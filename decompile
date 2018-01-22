@@ -1,0 +1,12 @@
+#!/usr/bin/swipl
+
+:-initialization(main).
+
+:-use_module(reader,[read_asm/1]).
+
+main:-
+	current_prolog_flag(argv, [File|_]),
+	read_asm(File),!,
+	halt.
+main:-
+	halt.
