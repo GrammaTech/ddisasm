@@ -1,0 +1,14 @@
+#!/usr/bin/swipl
+
+:-initialization(main).
+
+:-use_module(reader,[read_binary/1]).
+
+main:-
+	current_prolog_flag(argv, Args),
+	read_binary(Args),!,
+	halt.
+main:-
+	current_prolog_flag(argv, Args),
+	format(user_error,'Incorrect number of arguments ~p~n',[Args]),
+	halt.
