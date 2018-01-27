@@ -1,0 +1,24 @@
+Import('env opts')
+
+env.GTCreateFeature(
+    'souffle_disasmf',
+      CXXFLAGS=' -std=c++1y',
+    )
+pa2 = env.GTCheckProgram(
+        'souffle_disasm',
+        [
+        'souffle_disasm.cpp',
+#        'ex_source.cpp'
+        ],
+        UNITTEST_FLAGS=['-str=90'],
+        depends = [
+         'souffle_disasmf',
+        			'export_gtr_symbols',
+                   'export_tsl_symbols',
+                   'boost', # tsl/cir/tsl_interface.hpp via decoderff.hpp
+                   'string', # memcasecmp; see common/show.cxx:VSA_DLL_DEP
+                   'isax_thin_decoder_x64',
+                   'isax_thinpp_x64',
+                   'tsl_rtg_x64',
+                   ],
+        )

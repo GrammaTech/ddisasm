@@ -1,0 +1,5 @@
+#! /bin/sh
+cd "`dirname \"$0\"`" || exit $?
+# Remove this line once isal is 64-bit compatible
+GTR_BUILD_ARGS="target64=0"
+. ../gtr/scons/build

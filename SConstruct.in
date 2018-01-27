@@ -1,0 +1,8 @@
+# In order to use me:
+# cp SConstruct.in ../SConstruct && scons -D
+
+# Do not add things to this file.  Add them to SConscript.
+SConscript([ 'gtr/SConscript' ])
+Import('env')
+env.GTSConscript([ 'datalog_disasm/SConscript',
+                   'gtr/scons/SConsFin' ])
