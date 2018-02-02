@@ -28,18 +28,13 @@
 
 // possible target
 .decl possible_target(ea:address)
-.input possible_target
-
-
-
-
 
 possible_target(Val):-
 	op_immediate(_,Val).
 	
 // 'Next'
 .decl next(n:address,m:address)
-.input next
+
 
 next(EA,EA+Size):-
 	instruction(EA,Size,_,_,_,_).
@@ -55,7 +50,7 @@ jump_operation("JNA").
 	
 // 'Jumps'
 .decl inconditional_jump(n:address)
-.input inconditional_jump
+
 
 
 inconditional_jump(EA):-
@@ -63,7 +58,7 @@ inconditional_jump(EA):-
 	
 // direct jumps
 .decl direct_jump(n:address,m:address)
-.input direct_jump
+
 
 direct_jump(EA,Dest):-
 	instruction(EA,_,Operation,Op1,_,_),
@@ -75,7 +70,7 @@ direct_jump(EA,Dest):-
 		
 // 'Calls'
 .decl direct_call(n:address,m:address)
-.input direct_call
+
 
 direct_call(EA,Dest):-
 	instruction(EA,_,"CALL",Op1,_,_),

@@ -1,31 +1,25 @@
-/* GT_EXTERNAL_LEGEND(2008-2010) */
+
 
 #include "Datalog_visitor_x64.h"
 #include "gtr/src/lang/gtr_config.h"
 #include "gtr/src/string/tohex.hpp"
 
-#include <cctype>
-#include <sstream>
-#include <iostream>
+//#include <cctype>
+#include <exception>
 
-void Datalog_visitor_x64::collect_operands(Dl_operator_table& dict){
-        for(auto op: operators){
-            int64_t index=dict.add(op);
-            operator_codes.push_back(index);
-        }
-}
-std::string Datalog_visitor_x64::result_tabs(){
-    std::ostringstream o;
-    o<<address<<"\t"<<size<<"\t"<<name;
-    for (size_t i=0;i<4;++i){
-        if(i<operator_codes.size())
-            o<<"\t"<< operator_codes[i];
-        else
-            o<<"\t"<< 0;
-    }
-    return o.str();
+
+void Datalog_visitor_x64::add_curr_operator(){
+    if (curr_op.type==operator_type::NONE)
+        throw std::logic_error("An operator has not been processed well in EA"+ address);
+    int64_t index=op_dict->add(curr_op);
+    op_codes.push_back(index);
 }
 
+Dl_instruction Datalog_visitor_x64::get_instruction(){
+    return Dl_instruction(address,size,name,op_codes);
+}
+
+/*
 std::string Datalog_visitor_x64::result(){
     std::ostringstream o;
     o<< "instruction("<<address<<","<<size<<","<<name;
@@ -35,16 +29,16 @@ std::string Datalog_visitor_x64::result(){
     o<<").";
     return o.str();
 }
+ */
 
 void Datalog_visitor_x64::visit(const ConcTSLInterface::instruction * const n)
 {
-
-    std::cout<<"unrecognized instruction:"<<n->GetClassIdName()<<std::endl;
+    std::cerr<<"unrecognized instruction:"<<n->GetClassIdName()<<std::endl;
     exit(1);
 }
 void Datalog_visitor_x64::visit(const RTG::operand * const n)
 {
-    std::cout<<"unrecognized operator:"<<n->GetClassIdName() <<std::endl;
+    std::cerr<<"unrecognized operator:"<<n->GetClassIdName() <<std::endl;
     exit(1);
 }
 
@@ -52,7 +46,6 @@ void Datalog_visitor_x64::visit(const RTG::operand * const n)
 
 void Datalog_visitor_x64::visit(const RTG::threeOpInstr * const p){
     name=std::string(p->GetClassIdName());
-
 }
 void Datalog_visitor_x64::visit(const RTG::twoOpInstr * const p){
     name=std::string(p->GetClassIdName());
@@ -70,54 +63,92 @@ void Datalog_visitor_x64::visit(const RTG::zeroOpInstr * const p){
 
 
 template<typename T>
-void Datalog_visitor_x64::visit1op(const  T* const n)
+inline void Datalog_visitor_x64::visit1op(const  T* const n)
 {
+    // we put the curr_op type to none to detect cases where something went wrong
     curr_op.type=operator_type::NONE;
     n->Get_Src()->accept(*this);
-    operators.push_back(curr_op);
+    add_curr_operator();
     n->Get_OneOpInstr()->accept(*this);
 }
 template<typename T>
-void Datalog_visitor_x64::visit2op(const T * const n)
+inline void Datalog_visitor_x64::visit2op(const T * const n)
 {
     curr_op.type=operator_type::NONE;
     n->Get_Src()->accept(*this);
-    operators.push_back(curr_op);
+    add_curr_operator();
 
     curr_op.type=operator_type::NONE;
     n->Get_Dst() ->accept(*this);
-    operators.push_back(curr_op);
+    add_curr_operator();
 
     n->Get_TwoOpInstr()->accept(*this);
 }
 template<typename T>
-void Datalog_visitor_x64::visit3op(const T * const n)
+inline void Datalog_visitor_x64::visit3op(const T * const n)
 {
     curr_op.type=operator_type::NONE;
     n->Get_Src1()->accept(*this);
-    operators.push_back(curr_op);
+    add_curr_operator();
 
     curr_op.type=operator_type::NONE;
     n->Get_Src2()->accept(*this);
-    operators.push_back(curr_op);
+    add_curr_operator();
 
     curr_op.type=operator_type::NONE;
     n->Get_Dst() ->accept(*this);
-    operators.push_back(curr_op);
-
+    add_curr_operator();
     n->Get_ThreeOpInstr()->accept(*this);
 }
 
+template<typename regdirect>
+inline void Datalog_visitor_x64::visitRegDirect(const regdirect * const n)
+{
+    curr_op.type=operator_type::REG;
+    curr_op.reg1=std::string(n->Get_Reg()->GetClassIdName());
+}
+
+template <typename addr>
+inline void Datalog_visitor_x64::visitAddr(const addr * const n){
+    curr_op.type=operator_type::INDIRECT;
+    curr_op.reg1=n->Get_Seg()->GetClassIdName();
+    curr_op.reg2=n->Get_Base()->GetClassIdName();
+    curr_op.reg3=n->Get_Index()->GetClassIdName();
+
+
+    curr_op.disp= n->Get_disp().get_data();
+    curr_op.offset= n->Get_offset().get_data();
+    curr_op.multiplier=n->Get_s().get_data();
+}
+
+template <typename instr>
+inline void Datalog_visitor_x64::visitInstrWAdrr(const instr * const n)
+{
+    name=n->GetClassIdName();
+    curr_op.type=operator_type::NONE;
+    n->Get_Addr() ->accept(*this);
+    add_curr_operator();
+}
+
+template <typename instr>
+inline void Datalog_visitor_x64::visitInstrWAdrrDst(const instr * const n)
+{
+    name=n->GetClassIdName();
+    curr_op.type=operator_type::NONE;
+    n->Get_Addr() ->accept(*this);
+    add_curr_operator();
+
+    curr_op.type=operator_type::NONE;
+    n->Get_Dst() ->accept(*this);
+    add_curr_operator();
+}
 
 void Datalog_visitor_x64::visit(const RTG::OperandFloat * const n)
 {
-     n->Get_opnd() ->accept(*this);
+    n->Get_opnd() ->accept(*this);
 }
-
-
 void Datalog_visitor_x64::visit(const RTG::Operand128 * const n)
 {
-
     n->Get_opnd()->accept(*this);
 }
 void Datalog_visitor_x64::visit(const RTG::Operand80 * const n)
@@ -148,276 +179,181 @@ void Datalog_visitor_x64::visit(const RTG::Operand8 * const n)
 
 void Datalog_visitor_x64::visit(const RTG::RegDirect128 * const n)
 {
-    curr_op.type=operator_type::REG;
-    curr_op.reg1=std::string(n->Get_Reg()->GetClassIdName());
+    visitRegDirect<RTG::RegDirect128>(n);
 }
 void Datalog_visitor_x64::visit(const RTG::RegDirect64 * const n)
 {
-    curr_op.type=operator_type::REG;
-    curr_op.reg1=std::string(n->Get_Reg()->GetClassIdName());
+    visitRegDirect<RTG::RegDirect64>(n);
 }
 void Datalog_visitor_x64::visit(const RTG::RegDirect32 * const n)
 {
-    curr_op.type=operator_type::REG;
-    curr_op.reg1=std::string(n->Get_Reg()->GetClassIdName());
+    visitRegDirect<RTG::RegDirect32>(n);
 }
 void Datalog_visitor_x64::visit(const RTG::RegDirect16 * const n)
 {
-    curr_op.type=operator_type::REG;
-    curr_op.reg1=std::string(n->Get_Reg()->GetClassIdName());
+    visitRegDirect<RTG::RegDirect16>(n);
 }
 void Datalog_visitor_x64::visit(const RTG::RegDirect8 * const n)
 {
-    curr_op.type=operator_type::REG;
-    curr_op.reg1=std::string(n->Get_Reg()->GetClassIdName());
+    visitRegDirect<RTG::RegDirect8>(n);
 }
-
-
-
 void Datalog_visitor_x64::visit(const RTG::SRegDirect64 * const n)
 {
-    curr_op.type=operator_type::REG;
-    curr_op.reg1=std::string(n->Get_Reg()->GetClassIdName());
+    visitRegDirect<RTG::SRegDirect64>(n);
 }
 void Datalog_visitor_x64::visit(const RTG::SRegDirect32 * const n)
 {
-    curr_op.type=operator_type::REG;
-    curr_op.reg1=std::string(n->Get_Reg()->GetClassIdName());
+    visitRegDirect<RTG::SRegDirect32>(n);
 }
 void Datalog_visitor_x64::visit(const RTG::SRegDirect16 * const n)
 {
-    curr_op.type=operator_type::REG;
-    curr_op.reg1=std::string(n->Get_Reg()->GetClassIdName());
+    visitRegDirect<RTG::SRegDirect16>(n);
 }
-
 void Datalog_visitor_x64::visit(const RTG::Float_RegDirect * const n)
 {
-    curr_op.type=operator_type::REG;
-    curr_op.reg1=std::string(n->Get_Reg()->GetClassIdName());
-}
-
-template <typename addr>
-void Datalog_visitor_x64::visitAddr(const addr * const n){
-        curr_op.type=operator_type::INDIRECT;
-        curr_op.reg1=n->Get_Seg()->GetClassIdName();
-        curr_op.reg2=n->Get_Base()->GetClassIdName();
-        curr_op.reg3=n->Get_Index()->GetClassIdName();
-
-
-        curr_op.disp= n->Get_disp().get_data();
-        curr_op.offset= n->Get_offset().get_data();
-        curr_op.multiplier=n->Get_s().get_data();
+    visitRegDirect<RTG::Float_RegDirect>(n);
 }
 
 
 
 void Datalog_visitor_x64::visit(const RTG::Indirect128 * const n)
-    {
-        n->Get_Addr()->accept(*this);
-    }
+{
+    n->Get_Addr()->accept(*this);
+}
 void Datalog_visitor_x64::visit(const RTG::Indirect80 * const n)
-    {
-        n->Get_Addr()->accept(*this);
-    }
+{
+    n->Get_Addr()->accept(*this);
+}
 void Datalog_visitor_x64::visit(const RTG::Indirect64 * const n)
-    {
-        n->Get_Addr()->accept(*this);
-    }
+{
+    n->Get_Addr()->accept(*this);
+}
 
 
 void Datalog_visitor_x64::visit(const RTG::Indirect48 * const n)
-    {
-        n->Get_Addr()->accept(*this);
-    }
+{
+    n->Get_Addr()->accept(*this);
+}
 void Datalog_visitor_x64::visit(const RTG::Indirect32 * const n)
-    {
-        n->Get_Addr()->accept(*this);
-    }
+{
+    n->Get_Addr()->accept(*this);
+}
 void Datalog_visitor_x64::visit(const RTG::Indirect16 * const n)
-    {
-        n->Get_Addr()->accept(*this);
-    }
+{
+    n->Get_Addr()->accept(*this);
+}
 void Datalog_visitor_x64::visit(const RTG::Indirect8 * const n)
-    {
-        n->Get_Addr()->accept(*this);
-    }
+{
+    n->Get_Addr()->accept(*this);
+}
+
+
 
 void Datalog_visitor_x64::visit(const RTG::Immediate64 * const n)
-    {
-     curr_op.type=operator_type::IMMEDIATE;
-    curr_op.offset=n->Get_Imm()->get_data();
-    }
-void Datalog_visitor_x64::visit(const RTG::Immediate32 * const n)
-    {
-  curr_op.type=operator_type::IMMEDIATE;
-    curr_op.offset=n->Get_Imm()->get_data();
-    }
-void Datalog_visitor_x64::visit(const RTG::Immediate16 * const n)
-    {
-
-      curr_op.type=operator_type::IMMEDIATE;
-    curr_op.offset=n->Get_Imm()->get_data();
-    }
-void Datalog_visitor_x64::visit(const RTG::Immediate8 * const n)
-    {
+{
     curr_op.type=operator_type::IMMEDIATE;
     curr_op.offset=n->Get_Imm()->get_data();
-    }
+}
+void Datalog_visitor_x64::visit(const RTG::Immediate32 * const n)
+{
+    curr_op.type=operator_type::IMMEDIATE;
+    curr_op.offset=n->Get_Imm()->get_data();
+}
+void Datalog_visitor_x64::visit(const RTG::Immediate16 * const n)
+{
+
+    curr_op.type=operator_type::IMMEDIATE;
+    curr_op.offset=n->Get_Imm()->get_data();
+}
+void Datalog_visitor_x64::visit(const RTG::Immediate8 * const n)
+{
+    curr_op.type=operator_type::IMMEDIATE;
+    curr_op.offset=n->Get_Imm()->get_data();
+}
 
 
 // special instructions
-  void Datalog_visitor_x64::visit(const RTG::FarImmediate * const n)
-    {
+void Datalog_visitor_x64::visit(const RTG::FarImmediate * const n)
+{
     name=n->GetClassIdName();
     curr_op.type=operator_type::NONE;
     n->Get_Dst() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::FarIndirect16 * const n)
-    {
-    name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::FarIndirect32 * const n)
-    {
-      name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::FarIndirect64 * const n)
-    {
-    name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-    }
+    add_curr_operator();
+}
 
-    void Datalog_visitor_x64::visit(const RTG::Lea64 * const n)
-    {
-    name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-
-    curr_op.type=operator_type::NONE;
-    n->Get_Dst() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::Lea32 * const n)
-    {
-    name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-
-    curr_op.type=operator_type::NONE;
-    n->Get_Dst() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::Lea16 * const n)
-    {
-       name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-
-    curr_op.type=operator_type::NONE;
-    n->Get_Dst() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::Fnstenv * const n)
-    {
-       name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-
-
-    }
-    void Datalog_visitor_x64::visit(const RTG::Fldenv * const n)
-    {
-         name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::Fnsave * const n)
-    {
-          name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::Frstor * const n)
-    {
-           name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::Fxsave * const n)
-    {
-        name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::Fxsave64 * const n)
-    {
-          name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::Fxrstor * const n)
-    {
-          name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::Fxrstor64 * const n)
-    {
-             name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::Xsave * const n)
-    {
-              name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::Xsave64 * const n)
-    {
-             name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::Xrstor * const n)
-    {
-          name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::Xrstor64 * const n)
-    {
-          name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-    }
-    void Datalog_visitor_x64::visit(const RTG::Invlpg * const n)
-    {
-    name=n->GetClassIdName();
-    curr_op.type=operator_type::NONE;
-    n->Get_Addr() ->accept(*this);
-    operators.push_back(curr_op);
-    }
+void Datalog_visitor_x64::visit(const RTG::Lea64 * const n)
+{
+    visitInstrWAdrrDst<RTG::Lea64>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::Lea32 * const n)
+{
+    visitInstrWAdrrDst<RTG::Lea32>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::Lea16 * const n)
+{
+    visitInstrWAdrrDst<RTG::Lea16>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::FarIndirect16 * const n)
+{
+    visitInstrWAdrr<RTG::FarIndirect16>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::FarIndirect32 * const n)
+{
+    visitInstrWAdrr<RTG::FarIndirect32>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::FarIndirect64 * const n)
+{
+    visitInstrWAdrr<RTG::FarIndirect64>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::Fnstenv * const n)
+{
+    visitInstrWAdrr<RTG::Fnstenv>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::Fldenv * const n)
+{
+    visitInstrWAdrr<RTG::Fldenv>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::Fnsave * const n)
+{
+    visitInstrWAdrr<RTG::Fnsave>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::Frstor * const n)
+{
+    visitInstrWAdrr<RTG::Frstor>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::Fxsave * const n)
+{
+    visitInstrWAdrr<RTG::Fxsave>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::Fxsave64 * const n)
+{
+    visitInstrWAdrr<RTG::Fxsave64>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::Fxrstor * const n)
+{
+    visitInstrWAdrr<RTG::Fxrstor>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::Fxrstor64 * const n)
+{
+    visitInstrWAdrr<RTG::Fxrstor64>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::Xsave * const n)
+{
+    visitInstrWAdrr<RTG::Xsave>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::Xsave64 * const n)
+{
+    visitInstrWAdrr<RTG::Xsave64>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::Xrstor * const n)
+{
+    visitInstrWAdrr<RTG::Xrstor>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::Xrstor64 * const n)
+{
+    visitInstrWAdrr<RTG::Xrstor64>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::Invlpg * const n)
+{
+    visitInstrWAdrr<RTG::Invlpg>(n);
+}

@@ -21,17 +21,12 @@ int64_t Dl_operator_table::add_to_dict(op_dict& dict,Dl_operator op){
 }
 
 int64_t Dl_operator_table::add(Dl_operator op){
-   return add_to_dict(dicts[op.get_type()],op);
+    return add_to_dict(dicts[op.get_type()],op);
 
 }
-void Dl_operator_table::print(std::string directory,std::ios_base::openmode filemask){
-    //skip the none dictionary
-    for(int i=1;i<4;i++){
-        std::ofstream file;
-        file.open(directory+op_names[i]+".facts",filemask);
-        for(auto pair: dicts[i]){
-            file<<pair.first.print_tabs(pair.second)<<std::endl;
-        }
-        file.close();
+void Dl_operator_table::print_operators_of_type(operator_type type,std::ofstream& fbuf){
+    for(auto pair: dicts[type]){
+        fbuf<<pair.first.print_tabs(pair.second)<<std::endl;
     }
+
 }

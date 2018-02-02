@@ -35,13 +35,13 @@ public:
                 int64_t offset=0,
                 int64_t multiplier=1,
                 int64_t dist=0):
-        type(type),
-        reg1(reg1),
-        reg2(reg2),
-        reg3(reg3),
-        offset(offset),
-        multiplier(multiplier),
-        disp(dist){}
+                    type(type),
+                    reg1(reg1),
+                    reg2(reg2),
+                    reg3(reg3),
+                    offset(offset),
+                    multiplier(multiplier),
+                    disp(dist){}
 
     operator_type get_type() const;
     // for debugging purposes
@@ -51,7 +51,7 @@ public:
 };
 
 struct compare_operators{
-bool operator() (const Dl_operator&  op1,const Dl_operator&  op2);
+    bool operator() (const Dl_operator&  op1,const Dl_operator&  op2);
 };
 
 

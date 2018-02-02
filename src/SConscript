@@ -1,5 +1,8 @@
 Import('env opts')
 
+
+env.SConscript(['../../third-party/boost/libs/program_options/build/SConscript'])
+
 env.GTCreateFeature(
     'datalog_visitor_x64',
     LIBS = ['datalog_visitor_x64'],
@@ -10,12 +13,18 @@ env.GTLibrary(
     'datalog_visitor_x64',
     source = ['Datalog_visitor_x64.cpp',
               'Dl_operator.cpp',
+              'Dl_instruction.cpp',
               'Dl_operator_table.cpp',
+       #       'Dl_decoder.cpp',
               ],
     depends = ['datalog_visitor_x64',
-               'export_gtr_symbols',
-               'export_tsl_symbols',
-               'tsl_hash_includes',
+       		   		   'export_gtr_symbols',
+                   'export_tsl_symbols',
+                   'boost', # tsl/cir/tsl_interface.hpp via decoderff.hpp
+                   'string', # memcasecmp
+                   'isax_thin_decoder_x64',
+                   'tsl_rtg_x64',
+                   'tsl_hash_includes',
                ],
     )
 
@@ -26,19 +35,22 @@ env.GTCreateFeature(
 pa2 = env.GTCheckProgram(
         'souffle_disasm',
         [
-        'souffle_disasm.cpp',
+        'souffle_disasm.cpp', 
+        'Dl_decoder.cpp',
 #        'ex_source.cpp'
         ],
         UNITTEST_FLAGS=['-str=90'],
         depends = [
          'souffle_disasmf',
+           		   'datalog_visitor_x64',  
         		   'export_gtr_symbols',
                    'export_tsl_symbols',
                    'boost', # tsl/cir/tsl_interface.hpp via decoderff.hpp
+                   'boost_program_options',
                    'string', # memcasecmp
                    'isax_thin_decoder_x64',
-                   'datalog_visitor_x64',
                    'tsl_rtg_x64',
                    'tsl_hash_includes',
+                 
                    ],
         )

@@ -6,23 +6,16 @@
 // Description :
 //============================================================================
 
-#include "Datalog_visitor_x64.h"
-#include "Dl_operator_table.h"
-
-#include "gtr/src/lang/gtr_config.h"
-#include "isal/x64/decoderff.hpp"
+#include "Dl_decoder.h"
 #include "souffle/SouffleInterface.h"
+#include "gtr/src/lang/gtr_config.h"
 
+#include <boost/program_options.hpp>
 #include <cctype>
 #include <iostream>
 #include <sstream>
 #include <fstream>
 #include <string>
-
-
-typedef csuint64 ea_int_t;
-//#define NBYTES_ON_FAILURE(buf) 1
-//#define TO_ASM(instr) X64genPPrinter::to_asm(instr, mode)
 
 //---------------------
 // VSA_DLL_DEP HACK!!!
@@ -38,82 +31,96 @@ int dummy_hack(const void * lhs, size_t lsize, const void * rhs, size_t rsize) {
     return memcasecmp(lhs, lsize, rhs, rsize);
 }
 // end VSA_DLL_DEP HACK
+namespace po = boost::program_options;
+using namespace std;
 
 int main(int argc, char** argv) {
-    if (argc < 2) {
-        std::cerr << "Give me some argument" << std::endl;
-        exit(1);
+    po::options_description desc("Allowed options");
+    desc.add_options()
+                    ("help", "produce help message")
+                    ("sect", po::value<vector<string> >(), "sections to decode")
+                    ("addr", po::value<vector<int64_t> >(), "starting addresses")
+                    ("dir", po::value<string>(), "output directory");
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);
+    if (vm.count("help")) {
+        cout << desc << "\n";
+        return 1;
+    }
+    vector<string> sections;
+    vector<int64_t> addresses;
+    if (vm.count("sect") && vm.count("addr")) {
+        sections=vm["sect"].as<vector<string> >();
+        addresses=vm["addr"].as<vector<int64_t> >();
+        if(sections.size()!=addresses.size()){
+            cout << "The number of sections and addresses does not coincide\n";
+            return 1;
+        }
+    } else {
+        cout << "No sections or addresses were provided.\n";
+        cout << desc << "\n";
+        return 1;
+    }
+    string directory;
+    if (vm.count("dir")) {
+        directory=vm["dir"].as<string>();
+
+    }else{
+        cout << "Please provide an output directory.\n";
+        cout << desc << "\n";
+        return 1;
     }
 
-    X64genDecoderFF::initialize();
-    // initialize the first EA with the address argument, if provided
-    ea_int_t ea = 0;
     std::ios_base::openmode filemask=std::ios::out;
-    if (argc >= 3 && !strncasecmp(argv[2], "-address=", 9))
-        ea = strtoull(argv[2] + 9, 0, 0);
+    //    filemask=filemask | std::ios_base::app;
 
-    bool is_data(false);
-    if (argc >= 4 && !strncasecmp(argv[3], "-data",5))
-        is_data = true;
-    if (argc >= 4 && !strncasecmp(argv[3], "-append",7))
-        filemask=filemask | std::ios_base::app;
+    Dl_decoder decoder;
+    auto ItSections =sections.begin();
+    auto ItAddresses =addresses.begin();
+    while(ItSections!=sections.end()){
+        std::cout<<"Decoding section "<<*ItSections<<std::endl;
+        std::filebuf fbuf;
+        fbuf.open(*ItSections, std::ios::in | std::ios::binary);
+        decoder.decode_section(fbuf,*ItAddresses);
+        fbuf.close();
 
-    std::filebuf fbuf;
-    fbuf.open(argv[1], std::ios::in | std::ios::binary);
-    size_t buf_size = 102400;
-    char * buf = new char[buf_size];
-    std::streamsize nbytes_left = fbuf.sgetn(buf, buf_size);
-    char * bufptr = buf;
-
-    std::string directory=argv[1];
-    size_t found=directory.find_last_of("/\\");
-    directory= directory.substr(0,found)+'/';
-    std::cout<<"Saving results in directory: "<<directory<<std::endl;
-    std::ofstream instruction_file;
-
-
-    instruction_file.open(directory+"instruction.facts",filemask);
-    std::ofstream invalid_file;
-    invalid_file.open(directory+"invalid.facts",filemask);
-
-    Dl_operator_table op_dict;
-    while (nbytes_left > 0) {
-        unsigned int nbytes_decoded;
-        // safe to cast here since nbytes_left is in the range (0-buf_size]
-        if (is_data) {
-            uint64_t * data= (uint64_t*)(bufptr);
-            std::cout<<"data("<<ea<<","<<*data<<")"<<std::endl;
-        } else {
-            ConcTSLInterface::instructionRefPtr instr = X64genDecoderFF::decode(
-                    bufptr, ea, static_cast<unsigned int>(nbytes_left),
-                    &nbytes_decoded, IADC_LongMode);
-
-            if (instr.is_empty()) {
-                invalid_file << ea << std::endl;
-            } else {
-                Datalog_visitor_x64 visitor(ea,static_cast<long>(nbytes_decoded));
-                instr->accept(visitor);
-                //std::cout << instr << std::endl;
-                visitor.collect_operands(op_dict);
-               // std::cout << visitor.result() << std::endl;
-                instruction_file << visitor.result_tabs() << std::endl;
-                //std::cout << X64genPPrinter::to_souffle(ea,static_cast<long>(nbytes_decoded),instr,op_dict) << std::endl;
-
-            }
-        }
-        ++ea;
-        ++bufptr;
-        --nbytes_left;
-        if (nbytes_left == 0) {
-            nbytes_left = fbuf.sgetn(buf, buf_size);
-            bufptr = buf;
-        }
+        ++ItSections;
+        ++ItAddresses;
     }
-    instruction_file.close();
-    invalid_file.close();
-    std::cout << "operators "<< std::endl;
-    op_dict.print(directory,filemask);
-    delete buf;
+    std::cout<<"Saving results in directory: "<<directory<<std::endl;
+    std::cout<<"Saving instruction "<<std::endl;
+    std::ofstream instructions_file;
+    instructions_file.open(directory+"instruction.facts",filemask);
+    decoder.print_instructions(instructions_file);
+    instructions_file.close();
+
+    std::cout<<"Saving invalids "<<std::endl;
+    std::ofstream invalids_file;
+    invalids_file.open(directory+"invalid.facts",filemask);
+    decoder.print_invalids(invalids_file);
+    invalids_file.close();
+
+    std::cout<<"Saving operators "<<std::endl;
+
+    std::ofstream op_regdirect_file;
+    op_regdirect_file.open(directory+"op_regdirect.facts",filemask);
+    decoder.print_operators_of_type(operator_type::REG,op_regdirect_file);
+    op_regdirect_file.close();
+
+    std::ofstream op_immediate_file;
+    op_immediate_file.open(directory+"op_immediate.facts",filemask);
+    decoder.print_operators_of_type(operator_type::IMMEDIATE,op_immediate_file);
+    op_immediate_file.close();
+
+    std::ofstream op_indirect_file;
+    op_indirect_file.open(directory+"op_indirect.facts",filemask);
+    decoder.print_operators_of_type(operator_type::INDIRECT,op_indirect_file);
+    op_indirect_file.close();
+
+    std::cout<<"Done "<<std::endl;
+
     return 0;
 }
 

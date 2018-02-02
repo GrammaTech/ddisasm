@@ -53,24 +53,24 @@ operator_type Dl_operator::get_type() const{
 bool compare_operators::operator()(const Dl_operator&  op1,const Dl_operator&  op2){
     if(op1.type==op2.type){
         switch(op1.type){
-         case NONE:
-             return false;
-         case REG:
-             return op1.reg1< op2.reg1;
-         case IMMEDIATE:
-             return op1.offset< op2.offset;
-         case INDIRECT:
+        case NONE:
+            return false;
+        case REG:
+            return op1.reg1< op2.reg1;
+        case IMMEDIATE:
+            return op1.offset< op2.offset;
+        case INDIRECT:
             return (op1.reg1< op2.reg1) ||
-                  ( (op1.reg1==op2.reg1) && (op1.reg2< op2.reg2)) ||
-                  ( (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2< op2.reg2)) ||
-                  ( (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2==op2.reg2) &&
-                   (op1.offset< op2.offset)) ||
+                    ( (op1.reg1==op2.reg1) && (op1.reg2< op2.reg2)) ||
+                    ( (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2< op2.reg2)) ||
+                    ( (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2==op2.reg2) &&
+                            (op1.offset< op2.offset)) ||
 
-                 (  (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2==op2.reg2) &&
-                   (op1.offset==op2.offset) && (op1.multiplier< op2.multiplier) )||
+                            (  (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2==op2.reg2) &&
+                                    (op1.offset==op2.offset) && (op1.multiplier< op2.multiplier) )||
 
-                  ( (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2==op2.reg2) &&
-                   (op1.offset==op2.offset) && (op1.multiplier== op2.multiplier) && (op1.disp<op2.disp));
+                                    ( (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2==op2.reg2) &&
+                                            (op1.offset==op2.offset) && (op1.multiplier== op2.multiplier) && (op1.disp<op2.disp));
         }
     }else{
         return op1.type<op2.type;
