@@ -1,58 +1,110 @@
 .symbol_type name
+.symbol_type reg
 
 .number_type address
+.number_type op_code
 
 // 'Symbols'
 .decl symbol(ea:address,n:number,type:symbol,scope:symbol,name:symbol)
-#include "symbol.facts"
+.input symbol
 
 
+.decl instruction(ea:address,size:number,opcode:symbol,op1:op_code,op2:op_code,op3:op_code)
+.input instruction
 
-.decl possible_target(ea:address)
-#include "possible_target.facts"
+.decl op_regdirect(code:op_code,reg:reg)
+.input op_regdirect
 
-// 'Next'
-.decl next(n:address,m:address)
-#include "next.facts"
-// 'Jumps'
-.decl inconditional_jump(n:address)
-#include "inconditional_jump.facts"
+.decl op_immediate(code:op_code,num:number)
+.input op_immediate
 
-.decl direct_jump(n:address,m:address)
-#include "direct_jump.facts"
-// 'Calls'
-.decl direct_call(n:address,m:address)
-#include "direct_call.facts"
+.decl op_indirect(code:op_code,reg1:reg,reg2:reg,reg3:reg,multiplier:number,offset:number,noidea:number)
+.input op_indirect
+
 
 // 'Invalid adresses'
 .decl invalid(n:address)
-// 'Valid'
-#include "invalid.facts"
+.input invalid
+
+// possible target
+.decl possible_target(ea:address)
+.input possible_target
+
+
+
+
+
+possible_target(Val):-
+	op_immediate(_,Val).
+	
+// 'Next'
+.decl next(n:address,m:address)
+.input next
+
+next(EA,EA+Size):-
+	instruction(EA,Size,_,_,_,_).
+	
+
+.decl jump_operation(n:symbol)
+
+jump_operation("JMP").
+jump_operation("JNZ").
+jump_operation("JN").
+jump_operation("JGE").
+jump_operation("JNA").	
+	
+// 'Jumps'
+.decl inconditional_jump(n:address)
+.input inconditional_jump
+
+
+inconditional_jump(EA):-
+	instruction(EA,_,"JMP",_,_,_).	
+	
+// direct jumps
+.decl direct_jump(n:address,m:address)
+.input direct_jump
+
+direct_jump(EA,Dest):-
+	instruction(EA,_,Operation,Op1,_,_),
+	jump_operation(Operation),
+	op_immediate(Op1,Dest).
+	
+    
+
+		
+// 'Calls'
+.decl direct_call(n:address,m:address)
+.input direct_call
+
+direct_call(EA,Dest):-
+	instruction(EA,_,"CALL",Op1,_,_),
+	op_immediate(Op1,Dest).
+
+
+.decl maybe_valid(a:address)
+    
+maybe_valid(EA):-
+	instruction(EA,_,_,_,_,_).
+	
 
 // 'Returns'
 .decl return(n:address)
-#include "return.facts"
 
-.decl instruction_text(n:address,name:symbol)
-#include "instruction_text.facts"
+return(EA):-
+	instruction(EA,_,"Ret",_,_,_).
+
 
 
 
 .decl function_symbol(ea:address,name:symbol)
-.output function_symbol(IO=stdout)
+.output function_symbol
 
 function_symbol(EA,Name):-
 	symbol(EA,_,"func",_,Name).
 
 possible_target(EA):-
 	function_symbol(EA,_).
-	
-	
-.decl maybe_valid(n:address)
-
-//we can compute maybe_valid from next (hopefully reducing reading time)
-maybe_valid(N):-
-	next(N,_).
 		
 		
 .decl fallthrough(o:address,d:address)
@@ -71,7 +123,7 @@ fallthrough(From,To):-
 // following direct jumps and direct calls
 
 .decl valid4sure(n:address,start:address)
-//.output valid4sure(IO=stdout)
+.output valid4sure
 
 //for sure might be an overstatement
 valid4sure(EA,EA):-
@@ -112,12 +164,22 @@ overlap(EA+1,EA2):-
 	overlap(EA,EA2),
 	next(EA2,End),
 	EA+1 < End.
-	
+
+// the starting point of EA is in the middle of a valid instruction	
 invalid(EA):- 
 	valid4sure(Ini,_),
 	overlap(EA,Ini),
 	maybe_valid(EA),
 	!valid4sure(EA,_).
+
+// the ending point of EA is in the middle of a valid instruction
+invalid(EA):- 
+	valid4sure(Ini,_),
+	overlap(EA_f,Ini),
+	next(EA,EA_f),
+	maybe_valid(EA),
+	!valid4sure(EA,_).	
+	
 
 //transitively invalid
 
@@ -139,20 +201,16 @@ invalid_transitive(From):-
 
 
 .decl maybe_valid2(n:address)
-//.output maybe_valid2(IO=stdout)
+.output maybe_valid2
 
 maybe_valid2(EA):-
 	maybe_valid(EA),
 	!invalid_transitive(EA).
+	
+	
+.decl block_start(n:address)
+.output block_start
 
-.decl print(ea:address,name:symbol,parent:address)
-.output print(IO=stdout)
+block_start(EA):-valid4sure(_,EA).
 
-print(EA,Name,Parent):-
-	maybe_valid2(EA),
-	(
-		valid4sure(EA,Parent)
-	;
-		!valid4sure(EA,_),Parent=0
-	),
-	instruction_text(EA,Name).
+

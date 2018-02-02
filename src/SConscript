@@ -1,6 +1,25 @@
 Import('env opts')
 
 env.GTCreateFeature(
+    'datalog_visitor_x64',
+    LIBS = ['datalog_visitor_x64'],
+    LIBPATH = ['.'],
+    CXXFLAGS=' -std=c++1y',
+    )
+env.GTLibrary(
+    'datalog_visitor_x64',
+    source = ['Datalog_visitor_x64.cpp',
+              'Dl_operator.cpp',
+              'Dl_operator_table.cpp',
+              ],
+    depends = ['datalog_visitor_x64',
+               'export_gtr_symbols',
+               'export_tsl_symbols',
+               'tsl_hash_includes',
+               ],
+    )
+
+env.GTCreateFeature(
     'souffle_disasmf',
       CXXFLAGS=' -std=c++1y',
     )
@@ -13,12 +32,13 @@ pa2 = env.GTCheckProgram(
         UNITTEST_FLAGS=['-str=90'],
         depends = [
          'souffle_disasmf',
-        			'export_gtr_symbols',
+        		   'export_gtr_symbols',
                    'export_tsl_symbols',
                    'boost', # tsl/cir/tsl_interface.hpp via decoderff.hpp
-                   'string', # memcasecmp; see common/show.cxx:VSA_DLL_DEP
+                   'string', # memcasecmp
                    'isax_thin_decoder_x64',
-                   'isax_thinpp_x64',
+                   'datalog_visitor_x64',
                    'tsl_rtg_x64',
+                   'tsl_hash_includes',
                    ],
         )

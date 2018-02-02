@@ -1,4 +1,4 @@
-#!/usr/bin/swipl
+#!/usr/bin/swipl -G4g
 
 :-initialization(main).
 
