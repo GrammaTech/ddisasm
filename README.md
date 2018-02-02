@@ -10,32 +10,19 @@ which can be printed in several formats.
 
 
 ## Running the analysis
-run the prolog module that generates the datalog inputs
-it generates an input for souffle and one for bddbddb
+Example usage
+`./disasm ../examples/ex1/ex`
 
-`./disasm examples/bzip/bzip2`
-
+The prolog module `disasm`  takes care of extracting symbols and sections
+from an elf binary. Then, it calls souffle_disasm to decode the extracted sections.
+Finally, it calls souffle and pretty prints the results.
 This uses:
 
  * `./elf_extract.sh` to extract a list of sections and symbols from the binary
  * objcopy to extract specific sections from the binary
- * and `x64show` to decode sections into tsl code
+ * and `souffle_disasm` to decode sections into facts
 
-Once the datalog input has been generated, it can be run with different engines:
 
-* run the analysis with bddbddb
-
-`java -jar bddbddb-full.jar examples/ex1/ex.bdd`
-
-* run the analysis with souffle
-
-`souffle examples/ex1/ex.dl`
-souffle souffle_rules.pl -I ../examples/bzip/ -j 8  > ../examples/bzip/valid.txt
-
-* generate an executable with souffle that can be run later.
-It is considerably faster.
-
-`souffle examples/ex1/ex.dl -o examples/ex1/ex_prog`
 
 ## References
 1. Souffle: "On fast large-scale program analysis in Datalog" CC2016
