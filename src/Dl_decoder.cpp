@@ -10,19 +10,15 @@
 #include "isal/x64/x64_pp.hpp"
 #include <iostream>
 
-void Dl_decoder::decode_section(std::filebuf& fbuf,int64_t ea=0){
+using namespace std;
+
+void Dl_decoder::decode_section(char* buf,uint64_t size,int64_t ea){
     X64genDecoderFF::initialize();
-    size_t buf_size = 102400;
-    char * buf = new char[buf_size];
-
-    std::streamsize nbytes_left = fbuf.sgetn(buf, buf_size);
-    char * bufptr = buf;
-
-    while (nbytes_left > 0) {
+    while (size > 0) {
         unsigned int nbytes_decoded;
         // safe to cast here since nbytes_left is in the range (0-buf_size]
         ConcTSLInterface::instructionRefPtr instr = X64genDecoderFF::decode(
-                bufptr, ea, static_cast<unsigned int>(nbytes_left),
+                buf, ea, static_cast<unsigned int>(size),
                 &nbytes_decoded, IADC_LongMode);
 
         if (instr.is_empty()) {
@@ -34,28 +30,55 @@ void Dl_decoder::decode_section(std::filebuf& fbuf,int64_t ea=0){
         }
 
         ++ea;
-        ++bufptr;
-        --nbytes_left;
-        if (nbytes_left == 0) {
-            nbytes_left = fbuf.sgetn(buf, buf_size);
-            bufptr = buf;
-        }
+        ++buf;
+        --size;
+
     }
-    delete [] buf;
 }
+
+bool can_be_address(uint64_t num, uint64_t min_address, uint64_t max_address){
+    return ((num>=min_address) && (num<=max_address)) || //absolute address
+            (num+min_address<=max_address); //offset
+}
+
+void Dl_decoder::store_data_section(char* buf,uint64_t size,int64_t ea,uint64_t min_address,uint64_t max_address){
+    while (size > 8) {
+        //fixme what about the last bytes?
+        uint64_t content=*((int64_t*)buf);
+        if (can_be_address(content,min_address,max_address))
+            data.push_back(Dl_data(ea,content));
+        ++ea;
+        ++buf;
+        --size;
+
+    }
+}
+
 
 
 void Dl_decoder::print_instructions(std::ofstream& fbuf){
     for(auto instruction: instructions){
-        fbuf<<instruction.result_tabs()<<std::endl;
+        fbuf<<instruction.result_tabs()<<endl;
     }
 }
-void Dl_decoder::print_operators_of_type(operator_type type,std::ofstream& fbuf){
+void Dl_decoder::print_operators_of_type(operator_type type,ofstream& fbuf){
     op_dict.print_operators_of_type(type,fbuf);
 
 }
-void Dl_decoder::print_invalids(std::ofstream& fbuf){
+void Dl_decoder::print_invalids(ofstream& fbuf){
     for(auto invalid: invalids){
-        fbuf<<invalid<<std::endl;
+        fbuf<<invalid<<endl;
     }
+}
+
+void Dl_decoder::print_data(ofstream& fbuf){
+    for(auto data_item: data){
+        fbuf<<data_item.result_tabs()<<endl;
+    }
+}
+
+std::string Dl_data::result_tabs(){
+    ostringstream o;
+    o<<ea<<'\t'<<content;
+    return o.str();
 }

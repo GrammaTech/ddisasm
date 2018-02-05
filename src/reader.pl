@@ -5,164 +5,42 @@
 
 analysis_file('souffle_main.pl').
 
-read_binary([File|Args]):-
-	format('Extracting symbols and sections from binary~n',[]),
-    (member(skip_extract,Args)->
-	 true
-     ;
-     atom_concat('./elf_extract.sh ',File,Cmd),
-     
-     shell(Cmd)
-    ),
-    format('Reading symbols~n',[]),
-    read_symbols(File,Symbols),
-
-    format('Storing symbols~n',[]),
-    file_directory_name(File, Dir),
-    save_db(souffle,Dir,[fact_list(symbol,Symbols)]),
-  
-    format('Reading sections~n',[]),
-  	read_sections(File,Sections),
-    maplist(extract_section(File),Sections),
-    format('Decoding sections~n',[]),
-    decode_sections(File,Sections,Dir),
+read_binary([File|_Args]):-
+	set_prolog_flag(print_write_options,[quoted(false)]),
+	format('Decoding binary~n',[]),
+	file_directory_name(File, Dir),
+    decode_sections(File,Dir),
     format('Calling souffle~n',[]),
     call_souffle(Dir),
     format('Collecting results and printing~n',[]),
     collect_results(Dir,_Results),
-    maplist(assert,Sections),
     pretty_print_results,
     print_stats.
    
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% predicates for reading elf information
-read_symbols(File,Symbols_final):-
-    atom_concat(File,'.symbols',File2),
-    read_terms_from_filename(File2,Symbols-[]),
-    maplist(\Symbol^Symbol2^(
-		Symbol=symbol(Address,N,Type,Scope,Name),
-		hex_to_dec(Address,Address_dec),
-		maplist(atom_string,[Type,Scope,Name],[TypeStr,ScopeStr,NameStr]),
-		Symbol2=symbol(Address_dec,N,TypeStr,ScopeStr,NameStr)
-	    ), Symbols, Symbols_dec),
-    exclude(symbol_has_no_name,Symbols_dec,Symbols_final).
-
-symbol_has_no_name(symbol(_,_,_,_,"")).
-
-
-read_sections(File,Interesting_sections):-
-    atom_concat(File,'.sections',File2),
-    read_terms_from_filename(File2,Sections-[]),
-    %transform the numbers to decimal
-    maplist(\Section^Section2^(
-		Section=section(Name,Type,Address),
-		hex_to_dec(Address,Address_dec),
-		Section2=section(Name,Type,Address_dec)
-	    ), Sections, Sections_dec),
-    include(section_of_interest,Sections_dec,Interesting_sections).
-
-section_of_interest(section('.eh_frame',_Type,_Address)).
-section_of_interest(section('.text',_Type,_Address)).
-section_of_interest(section('.plt',_Type,_Address)).
-section_of_interest(section('.plt.got',_Type,_Address)).
-section_of_interest(section('.init',_Type,_Address)).
-section_of_interest(section('.fini',_Type,_Address)).
-%section_of_interest(section('.rodata',_Type,_Address)).
-
-extract_section(File,section(Name,_Type,_Address)):-
-    %objcopy -O binary --only-section=.text $1 $1.text
-    atomic_list_concat(['objcopy -O binary --only-section=',Name,' ',File,' ',File,Name],Cmd),
-    shell(Cmd).
-
-decode_sections(File,Sections,Dir):-
-	 foldl(collect_section_addresses(File),Sections,([],[]),(Sect_names,Sect_addr)),
-	 atomic_list_concat(Sect_names,Section_chain),
-	 atomic_list_concat(Sect_addr,Addr_chain),
-	 atomic_list_concat(['./souffle_disasm ',Section_chain,' ',Addr_chain,' --dir ',Dir,'/'],Cmd),
+decode_sections(File,Dir):-
+	Sections=[
+		'.eh_frame',
+		'.text',
+		'.plt',
+		'.plt.got',
+		'.init',
+		'.fini'],
+	 Data_sections=['.data','.rodata'],
+	 foldl(collect_section_args(' --sect '),Sections,[],Sect_args),
+	 foldl(collect_section_args(' --data_sect '),Data_sections,[],Data_sect_args),
+	 atomic_list_concat(Sect_args,Section_chain),
+	 atomic_list_concat(Data_sect_args,Data_section_chain),
+	 atomic_list_concat(['./souffle_disasm ',' --file ',File,' --dir ',Dir,'/',Section_chain,Data_section_chain],Cmd),
+	 format('cmd: ~p~n',[Cmd]),
 	 shell(Cmd).
    
-collect_section_addresses(File,section(Name,_,Address),(Acc_sec,Acc_addr),(Acc_sec2,Acc_addr2)):-
-	Acc_sec2=[' --sect ',File,Name|Acc_sec],
-	Acc_addr2=[' --addr ',Address|Acc_addr].
+collect_section_args(Arg,Name,Acc_sec,Acc_sec2):-
+	Acc_sec2=[Arg,Name|Acc_sec].
 	
-/* 
-
-
-
-decode_sections
-    % extract the instructions at all possible addresses
-    (Name='.rodata'->
-    	atomic_list_concat(['./souffle_disasm  ',File,Name,' -address=',Address,' -data > ',File,Name,'.dec'],Cmd2)
-    	;
-    	atomic_list_concat(['./souffle_disasm  ',File,Name,' -address=',Address],Cmd2)
-    	),
-    shell(Cmd2).
-*/
-    %./x64show  -f=$1.text -address=0x$offset_text -omit-prefix > $1.dec
-    %atomic_list_concat(['./x64show  -f=',File,Name,' -address=',Address,' -omit-prefix -asm > ',File,Name,'.incomplete.dec'],Cmd3),
-    %shell(Cmd3).
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% basic read and writing
-
-read_terms_from_filename(FileName,Terms):-
-    open(FileName,read,S),
-    read_terms_from_file(S,Terms),
-    close(S).
-
-read_terms_from_file(S,Terms-Tail) :-
-    read_line_to_string(S,String),
-    string_lower(String,Str_lower),
-    remove_paren(Str_lower,Str_clean),
-    term_string(Term,Str_clean),
-    ( 
-	Term == end_of_file -> 
-	    Terms = Tail
-     ;
-     Terms = [Term|Terms_aux],
-     read_terms_from_file(S,Terms_aux-Tail)
-    ).
-
-remove_paren(Str,Str_clean):-
-    string_codes(Str, Codes),
-    clean_codes(Codes,Codes2),
-    string_codes(Str_clean,Codes2).
-
-clean_codes([],[]).
-clean_codes([40,41|Rest],Rest2):-!,
-				 clean_codes(Rest,Rest2).
-clean_codes([Other|Rest],[Other|Rest2]):-	
-    clean_codes(Rest,Rest2).
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
-% Save the facts and the rules in different formats
-
-save_db(souffle,Dir,Terms):-
-	foldl(write_fact_list(Dir),Terms,[],_).
-
-write_fact_list(Dir,fact_list(Name,List),Open_files,Open_files2):-
-	get_fact_file_name(Dir,Name,File),
-	(member(Name,Open_files)->
-		open(File,append,S)
-		;
-		open(File,write,S),
-		Open_files2=[Name|Open_files]	
-    ),
-    csv_write_stream(S, List, [functor(Name), separator(0'\t)]),
-    close(S).
-
-
-get_fact_file_name(Dir,Name,Path):-
-	atom_concat(Name,'.facts',NameExt),
-	directory_file_path(Dir,NameExt,Path).
-
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 call_souffle(Dir):-
 	%souffle souffle_rules.pl -I ../examples/bzip/
-	atomic_list_concat(['souffle souffle_rules.pl -j 4 -F ',Dir,' -D ',Dir],Cmd),
+	atomic_list_concat(['souffle souffle_rules.dl -j 4 -F ',Dir,' -D ',Dir],Cmd),
 	time(shell(Cmd)).
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -170,6 +48,7 @@ result_descriptors([
 	res(valid4sure,2,'.csv'),
 	res(maybe_valid2,1,'.csv'),
 	res(function_symbol,2,'.csv'),
+	res(section,3,'.facts'),
 	res(block_start,1,'.csv'),
 	res(instruction,6,'.facts'),
 	res(op_regdirect,2,'.facts'),
