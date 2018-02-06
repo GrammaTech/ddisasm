@@ -2,26 +2,63 @@
 
 
 ## Introduction
-The files reader.pl and disasm extract a series of facts from a binary and combine it into a datalog program
-which can be printed in several formats.
 
-## Tasks
+The analysis contains three parts:
 
+ - The c++ files generate a binary src/souffle_disasm which takes care
+ of reading an elf file and generating several `.facts` files that
+ represent the inital problem.
+ 
+ - `src/souffle_rules.dl` is the specification of the analysis in
+ datalog.  It takes the basic facts and computes likely EAs, chunks of
+ code, etc. The results are stored in `.csv` files.
+ 
+ - `src/disasm_driver.pl` is a prolog module that calls souffle_disasm
+ first, then it calls souffle and finally reads the results from the
+ analysis and prints the assembler code.
+ 
+
+## Building souffle_disasm
+
+The project is prepared to be built with GTScons and has to be located
+in the trunk directory. Then it can be built by executing:
+
+`/code/trunk/datalog_disasm/build`
 
 
 ## Running the analysis
-Example usage
-`./disasm ../examples/ex1/ex`
+Once souffle_disasm is built, we can run complete analysis on a file
+by calling `/src/disasm'`.
+For example, we can run the analysis on one of the examples as
+follows:
 
-The prolog module `disasm`  takes care of extracting symbols and sections
-from an elf binary. Then, it calls souffle_disasm to decode the extracted sections.
-Finally, it calls souffle and pretty prints the results.
-This uses:
+`cd src` `./disasm ../examples/ex1/ex`
 
- * `./elf_extract.sh` to extract a list of sections and symbols from the binary
- * objcopy to extract specific sections from the binary
- * and `souffle_disasm` to decode sections into facts
+Note that `disasm` depends on having:
 
+- souffle_disasm correctly built in the 
+`src` directory 
+
+- souffle installed (in the PATH).
+ 
+## Current status
+
+- The analysis can disassemble correctly `ex1` and `ex_virtualDispatch`, even if these
+are stripped of their symbols (using `strip --strip-unneeded`).
+
+- The analysis has some conficts (segments of code that overlap) with
+`ex_switch` and more of them are left unresolved with the stripped
+version. This is normal, right now there is only one heuristic to
+resolve conflicts based on function symbols.
+
+- So far, not being able (not even trying) to compute indirect jumps or calls
+has not been a problem.
+
+### Issues/TODOs
+
+- Compute additional seeds based on computed jumps/calls and exceptions.
+
+- Resolve conflicts based on heuristics.
 
 
 ## References

@@ -1,4 +1,3 @@
-.symbol_type name
 .symbol_type reg
 
 .number_type address
@@ -9,10 +8,17 @@
 .decl symbol(ea:address,n:number,type:symbol,scope:symbol,name:symbol)
 .input symbol
 
+.decl section(name:symbol,n:number,addr:address)
+.input section
+
 
 .decl instruction(ea:address,size:number,opcode:symbol,op1:op_code,op2:op_code,op3:op_code)
 .input instruction
 
+.decl invalid(n:address)
+.input invalid
+
+// three kinds of operators
 .decl op_regdirect(code:op_code,reg:reg)
 .input op_regdirect
 
@@ -22,11 +28,10 @@
 .decl op_indirect(code:op_code,reg1:reg,reg2:reg,reg3:reg,multiplier:number,offset:number,noidea:number)
 .input op_indirect
 
+//data from data sections
 .decl static_data(ea:address,value:number)
 .input static_data
 
-.decl invalid(n:address)
-.input invalid
 
 /////////////////////////////////////////////////////////////
 // inference of basic facts
@@ -40,11 +45,32 @@ next(EA,EA+Size):-
 
 .decl jump_operation(n:symbol)
 
-jump_operation("JMP").
+jump_operation("JCXZ").
+jump_operation("JECXZ").
+jump_operation("JRCXZ").
+jump_operation("JO").
+jump_operation("JNO").
+jump_operation("JB").
+jump_operation("JNB").
+jump_operation("JZ").
 jump_operation("JNZ").
-jump_operation("JN").
-jump_operation("JGE").
 jump_operation("JNA").	
+jump_operation("JA").
+jump_operation("JS").
+jump_operation("JNS").
+jump_operation("JP").
+jump_operation("JNP").
+jump_operation("JL").
+jump_operation("JGE").
+jump_operation("JLE").
+jump_operation("JG").
+jump_operation("JC").
+jump_operation("JAE").
+jump_operation("JE").
+jump_operation("JNE").
+jump_operation("JBE").
+jump_operation("JNBE").	
+
 	
 // JUMPS
 .decl inconditional_jump(n:address)
@@ -61,24 +87,27 @@ direct_jump(EA,Dest):-
 	jump_operation(Operation),
 	op_immediate(Op1,Dest).
 
-// computed jump
-.decl reg_computed_jump(n:address)
-.output reg_computed_jump
+// jump to the address of a register
+// for now we do not compute anything about these
+.decl reg_jump(n:address)
+.output reg_jump
 
-reg_computed_jump(EA):-
+reg_jump(EA):-
 	instruction(EA,_,Operation,Op1,_,_),
 	jump_operation(Operation),
 	op_regdirect(Op1,_).
 	
-.decl indirect_computed_jump(n:address)
-.output indirect_computed_jump
+// indirect jump	
+.decl indirect_jump(n:address)
+.output indirect_jump
 
-indirect_computed_jump(EA):-
+indirect_jump(EA):-
 	instruction(EA,_,Operation,Op1,_,_),
 	jump_operation(Operation),
 	op_indirect(Op1,_,_,_, _,_,_),
 	!pc_relative_jump(EA,_).
 
+// Special kinds of indirect jumps
 // PC relative jumps
 .decl pc_relative_jump(n:address,m:address)
 .output pc_relative_jump
@@ -87,6 +116,7 @@ pc_relative_jump(EA,EA+Offset):-
 	instruction(EA,_,Operation,Op1,_,_),
 	jump_operation(Operation),
 	op_indirect(Op1,"NullSReg","RIP","NullReg64",1,Offset,_).
+	
 
 // CALLS
 // direct calls
@@ -96,6 +126,21 @@ pc_relative_jump(EA,EA+Offset):-
 direct_call(EA,Dest):-
 	instruction(EA,_,"CALL",Op1,_,_),
 	op_immediate(Op1,Dest).
+
+// for now we do not compute anything about these
+.decl reg_call(n:address)
+.output reg_call
+
+reg_call(EA):-
+	instruction(EA,_,"CALL",Op1,_,_),
+	op_regdirect(Op1,_).
+
+.decl indirect_call(n:address)
+.output indirect_call
+
+indirect_call(EA):-
+	instruction(EA,_,"CALL",Op1,_,_),
+	op_indirect(Op1,_,_,_,_,_,_).
 
 
 // Returns
@@ -110,45 +155,39 @@ return(EA):-
 
 function_symbol(EA,Name):-
 	symbol(EA,_,"FUNC",_,Name).
+
+
+.decl fallthrough(o:address,d:address)
+
+fallthrough(From,To):-
+	next(From,To),
+	!return(From),
+	!inconditional_jump(From).
 	
 /////////////////////////////////////////////////////////////
 // We go through several phases of increasing confidence
 /////////////////////////////////////////////////////////////
 
-
-/////////////////////////////
-// Phase 1
-// Get an initial approximation of things that look like code
-/////////////////////////////
-
+// we define a basic phase propagation
+// and we later instantiate it for each phase
+.comp phase {
+// this has to be defined in each phase
 .decl possible_ea(a:address)
-    
-possible_ea(EA):-
-	instruction(EA,_,_,_,_,_).
-	
-// approximation of possible targets
-// it is ok if they are not all but it is desirable
 
+// to be completed in each phase
 .decl possible_target(ea:address)
 
 possible_target(Val):-
-	op_immediate(_,Val).
-	
-possible_target(Val):-
 	static_data(_,Val).
-	
-possible_target(Val):-
-	pc_relative_jump(_,Val).
-	
+
+possible_target(EA):-
+	section(".text",_,EA).
+
 possible_target(EA):-
 	function_symbol(EA,_).
-// FIXME: add more targets
 
-		
-// propagate from possible targets
+// propagate from possible targets forward
 .decl likely_ea(n:address,start:address)
-//.output likely_ea
-
 
 likely_ea(EA,EA):-
 	possible_target(EA),
@@ -159,25 +198,39 @@ likely_ea(EA,Start):-
 	fallthrough(EA2,EA),
 	!possible_target(EA),
 	possible_ea(EA).
+	
+}
 
+/////////////////////////////
+// Phase 1
+// Get an initial approximation of things that look like code
+/////////////////////////////
+.init phase1=phase
+
+phase1.possible_ea(EA):-
+	instruction(EA,_,_,_,_,_).
+	
+
+phase1.possible_target(Val):-
+	op_immediate(_,Val).
+	
 /////////////////////////////
 // Second part 
 // we have an initial approximation of things that look like
 // code.
-// Now we discard overlaping instructions, we are pretty sure
-// those are not code
+// Now we discard overlaping instructions not likely to be code.
+// we are pretty sure  those are not code
 /////////////////////////////
 
 
-// forbid overlaps with likely_ea instructions
+// forbid overlaps with phase1.likely_ea instructions
 // grow the initial invalid set 
-.decl overlap(ea:address,ea_origin:address)
+.decl overlap(ea_overlap:address,ea_likely:address)
 
 
-//this is kind of ugly but for now it seems to achieve much better performance
+// Compute EAs that overlap with EAs of likely instuctions
 overlap(EA2+1,EA2):-
-	//this should limit the scope even more
-	likely_ea(EA2,_),
+	phase1.likely_ea(EA2,_),
 	next(EA2,End),
 	EA2+1 < End.
 overlap(EA+1,EA2):-
@@ -188,30 +241,24 @@ overlap(EA+1,EA2):-
 // the starting point of EA is in the middle of a likely instruction
 // (and it is not itself likely)
 invalid(EA):- 
-	likely_ea(Ini,_),
+	phase1.likely_ea(Ini,_),
 	overlap(EA,Ini),
-	possible_ea(EA),
-	!likely_ea(EA,_).
+	phase1.possible_ea(EA),
+	!phase1.likely_ea(EA,_).
 
 // the ending point of EA is in the middle of a likely instruction
 // (and it not iself likely)
 invalid(EA):- 
-	likely_ea(Ini,_),
+	phase1.likely_ea(Ini,_),
 	overlap(EA_f,Ini),
 	next(EA,EA_f),
-	possible_ea(EA),
-	!likely_ea(EA,_).	
+	phase1.possible_ea(EA),
+	!phase1.likely_ea(EA,_).	
 	
 
 //propagate the invalid instructions backward until ret or jmp (encoded in fallthrough)
 // propagate through direct jumps and calls weakly 
-.decl fallthrough(o:address,d:address)
 
-fallthrough(From,To):-
-	next(From,To),
-	!return(From),
-	!inconditional_jump(From).
-	
 .decl invalid_transitive(n:address)
 //.output invalid_transitive(IO=stdout)
 
@@ -221,30 +268,29 @@ invalid_transitive(From):-
 	(
 		fallthrough(From,To)
 	;
-		direct_jump(From,To),!likely_ea(From,_)
+		direct_jump(From,To),!phase1.likely_ea(From,_)
 	;
-		direct_call(From,To),!likely_ea(From,_)
+		direct_call(From,To),!phase1.likely_ea(From,_)
 	).
 	
 
 /////////////////////////////
 // Phase 2
-// Repeat the same idea
+// Repeat the same propagation but with more refined initial relations
 /////////////////////////////
 
-.decl possible_ea2(n:address)
-.output possible_ea2
+.init phase2=phase
 
-possible_ea2(EA):-
-	possible_ea(EA),
-	!invalid_transitive(EA).
-	
-	
+
+
+phase2.possible_ea(EA):-
+	phase1.possible_ea(EA),
+	!invalid_transitive(EA).	
 // approximation of possible targets
 
-.decl possible_target2_from(ea:address,ea2:address)
+.decl possible_target_from(ea:address,ea2:address)
 
-possible_target2_from(Val,Ea):-
+possible_target_from(Val,Ea):-
 	op_immediate(Op,Val),
 	(
 	instruction(Ea,_,_,Op,_,_)
@@ -253,95 +299,126 @@ possible_target2_from(Val,Ea):-
 	;
 	instruction(Ea,_,_,_,_,Op)
 	),
-	possible_ea2(Ea).
+	phase2.possible_ea(Ea).
 
-.decl possible_target2(ea:address)
-
-possible_target2(Val):-
-	possible_target2_from(Val,_).
+phase2.possible_target(Val):-
+	possible_target_from(Val,_).
 	
-possible_target2(Val):-
-	static_data(_,Val).
-	
-possible_target2(Val):-
-	pc_relative_jump(_,Val).
-	
-possible_target2(EA):-
-	function_symbol(EA,_).
-// FIXME: add more targets
 
-
-
-// propagate from possible targets
-.decl likely_ea2(n:address,start:address)
-.output likely_ea2
-
-
-likely_ea2(EA,EA):-
-	possible_target2(EA),
-	possible_ea2(EA).
-
-likely_ea2(EA,Start):-
-	likely_ea2(EA2,Start),
-	fallthrough(EA2,EA),
-	!possible_target2(EA),
-	possible_ea2(EA).
-
-.decl block_start(n:address)
-.output block_start
-
-block_start(EA):-likely_ea2(_,EA).
 
 
 ////////////////////////////////////////////////////////////////////////
-// experimenting
+// Phase 3:
+// we can start traversing the code in two places and end up in the same
+// sequence, we want to slit those common sequences apart
+// get chunks that don't have common tails
+
+.decl common_tail(ea:address)
 
 
-.decl conflict(ea:address,ea2:address)
-.output conflict
+common_tail(EA):-
+	phase2.likely_ea(EA,Chunk),
+	fallthrough(From,EA),
+	//get the head of the tail only
+	!phase2.likely_ea(From,Chunk),
+	phase2.likely_ea(From,Chunk2),
+	Chunk2!=Chunk.
 
-conflict(EA,EA2):-
-	likely_ea2(EA,_),
+.init phase3=phase
+
+// new propagation where the common tails form new starting points
+// for the chunks
+phase3.possible_ea(EA):-
+	phase2.possible_ea(EA).
+
+// this might be too restrictive
+phase3.possible_target(EA):-
+	possible_target_from(EA,Origin),
+	phase2.likely_ea(Origin,_).
+
+	
+phase3.possible_target(EA):-
+	common_tail(EA).
+	
+.output phase3.possible_ea
+.output phase3.likely_ea
+
+.decl chunk_start(n:address)
+.output chunk_start
+
+//special node for function calls
+chunk_start(0).
+chunk_start(EA):-phase3.likely_ea(_,EA).
+
+
+
+
+.decl chunk_overlap(ea:address,ea2:address)
+.output chunk_overlap
+
+chunk_overlap(EA_chunk,EA_chunk2):-
+	phase3.likely_ea(EA,EA_chunk),
 	overlap(EA,EA2),
-	likely_ea2(EA2,_).
+	phase3.likely_ea(EA2,EA_chunk2).
 	
+//////////////////////////////////////////////////////////////////////
+// We need to solve the chunk overlaps
+// we do it with heuristics
+///
 
-.decl defined_elsewhere(ea:address)
-	
-defined_elsewhere(EA):-
-	block_start(EA),
-	possible_target2_from(EA,Caller),
-	likely_ea2(Caller,EA2),EA2!=EA.
-defined_elsewhere(EA):-
-	block_start(EA),
-	!possible_target2_from(EA,_),
-	possible_target2(EA).
+.decl discarded_chunk(ea:address)
+.output discarded_chunk
 
-
-// propagate from possible targets
-.decl likely_ea3(n:address,start:address)
-.output likely_ea3
-
-
-likely_ea3(EA,EA):-
-	possible_target2(EA),
-	(!conflict(EA,_)
+discarded_chunk(Ch):-
+	(
+	chunk_overlap(Ch,Ch2)
 	;
-	conflict(EA,_),defined_elsewhere(EA)
+	chunk_overlap(Ch2,Ch)
 	),
-	possible_ea2(EA).
-
-likely_ea3(EA,Start):-
-	likely_ea3(EA2,Start),
-	fallthrough(EA2,EA),
-	!possible_target2(EA),
-	possible_ea2(EA).
+	//heuristic
+	function_symbol(Ch2,_),
+	!function_symbol(Ch,_).
 
 
-.decl conflict3(ea:address,ea2:address)
-.output conflict3
+.decl chunk_overlap2(ea:address,ea2:address)
+.output chunk_overlap2
 
-conflict3(EA,EA2):-
-	likely_ea3(EA,_),
-	overlap(EA,EA2),
-	likely_ea3(EA2,_).
+chunk_overlap2(Ch,Ch2):-
+	chunk_overlap(Ch,Ch2),
+	!discarded_chunk(Ch),
+	!discarded_chunk(Ch2).
+
+// under-approximation
+// .decl chunk_succ(Origin:address,Dest:address)
+// .output chunk_succ
+
+
+//  chunk_succ(Origin,0):-
+// 	chunk_start(Origin),
+// 	function_symbol(Origin,_).
+	
+//  chunk_succ(Origin,Dest):-
+//  	chunk_start(Dest),
+//  	//calls, jumps and fallthrough have to go to the beginning of the chunk
+//  	// because they define the chunk limits
+//  	(
+// 	fallthrough(Ea_origin,Dest) 
+// 	;
+//  	direct_call(EA_origin,Dest)
+//  	;
+//  	direct_jump(EA_origin,Dest)
+//  	),
+//  	phase3.likely_ea(EA_origin,Origin),
+//  	// we make it non-reflexive
+//  	Dest!= Origin.
+
+
+
+
+// .decl loner(n:address)
+// .output loner
+
+// loner(Chunk):-
+// 	chunk_start(Chunk),
+// 	!chunk_succ(_,Chunk).
+
