@@ -26,10 +26,15 @@ disasm_binary([File|Args]):-
     decode_sections(File,Dir),
     format('Calling souffle~n',[]),
     call_souffle(Dir),
-    format('Collecting results and printing~n',[]),
-    collect_results(Dir,_Results),
-    pretty_print_results,
-    print_stats.
+    (option(no_print)->
+	 true
+     ;
+     format('Collecting results and printing~n',[]),
+     collect_results(Dir,_Results),
+     generate_hints(Dir),
+     pretty_print_results,
+     print_stats
+    ).
 
 :-dynamic option/1.
 save_option(Arg):-
@@ -53,7 +58,7 @@ collect_section_args(Arg,Name,Acc_sec,Acc_sec2):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 call_souffle(Dir):-
     %souffle souffle_rules.pl -I ../examples/bzip/
-    atomic_list_concat(['souffle souffle_rules.dl -j 4 -F ',Dir,' -D ',Dir,' -p ',Dir,'/profile'],Cmd),
+    atomic_list_concat(['souffle ../src/souffle_rules.dl  -F ',Dir,' -D ',Dir,' -p ',Dir,'/profile'],Cmd),
     time(shell(Cmd)).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -325,6 +330,30 @@ print_descriptor_stats(Res):-
     length(Results,N),
     format(' Number of ~p: ~p~n',[Name,N]).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+generate_hints(Dir):-
+    option('-hints'),!,
+    findall(Code_ea,
+	    (
+		likely_ea(Code_ea,Chunk),
+		chunk_start(Chunk),
+		\+discarded_chunk(Chunk)
+
+	    ),Code_eas),
+    directory_file_path(Dir,'hints',Path),
+    open(Path,write,S),
+    maplist(print_code_ea(S),Code_eas),
+    close(S).
+
+generate_hints(_).    
+
+print_code_ea(S,EA):-
+    direct_jump(EA,_),!,
+    format(S,'0x~16R Cso0@0~n',[EA]).
+
+print_code_ea(S,EA):-
+    format(S,'0x~16R C~n',[EA]).
+      
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % auxiliary predicates

@@ -34,7 +34,7 @@ env.GTCreateFeature(
       CXXFLAGS=' -std=c++1y',
     )
 pa2 = env.GTCheckProgram(
-        'souffle_disasm',
+        '../bin/souffle_disasm',
         [
         'souffle_disasm.cpp', 
         'Dl_decoder.cpp',

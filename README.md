@@ -17,13 +17,22 @@ The analysis contains three parts:
  first, then it calls souffle and finally reads the results from the
  analysis and prints the assembler code.
  
+## Dependencies
+
+- The project is prepared to be built with GTScons and has to be located
+in the grammatech trunk directory.
+
+- The analysis depends on souffle being installed, 
+in particular the 64 bits version at https://github.com/cfallin/souffle.git
+
+- The pretty printer is (for now) written in prolog. It requires some prolog environment
+to be installed (preferably SWI-prolog).
 
 ## Building souffle_disasm
 
-The project is prepared to be built with GTScons and has to be located
-in the trunk directory. Then it can be built by executing:
 
-`/code/trunk/datalog_disasm/build`
+
+`/trunk/datalog_disasm/build`
 
 
 ## Running the analysis
@@ -34,12 +43,7 @@ follows:
 
 `cd src` `./disasm ../examples/ex1/ex`
 
-Note that `disasm` depends on having:
 
-- souffle_disasm correctly built in the 
-`src` directory 
-
-- souffle installed (in the PATH).
  
 ## Current status
 
@@ -80,3 +84,7 @@ has not been a problem.
 
 5. Alias analysis for Assembly by Brumley at CMU:
   http://reports-archive.adm.cs.cmu.edu/anon/anon/usr/ftp/2006/CMU-CS-06-180R.pdf
+  
+6. Reassembleable Disassembling
+
+7. Ramblr: Making Reassembly Great again
