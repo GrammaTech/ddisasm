@@ -1,2 +1,0 @@
-clang -c *.c
-clang -o ex2mods *.o

@@ -23,14 +23,17 @@ disasm_binary([File|Args]):-
     set_prolog_flag(print_write_options,[quoted(false)]),
     format('Decoding binary~n',[]),
     file_directory_name(File, Dir),
-    decode_sections(File,Dir),
+    atom_concat(Dir,'/dl_files',Dir2),
+    (\+exists_directory(Dir2)->
+	 make_directory(Dir2);true),
+    decode_sections(File,Dir2),
     format('Calling souffle~n',[]),
-    call_souffle(Dir),
+    call_souffle(Dir2),
     (option(no_print)->
 	 true
      ;
      format('Collecting results and printing~n',[]),
-     collect_results(Dir,_Results),
+     collect_results(Dir2,_Results),
      generate_hints(Dir),
      pretty_print_results,
      print_stats
@@ -75,15 +78,19 @@ result_descriptors([
 			  res(reg_jump,1,'.csv'),
 			  res(indirect_jump,1,'.csv'),
 			  res(pc_relative_jump,2,'.csv'),
+
 			  res(direct_call,2,'.csv'),
 
-
-			  res(likely_ea,'phase3-likely_ea',2,'.csv'),
-			  res(possible_ea,'phase3-possible_ea',1,'.csv'),
+			  %res(possible_target,'phase2-possible_target',1,'.csv'),
+			  res(likely_ea,'likely_ea_final',2,'.csv'),
+			  res(remaining_ea,'phase2-remaining_ea',1,'.csv'),
 			  res(function_symbol,2,'.csv'),
 			  res(chunk_start,1,'.csv'),
 			  res(chunk_overlap,'chunk_overlap2',2,'.csv'),
-			  res(discarded_chunk,1,'.csv')
+			  res(discarded_chunk,1,'.csv'),
+
+			  res(symbolic_imm,2,'.csv'),
+			  res(op_points_to_data,1,'.csv')
 
 		      ]).
 
@@ -98,14 +105,18 @@ result_descriptors([
 :-dynamic indirect_jump/1.
 :-dynamic pc_relative_jump/2.
 
+:-dynamic direct_call/2.
+
 :-dynamic likely_ea/2.
-:-dynamic possible_ea/1.
+:-dynamic remaining_ea/1.
 :-dynamic function_symbol/2.
 
 :-dynamic chunk_start/1.
 :-dynamic chunk_overlap/2.
 :-dynamic discarded_chunk/1.
- 
+
+:-dynamic symbolic_imm/2.
+:-dynamic op_points_to_data/1.
 
 collect_results(Dir,results(Results)):-
     result_descriptors(Descriptors),
@@ -142,7 +153,7 @@ get_chunks(Chunks):-
     findall(Instruction,
 	    (instruction(EA,Size,Name,Opc1,Opc2,Opc3),
 	    \+likely_ea(EA,_),
-	    possible_ea(EA),
+	    remaining_ea(EA),
 	    get_op(Opc1,Op1),
 	    get_op(Opc2,Op2),
 	    get_op(Opc3,Op3),
@@ -172,7 +183,7 @@ accum_instruction(instruction(EA,Size,OpCode,Op1,Op2,Op3),Assoc,Assoc1):-
 pp_chunk(EA_chunk-chunk(List)):-
     !,
     get_chunk_comments(EA_chunk,Comments),
-    ((discarded_chunk(EA_chunk),\+option(debug))->
+    ((discarded_chunk(EA_chunk),\+option('-debug'))->
 	 true
      ;
      print_section_header(EA_chunk),
@@ -187,7 +198,7 @@ pp_chunk(EA_chunk-chunk(List)):-
     ).
 
 pp_chunk(_EA_chunk-Instruction):-
-    (option(clean)->
+    (option('-debug')->
 	 pp_instruction(Instruction)
      ;	 
      true
@@ -293,6 +304,10 @@ get_ea_comments(_EA,[]).
 ea_comment(EA,not_in_chunk):-
 \+likely_ea(EA,_).
 
+ea_comment(EA,symbolic_ops(Symbolic_ops)):-
+    findall(Op_num,symbolic_imm(EA,Op_num),Symbolic_ops),
+    Symbolic_ops\=[].
+
 
 ea_comment(EA,reg_jump):-
     reg_jump(EA).
@@ -311,6 +326,7 @@ get_comment(Op,Name):-
     Op=immediate(Num),
     Num\=0,
     function_symbol(Num,Name).
+
 	 
 %%%%%%%%%%%%%%%%%%%%
 
@@ -348,12 +364,23 @@ generate_hints(Dir):-
 generate_hints(_).    
 
 print_code_ea(S,EA):-
-    direct_jump(EA,_),!,
-    format(S,'0x~16R Cso0@0~n',[EA]).
+    format(S,'0x~16R C',[EA]),
+    instruction(EA,_,_,Op1,Op2,Op3),
+    exclude(\OP^(OP=0),[Op1,Op2,Op3],Non_zero_ops),
+    length(Non_zero_ops,N_ops),
+    findall(Index,symbolic_imm(EA,Index),Indexes),
+    transform_indexes(Indexes,N_ops,Indexes_tr),
+    maplist(print_sym_index(S),Indexes_tr),
+    format(S,'~n',[]).
 
-print_code_ea(S,EA):-
-    format(S,'0x~16R C~n',[EA]).
-      
+transform_indexes(Indexes,N_ops,Indexes_tr):-
+    foldl(transform_index(N_ops),Indexes,[],Indexes_tr).
+
+transform_index(N_ops,Index,Accum,[Index_tr|Accum]):-
+    Index_tr is N_ops-Index.
+ 
+print_sym_index(S,I):-
+      	 format(S,'so~p@0',[I]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % auxiliary predicates

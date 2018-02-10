@@ -140,7 +140,7 @@ int main(int argc, char** argv) {
     data_file.close();
 
     cout<<"Saving invalids "<<endl;
-    ofstream invalids_file(directory+"invalid.facts",filemask);
+    ofstream invalids_file(directory+"invalid_op_code.facts",filemask);
     decoder.print_invalids(invalids_file);
     invalids_file.close();
 
