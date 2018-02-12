@@ -27,7 +27,7 @@
 .input op_immediate
 
 .decl op_indirect(code:op_code,reg1:reg,reg2:reg,reg3:reg,
-		multiplier:number,offset:number,noidea:number)
+		multiplier:number,offset:number,noidea:number,size:number)
 .input op_indirect
 
 //data from data sections
@@ -107,7 +107,7 @@ reg_jump(EA):-
 indirect_jump(EA):-
 	instruction(EA,_,Operation,Op1,_,_),
 	jump_operation(Operation),
-	op_indirect(Op1,_,_,_, _,_,_),
+	op_indirect(Op1,_,_,_, _,_,_,_),
 	!pc_relative_jump(EA,_).
 
 // Special kinds of indirect jumps
@@ -118,7 +118,7 @@ indirect_jump(EA):-
 pc_relative_jump(EA,EA+Offset):-
 	instruction(EA,_,Operation,Op1,_,_),
 	jump_operation(Operation),
-	op_indirect(Op1,"NullSReg","RIP","NullReg64",1,Offset,_).
+	op_indirect(Op1,"NullSReg","RIP","NullReg64",1,Offset,_,_).
 	
 
 // CALLS
@@ -143,7 +143,7 @@ reg_call(EA):-
 
 indirect_call(EA):-
 	instruction(EA,_,"CALL",Op1,_,_),
-	op_indirect(Op1,_,_,_,_,_,_).
+	op_indirect(Op1,_,_,_,_,_,_,_).
 
 
 // Returns
@@ -506,10 +506,10 @@ op_points_to_code(Op):-
 	likely_ea_final(Imm,_).
 	
 op_points_to_code(Op):-
-	op_indirect(Op,"NullSReg","RIP","NullReg64",1,_Offset,_).
+	op_indirect(Op,"NullSReg","RIP","NullReg64",1,_Offset,_,_).
 	
 op_points_to_code(Op):-
-	op_indirect(Op,"NullSReg",Reg,_Reg2,_Mul,Offset,_),
+	op_indirect(Op,"NullSReg",Reg,_Reg2,_Mul,Offset,_,_),
 	Reg!="RIP",
 	section(Name,Size,Address),
 	code_section(Name),
@@ -523,7 +523,7 @@ op_points_to_code(Op):-
 .output op_points_to_data
 
 op_points_to_data(Op):-
-	op_indirect(Op,"NullSReg",Reg,_,_Mul,Offset,_),
+	op_indirect(Op,"NullSReg",Reg,_,_Mul,Offset,_,_),
 	Reg!="RIP",
 	section(Name,Size,Address),
 	data_section(Name),

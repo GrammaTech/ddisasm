@@ -39,7 +39,7 @@ std::string Dl_operator::print_tabs(int64_t id) const{
         o<< id<< '\t'<<offset;
         return o.str();
     case INDIRECT:
-        o<< id<<'\t'<<reg1<<'\t'<<reg2<<'\t'<<reg3<<'\t'<<multiplier<<'\t'<<disp<<'\t'<<offset;
+        o<< id<<'\t'<<reg1<<'\t'<<reg2<<'\t'<<reg3<<'\t'<<multiplier<<'\t'<<disp<<'\t'<<offset<<'\t'<< size;;
         return o.str();
     }
 }
@@ -56,20 +56,22 @@ bool compare_operators::operator()(const Dl_operator&  op1,const Dl_operator&  o
         case NONE:
             return false;
         case REG:
-            return op1.reg1< op2.reg1;
+            return  op1.size< op2.size ||
+                    (op1.size== op2.size && op1.reg1< op2.reg1) ;
         case IMMEDIATE:
-            return op1.offset< op2.offset;
+            return op1.size< op2.size ||
+                    (op1.size== op2.size && op1.offset< op2.offset);
         case INDIRECT:
-            return (op1.reg1< op2.reg1) ||
-                    ( (op1.reg1==op2.reg1) && (op1.reg2< op2.reg2)) ||
-                    ( (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2< op2.reg2)) ||
-                    ( (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2==op2.reg2) &&
+
+            return op1.size< op2.size ||
+                    (op1.size== op2.size && op1.reg1< op2.reg1) ||
+                    ((op1.size== op2.size) &&  (op1.reg1==op2.reg1) && (op1.reg2< op2.reg2)) ||
+                    ((op1.size== op2.size) && (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2< op2.reg2)) ||
+                    ( (op1.size== op2.size) && (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2==op2.reg2) &&
                             (op1.offset< op2.offset)) ||
-
-                            (  (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2==op2.reg2) &&
+                            ( (op1.size== op2.size) && (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2==op2.reg2) &&
                                     (op1.offset==op2.offset) && (op1.multiplier< op2.multiplier) )||
-
-                                    ( (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2==op2.reg2) &&
+                                    ( (op1.size== op2.size) && (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2==op2.reg2) &&
                                             (op1.offset==op2.offset) && (op1.multiplier== op2.multiplier) && (op1.disp<op2.disp));
         }
     }else{

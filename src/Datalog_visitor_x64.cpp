@@ -63,39 +63,45 @@ void Datalog_visitor_x64::visit(const RTG::zeroOpInstr * const p){
 
 
 template<typename T>
-inline void Datalog_visitor_x64::visit1op(const  T* const n)
+inline void Datalog_visitor_x64::visit1op(const  T* const n,short size)
 {
     // we put the curr_op type to none to detect cases where something went wrong
     curr_op.type=operator_type::NONE;
+    curr_op.size=size;
     n->Get_Src()->accept(*this);
     add_curr_operator();
     n->Get_OneOpInstr()->accept(*this);
 }
 template<typename T>
-inline void Datalog_visitor_x64::visit2op(const T * const n)
+inline void Datalog_visitor_x64::visit2op(const T * const n,short size1,short size2)
 {
     curr_op.type=operator_type::NONE;
+    curr_op.size=size1;
     n->Get_Src()->accept(*this);
     add_curr_operator();
 
     curr_op.type=operator_type::NONE;
+    curr_op.size=size2;
     n->Get_Dst() ->accept(*this);
     add_curr_operator();
 
     n->Get_TwoOpInstr()->accept(*this);
 }
 template<typename T>
-inline void Datalog_visitor_x64::visit3op(const T * const n)
+inline void Datalog_visitor_x64::visit3op(const T * const n,short size1,short size2,short size3)
 {
     curr_op.type=operator_type::NONE;
+    curr_op.size=size1;
     n->Get_Src1()->accept(*this);
     add_curr_operator();
 
     curr_op.type=operator_type::NONE;
+    curr_op.size=size2;
     n->Get_Src2()->accept(*this);
     add_curr_operator();
 
     curr_op.type=operator_type::NONE;
+    curr_op.size=size3;
     n->Get_Dst() ->accept(*this);
     add_curr_operator();
     n->Get_ThreeOpInstr()->accept(*this);
