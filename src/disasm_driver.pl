@@ -14,8 +14,8 @@ sections([
 		'.init',
 		'.fini']).
 data_sections([
-		     '.got',
-		     '.plt.got',
+		 %    '.got',
+		%     '.plt.got',
 		     % '.got.plt',
 		     '.data',
 		     '.rodata']).
@@ -80,6 +80,7 @@ result_descriptors([
 			  res(op_regdirect,2,'.facts'),
 			  res(op_immediate,2,'.facts'),
 			  res(op_indirect,8,'.facts'),
+			  res(data_byte,2,'.facts'),
 
 			  res(direct_jump,2,'.csv'),	
 			  res(reg_jump,1,'.csv'),
@@ -97,7 +98,10 @@ result_descriptors([
 			  res(discarded_chunk,1,'.csv'),
 
 			  res(symbolic_imm,2,'.csv'),
-			  res(op_points_to_data,1,'.csv')
+			  res(data_label,1,'.csv')
+			  
+			%  res(op_points_to_data,3,'.csv')
+			 
 
 		      ]).
 
@@ -106,6 +110,8 @@ result_descriptors([
 :-dynamic op_regdirect/2.
 :-dynamic op_immediate/2.
 :-dynamic op_indirect/8.
+:-dynamic data_byte/2.
+
 
 :-dynamic direct_jump/2.
 :-dynamic reg_jump/1.
@@ -123,7 +129,8 @@ result_descriptors([
 :-dynamic discarded_chunk/1.
 
 :-dynamic symbolic_imm/2.
-:-dynamic op_points_to_data/1.
+:-dynamic data_label/1.
+% :-dynamic op_points_to_data/3.
 
 collect_results(Dir,results(Results)):-
     result_descriptors(Descriptors),
@@ -152,8 +159,30 @@ get_op(N,indirect(Reg1,Reg2,Reg3,A,B,C,Size)):-
 
 pretty_print_results:-
     get_chunks(Chunks),
-    maplist(pp_chunk, Chunks).
+    maplist(pp_chunk, Chunks),
+    get_data(Data),
+    maplist(pp_data,Data).
 
+get_data(Data):-
+    findall(Data_byte,
+	    (data_byte(EA,Content),
+	     Data_byte=data_byte(EA,Content)
+	     ),Data).
+
+
+pp_data(data_byte(EA,Content)):-
+    print_section_header(EA),
+    print_data_label(EA),
+     (option('-asm')->
+	 format('             .byte 0x~16R~n',[Content])
+     ;
+     format('         ~16R:   .byte 0x~16R~n',[EA,Content])
+     ).
+
+print_data_label(EA):-
+    data_label(EA),!,
+    format('L_~16R:~n',[EA]).
+print_data_label(_EA).
 
 get_chunks(Chunks):-
     findall(Chunk,chunk_start(Chunk),Chunk_addresses),
@@ -215,7 +244,7 @@ pp_chunk(_EA_chunk-Instruction):-
 print_section_header(EA):-
     section(Section_name,_,EA),!,
     format('~n~n;=================================== ~n',[]),
-    format(';  Section ~p:~n',[Section_name]),
+    format('.section ~p:~n',[Section_name]),
     format(';=================================== ~n~n',[]).
 print_section_header(_).
 
@@ -255,18 +284,22 @@ chunk_comment(EA,jumped_from(Str_or)):-
 
 pp_instruction(instruction(EA,_Size,OpCode,Op1,Op2,Op3)):-
     exclude(\Op^(Op=none),[Op1,Op2,Op3],Ops),
-    maplist(pp_op,Ops,Pretty_ops),
+    get_ea_comments(EA,Comments),
+    (member(symbolic_ops(Sym_ops),Comments)->true;Sym_ops=[]),
+  
+    pp_op_list(Ops,1,EA,Sym_ops,[],Pretty_ops_rev),
+
     %useful info
     convlist(get_comment,Ops,Op_comments),
-    get_ea_comments(EA,Comments),
+   
     append(Comments,Op_comments,All_comments),
-    reverse(Pretty_ops,Pretty_ops_rev),
     downcase_atom(OpCode,OpCode_l),
     (option('-asm')->
 	 format('             ~p',[OpCode_l])
      ;
      format('         ~16R:   ~p',[EA,OpCode_l])
-     ), 
+    ),
+   
     print_with_sep(Pretty_ops_rev,','),
     % print the names of the immediates if they are functions
     print_comments(All_comments),
@@ -283,58 +316,74 @@ print_comments(Comments):-
     ).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+pp_op_list([],_N,_,_Sym_ops,Pretty_ops_rev,Pretty_ops_rev).
 
-pp_op(reg(Name),Name).
-pp_op(immediate(Num),Num_hex):-
-    format(string(Num_hex),'~16R',[Num]).
+pp_op_list([Op|Ops],N,EA,Sym_ops,Accum,Pretty_ops_rev):-
+    (member(N,Sym_ops)->
+	 pp_op(Op,symbolic,EA,Op_pretty)
+     ;
+     pp_op(Op,normal,EA,Op_pretty)
+    ),
+    N1 is N+1,
+    pp_op_list(Ops,N1,EA,Sym_ops,[Op_pretty|Accum],Pretty_ops_rev).
 
-pp_op(indirect('NullSReg',Reg,'NullReg64',1,0,_,_),[Reg]). 	 
-pp_op(indirect('NullSReg',Reg,'NullReg64',1,Offset,_,Size),PP):-
-    Offset<0,!,
-    Offset1 is 0-Offset,
+pp_op(reg(Name),_,_,Name).
+pp_op(immediate(Num),normal,_,Num).
+pp_op(immediate(Num),symbolic,_,Num_hex):-
+    format(string(Num_hex),'L_~16R',[Num]).
+
+    
+pp_op(indirect('NullSReg',Reg,'NullReg64',1,0,_,_),_,_,[Reg]).
+
+% special case for rip relative addressing
+pp_op(indirect('NullSReg','RIP','NullReg64',1,Offset,_,Size),symbolic,EA,PP):-
+    !,
     get_size_name(Size,Name),
-    format(atom(PP),'~p ~p',[Name,[Reg-Offset1]]).
+    instruction(EA,Size_instr,_,_,_,_),
+    Address is EA+Offset+Size_instr,
+    format(atom(PP),'~p [L_~16R]',[Name,Address]).
 
-pp_op(indirect('NullSReg',Reg,'NullReg64',1,Offset,_,Size),PP):-
+pp_op(indirect('NullSReg',Reg,'NullReg64',1,Offset,_,Size),SymOrNormal,_,PP):-
+    get_offset_and_sign(Offset,SymOrNormal,Offset1,PosNeg),
     get_size_name(Size,Name),
-    format(atom(PP),'~p ~p',[Name,[Reg+Offset]]).
+     Term=..[PosNeg,Reg,Offset1],
+    format(atom(PP),'~p ~p',[Name,[Term]]).
 
-pp_op(indirect('NullSReg','NullReg64',Reg_index,Mult,Offset,_,Size),PP):-
-    Offset<0,!,
-    Offset1 is 0-Offset,
-    get_size_name(Size,Name),
-    format(atom(PP),'~p ~p',[Name,[Reg_index*Mult-Offset1]]).
-
-pp_op(indirect('NullSReg','NullReg64',Reg_index,Mult,Offset,_,Size),PP):-
-    get_size_name(Size,Name),
-    format(atom(PP),'~p ~p',[Name,[Reg_index*Mult+Offset]]).
+pp_op(indirect('NullSReg','NullReg64',Reg_index,Mult,Offset,_,Size),SymOrNormal,_,PP):-
+     get_offset_and_sign(Offset,SymOrNormal,Offset1,PosNeg),
+     get_size_name(Size,Name),
+     Term=..[PosNeg,Reg_index*Mult,Offset1],
+     format(atom(PP),'~p ~p',[Name,[Term]]).
     
 
-pp_op(indirect('NullSReg',Reg,Reg_index,Mult,0,_,Size),PP):-
+pp_op(indirect('NullSReg',Reg,Reg_index,Mult,0,_,Size),_SymOrNormal,_,PP):-
     get_size_name(Size,Name),
     format(atom(PP),'~p ~p',[Name,[Reg+Reg_index*Mult]]).
 
-pp_op(indirect('NullSReg',Reg,Reg_index,Mult,Offset,_,Size),PP):-
-    Offset<0,!,
-    Offset1 is 0-Offset,
-    get_size_name(Size,Name),
-    format(atom(PP),'~p ~p',[Name,[Reg+Reg_index*Mult+Offset1]]).
 
-pp_op(indirect('NullSReg',Reg,Reg_index,Mult,Offset,_,Size),PP):-
+pp_op(indirect('NullSReg',Reg,Reg_index,Mult,Offset,_,Size),SymOrNormal,_,PP):-
     get_size_name(Size,Name),
-    format(atom(PP),'~p ~p',[Name,[Reg+Reg_index*Mult+Offset]]).
+    get_offset_and_sign(Offset,SymOrNormal,Offset1,PosNeg),
+    Term=..[PosNeg,Reg+Reg_index*Mult,Offset1],
+    format(atom(PP),'~p ~p',[Name,[Term]]).
 
 %    format(string(Offset_hex),'~16R',[Offset]).
 
-
-pp_op(indirect(SReg,'NullReg64','NullReg64',1,Offset,_,Size),PP):-
+%FIXME 
+pp_op(indirect(SReg,'NullReg64','NullReg64',1,Offset,_,Size),_SymOrNormal,_,PP):-
     get_size_name(Size,Name),
     format(atom(PP),'~p ~p',[Name,[SReg:Offset]]).
 
     %    format(string(Offset_hex),'~16R',[Offset]).
     
-pp_op(Else,Else).
 
+
+get_offset_and_sign(Offset,symbolic,Offset1,'+'):-
+    format(atom(Offset1),'L_~p',[Offset]).
+get_offset_and_sign(Offset,normal,Offset1,'-'):-
+    Offset<0,!,
+    Offset1 is 0-Offset.
+get_offset_and_sign(Offset,normal,Offset,'+').
 
 get_size_name(128,'').
 get_size_name(64,'QWORD PTR').
@@ -410,6 +459,12 @@ generate_hints(Dir):-
     directory_file_path(Dir,'hints',Path),
     open(Path,write,S),
     maplist(print_code_ea(S),Code_eas),
+      findall(Data_ea,
+	    (
+		data_label(Data_ea)
+
+	    ),Data_eas),
+    maplist(print_data_ea(S),Data_eas),
     close(S).
 
 generate_hints(_).    
@@ -423,6 +478,9 @@ print_code_ea(S,EA):-
     transform_indexes(Indexes,N_ops,Indexes_tr),
     maplist(print_sym_index(S),Indexes_tr),
     format(S,'~n',[]).
+
+print_data_ea(S,EA):-
+    format(S,'0x~16R D~n',[EA]).
 
 transform_indexes(Indexes,N_ops,Indexes_tr):-
     foldl(transform_index(N_ops),Indexes,[],Indexes_tr).

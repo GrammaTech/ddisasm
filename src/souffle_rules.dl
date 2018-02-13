@@ -31,8 +31,13 @@
 .input op_indirect
 
 //data from data sections
-.decl static_data(ea:address,value:number)
-.input static_data
+
+.decl data_byte(ea:address,content:number)
+.input data_byte
+
+.decl data_address(ea:address,value:number)
+
+.input data_address
 
 
 /////////////////////////////////////////////////////////////
@@ -185,7 +190,7 @@ fallthrough(From,To):-
 // FIXME: add exception frame addresses
 
 basic_target(Val):-
-	static_data(_,Val).
+	data_address(_,Val).
 
 basic_target(EA):-
 	section(".text",_,EA).
@@ -453,6 +458,33 @@ likely_ea_final(EA,Chunk):-
 // Symbolization
 //////////////////////////////////////////////////////////////////////
 
+.decl pointer_candidates(ea:address,n:number,dest:address)
+
+pointer_candidates(EA,N,Dest):-
+	likely_ea_final(EA,_),
+	instruction(EA,Size,_,Op1,Op2,Op3),
+	(Op=Op1,N=1;Op=Op2,N=2;Op=Op3,N=3),
+	(
+	op_immediate(Op,Imm),
+	Dest=Imm
+	;
+	op_indirect(Op,"NullSReg","RIP","NullReg64",1,Offset,_,_),
+	Dest=EA+Offset+Size
+	;
+	op_indirect(Op,"NullSReg",Reg,_Reg2,_Mul,Offset,_,_),
+	Dest=Offset
+	),
+	points_to_something(Dest).
+
+.decl points_to_something(ea:address)
+
+points_to_something(EA):-
+	(
+	likely_ea_final(EA,_)
+	;
+	data_byte(EA,_)
+	).
+	
 
 .decl symbolic_imm(ea:address,op_num:op_code)
 .output symbolic_imm
@@ -468,76 +500,18 @@ symbolic_imm(EA,1):-
  	direct_jump(EA,_)
  	).
 
-
-// these are heuristic
 symbolic_imm(EA,N):-
-	likely_ea_final(EA,_),
-	instruction(EA,_,_,Op1,Op2,Op3),
-	(
-	op_points_to_data(Op1),
-	N=1
-	;
-	op_points_to_data(Op2),
-	N=2
-	;	
-	op_points_to_data(Op3),
-	N=3
-	).
-
-symbolic_imm(EA,N):-
-	likely_ea_final(EA,_),
-	instruction(EA,_,_,Op1,Op2,Op3),
-	(
-	op_points_to_code(Op1),
-	N=1
-	;
-	op_points_to_code(Op2),
-	N=2
-	;	
-	op_points_to_code(Op3),
-	N=3
-	).
-
-.decl op_points_to_code(n:op_code)
-.output op_points_to_code
-
-op_points_to_code(Op):-
-	op_immediate(Op,Imm),
-	likely_ea_final(Imm,_).
-	
-op_points_to_code(Op):-
-	op_indirect(Op,"NullSReg","RIP","NullReg64",1,_Offset,_,_).
-	
-op_points_to_code(Op):-
-	op_indirect(Op,"NullSReg",Reg,_Reg2,_Mul,Offset,_,_),
-	Reg!="RIP",
-	section(Name,Size,Address),
-	code_section(Name),
-		// we give some margin in case there was constant propagation
-	Address-1000<=Offset,
-	Address+Size+1000>Offset.
+	pointer_candidates(EA,N,_).
 
 
 
-.decl op_points_to_data(n:op_code)
-.output op_points_to_data
 
-op_points_to_data(Op):-
-	op_indirect(Op,"NullSReg",Reg,_,_Mul,Offset,_,_),
-	Reg!="RIP",
-	section(Name,Size,Address),
-	data_section(Name),
-	// we give some margin in case there was constant propagation
-	Address-1000<=Offset,
-	Address+Size+1000>Offset.
-
-
-op_points_to_data(Op):-
-	op_immediate(Op,Imm),
-	section(Name,Size,Address),
-	data_section(Name),
-		// we give some margin in case there was constant propagation
-	Address-1000<=Imm,
-	Address+Size+1000>Imm.
 
 	
+.decl data_label(EA:address)
+.output data_label
+
+data_label(EA):-
+	pointer_candidates(_,_,EA),
+	data_byte(EA,_).
+      

@@ -42,11 +42,17 @@ bool can_be_address(uint64_t num, uint64_t min_address, uint64_t max_address){
 }
 
 void Dl_decoder::store_data_section(char* buf,uint64_t size,int64_t ea,uint64_t min_address,uint64_t max_address){
-    while (size > 8) {
-        //fixme what about the last bytes?
+    while (size > 0) {
+        //store the byte
+        unsigned char content_byte=*buf;
+        data_bytes.push_back(Dl_data<unsigned char>(ea,content_byte));
+
+        //store the address
+        if(size>8 ){
         uint64_t content=*((int64_t*)buf);
         if (can_be_address(content,min_address,max_address))
-            data.push_back(Dl_data(ea,content));
+            data.push_back(Dl_data<int64_t>(ea,content));
+        }
         ++ea;
         ++buf;
         --size;
@@ -76,9 +82,15 @@ void Dl_decoder::print_data(ofstream& fbuf){
         fbuf<<data_item.result_tabs()<<endl;
     }
 }
+void Dl_decoder::print_data_bytes(ofstream& fbuf){
+    for(auto data_item: data_bytes){
+        fbuf<<data_item.result_tabs()<<endl;
+    }
+}
 
-std::string Dl_data::result_tabs(){
+template <class Content>
+std::string Dl_data<Content>::result_tabs(){
     ostringstream o;
-    o<<ea<<'\t'<<content;
+    o<<ea<<'\t'<<static_cast<int64_t>(content);
     return o.str();
 }

@@ -16,12 +16,12 @@
 #include <vector>
 #include <cstdint>
 
-
+template <class Content>
 class Dl_data{
     int64_t ea;
-    int64_t content;
+    Content content;
 public:
-    Dl_data(int64_t ea, int64_t content):
+    Dl_data(int64_t ea, Content content):
         ea(ea),
         content(content){}
     std::string result_tabs();
@@ -33,7 +33,8 @@ private:
     Dl_operator_table op_dict;
     std::vector<Dl_instruction> instructions;
     std::vector<int64_t> invalids;
-    std::vector<Dl_data> data;
+    std::vector<Dl_data<int64_t> > data;
+    std::vector<Dl_data<unsigned char> > data_bytes;
 public:
     void decode_section(char* buff,uint64_t size,int64_t ea);
     void store_data_section(char* buff,uint64_t size,int64_t ea,uint64_t min_address,uint64_t max_address);
@@ -42,6 +43,7 @@ public:
     void print_operators_of_type(operator_type type,std::ofstream& fbuf);
     void print_invalids(std::ofstream& fbuf);
     void print_data(std::ofstream& fbuf);
+    void print_data_bytes(std::ofstream& fbuf);
 
 };
 

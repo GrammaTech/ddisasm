@@ -135,9 +135,13 @@ int main(int argc, char** argv) {
     instructions_file.close();
 
     cout<<"Saving data "<<endl;
-    ofstream data_file(directory+"static_data.facts",filemask);
+    ofstream data_file(directory+"data_address.facts",filemask);
     decoder.print_data(data_file);
     data_file.close();
+
+    ofstream data_bytes_file(directory+"data_byte.facts",filemask);
+    decoder.print_data_bytes(data_bytes_file);
+    data_bytes_file.close();
 
     cout<<"Saving invalids "<<endl;
     ofstream invalids_file(directory+"invalid_op_code.facts",filemask);
