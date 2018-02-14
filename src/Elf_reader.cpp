@@ -172,8 +172,8 @@ void Elf_reader::print_sections(ostream& stream){
 		stream<< *sect_names_it<<'\t'
 				<<  sect_it->sh_size <<'\t'
 				<<  sect_it->sh_addr<< endl;
-		++sect_it;
-		++sect_names_it;
+            ++sect_it;
+            ++sect_names_it;
 	}
 }
 /*
