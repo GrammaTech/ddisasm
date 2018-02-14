@@ -1,0 +1,4 @@
+*.o
+*.a
+
+bin/souffle_disasm
