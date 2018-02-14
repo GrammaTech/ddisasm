@@ -1,7 +1,5 @@
 :-module(disasm_driver,[disasm_binary/1]).
 
-:-use_module(library(lambda)).
-:-use_module(library(clpfd)).
 
 valid_option('-hints').
 valid_option('-debug').
@@ -347,7 +345,7 @@ pp_instruction(instruction(EA,_,'CALL',_Op1,_,_)):-
      format('         ~16R:   ~p ~p~n',[EA,OpCode_l,Dest])
     ).
 pp_instruction(instruction(EA,_Size,OpCode,Op1,Op2,Op3)):-
-    exclude(\Op^(Op=none),[Op1,Op2,Op3],Ops),
+    exclude(is_none,[Op1,Op2,Op3],Ops),
     get_ea_comments(EA,Comments),
     (member(symbolic_ops(Sym_ops),Comments)->true;Sym_ops=[]),
   
@@ -371,6 +369,7 @@ pp_instruction(instruction(EA,_Size,OpCode,Op1,Op2,Op3)):-
 
 pp_instruction(_).
 
+is_none(none).
 
 print_comments(Comments):-
     (Comments\=[]->
@@ -541,13 +540,14 @@ generate_hints(_).
 print_code_ea(S,EA):-
     format(S,'0x~16R C',[EA]),
     instruction(EA,_,_,Op1,Op2,Op3),
-    exclude(\OP^(OP=0),[Op1,Op2,Op3],Non_zero_ops),
+    exclude(is_zero,[Op1,Op2,Op3],Non_zero_ops),
     length(Non_zero_ops,N_ops),
     findall(Index,symbolic_operand(EA,Index),Indexes),
     transform_indexes(Indexes,N_ops,Indexes_tr),
     maplist(print_sym_index(S),Indexes_tr),
     format(S,'~n',[]).
 
+is_zero(0).
 print_data_ea(S,EA):-
     format(S,'0x~16R D~n',[EA]).
 
