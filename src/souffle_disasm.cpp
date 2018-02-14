@@ -8,7 +8,9 @@
 
 #include "Dl_decoder.h"
 #include "Elf_reader.h"
-#include "souffle/SouffleInterface.h"
+
+// for now we do not use souffle directly
+//#include "souffle/SouffleInterface.h"
 #include "gtr/src/lang/gtr_config.h"
 
 #include <boost/program_options.hpp>
@@ -97,6 +99,8 @@ int main(int argc, char** argv) {
     elf.print_sections_to_file(directory+"section.facts");
     cout<<"Saving symbols\n";
     elf.print_symbols_to_file(directory+"symbol.facts");
+    cout<<"Saving relocations\n";
+    elf.print_relocations_to_file(directory+"relocation.facts");
     Dl_decoder decoder;
 
     uint64_t min_address=UINTMAX_MAX;

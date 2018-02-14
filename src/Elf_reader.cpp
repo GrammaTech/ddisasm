@@ -24,6 +24,8 @@ Elf_reader::Elf_reader(string filename):
 	if(valid){
 		read_sections();
 		read_symbols();
+		read_dynamic_symbols();
+		read_relocations();
 	}
 }
 
@@ -75,10 +77,39 @@ void Elf_reader::read_sections(){
 	}
 
 }
+void Elf_reader::read_dynamic_symbols(){
+	int dynsym_indx=0, dynstr_indx=0;
 
+	//get the indices of the sections
+	for(int i=0;i<header.e_shnum; i++){
+		if(section_names[i]==".dynsym")
+			dynsym_indx=i;
+		if(section_names[i]==".dynstr")
+				dynstr_indx=i;
+
+	}
+	//dynamic table
+	int num_symbols=sections[dynsym_indx].sh_size/sizeof(Elf64_Sym);
+	file.seekg(sections[dynsym_indx].sh_offset, ios::beg);
+	for(int i=0;i<num_symbols; i++){
+		Elf64_Sym symbol;
+		file.read((char*)(&symbol), sizeof(Elf64_Sym));
+		dyn_symbols.push_back(symbol);
+	}
+
+	//read the names
+	const int buff_size=100;
+	char buff[buff_size];
+	for(auto symbol:dyn_symbols){
+		file.seekg((sections[dynstr_indx].sh_offset+symbol.st_name), ios::beg);
+		file.read(buff, buff_size);
+		dyn_symbol_names.push_back(buff);
+	}
+
+}
 void Elf_reader::read_symbols(){
 	int symtab_indx=0,strtab_indx=0;
-	//int dynsym_indx=0,dynstr_indx=0;
+
 
 	//get the indices of the sections
 	for(int i=0;i<header.e_shnum; i++){
@@ -86,13 +117,8 @@ void Elf_reader::read_symbols(){
 			symtab_indx=i;
 		if(section_names[i]==".strtab")
 			strtab_indx=i;
-		//	if(section_names[i]==".dynsym")
-		//		dynsym_indx=i;
-		//	if(section_names[i]==".dynstr")
-		//		dynstr_indx=i;
-
 	}
-
+	//other symbols
 	int num_symbols=sections[symtab_indx].sh_size/sizeof(Elf64_Sym);
 	file.seekg(sections[symtab_indx].sh_offset, ios::beg);
 	for(int i=0;i<num_symbols; i++){
@@ -112,6 +138,29 @@ void Elf_reader::read_symbols(){
 
 }
 
+void Elf_reader::read_relocations(){
+
+	int reladyn_indx=get_section_index(".rela.dyn");
+	int relaplt_indx=get_section_index(".rela.plt");
+
+
+	int num_rela=sections[reladyn_indx].sh_size/sizeof(Elf64_Rela);
+	file.seekg(sections[reladyn_indx].sh_offset, ios::beg);
+	for(int i=0;i<num_rela; i++){
+		Elf64_Rela relocation;
+		file.read((char*)(&relocation), sizeof(Elf64_Rela));
+		relocations.push_back(relocation);
+	}
+
+	num_rela=sections[relaplt_indx].sh_size/sizeof(Elf64_Rela);
+	file.seekg(sections[relaplt_indx].sh_offset, ios::beg);
+	for(int i=0;i<num_rela; i++){
+		Elf64_Rela relocation;
+		file.read((char*)(&relocation), sizeof(Elf64_Rela));
+		relocations.push_back(relocation);
+	}
+}
+
 bool Elf_reader::is_valid(){
 	return valid;
 }
@@ -127,7 +176,7 @@ void Elf_reader::print_sections(ostream& stream){
 		++sect_names_it;
 	}
 }
-
+/*
 void Elf_reader::add_sections_to_souffle(souffle::Relation* rel){
 	auto sect_it=sections.begin();
 	auto sect_names_it=section_names.begin();
@@ -141,7 +190,7 @@ void Elf_reader::add_sections_to_souffle(souffle::Relation* rel){
 		++sect_names_it;
 	}
 }
-
+*/
 bool Elf_reader::print_sections_to_file(const string& filename){
 	ofstream file(filename,ios::out|ios::binary);
 	if(file.is_open()){
@@ -206,6 +255,7 @@ void Elf_reader::print_symbols(ostream& stream){
     }
 }
 
+/*
 void Elf_reader::add_symbols_to_souffle(souffle::Relation* rel){
 	auto symbol_it=symbols.begin();
 	auto symbol_names_it=symbol_names.begin();
@@ -220,7 +270,7 @@ void Elf_reader::add_symbols_to_souffle(souffle::Relation* rel){
 		++symbol_names_it;
 	}
 }
-
+*/
 bool Elf_reader::print_symbols_to_file(const string& filename){
 	ofstream file(filename,ios::out|ios::binary);
 	if(file.is_open()){
@@ -232,6 +282,28 @@ bool Elf_reader::print_symbols_to_file(const string& filename){
 	}
 
 }
+
+void Elf_reader::print_relocations(ostream& stream){
+    //this depends on reading the .dynsym first, before the .symtab when reading symbols
+    for(auto relocation: relocations){
+        int symbol_index=ELF64_R_SYM(relocation.r_info);
+        stream<< relocation.r_offset <<'\t'
+            << dyn_symbol_names[symbol_index] <<'\t'
+            << relocation.r_addend <<endl;
+    }
+}
+bool Elf_reader::print_relocations_to_file(const string& filename){
+	ofstream file(filename,ios::out|ios::binary);
+	if(file.is_open()){
+		print_relocations(file);
+		file.close();
+		return true;
+	}else{
+		return false;
+	}
+
+}
+
 
 int Elf_reader::get_section_index(const string& name){
 	for(size_t i=0;i<section_names.size();++i){

@@ -26,10 +26,16 @@ private:
 	std::vector<Elf64_Sym> symbols;
 	std::vector<std::string> symbol_names;
 
+	std::vector<Elf64_Sym> dyn_symbols;
+	std::vector<std::string> dyn_symbol_names;
+
+	std::vector<Elf64_Rela> relocations;
 	bool check_type();
 	void read_header();
 	void read_sections();
 	void read_symbols();
+	void read_dynamic_symbols();
+	void read_relocations();
 	int get_section_index(const std::string& name);
 public:
 	Elf_reader(std::string filename);
@@ -43,6 +49,9 @@ public:
 	void print_symbols(std::ostream&);
 	bool print_symbols_to_file(const std::string& filename);
 	void add_symbols_to_souffle(souffle::Relation* rel);
+
+	void print_relocations(std::ostream&);
+	bool print_relocations_to_file(const std::string& filename);
 
 
 	char* get_section(const std::string& name, int64_t& buff,Elf64_Addr& initial_addr);
