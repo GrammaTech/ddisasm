@@ -14,9 +14,9 @@ sections([
 		'.init',
 		'.fini']).
 data_sections([
-		 %    '.got',
-		%     '.plt.got',
-		     % '.got.plt',
+		     '.got',
+		     '.plt.got',
+		      '.got.plt',
 		     '.data',
 		     '.rodata']).
 
@@ -87,6 +87,8 @@ result_descriptors([
 			  res(indirect_jump,1,'.csv'),
 			  res(pc_relative_jump,2,'.csv'),
 
+			  res(plt_call,2,'.csv'),
+
 			  res(direct_call,2,'.csv'),
 
 			  %res(possible_target,'phase2-possible_target',1,'.csv'),
@@ -97,8 +99,12 @@ result_descriptors([
 			  res(chunk_overlap,'chunk_overlap2',2,'.csv'),
 			  res(discarded_chunk,1,'.csv'),
 
-			  res(symbolic_imm,2,'.csv'),
-			  res(data_label,1,'.csv')
+			  res(symbolic_operand,2,'.csv'),
+			  res(data_label,1,'.csv'),
+			  res(float_data,1,'.csv'),
+			  res(pointer_array,2,'.csv'),
+			  res(pointer_array_element,3,'.csv'),
+			  res(string,2,'.csv')
 			  
 			%  res(op_points_to_data,3,'.csv')
 			 
@@ -117,6 +123,7 @@ result_descriptors([
 :-dynamic reg_jump/1.
 :-dynamic indirect_jump/1.
 :-dynamic pc_relative_jump/2.
+:-dynamic plt_call/2.
 
 :-dynamic direct_call/2.
 
@@ -128,8 +135,13 @@ result_descriptors([
 :-dynamic chunk_overlap/2.
 :-dynamic discarded_chunk/1.
 
-:-dynamic symbolic_imm/2.
+:-dynamic symbolic_operand/2.
 :-dynamic data_label/1.
+:-dynamic float_data/1.
+:-dynamic pointer_array/2.
+:-dynamic pointer_array_element/3.
+:-dynamic string/2.
+
 % :-dynamic op_points_to_data/3.
 
 collect_results(Dir,results(Results)):-
@@ -158,10 +170,19 @@ get_op(N,indirect(Reg1,Reg2,Reg3,A,B,C,Size)):-
     op_indirect(N,Reg1,Reg2,Reg3,A,B,C,Size),!.
 
 pretty_print_results:-
+    print_header,
     get_chunks(Chunks),
     maplist(pp_chunk, Chunks),
     get_data(Data),
     maplist(pp_data,Data).
+
+print_header:-
+    option('-asm'),!,
+    format('
+	.intel_syntax noprefix
+	.globl	main
+	.type	main, @function~n',[]).
+print_header.
 
 get_data(Data):-
     findall(Data_byte,
@@ -172,17 +193,45 @@ get_data(Data):-
 
 pp_data(data_byte(EA,Content)):-
     print_section_header(EA),
+    findall(Comment,data_comment(EA,Comment),Comments),
     print_data_label(EA),
      (option('-asm')->
-	 format('             .byte 0x~16R~n',[Content])
+	 format('             .byte 0x~16R',[Content])
      ;
-     format('         ~16R:   .byte 0x~16R~n',[EA,Content])
-     ).
+     format('         ~16R:   .byte 0x~16R',[EA,Content])
+     ),
+    print_comments(Comments),
+    nl.
 
 print_data_label(EA):-
     data_label(EA),!,
     format('L_~16R:~n',[EA]).
+
 print_data_label(_EA).
+
+data_comment(EA,float):-
+    float_data(EA).
+
+data_comment(EA,pointer(V)):-
+    pointer_array(EA,Val),
+    format(atom(V),'~16R',[Val]).
+
+data_comment(EA,pointer_elem(Index,V)):-
+    pointer_array_element(EA,Val,Beg),
+    Index is (EA-Beg)/8,
+    format(atom(V),'~16R',[Val]).
+
+data_comment(EA,string(Size,String)):-
+    string(EA,End),
+    get_codes(EA,End,Codes),
+    atom_codes(String,Codes),
+    Size is End-EA.
+
+get_codes(E,E,[]).
+get_codes(B,E,[Code|Codes]):-
+    data_byte(B,Code),
+    B2 is B+1,
+    get_codes(B2,E,Codes).
 
 get_chunks(Chunks):-
     findall(Chunk,chunk_start(Chunk),Chunk_addresses),
@@ -241,11 +290,19 @@ pp_chunk(_EA_chunk-Instruction):-
      true
     ).
 
+
+
+print_section_header(EA):-
+    section('.text',_,EA),!,
+    format('~n~n#=================================== ~n',[]),
+    format('.text~n',[]),
+    format('#=================================== ~n~n',[]).
+
 print_section_header(EA):-
     section(Section_name,_,EA),!,
-    format('~n~n;=================================== ~n',[]),
-    format('.section ~p:~n',[Section_name]),
-    format(';=================================== ~n~n',[]).
+    format('~n~n#=================================== ~n',[]),
+    format('.section ~p~n',[Section_name]),
+    format('#=================================== ~n~n',[]).
 print_section_header(_).
 
 is_function(EA,Name):-
@@ -254,9 +311,9 @@ is_function(EA,'unkown'):-
       direct_call(_,EA).
 
 print_function_header(Name):-
-    	 format(';----------------------------------- ~n',[]),
-	 format(';  Function ~p:~n',[Name]),
-	 format(';----------------------------------- ~n',[]).
+    	 format('#----------------------------------- ~n',[]),
+	 format('~p:~n',[Name]),
+	 format('#----------------------------------- ~n',[]).
 		
 get_chunk_comments(EA_chunk,Comments):-
 	setof(Comment,chunk_comment(EA_chunk,Comment),Comments),!.
@@ -281,7 +338,14 @@ chunk_comment(EA,jumped_from(Str_or)):-
     format(string(Str_or),'~16R',[Or]).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
+pp_instruction(instruction(EA,_,'CALL',_Op1,_,_)):-
+    plt_call(EA,Dest),!,
+    downcase_atom('CALL',OpCode_l),
+    (option('-asm')->
+	 format('             ~p ~p~n',[OpCode_l,Dest])
+     ;
+     format('         ~16R:   ~p ~p~n',[EA,OpCode_l,Dest])
+    ).
 pp_instruction(instruction(EA,_Size,OpCode,Op1,Op2,Op3)):-
     exclude(\Op^(Op=none),[Op1,Op2,Op3],Ops),
     get_ea_comments(EA,Comments),
@@ -310,7 +374,7 @@ pp_instruction(_).
 
 print_comments(Comments):-
     (Comments\=[]->
-	 format('          ; ',[]),
+	 format('          # ',[]),
 	 maplist(print_with_space,Comments)
      ;true
     ).
@@ -352,7 +416,7 @@ pp_op(indirect('NullSReg',Reg,'NullReg64',1,Offset,_,Size),SymOrNormal,_,PP):-
 pp_op(indirect('NullSReg','NullReg64',Reg_index,Mult,Offset,_,Size),SymOrNormal,_,PP):-
      get_offset_and_sign(Offset,SymOrNormal,Offset1,PosNeg),
      get_size_name(Size,Name),
-     Term=..[PosNeg,Reg_index*Mult,Offset1],
+     Term=..[PosNeg,Offset1,Reg_index*Mult],
      format(atom(PP),'~p ~p',[Name,[Term]]).
     
 
@@ -364,7 +428,7 @@ pp_op(indirect('NullSReg',Reg,Reg_index,Mult,0,_,Size),_SymOrNormal,_,PP):-
 pp_op(indirect('NullSReg',Reg,Reg_index,Mult,Offset,_,Size),SymOrNormal,_,PP):-
     get_size_name(Size,Name),
     get_offset_and_sign(Offset,SymOrNormal,Offset1,PosNeg),
-    Term=..[PosNeg,Reg+Reg_index*Mult,Offset1],
+    Term=..[PosNeg,Offset1,Reg+Reg_index*Mult],
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
 %    format(string(Offset_hex),'~16R',[Offset]).
@@ -379,7 +443,7 @@ pp_op(indirect(SReg,'NullReg64','NullReg64',1,Offset,_,Size),_SymOrNormal,_,PP):
 
 
 get_offset_and_sign(Offset,symbolic,Offset1,'+'):-
-    format(atom(Offset1),'L_~p',[Offset]).
+    format(atom(Offset1),'L_~16R',[Offset]).
 get_offset_and_sign(Offset,normal,Offset1,'-'):-
     Offset<0,!,
     Offset1 is 0-Offset.
@@ -405,7 +469,7 @@ ea_comment(EA,not_in_chunk):-
 \+likely_ea(EA,_).
 
 ea_comment(EA,symbolic_ops(Symbolic_ops)):-
-    findall(Op_num,symbolic_imm(EA,Op_num),Symbolic_ops),
+    findall(Op_num,symbolic_operand(EA,Op_num),Symbolic_ops),
     Symbolic_ops\=[].
 
 
@@ -414,8 +478,13 @@ ea_comment(EA,reg_jump):-
 ea_comment(EA,indirect_jump):-
     indirect_jump(EA).
 
-ea_comment(EA,pc_relative_jump(Dest)):-
-    pc_relative_jump(EA,Dest).
+ea_comment(EA,plt(Dest)):-
+    plt_call(EA,Dest).
+
+
+ea_comment(EA,pc_relative_jump(Dest_hex)):-
+    pc_relative_jump(EA,Dest),
+     format(atom(Dest_hex),'~16R',[Dest]).
 
 
 
@@ -461,7 +530,7 @@ generate_hints(Dir):-
     maplist(print_code_ea(S),Code_eas),
       findall(Data_ea,
 	    (
-		data_label(Data_ea)
+		(data_label(Data_ea); pointer_array_element(Data_ea,_,_))
 
 	    ),Data_eas),
     maplist(print_data_ea(S),Data_eas),
@@ -474,7 +543,7 @@ print_code_ea(S,EA):-
     instruction(EA,_,_,Op1,Op2,Op3),
     exclude(\OP^(OP=0),[Op1,Op2,Op3],Non_zero_ops),
     length(Non_zero_ops,N_ops),
-    findall(Index,symbolic_imm(EA,Index),Indexes),
+    findall(Index,symbolic_operand(EA,Index),Indexes),
     transform_indexes(Indexes,N_ops,Indexes_tr),
     maplist(print_sym_index(S),Indexes_tr),
     format(S,'~n',[]).

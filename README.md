@@ -51,6 +51,9 @@ The script accepts the following parameters:
 - `-debug` in addition to print what is considered to be code, it prints every instruction
   that has not been explicitly discarded and segments of assembler that have been discarded
   
+- `-asm` generate assembler that can be given to an assembler directly.
+   NOTE: this is not working just yet.
+  
 ## Comparing to DVT
 
 The script `./bin/test.sh`  runs the disassembler with hints generation on and gives those hints
