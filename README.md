@@ -52,7 +52,7 @@ The script accepts the following parameters:
   that has not been explicitly discarded and segments of assembler that have been discarded
   
 - `-asm` generate assembler that can be given to an assembler directly.
-   NOTE: this is not working just yet.
+
   
 ## Comparing to DVT
 
@@ -75,7 +75,6 @@ and `ex_switch`, even if these are stripped of their symbols (using
 two functions that are missed 'make_simple_name' and 'warn' but these seem to not be
 called at all (they seem to be dead code).
 
-- The way clang and gcc deal with switch differs a lot. So far now it works with both.
 
 - I have not tried to disassemble optimized code.
 
@@ -83,12 +82,12 @@ called at all (they seem to be dead code).
 - I started generating information for symbolization (Literal reference disambiguation)
 in a very naive way following [6].
 
+- some basic examples `ex_switch` and `ex_float` can be disassembled and assembled again directly  maintaining functionality.
+
 ### Issues/TODOs
 
 - Compute additional seeds based on computed jumps/calls and exceptions.
 
-- Resolve conflicts based on heuristics.
-Update: The modified algorithm gets fewer conflics but I still get some when disassembling gcc (the binary in my computer, could it be optimized? )
 
 
 ## References
