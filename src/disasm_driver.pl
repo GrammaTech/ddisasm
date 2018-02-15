@@ -111,6 +111,7 @@ result_descriptors([
 			  result(pc_relative_call,2,'.csv'),
 
 			  result(plt_call,2,'.csv'),
+			  result(plt_jump,2,'.csv'),
 
 			  %result(possible_target,'phase2-possible_target',1,'.csv'),
 			  named_result(likely_ea,'likely_ea_final',2,'.csv'),
@@ -125,7 +126,9 @@ result_descriptors([
 			  result(labeled_data,1,'.csv'),
 			  result(float_data,1,'.csv'),
 			  result(pointer,2,'.csv'),
-			  result(string,2,'.csv')
+			  result(string,2,'.csv'),
+
+			  result(bss_data,1,'.csv')
 		      ]).
 
 :-dynamic section/3.
@@ -147,6 +150,7 @@ result_descriptors([
 :-dynamic indirect_call/1.
 :-dynamic pc_relative_call/2.
 :-dynamic plt_call/2.
+:-dynamic plt_jump/2.
 
 :-dynamic likely_ea/2.
 :-dynamic remaining_ea/1.
@@ -162,6 +166,7 @@ result_descriptors([
 :-dynamic pointer/2.
 :-dynamic string/2.
 
+:-dynamic bss_data/1.
 
 collect_results(Dir,results(Results)):-
     result_descriptors(Descriptors),
@@ -203,7 +208,9 @@ pretty_print_results:-
     get_chunks(Chunks),
     maplist(pp_chunk, Chunks),
     get_data(Data),
-    maplist(pp_data,Data).
+    maplist(pp_data,Data),
+    get_bss_data(Uninitialized_data),
+    maplist(pp_bss_data,Uninitialized_data).
 
 
 
@@ -296,6 +303,9 @@ group_data([data_byte(EA,Content)|Rest],[data_group(EA,string,String)|Groups]):-
     string_codes(String,Bytes_clean),
     group_data(Rest2,Groups).
 
+group_data([data_byte(EA,Content)|Rest],[data_group(EA,unknown,[data_byte(EA,Content)])|Groups]):-
+    labeled_data(EA),!,
+    group_data(Rest,Groups).
 
 group_data([data_byte(EA,Content)|Rest],[data_byte(EA,Content)|Groups]):-
     group_data(Rest,Groups).
@@ -312,6 +322,25 @@ split_at(N,List,FirstN,Rest):-
 
 get_data_byte_content(data_byte(_,Content),Content).
 
+
+get_bss_data(Data_elements):-
+    section('.bss',SizeSect,Base),
+    End is Base+SizeSect,
+      setof(EA,
+	    EA^(
+		bss_data(EA)
+	     ;
+	     %the last border
+	     EA=End
+	    )
+	    ,Addresses),
+      group_bss_data(Addresses,Data_elements).
+
+group_bss_data([],[]).
+group_bss_data([_Last],[]).
+group_bss_data([Start,Next|Rest],[variable(Start,Size)|Rest_vars]):-
+		   Size is Next-Start,
+		   group_bss_data([Next|Rest],Rest_vars).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 skip_ea(EA):-
@@ -352,7 +381,7 @@ pp_data(data_group(EA,pointer,Content)):-
      
 pp_data(data_group(EA,labeled_pointer,Content)):-
     print_section_header(EA),
-        print_label(EA),
+    print_label(EA),
     print_ea(EA),
     format('.quad L_~16R~n',[Content]).
    
@@ -369,7 +398,12 @@ pp_data(data_group(EA,string,Content)):-
     set_prolog_flag(character_escapes, false),
     format('.string "~p"~n',[Content]),
     set_prolog_flag(character_escapes, true).
-   
+
+pp_data(data_group(EA,unknown,Content)):-
+    print_section_header(EA),
+    print_label(EA),
+    maplist(pp_data,Content).
+
 pp_data(data_byte(EA,Content)):-
     print_section_header(EA),
     print_ea(EA),
@@ -383,7 +417,17 @@ print_ea(EA):-
     format('         ~16R: ',[EA]).
 
 print_label(EA):-
-      format('L_~16R:~n',[EA]).
+    format('L_~16R:~n',[EA]).
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+pp_bss_data(variable(Start,Size)):-
+    %print_label(EA),
+    format('.comm L_~16R, ~p ~n',[Start,Size]).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 pp_chunk(EA_chunk-chunk(_List)):-
@@ -432,8 +476,12 @@ print_function_header(EA):-
 
 print_function_header(_).
 
-is_function(EA,Name):-
-    function_symbol(EA,Name).
+is_function(EA,'main'):-
+    function_symbol(EA,'main').
+is_function(EA,Name_complete):-
+    function_symbol(EA,Name),
+    %symbol names do not have to be unique!
+    format(string(Name_complete),'~p_~16R',[Name,EA]).
 is_function(EA,Funtion_name):-
     direct_call(_,EA),
     atom_concat('unknown_function_',EA,Funtion_name).
@@ -441,20 +489,41 @@ is_function(EA,Funtion_name):-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% these opcodes do not really exist
+adapt_opcode(movsd2,movsd).
+adapt_opcode(imul2,imul).
+adapt_opcode(imul3,imul).
+adapt_opcode(imul1,imul).
+adapt_opcode(Operation,Operation).
 
-pp_instruction(instruction(EA,_Size,OpCode,Op1,Op2,Op3)):-
-    %instruction
+pp_instruction(instruction(EA,_Size,String_op,Op1,none,none)):-
+    member(String_op,['MOVS','CMPS']),!,
     print_ea(EA),
-    (OpCode='MOVS'-> trace;true),
-    downcase_atom(OpCode,OpCode_l),
-    (OpCode_l='movsd2'->% this instruction does not want to exist
-	 format(' ~p',['movsd'])
+    downcase_atom(String_op,OpCode_l),
+    get_op_indirect_size_suffix(Op1,Suffix),
+    format(' ~p~p',[OpCode_l,Suffix]),
+    (option('-debug')->
+	 get_comments(EA,Comments),
+	 print_comments(Comments)
      ;
-     format(' ~p',[OpCode_l])
+     true
     ),
+    nl.
+pp_instruction(instruction(EA,_Size,OpCode,Op1,Op2,Op3)):-
+
+    print_ea(EA),
+    downcase_atom(OpCode,OpCode_l),
+    adapt_opcode(OpCode_l,OpCode_adapted),
+    format(' ~p',[OpCode_adapted]),
     %operands
-    pp_operand_list([Op1,Op2,Op3],EA,1,[],Pretty_ops_rev),
-    print_with_sep(Pretty_ops_rev,','),
+    pp_operand_list([Op1,Op2,Op3],EA,1,Pretty_ops),
+    % print the operands in the order: dest, src1 src2
+    (append(Source_operands,[Dest_operand],Pretty_ops),
+     print_with_sep([Dest_operand|Source_operands],',')
+     ;
+     %unless there are no operands
+     Pretty_ops=[]
+    ),
     (option('-debug')->
 	 get_comments(EA,Comments),
 	 print_comments(Comments)
@@ -469,21 +538,28 @@ is_none(none).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-pp_operand_list([],_EA,_N,Pretty_ops_rev,Pretty_ops_rev).
-pp_operand_list([none|_Ops],_EA,_N,Pretty_ops_rev,Pretty_ops_rev).
-pp_operand_list([Op|Ops],EA,N,Accum,Pretty_ops_rev):-
+pp_operand_list([],_EA,_N,[]).
+pp_operand_list([none|Ops],EA,N,Pretty_ops):-
+    pp_operand_list(Ops,EA,N,Pretty_ops).
+pp_operand_list([Op|Ops],EA,N,[Op_pretty|Pretty_ops]):-
     pp_operand(Op,EA,N,Op_pretty),
     N1 is N+1,
-    pp_operand_list(Ops,EA,N1,[Op_pretty|Accum],Pretty_ops_rev).
+    pp_operand_list(Ops,EA,N1,Pretty_ops).
 
-pp_operand(reg(Name),_,_,Name).
+pp_operand(reg(Name),_,_,Name2):-
+    adapt_register(Name,Name2).
 
 pp_operand(immediate(_Num),EA,_N,Name):-
     plt_call(EA,Name),!.
-
 pp_operand(immediate(_Num),EA,_N,Name):-
+    plt_jump(EA,Name),!.
+
+
+pp_operand(immediate(_Num),EA,_N,Name_complete):-
     direct_call(EA,Dest),
-    function_symbol(Dest,Name),!.
+    function_symbol(Dest,Name),!,
+    %symbol names do not have to be unique!
+    format(string(Name_complete),'~p_~16R',[Name,Dest]).
 
 % special case for mov from symbolic
 pp_operand(immediate(Num),EA,1,Num_hex):-
@@ -501,8 +577,9 @@ pp_operand(immediate(Num),_,_,Num).
     
     
 pp_operand(indirect('NullSReg',Reg,'NullReg64',1,0,_,Size),_,_,PP):-
+      adapt_register(Reg,Reg_adapted),
       get_size_name(Size,Name),
-      format(atom(PP),'~p [~p]',[Name,Reg]).
+      format(atom(PP),'~p [~p]',[Name,Reg_adapted]).
 
 % special case for rip relative addressing
 pp_operand(indirect('NullSReg','RIP','NullReg64',1,Offset,_,Size),EA,N,PP):-
@@ -513,27 +590,33 @@ pp_operand(indirect('NullSReg','RIP','NullReg64',1,Offset,_,Size),EA,N,PP):-
     format(atom(PP),'~p [L_~16R]',[Name,Address]).
 
 pp_operand(indirect('NullSReg',Reg,'NullReg64',1,Offset,_,Size),EA,N,PP):-
+    adapt_register(Reg,Reg_adapted),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
     get_size_name(Size,Name),
-    Term=..[PosNeg,Reg,Offset1],
+    Term=..[PosNeg,Reg_adapted,Offset1],
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
 pp_operand(indirect('NullSReg','NullReg64',Reg_index,Mult,Offset,_,Size),EA,N,PP):-
-     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
-     get_size_name(Size,Name),
-     Term=..[PosNeg,Reg_index*Mult,Offset1],
-     format(atom(PP),'~p ~p',[Name,[Term]]).
-    
+    adapt_register(Reg_index,Reg_index_adapted),
+    get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
+    get_size_name(Size,Name),
+    Term=..[PosNeg,Reg_index_adapted*Mult,Offset1],
+    format(atom(PP),'~p ~p',[Name,[Term]]).
+
 
 pp_operand(indirect('NullSReg',Reg,Reg_index,Mult,0,_,Size),_EA,_N,PP):-
+    adapt_register(Reg,Reg_adapted),
+    adapt_register(Reg_index,Reg_index_adapted),
     get_size_name(Size,Name),
-    format(atom(PP),'~p ~p',[Name,[Reg+Reg_index*Mult]]).
+    format(atom(PP),'~p ~p',[Name,[Reg_adapted+Reg_index_adapted*Mult]]).
 
 
 pp_operand(indirect('NullSReg',Reg,Reg_index,Mult,Offset,_,Size),EA,N,PP):-
+    adapt_register(Reg,Reg_adapted),
+    adapt_register(Reg_index,Reg_index_adapted),
     get_size_name(Size,Name),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
-    Term=..[PosNeg,Reg+Reg_index*Mult,Offset1],
+    Term=..[PosNeg,Reg_adapted+Reg_index_adapted*Mult,Offset1],
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
 
@@ -560,6 +643,27 @@ get_size_name(32,'DWORD PTR').
 get_size_name(16,'WORD PTR').
 get_size_name(8,'BYTE PTR').
 get_size_name(Other,size(Other)).
+
+get_op_indirect_size_suffix(indirect(_,_,_,_,_,_,Size),Suffix):-
+    get_size_suffix(Size,Suffix).
+
+get_size_suffix(128,'').
+get_size_suffix(0,'').
+get_size_suffix(64,'q').
+get_size_suffix(32,'d').
+get_size_suffix(16,'w').
+get_size_suffix(8,'b').
+
+
+adapt_register('R8L','R8B'):-!.
+adapt_register('R9L','R9B'):-!.
+adapt_register('R10L','R10B'):-!.
+adapt_register('R11L','R11B'):-!.
+adapt_register('R12L','R12B'):-!.
+adapt_register('R13L','R13B'):-!.
+adapt_register('R14L','R14B'):-!.
+adapt_register('R15L','R15B'):-!.
+adapt_register(Reg,Reg).
 
 %%%%%%%%%%%%%%%%%%%
 % comments for debugging
@@ -602,6 +706,8 @@ comment(EA,indirect_jump):-
 
 comment(EA,plt(Dest)):-
     plt_call(EA,Dest).
+comment(EA,plt(Dest)):-
+    plt_jump(EA,Dest).
 
 comment(EA,pc_relative_jump(Dest_hex)):-
     pc_relative_jump(EA,Dest),

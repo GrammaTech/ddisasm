@@ -546,6 +546,17 @@ plt_call(EA,Function):-
 	pc_relative_jump(Dest,Got_entry),
 	relocation(Got_entry,Function,_).
 
+.decl plt_jump(ea:address, function:symbol)
+.output plt_jump
+
+plt_jump(EA,Function):-
+	direct_jump(EA,Dest),
+	section(".plt",Size,Beg),
+	Dest<Beg+Size,
+	Dest>=Beg,
+	pc_relative_jump(Dest,Got_entry),
+	relocation(Got_entry,Function,_).
+
 	
 //////////////////////////////////////////////////////////////////////
 // Symbolization
@@ -620,6 +631,17 @@ symbolic_operand(EA,Op_index):-
 labeled_data(EA):-
 	pointer_candidates(_,_,EA),
 	data_byte(EA,_).
+	
+// labels of un-initialized data
+.decl bss_data(EA:address)
+.output bss_data
+
+bss_data(EA):-
+	pointer_candidates(_,_,EA),
+	section(".bss",SizeSect,Base),
+	EA>=Base,
+	EA<Base+SizeSect.
+
 
 
 // type classification heuristics
