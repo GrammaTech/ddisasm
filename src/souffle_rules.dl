@@ -16,6 +16,9 @@
 .decl relocation(ea:address,name:symbol,addend:number)
 .input relocation
 
+.decl word_size_in_bytes(n:number)
+word_size_in_bytes(8).
+
 //FIXME: add eh_frames
 
 
@@ -175,6 +178,7 @@ direct_call(EA,Dest):-
 
 
 .decl pc_relative_call(src:address,dest:address)
+.output pc_relative_call
 
 pc_relative_call(Src,Src+Size+Offset):-
 	instruction(Src,Size,"CALL",Op1,_,_),
@@ -610,20 +614,20 @@ symbolic_operand(EA,Op_index):-
 
 
 // data that is dereferenced somewhere in the code
-.decl data_label(EA:address)
-.output data_label
+.decl labeled_data(EA:address)
+.output labeled_data
 
-data_label(EA):-
+labeled_data(EA):-
 	pointer_candidates(_,_,EA),
 	data_byte(EA,_).
-      
+
 
 // type classification heuristics
 .decl float_data(ea:address)
 .output float_data
 
 float_data(EA):-
-	data_label(EA),
+	labeled_data(EA),
 	pointer_candidates(Ref,_,EA),
 	float_instruction(Ref).
 
@@ -689,26 +693,20 @@ float_operation("SQRTPD").
 
 
 
-.decl pointer_array(ea:address,value:number)
-.output pointer_array
+.decl pointer(ea:address,value:number)
+.output pointer
 
-pointer_array(EA,Val):-
+pointer(EA,Val):-
  	data_address(EA,Val),
- 	data_label(EA),
+ 	labeled_data(EA),
  	!float_data(EA).
 
-.decl pointer_array_element(ea:address,value:number,base:address)
-.output pointer_array_element
+pointer(EA+WORD_SIZE,Val):-
+	word_size_in_bytes(WORD_SIZE),
+	pointer(EA,_),
+	data_address(EA+WORD_SIZE,Val),
+	!float_data(EA+WORD_SIZE).
 
-pointer_array_element(EA+8,Val,EA):-
-	pointer_array(EA,_),
-	data_address(EA+8,Val),
-	!data_label(EA+8).
-
-pointer_array_element(EA+8,Val,Base):-
-	pointer_array_element(EA,_,Base),
-	data_address(EA+8,Val),
-	!data_label(EA+8).
 	
 .decl string(ea:address,end:address)
 .output string
@@ -721,14 +719,15 @@ string(Beg,End):-
 .decl string_candidate(ea:address,base:address)
 
 string_candidate(EA,EA):-
-    data_label(EA),
+    labeled_data(EA),
     !float_data(EA),
-    !pointer_array(EA,_),
+    !pointer(EA,_),
     data_byte(EA,Byte),
     printable_char(Byte).
 
 string_candidate(EA+1,Base):-
    string_candidate(EA,Base),
+   !labeled_data(EA+1),
    data_byte(EA+1,Byte),
    printable_char(Byte).
     

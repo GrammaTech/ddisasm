@@ -76,12 +76,12 @@ template<typename T>
 inline void Datalog_visitor_x64::visit2op(const T * const n,short size1,short size2)
 {
     curr_op.type=operator_type::NONE;
-    curr_op.size=size1;
+    curr_op.size=size2;
     n->Get_Src()->accept(*this);
     add_curr_operator();
 
     curr_op.type=operator_type::NONE;
-    curr_op.size=size2;
+    curr_op.size=size1;
     n->Get_Dst() ->accept(*this);
     add_curr_operator();
 
@@ -91,7 +91,7 @@ template<typename T>
 inline void Datalog_visitor_x64::visit3op(const T * const n,short size1,short size2,short size3)
 {
     curr_op.type=operator_type::NONE;
-    curr_op.size=size1;
+    curr_op.size=size3;
     n->Get_Src1()->accept(*this);
     add_curr_operator();
 
@@ -101,7 +101,7 @@ inline void Datalog_visitor_x64::visit3op(const T * const n,short size1,short si
     add_curr_operator();
 
     curr_op.type=operator_type::NONE;
-    curr_op.size=size3;
+    curr_op.size=size1;
     n->Get_Dst() ->accept(*this);
     add_curr_operator();
     n->Get_ThreeOpInstr()->accept(*this);
@@ -111,7 +111,7 @@ template<typename regdirect>
 inline void Datalog_visitor_x64::visitRegDirect(const regdirect * const n)
 {
     curr_op.type=operator_type::REG;
-    curr_op.reg1=std::string(n->Get_Reg()->GetClassIdName());
+    curr_op.reg1=n->Get_Reg()->GetClassIdName();
 }
 
 template <typename addr>
@@ -290,14 +290,17 @@ void Datalog_visitor_x64::visit(const RTG::FarImmediate * const n)
 void Datalog_visitor_x64::visit(const RTG::Lea64 * const n)
 {
     visitInstrWAdrrDst<RTG::Lea64>(n);
+    name="LEA";
 }
 void Datalog_visitor_x64::visit(const RTG::Lea32 * const n)
 {
     visitInstrWAdrrDst<RTG::Lea32>(n);
+    name="LEA";
 }
 void Datalog_visitor_x64::visit(const RTG::Lea16 * const n)
 {
     visitInstrWAdrrDst<RTG::Lea16>(n);
+    name="LEA";
 }
 void Datalog_visitor_x64::visit(const RTG::FarIndirect16 * const n)
 {

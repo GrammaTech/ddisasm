@@ -18,11 +18,29 @@ data_sections([
 		     '.data',
 		     '.rodata']).
 
-analysis_file('souffle_main.pl').
+% the things that are ignored with the parameter -asm
+asm_skip_function('_start').
+asm_skip_function('deregister_tm_clones').
+asm_skip_function('register_tm_clones').
+asm_skip_function('__do_global_dtors_aux').
+asm_skip_function('frame_dummy').
+asm_skip_function('__libc_csu_fini').
+
+asm_skip_section('.comment').
+asm_skip_section('.plt').
+asm_skip_section('.init').
+asm_skip_section('.fini').
+asm_skip_section('.got').
+asm_skip_section('.plt.got').
+asm_skip_section('.got.plt').
+
 
 disasm_binary([File|Args]):-
     maplist(save_option,Args),
     set_prolog_flag(print_write_options,[quoted(false)]),
+
+    (option('-asm')->format('/*~n',[]);true),
+    
     format('Decoding binary~n',[]),
     file_directory_name(File, Dir),
     atom_concat(Dir,'/dl_files',Dir2),
@@ -37,6 +55,8 @@ disasm_binary([File|Args]):-
      format('Collecting results and printing~n',[]),
      collect_results(Dir2,_Results),
      generate_hints(Dir),
+
+     (option('-asm')->format('*/~n',[]);true),
      pretty_print_results,
      print_stats
     ).
@@ -57,7 +77,7 @@ decode_sections(File,Dir):-
     atomic_list_concat(Data_sect_args,Data_section_chain),
     atomic_list_concat(['./souffle_disasm ',' --file ',File,
 			' --dir ',Dir,'/',Section_chain,Data_section_chain],Cmd),
-    format('cmd: ~p~n',[Cmd]),
+    format('#cmd: ~p~n',[Cmd]),
     shell(Cmd).
 
 collect_section_args(Arg,Name,Acc_sec,Acc_sec2):-
@@ -73,40 +93,39 @@ call_souffle(Dir):-
 %%% Pretty printer
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 result_descriptors([
-			  res(section,3,'.facts'),
-			  res(instruction,6,'.facts'),
-			  res(op_regdirect,2,'.facts'),
-			  res(op_immediate,2,'.facts'),
-			  res(op_indirect,8,'.facts'),
-			  res(data_byte,2,'.facts'),
+			  result(section,3,'.facts'),
+			  result(instruction,6,'.facts'),
+			  result(op_regdirect,2,'.facts'),
+			  result(op_immediate,2,'.facts'),
+			  result(op_indirect,8,'.facts'),
+			  result(data_byte,2,'.facts'),
 
-			  res(direct_jump,2,'.csv'),	
-			  res(reg_jump,1,'.csv'),
-			  res(indirect_jump,1,'.csv'),
-			  res(pc_relative_jump,2,'.csv'),
-
-			  res(plt_call,2,'.csv'),
-
-			  res(direct_call,2,'.csv'),
-
-			  %res(possible_target,'phase2-possible_target',1,'.csv'),
-			  res(likely_ea,'likely_ea_final',2,'.csv'),
-			  res(remaining_ea,'phase2-remaining_ea',1,'.csv'),
-			  res(function_symbol,2,'.csv'),
-			  res(chunk_start,1,'.csv'),
-			  res(chunk_overlap,'chunk_overlap2',2,'.csv'),
-			  res(discarded_chunk,1,'.csv'),
-
-			  res(symbolic_operand,2,'.csv'),
-			  res(data_label,1,'.csv'),
-			  res(float_data,1,'.csv'),
-			  res(pointer_array,2,'.csv'),
-			  res(pointer_array_element,3,'.csv'),
-			  res(string,2,'.csv')
+			  result(direct_jump,2,'.csv'),	
+			  result(reg_jump,1,'.csv'),
+			  result(indirect_jump,1,'.csv'),
+			  result(pc_relative_jump,2,'.csv'),
 			  
-			%  res(op_points_to_data,3,'.csv')
-			 
+			  result(direct_call,2,'.csv'),
+			  result(reg_call,1,'.csv'),
+			  result(indirect_call,1,'.csv'),
+			  result(pc_relative_call,2,'.csv'),
 
+			  result(plt_call,2,'.csv'),
+
+			  %result(possible_target,'phase2-possible_target',1,'.csv'),
+			  named_result(likely_ea,'likely_ea_final',2,'.csv'),
+			  named_result(remaining_ea,'phase2-remaining_ea',1,'.csv'),
+			  named_result(chunk_overlap,'chunk_overlap2',2,'.csv'),
+
+			  result(function_symbol,2,'.csv'),
+			  result(chunk_start,1,'.csv'),
+			  result(discarded_chunk,1,'.csv'),
+
+			  result(symbolic_operand,2,'.csv'),
+			  result(labeled_data,1,'.csv'),
+			  result(float_data,1,'.csv'),
+			  result(pointer,2,'.csv'),
+			  result(string,2,'.csv')
 		      ]).
 
 :-dynamic section/3.
@@ -121,9 +140,13 @@ result_descriptors([
 :-dynamic reg_jump/1.
 :-dynamic indirect_jump/1.
 :-dynamic pc_relative_jump/2.
-:-dynamic plt_call/2.
+
 
 :-dynamic direct_call/2.
+:-dynamic reg_call/1.
+:-dynamic indirect_call/1.
+:-dynamic pc_relative_call/2.
+:-dynamic plt_call/2.
 
 :-dynamic likely_ea/2.
 :-dynamic remaining_ea/1.
@@ -134,38 +157,46 @@ result_descriptors([
 :-dynamic discarded_chunk/1.
 
 :-dynamic symbolic_operand/2.
-:-dynamic data_label/1.
+:-dynamic labeled_data/1.
 :-dynamic float_data/1.
-:-dynamic pointer_array/2.
-:-dynamic pointer_array_element/3.
+:-dynamic pointer/2.
 :-dynamic string/2.
 
-% :-dynamic op_points_to_data/3.
 
 collect_results(Dir,results(Results)):-
     result_descriptors(Descriptors),
     maplist(collect_result(Dir),Descriptors,Results).
 
-collect_result(Dir,res(Name,Filename,Arity,Ending),Result):-
+collect_result(Dir,named_result(Name,Filename,Arity,Ending),Result):-
     atom_concat(Filename,Ending,Name_file),
     directory_file_path(Dir,Name_file,Path),
     csv_read_file(Path, Result, [functor(Name), arity(Arity),separator(0'\t)]),
     maplist(assertz,Result).
 
-collect_result(Dir,res(Name,Arity,Ending),Result):-
+collect_result(Dir,result(Name,Arity,Ending),Result):-
     atom_concat(Name,Ending,Name_file),
     directory_file_path(Dir,Name_file,Path),
     csv_read_file(Path, Result, [functor(Name), arity(Arity),separator(0'\t)]),
     maplist(assertz,Result).
 
 
-get_op(0,none):-!.
-get_op(N,reg(Name)):-
-    op_regdirect(N,Name),!.
-get_op(N,immediate(Immediate)):-
-    op_immediate(N,Immediate),!.
-get_op(N,indirect(Reg1,Reg2,Reg3,A,B,C,Size)):-
-    op_indirect(N,Reg1,Reg2,Reg3,A,B,C,Size),!.
+
+print_stats:-
+    format('~n~n#Result statistics:~n',[]),
+    result_descriptors(Descriptors),
+    maplist(print_descriptor_stats,Descriptors).
+
+print_descriptor_stats(Res):-
+    (Res=result(Name,Arity,_)
+     ;
+     Res=named_result(Name,_,Arity,_)
+    ),
+    functor(Head,Name,Arity),
+    findall(Head,Head,Results),
+    length(Results,N),
+    format(' # Number of ~p: ~p~n',[Name,N]).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 pretty_print_results:-
     print_header,
@@ -174,65 +205,25 @@ pretty_print_results:-
     get_data(Data),
     maplist(pp_data,Data).
 
+
+
 print_header:-
     option('-asm'),!,
     format('
-	.intel_syntax noprefix
-	.globl	main
-	.type	main, @function~n',[]).
+.intel_syntax noprefix
+.globl	main
+.type	main, @function
+.text ~n',[]).
 print_header.
 
-get_data(Data):-
-    findall(Data_byte,
-	    (data_byte(EA,Content),
-	     Data_byte=data_byte(EA,Content)
-	     ),Data).
 
-
-pp_data(data_byte(EA,Content)):-
-    print_section_header(EA),
-    findall(Comment,data_comment(EA,Comment),Comments),
-    print_data_label(EA),
-     (option('-asm')->
-	 format('             .byte 0x~16R',[Content])
-     ;
-     format('         ~16R:   .byte 0x~16R',[EA,Content])
-     ),
-    print_comments(Comments),
-    nl.
-
-print_data_label(EA):-
-    data_label(EA),!,
-    format('L_~16R:~n',[EA]).
-
-print_data_label(_EA).
-
-data_comment(EA,float):-
-    float_data(EA).
-
-data_comment(EA,pointer(V)):-
-    pointer_array(EA,Val),
-    format(atom(V),'~16R',[Val]).
-
-data_comment(EA,pointer_elem(Index,V)):-
-    pointer_array_element(EA,Val,Beg),
-    Index is (EA-Beg)/8,
-    format(atom(V),'~16R',[Val]).
-
-data_comment(EA,string(Size,String)):-
-    string(EA,End),
-    get_codes(EA,End,Codes),
-    atom_codes(String,Codes),
-    Size is End-EA.
-
-get_codes(E,E,[]).
-get_codes(B,E,[Code|Codes]):-
-    data_byte(B,Code),
-    B2 is B+1,
-    get_codes(B2,E,Codes).
 
 get_chunks(Chunks):-
-    findall(Chunk,chunk_start(Chunk),Chunk_addresses),
+    findall(Chunk,
+	    (
+	     chunk_start(Chunk),
+	     \+discarded_chunk(Chunk)
+	    ),Chunk_addresses),
     findall(Instruction,
 	    (instruction(EA,Size,Name,Opc1,Opc2,Opc3),
 	    \+likely_ea(EA,_),
@@ -258,37 +249,165 @@ get_chunk_content(Chunk_addr,Assoc,Assoc1):-
 	    ),Instructions),
     put_assoc(Chunk_addr,Assoc,chunk(Instructions),Assoc1).
 
-
 accum_instruction(instruction(EA,Size,OpCode,Op1,Op2,Op3),Assoc,Assoc1):-
     put_assoc(EA,Assoc,instruction(EA,Size,OpCode,Op1,Op2,Op3),Assoc1).
 
 
+get_op(0,none):-!.
+get_op(N,reg(Name)):-
+    op_regdirect(N,Name),!.
+get_op(N,immediate(Immediate)):-
+    op_immediate(N,Immediate),!.
+get_op(N,indirect(Reg1,Reg2,Reg3,A,B,C,Size)):-
+    op_indirect(N,Reg1,Reg2,Reg3,A,B,C,Size),!.
+
+
+get_data(Data_groups):-
+    findall(Data_byte,
+	    (data_byte(EA,Content),
+	     Data_byte=data_byte(EA,Content)
+	    ),Data),
+    group_data(Data,Data_groups).
+
+group_data([],[]).
+
+group_data([data_byte(EA,_)|Rest],[data_group(EA,labeled_pointer,Group_content)|Groups]):-
+    pointer(EA,Group_content),
+    labeled_data(EA),!,
+    split_at(7,Rest,_,Rest2),
+    group_data(Rest2,Groups).
+
+group_data([data_byte(EA,_)|Rest],[data_group(EA,pointer,Group_content)|Groups]):-
+    pointer(EA,Group_content),!,
+    split_at(7,Rest,_,Rest2),
+    group_data(Rest2,Groups).
+
+group_data([data_byte(EA,Content)|Rest],[data_group(EA,float,Group_content)|Groups]):-
+    float_data(EA),!,
+    split_at(4,[data_byte(EA,Content)|Rest],Group_content,Rest2),
+    group_data(Rest2,Groups).
+
+group_data([data_byte(EA,Content)|Rest],[data_group(EA,string,String)|Groups]):-
+    string(EA,End),!,
+    Size is End-EA,
+    split_at(Size,[data_byte(EA,Content)|Rest],Data_bytes,Rest2),
+    maplist(get_data_byte_content,Data_bytes,Bytes),
+    clean_special_characters(Bytes,Bytes_clean),
+    string_codes(String,Bytes_clean),
+    group_data(Rest2,Groups).
+
+
+group_data([data_byte(EA,Content)|Rest],[data_byte(EA,Content)|Groups]):-
+    group_data(Rest,Groups).
+
+clean_special_characters([],[]).
+clean_special_characters([10|Codes],[92,110|Clean_codes]):-!,
+    clean_special_characters(Codes,Clean_codes).
+clean_special_characters([Code|Codes],[Code|Clean_codes]):-
+    clean_special_characters(Codes,Clean_codes).
+
+split_at(N,List,FirstN,Rest):-
+    length(FirstN,N),
+    append(FirstN,Rest,List).
+
+get_data_byte_content(data_byte(_,Content),Content).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+skip_ea(EA):-
+    option('-asm'),
+    ( is_in_section(EA,Section),
+      asm_skip_section(Section)
+     ;
+      is_in_function(EA,Function),
+      asm_skip_function(Function)
+    ).
+     
+is_in_section(EA,Name):-
+    section(Name,Size,Base),
+    EA>=Base,
+    End is Base+Size,
+    EA<End.
+is_in_function(EA,Name):-
+    function_symbol(EA_fun,Name),
+    % there is no function in between
+    EA>=EA_fun,
+    \+ (
+	function_symbol(EA_fun2,_),
+	EA_fun2=<EA,
+	EA_fun2>EA_fun
+       ).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+pp_data(data_group(EA,_,_)):-
+    skip_ea(EA),!.
+pp_data(data_byte(EA,_)):-
+    skip_ea(EA),!.
+
+pp_data(data_group(EA,pointer,Content)):-
+    print_section_header(EA),
+    print_ea(EA),
+    format('.quad L_~16R~n',[Content]).
+     
+pp_data(data_group(EA,labeled_pointer,Content)):-
+    print_section_header(EA),
+        print_label(EA),
+    print_ea(EA),
+    format('.quad L_~16R~n',[Content]).
+   
+pp_data(data_group(EA,float,Content)):-
+    print_section_header(EA),
+    print_label(EA),
+    format('# float~n',[]),
+    maplist(pp_data,Content).
+
+pp_data(data_group(EA,string,Content)):-
+    print_section_header(EA),
+    print_label(EA),
+    print_ea(EA),
+    set_prolog_flag(character_escapes, false),
+    format('.string "~p"~n',[Content]),
+    set_prolog_flag(character_escapes, true).
+   
+pp_data(data_byte(EA,Content)):-
+    print_section_header(EA),
+    print_ea(EA),
+    format('.byte 0x~16R~n',[Content]).
+
+print_ea(_):-
+    option('-asm'),!,
+    format('          ',[]).
+
+print_ea(EA):-
+    format('         ~16R: ',[EA]).
+
+print_label(EA):-
+      format('L_~16R:~n',[EA]).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+pp_chunk(EA_chunk-chunk(_List)):-
+    skip_ea(EA_chunk),!.
+
 pp_chunk(EA_chunk-chunk(List)):-
     !,
-    get_chunk_comments(EA_chunk,Comments),
-    ((discarded_chunk(EA_chunk),\+option('-debug'))->
-	 true
+    print_section_header(EA_chunk),
+    print_function_header(EA_chunk),
+    print_label(EA_chunk),   
+    (option('-debug')->
+	 get_comments(EA_chunk,Comments),
+	 print_comments(Comments),nl
      ;
-     print_section_header(EA_chunk),
-    
-     (is_function(EA_chunk,Name)->
-	  print_function_header(Name)
-      ;
-      true
-     ),!,
-     format('~n  L_~16R:',[EA_chunk]) ,
-     print_comments(Comments),nl,
-     maplist(pp_instruction,List),nl
-    ).
+     true),
+    maplist(pp_instruction,List),nl.
 
-pp_chunk(_EA_chunk-Instruction):-
+pp_chunk(EA_chunk-Instruction):-
+    print_section_header(EA_chunk),
     (option('-debug')->
 	 pp_instruction(Instruction)
      ;	 
      true
     ).
-
-
 
 print_section_header(EA):-
     section('.text',_,EA),!,
@@ -303,152 +422,139 @@ print_section_header(EA):-
     format('#=================================== ~n~n',[]).
 print_section_header(_).
 
+
+
+print_function_header(EA):-
+    is_function(EA,Name),
+    format('#----------------------------------- ~n',[]),
+    format('~p:~n',[Name]),
+    format('#----------------------------------- ~n',[]).
+
+print_function_header(_).
+
 is_function(EA,Name):-
     function_symbol(EA,Name).
-is_function(EA,'unkown'):-
-      direct_call(_,EA).
+is_function(EA,Funtion_name):-
+    direct_call(_,EA),
+    atom_concat('unknown_function_',EA,Funtion_name).
 
-print_function_header(Name):-
-    	 format('#----------------------------------- ~n',[]),
-	 format('~p:~n',[Name]),
-	 format('#----------------------------------- ~n',[]).
-		
-get_chunk_comments(EA_chunk,Comments):-
-	setof(Comment,chunk_comment(EA_chunk,Comment),Comments),!.
-get_chunk_comments(_EA_chunk,[]).
-    
-chunk_comment(EA,discarded):-
-    discarded_chunk(EA).
 
-chunk_comment(EA,overlap_with(Str_EA2)):-
-    chunk_overlap(EA2,EA),
-    format(string(Str_EA2),'~16R',[EA2]).
-
-chunk_comment(EA,overlap_with(Str_EA2)):-
-    chunk_overlap(EA,EA2),
-    format(string(Str_EA2),'~16R',[EA2]).
-
-chunk_comment(EA,is_called):-
-    direct_call(_,EA).
-
-chunk_comment(EA,jumped_from(Str_or)):-
-    direct_jump(Or,EA),
-    format(string(Str_or),'~16R',[Or]).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-pp_instruction(instruction(EA,_,'CALL',_Op1,_,_)):-
-    plt_call(EA,Dest),!,
-    downcase_atom('CALL',OpCode_l),
-    (option('-asm')->
-	 format('             ~p ~p~n',[OpCode_l,Dest])
-     ;
-     format('         ~16R:   ~p ~p~n',[EA,OpCode_l,Dest])
-    ).
-pp_instruction(instruction(EA,_Size,OpCode,Op1,Op2,Op3)):-
-    exclude(is_none,[Op1,Op2,Op3],Ops),
-    get_ea_comments(EA,Comments),
-    (member(symbolic_ops(Sym_ops),Comments)->true;Sym_ops=[]),
-  
-    pp_op_list(Ops,1,EA,Sym_ops,[],Pretty_ops_rev),
 
-    %useful info
-    convlist(get_comment,Ops,Op_comments),
-   
-    append(Comments,Op_comments,All_comments),
+pp_instruction(instruction(EA,_Size,OpCode,Op1,Op2,Op3)):-
+    %instruction
+    print_ea(EA),
+    (OpCode='MOVS'-> trace;true),
     downcase_atom(OpCode,OpCode_l),
-    (option('-asm')->
-	 format('             ~p',[OpCode_l])
+    (OpCode_l='movsd2'->% this instruction does not want to exist
+	 format(' ~p',['movsd'])
      ;
-     format('         ~16R:   ~p',[EA,OpCode_l])
+     format(' ~p',[OpCode_l])
     ),
-   
+    %operands
+    pp_operand_list([Op1,Op2,Op3],EA,1,[],Pretty_ops_rev),
     print_with_sep(Pretty_ops_rev,','),
-    % print the names of the immediates if they are functions
-    print_comments(All_comments),
+    (option('-debug')->
+	 get_comments(EA,Comments),
+	 print_comments(Comments)
+     ;
+     true
+    ),
     nl.
 
-pp_instruction(_).
 
 is_none(none).
 
-print_comments(Comments):-
-    (Comments\=[]->
-	 format('          # ',[]),
-	 maplist(print_with_space,Comments)
-     ;true
-    ).
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-pp_op_list([],_N,_,_Sym_ops,Pretty_ops_rev,Pretty_ops_rev).
-
-pp_op_list([Op|Ops],N,EA,Sym_ops,Accum,Pretty_ops_rev):-
-    (member(N,Sym_ops)->
-	 pp_op(Op,symbolic,EA,Op_pretty)
-     ;
-     pp_op(Op,normal,EA,Op_pretty)
-    ),
+pp_operand_list([],_EA,_N,Pretty_ops_rev,Pretty_ops_rev).
+pp_operand_list([none|_Ops],_EA,_N,Pretty_ops_rev,Pretty_ops_rev).
+pp_operand_list([Op|Ops],EA,N,Accum,Pretty_ops_rev):-
+    pp_operand(Op,EA,N,Op_pretty),
     N1 is N+1,
-    pp_op_list(Ops,N1,EA,Sym_ops,[Op_pretty|Accum],Pretty_ops_rev).
+    pp_operand_list(Ops,EA,N1,[Op_pretty|Accum],Pretty_ops_rev).
 
-pp_op(reg(Name),_,_,Name).
-pp_op(immediate(Num),normal,_,Num).
-pp_op(immediate(Num),symbolic,_,Num_hex):-
+pp_operand(reg(Name),_,_,Name).
+
+pp_operand(immediate(_Num),EA,_N,Name):-
+    plt_call(EA,Name),!.
+
+pp_operand(immediate(_Num),EA,_N,Name):-
+    direct_call(EA,Dest),
+    function_symbol(Dest,Name),!.
+
+% special case for mov from symbolic
+pp_operand(immediate(Num),EA,1,Num_hex):-
+    symbolic_operand(EA,1),
+    instruction(EA,_,'MOV',_,_,_),!,
+    format(string(Num_hex),'OFFSET L_~16R',[Num]).
+
+pp_operand(immediate(Num),EA,N,Num_hex):-
+    symbolic_operand(EA,N),!,
     format(string(Num_hex),'L_~16R',[Num]).
 
+
+
+pp_operand(immediate(Num),_,_,Num).
     
-pp_op(indirect('NullSReg',Reg,'NullReg64',1,0,_,_),_,_,[Reg]).
+    
+pp_operand(indirect('NullSReg',Reg,'NullReg64',1,0,_,Size),_,_,PP):-
+      get_size_name(Size,Name),
+      format(atom(PP),'~p [~p]',[Name,Reg]).
 
 % special case for rip relative addressing
-pp_op(indirect('NullSReg','RIP','NullReg64',1,Offset,_,Size),symbolic,EA,PP):-
-    !,
+pp_operand(indirect('NullSReg','RIP','NullReg64',1,Offset,_,Size),EA,N,PP):-
+    symbolic_operand(EA,N),!,
     get_size_name(Size,Name),
     instruction(EA,Size_instr,_,_,_,_),
     Address is EA+Offset+Size_instr,
     format(atom(PP),'~p [L_~16R]',[Name,Address]).
 
-pp_op(indirect('NullSReg',Reg,'NullReg64',1,Offset,_,Size),SymOrNormal,_,PP):-
-    get_offset_and_sign(Offset,SymOrNormal,Offset1,PosNeg),
+pp_operand(indirect('NullSReg',Reg,'NullReg64',1,Offset,_,Size),EA,N,PP):-
+    get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
     get_size_name(Size,Name),
-     Term=..[PosNeg,Reg,Offset1],
+    Term=..[PosNeg,Reg,Offset1],
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
-pp_op(indirect('NullSReg','NullReg64',Reg_index,Mult,Offset,_,Size),SymOrNormal,_,PP):-
-     get_offset_and_sign(Offset,SymOrNormal,Offset1,PosNeg),
+pp_operand(indirect('NullSReg','NullReg64',Reg_index,Mult,Offset,_,Size),EA,N,PP):-
+     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
      get_size_name(Size,Name),
-     Term=..[PosNeg,Offset1,Reg_index*Mult],
+     Term=..[PosNeg,Reg_index*Mult,Offset1],
      format(atom(PP),'~p ~p',[Name,[Term]]).
     
 
-pp_op(indirect('NullSReg',Reg,Reg_index,Mult,0,_,Size),_SymOrNormal,_,PP):-
+pp_operand(indirect('NullSReg',Reg,Reg_index,Mult,0,_,Size),_EA,_N,PP):-
     get_size_name(Size,Name),
     format(atom(PP),'~p ~p',[Name,[Reg+Reg_index*Mult]]).
 
 
-pp_op(indirect('NullSReg',Reg,Reg_index,Mult,Offset,_,Size),SymOrNormal,_,PP):-
+pp_operand(indirect('NullSReg',Reg,Reg_index,Mult,Offset,_,Size),EA,N,PP):-
     get_size_name(Size,Name),
-    get_offset_and_sign(Offset,SymOrNormal,Offset1,PosNeg),
-    Term=..[PosNeg,Offset1,Reg+Reg_index*Mult],
+    get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
+    Term=..[PosNeg,Reg+Reg_index*Mult,Offset1],
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
-%    format(string(Offset_hex),'~16R',[Offset]).
 
-%FIXME 
-pp_op(indirect(SReg,'NullReg64','NullReg64',1,Offset,_,Size),_SymOrNormal,_,PP):-
+pp_operand(indirect(SReg,'NullReg64','NullReg64',1,Offset,_,Size),EA,N,PP):-
     get_size_name(Size,Name),
-    format(atom(PP),'~p ~p',[Name,[SReg:Offset]]).
+    get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
+    Term=..[PosNeg,Offset1],
+    format(atom(PP),'~p ~p',[Name,[SReg:Term]]).
 
-    %    format(string(Offset_hex),'~16R',[Offset]).
-    
 
 
-get_offset_and_sign(Offset,symbolic,Offset1,'+'):-
+get_offset_and_sign(Offset,EA,N,Offset1,'+'):-
+    symbolic_operand(EA,N),!,
     format(atom(Offset1),'L_~16R',[Offset]).
-get_offset_and_sign(Offset,normal,Offset1,'-'):-
+get_offset_and_sign(Offset,_EA,_N,Offset1,'-'):-
     Offset<0,!,
     Offset1 is 0-Offset.
-get_offset_and_sign(Offset,normal,Offset,'+').
+get_offset_and_sign(Offset,_EA,_N,Offset,'+').
 
 get_size_name(128,'').
+get_size_name(0,'').
 get_size_name(64,'QWORD PTR').
 get_size_name(32,'DWORD PTR').
 get_size_name(16,'WORD PTR').
@@ -456,63 +562,50 @@ get_size_name(8,'BYTE PTR').
 get_size_name(Other,size(Other)).
 
 %%%%%%%%%%%%%%%%%%%
-% comments on instructions based on ea
+% comments for debugging
 
-get_ea_comments(EA,Comments):-
-    setof(Comment,
-	  ea_comment(EA,Comment),
-	  Comments),!.
-get_ea_comments(_EA,[]).
+    
 
-ea_comment(EA,not_in_chunk):-
-\+likely_ea(EA,_).
+get_comments(EA_chunk,Comments):-
+	setof(Comment,comment(EA_chunk,Comment),Comments),!.
+get_comments(_EA_chunk,[]).
+    
+comment(EA,discarded):-
+    discarded_chunk(EA).
 
-ea_comment(EA,symbolic_ops(Symbolic_ops)):-
+comment(EA,overlap_with(Str_EA2)):-
+    chunk_overlap(EA2,EA),
+    format(string(Str_EA2),'~16R',[EA2]).
+
+comment(EA,overlap_with(Str_EA2)):-
+    chunk_overlap(EA,EA2),
+    format(string(Str_EA2),'~16R',[EA2]).
+
+comment(EA,is_called):-
+    direct_call(_,EA).
+
+comment(EA,jumped_from(Str_or)):-
+    direct_jump(Or,EA),
+    format(string(Str_or),'~16R',[Or]).
+
+comment(EA,not_in_chunk):-
+    \+likely_ea(EA,_).
+
+comment(EA,symbolic_ops(Symbolic_ops)):-
     findall(Op_num,symbolic_operand(EA,Op_num),Symbolic_ops),
     Symbolic_ops\=[].
 
-
-ea_comment(EA,reg_jump):-
+comment(EA,reg_jump):-
     reg_jump(EA).
-ea_comment(EA,indirect_jump):-
+comment(EA,indirect_jump):-
     indirect_jump(EA).
 
-ea_comment(EA,plt(Dest)):-
+comment(EA,plt(Dest)):-
     plt_call(EA,Dest).
 
-
-ea_comment(EA,pc_relative_jump(Dest_hex)):-
+comment(EA,pc_relative_jump(Dest_hex)):-
     pc_relative_jump(EA,Dest),
-     format(atom(Dest_hex),'~16R',[Dest]).
-
-
-
-%%%%%%%%%%%%%%%%%%%
-% comments on instructions based on the operators
-
-get_comment(Op,Name):-
-    Op=immediate(Num),
-    Num\=0,
-    function_symbol(Num,Name).
-
-	 
-%%%%%%%%%%%%%%%%%%%%
-
-
-print_stats:-
-    format('~n~n;Result statistics:~n',[]),
-    result_descriptors(Descriptors),
-    maplist(print_descriptor_stats,Descriptors).
-
-print_descriptor_stats(Res):-
-    (Res=res(Name,Arity,_)
-     ;
-     Res=res(Name,_,Arity,_)
-    ),
-    functor(Head,Name,Arity),
-    findall(Head,Head,Results),
-    length(Results,N),
-    format(' ; Number of ~p: ~p~n',[Name,N]).
+    format(atom(Dest_hex),'~16R',[Dest]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 generate_hints(Dir):-
@@ -521,17 +614,18 @@ generate_hints(Dir):-
 	    (
 		likely_ea(Code_ea,Chunk),
 		chunk_start(Chunk),
-		\+discarded_chunk(Chunk)
-
+                \+discarded_chunk(Chunk)
 	    ),Code_eas),
     directory_file_path(Dir,'hints',Path),
     open(Path,write,S),
     maplist(print_code_ea(S),Code_eas),
-      findall(Data_ea,
+    findall(Data_ea,
 	    (
-		(data_label(Data_ea); pointer_array_element(Data_ea,_,_))
-
-	    ),Data_eas),
+		labeled_data(Data_ea)
+	     ;
+	     pointer(Data_ea,_)
+	    )
+	    ,Data_eas),
     maplist(print_data_ea(S),Data_eas),
     close(S).
 
@@ -562,6 +656,14 @@ print_sym_index(S,I):-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % auxiliary predicates
+
+print_comments(Comments):-
+    (Comments\=[]->
+	 format('          # ',[]),
+	 maplist(print_with_space,Comments)
+     ;true
+    ).
+
 hex_to_dec(Hex,Dec):-
     hex_bytes(Hex,Bytes),
     byte_list_to_num(Bytes,0,Dec).
@@ -575,6 +677,7 @@ byte_list_to_num([Byte|Bytes],Accum,Dec):-
 print_with_space(Op):-
     format(' ~p ',[Op]).
 
+print_with_sep([],_).
 print_with_sep([Last],_):-
     !,
     format(' ~p ',[Last]).
