@@ -9,8 +9,11 @@
 
 
 void Datalog_visitor_x64::add_curr_operator(){
-    if (curr_op.type==operator_type::NONE)
-        throw std::logic_error("An operator has not been processed well in EA"+ address);
+    if (curr_op.type==operator_type::NONE){
+        std::ostringstream error_message;
+        error_message<<"An operator has not been processed well in EA: "<< address;
+        throw std::logic_error(error_message.str());
+    }
     int64_t index=op_dict->add(curr_op);
     op_codes.push_back(index);
 }
@@ -214,6 +217,14 @@ void Datalog_visitor_x64::visit(const RTG::SRegDirect32 * const n)
 void Datalog_visitor_x64::visit(const RTG::SRegDirect16 * const n)
 {
     visitRegDirect<RTG::SRegDirect16>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::CRegDirect64 * const n)
+{
+    visitRegDirect<RTG::CRegDirect64>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::CRegDirect32 * const n)
+{
+    visitRegDirect<RTG::CRegDirect32>(n);
 }
 void Datalog_visitor_x64::visit(const RTG::Float_RegDirect * const n)
 {
