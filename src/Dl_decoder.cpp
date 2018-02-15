@@ -37,8 +37,8 @@ void Dl_decoder::decode_section(char* buf,uint64_t size,int64_t ea){
 }
 
 bool can_be_address(uint64_t num, uint64_t min_address, uint64_t max_address){
-    return ((num>=min_address) && (num<=max_address)) || //absolute address
-            (num+min_address<=max_address); //offset
+    return ((num>=min_address) && (num<=max_address));  //absolute address
+     //     ||  (num+min_address<=max_address); //offset
 }
 
 void Dl_decoder::store_data_section(char* buf,uint64_t size,int64_t ea,uint64_t min_address,uint64_t max_address){

@@ -2,23 +2,30 @@
 #include <stdlib.h>
 
 int one(int a){
+    puts("one"); 
     return a;
+    
 }
 int two(int a){
+    puts("two"); 
     return a;
 }
 int three(int a){
+    puts("three"); 
     return a+1;
 }
 int four(int a){
+    puts("four"); 
     return a;
 }
 int def(int a){
+    puts("last"); 
     return a;
 }
 
 
 void fun(int a,int b){
+    while(a<b){
         switch(a){
         case 1:
             one(a);
@@ -28,6 +35,7 @@ void fun(int a,int b){
             break;
         case 3:
             three(a);
+            break;
         case 4:
             four(a);
             break;
@@ -35,13 +43,12 @@ void fun(int a,int b){
             def(a);
             
         }
+        ++a;
+    }
 }
 int main() {
-    fun(3,20);
     puts("!!!Hello World!!!"); /* prints !!!Hello World!!! */
-    puts("a"); /* prints !!!Hello World!!! */
-    puts("b"); /* prints !!!Hello World!!! */
-    puts("c"); /* prints !!!Hello World!!! */
- return 0;
+    fun(1,6);
+    return 0;
 }
 
