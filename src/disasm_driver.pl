@@ -25,6 +25,7 @@ asm_skip_function('register_tm_clones').
 asm_skip_function('__do_global_dtors_aux').
 asm_skip_function('frame_dummy').
 asm_skip_function('__libc_csu_fini').
+asm_skip_function('__libc_csu_init').
 
 asm_skip_section('.comment').
 asm_skip_section('.plt').
@@ -119,6 +120,7 @@ result_descriptors([
 			  named_result(chunk_overlap,'chunk_overlap2',2,'.csv'),
 
 			  result(function_symbol,2,'.csv'),
+			 % result(ambiguous_function_symbol,1,'.csv'),
 			  result(chunk_start,1,'.csv'),
 			  result(discarded_chunk,1,'.csv'),
 
@@ -155,6 +157,7 @@ result_descriptors([
 :-dynamic likely_ea/2.
 :-dynamic remaining_ea/1.
 :-dynamic function_symbol/2.
+%:-dynamic ambiguous_function_symbol/2.
 
 :-dynamic chunk_start/1.
 :-dynamic chunk_overlap/2.
@@ -311,8 +314,15 @@ group_data([data_byte(EA,Content)|Rest],[data_byte(EA,Content)|Groups]):-
     group_data(Rest,Groups).
 
 clean_special_characters([],[]).
-clean_special_characters([10|Codes],[92,110|Clean_codes]):-!,
+%newline
+clean_special_characters([10|Codes],[92,110|Clean_codes]):-
+    !,
     clean_special_characters(Codes,Clean_codes).
+%scape character
+clean_special_characters([92|Codes],[92,92|Clean_codes]):-
+    !,
+    clean_special_characters(Codes,Clean_codes).
+
 clean_special_characters([Code|Codes],[Code|Clean_codes]):-
     clean_special_characters(Codes,Clean_codes).
 
@@ -510,7 +520,6 @@ pp_instruction(instruction(EA,_Size,String_op,Op1,none,none)):-
     ),
     nl.
 pp_instruction(instruction(EA,_Size,OpCode,Op1,Op2,Op3)):-
-
     print_ea(EA),
     downcase_atom(OpCode,OpCode_l),
     adapt_opcode(OpCode_l,OpCode_adapted),

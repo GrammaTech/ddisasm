@@ -158,6 +158,9 @@ public:
     virtual void visit(const RTG::SRegDirect32 * const n);
     virtual void visit(const RTG::SRegDirect16 * const n);
 
+    virtual void visit(const RTG::CRegDirect64 * const n);
+    virtual void visit(const RTG::CRegDirect32 * const n);
+
     virtual void visit(const RTG::Float_RegDirect * const n);
 
 
