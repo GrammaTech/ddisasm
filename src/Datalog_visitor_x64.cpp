@@ -19,9 +19,16 @@ void Datalog_visitor_x64::add_curr_operator(){
 }
 
 Dl_instruction Datalog_visitor_x64::get_instruction(){
-    return Dl_instruction(address,size,name,op_codes);
+    return Dl_instruction(address,size,prefix+name,op_codes);
 }
 
+void Datalog_visitor_x64::set_prefix(uint attrib)
+{
+    if (attrib & 1) prefix=  "rep ";
+    else if (attrib & 2) prefix= "repe ";
+    else if (attrib & 4) prefix="repne ";
+    if (attrib & 8) prefix= "lock ";
+}
 /*
 std::string Datalog_visitor_x64::result(){
     std::ostringstream o;
@@ -61,10 +68,6 @@ void Datalog_visitor_x64::visit(const RTG::zeroOpInstr * const p){
     name=std::string(p->GetClassIdName());
 }
 
-
-
-
-
 template<typename T>
 inline void Datalog_visitor_x64::visit1op(const  T* const n,short size)
 {
@@ -73,6 +76,7 @@ inline void Datalog_visitor_x64::visit1op(const  T* const n,short size)
     curr_op.size=size;
     n->Get_Src()->accept(*this);
     add_curr_operator();
+    set_prefix(n->Get_attributes().get_data());
     n->Get_OneOpInstr()->accept(*this);
 }
 template<typename T>
@@ -88,6 +92,7 @@ inline void Datalog_visitor_x64::visit2op(const T * const n,short size1,short si
     n->Get_Dst() ->accept(*this);
     add_curr_operator();
 
+    set_prefix(n->Get_attributes().get_data());
     n->Get_TwoOpInstr()->accept(*this);
 }
 template<typename T>
@@ -107,6 +112,8 @@ inline void Datalog_visitor_x64::visit3op(const T * const n,short size1,short si
     curr_op.size=size1;
     n->Get_Dst() ->accept(*this);
     add_curr_operator();
+
+    set_prefix(n->Get_attributes().get_data());
     n->Get_ThreeOpInstr()->accept(*this);
 }
 
@@ -133,7 +140,9 @@ inline void Datalog_visitor_x64::visitAddr(const addr * const n){
 template <typename instr>
 inline void Datalog_visitor_x64::visitInstrWAdrr(const instr * const n)
 {
+    set_prefix(n->Get_attributes().get_data());
     name=n->GetClassIdName();
+
     curr_op.type=operator_type::NONE;
     n->Get_Addr() ->accept(*this);
     add_curr_operator();
@@ -142,7 +151,9 @@ inline void Datalog_visitor_x64::visitInstrWAdrr(const instr * const n)
 template <typename instr>
 inline void Datalog_visitor_x64::visitInstrWAdrrDst(const instr * const n)
 {
+    set_prefix(n->Get_attributes().get_data());
     name=n->GetClassIdName();
+
     curr_op.type=operator_type::NONE;
     n->Get_Addr() ->accept(*this);
     add_curr_operator();

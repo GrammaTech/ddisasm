@@ -22,12 +22,14 @@ private:
     template<typename T>  void visitRegDirect(const T * const n);
     template<typename T>  void visitInstrWAdrr(const T * const n);
     template<typename T>  void visitInstrWAdrrDst(const T * const n);
+    void set_prefix(uint attrib);
 
     void add_curr_operator();
 
 
     int64_t address;
     long size;
+    std::string prefix;
     std::string name;
     Dl_operator curr_op;
     std::vector<int64_t> op_codes;
@@ -37,6 +39,7 @@ public:
     explicit Datalog_visitor_x64(int64_t address,long size,Dl_operator_table* op_dict)
     : address(address)
     , size(size)
+    , prefix()
     , name("unsupported:")
     , curr_op()
     , op_codes()
