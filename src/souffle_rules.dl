@@ -219,6 +219,14 @@ function_symbol(EA,Name):-
 	symbol(EA,_,"FUNC",_,Name).
 
 
+// .decl ambiguous_function_symbol(ea:address,name:symbol)
+// .output ambiguous_function_symbol
+
+// ambiguous_function_symbol(Name):-
+// 	function_symbol(_,Name),
+// 	count :{function_symbol(_,Name)}.
+	
+
 .decl data_section(name:symbol)
 
 data_section(".rodata").
@@ -631,6 +639,10 @@ symbolic_operand(EA,Op_index):-
 labeled_data(EA):-
 	pointer_candidates(_,_,EA),
 	data_byte(EA,_).
+
+labeled_data(Val):-
+	pointer(_,Val).
+
 	
 // labels of un-initialized data
 .decl bss_data(EA:address)
@@ -718,16 +730,43 @@ float_operation("SQRTPD").
 .decl pointer(ea:address,value:number)
 .output pointer
 
+
+data_address(EA,Byte0+ (Byte1* 2^8)+(Byte2* 2^16)+(Byte3* 2^24)+
+     (Byte4* 2^32)+(Byte5* 2^40)+
+     (Byte6* 2^48)+(Byte7* 2^56)):-
+     data_byte(EA,Byte0),
+     data_byte(EA+1,Byte1),
+     data_byte(EA+2,Byte2),
+     data_byte(EA+3,Byte3),
+     data_byte(EA+4,Byte4),
+     data_byte(EA+5,Byte5),
+     data_byte(EA+6,Byte6),
+     data_byte(EA+7,Byte7),
+     data_section(Name),
+     section(Name,Size,Beg),
+     (Byte0+ (Byte1* 2^8)+(Byte2* 2^16)+(Byte3* 2^24)+
+     (Byte4* 2^32)+(Byte5* 2^40)+
+     (Byte6* 2^48)+(Byte7* 2^56))>=Beg,
+     (Byte0+ (Byte1* 2^8)+(Byte2* 2^16)+(Byte3* 2^24)+
+     (Byte4* 2^32)+(Byte5* 2^40)+
+     (Byte6* 2^48)+(Byte7* 2^56))<Beg+Size.
+
+
 pointer(EA,Val):-
  	data_address(EA,Val),
- 	labeled_data(EA),
- 	!float_data(EA).
+ 	labeled_data(EA).
+ //	!( pointer_candidates(Ref,_,EA),
+//	  float_instruction(Ref)
+//	).
 
 pointer(EA+WORD_SIZE,Val):-
 	word_size_in_bytes(WORD_SIZE),
 	pointer(EA,_),
-	data_address(EA+WORD_SIZE,Val),
-	!float_data(EA+WORD_SIZE).
+	data_address(EA+WORD_SIZE,Val).
+//	!( pointer_candidates(Ref,_,EA),
+//	  float_instruction(Ref)
+//	).
+
 
 	
 .decl string(ea:address,end:address)

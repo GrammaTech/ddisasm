@@ -19,6 +19,7 @@ data_sections([
 		     '.rodata']).
 
 % the things that are ignored with the parameter -asm
+:-dynamic asm_skip_function/1.
 asm_skip_function('_start').
 asm_skip_function('deregister_tm_clones').
 asm_skip_function('register_tm_clones').
@@ -94,6 +95,7 @@ call_souffle(Dir):-
 %%% Pretty printer
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 result_descriptors([
+			  result(symbol,5,'.facts'),
 			  result(section,3,'.facts'),
 			  result(instruction,6,'.facts'),
 			  result(op_regdirect,2,'.facts'),
@@ -133,6 +135,7 @@ result_descriptors([
 			  result(bss_data,1,'.csv')
 		      ]).
 
+:-dynamic symbol/5.
 :-dynamic section/3.
 :-dynamic instruction/6.
 :-dynamic op_regdirect/2.
@@ -427,7 +430,12 @@ print_ea(EA):-
     format('         ~16R: ',[EA]).
 
 print_label(EA):-
-    format('L_~16R:~n',[EA]).
+    (get_global_symbol_name(EA,Name)->
+	 format('~p:~n',[Name])
+     ;
+     true
+    ),
+     format('L_~16R:~n',[EA]).
 
 
 
@@ -435,9 +443,13 @@ print_label(EA):-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%% pp_bss_data(variable(Start,Size)):-
+%%     get_global_symbol_name(Start,Name),!,
+%%     format('~p:~n',[Name]),
+%%     format('.comm L_~16R, ~p ~n',[Start,Size]).
+
 pp_bss_data(variable(Start,Size)):-
-    %print_label(EA),
-    format('.comm L_~16R, ~p ~n',[Start,Size]).
+    format('.lcomm L_~16R, ~p ~n',[Start,Size]).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 pp_chunk(EA_chunk-chunk(_List)):-
@@ -506,8 +518,17 @@ adapt_opcode(imul3,imul).
 adapt_opcode(imul1,imul).
 adapt_opcode(Operation,Operation).
 
+opcode_suffix(Opcode,Suffix):-
+    atom_codes(Opcode,Codes),
+    atom_codes(' ',[Space]),
+    append(_Prefix,[Space|Suffix_codes],Codes),!,
+    atom_codes(Suffix,Suffix_codes).
+opcode_suffix(Opcode,Opcode).
+
+
 pp_instruction(instruction(EA,_Size,String_op,Op1,none,none)):-
-    member(String_op,['MOVS','CMPS']),!,
+    opcode_suffix(String_op,Op_suffix),
+    member(Op_suffix,['MOVS','CMPS']),!,
     print_ea(EA),
     downcase_atom(String_op,OpCode_l),
     get_op_indirect_size_suffix(Op1,Suffix),
@@ -584,7 +605,8 @@ pp_operand(immediate(Num),EA,N,Num_hex):-
 
 pp_operand(immediate(Num),_,_,Num).
     
-    
+
+
 pp_operand(indirect('NullSReg',Reg,'NullReg64',1,0,_,Size),_,_,PP):-
       adapt_register(Reg,Reg_adapted),
       get_size_name(Size,Name),
@@ -596,7 +618,11 @@ pp_operand(indirect('NullSReg','RIP','NullReg64',1,Offset,_,Size),EA,N,PP):-
     get_size_name(Size,Name),
     instruction(EA,Size_instr,_,_,_,_),
     Address is EA+Offset+Size_instr,
-    format(atom(PP),'~p [L_~16R]',[Name,Address]).
+    (get_global_symbol_name(Address,Name_symbol)->
+	 format(atom(PP),'~p [~p]',[Name,Name_symbol])
+     ;
+	 format(atom(PP),'~p [L_~16R]',[Name,Address])
+    ).
 
 pp_operand(indirect('NullSReg',Reg,'NullReg64',1,Offset,_,Size),EA,N,PP):-
     adapt_register(Reg,Reg_adapted),
@@ -799,3 +825,16 @@ print_with_sep([Last],_):-
 print_with_sep([X|Xs],Sep):-
     format(' ~p~p ',[X,Sep]),
     print_with_sep(Xs,Sep).
+
+
+get_global_symbol_name(Address,Name):-
+    symbol(Address,_,_,'GLOBAL',Name_symbol),
+    clean_symbol_name_suffix(Name_symbol,Name).
+
+clean_symbol_name_suffix(Name,Name_clean):-
+    atom_codes(Name,Codes),
+    atom_codes('@',[At]),
+    append(Name_clean_codes,[At,At|_Suffix],Codes),!,
+    atom_codes(Name_clean,Name_clean_codes).
+
+%clean_symbol_name_suffix(Name,Name).
