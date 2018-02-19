@@ -66,12 +66,12 @@ bool compare_operators::operator()(const Dl_operator&  op1,const Dl_operator&  o
             return op1.size< op2.size ||
                     (op1.size== op2.size && op1.reg1< op2.reg1) ||
                     ((op1.size== op2.size) &&  (op1.reg1==op2.reg1) && (op1.reg2< op2.reg2)) ||
-                    ((op1.size== op2.size) && (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2< op2.reg2)) ||
-                    ( (op1.size== op2.size) && (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2==op2.reg2) &&
+                    ((op1.size== op2.size) && (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg3< op2.reg3)) ||
+                    ( (op1.size== op2.size) && (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg3==op2.reg3) &&
                             (op1.offset< op2.offset)) ||
-                            ( (op1.size== op2.size) && (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2==op2.reg2) &&
+                            ( (op1.size== op2.size) && (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg3==op2.reg3) &&
                                     (op1.offset==op2.offset) && (op1.multiplier< op2.multiplier) )||
-                                    ( (op1.size== op2.size) && (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg2==op2.reg2) &&
+                                    ( (op1.size== op2.size) && (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg3==op2.reg3) &&
                                             (op1.offset==op2.offset) && (op1.multiplier== op2.multiplier) && (op1.disp<op2.disp));
         }
     }else{
