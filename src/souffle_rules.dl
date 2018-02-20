@@ -360,13 +360,18 @@ invalid(From):-
 		pc_relative_call(From,To)
 	).
 
+
 .decl remaining_ea(ea:address)
+
 
 remaining_ea(EA):-
 	possible_ea(EA),
 	!invalid(EA).
 }
 
+.output phase1.invalid
+.output phase1.possible_ea
+.output phase1.remaining_ea
 /////////////////////////////
 // Phase 1
 // Get an initial approximation of things that look like code
@@ -392,7 +397,7 @@ phase1.block_limit(EA):-
 phase1.possible_target(EA):-
 	phase1.block_limit(EA).
 
-
+.output phase1.likely_ea
 /////////////////////////////
 // Phase 2
 // In this propagation the possible targets
@@ -450,8 +455,8 @@ phase2.possible_target(EA):-
 	possible_target_from(EA,_).
 
 
-
-//.output phase2.likely_ea
+.output phase2.possible_target
+.output phase2.likely_ea
 .output phase2.remaining_ea
 
 ////////////////////////////////////////////////////////////////////////
@@ -507,15 +512,15 @@ discarded_chunk(Chunk):-
 	
 .decl chunk_pred(chunk:address,predecessor:address,importance:number)
 
-chunk_pred(Chunk,0,10):-
+chunk_pred(Chunk,0,1):-
 	basic_target(Chunk).
 	
-chunk_pred(Chunk,Chunk_pred,2):-
+chunk_pred(Chunk,Chunk_pred,3):-
 	direct_jump(EA,Chunk),
 	phase2.likely_ea(EA,Chunk_pred),
 	Chunk_pred!=Chunk.
 
-chunk_pred(Chunk,Chunk_pred,2):-
+chunk_pred(Chunk,Chunk_pred,3):-
 	fallthrough(EA,Chunk),
 	phase2.likely_ea(EA,Chunk_pred).
 	
@@ -542,23 +547,14 @@ likely_ea_final(EA,Chunk):-
 	!discarded_chunk(Chunk).
 
 ////////////////////////////////////////////////////////////////////////////
-// detect calls to libraries (calls to plt)
-.decl plt_call(ea:address, function:symbol)
-.output plt_call
+// detect references  to libraries (calls to plt)
+.decl plt_reference(ea:address, function:symbol)
+.output plt_reference
 
-plt_call(EA,Function):-
-	direct_call(EA,Dest),
-	section(".plt",Size,Beg),
-	Dest<Beg+Size,
-	Dest>=Beg,
-	pc_relative_jump(Dest,Got_entry),
-	relocation(Got_entry,Function,_).
-
-.decl plt_jump(ea:address, function:symbol)
-.output plt_jump
-
-plt_jump(EA,Function):-
-	direct_jump(EA,Dest),
+plt_reference(EA,Function):-
+	likely_ea_final(EA,_),
+	instruction_get_op(EA,1,Op),
+	op_immediate(Op,Dest),
 	section(".plt",Size,Beg),
 	Dest<Beg+Size,
 	Dest>=Beg,
@@ -649,7 +645,11 @@ labeled_data(Val):-
 .output bss_data
 
 bss_data(EA):-
-	pointer_candidates(_,_,EA),
+	(
+	pointer_candidates(_,_,EA)
+	;
+	pointer(_,EA)
+	),
 	section(".bss",SizeSect,Base),
 	EA>=Base,
 	EA<Base+SizeSect.
@@ -753,26 +753,22 @@ data_address(EA,Byte0+ (Byte1* 2^8)+(Byte2* 2^16)+(Byte3* 2^24)+
 
 
 pointer(EA,Val):-
- 	data_address(EA,Val),
- 	labeled_data(EA).
- //	!( pointer_candidates(Ref,_,EA),
-//	  float_instruction(Ref)
-//	).
+ 	data_address(EA,Val).
+ //	labeled_data(EA).
 
-pointer(EA+WORD_SIZE,Val):-
-	word_size_in_bytes(WORD_SIZE),
-	pointer(EA,_),
-	data_address(EA+WORD_SIZE,Val).
-//	!( pointer_candidates(Ref,_,EA),
-//	  float_instruction(Ref)
-//	).
+
+//pointer(EA+WORD_SIZE,Val):-
+//	word_size_in_bytes(WORD_SIZE),
+//	pointer(EA,_),
+//	data_address(EA+WORD_SIZE,Val).
+
 
 
 	
 .decl string(ea:address,end:address)
 .output string
 
-string(Beg,End):-
+string(Beg,End+1):-
 	data_byte(End,0),
 	string_candidate(End-1,Beg).
    

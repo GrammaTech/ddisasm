@@ -3,6 +3,7 @@
 
 valid_option('-hints').
 valid_option('-debug').
+valid_option('-debug_all').
 valid_option('-asm').
 
 sections([
@@ -113,8 +114,7 @@ result_descriptors([
 			  result(indirect_call,1,'.csv'),
 			  result(pc_relative_call,2,'.csv'),
 
-			  result(plt_call,2,'.csv'),
-			  result(plt_jump,2,'.csv'),
+			  result(plt_reference,2,'.csv'),
 
 			  %result(possible_target,'phase2-possible_target',1,'.csv'),
 			  named_result(likely_ea,'likely_ea_final',2,'.csv'),
@@ -154,8 +154,7 @@ result_descriptors([
 :-dynamic reg_call/1.
 :-dynamic indirect_call/1.
 :-dynamic pc_relative_call/2.
-:-dynamic plt_call/2.
-:-dynamic plt_jump/2.
+:-dynamic plt_reference/2.
 
 :-dynamic likely_ea/2.
 :-dynamic remaining_ea/1.
@@ -305,7 +304,8 @@ group_data([data_byte(EA,Content)|Rest],[data_group(EA,string,String)|Groups]):-
     string(EA,End),!,
     Size is End-EA,
     split_at(Size,[data_byte(EA,Content)|Rest],Data_bytes,Rest2),
-    maplist(get_data_byte_content,Data_bytes,Bytes),
+    append(String_bytes,[_],Data_bytes),
+    maplist(get_data_byte_content,String_bytes,Bytes),
     clean_special_characters(Bytes,Bytes_clean),
     string_codes(String,Bytes_clean),
     group_data(Rest2,Groups).
@@ -318,6 +318,14 @@ group_data([data_byte(EA,Content)|Rest],[data_byte(EA,Content)|Groups]):-
     group_data(Rest,Groups).
 
 clean_special_characters([],[]).
+%double quote
+clean_special_characters([34|Codes],[92,34|Clean_codes]):-
+    !,
+    clean_special_characters(Codes,Clean_codes).
+% the single quote
+clean_special_characters([39|Codes],[92,39|Clean_codes]):-
+    !,
+    clean_special_characters(Codes,Clean_codes).
 %newline
 clean_special_characters([10|Codes],[92,110|Clean_codes]):-
     !,
@@ -474,7 +482,7 @@ pp_chunk(EA_chunk-chunk(List)):-
 
 pp_chunk(EA_chunk-Instruction):-
     print_section_header(EA_chunk),
-    (option('-debug')->
+    (option('-debug_all')->
 	 pp_instruction(Instruction)
      ;	 
      true
@@ -519,6 +527,8 @@ is_function(EA,Funtion_name):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % these opcodes do not really exist
+adapt_opcode(fmul_to,fmul).
+adapt_opcode(fsubr_to,fsub).
 adapt_opcode(movsd2,movsd).
 adapt_opcode(imul2,imul).
 adapt_opcode(imul3,imul).
@@ -586,10 +596,9 @@ pp_operand_list([Op|Ops],EA,N,[Op_pretty|Pretty_ops]):-
 pp_operand(reg(Name),_,_,Name2):-
     adapt_register(Name,Name2).
 
-pp_operand(immediate(_Num),EA,_N,Name):-
-    plt_call(EA,Name),!.
-pp_operand(immediate(_Num),EA,_N,Name):-
-    plt_jump(EA,Name),!.
+pp_operand(immediate(_Num),EA,1,Name):-
+    plt_reference(EA,Name),!.
+
 
 
 pp_operand(immediate(_Num),EA,_N,Name_complete):-
@@ -614,15 +623,15 @@ pp_operand(immediate(Num),_,_,Num).
     
 
 
-pp_operand(indirect('NullSReg',Reg,'NullReg64',1,0,_,Size),_,_,PP):-
+pp_operand(indirect('NullSReg',Reg,'NullReg64',1,0,_,Size),EA,_,PP):-
       adapt_register(Reg,Reg_adapted),
-      get_size_name(Size,Name),
+      get_size_name(Size,EA,Name),
       format(atom(PP),'~p [~p]',[Name,Reg_adapted]).
 
 % special case for rip relative addressing
 pp_operand(indirect('NullSReg','RIP','NullReg64',1,Offset,_,Size),EA,N,PP):-
     symbolic_operand(EA,N),!,
-    get_size_name(Size,Name),
+    get_size_name(Size,EA,Name),
     instruction(EA,Size_instr,_,_,_,_),
     Address is EA+Offset+Size_instr,
     (get_global_symbol_name(Address,Name_symbol)->
@@ -634,36 +643,36 @@ pp_operand(indirect('NullSReg','RIP','NullReg64',1,Offset,_,Size),EA,N,PP):-
 pp_operand(indirect('NullSReg',Reg,'NullReg64',1,Offset,_,Size),EA,N,PP):-
     adapt_register(Reg,Reg_adapted),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
-    get_size_name(Size,Name),
+    get_size_name(Size,EA,Name),
     Term=..[PosNeg,Reg_adapted,Offset1],
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
 pp_operand(indirect('NullSReg','NullReg64',Reg_index,Mult,Offset,_,Size),EA,N,PP):-
     adapt_register(Reg_index,Reg_index_adapted),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
-    get_size_name(Size,Name),
+    get_size_name(Size,EA,Name),
     Term=..[PosNeg,Reg_index_adapted*Mult,Offset1],
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
 
-pp_operand(indirect('NullSReg',Reg,Reg_index,Mult,0,_,Size),_EA,_N,PP):-
+pp_operand(indirect('NullSReg',Reg,Reg_index,Mult,0,_,Size),EA,_N,PP):-
     adapt_register(Reg,Reg_adapted),
     adapt_register(Reg_index,Reg_index_adapted),
-    get_size_name(Size,Name),
+    get_size_name(Size,EA,Name),
     format(atom(PP),'~p ~p',[Name,[Reg_adapted+Reg_index_adapted*Mult]]).
 
 
 pp_operand(indirect('NullSReg',Reg,Reg_index,Mult,Offset,_,Size),EA,N,PP):-
     adapt_register(Reg,Reg_adapted),
     adapt_register(Reg_index,Reg_index_adapted),
-    get_size_name(Size,Name),
+    get_size_name(Size,EA,Name),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
     Term=..[PosNeg,Reg_adapted+Reg_index_adapted*Mult,Offset1],
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
 
 pp_operand(indirect(SReg,'NullReg64','NullReg64',1,Offset,_,Size),EA,N,PP):-
-    get_size_name(Size,Name),
+    get_size_name(Size,EA,Name),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
     Term=..[PosNeg,Offset1],
     format(atom(PP),'~p ~p',[Name,[SReg:Term]]).
@@ -678,6 +687,14 @@ get_offset_and_sign(Offset,_EA,_N,Offset1,'-'):-
     Offset1 is 0-Offset.
 get_offset_and_sign(Offset,_EA,_N,Offset,'+').
 
+
+get_size_name(_,EA,''):-
+    instruction(EA,_,Op_code,_,_,_),
+    member(Op_code,['IMUL3','FLDCW','FNSTCW']),!.
+
+get_size_name(Size,_,Name):-
+    get_size_name(Size,Name).
+    
 get_size_name(128,'').
 get_size_name(0,'').
 get_size_name(64,'QWORD PTR').
@@ -705,6 +722,15 @@ adapt_register('R12L','R12B'):-!.
 adapt_register('R13L','R13B'):-!.
 adapt_register('R14L','R14B'):-!.
 adapt_register('R15L','R15B'):-!.
+
+adapt_register('ST0','ST(0)'):-!.
+adapt_register('ST1','ST(1)'):-!.
+adapt_register('ST2','ST(2)'):-!.
+adapt_register('ST3','ST(3)'):-!.
+adapt_register('ST4','ST(4)'):-!.
+adapt_register('ST5','ST(5)'):-!.
+adapt_register('ST6','ST(6)'):-!.
+adapt_register('ST7','ST(7)'):-!.
 adapt_register(Reg,Reg).
 
 %%%%%%%%%%%%%%%%%%%
@@ -747,9 +773,8 @@ comment(EA,indirect_jump):-
     indirect_jump(EA).
 
 comment(EA,plt(Dest)):-
-    plt_call(EA,Dest).
-comment(EA,plt(Dest)):-
-    plt_jump(EA,Dest).
+    plt_reference(EA,Dest).
+
 
 comment(EA,pc_relative_jump(Dest_hex)):-
     pc_relative_jump(EA,Dest),
