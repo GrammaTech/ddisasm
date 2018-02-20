@@ -357,13 +357,17 @@ group_bss_data([Start,Next|Rest],[variable(Start,Size)|Rest_vars]):-
 		   group_bss_data([Next|Rest],Rest_vars).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+skip_data_ea(EA):-
+    option('-asm'),
+    asm_skip_section(Section),
+    is_in_section(EA,Section).
 skip_ea(EA):-
     option('-asm'),
-    ( is_in_section(EA,Section),
-      asm_skip_section(Section)
+    ( asm_skip_section(Section),
+      is_in_section(EA,Section)
      ;
-      is_in_function(EA,Function),
-      asm_skip_function(Function)
+     asm_skip_function(Function),
+     is_in_function(EA,Function)
     ).
      
 is_in_section(EA,Name):-
@@ -384,9 +388,9 @@ is_in_function(EA,Name):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 pp_data(data_group(EA,_,_)):-
-    skip_ea(EA),!.
+    skip_data_ea(EA),!.
 pp_data(data_byte(EA,_)):-
-    skip_ea(EA),!.
+    skip_data_ea(EA),!.
 
 pp_data(data_group(EA,pointer,Content)):-
     print_section_header(EA),
