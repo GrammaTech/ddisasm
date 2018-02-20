@@ -216,6 +216,7 @@ pretty_print_results:-
     get_data(Data),
     maplist(pp_data,Data),
     get_bss_data(Uninitialized_data),
+    format('.bss~n',[]),
     maplist(pp_bss_data,Uninitialized_data).
 
 
@@ -449,7 +450,7 @@ print_label(EA):-
 %%     format('.comm L_~16R, ~p ~n',[Start,Size]).
 
 pp_bss_data(variable(Start,Size)):-
-    format('.lcomm L_~16R, ~p ~n',[Start,Size]).
+    format('L_~16R: .zero  ~p ~n',[Start,Size]).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 pp_chunk(EA_chunk-chunk(_List)):-
@@ -493,6 +494,8 @@ print_section_header(_).
 print_function_header(EA):-
     is_function(EA,Name),
     format('#----------------------------------- ~n',[]),
+    format('.globl ~p~n',[Name]),
+    format('.type ~p, @function~n',[Name]),
     format('~p:~n',[Name]),
     format('#----------------------------------- ~n',[]).
 
@@ -593,8 +596,8 @@ pp_operand(immediate(_Num),EA,_N,Name_complete):-
 
 % special case for mov from symbolic
 pp_operand(immediate(Num),EA,1,Num_hex):-
-    symbolic_operand(EA,1),
-    instruction(EA,_,'MOV',_,_,_),!,
+    symbolic_operand(EA,1),!,
+  %  instruction(EA,_,'MOV',_,_,_),!,
     format(string(Num_hex),'OFFSET L_~16R',[Num]).
 
 pp_operand(immediate(Num),EA,N,Num_hex):-
