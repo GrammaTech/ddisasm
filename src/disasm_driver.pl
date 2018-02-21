@@ -262,6 +262,8 @@ get_chunk_content(Chunk_addr,Assoc,Assoc1):-
 	    ),Instructions),
     put_assoc(Chunk_addr,Assoc,chunk(Instructions),Assoc1).
 
+
+
 accum_instruction(instruction(EA,Size,OpCode,Op1,Op2,Op3),Assoc,Assoc1):-
     put_assoc(EA,Assoc,instruction(EA,Size,OpCode,Op1,Op2,Op3),Assoc1).
 
@@ -635,6 +637,9 @@ pp_operand(immediate(Num),EA,N,Num_hex):-
 pp_operand(immediate(Num),_,_,Num).
     
 
+pp_operand(indirect('NullSReg','NullReg64','NullReg64',1,0,_,Size),_,_,PP):-
+      get_size_name(Size,Name),
+      format(atom(PP),'~p [~p]',[Name,0]).
 
 pp_operand(indirect('NullSReg',Reg,'NullReg64',1,0,_,Size),_,_,PP):-
       adapt_register(Reg,Reg_adapted),
@@ -652,6 +657,12 @@ pp_operand(indirect('NullSReg','RIP','NullReg64',1,Offset,_,Size),EA,N,PP):-
      ;
 	 format(atom(PP),'~p [L_~16R]',[Name,Address])
     ).
+
+pp_operand(indirect('NullSReg','NullReg64','NullReg64',1,Offset,_,Size),EA,N,PP):-
+    get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
+    get_size_name(Size,Name),
+    Term=..[PosNeg,Offset1],
+    format(atom(PP),'~p ~p',[Name,[Term]]).
 
 pp_operand(indirect('NullSReg',Reg,'NullReg64',1,Offset,_,Size),EA,N,PP):-
     adapt_register(Reg,Reg_adapted),

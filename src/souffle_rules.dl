@@ -630,7 +630,7 @@ labeled_data(EA):-
 	data_byte(EA,_).
 
 labeled_data(Val):-
-	pointer(_,Val).
+	data_address(_,Val).
 
 	
 // labels of un-initialized data
@@ -724,6 +724,8 @@ float_operation("SQRTPD").
 .output pointer
 
 
+
+
 data_address(EA,Byte0+ (Byte1* 2^8)+(Byte2* 2^16)+(Byte3* 2^24)+
      (Byte4* 2^32)+(Byte5* 2^40)+
      (Byte6* 2^48)+(Byte7* 2^56)):-
@@ -745,9 +747,28 @@ data_address(EA,Byte0+ (Byte1* 2^8)+(Byte2* 2^16)+(Byte3* 2^24)+
      (Byte6* 2^48)+(Byte7* 2^56))<Beg+Size.
 
 
+.decl data_address2(EA:address,Val:number)
+
+data_address2(EA,Val):-
+      data_address(EA,Val),
+      data_section(Name),
+      section(Name,Size,Beg),
+      Val>=Beg,
+      Val<Size+Beg.
+      
+data_address2(EA,Val):-
+      data_address(EA,Val),
+      likely_ea_final(Val,_).
+
 pointer(EA,Val):-
- 	data_address(EA,Val).
- //	labeled_data(EA).
+ 	data_address2(EA,Val),
+ 	!labeled_data(EA+1),
+	!labeled_data(EA+2),
+	!labeled_data(EA+3),
+	!labeled_data(EA+4),
+	!labeled_data(EA+5),
+	!labeled_data(EA+6),
+	!labeled_data(EA+7).
 
 
 //pointer(EA+WORD_SIZE,Val):-

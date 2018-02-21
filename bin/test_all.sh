@@ -17,3 +17,10 @@
 ./reassemble_and_test.sh ../real_world_examples/ed-0.9/ ed
 ./reassemble_and_test.sh ../real_world_examples/marst-2.4/ marst
 ./reassemble_and_test.sh ../real_world_examples/units-1.85/ units -lm -lreadline -lncurses
+
+./reassemble_and_test.sh ../real_world_examples/doschk-1.1/ doschk
+./reassemble_and_test.sh ../real_world_examples/bool-0.2/ src/bool
+
+./reassemble_and_test.sh ../real_world_examples/m4-1.4.4/ src/m4
+./reassemble_and_test.sh ../real_world_examples/patch-2.6.1/ src/patch
+./reassemble_and_test.sh ../real_world_examples/enscript-1.6.1/ src/enscript -lm
