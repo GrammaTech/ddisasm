@@ -99,12 +99,12 @@ template<typename T>
 inline void Datalog_visitor_x64::visit3op(const T * const n,short size1,short size2,short size3)
 {
     curr_op.type=operator_type::NONE;
-    curr_op.size=size3;
+    curr_op.size=size2;
     n->Get_Src1()->accept(*this);
     add_curr_operator();
 
     curr_op.type=operator_type::NONE;
-    curr_op.size=size2;
+    curr_op.size=size3;
     n->Get_Src2()->accept(*this);
     add_curr_operator();
 
