@@ -245,6 +245,12 @@ fallthrough(From,To):-
 	next(From,To),
 	!return(From),
 	!inconditional_jump(From).
+	
+.decl must_fallthrough(o:address,d:address)
+
+must_fallthrough(From,To):-
+	fallthrough(From,To),
+	!instruction(From,_,"CALL",_,_,_).
 
 
 .decl basic_target(ea:address)
@@ -349,7 +355,7 @@ invalid(EA):-
 invalid(From):-
 	invalid(To),
 	(
-		fallthrough(From,To)
+		must_fallthrough(From,To)
 	;
 		direct_jump(From,To)
 	;
@@ -546,20 +552,7 @@ likely_ea_final(EA,Chunk):-
 	phase2.likely_ea(EA,Chunk),
 	!discarded_chunk(Chunk).
 
-////////////////////////////////////////////////////////////////////////////
-// detect references  to libraries (calls to plt)
-.decl plt_reference(ea:address, function:symbol)
-.output plt_reference
 
-plt_reference(EA,Function):-
-	likely_ea_final(EA,_),
-	instruction_get_op(EA,1,Op),
-	op_immediate(Op,Dest),
-	section(".plt",Size,Beg),
-	Dest<Beg+Size,
-	Dest>=Beg,
-	pc_relative_jump(Dest,Got_entry),
-	relocation(Got_entry,Function,_).
 
 	
 //////////////////////////////////////////////////////////////////////
@@ -770,7 +763,9 @@ pointer(EA,Val):-
 
 string(Beg,End+1):-
 	data_byte(End,0),
-	string_candidate(End-1,Beg).
+	string_candidate(End-1,Beg),
+	!labeled_data(End).
+
    
 
 .decl string_candidate(ea:address,base:address)
@@ -893,3 +888,27 @@ printable_char(0x7B).
 printable_char(0x7C).
 printable_char(0x7D).
 printable_char(0x7E).
+
+
+////////////////////////////////////////////////////////////////////////////
+// detect references  to libraries (calls to plt)
+.decl plt_reference(ea:address, function:symbol)
+.output plt_reference
+
+plt_reference(EA,Function):-
+	likely_ea_final(EA,_),
+	instruction_get_op(EA,1,Op),
+	op_immediate(Op,Dest),
+	section(".plt",Size,Beg),
+	Dest<Beg+Size,
+	Dest>=Beg,
+	pc_relative_jump(Dest,Got_entry),
+	relocation(Got_entry,Function,_).
+
+plt_reference(EA,Function):-
+	pointer(EA,Dest),
+	section(".plt",Size,Beg),
+	Dest<Beg+Size,
+	Dest>=Beg,
+	pc_relative_jump(Dest,Got_entry),
+	relocation(Got_entry,Function,_).
