@@ -284,6 +284,12 @@ get_data(Data_groups):-
 
 group_data([],[]).
 
+group_data([data_byte(EA,_)|Rest],[data_group(EA,plt_ref,Function)|Groups]):-
+    pointer(EA,_Group_content),
+    plt_reference(EA,Function),!,
+    split_at(7,Rest,_,Rest2),
+    group_data(Rest2,Groups).
+
 group_data([data_byte(EA,_)|Rest],[data_group(EA,labeled_pointer,Group_content)|Groups]):-
     pointer(EA,Group_content),
     labeled_data(EA),!,
@@ -399,6 +405,12 @@ pp_data(data_group(EA,_,_)):-
     skip_data_ea(EA),!.
 pp_data(data_byte(EA,_)):-
     skip_data_ea(EA),!.
+
+pp_data(data_group(EA,plt_ref,Function)):-
+    print_section_header(EA),
+    print_label(EA),
+    print_ea(EA),
+    format('.quad ~s~n',[Function]).
 
 pp_data(data_group(EA,pointer,Content)):-
     print_section_header(EA),
@@ -533,6 +545,7 @@ adapt_opcode(movsd2,movsd).
 adapt_opcode(imul2,imul).
 adapt_opcode(imul3,imul).
 adapt_opcode(imul1,imul).
+adapt_opcode(cmpsd3,cmpsd).
 adapt_opcode(Operation,Operation).
 
 opcode_suffix(Opcode,Suffix):-
@@ -623,15 +636,15 @@ pp_operand(immediate(Num),_,_,Num).
     
 
 
-pp_operand(indirect('NullSReg',Reg,'NullReg64',1,0,_,Size),EA,_,PP):-
+pp_operand(indirect('NullSReg',Reg,'NullReg64',1,0,_,Size),_,_,PP):-
       adapt_register(Reg,Reg_adapted),
-      get_size_name(Size,EA,Name),
+      get_size_name(Size,Name),
       format(atom(PP),'~p [~p]',[Name,Reg_adapted]).
 
 % special case for rip relative addressing
 pp_operand(indirect('NullSReg','RIP','NullReg64',1,Offset,_,Size),EA,N,PP):-
     symbolic_operand(EA,N),!,
-    get_size_name(Size,EA,Name),
+    get_size_name(Size,Name),
     instruction(EA,Size_instr,_,_,_,_),
     Address is EA+Offset+Size_instr,
     (get_global_symbol_name(Address,Name_symbol)->
@@ -643,36 +656,36 @@ pp_operand(indirect('NullSReg','RIP','NullReg64',1,Offset,_,Size),EA,N,PP):-
 pp_operand(indirect('NullSReg',Reg,'NullReg64',1,Offset,_,Size),EA,N,PP):-
     adapt_register(Reg,Reg_adapted),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
-    get_size_name(Size,EA,Name),
+    get_size_name(Size,Name),
     Term=..[PosNeg,Reg_adapted,Offset1],
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
 pp_operand(indirect('NullSReg','NullReg64',Reg_index,Mult,Offset,_,Size),EA,N,PP):-
     adapt_register(Reg_index,Reg_index_adapted),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
-    get_size_name(Size,EA,Name),
+    get_size_name(Size,Name),
     Term=..[PosNeg,Reg_index_adapted*Mult,Offset1],
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
 
-pp_operand(indirect('NullSReg',Reg,Reg_index,Mult,0,_,Size),EA,_N,PP):-
+pp_operand(indirect('NullSReg',Reg,Reg_index,Mult,0,_,Size),_,_N,PP):-
     adapt_register(Reg,Reg_adapted),
     adapt_register(Reg_index,Reg_index_adapted),
-    get_size_name(Size,EA,Name),
+    get_size_name(Size,Name),
     format(atom(PP),'~p ~p',[Name,[Reg_adapted+Reg_index_adapted*Mult]]).
 
 
 pp_operand(indirect('NullSReg',Reg,Reg_index,Mult,Offset,_,Size),EA,N,PP):-
     adapt_register(Reg,Reg_adapted),
     adapt_register(Reg_index,Reg_index_adapted),
-    get_size_name(Size,EA,Name),
+    get_size_name(Size,Name),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
     Term=..[PosNeg,Reg_adapted+Reg_index_adapted*Mult,Offset1],
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
 
 pp_operand(indirect(SReg,'NullReg64','NullReg64',1,Offset,_,Size),EA,N,PP):-
-    get_size_name(Size,EA,Name),
+    get_size_name(Size,Name),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
     Term=..[PosNeg,Offset1],
     format(atom(PP),'~p ~p',[Name,[SReg:Term]]).
@@ -688,12 +701,7 @@ get_offset_and_sign(Offset,_EA,_N,Offset1,'-'):-
 get_offset_and_sign(Offset,_EA,_N,Offset,'+').
 
 
-get_size_name(_,EA,''):-
-    instruction(EA,_,Op_code,_,_,_),
-    member(Op_code,['IMUL3','FLDCW','FNSTCW']),!.
 
-get_size_name(Size,_,Name):-
-    get_size_name(Size,Name).
     
 get_size_name(128,'').
 get_size_name(0,'').
