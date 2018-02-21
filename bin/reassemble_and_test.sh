@@ -12,7 +12,9 @@
 # ./reasemble_and_test.sh ../real_world_examples/grep-2.5.4 src/grep -lpcre
 #
 
-
+red=`tput setaf 1`
+green=`tput setaf 2`
+normal=`tput sgr0`
 
 if [[ $# -eq 0 || $1 == "-h" || $1 == "--help" ]]; then
     printf "USAGE: ./reassemble_and_test.sh project_directory binary_path [compiler_flags]
@@ -36,7 +38,7 @@ shift
 shift
 
 printf "\n Rebuilding project $dir\n"
-if !(make clean -C $dir &>/dev/null && make -C $dir &>/dev/null); then
+if !( make clean -C $dir &>/dev/null && make -C $dir &>/dev/null); then
     printf "\n Initial compilation failed\n"
     exit 1
 fi
@@ -59,6 +61,11 @@ fi
 
 printf "  OK\n"
 printf "\n Testing\n"
-make check -C $dir
+if !(make check -C $dir); then
+    printf "\n${red}Testing FAILED ${normal}\n"
+else
+    printf "\n${green}Testing SUCCEED ${normal}\n"
+fi
+
 
 

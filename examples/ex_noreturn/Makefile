@@ -1,5 +1,5 @@
-all: ex_virtual.cpp
-	g++ ex_virtual.cpp -o ex
+all: ex.c 
+	gcc ex.c  -o ex 
 	@./ex > out.txt
 clean:
 	rm -f ex out.txt
@@ -7,3 +7,4 @@ clean:
 check:
 	@./ex >/tmp/res.txt
 	@ bash ./test.sh
+
