@@ -67,7 +67,10 @@ public:
     virtual void visit(const  RTG::IRet32* const n){name=n->GetClassIdName();}
     virtual void visit(const  RTG::IRet16* const n){name=n->GetClassIdName();}
     //one op
-    virtual void visit(const RTG::OneOpFloat * const n){ visit1op<RTG::OneOpFloat>(n,64); }
+    virtual void visit(const RTG::OneOpFloat * const n){
+     //the size will be overwritten
+        visit1op<RTG::OneOpFloat>(n,0);
+    }
     virtual void visit(const RTG::OneOp128 * const n){ visit1op<RTG::OneOp128>(n,128); }
     virtual void visit(const RTG::OneOp80 * const n){ visit1op<RTG::OneOp80>(n,80); }
     virtual void visit(const RTG::OneOp64 * const n){ visit1op<RTG::OneOp64>(n,64); }
@@ -190,21 +193,27 @@ public:
 
     virtual void visit(const RTG::Float_Int64 * const n){
         n->Get_Addr() ->accept(*this);
+        curr_op.size=64;
     }
     virtual void visit(const RTG::Float_Int32 * const n){
         n->Get_Addr() ->accept(*this);
+        curr_op.size=32;
     }
     virtual void visit(const RTG::Float_Int16 * const n){
         n->Get_Addr() ->accept(*this);
+        curr_op.size=16;
     }
     virtual void visit(const RTG::Float_Real80 * const n){
         n->Get_Addr() ->accept(*this);
+        curr_op.size=80;
     }
     virtual void visit(const RTG::Float_Real64 * const n){
         n->Get_Addr() ->accept(*this);
+        curr_op.size=64;
     }
     virtual void visit(const RTG::Float_Real32 * const n){
         n->Get_Addr() ->accept(*this);
+        curr_op.size=32;
     }
 
 

@@ -123,6 +123,7 @@ result_descriptors([
 			  named_result(chunk_overlap,'chunk_overlap2',2,'.csv'),
 
 			  result(function_symbol,2,'.csv'),
+			  result(main_function,1,'.csv'),
 			  result(ambiguous_symbol,1,'.csv'),
 			  result(chunk_start,1,'.csv'),
 			  result(discarded_chunk,1,'.csv'),
@@ -160,6 +161,7 @@ result_descriptors([
 :-dynamic likely_ea/2.
 :-dynamic remaining_ea/1.
 :-dynamic function_symbol/2.
+:-dynamic main_function/1.
 :-dynamic ambiguous_symbol/1.
 
 :-dynamic chunk_start/1.
@@ -528,6 +530,9 @@ print_function_header(EA):-
 
 print_function_header(_).
 
+
+function_complete_name(EA,'main'):-
+    main_function(EA),!.
 function_complete_name(EA,Name_complete):-
   function_symbol(EA,Name),
   (ambiguous_symbol(Name)->
@@ -728,6 +733,7 @@ get_offset_and_sign(Offset,_EA,_N,Offset,'+').
     
 get_size_name(128,'').
 get_size_name(0,'').
+get_size_name(80,'QWORD PTR').
 get_size_name(64,'QWORD PTR').
 get_size_name(32,'DWORD PTR').
 get_size_name(16,'WORD PTR').

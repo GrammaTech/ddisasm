@@ -7,6 +7,9 @@
 /////////////////////////////////////////////////////////////
 
 // metadata
+.decl entry_point(ea:address)
+.input entry_point
+
 .decl symbol(ea:address,n:number,type:symbol,scope:symbol,name:symbol)
 .input symbol
 
@@ -246,7 +249,7 @@ basic_target(Val):-
 	address_in_data(_,Val).
 
 basic_target(EA):-
-	section(".text",_,EA).
+	entry_point(EA).
 
 basic_target(EA):-
 	function_symbol(EA,_).
@@ -640,7 +643,7 @@ address_in_data2(EA,Val):-
       
 address_in_data2(EA,Val):-
       address_in_data(EA,Val),
-      likely_ea_final(Val,_).
+      likely_ea_final(_,Val).
 
 symbolic_data(EA,Val):-
  	address_in_data2(EA,Val),
@@ -695,6 +698,26 @@ string_candidate(EA+1,Base):-
    printable_char(Byte).
     
 
+.decl main_function(ea:address)
+.output main_function
+
+//main_function(EA):-
+//	function_symbol(EA,"main").
+	
+main_function(Main_location):-
+	!function_symbol(Main_location,"main"),
+	First_call= min EA:{
+		    entry_point(Entry),
+		    direct_call(EA,_),
+		    likely_ea_final(EA,_),
+		    EA>=Entry
+		    	},
+	next(Prev,First_call),
+        likely_ea_final(Prev,_),
+	symbolic_operand_candidate(Prev,1,Main_location).
+
+
+	
     
 .decl jump_operation(n:symbol)
 
