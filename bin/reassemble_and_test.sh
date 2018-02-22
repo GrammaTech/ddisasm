@@ -36,6 +36,12 @@ dir=$1
 exe=$2
 shift
 shift
+compiler="gcc"
+
+if [[ $# > 0 && $1 == "g++" ]]; then
+    compiler="g++"
+    shift
+fi
 
 printf "\n Rebuilding project $dir\n"
 if !( make clean -C $dir &>/dev/null && make -C $dir &>/dev/null); then
@@ -54,7 +60,7 @@ printf "\n Copying old binary to $dir/$exe.old\n"
 cp $dir/$exe $dir/$exe.old
 printf "\n Reassembling"
 
-if !(gcc "$dir/$exe.s" $@ -o  "$dir/$exe"); then
+if !($compiler "$dir/$exe.s" $@ -o  "$dir/$exe"); then
     echo "Reassembly failed"
     exit 1
 fi

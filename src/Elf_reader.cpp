@@ -165,6 +165,19 @@ void Elf_reader::read_relocations(){
 bool Elf_reader::is_valid(){
 	return valid;
 }
+void Elf_reader::print_entry_point(ostream& stream){
+	stream<< header.e_entry<< endl;
+}
+bool Elf_reader::print_entry_point_to_file(const string& filename){
+	ofstream file(filename,ios::out|ios::binary);
+	if(file.is_open()){
+		print_entry_point(file);
+		file.close();
+		return true;
+	}else{
+		return false;
+	}
+}
 void Elf_reader::print_sections(ostream& stream){
 	auto sect_it=sections.begin();
 	auto sect_names_it=section_names.begin();

@@ -48,6 +48,9 @@ public:
 	bool print_sections_to_file(const std::string& filename);
 	void add_sections_to_souffle(souffle::Relation* rel);
 
+	void print_entry_point(std::ostream&);
+	bool print_entry_point_to_file(const std::string& filename);
+
 	void print_symbols(std::ostream&);
 	bool print_symbols_to_file(const std::string& filename);
 	void add_symbols_to_souffle(souffle::Relation* rel);

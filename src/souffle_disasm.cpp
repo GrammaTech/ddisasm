@@ -95,6 +95,8 @@ int main(int argc, char** argv) {
     }
 
     cout<<"Valid binary\n";
+    cout<<"Saving entry point\n";
+    elf.print_entry_point_to_file(directory+"entry_point.facts");
     cout<<"Saving sections\n";
     elf.print_sections_to_file(directory+"section.facts");
     cout<<"Saving symbols\n";
