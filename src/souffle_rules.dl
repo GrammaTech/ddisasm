@@ -19,6 +19,7 @@
 .decl word_size_in_bytes(n:number)
 word_size_in_bytes(8).
 
+
 //FIXME: add eh_frames
 
 
@@ -45,15 +46,13 @@ word_size_in_bytes(8).
 .decl data_byte(ea:address,value:number)
 .input data_byte
 
-.decl data_address(ea:address,value:number)
+.decl address_in_data(ea:address,value:number)
 
-.input data_address
-
-
+.input address_in_data
 
 
 /////////////////////////////////////////////////////////////
-// inference of basic facts
+// auxiliary definitions
 /////////////////////////////////////////////////////////////
 
 .decl instruction_get_operation(ea:address,operation:symbol) 
@@ -78,6 +77,9 @@ instruction_get_op(EA,Index,Op):-
 	
 
 
+/////////////////////////////////////////////////////////////
+// inference of basic facts
+/////////////////////////////////////////////////////////////
 
 
 .decl next(n:address,m:address)
@@ -85,36 +87,14 @@ instruction_get_op(EA,Index,Op):-
 next(EA,EA+Size):-
 	instruction(EA,Size,_,_,_,_).
 	
+.decl pc_relative_operand(src:address,index:number, dest:address)
+.output pc_relative_operand
 
-.decl jump_operation(n:symbol)
-
-jump_operation("JCXZ").
-jump_operation("JECXZ").
-jump_operation("JRCXZ").
-jump_operation("JO").
-jump_operation("JNO").
-jump_operation("JB").
-jump_operation("JNB").
-jump_operation("JZ").
-jump_operation("JNZ").
-jump_operation("JNA").	
-jump_operation("JA").
-jump_operation("JS").
-jump_operation("JNS").
-jump_operation("JP").
-jump_operation("JNP").
-jump_operation("JL").
-jump_operation("JGE").
-jump_operation("JLE").
-jump_operation("JG").
-jump_operation("JC").
-jump_operation("JAE").
-jump_operation("JE").
-jump_operation("JNE").
-jump_operation("JBE").
-jump_operation("JNBE").
-jump_operation("JMP").	
-
+pc_relative_operand(EA,Index,EA_next+Offset):-
+	instruction_get_op(EA, Index, Op),
+	op_indirect(Op,"NullSReg","RIP","NullReg64",1,Offset,_,_),
+	next(EA,EA_next).
+	
 	
 // JUMPS
 .decl inconditional_jump(n:address)
@@ -137,33 +117,36 @@ direct_jump(EA,Dest):-
 .decl pc_relative_jump(src:address, dest:address)
 .output pc_relative_jump
 
-pc_relative_jump(EA,EA+Size+Offset):-
-	instruction(EA,Size,Operation,Op1,_,_),
+pc_relative_jump(EA,Dest):-
+	instruction_get_operation(EA,Operation),
 	jump_operation(Operation),
-	op_indirect(Op1,"NullSReg","RIP","NullReg64",1,Offset,_,_).
+	pc_relative_operand(EA,1,Dest).
+
 	
 // jump to the address of a register
 // for now we do not compute anything about these
-.decl reg_jump(src:address)
-.output reg_jump
 
-reg_jump(EA):-
-	instruction(EA,_,Operation,Op1,_,_),
-	jump_operation(Operation),
-	op_regdirect(Op1,_).
+// .decl reg_jump(src:address)
+// .output reg_jump
+
+// reg_jump(EA):-
+// 	instruction(EA,_,Operation,Op1,_,_),
+// 	jump_operation(Operation),
+// 	op_regdirect(Op1,_).
 	
 
 
 	
 // indirect jump	
-.decl indirect_jump(src:address)
-.output indirect_jump
 
-indirect_jump(EA):-
-	instruction(EA,_,Operation,Op1,_,_),
-	jump_operation(Operation),
-	op_indirect(Op1,_,_,_, _,_,_,_),
-	!pc_relative_jump(EA,_).
+// .decl indirect_jump(src:address)
+// .output indirect_jump
+
+// indirect_jump(EA):-
+// 	instruction(EA,_,Operation,Op1,_,_),
+// 	jump_operation(Operation),
+// 	op_indirect(Op1,_,_,_, _,_,_,_),
+// 	!pc_relative_jump(EA,_).
 
 
 	
@@ -180,28 +163,29 @@ direct_call(EA,Dest):-
 .decl pc_relative_call(src:address,dest:address)
 .output pc_relative_call
 
-pc_relative_call(Src,Src+Size+Offset):-
-	instruction(Src,Size,"CALL",Op1,_,_),
-	op_indirect(Op1,"NullSReg","RIP","NullReg64",1,Offset,_,_).
+pc_relative_call(Src,Dest):-
+	instruction_get_operation(Src,"CALL"),
+	pc_relative_operand(Src,1,Dest).
+
 
 // for now we do not compute anything about these
-.decl reg_call(src:address)
-.output reg_call
+//.decl reg_call(src:address)
+//.output reg_call
 
-reg_call(EA):-
-	instruction(EA,_,"CALL",Op1,_,_),
-	op_regdirect(Op1,_).
-
-
+// reg_call(EA):-
+// 	instruction(EA,_,"CALL",Op1,_,_),
+// 	op_regdirect(Op1,_).
 
 
-.decl indirect_call(src:address)
-.output indirect_call
 
-indirect_call(EA):-
-	instruction(EA,_,"CALL",Op1,_,_),
-	op_indirect(Op1,_,_,_,_,_,_,_),
-	!pc_relative_jump(EA,_).
+
+// .decl indirect_call(src:address)
+// .output indirect_call
+
+// indirect_call(EA):-
+// 	instruction(EA,_,"CALL",Op1,_,_),
+// 	op_indirect(Op1,_,_,_,_,_,_,_),
+// 	!pc_relative_jump(EA,_).
 
 
 // Returns
@@ -211,6 +195,13 @@ return(EA):-
 	instruction_get_operation(EA,"Ret").
 
 
+.decl ambiguous_symbol(name:symbol)
+.output ambiguous_symbol
+
+ambiguous_symbol(Name):-
+        symbol(_,_,_,_,Name),
+ 	1< count :{symbol(_,_,_,_,Name)}.
+
 // Function symbols
 .decl function_symbol(ea:address,name:symbol)
 .output function_symbol
@@ -218,13 +209,6 @@ return(EA):-
 function_symbol(EA,Name):-
 	symbol(EA,_,"FUNC",_,Name).
 
-
-// .decl ambiguous_function_symbol(ea:address,name:symbol)
-// .output ambiguous_function_symbol
-
-// ambiguous_function_symbol(Name):-
-// 	function_symbol(_,Name),
-// 	count :{function_symbol(_,Name)}.
 	
 
 .decl data_section(name:symbol)
@@ -239,9 +223,9 @@ code_section(".text").
 code_section(".plt").
 
 
-.decl fallthrough(o:address,d:address)
+.decl may_fallthrough(o:address,d:address)
 
-fallthrough(From,To):-
+may_fallthrough(From,To):-
 	next(From,To),
 	!return(From),
 	!inconditional_jump(From).
@@ -249,8 +233,9 @@ fallthrough(From,To):-
 .decl must_fallthrough(o:address,d:address)
 
 must_fallthrough(From,To):-
-	fallthrough(From,To),
-	!instruction(From,_,"CALL",_,_,_).
+	may_fallthrough(From,To),
+	instruction_get_operation(From,"CALL").
+
 
 
 .decl basic_target(ea:address)
@@ -258,7 +243,7 @@ must_fallthrough(From,To):-
 // FIXME: add exception frame addresses
 
 basic_target(Val):-
-	data_address(_,Val).
+	address_in_data(_,Val).
 
 basic_target(EA):-
 	section(".text",_,EA).
@@ -296,7 +281,7 @@ likely_ea(EA,EA):-
 //same block
 likely_ea(EA,Head):-
 	likely_ea(EA2,Start),
-	fallthrough(EA2,EA),
+	may_fallthrough(EA2,EA),
 	(
 	block_limit(EA),
 	Head=EA
@@ -340,7 +325,6 @@ invalid(EA):-
 	(
 	// the starting point of EA is in the middle of a likely instruction
 	overlap(EA,Ini)
-
 	;
 	// the ending point of EA is in the middle of a likely instruction
 	next(EA,EA_end),
@@ -349,7 +333,7 @@ invalid(EA):-
 	// (and it is not itself likely)
 	!likely_ea(EA,_).
 
-//propagate the invalid instructions backward until ret or jmp (encoded in fallthrough)
+//propagate the invalid instructions backward until ret or jmp (encoded in must_fallthrough)
 // propagate through direct jumps and calls
 
 invalid(From):-
@@ -375,9 +359,10 @@ remaining_ea(EA):-
 	!invalid(EA).
 }
 
-.output phase1.invalid
-.output phase1.possible_ea
-.output phase1.remaining_ea
+//.output phase1.invalid
+//.output phase1.possible_ea
+//.output phase1.remaining_ea
+
 /////////////////////////////
 // Phase 1
 // Get an initial approximation of things that look like code
@@ -430,7 +415,7 @@ phase2.block_limit(EA):-
 
 common_tail(EA):-
 	phase1.likely_ea(EA,Chunk),
-	fallthrough(From,EA),
+	may_fallthrough(From,EA),
 	//get the head of the tail only
 	!phase1.likely_ea(From,Chunk),
 	phase1.likely_ea(From,Chunk2),
@@ -461,12 +446,12 @@ phase2.possible_target(EA):-
 	possible_target_from(EA,_).
 
 
-.output phase2.possible_target
-.output phase2.likely_ea
+//.output phase2.possible_target
+//.output phase2.likely_ea
 .output phase2.remaining_ea
 
 ////////////////////////////////////////////////////////////////////////
-// Even at this point we hace chunks of code that overlap
+// Even at this point we can have chunks of code that overlap
 
 .decl chunk_start(ea_chunk:address)
 .output chunk_start
@@ -527,7 +512,7 @@ chunk_pred(Chunk,Chunk_pred,3):-
 	Chunk_pred!=Chunk.
 
 chunk_pred(Chunk,Chunk_pred,3):-
-	fallthrough(EA,Chunk),
+	may_fallthrough(EA,Chunk),
 	phase2.likely_ea(EA,Chunk_pred).
 	
 chunk_pred(Chunk,Chunk_pred,1):-
@@ -553,72 +538,62 @@ likely_ea_final(EA,Chunk):-
 	!discarded_chunk(Chunk).
 
 
+////////////////////////////////////////////////////////////////////////////
+// detect references  to libraries (calls to plt)
+.decl plt_reference(ea:address, function:symbol)
+.output plt_reference
 
+plt_reference(EA,Function):-
+	likely_ea_final(EA,_),
+	instruction_get_op(EA,1,Op),
+	op_immediate(Op,Dest),
+	section(".plt",Size,Beg),
+	Dest<Beg+Size,
+	Dest>=Beg,
+	pc_relative_jump(Dest,Got_entry),
+	relocation(Got_entry,Function,_).
+
+plt_reference(EA,Function):-
+	symbolic_data(EA,Dest),
+	section(".plt",Size,Beg),
+	Dest<Beg+Size,
+	Dest>=Beg,
+	pc_relative_jump(Dest,Got_entry),
+	relocation(Got_entry,Function,_).
 	
 //////////////////////////////////////////////////////////////////////
 // Symbolization
 //////////////////////////////////////////////////////////////////////
 
-.decl pointer_candidates(ea:address,operand_index:number,dest:address)
+.decl symbolic_operand_candidate(ea:address,operand_index:number,dest:address)
 
-pointer_candidates(EA,Op_index,Dest):-
+symbolic_operand_candidate(EA,Op_index,Dest):-
 	likely_ea_final(EA,_),
 	instruction_get_op(EA,Op_index,Op),
-	op_immediate(Op,Dest),
 	(
-		points_to_something(Dest)
+		op_immediate(Op,Dest)
 	;
-		section(".bss",SizeSect,Base),
-		Dest>=Base,
-		Dest<Base+SizeSect
-	).
-
-// this is similar to pc_relative jumps and calls but not limited to those
-// instructions
-pointer_candidates(EA,Op_index,EA+Offset+Size):-
-	likely_ea_final(EA,_),
-	instruction(EA,Size,_,_,_,_),
-	instruction_get_op(EA,Op_index,Op),
-	op_indirect(Op,"NullSReg","RIP","NullReg64",1,Offset,_,_),
-	(
-		points_to_something(EA+Offset+Size)
+		pc_relative_operand(EA,Op_index,Dest)
 	;
-		section(".bss",SizeSect,Base),
-		EA+Offset+Size>=Base,
-		EA+Offset+Size<Base+SizeSect
-	).
-
 // FIXME: here we do not compute the real destination but the base address
-// 
-pointer_candidates(EA,Op_index,Dest):-
-	likely_ea_final(EA,_),
-	instruction_get_op(EA,Op_index,Op),
-	op_indirect(Op,"NullSReg",Reg,_Reg2,_Mul,Dest,_,_),
+   	       op_indirect(Op,_,_,_,_,Dest,_,_)
+	),
 	(
-		points_to_something(Dest)
+		likely_ea_final(Dest,_)
 	;
-		section(".bss",SizeSect,Base),
+		data_section(Name),
+		section(Name,SizeSect,Base),
 		Dest>=Base,
 		Dest<Base+SizeSect
-	).	
-
-
-.decl points_to_something(ea:address)
-
-points_to_something(EA):-
-	(
-	likely_ea_final(EA,_)
-	;
-	data_byte(EA,_)
 	).
-	
+		
 
 .decl symbolic_operand(ea:address,operand_index:number)
 .output symbolic_operand
 
-
+//FIXME maybe we have to refine this
 symbolic_operand(EA,Op_index):-
-	pointer_candidates(EA,Op_index,_).
+	symbolic_operand_candidate(EA,Op_index,_).
 
 
 // data that is dereferenced somewhere in the code
@@ -626,12 +601,13 @@ symbolic_operand(EA,Op_index):-
 .output labeled_data
 
 labeled_data(EA):-
-	pointer_candidates(_,_,EA),
+	symbolic_operand_candidate(_,_,EA),
 	data_byte(EA,_).
 
 labeled_data(Val):-
-	data_address(_,Val).
-
+	address_in_data(_,Val),
+	data_byte(Val,_).
+	
 	
 // labels of un-initialized data
 .decl bss_data(EA:address)
@@ -639,129 +615,35 @@ labeled_data(Val):-
 
 bss_data(EA):-
 	(
-	pointer_candidates(_,_,EA)
+	symbolic_operand_candidate(_,_,EA)
 	;
-	pointer(_,EA)
+	symbolic_data(_,EA)
 	),
 	section(".bss",SizeSect,Base),
 	EA>=Base,
 	EA<Base+SizeSect.
 
 
-
-// type classification heuristics
-.decl float_data(ea:address)
-.output float_data
-
-float_data(EA):-
-	labeled_data(EA),
-	pointer_candidates(Ref,_,EA),
-	float_instruction(Ref).
-
-.decl float_instruction(ea:address)
-
-float_instruction(EA):-
-	instruction_get_operation(EA,Operation),
-	float_operation(Operation).
-
-.decl float_operation(operation:symbol)
-
-
-float_operation("MOVSS").
-float_operation("MOVSD").
-// am I missing more?
-float_operation("MOVSD2").
-
-float_operation("MOVUPS").
-float_operation("MOVUPD").
-float_operation("MOVAPS").
-float_operation("MOVAPD").
-
-float_operation("ADDSS").
-float_operation("ADDSD").
-float_operation("ADDPS").
-float_operation("ADDPD").
-
-float_operation("SUBSS").
-float_operation("SUBSD").
-float_operation("SUBPS").
-float_operation("SUBPD").
-
-float_operation("MULSS").
-float_operation("MULSD").
-float_operation("MULPS").
-float_operation("MULPD").
-
-float_operation("DIVSS").
-float_operation("DIVSD").
-float_operation("DIVPS").
-float_operation("DIVPD").
-
-float_operation("MINSS").
-float_operation("MINSD").
-float_operation("MINPS").
-float_operation("MINPD").
-
-float_operation("MAXSS").
-float_operation("MAXSD").
-float_operation("MAXPS").
-float_operation("MAXPD").
-
-
-float_operation("ROUNDSS").
-float_operation("ROUNDSD").
-float_operation("ROUNDPS").
-float_operation("ROUNDPD").
-
-float_operation("SQRTSS").
-float_operation("SQRTSD").
-float_operation("SQRTPS").
-float_operation("SQRTPD").
+.decl symbolic_data(ea:address,value:number)
+.output symbolic_data
 
 
 
-.decl pointer(ea:address,value:number)
-.output pointer
+.decl address_in_data2(EA:address,Val:number)
 
-
-
-
-data_address(EA,Byte0+ (Byte1* 2^8)+(Byte2* 2^16)+(Byte3* 2^24)+
-     (Byte4* 2^32)+(Byte5* 2^40)+
-     (Byte6* 2^48)+(Byte7* 2^56)):-
-     data_byte(EA,Byte0),
-     data_byte(EA+1,Byte1),
-     data_byte(EA+2,Byte2),
-     data_byte(EA+3,Byte3),
-     data_byte(EA+4,Byte4),
-     data_byte(EA+5,Byte5),
-     data_byte(EA+6,Byte6),
-     data_byte(EA+7,Byte7),
-     data_section(Name),
-     section(Name,Size,Beg),
-     (Byte0+ (Byte1* 2^8)+(Byte2* 2^16)+(Byte3* 2^24)+
-     (Byte4* 2^32)+(Byte5* 2^40)+
-     (Byte6* 2^48)+(Byte7* 2^56))>=Beg,
-     (Byte0+ (Byte1* 2^8)+(Byte2* 2^16)+(Byte3* 2^24)+
-     (Byte4* 2^32)+(Byte5* 2^40)+
-     (Byte6* 2^48)+(Byte7* 2^56))<Beg+Size.
-
-
-.decl data_address2(EA:address,Val:number)
-
-data_address2(EA,Val):-
-      data_address(EA,Val),
+address_in_data2(EA,Val):-
+      address_in_data(EA,Val),
       data_section(Name),
       section(Name,Size,Beg),
       Val>=Beg,
       Val<Size+Beg.
       
-data_address2(EA,Val):-
-      data_address(EA,Val),
+address_in_data2(EA,Val):-
+      address_in_data(EA,Val),
       likely_ea_final(Val,_).
 
-pointer(EA,Val):-
- 	data_address2(EA,Val),
+symbolic_data(EA,Val):-
+ 	address_in_data2(EA,Val),
  	!labeled_data(EA+1),
 	!labeled_data(EA+2),
 	!labeled_data(EA+3),
@@ -770,12 +652,20 @@ pointer(EA,Val):-
 	!labeled_data(EA+6),
 	!labeled_data(EA+7).
 
+// type classification heuristics
+.decl float_data(ea:address)
+.output float_data
 
-//pointer(EA+WORD_SIZE,Val):-
-//	word_size_in_bytes(WORD_SIZE),
-//	pointer(EA,_),
-//	data_address(EA+WORD_SIZE,Val).
+float_data(EA):-
+	labeled_data(EA),
+	symbolic_operand_candidate(Ref,_,EA),
+	float_instruction(Ref).
 
+.decl float_instruction(ea:address)
+
+float_instruction(EA):-
+	instruction_get_operation(EA,Operation),
+	float_operation(Operation).
 
 
 	
@@ -794,7 +684,7 @@ string(Beg,End+1):-
 string_candidate(EA,EA):-
     labeled_data(EA),
     !float_data(EA),
-    !pointer(EA,_),
+    !symbolic_data(EA,_),
     data_byte(EA,Byte),
     printable_char(Byte).
 
@@ -806,6 +696,34 @@ string_candidate(EA+1,Base):-
     
 
     
+.decl jump_operation(n:symbol)
+
+jump_operation("JCXZ").
+jump_operation("JECXZ").
+jump_operation("JRCXZ").
+jump_operation("JO").
+jump_operation("JNO").
+jump_operation("JB").
+jump_operation("JNB").
+jump_operation("JZ").
+jump_operation("JNZ").
+jump_operation("JNA").	
+jump_operation("JA").
+jump_operation("JS").
+jump_operation("JNS").
+jump_operation("JP").
+jump_operation("JNP").
+jump_operation("JL").
+jump_operation("JGE").
+jump_operation("JLE").
+jump_operation("JG").
+jump_operation("JC").
+jump_operation("JAE").
+jump_operation("JE").
+jump_operation("JNE").
+jump_operation("JBE").
+jump_operation("JNBE").
+jump_operation("JMP").
 
 .decl printable_char(n:number)
 
@@ -910,26 +828,57 @@ printable_char(0x7C).
 printable_char(0x7D).
 printable_char(0x7E).
 
+.decl float_operation(operation:symbol)
 
-////////////////////////////////////////////////////////////////////////////
-// detect references  to libraries (calls to plt)
-.decl plt_reference(ea:address, function:symbol)
-.output plt_reference
 
-plt_reference(EA,Function):-
-	likely_ea_final(EA,_),
-	instruction_get_op(EA,1,Op),
-	op_immediate(Op,Dest),
-	section(".plt",Size,Beg),
-	Dest<Beg+Size,
-	Dest>=Beg,
-	pc_relative_jump(Dest,Got_entry),
-	relocation(Got_entry,Function,_).
+float_operation("MOVSS").
+float_operation("MOVSD").
+// am I missing more?
+float_operation("MOVSD2").
 
-plt_reference(EA,Function):-
-	pointer(EA,Dest),
-	section(".plt",Size,Beg),
-	Dest<Beg+Size,
-	Dest>=Beg,
-	pc_relative_jump(Dest,Got_entry),
-	relocation(Got_entry,Function,_).
+float_operation("MOVUPS").
+float_operation("MOVUPD").
+float_operation("MOVAPS").
+float_operation("MOVAPD").
+
+float_operation("ADDSS").
+float_operation("ADDSD").
+float_operation("ADDPS").
+float_operation("ADDPD").
+
+float_operation("SUBSS").
+float_operation("SUBSD").
+float_operation("SUBPS").
+float_operation("SUBPD").
+
+float_operation("MULSS").
+float_operation("MULSD").
+float_operation("MULPS").
+float_operation("MULPD").
+
+float_operation("DIVSS").
+float_operation("DIVSD").
+float_operation("DIVPS").
+float_operation("DIVPD").
+
+float_operation("MINSS").
+float_operation("MINSD").
+float_operation("MINPS").
+float_operation("MINPD").
+
+float_operation("MAXSS").
+float_operation("MAXSD").
+float_operation("MAXPS").
+float_operation("MAXPD").
+
+
+float_operation("ROUNDSS").
+float_operation("ROUNDSD").
+float_operation("ROUNDPS").
+float_operation("ROUNDPD").
+
+float_operation("SQRTSS").
+float_operation("SQRTSD").
+float_operation("SQRTPS").
+float_operation("SQRTPD").
+

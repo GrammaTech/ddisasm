@@ -5,6 +5,7 @@ valid_option('-hints').
 valid_option('-debug').
 valid_option('-debug_all').
 valid_option('-asm').
+valid_option('-no_print').
 
 sections([
 		%	'.eh_frame',
@@ -52,7 +53,7 @@ disasm_binary([File|Args]):-
     decode_sections(File,Dir2),
     format('Calling souffle~n',[]),
     call_souffle(Dir2),
-    (option(no_print)->
+    (option('-no_print')->
 	 true
      ;
      format('Collecting results and printing~n',[]),
@@ -105,13 +106,13 @@ result_descriptors([
 			  result(data_byte,2,'.facts'),
 
 			  result(direct_jump,2,'.csv'),	
-			  result(reg_jump,1,'.csv'),
-			  result(indirect_jump,1,'.csv'),
+			%  result(reg_jump,1,'.csv'),
+			%  result(indirect_jump,1,'.csv'),
 			  result(pc_relative_jump,2,'.csv'),
 			  
 			  result(direct_call,2,'.csv'),
-			  result(reg_call,1,'.csv'),
-			  result(indirect_call,1,'.csv'),
+			%  result(reg_call,1,'.csv'),
+			%  result(indirect_call,1,'.csv'),
 			  result(pc_relative_call,2,'.csv'),
 
 			  result(plt_reference,2,'.csv'),
@@ -122,14 +123,14 @@ result_descriptors([
 			  named_result(chunk_overlap,'chunk_overlap2',2,'.csv'),
 
 			  result(function_symbol,2,'.csv'),
-			 % result(ambiguous_function_symbol,1,'.csv'),
+			  result(ambiguous_symbol,1,'.csv'),
 			  result(chunk_start,1,'.csv'),
 			  result(discarded_chunk,1,'.csv'),
 
 			  result(symbolic_operand,2,'.csv'),
 			  result(labeled_data,1,'.csv'),
 			  result(float_data,1,'.csv'),
-			  result(pointer,2,'.csv'),
+			  result(symbolic_data,2,'.csv'),
 			  result(string,2,'.csv'),
 
 			  result(bss_data,1,'.csv')
@@ -159,7 +160,7 @@ result_descriptors([
 :-dynamic likely_ea/2.
 :-dynamic remaining_ea/1.
 :-dynamic function_symbol/2.
-%:-dynamic ambiguous_function_symbol/2.
+:-dynamic ambiguous_symbol/1.
 
 :-dynamic chunk_start/1.
 :-dynamic chunk_overlap/2.
@@ -168,7 +169,7 @@ result_descriptors([
 :-dynamic symbolic_operand/2.
 :-dynamic labeled_data/1.
 :-dynamic float_data/1.
-:-dynamic pointer/2.
+:-dynamic symbolic_data/2.
 :-dynamic string/2.
 
 :-dynamic bss_data/1.
@@ -287,19 +288,19 @@ get_data(Data_groups):-
 group_data([],[]).
 
 group_data([data_byte(EA,_)|Rest],[data_group(EA,plt_ref,Function)|Groups]):-
-    pointer(EA,_Group_content),
+    symbolic_data(EA,_Group_content),
     plt_reference(EA,Function),!,
     split_at(7,Rest,_,Rest2),
     group_data(Rest2,Groups).
 
 group_data([data_byte(EA,_)|Rest],[data_group(EA,labeled_pointer,Group_content)|Groups]):-
-    pointer(EA,Group_content),
+    symbolic_data(EA,Group_content),
     labeled_data(EA),!,
     split_at(7,Rest,_,Rest2),
     group_data(Rest2,Groups).
 
 group_data([data_byte(EA,_)|Rest],[data_group(EA,pointer,Group_content)|Groups]):-
-    pointer(EA,Group_content),!,
+    symbolic_data(EA,Group_content),!,
     split_at(7,Rest,_,Rest2),
     group_data(Rest2,Groups).
 
@@ -527,12 +528,17 @@ print_function_header(EA):-
 
 print_function_header(_).
 
-is_function(EA,'main'):-
-    function_symbol(EA,'main').
+function_complete_name(EA,Name_complete):-
+  function_symbol(EA,Name),
+  (ambiguous_symbol(Name)->
+	format(string(Name_complete),'~p_~16R',[Name,EA])
+    ;
+    Name_complete=Name
+  ).
+
 is_function(EA,Name_complete):-
-    function_symbol(EA,Name),
-    %symbol names do not have to be unique!
-    format(string(Name_complete),'~p_~16R',[Name,EA]).
+    function_complete_name(EA,Name_complete).
+
 is_function(EA,Funtion_name):-
     direct_call(_,EA),
     atom_concat('unknown_function_',EA,Funtion_name).
@@ -611,16 +617,16 @@ pp_operand_list([Op|Ops],EA,N,[Op_pretty|Pretty_ops]):-
 pp_operand(reg(Name),_,_,Name2):-
     adapt_register(Name,Name2).
 
-pp_operand(immediate(_Num),EA,1,Name):-
-    plt_reference(EA,Name),!.
+pp_operand(immediate(_Num),EA,1,Name_complete):-
+    plt_reference(EA,Name),!,
+    format(string(Name_complete),'OFFSET ~p',[Name]).
 
 
 
 pp_operand(immediate(_Num),EA,_N,Name_complete):-
     direct_call(EA,Dest),
-    function_symbol(Dest,Name),!,
-    %symbol names do not have to be unique!
-    format(string(Name_complete),'~p_~16R',[Name,Dest]).
+    function_complete_name(Dest,Name_complete).
+ 
 
 % special case for mov from symbolic
 pp_operand(immediate(Num),EA,1,Num_hex):-
@@ -659,10 +665,16 @@ pp_operand(indirect('NullSReg','RIP','NullReg64',1,Offset,_,Size),EA,N,PP):-
     ).
 
 pp_operand(indirect('NullSReg','NullReg64','NullReg64',1,Offset,_,Size),EA,N,PP):-
-    get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
     get_size_name(Size,Name),
-    Term=..[PosNeg,Offset1],
-    format(atom(PP),'~p ~p',[Name,[Term]]).
+    %
+    (get_global_symbol_name(Offset,Name_symbol)->
+	 format(atom(PP),'~p [~p]',[Name,Name_symbol])
+     ;
+     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
+     Term=..[PosNeg,Offset1],
+     format(atom(PP),'~p ~p',[Name,[Term]])
+    ).
+  
 
 pp_operand(indirect('NullSReg',Reg,'NullReg64',1,Offset,_,Size),EA,N,PP):-
     adapt_register(Reg,Reg_adapted),
@@ -815,7 +827,7 @@ generate_hints(Dir):-
 	    (
 		labeled_data(Data_ea)
 	     ;
-	     pointer(Data_ea,_)
+	     symbolic_data(Data_ea,_)
 	    )
 	    ,Data_eas),
     maplist(print_data_ea(S),Data_eas),

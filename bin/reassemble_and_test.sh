@@ -44,7 +44,7 @@ if !( make clean -C $dir &>/dev/null && make -C $dir &>/dev/null); then
 fi
 
 printf "\n\n Disasembling $dir/$exe into $dir/$exe.s"
-if !(./disasm "$dir/$exe" -asm > "$dir/$exe.s"); then
+if !(time(./disasm "$dir/$exe" -asm > "$dir/$exe.s")); then
     printf "\n Disassembly failed\n"
     exit 1
 fi

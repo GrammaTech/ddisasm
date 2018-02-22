@@ -19,7 +19,7 @@
 #include <sstream>
 #include <fstream>
 #include <string>
-#include <algorithm>
+
 
 //---------------------
 // VSA_DLL_DEP HACK!!!
@@ -103,22 +103,21 @@ int main(int argc, char** argv) {
     elf.print_relocations_to_file(directory+"relocation.facts");
     Dl_decoder decoder;
 
-    uint64_t min_address=UINTMAX_MAX;
-    uint64_t max_address=0;
+
     for(auto section_name:sections){
         int64_t size;
         uint64_t address;
         char* buff=elf.get_section(section_name,size,address);
         if(buff!=nullptr){
             cout<<"Decoding section "<<section_name<<" of size "<<size <<endl;
-            min_address=min(min_address,address);
-            max_address=max(max_address,address+size);
             decoder.decode_section(buff,size,address);
             delete[] buff;
         }else
             cerr<<"Section "<<section_name<<" not found"<<endl;
 
     }
+    uint64_t min_address=elf.get_min_address();
+    uint64_t max_address=elf.get_max_address();
     for(auto section_name:data_sections){
         int64_t size;
         uint64_t address;
@@ -139,7 +138,7 @@ int main(int argc, char** argv) {
     instructions_file.close();
 
     cout<<"Saving data "<<endl;
-    ofstream data_file(directory+"data_address.facts",filemask);
+    ofstream data_file(directory+"address_in_data.facts",filemask);
     decoder.print_data(data_file);
     data_file.close();
 
