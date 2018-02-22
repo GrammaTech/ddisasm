@@ -42,6 +42,8 @@ public:
 	~Elf_reader();
 
 	bool is_valid();
+	uint64_t get_max_address();
+	uint64_t get_min_address();
 	void print_sections(std::ostream&);
 	bool print_sections_to_file(const std::string& filename);
 	void add_sections_to_souffle(souffle::Relation* rel);

@@ -26,7 +26,7 @@ void Dl_decoder::decode_section(char* buf,uint64_t size,int64_t ea){
         } else {
             Datalog_visitor_x64 visitor(ea,static_cast<long>(nbytes_decoded),&op_dict);
             instr->accept(visitor);
-            instructions.push_back(visitor.get_instruction());
+            instructions.push_back(move(visitor.get_instruction()));
         }
 
         ++ea;
@@ -48,7 +48,7 @@ void Dl_decoder::store_data_section(char* buf,uint64_t size,int64_t ea,uint64_t 
         data_bytes.push_back(Dl_data<unsigned char>(ea,content_byte));
 
         //store the address
-        if(size>8 ){
+        if(size>=8 ){
         uint64_t content=*((int64_t*)buf);
         if (can_be_address(content,min_address,max_address))
             data.push_back(Dl_data<int64_t>(ea,content));

@@ -237,6 +237,14 @@ void Datalog_visitor_x64::visit(const RTG::CRegDirect32 * const n)
 {
     visitRegDirect<RTG::CRegDirect32>(n);
 }
+void Datalog_visitor_x64::visit(const RTG::DRegDirect64 * const n)
+{
+    visitRegDirect<RTG::DRegDirect64>(n);
+}
+void Datalog_visitor_x64::visit(const RTG::DRegDirect32 * const n)
+{
+    visitRegDirect<RTG::DRegDirect32>(n);
+}
 void Datalog_visitor_x64::visit(const RTG::Float_RegDirect * const n)
 {
     visitRegDirect<RTG::Float_RegDirect>(n);

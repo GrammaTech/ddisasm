@@ -8,6 +8,7 @@
 #include "Elf_reader.h"
 #include <cstring>
 #include <iostream>
+#include <algorithm>
 using namespace std;
 
 Elf_reader::Elf_reader(string filename):
@@ -311,6 +312,24 @@ int Elf_reader::get_section_index(const string& name){
 			return i;
 	}
 	return -1;
+}
+
+uint64_t Elf_reader::get_min_address(){
+    uint64_t min_address=UINTMAX_MAX;
+    for(auto section: sections){
+        if (section.sh_type==SHT_PROGBITS || section.sh_type==SHT_NOBITS)
+            min_address=min(min_address,section.sh_addr);
+	}
+	return min_address;
+}
+uint64_t Elf_reader::get_max_address(){
+    uint64_t max_address=0;
+	for(auto section: sections){
+	    if (section.sh_type==SHT_PROGBITS || section.sh_type==SHT_NOBITS)
+	        max_address=max(max_address,section.sh_addr+section.sh_size);
+
+	}
+	return max_address;
 }
 
 
