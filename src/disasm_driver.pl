@@ -420,13 +420,13 @@ pp_data(data_group(EA,plt_ref,Function)):-
 pp_data(data_group(EA,pointer,Content)):-
     print_section_header(EA),
     print_ea(EA),
-    format('.quad L_~16R~n',[Content]).
+    format('.quad .L_~16R~n',[Content]).
      
 pp_data(data_group(EA,labeled_pointer,Content)):-
     print_section_header(EA),
     print_label(EA),
     print_ea(EA),
-    format('.quad L_~16R~n',[Content]).
+    format('.quad .L_~16R~n',[Content]).
    
 pp_data(data_group(EA,float,Content)):-
     print_section_header(EA),
@@ -465,7 +465,7 @@ print_label(EA):-
      ;
      true
     ),
-     format('L_~16R:~n',[EA]).
+     format('.L_~16R:~n',[EA]).
 
 
 
@@ -476,10 +476,10 @@ print_label(EA):-
 %% pp_bss_data(variable(Start,Size)):-
 %%     get_global_symbol_name(Start,Name),!,
 %%     format('~p:~n',[Name]),
-%%     format('.comm L_~16R, ~p ~n',[Start,Size]).
+%%     format('.comm .L_~16R, ~p ~n',[Start,Size]).
 
 pp_bss_data(variable(Start,Size)):-
-    format('L_~16R: .zero  ~p ~n',[Start,Size]).
+    format('.L_~16R: .zero  ~p ~n',[Start,Size]).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 pp_chunk(EA_chunk-chunk(_List)):-
@@ -544,9 +544,9 @@ function_complete_name(EA,Name_complete):-
 is_function(EA,Name_complete):-
     function_complete_name(EA,Name_complete).
 
-is_function(EA,Funtion_name):-
-    direct_call(_,EA),
-    atom_concat('unknown_function_',EA,Funtion_name).
+%is_function(EA,Funtion_name):-
+%    direct_call(_,EA),
+%    atom_concat('unknown_function_',EA,Funtion_name).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -637,11 +637,11 @@ pp_operand(immediate(_Num),EA,_N,Name_complete):-
 pp_operand(immediate(Num),EA,1,Num_hex):-
     symbolic_operand(EA,1),!,
   %  instruction(EA,_,'MOV',_,_,_),!,
-    format(string(Num_hex),'OFFSET L_~16R',[Num]).
+    format(string(Num_hex),'OFFSET .L_~16R',[Num]).
 
 pp_operand(immediate(Num),EA,N,Num_hex):-
     symbolic_operand(EA,N),!,
-    format(string(Num_hex),'L_~16R',[Num]).
+    format(string(Num_hex),'.L_~16R',[Num]).
 
 
 
@@ -664,9 +664,9 @@ pp_operand(indirect('NullSReg','RIP','NullReg64',1,Offset,_,Size),EA,N,PP):-
     instruction(EA,Size_instr,_,_,_,_),
     Address is EA+Offset+Size_instr,
     (get_global_symbol_name(Address,Name_symbol)->
-	 format(atom(PP),'~p [~p]',[Name,Name_symbol])
+	 format(atom(PP),'~p ~p[rip]',[Name,Name_symbol])
      ;
-	 format(atom(PP),'~p [L_~16R]',[Name,Address])
+	 format(atom(PP),'~p .L_~16R[rip]',[Name,Address])
     ).
 
 pp_operand(indirect('NullSReg','NullReg64','NullReg64',1,Offset,_,Size),EA,N,PP):-
@@ -722,7 +722,7 @@ pp_operand(indirect(SReg,'NullReg64','NullReg64',1,Offset,_,Size),EA,N,PP):-
 
 get_offset_and_sign(Offset,EA,N,Offset1,'+'):-
     symbolic_operand(EA,N),!,
-    format(atom(Offset1),'L_~16R',[Offset]).
+    format(atom(Offset1),'.L_~16R',[Offset]).
 get_offset_and_sign(Offset,_EA,_N,Offset1,'-'):-
     Offset<0,!,
     Offset1 is 0-Offset.
