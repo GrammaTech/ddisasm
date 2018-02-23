@@ -701,8 +701,8 @@ string_candidate(EA+1,Base):-
 .decl main_function(ea:address)
 .output main_function
 
-//main_function(EA):-
-//	function_symbol(EA,"main").
+main_function(EA):-
+	function_symbol(EA,"main").
 	
 main_function(Main_location):-
 	!function_symbol(Main_location,"main"),
