@@ -8,4 +8,5 @@
 ./reassemble_and_test.sh ../examples/ex_fprintf/ ex
 ./reassemble_and_test.sh ../examples/ex_noreturn/ ex
 ./reassemble_and_test.sh ../examples/ex_switch/ ex
+./reassemble_and_test.sh ../examples/ex_confusing_data ex
 
