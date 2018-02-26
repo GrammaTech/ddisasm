@@ -1,0 +1,100 @@
+.comp traverse_code {
+
+// INPUTS
+// these are the initial ea considered
+.decl possible_ea(a:address)
+
+// the initial targets to be considered
+.decl possible_target(ea:address)
+
+// the block limits to be considered
+.decl block_limit(ea:address)
+
+
+//COMPUTED
+// propagate from possible targets forward
+.decl likely_ea(ea:address,chunk_head:address)
+
+likely_ea(EA,EA):-
+	possible_target(EA),
+	possible_ea(EA).
+//same block
+likely_ea(EA,Head):-
+	likely_ea(EA2,Start),
+	may_fallthrough(EA2,EA),
+	(
+	block_limit(EA),
+	Head=EA
+	;
+	!block_limit(EA),
+	Head=Start
+	),
+	possible_ea(EA).
+
+
+// forbid overlaps with likely_ea instructions
+// grow the initial invalid set 
+.decl overlap(ea_overlap:address,ea_likely:address)
+
+
+// Compute EAs that overlap with EAs of likely instuctions
+overlap(EA2+1,EA2):-
+	likely_ea(EA2,_),
+	next(EA2,End),
+	EA2+1 < End.
+overlap(EA+1,EA2):-
+	overlap(EA,EA2),
+	next(EA2,End),
+	EA+1 < End.
+
+.decl invalid(ea:address)
+
+invalid(EA):-
+	invalid_op_code(EA).
+invalid(EA):-
+	(
+	direct_jump(EA,Not_code)
+	;
+	direct_call(EA,Not_code)
+	),
+	!possible_ea(Not_code).
+	
+
+invalid(EA):-
+	possible_ea(EA),
+	(
+	// the starting point of EA is in the middle of a likely instruction
+	overlap(EA,Ini)
+	;
+	// the ending point of EA is in the middle of a likely instruction
+	next(EA,EA_end),
+	overlap(EA_end,Ini)
+	),
+	// (and it is not itself likely)
+	!likely_ea(EA,_).
+
+//propagate the invalid instructions backward until ret or jmp (encoded in must_fallthrough)
+// propagate through direct jumps and calls
+
+invalid(From):-
+	invalid(To),
+	(
+		must_fallthrough(From,To)
+	;
+		direct_jump(From,To)
+	;
+		direct_call(From,To)
+	;
+		pc_relative_jump(From,To)
+	;
+		pc_relative_call(From,To)
+	).
+
+
+.decl remaining_ea(ea:address)
+
+
+remaining_ea(EA):-
+	possible_ea(EA),
+	!invalid(EA).
+}

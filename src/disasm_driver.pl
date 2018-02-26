@@ -90,7 +90,7 @@ collect_section_args(Arg,Name,Acc_sec,Acc_sec2):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 call_souffle(Dir):-
     %souffle souffle_rules.pl -I ../examples/bzip/
-    atomic_list_concat(['souffle ../src/souffle_rules.dl  -F ',Dir,' -D ',Dir,' -p ',Dir,'/profile'],Cmd),
+    atomic_list_concat(['souffle ../src/datalog/souffle_rules.dl  -F ',Dir,' -D ',Dir,' -p ',Dir,'/profile'],Cmd),
     time(shell(Cmd)).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -134,7 +134,11 @@ result_descriptors([
 			  result(symbolic_data,2,'.csv'),
 			  result(string,2,'.csv'),
 
+			  
 			  result(bss_data,1,'.csv')
+
+		%	  result(def_used_size,4,'.csv'),
+		%	  result(labeled_data_size,2,'.csv')
 		      ]).
 
 :-dynamic symbol/5.
@@ -175,6 +179,9 @@ result_descriptors([
 :-dynamic string/2.
 
 :-dynamic bss_data/1.
+
+:-dynamic def_used_size/4.
+:-dynamic labeled_data_size/2.
 
 collect_results(Dir,results(Results)):-
     result_descriptors(Descriptors),
@@ -229,7 +236,19 @@ print_header:-
 .intel_syntax noprefix
 .globl	main
 .type	main, @function
-.text ~n',[]).
+.text ~n',[])
+    .
+% introduce some displacement to fail as soon as we make any mistake (for developing)
+%%      format('
+%% nop
+%% nop
+%% nop
+%% nop
+%% nop
+%% nop
+%% nop
+%% ',[]).
+    
 print_header.
 
 
@@ -465,7 +484,13 @@ print_label(EA):-
      ;
      true
     ),
-     format('.L_~16R:~n',[EA]).
+    format('.L_~16R:~n',[EA]),
+    (option('-debug')->
+	 get_comments(EA,Comments),
+	 print_comments(Comments),nl
+     ;
+     true
+    ).
 
 
 
@@ -817,6 +842,21 @@ comment(EA,pc_relative_jump(Dest_hex)):-
     pc_relative_jump(EA,Dest),
     format(atom(Dest_hex),'~16R',[Dest]).
 
+comment(EA,used(PP_tuples)):-
+    findall((EA_used,Index,Size),
+	    def_used_size(EA,EA_used,Index,Size),
+	    Tuples),
+    Tuples\=[],
+    maplist(pp_eaIndex_tuple,Tuples,PP_tuples).
+
+comment(EA,sizes(Sizes)):-
+    findall(Size,
+	    labeled_data_size(EA,Size),
+	    Sizes),
+    Sizes\=[].
+
+pp_eaIndex_tuple((EA,Index,Size),(EA_hex,Index,Size)):-
+    format(atom(EA_hex),'~16R',[EA]).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 generate_hints(Dir):-
     option('-hints'),!,
