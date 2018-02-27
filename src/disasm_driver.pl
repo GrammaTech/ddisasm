@@ -135,10 +135,10 @@ result_descriptors([
 			  result(string,2,'.csv'),
 
 			  
-			  result(bss_data,1,'.csv')
-
-		%	  result(def_used_size,4,'.csv'),
-		%	  result(labeled_data_size,2,'.csv')
+			  result(bss_data,1,'.csv'),
+			  result(data_label,2,'.csv'),
+			  result(used_immediate,5,'.csv'),
+			  result(labeled_data_access,3,'.csv')
 		      ]).
 
 :-dynamic symbol/5.
@@ -180,8 +180,9 @@ result_descriptors([
 
 :-dynamic bss_data/1.
 
-:-dynamic def_used_size/4.
-:-dynamic labeled_data_size/2.
+:-dynamic used_immediate/5.
+:-dynamic labeled_data_access/3.
+:-dynamic data_label/2.
 
 collect_results(Dir,results(Results)):-
     result_descriptors(Descriptors),
@@ -439,7 +440,13 @@ pp_data(data_group(EA,plt_ref,Function)):-
 pp_data(data_group(EA,pointer,Content)):-
     print_section_header(EA),
     print_ea(EA),
-    format('.quad .L_~16R~n',[Content]).
+    format('.quad .L_~16R~n',[Content]),
+   (option('-debug')->
+   	 get_comments(EA,Comments),
+   	 print_comments(Comments),nl
+     ;
+     true
+     ).
      
 pp_data(data_group(EA,labeled_pointer,Content)):-
     print_section_header(EA),
@@ -485,12 +492,12 @@ print_label(EA):-
      true
     ),
     format('.L_~16R:~n',[EA]),
-    (option('-debug')->
-	 get_comments(EA,Comments),
-	 print_comments(Comments),nl
+     (option('-debug')->
+   	 get_comments(EA,Comments),
+   	 print_comments(Comments),nl
      ;
      true
-    ).
+     ).
 
 
 
@@ -842,18 +849,28 @@ comment(EA,pc_relative_jump(Dest_hex)):-
     pc_relative_jump(EA,Dest),
     format(atom(Dest_hex),'~16R',[Dest]).
 
-comment(EA,used(PP_tuples)):-
-    findall((EA_used,Index,Size),
-	    def_used_size(EA,EA_used,Index,Size),
+comment(EA,used(Tuples)):-
+    findall((Size,Multiplier),
+	    used_immediate(EA,_,_,Size,Multiplier),
 	    Tuples),
-    Tuples\=[],
-    maplist(pp_eaIndex_tuple,Tuples,PP_tuples).
+    Tuples\=[].
+
+  %  maplist(pp_eaIndex_tuple,Tuples,PP_tuples).
 
 comment(EA,sizes(Sizes)):-
-    findall(Size,
-	    labeled_data_size(EA,Size),
+    findall((Size,Mult),
+	    labeled_data_access(EA,Size,Mult),
 	    Sizes),
     Sizes\=[].
+
+comment(EA,labels(Refs_hex)):-
+     findall(Ref,
+	    data_label(EA,Ref),
+	    Refs),
+     maplist(pp_to_hex,Refs,Refs_hex).
+
+pp_to_hex(EA,EA_hex):-
+    format(atom(EA_hex),'~16R',[EA]).
 
 pp_eaIndex_tuple((EA,Index,Size),(EA_hex,Index,Size)):-
     format(atom(EA_hex),'~16R',[EA]).

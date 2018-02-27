@@ -37,6 +37,23 @@ mov(EA):-
 	contains("MOV",Operation).	
 	
 
+.decl instruction_get_dest_op(ea:address,index:number,op:operand_code)
+
+instruction_get_dest_op(EA,Index,Op):-
+	(
+	instruction(EA,_,_,_,Op,0),Op!=0,Index=2
+	;
+	instruction(EA,_,_,_,_,Op),Op!=0,Index=3
+	).
+.decl instruction_get_src_op(ea:address,Index:operand_index,op:operand_code)
+
+instruction_get_src_op(EA,Index,Op):-
+	(
+	instruction(EA,_,_,Op,_,_),Index=1
+	;
+	instruction(EA,_,_,_,Op,Op3),Op3!=0,Index=2
+	).
+	
 // limit the registers that are tracked
 // and transform the names to the largest version
 .decl track_register(Reg32:symbol,Reg64:symbol)
@@ -61,22 +78,7 @@ local_next(EA,EA_next):-
 	likely_ea_final(EA,_),
 	direct_jump(EA,EA_next).
 
-.decl instruction_get_dest_op(ea:address,index:number,op:operand_code)
 
-instruction_get_dest_op(EA,Index,Op):-
-	(
-	instruction(EA,_,_,_,Op,0),Op!=0,Index=2
-	;
-	instruction(EA,_,_,_,_,Op),Op!=0,Index=3
-	).
-.decl instruction_get_src_op(ea:address,Index:operand_index,op:operand_code)
-
-instruction_get_src_op(EA,Index,Op):-
-	(
-	instruction(EA,_,_,Op,_,_),Index=1
-	;
-	instruction(EA,_,_,_,Op,Op3),Op3!=0,Index=2
-	).	
 
 .decl op_contains_reg(op:operand_code,reg:register)
 
@@ -115,10 +117,13 @@ used_local(EA,Tracked_reg,EA,Index):-
 used_local(EA,Tracked_reg,EA,Index):-
 	likely_ea_final(EA,_),
 	instruction_get_dest_op(EA,Index,Op),
-	!mov(EA),
 	op_contains_reg(Op,Reg),
+	(
+	  !mov(EA)
+	;
+	  !op_regdirect(Op,Reg)
+	),
 	track_register(Reg,Tracked_reg).	
-
 
 	
 //top case
@@ -175,83 +180,137 @@ def_used(EA_def,EA_used,Index):-
 	local_next(EA_def,EA_next),
 	used(EA_next,Reg,EA_used,Index).
 
-.decl def_used_size(ea_def:address,ea_used:address,index_used:operand_index,size:number)
-//.output def_used_size
 
-def_used_size(EA_def,EA_used,Index,Size):-
-	def_used(EA_def,EA_used,Index),
-	instruction_get_op(EA_used,Index,Op_used),
-	!op_indirect(Op_used,_,_,_,_,_,_,_),
-	Size=0.
-	
-def_used_size(EA_def,EA_used,Index,Size):-
-	def_used(EA_def,EA_used,Index),
-	instruction_get_op(EA_used,Index,Op_used),
-	op_indirect(Op_used,_,_,_,_,_,_,Size).
 
+
+
+.decl used_immediate(EA:address,Index:operand_index,Dest:address,Size:number,Multiplier:number)
+.output used_immediate
+//untracked register
+used_immediate(EA,Index,Dest,0,0):-
+	likely_ea_final(EA,_),
+	instruction_get_op(EA,Index,Op),
+	op_immediate(Op,Dest),
+	!def(EA,_).
+
+// unknown use
+used_immediate(EA,Index,Dest,0,0):-
+	likely_ea_final(EA,_),
+	instruction_get_op(EA,Index,Op),
+	op_immediate(Op,Dest),
+	(
+	def_used(EA,EA_used,0)
+	;
+	def_used(EA,EA_used,Index_used),
+	instruction_get_op(EA_used,Index_used,Op_used),
+	!op_indirect(Op_used,_,_,_,_,_,_,_)
+	).
+// used to access memory but not as multiplier
+used_immediate(EA,Index,Dest+Offset,0,Size):-
+	likely_ea_final(EA,_),
+	instruction_get_op(EA,Index,Op),
+	op_immediate(Op,Dest),
+	def(EA,Defined_reg),
 	
+	def_used(EA,EA_used,Index_used),
+	instruction_get_op(EA_used,Index_used,Op_used),
+	op_indirect(Op_used,_,Defined_reg,"NullReg64",_,Offset,_,Size),
+	// heuristic
+	Dest>Offset.
+used_immediate(EA,Index,Dest+Offset,Multiplier,Size):-
+	likely_ea_final(EA,_),
+	instruction_get_op(EA,Index,Op),
+	op_immediate(Op,Dest),
+	def(EA,Defined_reg),
+	
+	def_used(EA,EA_used,Index_used),
+	instruction_get_op(EA_used,Index_used,Op_used),
+	op_indirect(Op_used,_,Defined_reg,Reg_mult,Multiplier,Offset,_,Size),
+	// heuristic
+	Dest>Offset,
+	Reg_mult!="NullReg64".
+	
+// used_immediate(EA,Index,Dest+Offset,Multiplier,Size):-
+// 	likely_ea_final(EA,_),
+// 	instruction_get_op(EA,Index,Op),
+// 	op_immediate(Op,Dest),
+// 	def_used(EA,EA_used,Index_used),
+// 	instruction_get_op(EA_used,_,Op_used),
+// 	op_indirect(Op_used,"NullSReg",_,"NullReg64",1,Offset,_,Size).
+
+
 ////////////////////////////
 
-.decl symbolic_operand_candidate(ea:address,operand_index:number,dest:address,size:number)
-
-symbolic_operand_candidate(EA,Op_index,Dest,Size):-
+.decl symbolic_code_operand_candidate(ea:address,operand_index:number,
+				      dest:address,size:number,mul:number)
+.decl symbolic_data_operand_candidate(ea:address,operand_index:number,
+                                      dest:address,size:number,mul:number)
+				      
+symbolic_code_operand_candidate(EA,Op_index,Dest,Size,Multiplier):-
 	likely_ea_final(EA,_),
 	instruction_get_op(EA,Op_index,Op),
 	(
-		op_immediate(Op,Dest),
-		(
-		//the defined reg is not one of the tracked ones
-		!def(EA,_),
-		Size=0
-		;
-		//unknown use
-		def_used(EA,EA_used,0),
-		Size=0
-		;
-		// use
-		def_used_size(EA,EA_used,Index_used,Size)
-		)
+		used_immediate(EA,Op_index,Dest,Multiplier,Size)
 
 	;
-		pc_relative_operand_complete(EA,Op_index,Dest,Size)
+		pc_relative_operand_complete(EA,Op_index,Dest,Size),
+		Multiplier=1
 	;
-	// here we do not compute the real destination but the base address
-   	       op_indirect(Op,_,_,_,_,Dest,_,Size)
+
+   	       op_indirect(Op,_,_,_,Multiplier,Dest,_,Size)
 	),
-	(
-		likely_ea_final(Dest,_)
-	;
-		data_section(Name),
-		section(Name,SizeSect,Base),
-		Dest>=Base,
-		Dest<Base+SizeSect
-	).
-
-.decl labeled_data_size(EA:address,Size:number)
-//.output labeled_data_size
-
-labeled_data_size(EA,Size):-
-	symbolic_operand_candidate(_,_,EA,Size),
-	data_byte(EA,_).
+	likely_ea_final(Dest,_).
 	
+
+symbolic_data_operand_candidate(EA,Op_index,Dest,Size,Multiplier):-
+	likely_ea_final(EA,_),
+	instruction_get_op(EA,Op_index,Op),
+	(
+		used_immediate(EA,Op_index,Dest,Multiplier,Size)
+	;
+		pc_relative_operand_complete(EA,Op_index,Dest,Size),
+		Multiplier=1
+	;
+
+   	       op_indirect(Op,_,_,_,Multiplier,Dest,_,Size)
+	),
+	data_section(Name),
+	section(Name,SizeSect,Base),
+	Dest>=Base,
+	Dest<Base+SizeSect.
+
+
+
+
+	
+.decl labeled_data_access(EA:address,Size:number,Mul:number)
+.output labeled_data_access
+
+labeled_data_access(EA,Size,Multiplier):-
+	symbolic_data_operand_candidate(_,_,EA,Size,Multiplier),
+	data_byte(EA,_).
+
 // overapproximation of labels
 labeled_data(EA):-
-	labeled_data_size(EA,_).
-	
+	labeled_data_access(EA,_Size,_Multiplier).
+
 labeled_data(Val):-
 	address_in_data(_,Val),
 	data_byte(Val,_).
+///////////////////////////////////////////////////////////////////////////////////////////
+
 
 // group data according to labels
 .decl data_label(ea:address,ea_label:address)
-
+.output data_label
 data_label(EA,EA):-
 	labeled_data(EA).
 	
-data_label(EA+1,EA_label):-
+data_label(EA+Multiplier,EA_label):-
 	data_label(EA,EA_label),
-	data_byte(EA+1,_),
-	!labeled_data(EA+1).
+	labeled_data_access(EA_label,_,Multiplier),
+	data_byte(EA+Multiplier,_),
+	!labeled_data(EA+Multiplier).
 
 
 .decl address_in_data2(EA:address,Val:number)
@@ -268,28 +327,34 @@ address_in_data2(EA,Val):-
       likely_ea_final(_,Val).
 
 
-.decl label_can_contain_pointers(ea:address)
-
-label_can_contain_pointers(Label):-
+.decl address_can_contain_pointers(ea:address)
+// address accessed from recognized pattern
+address_can_contain_pointers(EA):-
+	data_label(EA,Label),
 	(
-	labeled_data_size(Label,64)
+	labeled_data_access(Label,64,_)
 	;
-	labeled_data_size(Label,0)
-	;
-	address_in_data(_,Label)
-	).   
+	labeled_data_access(Label,0,_)
+	).
+// address accessed from other pattern
+address_can_contain_pointers(EA):-
+	address_in_data2(EA,_),
+	!data_label(EA,_).
+
+address_can_contain_pointers(EA):-
+	address_in_data2(_,EA).
+	   
 
 //FIXME maybe we have to refine this
 symbolic_operand(EA,Op_index):-
-	symbolic_operand_candidate(EA,Op_index,_,_).
+	symbolic_code_operand_candidate(EA,Op_index,_,_,_).
+symbolic_operand(EA,Op_index):-
+	symbolic_data_operand_candidate(EA,Op_index,_,_,_).	
 	
-
-
 
 symbolic_data(EA,Val):-
  	address_in_data2(EA,Val),
-	data_label(EA,Label),
-	label_can_contain_pointers(Label),
+	address_can_contain_pointers(EA),
  	!labeled_data(EA+1),
 	!labeled_data(EA+2),
 	!labeled_data(EA+3),
@@ -298,13 +363,10 @@ symbolic_data(EA,Val):-
 	!labeled_data(EA+6),
 	!labeled_data(EA+7).
 
-
-
 // for bss there is no decision to make
-
 bss_data(EA):-
 	(
-	symbolic_operand_candidate(_,_,EA,_)
+	symbolic_data_operand_candidate(_,_,EA,_,_)
 	;
 	symbolic_data(_,EA)
 	),
@@ -317,7 +379,7 @@ bss_data(EA):-
 
 float_data(EA):-
 	labeled_data(EA),
-	symbolic_operand_candidate(Ref,_,EA,_),
+	symbolic_data_operand_candidate(Ref,_,EA,_,_),
 	float_instruction(Ref).
 
 .decl float_instruction(ea:address)
