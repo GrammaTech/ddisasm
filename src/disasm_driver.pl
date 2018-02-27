@@ -237,18 +237,17 @@ print_header:-
 .intel_syntax noprefix
 .globl	main
 .type	main, @function
-.text ~n',[])
-    .
+.text ~n',[]),
 % introduce some displacement to fail as soon as we make any mistake (for developing)
-%%      format('
-%% nop
-%% nop
-%% nop
-%% nop
-%% nop
-%% nop
-%% nop
-%% ',[]).
+     format('
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+',[]).
     
 print_header.
 
