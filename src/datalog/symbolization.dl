@@ -206,6 +206,18 @@ used_immediate(EA,Index,Dest,0,0):-
 	!op_indirect(Op_used,_,_,_,_,_,_,_)
 	).
 // used to access memory but not as multiplier
+
+used_immediate(EA,Index,Dest,0,Size):-
+	likely_ea_final(EA,_),
+	instruction_get_op(EA,Index,Op),
+	op_immediate(Op,Dest),
+	def(EA,Defined_reg),
+	
+	def_used(EA,EA_used,Index_used),
+	instruction_get_op(EA_used,Index_used,Op_used),
+	op_indirect(Op_used,_,Defined_reg,_,_,_,_,Size).
+
+/////////////////////////////////////////////
 used_immediate(EA,Index,Dest+Offset,0,Size):-
 	likely_ea_final(EA,_),
 	instruction_get_op(EA,Index,Op),
