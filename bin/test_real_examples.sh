@@ -18,9 +18,8 @@
 ./reassemble_and_test.sh ../real_world_examples/sed-4.2/ sed/sed
 ./reassemble_and_test.sh ../real_world_examples/tar-1.29/ src/tar
 ./reassemble_and_test.sh ../real_world_examples/flex-2.5.4/ flex
+./reassemble_and_test.sh ../real_world_examples/make-3.80/ make
 
-# almost
-#./reassemble_and_test.sh ../real_world_examples/make-3.80/ make
 
 #not even close
 #./reassemble_and_test.sh ../real_world_examples/rsync-3.0.7/ rsync

@@ -10,3 +10,4 @@
 ./reassemble_and_test.sh ../examples/ex_switch/ ex
 ./reassemble_and_test.sh ../examples/ex_confusing_data ex
 
+./reassemble_and_test.sh ../examples/ex_virtualDispatch/ ex g++
