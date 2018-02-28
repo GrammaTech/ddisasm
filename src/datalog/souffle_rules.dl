@@ -514,7 +514,6 @@ main_function(Main_location):-
 		    	},
 	next(Prev,First_call),
         likely_ea_final(Prev,_),
-	symbolic_code_operand_candidate(Prev,1,Main_location,_,_).
-
+	symbolic_code_operand_candidate(Prev,1,Main_location).
 
 

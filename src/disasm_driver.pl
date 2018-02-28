@@ -136,9 +136,10 @@ result_descriptors([
 
 			  
 			  result(bss_data,1,'.csv'),
-			  result(data_label,2,'.csv'),
-			  result(used_immediate,5,'.csv'),
-			  result(labeled_data_access,3,'.csv')
+			  result(preferred_label,2,'.csv'),
+		%	  result(used_immediate,5,'.csv'),
+			  result(data_access_pattern,3,'.csv'),
+			   result(value_reg,7,'.csv')
 		      ]).
 
 :-dynamic symbol/5.
@@ -181,8 +182,10 @@ result_descriptors([
 :-dynamic bss_data/1.
 
 :-dynamic used_immediate/5.
-:-dynamic labeled_data_access/3.
-:-dynamic data_label/2.
+:-dynamic data_access_pattern/3.
+:-dynamic preferred_label/2.
+
+:-dynamic value_reg/7.
 
 collect_results(Dir,results(Results)):-
     result_descriptors(Descriptors),
@@ -388,6 +391,9 @@ get_bss_data(Data_elements):-
 	    ,Addresses),
       group_bss_data(Addresses,Data_elements).
 
+get_bss_data([]):-
+    \+section('.bss',_,_).
+
 group_bss_data([],[]).
 group_bss_data([_Last],[]).
 group_bss_data([Start,Next|Rest],[variable(Start,Size)|Rest_vars]):-
@@ -425,6 +431,14 @@ is_in_function(EA,Name):-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+cond_print_comments(EA):-
+       (option('-debug')->
+   	 get_comments(EA,Comments),
+   	 print_comments(Comments)
+     ;
+     true
+     ),nl.
+    
 pp_data(data_group(EA,_,_)):-
     skip_data_ea(EA),!.
 pp_data(data_byte(EA,_)):-
@@ -434,38 +448,37 @@ pp_data(data_group(EA,plt_ref,Function)):-
     print_section_header(EA),
     print_label(EA),
     print_ea(EA),
-    format('.quad ~s~n',[Function]).
+    format('.quad ~s',[Function]),
+    cond_print_comments(EA).
 
 pp_data(data_group(EA,pointer,Content)):-
     print_section_header(EA),
     print_ea(EA),
-    format('.quad .L_~16R~n',[Content]),
-   (option('-debug')->
-   	 get_comments(EA,Comments),
-   	 print_comments(Comments),nl
-     ;
-     true
-     ).
+    format('.quad .L_~16R',[Content]),
+    cond_print_comments(EA).
      
 pp_data(data_group(EA,labeled_pointer,Content)):-
     print_section_header(EA),
     print_label(EA),
     print_ea(EA),
-    format('.quad .L_~16R~n',[Content]).
+    format('.quad .L_~16R',[Content]),
+    cond_print_comments(EA).
    
 pp_data(data_group(EA,float,Content)):-
     print_section_header(EA),
     print_label(EA),
     format('# float~n',[]),
     maplist(pp_data,Content).
+   
 
 pp_data(data_group(EA,string,Content)):-
     print_section_header(EA),
     print_label(EA),
     print_ea(EA),
     set_prolog_flag(character_escapes, false),
-    format('.string "~p"~n',[Content]),
-    set_prolog_flag(character_escapes, true).
+    format('.string "~p"',[Content]),
+    set_prolog_flag(character_escapes, true),
+     cond_print_comments(EA).
 
 pp_data(data_group(EA,unknown,Content)):-
     print_section_header(EA),
@@ -475,7 +488,8 @@ pp_data(data_group(EA,unknown,Content)):-
 pp_data(data_byte(EA,Content)):-
     print_section_header(EA),
     print_ea(EA),
-    format('.byte 0x~16R~n',[Content]).
+    format('.byte 0x~16R',[Content]),
+    cond_print_comments(EA).
 
 print_ea(_):-
     option('-asm'),!,
@@ -490,13 +504,7 @@ print_label(EA):-
      ;
      true
     ),
-    format('.L_~16R:~n',[EA]),
-     (option('-debug')->
-   	 get_comments(EA,Comments),
-   	 print_comments(Comments),nl
-     ;
-     true
-     ).
+    format('.L_~16R:~n',[EA]).
 
 
 
@@ -856,17 +864,33 @@ comment(EA,used(Tuples)):-
 
   %  maplist(pp_eaIndex_tuple,Tuples,PP_tuples).
 
-comment(EA,sizes(Sizes)):-
-    findall((Size,Mult),
-	    labeled_data_access(EA,Size,Mult),
-	    Sizes),
-    Sizes\=[].
+
 
 comment(EA,labels(Refs_hex)):-
      findall(Ref,
-	    data_label(EA,Ref),
+	    preferred_label(EA,Ref),
 	    Refs),
+     Refs\=[],
      maplist(pp_to_hex,Refs,Refs_hex).
+
+comment(EA,values(Values_pp)):-
+    findall(value_reg(EA,Reg,EA2,Reg2,Multiplier,Offset,Steps),
+	    value_reg(EA,Reg,EA2,Reg2,Multiplier,Offset,Steps),
+	    Values),
+    Values\=[],
+    maplist(pp_value_reg,Values,Values_pp).
+
+comment(EA,access(Values)):-
+    findall(data_access_pattern(Size,Mult),
+	    data_access_pattern(EA,Size,Mult),
+	    Values),
+    Values\=[].
+
+
+pp_value_reg(value_reg(EA,Reg,EA2,Reg2,Multiplier,Offset,Steps),
+	     value_reg(EA_hex,Reg,EA2_hex,Reg2,Multiplier,Offset,Steps)):-
+    pp_to_hex(EA,EA_hex),
+    pp_to_hex(EA2,EA2_hex).
 
 pp_to_hex(EA,EA_hex):-
     format(atom(EA_hex),'~16R',[EA]).
