@@ -34,6 +34,8 @@ if [[ $# -eq 0 || $1 == "-h" || $1 == "--help" ]]; then
 fi
 
 dir=$1
+tests=/poller/for-release/
+#tests=/poller/for-testing/
 shift
 exe=$(basename "$dir")
 suffix="_2"
@@ -53,13 +55,13 @@ if !($compiler "$dir/$exe.s" $@ -o  "$dir/$new_exe"); then
 fi
 
 printf "\n Testing of the original file\n"
-cb-test --directory $dir --cb $exe --xml_dir $dir/poller/for-release/  >/tmp/original.out
+cb-test --directory $dir --cb $exe --xml_dir $dir$tests  >/tmp/original.out
 
 cat /tmp/original.out  | grep   -e "^\# total" -e "^\# polls" >/tmp/original_summary.out
 cat /tmp/original_summary.out
 
 printf "\n Testing the new binary $new_exe \n"
-cb-test --directory $dir --cb "$new_exe" --xml_dir $dir/poller/for-release/  >/tmp/new.out
+cb-test --directory $dir --cb "$new_exe" --xml_dir $dir$tests  >/tmp/new.out
 cat /tmp/new.out | grep   -e "^\# total" -e "^\# polls" > /tmp/new_summary.out
 cat /tmp/new_summary.out
 

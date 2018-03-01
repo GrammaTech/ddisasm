@@ -467,10 +467,8 @@ address_can_contain_pointers(EA):-
 	;
 	data_access_pattern(EA_label,0,_)	
 	).
-// address accessed from other pattern
-address_can_contain_pointers(EA):-
-	address_in_data2(EA,_),
-	!preferred_label(EA,_).
+
+
 
 
 //FIXME maybe we have to refine this
@@ -483,6 +481,26 @@ symbolic_operand(EA,Op_index):-
 symbolic_data(EA,Val):-
  	address_in_data2(EA,Val),
 	address_can_contain_pointers(EA),
+ 	!labeled_data(EA+1),
+	!labeled_data(EA+2),
+	!labeled_data(EA+3),
+	!labeled_data(EA+4),
+	!labeled_data(EA+5),
+	!labeled_data(EA+6),
+	!labeled_data(EA+7).
+	
+// address accessed from other pattern
+symbolic_data(EA,Val):-
+	address_in_data2(EA,Val),
+	 !labeled_data(EA+1),
+	!labeled_data(EA+2),
+	!labeled_data(EA+3),
+	!labeled_data(EA+4),
+	!labeled_data(EA+5),
+	!labeled_data(EA+6),
+	!labeled_data(EA+7),
+	
+	!preferred_label(EA,_),
  	!preferred_label(EA+1,_),
 	!preferred_label(EA+2,_),
 	!preferred_label(EA+3,_),
