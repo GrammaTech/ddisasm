@@ -38,6 +38,8 @@ asm_skip_section('.got').
 asm_skip_section('.plt.got').
 asm_skip_section('.got.plt').
 
+asm_skip_symbol('_IO_stdin_used').
+
 
 disasm_binary([File|Args]):-
     maplist(save_option,Args),
@@ -227,9 +229,11 @@ pretty_print_results:-
     get_chunks(Chunks),
     maplist(pp_chunk, Chunks),
     get_data(Data),
+    format('.section .rodata~n',[]),
     maplist(pp_data,Data),
     get_bss_data(Uninitialized_data),
-    format('.bss~n',[]),
+    %we want to make sure we don't mess up the alignment
+    format('.bss~n .align 8~n',[]),
     maplist(pp_bss_data,Uninitialized_data).
 
 
@@ -403,8 +407,14 @@ group_bss_data([Start,Next|Rest],[variable(Start,Size)|Rest_vars]):-
 
 skip_data_ea(EA):-
     option('-asm'),
-    asm_skip_section(Section),
-    is_in_section(EA,Section).
+    (
+	asm_skip_section(Section),
+	is_in_section(EA,Section)
+     ;
+     asm_skip_symbol(Symbol),
+     is_in_symbol(EA,Symbol)
+    ).
+
 skip_ea(EA):-
     option('-asm'),
     ( asm_skip_section(Section),
@@ -413,7 +423,13 @@ skip_ea(EA):-
      asm_skip_function(Function),
      is_in_function(EA,Function)
     ).
-     
+
+is_in_symbol(EA,Name):-
+    symbol(Base,Size,_,_,Name),
+    EA>=Base,
+    End is Base+Size,
+    EA<End.
+
 is_in_section(EA,Name):-
     section(Name,Size,Base),
     EA>=Base,
