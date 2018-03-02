@@ -29,6 +29,7 @@ asm_skip_function('__do_global_dtors_aux').
 asm_skip_function('frame_dummy').
 asm_skip_function('__libc_csu_fini').
 asm_skip_function('__libc_csu_init').
+asm_skip_function('__clang_call_terminate').
 
 asm_skip_section('.comment').
 asm_skip_section('.plt').
@@ -139,9 +140,9 @@ result_descriptors([
 			  
 			  result(bss_data,1,'.csv'),
 			  result(preferred_label,2,'.csv'),
-		%	  result(used_immediate,5,'.csv'),
+			  result(def_used,3,'.csv'),
 			  result(data_access_pattern,3,'.csv'),
-			   result(value_reg,7,'.csv')
+			  result(value_reg,7,'.csv')
 		      ]).
 
 :-dynamic symbol/5.
@@ -183,10 +184,10 @@ result_descriptors([
 
 :-dynamic bss_data/1.
 
-:-dynamic used_immediate/5.
+
 :-dynamic data_access_pattern/3.
 :-dynamic preferred_label/2.
-
+:-dynamic def_used/3.
 :-dynamic value_reg/7.
 
 collect_results(Dir,results(Results)):-
@@ -237,7 +238,6 @@ pretty_print_results:-
     maplist(pp_bss_data,Uninitialized_data).
 
 
-
 print_header:-
     option('-asm'),!,
     format('
@@ -245,8 +245,10 @@ print_header:-
 .globl	main
 .type	main, @function
 .text ~n',[]),
-% introduce some displacement to fail as soon as we make any mistake (for developing)
+    % introduce some displacement to fail as soon as we make any mistake (for developing)
+    % but without messing up the alignment
      format('
+nop
 nop
 nop
 nop
@@ -260,12 +262,15 @@ print_header.
 
 
 
-get_chunks(Chunks):-
+get_chunks(Chunks_with_padding):-
     findall(Chunk,
 	    (
-	     chunk_start(Chunk),
+	     chunk_start(Chunk),Chunk\=0,
 	     \+discarded_chunk(Chunk)
 	    ),Chunk_addresses),
+    (option('-asm')->
+	 Single_instructions=[]
+     ;
     findall(Instruction,
 	    (instruction(EA,Size,Name,Opc1,Opc2,Opc3),
 	    \+likely_ea(EA,_),
@@ -274,11 +279,13 @@ get_chunks(Chunks):-
 	    get_op(Opc2,Op2),
 	    get_op(Opc3,Op3),
 	    Instruction=instruction(EA,Size,Name,Op1,Op2,Op3)
-	    ),Single_instructions),
+	    ),Single_instructions)
+    ),
      empty_assoc(Empty),
      foldl(get_chunk_content,Chunk_addresses,Empty,Map),
      foldl(accum_instruction,Single_instructions,Map,Map2),
-     assoc_to_list(Map2,Chunks).
+     assoc_to_values(Map2,Chunks),
+     adjust_padding(Chunks,Chunks_with_padding).
 
 get_chunk_content(Chunk_addr,Assoc,Assoc1):-
     findall(Instruction,
@@ -289,7 +296,13 @@ get_chunk_content(Chunk_addr,Assoc,Assoc1):-
 	     get_op(Opc3,Op3),
 	     Instruction=instruction(EA,Size,Name,Op1,Op2,Op3)
 	    ),Instructions),
-    put_assoc(Chunk_addr,Assoc,chunk(Instructions),Assoc1).
+    (Instructions=[]->
+	 End=Chunk_addr
+     ;
+     last(Instructions,instruction(EA_last,Size_last,_,_,_,_)),
+     End is EA_last+Size_last
+    ),
+    put_assoc(Chunk_addr,Assoc,chunk(Chunk_addr,End,Instructions),Assoc1).
 
 
 
@@ -306,11 +319,33 @@ get_op(N,indirect(Reg1,Reg2,Reg3,A,B,C,Size)):-
     op_indirect(N,Reg1,Reg2,Reg3,A,B,C,Size),!.
 
 
+get_beg_end(chunk(Beg,End,_),Beg,End).
+get_beg_end(instruction(Beg,Size,_,_,_,_),Beg,End):-
+    End is Beg+Size.
+
+adjust_padding([Last],[Last]).
+adjust_padding([Chunk1,Chunk2|Chunks], Final_chunks):-
+    get_beg_end(Chunk1,_Beg,End),
+    get_beg_end(Chunk2,Beg2,_End2),
+    (Beg2=End->
+	 adjust_padding([Chunk2|Chunks],Chunks_adjusted),
+	 Final_chunks=[Chunk1|Chunks_adjusted]
+     ;
+     Beg2>End->
+	 Nop=instruction(End,1,'NOP',none,none,none),
+	 adjust_padding([Nop,Chunk2|Chunks],Chunks_adjusted),
+	 Final_chunks=[Chunk1|Chunks_adjusted]
+     ;
+     Beg2<End->
+	 adjust_padding([Chunk1|Chunks],Chunks_adjusted),
+	 Final_chunks=Chunks_adjusted
+    ).
+
+
 get_data(Data_groups):-
-    findall(Data_byte,
-	    (data_byte(EA,Content),
-	     Data_byte=data_byte(EA,Content)
-	    ),Data),
+    findall(data_byte(EA,Content),
+	    data_byte(EA,Content)
+	    ,Data),
     group_data(Data,Data_groups).
 
 group_data([],[]).
@@ -399,7 +434,7 @@ get_bss_data([]):-
     \+section('.bss',_,_).
 
 group_bss_data([],[]).
-group_bss_data([_Last],[]).
+group_bss_data([Last],[variable(Last,0)]).
 group_bss_data([Start,Next|Rest],[variable(Start,Size)|Rest_vars]):-
 		   Size is Next-Start,
 		   group_bss_data([Next|Rest],Rest_vars).
@@ -465,27 +500,29 @@ pp_data(data_group(EA,plt_ref,Function)):-
     print_label(EA),
     print_ea(EA),
     format('.quad ~s',[Function]),
-    cond_print_comments(EA).
+    cond_print_comments(EA),
+    print_end_label(EA,8).
 
 pp_data(data_group(EA,pointer,Content)):-
     print_section_header(EA),
     print_ea(EA),
     format('.quad .L_~16R',[Content]),
-    cond_print_comments(EA).
+    cond_print_comments(EA),
+     print_end_label(EA,8).
      
 pp_data(data_group(EA,labeled_pointer,Content)):-
     print_section_header(EA),
     print_label(EA),
     print_ea(EA),
     format('.quad .L_~16R',[Content]),
-    cond_print_comments(EA).
+    cond_print_comments(EA),
+    print_end_label(EA,8).
    
 pp_data(data_group(EA,float,Content)):-
     print_section_header(EA),
     print_label(EA),
     format('# float~n',[]),
     maplist(pp_data,Content).
-   
 
 pp_data(data_group(EA,string,Content)):-
     print_section_header(EA),
@@ -494,7 +531,10 @@ pp_data(data_group(EA,string,Content)):-
     set_prolog_flag(character_escapes, false),
     format('.string "~p"',[Content]),
     set_prolog_flag(character_escapes, true),
-     cond_print_comments(EA).
+    cond_print_comments(EA),
+
+    get_string_length(Content,Length),
+    print_end_label(EA,Length).
 
 pp_data(data_group(EA,unknown,Content)):-
     print_section_header(EA),
@@ -505,8 +545,23 @@ pp_data(data_byte(EA,Content)):-
     print_section_header(EA),
     print_ea(EA),
     format('.byte 0x~16R',[Content]),
-    cond_print_comments(EA).
+    cond_print_comments(EA),
+    print_end_label(EA,1).
 
+print_end_label(EA,Length):-
+    EA_end is EA+Length,
+    labeled_data(EA_end),
+    \+data_byte(EA_end,_),
+    \+bss_data(EA_end),
+    format('.L_~16R:~n',[EA_end]).
+
+print_end_label(_,_).
+
+			   
+get_string_length(Content,Length1):-
+    atom_codes(Content,Codes),
+    length(Codes,Length),
+    Length1 is Length+1.% the null character
 print_ea(_):-
     option('-asm'),!,
     format('          ',[]).
@@ -533,14 +588,21 @@ print_label(EA):-
 %%     format('~p:~n',[Name]),
 %%     format('.comm .L_~16R, ~p ~n',[Start,Size]).
 
+
+pp_bss_data(variable(Start,0)):-!,
+    format('.L_~16R:  ~n',[Start]).
+
 pp_bss_data(variable(Start,Size)):-
     format('.L_~16R: .zero  ~p ~n',[Start,Size]).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-pp_chunk(EA_chunk-chunk(_List)):-
+pp_chunk(chunk(EA_chunk,_,_List)):-
+    skip_ea(EA_chunk),!.
+pp_chunk(instruction(EA_chunk,_,_,_,_,_)):-
     skip_ea(EA_chunk),!.
 
-pp_chunk(EA_chunk-chunk(List)):-
+
+pp_chunk(chunk(EA_chunk,_,List)):-
     !,
     print_section_header(EA_chunk),
     print_function_header(EA_chunk),
@@ -552,13 +614,10 @@ pp_chunk(EA_chunk-chunk(List)):-
      true),
     maplist(pp_instruction,List),nl.
 
-pp_chunk(EA_chunk-Instruction):-
-    print_section_header(EA_chunk),
-    (option('-debug_all')->
-	 pp_instruction(Instruction)
-     ;	 
-     true
-    ).
+pp_chunk(instruction(EA,Size,Operation,Op1,Op2,Op3)):-
+    print_section_header(EA),
+    pp_instruction(instruction(EA,Size,Operation,Op1,Op2,Op3)).
+    
 
 print_section_header(EA):-
     section('.text',_,EA),!,
@@ -624,6 +683,10 @@ opcode_suffix(Opcode,Suffix):-
 opcode_suffix(Opcode,Opcode).
 
 
+pp_instruction(instruction(EA,Size,'NOP',none,none,none)):-
+    repeat_n_times((print_ea(EA),format(' nop ~n',[])),Size),
+    cond_print_comments(EA).
+
 pp_instruction(instruction(EA,_Size,String_op,Op1,none,none)):-
     opcode_suffix(String_op,Op_suffix),
     member(Op_suffix,['MOVS','CMPS']),!,
@@ -631,13 +694,8 @@ pp_instruction(instruction(EA,_Size,String_op,Op1,none,none)):-
     downcase_atom(String_op,OpCode_l),
     get_op_indirect_size_suffix(Op1,Suffix),
     format(' ~p~p',[OpCode_l,Suffix]),
-    (option('-debug')->
-	 get_comments(EA,Comments),
-	 print_comments(Comments)
-     ;
-     true
-    ),
-    nl.
+    cond_print_comments(EA).
+  
 pp_instruction(instruction(EA,_Size,OpCode,Op1,Op2,Op3)):-
     print_ea(EA),
     downcase_atom(OpCode,OpCode_l),
@@ -652,18 +710,18 @@ pp_instruction(instruction(EA,_Size,OpCode,Op1,Op2,Op3)):-
      %unless there are no operands
      Pretty_ops=[]
     ),
-    (option('-debug')->
-	 get_comments(EA,Comments),
-	 print_comments(Comments)
-     ;
-     true
-    ),
-    nl.
+    cond_print_comments(EA).
+
 
 
 is_none(none).
 
-
+repeat_n_times(_Pred,0).
+repeat_n_times(Pred,N):-
+    N>0,
+    call(Pred),
+    N1 is N-1,
+    repeat_n_times(Pred,N1).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 pp_operand_list([],_EA,_N,[]).
@@ -873,8 +931,11 @@ comment(EA,pc_relative_jump(Dest_hex)):-
     format(atom(Dest_hex),'~16R',[Dest]).
 
 comment(EA,used(Tuples)):-
-    findall((Size,Multiplier),
-	    used_immediate(EA,_,_,Size,Multiplier),
+    findall((EA_used_hex,Index),
+	    (
+	    def_used(EA,EA_used,Index),
+	    pp_to_hex(EA_used,EA_used_hex)
+	    ),
 	    Tuples),
     Tuples\=[].
 
