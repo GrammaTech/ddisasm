@@ -20,6 +20,7 @@ normal=`tput sgr0`
 if [[ $# -eq 0 || $1 == "-h" || $1 == "--help" ]]; then
     printf "USAGE: ./CBC_reassemble_and_test.sh cbc_challenge_dir  [compiler_flags]
  Take a directory of a cbc challenge:
+ -build the binary with the compiler flags
  -Disassemble the binary
  -Reassemble the binary with the suffix _2
  -Run the tests on the initial binary
@@ -28,7 +29,7 @@ if [[ $# -eq 0 || $1 == "-h" || $1 == "--help" ]]; then
  The reassembly uses the 'compiler_flags' arguments
 
  Example:
- ./reasemble_and_test.sh ../real_world_examples/grep-2.5.4 src/grep -lpcre
+ ./CBC_reassemble_and_test.sh /code/cgc-cbs/cqe-challenges/CROMU_00001 -O2
 "   
     exit
 fi
@@ -40,7 +41,14 @@ shift
 exe=$(basename "$dir")
 suffix="_2"
 new_exe=$exe$suffix
-compiler="gcc"
+#compiler="gcc"
+compiler="clang"
+compiler_reassembly="gcc"
+
+main_dir=$(pwd)
+cd $dir
+build.sh $exe $compiler $@
+cd $main_dir
 
 printf "\n\n Disasembling $dir/$exe into $dir/$exe.s"
 if !(time(./disasm "$dir/$exe" -asm > "$dir/$exe.s")); then
@@ -49,7 +57,7 @@ if !(time(./disasm "$dir/$exe" -asm > "$dir/$exe.s")); then
 fi
 printf "OK\n"
 printf "\n Reassembling  $dir/$exe.s into $dir/$new_exe \n"
-if !($compiler "$dir/$exe.s" $@ -o  "$dir/$new_exe"); then
+if !($compiler_reassembly "$dir/$exe.s" -lm -o  "$dir/$new_exe"); then
     echo "Reassembly failed"
     exit 1
 fi
