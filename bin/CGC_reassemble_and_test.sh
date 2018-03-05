@@ -11,7 +11,7 @@
 # Example:
 # ./CBC_reassemble_and_test.sh /code/cgc-cbs/cqe-challenges/CROMU_00001 -lm
 #
-. /code/cgc-cbs/sourceme.sh
+#
 
 red=`tput setaf 1`
 green=`tput setaf 2`
@@ -29,7 +29,7 @@ if [[ $# -eq 0 || $1 == "-h" || $1 == "--help" ]]; then
  The reassembly uses the 'compiler_flags' arguments
 
  Example:
- ./CBC_reassemble_and_test.sh /code/cgc-cbs/cqe-challenges/CROMU_00001 -O2
+ ./CBC_reassemble_and_test.sh /code/cgc-cbs/cqe-challenges/CROMU_00001 gcc -O2
 "   
     exit
 fi
@@ -41,43 +41,42 @@ shift
 exe=$(basename "$dir")
 suffix="_2"
 new_exe=$exe$suffix
-#compiler="gcc"
-compiler="clang"
-compiler_reassembly="gcc"
+
+compiler_reassembly="g++"
 
 main_dir=$(pwd)
 cd $dir
-build.sh $exe $compiler $@
+build.sh $exe $@
 cd $main_dir
 
-printf "\n\n Disasembling $dir/$exe into $dir/$exe.s"
+printf "#Disassembling $exe into $exe.s\n"
 if !(time(./disasm "$dir/$exe" -asm > "$dir/$exe.s")); then
-    printf "\n Disassembly failed\n"
+    printf "Disassembly failed\n"
     exit 1
 fi
 printf "OK\n"
-printf "\n Reassembling  $dir/$exe.s into $dir/$new_exe \n"
+printf "# Reassembling  $exe.s into $new_exe \n"
 if !($compiler_reassembly "$dir/$exe.s" -lm -o  "$dir/$new_exe"); then
     echo "Reassembly failed"
     exit 1
 fi
 
-printf "\n Testing of the original file\n"
+printf "#Testing of the original file\n"
 cb-test --directory $dir --cb $exe --xml_dir $dir$tests  >/tmp/original.out
 
 cat /tmp/original.out  | grep   -e "^\# total" -e "^\# polls" >/tmp/original_summary.out
 cat /tmp/original_summary.out
 
-printf "\n Testing the new binary $new_exe \n"
+printf "#Testing the new binary $new_exe \n"
 cb-test --directory $dir --cb "$new_exe" --xml_dir $dir$tests  >/tmp/new.out
 cat /tmp/new.out | grep   -e "^\# total" -e "^\# polls" > /tmp/new_summary.out
 cat /tmp/new_summary.out
 
 diff=$(diff /tmp/original_summary.out  /tmp/new_summary.out)
 if [[ -z  $diff ]] ; then
-    echo "$green TEST OK $normal";
+    echo "# $green Testing SUCCEED $normal";
 else
-    echo "$red TEST FAILED $normal"
+    echo "# $red Testing FAILED $normal"
     echo "$diff"
     exit 1
 fi

@@ -1,5 +1,9 @@
-all: ex.c fun.c
-	gcc ex.c fun.c -o ex -fPIC
+CC="gcc"
+CFLAGS=
+
+
+all: ex.c 
+	$(CC) ex.c fun.c  $(CFLAGS) -fPIC -o ex 
 	@./ex > out.txt
 clean:
 	rm -f ex out.txt
@@ -7,3 +11,5 @@ clean:
 check:
 	@./ex >/tmp/res.txt
 	@ bash ./test.sh
+
+
