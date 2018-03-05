@@ -230,13 +230,61 @@ pretty_print_results:-
     get_chunks(Chunks),
     maplist(pp_chunk, Chunks),
     get_data(Data),
+    split_rodata_and_data(Data,Rodata,RWdata),
     format('.section .rodata~n',[]),
-    maplist(pp_data,Data),
+    pp_aligned_data_section(Rodata),
+   % maplist(pp_data,Data),
+    format('.section .data~n',[]),
+    pp_aligned_data_section(RWdata),
+    
     get_bss_data(Uninitialized_data),
     %we want to make sure we don't mess up the alignment
-    format('.bss~n .align 8~n',[]),
+    format('.bss~n .align 16~n',[]),
     maplist(pp_bss_data,Uninitialized_data).
 
+split_rodata_and_data(Data,Rodata,Rwdata):-
+    section('.rodata',SizeSect,Base),
+    End is Base+SizeSect,
+    split_data_in_ea(Data,End,Rodata,Rwdata).
+split_rodata_and_data(Data,[],Data):-
+    \+section('.rodata',_,_).
+
+split_data_in_ea([],_,[],[]).
+split_data_in_ea([Item|Data],EA,[Item|Rodata],Rwdata):-
+    get_item_ea(Item,EA_item),
+    EA_item<EA,
+    split_data_in_ea(Data,EA,Rodata,Rwdata).
+split_data_in_ea([Item|Data],EA,[],[Item|Data]):-
+    get_item_ea(Item,EA_item),
+    EA_item>=EA.
+
+get_item_ea(data_group(EA,_,_),EA).
+get_item_ea(data_byte(EA,_),EA).
+
+
+pp_aligned_data_section(Data_list):-
+    % get first aligned label
+    nth0(Index,Data_list,data_group(EA,_Type,_Content)),
+    Alignment is EA mod 16,!,
+    
+    
+    split_at(Index,Data_list,Data_before,Data_after),
+    maplist(pp_data,Data_before),
+    format('.align 16~n',[]),
+    format('# printing ~p extra bytes to guarantee alignment~n',[Alignment]),
+    print_x_zeros(Alignment),
+    maplist(pp_data,Data_after).
+
+%if there are no aligned labels
+pp_aligned_data_section(Data_list):-
+    maplist(pp_data,Data_list).
+
+
+print_x_zeros(0).
+print_x_zeros(N):-
+    format('.byte 0x00~n',[]),
+    N1 is N-1,
+    print_x_zeros(N1).
 
 print_header:-
     option('-asm'),!,
@@ -637,6 +685,10 @@ print_section_header(_).
 print_function_header(EA):-
     is_function(EA,Name),
     format('#----------------------------------- ~n',[]),
+    (0=:= EA mod 8 -> 
+	 format('.align 8~n',[])
+     ;
+     true),
     format('.globl ~p~n',[Name]),
     format('.type ~p, @function~n',[Name]),
     format('~p:~n',[Name]),

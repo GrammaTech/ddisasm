@@ -439,15 +439,14 @@ labeled_data(Val):-
 
 
 // group data according to labels
-.decl data_label(ea:address,ea_label:address,offset:number)
+.decl data_label(ea:address,ea_label:address,offset:number,multiplier:number)
 .output data_label
 
-data_label(EA,EA,0):-
-	data_access_pattern(EA,_Size,_Mult).
+data_label(EA,EA,0,Mult):-
+	data_access_pattern(EA,_Size,Mult).
 	
-data_label(EA+Multiplier,EA_label,EA+Multiplier-EA_label):-
-	data_label(EA,EA_label,_),
-	data_access_pattern(EA_label,_,Multiplier),
+data_label(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Multiplier):-
+	data_label(EA,EA_label,_,Multiplier),
 	data_byte(EA+Multiplier,_),
 //do not cross data access or labels	
 	!data_access_pattern(EA+Multiplier,_,_),
@@ -456,8 +455,8 @@ data_label(EA+Multiplier,EA_label,EA+Multiplier-EA_label):-
 .decl preferred_label(ea:address,ea_label:address)
 .output preferred_label
 preferred_label(EA,EA_label):-
-	Min_Offset= min Offset:{data_label(EA,_,Offset)},
-	data_label(EA,EA_label,Selected_offset),
+	Min_Offset= min Offset:{data_label(EA,_,Offset,_)},
+	data_label(EA,EA_label,Selected_offset,_),
 	Min_Offset>=Selected_offset.
 
 .decl address_in_data2(EA:address,Val:number)
