@@ -1,15 +1,21 @@
-./reassemble_and_test.sh ../examples/ex1 ex
-./reassemble_and_test.sh ../examples/ex_float ex
-./reassemble_and_test.sh ../examples/ex_getoptlong/ ex
-./reassemble_and_test.sh ../examples/ex_2modulesPIC/ ex
-./reassemble_and_test.sh ../examples/ex_stat/ ex
-./reassemble_and_test.sh ../examples/ex_unitialized_data/ ex
-./reassemble_and_test.sh ../examples/ex_struct/ ex
-./reassemble_and_test.sh ../examples/ex_fprintf/ ex
-./reassemble_and_test.sh ../examples/ex_noreturn/ ex
-./reassemble_and_test.sh ../examples/ex_switch/ ex
-./reassemble_and_test.sh ../examples/ex_confusing_data ex
+compilers=("gcc"
+	   "gcc8"
+	   "clang");
 
-./reassemble_and_test.sh ../examples/ex_virtualDispatch/ ex g++
-./reassemble_and_test.sh ../examples/ex_pointerReatribution/ ex 
-./reassemble_and_test.sh ../examples/ex_pointerReatribution2/ ex 
+optimizations=(""
+	       "-O1"
+	       "-O2"
+	       "-O3"
+	       "-Os");
+
+for file in ../examples/* ; do
+
+    for compiler in "${compilers[@]}"; do
+	export CC=$compiler
+	for optimization in  "${optimizations[@]}"; do
+	    export CFLAGS=$optimization
+	    echo "#Example $file with $compiler $optimization"
+	    ./reassemble_and_test.sh $file ex
+	done
+    done
+done

@@ -1,5 +1,9 @@
-all: ex_switch.c 
-	gcc -o ex ex_switch.c
+CC="gcc"
+CFLAGS=
+
+
+all: ex.c 
+	$(CC) ex.c  $(CFLAGS) -o ex 
 	@./ex > out.txt
 clean:
 	rm -f ex out.txt
@@ -7,4 +11,5 @@ clean:
 check:
 	@./ex >/tmp/res.txt
 	@ bash ./test.sh
+
 

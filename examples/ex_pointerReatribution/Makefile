@@ -1,5 +1,9 @@
+CC="gcc"
+CFLAGS=
+
+
 all: ex.c 
-	clang ex.c  -o ex -O1
+	$(CC) ex.c  $(CFLAGS) -o ex 
 	@./ex > out.txt
 clean:
 	rm -f ex out.txt

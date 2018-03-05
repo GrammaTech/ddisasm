@@ -43,34 +43,35 @@ if [[ $# > 0 && $1 == "g++" ]]; then
     shift
 fi
 
-printf "\n Rebuilding project $dir\n"
-if !( make clean -C $dir &>/dev/null && make -C $dir &>/dev/null); then
-    printf "\n Initial compilation failed\n"
+
+printf "# Rebuilding project $dir\n"
+if !( make clean -e -C $dir &>/dev/null  && make -e -C $dir ); then
+    printf "${red}Initial compilation failed${normal}\n"
     exit 1
 fi
 
-printf "\n\n Disasembling $dir/$exe into $dir/$exe.s"
+printf "# Disassembling $exe into $exe.s\n"
 if !(time(./disasm "$dir/$exe" -asm > "$dir/$exe.s")); then
-    printf "\n Disassembly failed\n"
+    printf "${red}Disassembly failed${normal}\n"
     exit 1
 fi
 
 printf "  OK\n"
-printf "\n Copying old binary to $dir/$exe.old\n"
+printf "Copying old binary to $dir/$exe.old\n"
 cp $dir/$exe $dir/$exe.old
-printf "\n Reassembling"
+printf "## Reassembling... "
 
 if !($compiler "$dir/$exe.s" $@ -o  "$dir/$exe"); then
-    echo "Reassembly failed"
+    echo "Reassembly failed \n"
     exit 1
 fi
 
 printf "  OK\n"
-printf "\n Testing\n"
+printf "# Testing\n"
 if !(make check -C $dir); then
-    printf "\n${red}Testing FAILED ${normal}\n"
+    printf "## ${red}Testing FAILED ${normal}\n\n"
 else
-    printf "\n${green}Testing SUCCEED ${normal}\n"
+    printf "## ${green}Testing SUCCEED ${normal}\n\n"
 fi
 
 

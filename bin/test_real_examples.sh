@@ -1,30 +1,54 @@
-./reassemble_and_test.sh ../real_world_examples/grep-2.5.4 src/grep -lpcre
-./reassemble_and_test.sh ../real_world_examples/gzip-1.2.4 gzip
-./reassemble_and_test.sh ../real_world_examples/bar-1.11.0 bar
-./reassemble_and_test.sh ../real_world_examples/conflict-6.0 conflict 
-./reassemble_and_test.sh ../real_world_examples/ed-0.2/ ed
-./reassemble_and_test.sh ../real_world_examples/ed-0.9/ ed
-./reassemble_and_test.sh ../real_world_examples/marst-2.4/ marst
-./reassemble_and_test.sh ../real_world_examples/units-1.85/ units -lm -lreadline -lncurses
 
-./reassemble_and_test.sh ../real_world_examples/doschk-1.1/ doschk
-./reassemble_and_test.sh ../real_world_examples/bool-0.2/ src/bool
+dir="../real_world_examples/"
+examples=(
+    "grep-2.5.4 src/grep -lpcre"
+    "gzip-1.2.4 gzip"
+    "bar-1.11.0 bar"
+    "conflict-6.0 conflict"
+    "ed-0.2/ ed"
+    "ed-0.9/ ed"
+    "marst-2.4/ marst"
+    "units-1.85/ units -lm -lreadline -lncurses"
+    "doschk-1.1/ doschk"
+    "bool-0.2/ src/bool"
+    "m4-1.4.4/ src/m4"
+    "patch-2.6.1/ src/patch"
+    "enscript-1.6.1/ src/enscript -lm"
+    "bison-2.1/ src/bison"
+    "sed-4.2/ sed/sed"
+    "tar-1.29/ src/tar"
+    "flex-2.5.4/ flex"
+    "make-3.80/ make"
+);
 
-./reassemble_and_test.sh ../real_world_examples/m4-1.4.4/ src/m4
-./reassemble_and_test.sh ../real_world_examples/patch-2.6.1/ src/patch
-./reassemble_and_test.sh ../real_world_examples/enscript-1.6.1/ src/enscript -lm
-#hell yeah
-./reassemble_and_test.sh ../real_world_examples/bison-2.1/ src/bison
-./reassemble_and_test.sh ../real_world_examples/sed-4.2/ sed/sed
-./reassemble_and_test.sh ../real_world_examples/tar-1.29/ src/tar
-./reassemble_and_test.sh ../real_world_examples/flex-2.5.4/ flex
-./reassemble_and_test.sh ../real_world_examples/make-3.80/ make
+compilers=("gcc"
+	   "gcc8"
+	   "clang");
+
+optimizations=(""
+	       "-O1"
+	       "-O2"
+	       "-O3"
+	       "-Os");
+
+
+for ((i = 0; i < ${#examples[@]}; i++)); do
+    for compiler in "${compilers[@]}"; do
+	export CC=$compiler
+	for optimization in  "${optimizations[@]}"; do
+	    export CFLAGS=$optimization
+	    echo "#Example ${examples[$i]} with $compiler $optimization"
+	    ./reassemble_and_test.sh $dir${examples[$i]}
+	done
+    done
+done
+
 
 
 #not even close
-#./reassemble_and_test.sh ../real_world_examples/rsync-3.0.7/ rsync
+#"rsync-3.0.7/ rsync
 
-#./reassemble_and_test.sh ../real_world_examples/lighttpd-1.4.18/ src/lighttpd -lpcre -ldl
+#"lighttpd-1.4.18/ src/lighttpd -lpcre -ldl
 
-#./reassemble_and_test.sh ../real_world_examples/re2c-0.13.5/ re2c g++
-#./reassemble_and_test.sh ../real_world_examples/gperf-3.0.3/ src/gperf  g++
+#"re2c-0.13.5/ re2c g++
+#"gperf-3.0.3/ src/gperf  g++

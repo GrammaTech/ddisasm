@@ -1,5 +1,7 @@
+CXX="g++"
+
 all: ex.cpp
-	g++ ex.cpp -o ex
+	$(CXX) ex.cpp $(CFLAGS) -o ex
 	@./ex > out.txt
 clean:
 	rm -f ex out.txt
