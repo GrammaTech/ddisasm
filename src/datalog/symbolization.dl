@@ -71,7 +71,7 @@ track_register("RBX","RBX").
 track_register("RCX","RCX").
 track_register("RDX","RDX").
 
-//track_register("RDI","RDI").
+track_register("RDI","RDI").
 //track_register("RSI","RSI").
 //track_register("RBP","RBP").
 

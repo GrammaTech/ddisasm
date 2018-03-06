@@ -8,7 +8,7 @@ optimizations=(""
 	       "-O3"
 	       "-Os");
 
-for file in ../examples/* ; do
+for file in ../examples/ex_* ; do
 
     for compiler in "${compilers[@]}"; do
 	export CC=$compiler
