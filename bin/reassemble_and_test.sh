@@ -45,33 +45,33 @@ fi
 
 
 printf "# Rebuilding project $dir\n"
-if !( make clean -e -C $dir &>/dev/null  && make -e -C $dir ); then
-    printf "${red}Initial compilation failed${normal}\n"
+if !( make clean -e -C $dir &>/dev/null  && make -e -C $dir &>/dev/null); then
+    printf "# ${red}Initial compilation failed${normal}\n"
     exit 1
 fi
 
 printf "# Disassembling $exe into $exe.s\n"
 if !(time(./disasm "$dir/$exe" -asm > "$dir/$exe.s")); then
-    printf "${red}Disassembly failed${normal}\n"
+    printf "# ${red}Disassembly failed${normal}\n"
     exit 1
 fi
 
 printf "  OK\n"
 printf "Copying old binary to $dir/$exe.old\n"
 cp $dir/$exe $dir/$exe.old
-printf "## Reassembling... "
+printf "# Reassembling...\n"
 
 if !($compiler "$dir/$exe.s" $@ -o  "$dir/$exe"); then
-    echo "Reassembly failed \n"
+    printf "# ${red}Reassembly failed ${normal}\n"
     exit 1
 fi
 
 printf "  OK\n"
 printf "# Testing\n"
 if !(make check -C $dir); then
-    printf "## ${red}Testing FAILED ${normal}\n\n"
+    printf "# ${red}Testing FAILED ${normal}\n\n"
 else
-    printf "## ${green}Testing SUCCEED ${normal}\n\n"
+    printf "# ${green}Testing SUCCEED ${normal}\n\n"
 fi
 
 
