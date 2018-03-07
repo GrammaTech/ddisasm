@@ -384,7 +384,7 @@ chunk_start(EA):-phase2.likely_ea(_,EA).
 
 
 .decl chunk_overlap(ea:address,ea2:address)
-//.output chunk_overlap
+.output chunk_overlap
 
 chunk_overlap(EA_chunk,EA_chunk2):-
 	phase2.likely_ea(EA,EA_chunk),
@@ -415,31 +415,45 @@ discarded_chunk(Chunk):-
 	;
 	chunk_overlap(Chunk2,Chunk)
 	),
+	!function_symbol(Chunk2,_),
+	!function_symbol(Chunk,_),
 	//heuristic: keep the one that has more predecessors
 	// but we value different kinds of predecessors differently
-	Chunk_pred= sum X:{chunk_pred(Chunk,_,X)},
-	Chunk2_pred= sum X:{chunk_pred(Chunk2,_,X)},
-	Chunk2_pred>Chunk_pred.
+	(
+	sum X:{chunk_pred(Chunk,_,X)}< sum Y:{chunk_pred(Chunk2,_,Y)}
+	 ;
+	 //FIXME: there seems to be a problem with empty solutions
+	 chunk_pred(Chunk2,_,_),
+	 !chunk_pred(Chunk,_,_)
+	 ).
 	
 .decl chunk_pred(chunk:address,predecessor:address,importance:number)
-
+.output chunk_pred
 chunk_pred(Chunk,0,1):-
 	basic_target(Chunk).
 	
 chunk_pred(Chunk,Chunk_pred,3):-
 	direct_jump(EA,Chunk),
 	phase2.likely_ea(EA,Chunk_pred),
-	Chunk_pred!=Chunk.
+	Chunk_pred!=Chunk,
+	
+	!chunk_overlap(Chunk_pred,_),
+	!chunk_overlap(_,Chunk_pred).
 
 chunk_pred(Chunk,Chunk_pred,3):-
 	may_fallthrough(EA,Chunk),
-	phase2.likely_ea(EA,Chunk_pred).
+	phase2.likely_ea(EA,Chunk_pred),
+
+	!chunk_overlap(Chunk_pred,_),
+	!chunk_overlap(_,Chunk_pred).
 	
 chunk_pred(Chunk,Chunk_pred,1):-
 	possible_target_from(Chunk,EA),
 	!direct_jump(EA,Chunk),
 	phase2.likely_ea(EA,Chunk_pred),
-	Chunk_pred!=Chunk.
+	Chunk_pred!=Chunk,
+	!chunk_overlap(Chunk_pred,_),
+	!chunk_overlap(_,Chunk_pred).
 	
 	
 .decl chunk_overlap2(ea:address,ea2:address)
@@ -515,5 +529,3 @@ main_function(Main_location):-
 	next(Prev,First_call),
         likely_ea_final(Prev,_),
 	symbolic_code_operand_candidate(Prev,1,Main_location).
-
-

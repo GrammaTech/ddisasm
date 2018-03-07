@@ -16,10 +16,11 @@ examples=(
     "enscript-1.6.1/ src/enscript -lm"
     "bison-2.1/ src/bison"
     "sed-4.2/ sed/sed"
-    "tar-1.29/ src/tar"
     "flex-2.5.4/ flex"
     "make-3.80/ make"
+    "tar-1.29/ src/tar"
 );
+
 
 compilers=("gcc"
 	   "gcc8"
