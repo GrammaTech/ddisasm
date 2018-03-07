@@ -141,7 +141,8 @@ result_descriptors([
 			  result(bss_data,1,'.csv'),
 			  result(preferred_label,2,'.csv'),
 			  result(def_used,3,'.csv'),
-			  result(data_access_pattern,3,'.csv'),
+			  result(data_access_pattern,4,'.csv'),
+			  result(moved_label,4,'.csv'),
 			  result(value_reg,7,'.csv')
 		      ]).
 
@@ -185,10 +186,11 @@ result_descriptors([
 :-dynamic bss_data/1.
 
 
-:-dynamic data_access_pattern/3.
+:-dynamic data_access_pattern/4.
 :-dynamic preferred_label/2.
 :-dynamic def_used/3.
 :-dynamic value_reg/7.
+:-dynamic moved_label/4.
 
 collect_results(Dir,results(Results)):-
     result_descriptors(Descriptors),
@@ -801,8 +803,12 @@ pp_operand(immediate(_Num),EA,_N,Name_complete):-
 % special case for mov from symbolic
 pp_operand(immediate(Num),EA,1,Num_hex):-
     symbolic_operand(EA,1),!,
-  %  instruction(EA,_,'MOV',_,_,_),!,
-    format(string(Num_hex),'OFFSET .L_~16R',[Num]).
+    %  instruction(EA,_,'MOV',_,_,_),!,
+    (get_global_symbol_name(Num,Name_symbol)->
+	 format(string(Num_hex),'OFFSET [~p]',[Name_symbol])
+     ;
+         format(string(Num_hex),'OFFSET .L_~16R',[Num])
+    ).
 
 pp_operand(immediate(Num),EA,N,Num_hex):-
     symbolic_operand(EA,N),!,
@@ -884,6 +890,15 @@ pp_operand(indirect(SReg,'NullReg64','NullReg64',1,Offset,_,Size),EA,N,PP):-
     format(atom(PP),'~p ~p',[Name,[SReg:Term]]).
 
 
+
+get_offset_and_sign(Offset,EA,N,Offset1,'+'):-
+    symbolic_operand(EA,N),
+    moved_label(EA,N,Offset,Offset2),!,
+    Diff is Offset-Offset2,
+    (Diff>0->format(atom(Offset1),'.L_~16R+~p',[Offset2,Diff])
+     ;
+     format(atom(Offset1),'.L_~16R~p',[Offset2,Diff])
+    ).
 
 get_offset_and_sign(Offset,EA,N,Offset1,'+'):-
     symbolic_operand(EA,N),!,
@@ -1021,12 +1036,28 @@ comment(EA,values(Values_pp)):-
     Values\=[],
     maplist(pp_value_reg,Values,Values_pp).
 
-comment(EA,access(Values)):-
-    findall(data_access_pattern(Size,Mult),
-	    data_access_pattern(EA,Size,Mult),
+comment(EA,access(Values_pp)):-
+    findall(data_access_pattern(Size,Mult,From),
+	    data_access_pattern(EA,Size,Mult,From),
 	    Values),
-    Values\=[].
+    Values\=[],
+    maplist(pp_data_access_pattern,Values,Values_pp).
 
+comment(EA,moved_label(Values_pp)):-
+    findall(moved_label(Index,Val,New_val),
+	    moved_label(EA,Index,Val,New_val),
+	    Values),
+    Values\=[],
+    maplist(pp_moved_label,Values,Values_pp).
+    
+pp_moved_label(moved_label(Index,Val,New_val),
+		 moved_label(Index,Val_hex,New_val_hex)):-
+    pp_to_hex(Val,Val_hex),
+    pp_to_hex(New_val,New_val_hex).
+
+pp_data_access_pattern(data_access_pattern(Size,Mult,From),
+		       data_access_pattern(Size,Mult,From_hex)):-
+    pp_to_hex(From,From_hex).
 
 pp_value_reg(value_reg(EA,Reg,EA2,Reg2,Multiplier,Offset,Steps),
 	     value_reg(EA_hex,Reg,EA2_hex,Reg2,Multiplier,Offset,Steps)):-

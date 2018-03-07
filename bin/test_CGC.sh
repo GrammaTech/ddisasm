@@ -23,7 +23,7 @@ for file in $dir/* ; do
     for compiler in "${compilers[@]}"; do
 	for optimization in  "${optimizations[@]}"; do
 	      echo "#Example $file with $compiler $optimization"
-	    timeout $timeout ./CGC_reassemble_and_test.sh $file $compiler $optimization
+	      timeout $timeout bash ./CGC_reassemble_and_test.sh $file $compiler $optimization
 	done
     done
 done
@@ -34,7 +34,7 @@ for file in $dir/* ; do
     for compiler in "${compilers[@]}"; do
 	for optimization in  "${optimizations[@]}"; do
 	    echo "#Example $file with $compiler $optimization"
-	    timeout $timeout ./CGC_reassemble_and_test.sh $file $compiler $optimization
+	    timeout $timeout bash ./CGC_reassemble_and_test.sh $file $compiler $optimization
 	done
     done
 
