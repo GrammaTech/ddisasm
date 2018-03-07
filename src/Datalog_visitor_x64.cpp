@@ -68,36 +68,51 @@ void Datalog_visitor_x64::visit(const RTG::zeroOpInstr * const p){
     name=std::string(p->GetClassIdName());
 }
 
+// this is a workaround to the fact that the ast sizes sometimes do no correspond to the actual
+// sizes of the operands
+void Datalog_visitor_x64::fix_size_exceptions(){
+    if((name=="MOVHPS" || name=="MOVHPD" || name=="MOVLPD"|| name=="MOVLPS")
+            && curr_op.type==operator_type::INDIRECT)
+        curr_op.size=64;
+
+}
+
 template<typename T>
 inline void Datalog_visitor_x64::visit1op(const  T* const n,short size)
 {
+    set_prefix(n->Get_attributes().get_data());
+    n->Get_OneOpInstr()->accept(*this);
     // we put the curr_op type to none to detect cases where something went wrong
     curr_op.type=operator_type::NONE;
     curr_op.size=size;
     n->Get_Src()->accept(*this);
     add_curr_operator();
-    set_prefix(n->Get_attributes().get_data());
-    n->Get_OneOpInstr()->accept(*this);
+
 }
 template<typename T>
 inline void Datalog_visitor_x64::visit2op(const T * const n,short size1,short size2)
 {
+    set_prefix(n->Get_attributes().get_data());
+    n->Get_TwoOpInstr()->accept(*this);
     curr_op.type=operator_type::NONE;
     curr_op.size=size2;
     n->Get_Src()->accept(*this);
+    fix_size_exceptions();
     add_curr_operator();
 
     curr_op.type=operator_type::NONE;
     curr_op.size=size1;
     n->Get_Dst() ->accept(*this);
+    fix_size_exceptions();
     add_curr_operator();
 
-    set_prefix(n->Get_attributes().get_data());
-    n->Get_TwoOpInstr()->accept(*this);
 }
 template<typename T>
 inline void Datalog_visitor_x64::visit3op(const T * const n,short size1,short size2,short size3)
 {
+  set_prefix(n->Get_attributes().get_data());
+    n->Get_ThreeOpInstr()->accept(*this);
+
     curr_op.type=operator_type::NONE;
     curr_op.size=size2;
     n->Get_Src1()->accept(*this);
@@ -113,8 +128,6 @@ inline void Datalog_visitor_x64::visit3op(const T * const n,short size1,short si
     n->Get_Dst() ->accept(*this);
     add_curr_operator();
 
-    set_prefix(n->Get_attributes().get_data());
-    n->Get_ThreeOpInstr()->accept(*this);
 }
 
 template<typename regdirect>

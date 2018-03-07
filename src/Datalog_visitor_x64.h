@@ -25,7 +25,7 @@ private:
     void set_prefix(uint attrib);
 
     void add_curr_operator();
-
+    void fix_size_exceptions();
 
     int64_t address;
     long size;
@@ -60,12 +60,25 @@ public:
     virtual void visit(const RTG::oneOpInstr * const p);
     virtual void visit(const RTG::zeroOpInstr * const p);
     // special instructions
-    virtual void visit(const  RTG::ZeroOp* const n){ n->Get_ZeroOpInstr()->accept(*this);}
-    virtual void visit(const  RTG::Ret* const n){name=n->GetClassIdName();}
-    virtual void visit(const  RTG::FarRet* const n){name=n->GetClassIdName();}
-    virtual void visit(const  RTG::IRet64* const n){name=n->GetClassIdName();}
-    virtual void visit(const  RTG::IRet32* const n){name=n->GetClassIdName();}
-    virtual void visit(const  RTG::IRet16* const n){name=n->GetClassIdName();}
+    virtual void visit(const  RTG::ZeroOp* const n){
+        set_prefix(n->Get_attributes().get_data());
+        n->Get_ZeroOpInstr()->accept(*this);}
+    virtual void visit(const  RTG::Ret* const n){
+        set_prefix(n->Get_attributes().get_data());
+        name=n->GetClassIdName();
+    }
+    virtual void visit(const  RTG::FarRet* const n){
+        set_prefix(n->Get_attributes().get_data());
+        name=n->GetClassIdName();}
+    virtual void visit(const  RTG::IRet64* const n){
+        set_prefix(n->Get_attributes().get_data());
+        name=n->GetClassIdName();}
+    virtual void visit(const  RTG::IRet32* const n){
+        set_prefix(n->Get_attributes().get_data());
+        name=n->GetClassIdName();}
+    virtual void visit(const  RTG::IRet16* const n){
+        set_prefix(n->Get_attributes().get_data());
+        name=n->GetClassIdName();}
     //one op
     virtual void visit(const RTG::OneOpFloat * const n){
      //the size will be overwritten
