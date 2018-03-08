@@ -235,7 +235,8 @@ pretty_print_results:-
     split_rodata_and_data(Data,Rodata,RWdata),
     format('.section .rodata~n',[]),
     pp_aligned_data_section(Rodata),
-   % maplist(pp_data,Data),
+    % maplist(pp_data,Data),
+   % trace,
     format('.section .data~n',[]),
     pp_aligned_data_section(RWdata),
     

@@ -39,7 +39,7 @@ for ((i = 0; i < ${#examples[@]}; i++)); do
 	for optimization in  "${optimizations[@]}"; do
 	    export CFLAGS=$optimization
 	    echo "#Example ${examples[$i]} with $compiler $optimization"
-	    ./reassemble_and_test.sh $dir${examples[$i]}
+	    timeout 10m bash ./reassemble_and_test.sh $dir${examples[$i]}
 	done
     done
 done
