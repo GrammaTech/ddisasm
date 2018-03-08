@@ -443,9 +443,9 @@ chunk_pred(Chunk,Chunk_pred,3):-
 chunk_pred(Chunk,Chunk_pred,3):-
 	may_fallthrough(EA,Chunk),
 	phase2.likely_ea(EA,Chunk_pred),
-
 	!chunk_overlap(Chunk_pred,_),
 	!chunk_overlap(_,Chunk_pred).
+
 	
 chunk_pred(Chunk,Chunk_pred,1):-
 	possible_target_from(Chunk,EA),
@@ -455,6 +455,16 @@ chunk_pred(Chunk,Chunk_pred,1):-
 	!chunk_overlap(Chunk_pred,_),
 	!chunk_overlap(_,Chunk_pred).
 	
+
+chunk_pred(Chunk,Chunk_pred2,Points):-
+	may_fallthrough(EA,Chunk),
+	phase2.likely_ea(EA,Chunk_pred),
+	(
+	chunk_overlap(Chunk_pred,_)
+	;
+	chunk_overlap(_,Chunk_pred)
+	),
+	chunk_pred(Chunk_pred,Chunk_pred2,Points).
 	
 .decl chunk_overlap2(ea:address,ea2:address)
 .output chunk_overlap2
