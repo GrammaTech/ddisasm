@@ -384,7 +384,7 @@ taken_by_data_access_pattern(EA,Size/ 8):-
 	data_access_pattern(EA,Size,_,_).
 taken_by_data_access_pattern(EA+1,Rem-1):-
 	taken_by_data_access_pattern(EA,Rem),
-	Rem>0.
+	Rem>1.
 	
 .decl string_register(reg:register)
 
