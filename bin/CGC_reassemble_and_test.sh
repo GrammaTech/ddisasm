@@ -56,7 +56,7 @@ if !(time(./disasm "$dir/$exe" -asm > "$dir/$exe.s")); then
 fi
 printf "OK\n"
 printf "# Reassembling  $exe.s into $new_exe \n"
-if !($compiler_reassembly "$dir/$exe.s" -lm -o  "$dir/$new_exe"); then
+if !($compiler_reassembly -nostartfiles "$dir/$exe.s" -lm -o  "$dir/$new_exe"); then
     echo "Reassembly failed"
     exit 1
 fi
