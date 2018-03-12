@@ -194,7 +194,8 @@ value_reg(EA,Reg,0,"Unkown",Immediate,Base-Immediate,Steps+1):-
 	op_immediate(Op1,Immediate),
 	op_regdirect_uniform(Op2,Reg),
 	// the base case
-	value_reg(EA,Reg,0,"NullReg64",0,Base,Steps).
+	value_reg(EA,Reg,0,NullReg,0,Base,Steps),
+	null_reg(NullReg).
 
 
 value_reg(EA,Reg,EA_prev,Reg,1,Immediate,1):-
@@ -213,7 +214,8 @@ value_reg(EA,Reg,EA_prev,Reg,2^Immediate,0,1):-
 	op_regdirect_uniform(Op2,Reg),
 	EA!=EA_prev.
 
-value_reg(EA,Reg,0,"NullReg64",0,Immediate,1):-
+value_reg(EA,Reg,0,NullReg,0,Immediate,1):-
+	null_reg(NullReg),
 	def(EA,Reg),
 	instruction(EA,_,"MOV",Op1,Op2,0),
 	op_immediate(Op1,Immediate),
@@ -232,7 +234,8 @@ value_reg(EA,Reg,EA_prev,Reg_origin,Multiplier,Offset,1):-
 	def(EA,Reg),
 	def_used(EA_prev,EA,_),
 	instruction(EA,_,"LEA",Op1,Op2,0),
-	op_indirect(Op1,_,"NullReg64",Reg_origin_non_uniform,Multiplier,Offset,_,_),
+	op_indirect(Op1,_,NullReg,Reg_origin_non_uniform,Multiplier,Offset,_,_),
+	null_reg(NullReg),
 	track_register(Reg_origin_non_uniform,Reg_origin),
 	op_regdirect_uniform(Op2,Reg),
 	EA!=EA_prev.
@@ -250,7 +253,8 @@ value_reg(EA,Reg,EA_prev,Reg_origin,1,Offset,1):-
 	def(EA,Reg),
 	def_used(EA_prev,EA,_),
 	instruction(EA,_,"LEA",Op1,Op2,0),
-	op_indirect(Op1,_,Reg_origin_non_uniform,"NullReg64",1,Offset,_,_),
+	op_indirect(Op1,_,Reg_origin_non_uniform,NullReg,1,Offset,_,_),
+	null_reg(NullReg),
 	track_register(Reg_origin_non_uniform,Reg_origin),
 	op_regdirect_uniform(Op2,Reg),
 	EA!=EA_prev.
@@ -289,8 +293,10 @@ value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,S
 data_access_pattern(Address,Size,0,EA):-
 	likely_ea_final(EA,_),
 	instruction_get_op(EA,_Op_index,Op),
-	op_indirect(Op,"NullSReg","NullReg64","NullReg64",_,Address,_,Size),
-
+	op_indirect(Op,NullSReg,NullReg1,NullReg2,_,Address,_,Size),
+	null_reg(NullSReg),
+	null_reg(NullReg1),
+	null_reg(NullReg2),
 	data_section(Name),
 	section(Name,SizeSect,Base),
 	Address>=Base,
@@ -301,8 +307,10 @@ data_access_pattern(Address,Size,0,EA):-
 data_access_pattern(Address,Size,Multiplier,EA):-
 	likely_ea_final(EA,_),
 	instruction_get_op(EA,_Op_index,Op),
-	op_indirect(Op,"NullSReg","NullReg64",RegMult,Multiplier,Address,_,Size),
-	RegMult!="NullReg64",
+	op_indirect(Op,NullSReg,NullReg1,RegMult,Multiplier,Address,_,Size),
+	null_reg(NullSReg),
+	null_reg(NullReg1),
+	!null_reg(RegMult),
 	data_section(Name),
 	section(Name,SizeSect,Base),
 	Address>=Base,
@@ -322,7 +330,9 @@ data_access_pattern(Address,Size,0,EA):-
 data_access_pattern(Offset+Address,Size,Multiplier,EA):-
 	likely_ea_final(EA,_),
 	instruction_get_op(EA,Op_index,Op),
-	op_indirect(Op,"NullSReg",Reg,"NullReg64",_,Address,_,Size),
+	op_indirect(Op,NullSReg,Reg,NullReg1,_,Address,_,Size),
+	null_reg(NullSReg),
+	null_reg(NullReg1),
 	def_used(EA_def,EA,Op_index),
 	Max_steps=max Steps:{value_reg(EA_def,Reg,_,_,_,_,Steps)},	
 	value_reg(EA_def,Reg,_,_,Multiplier,Offset,St),
@@ -337,8 +347,10 @@ data_access_pattern(Offset+Address,Size,Multiplier,EA):-
 data_access_pattern(Address,8,1,EA):-
 	likely_ea_final(EA,_),
 	instruction_get_op(EA,_,Op),
-	op_indirect(Op,"NullSReg",Reg,"NullReg64",_,Address,_,1),
-	Reg!="NullReg64",
+	op_indirect(Op,NullSReg,Reg,NullReg1,_,Address,_,1),
+	null_reg(NullSReg),
+	null_reg(NullReg1),
+	!null_reg(Reg),
 
 	def_used(EA_def,EA,_),	
 	!value_reg(EA_def,Reg,_,_,_,_,_),
@@ -352,8 +364,10 @@ data_access_pattern(Address,8,1,EA):-
 data_access_pattern(Address,16,2,EA):-
 	likely_ea_final(EA,_),
 	instruction_get_op(EA,_,Op),
-	op_indirect(Op,"NullSReg",Reg,Reg,1,Address,_,16),
-	Reg!="NullReg64",
+	op_indirect(Op,NullSReg,Reg,Reg,1,Address,_,16),
+	null_reg(NullSReg),
+	!null_reg(Reg),
+
 
 	def_used(EA_def,EA,_),	
 	!value_reg(EA_def,Reg,_,_,_,_,_),
