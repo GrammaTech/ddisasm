@@ -13,13 +13,18 @@ sections([
 		'.plt',
 		'.init',
 		'.fini']).
-data_sections([
-		     '.got',
-		     '.plt.got',
-		      '.got.plt',
-		     '.data',
-		     '.rodata']).
 
+% name and alignment
+data_section_descriptor('.got',8).
+data_section_descriptor('.plt.got',8).
+data_section_descriptor('.got.plt',8).
+data_section_descriptor('.init_array',8).
+data_section_descriptor('.fini_array',8).
+data_section_descriptor('.rodata',16).
+data_section_descriptor('.data',16).
+
+meta_section('.init_array').
+meta_section('.fini_array').
 % the things that are ignored with the parameter -asm
 :-dynamic asm_skip_function/1.
 asm_skip_function('_start').
@@ -77,9 +82,9 @@ save_option(Arg):-
 
 decode_sections(File,Dir):-
     sections(Sections),
-    data_sections(Data_sections),
+    findall(Name,data_section_descriptor(Name,_),Data_sections_names),
     foldl(collect_section_args(' --sect '),Sections,[],Sect_args),
-    foldl(collect_section_args(' --data_sect '),Data_sections,[],Data_sect_args),
+    foldl(collect_section_args(' --data_sect '),Data_sections_names,[],Data_sect_args),
     atomic_list_concat(Sect_args,Section_chain),
     atomic_list_concat(Data_sect_args,Data_section_chain),
     atomic_list_concat(['./souffle_disasm ',' --file ',File,
@@ -102,6 +107,7 @@ call_souffle(Dir):-
 result_descriptors([
 			  result(symbol,5,'.facts'),
 			  result(section,3,'.facts'),
+			  result(relocation,3,'.facts'),
 			  result(instruction,6,'.facts'),
 			  result(op_regdirect,2,'.facts'),
 			  result(op_immediate,2,'.facts'),
@@ -148,6 +154,7 @@ result_descriptors([
 
 :-dynamic symbol/5.
 :-dynamic section/3.
+:-dynamic relocation/3.
 :-dynamic instruction/6.
 :-dynamic op_regdirect/2.
 :-dynamic op_immediate/2.
@@ -231,56 +238,60 @@ pretty_print_results:-
     print_header,
     get_chunks(Chunks),
     maplist(pp_chunk, Chunks),
-    get_data(Data),
-    split_rodata_and_data(Data,Rodata,RWdata),
-    format('.section .rodata~n',[]),
-    pp_aligned_data_section(Rodata),
-    % maplist(pp_data,Data),
-   % trace,
-    format('.section .data~n',[]),
-    pp_aligned_data_section(RWdata),
-    
+    get_data_sections(Data_sections),
+    maplist(pp_aligned_data_section,Data_sections),
     get_bss_data(Uninitialized_data),
     %we want to make sure we don't mess up the alignment
+    format('~n~n#=================================== ~n',[]),
     format('.bss~n .align 16~n',[]),
+    format('#=================================== ~n~n',[]),
     maplist(pp_bss_data,Uninitialized_data).
 
-split_rodata_and_data(Data,Rodata,Rwdata):-
-    section('.rodata',SizeSect,Base),
-    End is Base+SizeSect,
-    split_data_in_ea(Data,End,Rodata,Rwdata).
-split_rodata_and_data(Data,[],Data):-
-    \+section('.rodata',_,_).
 
-split_data_in_ea([],_,[],[]).
-split_data_in_ea([Item|Data],EA,[Item|Rodata],Rwdata):-
-    get_item_ea(Item,EA_item),
-    EA_item<EA,
-    split_data_in_ea(Data,EA,Rodata,Rwdata).
-split_data_in_ea([Item|Data],EA,[],[Item|Data]):-
-    get_item_ea(Item,EA_item),
-    EA_item>=EA.
 
 get_item_ea(data_group(EA,_,_),EA).
 get_item_ea(data_byte(EA,_),EA).
 
 
-pp_aligned_data_section(Data_list):-
-    % get first aligned label
+
+pp_aligned_data_section(data_section(Name,Required_alignment,Data_list)):-
+    meta_section(Name),!,
+    format('~n~n#=================================== ~n',[]),
+    format('.section ~p~n.align ~p~n',[Name,Required_alignment]),
+    format('#=================================== ~n',[]),
+    exclude(pointer_to_excluded_code,Data_list,Data_list_filtered),
+    maplist(pp_data,Data_list_filtered).
+
+pp_aligned_data_section(data_section(Name,Required_alignment,Data_list)):-
+    % get first label
     nth0(Index,Data_list,data_group(EA,_Type,_Content)),
-    Alignment is EA mod 16,!,
-    
+    Alignment is EA mod Required_alignment,!,
     
     split_at(Index,Data_list,Data_before,Data_after),
+    format('~n~n#=================================== ~n',[]),
+    format('.section ~p~n',[Name]),
+    format('#=================================== ~n~n',[]),
     maplist(pp_data,Data_before),
-    format('.align 16~n',[]),
+    format('.align ~p~n',[Required_alignment]),
     format('# printing ~p extra bytes to guarantee alignment~n',[Alignment]),
     print_x_zeros(Alignment),
     maplist(pp_data,Data_after).
 
-%if there are no aligned labels
-pp_aligned_data_section(Data_list):-
+%if there are no labels
+pp_aligned_data_section(data_section(Name,Required_alignment,Data_list)):-
+    format('~n~n#=================================== ~n',[]),
+    format('.section ~p~n.align ~p~n',[Name,Required_alignment]),
+    format('#=================================== ~n',[]),
     maplist(pp_data,Data_list).
+
+
+pointer_to_excluded_code(data_group(_EA,Type,Val)):-
+    (Type=labeled_pointer ; Type=pointer),
+    option('-asm'),!,
+    asm_skip_function(Function),
+    is_in_function(Val,Function).
+ 
+
 
 
 print_x_zeros(0).
@@ -292,10 +303,11 @@ print_x_zeros(N):-
 print_header:-
     option('-asm'),!,
     format('
+#=================================== 
 .intel_syntax noprefix
 .globl	main
 .type	main, @function
-.text ~n',[]),
+#=================================== ~n',[]),
     % introduce some displacement to fail as soon as we make any mistake (for developing)
     % but without messing up the alignment
      format('
@@ -392,12 +404,29 @@ adjust_padding([Chunk1,Chunk2|Chunks], Final_chunks):-
 	 Final_chunks=Chunks_adjusted
     ).
 
+get_data_sections(Data_sections):-
+    findall(data_section_descriptor(Name,Alignment),
+	    data_section_descriptor(Name,Alignment),
+	    Data_section_descriptors),
+    convlist(get_data_section,Data_section_descriptors,Data_sections).
 
-get_data(Data_groups):-
+get_data_section(data_section_descriptor(Section_name,Alignment),
+		 data_section(Section_name,Alignment,Data_groups)):-
+    section(Section_name,SizeSect,Base),
+    \+skip_data_section(Section_name),
+    End is Base+SizeSect,
     findall(data_byte(EA,Content),
-	    data_byte(EA,Content)
+	    (
+		data_byte(EA,Content),
+		EA>=Base,
+		EA<End
+	    )
 	    ,Data),
+    %exclude empty sections
+    Data\=[],
     group_data(Data,Data_groups).
+
+
 
 group_data([],[]).
 
@@ -440,30 +469,7 @@ group_data([data_byte(EA,Content)|Rest],[data_group(EA,unknown,[data_byte(EA,Con
 group_data([data_byte(EA,Content)|Rest],[data_byte(EA,Content)|Groups]):-
     group_data(Rest,Groups).
 
-clean_special_characters([],[]).
-%double quote
-clean_special_characters([34|Codes],[92,34|Clean_codes]):-
-    !,
-    clean_special_characters(Codes,Clean_codes).
-% the single quote
-clean_special_characters([39|Codes],[92,39|Clean_codes]):-
-    !,
-    clean_special_characters(Codes,Clean_codes).
-%newline
-clean_special_characters([10|Codes],[92,110|Clean_codes]):-
-    !,
-    clean_special_characters(Codes,Clean_codes).
-%scape character
-clean_special_characters([92|Codes],[92,92|Clean_codes]):-
-    !,
-    clean_special_characters(Codes,Clean_codes).
 
-clean_special_characters([Code|Codes],[Code|Clean_codes]):-
-    clean_special_characters(Codes,Clean_codes).
-
-split_at(N,List,FirstN,Rest):-
-    length(FirstN,N),
-    append(FirstN,Rest,List).
 
 get_data_byte_content(data_byte(_,Content),Content).
 
@@ -491,15 +497,14 @@ group_bss_data([Start,Next|Rest],[variable(Start,Size)|Rest_vars]):-
 		   group_bss_data([Next|Rest],Rest_vars).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+skip_data_section(Section_name):-
+    option('-asm'),
+    asm_skip_section(Section_name).
+
 skip_data_ea(EA):-
     option('-asm'),
-    (
-	asm_skip_section(Section),
-	is_in_section(EA,Section)
-     ;
-     asm_skip_symbol(Symbol),
-     is_in_symbol(EA,Symbol)
-    ).
+    asm_skip_symbol(Symbol),
+    is_in_symbol(EA,Symbol).
 
 skip_ea(EA):-
     option('-asm'),
@@ -547,7 +552,6 @@ pp_data(data_byte(EA,_)):-
     skip_data_ea(EA),!.
 
 pp_data(data_group(EA,plt_ref,Function)):-
-    print_section_header(EA),
     print_label(EA),
     print_ea(EA),
     format('.quad ~s',[Function]),
@@ -555,14 +559,12 @@ pp_data(data_group(EA,plt_ref,Function)):-
     print_end_label(EA,8).
 
 pp_data(data_group(EA,pointer,Content)):-
-    print_section_header(EA),
     print_ea(EA),
     format('.quad .L_~16R',[Content]),
     cond_print_comments(EA),
      print_end_label(EA,8).
      
 pp_data(data_group(EA,labeled_pointer,Content)):-
-    print_section_header(EA),
     print_label(EA),
     print_ea(EA),
     format('.quad .L_~16R',[Content]),
@@ -570,13 +572,11 @@ pp_data(data_group(EA,labeled_pointer,Content)):-
     print_end_label(EA,8).
    
 pp_data(data_group(EA,float,Content)):-
-    print_section_header(EA),
     print_label(EA),
     format('# float~n',[]),
     maplist(pp_data,Content).
 
 pp_data(data_group(EA,string,Content)):-
-    print_section_header(EA),
     print_label(EA),
     print_ea(EA),
     set_prolog_flag(character_escapes, false),
@@ -588,12 +588,10 @@ pp_data(data_group(EA,string,Content)):-
     print_end_label(EA,Length).
 
 pp_data(data_group(EA,unknown,Content)):-
-    print_section_header(EA),
     print_label(EA),
     maplist(pp_data,Content).
 
 pp_data(data_byte(EA,Content)):-
-    print_section_header(EA),
     print_ea(EA),
     format('.byte 0x~16R',[Content]),
     cond_print_comments(EA),
@@ -604,6 +602,7 @@ print_end_label(EA,Length):-
     labeled_data(EA_end),
     \+data_byte(EA_end,_),
     \+bss_data(EA_end),
+    cond_print_global_symbol(EA_end),
     format('.L_~16R:~n',[EA_end]).
 
 print_end_label(_,_).
@@ -621,16 +620,17 @@ print_ea(EA):-
     format('         ~16R: ',[EA]).
 
 print_label(EA):-
-    (get_global_symbol_name(EA,Name)->
-	 format('~p:~n',[Name])
-     ;
-     true
-    ),
+    cond_print_global_symbol(EA),
     format('.L_~16R:~n',[EA]).
 
 
-
-
+cond_print_global_symbol(EA):-
+    (get_global_symbol_name(EA,Name)->
+	format('.globl ~p~n',[Name]),
+	 format('~p:~n',[Name])
+     ;
+     true
+    ).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -641,9 +641,11 @@ print_label(EA):-
 
 
 pp_bss_data(variable(Start,0)):-!,
+    cond_print_global_symbol(Start),
     format('.L_~16R:  ~n',[Start]).
 
 pp_bss_data(variable(Start,Size)):-
+    cond_print_global_symbol(Start),
     format('.L_~16R: .zero  ~p ~n',[Start,Size]).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -712,10 +714,6 @@ function_complete_name(EA,Name_complete):-
 
 is_function(EA,Name_complete):-
     function_complete_name(EA,Name_complete).
-
-%is_function(EA,Funtion_name):-
-%    direct_call(_,EA),
-%    atom_concat('unknown_function_',EA,Funtion_name).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -805,7 +803,7 @@ pp_operand(immediate(_Num),EA,_N,Name_complete):-
 pp_operand(immediate(Num),EA,1,Num_hex):-
     symbolic_operand(EA,1),!,
     %  instruction(EA,_,'MOV',_,_,_),!,
-    (get_global_symbol_name(Num,Name_symbol)->
+    (get_global_symbol_ref(Num,Name_symbol)->
 	 format(string(Num_hex),'OFFSET [~p]',[Name_symbol])
      ;
          format(string(Num_hex),'OFFSET .L_~16R',[Num])
@@ -820,31 +818,41 @@ pp_operand(immediate(Num),EA,N,Num_hex):-
 pp_operand(immediate(Num),_,_,Num).
     
 
-pp_operand(indirect('NullSReg','NullReg64','NullReg64',1,0,_,Size),EA,_,PP):-
-      get_size_name(EA,Size,Name),
-      format(atom(PP),'~p [~p]',[Name,0]).
+pp_operand(indirect(NullSReg,NullReg1,NullReg2,1,0,_,Size),EA,_,PP):-
+    null_reg(NullSReg),
+    null_reg(NullReg1),
+    null_reg(NullReg2),
+    get_size_name(EA,Size,Name),
+    format(atom(PP),'~p [~p]',[Name,0]).
 
-pp_operand(indirect('NullSReg',Reg,'NullReg64',1,0,_,Size),EA,_,PP):-
-      adapt_register(Reg,Reg_adapted),
-      get_size_name(EA,Size,Name),
-      format(atom(PP),'~p [~p]',[Name,Reg_adapted]).
+pp_operand(indirect(NullSReg,Reg,NullReg1,1,0,_,Size),EA,_,PP):-
+    null_reg(NullSReg),
+    null_reg(NullReg1),
+    adapt_register(Reg,Reg_adapted),
+    get_size_name(EA,Size,Name),
+    format(atom(PP),'~p [~p]',[Name,Reg_adapted]).
 
 % special case for rip relative addressing
-pp_operand(indirect('NullSReg','RIP','NullReg64',1,Offset,_,Size),EA,N,PP):-
+pp_operand(indirect(NullSReg,'RIP',NullReg1,1,Offset,_,Size),EA,N,PP):-
+    null_reg(NullSReg),
+    null_reg(NullReg1),
     symbolic_operand(EA,N),!,
     get_size_name(EA,Size,Name),
     instruction(EA,Size_instr,_,_,_,_),
     Address is EA+Offset+Size_instr,
-    (get_global_symbol_name(Address,Name_symbol)->
+    (get_global_symbol_ref(Address,Name_symbol)->
 	 format(atom(PP),'~p ~p[rip]',[Name,Name_symbol])
      ;
 	 format(atom(PP),'~p .L_~16R[rip]',[Name,Address])
     ).
 
-pp_operand(indirect('NullSReg','NullReg64','NullReg64',1,Offset,_,Size),EA,N,PP):-
+pp_operand(indirect(NullSReg,NullReg1,NullReg2,1,Offset,_,Size),EA,N,PP):-
+    null_reg(NullSReg),
+    null_reg(NullReg1),
+    null_reg(NullReg2),
     get_size_name(EA,Size,Name),
     %
-    (get_global_symbol_name(Offset,Name_symbol)->
+    (get_global_symbol_ref(Offset,Name_symbol)->
 	 format(atom(PP),'~p [~p]',[Name,Name_symbol])
      ;
      get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
@@ -853,14 +861,18 @@ pp_operand(indirect('NullSReg','NullReg64','NullReg64',1,Offset,_,Size),EA,N,PP)
     ).
   
 
-pp_operand(indirect('NullSReg',Reg,'NullReg64',1,Offset,_,Size),EA,N,PP):-
+pp_operand(indirect(NullSReg,Reg,NullReg1,1,Offset,_,Size),EA,N,PP):-
+    null_reg(NullSReg),
+    null_reg(NullReg1),
     adapt_register(Reg,Reg_adapted),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
     get_size_name(EA,Size,Name),
     Term=..[PosNeg,Reg_adapted,Offset1],
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
-pp_operand(indirect('NullSReg','NullReg64',Reg_index,Mult,Offset,_,Size),EA,N,PP):-
+pp_operand(indirect(NullSReg,NullReg1,Reg_index,Mult,Offset,_,Size),EA,N,PP):-
+    null_reg(NullSReg),
+    null_reg(NullReg1),
     adapt_register(Reg_index,Reg_index_adapted),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
     get_size_name(EA,Size,Name),
@@ -868,14 +880,16 @@ pp_operand(indirect('NullSReg','NullReg64',Reg_index,Mult,Offset,_,Size),EA,N,PP
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
 
-pp_operand(indirect('NullSReg',Reg,Reg_index,Mult,0,_,Size),EA,_N,PP):-
+pp_operand(indirect(NullSReg,Reg,Reg_index,Mult,0,_,Size),EA,_N,PP):-
+    null_reg(NullSReg),
     adapt_register(Reg,Reg_adapted),
     adapt_register(Reg_index,Reg_index_adapted),
     get_size_name(EA,Size,Name),
     format(atom(PP),'~p ~p',[Name,[Reg_adapted+Reg_index_adapted*Mult]]).
 
 
-pp_operand(indirect('NullSReg',Reg,Reg_index,Mult,Offset,_,Size),EA,N,PP):-
+pp_operand(indirect(NullSReg,Reg,Reg_index,Mult,Offset,_,Size),EA,N,PP):-
+    null_reg(NullSReg),
     adapt_register(Reg,Reg_adapted),
     adapt_register(Reg_index,Reg_index_adapted),
     get_size_name(EA,Size,Name),
@@ -884,7 +898,9 @@ pp_operand(indirect('NullSReg',Reg,Reg_index,Mult,Offset,_,Size),EA,N,PP):-
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
 
-pp_operand(indirect(SReg,'NullReg64','NullReg64',1,Offset,_,Size),EA,N,PP):-
+pp_operand(indirect(SReg,NullReg1,NullReg2,1,Offset,_,Size),EA,N,PP):-
+    null_reg(NullReg1),
+    null_reg(NullReg2),
     get_size_name(EA,Size,Name),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
     Term=..[PosNeg,Offset1],
@@ -963,6 +979,11 @@ adapt_register('ST6','ST(6)'):-!.
 adapt_register('ST7','ST(7)'):-!.
 adapt_register(Reg,Reg).
 
+
+null_reg('NullReg64').
+null_reg('NullReg32').
+null_reg('NullReg16').
+null_reg('NullSReg').
 %%%%%%%%%%%%%%%%%%%
 % comments for debugging
 
@@ -1018,10 +1039,6 @@ comment(EA,used(Tuples)):-
 	    ),
 	    Tuples),
     Tuples\=[].
-
-  %  maplist(pp_eaIndex_tuple,Tuples,PP_tuples).
-
-
 
 comment(EA,labels(Refs_hex)):-
      findall(Ref,
@@ -1149,9 +1166,19 @@ print_with_sep([X|Xs],Sep):-
     print_with_sep(Xs,Sep).
 
 
-get_global_symbol_name(Address,Name):-
+
+get_global_symbol_ref(Address,NameNew):-
     symbol(Address,_,_,'GLOBAL',Name_symbol),
-    clean_symbol_name_suffix(Name_symbol,Name).
+    clean_symbol_name_suffix(Name_symbol,Name),
+    avoid_reg_name_conflics(Name,NameNew).
+
+get_global_symbol_name(Address,NameNew):-
+    symbol(Address,_,_,'GLOBAL',Name_symbol),
+    %do not print labels for symbols that have to be relocated
+    clean_symbol_name_suffix(Name_symbol,Name),
+    \+relocation(_,Name,_),
+    \+reserved_symbol(Name),
+    avoid_reg_name_conflics(Name,NameNew).
 
 clean_symbol_name_suffix(Name,Name_clean):-
     atom_codes(Name,Codes),
@@ -1159,4 +1186,40 @@ clean_symbol_name_suffix(Name,Name_clean):-
     append(Name_clean_codes,[At,At|_Suffix],Codes),!,
     atom_codes(Name_clean,Name_clean_codes).
 
-%clean_symbol_name_suffix(Name,Name).
+clean_symbol_name_suffix(Name,Name).
+
+avoid_reg_name_conflics(Name,NameNew):-
+    register_name(Name),
+    atom_concat(Name,'_renamed',NameNew).
+avoid_reg_name_conflics(Name,Name).
+
+register_name('FS').
+
+reserved_symbol(Name):-
+    atom_concat('__',_Suffix,Name).
+
+
+clean_special_characters([],[]).
+%double quote
+clean_special_characters([34|Codes],[92,34|Clean_codes]):-
+    !,
+    clean_special_characters(Codes,Clean_codes).
+% the single quote
+clean_special_characters([39|Codes],[92,39|Clean_codes]):-
+    !,
+    clean_special_characters(Codes,Clean_codes).
+%newline
+clean_special_characters([10|Codes],[92,110|Clean_codes]):-
+    !,
+    clean_special_characters(Codes,Clean_codes).
+%scape character
+clean_special_characters([92|Codes],[92,92|Clean_codes]):-
+    !,
+    clean_special_characters(Codes,Clean_codes).
+
+clean_special_characters([Code|Codes],[Code|Clean_codes]):-
+    clean_special_characters(Codes,Clean_codes).
+
+split_at(N,List,FirstN,Rest):-
+    length(FirstN,N),
+    append(FirstN,Rest,List).

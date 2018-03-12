@@ -96,6 +96,12 @@ instruction_get_op(EA,Index,Op):-
 	).
 	
 
+.decl null_reg(name:symbol)
+
+null_reg("NullReg64").
+null_reg("NullReg32").
+null_reg("NullReg16").
+null_reg("NullSReg").
 
 /////////////////////////////////////////////////////////////
 // inference of basic facts
@@ -117,7 +123,9 @@ pc_relative_operand(EA,Index,Dest):-
 
 pc_relative_operand_complete(EA,Index,EA_next+Offset,Size):-
 	instruction_get_op(EA, Index, Op),
-	op_indirect(Op,"NullSReg","RIP","NullReg64",1,Offset,_,Size),
+	op_indirect(Op,NullSReg,"RIP",NullReg1,1,Offset,_,Size),
+	null_reg(NullSReg),
+	null_reg(NullReg1),
 	next(EA,EA_next).
 	
 	
@@ -244,6 +252,11 @@ data_section(".rodata").
 data_section(".data").
 data_section(".bss").
 
+data_section(Name):-
+	section(Name,_,EA),
+	EA!=0,
+	!code_section(Name).
+	
 .decl code_section(name:symbol)
 
 code_section(".text").
