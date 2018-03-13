@@ -19,8 +19,9 @@ examples=(
     "flex-2.5.4/ flex"
     "make-3.80/ make"
     "tar-1.29/ src/tar"
+    "rsync-3.0.7/ rsync"
+    "gperf-3.0.3/ src/gperf  g++"
 );
-
 
 compilers=("gcc"
 	   "gcc8"
@@ -47,9 +48,10 @@ done
 
 
 #not even close
-#"rsync-3.0.7/ rsync
 
 #"lighttpd-1.4.18/ src/lighttpd -lpcre -ldl
 
+
+
+#with .init_array
 #"re2c-0.13.5/ re2c g++
-#"gperf-3.0.3/ src/gperf  g++

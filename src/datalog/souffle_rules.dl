@@ -251,11 +251,8 @@ function_symbol(EA,Name):-
 data_section(".rodata").
 data_section(".data").
 data_section(".bss").
-
-data_section(Name):-
-	section(Name,_,EA),
-	EA!=0,
-	!code_section(Name).
+data_section(".init_array").
+data_section(".fini_array").
 	
 .decl code_section(name:symbol)
 
@@ -274,7 +271,7 @@ may_fallthrough(From,To):-
 
 must_fallthrough(From,To):-
 	may_fallthrough(From,To),
-	instruction_get_operation(From,"CALL").
+	!instruction_get_operation(From,"CALL").
 
 
 
