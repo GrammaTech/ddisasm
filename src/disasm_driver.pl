@@ -23,8 +23,7 @@ data_section_descriptor('.fini_array',8).
 data_section_descriptor('.rodata',16).
 data_section_descriptor('.data',16).
 
-meta_section('.init_array').
-meta_section('.fini_array').
+
 % the things that are ignored with the parameter -asm
 :-dynamic asm_skip_function/1.
 asm_skip_function('_start').
@@ -46,6 +45,8 @@ asm_skip_section('.got.plt').
 
 asm_skip_symbol('_IO_stdin_used').
 
+meta_section('.init_array').
+meta_section('.fini_array').
 
 disasm_binary([File|Args]):-
     maplist(save_option,Args),
@@ -704,13 +705,15 @@ print_function_header(_).
 
 function_complete_name(EA,'main'):-
     main_function(EA),!.
-function_complete_name(EA,Name_complete):-
-  function_symbol(EA,Name),
+function_complete_name(EA,NameNew):-
+    function_symbol(EA,Name),
+    
   (ambiguous_symbol(Name)->
 	format(string(Name_complete),'~p_~16R',[Name,EA])
     ;
     Name_complete=Name
-  ).
+  ),
+  avoid_reg_name_conflics(Name_complete,NameNew).
 
 is_function(EA,Name_complete):-
     function_complete_name(EA,Name_complete).
@@ -748,7 +751,7 @@ pp_instruction(instruction(EA,_Size,String_op,Op1,none,none)):-
     get_op_indirect_size_suffix(Op1,Suffix),
     format(' ~p~p',[OpCode_l,Suffix]),
     cond_print_comments(EA).
-  
+
 pp_instruction(instruction(EA,_Size,OpCode,Op1,Op2,Op3)):-
     print_ea(EA),
     downcase_atom(OpCode,OpCode_l),
@@ -812,6 +815,11 @@ pp_operand(immediate(Num),EA,1,Num_hex):-
 pp_operand(immediate(Num),EA,N,Num_hex):-
     symbolic_operand(EA,N),!,
     format(string(Num_hex),'.L_~16R',[Num]).
+
+pp_operand(immediate(Offset),EA,N,Num_hex):-
+    moved_label(EA,N,Offset,Offset2),!,
+    Diff is Offset-Offset2,
+    format(string(Num_hex),'OFFSET .L_~16R+~p',[Offset2,Diff]).
 
 
 
@@ -909,7 +917,7 @@ pp_operand(indirect(SReg,NullReg1,NullReg2,1,Offset,_,Size),EA,N,PP):-
 
 
 get_offset_and_sign(Offset,EA,N,Offset1,'+'):-
-    symbolic_operand(EA,N),
+    %symbolic_operand(EA,N),
     moved_label(EA,N,Offset,Offset2),!,
     Diff is Offset-Offset2,
     (Diff>0->format(atom(Offset1),'.L_~16R+~p',[Offset2,Diff])
@@ -1170,6 +1178,7 @@ print_with_sep([X|Xs],Sep):-
 get_global_symbol_ref(Address,NameNew):-
     symbol(Address,_,_,'GLOBAL',Name_symbol),
     clean_symbol_name_suffix(Name_symbol,Name),
+    \+reserved_symbol(Name),
     avoid_reg_name_conflics(Name,NameNew).
 
 get_global_symbol_name(Address,NameNew):-
@@ -1189,11 +1198,19 @@ clean_symbol_name_suffix(Name,Name_clean):-
 clean_symbol_name_suffix(Name,Name).
 
 avoid_reg_name_conflics(Name,NameNew):-
-    register_name(Name),
+    reserved_name(Name),
     atom_concat(Name,'_renamed',NameNew).
 avoid_reg_name_conflics(Name,Name).
 
-register_name('FS').
+reserved_name('FS').
+reserved_name('MOD').
+reserved_name('DIV').
+reserved_name('NOT').
+
+reserved_name('mod').
+reserved_name('div').
+reserved_name('not').
+
 
 reserved_symbol(Name):-
     atom_concat('__',_Suffix,Name).

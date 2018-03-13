@@ -51,9 +51,9 @@ examples=(
   #  "CROMU_00077"
     "CROMU_00078"
   #  "CROMU_00094"
-    "CROMU_00096"
+  #  "CROMU_00096" this one takes forever
     "CROMU_00097"
-    "CROMU_00098"
+  #  "CROMU_00098"  this one takes forever
   #  "KPRCA_00001"
   #  "KPRCA_00002"
   #  "KPRCA_00003"
