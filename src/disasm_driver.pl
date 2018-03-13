@@ -1171,12 +1171,23 @@ print_with_sep([X|Xs],Sep):-
     print_with_sep(Xs,Sep).
 
 
-%check relocated symbols first
-get_global_symbol_ref(Address,NameNew):-
-    symbol(Address,_,_,'GLOBAL',Name_symbol),    
+in_relocated_symbol(EA,Name,Offset):-
+    symbol(Address,Size,_,_,Name_symbol),
+    EA>=Address,
+    EA<Address+Size,
     clean_symbol_name_suffix(Name_symbol,Name),
     relocation(_,Name,_),
-    avoid_reg_name_conflics(Name,NameNew).
+    Offset is EA-Address.
+    
+    
+%check relocated symbols first
+get_global_symbol_ref(Address,Final_name):-
+    in_relocated_symbol(Address,Name,Offset),
+    avoid_reg_name_conflics(Name,NameNew),
+    (Offset\= 0->
+	 Final_name=NameNew+Offset
+     ;
+     Final_name=NameNew).
 
 get_global_symbol_ref(Address,NameNew):-
     symbol(Address,_,_,'GLOBAL',Name_symbol),

@@ -18,9 +18,11 @@ examples=(
     "sed-4.2/ sed/sed"
     "flex-2.5.4/ flex"
     "make-3.80/ make"
-    "tar-1.29/ src/tar"
     "rsync-3.0.7/ rsync"
     "gperf-3.0.3/ src/gperf  g++"
+    "re2c-0.13.5/ re2c g++"
+    "tar-1.29/ src/tar"
+    "lighttpd-1.4.18/ src/lighttpd -rdynamic -lpcre -ldl"
 );
 
 compilers=("gcc"
@@ -46,12 +48,3 @@ for ((i = 0; i < ${#examples[@]}; i++)); do
 done
 
 
-
-#not even close
-
-#"lighttpd-1.4.18/ src/lighttpd -lpcre -ldl
-
-
-
-#with .init_array
-#"re2c-0.13.5/ re2c g++

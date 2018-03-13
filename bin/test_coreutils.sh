@@ -147,14 +147,3 @@ for compiler in "${compilers[@]}"; do
 	fi
     done
 done
-
-
-
-#not even close
-
-#"lighttpd-1.4.18/ src/lighttpd -lpcre -ldl
-
-
-
-#with .init_array
-#"re2c-0.13.5/ re2c g++
