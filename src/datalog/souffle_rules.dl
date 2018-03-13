@@ -456,6 +456,13 @@ chunk_pred(Chunk,Chunk_pred,3):-
 	!chunk_overlap(Chunk_pred,_),
 	!chunk_overlap(_,Chunk_pred).
 
+// it fits but the previous block does not fall through
+chunk_pred(Chunk,Chunk_pred,1):-
+	next(EA,Chunk),
+	!may_fallthrough(EA,Chunk),
+	phase2.likely_ea(EA,Chunk_pred),
+	!chunk_overlap(Chunk_pred,_),
+	!chunk_overlap(_,Chunk_pred).
 	
 chunk_pred(Chunk,Chunk_pred,1):-
 	possible_target_from(Chunk,EA),
@@ -465,9 +472,19 @@ chunk_pred(Chunk,Chunk_pred,1):-
 	!chunk_overlap(Chunk_pred,_),
 	!chunk_overlap(_,Chunk_pred).
 	
-
+// transitivity for fallthrough and direct jumps
 chunk_pred(Chunk,Chunk_pred2,Points):-
 	may_fallthrough(EA,Chunk),
+	phase2.likely_ea(EA,Chunk_pred),
+	(
+	chunk_overlap(Chunk_pred,_)
+	;
+	chunk_overlap(_,Chunk_pred)
+	),
+	chunk_pred(Chunk_pred,Chunk_pred2,Points).
+
+chunk_pred(Chunk,Chunk_pred2,Points):-
+	direct_jump(EA,Chunk),
 	phase2.likely_ea(EA,Chunk_pred),
 	(
 	chunk_overlap(Chunk_pred,_)

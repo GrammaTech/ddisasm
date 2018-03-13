@@ -130,7 +130,7 @@ result_descriptors([
 			  %result(possible_target,'phase2-possible_target',1,'.csv'),
 			  named_result(likely_ea,'likely_ea_final',2,'.csv'),
 			  named_result(remaining_ea,'phase2-remaining_ea',1,'.csv'),
-			  named_result(chunk_overlap,'chunk_overlap2',2,'.csv'),
+			  named_result(chunk_overlap,'chunk_overlap',2,'.csv'),
 
 			  result(function_symbol,2,'.csv'),
 			  result(main_function,1,'.csv'),
@@ -947,7 +947,7 @@ instruction_omit_size('PINSRW').
 
 get_size_name(128,'').
 get_size_name(0,'').
-get_size_name(80,'QWORD PTR').
+get_size_name(80,'TBYTE PTR').
 get_size_name(64,'QWORD PTR').
 get_size_name(32,'DWORD PTR').
 get_size_name(16,'WORD PTR').
@@ -1213,6 +1213,9 @@ reserved_name('NOT').
 reserved_name('mod').
 reserved_name('div').
 reserved_name('not').
+
+reserved_name('and').
+reserved_name('or').
 
 
 reserved_symbol(Name):-
