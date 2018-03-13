@@ -801,13 +801,16 @@ pp_operand(immediate(_Num),EA,_N,Name_complete):-
     direct_call(EA,Dest),
     function_complete_name(Dest,Name_complete).
  
+pp_operand(immediate(Offset),EA,N,Num_hex):-
+    moved_label(EA,N,Offset,Offset2),!,
+    Diff is Offset-Offset2,
+    format(string(Num_hex),'OFFSET .L_~16R+~p',[Offset2,Diff]).
 
 % special case for mov from symbolic
 pp_operand(immediate(Num),EA,1,Num_hex):-
     symbolic_operand(EA,1),!,
-    %  instruction(EA,_,'MOV',_,_,_),!,
     (get_global_symbol_ref(Num,Name_symbol)->
-	 format(string(Num_hex),'OFFSET [~p]',[Name_symbol])
+	 format(string(Num_hex),'OFFSET ~p',[Name_symbol])
      ;
          format(string(Num_hex),'OFFSET .L_~16R',[Num])
     ).
@@ -815,12 +818,6 @@ pp_operand(immediate(Num),EA,1,Num_hex):-
 pp_operand(immediate(Num),EA,N,Num_hex):-
     symbolic_operand(EA,N),!,
     format(string(Num_hex),'.L_~16R',[Num]).
-
-pp_operand(immediate(Offset),EA,N,Num_hex):-
-    moved_label(EA,N,Offset,Offset2),!,
-    Diff is Offset-Offset2,
-    format(string(Num_hex),'OFFSET .L_~16R+~p',[Offset2,Diff]).
-
 
 
 pp_operand(immediate(Num),_,_,Num).
@@ -1179,7 +1176,6 @@ get_global_symbol_ref(Address,NameNew):-
     symbol(Address,_,_,'GLOBAL',Name_symbol),    
     clean_symbol_name_suffix(Name_symbol,Name),
     relocation(_,Name,_),
-    \+reserved_symbol(Name),
     avoid_reg_name_conflics(Name,NameNew).
 
 get_global_symbol_ref(Address,NameNew):-
