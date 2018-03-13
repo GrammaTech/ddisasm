@@ -1174,6 +1174,13 @@ print_with_sep([X|Xs],Sep):-
     print_with_sep(Xs,Sep).
 
 
+%check relocated symbols first
+get_global_symbol_ref(Address,NameNew):-
+    symbol(Address,_,_,'GLOBAL',Name_symbol),    
+    clean_symbol_name_suffix(Name_symbol,Name),
+    relocation(_,Name,_),
+    \+reserved_symbol(Name),
+    avoid_reg_name_conflics(Name,NameNew).
 
 get_global_symbol_ref(Address,NameNew):-
     symbol(Address,_,_,'GLOBAL',Name_symbol),
