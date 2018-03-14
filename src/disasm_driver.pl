@@ -149,6 +149,7 @@ result_descriptors([
 			  result(preferred_label,2,'.csv'),
 			  result(def_used,3,'.csv'),
 			  result(data_access_pattern,4,'.csv'),
+			  result(paired_data_access,8,'.csv'),
 			  result(moved_label,4,'.csv'),
 			  result(value_reg,7,'.csv')
 		      ]).
@@ -195,6 +196,7 @@ result_descriptors([
 
 
 :-dynamic data_access_pattern/4.
+:-dynamic paired_data_access/8.
 :-dynamic preferred_label/2.
 :-dynamic def_used/3.
 :-dynamic value_reg/7.
@@ -722,8 +724,7 @@ is_function(EA,Name_complete):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % these opcodes do not really exist
-adapt_opcode(fmul_to,fmul).
-adapt_opcode(fsubr_to,fsub).
+
 adapt_opcode(movsd2,movsd).
 adapt_opcode(imul2,imul).
 adapt_opcode(imul3,imul).
@@ -751,6 +752,16 @@ pp_instruction(instruction(EA,_Size,String_op,Op1,none,none)):-
     get_op_indirect_size_suffix(Op1,Suffix),
     format(' ~p~p',[OpCode_l,Suffix]),
     cond_print_comments(EA).
+
+
+% FDIV_TO FMUL_TO FSUBR_TO
+pp_instruction(instruction(EA,Size,Operation_TO,Op1,none,none)):-
+    atom_concat(Operation,'_TO',Operation_TO),!,
+    pp_instruction(instruction(EA,Size,Operation,reg('ST'),Op1,none)).
+
+pp_instruction(instruction(EA,Size,FCMOV,Op1,none,none)):-
+   atom_concat('FCMOV',_,FCMOV),!,
+   pp_instruction(instruction(EA,Size,FCMOV,Op1,reg('ST'),none)).
 
 pp_instruction(instruction(EA,_Size,OpCode,Op1,Op2,Op3)):-
     print_ea(EA),
@@ -1066,6 +1077,13 @@ comment(EA,access(Values_pp)):-
     Values\=[],
     maplist(pp_data_access_pattern,Values,Values_pp).
 
+comment(EA,paired_access(Values_pp)):-
+    findall(paired_data_access(Size1,Ref1,Multiplier,EA2,Size2,Ref2),
+	    paired_data_access(EA,Size1,Ref1,Multiplier,EA2,Size2,Ref2,_Diff),
+	    Values),
+    Values\=[],
+    maplist(pp_paired_data_access,Values,Values_pp).
+
 comment(EA,moved_label(Values_pp)):-
     findall(moved_label(Index,Val,New_val),
 	    moved_label(EA,Index,Val,New_val),
@@ -1077,6 +1095,13 @@ pp_moved_label(moved_label(Index,Val,New_val),
 		 moved_label(Index,Val_hex,New_val_hex)):-
     pp_to_hex(Val,Val_hex),
     pp_to_hex(New_val,New_val_hex).
+
+pp_paired_data_access(paired_data_access(Size1,Ref1,Multiplier,EA2,Size2,Ref2),
+		       paired_data_access(Size1,Ref1_hex,Multiplier,EA2_hex,Size2,Ref2_hex)):-
+    pp_to_hex(Ref1,Ref1_hex),
+    pp_to_hex(Ref2,Ref2_hex),
+    pp_to_hex(EA2,EA2_hex).
+    
 
 pp_data_access_pattern(data_access_pattern(Size,Mult,From),
 		       data_access_pattern(Size,Mult,From_hex)):-
