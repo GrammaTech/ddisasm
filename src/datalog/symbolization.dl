@@ -224,12 +224,22 @@ value_reg(EA,Reg,EA_prev,Reg,1,Immediate,1):-
 	op_regdirect_uniform(Op2,Reg),
 	EA!=EA_prev.
 
+
 value_reg(EA,Reg,EA_prev,Reg,2^Immediate,0,1):-
 	def(EA,Reg),
 	def_used(EA_prev,EA,_),
 	instruction(EA,_,"SHL",Op1,Op2,0),
 	op_immediate(Op1,Immediate),
 	op_regdirect_uniform(Op2,Reg),
+	EA!=EA_prev.
+
+
+value_reg(EA,Reg,EA_prev,Reg,Immediate,0,1):-
+	def(EA,Reg),
+	def_used(EA_prev,EA,_),
+	instruction(EA,_,"IMUL3",Op1,Op2,Op1),
+	op_immediate(Op2,Immediate),
+	op_regdirect_uniform(Op1,Reg),
 	EA!=EA_prev.
 
 value_reg(EA,Reg,0,"NullReg64",0,Immediate,1):-
@@ -409,6 +419,22 @@ data_access_pattern(Address,0,0,EA):-
 	Address<=Base+SizeSect.
 
 
+.decl paired_data_access(EA1:address,Size1:number,Ref1:address,Multiplier:number,
+			 EA2:address,Size2:number,Ref2:address,Diff:number)
+.output paired_data_access			 
+paired_data_access(EA1,Size1,Ref1,Multiplier,EA2,Size2,Ref2,Diff):-
+			 data_access_pattern(EA1,Size1,Multiplier,Ref1),
+			 data_access_pattern(EA2,Size2,Multiplier,Ref2),
+			 EA1<EA2,
+			 EA1+Multiplier>=EA2+(Size2/8),
+			 Diff=EA2-EA1,
+			 (Ref1<Ref2, Ref1+200>=Ref2
+			 ;
+			 Ref2<Ref1, Ref2+200>=Ref1
+			 ).
+			 //too strict
+			 //likely_ea_final(Ref1,Chunk),
+			 //likely_ea_final(Ref2,Chunk).
 
 .decl taken_by_data_access_pattern(EA:address,Offset:number)
 
@@ -690,11 +716,25 @@ data_label(EA,EA,0,Mult):-
 	
 data_label(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Multiplier):-
 	data_label(EA,EA_label,_,Multiplier),
+
+//propagate paired accesses together
+	(
+	  paired_data_access(EA_label,_,_,Multiplier,EA_paired,_,_,Diff),
+ 	  data_label(EA+Diff,EA_paired,_,Multiplier)
+	;
+	   !paired_data_access(EA_label,_,_,Multiplier,_,_,_,_)
+	),
+ 	(
+          paired_data_access(EA_paired2,_,_,Multiplier,EA_label,_,_,Diff2),
+          data_label(EA+Multiplier-Diff2,EA_paired2,_,Multiplier)
+	   ;
+           !paired_data_access(_,_,_,Multiplier,EA_label,_,_,_)
+	),
 	data_byte(EA+Multiplier,_),
 //do not cross data access or labels	
 //	!data_access_pattern(EA+Multiplier,_,_,_),
-	!taken_by_data_access_pattern(EA+Multiplier,_),
 	!labeled_data(EA+Multiplier),
+	!taken_by_data_access_pattern(EA+Multiplier,_),
 	address_array_range.no_overlap(EA,64).
 	
 
