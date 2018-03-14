@@ -4,8 +4,8 @@
 #include "gtr/src/lang/gtr_config.h"
 #include "gtr/src/string/tohex.hpp"
 
-//#include <cctype>
 #include <exception>
+#include <algorithm>
 
 
 void Datalog_visitor_x64::add_curr_operator(){
@@ -71,10 +71,11 @@ void Datalog_visitor_x64::visit(const RTG::zeroOpInstr * const p){
 // this is a workaround to the fact that the ast sizes sometimes do no correspond to the actual
 // sizes of the operands
 void Datalog_visitor_x64::fix_size_exceptions(){
-    if((name=="MOVHPS" || name=="MOVHPD" || name=="MOVLPD"|| name=="MOVLPS")
+    std::vector<std::string> operations {"MOVHPS","MOVHPD","MOVLPD","MOVLPS","MOVQ"};
+
+    if(std::find(operations.begin(), operations.end(), name) != operations.end()
             && curr_op.type==operator_type::INDIRECT)
         curr_op.size=64;
-
 }
 
 template<typename T>
