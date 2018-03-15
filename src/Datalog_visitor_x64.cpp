@@ -9,6 +9,7 @@
 
 
 void Datalog_visitor_x64::add_curr_operator(){
+    fix_size_exceptions();
     if (curr_op.type==operator_type::NONE){
         std::ostringstream error_message;
         error_message<<"An operator has not been processed well in EA: "<< address;
@@ -103,13 +104,11 @@ inline void Datalog_visitor_x64::visit2op(const T * const n,short size1,short si
     curr_op.type=operator_type::NONE;
     curr_op.size=size2;
     n->Get_Src()->accept(*this);
-    fix_size_exceptions();
     add_curr_operator();
 
     curr_op.type=operator_type::NONE;
     curr_op.size=size1;
     n->Get_Dst() ->accept(*this);
-    fix_size_exceptions();
     add_curr_operator();
 
 }
