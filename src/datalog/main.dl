@@ -341,7 +341,7 @@ basic_target(EA):-
 
 
 plt_code_reference(EA,Function):-
-	likely_ea_final(EA,_),
+	code(EA),
 	instruction_get_op(EA,1,Op),
 	op_immediate(Op,Dest),
 	section(".plt",Size,Beg),
@@ -385,9 +385,9 @@ main_function(Main_location):-
 	First_call= min EA:{
 		    entry_point(Entry),
 		    direct_call(EA,_),
-		    likely_ea_final(EA,_),
+		    code(EA),
 		    EA>=Entry
 		    	},
 	next(Prev,First_call),
-        likely_ea_final(Prev,_),
+        code(Prev),
 	symbolic_code_operand_candidate(Prev,1,Main_location).
