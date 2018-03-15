@@ -1,18 +1,15 @@
 :-module(disasm_driver,[disasm_binary/1]).
 
 
-valid_option('-hints').
 valid_option('-debug').
-valid_option('-debug_all').
 valid_option('-asm').
-valid_option('-no_print').
 
-sections([
-		%	'.eh_frame',
-		'.text',
-		'.plt',
-		'.init',
-		'.fini']).
+
+%	'.eh_frame',
+code_section('.text').
+code_section('.plt').
+code_section('.init').
+code_section('.fini').
 
 % name and alignment
 data_section_descriptor('.got',8).
@@ -48,6 +45,10 @@ asm_skip_symbol('_IO_stdin_used').
 meta_section('.init_array').
 meta_section('.fini_array').
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Top-level predicate
+
 disasm_binary([File|Args]):-
     maplist(save_option,Args),
     set_prolog_flag(print_write_options,[quoted(false)]),
@@ -62,17 +63,13 @@ disasm_binary([File|Args]):-
     decode_sections(File,Dir2),
     format('Calling souffle~n',[]),
     call_souffle(Dir2),
-    (option('-no_print')->
-	 true
-     ;
-     format('Collecting results and printing~n',[]),
-     collect_results(Dir2,_Results),
-     generate_hints(Dir),
 
-     (option('-asm')->format('*/~n',[]);true),
-     pretty_print_results,
-     print_stats
-    ).
+    format('Collecting results and printing~n',[]),
+    collect_results(Dir2,_Results),
+
+    (option('-asm')->format('*/~n',[]);true),
+    pretty_print_results,
+    print_stats.
 
 :-dynamic option/1.
 
@@ -82,7 +79,7 @@ save_option(Arg):-
     assert(option(Arg)).
 
 decode_sections(File,Dir):-
-    sections(Sections),
+    findall(Section,code_section(Section),Sections),
     findall(Name,data_section_descriptor(Name,_),Data_sections_names),
     foldl(collect_section_args(' --sect '),Sections,[],Sect_args),
     foldl(collect_section_args(' --data_sect '),Data_sections_names,[],Data_sect_args),
@@ -103,8 +100,8 @@ call_souffle(Dir):-
     time(shell(Cmd)).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%% Pretty printer
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Collect the results from souffle
+
 result_descriptors([
 			  result(symbol,5,'.facts'),
 			  result(section,3,'.facts'),
@@ -143,8 +140,7 @@ result_descriptors([
 			  result(float_data,1,'.csv'),
 			  result(symbolic_data,2,'.csv'),
 			  result(string,2,'.csv'),
-
-			  
+	  
 			  result(bss_data,1,'.csv'),
 			  result(preferred_label,2,'.csv'),
 			  result(def_used,3,'.csv'),
@@ -169,7 +165,6 @@ result_descriptors([
 :-dynamic indirect_jump/1.
 :-dynamic pc_relative_jump/2.
 
-
 :-dynamic direct_call/2.
 :-dynamic reg_call/1.
 :-dynamic indirect_call/1.
@@ -191,10 +186,7 @@ result_descriptors([
 :-dynamic float_data/1.
 :-dynamic symbolic_data/2.
 :-dynamic string/2.
-
 :-dynamic bss_data/1.
-
-
 :-dynamic data_access_pattern/4.
 :-dynamic paired_data_access/8.
 :-dynamic preferred_label/2.
@@ -219,7 +211,7 @@ collect_result(Dir,result(Name,Arity,Ending),Result):-
     maplist(assertz,Result).
 
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 print_stats:-
     format('~n~n#Result statistics:~n',[]),
     result_descriptors(Descriptors),
@@ -236,11 +228,11 @@ print_descriptor_stats(Res):-
     format(' # Number of ~p: ~p~n',[Name,N]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+% print the complete assembly: first the code, then the data and finally the .bss
 pretty_print_results:-
     print_header,
-    get_chunks(Chunks),
-    maplist(pp_chunk, Chunks),
+    get_code_chunks(Chunks),
+    maplist(pp_code_chunk, Chunks),
     get_data_sections(Data_sections),
     maplist(pp_aligned_data_section,Data_sections),
     get_bss_data(Uninitialized_data),
@@ -250,58 +242,6 @@ pretty_print_results:-
     format('#=================================== ~n~n',[]),
     maplist(pp_bss_data,Uninitialized_data).
 
-
-
-get_item_ea(data_group(EA,_,_),EA).
-get_item_ea(data_byte(EA,_),EA).
-
-
-
-pp_aligned_data_section(data_section(Name,Required_alignment,Data_list)):-
-    meta_section(Name),!,
-    format('~n~n#=================================== ~n',[]),
-    format('.section ~p~n.align ~p~n',[Name,Required_alignment]),
-    format('#=================================== ~n',[]),
-    exclude(pointer_to_excluded_code,Data_list,Data_list_filtered),
-    maplist(pp_data,Data_list_filtered).
-
-pp_aligned_data_section(data_section(Name,Required_alignment,Data_list)):-
-    % get first label
-    nth0(Index,Data_list,data_group(EA,_Type,_Content)),
-    Alignment is EA mod Required_alignment,!,
-    
-    split_at(Index,Data_list,Data_before,Data_after),
-    format('~n~n#=================================== ~n',[]),
-    format('.section ~p~n',[Name]),
-    format('#=================================== ~n~n',[]),
-    maplist(pp_data,Data_before),
-    format('.align ~p~n',[Required_alignment]),
-    format('# printing ~p extra bytes to guarantee alignment~n',[Alignment]),
-    print_x_zeros(Alignment),
-    maplist(pp_data,Data_after).
-
-%if there are no labels
-pp_aligned_data_section(data_section(Name,Required_alignment,Data_list)):-
-    format('~n~n#=================================== ~n',[]),
-    format('.section ~p~n.align ~p~n',[Name,Required_alignment]),
-    format('#=================================== ~n',[]),
-    maplist(pp_data,Data_list).
-
-
-pointer_to_excluded_code(data_group(_EA,Type,Val)):-
-    (Type=labeled_pointer ; Type=pointer),
-    option('-asm'),!,
-    asm_skip_function(Function),
-    is_in_function(Val,Function).
- 
-
-
-
-print_x_zeros(0).
-print_x_zeros(N):-
-    format('.byte 0x00~n',[]),
-    N1 is N-1,
-    print_x_zeros(N1).
 
 print_header:-
     option('-asm'),!,
@@ -323,12 +263,13 @@ nop
 nop
 nop
 ',[]).
-    
+
 print_header.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% collect all the code into chunks
 
-
-get_chunks(Chunks_with_padding):-
+get_code_chunks(Chunks_with_padding):-
     findall(Chunk,
 	    (
 	     chunk_start(Chunk),Chunk\=0,
@@ -371,11 +312,6 @@ get_chunk_content(Chunk_addr,Assoc,Assoc1):-
     put_assoc(Chunk_addr,Assoc,chunk(Chunk_addr,End,Instructions),Assoc1).
 
 
-
-accum_instruction(instruction(EA,Size,OpCode,Op1,Op2,Op3),Assoc,Assoc1):-
-    put_assoc(EA,Assoc,instruction(EA,Size,OpCode,Op1,Op2,Op3),Assoc1).
-
-
 get_op(0,none):-!.
 get_op(N,reg(Name)):-
     op_regdirect(N,Name),!.
@@ -384,10 +320,9 @@ get_op(N,immediate(Immediate)):-
 get_op(N,indirect(Reg1,Reg2,Reg3,A,B,C,Size)):-
     op_indirect(N,Reg1,Reg2,Reg3,A,B,C,Size),!.
 
+accum_instruction(instruction(EA,Size,OpCode,Op1,Op2,Op3),Assoc,Assoc1):-
+    put_assoc(EA,Assoc,instruction(EA,Size,OpCode,Op1,Op2,Op3),Assoc1).
 
-get_beg_end(chunk(Beg,End,_),Beg,End).
-get_beg_end(instruction(Beg,Size,_,_,_,_),Beg,End):-
-    End is Beg+Size.
 
 adjust_padding([Last],[Last]).
 adjust_padding([Chunk1,Chunk2|Chunks], Final_chunks):-
@@ -406,6 +341,15 @@ adjust_padding([Chunk1,Chunk2|Chunks], Final_chunks):-
 	 adjust_padding([Chunk1|Chunks],Chunks_adjusted),
 	 Final_chunks=Chunks_adjusted
     ).
+
+get_beg_end(chunk(Beg,End,_),Beg,End).
+get_beg_end(instruction(Beg,Size,_,_,_,_),Beg,End):-
+    End is Beg+Size.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% collect all the data into data_section which contain
+% lists of data_groups (such as strings or pointers) or individual data_byte
 
 get_data_sections(Data_sections):-
     findall(data_section_descriptor(Name,Alignment),
@@ -428,8 +372,6 @@ get_data_section(data_section_descriptor(Section_name,Alignment),
     %exclude empty sections
     Data\=[],
     group_data(Data,Data_groups).
-
-
 
 group_data([],[]).
 
@@ -473,10 +415,11 @@ group_data([data_byte(EA,Content)|Rest],[data_byte(EA,Content)|Groups]):-
     group_data(Rest,Groups).
 
 
-
 get_data_byte_content(data_byte(_,Content),Content).
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% collect the .bss:
+% collect the labels that have to printed and the sizes between labels
 get_bss_data(Data_elements):-
     section('.bss',SizeSect,Base),
     End is Base+SizeSect,
@@ -498,57 +441,46 @@ group_bss_data([Last],[variable(Last,0)]).
 group_bss_data([Start,Next|Rest],[variable(Start,Size)|Rest_vars]):-
 		   Size is Next-Start,
 		   group_bss_data([Next|Rest],Rest_vars).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-skip_data_section(Section_name):-
-    option('-asm'),
-    asm_skip_section(Section_name).
 
-skip_data_ea(EA):-
-    option('-asm'),
-    asm_skip_symbol(Symbol),
-    is_in_symbol(EA,Symbol).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% print data sections
 
-skip_ea(EA):-
-    option('-asm'),
-    ( asm_skip_section(Section),
-      is_in_section(EA,Section)
-     ;
-     asm_skip_function(Function),
-     is_in_function(EA,Function)
-    ).
+% special case for .init_array and .fini_array
+pp_aligned_data_section(data_section(Name,Required_alignment,Data_list)):-
+    meta_section(Name),!,
+    print_section_header(Name,Required_alignment),
+    exclude(pointer_to_excluded_code,Data_list,Data_list_filtered),
+    maplist(pp_data,Data_list_filtered).
 
-is_in_symbol(EA,Name):-
-    symbol(Base,Size,_,_,Name),
-    EA>=Base,
-    End is Base+Size,
-    EA<End.
-
-is_in_section(EA,Name):-
-    section(Name,Size,Base),
-    EA>=Base,
-    End is Base+Size,
-    EA<End.
-is_in_function(EA,Name):-
-    function_symbol(EA_fun,Name),
-    % there is no function in between
-    EA>=EA_fun,
-    \+ (
-	function_symbol(EA_fun2,_),
-	EA_fun2=<EA,
-	EA_fun2>EA_fun
-       ).
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-cond_print_comments(EA):-
-       (option('-debug')->
-   	 get_comments(EA,Comments),
-   	 print_comments(Comments)
-     ;
-     true
-     ),nl.
+pp_aligned_data_section(data_section(Name,Required_alignment,Data_list)):-
+    % get first label and ensure it has the right alignment
+    % possibly adding some padding
+    nth0(Index,Data_list,data_group(EA,_Type,_Content)),
+    Alignment is EA mod Required_alignment,!,
     
+    split_at(Index,Data_list,Data_before,Data_after),
+    print_section_header(Name),
+    maplist(pp_data,Data_before),
+    format('.align ~p~n',[Required_alignment]),
+    format('# printing ~p extra bytes to guarantee alignment~n',[Alignment]),
+    print_x_zeros(Alignment),
+    maplist(pp_data,Data_after).
+
+%if there are no labels
+pp_aligned_data_section(data_section(Name,Required_alignment,Data_list)):-
+    print_section_header(Name,Required_alignment),
+    maplist(pp_data,Data_list).
+
+
+pointer_to_excluded_code(data_group(_EA,Type,Val)):-
+    (Type=labeled_pointer ; Type=pointer),
+    option('-asm'),!,
+    asm_skip_function(Function),
+    is_in_function(Val,Function).
+
+
 pp_data(data_group(EA,_,_)):-
     skip_data_ea(EA),!.
 pp_data(data_byte(EA,_)):-
@@ -600,48 +532,10 @@ pp_data(data_byte(EA,Content)):-
     cond_print_comments(EA),
     print_end_label(EA,1).
 
-print_end_label(EA,Length):-
-    EA_end is EA+Length,
-    labeled_data(EA_end),
-    \+data_byte(EA_end,_),
-    \+bss_data(EA_end),
-    cond_print_global_symbol(EA_end),
-    format('.L_~16R:~n',[EA_end]).
 
-print_end_label(_,_).
-
-			   
-get_string_length(Content,Length1):-
-    atom_codes(Content,Codes),
-    length(Codes,Length),
-    Length1 is Length+1.% the null character
-print_ea(_):-
-    option('-asm'),!,
-    format('          ',[]).
-
-print_ea(EA):-
-    format('         ~16R: ',[EA]).
-
-print_label(EA):-
-    cond_print_global_symbol(EA),
-    format('.L_~16R:~n',[EA]).
-
-
-cond_print_global_symbol(EA):-
-    (get_global_symbol_name(EA,Name)->
-	format('.globl ~p~n',[Name]),
-	 format('~p:~n',[Name])
-     ;
-     true
-    ).
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%% pp_bss_data(variable(Start,Size)):-
-%%     get_global_symbol_name(Start,Name),!,
-%%     format('~p:~n',[Name]),
-%%     format('.comm .L_~16R, ~p ~n',[Start,Size]).
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% print bss data
 
 pp_bss_data(variable(Start,0)):-!,
     cond_print_global_symbol(Start),
@@ -650,17 +544,19 @@ pp_bss_data(variable(Start,0)):-!,
 pp_bss_data(variable(Start,Size)):-
     cond_print_global_symbol(Start),
     format('.L_~16R: .zero  ~p ~n',[Start,Size]).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% print chunk of code
 
-pp_chunk(chunk(EA_chunk,_,_List)):-
+pp_code_chunk(chunk(EA_chunk,_,_List)):-
     skip_ea(EA_chunk),!.
-pp_chunk(instruction(EA_chunk,_,_,_,_,_)):-
+pp_code_chunk(instruction(EA_chunk,_,_,_,_,_)):-
     skip_ea(EA_chunk),!.
 
 
-pp_chunk(chunk(EA_chunk,_,List)):-
+pp_code_chunk(chunk(EA_chunk,_,List)):-
     !,
-    print_section_header(EA_chunk),
+    cond_print_section_header(EA_chunk),
     print_function_header(EA_chunk),
     print_label(EA_chunk),   
     (option('-debug')->
@@ -670,25 +566,10 @@ pp_chunk(chunk(EA_chunk,_,List)):-
      true),
     maplist(pp_instruction,List),nl.
 
-pp_chunk(instruction(EA,Size,Operation,Op1,Op2,Op3)):-
-    print_section_header(EA),
+pp_code_chunk(instruction(EA,Size,Operation,Op1,Op2,Op3)):-
+    cond_print_section_header(EA),
     pp_instruction(instruction(EA,Size,Operation,Op1,Op2,Op3)).
     
-
-print_section_header(EA):-
-    section('.text',_,EA),!,
-    format('~n~n#=================================== ~n',[]),
-    format('.text~n',[]),
-    format('#=================================== ~n~n',[]).
-
-print_section_header(EA):-
-    section(Section_name,_,EA),!,
-    format('~n~n#=================================== ~n',[]),
-    format('.section ~p~n',[Section_name]),
-    format('#=================================== ~n~n',[]).
-print_section_header(_).
-
-
 
 print_function_header(EA):-
     is_function(EA,Name),
@@ -708,38 +589,23 @@ print_function_header(_).
 function_complete_name(EA,'main'):-
     main_function(EA),!.
 function_complete_name(EA,NameNew):-
-    function_symbol(EA,Name),
-    
-  (ambiguous_symbol(Name)->
-	format(string(Name_complete),'~p_~16R',[Name,EA])
-    ;
-    Name_complete=Name
-  ),
-  avoid_reg_name_conflics(Name_complete,NameNew).
+    function_symbol(EA,Name),   
+    (ambiguous_symbol(Name)->
+	 format(string(Name_complete),'~p_~16R',[Name,EA])
+     ;
+     Name_complete=Name
+    ),
+    avoid_reg_name_conflics(Name_complete,NameNew).
 
 is_function(EA,Name_complete):-
     function_complete_name(EA,Name_complete).
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% print instructions
 
-% these opcodes do not really exist
-
-adapt_opcode(movsd2,movsd).
-adapt_opcode(imul2,imul).
-adapt_opcode(imul3,imul).
-adapt_opcode(imul1,imul).
-adapt_opcode(cmpsd3,cmpsd).
-adapt_opcode(Operation,Operation).
-
-opcode_suffix(Opcode,Suffix):-
-    atom_codes(Opcode,Codes),
-    atom_codes(' ',[Space]),
-    append(_Prefix,[Space|Suffix_codes],Codes),!,
-    atom_codes(Suffix,Suffix_codes).
-opcode_suffix(Opcode,Opcode).
-
-
+%%%%%%%%%%%%%
+%special cases
 pp_instruction(instruction(EA,Size,'NOP',none,none,none)):-
     repeat_n_times((print_ea(EA),format(' nop ~n',[])),Size),
     cond_print_comments(EA).
@@ -754,7 +620,7 @@ pp_instruction(instruction(EA,_Size,String_op,Op1,none,none)):-
     cond_print_comments(EA).
 
 
-% FDIV_TO FMUL_TO FSUBR_TO
+% FDIV_TO, FMUL_TO, FSUBR_TO, etc.
 pp_instruction(instruction(EA,Size,Operation_TO,Op1,none,none)):-
     atom_concat(Operation,'_TO',Operation_TO),!,
     pp_instruction(instruction(EA,Size,Operation,reg('ST'),Op1,none)).
@@ -763,6 +629,8 @@ pp_instruction(instruction(EA,Size,FCMOV,Op1,none,none)):-
    atom_concat('FCMOV',_,FCMOV),!,
    pp_instruction(instruction(EA,Size,FCMOV,Op1,reg('ST'),none)).
 
+%%%%%%%%%%%%%%%
+% general case
 pp_instruction(instruction(EA,_Size,OpCode,Op1,Op2,Op3)):-
     print_ea(EA),
     downcase_atom(OpCode,OpCode_l),
@@ -779,18 +647,24 @@ pp_instruction(instruction(EA,_Size,OpCode,Op1,Op2,Op3)):-
     ),
     cond_print_comments(EA).
 
+% these opcodes do not really exist
+adapt_opcode(movsd2,movsd).
+adapt_opcode(imul2,imul).
+adapt_opcode(imul3,imul).
+adapt_opcode(imul1,imul).
+adapt_opcode(cmpsd3,cmpsd).
+adapt_opcode(Operation,Operation).
 
-
-is_none(none).
-
-repeat_n_times(_Pred,0).
-repeat_n_times(Pred,N):-
-    N>0,
-    call(Pred),
-    N1 is N-1,
-    repeat_n_times(Pred,N1).
+opcode_suffix(Opcode,Suffix):-
+    atom_codes(Opcode,Codes),
+    atom_codes(' ',[Space]),
+    append(_Prefix,[Space|Suffix_codes],Codes),!,
+    atom_codes(Suffix,Suffix_codes).
+opcode_suffix(Opcode,Opcode).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% print operands
+
 pp_operand_list([],_EA,_N,[]).
 pp_operand_list([none|Ops],EA,N,Pretty_ops):-
     pp_operand_list(Ops,EA,N,Pretty_ops).
@@ -805,8 +679,6 @@ pp_operand(reg(Name),_,_,Name2):-
 pp_operand(immediate(_Num),EA,1,Name_complete):-
     plt_reference(EA,Name),!,
     format(string(Name_complete),'OFFSET ~p',[Name]).
-
-
 
 pp_operand(immediate(_Num),EA,_N,Name_complete):-
     direct_call(EA,Dest),
@@ -834,18 +706,18 @@ pp_operand(immediate(Num),EA,N,Num_hex):-
 pp_operand(immediate(Num),_,_,Num).
     
 
-pp_operand(indirect(NullSReg,NullReg1,NullReg2,1,0,_,Size),EA,_,PP):-
+pp_operand(indirect(NullSReg,NullReg1,NullReg2,1,0,_,Size),_,_,PP):-
     null_reg(NullSReg),
     null_reg(NullReg1),
     null_reg(NullReg2),
-    get_size_name(EA,Size,Name),
+    get_size_name(Size,Name),
     format(atom(PP),'~p [~p]',[Name,0]).
 
-pp_operand(indirect(NullSReg,Reg,NullReg1,1,0,_,Size),EA,_,PP):-
+pp_operand(indirect(NullSReg,Reg,NullReg1,1,0,_,Size),_,_,PP):-
     null_reg(NullSReg),
     null_reg(NullReg1),
     adapt_register(Reg,Reg_adapted),
-    get_size_name(EA,Size,Name),
+    get_size_name(Size,Name),
     format(atom(PP),'~p [~p]',[Name,Reg_adapted]).
 
 % special case for rip relative addressing
@@ -853,7 +725,7 @@ pp_operand(indirect(NullSReg,'RIP',NullReg1,1,Offset,_,Size),EA,N,PP):-
     null_reg(NullSReg),
     null_reg(NullReg1),
     symbolic_operand(EA,N),!,
-    get_size_name(EA,Size,Name),
+    get_size_name(Size,Name),
     instruction(EA,Size_instr,_,_,_,_),
     Address is EA+Offset+Size_instr,
     (get_global_symbol_ref(Address,Name_symbol)->
@@ -866,7 +738,7 @@ pp_operand(indirect(NullSReg,NullReg1,NullReg2,1,Offset,_,Size),EA,N,PP):-
     null_reg(NullSReg),
     null_reg(NullReg1),
     null_reg(NullReg2),
-    get_size_name(EA,Size,Name),
+    get_size_name(Size,Name),
     %
     (get_global_symbol_ref(Offset,Name_symbol)->
 	 format(atom(PP),'~p [~p]',[Name,Name_symbol])
@@ -876,13 +748,12 @@ pp_operand(indirect(NullSReg,NullReg1,NullReg2,1,Offset,_,Size),EA,N,PP):-
      format(atom(PP),'~p ~p',[Name,[Term]])
     ).
   
-
 pp_operand(indirect(NullSReg,Reg,NullReg1,1,Offset,_,Size),EA,N,PP):-
     null_reg(NullSReg),
     null_reg(NullReg1),
     adapt_register(Reg,Reg_adapted),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
-    get_size_name(EA,Size,Name),
+    get_size_name(Size,Name),
     Term=..[PosNeg,Reg_adapted,Offset1],
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
@@ -891,16 +762,16 @@ pp_operand(indirect(NullSReg,NullReg1,Reg_index,Mult,Offset,_,Size),EA,N,PP):-
     null_reg(NullReg1),
     adapt_register(Reg_index,Reg_index_adapted),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
-    get_size_name(EA,Size,Name),
+    get_size_name(Size,Name),
     Term=..[PosNeg,Reg_index_adapted*Mult,Offset1],
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
 
-pp_operand(indirect(NullSReg,Reg,Reg_index,Mult,0,_,Size),EA,_N,PP):-
+pp_operand(indirect(NullSReg,Reg,Reg_index,Mult,0,_,Size),_,_N,PP):-
     null_reg(NullSReg),
     adapt_register(Reg,Reg_adapted),
     adapt_register(Reg_index,Reg_index_adapted),
-    get_size_name(EA,Size,Name),
+    get_size_name(Size,Name),
     format(atom(PP),'~p ~p',[Name,[Reg_adapted+Reg_index_adapted*Mult]]).
 
 
@@ -908,7 +779,7 @@ pp_operand(indirect(NullSReg,Reg,Reg_index,Mult,Offset,_,Size),EA,N,PP):-
     null_reg(NullSReg),
     adapt_register(Reg,Reg_adapted),
     adapt_register(Reg_index,Reg_index_adapted),
-    get_size_name(EA,Size,Name),
+    get_size_name(Size,Name),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
     Term=..[PosNeg,Reg_adapted+Reg_index_adapted*Mult,Offset1],
     format(atom(PP),'~p ~p',[Name,[Term]]).
@@ -917,7 +788,7 @@ pp_operand(indirect(NullSReg,Reg,Reg_index,Mult,Offset,_,Size),EA,N,PP):-
 pp_operand(indirect(SReg,NullReg1,NullReg2,1,Offset,_,Size),EA,N,PP):-
     null_reg(NullReg1),
     null_reg(NullReg2),
-    get_size_name(EA,Size,Name),
+    get_size_name(Size,Name),
     get_offset_and_sign(Offset,EA,N,Offset1,PosNeg),
     Term=..[PosNeg,Offset1],
     format(atom(PP),'~p ~p',[Name,[SReg:Term]]).
@@ -942,19 +813,6 @@ get_offset_and_sign(Offset,_EA,_N,Offset1,'-'):-
 get_offset_and_sign(Offset,_EA,_N,Offset,'+').
 
 
-
-
-%exceptions
-get_size_name(EA,_Size,Name):-
-    instruction(EA,_,Operation,_,_,_),
-    instruction_omit_size(Operation),!,
-    Name=''.
-%the usual case
-get_size_name(_EA,Size,Name):-
-    get_size_name(Size,Name).
-
-
-instruction_omit_size('PINSRW').
 
 get_size_name(128,'').
 get_size_name(0,'').
@@ -995,15 +853,76 @@ adapt_register('ST6','ST(6)'):-!.
 adapt_register('ST7','ST(7)'):-!.
 adapt_register(Reg,Reg).
 
-
 null_reg('NullReg64').
 null_reg('NullReg32').
 null_reg('NullReg16').
 null_reg('NullSReg').
-%%%%%%%%%%%%%%%%%%%
-% comments for debugging
 
-    
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% common predicates for printing data and code
+
+
+cond_print_section_header(EA):-
+    section(Name,_,EA),!,
+    print_section_header(Name).
+cond_print_section_header(_).
+
+print_section_header('.text'):-
+    format('~n~n#=================================== ~n',[]),
+    format('.text~n',[]),
+    format('#=================================== ~n~n',[]).
+
+print_section_header(Name):-
+    format('~n~n#=================================== ~n',[]),
+    format('.section ~p~n',[Name]),
+    format('#=================================== ~n~n',[]).
+
+print_section_header(Name,Required_alignment):-
+    format('~n~n#=================================== ~n',[]),
+    format('.section ~p~n.align ~p~n',[Name,Required_alignment]),
+    format('#=================================== ~n',[]).
+
+
+print_ea(_):-
+    option('-asm'),!,
+    format('          ',[]).
+
+print_ea(EA):-
+    format('         ~16R: ',[EA]).
+
+print_label(EA):-
+    cond_print_global_symbol(EA),
+    format('.L_~16R:~n',[EA]).
+
+print_end_label(EA,Length):-
+    EA_end is EA+Length,
+    labeled_data(EA_end),
+    \+data_byte(EA_end,_),
+    \+bss_data(EA_end),
+    cond_print_global_symbol(EA_end),
+    format('.L_~16R:~n',[EA_end]).
+
+print_end_label(_,_).
+
+cond_print_global_symbol(EA):-
+    (get_global_symbol_name(EA,Name)->
+	format('.globl ~p~n',[Name]),
+	 format('~p:~n',[Name])
+     ;
+     true
+    ).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% print comments for debugging
+
+cond_print_comments(EA):-
+       (option('-debug')->
+   	 get_comments(EA,Comments),
+   	 print_comments(Comments)
+     ;
+     true
+       ),nl.
 
 get_comments(EA_chunk,Comments):-
 	setof(Comment,comment(EA_chunk,Comment),Comments),!.
@@ -1115,96 +1034,51 @@ pp_value_reg(value_reg(EA,Reg,EA2,Reg2,Multiplier,Offset,Steps),
 pp_to_hex(EA,EA_hex):-
     format(atom(EA_hex),'~16R',[EA]).
 
-pp_eaIndex_tuple((EA,Index,Size),(EA_hex,Index,Size)):-
-    format(atom(EA_hex),'~16R',[EA]).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-generate_hints(Dir):-
-    option('-hints'),!,
-    findall(Code_ea,
-	    (
-		likely_ea(Code_ea,Chunk),
-		chunk_start(Chunk),
-                \+discarded_chunk(Chunk)
-	    ),Code_eas),
-    directory_file_path(Dir,'hints',Path),
-    open(Path,write,S),
-    maplist(print_code_ea(S),Code_eas),
-    findall(Data_ea,
-	    (
-		labeled_data(Data_ea)
-	     ;
-	     symbolic_data(Data_ea,_)
-	    )
-	    ,Data_eas),
-    maplist(print_data_ea(S),Data_eas),
-    close(S).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% predicates to skip certain sections or functions added by the compiler
 
-generate_hints(_).    
+skip_data_section(Section_name):-
+    option('-asm'),
+    asm_skip_section(Section_name).
 
-print_code_ea(S,EA):-
-    format(S,'0x~16R C',[EA]),
-    instruction(EA,_,_,Op1,Op2,Op3),
-    exclude(is_zero,[Op1,Op2,Op3],Non_zero_ops),
-    length(Non_zero_ops,N_ops),
-    findall(Index,symbolic_operand(EA,Index),Indexes),
-    transform_indexes(Indexes,N_ops,Indexes_tr),
-    maplist(print_sym_index(S),Indexes_tr),
-    format(S,'~n',[]).
+skip_data_ea(EA):-
+    option('-asm'),
+    asm_skip_symbol(Symbol),
+    is_in_symbol(EA,Symbol).
 
-is_zero(0).
-print_data_ea(S,EA):-
-    format(S,'0x~16R D~n',[EA]).
-
-transform_indexes(Indexes,N_ops,Indexes_tr):-
-    foldl(transform_index(N_ops),Indexes,[],Indexes_tr).
-
-transform_index(N_ops,Index,Accum,[Index_tr|Accum]):-
-    Index_tr is N_ops-Index.
- 
-print_sym_index(S,I):-
-      	 format(S,'so~p@0',[I]).
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% auxiliary predicates
-
-print_comments(Comments):-
-    (Comments\=[]->
-	 format('          # ',[]),
-	 maplist(print_with_space,Comments)
-     ;true
+skip_ea(EA):-
+    option('-asm'),
+    ( asm_skip_section(Section),
+      is_in_section(EA,Section)
+     ;
+     asm_skip_function(Function),
+     is_in_function(EA,Function)
     ).
 
-hex_to_dec(Hex,Dec):-
-    hex_bytes(Hex,Bytes),
-    byte_list_to_num(Bytes,0,Dec).
+is_in_symbol(EA,Name):-
+    symbol(Base,Size,_,_,Name),
+    EA>=Base,
+    End is Base+Size,
+    EA<End.
 
-byte_list_to_num([],Accum,Accum).
-byte_list_to_num([Byte|Bytes],Accum,Dec):-
-    Accum2 is Byte+256*Accum,
-    byte_list_to_num(Bytes,Accum2,Dec).
+is_in_section(EA,Name):-
+    section(Name,Size,Base),
+    EA>=Base,
+    End is Base+Size,
+    EA<End.
+is_in_function(EA,Name):-
+    function_symbol(EA_fun,Name),
+    % there is no function in between
+    EA>=EA_fun,
+    \+ (
+	function_symbol(EA_fun2,_),
+	EA_fun2=<EA,
+	EA_fun2>EA_fun
+       ).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-print_with_space(Op):-
-    format(' ~p ',[Op]).
-
-print_with_sep([],_).
-print_with_sep([Last],_):-
-    !,
-    format(' ~p ',[Last]).
-print_with_sep([X|Xs],Sep):-
-    format(' ~p~p ',[X,Sep]),
-    print_with_sep(Xs,Sep).
-
-
-in_relocated_symbol(EA,Name,Offset):-
-    symbol(Address,Size,_,_,Name_symbol),
-    EA>=Address,
-    EA<Address+Size,
-    clean_symbol_name_suffix(Name_symbol,Name),
-    relocation(_,Name,_),
-    Offset is EA-Address.
-    
-    
+   
 %check relocated symbols first
 get_global_symbol_ref(Address,Final_name):-
     in_relocated_symbol(Address,Name,Offset),
@@ -1236,6 +1110,14 @@ clean_symbol_name_suffix(Name,Name_clean):-
 
 clean_symbol_name_suffix(Name,Name).
 
+in_relocated_symbol(EA,Name,Offset):-
+    symbol(Address,Size,_,_,Name_symbol),
+    EA>=Address,
+    EA<Address+Size,
+    clean_symbol_name_suffix(Name_symbol,Name),
+    relocation(_,Name,_),
+    Offset is EA-Address.
+
 avoid_reg_name_conflics(Name,NameNew):-
     reserved_name(Name),
     atom_concat(Name,'_renamed',NameNew).
@@ -1256,6 +1138,52 @@ reserved_name('or').
 
 reserved_symbol(Name):-
     atom_concat('__',_Suffix,Name).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% auxiliary predicates
+
+print_x_zeros(0).
+print_x_zeros(N):-
+    format('.byte 0x00~n',[]),
+    N1 is N-1,
+    print_x_zeros(N1).
+
+is_none(none).
+
+repeat_n_times(_Pred,0).
+repeat_n_times(Pred,N):-
+    N>0,
+    call(Pred),
+    N1 is N-1,
+    repeat_n_times(Pred,N1).
+
+print_comments(Comments):-
+    (Comments\=[]->
+	 format('          # ',[]),
+	 maplist(print_with_space,Comments)
+     ;true
+    ).
+
+hex_to_dec(Hex,Dec):-
+    hex_bytes(Hex,Bytes),
+    byte_list_to_num(Bytes,0,Dec).
+
+byte_list_to_num([],Accum,Accum).
+byte_list_to_num([Byte|Bytes],Accum,Dec):-
+    Accum2 is Byte+256*Accum,
+    byte_list_to_num(Bytes,Accum2,Dec).
+
+
+print_with_space(Op):-
+    format(' ~p ',[Op]).
+
+print_with_sep([],_).
+print_with_sep([Last],_):-
+    !,
+    format(' ~p ',[Last]).
+print_with_sep([X|Xs],Sep):-
+    format(' ~p~p ',[X,Sep]),
+    print_with_sep(Xs,Sep).
 
 
 clean_special_characters([],[]).
@@ -1282,3 +1210,57 @@ clean_special_characters([Code|Codes],[Code|Clean_codes]):-
 split_at(N,List,FirstN,Rest):-
     length(FirstN,N),
     append(FirstN,Rest,List).
+
+get_string_length(Content,Length1):-
+    atom_codes(Content,Codes),
+    length(Codes,Length),
+    Length1 is Length+1.% the null character
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%code to generate hints
+
+%% generate_hints(Dir):-
+%%     option('-hints'),!,
+%%     findall(Code_ea,
+%% 	    (
+%% 		likely_ea(Code_ea,Chunk),
+%% 		chunk_start(Chunk),
+%%                 \+discarded_chunk(Chunk)
+%% 	    ),Code_eas),
+%%     directory_file_path(Dir,'hints',Path),
+%%     open(Path,write,S),
+%%     maplist(print_code_ea(S),Code_eas),
+%%     findall(Data_ea,
+%% 	    (
+%% 		labeled_data(Data_ea)
+%% 	     ;
+%% 	     symbolic_data(Data_ea,_)
+%% 	    )
+%% 	    ,Data_eas),
+%%     maplist(print_data_ea(S),Data_eas),
+%%     close(S).
+
+%% generate_hints(_).    
+
+%% print_code_ea(S,EA):-
+%%     format(S,'0x~16R C',[EA]),
+%%     instruction(EA,_,_,Op1,Op2,Op3),
+%%     exclude(is_zero,[Op1,Op2,Op3],Non_zero_ops),
+%%     length(Non_zero_ops,N_ops),
+%%     findall(Index,symbolic_operand(EA,Index),Indexes),
+%%     transform_indexes(Indexes,N_ops,Indexes_tr),
+%%     maplist(print_sym_index(S),Indexes_tr),
+%%     format(S,'~n',[]).
+
+%% is_zero(0).
+%% print_data_ea(S,EA):-
+%%     format(S,'0x~16R D~n',[EA]).
+
+%% transform_indexes(Indexes,N_ops,Indexes_tr):-
+%%     foldl(transform_index(N_ops),Indexes,[],Indexes_tr).
+
+%% transform_index(N_ops,Index,Accum,[Index_tr|Accum]):-
+%%     Index_tr is N_ops-Index.
+ 
+%% print_sym_index(S,I):-
+%%       	 format(S,'so~p@0',[I]).
