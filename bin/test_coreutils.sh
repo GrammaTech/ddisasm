@@ -109,17 +109,19 @@ examples=(
     "yes"
 );
 
-compilers=("gcc"
-	  "gcc8"
-	  "clang"
-	  );
+compilers=(
+    "gcc"
+    "gcc8"
+    "clang"
+);
 
-optimizations=(""
-	      "-O1"
-	      "-O2"
-	      "-O3"
-	      "-Os"
-	      );
+optimizations=(
+    ""
+    "-O1"
+    "-O2"
+    "-O3"
+    "-Os"
+);
 
 
 

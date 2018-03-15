@@ -21,57 +21,10 @@
 .decl string(ea:address,end:address)
 .output string
 
+
 ////////////////////////////////////////////////////////////////////////
-
-.decl conditional_mov(EA:address)
-
-conditional_mov(EA):-
-	instruction_get_operation(EA,Operation),
-	contains("CMOV",Operation).
-	
-.decl mov(EA:address)
-
-mov(EA):-
-	instruction_get_operation(EA,Operation),
-	contains("MOV",Operation).	
-	
-.decl read_only_operation(Operation:symbol)
-
-read_only_operation("TEST").
-read_only_operation("CMP").
-
-
-
-.decl instruction_get_dest_op(ea:address,index:number,op:operand_code)
-
-instruction_get_dest_op(EA,Index,Op):-
-	instruction(EA,_,Operation,_,Op2,Op3),
-	!read_only_operation(Operation),
-	(
-	Op3=0,
-	Op2!=0,
-	Op=Op2,
-	Index=2
-	;
-	Op3!=0,
-	Op=Op3,
-	Index=3
-	).
-.decl instruction_get_src_op(ea:address,Index:operand_index,op:operand_code)
-
-//when the dest is used as a source as well
-instruction_get_src_op(EA,Index,Op2):-
-	instruction(EA,_,_Operation,_,Op2,_),
-	Index=2,
-	!mov(EA).
-//	!read_only_operation(Operation).
-
-instruction_get_src_op(EA,Index,Op):-
-	(
-	instruction(EA,_,_,Op,_,_),Index=1
-	;
-	instruction(EA,_,_,_,Op,Op3),Op3!=0,Index=2
-	).
+// hard-coded facts about the analysis
+///////////////////////////////////////////////////
 	
 // limit the registers that are tracked
 // and transform the names to the largest version
@@ -94,25 +47,12 @@ track_register("EDI","RDI").
 track_register("RSI","RSI").
 track_register("ESI","RSI").
 
-//track_register("RBP","RBP").
 
-//local underapproximation of control flow
-.decl local_next(ea:address,ea_next:address)
-
-local_next(EA,EA_next):-
-	likely_ea_final(EA,_),
-	!instruction_get_operation(EA,"CALL"),
-	may_fallthrough(EA,EA_next).
-local_next(EA,EA_next):-
-	likely_ea_final(EA,_),
-	direct_jump(EA,EA_next).
-
-
+////////////////////////////////////////////////////////////////////////
+// Auxiliary predicates
+/////////////////////////////////////////////////////
 
 .decl op_indirect_contains_reg(op:operand_code,reg:register)
-
-//op_contains_reg(Op,Reg):-
-//	op_regdirect(Op,Reg).
 
 op_indirect_contains_reg(Op,Reg_uniform):-
 	op_indirect(Op,_,Reg2,_,_,_,_,_),
@@ -127,6 +67,26 @@ op_indirect_contains_reg(Op,Reg_uniform):-
 op_regdirect_uniform(Op,Reg2):-
 	op_regdirect(Op,Reg),
 	track_register(Reg,Reg2).
+	
+//////////////////////////////////////////////////////////////////////////////
+//local underapproximation of control flow
+// we stop whenever we find a call
+.decl local_next(ea:address,ea_next:address)
+
+local_next(EA,EA_next):-
+	likely_ea_final(EA,_),
+	!instruction_get_operation(EA,"CALL"),
+	may_fallthrough(EA,EA_next).
+local_next(EA,EA_next):-
+	likely_ea_final(EA,_),
+	direct_jump(EA,EA_next).
+
+
+
+//////////////////////////////////////////////////////////////////////////////////
+// Def-used analysis: start from memory accesses and walk back
+// tracking the registers involved (used)
+//////////
 
 // register is defined in this location
 .decl def(EA:address,Reg:register)
@@ -140,14 +100,14 @@ def(EA,Reg):-
 .decl used_for_address(ea:address,reg:register,where:address, index:operand_index)
 
 
-//used register for memory here
+//BASE CASE: used register for memory here
 used_for_address(EA,Tracked_reg,EA,Index):-
 	likely_ea_final(EA,_),
 	instruction_get_op(EA,Index,Op),
 	op_indirect_contains_reg(Op,Reg),
 	track_register(Reg,Tracked_reg).
 
-// used to compute something used for memory later
+//USED TRANSITIVELY: used to compute something used for memory later
 used_for_address(EA,Tracked_reg,EA,Index):-
 	//the instruction defines a register that is used for memory
 	used_for_address(EA_next,Reg_defined,_,_),
@@ -161,9 +121,10 @@ used_for_address(EA,Tracked_reg,EA,Index):-
 	op_regdirect_uniform(Op,Tracked_reg)
 	).
 
-// a register is compared to one used for address
+//SPECIAL CASE: the register is not used to compute an address but it is
+// compared to a register possibly containing an address
+// FIXME generalize comparisons
 used_for_address(EA,Reg_compared,EA,Index2):-
-
 	used_for_address(EA_next,Reg_used,_,_),
 	local_next(EA,EA_next),
 	instruction_get_operation(EA,"CMP"),
@@ -173,7 +134,7 @@ used_for_address(EA,Reg_compared,EA,Index2):-
 	instruction_get_src_op(EA,Index2,Op2),
 	op_regdirect_uniform(Op2,Reg_compared).
 
-
+// propagation of uses when the register is not re-defined
 used_for_address(EA,Reg,Where,Index):-
 	//weak update with conditional mov
 	conditional_mov(EA),
@@ -186,7 +147,7 @@ used_for_address(EA,Reg,Where,Index):-
 	!conditional_mov(EA),
 	!def(EA,Reg).
 
-	
+// match uses and definitions	
 .decl def_used(ea_def:address,ea_used:address,index_used:operand_index)
 .output def_used
 
@@ -196,10 +157,11 @@ def_used(EA_def,EA_used,Index):-
 	used_for_address(EA_next,Reg,EA_used,Index).
 
 
-
-// very basic value analysis
+//////////////////////////////////////////////////////////////////////////////////
+// very basic value analysis:
 // the value of a register at a point is expressed as the value of another
 // multiplied by a multiplier and plus an offset
+// val(Reg,EA) = val(Reg1,EA_reg1)* Multiplier+ Offset
 .decl value_reg(EA:address,Reg:register,
                 EA_reg1:address,Reg1:register,Multiplier:number,Offset:number,steps:number)
 .output value_reg
@@ -305,8 +267,6 @@ value_reg(EA,Reg2,EA2,Reg1,Multiplier-1,Offset,Steps+1):-
 	op_regdirect_uniform(Op1,Reg1),
 	EA!=EA2.
 	
-
-
 value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,Steps+Steps2):-
 	value_reg(EA1,Reg1,EA2,Reg2,Multiplier,Offset,Steps),
 	value_reg(EA2,Reg2,EA3,Reg3,Multiplier2,Offset2,Steps2),
@@ -324,10 +284,8 @@ data_access_pattern(Address,Size,0,EA):-
 	null_reg(NullSReg),
 	null_reg(NullReg1),
 	null_reg(NullReg2),
-	data_section(Name),
-	section(Name,SizeSect,Base),
-	Address>=Base,
-	Address<=Base+SizeSect.
+	data_byte(Address,_).
+
 
 	
 // directly computed
@@ -338,20 +296,14 @@ data_access_pattern(Address,Size,Multiplier,EA):-
 	null_reg(NullSReg),
 	null_reg(NullReg1),
 	!null_reg(RegMult),
-	data_section(Name),
-	section(Name,SizeSect,Base),
-	Address>=Base,
-	Address<=Base+SizeSect.
+	data_byte(Address,_).
 
 // pc relative
 data_access_pattern(Address,Size,0,EA):-
 	likely_ea_final(EA,_),
 	pc_relative_operand_complete(EA,_,Address,Size),
 	
-	data_section(Name),
-	section(Name,SizeSect,Base),
-	Address>=Base,
-	Address<=Base+SizeSect.
+	data_byte(Address,_).
 	
 // indirectly computed
 data_access_pattern(Offset+Address,Size,Multiplier,EA):-
@@ -365,10 +317,7 @@ data_access_pattern(Offset+Address,Size,Multiplier,EA):-
 	value_reg(EA_def,Reg,_,_,Multiplier,Offset,St),
 	St>=Max_steps,
 	
-	data_section(Name),
-	section(Name,SizeSect,Base),
-	Offset+Address>=Base,
-	Offset+Address<=Base+SizeSect.
+	data_byte(Offset+Address,_).
 
 
 //typical byte index
@@ -383,10 +332,7 @@ data_access_pattern(Address,8,1,EA):-
 	def_used(EA_def,EA,_),	
 	!value_reg(EA_def,Reg,_,_,_,_,_),
 
-	data_section(Name),
-	section(Name,SizeSect,Base),
-	Address>=Base,
-	Address<=Base+SizeSect.
+	data_byte(Address,_).
 
 //typical word index
 data_access_pattern(Address,16,2,EA):-
@@ -400,10 +346,7 @@ data_access_pattern(Address,16,2,EA):-
 	def_used(EA_def,EA,_),	
 	!value_reg(EA_def,Reg,_,_,_,_,_),
 
-	data_section(Name),
-	section(Name,SizeSect,Base),
-	Address>=Base,
-	Address<=Base+SizeSect.
+	data_byte(Address,_).
 
 //typical string access
 data_access_pattern(Address,0,0,EA):-
@@ -413,11 +356,15 @@ data_access_pattern(Address,0,0,EA):-
 	op_regdirect(Op2,Reg),
 	string_register(Reg),
 
-	data_section(Name),
-	section(Name,SizeSect,Base),
-	Address>=Base,
-	Address<=Base+SizeSect.
+	data_byte(Address,_).
 
+.decl string_register(reg:register)
+
+string_register("EDI").
+string_register("ESI").
+
+///////////////////////////////////////////////////////////////////////////////
+////
 
 .decl paired_data_access(EA1:address,Size1:number,Ref1:address,Multiplier:number,
 			 EA2:address,Size2:number,Ref2:address,Diff:number)
@@ -443,11 +390,6 @@ taken_by_data_access_pattern(EA,Size/ 8):-
 taken_by_data_access_pattern(EA+1,Rem-1):-
 	taken_by_data_access_pattern(EA,Rem),
 	Rem>1.
-	
-.decl string_register(reg:register)
-
-string_register("EDI").
-string_register("ESI").
 
 
 
@@ -662,7 +604,6 @@ labeled_data(EA):-
 	symbolic_data_operand_candidate(Src,_,EA),
 	!moved_label(Src,_,EA,_).
 labeled_data(EA_moved):-
-//	symbolic_data_operand_candidate(Src,_,EA),
 	moved_label(_Src,_,_,EA_moved).
 	
 
@@ -707,6 +648,66 @@ address_array_range.in_ea(EA):-
 
 
 
+// // group data according to labels
+// .decl individual_data_label(ea:address,ea_label:address,offset:number,multiplier:number)
+
+// individual_data_label(EA,EA,0,Mult):-
+// 	data_access_pattern(EA,Size,Mult,Ref),
+// 	!paired_data_access(EA,Size,Ref,Mult,_,_,_,_),
+// 	!paired_data_access(_,_,_,Mult,EA,Size,Ref,_).	
+	
+// individual_data_label(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Multiplier):-
+// 	individual_data_label(EA,EA_label,_,Multiplier),
+// 	data_byte(EA+Multiplier,_),
+// //do not cross data access or labels	
+// 	!labeled_data(EA+Multiplier),
+// 	!taken_by_data_access_pattern(EA+Multiplier,_),
+// 	address_array_range.no_overlap(EA,64).
+
+
+// // group data according to labels
+// .decl paired_data_label(ea:address,ea_label:address,offset:number,multiplier:number)
+
+
+// paired_data_label(EA,EA,0,Mult):-
+// 	data_access_pattern(EA,Size,Mult,Ref),
+// 	paired_data_access(EA,Size,Ref,Mult,_,_,_,_).
+	
+// paired_data_label(EA,EA,0,Mult):-
+// 	data_access_pattern(EA,Size,Mult,Ref),
+// 	paired_data_access(_,_,_,Mult,EA,Size,Ref,_).	
+	
+// paired_data_label(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Multiplier):-
+// 	paired_data_label(EA,EA_label,_,Multiplier),
+// 	data_byte(EA+Multiplier,_),
+// //do not cross data access or labels	
+// 	!labeled_data(EA+Multiplier),
+// 	!taken_by_data_access_pattern(EA+Multiplier,_),
+// 	address_array_range.no_overlap(EA,64),
+// //propagate paired accesses together
+// 	(
+// 	  paired_data_access(EA_label,_,_,Multiplier,EA_paired,_,_,Diff),
+//  	  paired_data_label(EA+Diff,EA_paired,_,Multiplier)
+// 	;
+// 	   !paired_data_access(EA_label,_,_,Multiplier,_,_,_,_)
+// 	),
+//  	(
+//           paired_data_access(EA_paired2,_,_,Multiplier,EA_label,_,_,Diff2),
+//           paired_data_label(EA+Multiplier-Diff2,EA_paired2,_,Multiplier)
+// 	   ;
+//            !paired_data_access(_,_,_,Multiplier,EA_label,_,_,_)
+// 	).
+	
+// .decl data_label(ea:address,ea_label:address,offset:number,multiplier:number)
+// .output data_label
+
+// data_label(EA,EA_label,Offset,Multiplier):-
+// 	paired_data_label(EA,EA_label,Offset,Multiplier).
+// data_label(EA,EA_label,Offset,Multiplier):-
+// 	individual_data_label(EA,EA_label,Offset,Multiplier).
+	
+
+
 // group data according to labels
 .decl data_label(ea:address,ea_label:address,offset:number,multiplier:number)
 .output data_label
@@ -737,8 +738,6 @@ data_label(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Multiplier):-
 	!taken_by_data_access_pattern(EA+Multiplier,_),
 	address_array_range.no_overlap(EA,64).
 	
-
-
 .decl preferred_label(ea:address,ea_label:address)
 .output preferred_label
 preferred_label(EA,EA_label):-
@@ -822,7 +821,7 @@ symbolic_data(EA,Val):-
 symbolic_data(EA,Val):-
 	EA % 8 =0,
 	address_in_data2(EA,Val),
-	 !labeled_data(EA+1),
+	!labeled_data(EA+1),
 	!labeled_data(EA+2),
 	!labeled_data(EA+3),
 	!labeled_data(EA+4),
@@ -849,6 +848,8 @@ bss_data(EA):-
 	section(".bss",SizeSect,Base),
 	EA>=Base,
 	EA<=Base+SizeSect.
+
+/////////////////////////////////////////////////////////////////////////////////
 // This is not necessary but helful for debugging
 
 
