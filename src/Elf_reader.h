@@ -36,6 +36,8 @@ private:
 	void read_symbols();
 	void read_dynamic_symbols();
 	void read_relocations();
+	void print_symbol_table(std::ostream& stream,std::vector<Elf64_Sym>& symbol_table,
+	                        std::vector<std::string>& symbol_name_table);
 	int get_section_index(const std::string& name);
 public:
 	Elf_reader(std::string filename);

@@ -253,10 +253,11 @@ string get_symbol_type_str(unsigned char type){
 	}
 }
 
-void Elf_reader::print_symbols(ostream& stream){
-    auto symbol_it=symbols.begin();
-    auto symbol_names_it=symbol_names.begin();
-    while(symbol_it!=symbols.end()){
+void Elf_reader::print_symbol_table(ostream& stream,std::vector<Elf64_Sym>& symbol_table,
+                                    std::vector<string>& symbol_name_table){
+    auto symbol_it=symbol_table.begin();
+    auto symbol_names_it=symbol_name_table.begin();
+    while(symbol_it!=symbol_table.end()){
         if(*symbol_names_it!="")
             stream<< symbol_it->st_value <<'\t'
             << symbol_it->st_size <<'\t'
@@ -267,6 +268,10 @@ void Elf_reader::print_symbols(ostream& stream){
         ++symbol_it;
         ++symbol_names_it;
     }
+}
+void Elf_reader::print_symbols(ostream& stream){
+    print_symbol_table(stream,symbols,symbol_names);
+    print_symbol_table(stream,dyn_symbols,dyn_symbol_names);
 }
 
 /*
