@@ -1,5 +1,29 @@
-dir_make="../coreutils-8.21/"
-dir="../coreutils-8.21/src"
+
+dir_make="../coreutils-8.21"
+if [[ $# -eq 1 && $1 != "-h" && $1 != "--help" ]]; then
+ dir_make=$1
+fi
+
+if [[ ! -d $dir_make ]]; then
+    printf "Coreutils not found in $dir_make\n"
+    dir_make="not_found"
+fi
+    
+
+if [[ ($# > 0 && ($1 == "-h" || $1 == "--help")) || $dir_make == "not_found" ]]; then
+    printf "USAGE: ./test_coreutils.sh Coreutils_path
+ This script receives the path where the coreutils directory is located and
+- rebuilds coreutils with different compilers and optimization options
+- rewrite the binaries
+- run the coreutils tests
+"   
+    exit
+
+fi
+
+
+
+dir="$dir_make/src"
 examples=(
     "[ "
     "base64"
@@ -126,26 +150,36 @@ optimizations=(
 
 
 for compiler in "${compilers[@]}"; do
-    export CC=$compiler
-    for optimization in  "${optimizations[@]}"; do
-	export CFLAGS=$optimization
-	printf "# Cleaning and Rebuilding coreutils with $compiler $optimization\n"
-	if !( make clean -e -C $dir_make &>/dev/null  && make -e -C $dir_make &>/dev/null); then
-	    printf "# ${red}Initial compilation failed${normal}\n"
-	    
-	else 
-	    for ((i = 0; i < ${#examples[@]}; i++)); do
-		echo "#Example ${examples[$i]}"
-		timeout 10m bash ./reassemble_no_rebuild.sh $dir ${examples[$i]}
-	    done
-	    printf "# Testing\n"
-	    #export RUN_EXPENSIVE_TESTS=yes
-	    #export RUN_VERY_EXPENSIVE_TESTS=yes
-	    if !(make check -C $dir_make); then
-		printf "# ${red}Testing FAILED ${normal}\n\n"
+    if [[ -x $(command -v $compiler) ]]; then 
+	export CC=$compiler
+	for optimization in  "${optimizations[@]}"; do
+	    export CFLAGS=$optimization
+	    printf "# Cleaning and Rebuilding coreutils with $compiler $optimization\n"
+	    if !( make clean -e -C $dir_make &>/dev/null  && make -e -C $dir_make &>/dev/null); then
+		printf "# ${red}Initial compilation failed${normal}\n"
+		
 	    else
-		printf "# ${green}Testing SUCCEED ${normal}\n\n"
+		
+		for ((i = 0; i < ${#examples[@]}; i++)); do
+		    echo "#Example ${examples[$i]}"
+		    exe_name=(${examples[$i]})
+	            echo "Stripping ${exe_name[0]}"
+		    cp "$dir/${exe_name[0]}" "$dir/${exe_name[0]}.unstripped"
+		    strip --strip-unneeded $dir/${exe_name[0]}
+		    timeout 10m bash ./reassemble_no_rebuild.sh $dir ${examples[$i]}
+		done
+		
+		printf "# Testing\n"
+		#export RUN_EXPENSIVE_TESTS=yes
+		#export RUN_VERY_EXPENSIVE_TESTS=yes
+		if !(make check -C $dir_make); then
+		    printf "# ${red}Testing FAILED ${normal}\n\n"
+		else
+		    printf "# ${green}Testing SUCCEED ${normal}\n\n"
+		fi
 	    fi
-	fi
-    done
+	done
+    else
+	printf "#Compiler $compiler not found\n"
+    fi
 done

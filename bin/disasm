@@ -1,5 +1,8 @@
 #!/usr/bin/swipl -G4g
 
+% main script to disassemble a binary
+%
+
 :-initialization(main).
 
 :-use_module('../src/disasm_driver',[disasm_binary/1]).
