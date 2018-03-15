@@ -76,6 +76,11 @@ void Datalog_visitor_x64::fix_size_exceptions(){
     if(std::find(operations.begin(), operations.end(), name) != operations.end()
             && curr_op.type==operator_type::INDIRECT)
         curr_op.size=64;
+
+    std::vector<std::string> operations16 {"PINSRW"};
+    if(std::find(operations16.begin(), operations16.end(), name) != operations16.end()
+            && curr_op.type==operator_type::INDIRECT)
+        curr_op.size=16;
 }
 
 template<typename T>
