@@ -1,20 +1,3 @@
-# ./reassemble_and_test.sh project_directory binary_path [compiler_flags]
-# Take a project directory where the main makefile is located
-# and the relative path of the main executable within the directory and:
-# -Rebuild the project
-# -Disassemble the binary
-# -Reassemble the binary (substituting the old one)
-# -Run the makefile's tests
-
-# The reassembly uses the 'compiler_flags' arguments
-
-# Example:
-# ./reasemble_and_test.sh ../real_world_examples/grep-2.5.4 src/grep -lpcre
-#
-
-red=`tput setaf 1`
-green=`tput setaf 2`
-normal=`tput sgr0`
 
 if [[ $# -eq 0 || $1 == "-h" || $1 == "--help" ]]; then
     printf "USAGE: ./reassemble_and_test.sh project_directory binary_path [compiler_flags]
@@ -22,16 +5,29 @@ if [[ $# -eq 0 || $1 == "-h" || $1 == "--help" ]]; then
  and the relative path of the main executable within the directory and:
  -Rebuild the project
  -Disassemble the binary
- -Reassemble the binary (substituting the old one)
+ -Reassemble the binary (substituting the old one and saving the old one in 'binary'.old)
  -Run the makefile's tests
 
  The reassembly uses the 'compiler_flags' arguments
 
  Example:
  ./reasemble_and_test.sh ../real_world_examples/grep-2.5.4 src/grep -lpcre
+
+-The assembly code will be in ../real_world_examples/grep-2.5.4/src/grep.s
+-The old binary will be  ../real_world_examples/grep-2.5.4/src/grep.old
 "   
     exit
 fi
+
+
+
+
+
+red=`tput setaf 1`
+green=`tput setaf 2`
+normal=`tput sgr0`
+
+
 dir=$1
 exe=$2
 shift
@@ -49,6 +45,9 @@ if !( make clean -e -C $dir &>/dev/null  && make -e -C $dir &>/dev/null); then
     printf "# ${red}Initial compilation failed${normal}\n"
     exit 1
 fi
+
+printf "# Stripping binary\n"
+strip --strip-unneeded "$dir/$exe"
 
 printf "# Disassembling $exe into $exe.s\n"
 if !(time(./disasm "$dir/$exe" -asm > "$dir/$exe.s")); then

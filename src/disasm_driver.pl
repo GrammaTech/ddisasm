@@ -99,7 +99,7 @@ collect_section_args(Arg,Name,Acc_sec,Acc_sec2):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 call_souffle(Dir):-
     %souffle souffle_rules.pl -I ../examples/bzip/
-    atomic_list_concat(['souffle ../src/datalog/souffle_rules.dl  -F ',Dir,' -D ',Dir,' -p ',Dir,'/profile'],Cmd),
+    atomic_list_concat(['souffle ../src/datalog/main.dl  -F ',Dir,' -D ',Dir,' -p ',Dir,'/profile'],Cmd),
     time(shell(Cmd)).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
