@@ -144,7 +144,7 @@ result_descriptors([
 			  result(preferred_label,2,'.csv'),
 			  result(def_used,4,'.csv'),
 			  result(data_access_pattern,4,'.csv'),
-			  result(paired_data_access,8,'.csv'),
+			  result(paired_data_access,6,'.csv'),
 			  result(moved_label,4,'.csv'),
 			  result(value_reg,7,'.csv')
 		      ]).
@@ -186,7 +186,7 @@ result_descriptors([
 :-dynamic string/2.
 :-dynamic bss_data/1.
 :-dynamic data_access_pattern/4.
-:-dynamic paired_data_access/8.
+:-dynamic paired_data_access/6.
 :-dynamic preferred_label/2.
 :-dynamic def_used/4.
 :-dynamic value_reg/7.
@@ -986,8 +986,8 @@ comment(EA,access(Values_pp)):-
     maplist(pp_data_access_pattern,Values,Values_pp).
 
 comment(EA,paired_access(Values_pp)):-
-    findall(paired_data_access(Size1,Ref1,Multiplier,EA2,Size2,Ref2),
-	    paired_data_access(EA,Size1,Ref1,Multiplier,EA2,Size2,Ref2,_Diff),
+    findall(paired_data_access(Size1,Multiplier,EA2,Size2),
+	    paired_data_access(EA,Size1,Multiplier,EA2,Size2,_Diff),
 	    Values),
     Values\=[],
     maplist(pp_paired_data_access,Values,Values_pp).
@@ -1004,10 +1004,8 @@ pp_moved_label(moved_label(Index,Val,New_val),
     pp_to_hex(Val,Val_hex),
     pp_to_hex(New_val,New_val_hex).
 
-pp_paired_data_access(paired_data_access(Size1,Ref1,Multiplier,EA2,Size2,Ref2),
-		       paired_data_access(Size1,Ref1_hex,Multiplier,EA2_hex,Size2,Ref2_hex)):-
-    pp_to_hex(Ref1,Ref1_hex),
-    pp_to_hex(Ref2,Ref2_hex),
+pp_paired_data_access(paired_data_access(Size1,Multiplier,EA2,Size2),
+		       paired_data_access(Size1,Multiplier,EA2_hex,Size2)):-
     pp_to_hex(EA2,EA2_hex).
     
 

@@ -19,6 +19,7 @@
 .decl string(ea:address,end:address)
 .output string
 
+#include "empty_range.dl"
 
 ////////////////////////////////////////////////////////////////////////
 // hard-coded facts about the analysis
@@ -372,10 +373,10 @@ string_register("ESI").
 ///////////////////////////////////////////////////////////////////////////////
 ////If threre are two nearby memory accesses
 
-.decl paired_data_access(EA1:address,Size1:number,Ref1:address,Multiplier:number,
-			 EA2:address,Size2:number,Ref2:address,Diff:number)
+.decl paired_data_access(EA1:address,Size1:number,Multiplier:number,
+			 EA2:address,Size2:number,Diff:number)
 .output paired_data_access			 
-paired_data_access(EA1,Size1,Ref1,Multiplier,EA2,Size2,Ref2,Diff):-
+paired_data_access(EA1,Size1,Multiplier,EA2,Size2,Diff):-
 			 data_access_pattern(EA1,Size1,Multiplier,Ref1),
 			 data_access_pattern(EA2,Size2,Multiplier,Ref2),
 			 EA1<EA2,
@@ -401,10 +402,6 @@ taken_by_data_access_pattern(EA+1,Rem-1):-
 
 
 ////////////////////////////
-
-
-
-
 
 .decl symbolic_code_operand_candidate(ea:address,operand_index:number,Dest:address)
 .decl symbolic_data_operand_candidate(ea:address,operand_index:number,Dest:address)
@@ -630,7 +627,6 @@ labeled_data(Val):-
 	address_in_data(_,Val),
 	data_byte(Val,_).
 
-
 // an array has to have at least 3 elements to give us some confidence
 .decl address_array(EA:address)
 
@@ -643,108 +639,109 @@ address_array(EA):-
 	address_array(EA-8),
 	address_in_data2(EA,_).
 
-#include "empty_range.dl"
 .init address_array_range=empty_range
 
 address_array_range.in_ea(EA):-
 	address_array(EA).
+
 	
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 
+// group data according to labels
+.decl individual_data_label(ea:address,ea_label:address,offset:number,multiplier:number)
 
+individual_data_label(EA,EA,0,Mult):-
+	data_access_pattern(EA,Size,Mult,_Ref),
+	!paired_data_access(EA,Size,Mult,_,_,_),
+	!paired_data_access(_,_,Mult,EA,Size,_).	
+	
+individual_data_label(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Multiplier):-
+	individual_data_label(EA,EA_label,_,Multiplier),
+	data_byte(EA+Multiplier,_),
+//do not cross data access or labels	
+	!labeled_data(EA+Multiplier),
+	!taken_by_data_access_pattern(EA+Multiplier,_),
+	address_array_range.no_overlap(EA,64).
+
+
+// group data according to labels
+.decl paired_data_label(ea:address,ea_label:address,offset:number,multiplier:number)
+
+
+paired_data_label(EA,EA,0,Mult):-
+	data_access_pattern(EA,Size,Mult,_Ref),
+	paired_data_access(EA,Size,Mult,_,_,_).
+	
+paired_data_label(EA,EA,0,Mult):-
+	data_access_pattern(EA,Size,Mult,_Ref),
+	paired_data_access(_,_,Mult,EA,Size,_).	
+	
+paired_data_label(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Multiplier):-
+	paired_data_label(EA,EA_label,_,Multiplier),
+	data_byte(EA+Multiplier,_),
+//do not cross data access or labels	
+	!labeled_data(EA+Multiplier),
+	!taken_by_data_access_pattern(EA+Multiplier,_),
+	address_array_range.no_overlap(EA,64),
+//propagate paired accesses together
+	(
+	  paired_data_access(EA_label,_,Multiplier,EA_paired,_,Diff),
+ 	  paired_data_label(EA+Diff,EA_paired,_,Multiplier)
+	;
+	   !paired_data_access(EA_label,_,Multiplier,_,_,_)
+	),
+ 	(
+          paired_data_access(EA_paired2,_,Multiplier,EA_label,_,Diff2),
+          paired_data_label(EA+Multiplier-Diff2,EA_paired2,_,Multiplier)
+	   ;
+           !paired_data_access(_,_,Multiplier,EA_label,_,_)
+	).
+	
+.decl data_label(ea:address,ea_label:address,offset:number,multiplier:number)
+.output data_label
+
+data_label(EA,EA_label,Offset,Multiplier):-
+	paired_data_label(EA,EA_label,Offset,Multiplier).
+data_label(EA,EA_label,Offset,Multiplier):-
+	individual_data_label(EA,EA_label,Offset,Multiplier).
+	
 
 
 // // group data according to labels
-// .decl individual_data_label(ea:address,ea_label:address,offset:number,multiplier:number)
+// .decl data_label(ea:address,ea_label:address,offset:number,multiplier:number)
+// .output data_label
 
-// individual_data_label(EA,EA,0,Mult):-
-// 	data_access_pattern(EA,Size,Mult,Ref),
-// 	!paired_data_access(EA,Size,Ref,Mult,_,_,_,_),
-// 	!paired_data_access(_,_,_,Mult,EA,Size,Ref,_).	
+// data_label(EA,EA,0,Mult):-
+// 	data_access_pattern(EA,_Size,Mult,_).
 	
-// individual_data_label(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Multiplier):-
-// 	individual_data_label(EA,EA_label,_,Multiplier),
-// 	data_byte(EA+Multiplier,_),
-// //do not cross data access or labels	
-// 	!labeled_data(EA+Multiplier),
-// 	!taken_by_data_access_pattern(EA+Multiplier,_),
-// 	address_array_range.no_overlap(EA,64).
+// data_label(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Multiplier):-
+// 	data_label(EA,EA_label,_,Multiplier),
 
-
-// // group data according to labels
-// .decl paired_data_label(ea:address,ea_label:address,offset:number,multiplier:number)
-
-
-// paired_data_label(EA,EA,0,Mult):-
-// 	data_access_pattern(EA,Size,Mult,Ref),
-// 	paired_data_access(EA,Size,Ref,Mult,_,_,_,_).
-	
-// paired_data_label(EA,EA,0,Mult):-
-// 	data_access_pattern(EA,Size,Mult,Ref),
-// 	paired_data_access(_,_,_,Mult,EA,Size,Ref,_).	
-	
-// paired_data_label(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Multiplier):-
-// 	paired_data_label(EA,EA_label,_,Multiplier),
-// 	data_byte(EA+Multiplier,_),
-// //do not cross data access or labels	
-// 	!labeled_data(EA+Multiplier),
-// 	!taken_by_data_access_pattern(EA+Multiplier,_),
-// 	address_array_range.no_overlap(EA,64),
 // //propagate paired accesses together
 // 	(
 // 	  paired_data_access(EA_label,_,_,Multiplier,EA_paired,_,_,Diff),
-//  	  paired_data_label(EA+Diff,EA_paired,_,Multiplier)
+//  	  data_label(EA+Diff,EA_paired,_,Multiplier)
 // 	;
 // 	   !paired_data_access(EA_label,_,_,Multiplier,_,_,_,_)
 // 	),
 //  	(
 //           paired_data_access(EA_paired2,_,_,Multiplier,EA_label,_,_,Diff2),
-//           paired_data_label(EA+Multiplier-Diff2,EA_paired2,_,Multiplier)
+//           data_label(EA+Multiplier-Diff2,EA_paired2,_,Multiplier)
 // 	   ;
 //            !paired_data_access(_,_,_,Multiplier,EA_label,_,_,_)
-// 	).
-	
-// .decl data_label(ea:address,ea_label:address,offset:number,multiplier:number)
-// .output data_label
-
-// data_label(EA,EA_label,Offset,Multiplier):-
-// 	paired_data_label(EA,EA_label,Offset,Multiplier).
-// data_label(EA,EA_label,Offset,Multiplier):-
-// 	individual_data_label(EA,EA_label,Offset,Multiplier).
-	
+// 	),
+// 	data_byte(EA+Multiplier,_),
+// //do not cross data access or labels	
+// //	!data_access_pattern(EA+Multiplier,_,_,_),
+// 	!labeled_data(EA+Multiplier),
+// 	!taken_by_data_access_pattern(EA+Multiplier,_),
+// 	address_array_range.no_overlap(EA,64).
 
 
-// group data according to labels
-.decl data_label(ea:address,ea_label:address,offset:number,multiplier:number)
-.output data_label
 
-data_label(EA,EA,0,Mult):-
-	data_access_pattern(EA,_Size,Mult,_).
-	
-data_label(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Multiplier):-
-	data_label(EA,EA_label,_,Multiplier),
 
-//propagate paired accesses together
-	(
-	  paired_data_access(EA_label,_,_,Multiplier,EA_paired,_,_,Diff),
- 	  data_label(EA+Diff,EA_paired,_,Multiplier)
-	;
-	   !paired_data_access(EA_label,_,_,Multiplier,_,_,_,_)
-	),
- 	(
-          paired_data_access(EA_paired2,_,_,Multiplier,EA_label,_,_,Diff2),
-          data_label(EA+Multiplier-Diff2,EA_paired2,_,Multiplier)
-	   ;
-           !paired_data_access(_,_,_,Multiplier,EA_label,_,_,_)
-	),
-	data_byte(EA+Multiplier,_),
-//do not cross data access or labels	
-//	!data_access_pattern(EA+Multiplier,_,_,_),
-	!labeled_data(EA+Multiplier),
-	!taken_by_data_access_pattern(EA+Multiplier,_),
-	address_array_range.no_overlap(EA,64).
-	
+
 .decl preferred_label(ea:address,ea_label:address)
 .output preferred_label
 preferred_label(EA,EA_label):-
@@ -753,7 +750,9 @@ preferred_label(EA,EA_label):-
 	Min_Offset>=Selected_offset.
 
 
-	
+//////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+
 .decl address_can_contain_pointers(ea:address)
 .output address_can_contain_pointers
 // address accessed from recognized pattern
@@ -775,20 +774,25 @@ symbolic_operand(EA,Op_index):-
 	symbolic_data_operand_candidate(EA,Op_index,_).	
 	
 
-symbolic_data(EA,Val):-
- 	address_in_data2(EA,Val),
-	address_can_contain_pointers(EA),
- 	!labeled_data(EA+1),
-	!labeled_data(EA+2),
-	!labeled_data(EA+3),
-	!labeled_data(EA+4),
-	!labeled_data(EA+5),
-	!labeled_data(EA+6),
-	!labeled_data(EA+7).
+
 	
 symbolic_data(EA,Val):-
  	address_in_data2(EA,Val),
-	address_array(EA),
+	(
+	address_array(EA)
+	;
+	address_can_contain_pointers(EA)
+	;
+	EA % 8 =0,
+	!preferred_label(EA,_),
+ 	!preferred_label(EA+1,_),
+	!preferred_label(EA+2,_),
+	!preferred_label(EA+3,_),
+	!preferred_label(EA+4,_),
+	!preferred_label(EA+5,_),
+	!preferred_label(EA+6,_),
+	!preferred_label(EA+7,_)
+	),	
  	!labeled_data(EA+1),
 	!labeled_data(EA+2),
 	!labeled_data(EA+3),
@@ -797,28 +801,6 @@ symbolic_data(EA,Val):-
 	!labeled_data(EA+6),
 	!labeled_data(EA+7).	
 	
-// address accessed from other pattern
-// this one is unlikely so we only allow aligned pointers
-symbolic_data(EA,Val):-
-	EA % 8 =0,
-	address_in_data2(EA,Val),
-	!labeled_data(EA+1),
-	!labeled_data(EA+2),
-	!labeled_data(EA+3),
-	!labeled_data(EA+4),
-	!labeled_data(EA+5),
-	!labeled_data(EA+6),
-	!labeled_data(EA+7),
-	
-	!preferred_label(EA,_),
- 	!preferred_label(EA+1,_),
-	!preferred_label(EA+2,_),
-	!preferred_label(EA+3,_),
-	!preferred_label(EA+4,_),
-	!preferred_label(EA+5,_),
-	!preferred_label(EA+6,_),
-	!preferred_label(EA+7,_).
-
 // for bss there is no decision to make
 bss_data(EA):-
 	(
