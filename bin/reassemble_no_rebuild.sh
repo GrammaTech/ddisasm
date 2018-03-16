@@ -45,10 +45,14 @@ fi
 
 
 printf "# Disassembling $exe into $exe.s\n"
-if !(time(./disasm "$dir/$exe" -asm > "$dir/$exe.s")); then
+if !(time(./disasm "$dir/$exe" -asm > "$dir/$exe.s") 2>/tmp/timeCore.txt); then
     printf "# ${red}Disassembly failed${normal}\n"
     exit 1
 fi
+
+time=$(cat /tmp/timeCore.txt| grep user| cut -f 2)
+size=$(stat --printf="%s" "$dir/$exe")
+printf "#Stats: Time $time Size $size\n"
 
 printf "  OK\n"
 printf "Copying old binary to $dir/$exe.old\n"
