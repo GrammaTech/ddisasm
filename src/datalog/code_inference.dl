@@ -1,0 +1,247 @@
+
+
+
+// These are final addresses where the code is located
+// They are organized in chunks of sequential code
+// The first address is the chunk identifier
+.decl likely_ea_final(ea:address,chunk:address)
+.output likely_ea_final
+
+.decl code(ea:address)
+
+
+// we detect if there are still overlaping blocks, in that case the analysis failed
+.decl chunk_still_overlap(ea:address,ea2:address)
+.output chunk_still_overlap
+
+
+// define component traverse_code
+#include "traverse_code.dl"
+
+/////////////////////////////////////////////////////////////
+// We go through several phases of increasing confidence
+/////////////////////////////////////////////////////////////
+
+/////////////////////////////
+// Phase 1
+// Get an initial approximation of things that look like code
+/////////////////////////////
+.init phase1=traverse_code
+
+phase1.possible_ea(EA):-
+	instruction(EA,_,_,_,_,_).
+
+
+
+phase1.block_limit(EA):-
+	op_immediate(_,EA).
+
+phase1.block_limit(EA):-
+	pc_relative_jump(_,EA).
+	
+phase1.block_limit(EA):-
+	pc_relative_call(_,EA).
+
+phase1.block_limit(EA):-
+	basic_target(EA).	
+	
+
+
+phase1.possible_target(EA):-
+	phase1.block_limit(EA).
+
+
+/////////////////////////////
+// Phase 2
+// In this propagation the possible targets
+// are discovered incrementally
+/////////////////////////////
+
+.init phase2=traverse_code
+
+phase2.possible_ea(EA):-
+	phase1.remaining_ea(EA).	
+
+// we can start traversing the code in two places and end up in the same
+// sequence, we want to split those common sequences apart so we 
+// get chunks that don't have common tails
+.decl common_tail(ea:address)
+
+common_tail(EA):-
+	phase1.likely_ea(EA,Chunk),
+	may_fallthrough(From,EA),
+	//get the head of the tail only
+	!phase1.likely_ea(From,Chunk),
+	phase1.likely_ea(From,Chunk2),
+	Chunk2!=Chunk.
+
+phase2.block_limit(EA):-
+	phase1.block_limit(EA).
+	
+phase2.block_limit(EA):-
+	common_tail(EA).
+
+
+
+//////////////////////////////////////////	
+// The targets are computed incrementally now as we traverse the code
+// likely_ea and possible_target_from are mutually recursive
+
+.decl possible_target_from(dest:address,src:address)
+
+possible_target_from(Dest,Src):-
+	phase2.likely_ea(Src,_),
+	instruction_get_op(Src,_,Op),
+	op_immediate(Op,Dest).
+
+possible_target_from(Dest,Src):-
+	phase2.likely_ea(Src,_),
+	pc_relative_jump(Src,Dest).
+	
+possible_target_from(Dest,Src):-
+	phase2.likely_ea(Src,_),
+	pc_relative_call(Src,Dest).
+
+
+phase2.possible_target(EA):-
+	basic_target(EA).
+
+phase2.possible_target(EA):-
+	possible_target_from(EA,_).
+
+
+.output phase2.remaining_ea
+
+////////////////////////////////////////////////////////////////////////
+// We are done with the recursive exploration
+// Now we detect and resolve conflics within the different chunks
+
+.decl chunk_start(ea_chunk:address)
+.output chunk_start
+
+//special node for function calls
+chunk_start(0).
+chunk_start(EA):-phase2.likely_ea(_,EA).
+
+
+
+
+.decl chunk_overlap(ea:address,ea2:address)
+.output chunk_overlap
+
+chunk_overlap(EA_chunk,EA_chunk2):-
+	phase2.likely_ea(EA,EA_chunk),
+	phase2.overlap(EA,EA2),
+	phase2.likely_ea(EA2,EA_chunk2).
+
+
+
+.decl chunk_is_overlaping(chunk:address)
+
+chunk_is_overlaping(Chunk):-
+	(
+	chunk_overlap(Chunk,_)
+	;
+	chunk_overlap(_,Chunk)
+	).
+	
+//////////////////////////////////////////////////////////////////////
+// We need to solve the chunk overlaps
+// we do it with heuristics
+///
+
+.decl discarded_chunk(ea_chunk:address)
+.output discarded_chunk
+
+discarded_chunk(Chunk):-
+	(
+	chunk_overlap(Chunk,Chunk2)
+	;
+	chunk_overlap(Chunk2,Chunk)
+	),
+	//heuristic: one is a externally defined function
+	function_symbol(Chunk2,_),
+	!function_symbol(Chunk,_).
+
+discarded_chunk(Chunk):-
+	(
+	chunk_overlap(Chunk,Chunk2)
+	;
+	chunk_overlap(Chunk2,Chunk)
+	),
+	!function_symbol(Chunk2,_),
+	!function_symbol(Chunk,_),
+	//heuristic: keep the one that has more predecessors
+	// but we value different kinds of predecessors differently
+	(
+	sum X:{chunk_pred(Chunk,_,X)}< sum Y:{chunk_pred(Chunk2,_,Y)}
+	 ;
+	 //The sum seems to fail if the set is empty so we consider
+	 // this case independently
+	 chunk_pred(Chunk2,_,_),
+	 !chunk_pred(Chunk,_,_)
+	 ).
+
+// The heuristics count the number of predecessors that are not overlaping blocks
+// we give more points for predecessors from fallthroughs and direct jumps
+// The points are trasmitted transitively though overlaping blocks
+
+.decl chunk_pred(chunk:address,predecessor:address,importance:number)
+.output chunk_pred
+chunk_pred(Chunk,0,1):-
+	basic_target(Chunk).
+	
+chunk_pred(Chunk,Chunk_pred,3):-
+	direct_jump(EA,Chunk),
+	phase2.likely_ea(EA,Chunk_pred),
+	Chunk_pred!=Chunk,
+	!chunk_is_overlaping(Chunk_pred).
+	
+chunk_pred(Chunk,Chunk_pred,3):-
+	may_fallthrough(EA,Chunk),
+	phase2.likely_ea(EA,Chunk_pred),
+	!chunk_is_overlaping(Chunk_pred).
+
+// it fits but the previous block does not fall through
+chunk_pred(Chunk,Chunk_pred,1):-
+	next(EA,Chunk),
+	!may_fallthrough(EA,Chunk),
+	phase2.likely_ea(EA,Chunk_pred),
+	!chunk_is_overlaping(Chunk_pred).
+	
+chunk_pred(Chunk,Chunk_pred,1):-
+	possible_target_from(Chunk,EA),
+	!direct_jump(EA,Chunk),
+	phase2.likely_ea(EA,Chunk_pred),
+	Chunk_pred!=Chunk,
+	!chunk_is_overlaping(Chunk_pred).
+	
+// transitivity for fallthrough and direct jumps
+chunk_pred(Chunk,Chunk_pred2,Points):-
+	may_fallthrough(EA,Chunk),
+	phase2.likely_ea(EA,Chunk_pred),
+	chunk_is_overlaping(Chunk_pred),
+	chunk_pred(Chunk_pred,Chunk_pred2,Points).
+
+chunk_pred(Chunk,Chunk_pred2,Points):-
+	direct_jump(EA,Chunk),
+	phase2.likely_ea(EA,Chunk_pred),
+	chunk_is_overlaping(Chunk_pred),
+	chunk_pred(Chunk_pred,Chunk_pred2,Points).
+
+////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+
+
+likely_ea_final(EA,Chunk):-
+	phase2.likely_ea(EA,Chunk),
+	!discarded_chunk(Chunk).
+
+
+code(EA):-
+	likely_ea_final(EA,_).
+	
+chunk_still_overlap(Chunk,Chunk2):-
+	chunk_overlap(Chunk,Chunk2),
+	!discarded_chunk(Chunk),
+	!discarded_chunk(Chunk2).
