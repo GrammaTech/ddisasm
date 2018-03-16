@@ -162,10 +162,10 @@ for compiler in "${compilers[@]}"; do
 		
 		for ((i = 0; i < ${#examples[@]}; i++)); do
 		    echo "#Example ${examples[$i]}"
-		    exe_name=(${examples[$i]})
-	            echo "Stripping ${exe_name[0]}"
-		    cp "$dir/${exe_name[0]}" "$dir/${exe_name[0]}.unstripped"
-		    strip --strip-unneeded $dir/${exe_name[0]}
+		   # exe_name=(${examples[$i]})
+	           # echo "Stripping ${exe_name[0]}"
+		   # cp "$dir/${exe_name[0]}" "$dir/${exe_name[0]}.unstripped"
+		   # strip --strip-unneeded $dir/${exe_name[0]}
 		    timeout 10m bash ./reassemble_no_rebuild.sh $dir ${examples[$i]}
 		done
 		

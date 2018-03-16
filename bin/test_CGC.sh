@@ -46,10 +46,10 @@ examples=(
   #  "CROMU_00055"
     "CROMU_00058"
   #  "CROMU_00061"
-    "CROMU_00065"
+  #  "CROMU_00065" this one takes long
   #  "CROMU_00070"
   #  "CROMU_00077"
-    "CROMU_00078"
+  #  "CROMU_00078" this one takes forever
   #  "CROMU_00094"
   #  "CROMU_00096" this one takes forever
     "CROMU_00097"
@@ -88,7 +88,7 @@ examples=(
     "KPRCA_00045"
     "KPRCA_00046"
     "KPRCA_00051"
-    "KPRCA_00052"
+    "KPRCA_00052" 
     "KPRCA_00053"
     "KPRCA_00054"
   #  "KPRCA_00055"
@@ -136,7 +136,7 @@ examples=(
   #  "NRFIN_00045"
   #  "NRFIN_00046"
     "NRFIN_00051"
-    "NRFIN_00052"
+  #  "NRFIN_00052" this one takes forever
     "NRFIN_00053"
     "NRFIN_00059"
     "NRFIN_00077"
@@ -149,7 +149,8 @@ examples=(
   #  "YAN01_00016"
 );
 
-dir="/code/cgc-cbs/examples/"
+dir="/code/cgc-cbs/cqe-challenges/"
+
 
 for file in "${examples[@]}"; do
     if [ -d "$dir$file" ]; then
@@ -162,8 +163,8 @@ for file in "${examples[@]}"; do
     fi
 done
 
-dir="/code/cgc-cbs/cqe-challenges/"
 
+dir="/code/cgc-cbs/examples/"
 
 for file in "${examples[@]}"; do
     if [ -d "$dir$file" ]; then

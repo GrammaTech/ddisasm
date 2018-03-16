@@ -25,25 +25,38 @@ examples=(
     "lighttpd-1.4.18/ src/lighttpd -rdynamic -lpcre -ldl"
 );
 
-compilers=("gcc"
-	   "gcc8"
-	   "clang");
+compilers=(
+    "gcc"
+    "gcc8"
+    "clang"
+);
 
-optimizations=(""
-	       "-O1"
-	       "-O2"
-	       "-O3"
-	       "-Os");
+cpp_compilers=(
+    "g++"
+    "g++8"
+    "clang++"
+);
+
+optimizations=(
+    ""
+    "-O1"
+    "-O2"
+    "-O3"
+    "-Os"
+);
 
 
 for ((i = 0; i < ${#examples[@]}; i++)); do
+    j=0
     for compiler in "${compilers[@]}"; do
 	export CC=$compiler
+	export CXX=${cpp_compilers[$j]}
 	for optimization in  "${optimizations[@]}"; do
 	    export CFLAGS=$optimization
-	    echo "#Example ${examples[$i]} with $compiler $optimization"
+	    echo "#Example ${examples[$i]} with $CC/$CXX $optimization"
 	    timeout 10m bash ./reassemble_and_test.sh $dir${examples[$i]}
 	done
+    j=$j+1	
     done
 done
 
