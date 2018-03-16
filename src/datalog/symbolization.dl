@@ -99,7 +99,7 @@ def(EA,Reg):-
 
 .decl used_for_address(ea:address,reg:register,where:address, index:operand_index)
 // the register 'reg' at address 'ea' is later used in a memory address in 'where'
-// in the operand #index
+// in the operand 'index'
 
 
 //BASE CASE: used register for memory here
@@ -603,7 +603,20 @@ moved_label(EA,Op_index,Dest,Dest-Diff):-
 	Dest-Diff>=Beg,
 	Dest-Diff<=Size+Beg
 	).
-	
+
+
+.decl address_in_data2(EA:address,Val:number)
+
+address_in_data2(EA,Val):-
+      address_in_data(EA,Val),
+      data_section(Name),
+      section(Name,Size,Beg),
+      Val>=Beg,
+      Val<=Size+Beg.
+      
+address_in_data2(EA,Val):-
+      address_in_data(EA,Val),
+      likely_ea_final(_,Val).
 
 // overapproximation of labels
 labeled_data(EA):-
@@ -616,41 +629,29 @@ labeled_data(EA_moved):-
 labeled_data(Val):-
 	address_in_data(_,Val),
 	data_byte(Val,_).
-///////////////////////////////////////////////////////////////////////////////////////////
-
-.comp empty_range{
-
-.decl in_ea(ea:address)
-.decl no_overlap(ea:address,size:number)
 
 
-no_overlap(EA,16):-
-	data_byte(EA,_),
-	!in_ea(EA-1).
-	
-no_overlap(EA,32):-
-	data_byte(EA,_),
-	!in_ea(EA-1),
-	!in_ea(EA-2),
-	!in_ea(EA-3).
-	
-no_overlap(EA,64):-
-	data_byte(EA,_),
-	no_overlap(EA,32),
-	!in_ea(EA-4),
-	no_overlap(EA-4,32).
+// an array has to have at least 3 elements to give us some confidence
+.decl address_array(EA:address)
 
-	
-no_overlap(EA,128):-
-	no_overlap(EA,64),
-	!in_ea(EA-8),
-	no_overlap(EA-8,64).
+address_array(EA):-
+	address_in_data2(EA,_),
+	EA % 8 =0,
+	address_in_data2(EA+8,_),
+	address_in_data2(EA+16,_).
+address_array(EA):-
+	address_array(EA-8),
+	address_in_data2(EA,_).
 
-}
+#include "empty_range.dl"
 .init address_array_range=empty_range
 
 address_array_range.in_ea(EA):-
 	address_array(EA).
+	
+///////////////////////////////////////////////////////////////////////////////////////////
+
+
 
 
 
@@ -751,34 +752,8 @@ preferred_label(EA,EA_label):-
 	data_label(EA,EA_label,Selected_offset,_),
 	Min_Offset>=Selected_offset.
 
-.decl address_in_data2(EA:address,Val:number)
 
-address_in_data2(EA,Val):-
-      address_in_data(EA,Val),
-      data_section(Name),
-      section(Name,Size,Beg),
-      Val>=Beg,
-      Val<=Size+Beg.
-      
-address_in_data2(EA,Val):-
-      address_in_data(EA,Val),
-      likely_ea_final(_,Val).
-
-// an array has to have at least 3 elements to give us some confidence
-.decl address_array(EA:address)
-
-address_array(EA):-
-	address_in_data2(EA,_),
-	EA % 8 =0,
-	address_in_data2(EA+8,_),
-	address_in_data2(EA+16,_).
-address_array(EA):-
-	address_array(EA-8),
-	address_in_data2(EA,_).
 	
-	
-	
-
 .decl address_can_contain_pointers(ea:address)
 .output address_can_contain_pointers
 // address accessed from recognized pattern
