@@ -46,14 +46,17 @@ if !( make clean -e -C $dir &>/dev/null  && make -e -C $dir &>/dev/null); then
     exit 1
 fi
 
-printf "# Stripping binary\n"
-strip --strip-unneeded "$dir/$exe"
+#printf "# Stripping binary\n"
+#strip --strip-unneeded "$dir/$exe"
 
 printf "# Disassembling $exe into $exe.s\n"
-if !(time(./disasm "$dir/$exe" -asm > "$dir/$exe.s")); then
+if !(time(./disasm "$dir/$exe" -asm > "$dir/$exe.s") 2>/tmp/time.txt); then
     printf "# ${red}Disassembly failed${normal}\n"
     exit 1
 fi
+time=$(cat /tmp/time.txt| grep user| cut -f 2)
+size=$(stat --printf="%s" "$dir/$exe")
+printf "#Stats: Time $time Size $size\n"
 
 printf "  OK\n"
 printf "Copying old binary to $dir/$exe.old\n"
