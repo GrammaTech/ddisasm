@@ -1,0 +1,29 @@
+.comp empty_range{
+
+.decl in_ea(ea:address)
+.decl no_overlap(ea:address,size:number)
+
+
+no_overlap(EA,16):-
+	data_byte(EA,_),
+	!in_ea(EA-1).
+	
+no_overlap(EA,32):-
+	data_byte(EA,_),
+	!in_ea(EA-1),
+	!in_ea(EA-2),
+	!in_ea(EA-3).
+	
+no_overlap(EA,64):-
+	data_byte(EA,_),
+	no_overlap(EA,32),
+	!in_ea(EA-4),
+	no_overlap(EA-4,32).
+
+	
+no_overlap(EA,128):-
+	no_overlap(EA,64),
+	!in_ea(EA-8),
+	no_overlap(EA-8,64).
+
+}
