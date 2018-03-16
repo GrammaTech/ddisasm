@@ -143,7 +143,7 @@ result_descriptors([
 	  
 			  result(bss_data,1,'.csv'),
 			  result(preferred_label,2,'.csv'),
-			  result(def_used,3,'.csv'),
+			  result(def_used,4,'.csv'),
 			  result(data_access_pattern,4,'.csv'),
 			  result(paired_data_access,8,'.csv'),
 			  result(moved_label,4,'.csv'),
@@ -190,7 +190,7 @@ result_descriptors([
 :-dynamic data_access_pattern/4.
 :-dynamic paired_data_access/8.
 :-dynamic preferred_label/2.
-:-dynamic def_used/3.
+:-dynamic def_used/4.
 :-dynamic value_reg/7.
 :-dynamic moved_label/4.
 
@@ -967,9 +967,9 @@ comment(EA,pc_relative_jump(Dest_hex)):-
     format(atom(Dest_hex),'~16R',[Dest]).
 
 comment(EA,used(Tuples)):-
-    findall((EA_used_hex,Index),
+    findall((Reg,EA_used_hex,Index),
 	    (
-	    def_used(EA,EA_used,Index),
+	    def_used(EA,Reg,EA_used,Index),
 	    pp_to_hex(EA_used,EA_used_hex)
 	    ),
 	    Tuples),
