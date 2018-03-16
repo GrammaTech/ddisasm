@@ -22,7 +22,7 @@ std::string Dl_operator::print() const{
         o<< "immediate("<<offset<<")";
         return o.str();
     case INDIRECT:
-        o<< "indirect("<<reg1<<","<<reg2<<","<<reg3<<","<<multiplier<<","<<disp<<","<<offset<<")";
+        o<< "indirect("<<reg1<<","<<reg2<<","<<reg3<<","<<multiplier<<","<<offset<<")";
         return o.str();
     }
 }
@@ -39,7 +39,7 @@ std::string Dl_operator::print_tabs(int64_t id) const{
         o<< id<< '\t'<<offset;
         return o.str();
     case INDIRECT:
-        o<< id<<'\t'<<reg1<<'\t'<<reg2<<'\t'<<reg3<<'\t'<<multiplier<<'\t'<<disp<<'\t'<<offset<<'\t'<< size;;
+        o<< id<<'\t'<<reg1<<'\t'<<reg2<<'\t'<<reg3<<'\t'<<multiplier<<'\t'<<offset<<'\t'<< size;;
         return o.str();
     }
 }
@@ -70,9 +70,7 @@ bool compare_operators::operator()(const Dl_operator&  op1,const Dl_operator&  o
                     ( (op1.size== op2.size) && (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg3==op2.reg3) &&
                             (op1.offset< op2.offset)) ||
                             ( (op1.size== op2.size) && (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg3==op2.reg3) &&
-                                    (op1.offset==op2.offset) && (op1.multiplier< op2.multiplier) )||
-                                    ( (op1.size== op2.size) && (op1.reg1==op2.reg1) && (op1.reg2==op2.reg2) && (op1.reg3==op2.reg3) &&
-                                            (op1.offset==op2.offset) && (op1.multiplier== op2.multiplier) && (op1.disp<op2.disp));
+                                    (op1.offset==op2.offset) && (op1.multiplier< op2.multiplier) );
         }
     }else{
         return op1.type<op2.type;

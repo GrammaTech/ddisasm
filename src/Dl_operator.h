@@ -24,9 +24,8 @@ public:
     std::string reg1;
     std::string reg2;
     std::string reg3;
-    int64_t offset;
     int64_t multiplier;
-    int64_t disp;
+    int64_t offset;
     short size;
 
     Dl_operator(operator_type type=operator_type::NONE,
@@ -41,9 +40,8 @@ public:
                     reg1(reg1),
                     reg2(reg2),
                     reg3(reg3),
-                    offset(offset),
                     multiplier(multiplier),
-                    disp(dist),
+                    offset(offset),
                     size(size){}
 
     operator_type get_type() const;

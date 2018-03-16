@@ -15,8 +15,6 @@
 .output bss_data
 
 // type classification heuristics
-.decl float_data(ea:address)
-.output float_data
 
 .decl string(ea:address,end:address)
 .output string
@@ -57,11 +55,11 @@ track_register("ESI","RSI").
 // ignore section registers
 
 op_indirect_contains_reg(Op,Reg_uniform):-
-	op_indirect(Op,_,Reg2,_,_,_,_,_),
+	op_indirect(Op,_,Reg2,_,_,_,_),
 	track_register(Reg2,Reg_uniform).
 	
 op_indirect_contains_reg(Op,Reg_uniform):-
-	op_indirect(Op,_,_,Reg3,_,_,_,_),
+	op_indirect(Op,_,_,Reg3,_,_,_),
 	track_register(Reg3,Reg_uniform).
 
 .decl op_regdirect_contains_reg(op:operand_code,reg:register)
@@ -216,7 +214,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier,Offset):-
 	def(EA,Reg),
 	def_used(EA_prev,Reg_origin,EA,1),
 	instruction(EA,_,"LEA",Op1,Op2,0),
-	op_indirect(Op1,_,NullReg,Reg_origin_non_uniform,Multiplier,Offset,_,_),
+	op_indirect(Op1,_,NullReg,Reg_origin_non_uniform,Multiplier,Offset,_),
 	null_reg(NullReg),
 	track_register(Reg_origin_non_uniform,Reg_origin),
 	op_regdirect_contains_reg(Op2,Reg),
@@ -226,7 +224,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier+1,Offset):-
 	def(EA,Reg),
 	def_used(EA_prev,Reg_origin,EA,1),
 	instruction(EA,_,"LEA",Op1,Op2,0),
-	op_indirect(Op1,_,Reg_origin_non_uniform,Reg_origin_non_uniform,Multiplier,Offset,_,_),
+	op_indirect(Op1,_,Reg_origin_non_uniform,Reg_origin_non_uniform,Multiplier,Offset,_),
 	track_register(Reg_origin_non_uniform,Reg_origin),
 	op_regdirect_contains_reg(Op2,Reg),
 	EA!=EA_prev.	
@@ -235,7 +233,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,Offset):-
 	def(EA,Reg),
 	def_used(EA_prev,Reg_origin,EA,1),
 	instruction(EA,_,"LEA",Op1,Op2,0),
-	op_indirect(Op1,_,Reg_origin_non_uniform,NullReg,1,Offset,_,_),
+	op_indirect(Op1,_,Reg_origin_non_uniform,NullReg,1,Offset,_),
 	null_reg(NullReg),
 	track_register(Reg_origin_non_uniform,Reg_origin),
 	op_regdirect_contains_reg(Op2,Reg),
@@ -295,7 +293,7 @@ value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,S
 data_access_pattern(Address,Size,0,EA):-
 	code(EA),
 	instruction_get_op(EA,_Op_index,Op),
-	op_indirect(Op,NullSReg,NullReg1,NullReg2,_,Address,_,Size),
+	op_indirect(Op,NullSReg,NullReg1,NullReg2,_,Address,Size),
 	null_reg(NullSReg),
 	null_reg(NullReg1),
 	null_reg(NullReg2),
@@ -305,7 +303,7 @@ data_access_pattern(Address,Size,0,EA):-
 data_access_pattern(Address,Size,Multiplier,EA):-
 	code(EA),
 	instruction_get_op(EA,_Op_index,Op),
-	op_indirect(Op,NullSReg,NullReg1,RegMult,Multiplier,Address,_,Size),
+	op_indirect(Op,NullSReg,NullReg1,RegMult,Multiplier,Address,Size),
 	null_reg(NullSReg),
 	null_reg(NullReg1),
 	!null_reg(RegMult),
@@ -314,22 +312,20 @@ data_access_pattern(Address,Size,Multiplier,EA):-
 // pc relative
 data_access_pattern(Address,Size,0,EA):-
 	code(EA),
-	pc_relative_operand_complete(EA,_,Address,Size),
-	
+	pc_relative_operand_complete(EA,_,Address,Size),	
 	data_byte(Address,_).
 	
 // indirectly computed
 data_access_pattern(Offset+Address,Size,Multiplier,EA):-
 	code(EA),
 	instruction_get_op(EA,Op_index,Op),
-	op_indirect(Op,NullSReg,Reg,NullReg1,_,Address,_,Size),
+	op_indirect(Op,NullSReg,Reg,NullReg1,_,Address,Size),
 	null_reg(NullSReg),
 	null_reg(NullReg1),
 	def_used(EA_def,Reg,EA,Op_index),
 	Max_steps=max Steps:{value_reg(EA_def,Reg,_,_,_,_,Steps)},	
 	value_reg(EA_def,Reg,_,_,Multiplier,Offset,St),
-	St>=Max_steps,
-	
+	St>=Max_steps,	
 	data_byte(Offset+Address,_).
 
 
@@ -337,28 +333,26 @@ data_access_pattern(Offset+Address,Size,Multiplier,EA):-
 data_access_pattern(Address,8,1,EA):-
 	code(EA),
 	instruction_get_op(EA,Index,Op),
-	op_indirect(Op,NullSReg,Reg,NullReg1,_,Address,_,1),
+	op_indirect(Op,NullSReg,Reg,NullReg1,_,Address,1),
 	null_reg(NullSReg),
 	null_reg(NullReg1),
 	!null_reg(Reg),
 
 	def_used(EA_def,Reg,EA,Index),	
 	!value_reg(EA_def,Reg,_,_,_,_,_),
-
 	data_byte(Address,_).
 
 //typical word index
 data_access_pattern(Address,16,2,EA):-
 	code(EA),
 	instruction_get_op(EA,Index,Op),
-	op_indirect(Op,NullSReg,Reg,Reg,1,Address,_,16),
+	op_indirect(Op,NullSReg,Reg,Reg,1,Address,16),
 	null_reg(NullSReg),
 	!null_reg(Reg),
 
 
 	def_used(EA_def,Reg,EA,Index),	
 	!value_reg(EA_def,Reg,_,_,_,_,_),
-
 	data_byte(Address,_).
 
 //typical string access
@@ -368,7 +362,6 @@ data_access_pattern(Address,0,0,EA):-
 	op_immediate(Op1,Address),
 	op_regdirect(Op2,Reg),
 	string_register(Reg),
-
 	data_byte(Address,_).
 
 .decl string_register(reg:register)
@@ -377,7 +370,7 @@ string_register("EDI").
 string_register("ESI").
 
 ///////////////////////////////////////////////////////////////////////////////
-////
+////If threre are two nearby memory accesses
 
 .decl paired_data_access(EA1:address,Size1:number,Ref1:address,Multiplier:number,
 			 EA2:address,Size2:number,Ref2:address,Diff:number)
@@ -388,13 +381,14 @@ paired_data_access(EA1,Size1,Ref1,Multiplier,EA2,Size2,Ref2,Diff):-
 			 EA1<EA2,
 			 EA1+Multiplier>=EA2+(Size2/8),
 			 Diff=EA2-EA1,
-			 (Ref1<Ref2, Ref1+200>=Ref2
+			 (
+			 Ref1<Ref2,
+			 Ref1+200>=Ref2
 			 ;
-			 Ref2<Ref1, Ref2+200>=Ref1
+			 Ref2<Ref1,
+			 Ref2+200>=Ref1
 			 ).
-			 //too strict
-			 //likely_ea_final(Ref1,Chunk),
-			 //likely_ea_final(Ref2,Chunk).
+
 
 .decl taken_by_data_access_pattern(EA:address,Offset:number)
 
@@ -425,7 +419,7 @@ symbolic_code_operand_candidate(EA,Op_index,Dest):-
 		pc_relative_operand_complete(EA,Op_index,Dest,_Size)
 	;
 
-   	       op_indirect(Op,_,_,_,_,Dest,_,_Size)
+   	       op_indirect(Op,_,_,_,_,Dest,_Size)
 	),
 	code(Dest).
 	
@@ -439,7 +433,7 @@ symbolic_data_operand_candidate(EA,Op_index,Dest):-
 		pc_relative_operand_complete(EA,Op_index,Dest,_Size)
 	;
 
-   	       op_indirect(Op,_,_,_,_Multiplier,Dest,_,_Size)
+   	       op_indirect(Op,_,_,_,_Multiplier,Dest,_Size)
 	),
 	data_section(Name),
 	section(Name,SizeSect,Base),
@@ -453,7 +447,6 @@ symbolic_data_operand_candidate(EA,Op_index,Dest):-
 moved_label(EA,Op_index,Dest,New_dest):-
 	symbolic_data_operand_candidate(EA,Op_index,Dest),
 	1>=count:{symbolic_data_operand_candidate(_,_,Dest)},//it appears only once
-//	1>=count:{data_access_pattern(_,_,_,EA)},//only 1 access pattern
 
 	data_access_pattern(New_dest,_,_,EA),
 	(Dest>New_dest+3
@@ -519,7 +512,7 @@ moved_label(EA,Op_index,Dest,Dest+Correction):-
 	instruction_get_op(EA,Op_index,Op),
 	!symbolic_data_operand_candidate(EA,Op_index,Dest),
 	!pc_relative_operand_complete(EA,Op_index,_,_),
-	op_indirect(Op,_,_,_,_,Dest,_,_),
+	op_indirect(Op,_,_,_,_,Dest,_),
 	Dest>40000,
 	
 	data_section(Name),
@@ -535,7 +528,7 @@ moved_label(EA,Op_index,Dest,Dest+Correction):-
 	!pc_relative_operand_complete(EA,Op_index,_,_),
 	
 	// the ones that miss it for a little
-	op_indirect(Op,NullSReg,Reg,_,_,Dest,_,Size),
+	op_indirect(Op,NullSReg,Reg,_,_,Dest,Size),
 	Dest!=0,
 	def_used(EA_def,Reg,EA,Op_index),
 	Max_steps=max Steps:{value_reg(EA_def,Reg,_,_,_,_,Steps)},	
@@ -866,39 +859,23 @@ bss_data(EA):-
 // This is not necessary but helful for debugging
 
 
-
-float_data(EA):-
-	labeled_data(EA),
-	symbolic_data_operand_candidate(Ref,_,EA),
-	float_instruction(Ref).
-
-.decl float_instruction(ea:address)
-
-float_instruction(EA):-
-	instruction_get_operation(EA,Operation),
-	float_operation(Operation).
-
-
 string(Beg,End+1):-
 	data_byte(End,0),
 	string_candidate(End-1,Beg),
 	!labeled_data(End).
 
-   
-
+  
 .decl string_candidate(ea:address,base:address)
 
 
 string_candidate(EA,EA):-
     preferred_label(EA,_),
-    !float_data(EA),
     !symbolic_data(EA,_),
     data_byte(EA,Byte),
     printable_char(Byte).
     
 string_candidate(EA,EA):-
     labeled_data(EA),
-    !float_data(EA),
     !symbolic_data(EA,_),
     data_byte(EA,Byte),
     printable_char(Byte).
