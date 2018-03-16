@@ -149,9 +149,7 @@ inline void Datalog_visitor_x64::visitAddr(const addr * const n){
     curr_op.reg2=n->Get_Base()->GetClassIdName();
     curr_op.reg3=n->Get_Index()->GetClassIdName();
 
-
-    curr_op.disp= n->Get_disp().get_data();
-    curr_op.offset= n->Get_offset().get_data();
+    curr_op.offset=n->Get_disp().get_data();
     curr_op.multiplier=n->Get_s().get_data();
 }
 

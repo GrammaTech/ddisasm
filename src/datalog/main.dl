@@ -6,7 +6,7 @@
 
 
 #include "printable_chars.dl"
-#include "float_operations.dl"
+//#include "float_operations.dl"
 #include "jump_operations.dl"
 
 // infer what is code and what is not
@@ -15,7 +15,7 @@
 
 // infer what is a pointer and what is not
 // compute symbolic_operand, symbolic_data, labeled_data
-// float and strings
+// and strings
 #include "symbolization.dl"
 
 /////////////////////////////////////////////////////////////
@@ -54,7 +54,7 @@
 .input op_immediate
 
 .decl op_indirect(code:operand_code,reg1:register, reg2:register, reg3:register,
-		multiplier:number, offset:number, noidea:number, size_value:number)
+		multiplier:number, offset:number, size_value:number)
 .input op_indirect
 
 //data from data sections
@@ -184,7 +184,7 @@ pc_relative_operand(EA,Index,Dest):-
 
 pc_relative_operand_complete(EA,Index,EA_next+Offset,Size):-
 	instruction_get_op(EA, Index, Op),
-	op_indirect(Op,NullSReg,"RIP",NullReg1,1,Offset,_,Size),
+	op_indirect(Op,NullSReg,"RIP",NullReg1,1,Offset,Size),
 	null_reg(NullSReg),
 	null_reg(NullReg1),
 	next(EA,EA_next).		
@@ -239,7 +239,7 @@ reg_jump(EA):-
 indirect_jump(EA):-
  	instruction(EA,_,Operation,Op1,_,_),
  	jump_operation(Operation),
- 	op_indirect(Op1,_,_,_, _,_,_,_),
+ 	op_indirect(Op1,_,_,_, _,_,_),
  	!pc_relative_jump(EA,_).
 
 
@@ -278,7 +278,7 @@ reg_call(EA):-
 
 indirect_call(EA):-
 	instruction(EA,_,"CALL",Op1,_,_),
- 	op_indirect(Op1,_,_,_,_,_,_,_),
+ 	op_indirect(Op1,_,_,_,_,_,_),
  	!pc_relative_jump(EA,_).
 
 

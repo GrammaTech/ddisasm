@@ -109,7 +109,7 @@ result_descriptors([
 			  result(instruction,6,'.facts'),
 			  result(op_regdirect,2,'.facts'),
 			  result(op_immediate,2,'.facts'),
-			  result(op_indirect,8,'.facts'),
+			  result(op_indirect,7,'.facts'),
 			  result(data_byte,2,'.facts'),
 
 			  result(direct_jump,2,'.csv'),	
@@ -137,7 +137,6 @@ result_descriptors([
 
 			  result(symbolic_operand,2,'.csv'),
 			  result(labeled_data,1,'.csv'),
-			  result(float_data,1,'.csv'),
 			  result(symbolic_data,2,'.csv'),
 			  result(string,2,'.csv'),
 	  
@@ -156,7 +155,7 @@ result_descriptors([
 :-dynamic instruction/6.
 :-dynamic op_regdirect/2.
 :-dynamic op_immediate/2.
-:-dynamic op_indirect/8.
+:-dynamic op_indirect/7.
 :-dynamic data_byte/2.
 
 
@@ -183,7 +182,6 @@ result_descriptors([
 
 :-dynamic symbolic_operand/2.
 :-dynamic labeled_data/1.
-:-dynamic float_data/1.
 :-dynamic symbolic_data/2.
 :-dynamic string/2.
 :-dynamic bss_data/1.
@@ -317,8 +315,8 @@ get_op(N,reg(Name)):-
     op_regdirect(N,Name),!.
 get_op(N,immediate(Immediate)):-
     op_immediate(N,Immediate),!.
-get_op(N,indirect(Reg1,Reg2,Reg3,A,B,C,Size)):-
-    op_indirect(N,Reg1,Reg2,Reg3,A,B,C,Size),!.
+get_op(N,indirect(Reg1,Reg2,Reg3,A,B,Size)):-
+    op_indirect(N,Reg1,Reg2,Reg3,A,B,Size),!.
 
 accum_instruction(instruction(EA,Size,OpCode,Op1,Op2,Op3),Assoc,Assoc1):-
     put_assoc(EA,Assoc,instruction(EA,Size,OpCode,Op1,Op2,Op3),Assoc1).
@@ -392,10 +390,6 @@ group_data([data_byte(EA,_)|Rest],[data_group(EA,pointer,Group_content)|Groups])
     split_at(7,Rest,_,Rest2),
     group_data(Rest2,Groups).
 
-group_data([data_byte(EA,Content)|Rest],[data_group(EA,float,Group_content)|Groups]):-
-    float_data(EA),!,
-    split_at(4,[data_byte(EA,Content)|Rest],Group_content,Rest2),
-    group_data(Rest2,Groups).
 
 group_data([data_byte(EA,Content)|Rest],[data_group(EA,string,String)|Groups]):-
     string(EA,End),!,
@@ -505,11 +499,6 @@ pp_data(data_group(EA,labeled_pointer,Content)):-
     format('.quad .L_~16R',[Content]),
     cond_print_comments(EA),
     print_end_label(EA,8).
-   
-pp_data(data_group(EA,float,Content)):-
-    print_label(EA),
-    format('# float~n',[]),
-    maplist(pp_data,Content).
 
 pp_data(data_group(EA,string,Content)):-
     print_label(EA),
@@ -706,14 +695,14 @@ pp_operand(immediate(Num),EA,N,Num_hex):-
 pp_operand(immediate(Num),_,_,Num).
     
 
-pp_operand(indirect(NullSReg,NullReg1,NullReg2,1,0,_,Size),_,_,PP):-
+pp_operand(indirect(NullSReg,NullReg1,NullReg2,1,0,Size),_,_,PP):-
     null_reg(NullSReg),
     null_reg(NullReg1),
     null_reg(NullReg2),
     get_size_name(Size,Name),
     format(atom(PP),'~p [~p]',[Name,0]).
 
-pp_operand(indirect(NullSReg,Reg,NullReg1,1,0,_,Size),_,_,PP):-
+pp_operand(indirect(NullSReg,Reg,NullReg1,1,0,Size),_,_,PP):-
     null_reg(NullSReg),
     null_reg(NullReg1),
     adapt_register(Reg,Reg_adapted),
@@ -721,7 +710,7 @@ pp_operand(indirect(NullSReg,Reg,NullReg1,1,0,_,Size),_,_,PP):-
     format(atom(PP),'~p [~p]',[Name,Reg_adapted]).
 
 % special case for rip relative addressing
-pp_operand(indirect(NullSReg,'RIP',NullReg1,1,Offset,_,Size),EA,N,PP):-
+pp_operand(indirect(NullSReg,'RIP',NullReg1,1,Offset,Size),EA,N,PP):-
     null_reg(NullSReg),
     null_reg(NullReg1),
     symbolic_operand(EA,N),!,
@@ -734,7 +723,7 @@ pp_operand(indirect(NullSReg,'RIP',NullReg1,1,Offset,_,Size),EA,N,PP):-
 	 format(atom(PP),'~p .L_~16R[rip]',[Name,Address])
     ).
 
-pp_operand(indirect(NullSReg,NullReg1,NullReg2,1,Offset,_,Size),EA,N,PP):-
+pp_operand(indirect(NullSReg,NullReg1,NullReg2,1,Offset,Size),EA,N,PP):-
     null_reg(NullSReg),
     null_reg(NullReg1),
     null_reg(NullReg2),
@@ -748,7 +737,7 @@ pp_operand(indirect(NullSReg,NullReg1,NullReg2,1,Offset,_,Size),EA,N,PP):-
      format(atom(PP),'~p ~p',[Name,[Term]])
     ).
   
-pp_operand(indirect(NullSReg,Reg,NullReg1,1,Offset,_,Size),EA,N,PP):-
+pp_operand(indirect(NullSReg,Reg,NullReg1,1,Offset,Size),EA,N,PP):-
     null_reg(NullSReg),
     null_reg(NullReg1),
     adapt_register(Reg,Reg_adapted),
@@ -757,7 +746,7 @@ pp_operand(indirect(NullSReg,Reg,NullReg1,1,Offset,_,Size),EA,N,PP):-
     Term=..[PosNeg,Reg_adapted,Offset1],
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
-pp_operand(indirect(NullSReg,NullReg1,Reg_index,Mult,Offset,_,Size),EA,N,PP):-
+pp_operand(indirect(NullSReg,NullReg1,Reg_index,Mult,Offset,Size),EA,N,PP):-
     null_reg(NullSReg),
     null_reg(NullReg1),
     adapt_register(Reg_index,Reg_index_adapted),
@@ -767,7 +756,7 @@ pp_operand(indirect(NullSReg,NullReg1,Reg_index,Mult,Offset,_,Size),EA,N,PP):-
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
 
-pp_operand(indirect(NullSReg,Reg,Reg_index,Mult,0,_,Size),_,_N,PP):-
+pp_operand(indirect(NullSReg,Reg,Reg_index,Mult,0,Size),_,_N,PP):-
     null_reg(NullSReg),
     adapt_register(Reg,Reg_adapted),
     adapt_register(Reg_index,Reg_index_adapted),
@@ -775,7 +764,7 @@ pp_operand(indirect(NullSReg,Reg,Reg_index,Mult,0,_,Size),_,_N,PP):-
     format(atom(PP),'~p ~p',[Name,[Reg_adapted+Reg_index_adapted*Mult]]).
 
 
-pp_operand(indirect(NullSReg,Reg,Reg_index,Mult,Offset,_,Size),EA,N,PP):-
+pp_operand(indirect(NullSReg,Reg,Reg_index,Mult,Offset,Size),EA,N,PP):-
     null_reg(NullSReg),
     adapt_register(Reg,Reg_adapted),
     adapt_register(Reg_index,Reg_index_adapted),
@@ -785,7 +774,7 @@ pp_operand(indirect(NullSReg,Reg,Reg_index,Mult,Offset,_,Size),EA,N,PP):-
     format(atom(PP),'~p ~p',[Name,[Term]]).
 
 
-pp_operand(indirect(SReg,NullReg1,NullReg2,1,Offset,_,Size),EA,N,PP):-
+pp_operand(indirect(SReg,NullReg1,NullReg2,1,Offset,Size),EA,N,PP):-
     null_reg(NullReg1),
     null_reg(NullReg2),
     get_size_name(Size,Name),
@@ -823,7 +812,7 @@ get_size_name(16,'WORD PTR').
 get_size_name(8,'BYTE PTR').
 get_size_name(Other,size(Other)).
 
-get_op_indirect_size_suffix(indirect(_,_,_,_,_,_,Size),Suffix):-
+get_op_indirect_size_suffix(indirect(_,_,_,_,_,Size),Suffix):-
     get_size_suffix(Size,Suffix).
 
 get_size_suffix(128,'').
