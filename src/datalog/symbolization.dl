@@ -14,8 +14,7 @@
 .decl bss_data(ea:address)
 .output bss_data
 
-// type classification heuristics
-
+// string (just for pretty printing)
 .decl string(ea:address,end:address)
 .output string
 
@@ -30,21 +29,24 @@
 .decl track_register(Reg32:register,Reg64:register)
 
 track_register("EAX","RAX").
-track_register("EBX","RBX").
-track_register("ECX","RCX").
-track_register("EDX","RDX").
-
-
 track_register("RAX","RAX").
+
+track_register("EBX","RBX").
 track_register("RBX","RBX").
+
+track_register("ECX","RCX").
 track_register("RCX","RCX").
+
+
+track_register("EDX","RDX").
 track_register("RDX","RDX").
 
-track_register("RDI","RDI").
 track_register("EDI","RDI").
+track_register("RDI","RDI").
 
-track_register("RSI","RSI").
 track_register("ESI","RSI").
+track_register("RSI","RSI").
+
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -71,13 +73,14 @@ op_regdirect_contains_reg(Op,Reg_uniform):-
 	
 //////////////////////////////////////////////////////////////////////////////
 //local underapproximation of control flow
-// we stop whenever we find a call
 .decl local_next(ea:address,ea_next:address)
 
+//do not cross calls
 local_next(EA,EA_next):-
 	code(EA),
 	!instruction_get_operation(EA,"CALL"),
 	may_fallthrough(EA,EA_next).
+	
 local_next(EA,EA_next):-
 	code(EA),
 	direct_jump(EA,EA_next).
@@ -106,6 +109,7 @@ def(EA,Reg):-
 //BASE CASE: used register for memory here
 used_for_address(EA,Reg,EA,Index):-
 	code(EA),
+	//lea does not access memory
 	!instruction_get_operation(EA,"LEA"),
 	instruction_get_op(EA,Index,Op),
 	op_indirect_contains_reg(Op,Reg).
@@ -148,7 +152,7 @@ used_for_address(EA,Reg,Where,Index):-
 	).
 
 
-// match uses and definitions	
+//The 'reg' is defined in 'ea_def' and used in 'ea_used' in the operand with index 'index_used'	
 .decl def_used(ea_def:address,reg:register,ea_used:address,index_used:operand_index)
 .output def_used
 
@@ -160,8 +164,9 @@ def_used(EA_def,Reg,EA_used,Index):-
 
 //////////////////////////////////////////////////////////////////////////////////
 // Basic value analysis:
-// the value of a register at a point is expressed as the value of another
-// multiplied by a multiplier and plus an offset
+// the value of a register at a point (ea) is expressed as the value of another
+// at another point (EA_reg1)
+// multiplied by a multiplier plus an offset
 // val(Reg,EA) = val(Reg1,EA_reg1)* Multiplier+ Offset
 .decl value_reg_edge(EA:address,Reg:register,
                 EA_reg1:address,Reg1:register,Multiplier:number,Offset:number)
@@ -262,9 +267,9 @@ value_reg(EA,Reg,0,"Unkown",Immediate,Base-Immediate,Steps+1):-
 	value_reg(EA,Reg,0,NullReg,0,Base,Steps),
 	null_reg(NullReg).
 	
-// this one requires propagation before
+// This is an ad-hoc case observed quite often:
 // Reg2=Reg2-Reg1
-// when Reg2 is defined in terms of Reg1
+// where Reg2 is defined in terms of Reg1
 // Reg2= (Reg1*mult+offset)-Reg1 = Reg1 *(mult-1)+offset
 value_reg(EA,Reg2,EA2,Reg1,Multiplier-1,Offset,1):-
 	def(EA,Reg2),
@@ -287,6 +292,9 @@ value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,S
 	EA1!=EA3,
 	Steps+1<6.
 
+//////////////////////////////////////////////////////////////////////////////////
+// The address 'Address' is accessed with size 'Size' and multiplier 'Multiplier'
+// from an instruction in 'FromWhere'
 
 .decl data_access_pattern(Address:address,Size:number,Multiplier:number,FromWhere:address)
 .output data_access_pattern
@@ -316,20 +324,6 @@ data_access_pattern(Address,Size/8 ,0,EA):-
 	pc_relative_operand_complete(EA,_,Address,Size),	
 	data_byte(Address,_).
 	
-// indirectly computed
-data_access_pattern(Offset+Address,Size/8 ,Multiplier,EA):-
-	code(EA),
-	instruction_get_op(EA,Op_index,Op),
-	op_indirect(Op,NullSReg,Reg,NullReg1,_,Address,Size),
-	null_reg(NullSReg),
-	null_reg(NullReg1),
-	def_used(EA_def,Reg,EA,Op_index),
-	Max_steps=max Steps:{value_reg(EA_def,Reg,_,_,_,_,Steps)},	
-	value_reg(EA_def,Reg,_,_,Multiplier,Offset,St),
-	St>=Max_steps,	
-	data_byte(Offset+Address,_).
-
-
 //typical byte index
 data_access_pattern(Address,1,1,EA):-
 	code(EA),
@@ -350,12 +344,24 @@ data_access_pattern(Address,2,2,EA):-
 	op_indirect(Op,NullSReg,Reg,Reg,1,Address,16),
 	null_reg(NullSReg),
 	!null_reg(Reg),
-
-
 	def_used(EA_def,Reg,EA,Index),	
 	!value_reg(EA_def,Reg,_,_,_,_,_),
 	data_byte(Address,_).
 
+// indirectly computed
+data_access_pattern(Offset+Address,Size/8 ,Multiplier,EA):-
+	code(EA),
+	instruction_get_op(EA,Op_index,Op),
+	op_indirect(Op,NullSReg,Reg,NullReg1,_,Address,Size),
+	null_reg(NullSReg),
+	null_reg(NullReg1),
+	def_used(EA_def,Reg,EA,Op_index),
+	Max_steps=max Steps:{value_reg(EA_def,Reg,_,_,_,_,Steps)},	
+	value_reg(EA_def,Reg,_,_,Multiplier,Offset,St),
+	St>=Max_steps,	
+	data_byte(Offset+Address,_).
+	
+// TODO check if this one is useful at all
 //typical string access
 data_access_pattern(Address,0,0,EA):-
 	code(EA),
