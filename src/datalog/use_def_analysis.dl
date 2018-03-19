@@ -1,0 +1,139 @@
+//////////////////////////////////////////////////////////////////////////////////
+// Def-used analysis: start from memory accesses and walk back
+// tracking the registers involved (used)
+//////////
+// register is defined in this location
+.decl def(EA:address,Reg:register)
+
+
+.decl used_for_address(ea:address,reg:register,where:address, index:operand_index)
+// the register 'reg' at address 'ea' is later used in a memory address in 'where'
+// in the operand 'index'
+
+//The 'reg' is defined in 'ea_def' and used in 'ea_used' in the operand with index 'index_used'	
+.decl def_used(ea_def:address,reg:register,ea_used:address,index_used:operand_index)
+.output def_used
+
+////////////////////////////////////////////////////////////////////////
+// hard-coded facts about the analysis
+///////////////////////////////////////////////////
+	
+// limit the registers that are tracked
+// and transform the names to their 64 bits version
+.decl track_register(Reg32:register,Reg64:register)
+
+track_register("EAX","RAX").
+track_register("RAX","RAX").
+
+track_register("EBX","RBX").
+track_register("RBX","RBX").
+
+track_register("ECX","RCX").
+track_register("RCX","RCX").
+
+
+track_register("EDX","RDX").
+track_register("RDX","RDX").
+
+track_register("EDI","RDI").
+track_register("RDI","RDI").
+
+track_register("ESI","RSI").
+track_register("RSI","RSI").
+
+
+
+////////////////////////////////////////////////////////////////////////
+// Auxiliary predicates
+/////////////////////////////////////////////////////
+
+.decl op_indirect_contains_reg(op:operand_code,reg:register)
+
+// ignore section registers
+
+op_indirect_contains_reg(Op,Reg_uniform):-
+	op_indirect(Op,_,Reg2,_,_,_,_),
+	track_register(Reg2,Reg_uniform).
+	
+op_indirect_contains_reg(Op,Reg_uniform):-
+	op_indirect(Op,_,_,Reg3,_,_,_),
+	track_register(Reg3,Reg_uniform).
+
+.decl op_regdirect_contains_reg(op:operand_code,reg:register)
+
+op_regdirect_contains_reg(Op,Reg_uniform):-
+	op_regdirect(Op,Reg),
+	track_register(Reg,Reg_uniform).
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+//local underapproximation of control flow
+.decl local_next(ea:address,ea_next:address)
+
+//do not cross calls
+local_next(EA,EA_next):-
+	code(EA),
+	!instruction_get_operation(EA,"CALL"),
+	may_fallthrough(EA,EA_next).
+	
+local_next(EA,EA_next):-
+	code(EA),
+	direct_jump(EA,EA_next).
+
+
+def(EA,Reg):-
+	code(EA),
+	instruction_get_dest_op(EA,_,Op),
+	op_regdirect_contains_reg(Op,Reg).
+
+//BASE CASE: used register for memory here
+used_for_address(EA,Reg,EA,Index):-
+	code(EA),
+	//lea does not access memory
+	!instruction_get_operation(EA,"LEA"),
+	instruction_get_op(EA,Index,Op),
+	op_indirect_contains_reg(Op,Reg).
+
+//USED TRANSITIVELY: used to compute something used for memory later
+used_for_address(EA,Tracked_reg,EA,Index):-
+	//the instruction defines a register that is used for memory
+	used_for_address(EA_next,Reg_defined,_,_),
+	local_next(EA,EA_next),
+	def(EA,Reg_defined),	
+	instruction_get_src_op(EA,Index,Op),
+	(
+	op_indirect_contains_reg(Op,Tracked_reg)
+	;
+	op_regdirect_contains_reg(Op,Tracked_reg)
+	).
+
+//SPECIAL CASE: the register is not used to compute an address but it is
+// compared to a register possibly containing an address
+// FIXME generalize comparisons
+used_for_address(EA,Reg_compared,EA,Index2):-
+	used_for_address(EA_next,Reg_used,_,_),
+	local_next(EA,EA_next),
+	instruction_get_operation(EA,"CMP"),
+	instruction_get_src_op(EA,_,Op),
+	op_regdirect_contains_reg(Op,Reg_used),
+	//track the other operand
+	instruction_get_src_op(EA,Index2,Op2),
+	Op2!=Op,
+	op_regdirect_contains_reg(Op2,Reg_compared).
+
+// propagation of uses when the register is not (necessarily) re-defined	
+used_for_address(EA,Reg,Where,Index):-
+	used_for_address(EA_next,Reg,Where,Index),
+	local_next(EA,EA_next),
+	(
+	!def(EA,Reg)
+	;
+	conditional_mov(EA)
+	).
+
+
+def_used(EA_def,Reg,EA_used,Index):-
+	def(EA_def,Reg),
+	local_next(EA_def,EA_next),
+	used_for_address(EA_next,Reg,EA_used,Index).
