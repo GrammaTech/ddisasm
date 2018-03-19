@@ -1,0 +1,129 @@
+//////////////////////////////////////////////////////////////////////////////////
+// Basic value analysis:
+// the value of a register at a point (ea) is expressed as the value of another
+// at another point (EA_reg1)
+// multiplied by a multiplier plus an offset
+// val(Reg,EA) = val(Reg1,EA_reg1)* Multiplier+ Offset
+.decl value_reg_edge(EA:address,Reg:register,
+                EA_reg1:address,Reg1:register,Multiplier:number,Offset:number)
+
+
+.decl value_reg(EA:address,Reg:register,
+                EA_reg1:address,Reg1:register,Multiplier:number,Offset:number,steps:number)
+.output value_reg
+
+// mov reg immediate
+value_reg_edge(EA,Reg,0,"NullReg64",0,Immediate):-
+	def_used(EA,Reg,_,_),
+	instruction(EA,_,"MOV",Op1,Op2,0),
+	op_immediate(Op1,Immediate),
+	op_regdirect_contains_reg(Op2,Reg).
+
+//add reg immediate
+value_reg_edge(EA,Reg,EA_prev,Reg,1,Immediate):-
+	def_used(EA_prev,Reg,EA,_),
+	instruction(EA,_,"ADD",Op1,Op2,0),
+	op_immediate(Op1,Immediate),
+	op_regdirect_contains_reg(Op2,Reg),
+	EA!=EA_prev.
+
+//shl reg immediate
+value_reg_edge(EA,Reg,EA_prev,Reg,2^Immediate,0):-
+	def_used(EA_prev,Reg,EA,_),
+	instruction(EA,_,"SHL",Op1,Op2,0),
+	op_immediate(Op1,Immediate),
+	op_regdirect_contains_reg(Op2,Reg),
+	EA!=EA_prev.
+
+//mul reg reg immediate
+value_reg_edge(EA,Reg,EA_prev,Reg,Immediate,0):-
+	def_used(EA_prev,Reg,EA,_),
+	instruction(EA,_,"IMUL3",Op1,Op2,Op1),
+	op_immediate(Op2,Immediate),
+	op_regdirect_contains_reg(Op1,Reg),
+	EA!=EA_prev.
+
+//mov reg reg_origin
+value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
+	def(EA,Reg),
+	def_used(EA_prev,Reg_origin,EA,_),
+	instruction(EA,_,"MOV",Op1,Op2,0),
+	op_regdirect_contains_reg(Op1,Reg_origin),
+	op_regdirect_contains_reg(Op2,Reg),
+	EA!=EA_prev.
+//lea reg [reg_origin*Multiplier+Offset]
+value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier,Offset):-
+	def(EA,Reg),
+	def_used(EA_prev,Reg_origin,EA,1),
+	instruction(EA,_,"LEA",Op1,Op2,0),
+	op_indirect(Op1,_,NullReg,Reg_origin_non_uniform,Multiplier,Offset,_),
+	null_reg(NullReg),
+	track_register(Reg_origin_non_uniform,Reg_origin),
+	op_regdirect_contains_reg(Op2,Reg),
+	EA!=EA_prev.
+//lea reg [reg_origin+reg_origin*Multiplier+Offset]	
+value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier+1,Offset):-
+	def(EA,Reg),
+	def_used(EA_prev,Reg_origin,EA,1),
+	instruction(EA,_,"LEA",Op1,Op2,0),
+	op_indirect(Op1,_,Reg_origin_non_uniform,Reg_origin_non_uniform,Multiplier,Offset,_),
+	track_register(Reg_origin_non_uniform,Reg_origin),
+	op_regdirect_contains_reg(Op2,Reg),
+	EA!=EA_prev.	
+//lea reg [reg_origin+Offset]
+value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,Offset):-
+	def(EA,Reg),
+	def_used(EA_prev,Reg_origin,EA,1),
+	instruction(EA,_,"LEA",Op1,Op2,0),
+	op_indirect(Op1,_,Reg_origin_non_uniform,NullReg,1,Offset,_),
+	null_reg(NullReg),
+	track_register(Reg_origin_non_uniform,Reg_origin),
+	op_regdirect_contains_reg(Op2,Reg),
+	EA!=EA_prev.
+
+///////////////////////////////////////////////////////////////////////////////////////
+// once we have the edges that relate the values of registers at different
+// instructions we propagate these values forward
+
+//base cases
+value_reg(EA,Reg,0,Reg_prev,Mult,Immediate,1):-
+	value_reg_edge(EA,Reg,0,Reg_prev,Mult,Immediate).
+value_reg(EA,Reg,EA_prev,Reg_prev,Mult,Immediate,1):-
+	value_reg_edge(EA,Reg,EA_prev,Reg_prev,Mult,Immediate),
+	!value_reg_edge(EA_prev,Reg_prev,_,_,_,_).
+	
+
+// possible loop
+value_reg(EA,Reg,0,"Unkown",Immediate,Base-Immediate,Steps+1):-
+	def_used(EA,Reg,EA,_),
+	instruction(EA,_,"ADD",Op1,Op2,0),	
+	op_immediate(Op1,Immediate),
+	op_regdirect_contains_reg(Op2,Reg),
+	// the base case
+	value_reg(EA,Reg,0,NullReg,0,Base,Steps),
+	null_reg(NullReg).
+	
+// This is an ad-hoc case observed quite often:
+// Reg2=Reg2-Reg1
+// where Reg2 is defined in terms of Reg1
+// Reg2= (Reg1*mult+offset)-Reg1 = Reg1 *(mult-1)+offset
+value_reg(EA,Reg2,EA2,Reg1,Multiplier-1,Offset,1):-
+	def(EA,Reg2),
+	instruction(EA,_,"SUB",Op1,Op2,0),
+	op_regdirect_contains_reg(Op1,Reg1),
+	op_regdirect_contains_reg(Op2,Reg2),
+	// Reg2 is defined in EA_prev in terms of reg1
+	def_used(EA_prev,Reg2,EA,_),
+	value_reg_edge(EA_prev,Reg2,EA2,Reg1,Multiplier,Offset),
+	Multiplier>1,
+	// Reg1 is defined at the same point
+	def_used(EA2,Reg1,EA,_),
+	op_regdirect_contains_reg(Op1,Reg1),
+	EA!=EA2.
+
+// normal propagation
+value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,Steps+1):-
+	value_reg(EA2,Reg2,EA3,Reg3,Multiplier2,Offset2,Steps),
+	value_reg_edge(EA1,Reg1,EA2,Reg2,Multiplier,Offset),
+	EA1!=EA3,
+	Steps+1<6.
