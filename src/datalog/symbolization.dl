@@ -460,9 +460,9 @@ address_array(EA):-
 	EA % 8 =0,
 	address_in_data_refined(EA+8,_),
 	address_in_data_refined(EA+16,_).
-address_array(EA):-
-	address_array(EA-8),
-	address_in_data_refined(EA,_).
+address_array(EA+8):-
+	address_array(EA),
+	address_in_data_refined(EA+8,_).
 
 .init address_array_range=empty_range
 
