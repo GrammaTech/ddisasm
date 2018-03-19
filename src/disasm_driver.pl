@@ -141,7 +141,7 @@ result_descriptors([
 			  result(string,2,'.csv'),
 	  
 			  result(bss_data,1,'.csv'),
-			  result(preferred_label,2,'.csv'),
+			  result(preferred_data_access,2,'.csv'),
 			  result(def_used,4,'.csv'),
 			  result(data_access_pattern,4,'.csv'),
 			  result(paired_data_access,6,'.csv'),
@@ -187,7 +187,7 @@ result_descriptors([
 :-dynamic bss_data/1.
 :-dynamic data_access_pattern/4.
 :-dynamic paired_data_access/6.
-:-dynamic preferred_label/2.
+:-dynamic preferred_data_access/2.
 :-dynamic def_used/4.
 :-dynamic value_reg/7.
 :-dynamic moved_label/4.
@@ -962,7 +962,7 @@ comment(EA,used(Tuples)):-
 
 comment(EA,labels(Refs_hex)):-
      findall(Ref,
-	    preferred_label(EA,Ref),
+	    preferred_data_access(EA,Ref),
 	    Refs),
      Refs\=[],
      maplist(pp_to_hex,Refs,Refs_hex).
