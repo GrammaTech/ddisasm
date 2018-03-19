@@ -361,24 +361,15 @@ data_access_pattern(Offset+Address,Size/8 ,Multiplier,EA):-
 	St>=Max_steps,	
 	data_byte(Offset+Address,_).
 	
-// TODO check if this one is useful at all
-//typical string access
-data_access_pattern(Address,0,0,EA):-
-	code(EA),
-	instruction(EA,_,"MOV",Op1,Op2,0),
-	op_immediate(Op1,Address),
-	op_regdirect(Op2,Reg),
-	string_register(Reg),
-	data_byte(Address,_).
-
-.decl string_register(reg:register)
-
-string_register("EDI").
-string_register("ESI").
 
 ///////////////////////////////////////////////////////////////////////////////
-////If threre are two nearby memory accesses
+//If threre are two nearby memory accesses with the same multiplier
+// so their accesses are interleaved
+// we consider they access the same data structure array
+// so we propagate them together
 
+// data_access_pattern at 'EA1' with size 'Size1' and multiplier 'Multiplier'
+// is paired with data_access_pattern at 'EA2' with size 'Size2' and multiplier 'Multiplier'
 .decl paired_data_access(EA1:address,Size1:number,Multiplier:number,
 			 EA2:address,Size2:number,Diff:number)
 // size in bytes			 
