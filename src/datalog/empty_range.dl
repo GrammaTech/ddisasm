@@ -1,7 +1,7 @@
 .comp empty_range{
 
 .decl in_ea(ea:address)
-.decl no_overlap(ea:address,size:number)
+.decl no_overlap(ea:address,size:number) inline
 
 
 no_overlap(EA,2):-
@@ -16,14 +16,32 @@ no_overlap(EA,4):-
 	
 no_overlap(EA,8):-
 	data_byte(EA,_),
-	no_overlap(EA,4),
+	!in_ea(EA-1),
+	!in_ea(EA-2),
+	!in_ea(EA-3),
 	!in_ea(EA-4),
-	no_overlap(EA-4,4).
+	!in_ea(EA-5),
+	!in_ea(EA-6),
+	!in_ea(EA-7).
 
 	
 no_overlap(EA,16):-
-	no_overlap(EA,8),
+	data_byte(EA,_),
+	!in_ea(EA-1),
+	!in_ea(EA-2),
+	!in_ea(EA-3),
+	!in_ea(EA-4),
+	!in_ea(EA-5),
+	!in_ea(EA-6),
+	!in_ea(EA-7),
 	!in_ea(EA-8),
-	no_overlap(EA-8,8).
+
+	!in_ea(EA-9),
+	!in_ea(EA-10),
+	!in_ea(EA-11),
+	!in_ea(EA-12),
+	!in_ea(EA-13),
+	!in_ea(EA-14),
+	!in_ea(EA-15).
 
 }
