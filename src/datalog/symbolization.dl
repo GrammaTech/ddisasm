@@ -20,6 +20,25 @@
 
 #include "empty_range.dl"
 
+
+
+////////////////////////////////////////////////////////////////////////
+// address_in_data considers anything that points to the code region
+// this refinement restricts that to the beginning of the final blocks
+.decl address_in_data_refined(EA:address,Val:number)
+
+address_in_data_refined(EA,Val):-
+      address_in_data(EA,Val),
+      data_section(Name),
+      section(Name,Size,Beg),
+      Val>=Beg,
+      Val<=Size+Beg.
+      
+address_in_data_refined(EA,Val):-
+      address_in_data(EA,Val),
+      likely_ea_final(_,Val).
+
+
 ////////////////////////////////////////////////////////////////////////
 // hard-coded facts about the analysis
 ///////////////////////////////////////////////////
@@ -70,7 +89,9 @@ op_indirect_contains_reg(Op,Reg_uniform):-
 op_regdirect_contains_reg(Op,Reg_uniform):-
 	op_regdirect(Op,Reg),
 	track_register(Reg,Reg_uniform).
-	
+
+
+
 //////////////////////////////////////////////////////////////////////////////
 //local underapproximation of control flow
 .decl local_next(ea:address,ea_next:address)
@@ -84,7 +105,6 @@ local_next(EA,EA_next):-
 local_next(EA,EA_next):-
 	code(EA),
 	direct_jump(EA,EA_next).
-
 
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -306,7 +326,13 @@ data_access_pattern(Address,Size/8 ,0,EA):-
 	null_reg(NullSReg),
 	null_reg(NullReg1),
 	null_reg(NullReg2),
-	data_byte(Address,_).
+
+	data_section(Section),
+	section(Section,SizeSect,Base),
+	Address>=Base,
+	Address<=Base+SizeSect.
+
+
 
 // directly computed
 data_access_pattern(Address,Size/8 ,Multiplier,EA):-
@@ -316,13 +342,22 @@ data_access_pattern(Address,Size/8 ,Multiplier,EA):-
 	null_reg(NullSReg),
 	null_reg(NullReg1),
 	!null_reg(RegMult),
-	data_byte(Address,_).
+
+	data_section(Section),
+	section(Section,SizeSect,Base),
+	Address>=Base,
+	Address<=Base+SizeSect.
+
 
 // pc relative
 data_access_pattern(Address,Size/8 ,0,EA):-
 	code(EA),
-	pc_relative_operand_complete(EA,_,Address,Size),	
-	data_byte(Address,_).
+	pc_relative_operand_complete(EA,_,Address,Size),
+
+	data_section(Section),
+	section(Section,SizeSect,Base),
+	Address>=Base,
+	Address<=Base+SizeSect.
 	
 //typical byte index
 data_access_pattern(Address,1,1,EA):-
@@ -335,7 +370,12 @@ data_access_pattern(Address,1,1,EA):-
 
 	def_used(EA_def,Reg,EA,Index),	
 	!value_reg(EA_def,Reg,_,_,_,_,_),
-	data_byte(Address,_).
+
+	data_section(Section),
+	section(Section,SizeSect,Base),
+	Address>=Base,
+	Address<=Base+SizeSect.
+
 
 //typical word index
 data_access_pattern(Address,2,2,EA):-
@@ -346,7 +386,12 @@ data_access_pattern(Address,2,2,EA):-
 	!null_reg(Reg),
 	def_used(EA_def,Reg,EA,Index),	
 	!value_reg(EA_def,Reg,_,_,_,_,_),
-	data_byte(Address,_).
+
+	data_section(Section),
+	section(Section,SizeSect,Base),
+	Address>=Base,
+	Address<=Base+SizeSect.
+
 
 // indirectly computed
 data_access_pattern(Offset+Address,Size/8 ,Multiplier,EA):-
@@ -358,8 +403,13 @@ data_access_pattern(Offset+Address,Size/8 ,Multiplier,EA):-
 	def_used(EA_def,Reg,EA,Op_index),
 	Max_steps=max Steps:{value_reg(EA_def,Reg,_,_,_,_,Steps)},	
 	value_reg(EA_def,Reg,_,_,Multiplier,Offset,St),
-	St>=Max_steps,	
-	data_byte(Offset+Address,_).
+	St>=Max_steps,
+
+	data_section(Section),
+	section(Section,SizeSect,Base),
+	Offset+Address>=Base,
+	Offset+Address<=Base+SizeSect.
+
 	
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -388,7 +438,7 @@ paired_data_access(EA1,Size1,Multiplier,EA2,Size2,Diff):-
 			 Ref2+200>=Ref1
 			 ).
 
-
+// the addresses that are covered by data_access_patterns
 .decl taken_by_data_access_pattern(EA:address,Offset:number)
 
 taken_by_data_access_pattern(EA,Size):-
@@ -397,10 +447,10 @@ taken_by_data_access_pattern(EA+1,Rem-1):-
 	taken_by_data_access_pattern(EA,Rem),
 	Rem>1.
 
-
-
-////////////////////////////
-
+////////////////////////////////////////////////////////////////////////////////////
+// candidates of symbolic values in the code
+// symbolic_code_operand_candidate points to code
+// symbolic_data_operand_candidate points to data 
 .decl symbolic_code_operand_candidate(ea:address,operand_index:number,Dest:address)
 .decl symbolic_data_operand_candidate(ea:address,operand_index:number,Dest:address)
 				      
@@ -435,21 +485,8 @@ symbolic_data_operand_candidate(EA,Op_index,Dest):-
 	Dest>=Base,
 	Dest<=Base+SizeSect.
 
-
-.decl address_in_data_refined(EA:address,Val:number)
-
-address_in_data_refined(EA,Val):-
-      address_in_data(EA,Val),
-      data_section(Name),
-      section(Name,Size,Beg),
-      Val>=Beg,
-      Val<=Size+Beg.
-      
-address_in_data_refined(EA,Val):-
-      address_in_data(EA,Val),
-      likely_ea_final(_,Val).
-
-// an array has to have at least 3 elements to give us some confidence
+// Heuristic: If there are at least 3 consecutive addresses
+//  we consider that we found an array of addresses 
 .decl address_array(EA:address)
 
 address_array(EA):-
@@ -466,79 +503,49 @@ address_array(EA+8):-
 address_array_range.in_ea(EA):-
 	address_array(EA).
 
+.init address_in_data_refined_range=empty_range
+
+address_in_data_refined_range.in_ea(EA):-
+	address_in_data_refined(EA,_).
+
+////////////////////////////////////////////////////////////////////////////////////
+// Pointer reatribution:
+// two cases
+//1: when it is symbolic but possibly lands in the middle of a pointer
+//2: when it is not symbolic because it misses the data sections
 
 .decl moved_label(EA:address,Index:number,Val:address,New_val:address)
 .output moved_label
 
-// two cases
-// when we it is symbolic but possibly lands in the middle of a pointer
 
-// when it is not symbolic because it misses the data sections
-
+// label lands in the middle of a pointer
 moved_label(EA,Op_index,Dest,New_dest):-
 	symbolic_data_operand_candidate(EA,Op_index,Dest),
 	1>=count:{symbolic_data_operand_candidate(_,_,Dest)},//it appears only once
-
 	data_access_pattern(New_dest,_,_,EA),
 	(Dest>New_dest+3
 	;
 	Dest+3<New_dest
 	),
-	//it might collide with a pointer
-	(
-	address_in_data_refined(Dest-1,_)
-	;
-	address_in_data_refined(Dest-2,_)
-	;
-	address_in_data_refined(Dest-3,_)
-	;
-	address_in_data_refined(Dest-4,_)
-	;
-	address_in_data_refined(Dest-5,_)
-	;
-	address_in_data_refined(Dest-6,_)
-	;
-	address_in_data_refined(Dest-7,_)
-	).
+	//it might collide with a pointer	
+	address_in_data_refined_range.overlap(Dest,8,_).
 
 moved_label(EA,Op_index,Dest,New_dest):-
 	symbolic_data_operand_candidate(EA,Op_index,Dest),
 	1>=count:{symbolic_data_operand_candidate(_,_,Dest)},//it appears only once
-	//it might collide with a strong pointer
+	//it might collide with a very likely pointer
+	address_in_data_refined_range.overlap(Dest,8,New_dest),
 	(
-	address_in_data_refined(Dest-1,_),
-	(data_access_pattern(Dest-1,8,_,_);address_array(Dest-1)),
-	New_dest=Dest-1
+	data_access_pattern(New_dest,8,_,_)
 	;
-	address_in_data_refined(Dest-2,_),
-	(data_access_pattern(Dest-2,8,_,_);address_array(Dest-2)),
-	New_dest=Dest-2
-	;
-	address_in_data_refined(Dest-3,_),
-	(data_access_pattern(Dest-3,8,_,_);address_array(Dest-3)),
-	New_dest=Dest-3
-	
-	;
-	address_in_data_refined(Dest-4,_),	
-	(data_access_pattern(Dest-4,8,_,_);address_array(Dest-4)),
-	New_dest=Dest-4
-	;
-	address_in_data_refined(Dest-5,_),
-	(data_access_pattern(Dest-5,8,_,_);address_array(Dest-5)),
-	New_dest=Dest-5
-	
-	;
-	address_in_data_refined(Dest-6,_),
-	(data_access_pattern(Dest-6,8,_,_);address_array(Dest-6)),
-	New_dest=Dest-6
-	;
-	address_in_data_refined(Dest-7,_),
-	(data_access_pattern(Dest-7,8,_,_);address_array(Dest-7)),
-	New_dest=Dest-7
+	address_array(New_dest)
 	).
-	
 
-moved_label(EA,Op_index,Dest,Dest+Correction):-
+// labels that are miss the data sections but should be symbolic
+
+// indirect operand
+// the destination is before the data section
+moved_label(EA,Op_index,Dest,Base):-
 	code(EA),
 	instruction_get_op(EA,Op_index,Op),
 	!symbolic_data_operand_candidate(EA,Op_index,Dest),
@@ -549,101 +556,61 @@ moved_label(EA,Op_index,Dest,Dest+Correction):-
 	data_section(Name),
 	section(Name,_,Base),
 	Dest<Base,
-	Dest+1000>=Base,
-	Correction=Base-Dest.
-	
-moved_label(EA,Op_index,Dest,Dest+Correction):-
+	Dest+1000>=Base.
+
+// the destination is more than the end of the section
+moved_label(EA,Op_index,Dest,Base+SizeSect):-
 	code(EA),
 	instruction_get_op(EA,Op_index,Op),
 	!symbolic_data_operand_candidate(EA,Op_index,Dest),
 	!pc_relative_operand_complete(EA,Op_index,_,_),
-	
-	// the ones that miss it for a little
-	op_indirect(Op,NullSReg,Reg,_,_,Dest,Size),
-	Dest!=0,
-	def_used(EA_def,Reg,EA,Op_index),
-	Max_steps=max Steps:{value_reg(EA_def,Reg,_,_,_,_,Steps)},	
+	op_indirect(Op,_,_,_,_,Dest,_),
+	data_access_pattern(Other_dest,_,_,EA),
 
-	(
-	//the multiplier
-	value_reg(EA_def,Reg,_,_,Correction,0,St)
-	;
-	// the offset
-	value_reg(EA_def,Reg,_,_,_,Correction,St)
-	),
-	Correction<Dest,
-	0-Correction<Dest,
-	
-	St>=Max_steps,
-	
 	data_section(Name),
-
 	section(Name,SizeSect,Base),
+	Other_dest>=Base,
+	Other_dest<=Base+SizeSect,
+	Dest>Base+SizeSect.
 
-	(Dest<Base ; Dest>Base+SizeSect),
-	
-
-	Dest+Correction>=Base,
-	Dest+Correction<=Base+SizeSect.
-	
-moved_label(EA,Op_index,Dest,Dest-Diff):-
+//immediate operand used
+moved_label(EA,Op_index,Dest,New_dest):-
 	code(EA),
 	instruction_get_src_op(EA,Op_index,Op),
 	op_immediate(Op,Dest),
 	!symbolic_data_operand_candidate(EA,Op_index,Dest),
-
-	instruction_get_operation(EA,"CMP"),
-
-	def_used(EA_other,_,EA,Index2),
-	Index2!=Op_index,
 	(
-	value_reg(EA_other,_,_,_,Diff,_,_)
+	instruction_get_operation(EA,"CMP")
 	;
-	value_reg(EA_other,_,_,_,_,Diff,_)
+	instruction_get_operation(EA,"MOV")
 	),
-	Diff!=0,
-	(
-	symbolic_data_operand_candidate(_,_,Dest-Diff)
-	;
+	instruction_get_op(EA,_,Op2),
+	Op2!=Op,
+	op_regdirect_contains_reg(Op2,Reg),
+	used_for_address(EA,Reg,EA_used,_),
+
+	//get the section where it is supposed to go
+	value_reg(EA_used,Reg,_,_,_,Other_dest,_),
+	Other_dest!=0,
 	data_section(Name),
         section(Name,Size,Beg),
-	Dest-Diff=Size+Beg
-	).
-	
-moved_label(EA,Op_index,Dest,Dest-Diff):-
-	code(EA),
-	instruction_get_src_op(EA,Op_index,Op),
-	op_immediate(Op,Dest),
-	!symbolic_data_operand_candidate(EA,Op_index,Dest),
-
-	def_used(EA,_,EA_used,Index1),
-	instruction_get_operation(EA_used,"CMP"),
-	def_used(EA_other,_,EA_used,Index2),
-	Index2!=Index1,
+	Other_dest>=Beg,
+	Other_dest<=Size+Beg,
 	(
-	value_reg(EA_other,_,_,_,Diff,_,_)
+	Dest< Beg, New_dest=Beg
 	;
-	value_reg(EA_other,_,_,_,_,Diff,_)
-	),
-	Diff!=0,
-	(
-	symbolic_data_operand_candidate(_,_,Dest-Diff)
-	;
-	data_section(Name),
-        section(Name,Size,Beg),
-	Dest-Diff>=Beg,
-	Dest-Diff<=Size+Beg
+	Dest>Size+Beg, New_dest=Size+Beg
 	).
 
+///////////////////////////////////////////////////////////////////////////////////////////
 
-// overapproximation of labels
+// Labels
 labeled_data(EA):-
 	symbolic_data_operand_candidate(Src,_,EA),
 	!moved_label(Src,_,EA,_).
 labeled_data(EA_moved):-
 	moved_label(_Src,_,_,EA_moved).
 	
-
 labeled_data(Val):-
 	address_in_data(_,Val),
 	data_byte(Val,_).
@@ -653,70 +620,70 @@ labeled_data(Val):-
 
 
 // group data according to labels
-.decl individual_data_label(ea:address,ea_label:address,offset:number,multiplier:number)
+.decl individual_propagated_data_access(ea:address,ea_label:address,offset:number,multiplier:number)
 
-individual_data_label(EA,EA,0,Mult):-
+individual_propagated_data_access(EA,EA,0,Mult):-
 	data_access_pattern(EA,Size,Mult,_Ref),
 	!paired_data_access(EA,Size,Mult,_,_,_),
 	!paired_data_access(_,_,Mult,EA,Size,_).	
 	
-individual_data_label(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Multiplier):-
-	individual_data_label(EA,EA_label,_,Multiplier),
+individual_propagated_data_access(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Multiplier):-
+	individual_propagated_data_access(EA,EA_label,_,Multiplier),
 	data_byte(EA+Multiplier,_),
-//do not cross data access or labels	
+	//do not cross data access or labels	
 	!labeled_data(EA+Multiplier),
 	!taken_by_data_access_pattern(EA+Multiplier,_),
 	address_array_range.no_overlap(EA,8).
 
 
 // group data according to labels
-.decl paired_data_label(ea:address,ea_label:address,offset:number,multiplier:number)
+.decl paired_propagated_data_access(ea:address,ea_label:address,offset:number,multiplier:number)
 
 
-paired_data_label(EA,EA,0,Mult):-
+paired_propagated_data_access(EA,EA,0,Mult):-
 	data_access_pattern(EA,Size,Mult,_),
 	paired_data_access(EA,Size,Mult,_,_,_).
 	
-paired_data_label(EA,EA,0,Mult):-
+paired_propagated_data_access(EA,EA,0,Mult):-
 	data_access_pattern(EA,Size,Mult,_),
 	paired_data_access(_,_,Mult,EA,Size,_).	
 	
-paired_data_label(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Multiplier):-
-	paired_data_label(EA,EA_label,_,Multiplier),
+paired_propagated_data_access(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Multiplier):-
+	paired_propagated_data_access(EA,EA_label,_,Multiplier),
 	data_byte(EA+Multiplier,_),
-//do not cross data access or labels	
+	//do not cross data access or labels	
 	!labeled_data(EA+Multiplier),
 	!taken_by_data_access_pattern(EA+Multiplier,_),
 	address_array_range.no_overlap(EA,8),
 //propagate paired accesses together
 	(
 	  paired_data_access(EA_label,_,Multiplier,EA_paired,_,Diff),
- 	  paired_data_label(EA+Diff,EA_paired,_,Multiplier)
+ 	  paired_propagated_data_access(EA+Diff,EA_paired,_,Multiplier)
 	;
 	   !paired_data_access(EA_label,_,Multiplier,_,_,_)
 	),
  	(
           paired_data_access(EA_paired2,_,Multiplier,EA_label,_,Diff2),
-          paired_data_label(EA+Multiplier-Diff2,EA_paired2,_,Multiplier)
+          paired_propagated_data_access(EA+Multiplier-Diff2,EA_paired2,_,Multiplier)
 	   ;
            !paired_data_access(_,_,Multiplier,EA_label,_,_)
 	).
 	
-.decl data_label(ea:address,ea_label:address,offset:number,multiplier:number)
-.output data_label
+.decl propagated_data_access(ea:address,ea_label:address,offset:number,multiplier:number)
+.output propagated_data_access
 
-data_label(EA,EA_label,Offset,Multiplier):-
-	paired_data_label(EA,EA_label,Offset,Multiplier).
-data_label(EA,EA_label,Offset,Multiplier):-
-	individual_data_label(EA,EA_label,Offset,Multiplier).
+propagated_data_access(EA,EA_label,Offset,Multiplier):-
+	paired_propagated_data_access(EA,EA_label,Offset,Multiplier).
+propagated_data_access(EA,EA_label,Offset,Multiplier):-
+	individual_propagated_data_access(EA,EA_label,Offset,Multiplier).
 	
 
 
-.decl preferred_label(ea:address,ea_label:address)
-.output preferred_label
-preferred_label(EA,EA_label):-
-	Min_Offset= min Offset:{data_label(EA,_,Offset,_)},
-	data_label(EA,EA_label,Selected_offset,_),
+.decl preferred_data_access(ea:address,ea_label:address)
+.output preferred_data_access
+preferred_data_access(EA,EA_label):-
+	Min_Offset= min Offset:{propagated_data_access(EA,_,Offset,_)},
+	propagated_data_access(EA,EA_label,Selected_offset,_),
 	Min_Offset>=Selected_offset.
 
 
@@ -728,7 +695,7 @@ preferred_label(EA,EA_label):-
 // address accessed from recognized pattern
 // this discard places labeled only labeled with a different size
 address_can_contain_pointers(EA):-
-	preferred_label(EA,Label),
+	preferred_data_access(EA,Label),
 	(
 	data_access_pattern(Label,8,_,_)
 	;
@@ -753,14 +720,14 @@ symbolic_data(EA,Val):-
 	;
 	// no labels at all
 	EA % 8 =0,
-	!preferred_label(EA,_),
- 	!preferred_label(EA+1,_),
-	!preferred_label(EA+2,_),
-	!preferred_label(EA+3,_),
-	!preferred_label(EA+4,_),
-	!preferred_label(EA+5,_),
-	!preferred_label(EA+6,_),
-	!preferred_label(EA+7,_)
+	!preferred_data_access(EA,_),
+ 	!preferred_data_access(EA+1,_),
+	!preferred_data_access(EA+2,_),
+	!preferred_data_access(EA+3,_),
+	!preferred_data_access(EA+4,_),
+	!preferred_data_access(EA+5,_),
+	!preferred_data_access(EA+6,_),
+	!preferred_data_access(EA+7,_)
 	),	
  	!labeled_data(EA+1),
 	!labeled_data(EA+2),
@@ -795,7 +762,7 @@ string(Beg,End+1):-
 
 
 string_candidate(EA,EA):-
-    preferred_label(EA,_),
+    preferred_data_access(EA,_),
     !symbolic_data(EA,_),
     data_byte(EA,Byte),
     printable_char(Byte).
