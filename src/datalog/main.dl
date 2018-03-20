@@ -102,7 +102,12 @@ conditional_mov(EA):-
 mov(EA):-
 	instruction_get_operation(EA,Operation),
 	contains("MOV",Operation).	
-	
+
+.decl comparison_operation(Operaiton:symbol)
+
+comparison_operation("CMP").
+comparison_operation("TEST").
+
 .decl read_only_operation(Operation:symbol)
 
 read_only_operation("TEST").
