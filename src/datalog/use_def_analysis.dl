@@ -110,11 +110,12 @@ used_for_address(EA,Tracked_reg,EA,Index):-
 
 //SPECIAL CASE: the register is not used to compute an address but it is
 // compared to a register possibly containing an address
-// FIXME generalize comparisons
+
 used_for_address(EA,Reg_compared,EA,Index2):-
 	used_for_address(EA_next,Reg_used,_,_),
 	local_next(EA,EA_next),
-	instruction_get_operation(EA,"CMP"),
+	instruction_get_operation(EA,Operation),
+	comparison_operation(Operation),
 	instruction_get_src_op(EA,_,Op),
 	op_regdirect_contains_reg(Op,Reg_used),
 	//track the other operand
