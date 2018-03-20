@@ -60,7 +60,6 @@ examples=(
     "KPRCA_00007"
     "KPRCA_00008"
   #  "KPRCA_00009"
-    "KPRCA_00010"
   #  "KPRCA_00012"
     "KPRCA_00013"
     "KPRCA_00014"
@@ -100,7 +99,6 @@ examples=(
   #  "KPRCA_00101"
   #  "KPRCA_00102"
     "KPRCA_00112"
-    "LUNGE_00002"
     "NRFIN_00001"
     "NRFIN_00003"
     "NRFIN_00004"
@@ -121,10 +119,8 @@ examples=(
     "NRFIN_00022"
     "NRFIN_00023"
     "NRFIN_00024"
-    "NRFIN_00029"
     "NRFIN_00030"
  #   "NRFIN_00033"
-    "NRFIN_00034"
     "NRFIN_00035"
  #   "NRFIN_00036"
     "NRFIN_00037"
@@ -146,7 +142,13 @@ examples=(
     "YAN01_00010"
     "YAN01_00011"
     "YAN01_00012"
-  #  "YAN01_00016"
+    #  "YAN01_00016"
+
+    "LUNGE_00002"
+#    "NRFIN_00029"
+#    "NRFIN_00034"
+#    "KPRCA_00010"
+   
 );
 
 dir="/code/cgc-cbs/cqe-challenges/"
