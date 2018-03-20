@@ -136,7 +136,7 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	address_array(New_dest)
 	).
 
-// labels that are miss the data sections but should be symbolic
+// labels that miss the data sections but should be symbolic
 
 // indirect operand
 // the destination is before the data section
@@ -169,6 +169,8 @@ moved_label(EA,Op_index,Dest,Base+SizeSect):-
 	Dest>Base+SizeSect.
 
 //immediate operand used
+
+//immediate operand used
 moved_label(EA,Op_index,Dest,New_dest):-
 	code(EA),
 	instruction_get_src_op(EA,Op_index,Op),
@@ -182,19 +184,27 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	instruction_get_op(EA,_,Op2),
 	Op2!=Op,
 	op_regdirect_contains_reg(Op2,Reg),
-	used_for_address(EA,Reg,EA_used,_),
+
+	local_next(EA,EA_next),
+	used_for_address(EA_next,Reg,EA_used,_),
 
 	//get the section where it is supposed to go
-	value_reg(EA_used,Reg,_,_,_,Other_dest,_),
+	(
+	value_reg(EA_used,_,_,_,_,Other_dest,_)
+	;
+	// a related register
+	def_used(EA_def,_,EA_used,_),
+	value_reg(EA_def,_,_,_,_,Other_dest,_)
+	),
 	Other_dest!=0,
 	data_section(Name),
-        section(Name,Size,Beg),
+        section(Name,SizeSect,Beg),
 	Other_dest>=Beg,
-	Other_dest<=Size+Beg,
+	Other_dest<=SizeSect+Beg,
 	(
 	Dest< Beg, New_dest=Beg
 	;
-	Dest>Size+Beg, New_dest=Size+Beg
+	Dest>SizeSect+Beg, New_dest=SizeSect+Beg
 	).
 
 ///////////////////////////////////////////////////////////////////////////////////////////
