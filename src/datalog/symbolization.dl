@@ -168,13 +168,13 @@ moved_label(EA,Op_index,Dest,Base+SizeSect):-
 	Other_dest<=Base+SizeSect,
 	Dest>Base+SizeSect.
 
-//immediate operand used
 
 //immediate operand used
 moved_label(EA,Op_index,Dest,New_dest):-
 	code(EA),
 	instruction_get_src_op(EA,Op_index,Op),
 	op_immediate(Op,Dest),
+	Dest>40000,
 	!symbolic_data_operand_candidate(EA,Op_index,Dest),
 	(
 	instruction_get_operation(EA,"CMP")
