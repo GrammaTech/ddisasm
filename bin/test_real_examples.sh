@@ -22,6 +22,7 @@ examples=(
     "gperf-3.0.3/ src/gperf  g++"
     "re2c-0.13.5/ re2c g++"
     "lighttpd-1.4.18/ src/lighttpd -rdynamic -lpcre -ldl"
+    "lighttpd-1.4.11/ src/lighttpd -rdynamic -lpcre -ldl"
     "tar-1.29/ src/tar"
 );
 
