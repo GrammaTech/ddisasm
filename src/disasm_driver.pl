@@ -4,6 +4,7 @@
 valid_option('-debug').
 valid_option('-asm').
 valid_option('-stir').
+valid_option('-interpreted').
 
 
 %	'.eh_frame',
@@ -63,9 +64,11 @@ disasm_binary([File|Args]):-
 	 make_directory(Dir2);true),
     decode_sections(File,Dir2),
     format('Calling souffle~n',[]),
-    call_souffle(Dir2),
-    %call_compiled_souffle(Dir2),
-
+    (option('-interpreted')->
+	 call_souffle(Dir2)
+     ;
+     call_compiled_souffle(Dir2)
+    ),
     format('Collecting results and printing~n',[]),
     collect_results(Dir2,_Results),
 
