@@ -3,6 +3,7 @@
 
 valid_option('-debug').
 valid_option('-asm').
+valid_option('-stir').
 
 
 %	'.eh_frame',
@@ -62,7 +63,8 @@ disasm_binary([File|Args]):-
 	 make_directory(Dir2);true),
     decode_sections(File,Dir2),
     format('Calling souffle~n',[]),
-    call_souffle(Dir2),
+    %call_souffle(Dir2),
+    call_compiled_souffle(Dir2),
 
     format('Collecting results and printing~n',[]),
     collect_results(Dir2,_Results),
@@ -88,15 +90,23 @@ decode_sections(File,Dir):-
     atomic_list_concat(['./souffle_disasm ',' --file ',File,
 			' --dir ',Dir,'/',Section_chain,Data_section_chain],Cmd),
     format('#cmd: ~p~n',[Cmd]),
-    shell(Cmd).
+    format(user_error,'Decoding',[]),
+    time(shell(Cmd)).
 
 collect_section_args(Arg,Name,Acc_sec,Acc_sec2):-
     Acc_sec2=[Arg,Name|Acc_sec].
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+call_compiled_souffle(Dir):-
+    %souffle souffle_rules.pl -I ../examples/bzip/
+    atomic_list_concat(['../src/datalog/disasm  -F ',Dir,' -D ',Dir],Cmd),
+    format(user_error,'Datalog',[]),
+    time(shell(Cmd)).
+
 call_souffle(Dir):-
     %souffle souffle_rules.pl -I ../examples/bzip/
     atomic_list_concat(['souffle ../src/datalog/main.dl  -F ',Dir,' -D ',Dir,' -p ',Dir,'/profile'],Cmd),
+    format(user_error,'Datalog',[]),
     time(shell(Cmd)).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -553,11 +563,11 @@ pp_code_chunk(chunk(EA_chunk,_,List)):-
 	 print_comments(Comments),nl
      ;
      true),
-    maplist(pp_instruction,List),nl.
+    maplist(pp_instruction_rand,List),nl.
 
 pp_code_chunk(instruction(EA,Size,Operation,Op1,Op2,Op3)):-
     cond_print_section_header(EA),
-    pp_instruction(instruction(EA,Size,Operation,Op1,Op2,Op3)).
+    pp_instruction_rand(instruction(EA,Size,Operation,Op1,Op2,Op3)).
     
 
 print_function_header(EA):-
@@ -595,6 +605,17 @@ is_function(EA,Name_complete):-
 
 %%%%%%%%%%%%%
 %special cases
+pp_instruction_rand(Instruction):-
+    option('-stir'),!,
+    (maybe(1,3)->
+	 random(1,10,Random),
+	 repeat_n_times(format('     nop #stir ~n',[]),Random)
+     ;
+     true),
+    pp_instruction(Instruction).
+pp_instruction_rand(Instruction):-
+    pp_instruction(Instruction).
+
 pp_instruction(instruction(EA,Size,'NOP',none,none,none)):-
     repeat_n_times((print_ea(EA),format(' nop ~n',[])),Size),
     cond_print_comments(EA).
