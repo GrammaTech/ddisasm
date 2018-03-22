@@ -1,0 +1,14 @@
+
+
+.decl function_entry(EA:address)
+.output function_entry
+
+function_entry(EA):-
+	function_symbol(EA,_).
+
+function_entry(EA):-
+	direct_call(_,EA),
+	likely_ea_final(_,EA).
+
+function_entry(EA):-
+	main_function(EA).

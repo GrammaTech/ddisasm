@@ -174,60 +174,80 @@ discarded_chunk(Chunk):-
 	//heuristic: keep the one that has more predecessors
 	// but we value different kinds of predecessors differently
 	(
-	sum X:{chunk_pred(Chunk,_,X)}< sum Y:{chunk_pred(Chunk2,_,Y)}
+	sum X:{chunk_pred(Chunk,_,X,_)}< sum Y:{chunk_pred(Chunk2,_,Y,_)}
 	 ;
 	 //The sum seems to fail if the set is empty so we consider
 	 // this case independently
-	 chunk_pred(Chunk2,_,_),
-	 !chunk_pred(Chunk,_,_)
+	 chunk_pred(Chunk2,_,_,_),
+	 !chunk_pred(Chunk,_,_,_)
 	 ).
 
+// propagate discarding chunks through direct jumps or calls
+discarded_chunk(Chunk):-
+	discarded_chunk(Chunk2),
+	(
+	direct_jump(EA,Chunk2)
+	;
+	direct_call(EA,Chunk2)
+	)
+	phase2.likely_ea(EA,Chunk).
+	
 // The heuristics count the number of predecessors that are not overlaping blocks
 // we give more points for predecessors from fallthroughs and direct jumps
 // The points are trasmitted transitively though overlaping blocks
 
-.decl chunk_pred(chunk:address,predecessor:address,importance:number)
+.decl chunk_pred(chunk:address,predecessor:address,importance:number,why:symbol)
 .output chunk_pred
-chunk_pred(Chunk,0,1):-
+chunk_pred(Chunk,0,1,"basic_target"):-
 	basic_target(Chunk).
 	
-chunk_pred(Chunk,Chunk_pred,3):-
+chunk_pred(Chunk,Chunk_pred,3,"direct jump"):-
 	direct_jump(EA,Chunk),
 	phase2.likely_ea(EA,Chunk_pred),
 	Chunk_pred!=Chunk,
 	!chunk_is_overlaping(Chunk_pred).
 	
-chunk_pred(Chunk,Chunk_pred,3):-
+chunk_pred(Chunk,Chunk_pred,4,"may_fallthrough"):-
 	may_fallthrough(EA,Chunk),
 	phase2.likely_ea(EA,Chunk_pred),
 	!chunk_is_overlaping(Chunk_pred).
 
 // it fits but the previous block does not fall through
-chunk_pred(Chunk,Chunk_pred,1):-
+chunk_pred(Chunk,Chunk_pred,1,"fits"):-
 	next(EA,Chunk),
 	!may_fallthrough(EA,Chunk),
 	phase2.likely_ea(EA,Chunk_pred),
 	!chunk_is_overlaping(Chunk_pred).
-	
-chunk_pred(Chunk,Chunk_pred,1):-
+
+// its address appears somewhere
+chunk_pred(Chunk,Chunk_pred,1,"appears"):-
 	possible_target_from(Chunk,EA),
 	!direct_jump(EA,Chunk),
 	phase2.likely_ea(EA,Chunk_pred),
 	Chunk_pred!=Chunk,
 	!chunk_is_overlaping(Chunk_pred).
+
+// give a point if it may fallthrough to another block
+chunk_pred(Chunk,Chunk_succ,1,"fallthough_to"):-
+	phase2.likely_ea(EA,Chunk),
+	may_fallthrough(EA,Chunk_succ),
+	phase2.likely_ea(_,Chunk_succ),
+	!chunk_is_overlaping(Chunk_succ).
+	
+
 	
 // transitivity for fallthrough and direct jumps
-chunk_pred(Chunk,Chunk_pred2,Points):-
+chunk_pred(Chunk,Chunk_pred2,Points,"transitive fallthough"):-
 	may_fallthrough(EA,Chunk),
 	phase2.likely_ea(EA,Chunk_pred),
 	chunk_is_overlaping(Chunk_pred),
-	chunk_pred(Chunk_pred,Chunk_pred2,Points).
+	chunk_pred(Chunk_pred,Chunk_pred2,Points,_).
 
-chunk_pred(Chunk,Chunk_pred2,Points):-
+chunk_pred(Chunk,Chunk_pred2,Points,"transitive jump"):-
 	direct_jump(EA,Chunk),
 	phase2.likely_ea(EA,Chunk_pred),
 	chunk_is_overlaping(Chunk_pred),
-	chunk_pred(Chunk_pred,Chunk_pred2,Points).
+	chunk_pred(Chunk_pred,Chunk_pred2,Points,_).
 
 ////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////
