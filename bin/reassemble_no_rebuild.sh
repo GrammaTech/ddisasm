@@ -42,17 +42,24 @@ if [[ $# > 0 && $1 == "g++" ]]; then
 fi
 
 
-
+printf "# Stripping binary\n"
+strip --strip-unneeded "$dir/$exe"
 
 printf "# Disassembling $exe into $exe.s\n"
-if !(time(./disasm "$dir/$exe" -asm > "$dir/$exe.s") 2>/tmp/timeCore.txt); then
+if !(time(./disasm "$dir/$exe" -asm -stir > "$dir/$exe.s") 2>/tmp/timeCore.txt); then
     printf "# ${red}Disassembly failed${normal}\n"
     exit 1
 fi
+decode_time=$(cat /tmp/timeCore.txt | grep -m 1 seconds)
+dl_time=$(cat /tmp/timeCore.txt | grep -m 2 seconds | tail -n1)
+decode_time=${decode_time#*in }
+decode_time=${decode_time%seconds*}
+dl_time=${dl_time#*in }
+dl_time=${dl_time%seconds*}
 
 time=$(cat /tmp/timeCore.txt| grep user| cut -f 2)
 size=$(stat --printf="%s" "$dir/$exe")
-printf "#Stats: Time $time Size $size\n"
+printf "#Stats: Time $time Decode $decode_time Datalog $dl_time Size $size\n"
 
 printf "  OK\n"
 printf "Copying old binary to $dir/$exe.old\n"

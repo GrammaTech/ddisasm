@@ -50,13 +50,21 @@ build.sh $exe $@
 cd $main_dir
 
 printf "#Disassembling $exe into $exe.s\n"
-if !(time(./disasm "$dir/$exe" -asm > "$dir/$exe.s") 2>/tmp/timeCGC.txt); then
+if !(time(./disasm "$dir/$exe" -asm -stir > "$dir/$exe.s") 2>/tmp/timeCGC.txt); then
     printf "Disassembly failed\n"
     exit 1
 fi
+decode_time=$(cat /tmp/timeCGC.txt | grep -m 1 seconds)
+dl_time=$(cat /tmp/timeCGC.txt | grep -m 2 seconds | tail -n1)
+decode_time=${decode_time#*in }
+decode_time=${decode_time%seconds*}
+dl_time=${dl_time#*in }
+dl_time=${dl_time%seconds*}
+
 time=$(cat /tmp/timeCGC.txt| grep user| cut -f 2)
 size=$(stat --printf="%s" "$dir/$exe")
-printf "#Stats: Time $time Size $size\n"
+printf "#Stats: Time $time Decode $decode_time Datalog $dl_time Size $size\n"
+
 
 printf "OK\n"
 printf "# Reassembling  $exe.s into $new_exe \n"
