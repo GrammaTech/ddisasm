@@ -189,7 +189,7 @@ discarded_chunk(Chunk):-
 	direct_jump(EA,Chunk2)
 	;
 	direct_call(EA,Chunk2)
-	)
+	),
 	phase2.likely_ea(EA,Chunk).
 	
 // The heuristics count the number of predecessors that are not overlaping blocks
