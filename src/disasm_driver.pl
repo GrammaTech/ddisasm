@@ -63,8 +63,8 @@ disasm_binary([File|Args]):-
 	 make_directory(Dir2);true),
     decode_sections(File,Dir2),
     format('Calling souffle~n',[]),
-    %call_souffle(Dir2),
-    call_compiled_souffle(Dir2),
+    call_souffle(Dir2),
+    %call_compiled_souffle(Dir2),
 
     format('Collecting results and printing~n',[]),
     collect_results(Dir2,_Results),
@@ -145,6 +145,8 @@ result_descriptors([
 			  result(chunk_start,1,'.csv'),
 			  result(discarded_chunk,1,'.csv'),
 
+			  result(function_entry,1,'.csv'),
+
 			  result(symbolic_operand,2,'.csv'),
 			  result(labeled_data,1,'.csv'),
 			  result(symbolic_data,2,'.csv'),
@@ -189,6 +191,8 @@ result_descriptors([
 :-dynamic chunk_start/1.
 :-dynamic chunk_overlap/2.
 :-dynamic discarded_chunk/1.
+
+:-dynamic function_entry/1.
 
 :-dynamic symbolic_operand/2.
 :-dynamic labeled_data/1.
@@ -588,13 +592,19 @@ print_function_header(_).
 function_complete_name(EA,'main'):-
     main_function(EA),!.
 function_complete_name(EA,NameNew):-
-    function_symbol(EA,Name),   
+    function_symbol(EA,Name),!,
     (ambiguous_symbol(Name)->
 	 format(string(Name_complete),'~p_~16R',[Name,EA])
      ;
      Name_complete=Name
     ),
     avoid_reg_name_conflics(Name_complete,NameNew).
+
+function_complete_name(EA,Name):-
+    function_entry(EA),
+    \+function_symbol(EA,_),   
+    format(string(Name),'unknown_function_~16R',[EA]).
+
 
 is_function(EA,Name_complete):-
     function_complete_name(EA,Name_complete).
@@ -639,6 +649,10 @@ pp_instruction(instruction(EA,Size,FCMOV,Op1,none,none)):-
    atom_concat('FCMOV',_,FCMOV),!,
    pp_instruction(instruction(EA,Size,FCMOV,Op1,reg('ST'),none)).
 
+pp_instruction(instruction(EA,Size,Loop,reg('RCX'),Op2,none)):-
+    atom_concat('LOOP',_,Loop),!,
+    pp_instruction(instruction(EA,Size,Loop,none,Op2,none)).
+
 %%%%%%%%%%%%%%%
 % general case
 pp_instruction(instruction(EA,_Size,OpCode,Op1,Op2,Op3)):-
@@ -663,6 +677,7 @@ adapt_opcode(imul2,imul).
 adapt_opcode(imul3,imul).
 adapt_opcode(imul1,imul).
 adapt_opcode(cmpsd3,cmpsd).
+adapt_opcode(out_i,out).
 adapt_opcode(Operation,Operation).
 
 opcode_suffix(Opcode,Suffix):-
@@ -677,7 +692,8 @@ opcode_suffix(Opcode,Opcode).
 
 pp_operand_list([],_EA,_N,[]).
 pp_operand_list([none|Ops],EA,N,Pretty_ops):-
-    pp_operand_list(Ops,EA,N,Pretty_ops).
+    N1 is N+1,
+    pp_operand_list(Ops,EA,N1,Pretty_ops).
 pp_operand_list([Op|Ops],EA,N,[Op_pretty|Pretty_ops]):-
     pp_operand(Op,EA,N,Op_pretty),
     N1 is N+1,
@@ -1075,7 +1091,7 @@ is_in_function(EA,Name):-
     % there is no function in between
     EA>=EA_fun,
     \+ (
-	function_symbol(EA_fun2,_),
+	function_entry(EA_fun2),
 	EA_fun2=<EA,
 	EA_fun2>EA_fun
        ).
