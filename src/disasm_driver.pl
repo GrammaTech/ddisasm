@@ -5,6 +5,7 @@ valid_option('-debug').
 valid_option('-asm').
 valid_option('-stir').
 valid_option('-interpreted').
+valid_option('-keep_start').
 
 
 %	'.eh_frame',
@@ -25,7 +26,8 @@ data_section_descriptor('.data',16).
 
 % the things that are ignored with the parameter -asm
 :-dynamic asm_skip_function/1.
-asm_skip_function('_start').
+asm_skip_function('_start'):-
+    \+option('-keep_start').
 asm_skip_function('deregister_tm_clones').
 asm_skip_function('register_tm_clones').
 asm_skip_function('__do_global_dtors_aux').
