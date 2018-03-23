@@ -153,15 +153,6 @@ chunk_is_overlaping(Chunk):-
 .decl discarded_chunk(ea_chunk:address)
 .output discarded_chunk
 
-discarded_chunk(Chunk):-
-	(
-	chunk_overlap(Chunk,Chunk2)
-	;
-	chunk_overlap(Chunk2,Chunk)
-	),
-	//heuristic: one is a externally defined function
-	function_symbol(Chunk2,_),
-	!function_symbol(Chunk,_).
 
 discarded_chunk(Chunk):-
 	(
@@ -198,16 +189,28 @@ discarded_chunk(Chunk):-
 
 .decl chunk_pred(chunk:address,predecessor:address,importance:number,why:symbol)
 .output chunk_pred
-chunk_pred(Chunk,0,1,"basic_target"):-
-	basic_target(Chunk).
+
+chunk_pred(Chunk,0,20,"start point"):-
+	entry_point(Chunk).
+
+chunk_pred(Chunk,0,20,"function symbol"):-
+	function_symbol(Chunk,_).
 	
-chunk_pred(Chunk,Chunk_pred,3,"direct jump"):-
+chunk_pred(Chunk,Address,1,"address in data"):-
+	address_in_data(Address,Chunk),
+	Address % 8 != 0.
+
+chunk_pred(Chunk,Address,2,"aligned address in data"):-
+	address_in_data(Address,Chunk),
+	Address % 8 = 0.
+
+chunk_pred(Chunk,Chunk_pred,4,"direct jump"):-
 	direct_jump(EA,Chunk),
 	phase2.likely_ea(EA,Chunk_pred),
 	Chunk_pred!=Chunk,
 	!chunk_is_overlaping(Chunk_pred).
 	
-chunk_pred(Chunk,Chunk_pred,4,"may_fallthrough"):-
+chunk_pred(Chunk,Chunk_pred,5,"may_fallthrough"):-
 	may_fallthrough(EA,Chunk),
 	phase2.likely_ea(EA,Chunk_pred),
 	!chunk_is_overlaping(Chunk_pred).
@@ -220,7 +223,7 @@ chunk_pred(Chunk,Chunk_pred,1,"fits"):-
 	!chunk_is_overlaping(Chunk_pred).
 
 // its address appears somewhere
-chunk_pred(Chunk,Chunk_pred,1,"appears"):-
+chunk_pred(Chunk,Chunk_pred,2,"appears"):-
 	possible_target_from(Chunk,EA),
 	!direct_jump(EA,Chunk),
 	phase2.likely_ea(EA,Chunk_pred),
@@ -235,7 +238,6 @@ chunk_pred(Chunk,Chunk_succ,1,"fallthough_to"):-
 	!chunk_is_overlaping(Chunk_succ).
 	
 
-	
 // transitivity for fallthrough and direct jumps
 chunk_pred(Chunk,Chunk_pred2,Points,"transitive fallthough"):-
 	may_fallthrough(EA,Chunk),

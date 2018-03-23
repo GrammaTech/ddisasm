@@ -144,6 +144,7 @@ result_descriptors([
 
 			  result(function_symbol,2,'.csv'),
 			  result(main_function,1,'.csv'),
+			  result(start_function,1,'.csv'),
 			  result(ambiguous_symbol,1,'.csv'),
 			  result(chunk_start,1,'.csv'),
 			  result(discarded_chunk,1,'.csv'),
@@ -189,6 +190,7 @@ result_descriptors([
 :-dynamic remaining_ea/1.
 :-dynamic function_symbol/2.
 :-dynamic main_function/1.
+:-dynamic start_function/1.
 :-dynamic ambiguous_symbol/1.
 
 :-dynamic chunk_start/1.
@@ -263,8 +265,6 @@ print_header:-
     format('
 #=================================== 
 .intel_syntax noprefix
-.globl	main
-.type	main, @function
 #=================================== ~n',[]),
     % introduce some displacement to fail as soon as we make any mistake (for developing)
     % but without messing up the alignment
@@ -592,10 +592,19 @@ print_function_header(EA):-
 print_function_header(_).
 
 
+function_get_ea('_start',EA):-
+    start_function(EA),!.
+function_get_ea('main',EA):-
+    main_function(EA),!.
+function_get_ea(Name,EA):-
+    function_symbol(EA,Name).
+
 function_complete_name(EA,'main'):-
     main_function(EA),!.
+function_complete_name(EA,'_start'):-
+    start_function(EA),!.
 function_complete_name(EA,NameNew):-
-    function_symbol(EA,Name),!,
+    function_symbol(EA,Name),
     (ambiguous_symbol(Name)->
 	 format(string(Name_complete),'~p_~16R',[Name,EA])
      ;
@@ -655,6 +664,11 @@ pp_instruction(instruction(EA,Size,FCMOV,Op1,none,none)):-
 pp_instruction(instruction(EA,Size,Loop,reg('RCX'),Op2,none)):-
     atom_concat('LOOP',_,Loop),!,
     pp_instruction(instruction(EA,Size,Loop,none,Op2,none)).
+
+pp_instruction(instruction(EA,Size,PrefixOperation,Op1,Op2,Op3)):-
+    atom_concat('lock ',Operation,PrefixOperation),!,
+    atom_concat('lock\n           ',Operation,PrefixOperation2),
+    pp_instruction(instruction(EA,Size,PrefixOperation2,Op1,Op2,Op3)).
 
 %%%%%%%%%%%%%%%
 % general case
@@ -1090,7 +1104,7 @@ is_in_section(EA,Name):-
     End is Base+Size,
     EA<End.
 is_in_function(EA,Name):-
-    function_symbol(EA_fun,Name),
+    function_get_ea(Name,EA_fun),
     % there is no function in between
     EA>=EA_fun,
     \+ (
