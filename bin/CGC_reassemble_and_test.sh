@@ -34,6 +34,18 @@ if [[ $# -eq 0 || $1 == "-h" || $1 == "--help" ]]; then
     exit
 fi
 
+strip=0
+if [[ $# > 0 && $1 == "-strip" ]]; then
+    strip=1
+    shift
+fi
+
+stir=""
+if [[ $# > 0 && $1 == "-stir" ]]; then
+    stir="-stir"
+    shift
+fi
+
 dir=$1
 tests=/poller/for-release/
 #tests=/poller/for-testing/
@@ -49,8 +61,14 @@ cd $dir
 build.sh $exe $@
 cd $main_dir
 
-printf "#Disassembling $exe into $exe.s\n"
-if !(time(./disasm "$dir/$exe" -asm -stir > "$dir/$exe.s") 2>/tmp/timeCGC.txt); then
+if [ $strip == 1 ]; then 
+    printf "# Stripping binary\n"
+    cp "$dir/$exe" "$dir/$exe.unstripped"
+    strip --strip-unneeded "$dir/$exe"
+fi
+
+printf "#Disassembling $exe into $exe.s with flags: $stir\n"
+if !(time(./disasm "$dir/$exe" -keep_start -asm $stir > "$dir/$exe.s") 2>/tmp/timeCGC.txt); then
     printf "Disassembly failed\n"
     exit 1
 fi

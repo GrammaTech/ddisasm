@@ -147,7 +147,17 @@ optimizations=(
     "-Os"
 );
 
+strip=""
+if [[ $# > 0 && $1 == "-strip" ]]; then
+    strip="-strip"
+    shift
+fi
 
+stir=""
+if [[ $# > 0 && $1 == "-stir" ]]; then
+    stir="-stir"
+    shift
+fi
 
 for compiler in "${compilers[@]}"; do
     if [[ -x $(command -v $compiler) ]]; then 
@@ -162,7 +172,10 @@ for compiler in "${compilers[@]}"; do
 		
 		for ((i = 0; i < ${#examples[@]}; i++)); do
 		    echo "#Example ${examples[$i]}"
-		    timeout 10m bash ./reassemble_no_rebuild.sh $dir ${examples[$i]}
+		    if !(timeout 10m bash ./reassemble_no_rebuild.sh $strip $stir $dir ${examples[$i]}) ; then
+		       exit 1
+		    fi
+		       
 		done
 		
 		printf "# Testing\n"

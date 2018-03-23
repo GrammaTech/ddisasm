@@ -153,13 +153,24 @@ examples=(
 
 dir="/code/cgc-cbs/cqe-challenges/"
 
+strip=""
+if [[ $# > 0 && $1 == "-strip" ]]; then
+    strip="-strip"
+    shift
+fi
+
+stir=""
+if [[ $# > 0 && $1 == "-stir" ]]; then
+    stir="-stir"
+    shift
+fi
 
 for file in "${examples[@]}"; do
     if [ -d "$dir$file" ]; then
 	for compiler in "${compilers[@]}"; do
 	    for optimization in  "${optimizations[@]}"; do
 		echo "#Example $file with $compiler $optimization"
-		timeout $timeout bash ./CGC_reassemble_and_test.sh $dir$file $compiler $optimization
+		timeout $timeout bash ./CGC_reassemble_and_test.sh $strip $stir $dir$file $compiler $optimization
 	    done
 	done
     fi
@@ -173,7 +184,7 @@ for file in "${examples[@]}"; do
 	for compiler in "${compilers[@]}"; do
 	    for optimization in  "${optimizations[@]}"; do
 		echo "#Example $file with $compiler $optimization"
-		timeout $timeout bash ./CGC_reassemble_and_test.sh $dir$file $compiler $optimization
+		timeout $timeout bash ./CGC_reassemble_and_test.sh $strip $stir $dir$file $compiler $optimization
 	    done
 	done
     fi
