@@ -160,8 +160,6 @@ discarded_chunk(Chunk):-
 	;
 	chunk_overlap(Chunk2,Chunk)
 	),
-	!function_symbol(Chunk2,_),
-	!function_symbol(Chunk,_),
 	//heuristic: keep the one that has more predecessors
 	// but we value different kinds of predecessors differently
 	(
