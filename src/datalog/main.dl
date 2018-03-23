@@ -408,3 +408,13 @@ main_function(Main_location):-
 	next(Prev,First_call),
         code(Prev),
 	symbolic_code_operand_candidate(Prev,1,Main_location).
+
+.decl start_function(ea:address)
+.output start_function
+
+start_function(EA):-
+	function_symbol(EA,"_start").
+	
+start_function(Start_location):-
+	!function_symbol(Start_location,"_start"),
+	entry_point(Start_location).

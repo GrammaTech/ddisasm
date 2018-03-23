@@ -12,3 +12,6 @@ function_entry(EA):-
 
 function_entry(EA):-
 	main_function(EA).
+
+function_entry(EA):-
+	start_function(EA).
