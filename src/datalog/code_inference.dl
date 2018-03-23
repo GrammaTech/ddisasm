@@ -194,11 +194,11 @@ chunk_pred(Chunk,0,20,"start point"):-
 chunk_pred(Chunk,0,20,"function symbol"):-
 	function_symbol(Chunk,_).
 	
-chunk_pred(Chunk,Address,1,"address in data"):-
+chunk_pred(Chunk,0,1,"address in data"):-
 	address_in_data(Address,Chunk),
 	Address % 8 != 0.
 
-chunk_pred(Chunk,Address,2,"aligned address in data"):-
+chunk_pred(Chunk,0,2,"aligned address in data"):-
 	address_in_data(Address,Chunk),
 	Address % 8 = 0.
 
