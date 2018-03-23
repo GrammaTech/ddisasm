@@ -1,20 +1,6 @@
-# ./reassemble_and_test.sh project_directory binary_path [compiler_flags]
-# Take a project directory where the main makefile is located
-# and the relative path of the main executable within the directory and:
-# -Rebuild the project
-# -Disassemble the binary
-# -Reassemble the binary (substituting the old one)
-# -Run the makefile's tests
 
-# The reassembly uses the 'compiler_flags' arguments
 
-# Example:
-# ./reasemble_and_test.sh ../real_world_examples/grep-2.5.4 src/grep -lpcre
-#
 
-red=`tput setaf 1`
-green=`tput setaf 2`
-normal=`tput sgr0`
 
 if [[ $# -eq 0 || $1 == "-h" || $1 == "--help" ]]; then
     printf "USAGE: ./reassemble_no_rebuild.sh project_directory binary_path [compiler_flags]
@@ -30,6 +16,22 @@ if [[ $# -eq 0 || $1 == "-h" || $1 == "--help" ]]; then
 "   
     exit
 fi
+
+red=`tput setaf 1`
+green=`tput setaf 2`
+normal=`tput sgr0`
+
+if [[ $# > 0 && $1 == "-strip" ]]; then
+    strip=1
+    shift
+fi
+
+stir=""
+if [[ $# > 0 && $1 == "-stir" ]]; then
+    stir="-stir"
+    shift
+fi
+
 dir=$1
 exe=$2
 shift
@@ -42,11 +44,14 @@ if [[ $# > 0 && $1 == "g++" ]]; then
 fi
 
 
-printf "# Stripping binary\n"
-strip --strip-unneeded "$dir/$exe"
+if [ $strip ]; then 
+    printf "# Stripping binary\n"
+    cp "$dir/$exe" "$dir/$exe.unstripped"
+    strip --strip-unneeded "$dir/$exe"
+fi
 
-printf "# Disassembling $exe into $exe.s\n"
-if !(time(./disasm "$dir/$exe" -asm -stir > "$dir/$exe.s") 2>/tmp/timeCore.txt); then
+printf "# Disassembling $exe into $exe.s with flags $stir\n"
+if !(time(./disasm "$dir/$exe" -asm $stir > "$dir/$exe.s") 2>/tmp/timeCore.txt); then
     printf "# ${red}Disassembly failed${normal}\n"
     exit 1
 fi

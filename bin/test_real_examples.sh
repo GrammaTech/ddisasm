@@ -46,6 +46,18 @@ optimizations=(
     "-Os"
 );
 
+strip=""
+if [[ $# > 0 && $1 == "-strip" ]]; then
+    strip="-strip"
+    shift
+fi
+
+stir=""
+if [[ $# > 0 && $1 == "-stir" ]]; then
+    stir="-stir"
+    shift
+fi
+
 
 for ((i = 0; i < ${#examples[@]}; i++)); do
     j=0
@@ -55,7 +67,7 @@ for ((i = 0; i < ${#examples[@]}; i++)); do
 	for optimization in  "${optimizations[@]}"; do
 	    export CFLAGS=$optimization
 	    echo "#Example ${examples[$i]} with $CC/$CXX $optimization"
-	    timeout 10m bash ./reassemble_and_test.sh $dir${examples[$i]}
+	    timeout 10m bash ./reassemble_and_test.sh $strip $stir $dir${examples[$i]}
 	done
     j=$j+1	
     done

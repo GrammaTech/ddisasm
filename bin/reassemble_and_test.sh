@@ -19,14 +19,21 @@ if [[ $# -eq 0 || $1 == "-h" || $1 == "--help" ]]; then
     exit
 fi
 
-
-
-
-
 red=`tput setaf 1`
 green=`tput setaf 2`
 normal=`tput sgr0`
 
+strip=0
+if [[ $# > 0 && $1 == "-strip" ]]; then
+    strip=1
+    shift
+fi
+
+stir=""
+if [[ $# > 0 && $1 == "-stir" ]]; then
+    stir="-stir"
+    shift
+fi
 
 dir=$1
 exe=$2
@@ -46,11 +53,14 @@ if !( make clean -e -C $dir &>/dev/null  && make -e -C $dir &>/dev/null); then
     exit 1
 fi
 
-printf "# Stripping binary\n"
-strip --strip-unneeded "$dir/$exe"
+if [ $strip == 1 ]; then 
+    printf "# Stripping binary\n"
+    cp "$dir/$exe" "$dir/$exe.unstripped"
+    strip --strip-unneeded "$dir/$exe"
+fi
 
-printf "# Disassembling $exe into $exe.s\n"
-if !(time(./disasm "$dir/$exe" -asm -stir > "$dir/$exe.s") 2>/tmp/time.txt); then
+printf "# Disassembling $exe into $exe.s with flags: $stir\n"
+if !(time(./disasm "$dir/$exe" -asm $stir > "$dir/$exe.s") 2>/tmp/time.txt); then
     printf "# ${red}Disassembly failed${normal}\n"
     exit 1
 fi
