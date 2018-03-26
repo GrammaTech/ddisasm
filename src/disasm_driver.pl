@@ -585,7 +585,11 @@ print_function_header(EA):-
     (0=:= EA mod 8 -> 
 	 format('.align 8~n',[])
      ;
-     true),
+    0=:= EA mod 2 -> 
+	format('.align 2~n',[])
+     ;
+     true
+    ),
     format('.globl ~p~n',[Name]),
     format('.type ~p, @function~n',[Name]),
     format('~p:~n',[Name]),
