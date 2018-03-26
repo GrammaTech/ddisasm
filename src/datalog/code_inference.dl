@@ -110,6 +110,12 @@ phase2.possible_target(EA):-
 	possible_target_from(EA,_).
 
 
+phase2.possible_target(EA):-
+ 	after_function_end(EA),
+	!instruction_get_operation(EA,"NOP").
+// 	typical_function_starter(EA).
+
+
 .output phase2.remaining_ea
 
 ////////////////////////////////////////////////////////////////////////
@@ -201,6 +207,20 @@ chunk_pred(Chunk,0,1,"address in data"):-
 chunk_pred(Chunk,0,2,"aligned address in data"):-
 	address_in_data(Address,Chunk),
 	Address % 8 = 0.
+
+chunk_pred(Chunk,0,1,"address in data array"):-
+	address_in_data(Address,Chunk),
+	Address % 8 = 0,
+	(
+	address_in_data(Address+8,_),
+	address_in_data(Address+16,_)
+	;
+	address_in_data(Address-8,_),
+	address_in_data(Address-16,_)
+	;
+	address_in_data(Address+8,_),
+	address_in_data(Address-8,_)
+	).
 
 chunk_pred(Chunk,Chunk_pred,4,"direct jump"):-
 	direct_jump(EA,Chunk),

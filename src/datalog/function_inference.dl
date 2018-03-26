@@ -15,3 +15,48 @@ function_entry(EA):-
 
 function_entry(EA):-
 	start_function(EA).
+
+
+function_entry(EA):-
+	likely_ea_final(_,EA),
+	after_function_end(EA),
+	typical_function_starter(EA).
+
+//////////////////////////////////////////////////////////////////////////////
+.decl function_end(EA:address)
+
+function_end(EA):-
+	return(EA).
+
+function_end(EA):-
+	inconditional_jump(EA).
+	
+// function_end(EA):-
+// 	instruction(EA,_,"CALL",_,_,_).
+
+
+.decl after_function_end(EA:address)
+
+after_function_end(Next):-
+	function_end(EA),
+	phase2.likely_ea(EA,_),
+	next(EA,Next).
+
+
+after_function_end(Next):-
+	after_function_end(EA),
+	instruction_get_operation(EA,"NOP"),
+	next(EA,Next).
+	
+
+.decl typical_function_starter(EA:address)
+
+typical_function_starter(EA):-
+	instruction(EA,_,"PUSH",_,_,_).
+
+typical_function_starter(EA):-
+	instruction(EA,_,"SUB",Op1,Op2,_),
+	op_immediate(Op1,_),
+	op_regdirect(Op2,"RSP").
+	
+
