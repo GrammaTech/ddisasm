@@ -38,8 +38,8 @@ function_end(EA):-
 .decl after_function_end(EA:address)
 
 after_function_end(Next):-
-	function_end(EA),
 	phase2.likely_ea(EA,_),
+	function_end(EA),
 	next(EA,Next).
 
 
