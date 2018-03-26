@@ -1,0 +1,3 @@
+instruction(4000A0,5,'MOV',Op1,Op2,0).
+op_regdirect(Op1,'RAX').
+op_immediate(Op2,420020).
