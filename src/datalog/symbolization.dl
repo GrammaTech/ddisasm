@@ -188,7 +188,8 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	op_regdirect_contains_reg(Op2,Reg),
 
 	local_next(EA,EA_next),
-	used_for_address(EA_next,Reg,EA_used,_),
+	used_for_address(EA_next,Reg,EA_used,Index_used),
+	!symbolic_operand(EA_used,Index_used),
 
 	//get the section where it is supposed to go
 	(
