@@ -41,7 +41,6 @@ track_register("RDI","RDI").
 track_register("ESI","RSI").
 track_register("RSI","RSI").
 
-
 track_register("RBP","RBP").
 track_register("EBP","RBP").
 
@@ -132,13 +131,14 @@ def(EA,Reg):-
 	function_non_maintained_reg(Reg).
 
 
-//BASE CASE: used register for memory here
+//BASE CASE: used register for memory here and not accessing the stack
 used_for_address(EA,Reg,EA,Index):-
 	code(EA),
 	//lea does not access memory
 	!instruction_get_operation(EA,"LEA"),
 	instruction_get_op(EA,Index,Op),
-	op_indirect_contains_reg(Op,Reg).
+	op_indirect_contains_reg(Op,Reg),
+	Reg!="RBP".
 
 //USED TRANSITIVELY: used to compute something used for memory later
 used_for_address(EA,Tracked_reg,EA,Index):-
