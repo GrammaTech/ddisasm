@@ -151,7 +151,7 @@ moved_label(EA,Op_index,Dest,Base):-
 	data_section(Name),
 	section(Name,_,Base),
 	Dest<Base,
-	Dest+1000>=Base.
+	Dest+4000>=Base.
 
 // the destination is more than the end of the section
 moved_label(EA,Op_index,Dest,Base+SizeSect):-
@@ -188,8 +188,8 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	op_regdirect_contains_reg(Op2,Reg),
 
 	local_next(EA,EA_next),
-	used_for_address(EA_next,Reg,EA_used,Index_used),
-	!symbolic_operand(EA_used,Index_used),
+	used_for_address(EA_next,Reg,EA_used,Op_index_used),
+	!symbolic_operand(EA_used,Op_index_used),
 
 	//get the section where it is supposed to go
 	(
@@ -205,7 +205,9 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	Other_dest>=Beg,
 	Other_dest<=SizeSect+Beg,
 	(
-	Dest< Beg, New_dest=Beg
+	Dest< Beg,
+	Dest+4000>=Beg,
+	New_dest=Beg
 	;
 	Dest>SizeSect+Beg,
 	Dest<=Beg+SizeSect+(SizeSect/2),
