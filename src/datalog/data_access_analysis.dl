@@ -232,9 +232,12 @@ paired_propagated_data_access(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Mult
 .decl propagated_data_access(ea:address,ea_label:address,offset:number,multiplier:number)
 
 
-propagated_data_access(EA,EA_label,Offset,Multiplier):-
+// count offset after the first propagation so patterns
+// with higher multiplier prevail in the first propagation
+
+propagated_data_access(EA,EA_label,Offset-Multiplier,Multiplier):-
 	paired_propagated_data_access(EA,EA_label,Offset,Multiplier).
-propagated_data_access(EA,EA_label,Offset,Multiplier):-
+propagated_data_access(EA,EA_label,Offset-Multiplier,Multiplier):-
 	individual_propagated_data_access(EA,EA_label,Offset,Multiplier).
 	
 
