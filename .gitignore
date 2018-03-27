@@ -2,3 +2,11 @@
 *.a
 
 bin/souffle_disasm
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+doc/slides/slides.pdf
+

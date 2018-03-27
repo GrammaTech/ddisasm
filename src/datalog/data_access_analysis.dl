@@ -26,20 +26,46 @@ data_access_pattern(Address,Size/8 ,0,EA):-
 	Address<=Base+SizeSect.
 
 // directly computed
-data_access_pattern(Address,Size/8 ,Multiplier,EA):-
+data_access_pattern(Address+(Offset2*Multiplier),Size/8 ,Multiplier*Multiplier2,EA):-
 	code(EA),
-	instruction_get_op(EA,_Op_index,Op),
+	instruction_get_op(EA,Op_index,Op),
 	op_indirect(Op,NullSReg,NullReg1,RegMult,Multiplier,Address,Size),
 	null_reg(NullSReg),
 	null_reg(NullReg1),
 	!null_reg(RegMult),
 
+	def_used(EA_def,RegMult,EA,Op_index),
+//	Max_steps=max Steps:{value_reg(EA_def,RegMult,_,_,_,_,Steps)},
+	Max_multiplier=max Mult:{value_reg(EA_def,RegMult,_,_,Mult,_,_)},
+	value_reg(EA_def,RegMult,_,_,Multiplier2,Offset2,_St),
+//	St>=Max_steps,
+	Multiplier2>=Max_multiplier,
+	Multiplier*Multiplier2>1,
 	data_section(Section),
 	section(Section,SizeSect,Base),
 	Address>=Base,
 	Address<=Base+SizeSect.
 
 
+// indirectly computed
+data_access_pattern(Offset+Address,Size/8 ,Multiplier,EA):-
+	code(EA),
+	instruction_get_op(EA,Op_index,Op),
+	op_indirect(Op,NullSReg,Reg,NullReg1,_,Address,Size),
+	null_reg(NullSReg),
+	null_reg(NullReg1),
+	def_used(EA_def,Reg,EA,Op_index),
+//	Max_steps=max Steps:{value_reg(EA_def,Reg,_,_,_,_,Steps)},
+	Max_multiplier=max Mult:{value_reg(EA_def,Reg,_,_,Mult,_,_)},
+	value_reg(EA_def,Reg,_,_,Multiplier,Offset,_St),
+//	St>=Max_steps,
+	Multiplier>=Max_multiplier,
+	Multiplier>1,
+	data_section(Section),
+	section(Section,SizeSect,Base),
+	Offset+Address>=Base,
+	Offset+Address<=Base+SizeSect.
+	
 // pc relative
 data_access_pattern(Address,Size/8 ,0,EA):-
 	code(EA),
@@ -60,7 +86,7 @@ data_access_pattern(Address,1,1,EA):-
 	!null_reg(Reg),
 
 	def_used(EA_def,Reg,EA,Index),	
-	!value_reg(EA_def,Reg,_,_,_,_,_),
+	value_reg(EA_def,Reg,_,_,1,0,_),
 
 	data_section(Section),
 	section(Section,SizeSect,Base),
@@ -76,30 +102,12 @@ data_access_pattern(Address,2,2,EA):-
 	null_reg(NullSReg),
 	!null_reg(Reg),
 	def_used(EA_def,Reg,EA,Index),	
-	!value_reg(EA_def,Reg,_,_,_,_,_),
+	value_reg(EA_def,Reg,_,_,1,0,_),
 
 	data_section(Section),
 	section(Section,SizeSect,Base),
 	Address>=Base,
 	Address<=Base+SizeSect.
-
-
-// indirectly computed
-data_access_pattern(Offset+Address,Size/8 ,Multiplier,EA):-
-	code(EA),
-	instruction_get_op(EA,Op_index,Op),
-	op_indirect(Op,NullSReg,Reg,NullReg1,_,Address,Size),
-	null_reg(NullSReg),
-	null_reg(NullReg1),
-	def_used(EA_def,Reg,EA,Op_index),
-	Max_steps=max Steps:{value_reg(EA_def,Reg,_,_,_,_,Steps)},	
-	value_reg(EA_def,Reg,_,_,Multiplier,Offset,St),
-	St>=Max_steps,
-
-	data_section(Section),
-	section(Section,SizeSect,Base),
-	Offset+Address>=Base,
-	Offset+Address<=Base+SizeSect.
 
 	
 
@@ -129,6 +137,29 @@ paired_data_access(EA1,Size1,Multiplier,EA2,Size2,Diff):-
 			 Ref2+200>=Ref1
 			 ).
 
+
+.decl next_paired_data_access(EA1:address,Size1:number,Multiplier:number,
+			 EA2:address,Size2:number,Diff:number)
+			 
+next_paired_data_access(EA1,Size1,Multiplier,EA2,Size2,Diff2):-
+	data_access_pattern(EA1,Size1,Multiplier,_),
+	Min_diff=min Diff : paired_data_access(EA1,Size1,Multiplier,_,_,Diff),
+	paired_data_access(EA1,Size1,Multiplier,EA2,Size2,Diff2),
+	Min_diff>= Diff2.
+
+.decl restart_paired_data_access(EA1:address,Size1:number,Multiplier:number,
+			 EA2:address,Size2:number,Diff:number)
+			 
+restart_paired_data_access(EA1,Size1,Multiplier,EA2,Size2,Diff2):-
+	data_access_pattern(EA1,Size1,Multiplier,_),
+	!paired_data_access(_,_,Multiplier,EA1,Size1,_),
+	
+	Max_diff=max Diff : paired_data_access(EA1,Size1,Multiplier,_,_,Diff),
+	paired_data_access(EA1,Size1,Multiplier,EA2,Size2,Diff2),
+	Max_diff<= Diff2.
+	
+
+
 // the addresses that are covered by data_access_patterns
 .decl taken_by_data_access_pattern(EA:address,Offset:number)
 
@@ -153,7 +184,13 @@ individual_propagated_data_access(EA+Multiplier,EA_label,EA+Multiplier-EA_label,
 	//do not cross data access or labels
 	!symbolic_data_operand_candidate(_,_,EA+Multiplier),
 	!address_in_data_refined(_,EA+Multiplier),
-	!taken_by_data_access_pattern(EA+Multiplier,_),
+	(
+	!taken_by_data_access_pattern(EA+Multiplier,_)
+	;
+	//is an access that matches the existing
+	data_access_pattern(EA+Multiplier,Size,Multiplier,Ref),
+	data_access_pattern(EA_label,Size,Multiplier,Reg)
+	),
 	address_array_range.no_overlap(EA,8).
 
 
@@ -163,32 +200,33 @@ individual_propagated_data_access(EA+Multiplier,EA_label,EA+Multiplier-EA_label,
 
 paired_propagated_data_access(EA,EA,0,Mult):-
 	data_access_pattern(EA,Size,Mult,_),
-	paired_data_access(EA,Size,Mult,_,_,_).
+	next_paired_data_access(EA,Size,Mult,_,_,_).
 	
 paired_propagated_data_access(EA,EA,0,Mult):-
 	data_access_pattern(EA,Size,Mult,_),
-	paired_data_access(_,_,Mult,EA,Size,_).	
+	restart_paired_data_access(_,_,Mult,EA,Size,_).	
 	
 paired_propagated_data_access(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Multiplier):-
 	paired_propagated_data_access(EA,EA_label,_,Multiplier),
 	data_byte(EA+Multiplier,_),
 	//do not cross data access or labels	
 	!symbolic_data_operand_candidate(_,_,EA+Multiplier),
-	!address_in_data_refined(_,EA+Multiplier),	
-	!taken_by_data_access_pattern(EA+Multiplier,_),
+	!address_in_data_refined(_,EA+Multiplier),
+	(
+	!taken_by_data_access_pattern(EA+Multiplier,_)
+	;
+	//is an access that matches the existing
+	data_access_pattern(EA+Multiplier,Size,Multiplier,Ref),
+	data_access_pattern(EA_label,Size,Multiplier,Reg)
+	),
 	address_array_range.no_overlap(EA,8),
 //propagate paired accesses together
 	(
-	  paired_data_access(EA_label,_,Multiplier,EA_paired,_,Diff),
- 	  paired_propagated_data_access(EA+Diff,EA_paired,_,Multiplier)
+	next_paired_data_access(EA_paired,_,Multiplier,EA_label,_,Diff),
+	paired_propagated_data_access(EA+Multiplier-Diff,EA_paired,_,Multiplier)
 	;
-	   !paired_data_access(EA_label,_,Multiplier,_,_,_)
-	),
- 	(
-          paired_data_access(EA_paired2,_,Multiplier,EA_label,_,Diff2),
-          paired_propagated_data_access(EA+Multiplier-Diff2,EA_paired2,_,Multiplier)
-	   ;
-           !paired_data_access(_,_,Multiplier,EA_label,_,_)
+	restart_paired_data_access(EA_label,_,Multiplier,EA_paired,_,Diff),
+	paired_propagated_data_access(EA+Diff,EA_paired,_,Multiplier)
 	).
 	
 .decl propagated_data_access(ea:address,ea_label:address,offset:number,multiplier:number)
@@ -200,8 +238,28 @@ propagated_data_access(EA,EA_label,Offset,Multiplier):-
 	individual_propagated_data_access(EA,EA_label,Offset,Multiplier).
 	
 
+.decl initial_preferred_data_access(EA:address,EA_label:address)
 
-preferred_data_access(EA,EA_label):-
+initial_preferred_data_access(EA,EA_label):-
 	Min_Offset= min Offset:{propagated_data_access(EA,_,Offset,_)},
 	propagated_data_access(EA,EA_label,Selected_offset,_),
 	Min_Offset>=Selected_offset.
+
+
+.decl discarded_propagated_access(EA:address,EA_label:address,Multiplier:number)
+
+
+discarded_propagated_access(EA,EA_label2,Multiplier):-
+	initial_preferred_data_access(EA,EA_label),
+	propagated_data_access(EA,EA_label2,_,Multiplier),
+	EA_label2!=EA_label.
+
+discarded_propagated_access(EA+Multiplier,EA_label,Multiplier):-
+	discarded_propagated_access(EA,EA_label,Multiplier),
+	propagated_data_access(EA+Multiplier,EA_label,_,Multiplier).
+
+
+preferred_data_access(EA,EA_label):-
+	initial_preferred_data_access(EA,EA_label),
+	!discarded_propagated_access(EA,EA_label,_).
+	

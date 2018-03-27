@@ -42,6 +42,46 @@ track_register("ESI","RSI").
 track_register("RSI","RSI").
 
 
+track_register("RBP","RBP").
+track_register("EBP","RBP").
+
+track_register("R8","R8").
+track_register("R8D","R8").
+
+track_register("R9","R9").
+track_register("R9D","R9").
+
+track_register("R10","R10").
+track_register("R10D","R10").
+
+track_register("R11","R11").
+track_register("R11D","R11").
+
+track_register("R12","R12").
+track_register("R12D","R12").
+
+track_register("R13","R13").
+track_register("R13D","R13").
+
+track_register("R14","R14").
+track_register("R14D","R14").
+
+track_register("R15","R15").
+track_register("R15D","R15").
+
+.decl function_non_maintained_reg(reg:register)
+
+function_non_maintained_reg("RAX").
+function_non_maintained_reg("RCX").
+function_non_maintained_reg("RDX").
+function_non_maintained_reg("RDI").
+function_non_maintained_reg("RSI").
+
+
+function_non_maintained_reg("R8").
+function_non_maintained_reg("R9").
+function_non_maintained_reg("R10").
+function_non_maintained_reg("R11").
 
 ////////////////////////////////////////////////////////////////////////
 // Auxiliary predicates
@@ -71,10 +111,9 @@ op_regdirect_contains_reg(Op,Reg_uniform):-
 //local underapproximation of control flow
 .decl local_next(ea:address,ea_next:address)
 
-//do not cross calls
+
 local_next(EA,EA_next):-
 	code(EA),
-	!instruction_get_operation(EA,"CALL"),
 	may_fallthrough(EA,EA_next).
 	
 local_next(EA,EA_next):-
@@ -86,6 +125,12 @@ def(EA,Reg):-
 	code(EA),
 	instruction_get_dest_op(EA,_,Op),
 	op_regdirect_contains_reg(Op,Reg).
+
+def(EA,Reg):-
+	code(EA),
+	instruction_get_operation(EA,"CALL"),
+	function_non_maintained_reg(Reg).
+
 
 //BASE CASE: used register for memory here
 used_for_address(EA,Reg,EA,Index):-
