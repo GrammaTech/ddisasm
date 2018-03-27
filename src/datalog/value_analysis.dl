@@ -133,19 +133,6 @@ value_reg(EA,Reg2,EA_third,Reg3,Multiplier-Multiplier2,Offset-Offset2,Steps+Step
 	value_reg(EA_def1,Reg1,EA_third,Reg3,Multiplier2,Offset2,Steps2),
 	EA!=EA_third.
 
-// value_reg(EA,Reg2,EA_def1,Reg1,Multiplier-1,0,Steps+1):-
-// 	def(EA,Reg2),
-// 	instruction(EA,_,"SUB",Op1,Op2,0),
-// 	op_regdirect_contains_reg(Op1,Reg1),
-// 	op_regdirect_contains_reg(Op2,Reg2),
-// 	// Reg2 is defined in EA_prev in terms of reg1
-// 	def_used(EA_prev,Reg2,EA,_),
-// 	value_reg(EA_prev,Reg2,EA_def1,Reg1,Multiplier,0,Steps),
-// 	Multiplier>1,
-// 	// Reg1 is defined at the same point
-// 	def_used(EA_def1,Reg1,EA,_),
-// 	EA!=EA_def1.
-
 // normal propagation
 value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,Steps+1):-
 	value_reg(EA2,Reg2,EA3,Reg3,Multiplier2,Offset2,Steps),
