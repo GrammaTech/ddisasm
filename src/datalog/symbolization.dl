@@ -84,18 +84,37 @@ symbolic_data_operand_candidate(EA,Op_index,Dest):-
 	Dest<=Base+SizeSect.
 
 // Heuristic: If there are at least 3 consecutive addresses
-//  we consider that we found an array of addresses 
+//  we consider that we found an array of addresses
+
+.decl next_address_in_data(EA:address,EA_next:address)
+
+
+next_address_in_data(EA,EA_next):-
+	address_in_data_refined(EA,_),
+	EA_next=min EA2: {
+		    address_in_data_refined(EA,_),
+		    address_in_data_refined(EA2,_),EA2>EA}.
+
+
+.decl address_array_aux(EA:address,Distance:number)
+
+address_array_aux(EA,Diff):-
+	address_in_data_refined(EA,_),
+	EA % 8 =0,
+	next_address_in_data(EA,EA_next),
+	Diff= EA_next-EA,
+	address_in_data_refined(EA+Diff,_),
+	next_address_in_data(EA+Diff,EA+(2*Diff)).
+	
+address_array_aux(EA+Diff,Diff):-
+	address_array_aux(EA,Diff),
+	next_address_in_data(EA,EA+Diff).
+	
 .decl address_array(EA:address)
 
 address_array(EA):-
-	address_in_data_refined(EA,_),
-	EA % 8 =0,
-	address_in_data_refined(EA+8,_),
-	address_in_data_refined(EA+16,_).
-address_array(EA+8):-
-	address_array(EA),
-	address_in_data_refined(EA+8,_).
-
+	address_array_aux(EA,_).
+	
 .init address_array_range=empty_range
 
 address_array_range.in_ea(EA):-
