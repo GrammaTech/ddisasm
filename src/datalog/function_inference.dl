@@ -36,6 +36,7 @@ function_end(EA):-
 
 
 .decl after_function_end(EA:address)
+.output after_function_end
 
 after_function_end(Next):-
 	phase2.likely_ea(EA,_),
