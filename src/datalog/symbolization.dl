@@ -86,14 +86,26 @@ symbolic_data_operand_candidate(EA,Op_index,Dest):-
 // Heuristic: If there are at least 3 consecutive addresses
 //  we consider that we found an array of addresses
 
+
+.decl after_address_in_data(EA:address,EA_next:address)
+
+
+after_address_in_data(EA,EA+8):-
+	address_in_data_refined(EA,_),
+	data_byte(EA+8,_).
+	
+after_address_in_data(EA,EA_aux+1):-
+	after_address_in_data(EA,EA_aux),
+	!address_in_data_refined(EA_aux,_),
+	data_byte(EA_aux+1,_).
+
 .decl next_address_in_data(EA:address,EA_next:address)
 
 
 next_address_in_data(EA,EA_next):-
 	address_in_data_refined(EA,_),
-	EA_next=min EA2: {
-		    address_in_data_refined(EA,_),
-		    address_in_data_refined(EA2,_),EA2>EA}.
+	after_address_in_data(EA,EA_next),
+	address_in_data_refined(EA_next,_).
 
 
 .decl address_array_aux(EA:address,Distance:number)
