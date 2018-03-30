@@ -6,6 +6,7 @@ valid_option('-asm').
 valid_option('-stir').
 valid_option('-interpreted').
 valid_option('-keep_start').
+valid_option('-hints').
 
 
 %	'.eh_frame',
@@ -75,7 +76,7 @@ disasm_binary([File|Args]):-
     collect_results(Dir2,_Results),
 
     (option('-asm')->format('*/~n',[]);true),
-    pretty_print_results,
+    pretty_print_results(Dir),
     print_stats.
 
 :-dynamic option/1.
@@ -248,7 +249,7 @@ print_descriptor_stats(Res):-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % print the complete assembly: first the code, then the data and finally the .bss
-pretty_print_results:-
+pretty_print_results(Dir):-
     print_header,
     get_code_chunks(Chunks),
     maplist(pp_code_chunk, Chunks),
@@ -259,7 +260,8 @@ pretty_print_results:-
     format('~n~n#=================================== ~n',[]),
     format('.bss~n .align 16~n',[]),
     format('#=================================== ~n~n',[]),
-    maplist(pp_bss_data,Uninitialized_data).
+    maplist(pp_bss_data,Uninitialized_data),
+    generate_hints(Dir,Data_sections).
 
 
 print_header:-
@@ -420,6 +422,13 @@ group_data([data_byte(EA,Content)|Rest],[data_group(EA,string,String)|Groups]):-
     string_codes(String,Bytes_clean),
     group_data(Rest2,Groups).
 
+group_data([data_byte(EA,Content)|Rest],[data_group(EA,accessed_data,Data_bytes)|Groups]):-
+    preferred_data_access(EA,Ref),
+    data_access_pattern(Ref,Size,_,_),Size>0,
+    split_at(Size,[data_byte(EA,Content)|Rest],Data_bytes,Rest2),
+    maplist(not_labeled,[data_byte(EA,Content)|Rest]),!,
+    group_data(Rest2,Groups).
+
 group_data([data_byte(EA,Content)|Rest],[data_group(EA,unknown,[data_byte(EA,Content)])|Groups]):-
     labeled_data(EA),!,
     group_data(Rest,Groups).
@@ -430,6 +439,8 @@ group_data([data_byte(EA,Content)|Rest],[data_byte(EA,Content)|Groups]):-
 
 get_data_byte_content(data_byte(_,Content),Content).
 
+not_labeled(data_byte(EA,_)):-
+    \+labeled_data(EA).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % collect the .bss:
 % collect the labels that have to printed and the sizes between labels
@@ -529,6 +540,10 @@ pp_data(data_group(EA,string,Content)):-
 
     get_string_length(Content,Length),
     print_end_label(EA,Length).
+
+pp_data(data_group(EA,accessed_data,Content)):-
+    print_label(EA),
+    maplist(pp_data,Content).
 
 pp_data(data_group(EA,unknown,Content)):-
     print_label(EA),
@@ -1262,48 +1277,78 @@ get_string_length(Content,Length1):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %code to generate hints
 
-%% generate_hints(Dir):-
-%%     option('-hints'),!,
-%%     findall(Code_ea,
-%% 	    (
-%% 		likely_ea(Code_ea,Chunk),
-%% 		chunk_start(Chunk),
-%%                 \+discarded_chunk(Chunk)
-%% 	    ),Code_eas),
-%%     directory_file_path(Dir,'hints',Path),
-%%     open(Path,write,S),
-%%     maplist(print_code_ea(S),Code_eas),
-%%     findall(Data_ea,
-%% 	    (
-%% 		labeled_data(Data_ea)
-%% 	     ;
-%% 	     symbolic_data(Data_ea,_)
-%% 	    )
-%% 	    ,Data_eas),
-%%     maplist(print_data_ea(S),Data_eas),
-%%     close(S).
+generate_hints(Dir,Data_sections):-
+    option('-hints'),!,
+    findall(Code_ea,
+	    (
+		likely_ea(Code_ea,Chunk),
+		chunk_start(Chunk),
+                \+discarded_chunk(Chunk)
+	    ),Code_eas),
+    directory_file_path(Dir,'hints',Path),
+    open(Path,write,S),
+    maplist(print_code_ea(S),Code_eas),
+    maplist(print_section_data_hints(S),Data_sections),
+    close(S).
 
-%% generate_hints(_).    
+generate_hints(_,_).    
 
-%% print_code_ea(S,EA):-
-%%     format(S,'0x~16R C',[EA]),
-%%     instruction(EA,_,_,Op1,Op2,Op3),
-%%     exclude(is_zero,[Op1,Op2,Op3],Non_zero_ops),
-%%     length(Non_zero_ops,N_ops),
-%%     findall(Index,symbolic_operand(EA,Index),Indexes),
-%%     transform_indexes(Indexes,N_ops,Indexes_tr),
-%%     maplist(print_sym_index(S),Indexes_tr),
-%%     format(S,'~n',[]).
+print_code_ea(S,EA):-
+    format(S,'0x~16R C',[EA]),
+    instruction(EA,_,_,Op1,Op2,Op3),
+    exclude(is_zero,[Op1,Op2,Op3],Non_zero_ops),
+    length(Non_zero_ops,N_ops),
+    findall(Index,
+	    (
+		symbolic_operand(EA,Index)
+	     ;
+		moved_label(EA,Index,_,_)
+	    )
+	    ,Indexes),
+    transform_indexes(Indexes,N_ops,Indexes_tr),
+    maplist(print_sym_index(S),Indexes_tr),
+    format(S,'~n',[]).
 
-%% is_zero(0).
-%% print_data_ea(S,EA):-
-%%     format(S,'0x~16R D~n',[EA]).
+is_zero(0).
 
-%% transform_indexes(Indexes,N_ops,Indexes_tr):-
-%%     foldl(transform_index(N_ops),Indexes,[],Indexes_tr).
 
-%% transform_index(N_ops,Index,Accum,[Index_tr|Accum]):-
-%%     Index_tr is N_ops-Index.
+transform_indexes(Indexes,N_ops,Indexes_tr):-
+    foldl(transform_index(N_ops),Indexes,[],Indexes_tr).
+
+transform_index(N_ops,Index,Accum,[Index_tr|Accum]):-
+    Index_tr is N_ops-Index.
  
-%% print_sym_index(S,I):-
-%%       	 format(S,'so~p@0',[I]).
+print_sym_index(S,I):-
+      	 format(S,'so~p@0',[I]).
+
+
+print_section_data_hints(S,data_section(_Name,_Required_alignment,Data_list)):-
+    maplist(print_element_data_hint(S),Data_list).
+
+print_element_data_hint(S,data_group(EA,Symbolic,_)):-
+    member(Symbolic,[plt_ref,pointer,labeled_pointer]),!,
+    format(S,'0x~16R Dqs@0~n',[EA]).
+%    format(S,'0x~16R Dq~n',[EA]).
+
+print_element_data_hint(S,data_group(EA,string,_Content)):-
+    format(S,'0x~16R D~n',[EA]).
+
+
+print_element_data_hint(S,data_group(EA,accessed_data,Content)):-
+    length(Content,Size),
+    get_hint_size_code(Size,Code),
+    format(S,'0x~16R D~p~n',[EA,Code]).
+
+
+print_element_data_hint(S,data_group(_EA,unknown,Content)):-
+    maplist(print_element_data_hint(S),Content).
+
+print_element_data_hint(S,data_byte(EA,_Content)):-
+    format(S,'0x~16R D~n',[EA]).
+
+
+get_hint_size_code(8,q).
+get_hint_size_code(4,d).
+get_hint_size_code(2,w).
+get_hint_size_code(1,b).
+get_hint_size_code(_,'').
