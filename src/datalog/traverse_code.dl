@@ -18,7 +18,7 @@
 likely_ea(EA,EA):-
 	possible_target(EA),
 	possible_ea(EA).
-//same block
+
 likely_ea(EA,Head):-
 	likely_ea(EA2,Start),
 	may_fallthrough(EA2,EA),
