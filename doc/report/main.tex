@@ -1,0 +1,240 @@
+% ;; TeX-PDF-mode: t; TeX-master: "main" -*-%
+
+%\documentclass[article,dr=phil,type=drfinal,colorback,accentcolor=tud9c]{tudthesis}
+\documentclass[]{llncs}
+%\usepackage{ngerman}
+\overfullrule=1mm
+\usepackage{epigraph}
+\usepackage{xspace}
+\usepackage[toc]{glossaries}
+\usepackage{import}
+%\usepackage{enumitem}      % adjust spacing in enums
+\usepackage[colorlinks=true,allcolors=blue,breaklinks,draft=false]{hyperref}   % hyperlinks, includ
+%\usepackage{ctable}
+\usepackage{footmisc}
+\usepackage{hhline}
+\usepackage{etoolbox}
+%\usepackage{amssymb}
+%\usepackage{amsmath}
+%\usepackage{mathtools}
+%\usepackage{bm}
+
+\usepackage{pgfplots}
+\usepackage{booktabs}
+%\usepackage{amsthm}
+\usepackage{colortbl}
+\usepackage{color}
+%\usepackage{mparhack}
+%\usepackage{pdfcomment}
+\usepackage[draft]{fixme}
+%\fxloadlayouts{pdfmargin}
+%\fxsetup{pdfmargin}
+%\fxsetup{margin}
+\usepackage{multicol}
+\usepackage{multirow}
+\usepackage{url}
+
+\usepackage{listings}
+\lstset{
+  frame=Ltb,
+  framerule=0pt,
+  aboveskip=0mm,
+  framextopmargin=0pt,
+  framexbottommargin=0pt,
+  framexleftmargin=0cm,
+  framesep=0pt,
+  rulesep=0pt,
+  showstringspaces = false,
+  basicstyle=\ttfamily,
+  numbers=left,
+  mathescape=true,
+  numbersep=-5pt,
+  numberstyle=\tiny,
+  numberfirstline=true,
+  firstnumber=auto,
+  breaklines=true
+}
+
+\usepackage{tikz}
+\usetikzlibrary{shapes}
+\usetikzlibrary{arrows}
+\usetikzlibrary{decorations.markings}
+\usetikzlibrary{shapes.multipart}
+\usetikzlibrary{shapes.arrows}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{positioning}
+\usetikzlibrary{patterns}
+\usetikzlibrary{calc,decorations.pathreplacing,matrix,shadows,fit,chains} 
+\usetikzlibrary{trees,hobby,backgrounds}
+\pgfplotsset{compat=1.13}
+%\usepackage{algorithmicx}
+%\usepackage[noend]{algpseudocode}
+%\algrenewcommand\algorithmicindent{4pt}
+%\renewcommand{\algorithmicforall}{\textbf{for each}}
+%\usepackage{algorithm}
+%\algrenewcommand\algorithmicindent{2.0em}
+
+
+%\DeclarePairedDelimiter\nat{\|}{\|}
+%\DeclarePairedDelimiter\tuple{\langle}{\rangle}
+%\DeclarePairedDelimiter\paren{(}{)}
+%\DeclarePairedDelimiter\set{\{}{\}}
+%\DeclarePairedDelimiter\multiset{\{\!\!\{}{\}\!\!\}}
+
+
+
+\author{Antonio Flores Montoya}
+\title{Datalog Disassembler}
+\begin{document}
+\maketitle
+
+\section{Instruction boundaires}
+-traverse code, considering possible starting points any address found in the code.
+
+-discard invalid instructions and instruction that overlap with the traversed
+instructions
+
+-whenever a block ends try to disassembly contiguous instructions
+
+At the end of the process we have a set of blocks. Some of them might be overlaping.
+Use heuristics to resolve conflics
+based on predecessors that do not overlap, symbols, if their address appears in the code,
+etc.
+
+
+\section{Symbolization}
+\subsection{Auxiliary analyses}
+Used Defined analysis:
+
+compute dependencies backward of registers that are (transitively) used to access
+memory.
+
+
+Register Value analysis
+
+Using the computed dependencies, compute a limited version of value analysis with a
+very specific format forward.
+Edges are added for operations that can be abstracted to the representaiton
+the transitive relations are computed afterwards.
+
+for binary operations the semantics are encoded in the second relation.
+
+
+
+\subsection{Data access patterns}
+-Using the results of the value analysis compute addresses that are accessed with
+a certain size and multiplier.
+-accesses within the range of the multiplier and with the same multiplier are considered
+paired. (the access the same array of structs).
+-data accesses are propagated until a new access is found.
+If two accesses coincide, the one originated closer takes precendence and the
+other one is not propagated further.
+paired accesses are only propagated insofar as all of the do not reach other access.
+
+\subsection{Other heuristics}
+
+address array
+aligned address
+
+\subsection{Final decision}
+an address is considered a symbol if it qualifies for at least to heuristics.
+
+
+\section{Future work}
+
+  Some possible next steps are:
+  \begin{enumerate}
+  \item sprinkle nops randomly in the code:
+    Done, see Sect.\ref{sec:experiments}.
+  \item run with compiled souffle:
+    Done, see Sect.\ref{sec:experiments}.
+  \item run against binaries with the optimize switch "dense computed jumps"
+    I can just keep looking though fallthrough and should be fine
+
+  \item Add a data delineation analysis:
+    I'm getting a bunch of info about it but only for static memory accesses
+    Explicitly avoiding checking stack accesses and not recording heap accesses.
+    
+    I read the paper and the objectives are quite different but maybe the analyses
+    can be retargeted. The paper about data delineation is concerned with object
+    passed as parameters.
+
+  \item Add a function boundary analysis:
+
+    I have some basic heuristics in place, but I would need DVT integration
+    to check how well it works.
+
+  \item DVT support for hints:
+    Maybe get function dvt information
+  \item Use TSL or QFBV
+    Question about TSL. It is very big because every operation is split according to
+    the sizes? Is there a way to get QFBV, is it worth it?
+
+    The current analysis focuses on the address computation. This means a limited number
+    of instructions are considered (only integer instructions)
+    For the code inference, only jumps, calls and rets are relevant.
+    That means that the relevant instructions are not so many, the effects of these could
+    be factored out of the analysis easily (some inline relations and magic set)
+
+  \end{enumerate}
+
+
+\section{Transitions and associated risks}
+\label{sec:risks}
+Some possible transitions are:
+\begin{enumerate}
+\item  A playground for testing new heuristics
+\item  A source of analysis contributing to our "hints database"
+\item  A replacement binary front end for our flagship CodeSonar commercial tool
+\item  A disassembler targeting our binary rewriting IR (in development)
+\end{enumerate}
+
+\subsection{Risks}
+
+\paragraph{Dead code}
+I realize that with binary stripping, functions are skipped but it does not seems to
+affect functionality. They are probably dead code (procceeding from libraries)
+but depending on the application we might want to obtain them.
+
+\paragraph{Stack usage and heap usage}
+Right now the dissassembler ignores all stack and heap memory accesses because for
+reassembleabilty only static data is important.
+However, for some applications this might change.
+
+\paragraph{Architecture and compiler dependency}
+As it stands, the disassembler works only for x64 architecture. There
+are aspects of the disassembler that might require a considerable
+effort to port to other architectures.
+
+\begin{itemize}
+\item For All the code inference algorithm assumes code
+  is in .text and there is no data in .text which does not hold for ARM and apparently
+  does not always hold for x86/windows.
+
+\item 
+  In x64, relative addressing is done using the register RIP, but this
+  cannot be done in x86 and might be different in ARM.
+
+\item
+  The size of a pointer in x64 is 8 bits which is not a commonly used
+  primitive data size. In 32 bits machines, using heuristics based on the
+  size of the data type might be less effective.
+
+\end{itemize}
+
+Reasons (According to Tom Johnson) why x86/windows (older code like
+90's, early 2000's) might be more challenging:
+\begin{itemize}
+\item Standard libraries that came w/ Visual Studio had what seemed to
+  be hand-optimized code - particularly in the math library. Also, I
+  remember printf having data tables in the code section.
+\item Predates ASLR, so no need to keep relocation information in the
+  executable.
+\item No RIP-relative addressing. 
+\end{itemize}
+\input{experiments.tex}
+\bibliographystyle{plain}
+
+\bibliography{biblio}
+
+\end{document}
