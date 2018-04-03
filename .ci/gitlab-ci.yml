@@ -12,8 +12,8 @@ stages:
 .build-template: &build
   script:
     - docker build -f .ci/Dockerfile.$OS -t ${LOCAL_IMAGE_NAME}-${OS} .
-    - docker tag ${LOCAL_IMAGE_NAME}-${OS} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:${VERSION};
-    - docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:${VERSION};
+    - docker tag ${LOCAL_IMAGE_NAME}-${OS} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
+    - docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
     - docker rmi -f ${LOCAL_IMAGE_NAME}-${OS}
 
 build:
