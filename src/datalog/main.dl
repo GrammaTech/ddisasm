@@ -164,6 +164,8 @@ word_size_in_bytes(8).
 data_section(".rodata").
 data_section(".data").
 data_section(".bss").
+data_section(".got").
+data_section(".got.plt").
 data_section(".init_array").
 data_section(".fini_array").
 	
@@ -171,6 +173,7 @@ data_section(".fini_array").
 
 code_section(".text").
 code_section(".plt").
+code_section(".plt.got").
 /////////////////////////////////////////////////////////////
 // inference of basic facts
 /////////////////////////////////////////////////////////////
