@@ -122,22 +122,23 @@ for binary operations the semantics are encoded in the second relation.
 
 
 \subsection{Data access patterns}
--Using the results of the value analysis compute addresses that are accessed with
+\begin{itemize}
+\item Using the results of the value analysis compute addresses that are accessed with
 a certain size and multiplier.
--accesses within the range of the multiplier and with the same multiplier are considered
+\item Accesses within the range of the multiplier and with the same multiplier are considered
 paired. (the access the same array of structs).
--data accesses are propagated until a new access is found.
+\item Data accesses are propagated until a new access is found.
 If two accesses coincide, the one originated closer takes precendence and the
 other one is not propagated further.
 paired accesses are only propagated insofar as all of the do not reach other access.
-
+\end{itemize}
 \subsection{Other heuristics}
 
 address array
 aligned address
 
 \subsection{Final decision}
-an address is considered a symbol if it qualifies for at least to heuristics.
+An address is considered a symbol if it qualifies for at least two heuristics.
 
 
 \section{Future work}
