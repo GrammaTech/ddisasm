@@ -56,7 +56,11 @@ value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
 	def(EA,Reg),
 	def_used(EA_prev,Reg_origin,EA,_),
-	instruction(EA,_,"MOV",Op1,Op2,0),
+	(
+	instruction(EA,_,"MOV",Op1,Op2,0)
+	;
+	instruction(EA,_,"MOVSXD",Op1,Op2,0)
+	),
 	op_regdirect_contains_reg(Op1,Reg_origin),
 	op_regdirect_contains_reg(Op2,Reg),
 	EA!=EA_prev.
@@ -113,13 +117,14 @@ value_reg(EA,Reg,0,"Unkown",Immediate,Base-Immediate,Steps+1):-
 	op_regdirect_contains_reg(Op2,Reg),
 	// the base case
 	value_reg(EA,Reg,0,NullReg,0,Base,Steps),
-	null_reg(NullReg).
+	null_reg(NullReg),
+	Steps+1<8.
 	
 // This is an ad-hoc case observed quite often:
 // Reg2=Reg2-Reg1
 // where Reg2 is defined in terms of Reg1
 // Reg2= (Reg1*mult+offset)-Reg1 = Reg1 *(mult-1)+offset
-value_reg(EA,Reg2,EA_third,Reg3,Multiplier-Multiplier2,Offset-Offset2,Steps+Steps2):-
+value_reg(EA,Reg2,EA_third,Reg3,Multiplier-Multiplier2,Offset-Offset2,Steps3):-
 	def(EA,Reg2),
 	instruction(EA,_,"SUB",Op1,Op2,0),
 	op_regdirect_contains_reg(Op1,Reg1),
@@ -131,11 +136,41 @@ value_reg(EA,Reg2,EA_third,Reg3,Multiplier-Multiplier2,Offset-Offset2,Steps+Step
 	// Reg1 is defined at the same point
 	def_used(EA_def1,Reg1,EA,_),
 	value_reg(EA_def1,Reg1,EA_third,Reg3,Multiplier2,Offset2,Steps2),
-	EA!=EA_third.
+	EA != EA_def1,
+	EA != EA_prev,
+	EA!=EA_third,
+	(Steps>Steps2, Steps3=Steps+1
+	;
+	Steps<=Steps2, Steps3=Steps2+1
+	),
+	Steps3<8.
+
+value_reg(EA,Reg2,EA_third,Reg3,Multiplier+Multiplier2,Offset+Offset2,Steps3):-
+	def(EA,Reg2),
+	instruction(EA,_,"ADD",Op1,Op2,0),
+	op_regdirect_contains_reg(Op2,Reg2),
+	op_regdirect_contains_reg(Op1,Reg1),
+	def_used(EA_def1,Reg1,EA,_),
+	def_used(EA_prev,Reg2,EA,_),
+	value_reg(EA_def1,Reg1,EA_third,Reg3,Multiplier2,Offset2,Steps2),
+	Multiplier2>=1,
+	value_reg(EA_prev,Reg2,EA_third,Reg3,Multiplier,Offset,Steps),
+	Multiplier>=1,
+	EA != EA_def1,
+	EA != EA_prev,
+	EA!=EA_third,
+	(Steps>Steps2, Steps3=Steps+1
+	;
+	Steps<=Steps2, Steps3=Steps2+1
+	),
+	Steps3<8.
 
 // normal propagation
 value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,Steps+1):-
 	value_reg(EA2,Reg2,EA3,Reg3,Multiplier2,Offset2,Steps),
 	value_reg_edge(EA1,Reg1,EA2,Reg2,Multiplier,Offset),
+        //no back edges experiment
+	EA2<=EA1,
+	EA2!=EA1,
 	EA1!=EA3,
 	Steps+1<8.
