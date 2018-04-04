@@ -14,10 +14,11 @@ code_section('.text').
 code_section('.plt').
 code_section('.init').
 code_section('.fini').
+code_section('.plt.got').
 
 % name and alignment
 data_section_descriptor('.got',8).
-data_section_descriptor('.plt.got',8).
+
 data_section_descriptor('.got.plt',8).
 data_section_descriptor('.init_array',8).
 data_section_descriptor('.fini_array',8).
@@ -155,6 +156,7 @@ result_descriptors([
 			  result(function_entry,1,'.csv'),
 
 			  result(symbolic_operand,2,'.csv'),
+			  result(stack_operand,2,'.csv'),
 			  result(labeled_data,1,'.csv'),
 			  result(symbolic_data,2,'.csv'),
 			  result(string,2,'.csv'),
@@ -165,6 +167,7 @@ result_descriptors([
 			  result(data_access_pattern,4,'.csv'),
 			  result(paired_data_access,6,'.csv'),
 			  result(moved_label,4,'.csv'),
+			  result(moved_data_label,3,'.csv'),
 			  result(value_reg,7,'.csv')
 		      ]).
 
@@ -203,6 +206,7 @@ result_descriptors([
 :-dynamic function_entry/1.
 
 :-dynamic symbolic_operand/2.
+:-dynamic stack_operand/2.
 :-dynamic labeled_data/1.
 :-dynamic symbolic_data/2.
 :-dynamic string/2.
@@ -213,6 +217,7 @@ result_descriptors([
 :-dynamic def_used/4.
 :-dynamic value_reg/7.
 :-dynamic moved_label/4.
+:-dynamic moved_data_label/3.
 
 collect_results(Dir,results(Results)):-
     result_descriptors(Descriptors),
@@ -510,6 +515,7 @@ pp_data(data_group(EA,_,_)):-
 pp_data(data_byte(EA,_)):-
     skip_data_ea(EA),!.
 
+
 pp_data(data_group(EA,plt_ref,Function)):-
     print_label(EA),
     print_ea(EA),
@@ -519,14 +525,16 @@ pp_data(data_group(EA,plt_ref,Function)):-
 
 pp_data(data_group(EA,pointer,Content)):-
     print_ea(EA),
-    format('.quad .L_~16R',[Content]),
+     adjust_moved_data_label(EA,Content,Printed),
+    format('.quad ~p',[Printed]),
     cond_print_comments(EA),
      print_end_label(EA,8).
      
 pp_data(data_group(EA,labeled_pointer,Content)):-
     print_label(EA),
     print_ea(EA),
-    format('.quad .L_~16R',[Content]),
+    adjust_moved_data_label(EA,Content,Printed),
+    format('.quad ~p',[Printed]),
     cond_print_comments(EA),
     print_end_label(EA,8).
 
@@ -555,7 +563,13 @@ pp_data(data_byte(EA,Content)):-
     cond_print_comments(EA),
     print_end_label(EA,1).
 
-
+adjust_moved_data_label(EA,Val,Printed):-
+    (moved_data_label(EA,Val,New_val)->
+	Diff is Val-New_val,
+	format(atom(Printed),'.L_~16R+~p',[Val,Diff])
+    ;
+    format(atom(Printed),'.L_~16R',[Val])
+    ).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % print bss data
@@ -746,12 +760,17 @@ pp_operand(immediate(_Num),EA,1,Name_complete):-
 
 pp_operand(immediate(_Num),EA,_N,Name_complete):-
     direct_call(EA,Dest),
-    function_complete_name(Dest,Name_complete).
+    (\+skip_ea(Dest)->
+	 function_complete_name(Dest,Name_complete)
+     ;
+     Name_complete=Dest
+    ).
  
 pp_operand(immediate(Offset),EA,N,Num_hex):-
     moved_label(EA,N,Offset,Offset2),!,
     Diff is Offset-Offset2,
-    format(string(Num_hex),'OFFSET .L_~16R+~p',[Offset2,Diff]).
+    print_symbol(Offset2,Label),
+    format(string(Num_hex),'OFFSET ~p+~p',[Label,Diff]).
 
 % special case for mov from symbolic
 pp_operand(immediate(Num),EA,1,Num_hex):-
@@ -759,12 +778,14 @@ pp_operand(immediate(Num),EA,1,Num_hex):-
     (get_global_symbol_ref(Num,Name_symbol)->
 	 format(string(Num_hex),'OFFSET ~p',[Name_symbol])
      ;
-         format(string(Num_hex),'OFFSET .L_~16R',[Num])
+     print_symbol(Num,Label),
+     format(string(Num_hex),'OFFSET ~p',[Label])
     ).
 
 pp_operand(immediate(Num),EA,N,Num_hex):-
     symbolic_operand(EA,N),!,
-    format(string(Num_hex),'.L_~16R',[Num]).
+    print_symbol(Num,Num_hex).
+
 
 
 pp_operand(immediate(Num),_,_,Num).
@@ -787,7 +808,8 @@ pp_operand(indirect(NullSReg,'RIP',NullReg1,1,Offset,Size),EA,N,PP):-
     (get_global_symbol_ref(Address,Name_symbol)->
 	 format(atom(PP),'~p ~p[rip]',[Name,Name_symbol])
      ;
-	 format(atom(PP),'~p .L_~16R[rip]',[Name,Address])
+     print_symbol(Address,Label),
+     format(atom(PP),'~p ~p[rip]',[Name,Label])
     ).
 
 pp_operand(indirect(SReg,Reg,NullReg1,1,0,Size),_,_,PP):-
@@ -849,21 +871,27 @@ pp_operand(indirect(SReg,Reg,Reg_index,Mult,Offset,Size),EA,N,PP):-
     format(atom(PP),'~p ~p',[Name,Term_with_sreg]).
 
 
+%if the label is skipped we treat it like a constant
+print_symbol(Num,Num):-
+    skip_ea(Num),!.
 
-
+print_symbol(Num,Label):-
+    format(string(Label),'.L_~16R',[Num]).
 
 get_offset_and_sign(Offset,EA,N,Offset1,'+'):-
     %symbolic_operand(EA,N),
     moved_label(EA,N,Offset,Offset2),!,
     Diff is Offset-Offset2,
-    (Diff>0->format(atom(Offset1),'.L_~16R+~p',[Offset2,Diff])
+    print_symbol(Offset2,Label),
+    (Diff>0->format(atom(Offset1),'~p+~p',[Label,Diff])
      ;
-     format(atom(Offset1),'.L_~16R~p',[Offset2,Diff])
+     format(atom(Offset1),'~p~p',[Label,Diff])
     ).
 
 get_offset_and_sign(Offset,EA,N,Offset1,'+'):-
     symbolic_operand(EA,N),!,
-    format(atom(Offset1),'.L_~16R',[Offset]).
+    print_symbol(Offset,Label),
+    format(atom(Offset1),'~p',[Label]).
 get_offset_and_sign(Offset,_EA,_N,Offset1,'-'):-
     Offset<0,!,
     Offset1 is 0-Offset.
@@ -1069,6 +1097,10 @@ comment(EA,moved_label(Values_pp)):-
 	    Values),
     Values\=[],
     maplist(pp_moved_label,Values,Values_pp).
+
+
+comment(EA,moved_data_label):-
+    moved_data_label(EA,_,_).
     
 pp_moved_label(moved_label(Index,Val,New_val),
 		 moved_label(Index,Val_hex,New_val_hex)):-
@@ -1298,11 +1330,17 @@ print_code_ea(S,EA):-
     instruction(EA,_,_,Op1,Op2,Op3),
     exclude(is_zero,[Op1,Op2,Op3],Non_zero_ops),
     length(Non_zero_ops,N_ops),
-    findall(Index,
+    findall((Index,Type),
 	    (
-		symbolic_operand(EA,Index)
+		symbolic_operand(EA,Index),
+		Type=symbolic
 	     ;
-		moved_label(EA,Index,_,_)
+	     moved_label(EA,Index,_,_),
+			Type=symbolic
+	     ;
+	     stack_operand(EA,Index),
+	     \+symbolic_operand(EA,Index),
+	     Type=stack
 	    )
 	    ,Indexes),
     transform_indexes(Indexes,N_ops,Indexes_tr),
@@ -1315,11 +1353,17 @@ is_zero(0).
 transform_indexes(Indexes,N_ops,Indexes_tr):-
     foldl(transform_index(N_ops),Indexes,[],Indexes_tr).
 
-transform_index(N_ops,Index,Accum,[Index_tr|Accum]):-
-    Index_tr is N_ops-Index.
+transform_index(N_ops,(Index,Type),Accum,[(Index_tr,Type)|Accum]):-
+    (Index= N_ops ->
+	 Index_tr=0
+     ;
+     Index_tr=Index
+    ).
  
-print_sym_index(S,I):-
-      	 format(S,'so~p@0',[I]).
+print_sym_index(S,(I,symbolic)):-
+    format(S,'so~p@0',[I]).
+print_sym_index(S,(I,stack)):-
+		 format(S,'ko~p',[I]).
 
 
 print_section_data_hints(S,data_section(_Name,_Required_alignment,Data_list)):-
