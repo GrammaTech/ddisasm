@@ -51,6 +51,9 @@ The script accepts the following parameters:
   
 - `-asm` generate reassembleable assembler that can be given to assembler directly.
 
+- `-hints` generate a file `hints` with user hints (for csurf) in the
+  same directory as the binary
+
 ## Rewriting a project
 
 The directory /bin contains several scripts to rewrite and test complete projects:
@@ -63,8 +66,14 @@ specified in the enviroment variables CC and CFLAGS, rewrites the binary with
 However, it receives the compiler and compiler flags as arguments
 
 
--`reassemble_no_rebuild.sh` rewrites a binary without trying to rebuild the project before
+- `reassemble_no_rebuild.sh` rewrites a binary without trying to rebuild the project before
 and without running tests later.
+
+- `compare_with_melt.sh` runs the disassembler and generates user
+hints these user hints are then compared to the IR resulting from
+calling gtm using gtir_compare. It generates a file with the
+differences and outputs filtered differences.
+
 
 ## Testing
 The directory /bin also contains script for running extensive tests:
