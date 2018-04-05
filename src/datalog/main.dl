@@ -168,12 +168,16 @@ data_section(".got").
 data_section(".got.plt").
 data_section(".init_array").
 data_section(".fini_array").
+data_section(".eh_frame").
+data_section(".gcc_except_table").
 	
 .decl code_section(name:symbol)
 
 code_section(".text").
 code_section(".plt").
 code_section(".plt.got").
+code_section(".fini").
+code_section(".init").
 /////////////////////////////////////////////////////////////
 // inference of basic facts
 /////////////////////////////////////////////////////////////
@@ -350,6 +354,10 @@ basic_target(Val):-
 
 basic_target(EA):-
 	entry_point(EA).
+
+basic_target(EA):-
+	code_section(Name),
+	section(Name,_,EA).
 
 basic_target(EA):-
 	function_symbol(EA,_).

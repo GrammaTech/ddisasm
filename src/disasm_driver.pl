@@ -22,6 +22,10 @@ data_section_descriptor('.got',8).
 data_section_descriptor('.got.plt',8).
 data_section_descriptor('.init_array',8).
 data_section_descriptor('.fini_array',8).
+%data_section_descriptor('.eh_frame_hdr',4).
+%data_section_descriptor('.eh_frame',8).
+%data_section_descriptor('.gcc_except_table',8).
+
 data_section_descriptor('.rodata',16).
 data_section_descriptor('.data',16).
 
@@ -266,7 +270,7 @@ pretty_print_results(Dir):-
     format('.bss~n .align 16~n',[]),
     format('#=================================== ~n~n',[]),
     maplist(pp_bss_data,Uninitialized_data),
-    generate_hints(Dir,Data_sections).
+    generate_hints(Dir,Data_sections,Uninitialized_data).
 
 
 print_header:-
@@ -1309,7 +1313,7 @@ get_string_length(Content,Length1):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %code to generate hints
 
-generate_hints(Dir,Data_sections):-
+generate_hints(Dir,Data_sections,Uninitialized_data):-
     option('-hints'),!,
     findall(Code_ea,
 	    (
@@ -1321,9 +1325,10 @@ generate_hints(Dir,Data_sections):-
     open(Path,write,S),
     maplist(print_code_ea(S),Code_eas),
     maplist(print_section_data_hints(S),Data_sections),
+    maplist(print_bss_data_hints(S),Uninitialized_data),
     close(S).
 
-generate_hints(_,_).    
+generate_hints(_,_,_).    
 
 print_code_ea(S,EA):-
     format(S,'0x~16R C',[EA]),
@@ -1367,7 +1372,31 @@ print_sym_index(S,(I,stack)):-
 
 
 print_section_data_hints(S,data_section(_Name,_Required_alignment,Data_list)):-
-    maplist(print_element_data_hint(S),Data_list).
+    group_remaining_bytes(Data_list,Data_list_grouped),
+    maplist(print_element_data_hint(S),Data_list_grouped).
+
+group_remaining_bytes([],[]).
+group_remaining_bytes([data_group(EA,unknown,Content)|Rest],
+		      [data_group(EA,unknown,Content2)|Rest2]):-!,
+    take_contiguous_data_bytes(Rest,Data_bytes,Remaining),
+    append(Content,Data_bytes,Content2),
+    group_remaining_bytes(Remaining,Rest2).
+group_remaining_bytes([data_group(EA,Type,Content)|Rest],[data_group(EA,Type,Content)|Rest2]):-
+    group_remaining_bytes(Rest,Rest2).
+
+
+group_remaining_bytes([data_byte(EA,Content)|Rest],[data_group(EA,unknown,Data_bytes)|Rest2]):-
+    take_contiguous_data_bytes([data_byte(EA,Content)|Rest],Data_bytes,Remaining),
+    group_remaining_bytes(Remaining,Rest2).
+
+take_contiguous_data_bytes([],[],[]).
+take_contiguous_data_bytes([data_byte(EA,Content)|Rest],[data_byte(EA,Content)|Data_bytes],Rest2):-
+    take_contiguous_data_bytes(Rest,Data_bytes,Rest2).
+
+take_contiguous_data_bytes([data_group(EA,Type,Content)|Rest],[],
+			   [data_group(EA,Type,Content)|Rest]).
+
+
 
 print_element_data_hint(S,data_group(EA,Symbolic,_)):-
     member(Symbolic,[plt_ref,pointer,labeled_pointer]),!,
@@ -1384,11 +1413,14 @@ print_element_data_hint(S,data_group(EA,accessed_data,Content)):-
     format(S,'0x~16R D~p~n',[EA,Code]).
 
 
-print_element_data_hint(S,data_group(_EA,unknown,Content)):-
-    maplist(print_element_data_hint(S),Content).
-
-print_element_data_hint(S,data_byte(EA,_Content)):-
+print_element_data_hint(S,data_group(EA,unknown,_Content)):-
     format(S,'0x~16R D~n',[EA]).
+    %maplist(print_element_data_hint(S),Content).
+
+%print_element_data_hint(S,data_byte(EA,_Content)):-
+%   format(S,'0x~16R D~n',[EA]).
+%print_element_data_hint(_S,data_byte(_EA,_Content)).
+
 
 
 get_hint_size_code(8,q).
@@ -1396,3 +1428,7 @@ get_hint_size_code(4,d).
 get_hint_size_code(2,w).
 get_hint_size_code(1,b).
 get_hint_size_code(_,'').
+
+
+print_bss_data_hints(S,variable(EA,_)):-
+      format(S,'0x~16R D~n',[EA]).

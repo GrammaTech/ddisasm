@@ -31,7 +31,7 @@ strip --strip-unneeded -o $dir/$exe.stripped $dir/$exe
 exename=$exename.stripped
 
 echo "Calling the disassembler on $dir/$exe.stripped and storing the result in $dir/result "
-./disasm $dir/$exe.stripped -asm -hints > $dir/$exe.s
+./disasm $dir/$exe.stripped -debug -hints > $dir/$exe.s
 
 
 cd $dir/$exedir
@@ -71,7 +71,7 @@ diffs=$(cat $dir/diffs.diff | grep "^==" | grep -v -e  "==WARNING: no AST for EA
 
 other_diffs=$(awk 'BEGIN{lastline=""} \
 {                                     \
-if($0 ~/^-/ && $0 !~/operands|data_range|data labels/ ){ \
+if($0 ~/^-/ && $0 !~/operands|data_range|data labels|extrn/ ){ \
    if(lastline!=""){          \
           print lastline;     \
           print $0;           \
