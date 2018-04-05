@@ -1,4 +1,4 @@
-
+pushd ../bin/
 dir_make="../coreutils-8.21"
 if [[ $# -eq 1 && $1 != "-h" && $1 != "--help" ]]; then
  dir_make=$1

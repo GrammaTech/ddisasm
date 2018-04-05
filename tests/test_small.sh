@@ -1,3 +1,4 @@
+pushd ../bin/
 compilers=("gcc"
 	   "gcc8"
 	   "clang");

@@ -1,4 +1,5 @@
 #. /code/cgc-cbs/sourceme.sh
+pushd ../bin/
 timeout=1000s
 
 optimizations=(""
