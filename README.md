@@ -5,16 +5,17 @@
 
 The analysis contains three parts:
 
- - The c++ files generate a binary `bin/souffle_disasm` which takes care
+ - The c++ files generate a binary `bin/datalog_decoder` which takes care
  of reading an elf file and generating several `.facts` files that
  represent the inital problem.
  
  - `src/datalog/*.dl` contains the specification of the analyses in
  datalog.  It takes the basic facts and computes likely EAs, chunks of
  code, etc. The results are stored in `.csv` files.
+ These files can be compiled into `/bin/souffle_disasm`
  
- - `src/disasm_driver.pl` is a prolog module that calls souffle_disasm
- first, then it calls souffle and finally reads the results from the
+ - `src/disasm_driver.pl` is a prolog module that calls datalog_decored
+ first, then it calls souffle (or souffle_disasm) and finally reads the results from the
  analysis and prints the assembler code. (this script can be called by executing `./bin/disasm`)
  
 ## Dependencies
@@ -29,11 +30,22 @@ Update (Feb. 9th): The 64 bits version is now in the master branch https://githu
 - The pretty printer is (for now) written in prolog. It requires some prolog environment
 to be installed (preferably SWI-prolog).
 
+- The project contains a Makefile to compile without GTScons and without the grammatech
+trunk directory, but it requires a folder `/standalone_compilation/` with the corresponding
+libraries and header to be added to the project.
+
 ## Building souffle_disasm
 
 
 
 `/trunk/datalog_disasm/build`
+
+or for the standalone compilation:
+
+```
+cd src
+make
+```
 
 
 ## Running the analysis
@@ -53,6 +65,8 @@ The script accepts the following parameters:
 
 - `-hints` generate a file `hints` with user hints (for csurf) in the
   same directory as the binary
+  
+- `-interpreted` this flag runs the souffle interpreter instead of the compiled version. It is mainly useful for development.
 
 ## Rewriting a project
 
@@ -76,7 +90,7 @@ differences and outputs filtered differences.
 
 
 ## Testing
-The directory /bin also contains script for running extensive tests:
+The directory /tests also contains script for running extensive tests:
 
 - `test_coreutils.sh` test coreutils with different compilers and optimization flags
 

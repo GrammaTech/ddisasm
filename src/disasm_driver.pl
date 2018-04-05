@@ -94,7 +94,7 @@ decode_sections(File,Dir):-
     foldl(collect_section_args(' --data_sect '),Data_sections_names,[],Data_sect_args),
     atomic_list_concat(Sect_args,Section_chain),
     atomic_list_concat(Data_sect_args,Data_section_chain),
-    atomic_list_concat(['./souffle_disasm ',' --file ',File,
+    atomic_list_concat(['./datalog_decoder ',' --file ',File,
 			' --dir ',Dir,'/',Section_chain,Data_section_chain],Cmd),
     format('#cmd: ~p~n',[Cmd]),
     format(user_error,'Decoding',[]),
@@ -106,7 +106,7 @@ collect_section_args(Arg,Name,Acc_sec,Acc_sec2):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 call_compiled_souffle(Dir):-
     %souffle souffle_rules.pl -I ../examples/bzip/
-    atomic_list_concat(['../src/datalog/disasm  -F ',Dir,' -D ',Dir],Cmd),
+    atomic_list_concat(['./souffle_disasm  -F ',Dir,' -D ',Dir],Cmd),
     format(user_error,'Datalog',[]),
     time(shell(Cmd)).
 
