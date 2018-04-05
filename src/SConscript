@@ -15,8 +15,7 @@ env.GTLibrary(
               'Dl_operator.cpp',
               'Dl_instruction.cpp',
               'Dl_operator_table.cpp',
-              'Elf_reader.cpp',
-       #       'Dl_decoder.cpp',
+              'Elf_reader.cpp'
               ],
     depends = ['datalog_visitor_x64',
        		   		   'export_gtr_symbols',
@@ -34,9 +33,9 @@ env.GTCreateFeature(
       CXXFLAGS=' -std=c++1y',
     )
 pa2 = env.GTCheckProgram(
-        '../bin/souffle_disasm',
+        '../bin/datalog_decoder',
         [
-        'souffle_disasm.cpp', 
+        'decoder_main.cpp', 
         'Dl_decoder.cpp',
 #        'ex_source.cpp'
         ],
