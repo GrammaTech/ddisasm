@@ -1,4 +1,4 @@
-
+pushd ../bin/
 dir="../real_world_examples/"
 examples=(
     "grep-2.5.4 src/grep -lpcre"
