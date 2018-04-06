@@ -7,6 +7,7 @@ valid_option('-stir').
 valid_option('-interpreted').
 valid_option('-keep_start').
 valid_option('-hints').
+valid_option('-function_hints').
 
 
 %	'.eh_frame',
@@ -270,7 +271,8 @@ pretty_print_results(Dir):-
     format('.bss~n .align 16~n',[]),
     format('#=================================== ~n~n',[]),
     maplist(pp_bss_data,Uninitialized_data),
-    generate_hints(Dir,Data_sections,Uninitialized_data).
+    generate_hints(Dir,Data_sections,Uninitialized_data),
+    generate_function_hints(Dir).
 
 
 print_header:-
@@ -1432,3 +1434,18 @@ get_hint_size_code(_,'').
 
 print_bss_data_hints(S,variable(EA,_)):-
       format(S,'0x~16R D~n',[EA]).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+generate_function_hints(Dir):-
+    option('-function_hints'),!,
+    findall(function_entry(EA), (function_entry(EA),EA\=0),Functions),
+    sort(Functions,Functions_sorted),
+    directory_file_path(Dir,'datalog_disasm_functions.txt',Path),
+    open(Path,write,S),
+    maplist(print_function_hint(S),Functions_sorted),
+    close(S).
+
+generate_function_hints(_).
+
+print_function_hint(S,function_entry(EA)):-
+    format(S,'~16r~n',[EA]).
