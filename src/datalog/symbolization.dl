@@ -68,7 +68,8 @@ address_in_data_refined_range.in_ea(EA):-
 ////////////////////////////////////////////////////////////////////////////////////
 // candidates of symbolic values in the code
 // symbolic_code_operand_candidate points to code
-// symbolic_data_operand_candidate points to data 
+// symbolic_data_operand_candidate points to data
+
 .decl symbolic_code_operand_candidate(ea:address,operand_index:number,Dest:address)
 .decl symbolic_data_operand_candidate(ea:address,operand_index:number,Dest:address)
 				      
@@ -163,6 +164,7 @@ address_array_range.in_ea(EA):-
 .decl moved_label(EA:address,Index:number,Val:address,New_val:address)
 .output moved_label
 
+// indirect operand
 
 // label lands in the middle of a pointer
 moved_label(EA,Op_index,Dest,New_dest):-
@@ -186,10 +188,35 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	;
 	address_array(New_dest)
 	).
+	
+// the pointer is likely to point to the wrong section
+moved_label(EA,Op_index,Dest,New_dest):-
+	symbolic_data_operand_candidate(EA,Op_index,Dest),
+	data_access_pattern(Access_dest,_,Mult,EA),
+	(Access_dest!=Dest,
+	New_dest=Access_dest
+	;
+	Access_dest=Dest,
+	New_dest=Dest+Mult
+	),
+	
+	data_section(Name),
+	section(Name,SectSize,Base),
+	Dest>=Base,Dest<=Base+SectSize,
+
+	data_section(Name2), Name2!= Name,
+	section(Name2,SectSize2,Base2),
+	New_dest>=Base2,New_dest<=Base2+SectSize2,
+
+	//we are going to move in the direction of the other section
+	(
+	Mult>0,New_dest>Dest
+	;
+	Mult<0, New_dest<Dest
+	).
+
 
 // labels that miss the data sections but should be symbolic
-
-// indirect operand
 // the destination is before the data section
 moved_label(EA,Op_index,Dest,Base):-
 	code(EA),
@@ -219,6 +246,10 @@ moved_label(EA,Op_index,Dest,Base+SizeSect):-
 	Other_dest<=Base+SizeSect,
 	Dest>Base+SizeSect,
 	Dest<=Base+SizeSect+(SizeSect/2).
+
+
+
+
 
 
 //immediate operand used
@@ -318,7 +349,7 @@ symbolic_data(EA,Val):-
 	;
 	address_can_contain_pointers(EA)
 	;
-	// no labels at all
+	// no labels at all and aligned
 	EA % 8 =0,
 	!preferred_data_access(EA,_),
  	!preferred_data_access(EA+1,_),

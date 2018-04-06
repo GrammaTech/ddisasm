@@ -105,7 +105,7 @@ mov(EA):-
 	instruction_get_operation(EA,Operation),
 	contains("MOV",Operation).	
 
-.decl comparison_operation(Operaiton:symbol)
+.decl comparison_operation(Operation:symbol)
 
 comparison_operation("CMP").
 comparison_operation("TEST").
@@ -114,6 +114,11 @@ comparison_operation("TEST").
 
 read_only_operation("TEST").
 read_only_operation("CMP").
+
+.decl one_op_write(Operation:symbol)
+
+one_op_write("INC").
+one_op_write("DEC").
 
 .decl instruction_get_dest_op(ea:address,index:number,op:operand_code)
 
@@ -130,6 +135,11 @@ instruction_get_dest_op(EA,Index,Op):-
 	Op=Op3,
 	Index=3
 	).
+instruction_get_dest_op(EA,1,Op):-
+	instruction(EA,_,Operation,Op,0,0),
+	one_op_write(Operation).
+
+
 .decl instruction_get_src_op(ea:address,Index:operand_index,op:operand_code)
 
 //when the dest is used as a source as well
@@ -168,8 +178,7 @@ data_section(".got").
 data_section(".got.plt").
 data_section(".init_array").
 data_section(".fini_array").
-data_section(".eh_frame").
-data_section(".gcc_except_table").
+
 	
 .decl code_section(name:symbol)
 
