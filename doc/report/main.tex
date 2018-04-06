@@ -87,12 +87,74 @@
 \title{Datalog Disassembler}
 \begin{document}
 \maketitle
+\section{Introduction}
+Correctly disassembling binaries has multiple applications that range
+from reverse engineering and program understanding to binary rewriting
+a hardening. There exist many techniques to disassemble binaries
+(cite) tailored to different applications given that different
+application have different needs.
+
+One application that has gained attention recently is binary rewriting
+or hardening. In this application, binaries are disassemble so
+additional checks and transformations can be added to make the binary
+more resilient to attacks or to correct possible vulnerabilities.
+This application has very different needs that traditional
+applications.  It is essential to determine what constitutes code and
+what does not and to recognize the symbols appearing in the
+program. This allows making changes in the program without breaking
+references.
+
+The state of the art in reasseableable disassembly is Ramblr\cite{}
+which is integrated as part of an extensive binary analysis toolset
+called Angr\cite{}.  This tools uses a variety of heavyweight analyses
+to perform symbolization and pointer reattribution.
+
+In this paper we explore a different approach. We develop a tool for
+disassembly that relies only on lightweight analyses and
+heuristics. This tool can replicate the results of Ramblr and even
+improve them while achieving much higher performance. Our tool is
+mainly defined in Datalog and uses Souffle\cite{} to generate highly
+efficient code.  This allows us to express multiple heuristics and
+analyses concisely.
+
+The contributions of this work are:
+\begin{itemize}
+\item A novel disassembly algorithm that break disassembly in two phases:
+  -code discovery: the goal of this phase is to find as many code blocks as possible,
+  an overapproximation of all code blocks in the program
+  -conflict resolution: Once we have a superset of all possible code blocks in the program
+  we used several heuristics to decide which blocks are real and which are spureous
+  whenever there are overlaping block.
+  This approach separates the heuristics from the code discovery effectively bringing separation
+  of concerns. The heuristics can be easily extended and tuned.
+
+\item As pointed out in \cite{Ramblr}, naive approaches for symbolization do not work
+  as they produce both false possitives and false negatives.
+  False positives are mainly due to value collisions and false negatives due to pointer
+  reattribution.
+  In order to detect these cases we perform a lightweight dependence analysis and value analysis
+  on the value of the registers at an intra-procedural level.
+  We use the results of this analysis together with other heuristics to detect and avoid
+  both false positives and false negatives. Because these results as used as a source of
+  heuristics, we do not require them to be sound nor complete.
+\end{itemize}
+
+The tool has XXX lines of code and took 2 man months to develop.
+It support x86 and x64 elf binaries. We plan to extend it to
+windows binaries and ARM.
 
 \section{Instruction boundaires}
 -traverse code, considering possible starting points any address found in the code.
+This gives us a initial approximation of the code
 
 -discard invalid instructions and instruction that overlap with the traversed
-instructions
+instructions, fallthrough to invalid instructions or jump to invalid or non-existing
+instructions.
+
+Factor out common tails of blocks.
+
+We might still miss some code, start at new places where there are still feasible instructions
+
 
 -whenever a block ends try to disassembly contiguous instructions
 
@@ -101,6 +163,7 @@ Use heuristics to resolve conflics
 based on predecessors that do not overlap, symbols, if their address appears in the code,
 etc.
 
+this approach presents similarities with ``Control flow integrity for COTS binaries''\cite{}
 
 \section{Symbolization}
 \subsection{Auxiliary analyses}
@@ -134,8 +197,16 @@ paired accesses are only propagated insofar as all of the do not reach other acc
 \end{itemize}
 \subsection{Other heuristics}
 
-address array
-aligned address
+\paragraph{Regularly Spaced Pointers}.
+Let $x_1,x_2,\ldots,x_n$ the locations that have possible pointers.
+We consider $x_i$ more likely to be pointer if $x_i$ is aligned
+and if $x_{i+1}-x_i=x_{i+2}-x_{i+1}$. This usually means that it is an array of pointers
+(if the difference is the word size) or an array of structs that contain pointers.
+
+We can adjust the heuristic to require more or less pointers to be regularly spaced.
+In our implementation we adapt a minimum of 3.
+
+
 
 \subsection{Final decision}
 An address is considered a symbol if it qualifies for at least two heuristics.
