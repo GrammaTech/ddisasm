@@ -114,11 +114,13 @@ op_regdirect_contains_reg(Op,Reg_uniform):-
 local_next(EA,EA_next):-
 	code(EA),
 	may_fallthrough(EA,EA_next).
+
+
 	
 local_next(EA,EA_next):-
 	code(EA),
 	direct_jump(EA,EA_next).
-
+	
 
 def(EA,Reg):-
 	code(EA),
@@ -130,53 +132,74 @@ def(EA,Reg):-
 	instruction_get_operation(EA,"CALL"),
 	function_non_maintained_reg(Reg).
 
+.decl must_def(EA:address,Reg:register)
+
+must_def(EA,Reg):-
+	def(EA,Reg),
+	!conditional_mov(EA).
+
+
+.decl reg_compared(EA:address,Reg:register,Index:operand_index,Reg2:register,Index2:operand_index)
+
+reg_compared(EA,Reg,Index,Reg2,Index2):-
+	code(EA),
+	instruction_get_operation(EA,Operation),
+	comparison_operation(Operation),
+	//track the other operand
+	instruction_get_src_op(EA,Index,Op1),
+	op_regdirect_contains_reg(Op1,Reg),
+	instruction_get_src_op(EA,Index2,Op2),
+	op_regdirect_contains_reg(Op2,Reg2),
+	Op2!=Op1.
+
+
+
+.decl used(EA:address,Reg:register,Index:operand_index)
+
+used(EA,Reg,Index):-
+	code(EA),
+	instruction_get_op(EA,Index,Op),
+	(
+	op_indirect_contains_reg(Op,Reg)
+	;
+	op_regdirect_contains_reg(Op,Reg)
+	).
 
 //BASE CASE: used register for memory here and not accessing the stack
 used_for_address(EA,Reg,EA,Index):-
-	code(EA),
-	//lea does not access memory
-	!instruction_get_operation(EA,"LEA"),
+	used(EA,Reg,Index),
 	instruction_get_op(EA,Index,Op),
 	op_indirect_contains_reg(Op,Reg),
+	//lea does not access memory
+	!instruction_get_operation(EA,"LEA"),
 	Reg!="RBP".
 
 //USED TRANSITIVELY: used to compute something used for memory later
-used_for_address(EA,Tracked_reg,EA,Index):-
+used_for_address(EA,Used_reg,EA,Index):-
 	//the instruction defines a register that is used for memory
 	used_for_address(EA_next,Reg_defined,_,_),
 	local_next(EA,EA_next),
-	def(EA,Reg_defined),	
-	instruction_get_src_op(EA,Index,Op),
-	(
-	op_indirect_contains_reg(Op,Tracked_reg)
-	;
-	op_regdirect_contains_reg(Op,Tracked_reg)
-	).
+	def(EA,Reg_defined),
+	instruction_get_src_op(EA,Index,_),
+	used(EA,Used_reg,Index).
+	
 
 //SPECIAL CASE: the register is not used to compute an address but it is
 // compared to a register possibly containing an address
 
-used_for_address(EA,Reg_compared,EA,Index2):-
+used_for_address(EA,Reg_compared,EA,Index):-
 	used_for_address(EA_next,Reg_used,_,_),
 	local_next(EA,EA_next),
-	instruction_get_operation(EA,Operation),
-	comparison_operation(Operation),
-	instruction_get_src_op(EA,_,Op),
-	op_regdirect_contains_reg(Op,Reg_used),
-	//track the other operand
-	instruction_get_src_op(EA,Index2,Op2),
-	Op2!=Op,
-	op_regdirect_contains_reg(Op2,Reg_compared).
+	reg_compared(EA,Reg_used,_,Reg_compared,Index).
+	
 
+	
 // propagation of uses when the register is not (necessarily) re-defined	
 used_for_address(EA,Reg,Where,Index):-
 	used_for_address(EA_next,Reg,Where,Index),
 	local_next(EA,EA_next),
-	(
-	!def(EA,Reg)
-	;
-	conditional_mov(EA)
-	).
+	!must_def(EA,Reg).
+
 
 
 def_used(EA_def,Reg,EA_used,Index):-

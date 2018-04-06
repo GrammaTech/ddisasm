@@ -19,7 +19,17 @@ value_reg_edge(EA,Reg,0,"NullReg64",0,Immediate):-
 	op_immediate(Op1,Immediate),
 	op_regdirect_contains_reg(Op2,Reg).
 
-
+//mov reg reg_origin
+value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
+	def(EA,Reg),
+	def_used(EA_prev,Reg_origin,EA,_),
+	mov(EA),
+	instruction_get_op(EA,1,Op1),
+	op_regdirect_contains_reg(Op1,Reg_origin),
+	instruction_get_op(EA,2,Op2),
+	op_regdirect_contains_reg(Op2,Reg),
+	EA!=EA_prev.
+	
 //reset a register
 value_reg_edge(EA,Reg,0,"NullReg64",1,0):-
 	def_used(EA,Reg,_,_),
@@ -31,6 +41,13 @@ value_reg_edge(EA,Reg,0,"NullReg64",1,0):-
 value_reg_edge(EA,Reg,EA_prev,Reg,1,Immediate):-
 	def_used(EA_prev,Reg,EA,_),
 	instruction(EA,_,"ADD",Op1,Op2,0),
+	op_immediate(Op1,Immediate),
+	op_regdirect_contains_reg(Op2,Reg),
+	EA!=EA_prev.
+
+value_reg_edge(EA,Reg,EA_prev,Reg,1,-Immediate):-
+	def_used(EA_prev,Reg,EA,_),
+	instruction(EA,_,"SUB",Op1,Op2,0),
 	op_immediate(Op1,Immediate),
 	op_regdirect_contains_reg(Op2,Reg),
 	EA!=EA_prev.
@@ -63,20 +80,14 @@ value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
 	op_regdirect_contains_reg(Op3,Reg),
 	op_regdirect_contains_reg(Op1,Reg2),
 	EA!=EA_prev.
-
-//mov reg reg_origin
-value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
-	def(EA,Reg),
-	def_used(EA_prev,Reg_origin,EA,_),
-	(
-	instruction(EA,_,"MOV",Op1,Op2,0)
-	;
-	instruction(EA,_,"MOVSXD",Op1,Op2,0)
-	),
-	op_regdirect_contains_reg(Op1,Reg_origin),
+//mul reg immediate
+value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
+	def_used(EA_prev,Reg2,EA,_),
+	instruction(EA,_,"IMUL2",Op1,Op2,0),
+	op_immediate(Op1,Immediate),
 	op_regdirect_contains_reg(Op2,Reg),
 	EA!=EA_prev.
-
+	
 
 //lea reg [reg_origin*Multiplier+Offset]
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier,Offset):-
@@ -159,10 +170,7 @@ value_reg(EA,Reg2,EA_third,Reg3,Multiplier-Multiplier2,Offset-Offset2,Steps3):-
 	EA != EA_def1,
 	EA != EA_prev,
 	EA!=EA_third,
-	(Steps>Steps2, Steps3=Steps+1
-	;
-	Steps<=Steps2, Steps3=Steps2+1
-	),
+	Steps3=max(Steps+1,Steps2+1),
 	Steps3<8.
 
 value_reg(EA,Reg2,EA_third,Reg3,Multiplier+Multiplier2,Offset+Offset2,Steps3):-
@@ -179,10 +187,7 @@ value_reg(EA,Reg2,EA_third,Reg3,Multiplier+Multiplier2,Offset+Offset2,Steps3):-
 	EA != EA_def1,
 	EA != EA_prev,
 	EA!=EA_third,
-	(Steps>Steps2, Steps3=Steps+1
-	;
-	Steps<=Steps2, Steps3=Steps2+1
-	),
+	Steps3=max(Steps+1,Steps2+1),
 	Steps3<8.
 
 // normal propagation
