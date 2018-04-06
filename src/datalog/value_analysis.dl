@@ -34,6 +34,18 @@ value_reg_edge(EA,Reg,EA_prev,Reg,1,Immediate):-
 	op_immediate(Op1,Immediate),
 	op_regdirect_contains_reg(Op2,Reg),
 	EA!=EA_prev.
+	
+value_reg_edge(EA,Reg,EA_prev,Reg,1,1):-
+	def_used(EA_prev,Reg,EA,_),
+	instruction(EA,_,"INC",Op1,0,0),
+	op_regdirect_contains_reg(Op1,Reg),
+	EA!=EA_prev.
+	
+value_reg_edge(EA,Reg,EA_prev,Reg,1,-1):-
+	def_used(EA_prev,Reg,EA,_),
+	instruction(EA,_,"DEC",Op1,0,0),
+	op_regdirect_contains_reg(Op1,Reg),
+	EA!=EA_prev.	
 
 //shl reg immediate
 value_reg_edge(EA,Reg,EA_prev,Reg,2^Immediate,0):-
@@ -119,6 +131,14 @@ value_reg(EA,Reg,0,"Unkown",Immediate,Base-Immediate,Steps+1):-
 	value_reg(EA,Reg,0,NullReg,0,Base,Steps),
 	null_reg(NullReg),
 	Steps+1<8.
+value_reg(EA,Reg,0,"Unkown",1,Base-1,Steps+1):-
+	def_used(EA,Reg,EA,_),
+	instruction(EA,_,"INC",Op1,0,0),	
+	op_regdirect_contains_reg(Op1,Reg),
+	// the base case
+	value_reg(EA,Reg,0,NullReg,0,Base,Steps),
+	null_reg(NullReg),
+	Steps+1<8.	
 	
 // This is an ad-hoc case observed quite often:
 // Reg2=Reg2-Reg1
@@ -166,11 +186,17 @@ value_reg(EA,Reg2,EA_third,Reg3,Multiplier+Multiplier2,Offset+Offset2,Steps3):-
 	Steps3<8.
 
 // normal propagation
-value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,Steps+1):-
+value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,Steps2):-
 	value_reg(EA2,Reg2,EA3,Reg3,Multiplier2,Offset2,Steps),
 	value_reg_edge(EA1,Reg1,EA2,Reg2,Multiplier,Offset),
-        //no back edges experiment
-	EA2<=EA1,
 	EA2!=EA1,
 	EA1!=EA3,
-	Steps+1<8.
+	// we allow less back steps
+	(
+	  EA2<=EA1,
+	  Steps2=Steps+1
+	  ;
+	  EA2>EA1,
+	  Steps2=Steps+4
+	),
+	Steps2<8.

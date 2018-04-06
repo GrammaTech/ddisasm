@@ -35,16 +35,16 @@ data_access_pattern(Address+(Offset2*Multiplier),Size/8 ,Multiplier*Multiplier2,
 	!null_reg(RegMult),
 
 	def_used(EA_def,RegMult,EA,Op_index),
-//	Max_steps=max Steps:{value_reg(EA_def,RegMult,_,_,_,_,Steps)},
 	Max_multiplier=max Mult:{value_reg(EA_def,RegMult,_,_,Mult,_,_)},
-	value_reg(EA_def,RegMult,_,_,Multiplier2,Offset2,_St),
-//	St>=Max_steps,
+	value_reg(EA_def,RegMult,_,_,Multiplier2,Offset2,_),
+	
 	Multiplier2>=Max_multiplier,
 	Multiplier*Multiplier2>1,
+
 	data_section(Section),
 	section(Section,SizeSect,Base),
-	Address>=Base,
-	Address<=Base+SizeSect.
+	Address+(Offset2*Multiplier)>=Base,
+	Address+(Offset2*Multiplier)<=Base+SizeSect.
 
 
 // indirectly computed
