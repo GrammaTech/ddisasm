@@ -111,7 +111,9 @@ phase2.block_limit(EA):-
 possible_target_from(Dest,Src):-
 	phase2.likely_ea(Src,_),
 	instruction_get_op(Src,_,Op),
-	op_immediate(Op,Dest).
+	op_immediate(Op,Dest),
+	phase1.remaining_ea(Dest).
+
 
 possible_target_from(Dest,Src):-
 	phase2.likely_ea(Src,_),

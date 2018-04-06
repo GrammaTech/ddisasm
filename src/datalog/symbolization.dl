@@ -78,12 +78,10 @@ symbolic_code_operand_candidate(EA,Op_index,Dest):-
 	instruction_get_op(EA,Op_index,Op),
 	(
 		op_immediate(Op,Dest)
-
 	;
 		pc_relative_operand_complete(EA,Op_index,Dest,_Size)
 	;
-
-   	       op_indirect(Op,_,_,_,_,Dest,_Size)
+   	        op_indirect(Op,_,_,_,_,Dest,_Size)
 	),
 	code(Dest).
 	
@@ -96,8 +94,7 @@ symbolic_data_operand_candidate(EA,Op_index,Dest):-
 	;
 		pc_relative_operand_complete(EA,Op_index,Dest,_Size)
 	;
-
-   	       op_indirect(Op,_,_,_,_Multiplier,Dest,_Size)
+   	        op_indirect(Op,_,_,_,_Multiplier,Dest,_Size)
 	),
 	data_section(Name),
 	section(Name,SizeSect,Base),
@@ -111,9 +108,10 @@ symbolic_data_operand_candidate(EA,Op_index,Dest):-
 .decl after_address_in_data(EA:address,EA_next:address)
 
 
-after_address_in_data(EA,EA+8):-
+after_address_in_data(EA,EA+Pt_size):-
 	address_in_data_refined(EA,_),
-	data_byte(EA+8,_).
+	pointer_size(Pt_size),
+	data_byte(EA+Pt_size,_).
 	
 after_address_in_data(EA,EA_aux+1):-
 	after_address_in_data(EA,EA_aux),
@@ -133,7 +131,8 @@ next_address_in_data(EA,EA_next):-
 
 address_array_aux(EA,Diff):-
 	address_in_data_refined(EA,_),
-	EA % 8 =0,
+	pointer_size(Pt_size),
+	EA % Pt_size =0,
 	next_address_in_data(EA,EA_next),
 	Diff= EA_next-EA,
 	address_in_data_refined(EA+Diff,_),
@@ -175,14 +174,16 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	;
 	Dest+3<New_dest
 	),
-	//it might collide with a pointer	
-	address_in_data_refined_range.overlap(Dest,8,_).
+	//it might collide with a pointer
+	pointer_size(Pt_size),
+	address_in_data_refined_range.overlap(Dest,Pt_size,_).
 
 moved_label(EA,Op_index,Dest,New_dest):-
 	symbolic_data_operand_candidate(EA,Op_index,Dest),
 	1>=count:{symbolic_data_operand_candidate(_,_,Dest)},//it appears only once
 	//it might collide with a very likely pointer
-	address_in_data_refined_range.overlap(Dest,8,New_dest),
+	pointer_size(Pt_size),
+	address_in_data_refined_range.overlap(Dest,Pt_size,New_dest),
 	(
 	data_access_pattern(New_dest,8,_,_)
 	;
@@ -259,11 +260,11 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	op_immediate(Op,Dest),
 	Dest>40000,
 	!symbolic_operand(EA,Op_index),
-	instruction_get_operation(EA,Operation),
 	(
-	comparison_operation(Operation)
+	  instruction_get_operation(EA,Operation),
+	  comparison_operation(Operation)
 	;
-	Operation="MOV"
+	  mov(EA)
 	),
 	instruction_get_op(EA,_,Op2),
 	Op2!=Op,
@@ -329,8 +330,9 @@ labeled_data(New_dest):-
 // this discard places labeled only labeled with a different size
 address_can_contain_pointers(EA):-
 	preferred_data_access(EA,Label),
+	pointer_size(Pt_size),
 	(
-	data_access_pattern(Label,8,_,_)
+	data_access_pattern(Label,Pt_size,_,_)
 	;
 	data_access_pattern(Label,0,_,_)	
 	).
@@ -350,7 +352,9 @@ symbolic_data(EA,Val):-
 	address_can_contain_pointers(EA)
 	;
 	// no labels at all and aligned
-	EA % 8 =0,
+	pointer_size(Pt_size),
+	EA % Pt_size =0,
+	//fixme: make pointer size parametric
 	!preferred_data_access(EA,_),
  	!preferred_data_access(EA+1,_),
 	!preferred_data_access(EA+2,_),

@@ -93,6 +93,44 @@ instruction_get_op(EA,Index,Op):-
 	Op=Op3,Index=3
 	).
 
+.decl instruction_get_dest_op(ea:address,index:number,op:operand_code)
+
+instruction_get_dest_op(EA,Index,Op):-
+	instruction(EA,_,Operation,_,Op2,Op3),
+	!read_only_operation(Operation),
+	(
+	Op3=0,
+	Op2!=0,
+	Op=Op2,
+	Index=2
+	;
+	Op3!=0,
+	Op=Op3,
+	Index=3
+	).
+instruction_get_dest_op(EA,1,Op):-
+	instruction(EA,_,Operation,Op,0,0),
+	one_op_write(Operation).
+
+
+.decl instruction_get_src_op(ea:address,Index:operand_index,op:operand_code)
+
+//when the dest is used as a source as well
+instruction_get_src_op(EA,Index,Op2):-
+	instruction(EA,_,_Operation,_,Op2,_),Op2!=0,
+	Index=2,
+	!mov(EA).
+//	!read_only_operation(Operation).
+
+instruction_get_src_op(EA,Index,Op):-
+	(
+	instruction(EA,_,_,Op,_,_),Op!=0,Index=1
+	;
+	instruction(EA,_,_,_,Op,Op3),Op!=0,Op3!=0,Index=2
+	).
+/////////////////////////////////////////////////////////////
+// hard-coded facts
+/////////////////////////////////////////////////////////////
 .decl conditional_mov(EA:address)
 
 conditional_mov(EA):-
@@ -120,45 +158,6 @@ read_only_operation("CMP").
 one_op_write("INC").
 one_op_write("DEC").
 
-.decl instruction_get_dest_op(ea:address,index:number,op:operand_code)
-
-instruction_get_dest_op(EA,Index,Op):-
-	instruction(EA,_,Operation,_,Op2,Op3),
-	!read_only_operation(Operation),
-	(
-	Op3=0,
-	Op2!=0,
-	Op=Op2,
-	Index=2
-	;
-	Op3!=0,
-	Op=Op3,
-	Index=3
-	).
-instruction_get_dest_op(EA,1,Op):-
-	instruction(EA,_,Operation,Op,0,0),
-	one_op_write(Operation).
-
-
-.decl instruction_get_src_op(ea:address,Index:operand_index,op:operand_code)
-
-//when the dest is used as a source as well
-instruction_get_src_op(EA,Index,Op2):-
-	instruction(EA,_,_Operation,_,Op2,_),
-	Index=2,
-	!mov(EA).
-//	!read_only_operation(Operation).
-
-instruction_get_src_op(EA,Index,Op):-
-	(
-	instruction(EA,_,_,Op,_,_),Index=1
-	;
-	instruction(EA,_,_,_,Op,Op3),Op3!=0,Index=2
-	).
-/////////////////////////////////////////////////////////////
-// hard-coded facts
-/////////////////////////////////////////////////////////////
-
 .decl null_reg(name:symbol)
 
 null_reg("NullReg64").
@@ -166,8 +165,8 @@ null_reg("NullReg32").
 null_reg("NullReg16").
 null_reg("NullSReg").
 
-.decl word_size_in_bytes(n:number)
-word_size_in_bytes(8).
+.decl pointer_size(n:number) inline
+pointer_size(8).
 
 .decl data_section(name:symbol)
 

@@ -55,10 +55,8 @@ data_access_pattern(Offset+Address,Size/8 ,Multiplier,EA):-
 	null_reg(NullSReg),
 	null_reg(NullReg1),
 	def_used(EA_def,Reg,EA,Op_index),
-//	Max_steps=max Steps:{value_reg(EA_def,Reg,_,_,_,_,Steps)},
 	Max_multiplier=max Mult:{value_reg(EA_def,Reg,_,_,Mult,_,_)},
-	value_reg(EA_def,Reg,_,_,Multiplier,Offset,_St),
-//	St>=Max_steps,
+	value_reg(EA_def,Reg,_,_,Multiplier,Offset,_),
 	Multiplier>=Max_multiplier,
 	Multiplier>1,
 	data_section(Section),
@@ -129,13 +127,8 @@ paired_data_access(EA1,Size1,Multiplier,EA2,Size2,Diff):-
 			 EA1<EA2,
 			 EA1+Multiplier>=EA2+Size2,
 			 Diff=EA2-EA1,
-			 (
-			 Ref1<Ref2,
-			 Ref1+200>=Ref2
-			 ;
-			 Ref2<Ref1,
-			 Ref2+200>=Ref1
-			 ).
+			 Ref1+200>=max(Ref1,Ref2),
+			 Ref2+200>=max(Ref1,Ref2).
 
 
 .decl next_paired_data_access(EA1:address,Size1:number,Multiplier:number,
@@ -185,13 +178,14 @@ individual_propagated_data_access(EA+Multiplier,EA_label,EA+Multiplier-EA_label,
 	!symbolic_data_operand_candidate(_,_,EA+Multiplier),
 	!address_in_data_refined(_,EA+Multiplier),
 	(
-	!taken_by_data_access_pattern(EA+Multiplier,_)
+  	   !taken_by_data_access_pattern(EA+Multiplier,_)
 	;
-	//is an access that matches the existing
-	data_access_pattern(EA+Multiplier,Size,Multiplier,Ref),
-	data_access_pattern(EA_label,Size,Multiplier,Reg)
+	   //is an access that matches the existing
+	   data_access_pattern(EA+Multiplier,Size,Multiplier,Ref),
+	   data_access_pattern(EA_label,Size,Multiplier,Reg)
 	),
-	address_array_range.no_overlap(EA,8).
+	pointer_size(Pt_size),
+	address_array_range.no_overlap(EA,Pt_size).
 
 
 // group data according to labels
@@ -213,20 +207,21 @@ paired_propagated_data_access(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Mult
 	!symbolic_data_operand_candidate(_,_,EA+Multiplier),
 	!address_in_data_refined(_,EA+Multiplier),
 	(
-	!taken_by_data_access_pattern(EA+Multiplier,_)
+	   !taken_by_data_access_pattern(EA+Multiplier,_)
 	;
-	//is an access that matches the existing
-	data_access_pattern(EA+Multiplier,Size,Multiplier,Ref),
-	data_access_pattern(EA_label,Size,Multiplier,Reg)
+	   //is an access that matches the existing
+	   data_access_pattern(EA+Multiplier,Size,Multiplier,Ref),
+	   data_access_pattern(EA_label,Size,Multiplier,Reg)
 	),
-	address_array_range.no_overlap(EA,8),
+	pointer_size(Pt_size),
+	address_array_range.no_overlap(EA,Pt_size),
 //propagate paired accesses together
 	(
-	next_paired_data_access(EA_paired,_,Multiplier,EA_label,_,Diff),
-	paired_propagated_data_access(EA+Multiplier-Diff,EA_paired,_,Multiplier)
+	    next_paired_data_access(EA_paired,_,Multiplier,EA_label,_,Diff),
+	    paired_propagated_data_access(EA+Multiplier-Diff,EA_paired,_,Multiplier)
 	;
-	restart_paired_data_access(EA_label,_,Multiplier,EA_paired,_,Diff),
-	paired_propagated_data_access(EA+Diff,EA_paired,_,Multiplier)
+	    restart_paired_data_access(EA_label,_,Multiplier,EA_paired,_,Diff),
+	    paired_propagated_data_access(EA+Diff,EA_paired,_,Multiplier)
 	).
 	
 .decl propagated_data_access(ea:address,ea_label:address,offset:number,multiplier:number)
