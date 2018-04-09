@@ -205,10 +205,15 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	section(Name,SectSize,Base),
 	Dest>=Base,Dest<=Base+SectSize,
 
+
+
 	data_section(Name2), Name2!= Name,
 	section(Name2,SectSize2,Base2),
 	New_dest>=Base2,New_dest<=Base2+SectSize2,
 
+	// sections can have one overlapping address
+	Dest!=Base2,
+	
 	//we are going to move in the direction of the other section
 	(
 	Mult>0,New_dest>Dest
