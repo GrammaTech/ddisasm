@@ -1,6 +1,7 @@
 FROM base/archlinux as souffle
+RUN sed -i 's/#\[multilib\]/\[multilib\]/; /^\[multilib\]/,/^$/ s/^#//' /etc/pacman.conf
 RUN pacman --noconfirm -Syu archlinux-keyring
-RUN pacman -Syu --noconfirm git subversion autoconf automake bison doxygen flex fakeroot sqlite libtool jdk8-openjdk make pkg-config python zlib mcpp gcc swi-prolog
+RUN pacman -Syu --noconfirm git subversion autoconf automake bison doxygen flex fakeroot sqlite libtool jdk8-openjdk make pkg-config python zlib mcpp gcc swi-prolog gcc-multilib lib32-fakeroot lib32-gcc-libs lib32-libltdl
 # Enable makepkg as root.
 RUN sed -i "s/^\(OPT_LONG=(\)/\1'asroot' /;s/EUID == 0/1 == 0/" /usr/bin/makepkg
 RUN mkdir -p /aur/souffle
@@ -8,8 +9,9 @@ COPY .ci/PKGBUILD /aur/souffle
 RUN cd /aur/souffle && makepkg --asroot --noconfirm -si
 
 FROM base/archlinux
+RUN sed -i 's/#\[multilib\]/\[multilib\]/; /^\[multilib\]/,/^$/ s/^#//' /etc/pacman.conf
 RUN pacman --noconfirm -Syu archlinux-keyring
-RUN pacman -Syu --noconfirm git subversion autoconf automake bison doxygen flex fakeroot sqlite libtool jdk8-openjdk make pkg-config python zlib mcpp gcc swi-prolog
+RUN pacman -Syu --noconfirm git subversion autoconf automake bison doxygen flex fakeroot sqlite libtool jdk8-openjdk make pkg-config python zlib mcpp gcc swi-prolog gcc-multilib lib32-fakeroot lib32-gcc-libs lib32-libltdl
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
 COPY --from=souffle /usr/bin/souffle /usr/bin/souffle
@@ -19,3 +21,6 @@ COPY --from=souffle /usr/share/man/man1/souffle.1.gz /usr/share/man/man1/souffle
 COPY --from=souffle /usr/share/man/man1/souffle-config.1.gz /usr/share/man/man1/souffle-config.1.gz
 COPY --from=souffle /usr/share/man/man1/souffle-compile.1.gz /usr/share/man/man1/souffle-compile.1.gz
 COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
+COPY . /datalog_disasm
+RUN cd /datalog_disasm && tar xjf standalone_compilation.tar.bz2
+RUN cd /datalog_disasm && make -C src

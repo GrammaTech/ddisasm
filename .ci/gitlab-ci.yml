@@ -11,6 +11,7 @@ stages:
 
 .build-template: &build
   script:
+    - cp /u4/TARBALLS/datalog_disasm/standalone_compilation.tar.bz2 ./
     - docker build -f .ci/Dockerfile.$OS -t ${LOCAL_IMAGE_NAME}-${OS} .
     - docker tag ${LOCAL_IMAGE_NAME}-${OS} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
     - docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
