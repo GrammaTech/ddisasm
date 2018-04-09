@@ -2,6 +2,8 @@
 *.a
 
 bin/souffle_disasm
+bin/datalog_decoder
+bin/souffle_disasm.*
 *.aux
 *.log
 *.nav
@@ -10,3 +12,5 @@ bin/souffle_disasm
 *.toc
 doc/slides/slides.pdf
 
+standalone_compilation/
+standalone_compilation.tar.bz2
