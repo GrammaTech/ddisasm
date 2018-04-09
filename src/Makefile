@@ -27,3 +27,6 @@ libdatalog_visitor_x64.a: $(OBJECTS) ../standalone_compilation
 	$(CC) -o $@ $(CFLAGS)   $< $(INCLUDE)
 clean:
 	rm -f *.a *.o ../bin/souffle_disasm ../bin/datalog_decoder
+
+../standalone_compilation:
+	tar xvjf /u4/TARBALLS/datalog_disasm/standalone_compilation.tar.bz2 -C ../
