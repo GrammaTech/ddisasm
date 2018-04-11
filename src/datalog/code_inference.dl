@@ -50,25 +50,8 @@ phase1.possible_target(EA):-
 	phase1.block_limit(EA).
 
 ////////////////////////////////////////////////////////
-.decl after_function_end1(EA:address)
 
 
-after_function_end1(Next):-
-	phase1.likely_ea(EA,_),
-	function_end(EA),
-	next(EA,Next).
-
-
-after_function_end1(Next):-
-	after_function_end1(EA),
-	instruction_get_operation(EA,"NOP"),
-	next(EA,Next).
-	
-
-
-phase1.possible_target(EA):-
- 	after_function_end1(EA),
-	!instruction_get_operation(EA,"NOP").
 
 /////////////////////////////
 // Phase 2
@@ -129,13 +112,6 @@ phase2.possible_target(EA):-
 
 phase2.possible_target(EA):-
 	possible_target_from(EA,_).
-
-
-phase2.possible_target(EA):-
- 	after_function_end(EA),
-	!instruction_get_operation(EA,"NOP").
-// 	typical_function_starter(EA).
-
 
 .output phase2.remaining_ea
 

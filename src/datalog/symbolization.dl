@@ -326,6 +326,42 @@ labeled_data(New_dest):-
 	moved_data_label(EA,Val,New_dest),
 	data_byte(Val,_).
 
+/////////////////////////////////////////////////////////////////////////////////
+// Detect strings
+
+
+string(Beg,End+1):-
+	data_byte(End,0),
+	string_candidate(End-1,Beg),
+	!labeled_data(End).
+
+
+.decl string_candidate(ea:address,base:address)
+
+
+string_candidate(EA,EA):-
+    preferred_data_access(EA,_),
+    !address_in_data_refined(EA,_),
+    data_byte(EA,Byte),
+    printable_char(Byte).
+
+string_candidate(EA,EA):-
+    labeled_data(EA),
+    !address_in_data_refined(EA,_),
+    data_byte(EA,Byte),
+    printable_char(Byte).
+
+string_candidate(EA+1,Base):-
+   string_candidate(EA,Base),
+   !labeled_data(EA+1),
+   data_byte(EA+1,Byte),
+   printable_char(Byte).
+
+.decl in_string(EA:address,Size:number)
+
+in_string(EA,End-Beg):-
+	string(Beg,End),
+	string_candidate(EA,Beg).
 //////////////////////////////////////////////////////////////////////////////////
 // Final decision on symbolization
 
@@ -341,6 +377,7 @@ address_can_contain_pointers(EA):-
 	;
 	data_access_pattern(Label,0,_,_)	
 	).
+
 
 
 //FIXME maybe we have to refine this (are there false positives?)
@@ -359,6 +396,8 @@ symbolic_data(EA,Val):-
 	// no labels at all and aligned
 	pointer_size(Pt_size),
 	EA % Pt_size =0,
+	//not in the middle of a string
+	!in_string(EA,_),
 	//fixme: make pointer size parametric
 	!preferred_data_access(EA,_),
  	!preferred_data_access(EA+1,_),
@@ -389,34 +428,6 @@ bss_data(EA):-
 	EA>=Base,
 	EA<=Base+SizeSect.
 
-/////////////////////////////////////////////////////////////////////////////////
-// This is not necessary but helful for debugging
 
-string(Beg,End+1):-
-	data_byte(End,0),
-	string_candidate(End-1,Beg),
-	!labeled_data(End).
-
-  
-.decl string_candidate(ea:address,base:address)
-
-
-string_candidate(EA,EA):-
-    preferred_data_access(EA,_),
-    !symbolic_data(EA,_),
-    data_byte(EA,Byte),
-    printable_char(Byte).
-    
-string_candidate(EA,EA):-
-    labeled_data(EA),
-    !symbolic_data(EA,_),
-    data_byte(EA,Byte),
-    printable_char(Byte).
-
-string_candidate(EA+1,Base):-
-   string_candidate(EA,Base),
-   !labeled_data(EA+1),
-   data_byte(EA+1,Byte),
-   printable_char(Byte).
 
 

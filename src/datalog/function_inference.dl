@@ -1,14 +1,89 @@
 
+function_entry(EA):-
+	likely_ea_final(_,EA),
+	phase2.after_function_end(EA,_),
+	!possible_target_from(EA,_),
+	symbolic_data(Pointer,EA),
+	//and not fallthrough from code
+	!fallthrough_from_code(EA),
+	typical_function_starter(EA),
+
+	symbolic_data(Pointer+8,EA2),
+	phase2.after_function_end(EA2,_),
+	!fallthrough_from_code(EA2),
+	typical_function_starter(EA2).
+
+// not referenced anywhere
+function_entry(EA):-
+	likely_ea_final(_,EA),
+	phase2.after_function_end(EA,_),
+	!possible_target_from(EA,_),
+	!symbolic_data(_,EA),
+	//and not fallthrough from code
+	!fallthrough_from_code(EA),
+	typical_function_starter(EA).
+
+
+// the address is moved to a register
+function_entry(EA):-
+	likely_ea_final(_,EA),
+	phase2.after_function_end(EA,_),
+	possible_target_from(EA,Src),
+	code(Src),
+	mov(Src).
+
+// // reference from function table
+function_entry(EA):-
+	function_table(Label),
+	preferred_data_access(Offset,Label),
+	symbolic_data(Offset,EA),
+	likely_ea_final(_,EA).
+
+// // referenced from lonely pointer
+function_entry(EA):-
+	pointer_size(Pt_size),
+	code_pointer_in_data(Offset,EA),
+	!code_pointer_in_data(Offset+Pt_size,_),
+	!code_pointer_in_data(Offset-Pt_size,_).
+
+// a compact function table (it is enough to determine one of the pointers is a function)
+function_entry(EA2):-
+	function_entry(EA),
+	pointer_size(Pt_size),
+	code_pointer_in_data(Offset,EA),
+	code_pointer_in_data(Offset+Pt_size,EA2),
+	!labeled_data(Offset+Pt_size).
+
+function_entry(EA2):-
+	function_entry(EA),
+	pointer_size(Pt_size),
+	code_pointer_in_data(Offset,EA),
+	!labeled_data(Offset),
+	code_pointer_in_data(Offset-Pt_size,EA2).
+
+function_entry(EA2):-
+	plt_data_reference(Offset,_Function),
+	pointer_size(Pt_size),
+	code_pointer_in_data(Offset+Pt_size,EA2),
+	!labeled_data(Offset+Pt_size).
+
+function_entry(EA2):-
+	plt_data_reference(Offset,_Function),
+	pointer_size(Pt_size),
+	!labeled_data(Offset),
+	code_pointer_in_data(Offset-Pt_size,EA2).
+
+
+
+
 
 .decl function_entry(EA:address)
 .output function_entry
 
-function_entry(EA):-
-	function_symbol(EA,_).
+// very certain sources
 
 function_entry(EA):-
-	direct_call(_,EA),
-	likely_ea_final(_,EA).
+	function_symbol(EA,_).
 
 function_entry(EA):-
 	main_function(EA).
@@ -16,39 +91,83 @@ function_entry(EA):-
 function_entry(EA):-
 	start_function(EA).
 
+//called
+function_entry(EA):-
+	direct_call(EA_caller,EA),
+	code(EA_caller),
+	likely_ea_final(_,EA).
 
+//section start
 function_entry(EA):-
 	likely_ea_final(_,EA),
-	after_function_end(EA),
-	typical_function_starter(EA).
+	section(_,_,EA).
+
+
+// pointer in special sections
+function_entry(EA):-
+	symbolic_data(Src,EA),
+	function_pointer_section(Name),
+	section(Name,Size,Base),
+	Src>=Base,
+	Src < Base+Size.
+
+
+
+//////////////////////////////////////////////////////////////////
+//propagation: jumped from another function
+function_entry(EA):-
+	likely_ea_final(_,EA),
+	direct_jump(Src,EA),
+	code(Src),
+	function_entry(Middle),
+	(
+	Src>=Middle,Middle>EA
+	;
+	Src<Middle,Middle<=EA
+	).
+
 
 //////////////////////////////////////////////////////////////////////////////
-.decl function_end(EA:address)
+// auliliary predicates
+.decl function_table(Label:address)
 
-function_end(EA):-
-	return(EA).
-
-function_end(EA):-
-	inconditional_jump(EA).
-	
-// function_end(EA):-
-// 	instruction(EA,_,"CALL",_,_,_).
-
-
-.decl after_function_end(EA:address)
-.output after_function_end
-
-after_function_end(Next):-
-	phase2.likely_ea(EA,_),
-	function_end(EA),
-	next(EA,Next).
+function_table(Label):-
+	pointer_size(Pt_size),
+	data_access_pattern(Label,Pt_size,Mult,Origin),
+	(
+		instruction_get_operation(Origin,"CALL")
+	;
+		Mult>Pt_size
+	),
+	preferred_data_access(Offset,Label),
+	symbolic_data(Offset,EA),
+	likely_ea_final(_,EA).
 
 
-after_function_end(Next):-
-	after_function_end(EA),
-	instruction_get_operation(EA,"NOP"),
-	next(EA,Next).
-	
+.decl code_pointer_in_data(EA:address,Val:address)
+
+code_pointer_in_data(EA,Val):-
+	symbolic_data(EA,Val),
+	likely_ea_final(_,Val).
+
+
+.decl fallthrough_from_code(EA:address)
+fallthrough_from_code(EA):-
+	likely_ea_final(_,EA),
+	may_fallthrough(Prev,EA),
+	!no_return_call(Prev),
+	code(Prev).
+
+
+//////////////////////////////////////////////////////////////////////////////
+// heuristic markers
+.decl function_pointer_section(Name:symbol)
+
+function_pointer_section(".init_array").
+function_pointer_section(".fini_array").
+function_pointer_section(".got.plt").
+
+
 
 .decl typical_function_starter(EA:address)
 
