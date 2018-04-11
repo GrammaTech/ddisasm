@@ -11,9 +11,9 @@ DATALOG_SOURCES=datalog/code_inference.dl datalog/disasm datalog/empty_range.dl	
 LDFLAGS= -fvisibility=hidden -m32 -march=i686 -mtune=generic -static-libgcc -Wl,--exclude-libs,libstdc++.a
 LINK= -L$(STANDALONE)/lib -L.  -lstring  -ldetcheck -lisax_thin_decoder_x64 -ltsl_rtg_x64 -ltsl_rtg_generic  -lm -lisax_core_x64 -lisax -lgt_assert -lgt_message -lgt_abort -lgtr_compat  -ldatalog_visitor_x64 -lboost_program_options  -lstdc++ -lpthread
 
-all: ../bin/datalog_decoder datalog/disasm
+all: ../bin/datalog_decoder ../bin/souffle_disasm
 
-datalog/disasm:
+../bin/souffle_disasm: $(DATALOG_SOURCES)
 	souffle datalog/main.dl -o ../bin/souffle_disasm
 
 ../bin/datalog_decoder: $(OBJECTS) libdatalog_visitor_x64.a | $(STANDALONE)
