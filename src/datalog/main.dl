@@ -143,6 +143,16 @@ mov(EA):-
 	instruction_get_operation(EA,Operation),
 	contains("MOV",Operation).	
 
+
+.decl is_nop(EA:address)
+
+is_nop(EA):-
+    instruction_get_operation(EA,"NOP").
+
+is_nop(EA):-
+    instruction(EA,_,"XCHG",Op,Op,0),
+    op_regdirect(Op,"AX").
+
 .decl comparison_operation(Operation:symbol)
 
 comparison_operation("CMP").
@@ -186,6 +196,13 @@ code_section(".plt").
 code_section(".plt.got").
 code_section(".fini").
 code_section(".init").
+
+.decl no_return_function(Name:symbol)
+
+no_return_function("exit").
+no_return_function("_exit").
+no_return_function("abort").
+no_return_function("__stack_chk_fail").
 /////////////////////////////////////////////////////////////
 // inference of basic facts
 /////////////////////////////////////////////////////////////
@@ -260,8 +277,6 @@ reg_jump(EA):-
  	jump_operation(Operation),
  	op_regdirect(Op1,_).
 	
-
-
 	
 // indirect jump	
 
@@ -335,7 +350,33 @@ ambiguous_symbol(Name):-
 function_symbol(EA,Name):-
 	symbol(EA,_,"FUNC",_,Name).
 
+
+.decl function_end(EA:address)
+
+function_end(EA):-
+	return(EA).
+
+function_end(EA):-
+	inconditional_jump(EA).
+
+function_end(EA):-
+	no_return_call(EA).
 	
+
+
+.decl no_return_call(EA:address)
+.output no_return_call
+
+no_return_call(EA):-
+	no_return_function(Function),
+	relocation(Got_entry,Function,_),
+	pc_relative_jump(Dest,Got_entry),
+	section(".plt",Size,Beg),
+	Dest<Beg+Size,
+	Dest>=Beg,
+	op_immediate(Op,Dest),
+	instruction_get_op(EA,1,Op),
+	instruction_get_operation(EA,"CALL").
 /////////////////////////////////////////////////////////////
 
 .decl may_fallthrough(o:address,d:address)

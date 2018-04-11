@@ -31,6 +31,25 @@ likely_ea(EA,Head):-
 	),
 	possible_ea(EA).
 
+// add some additional targets
+.decl after_function_end(EA:address,End:address)
+
+
+after_function_end(Next,End):-
+	likely_ea(End,_),
+	function_end(End),
+	next(End,Next).
+
+
+after_function_end(Next,End):-
+	after_function_end(EA,End),
+	is_nop(EA),
+	next(EA,Next).
+
+
+possible_target(EA):-
+	after_function_end(EA,_),
+	!is_nop(EA).
 
 // forbid overlaps with likely_ea instructions
 // grow the initial invalid set 
