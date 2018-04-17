@@ -19,36 +19,49 @@ likely_ea(EA,EA):-
 	possible_target(EA),
 	possible_ea(EA).
 
-likely_ea(EA,Head):-
+likely_ea(EA,Start):-
+	likely_ea(EA2,Start),
+	must_fallthrough(EA2,EA),
+	!block_limit(EA),
+	possible_ea(EA).
+
+	
+likely_ea(EA,EA):-
 	likely_ea(EA2,Start),
 	may_fallthrough(EA2,EA),
 	(
-	block_limit(EA),
-	Head=EA
+	!must_fallthrough(EA2,EA)
 	;
-	!block_limit(EA),
-	Head=Start
+	block_limit(EA)
+	;
+	is_nop(EA2),
+	!is_nop(EA)
 	),
-	possible_ea(EA).
+	possible_ea(EA).	
+	
 
-// add some additional targets
-.decl after_function_end(EA:address,End:address)
+// in case we cannot fallthrough we skip the nops
+.decl after_end(EA:address,End:address)
 
 
-after_function_end(Next,End):-
+after_end(Next,End):-
 	likely_ea(End,_),
-	function_end(End),
+	(
+	inconditional_jump(End)
+	;
+	return(End)
+	),
 	next(End,Next).
 
 
-after_function_end(Next,End):-
-	after_function_end(EA,End),
+after_end(Next,End):-
+	after_end(EA,End),
 	is_nop(EA),
 	next(EA,Next).
 
 
 possible_target(EA):-
-	after_function_end(EA,_),
+	after_end(EA,_),
 	!is_nop(EA).
 
 // forbid overlaps with likely_ea instructions

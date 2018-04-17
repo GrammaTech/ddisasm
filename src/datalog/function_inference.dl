@@ -1,85 +1,23 @@
 
-function_entry(EA):-
-	likely_ea_final(_,EA),
-	phase2.after_function_end(EA,_),
-	!possible_target_from(EA,_),
-	symbolic_data(Pointer,EA),
-	//and not fallthrough from code
-	!fallthrough_from_code(EA),
-	typical_function_starter(EA),
-
-	symbolic_data(Pointer+8,EA2),
-	phase2.after_function_end(EA2,_),
-	!fallthrough_from_code(EA2),
-	typical_function_starter(EA2).
-
-// not referenced anywhere
-function_entry(EA):-
-	likely_ea_final(_,EA),
-	phase2.after_function_end(EA,_),
-	!possible_target_from(EA,_),
-	!symbolic_data(_,EA),
-	//and not fallthrough from code
-	!fallthrough_from_code(EA),
-	typical_function_starter(EA).
+//////////////////////////////////////////////////////////////////////////////
+// Function inference has two phases
+// the first one uses symbol information, and heuristics
 
 
-// the address is moved to a register
-function_entry(EA):-
-	likely_ea_final(_,EA),
-	phase2.after_function_end(EA,_),
-	possible_target_from(EA,Src),
-	code(Src),
-	mov(Src).
+// the intra_procedural_cfg_completeness computes reachability
+// and cfgs that are complete
+// it uses the functions inferred in the first phase
 
-// // reference from function table
-function_entry(EA):-
-	function_table(Label),
-	preferred_data_access(Offset,Label),
-	symbolic_data(Offset,EA),
-	likely_ea_final(_,EA).
-
-// // referenced from lonely pointer
-function_entry(EA):-
-	pointer_size(Pt_size),
-	code_pointer_in_data(Offset,EA),
-	!code_pointer_in_data(Offset+Pt_size,_),
-	!code_pointer_in_data(Offset-Pt_size,_).
-
-// a compact function table (it is enough to determine one of the pointers is a function)
-function_entry(EA2):-
-	function_entry(EA),
-	pointer_size(Pt_size),
-	code_pointer_in_data(Offset,EA),
-	code_pointer_in_data(Offset+Pt_size,EA2),
-	!labeled_data(Offset+Pt_size).
-
-function_entry(EA2):-
-	function_entry(EA),
-	pointer_size(Pt_size),
-	code_pointer_in_data(Offset,EA),
-	!labeled_data(Offset),
-	code_pointer_in_data(Offset-Pt_size,EA2).
-
-function_entry(EA2):-
-	plt_data_reference(Offset,_Function),
-	pointer_size(Pt_size),
-	code_pointer_in_data(Offset+Pt_size,EA2),
-	!labeled_data(Offset+Pt_size).
-
-function_entry(EA2):-
-	plt_data_reference(Offset,_Function),
-	pointer_size(Pt_size),
-	!labeled_data(Offset),
-	code_pointer_in_data(Offset-Pt_size,EA2).
+// The second phase adds new functions by finding blocks of code
+// that are contiguous (but not reachable) to a complete function.
+// A complete function is a function that does not have unresolved jumps
 
 
-
-
+#include "no_return_analysis.dl"
+#include "intra_procedural_cfg_completeness.dl"
 
 .decl function_entry(EA:address)
 .output function_entry
-
 // very certain sources
 
 function_entry(EA):-
@@ -111,13 +49,89 @@ function_entry(EA):-
 	Src>=Base,
 	Src < Base+Size.
 
+// not referenced anywhere
+function_entry(EA):-
+	likely_ea_final(_,EA),
+	after_function_end(EA,_),
+	!possible_target_from(EA,_),
+	!symbolic_data(_,EA),
+	typical_function_starter(EA).
+
+// two consecutive elements in a table with typical function beginnings
+function_entry(EA):-
+	likely_ea_final(_,EA),
+	after_function_end(EA,_),
+	!possible_target_from(EA,_),
+	symbolic_data(Pointer,EA),
+	typical_function_starter(EA),
+
+	symbolic_data(Pointer+8,EA2),EA2!=EA,
+	after_function_end(EA2,_),
+	typical_function_starter(EA2).
+
+// the address is moved to a register
+function_entry(EA):-
+	likely_ea_final(_,EA),
+	after_function_end(EA,_),
+	possible_target_from(EA,Src),
+	code(Src),
+	mov(Src).
+
+// // reference from function table
+function_entry(EA):-
+	function_table(Label),
+	preferred_data_access(Offset,Label),
+	symbolic_data(Offset,EA),
+	likely_ea_final(_,EA),
+	after_function_end(EA,_).
+
+// // referenced from lonely pointer
+function_entry(EA):-
+	pointer_size(Pt_size),
+	code_pointer_in_data(Offset,EA),
+	after_function_end(EA,_),
+	!code_pointer_in_data(Offset+Pt_size,_),
+	!code_pointer_in_data(Offset-Pt_size,_).
 
 
-//////////////////////////////////////////////////////////////////
-//propagation: jumped from another function
+// a compact function table (it is enough to determine one of the pointers is a function)
+function_entry(EA2):-
+	function_entry(EA),
+	pointer_size(Pt_size),
+	code_pointer_in_data(Offset,EA),
+	code_pointer_in_data(Offset+Pt_size,EA2),
+	after_function_end(EA2,_),
+	!labeled_data(Offset+Pt_size).
+
+function_entry(EA2):-
+	function_entry(EA),
+	pointer_size(Pt_size),
+	code_pointer_in_data(Offset,EA),
+	!labeled_data(Offset),
+	code_pointer_in_data(Offset-Pt_size,EA2),
+	after_function_end(EA2,_).
+
+function_entry(EA2):-
+	plt_data_reference(Offset,_Function),
+	pointer_size(Pt_size),
+	code_pointer_in_data(Offset+Pt_size,EA2),
+	after_function_end(EA2,_),
+	!labeled_data(Offset+Pt_size).
+
+function_entry(EA2):-
+	plt_data_reference(Offset,_Function),
+	pointer_size(Pt_size),
+	!labeled_data(Offset),
+	code_pointer_in_data(Offset-Pt_size,EA2),
+	after_function_end(EA2,_).
+
+
+////////////////
+//propagation: jumped from another function (there is a function boundary in between)
 function_entry(EA):-
 	likely_ea_final(_,EA),
 	direct_jump(Src,EA),
+	inconditional_jump(Src),
 	code(Src),
 	function_entry(Middle),
 	(
@@ -125,6 +139,37 @@ function_entry(EA):-
 	;
 	Src<Middle,Middle<=EA
 	).
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+// refinement using complete_cfg, reachability information and no_return information
+.decl function_entry2(EA:address)
+.output function_entry2
+
+function_entry2(EA):-
+	function_entry(EA).
+	
+function_entry2(EA):-
+	in_function(Block,Function),
+	complete_cfg(Function),
+	likely_ea_final(End,Block),
+	after_function_end(EA,End),
+	
+	likely_ea_final(_,EA),
+	!is_nop(EA),
+	!intra_reachable(Function,EA),
+	EA>max B:intra_reachable(Function,B).
+
+
+	
+.decl in_function(EA:address,Function:address)
+.output in_function
+
+in_function(Block,Function):-
+	function_entry2(Function),
+	intra_reachable(Function,Block).
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -143,22 +188,6 @@ function_table(Label):-
 	symbolic_data(Offset,EA),
 	likely_ea_final(_,EA).
 
-
-.decl code_pointer_in_data(EA:address,Val:address)
-
-code_pointer_in_data(EA,Val):-
-	symbolic_data(EA,Val),
-	likely_ea_final(_,Val).
-
-
-.decl fallthrough_from_code(EA:address)
-fallthrough_from_code(EA):-
-	likely_ea_final(_,EA),
-	may_fallthrough(Prev,EA),
-	!no_return_call(Prev),
-	code(Prev).
-
-
 //////////////////////////////////////////////////////////////////////////////
 // heuristic markers
 .decl function_pointer_section(Name:symbol)
@@ -171,8 +200,8 @@ function_pointer_section(".got.plt").
 
 .decl typical_function_starter(EA:address)
 
-typical_function_starter(EA):-
-	instruction(EA,_,"PUSH",_,_,_).
+// typical_function_starter(EA):-
+// 	instruction(EA,_,"PUSH",_,_,_).
 
 typical_function_starter(EA):-
 	instruction(EA,_,"SUB",Op1,Op2,_),
@@ -180,3 +209,30 @@ typical_function_starter(EA):-
 	op_regdirect(Op2,"RSP").
 	
 
+//////////////////////////////////////////////////////////////////////////////
+// functions can start after a block that does not fallthrough
+
+
+.decl after_function_end(EA:address,End:address)
+
+after_function_end(Next,End):-
+	code(End),
+	function_end(End),
+	next(End,Next).
+
+
+after_function_end(Next,End):-
+	after_function_end(EA,End),
+	is_nop(EA),
+	next(EA,Next).
+
+.decl function_end(EA:address)
+
+function_end(EA):-
+	return(EA).
+
+function_end(EA):-
+	inconditional_jump(EA).
+
+function_end(EA):-
+	no_return_call(EA).

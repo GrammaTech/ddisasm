@@ -1,0 +1,55 @@
+.comp ordered_set{
+
+.decl pred(Set:number,element:number)
+.decl succ(Set:number,element1:number,element2:number)
+.decl first(Set:number,Element:number)
+.decl last(Set:number,Element:number)
+.decl next(Set:number,Element:number,Element2:number)
+      
+succ(Set,A,B):-
+	pred(Set,A),
+	pred(Set,B),
+	A<B.
+
+first(Set,A):-
+	pred(Set,A),
+	!succ(Set,_,A).
+	
+last(Set,A):-
+	pred(Set,A),
+	!succ(Set,A,_).
+	
+.decl transitive(Set:number,Element1:number,Element2:number)
+
+transitive(Set,E1,E2):-
+	succ(Set,E1,E3),
+	succ(Set,E3,E2).
+	
+next(Set,A,B):-
+	succ(Set,A,B),
+	!transitive(Set,A,B).
+	
+}
+
+.comp forall_ordered_set : ordered_set{
+
+.decl property(Element:number)
+
+.decl forall(Set:number)
+
+forall(Set):-
+	last(Set,EA),
+	forall_accum(Set,EA).
+	
+.decl forall_accum(Set:number,Element:number)
+
+forall_accum(Set,Element):-
+	first(Set,Element),
+	property(Element).
+	
+forall_accum(Set,Element):-
+	forall_accum(Set,Prev),
+	next(Set,Prev,Element),
+	property(Element).
+
+}
