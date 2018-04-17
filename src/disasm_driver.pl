@@ -158,7 +158,7 @@ result_descriptors([
 			  result(chunk_start,1,'.csv'),
 			  result(discarded_chunk,1,'.csv'),
 
-			  result(function_entry,1,'.csv'),
+			  named_result(function_entry,'function_entry2',1,'.csv'),
 
 			  result(symbolic_operand,2,'.csv'),
 			  result(stack_operand,2,'.csv'),
@@ -173,7 +173,12 @@ result_descriptors([
 			  result(paired_data_access,6,'.csv'),
 			  result(moved_label,4,'.csv'),
 			  result(moved_data_label,3,'.csv'),
-			  result(value_reg,7,'.csv')
+			  result(value_reg,7,'.csv'),
+
+			  result(incomplete_cfg,1,'.csv'),
+			  result(no_return,1,'.csv'),
+			  result(in_function,2,'.csv')
+				
 		      ]).
 
 :-dynamic symbol/5.
@@ -223,6 +228,10 @@ result_descriptors([
 :-dynamic value_reg/7.
 :-dynamic moved_label/4.
 :-dynamic moved_data_label/3.
+
+:-dynamic incomplete_cfg/1.
+:-dynamic no_return/1.
+:-dynamic in_function/2.
 
 collect_results(Dir,results(Results)):-
     result_descriptors(Descriptors),
@@ -1103,6 +1112,23 @@ comment(EA,moved_label(Values_pp)):-
 	    Values),
     Values\=[],
     maplist(pp_moved_label,Values,Values_pp).
+
+comment(EA,incomplete_cfg):-
+	    incomplete_cfg(EA).
+
+
+comment(EA,no_return):-
+	    no_return(EA).
+
+comment(EA,in_function(Functions)):-
+    findall(Function_pp,(
+		in_function(EA,Function),
+		pp_to_hex(Function,Function_pp)				   
+		),
+	    Functions),
+    Functions\=[].
+
+
 
 
 comment(EA,moved_data_label):-

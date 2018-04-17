@@ -1,0 +1,97 @@
+
+//////////////////////////////////////////////////////////////////////////////
+// Auxiliary predicates used in several places
+
+
+// Resolve easy jumps that access a straightforward jump table
+.decl resolved_jump(Src:address,Dest:address)
+.output resolved_jump
+
+resolved_jump(EA,Dest):-
+	code(EA),
+	indirect_jump(EA),
+	pointer_size(Pt_size),
+	data_access_pattern(Initial_memory,Pt_size,Pt_size,EA),
+	preferred_data_access(Memory,Initial_memory),
+	symbolic_data(Memory,Dest).
+
+// record blocks that have jumps that are not resolved
+.decl incomplete_block(block:address,Cause:address)
+
+incomplete_block(Block,EA):-
+	likely_ea_final(EA,Block),
+	(
+	  reg_jump(EA)
+	;
+	  indirect_jump(EA)
+	),	
+	!resolved_jump(EA,_).
+
+.decl complete_block(block:address)
+
+complete_block(Block):-
+	likely_ea_final(_,Block),
+	!incomplete_block(Block,_).
+
+// record blocks that contain a ret instruction
+.decl block_contains_ret(block:address)
+.output block_contains_ret
+
+block_contains_ret(Block):-
+	likely_ea_final(EA,Block),
+	return(EA).
+	
+//////////////////////////////////////////////////////////////////////////////
+// compute reachability without crossing function boundaries
+// This is computed without knowing all the functions though to avoid
+// a cyclic dependency
+.decl intra_reachable(Block:address,Function:address)
+
+intra_reachable(Block,Block):-
+	likely_ea_final(_,Block).
+	
+intra_reachable(Src,Dest):-
+	intra_reachable(Src,A),
+	intra_edge(A,Dest).
+	
+
+.decl intra_edge(Block_src:address,Block_dest:address)
+.output intra_edge
+
+intra_edge(Src,Dest):-
+	likely_ea_final(EA,Src),
+	direct_jump(EA,Dest),
+	!plt_code_reference(EA,_),
+	!function_entry(Dest).
+
+intra_edge(Src,Dest):-
+	likely_ea_final(EA,Src),
+	pc_relative_jump(EA,Dest),
+	!plt_code_reference(EA,_),
+	!function_entry(Dest).
+	
+intra_edge(Src,Dest):-
+	likely_ea_final(EA,Src),
+	may_fallthrough(EA,Dest),
+	!no_return_call(EA),
+	likely_ea_final(Dest,Dest).
+
+intra_edge(Src,Dest):-
+	likely_ea_final(EA,Src),
+	resolved_jump(EA,Dest).
+	
+//////////////////////////////////////////////////////////////////////////////
+// use reachability to compute incomplete and complete cfg
+	
+.decl incomplete_cfg(Block:address)
+.output incomplete_cfg
+
+incomplete_cfg(Block):-
+	intra_reachable(Block,Dest),
+	incomplete_block(Dest,_).
+
+.decl complete_cfg(Block:address)
+
+complete_cfg(Block):-
+	likely_ea_final(_,Block),
+	!incomplete_cfg(Block).

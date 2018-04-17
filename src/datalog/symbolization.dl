@@ -9,6 +9,9 @@
 .decl symbolic_data(ea:address,value:address)
 .output symbolic_data
 
+// symbolic data that points to code
+.decl code_pointer_in_data(EA:address,Val:address)
+
 // data that is dereferenced somewhere in the code
 .decl labeled_data(ea:address)
 .output labeled_data
@@ -416,6 +419,11 @@ symbolic_data(EA,Val):-
 	!labeled_data(EA+6),
 	!labeled_data(EA+7).	
 
+
+code_pointer_in_data(EA,Val):-
+	symbolic_data(EA,Val),
+	likely_ea_final(_,Val).
+	
 /////////////////////////////////////////////////////////////////////////////////
 // for bss there is no decision to make
 bss_data(EA):-

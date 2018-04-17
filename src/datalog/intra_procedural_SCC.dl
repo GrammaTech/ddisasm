@@ -1,0 +1,73 @@
+.decl scc_representative(Block:address)
+.decl scc_exit(SCC:address,Exit_block:address)
+
+
+.decl intra_reachable_initial(Block:address,Function:address)
+
+intra_reachable_initial(Block,Block):-
+	likely_ea_final(_,Block).
+	
+intra_reachable_initial(Src,Dest):-
+	intra_reachable_initial(Src,A),
+	intra_edge_initial(A,Dest).
+	
+
+.decl intra_edge_initial(Block_src:address,Block_dest:address)
+
+intra_edge_initial(Src,Dest):-
+	likely_ea_final(EA,Src),
+	direct_jump(EA,Dest).
+
+intra_edge_initial(Src,Dest):-
+	likely_ea_final(EA,Src),
+	pc_relative_jump(EA,Dest).
+	
+intra_edge_initial(Src,Dest):-
+	likely_ea_final(EA,Src),
+	may_fallthrough(EA,Dest),
+	likely_ea_final(Dest,Dest).
+
+intra_edge_initial(Src,Dest):-
+	likely_ea_final(EA,Src),
+	resolved_jump(EA,Dest).
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+.decl in_scc(Block1:address,Block2:address)
+.output in_scc
+
+in_scc(Block1,Block2):-
+	intra_reachable_initial(Block1,Block2),
+	intra_reachable_initial(Block2,Block1),
+	Block1<Block2.
+
+.decl single_scc(Block:address)
+
+single_scc(Block):-
+	intra_edge_initial(Block,Block),
+	!in_scc(Block,_),
+	!in_scc(_,Block).
+	
+scc_representative(Block):-
+	in_scc(Block,_),
+	!in_scc(_,Block).
+	
+scc_representative(Block):-
+	single_scc(Block).	
+
+
+
+scc_exit(SCC,Exit_block):-
+	scc_representative(SCC),
+	in_scc(SCC,Block),
+	intra_edge_initial(Block,Exit_block),
+	!in_scc(SCC,Exit_block),
+	Exit_block!= SCC.
+	
+scc_exit(SCC,Exit_block):-
+	scc_representative(SCC),
+	intra_edge_initial(SCC,Exit_block),
+	!in_scc(SCC,Exit_block),
+	Exit_block!= SCC.

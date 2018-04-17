@@ -197,12 +197,8 @@ code_section(".plt.got").
 code_section(".fini").
 code_section(".init").
 
-.decl no_return_function(Name:symbol)
 
-no_return_function("exit").
-no_return_function("_exit").
-no_return_function("abort").
-no_return_function("__stack_chk_fail").
+
 /////////////////////////////////////////////////////////////
 // inference of basic facts
 /////////////////////////////////////////////////////////////
@@ -335,6 +331,10 @@ indirect_call(EA):-
 return(EA):-
 	instruction_get_operation(EA,"Ret").
 
+.decl halt(EA:address)
+
+halt(EA):-
+	instruction_get_operation(EA,"HLT").
 
 .decl ambiguous_symbol(name:symbol)
 .output ambiguous_symbol
@@ -350,33 +350,6 @@ ambiguous_symbol(Name):-
 function_symbol(EA,Name):-
 	symbol(EA,_,"FUNC",_,Name).
 
-
-.decl function_end(EA:address)
-
-function_end(EA):-
-	return(EA).
-
-function_end(EA):-
-	inconditional_jump(EA).
-
-function_end(EA):-
-	no_return_call(EA).
-	
-
-
-.decl no_return_call(EA:address)
-.output no_return_call
-
-no_return_call(EA):-
-	no_return_function(Function),
-	relocation(Got_entry,Function,_),
-	pc_relative_jump(Dest,Got_entry),
-	section(".plt",Size,Beg),
-	Dest<Beg+Size,
-	Dest>=Beg,
-	op_immediate(Op,Dest),
-	instruction_get_op(EA,1,Op),
-	instruction_get_operation(EA,"CALL").
 /////////////////////////////////////////////////////////////
 
 .decl may_fallthrough(o:address,d:address)
@@ -384,8 +357,10 @@ no_return_call(EA):-
 may_fallthrough(From,To):-
 	next(From,To),
 	!return(From),
-	!inconditional_jump(From).
-	
+	!inconditional_jump(From),
+//	!no_return_call(From),
+	!halt(From).
+		
 .decl must_fallthrough(o:address,d:address)
 
 must_fallthrough(From,To):-
