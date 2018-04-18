@@ -19,15 +19,9 @@ last(Set,A):-
 	pred(Set,A),
 	!succ(Set,A,_).
 	
-.decl transitive(Set:number,Element1:number,Element2:number)
-
-transitive(Set,E1,E2):-
-	succ(Set,E1,E3),
-	succ(Set,E3,E2).
-	
 next(Set,A,B):-
-	succ(Set,A,B),
-	!transitive(Set,A,B).
+	pred(Set,A),
+	B=min D:{ succ(Set,A,D)}.
 	
 }
 
