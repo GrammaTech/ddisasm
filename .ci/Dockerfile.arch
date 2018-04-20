@@ -11,7 +11,7 @@ RUN cd /aur/souffle && makepkg --asroot --noconfirm -si
 FROM base/archlinux
 RUN sed -i 's/#\[multilib\]/\[multilib\]/; /^\[multilib\]/,/^$/ s/^#//' /etc/pacman.conf
 RUN pacman --noconfirm -Syu archlinux-keyring
-RUN pacman -Syu --noconfirm git subversion autoconf automake bison doxygen flex fakeroot sqlite libtool jdk8-openjdk make pkg-config python zlib mcpp gcc swi-prolog gcc-multilib lib32-fakeroot lib32-gcc-libs lib32-libltdl
+RUN pacman -Syu --noconfirm git subversion autoconf automake bison doxygen flex fakeroot sqlite libtool jdk8-openjdk make pkg-config python zlib mcpp gcc swi-prolog gcc-multilib lib32-fakeroot lib32-gcc-libs lib32-libltdl clang
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
 COPY --from=souffle /usr/bin/souffle /usr/bin/souffle
@@ -23,4 +23,5 @@ COPY --from=souffle /usr/share/man/man1/souffle-compile.1.gz /usr/share/man/man1
 COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
 COPY . /datalog_disasm
 RUN cd /datalog_disasm && tar xjf standalone_compilation.tar.bz2
+ENV TERM xterm
 RUN cd /datalog_disasm && make check
