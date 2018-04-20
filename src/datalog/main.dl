@@ -48,6 +48,7 @@
 .decl invalid_op_code(ea:address)
 .input invalid_op_code
 
+	
 // three kinds of operators
 .decl op_regdirect(code:operand_code,register_name:register)
 .input op_regdirect
@@ -335,6 +336,9 @@ return(EA):-
 
 halt(EA):-
 	instruction_get_operation(EA,"HLT").
+
+halt(EA):-
+	instruction_get_operation(EA,"UD2").
 
 .decl ambiguous_symbol(name:symbol)
 .output ambiguous_symbol

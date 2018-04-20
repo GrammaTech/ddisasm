@@ -133,7 +133,7 @@ value_reg(EA,Reg,EA,Reg,1,0,1):-
 	
 
 // possible loop
-value_reg(EA,Reg,0,"Unkown",Immediate,Base-Immediate,Steps+1):-
+value_reg(EA,Reg,0,"Unkown",Immediate,Base,Steps+1):-
 	def_used(EA,Reg,EA,_),
 	instruction(EA,_,"ADD",Op1,Op2,0),	
 	op_immediate(Op1,Immediate),
@@ -142,7 +142,7 @@ value_reg(EA,Reg,0,"Unkown",Immediate,Base-Immediate,Steps+1):-
 	value_reg(EA,Reg,0,NullReg,0,Base,Steps),
 	null_reg(NullReg),
 	Steps+1<8.
-value_reg(EA,Reg,0,"Unkown",1,Base-1,Steps+1):-
+value_reg(EA,Reg,0,"Unkown",1,Base,Steps+1):-
 	def_used(EA,Reg,EA,_),
 	instruction(EA,_,"INC",Op1,0,0),	
 	op_regdirect_contains_reg(Op1,Reg),

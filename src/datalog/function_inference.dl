@@ -5,7 +5,7 @@
 
 
 // the intra_procedural_cfg_completeness computes reachability
-// and cfgs that are complete
+// and cfgs that are complete (all their jumps resolved)
 // it uses the functions inferred in the first phase
 
 // The second phase adds new functions by finding blocks of code
@@ -43,7 +43,7 @@ function_entry(EA):-
 
 // pointer in special sections
 function_entry(EA):-
-	symbolic_data(Src,EA),
+	code_pointer_in_data(Src,EA),
 	function_pointer_section(Name),
 	section(Name,Size,Base),
 	Src>=Base,
@@ -64,10 +64,12 @@ function_entry(EA):-
 	!possible_target_from(EA,_),
 	symbolic_data(Pointer,EA),
 	typical_function_starter(EA),
+	!resolved_jump(_,EA),
 
 	symbolic_data(Pointer+8,EA2),EA2!=EA,
 	after_function_end(EA2,_),
-	typical_function_starter(EA2).
+	typical_function_starter(EA2),
+	!resolved_jump(_,EA2).
 
 // the address is moved to a register
 function_entry(EA):-
@@ -100,6 +102,7 @@ function_entry(EA2):-
 	pointer_size(Pt_size),
 	code_pointer_in_data(Offset,EA),
 	code_pointer_in_data(Offset+Pt_size,EA2),
+	!resolved_jump(_,EA2),
 	after_function_end(EA2,_),
 	!labeled_data(Offset+Pt_size).
 
@@ -109,12 +112,14 @@ function_entry(EA2):-
 	code_pointer_in_data(Offset,EA),
 	!labeled_data(Offset),
 	code_pointer_in_data(Offset-Pt_size,EA2),
+	!resolved_jump(_,EA2),
 	after_function_end(EA2,_).
 
 function_entry(EA2):-
 	plt_data_reference(Offset,_Function),
 	pointer_size(Pt_size),
 	code_pointer_in_data(Offset+Pt_size,EA2),
+	!resolved_jump(_,EA2),
 	after_function_end(EA2,_),
 	!labeled_data(Offset+Pt_size).
 
@@ -123,13 +128,15 @@ function_entry(EA2):-
 	pointer_size(Pt_size),
 	!labeled_data(Offset),
 	code_pointer_in_data(Offset-Pt_size,EA2),
+	!resolved_jump(_,EA2),
 	after_function_end(EA2,_).
 
 
 ////////////////
 //propagation: jumped from another function (there is a function boundary in between)
-function_entry(EA):-
+function_entry2(EA):-
 	likely_ea_final(_,EA),
+	after_function_end(EA,_),
 	direct_jump(Src,EA),
 	inconditional_jump(Src),
 	code(Src),
@@ -145,31 +152,67 @@ function_entry(EA):-
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 // refinement using complete_cfg, reachability information and no_return information
+
+ 
 .decl function_entry2(EA:address)
 .output function_entry2
+
 
 function_entry2(EA):-
 	function_entry(EA).
 	
 function_entry2(EA):-
 	in_function(Block,Function),
+	Function<=Block,
 	complete_cfg(Function),
 	likely_ea_final(End,Block),
 	after_function_end(EA,End),
 	
 	likely_ea_final(_,EA),
 	!is_nop(EA),
-	!intra_reachable(Function,EA),
-	EA>max B:intra_reachable(Function,B).
+	!resolved_jump(_,EA),
+	//cannot be reached from before
+	//!intra_reachable(Function,EA),
+	EA<= min Y:reaches_segment(Y,EA),	
+	//with this we want to avoid dead code missed by the compiler
+	(
+	instruction_get_operation(End,"CALL"),
+	!intra_edge_dir(EA,_,"back"),
+	!goes_back(EA,_,"cjump"),
+	!inconditional_jump(EA)
+	;
+	!instruction_get_operation(End,"CALL")
+	).
 
 
-	
 .decl in_function(EA:address,Function:address)
 .output in_function
 
 in_function(Block,Function):-
 	function_entry2(Function),
 	intra_reachable(Function,Block).
+
+//we repeat the propagation in the data sections
+
+function_entry2(EA2):-
+	function_entry2(EA),
+	pointer_size(Pt_size),
+	code_pointer_in_data(Offset,EA),
+	code_pointer_in_data(Offset+Pt_size,EA2),
+	!resolved_jump(_,EA2),
+	after_function_end(EA2,_),
+	!labeled_data(Offset+Pt_size).
+
+function_entry2(EA2):-
+	function_entry2(EA),
+	pointer_size(Pt_size),
+	code_pointer_in_data(Offset,EA),
+	!labeled_data(Offset),
+	code_pointer_in_data(Offset-Pt_size,EA2),
+	!resolved_jump(_,EA2),
+	after_function_end(EA2,_).
+
+
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -182,7 +225,8 @@ function_table(Label):-
 	(
 		instruction_get_operation(Origin,"CALL")
 	;
-		Mult>Pt_size
+		Mult>Pt_size,
+		!inconditional_jump(Origin)
 	),
 	preferred_data_access(Offset,Label),
 	symbolic_data(Offset,EA),
@@ -207,6 +251,11 @@ typical_function_starter(EA):-
 	instruction(EA,_,"SUB",Op1,Op2,_),
 	op_immediate(Op1,_),
 	op_regdirect(Op2,"RSP").
+	
+typical_function_starter(EA):-
+	instruction(EA,_,"PUSH",Op1,_,_),
+ 	op_regdirect(Op1,"RBP").
+	
 	
 
 //////////////////////////////////////////////////////////////////////////////
@@ -233,6 +282,9 @@ function_end(EA):-
 
 function_end(EA):-
 	inconditional_jump(EA).
+	
+function_end(EA):-
+	halt(EA).	
 
 function_end(EA):-
 	no_return_call(EA).

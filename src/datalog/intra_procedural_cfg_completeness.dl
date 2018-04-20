@@ -2,19 +2,54 @@
 //////////////////////////////////////////////////////////////////////////////
 // Auxiliary predicates used in several places
 
+// We want to over-approximate the destinations of the jump tables
+
+.decl jump_table(Src:address,Data:address)
+
+//use the data access pattern
+jump_table(EA,Initial_memory):-
+	code(EA),
+	indirect_jump(EA),
+	pointer_size(Pt_size),
+	data_access_pattern(Initial_memory,Pt_size,Pt_size,EA),
+	symbolic_data(Initial_memory,_).
+
+//use just the constant in the jump
+jump_table(EA,Initial_memory):-
+	code(EA),
+	indirect_jump(EA),
+	symbolic_data_operand_candidate(EA,1,Initial_memory),
+	symbolic_data(Initial_memory,_).
+	
+jump_table(EA,Memory+8):-
+	jump_table(EA,Memory),
+	symbolic_data(Memory+8,_),
+	!data_access_pattern(Memory+8,_,_,_).
+
+// we have another access to the same table (the access can be before or after)
+jump_table(EA,Memory+8):-
+	jump_table(EA,Memory),
+	symbolic_data(Memory,Content_prev),
+	symbolic_data(Memory+8,Content_next),
+	pointer_size(Pt_size),
+	data_access_pattern(Memory+8,Pt_size,Pt_size,EA),
+	(
+	EA<Content_prev,
+	EA<Content_next
+	;
+	EA>Content_prev,
+	EA>Content_next
+	).
 
 // Resolve easy jumps that access a straightforward jump table
 .decl resolved_jump(Src:address,Dest:address)
 .output resolved_jump
 
 resolved_jump(EA,Dest):-
-	code(EA),
-	indirect_jump(EA),
-	pointer_size(Pt_size),
-	data_access_pattern(Initial_memory,Pt_size,Pt_size,EA),
-	preferred_data_access(Memory,Initial_memory),
+	jump_table(EA,Memory),
 	symbolic_data(Memory,Dest).
-
+	
+//////////////////////////////////////////////////////////////////////////////
 // record blocks that have jumps that are not resolved
 .decl incomplete_block(block:address,Cause:address)
 
@@ -52,7 +87,7 @@ intra_reachable(Block,Block):-
 	
 intra_reachable(Src,Dest):-
 	intra_reachable(Src,A),
-	intra_edge(A,Dest).
+	intra_edge(A,Dest),Dest>=Src.
 	
 
 .decl intra_edge(Block_src:address,Block_dest:address)
@@ -79,7 +114,59 @@ intra_edge(Src,Dest):-
 intra_edge(Src,Dest):-
 	likely_ea_final(EA,Src),
 	resolved_jump(EA,Dest).
-	
+
+.decl intra_edge_dir(Src:address,Dest:address,Dir:symbol)
+
+intra_edge_dir(Src,Dest,"fwd"):-
+	intra_edge(Src,Dest),Dest>=Src.
+intra_edge_dir(Src,Dest,"back"):-
+	intra_edge(Src,Dest),Dest<Src.	
+
+//////////////////////////////////////////////////////////////////////////////
+// underapproximation of reachable blocks
+// form a function candidate block
+
+.decl must_intra_reachable(Block:address,Next:address)
+
+must_intra_reachable(Block,Block):-
+	likely_ea_final(_,Block),
+	after_function_end(Block,_).
+
+must_intra_reachable(Block,Next):-
+	must_intra_reachable(Block,Reach),
+	likely_ea_final(EA,Reach),
+	may_fallthrough(EA,Next),
+	!no_return_call(EA),
+	likely_ea_final(_,Next).
+
+
+// a restricted version of common ancestor
+// where one side uses the over-approximating intra_reachable
+// and the other side uses the under-approximating must_intra_reachable
+.decl reaches_segment(Block:address,Segment:address)
+
+reaches_segment(Block,Segment):-
+	intra_reachable(Block,Reached),
+	!is_nop(Block),
+	must_intra_reachable(Segment,Reached).
+
+
+// under-approximate the fact that a block goes back (to an address before itself)
+// it under-approximates because it tries to discard things that might be
+// tail calls
+.decl goes_back(Src:address,Dest:address,how:symbol)
+
+goes_back(Src,Dest,"cjump"):-
+	intra_reachable(Src,Middle),
+	intra_edge(Middle,Dest),
+	Dest<Src,
+	// try to discard tail calls
+	(
+	 !inconditional_jump(Middle)
+	;
+	//not a call to the beginning of a function
+	 !after_function_end(Dest,_)
+	 ).
 //////////////////////////////////////////////////////////////////////////////
 // use reachability to compute incomplete and complete cfg
 	
