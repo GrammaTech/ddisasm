@@ -13,7 +13,7 @@ LINK= -L$(STANDALONE)/lib -L.  -lstring  -ldetcheck -lisax_thin_decoder_x64 -lts
 
 all: ../bin/datalog_decoder ../bin/souffle_disasm
 
-../bin/souffle_disasm: 
+../bin/souffle_disasm: datalog/*.dl
 	souffle datalog/main.dl -o ../bin/souffle_disasm
 
 ../bin/datalog_decoder: $(OBJECTS) libdatalog_visitor_x64.a | $(STANDALONE)

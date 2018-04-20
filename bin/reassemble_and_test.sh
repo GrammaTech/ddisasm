@@ -89,8 +89,10 @@ printf "  OK\n"
 printf "# Testing\n"
 if !(make check -C $dir); then
     printf "# ${red}Testing FAILED ${normal}\n\n"
+    exit 1
 else
     printf "# ${green}Testing SUCCEED ${normal}\n\n"
+    exit 0
 fi
 
 
