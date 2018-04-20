@@ -18,34 +18,44 @@ examples=(
     "sed-4.2/ sed/sed"
     "flex-2.5.4/ flex"
     "make-3.80/ make"
-    "rsync-3.0.7/ rsync"
+#    "rsync-3.0.7/ rsync"
     "gperf-3.0.3/ src/gperf  g++"
-    "re2c-0.13.5/ re2c g++"
-    "lighttpd-1.4.18/ src/lighttpd -rdynamic -lpcre -ldl"
-    "lighttpd-1.4.11/ src/lighttpd -rdynamic -lpcre -ldl"
-    "tar-1.29/ src/tar"
+#    "re2c-0.13.5/ re2c g++"
+#    "lighttpd-1.4.18/ src/lighttpd -rdynamic -lpcre -ldl"
+#    "lighttpd-1.4.11/ src/lighttpd -rdynamic -lpcre -ldl"
+#    "tar-1.29/ src/tar"
 );
 
 compilers=(
     "gcc"
-#    "gcc8"
-#    "clang"
+    "gcc8"
+    "clang"
 );
 
 cpp_compilers=(
     "g++"
-#    "g++8"
-#    "clang++"
+    "g++8"
+    "clang++"
 );
 
 optimizations=(
     ""
-#    "-O1"
-#    "-O2"
-#    "-O3"
-#    "-Os"
+    "-O1"
+    "-O2"
+    "-O3"
+    "-Os"
 );
 
+datalog=""
+if [[ $# > 0 && $1 == "-dl" ]]; then
+    datalog="-dl"
+    shift
+fi
+melt=""
+if [[ $# > 0 && $1 == "-melt" ]]; then
+    melt="-melt"
+    shift
+fi
 
 
 for ((i = 0; i < ${#examples[@]}; i++)); do
@@ -55,8 +65,8 @@ for ((i = 0; i < ${#examples[@]}; i++)); do
 	export CXX=${cpp_compilers[$j]}
 	for optimization in  "${optimizations[@]}"; do
 	    export CFLAGS=$optimization
-	    echo "#Example ${examples[$i]} with $CC/$CXX $optimization"
-	    timeout 20m bash ./compare_functions_with_melt.sh  $dir${examples[$i]}
+	    echo "##Example ${examples[$i]} with $CC/$CXX $optimization"
+	    timeout 40m bash ./compare_functions_with_melt.sh  $datalog $melt  $dir${examples[$i]}
 	done
     j=$j+1
     done

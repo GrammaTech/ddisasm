@@ -50,6 +50,8 @@ after_end(Next,End):-
 	inconditional_jump(End)
 	;
 	return(End)
+	;
+	halt(End)
 	),
 	next(End,Next).
 

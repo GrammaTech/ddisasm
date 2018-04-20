@@ -1469,9 +1469,24 @@ generate_function_hints(Dir):-
     directory_file_path(Dir,'datalog_disasm_functions.txt',Path),
     open(Path,write,S),
     maplist(print_function_hint(S),Functions_sorted),
-    close(S).
+    close(S),
+
+    exclude(in_section('.plt'),Functions_sorted,Functions2),
+    exclude(in_section('.plt.got'),Functions2,Functions3),
+
+    directory_file_path(Dir,'datalog_disasm_functions_in_text.txt',Path_in_text),
+    open(Path_in_text,write,S_in_text),
+    maplist(print_function_hint(S_in_text),Functions3),
+    close(S_in_text).
+    
 
 generate_function_hints(_).
 
 print_function_hint(S,function_entry(EA)):-
     format(S,'~16r~n',[EA]).
+
+in_section(Section,function_entry(EA)):-
+    section(Section,SizeSect,Base),
+    EA>=Base,
+    End is SizeSect+Base,
+    EA<End.
