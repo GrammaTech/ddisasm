@@ -1,6 +1,5 @@
 :-module(disasm_driver,[disasm_binary/1]).
 
-:-use_module(library(apply)).
 
 valid_option('-debug').
 valid_option('-asm').
@@ -399,7 +398,7 @@ get_data_sections(Data_sections):-
 
 get_data_section(data_section_descriptor(Section_name,Alignment),
 		 data_section(Section_name,Alignment,Data_groups)):-
-    section(Section_name,SizeSect,Base),
+    section(Section_name,SizeSect,Base),!,
     \+skip_data_section(Section_name),
     End is Base+SizeSect,
     findall(data_byte(EA,Content),
@@ -1491,3 +1490,16 @@ in_section(Section,function_entry(EA)):-
     EA>=Base,
     End is SizeSect+Base,
     EA<End.
+
+
+% this predicate is in swi-prolog for versions after 7.5
+convlist(Goal, ListIn, ListOut) :-
+    convlist_(ListIn, ListOut, Goal).
+
+convlist_([], [], _).
+convlist_([H0|T0], ListOut, Goal) :-
+    (   call(Goal, H0, H)
+    ->  ListOut = [H|T],
+        convlist_(T0, T, Goal)
+    ;   convlist_(T0, ListOut, Goal)
+    ).
