@@ -1,5 +1,6 @@
 :-module(disasm_driver,[disasm_binary/1]).
 
+:-use_module(library(apply)).
 
 valid_option('-debug').
 valid_option('-asm').
