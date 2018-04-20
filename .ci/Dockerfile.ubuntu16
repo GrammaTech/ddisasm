@@ -21,4 +21,4 @@ COPY --from=souffle /usr/share/man/man1/souffle-compile.1 /usr/share/man/man1/so
 COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
 COPY . /datalog_disasm
 RUN cd /datalog_disasm && tar xjf standalone_compilation.tar.bz2
-RUN cd /datalog_disasm && make -C src
+RUN cd /datalog_disasm && make check
