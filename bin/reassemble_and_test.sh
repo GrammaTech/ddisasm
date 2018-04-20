@@ -80,7 +80,7 @@ printf "Copying old binary to $dir/$exe.old\n"
 cp $dir/$exe $dir/$exe.old
 printf "# Reassembling...\n"
 
-if !($compiler "$dir/$exe.s" $@ -o  "$dir/$exe"); then
+if !($compiler "$dir/$exe.s" $@ -no-pie -o  "$dir/$exe"); then
     printf "# ${red}Reassembly failed ${normal}\n"
     exit 1
 fi
