@@ -34,7 +34,7 @@
 .decl section(name:symbol,size:number,addr:address)
 .input section
 
-.decl relocation(ea:address,name:symbol,addend:number)
+.decl relocation(ea:address,type:symbol,name:symbol,addend:number)
 .input relocation
 
 
@@ -404,7 +404,7 @@ plt_code_reference(EA,Function):-
 	Dest<Beg+Size,
 	Dest>=Beg,
 	pc_relative_jump(Dest,Got_entry),
-	relocation(Got_entry,Function,_).
+	relocation(Got_entry,_,Function,_).
 
 .decl plt_data_reference(ea:address, function:symbol)
 
@@ -414,7 +414,7 @@ plt_data_reference(EA,Function):-
 	Dest<Beg+Size,
 	Dest>=Beg,
 	pc_relative_jump(Dest,Got_entry),
-	relocation(Got_entry,Function,_).
+	relocation(Got_entry,_,Function,_).
 
 .decl plt_reference(ea:address, function:symbol)
 .output plt_reference

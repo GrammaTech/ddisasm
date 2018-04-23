@@ -127,7 +127,7 @@ call_souffle(Dir):-
 result_descriptors([
 			  result(symbol,5,'.facts'),
 			  result(section,3,'.facts'),
-			  result(relocation,3,'.facts'),
+			  result(relocation,4,'.facts'),
 			  result(instruction,6,'.facts'),
 			  result(op_regdirect,2,'.facts'),
 			  result(op_immediate,2,'.facts'),
@@ -183,7 +183,7 @@ result_descriptors([
 
 :-dynamic symbol/5.
 :-dynamic section/3.
-:-dynamic relocation/3.
+:-dynamic relocation/4.
 :-dynamic instruction/6.
 :-dynamic op_regdirect/2.
 :-dynamic op_immediate/2.
@@ -790,7 +790,7 @@ pp_operand(immediate(Offset),EA,N,Num_hex):-
 % special case for mov from symbolic
 pp_operand(immediate(Num),EA,1,Num_hex):-
     symbolic_operand(EA,1),!,
-    (get_global_symbol_ref(Num,Name_symbol)->
+    (get_global_symbol_ref(Num,absolute,Name_symbol)->
 	 format(string(Num_hex),'OFFSET ~p',[Name_symbol])
      ;
      print_symbol(Num,Label),
@@ -820,7 +820,7 @@ pp_operand(indirect(NullSReg,'RIP',NullReg1,1,Offset,Size),EA,N,PP):-
     get_size_name(Size,Name),
     instruction(EA,Size_instr,_,_,_,_),
     Address is EA+Offset+Size_instr,
-    (get_global_symbol_ref(Address,Name_symbol)->
+    (get_global_symbol_ref(Address,relative,Name_symbol)->
 	 format(atom(PP),'~p ~p[rip]',[Name,Name_symbol])
      ;
      print_symbol(Address,Label),
@@ -839,7 +839,7 @@ pp_operand(indirect(SReg,NullReg1,NullReg2,1,Offset,Size),EA,N,PP):-
     null_reg(NullReg2),
     get_size_name(Size,Name),
     %
-    (get_global_symbol_ref(Offset,Name_symbol)->
+    (get_global_symbol_ref(Offset,absolute,Name_symbol)->
 	 put_segment_register(Name_symbol,SReg,Term),
 	 format(atom(PP),'~p ~p',[Name,Term])
      ;
@@ -1202,15 +1202,15 @@ is_in_function(EA,Name):-
 
    
 %check relocated symbols first
-get_global_symbol_ref(Address,Final_name):-
-    in_relocated_symbol(Address,Name,Offset),
+get_global_symbol_ref(Address,Relative,Final_name):-
+    in_relocated_symbol(Address,Relative,Name,Offset),
     avoid_reg_name_conflics(Name,NameNew),
     (Offset\= 0->
 	 Final_name=NameNew+Offset
      ;
      Final_name=NameNew).
 
-get_global_symbol_ref(Address,NameNew):-
+get_global_symbol_ref(Address,_Relative,NameNew):-
     symbol(Address,_,_,'GLOBAL',Name_symbol),
     clean_symbol_name_suffix(Name_symbol,Name),
     \+reserved_symbol(Name),
@@ -1220,7 +1220,7 @@ get_global_symbol_name(Address,NameNew):-
     symbol(Address,_,_,'GLOBAL',Name_symbol),
     %do not print labels for symbols that have to be relocated
     clean_symbol_name_suffix(Name_symbol,Name),
-    \+relocation(_,Name,_),
+    \+relocation(_,_,Name,_),
     \+reserved_symbol(Name),
     avoid_reg_name_conflics(Name,NameNew).
 
@@ -1232,13 +1232,18 @@ clean_symbol_name_suffix(Name,Name_clean):-
 
 clean_symbol_name_suffix(Name,Name).
 
-in_relocated_symbol(EA,Name,Offset):-
+in_relocated_symbol(EA,_,Name,Offset):-
     symbol(Address,Size,_,_,Name_symbol),
     EA>=Address,
     EA<Address+Size,
     clean_symbol_name_suffix(Name_symbol,Name),
-    relocation(_,Name,_),
+    relocation(_,_,Name,_),
     Offset is EA-Address.
+in_relocated_symbol(EA,relative,Qualified_name,Offset):-
+    relocation(EA,'R_X86_64_GLOB_DAT',Name,Offset),!,
+    atom_concat(Name,'@GOTPCREL',Qualified_name).
+					
+
 
 avoid_reg_name_conflics(Name,NameNew):-
     reserved_name(Name),

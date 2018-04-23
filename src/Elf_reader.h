@@ -36,6 +36,7 @@ private:
 	void read_symbols();
 	void read_dynamic_symbols();
 	void read_relocations();
+	std::string get_relocation_type(int type);
 	void print_symbol_table(std::ostream& stream,std::vector<Elf64_Sym>& symbol_table,
 	                        std::vector<std::string>& symbol_name_table);
 	int get_section_index(const std::string& name);
