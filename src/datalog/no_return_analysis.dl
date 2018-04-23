@@ -129,7 +129,7 @@ no_return(EA):-
 
 no_return_call(EA):-
 	no_return_function(Function),
-	relocation(Got_entry,Function,_),
+	relocation(Got_entry,_,Function,_),
 	pc_relative_jump(Dest,Got_entry),
 	section(".plt",Size,Beg),
 	Dest<Beg+Size,
