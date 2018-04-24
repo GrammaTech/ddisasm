@@ -21,6 +21,7 @@ code_section('.plt.got').
 data_section_descriptor('.got',8).
 
 data_section_descriptor('.got.plt',8).
+data_section_descriptor('.data.rel.ro',8).
 data_section_descriptor('.init_array',8).
 data_section_descriptor('.fini_array',8).
 %data_section_descriptor('.eh_frame_hdr',4).
@@ -1242,7 +1243,8 @@ in_relocated_symbol(EA,_,Name,Offset):-
 in_relocated_symbol(EA,relative,Qualified_name,Offset):-
     relocation(EA,'R_X86_64_GLOB_DAT',Name,Offset),!,
     atom_concat(Name,'@GOTPCREL',Qualified_name).
-					
+
+
 
 
 avoid_reg_name_conflics(Name,NameNew):-
