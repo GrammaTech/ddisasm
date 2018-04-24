@@ -165,6 +165,7 @@ result_descriptors([
 			  result(stack_operand,2,'.csv'),
 			  result(labeled_data,1,'.csv'),
 			  result(symbolic_data,2,'.csv'),
+			  result(symbol_minus_symbol,3,'.csv'),
 			  result(string,2,'.csv'),
 	  
 			  result(bss_data,1,'.csv'),
@@ -220,6 +221,7 @@ result_descriptors([
 :-dynamic stack_operand/2.
 :-dynamic labeled_data/1.
 :-dynamic symbolic_data/2.
+:-dynamic symbol_minus_symbol/3.
 :-dynamic string/2.
 :-dynamic bss_data/1.
 :-dynamic data_access_pattern/4.
@@ -432,6 +434,16 @@ group_data([data_byte(EA,_)|Rest],[data_group(EA,pointer,Group_content)|Groups])
     split_at(7,Rest,_,Rest2),
     group_data(Rest2,Groups).
 
+group_data([data_byte(EA,_)|Rest],[data_group(EA,labeled_pointer_diff,symbols(Symbol1,Symbol2))|Groups]):-
+    symbol_minus_symbol(EA,Symbol1,Symbol2),
+    labeled_data(EA),!,
+    split_at(3,Rest,_,Rest2),
+    group_data(Rest2,Groups).
+
+group_data([data_byte(EA,_)|Rest],[data_group(EA,pointer_diff,symbols(Symbol1,Symbol2))|Groups]):-
+    symbol_minus_symbol(EA,Symbol1,Symbol2),
+    split_at(3,Rest,_,Rest2),
+    group_data(Rest2,Groups).
 
 group_data([data_byte(EA,Content)|Rest],[data_group(EA,string,String)|Groups]):-
     string(EA,End),!,
@@ -553,6 +565,23 @@ pp_data(data_group(EA,labeled_pointer,Content)):-
     format('.quad ~p',[Printed]),
     cond_print_comments(EA),
     print_end_label(EA,8).
+
+pp_data(data_group(EA,labeled_pointer_diff,symbols(Symbol1,Symbol2))):-
+    print_label(EA),
+    print_ea(EA),
+    format(atom(Printed1),'.L_~16R',[Symbol1]),
+    format(atom(Printed2),'.L_~16R',[Symbol2]),
+    format('.long ~p-~p',[Printed2,Printed1]),
+    cond_print_comments(EA),
+    print_end_label(EA,4).
+
+pp_data(data_group(EA,pointer_diff,symbols(Symbol1,Symbol2))):-
+    print_ea(EA),
+    format(atom(Printed1),'.L_~16R',[Symbol1]),
+    format(atom(Printed2),'.L_~16R',[Symbol2]),
+    format('.long ~p-~p',[Printed2,Printed1]),
+    cond_print_comments(EA),
+    print_end_label(EA,4).
 
 pp_data(data_group(EA,string,Content)):-
     print_label(EA),

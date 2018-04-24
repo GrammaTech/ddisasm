@@ -19,6 +19,14 @@ value_reg_edge(EA,Reg,0,"NullReg64",0,Immediate):-
 	op_immediate(Op1,Immediate),
 	op_regdirect_contains_reg(Op2,Reg).
 
+value_reg_edge(EA,Reg,0,"NullReg64",0,Address):-
+	def_used(EA,Reg,_,_),
+	instruction(EA,Size,"LEA",Op1,Op2,0),
+	op_indirect(Op1,_,"RIP",NullReg,_,Offset,_),
+	null_reg(NullReg),
+	op_regdirect_contains_reg(Op2,Reg),
+	Address=EA+Size+Offset.
+	
 //mov reg reg_origin
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
 	def(EA,Reg),
@@ -88,7 +96,6 @@ value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
 	op_regdirect_contains_reg(Op2,Reg),
 	EA!=EA_prev.
 	
-
 //lea reg [reg_origin*Multiplier+Offset]
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier,Offset):-
 	def(EA,Reg),
