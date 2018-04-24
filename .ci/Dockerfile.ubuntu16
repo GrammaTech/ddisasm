@@ -1,6 +1,5 @@
 FROM ubuntu:16.04 as souffle
-RUN apt-get -y update
-RUN apt-get -y install autoconf automake bison build-essential clang doxygen flex g++ gcc gcc-multilib g++-multilib git libtool make mcpp openjdk-8-jdk pkg-config python sqlite3 libsqlite3-dev subversion swi-prolog zlib1g-dev
+RUN apt-get -y update && apt-get -y install automake  bison build-essential clang doxygen flex g++ gcc gcc-multilib g++-multilib git libtool make mcpp openjdk-8-jdk pkg-config python sqlite3 libsqlite3-dev subversion swi-prolog zlib1g-dev
 RUN git clone https://github.com/souffle-lang/souffle
 RUN cd souffle && sh ./bootstrap
 RUN cd souffle && ./configure --prefix=/usr --enable-64bit-domain --disable-provenance
@@ -8,8 +7,7 @@ RUN cd souffle && make -j4 install
 RUN cd souffle && cp include/souffle/RamTypes.h /usr/include/souffle/
 
 FROM ubuntu:16.04
-RUN apt-get -y update
-RUN apt-get -y install autoconf automake bison build-essential clang doxygen flex g++ gcc gcc-multilib g++-multilib git libtool make mcpp openjdk-8-jdk pkg-config python sqlite3 libsqlite3-dev subversion swi-prolog zlib1g-dev clang
+RUN apt-get -y update && apt-get -y install autoconf automake bison build-essential clang doxygen flex g++ gcc gcc-multilib g++-multilib git libtool make mcpp openjdk-8-jdk pkg-config python sqlite3 libsqlite3-dev subversion swi-prolog zlib1g-dev clang
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
 COPY --from=souffle /usr/bin/souffle /usr/bin/souffle
