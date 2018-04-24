@@ -188,6 +188,7 @@ data_section(".got").
 data_section(".got.plt").
 data_section(".init_array").
 data_section(".fini_array").
+data_section(".data.rel.ro").
 
 	
 .decl code_section(name:symbol)
