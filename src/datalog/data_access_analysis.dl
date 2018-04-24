@@ -29,18 +29,32 @@ data_access_pattern(Address,Size/8 ,0,EA):-
 data_access_pattern(Address+(Offset2*Multiplier),Size/8 ,Multiplier*Multiplier2,EA):-
 	code(EA),
 	instruction_get_op(EA,Op_index,Op),
-	op_indirect(Op,NullSReg,NullReg1,RegMult,Multiplier,Address,Size),
+	op_indirect(Op,NullSReg,RegBase,RegMult,Multiplier,Address1,Size),
 	null_reg(NullSReg),
-	null_reg(NullReg1),
 	!null_reg(RegMult),
 
+	
 	def_used(EA_def,RegMult,EA,Op_index),
 	Max_multiplier=max Mult:{value_reg(EA_def,RegMult,_,_,Mult,_,_)},
-	value_reg(EA_def,RegMult,_,_,Multiplier2,Offset2,_),
-
+	value_reg(EA_def,RegMult,_,_,Multiplier2,Offset2_aux,_),
+	(
+	Offset2=Offset2_aux
+	;
+	Offset2=max(Offset2_aux,0)
+	),
 	Multiplier2>=Max_multiplier,
 	Multiplier*Multiplier2>1,
 
+	(
+	null_reg(RegBase),
+	Address=Address1
+	;
+	!null_reg(RegBase),
+	def_used(EA_base,RegBase,EA,Op_index),
+	value_reg(EA_base,RegBase,0,"NullReg64",_,Address2,_),
+	Address=Address1+Address2
+	),
+	
 	data_section(Section),
 	section(Section,SizeSect,Base),
 	Address+(Offset2*Multiplier)>=Base,
@@ -51,24 +65,62 @@ data_access_pattern(Address+(Offset2*Multiplier),Size/8 ,Multiplier*Multiplier2,
 data_access_pattern(Offset+Address,Size/8 ,Multiplier,EA):-
 	code(EA),
 	instruction_get_op(EA,Op_index,Op),
-	op_indirect(Op,NullSReg,Reg,NullReg1,_,Address,Size),
+	op_indirect(Op,NullSReg,Reg,RegBase,MultiplierBase,Address1,Size),
 	null_reg(NullSReg),
-	null_reg(NullReg1),
 	def_used(EA_def,Reg,EA,Op_index),
 	Max_multiplier=max Mult:{value_reg(EA_def,Reg,_,_,Mult,_,_)},
 	value_reg(EA_def,Reg,_,_,Multiplier,Offset,_),
 	Multiplier>=Max_multiplier,
 	Multiplier>1,
+
+	(
+	null_reg(RegBase),
+	Address=Address1
+	;
+	!null_reg(RegBase),
+	MultiplierBase=1,
+	def_used(EA_base,RegBase,EA,Op_index),
+	value_reg(EA_base,RegBase,0,"NullReg64",_,Address2,_),
+	Address=Address1+Address2
+	),
 	data_section(Section),
 	section(Section,SizeSect,Base),
 	Offset+Address>=Base,
 	Offset+Address<=Base+SizeSect.
-	
+
+
+data_access_pattern(Address,Size/8 ,Multiplier,EA):-
+	code(EA),
+	instruction_get_op(EA,Op_index,Op),
+	op_indirect(Op,NullSReg,Reg,RegBase,MultiplierBase,Address1,Size),
+	null_reg(NullSReg),
+	def_used(EA_def,Reg,EA,Op_index),
+	Max_multiplier=max Mult:{value_reg(EA_def,Reg,_,_,Mult,_,_)},
+	value_reg(EA_def,Reg,_,_,Multiplier,Offset,_),
+	Offset<0,
+	Multiplier>=Max_multiplier,
+	Multiplier>1,
+
+	(
+	null_reg(RegBase),
+	Address=Address1
+	;
+	!null_reg(RegBase),
+	MultiplierBase=1,
+	def_used(EA_base,RegBase,EA,Op_index),
+	value_reg(EA_base,RegBase,0,"NullReg64",_,Address2,_),
+	Address=Address1+Address2
+	),
+	data_section(Section),
+	section(Section,SizeSect,Base),
+	Address>=Base,
+	Address<=Base+SizeSect.
+
+
 // pc relative
 data_access_pattern(Address,Size/8 ,0,EA):-
 	code(EA),
 	pc_relative_operand_complete(EA,_,Address,Size),
-
 	data_section(Section),
 	section(Section,SizeSect,Base),
 	Address>=Base,
