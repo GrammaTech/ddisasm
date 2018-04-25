@@ -17,14 +17,14 @@ stages:
     - docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
     - docker rmi -f ${LOCAL_IMAGE_NAME}-${OS}
 
-build:
+build-ubuntu16:
   stage: build-deploy-cleanup
   variables:
     OS: 'ubuntu16'
   <<: *build
 
-build:
-  stage: build-deploy-cleanup
-  variables:
-    OS: 'arch'
-  <<: *build
+# build-arch:
+#   stage: build-deploy-cleanup
+#   variables:
+#     OS: 'arch'
+#   <<: *build
