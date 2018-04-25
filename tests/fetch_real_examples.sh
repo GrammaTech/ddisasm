@@ -32,10 +32,10 @@ mkdir $dir
 
 for tarball in  "${tarballs[@]}"; do
 #   cp /u4/TARBALLS/codesonar-tests/$tarball $dir
-    tar xvzf /u4/TARBALLS/codesonar-test/$tarball -C $dir
+    tar xvzf /u4/TARBALLS/codesonar-tests/$tarball -C $dir
 done
 
 for tarball in  "${tarballs_bz2[@]}"; do
 #   cp /u4/TARBALLS/codesonar-tests/$tarball $dir
-    tar xvjf /u4/TARBALLS/codesonar-test/$tarball -C $dir
+    tar xvjf /u4/TARBALLS/codesonar-tests/$tarball -C $dir
 done
