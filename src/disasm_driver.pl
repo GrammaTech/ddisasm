@@ -334,7 +334,11 @@ get_code_chunks(Chunks_with_padding):-
      foldl(get_chunk_content,Chunk_addresses,Empty,Map),
      foldl(accum_instruction,Single_instructions,Map,Map2),
      assoc_to_values(Map2,Chunks),
-     adjust_padding(Chunks,Chunks_with_padding).
+     (\+option('-debug')->
+	  adjust_padding(Chunks,Chunks_with_padding)
+      ;
+      Chunks=Chunks_with_padding
+     ).
 
 get_chunk_content(Chunk_addr,Assoc,Assoc1):-
     findall(Instruction,

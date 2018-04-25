@@ -191,7 +191,8 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	pointer_size(Pt_size),
 	address_in_data_refined_range.overlap(Dest,Pt_size,New_dest),
 	(
-	data_access_pattern(New_dest,8,_,_)
+	preferred_data_access(New_dest,Label),
+	data_access_pattern(Label,Pt_size,_,_)
 	;
 	address_array(New_dest)
 	).
@@ -320,37 +321,22 @@ moved_data_label(EA,Dest,New_dest):-
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 
-.decl data_dword(EA:address,Val:number) inline
-
-
-data_dword(EA,Val):-
-	data_byte(EA,Byte0),
-	data_byte(EA+1,Byte1),
-	data_byte(EA+2,Byte2),
-	data_byte(EA+3,Byte3),
-	Val= -(2^32 -( Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0)).
-
-
-
 
 symbol_minus_symbol(EA,EA,Symbol2):-
-	data_access_pattern(EA,4,4,Ref),
-	data_dword(EA,Diff),
-	EA+Diff=Symbol2,
-	code(Symbol2),
-	Symbol2>Ref,
+	data_access_pattern(EA,4,4,_Ref),
+	relative_address(EA,EA,Symbol2),
+	likely_ea_final(_,Symbol2),
+	relative_address(EA+4,EA,Symbol3),
+	likely_ea_final(_,Symbol3).
 
-	data_dword(EA+4,Diff2),
-	EA+Diff2=Symbol3,
-	code(Symbol3),
-	Symbol3>Ref.
-
-symbol_minus_symbol(EA,EA_label,Symbol2):-
+	
+symbol_minus_symbol(EA,EA_ref,Symbol2):-
+	symbol_minus_symbol(EA_label,EA_ref,_),
 	preferred_data_access(EA,EA_label),
-	symbol_minus_symbol(EA_label,EA_label,_),
-	data_dword(EA,Diff),
-	EA_label+Diff=Symbol2,
-	code(Symbol2).
+	relative_address(EA,EA_ref,Symbol2),
+	likely_ea_final(_,Symbol2).
+
+
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
