@@ -14,3 +14,8 @@ doc/slides/slides.pdf
 
 standalone_compilation/
 standalone_compilation.tar.bz2
+
+examples/**/dl_files
+examples/**/ex.old
+examples/**/ex.s
+examples/**/out.txt
