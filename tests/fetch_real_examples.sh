@@ -25,7 +25,7 @@ tarballs_bz2=(
     "ed-0.9.tar.bz2"
 );
 
-$dir=../real_world_examples
+dir="../real_world_examples"
 
 rm -rf $dir
 mkdir $dir
