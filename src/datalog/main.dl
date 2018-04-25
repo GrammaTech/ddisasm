@@ -372,11 +372,50 @@ must_fallthrough(From,To):-
 	may_fallthrough(From,To),
 	!instruction_get_operation(From,"CALL").
 
+.decl data_dword(EA:address,Val:number)
+
+
+data_dword(EA,Val):-
+	data_byte(EA,Byte0),EA % 4 =0,//jump tables are assumed to be aligned
+	data_byte(EA+1,Byte1),
+	data_byte(EA+2,Byte2),
+	data_byte(EA+3,Byte3),
+	Byte3>=128,//the number is negative
+	Val= -(2^32 -( Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0)).
+
+
+.decl take_address(Src:address,Address_taken:address)
+
+take_address(Src,Address):-
+	pc_relative_operand(Src,1,Address),
+	instruction_get_operation(Src,"LEA").
+
+.decl relative_address_start(EA:address,Reference:address,Val:address)
+
+relative_address_start(EA,EA,EA+Diff):-
+	take_address(_,EA),
+	data_dword(EA,Diff),
+	instruction(EA+Diff,_,_,_,_,_).
+	
+.decl relative_address(EA:address,Reference:address,Val:address)
+.output relative_address
+
+relative_address(EA,EA,Symbol2):-
+	relative_address_start(EA,EA,Symbol2).
+
+relative_address(EA+4,Ref,Ref+Diff):-
+	relative_address(EA,Ref,_),
+	data_dword(EA+4,Diff),
+	instruction(Ref+Diff,_,_,_,_,_),
+	!relative_address_start(EA+4,_,_).
 
 
 .decl basic_target(ea:address)
 
 // FIXME: add exception frame addresses
+
+basic_target(Val):-
+ 	relative_address(_,_,Val).
 
 basic_target(Val):-
 	address_in_data(_,Val).
@@ -396,12 +435,17 @@ basic_target(EA):-
 // detect references  to libraries (calls to plt)
 .decl plt_code_reference(ea:address, function:symbol)
 
+.decl plt_section(name:symbol)
+
+plt_section(".plt").
+plt_section(".plt.got").
 
 plt_code_reference(EA,Function):-
 	code(EA),
 	instruction_get_op(EA,1,Op),
 	op_immediate(Op,Dest),
-	section(".plt",Size,Beg),
+	plt_section(SecName),
+	section(SecName,Size,Beg),
 	Dest<Beg+Size,
 	Dest>=Beg,
 	pc_relative_jump(Dest,Got_entry),
@@ -411,7 +455,8 @@ plt_code_reference(EA,Function):-
 
 plt_data_reference(EA,Function):-
 	symbolic_data(EA,Dest),
-	section(".plt",Size,Beg),
+	plt_section(SecName),
+	section(SecName,Size,Beg),
 	Dest<Beg+Size,
 	Dest>=Beg,
 	pc_relative_jump(Dest,Got_entry),
