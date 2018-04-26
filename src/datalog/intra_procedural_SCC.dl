@@ -5,7 +5,7 @@
 .decl intra_reachable_initial(Block:address,Function:address)
 
 intra_reachable_initial(Block,Block):-
-	code_in_block(_,Block).
+	block(Block).
 	
 intra_reachable_initial(Src,Dest):-
 	intra_reachable_initial(Src,A),

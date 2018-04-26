@@ -64,7 +64,7 @@ address_in_data_refined(EA,Val):-
       
 address_in_data_refined(EA,Val):-
       address_in_data(EA,Val),
-      code_in_block(_,Val).
+      block(Val).
 
 .init address_in_data_refined_range=empty_range
 
@@ -325,16 +325,16 @@ moved_data_label(EA,Dest,New_dest):-
 symbol_minus_symbol(EA,EA,Symbol2):-
 	data_access_pattern(EA,4,4,_Ref),
 	relative_address(EA,EA,Symbol2),
-	code_in_block(_,Symbol2),
+	block(Symbol2),
 	relative_address(EA+4,EA,Symbol3),
-	code_in_block(_,Symbol3).
+	block(Symbol3).
 
 	
 symbol_minus_symbol(EA,EA_ref,Symbol2):-
 	symbol_minus_symbol(EA_label,EA_ref,_),
 	preferred_data_access(EA,EA_label),
 	relative_address(EA,EA_ref,Symbol2),
-	code_in_block(_,Symbol2).
+	block(Symbol2).
 
 
 
@@ -455,7 +455,7 @@ symbolic_data(EA,Val):-
 
 code_pointer_in_data(EA,Val):-
 	symbolic_data(EA,Val),
-	code_in_block(_,Val).
+	block(Val).
 	
 /////////////////////////////////////////////////////////////////////////////////
 // for bss there is no decision to make

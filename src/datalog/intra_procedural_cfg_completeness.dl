@@ -65,7 +65,7 @@ incomplete_block(Block,EA):-
 .decl complete_block(block:address)
 
 complete_block(Block):-
-	code_in_block(_,Block),
+	block(Block),
 	!incomplete_block(Block,_).
 
 // record blocks that contain a ret instruction
@@ -83,7 +83,7 @@ block_contains_ret(Block):-
 .decl intra_reachable(Block:address,Function:address)
 
 intra_reachable(Block,Block):-
-	code_in_block(_,Block).
+	block(Block).
 	
 intra_reachable(Src,Dest):-
 	intra_reachable(Src,A),
@@ -129,7 +129,7 @@ intra_edge_dir(Src,Dest,"back"):-
 .decl must_intra_reachable(Block:address,Next:address)
 
 must_intra_reachable(Block,Block):-
-	code_in_block(_,Block),
+	block(Block),
 	after_function_end(Block,_).
 
 must_intra_reachable(Block,Next):-
@@ -137,7 +137,7 @@ must_intra_reachable(Block,Next):-
 	code_in_block(EA,Reach),
 	may_fallthrough(EA,Next),
 	!no_return_call(EA),
-	code_in_block(_,Next).
+	block(Next).
 
 
 // a restricted version of common ancestor
@@ -180,5 +180,5 @@ incomplete_cfg(Block):-
 .decl complete_cfg(Block:address)
 
 complete_cfg(Block):-
-	code_in_block(_,Block),
+	block(Block),
 	!incomplete_cfg(Block).
