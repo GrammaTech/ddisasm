@@ -2,17 +2,20 @@
 
 
 // These are final addresses where the code is located
-// They are organized in chunks of sequential code
-// The first address is the chunk identifier
-.decl code_in_block(ea:address,chunk:address)
+// They are organized in blocks of sequential code
+// The first address is the block identifier
+.decl code_in_block(ea:address,block:address)
 .output code_in_block
+
+.decl block(block:address)
+.output block
 
 .decl code(ea:address)
 
 
 // we detect if there are still overlaping blocks, in that case the analysis failed
-.decl chunk_still_overlap(ea:address,ea2:address)
-.output chunk_still_overlap
+.decl block_still_overlap(ea:address,ea2:address)
+.output block_still_overlap
 
 
 // define component traverse_code
@@ -66,16 +69,16 @@ phase2.possible_ea(EA):-
 
 // we can start traversing the code in two places and end up in the same
 // sequence, we want to split those common sequences apart so we 
-// get chunks that don't have common tails
+// get blocks that don't have common tails
 .decl common_tail(ea:address)
 
 common_tail(EA):-
-	phase1.likely_ea(EA,Chunk),
+	phase1.likely_ea(EA,Block),
 	may_fallthrough(From,EA),
 	//get the head of the tail only
-	!phase1.likely_ea(From,Chunk),
-	phase1.likely_ea(From,Chunk2),
-	Chunk2!=Chunk.
+	!phase1.likely_ea(From,Block),
+	phase1.likely_ea(From,Block2),
+	Block2!=Block.
 
 phase2.block_limit(EA):-
 	phase1.block_limit(EA).
@@ -117,96 +120,86 @@ phase2.possible_target(EA):-
 
 ////////////////////////////////////////////////////////////////////////
 // We are done with the recursive exploration
-// Now we detect and resolve conflics within the different chunks
+// Now we detect and resolve conflics within the different blocks
 
-.decl chunk_start(ea_chunk:address)
-.output chunk_start
+.decl block_overlap(ea:address,ea2:address)
+.output block_overlap
 
-//special node for function calls
-chunk_start(0).
-chunk_start(EA):-phase2.likely_ea(_,EA).
-
-
-
-
-.decl chunk_overlap(ea:address,ea2:address)
-.output chunk_overlap
-
-chunk_overlap(EA_chunk,EA_chunk2):-
-	phase2.likely_ea(EA,EA_chunk),
+block_overlap(EA_block,EA_block2):-
+	phase2.likely_ea(EA,EA_block),
 	phase2.overlap(EA,EA2),
-	phase2.likely_ea(EA2,EA_chunk2).
+	phase2.likely_ea(EA2,EA_block2).
 
 
 
-.decl chunk_is_overlaping(chunk:address)
+.decl block_is_overlaping(block:address)
 
-chunk_is_overlaping(Chunk):-
+block_is_overlaping(Block):-
 	(
-	chunk_overlap(Chunk,_)
+	block_overlap(Block,_)
 	;
-	chunk_overlap(_,Chunk)
+	block_overlap(_,Block)
 	).
 	
 //////////////////////////////////////////////////////////////////////
-// We need to solve the chunk overlaps
+// We need to solve the block overlaps
 // we do it with heuristics
 ///
 
-.decl discarded_chunk(ea_chunk:address)
-.output discarded_chunk
+.decl discarded_block(ea_block:address)
+.output discarded_block
 
 
-discarded_chunk(Chunk):-
+discarded_block(Block):-
 	(
-	chunk_overlap(Chunk,Chunk2)
+	block_overlap(Block,Block2)
 	;
-	chunk_overlap(Chunk2,Chunk)
+	block_overlap(Block2,Block)
 	),
 	//heuristic: keep the one that has more predecessors
 	// but we value different kinds of predecessors differently
 	(
-	sum X:{chunk_pred(Chunk,_,X,_)}< sum Y:{chunk_pred(Chunk2,_,Y,_)}
+	sum X:{block_pred(Block,_,X,_)}< sum Y:{block_pred(Block2,_,Y,_)}
 	 ;
 	 //The sum seems to fail if the set is empty so we consider
 	 // this case independently
-	 chunk_pred(Chunk2,_,_,_),
-	 !chunk_pred(Chunk,_,_,_)
+	 block_pred(Block2,_,_,_),
+	 !block_pred(Block,_,_,_)
 	 ).
 
-// propagate discarding chunks through direct jumps or calls
-discarded_chunk(Chunk):-
-	discarded_chunk(Chunk2),
+// propagate discarding blocks through direct jumps or calls
+discarded_block(Block):-
+	discarded_block(Block2),
 	(
-	direct_jump(EA,Chunk2)
+	direct_jump(EA,Block2)
 	;
-	direct_call(EA,Chunk2)
+	direct_call(EA,Block2)
 	),
-	phase2.likely_ea(EA,Chunk).
+	phase2.likely_ea(EA,Block).
 	
 // The heuristics count the number of predecessors that are not overlaping blocks
 // we give more points for predecessors from fallthroughs and direct jumps
 // The points are trasmitted transitively though overlaping blocks
 
-.decl chunk_pred(chunk:address,predecessor:address,importance:number,why:symbol)
-.output chunk_pred
+.decl block_pred(block:address,predecessor:address,importance:number,why:symbol)
+.output block_pred
 
-chunk_pred(Chunk,0,20,"start point"):-
-	entry_point(Chunk).
+block_pred(Block,0,20,"start point"):-
+	entry_point(Block).
 
-chunk_pred(Chunk,0,20,"function symbol"):-
-	function_symbol(Chunk,_).
+block_pred(Block,0,20,"function symbol"):-
+	function_symbol(Block,_).
 	
-chunk_pred(Chunk,0,1,"address in data"):-
-	address_in_data(Address,Chunk),
+block_pred(Block,0,1,"address in data"):-
+	address_in_data(Address,Block),
 	Address % 8 != 0.
 
-chunk_pred(Chunk,0,2,"aligned address in data"):-
-	address_in_data(Address,Chunk),
+block_pred(Block,0,2,"aligned address in data"):-
+	address_in_data(Address,Block),
 	Address % 8 = 0.
 
-chunk_pred(Chunk,0,1,"address in data array"):-
-	address_in_data(Address,Chunk),
+block_pred(Block,0,1,"address in data array"):-
+	address_in_data(Address,Block),
 	Address % 8 = 0,
 	(
 	address_in_data(Address+8,_),
@@ -219,66 +212,68 @@ chunk_pred(Chunk,0,1,"address in data array"):-
 	address_in_data(Address-8,_)
 	).
 
-chunk_pred(Chunk,Chunk_pred,4,"direct jump"):-
-	direct_jump(EA,Chunk),
-	phase2.likely_ea(EA,Chunk_pred),
-	Chunk_pred!=Chunk,
-	!chunk_is_overlaping(Chunk_pred).
+block_pred(Block,Block_pred,4,"direct jump"):-
+	direct_jump(EA,Block),
+	phase2.likely_ea(EA,Block_pred),
+	Block_pred!=Block,
+	!block_is_overlaping(Block_pred).
 	
-chunk_pred(Chunk,Chunk_pred,5,"may_fallthrough"):-
-	may_fallthrough(EA,Chunk),
-	phase2.likely_ea(EA,Chunk_pred),
-	!chunk_is_overlaping(Chunk_pred).
+block_pred(Block,Block_pred,5,"may_fallthrough"):-
+	may_fallthrough(EA,Block),
+	phase2.likely_ea(EA,Block_pred),
+	!block_is_overlaping(Block_pred).
 
 // it fits but the previous block does not fall through
-chunk_pred(Chunk,Chunk_pred,1,"fits"):-
-	next(EA,Chunk),
-	!may_fallthrough(EA,Chunk),
-	phase2.likely_ea(EA,Chunk_pred),
-	!chunk_is_overlaping(Chunk_pred).
+block_pred(Block,Block_pred,1,"fits"):-
+	next(EA,Block),
+	!may_fallthrough(EA,Block),
+	phase2.likely_ea(EA,Block_pred),
+	!block_is_overlaping(Block_pred).
 
 // its address appears somewhere
-chunk_pred(Chunk,Chunk_pred,2,"appears"):-
-	possible_target_from(Chunk,EA),
-	!direct_jump(EA,Chunk),
-	phase2.likely_ea(EA,Chunk_pred),
-	Chunk_pred!=Chunk,
-	!chunk_is_overlaping(Chunk_pred).
+block_pred(Block,Block_pred,2,"appears"):-
+	possible_target_from(Block,EA),
+	!direct_jump(EA,Block),
+	phase2.likely_ea(EA,Block_pred),
+	Block_pred!=Block,
+	!block_is_overlaping(Block_pred).
 
 // give a point if it may fallthrough to another block
-chunk_pred(Chunk,Chunk_succ,1,"fallthough_to"):-
-	phase2.likely_ea(EA,Chunk),
-	may_fallthrough(EA,Chunk_succ),
-	phase2.likely_ea(_,Chunk_succ),
-	!chunk_is_overlaping(Chunk_succ).
+block_pred(Block,Block_succ,1,"fallthough_to"):-
+	phase2.likely_ea(EA,Block),
+	may_fallthrough(EA,Block_succ),
+	phase2.likely_ea(_,Block_succ),
+	!block_is_overlaping(Block_succ).
 	
 
 // transitivity for fallthrough and direct jumps
-chunk_pred(Chunk,Chunk_pred2,Points,"transitive fallthough"):-
-	may_fallthrough(EA,Chunk),
-	phase2.likely_ea(EA,Chunk_pred),
-	chunk_is_overlaping(Chunk_pred),
-	chunk_pred(Chunk_pred,Chunk_pred2,Points,_).
+block_pred(Block,Block_pred2,Points,"transitive fallthough"):-
+	may_fallthrough(EA,Block),
+	phase2.likely_ea(EA,Block_pred),
+	block_is_overlaping(Block_pred),
+	block_pred(Block_pred,Block_pred2,Points,_).
 
-chunk_pred(Chunk,Chunk_pred2,Points,"transitive jump"):-
-	direct_jump(EA,Chunk),
-	phase2.likely_ea(EA,Chunk_pred),
-	chunk_is_overlaping(Chunk_pred),
-	chunk_pred(Chunk_pred,Chunk_pred2,Points,_).
+block_pred(Block,Block_pred2,Points,"transitive jump"):-
+	direct_jump(EA,Block),
+	phase2.likely_ea(EA,Block_pred),
+	block_is_overlaping(Block_pred),
+	block_pred(Block_pred,Block_pred2,Points,_).
 
 ////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////
 
 
-code_in_block(EA,Chunk):-
-	phase2.likely_ea(EA,Chunk),
-	!discarded_chunk(Chunk).
+code_in_block(EA,Block):-
+	phase2.likely_ea(EA,Block),
+	!discarded_block(Block).
 
-
+block(Block):-
+	code_in_block(_,Block).
+	
 code(EA):-
 	code_in_block(EA,_).
 	
-chunk_still_overlap(Chunk,Chunk2):-
-	chunk_overlap(Chunk,Chunk2),
-	!discarded_chunk(Chunk),
-	!discarded_chunk(Chunk2).
+block_still_overlap(Block,Block2):-
+	block_overlap(Block,Block2),
+	!discarded_block(Block),
+	!discarded_block(Block2).
