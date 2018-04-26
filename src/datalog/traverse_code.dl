@@ -13,7 +13,7 @@
 
 //COMPUTED
 // propagate from possible targets forward
-.decl likely_ea(ea:address,chunk_head:address)
+.decl likely_ea(ea:address,block_head:address)
 
 likely_ea(EA,EA):-
 	possible_target(EA),

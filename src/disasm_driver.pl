@@ -153,8 +153,7 @@ result_descriptors([
 			  %these facts are necessary for printing the asm
 			  
 			  % code blocks and leftover instructions
-			  result(chunk_start,1,'.csv'),
-			  result(discarded_chunk,1,'.csv'),
+			  result(block,1,'.csv'),
 			  named_result(code_in_block,'code_in_block',2,'.csv'),
 			  named_result(remaining_ea,'phase2-remaining_ea',1,'.csv'),
 
@@ -196,10 +195,11 @@ result_descriptors([
 
 			  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 			  %these facts are only collected for printing debugging information
+			  result(discarded_block,1,'.csv'),
 			  result(direct_jump,2,'.csv'),	
 			  result(pc_relative_jump,2,'.csv'),
 			  result(pc_relative_call,2,'.csv'),
-			  named_result(chunk_overlap,'chunk_still_overlap',2,'.csv'),	  
+			  named_result(block_overlap,'block_still_overlap',2,'.csv'),	  
 			  result(def_used,4,'.csv'),
 			  result(paired_data_access,6,'.csv'),
 			  result(value_reg,7,'.csv'),
@@ -219,8 +219,8 @@ result_descriptors([
 :-dynamic data_byte/2.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-:-dynamic chunk_start/1.
-:-dynamic discarded_chunk/1.
+:-dynamic block/1.
+:-dynamic discarded_block/1.
 :-dynamic code_in_block/2.
 :-dynamic remaining_ea/1.
 
@@ -256,7 +256,7 @@ result_descriptors([
 :-dynamic direct_jump/2.
 :-dynamic pc_relative_jump/2.
 :-dynamic pc_relative_call/2.
-:-dynamic chunk_overlap/2.
+:-dynamic block_overlap/2.
 :-dynamic paired_data_access/6.
 :-dynamic def_used/4.
 :-dynamic value_reg/7.
@@ -306,8 +306,8 @@ print_descriptor_stats(Res):-
 pretty_print_results(Dir):-
     print_header,
     %print code
-    get_code_chunks(Chunks),
-    maplist(pp_code_chunk, Chunks),
+    get_code_blocks(Blocks),
+    maplist(pp_code_block, Blocks),
     
     %print data
     get_data_sections(Data_sections),
@@ -348,15 +348,11 @@ nop
 print_header.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% collect all the code into chunks
+% collect all the code into blocks
 
-get_code_chunks(Chunks_with_padding):-
+get_code_blocks(Blocks_with_padding):-
     %collect all the blocks
-    findall(Chunk,
-	    (
-	     chunk_start(Chunk),Chunk\=0,
-	     \+discarded_chunk(Chunk)
-	    ),Chunk_addresses),
+    findall(Block, block(Block),Block_addresses),
     %collect all the instructions that are not in blocks
     % if -asm we do not collect anything
     (option('-asm')->
@@ -376,36 +372,36 @@ get_code_chunks(Chunks_with_padding):-
     % assoc is a key-value map
     empty_assoc(Empty),
     %for each block collect its instructions
-    foldl(get_chunk_content,Chunk_addresses,Empty,Map),
+    foldl(get_block_content,Block_addresses,Empty,Map),
     % add the instructions outside blocks to the map 
     foldl(accum_instruction,Single_instructions,Map,Map2),
     %get the values of the map
-    assoc_to_values(Map2,Chunks),
+    assoc_to_values(Map2,Blocks),
     
     %if we are not debugging make sure there are no overlaping blocks
     %and fill the gaps with NOPs
      (\+option('-debug')->
-	  adjust_padding(Chunks,Chunks_with_padding)
+	  adjust_padding(Blocks,Blocks_with_padding)
       ;
-      Chunks=Chunks_with_padding
+      Blocks=Blocks_with_padding
      ).
 
-get_chunk_content(Chunk_addr,Assoc,Assoc1):-
+get_block_content(Block_addr,Assoc,Assoc1):-
     %get the instruction in the block
     findall(Instruction,
-	    (code_in_block(EA,Chunk_addr),
+	    (code_in_block(EA,Block_addr),
 	     instruction(EA,Size,Name,Opc1,Opc2,Opc3),	     
 	     get_op(Opc1,Op1),
 	     get_op(Opc2,Op2),
 	     get_op(Opc3,Op3),
 	     Instruction=instruction(EA,Size,Name,Op1,Op2,Op3)
 	    ),Instructions),
-    get_block_end_address(Instructions,Chunk_addr,End),
-    put_assoc(Chunk_addr,Assoc,chunk(Chunk_addr,End,Instructions),Assoc1).
+    get_block_end_address(Instructions,Block_addr,End),
+    put_assoc(Block_addr,Assoc,block(Block_addr,End,Instructions),Assoc1).
 
 
-get_block_end_address([],Chunk_addr,Chunk_addr).
-get_block_end_address(Instructions,Chunk_addr,End):-
+get_block_end_address([],Block_addr,Block_addr).
+get_block_end_address(Instructions,Block_addr,End):-
      last(Instructions,instruction(EA_last,Size_last,_,_,_,_)),
      End is EA_last+Size_last.
 
@@ -425,24 +421,24 @@ accum_instruction(instruction(EA,Size,OpCode,Op1,Op2,Op3),Assoc,Assoc1):-
 
 
 adjust_padding([Last],[Last]).
-adjust_padding([Chunk1,Chunk2|Chunks], Final_chunks):-
-    get_begin_end(Chunk1,_Beg,End),
-    get_begin_end(Chunk2,Beg2,_End2),
+adjust_padding([Block1,Block2|Blocks], Final_blocks):-
+    get_begin_end(Block1,_Beg,End),
+    get_begin_end(Block2,Beg2,_End2),
     (Beg2=End->
-	 adjust_padding([Chunk2|Chunks],Chunks_adjusted),
-	 Final_chunks=[Chunk1|Chunks_adjusted]
+	 adjust_padding([Block2|Blocks],Blocks_adjusted),
+	 Final_blocks=[Block1|Blocks_adjusted]
      ;
      Beg2>End->
 	 Nop=instruction(End,1,'NOP',none,none,none),
-	 adjust_padding([Nop,Chunk2|Chunks],Chunks_adjusted),
-	 Final_chunks=[Chunk1|Chunks_adjusted]
+	 adjust_padding([Nop,Block2|Blocks],Blocks_adjusted),
+	 Final_blocks=[Block1|Blocks_adjusted]
      ;
      Beg2<End->
-	 adjust_padding([Chunk1|Chunks],Chunks_adjusted),
-	 Final_chunks=Chunks_adjusted
+	 adjust_padding([Block1|Blocks],Blocks_adjusted),
+	 Final_blocks=Blocks_adjusted
     ).
 
-get_begin_end(chunk(Beg,End,_),Beg,End).
+get_begin_end(block(Beg,End,_),Beg,End).
 get_begin_end(instruction(Beg,Size,_,_,_,_),Beg,End):-
     End is Beg+Size.
 
@@ -704,26 +700,26 @@ pp_bss_data(variable(Start,Size)):-
     format('.L_~16R: .zero  ~p ~n',[Start,Size]).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% print chunk of code
+% print block of code
 
-pp_code_chunk(chunk(EA_chunk,_,_List)):-
-    skip_ea(EA_chunk),!.
-pp_code_chunk(instruction(EA_chunk,_,_,_,_,_)):-
-    skip_ea(EA_chunk),!.
+pp_code_block(block(EA_block,_,_List)):-
+    skip_ea(EA_block),!.
+pp_code_block(instruction(EA_block,_,_,_,_,_)):-
+    skip_ea(EA_block),!.
 
-pp_code_chunk(chunk(EA_chunk,_,List)):-
+pp_code_block(block(EA_block,_,List)):-
     !,
-    cond_print_section_header(EA_chunk),
-    print_function_header(EA_chunk),
-    print_label(EA_chunk),   
+    cond_print_section_header(EA_block),
+    print_function_header(EA_block),
+    print_label(EA_block),   
     (option('-debug')->
-	 get_comments(EA_chunk,Comments),
+	 get_comments(EA_block,Comments),
 	 print_comments(Comments),nl
      ;
      true),
     maplist(pp_instruction_rand,List),nl.
 
-pp_code_chunk(instruction(EA,Size,Operation,Op1,Op2,Op3)):-
+pp_code_block(instruction(EA,Size,Operation,Op1,Op2,Op3)):-
     cond_print_section_header(EA),
     pp_instruction_rand(instruction(EA,Size,Operation,Op1,Op2,Op3)).
     
@@ -1144,19 +1140,19 @@ cond_print_comments(EA):-
      true
        ),nl.
 
-get_comments(EA_chunk,Comments):-
-	setof(Comment,comment(EA_chunk,Comment),Comments),!.
-get_comments(_EA_chunk,[]).
+get_comments(EA_block,Comments):-
+	setof(Comment,comment(EA_block,Comment),Comments),!.
+get_comments(_EA_block,[]).
     
 comment(EA,discarded):-
-    discarded_chunk(EA).
+    discarded_block(EA).
 
 comment(EA,overlap_with(Str_EA2)):-
-    chunk_overlap(EA2,EA),
+    block_overlap(EA2,EA),
     format(string(Str_EA2),'~16R',[EA2]).
 
 comment(EA,overlap_with(Str_EA2)):-
-    chunk_overlap(EA,EA2),
+    block_overlap(EA,EA2),
     format(string(Str_EA2),'~16R',[EA2]).
 
 comment(EA,is_called):-
@@ -1166,7 +1162,7 @@ comment(EA,jumped_from(Str_or)):-
     direct_jump(Or,EA),
     format(string(Str_or),'~16R',[Or]).
 
-comment(EA,not_in_chunk):-
+comment(EA,not_in_block):-
     \+code_in_block(EA,_).
 
 comment(EA,symbolic_ops(Symbolic_ops)):-
@@ -1477,12 +1473,7 @@ get_string_length(Content,Length1):-
 
 generate_hints(Dir,Data_sections,Uninitialized_data):-
     option('-hints'),!,
-    findall(Code_ea,
-	    (
-		code_in_block(Code_ea,Chunk),
-		chunk_start(Chunk),
-                \+discarded_chunk(Chunk)
-	    ),Code_eas),
+    findall(Code_ea,code_in_block(Code_ea,_),Code_eas),
     directory_file_path(Dir,'hints',Path),
     open(Path,write,S),
     maplist(print_code_ea(S),Code_eas),
