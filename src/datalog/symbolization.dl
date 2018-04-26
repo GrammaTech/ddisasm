@@ -201,7 +201,8 @@ moved_label(EA,Op_index,Dest,New_dest):-
 moved_label(EA,Op_index,Dest,New_dest):-
 	symbolic_data_operand_candidate(EA,Op_index,Dest),
 	data_access_pattern(Access_dest,_,Mult,EA),
-	(Access_dest!=Dest,
+	(
+	Access_dest!=Dest,
 	New_dest=Access_dest
 	;
 	Access_dest=Dest,
