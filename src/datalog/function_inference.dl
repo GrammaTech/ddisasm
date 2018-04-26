@@ -33,11 +33,11 @@ function_entry(EA):-
 function_entry(EA):-
 	direct_call(EA_caller,EA),
 	code(EA_caller),
-	likely_ea_final(_,EA).
+	code_in_block(_,EA).
 
 //section start
 function_entry(EA):-
-	likely_ea_final(_,EA),
+	code_in_block(_,EA),
 	section(_,_,EA).
 
 
@@ -51,7 +51,7 @@ function_entry(EA):-
 
 // not referenced anywhere
 function_entry(EA):-
-	likely_ea_final(_,EA),
+	code_in_block(_,EA),
 	after_function_end(EA,_),
 	!possible_target_from(EA,_),
 	!symbolic_data(_,EA),
@@ -59,7 +59,7 @@ function_entry(EA):-
 
 // two consecutive elements in a table with typical function beginnings
 function_entry(EA):-
-	likely_ea_final(_,EA),
+	code_in_block(_,EA),
 	after_function_end(EA,_),
 	!possible_target_from(EA,_),
 	symbolic_data(Pointer,EA),
@@ -73,7 +73,7 @@ function_entry(EA):-
 
 // the address is moved to a register
 function_entry(EA):-
-	likely_ea_final(_,EA),
+	code_in_block(_,EA),
 	after_function_end(EA,_),
 	possible_target_from(EA,Src),
 	code(Src),
@@ -84,7 +84,7 @@ function_entry(EA):-
 	function_table(Label),
 	preferred_data_access(Offset,Label),
 	symbolic_data(Offset,EA),
-	likely_ea_final(_,EA),
+	code_in_block(_,EA),
 	after_function_end(EA,_).
 
 // // referenced from lonely pointer
@@ -135,7 +135,7 @@ function_entry(EA2):-
 ////////////////
 //propagation: jumped from another function (there is a function boundary in between)
 function_entry2(EA):-
-	likely_ea_final(_,EA),
+	code_in_block(_,EA),
 	after_function_end(EA,_),
 	direct_jump(Src,EA),
 	inconditional_jump(Src),
@@ -165,10 +165,10 @@ function_entry2(EA):-
 	in_function(Block,Function),
 	Function<=Block,
 	complete_cfg(Function),
-	likely_ea_final(End,Block),
+	code_in_block(End,Block),
 	after_function_end(EA,End),
 	
-	likely_ea_final(_,EA),
+	code_in_block(_,EA),
 	!is_nop(EA),
 	!resolved_jump(_,EA),
 	//cannot be reached from before
@@ -230,7 +230,7 @@ function_table(Label):-
 	),
 	preferred_data_access(Offset,Label),
 	symbolic_data(Offset,EA),
-	likely_ea_final(_,EA).
+	code_in_block(_,EA).
 
 //////////////////////////////////////////////////////////////////////////////
 // heuristic markers

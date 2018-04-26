@@ -4,8 +4,8 @@
 // These are final addresses where the code is located
 // They are organized in chunks of sequential code
 // The first address is the chunk identifier
-.decl likely_ea_final(ea:address,chunk:address)
-.output likely_ea_final
+.decl code_in_block(ea:address,chunk:address)
+.output code_in_block
 
 .decl code(ea:address)
 
@@ -270,13 +270,13 @@ chunk_pred(Chunk,Chunk_pred2,Points,"transitive jump"):-
 ////////////////////////////////////////////////////////////////////////////
 
 
-likely_ea_final(EA,Chunk):-
+code_in_block(EA,Chunk):-
 	phase2.likely_ea(EA,Chunk),
 	!discarded_chunk(Chunk).
 
 
 code(EA):-
-	likely_ea_final(EA,_).
+	code_in_block(EA,_).
 	
 chunk_still_overlap(Chunk,Chunk2):-
 	chunk_overlap(Chunk,Chunk2),
