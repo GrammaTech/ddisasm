@@ -155,7 +155,7 @@ result_descriptors([
 			  % code blocks and leftover instructions
 			  result(chunk_start,1,'.csv'),
 			  result(discarded_chunk,1,'.csv'),
-			  named_result(likely_ea,'likely_ea_final',2,'.csv'),
+			  named_result(code_in_block,'code_in_block',2,'.csv'),
 			  named_result(remaining_ea,'phase2-remaining_ea',1,'.csv'),
 
 			  %functions
@@ -221,7 +221,7 @@ result_descriptors([
 
 :-dynamic chunk_start/1.
 :-dynamic discarded_chunk/1.
-:-dynamic likely_ea/2.
+:-dynamic code_in_block/2.
 :-dynamic remaining_ea/1.
 
 :-dynamic function_symbol/2.
@@ -365,7 +365,7 @@ get_code_chunks(Chunks_with_padding):-
     findall(Instruction,
 	    (
 		instruction(EA,Size,Name,Opc1,Opc2,Opc3),
-                \+likely_ea(EA,_),
+                \+code_in_block(EA,_),
 		remaining_ea(EA),
 		get_op(Opc1,Op1),
 		get_op(Opc2,Op2),
@@ -393,7 +393,7 @@ get_code_chunks(Chunks_with_padding):-
 get_chunk_content(Chunk_addr,Assoc,Assoc1):-
     %get the instruction in the block
     findall(Instruction,
-	    (likely_ea(EA,Chunk_addr),
+	    (code_in_block(EA,Chunk_addr),
 	     instruction(EA,Size,Name,Opc1,Opc2,Opc3),	     
 	     get_op(Opc1,Op1),
 	     get_op(Opc2,Op2),
@@ -1167,7 +1167,7 @@ comment(EA,jumped_from(Str_or)):-
     format(string(Str_or),'~16R',[Or]).
 
 comment(EA,not_in_chunk):-
-    \+likely_ea(EA,_).
+    \+code_in_block(EA,_).
 
 comment(EA,symbolic_ops(Symbolic_ops)):-
     findall(Op_num,symbolic_operand(EA,Op_num),Symbolic_ops),
@@ -1479,7 +1479,7 @@ generate_hints(Dir,Data_sections,Uninitialized_data):-
     option('-hints'),!,
     findall(Code_ea,
 	    (
-		likely_ea(Code_ea,Chunk),
+		code_in_block(Code_ea,Chunk),
 		chunk_start(Chunk),
                 \+discarded_chunk(Chunk)
 	    ),Code_eas),

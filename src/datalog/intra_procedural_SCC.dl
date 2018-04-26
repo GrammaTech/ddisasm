@@ -5,7 +5,7 @@
 .decl intra_reachable_initial(Block:address,Function:address)
 
 intra_reachable_initial(Block,Block):-
-	likely_ea_final(_,Block).
+	code_in_block(_,Block).
 	
 intra_reachable_initial(Src,Dest):-
 	intra_reachable_initial(Src,A),
@@ -15,20 +15,20 @@ intra_reachable_initial(Src,Dest):-
 .decl intra_edge_initial(Block_src:address,Block_dest:address)
 
 intra_edge_initial(Src,Dest):-
-	likely_ea_final(EA,Src),
+	code_in_block(EA,Src),
 	direct_jump(EA,Dest).
 
 intra_edge_initial(Src,Dest):-
-	likely_ea_final(EA,Src),
+	code_in_block(EA,Src),
 	pc_relative_jump(EA,Dest).
 	
 intra_edge_initial(Src,Dest):-
-	likely_ea_final(EA,Src),
+	code_in_block(EA,Src),
 	may_fallthrough(EA,Dest),
-	likely_ea_final(Dest,Dest).
+	code_in_block(Dest,Dest).
 
 intra_edge_initial(Src,Dest):-
-	likely_ea_final(EA,Src),
+	code_in_block(EA,Src),
 	resolved_jump(EA,Dest).
 
 
