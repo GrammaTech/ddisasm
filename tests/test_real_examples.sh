@@ -57,11 +57,14 @@ if [[ $# > 0 && $1 == "-stir" ]]; then
     shift
 fi
 
+this_directory=$(pwd)
 
 for ((i = 0; i < ${#examples[@]}; i++)); do
     j=0
     directory=($sentence${examples[$i]})
-    $dir$directory/configure
+    cd $dir$directory
+    ./configure
+    cd $this_directory
     for compiler in "${compilers[@]}"; do
 	export CC=$compiler
 	export CXX=${cpp_compilers[$j]}
