@@ -19,7 +19,7 @@ optimizations=(""
 examples=(
     "ex1 ex"
     "ex_2modulesPIC ex"
- #   "ex_confusing_data ex"
+    "ex_confusing_data ex"
     "ex_float ex"
     "ex_fprintf ex"
     "ex_getoptlong ex"

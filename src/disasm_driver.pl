@@ -401,7 +401,7 @@ get_block_content(Block_addr,Assoc,Assoc1):-
 
 
 get_block_end_address([],Block_addr,Block_addr).
-get_block_end_address(Instructions,Block_addr,End):-
+get_block_end_address(Instructions,_,End):-
      last(Instructions,instruction(EA_last,Size_last,_,_,_,_)),
      End is EA_last+Size_last.
 
@@ -582,16 +582,17 @@ pp_aligned_data_section(data_section(Name,Required_alignment,Data_list)):-
 pp_aligned_data_section(data_section(Name,Required_alignment,Data_list)):-
     % get first label and ensure it has the right alignment
     % possibly adding some padding
-    nth0(Index,Data_list,data_group(EA,_Type,_Content)),
-    Alignment is EA mod Required_alignment,!,
-    
-    split_at(Index,Data_list,Data_before,Data_after),
+    nth0(Index,Data_list,data_group(EA,_Type,_Content)),!,
+    Alignment is EA mod Required_alignment,
+    Current_alignment is Index mod Required_alignment,
+
+    get_needed_padding(Alignment,Current_alignment,Required_alignment,Required_zeros),
     print_section_header(Name),
-    maplist(pp_data,Data_before),
     format('.align ~p~n',[Required_alignment]),
-    format('# printing ~p extra bytes to guarantee alignment~n',[Alignment]),
-    print_x_zeros(Alignment),
-    maplist(pp_data,Data_after).
+    format('# printing ~p extra bytes to guarantee alignment~n',[Required_zeros]),
+    print_x_zeros(Required_zeros),
+    maplist(pp_data,Data_list).
+
 
 %if there are no labels
 pp_aligned_data_section(data_section(Name,Required_alignment,Data_list)):-
@@ -605,13 +606,14 @@ pointer_to_excluded_code(data_group(_EA,Type,Val)):-
     asm_skip_function(Function),
     is_in_function(Val,Function).
 
+get_needed_padding(Alignment,Current_alignment,_,Needed_zeros):-
+    Alignment>= Current_alignment,
+    Needed_zeros is Alignment-Current_alignment.
+get_needed_padding(Alignment,Current_alignment,Required_alignment,Needed_zeros):-
+    Alignment< Current_alignment,
+    Needed_zeros is (Alignment+Required_alignment)-Current_alignment.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % print data groups according to the type
-
-pp_data(data_group(EA,_,_)):-
-    skip_data_ea(EA),!.
-pp_data(data_byte(EA,_)):-
-    skip_data_ea(EA),!.
 
 pp_data(data_group(EA,plt_ref,Function)):-
     print_label(EA),
@@ -1169,11 +1171,6 @@ comment(EA,symbolic_ops(Symbolic_ops)):-
     findall(Op_num,symbolic_operand(EA,Op_num),Symbolic_ops),
     Symbolic_ops\=[].
 
-comment(EA,reg_jump):-
-    reg_jump(EA).
-comment(EA,indirect_jump):-
-    indirect_jump(EA).
-
 comment(EA,plt(Dest)):-
     plt_reference(EA,Dest).
 
@@ -1276,10 +1273,6 @@ skip_data_section(Section_name):-
     option('-asm'),
     asm_skip_section(Section_name).
 
-skip_data_ea(EA):-
-    option('-asm'),
-    asm_skip_symbol(Symbol),
-    is_in_symbol(EA,Symbol).
 
 skip_ea(EA):-
     option('-asm'),
