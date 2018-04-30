@@ -26,6 +26,7 @@ libdatalog_visitor_x64.a: $(OBJECTS) | $(STANDALONE)
 
 %.o: %.cpp | $(STANDALONE)
 	$(CC) -o $@ $(CFLAGS)   $< $(INCLUDE)
+	
 clean:
 	rm -f *.a *.o ../bin/souffle_disasm ../bin/datalog_decoder
 
