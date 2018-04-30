@@ -1,7 +1,7 @@
 STANDALONE=./../../standalone_compilation
 
 CC=gcc
-CFLAGS=-c -Werror -Wall -Wpointer-arith -Wshadow -Wno-unused-local-typedefs -fvisibility=hidden -g3 -m32 -march=i686 -mtune=generic -pthread -std=c++1y -std=c++1y -Wno-shadow -Wno-shadow  -DEXPORT_GTR_SYMBOLS=1
+CFLAGS=-c -Werror -Wall -Wpointer-arith -Wshadow -Wno-unused-local-typedefs -fvisibility=hidden -g3 -m32 -march=i686 -mtune=generic -pthread -std=c++1y -std=c++1y -Wno-shadow -Wno-shadow -O0 
 INCLUDE= -I $(STANDALONE)/include/ -I ./../../
 SOURCES= disasm.cpp Table.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
