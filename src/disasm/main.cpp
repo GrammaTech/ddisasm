@@ -1,13 +1,15 @@
 #include "disasm.h"
 #include <iostream>
 #include <boost/program_options.hpp>
+#include <iomanip>
 
 int main(int argc, char** argv)
 {
 	boost::program_options::options_description desc("Allowed options");
 	desc.add_options()
     	("help", "Produce help message.")
-    	("directory", boost::program_options::value<std::string>(), "Set the directory to parse.");
+    	("dir", boost::program_options::value<std::string>(), "Set the directory to parse.")
+    	("asm", boost::program_options::value<std::string>(), "Set the name of the assembly file to print to.");
 
 	boost::program_options::variables_map vm;
 	boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
@@ -19,12 +21,19 @@ int main(int argc, char** argv)
     	return 1;
 	}
 
-	std::string directory;
-	if(vm.count("directory")) 
+	Disasm disasm;
+
+	if(vm.count("dir")) 
 	{
-    	directory = vm["directory"].as<std::string>();
+		auto value = vm["dir"].as<std::string>();
+		std::cerr << std::setw(24) << std::left << "Reading Directory: " << "\"" << value << "\"" << std::endl;
+		disasm.parseDirectory(value);
 	} 
 
-	Disasm disasm;
-	disasm.parseDirectory(directory);
+	if(vm.count("asm")) 
+	{
+    	auto value = vm["asm"].as<std::string>();
+		std::cerr << std::setw(24) << std::left << "Saving ASM: " << "\"" << value << "\"" << std::endl;
+    	disasm.prettyPrint(value);
+	}
 }
