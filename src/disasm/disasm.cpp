@@ -7,7 +7,7 @@
 Disasm::Disasm()
 {
 	this->asm_skip_section = {".comment", ".plt", ".init", ".fini", ".got", ".plt.got", ".got.plt"};
-	this->asm_skip_function = {"_start", "deregister_tm_clone", "register_tm_clone", "__do_global_dtors_au", "frame_dumm", "__libc_csu_fin", "__libc_csu_ini" };
+	this->asm_skip_function = {"_start", "deregister_tm_clones", "register_tm_clones", "__do_global_dtors_aux", "frame_dummy", "__libc_csu_fini", "__libc_csu_init" };
 }
 
 void Disasm::setDebug(bool x)
@@ -656,6 +656,7 @@ void Disasm::printBlock(std::ofstream& ofs, const Block& x) const
 	if(this->skipEA(x.StartingAddress) == false)
 	{
 		this->condPrintSectionHeader(ofs, x);
+		this->printFunctionHeader(ofs, x.StartingAddress);
 	}
 }
 
@@ -739,6 +740,7 @@ bool Disasm::skipEA(const uint64_t x) const
 	if(xFunctionName.empty() == false)
 	{
 		const auto found = std::find(std::begin(this->asm_skip_function), std::end(this->asm_skip_function), xFunctionName);
+		std::cout << "Funciton Name: \"" << xFunctionName << "\" Found == " << (found != std::end(this->asm_skip_function)) << "\n";
 		return found != std::end(this->asm_skip_function);
 	}
 
@@ -756,4 +758,66 @@ std::string Disasm::getSectionName(uint64_t x) const
 	}
 
 	return std::string{};
+}
+
+std::string Disasm::getFunctionName(uint64_t x) const
+{
+	for(auto& s : this->function_symbol)
+	{
+		if(s.EA == x)
+		{
+			return s.Name;
+		}
+	}
+
+	if(x == this->main_function[0])
+	{
+		return "main";
+	}
+	else if(x == this->start_function[0])
+	{
+		return "_start";
+	}
+
+	// or is this a funciton entry?
+	for(auto f : this->function_entry)
+	{
+		if(x == f)
+		{
+			std::stringstream ss;
+			ss << "unknown_function_" << std::hex << x;
+			return ss.str();
+		}
+	}
+
+	return std::string{};
+}
+
+void Disasm::printBar(std::ofstream& ofs) const
+{
+	ofs << "#=================================== \n";
+}
+
+void Disasm::printFunctionHeader(std::ofstream& ofs, uint64_t ea) const
+{
+	const auto name = this->getFunctionName(ea);
+	if(name.empty() == false)
+	{
+		ofs << "#----------------------------------- \n";
+	    
+	    // enforce maximum alignment 
+	    if(ea % 8 == 0)
+	    {
+			ofs << ".align 8\n";
+	 	}
+	 	else if(ea % 2 == 0)
+	 	{
+			ofs << ".align 2\n";
+		}
+
+	    ofs << ".globl " << name << "\n";
+	    ofs << ".type " << name << ", @function\n";
+	    ofs << name << ":\n";
+	    ofs << "#----------------------------------- \n";
+	}
 }
