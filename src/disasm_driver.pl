@@ -167,6 +167,7 @@ result_descriptors([
 			  result(ambiguous_symbol,1,'.csv'),
 			  result(direct_call,2,'.csv'),
 			  result(plt_reference,2,'.csv'),
+			  result(got_reference,3,'.csv'),
 			  
 			  %symbols in code
 			  result(symbolic_operand,2,'.csv'),
@@ -231,6 +232,7 @@ result_descriptors([
 
 :-dynamic ambiguous_symbol/1.
 :-dynamic plt_reference/2.
+:-dynamic got_reference/3.
 :-dynamic direct_call/2.
 
 
@@ -484,7 +486,7 @@ group_data([],[]).
 
 group_data([data_byte(EA,_)|Rest],[data_group(EA,plt_ref,Function)|Groups]):-
     symbolic_data(EA,_Group_content),
-    plt_reference(EA,Function),!,
+    plt_reference_qualified(EA,Function),!,
     split_at(7,Rest,_,Rest2),
     group_data(Rest2,Groups).
 
@@ -881,7 +883,7 @@ pp_operand(reg(Name),_,_,Name2):-
 
 %immediate
 pp_operand(immediate(_Num),EA,1,Name_complete):-
-    plt_reference(EA,Name),!,
+    plt_reference_qualified(EA,Name),!,
     format(string(Name_complete),'OFFSET ~p',[Name]).
 
 pp_operand(immediate(_Num),EA,_N,Name_complete):-
@@ -924,6 +926,10 @@ pp_operand(indirect(NullSReg,NullReg1,NullReg2,1,0,Size),_,_,PP):-
     null_reg(NullReg2),
     get_size_name(Size,Name),
     format(atom(PP),'~p [~p]',[Name,0]).
+
+pp_operand(indirect(_,_,_,_,_,_),EA,N,PP):-
+    got_reference(EA,N,Content),!,
+    format(atom(PP),'.L_~16R@GOTPCREL[rip]',[Content]).
 
 % special case for rip relative addressing
 pp_operand(indirect(NullSReg,'RIP',NullReg1,1,Offset,Size),EA,N,PP):-
@@ -1172,7 +1178,7 @@ comment(EA,symbolic_ops(Symbolic_ops)):-
     Symbolic_ops\=[].
 
 comment(EA,plt(Dest)):-
-    plt_reference(EA,Dest).
+    plt_reference_qualified(EA,Dest).
 
 
 comment(EA,pc_relative_jump(Dest_hex)):-
@@ -1314,7 +1320,15 @@ function_get_ea(Name,EA):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Deal with global symbols and relocations
 
-   
+
+plt_reference_qualified(EA,Function):-
+    plt_reference(EA,Function).
+ %%    is_in_section(EA,'.plt'),!,
+%%     atom_concat(Function,'@PLT',FunctionAtPlt).
+%% plt_reference_qualified(EA,FunctionAtPlt):-
+%%     plt_reference(EA,Function),
+%%     atom_concat(Function,'@GOTPLT',FunctionAtPlt).
+
 %check relocated symbols first
 get_global_symbol_ref(Address,Relative,Final_name):-
     in_relocated_symbol(Address,Relative,Name,Offset),
