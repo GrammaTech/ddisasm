@@ -344,20 +344,41 @@ void DisasmData::parseSymbolicData(const std::string& x)
 
 void DisasmData::parseSymbolMinusSymbol(const std::string& x)
 {
-    this->symbol_minus_symbol.parseFile(x);
+    Table fromFile{2};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->symbol_minus_symbol.push_back(SymbolMinusSymbol(ff));
+    }
+
     std::cerr << " # Number of symbol_minus_symbol: " << this->symbol_minus_symbol.size()
               << std::endl;
 }
 
 void DisasmData::parseMovedDataLabel(const std::string& x)
 {
-    this->moved_data_label.parseFile(x);
+    Table fromFile{3};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->moved_data_label.push_back(MovedDataLabel(ff));
+    }
+
     std::cerr << " # Number of moved_data_label: " << this->moved_data_label.size() << std::endl;
 }
 
 void DisasmData::parseString(const std::string& x)
 {
-    this->string.parseFile(x);
+    Table fromFile{2};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->string.push_back(String(ff));
+    }
+
     std::cerr << " # Number of string: " << this->string.size() << std::endl;
 }
 
@@ -571,17 +592,17 @@ std::vector<SymbolicData>* DisasmData::getSymbolicData()
     return &this->symbolic_data;
 }
 
-Table* DisasmData::getSymbolMinusSymbol()
+std::vector<SymbolMinusSymbol>* DisasmData::getSymbolMinusSymbol()
 {
     return &this->symbol_minus_symbol;
 }
 
-Table* DisasmData::getMovedDataLabel()
+std::vector<MovedDataLabel>* DisasmData::getMovedDataLabel()
 {
     return &this->moved_data_label;
 }
 
-Table* DisasmData::getString()
+std::vector<String>* DisasmData::getString()
 {
     return &this->string;
 }
@@ -885,6 +906,11 @@ std::string DisasmData::GetSizeName(const std::string& x)
     assert("Unknown Size");
 
     return x;
+}
+
+std::string DisasmData::GetSizeSuffix(const OpIndirect& x)
+{
+    return DisasmData::GetSizeSuffix(x.Size);
 }
 
 std::string DisasmData::GetSizeSuffix(uint64_t x)
