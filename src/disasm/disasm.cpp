@@ -4,6 +4,13 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/lexical_cast.hpp>
 
+std::string str_tolower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(), 
+                   [](unsigned char c){ return std::tolower(c); } // correct
+                  );
+    return s;
+}
+
 Disasm::Disasm()
 {
 	this->asm_skip_section = {".comment", ".plt", ".init", ".fini", ".got", ".plt.got", ".got.plt"};
@@ -97,7 +104,14 @@ void Disasm::parseRelocation(const std::string& x)
 
 void Disasm::parseInstruction(const std::string& x)
 {
-	this->instruction.parseFile(x);
+	Table fromFile{6};
+	fromFile.parseFile(x);
+
+	for(const auto& ff : fromFile)
+	{
+		this->instruction.push_back(Disasm::Instruction(ff));
+	}
+
 	std::cerr << " # Number of instruction: " << this->instruction.size() << std::endl;
 }
 
@@ -369,7 +383,7 @@ Table* Disasm::getRelocation()
 	return &this->relocation;
 }
 
-Table* Disasm::getInstruction()
+std::vector<Disasm::Instruction>* Disasm::getInstruction()
 {
 	return &this->instruction;
 }
@@ -610,7 +624,9 @@ std::list<Disasm::Block> Disasm::getCodeBlocks() const
 		b.StartingAddress = boost::lexical_cast<uint64_t>(i[0]);
 
 		const auto address = *std::rbegin(b.Instructions);
-		b.EndingAddress = address + boost::lexical_cast<uint64_t>(this->instruction.getRow(boost::lexical_cast<std::string>(address))[1]);
+		const auto inst = this->getInstructionAt(address);
+
+		b.EndingAddress = address + inst.Size;
 
 		blocks.push_back(std::move(b));
 	}
@@ -655,8 +671,25 @@ void Disasm::printBlock(std::ofstream& ofs, const Block& x) const
 {
 	if(this->skipEA(x.StartingAddress) == false)
 	{
-		this->condPrintSectionHeader(ofs, x);
-		this->printFunctionHeader(ofs, x.StartingAddress);
+		if(x.Instructions.empty() == false)
+		{
+			this->condPrintSectionHeader(ofs, x);
+			this->printFunctionHeader(ofs, x.StartingAddress);
+			this->printLabel(ofs, x.StartingAddress);
+
+			for(auto inst : x.Instructions)
+			{
+				this->printInstruction(ofs, inst);
+			}
+		}
+		else
+		{
+			// Fill in the correct number of nops.
+			// for(auto i = x.StartingAddress; i < x.EndingAddress; ++i)
+			// {
+			// 	this->printInstructionNop(ofs);
+			// }
+		}
 	}
 }
 
@@ -820,4 +853,132 @@ void Disasm::printFunctionHeader(std::ofstream& ofs, uint64_t ea) const
 	    ofs << name << ":\n";
 	    ofs << "#----------------------------------- \n";
 	}
+}
+
+void Disasm::printLabel(std::ofstream& ofs, uint64_t ea) const
+{
+	this->condPrintGlobalSymbol(ofs, ea);
+	ofs << ".L_" << std::hex << ea << ":\n";
+}
+
+void Disasm::condPrintGlobalSymbol(std::ofstream& ofs, uint64_t ea) const
+{
+	auto name = this->getGlobalSymbolName(ea);
+	
+	if(name.empty() == false)
+	{
+		ofs << ".globl " << name << "\n";
+	 	ofs << "~p:" << name << "\n";
+	}
+}
+
+std::string Disasm::getGlobalSymbolName(uint64_t ea) const
+{
+	for(const auto& s : this->symbol)
+	{
+		if(boost::lexical_cast<uint64_t>(s[0]) == ea)
+		{
+			if(s[2] == std::string{"GLOBAL"})
+			{
+				auto name = s[4];
+				name = this->cleanSymbolNameSuffix(name);
+
+				/// \todo 
+				// %do not print labels for symbols that have to be relocated
+    			// clean_symbol_name_suffix(Name_symbol,Name),
+    			// \+relocation(_,_,Name,_),
+    			// \+reserved_symbol(Name),
+    			// avoid_reg_name_conflics(Name,NameNew).
+
+    			return name;
+			}
+		}
+	}
+
+	return std::string{};
+}
+
+std::string Disasm::cleanSymbolNameSuffix(std::string x) const
+{
+	return x.substr(0, x.find_first_of('@'));
+}
+
+void Disasm::printInstruction(std::ofstream& ofs, uint64_t ea) const
+{
+	// TODO // Maybe print random nop's.
+	this->printEA(ofs, ea);
+	const auto inst = this->getInstructionAt(ea);
+	auto opcode = str_tolower(inst.Opcode);
+	opcode = this->adaptOpcode(opcode);
+	ofs << " " << opcode;
+
+
+	/// TAKE THIS OUT ///
+	ofs << "\n";
+}
+
+std::string Disasm::adaptOpcode(const std::string& x) const
+{
+	if(x == std::string{"movsd2"})
+	{
+		return std::string{"movsd"};
+	}
+
+	if(x == std::string{"imul2"})
+	{
+		return std::string{"imul"};
+	}
+
+	if(x == std::string{"imul3"})
+	{
+		return std::string{"imul"};
+	}
+
+	if(x == std::string{"imul1"})
+	{
+		return std::string{"imul"};
+	}
+
+	if(x == std::string{"cmpsd3"})
+	{
+		return std::string{"cmpsd"};
+	}
+
+	if(x == std::string{"out_i"})
+	{
+		return std::string{"out"};
+	}
+
+	return x;
+}
+
+void Disasm::printInstructionNop(std::ofstream& ofs) const
+{
+	ofs << " nop \n";
+}
+
+void Disasm::printEA(std::ofstream& ofs, uint64_t ea) const
+{
+	ofs << "          ";
+
+	if(this->getDebug() == true)
+	{
+		ofs << std::hex << ea << ": ";
+	}	
+}
+
+Disasm::Instruction Disasm::getInstructionAt(uint64_t ea) const
+{
+	const auto inst = std::find_if(std::begin(this->instruction), std::end(this->instruction), 
+			[ea](const auto& x)
+			{
+				return x.EA == ea;
+			});
+
+	if(inst != std::end(this->instruction))
+	{
+		return *inst;
+	}
+
+	return Instruction{};
 }
