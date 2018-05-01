@@ -56,7 +56,14 @@ void DisasmData::parseDirectory(std::string x)
 
 void DisasmData::parseSymbol(const std::string& x)
 {
-    this->symbol.parseFile(x);
+    Table fromFile{5};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->symbol.push_back(Symbol(ff));
+    }
+
     std::cerr << " # Number of symbol: " << this->symbol.size() << std::endl;
 }
 
@@ -67,7 +74,7 @@ void DisasmData::parseSection(const std::string& x)
 
     for(const auto& ff : fromFile)
     {
-        this->section.push_back(DisasmData::Section(ff));
+        this->section.push_back(Section(ff));
     }
 
     std::cerr << " # Number of section: " << this->section.size() << std::endl;
@@ -75,7 +82,14 @@ void DisasmData::parseSection(const std::string& x)
 
 void DisasmData::parseRelocation(const std::string& x)
 {
-    this->relocation.parseFile(x);
+    Table fromFile{5};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->relocation.push_back(Relocation(ff));
+    }
+
     std::cerr << " # Number of relocation: " << this->relocation.size() << std::endl;
 }
 
@@ -86,7 +100,7 @@ void DisasmData::parseInstruction(const std::string& x)
 
     for(const auto& ff : fromFile)
     {
-        this->instruction.push_back(DisasmData::Instruction(ff));
+        this->instruction.push_back(Instruction(ff));
     }
 
     std::cerr << " # Number of instruction: " << this->instruction.size() << std::endl;
@@ -94,37 +108,79 @@ void DisasmData::parseInstruction(const std::string& x)
 
 void DisasmData::parseOpRegdirect(const std::string& x)
 {
-    this->op_regdirect.parseFile(x);
+    Table fromFile{2};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->op_regdirect.push_back(OpRegdirect(ff));
+    }
+
     std::cerr << " # Number of op_regdirect: " << this->op_regdirect.size() << std::endl;
 }
 
 void DisasmData::parseOpImmediate(const std::string& x)
 {
-    this->op_immediate.parseFile(x);
+    Table fromFile{2};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->op_immediate.push_back(OpImmediate(ff));
+    }
+
     std::cerr << " # Number of op_immediate: " << this->op_immediate.size() << std::endl;
 }
 
 void DisasmData::parseOpIndirect(const std::string& x)
 {
-    this->op_indirect.parseFile(x);
+    Table fromFile{7};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->op_indirect.push_back(OpIndirect(ff));
+    }
+
     std::cerr << " # Number of op_indirect: " << this->op_indirect.size() << std::endl;
 }
 
 void DisasmData::parseDataByte(const std::string& x)
 {
-    this->data_byte.parseFile(x);
+    Table fromFile{2};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->data_byte.push_back(DataByte(ff));
+    }
+
     std::cerr << " # Number of data_byte: " << this->data_byte.size() << std::endl;
 }
 
 void DisasmData::parseBlock(const std::string& x)
 {
-    this->block.parseFile(x);
+    Table fromFile{1};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->block.push_back(boost::lexical_cast<uint64_t>(ff[0]));
+    }
+
     std::cerr << " # Number of block: " << this->block.size() << std::endl;
 }
 
 void DisasmData::parseCodeInblock(const std::string& x)
 {
-    this->code_in_block.parseFile(x);
+    Table fromFile{2};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->code_in_block.push_back(CodeInBlock(ff));
+    }
+
     std::cerr << " # Number of code_in_block: " << this->code_in_block.size() << std::endl;
 }
 
@@ -148,7 +204,7 @@ void DisasmData::parseFunctionSymbol(const std::string& x)
 
     for(const auto& ff : fromFile)
     {
-        this->function_symbol.push_back(DisasmData::FunctionSymbol(ff));
+        this->function_symbol.push_back(FunctionSymbol(ff));
     }
 
     std::cerr << " # Number of function_symbol: " << this->function_symbol.size() << std::endl;
@@ -197,43 +253,92 @@ void DisasmData::parseFunctionEntry(const std::string& x)
 
 void DisasmData::parseAmbiguousSymbol(const std::string& x)
 {
-    this->ambiguous_symbol.parseFile(x);
+    Table fromFile{1};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->ambiguous_symbol.push_back(boost::lexical_cast<uint64_t>(ff[0]));
+    }
+
     std::cerr << " # Number of ambiguous_symbol: " << this->ambiguous_symbol.size() << std::endl;
 }
 
 void DisasmData::parseDirectCall(const std::string& x)
 {
-    this->direct_call.parseFile(x);
+    Table fromFile{2};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->direct_call.push_back(DirectCall(ff));
+    }
+
     std::cerr << " # Number of direct_call: " << this->direct_call.size() << std::endl;
 }
 
 void DisasmData::parsePLTReference(const std::string& x)
 {
-    this->plt_reference.parseFile(x);
+    Table fromFile{2};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->plt_reference.push_back(PLTReference(ff));
+    }
+
     std::cerr << " # Number of plt_reference: " << this->plt_reference.size() << std::endl;
 }
 
 void DisasmData::parseSymbolicOperand(const std::string& x)
 {
-    this->symbolic_operand.parseFile(x);
+    Table fromFile{2};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->symbolic_operand.push_back(SymbolicOperand(ff));
+    }
+
     std::cerr << " # Number of symbolic_operand: " << this->symbolic_operand.size() << std::endl;
 }
 
 void DisasmData::parseMovedLabel(const std::string& x)
 {
-    this->moved_label.parseFile(x);
+    Table fromFile{4};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->moved_label.push_back(MovedLabel(ff));
+    }
+
     std::cerr << " # Number of moved_label: " << this->moved_label.size() << std::endl;
 }
 
 void DisasmData::parseLabeledData(const std::string& x)
 {
-    this->labeled_data.parseFile(x);
+    Table fromFile{1};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->labeled_data.push_back(boost::lexical_cast<uint64_t>(ff[0]));
+    }
+
     std::cerr << " # Number of labeled_data: " << this->labeled_data.size() << std::endl;
 }
 
 void DisasmData::parseSymbolicData(const std::string& x)
 {
-    this->symbolic_data.parseFile(x);
+    Table fromFile{2};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->symbolic_data.push_back(SymbolicData(ff));
+    }
+
     std::cerr << " # Number of symbolic_data: " << this->symbolic_data.size() << std::endl;
 }
 
@@ -258,7 +363,14 @@ void DisasmData::parseString(const std::string& x)
 
 void DisasmData::parseBSSData(const std::string& x)
 {
-    this->bss_data.parseFile(x);
+    Table fromFile{1};
+    fromFile.parseFile(x);
+
+    for(const auto& ff : fromFile)
+    {
+        this->bss_data.push_back(boost::lexical_cast<uint64_t>(ff[0]));
+    }
+
     std::cerr << " # Number of bss_data: " << this->bss_data.size() << std::endl;
 }
 
@@ -349,52 +461,52 @@ void DisasmData::parseInFunction(const std::string& x)
     std::cerr << " # Number of in_function: " << this->in_function.size() << std::endl;
 }
 
-Table* DisasmData::getSymbol()
+std::vector<Symbol>* DisasmData::getSymbol()
 {
     return &this->symbol;
 }
 
-std::vector<DisasmData::Section>* DisasmData::getSection()
+std::vector<Section>* DisasmData::getSection()
 {
     return &this->section;
 }
 
-Table* DisasmData::getRelocation()
+std::vector<Relocation>* DisasmData::getRelocation()
 {
     return &this->relocation;
 }
 
-std::vector<DisasmData::Instruction>* DisasmData::getInstruction()
+std::vector<Instruction>* DisasmData::getInstruction()
 {
     return &this->instruction;
 }
 
-Table* DisasmData::getOPRegdirect()
+std::vector<OpRegdirect>* DisasmData::getOPRegdirect()
 {
     return &this->op_regdirect;
 }
 
-Table* DisasmData::getOPImmediate()
+std::vector<OpImmediate>* DisasmData::getOPImmediate()
 {
     return &this->op_immediate;
 }
 
-Table* DisasmData::getOPIndirect()
+std::vector<OpIndirect>* DisasmData::getOPIndirect()
 {
     return &this->op_indirect;
 }
 
-Table* DisasmData::getDataByte()
+std::vector<DataByte>* DisasmData::getDataByte()
 {
     return &this->data_byte;
 }
 
-Table* DisasmData::getBlock()
+std::vector<uint64_t>* DisasmData::getBlock()
 {
     return &this->block;
 }
 
-Table* DisasmData::getCodeInBlock()
+std::vector<CodeInBlock>* DisasmData::getCodeInBlock()
 {
     return &this->code_in_block;
 }
@@ -404,7 +516,7 @@ std::vector<uint64_t>* DisasmData::getRemainingEA()
     return &this->remaining_ea;
 }
 
-std::vector<DisasmData::FunctionSymbol>* DisasmData::getFunctionSymbol()
+std::vector<FunctionSymbol>* DisasmData::getFunctionSymbol()
 {
     return &this->function_symbol;
 }
@@ -424,37 +536,37 @@ std::vector<uint64_t>* DisasmData::getFunctionEntry()
     return &this->function_entry;
 }
 
-Table* DisasmData::getAmbiguousSymbol()
+std::vector<uint64_t>* DisasmData::getAmbiguousSymbol()
 {
     return &this->ambiguous_symbol;
 }
 
-Table* DisasmData::getDirectCall()
+std::vector<DirectCall>* DisasmData::getDirectCall()
 {
     return &this->direct_call;
 }
 
-Table* DisasmData::getPLTReference()
+std::vector<PLTReference>* DisasmData::getPLTReference()
 {
     return &this->plt_reference;
 }
 
-Table* DisasmData::getSymbolicOperand()
+std::vector<SymbolicOperand>* DisasmData::getSymbolicOperand()
 {
     return &this->symbolic_operand;
 }
 
-Table* DisasmData::getMovedLabel()
+std::vector<MovedLabel>* DisasmData::getMovedLabel()
 {
     return &this->moved_label;
 }
 
-Table* DisasmData::getLabeledData()
+std::vector<uint64_t>* DisasmData::getLabeledData()
 {
     return &this->labeled_data;
 }
 
-Table* DisasmData::getSymbolicData()
+std::vector<SymbolicData>* DisasmData::getSymbolicData()
 {
     return &this->symbolic_data;
 }
@@ -474,7 +586,7 @@ Table* DisasmData::getString()
     return &this->string;
 }
 
-Table* DisasmData::getBSSData()
+std::vector<uint64_t>* DisasmData::getBSSData()
 {
     return &this->bss_data;
 }
@@ -549,41 +661,37 @@ Table* DisasmData::getInFunction()
     return &this->in_function;
 }
 
-std::list<DisasmData::Block> DisasmData::getCodeBlocks() const
+std::list<Block> DisasmData::getCodeBlocks() const
 {
-    std::list<DisasmData::Block> blocks;
+    std::list<Block> blocks;
 
-    for(auto& i : this->block)
+    for(auto& blockAddress : this->block)
     {
-        DisasmData::Block b;
+        Block b;
 
         for(auto& cib : this->code_in_block)
         {
             // The instruction's block address == the block's addres.
-            if(cib[1] == i[0])
+            if(cib.BlockAddress == blockAddress)
             {
                 // Push back the instruction.
-                b.Instructions.push_back(boost::lexical_cast<uint64_t>(cib[0]));
+                b.Instructions.push_back(cib.EA);
             }
         }
 
         std::sort(std::begin(b.Instructions), std::end(b.Instructions));
 
-        b.StartingAddress = boost::lexical_cast<uint64_t>(i[0]);
+        b.StartingAddress = blockAddress;
 
         if(b.Instructions.empty() == false)
         {
             const auto address = b.Instructions.back();
             const auto inst = this->getInstructionAt(address);
             b.EndingAddress = address + inst.Size;
-            std::cerr << "ENDING ADDRESS: " << b.EndingAddress << " == " << address << " + "
-                      << inst.Size << " and Starting at " << b.StartingAddress << std::endl;
         }
         else
         {
             b.EndingAddress = b.StartingAddress;
-            std::cerr << "NO INSTRUCTIONS; ENDING ADDRESS == STARTING ADDRESS: " << b.EndingAddress
-                      << " and Starting at " << b.StartingAddress << std::endl;
         }
 
         blocks.push_back(std::move(b));
@@ -609,13 +717,22 @@ std::string DisasmData::getSectionName(uint64_t x) const
     return std::string{};
 }
 
+// function_complete_name
 std::string DisasmData::getFunctionName(uint64_t x) const
 {
     for(auto& s : this->function_symbol)
     {
         if(s.EA == x)
         {
-            return s.Name;
+            std::stringstream name;
+            name << s.Name;
+
+            if(this->getIsAmbiguousSymbol(x) == true)
+            {
+                name << "_" << std::hex << x;
+            }
+
+            return name.str();
         }
     }
 
@@ -646,16 +763,14 @@ std::string DisasmData::getGlobalSymbolName(uint64_t ea) const
 {
     for(const auto& s : this->symbol)
     {
-        if(boost::lexical_cast<uint64_t>(s[0]) == ea)
+        if(s.Base == ea)
         {
-            if(s[2] == std::string{"GLOBAL"})
+            if(s.Scope == std::string{"GLOBAL"})
             {
-                auto name = s[4];
-                name = DisasmData::CleanSymbolNameSuffix(name);
+                // %do not print labels for symbols that have to be relocated
+                auto name = DisasmData::CleanSymbolNameSuffix(s.Name);
 
                 /// \todo
-                // %do not print labels for symbols that have to be relocated
-                // clean_symbol_name_suffix(Name_symbol,Name),
                 // \+relocation(_,_,Name,_),
                 // \+reserved_symbol(Name),
                 // avoid_reg_name_conflics(Name,NameNew).
@@ -668,7 +783,7 @@ std::string DisasmData::getGlobalSymbolName(uint64_t ea) const
     return std::string{};
 }
 
-DisasmData::Instruction DisasmData::getInstructionAt(uint64_t ea) const
+Instruction DisasmData::getInstructionAt(uint64_t ea) const
 {
     const auto inst = std::find_if(std::begin(this->instruction), std::end(this->instruction),
                                    [ea](const auto& x) { return x.EA == ea; });
@@ -681,7 +796,14 @@ DisasmData::Instruction DisasmData::getInstructionAt(uint64_t ea) const
     return Instruction{};
 }
 
-void DisasmData::AdjustPadding(std::list<DisasmData::Block>& blocks)
+bool DisasmData::getIsAmbiguousSymbol(uint64_t ea) const
+{
+    const auto found =
+        std::find(std::begin(this->ambiguous_symbol), std::end(this->ambiguous_symbol), ea);
+    return found != std::end(this->ambiguous_symbol);
+}
+
+void DisasmData::AdjustPadding(std::list<Block>& blocks)
 {
     for(auto i = std::begin(blocks); i != std::end(blocks); ++i)
     {
@@ -713,35 +835,75 @@ std::string DisasmData::CleanSymbolNameSuffix(std::string x)
 
 std::string DisasmData::AdaptOpcode(const std::string& x)
 {
-    if(x == std::string{"movsd2"})
+    const std::map<std::string, std::string> adapt{{"movsd2", "movsd"}, {"imul2", "imul"},
+                                                   {"imul3", "imul"},   {"imul1", "imul"},
+                                                   {"cmpsd3", "cmpsd"}, {"out_i", "out"}};
+
+    const auto found = adapt.find(x);
+    if(found != std::end(adapt))
     {
-        return std::string{"movsd"};
+        return found->second;
     }
 
-    if(x == std::string{"imul2"})
+    return x;
+}
+
+std::string DisasmData::AdaptRegister(const std::string& x)
+{
+    const std::map<std::string, std::string> adapt{
+        {"R8L", "R8B"},   {"R9L", "R9B"},   {"R10L", "R10B"}, {"R11L", "R11B"}, {"R12L", "R12B"},
+        {"R13L", "R13B"}, {"R14L", "R14B"}, {"R15L", "R15B"}, {"R12L", "R12B"}, {"R13L", "R13B"},
+        {"ST0", "ST(0)"}, {"ST1", "ST(1)"}, {"ST2", "ST(2)"}, {"ST3", "ST(3)"}, {"ST4", "ST(4)"},
+        {"ST5", "ST(5)"}, {"ST6", "ST(6)"}, {"ST7", "ST(7)"}};
+
+    const auto found = adapt.find(x);
+    if(found != std::end(adapt))
     {
-        return std::string{"imul"};
+        return found->second;
     }
 
-    if(x == std::string{"imul3"})
+    return x;
+}
+
+std::string DisasmData::GetSizeName(uint64_t x)
+{
+    return DisasmData::GetSizeName(std::to_string(x));
+}
+
+std::string DisasmData::GetSizeName(const std::string& x)
+{
+    const std::map<std::string, std::string> adapt{
+        {"128", ""},         {"0", ""},          {"80", "TBYTE PTR"}, {"64", "QWORD PTR"},
+        {"32", "DWORD PTR"}, {"16", "WORD PTR"}, {"8", "BYTE PTR"}};
+
+    const auto found = adapt.find(x);
+    if(found != std::end(adapt))
     {
-        return std::string{"imul"};
+        return found->second;
     }
 
-    if(x == std::string{"imul1"})
+    assert("Unknown Size");
+
+    return x;
+}
+
+std::string DisasmData::GetSizeSuffix(uint64_t x)
+{
+    return DisasmData::GetSizeSuffix(std::to_string(x));
+}
+
+std::string DisasmData::GetSizeSuffix(const std::string& x)
+{
+    const std::map<std::string, std::string> adapt{
+        {"128", ""}, {"0", ""}, {"80", "t"}, {"64", "q"}, {"32", "d"}, {"16", "w"}, {"8", "b"}};
+
+    const auto found = adapt.find(x);
+    if(found != std::end(adapt))
     {
-        return std::string{"imul"};
+        return found->second;
     }
 
-    if(x == std::string{"cmpsd3"})
-    {
-        return std::string{"cmpsd"};
-    }
-
-    if(x == std::string{"out_i"})
-    {
-        return std::string{"out"};
-    }
+    assert("Unknown Size");
 
     return x;
 }
