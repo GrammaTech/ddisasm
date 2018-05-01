@@ -206,7 +206,7 @@ struct Relocation
         this->EA = boost::lexical_cast<uint64_t>(x[0]);
         this->Label = x[1];
         this->Name = x[2];
-        this->Offset = boost::lexical_cast<uint64_t>(x[0]);
+        this->Offset = boost::lexical_cast<uint64_t>(x[3]);
     };
 
     uint64_t EA{0};
@@ -332,7 +332,7 @@ struct SymbolicOperand
         assert(x.size() == 2);
 
         this->EA = boost::lexical_cast<uint64_t>(x[0]);
-        this->OpNum = boost::lexical_cast<uint64_t>(x[0]);
+        this->OpNum = boost::lexical_cast<uint64_t>(x[1]);
     };
 
     uint64_t EA{0};
@@ -351,9 +351,75 @@ struct SymbolicData
         assert(x.size() == 2);
 
         this->EA = boost::lexical_cast<uint64_t>(x[0]);
-        this->GroupContent = boost::lexical_cast<uint64_t>(x[0]);
+        this->GroupContent = boost::lexical_cast<uint64_t>(x[1]);
     };
 
     uint64_t EA{0};
     uint64_t GroupContent{0};
+};
+
+///
+///
+///
+struct SymbolMinusSymbol
+{
+    SymbolMinusSymbol() = default;
+
+    SymbolMinusSymbol(const std::vector<std::string>& x)
+    {
+        assert(x.size() == 3);
+
+        this->EA = boost::lexical_cast<uint64_t>(x[0]);
+        this->Symbol1 = boost::lexical_cast<uint64_t>(x[1]);
+        this->Symbol2 = boost::lexical_cast<uint64_t>(x[2]);
+    };
+
+    uint64_t EA{0};
+    uint64_t Symbol1{0};
+    uint64_t Symbol2{0};
+};
+
+///
+///
+///
+struct MovedDataLabel
+{
+    MovedDataLabel() = default;
+
+    MovedDataLabel(const std::vector<std::string>& x)
+    {
+        assert(x.size() == 3);
+
+        this->EA = boost::lexical_cast<uint64_t>(x[0]);
+        this->Content = boost::lexical_cast<uint64_t>(x[1]);
+        this->Printed = x[2];
+    };
+
+    uint64_t EA{0};
+    uint64_t Content{0};
+    std::string Printed;
+};
+
+///
+/// "String" is a bad name for this data type. 
+///
+struct String
+{
+    String() = default;
+
+    String(const std::vector<std::string>& x)
+    {
+        assert(x.size() == 2);
+
+        this->EA = boost::lexical_cast<uint64_t>(x[0]);
+        this->End = boost::lexical_cast<uint64_t>(x[1]);
+    };
+
+    uint64_t size() const
+    {
+    	return this->End - this->EA;
+    }
+
+    uint64_t EA{0};
+    uint64_t End{0};
 };

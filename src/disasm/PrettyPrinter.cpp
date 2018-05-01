@@ -303,3 +303,35 @@ bool PrettyPrinter::skipEA(const uint64_t x) const
 
     return false;
 }
+
+std::string PrettyPrinter::avoidRegNameConflicts(const std::string& x)
+{
+    const std::vector<std::string> adapt{"FS",  "MOD", "DIV", "NOT", "mod",
+                                         "div", "not", "and", "or"};
+
+    const auto found = std::find(std::begin(adapt), std::end(adapt), x);
+    if(found != std::end(adapt))
+    {
+        return x + "_renamed";
+    }
+
+    return x;
+}
+
+void PrettyPrinter::printZeros(uint64_t x)
+{
+    for(uint64_t i = 0; i < x; i++)
+    {
+        this->ofs << ".byte 0x00" << std::endl;
+    }
+}
+
+int64_t PrettyPrinter::GetNeededPadding(int64_t alignment, int64_t currentAlignment, int64_t requiredAlignment)
+{
+    if(alignment >= currentAlignment)
+    {
+        return alignment - currentAlignment;
+    }
+
+    return (alignment + requiredAlignment) - currentAlignment;
+}

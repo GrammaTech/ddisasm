@@ -43,6 +43,14 @@ protected:
 
     bool skipEA(const uint64_t x) const;
 
+    // % avoid_reg_name_conflics
+    std::string avoidRegNameConflicts(const std::string& x);
+    void printZeros(uint64_t x);
+
+    // Static utility functions.
+
+    static int64_t GetNeededPadding(int64_t alignment, int64_t currentAlignment, int64_t requiredAlignment);
+
 private:
     DisasmData* disasm{nullptr};
     std::stringstream ofs;

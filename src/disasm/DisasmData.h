@@ -93,9 +93,9 @@ public:
     std::vector<MovedLabel>* getMovedLabel();
     std::vector<uint64_t>* getLabeledData();
     std::vector<SymbolicData>* getSymbolicData();
-    Table* getSymbolMinusSymbol();
-    Table* getMovedDataLabel();
-    Table* getString();
+    std::vector<SymbolMinusSymbol>* getSymbolMinusSymbol();
+    std::vector<MovedDataLabel>* getMovedDataLabel();
+    std::vector<String>* getString();
     std::vector<uint64_t>* getBSSData();
     Table* getStackOperand();
     Table* getPreferredDataAccess();
@@ -125,6 +125,7 @@ public:
     static std::string AdaptRegister(const std::string& x);
     static std::string GetSizeName(uint64_t x);
     static std::string GetSizeName(const std::string& x);
+    static std::string GetSizeSuffix(const OpIndirect& x);
     static std::string GetSizeSuffix(uint64_t x);
     static std::string GetSizeSuffix(const std::string& x);
 
@@ -154,9 +155,9 @@ private:
     std::vector<MovedLabel> moved_label;
     std::vector<uint64_t> labeled_data;
     std::vector<SymbolicData> symbolic_data;
-    Table symbol_minus_symbol{3};
-    Table moved_data_label{3};
-    Table string{2};
+    std::vector<SymbolMinusSymbol> symbol_minus_symbol;
+    std::vector<MovedDataLabel> moved_data_label;
+    std::vector<String> string;
     std::vector<uint64_t> bss_data;
 
     // these facts are only used for generating hints
