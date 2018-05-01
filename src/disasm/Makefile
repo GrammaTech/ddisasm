@@ -3,7 +3,7 @@ STANDALONE=./../../standalone_compilation
 CC=gcc
 CFLAGS=-c -Werror -Wall -Wpointer-arith -Wshadow -Wno-unused-local-typedefs -fvisibility=hidden -g3 -m32 -march=i686 -mtune=generic -pthread -std=c++1y -std=c++1y -Wno-shadow -Wno-shadow -O0 
 INCLUDE= -I $(STANDALONE)/include/ -I ./../../
-SOURCES= disasm.cpp Table.cpp
+SOURCES= DisasmData.cpp Table.cpp PrettyPrinter.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 LDFLAGS= -fvisibility=hidden -m32 -march=i686 -mtune=generic -static-libgcc -Wl,--exclude-libs,libstdc++.a
 LINK= -L$(STANDALONE)/lib -L.  -lstring  -ldetcheck -lisax_thin_decoder_x64 -ltsl_rtg_x64 -ltsl_rtg_generic  -lm -lisax_core_x64 -lisax -lboost_program_options -lstdc++ -lpthread

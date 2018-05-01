@@ -1,4 +1,5 @@
-#include "disasm.h"
+#include "DisasmData.h"
+#include "PrettyPrinter.h"
 #include <iostream>
 #include <boost/program_options.hpp>
 #include <iomanip>
@@ -21,7 +22,7 @@ int main(int argc, char** argv)
     	return 1;
 	}
 
-	Disasm disasm;
+	DisasmData disasm;
 
 	if(vm.count("dir")) 
 	{
@@ -30,10 +31,14 @@ int main(int argc, char** argv)
 		disasm.parseDirectory(value);
 	} 
 
-	if(vm.count("asm")) 
-	{
-    	auto value = vm["asm"].as<std::string>();
-		std::cerr << std::setw(24) << std::left << "Saving ASM: " << "\"" << value << "\"" << std::endl;
-    	disasm.prettyPrint(value);
-	}
+	//if(vm.count("asm")) 
+	//{
+    //	auto value = vm["asm"].as<std::string>();
+	//	std::cerr << std::setw(24) << std::left << "Saving ASM: " << "\"" << value << "\"" << std::endl;
+
+		PrettyPrinter pp;
+		auto assembly = pp.prettyPrint(&disasm);
+
+		std::cout << assembly << std::endl;
+	//}
 }
