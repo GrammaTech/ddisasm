@@ -29,7 +29,7 @@ public:
 
 protected:
     void printBar(bool heavy = true);
-    void printBlock(const DisasmData::Block& x);
+    void printBlock(const Block& x);
     void printEA(uint64_t ea);
     void printFunctionHeader(uint64_t ea);
     void printHeader();
@@ -39,7 +39,7 @@ protected:
     void printSectionHeader(const std::string& x);
 
     void condPrintGlobalSymbol(uint64_t ea);
-    void condPrintSectionHeader(const DisasmData::Block& x);
+    void condPrintSectionHeader(const Block& x);
 
     bool skipEA(const uint64_t x) const;
 

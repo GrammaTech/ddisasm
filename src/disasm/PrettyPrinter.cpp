@@ -12,20 +12,24 @@
 class BlockAreaComment
 {
 public:
-	BlockAreaComment(std::stringstream& ss, std::string m) : ofs{ss}, message{std::move(m)}
-	{
-		ofs << std::endl;
-		ofs << "# BEGIN - " << this->message << std::endl;
-	}
+    BlockAreaComment(std::stringstream& ss, std::string m, std::function<void()> f = []() {})
+        : ofs{ss}, message{std::move(m)}, func{std::move(f)}
+    {
+        ofs << std::endl;
+        ofs << "# BEGIN - " << this->message << std::endl;
+        func();
+    }
 
-	~BlockAreaComment()
-	{
-		ofs << "# END   - " << this->message << std::endl;
-		ofs << std::endl;
-	}
+    ~BlockAreaComment()
+    {
+        func();
+        ofs << "# END   - " << this->message << std::endl;
+        ofs << std::endl;
+    }
 
-	std::stringstream& ofs;
-	const std::string message;
+    std::stringstream& ofs;
+    const std::string message;
+    std::function<void()> func;
 };
 
 std::string str_tolower(std::string s)
@@ -65,7 +69,6 @@ std::string PrettyPrinter::prettyPrint(DisasmData* x)
 
     if(this->getDebug() == true)
     {
-        std::cerr << "DEBUG: Adjusting Padding." << std::endl;
         DisasmData::AdjustPadding(blocks);
     }
 
@@ -93,7 +96,7 @@ void PrettyPrinter::printHeader()
     this->ofs << "nop" << std::endl;
 }
 
-void PrettyPrinter::printBlock(const DisasmData::Block& x)
+void PrettyPrinter::printBlock(const Block& x)
 {
     if(this->skipEA(x.StartingAddress) == false)
     {
@@ -114,17 +117,17 @@ void PrettyPrinter::printBlock(const DisasmData::Block& x)
             this->ofs << std::endl;
 
             const auto bac = BlockAreaComment(this->ofs, "No instruciton padding.");
-            
+
             // Fill in the correct number of nops.
             for(uint64_t i = 0; i < nopCount; ++i)
             {
-            	this->printInstructionNop();
+                this->printInstructionNop();
             }
         }
     }
 }
 
-void PrettyPrinter::condPrintSectionHeader(const DisasmData::Block& x)
+void PrettyPrinter::condPrintSectionHeader(const Block& x)
 {
     const auto sections = this->disasm->getSection();
 
@@ -174,7 +177,8 @@ void PrettyPrinter::printFunctionHeader(uint64_t ea)
 
     if(name.empty() == false)
     {
-        this->printBar(false);
+        const auto bac =
+            BlockAreaComment(this->ofs, "Function Header", [this]() { this->printBar(false); });
 
         // enforce maximum alignment
         if(ea % 8 == 0)
@@ -189,8 +193,6 @@ void PrettyPrinter::printFunctionHeader(uint64_t ea)
         this->ofs << ".globl " << name << std::endl;
         this->ofs << ".type " << name << ", @function" << std::endl;
         this->ofs << name << ":" << std::endl;
-
-        this->printBar(false);
     }
 }
 
@@ -207,7 +209,7 @@ void PrettyPrinter::condPrintGlobalSymbol(uint64_t ea)
     if(name.empty() == false)
     {
         this->ofs << ".globl " << name << std::endl;
-        this->ofs << "~p:" << name << std::endl;
+        this->ofs << name << ":" << std::endl;
     }
 }
 
