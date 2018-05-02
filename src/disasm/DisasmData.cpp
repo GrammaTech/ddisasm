@@ -155,6 +155,8 @@ void DisasmData::parseDataByte(const std::string& x)
         this->data_byte.push_back(DataByte(ff));
     }
 
+    std::sort(std::begin(this->data_byte), std::end(this->data_byte));
+
     std::cerr << " # Number of data_byte: " << this->data_byte.size() << std::endl;
 }
 
@@ -842,6 +844,45 @@ const PLTReference* const DisasmData::getPLTReference(uint64_t ea) const
     return nullptr;
 }
 
+const SymbolicData* const DisasmData::getSymbolicData(uint64_t ea) const
+{
+    const auto found = std::find_if(std::begin(this->symbolic_data), std::end(this->symbolic_data),
+                                    [ea](const auto& element) { return element.EA == ea; });
+
+    if(found != std::end(this->symbolic_data))
+    {
+        return &(*found);
+    }
+
+    return nullptr;
+}
+
+const SymbolMinusSymbol* const DisasmData::getSymbolMinusSymbol(uint64_t ea) const
+{
+    const auto found = std::find_if(std::begin(this->symbol_minus_symbol), std::end(this->symbol_minus_symbol),
+                                    [ea](const auto& element) { return element.EA == ea; });
+
+    if(found != std::end(this->symbol_minus_symbol))
+    {
+        return &(*found);
+    }
+
+    return nullptr;
+}
+
+const String* const DisasmData::getString(uint64_t ea) const
+{
+    const auto found = std::find_if(std::begin(this->string), std::end(this->string),
+                                    [ea](const auto& element) { return element.EA == ea; });
+
+    if(found != std::end(this->string))
+    {
+        return &(*found);
+    }
+
+    return nullptr;
+}
+
 const DirectCall* const DisasmData::getDirectCall(uint64_t ea) const
 {
     const auto found = std::find_if(std::begin(this->direct_call), std::end(this->direct_call),
@@ -861,6 +902,19 @@ const MovedLabel* const DisasmData::getMovedLabel(uint64_t ea) const
                                     [ea](const auto& element) { return element.EA == ea; });
 
     if(found != std::end(this->moved_label))
+    {
+        return &(*found);
+    }
+
+    return nullptr;
+}
+
+const MovedDataLabel* const DisasmData::getMovedDataLabel(uint64_t ea) const
+{
+    const auto found = std::find_if(std::begin(this->moved_data_label), std::end(this->moved_data_label),
+                                    [ea](const auto& element) { return element.EA == ea; });
+
+    if(found != std::end(this->moved_data_label))
     {
         return &(*found);
     }
