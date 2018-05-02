@@ -118,12 +118,16 @@ public:
     std::string getGlobalSymbolReference(uint64_t ea) const;
     std::string getGlobalSymbolName(uint64_t ea) const;
     const PLTReference* const getPLTReference(uint64_t ea) const;
+    const SymbolicData* const getSymbolicData(uint64_t ea) const;
+    const SymbolMinusSymbol* const getSymbolMinusSymbol(uint64_t ea) const;
+    const String* const getString(uint64_t ea) const;
     const DirectCall* const getDirectCall(uint64_t ea) const;
     const Instruction* const getInstruction(uint64_t ea) const;
     const OpIndirect* const getOpIndirect(uint64_t x) const;
     const OpRegdirect* const getOpRegdirect(uint64_t x) const;
     const OpImmediate* const getOpImmediate(uint64_t x) const;
     const MovedLabel* const getMovedLabel(uint64_t x) const;
+    const MovedDataLabel* const getMovedDataLabel(uint64_t x) const;
     const Relocation* const getRelocation(const std::string& x) const;
     const SymbolicOperand* const getSymbolicOperand(uint64_t x, uint64_t opNum) const;
 

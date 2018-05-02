@@ -1,4 +1,5 @@
 #include "PrettyPrinter.h"
+#include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/lexical_cast.hpp>
 #include <iomanip>
@@ -84,6 +85,9 @@ std::string PrettyPrinter::prettyPrint(DisasmData* x)
         this->printBlock(b);
     }
 
+    this->buildDataGroups();
+    this->printDataGroups();
+
     return this->ofs.str();
 }
 
@@ -109,6 +113,7 @@ void PrettyPrinter::printBlock(const Block& x)
             this->condPrintSectionHeader(x);
             this->printFunctionHeader(x.StartingAddress);
             this->printLabel(x.StartingAddress);
+            this->ofs << std::endl;
 
             for(auto inst : x.Instructions)
             {
@@ -145,7 +150,7 @@ void PrettyPrinter::condPrintSectionHeader(const Block& x)
     }
 }
 
-void PrettyPrinter::printSectionHeader(const std::string& x)
+void PrettyPrinter::printSectionHeader(const std::string& x, uint64_t alignment)
 {
     ofs << std::endl;
     this->printBar();
@@ -157,6 +162,11 @@ void PrettyPrinter::printSectionHeader(const std::string& x)
     else
     {
         this->ofs << PrettyPrinter::StrSection << " " << x << std::endl;
+
+        if(alignment != 0)
+        {
+            this->ofs << ".align " << alignment << std::endl;
+        }
     }
 
     this->printBar();
@@ -203,7 +213,7 @@ void PrettyPrinter::printFunctionHeader(uint64_t ea)
 void PrettyPrinter::printLabel(uint64_t ea)
 {
     this->condPrintGlobalSymbol(ea);
-    this->ofs << ".L_" << std::hex << ea << ":" << std::endl;
+    this->ofs << ".L_" << std::hex << ea << ":" << std::dec;
 }
 
 void PrettyPrinter::condPrintGlobalSymbol(uint64_t ea)
@@ -244,7 +254,7 @@ void PrettyPrinter::printEA(uint64_t ea)
 
     if(this->getDebug() == true)
     {
-        this->ofs << std::hex << ea << ": ";
+        this->ofs << std::hex << ea << ": " << std::dec;
     }
 }
 
@@ -365,6 +375,7 @@ std::string PrettyPrinter::buildOpIndirect(const OpIndirect* const op, uint64_t 
         return "[" + term + "]";
     };
 
+    // Case 1
     if(op->Offset == 0)
     {
         if(PrettyPrinter::GetIsNullReg(op->SReg) && PrettyPrinter::GetIsNullReg(op->Reg1)
@@ -374,6 +385,7 @@ std::string PrettyPrinter::buildOpIndirect(const OpIndirect* const op, uint64_t 
         }
     }
 
+    // Case 2
     if(op->Reg1 == std::string{"RIP"} && op->Multiplier == 1)
     {
         if(PrettyPrinter::GetIsNullReg(op->SReg) && PrettyPrinter::GetIsNullReg(op->Reg2))
@@ -398,6 +410,7 @@ std::string PrettyPrinter::buildOpIndirect(const OpIndirect* const op, uint64_t 
         }
     }
 
+    // Case 3
     if(PrettyPrinter::GetIsNullReg(op->Reg1) == false
        && PrettyPrinter::GetIsNullReg(op->Reg2) == true && op->Offset == 0)
     {
@@ -405,65 +418,383 @@ std::string PrettyPrinter::buildOpIndirect(const OpIndirect* const op, uint64_t 
         return sizeName + " " + putSegmentRegister(adapted);
     }
 
-    return std::string{};
+    // Case 4
+    if(PrettyPrinter::GetIsNullReg(op->Reg1) == true
+       && PrettyPrinter::GetIsNullReg(op->Reg2) == true)
+    {
+        auto symbol = this->disasm->getGlobalSymbolReference(op->Offset);
+        if(symbol.empty() == false)
+        {
+            return sizeName + putSegmentRegister(symbol);
+        }
+
+        auto offsetAndSign = this->getOffsetAndSign(op->Offset, ea, index);
+        std::string term = std::string{offsetAndSign.second} + offsetAndSign.first;
+        return sizeName + " " + putSegmentRegister(term);
+    }
+
+    // Case 5
+    if(PrettyPrinter::GetIsNullReg(op->Reg2) == true)
+    {
+        auto adapted = DisasmData::AdaptRegister(op->Reg1);
+        auto offsetAndSign = this->getOffsetAndSign(op->Offset, ea, index);
+        std::string term = adapted + std::string{offsetAndSign.second} + offsetAndSign.first;
+        return sizeName + " " + putSegmentRegister(term);
+    }
+
+    // Case 6
+    if(PrettyPrinter::GetIsNullReg(op->Reg1) == true)
+    {
+        auto adapted = DisasmData::AdaptRegister(op->Reg2);
+        auto offsetAndSign = this->getOffsetAndSign(op->Offset, ea, index);
+        std::string term = adapted + "*" + std::to_string(op->Multiplier)
+                           + std::string{offsetAndSign.second} + offsetAndSign.first;
+        return sizeName + " " + putSegmentRegister(term);
+    }
+
+    // Case 7
+    if(op->Offset == 0)
+    {
+        auto adapted1 = DisasmData::AdaptRegister(op->Reg1);
+        auto adapted2 = DisasmData::AdaptRegister(op->Reg2);
+        std::string term = adapted1 + "+" + adapted2 + "*" + std::to_string(op->Multiplier);
+        return sizeName + " " + putSegmentRegister(term);
+    }
+
+    // Case 8
+    auto adapted1 = DisasmData::AdaptRegister(op->Reg1);
+    auto adapted2 = DisasmData::AdaptRegister(op->Reg2);
+    auto offsetAndSign = this->getOffsetAndSign(op->Offset, ea, index);
+    std::string term = adapted1 + "+" + adapted2 + "*" + std::to_string(op->Multiplier)
+                       + std::string{offsetAndSign.second} + offsetAndSign.first;
+    return sizeName + " " + putSegmentRegister(term);
+}
+
+std::string PrettyPrinter::buildAdjustMovedDataLabel(uint64_t ea, uint64_t value)
+{
+    std::stringstream ss;
+    ss << ".L_" << std::hex << value;
+
+    auto moved = this->disasm->getMovedDataLabel(ea);
+    if(moved != nullptr)
+    {
+        assert(value == moved->Old);
+
+        auto diff = value - moved->New;
+        ss << "+" << diff << std::dec;
+    }
+
+    return ss.str();
+}
+
+void PrettyPrinter::buildDataGroups()
+{
+    for(auto s : *this->disasm->getSection())
+    {
+        const auto foundDataSection =
+            std::find_if(std::begin(DataSectionDescriptors), std::end(DataSectionDescriptors),
+                         [s](const auto& dsd) { return dsd.first == s.Name; });
+
+        const auto foundSkipSection = std::find(std::begin(PrettyPrinter::AsmSkipSection),
+                                                std::end(PrettyPrinter::AsmSkipSection), s.Name);
+
+        if(foundDataSection != std::end(DataSectionDescriptors)
+           && (foundSkipSection == std::end(PrettyPrinter::AsmSkipSection) || this->debug == true))
+        {
+            DataSection dataSection;
+            dataSection.SectionPtr = s;
+            dataSection.Alignment = foundDataSection->second;
+
+            const uint64_t startingAddress = s.StartingAddress;
+            std::vector<uint8_t> bytes;
+
+            auto dataBytes = this->disasm->getDataByte();
+            auto dataIt = std::find(std::begin(*dataBytes), std::end(*dataBytes), startingAddress);
+
+            for(size_t i = 0; i < s.Size; ++i)
+            {
+                bytes.push_back(dataIt->Content);
+                ++dataIt;
+            }
+
+            for(auto currentAddr = startingAddress; currentAddr < startingAddress + s.Size;
+                currentAddr++)
+            {
+                // Insert a marker for labeled data?
+                const auto foundLabeledData =
+                    std::find(std::begin(*this->disasm->getLabeledData()),
+                              std::end(*this->disasm->getLabeledData()), currentAddr);
+                if(foundLabeledData != std::end(*this->disasm->getLabeledData()))
+                {
+                    auto dataGroup = std::make_unique<DataGroupLabelMarker>(currentAddr);
+                    dataSection.DataGroups.push_back(std::move(dataGroup));
+                }
+
+                // Case 1, 2, 3
+                const auto symbolic = this->disasm->getSymbolicData(currentAddr);
+                if(symbolic != nullptr)
+                {
+                    // Case 1
+                    const auto pltReference = this->disasm->getPLTReference(currentAddr);
+                    if(pltReference != nullptr)
+                    {
+                        auto dataGroup = std::make_unique<DataGroupPLTReference>(currentAddr);
+                        dataGroup->Function = pltReference->Name;
+                        dataSection.DataGroups.push_back(std::move(dataGroup));
+
+                        currentAddr += 7;
+                        continue;
+                    }
+
+                    // Case 2, 3
+                    // There was no PLT Reference and there was no label found.
+                    auto dataGroup = std::make_unique<DataGroupPointer>(currentAddr);
+                    dataGroup->Content = symbolic->GroupContent;
+                    dataSection.DataGroups.push_back(std::move(dataGroup));
+
+                    currentAddr += 7;
+                    continue;
+                }
+
+                // Case 4, 5
+                const auto symMinusSym = this->disasm->getSymbolMinusSymbol(currentAddr);
+                if(symMinusSym != nullptr)
+                {
+                    // Case 4, 5
+                    auto dataGroup = std::make_unique<DataGroupPointerDiff>(currentAddr);
+                    dataGroup->Symbol1 = symMinusSym->Symbol1;
+                    dataGroup->Symbol2 = symMinusSym->Symbol2;
+                    dataSection.DataGroups.push_back(std::move(dataGroup));
+
+                    currentAddr += 3;
+                    continue;
+                }
+
+                // Case 6
+                const auto str = this->disasm->getString(currentAddr);
+                if(str != nullptr)
+                {
+                    auto dataGroup = std::make_unique<DataGroupString>(currentAddr);
+
+                    for(; currentAddr < str->End; ++currentAddr)
+                    {
+                        dataGroup->StringBytes.push_back(bytes[currentAddr - startingAddress]);
+                    }
+
+                    // Because the loop is going to increment this counter, don't skip a byte.
+                    currentAddr--;
+                    dataSection.DataGroups.push_back(std::move(dataGroup));
+                    continue;
+                }
+
+                // Store raw data
+                auto dataGroup = std::make_unique<DataGroupRawByte>(currentAddr);
+                dataGroup->Byte = bytes[currentAddr - startingAddress];
+                dataSection.DataGroups.push_back(std::move(dataGroup));
+            }
+
+            this->dataSections.push_back(std::move(dataSection));
+        }
+    }
+}
+
+void PrettyPrinter::printDataGroups()
+{
+    for(const auto& ds : this->dataSections)
+    {
+        // Print section header...
+        this->printSectionHeader(ds.SectionPtr.Name, ds.Alignment);
+
+        // Print data for this section...
+        for(auto dg = std::begin(ds.DataGroups); dg != std::end(ds.DataGroups); ++dg)
+        {
+            bool exclude = false;
+
+            if(ds.SectionPtr.Name == ".init_array" || ds.SectionPtr.Name == ".fini_array")
+            {
+                auto dgNext = dg;
+                dgNext++;
+
+                if(dgNext != std::end(ds.DataGroups))
+                {
+                    exclude = this->getIsPointerToExcludedCode(dg->get(), dgNext->get());
+                }
+                else
+                {
+                    exclude = this->getIsPointerToExcludedCode(dg->get(), nullptr);
+                }
+            }
+
+            if(exclude == false)
+            {
+                switch((*dg)->getType())
+                {
+                    case DataGroup::Type::LabelMarker:
+                        this->printDataGroupLabelMarker(
+                            dynamic_cast<const DataGroupLabelMarker* const>(dg->get()));
+                        break;
+                    case DataGroup::Type::PLTReference:
+                        this->ofs << PrettyPrinter::StrTab;
+                        this->printDataGroupPLTReference(
+                            dynamic_cast<const DataGroupPLTReference* const>(dg->get()));
+                        break;
+                    case DataGroup::Type::Pointer:
+                        this->ofs << PrettyPrinter::StrTab;
+                        this->printDataGroupPointer(
+                            dynamic_cast<const DataGroupPointer* const>(dg->get()));
+                        break;
+                    case DataGroup::Type::PointerDiff:
+                        this->ofs << PrettyPrinter::StrTab;
+                        this->printDataGroupPointerDiff(
+                            dynamic_cast<const DataGroupPointerDiff* const>(dg->get()));
+                        break;
+                    case DataGroup::Type::String:
+                        this->ofs << PrettyPrinter::StrTab;
+                        this->printDataGroupString(
+                            dynamic_cast<const DataGroupString* const>(dg->get()));
+                        break;
+                    case DataGroup::Type::RawByte:
+                        this->ofs << PrettyPrinter::StrTab;
+                        this->printDataGroupRawByte(
+                            dynamic_cast<const DataGroupRawByte* const>(dg->get()));
+                        break;
+                }
+
+                // Print Comments...
+
+                // Done.
+                this->ofs << std::endl;
+            }
+        }
+
+        // End label
+        const auto endAddress = ds.SectionPtr.StartingAddress + ds.SectionPtr.Size;
+        if(this->disasm->getSectionName(endAddress).empty() == true)
+        {
+            // This is no the start of a new section, so print the label.
+            this->printLabel(endAddress);
+            this->ofs << std::endl;
+        }
+    }
+}
+
+void PrettyPrinter::printDataGroupLabelMarker(const DataGroupLabelMarker* const x)
+{
+    this->printLabel(x->getEA());
+}
+
+void PrettyPrinter::printDataGroupPLTReference(const DataGroupPLTReference* const x)
+{
+    this->printEA(x->getEA());
+    this->ofs << ".quad " << x->Function;
+}
+
+void PrettyPrinter::printDataGroupPointer(const DataGroupPointer* const x)
+{
+    auto printed = this->buildAdjustMovedDataLabel(x->getEA(), x->Content);
+    this->ofs << ".quad " << printed;
+}
+
+void PrettyPrinter::printDataGroupPointerDiff(const DataGroupPointerDiff* const x)
+{
+    this->printEA(x->getEA());
+    ofs << ".long .L_" << x->Symbol2 << "-" << x->Symbol1;
+}
+
+void PrettyPrinter::printDataGroupString(const DataGroupString* const x)
+{
+    auto cleanByte = [](uint8_t b) {
+        std::string cleaned;
+        cleaned += b;
+
+        cleaned = boost::replace_all_copy(cleaned, "\n", "\\n");
+        cleaned = boost::replace_all_copy(cleaned, "\t", "\\t");
+        cleaned = boost::replace_all_copy(cleaned, "\v", "\\v");
+        cleaned = boost::replace_all_copy(cleaned, "\b", "\\b");
+        cleaned = boost::replace_all_copy(cleaned, "\r", "\\r");
+        cleaned = boost::replace_all_copy(cleaned, "\a", "\\a");
+        cleaned = boost::replace_all_copy(cleaned, "\\", "\\\\");
+        cleaned = boost::replace_all_copy(cleaned, "\"", "\\\"");
+        cleaned = boost::replace_all_copy(cleaned, "\0", "\\0");
+
+        return cleaned;
+    };
+
+    this->ofs << ".string \"";
+
+    for(auto& b : x->StringBytes)
+    {
+        this->ofs << cleanByte(b);
+    }
+
+    this->ofs << "\"";
+}
+
+void PrettyPrinter::printDataGroupRawByte(const DataGroupRawByte* const x)
+{
+    ofs << ".byte 0x" << std::hex << static_cast<uint32_t>(x->Byte) << std::dec;
 }
 
 bool PrettyPrinter::skipEA(const uint64_t x) const
 {
-    const auto sections = this->disasm->getSection();
-
-    for(const auto& s : *sections)
+    if(this->debug == false)
     {
-        const auto found = std::find(std::begin(PrettyPrinter::AsmSkipSection),
-                                     std::end(PrettyPrinter::AsmSkipSection), s.Name);
+        const auto sections = this->disasm->getSection();
 
-        if(found != std::end(PrettyPrinter::AsmSkipSection))
+        for(const auto& s : *sections)
         {
-            const auto isSkipped = ((x >= s.StartingAddress) && (x < (s.StartingAddress + s.Size)));
+            const auto found = std::find(std::begin(PrettyPrinter::AsmSkipSection),
+                                         std::end(PrettyPrinter::AsmSkipSection), s.Name);
 
-            if(isSkipped == true)
+            if(found != std::end(PrettyPrinter::AsmSkipSection))
             {
-                return true;
+                const auto isSkipped =
+                    ((x >= s.StartingAddress) && (x < (s.StartingAddress + s.Size)));
+
+                if(isSkipped == true)
+                {
+                    return true;
+                }
             }
         }
-    }
 
-    uint64_t xFunctionAddress{0};
-    const auto functionEntries = this->disasm->getFunctionEntry();
+        uint64_t xFunctionAddress{0};
+        const auto functionEntries = this->disasm->getFunctionEntry();
 
-    for(auto fe = std::begin(*functionEntries); fe != std::end(*functionEntries); ++fe)
-    {
-        auto feNext = fe;
-        feNext++;
-
-        if(x >= *fe && x < *feNext)
+        for(auto fe = std::begin(*functionEntries); fe != std::end(*functionEntries); ++fe)
         {
-            xFunctionAddress = *fe;
-            continue;
+            auto feNext = fe;
+            feNext++;
+
+            if(x >= *fe && x < *feNext)
+            {
+                xFunctionAddress = *fe;
+                continue;
+            }
         }
-    }
 
-    std::string xFunctionName{};
-    const auto functionSymbols = this->disasm->getFunctionSymbol();
+        std::string xFunctionName{};
+        const auto functionSymbols = this->disasm->getFunctionSymbol();
 
-    for(auto& fs : *functionSymbols)
-    {
-        if(fs.EA == xFunctionAddress)
+        for(auto& fs : *functionSymbols)
         {
-            xFunctionName = fs.Name;
-            continue;
+            if(fs.EA == xFunctionAddress)
+            {
+                xFunctionName = fs.Name;
+                continue;
+            }
         }
-    }
 
-    // if we have a function address.
-    // and that funciton address has a name.
-    // is that name in our skip list?
+        // if we have a function address.
+        // and that funciton address has a name.
+        // is that name in our skip list?
 
-    if(xFunctionName.empty() == false)
-    {
-        const auto found = std::find(std::begin(PrettyPrinter::AsmSkipFunction),
-                                     std::end(PrettyPrinter::AsmSkipFunction), xFunctionName);
-        return found != std::end(PrettyPrinter::AsmSkipFunction);
+        if(xFunctionName.empty() == false)
+        {
+            const auto found = std::find(std::begin(PrettyPrinter::AsmSkipFunction),
+                                         std::end(PrettyPrinter::AsmSkipFunction), xFunctionName);
+            return found != std::end(PrettyPrinter::AsmSkipFunction);
+        }
     }
 
     return false;
@@ -477,10 +808,79 @@ void PrettyPrinter::printZeros(uint64_t x)
     }
 }
 
+std::pair<std::string, char> PrettyPrinter::getOffsetAndSign(int64_t offset, uint64_t ea,
+                                                             uint64_t index) const
+{
+    std::pair<std::string, char> result = {"", '+'};
+
+    auto moveLabel = this->disasm->getMovedLabel(ea);
+    if(moveLabel != nullptr)
+    {
+        assert(moveLabel->Offset1 == offset);
+        auto diff = moveLabel->Offset1 - moveLabel->Offset2;
+        auto symOffset2 = GetSymbolToPrint(moveLabel->Offset2);
+
+        if(diff >= 0)
+        {
+            result.first = symOffset2 + "+" + std::to_string(diff);
+            result.second = '+';
+            return result;
+        }
+        else
+        {
+            result.first = symOffset2 + std::to_string(diff);
+            result.second = '+';
+            return result;
+        }
+    }
+
+    auto symbolicOperand = this->disasm->getSymbolicOperand(ea, index);
+    if(symbolicOperand != nullptr)
+    {
+        result.first = GetSymbolToPrint(offset);
+        result.second = '+';
+        return result;
+    }
+
+    if(offset < 0)
+    {
+        result.first = std::to_string(-offset);
+        result.second = '-';
+        return result;
+    }
+
+    result.first = std::to_string(offset);
+    result.second = '+';
+    return result;
+}
+
+bool PrettyPrinter::getIsPointerToExcludedCode(DataGroup* dg, DataGroup* dgNext)
+{
+    // If we have a label followed by a pointer.
+    auto dgLabel = dynamic_cast<DataGroupLabelMarker*>(dg);
+    if(dgLabel != nullptr)
+    {
+        auto dgPtr = dynamic_cast<DataGroupPointer*>(dgNext);
+        if(dgPtr != nullptr)
+        {
+            return this->skipEA(dgPtr->Content);
+        }
+    }
+
+    // Or if we just have a pointer...
+    auto dgPtr = dynamic_cast<DataGroupPointer*>(dg);
+    if(dgPtr != nullptr)
+    {
+        return this->skipEA(dgPtr->Content);
+    }
+
+    return false;
+}
+
 std::string PrettyPrinter::GetSymbolToPrint(uint64_t x)
 {
     std::stringstream ss;
-    ss << ".L_" << std::hex << x;
+    ss << ".L_" << std::hex << x << std::dec;
     return ss.str();
 }
 

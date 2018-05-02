@@ -274,6 +274,37 @@ struct DataByte
         this->Content = static_cast<uint8_t>(byte);
     };
 
+    bool operator<(const DataByte& x) const
+    {
+        return this->EA < x.EA;
+    }
+
+    bool operator<(const uint64_t x) const
+    {
+        return this->EA < x;
+    }
+
+    bool operator==(const DataByte& x) const
+    {
+        return this->EA == x.EA;
+    }
+
+    bool operator!=(const DataByte& x) const
+    {
+        return this->EA != x.EA;
+    }
+
+    bool operator==(const uint64_t x) const
+    {
+        return this->EA == x;
+    }
+
+    bool operator!=(const uint64_t x) const
+    {
+        return this->EA != x;
+    }
+
+
     uint64_t EA{0};
     uint8_t Content{0};
 };
@@ -391,13 +422,13 @@ struct MovedDataLabel
         assert(x.size() == 3);
 
         this->EA = boost::lexical_cast<uint64_t>(x[0]);
-        this->Content = boost::lexical_cast<uint64_t>(x[1]);
-        this->Printed = x[2];
+        this->Old = boost::lexical_cast<uint64_t>(x[1]);
+        this->New = boost::lexical_cast<uint64_t>(x[2]);
     };
 
     uint64_t EA{0};
-    uint64_t Content{0};
-    std::string Printed;
+    uint64_t Old{0};
+    uint64_t New{0};
 };
 
 ///
