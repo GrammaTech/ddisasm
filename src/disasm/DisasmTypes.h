@@ -131,20 +131,20 @@ struct OpIndirect
         assert(x.size() == 7);
 
         this->N = boost::lexical_cast<decltype(OpIndirect::N)>(x[0]);
-        this->Reg1 = x[1];
-        this->Reg2 = x[2];
-        this->Reg3 = x[3];
-        this->A = boost::lexical_cast<decltype(OpIndirect::A)>(x[4]);
-        this->B = boost::lexical_cast<decltype(OpIndirect::B)>(x[5]);
+        this->SReg = x[1];
+        this->Reg1 = x[2];
+        this->Reg2 = x[3];
+        this->Multiplier = boost::lexical_cast<decltype(OpIndirect::Multiplier)>(x[4]);
+        this->Offset = boost::lexical_cast<decltype(OpIndirect::Offset)>(x[5]);
         this->Size = boost::lexical_cast<decltype(OpIndirect::Size)>(x[6]);
     };
 
-    int64_t N{0};
+    uint64_t N{0};
+    std::string SReg;
     std::string Reg1;
     std::string Reg2;
-    std::string Reg3;
-    int64_t A{0};
-    int64_t B{0};
+    int64_t Multiplier{0};
+    int64_t Offset{0};
     uint64_t Size{0};
 };
 
@@ -290,11 +290,11 @@ struct DirectCall
         assert(x.size() == 2);
 
         this->EA = boost::lexical_cast<uint64_t>(x[0]);
-        this->Destination = boost::lexical_cast<int64_t>(x[1]);
+        this->Destination = boost::lexical_cast<uint64_t>(x[1]);
     };
 
     uint64_t EA{0};
-    int64_t Destination{0};
+    uint64_t Destination{0};
 };
 
 ///

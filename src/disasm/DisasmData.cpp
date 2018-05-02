@@ -707,8 +707,8 @@ std::list<Block> DisasmData::getCodeBlocks() const
         if(b.Instructions.empty() == false)
         {
             const auto address = b.Instructions.back();
-            const auto inst = this->getInstructionAt(address);
-            b.EndingAddress = address + inst.Size;
+            auto inst = this->getInstruction(address);
+            b.EndingAddress = address + inst->Size;
         }
         else
         {
@@ -780,6 +780,29 @@ std::string DisasmData::getFunctionName(uint64_t x) const
     return std::string{};
 }
 
+std::string DisasmData::getGlobalSymbolReference(uint64_t ea) const
+{
+    for(const auto& s : this->symbol)
+    {
+        /// \todo	This will need looked at again to cover the logic of get_global_symbol_ref.
+        if(s.Base == ea)
+        {
+            if(s.Scope == std::string{"GLOBAL"})
+            {
+                // %do not print labels for symbols that have to be relocated
+                const auto name = DisasmData::CleanSymbolNameSuffix(s.Name);
+
+                if(DisasmData::GetIsReservedSymbol(name) == false)
+                {
+                    return DisasmData::AvoidRegNameConflicts(name);
+                }
+            }
+        }
+    }
+
+    return std::string{};
+}
+
 std::string DisasmData::getGlobalSymbolName(uint64_t ea) const
 {
     for(const auto& s : this->symbol)
@@ -789,14 +812,16 @@ std::string DisasmData::getGlobalSymbolName(uint64_t ea) const
             if(s.Scope == std::string{"GLOBAL"})
             {
                 // %do not print labels for symbols that have to be relocated
-                auto name = DisasmData::CleanSymbolNameSuffix(s.Name);
+                const auto name = DisasmData::CleanSymbolNameSuffix(s.Name);
 
-                /// \todo
-                // \+relocation(_,_,Name,_),
-                // \+reserved_symbol(Name),
-                // avoid_reg_name_conflics(Name,NameNew).
-
-                return name;
+                // if it is not relocated...
+                if(this->getRelocation(name) == nullptr)
+                {
+                    if(DisasmData::GetIsReservedSymbol(name) == false)
+                    {
+                        return DisasmData::AvoidRegNameConflicts(name);
+                    }
+                }
             }
         }
     }
@@ -804,17 +829,124 @@ std::string DisasmData::getGlobalSymbolName(uint64_t ea) const
     return std::string{};
 }
 
-Instruction DisasmData::getInstructionAt(uint64_t ea) const
+const PLTReference* const DisasmData::getPLTReference(uint64_t ea) const
+{
+    const auto found = std::find_if(std::begin(this->plt_reference), std::end(this->plt_reference),
+                                    [ea](const auto& element) { return element.EA == ea; });
+
+    if(found != std::end(this->plt_reference))
+    {
+        return &(*found);
+    }
+
+    return nullptr;
+}
+
+const DirectCall* const DisasmData::getDirectCall(uint64_t ea) const
+{
+    const auto found = std::find_if(std::begin(this->direct_call), std::end(this->direct_call),
+                                    [ea](const auto& element) { return element.EA == ea; });
+
+    if(found != std::end(this->direct_call))
+    {
+        return &(*found);
+    }
+
+    return nullptr;
+}
+
+const MovedLabel* const DisasmData::getMovedLabel(uint64_t ea) const
+{
+    const auto found = std::find_if(std::begin(this->moved_label), std::end(this->moved_label),
+                                    [ea](const auto& element) { return element.EA == ea; });
+
+    if(found != std::end(this->moved_label))
+    {
+        return &(*found);
+    }
+
+    return nullptr;
+}
+
+const SymbolicOperand* const DisasmData::getSymbolicOperand(uint64_t ea, uint64_t opNum) const
+{
+    const auto found =
+        std::find_if(std::begin(this->symbolic_operand), std::end(this->symbolic_operand),
+                     [ea, opNum](const auto& element) {
+                         return (element.EA == ea) && (element.OpNum == opNum);
+                     });
+
+    if(found != std::end(this->symbolic_operand))
+    {
+        return &(*found);
+    }
+
+    return nullptr;
+}
+
+const Relocation* const DisasmData::getRelocation(const std::string& x) const
+{
+    const auto found = std::find_if(std::begin(this->relocation), std::end(this->relocation),
+                                    [x](const auto& element) { return element.Name == x; });
+
+    if(found != std::end(this->relocation))
+    {
+        return &(*found);
+    }
+
+    return nullptr;
+}
+
+const Instruction* const DisasmData::getInstruction(uint64_t ea) const
 {
     const auto inst = std::find_if(std::begin(this->instruction), std::end(this->instruction),
                                    [ea](const auto& x) { return x.EA == ea; });
 
     if(inst != std::end(this->instruction))
     {
-        return *inst;
+        return &(*inst);
     }
 
-    return Instruction{};
+    return nullptr;
+}
+
+const OpIndirect* const DisasmData::getOpIndirect(uint64_t x) const
+{
+    const auto found = std::find_if(std::begin(this->op_indirect), std::end(this->op_indirect),
+                                    [x](const auto& element) { return element.N == x; });
+
+    if(found != std::end(this->op_indirect))
+    {
+        return &(*found);
+    }
+
+    return nullptr;
+}
+
+const OpRegdirect* const DisasmData::getOpRegdirect(uint64_t x) const
+{
+    const auto found = std::find_if(std::begin(this->op_regdirect), std::end(this->op_regdirect),
+                                    [x](const auto& element) { return element.N == x; });
+
+    if(found != std::end(this->op_regdirect))
+    {
+        return &(*found);
+    }
+
+    return nullptr;
+}
+
+const OpImmediate* const DisasmData::getOpImmediate(uint64_t x) const
+{
+    const auto found = std::find_if(std::begin(this->op_immediate), std::end(this->op_immediate),
+                                    [x](const auto& element) { return element.N == x; });
+
+    if(found != std::end(this->op_immediate))
+    {
+        return &(*found);
+    }
+
+    return nullptr;
 }
 
 bool DisasmData::getIsAmbiguousSymbol(uint64_t ea) const
@@ -930,6 +1062,30 @@ std::string DisasmData::GetSizeSuffix(const std::string& x)
     }
 
     assert("Unknown Size");
+
+    return x;
+}
+
+bool DisasmData::GetIsReservedSymbol(const std::string& x)
+{
+    if(x.length() > 2)
+    {
+        return ((x[0] == '_') && (x[1] == '_'));
+    }
+
+    return false;
+}
+
+std::string DisasmData::AvoidRegNameConflicts(const std::string& x)
+{
+    const std::vector<std::string> adapt{"FS",  "MOD", "DIV", "NOT", "mod",
+                                         "div", "not", "and", "or"};
+
+    const auto found = std::find(std::begin(adapt), std::end(adapt), x);
+    if(found != std::end(adapt))
+    {
+        return x + "_renamed";
+    }
 
     return x;
 }
