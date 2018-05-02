@@ -12,18 +12,29 @@
 class BlockAreaComment
 {
 public:
-    BlockAreaComment(std::stringstream& ss, std::string m, std::function<void()> f = []() {})
+    BlockAreaComment(std::stringstream& ss, std::string m = std::string{},
+                     std::function<void()> f = []() {})
         : ofs{ss}, message{std::move(m)}, func{std::move(f)}
     {
         ofs << std::endl;
-        ofs << "# BEGIN - " << this->message << std::endl;
+
+        if(message.empty() == false)
+        {
+            ofs << "# BEGIN - " << this->message << std::endl;
+        }
+
         func();
     }
 
     ~BlockAreaComment()
     {
         func();
-        ofs << "# END   - " << this->message << std::endl;
+
+        if(message.empty() == false)
+        {
+            ofs << "# END   - " << this->message << std::endl;
+        }
+
         ofs << std::endl;
     }
 
@@ -42,10 +53,6 @@ std::string str_tolower(std::string s)
 
 PrettyPrinter::PrettyPrinter()
 {
-    this->asm_skip_section = {".comment", ".plt", ".init", ".fini", ".got", ".plt.got", ".got.plt"};
-    this->asm_skip_function = {
-        "_start",      "deregister_tm_clones", "register_tm_clones", "__do_global_dtors_aux",
-        "frame_dummy", "__libc_csu_fini",      "__libc_csu_init"};
 }
 
 void PrettyPrinter::setDebug(bool x)
@@ -86,14 +93,11 @@ void PrettyPrinter::printHeader()
     this->ofs << ".intel_syntax noprefix" << std::endl;
     this->printBar();
     this->ofs << "" << std::endl;
-    this->ofs << "nop" << std::endl;
-    this->ofs << "nop" << std::endl;
-    this->ofs << "nop" << std::endl;
-    this->ofs << "nop" << std::endl;
-    this->ofs << "nop" << std::endl;
-    this->ofs << "nop" << std::endl;
-    this->ofs << "nop" << std::endl;
-    this->ofs << "nop" << std::endl;
+
+    for(int i = 0; i < 8; i++)
+    {
+        this->ofs << PrettyPrinter::StrNOP << std::endl;
+    }
 }
 
 void PrettyPrinter::printBlock(const Block& x)
@@ -146,13 +150,13 @@ void PrettyPrinter::printSectionHeader(const std::string& x)
     ofs << std::endl;
     this->printBar();
 
-    if(x == ".text")
+    if(x == PrettyPrinter::StrSectionText)
     {
-        ofs << ".text" << std::endl;
+        ofs << PrettyPrinter::StrSectionText << std::endl;
     }
     else
     {
-        this->ofs << ".section " << x << std::endl;
+        this->ofs << PrettyPrinter::StrSection << " " << x << std::endl;
     }
 
     this->printBar();
@@ -190,8 +194,8 @@ void PrettyPrinter::printFunctionHeader(uint64_t ea)
             this->ofs << ".align 2" << std::endl;
         }
 
-        this->ofs << ".globl " << name << std::endl;
-        this->ofs << ".type " << name << ", @function" << std::endl;
+        this->ofs << PrettyPrinter::StrSectionGlobal << " " << name << std::endl;
+        this->ofs << PrettyPrinter::StrSectionType << " " << name << ", @function" << std::endl;
         this->ofs << name << ":" << std::endl;
     }
 }
@@ -208,7 +212,7 @@ void PrettyPrinter::condPrintGlobalSymbol(uint64_t ea)
 
     if(name.empty() == false)
     {
-        this->ofs << ".globl " << name << std::endl;
+        this->ofs << PrettyPrinter::StrSectionGlobal << " " << name << std::endl;
         this->ofs << name << ":" << std::endl;
     }
 }
@@ -218,11 +222,12 @@ void PrettyPrinter::printInstruction(uint64_t ea)
     // TODO // Maybe print random nop's.
     this->printEA(ea);
 
-    const auto inst = this->disasm->getInstructionAt(ea);
-    auto opcode = str_tolower(inst.Opcode);
+    auto inst = this->disasm->getInstruction(ea);
+    auto opcode = str_tolower(inst->Opcode);
     opcode = DisasmData::AdaptOpcode(opcode);
 
-    this->ofs << " " << opcode;
+    this->ofs << " " << opcode << " ";
+    this->printOperandList(inst);
 
     /// TAKE THIS OUT ///
     this->ofs << std::endl;
@@ -230,7 +235,7 @@ void PrettyPrinter::printInstruction(uint64_t ea)
 
 void PrettyPrinter::printInstructionNop()
 {
-    this->ofs << "nop" << std::endl;
+    this->ofs << PrettyPrinter::StrNOP << std::endl;
 }
 
 void PrettyPrinter::printEA(uint64_t ea)
@@ -243,16 +248,176 @@ void PrettyPrinter::printEA(uint64_t ea)
     }
 }
 
+void PrettyPrinter::printOperandList(const Instruction* const x)
+{
+    const auto strOp1 = this->buildOperand(x->Op1, x->EA, 1);
+    const auto strOp2 = this->buildOperand(x->Op2, x->EA, 2);
+    const auto strOp3 = this->buildOperand(x->Op3, x->EA, 3);
+
+    if(strOp3.empty() == false)
+    {
+        this->ofs << strOp3 << ", " << strOp1 << ", " << strOp2;
+    }
+    else if(strOp2.empty() == false)
+    {
+        this->ofs << strOp2 << ", " << strOp1;
+    }
+    else
+    {
+        this->ofs << strOp1;
+    }
+}
+
+std::string PrettyPrinter::buildOperand(uint64_t operand, uint64_t ea, uint64_t index)
+{
+    auto opReg = this->disasm->getOpRegdirect(operand);
+    if(opReg != nullptr)
+    {
+        return this->buildOpRegdirect(opReg, ea, index);
+    }
+
+    auto opImm = this->disasm->getOpImmediate(operand);
+    if(opImm != nullptr)
+    {
+        return this->buildOpImmediate(opImm, ea, index);
+    }
+
+    auto opInd = this->disasm->getOpIndirect(operand);
+    if(opInd != nullptr)
+    {
+        return this->buildOpIndirect(opInd, ea, index);
+    }
+
+    return std::string{};
+}
+
+std::string PrettyPrinter::buildOpRegdirect(const OpRegdirect* const op, uint64_t /*ea*/,
+                                            uint64_t /*index*/)
+{
+    return DisasmData::AdaptRegister(op->Register);
+}
+
+std::string PrettyPrinter::buildOpImmediate(const OpImmediate* const op, uint64_t ea,
+                                            uint64_t index)
+{
+    auto pltReference = this->disasm->getPLTReference(ea);
+    if(pltReference != nullptr)
+    {
+        return PrettyPrinter::StrOffset + " " + pltReference->Name;
+    }
+
+    auto directCall = this->disasm->getDirectCall(ea);
+    if(directCall != nullptr && this->skipEA(directCall->Destination) == false)
+    {
+        const auto functionName = this->disasm->getFunctionName(directCall->Destination);
+
+        if(functionName.empty() == true)
+        {
+            return std::to_string(directCall->Destination);
+        }
+
+        return functionName;
+    }
+
+    auto moveLabel = this->disasm->getMovedLabel(ea);
+    if(moveLabel != nullptr)
+    {
+        assert(moveLabel->Offset1 == op->Immediate);
+        auto diff = moveLabel->Offset1 - moveLabel->Offset2;
+        auto symOffset2 = GetSymbolToPrint(moveLabel->Offset2);
+        std::stringstream ss;
+        ss << PrettyPrinter::StrOffset << " " << symOffset2 << "+" << diff;
+        return ss.str();
+    }
+
+    auto symbolicOperand = this->disasm->getSymbolicOperand(ea, index);
+    if(symbolicOperand != nullptr)
+    {
+        if(index == 1)
+        {
+            auto ref = this->disasm->getGlobalSymbolReference(op->Immediate);
+            if(ref.empty() == false)
+            {
+                return PrettyPrinter::StrOffset + " " + ref;
+            }
+            else
+            {
+                return PrettyPrinter::StrOffset + " " + GetSymbolToPrint(op->Immediate);
+            }
+        }
+
+        return GetSymbolToPrint(op->Immediate);
+    }
+
+    return std::to_string(op->Immediate);
+}
+
+std::string PrettyPrinter::buildOpIndirect(const OpIndirect* const op, uint64_t ea, uint64_t index)
+{
+    const auto sizeName = DisasmData::GetSizeName(op->Size);
+
+    auto putSegmentRegister = [op](const std::string& term) {
+        if(PrettyPrinter::GetIsNullReg(op->SReg) == false)
+        {
+            return op->SReg + ":[" + term + "]";
+        }
+
+        return "[" + term + "]";
+    };
+
+    if(op->Offset == 0)
+    {
+        if(PrettyPrinter::GetIsNullReg(op->SReg) && PrettyPrinter::GetIsNullReg(op->Reg1)
+           && PrettyPrinter::GetIsNullReg(op->Reg2))
+        {
+            return sizeName + std::string{" [0]"};
+        }
+    }
+
+    if(op->Reg1 == std::string{"RIP"} && op->Multiplier == 1)
+    {
+        if(PrettyPrinter::GetIsNullReg(op->SReg) && PrettyPrinter::GetIsNullReg(op->Reg2))
+        {
+            auto symbolicOperand = this->disasm->getSymbolicOperand(ea, index);
+            if(symbolicOperand != nullptr)
+            {
+                auto instruction = this->disasm->getInstruction(ea);
+                auto address = ea + op->Offset + instruction->Size;
+                auto symbol = this->disasm->getGlobalSymbolReference(address);
+
+                if(symbol.empty() == false)
+                {
+                    return sizeName + " " + symbol + PrettyPrinter::StrRIP;
+                }
+                else
+                {
+                    auto symbolToPrint = GetSymbolToPrint(address);
+                    return sizeName + " " + symbolToPrint + PrettyPrinter::StrRIP;
+                }
+            }
+        }
+    }
+
+    if(PrettyPrinter::GetIsNullReg(op->Reg1) == false
+       && PrettyPrinter::GetIsNullReg(op->Reg2) == true && op->Offset == 0)
+    {
+        auto adapted = DisasmData::AdaptRegister(op->Reg1);
+        return sizeName + " " + putSegmentRegister(adapted);
+    }
+
+    return std::string{};
+}
+
 bool PrettyPrinter::skipEA(const uint64_t x) const
 {
     const auto sections = this->disasm->getSection();
 
     for(const auto& s : *sections)
     {
-        const auto found =
-            std::find(std::begin(this->asm_skip_section), std::end(this->asm_skip_section), s.Name);
+        const auto found = std::find(std::begin(PrettyPrinter::AsmSkipSection),
+                                     std::end(PrettyPrinter::AsmSkipSection), s.Name);
 
-        if(found != std::end(this->asm_skip_section))
+        if(found != std::end(PrettyPrinter::AsmSkipSection))
         {
             const auto isSkipped = ((x >= s.StartingAddress) && (x < (s.StartingAddress + s.Size)));
 
@@ -296,37 +461,31 @@ bool PrettyPrinter::skipEA(const uint64_t x) const
 
     if(xFunctionName.empty() == false)
     {
-        const auto found = std::find(std::begin(this->asm_skip_function),
-                                     std::end(this->asm_skip_function), xFunctionName);
-        return found != std::end(this->asm_skip_function);
+        const auto found = std::find(std::begin(PrettyPrinter::AsmSkipFunction),
+                                     std::end(PrettyPrinter::AsmSkipFunction), xFunctionName);
+        return found != std::end(PrettyPrinter::AsmSkipFunction);
     }
 
     return false;
-}
-
-std::string PrettyPrinter::avoidRegNameConflicts(const std::string& x)
-{
-    const std::vector<std::string> adapt{"FS",  "MOD", "DIV", "NOT", "mod",
-                                         "div", "not", "and", "or"};
-
-    const auto found = std::find(std::begin(adapt), std::end(adapt), x);
-    if(found != std::end(adapt))
-    {
-        return x + "_renamed";
-    }
-
-    return x;
 }
 
 void PrettyPrinter::printZeros(uint64_t x)
 {
     for(uint64_t i = 0; i < x; i++)
     {
-        this->ofs << ".byte 0x00" << std::endl;
+        this->ofs << PrettyPrinter::StrZeroByte << std::endl;
     }
 }
 
-int64_t PrettyPrinter::GetNeededPadding(int64_t alignment, int64_t currentAlignment, int64_t requiredAlignment)
+std::string PrettyPrinter::GetSymbolToPrint(uint64_t x)
+{
+    std::stringstream ss;
+    ss << ".L_" << std::hex << x;
+    return ss.str();
+}
+
+int64_t PrettyPrinter::GetNeededPadding(int64_t alignment, int64_t currentAlignment,
+                                        int64_t requiredAlignment)
 {
     if(alignment >= currentAlignment)
     {
@@ -334,4 +493,12 @@ int64_t PrettyPrinter::GetNeededPadding(int64_t alignment, int64_t currentAlignm
     }
 
     return (alignment + requiredAlignment) - currentAlignment;
+}
+
+bool PrettyPrinter::GetIsNullReg(const std::string& x)
+{
+    const std::vector<std::string> adapt{"NullReg64", "NullReg32", "NullReg16", "NullSReg"};
+
+    const auto found = std::find(std::begin(adapt), std::end(adapt), x);
+    return (found != std::end(adapt));
 }

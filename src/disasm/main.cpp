@@ -39,7 +39,7 @@ int main(int argc, char** argv)
     //std::endl;
 
     PrettyPrinter pp;
-    pp.setDebug(true);
+    //pp.setDebug(true);
     auto assembly = pp.prettyPrint(&disasm);
 
     std::cout << assembly << std::endl;
