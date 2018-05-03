@@ -37,6 +37,9 @@
 .decl relocation(ea:address,type:symbol,name:symbol,addend:number)
 .input relocation
 
+.decl binary_type(Type:symbol)
+.input binary_type
+
 
 //FIXME: add eh_frames
 
@@ -418,7 +421,14 @@ basic_target(Val):-
  	relative_address(_,_,Val).
 
 basic_target(Val):-
-	address_in_data(_,Val).
+	binary_type("DYN"),
+	address_in_data(EA,Val),
+	relocation(EA,_,_,_).
+
+basic_target(Val):-
+	binary_type("EXEC"),
+	address_in_data(EA,Val).
+
 
 basic_target(EA):-
 	entry_point(EA).
@@ -434,6 +444,7 @@ basic_target(EA):-
 ////////////////////////////////////////////////////////////////////////////
 // detect references  to libraries (calls to plt)
 .decl plt_code_reference(ea:address, function:symbol)
+.output plt_code_reference
 
 .decl plt_section(name:symbol)
 
@@ -442,6 +453,7 @@ plt_section(".plt.got").
 
 plt_code_reference(EA,Function):-
 	code(EA),
+	symbolic_operand(EA,1),
 	instruction_get_op(EA,1,Op),
 	op_immediate(Op,Dest),
 	plt_section(SecName),
@@ -452,6 +464,7 @@ plt_code_reference(EA,Function):-
 	relocation(Got_entry,_,Function,_).
 
 .decl plt_data_reference(ea:address, function:symbol)
+.output plt_data_reference
 
 plt_data_reference(EA,Function):-
 	symbolic_data(EA,Dest),
@@ -461,16 +474,6 @@ plt_data_reference(EA,Function):-
 	Dest>=Beg,
 	pc_relative_jump(Dest,Got_entry),
 	relocation(Got_entry,_,Function,_).
-
-.decl plt_reference(ea:address, function:symbol)
-.output plt_reference
-
-plt_reference(EA,Function):-
-	(
-	plt_code_reference(EA,Function)
-	;
-	plt_data_reference(EA,Function)
-	).
 
 //////////////////////////////////////////////////////////////////////////
 
