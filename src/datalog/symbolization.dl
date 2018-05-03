@@ -58,7 +58,7 @@ stack_operand(EA,Op_index):-
 address_in_data_refined(EA,Val):-
       binary_type("DYN"),
       address_in_data(EA,Val),
-      relocation(EA,_,_,_)
+      relocation(EA,_,_,_),
       data_section(Name),
       section(Name,Size,Beg),
       Val>=Beg,
@@ -84,7 +84,6 @@ address_in_data_refined(EA,Val):-
       block(Val).
 
 
-
 .init address_in_data_refined_range=empty_range
 
 address_in_data_refined_range.in_ea(EA):-
@@ -108,7 +107,7 @@ symbolic_code_operand_candidate(EA,Op_index,Dest):-
 		pc_relative_operand_complete(EA,Op_index,Dest,_Size)
 	;
 		can_have_symbolic(EA),
-   	        op_indirect(Op,_,_,_,_,Dest,_Size)
+	        op_indirect(Op,_,_,_,_,Dest,_Size)
 	),
 	code(Dest).
 	
