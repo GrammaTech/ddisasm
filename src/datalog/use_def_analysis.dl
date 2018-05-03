@@ -171,8 +171,8 @@ used_for_address(EA,Reg,EA,Index):-
 	instruction_get_op(EA,Index,Op),
 	op_indirect_contains_reg(Op,Reg),
 	//lea does not access memory
-	!instruction_get_operation(EA,"LEA"),
-	Reg!="RBP".
+	!instruction_get_operation(EA,"LEA").
+	//Reg!="RBP".
 
 //USED TRANSITIVELY: used to compute something used for memory later
 used_for_address(EA,Used_reg,EA,Index):-

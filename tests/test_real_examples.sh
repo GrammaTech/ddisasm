@@ -1,5 +1,32 @@
-pushd ../bin/
+
 dir="../real_world_examples/"
+
+#get the real examples
+if [ ! -d "$dir" ]; then
+  ./fetch_real_examples.sh
+fi
+
+pushd ../bin/
+compilers=(
+    "gcc"
+ #   "gcc8"
+    "clang"
+);
+
+cpp_compilers=(
+    "g++"
+#    "g++8"
+    "clang++"
+);
+
+optimizations=(
+    ""
+    "-O1"
+    "-O2"
+    "-O3"
+    "-Os"
+);
+
 examples=(
     "grep-2.5.4 src/grep -lpcre"
     "gzip-1.2.4 gzip"
@@ -25,25 +52,6 @@ examples=(
     "tar-1.29/ src/tar"
 );
 
-compilers=(
-    "gcc"
-    "gcc8"
-    "clang"
-);
-
-cpp_compilers=(
-    "g++"
-    "g++8"
-    "clang++"
-);
-
-optimizations=(
-    ""
-    "-O1"
-    "-O2"
-    "-O3"
-    "-Os"
-);
 
 strip=""
 if [[ $# > 0 && $1 == "-strip" ]]; then
@@ -56,25 +64,38 @@ if [[ $# > 0 && $1 == "-stir" ]]; then
     stir="-stir"
     shift
 fi
-
+error=0
+success=0
 this_directory=$(pwd)
 
 for ((i = 0; i < ${#examples[@]}; i++)); do
     j=0
     directory=($sentence${examples[$i]})
     cd $dir$directory
+    unset CC
+    unset CFLAGS
     ./configure
     cd $this_directory
     for compiler in "${compilers[@]}"; do
 	export CC=$compiler
 	export CXX=${cpp_compilers[$j]}
 	for optimization in  "${optimizations[@]}"; do
-	    export CFLAGS=$optimization
+	    export CFLAGS="$optimization"
 	    echo "#Example ${examples[$i]} with $CC/$CXX $optimization"
-	    timeout 10m bash ./reassemble_and_test.sh $strip $stir $dir${examples[$i]}
+	    if !(bash ./reassemble_and_test.sh $strip $stir $dir${examples[$i]}) then
+	       ((error++))
+	       else
+		   ((success++))
+	    fi
 	done
-    j=$j+1	
+		((j++))
     done
 done
 
 
+echo "$success/$((error+success)) tests succeed"
+
+if (( $error > 0 )); then
+    echo "$error tests failed"
+    exit 1
+fi

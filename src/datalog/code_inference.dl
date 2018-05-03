@@ -112,8 +112,6 @@ can_have_symbolic(Src):-
 	phase2.likely_ea(Src,_).
 
 
-
-
 can_have_symbolic(EA):-
 	direct_jump(EA,_).
 can_have_symbolic(EA):-
