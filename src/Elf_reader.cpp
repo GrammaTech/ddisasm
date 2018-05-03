@@ -178,6 +178,28 @@ bool Elf_reader::print_entry_point_to_file(const string& filename){
 		return false;
 	}
 }
+
+bool Elf_reader::print_binary_type_to_file(const string& filename){
+    static string binary_type_names[6]={
+                                        "NONE",				/* No file type */
+                                        "REL",			/* Relocatable file */
+                                        "EXEC",			/* Executable file */
+                                        "DYN",			/* Shared object file */
+                                        "CORE",			/* Core file */
+                                        "NUM"
+    };			/* Number of defined types */
+    ofstream file(filename,ios::out|ios::binary);
+    if(file.is_open()){
+        if(header.e_type<6)
+            file<< binary_type_names[header.e_type];
+        else
+            file<< "OTHER";
+        file.close();
+        return true;
+    }else{
+        return false;
+    }
+}
 void Elf_reader::print_sections(ostream& stream){
 	auto sect_it=sections.begin();
 	auto sect_names_it=section_names.begin();
@@ -410,7 +432,13 @@ char* Elf_reader::get_section(const string& name,int64_t & size,Elf64_Addr& init
 	if(index!=-1){
 		size=sections[index].sh_size;
 		initial_addr=sections[index].sh_addr;
-		char* buff= new char[size];
+		char* buff;
+		try{
+		buff= new char[size];
+		}catch(std::bad_alloc& ba){
+		    std::cerr << "bad_alloc caught: " << ba.what() << "trying to allocate for "<< name<<endl;
+
+		}
 		file.seekg((sections[index].sh_offset), ios::beg);
 		file.read(buff, size);
 		return buff;

@@ -94,14 +94,16 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    cout<<"Valid binary\n";
-    cout<<"Saving entry point\n";
+    cout<<"Valid binary"<<endl;
+    cout<<"Saving binary type"<<endl;
+    elf.print_binary_type_to_file(directory+"binary_type.facts");
+    cout<<"Saving entry point"<<endl;
     elf.print_entry_point_to_file(directory+"entry_point.facts");
-    cout<<"Saving sections\n";
+    cout<<"Saving sections"<<endl;
     elf.print_sections_to_file(directory+"section.facts");
-    cout<<"Saving symbols\n";
+    cout<<"Saving symbols"<<endl;
     elf.print_symbols_to_file(directory+"symbol.facts");
-    cout<<"Saving relocations\n";
+    cout<<"Saving relocations"<<endl;
     elf.print_relocations_to_file(directory+"relocation.facts");
     Dl_decoder decoder;
 

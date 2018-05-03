@@ -35,7 +35,7 @@ phase1.possible_ea(EA):-
 	instruction(EA,_,_,_,_,_).
 
 
-
+//fixme pie here
 phase1.block_limit(EA):-
 	op_immediate(_,EA).
 
@@ -92,11 +92,42 @@ phase2.block_limit(EA):-
 // The targets are computed incrementally now as we traverse the code
 // likely_ea and possible_target_from are mutually recursive
 
+.decl operation_not_for_address(Operation:symbol)
+
+operation_not_for_address("AND").
+operation_not_for_address("XOR").
+
+.decl can_have_symbolic(EA:address)
+
+can_have_symbolic(Src):-
+	binary_type("DYN"),
+	phase2.likely_ea(Src,_),
+	instruction(Src,Size,_,_,_,_),
+	relocation(Location,_,_,_),
+	Src<=Location,
+	Location<Src+Size.
+
+can_have_symbolic(Src):-
+	binary_type("EXEC"),
+	phase2.likely_ea(Src,_).
+
+
+
+
+can_have_symbolic(EA):-
+	direct_jump(EA,_).
+can_have_symbolic(EA):-
+	direct_call(EA,_).
+
+
 .decl possible_target_from(dest:address,src:address)
 
 possible_target_from(Dest,Src):-
 	phase2.likely_ea(Src,_),
+	can_have_symbolic(Src),
 	instruction_get_op(Src,_,Op),
+	instruction_get_operation(Src,Operation),
+	!operation_not_for_address(Operation),
 	op_immediate(Op,Dest),
 	phase1.remaining_ea(Dest).
 
@@ -237,6 +268,9 @@ block_pred(Block,Block_pred,2,"appears"):-
 	phase2.likely_ea(EA,Block_pred),
 	Block_pred!=Block,
 	!block_is_overlaping(Block_pred).
+
+block_pred(Block,0,2,"in relative jump table"):-
+	relative_address(_,_,Block).
 
 // give a point if it may fallthrough to another block
 block_pred(Block,Block_succ,1,"fallthough_to"):-

@@ -51,6 +51,8 @@ public:
 	bool print_sections_to_file(const std::string& filename);
 	void add_sections_to_souffle(souffle::Relation* rel);
 
+	bool print_binary_type_to_file(const std::string& filename);
+
 	void print_entry_point(std::ostream&);
 	bool print_entry_point_to_file(const std::string& filename);
 

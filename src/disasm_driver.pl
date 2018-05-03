@@ -166,7 +166,8 @@ result_descriptors([
 			  %misc
 			  result(ambiguous_symbol,1,'.csv'),
 			  result(direct_call,2,'.csv'),
-			  result(plt_reference,2,'.csv'),
+			  result(plt_code_reference,2,'.csv'),
+			  result(plt_data_reference,2,'.csv'),
 			  result(got_reference,3,'.csv'),
 			  
 			  %symbols in code
@@ -231,7 +232,8 @@ result_descriptors([
 :-dynamic function_entry/1.
 
 :-dynamic ambiguous_symbol/1.
-:-dynamic plt_reference/2.
+:-dynamic plt_code_reference/2.
+:-dynamic plt_data_reference/2.
 :-dynamic got_reference/3.
 :-dynamic direct_call/2.
 
@@ -485,8 +487,8 @@ get_data_section(data_section_descriptor(Section_name,Alignment),
 group_data([],[]).
 
 group_data([data_byte(EA,_)|Rest],[data_group(EA,plt_ref,Function)|Groups]):-
-    symbolic_data(EA,_Group_content),
-    plt_reference_qualified(EA,Function),!,
+    symbolic_data(EA,Content),
+    plt_reference_qualified(EA,Content,Function),!,
     split_at(7,Rest,_,Rest2),
     group_data(Rest2,Groups).
 
@@ -882,9 +884,18 @@ pp_operand(reg(Name),_,_,Name2):-
     adapt_register(Name,Name2).
 
 %immediate
+pp_operand(immediate(Num),EA,1,Name):-
+    (
+     direct_call(EA,_)
+     ;
+     direct_jump(EA,_)
+    ),
+    plt_reference_qualified(EA,Num,Name),!.
+
 pp_operand(immediate(_Num),EA,1,Name_complete):-
-    plt_reference_qualified(EA,Name),!,
+    plt_code_reference(EA,Name),!,
     format(string(Name_complete),'OFFSET ~p',[Name]).
+
 
 pp_operand(immediate(_Num),EA,_N,Name_complete):-
     direct_call(EA,Dest),
@@ -1178,7 +1189,7 @@ comment(EA,symbolic_ops(Symbolic_ops)):-
     Symbolic_ops\=[].
 
 comment(EA,plt(Dest)):-
-    plt_reference_qualified(EA,Dest).
+    plt_code_reference(EA,Dest).
 
 
 comment(EA,pc_relative_jump(Dest_hex)):-
@@ -1304,11 +1315,12 @@ is_in_function(EA,Name):-
     function_get_ea(Name,EA_fun),
     % there is no function in between
     EA>=EA_fun,
-    \+ (
+    \+function_in_between(EA_fun,EA).
+
+function_in_between(EA_fun,EA):-
 	function_entry(EA_fun2),
 	EA_fun2=<EA,
-	EA_fun2>EA_fun
-       ).
+	EA_fun2>EA_fun.
 
 function_get_ea('_start',EA):-
     start_function(EA),!.
@@ -1321,13 +1333,13 @@ function_get_ea(Name,EA):-
 % Deal with global symbols and relocations
 
 
-plt_reference_qualified(EA,Function):-
-    plt_reference(EA,Function).
- %%    is_in_section(EA,'.plt'),!,
-%%     atom_concat(Function,'@PLT',FunctionAtPlt).
-%% plt_reference_qualified(EA,FunctionAtPlt):-
-%%     plt_reference(EA,Function),
-%%     atom_concat(Function,'@GOTPLT',FunctionAtPlt).
+plt_reference_qualified(EA,_,FunctionAtPlt):-
+    plt_code_reference(EA,Function),
+    atom_concat(Function,'@PLT',FunctionAtPlt).
+plt_reference_qualified(EA,_,FunctionAtPlt):-
+    plt_data_reference(EA,Function),
+    atom_concat(Function,'',FunctionAtPlt).
+
 
 %check relocated symbols first
 get_global_symbol_ref(Address,Relative,Final_name):-
