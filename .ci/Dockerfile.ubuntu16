@@ -7,7 +7,7 @@ RUN cd souffle && make -j4 install
 RUN cd souffle && cp include/souffle/RamTypes.h /usr/include/souffle/
 
 FROM ubuntu:16.04
-RUN apt-get -y update && apt-get -y install autoconf automake bison build-essential clang doxygen flex g++ gcc gcc-multilib g++-multilib git libtool make mcpp openjdk-8-jdk pkg-config python sqlite3 libsqlite3-dev subversion swi-prolog zlib1g-dev clang ed
+RUN apt-get -y update && apt-get -y install autoconf automake bison build-essential clang doxygen flex g++ gcc gcc-multilib g++-multilib git libtool make mcpp openjdk-8-jdk pkg-config python sqlite3 libsqlite3-dev subversion swi-prolog zlib1g-dev clang ed libpcre3-dev libncurses5-dev
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
 COPY --from=souffle /usr/bin/souffle /usr/bin/souffle
@@ -17,7 +17,9 @@ COPY --from=souffle /usr/share/man/man1/souffle-config.1 /usr/share/man/man1/sou
 COPY --from=souffle /usr/share/man/man1/souffle-profile.1 /usr/share/man/man1/souffle-profile.1
 COPY --from=souffle /usr/share/man/man1/souffle-compile.1 /usr/share/man/man1/souffle-compile.1
 COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
-COPY . /datalog_disasm
+RUN   useradd dl_disasm
+COPY --chown=dl_disasm . /datalog_disasm
+USER dl_disasm
 RUN cd /datalog_disasm && tar xjf standalone_compilation.tar.bz2
 ENV TERM xterm
 RUN cd /datalog_disasm && make check
