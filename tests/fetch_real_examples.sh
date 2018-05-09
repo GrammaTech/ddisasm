@@ -45,3 +45,6 @@ cp test_patches/rsync_Makefile.in $dir/rsync-3.0.7/Makefile.in
 
 echo "patching doschk"
 sed -i 's/extern char \*malloc ();/extern void \*malloc ();/' $dir/doschk-1.1/doschk.c
+
+echo "patching lighttpd (so the tests work in docker)"
+rm $dir/lighttpd-1.4.18/tests/core-404-handler.t
