@@ -27,6 +27,7 @@ examples=(
     "ex_noreturn ex"
     "ex_pointerReatribution ex"
     "ex_pointerReatribution2 ex"
+    "ex_pointerReatribution3 ex"
     "ex_stat ex"
     "ex_struct ex"
     "ex_switch ex"
@@ -44,7 +45,7 @@ for ((i = 0; i < ${#examples[@]}; i++)); do
 	for optimization in  "${optimizations[@]}"; do
 	    export CFLAGS=$optimization
 	    echo "#Example $file with $compiler $optimization"
-	    if !(./reassemble_and_test.sh $dir${examples[$i]}) then
+        if !(./reassemble_and_test.sh -strip -stir $dir${examples[$i]}) then
 	       ((error++))
 	       else
 		   ((success++))
