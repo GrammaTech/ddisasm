@@ -365,6 +365,8 @@ symbol_minus_symbol(EA,EA_ref,Symbol2):-
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Final label decision
 
+labeled_data(EA):-
+	symbol(EA,_,_,"GLOBAL",_).
 
 labeled_data(EA):-
 	symbolic_data_operand_candidate(Src,_,EA),

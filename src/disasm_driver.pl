@@ -644,8 +644,8 @@ pp_data(data_group(EA,labeled_pointer,Content)):-
 pp_data(data_group(EA,labeled_pointer_diff,symbols(Symbol1,Symbol2))):-
     print_label(EA),
     print_ea(EA),
-    format(atom(Printed1),'.L_~16R',[Symbol1]),
-    format(atom(Printed2),'.L_~16R',[Symbol2]),
+    format(atom(Printed1),'.L_~16r',[Symbol1]),
+    format(atom(Printed2),'.L_~16r',[Symbol2]),
     %note the order is the inverse
     format('.long ~p-~p',[Printed2,Printed1]),
     cond_print_comments(EA),
@@ -653,8 +653,8 @@ pp_data(data_group(EA,labeled_pointer_diff,symbols(Symbol1,Symbol2))):-
 
 pp_data(data_group(EA,pointer_diff,symbols(Symbol1,Symbol2))):-
     print_ea(EA),
-    format(atom(Printed1),'.L_~16R',[Symbol1]),
-    format(atom(Printed2),'.L_~16R',[Symbol2]),
+    format(atom(Printed1),'.L_~16r',[Symbol1]),
+    format(atom(Printed2),'.L_~16r',[Symbol2]),
     %note the order is the inverse
     format('.long ~p-~p',[Printed2,Printed1]),
     cond_print_comments(EA),
@@ -681,7 +681,7 @@ pp_data(data_group(EA,unknown,Content)):-
 
 pp_data(data_byte(EA,Content)):-
     print_ea(EA),
-    format('.byte 0x~16R',[Content]),
+    format('.byte 0x~16r',[Content]),
     cond_print_comments(EA),
     print_end_label(EA,1).
 
@@ -689,9 +689,9 @@ pp_data(data_byte(EA,Content)):-
 adjust_moved_data_label(EA,Val,Printed):-
     (moved_data_label(EA,Val,New_val)->
 	Diff is Val-New_val,
-	format(atom(Printed),'.L_~16R+~p',[Val,Diff])
+	format(atom(Printed),'.L_~16r+~p',[Val,Diff])
     ;
-    format(atom(Printed),'.L_~16R',[Val])
+    format(atom(Printed),'.L_~16r',[Val])
     ).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -699,11 +699,11 @@ adjust_moved_data_label(EA,Val,Printed):-
 
 pp_bss_data(variable(Start,0)):-!,
     cond_print_global_symbol(Start),
-    format('.L_~16R:  ~n',[Start]).
+    format('.L_~16r:  ~n',[Start]).
 
 pp_bss_data(variable(Start,Size)):-
     cond_print_global_symbol(Start),
-    format('.L_~16R: .zero  ~p ~n',[Start,Size]).
+    format('.L_~16r: .zero ~p~n',[Start,Size]).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % print block of code
@@ -757,7 +757,7 @@ function_complete_name(EA,'_start'):-
 function_complete_name(EA,NameNew):-
     function_symbol(EA,Name),
     (ambiguous_symbol(Name)->
-	 format(string(Name_complete),'~p_~16R',[Name,EA])
+	 format(string(Name_complete),'~p_~16r',[Name,EA])
      ;
      Name_complete=Name
     ),
@@ -766,7 +766,7 @@ function_complete_name(EA,NameNew):-
 function_complete_name(EA,Name):-
     function_entry(EA),
     \+function_symbol(EA,_),   
-    format(string(Name),'unknown_function_~16R',[EA]).
+    format(string(Name),'unknown_function_~16r',[EA]).
 
 
 is_function(EA,Name_complete):-
@@ -940,7 +940,7 @@ pp_operand(indirect(NullSReg,NullReg1,NullReg2,1,0,Size),_,_,PP):-
 
 pp_operand(indirect(_,_,_,_,_,_),EA,N,PP):-
     got_reference(EA,N,Content),!,
-    format(atom(PP),'.L_~16R@GOTPCREL[rip]',[Content]).
+    format(atom(PP),'.L_~16r@GOTPCREL[rip]',[Content]).
 
 % special case for rip relative addressing
 pp_operand(indirect(NullSReg,'RIP',NullReg1,1,Offset,Size),EA,N,PP):-
@@ -1020,7 +1020,7 @@ print_symbol(Num,Num):-
     skip_ea(Num),!.
 
 print_symbol(Num,Label):-
-    format(string(Label),'.L_~16R',[Num]).
+    format(string(Label),'.L_~16r',[Num]).
 
 %auxiliary predicate for indirect addressing
 
@@ -1123,11 +1123,11 @@ print_ea(_):-
     format('          ',[]).
 
 print_ea(EA):-
-    format('         ~16R: ',[EA]).
+    format('         ~16r: ',[EA]).
 
 print_label(EA):-
     cond_print_global_symbol(EA),
-    format('.L_~16R:~n',[EA]).
+    format('.L_~16r:~n',[EA]).
 
 print_end_label(EA,Length):-
     EA_end is EA+Length,
@@ -1135,14 +1135,13 @@ print_end_label(EA,Length):-
     \+data_byte(EA_end,_),
     \+bss_data(EA_end),
     cond_print_global_symbol(EA_end),
-    format('.L_~16R:~n',[EA_end]).
+    format('.L_~16r:~n',[EA_end]).
 
 print_end_label(_,_).
 
 cond_print_global_symbol(EA):-
     (get_global_symbol_name(EA,Name)->
-	format('.globl ~p~n',[Name]),
-	 format('~p:~n',[Name])
+	format('~p:~n',[Name])
      ;
      true
     ).
@@ -1168,18 +1167,18 @@ comment(EA,discarded):-
 
 comment(EA,overlap_with(Str_EA2)):-
     block_overlap(EA2,EA),
-    format(string(Str_EA2),'~16R',[EA2]).
+    format(string(Str_EA2),'~16r',[EA2]).
 
 comment(EA,overlap_with(Str_EA2)):-
     block_overlap(EA,EA2),
-    format(string(Str_EA2),'~16R',[EA2]).
+    format(string(Str_EA2),'~16r',[EA2]).
 
 comment(EA,is_called):-
     direct_call(_,EA).
 
 comment(EA,jumped_from(Str_or)):-
     direct_jump(Or,EA),
-    format(string(Str_or),'~16R',[Or]).
+    format(string(Str_or),'~16r',[Or]).
 
 comment(EA,not_in_block):-
     \+code_in_block(EA,_).
@@ -1194,7 +1193,7 @@ comment(EA,plt(Dest)):-
 
 comment(EA,pc_relative_jump(Dest_hex)):-
     pc_relative_jump(EA,Dest),
-    format(atom(Dest_hex),'~16R',[Dest]).
+    format(atom(Dest_hex),'~16r',[Dest]).
 
 comment(EA,used(Tuples)):-
     findall((Reg,EA_used_hex,Index),
@@ -1281,7 +1280,7 @@ pp_value_reg(value_reg(EA,Reg,EA2,Reg2,Multiplier,Offset,Steps),
     pp_to_hex(EA2,EA2_hex).
 
 pp_to_hex(EA,EA_hex):-
-    format(atom(EA_hex),'~16R',[EA]).
+    format(atom(EA_hex),'~16r',[EA]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % predicates to skip certain sections or functions added by the compiler
@@ -1449,9 +1448,9 @@ print_with_space(Op):-
 print_with_sep([],_).
 print_with_sep([Last],_):-
     !,
-    format(' ~p ',[Last]).
+    format(' ~p',[Last]).
 print_with_sep([X|Xs],Sep):-
-    format(' ~p~p ',[X,Sep]),
+    format(' ~p~p',[X,Sep]),
     print_with_sep(Xs,Sep).
 
 % get rid of problematic characters in strings
@@ -1503,7 +1502,7 @@ generate_hints(Dir,Data_sections,Uninitialized_data):-
 generate_hints(_,_,_).    
 
 print_code_ea(S,EA):-
-    format(S,'0x~16R C',[EA]),
+    format(S,'0x~16r C',[EA]),
     instruction(EA,_,_,Op1,Op2,Op3),
     exclude(is_zero,[Op1,Op2,Op3],Non_zero_ops),
     length(Non_zero_ops,N_ops),
@@ -1575,20 +1574,20 @@ take_contiguous_data_bytes([data_group(EA,Type,Content)|Rest],[],
 
 print_element_data_hint(S,data_group(EA,Symbolic,_)):-
     member(Symbolic,[plt_ref,pointer,labeled_pointer]),!,
-    format(S,'0x~16R Dqs@0~n',[EA]).
+    format(S,'0x~16r Dqs@0~n',[EA]).
 
 print_element_data_hint(S,data_group(EA,string,_Content)):-
-    format(S,'0x~16R D~n',[EA]).
+    format(S,'0x~16r D~n',[EA]).
 
 
 print_element_data_hint(S,data_group(EA,accessed_data,Content)):-
     length(Content,Size),
     get_hint_size_code(Size,Code),
-    format(S,'0x~16R D~p~n',[EA,Code]).
+    format(S,'0x~16r D~p~n',[EA,Code]).
 
 
 print_element_data_hint(S,data_group(EA,unknown,_Content)):-
-    format(S,'0x~16R D~n',[EA]).
+    format(S,'0x~16r D~n',[EA]).
 
 get_hint_size_code(8,q).
 get_hint_size_code(4,d).
@@ -1598,7 +1597,7 @@ get_hint_size_code(_,'').
 
 
 print_bss_data_hints(S,variable(EA,_)):-
-      format(S,'0x~16R D~n',[EA]).
+      format(S,'0x~16r D~n',[EA]).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % we write two files that include or not the plt thunks
