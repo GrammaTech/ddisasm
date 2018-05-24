@@ -21,8 +21,8 @@ build-ubuntu16:
     OS: 'ubuntu16'
   <<: *build
 
-build-arch:
-  stage: build-deploy-cleanup
-  variables:
-    OS: 'arch'
-  <<: *build
+# build-arch:
+#   stage: build-deploy-cleanup
+#   variables:
+#     OS: 'arch'
+#   <<: *build
