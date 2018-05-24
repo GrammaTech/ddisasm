@@ -595,6 +595,11 @@ pp_aligned_data_section(data_section(Name,Required_alignment,Data_list)):-
     format('.align ~p~n',[Required_alignment]),
     format('# printing ~p extra bytes to guarantee alignment~n',[Required_zeros]),
     print_x_zeros(Required_zeros),
+    (option('-stir')->
+       format('# printing 16 extra bytes to shake things a little~n',[]),
+           print_x_zeros(16)
+     ;
+     true),
     maplist(pp_data,Data_list).
 
 

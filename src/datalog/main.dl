@@ -193,7 +193,12 @@ data_section(".init_array").
 data_section(".fini_array").
 data_section(".data.rel.ro").
 
-	
+.decl regular_data_section(name:symbol)
+
+regular_data_section(".rodata").
+regular_data_section(".data").
+regular_data_section(".bss").
+
 .decl code_section(name:symbol)
 
 code_section(".text").
