@@ -15,13 +15,13 @@
 // mov reg immediate
 value_reg_edge(EA,Reg,0,"NullReg64",0,Immediate):-
 	def_used(EA,Reg,_,_),
-	instruction(EA,_,"MOV",Op1,Op2,0),
+	instruction(EA,_,_,"MOV",Op1,Op2,0),
 	op_immediate(Op1,Immediate),
 	op_regdirect_contains_reg(Op2,Reg).
 
 value_reg_edge(EA,Reg,0,"NullReg64",0,Address):-
 	def_used(EA,Reg,_,_),
-	instruction(EA,Size,"LEA",Op1,Op2,0),
+	instruction(EA,Size,_,"LEA",Op1,Op2,0),
 	op_indirect(Op1,_,"RIP",NullReg,_,Offset,_),
 	null_reg(NullReg),
 	op_regdirect_contains_reg(Op2,Reg),
@@ -41,41 +41,41 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
 //reset a register
 value_reg_edge(EA,Reg,0,"NullReg64",1,0):-
 	def_used(EA,Reg,_,_),
-	instruction(EA,_,"XOR",Op1,Op2,0),
+	instruction(EA,_,_,"XOR",Op1,Op2,0),
 	op_regdirect_contains_reg(Op1,Reg),
 	op_regdirect_contains_reg(Op2,Reg).
 	
 //add reg immediate
 value_reg_edge(EA,Reg,EA_prev,Reg,1,Immediate):-
 	def_used(EA_prev,Reg,EA,_),
-	instruction(EA,_,"ADD",Op1,Op2,0),
+	instruction(EA,_,_,"ADD",Op1,Op2,0),
 	op_immediate(Op1,Immediate),
 	op_regdirect_contains_reg(Op2,Reg),
 	EA!=EA_prev.
 
 value_reg_edge(EA,Reg,EA_prev,Reg,1,-Immediate):-
 	def_used(EA_prev,Reg,EA,_),
-	instruction(EA,_,"SUB",Op1,Op2,0),
+	instruction(EA,_,_,"SUB",Op1,Op2,0),
 	op_immediate(Op1,Immediate),
 	op_regdirect_contains_reg(Op2,Reg),
 	EA!=EA_prev.
 	
 value_reg_edge(EA,Reg,EA_prev,Reg,1,1):-
 	def_used(EA_prev,Reg,EA,_),
-	instruction(EA,_,"INC",Op1,0,0),
+	instruction(EA,_,_,"INC",Op1,0,0),
 	op_regdirect_contains_reg(Op1,Reg),
 	EA!=EA_prev.
 	
 value_reg_edge(EA,Reg,EA_prev,Reg,1,-1):-
 	def_used(EA_prev,Reg,EA,_),
-	instruction(EA,_,"DEC",Op1,0,0),
+	instruction(EA,_,_,"DEC",Op1,0,0),
 	op_regdirect_contains_reg(Op1,Reg),
 	EA!=EA_prev.	
 
 //shl reg immediate
 value_reg_edge(EA,Reg,EA_prev,Reg,2^Immediate,0):-
 	def_used(EA_prev,Reg,EA,_),
-	instruction(EA,_,"SHL",Op1,Op2,0),
+	instruction(EA,_,_,"SHL",Op1,Op2,0),
 	op_immediate(Op1,Immediate),
 	op_regdirect_contains_reg(Op2,Reg),
 	EA!=EA_prev.
@@ -83,7 +83,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg,2^Immediate,0):-
 //mul reg reg immediate
 value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
 	def_used(EA_prev,Reg2,EA,_),
-	instruction(EA,_,"IMUL3",Op1,Op2,Op3),
+	instruction(EA,_,_,"IMUL3",Op1,Op2,Op3),
 	op_immediate(Op2,Immediate),
 	op_regdirect_contains_reg(Op3,Reg),
 	op_regdirect_contains_reg(Op1,Reg2),
@@ -91,7 +91,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
 //mul reg immediate
 value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
 	def_used(EA_prev,Reg2,EA,_),
-	instruction(EA,_,"IMUL2",Op1,Op2,0),
+	instruction(EA,_,_,"IMUL2",Op1,Op2,0),
 	op_immediate(Op1,Immediate),
 	op_regdirect_contains_reg(Op2,Reg),
 	EA!=EA_prev.
@@ -100,7 +100,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier,Offset):-
 	def(EA,Reg),
 	def_used(EA_prev,Reg_origin,EA,1),
-	instruction(EA,_,"LEA",Op1,Op2,0),
+	instruction(EA,_,_,"LEA",Op1,Op2,0),
 	op_indirect(Op1,_,NullReg,Reg_origin_non_uniform,Multiplier,Offset,_),
 	null_reg(NullReg),
 	track_register(Reg_origin_non_uniform,Reg_origin),
@@ -110,7 +110,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier,Offset):-
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier+1,Offset):-
 	def(EA,Reg),
 	def_used(EA_prev,Reg_origin,EA,1),
-	instruction(EA,_,"LEA",Op1,Op2,0),
+	instruction(EA,_,_,"LEA",Op1,Op2,0),
 	op_indirect(Op1,_,Reg_origin_non_uniform,Reg_origin_non_uniform,Multiplier,Offset,_),
 	track_register(Reg_origin_non_uniform,Reg_origin),
 	op_regdirect_contains_reg(Op2,Reg),
@@ -119,7 +119,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier+1,Offset):-
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,Offset):-
 	def(EA,Reg),
 	def_used(EA_prev,Reg_origin,EA,1),
-	instruction(EA,_,"LEA",Op1,Op2,0),
+	instruction(EA,_,_,"LEA",Op1,Op2,0),
 	op_indirect(Op1,_,Reg_origin_non_uniform,NullReg,1,Offset,_),
 	null_reg(NullReg),
 	track_register(Reg_origin_non_uniform,Reg_origin),
@@ -142,7 +142,7 @@ value_reg(EA,Reg,EA,Reg,1,0,1):-
 // possible loop
 value_reg(EA,Reg,0,"Unknown",Immediate,Base,Steps+1):-
 	def_used(EA,Reg,EA,_),
-	instruction(EA,_,"ADD",Op1,Op2,0),	
+	instruction(EA,_,_,"ADD",Op1,Op2,0),
 	op_immediate(Op1,Immediate),
 	op_regdirect_contains_reg(Op2,Reg),
 	// the base case
@@ -151,7 +151,7 @@ value_reg(EA,Reg,0,"Unknown",Immediate,Base,Steps+1):-
 	Steps+1<8.
 value_reg(EA,Reg,0,"Unknown",1,Base,Steps+1):-
 	def_used(EA,Reg,EA,_),
-	instruction(EA,_,"INC",Op1,0,0),	
+	instruction(EA,_,_,"INC",Op1,0,0),
 	op_regdirect_contains_reg(Op1,Reg),
 	// the base case
 	value_reg(EA,Reg,0,NullReg,0,Base,Steps),
@@ -164,7 +164,7 @@ value_reg(EA,Reg,0,"Unknown",1,Base,Steps+1):-
 // Reg2= (Reg1*mult+offset)-Reg1 = Reg1 *(mult-1)+offset
 value_reg(EA,Reg2,EA_third,Reg3,Multiplier-Multiplier2,Offset-Offset2,Steps3):-
 	def(EA,Reg2),
-	instruction(EA,_,"SUB",Op1,Op2,0),
+	instruction(EA,_,_,"SUB",Op1,Op2,0),
 	op_regdirect_contains_reg(Op1,Reg1),
 	op_regdirect_contains_reg(Op2,Reg2),
 	// Reg2 is defined in EA_prev in terms of reg1
@@ -182,7 +182,7 @@ value_reg(EA,Reg2,EA_third,Reg3,Multiplier-Multiplier2,Offset-Offset2,Steps3):-
 
 value_reg(EA,Reg2,EA_third,Reg3,Multiplier+Multiplier2,Offset+Offset2,Steps3):-
 	def(EA,Reg2),
-	instruction(EA,_,"ADD",Op1,Op2,0),
+	instruction(EA,_,_,"ADD",Op1,Op2,0),
 	op_regdirect_contains_reg(Op2,Reg2),
 	op_regdirect_contains_reg(Op1,Reg1),
 	def_used(EA_def1,Reg1,EA,_),

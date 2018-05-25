@@ -32,7 +32,7 @@
 .init phase1=traverse_code
 
 phase1.possible_ea(EA):-
-	instruction(EA,_,_,_,_,_).
+	instruction(EA,_,_,_,_,_,_).
 
 
 //fixme pie here
@@ -102,7 +102,7 @@ operation_not_for_address("XOR").
 can_have_symbolic(Src):-
 	binary_type("DYN"),
 	phase2.likely_ea(Src,_),
-	instruction(Src,Size,_,_,_,_),
+	instruction(Src,Size,_,_,_,_,_),
 	relocation(Location,_,_,_),
 	Src<=Location,
 	Location<Src+Size.
