@@ -20,27 +20,16 @@ void Datalog_visitor_x64::add_curr_operator(){
 }
 
 Dl_instruction Datalog_visitor_x64::get_instruction(){
-    return Dl_instruction(address,size,prefix+name,op_codes);
+    return Dl_instruction(address,size,prefix,name,op_codes);
 }
 
 void Datalog_visitor_x64::set_prefix(uint attrib)
 {
-    if (attrib & 1) prefix=  "rep ";
-    else if (attrib & 2) prefix= "repe ";
-    else if (attrib & 4) prefix="repne ";
-    if (attrib & 8) prefix= "lock ";
+    if (attrib & 1) prefix=  "rep";
+    else if (attrib & 2) prefix= "repe";
+    else if (attrib & 4) prefix="repne";
+    if (attrib & 8) prefix= "lock";
 }
-/*
-std::string Datalog_visitor_x64::result(){
-    std::ostringstream o;
-    o<< "instruction("<<address<<","<<size<<","<<name;
-    for (auto op: operators){
-        o<<","<< op.print();
-    }
-    o<<").";
-    return o.str();
-}
- */
 
 void Datalog_visitor_x64::visit(const ConcTSLInterface::instruction * const n)
 {
