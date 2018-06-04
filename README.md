@@ -100,6 +100,32 @@ are all at certain directory `real_world_examples`
 
 - `test_CGC.sh` test a subset of the CGC programs with different compilers and optimization flags.
 
+## Experimental Evaluation
+
+We would like to perform an evaluation along the following dimensions:
+
+Tools
+- Datalog Disassembler
+- GTx
+- Ramblr
+
+Benchmarks (× Compilers × Flags -- should include the versions used in the Ramblr paper)
+- coreutils
+- CGC binaries (a subset thereof)
+- Real World binaries (we need a real methodology for how these were selected)
+- Siemens programs
+
+Metrics
+- Runtime of the rewritten binaries
+- Memory consumption of the rewritten binaries
+- Size of the rewritten binaries (stripped)
+- Runtime of the binary rewriter
+- Memory consumption of the binary rewriter
+- Functionality of the rewritten binaries (as measure by their test suites)
+- Additional "precision" metrics (might be useful if we have GT-IRB)
+    - symbolization
+    - data vs. code location
+    - function boundary identification
 
 ### Issues/TODOs
 
