@@ -31,7 +31,7 @@ void Datalog_visitor_x64::set_prefix(uint attrib)
     if (attrib & 8) prefix= "lock";
 }
 
-void Datalog_visitor_x64::visit(const ConcTSLInterface::instruction * const n)
+void Datalog_visitor_x64::visit(const RTG::instruction * const n)
 {
     std::cerr<<"unrecognized instruction:"<<n->GetClassIdName()<<std::endl;
     exit(1);

@@ -50,7 +50,7 @@ operator_type Dl_operator::get_type() const{
 }
 
 
-bool compare_operators::operator()(const Dl_operator&  op1,const Dl_operator&  op2){
+bool compare_operators::operator()(const Dl_operator&  op1,const Dl_operator&  op2) const{
     if(op1.type==op2.type){
         switch(op1.type){
         case NONE:

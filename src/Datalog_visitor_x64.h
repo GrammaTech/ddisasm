@@ -15,6 +15,7 @@ class Datalog_visitor_x64 : public tsl_x64::Conc1LevelRTG::ConcVisitor
 {
     typedef tsl_x64::Conc1LevelRTG RTG;
 private:
+    using tsl_x64::Conc1LevelRTG::ConcVisitor::visit;
     template<typename T>  void visit3op(const T * const n,short size1,short size2, short size3);
     template<typename T>  void visit2op(const T * const n,short size1,short size2);
     template<typename T>  void visit1op(const T * const n,short size);
@@ -50,7 +51,7 @@ public:
     //std::string result();
     Dl_instruction get_instruction();
     //generic instruction
-    virtual void visit(const ConcTSLInterface::instruction * const n);
+    virtual void visit(const RTG::instruction * const n);
     //generic operand
     virtual void visit(const RTG::operand * const n);
 
