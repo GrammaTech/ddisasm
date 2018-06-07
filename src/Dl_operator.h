@@ -52,7 +52,7 @@ public:
 };
 
 struct compare_operators{
-    bool operator() (const Dl_operator&  op1,const Dl_operator&  op2);
+    bool operator() (const Dl_operator&  op1,const Dl_operator&  op2) const;
 };
 
 

@@ -26,7 +26,7 @@ void Dl_decoder::decode_section(char* buf,uint64_t size,int64_t ea){
         } else {
             Datalog_visitor_x64 visitor(ea,static_cast<long>(nbytes_decoded),&op_dict);
             instr->accept(visitor);
-            instructions.push_back(move(visitor.get_instruction()));
+            instructions.push_back(visitor.get_instruction());
         }
 
         ++ea;
