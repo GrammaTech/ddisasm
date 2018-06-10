@@ -13,6 +13,7 @@ LDFLAGS= -fvisibility=hidden  -mtune=generic  -Wl,--exclude-libs,libc++.a:libc++
 
 LINK= -L$(STANDALONE)/lib -L.  -lpthread -lrt -lstring  -ldetcheck -lisax_thin_decoder_x64 -ltsl_rtg_x64 -ltsl_rtg_generic  -lm -lisax_core_x64 -lisax -lgt_assert -lgt_message -lgt_abort -lgtr_compat -lrt -ldatalog_visitor_x64 -lboost_program_options  -lc++  -lc++abi  -lpthread -ldl -no-pie
 
+LINK= -L$(STANDALONE)/lib -L.  -lpthread -lrt -lstring  -ldetcheck -lisax_thin_decoder_x64 -ltsl_rtg_x64 -ltsl_rtg_generic  -lm -lisax_core_x64 -lisax -lgt_assert -lgt_message -lgt_abort -lgtr_compat -lrt -ldatalog_visitor_x64 -lboost_program_options -lboost_system  -lc++  -lc++abi  -lpthread -ldl -no-pie
 
 all: ../bin/datalog_decoder ../bin/souffle_disasm
 
