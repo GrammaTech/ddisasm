@@ -1,0 +1,54 @@
+FROM ubuntu:18.04 as souffle
+RUN apt-get -y update && apt-get -y install automake  bison build-essential clang doxygen flex git libtool make mcpp openjdk-8-jdk pkg-config python sqlite3 libsqlite3-dev subversion swi-prolog zlib1g-dev gcc-5 g++-5
+
+RUN ln -sf gcc-5 /usr/bin/gcc
+RUN ln -sf g++-5 /usr/bin/g++
+
+RUN git clone https://github.com/souffle-lang/souffle
+RUN cd souffle && sh ./bootstrap
+RUN cd souffle && ./configure --prefix=/usr --enable-64bit-domain --disable-provenance
+RUN cd souffle && make -j4 install
+RUN cd souffle && cp include/souffle/RamTypes.h /usr/include/souffle/
+
+FROM ubuntu:18.04
+
+ARG BOOST_VERSION=1.67.0
+ARG BOOST_VERSION_=1_67_0
+
+RUN apt-get -y update && apt-get -y install autoconf automake bison build-essential clang doxygen flex  git libtool make mcpp openjdk-8-jdk pkg-config python sqlite3 libsqlite3-dev subversion swi-prolog zlib1g-dev clang ed libpcre3-dev libncurses5-dev wget libc++1 libc++abi1 gcc-5 g++-5
+COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
+COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
+COPY --from=souffle /usr/bin/souffle /usr/bin/souffle
+COPY --from=souffle /usr/bin/souffle-profile /usr/bin/souffle-profile
+COPY --from=souffle /usr/share/man/man1/souffle.1 /usr/share/man/man1/souffle.1
+COPY --from=souffle /usr/share/man/man1/souffle-config.1 /usr/share/man/man1/souffle-config.1
+COPY --from=souffle /usr/share/man/man1/souffle-profile.1 /usr/share/man/man1/souffle-profile.1
+COPY --from=souffle /usr/share/man/man1/souffle-compile.1 /usr/share/man/man1/souffle-compile.1
+COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
+
+RUN ln -sf gcc-5 /usr/bin/gcc
+RUN ln -sf g++-5 /usr/bin/g++
+
+# Install Boost
+ENV BOOST_VERSION=${BOOST_VERSION}
+ENV BOOST_VERSION_=${BOOST_VERSION_}
+ENV BOOST_ROOT=/usr/include/boost
+RUN cd /home && wget https://dl.bintray.com/boostorg/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_}.tar.gz \
+  && tar xfz boost_${BOOST_VERSION_}.tar.gz \
+  && rm boost_${BOOST_VERSION_}.tar.gz \
+  && cd boost_${BOOST_VERSION_} \
+  && ./bootstrap.sh  --prefix=/usr --with-libraries=program_options,filesystem,system,serialization \
+  && ./b2 install \
+  && cd /home \
+  && rm -rf boost_${BOOST_VERSION_}
+
+# For some reason the standard symlinks don't exist, so create them.
+RUN ln -s libc++.so.1 /usr/lib/x86_64-linux-gnu/libc++.so
+RUN ln -s libc++abi.so.1 /usr/lib/x86_64-linux-gnu/libc++abi.so
+
+RUN   useradd dl_disasm
+COPY --chown=dl_disasm . /datalog_disasm
+USER dl_disasm
+RUN cd /datalog_disasm && tar xjf standalone_compilation.tar.bz2
+ENV TERM xterm
+RUN cd /datalog_disasm && make
