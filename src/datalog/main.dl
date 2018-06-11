@@ -495,24 +495,6 @@ got_reference(EA,Index,Content):-
 // find the main function even if it does not have a symbol
 //
 
-.decl main_function(ea:address)
-.output main_function
-
-main_function(EA):-
-	function_symbol(EA,"main").
-	
-main_function(Main_location):-
-	!function_symbol(Main_location,"main"),
-	First_call= min EA:{
-		    entry_point(Entry),
-		    direct_call(EA,_),
-		    code(EA),
-		    EA>=Entry
-		    	},
-	next(Prev,First_call),
-        code(Prev),
-	symbolic_code_operand_candidate(Prev,1,Main_location).
-
 .decl start_function(ea:address)
 .output start_function
 
@@ -522,3 +504,22 @@ start_function(EA):-
 start_function(Start_location):-
 	!function_symbol(Start_location,"_start"),
 	entry_point(Start_location).
+
+
+.decl main_function(ea:address)
+.output main_function
+
+main_function(EA):-
+	function_symbol(EA,"main").
+
+main_function(Main_location):-
+	!function_symbol(Main_location,"main"),
+	First_call= min EA:{
+		    start_function(Entry),
+		    instruction_get_operation(EA,"CALL"),
+		    code(EA),
+		    EA>=Entry},
+	next(Prev,First_call),
+        code(Prev),
+	symbolic_code_operand_candidate(Prev,1,Main_location).
+
