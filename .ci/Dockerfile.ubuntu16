@@ -30,7 +30,7 @@ RUN cd /home && wget https://dl.bintray.com/boostorg/release/${BOOST_VERSION}/so
   && tar xfz boost_${BOOST_VERSION_}.tar.gz \
   && rm boost_${BOOST_VERSION_}.tar.gz \
   && cd boost_${BOOST_VERSION_} \
-  && ./bootstrap.sh --prefix=/usr/local --with-libraries=program_options,filesystem,system,serialization \
+  && ./bootstrap.sh  --prefix=/usr --with-libraries=program_options,filesystem,system,serialization \
   && ./b2 install \
   && cd /home \
   && rm -rf boost_${BOOST_VERSION_}
