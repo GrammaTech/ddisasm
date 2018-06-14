@@ -81,7 +81,8 @@ printf "#Stats: Time $time Decode $decode_time Datalog $dl_time Size $size\n"
 printf "  OK\n"
 printf "Copying old binary to $dir/$exe.old\n"
 cp $dir/$exe $dir/$exe.old
-binary_type=$(cat $dir/dl_files/binary_type.facts)
+dl_files_dir=$(dirname $dir/$exe)
+binary_type=$(cat $dl_files_dir/dl_files/binary_type.facts)
 printf "# Binary of type $binary_type\n"
 
 pie_flag=""
