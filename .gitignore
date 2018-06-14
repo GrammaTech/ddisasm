@@ -18,4 +18,5 @@ standalone_compilation.tar.bz2
 examples/**/dl_files
 examples/**/ex.old
 examples/**/ex.s
+examples/**/ex.unstripped
 examples/**/out.txt
