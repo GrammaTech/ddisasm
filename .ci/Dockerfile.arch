@@ -24,4 +24,4 @@ COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
 COPY . /datalog_disasm
 RUN cd /datalog_disasm && tar xjf standalone_compilation.tar.bz2
 ENV TERM xterm
-RUN cd /datalog_disasm && make check
+RUN cd /datalog_disasm && make clean && make check
