@@ -245,15 +245,15 @@ function_pointer_section(".got.plt").
 .decl typical_function_starter(EA:address)
 
 // typical_function_starter(EA):-
-// 	instruction(EA,_,_,"PUSH",_,_,_).
+// 	instruction(EA,_,_,"PUSH",_,_,_,_).
 
 typical_function_starter(EA):-
-	instruction(EA,_,_,"SUB",Op1,Op2,_),
+	instruction(EA,_,_,"SUB",Op1,Op2,_,_),
 	op_immediate(Op1,_),
 	op_regdirect(Op2,"RSP").
 	
 typical_function_starter(EA):-
-	instruction(EA,_,_,"PUSH",Op1,_,_),
+	instruction(EA,_,_,"PUSH",Op1,_,_,_),
  	op_regdirect(Op1,"RBP").
 	
 	

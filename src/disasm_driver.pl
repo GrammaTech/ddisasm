@@ -32,7 +32,6 @@ data_section_descriptor('.data',16).
 
 % when the parameter -asm is given we do not print some of the functions and sections
 % that are added by the compiler/assembler
-
 asm_skip_function('_start'):-
     \+option('-keep_start').
 asm_skip_function('deregister_tm_clones').
@@ -41,6 +40,7 @@ asm_skip_function('__do_global_dtors_aux').
 asm_skip_function('frame_dummy').
 asm_skip_function('__libc_csu_fini').
 asm_skip_function('__libc_csu_init').
+asm_skip_function('_dl_relocate_static_pie').
 %asm_skip_function('__clang_call_terminate').
 
 asm_skip_section('.comment').
@@ -143,7 +143,7 @@ result_descriptors([
 			  result(symbol,5,'.facts'),
 			  result(section,3,'.facts'),
 			  result(relocation,4,'.facts'),
-			  result(instruction,7,'.facts'),
+			  result(instruction,8,'.facts'),
 			  result(op_regdirect,2,'.facts'),
 			  result(op_immediate,2,'.facts'),
 			  result(op_indirect,7,'.facts'),
@@ -214,7 +214,7 @@ result_descriptors([
 :-dynamic symbol/5.
 :-dynamic section/3.
 :-dynamic relocation/4.
-:-dynamic instruction/7.
+:-dynamic instruction/8.
 :-dynamic op_regdirect/2.
 :-dynamic op_immediate/2.
 :-dynamic op_indirect/7.
@@ -364,13 +364,14 @@ get_code_blocks(Blocks_with_padding):-
      ;
     findall(Instruction,
 	    (
-		instruction(EA,Size,Prefix,Name,Opc1,Opc2,Opc3),
+		instruction(EA,Size,Prefix,Name,Opc1,Opc2,Opc3,Opc4),
                 \+code_in_block(EA,_),
 		remaining_ea(EA),
 		get_op(Opc1,Op1),
 		get_op(Opc2,Op2),
 		get_op(Opc3,Op3),
-		Instruction=instruction(EA,Size,Prefix,Name,Op1,Op2,Op3)
+		get_op(Opc4,Op4),
+		Instruction=instruction(EA,Size,Prefix,Name,Op1,Op2,Op3,Op4)
 	    ),Single_instructions)
     ),
     % assoc is a key-value map
@@ -394,11 +395,12 @@ get_block_content(Block_addr,Assoc,Assoc1):-
     %get the instruction in the block
     findall(Instruction,
 	    (code_in_block(EA,Block_addr),
-	     instruction(EA,Size,Prefix,Name,Opc1,Opc2,Opc3),
+	     instruction(EA,Size,Prefix,Name,Opc1,Opc2,Opc3,Opc4),
 	     get_op(Opc1,Op1),
 	     get_op(Opc2,Op2),
 	     get_op(Opc3,Op3),
-	     Instruction=instruction(EA,Size,Prefix,Name,Op1,Op2,Op3)
+	     get_op(Opc4,Op4),
+	     Instruction=instruction(EA,Size,Prefix,Name,Op1,Op2,Op3,Op4)
 	    ),Instructions),
     get_block_end_address(Instructions,Block_addr,End),
     put_assoc(Block_addr,Assoc,block(Block_addr,End,Instructions),Assoc1).
@@ -406,7 +408,7 @@ get_block_content(Block_addr,Assoc,Assoc1):-
 
 get_block_end_address([],Block_addr,Block_addr).
 get_block_end_address(Instructions,_,End):-
-     last(Instructions,instruction(EA_last,Size_last,_,_,_,_,_)),
+     last(Instructions,instruction(EA_last,Size_last,_,_,_,_,_,_)),
      End is EA_last+Size_last.
 
 % get the operators without the operator id
@@ -418,8 +420,8 @@ get_op(N,immediate(Immediate)):-
 get_op(N,indirect(Reg1,Reg2,Reg3,A,B,Size)):-
     op_indirect(N,Reg1,Reg2,Reg3,A,B,Size),!.
 
-accum_instruction(instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3),Assoc,Assoc1):-
-    put_assoc(EA,Assoc,instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3),Assoc1).
+accum_instruction(instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4),Assoc,Assoc1):-
+    put_assoc(EA,Assoc,instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4),Assoc1).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -433,7 +435,7 @@ adjust_padding([Block1,Block2|Blocks], Final_blocks):-
 	 Final_blocks=[Block1|Blocks_adjusted]
      ;
      Beg2>End->
-	 Nop=instruction(End,1,_,'NOP',none,none,none),
+	 Nop=instruction(End,1,_,'NOP',none,none,none,none),
 	 adjust_padding([Nop,Block2|Blocks],Blocks_adjusted),
 	 Final_blocks=[Block1|Blocks_adjusted]
      ;
@@ -443,7 +445,7 @@ adjust_padding([Block1,Block2|Blocks], Final_blocks):-
     ).
 
 get_begin_end(block(Beg,End,_),Beg,End).
-get_begin_end(instruction(Beg,Size,_,_,_,_,_),Beg,End):-
+get_begin_end(instruction(Beg,Size,_,_,_,_,_,_),Beg,End):-
     End is Beg+Size.
 
 
@@ -715,7 +717,7 @@ pp_bss_data(variable(Start,Size)):-
 
 pp_code_block(block(EA_block,_,_List)):-
     skip_ea(EA_block),!.
-pp_code_block(instruction(EA_block,_,_,_,_,_,_)):-
+pp_code_block(instruction(EA_block,_,_,_,_,_,_,_)):-
     skip_ea(EA_block),!.
 
 pp_code_block(block(EA_block,_,List)):-
@@ -730,9 +732,9 @@ pp_code_block(block(EA_block,_,List)):-
      true),
     maplist(pp_instruction_rand,List),nl.
 
-pp_code_block(instruction(EA,Size,Prefix,Operation,Op1,Op2,Op3)):-
+pp_code_block(instruction(EA,Size,Prefix,Operation,Op1,Op2,Op3,Op4)):-
     cond_print_section_header(EA),
-    pp_instruction_rand(instruction(EA,Size,Prefix,Operation,Op1,Op2,Op3)).
+    pp_instruction_rand(instruction(EA,Size,Prefix,Operation,Op1,Op2,Op3,Op4)).
     
 
 print_function_header(EA):-
@@ -799,11 +801,11 @@ pp_instruction_rand(Instruction):-
 % some instructions operands have to be adapted or reordered
 % some instruction prefixes need to be adapted
 
-pp_instruction(instruction(EA,Size,'','NOP',none,none,none)):-
+pp_instruction(instruction(EA,Size,'','NOP',none,none,none,none)):-
     repeat_n_times((print_ea(EA),format(' nop ~n',[])),Size),
     cond_print_comments(EA).
 
-pp_instruction(instruction(EA,_Size,Prefix,String_op,Op1,none,none)):-
+pp_instruction(instruction(EA,_Size,Prefix,String_op,Op1,none,none,none)):-
     opcode_suffix(String_op,Op_suffix),
     member(Op_suffix,['MOVS','CMPS']),!,
     print_ea(EA),
@@ -814,31 +816,31 @@ pp_instruction(instruction(EA,_Size,Prefix,String_op,Op1,none,none)):-
 
 
 % FDIV_TO, FMUL_TO, FSUBR_TO, etc.
-pp_instruction(instruction(EA,Size,Prefix,Operation_TO,Op1,none,none)):-
+pp_instruction(instruction(EA,Size,Prefix,Operation_TO,Op1,none,none,none)):-
     atom_concat(Operation,'_TO',Operation_TO),!,
-    pp_instruction(instruction(EA,Size,Prefix,Operation,reg('ST'),Op1,none)).
+    pp_instruction(instruction(EA,Size,Prefix,Operation,reg('ST'),Op1,none,none)).
 
-pp_instruction(instruction(EA,Size,Prefix,FCMOV,Op1,none,none)):-
+pp_instruction(instruction(EA,Size,Prefix,FCMOV,Op1,none,none,none)):-
    atom_concat('FCMOV',_,FCMOV),!,
-   pp_instruction(instruction(EA,Size,Prefix,FCMOV,Op1,reg('ST'),none)).
+   pp_instruction(instruction(EA,Size,Prefix,FCMOV,Op1,reg('ST'),none,none)).
 
-pp_instruction(instruction(EA,Size,Prefix,Loop,reg('RCX'),Op2,none)):-
+pp_instruction(instruction(EA,Size,Prefix,Loop,reg('RCX'),Op2,none,none)):-
     atom_concat('LOOP',_,Loop),!,
-    pp_instruction(instruction(EA,Size,Prefix,Loop,none,Op2,none)).
+    pp_instruction(instruction(EA,Size,Prefix,Loop,none,Op2,none,none)).
 
-pp_instruction(instruction(EA,Size,'lock',Operation,Op1,Op2,Op3)):-!,
-    pp_instruction(instruction(EA,Size,'lock\n           ',Operation,Op1,Op2,Op3)).
+pp_instruction(instruction(EA,Size,'lock',Operation,Op1,Op2,Op3,Op4)):-!,
+    pp_instruction(instruction(EA,Size,'lock\n           ',Operation,Op1,Op2,Op3,Op4)).
 
 %%%%%%%%%%%%%%%
 % general case
-pp_instruction(instruction(EA,_Size,Prefix,OpCode,Op1,Op2,Op3)):-
+pp_instruction(instruction(EA,_Size,Prefix,OpCode,Op1,Op2,Op3,Op4)):-
 
     print_ea(EA),
     downcase_atom(OpCode,OpCode_l),
     adapt_opcode(OpCode_l,OpCode_adapted),
     format('~p ~p',[Prefix,OpCode_adapted]),
     %operands
-    pp_operand_list([Op1,Op2,Op3],EA,1,Pretty_ops),
+    pp_operand_list([Op1,Op2,Op3,Op4],EA,1,Pretty_ops),
     % print the operands in the order: dest, src1 src2
     (
 	append(Source_operands,[Dest_operand],Pretty_ops),
@@ -952,7 +954,7 @@ pp_operand(indirect(NullSReg,'RIP',NullReg1,1,Offset,Size),EA,N,PP):-
     null_reg(NullReg1),
     symbolic_operand(EA,N),!,
     get_size_name(Size,Name),
-    instruction(EA,Size_instr,_,_,_,_,_),
+    instruction(EA,Size_instr,_,_,_,_,_,_),
     Address is EA+Offset+Size_instr,
     (get_global_symbol_ref(Address,relative,Name_symbol)->
 	 format(atom(PP),'~p ~p[rip]',[Name,Name_symbol])
@@ -1376,13 +1378,15 @@ clean_symbol_name_suffix(Name,Name_clean):-
 clean_symbol_name_suffix(Name,Name).
 
 in_relocated_symbol(EA,_,Name,Offset):-
-    symbol(Address,Size,_,_,Name_symbol),
+%    symbol(Address,Size,_,'GLOBAL',Name_symbol),
+     symbol(Address,Size,_,_,Name_symbol),
     EA>=Address,
     EA<Address+Size,
     clean_symbol_name_suffix(Name_symbol,Name),
     relocation(_,_,Name,_),
     Offset is EA-Address.
 in_relocated_symbol(EA,relative,Qualified_name,Offset):-
+    symbol(EA,_,_,'GLOBAL',_),
     relocation(EA,'R_X86_64_GLOB_DAT',Name,Offset),!,
     atom_concat(Name,'@GOTPCREL',Qualified_name).
 
@@ -1507,8 +1511,8 @@ generate_hints(_,_,_).
 
 print_code_ea(S,EA):-
     format(S,'0x~16r C',[EA]),
-    instruction(EA,_,_,_,Op1,Op2,Op3),
-    exclude(is_zero,[Op1,Op2,Op3],Non_zero_ops),
+    instruction(EA,_,_,_,Op1,Op2,Op3,Op4),
+    exclude(is_zero,[Op1,Op2,Op3,Op4],Non_zero_ops),
     length(Non_zero_ops,N_ops),
     findall((Index,Type),
 	    (

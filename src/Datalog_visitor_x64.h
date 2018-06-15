@@ -16,6 +16,7 @@ class Datalog_visitor_x64 : public tsl_x64::Conc1LevelRTG::ConcVisitor
     typedef tsl_x64::Conc1LevelRTG RTG;
 private:
     using tsl_x64::Conc1LevelRTG::ConcVisitor::visit;
+    template<typename T>  void visit4op(const T * const n,short size1,short size2, short size3, short size4);
     template<typename T>  void visit3op(const T * const n,short size1,short size2, short size3);
     template<typename T>  void visit2op(const T * const n,short size1,short size2);
     template<typename T>  void visit1op(const T * const n,short size);
@@ -128,6 +129,8 @@ public:
     virtual void visit(const RTG::ThreeOp16_16_16 * const n){ visit3op<RTG::ThreeOp16_16_16>(n,16,16,16); }
     virtual void visit(const RTG::ThreeOp128 * const n){ visit3op<RTG::ThreeOp128>(n,128,128,128); }
 
+    virtual void visit(const RTG::ThreeOp128_128_64 * const n){ visit3op<RTG::ThreeOp128_128_64>(n,128,128,64); }
+    virtual void visit(const RTG::ThreeOp128_128_32 * const n){ visit3op<RTG::ThreeOp128_128_32>(n,128,128,32); }
     virtual void visit(const RTG::ThreeOp128_128_8 * const n){ visit3op<RTG::ThreeOp128_128_8>(n,128,128,8); }
     virtual void visit(const RTG::ThreeOp128_64_8 * const n){ visit3op<RTG::ThreeOp128_64_8>(n,128,64,8); }
     virtual void visit(const RTG::ThreeOp128_32_8 * const n){ visit3op<RTG::ThreeOp128_32_8>(n,128,32,8); }
@@ -151,6 +154,12 @@ public:
     virtual void visit(const RTG::ThreeOp16_16_8 * const n){ visit3op<RTG::ThreeOp16_16_8>(n,16,16,8); }
 
     virtual void visit(const RTG::ThreeOp8_128_8 * const n){ visit3op<RTG::ThreeOp8_128_8>(n,8,128,8); }
+
+    virtual void visit(const RTG::FourOp128_128_128_8 * const n){ visit4op<RTG::FourOp128_128_128_8>(n,128,128,128,8);}
+    virtual void visit(const RTG::FourOp128_128_64_8 * const n){ visit4op<RTG::FourOp128_128_64_8>(n,128,128,64,8);}
+    virtual void visit(const RTG::FourOp128_128_32_8 * const n){ visit4op<RTG::FourOp128_128_32_8>(n,128,128,32,8);}
+    virtual void visit(const RTG::FourOp128_128_16_8 * const n){ visit4op<RTG::FourOp128_128_16_8>(n,128,128,16,8);}
+    virtual void visit(const RTG::FourOp128 * const n){ visit4op<RTG::FourOp128>(n,128,128,128,128);}
 
     // operands
     virtual void visit(const RTG::OperandFloat * const n);

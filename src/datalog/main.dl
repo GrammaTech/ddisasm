@@ -45,7 +45,7 @@
 
 
 .decl instruction(ea:address, size:number, prefix:symbol, opcode:symbol,
-		  op1:operand_code, op2:operand_code, op3:operand_code)
+		  op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code)
 .input instruction
 
 .decl invalid_op_code(ea:address)
@@ -80,12 +80,12 @@
 .decl instruction_get_operation(ea:address,operation:symbol) 
 
 instruction_get_operation(EA,Operation):-
-	instruction(EA,_,_,Operation,_,_,_).
+	instruction(EA,_,_,Operation,_,_,_,_).
 	
 .decl instruction_get_op(ea:address, index:number, operator:operand_code)
 
 instruction_get_op(EA,Index,Op):-
-	instruction(EA,_,_,_,Op1,Op2,Op3),
+	instruction(EA,_,_,_,Op1,Op2,Op3,Op4),
 	(
 	Op1!=0,
 	Op=Op1,Index=1
@@ -95,25 +95,34 @@ instruction_get_op(EA,Index,Op):-
 	;
 	Op3!=0,
 	Op=Op3,Index=3
+	;
+	Op4!=0,
+	Op=Op4,Index=4
 	).
 
 .decl instruction_get_dest_op(ea:address,index:number,op:operand_code)
 
 instruction_get_dest_op(EA,Index,Op):-
-	instruction(EA,_,_,Operation,_,Op2,Op3),
+	instruction(EA,_,_,Operation,_,Op2,Op3,Op4),
 	!read_only_operation(Operation),
 	(
+	Op4=0,
 	Op3=0,
 	Op2!=0,
 	Op=Op2,
 	Index=2
 	;
+	Op4=0,
 	Op3!=0,
 	Op=Op3,
 	Index=3
+	;
+	Op4!=0,
+	Op=Op4,
+	Index=4
 	).
 instruction_get_dest_op(EA,1,Op):-
-	instruction(EA,_,_,Operation,Op,0,0),
+	instruction(EA,_,_,Operation,Op,0,0,0),
 	one_op_write(Operation).
 
 
@@ -121,16 +130,18 @@ instruction_get_dest_op(EA,1,Op):-
 
 //when the dest is used as a source as well
 instruction_get_src_op(EA,Index,Op2):-
-	instruction(EA,_,_,_Operation,_,Op2,_),Op2!=0,
+	instruction(EA,_,_,_Operation,_,Op2,_,_),Op2!=0,
 	Index=2,
 	!mov(EA).
 //	!read_only_operation(Operation).
 
 instruction_get_src_op(EA,Index,Op):-
 	(
-	instruction(EA,_,_,_,Op,_,_),Op!=0,Index=1
+	instruction(EA,_,_,_,Op,_,_,_),Op!=0,Index=1
 	;
-	instruction(EA,_,_,_,_,Op,Op3),Op!=0,Op3!=0,Index=2
+	instruction(EA,_,_,_,_,Op,Op3,_),Op!=0,Op3!=0,Index=2
+	;
+	instruction(EA,_,_,_,_,_,Op,Op4),Op!=0,Op4!=0,Index=3
 	).
 /////////////////////////////////////////////////////////////
 // hard-coded facts
@@ -154,7 +165,7 @@ is_nop(EA):-
     instruction_get_operation(EA,"NOP").
 
 is_nop(EA):-
-    instruction(EA,_,_,"XCHG",Op,Op,0),
+    instruction(EA,_,_,"XCHG",Op,Op,0,0),
     op_regdirect(Op,"AX").
 
 .decl comparison_operation(Operation:symbol)
@@ -217,7 +228,7 @@ code_section(".init").
 .decl next(n:address,m:address)
 
 next(EA,EA+Size):-
-	instruction(EA,Size,_,_,_,_,_).
+	instruction(EA,Size,_,_,_,_,_,_).
 	
 .decl pc_relative_operand(src:address,index:number, dest:address)
 .output pc_relative_operand
@@ -246,12 +257,12 @@ inconditional_jump(EA):-
 .output direct_jump
 
 direct_jump(EA,Dest):-
-	instruction(EA,_,_,Operation,Op1,_,_),
+	instruction(EA,_,_,Operation,Op1,_,_,_),
 	jump_operation(Operation),
 	op_immediate(Op1,Dest).
 
 direct_jump(EA,Dest):-
-	instruction(EA,_,_,Operation,_,Op2,_),
+	instruction(EA,_,_,Operation,_,Op2,_,_),
 	loop_operation(Operation),
 	op_immediate(Op2,Dest).
 
@@ -279,7 +290,7 @@ pc_relative_jump(EA,Dest):-
 // .output reg_jump
 
 reg_jump(EA):-
-	instruction(EA,_,_,Operation,Op1,_,_),
+	instruction(EA,_,_,Operation,Op1,_,_,_),
 	jump_operation(Operation),
 	op_regdirect(Op1,_).
 	
@@ -290,7 +301,7 @@ reg_jump(EA):-
 // .output indirect_jump
 
 indirect_jump(EA):-
-	instruction(EA,_,_,Operation,Op1,_,_),
+	instruction(EA,_,_,Operation,Op1,_,_,_),
 	jump_operation(Operation),
 	op_indirect(Op1,_,_,_, _,_,_),
 	!pc_relative_jump(EA,_).
@@ -303,7 +314,7 @@ indirect_jump(EA):-
 .output direct_call
 
 direct_call(EA,Dest):-
-	instruction(EA,_,_,"CALL",Op1,_,_),
+	instruction(EA,_,_,"CALL",Op1,_,_,_),
 	op_immediate(Op1,Dest).
 
 
@@ -320,7 +331,7 @@ pc_relative_call(Src,Dest):-
 .output reg_call
 
 reg_call(EA):-
-	instruction(EA,_,_,"CALL",Op1,_,_),
+	instruction(EA,_,_,"CALL",Op1,_,_,_),
  	op_regdirect(Op1,_).
 
 
@@ -330,7 +341,7 @@ reg_call(EA):-
 // .output indirect_call
 
 indirect_call(EA):-
-	instruction(EA,_,_,"CALL",Op1,_,_),
+	instruction(EA,_,_,"CALL",Op1,_,_,_),
  	op_indirect(Op1,_,_,_,_,_,_),
  	!pc_relative_jump(EA,_).
 
@@ -403,7 +414,7 @@ take_address(Src,Address):-
 relative_address_start(EA,EA,EA+Diff):-
 	take_address(_,EA),
 	data_dword(EA,Diff),
-	instruction(EA+Diff,_,_,_,_,_,_).
+	instruction(EA+Diff,_,_,_,_,_,_,_).
 	
 .decl relative_address(EA:address,Reference:address,Val:address)
 .output relative_address
@@ -414,7 +425,7 @@ relative_address(EA,EA,Symbol2):-
 relative_address(EA+4,Ref,Ref+Diff):-
 	relative_address(EA,Ref,_),
 	data_dword(EA+4,Diff),
-	instruction(Ref+Diff,_,_,_,_,_,_),
+	instruction(Ref+Diff,_,_,_,_,_,_,_),
 	!relative_address_start(EA+4,_,_).
 
 
