@@ -124,6 +124,34 @@ inline void Datalog_visitor_x64::visit3op(const T * const n,short size1,short si
 
 }
 
+template<typename T>
+inline void Datalog_visitor_x64::visit4op(const T * const n,short size1,short size2,short size3,short size4)
+{
+  set_prefix(n->Get_attributes().get_data());
+    n->Get_FourOpInstr()->accept(*this);
+
+    curr_op.type=operator_type::NONE;
+    curr_op.size=size2;
+    n->Get_Src1()->accept(*this);
+    add_curr_operator();
+
+    curr_op.type=operator_type::NONE;
+    curr_op.size=size3;
+    n->Get_Src2()->accept(*this);
+    add_curr_operator();
+
+    curr_op.type=operator_type::NONE;
+    curr_op.size=size4;
+    n->Get_Src3()->accept(*this);
+    add_curr_operator();
+
+    curr_op.type=operator_type::NONE;
+    curr_op.size=size1;
+    n->Get_Dst() ->accept(*this);
+    add_curr_operator();
+
+}
+
 template<typename regdirect>
 inline void Datalog_visitor_x64::visitRegDirect(const regdirect * const n)
 {

@@ -13,7 +13,7 @@
 std::string Dl_instruction::result_tabs(){
     std::ostringstream o;
     o<<address<<"\t"<<size<<"\t"<<prefix<<"\t"<<name;
-    for (size_t i=0;i<3;++i){
+    for (size_t i=0;i<4;++i){
         if(i<op_codes.size())
             o<<"\t"<< op_codes[i];
         else
