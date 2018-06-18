@@ -4,7 +4,7 @@ all: ex_original.s
 	@./ex > out.txt
 clean:
 	rm -f ex out.txt
-	rm -fr ex.s *.old*  dl_files
+	rm -fr ex.unstripped ex.s *.old*  dl_files
 check:
 	./ex > /tmp/res.txt
 	@bash ./test.sh
