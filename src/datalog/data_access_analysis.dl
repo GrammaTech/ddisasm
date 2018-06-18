@@ -35,20 +35,16 @@ data_access_pattern(Address+(Offset2*Multiplier),Size/8 ,Multiplier*Multiplier2,
 
 	
 	def_used(EA_def,RegMult,EA,Op_index),
-	Max_multiplier=max Mult:{value_reg(EA_def,RegMult,_,_,Mult,_,_)},
-	value_reg(EA_def,RegMult,_,Ref_reg,Multiplier2,Offset2_aux,_),
-
-//	Offset2=max(Offset2_aux,0),
+	best_value_reg(EA_def,RegMult,Multiplier2,Offset_aux2,Type),
 	(
-	Ref_reg="Unknown",
-	Offset2=Offset2_aux
+	Type!="incomplete",
+	Offset2=Offset_aux2
 	;
-	Ref_reg!="Unknown",
+	Type="incomplete",
 	Offset2=0
 	),
 
-	Multiplier2>=Max_multiplier,
-	Multiplier*Multiplier2>1,
+	max(Multiplier*Multiplier2,Multiplier*Multiplier2*(-1))>1,
 
 	(
 	null_reg(RegBase),
@@ -56,7 +52,7 @@ data_access_pattern(Address+(Offset2*Multiplier),Size/8 ,Multiplier*Multiplier2,
 	;
 	!null_reg(RegBase),
 	def_used(EA_base,RegBase,EA,Op_index),
-	value_reg(EA_base,RegBase,0,"NullReg64",_,Address2,_),
+	best_value_reg(EA_base,RegBase,0,Address2,"complete"),
 	Address=Address1+Address2
 	),
 	
@@ -65,7 +61,6 @@ data_access_pattern(Address+(Offset2*Multiplier),Size/8 ,Multiplier*Multiplier2,
 	Address+(Offset2*Multiplier)>=Base,
 	Address+(Offset2*Multiplier)<=Base+SizeSect.
 
-
 // indirectly computed
 data_access_pattern(Offset+Address,Size/8 ,Multiplier,EA):-
 	code(EA),
@@ -73,19 +68,14 @@ data_access_pattern(Offset+Address,Size/8 ,Multiplier,EA):-
 	op_indirect(Op,NullSReg,Reg,RegBase,MultiplierBase,Address1,Size),
 	null_reg(NullSReg),
 	def_used(EA_def,Reg,EA,Op_index),
-	Max_multiplier=max Mult:{value_reg(EA_def,Reg,_,_,Mult,_,_)},
-	value_reg(EA_def,Reg,_,Ref_reg,Multiplier,Offset_aux,_),
+	best_value_reg(EA_def,Reg,Multiplier,Offset_aux,Type),
 	(
-	Ref_reg="Unknown",
+	Type!="incomplete",
 	Offset=Offset_aux
 	;
-	Ref_reg!="Unknown",
+	Type="incomplete",
 	Offset=0
 	),
-	//Offset=max(Offset_aux,0),
-	Multiplier>=Max_multiplier,
-	Multiplier>1,
-
 	(
 	null_reg(RegBase),
 	Address=Address1
@@ -93,17 +83,13 @@ data_access_pattern(Offset+Address,Size/8 ,Multiplier,EA):-
 	!null_reg(RegBase),
 	MultiplierBase=1,
 	def_used(EA_base,RegBase,EA,Op_index),
-	value_reg(EA_base,RegBase,0,"NullReg64",_,Address2,_),
+	best_value_reg(EA_base,RegBase,0,Address2,"complete"),
 	Address=Address1+Address2
 	),
 	data_section(Section),
 	section(Section,SizeSect,Base),
 	Offset+Address>=Base,
 	Offset+Address<=Base+SizeSect.
-
-
-
-
 
 // pc relative
 data_access_pattern(Address,Size/8 ,0,EA):-
@@ -124,13 +110,12 @@ data_access_pattern(Address,1,1,EA):-
 	!null_reg(Reg),
 
 	def_used(EA_def,Reg,EA,Index),	
-	value_reg(EA_def,Reg,_,_,1,0,_),
+	best_value_reg(EA_def,Reg,1,0,_),
 
 	data_section(Section),
 	section(Section,SizeSect,Base),
 	Address>=Base,
 	Address<=Base+SizeSect.
-
 
 //typical word index
 data_access_pattern(Address,2,2,EA):-
@@ -140,7 +125,7 @@ data_access_pattern(Address,2,2,EA):-
 	null_reg(NullSReg),
 	!null_reg(Reg),
 	def_used(EA_def,Reg,EA,Index),	
-	value_reg(EA_def,Reg,_,_,1,0,_),
+	best_value_reg(EA_def,Reg,1,0,_),
 
 	data_section(Section),
 	section(Section,SizeSect,Base),
@@ -269,24 +254,28 @@ paired_propagated_data_access(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Mult
 	    paired_propagated_data_access(EA+Diff,EA_paired,_,Multiplier)
 	).
 	
-.decl propagated_data_access(ea:address,ea_label:address,offset:number,multiplier:number)
+.decl propagated_data_access(ea:address,ea_label:address,distance:number,multiplier:number)
 
 
 // count offset after the first propagation so patterns
 // with higher multiplier prevail in the first propagation
 
-propagated_data_access(EA,EA_label,Offset-Multiplier,Multiplier):-
-	paired_propagated_data_access(EA,EA_label,Offset,Multiplier).
-propagated_data_access(EA,EA_label,Offset-Multiplier,Multiplier):-
-	individual_propagated_data_access(EA,EA_label,Offset,Multiplier).
+propagated_data_access(EA,EA_label,Distance,Multiplier):-
+	paired_propagated_data_access(EA,EA_label,_,Multiplier),
+	Reference=EA_label+Multiplier,
+	Distance=max(Reference-EA,EA-Reference).
+propagated_data_access(EA,EA_label,Distance,Multiplier):-
+	individual_propagated_data_access(EA,EA_label,_,Multiplier),
+	Reference=EA_label+Multiplier,
+	Distance=max(Reference-EA,EA-Reference).
 	
 
 .decl initial_preferred_data_access(EA:address,EA_label:address)
 
 initial_preferred_data_access(EA,EA_label):-
-	Min_Offset= min Offset:{propagated_data_access(EA,_,Offset,_)},
-	propagated_data_access(EA,EA_label,Selected_offset,_),
-	Min_Offset>=Selected_offset.
+	Min_Distance= min Distance:{propagated_data_access(EA,_,Distance,_)},
+	propagated_data_access(EA,EA_label,Selected_distance,_),
+	Min_Distance>=Selected_distance.
 
 
 .decl discarded_propagated_access(EA:address,EA_label:address,Multiplier:number)
