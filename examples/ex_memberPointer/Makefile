@@ -5,7 +5,7 @@ all: ex.cpp
 	@./ex > out.txt
 clean:
 	rm -f ex out.txt
-	rm -fr *.s *.old*  dl_files
+	rm -fr ex.unstripped *.s *.old*  dl_files
 check:
 	@./ex >/tmp/res.txt
 	@ bash ./test.sh

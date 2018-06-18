@@ -9,7 +9,7 @@ all: ex.c
 	@ echo "C" |./ex >> out.txt
 clean:
 	rm -f ex out.txt
-	rm -fr *.s *.old*  dl_files
+	rm -fr ex.unstripped *.s *.old*  dl_files
 check:
 	@ echo "A" |./ex > /tmp/res.txt
 	@ echo "B" |./ex >> /tmp/res.txt
