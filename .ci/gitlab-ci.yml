@@ -9,6 +9,7 @@ stages:
   script:
     - cp /u4/TARBALLS/datalog_disasm/standalone_compilation.tar.bz2 ./
     - (cd tests ; ./fetch_real_examples.sh)
+    - git clone https://git.grammatech.com/debloat/gtirb.git
     - docker build -f .ci/Dockerfile.$OS -t ${LOCAL_IMAGE_NAME}-${OS} .
     - docker tag ${LOCAL_IMAGE_NAME}-${OS} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $DOCKER_REGISTRY

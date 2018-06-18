@@ -14,6 +14,7 @@ FROM ubuntu:18.04
 
 ARG BOOST_VERSION=1.67.0
 ARG BOOST_VERSION_=1_67_0
+ARG CMAKE_VERSION=3.10
 
 RUN apt-get -y update && apt-get -y install autoconf automake bison build-essential clang doxygen flex  git libtool make mcpp openjdk-8-jdk pkg-config python sqlite3 libsqlite3-dev subversion swi-prolog zlib1g-dev clang ed libpcre3-dev libncurses5-dev wget libc++1 libc++abi1 gcc-5 g++-5
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
@@ -26,6 +27,11 @@ COPY --from=souffle /usr/share/man/man1/souffle-profile.1 /usr/share/man/man1/so
 COPY --from=souffle /usr/share/man/man1/souffle-compile.1 /usr/share/man/man1/souffle-compile.1
 COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
 
+# Fix symlinks for libc++/libc++abi.
+RUN ln -s libc++.so.1 /usr/lib/x86_64-linux-gnu/libc++.so
+RUN ln -s libc++abi.so.1 /usr/lib/x86_64-linux-gnu/libc++abi.so
+
+# Use gcc-5
 RUN ln -sf gcc-5 /usr/bin/gcc
 RUN ln -sf g++-5 /usr/bin/g++
 
@@ -42,13 +48,20 @@ RUN cd /home && wget https://dl.bintray.com/boostorg/release/${BOOST_VERSION}/so
   && cd /home \
   && rm -rf boost_${BOOST_VERSION_}
 
-# For some reason the standard symlinks don't exist, so create them.
-RUN ln -s libc++.so.1 /usr/lib/x86_64-linux-gnu/libc++.so
-RUN ln -s libc++abi.so.1 /usr/lib/x86_64-linux-gnu/libc++abi.so
+# Install CMake
+RUN curl -SL https://cmake.org/files/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.0-Linux-x86_64.tar.gz \
+    |tar -xz --strip-components=1 -C /usr/local
 
 RUN   useradd dl_disasm
 COPY --chown=dl_disasm . /datalog_disasm
 USER dl_disasm
+
+# Build GTIRB
+RUN rm -rf /datalog_disasm/gtirb/build /datalog_disasm/gtirb/CMakeCache.txt /datalog_disasm/gtirb/CMakeFiles /datalog_disasm/gtirb/CMakeScripts
+RUN cd /datalog_disasm/gtirb/ && cmake ./ -Bbuild  && cd build &&  make && make install
+
 RUN cd /datalog_disasm && tar xjf standalone_compilation.tar.bz2
 ENV TERM xterm
-RUN cd /datalog_disasm && make clean && make
+ENV LD_LIBRARY_PATH /datalog_disasm/gtirb/bin
+WORKDIR /datalog_disasm
+RUN make clean && make GTIRB_BASE=$PWD/gtirb
