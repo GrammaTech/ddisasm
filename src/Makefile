@@ -23,7 +23,7 @@ all: ../bin/datalog_decoder ../bin/souffle_disasm
 # (particularly RAM_DOMAIN_SIZE) match those used when compiling
 # Souffle itself.
 ../bin/souffle_disasm.o: ../bin/souffle_disasm.cpp
-	$(CC) -g3 -c ../bin/souffle_disasm.cpp -o ../bin/souffle_disasm.o -D__EMBEDDED_SOUFFLE__ -DRAM_DOMAIN_SIZE=64 -Wno-narrowing -Wno-unused-but-set-variable
+	$(CC) -g3 -std=c++11 -c ../bin/souffle_disasm.cpp -o ../bin/souffle_disasm.o -D__EMBEDDED_SOUFFLE__ -DRAM_DOMAIN_SIZE=64 -Wno-narrowing -Wno-unused-but-set-variable
 
 ../bin/souffle_disasm: ../bin/souffle_disasm.o disasm_main.o
 	$(CC) -g3 -o ../bin/souffle_disasm $(LDFLAGS) ../bin/souffle_disasm.o disasm_main.o $(LINK)
