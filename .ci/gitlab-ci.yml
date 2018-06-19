@@ -3,7 +3,9 @@ variables:
   LOCAL_IMAGE_NAME: '$CI_BUILD_REF_NAME-$CI_PIPELINE_ID'
 
 stages:
-  - build-deploy-cleanup
+  - build
+  - test-and-tag
+  - cleanup
 
 .build-template: &build
   script:
@@ -11,16 +13,32 @@ stages:
     - (cd tests ; ./fetch_real_examples.sh)
     - git clone https://git.grammatech.com/debloat/gtirb.git
     - docker build -f .ci/Dockerfile.$OS -t ${LOCAL_IMAGE_NAME}-${OS} .
-    - docker tag ${LOCAL_IMAGE_NAME}-${OS} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
-    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $DOCKER_REGISTRY
-    - docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
-    - docker rmi -f ${LOCAL_IMAGE_NAME}-${OS}
 
 build-ubuntu16:
-  stage: build-deploy-cleanup
+  stage: build
   variables:
     OS: 'ubuntu16'
   <<: *build
+
+run-ubuntu16:
+  stage: test-and-tag
+  variables:
+    OS: 'ubuntu16'
+  script:
+    - docker run ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c "make check"
+    - if [ "$CI_BUILD_REF_NAME" = "master" && "$OS" = "ubuntu16" ];
+      then
+        docker tag ${LOCAL_IMAGE_NAME}-${OS} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
+        docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $DOCKER_REGISTRY
+        docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
+      fi
+
+cleanup-ubuntu16:
+  stage: cleanup
+  variables:
+    OS: 'ubuntu16'
+  script:
+    - docker rmi -f ${LOCAL_IMAGE_NAME}-${OS}
 
 # build-arch:
 #   stage: build-deploy-cleanup
