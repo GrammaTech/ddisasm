@@ -3,6 +3,8 @@ dir="../examples/asm_examples/"
 
 examples=(
     "ex_pointerReatribution3 ex"
+    "ex_pointerReatribution3_clang ex"
+    "ex_pointerReatribution3_pie ex"
     "ex_relative_switch ex"
 );
 
