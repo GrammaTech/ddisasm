@@ -183,15 +183,84 @@ address_array_range.in_ea(EA):-
 
 
 ////////////////////////////////////////////////////////////////////////////////////
+
+.decl related_data_access(EA:address,Dest:address)
+
+.output related_data_access
+
+related_data_access(EA,Dest):-
+	data_access_pattern(Dest,_,_,EA),
+	!instruction_get_operation(EA,"LEA").
+
+related_data_access(EA_def,Dest):-
+	related_data_access(EA_used,Dest),
+	def_used(EA_def,_,EA_used,_),
+	(
+	!data_access_pattern(_,_,_,EA_def)
+	;
+	instruction_get_operation(EA_def,"LEA")
+	).
+	
+related_data_access(EA_cmp,Dest):-
+	related_data_access(EA_used,Dest),
+	used_for_address(EA_cmp,Reg,EA_used,_),
+	instruction_get_operation(EA_cmp,Operation),
+	comparison_operation(Operation),
+	instruction_get_src_op(EA_cmp,_,Op1),
+	op_regdirect_contains_reg(Op1,Reg),
+	!data_access_pattern(_,_,_,EA_cmp).
+	
 // Pointer reatribution:
 // two cases
 //1: when it is symbolic but possibly lands in the middle of a pointer
-//2: when it is not symbolic because it misses the data sections
+//2: when it is not symbolic because it misses the data sections (and there is a good reason
+//   to think that it is)
+//3: the pointer points to the wrong section
+
+
+
+.decl moved_label_candidate(EA:address,Index:number,Val:address,New_val:address,Diff:number)
+
+moved_label_candidate(EA,Op_index,Dest,New_dest,Diff):-
+	code(EA),
+	pc_relative_operand_complete(EA,Op_index,Dest,_),
+	!symbolic_operand(EA,Op_index),
+	related_data_access(EA,Dest_access),
+	Dest_access!=Dest,
+	//section(Name,SectSize,Base),
+	//Dest_access>=Base,
+	//Dest_access<=SectSize+Base,
+	New_dest=Dest_access,
+	Diff=max(Dest_access-Dest,Dest-Dest_access).
+
+moved_label_candidate(EA,Op_index,Dest,New_dest,Diff):-
+	code(EA),
+	pc_relative_operand_complete(EA,Op_index,Dest,_),
+	symbolic_operand(EA,Op_index),
+	section(Name,SectSize,Base),
+	Dest>=Base,
+	Dest<=SectSize+Base,
+	related_data_access(EA,Dest_access),
+	(Dest_access<Base;Dest_access>Base+SectSize),//the access is to other section
+	//get the correct section
+	section(Name2,SectSize2,Base2),
+	Dest_access>=Base2,
+	Dest_access<=SectSize2+Base2,
+	New_dest=Dest_access,
+	Diff=max(Dest_access-Dest,Dest-Dest_access).
+
 
 .decl moved_label(EA:address,Index:number,Val:address,New_val:address)
 .output moved_label
 
 // indirect operand
+
+//pc-relative that misses the data sections
+moved_label(EA,Op_index,Dest,New_dest):-
+	moved_label_candidate(EA,Op_index,Dest,_,_),
+	Diff_min=min X:moved_label_candidate(EA,Op_index,Dest,_,X),
+	moved_label_candidate(EA,Op_index,Dest,New_dest,Diff),
+	Diff<=Diff_min.
 
 // label lands in the middle of a pointer
 moved_label(EA,Op_index,Dest,New_dest):-
@@ -235,9 +304,7 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	section(Name,SectSize,Base),
 	Dest>=Base,Dest<=Base+SectSize,
 
-
-
-	data_section(Name2), Name2!= Name,
+	regular_data_section(Name2), Name2!= Name,
 	section(Name2,SectSize2,Base2),
 	New_dest>=Base2,New_dest<=Base2+SectSize2,
 
@@ -262,7 +329,7 @@ moved_label(EA,Op_index,Dest,Base):-
 	op_indirect(Op,_,_,_,_,Dest,_),
 	Dest>40000,
 	
-	data_section(Name),
+	regular_data_section(Name),
 	section(Name,_,Base),
 	Dest<Base,
 	Dest+4000>=Base.
@@ -276,7 +343,7 @@ moved_label(EA,Op_index,Dest,Base+SizeSect):-
 	op_indirect(Op,_,_,_,_,Dest,_),
 	data_access_pattern(Other_dest,_,_,EA),
 
-	data_section(Name),
+	regular_data_section(Name),
 	section(Name,SizeSect,Base),
 	Other_dest>=Base,
 	Other_dest<=Base+SizeSect,
@@ -326,7 +393,7 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	value_reg(EA_def,_,_,_,_,Other_dest,_)
 	),
 	Other_dest!=0,
-    regular_data_section(Name),
+    	regular_data_section(Name),
         section(Name,SizeSect,Beg),
 	Other_dest>=Beg,
 	Other_dest<=SizeSect+Beg,

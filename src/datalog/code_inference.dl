@@ -100,35 +100,37 @@ operation_not_for_address("XOR").
 .decl can_have_symbolic(EA:address)
 
 can_have_symbolic(Src):-
+	phase1.remaining_ea(Src),
+	(
 	binary_type("DYN"),
-	phase2.likely_ea(Src,_),
 	instruction(Src,Size,_,_,_,_,_,_),
 	relocation(Location,_,_,_),
 	Src<=Location,
-	Location<Src+Size.
-
-can_have_symbolic(Src):-
-	binary_type("EXEC"),
-	phase2.likely_ea(Src,_).
-
+	Location<Src+Size
+	;
+	binary_type("EXEC")
+	).
 
 can_have_symbolic(EA):-
 	direct_jump(EA,_).
 can_have_symbolic(EA):-
 	direct_call(EA,_).
 
+.decl may_have_symbolic_immediate(dest:address,src:address)
 
+may_have_symbolic_immediate(Dest,Src):-
+	can_have_symbolic(Src),
+	instruction_get_op(Src,_,Op),
+	op_immediate(Op,Dest),
+	instruction_get_operation(Src,Operation),
+	!operation_not_for_address(Operation).
+	
 .decl possible_target_from(dest:address,src:address)
 
 possible_target_from(Dest,Src):-
 	phase2.likely_ea(Src,_),
-	can_have_symbolic(Src),
-	instruction_get_op(Src,_,Op),
-	instruction_get_operation(Src,Operation),
-	!operation_not_for_address(Operation),
-	op_immediate(Op,Dest),
+	may_have_symbolic_immediate(Dest,Src),
 	phase1.remaining_ea(Dest).
-
 
 possible_target_from(Dest,Src):-
 	phase2.likely_ea(Src,_),

@@ -198,10 +198,11 @@ result_descriptors([
 			  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 			  %these facts are only collected for printing debugging information
 			  result(discarded_block,1,'.csv'),
-			  result(direct_jump,2,'.csv'),	
+			  result(direct_jump,2,'.csv'),
+			  result(related_data_access,2,'.csv'),
 			  result(pc_relative_jump,2,'.csv'),
 			  result(pc_relative_call,2,'.csv'),
-			  named_result(block_overlap,'block_still_overlap',2,'.csv'),	  
+			  named_result(block_overlap,'block_still_overlap',2,'.csv'),
 			  result(def_used,4,'.csv'),
 			  result(paired_data_access,6,'.csv'),
 			  result(value_reg,7,'.csv'),
@@ -602,12 +603,16 @@ pp_aligned_data_section(data_section(Name,Required_alignment,Data_list)):-
            print_x_zeros(16)
      ;
      true),
+    section(Name,_,Base),
+    print_label(Base),
     maplist(pp_data,Data_list).
 
 
 %if there are no labels
 pp_aligned_data_section(data_section(Name,Required_alignment,Data_list)):-
     print_section_header(Name,Required_alignment),
+    section(Name,_,Base),
+    print_label(Base),
     maplist(pp_data,Data_list).
 
 % exclude pointers to skipped sections of the code
@@ -945,6 +950,7 @@ pp_operand(indirect(NullSReg,NullReg1,NullReg2,1,0,Size),_,_,PP):-
     format(atom(PP),'~p [~p]',[Name,0]).
 
 pp_operand(indirect(_,_,_,_,_,_),EA,N,PP):-
+    \+moved_label(EA,N,_,_),
     got_reference(EA,N,Content),!,
     format(atom(PP),'.L_~16r@GOTPCREL[rip]',[Content]).
 
@@ -953,15 +959,22 @@ pp_operand(indirect(NullSReg,'RIP',NullReg1,1,Offset,Size),EA,N,PP):-
     null_reg(NullSReg),
     null_reg(NullReg1),
     symbolic_operand(EA,N),!,
-    get_size_name(Size,Name),
+    get_size_name(Size,Name_size),
     instruction(EA,Size_instr,_,_,_,_,_,_),
     Address is EA+Offset+Size_instr,
-    (get_global_symbol_ref(Address,relative,Name_symbol)->
-	 format(atom(PP),'~p ~p[rip]',[Name,Name_symbol])
+    (moved_label(EA,N,Address,Address2)->
+	 Diff is Address-Address2
      ;
-     print_symbol(Address,Label),
-     format(atom(PP),'~p ~p[rip]',[Name,Label])
-    ).
+     Diff=0,
+     Address2=Address
+    ),
+    get_diff_addend(Diff,Diff_addend),
+    (get_global_symbol_ref(Address2,relative,Name_symbol)->
+	 true
+     ;
+     print_symbol(Address2,Name_symbol)
+    ),
+    format(atom(PP),'~p ~p~p[rip]',[Name_size,Name_symbol,Diff_addend]).
 
 pp_operand(indirect(SReg,Reg,NullReg1,1,0,Size),_,_,PP):-
     null_reg(NullReg1),
@@ -1034,10 +1047,8 @@ get_offset_and_sign(Offset,EA,N,Offset1,'+'):-
     moved_label(EA,N,Offset,Offset2),!,
     Diff is Offset-Offset2,
     print_symbol(Offset2,Label),
-    (Diff>0->format(atom(Offset1),'~p+~p',[Label,Diff])
-     ;
-     format(atom(Offset1),'~p~p',[Label,Diff])
-    ).
+    get_diff_addend(Diff,Diff_addend),
+    format(atom(Offset1),'~p~p',[Label,Diff_addend]).
 
 get_offset_and_sign(Offset,EA,N,Offset1,'+'):-
     symbolic_operand(EA,N),!,
@@ -1053,6 +1064,14 @@ put_segment_register(Term,SReg,[Term]):-
     null_reg(SReg),!.
 put_segment_register(Term,SReg,SReg:[Term]).
 
+
+get_diff_addend(0,'').
+get_diff_addend(N,PP):-
+    N>0,
+    format(atom(PP),'+~p',[N]).
+get_diff_addend(N,PP):-
+    N<0,
+    format(atom(PP),'~p',[N]).
 
 get_size_name(128,'').
 get_size_name(0,'').
@@ -1260,6 +1279,13 @@ comment(EA,in_function(Functions)):-
 	    Functions),
     Functions\=[].
 
+comment(EA,related_data_access(Accesses)):-
+    findall(Access_pp,(
+		related_data_access(EA,Access),
+		pp_to_hex(Access,Access_pp)
+		),
+	    Accesses),
+    Accesses\=[].
 
 comment(EA,moved_data_label):-
     moved_data_label(EA,_,_).
