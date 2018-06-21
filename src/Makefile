@@ -22,8 +22,10 @@ all: ../bin/datalog_decoder ../bin/souffle_disasm
 # warnings. We also need to make sure that the preprocessor flags
 # (particularly RAM_DOMAIN_SIZE) match those used when compiling
 # Souffle itself.
+# Finally, always optimize. It improves performance significantly and
+# we're unlikely to need to debug this code.
 ../bin/souffle_disasm.o: ../bin/souffle_disasm.cpp
-	$(CC) -g3 -std=c++11 -c ../bin/souffle_disasm.cpp -o ../bin/souffle_disasm.o -D__EMBEDDED_SOUFFLE__ -DRAM_DOMAIN_SIZE=64 -Wno-narrowing -Wno-unused-but-set-variable
+	$(CC) -O2 -std=c++11 -c ../bin/souffle_disasm.cpp -o ../bin/souffle_disasm.o -D__EMBEDDED_SOUFFLE__ -DRAM_DOMAIN_SIZE=64 -Wno-narrowing -Wno-unused-but-set-variable
 
 ../bin/souffle_disasm: ../bin/souffle_disasm.o disasm_main.o
 	$(CC) -g3 -o ../bin/souffle_disasm $(LDFLAGS) ../bin/souffle_disasm.o disasm_main.o $(LINK)
