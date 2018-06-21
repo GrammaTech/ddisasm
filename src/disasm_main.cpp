@@ -46,7 +46,12 @@ struct DecodedInstruction
     {
         assert(tuple.size() == 8);
 
-        tuple >> EA >> Size >> Prefix >> Opcode >> Op1 >> Op2 >> Op3 >> Op4;
+        tuple >> EA >> Size;
+        // Skip prefix and opcode. Not used.
+        this->Op1 = tuple[4];
+        this->Op2 = tuple[5];
+        this->Op3 = tuple[6];
+        this->Op4 = tuple[7];
     };
 
     uint64_t getEndAddress() const
@@ -54,8 +59,6 @@ struct DecodedInstruction
         return EA + Size;
     }
 
-    std::string Prefix;
-    std::string Opcode;
     uint64_t EA{0};
     uint64_t Size{0};
     uint64_t Op1{0};
