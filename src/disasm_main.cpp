@@ -335,108 +335,140 @@ const T *findByEA(const std::vector<T> &vec, gtirb::EA ea)
     return nullptr;
 }
 
-gtirb::Instruction::SymbolicOperand buildSymbolic(gtirb::Instruction &inst, uint64_t operand,
-                                                  uint64_t index, const SymbolicInfo &symbolicInfo,
-                                                  const std::vector<OpImmediate> &opImmediate,
-                                                  const std::vector<OpIndirect> &opIndirect)
+bool isNullReg(const std::string &reg)
 {
-    if(std::find_if(opImmediate.begin(), opImmediate.end(),
-                    [operand](const auto &element) { return element.N == operand; })
-       != opImmediate.end())
-    {
-        auto pltReference = findByEA(symbolicInfo.PLTCodeReferences, inst.getEA());
-        if(pltReference != nullptr)
-        {
-            return {gtirb::Instruction::SymbolicKind::PLTReference, {pltReference->Name}, {}, {}};
-        }
+    const std::vector<std::string> adapt{"NullReg64", "NullReg32", "NullReg16", "NullSReg"};
 
-        auto directCall = findByEA(symbolicInfo.DirectCalls, inst.getEA());
-        if(directCall != nullptr)
-        {
-            return {gtirb::Instruction::SymbolicKind::DirectCall,
-                    {},
-                    gtirb::EA(directCall->Destination),
-                    {}};
-        }
-
-        auto movedLabel = findByEA(symbolicInfo.MovedLabels, inst.getEA());
-        if(movedLabel != nullptr)
-        {
-            return {gtirb::Instruction::SymbolicKind::MovedLabel,
-                    {},
-                    {},
-                    {movedLabel->Offset1, movedLabel->Offset2}};
-        }
-
-        if(std::find_if(symbolicInfo.SymbolicOperands.begin(), symbolicInfo.SymbolicOperands.end(),
-                        [inst, index](const auto &element) {
-                            return (element.EA == inst.getEA()) && (element.OpNum == index);
-                        })
-           != symbolicInfo.SymbolicOperands.end())
-        {
-            return {gtirb::Instruction::SymbolicKind::GlobalSymbol};
-        }
-    }
-
-    if(std::find_if(opIndirect.begin(), opIndirect.end(),
-                    [operand](const auto &element) { return element.N == operand; })
-       != opIndirect.end())
-    {
-        auto movedLabel = findByEA(symbolicInfo.MovedLabels, inst.getEA());
-        if(movedLabel != nullptr)
-        {
-            return {gtirb::Instruction::SymbolicKind::MovedLabel,
-                    {},
-                    {},
-                    {movedLabel->Offset1, movedLabel->Offset2}};
-        }
-
-        if(std::find_if(symbolicInfo.SymbolicOperands.begin(), symbolicInfo.SymbolicOperands.end(),
-                        [inst, index](const auto &element) {
-                            return (element.EA == inst.getEA()) && (element.OpNum == index);
-                        })
-           != symbolicInfo.SymbolicOperands.end())
-        {
-            return {gtirb::Instruction::SymbolicKind::GlobalSymbol};
-        }
-    }
-    return {gtirb::Instruction::SymbolicKind::None};
+    const auto found = std::find(std::begin(adapt), std::end(adapt), reg);
+    return (found != std::end(adapt));
 }
 
-gtirb::Instruction buildInstruction(gtirb::EA ea, std::vector<DecodedInstruction> instructions,
-                                    const SymbolicInfo &symbolicInfo,
-                                    const std::vector<OpImmediate> &opImmediate,
-                                    const std::vector<OpIndirect> &opIndirect)
+static std::string getLabel(uint64_t ea)
 {
-    const auto inst = std::find_if(instructions.begin(), instructions.end(),
-                                   [ea](const auto &x) { return x.EA == ea; });
-    assert(inst != instructions.end());
+    std::stringstream ss;
+    ss << ".L_" << std::hex << ea;
+    return ss.str();
+}
 
-    gtirb::Instruction gtInst(ea);
+static const gtirb::SymbolReference getSymbol(gtirb::SymbolSet &symbols, gtirb::EA ea)
+{
+    const auto &s = symbols.getSymbols();
+    const auto found =
+        std::find_if(s.begin(), s.end(), [ea](const auto &sym) { return sym.getEA() == ea; });
+    if(found != s.end())
+    {
+        return gtirb::SymbolReference(*found);
+    }
 
-    auto &symbolic = gtInst.getSymbolicOperands();
+    auto &sym = symbols.addSymbol(gtirb::Symbol(ea));
+    sym.setName(getLabel(ea));
+    sym.setIsGlobal(false);
+    return gtirb::SymbolReference(sym);
+}
 
-    symbolic.push_back(buildSymbolic(gtInst, inst->Op1, 1, symbolicInfo, opImmediate, opIndirect));
-    symbolic.push_back(buildSymbolic(gtInst, inst->Op2, 2, symbolicInfo, opImmediate, opIndirect));
-    symbolic.push_back(buildSymbolic(gtInst, inst->Op3, 3, symbolicInfo, opImmediate, opIndirect));
-    symbolic.push_back(buildSymbolic(gtInst, inst->Op4, 4, symbolicInfo, opImmediate, opIndirect));
+void buildSymbolic(gtirb::SymbolSet &symbols, gtirb::SymbolicOperandSet &symbolic,
+                   DecodedInstruction instruction, gtirb::EA &ea, uint64_t operand, uint64_t index,
+                   const SymbolicInfo &symbolicInfo, const std::vector<OpImmediate> &opImmediate,
+                   const std::vector<OpIndirect> &opIndirect)
+{
+    // FIXME: we're faking the operand offset here, assuming it's equal
+    // to index. This works as long as the pretty-printer does the same
+    // thing, but it isn't right.
+    const auto foundImm =
+        std::find_if(opImmediate.begin(), opImmediate.end(),
+                     [operand](const auto &element) { return element.N == operand; });
 
-    return gtInst;
+    if(foundImm != opImmediate.end())
+    {
+        int64_t immediate = foundImm->Immediate;
+
+        auto pltReference = findByEA(symbolicInfo.PLTCodeReferences, ea);
+        if(pltReference != nullptr)
+        {
+            auto sym = getSymbol(symbols, gtirb::EA(immediate));
+            symbolic.insert({gtirb::EA(ea.get() + index), gtirb::SymAddrConst{0, sym}});
+        }
+
+        auto directCall = findByEA(symbolicInfo.DirectCalls, ea);
+        if(directCall != nullptr)
+        {
+            auto sym = getSymbol(symbols, directCall->Destination);
+            symbolic.insert({gtirb::EA(ea.get() + index), gtirb::SymAddrConst{0, sym}});
+        }
+
+        auto movedLabel = findByEA(symbolicInfo.MovedLabels, ea);
+        if(movedLabel != nullptr)
+        {
+            assert(movedLabel->Offset1 == immediate);
+            auto diff = movedLabel->Offset1 - movedLabel->Offset2;
+            auto sym = getSymbol(symbols, gtirb::EA(movedLabel->Offset2));
+            symbolic.insert({gtirb::EA(ea.get() + index), gtirb::SymAddrConst{diff, sym}});
+        }
+
+        if(std::find_if(symbolicInfo.SymbolicOperands.begin(), symbolicInfo.SymbolicOperands.end(),
+                        [ea, index](const auto &element) {
+                            return (element.EA == ea) && (element.OpNum == index);
+                        })
+           != symbolicInfo.SymbolicOperands.end())
+        {
+            auto sym = getSymbol(symbols, gtirb::EA(immediate));
+            symbolic.insert({gtirb::EA(ea.get() + index), gtirb::SymAddrConst{0, sym}});
+        }
+    }
+
+    const auto foundInd =
+        std::find_if(opIndirect.begin(), opIndirect.end(),
+                     [operand](const auto &element) { return element.N == operand; });
+
+    if(foundInd != opIndirect.end())
+    {
+        auto op = *foundInd;
+        auto movedLabel = findByEA(symbolicInfo.MovedLabels, ea);
+        if(movedLabel != nullptr)
+        {
+            auto diff = movedLabel->Offset1 - movedLabel->Offset2;
+            auto sym = getSymbol(symbols, gtirb::EA(movedLabel->Offset2));
+            symbolic.insert({gtirb::EA(ea.get() + index), gtirb::SymAddrConst{diff, sym}});
+        }
+
+        if(std::find_if(symbolicInfo.SymbolicOperands.begin(), symbolicInfo.SymbolicOperands.end(),
+                        [ea, index](const auto &element) {
+                            return (element.EA == ea) && (element.OpNum == index);
+                        })
+           != symbolicInfo.SymbolicOperands.end())
+        {
+            if(op.Reg1 == std::string{"RIP"} && op.Multiplier == 1 && isNullReg(op.SReg)
+               && isNullReg(op.Reg2))
+            {
+                auto address = gtirb::EA(ea.get() + foundInd->Offset + instruction.Size);
+                auto sym = getSymbol(symbols, address);
+                symbolic.insert({gtirb::EA(ea.get() + index), gtirb::SymAddrConst{0, sym}});
+            }
+            else
+            {
+                auto sym = getSymbol(symbols, gtirb::EA(op.Offset));
+                symbolic.insert({gtirb::EA(ea.get() + index), gtirb::SymAddrConst{0, sym}});
+            }
+        }
+    }
 }
 
 void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
     auto codeInBlock = convertRelation<CodeInBlock>("code_in_block", prog);
 
-    SymbolicInfo symbolic{convertRelation<PLTReference>("plt_code_reference", prog),
-                          convertRelation<DirectCall>("direct_call", prog),
-                          convertRelation<MovedLabel>("moved_label", prog),
-                          convertRelation<SymbolicOperand>("symbolic_operand", prog)};
+    SymbolicInfo symbolicInfo{convertRelation<PLTReference>("plt_code_reference", prog),
+                              convertRelation<DirectCall>("direct_call", prog),
+                              convertRelation<MovedLabel>("moved_label", prog),
+                              convertRelation<SymbolicOperand>("symbolic_operand", prog)};
     auto decodedInstructions = convertRelation<DecodedInstruction>("instruction", prog);
     auto opImmediate = convertRelation<OpImmediate>("op_immediate", prog);
     auto opIndirect = convertRelation<OpIndirect>("op_indirect", prog);
 
     std::vector<gtirb::Block> blocks;
+    auto &module = *ir.getMainModule();
+    auto &symbolic = module.getSymbolicOperands();
+    auto &symbols = *module.getSymbolSet();
 
     for(auto &output : *prog->getRelation("block"))
     {
@@ -449,8 +481,18 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
         {
             if(cib.BlockAddress == blockAddress)
             {
-                instructions.push_back(buildInstruction(cib.EA, decodedInstructions, symbolic,
-                                                        opImmediate, opIndirect));
+                const auto inst = findByEA(decodedInstructions, cib.EA);
+                assert(inst != nullptr);
+
+                instructions.emplace_back(gtirb::EA(cib.EA));
+                buildSymbolic(symbols, symbolic, *inst, cib.EA, inst->Op1, 1, symbolicInfo,
+                              opImmediate, opIndirect);
+                buildSymbolic(symbols, symbolic, *inst, cib.EA, inst->Op2, 2, symbolicInfo,
+                              opImmediate, opIndirect);
+                buildSymbolic(symbols, symbolic, *inst, cib.EA, inst->Op3, 3, symbolicInfo,
+                              opImmediate, opIndirect);
+                buildSymbolic(symbols, symbolic, *inst, cib.EA, inst->Op4, 4, symbolicInfo,
+                              opImmediate, opIndirect);
             }
         }
 
@@ -480,6 +522,13 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
     });
 
     ir.getMainModule()->setBlocks(blocks);
+
+    gtirb::Table::InnerMapType pltReferences;
+    for(const auto &p : symbolicInfo.PLTCodeReferences)
+    {
+        pltReferences[gtirb::EA(p.EA)] = p.Name;
+    }
+    ir.getTable("DisasmData")->contents["pltCodeReferences"] = pltReferences;
 }
 
 // Name, Alignment.
@@ -518,8 +567,13 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
     auto pltDataReference = convertRelation<PLTReference>("plt_data_reference", prog);
     auto symbolMinusSymbol = convertRelation<SymbolMinusSymbol>("symbol_minus_symbol", prog);
     auto dataStrings = convertRelation<String>("string", prog);
+    auto module = ir.getMainModule();
+    auto &symbols = *module->getSymbolSet();
+    auto &symbolicOps = ir.getMainModule()->getSymbolicOperands();
+    auto &data = module->getData();
 
     std::vector<gtirb::Table::InnerMapType> dataSections;
+    std::vector<gtirb::EA> stringEAs;
 
     for(auto &s : ir.getMainModule()->getSections())
     {
@@ -533,7 +587,6 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
 
             std::vector<uint64_t> dataGroupIndices;
 
-            auto module = ir.getMainModule();
             std::vector<uint8_t> bytes =
                 module->getImageByteMap()->getData(s.startingAddress, s.size);
 
@@ -541,15 +594,6 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
                 currentAddr++)
             {
                 gtirb::EA currentEA(currentAddr);
-
-                // Insert a marker for labeled data?
-                if(std::find(labeledData.begin(), labeledData.end(), currentAddr)
-                   != labeledData.end())
-                {
-                    dataGroupIndices.push_back(module->getData().size());
-                    auto dataGroup = std::make_unique<gtirb::DataLabelMarker>(currentEA);
-                    module->addData(std::move(dataGroup));
-                }
 
                 // Case 1, 2, 3
                 const auto symbolic = findByEA(symbolicData, currentEA);
@@ -559,10 +603,8 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
                     const auto pltReference = findByEA(pltDataReference, currentEA);
                     if(pltReference != nullptr)
                     {
-                        dataGroupIndices.push_back(module->getData().size());
-                        auto dataGroup = std::make_unique<gtirb::DataPLTReference>(currentEA);
-                        dataGroup->function = pltReference->Name;
-                        module->addData(std::move(dataGroup));
+                        dataGroupIndices.push_back(data.size());
+                        data.emplace_back(currentEA, 8);
 
                         currentAddr += 7;
                         continue;
@@ -570,10 +612,13 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
 
                     // Case 2, 3
                     // There was no PLT Reference and there was no label found.
-                    dataGroupIndices.push_back(module->getData().size());
-                    auto dataGroup = std::make_unique<gtirb::DataPointer>(currentEA);
-                    dataGroup->content = gtirb::EA(symbolic->GroupContent);
-                    module->addData(std::move(dataGroup));
+                    dataGroupIndices.push_back(data.size());
+                    data.emplace_back(currentEA, 8);
+
+                    symbolicOps.insert(
+                        {gtirb::EA(currentEA),
+                         gtirb::SymAddrConst{
+                             0, getSymbol(symbols, gtirb::EA(symbolic->GroupContent))}});
 
                     currentAddr += 7;
                     continue;
@@ -584,11 +629,13 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
                 if(symMinusSym != nullptr)
                 {
                     // Case 4, 5
-                    dataGroupIndices.push_back(module->getData().size());
-                    auto dataGroup = std::make_unique<gtirb::DataPointerDiff>(currentEA);
-                    dataGroup->symbol1 = gtirb::EA(symMinusSym->Symbol1);
-                    dataGroup->symbol2 = gtirb::EA(symMinusSym->Symbol2);
-                    module->addData(std::move(dataGroup));
+                    dataGroupIndices.push_back(data.size());
+                    data.emplace_back(currentEA, 4);
+
+                    symbolicOps.insert(
+                        {gtirb::EA(currentEA),
+                         gtirb::SymAddrAddr{1, 0, getSymbol(symbols, symMinusSym->Symbol2),
+                                            getSymbol(symbols, symMinusSym->Symbol1)}});
 
                     currentAddr += 3;
                     continue;
@@ -598,20 +645,19 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
                 const auto str = findByEA(dataStrings, currentEA);
                 if(str != nullptr)
                 {
-                    dataGroupIndices.push_back(module->getData().size());
-                    auto dataGroup = std::make_unique<gtirb::DataString>(currentEA);
-                    dataGroup->size = str->End.get() - currentAddr;
+                    dataGroupIndices.push_back(data.size());
+                    stringEAs.push_back(currentEA);
+                    data.emplace_back(currentEA, str->End.get() - currentAddr);
 
                     // Because the loop is going to increment this counter, don't skip a byte.
                     currentAddr = str->End.get() - 1;
-                    module->addData(std::move(dataGroup));
+
                     continue;
                 }
 
                 // Store raw data
-                dataGroupIndices.push_back(module->getData().size());
-                auto dataGroup = std::make_unique<gtirb::DataRawByte>(currentEA);
-                module->addData(std::move(dataGroup));
+                dataGroupIndices.push_back(data.size());
+                data.emplace_back(currentEA, 1);
             }
 
             dataSection["dataGroups"] = dataGroupIndices;
@@ -619,12 +665,22 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
         }
     }
 
-    auto table = ir.addTable("DisasmData", std::make_unique<gtirb::Table>());
-    table->contents["dataSections"] = dataSections;
+    auto *dataTable = ir.getTable("DisasmData");
+
+    dataTable->contents["dataSections"] = dataSections;
+    dataTable->contents["stringEAs"] = stringEAs;
+
+    gtirb::Table::InnerMapType pltReferences;
+    for(const auto &p : pltDataReference)
+    {
+        pltReferences[gtirb::EA(p.EA)] = p.Name;
+    }
+    ir.getTable("DisasmData")->contents["pltDataReferences"] = pltReferences;
 }
 
 static void buildIR(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
+    ir.addTable("DisasmData", std::make_unique<gtirb::Table>());
     buildSymbols(ir, prog);
     buildSections(ir, prog);
     buildRelocations(ir, prog);
