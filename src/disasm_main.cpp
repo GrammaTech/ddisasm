@@ -1,13 +1,15 @@
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 #include <boost/archive/polymorphic_text_oarchive.hpp>
+#include <gtirb/Block.hpp>
 #include <gtirb/Data.hpp>
 #include <gtirb/IR.hpp>
 #include <gtirb/ImageByteMap.hpp>
 #include <gtirb/Module.hpp>
+#include <gtirb/Relocation.hpp>
 #include <gtirb/Section.hpp>
 #include <gtirb/Symbol.hpp>
-#include <gtirb/SymbolSet.hpp>
+#include <gtirb/SymbolicOperand.hpp>
 #include <gtirb/Table.hpp>
 #include <string>
 #include <vector>
@@ -234,7 +236,7 @@ static std::vector<T> convertRelation(const std::string &relation, souffle::Souf
 
 static void buildSymbols(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    auto syms = ir.getMainModule()->getSymbolSet();
+    auto &syms = ir.getMainModule()->getSymbolSet();
 
     for(auto &output : *prog->getRelation("symbol"))
     {
@@ -246,7 +248,8 @@ static void buildSymbols(gtirb::IR &ir, souffle::SouffleProgram *prog)
 
         output >> base >> size >> type >> scope >> name;
 
-        auto &new_sym = syms->addSymbol(gtirb::Symbol(base));
+        syms.emplace_back(base);
+        auto &new_sym = syms.back();
         new_sym.setElementSize(size);
         new_sym.setName(name);
         // NOTE: don't seem to care about OBJECT or NOTYPE, and not clear how
@@ -352,15 +355,15 @@ static std::string getLabel(uint64_t ea)
 
 static const gtirb::SymbolReference getSymbol(gtirb::SymbolSet &symbols, gtirb::EA ea)
 {
-    const auto &s = symbols.getSymbols();
-    const auto found =
-        std::find_if(s.begin(), s.end(), [ea](const auto &sym) { return sym.getEA() == ea; });
-    if(found != s.end())
+    const auto found = std::find_if(symbols.begin(), symbols.end(),
+                                    [ea](const auto &sym) { return sym.getEA() == ea; });
+    if(found != symbols.end())
     {
         return gtirb::SymbolReference(*found);
     }
 
-    auto &sym = symbols.addSymbol(gtirb::Symbol(ea));
+    symbols.emplace_back(ea);
+    auto &sym = symbols.back();
     sym.setName(getLabel(ea));
     sym.setIsGlobal(false);
     return gtirb::SymbolReference(sym);
@@ -468,7 +471,7 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
     std::vector<gtirb::Block> blocks;
     auto &module = *ir.getMainModule();
     auto &symbolic = module.getSymbolicOperands();
-    auto &symbols = *module.getSymbolSet();
+    auto &symbols = module.getSymbolSet();
 
     for(auto &output : *prog->getRelation("block"))
     {
@@ -568,7 +571,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
     auto symbolMinusSymbol = convertRelation<SymbolMinusSymbol>("symbol_minus_symbol", prog);
     auto dataStrings = convertRelation<String>("string", prog);
     auto module = ir.getMainModule();
-    auto &symbols = *module->getSymbolSet();
+    auto &symbols = module->getSymbolSet();
     auto &symbolicOps = ir.getMainModule()->getSymbolicOperands();
     auto &data = module->getData();
 
