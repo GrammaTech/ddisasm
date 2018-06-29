@@ -236,7 +236,7 @@ static std::vector<T> convertRelation(const std::string &relation, souffle::Souf
 
 static void buildSymbols(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    auto &syms = ir.getMainModule()->getSymbolSet();
+    auto &syms = ir.getMainModule().getSymbolSet();
 
     for(auto &output : *prog->getRelation("symbol"))
     {
@@ -266,7 +266,7 @@ static void buildSymbols(gtirb::IR &ir, souffle::SouffleProgram *prog)
 
 static void buildSections(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    auto &sections = ir.getMainModule()->getSections();
+    auto &sections = ir.getMainModule().getSections();
     for(auto &output : *prog->getRelation("section"))
     {
         assert(output.size() == 3);
@@ -296,12 +296,12 @@ static void buildRelocations(gtirb::IR &ir, souffle::SouffleProgram *prog)
             name.clear();
         relocations.push_back({ea, type, name, static_cast<uint64_t>(offset)});
     }
-    ir.getMainModule()->setRelocations(relocations);
+    ir.getMainModule().setRelocations(relocations);
 }
 
 void buildDataBytes(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    auto byteMap = ir.getMainModule()->getImageByteMap();
+    auto &byteMap = ir.getMainModule().getImageByteMap();
     for(auto &output : *prog->getRelation("data_byte"))
     {
         gtirb::EA ea;
@@ -309,18 +309,18 @@ void buildDataBytes(gtirb::IR &ir, souffle::SouffleProgram *prog)
 
         output >> ea >> byte;
 
-        auto minMax = byteMap->getEAMinMax();
+        auto minMax = byteMap.getEAMinMax();
         if(minMax.first == gtirb::constants::BadAddress
            && minMax.second == gtirb::constants::BadAddress)
         {
-            byteMap->setEAMinMax({ea, ea});
+            byteMap.setEAMinMax({ea, ea});
         }
         else
         {
-            byteMap->setEAMinMax({std::min(minMax.first, ea), std::max(minMax.second, ea)});
+            byteMap.setEAMinMax({std::min(minMax.first, ea), std::max(minMax.second, ea)});
         }
 
-        byteMap->setData(ea, static_cast<uint8_t>(byte));
+        byteMap.setData(ea, static_cast<uint8_t>(byte));
     }
 }
 
@@ -469,7 +469,7 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
     auto opIndirect = convertRelation<OpIndirect>("op_indirect", prog);
 
     std::vector<gtirb::Block> blocks;
-    auto &module = *ir.getMainModule();
+    auto &module = ir.getMainModule();
     auto &symbolic = module.getSymbolicOperands();
     auto &symbols = module.getSymbolSet();
 
@@ -517,14 +517,14 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
             end = gtirb::EA(blockAddress);
         }
 
-        blocks.emplace_back(gtirb::Block(blockAddress, end, instructions));
+        blocks.emplace_back(gtirb::Block(blockAddress, end, std::move(instructions)));
     }
 
     std::sort(blocks.begin(), blocks.end(), [](const auto &left, const auto &right) {
         return left.getStartingAddress() < right.getStartingAddress();
     });
 
-    ir.getMainModule()->setBlocks(blocks);
+    ir.getMainModule().setBlocks(blocks);
 
     gtirb::Table::InnerMapType pltReferences;
     for(const auto &p : symbolicInfo.PLTCodeReferences)
@@ -570,15 +570,15 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
     auto pltDataReference = convertRelation<PLTReference>("plt_data_reference", prog);
     auto symbolMinusSymbol = convertRelation<SymbolMinusSymbol>("symbol_minus_symbol", prog);
     auto dataStrings = convertRelation<String>("string", prog);
-    auto module = ir.getMainModule();
-    auto &symbols = module->getSymbolSet();
-    auto &symbolicOps = ir.getMainModule()->getSymbolicOperands();
-    auto &data = module->getData();
+    auto &module = ir.getMainModule();
+    auto &symbols = module.getSymbolSet();
+    auto &symbolicOps = module.getSymbolicOperands();
+    auto &data = module.getData();
 
     std::vector<gtirb::Table::InnerMapType> dataSections;
     std::vector<gtirb::EA> stringEAs;
 
-    for(auto &s : ir.getMainModule()->getSections())
+    for(auto &s : module.getSections())
     {
         auto foundDataSection = getDataSectionDescriptor(s.name);
 
@@ -591,7 +591,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
             std::vector<uint64_t> dataGroupIndices;
 
             std::vector<uint8_t> bytes =
-                module->getImageByteMap()->getData(s.startingAddress, s.size);
+                module.getImageByteMap().getData(s.startingAddress, s.size);
 
             for(auto currentAddr = s.startingAddress.get(); currentAddr < s.addressLimit();
                 currentAddr++)
