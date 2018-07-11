@@ -1,6 +1,5 @@
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
-#include <boost/archive/polymorphic_text_oarchive.hpp>
 #include <gtirb/Block.hpp>
 #include <gtirb/Data.hpp>
 #include <gtirb/IR.hpp>
@@ -526,12 +525,12 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
 
     ir.getMainModule().setBlocks(blocks);
 
-    gtirb::Table::InnerMapType pltReferences;
+    std::map<gtirb::EA, gtirb::table::ValueType> pltReferences;
     for(const auto &p : symbolicInfo.PLTCodeReferences)
     {
         pltReferences[gtirb::EA(p.EA)] = p.Name;
     }
-    ir.getTable("DisasmData")->contents["pltCodeReferences"] = pltReferences;
+    ir.addTable("pltCodeReferences", std::make_unique<gtirb::Table>(std::move(pltReferences)));
 }
 
 // Name, Alignment.
@@ -575,7 +574,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
     auto &symbolicOps = module.getSymbolicOperands();
     auto &data = module.getData();
 
-    std::vector<gtirb::Table::InnerMapType> dataSections;
+    std::vector<gtirb::table::InnerMapType> dataSections;
     std::vector<gtirb::EA> stringEAs;
 
     for(auto &s : module.getSections())
@@ -584,11 +583,11 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
 
         if(foundDataSection != nullptr)
         {
-            gtirb::Table::InnerMapType dataSection;
+            gtirb::table::InnerMapType dataSection;
             dataSection["name"] = s.name;
             dataSection["alignment"] = foundDataSection->second;
 
-            std::vector<uint64_t> dataGroupIndices;
+            std::vector<int64_t> dataGroupIndices;
 
             std::vector<uint8_t> bytes =
                 module.getImageByteMap().getData(s.startingAddress, s.size);
@@ -668,22 +667,19 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
         }
     }
 
-    auto *dataTable = ir.getTable("DisasmData");
+    ir.addTable("dataSections", std::make_unique<gtirb::Table>(std::move(dataSections)));
+    ir.addTable("stringEAs", std::make_unique<gtirb::Table>(std::move(stringEAs)));
 
-    dataTable->contents["dataSections"] = dataSections;
-    dataTable->contents["stringEAs"] = stringEAs;
-
-    gtirb::Table::InnerMapType pltReferences;
+    std::map<gtirb::EA, gtirb::table::ValueType> pltReferences;
     for(const auto &p : pltDataReference)
     {
         pltReferences[gtirb::EA(p.EA)] = p.Name;
     }
-    ir.getTable("DisasmData")->contents["pltDataReferences"] = pltReferences;
+    ir.addTable("pltDataReferences", std::make_unique<gtirb::Table>(std::move(pltReferences)));
 }
 
 static void buildIR(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    ir.addTable("DisasmData", std::make_unique<gtirb::Table>());
     buildSymbols(ir, prog);
     buildSections(ir, prog);
     buildRelocations(ir, prog);
@@ -714,9 +710,7 @@ int main(int argc, char **argv)
             buildIR(ir, prog);
 
             std::ofstream out(opt.getOutputFileDir() + "/gtirb");
-            boost::archive::polymorphic_text_oarchive oa{out};
-            oa << ir;
-            out.close();
+            ir.save(out);
 
             // Also output CSV files for data not yet stored in gtirb.
             prog->printAll(opt.getOutputFileDir());
