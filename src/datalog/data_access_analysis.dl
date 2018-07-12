@@ -1,5 +1,5 @@
 /**
- The data_access analysis computes:
+ The data access analysis computes:
 
 -'data_access_patterns' which represent that the address 'Address' is
  accessed with size 'Size' and multiplier 'Multiplier' from an
@@ -8,20 +8,35 @@
 -'preferred_data_access' the address is most likely accessed from the data access
   pattern located at ea_data_access.
 
-data_access_patterns are computed by checking memory accesses and with the help of the
-value analysis. Some special cases are checked explicitly.
+data_access_patterns are computed by checking memory accesses and with
+the help of the value analysis. Some special cases are checked
+explicitly.
 
 data_access_patterns give us very sparse information, but if an
 address 'ea' is accessed with a multiplier, it is likely that
-'ea'+multiplier, 'ea'+2*multiplier, etc are also accessed the same way.
-Unfortunately, we do not know until when.
+'ea'+multiplier, 'ea'+2*multiplier, etc are also accessed the same
+way.  Unfortunately, we do not know until when. Therefore, we
+propagate these accesses using the multiplier until we reach some
+other access.
+
+There are two refinements:
+
+- Once the accesses have been propagated, we can have several data access patterns that
+ have been propagated to the same location. We choose the one that is closest (thus the
+ prefix 'preferred_'). The other propagated data accesses are discarded.
+
+- Often we have data accesses that are related. For example accesses
+to different fields of an array of structs. We say that those accesses
+are 'paired'. In such cases, we can get better precision if we
+propagate those accesses together. I.e. we stop the propagation as
+soon as any of the paired accesses reaches another access.
+
+Let us have two accesses to locations EA1 and EA2 with multipliers
+Mult1 and Mult2.  We say these two accesses are paired if Mult1=Mult2
+and EA1<= EA2<= EA1+Mult1.
 
 
 */
-
-
-//////////////////////////////////////////////////////////////////////////////////
-
 
 .decl data_access_pattern(Address:address,Size:number,Multiplier:number,FromWhere:address)
 .output data_access_pattern
@@ -165,7 +180,7 @@ data_access_pattern(Address,2,2,EA):-
 // is paired with data_access_pattern at 'EA2' with size 'Size2' and multiplier 'Multiplier'
 .decl paired_data_access(EA1:address,Size1:number,Multiplier:number,
 			 EA2:address,Size2:number,Diff:number)
-// size in bytes			 
+			 
 .output paired_data_access			 
 paired_data_access(EA1,Size1,Multiplier,EA2,Size2,Diff):-
 			 data_access_pattern(EA1,Size1,Multiplier,Ref1),
@@ -197,7 +212,6 @@ restart_paired_data_access(EA1,Size1,Multiplier,EA2,Size2,Diff2):-
 	paired_data_access(EA1,Size1,Multiplier,EA2,Size2,Diff2),
 	Max_diff<= Diff2.
 	
-
 
 // the addresses that are covered by data_access_patterns
 .decl taken_by_data_access_pattern(EA:address,Offset:number)
@@ -277,7 +291,6 @@ paired_propagated_data_access(EA+Multiplier,EA_label,EA+Multiplier-EA_label,Mult
 	
 .decl propagated_data_access(ea:address,ea_label:address,distance:number,multiplier:number)
 
-
 // count offset after the first propagation so patterns
 // with higher multiplier prevail in the first propagation
 
@@ -298,9 +311,7 @@ initial_preferred_data_access(EA,EA_label):-
 	propagated_data_access(EA,EA_label,Selected_distance,_),
 	Min_Distance>=Selected_distance.
 
-
 .decl discarded_propagated_access(EA:address,EA_label:address,Multiplier:number)
-
 
 discarded_propagated_access(EA,EA_label2,Multiplier):-
 	initial_preferred_data_access(EA,EA_label),

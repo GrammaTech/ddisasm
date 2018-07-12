@@ -1,3 +1,12 @@
+/**
+ Pointer reatribution:
+1: when it is symbolic but possibly lands in the middle of a pointer
+
+2: when it is not symbolic because it misses the data sections (and there is a good reason
+   to think that it is)
+
+3: the pointer points to the wrong section
+*/
 
 .decl moved_data_label(EA:address,Dest:address,New_dest:address)
 .output moved_data_label
@@ -6,6 +15,12 @@
 .output moved_label
 
 ////////////////////////////////////////////////////////////////////////////////////
+
+moved_data_label(EA,Dest,New_dest):-
+	address_in_data_refined(EA,Dest),
+	address_in_data_refined_range.overlap(Dest,8,New_dest).
+
+
 
 .decl related_data_access(EA:address,Dest:address)
 
@@ -32,14 +47,6 @@ related_data_access(EA_cmp,Dest):-
 	instruction_get_src_op(EA_cmp,_,Op1),
 	op_regdirect_contains_reg(Op1,Reg),
 	!data_access_pattern(_,_,_,EA_cmp).
-	
-// Pointer reatribution:
-// two cases
-//1: when it is symbolic but possibly lands in the middle of a pointer
-//2: when it is not symbolic because it misses the data sections (and there is a good reason
-//   to think that it is)
-//3: the pointer points to the wrong section
-
 
 
 .decl moved_label_candidate(EA:address,Index:number,Val:address,New_val:address,Diff:number)
@@ -226,6 +233,3 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	New_dest=SizeSect+Beg
 	).
 
-moved_data_label(EA,Dest,New_dest):-
-	address_in_data_refined(EA,Dest),
-	address_in_data_refined_range.overlap(Dest,8,New_dest).

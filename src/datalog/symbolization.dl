@@ -8,8 +8,35 @@ It uses the results of several analysis:
 Part of symbolization is pointer reatribution, that is detecting cases
 where a number is the result of a symbol+constant. This is done in an
 independent module 'pointer_reatribution' which also uses the results
-of the analyses.
+of these analyses.
+
+The data symbolization itself uses the following heuristics:
+
+  - address_array: whether we have potential symbols evenly
+    spaced. The more symbols the less likely they are all value
+    collisions. We require at least 3 symbols evenly spaced to
+    consider it an array.
+
+  - preferred_data_access and data_access_patterns (from the data_access analysis):
+    - if an address is accessed with the size of the pointer, it is more likely to be a pointer.
+    - if an address is accessed with a size other than the size of the pointers, it is almost
+      certainly not a pointer.
+
+  - strings: if we have a pointer candidate in what seems to be a string,
+    it is less likely to be a pointer
+
+  - aligned location: if a pointer candidate is aligned, it is more
+    likely to be a pointer. Compilers usually (but not always) store
+    pointers aligned.
+
+This module also computes stack_operand and symbol_minus_symbol.
 */
+
+#include "empty_range.dl"
+#include "use_def_analysis.dl"
+#include "value_analysis.dl"
+#include "data_access_analysis.dl" // data_access_analysis uses predicates from here
+#include "pointer_reatribution.dl"
 
 .decl symbolic_operand(ea:address,index:operand_index)
 .output symbolic_operand
@@ -38,11 +65,7 @@ of the analyses.
 .decl string(ea:address,end:address)
 .output string
 
-#include "empty_range.dl"
-#include "use_def_analysis.dl"
-#include "value_analysis.dl"
-#include "data_access_analysis.dl" // data_access_analysis uses predicated here
-#include "pointer_reatribution.dl"
+////////////////////////////////////////////////////////////////////////
 
 stack_operand(EA,Op_index):-
 	code(EA),
@@ -60,7 +83,18 @@ stack_operand(EA,Op_index):-
 	null_reg(NullReg),
 	Offset>=0.
 
-
+symbol_minus_symbol(EA,EA,Symbol2):-
+	data_access_pattern(EA,4,4,_Ref),
+	relative_address(EA,EA,Symbol2),
+	block(Symbol2),
+	relative_address(EA+4,EA,Symbol3),
+	block(Symbol3).
+	
+symbol_minus_symbol(EA,EA_ref,Symbol2):-
+	symbol_minus_symbol(EA_label,EA_ref,_),
+	preferred_data_access(EA,EA_label),
+	relative_address(EA,EA_ref,Symbol2),
+	block(Symbol2).
 ////////////////////////////////////////////////////////////////////////
 // address_in_data considers anything that points to the code region
 // this refinement restricts that to the beginning of the final blocks
@@ -140,6 +174,7 @@ symbolic_data_operand_candidate(EA,Op_index,Dest):-
 	Dest>=Base,
 	Dest<=Base+SizeSect.
 
+///////////////////////////////////////////////////////////////////////////////////////////
 // Heuristic: If there are at least 3 consecutive addresses
 //  we consider that we found an array of addresses
 
@@ -190,26 +225,6 @@ address_array(EA):-
 
 address_array_range.in_ea(EA):-
 	address_array(EA).
-
-
-///////////////////////////////////////////////////////////////////////////////////////////
-
-
-symbol_minus_symbol(EA,EA,Symbol2):-
-	data_access_pattern(EA,4,4,_Ref),
-	relative_address(EA,EA,Symbol2),
-	block(Symbol2),
-	relative_address(EA+4,EA,Symbol3),
-	block(Symbol3).
-
-	
-symbol_minus_symbol(EA,EA_ref,Symbol2):-
-	symbol_minus_symbol(EA_label,EA_ref,_),
-	preferred_data_access(EA,EA_label),
-	relative_address(EA,EA_ref,Symbol2),
-	block(Symbol2).
-
-
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -295,7 +310,13 @@ symbolic_operand(EA,Op_index):-
 	symbolic_code_operand_candidate(EA,Op_index,_).
 symbolic_operand(EA,Op_index):-
 	symbolic_data_operand_candidate(EA,Op_index,_).	
-		
+
+// We consider that belonging to an address array
+// or being accessed with the size of the pointers (8 bits in x64)
+// is sufficient evidence for symbolization
+
+// If these criteria are not met we require that the address is not accessed
+// with any other data access pattern and that the address is aligned
 symbolic_data(EA,Val):-
  	address_in_data_refined(EA,Val),
 	(
