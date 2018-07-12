@@ -1,0 +1,231 @@
+
+.decl moved_data_label(EA:address,Dest:address,New_dest:address)
+.output moved_data_label
+
+.decl moved_label(EA:address,Index:number,Val:address,New_val:address)
+.output moved_label
+
+////////////////////////////////////////////////////////////////////////////////////
+
+.decl related_data_access(EA:address,Dest:address)
+
+.output related_data_access
+
+related_data_access(EA,Dest):-
+	data_access_pattern(Dest,_,_,EA),
+	!instruction_get_operation(EA,"LEA").
+
+related_data_access(EA_def,Dest):-
+	related_data_access(EA_used,Dest),
+	def_used(EA_def,_,EA_used,_),
+	(
+	!data_access_pattern(_,_,_,EA_def)
+	;
+	instruction_get_operation(EA_def,"LEA")
+	).
+	
+related_data_access(EA_cmp,Dest):-
+	related_data_access(EA_used,Dest),
+	used_for_address(EA_cmp,Reg,EA_used,_),
+	instruction_get_operation(EA_cmp,Operation),
+	comparison_operation(Operation),
+	instruction_get_src_op(EA_cmp,_,Op1),
+	op_regdirect_contains_reg(Op1,Reg),
+	!data_access_pattern(_,_,_,EA_cmp).
+	
+// Pointer reatribution:
+// two cases
+//1: when it is symbolic but possibly lands in the middle of a pointer
+//2: when it is not symbolic because it misses the data sections (and there is a good reason
+//   to think that it is)
+//3: the pointer points to the wrong section
+
+
+
+.decl moved_label_candidate(EA:address,Index:number,Val:address,New_val:address,Diff:number)
+
+moved_label_candidate(EA,Op_index,Dest,New_dest,Diff):-
+	code(EA),
+	pc_relative_operand_complete(EA,Op_index,Dest,_),
+	!symbolic_operand(EA,Op_index),
+	related_data_access(EA,Dest_access),
+	Dest_access!=Dest,
+	//section(Name,SectSize,Base),
+	//Dest_access>=Base,
+	//Dest_access<=SectSize+Base,
+	New_dest=Dest_access,
+	Diff=max(Dest_access-Dest,Dest-Dest_access).
+
+moved_label_candidate(EA,Op_index,Dest,New_dest,Diff):-
+	code(EA),
+	pc_relative_operand_complete(EA,Op_index,Dest,_),
+	symbolic_operand(EA,Op_index),
+	section(Name,SectSize,Base),
+	Dest>=Base,
+	Dest<=SectSize+Base,
+	related_data_access(EA,Dest_access),
+	(Dest_access<Base;Dest_access>Base+SectSize),//the access is to other section
+	//get the correct section
+	section(Name2,SectSize2,Base2),
+	Dest_access>=Base2,
+	Dest_access<=SectSize2+Base2,
+	New_dest=Dest_access,
+	Diff=max(Dest_access-Dest,Dest-Dest_access).
+
+// indirect operand
+
+//pc-relative that misses the data sections
+moved_label(EA,Op_index,Dest,New_dest):-
+	moved_label_candidate(EA,Op_index,Dest,_,_),
+	Diff_min=min X:moved_label_candidate(EA,Op_index,Dest,_,X),
+	moved_label_candidate(EA,Op_index,Dest,New_dest,Diff),
+	Diff<=Diff_min.
+
+// label lands in the middle of a pointer
+moved_label(EA,Op_index,Dest,New_dest):-
+	symbolic_data_operand_candidate(EA,Op_index,Dest),
+	1>=count:{symbolic_data_operand_candidate(_,_,Dest)},//it appears only once
+	data_access_pattern(New_dest,_,_,EA),
+	(Dest>New_dest+3
+	;
+	Dest+3<New_dest
+	),
+	//it might collide with a pointer
+	pointer_size(Pt_size),
+	address_in_data_refined_range.overlap(Dest,Pt_size,_).
+
+moved_label(EA,Op_index,Dest,New_dest):-
+	symbolic_data_operand_candidate(EA,Op_index,Dest),
+	1>=count:{symbolic_data_operand_candidate(_,_,Dest)},//it appears only once
+	//it might collide with a very likely pointer
+	pointer_size(Pt_size),
+	address_in_data_refined_range.overlap(Dest,Pt_size,New_dest),
+	(
+	preferred_data_access(New_dest,Label),
+	data_access_pattern(Label,Pt_size,_,_)
+	;
+	address_array(New_dest)
+	).
+	
+// the pointer is likely to point to the wrong section
+moved_label(EA,Op_index,Dest,New_dest):-
+	symbolic_data_operand_candidate(EA,Op_index,Dest),
+	data_access_pattern(Access_dest,_,Mult,EA),
+	(
+	Access_dest!=Dest,
+	New_dest=Access_dest
+	;
+	Access_dest=Dest,
+	New_dest=Dest+Mult
+	),
+	
+	data_section(Name),
+	section(Name,SectSize,Base),
+	Dest>=Base,Dest<=Base+SectSize,
+
+	regular_data_section(Name2), Name2!= Name,
+	section(Name2,SectSize2,Base2),
+	New_dest>=Base2,New_dest<=Base2+SectSize2,
+
+	// sections can have one overlapping address
+	Dest!=Base2,
+	
+	//we are going to move in the direction of the other section
+	(
+	Mult>0,New_dest>Dest
+	;
+	Mult<0, New_dest<Dest
+	).
+
+
+// labels that miss the data sections but should be symbolic
+// the destination is before the data section
+moved_label(EA,Op_index,Dest,Base):-
+	code(EA),
+	instruction_get_op(EA,Op_index,Op),
+	!symbolic_operand(EA,Op_index),
+	!pc_relative_operand_complete(EA,Op_index,_,_),
+	op_indirect(Op,_,_,_,_,Dest,_),
+	Dest>40000,
+	
+	regular_data_section(Name),
+	section(Name,_,Base),
+	Dest<Base,
+	Dest+4000>=Base.
+
+// the destination is more than the end of the section
+moved_label(EA,Op_index,Dest,Base+SizeSect):-
+	code(EA),
+	instruction_get_op(EA,Op_index,Op),
+	!symbolic_operand(EA,Op_index),
+	!pc_relative_operand_complete(EA,Op_index,_,_),
+	op_indirect(Op,_,_,_,_,Dest,_),
+	data_access_pattern(Other_dest,_,_,EA),
+
+	regular_data_section(Name),
+	section(Name,SizeSect,Base),
+	Other_dest>=Base,
+	Other_dest<=Base+SizeSect,
+	Dest>Base+SizeSect,
+	Dest<=Base+SizeSect+(SizeSect/2).
+
+
+//immediate operand used
+//this considers also the case the pointer points to the wrong section (if the value is
+// already symbolic
+
+moved_label(EA,Op_index,Dest,New_dest):-
+	code(EA),
+	instruction_get_src_op(EA,Op_index,Op),
+	op_immediate(Op,Dest),
+	Dest>40000,
+    //maybe add check that it points to a special section?
+    (!symbolic_operand(EA,Op_index)
+    ;
+    symbolic_operand(EA,Op_index),
+    data_section(Sect_origin),
+    !regular_data_section(Sect_origin),
+    section(Sect_origin,SizeSect_origin,Beg_origin),
+    Dest>=Beg_origin,
+    Dest<=SizeSect_origin+Beg_origin
+    ),
+	(
+	  instruction_get_operation(EA,Operation),
+	  comparison_operation(Operation)
+	;
+	  mov(EA)
+	),
+	instruction_get_op(EA,_,Op2),
+	Op2!=Op,
+	op_regdirect_contains_reg(Op2,Reg),
+
+	local_next(EA,EA_next),
+	used_for_address(EA_next,Reg,EA_used,Op_index_used),
+	!symbolic_operand(EA_used,Op_index_used),
+
+	//get the section where it is supposed to go
+	(
+	value_reg(EA_used,_,_,_,_,Other_dest,_)
+	;
+	// a related register
+	def_used(EA_def,_,EA_used,_),
+	value_reg(EA_def,_,_,_,_,Other_dest,_)
+	),
+	Other_dest!=0,
+    	regular_data_section(Name),
+        section(Name,SizeSect,Beg),
+	Other_dest>=Beg,
+	Other_dest<=SizeSect+Beg,
+	(
+	Dest< Beg,
+	Dest+4000>=Beg,
+	New_dest=Beg
+	;
+	Dest>SizeSect+Beg,
+	Dest<=Beg+SizeSect+(SizeSect/2),
+	New_dest=SizeSect+Beg
+	).
+
+moved_data_label(EA,Dest,New_dest):-
+	address_in_data_refined(EA,Dest),
+	address_in_data_refined_range.overlap(Dest,8,New_dest).
