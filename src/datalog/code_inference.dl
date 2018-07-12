@@ -17,7 +17,7 @@ locations but converging into the same location).
 
 The second traversal (phase2) only considers an address appearing in
 the code as a possible target if the code where it appears has been
-already traversed. In that sense it is more similar to recursive
+already traversed. In that sense, it is more similar to recursive
 disassembly but it still has a linear component as it explores the
 instructions after locations that cannot fallthough.
 
@@ -30,7 +30,7 @@ more points.
 
 // These are final addresses where the code is located
 // They are organized in blocks of sequential code
-// The first address is the block identifier
+// The block identifier is the address of the first instruction in the block
 .decl code_in_block(ea:address,block:address)
 .output code_in_block
 
@@ -40,7 +40,7 @@ more points.
 .decl code(ea:address)
 
 
-// we detect if there are still overlaping blocks, in that case the analysis failed
+// we detect if there are still overlaping blocks, in that case the analysis has failed
 .decl block_still_overlap(ea:address,ea2:address)
 .output block_still_overlap
 
@@ -122,9 +122,6 @@ basic_target(EA):-
 
 basic_target(EA):-
 	function_symbol(EA,_).
-////////////////////////////////////////////////////////
-
-
 
 /////////////////////////////
 // Phase 2
@@ -374,7 +371,6 @@ block_points(Block,Block_pred2,Points,"transitive jump"):-
 	block_is_overlaping(Block_pred),
 	block_points(Block_pred,Block_pred2,Points,_).
 
-////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////
 
 

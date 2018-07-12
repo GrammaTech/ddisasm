@@ -1,3 +1,10 @@
+/**
+This module defines the component empty_range. It receives a set
+of addresse in_ea and generates a set of overlapping addresses
+and no overapping addresses according to a size of the element.
+*/
+
+
 .comp empty_range{
 
 .decl in_ea(ea:address)

@@ -1,3 +1,7 @@
+/**
+Perform a intra-procedural completeness analysis.
+
+*/
 
 //////////////////////////////////////////////////////////////////////////////
 // Auxiliary predicates used in several places

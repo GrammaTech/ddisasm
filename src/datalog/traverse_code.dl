@@ -1,22 +1,23 @@
-/** This component traverses the code forward and recursively
- discovering blocks of code which are stored in the facts
+/**
+ This component traverses the code forward and recursively.  It
+ discovers blocks of code which are stored in the facts
  'likely_ea'. This traversal starts at the locations specified by
- possible_target' and only traverses instructions contained in
+ 'possible_target' and only traverses instructions contained in
  'possible_ea'.  During the traversal additional new 'possible_target'
  are generated.
 
- The traversal is recursive in the senses that it generate new targets
+ The traversal is recursive in the sense that it generates new targets
  from the found code, and linear in the sense that it continues
  exploring the code after the end of each block.
 
  Once the forward traversal is done, 'invalid' instructions are
- propagated backwards weakly. The component can receive a set of
- initial invalid instructions.  Additional invalid instructions are
- considered for instructions that overlap instructions inside a block
- and are not themselves in any block.
+ propagated backwards weakly (only through must_fallthrough). The
+ component can receive a set of initial invalid instructions.  An
+ instruction is also considere invali if it overlap other instructions
+ inside a block and it is not itself in any block.
 
  Finally remaining_ea is the set of instructions that do not belong to any
- discovered block but are also not clasified invalid.
+ discovered block but are also not classified invalid.
 */
 .comp traverse_code {
 

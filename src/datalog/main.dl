@@ -1,12 +1,13 @@
 /**
 This is the main module of the datalog disassembler.
 The disassembly has 3 main components:
- 1- code_inference.pl
-     -traverse_code.pl
+ 1- code_inference.dl
+     -traverse_code.dl
  2- symbolization.pl
      - use_def_analysis.dl
      - value_analysis.dl
-     - data_access_analysis.pl
+     - data_access_analysis.dl
+     - pointer_reatribution.dl
 
  3- function_inference.pl
      -intra_procedural_cfg_completeness.dl
@@ -21,7 +22,7 @@ generic components and tables.
 
  Generic components:
   -ordered_set.dl
-  -empty_range.pl
+  -empty_range.dl
 
  Tables:
   -float_operations.dl

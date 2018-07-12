@@ -3,9 +3,9 @@ Function inference has two phases:
 
 - The first one uses symbol information and heuristics.
 
-- The second phase adds new functions by finding blocks of code
- that are contiguous (but not reachable) to a complete function.
- A complete function is a function that does not have unresolved jumps.
+- The second phase adds new functions by finding blocks of code that
+ are contiguous (but not reachable) to a complete function. A
+ complete function is a function that does not have unresolved jumps.
 
    - intra_procedural_cfg_completeness computes reachability
     and cfgs that are complete (all their jumps resolved)

@@ -1,3 +1,7 @@
+/*
+The set of printable ascii characters.
+*/
+
 .decl printable_char(n:number)
 
 printable_char(0x9).

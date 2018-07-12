@@ -1,3 +1,18 @@
+/**
+This module defines two components:
+ordered_set receives pred(Set,element) as input which defines
+that element is in set.
+
+ordered_set provides the predicates first, last and next
+so the elements in one set can be 'iterated' in order.
+
+Component forall_ordered_set extends ordered_set and
+receives a property as an input and provides a predicate forall.
+ -property(elem) indicates that elem has a certain property.
+ -forall(set) indicates that all the elements in the set have such property.
+
+*/
+
 .comp ordered_set{
 
 .decl pred(Set:number,element:number)

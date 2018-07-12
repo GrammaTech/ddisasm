@@ -1,11 +1,15 @@
+/**
+ no_return and no_return_call are mutually recursive definitions
+ that implement a must analysis that propagates over (potentially) the
+ whole program.
 
-// no_return and no_return_call are mutually recursive definitions
-// that implement a must analysis that propagates over (potentially) the whole program
+ The analysis is a must analysis so it cannot propagate if there are jumps
+ or calls that are not defined
+ In order to propagate through SCC we need to compute their exits
+ if none of their exits return, and the CFG is complete, the SCC never returns.
+*/
 
-// The analysis is a must analysis so it cannot propagate if there are jumps
-// or calls that are not defined
-// In order to propagate through SCC we need to compute their exits
-// if none of their exits return, and the CFG is complete, the SCC never returns
+
 
 
 

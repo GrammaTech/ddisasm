@@ -1,3 +1,22 @@
+/**
+Compute strongly connected components of an intra-procedural
+control flow graph.
+
+in_scc(block1,block2): represents that block2 and block2 belong to the
+same SCC.
+
+single_scc(block): represents a SCC with only one block but that is
+nonetheless recursive
+
+scc_representative(block): Each SCC can contain a number of blocks. We
+identify a SCC by the id of its first block.
+
+scc_exit(SCC,exit_block): There is an edge in the control flow graph
+from one of the nodes in SCC to exit_block.  That is, exit_block is an
+exit point of the SCC.
+*/
+
+
 .decl scc_representative(Block:address)
 .decl scc_exit(SCC:address,Exit_block:address)
 

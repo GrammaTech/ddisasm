@@ -1,4 +1,6 @@
-    
+/**
+The set of jump operations in x64
+*/
 .decl jump_operation(n:symbol)
 
 jump_operation("JCXZ").
