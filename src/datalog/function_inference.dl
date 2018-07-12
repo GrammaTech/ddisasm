@@ -1,17 +1,18 @@
+/**
+Function inference has two phases:
 
-//////////////////////////////////////////////////////////////////////////////
-// Function inference has two phases
-// the first one uses symbol information, and heuristics
+- The first one uses symbol information and heuristics.
 
+- The second phase adds new functions by finding blocks of code
+ that are contiguous (but not reachable) to a complete function.
+ A complete function is a function that does not have unresolved jumps.
 
-// the intra_procedural_cfg_completeness computes reachability
-// and cfgs that are complete (all their jumps resolved)
-// it uses the functions inferred in the first phase
+   - intra_procedural_cfg_completeness computes reachability
+    and cfgs that are complete (all their jumps resolved)
+    it uses the functions inferred in the first phase.
 
-// The second phase adds new functions by finding blocks of code
-// that are contiguous (but not reachable) to a complete function.
-// A complete function is a function that does not have unresolved jumps
-
+   - no_return_analysis helps detecting potential function end points.
+*/
 
 #include "no_return_analysis.dl"
 #include "intra_procedural_cfg_completeness.dl"
@@ -147,8 +148,6 @@ function_entry2(EA):-
 	Src<Middle,Middle<=EA
 	).
 
-
-
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 // refinement using complete_cfg, reachability information and no_return information
@@ -156,7 +155,6 @@ function_entry2(EA):-
  
 .decl function_entry2(EA:address)
 .output function_entry2
-
 
 function_entry2(EA):-
 	function_entry(EA).
@@ -212,11 +210,8 @@ function_entry2(EA2):-
 	!resolved_jump(_,EA2),
 	after_function_end(EA2,_).
 
-
-
-
 //////////////////////////////////////////////////////////////////////////////
-// auliliary predicates
+// auxiliary predicates
 .decl function_table(Label:address)
 
 function_table(Label):-
@@ -256,11 +251,8 @@ typical_function_starter(EA):-
 	instruction(EA,_,_,"PUSH",Op1,_,_,_),
  	op_regdirect(Op1,"RBP").
 	
-	
-
 //////////////////////////////////////////////////////////////////////////////
 // functions can start after a block that does not fallthrough
-
 
 .decl after_function_end(EA:address,End:address)
 

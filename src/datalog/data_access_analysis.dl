@@ -1,11 +1,32 @@
+/**
+ The data_access analysis computes:
+
+-'data_access_patterns' which represent that the address 'Address' is
+ accessed with size 'Size' and multiplier 'Multiplier' from an
+ instruction in 'FromWhere'.
+
+-'preferred_data_access' the address is most likely accessed from the data access
+  pattern located at ea_data_access.
+
+data_access_patterns are computed by checking memory accesses and with the help of the
+value analysis. Some special cases are checked explicitly.
+
+data_access_patterns give us very sparse information, but if an
+address 'ea' is accessed with a multiplier, it is likely that
+'ea'+multiplier, 'ea'+2*multiplier, etc are also accessed the same way.
+Unfortunately, we do not know until when.
+
+
+*/
+
+
 //////////////////////////////////////////////////////////////////////////////////
-// The address 'Address' is accessed with size 'Size' and multiplier 'Multiplier'
-// from an instruction in 'FromWhere'
+
 
 .decl data_access_pattern(Address:address,Size:number,Multiplier:number,FromWhere:address)
 .output data_access_pattern
 
-.decl preferred_data_access(ea:address,ea_label:address)
+.decl preferred_data_access(ea:address,ea_data_access:address)
 .output preferred_data_access
 
 //////////////////////////////////////////////////
