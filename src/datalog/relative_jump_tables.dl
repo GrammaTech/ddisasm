@@ -1,0 +1,40 @@
+/**
+This module deals exclusively with detecting jump tables with relative addresses.
+*/
+
+
+.decl data_dword(EA:address,Val:number)
+
+data_dword(EA,Val):-
+	data_byte(EA,Byte0),EA % 4 =0,//jump tables are assumed to be aligned
+	data_byte(EA+1,Byte1),
+	data_byte(EA+2,Byte2),
+	data_byte(EA+3,Byte3),
+	Byte3>=128,//the number is negative
+	Val= -(2^32 -( Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0)).
+
+
+.decl take_address(Src:address,Address_taken:address)
+
+take_address(Src,Address):-
+	pc_relative_operand(Src,1,Address),
+	instruction_get_operation(Src,"LEA").
+
+.decl relative_address_start(EA:address,Reference:address,Val:address)
+
+relative_address_start(EA,EA,EA+Diff):-
+	take_address(_,EA),
+	data_dword(EA,Diff),
+	instruction(EA+Diff,_,_,_,_,_,_,_).
+	
+.decl relative_address(EA:address,Reference:address,Val:address)
+.output relative_address
+
+relative_address(EA,EA,Symbol2):-
+	relative_address_start(EA,EA,Symbol2).
+
+relative_address(EA+4,Ref,Ref+Diff):-
+	relative_address(EA,Ref,_),
+	data_dword(EA+4,Diff),
+	instruction(Ref+Diff,_,_,_,_,_,_,_),
+	!relative_address_start(EA+4,_,_).
