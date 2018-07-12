@@ -1,57 +1,96 @@
+/** This component traverses the code forward and recursively
+ discovering blocks of code which are stored in the facts
+ 'likely_ea'. This traversal starts at the locations specified by
+ possible_target' and only traverses instructions contained in
+ 'possible_ea'.  During the traversal additional new 'possible_target'
+ are generated.
+
+ The traversal is recursive in the senses that it generate new targets
+ from the found code, and linear in the sense that it continues
+ exploring the code after the end of each block.
+
+ Once the forward traversal is done, 'invalid' instructions are
+ propagated backwards weakly. The component can receive a set of
+ initial invalid instructions.  Additional invalid instructions are
+ considered for instructions that overlap instructions inside a block
+ and are not themselves in any block.
+
+ Finally remaining_ea is the set of instructions that do not belong to any
+ discovered block but are also not clasified invalid.
+*/
 .comp traverse_code {
 
 // INPUTS
+
 // these are the initial ea considered
 .decl possible_ea(a:address)
-
-// the initial targets to be considered
-.decl possible_target(ea:address)
 
 // the block limits to be considered
 .decl block_limit(ea:address)
 
+// INPUTS AND OUTPUTS
 
-//COMPUTED
-// propagate from possible targets forward
+// the initial targets to be considered
+.decl possible_target(ea:address)
+
+// there cannot be a valid instruction in ea
+.decl invalid(ea:address)
+
+// OUTPUTS
+
+// likely_ea represents a block of code where each ea in an instruction
+// in the block starting in block_head
 .decl likely_ea(ea:address,block_head:address)
 
+// Instructions that are not associated to any block but also have not been
+// discarded
+.decl remaining_ea(ea:address)
+
+
+// INFERENCE RULES
+
+// start a new block given a possible target
 likely_ea(EA,EA):-
 	possible_target(EA),
 	possible_ea(EA).
 
+// extend the block as long as we are sure to fallthrough and we have not
+// reached a block limit
 likely_ea(EA,Start):-
 	likely_ea(EA2,Start),
 	must_fallthrough(EA2,EA),
 	!block_limit(EA),
 	possible_ea(EA).
 
-	
+// if reached a block limit or an instruction that does not necessarily
+// fallthrough continue exploring but start a new block
 likely_ea(EA,EA):-
 	likely_ea(EA2,Start),
 	may_fallthrough(EA2,EA),
 	(
-	!must_fallthrough(EA2,EA)
+	  !must_fallthrough(EA2,EA)
 	;
-	block_limit(EA)
+	  block_limit(EA)
 	;
-	is_nop(EA2),
-	!is_nop(EA)
+	  is_nop(EA2),
+	  !is_nop(EA)
 	),
 	possible_ea(EA).	
 	
 
-// in case we cannot fallthrough we skip the nops
+// in case we cannot fallthrough, we skip any nops that we might find
+// and generate a new possible_target once the nops finish
 .decl after_end(EA:address,End:address)
 
 
 after_end(Next,End):-
 	likely_ea(End,_),
 	(
-	inconditional_jump(End)
+	   inconditional_jump(End)
 	;
-	return(End)
+	   return(End)
 	;
-	halt(End)
+	   halt(End)
 	),
 	next(End,Next).
 
@@ -71,7 +110,7 @@ possible_target(EA):-
 .decl overlap(ea_overlap:address,ea_likely:address)
 
 
-// Compute EAs that overlap with EAs of likely instuctions
+// Compute EAs that overlap with EAs of likely instuctions (instructions that belong to blocks)
 overlap(EA2+1,EA2):-
 	likely_ea(EA2,_),
 	next(EA2,End),
@@ -81,10 +120,12 @@ overlap(EA+1,EA2):-
 	next(EA2,End),
 	EA+1 < End.
 
-.decl invalid(ea:address)
 
+// if the decoder failed to decode any instruction at EA, EA is invalid
 invalid(EA):-
 	invalid_op_code(EA).
+	
+// if EA contains a direct call or jump to something that cannot be code, it is invalid
 invalid(EA):-
 	(
 	direct_jump(EA,Not_code)
@@ -93,7 +134,8 @@ invalid(EA):-
 	),
 	!possible_ea(Not_code).
 	
-
+// If the instruction overlaps with an instruction that belong to a block
+// and it does not belong to a block itself
 invalid(EA):-
 	possible_ea(EA),
 	(
@@ -107,9 +149,8 @@ invalid(EA):-
 	// (and it is not itself likely)
 	!likely_ea(EA,_).
 
-//propagate the invalid instructions backward until ret or jmp (encoded in must_fallthrough)
+// propagate the invalid instructions backwards until ret or jmp (encoded in must_fallthrough)
 // propagate through direct jumps and calls
-
 invalid(From):-
 	invalid(To),
 	(
@@ -123,10 +164,6 @@ invalid(From):-
 	;
 		pc_relative_call(From,To)
 	).
-
-
-.decl remaining_ea(ea:address)
-
 
 remaining_ea(EA):-
 	possible_ea(EA),

@@ -1,23 +1,33 @@
+/**
+This is the main module of the datalog disassembler.
+The disassembly has 3 main components:
+ -code_inference
+ -symbolization
+ -function_inference
+
+*/
+
 .symbol_type register
 
 .number_type address
 .number_type operand_code
 .number_type operand_index
 
-
+// tables with basic facts
 #include "printable_chars.dl"
-
 #include "jump_operations.dl"
 
-// infer what is code and what is not
+// Detection of relative jump tables
+#include "relative_jump_tables.dl"
+
+// Inference of instruction boundaries
 #include "code_inference.dl"
 
-
-// infer what is a pointer and what is not
-// compute symbolic_operand, symbolic_data, labeled_data
+// Performs literal-reference desambiguation
 // and strings
 #include "symbolization.dl"
 
+// Inferece of function boundaries
 #include "function_inference.dl"
 
 /////////////////////////////////////////////////////////////
@@ -243,14 +253,19 @@ pc_relative_operand_complete(EA,Index,EA_next+Offset,Size):-
 	op_indirect(Op,NullSReg,"RIP",NullReg1,1,Offset,Size),
 	null_reg(NullSReg),
 	null_reg(NullReg1),
-	next(EA,EA_next).		
+	next(EA,EA_next).
+
+.decl loop_operation(operation:symbol)
+
+loop_operation("LOOP").
+loop_operation("LOOPNE").
+loop_operation("LOOPE").
+
 // JUMPS
 .decl inconditional_jump(n:address)
 
 inconditional_jump(EA):-
 	instruction_get_operation(EA,"JMP").
-
-
 
 // direct jumps
 .decl direct_jump(src:address, dest:address)
@@ -266,12 +281,6 @@ direct_jump(EA,Dest):-
 	loop_operation(Operation),
 	op_immediate(Op2,Dest).
 
-.decl loop_operation(operation:symbol)
-
-loop_operation("LOOP").
-loop_operation("LOOPNE").
-loop_operation("LOOPE").
-
 // Special kinds of indirect jumps
 // PC relative jumps
 .decl pc_relative_jump(src:address, dest:address)
@@ -285,9 +294,7 @@ pc_relative_jump(EA,Dest):-
 	
 // jump to the address of a register
 // for now we do not compute anything about these
-
  .decl reg_jump(src:address)
-// .output reg_jump
 
 reg_jump(EA):-
 	instruction(EA,_,_,Operation,Op1,_,_,_),
@@ -296,9 +303,7 @@ reg_jump(EA):-
 	
 	
 // indirect jump	
-
  .decl indirect_jump(src:address)
-// .output indirect_jump
 
 indirect_jump(EA):-
 	instruction(EA,_,_,Operation,Op1,_,_,_),
@@ -334,9 +339,6 @@ reg_call(EA):-
 	instruction(EA,_,_,"CALL",Op1,_,_,_),
  	op_regdirect(Op1,_).
 
-
-
-
  .decl indirect_call(src:address)
 // .output indirect_call
 
@@ -344,7 +346,6 @@ indirect_call(EA):-
 	instruction(EA,_,_,"CALL",Op1,_,_,_),
  	op_indirect(Op1,_,_,_,_,_,_),
  	!pc_relative_jump(EA,_).
-
 
 // Returns
 .decl return(n:address)
@@ -373,89 +374,6 @@ ambiguous_symbol(Name):-
 
 function_symbol(EA,Name):-
 	symbol(EA,_,"FUNC",_,Name).
-
-/////////////////////////////////////////////////////////////
-
-.decl may_fallthrough(o:address,d:address)
-
-may_fallthrough(From,To):-
-	next(From,To),
-	!return(From),
-	!inconditional_jump(From),
-//	!no_return_call(From),
-	!halt(From).
-		
-.decl must_fallthrough(o:address,d:address)
-
-must_fallthrough(From,To):-
-	may_fallthrough(From,To),
-	!instruction_get_operation(From,"CALL").
-
-.decl data_dword(EA:address,Val:number)
-
-
-data_dword(EA,Val):-
-	data_byte(EA,Byte0),EA % 4 =0,//jump tables are assumed to be aligned
-	data_byte(EA+1,Byte1),
-	data_byte(EA+2,Byte2),
-	data_byte(EA+3,Byte3),
-	Byte3>=128,//the number is negative
-	Val= -(2^32 -( Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0)).
-
-
-.decl take_address(Src:address,Address_taken:address)
-
-take_address(Src,Address):-
-	pc_relative_operand(Src,1,Address),
-	instruction_get_operation(Src,"LEA").
-
-.decl relative_address_start(EA:address,Reference:address,Val:address)
-
-relative_address_start(EA,EA,EA+Diff):-
-	take_address(_,EA),
-	data_dword(EA,Diff),
-	instruction(EA+Diff,_,_,_,_,_,_,_).
-	
-.decl relative_address(EA:address,Reference:address,Val:address)
-.output relative_address
-
-relative_address(EA,EA,Symbol2):-
-	relative_address_start(EA,EA,Symbol2).
-
-relative_address(EA+4,Ref,Ref+Diff):-
-	relative_address(EA,Ref,_),
-	data_dword(EA+4,Diff),
-	instruction(Ref+Diff,_,_,_,_,_,_,_),
-	!relative_address_start(EA+4,_,_).
-
-
-.decl basic_target(ea:address)
-
-// FIXME: add exception frame addresses
-
-basic_target(Val):-
- 	relative_address(_,_,Val).
-
-basic_target(Val):-
-	binary_type("DYN"),
-	address_in_data(EA,Val),
-	relocation(EA,_,_,_).
-
-basic_target(Val):-
-	binary_type("EXEC"),
-	address_in_data(_,Val).
-
-
-basic_target(EA):-
-	entry_point(EA).
-
-basic_target(EA):-
-	code_section(Name),
-	section(Name,_,EA).
-
-basic_target(EA):-
-	function_symbol(EA,_).
-	
 	
 ////////////////////////////////////////////////////////////////////////////
 // detect references  to libraries (calls to plt)

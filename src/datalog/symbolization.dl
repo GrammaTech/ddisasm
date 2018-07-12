@@ -503,6 +503,7 @@ in_string(EA,End-Beg):-
 
 .decl address_can_contain_pointers(ea:address)
 .output address_can_contain_pointers
+
 // address accessed from recognized pattern
 // this discard places labeled only labeled with a different size
 address_can_contain_pointers(EA):-
@@ -513,8 +514,6 @@ address_can_contain_pointers(EA):-
 	;
 	data_access_pattern(Label,0,_,_)	
 	).
-
-
 
 //FIXME maybe we have to refine this (are there false positives?)
 symbolic_operand(EA,Op_index):-
@@ -552,13 +551,13 @@ symbolic_data(EA,Val):-
 	!labeled_data(EA+6),
 	!labeled_data(EA+7).	
 
-
 code_pointer_in_data(EA,Val):-
 	symbolic_data(EA,Val),
 	block(Val).
 	
 /////////////////////////////////////////////////////////////////////////////////
-// for bss there is no decision to make
+// This facts specifies that a label should be printed in the .bss section for
+// the given address (because it is referenced somewhere)
 bss_data(EA):-
 	(
 	labeled_data(EA)
