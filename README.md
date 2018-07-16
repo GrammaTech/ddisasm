@@ -1,23 +1,38 @@
+Datalog Disassembly
+===================
 
-
+A *fast* disassembler which is *accurate* enough for the resulting
+assembly code to be reassembled.  The disassembler implemented using
+the datalog ( [souffle](https://github.com/souffle-lang/souffle))
+declarative logic programming language to compile reverse engineering
+and binary analysis rules and heuristics.  The disassembler first
+parses ELF file information and decodes a superset of possible
+instructions to create an initial set of datalog facts.  These facts
+are analyzed to identify *code location*, *symbolization*, and
+*function boundaries*.  The results of this analysis, a refined set of
+datalog facts, are then translated to the GTIRB intermediate
+representation for binary analysis and reverse engineering.  The
+[GTIRB pretty printer](https://github.com/grammatech/XXXXXXXX) may
+then be used to pretty print the GTIRB to reassemblable assembly code.
 
 ## Introduction
 
 The analysis contains three parts:
 
- - The c++ files generate a binary `bin/datalog_decoder` which takes care
- of reading an elf file and generating several `.facts` files that
- represent the inital problem.
+- The c++ files generate a binary `bin/datalog_decoder` which takes
+  care of reading an elf file and generating several `.facts` files
+  that represent the inital problem.
  
- - `src/datalog/*.dl` contains the specification of the analyses in
- datalog.  It takes the basic facts and computes likely EAs, chunks of
- code, etc. The results are stored in `.csv` files.
- These files can be compiled into `/bin/souffle_disasm`
+- `src/datalog/*.dl` contains the specification of the analyses in
+  datalog.  It takes the basic facts and computes likely EAs, chunks
+  of code, etc. The results are stored in `.csv` files.  These files
+  can be compiled into `/bin/souffle_disasm`
  
- - `src/disasm_driver.pl` is a prolog module that calls datalog_decored
- first, then it calls souffle (or souffle_disasm) and finally reads the results from the
- analysis and prints the assembler code. (this script can be called by executing `./bin/disasm`)
- 
+- `src/disasm_driver.pl` is a prolog module that calls datalog_decored
+  first, then it calls souffle (or souffle_disasm) and finally reads
+  the results from the analysis and prints the assembler code. (this
+  script can be called by executing `./bin/disasm`)
+
 ## Dependencies
 
 - The project is prepared to be built with GTScons and has to be located
