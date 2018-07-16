@@ -10,7 +10,8 @@ parses ELF file information and decodes a superset of possible
 instructions to create an initial set of datalog facts.  These facts
 are analyzed to identify *code location*, *symbolization*, and
 *function boundaries*.  The results of this analysis, a refined set of
-datalog facts, are then translated to the GTIRB intermediate
+datalog facts, are then translated to the
+[GTIRB](https://github.com/grammatech/gtirb) intermediate
 representation for binary analysis and reverse engineering.  The
 [GTIRB pretty printer](https://github.com/grammatech/XXXXXXXX) may
 then be used to pretty print the GTIRB to reassemblable assembly code.
