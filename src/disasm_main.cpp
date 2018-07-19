@@ -43,6 +43,10 @@ souffle::tuple &operator>>(souffle::tuple &t, uint8_t &byte)
 
 struct DecodedInstruction
 {
+    DecodedInstruction(uint64_t ea) : EA(ea)
+    {
+    }
+
     DecodedInstruction(souffle::tuple &tuple)
     {
         assert(tuple.size() == 8);
@@ -82,6 +86,10 @@ struct OpRegdirect
 
 struct OpImmediate
 {
+    OpImmediate(uint64_t n) : N(n)
+    {
+    }
+
     OpImmediate(souffle::tuple &tuple)
     {
         assert(tuple.size() == 2);
@@ -94,6 +102,10 @@ struct OpImmediate
 
 struct OpIndirect
 {
+    OpIndirect(uint64_t n) : N(n)
+    {
+    }
+
     OpIndirect(souffle::tuple &tuple)
     {
         assert(tuple.size() == 7);
@@ -125,6 +137,10 @@ struct CodeInBlock
 
 struct PLTReference
 {
+    PLTReference(uint64_t ea) : EA(ea)
+    {
+    }
+
     PLTReference(souffle::tuple &tuple)
     {
         assert(tuple.size() == 2);
@@ -137,6 +153,10 @@ struct PLTReference
 
 struct DirectCall
 {
+    DirectCall(uint64_t ea) : EA(ea)
+    {
+    }
+
     DirectCall(souffle::tuple &tuple)
     {
         assert(tuple.size() == 2);
@@ -150,6 +170,10 @@ struct DirectCall
 
 struct MovedLabel
 {
+    MovedLabel(uint64_t ea) : EA(ea)
+    {
+    }
+
     MovedLabel(souffle::tuple &tuple)
     {
         assert(tuple.size() == 4);
@@ -164,6 +188,9 @@ struct MovedLabel
 
 struct SymbolicOperand
 {
+    SymbolicOperand(uint64_t ea) : EA(ea)
+    {
+    }
     SymbolicOperand(souffle::tuple &tuple)
     {
         assert(tuple.size() == 2);
@@ -174,16 +201,92 @@ struct SymbolicOperand
     uint64_t OpNum{0};
 };
 
+template <typename T>
+class VectorByEA
+{
+public:
+    explicit VectorByEA() = default;
+    using const_iterator = typename std::vector<T>::const_iterator;
+    void sort()
+    {
+        std::sort(this->contents.begin(), this->contents.end(),
+                  [](const auto &left, const auto &right) { return left.EA < right.EA; });
+    }
+
+    std::pair<const_iterator, const_iterator> equal_range(gtirb::EA ea) const
+    {
+        T key(ea);
+        return std::equal_range(
+            this->contents.begin(), this->contents.end(), key,
+            [](const auto &left, const auto &right) { return left.EA < right.EA; });
+    }
+
+    const T *find(gtirb::EA ea) const
+    {
+        auto inst = this->equal_range(ea);
+        if(inst.first != this->contents.end() && inst.first->EA == ea)
+        {
+            return &*inst.first;
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
+
+    std::vector<T> contents;
+};
+
+template <typename T>
+class VectorByN
+{
+public:
+    explicit VectorByN() = default;
+    using const_iterator = typename std::vector<T>::const_iterator;
+    void sort()
+    {
+        std::sort(this->contents.begin(), this->contents.end(),
+                  [](const auto &left, const auto &right) { return left.N < right.N; });
+    }
+
+    std::pair<const_iterator, const_iterator> equal_range(uint64_t n) const
+    {
+        T key(n);
+        return std::equal_range(
+            this->contents.begin(), this->contents.end(), key,
+            [](const auto &left, const auto &right) { return left.N < right.N; });
+    }
+
+    const T *find(uint64_t n) const
+    {
+        auto inst = this->equal_range(n);
+        if(inst.first != this->contents.end() && inst.first->N == n)
+        {
+            return &*inst.first;
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
+
+    std::vector<T> contents;
+};
+
 struct SymbolicInfo
 {
-    std::vector<PLTReference> PLTCodeReferences;
-    std::vector<DirectCall> DirectCalls;
-    std::vector<MovedLabel> MovedLabels;
-    std::vector<SymbolicOperand> SymbolicOperands;
+    VectorByEA<PLTReference> PLTCodeReferences;
+    VectorByEA<DirectCall> DirectCalls;
+    VectorByEA<MovedLabel> MovedLabels;
+    VectorByEA<SymbolicOperand> SymbolicOperands;
 };
 
 struct SymbolicData
 {
+    SymbolicData(uint64_t ea) : EA(ea)
+    {
+    }
+
     SymbolicData(souffle::tuple &tuple)
     {
         assert(tuple.size() == 2);
@@ -196,6 +299,10 @@ struct SymbolicData
 
 struct SymbolMinusSymbol
 {
+    SymbolMinusSymbol(uint64_t ea) : EA(ea)
+    {
+    }
+
     SymbolMinusSymbol(souffle::tuple &tuple)
     {
         assert(tuple.size() == 3);
@@ -211,6 +318,10 @@ struct SymbolMinusSymbol
 // "String" is a bad name for this data type.
 struct String
 {
+    String(uint64_t ea) : EA(ea)
+    {
+    }
+
     String(souffle::tuple &tuple)
     {
         assert(tuple.size() == 2);
@@ -230,6 +341,18 @@ static std::vector<T> convertRelation(const std::string &relation, souffle::Souf
     {
         result.emplace_back(output);
     }
+    return result;
+}
+
+template <typename T>
+static T convertSortedRelation(const std::string &relation, souffle::SouffleProgram *prog)
+{
+    T result;
+    for(auto &output : *prog->getRelation(relation))
+    {
+        result.contents.emplace_back(output);
+    }
+    result.sort();
     return result;
 }
 
@@ -295,7 +418,6 @@ static void buildRelocations(gtirb::IR &ir, souffle::SouffleProgram *prog)
             name.clear();
         relocations.push_back({ea, type, name, static_cast<uint64_t>(offset)});
     }
-    ir.getMainModule().setRelocations(relocations);
 }
 
 void buildDataBytes(gtirb::IR &ir, souffle::SouffleProgram *prog)
@@ -321,20 +443,6 @@ void buildDataBytes(gtirb::IR &ir, souffle::SouffleProgram *prog)
 
         byteMap.setData(ea, static_cast<uint8_t>(byte));
     }
-}
-
-template <typename T>
-const T *findByEA(const std::vector<T> &vec, gtirb::EA ea)
-{
-    const auto found = std::find_if(vec.begin(), vec.end(),
-                                    [ea](const auto &element) { return element.EA == ea; });
-
-    if(found != vec.end())
-    {
-        return &(*found);
-    }
-
-    return nullptr;
 }
 
 bool isNullReg(const std::string &reg)
@@ -370,35 +478,33 @@ static const gtirb::SymbolReference getSymbol(gtirb::SymbolSet &symbols, gtirb::
 
 void buildSymbolic(gtirb::SymbolSet &symbols, gtirb::SymbolicOperandSet &symbolic,
                    DecodedInstruction instruction, gtirb::EA &ea, uint64_t operand, uint64_t index,
-                   const SymbolicInfo &symbolicInfo, const std::vector<OpImmediate> &opImmediate,
-                   const std::vector<OpIndirect> &opIndirect)
+                   const SymbolicInfo &symbolicInfo, const VectorByN<OpImmediate> &opImmediate,
+                   const VectorByN<OpIndirect> &opIndirect)
 {
     // FIXME: we're faking the operand offset here, assuming it's equal
     // to index. This works as long as the pretty-printer does the same
     // thing, but it isn't right.
-    const auto foundImm =
-        std::find_if(opImmediate.begin(), opImmediate.end(),
-                     [operand](const auto &element) { return element.N == operand; });
+    const auto foundImm = opImmediate.find(operand);
 
-    if(foundImm != opImmediate.end())
+    if(foundImm != nullptr)
     {
         int64_t immediate = foundImm->Immediate;
 
-        auto pltReference = findByEA(symbolicInfo.PLTCodeReferences, ea);
+        auto pltReference = symbolicInfo.PLTCodeReferences.find(ea);
         if(pltReference != nullptr)
         {
             auto sym = getSymbol(symbols, gtirb::EA(immediate));
             symbolic.insert({gtirb::EA(ea.get() + index), gtirb::SymAddrConst{0, sym}});
         }
 
-        auto directCall = findByEA(symbolicInfo.DirectCalls, ea);
+        auto directCall = symbolicInfo.DirectCalls.find(ea);
         if(directCall != nullptr)
         {
             auto sym = getSymbol(symbols, directCall->Destination);
             symbolic.insert({gtirb::EA(ea.get() + index), gtirb::SymAddrConst{0, sym}});
         }
 
-        auto movedLabel = findByEA(symbolicInfo.MovedLabels, ea);
+        auto movedLabel = symbolicInfo.MovedLabels.find(ea);
         if(movedLabel != nullptr)
         {
             assert(movedLabel->Offset1 == immediate);
@@ -407,25 +513,24 @@ void buildSymbolic(gtirb::SymbolSet &symbols, gtirb::SymbolicOperandSet &symboli
             symbolic.insert({gtirb::EA(ea.get() + index), gtirb::SymAddrConst{diff, sym}});
         }
 
-        if(std::find_if(symbolicInfo.SymbolicOperands.begin(), symbolicInfo.SymbolicOperands.end(),
+        auto range = symbolicInfo.SymbolicOperands.equal_range(ea);
+        if(std::find_if(range.first, range.second,
                         [ea, index](const auto &element) {
                             return (element.EA == ea) && (element.OpNum == index);
                         })
-           != symbolicInfo.SymbolicOperands.end())
+           != range.second)
         {
             auto sym = getSymbol(symbols, gtirb::EA(immediate));
             symbolic.insert({gtirb::EA(ea.get() + index), gtirb::SymAddrConst{0, sym}});
         }
     }
 
-    const auto foundInd =
-        std::find_if(opIndirect.begin(), opIndirect.end(),
-                     [operand](const auto &element) { return element.N == operand; });
+    const auto foundInd = opIndirect.find(operand);
 
-    if(foundInd != opIndirect.end())
+    if(foundInd != nullptr)
     {
         auto op = *foundInd;
-        auto movedLabel = findByEA(symbolicInfo.MovedLabels, ea);
+        auto movedLabel = symbolicInfo.MovedLabels.find(ea);
         if(movedLabel != nullptr)
         {
             auto diff = movedLabel->Offset1 - movedLabel->Offset2;
@@ -433,11 +538,12 @@ void buildSymbolic(gtirb::SymbolSet &symbols, gtirb::SymbolicOperandSet &symboli
             symbolic.insert({gtirb::EA(ea.get() + index), gtirb::SymAddrConst{diff, sym}});
         }
 
-        if(std::find_if(symbolicInfo.SymbolicOperands.begin(), symbolicInfo.SymbolicOperands.end(),
+        auto range = symbolicInfo.SymbolicOperands.equal_range(ea);
+        if(std::find_if(range.first, range.second,
                         [ea, index](const auto &element) {
                             return (element.EA == ea) && (element.OpNum == index);
                         })
-           != symbolicInfo.SymbolicOperands.end())
+           != range.second)
         {
             if(op.Reg1 == std::string{"RIP"} && op.Multiplier == 1 && isNullReg(op.SReg)
                && isNullReg(op.Reg2))
@@ -459,13 +565,15 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
     auto codeInBlock = convertRelation<CodeInBlock>("code_in_block", prog);
 
-    SymbolicInfo symbolicInfo{convertRelation<PLTReference>("plt_code_reference", prog),
-                              convertRelation<DirectCall>("direct_call", prog),
-                              convertRelation<MovedLabel>("moved_label", prog),
-                              convertRelation<SymbolicOperand>("symbolic_operand", prog)};
-    auto decodedInstructions = convertRelation<DecodedInstruction>("instruction", prog);
-    auto opImmediate = convertRelation<OpImmediate>("op_immediate", prog);
-    auto opIndirect = convertRelation<OpIndirect>("op_indirect", prog);
+    SymbolicInfo symbolicInfo{
+        convertSortedRelation<VectorByEA<PLTReference>>("plt_code_reference", prog),
+        convertSortedRelation<VectorByEA<DirectCall>>("direct_call", prog),
+        convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
+        convertSortedRelation<VectorByEA<SymbolicOperand>>("symbolic_operand", prog)};
+    auto decodedInstructions =
+        convertSortedRelation<VectorByEA<DecodedInstruction>>("instruction", prog);
+    auto opImmediate = convertSortedRelation<VectorByN<OpImmediate>>("op_immediate", prog);
+    auto opIndirect = convertSortedRelation<VectorByN<OpIndirect>>("op_indirect", prog);
 
     auto &module = ir.getMainModule();
     auto &blocks = module.getBlocks();
@@ -483,7 +591,7 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
         {
             if(cib.BlockAddress == blockAddress)
             {
-                const auto inst = findByEA(decodedInstructions, cib.EA);
+                const auto inst = decodedInstructions.find(cib.EA);
                 assert(inst != nullptr);
 
                 instructions.emplace_back(gtirb::EA(cib.EA));
@@ -505,9 +613,8 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
         if(!instructions.empty())
         {
             auto address = instructions.back().getEA();
-            const auto inst = std::find_if(decodedInstructions.begin(), decodedInstructions.end(),
-                                           [address](const auto &x) { return x.EA == address; });
-            assert(inst != decodedInstructions.end());
+            const auto inst = decodedInstructions.find(address);
+            assert(inst != nullptr);
 
             end = gtirb::EA(address.get() + inst->Size);
         }
@@ -524,7 +631,7 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
     });
 
     std::map<gtirb::EA, gtirb::table::ValueType> pltReferences;
-    for(const auto &p : symbolicInfo.PLTCodeReferences)
+    for(const auto &p : symbolicInfo.PLTCodeReferences.contents)
     {
         pltReferences[gtirb::EA(p.EA)] = p.Name;
     }
@@ -563,10 +670,12 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
         labeledData.push_back(x);
     }
 
-    auto symbolicData = convertRelation<SymbolicData>("symbolic_data", prog);
-    auto pltDataReference = convertRelation<PLTReference>("plt_data_reference", prog);
-    auto symbolMinusSymbol = convertRelation<SymbolMinusSymbol>("symbol_minus_symbol", prog);
-    auto dataStrings = convertRelation<String>("string", prog);
+    auto symbolicData = convertSortedRelation<VectorByEA<SymbolicData>>("symbolic_data", prog);
+    auto pltDataReference =
+        convertSortedRelation<VectorByEA<PLTReference>>("plt_data_reference", prog);
+    auto symbolMinusSymbol =
+        convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
+    auto dataStrings = convertSortedRelation<VectorByEA<String>>("string", prog);
     auto &module = ir.getMainModule();
     auto &symbols = module.getSymbolSet();
     auto &symbolicOps = module.getSymbolicOperands();
@@ -596,11 +705,11 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
                 gtirb::EA currentEA(currentAddr);
 
                 // Case 1, 2, 3
-                const auto symbolic = findByEA(symbolicData, currentEA);
+                const auto symbolic = symbolicData.find(currentEA);
                 if(symbolic != nullptr)
                 {
                     // Case 1
-                    const auto pltReference = findByEA(pltDataReference, currentEA);
+                    const auto pltReference = pltDataReference.find(currentEA);
                     if(pltReference != nullptr)
                     {
                         dataGroupIndices.push_back(data.size());
@@ -625,7 +734,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
                 }
 
                 // Case 4, 5
-                const auto symMinusSym = findByEA(symbolMinusSymbol, currentEA);
+                const auto symMinusSym = symbolMinusSymbol.find(currentEA);
                 if(symMinusSym != nullptr)
                 {
                     // Case 4, 5
@@ -642,7 +751,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
                 }
 
                 // Case 6
-                const auto str = findByEA(dataStrings, currentEA);
+                const auto str = dataStrings.find(currentEA);
                 if(str != nullptr)
                 {
                     dataGroupIndices.push_back(data.size());
@@ -669,7 +778,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
     ir.addTable("stringEAs", std::make_unique<gtirb::Table>(std::move(stringEAs)));
 
     std::map<gtirb::EA, gtirb::table::ValueType> pltReferences;
-    for(const auto &p : pltDataReference)
+    for(const auto &p : pltDataReference.contents)
     {
         pltReferences[gtirb::EA(p.EA)] = p.Name;
     }
