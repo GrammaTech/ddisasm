@@ -277,13 +277,13 @@ static void buildSections(gtirb::IR &ir, souffle::SouffleProgram *prog)
         sections.emplace_back(name, size, address);
     }
     std::sort(sections.begin(), sections.end(), [](const auto &left, const auto &right) {
-        return left.startingAddress < right.startingAddress;
+        return left.getStartingAddress() < right.getStartingAddress();
     });
 }
 
 static void buildRelocations(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    std::vector<gtirb::Relocation> relocations;
+    auto &relocations = ir.getMainModule().getRelocations();
     for(auto &output : *prog->getRelation("relocation"))
     {
         gtirb::EA ea;
@@ -467,8 +467,8 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
     auto opImmediate = convertRelation<OpImmediate>("op_immediate", prog);
     auto opIndirect = convertRelation<OpIndirect>("op_indirect", prog);
 
-    std::vector<gtirb::Block> blocks;
     auto &module = ir.getMainModule();
+    auto &blocks = module.getBlocks();
     auto &symbolic = module.getSymbolicOperands();
     auto &symbols = module.getSymbolSet();
 
@@ -522,8 +522,6 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
     std::sort(blocks.begin(), blocks.end(), [](const auto &left, const auto &right) {
         return left.getStartingAddress() < right.getStartingAddress();
     });
-
-    ir.getMainModule().setBlocks(blocks);
 
     std::map<gtirb::EA, gtirb::table::ValueType> pltReferences;
     for(const auto &p : symbolicInfo.PLTCodeReferences)
@@ -579,20 +577,20 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
 
     for(auto &s : module.getSections())
     {
-        auto foundDataSection = getDataSectionDescriptor(s.name);
+        auto foundDataSection = getDataSectionDescriptor(s.getName());
 
         if(foundDataSection != nullptr)
         {
             gtirb::table::InnerMapType dataSection;
-            dataSection["name"] = s.name;
+            dataSection["name"] = s.getName();
             dataSection["alignment"] = foundDataSection->second;
 
             std::vector<int64_t> dataGroupIndices;
 
             std::vector<uint8_t> bytes =
-                module.getImageByteMap().getData(s.startingAddress, s.size);
+                module.getImageByteMap().getData(s.getStartingAddress(), s.getSize());
 
-            for(auto currentAddr = s.startingAddress.get(); currentAddr < s.addressLimit();
+            for(auto currentAddr = s.getStartingAddress().get(); currentAddr < s.addressLimit();
                 currentAddr++)
             {
                 gtirb::EA currentEA(currentAddr);
