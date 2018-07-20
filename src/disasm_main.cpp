@@ -356,9 +356,11 @@ static T convertSortedRelation(const std::string &relation, souffle::SouffleProg
     return result;
 }
 
-static void buildSymbols(gtirb::IR &ir, souffle::SouffleProgram *prog)
+static std::map<uint64_t, uint64_t> buildSymbols(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
+    std::map<uint64_t, uint64_t> symbolSizes;
     auto &syms = ir.getMainModule().getSymbolSet();
+    std::vector<gtirb::EA> functionEAs;
 
     for(auto &output : *prog->getRelation("symbol"))
     {
@@ -370,20 +372,26 @@ static void buildSymbols(gtirb::IR &ir, souffle::SouffleProgram *prog)
 
         output >> base >> size >> type >> scope >> name;
 
-        syms.emplace_back(base);
-        auto &new_sym = syms.back();
-        new_sym.setElementSize(size);
+        gtirb::Symbol new_sym(base, name);
+        symbolSizes[base] = size;
         new_sym.setName(name);
         // NOTE: don't seem to care about OBJECT or NOTYPE, and not clear how
         // to represent them in gtirb.
         if(type == "FUNC")
         {
-            new_sym.setDeclarationKind(gtirb::Symbol::DeclarationKind::Func);
+            functionEAs.push_back(base);
         }
-        // NOTE: don't seem to care about LOCAL or WEAK, and not clear how to
-        // represent them in gtirb.
-        new_sym.setIsGlobal(scope == "GLOBAL");
+
+        new_sym.setStorageKind(scope == "GLOBAL" ? gtirb::Symbol::StorageKind::Extern
+                                                 : gtirb::Symbol::StorageKind::Local);
+
+        addSymbol(syms, std::move(new_sym));
     }
+
+    std::sort(functionEAs.begin(), functionEAs.end());
+    ir.addTable("functionEAs", std::make_unique<gtirb::Table>(std::move(functionEAs)));
+
+    return symbolSizes;
 }
 
 static void buildSections(gtirb::IR &ir, souffle::SouffleProgram *prog)
@@ -460,20 +468,20 @@ static std::string getLabel(uint64_t ea)
     return ss.str();
 }
 
-static const gtirb::SymbolReference getSymbol(gtirb::SymbolSet &symbols, gtirb::EA ea)
+static const gtirb::NodeReference<gtirb::Symbol> getSymbol(gtirb::SymbolSet &symbols, gtirb::EA ea)
 {
-    const auto found = std::find_if(symbols.begin(), symbols.end(),
-                                    [ea](const auto &sym) { return sym.getEA() == ea; });
-    if(found != symbols.end())
+    const auto found = gtirb::findSymbols(symbols, ea);
+    if(!found.empty())
     {
-        return gtirb::SymbolReference(*found);
+        return gtirb::NodeReference<gtirb::Symbol>(*found[0]);
     }
 
-    symbols.emplace_back(ea);
-    auto &sym = symbols.back();
-    sym.setName(getLabel(ea));
-    sym.setIsGlobal(false);
-    return gtirb::SymbolReference(sym);
+    gtirb::Symbol sym(ea, getLabel(ea));
+    sym.setStorageKind(gtirb::Symbol::StorageKind::Local);
+    gtirb::NodeReference<gtirb::Symbol> result(sym);
+    gtirb::addSymbol(symbols, std::move(sym));
+
+    return result;
 }
 
 void buildSymbolic(gtirb::SymbolSet &symbols, gtirb::SymbolicOperandSet &symbolic,
@@ -660,7 +668,78 @@ const std::pair<std::string, int> *getDataSectionDescriptor(const std::string &n
         return nullptr;
 }
 
-void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
+// Create Data objects for labeled objects in the BSS section, without adding
+// data to the ImageByteMap.
+void buildBSS(const gtirb::IR &ir, gtirb::DataSet &data, souffle::SouffleProgram *prog,
+              const std::map<uint64_t, uint64_t> &symbolSizes)
+{
+    std::vector<uint64_t> bssData;
+    auto relation = prog->getRelation("bss_data");
+    std::transform(relation->begin(), relation->end(), std::back_inserter(bssData),
+                   [](auto &tuple) {
+                       uint64_t result;
+                       tuple >> result;
+                       return result;
+                   });
+
+    if(bssData.empty())
+    {
+        return;
+    }
+
+    const auto &sections = ir.getMainModule().getSections();
+    const auto found = std::find_if(sections.begin(), sections.end(), [](const auto &element) {
+        return element.getName() == ".bss";
+    });
+    assert(found != sections.end());
+
+    for(size_t i = 0; i < bssData.size(); ++i)
+    {
+        const uint64_t current = bssData[i];
+
+        if(i != bssData.size() - 1)
+        {
+            uint64_t next = bssData[i + 1];
+
+            // If there's a symbol at this location, adjust Data object to
+            // match symbol size.
+            auto symbol = symbolSizes.find(current);
+            if(symbol != symbolSizes.end())
+            {
+                uint64_t size = symbol->second;
+                uint64_t end = current + size;
+                data.emplace_back(gtirb::EA(current), size);
+                // If symbol size was smaller than BSS object, fill in the
+                // difference
+                if(end < next)
+                {
+                    data.emplace_back(gtirb::EA(end), next - end);
+                }
+                // Otherwise, skip BSS objects contained within the symbol.
+                else
+                {
+                    while(bssData[i] < end)
+                    {
+                        i++;
+                    }
+                }
+            }
+            else
+            {
+                data.emplace_back(gtirb::EA(current), next - current);
+            }
+        }
+        else
+        {
+            // Print to the end of the section.
+            uint64_t next = found->addressLimit().get();
+            data.emplace_back(gtirb::EA(current), next - current);
+        }
+    }
+}
+
+void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
+                     const std::map<uint64_t, uint64_t> &symbolSizes)
 {
     std::vector<uint64_t> labeledData;
     for(auto &output : *prog->getRelation("labeled_data"))
@@ -774,6 +853,8 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
         }
     }
 
+    buildBSS(ir, data, prog, symbolSizes);
+
     ir.addTable("dataSections", std::make_unique<gtirb::Table>(std::move(dataSections)));
     ir.addTable("stringEAs", std::make_unique<gtirb::Table>(std::move(stringEAs)));
 
@@ -783,15 +864,21 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
         pltReferences[gtirb::EA(p.EA)] = p.Name;
     }
     ir.addTable("pltDataReferences", std::make_unique<gtirb::Table>(std::move(pltReferences)));
+
+    // Set referents of all symbols pointing to data
+    std::for_each(data.begin(), data.end(), [&symbols](const auto &d) {
+        auto found = gtirb::findSymbols(symbols, d.getEA());
+        std::for_each(found.begin(), found.end(), [&d](auto &sym) { sym->setReferent(d); });
+    });
 }
 
 static void buildIR(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    buildSymbols(ir, prog);
+    auto symbolSizes = buildSymbols(ir, prog);
     buildSections(ir, prog);
     buildRelocations(ir, prog);
     buildDataBytes(ir, prog);
-    buildDataGroups(ir, prog);
+    buildDataGroups(ir, prog, symbolSizes);
     buildCodeBlocks(ir, prog);
 }
 
