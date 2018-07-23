@@ -584,7 +584,8 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
     auto opIndirect = convertSortedRelation<VectorByN<OpIndirect>>("op_indirect", prog);
 
     auto &module = ir.getMainModule();
-    auto &blocks = module.getBlocks();
+    std::vector<gtirb::Block> blocks;
+    auto &cfg = module.getCFG();
     auto &symbolic = module.getSymbolicOperands();
     auto &symbols = module.getSymbolSet();
 
@@ -631,12 +632,14 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
             end = gtirb::EA(blockAddress);
         }
 
-        blocks.emplace_back(gtirb::Block(blockAddress, end, std::move(instructions)));
+        blocks.emplace_back(blockAddress, end, std::move(instructions));
     }
 
     std::sort(blocks.begin(), blocks.end(), [](const auto &left, const auto &right) {
         return left.getStartingAddress() < right.getStartingAddress();
     });
+    std::for_each(blocks.begin(), blocks.end(),
+                  [&cfg](auto &&b) { gtirb::addBlock(cfg, std::move(b)); });
 
     std::map<gtirb::EA, gtirb::table::ValueType> pltReferences;
     for(const auto &p : symbolicInfo.PLTCodeReferences.contents)
