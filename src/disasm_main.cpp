@@ -1,15 +1,6 @@
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
-#include <gtirb/Block.hpp>
-#include <gtirb/Data.hpp>
-#include <gtirb/IR.hpp>
-#include <gtirb/ImageByteMap.hpp>
-#include <gtirb/Module.hpp>
-#include <gtirb/Relocation.hpp>
-#include <gtirb/Section.hpp>
-#include <gtirb/Symbol.hpp>
-#include <gtirb/SymbolicOperand.hpp>
-#include <gtirb/Table.hpp>
+#include <gtirb/gtirb.hpp>
 #include <string>
 #include <vector>
 
@@ -359,7 +350,7 @@ static T convertSortedRelation(const std::string &relation, souffle::SouffleProg
 static std::map<uint64_t, uint64_t> buildSymbols(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
     std::map<uint64_t, uint64_t> symbolSizes;
-    auto &syms = ir.getMainModule().getSymbolSet();
+    auto &syms = ir.getMainModule().getSymbols();
     std::vector<gtirb::EA> functionEAs;
 
     for(auto &output : *prog->getRelation("symbol"))
@@ -372,9 +363,10 @@ static std::map<uint64_t, uint64_t> buildSymbols(gtirb::IR &ir, souffle::Souffle
 
         output >> base >> size >> type >> scope >> name;
 
-        gtirb::Symbol new_sym(base, name);
+        gtirb::Symbol new_sym(base, name,
+                              scope == "GLOBAL" ? gtirb::Symbol::StorageKind::Extern
+                                                : gtirb::Symbol::StorageKind::Local);
         symbolSizes[base] = size;
-        new_sym.setName(name);
         // NOTE: don't seem to care about OBJECT or NOTYPE, and not clear how
         // to represent them in gtirb.
         if(type == "FUNC")
@@ -382,14 +374,11 @@ static std::map<uint64_t, uint64_t> buildSymbols(gtirb::IR &ir, souffle::Souffle
             functionEAs.push_back(base);
         }
 
-        new_sym.setStorageKind(scope == "GLOBAL" ? gtirb::Symbol::StorageKind::Extern
-                                                 : gtirb::Symbol::StorageKind::Local);
-
         addSymbol(syms, std::move(new_sym));
     }
 
     std::sort(functionEAs.begin(), functionEAs.end());
-    ir.addTable("functionEAs", std::make_unique<gtirb::Table>(std::move(functionEAs)));
+    ir.addTable("functionEAs", std::move(functionEAs));
 
     return symbolSizes;
 }
@@ -476,8 +465,7 @@ static const gtirb::NodeReference<gtirb::Symbol> getSymbol(gtirb::SymbolSet &sym
         return gtirb::NodeReference<gtirb::Symbol>(*found[0]);
     }
 
-    gtirb::Symbol sym(ea, getLabel(ea));
-    sym.setStorageKind(gtirb::Symbol::StorageKind::Local);
+    gtirb::Symbol sym(ea, getLabel(ea), gtirb::Symbol::StorageKind::Local);
     gtirb::NodeReference<gtirb::Symbol> result(sym);
     gtirb::addSymbol(symbols, std::move(sym));
 
@@ -587,7 +575,7 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
     std::vector<gtirb::Block> blocks;
     auto &cfg = module.getCFG();
     auto &symbolic = module.getSymbolicOperands();
-    auto &symbols = module.getSymbolSet();
+    auto &symbols = module.getSymbols();
 
     for(auto &output : *prog->getRelation("block"))
     {
@@ -646,7 +634,7 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
     {
         pltReferences[gtirb::EA(p.EA)] = p.Name;
     }
-    ir.addTable("pltCodeReferences", std::make_unique<gtirb::Table>(std::move(pltReferences)));
+    ir.addTable("pltCodeReferences", std::move(pltReferences));
 }
 
 // Name, Alignment.
@@ -759,7 +747,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
     auto dataStrings = convertSortedRelation<VectorByEA<String>>("string", prog);
     auto &module = ir.getMainModule();
-    auto &symbols = module.getSymbolSet();
+    auto &symbols = module.getSymbols();
     auto &symbolicOps = module.getSymbolicOperands();
     auto &data = module.getData();
 
@@ -858,15 +846,15 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
 
     buildBSS(ir, data, prog, symbolSizes);
 
-    ir.addTable("dataSections", std::make_unique<gtirb::Table>(std::move(dataSections)));
-    ir.addTable("stringEAs", std::make_unique<gtirb::Table>(std::move(stringEAs)));
+    ir.addTable("dataSections", std::move(dataSections));
+    ir.addTable("stringEAs", std::move(stringEAs));
 
     std::map<gtirb::EA, gtirb::table::ValueType> pltReferences;
     for(const auto &p : pltDataReference.contents)
     {
         pltReferences[gtirb::EA(p.EA)] = p.Name;
     }
-    ir.addTable("pltDataReferences", std::make_unique<gtirb::Table>(std::move(pltReferences)));
+    ir.addTable("pltDataReferences", std::move(pltReferences));
 
     // Set referents of all symbols pointing to data
     std::for_each(data.begin(), data.end(), [&symbols](const auto &d) {
