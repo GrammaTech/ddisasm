@@ -3,6 +3,7 @@
 #include <gtirb/gtirb.hpp>
 #include <string>
 #include <vector>
+#include "Elf_reader.h"
 
 // souffle uses a signed integer for all numbers (either 32 or 64 bits
 // dependin on compilation flags). Allow conversion to other types.
@@ -383,8 +384,33 @@ static std::map<uint64_t, uint64_t> buildSymbols(gtirb::IR &ir, souffle::Souffle
     return symbolSizes;
 }
 
-static void buildSections(gtirb::IR &ir, souffle::SouffleProgram *prog)
+// Name, Alignment.
+const std::array<std::pair<std::string, int>, 7> DataSectionDescriptors{{
+    {".got", 8},         //
+    {".got.plt", 8},     //
+    {".data.rel.ro", 8}, //
+    {".init_array", 8},  //
+    {".fini_array", 8},  //
+    {".rodata", 16},     //
+    {".data", 16}        //
+}};
+
+static const std::pair<std::string, int> *getDataSectionDescriptor(const std::string &name)
 {
+    const auto foundDataSection =
+        std::find_if(std::begin(DataSectionDescriptors), std::end(DataSectionDescriptors),
+                     [name](const auto &dsd) { return dsd.first == name; });
+    if(foundDataSection != std::end(DataSectionDescriptors))
+        return foundDataSection;
+    else
+        return nullptr;
+}
+
+static void buildSections(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgram *prog)
+{
+    auto &byteMap = ir.getModules()[0].getImageByteMap();
+    byteMap.setEAMinMax({gtirb::EA(elf.get_min_address()), gtirb::EA(elf.get_max_address())});
+
     auto &sections = ir.getModules()[0].getSections();
     for(auto &output : *prog->getRelation("section"))
     {
@@ -395,6 +421,19 @@ static void buildSections(gtirb::IR &ir, souffle::SouffleProgram *prog)
         std::string name;
         output >> name >> size >> address;
         sections.emplace_back(name, address, size);
+
+        // Copy section data into the byteMap. There seem to be some
+        // overlapping sections at address 0 which cause problems, so ignore
+        // them for now.
+        if(address != 0)
+        {
+            int64_t size2;
+            uint64_t address2;
+            char *buf = elf.get_section(name, size2, address2);
+            assert(size == static_cast<uint64_t>(size2));
+            assert(address == address2);
+            byteMap.setData(address, as_bytes(gsl::make_span(buf, size)));
+        }
     }
     std::sort(sections.begin(), sections.end(), [](const auto &left, const auto &right) {
         return left.getAddress() < right.getAddress();
@@ -416,30 +455,6 @@ static void buildRelocations(gtirb::IR &ir, souffle::SouffleProgram *prog)
         relocations[ea] = gtirb::table::InnerMapType{{"type", type}, {"name", name}};
     }
     ir.addTable("relocations", std::move(relocations));
-}
-
-void buildDataBytes(gtirb::IR &ir, souffle::SouffleProgram *prog)
-{
-    auto &byteMap = ir.getModules()[0].getImageByteMap();
-    for(auto &output : *prog->getRelation("data_byte"))
-    {
-        gtirb::EA ea;
-        uint8_t byte;
-
-        output >> ea >> byte;
-
-        auto minMax = byteMap.getEAMinMax();
-        if(minMax.first == gtirb::BadAddress && minMax.second == gtirb::BadAddress)
-        {
-            byteMap.setEAMinMax({ea, ea});
-        }
-        else
-        {
-            byteMap.setEAMinMax({std::min(minMax.first, ea), std::max(minMax.second, ea)});
-        }
-
-        byteMap.setData(ea, static_cast<uint8_t>(byte));
-    }
 }
 
 bool isNullReg(const std::string &reg)
@@ -650,28 +665,6 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
     ir.addTable("pltCodeReferences", std::move(pltReferences));
 }
 
-// Name, Alignment.
-const std::array<std::pair<std::string, int>, 7> DataSectionDescriptors{{
-    {".got", 8},         //
-    {".got.plt", 8},     //
-    {".data.rel.ro", 8}, //
-    {".init_array", 8},  //
-    {".fini_array", 8},  //
-    {".rodata", 16},     //
-    {".data", 16}        //
-}};
-
-const std::pair<std::string, int> *getDataSectionDescriptor(const std::string &name)
-{
-    const auto foundDataSection =
-        std::find_if(std::begin(DataSectionDescriptors), std::end(DataSectionDescriptors),
-                     [name](const auto &dsd) { return dsd.first == name; });
-    if(foundDataSection != std::end(DataSectionDescriptors))
-        return foundDataSection;
-    else
-        return nullptr;
-}
-
 // Create DataObjects for labeled objects in the BSS section, without adding
 // data to the ImageByteMap.
 void buildBSS(const gtirb::IR &ir, gtirb::DataSet &data, souffle::SouffleProgram *prog,
@@ -872,25 +865,36 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
     });
 }
 
-static void buildIR(gtirb::IR &ir, souffle::SouffleProgram *prog)
+static void buildIR(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgram *prog)
 {
     ir.getModules().emplace_back();
     auto symbolSizes = buildSymbols(ir, prog);
-    buildSections(ir, prog);
+    buildSections(ir, elf, prog);
     buildRelocations(ir, prog);
-    buildDataBytes(ir, prog);
     buildDataGroups(ir, prog, symbolSizes);
     buildCodeBlocks(ir, prog);
 }
 
 int main(int argc, char **argv)
 {
+    if(argc < 2)
+        return 1;
+
+    const char *filename = argv[1];
+
     souffle::CmdOptions opt(R"(datalog/main.dl)",
                             R"(.)",
                             R"(.)", false,
                             R"()", 1, -1);
-    if(!opt.parse(argc, argv))
+    if(!opt.parse(argc - 1, argv + 1))
         return 1;
+
+    Elf_reader elf(filename);
+    if(!elf.is_valid())
+    {
+        std::cerr << "There was a problem loading the binary file " << filename << "\n";
+        return 1;
+    }
 
     if(souffle::SouffleProgram *prog =
            souffle::ProgramFactory::newInstance("___bin_souffle_disasm"))
@@ -902,7 +906,7 @@ int main(int argc, char **argv)
 
             // Build and save IR
             gtirb::IR ir;
-            buildIR(ir, prog);
+            buildIR(ir, elf, prog);
 
             std::ofstream out(opt.getOutputFileDir() + "/gtirb");
             ir.save(out);
