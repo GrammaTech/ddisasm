@@ -336,6 +336,20 @@ static std::vector<T> convertRelation(const std::string &relation, souffle::Souf
     return result;
 }
 
+template <>
+std::vector<gtirb::EA> convertRelation<gtirb::EA>(const std::string &relation,
+                                                  souffle::SouffleProgram *prog)
+{
+    std::vector<gtirb::EA> result;
+    auto *r = prog->getRelation(relation);
+    std::transform(r->begin(), r->end(), std::back_inserter(result), [](auto &tuple) {
+        gtirb::EA result;
+        tuple >> result;
+        return result;
+    });
+    return result;
+}
+
 template <typename T>
 static T convertSortedRelation(const std::string &relation, souffle::SouffleProgram *prog)
 {
@@ -865,6 +879,13 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
     });
 }
 
+static void buildFunctions(gtirb::IR &ir, souffle::SouffleProgram *prog)
+{
+    ir.addTable("functionEntry", convertRelation<gtirb::EA>("function_entry2", prog));
+    ir.addTable("mainFunction", convertRelation<gtirb::EA>("main_function", prog));
+    ir.addTable("startFunction", convertRelation<gtirb::EA>("start_function", prog));
+}
+
 static void buildIR(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgram *prog)
 {
     ir.getModules().emplace_back();
@@ -873,6 +894,7 @@ static void buildIR(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgram *pro
     buildRelocations(ir, prog);
     buildDataGroups(ir, prog, symbolSizes);
     buildCodeBlocks(ir, prog);
+    buildFunctions(ir, prog);
 }
 
 int main(int argc, char **argv)
