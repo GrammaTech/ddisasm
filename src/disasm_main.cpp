@@ -681,22 +681,11 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
 
 // Create DataObjects for labeled objects in the BSS section, without adding
 // data to the ImageByteMap.
-void buildBSS(const gtirb::IR &ir, gtirb::DataSet &data, souffle::SouffleProgram *prog,
+void buildBSS(gtirb::IR &ir, gtirb::DataSet &data, souffle::SouffleProgram *prog,
               const std::map<uint64_t, uint64_t> &symbolSizes)
 {
-    std::vector<uint64_t> bssData;
-    auto relation = prog->getRelation("bss_data");
-    std::transform(relation->begin(), relation->end(), std::back_inserter(bssData),
-                   [](auto &tuple) {
-                       uint64_t result;
-                       tuple >> result;
-                       return result;
-                   });
-
-    if(bssData.empty())
-    {
-        return;
-    }
+    auto bssData = convertRelation<gtirb::EA>("bss_data", prog);
+    std::vector<gtirb::UUID> dataUUIDs;
 
     const auto &sections = ir.getModules()[0].getSections();
     const auto found = std::find_if(sections.begin(), sections.end(), [](const auto &element) {
@@ -706,46 +695,54 @@ void buildBSS(const gtirb::IR &ir, gtirb::DataSet &data, souffle::SouffleProgram
 
     for(size_t i = 0; i < bssData.size(); ++i)
     {
-        const uint64_t current = bssData[i];
+        const gtirb::EA current = bssData[i];
 
         if(i != bssData.size() - 1)
         {
-            uint64_t next = bssData[i + 1];
+            gtirb::EA next = bssData[i + 1];
 
             // If there's a symbol at this location, adjust DataObject to
             // match symbol size.
             auto symbol = symbolSizes.find(current);
-            if(symbol != symbolSizes.end())
+            if(symbol != symbolSizes.end() && symbol->second != 0)
             {
                 uint64_t size = symbol->second;
-                uint64_t end = current + size;
-                data.emplace_back(gtirb::EA(current), size);
+                gtirb::EA end = current + size;
+                data.emplace_back(current, size);
+                dataUUIDs.emplace_back(data.back().getUUID());
+
                 // If symbol size was smaller than BSS object, fill in the
                 // difference
                 if(end < next)
                 {
-                    data.emplace_back(gtirb::EA(end), next - end);
+                    data.emplace_back(end, next - end);
+                    dataUUIDs.emplace_back(data.back().getUUID());
                 }
                 // Otherwise, skip BSS objects contained within the symbol.
                 else
                 {
-                    while(bssData[i] < end)
+                    while(next < end && i < bssData.size() - 1)
                     {
                         i++;
+                        next = bssData[i + 1];
                     }
                 }
             }
             else
             {
                 data.emplace_back(gtirb::EA(current), next - current);
+                dataUUIDs.emplace_back(data.back().getUUID());
             }
         }
         else
         {
             // Continue to the end of the section.
             data.emplace_back(gtirb::EA(current), addressLimit(*found) - current);
+            dataUUIDs.emplace_back(data.back().getUUID());
         }
     }
+
+    ir.addTable("bssData", dataUUIDs);
 }
 
 void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
