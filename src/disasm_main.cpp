@@ -350,6 +350,20 @@ std::vector<gtirb::EA> convertRelation<gtirb::EA>(const std::string &relation,
     return result;
 }
 
+template <>
+std::vector<std::string> convertRelation<std::string>(const std::string &relation,
+                                                      souffle::SouffleProgram *prog)
+{
+    std::vector<std::string> result;
+    auto *r = prog->getRelation(relation);
+    std::transform(r->begin(), r->end(), std::back_inserter(result), [](auto &tuple) {
+        std::string result;
+        tuple >> result;
+        return result;
+    });
+    return result;
+}
+
 template <typename T>
 static T convertSortedRelation(const std::string &relation, souffle::SouffleProgram *prog)
 {
@@ -892,6 +906,7 @@ static void buildIR(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgram *pro
     buildDataGroups(ir, prog, symbolSizes);
     buildCodeBlocks(ir, prog);
     buildFunctions(ir, prog);
+    ir.addTable("ambiguousSymbol", convertRelation<std::string>("ambiguous_symbol", prog));
 }
 
 int main(int argc, char **argv)
