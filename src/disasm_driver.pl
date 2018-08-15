@@ -80,7 +80,7 @@ disasm_binary([File|Args]):-
     (option('-interpreted')->
 	 call_souffle(Dir2)
      ;
-     call_compiled_souffle(Dir2)
+     call_compiled_souffle(File,Dir2)
     ),
     % read all the information inferred in datalog and
     % incorporate it to the prolog database
