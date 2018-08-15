@@ -458,9 +458,12 @@ static void buildSections(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgra
             int64_t size2;
             uint64_t address2;
             char *buf = elf.get_section(name, size2, address2);
-            assert(size == static_cast<uint64_t>(size2));
-            assert(address == address2);
-            byteMap.setData(address, as_bytes(gsl::make_span(buf, size)));
+            // FIXME: why does the ELF reader sometimes have different
+            // sections than the souffle relations?
+            if(size == static_cast<uint64_t>(size2) && address == address2)
+            {
+                byteMap.setData(address, as_bytes(gsl::make_span(buf, size)));
+            }
         }
     }
     std::sort(sections.begin(), sections.end(), [](const auto &left, const auto &right) {
