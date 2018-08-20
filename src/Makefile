@@ -1,8 +1,8 @@
 STANDALONE=./../standalone_compilation
 GTIRB_BASE ?= ../../gtirb
 
-CC=g++
-CFLAGS=-c -Werror -Wall -Wpointer-arith  -Wno-unused-local-typedefs -fvisibility=hidden -g3  -mno-3dnow  -mtune=generic -pthread -std=c++17 -Wno-shadow -DEXPORT_GTR_SYMBOLS=1 -DEXPORT_TSL_SYMBOLS=1 -no-pie -DRAM_DOMAIN_SIZE=64
+CC=?g++
+CFLAGS=-c -Werror -Wall -Wpointer-arith  -Wno-unused-local-typedefs -fvisibility=hidden -g3  -mno-3dnow  -mtune=generic -pthread -std=c++17 -Wno-shadow -DEXPORT_GTR_SYMBOLS=1 -DEXPORT_TSL_SYMBOLS=1 -no-pie -DRAM_DOMAIN_SIZE=64 -DGSL_USE_STD_BYTE
 INCLUDE= -I /usr/local/include -I $(STANDALONE)/include/ -I ./../../ -I $(GTIRB_BASE)/include/
 SOURCES= decoder_main.cpp Dl_decoder.cpp Datalog_visitor_x64.cpp Dl_operator.cpp Dl_instruction.cpp Dl_operator_table.cpp Elf_reader.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
