@@ -36,32 +36,34 @@ The analysis contains three parts:
 
 ## Dependencies
 
-- The project is prepared to be built with GTScons and has to be located
-in the grammatech trunk directory.
+- [GTIRB](https://github.com/grammatech/gtirb)
 
-- The analysis depends on souffle being installed, 
-in particular the 64 bits version at https://github.com/cfallin/souffle.git
-Update (Feb. 9th): The 64 bits version is now in the master branch https://github.com/souffle-lang/souffle/pull/569
+- The analysis depends on [souffle](https://github.com/souffle-lang)
+  being installed. Configure souffle with `--enable-64bit-domain
+  --disable-provenance`.
 
 - The pretty printer is (for now) written in prolog. It requires some prolog environment
 to be installed (preferably SWI-prolog).
+
+- The project is prepared to be built with GTScons and has to be
+located in the grammatech trunk directory. (Note: this has not been
+maintained and will probably not link correctly with GTIRB).
 
 - The project contains a Makefile to compile without GTScons and without the grammatech
 trunk directory, but it requires a folder `/standalone_compilation/` with the corresponding
 libraries and header to be added to the project.
 
 ## Building souffle_disasm
+A C++17 compiler such as gcc 7 or clang 6 is required.
 
+For the standalone compilation:
+```
+/u4/TARBALLS/datalog_disasm/standalone_compilation.tar.bz2
+make CXX=gcc-7 GTIRB_BASE=<path-to-gtirb> PROTOBUF_BASE=<path-to-protobuf>
+```
 
-
+For a build within trunk:
 `/trunk/datalog_disasm/build`
-
-or for the standalone compilation:
-
-```
-cd src
-make
-```
 
 
 ## Running the analysis
