@@ -79,4 +79,4 @@ RUN cd /datalog_disasm && tar xjf standalone_compilation.tar.bz2
 ENV TERM xterm
 ENV LD_LIBRARY_PATH /datalog_disasm/gtirb/bin
 WORKDIR /datalog_disasm
-RUN make clean && make CXX=g++-7 GTIRB_BASE=$PWD/gtirb
+RUN make clean && make CXX=g++-7 GTIRB_BASE=$PWD/gtirb/build/

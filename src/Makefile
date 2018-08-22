@@ -1,5 +1,5 @@
 STANDALONE=./../standalone_compilation
-GTIRB_BASE ?= ../../gtirb
+GTIRB_BASE ?= ../../gtirb/build
 PROTOBUF_BASE ?= /usr/local
 
 CXXFLAGS=-c -Werror -Wall -Wpointer-arith  -Wno-unused-local-typedefs -fvisibility=hidden -g3  -mno-3dnow  -mtune=generic -pthread -std=c++17 -Wno-shadow -DEXPORT_GTR_SYMBOLS=1 -DEXPORT_TSL_SYMBOLS=1 -no-pie -DRAM_DOMAIN_SIZE=64 -DGSL_USE_STD_BYTE
@@ -11,7 +11,7 @@ DATALOG_SOURCES=datalog/code_inference.dl datalog/disasm datalog/empty_range.dl	
 
 LDFLAGS= -fvisibility=hidden  -mtune=generic  -Wl,--exclude-libs,libc++.a:libc++abi.a:libunwind.a
 
-LINK= -L$(PROTOBUF_BASE)/lib -L$(GTIRB_BASE)/bin -L$(STANDALONE)/lib -L/usr/local/lib -L.  -lpthread -lrt -lstring  -ldetcheck -lisax_thin_decoder_x64 -ltsl_rtg_x64 -ltsl_rtg_generic  -lm -lisax_core_x64 -lisax -lgt_assert -lgt_message -lgt_abort -lgtr_compat -lrt -ldatalog_visitor_x64 -lboost_program_options -lboost_system -lboost_serialization -lc++  -lc++abi  -lpthread -ldl -no-pie -lgtirb
+LINK= -L$(PROTOBUF_BASE)/lib -L$(GTIRB_BASE)/lib -L$(STANDALONE)/lib -L/usr/local/lib -L.  -lpthread -lrt -lstring  -ldetcheck -lisax_thin_decoder_x64 -ltsl_rtg_x64 -ltsl_rtg_generic  -lm -lisax_core_x64 -lisax -lgt_assert -lgt_message -lgt_abort -lgtr_compat -lrt -ldatalog_visitor_x64 -lboost_program_options -lboost_system -lboost_serialization -lc++  -lc++abi  -lpthread -ldl -no-pie -lgtirb
 
 all: ../bin/datalog_decoder ../bin/souffle_disasm
 
