@@ -231,7 +231,7 @@ address_array_range.in_ea(EA):-
 // Final label decision
 
 labeled_data(EA):-
-	symbol(EA,_,_,"GLOBAL",_).
+	symbol(EA,_,_,_,_).
 
 labeled_data(EA):-
 	symbolic_data_operand_candidate(Src,_,EA),
@@ -239,18 +239,16 @@ labeled_data(EA):-
 labeled_data(EA_moved):-
 	moved_label(_Src,_,_,EA_moved).
 	
-labeled_data(Val):-
-	address_in_data_refined(EA,Val),
-	!moved_data_label(EA,Val,_),
-	data_byte(Val,_).
-
 labeled_data(EA):-
 	symbol_minus_symbol(EA,EA,_).
 
+labeled_data(Val):-
+	address_in_data_refined(EA,Val),
+	!moved_data_label(EA,Val,_).
+	
 labeled_data(New_dest):-
 	address_in_data_refined(EA,Val),
-	moved_data_label(EA,Val,New_dest),
-	data_byte(Val,_).
+	moved_data_label(EA,Val,New_dest).
 
 /////////////////////////////////////////////////////////////////////////////////
 // Detect strings
@@ -355,11 +353,7 @@ code_pointer_in_data(EA,Val):-
 // This facts specifies that a label should be printed in the .bss section for
 // the given address (because it is referenced somewhere)
 bss_data(EA):-
-	(
-	labeled_data(EA)
-	;
-	symbolic_data(_,EA)
-	),
+	labeled_data(EA),
 	section(".bss",SizeSect,Base),
 	EA>=Base,
 	EA<=Base+SizeSect.
