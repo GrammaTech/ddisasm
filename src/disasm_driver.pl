@@ -701,7 +701,7 @@ pp_data(data_byte(EA,Content)):-
 adjust_moved_data_label(EA,Val,Printed):-
     (moved_data_label(EA,Val,New_val)->
 	Diff is Val-New_val,
-	format(atom(Printed),'.L_~16r+~p',[Val,Diff])
+	format(atom(Printed),'.L_~16r+~p',[New_val,Diff])
     ;
     format(atom(Printed),'.L_~16r',[Val])
     ).
@@ -919,8 +919,12 @@ pp_operand(immediate(_Num),EA,_N,Name_complete):-
 pp_operand(immediate(Offset),EA,N,Num_hex):-
     moved_label(EA,N,Offset,Offset2),!,
     Diff is Offset-Offset2,
-    print_symbol(Offset2,Label),
-    format(string(Num_hex),'OFFSET ~p+~p',[Label,Diff]).
+    (get_global_symbol_ref(Offset2,absolute,Name_symbol)->
+	 format(string(Num_hex),'OFFSET ~p+~p',[Name_symbol,Diff])
+     ;
+     print_symbol(Offset2,Label),
+     format(string(Num_hex),'OFFSET ~p+~p',[Label,Diff])
+    ).
 
 % special case for mov from symbolic
 pp_operand(immediate(Num),EA,1,Num_hex):-

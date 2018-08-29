@@ -178,6 +178,23 @@ struct MovedLabel
     int64_t Offset2{0};
 };
 
+struct MovedDataLabel
+{
+    MovedDataLabel(uint64_t ea) : EA(ea)
+    {
+    }
+
+    MovedDataLabel(souffle::tuple &tuple)
+    {
+        assert(tuple.size() == 3);
+        tuple >> EA >> Offset1 >> Offset2;
+    };
+
+    gtirb::EA EA{0};
+    int64_t Offset1{0};
+    int64_t Offset2{0};
+};
+
 struct SymbolicExpression
 {
     SymbolicExpression(uint64_t ea) : EA(ea)
@@ -547,7 +564,7 @@ void buildSymbolic(gtirb::SymbolSet &symbols, gtirb::SymbolicExpressionSet &symb
         }
 
         auto movedLabel = symbolicInfo.MovedLabels.find(ea);
-        if(movedLabel != nullptr)
+        if(movedLabel != nullptr && movedLabel->N == index)
         {
             assert(movedLabel->Offset1 == immediate);
             auto diff = movedLabel->Offset1 - movedLabel->Offset2;
@@ -573,7 +590,7 @@ void buildSymbolic(gtirb::SymbolSet &symbols, gtirb::SymbolicExpressionSet &symb
     {
         auto op = *foundInd;
         auto movedLabel = symbolicInfo.MovedLabels.find(ea);
-        if(movedLabel != nullptr)
+        if(movedLabel != nullptr && movedLabel->N == index)
         {
             auto diff = movedLabel->Offset1 - movedLabel->Offset2;
             auto sym = getSymbol(symbols, gtirb::EA(movedLabel->Offset2));
@@ -776,6 +793,8 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
     auto symbolicData = convertSortedRelation<VectorByEA<SymbolicData>>("symbolic_data", prog);
     auto pltDataReference =
         convertSortedRelation<VectorByEA<PLTReference>>("plt_data_reference", prog);
+    auto movedDataLabels =
+        convertSortedRelation<VectorByEA<MovedDataLabel>>("moved_data_label", prog);
     auto symbolMinusSymbol =
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
     auto dataStrings = convertSortedRelation<VectorByEA<String>>("string", prog);
@@ -824,10 +843,20 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
                     data.emplace_back(currentEA, 8);
                     dataGroupIds.push_back(data.back().getUUID());
 
-                    symbolicOps.insert(
-                        {gtirb::EA(currentEA),
-                         gtirb::SymAddrConst{
-                             0, getSymbol(symbols, gtirb::EA(symbolic->GroupContent))}});
+                    // if there is a moved_data_label we have a symbol+constant
+                    int64_t diff = 0;
+                    gtirb::NodeRef<gtirb::Symbol> sym;
+                    const auto movedDataLabel = movedDataLabels.find(currentEA);
+                    if(movedDataLabel != nullptr)
+                    {
+                        diff = movedDataLabel->Offset1 - movedDataLabel->Offset2;
+                        sym = getSymbol(symbols, gtirb::EA(movedDataLabel->Offset2));
+                    }
+                    else
+                    {
+                        sym = getSymbol(symbols, gtirb::EA(symbolic->GroupContent));
+                    }
+                    symbolicOps.insert({gtirb::EA(currentEA), gtirb::SymAddrConst{diff, sym}});
 
                     currentAddr += 7;
                     continue;
