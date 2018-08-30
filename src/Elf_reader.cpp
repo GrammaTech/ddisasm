@@ -428,24 +428,28 @@ uint64_t Elf_reader::get_max_address(){
 
 
 char* Elf_reader::get_section(const string& name,int64_t & size,Elf64_Addr& initial_addr){
-	int index=get_section_index(name);
-	if(index!=-1){
-		size=sections[index].sh_size;
-		initial_addr=sections[index].sh_addr;
-		char* buff;
-		try{
-		buff= new char[size];
-		}catch(std::bad_alloc& ba){
-		    std::cerr << "bad_alloc caught: " << ba.what() << "trying to allocate for "<< name<<endl;
+    int index=get_section_index(name);
+    if(index==-1){
+        size=0;
+        return nullptr;
+    }
+    if(sections[index].sh_type==SHT_NOBITS){
+        size=0;
+        return nullptr;
+    }
+    size=sections[index].sh_size;
+    initial_addr=sections[index].sh_addr;
+    char* buff;
+    try{
+        buff= new char[size];
+    }catch(std::bad_alloc& ba){
+        std::cerr << "bad_alloc caught: " << ba.what() << "trying to allocate for "<< name<<endl;
 
-		}
-		file.seekg((sections[index].sh_offset), ios::beg);
-		file.read(buff, size);
-		return buff;
-	}else{
-		size=0;
-		return nullptr;
-	}
+    }
+    file.seekg((sections[index].sh_offset), ios::beg);
+    file.read(buff, size);
+    return buff;
+
 }
 char* Elf_reader::get_section(const string& name,int64_t & size){
 	Elf64_Addr addr;

@@ -477,7 +477,7 @@ static void buildSections(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgra
             char *buf = elf.get_section(name, size2, address2);
             // FIXME: why does the ELF reader sometimes have different
             // sections than the souffle relations?
-            if(size == static_cast<uint64_t>(size2) && address == address2)
+            if(buf!=nullptr)
             {
                 byteMap.setData(address, as_bytes(gsl::make_span(buf, size)));
             }
