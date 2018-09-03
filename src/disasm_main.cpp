@@ -391,10 +391,12 @@ static T convertSortedRelation(const std::string &relation, souffle::SouffleProg
     return result;
 }
 
+gtirb::Context C;
+
 static std::map<gtirb::Addr, uint64_t> buildSymbols(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
     std::map<gtirb::Addr, uint64_t> symbolSizes;
-    auto &syms = ir.getModules()[0].getSymbols();
+    auto &module = ir.modules()[0];
     std::vector<gtirb::Addr> functionEAs;
 
     for(auto &output : *prog->getRelation("symbol"))
@@ -407,9 +409,6 @@ static std::map<gtirb::Addr, uint64_t> buildSymbols(gtirb::IR &ir, souffle::Souf
 
         output >> base >> size >> type >> scope >> name;
 
-        gtirb::Symbol new_sym(base, name,
-                              scope == "GLOBAL" ? gtirb::Symbol::StorageKind::Extern
-                                                : gtirb::Symbol::StorageKind::Local);
         symbolSizes[base] = size;
         // NOTE: don't seem to care about OBJECT or NOTYPE, and not clear how
         // to represent them in gtirb.
@@ -418,7 +417,10 @@ static std::map<gtirb::Addr, uint64_t> buildSymbols(gtirb::IR &ir, souffle::Souf
             functionEAs.push_back(base);
         }
 
-        addSymbol(syms, std::move(new_sym));
+        module.addSymbol(gtirb::Symbol::Create(C, base, name,
+                                               scope == "GLOBAL"
+                                                   ? gtirb::Symbol::StorageKind::Extern
+                                                   : gtirb::Symbol::StorageKind::Local));
     }
 
     std::sort(functionEAs.begin(), functionEAs.end());
@@ -451,10 +453,10 @@ static const std::pair<std::string, int> *getDataSectionDescriptor(const std::st
 
 static void buildSections(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgram *prog)
 {
-    auto &byteMap = ir.getModules()[0].getImageByteMap();
+    auto &byteMap = ir.modules()[0].getImageByteMap();
     byteMap.setAddrMinMax({gtirb::Addr(elf.get_min_address()), gtirb::Addr(elf.get_max_address())});
 
-    auto &sections = ir.getModules()[0].getSections();
+    auto &module = ir.modules()[0];
     for(auto &output : *prog->getRelation("section"))
     {
         assert(output.size() == 3);
@@ -463,7 +465,7 @@ static void buildSections(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgra
         uint64_t size;
         std::string name;
         output >> name >> size >> address;
-        sections.emplace_back(name, address, size);
+        module.addSection(gtirb::Section::Create(C, name, address, size));
 
         // Copy section data into the byteMap. There seem to be some
         // overlapping sections at address 0 which cause problems, so ignore
@@ -481,9 +483,9 @@ static void buildSections(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgra
             }
         }
     }
-    std::sort(sections.begin(), sections.end(), [](const auto &left, const auto &right) {
-        return left.getAddress() < right.getAddress();
-    });
+    std::sort(
+        module.section_begin(), module.section_end(),
+        [](const auto &left, const auto &right) { return left.getAddress() < right.getAddress(); });
 }
 
 static void buildRelocations(gtirb::IR &ir, souffle::SouffleProgram *prog)
@@ -518,24 +520,24 @@ static std::string getLabel(uint64_t ea)
     return ss.str();
 }
 
-static const gtirb::NodeRef<gtirb::Symbol> getSymbol(gtirb::SymbolSet &symbols, gtirb::Addr ea)
+static const gtirb::NodeRef<gtirb::Symbol> getSymbol(gtirb::Module &module, gtirb::Addr ea)
 {
-    const auto found = gtirb::findSymbols(symbols, ea);
+    const auto found = module.findSymbols(ea);
     if(!found.empty())
     {
-        return gtirb::NodeRef<gtirb::Symbol>(*found[0]);
+        return gtirb::NodeRef<gtirb::Symbol>(*found.begin());
     }
 
-    gtirb::Symbol sym(ea, getLabel(uint64_t(ea)), gtirb::Symbol::StorageKind::Local);
+    auto *sym =
+        gtirb::Symbol::Create(C, ea, getLabel(uint64_t(ea)), gtirb::Symbol::StorageKind::Local);
     gtirb::NodeRef<gtirb::Symbol> result(sym);
-    gtirb::addSymbol(symbols, std::move(sym));
+    module.addSymbol(std::move(sym));
 
     return result;
 }
 
-void buildSymbolic(gtirb::SymbolSet &symbols, gtirb::SymbolicExpressionSet &symbolic,
-                   DecodedInstruction instruction, gtirb::Addr &ea, uint64_t operand,
-                   uint64_t index, const SymbolicInfo &symbolicInfo,
+void buildSymbolic(gtirb::Module &module, DecodedInstruction instruction, gtirb::Addr &ea,
+                   uint64_t operand, uint64_t index, const SymbolicInfo &symbolicInfo,
                    const VectorByN<OpImmediate> &opImmediate,
                    const VectorByN<OpIndirect> &opIndirect)
 {
@@ -551,15 +553,15 @@ void buildSymbolic(gtirb::SymbolSet &symbols, gtirb::SymbolicExpressionSet &symb
         auto pltReference = symbolicInfo.PLTCodeReferences.find(ea);
         if(pltReference != nullptr)
         {
-            auto sym = getSymbol(symbols, gtirb::Addr(immediate));
-            symbolic.insert({ea + index, gtirb::SymAddrConst{0, sym}});
+            auto sym = getSymbol(module, gtirb::Addr(immediate));
+            module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{0, sym});
         }
 
         auto directCall = symbolicInfo.DirectCalls.find(ea);
         if(directCall != nullptr)
         {
-            auto sym = getSymbol(symbols, directCall->Destination);
-            symbolic.insert({ea + index, gtirb::SymAddrConst{0, sym}});
+            auto sym = getSymbol(module, directCall->Destination);
+            module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{0, sym});
         }
 
         auto movedLabel = symbolicInfo.MovedLabels.find(ea);
@@ -567,8 +569,8 @@ void buildSymbolic(gtirb::SymbolSet &symbols, gtirb::SymbolicExpressionSet &symb
         {
             assert(movedLabel->Offset1 == immediate);
             auto diff = movedLabel->Offset1 - movedLabel->Offset2;
-            auto sym = getSymbol(symbols, gtirb::Addr(movedLabel->Offset2));
-            symbolic.insert({ea + index, gtirb::SymAddrConst{diff, sym}});
+            auto sym = getSymbol(module, gtirb::Addr(movedLabel->Offset2));
+            module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{diff, sym});
         }
 
         auto range = symbolicInfo.SymbolicExpressions.equal_range(ea);
@@ -578,8 +580,8 @@ void buildSymbolic(gtirb::SymbolSet &symbols, gtirb::SymbolicExpressionSet &symb
                         })
            != range.second)
         {
-            auto sym = getSymbol(symbols, gtirb::Addr(immediate));
-            symbolic.insert({ea + index, gtirb::SymAddrConst{0, sym}});
+            auto sym = getSymbol(module, gtirb::Addr(immediate));
+            module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{0, sym});
         }
     }
 
@@ -592,8 +594,8 @@ void buildSymbolic(gtirb::SymbolSet &symbols, gtirb::SymbolicExpressionSet &symb
         if(movedLabel != nullptr && movedLabel->N == index)
         {
             auto diff = movedLabel->Offset1 - movedLabel->Offset2;
-            auto sym = getSymbol(symbols, gtirb::Addr(movedLabel->Offset2));
-            symbolic.insert({ea + index, gtirb::SymAddrConst{diff, sym}});
+            auto sym = getSymbol(module, gtirb::Addr(movedLabel->Offset2));
+            module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{diff, sym});
         }
 
         auto range = symbolicInfo.SymbolicExpressions.equal_range(ea);
@@ -607,13 +609,13 @@ void buildSymbolic(gtirb::SymbolSet &symbols, gtirb::SymbolicExpressionSet &symb
                && isNullReg(op.Reg2))
             {
                 auto address = ea + foundInd->Offset + instruction.Size;
-                auto sym = getSymbol(symbols, address);
-                symbolic.insert({ea + index, gtirb::SymAddrConst{0, sym}});
+                auto sym = getSymbol(module, address);
+                module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{0, sym});
             }
             else
             {
-                auto sym = getSymbol(symbols, gtirb::Addr(op.Offset));
-                symbolic.insert({ea + index, gtirb::SymAddrConst{0, sym}});
+                auto sym = getSymbol(module, gtirb::Addr(op.Offset));
+                module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{0, sym});
             }
         }
     }
@@ -633,11 +635,9 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
     auto opImmediate = convertSortedRelation<VectorByN<OpImmediate>>("op_immediate", prog);
     auto opIndirect = convertSortedRelation<VectorByN<OpIndirect>>("op_indirect", prog);
 
-    auto &module = ir.getModules()[0];
-    std::vector<gtirb::Block> blocks;
+    auto &module = ir.modules()[0];
+    std::vector<gtirb::Block *> blocks;
     auto &cfg = module.getCFG();
-    auto &symbolic = module.getSymbolicExpressions();
-    auto &symbols = module.getSymbols();
 
     for(auto &output : *prog->getRelation("block"))
     {
@@ -654,14 +654,14 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
                 assert(inst != nullptr);
 
                 instructions.emplace_back(cib.EA);
-                buildSymbolic(symbols, symbolic, *inst, cib.EA, inst->Op1, 1, symbolicInfo,
-                              opImmediate, opIndirect);
-                buildSymbolic(symbols, symbolic, *inst, cib.EA, inst->Op2, 2, symbolicInfo,
-                              opImmediate, opIndirect);
-                buildSymbolic(symbols, symbolic, *inst, cib.EA, inst->Op3, 3, symbolicInfo,
-                              opImmediate, opIndirect);
-                buildSymbolic(symbols, symbolic, *inst, cib.EA, inst->Op4, 4, symbolicInfo,
-                              opImmediate, opIndirect);
+                buildSymbolic(module, *inst, cib.EA, inst->Op1, 1, symbolicInfo, opImmediate,
+                              opIndirect);
+                buildSymbolic(module, *inst, cib.EA, inst->Op2, 2, symbolicInfo, opImmediate,
+                              opIndirect);
+                buildSymbolic(module, *inst, cib.EA, inst->Op3, 3, symbolicInfo, opImmediate,
+                              opIndirect);
+                buildSymbolic(module, *inst, cib.EA, inst->Op4, 4, symbolicInfo, opImmediate,
+                              opIndirect);
             }
         }
 
@@ -681,14 +681,13 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
             size = 0;
         }
 
-        blocks.emplace_back(blockAddress, size);
+        blocks.push_back(gtirb::Block::Create(C, blockAddress, size));
     }
 
-    std::sort(blocks.begin(), blocks.end(), [](const auto &left, const auto &right) {
-        return left.getAddress() < right.getAddress();
+    std::sort(blocks.begin(), blocks.end(), [](const auto *left, const auto *right) {
+        return left->getAddress() < right->getAddress();
     });
-    std::for_each(blocks.begin(), blocks.end(),
-                  [&cfg](auto &&b) { gtirb::addBlock(cfg, std::move(b)); });
+    std::for_each(blocks.begin(), blocks.end(), [&cfg](auto &&b) { gtirb::addBlock(cfg, b); });
 
     std::map<gtirb::Addr, gtirb::table::ValueType> pltReferences;
     for(const auto &p : symbolicInfo.PLTCodeReferences.contents)
@@ -700,13 +699,14 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
 
 // Create DataObjects for labeled objects in the BSS section, without adding
 // data to the ImageByteMap.
-void buildBSS(gtirb::IR &ir, gtirb::DataSet &data, souffle::SouffleProgram *prog,
+void buildBSS(gtirb::IR &ir, souffle::SouffleProgram *prog,
               const std::map<gtirb::Addr, uint64_t> &symbolSizes)
 {
     auto bssData = convertRelation<gtirb::Addr>("bss_data", prog);
     std::vector<gtirb::UUID> dataUUIDs;
 
-    const auto &sections = ir.getModules()[0].getSections();
+    auto &module = ir.modules()[0];
+    const auto &sections = module.sections();
     const auto found = std::find_if(sections.begin(), sections.end(), [](const auto &element) {
         return element.getName() == ".bss";
     });
@@ -727,15 +727,19 @@ void buildBSS(gtirb::IR &ir, gtirb::DataSet &data, souffle::SouffleProgram *prog
             {
                 uint64_t size = symbol->second;
                 gtirb::Addr end = current + size;
-                data.emplace_back(current, size);
-                dataUUIDs.emplace_back(data.back().getUUID());
+                {
+                    auto *d = gtirb::DataObject::Create(C, current, size);
+                    module.addData(d);
+                    dataUUIDs.push_back(d->getUUID());
+                }
 
                 // If symbol size was smaller than BSS object, fill in the
                 // difference
                 if(end < next)
                 {
-                    data.emplace_back(end, next - end);
-                    dataUUIDs.emplace_back(data.back().getUUID());
+                    auto *d = gtirb::DataObject::Create(C, end, next - end);
+                    module.addData(d);
+                    dataUUIDs.push_back(d->getUUID());
                 }
                 // Otherwise, skip BSS objects contained within the symbol.
                 else
@@ -749,15 +753,18 @@ void buildBSS(gtirb::IR &ir, gtirb::DataSet &data, souffle::SouffleProgram *prog
             }
             else
             {
-                data.emplace_back(gtirb::Addr(current), next - current);
-                dataUUIDs.emplace_back(data.back().getUUID());
+                auto *d = gtirb::DataObject::Create(C, gtirb::Addr(current), next - current);
+                module.addData(d);
+                dataUUIDs.push_back(d->getUUID());
             }
         }
         else
         {
             // Continue to the end of the section.
-            data.emplace_back(gtirb::Addr(current), addressLimit(*found) - current);
-            dataUUIDs.emplace_back(data.back().getUUID());
+            auto *d =
+                gtirb::DataObject::Create(C, gtirb::Addr(current), addressLimit(*found) - current);
+            module.addData(d);
+            dataUUIDs.push_back(d->getUUID());
         }
     }
 
@@ -783,15 +790,12 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
     auto symbolMinusSymbol =
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
     auto dataStrings = convertSortedRelation<VectorByEA<String>>("string", prog);
-    auto &module = ir.getModules()[0];
-    auto &symbols = module.getSymbols();
-    auto &symbolicOps = module.getSymbolicExpressions();
-    auto &data = module.getData();
+    auto &module = ir.modules()[0];
 
     std::vector<gtirb::table::InnerMapType> dataSections;
     std::vector<gtirb::Addr> stringEAs;
 
-    for(auto &s : module.getSections())
+    for(auto &s : module.sections())
     {
         auto foundDataSection = getDataSectionDescriptor(s.getName());
 
@@ -814,8 +818,9 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
                     const auto pltReference = pltDataReference.find(currentAddr);
                     if(pltReference != nullptr)
                     {
-                        data.emplace_back(currentAddr, 8);
-                        dataGroupIds.push_back(data.back().getUUID());
+                        auto *d = gtirb::DataObject::Create(C, currentAddr, 8);
+                        module.addData(d);
+                        dataGroupIds.push_back(d->getUUID());
 
                         currentAddr += 7;
                         continue;
@@ -823,8 +828,9 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
 
                     // Case 2, 3
                     // There was no PLT Reference and there was no label found.
-                    data.emplace_back(currentAddr, 8);
-                    dataGroupIds.push_back(data.back().getUUID());
+                    auto *d = gtirb::DataObject::Create(C, currentAddr, 8);
+                    module.addData(d);
+                    dataGroupIds.push_back(d->getUUID());
 
                     // if there is a moved_data_label we have a symbol+constant
                     int64_t diff = 0;
@@ -833,13 +839,13 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
                     if(movedDataLabel != nullptr)
                     {
                         diff = movedDataLabel->Offset1 - movedDataLabel->Offset2;
-                        sym = getSymbol(symbols, gtirb::Addr(movedDataLabel->Offset2));
+                        sym = getSymbol(module, gtirb::Addr(movedDataLabel->Offset2));
                     }
                     else
                     {
-                        sym = getSymbol(symbols, gtirb::Addr(symbolic->GroupContent));
+                        sym = getSymbol(module, gtirb::Addr(symbolic->GroupContent));
                     }
-                    symbolicOps.insert({currentAddr, gtirb::SymAddrConst{diff, sym}});
+                    module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{diff, sym});
 
                     currentAddr += 7;
                     continue;
@@ -850,13 +856,14 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
                 if(symMinusSym != nullptr)
                 {
                     // Case 4, 5
-                    data.emplace_back(currentAddr, 4);
-                    dataGroupIds.push_back(data.back().getUUID());
+                    auto *d = gtirb::DataObject::Create(C, currentAddr, 4);
+                    module.addData(d);
+                    dataGroupIds.push_back(d->getUUID());
 
-                    symbolicOps.insert(
-                        {gtirb::Addr(currentAddr),
-                         gtirb::SymAddrAddr{1, 0, getSymbol(symbols, symMinusSym->Symbol2),
-                                            getSymbol(symbols, symMinusSym->Symbol1)}});
+                    module.addSymbolicExpression(
+                        gtirb::Addr(currentAddr),
+                        gtirb::SymAddrAddr{1, 0, getSymbol(module, symMinusSym->Symbol2),
+                                           getSymbol(module, symMinusSym->Symbol1)});
 
                     currentAddr += 3;
                     continue;
@@ -867,8 +874,9 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
                 if(str != nullptr)
                 {
                     stringEAs.push_back(currentAddr);
-                    data.emplace_back(currentAddr, str->End - currentAddr);
-                    dataGroupIds.push_back(data.back().getUUID());
+                    auto *d = gtirb::DataObject::Create(C, currentAddr, str->End - currentAddr);
+                    module.addData(d);
+                    dataGroupIds.push_back(d->getUUID());
 
                     // Because the loop is going to increment this counter, don't skip a byte.
                     currentAddr = str->End - 1;
@@ -877,8 +885,9 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
                 }
 
                 // Store raw data
-                data.emplace_back(currentAddr, 1);
-                dataGroupIds.push_back(data.back().getUUID());
+                auto *d = gtirb::DataObject::Create(C, currentAddr, 1);
+                module.addData(d);
+                dataGroupIds.push_back(d->getUUID());
             }
 
             dataSection["dataGroups"] = dataGroupIds;
@@ -886,7 +895,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
         }
     }
 
-    buildBSS(ir, data, prog, symbolSizes);
+    buildBSS(ir, prog, symbolSizes);
 
     ir.addTable("dataSections", std::move(dataSections));
     ir.addTable("stringEAs", std::move(stringEAs));
@@ -899,9 +908,10 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
     ir.addTable("pltDataReferences", std::move(pltReferences));
 
     // Set referents of all symbols pointing to data
-    std::for_each(data.begin(), data.end(), [&symbols](const auto &d) {
-        auto found = gtirb::findSymbols(symbols, d.getAddress());
-        std::for_each(found.begin(), found.end(), [&d](auto &sym) { sym->setReferent(d); });
+    const auto &dataObjs = module.data();
+    std::for_each(dataObjs.begin(), dataObjs.end(), [&module](const auto &d) {
+        auto found = module.findSymbols(d.getAddress());
+        std::for_each(found.begin(), found.end(), [&d](auto &sym) { sym.setReferent(d); });
     });
 }
 
@@ -914,7 +924,7 @@ static void buildFunctions(gtirb::IR &ir, souffle::SouffleProgram *prog)
 
 static void buildIR(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgram *prog)
 {
-    ir.getModules().emplace_back();
+    ir.addModule(gtirb::Module::Create(C));
     auto symbolSizes = buildSymbols(ir, prog);
     buildSections(ir, elf, prog);
     buildRelocations(ir, prog);
@@ -954,7 +964,7 @@ int main(int argc, char **argv)
             prog->run();
 
             // Build and save IR
-            gtirb::IR ir;
+            auto &ir = *gtirb::IR::Create(C);
             buildIR(ir, elf, prog);
 
             std::ofstream out(opt.getOutputFileDir() + "/gtirb");
