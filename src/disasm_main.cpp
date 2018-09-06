@@ -639,8 +639,6 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
     auto &symbolic = module.getSymbolicExpressions();
     auto &symbols = module.getSymbols();
 
-    std::map<gtirb::UUID, std::vector<gtirb::Addr>> blockInstructions;
-
     for(auto &output : *prog->getRelation("block"))
     {
         gtirb::Addr blockAddress;
@@ -684,19 +682,7 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
         }
 
         blocks.emplace_back(blockAddress, size);
-        blockInstructions.emplace(blocks.back().getUUID(), instructions);
     }
-
-    // Tables don't support a vector<EA> as a map value type. But since EAs
-    // are POD, we can store their bytes directly in a string and reconstruct
-    // them later. This is ugly but it works.
-    std::map<gtirb::UUID, gtirb::table::ValueType> blockTable;
-    for(const auto &x : blockInstructions)
-    {
-        blockTable.emplace(x.first, std::string(reinterpret_cast<const char *>(x.second.data()),
-                                                x.second.size() * sizeof(gtirb::Addr)));
-    }
-    ir.addTable("blockInstructions", std::move(blockTable));
 
     std::sort(blocks.begin(), blocks.end(), [](const auto &left, const auto &right) {
         return left.getAddress() < right.getAddress();
