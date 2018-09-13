@@ -167,11 +167,11 @@ struct MovedLabel
     MovedLabel(souffle::tuple &tuple)
     {
         assert(tuple.size() == 4);
-        tuple >> EA >> N >> Offset1 >> Offset2;
+        tuple >> EA >> OpNum >> Offset1 >> Offset2;
     };
 
     gtirb::Addr EA{0};
-    uint64_t N{0};
+    uint64_t OpNum{0};
     int64_t Offset1{0};
     int64_t Offset2{0};
 };
@@ -416,8 +416,10 @@ static std::map<gtirb::Addr, uint64_t> buildSymbols(gtirb::IR &ir, souffle::Souf
         {
             functionEAs.push_back(base);
         }
-
-        module.addSymbol(gtirb::Symbol::Create(C, base, name,
+        // FIXME: Skip symbols with no type or with object type and zero size
+        // This is to avoid conflics when building symbolic expressions (several symbols with same address)
+        if(type != "NOTYPE" && (type != "OBJECT" || size>0))
+            module.addSymbol(gtirb::Symbol::Create(C, base, name,
                                                scope == "GLOBAL"
                                                    ? gtirb::Symbol::StorageKind::Extern
                                                    : gtirb::Symbol::StorageKind::Local));
@@ -564,8 +566,11 @@ void buildSymbolic(gtirb::Module &module, DecodedInstruction instruction, gtirb:
             module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{0, sym});
         }
 
-        auto movedLabel = symbolicInfo.MovedLabels.find(ea);
-        if(movedLabel != nullptr && movedLabel->N == index)
+        auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
+               if(auto movedLabel=std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
+                               [ea, index](const auto &element) {
+                                   return (element.EA == ea) && (element.OpNum == index);
+                               }); movedLabel != rangeMovedLabel.second)
         {
             assert(movedLabel->Offset1 == immediate);
             auto diff = movedLabel->Offset1 - movedLabel->Offset2;
@@ -590,8 +595,12 @@ void buildSymbolic(gtirb::Module &module, DecodedInstruction instruction, gtirb:
     if(foundInd != nullptr)
     {
         auto op = *foundInd;
-        auto movedLabel = symbolicInfo.MovedLabels.find(ea);
-        if(movedLabel != nullptr && movedLabel->N == index)
+
+        auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
+        if(auto movedLabel=std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
+                                        [ea, index](const auto &element) {
+            return (element.EA == ea) && (element.OpNum == index);
+        }); movedLabel != rangeMovedLabel.second)
         {
             auto diff = movedLabel->Offset1 - movedLabel->Offset2;
             auto sym = getSymbol(module, gtirb::Addr(movedLabel->Offset2));
