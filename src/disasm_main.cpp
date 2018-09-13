@@ -819,24 +819,10 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
             auto limit = addressLimit(s);
             for(auto currentAddr = s.getAddress(); currentAddr < limit; currentAddr++)
             {
-                // Case 1, 2, 3
+                // symbol+constant and symbol+0
                 const auto symbolic = symbolicData.find(currentAddr);
                 if(symbolic != nullptr)
                 {
-                    // Case 1
-                    const auto pltReference = pltDataReference.find(currentAddr);
-                    if(pltReference != nullptr)
-                    {
-                        auto *d = gtirb::DataObject::Create(C, currentAddr, 8);
-                        module.addData(d);
-                        dataGroupIds.push_back(d->getUUID());
-
-                        currentAddr += 7;
-                        continue;
-                    }
-
-                    // Case 2, 3
-                    // There was no PLT Reference and there was no label found.
                     auto *d = gtirb::DataObject::Create(C, currentAddr, 8);
                     module.addData(d);
                     dataGroupIds.push_back(d->getUUID());
@@ -860,11 +846,10 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
                     continue;
                 }
 
-                // Case 4, 5
+                // symbol-symbol
                 const auto symMinusSym = symbolMinusSymbol.find(currentAddr);
                 if(symMinusSym != nullptr)
                 {
-                    // Case 4, 5
                     auto *d = gtirb::DataObject::Create(C, currentAddr, 4);
                     module.addData(d);
                     dataGroupIds.push_back(d->getUUID());
@@ -878,7 +863,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
                     continue;
                 }
 
-                // Case 6
+                // string
                 const auto str = dataStrings.find(currentAddr);
                 if(str != nullptr)
                 {
