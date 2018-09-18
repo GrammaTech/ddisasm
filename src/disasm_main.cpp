@@ -916,10 +916,9 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
     ir.addTable("pltDataReferences", std::move(pltReferences));
 
     // Set referents of all symbols pointing to data
-    const auto &dataObjs = module.data();
-    std::for_each(dataObjs.begin(), dataObjs.end(), [&module](const auto &d) {
+    std::for_each(module.data_begin(), module.data_end(), [&module](auto &d) {
         auto found = module.findSymbols(d.getAddress());
-        std::for_each(found.begin(), found.end(), [&d](auto &sym) { sym.setReferent(d); });
+        std::for_each(found.begin(), found.end(), [&d](auto &sym) { sym.setReferent(&d); });
     });
 }
 
