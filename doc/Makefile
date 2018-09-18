@@ -1,3 +1,8 @@
+all: ddisasm.html ddisasm.1.gz
+
+clean:
+	rm -f *.html *.gz
+
 %.html: %.md
 	pandoc -s -t html $< -o $@
 
