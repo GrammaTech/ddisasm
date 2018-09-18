@@ -29,12 +29,6 @@ The analysis contains three parts:
   of code, etc. The results are stored in `.csv` files.  These files
   can be compiled into `/bin/souffle_disasm`
 
-- `src/disasm_driver.pl` is a prolog module that calls
-  `datalog_decored` first, then it calls souffle (or `souffle_disasm`)
-  and finally reads the results from the analysis and prints the
-  assembler code. (this script can be called by executing
-  `./bin/disasm`)
-
 ## Dependencies
 
 - [GTIRB](https://github.com/grammatech/gtirb)
@@ -43,31 +37,8 @@ The analysis contains three parts:
   being installed. Configure souffle with `--enable-64bit-domain
   --disable-provenance`.
 
-- The pretty printer is (for now) written in prolog. It requires some
-  prolog environment to be installed (preferably SWI-prolog).
-
-- The project is prepared to be built with GTScons and has to be
-  located in the grammatech trunk directory. (Note: this has not been
-  maintained and will probably not link correctly with GTIRB).
-
-- The project contains a Makefile to compile without GTScons and
-  without the grammatech trunk directory, but it requires a folder
-  `/standalone_compilation/` with the corresponding libraries and
-  header to be added to the project.
-
 ## Building souffle_disasm
 A C++17 compiler such as gcc 7 or clang 6 is required.
-
-For the standalone compilation:
-```
-/u4/TARBALLS/datalog_disasm/standalone_compilation.tar.bz2
-make CXX=gcc-7 GTIRB_BASE=<path-to-gtirb> PROTOBUF_BASE=<path-to-protobuf>
-```
-
-For a build within trunk:
-```
-/trunk/datalog_disasm/build
-```
 
 ## Running the analysis
 Once souffle_disasm is built, we can run complete analysis on a file
@@ -122,33 +93,6 @@ The directory /tests also contains script for running extensive tests:
   the applications are all at certain directory `real_world_examples`
 
 - `test_CGC.sh` test a subset of the CGC programs with different compilers and optimization flags.
-
-## Experimental Evaluation
-
-We would like to perform an evaluation along the following dimensions:
-
-Tools
-- Datalog Disassembler
-- GTx
-- Ramblr
-
-Benchmarks (× Compilers × Flags -- should include the versions used in the Ramblr paper)
-- coreutils
-- CGC binaries (a subset thereof)
-- Real World binaries (we need a real methodology for how these were selected)
-- Siemens programs
-
-Metrics
-- Runtime of the rewritten binaries
-- Memory consumption of the rewritten binaries
-- Size of the rewritten binaries (stripped)
-- Runtime of the binary rewriter
-- Memory consumption of the binary rewriter
-- Functionality of the rewritten binaries (as measure by their test suites)
-- Additional "precision" metrics (might be useful if we have GT-IRB)
-    - symbolization
-    - data vs. code location
-    - function boundary identification
 
 ### Issues/TODOs
 
