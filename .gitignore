@@ -20,3 +20,5 @@ examples/**/ex.old
 examples/**/ex.s
 examples/**/ex.unstripped
 examples/**/out.txt
+
+gtirb/
