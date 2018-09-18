@@ -431,12 +431,13 @@ static std::map<gtirb::Addr, uint64_t> buildSymbols(gtirb::IR &ir, souffle::Souf
             functionEAs.push_back(base);
         }
         // FIXME: Skip symbols with no type or with object type and zero size
-        // This is to avoid conflics when building symbolic expressions (several symbols with same address)
-        if(type != "NOTYPE" && (type != "OBJECT" || size>0))
+        // This is to avoid conflics when building symbolic expressions (several symbols with same
+        // address)
+        if(type != "NOTYPE" && (type != "OBJECT" || size > 0))
             module.addSymbol(gtirb::Symbol::Create(C, base, name,
-                                               scope == "GLOBAL"
-                                                   ? gtirb::Symbol::StorageKind::Extern
-                                                   : gtirb::Symbol::StorageKind::Local));
+                                                   scope == "GLOBAL"
+                                                       ? gtirb::Symbol::StorageKind::Extern
+                                                       : gtirb::Symbol::StorageKind::Local));
     }
 
     std::sort(functionEAs.begin(), functionEAs.end());
@@ -581,10 +582,11 @@ void buildSymbolic(gtirb::Module &module, DecodedInstruction instruction, gtirb:
         }
 
         auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
-               if(auto movedLabel=std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
-                               [ea, index](const auto &element) {
-                                   return (element.EA == ea) && (element.OpNum == index);
-                               }); movedLabel != rangeMovedLabel.second)
+        if(auto movedLabel = std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
+                                          [ea, index](const auto &element) {
+                                              return (element.EA == ea) && (element.OpNum == index);
+                                          });
+           movedLabel != rangeMovedLabel.second)
         {
             assert(movedLabel->Offset1 == immediate);
             auto diff = movedLabel->Offset1 - movedLabel->Offset2;
@@ -611,10 +613,11 @@ void buildSymbolic(gtirb::Module &module, DecodedInstruction instruction, gtirb:
         auto op = *foundInd;
 
         auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
-        if(auto movedLabel=std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
-                                        [ea, index](const auto &element) {
-            return (element.EA == ea) && (element.OpNum == index);
-        }); movedLabel != rangeMovedLabel.second)
+        if(auto movedLabel = std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
+                                          [ea, index](const auto &element) {
+                                              return (element.EA == ea) && (element.OpNum == index);
+                                          });
+           movedLabel != rangeMovedLabel.second)
         {
             auto diff = movedLabel->Offset1 - movedLabel->Offset2;
             auto sym = getSymbol(module, gtirb::Addr(movedLabel->Offset2));
