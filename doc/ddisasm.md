@@ -1,10 +1,10 @@
 % DDISASM(1) DATALOG DISASSEMBLER
-% GrammaTech Inc.
+% GrammaTech Inc
 % September 2018
 
 # NAME
 
-ddisasm - disassembles binaries and generates assembly code that is ready for reassembly.
+ddisasm - disassemble a binary and generate assembly code that is ready for reassembly.
 
 # SYNOPSIS
 
@@ -27,23 +27,23 @@ Currently `ddisasm` supports x64 executables in ELF format.
 :   print debugging information
 
 -o, --output *FILE*
-:   name of the output gtirb file (by default it is (*binary*).gtirb)
+:   name of the output gtirb file (by default it is *BINARY.gtirb*)
 
 -p, --print *FILE*
 :	print the assembly code of the binary using the **gtirb-pprinter**
 
 -s, --section *SECTION-NAME*
-:   consider the *SECTION-NAME* as a code section for the disassembly. By default
-    the following code sections are considered: `.text`, `.plt`,
-	`.init`, `.fini`, and `.plt.got`.
-	This option allows considering additional sections.
+:   consider the section *SECTION-NAME* as an additional code section
+    for the disassembly. By default the following code sections are
+    considered: `.text`, `.plt`, `.init`, `.fini`, and `.plt.got`.
+    This option allows considering additional sections.
 
 -d, --data-section *SECTION-NAME*
-:   consider the *SECTION-NAME* as a data section for the
-    disassembly. By default the following  data sections are
+:   consider the section *SECTION-NAME* as an additional data section
+    for the disassembly. By default the following data sections are
     considered: `.got`, `.got.plt`, `.data.rel.ro`, `.init_array`,
-    `.fini_array`, `rodata`, `data`, and `.bss`.
-    This option allows considering additional sections.
+    `.fini_array`, `rodata`, `data`, and `.bss`.  This option allows
+    considering additional sections.
 
 -p, --profile *FILE*
 :   generate souffle profiling information into *FILE*. This profiling information
