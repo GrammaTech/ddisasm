@@ -500,14 +500,11 @@ static void buildSections(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgra
             }
         }
     }
-    std::sort(
-        module.section_begin(), module.section_end(),
-        [](const auto &left, const auto &right) { return left.getAddress() < right.getAddress(); });
 }
 
 static void buildRelocations(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    std::map<gtirb::Addr, gtirb::table::ValueType> relocations;
+    std::map<gtirb::Addr, std::tuple<std::string, std::string>> relocations;
     for(auto &output : *prog->getRelation("relocation"))
     {
         gtirb::Addr ea;
@@ -517,7 +514,7 @@ static void buildRelocations(gtirb::IR &ir, souffle::SouffleProgram *prog)
         // Datalog code turns empty string in "n/a" somewhere. Put it back.
         if(name == "n/a")
             name.clear();
-        relocations[ea] = gtirb::table::InnerMapType{{"type", type}, {"name", name}};
+        relocations[ea] = {type, name};
     }
     ir.addTable("relocations", std::move(relocations));
 }
@@ -537,20 +534,19 @@ static std::string getLabel(uint64_t ea)
     return ss.str();
 }
 
-static const gtirb::NodeRef<gtirb::Symbol> getSymbol(gtirb::Module &module, gtirb::Addr ea)
+static gtirb::Symbol *getSymbol(gtirb::Module &module, gtirb::Addr ea)
 {
-    const auto found = module.findSymbols(ea);
+    auto found = module.findSymbols(ea);
     if(!found.empty())
     {
-        return gtirb::NodeRef<gtirb::Symbol>(*found.begin());
+        return &*found.begin();
     }
 
     auto *sym =
         gtirb::Symbol::Create(C, ea, getLabel(uint64_t(ea)), gtirb::Symbol::StorageKind::Local);
-    gtirb::NodeRef<gtirb::Symbol> result(sym);
-    module.addSymbol(std::move(sym));
+    module.addSymbol(sym);
 
-    return result;
+    return sym;
 }
 
 void buildSymbolic(gtirb::Module &module, DecodedInstruction instruction, gtirb::Addr &ea,
@@ -662,7 +658,6 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
     auto opIndirect = convertSortedRelation<VectorByN<OpIndirect>>("op_indirect", prog);
 
     auto &module = ir.modules()[0];
-    std::vector<gtirb::Block *> blocks;
     auto &cfg = module.getCFG();
 
     for(auto &output : *prog->getRelation("block"))
@@ -707,15 +702,10 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
             size = 0;
         }
 
-        blocks.push_back(gtirb::Block::Create(C, blockAddress, size));
+        emplaceBlock(cfg, C, blockAddress, size);
     }
 
-    std::sort(blocks.begin(), blocks.end(), [](const auto *left, const auto *right) {
-        return left->getAddress() < right->getAddress();
-    });
-    std::for_each(blocks.begin(), blocks.end(), [&cfg](auto &&b) { gtirb::addBlock(cfg, b); });
-
-    std::map<gtirb::Addr, gtirb::table::ValueType> pltReferences;
+    std::map<gtirb::Addr, std::string> pltReferences;
     for(const auto &p : symbolicInfo.PLTCodeReferences.contents)
     {
         pltReferences[gtirb::Addr(p.EA)] = p.Name;
@@ -818,7 +808,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
     auto dataStrings = convertSortedRelation<VectorByEA<String>>("string", prog);
     auto &module = ir.modules()[0];
 
-    std::vector<gtirb::table::InnerMapType> dataSections;
+    std::vector<std::tuple<std::string, int, std::vector<gtirb::UUID>>> dataSections;
     std::vector<gtirb::Addr> stringEAs;
 
     for(auto &s : module.sections())
@@ -827,10 +817,6 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
 
         if(foundDataSection != nullptr)
         {
-            gtirb::table::InnerMapType dataSection;
-            dataSection["name"] = s.getName();
-            dataSection["alignment"] = foundDataSection->second;
-
             std::vector<gtirb::UUID> dataGroupIds;
 
             auto limit = addressLimit(s);
@@ -846,7 +832,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
 
                     // if there is a moved_data_label we have a symbol+constant
                     int64_t diff = 0;
-                    gtirb::NodeRef<gtirb::Symbol> sym;
+                    gtirb::Symbol *sym;
                     const auto movedDataLabel = movedDataLabels.find(currentAddr);
                     if(movedDataLabel != nullptr)
                     {
@@ -901,8 +887,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
                 dataGroupIds.push_back(d->getUUID());
             }
 
-            dataSection["dataGroups"] = dataGroupIds;
-            dataSections.push_back(std::move(dataSection));
+            dataSections.emplace_back(s.getName(), foundDataSection->second, dataGroupIds);
         }
     }
 
@@ -911,7 +896,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
     ir.addTable("dataSections", std::move(dataSections));
     ir.addTable("stringEAs", std::move(stringEAs));
 
-    std::map<gtirb::Addr, gtirb::table::ValueType> pltReferences;
+    std::map<gtirb::Addr, std::string> pltReferences;
     for(const auto &p : pltDataReference.contents)
     {
         pltReferences[gtirb::Addr(p.EA)] = p.Name;
