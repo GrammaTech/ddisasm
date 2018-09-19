@@ -11,6 +11,7 @@ bin/souffle_disasm.*
 *.snm
 *.toc
 doc/slides/slides.pdf
+doc/*.1.gz
 
 standalone_compilation/
 standalone_compilation.tar.bz2
