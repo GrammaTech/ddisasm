@@ -20,35 +20,113 @@
  */
 
 #include "Dl_decoder.h"
-#include "isal/x64/decoderff.hpp"
-#include "isal/x64/x64_pp.hpp"
 #include <iostream>
+#include <sstream>
+#include <string>
+#include <algorithm>
 
 using namespace std;
 
-void Dl_decoder::decode_section(char* buf,uint64_t size,int64_t ea){
-    X64genDecoderFF::initialize();
-    while (size > 0) {
-        unsigned int nbytes_decoded;
-        // safe to cast here since nbytes_left is in the range (0-buf_size]
-        ConcTSLInterface::instructionRefPtr instr = X64genDecoderFF::decode(
-                buf, ea, static_cast<unsigned int>(size),
-                &nbytes_decoded, IADC_LongMode);
+Dl_decoder::Dl_decoder(){
+    cs_open(CS_ARCH_X86, CS_MODE_64, &this->csHandle);// == CS_ERR_OK
+    cs_option(this->csHandle, CS_OPT_DETAIL, CS_OPT_ON);
+}
 
-        if (instr.is_empty()) {
+void Dl_decoder::decode_section(char* buf,uint64_t size,int64_t ea){
+    while (size > 0) {
+        cs_insn *insn;
+        size_t count =cs_disasm(this->csHandle, (const uint8_t*)buf,size, ea, 1, &insn);
+        if (count==0) {
             invalids.push_back(ea);
         } else {
-            Datalog_visitor_x64 visitor(ea,static_cast<long>(nbytes_decoded),&op_dict);
-            instr->accept(visitor);
-            instructions.push_back(visitor.get_instruction());
+            instructions.push_back(this->transformInstruction(*insn));
+            cs_free(insn, count);
         }
-
         ++ea;
         ++buf;
         --size;
 
     }
 }
+
+std::string str_toupper(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(),[](unsigned char c) { return std::toupper(c); });
+    return s;
+}
+
+std::string Dl_decoder::getRegisterName(unsigned int reg) {
+    return
+            reg == X86_REG_INVALID ? "NullReg64" : str_toupper(cs_reg_name(this->csHandle, reg));
+}
+
+Dl_instruction Dl_decoder::transformInstruction(cs_insn& insn){
+    std::vector<int64_t> op_codes;
+    std::string prefix;
+    std::string name=str_toupper(cs_insn_name(this->csHandle,insn.id));
+    auto &detail = insn.detail->x86;
+    switch (detail.prefix[0]){
+    case X86_PREFIX_LOCK:
+        prefix="lock";
+        break;
+    case X86_PREFIX_REP:
+        prefix="rep";
+        break;
+    case X86_PREFIX_REPNE:
+        prefix="repne";
+        break;
+    default:
+        prefix="";
+    }
+    if(name!="NOP"){
+        auto opCount = detail.op_count;
+        //skip the destination operand
+        for(int i=1;i<opCount;i++){
+            const auto &op =detail.operands[i] ;
+            int64_t index=op_dict.add(this->buildOperand(op));
+            op_codes.push_back(index);
+        }
+        // we put the destination operand at the end
+        if(opCount>0){
+            const auto &op =detail.operands[0] ;
+            int64_t index=op_dict.add(this->buildOperand(op));
+            op_codes.push_back(index);
+        }
+    }
+    //FIXME what about the prefix?
+    return Dl_instruction(insn.address,insn.size,prefix,name,op_codes);
+}
+
+Dl_operator Dl_decoder::buildOperand(const cs_x86_op& op){
+    Dl_operator curr_op;
+    switch (op.type) {
+    case X86_OP_REG:
+        curr_op.type=operator_type::REG;
+        curr_op.reg1=getRegisterName(op.reg);
+        break;
+    case X86_OP_IMM:
+        curr_op.type=operator_type::IMMEDIATE;
+        curr_op.offset=op.imm;
+        break;
+    case X86_OP_MEM:
+        curr_op.type=operator_type::INDIRECT;
+        curr_op.reg1=getRegisterName(op.mem.segment);
+        curr_op.reg2=getRegisterName(op.mem.base);
+        curr_op.reg3=getRegisterName(op.mem.index);
+        curr_op.offset=op.mem.disp;
+        curr_op.multiplier=op.mem.scale;
+        break;
+    case X86_OP_FP:
+        std::cerr << "floating point operations not implemented\n";
+        exit(1);
+    case X86_OP_INVALID:
+        std::cerr << "invalid operand\n";
+        exit(1);
+    }
+    //size in bits
+    curr_op.size=op.size*8;
+    return curr_op;
+}
+
 
 bool can_be_address(uint64_t num, uint64_t min_address, uint64_t max_address){
     return ((num>=min_address) && (num<=max_address));  //absolute address

@@ -52,6 +52,24 @@ and EA1<= EA2<= EA1+Mult1.
 
 */
 
+// auxiliary predicate to  compute the amount of read memory
+.decl instruction_memory_access_size(EA:address,Op_index:operand_index,Size:number)
+    
+
+instruction_memory_access_size(EA,Index,SizeAccess):-
+    code(EA),
+    instruction_get_op(EA,Index,Op),
+    instruction_get_operation(EA,Operation),
+    (
+        Operation="LEA",
+        SizeAccess=0
+     ;
+        Operation!="LEA",
+        op_indirect(Op,_,_,_,_,_,Size),
+        SizeAccess=Size/8
+    ).
+
+
 .decl data_access_pattern(Address:address,Size:number,Multiplier:number,FromWhere:address)
 .output data_access_pattern
 
@@ -60,12 +78,14 @@ and EA1<= EA2<= EA1+Mult1.
 
 //////////////////////////////////////////////////
 
-
+    
 //single access
-data_access_pattern(Address,Size/8 ,0,EA):-
+data_access_pattern(Address,Size ,0,EA):-
 	code(EA),
-	instruction_get_op(EA,_Op_index,Op),
-	op_indirect(Op,NullSReg,NullReg1,NullReg2,_,Address,Size),
+	instruction_get_op(EA,Op_index,Op),
+	op_indirect(Op,NullSReg,NullReg1,NullReg2,_,Address,_),
+        instruction_memory_access_size(EA,Op_index,Size),
+    
 	null_reg(NullSReg),
 	null_reg(NullReg1),
 	null_reg(NullReg2),
@@ -76,10 +96,11 @@ data_access_pattern(Address,Size/8 ,0,EA):-
 	Address<=Base+SizeSect.
 
 // directly computed
-data_access_pattern(Address+(Offset2*Multiplier),Size/8 ,Multiplier*Multiplier2,EA):-
+data_access_pattern(Address+(Offset2*Multiplier),Size ,Multiplier*Multiplier2,EA):-
 	code(EA),
 	instruction_get_op(EA,Op_index,Op),
-	op_indirect(Op,NullSReg,RegBase,RegMult,Multiplier,Address1,Size),
+	op_indirect(Op,NullSReg,RegBase,RegMult,Multiplier,Address1,_),
+        instruction_memory_access_size(EA,Op_index,Size), 
 	null_reg(NullSReg),
 	!null_reg(RegMult),
 
@@ -112,10 +133,11 @@ data_access_pattern(Address+(Offset2*Multiplier),Size/8 ,Multiplier*Multiplier2,
 	Address+(Offset2*Multiplier)<=Base+SizeSect.
 
 // indirectly computed
-data_access_pattern(Offset+Address,Size/8 ,Multiplier,EA):-
+data_access_pattern(Offset+Address,Size ,Multiplier,EA):-
 	code(EA),
 	instruction_get_op(EA,Op_index,Op),
-	op_indirect(Op,NullSReg,Reg,RegBase,MultiplierBase,Address1,Size),
+	op_indirect(Op,NullSReg,Reg,RegBase,MultiplierBase,Address1,_),
+        instruction_memory_access_size(EA,Op_index,Size),
 	null_reg(NullSReg),
 	def_used(EA_def,Reg,EA,Op_index),
 	best_value_reg(EA_def,Reg,Multiplier,Offset_aux,Type),
@@ -142,9 +164,10 @@ data_access_pattern(Offset+Address,Size/8 ,Multiplier,EA):-
 	Offset+Address<=Base+SizeSect.
 
 // pc relative
-data_access_pattern(Address,Size/8 ,0,EA):-
+data_access_pattern(Address,Size ,0,EA):-
 	code(EA),
-	pc_relative_operand_complete(EA,_,Address,Size),
+	pc_relative_operand(EA,Op_index,Address),
+        instruction_memory_access_size(EA,Op_index,Size), 
 	data_section(Section),
 	section(Section,SizeSect,Base),
 	Address>=Base,

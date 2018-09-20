@@ -9,7 +9,6 @@ stages:
 
 .build-template: &build
   script:
-    - cp /u4/TARBALLS/datalog_disasm/standalone_compilation.tar.bz2 ./
     - (cd tests ; ./fetch_real_examples.sh)
     - git clone https://git.grammatech.com/debloat/gtirb.git
     - docker build -f .ci/Dockerfile.$OS -t ${LOCAL_IMAGE_NAME}-${OS} .
