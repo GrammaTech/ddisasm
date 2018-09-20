@@ -284,14 +284,14 @@ next(EA,EA+Size):-
 .decl pc_relative_operand(src:address,index:number, dest:address)
 .output pc_relative_operand
 
-pc_relative_operand(EA,Index,Dest):-
-	pc_relative_operand_complete(EA,Index,Dest,_).
+// pc_relative_operand(EA,Index,Dest):-
+// 	pc_relative_operand_complete(EA,Index,Dest,_).
 
-.decl pc_relative_operand_complete(src:address,index:number, dest:address, size:number)
+// .decl pc_relative_operand_complete(src:address,index:number, dest:address, size:number)
 
-pc_relative_operand_complete(EA,Index,EA_next+Offset,Size):-
+pc_relative_operand(EA,Index,EA_next+Offset):-
 	instruction_get_op(EA, Index, Op),
-	op_indirect(Op,NullSReg,"RIP",NullReg1,1,Offset,Size),
+        op_indirect(Op,NullSReg,"RIP",NullReg1,1,Offset,_),
 	null_reg(NullSReg),
 	null_reg(NullReg1),
 	next(EA,EA_next).
@@ -390,7 +390,7 @@ indirect_call(EA):-
 .decl return(n:address)
 
 return(EA):-
-	instruction_get_operation(EA,"Ret").
+	instruction_get_operation(EA,"RET").
 
 .decl halt(EA:address)
 

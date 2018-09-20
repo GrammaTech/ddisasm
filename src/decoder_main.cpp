@@ -22,11 +22,6 @@
 
 #include "Dl_decoder.h"
 #include "Elf_reader.h"
-
-// for now we do not use souffle directly
-//#include "souffle/SouffleInterface.h"
-#include "gtr/src/lang/gtr_config.h"
-
 #include <boost/program_options.hpp>
 #include <cctype>
 #include <iostream>
@@ -35,20 +30,6 @@
 #include <string>
 
 
-//---------------------
-// VSA_DLL_DEP HACK!!!
-// <isa>_show depends on tsl_rtg_<isa>, which uses memcasecmp and should
-// rightfully depend on feature 'string'.  However, the situation with Windows'
-// vsa_tsl_<isa>.dll/swyxana_<isa>.lib currently prevents us from adding that
-// dependence, as it leads to linker multiply-defined symbol errors.
-// As a (very ugly) workaround, we add this dummy dependence on memcasecmp,
-// with a corresponding dummy SCons dependence on 'string', to let this link
-// successfully without changing tsl_rtg_<isa>'s dependences.
-#include "gtr/src/string/string_ops.h"
-int dummy_hack(const void * lhs, size_t lsize, const void * rhs, size_t rsize) {
-    return memcasecmp(lhs, lsize, rhs, rsize);
-}
-// end VSA_DLL_DEP HACK
 namespace po = boost::program_options;
 using namespace std;
 

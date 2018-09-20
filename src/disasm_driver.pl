@@ -126,10 +126,19 @@ decode_sections(File,Dir):-
     % create command
     atomic_list_concat(['./datalog_decoder ',' --file ',File,
 			' --dir ',Dir,'/',Section_chain,Data_section_chain],Cmd),
+    
+    
     format('#cmd: ~p~n',[Cmd]),
     format(user_error,'Decoding',[]),
     time(shell(Cmd)).
 
+    %atom_concat(Dir,'_old',Dir2),
+    %(\+exists_directory(Dir2)->
+    %make_directory(Dir2);true),
+    %atomic_list_concat(['./datalog_decoder_old ',' --file ',File,
+    %			' --dir ',Dir2,'/',Section_chain,Data_section_chain],Cmd_old),
+    %format(user_error,'Old Decoding',[]),
+    %time(shell(Cmd_old)).
 collect_section_args(Arg,Name,Acc_sec,Acc_sec2):-
     Acc_sec2=[Arg,Name|Acc_sec].
 
@@ -819,6 +828,11 @@ pp_instruction_rand(Instruction):-
 pp_instruction(instruction(EA,Size,'','NOP',none,none,none,none)):-
     repeat_n_times((print_ea(EA),format(' nop ~n',[])),Size),
     cond_print_comments(EA).
+
+pp_instruction(instruction(EA,Size,Prefix,'MOVSD',Op1,Op2,none,none)):-
+    Op1=indirect('NullReg64', 'RSI', 'NullReg64', 1, 0, 32),
+    Op2=indirect('NullReg64', 'RDI', 'NullReg64', 1, 0, 32),!,
+    pp_instruction(instruction(EA,Size,Prefix,'MOVSD',none,none,none,none)).
 
 pp_instruction(instruction(EA,_Size,Prefix,String_op,Op1,none,none,none)):-
     opcode_suffix(String_op,Op_suffix),

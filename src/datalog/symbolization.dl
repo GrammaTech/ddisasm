@@ -163,7 +163,7 @@ symbolic_code_operand_candidate(EA,Op_index,Dest):-
 		can_have_symbolic(EA),
 		op_immediate(Op,Dest)
 	;
-		pc_relative_operand_complete(EA,Op_index,Dest,_Size)
+		pc_relative_operand(EA,Op_index,Dest)
 	;
 		can_have_symbolic(EA),
 	        op_indirect(Op,_,_,_,_,Dest,_Size)
@@ -178,7 +178,7 @@ symbolic_data_operand_candidate(EA,Op_index,Dest):-
 		can_have_symbolic(EA),
 		op_immediate(Op,Dest)
 	;
-		pc_relative_operand_complete(EA,Op_index,Dest,_Size)
+		pc_relative_operand(EA,Op_index,Dest)
 	;
 		can_have_symbolic(EA),
    	        op_indirect(Op,_,_,_,_Multiplier,Dest,_Size)

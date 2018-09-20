@@ -67,6 +67,14 @@ RUN cd /usr/local/src \
     && make install
 RUN ldconfig
 
+# Install capstone
+RUN cd /usr/local/src \
+    && wget https://github.com/aquynh/capstone/archive/3.0.5.tar.gz \
+    && tar xf 3.0.5.tar.gz \
+    && cd capstone-3.0.5 \
+    && CAPSTONE_ARCHS=x86 ./make.sh \
+    && CAPSTONE_ARCHS=x86 ./make.sh install
+
 RUN   useradd dl_disasm
 COPY --chown=dl_disasm . /datalog_disasm
 USER dl_disasm
@@ -75,7 +83,6 @@ USER dl_disasm
 RUN rm -rf /datalog_disasm/gtirb/build /datalog_disasm/gtirb/CMakeCache.txt /datalog_disasm/gtirb/CMakeFiles /datalog_disasm/gtirb/CMakeScripts
 RUN cd /datalog_disasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build &&  make && make install
 
-RUN cd /datalog_disasm && tar xjf standalone_compilation.tar.bz2
 ENV TERM xterm
 ENV LD_LIBRARY_PATH /datalog_disasm/gtirb/build/lib
 WORKDIR /datalog_disasm
