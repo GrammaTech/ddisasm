@@ -26,10 +26,10 @@ run-ubuntu16:
     OS: 'ubuntu16'
   script:
     - docker run ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c "make check"
-    - if [ "$CI_BUILD_REF_NAME" = "master" && "$OS" = "ubuntu16" ];
+    - if [ "$CI_BUILD_REF_NAME" == "master" ] && [ "$OS" == "ubuntu16" ];
       then
         docker tag ${LOCAL_IMAGE_NAME}-${OS} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
-        docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $DOCKER_REGISTRY
+        docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $DOCKER_REGISTRY;
         docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
       fi
 
