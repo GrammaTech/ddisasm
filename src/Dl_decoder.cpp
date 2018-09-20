@@ -61,22 +61,18 @@ std::string Dl_decoder::getRegisterName(unsigned int reg) {
 
 Dl_instruction Dl_decoder::transformInstruction(cs_insn& insn){
     std::vector<int64_t> op_codes;
-    std::string prefix;
-    std::string name=str_toupper(cs_insn_name(this->csHandle,insn.id));
-    auto &detail = insn.detail->x86;
-    switch (detail.prefix[0]){
-    case X86_PREFIX_LOCK:
-        prefix="lock";
-        break;
-    case X86_PREFIX_REP:
-        prefix="rep";
-        break;
-    case X86_PREFIX_REPNE:
-        prefix="repne";
-        break;
-    default:
+    std::string prefix_name=insn.mnemonic;
+    std::string prefix,name;
+    size_t pos=prefix_name.find(' ');
+    if(pos!= std::string::npos){
+        prefix=prefix_name.substr(0,pos);
+        name=str_toupper(prefix_name.substr(pos+1,prefix_name.length()-(pos+1)));
+    }else{
         prefix="";
+        name=str_toupper(prefix_name);
     }
+
+    auto &detail = insn.detail->x86;
     if(name!="NOP"){
         auto opCount = detail.op_count;
         //skip the destination operand
