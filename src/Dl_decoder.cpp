@@ -55,8 +55,13 @@ std::string str_toupper(std::string s) {
 }
 
 std::string Dl_decoder::getRegisterName(unsigned int reg) {
-    return
-            reg == X86_REG_INVALID ? "NullReg64" : str_toupper(cs_reg_name(this->csHandle, reg));
+    if (reg==X86_REG_INVALID)
+        return "NullReg64";
+    std::string name=str_toupper(cs_reg_name(this->csHandle, reg));
+    //FIXME remove this once capstone returns the right name for ST(0)
+    if (name=="ST(0")
+        return "ST(0)";
+    return name;
 }
 
 Dl_instruction Dl_decoder::transformInstruction(cs_insn& insn){
