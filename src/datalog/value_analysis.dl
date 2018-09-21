@@ -129,7 +129,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg,2^Immediate,0):-
 //mul reg reg immediate
 value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
 	def_used(EA_prev,Reg2,EA,_),
-	instruction(EA,_,_,"IMUL3",Op1,Op2,Op3,0),
+	instruction(EA,_,_,"IMUL",Op1,Op2,Op3,0),
 	op_immediate(Op2,Immediate),
 	op_regdirect_contains_reg(Op3,Reg),
 	op_regdirect_contains_reg(Op1,Reg2),
@@ -137,7 +137,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
 //mul reg immediate
 value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
 	def_used(EA_prev,Reg2,EA,_),
-	instruction(EA,_,_,"IMUL2",Op1,Op2,0,0),
+	instruction(EA,_,_,"IMUL",Op1,Op2,0,0),
 	op_immediate(Op1,Immediate),
 	op_regdirect_contains_reg(Op2,Reg),
 	EA!=EA_prev.
