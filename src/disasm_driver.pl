@@ -124,7 +124,7 @@ decode_sections(File,Dir):-
     atomic_list_concat(Sect_args,Section_chain),
     atomic_list_concat(Data_sect_args,Data_section_chain),
     % create command
-    atomic_list_concat(['./datalog_decoder ',' --file ',File,
+    atomic_list_concat(['datalog_decoder ',' --file ',File,
 			' --dir ',Dir,'/',Section_chain,Data_section_chain],Cmd),
     
     
@@ -144,7 +144,7 @@ collect_section_args(Arg,Name,Acc_sec,Acc_sec2):-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 call_compiled_souffle(File,Dir):-
-    atomic_list_concat(['./souffle_disasm  ',File,' -F ',Dir,' -D ',Dir],Cmd),
+    atomic_list_concat(['souffle_disasm  ',File,' -F ',Dir,' -D ',Dir],Cmd),
     format(user_error,'Datalog',[]),
     time(shell(Cmd)).
 
