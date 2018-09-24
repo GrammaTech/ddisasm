@@ -1,0 +1,66 @@
+#
+# Cmake Configuration
+#
+
+# Need 3.7 to support CXX_STANDARD=17
+CMAKE_MINIMUM_REQUIRED(VERSION 3.7.0)
+
+PROJECT(DDISASM)
+
+#
+# Global Options (CMake)
+#
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+if (WIN32)
+  set(CMAKE_DEBUG_POSTFIX          "d" CACHE STRING "add a postfix, usually d on windows")
+endif()
+set(CMAKE_RELEASE_POSTFIX        ""  CACHE STRING "add a postfix, usually empty on windows")
+set(CMAKE_RELWITHDEBINFO_POSTFIX ""  CACHE STRING "add a postfix, usually empty on windows")
+set(CMAKE_MINSIZEREL_POSTFIX     ""  CACHE STRING "add a postfix, usually empty on windows")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Use C++17
+set(CMAKE_CXX_STANDARD 17)
+# Error if it's not available
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Specifically check for gcc-7 or later. gcc-5 is installed on many
+# systems and will accept -std=c++17, but does not fully support the
+# standard.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "7.0.0")
+    message(FATAL_ERROR "gcc 7 or later is required to build gtirb")
+  endif()
+endif()
+
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+
+# ---------------------------------------------------------------------------
+# gtirb
+# ---------------------------------------------------------------------------
+
+find_package(gtirb REQUIRED)
+
+# ---------------------------------------------------------------------------
+# Boost
+# ---------------------------------------------------------------------------
+
+add_compile_options(-DBOOST_SYSTEM_NO_DEPRECATED)
+find_package(Boost 1.59 REQUIRED COMPONENTS filesystem program_options)
+include_directories(${Boost_INCLUDE_DIRS})
+
+# ---------------------------------------------------------------------------
+# capstone
+# ---------------------------------------------------------------------------
+find_library(CAPSTONE NAMES capstone)
+if(NOT CAPSTONE)
+  message(FATAL_ERROR "capstone library not found")
+endif()
+
+
+add_subdirectory(src)
+add_subdirectory(doc)

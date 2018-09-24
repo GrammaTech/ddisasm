@@ -24,7 +24,8 @@ run-ubuntu16:
   variables:
     OS: 'ubuntu16'
   script:
-    - docker run ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c "make check"
+    - docker run ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
+      "cd tests/ && ./test_small.sh && ./test_assembler_examples.sh"
     - if [ "$CI_BUILD_REF_NAME" == "master" ] && [ "$OS" == "ubuntu16" ];
       then
         docker tag ${LOCAL_IMAGE_NAME}-${OS} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;

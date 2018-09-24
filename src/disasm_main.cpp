@@ -372,9 +372,9 @@ std::vector<gtirb::Addr> convertRelation<gtirb::Addr>(const std::string &relatio
     std::vector<gtirb::Addr> result;
     auto *r = prog->getRelation(relation);
     std::transform(r->begin(), r->end(), std::back_inserter(result), [](auto &tuple) {
-        gtirb::Addr result;
-        tuple >> result;
-        return result;
+        gtirb::Addr addr;
+        tuple >> addr;
+        return addr;
     });
     return result;
 }
@@ -386,9 +386,9 @@ std::vector<std::string> convertRelation<std::string>(const std::string &relatio
     std::vector<std::string> result;
     auto *r = prog->getRelation(relation);
     std::transform(r->begin(), r->end(), std::back_inserter(result), [](auto &tuple) {
-        std::string result;
-        tuple >> result;
-        return result;
+        std::string str;
+        tuple >> str;
+        return str;
     });
     return result;
 }
@@ -950,8 +950,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if(souffle::SouffleProgram *prog =
-           souffle::ProgramFactory::newInstance("___bin_souffle_disasm"))
+    if(souffle::SouffleProgram *prog = souffle::ProgramFactory::newInstance("souffle_disasm"))
     {
         try
         {

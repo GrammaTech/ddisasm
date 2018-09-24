@@ -40,6 +40,23 @@ The analysis contains three parts:
 ## Building souffle_disasm
 A C++17 compiler such as gcc 7 or clang 6 is required.
 
+Boost (1.59 or later) and [GTIRB](https://github.com/grammatech/gtirb)
+are required.
+
+Use the following options to configure cmake:
+- You can tell CMake which compiler to use with
+  `-DCMAKE_CXX_COMPILER=<compiler>`.
+- Normally CMake will find GTIRB automatically, but if it does not you
+  can pass `-Dgtirb_DIR=<path-to-gtirb-build>`.
+
+Once the dependencies are installed, you can configure and build as follows:
+
+```bash
+$ cmake ./ -Bbuild
+$ cd build
+$ make
+```
+
 ## Running the analysis
 Once souffle_disasm is built, we can run complete analysis on a file
 by calling `/bin/disasm'`.
