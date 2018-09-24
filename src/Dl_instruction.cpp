@@ -19,7 +19,7 @@
  *      Author: afloresmontoya
  */
 
-#include <datalog_disasm/src/Dl_instruction.h>
+#include "Dl_instruction.h"
 #include <sstream>
 
 

@@ -1,0 +1,74 @@
+# ===== datalog_decoder =====
+add_executable(datalog_decoder
+  decoder_main.cpp
+  Dl_decoder.cpp
+  Dl_operator.cpp
+  Dl_instruction.cpp
+  Dl_operator_table.cpp
+  Elf_reader.cpp)
+
+target_link_libraries(datalog_decoder
+  ${CAPSTONE}
+  ${Boost_LIBRARIES})
+
+target_compile_options(datalog_decoder PRIVATE -Wall -Wextra -Wpointer-arith -Wno-unused-parameter)
+target_compile_options(datalog_decoder PRIVATE -Werror)
+
+# ===== generated souffle code =====
+find_program(SOUFFLE souffle
+	HINTS $ENV{PATH}
+	DOC "souffle must be in your PATH to build disassembler.")
+if(NOT SOUFFLE)
+  message(FATAL_ERROR "souffle was not found in your PATH. Unable to build.")
+endif()
+
+
+set(DATALOG_SOURCES
+    datalog/code_inference.dl
+    datalog/data_access_analysis.dl
+    datalog/empty_range.dl
+    datalog/float_operations.dl
+    datalog/function_inference.dl
+    datalog/intra_procedural_cfg_completeness.dl
+    datalog/intra_procedural_SCC.dl
+    datalog/jump_operations.dl
+    datalog/main.dl
+    datalog/no_return_analysis.dl
+    datalog/ordered_set.dl
+    datalog/pointer_reatribution.dl
+    datalog/printable_chars.dl
+    datalog/relative_jump_tables.dl
+    datalog/symbolization.dl
+    datalog/traverse_code.dl
+    datalog/use_def_analysis.dl
+    datalog/value_analysis.dl)
+
+set(GENERATED_CPP "${CMAKE_BINARY_DIR}/src/souffle_disasm.cpp")
+add_custom_command(OUTPUT ${GENERATED_CPP}
+  # Souffle incldes the path of the output file in the generated
+  # program name. Change directory and use a relative path so the name
+  # does not depend on build location.
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
+  COMMAND ${SOUFFLE} ${CMAKE_CURRENT_SOURCE_DIR}/datalog/main.dl -g souffle_disasm.cpp
+  DEPENDS ${DATALOG_SOURCES})
+
+# ===== souffle_disasm =====
+# First build a static library of all the non-generated code.. This is
+# just a hack to get CMake to use different compile flags (because the
+# generated souffle code won't build with -Wall -Werror).
+add_library(disasm_main STATIC
+  disasm_main.cpp
+  Elf_reader.cpp)
+target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
+target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
+target_compile_options(disasm_main PRIVATE -Wall -Wextra -Wpointer-arith)
+target_compile_options(disasm_main PRIVATE -Werror)
+target_link_libraries(disasm_main gtirb)
+
+# Now combine the static library and generated code into an
+# executable.
+add_executable(souffle_disasm
+  ${GENERATED_CPP})
+target_link_libraries(souffle_disasm disasm_main)
+target_compile_definitions(souffle_disasm PRIVATE __EMBEDDED_SOUFFLE__)
+target_compile_definitions(souffle_disasm PRIVATE RAM_DOMAIN_SIZE=64)

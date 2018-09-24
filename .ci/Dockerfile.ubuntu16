@@ -75,15 +75,15 @@ RUN cd /usr/local/src \
     && CAPSTONE_ARCHS=x86 ./make.sh \
     && CAPSTONE_ARCHS=x86 ./make.sh install
 
-RUN   useradd dl_disasm
-COPY --chown=dl_disasm . /datalog_disasm
-USER dl_disasm
+COPY . /datalog_disasm
 
 # Build GTIRB
 RUN rm -rf /datalog_disasm/gtirb/build /datalog_disasm/gtirb/CMakeCache.txt /datalog_disasm/gtirb/CMakeFiles /datalog_disasm/gtirb/CMakeScripts
 RUN cd /datalog_disasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build &&  make && make install
 
+# Build datalog_disasm
 ENV TERM xterm
-ENV LD_LIBRARY_PATH /datalog_disasm/gtirb/build/lib
+RUN rm -rf /datalog_disasm/build /datalog_disasm/CMakeCache.txt /datalog_disasm/CMakeFiles /datalog_disasm/CMakeScripts
 WORKDIR /datalog_disasm
-RUN make clean && make CXX=g++-7 GTIRB_BASE=$PWD/gtirb/build/
+RUN cmake ./  -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build && make
+ENV LD_LIBRARY_PATH /datalog_disasm/gtirb/build/lib
