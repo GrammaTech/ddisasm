@@ -458,7 +458,7 @@ char* Elf_reader::get_section(const string& name,int64_t & size,Elf64_Addr& init
         buff= new char[size];
     }catch(std::bad_alloc& ba){
         std::cerr << "bad_alloc caught: " << ba.what() << "trying to allocate for "<< name<<endl;
-
+        return nullptr;
     }
     file.seekg((sections[index].sh_offset), ios::beg);
     file.read(buff, size);
