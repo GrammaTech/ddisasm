@@ -19,6 +19,16 @@ if [[ $# -eq 0 || $1 == "-h" || $1 == "--help" ]]; then
     exit
 fi
 
+# Check for missing executables, to avoid mysterious failures later.
+if !(which souffle_disasm > /dev/null); then
+    echo "Missing souffle_disasm"
+    exit 1
+fi
+if !(which datalog_decoder > /dev/null); then
+    echo "Missing datalog_decoder"
+    exit 1
+fi
+
 red=`tput setaf 1`
 green=`tput setaf 2`
 normal=`tput sgr0`
