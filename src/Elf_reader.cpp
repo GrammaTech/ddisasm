@@ -82,7 +82,8 @@ void Elf_reader::read_sections(){
 
 	//read the names
 	Elf64_Shdr* SecName_section= &sections[header.e_shstrndx];
-	const int buff_size=100;
+        // FIXME: use dynamically sized buffer or at least detect names which don't fit.
+	const int buff_size=200;
 	char buff[buff_size];
 	for(int i=0;i<header.e_shnum; i++){
 		//position in the begining of the name
