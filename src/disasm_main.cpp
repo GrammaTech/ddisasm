@@ -459,7 +459,7 @@ static std::map<gtirb::Addr, uint64_t> buildSymbols(gtirb::IR &ir, souffle::Souf
     }
 
     std::sort(functionEAs.begin(), functionEAs.end());
-    ir.addTable("functionEAs", std::move(functionEAs));
+    ir.addAuxData("functionEAs", std::move(functionEAs));
 
     return symbolSizes;
 }
@@ -534,7 +534,7 @@ static void buildRelocations(gtirb::IR &ir, souffle::SouffleProgram *prog)
             name.clear();
         relocations[ea] = {type, name};
     }
-    ir.addTable("relocations", std::move(relocations));
+    ir.addAuxData("relocations", std::move(relocations));
 }
 
 bool isNullReg(const std::string &reg)
@@ -747,14 +747,14 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
         }
         emplaceBlock(cfg, C, blockAddress, size, exit);
     }
-    ir.addTable("blockCalls", std::move(blockCalls));
+    ir.addAuxData("blockCalls", std::move(blockCalls));
 
     std::map<gtirb::Addr, std::string> pltReferences;
     for(const auto &p : symbolicInfo.PLTCodeReferences.contents)
     {
         pltReferences[gtirb::Addr(p.EA)] = p.Name;
     }
-    ir.addTable("pltCodeReferences", std::move(pltReferences));
+    ir.addAuxData("pltCodeReferences", std::move(pltReferences));
 }
 
 // Create DataObjects for labeled objects in the BSS section, without adding
@@ -828,7 +828,7 @@ void buildBSS(gtirb::IR &ir, souffle::SouffleProgram *prog,
         }
     }
 
-    ir.addTable("bssData", dataUUIDs);
+    ir.addAuxData("bssData", dataUUIDs);
 }
 
 void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
@@ -937,15 +937,15 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
 
     buildBSS(ir, prog, symbolSizes);
 
-    ir.addTable("dataSections", std::move(dataSections));
-    ir.addTable("stringEAs", std::move(stringEAs));
+    ir.addAuxData("dataSections", std::move(dataSections));
+    ir.addAuxData("stringEAs", std::move(stringEAs));
 
     std::map<gtirb::Addr, std::string> pltReferences;
     for(const auto &p : pltDataReference.contents)
     {
         pltReferences[gtirb::Addr(p.EA)] = p.Name;
     }
-    ir.addTable("pltDataReferences", std::move(pltReferences));
+    ir.addAuxData("pltDataReferences", std::move(pltReferences));
 
     // Set referents of all symbols pointing to data
     std::for_each(module.data_begin(), module.data_end(), [&module](auto &d) {
@@ -956,9 +956,9 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
 
 static void buildFunctions(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    ir.addTable("functionEntry", convertRelation<gtirb::Addr>("function_entry2", prog));
-    ir.addTable("mainFunction", convertRelation<gtirb::Addr>("main_function", prog));
-    ir.addTable("startFunction", convertRelation<gtirb::Addr>("start_function", prog));
+    ir.addAuxData("functionEntry", convertRelation<gtirb::Addr>("function_entry2", prog));
+    ir.addAuxData("mainFunction", convertRelation<gtirb::Addr>("main_function", prog));
+    ir.addAuxData("startFunction", convertRelation<gtirb::Addr>("start_function", prog));
 }
 
 static void buildCFG(gtirb::IR &ir, souffle::SouffleProgram *prog)
@@ -979,7 +979,7 @@ static void buildCFG(gtirb::IR &ir, souffle::SouffleProgram *prog)
     }
 
     std::map<const gtirb::Block *, const gtirb::Block *> blockCalls;
-    const auto &t2 = *ir.getTable("blockCalls")->get<std::map<gtirb::Addr, gtirb::Addr>>();
+    const auto &t2 = *ir.getAuxData("blockCalls")->get<std::map<gtirb::Addr, gtirb::Addr>>();
     std::transform(t2.begin(), t2.end(), std::inserter(blockCalls, blockCalls.begin()),
                    [&blocksByEA](const auto &elt) {
                        return std::make_pair(blocksByEA.find(elt.first)->second,
