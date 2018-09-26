@@ -2,8 +2,8 @@
 # Cmake Configuration
 #
 
-# Need 3.7 to support CXX_STANDARD=17
-CMAKE_MINIMUM_REQUIRED(VERSION 3.7.0)
+# Need 3.9 to support CXX_STANDARD=17 and protobuf
+CMAKE_MINIMUM_REQUIRED(VERSION 3.9.0)
 
 PROJECT(DDISASM)
 

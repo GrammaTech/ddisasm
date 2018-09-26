@@ -14,7 +14,7 @@ FROM ubuntu:18.04
 
 ARG BOOST_VERSION=1.67.0
 ARG BOOST_VERSION_=1_67_0
-ARG CMAKE_VERSION=3.10
+ARG CMAKE_VERSION=3.9
 
 RUN apt-get -y update && apt-get -y install autoconf automake bison build-essential clang doxygen flex  git libtool make mcpp openjdk-8-jdk pkg-config python sqlite3 libsqlite3-dev subversion swi-prolog zlib1g-dev clang ed libpcre3-dev libncurses5-dev wget libc++1 libc++abi1 gcc-5 g++-5
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
