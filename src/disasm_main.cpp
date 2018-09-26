@@ -411,20 +411,6 @@ std::vector<gtirb::Addr> convertRelation<gtirb::Addr>(const std::string &relatio
     return result;
 }
 
-template <>
-std::vector<std::string> convertRelation<std::string>(const std::string &relation,
-                                                      souffle::SouffleProgram *prog)
-{
-    std::vector<std::string> result;
-    auto *r = prog->getRelation(relation);
-    std::transform(r->begin(), r->end(), std::back_inserter(result), [](auto &tuple) {
-        std::string str;
-        tuple >> str;
-        return str;
-    });
-    return result;
-}
-
 template <typename T>
 static T convertSortedRelation(const std::string &relation, souffle::SouffleProgram *prog)
 {
