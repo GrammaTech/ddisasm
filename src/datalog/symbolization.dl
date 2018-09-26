@@ -103,12 +103,31 @@ symbol_minus_symbol(EA,EA,Symbol2):-
 	block(Symbol2),
 	relative_address(EA+4,EA,Symbol3),
 	block(Symbol3).
+
+// more permissive symbol_minus_symbol starting point
+symbol_minus_symbol(EA,EA,Symbol2):-
+	relative_address(EA,EA,Symbol1),
+	block(Symbol1),
+	relative_address(EA+4,EA,Symbol2),
+        !preferred_data_access(EA+4,_),
+        block(Symbol2),
+     	relative_address(EA+8,EA,Symbol3),
+        !preferred_data_access(EA+8,_),
+	block(Symbol3).
+ 
 	
 symbol_minus_symbol(EA,EA_ref,Symbol2):-
 	symbol_minus_symbol(EA_label,EA_ref,_),
 	preferred_data_access(EA,EA_label),
 	relative_address(EA,EA_ref,Symbol2),
 	block(Symbol2).
+
+//more permissive symbol_minus_symbol propagation
+symbol_minus_symbol(EA+4,EA_ref,Symbol):-
+	symbol_minus_symbol(EA,EA_ref,_),
+        relative_address(EA+4,EA_ref,Symbol),
+	!preferred_data_access(EA+4,_),
+	block(Symbol).
 ////////////////////////////////////////////////////////////////////////
 // address_in_data considers anything that points to the code region
 // this refinement restricts that to the beginning of the final blocks
