@@ -1074,8 +1074,6 @@ static void buildIR(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgram *pro
     buildDataGroups(ir, prog, symbolSizes);
     buildCodeBlocks(ir, prog);
     buildFunctions(ir, prog);
-    ir.addTable("ambiguousSymbol", convertRelation<std::string>("ambiguous_symbol", prog));
-
     buildCFG(ir, prog);
 }
 
