@@ -78,7 +78,8 @@ may_fallthrough(From,To):-
 
 must_fallthrough(From,To):-
 	may_fallthrough(From,To),
-	!instruction_get_operation(From,"CALL").
+        !instruction_get_operation(From,"CALL"),
+        !conditional_jump(From).
 
 
 /////////////////////////////////////////////////////////////
