@@ -308,6 +308,13 @@ loop_operation("LOOPE").
 inconditional_jump(EA):-
 	instruction_get_operation(EA,"JMP").
 
+.decl conditional_jump(src:address)
+
+conditional_jump(EA):-
+    instruction_get_operation(EA,Operation),
+    jump_operation(Operation),
+    Operation!="JMP".
+
 // direct jumps
 .decl direct_jump(src:address, dest:address)
 .output direct_jump
