@@ -28,13 +28,12 @@
 
 class Dl_instruction
 {
-private:
+public:
     int64_t address;
     long size;
     std::string prefix;
     std::string name;
     std::vector<int64_t> op_codes;
-public:
 
     Dl_instruction():
         address(0),

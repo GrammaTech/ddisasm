@@ -28,7 +28,10 @@
 #include <vector>
 
 class Elf_reader {
-
+public:
+        using symbol = std::tuple<uint64_t, uint64_t, std::string, std::string, std::string>;
+        using section = std::tuple<std::string, uint64_t, uint64_t>;
+        using relocation = std::tuple<uint64_t, std::string, std::string, uint64_t>;
 
 private:
 	std::ifstream file;
@@ -53,6 +56,10 @@ private:
 	std::string get_relocation_type(int type);
 	void print_symbol_table(std::ostream& stream,std::vector<Elf64_Sym>& symbol_table,
 	                        std::vector<std::string>& symbol_name_table);
+        void add_symbols_from_table(std::vector<symbol> &out,
+                                    const std::vector<Elf64_Sym>& symbol_table,
+                                    const std::vector<std::string>& symbol_name_table);
+
 	int get_section_index(const std::string& name);
 public:
 	Elf_reader(std::string filename);
@@ -63,19 +70,23 @@ public:
 	uint64_t get_min_address();
 	void print_sections(std::ostream&);
 	bool print_sections_to_file(const std::string& filename);
-	void add_sections_to_souffle(souffle::Relation* rel);
+
+        std::vector<section> get_sections();
 
 	bool print_binary_type_to_file(const std::string& filename);
+        std::string get_binary_type();
 
 	void print_entry_point(std::ostream&);
 	bool print_entry_point_to_file(const std::string& filename);
+        uint64_t get_entry_point();
 
 	void print_symbols(std::ostream&);
 	bool print_symbols_to_file(const std::string& filename);
-	void add_symbols_to_souffle(souffle::Relation* rel);
+        std::vector<symbol> get_symbols();
 
 	void print_relocations(std::ostream&);
 	bool print_relocations_to_file(const std::string& filename);
+        std::vector<Elf_reader::relocation> get_relocations();
 
 
 	char* get_section(const std::string& name, int64_t& buff,Elf64_Addr& initial_addr);
