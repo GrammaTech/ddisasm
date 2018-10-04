@@ -1,19 +1,3 @@
-# ===== datalog_decoder =====
-add_executable(datalog_decoder
-  decoder_main.cpp
-  Dl_decoder.cpp
-  Dl_operator.cpp
-  Dl_instruction.cpp
-  Dl_operator_table.cpp
-  Elf_reader.cpp)
-
-target_link_libraries(datalog_decoder
-  ${CAPSTONE}
-  ${Boost_LIBRARIES})
-
-target_compile_options(datalog_decoder PRIVATE -Wall -Wextra -Wpointer-arith -Wno-unused-parameter)
-target_compile_options(datalog_decoder PRIVATE -Werror)
-
 # ===== generated souffle code =====
 find_program(SOUFFLE souffle
 	HINTS $ENV{PATH}
@@ -58,12 +42,19 @@ add_custom_command(OUTPUT ${GENERATED_CPP}
 # generated souffle code won't build with -Wall -Werror).
 add_library(disasm_main STATIC
   disasm_main.cpp
+  Dl_decoder.cpp
+  Dl_operator.cpp
+  Dl_instruction.cpp
+  Dl_operator_table.cpp
   Elf_reader.cpp)
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(disasm_main PRIVATE -Wall -Wextra -Wpointer-arith)
 target_compile_options(disasm_main PRIVATE -Werror)
-target_link_libraries(disasm_main gtirb)
+target_link_libraries(disasm_main
+  gtirb
+  ${CAPSTONE}
+  ${Boost_LIBRARIES})
 
 # Now combine the static library and generated code into an
 # executable.

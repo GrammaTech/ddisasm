@@ -48,7 +48,7 @@ public:
                 std::string reg3="none",
                 int64_t offset=0,
                 int64_t multiplier=1,
-                int64_t dist=0,
+                int64_t=0,
                 short size=0):
                     type(type),
                     reg1(reg1),

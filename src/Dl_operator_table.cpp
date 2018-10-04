@@ -44,3 +44,13 @@ void Dl_operator_table::print_operators_of_type(operator_type type,std::ofstream
     }
 
 }
+
+std::vector<std::pair<Dl_operator, int64_t>>
+Dl_operator_table::get_operators_of_type(operator_type type) const
+{
+    std::vector<std::pair<Dl_operator, int64_t>> result;
+    for (const auto& pair : dicts[type]) {
+        result.push_back(pair);
+    }
+    return result;
+}

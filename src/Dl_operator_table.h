@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <map>
 #include <fstream>
+#include <vector>
 
 class Dl_operator_table{
     using op_dict=std::map<Dl_operator,int64_t,compare_operators>;
@@ -45,6 +46,7 @@ public:
     int64_t add(Dl_operator op);
     void print_operators_of_type(operator_type type,std::ofstream& fbuf);
     void print(std::string directory,std::ios_base::openmode filemask);
+    std::vector<std::pair<Dl_operator, int64_t>> get_operators_of_type(operator_type type) const;
 
 
 };

@@ -183,6 +183,11 @@ bool Elf_reader::is_valid(){
 void Elf_reader::print_entry_point(ostream& stream){
 	stream<< header.e_entry<< endl;
 }
+
+uint64_t Elf_reader::get_entry_point() {
+	return header.e_entry;
+}
+
 bool Elf_reader::print_entry_point_to_file(const string& filename){
 	ofstream file(filename,ios::out|ios::binary);
 	if(file.is_open()){
@@ -215,6 +220,21 @@ bool Elf_reader::print_binary_type_to_file(const string& filename){
         return false;
     }
 }
+
+string Elf_reader::get_binary_type(){
+    static string binary_type_names[]={
+                                        "NONE",				/* No file type */
+                                        "REL",			/* Relocatable file */
+                                        "EXEC",			/* Executable file */
+                                        "DYN",			/* Shared object file */
+                                        "CORE",			/* Core file */
+                                        "NUM",			/* Number of defined types */
+                                      };
+    if(header.e_type<6)
+        return binary_type_names[header.e_type];
+    return "OTHER";
+}
+
 void Elf_reader::print_sections(ostream& stream){
 	auto sect_it=sections.begin();
 	auto sect_names_it=section_names.begin();
@@ -227,21 +247,21 @@ void Elf_reader::print_sections(ostream& stream){
             ++sect_names_it;
 	}
 }
-/*
-void Elf_reader::add_sections_to_souffle(souffle::Relation* rel){
+
+vector<Elf_reader::section> Elf_reader::get_sections(){
 	auto sect_it=sections.begin();
 	auto sect_names_it=section_names.begin();
+        vector<section> result;
 	while(sect_it!=sections.end()){
-		souffle::tuple tuple(rel);
-		tuple<< *sect_names_it
-				<<  sect_it->sh_size
-				<<  sect_it->sh_addr;
-		rel->insert(tuple);
-		++sect_it;
-		++sect_names_it;
+	    if(*sect_names_it!="")
+                result.emplace_back(*sect_names_it, sect_it->sh_size,
+                                    sect_it->sh_addr);
+            ++sect_it;
+            ++sect_names_it;
 	}
+        return result;
 }
-*/
+
 bool Elf_reader::print_sections_to_file(const string& filename){
 	ofstream file(filename,ios::out|ios::binary);
 	if(file.is_open()){
@@ -306,27 +326,38 @@ void Elf_reader::print_symbol_table(ostream& stream,std::vector<Elf64_Sym>& symb
         ++symbol_names_it;
     }
 }
+
+void Elf_reader::add_symbols_from_table(std::vector<symbol> &out,
+                                        const std::vector<Elf64_Sym>& symbol_table,
+                                        const std::vector<string>& symbol_name_table)
+{
+    auto symbol_it=symbol_table.begin();
+    auto symbol_names_it=symbol_name_table.begin();
+    while(symbol_it!=symbol_table.end()){
+        if(*symbol_names_it!="")
+            out.emplace_back(symbol_it->st_value,
+                             symbol_it->st_size,
+                             get_symbol_type_str(symbol_it->st_info),
+                             get_symbol_scope_str(symbol_it->st_info),
+                             *symbol_names_it);
+
+        ++symbol_it;
+        ++symbol_names_it;
+    }
+}
+
 void Elf_reader::print_symbols(ostream& stream){
     print_symbol_table(stream,symbols,symbol_names);
     print_symbol_table(stream,dyn_symbols,dyn_symbol_names);
 }
 
-/*
-void Elf_reader::add_symbols_to_souffle(souffle::Relation* rel){
-	auto symbol_it=symbols.begin();
-	auto symbol_names_it=symbol_names.begin();
-	while(symbol_it!=symbols.end()){
-		souffle::tuple tuple(rel);
-		tuple<< *symbol_names_it
-				<<  symbol_it->st_info
-				<< symbol_it->st_value
-				<< symbol_it->st_size;
-		rel->insert(tuple);
-		++symbol_it;
-		++symbol_names_it;
-	}
+vector<Elf_reader::symbol> Elf_reader::get_symbols() {
+    vector<symbol> result;
+    add_symbols_from_table(result,symbols,symbol_names);
+    add_symbols_from_table(result,dyn_symbols,dyn_symbol_names);
+
+    return result;
 }
-*/
 bool Elf_reader::print_symbols_to_file(const string& filename){
 	ofstream file(filename,ios::out|ios::binary);
 	if(file.is_open()){
@@ -414,6 +445,19 @@ bool Elf_reader::print_relocations_to_file(const string& filename){
 
 }
 
+vector<Elf_reader::relocation> Elf_reader::get_relocations() {
+    //this depends on reading the .dynsym first, before the .symtab when reading symbols
+    vector<relocation> result;
+    for(auto relocation: relocations){
+        int symbol_index=ELF64_R_SYM(relocation.r_info);
+        int type=ELF64_R_TYPE(relocation.r_info);
+        result.emplace_back(relocation.r_offset,
+                            get_relocation_type(type),
+                            dyn_symbol_names[symbol_index],
+                            relocation.r_addend);
+    }
+    return result;
+}
 
 int Elf_reader::get_section_index(const string& name){
 	for(size_t i=0;i<section_names.size();++i){

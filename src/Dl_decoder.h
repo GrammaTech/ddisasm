@@ -30,10 +30,10 @@
 #include <cstdint>
 
 template <class Content>
-class Dl_data{
+struct Dl_data{
+public:
     int64_t ea;
     Content content;
-public:
     Dl_data(int64_t ea, Content content):
         ea(ea),
         content(content){}
@@ -42,14 +42,14 @@ public:
 
 class Dl_decoder
 {
-private:
     csh csHandle;
+
+public:
     Dl_operator_table op_dict;
     std::vector<Dl_instruction> instructions;
     std::vector<int64_t> invalids;
     std::vector<Dl_data<int64_t> > data;
     std::vector<Dl_data<unsigned char> > data_bytes;
-public:
     Dl_decoder();
     void decode_section(char* buff,uint64_t size,int64_t ea);
     std::string getRegisterName(unsigned int reg);

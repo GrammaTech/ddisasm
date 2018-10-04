@@ -14,12 +14,17 @@
 //===----------------------------------------------------------------------===//
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
+#include <boost/program_options.hpp>
+#include <fstream>
 #include <gtirb/gtirb.hpp>
+#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
+#include "Dl_decoder.h"
 #include "Elf_reader.h"
 
+namespace po = boost::program_options;
 using namespace std::rel_ops;
 
 // souffle uses a signed integer for all numbers (either 32 or 64 bits
@@ -1063,19 +1068,202 @@ static void buildIR(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgram *pro
     buildCFG(ir, prog);
 }
 
+static void decode(Dl_decoder &decoder, Elf_reader &elf, std::vector<std::string> sections,
+                   std::vector<std::string> data_sections)
+{
+    for(const auto &section_name : sections)
+    {
+        int64_t size;
+        uint64_t address;
+        char *buff = elf.get_section(section_name, size, address);
+        if(buff != nullptr)
+        {
+            std::cout << "Decoding section " << section_name << " of size " << size << "\n";
+            decoder.decode_section(buff, size, address);
+            delete[] buff;
+        }
+        else
+            std::cerr << "Section " << section_name << " not found\n";
+    }
+    uint64_t min_address = elf.get_min_address();
+    uint64_t max_address = elf.get_max_address();
+    for(const auto &section_name : data_sections)
+    {
+        int64_t size;
+        uint64_t address;
+        char *buff = elf.get_section(section_name, size, address);
+        if(buff != nullptr)
+        {
+            std::cout << "Storing data section " << section_name << " of size " << size << "\n";
+            decoder.store_data_section(buff, size, address, min_address, max_address);
+            delete[] buff;
+        }
+        else
+            std::cerr << "Section " << section_name << " not found\n";
+    }
+}
+
+static void writeFacts(Dl_decoder &decoder, Elf_reader &elf, const std::string &directory)
+{
+    std::ios_base::openmode filemask = std::ios::out;
+
+    elf.print_binary_type_to_file(directory + "binary_type.facts");
+    elf.print_entry_point_to_file(directory + "entry_point.facts");
+    elf.print_sections_to_file(directory + "section.facts");
+    elf.print_symbols_to_file(directory + "symbol.facts");
+    elf.print_relocations_to_file(directory + "relocation.facts");
+
+    std::ofstream instructions_file(directory + "instruction.facts", filemask);
+    decoder.print_instructions(instructions_file);
+    instructions_file.close();
+
+    std::ofstream data_file(directory + "address_in_data.facts", filemask);
+    decoder.print_data(data_file);
+    data_file.close();
+
+    std::ofstream data_bytes_file(directory + "data_byte.facts", filemask);
+    decoder.print_data_bytes(data_bytes_file);
+    data_bytes_file.close();
+
+    std::ofstream invalids_file(directory + "invalid_op_code.facts", filemask);
+    decoder.print_invalids(invalids_file);
+    invalids_file.close();
+
+    std::ofstream op_regdirect_file(directory + "op_regdirect.facts", filemask);
+    decoder.print_operators_of_type(operator_type::REG, op_regdirect_file);
+    op_regdirect_file.close();
+
+    std::ofstream op_immediate_file(directory + "op_immediate.facts", filemask);
+    decoder.print_operators_of_type(operator_type::IMMEDIATE, op_immediate_file);
+    op_immediate_file.close();
+
+    std::ofstream op_indirect_file(directory + "op_indirect.facts", filemask);
+    decoder.print_operators_of_type(operator_type::INDIRECT, op_indirect_file);
+    op_indirect_file.close();
+}
+
+template <typename T>
+void addRelation(souffle::SouffleProgram *prog, const std::string &name, const std::vector<T> &data)
+{
+    auto *rel = prog->getRelation(name);
+    for(const auto elt : data)
+    {
+        souffle::tuple t(rel);
+        t << elt;
+        rel->insert(t);
+    }
+}
+
+template <class Func, size_t... Is>
+constexpr void static_for(Func &&f, std::integer_sequence<size_t, Is...>)
+{
+    (f(std::integral_constant<size_t, Is>{}), ...);
+}
+
+template <class... T>
+souffle::tuple &operator<<(souffle::tuple &t, const std::tuple<T...> &x)
+{
+    static_for([&t, &x](auto i) { t << get<i>(x); },
+               std::make_index_sequence<std::tuple_size<std::tuple<T...>>::value>{});
+
+    return t;
+}
+
+souffle::tuple &operator<<(souffle::tuple &t, const Dl_instruction &inst)
+{
+    t << inst.address << inst.size << inst.prefix << inst.name;
+    for(size_t i = 0; i < 4; ++i)
+    {
+        if(i < inst.op_codes.size())
+            t << inst.op_codes[i];
+        else
+            t << 0;
+    }
+
+    return t;
+}
+
+template <class T>
+souffle::tuple &operator<<(souffle::tuple &t, const Dl_data<T> &data)
+{
+    t << data.ea << static_cast<int64_t>(data.content);
+    return t;
+}
+
+souffle::tuple &operator<<(souffle::tuple &t, const std::pair<Dl_operator, int64_t> &pair)
+{
+    auto &[op, id] = pair;
+    switch(op.type)
+    {
+        case NONE:
+        default:
+            break;
+        case REG:
+            t << id << op.reg1;
+            break;
+        case IMMEDIATE:
+            t << id << op.offset;
+            break;
+        case INDIRECT:
+            t << id << op.reg1 << op.reg2 << op.reg3 << op.multiplier << op.offset << op.size;
+            break;
+    }
+
+    return t;
+}
+
+static void loadInputs(souffle::SouffleProgram *prog, Elf_reader &elf, const Dl_decoder &decoder)
+{
+    addRelation<std::string>(prog, "binary_type", {elf.get_binary_type()});
+    addRelation<uint64_t>(prog, "entry_point", {elf.get_entry_point()});
+    addRelation(prog, "section", elf.get_sections());
+    addRelation(prog, "symbol", elf.get_symbols());
+    addRelation(prog, "relocation", elf.get_relocations());
+    addRelation(prog, "instruction", decoder.instructions);
+    addRelation(prog, "address_in_data", decoder.data);
+    addRelation(prog, "data_byte", decoder.data_bytes);
+    addRelation(prog, "invalid_op_code", decoder.invalids);
+    addRelation(prog, "op_regdirect", decoder.op_dict.get_operators_of_type(operator_type::REG));
+    addRelation(prog, "op_immediate",
+                decoder.op_dict.get_operators_of_type(operator_type::IMMEDIATE));
+    addRelation(prog, "op_indirect",
+                decoder.op_dict.get_operators_of_type(operator_type::INDIRECT));
+}
+
 int main(int argc, char **argv)
 {
-    if(argc < 2)
-        return 1;
+    po::options_description desc("Allowed options");
+    desc.add_options()                                                          //
+        ("help", "produce help message")                                        //
+        ("file", po::value<std::string>()->required(), "the binary to analyze") //
+        ("sect", po::value<std::vector<std::string>>()->required(),
+         "sections to decode") //
+        ("data_sect", po::value<std::vector<std::string>>()->required(),
+         "data sections to consider")                                     //
+        ("ir", po::value<std::string>()->required(), "GTIRB output file") //
+        ("debug-dir", po::value<std::string>(), "location to write CSV files for debugging");
 
-    const char *filename = argv[1];
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
 
-    souffle::CmdOptions opt(R"(datalog/main.dl)",
-                            R"(.)",
-                            R"(.)", false,
-                            R"()", 1, -1);
-    if(!opt.parse(argc - 1, argv + 1))
+    if(vm.count("help"))
+    {
+        std::cout << desc << "\n";
         return 1;
+    }
+
+    try
+    {
+        po::notify(vm);
+    }
+    catch(std::exception &e)
+    {
+        std::cerr << "Error: " << e.what() << "\n";
+        return 1;
+    }
+
+    std::string filename;
+    filename = vm["file"].as<std::string>();
 
     Elf_reader elf(filename);
     if(!elf.is_valid())
@@ -1084,22 +1272,30 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    Dl_decoder decoder;
+    decode(decoder, elf, vm["sect"].as<std::vector<std::string>>(),
+           vm["data_sect"].as<std::vector<std::string>>());
+
     if(souffle::SouffleProgram *prog = souffle::ProgramFactory::newInstance("souffle_disasm"))
     {
         try
         {
-            prog->loadAll(opt.getInputFileDir());
+            loadInputs(prog, elf, decoder);
             prog->run();
 
             // Build and save IR
             auto &ir = *gtirb::IR::Create(C);
             buildIR(ir, elf, prog);
 
-            std::ofstream out(opt.getOutputFileDir() + "/gtirb");
+            std::ofstream out(vm["ir"].as<std::string>());
             ir.save(out);
 
-            // Also output CSV files for data not yet stored in gtirb.
-            prog->printAll(opt.getOutputFileDir());
+            if(vm.count("debug-dir") != 0)
+            {
+                auto dir = vm["debug-dir"].as<std::string>() + "/";
+                writeFacts(decoder, elf, dir);
+                prog->printAll(dir);
+            }
 
             delete prog;
             return 0;
