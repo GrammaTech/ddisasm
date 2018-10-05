@@ -1209,18 +1209,35 @@ static void loadInputs(souffle::SouffleProgram *prog, Elf_reader &elf, const Dl_
                 decoder.op_dict.get_operators_of_type(operator_type::INDIRECT));
 }
 
+namespace std
+{
+    // program_options default values need to be printable.
+    std::ostream &operator<<(std::ostream &os, const std::vector<std::string> &vec)
+    {
+        for(auto item : vec)
+        {
+            os << item << ",";
+        }
+        return os;
+    }
+} // namespace std
+
 int main(int argc, char **argv)
 {
+    std::vector<std::string> sections{".plt.got", ".fini", ".init", ".plt", ".text"};
+    std::vector<std::string> dataSections{".data",        ".rodata",  ".fini_array", ".init_array",
+                                          ".data.rel.ro", ".got.plt", ".got"};
+
     po::options_description desc("Allowed options");
-    desc.add_options()                                                          //
-        ("help", "produce help message")                                        //
-        ("file", po::value<std::string>()->required(), "the binary to analyze") //
-        ("sect", po::value<std::vector<std::string>>()->required(),             //
-         "sections to decode")                                                  //
-        ("data_sect", po::value<std::vector<std::string>>()->required(),        //
-         "data sections to consider")                                           //
-        ("ir", po::value<std::string>(), "GTIRB output file")                   //
-        ("asm", po::value<std::string>(), "ASM output file")                    //
+    desc.add_options()                                                                    //
+        ("help", "produce help message")                                                  //
+        ("file", po::value<std::string>()->required(), "the binary to analyze")           //
+        ("sect", po::value<std::vector<std::string>>()->default_value(sections),          //
+         "sections to decode")                                                            //
+        ("data_sect", po::value<std::vector<std::string>>()->default_value(dataSections), //
+         "data sections to consider")                                                     //
+        ("ir", po::value<std::string>(), "GTIRB output file")                             //
+        ("asm", po::value<std::string>(), "ASM output file")                              //
         ("debug-dir", po::value<std::string>(), "location to write CSV files for debugging");
 
     po::variables_map vm;
