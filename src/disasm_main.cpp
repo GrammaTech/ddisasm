@@ -12,6 +12,7 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include <PrettyPrinter.h>
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 #include <boost/program_options.hpp>
@@ -467,28 +468,6 @@ static std::map<gtirb::Addr, uint64_t> buildSymbols(gtirb::IR &ir, souffle::Souf
     ir.addAuxData("functionEAs", std::move(functionEAs));
 
     return symbolSizes;
-}
-
-// Name, Alignment.
-const std::array<std::pair<std::string, int>, 7> DataSectionDescriptors{{
-    {".got", 8},         //
-    {".got.plt", 8},     //
-    {".data.rel.ro", 8}, //
-    {".init_array", 8},  //
-    {".fini_array", 8},  //
-    {".rodata", 16},     //
-    {".data", 16}        //
-}};
-
-static const std::pair<std::string, int> *getDataSectionDescriptor(const std::string &name)
-{
-    const auto foundDataSection =
-        std::find_if(std::begin(DataSectionDescriptors), std::end(DataSectionDescriptors),
-                     [name](const auto &dsd) { return dsd.first == name; });
-    if(foundDataSection != std::end(DataSectionDescriptors))
-        return foundDataSection;
-    else
-        return nullptr;
 }
 
 static void buildSections(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgram *prog)
@@ -1236,11 +1215,12 @@ int main(int argc, char **argv)
     desc.add_options()                                                          //
         ("help", "produce help message")                                        //
         ("file", po::value<std::string>()->required(), "the binary to analyze") //
-        ("sect", po::value<std::vector<std::string>>()->required(),
-         "sections to decode") //
-        ("data_sect", po::value<std::vector<std::string>>()->required(),
-         "data sections to consider")                                     //
-        ("ir", po::value<std::string>()->required(), "GTIRB output file") //
+        ("sect", po::value<std::vector<std::string>>()->required(),             //
+         "sections to decode")                                                  //
+        ("data_sect", po::value<std::vector<std::string>>()->required(),        //
+         "data sections to consider")                                           //
+        ("ir", po::value<std::string>(), "GTIRB output file")                   //
+        ("asm", po::value<std::string>(), "ASM output file")                    //
         ("debug-dir", po::value<std::string>(), "location to write CSV files for debugging");
 
     po::variables_map vm;
@@ -1283,12 +1263,21 @@ int main(int argc, char **argv)
             loadInputs(prog, elf, decoder);
             prog->run();
 
-            // Build and save IR
             auto &ir = *gtirb::IR::Create(C);
             buildIR(ir, elf, prog);
 
-            std::ofstream out(vm["ir"].as<std::string>());
-            ir.save(out);
+            // Output GTIRB
+            if(vm.count("ir") != 0)
+            {
+                std::ofstream out(vm["ir"].as<std::string>());
+                ir.save(out);
+            }
+            // Pretty-print
+            if(vm.count("asm") != 0)
+            {
+                std::ofstream out(vm["asm"].as<std::string>());
+                out << PrettyPrinter().prettyPrint(C, &ir);
+            }
 
             if(vm.count("debug-dir") != 0)
             {
