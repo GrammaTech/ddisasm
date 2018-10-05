@@ -53,6 +53,7 @@ target_compile_options(disasm_main PRIVATE -Wall -Wextra -Wpointer-arith)
 target_compile_options(disasm_main PRIVATE -Werror)
 target_link_libraries(disasm_main
   gtirb
+  gtirb_pprinter
   ${CAPSTONE}
   ${Boost_LIBRARIES})
 

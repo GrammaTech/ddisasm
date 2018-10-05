@@ -81,10 +81,13 @@ COPY . /datalog_disasm
 RUN rm -rf /datalog_disasm/gtirb/build /datalog_disasm/gtirb/CMakeCache.txt /datalog_disasm/gtirb/CMakeFiles /datalog_disasm/gtirb/CMakeScripts
 RUN cd /datalog_disasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build &&  make && make install
 
+# Build pretty-printer
+RUN rm -rf /datalog_disasm/pretty-printer/build /datalog_disasm/pretty-printer/CMakeCache.txt /datalog_disasm/pretty-printer/CMakeFiles /datalog_disasm/pretty-printer/CMakeScripts
+RUN cd /datalog_disasm/pretty-printer/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build &&  make && make install
+
 # Build datalog_disasm
 ENV TERM xterm
 RUN rm -rf /datalog_disasm/build /datalog_disasm/CMakeCache.txt /datalog_disasm/CMakeFiles /datalog_disasm/CMakeScripts
 WORKDIR /datalog_disasm
 RUN cmake ./  -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build && make
-ENV LD_LIBRARY_PATH /datalog_disasm/gtirb/build/lib
 ENV PATH=/datalog_disasm/build/bin:$PATH
