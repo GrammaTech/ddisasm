@@ -19,13 +19,9 @@ if [[ $# -eq 0 || $1 == "-h" || $1 == "--help" ]]; then
     exit
 fi
 
-# Check for missing executables, to avoid mysterious failures later.
+# Check for missing executable, to avoid mysterious failures later.
 if !(which souffle_disasm > /dev/null); then
     echo "Missing souffle_disasm"
-    exit 1
-fi
-if !(which datalog_decoder > /dev/null); then
-    echo "Missing datalog_decoder"
     exit 1
 fi
 
@@ -70,29 +66,23 @@ if [ $strip == 1 ]; then
 fi
 
 
-printf "# Disassembling $exe into $exe.s with flags: $stir\n"
-if !(time(./disasm "$dir/$exe" -asm $stir > "$dir/$exe.s") 2>/tmp/time.txt); then
+printf "# Disassembling $exe into $exe.s\n"
+dl_files_dir=$(dirname $dir/$exe)/dl_files/
+mkdir "$dl_files_dir"
+if !(time(souffle_disasm --file "$dir/$exe" --debug-dir "$dl_files_dir" --asm "$dir/$exe.s" > "$dir/disasm.out") 2>/tmp/time.txt); then
     printf "# ${red}Disassembly failed${normal}\n"
     exit 1
 fi
 
 
-decode_time=$(cat /tmp/time.txt | grep -m 1 seconds)
-dl_time=$(cat /tmp/time.txt | grep -m 2 seconds | tail -n1)
-decode_time=${decode_time#*in }
-decode_time=${decode_time%seconds*}
-dl_time=${dl_time#*in }
-dl_time=${dl_time%seconds*}
-
 time=$(cat /tmp/time.txt| grep user| cut -f 2)
 size=$(stat --printf="%s" "$dir/$exe")
-printf "#Stats: Time $time Decode $decode_time Datalog $dl_time Size $size\n"
+printf "#Stats: Time $time Size $size\n"
 
 printf "  OK\n"
 printf "Copying old binary to $dir/$exe.old\n"
 cp $dir/$exe $dir/$exe.old
-dl_files_dir=$(dirname $dir/$exe)
-binary_type=$(cat $dl_files_dir/dl_files/binary_type.facts)
+binary_type=$(cat $dl_files_dir/binary_type.facts)
 printf "# Binary of type $binary_type\n"
 
 pie_flag=""
