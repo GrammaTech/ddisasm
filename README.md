@@ -18,16 +18,15 @@ code.
 
 ## Introduction
 
-The analysis contains three parts:
+The analysis contains two parts:
 
-- The C++ files generate a binary `bin/datalog_decoder` which takes
-  care of reading an elf file and generating several `.facts` files
-  that represent the inital problem.
+- The C++ files take care of reading an elf file and generating facts that represent
+  all the information contained in the binary.
 
 - `src/datalog/*.dl` contains the specification of the analyses in
   datalog.  It takes the basic facts and computes likely EAs, chunks
-  of code, etc. The results are stored in `.csv` files.  These files
-  can be compiled into `/bin/souffle_disasm`
+  of code, etc. The results are represented in GTIRB or can be printed
+  to assembler code using the gtirb-pprinter.
 
 ## Dependencies
 
@@ -36,6 +35,9 @@ The analysis contains three parts:
 - The analysis depends on [souffle](https://github.com/souffle-lang)
   being installed. Configure souffle with `--enable-64bit-domain
   --disable-provenance`.
+
+- For printing assembler code the datalog disassembler requires the
+[gtirb-pprinter](https://git.grammatech.com/debloat/pretty-printer)
 
 ## Building souffle_disasm
 A C++17 compiler such as gcc 7 or clang 6 is required.
@@ -59,24 +61,24 @@ $ make
 
 ## Running the analysis
 Once souffle_disasm is built, we can run complete analysis on a file
-by calling `/bin/disasm'`.
+by calling `build/bin/souffle_disasm'`.
 For example, we can run the analysis on one of the examples as
 follows:
 
-`cd bin` `./disasm ../examples/ex1/ex`
+`cd /build/bin` `./souffle_disasm --file ../../examples/ex1/ex --asm ex.s`
 
 The script accepts the following parameters:
 
-- `-debug` in addition to print what is considered to be code, it prints every instruction
-  that has not been explicitly discarded and segments of assembler that have been discarded
+*  `--help` produce help message
+*  `--file arg`  the binary to analyze
+*  `--sect arg (=.plt.got,.fini,.init,.plt,.text,)`
+                  code sections to decode
+*  `--data_sect arg (=.data,.rodata,.fini_array,.init_array,.data.rel.ro,.got.plt,.got,)`
+                  data sections to consider
+*  `--ir arg`    GTIRB output file
+*  `--asm arg`   ASM output file
+*  `--debug-dir arg`  location to write CSV files for debugging
 
-- `-asm` generate reassembleable assembler that can be given to assembler directly.
-
-- `-hints` generate a file `hints` with user hints (for csurf) in the
-  same directory as the binary
-
-- `-interpreted` this flag runs the souffle interpreter instead of the
-  compiled version. It is mainly useful for development.
 
 ## Rewriting a project
 
@@ -84,30 +86,24 @@ The directory /bin contains several scripts to rewrite and test complete project
 
 - `reassemble_and_test.sh` rebuilds a project using the compiler and
   compiler flags specified in the enviroment variables CC and CFLAGS,
-  rewrites the binary with `disasm` and run the project tests on the
+  rewrites the binary  and run the project tests on the
   new binary.
 
 - `CGC_reassemble_and_test.sh` does the analogous process but with CGC
   projects.  However, it receives the compiler and compiler flags as
   arguments
 
-
 - `reassemble_no_rebuild.sh` rewrites a binary without trying to
   rebuild the project before and without running tests later.
 
-- `compare_with_melt.sh` runs the disassembler and generates user
-  hints these user hints are then compared to the IR resulting from
-  calling gtm using gtir_compare. It generates a file with the
-  differences and outputs filtered differences.
 
 ## Testing
 The directory /tests also contains script for running extensive tests:
 
-- `test_coreutils.sh` test coreutils with different compilers and optimization flags
+- `test_coreutils.sh` test coreutils with different compilers and optimization flags.
 
 - `test_real_examples.sh` test a list of real world applications with
-  different compilers and optimization flags. For now it assumes that
-  the applications are all at certain directory `real_world_examples`
+  different compilers and optimization flags.
 
 - `test_CGC.sh` test a subset of the CGC programs with different compilers and optimization flags.
 
@@ -116,6 +112,7 @@ The directory /tests also contains script for running extensive tests:
 - Exception frames are ignored
 
 ## References
+
 1. Souffle: "On fast large-scale program analysis in Datalog" CC2016
  - PDF: http://souffle-lang.org/pdf/cc.pdf
  - License: Universal Permissive License (UPL)
@@ -124,17 +121,15 @@ The directory /tests also contains script for running extensive tests:
 2. Porting Doop from LogicBlox to souffle
  - https://yanniss.github.io/doop2souffle-soap17.pdf
 
-3. bddbddb
- - Web: http://bddbddb.sourceforge.net/
- - Papers:   https://suif.stanford.edu/papers/pldi04.pdf
-             https://people.csail.mit.edu/mcarbin/papers/aplas05.pdf
-
-4. Control Flow Integrity for COTS Binaries
+3. Control Flow Integrity for COTS Binaries
    - PDF: http://stonecat/repos/reading/papers/12313-sec13-paper_zhang.pdf
 
-5. Alias analysis for Assembly by Brumley at CMU:
+4. Alias analysis for Assembly by Brumley at CMU:
   http://reports-archive.adm.cs.cmu.edu/anon/anon/usr/ftp/2006/CMU-CS-06-180R.pdf
 
-6. Reassembleable Disassembling
+5. [Reassembleable Disassembling](https://www.usenix.org/system/files/conference/usenixsecurity15/sec15-paper-wang-shuai.pdf)
+6. [Ramblr: Making disassembly great again](https://pdfs.semanticscholar.org/dcf5/dc7e6ae2614dd0079b851e3f292148366ca8.pdf)
 
-7. Ramblr: Making Reassembly Great again
+7. [An In-Depth Analysis of Disassembly on Full-Scale x86/x64 Binaries](https://www.usenix.org/system/files/conference/usenixsecurity16/sec16_paper_andriesse.pdf)
+
+8. [Binary Code is Not Easy](http://delivery.acm.org/10.1145/2940000/2931047/p24-meng.pdf?ip=98.159.213.242&id=2931047&acc=CHORUS&key=4D4702B0C3E38B35%2E4D4702B0C3E38B35%2E4D4702B0C3E38B35%2E6D218144511F3437&__acm__=1539001930_dedfe0a1aa0c9bf006dbe0874ff74722)
