@@ -42,7 +42,7 @@ public:
         name(),
         op_codes(){};
 
-    Dl_instruction(int64_t address,long size,std::string prefix,std::string name,std::vector<int64_t> op_codes):
+    Dl_instruction(int64_t address,long size, const std::string& prefix, const std::string& name,std::vector<int64_t> op_codes):
         address(address),
         size(size),
         prefix(prefix),
