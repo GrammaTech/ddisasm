@@ -145,6 +145,7 @@ collect_section_args(Arg,Name,Acc_sec,Acc_sec2):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 call_compiled_souffle(File,Dir):-
     atomic_list_concat(['souffle_disasm  ',File,' -F ',Dir,' -D ',Dir],Cmd),
+    atomic_list_concat(['ddisasm  ',File,' -F ',Dir,' -D ',Dir],Cmd),
     format(user_error,'Datalog',[]),
     time(shell(Cmd)).
 
