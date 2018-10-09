@@ -59,8 +59,8 @@ target_link_libraries(disasm_main
 
 # Now combine the static library and generated code into an
 # executable.
-add_executable(souffle_disasm
+add_executable(ddisasm
   ${GENERATED_CPP})
-target_link_libraries(souffle_disasm disasm_main)
-target_compile_definitions(souffle_disasm PRIVATE __EMBEDDED_SOUFFLE__)
-target_compile_definitions(souffle_disasm PRIVATE RAM_DOMAIN_SIZE=64)
+target_link_libraries(ddisasm disasm_main)
+target_compile_definitions(ddisasm PRIVATE __EMBEDDED_SOUFFLE__)
+target_compile_definitions(ddisasm PRIVATE RAM_DOMAIN_SIZE=64)

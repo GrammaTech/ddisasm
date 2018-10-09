@@ -39,7 +39,7 @@ The analysis contains two parts:
 - For printing assembler code the datalog disassembler requires the
 [gtirb-pprinter](https://git.grammatech.com/debloat/pretty-printer)
 
-## Building souffle_disasm
+## Building ddisasm
 A C++17 compiler such as gcc 7 or clang 6 is required.
 
 Boost (1.59 or later) and [GTIRB](https://github.com/grammatech/gtirb)
@@ -60,17 +60,16 @@ $ make
 ```
 
 ## Running the analysis
-Once souffle_disasm is built, we can run complete analysis on a file
-by calling `build/bin/souffle_disasm'`.
+Once `ddisasm` is built, we can run complete analysis on a file
+by calling `/bin/ddisasm'`.
 For example, we can run the analysis on one of the examples as
 follows:
 
-`cd /build/bin` `./souffle_disasm --file ../../examples/ex1/ex --asm ex.s`
+`cd build/bin` `./ddisasm ../../examples/ex1/ex --asm ex.s`
 
 The script accepts the following parameters:
 
 *  `--help` produce help message
-*  `--file arg`  the binary to analyze
 *  `--sect arg (=.plt.got,.fini,.init,.plt,.text,)`
                   code sections to decode
 *  `--data_sect arg (=.data,.rodata,.fini_array,.init_array,.data.rel.ro,.got.plt,.got,)`

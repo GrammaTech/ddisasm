@@ -20,8 +20,8 @@ if [[ $# -eq 0 || $1 == "-h" || $1 == "--help" ]]; then
 fi
 
 # Check for missing executable, to avoid mysterious failures later.
-if !(which souffle_disasm > /dev/null); then
-    echo "Missing souffle_disasm"
+if !(which ddisasm > /dev/null); then
+    echo "Missing ddisasm"
     exit 1
 fi
 
@@ -69,7 +69,7 @@ fi
 printf "# Disassembling $exe into $exe.s\n"
 dl_files_dir=$(dirname $dir/$exe)/dl_files/
 mkdir "$dl_files_dir"
-if !(time(souffle_disasm --file "$dir/$exe" --debug-dir "$dl_files_dir" --asm "$dir/$exe.s" > "$dir/disasm.out") 2>/tmp/time.txt); then
+if !(time(ddisasm --file "$dir/$exe" --debug-dir "$dl_files_dir" --asm "$dir/$exe.s" > "$dir/disasm.out") 2>/tmp/time.txt); then
     printf "# ${red}Disassembly failed${normal}\n"
     exit 1
 fi
