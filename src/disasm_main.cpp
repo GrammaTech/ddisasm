@@ -1057,12 +1057,13 @@ static void decode(Dl_decoder &decoder, Elf_reader &elf, std::vector<std::string
         char *buff = elf.get_section(section_name, size, address);
         if(buff != nullptr)
         {
-            std::cout << "Decoding section " << section_name << " of size " << size << "\n";
             decoder.decode_section(buff, size, address);
             delete[] buff;
         }
         else
+        {
             std::cerr << "Section " << section_name << " not found\n";
+        }
     }
     uint64_t min_address = elf.get_min_address();
     uint64_t max_address = elf.get_max_address();
@@ -1073,12 +1074,13 @@ static void decode(Dl_decoder &decoder, Elf_reader &elf, std::vector<std::string
         char *buff = elf.get_section(section_name, size, address);
         if(buff != nullptr)
         {
-            std::cout << "Storing data section " << section_name << " of size " << size << "\n";
             decoder.store_data_section(buff, size, address, min_address, max_address);
             delete[] buff;
         }
         else
+        {
             std::cerr << "Section " << section_name << " not found\n";
+        }
     }
 }
 
@@ -1222,6 +1224,10 @@ namespace std
     }
 } // namespace std
 
+using namespace boost;
+namespace po = boost::program_options;
+using namespace std;
+
 int main(int argc, char **argv)
 {
     std::vector<std::string> sections{".plt.got", ".fini", ".init", ".plt", ".text"};
@@ -1231,36 +1237,47 @@ int main(int argc, char **argv)
     po::options_description desc("Allowed options");
     desc.add_options()                                                                    //
         ("help", "produce help message")                                                  //
-        ("file", po::value<std::string>()->required(), "the binary to analyze")           //
         ("sect", po::value<std::vector<std::string>>()->default_value(sections),          //
          "sections to decode")                                                            //
         ("data_sect", po::value<std::vector<std::string>>()->default_value(dataSections), //
          "data sections to consider")                                                     //
         ("ir", po::value<std::string>(), "GTIRB output file")                             //
         ("asm", po::value<std::string>(), "ASM output file")                              //
-        ("debug-dir", po::value<std::string>(), "location to write CSV files for debugging");
+        ("debug-dir", po::value<std::string>(),                                           //
+         "location to write CSV files for debugging")                                     //
+        ("input-file", po::value<std::string>(), "file to disasemble");
+    po::positional_options_description pd;
+    pd.add("input-file", -1);
 
     po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, desc), vm);
-
-    if(vm.count("help"))
-    {
-        std::cout << desc << "\n";
-        return 1;
-    }
-
     try
     {
+        po::store(po::command_line_parser(argc, argv).options(desc).positional(pd).run(), vm);
+
+        if(vm.count("help"))
+        {
+            std::cout << "Usage: " << argv[0] << " [OPTIONS...] INPUT_FILE\n"
+                      << "Disassemble INPUT_FILE and output assembly code and/or gtirb.\n\n"
+                      << desc << "\n";
+            return 1;
+        }
         po::notify(vm);
     }
     catch(std::exception &e)
     {
-        std::cerr << "Error: " << e.what() << "\n";
+        std::cerr << "Error: " << e.what() << "\nTry '" << argv[0]
+                  << " --help' for more information.\n";
         return 1;
     }
 
-    std::string filename;
-    filename = vm["file"].as<std::string>();
+    if(vm.count("input-file") < 1)
+    {
+        std::cerr << "Error: missing input file\nTry '" << argv[0]
+                  << " --help' for more information.\n";
+        return 1;
+    }
+
+    std::string filename = vm["input-file"].as<std::string>();
 
     Elf_reader elf(filename);
     if(!elf.is_valid())
@@ -1294,6 +1311,10 @@ int main(int argc, char **argv)
             {
                 std::ofstream out(vm["asm"].as<std::string>());
                 out << PrettyPrinter().prettyPrint(C, &ir);
+            }
+            else if(vm.count("ir") == 0)
+            {
+                std::cout << PrettyPrinter().prettyPrint(C, &ir);
             }
 
             if(vm.count("debug-dir") != 0)
