@@ -20,6 +20,18 @@ build-ubuntu16:
     OS: 'ubuntu16'
   <<: *build
 
+build-ubuntu18:
+  stage: build
+  variables:
+    OS: 'ubuntu18'
+  <<: *build
+
+build-arch:
+  stage: build
+  variables:
+    OS: 'arch'
+  <<: *build
+
 run-ubuntu16:
   stage: test-and-tag
   variables:
@@ -34,10 +46,32 @@ run-ubuntu16:
         docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
       fi
 
+run-ubuntu18:
+  stage: test-and-tag
+  variables:
+    OS: 'ubuntu18'
+  script:
+    - docker run ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
+      "cd tests/ && ./test_small.sh && ./test_assembler_examples.sh -strip"
+
 cleanup-ubuntu16:
   stage: cleanup
   variables:
     OS: 'ubuntu16'
+  script:
+    - docker rmi -f ${LOCAL_IMAGE_NAME}-${OS}
+
+cleanup-ubuntu18:
+  stage: cleanup
+  variables:
+    OS: 'ubuntu18'
+  script:
+    - docker rmi -f ${LOCAL_IMAGE_NAME}-${OS}
+
+cleanup-arch:
+  stage: cleanup
+  variables:
+    OS: 'arch'
   script:
     - docker rmi -f ${LOCAL_IMAGE_NAME}-${OS}
 
