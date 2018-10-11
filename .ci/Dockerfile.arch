@@ -9,9 +9,15 @@ COPY .ci/PKGBUILD /aur/souffle
 RUN cd /aur/souffle && makepkg --asroot --noconfirm -si
 
 FROM base/archlinux
+
+ARG BOOST_VERSION=1.67.0
+ARG BOOST_VERSION_=1_67_0
+ARG CMAKE_VERSION=3.9
+ARG CXX_COMPILER=g++
+
 RUN sed -i 's/#\[multilib\]/\[multilib\]/; /^\[multilib\]/,/^$/ s/^#//' /etc/pacman.conf
 RUN pacman --noconfirm -Syu archlinux-keyring
-RUN pacman -Syu --noconfirm git subversion autoconf automake bison doxygen flex fakeroot sqlite libtool jdk8-openjdk make pkg-config python zlib mcpp gcc swi-prolog gcc-multilib lib32-fakeroot lib32-gcc-libs lib32-libltdl clang gdb ed
+RUN pacman -Syu --noconfirm git subversion autoconf automake bison doxygen flex fakeroot sqlite libtool jdk8-openjdk make pkg-config python zlib mcpp gcc swi-prolog gcc-multilib lib32-fakeroot lib32-gcc-libs lib32-libltdl clang gdb ed cmake wget
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
 COPY --from=souffle /usr/bin/souffle /usr/bin/souffle
@@ -21,7 +27,55 @@ COPY --from=souffle /usr/share/man/man1/souffle.1.gz /usr/share/man/man1/souffle
 COPY --from=souffle /usr/share/man/man1/souffle-config.1.gz /usr/share/man/man1/souffle-config.1.gz
 COPY --from=souffle /usr/share/man/man1/souffle-compile.1.gz /usr/share/man/man1/souffle-compile.1.gz
 COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
+
+# Install Boost
+ENV BOOST_VERSION=${BOOST_VERSION}
+ENV BOOST_VERSION_=${BOOST_VERSION_}
+ENV BOOST_ROOT=/usr/include/boost
+RUN cd /home && wget https://dl.bintray.com/boostorg/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_}.tar.gz \
+  && tar xfz boost_${BOOST_VERSION_}.tar.gz \
+  && rm boost_${BOOST_VERSION_}.tar.gz \
+  && cd boost_${BOOST_VERSION_} \
+  && ./bootstrap.sh  --prefix=/usr --with-libraries=program_options,filesystem,system,serialization \
+  && ./b2 install \
+  && cd /home \
+  && rm -rf boost_${BOOST_VERSION_}
+
+# Install CMake
+RUN curl -SL https://cmake.org/files/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.0-Linux-x86_64.tar.gz \
+    |tar -xz --strip-components=1 -C /usr/local
+
+# Install protobuf
+RUN cd /usr/local/src \
+    && wget https://github.com/google/protobuf/releases/download/v3.6.0/protobuf-cpp-3.6.0.tar.gz \
+    && tar xf protobuf-cpp-3.6.0.tar.gz \
+    && cd protobuf-3.6.0 \
+    && ./configure \
+    && make \
+    && make install
+RUN ldconfig
+
+# Install capstone
+RUN cd /usr/local/src \
+    && wget https://github.com/aquynh/capstone/archive/3.0.5.tar.gz \
+    && tar xf 3.0.5.tar.gz \
+    && cd capstone-3.0.5 \
+    && CAPSTONE_ARCHS=x86 ./make.sh \
+    && CAPSTONE_ARCHS=x86 ./make.sh install
+
 COPY . /datalog_disasm
-RUN cd /datalog_disasm && tar xjf standalone_compilation.tar.bz2
+
+# Build GTIRB
+RUN rm -rf /datalog_disasm/gtirb/build /datalog_disasm/gtirb/CMakeCache.txt /datalog_disasm/gtirb/CMakeFiles /datalog_disasm/gtirb/CMakeScripts
+RUN cd /datalog_disasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build &&  make && make install
+
+# Build pretty-printer
+RUN rm -rf /datalog_disasm/pretty-printer/build /datalog_disasm/pretty-printer/CMakeCache.txt /datalog_disasm/pretty-printer/CMakeFiles /datalog_disasm/pretty-printer/CMakeScripts
+RUN cd /datalog_disasm/pretty-printer/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build &&  make && make install
+
+# Build datalog_disasm
 ENV TERM xterm
-RUN cd /datalog_disasm && make clean && make check
+RUN rm -rf /datalog_disasm/build /datalog_disasm/CMakeCache.txt /datalog_disasm/CMakeFiles /datalog_disasm/CMakeScripts
+WORKDIR /datalog_disasm
+RUN cmake ./  -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build && make
+ENV PATH=/datalog_disasm/build/bin:$PATH

@@ -1,9 +1,5 @@
 FROM ubuntu:18.04 as souffle
-RUN apt-get -y update && apt-get -y install automake  bison build-essential clang doxygen flex git libtool make mcpp openjdk-8-jdk pkg-config python sqlite3 libsqlite3-dev subversion swi-prolog zlib1g-dev gcc-5 g++-5
-
-RUN ln -sf gcc-5 /usr/bin/gcc
-RUN ln -sf g++-5 /usr/bin/g++
-
+RUN apt-get -y update && apt-get -y install automake  bison build-essential clang doxygen flex git libtool make mcpp openjdk-8-jdk pkg-config python sqlite3 libsqlite3-dev subversion swi-prolog zlib1g-dev
 RUN git clone https://github.com/souffle-lang/souffle
 RUN cd souffle && sh ./bootstrap
 RUN cd souffle && ./configure --prefix=/usr --enable-64bit-domain --disable-provenance
@@ -15,8 +11,9 @@ FROM ubuntu:18.04
 ARG BOOST_VERSION=1.67.0
 ARG BOOST_VERSION_=1_67_0
 ARG CMAKE_VERSION=3.9
+ARG CXX_COMPILER=g++-7
 
-RUN apt-get -y update && apt-get -y install autoconf automake bison build-essential clang doxygen flex  git libtool make mcpp openjdk-8-jdk pkg-config python sqlite3 libsqlite3-dev subversion swi-prolog zlib1g-dev clang ed libpcre3-dev libncurses5-dev wget libc++1 libc++abi1 gcc-5 g++-5
+RUN apt-get -y update && apt-get -y install autoconf automake bison build-essential clang doxygen flex  git libtool make mcpp openjdk-8-jdk pkg-config python sqlite3 libsqlite3-dev subversion swi-prolog zlib1g-dev clang ed libpcre3-dev libncurses5-dev wget curl libc++1 libc++abi1
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
 COPY --from=souffle /usr/bin/souffle /usr/bin/souffle
@@ -31,9 +28,6 @@ COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
 RUN ln -s libc++.so.1 /usr/lib/x86_64-linux-gnu/libc++.so
 RUN ln -s libc++abi.so.1 /usr/lib/x86_64-linux-gnu/libc++abi.so
 
-# Use gcc-5
-RUN ln -sf gcc-5 /usr/bin/gcc
-RUN ln -sf g++-5 /usr/bin/g++
 
 # Install Boost
 ENV BOOST_VERSION=${BOOST_VERSION}
@@ -52,16 +46,37 @@ RUN cd /home && wget https://dl.bintray.com/boostorg/release/${BOOST_VERSION}/so
 RUN curl -SL https://cmake.org/files/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.0-Linux-x86_64.tar.gz \
     |tar -xz --strip-components=1 -C /usr/local
 
-RUN   useradd dl_disasm
-COPY --chown=dl_disasm . /datalog_disasm
-USER dl_disasm
+# Install protobuf
+RUN cd /usr/local/src \
+    && wget https://github.com/google/protobuf/releases/download/v3.6.0/protobuf-cpp-3.6.0.tar.gz \
+    && tar xf protobuf-cpp-3.6.0.tar.gz \
+    && cd protobuf-3.6.0 \
+    && ./configure \
+    && make \
+    && make install
+RUN ldconfig
+
+# Install capstone
+RUN cd /usr/local/src \
+    && wget https://github.com/aquynh/capstone/archive/3.0.5.tar.gz \
+    && tar xf 3.0.5.tar.gz \
+    && cd capstone-3.0.5 \
+    && CAPSTONE_ARCHS=x86 ./make.sh \
+    && CAPSTONE_ARCHS=x86 ./make.sh install
+
+COPY . /datalog_disasm
 
 # Build GTIRB
 RUN rm -rf /datalog_disasm/gtirb/build /datalog_disasm/gtirb/CMakeCache.txt /datalog_disasm/gtirb/CMakeFiles /datalog_disasm/gtirb/CMakeScripts
-RUN cd /datalog_disasm/gtirb/ && cmake ./ -Bbuild  && cd build &&  make && make install
+RUN cd /datalog_disasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build &&  make && make install
 
-RUN cd /datalog_disasm && tar xjf standalone_compilation.tar.bz2
+# Build pretty-printer
+RUN rm -rf /datalog_disasm/pretty-printer/build /datalog_disasm/pretty-printer/CMakeCache.txt /datalog_disasm/pretty-printer/CMakeFiles /datalog_disasm/pretty-printer/CMakeScripts
+RUN cd /datalog_disasm/pretty-printer/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build &&  make && make install
+
+# Build datalog_disasm
 ENV TERM xterm
-ENV LD_LIBRARY_PATH /datalog_disasm/gtirb/bin
+RUN rm -rf /datalog_disasm/build /datalog_disasm/CMakeCache.txt /datalog_disasm/CMakeFiles /datalog_disasm/CMakeScripts
 WORKDIR /datalog_disasm
-RUN make clean && make GTIRB_BASE=$PWD/gtirb
+RUN cmake ./  -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build && make
+ENV PATH=/datalog_disasm/build/bin:$PATH
