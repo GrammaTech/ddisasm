@@ -1,9 +1,6 @@
 //===- Elf_reader.cpp -------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2018 GrammaTech, Inc.
-//
-//  This code is licensed under the GPL V3 license. See the LICENSE file in the
-//  project root for license terms.
+//  Copyright (C) 2018 GrammaTech, Inc.  All rights reserved.
 //
 //  This project is sponsored by the Office of Naval Research, One Liberty
 //  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
