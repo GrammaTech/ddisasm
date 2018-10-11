@@ -1,2 +1,0 @@
-1: MOV RAX, 40000
-2: ADD RAX, 2

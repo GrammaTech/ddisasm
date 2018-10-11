@@ -1,2 +1,0 @@
-mov RAX, -2000
-mov RCX, [RAX+611000]

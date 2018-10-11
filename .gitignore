@@ -10,7 +10,6 @@ bin/souffle_disasm.*
 *.out
 *.snm
 *.toc
-doc/slides/slides.pdf
 doc/*.1.gz
 
 standalone_compilation/
