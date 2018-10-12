@@ -1240,8 +1240,9 @@ int main(int argc, char **argv)
          "data sections to consider")                                                     //
         ("ir", po::value<std::string>(), "GTIRB output file")                             //
         ("asm", po::value<std::string>(), "ASM output file")                              //
+        ("debug", "generate assembler file with debugging information")                   //
         ("debug-dir", po::value<std::string>(),                                           //
-         "location to write CSV files for debugging")                                     //
+                 "location to write CSV files for debugging")                             //
         ("input-file", po::value<std::string>(), "file to disasemble");
     po::positional_options_description pd;
     pd.add("input-file", -1);
@@ -1286,14 +1287,16 @@ int main(int argc, char **argv)
     Dl_decoder decoder;
     decode(decoder, elf, vm["sect"].as<std::vector<std::string>>(),
            vm["data_sect"].as<std::vector<std::string>>());
-
+    std::cout<<"Decoding the binary"<<std::endl;
     if(souffle::SouffleProgram *prog = souffle::ProgramFactory::newInstance("souffle_disasm"))
     {
         try
         {
             loadInputs(prog, elf, decoder);
+            std::cout<<"Disassembling"<<std::endl;
             prog->run();
 
+            std::cout<<"Building the gtirb representation"<<std::endl;
             auto &ir = *gtirb::IR::Create(C);
             buildIR(ir, elf, prog);
 
@@ -1307,11 +1310,15 @@ int main(int argc, char **argv)
             if(vm.count("asm") != 0)
             {
                 std::ofstream out(vm["asm"].as<std::string>());
-                out << PrettyPrinter().prettyPrint(C, &ir);
+                PrettyPrinter pprinter;
+                pprinter.setDebug(vm.count("debug"));
+                out << pprinter.prettyPrint(C, &ir);
             }
             else if(vm.count("ir") == 0)
             {
-                std::cout << PrettyPrinter().prettyPrint(C, &ir);
+                PrettyPrinter pprinter;
+                pprinter.setDebug(vm.count("debug"));
+                std::cout << pprinter.prettyPrint(C, &ir);
             }
 
             if(vm.count("debug-dir") != 0)
