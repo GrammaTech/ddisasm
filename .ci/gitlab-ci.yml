@@ -54,6 +54,16 @@ run-ubuntu18:
     - docker run ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
       "cd tests/ && ./test_small.sh && ./test_assembler_examples.sh -strip"
 
+run-ubuntu16-slow:
+  stage: test-and-tag
+  only:
+    - schedules
+  variables:
+    OS: 'ubuntu16'
+  script:
+    - docker run ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
+      "cd tests/ && ./test_real_examples.sh "
+
 cleanup-ubuntu16:
   stage: cleanup
   variables:
