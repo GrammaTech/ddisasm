@@ -152,26 +152,27 @@ void Elf_reader::read_symbols(){
 }
 
 void Elf_reader::read_relocations(){
+        if (int reladyn_indx=get_section_index(".rela.dyn");
+            reladyn_indx != -1) {
+		int num_rela=sections[reladyn_indx].sh_size/sizeof(Elf64_Rela);
+                file.seekg(sections[reladyn_indx].sh_offset, ios::beg);
+                for(int i=0;i<num_rela; i++){
+			Elf64_Rela relocation;
+                        file.read((char*)(&relocation), sizeof(Elf64_Rela));
+                        relocations.push_back(relocation);
+		}
+        }
 
-	int reladyn_indx=get_section_index(".rela.dyn");
-	int relaplt_indx=get_section_index(".rela.plt");
-
-
-	int num_rela=sections[reladyn_indx].sh_size/sizeof(Elf64_Rela);
-	file.seekg(sections[reladyn_indx].sh_offset, ios::beg);
-	for(int i=0;i<num_rela; i++){
-		Elf64_Rela relocation;
-		file.read((char*)(&relocation), sizeof(Elf64_Rela));
-		relocations.push_back(relocation);
-	}
-
-	num_rela=sections[relaplt_indx].sh_size/sizeof(Elf64_Rela);
-	file.seekg(sections[relaplt_indx].sh_offset, ios::beg);
-	for(int i=0;i<num_rela; i++){
-		Elf64_Rela relocation;
-		file.read((char*)(&relocation), sizeof(Elf64_Rela));
-		relocations.push_back(relocation);
-	}
+        if (int relaplt_indx=get_section_index(".rela.plt");
+            relaplt_indx != -1) {
+          	int num_rela=sections[relaplt_indx].sh_size/sizeof(Elf64_Rela);
+                file.seekg(sections[relaplt_indx].sh_offset, ios::beg);
+                for(int i=0;i<num_rela; i++){
+			Elf64_Rela relocation;
+                        file.read((char*)(&relocation), sizeof(Elf64_Rela));
+                        relocations.push_back(relocation);
+		}
+       }
 }
 
 bool Elf_reader::is_valid(){
