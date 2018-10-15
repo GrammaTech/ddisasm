@@ -26,12 +26,6 @@ if [[ $# > 0 && $1 == "-strip" ]]; then
     shift
 fi
 
-stir=""
-if [[ $# > 0 && $1 == "-stir" ]]; then
-    stir="-stir"
-    shift
-fi
-
 dir=$1
 exe=$2
 shift
@@ -50,28 +44,33 @@ if [ $strip ]; then
     strip --strip-unneeded "$dir/$exe"
 fi
 
-printf "# Disassembling $exe into $exe.s with flags $stir\n"
-if !(time(./disasm "$dir/$exe" -asm $stir > "$dir/$exe.s") 2>/tmp/timeCore.txt); then
+printf "# Disassembling $exe into $exe.s\n"
+dl_files_dir=$(dirname $dir/$exe)/dl_files/
+mkdir "$dl_files_dir"
+if !(time(ddisasm "$dir/$exe" --debug-dir "$dl_files_dir" --asm  "$dir/$exe.s" > "$dir/disasm.out") 2>/tmp/timeCore.txt); then
     printf "# ${red}Disassembly failed${normal}\n"
     exit 1
 fi
-decode_time=$(cat /tmp/timeCore.txt | grep -m 1 seconds)
-dl_time=$(cat /tmp/timeCore.txt | grep -m 2 seconds | tail -n1)
-decode_time=${decode_time#*in }
-decode_time=${decode_time%seconds*}
-dl_time=${dl_time#*in }
-dl_time=${dl_time%seconds*}
-
 time=$(cat /tmp/timeCore.txt| grep user| cut -f 2)
 size=$(stat --printf="%s" "$dir/$exe")
-printf "#Stats: Time $time Decode $decode_time Datalog $dl_time Size $size\n"
+printf "#Stats: Time $time Size $size\n"
 
 printf "  OK\n"
 printf "Copying old binary to $dir/$exe.old\n"
 cp $dir/$exe $dir/$exe.old
+binary_type=$(cat $dl_files_dir/binary_type.facts)
+printf "# Binary of type $binary_type\n"
+
+pie_flag=""
+if [[  $binary_type == "DYN" ]]; then
+    pie_flag="-pie"
+else
+    pie_flag="-no-pie"
+fi
+
 printf "# Reassembling...\n"
 
-if !($compiler "$dir/$exe.s" $@ -o  "$dir/$exe"); then
+if !($compiler "$dir/$exe.s" $pie_flag $@ -o  "$dir/$exe"); then
     printf "# ${red}Reassembly failed ${normal}\n"
     exit 1
 fi
