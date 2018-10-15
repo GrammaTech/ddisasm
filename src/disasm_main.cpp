@@ -1032,9 +1032,14 @@ static void buildCFG(gtirb::IR &ir, souffle::SouffleProgram *prog)
 #endif
 }
 
-static void buildIR(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgram *prog)
+static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
+                    souffle::SouffleProgram *prog)
 {
-    ir.addModule(gtirb::Module::Create(C));
+    auto *M = gtirb::Module::Create(C);
+    M->setBinaryPath(filename);
+    M->setFileFormat(gtirb::FileFormat::ELF);
+    M->setISAID(gtirb::ISAID::X64);
+    ir.addModule(M);
     auto symbolSizes = buildSymbols(ir, prog);
     buildSections(ir, elf, prog);
     buildRelocations(ir, prog);
@@ -1298,7 +1303,7 @@ int main(int argc, char **argv)
 
             std::cout<<"Building the gtirb representation"<<std::endl;
             auto &ir = *gtirb::IR::Create(C);
-            buildIR(ir, elf, prog);
+            buildIR(ir, filename, elf, prog);
 
             // Output GTIRB
             if(vm.count("ir") != 0)
