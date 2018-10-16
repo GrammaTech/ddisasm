@@ -43,13 +43,12 @@ more points.
 // They are organized in blocks of sequential code
 // The block identifier is the address of the first instruction in the block
 .decl code_in_block(ea:address,block:address)
-.output code_in_block
-
 .decl block(block:address)
-.output block
-
 .decl code(ea:address)
 
+ // The postprocess refines the blocks by merging contiguous blocks
+ // that are always executed together
+#include "code_inference_postprocess.dl"
 
 // we detect if there are still overlaping blocks, in that case the analysis has failed
 .decl block_still_overlap(ea:address,ea2:address)

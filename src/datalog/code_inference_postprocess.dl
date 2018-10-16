@@ -1,0 +1,53 @@
+//===- code_inference_postprocess.dl ----------------------------------------*- C++ -*-===//
+//
+//  Copyright (C) 2018 GrammaTech, Inc.  All rights reserved.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+
+/*
+  After symbolization, we merge blocks that start at addresses
+  that are never referenced and must fallthrough from another block.
+
+*/
+    
+.decl code_in_refined_block(ea:address,block:address)
+.output code_in_refined_block
+
+.decl refined_block(block:address)
+.output refined_block
+
+// a block that is not referenced anywhere
+.decl block_needs_merging(block:address)
+
+block_needs_merging(Block):-
+    block(Block),
+    must_fallthrough(Code,Block),
+    code(Code),
+    //not reference anywhere
+    !symbolic_code_operand_candidate(_,_,Block),
+    !code_pointer_in_data(_,Block),
+    !symbol_minus_symbol(_,_,Block),
+    !moved_data_label(_,_,Block),
+    !moved_label(_,_,_,Block),
+    !function_symbol(Block,_).
+    
+
+refined_block(Block):-
+     block(Block),
+    !block_needs_merging(Block).
+     
+code_in_refined_block(EA,Block):-
+    refined_block(Block),
+    code_in_block(EA,Block).
+
+code_in_refined_block(EA,Block):-
+    block_needs_merging(OldBlock),
+    code_in_block(EA,OldBlock),
+    must_fallthrough(Prev,OldBlock),
+    code_in_refined_block(Prev,Block).

@@ -644,7 +644,7 @@ void buildSymbolic(gtirb::Module &module, DecodedInstruction instruction, gtirb:
 
 void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    auto codeInBlock = convertRelation<CodeInBlock>("code_in_block", prog);
+    auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", prog);
 
     SymbolicInfo symbolicInfo{
         convertSortedRelation<VectorByEA<PLTReference>>("plt_code_reference", prog),
@@ -660,7 +660,7 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
     auto &cfg = module.getCFG();
     std::map<gtirb::Addr, gtirb::Addr> blockCalls;
 
-    for(auto &output : *prog->getRelation("block"))
+    for(auto &output : *prog->getRelation("refined_block"))
     {
         gtirb::Addr blockAddress;
         output >> blockAddress;
