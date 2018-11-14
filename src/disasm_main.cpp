@@ -1244,6 +1244,7 @@ int main(int argc, char **argv)
         ("data_sect", po::value<std::vector<std::string>>()->default_value(dataSections), //
          "data sections to consider")                                                     //
         ("ir", po::value<std::string>(), "GTIRB output file")                             //
+        ("json", po::value<std::string>(), "GTIRB json output file")                             //
         ("asm", po::value<std::string>(), "ASM output file")                              //
         ("debug", "generate assembler file with debugging information")                   //
         ("debug-dir", po::value<std::string>(),                                           //
@@ -1310,6 +1311,12 @@ int main(int argc, char **argv)
             {
                 std::ofstream out(vm["ir"].as<std::string>());
                 ir.save(out);
+            }
+            // Output json GTIRB
+            if(vm.count("json") != 0)
+            {
+                std::ofstream out(vm["json"].as<std::string>());
+                ir.saveJSON(out);
             }
             // Pretty-print
             if(vm.count("asm") != 0)
