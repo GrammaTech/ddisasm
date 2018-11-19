@@ -1091,6 +1091,20 @@ static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
     buildComments(ir, prog);
 }
 
+static void performSanityChecks(souffle::SouffleProgram *prog){
+    auto blockOverlap =prog->getRelation("block_still_overlap");
+    if(blockOverlap->size()>0){
+        std::cerr <<"The conflicts between the following code blocks could not be resolved:"<<std::endl;
+        for(auto &output : *blockOverlap){
+            uint64_t ea;
+            output >> ea;
+            std::cerr<< std::hex<<ea<<std::dec<<" ";
+        }
+        std::cerr <<"Aborting"<<std::endl;
+        exit(1);
+    }
+}
+
 static void decode(Dl_decoder &decoder, Elf_reader &elf, std::vector<std::string> sections,
                    std::vector<std::string> data_sections)
 {
@@ -1343,6 +1357,7 @@ int main(int argc, char **argv)
             loadInputs(prog, elf, decoder);
             std::cout<<"Disassembling"<<std::endl;
             prog->run();
+            performSanityChecks(prog);
 
             std::cout<<"Building the gtirb representation"<<std::endl;
             auto &ir = *gtirb::IR::Create(C);
