@@ -1032,6 +1032,13 @@ static void buildCFG(gtirb::IR &ir, souffle::SouffleProgram *prog)
 #endif
 }
 
+static void updateComment(std::map<gtirb::Addr, std::string> &comments, gtirb::Addr ea, std::string newComment){
+    auto existing=comments.find(ea);
+    if(existing != comments.end())
+        comments[ea]=existing->second+ newComment;
+    else
+        comments[ea]=newComment;
+}
 
 static void buildComments(gtirb::IR &ir,souffle::SouffleProgram *prog){
     std::map<gtirb::Addr, std::string> comments;
@@ -1041,11 +1048,7 @@ static void buildComments(gtirb::IR &ir,souffle::SouffleProgram *prog){
         output >> ea >> size >> multiplier >> from;
         std::ostringstream newComment;
         newComment<<"data_access("<<size<<", "<<multiplier<<", "<<std::hex<<from<<std::dec<<") ";
-        auto existing=comments.find(ea);
-        if(existing != comments.end())
-            comments[ea]=existing->second+ newComment.str();
-        else
-            comments[ea]=newComment.str();
+        updateComment(comments, ea, newComment.str());
     }
 
     for(auto &output : *prog->getRelation("preferred_data_access")){
@@ -1054,11 +1057,7 @@ static void buildComments(gtirb::IR &ir,souffle::SouffleProgram *prog){
         output >> ea >> data_access;
         std::ostringstream newComment;
         newComment<<"preferred_data_access("<<std::hex<<data_access<<std::dec<<") ";
-        auto existing=comments.find(ea);
-        if(existing != comments.end())
-            comments[ea]=existing->second+ newComment.str();
-        else
-            comments[ea]=newComment.str();
+        updateComment(comments, ea, newComment.str());
     }
 
     for(auto &output : *prog->getRelation("best_value_reg")){
@@ -1068,14 +1067,12 @@ static void buildComments(gtirb::IR &ir,souffle::SouffleProgram *prog){
         output >> ea >> reg >> multiplier>> offset >> type;
         std::ostringstream newComment;
         newComment<<reg<<"=X*"<<multiplier<<"+"<<std::hex<<offset<<std::dec<<" type("<<type<<") ";
-        auto existing=comments.find(ea);
-        if(existing != comments.end())
-            comments[ea]=existing->second+ newComment.str();
-        else
-            comments[ea]=newComment.str();
+        updateComment(comments, ea, newComment.str());
+
     }
     ir.addAuxData("comments", std::move(comments));
 }
+
 static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
                     souffle::SouffleProgram *prog)
 {
