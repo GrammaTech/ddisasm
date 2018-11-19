@@ -1032,6 +1032,50 @@ static void buildCFG(gtirb::IR &ir, souffle::SouffleProgram *prog)
 #endif
 }
 
+
+static void buildComments(gtirb::IR &ir,souffle::SouffleProgram *prog){
+    std::map<gtirb::Addr, std::string> comments;
+    for(auto &output : *prog->getRelation("data_access_pattern")){
+        gtirb::Addr ea;
+        uint64_t size, multiplier,from;
+        output >> ea >> size >> multiplier >> from;
+        std::ostringstream newComment;
+        newComment<<"data_access("<<size<<", "<<multiplier<<", "<<std::hex<<from<<std::dec<<") ";
+        auto existing=comments.find(ea);
+        if(existing != comments.end())
+            comments[ea]=existing->second+ newComment.str();
+        else
+            comments[ea]=newComment.str();
+    }
+
+    for(auto &output : *prog->getRelation("preferred_data_access")){
+        gtirb::Addr ea;
+        uint64_t data_access;
+        output >> ea >> data_access;
+        std::ostringstream newComment;
+        newComment<<"preferred_data_access("<<std::hex<<data_access<<std::dec<<") ";
+        auto existing=comments.find(ea);
+        if(existing != comments.end())
+            comments[ea]=existing->second+ newComment.str();
+        else
+            comments[ea]=newComment.str();
+    }
+
+    for(auto &output : *prog->getRelation("best_value_reg")){
+        gtirb::Addr ea;
+        std::string reg,type;
+        int64_t multiplier,offset;
+        output >> ea >> reg >> multiplier>> offset >> type;
+        std::ostringstream newComment;
+        newComment<<reg<<"=X*"<<multiplier<<"+"<<std::hex<<offset<<std::dec<<" type("<<type<<") ";
+        auto existing=comments.find(ea);
+        if(existing != comments.end())
+            comments[ea]=existing->second+ newComment.str();
+        else
+            comments[ea]=newComment.str();
+    }
+    ir.addAuxData("comments", std::move(comments));
+}
 static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
                     souffle::SouffleProgram *prog)
 {
@@ -1047,6 +1091,7 @@ static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
     buildCodeBlocks(ir, prog);
     buildFunctions(ir, prog);
     buildCFG(ir, prog);
+    buildComments(ir, prog);
 }
 
 static void decode(Dl_decoder &decoder, Elf_reader &elf, std::vector<std::string> sections,
@@ -1321,6 +1366,7 @@ int main(int argc, char **argv)
             // Pretty-print
             if(vm.count("asm") != 0)
             {
+                std::cout<<"Printing assembler"<<std::endl;
                 std::ofstream out(vm["asm"].as<std::string>());
                 PrettyPrinter pprinter;
                 pprinter.setDebug(vm.count("debug"));
@@ -1328,6 +1374,7 @@ int main(int argc, char **argv)
             }
             else if(vm.count("ir") == 0)
             {
+                std::cout<<"Printing assembler"<<std::endl;
                 PrettyPrinter pprinter;
                 pprinter.setDebug(vm.count("debug"));
                 std::cout << pprinter.prettyPrint(C, &ir);
@@ -1335,6 +1382,7 @@ int main(int argc, char **argv)
 
             if(vm.count("debug-dir") != 0)
             {
+                std::cout<<"Writing facts to debug dir "<< vm["debug-dir"].as<std::string>()<<std::endl;
                 auto dir = vm["debug-dir"].as<std::string>() + "/";
                 writeFacts(decoder, elf, dir);
                 prog->printAll(dir);
