@@ -9,6 +9,7 @@ endif()
 
 set(DATALOG_SOURCES
     datalog/code_inference.dl
+    datalog/code_inference_postprocess.dl
     datalog/data_access_analysis.dl
     datalog/empty_range.dl
     datalog/float_operations.dl
@@ -50,7 +51,8 @@ add_library(disasm_main STATIC
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(disasm_main PRIVATE -Wall -Wextra -Wpointer-arith)
-target_compile_options(disasm_main PRIVATE -Werror)
+target_compile_options(disasm_main PRIVATE -Werror -fopenmp)
+#target_compile_options(ddisasm PRIVATE -O3)
 target_link_libraries(disasm_main
   gtirb
   gtirb_pprinter
@@ -64,3 +66,6 @@ add_executable(ddisasm
 target_link_libraries(ddisasm disasm_main)
 target_compile_definitions(ddisasm PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(ddisasm PRIVATE RAM_DOMAIN_SIZE=64)
+target_compile_options(ddisasm PRIVATE -fopenmp)
+#target_compile_options(ddisasm PRIVATE -O3)
+target_link_libraries(ddisasm gomp)
