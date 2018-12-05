@@ -1305,7 +1305,9 @@ int main(int argc, char **argv)
         ("debug", "generate assembler file with debugging information")                   //
         ("debug-dir", po::value<std::string>(),                                           //
                  "location to write CSV files for debugging")                             //
-        ("input-file", po::value<std::string>(), "file to disasemble");
+        ("input-file", po::value<std::string>(), "file to disasemble")
+        ("keep-functions,K", boost::program_options::value<std::vector<std::string>>()->multitoken(),
+         "Print the given functions even if they are skipped by default (e.g. _start)");
     po::positional_options_description pd;
     pd.add("input-file", -1);
 
@@ -1376,19 +1378,22 @@ int main(int argc, char **argv)
                 ir.saveJSON(out);
             }
             // Pretty-print
+            PrettyPrinter pprinter;
+            pprinter.setDebug(vm.count("debug"));
+            if(vm.count("keep-functions")!=0){
+                for(auto keep: vm["keep-functions"].as<std::vector<std::string>>()){
+                    pprinter.keepFunction(keep);
+                }
+            }
             if(vm.count("asm") != 0)
             {
                 std::cout<<"Printing assembler"<<std::endl;
                 std::ofstream out(vm["asm"].as<std::string>());
-                PrettyPrinter pprinter;
-                pprinter.setDebug(vm.count("debug"));
                 out << pprinter.prettyPrint(C, &ir);
             }
             else if(vm.count("ir") == 0)
             {
                 std::cout<<"Printing assembler"<<std::endl;
-                PrettyPrinter pprinter;
-                pprinter.setDebug(vm.count("debug"));
                 std::cout << pprinter.prettyPrint(C, &ir);
             }
 
