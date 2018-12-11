@@ -751,8 +751,10 @@ void buildBSS(gtirb::IR &ir, souffle::SouffleProgram *prog,
     const auto found = std::find_if(sections.begin(), sections.end(), [](const auto &element) {
         return element.getName() == ".bss";
     });
-    assert(found != sections.end());
-
+    if(found == sections.end()){
+        std::cerr << "Section .bss not found\n";
+        return;
+    }
     for(size_t i = 0; i < bssData.size(); ++i)
     {
         const gtirb::Addr current = bssData[i];
