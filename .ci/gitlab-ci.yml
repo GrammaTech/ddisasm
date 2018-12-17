@@ -10,8 +10,8 @@ stages:
 .build-template: &build
   script:
     - (cd tests ; ./fetch_real_examples.sh)
-    - git clone https://git.grammatech.com/debloat/gtirb.git
-    - git clone https://git.grammatech.com/debloat/pretty-printer.git
+    - git clone https://git.grammatech.com/rewriting/gtirb.git
+    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git
     - docker build -f .ci/Dockerfile.$OS -t ${LOCAL_IMAGE_NAME}-${OS} .
 
 build-ubuntu16:
