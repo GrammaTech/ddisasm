@@ -79,14 +79,12 @@ void Elf_reader::read_sections(){
 
 	//read the names
 	Elf64_Shdr* SecName_section= &sections[header.e_shstrndx];
-        // FIXME: use dynamically sized buffer or at least detect names which don't fit.
-	const int buff_size=200;
-	char buff[buff_size];
 	for(int i=0;i<header.e_shnum; i++){
 		//position in the begining of the name
 		file.seekg ((SecName_section->sh_offset+sections[i].sh_name), ios::beg);
-		file.read(buff, buff_size);
-		section_names.push_back(buff);
+		std::stringstream buff;
+		read_string(buff);;
+		section_names.push_back(buff.str());
 	}
 
 }
@@ -99,7 +97,6 @@ void Elf_reader::read_dynamic_symbols(){
 			dynsym_indx=i;
 		if(section_names[i]==".dynstr")
 				dynstr_indx=i;
-
 	}
 	//dynamic table
 	int num_symbols=sections[dynsym_indx].sh_size/sizeof(Elf64_Sym);
@@ -111,12 +108,11 @@ void Elf_reader::read_dynamic_symbols(){
 	}
 
 	//read the names
-	const int buff_size=100;
-	char buff[buff_size];
 	for(auto symbol:dyn_symbols){
-		file.seekg((sections[dynstr_indx].sh_offset+symbol.st_name), ios::beg);
-		file.read(buff, buff_size);
-		dyn_symbol_names.push_back(buff);
+	    std::stringstream buff;
+	    file.seekg((sections[dynstr_indx].sh_offset+symbol.st_name), ios::beg);
+	    read_string(buff);;
+		dyn_symbol_names.push_back(buff.str());
 	}
 
 }
@@ -141,14 +137,23 @@ void Elf_reader::read_symbols(){
 	}
 
 	//read the names
-	const int buff_size=100;
-	char buff[buff_size];
-	for(auto symbol:symbols){
-		file.seekg((sections[strtab_indx].sh_offset+symbol.st_name), ios::beg);
-		file.read(buff, buff_size);
-		symbol_names.push_back(buff);
-	}
 
+	for(auto symbol:symbols){
+	    file.seekg((sections[strtab_indx].sh_offset+symbol.st_name), ios::beg);
+	    std::stringstream buff;
+	    read_string(buff);
+	    symbol_names.push_back(buff.str());
+	}
+}
+
+void Elf_reader::read_string(std::stringstream& str){
+    char character;
+    while(true){
+        file.read(&character,sizeof(char));
+        if(!character)
+            return;
+        str<<character;
+    }
 }
 
 void Elf_reader::read_relocations(){

@@ -53,11 +53,13 @@ private:
 	std::string get_relocation_type(int type);
 	void print_symbol_table(std::ostream& stream,std::vector<Elf64_Sym>& symbol_table,
 	                        std::vector<std::string>& symbol_name_table);
-        void add_symbols_from_table(std::vector<symbol> &out,
+    void add_symbols_from_table(std::vector<symbol> &out,
                                     const std::vector<Elf64_Sym>& symbol_table,
                                     const std::vector<std::string>& symbol_name_table);
 
 	int get_section_index(const std::string& name);
+	void read_string(std::stringstream& str);
+
 public:
 	Elf_reader(std::string filename);
 	~Elf_reader();
