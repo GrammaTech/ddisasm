@@ -1,4 +1,4 @@
-//===- use_def_analysis.dl --------------------------------------*- C++ -*-===//
+//===- use_def_analysis.dl --------------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2018 GrammaTech, Inc.  All rights reserved.
 //
@@ -181,6 +181,13 @@ must_def(EA,Reg):-
 	def(EA,Reg),
 	!conditional_mov(EA).
 
+.decl defined_in_block(EA:address,Reg:register)
+
+defined_in_block(Block,Reg):-
+	def(EA,Reg),
+	code_in_block(EA,Block).
+
+
 used(EA,Reg,Index):-
 	code(EA),
 	instruction_get_op(EA,Index,Op),
@@ -215,11 +222,23 @@ used_for_address(EA,Reg_compared,EA,Index):-
 	local_next(EA,EA_next),
 	reg_compared(EA,Reg_used,_,Reg_compared,Index).
 
+
 // propagation of uses when the register is not (necessarily) re-defined	
+// go one by one if the register is defined in the block
 used_for_address(EA,Reg,Where,Index):-
 	used_for_address(EA_next,Reg,Where,Index),
 	local_next(EA,EA_next),
+	code_in_block(EA,Block),
+	defined_in_block(Block,Reg),
 	!must_def(EA,Reg).
+
+// skip the block if the register is not defined there
+used_for_address(Block,Reg,Where,Index):-
+	used_for_address(EA_next,Reg,Where,Index),
+	local_next(EA,EA_next),
+	code_in_block(EA,Block),
+	!defined_in_block(Block,Reg).
+
 
 
 // once we have definitions and live uses, we can compute def_used connections
