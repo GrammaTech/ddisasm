@@ -113,9 +113,6 @@ Dl_operator Dl_decoder::buildOperand(const cs_x86_op& op){
         curr_op.offset=op.mem.disp;
         curr_op.multiplier=op.mem.scale;
         break;
-    case X86_OP_FP:
-        std::cerr << "floating point operations not implemented\n";
-        exit(1);
     case X86_OP_INVALID:
         std::cerr << "invalid operand\n";
         exit(1);

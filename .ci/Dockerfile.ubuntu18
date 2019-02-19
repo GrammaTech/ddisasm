@@ -58,9 +58,9 @@ RUN ldconfig
 
 # Install capstone
 RUN cd /usr/local/src \
-    && wget https://github.com/aquynh/capstone/archive/3.0.5.tar.gz \
-    && tar xf 3.0.5.tar.gz \
-    && cd capstone-3.0.5 \
+    && wget https://github.com/aquynh/capstone/archive/4.0.1.tar.gz \
+    && tar xf 4.0.1.tar.gz \
+    && cd capstone-4.0.1 \
     && CAPSTONE_ARCHS=x86 ./make.sh \
     && CAPSTONE_ARCHS=x86 ./make.sh install
 
