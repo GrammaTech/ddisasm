@@ -464,6 +464,12 @@ static std::map<gtirb::Addr, uint64_t> buildSymbols(gtirb::IR &ir, souffle::Souf
     std::sort(functionEAs.begin(), functionEAs.end());
     ir.addAuxData("functionEAs", std::move(functionEAs));
 
+    for(gtirb::Addr addrMain: convertRelation<gtirb::Addr>("main_function", prog)){
+        module.addSymbol(gtirb::Symbol::Create(C,addrMain,"main"));
+    }
+    for(gtirb::Addr addrMain: convertRelation<gtirb::Addr>("start_function", prog)){
+        module.addSymbol(gtirb::Symbol::Create(C,addrMain,"_start"));
+    }
     return symbolSizes;
 }
 
@@ -664,7 +670,6 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
     {
         gtirb::Addr blockAddress;
         output >> blockAddress;
-
         std::vector<gtirb::Addr> instructions;
         bool hasRet = false;
         bool hasCall = false;
