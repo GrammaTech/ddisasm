@@ -1,4 +1,4 @@
-FROM base/archlinux as souffle
+FROM archlinux/base as souffle
 RUN sed -i 's/#\[multilib\]/\[multilib\]/; /^\[multilib\]/,/^$/ s/^#//' /etc/pacman.conf
 RUN pacman --noconfirm -Syu archlinux-keyring
 RUN pacman -Syu --noconfirm git subversion autoconf automake bison doxygen flex fakeroot sqlite libtool jdk8-openjdk make pkg-config python zlib mcpp gcc swi-prolog gcc-multilib lib32-fakeroot lib32-gcc-libs lib32-libltdl
