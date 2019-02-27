@@ -8,7 +8,7 @@ RUN mkdir -p /aur/souffle
 COPY .ci/PKGBUILD /aur/souffle
 RUN cd /aur/souffle && makepkg --asroot --noconfirm -si
 
-FROM base/archlinux
+FROM archlinux/base
 
 ARG BOOST_VERSION=1.67.0
 ARG BOOST_VERSION_=1_67_0
