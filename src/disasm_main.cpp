@@ -1380,7 +1380,7 @@ int main(int argc, char **argv)
                 ir.saveJSON(out);
             }
             // Pretty-print
-            PrettyPrinter pprinter;
+            gtirb_pprint::PrettyPrinter pprinter;
             pprinter.setDebug(vm.count("debug"));
             if(vm.count("keep-functions")!=0){
                 for(auto keep: vm["keep-functions"].as<std::vector<std::string>>()){
@@ -1391,12 +1391,12 @@ int main(int argc, char **argv)
             {
                 std::cout<<"Printing assembler"<<std::endl;
                 std::ofstream out(vm["asm"].as<std::string>());
-                out << pprinter.prettyPrint(C, &ir);
+                pprinter.print(out, C, ir);
             }
             else if(vm.count("ir") == 0)
             {
                 std::cout<<"Printing assembler"<<std::endl;
-                std::cout << pprinter.prettyPrint(C, &ir);
+                pprinter.print(std::cout, C, ir);
             }
 
             if(vm.count("debug-dir") != 0)
