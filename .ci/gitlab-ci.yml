@@ -9,7 +9,6 @@ stages:
 
 .build-template: &build
   script:
-    - (cd tests ; ./fetch_real_examples.sh)
     - git clone https://git.grammatech.com/rewriting/gtirb.git
     - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git
     - docker build -f .ci/Dockerfile.$OS -t ${LOCAL_IMAGE_NAME}-${OS} .
@@ -53,16 +52,6 @@ run-ubuntu18:
   script:
     - docker run ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
       "cd tests/ && ./test_small.sh && ./test_assembler_examples.sh -strip"
-
-run-ubuntu16-slow:
-  stage: test-and-tag
-  only:
-    - schedules
-  variables:
-    OS: 'ubuntu16'
-  script:
-    - docker run ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
-      "cd tests/ && ./test_real_examples.sh "
 
 cleanup-ubuntu16:
   stage: cleanup
