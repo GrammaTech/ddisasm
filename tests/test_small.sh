@@ -35,6 +35,12 @@ examples=(
     "ex_virtualDispatch ex g++"
 );
 
+strip=""
+if [[ $# > 0 && $1 == "-strip" ]]; then
+    strip="-strip"
+    shift
+fi
+
 error=0
 success=0
 for ((i = 0; i < ${#examples[@]}; i++)); do
@@ -45,7 +51,7 @@ for ((i = 0; i < ${#examples[@]}; i++)); do
 	for optimization in  "${optimizations[@]}"; do
 	    export CFLAGS=$optimization
 	    echo "#Example $file with $compiler $optimization"
-        if !(./reassemble_and_test.sh -strip -stir $dir${examples[$i]}) then
+        if !(./reassemble_and_test.sh $strip -stir $dir${examples[$i]}) then
 	       ((error++))
 	       else
 		   ((success++))
