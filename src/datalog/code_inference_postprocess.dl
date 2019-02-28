@@ -35,7 +35,8 @@ block_needs_merging(Block):-
     !symbol_minus_symbol(_,_,Block),
     !moved_data_label(_,_,Block),
     !moved_label(_,_,_,Block),
-    !function_symbol(Block,_).
+    !function_symbol(Block,_),
+    !start_function(Block).
     
 
 refined_block(Block):-

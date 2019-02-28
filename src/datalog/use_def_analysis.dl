@@ -222,6 +222,13 @@ used_for_address(EA,Reg_compared,EA,Index):-
 	local_next(EA,EA_next),
 	reg_compared(EA,Reg_used,_,Reg_compared,Index).
 
+// the same special case when the block is skipped
+used_for_address(EA,Reg_compared,EA,Index):-
+	used_for_address(Block,Reg_used,EA_used,_),
+	!defined_in_block(Block,Reg_used),
+	code_in_block(EA,Block),EA<EA_used,
+	reg_compared(EA,Reg_used,_,Reg_compared,Index).
+
 
 // propagation of uses when the register is not (necessarily) re-defined	
 // go one by one if the register is defined in the block
@@ -239,6 +246,12 @@ used_for_address(Block,Reg,Where,Index):-
 	code_in_block(EA,Block),
 	!defined_in_block(Block,Reg).
 
+used_for_address(EA,Reg,Where,Index):-
+	used_for_address(Block,Reg,Where,Index),
+	code_in_block(EA,Block),
+	!defined_in_block(Block,Reg),
+	local_next(EA_prev,EA),
+	used(EA_prev,Reg,_).
 
 
 // once we have definitions and live uses, we can compute def_used connections
