@@ -464,12 +464,12 @@ static std::map<gtirb::Addr, uint64_t> buildSymbols(gtirb::IR &ir, souffle::Souf
     std::sort(functionEAs.begin(), functionEAs.end());
     ir.addAuxData("functionEAs", std::move(functionEAs));
 
-    for(gtirb::Addr addrMain: convertRelation<gtirb::Addr>("main_function", prog)){
-        module.addSymbol(gtirb::Symbol::Create(C,addrMain,"main"));
-    }
-    for(gtirb::Addr addrMain: convertRelation<gtirb::Addr>("start_function", prog)){
-        module.addSymbol(gtirb::Symbol::Create(C,addrMain,"_start"));
-    }
+    if(!module.findSymbols("main"))
+        for(gtirb::Addr addrMain: convertRelation<gtirb::Addr>("main_function", prog))
+            module.addSymbol(gtirb::Symbol::Create(C,addrMain,"main"));
+    if(!module.findSymbols("_start"))
+        for(gtirb::Addr addrMain: convertRelation<gtirb::Addr>("start_function", prog))
+            module.addSymbol(gtirb::Symbol::Create(C,addrMain,"_start"));
     return symbolSizes;
 }
 
@@ -945,8 +945,6 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
 static void buildFunctions(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
     ir.addAuxData("functionEntry", convertRelation<gtirb::Addr>("function_entry2", prog));
-    ir.addAuxData("mainFunction", convertRelation<gtirb::Addr>("main_function", prog));
-    ir.addAuxData("startFunction", convertRelation<gtirb::Addr>("start_function", prog));
 }
 
 static void buildCFG(gtirb::IR &ir, souffle::SouffleProgram *prog)
