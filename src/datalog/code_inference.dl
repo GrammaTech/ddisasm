@@ -337,6 +337,12 @@ block_points(Block,Block_pred,4,"direct jump"):-
 	phase2.likely_ea(EA,Block_pred),
 	Block_pred!=Block,
 	!block_is_overlaping(Block_pred).
+
+block_points(Block,Block_pred,4,"direct call"):-
+	direct_call(EA,Block),
+	phase2.likely_ea(EA,Block_pred),
+	Block_pred!=Block,
+	!block_is_overlaping(Block_pred).
 	
 block_points(Block,Block_pred,5,"may_fallthrough"):-
 	may_fallthrough(EA,Block),
@@ -354,6 +360,7 @@ block_points(Block,Block_pred,1,"fits"):-
 block_points(Block,Block_pred,2,"appears"):-
 	possible_target_from(Block,EA),
 	!direct_jump(EA,Block),
+        !direct_call(EA,Block),
 	phase2.likely_ea(EA,Block_pred),
 	Block_pred!=Block,
 	!block_is_overlaping(Block_pred).
@@ -381,6 +388,7 @@ block_points(Block,Block_pred2,Points,"transitive jump"):-
 	phase2.likely_ea(EA,Block_pred),
 	block_is_overlaping(Block_pred),
 	block_points(Block_pred,Block_pred2,Points,_).
+
 
 ////////////////////////////////////////////////////////////////////////////
 
