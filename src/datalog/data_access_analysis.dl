@@ -186,6 +186,22 @@ data_access_pattern(Address,1,1,EA):-
 	section(Section,SizeSect,Base),
 	Address>=Base,
 	Address<=Base+SizeSect.
+//another typical byte index
+data_access_pattern(Address,1,1,EA):-
+	code(EA),
+	instruction_get_op(EA,Index,Op),
+	op_indirect(Op,NullSReg,NullReg1,Reg,1,Address,8),
+	null_reg(NullSReg),
+	null_reg(NullReg1),
+	!null_reg(Reg),
+
+	def_used(EA_def,Reg,EA,Index),
+	best_value_reg(EA_def,Reg,1,0,_),
+
+	data_section(Section),
+	section(Section,SizeSect,Base),
+	Address>=Base,
+	Address<=Base+SizeSect.
 
 //typical word index
 data_access_pattern(Address,2,2,EA):-
