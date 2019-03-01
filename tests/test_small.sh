@@ -33,6 +33,7 @@ examples=(
     "ex_switch ex"
     "ex_unitialized_data ex"
     "ex_virtualDispatch ex g++"
+    "ex_false_pointer_array ex"
 );
 
 strip=""
