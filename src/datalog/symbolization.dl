@@ -1,4 +1,4 @@
-//===- symbolization.dl -----------------------------------------*- C++ -*-===//
+//===- symbolization.dl -----------------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2018 GrammaTech, Inc.  All rights reserved.
 //
@@ -72,7 +72,7 @@ This module also computes stack_operand and symbol_minus_symbol.
 .decl bss_data(ea:address)
 .output bss_data
 
-// string (just for pretty printing)
+// string
 .decl string(ea:address,end:address)
 .output string
 
@@ -203,10 +203,23 @@ symbolic_data_operand_candidate(EA,Op_index,Dest):-
 	section(Name,SizeSect,Base),
 	Dest>=Base,
 	Dest<=Base+SizeSect.
+///////////////////////////////
+// label candidates before moving
+.decl labeled_data_candidate(EA:address)
+
+labeled_data_candidate(EA):-
+	symbol(EA,_,_,_,_).
+
+labeled_data_candidate(EA):-
+	symbolic_data_operand_candidate(_,_,EA).
+
+labeled_data_candidate(Val):-
+	address_in_data_refined(_,Val).
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Heuristic: If there are at least 3 consecutive addresses
 //  we consider that we found an array of addresses
+// we do not cross labels
 
 
 .decl after_address_in_data(EA:address,EA_next:address)
@@ -215,12 +228,14 @@ symbolic_data_operand_candidate(EA,Op_index,Dest):-
 after_address_in_data(EA,EA+Pt_size):-
 	address_in_data_refined(EA,_),
 	pointer_size(Pt_size),
-	data_byte(EA+Pt_size,_).
+	data_byte(EA+Pt_size,_),
+        !labeled_data_candidate(EA+Pt_size).
 	
 after_address_in_data(EA,EA_aux+1):-
 	after_address_in_data(EA,EA_aux),
 	!address_in_data_refined(EA_aux,_),
-	data_byte(EA_aux+1,_).
+	data_byte(EA_aux+1,_),
+	!labeled_data_candidate(EA_aux+1).
 
 .decl next_address_in_data(EA:address,EA_next:address)
 
@@ -266,19 +281,19 @@ labeled_data(EA):-
 labeled_data(EA):-
 	symbolic_data_operand_candidate(Src,_,EA),
 	!moved_label(Src,_,EA,_).
-labeled_data(EA_moved):-
-	moved_label(_Src,_,_,EA_moved).
-	
-labeled_data(EA):-
-	symbol_minus_symbol(EA,EA,_).
 
-labeled_data(Val):-
-	address_in_data_refined(EA,Val),
-	!moved_data_label(EA,Val,_).
+labeled_data(EA):-
+	address_in_data_refined(Src,EA),
+	!moved_data_label(Src,EA,_).
+
+labeled_data(EA_moved):-
+	moved_label(_,_,_,EA_moved).
 	
 labeled_data(New_dest):-
-	address_in_data_refined(EA,Val),
-	moved_data_label(EA,Val,New_dest).
+	moved_data_label(_,_,New_dest).
+
+labeled_data(EA):-
+	symbol_minus_symbol(EA,EA,_).
 
 /////////////////////////////////////////////////////////////////////////////////
 // Detect strings
