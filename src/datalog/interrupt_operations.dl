@@ -1,0 +1,21 @@
+//===- interrupt_operations.dl ---------------------------------------*- C++ -*-===//
+//
+//  Copyright (C) 2018 GrammaTech, Inc.  All rights reserved.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+The set of interrupt operations in x64
+*/
+
+.decl interrupt_operation(n:symbol)
+
+interrupt_operation("INT").
+interrupt_operation("INTO").
+interrupt_operation("INT1").
+interrupt_operation("INT3").

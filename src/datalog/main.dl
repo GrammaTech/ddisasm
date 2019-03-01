@@ -56,6 +56,7 @@ This module:
 // tables with basic facts
 #include "printable_chars.dl"
 #include "jump_operations.dl"
+#include "interrupt_operations.dl"
 
 // Detection of relative jump tables
 #include "relative_jump_tables.dl"
