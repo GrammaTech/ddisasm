@@ -74,9 +74,10 @@ may_fallthrough(From,To):-
 
 must_fallthrough(From,To):-
 	may_fallthrough(From,To),
-        instruction_get_operation(From,Operation),
+	instruction_get_operation(From,Operation),
         Operation!="CALL",
         !interrupt_operation(Operation),
+	!instruction_has_loop_prefix(From),
         !conditional_jump(From).
 
 
@@ -104,6 +105,9 @@ phase1.block_limit(EA):-
 
 phase1.block_limit(EA):-
 	basic_target(EA).	
+
+phase1.block_limit(EA):-
+        instruction_has_loop_prefix(EA).
 
 // In this phase possible target and block_limits are the same
 phase1.possible_target(EA):-

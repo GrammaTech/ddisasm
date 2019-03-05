@@ -67,7 +67,7 @@ Dl_instruction Dl_decoder::transformInstruction(cs_insn& insn){
     std::string prefix,name;
     size_t pos=prefix_name.find(' ');
     if(pos!= std::string::npos){
-        prefix=prefix_name.substr(0,pos);
+        prefix=str_toupper(prefix_name.substr(0,pos));
         name=str_toupper(prefix_name.substr(pos+1,prefix_name.length()-(pos+1)));
     }else{
         prefix="";

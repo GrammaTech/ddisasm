@@ -1,4 +1,4 @@
-//===- main.dl --------------------------------------------------*- C++ -*-===//
+//===- main.dl --------------------------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2018 GrammaTech, Inc.  All rights reserved.
 //
@@ -300,6 +300,18 @@ loop_operation("LOOP").
 loop_operation("LOOPNE").
 loop_operation("LOOPE").
 
+.decl loop_prefix(prefix:symbol)
+
+loop_prefix("REP").
+loop_prefix("REPE").
+loop_prefix("REPNE").
+
+.decl instruction_has_loop_prefix(EA:address)
+
+instruction_has_loop_prefix(EA):-
+	instruction(EA,_,Prefix,_,_,_,_,_),
+	loop_prefix(Prefix).
+
 // JUMPS
 .decl inconditional_jump(n:address)
 
@@ -326,6 +338,9 @@ direct_jump(EA,Dest):-
 	instruction(EA,_,_,Operation,_,Op2,_,_),
 	loop_operation(Operation),
 	op_immediate(Op2,Dest).
+
+direct_jump(EA,EA):-
+	instruction_has_loop_prefix(EA).
 
 // Special kinds of indirect jumps
 // PC relative jumps
