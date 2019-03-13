@@ -77,9 +77,6 @@ struct DecodedInstruction
         std::string prefix, opcode;
 
         tuple >> EA >> Size >> prefix >> opcode;
-        // Need to identify rets for the CFG, otherwise prefix and opcode can
-        // be ignored
-        this->isRet = (opcode == "RET");
         this->Op1 = tuple[4];
         this->Op2 = tuple[5];
         this->Op3 = tuple[6];
@@ -92,7 +89,6 @@ struct DecodedInstruction
     uint64_t Op2{0};
     uint64_t Op3{0};
     uint64_t Op4{0};
-    bool isRet{false};
 };
 
 struct OpRegdirect
@@ -156,6 +152,22 @@ struct CodeInBlock
 
     gtirb::Addr EA{0};
     gtirb::Addr BlockAddress{0};
+};
+
+struct BlockInformation
+{
+    BlockInformation(gtirb::Addr ea) : EA(ea)
+    {
+    }
+
+    BlockInformation(souffle::tuple &tuple)
+    {
+        assert(tuple.size() == 2);
+        tuple >> EA >> size;
+    };
+
+    gtirb::Addr EA{0};
+    uint64_t size{0};
 };
 
 struct PLTReference
@@ -343,7 +355,6 @@ public:
 struct SymbolicInfo
 {
     VectorByEA<PLTReference> PLTCodeReferences;
-    VectorByEA<DirectCall> DirectCalls;
     VectorByEA<MovedLabel> MovedLabels;
     VectorByEA<SymbolicExpression> SymbolicExpressions;
 };
@@ -586,13 +597,6 @@ void buildSymbolic(gtirb::Module &module, DecodedInstruction instruction, gtirb:
             module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{0, sym});
         }
 
-        auto directCall = symbolicInfo.DirectCalls.find(ea);
-        if(directCall != nullptr)
-        {
-            auto sym = getSymbol(module, directCall->Destination);
-            module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{0, sym});
-        }
-
         auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
         if(auto movedLabel = std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
                                           [ea, index](const auto &element) {
@@ -659,99 +663,57 @@ void buildSymbolic(gtirb::Module &module, DecodedInstruction instruction, gtirb:
     }
 }
 
-void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
+void buildCodeSymbolicInformation(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
     auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", prog);
-
     SymbolicInfo symbolicInfo{
         convertSortedRelation<VectorByEA<PLTReference>>("plt_code_reference", prog),
-        convertSortedRelation<VectorByEA<DirectCall>>("direct_call", prog),
         convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
         convertSortedRelation<VectorByEA<SymbolicExpression>>("symbolic_operand", prog)};
     auto decodedInstructions =
         convertSortedRelation<VectorByEA<DecodedInstruction>>("instruction", prog);
     auto opImmediate = convertSortedRelation<VectorByN<OpImmediate>>("op_immediate", prog);
     auto opIndirect = convertSortedRelation<VectorByN<OpIndirect>>("op_indirect", prog);
-
     auto &module = ir.modules()[0];
-    auto &cfg = module.getCFG();
-    std::map<gtirb::Addr, gtirb::Addr> blockCalls;
-
-    for(auto &output : *prog->getRelation("refined_block"))
+    for(auto &cib : codeInBlock)
     {
-        gtirb::Addr blockAddress;
-        output >> blockAddress;
-        std::vector<gtirb::Addr> instructions;
-        bool hasRet = false;
-        bool hasCall = false;
-
-        for(auto &cib : codeInBlock)
-        {
-            if(cib.BlockAddress == blockAddress)
-            {
-                const auto inst = decodedInstructions.find(cib.EA);
-                assert(inst != nullptr);
-
-                instructions.emplace_back(cib.EA);
-                buildSymbolic(module, *inst, cib.EA, inst->Op1, 1, symbolicInfo, opImmediate,
+        const auto inst = decodedInstructions.find(cib.EA);
+        assert(inst != nullptr);
+        buildSymbolic(module, *inst, cib.EA, inst->Op1, 1, symbolicInfo, opImmediate,
                               opIndirect);
-                buildSymbolic(module, *inst, cib.EA, inst->Op2, 2, symbolicInfo, opImmediate,
+        buildSymbolic(module, *inst, cib.EA, inst->Op2, 2, symbolicInfo, opImmediate,
                               opIndirect);
-                buildSymbolic(module, *inst, cib.EA, inst->Op3, 3, symbolicInfo, opImmediate,
+        buildSymbolic(module, *inst, cib.EA, inst->Op3, 3, symbolicInfo, opImmediate,
                               opIndirect);
-                buildSymbolic(module, *inst, cib.EA, inst->Op4, 4, symbolicInfo, opImmediate,
+        buildSymbolic(module, *inst, cib.EA, inst->Op4, 4, symbolicInfo, opImmediate,
                               opIndirect);
-                if(inst->isRet)
-                {
-                    hasRet = true;
-                }
-                if(auto *call = symbolicInfo.DirectCalls.find(cib.EA))
-                {
-                    hasCall = true;
-                    blockCalls.emplace(cib.BlockAddress, call->Destination);
-                }
-            }
-        }
-
-        std::sort(instructions.begin(), instructions.end());
-
-        uint64_t size;
-        if(!instructions.empty())
-        {
-            auto address = instructions.back();
-            const auto inst = decodedInstructions.find(address);
-            assert(inst != nullptr);
-
-            size = address + inst->Size - blockAddress;
-        }
-        else
-        {
-            size = 0;
-        }
-
-        gtirb::Block::Exit exit;
-        if(hasRet)
-        {
-            exit = gtirb::Block::Exit::Return;
-        }
-        else if(hasCall)
-        {
-            exit = gtirb::Block::Exit::Call;
-        }
-        else
-        {
-            exit = gtirb::Block::Exit::Fallthrough;
-        }
-        emplaceBlock(cfg, C, blockAddress, size, exit);
     }
-    ir.addAuxData("blockCalls", std::move(blockCalls));
-
     std::map<gtirb::Addr, std::string> pltReferences;
     for(const auto &p : symbolicInfo.PLTCodeReferences.contents)
     {
         pltReferences[gtirb::Addr(p.EA)] = p.Name;
     }
     ir.addAuxData("pltCodeReferences", std::move(pltReferences));
+}
+
+//FIXME once we know what the block exit should be
+gtirb::Block::Exit computeBlockExit(){
+    return gtirb::Block::Exit::Fallthrough;
+}
+
+void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
+{
+    auto &module = ir.modules()[0];
+    auto &cfg = module.getCFG();
+    auto blockInformation = convertSortedRelation<VectorByEA<BlockInformation>>("block_information", prog);
+    for(auto &output : *prog->getRelation("refined_block"))
+    {
+        gtirb::Addr blockAddress;
+        output >> blockAddress;
+        uint64_t size = blockInformation.find(blockAddress)->size;
+        gtirb::Block::Exit exit=computeBlockExit();
+        emplaceBlock(cfg, C, blockAddress, size, exit);
+    }
 }
 
 // Create DataObjects for labeled objects in the BSS section, without adding
@@ -960,92 +922,25 @@ static void buildFunctions(gtirb::IR &ir, souffle::SouffleProgram *prog)
 
 static void buildCFG(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    // FIXME: this is missing some labels, and some cases for Block.Exit.
-    // Most of the logic should be moved into datalog code and the remaining
-    // details added there.
     auto &cfg = ir.modules()[0].getCFG();
     std::map<gtirb::Addr, const gtirb::Block *> blocksByEA;
-    std::set<const gtirb::Block *> blocksWithRet;
     for(const auto &b : blocks(cfg))
     {
         blocksByEA.emplace(b.getAddress(), &b);
-        if(b.getExitKind() == gtirb::Block::Exit::Return)
-        {
-            blocksWithRet.insert(&b);
-        }
     }
-
-    std::map<const gtirb::Block *, const gtirb::Block *> blockCalls;
-    const auto &t2 = *ir.getAuxData("blockCalls")->get<std::map<gtirb::Addr, gtirb::Addr>>();
-    std::transform(t2.begin(), t2.end(), std::inserter(blockCalls, blockCalls.begin()),
-                   [&blocksByEA](const auto &elt) {
-                       return std::make_pair(blocksByEA.find(elt.first)->second,
-                                             blocksByEA.find(elt.second)->second);
-                   });
-
-    std::map<const gtirb::Block *, std::vector<const gtirb::Block *>> functionReturns;
-    for(const auto &f : convertRelation<AddrPair>("in_function", prog))
+    for(auto &output : *prog->getRelation("cfg_edge"))
     {
-        if(auto b = blocksByEA.find(f.Addr1); b != blocksByEA.end())
-        {
-            auto block = blocksWithRet.find(b->second);
-            auto fun = blocksByEA.find(f.Addr2);
-            if(block != blocksWithRet.end() && fun != blocksByEA.end())
-            {
-                functionReturns[fun->second].push_back(*block);
-            }
-        }
+        gtirb::Addr srcAddr, destAddr;
+        std::string label;
+        output >> srcAddr >> destAddr >> label;
+        const gtirb::Block * src = blocksByEA.find(srcAddr)->second;
+        const gtirb::Block * dest = blocksByEA.find(srcAddr)->second;
+        //FIXME once we decide the labels for cfg edges
+        if(label=="fallthrough")
+            cfg[addEdge(src,dest, cfg)] =false;
+        else
+            cfg[addEdge(src,dest, cfg)] =true;
     }
-
-    for(const auto &edge : convertRelation<DirectCall>("intra_edge", prog))
-    {
-        if(auto fromI = blocksByEA.find(edge.EA), toI = blocksByEA.find(edge.Destination);
-           fromI != blocksByEA.end() && toI != blocksByEA.end())
-        {
-            const gtirb::Block *from = fromI->second, *to = toI->second;
-
-            // Add call/return edges, not present in intra_edge
-            if(auto call = blockCalls.find(from); call != blockCalls.end())
-            {
-                // Call edge
-                cfg[addEdge(from, call->second, cfg)] = true;
-
-                if(auto rets = functionReturns.find(call->second); rets != functionReturns.end())
-                {
-                    // Return edges
-                    for(auto v : rets->second)
-                    {
-                        addEdge(v, from, cfg);
-                    }
-
-                    // Fallthrough to next block after return
-                    cfg[addEdge(from, to, cfg)] = false;
-                    continue;
-                }
-            }
-
-            // Add other edges directly from intra_edge
-            addEdge(from, to, cfg);
-        }
-    }
-
-#if 0
-    ///////// Print /////////
-    for(const auto &b : boost::iterator_range<gtirb::CFG::vertex_iterator>(vertices(cfg)))
-    {
-        const auto &block = cfg[b];
-        std::cout << std::hex << uint64_t(block->getAddress()) << ":\n";
-        for(const auto &e : boost::iterator_range<gtirb::CFG::out_edge_iterator>(out_edges(b, cfg)))
-        {
-            std::cout << "\t" << uint64_t(cfg[target(e, cfg)]->getAddress());
-            if(auto *label = std::get_if<bool>(&cfg[e]))
-            {
-                std::cout << "  " << (*label ? "true" : "false");
-            }
-            std::cout << "\n";
-        }
-    }
-#endif
 }
 
 static void updateComment(std::map<gtirb::Addr, std::string> &comments, gtirb::Addr ea, std::string newComment){
@@ -1102,6 +997,7 @@ static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
     buildRelocations(ir, prog);
     buildDataGroups(ir, prog, symbolSizes);
     buildCodeBlocks(ir, prog);
+    buildCodeSymbolicInformation(ir,prog);
     buildFunctions(ir, prog);
     buildCFG(ir, prog);
     buildComments(ir, prog);
