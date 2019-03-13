@@ -56,11 +56,11 @@ function_entry(EA):-
 function_entry(EA):-
 	direct_call(EA_caller,EA),
 	code(EA_caller),
-	block(EA).
+	refined_block(EA).
 
 //section start
 function_entry(EA):-
-	block(EA),
+	refined_block(EA),
 	section(_,_,EA).
 
 
@@ -74,7 +74,7 @@ function_entry(EA):-
 
 // not referenced anywhere
 function_entry(EA):-
-	block(EA),
+	refined_block(EA),
 	after_function_end(EA,_),
 	!possible_target_from(EA,_),
 	!symbolic_data(_,EA),
@@ -82,7 +82,7 @@ function_entry(EA):-
 
 // two consecutive elements in a table with typical function beginnings
 function_entry(EA):-
-	block(EA),
+	refined_block(EA),
 	after_function_end(EA,_),
 	!possible_target_from(EA,_),
 	symbolic_data(Pointer,EA),
@@ -96,7 +96,7 @@ function_entry(EA):-
 
 // the address is moved to a register
 function_entry(EA):-
-	block(EA),
+	refined_block(EA),
 	after_function_end(EA,_),
 	possible_target_from(EA,Src),
 	code(Src),
@@ -107,7 +107,7 @@ function_entry(EA):-
 	function_table(Label),
 	preferred_data_access(Offset,Label),
 	symbolic_data(Offset,EA),
-	block(EA),
+	refined_block(EA),
 	after_function_end(EA,_).
 
 // // referenced from lonely pointer
@@ -158,7 +158,7 @@ function_entry(EA2):-
 ////////////////
 //propagation: jumped from another function (there is a function boundary in between)
 function_entry2(EA):-
-	block(EA),
+	refined_block(EA),
 	after_function_end(EA,_),
 	direct_jump(Src,EA),
 	inconditional_jump(Src),
@@ -178,6 +178,9 @@ function_entry2(EA):-
 .decl function_entry2(EA:address)
 .output function_entry2
 
+.decl in_function(EA:address,Function:address)
+.output in_function
+
 function_entry2(EA):-
 	function_entry(EA).
 	
@@ -185,10 +188,10 @@ function_entry2(EA):-
 	in_function(Block,Function),
 	Function<=Block,
 	complete_cfg(Function),
-	code_in_block(End,Block),
+	code_in_refined_block(End,Block),
 	after_function_end(EA,End),
 	
-	block(EA),
+	refined_block(EA),
 	!is_nop(EA),
 	!resolved_jump(_,EA),
 	//cannot be reached from before
@@ -204,9 +207,6 @@ function_entry2(EA):-
 	!instruction_get_operation(End,"CALL")
 	).
 
-
-.decl in_function(EA:address,Function:address)
-.output in_function
 
 in_function(Block,Function):-
 	function_entry2(Function),
@@ -247,7 +247,7 @@ function_table(Label):-
 	),
 	preferred_data_access(Offset,Label),
 	symbolic_data(Offset,EA),
-	block(EA).
+	refined_block(EA).
 
 //////////////////////////////////////////////////////////////////////////////
 // heuristic markers
