@@ -139,7 +139,7 @@ function_entry(EA2):-
 	after_function_end(EA2,_).
 
 function_entry(EA2):-
-	plt_data_reference(Offset,_Function),
+	plt_data_reference(Offset),
 	pointer_size(Pt_size),
 	code_pointer_in_data(Offset+Pt_size,EA2),
 	!resolved_jump(_,EA2),
@@ -147,7 +147,7 @@ function_entry(EA2):-
 	!labeled_data(Offset+Pt_size).
 
 function_entry(EA2):-
-	plt_data_reference(Offset,_Function),
+	plt_data_reference(Offset),
 	pointer_size(Pt_size),
 	!labeled_data(Offset),
 	code_pointer_in_data(Offset-Pt_size,EA2),

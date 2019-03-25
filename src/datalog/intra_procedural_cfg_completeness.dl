@@ -122,13 +122,11 @@ intra_reachable(Src,Dest):-
 intra_edge(Src,Dest):-
 	code_in_refined_block(EA,Src),
 	direct_jump(EA,Dest),
-	!plt_code_reference(EA,_),
 	!function_entry(Dest).
 
 intra_edge(Src,Dest):-
 	code_in_refined_block(EA,Src),
 	pc_relative_jump(EA,Dest),
-	!plt_code_reference(EA,_),
 	!function_entry(Dest).
 	
 intra_edge(Src,Dest):-

@@ -354,7 +354,6 @@ public:
 
 struct SymbolicInfo
 {
-    VectorByEA<PLTReference> PLTCodeReferences;
     VectorByEA<MovedLabel> MovedLabels;
     VectorByEA<SymbolicExpression> SymbolicExpressions;
 };
@@ -474,15 +473,15 @@ static std::map<gtirb::Addr, uint64_t> buildSymbols(gtirb::IR &ir, souffle::Souf
         std::string type, scope, name;
         output >> base >> size >> type >> scope >> name;
         symbolSizes[base] = size;
-        module.addSymbol(gtirb::Symbol::Create(C, base, name, getSymbolType(base,scope)));
+        gtirb::emplaceSymbol(module,C, base, name, getSymbolType(base,scope));
     }
 
     if(!module.findSymbols("main"))
         for(gtirb::Addr addrMain: convertRelation<gtirb::Addr>("main_function", prog))
-            module.addSymbol(gtirb::Symbol::Create(C,addrMain,"main"));
+            gtirb::emplaceSymbol(module,C,addrMain,"main");
     if(!module.findSymbols("_start"))
         for(gtirb::Addr addrMain: convertRelation<gtirb::Addr>("start_function", prog))
-            module.addSymbol(gtirb::Symbol::Create(C,addrMain,"_start"));
+            gtirb::emplaceSymbol(module,C,addrMain,"_start");
     return symbolSizes;
 }
 
@@ -520,21 +519,57 @@ static void buildSections(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgra
     }
 }
 
-static void buildRelocations(gtirb::IR &ir, souffle::SouffleProgram *prog)
+// auxiliary function to get a symbol with an address and name
+static gtirb::Symbol* findSymbol(gtirb::Module& module, gtirb::Addr ea, std::string name){
+    auto found = module.findSymbols(ea);
+    for(gtirb::Symbol& symbol : found){
+        if(symbol.getName()==name)
+            return &symbol;
+    }
+    return nullptr;
+}
+
+// Build a first version of the SymbolForwarding table with copy relocations
+static void buildSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    std::map<gtirb::Addr, std::tuple<std::string, std::string>> relocations;
+    std::map<gtirb::UUID, gtirb::UUID> symbolForwarding;
+    auto &module = ir.modules()[0];
     for(auto &output : *prog->getRelation("relocation"))
     {
         gtirb::Addr ea;
         uint64_t offset;
         std::string type, name;
         output >> ea >> type >> name >> offset;
-        // Datalog code turns empty string in "n/a" somewhere. Put it back.
-        if(name == "n/a")
-            name.clear();
-        relocations[ea] = {type, name};
+        if(type=="R_X86_64_COPY"){
+            gtirb::Symbol* copySymbol=findSymbol(module,ea,name);
+            if(copySymbol){
+                gtirb::Symbol* realSymbol=gtirb::emplaceSymbol(module,C,name);
+                gtirb::renameSymbol(module,*copySymbol,name+"_copy");
+                symbolForwarding[copySymbol->getUUID()]=realSymbol->getUUID();
+            }
+        }
     }
-    ir.addAuxData("relocations", std::move(relocations));
+    ir.addAuxData("SymbolForwarding", std::move(symbolForwarding));
+}
+
+// Expand the SymbolForwarding table with plt references
+static void expandSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
+{
+    auto* symbolForwarding= getAuxData<std::map<gtirb::UUID, gtirb::UUID>>(ir,"SymbolForwarding");
+    auto &module = ir.modules()[0];
+     for(auto &output : *prog->getRelation("plt_entry"))
+    {
+        gtirb::Addr ea;
+        std::string name;
+        output >> ea >> name;
+        auto foundSrc = module.findSymbols(ea);
+        auto foundDest= module.findSymbols(name);
+        for(gtirb::Symbol& src: foundSrc){
+            for(gtirb::Symbol& dest:  foundDest){
+                (*symbolForwarding)[src.getUUID()]=dest.getUUID();
+            }
+        }
+    }
 }
 
 bool isNullReg(const std::string &reg)
@@ -552,34 +587,24 @@ static std::string getLabel(uint64_t ea)
     return ss.str();
 }
 
-static bool symbolHasCopyRelocation(gtirb::IR &ir,gtirb::Symbol sym){
-    const auto& relocations =
-        *ir.getAuxData("relocations")
-             ->get<std::map<gtirb::Addr, std::tuple<std::string, std::string>>>();
-    auto relocation=relocations.find(sym.getAddress().value());
-    return relocation!=relocations.end()
-            && std::get<0>(std::get<1>((*relocation)))=="R_X86_64_COPY"
-            && std::get<1>(std::get<1>((*relocation)))==sym.getName();
-
-}
-
 static gtirb::Symbol* getSymbol(gtirb::IR &ir, gtirb::Addr ea)
 {
+    const auto* symbolForwarding= getAuxData<std::map<gtirb::UUID, gtirb::UUID>>(ir,"SymbolForwarding");
     auto &module = ir.modules()[0];
-     auto found = module.findSymbols(ea);
-     if(!found.empty())
+    auto found = module.findSymbols(ea);
+    if(!found.empty())
      {
         gtirb::Symbol* bestSymbol=&*found.begin();
         for(auto it=found.begin();it!=found.end();it++){
-            if(symbolHasCopyRelocation(ir,*it))
+            auto forwardSymbol= symbolForwarding->find(it->getUUID());
+            if(forwardSymbol != symbolForwarding->end())
                 bestSymbol=&*it;
         }
         return bestSymbol;
     }
-     auto *sym = gtirb::Symbol::Create(C, ea, getLabel(uint64_t(ea)), gtirb::Symbol::StorageKind::Local);
-     module.addSymbol(sym);
-
-     return sym;
+    auto *sym = gtirb::Symbol::Create(C, ea, getLabel(uint64_t(ea)), gtirb::Symbol::StorageKind::Local);
+    module.addSymbol(sym);
+    return sym;
 }
 
 
@@ -597,14 +622,6 @@ void buildSymbolic(gtirb::IR &ir, DecodedInstruction instruction, gtirb::Addr &e
     if(foundImm != nullptr)
     {
         int64_t immediate = foundImm->Immediate;
-
-        auto pltReference = symbolicInfo.PLTCodeReferences.find(ea);
-        if(pltReference != nullptr)
-        {
-            auto sym = getSymbol(ir, gtirb::Addr(immediate));
-            module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{0, sym});
-        }
-
         auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
         if(auto movedLabel = std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
                                           [ea, index](const auto &element) {
@@ -675,7 +692,6 @@ void buildCodeSymbolicInformation(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
     auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", prog);
     SymbolicInfo symbolicInfo{
-        convertSortedRelation<VectorByEA<PLTReference>>("plt_code_reference", prog),
         convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
         convertSortedRelation<VectorByEA<SymbolicExpression>>("symbolic_operand", prog)};
     auto decodedInstructions =
@@ -695,12 +711,6 @@ void buildCodeSymbolicInformation(gtirb::IR &ir, souffle::SouffleProgram *prog)
         buildSymbolic(ir, *inst, cib.EA, inst->Op4, 4, symbolicInfo, opImmediate,
                               opIndirect);
     }
-    std::map<gtirb::Addr, std::string> pltReferences;
-    for(const auto &p : symbolicInfo.PLTCodeReferences.contents)
-    {
-        pltReferences[gtirb::Addr(p.EA)] = p.Name;
-    }
-    ir.addAuxData("pltCodeReferences", std::move(pltReferences));
 }
 
 //FIXME once we know what the block exit should be
@@ -811,8 +821,6 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
     }
 
     auto symbolicData = convertSortedRelation<VectorByEA<SymbolicData>>("symbolic_data", prog);
-    auto pltDataReference =
-        convertSortedRelation<VectorByEA<PLTReference>>("plt_data_reference", prog);
     auto movedDataLabels =
         convertSortedRelation<VectorByEA<MovedDataLabel>>("moved_data_label", prog);
     auto symbolMinusSymbol =
@@ -908,18 +916,28 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
     ir.addAuxData("dataSections", std::move(dataSections));
     ir.addAuxData("stringEAs", std::move(stringEAs));
 
-    std::map<gtirb::Addr, std::string> pltReferences;
-    for(const auto &p : pltDataReference.contents)
-    {
-        pltReferences[gtirb::Addr(p.EA)] = p.Name;
-    }
-    ir.addAuxData("pltDataReferences", std::move(pltReferences));
-
     // Set referents of all symbols pointing to data
+
+}
+
+static void connectSymbolsToDataGroups(gtirb::IR &ir)
+{
+    auto &module = ir.modules()[0];
     std::for_each(module.data_begin(), module.data_end(), [&module](auto &d) {
         auto found = module.findSymbols(d.getAddress());
-        std::for_each(found.begin(), found.end(), [&d](auto &sym) { sym.setReferent(&d); });
+        std::for_each(found.begin(), found.end(), [&d,&module](auto &sym) { gtirb::setReferent(module,sym,&d); });
     });
+}
+
+static void connectSymbolsToBlocks(gtirb::IR &ir)
+{
+    auto &module = ir.modules()[0];
+    auto &cfg = module.getCFG();
+    for(auto &block : blocks(cfg))
+    {
+        for(auto& symbol: module.findSymbols(block.getAddress()))
+            gtirb::setReferent(module,symbol,&block);
+    }
 }
 
 static void buildFunctions(gtirb::IR &ir, souffle::SouffleProgram *prog)
@@ -1000,11 +1018,14 @@ static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
     M->setISAID(gtirb::ISAID::X64);
     ir.addModule(M);
     auto symbolSizes = buildSymbols(ir, prog);
+    buildSymbolForwarding(ir, prog);
     buildSections(ir, elf, prog);
-    buildRelocations(ir, prog);
     buildDataGroups(ir, prog, symbolSizes);
+    connectSymbolsToDataGroups(ir);
     buildCodeBlocks(ir, prog);
     buildCodeSymbolicInformation(ir,prog);
+    expandSymbolForwarding(ir, prog);
+    connectSymbolsToBlocks(ir);
     buildFunctions(ir, prog);
     buildCFG(ir, prog);
     buildComments(ir, prog);
