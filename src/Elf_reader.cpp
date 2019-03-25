@@ -142,12 +142,14 @@ void Elf_reader::read_symbols(){
 	}
 
 	//read the names
-
 	for(auto symbol:symbols){
 	    file.seekg((sections[strtab_indx].sh_offset+symbol.st_name), ios::beg);
 	    std::stringstream buff;
 	    read_string(buff);
-	    symbol_names.push_back(buff.str());
+		std::string name=buff.str();
+		// Ignore the symbol version for now
+		name=name.substr(0, name.find_first_of('@'));
+	    symbol_names.push_back(name);
 	}
 }
 

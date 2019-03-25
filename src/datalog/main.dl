@@ -447,37 +447,28 @@ function_symbol(EA,Name):-
 	
 ////////////////////////////////////////////////////////////////////////////
 // detect references  to libraries (calls to plt)
-.decl plt_code_reference(ea:address, function:symbol)
-.output plt_code_reference
-
 .decl plt_section(name:symbol)
 
 plt_section(".plt").
 plt_section(".plt.got").
 
-plt_code_reference(EA,Function):-
-	code(EA),
-	symbolic_operand(EA,1),
-	instruction_get_op(EA,1,Op),
-	op_immediate(Op,Dest),
+
+.decl plt_entry(ea:address, function:symbol)
+.output plt_entry
+
+plt_entry(EA,Function):-
 	plt_section(SecName),
 	section(SecName,Size,Beg),
-	Dest<Beg+Size,
-	Dest>=Beg,
-	pc_relative_jump(Dest,Got_entry),
+	EA<Beg+Size,
+	EA>=Beg,
+	pc_relative_jump(EA,Got_entry),
 	relocation(Got_entry,_,Function,_).
 
-.decl plt_data_reference(ea:address, function:symbol)
-.output plt_data_reference
+.decl plt_data_reference(ea:address)
 
-plt_data_reference(EA,Function):-
-	symbolic_data(EA,Dest),
-	plt_section(SecName),
-	section(SecName,Size,Beg),
-	Dest<Beg+Size,
-	Dest>=Beg,
-	pc_relative_jump(Dest,Got_entry),
-	relocation(Got_entry,_,Function,_).
+plt_data_reference(EA):-
+    plt_entry(Dest,_),
+	symbolic_data(EA,Dest).
 
 //////////////////////////////////////////////////////////////////////////
 
