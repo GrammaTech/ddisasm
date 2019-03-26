@@ -549,13 +549,13 @@ static void buildSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
             }
         }
     }
-    ir.addAuxData("SymbolForwarding", std::move(symbolForwarding));
+    ir.addAuxData("symbolForwarding", std::move(symbolForwarding));
 }
 
 // Expand the SymbolForwarding table with plt references
 static void expandSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    auto* symbolForwarding= getAuxData<std::map<gtirb::UUID, gtirb::UUID>>(ir,"SymbolForwarding");
+    auto* symbolForwarding= getAuxData<std::map<gtirb::UUID, gtirb::UUID>>(ir,"symbolForwarding");
     auto &module = ir.modules()[0];
      for(auto &output : *prog->getRelation("plt_entry"))
     {
@@ -589,7 +589,7 @@ static std::string getLabel(uint64_t ea)
 
 static gtirb::Symbol* getSymbol(gtirb::IR &ir, gtirb::Addr ea)
 {
-    const auto* symbolForwarding= getAuxData<std::map<gtirb::UUID, gtirb::UUID>>(ir,"SymbolForwarding");
+    const auto* symbolForwarding= getAuxData<std::map<gtirb::UUID, gtirb::UUID>>(ir,"symbolForwarding");
     auto &module = ir.modules()[0];
     auto found = module.findSymbols(ea);
     if(!found.empty())
