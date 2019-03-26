@@ -1,6 +1,17 @@
 //===- Dl_instruction.cpp ---------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2018 GrammaTech, Inc.  All rights reserved.
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
 //
 //  This project is sponsored by the Office of Naval Research, One Liberty
 //  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
@@ -9,12 +20,6 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-/*
- * Dl_instruction.cpp
- *
- *  Created on: Feb 2, 2018
- *      Author: afloresmontoya
- */
 
 #include "Dl_instruction.h"
 #include <sstream>
