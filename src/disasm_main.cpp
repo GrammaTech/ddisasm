@@ -711,11 +711,6 @@ void buildCodeSymbolicInformation(gtirb::IR &ir, souffle::SouffleProgram *prog)
     }
 }
 
-//FIXME once we know what the block exit should be
-gtirb::Block::Exit computeBlockExit(){
-    return gtirb::Block::Exit::Fallthrough;
-}
-
 void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
     auto &module = ir.modules()[0];
@@ -726,8 +721,7 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
         gtirb::Addr blockAddress;
         output >> blockAddress;
         uint64_t size = blockInformation.find(blockAddress)->size;
-        gtirb::Block::Exit exit=computeBlockExit();
-        emplaceBlock(cfg, C, blockAddress, size, exit);
+        emplaceBlock(cfg, C, blockAddress, size);
     }
 }
 
