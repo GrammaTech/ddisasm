@@ -1,0 +1,77 @@
+//===- cfg.dl ----------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2018 GrammaTech, Inc.  All rights reserved.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+This module generates the control flow graph of the disassembled code
+*/
+
+.decl cfg_edge(src:address,dest:address,conditional:symbol,indirect:symbol,type:symbol)
+.output cfg_edge
+
+// edges whose destination we do not know
+.decl cfg_edge_to_top(src:address,conditional:symbol,type:symbol)
+.output cfg_edge_to_top
+
+.decl cfg_edge_to_symbol(srf:address,symbol:symbol)
+
+cfg_edge(Src,Dest,Conditional,Indirect,"branch"):-
+    block_last_instruction(Src,EA),
+	(
+     direct_jump(EA,Dest), Indirect="false";
+     pc_relative_jump(EA,Dest), Indirect="false";
+     resolved_jump(EA,Dest), Indirect="true"
+    ),
+    (
+     unconditional_jump(EA),Conditional="false" ;
+     !unconditional_jump(EA),Conditional="true"
+    ).
+
+cfg_edge(Src,Dest,"false","false","call"):-
+    block_last_instruction(Src,EA),
+    (
+	direct_call(EA,Dest);
+    pc_relative_call(EA,Dest)
+    ).
+
+cfg_edge(Src,Dest,"false","false","fallthrough"):-
+	block_last_instruction(Src,EA),
+	may_fallthrough(EA,Dest),
+	code_in_refined_block(Dest,Dest).
+
+cfg_edge(ReturnBlock,NextBlock,"false","false","return"):-
+    cfg_edge(Caller,Block,_,_,"call"),
+    cfg_edge(Caller,NextBlock,_,_,"fallthrough"),
+    in_function(Block,FunctionEntry),
+    in_function(ReturnBlock,FunctionEntry),
+    block_last_instruction(ReturnBlock,Insn),
+    return(Insn).
+
+cfg_edge_to_top(Src,Conditional,"branch"):-
+    block_last_instruction(Src,EA),
+    (
+    reg_jump(EA);
+    indirect_jump(EA)
+    ),
+    (
+     unconditional_jump(EA),Conditional="false" ;
+     !unconditional_jump(EA),Conditional="true"
+    ).
+
+cfg_edge_to_top(Src,"false","call"):-
+	block_last_instruction(Src,EA),
+    (
+    reg_call(EA);
+    indirect_call(EA)
+    ).
+
+cfg_edge_to_symbol(Src,Symbol):-
+    block_last_instruction(Src,EA),
+    plt_entry(EA,Symbol).

@@ -25,6 +25,8 @@ This is the main module of the datalog disassembler.
 The disassembly has 3 main components:
  1- code_inference.dl
      -traverse_code.dl
+	 -code_inference_postprocess.dl
+	 -cfg.dl
  2- symbolization.pl
      - use_def_analysis.dl
      - value_analysis.dl
@@ -324,9 +326,9 @@ instruction_has_loop_prefix(EA):-
 	loop_prefix(Prefix).
 
 // JUMPS
-.decl inconditional_jump(n:address)
+.decl unconditional_jump(n:address)
 
-inconditional_jump(EA):-
+unconditional_jump(EA):-
 	instruction_get_operation(EA,"JMP").
 
 .decl conditional_jump(src:address)

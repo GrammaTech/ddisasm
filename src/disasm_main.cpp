@@ -607,8 +607,6 @@ static gtirb::Symbol* getSymbol(gtirb::IR &ir, gtirb::Addr ea)
     return sym;
 }
 
-
-
 void buildSymbolic(gtirb::IR &ir, DecodedInstruction instruction, gtirb::Addr &ea,
                    uint64_t operand, uint64_t index, const SymbolicInfo &symbolicInfo,
                    const VectorByN<OpImmediate> &opImmediate,
@@ -956,15 +954,36 @@ static void buildCFG(gtirb::IR &ir, souffle::SouffleProgram *prog)
     for(auto &output : *prog->getRelation("cfg_edge"))
     {
         gtirb::Addr srcAddr, destAddr;
-        std::string label;
-        output >> srcAddr >> destAddr >> label;
+        std::string conditional, indirect, type;
+        output >> srcAddr >> destAddr >> conditional>> indirect >>type;
+        bool isConditional= conditional=="true";
+        //bool isIndirect= indirect=="true";
+
         const gtirb::Block * src = blocksByEA.find(srcAddr)->second;
-        const gtirb::Block * dest = blocksByEA.find(srcAddr)->second;
-        //FIXME once we decide the labels for cfg edges
-        if(label=="fallthrough")
-            cfg[addEdge(src,dest, cfg)] =false;
-        else
-            cfg[addEdge(src,dest, cfg)] =true;
+        const gtirb::Block * dest = blocksByEA.find(destAddr)->second;
+        //FIXME once we have the right labels
+        cfg[addEdge(src,dest, cfg)]= isConditional;
+    }
+    for(auto &output : *prog->getRelation("cfg_edge_to_top"))
+    {
+        gtirb::Addr srcAddr;
+        std::string conditional, type;
+        output >> srcAddr  >> conditional >>type;
+        //bool isConditional= conditional=="true";
+        //const gtirb::Block * src = blocksByEA.find(srcAddr)->second;
+        //FIXME once we can create edges to top
+        //cfg[addEdge(src, cfg)]= isConditional;
+    }
+    for(auto &output : *prog->getRelation("cfg_edge_to_symbol"))
+    {
+        gtirb::Addr srcAddr;
+        std::string symbolName;
+        output >> srcAddr  >> symbolName;
+        //const gtirb::Block * src = blocksByEA.find(srcAddr)->second;
+        //for(gtirb::Symbol& symbol: ir.modules()[0].findSymbols(symbolName){
+            //FIXME once we can create edges to symbol
+            //cfg[addEdge(src,destSymbol, cfg)]=false;
+        //}
     }
 }
 

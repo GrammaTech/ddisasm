@@ -109,7 +109,7 @@ likely_ea(EA,EA):-
 after_end(Next,End):-
 	likely_ea(End,_),
 	(
-	   inconditional_jump(End)
+	   unconditional_jump(End)
 	;
 	   return(End)
 	;
