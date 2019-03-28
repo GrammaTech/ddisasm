@@ -161,7 +161,7 @@ function_entry2(EA):-
 	refined_block(EA),
 	after_function_end(EA,_),
 	direct_jump(Src,EA),
-	inconditional_jump(Src),
+	unconditional_jump(Src),
 	code(Src),
 	function_entry(Middle),
 	(
@@ -202,7 +202,7 @@ function_entry2(EA):-
 	instruction_get_operation(End,"CALL"),
 	!intra_edge_dir(EA,_,"back"),
 	!goes_back(EA,_,"cjump"),
-	!inconditional_jump(EA)
+	!unconditional_jump(EA)
 	;
 	!instruction_get_operation(End,"CALL")
 	).
@@ -243,7 +243,7 @@ function_table(Label):-
 		instruction_get_operation(Origin,"CALL")
 	;
 		Mult>Pt_size,
-		!inconditional_jump(Origin)
+		!unconditional_jump(Origin)
 	),
 	preferred_data_access(Offset,Label),
 	symbolic_data(Offset,EA),
@@ -295,7 +295,7 @@ function_end(EA):-
 	return(EA).
 
 function_end(EA):-
-	inconditional_jump(EA).
+	unconditional_jump(EA).
 	
 function_end(EA):-
 	halt(EA).	

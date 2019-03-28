@@ -36,9 +36,6 @@
 .decl block_information(block:address,size:number)
 .output block_information
 
-.decl cfg_edge(src:address,dest:address,label:symbol)
-.output cfg_edge
-
 .decl block_last_instruction(block:address,EA:address)
 
 // a block that is not referenced anywhere
@@ -83,34 +80,3 @@ block_information(Block,BlockSize):-
     block_last_instruction(Block,LastEA),
     instruction(LastEA, InsnSize, _, _,_, _, _, _),
     BlockSize= LastEA+InsnSize - Block.
-
-
-cfg_edge(Src,Dest,"jump"):-
-	code_in_refined_block(EA,Src),
-	(
-    direct_jump(EA,Dest);
-    pc_relative_jump(EA,Dest);
-    resolved_jump(EA,Dest)
-    ).
-
-cfg_edge(Src,Dest,"call"):-
-	code_in_refined_block(EA,Src),
-    (
-	direct_call(EA,Dest);
-    pc_relative_call(EA,Dest)
-    ).
-
-cfg_edge(Src,Dest,"fallthrough"):-
-	code_in_refined_block(EA,Src),
-	may_fallthrough(EA,Dest),
-	code_in_refined_block(Dest,Dest).
-
-cfg_edge(ReturnBlock,NextBlock,"return"):-
-    cfg_edge(Caller,Block,"call"),
-    cfg_edge(Caller,NextBlock,"fallthrough"),
-    in_function(Block,FunctionEntry),
-    in_function(ReturnBlock,FunctionEntry),
-    block_last_instruction(ReturnBlock,Insn),
-    return(Insn).
-
-

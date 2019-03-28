@@ -61,6 +61,9 @@ more points.
  // that are always executed together
 #include "code_inference_postprocess.dl"
 
+// cfg generates a control flow graph
+#include "cfg.dl"
+
 // we detect if there are still overlaping blocks, in that case the analysis has failed
 .decl block_still_overlap(ea:address,ea2:address)
 .output block_still_overlap
@@ -78,7 +81,7 @@ more points.
 may_fallthrough(From,To):-
 	next(From,To),
 	!return(From),
-	!inconditional_jump(From),
+	!unconditional_jump(From),
 	!halt(From).
 		
 .decl must_fallthrough(o:address,d:address)

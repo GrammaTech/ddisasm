@@ -186,7 +186,7 @@ goes_back(Src,Dest,"cjump"):-
 	Dest<Src,
 	// try to discard tail calls
 	(
-	 !inconditional_jump(Middle)
+	 !unconditional_jump(Middle)
 	;
 	//not a call to the beginning of a function
 	 !after_function_end(Dest,_)
