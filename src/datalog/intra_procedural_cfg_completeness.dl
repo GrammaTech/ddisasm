@@ -38,18 +38,21 @@ jump_table(EA,Initial_memory):-
 	indirect_jump(EA),
 	pointer_size(Pt_size),
 	data_access_pattern(Initial_memory,Pt_size,Pt_size,EA),
-	symbolic_data(Initial_memory,_).
+	symbolic_data(Initial_memory,Dest_block),
+	refined_block(Dest_block).
 
 //use just the constant in the jump
 jump_table(EA,Initial_memory):-
 	code(EA),
 	indirect_jump(EA),
 	symbolic_data_operand_candidate(EA,1,Initial_memory),
-	symbolic_data(Initial_memory,_).
+	symbolic_data(Initial_memory,Dest_block),
+	refined_block(Dest_block).
 	
 jump_table(EA,Memory+8):-
 	jump_table(EA,Memory),
-	symbolic_data(Memory+8,_),
+	symbolic_data(Memory+8,Dest_block),
+	refined_block(Dest_block),
 	!data_access_pattern(Memory+8,_,_,_).
 
 // we have another access to the same table (the access can be before or after)
@@ -57,6 +60,7 @@ jump_table(EA,Memory+8):-
 	jump_table(EA,Memory),
 	symbolic_data(Memory,Content_prev),
 	symbolic_data(Memory+8,Content_next),
+	refined_block(Content_next),
 	pointer_size(Pt_size),
 	data_access_pattern(Memory+8,Pt_size,Pt_size,EA),
 	(
@@ -73,7 +77,8 @@ jump_table(EA,Memory+8):-
 
 resolved_jump(EA,Dest):-
 	jump_table(EA,Memory),
-	symbolic_data(Memory,Dest).
+	symbolic_data(Memory,Dest),
+	refined_block(Dest).
 	
 //////////////////////////////////////////////////////////////////////////////
 // record blocks that have jumps that are not resolved
