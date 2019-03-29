@@ -10,6 +10,7 @@ endif()
 set(DATALOG_SOURCES
     datalog/code_inference.dl
     datalog/code_inference_postprocess.dl
+    datalog/cfg.dl
     datalog/data_access_analysis.dl
     datalog/empty_range.dl
     datalog/float_operations.dl
