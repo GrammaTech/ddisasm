@@ -50,7 +50,7 @@ run-ubuntu18:
   variables:
     OS: 'ubuntu18'
   script:
-    - docker run ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
+    - docker run --cpus=8 ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
       "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip"
 
 cleanup-ubuntu16:
