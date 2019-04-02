@@ -371,7 +371,7 @@ struct SymbolicData
     };
 
     gtirb::Addr EA{0};
-    uint64_t GroupContent{0};
+    gtirb::Addr GroupContent{0};
 };
 
 struct SymbolMinusSymbol
@@ -459,12 +459,9 @@ static gtirb::Symbol::StorageKind getSymbolType(uint64_t sectionIndex, std::stri
     return gtirb::Symbol::StorageKind::Extern;
 }
 
-static std::map<gtirb::Addr, uint64_t> buildSymbols(gtirb::IR &ir, souffle::SouffleProgram *prog)
+static void buildSymbols(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    std::map<gtirb::Addr, uint64_t> symbolSizes;
     auto &module = ir.modules()[0];
-    std::vector<gtirb::Addr> functionEAs;
-
     for(auto &output : *prog->getRelation("symbol"))
     {
         assert(output.size() == 5);
@@ -472,8 +469,10 @@ static std::map<gtirb::Addr, uint64_t> buildSymbols(gtirb::IR &ir, souffle::Souf
         uint64_t size,sectionIndex;
         std::string type, scope, name;
         output >> base >> size >> type >> scope >> sectionIndex >> name;
-        symbolSizes[base] = size;
-        gtirb::emplaceSymbol(module,C, base, name, getSymbolType(sectionIndex,scope));
+        if(sectionIndex==0)
+           gtirb::emplaceSymbol(module,C, name);
+        else
+           gtirb::emplaceSymbol(module,C, base, name, getSymbolType(sectionIndex,scope));
     }
 
     if(!module.findSymbols("main"))
@@ -482,7 +481,6 @@ static std::map<gtirb::Addr, uint64_t> buildSymbols(gtirb::IR &ir, souffle::Souf
     if(!module.findSymbols("_start"))
         for(gtirb::Addr addrMain: convertRelation<gtirb::Addr>("start_function", prog))
             gtirb::emplaceSymbol(module,C,addrMain,"_start");
-    return symbolSizes;
 }
 
 static void buildSections(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgram *prog)
@@ -729,91 +727,44 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
 
 // Create DataObjects for labeled objects in the BSS section, without adding
 // data to the ImageByteMap.
-void buildBSS(gtirb::IR &ir, souffle::SouffleProgram *prog,
-              const std::map<gtirb::Addr, uint64_t> &symbolSizes)
+
+void buildBSS(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
     auto bssData = convertRelation<gtirb::Addr>("bss_data", prog);
-    std::vector<gtirb::UUID> dataUUIDs;
-
     auto &module = ir.modules()[0];
     const auto &sections = module.sections();
     const auto found = std::find_if(sections.begin(), sections.end(), [](const auto &element) {
         return element.getName() == ".bss";
     });
-    if(found == sections.end()){
+    if(found == sections.end())
+    {
         std::cerr << "Section .bss not found\n";
         return;
     }
     for(size_t i = 0; i < bssData.size(); ++i)
     {
         const gtirb::Addr current = bssData[i];
-
         if(i != bssData.size() - 1)
         {
             gtirb::Addr next = bssData[i + 1];
-
-            // If there's a symbol at this location, adjust DataObject to
-            // match symbol size.
-            auto symbol = symbolSizes.find(current);
-            if(symbol != symbolSizes.end() && symbol->second != 0)
-            {
-                uint64_t size = symbol->second;
-                gtirb::Addr end = current + size;
-                {
-                    auto *d = gtirb::DataObject::Create(C, current, size);
-                    module.addData(d);
-                    dataUUIDs.push_back(d->getUUID());
-                }
-
-                // If symbol size was smaller than BSS object, fill in the
-                // difference
-                if(end < next)
-                {
-                    auto *d = gtirb::DataObject::Create(C, end, next - end);
-                    module.addData(d);
-                    dataUUIDs.push_back(d->getUUID());
-                }
-                // Otherwise, skip BSS objects contained within the symbol.
-                else
-                {
-                    while(next < end && i < bssData.size() - 1)
-                    {
-                        i++;
-                        next = bssData[i + 1];
-                    }
-                }
-            }
-            else
-            {
-                auto *d = gtirb::DataObject::Create(C, gtirb::Addr(current), next - current);
-                module.addData(d);
-                dataUUIDs.push_back(d->getUUID());
-            }
+            auto *d = gtirb::DataObject::Create(C, gtirb::Addr(current), next - current);
+            module.addData(d);
         }
         else
         {
             // Continue to the end of the section.
-            auto *d =
-                gtirb::DataObject::Create(C, gtirb::Addr(current), addressLimit(*found) - current);
-            module.addData(d);
-            dataUUIDs.push_back(d->getUUID());
+            int64_t remaining = addressLimit(*found) - current;
+            if(remaining > 0)
+            {
+                auto *d = gtirb::DataObject::Create(C, gtirb::Addr(current), remaining);
+                module.addData(d);
+            }
         }
     }
-
-    ir.addAuxData("bssData", dataUUIDs);
 }
 
-void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
-                     const std::map<gtirb::Addr, uint64_t> &symbolSizes)
+void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    std::vector<uint64_t> labeledData;
-    for(auto &output : *prog->getRelation("labeled_data"))
-    {
-        uint64_t x;
-        output >> x;
-        labeledData.push_back(x);
-    }
-
     auto symbolicData = convertSortedRelation<VectorByEA<SymbolicData>>("symbolic_data", prog);
     auto movedDataLabels =
         convertSortedRelation<VectorByEA<MovedDataLabel>>("moved_data_label", prog);
@@ -821,65 +772,58 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
     auto dataStrings = convertSortedRelation<VectorByEA<String>>("string", prog);
     auto &module = ir.modules()[0];
-
-    std::vector<std::tuple<std::string, int, std::vector<gtirb::UUID>>> dataSections;
+    std::unordered_set<std::string> dataSections{
+    ".got",
+    ".got.plt",
+    ".data.rel.ro",
+    ".init_array",
+    ".fini_array",
+    ".rodata",
+    ".data"};
     std::vector<gtirb::Addr> stringEAs;
 
     for(auto &s : module.sections())
     {
-        auto foundDataSection = getDataSectionDescriptor(s.getName());
-
-        if(foundDataSection != nullptr)
-        {
-            std::vector<gtirb::UUID> dataGroupIds;
-
+        if (dataSections.count(s.getName())){
             auto limit = addressLimit(s);
             for(auto currentAddr = s.getAddress(); currentAddr < limit; currentAddr++)
             {
-                // symbol+constant and symbol+0
+                 // symbol+constant
+                const auto movedDataLabel = movedDataLabels.find(currentAddr);
+                 if(movedDataLabel != nullptr)
+                    {
+                        auto *d = gtirb::DataObject::Create(C, currentAddr, 8);
+                        module.addData(d);
+                        auto diff = movedDataLabel->Offset1 - movedDataLabel->Offset2;
+                        auto sym=getSymbol(ir,  gtirb::Addr(movedDataLabel->Offset2));
+                        module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{diff, sym});
+                        currentAddr += 7;
+                        continue;
+                    }
+                // symbol+0
                 const auto symbolic = symbolicData.find(currentAddr);
                 if(symbolic != nullptr)
                 {
-                    auto *d = gtirb::DataObject::Create(C, currentAddr, 8);
-                    module.addData(d);
-                    dataGroupIds.push_back(d->getUUID());
-
-                    // if there is a moved_data_label we have a symbol+constant
-                    int64_t diff = 0;
-                    gtirb::Symbol *sym;
-                    const auto movedDataLabel = movedDataLabels.find(currentAddr);
-                    if(movedDataLabel != nullptr)
-                    {
-                        diff = movedDataLabel->Offset1 - movedDataLabel->Offset2;
-                        sym = getSymbol(ir, gtirb::Addr(movedDataLabel->Offset2));
-                    }
-                    else
-                    {
-                        sym = getSymbol(ir, gtirb::Addr(symbolic->GroupContent));
-                    }
-                    module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{diff, sym});
-
-                    currentAddr += 7;
-                    continue;
+                        auto *d = gtirb::DataObject::Create(C, currentAddr, 8);
+                        module.addData(d);
+                        auto sym=getSymbol(ir, symbolic->GroupContent);
+                        module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{0, sym});
+                        currentAddr += 7;
+                        continue;
                 }
-
                 // symbol-symbol
                 const auto symMinusSym = symbolMinusSymbol.find(currentAddr);
                 if(symMinusSym != nullptr)
                 {
                     auto *d = gtirb::DataObject::Create(C, currentAddr, 4);
                     module.addData(d);
-                    dataGroupIds.push_back(d->getUUID());
-
                     module.addSymbolicExpression(
                         gtirb::Addr(currentAddr),
                         gtirb::SymAddrAddr{1, 0, getSymbol(ir, symMinusSym->Symbol2),
                                            getSymbol(ir, symMinusSym->Symbol1)});
-
                     currentAddr += 3;
                     continue;
                 }
-
                 // string
                 const auto str = dataStrings.find(currentAddr);
                 if(str != nullptr)
@@ -887,32 +831,20 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog,
                     stringEAs.push_back(currentAddr);
                     auto *d = gtirb::DataObject::Create(C, currentAddr, str->End - currentAddr);
                     module.addData(d);
-                    dataGroupIds.push_back(d->getUUID());
-
                     // Because the loop is going to increment this counter, don't skip a byte.
                     currentAddr = str->End - 1;
-
                     continue;
                 }
-
                 // Store raw data
                 auto *d = gtirb::DataObject::Create(C, currentAddr, 1);
                 module.addData(d);
-                dataGroupIds.push_back(d->getUUID());
             }
-
-            dataSections.emplace_back(s.getName(), foundDataSection->second, dataGroupIds);
         }
     }
-
-    buildBSS(ir, prog, symbolSizes);
-
-    ir.addAuxData("dataSections", std::move(dataSections));
+    buildBSS(ir, prog);
     ir.addAuxData("stringEAs", std::move(stringEAs));
-
-    // Set referents of all symbols pointing to data
-
 }
+
 
 static void connectSymbolsToDataGroups(gtirb::IR &ir)
 {
@@ -1032,10 +964,10 @@ static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
     M->setFileFormat(gtirb::FileFormat::ELF);
     M->setISAID(gtirb::ISAID::X64);
     ir.addModule(M);
-    auto symbolSizes = buildSymbols(ir, prog);
+    buildSymbols(ir, prog);
     buildSymbolForwarding(ir, prog);
     buildSections(ir, elf, prog);
-    buildDataGroups(ir, prog, symbolSizes);
+    buildDataGroups(ir, prog);
     connectSymbolsToDataGroups(ir);
     buildCodeBlocks(ir, prog);
     buildCodeSymbolicInformation(ir,prog);
