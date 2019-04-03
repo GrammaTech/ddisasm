@@ -1,4 +1,3 @@
-pushd ../bin/
 dir="../examples/asm_examples/"
 
 examples=(
