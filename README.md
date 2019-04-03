@@ -39,7 +39,7 @@ The analysis contains two parts:
   --disable-provenance`.
 
 - For printing assembler code the datalog disassembler requires the
-  [gtirb-pprinter](https://git.grammatech.com/debloat/pretty-printer)
+  [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
 
 
 ## Building ddisasm
