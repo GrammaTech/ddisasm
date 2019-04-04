@@ -459,9 +459,8 @@ static gtirb::Symbol::StorageKind getSymbolType(uint64_t sectionIndex, std::stri
     return gtirb::Symbol::StorageKind::Extern;
 }
 
-static void buildSymbols(gtirb::IR &ir, souffle::SouffleProgram *prog)
+static void buildSymbols(gtirb::Module& module, souffle::SouffleProgram *prog)
 {
-    auto &module = ir.modules()[0];
     for(auto &output : *prog->getRelation("symbol"))
     {
         assert(output.size() == 5);
@@ -483,12 +482,11 @@ static void buildSymbols(gtirb::IR &ir, souffle::SouffleProgram *prog)
             gtirb::emplaceSymbol(module,C,addrMain,"_start");
 }
 
-static void buildSections(gtirb::IR &ir, Elf_reader &elf, souffle::SouffleProgram *prog)
+static void buildSections(gtirb::Module &module, Elf_reader &elf, souffle::SouffleProgram *prog)
 {
-    auto &byteMap = ir.modules()[0].getImageByteMap();
+    auto &byteMap = module.getImageByteMap();
     byteMap.setAddrMinMax({gtirb::Addr(elf.get_min_address()), gtirb::Addr(elf.get_max_address())});
 
-    auto &module = ir.modules()[0];
     for(auto &output : *prog->getRelation("section"))
     {
         assert(output.size() == 3);
@@ -531,7 +529,7 @@ static gtirb::Symbol* findSymbol(gtirb::Module& module, gtirb::Addr ea, std::str
 static void buildSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
     std::map<gtirb::UUID, gtirb::UUID> symbolForwarding;
-    auto &module = ir.modules()[0];
+    auto &module = *ir.modules().begin();
     for(auto &output : *prog->getRelation("relocation"))
     {
         gtirb::Addr ea;
@@ -554,7 +552,7 @@ static void buildSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
 static void expandSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
     auto* symbolForwarding= getAuxData<std::map<gtirb::UUID, gtirb::UUID>>(ir,"symbolForwarding");
-    auto &module = ir.modules()[0];
+    auto &module = *ir.modules().begin();
      for(auto &output : *prog->getRelation("plt_entry"))
     {
         gtirb::Addr ea;
@@ -590,7 +588,7 @@ static std::string getLabel(uint64_t ea)
 static gtirb::Symbol* getSymbol(gtirb::IR &ir, gtirb::Addr ea)
 {
     const auto* symbolForwarding= getAuxData<std::map<gtirb::UUID, gtirb::UUID>>(ir,"symbolForwarding");
-    auto &module = ir.modules()[0];
+    auto &module = *ir.modules().begin();
     auto found = module.findSymbols(ea);
     if(!found.empty())
      {
@@ -616,7 +614,7 @@ void buildSymbolic(gtirb::IR &ir, DecodedInstruction instruction, gtirb::Addr &e
     // to index. This works as long as the pretty-printer does the same
     // thing, but it isn't right.
     const auto foundImm = opImmediate.find(operand);
-    auto &module = ir.modules()[0];
+    auto &module = *ir.modules().begin();
     if(foundImm != nullptr)
     {
         int64_t immediate = foundImm->Immediate;
@@ -711,9 +709,8 @@ void buildCodeSymbolicInformation(gtirb::IR &ir, souffle::SouffleProgram *prog)
     }
 }
 
-void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
+void buildCodeBlocks(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
-    auto &module = ir.modules()[0];
     auto &cfg = module.getCFG();
     auto blockInformation = convertSortedRelation<VectorByEA<BlockInformation>>("block_information", prog);
     for(auto &output : *prog->getRelation("refined_block"))
@@ -728,10 +725,9 @@ void buildCodeBlocks(gtirb::IR &ir, souffle::SouffleProgram *prog)
 // Create DataObjects for labeled objects in the BSS section, without adding
 // data to the ImageByteMap.
 
-void buildBSS(gtirb::IR &ir, souffle::SouffleProgram *prog)
+void buildBSS(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     auto bssData = convertRelation<gtirb::Addr>("bss_data", prog);
-    auto &module = ir.modules()[0];
     const auto &sections = module.sections();
     const auto found = std::find_if(sections.begin(), sections.end(), [](const auto &element) {
         return element.getName() == ".bss";
@@ -771,7 +767,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
     auto symbolMinusSymbol =
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
     auto dataStrings = convertSortedRelation<VectorByEA<String>>("string", prog);
-    auto &module = ir.modules()[0];
+    auto &module = *ir.modules().begin();
     std::unordered_set<std::string> dataSections{
     ".got",
     ".got.plt",
@@ -841,23 +837,21 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
             }
         }
     }
-    buildBSS(ir, prog);
+    buildBSS(module, prog);
     ir.addAuxData("stringEAs", std::move(stringEAs));
 }
 
 
-static void connectSymbolsToDataGroups(gtirb::IR &ir)
+static void connectSymbolsToDataGroups(gtirb::Module &module)
 {
-    auto &module = ir.modules()[0];
     std::for_each(module.data_begin(), module.data_end(), [&module](auto &d) {
         auto found = module.findSymbols(d.getAddress());
         std::for_each(found.begin(), found.end(), [&d,&module](auto &sym) { gtirb::setReferent(module,sym,&d); });
     });
 }
 
-static void connectSymbolsToBlocks(gtirb::IR &ir)
+static void connectSymbolsToBlocks(gtirb::Module &module)
 {
-    auto &module = ir.modules()[0];
     auto &cfg = module.getCFG();
     for(auto &block : blocks(cfg))
     {
@@ -871,9 +865,9 @@ static void buildFunctions(gtirb::IR &ir, souffle::SouffleProgram *prog)
     ir.addAuxData("functionEntry", convertRelation<gtirb::Addr>("function_entry2", prog));
 }
 
-static void buildCFG(gtirb::IR &ir, souffle::SouffleProgram *prog)
+static void buildCFG(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
-    auto &cfg = ir.modules()[0].getCFG();
+    auto &cfg = module.getCFG();
     std::map<gtirb::Addr, const gtirb::Block *> blocksByEA;
     for(const auto &b : blocks(cfg))
     {
@@ -908,7 +902,7 @@ static void buildCFG(gtirb::IR &ir, souffle::SouffleProgram *prog)
         std::string symbolName;
         output >> srcAddr  >> symbolName;
         //const gtirb::Block * src = blocksByEA.find(srcAddr)->second;
-        //for(gtirb::Symbol& symbol: ir.modules()[0].findSymbols(symbolName){
+        //for(gtirb::Symbol& symbol: module.findSymbols(symbolName){
             //FIXME once we can create edges to symbol
             //cfg[addEdge(src,destSymbol, cfg)]=false;
         //}
@@ -959,22 +953,22 @@ static void buildComments(gtirb::IR &ir,souffle::SouffleProgram *prog){
 static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
                     souffle::SouffleProgram *prog)
 {
-    auto *M = gtirb::Module::Create(C);
-    M->setBinaryPath(filename);
-    M->setFileFormat(gtirb::FileFormat::ELF);
-    M->setISAID(gtirb::ISAID::X64);
-    ir.addModule(M);
-    buildSymbols(ir, prog);
+    auto *module = gtirb::Module::Create(C);
+    module->setBinaryPath(filename);
+    module->setFileFormat(gtirb::FileFormat::ELF);
+    module->setISAID(gtirb::ISAID::X64);
+    ir.addModule(module);
+    buildSymbols(*module, prog);
     buildSymbolForwarding(ir, prog);
-    buildSections(ir, elf, prog);
+    buildSections(*module, elf, prog);
     buildDataGroups(ir, prog);
-    connectSymbolsToDataGroups(ir);
-    buildCodeBlocks(ir, prog);
+    connectSymbolsToDataGroups(*module);
+    buildCodeBlocks(*module, prog);
     buildCodeSymbolicInformation(ir,prog);
     expandSymbolForwarding(ir, prog);
-    connectSymbolsToBlocks(ir);
+    connectSymbolsToBlocks(*module);
     buildFunctions(ir, prog);
-    buildCFG(ir, prog);
+    buildCFG(*module, prog);
     buildComments(ir, prog);
 }
 
