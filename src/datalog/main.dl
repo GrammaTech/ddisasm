@@ -92,7 +92,7 @@ This module:
 .decl entry_point(ea:address)
 .input entry_point
 
-.decl symbol(ea:address,size:number,type:symbol,scope:symbol,name:symbol)
+.decl symbol(ea:address,size:number,type:symbol,scope:symbol,sectionIndex:number,name:symbol)
 .input symbol
 
 .decl section(name:symbol,size:number,addr:address)
@@ -437,15 +437,15 @@ halt(EA):-
 .output ambiguous_symbol
 
 ambiguous_symbol(Name):-
-        symbol(_,_,_,_,Name),
- 	1< count :{symbol(_,_,_,_,Name)}.
+        symbol(_,_,_,_,_,Name),
+ 	1< count :{symbol(_,_,_,_,_,Name)}.
 
 // Function symbols
 .decl function_symbol(ea:address,name:symbol)
 .output function_symbol
 
 function_symbol(EA,Name):-
-	symbol(EA,_,"FUNC",_,Name).
+	symbol(EA,_,"FUNC",_,_,Name).
 	
 ////////////////////////////////////////////////////////////////////////////
 // detect references  to libraries (calls to plt)
