@@ -69,7 +69,7 @@ moved_data_label(EA,Dest,New_dest):-
 moved_data_label(EA,Dest,Address):-
 	address_in_data_refined(EA,Dest),
 	!code(Dest),
-	symbol(Address,Size,_,_,_),
+	symbol(Address,Size,_,_,_,_),
 	Address<Dest,
 	Dest<Address+Size.
 
@@ -293,6 +293,6 @@ moved_label(EA,Op_index,Dest,New_dest):-
 // If the destination is in the middle of a known symbol
 moved_label(EA,Op_index,Dest,Address):-
  	symbolic_data_operand_candidate(EA,Op_index,Dest),
- 	symbol(Address,Size,_,_,_),
+ 	symbol(Address,Size,_,_,_,_),
  	Address<Dest,
 	Dest<Address+Size.

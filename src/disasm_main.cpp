@@ -449,8 +449,8 @@ static T convertSortedRelation(const std::string &relation, souffle::SouffleProg
 
 gtirb::Context C;
 
-static gtirb::Symbol::StorageKind getSymbolType(gtirb::Addr location,std::string scope){
-    if(location==gtirb::Addr(0))
+static gtirb::Symbol::StorageKind getSymbolType(uint64_t sectionIndex, std::string scope){
+    if(sectionIndex==0)
         return gtirb::Symbol::StorageKind::Undefined;
     if(scope=="GLOBAL")
         return gtirb::Symbol::StorageKind::Normal;
@@ -469,11 +469,11 @@ static std::map<gtirb::Addr, uint64_t> buildSymbols(gtirb::IR &ir, souffle::Souf
     {
         assert(output.size() == 5);
         gtirb::Addr base;
-        uint64_t size;
+        uint64_t size,sectionIndex;
         std::string type, scope, name;
-        output >> base >> size >> type >> scope >> name;
+        output >> base >> size >> type >> scope >> sectionIndex >> name;
         symbolSizes[base] = size;
-        gtirb::emplaceSymbol(module,C, base, name, getSymbolType(base,scope));
+        gtirb::emplaceSymbol(module,C, base, name, getSymbolType(sectionIndex,scope));
     }
 
     if(!module.findSymbols("main"))

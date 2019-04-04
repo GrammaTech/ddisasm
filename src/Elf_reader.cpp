@@ -330,6 +330,7 @@ void Elf_reader::print_symbol_table(ostream& stream,std::vector<Elf64_Sym>& symb
             << symbol_it->st_size <<'\t'
             <<  get_symbol_type_str(symbol_it->st_info) <<'\t'
             <<  get_symbol_scope_str(symbol_it->st_info) <<'\t'
+			<<  symbol_it->st_shndx <<'\t'
             << *symbol_names_it<<endl;
 
         ++symbol_it;
