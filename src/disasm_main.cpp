@@ -562,6 +562,8 @@ static void expandSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
         gtirb::Addr ea;
         std::string name;
         output >> ea >> name;
+        // the inference of plt_entry guarantees that there is at most one
+        // destination symbol for each source
         auto foundSrc = module.findSymbols(ea);
         auto foundDest= module.findSymbols(name);
         for(gtirb::Symbol& src: foundSrc){
