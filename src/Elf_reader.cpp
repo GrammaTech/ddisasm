@@ -350,6 +350,7 @@ void Elf_reader::add_symbols_from_table(std::vector<symbol> &out,
                              symbol_it->st_size,
                              get_symbol_type_str(symbol_it->st_info),
                              get_symbol_scope_str(symbol_it->st_info),
+							 symbol_it->st_shndx,
                              *symbol_names_it);
 
         ++symbol_it;

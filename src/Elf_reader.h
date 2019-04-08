@@ -31,7 +31,7 @@
 
 class Elf_reader {
 public:
-        using symbol = std::tuple<uint64_t, uint64_t, std::string, std::string, std::string>;
+        using symbol = std::tuple<uint64_t, uint64_t, std::string, std::string, std::uint64_t, std::string>;
         using section = std::tuple<std::string, uint64_t, uint64_t>;
         using relocation = std::tuple<uint64_t, std::string, std::string, uint64_t>;
 
