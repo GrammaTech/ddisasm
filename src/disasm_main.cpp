@@ -463,7 +463,7 @@ static void buildSymbols(gtirb::Module& module, souffle::SouffleProgram *prog)
 {
     for(auto &output : *prog->getRelation("symbol"))
     {
-        assert(output.size() == 5);
+        assert(output.size() == 6);
         gtirb::Addr base;
         uint64_t size,sectionIndex;
         std::string type, scope, name;
@@ -551,7 +551,7 @@ static void buildSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
 // Expand the SymbolForwarding table with plt references
 static void expandSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    auto* symbolForwarding= getAuxData<std::map<gtirb::UUID, gtirb::UUID>>(ir,"symbolForwarding");
+    auto* symbolForwarding= ir.getAuxData<std::map<gtirb::UUID, gtirb::UUID>>("symbolForwarding");
     auto &module = *ir.modules().begin();
      for(auto &output : *prog->getRelation("plt_entry"))
     {
@@ -587,7 +587,7 @@ static std::string getLabel(uint64_t ea)
 
 static gtirb::Symbol* getSymbol(gtirb::IR &ir, gtirb::Addr ea)
 {
-    const auto* symbolForwarding= getAuxData<std::map<gtirb::UUID, gtirb::UUID>>(ir,"symbolForwarding");
+    const auto* symbolForwarding= ir.getAuxData<std::map<gtirb::UUID, gtirb::UUID>>("symbolForwarding");
     auto &module = *ir.modules().begin();
     auto found = module.findSymbols(ea);
     if(!found.empty())
@@ -629,6 +629,7 @@ void buildSymbolic(gtirb::IR &ir, DecodedInstruction instruction, gtirb::Addr &e
             auto diff = movedLabel->Offset1 - movedLabel->Offset2;
             auto sym = getSymbol(ir, gtirb::Addr(movedLabel->Offset2));
             module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{diff, sym});
+            return;
         }
 
         auto range = symbolicInfo.SymbolicExpressions.equal_range(ea);
@@ -640,6 +641,7 @@ void buildSymbolic(gtirb::IR &ir, DecodedInstruction instruction, gtirb::Addr &e
         {
             auto sym = getSymbol(ir, gtirb::Addr(immediate));
             module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{0, sym});
+            return;
         }
     }
 
@@ -659,6 +661,7 @@ void buildSymbolic(gtirb::IR &ir, DecodedInstruction instruction, gtirb::Addr &e
             auto diff = movedLabel->Offset1 - movedLabel->Offset2;
             auto sym = getSymbol(ir, gtirb::Addr(movedLabel->Offset2));
             module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{diff, sym});
+            return;
         }
 
         auto range = symbolicInfo.SymbolicExpressions.equal_range(ea);
