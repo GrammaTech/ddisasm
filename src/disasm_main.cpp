@@ -449,37 +449,38 @@ static T convertSortedRelation(const std::string &relation, souffle::SouffleProg
 
 gtirb::Context C;
 
-static gtirb::Symbol::StorageKind getSymbolType(uint64_t sectionIndex, std::string scope){
-    if(sectionIndex==0)
+static gtirb::Symbol::StorageKind getSymbolType(uint64_t sectionIndex, std::string scope)
+{
+    if(sectionIndex == 0)
         return gtirb::Symbol::StorageKind::Undefined;
-    if(scope=="GLOBAL")
+    if(scope == "GLOBAL")
         return gtirb::Symbol::StorageKind::Normal;
-    if(scope=="LOCAL")
+    if(scope == "LOCAL")
         return gtirb::Symbol::StorageKind::Local;
     return gtirb::Symbol::StorageKind::Extern;
 }
 
-static void buildSymbols(gtirb::Module& module, souffle::SouffleProgram *prog)
+static void buildSymbols(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     for(auto &output : *prog->getRelation("symbol"))
     {
         assert(output.size() == 6);
         gtirb::Addr base;
-        uint64_t size,sectionIndex;
+        uint64_t size, sectionIndex;
         std::string type, scope, name;
         output >> base >> size >> type >> scope >> sectionIndex >> name;
-        if(sectionIndex==0)
-           gtirb::emplaceSymbol(module,C, name);
+        if(sectionIndex == 0)
+            gtirb::emplaceSymbol(module, C, name);
         else
-           gtirb::emplaceSymbol(module,C, base, name, getSymbolType(sectionIndex,scope));
+            gtirb::emplaceSymbol(module, C, base, name, getSymbolType(sectionIndex, scope));
     }
 
     if(!module.findSymbols("main"))
-        for(gtirb::Addr addrMain: convertRelation<gtirb::Addr>("main_function", prog))
-            gtirb::emplaceSymbol(module,C,addrMain,"main");
+        for(gtirb::Addr addrMain : convertRelation<gtirb::Addr>("main_function", prog))
+            gtirb::emplaceSymbol(module, C, addrMain, "main");
     if(!module.findSymbols("_start"))
-        for(gtirb::Addr addrMain: convertRelation<gtirb::Addr>("start_function", prog))
-            gtirb::emplaceSymbol(module,C,addrMain,"_start");
+        for(gtirb::Addr addrMain : convertRelation<gtirb::Addr>("start_function", prog))
+            gtirb::emplaceSymbol(module, C, addrMain, "_start");
 }
 
 static void buildSections(gtirb::Module &module, Elf_reader &elf, souffle::SouffleProgram *prog)
@@ -516,10 +517,12 @@ static void buildSections(gtirb::Module &module, Elf_reader &elf, souffle::Souff
 }
 
 // auxiliary function to get a symbol with an address and name
-static gtirb::Symbol* findSymbol(gtirb::Module& module, gtirb::Addr ea, std::string name){
+static gtirb::Symbol *findSymbol(gtirb::Module &module, gtirb::Addr ea, std::string name)
+{
     auto found = module.findSymbols(ea);
-    for(gtirb::Symbol& symbol : found){
-        if(symbol.getName()==name)
+    for(gtirb::Symbol &symbol : found)
+    {
+        if(symbol.getName() == name)
             return &symbol;
     }
     return nullptr;
@@ -536,12 +539,14 @@ static void buildSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
         uint64_t offset;
         std::string type, name;
         output >> ea >> type >> name >> offset;
-        if(type=="R_X86_64_COPY"){
-            gtirb::Symbol* copySymbol=findSymbol(module,ea,name);
-            if(copySymbol){
-                gtirb::Symbol* realSymbol=gtirb::emplaceSymbol(module,C,name);
-                gtirb::renameSymbol(module,*copySymbol,name+"_copy");
-                symbolForwarding[copySymbol->getUUID()]=realSymbol->getUUID();
+        if(type == "R_X86_64_COPY")
+        {
+            gtirb::Symbol *copySymbol = findSymbol(module, ea, name);
+            if(copySymbol)
+            {
+                gtirb::Symbol *realSymbol = gtirb::emplaceSymbol(module, C, name);
+                gtirb::renameSymbol(module, *copySymbol, name + "_copy");
+                symbolForwarding[copySymbol->getUUID()] = realSymbol->getUUID();
             }
         }
     }
@@ -551,9 +556,9 @@ static void buildSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
 // Expand the SymbolForwarding table with plt references
 static void expandSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
 {
-    auto* symbolForwarding= ir.getAuxData<std::map<gtirb::UUID, gtirb::UUID>>("symbolForwarding");
+    auto *symbolForwarding = ir.getAuxData<std::map<gtirb::UUID, gtirb::UUID>>("symbolForwarding");
     auto &module = *ir.modules().begin();
-     for(auto &output : *prog->getRelation("plt_entry"))
+    for(auto &output : *prog->getRelation("plt_entry"))
     {
         gtirb::Addr ea;
         std::string name;
@@ -561,10 +566,12 @@ static void expandSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
         // the inference of plt_entry guarantees that there is at most one
         // destination symbol for each source
         auto foundSrc = module.findSymbols(ea);
-        auto foundDest= module.findSymbols(name);
-        for(gtirb::Symbol& src: foundSrc){
-            for(gtirb::Symbol& dest:  foundDest){
-                (*symbolForwarding)[src.getUUID()]=dest.getUUID();
+        auto foundDest = module.findSymbols(name);
+        for(gtirb::Symbol &src : foundSrc)
+        {
+            for(gtirb::Symbol &dest : foundDest)
+            {
+                (*symbolForwarding)[src.getUUID()] = dest.getUUID();
             }
         }
     }
@@ -585,28 +592,31 @@ static std::string getLabel(uint64_t ea)
     return ss.str();
 }
 
-static gtirb::Symbol* getSymbol(gtirb::IR &ir, gtirb::Addr ea)
+static gtirb::Symbol *getSymbol(gtirb::IR &ir, gtirb::Addr ea)
 {
-    const auto* symbolForwarding= ir.getAuxData<std::map<gtirb::UUID, gtirb::UUID>>("symbolForwarding");
+    const auto *symbolForwarding =
+        ir.getAuxData<std::map<gtirb::UUID, gtirb::UUID>>("symbolForwarding");
     auto &module = *ir.modules().begin();
     auto found = module.findSymbols(ea);
     if(!found.empty())
-     {
-        gtirb::Symbol* bestSymbol=&*found.begin();
-        for(auto it=found.begin();it!=found.end();it++){
-            auto forwardSymbol= symbolForwarding->find(it->getUUID());
+    {
+        gtirb::Symbol *bestSymbol = &*found.begin();
+        for(auto it = found.begin(); it != found.end(); it++)
+        {
+            auto forwardSymbol = symbolForwarding->find(it->getUUID());
             if(forwardSymbol != symbolForwarding->end())
-                bestSymbol=&*it;
+                bestSymbol = &*it;
         }
         return bestSymbol;
     }
-    auto *sym = gtirb::Symbol::Create(C, ea, getLabel(uint64_t(ea)), gtirb::Symbol::StorageKind::Local);
+    auto *sym =
+        gtirb::Symbol::Create(C, ea, getLabel(uint64_t(ea)), gtirb::Symbol::StorageKind::Local);
     module.addSymbol(sym);
     return sym;
 }
 
-void buildSymbolic(gtirb::IR &ir, DecodedInstruction instruction, gtirb::Addr &ea,
-                   uint64_t operand, uint64_t index, const SymbolicInfo &symbolicInfo,
+void buildSymbolic(gtirb::IR &ir, DecodedInstruction instruction, gtirb::Addr &ea, uint64_t operand,
+                   uint64_t index, const SymbolicInfo &symbolicInfo,
                    const VectorByN<OpImmediate> &opImmediate,
                    const VectorByN<OpIndirect> &opIndirect)
 {
@@ -701,21 +711,18 @@ void buildCodeSymbolicInformation(gtirb::IR &ir, souffle::SouffleProgram *prog)
     {
         const auto inst = decodedInstructions.find(cib.EA);
         assert(inst != nullptr);
-        buildSymbolic(ir, *inst, cib.EA, inst->Op1, 1, symbolicInfo, opImmediate,
-                              opIndirect);
-        buildSymbolic(ir, *inst, cib.EA, inst->Op2, 2, symbolicInfo, opImmediate,
-                              opIndirect);
-        buildSymbolic(ir, *inst, cib.EA, inst->Op3, 3, symbolicInfo, opImmediate,
-                              opIndirect);
-        buildSymbolic(ir, *inst, cib.EA, inst->Op4, 4, symbolicInfo, opImmediate,
-                              opIndirect);
+        buildSymbolic(ir, *inst, cib.EA, inst->Op1, 1, symbolicInfo, opImmediate, opIndirect);
+        buildSymbolic(ir, *inst, cib.EA, inst->Op2, 2, symbolicInfo, opImmediate, opIndirect);
+        buildSymbolic(ir, *inst, cib.EA, inst->Op3, 3, symbolicInfo, opImmediate, opIndirect);
+        buildSymbolic(ir, *inst, cib.EA, inst->Op4, 4, symbolicInfo, opImmediate, opIndirect);
     }
 }
 
 void buildCodeBlocks(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     auto &cfg = module.getCFG();
-    auto blockInformation = convertSortedRelation<VectorByEA<BlockInformation>>("block_information", prog);
+    auto blockInformation =
+        convertSortedRelation<VectorByEA<BlockInformation>>("block_information", prog);
     for(auto &output : *prog->getRelation("refined_block"))
     {
         gtirb::Addr blockAddress;
@@ -770,43 +777,38 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
     auto dataStrings = convertSortedRelation<VectorByEA<String>>("string", prog);
     auto &module = *ir.modules().begin();
     std::unordered_set<std::string> dataSections{
-    ".got",
-    ".got.plt",
-    ".data.rel.ro",
-    ".init_array",
-    ".fini_array",
-    ".rodata",
-    ".data"};
+        ".got", ".got.plt", ".data.rel.ro", ".init_array", ".fini_array", ".rodata", ".data"};
     std::vector<gtirb::Addr> stringEAs;
 
     for(auto &s : module.sections())
     {
-        if (dataSections.count(s.getName())){
+        if(dataSections.count(s.getName()))
+        {
             auto limit = addressLimit(s);
             for(auto currentAddr = s.getAddress(); currentAddr < limit; currentAddr++)
             {
-                 // symbol+constant
+                // symbol+constant
                 const auto movedDataLabel = movedDataLabels.find(currentAddr);
-                 if(movedDataLabel != nullptr)
-                    {
-                        auto *d = gtirb::DataObject::Create(C, currentAddr, 8);
-                        module.addData(d);
-                        auto diff = movedDataLabel->Offset1 - movedDataLabel->Offset2;
-                        auto sym=getSymbol(ir,  gtirb::Addr(movedDataLabel->Offset2));
-                        module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{diff, sym});
-                        currentAddr += 7;
-                        continue;
-                    }
+                if(movedDataLabel != nullptr)
+                {
+                    auto *d = gtirb::DataObject::Create(C, currentAddr, 8);
+                    module.addData(d);
+                    auto diff = movedDataLabel->Offset1 - movedDataLabel->Offset2;
+                    auto sym = getSymbol(ir, gtirb::Addr(movedDataLabel->Offset2));
+                    module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{diff, sym});
+                    currentAddr += 7;
+                    continue;
+                }
                 // symbol+0
                 const auto symbolic = symbolicData.find(currentAddr);
                 if(symbolic != nullptr)
                 {
-                        auto *d = gtirb::DataObject::Create(C, currentAddr, 8);
-                        module.addData(d);
-                        auto sym=getSymbol(ir, symbolic->GroupContent);
-                        module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{0, sym});
-                        currentAddr += 7;
-                        continue;
+                    auto *d = gtirb::DataObject::Create(C, currentAddr, 8);
+                    module.addData(d);
+                    auto sym = getSymbol(ir, symbolic->GroupContent);
+                    module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{0, sym});
+                    currentAddr += 7;
+                    continue;
                 }
                 // symbol-symbol
                 const auto symMinusSym = symbolMinusSymbol.find(currentAddr);
@@ -842,12 +844,12 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
     ir.addAuxData("stringEAs", std::move(stringEAs));
 }
 
-
 static void connectSymbolsToDataGroups(gtirb::Module &module)
 {
     std::for_each(module.data_begin(), module.data_end(), [&module](auto &d) {
         auto found = module.findSymbols(d.getAddress());
-        std::for_each(found.begin(), found.end(), [&d,&module](auto &sym) { gtirb::setReferent(module,sym,&d); });
+        std::for_each(found.begin(), found.end(),
+                      [&d, &module](auto &sym) { gtirb::setReferent(module, sym, &d); });
     });
 }
 
@@ -856,8 +858,8 @@ static void connectSymbolsToBlocks(gtirb::Module &module)
     auto &cfg = module.getCFG();
     for(auto &block : blocks(cfg))
     {
-        for(auto& symbol: module.findSymbols(block.getAddress()))
-            gtirb::setReferent(module,symbol,&block);
+        for(auto &symbol : module.findSymbols(block.getAddress()))
+            gtirb::setReferent(module, symbol, &block);
     }
 }
 
@@ -878,75 +880,82 @@ static void buildCFG(gtirb::Module &module, souffle::SouffleProgram *prog)
     {
         gtirb::Addr srcAddr, destAddr;
         std::string conditional, indirect, type;
-        output >> srcAddr >> destAddr >> conditional>> indirect >>type;
-        bool isConditional= conditional=="true";
-        //bool isIndirect= indirect=="true";
+        output >> srcAddr >> destAddr >> conditional >> indirect >> type;
+        bool isConditional = conditional == "true";
+        // bool isIndirect= indirect=="true";
 
-        const gtirb::Block * src = blocksByEA.find(srcAddr)->second;
-        const gtirb::Block * dest = blocksByEA.find(destAddr)->second;
-        //FIXME once we have the right labels
-        cfg[addEdge(src,dest, cfg)]= isConditional;
+        const gtirb::Block *src = blocksByEA.find(srcAddr)->second;
+        const gtirb::Block *dest = blocksByEA.find(destAddr)->second;
+        // FIXME once we have the right labels
+        cfg[addEdge(src, dest, cfg)] = isConditional;
     }
     for(auto &output : *prog->getRelation("cfg_edge_to_top"))
     {
         gtirb::Addr srcAddr;
         std::string conditional, type;
-        output >> srcAddr  >> conditional >>type;
-        //bool isConditional= conditional=="true";
-        //const gtirb::Block * src = blocksByEA.find(srcAddr)->second;
-        //FIXME once we can create edges to top
-        //cfg[addEdge(src, cfg)]= isConditional;
+        output >> srcAddr >> conditional >> type;
+        // bool isConditional= conditional=="true";
+        // const gtirb::Block * src = blocksByEA.find(srcAddr)->second;
+        // FIXME once we can create edges to top
+        // cfg[addEdge(src, cfg)]= isConditional;
     }
     for(auto &output : *prog->getRelation("cfg_edge_to_symbol"))
     {
         gtirb::Addr srcAddr;
         std::string symbolName;
-        output >> srcAddr  >> symbolName;
-        //const gtirb::Block * src = blocksByEA.find(srcAddr)->second;
-        //for(gtirb::Symbol& symbol: module.findSymbols(symbolName){
-            //FIXME once we can create edges to symbol
-            //cfg[addEdge(src,destSymbol, cfg)]=false;
+        output >> srcAddr >> symbolName;
+        // const gtirb::Block * src = blocksByEA.find(srcAddr)->second;
+        // for(gtirb::Symbol& symbol: module.findSymbols(symbolName){
+        // FIXME once we can create edges to symbol
+        // cfg[addEdge(src,destSymbol, cfg)]=false;
         //}
     }
 }
 
-static void updateComment(std::map<gtirb::Addr, std::string> &comments, gtirb::Addr ea, std::string newComment){
-    auto existing=comments.find(ea);
+static void updateComment(std::map<gtirb::Addr, std::string> &comments, gtirb::Addr ea,
+                          std::string newComment)
+{
+    auto existing = comments.find(ea);
     if(existing != comments.end())
-        comments[ea]=existing->second+ newComment;
+        comments[ea] = existing->second + newComment;
     else
-        comments[ea]=newComment;
+        comments[ea] = newComment;
 }
 
-static void buildComments(gtirb::IR &ir,souffle::SouffleProgram *prog){
+static void buildComments(gtirb::IR &ir, souffle::SouffleProgram *prog)
+{
     std::map<gtirb::Addr, std::string> comments;
-    for(auto &output : *prog->getRelation("data_access_pattern")){
+    for(auto &output : *prog->getRelation("data_access_pattern"))
+    {
         gtirb::Addr ea;
-        uint64_t size, multiplier,from;
+        uint64_t size, multiplier, from;
         output >> ea >> size >> multiplier >> from;
         std::ostringstream newComment;
-        newComment<<"data_access("<<size<<", "<<multiplier<<", "<<std::hex<<from<<std::dec<<") ";
+        newComment << "data_access(" << size << ", " << multiplier << ", " << std::hex << from
+                   << std::dec << ") ";
         updateComment(comments, ea, newComment.str());
     }
 
-    for(auto &output : *prog->getRelation("preferred_data_access")){
+    for(auto &output : *prog->getRelation("preferred_data_access"))
+    {
         gtirb::Addr ea;
         uint64_t data_access;
         output >> ea >> data_access;
         std::ostringstream newComment;
-        newComment<<"preferred_data_access("<<std::hex<<data_access<<std::dec<<") ";
+        newComment << "preferred_data_access(" << std::hex << data_access << std::dec << ") ";
         updateComment(comments, ea, newComment.str());
     }
 
-    for(auto &output : *prog->getRelation("best_value_reg")){
+    for(auto &output : *prog->getRelation("best_value_reg"))
+    {
         gtirb::Addr ea;
-        std::string reg,type;
-        int64_t multiplier,offset;
-        output >> ea >> reg >> multiplier>> offset >> type;
+        std::string reg, type;
+        int64_t multiplier, offset;
+        output >> ea >> reg >> multiplier >> offset >> type;
         std::ostringstream newComment;
-        newComment<<reg<<"=X*"<<multiplier<<"+"<<std::hex<<offset<<std::dec<<" type("<<type<<") ";
+        newComment << reg << "=X*" << multiplier << "+" << std::hex << offset << std::dec
+                   << " type(" << type << ") ";
         updateComment(comments, ea, newComment.str());
-
     }
     ir.addAuxData("comments", std::move(comments));
 }
@@ -965,7 +974,7 @@ static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
     buildDataGroups(ir, prog);
     connectSymbolsToDataGroups(*module);
     buildCodeBlocks(*module, prog);
-    buildCodeSymbolicInformation(ir,prog);
+    buildCodeSymbolicInformation(ir, prog);
     expandSymbolForwarding(ir, prog);
     connectSymbolsToBlocks(*module);
     buildFunctions(ir, prog);
@@ -973,16 +982,20 @@ static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
     buildComments(ir, prog);
 }
 
-static void performSanityChecks(souffle::SouffleProgram *prog){
-    auto blockOverlap =prog->getRelation("block_still_overlap");
-    if(blockOverlap->size()>0){
-        std::cerr <<"The conflicts between the following code blocks could not be resolved:"<<std::endl;
-        for(auto &output : *blockOverlap){
+static void performSanityChecks(souffle::SouffleProgram *prog)
+{
+    auto blockOverlap = prog->getRelation("block_still_overlap");
+    if(blockOverlap->size() > 0)
+    {
+        std::cerr << "The conflicts between the following code blocks could not be resolved:"
+                  << std::endl;
+        for(auto &output : *blockOverlap)
+        {
             uint64_t ea;
             output >> ea;
-            std::cerr<< std::hex<<ea<<std::dec<<" ";
+            std::cerr << std::hex << ea << std::dec << " ";
         }
-        std::cerr <<"Aborting"<<std::endl;
+        std::cerr << "Aborting" << std::endl;
         exit(1);
     }
 }
@@ -1182,14 +1195,15 @@ int main(int argc, char **argv)
         ("data_sect", po::value<std::vector<std::string>>()->default_value(dataSections), //
          "data sections to consider")                                                     //
         ("ir", po::value<std::string>(), "GTIRB output file")                             //
-        ("json", po::value<std::string>(), "GTIRB json output file")                             //
+        ("json", po::value<std::string>(), "GTIRB json output file")                      //
         ("asm", po::value<std::string>(), "ASM output file")                              //
         ("debug", "generate assembler file with debugging information")                   //
         ("debug-dir", po::value<std::string>(),                                           //
-                 "location to write CSV files for debugging")                             //
-        ("input-file", po::value<std::string>(), "file to disasemble")
-        ("keep-functions,K", boost::program_options::value<std::vector<std::string>>()->multitoken(),
-         "Print the given functions even if they are skipped by default (e.g. _start)");
+         "location to write CSV files for debugging")                                     //
+        ("input-file", po::value<std::string>(), "file to disasemble")(
+            "keep-functions,K",
+            boost::program_options::value<std::vector<std::string>>()->multitoken(),
+            "Print the given functions even if they are skipped by default (e.g. _start)");
     po::positional_options_description pd;
     pd.add("input-file", -1);
 
@@ -1233,17 +1247,17 @@ int main(int argc, char **argv)
     Dl_decoder decoder;
     decode(decoder, elf, vm["sect"].as<std::vector<std::string>>(),
            vm["data_sect"].as<std::vector<std::string>>());
-    std::cout<<"Decoding the binary"<<std::endl;
+    std::cout << "Decoding the binary" << std::endl;
     if(souffle::SouffleProgram *prog = souffle::ProgramFactory::newInstance("souffle_disasm"))
     {
         try
         {
             loadInputs(prog, elf, decoder);
-            std::cout<<"Disassembling"<<std::endl;
+            std::cout << "Disassembling" << std::endl;
             prog->run();
             performSanityChecks(prog);
 
-            std::cout<<"Building the gtirb representation"<<std::endl;
+            std::cout << "Building the gtirb representation" << std::endl;
             auto &ir = *gtirb::IR::Create(C);
             buildIR(ir, filename, elf, prog);
 
@@ -1262,26 +1276,29 @@ int main(int argc, char **argv)
             // Pretty-print
             gtirb_pprint::PrettyPrinter pprinter;
             pprinter.setDebug(vm.count("debug"));
-            if(vm.count("keep-functions")!=0){
-                for(auto keep: vm["keep-functions"].as<std::vector<std::string>>()){
+            if(vm.count("keep-functions") != 0)
+            {
+                for(auto keep : vm["keep-functions"].as<std::vector<std::string>>())
+                {
                     pprinter.keepFunction(keep);
                 }
             }
             if(vm.count("asm") != 0)
             {
-                std::cout<<"Printing assembler"<<std::endl;
+                std::cout << "Printing assembler" << std::endl;
                 std::ofstream out(vm["asm"].as<std::string>());
                 pprinter.print(out, C, ir);
             }
             else if(vm.count("ir") == 0)
             {
-                std::cout<<"Printing assembler"<<std::endl;
+                std::cout << "Printing assembler" << std::endl;
                 pprinter.print(std::cout, C, ir);
             }
 
             if(vm.count("debug-dir") != 0)
             {
-                std::cout<<"Writing facts to debug dir "<< vm["debug-dir"].as<std::string>()<<std::endl;
+                std::cout << "Writing facts to debug dir " << vm["debug-dir"].as<std::string>()
+                          << std::endl;
                 auto dir = vm["debug-dir"].as<std::string>() + "/";
                 writeFacts(decoder, elf, dir);
                 prog->printAll(dir);
