@@ -3,9 +3,15 @@ variables:
   LOCAL_IMAGE_NAME: '$CI_BUILD_REF_NAME-$CI_PIPELINE_ID'
 
 stages:
+  - check-format
   - build
   - test-and-tag
   - cleanup
+
+check-format:
+  stage: check-format
+  script:
+    - docker build --rm -f .ci/Dockerfile.formatter .
 
 .build-template: &build
   script:
