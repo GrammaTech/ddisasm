@@ -23,35 +23,36 @@
 
 #include "Dl_operator_table.h"
 
-
-
-
-int64_t Dl_operator_table::add_to_dict(op_dict& dict,Dl_operator op){
-    auto pair=dict.find(op);
-    if(pair!=dict.end())
+int64_t Dl_operator_table::add_to_dict(op_dict& dict, Dl_operator op)
+{
+    auto pair = dict.find(op);
+    if(pair != dict.end())
         return (pair->second);
-    else{
-        dict[op]=curr_index;
+    else
+    {
+        dict[op] = curr_index;
         return curr_index++;
     }
 }
 
-int64_t Dl_operator_table::add(Dl_operator op){
-    return add_to_dict(dicts[op.get_type()],op);
-
+int64_t Dl_operator_table::add(Dl_operator op)
+{
+    return add_to_dict(dicts[op.get_type()], op);
 }
-void Dl_operator_table::print_operators_of_type(operator_type type,std::ofstream& fbuf){
-    for(auto pair: dicts[type]){
-        fbuf<<pair.first.print_tabs(pair.second)<<std::endl;
+void Dl_operator_table::print_operators_of_type(operator_type type, std::ofstream& fbuf)
+{
+    for(auto pair : dicts[type])
+    {
+        fbuf << pair.first.print_tabs(pair.second) << std::endl;
     }
-
 }
 
-std::vector<std::pair<Dl_operator, int64_t>>
-Dl_operator_table::get_operators_of_type(operator_type type) const
+std::vector<std::pair<Dl_operator, int64_t>> Dl_operator_table::get_operators_of_type(
+    operator_type type) const
 {
     std::vector<std::pair<Dl_operator, int64_t>> result;
-    for (const auto& pair : dicts[type]) {
+    for(const auto& pair : dicts[type])
+    {
         result.push_back(pair);
     }
     return result;
