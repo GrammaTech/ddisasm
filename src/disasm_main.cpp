@@ -731,15 +731,13 @@ void buildCodeBlocks(gtirb::Module &module, souffle::SouffleProgram *prog)
 void buildBSS(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     auto bssData = convertRelation<gtirb::Addr>("bss_data", prog);
-    const auto &sections = module.sections();
-    const auto found = std::find_if(sections.begin(), sections.end(), [](const auto &element) {
-        return element.getName() == ".bss";
-    });
-    if(found == sections.end())
+    const auto bss_section = module.findSection(".bss");
+    if(bss_section == module.section_by_name_end())
     {
         std::cerr << "Section .bss not found\n";
         return;
     }
+    // We assume there is at most one section with the name ".bss"
     for(size_t i = 0; i < bssData.size(); ++i)
     {
         const gtirb::Addr current = bssData[i];
@@ -752,7 +750,7 @@ void buildBSS(gtirb::Module &module, souffle::SouffleProgram *prog)
         else
         {
             // Continue to the end of the section.
-            int64_t remaining = addressLimit(*found) - current;
+            int64_t remaining = addressLimit(*bss_section) - current;
             if(remaining > 0)
             {
                 auto *d = gtirb::DataObject::Create(C, gtirb::Addr(current), remaining);
