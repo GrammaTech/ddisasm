@@ -12,7 +12,7 @@ location*, *symbolization*, and *function boundaries*.  The results of
 this analysis, a refined set of datalog facts, are then translated to
 the [GTIRB](https://github.com/grammatech/gtirb) intermediate
 representation for binary analysis and reverse engineering.  The
-[GTIRB pretty printer](https://github.com/grammatech/gtirb-pprinter)
+[GTIRB pretty printer](https://github.com/grammatech/gtirb-pprinte)
 may then be used to pretty print the GTIRB to reassemblable assembly
 code.
 
@@ -39,7 +39,7 @@ The analysis contains two parts:
   --disable-provenance`.
 
 - For printing assembler code the datalog disassembler requires the
-  [gtirb-pprinter](https://git.grammatech.com/debloat/pretty-printer)
+  [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
 
 
 ## Building ddisasm
@@ -93,56 +93,46 @@ The script accepts the following parameters:
 `--asm arg`
 :   ASM output file
 
+`--debug`
+:   if the assembly code is printed, it is printed with debugging information
+
 `--debug-dir arg`
 :   location to write CSV files for debugging
 
 
 ## Rewriting a project
 
-The directory bin/ contains several scripts to rewrite and test
-complete projects:
+The directory tests/ contains the script `reassemble_and_test.sh` to
+rewrite and test a complete project. `reassemble_and_test.sh` rebuilds
+a project using the compiler and compiler flags specified in the
+enviroment variables CC and CFLAGS (`make -e`), rewrites the binary
+and run the project tests on the new binary.
 
-- `reassemble_and_test.sh` rebuilds a project using the compiler and
-  compiler flags specified in the enviroment variables CC and CFLAGS,
-  rewrites the binary and run the project tests on the new binary.
+We can rewrite ex1 as follows:
 
-- `CGC_reassemble_and_test.sh` does the analogous process but with CGC
-  projects.  However, it receives the compiler and compiler flags as
-  arguments
-
-- `reassemble_no_rebuild.sh` rewrites a binary without trying to
-  rebuild the project before and without running tests later.
-
+```
+cd examples/ex1
+make
+ddisasm ex --asm ex.s
+gcc ex.s -o ex_rewritten
+```
 
 ## Testing
 
-The directory tests/ also contains script for running extensive tests:
-
-- `test_coreutils.sh` test coreutils with different compilers and
-  optimization flags.
-
-- `test_real_examples.sh` test a list of real world applications with
-  different compilers and optimization flags.
-
-- `test_CGC.sh` test a subset of the CGC programs with different
-  compilers and optimization flags.
+The directory `tests/` also contains a script `test_small.sh` for
+rewriting the examples in `/examples` with different compilers and
+optimization flags.
 
 
-## References
+## Some References
 
-1. Souffle: "On fast large-scale program analysis in Datalog" CC2016
-   - Souffle PDF: http://souffle-lang.org/pdf/cc.pdf
-   - Souffle License: Universal Permissive License (UPL)
-   - Souffle Homepage: https://github.com/souffle-lang/souffle
+1. [Souffle](https://github.com/souffle-lang/souffle)
 
-2. Porting Doop from LogicBlox to souffle
-   - https://yanniss.github.io/doop2souffle-soap17.pdf
+2. [Capstone disassembler](http://www.capstone-engine.org/)
 
-3. Control Flow Integrity for COTS Binaries
-   - PDF: http://stonecat/repos/reading/papers/12313-sec13-paper_zhang.pdf
+3. [Control Flow Integrity for COTS Binaries](http://stonecat/repos/reading/papers/12313-sec13-paper_zhang.pdf)
 
-4. Alias analysis for Assembly by Brumley at CMU:
-   http://reports-archive.adm.cs.cmu.edu/anon/anon/usr/ftp/2006/CMU-CS-06-180R.pdf
+4. [Alias analysis for Assembly](http://reports-archive.adm.cs.cmu.edu/anon/anon/usr/ftp/2006/CMU-CS-06-180R.pdf)
 
 5. [Reassembleable Disassembling](https://www.usenix.org/system/files/conference/usenixsecurity15/sec15-paper-wang-shuai.pdf)
 
