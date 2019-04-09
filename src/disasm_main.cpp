@@ -529,10 +529,9 @@ static gtirb::Symbol *findSymbol(gtirb::Module &module, gtirb::Addr ea, std::str
 }
 
 // Build a first version of the SymbolForwarding table with copy relocations
-static void buildSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
+static void buildSymbolForwarding(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     std::map<gtirb::UUID, gtirb::UUID> symbolForwarding;
-    auto &module = *ir.modules().begin();
     for(auto &output : *prog->getRelation("relocation"))
     {
         gtirb::Addr ea;
@@ -550,14 +549,14 @@ static void buildSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
             }
         }
     }
-    ir.addAuxData("symbolForwarding", std::move(symbolForwarding));
+    module.addAuxData("symbolForwarding", std::move(symbolForwarding));
 }
 
 // Expand the SymbolForwarding table with plt references
-static void expandSymbolForwarding(gtirb::IR &ir, souffle::SouffleProgram *prog)
+static void expandSymbolForwarding(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
-    auto *symbolForwarding = ir.getAuxData<std::map<gtirb::UUID, gtirb::UUID>>("symbolForwarding");
-    auto &module = *ir.modules().begin();
+    auto *symbolForwarding =
+        module.getAuxData<std::map<gtirb::UUID, gtirb::UUID>>("symbolForwarding");
     for(auto &output : *prog->getRelation("plt_entry"))
     {
         gtirb::Addr ea;
@@ -592,11 +591,10 @@ static std::string getLabel(uint64_t ea)
     return ss.str();
 }
 
-static gtirb::Symbol *getSymbol(gtirb::IR &ir, gtirb::Addr ea)
+static gtirb::Symbol *getSymbol(gtirb::Module &module, gtirb::Addr ea)
 {
     const auto *symbolForwarding =
-        ir.getAuxData<std::map<gtirb::UUID, gtirb::UUID>>("symbolForwarding");
-    auto &module = *ir.modules().begin();
+        module.getAuxData<std::map<gtirb::UUID, gtirb::UUID>>("symbolForwarding");
     auto found = module.findSymbols(ea);
     if(!found.empty())
     {
@@ -615,8 +613,8 @@ static gtirb::Symbol *getSymbol(gtirb::IR &ir, gtirb::Addr ea)
     return sym;
 }
 
-void buildSymbolic(gtirb::IR &ir, DecodedInstruction instruction, gtirb::Addr &ea, uint64_t operand,
-                   uint64_t index, const SymbolicInfo &symbolicInfo,
+void buildSymbolic(gtirb::Module &module, DecodedInstruction instruction, gtirb::Addr &ea,
+                   uint64_t operand, uint64_t index, const SymbolicInfo &symbolicInfo,
                    const VectorByN<OpImmediate> &opImmediate,
                    const VectorByN<OpIndirect> &opIndirect)
 {
@@ -624,7 +622,6 @@ void buildSymbolic(gtirb::IR &ir, DecodedInstruction instruction, gtirb::Addr &e
     // to index. This works as long as the pretty-printer does the same
     // thing, but it isn't right.
     const auto foundImm = opImmediate.find(operand);
-    auto &module = *ir.modules().begin();
     if(foundImm != nullptr)
     {
         int64_t immediate = foundImm->Immediate;
@@ -637,7 +634,7 @@ void buildSymbolic(gtirb::IR &ir, DecodedInstruction instruction, gtirb::Addr &e
         {
             assert(movedLabel->Offset1 == immediate);
             auto diff = movedLabel->Offset1 - movedLabel->Offset2;
-            auto sym = getSymbol(ir, gtirb::Addr(movedLabel->Offset2));
+            auto sym = getSymbol(module, gtirb::Addr(movedLabel->Offset2));
             module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{diff, sym});
             return;
         }
@@ -649,7 +646,7 @@ void buildSymbolic(gtirb::IR &ir, DecodedInstruction instruction, gtirb::Addr &e
                         })
            != range.second)
         {
-            auto sym = getSymbol(ir, gtirb::Addr(immediate));
+            auto sym = getSymbol(module, gtirb::Addr(immediate));
             module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{0, sym});
             return;
         }
@@ -669,7 +666,7 @@ void buildSymbolic(gtirb::IR &ir, DecodedInstruction instruction, gtirb::Addr &e
            movedLabel != rangeMovedLabel.second)
         {
             auto diff = movedLabel->Offset1 - movedLabel->Offset2;
-            auto sym = getSymbol(ir, gtirb::Addr(movedLabel->Offset2));
+            auto sym = getSymbol(module, gtirb::Addr(movedLabel->Offset2));
             module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{diff, sym});
             return;
         }
@@ -685,19 +682,19 @@ void buildSymbolic(gtirb::IR &ir, DecodedInstruction instruction, gtirb::Addr &e
                && isNullReg(op.Reg2))
             {
                 auto address = ea + foundInd->Offset + instruction.Size;
-                auto sym = getSymbol(ir, address);
+                auto sym = getSymbol(module, address);
                 module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{0, sym});
             }
             else
             {
-                auto sym = getSymbol(ir, gtirb::Addr(op.Offset));
+                auto sym = getSymbol(module, gtirb::Addr(op.Offset));
                 module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{0, sym});
             }
         }
     }
 }
 
-void buildCodeSymbolicInformation(gtirb::IR &ir, souffle::SouffleProgram *prog)
+void buildCodeSymbolicInformation(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", prog);
     SymbolicInfo symbolicInfo{
@@ -711,10 +708,10 @@ void buildCodeSymbolicInformation(gtirb::IR &ir, souffle::SouffleProgram *prog)
     {
         const auto inst = decodedInstructions.find(cib.EA);
         assert(inst != nullptr);
-        buildSymbolic(ir, *inst, cib.EA, inst->Op1, 1, symbolicInfo, opImmediate, opIndirect);
-        buildSymbolic(ir, *inst, cib.EA, inst->Op2, 2, symbolicInfo, opImmediate, opIndirect);
-        buildSymbolic(ir, *inst, cib.EA, inst->Op3, 3, symbolicInfo, opImmediate, opIndirect);
-        buildSymbolic(ir, *inst, cib.EA, inst->Op4, 4, symbolicInfo, opImmediate, opIndirect);
+        buildSymbolic(module, *inst, cib.EA, inst->Op1, 1, symbolicInfo, opImmediate, opIndirect);
+        buildSymbolic(module, *inst, cib.EA, inst->Op2, 2, symbolicInfo, opImmediate, opIndirect);
+        buildSymbolic(module, *inst, cib.EA, inst->Op3, 3, symbolicInfo, opImmediate, opIndirect);
+        buildSymbolic(module, *inst, cib.EA, inst->Op4, 4, symbolicInfo, opImmediate, opIndirect);
     }
 }
 
@@ -766,7 +763,7 @@ void buildBSS(gtirb::Module &module, souffle::SouffleProgram *prog)
     }
 }
 
-void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
+void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     auto symbolicData = convertSortedRelation<VectorByEA<SymbolicData>>("symbolic_data", prog);
     auto movedDataLabels =
@@ -774,7 +771,6 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
     auto symbolMinusSymbol =
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
     auto dataStrings = convertSortedRelation<VectorByEA<String>>("string", prog);
-    auto &module = *ir.modules().begin();
     std::unordered_set<std::string> dataSections{
         ".got", ".got.plt", ".data.rel.ro", ".init_array", ".fini_array", ".rodata", ".data"};
     std::vector<gtirb::Addr> stringEAs;
@@ -793,7 +789,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
                     auto *d = gtirb::DataObject::Create(C, currentAddr, 8);
                     module.addData(d);
                     auto diff = movedDataLabel->Offset1 - movedDataLabel->Offset2;
-                    auto sym = getSymbol(ir, gtirb::Addr(movedDataLabel->Offset2));
+                    auto sym = getSymbol(module, gtirb::Addr(movedDataLabel->Offset2));
                     module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{diff, sym});
                     currentAddr += 7;
                     continue;
@@ -804,7 +800,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
                 {
                     auto *d = gtirb::DataObject::Create(C, currentAddr, 8);
                     module.addData(d);
-                    auto sym = getSymbol(ir, symbolic->GroupContent);
+                    auto sym = getSymbol(module, symbolic->GroupContent);
                     module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{0, sym});
                     currentAddr += 7;
                     continue;
@@ -817,8 +813,8 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
                     module.addData(d);
                     module.addSymbolicExpression(
                         gtirb::Addr(currentAddr),
-                        gtirb::SymAddrAddr{1, 0, getSymbol(ir, symMinusSym->Symbol2),
-                                           getSymbol(ir, symMinusSym->Symbol1)});
+                        gtirb::SymAddrAddr{1, 0, getSymbol(module, symMinusSym->Symbol2),
+                                           getSymbol(module, symMinusSym->Symbol1)});
                     currentAddr += 3;
                     continue;
                 }
@@ -840,7 +836,7 @@ void buildDataGroups(gtirb::IR &ir, souffle::SouffleProgram *prog)
         }
     }
     buildBSS(module, prog);
-    ir.addAuxData("stringEAs", std::move(stringEAs));
+    module.addAuxData("stringEAs", std::move(stringEAs));
 }
 
 static void connectSymbolsToDataGroups(gtirb::Module &module)
@@ -862,9 +858,9 @@ static void connectSymbolsToBlocks(gtirb::Module &module)
     }
 }
 
-static void buildFunctions(gtirb::IR &ir, souffle::SouffleProgram *prog)
+static void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
-    ir.addAuxData("functionEntry", convertRelation<gtirb::Addr>("function_entry2", prog));
+    module.addAuxData("functionEntry", convertRelation<gtirb::Addr>("function_entry2", prog));
 }
 
 static gtirb::EdgeType getEdgeType(const std::string &type)
@@ -946,7 +942,7 @@ static void updateComment(std::map<gtirb::Addr, std::string> &comments, gtirb::A
         comments[ea] = newComment;
 }
 
-static void buildComments(gtirb::IR &ir, souffle::SouffleProgram *prog)
+static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     std::map<gtirb::Addr, std::string> comments;
     for(auto &output : *prog->getRelation("data_access_pattern"))
@@ -981,29 +977,29 @@ static void buildComments(gtirb::IR &ir, souffle::SouffleProgram *prog)
                    << " type(" << type << ") ";
         updateComment(comments, ea, newComment.str());
     }
-    ir.addAuxData("comments", std::move(comments));
+    module.addAuxData("comments", std::move(comments));
 }
 
 static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
                     souffle::SouffleProgram *prog)
 {
-    auto *module = gtirb::Module::Create(C);
-    module->setBinaryPath(filename);
-    module->setFileFormat(gtirb::FileFormat::ELF);
-    module->setISAID(gtirb::ISAID::X64);
-    ir.addModule(module);
-    buildSymbols(*module, prog);
-    buildSymbolForwarding(ir, prog);
-    buildSections(*module, elf, prog);
-    buildDataGroups(ir, prog);
-    connectSymbolsToDataGroups(*module);
-    buildCodeBlocks(*module, prog);
-    buildCodeSymbolicInformation(ir, prog);
-    expandSymbolForwarding(ir, prog);
-    connectSymbolsToBlocks(*module);
-    buildFunctions(ir, prog);
-    buildCFG(*module, prog);
-    buildComments(ir, prog);
+    gtirb::Module &module = *gtirb::Module::Create(C);
+    module.setBinaryPath(filename);
+    module.setFileFormat(gtirb::FileFormat::ELF);
+    module.setISAID(gtirb::ISAID::X64);
+    ir.addModule(&module);
+    buildSymbols(module, prog);
+    buildSymbolForwarding(module, prog);
+    buildSections(module, elf, prog);
+    buildDataGroups(module, prog);
+    connectSymbolsToDataGroups(module);
+    buildCodeBlocks(module, prog);
+    buildCodeSymbolicInformation(module, prog);
+    expandSymbolForwarding(module, prog);
+    connectSymbolsToBlocks(module);
+    buildFunctions(module, prog);
+    buildCFG(module, prog);
+    buildComments(module, prog);
 }
 
 static void performSanityChecks(souffle::SouffleProgram *prog)
