@@ -875,6 +875,7 @@ static gtirb::EdgeType getEdgeType(const std::string &type)
         return gtirb::EdgeType::Call;
     if(type == "return")
         return gtirb::EdgeType::Return;
+    //TODO syscall and sysret
     return gtirb::EdgeType::Fallthrough;
 }
 
