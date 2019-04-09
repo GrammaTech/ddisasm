@@ -773,7 +773,7 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
     auto dataStrings = convertSortedRelation<VectorByEA<String>>("string", prog);
     std::unordered_set<std::string> dataSections{
         ".got", ".got.plt", ".data.rel.ro", ".init_array", ".fini_array", ".rodata", ".data"};
-    std::vector<gtirb::Addr> stringEAs;
+    std::map<gtirb::UUID, std::string> typesTable;
 
     for(auto &s : module.sections())
     {
@@ -822,9 +822,10 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
                 const auto str = dataStrings.find(currentAddr);
                 if(str != nullptr)
                 {
-                    stringEAs.push_back(currentAddr);
                     auto *d = gtirb::DataObject::Create(C, currentAddr, str->End - currentAddr);
                     module.addData(d);
+                    typesTable[d->getUUID()] = std::string{"char[]"};
+
                     // Because the loop is going to increment this counter, don't skip a byte.
                     currentAddr = str->End - 1;
                     continue;
@@ -836,7 +837,7 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
         }
     }
     buildBSS(module, prog);
-    module.addAuxData("stringEAs", std::move(stringEAs));
+    module.addAuxData("types", std::move(typesTable));
 }
 
 static void connectSymbolsToDataGroups(gtirb::Module &module)
