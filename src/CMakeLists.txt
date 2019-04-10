@@ -29,13 +29,17 @@ set(DATALOG_SOURCES
     datalog/use_def_analysis.dl
     datalog/value_analysis.dl)
 
+if(NOT CORES)
+  set(CORES "auto")
+endif()
+
 set(GENERATED_CPP "${CMAKE_BINARY_DIR}/src/souffle_disasm.cpp")
 add_custom_command(OUTPUT ${GENERATED_CPP}
   # Souffle incldes the path of the output file in the generated
   # program name. Change directory and use a relative path so the name
   # does not depend on build location.
   WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
-  COMMAND ${SOUFFLE} ${CMAKE_CURRENT_SOURCE_DIR}/datalog/main.dl -g souffle_disasm.cpp -jauto
+  COMMAND ${SOUFFLE} ${CMAKE_CURRENT_SOURCE_DIR}/datalog/main.dl -g souffle_disasm.cpp -j${CORES}
   DEPENDS ${DATALOG_SOURCES})
 
 # ===== souffle_disasm =====
