@@ -5,7 +5,8 @@ variables:
 stages:
   - check-format
   - build
-  - test-and-tag
+  - test-and-tag-ubuntu16
+  - test-and-tag-ubuntu18
   - cleanup
 
 check-format:
@@ -38,7 +39,7 @@ build-arch:
   <<: *build
 
 run-ubuntu16:
-  stage: test-and-tag
+  stage: test-and-tag-ubuntu16
   variables:
     OS: 'ubuntu16'
   script:
@@ -52,7 +53,7 @@ run-ubuntu16:
       fi
 
 run-ubuntu18:
-  stage: test-and-tag
+  stage: test-and-tag-ubuntu18
   variables:
     OS: 'ubuntu18'
   script:
