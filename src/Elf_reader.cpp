@@ -281,7 +281,7 @@ void Elf_reader::print_sections(ostream& stream)
     auto sect_names_it = section_names.begin();
     while(sect_it != sections.end())
     {
-        if(*sect_names_it != "")
+        if(*sect_names_it != "" && sect_it->sh_flags & SHF_ALLOC)
             stream << *sect_names_it << '\t' << sect_it->sh_size << '\t' << sect_it->sh_addr
                    << endl;
         ++sect_it;
@@ -296,7 +296,7 @@ vector<Elf_reader::section> Elf_reader::get_sections()
     vector<section> result;
     while(sect_it != sections.end())
     {
-        if(*sect_names_it != "")
+        if(*sect_names_it != "" && sect_it->sh_flags & SHF_ALLOC)
             result.emplace_back(*sect_names_it, sect_it->sh_size, sect_it->sh_addr);
         ++sect_it;
         ++sect_names_it;
