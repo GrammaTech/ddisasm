@@ -69,7 +69,7 @@ fi
 printf "# Disassembling $exe into $exe.s\n"
 dl_files_dir=$(dirname $dir/$exe)/dl_files/
 mkdir "$dl_files_dir"
-if !(time(ddisasm "$dir/$exe" --debug-dir "$dl_files_dir" --asm "$dir/$exe.s" > "$dir/disasm.out") 2>/tmp/time.txt); then
+if !(time(ddisasm "$dir/$exe" --asm "$dir/$exe.s" > "$dir/disasm.out") 2>/tmp/time.txt); then
     printf "# ${red}Disassembly failed${normal}\n"
     exit 1
 fi
