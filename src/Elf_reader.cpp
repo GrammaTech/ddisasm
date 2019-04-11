@@ -577,35 +577,17 @@ char* Elf_reader::get_section(const string& name, int64_t& size, Elf64_Addr& ini
     file.read(buff, size);
     return buff;
 }
-char* Elf_reader::get_section(const string& name, int64_t& size)
+bool Elf_reader::get_section(const string& name, std::vector<std::byte>& buf)
 {
-    Elf64_Addr addr;
-    return get_section(name, size, addr);
-}
-
-bool Elf_reader::extract_section(const string& name, const string& filename)
-{
-    int64_t size;
-    char* buff = get_section(name, size);
-    if(buff != nullptr)
-    {
-        ofstream file_sect(filename, ios::out | ios::binary);
-        if(file_sect.is_open())
-        {
-            file_sect.write(buff, size);
-            file.close();
-            delete[] buff;
-            return true;
-        }
-        else
-        {
-            cerr << "Problem opening the file " << filename << endl;
-            delete[] buff;
-            return false;
-        }
-    }
-    {
-        cerr << "The section" << name << " was not found" << endl;
+    int64_t size = 0;
+    int index = get_section_index(name);
+    if(index == -1)
         return false;
-    }
+    if(sections[index].sh_type == SHT_NOBITS)
+        return false;
+    size = sections[index].sh_size;
+    buf.resize(size);
+    file.seekg((sections[index].sh_offset), ios::beg);
+    file.read((char*)buf.data(), size);
+    return true;
 }

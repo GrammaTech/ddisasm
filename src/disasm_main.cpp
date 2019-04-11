@@ -497,22 +497,9 @@ static void buildSections(gtirb::Module &module, Elf_reader &elf, souffle::Souff
         std::string name;
         output >> name >> size >> address;
         module.addSection(gtirb::Section::Create(C, name, address, size));
-
-        // Copy section data into the byteMap. There seem to be some
-        // overlapping sections at address 0 which cause problems, so ignore
-        // them for now.
-        if(address != gtirb::Addr(0))
-        {
-            int64_t size2;
-            uint64_t address2;
-            char *buf = elf.get_section(name, size2, address2);
-            // FIXME: why does the ELF reader sometimes have different
-            // sections than the souffle relations?
-            if(buf != nullptr)
-            {
-                byteMap.setData(address, as_bytes(gsl::make_span(buf, size)));
-            }
-        }
+        std::vector<std::byte> buf;
+        if(elf.get_section(name, buf))
+            byteMap.setData(address, boost::make_iterator_range(buf));
     }
 }
 

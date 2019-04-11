@@ -25,6 +25,7 @@
 #define ELF_READER_H_
 
 #include <elf.h>
+#include <cstddef>
 #include <fstream>
 #include <vector>
 #include "souffle/SouffleInterface.h"
@@ -95,8 +96,7 @@ public:
     std::vector<Elf_reader::relocation> get_relocations();
 
     char* get_section(const std::string& name, int64_t& buff, Elf64_Addr& initial_addr);
-    char* get_section(const std::string& name, int64_t& buff);
-    bool extract_section(const std::string& name, const std::string& filename);
+    bool get_section(const std::string& name, std::vector<std::byte>& buf);
 };
 
 #endif /* ELF_READER_H_ */
