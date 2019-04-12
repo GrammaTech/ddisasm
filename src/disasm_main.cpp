@@ -497,9 +497,13 @@ static void buildSections(gtirb::Module &module, Elf_reader &elf, souffle::Souff
         std::string name;
         output >> name >> size >> address;
         module.addSection(gtirb::Section::Create(C, name, address, size));
-        std::vector<std::byte> buf;
-        if(elf.get_section(name, buf))
-            byteMap.setData(address, boost::make_iterator_range(buf));
+        if(char *data = elf.get_section(name, size))
+        {
+            std::byte *begin = reinterpret_cast<std::byte *>(data);
+            std::byte *end = reinterpret_cast<std::byte *>(data + size);
+            byteMap.setData(address, boost::make_iterator_range(begin, end));
+            delete[] data;
+        }
     }
 }
 
@@ -1013,7 +1017,7 @@ static void decode(Dl_decoder &decoder, Elf_reader &elf, std::vector<std::string
 {
     for(const auto &section_name : sections)
     {
-        int64_t size;
+        uint64_t size;
         uint64_t address;
         char *buff = elf.get_section(section_name, size, address);
         if(buff != nullptr)
@@ -1030,7 +1034,7 @@ static void decode(Dl_decoder &decoder, Elf_reader &elf, std::vector<std::string
     uint64_t max_address = elf.get_max_address();
     for(const auto &section_name : data_sections)
     {
-        int64_t size;
+        uint64_t size;
         uint64_t address;
         char *buff = elf.get_section(section_name, size, address);
         if(buff != nullptr)

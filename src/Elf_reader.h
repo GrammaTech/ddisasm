@@ -95,8 +95,8 @@ public:
     bool print_relocations_to_file(const std::string& filename);
     std::vector<Elf_reader::relocation> get_relocations();
 
-    char* get_section(const std::string& name, int64_t& buff, Elf64_Addr& initial_addr);
-    bool get_section(const std::string& name, std::vector<std::byte>& buf);
+    char* get_section(const std::string& name, uint64_t& buff, Elf64_Addr& initial_addr);
+    char* get_section(const std::string& name, uint64_t& buff);
 };
 
 #endif /* ELF_READER_H_ */

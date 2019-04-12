@@ -548,7 +548,7 @@ uint64_t Elf_reader::get_max_address()
     return max_address;
 }
 
-char* Elf_reader::get_section(const string& name, int64_t& size, Elf64_Addr& initial_addr)
+char* Elf_reader::get_section(const string& name, uint64_t& size, Elf64_Addr& initial_addr)
 {
     int index = get_section_index(name);
     if(index == -1)
@@ -577,17 +577,9 @@ char* Elf_reader::get_section(const string& name, int64_t& size, Elf64_Addr& ini
     file.read(buff, size);
     return buff;
 }
-bool Elf_reader::get_section(const string& name, std::vector<std::byte>& buf)
+
+char* Elf_reader::get_section(const string& name, uint64_t& size)
 {
-    int64_t size = 0;
-    int index = get_section_index(name);
-    if(index == -1)
-        return false;
-    if(sections[index].sh_type == SHT_NOBITS)
-        return false;
-    size = sections[index].sh_size;
-    buf.resize(size);
-    file.seekg((sections[index].sh_offset), ios::beg);
-    file.read((char*)buf.data(), size);
-    return true;
+    Elf64_Addr initial_addr;
+    return get_section(name, size, initial_addr);
 }
