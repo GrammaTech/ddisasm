@@ -24,6 +24,7 @@
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 #include <boost/program_options.hpp>
+#include <cstddef>
 #include <fstream>
 #include <gtirb/gtirb.hpp>
 #include <iostream>

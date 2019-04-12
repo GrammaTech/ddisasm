@@ -25,7 +25,6 @@
 #define ELF_READER_H_
 
 #include <elf.h>
-#include <cstddef>
 #include <fstream>
 #include <vector>
 #include "souffle/SouffleInterface.h"
