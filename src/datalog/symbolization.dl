@@ -313,7 +313,7 @@ labeled_data(EA):-
 string(Beg,End+1):-
 	data_byte(End,0),
 	string_candidate(End-1,Beg),
-	!labeled_data(End).
+	!labeled_data_candidate(End).
 
 
 .decl string_candidate(ea:address,base:address)
@@ -326,14 +326,14 @@ string_candidate(EA,EA):-
     printable_char(Byte).
 
 string_candidate(EA,EA):-
-    labeled_data(EA),
+    labeled_data_candidate(EA),
     !address_in_data_refined(EA,_),
     data_byte(EA,Byte),
     printable_char(Byte).
 
 string_candidate(EA+1,Base):-
    string_candidate(EA,Base),
-   !labeled_data(EA+1),
+   !labeled_data_candidate(EA+1),
    data_byte(EA+1,Byte),
    printable_char(Byte).
 
@@ -393,13 +393,13 @@ symbolic_data(EA,Val):-
 	!preferred_data_access(EA+6,_),
 	!preferred_data_access(EA+7,_)
 	),	
- 	!labeled_data(EA+1),
-	!labeled_data(EA+2),
-	!labeled_data(EA+3),
-	!labeled_data(EA+4),
-	!labeled_data(EA+5),
-	!labeled_data(EA+6),
-	!labeled_data(EA+7).	
+ 	!labeled_data_candidate(EA+1),
+	!labeled_data_candidate(EA+2),
+	!labeled_data_candidate(EA+3),
+	!labeled_data_candidate(EA+4),
+	!labeled_data_candidate(EA+5),
+	!labeled_data_candidate(EA+6),
+	!labeled_data_candidate(EA+7).
 
 code_pointer_in_data(EA,Val):-
 	symbolic_data(EA,Val),

@@ -61,13 +61,13 @@ compute an address but this is also no enough.
 ////////////////////////////////////////////////////////////////////////////////////
 
 moved_data_label(EA,Dest,New_dest):-
-	address_in_data_refined(EA,Dest),
+	symbolic_data(EA,Dest),
 	address_in_data_refined_range.overlap(Dest,8,New_dest).
 
 //if something points to the middle of a known symbol we express it as symbol+constant
 //as long as it is not code
 moved_data_label(EA,Dest,Address):-
-	address_in_data_refined(EA,Dest),
+	symbolic_data(EA,Dest),
 	!code(Dest),
 	symbol(Address,Size,_,_,_,_),
 	Address<Dest,
