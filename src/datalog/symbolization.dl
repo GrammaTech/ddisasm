@@ -63,11 +63,10 @@ This module also computes stack_operand and symbol_minus_symbol.
 .decl symbolic_operand(ea:address,index:operand_index)
 .output symbolic_operand
 
-.decl stack_operand(ea:address,index:operand_index)
-.output stack_operand
-
 .decl symbolic_data(ea:address,value:address)
 .output symbolic_data
+
+.decl symbol_minus_symbol_candidate(ea:address,symbol1:address,symbol2:address)
 
 .decl symbol_minus_symbol(ea:address,symbol1:address,symbol2:address)
 .output symbol_minus_symbol
@@ -84,56 +83,41 @@ This module also computes stack_operand and symbol_minus_symbol.
 .output bss_data
 
 // string
+.decl string_candidate(ea:address,end:address)
+
 .decl string(ea:address,end:address)
 .output string
 
 ////////////////////////////////////////////////////////////////////////
-
-stack_operand(EA,Op_index):-
-	code(EA),
-	instruction_get_op(EA,Op_index,Op),
-	op_indirect(Op,NullSReg,"RBP",_,_,_Offset,_),
-	!instruction_get_operation(EA,"LEA"),
-	null_reg(NullSReg).
-
-stack_operand(EA,Op_index):-
-	code(EA),
-	instruction_get_op(EA,Op_index,Op),
-	op_indirect(Op,NullSReg,"RSP",NullReg,_,Offset,_),
-	!instruction_get_operation(EA,"LEA"),
-	null_reg(NullSReg),
-	null_reg(NullReg),
-	Offset>=0.
-
-symbol_minus_symbol(EA,EA,Symbol2):-
+symbol_minus_symbol_candidate(EA,EA,Symbol2):-
 	data_access_pattern(EA,4,4,_Ref),
 	relative_address(EA,EA,Symbol2),
 	block(Symbol2),
 	relative_address(EA+4,EA,Symbol3),
 	block(Symbol3).
 
-// more permissive symbol_minus_symbol starting point
-symbol_minus_symbol(EA,EA,Symbol2):-
+// more permissive symbol_minus_symbol_candidate starting point
+symbol_minus_symbol_candidate(EA,EA,Symbol2):-
 	relative_address(EA,EA,Symbol1),
 	block(Symbol1),
 	relative_address(EA+4,EA,Symbol2),
-        !preferred_data_access(EA+4,_),
-        block(Symbol2),
-     	relative_address(EA+8,EA,Symbol3),
-        !preferred_data_access(EA+8,_),
+  !preferred_data_access(EA+4,_),
+  block(Symbol2),
+  relative_address(EA+8,EA,Symbol3),
+  !preferred_data_access(EA+8,_),
 	block(Symbol3).
  
 	
-symbol_minus_symbol(EA,EA_ref,Symbol2):-
-	symbol_minus_symbol(EA_label,EA_ref,_),
+symbol_minus_symbol_candidate(EA,EA_ref,Symbol2):-
+	symbol_minus_symbol_candidate(EA_label,EA_ref,_),
 	preferred_data_access(EA,EA_label),
 	relative_address(EA,EA_ref,Symbol2),
 	block(Symbol2).
 
-//more permissive symbol_minus_symbol propagation
-symbol_minus_symbol(EA+4,EA_ref,Symbol):-
-	symbol_minus_symbol(EA,EA_ref,_),
-        relative_address(EA+4,EA_ref,Symbol),
+//more permissive symbol_minus_symbol_candidate propagation
+symbol_minus_symbol_candidate(EA+4,EA_ref,Symbol):-
+	symbol_minus_symbol_candidate(EA,EA_ref,_),
+  relative_address(EA+4,EA_ref,Symbol),
 	!preferred_data_access(EA+4,_),
 	block(Symbol).
 ////////////////////////////////////////////////////////////////////////
@@ -227,12 +211,59 @@ labeled_data_candidate(EA):-
 labeled_data_candidate(Val):-
 	address_in_data_refined(_,Val).
 
+/////////////////////////////////////////////////////////////////////////////////
+// Detect strings
+string_candidate(Beg,End+1):-
+	data_byte(End,0),
+	string_part(End-1,Beg),
+	!labeled_data_candidate(End).
+
+
+.decl string_part(ea:address,base:address)
+
+string_part(EA,EA):-
+    preferred_data_access(EA,_),
+    data_byte(EA,Byte),
+    printable_char(Byte).
+
+string_part(EA,EA):-
+    labeled_data_candidate(EA),
+    data_byte(EA,Byte),
+    printable_char(Byte).
+
+string_part(EA+1,Base):-
+   string_part(EA,Base),
+   data_byte(EA+1,Byte),
+   printable_char(Byte).
+
+///////////////////////////////////////////////////////////////////////////
+.decl data_object_candidate(ea:address,size:number,type:symbol)
+.decl data_object_point(ea:address,size:number,type:symbol,points:number,why:symbol)
+.output data_object_point
+.decl data_object_conflict(ea:address,size:number,type:symbol,ea2:address,size2:number,type2:symbol)
+.decl data_object(ea:address,size:number,type:symbol)
+
+data_object_candidate(EA,4,"symbol-symbol"):-
+	symbol_minus_symbol_candidate(EA,_,_).
+
+data_object_candidate(EA,Pt_size,"symbol"):-
+	pointer_size(Pt_size),
+	address_in_data_refined(EA,_).
+
+data_object_candidate(EA,Size,"string"):-
+	string_candidate(EA,End),
+	Size=End-EA+1.
+
+data_object_candidate(EA,Size,"other"):-
+  preferred_data_access(EA,Label),
+	data_access_pattern(Label,Size,_,_),
+	Size!=Pt_size,
+	pointer_size(Pt_size).
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Heuristic: If there are at least 3 consecutive addresses
 //  we consider that we found an array of addresses
 // we do not cross labels
-
-
 .decl after_address_in_data(EA:address,EA_next:address)
 
 
@@ -240,7 +271,7 @@ after_address_in_data(EA,EA+Pt_size):-
 	address_in_data_refined(EA,_),
 	pointer_size(Pt_size),
 	data_byte(EA+Pt_size,_),
-        !labeled_data_candidate(EA+Pt_size).
+  !labeled_data_candidate(EA+Pt_size).
 	
 after_address_in_data(EA,EA_aux+1):-
 	after_address_in_data(EA,EA_aux),
@@ -283,6 +314,118 @@ address_array_range.in_ea(EA):-
 	address_array(EA).
 
 
+//////////////////////////////////////////////////////////////////////////////////
+// Final decision on symbolization
+
+//FIXME maybe we have to refine this (are there false positives?)
+symbolic_operand(EA,Op_index):-
+	symbolic_code_operand_candidate(EA,Op_index,_).
+symbolic_operand(EA,Op_index):-
+	symbolic_data_operand_candidate(EA,Op_index,_).	
+
+
+// Pointer array heuristic
+data_object_point(EA,Pt_size,"symbol",3,"pointer array"):-
+  data_object_candidate(EA,Pt_size,"symbol"),
+	address_array(EA).
+
+// data access heuristic
+data_object_point(EA,Pt_size,"symbol",4,"data access"):-
+  data_object_candidate(EA,Pt_size,"symbol"),
+	preferred_data_access(EA,Label),
+	(
+	data_access_pattern(Label,Pt_size,_,_)
+	;
+	data_access_pattern(Label,0,_,_)	
+	).
+
+data_object_point(EA,Pt_size,"symbol",1,"no label conflicts"):-
+  data_object_candidate(EA,Pt_size,"symbol"),
+ 	!labeled_data_candidate(EA+1),
+	!labeled_data_candidate(EA+2),
+	!labeled_data_candidate(EA+3),
+	!labeled_data_candidate(EA+4),
+	!labeled_data_candidate(EA+5),
+	!labeled_data_candidate(EA+6),
+	!labeled_data_candidate(EA+7).
+
+data_object_point(EA,Pt_size,"symbol",1,"aligned"):-
+  data_object_candidate(EA,Pt_size,"symbol"),
+	EA % Pt_size =0.
+
+//extra point if the string is long
+data_object_point(EA,Size,"string",1,"long string"):-
+	data_object_candidate(EA,Size,"string"),
+	Size>8.
+
+
+// data access negative heuristic
+data_object_point(EA,Size,"other",3,"data access"):-
+  data_object_candidate(EA,Size,"other").
+
+//range mismatch
+data_object_conflict(EA,Size,Type,EA2,Size2,Type2):-
+	data_object_candidate(EA,Size,Type),
+  data_object_candidate(EA2,Size2,Type2),
+	EA2>EA,
+	EA2<EA+Size.
+
+//size mismatch
+data_object_conflict(EA,Size,Type,EA,Size2,Type2):-
+	data_object_candidate(EA,Size,Type),
+  data_object_candidate(EA,Size2,Type2),
+	Size2>Size.
+
+//type mismatch
+data_object_conflict(EA,Size,Type,EA,Size,Type2):-
+	data_object_candidate(EA,Size,Type),
+  data_object_candidate(EA,Size,Type2),
+	Type!=Type2.
+
+
+data_object(EA,Size,Type):-
+  data_object_candidate(EA,Size,Type),
+	!data_object_conflict(EA,Size,Type,_,_,_),
+	!data_object_conflict(_,_,_,EA,Size,Type),
+	sum X:{data_object_point(EA,Size,Type,X,_)} >=2.
+
+data_object(EA_f,Size_f,Type_f):-
+  data_object_conflict(EA,Size,Type,EA2,Size2,Type2),
+	Points1=sum X:{data_object_point(EA,Size,Type,X,_)},
+	Points2=sum Y:{data_object_point(EA2,Size2,Type2,Y,_)},
+  (
+		Points1>Points2,
+		Points1>=2,
+		EA_f=EA,
+		Size_f=Size,
+		Type_f=Type
+	;
+		Points1<Points2,
+		Points2>=2,
+		EA_f=EA2,
+		Size_f=Size2,
+		Type_f=Type2
+	).
+
+// predicates to export
+
+symbolic_data(EA,Val):-
+	data_object(EA,_,"symbol"),
+  address_in_data_refined(EA,Val).
+
+string(EA,End):-
+	data_object(EA,Size,"string"),
+	string_candidate(EA,End),
+	Size=End-EA+1.
+
+symbol_minus_symbol(EA,Symbol1,Symbol2):-
+	data_object(EA,4,"symbol-symbol"),
+	symbol_minus_symbol_candidate(EA,Symbol1,Symbol2).
+
+code_pointer_in_data(EA,Val):-
+	symbolic_data(EA,Val),
+	block(Val).
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Final label decision
 
@@ -305,106 +448,6 @@ labeled_data(New_dest):-
 
 labeled_data(EA):-
 	symbol_minus_symbol(EA,EA,_).
-
-/////////////////////////////////////////////////////////////////////////////////
-// Detect strings
-
-
-string(Beg,End+1):-
-	data_byte(End,0),
-	string_candidate(End-1,Beg),
-	!labeled_data_candidate(End).
-
-
-.decl string_candidate(ea:address,base:address)
-
-
-string_candidate(EA,EA):-
-    preferred_data_access(EA,_),
-    !address_in_data_refined(EA,_),
-    data_byte(EA,Byte),
-    printable_char(Byte).
-
-string_candidate(EA,EA):-
-    labeled_data_candidate(EA),
-    !address_in_data_refined(EA,_),
-    data_byte(EA,Byte),
-    printable_char(Byte).
-
-string_candidate(EA+1,Base):-
-   string_candidate(EA,Base),
-   !labeled_data_candidate(EA+1),
-   data_byte(EA+1,Byte),
-   printable_char(Byte).
-
-.decl in_string(EA:address,Size:number)
-
-in_string(EA,End-Beg):-
-	string(Beg,End),
-	string_candidate(EA,Beg).
-//////////////////////////////////////////////////////////////////////////////////
-// Final decision on symbolization
-
-.decl address_can_contain_pointers(ea:address)
-.output address_can_contain_pointers
-
-// address accessed from recognized pattern
-// this discard places labeled only labeled with a different size
-address_can_contain_pointers(EA):-
-	preferred_data_access(EA,Label),
-	pointer_size(Pt_size),
-	(
-	data_access_pattern(Label,Pt_size,_,_)
-	;
-	data_access_pattern(Label,0,_,_)	
-	).
-
-//FIXME maybe we have to refine this (are there false positives?)
-symbolic_operand(EA,Op_index):-
-	symbolic_code_operand_candidate(EA,Op_index,_).
-symbolic_operand(EA,Op_index):-
-	symbolic_data_operand_candidate(EA,Op_index,_).	
-
-// We consider that belonging to an address array
-// or being accessed with the size of the pointers (8 bits in x64)
-// is sufficient evidence for symbolization
-
-// If these criteria are not met we require that the address is not accessed
-// with any other data access pattern and that the address is aligned
-symbolic_data(EA,Val):-
- 	address_in_data_refined(EA,Val),
-	(
-	address_array(EA)
-	;
-	address_can_contain_pointers(EA)
-	;
-	// no labels at all and aligned
-	pointer_size(Pt_size),
-	EA % Pt_size =0,
-	//not in the middle of a string
-	!in_string(EA,_),
-	//fixme: make pointer size parametric
-	!preferred_data_access(EA,_),
- 	!preferred_data_access(EA+1,_),
-	!preferred_data_access(EA+2,_),
-	!preferred_data_access(EA+3,_),
-	!preferred_data_access(EA+4,_),
-	!preferred_data_access(EA+5,_),
-	!preferred_data_access(EA+6,_),
-	!preferred_data_access(EA+7,_)
-	),	
- 	!labeled_data_candidate(EA+1),
-	!labeled_data_candidate(EA+2),
-	!labeled_data_candidate(EA+3),
-	!labeled_data_candidate(EA+4),
-	!labeled_data_candidate(EA+5),
-	!labeled_data_candidate(EA+6),
-	!labeled_data_candidate(EA+7).
-
-code_pointer_in_data(EA,Val):-
-	symbolic_data(EA,Val),
-	block(Val).
-	
 /////////////////////////////////////////////////////////////////////////////////
 // This facts specifies that a label should be printed in the .bss section for
 // the given address (because it is referenced somewhere)
