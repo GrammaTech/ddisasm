@@ -79,3 +79,5 @@ target_compile_definitions(ddisasm PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(ddisasm PRIVATE -fopenmp)
 target_compile_options(ddisasm PRIVATE -O3)
 target_link_libraries(ddisasm gomp)
+
+install(TARGETS ddisasm DESTINATION bin)
