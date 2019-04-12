@@ -188,36 +188,6 @@ struct PLTReference
     gtirb::Addr EA{0};
 };
 
-struct AddrPair
-{
-    AddrPair(souffle::tuple &tuple)
-    {
-        assert(tuple.size() == 2);
-
-        tuple >> Addr1 >> Addr2;
-    };
-
-    gtirb::Addr Addr1{0};
-    gtirb::Addr Addr2{0};
-};
-
-struct DirectCall
-{
-    DirectCall(gtirb::Addr ea) : EA(ea)
-    {
-    }
-
-    DirectCall(souffle::tuple &tuple)
-    {
-        assert(tuple.size() == 2);
-
-        tuple >> EA >> Destination;
-    };
-
-    gtirb::Addr EA{0};
-    gtirb::Addr Destination{0};
-};
-
 struct MovedLabel
 {
     MovedLabel(gtirb::Addr ea) : EA(ea)
@@ -394,14 +364,13 @@ struct SymbolMinusSymbol
     gtirb::Addr Symbol2{0};
 };
 
-// "String" is a bad name for this data type.
-struct String
+struct StringDataObject
 {
-    String(gtirb::Addr ea) : EA(ea)
+    StringDataObject(gtirb::Addr ea) : EA(ea)
     {
     }
 
-    String(souffle::tuple &tuple)
+    StringDataObject(souffle::tuple &tuple)
     {
         assert(tuple.size() == 2);
 
@@ -763,7 +732,7 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
         convertSortedRelation<VectorByEA<MovedDataLabel>>("moved_data_label", prog);
     auto symbolMinusSymbol =
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
-    auto dataStrings = convertSortedRelation<VectorByEA<String>>("string", prog);
+    auto dataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", prog);
     std::unordered_set<std::string> dataSections{
         ".got", ".got.plt", ".data.rel.ro", ".init_array", ".fini_array", ".rodata", ".data"};
     std::map<gtirb::UUID, std::string> typesTable;
