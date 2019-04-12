@@ -440,7 +440,9 @@ static void buildSymbols(gtirb::Module &module, souffle::SouffleProgram *prog)
         uint64_t size, sectionIndex;
         std::string type, scope, name;
         output >> base >> size >> type >> scope >> sectionIndex >> name;
-        if(sectionIndex == 0)
+        // Symbols with special section index do not have an address
+        if(sectionIndex == SHN_UNDEF
+           || (sectionIndex >= SHN_LORESERVE && sectionIndex <= SHN_HIRESERVE))
             gtirb::emplaceSymbol(module, C, name);
         else
             gtirb::emplaceSymbol(module, C, base, name, getSymbolType(sectionIndex, scope));
