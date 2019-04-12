@@ -24,6 +24,7 @@
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 #include <boost/program_options.hpp>
+#include <boost/uuid/uuid_generators.hpp>
 #include <cstddef>
 #include <fstream>
 #include <gtirb/gtirb.hpp>
@@ -853,7 +854,38 @@ static void connectSymbolsToBlocks(gtirb::Module &module)
 
 static void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
-    module.addAuxData("functionEntry", convertRelation<gtirb::Addr>("function_entry2", prog));
+    std::map<gtirb::UUID, std::vector<gtirb::UUID>> functionEntries;
+    std::map<gtirb::Addr, gtirb::UUID> functionEntry2function;
+    boost::uuids::random_generator generator;
+    for(auto &output : *prog->getRelation("function_entry2"))
+    {
+        gtirb::Addr functionEntry;
+        output >> functionEntry;
+        auto blockRange = module.findBlock(functionEntry);
+        if(blockRange.begin() != blockRange.end())
+        {
+            const gtirb::UUID &entryBlockUUID = blockRange.begin()->getUUID();
+            gtirb::UUID functionUUID = generator();
+            functionEntry2function[functionEntry] = functionUUID;
+            functionEntries[functionUUID].push_back(entryBlockUUID);
+        }
+    }
+
+    std::map<gtirb::UUID, std::vector<gtirb::UUID>> functionBlocks;
+    for(auto &output : *prog->getRelation("in_function"))
+    {
+        gtirb::Addr blockAddr, functionEntryAddr;
+        output >> blockAddr >> functionEntryAddr;
+        auto blockRange = module.findBlock(blockAddr);
+        if(blockRange.begin() != blockRange.end())
+        {
+            gtirb::Block *block = &*blockRange.begin();
+            gtirb::UUID functionEntryUUID = functionEntry2function[functionEntryAddr];
+            functionBlocks[functionEntryUUID].push_back(block->getUUID());
+        }
+    }
+    module.addAuxData("functionEntries", std::move(functionEntries));
+    module.addAuxData("functionBlocks", std::move(functionBlocks));
 }
 
 static gtirb::EdgeType getEdgeType(const std::string &type)
