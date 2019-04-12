@@ -511,15 +511,22 @@ plt_data_reference(EA):-
 
 //////////////////////////////////////////////////////////////////////////
 
-.decl got_reference(EA:address,Index:number,Content:address)
+.decl got_reference(Got_entry:address,Symbol:symbol)
 .output got_reference
 
-got_reference(EA,Index,Content):-
-	pc_relative_operand(EA,Index,Dest),
+got_reference(Got_entry,Symbol):-
+    pc_relative_operand(_,_,Got_entry),
 	section(".got",Size,Beg),
-	Dest>=Beg,
-	Dest<Beg+Size,
-	symbolic_data(Dest,Content).
+    Got_entry>=Beg,
+    Got_entry<Beg+Size,
+    relocation(Got_entry,_,Symbol,_),
+    !special_startup_symbol(Symbol).
+
+.decl special_startup_symbol(Symbol:symbol)
+
+special_startup_symbol("_ITM_registerTMCloneTable").
+special_startup_symbol("_ITM_deregisterTMCloneTable").
+
 //////////////////////////////////////////////////////////////////////////
 // find the main function even if it does not have a symbol
 //

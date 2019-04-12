@@ -537,6 +537,21 @@ static void expandSymbolForwarding(gtirb::Module &module, souffle::SouffleProgra
             }
         }
     }
+    for(auto &output : *prog->getRelation("got_reference"))
+    {
+        gtirb::Addr ea;
+        std::string name;
+        output >> ea >> name;
+        auto foundSrc = module.findSymbols(ea);
+        auto foundDest = module.findSymbols(name);
+        for(gtirb::Symbol &src : foundSrc)
+        {
+            for(gtirb::Symbol &dest : foundDest)
+            {
+                (*symbolForwarding)[src.getUUID()] = dest.getUUID();
+            }
+        }
+    }
 }
 
 bool isNullReg(const std::string &reg)
