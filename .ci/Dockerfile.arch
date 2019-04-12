@@ -1,7 +1,8 @@
 FROM archlinux/base as souffle
 RUN sed -i 's/#\[multilib\]/\[multilib\]/; /^\[multilib\]/,/^$/ s/^#//' /etc/pacman.conf
 RUN pacman --noconfirm -Syu archlinux-keyring
-RUN pacman -Syu --noconfirm git subversion autoconf automake bison doxygen flex fakeroot sqlite libtool jdk8-openjdk make pkg-config python zlib mcpp gcc swi-prolog gcc-multilib lib32-fakeroot lib32-gcc-libs lib32-libltdl
+RUN pacman -Syu --noconfirm git autoconf automake bison doxygen flex fakeroot sqlite \
+    libtool make pkg-config zlib mcpp gcc gcc-multilib lib32-fakeroot lib32-gcc-libs lib32-libltdl
 # Enable makepkg as root.
 RUN sed -i "s/^\(OPT_LONG=(\)/\1'asroot' /;s/EUID == 0/1 == 0/" /usr/bin/makepkg
 RUN mkdir -p /aur/souffle
@@ -15,30 +16,15 @@ ARG CXX_COMPILER=g++
 
 RUN sed -i 's/#\[multilib\]/\[multilib\]/; /^\[multilib\]/,/^$/ s/^#//' /etc/pacman.conf
 RUN pacman --noconfirm -Syu archlinux-keyring
-RUN pacman -Syu --noconfirm git subversion autoconf automake bison doxygen flex fakeroot sqlite libtool jdk8-openjdk make pkg-config python zlib mcpp gcc swi-prolog gcc-multilib lib32-fakeroot lib32-gcc-libs lib32-libltdl clang gdb ed cmake wget which
+RUN pacman -Syu --noconfirm git autoconf automake bison doxygen flex fakeroot sqlite libtool \
+    make pkg-config zlib mcpp gcc gcc-multilib lib32-fakeroot lib32-gcc-libs lib32-libltdl \
+    clang gdb ed cmake wget which
+
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
 COPY --from=souffle /usr/bin/souffle /usr/bin/souffle
 COPY --from=souffle /usr/bin/souffle-profile /usr/bin/souffle-profile
-COPY --from=souffle /usr/share/man/man1/souffle-profile.1.gz /usr/share/man/man1/souffle-profile.1.gz
-COPY --from=souffle /usr/share/man/man1/souffle.1.gz /usr/share/man/man1/souffle.1.gz
-COPY --from=souffle /usr/share/man/man1/souffle-config.1.gz /usr/share/man/man1/souffle-config.1.gz
-COPY --from=souffle /usr/share/man/man1/souffle-compile.1.gz /usr/share/man/man1/souffle-compile.1.gz
 COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
-
-# Install CMake
-RUN curl -SL https://cmake.org/files/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.0-Linux-x86_64.tar.gz \
-    |tar -xz --strip-components=1 -C /usr/local
-
-# Install protobuf
-RUN cd /usr/local/src \
-    && wget https://github.com/google/protobuf/releases/download/v3.6.0/protobuf-cpp-3.6.0.tar.gz \
-    && tar xf protobuf-cpp-3.6.0.tar.gz \
-    && cd protobuf-3.6.0 \
-    && ./configure \
-    && make \
-    && make install
-RUN ldconfig
 
 # Install capstone
 RUN cd /usr/local/src \
