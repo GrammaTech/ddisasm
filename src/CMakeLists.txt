@@ -60,7 +60,7 @@ target_compile_options(disasm_main PRIVATE -Werror -fopenmp)
 #target_compile_options(ddisasm_main PRIVATE -O3)
 
 if( ${GTIRB_USE_SYSTEM_BOOST} MATCHES "OFF" )
-  add_dependencies(${PROJECT_NAME} Boost)
+  add_dependencies(disasm_main Boost)
 endif()
 
 target_link_libraries(disasm_main
