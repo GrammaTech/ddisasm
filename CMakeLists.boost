@@ -1,0 +1,49 @@
+cmake_minimum_required(VERSION 2.8.11)
+
+set( Boost_Bootstrap_Command )
+include(ExternalProject)
+
+# We only support UNIX for now
+if( UNIX )
+  set( Boost_url "https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.gz" )
+  set( Boost_Bootstrap_Command ./bootstrap.sh )
+  set( Boost_b2_Command ./b2 )
+endif()
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  set(Boost_address_model 64)
+else()
+  set(Boost_address_model 32)
+endif()
+
+ExternalProject_Add(Boost
+  BUILD_IN_SOURCE 1
+  PREFIX "${CMAKE_BINARY_DIR}/boost"
+  URL ${Boost_url}
+  UPDATE_COMMAND ""
+  CONFIGURE_COMMAND ${Boost_Bootstrap_Command} --prefix=${CMAKE_BINARY_DIR}/boost/ --with-libraries=program_options
+  BUILD_COMMAND ${Boost_b2_Command} install --prefix=${CMAKE_BINARY_DIR}/boost address-model=${Boost_address_model} link=static,shared
+  INSTALL_COMMAND ""
+  LOG_DOWNLOAD ON
+  LOG_CONFIGURE ON
+  LOG_UPDATE ON
+  LOG_BUILD ON
+  LOG_INSTALL ON
+  )
+
+
+set( Boost_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/boost/include )
+
+include_directories(${Boost_INCLUDE_DIRS})
+
+set( Boost_LIBRARY_DIR ${CMAKE_BINARY_DIR}/boost/lib )
+
+if(${BUILD_SHARED_LIBS} MATCHES OFF)
+  set(Boost_LIBRARIES
+    ${Boost_LIBRARY_DIR}/libboost_program_options.a
+    )
+elseif(${BUILD_SHARED_LIBS} MATCHES ON)
+  set(Boost_LIBRARIES
+    ${Boost_LIBRARY_DIR}/libboost_program_options.so
+    )
+endif()
