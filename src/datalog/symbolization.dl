@@ -339,6 +339,7 @@ data_object_point(EA,Pt_size,"symbol",4,"data access"):-
 	data_access_pattern(Label,0,_,_)	
 	).
 
+
 data_object_point(EA,Pt_size,"symbol",1,"no label conflicts"):-
   data_object_candidate(EA,Pt_size,"symbol"),
  	!labeled_data_candidate(EA+1),
@@ -348,6 +349,10 @@ data_object_point(EA,Pt_size,"symbol",1,"no label conflicts"):-
 	!labeled_data_candidate(EA+5),
 	!labeled_data_candidate(EA+6),
 	!labeled_data_candidate(EA+7).
+
+data_object_point(EA,Pt_size,"symbol",1,"labeled"):-
+  data_object_candidate(EA,Pt_size,"symbol"),
+  labeled_data_candidate(EA).
 
 data_object_point(EA,Pt_size,"symbol",1,"aligned"):-
   data_object_candidate(EA,Pt_size,"symbol"),
@@ -387,7 +392,10 @@ data_object(EA,Size,Type):-
   data_object_candidate(EA,Size,Type),
 	!data_object_conflict(EA,Size,Type,_,_,_),
 	!data_object_conflict(_,_,_,EA,Size,Type),
-	sum X:{data_object_point(EA,Size,Type,X,_)} >=2.
+	(sum X:{data_object_point(EA,Size,Type,X,_)} >=2
+	;
+	Type="string"
+	).
 
 data_object(EA_f,Size_f,Type_f):-
   data_object_conflict(EA,Size,Type,EA2,Size2,Type2),
