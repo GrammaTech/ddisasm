@@ -128,6 +128,9 @@ optimization flags.
 
 Please read the [DDisasm Code of Conduct](CODE_OF_CONDUCT.md).
 
+Please follow the Code Requirements in
+[gtirb/CONTRIBUTING](https://github.com/GrammaTech/gtirb/blob/master/CONTRIBUTING.md#code-requirements).
+
 
 ## Some References
 
