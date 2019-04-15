@@ -74,7 +74,7 @@ of the examples as follows:
 
 ```
 cd build/bin ./ddisasm ../../examples/ex1/ex --asm ex.s
-````
+```
 
 The script accepts the following parameters:
 
@@ -122,6 +122,11 @@ gcc ex.s -o ex_rewritten
 The directory `tests/` also contains a script `test_small.sh` for
 rewriting the examples in `/examples` with different compilers and
 optimization flags.
+
+
+## Contributing
+
+Please read the [DDisasm Code of Conduct](CODE_OF_CONDUCT.md).
 
 
 ## Some References
