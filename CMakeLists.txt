@@ -70,7 +70,7 @@ add_compile_options(-DBOOST_SYSTEM_NO_DEPRECATED)
 if( ${DDISASM_USE_SYSTEM_BOOST} MATCHES "OFF" )
   include( CMakeLists.boost )
 else()
-  find_package(Boost 1.59 REQUIRED COMPONENTS program_options)
+  find_package(Boost 1.67 REQUIRED COMPONENTS program_options)
   include_directories(${Boost_INCLUDE_DIRS})
 endif()
 

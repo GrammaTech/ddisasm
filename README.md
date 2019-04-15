@@ -45,7 +45,7 @@ The analysis contains two parts:
 ## Building ddisasm
 A C++17 compiler such as gcc 7 or clang 6 is required.
 
-Boost (1.59 or later) and [GTIRB](https://github.com/grammatech/gtirb)
+Boost (1.67 or later) and [GTIRB](https://github.com/grammatech/gtirb)
 are required.
 
 Use the following options to configure cmake:
