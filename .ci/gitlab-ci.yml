@@ -7,6 +7,7 @@ stages:
   - build
   - test-and-tag-ubuntu16
   - test-and-tag-ubuntu18
+  - test-and-tag-arch
   - cleanup
 
 check-format:
@@ -60,6 +61,14 @@ run-ubuntu18:
     - docker run --cpus=8 ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
       "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip"
 
+run-arch:
+  stage: test-and-tag-arch
+  variables:
+    OS: 'arch'
+  script:
+    - docker run --cpus=8 ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
+      "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip"
+
 cleanup-ubuntu16:
   stage: cleanup
   variables:
@@ -81,8 +90,3 @@ cleanup-arch:
   script:
     - docker rmi -f ${LOCAL_IMAGE_NAME}-${OS}
 
-# build-arch:
-#   stage: build-deploy-cleanup
-#   variables:
-#     OS: 'arch'
-#   <<: *build
