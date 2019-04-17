@@ -825,7 +825,7 @@ static void connectSymbolsToBlocks(gtirb::Module &module)
 
 static void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
-    std::map<gtirb::UUID, std::vector<gtirb::UUID>> functionEntries;
+    std::map<gtirb::UUID, std::set<gtirb::UUID>> functionEntries;
     std::map<gtirb::Addr, gtirb::UUID> functionEntry2function;
     boost::uuids::random_generator generator;
     for(auto &output : *prog->getRelation("function_entry2"))
@@ -838,11 +838,11 @@ static void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
             const gtirb::UUID &entryBlockUUID = blockRange.begin()->getUUID();
             gtirb::UUID functionUUID = generator();
             functionEntry2function[functionEntry] = functionUUID;
-            functionEntries[functionUUID].push_back(entryBlockUUID);
+            functionEntries[functionUUID].insert(entryBlockUUID);
         }
     }
 
-    std::map<gtirb::UUID, std::vector<gtirb::UUID>> functionBlocks;
+    std::map<gtirb::UUID, std::set<gtirb::UUID>> functionBlocks;
     for(auto &output : *prog->getRelation("in_function"))
     {
         gtirb::Addr blockAddr, functionEntryAddr;
@@ -852,7 +852,7 @@ static void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
         {
             gtirb::Block *block = &*blockRange.begin();
             gtirb::UUID functionEntryUUID = functionEntry2function[functionEntryAddr];
-            functionBlocks[functionEntryUUID].push_back(block->getUUID());
+            functionBlocks[functionEntryUUID].insert(block->getUUID());
         }
     }
     module.addAuxData("functionEntries", std::move(functionEntries));
