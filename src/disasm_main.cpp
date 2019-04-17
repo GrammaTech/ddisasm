@@ -988,9 +988,9 @@ static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
     buildSymbolForwarding(module, prog);
     buildSections(module, elf, prog);
     buildDataGroups(module, prog);
-    connectSymbolsToDataGroups(module);
     buildCodeBlocks(module, prog);
     buildCodeSymbolicInformation(module, prog);
+    connectSymbolsToDataGroups(module);
     expandSymbolForwarding(module, prog);
     connectSymbolsToBlocks(module);
     buildFunctions(module, prog);
