@@ -68,11 +68,6 @@ more points.
 .decl block_still_overlap(ea:address,ea2:address)
 .output block_still_overlap
 
-
-// define component traverse_code
-#include "traverse_code.dl"
-
-
 /////////////////////////////////////////////////////////////
 // Basic facts to define fallthrough
 
@@ -89,131 +84,10 @@ may_fallthrough(From,To):-
 must_fallthrough(From,To):-
 	may_fallthrough(From,To),
 	instruction_get_operation(From,Operation),
-        Operation!="CALL",
-        !interrupt_operation(Operation),
+    Operation!="CALL",
+    !interrupt_operation(Operation),
 	!instruction_has_loop_prefix(From),
-        !conditional_jump(From).
-
-
-/////////////////////////////////////////////////////////////
-// We go through 2 phases
-
-/////////////////////////////
-// Phase 1
-// Get an initial approximation of things that look like code
-/////////////////////////////
-.init phase1=traverse_code
-
-phase1.possible_ea(EA):-
-	instruction(EA,_,_,_,_,_,_,_).
-
-//fixme pie here
-phase1.block_limit(EA):-
-	op_immediate(_,EA).
-
-phase1.block_limit(EA):-
-	pc_relative_jump(_,EA).
-	
-phase1.block_limit(EA):-
-	pc_relative_call(_,EA).
-
-phase1.block_limit(EA):-
-	basic_target(EA).	
-
-phase1.block_limit(EA):-
-        instruction_has_loop_prefix(EA).
-
-// In this phase possible target and block_limits are the same
-phase1.possible_target(EA):-
-	phase1.block_limit(EA).
-
-
-.decl basic_target(ea:address)
-
-// FIXME: add exception frame addresses
-
-basic_target(Val):-
- 	relative_address(_,_,Val).
-
-basic_target(Val):-
-	binary_type("DYN"),
-	address_in_data(EA,Val),
-	relocation(EA,_,_,_).
-
-basic_target(Val):-
-	binary_type("EXEC"),
-	address_in_data(_,Val).
-
-basic_target(EA):-
-	entry_point(EA).
-
-basic_target(EA):-
-	code_section(Name),
-	section(Name,_,EA).
-
-basic_target(EA):-
-	function_symbol(EA,_).
-
-/////////////////////////////
-// Phase 2
-// In this propagation the possible targets are discovered incrementally
-// We use the block limits obtained from the previous phase.
-/////////////////////////////
-
-.init phase2=traverse_code
-
-phase2.possible_ea(EA):-
-	phase1.remaining_ea(EA).	
-
-// we can start traversing the code in two places and end up in the same
-// sequence, we want to split those common sequences apart so we 
-// get blocks that do not have common tails
-.decl common_tail(ea:address)
-
-common_tail(EA):-
-	phase1.likely_ea(EA,Block),
-	may_fallthrough(From,EA),
-	//get the head of the tail only
-	!phase1.likely_ea(From,Block),
-	phase1.likely_ea(From,Block2),
-	Block2!=Block.
-
-//In this phase we reuse the previous block limits plus
-// the points where we have common tails
-phase2.block_limit(EA):-
-	phase1.block_limit(EA).
-	
-phase2.block_limit(EA):-
-	common_tail(EA).
-
-// The targets are computed incrementally now as we traverse the code
-// likely_ea and possible_target_from are mutually recursive
-
-.decl possible_target_from(dest:address,src:address)
-
-possible_target_from(Dest,Src):-
-	phase2.likely_ea(Src,_),
-	may_have_symbolic_immediate(Dest,Src),
-	phase1.remaining_ea(Dest).
-
-possible_target_from(Dest,Src):-
-	phase2.likely_ea(Src,_),
-	pc_relative_jump(Src,Dest).
-	
-possible_target_from(Dest,Src):-
-	phase2.likely_ea(Src,_),
-	pc_relative_call(Src,Dest).
-
-
-phase2.possible_target(EA):-
-	basic_target(EA).
-
-phase2.possible_target(EA):-
-	possible_target_from(EA,_).
-
-// output for debugging purposes
-.output phase2.remaining_ea
-
+    !conditional_jump(From).
 
 
 //////////////////////////////////////////////////////////////
@@ -238,10 +112,9 @@ operation_not_for_address("XOR").
 .decl can_have_symbolic(EA:address)
 
 can_have_symbolic(Src):-
-	phase1.remaining_ea(Src),
+	instruction(Src,Size,_,_,_,_,_,_),
 	(
 	binary_type("DYN"),
-	instruction(Src,Size,_,_,_,_,_,_),
 	relocation(Location,_,_,_),
 	Src<=Location,
 	Location<Src+Size
@@ -251,31 +124,175 @@ can_have_symbolic(Src):-
 
 can_have_symbolic(EA):-
 	direct_jump(EA,_).
+
 can_have_symbolic(EA):-
 	direct_call(EA,_).
 
+.decl invalid(EA:address)
+
+// if the decoder failed to decode any instruction at EA, EA is invalid
+invalid(EA):-
+	invalid_op_code(EA).
+	
+// if EA contains a direct call or jump to something that cannot be code, it is invalid
+invalid(EA):-
+	(
+	direct_jump(EA,Not_code);
+	direct_call(EA,Not_code);
+	must_fallthrough(EA,Not_code)
+	),
+	!instruction(Not_code,_,_,_,_,_,_,_).
+	
+// propagate the invalid instructions backwards until ret or jmp (encoded in must_fallthrough)
+// propagate through direct jumps and calls
+invalid(From):-
+	invalid(To),
+	(
+		must_fallthrough(From,To);
+		direct_jump(From,To);
+		direct_call(From,To);
+		pc_relative_jump(From,To);
+		pc_relative_call(From,To)
+	).
+
+.decl possible_ea(EA:address)
+
+possible_ea(EA):-
+	instruction(EA,_,_,_,_,_,_,_),
+	!invalid(EA).
+
+.decl basic_target(ea:address)
+
+// FIXME: add exception frame addresses
+
+basic_target(Val):-
+	(
+ 	relative_address(_,_,Val)
+	;
+	binary_type("DYN"),
+	address_in_data(EA,Val),
+	relocation(EA,_,_,_)
+	;
+	binary_type("EXEC"),
+	address_in_data(_,Val)
+	;
+	entry_point(Val)
+	;
+	code_section(Name),
+	section(Name,_,Val)
+	;
+	function_symbol(Val,_)
+	).
+
+.decl block_limit(EA:address)
+
+block_limit(EA):-
+	(
+	op_immediate(_,EA);
+	pc_relative_jump(_,EA);
+	pc_relative_call(_,EA);
+	basic_target(EA);
+    instruction_has_loop_prefix(EA)
+	).
+
+// The targets are computed incrementally now as we traverse the code
+// likely_ea and possible_target_from are mutually recursive
+
+.decl possible_target_from(dest:address,src:address)
+
+possible_target_from(Dest,Src):-
+	code_in_block_candidate(Src,_),
+	(
+	may_have_symbolic_immediate(Dest,Src);
+	pc_relative_jump(Src,Dest);
+	pc_relative_call(Src,Dest)
+	).
+
+.decl possible_target(Target:address)
+.decl code_in_block_candidate(EA:address,EA_block:address)
+
+possible_target(EA):-
+	basic_target(EA).
+
+possible_target(EA):-
+	possible_target_from(EA,_).
+
+// start a new block given a possible target
+code_in_block_candidate(EA,EA):-
+	possible_target(EA),
+	possible_ea(EA).
+
+// extend the block as long as we are sure to fallthrough and we have not
+// reached a block limit
+code_in_block_candidate(EA,Start):-
+	code_in_block_candidate(EA2,Start),
+	must_fallthrough(EA2,EA),
+	!block_limit(EA).
+
+
+// if reached a block limit or an instruction that does not necessarily
+// fallthrough continue exploring but start a new block
+code_in_block_candidate(EA,EA):-
+	code_in_block_candidate(EA2,Start),
+	may_fallthrough(EA2,EA),
+	(
+	  !must_fallthrough(EA2,EA)
+	;
+	  block_limit(EA)
+	),
+	possible_ea(EA).
+	
+
+// in case we cannot fallthrough, we skip any nops that we might find
+// and generate a new possible_target once the nops finish
+.decl after_end(EA:address,End:address)
+
+after_end(Next,End):-
+	code_in_block_candidate(End,_),
+	(
+	   unconditional_jump(End);
+	   return(End);
+	   halt(End)
+	),
+	next(End,Next).
+
+after_end(Next,End):-
+	after_end(EA,End),
+	is_nop(EA),
+	next(EA,Next).
+
+possible_target(EA):-
+	after_end(EA,_),
+	!is_nop(EA).
 
 	
-////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
 // We are done with the recursive exploration
 // Now we detect and resolve conflics within the different blocks
+
+.decl block_candidate_limit(EA:address,Limit:address)
+
+block_candidate_limit(Block,Next):-
+    code_in_block_candidate(EA,Block),
+    next(EA,Next),
+    !code_in_block_candidate(Next,Block).
+
 
 .decl block_overlap(ea:address,ea2:address)
 .output block_overlap
 
 block_overlap(EA_block,EA_block2):-
-	phase2.likely_ea(EA,EA_block),
-	phase2.overlap(EA,EA2),
-	phase2.likely_ea(EA2,EA_block2).
-
-
+	code_in_block_candidate(_,EA_block),
+	block_candidate_limit(EA_block,Limit),
+	code_in_block_candidate(_,EA_block2),
+	EA_block2 > EA_block,
+	EA_block2 < Limit.
 
 .decl block_is_overlaping(block:address)
 
 block_is_overlaping(Block):-
 	(
-	block_overlap(Block,_)
-	;
+	block_overlap(Block,_);
 	block_overlap(_,Block)
 	).
 	
@@ -289,29 +306,20 @@ block_is_overlaping(Block):-
 
 discarded_block(Block):-
 	(
-	   block_overlap(Block,Block2)
-	;
+	   block_overlap(Block,Block2);
 	   block_overlap(Block2,Block)
 	),
 	// keep the block that has more points
-	(
-	  sum X:{block_points(Block,_,X,_)}< sum Y:{block_points(Block2,_,Y,_)}
-	;
-	 //The sum seems to fail if the set is empty so we consider
-	 // this case independently
-	 block_points(Block2,_,_,_),
-	 !block_points(Block,_,_,_)
-	).
+	sum X:{block_points(Block,_,X,_)} < sum Y:{block_points(Block2,_,Y,_)}.
 
 // propagate discarding blocks through direct jumps or calls
 discarded_block(Block):-
 	discarded_block(Block2),
 	(
-	direct_jump(EA,Block2)
-	;
+	direct_jump(EA,Block2);
 	direct_call(EA,Block2)
 	),
-	phase2.likely_ea(EA,Block).
+	code_in_block_candidate(EA,Block).
 	
 /**
  The heuristics give a variable number of points for things like number
@@ -323,6 +331,10 @@ discarded_block(Block):-
 
 .decl block_points(block:address,predecessor:address,importance:number,why:symbol)
 .output block_points
+
+
+block_points(Block,0,0,"basic point"):-
+	code_in_block_candidate(_,Block).
 
 block_points(Block,0,20,"start point"):-
 	entry_point(Block).
@@ -354,34 +366,34 @@ block_points(Block,0,1,"address in data array"):-
 
 block_points(Block,Block_pred,4,"direct jump"):-
 	direct_jump(EA,Block),
-	phase2.likely_ea(EA,Block_pred),
+	code_in_block_candidate(EA,Block_pred),
 	Block_pred!=Block,
 	!block_is_overlaping(Block_pred).
 
 block_points(Block,Block_pred,4,"direct call"):-
 	direct_call(EA,Block),
-	phase2.likely_ea(EA,Block_pred),
+	code_in_block_candidate(EA,Block_pred),
 	Block_pred!=Block,
 	!block_is_overlaping(Block_pred).
 	
 block_points(Block,Block_pred,5,"may_fallthrough"):-
 	may_fallthrough(EA,Block),
-	phase2.likely_ea(EA,Block_pred),
+	code_in_block_candidate(EA,Block_pred),
 	!block_is_overlaping(Block_pred).
 
 // it fits but the previous block does not fallthrough
 block_points(Block,Block_pred,1,"fits"):-
 	next(EA,Block),
 	!may_fallthrough(EA,Block),
-	phase2.likely_ea(EA,Block_pred),
+	code_in_block_candidate(EA,Block_pred),
 	!block_is_overlaping(Block_pred).
 
 // its address appears somewhere
 block_points(Block,Block_pred,2,"appears"):-
 	possible_target_from(Block,EA),
 	!direct_jump(EA,Block),
-        !direct_call(EA,Block),
-	phase2.likely_ea(EA,Block_pred),
+    !direct_call(EA,Block),
+	code_in_block_candidate(EA,Block_pred),
 	Block_pred!=Block,
 	!block_is_overlaping(Block_pred).
 
@@ -390,22 +402,21 @@ block_points(Block,0,2,"in relative jump table"):-
 
 // give a point if it may fallthrough to another block
 block_points(Block,Block_succ,1,"fallthough_to"):-
-	phase2.likely_ea(EA,Block),
+	code_in_block_candidate(EA,Block),
 	may_fallthrough(EA,Block_succ),
-	phase2.likely_ea(_,Block_succ),
+	code_in_block_candidate(_,Block_succ),
 	!block_is_overlaping(Block_succ).
 	
-
 // transitivity for fallthrough and direct jumps
 block_points(Block,Block_pred2,Points,"transitive fallthough"):-
 	may_fallthrough(EA,Block),
-	phase2.likely_ea(EA,Block_pred),
+	code_in_block_candidate(EA,Block_pred),
 	block_is_overlaping(Block_pred),
 	block_points(Block_pred,Block_pred2,Points,_).
 
 block_points(Block,Block_pred2,Points,"transitive jump"):-
 	direct_jump(EA,Block),
-	phase2.likely_ea(EA,Block_pred),
+	code_in_block_candidate(EA,Block_pred),
 	block_is_overlaping(Block_pred),
 	block_points(Block_pred,Block_pred2,Points,_).
 
@@ -414,7 +425,7 @@ block_points(Block,Block_pred2,Points,"transitive jump"):-
 
 
 code_in_block(EA,Block):-
-	phase2.likely_ea(EA,Block),
+	code_in_block_candidate(EA,Block),
 	!discarded_block(Block).
 
 block(Block):-

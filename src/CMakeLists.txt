@@ -25,7 +25,6 @@ set(DATALOG_SOURCES
     datalog/printable_chars.dl
     datalog/relative_jump_tables.dl
     datalog/symbolization.dl
-    datalog/traverse_code.dl
     datalog/use_def_analysis.dl
     datalog/value_analysis.dl)
 
