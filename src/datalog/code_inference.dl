@@ -137,9 +137,11 @@ invalid(EA):-
 // if EA contains a direct call or jump to something that cannot be code, it is invalid
 invalid(EA):-
 	(
+	must_fallthrough(EA,Not_code);
 	direct_jump(EA,Not_code);
-	direct_call(EA,Not_code);
-	must_fallthrough(EA,Not_code)
+	direct_call(EA,Not_code)
+	//pc_relative_jump(EA,Not_code);
+	//pc_relative_call(EA,Not_code)
 	),
 	!instruction(Not_code,_,_,_,_,_,_,_).
 	
@@ -259,13 +261,15 @@ after_end(Next,End):-
 after_end(Next,End):-
 	after_end(EA,End),
 	is_nop(EA),
+	!block_limit(EA),
 	next(EA,Next).
 
 possible_target(EA):-
 	after_end(EA,_),
-	!is_nop(EA).
-
-	
+	(
+	!is_nop(EA);
+	block_limit(EA)
+	). 
 ///////////////////////////////////////////////////////////////////////
 // We are done with the recursive exploration
 // Now we detect and resolve conflics within the different blocks
