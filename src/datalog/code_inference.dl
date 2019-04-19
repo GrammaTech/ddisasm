@@ -274,23 +274,45 @@ possible_target(EA):-
 // We are done with the recursive exploration
 // Now we detect and resolve conflics within the different blocks
 
+//First remove common tails
+.decl code_in_block_candidate_refined(EA:address,Block:address)
+
+code_in_block_candidate_refined(Block,Block):-
+	code_in_block_candidate(Block,Block).
+
+code_in_block_candidate_refined(EA_next,Block):-
+	code_in_block_candidate_refined(EA,Block),
+	next(EA,EA_next),
+	code_in_block_candidate(EA_next,Block),
+	!code_in_block_candidate(EA_next,EA_next).
+
+
 .decl block_candidate_limit(EA:address,Limit:address)
 
 block_candidate_limit(Block,Next):-
-    code_in_block_candidate(EA,Block),
+    code_in_block_candidate_refined(EA,Block),
     next(EA,Next),
-    !code_in_block_candidate(Next,Block).
+    !code_in_block_candidate_refined(Next,Block).
 
+
+.decl instruction_range(EA:address,EA_Instruction:address)
+
+instruction_range(EA2+1,EA2):-
+	code_in_block_candidate_refined(EA2,_),
+	next(EA2,End),
+	EA2+1 < End.
+instruction_range(EA+1,EA2):-
+	instruction_range(EA,EA2),
+	next(EA2,End),
+	EA+1 < End.
 
 .decl block_overlap(ea:address,ea2:address)
 .output block_overlap
 
 block_overlap(EA_block,EA_block2):-
-	code_in_block_candidate(_,EA_block),
-	block_candidate_limit(EA_block,Limit),
-	code_in_block_candidate(_,EA_block2),
-	EA_block2 > EA_block,
-	EA_block2 < Limit.
+	code_in_block_candidate_refined(EA,EA_block),
+	instruction_range(EA_block2,EA),
+	code_in_block_candidate_refined(_,EA_block2).
 
 .decl block_is_overlaping(block:address)
 
@@ -323,7 +345,7 @@ discarded_block(Block):-
 	direct_jump(EA,Block2);
 	direct_call(EA,Block2)
 	),
-	code_in_block_candidate(EA,Block).
+	code_in_block_candidate_refined(EA,Block).
 	
 /**
  The heuristics give a variable number of points for things like number
@@ -338,7 +360,7 @@ discarded_block(Block):-
 
 
 block_points(Block,0,0,"basic point"):-
-	code_in_block_candidate(_,Block).
+	code_in_block_candidate_refined(_,Block).
 
 block_points(Block,0,20,"start point"):-
 	entry_point(Block).
@@ -370,26 +392,26 @@ block_points(Block,0,1,"address in data array"):-
 
 block_points(Block,Block_pred,4,"direct jump"):-
 	direct_jump(EA,Block),
-	code_in_block_candidate(EA,Block_pred),
+	code_in_block_candidate_refined(EA,Block_pred),
 	Block_pred!=Block,
 	!block_is_overlaping(Block_pred).
 
 block_points(Block,Block_pred,4,"direct call"):-
 	direct_call(EA,Block),
-	code_in_block_candidate(EA,Block_pred),
+	code_in_block_candidate_refined(EA,Block_pred),
 	Block_pred!=Block,
 	!block_is_overlaping(Block_pred).
 	
 block_points(Block,Block_pred,5,"may_fallthrough"):-
 	may_fallthrough(EA,Block),
-	code_in_block_candidate(EA,Block_pred),
+	code_in_block_candidate_refined(EA,Block_pred),
 	!block_is_overlaping(Block_pred).
 
 // it fits but the previous block does not fallthrough
 block_points(Block,Block_pred,1,"fits"):-
 	next(EA,Block),
 	!may_fallthrough(EA,Block),
-	code_in_block_candidate(EA,Block_pred),
+	code_in_block_candidate_refined(EA,Block_pred),
 	!block_is_overlaping(Block_pred).
 
 // its address appears somewhere
@@ -397,7 +419,7 @@ block_points(Block,Block_pred,2,"appears"):-
 	possible_target_from(Block,EA),
 	!direct_jump(EA,Block),
     !direct_call(EA,Block),
-	code_in_block_candidate(EA,Block_pred),
+	code_in_block_candidate_refined(EA,Block_pred),
 	Block_pred!=Block,
 	!block_is_overlaping(Block_pred).
 
@@ -406,21 +428,21 @@ block_points(Block,0,2,"in relative jump table"):-
 
 // give a point if it may fallthrough to another block
 block_points(Block,Block_succ,1,"fallthough_to"):-
-	code_in_block_candidate(EA,Block),
+	code_in_block_candidate_refined(EA,Block),
 	may_fallthrough(EA,Block_succ),
-	code_in_block_candidate(_,Block_succ),
+	code_in_block_candidate_refined(_,Block_succ),
 	!block_is_overlaping(Block_succ).
 	
 // transitivity for fallthrough and direct jumps
 block_points(Block,Block_pred2,Points,"transitive fallthough"):-
 	may_fallthrough(EA,Block),
-	code_in_block_candidate(EA,Block_pred),
+	code_in_block_candidate_refined(EA,Block_pred),
 	block_is_overlaping(Block_pred),
 	block_points(Block_pred,Block_pred2,Points,_).
 
 block_points(Block,Block_pred2,Points,"transitive jump"):-
 	direct_jump(EA,Block),
-	code_in_block_candidate(EA,Block_pred),
+	code_in_block_candidate_refined(EA,Block_pred),
 	block_is_overlaping(Block_pred),
 	block_points(Block_pred,Block_pred2,Points,_).
 
@@ -429,7 +451,7 @@ block_points(Block,Block_pred2,Points,"transitive jump"):-
 
 
 code_in_block(EA,Block):-
-	code_in_block_candidate(EA,Block),
+	code_in_block_candidate_refined(EA,Block),
 	!discarded_block(Block).
 
 block(Block):-
