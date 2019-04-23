@@ -1271,7 +1271,6 @@ int main(int argc, char **argv)
             loadInputs(prog, elf, decoder);
             std::cout << "Disassembling" << std::endl;
             prog->run();
-            performSanityChecks(prog);
 
             std::cout << "Building the gtirb representation" << std::endl;
             auto &ir = *gtirb::IR::Create(C);
@@ -1319,7 +1318,7 @@ int main(int argc, char **argv)
                 writeFacts(decoder, elf, dir);
                 prog->printAll(dir);
             }
-
+            performSanityChecks(prog);
             delete prog;
             return 0;
         }
