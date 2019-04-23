@@ -239,12 +239,15 @@ string_part(EA+1,Base):-
 
 ///////////////////////////////////////////////////////////////////////////
 .decl data_object_candidate(ea:address,size:number,type:symbol)
+
 .decl data_object_point(ea:address,size:number,type:symbol,points:number,why:symbol)
 .output data_object_point
+
 .decl data_object_conflict(ea:address,size:number,type:symbol,ea2:address,size2:number,type2:symbol)
 .output data_object_conflict
 
 .decl discarded_data_object(ea:address,size:number,type:symbol)
+
 .decl data_object(ea:address,size:number,type:symbol)
 
 data_object_candidate(EA,4,"symbol-symbol"):-
@@ -269,7 +272,6 @@ data_object_candidate(EA,Size,"other"):-
 //  we consider that we found an array of addresses
 // we do not cross labels
 .decl after_address_in_data(EA:address,EA_next:address)
-
 
 after_address_in_data(EA,EA+Pt_size):-
 	address_in_data_refined(EA,_),
@@ -370,6 +372,10 @@ data_object_point(EA,Size,"string",0,"basic point"):-
 data_object_point(EA,Size,"string",1,"long string"):-
 	data_object_candidate(EA,Size,"string"),
 	Size>8.
+
+data_object_point(EA,Size,"string",2,"very long string"):-
+	data_object_candidate(EA,Size,"string"),
+	Size>16.
 
 
 // data access negative heuristic
@@ -478,5 +484,37 @@ bss_data(EA):-
 	EA<=Base+SizeSect.
 
 
+// Predicates for debugging and statistics
+.decl discarded_aligned_pointer(ea:address)
+.output discarded_aligned_pointer
 
+.decl discarded_aligned_pointer_to_text(ea:address)
+.output discarded_aligned_pointer_to_text
 
+.decl unaligned_pointer(ea:address)
+.output unaligned_pointer
+
+discarded_aligned_pointer_to_text(EA):-
+	address_in_data(EA,_),
+	!address_in_data_refined(EA,_),
+	pointer_size(Pt_size),
+	EA % Pt_size = 0.
+
+discarded_aligned_pointer(EA):-
+	discarded_data_object(EA,Pt_size,"symbol"),
+	EA % Pt_size = 0.
+
+unaligned_pointer(EA):-
+	data_object(EA,Pt_size,"symbol"),
+	EA % Pt_size != 0.
+
+.decl immediate_symbol(ea:address,op_index:number,dest:address)
+.output immediate_symbol
+
+immediate_symbol(EA,Op_index,Dest):-
+	code(EA),
+	instruction_get_op(EA,Op_index,Op),
+	can_have_symbolic(EA),
+	!direct_jump(EA,_),
+	!direct_call(EA,_),
+	op_immediate(Op,Dest).
