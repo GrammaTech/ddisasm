@@ -269,7 +269,7 @@ possible_target(EA):-
 	(
 	!is_nop(EA);
 	block_limit(EA)
-	). 
+	).
 ///////////////////////////////////////////////////////////////////////
 // We are done with the recursive exploration
 // Now we detect and resolve conflics within the different blocks
@@ -446,8 +446,7 @@ block_points(Block,Block_pred,6,"may-fallthrough"):-
 // it fits but the previous block does not fallthrough
 block_points(Block,Block_pred,2,"fits"):-
 	block_is_overlaping(Block),
-	next(EA,Block),
-	!may_fallthrough(EA,Block),
+	after_end(Block,EA),
 	code_in_block_candidate_refined(EA,Block_pred),
 	!block_is_overlaping(Block_pred).
 
