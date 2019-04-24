@@ -442,11 +442,11 @@ block_points(Block,Block_pred,2,"fits"):-
 	!block_is_overlaping(Block_pred).
 
 // its address appears somewhere
-block_points(Block,Block_pred,3,"appears"):-
+block_points(Block,0,3,"appears"):-
 	block_is_overlaping(Block),
 	possible_target_from(Block,EA),
 	!direct_jump(EA,Block),
-    !direct_call(EA,Block),
+  !direct_call(EA,Block),
 	code_in_block_candidate_refined(EA,Block_pred),
 	Block_pred!=Block,
 	!block_is_overlaping(Block_pred).
