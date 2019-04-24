@@ -25,26 +25,16 @@ This module computes the valid instructions organized in blocks of
 code.  It infers the facts 'code_in_block', 'block', and 'code'. In
 addition it computes 'block_still_overlap' for debugging purposes.
 
-The way this is done is by using the component 'traverse_code' twice.
-The first traversal (phase1) considers any potential address in the
-code or data as a possible_target (a starting point from where to
-start traversing) and gives us a first approximation of the code.
+The disassembly is done in two traversals:
 
-We can use the results of this traversal to define better block
-limits.  We define block limits for all the locations that are
-possible targets and also for all the locations where two potential
-blocks converge. That way, in the second traversal the generated
-blocks will not have 'common tails' (two blocks starting at different
-locations but converging into the same location).
+  - A "must" backward traversal that propagates invalid instructions
+  - A "may" forward traversal that tries to generate a
+    superset of all possible code blocks (with the predicates possible_target
+	and code_in_block_candidate). This traversal has a recursive component
+	and a linear-sweep component.
 
-The second traversal (phase2) only considers an address appearing in
-the code as a possible target if the code where it appears has been
-already traversed. In that sense, it is more similar to recursive
-disassembly but it still has a linear component as it explores the
-instructions after locations that cannot fallthough.
-
-Finally, we detect blocks of code that overlap with each other (and
-therefore are in conclict) and give them points according to several
+Finally, we detect candidate blocks of code that overlap with each other (and
+therefore are in conflict) and give them points according to several
 heuristics. Then for each two conflicting blocks we keep the one with
 more points.
 */
@@ -64,7 +54,8 @@ more points.
 // cfg generates a control flow graph
 #include "cfg.dl"
 
-// we detect if there are still overlaping blocks, in that case the analysis has failed
+// we detect if there are still overlaping blocks,
+// in that case the analysis has failed to resolve all conflicts
 .decl block_still_overlap(ea:address,ea2:address)
 .output block_still_overlap
 

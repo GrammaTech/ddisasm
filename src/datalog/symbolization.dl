@@ -45,13 +45,13 @@ The data symbolization itself uses the following heuristics:
       certainly not a pointer.
 
   - strings: if we have a pointer candidate in what seems to be a string,
-    it is less likely to be a pointer
+    it is less likely to be a pointer.
 
   - aligned location: if a pointer candidate is aligned, it is more
     likely to be a pointer. Compilers usually (but not always) store
     pointers aligned.
 
-This module also computes stack_operand and symbol_minus_symbol.
+This module also computes and symbol_minus_symbol.
 */
 
 #include "empty_range.dl"
@@ -482,39 +482,3 @@ bss_data(EA):-
 	section(".bss",SizeSect,Base),
 	EA>=Base,
 	EA<=Base+SizeSect.
-
-
-// Predicates for debugging and statistics
-.decl discarded_aligned_pointer(ea:address)
-.output discarded_aligned_pointer
-
-.decl discarded_aligned_pointer_to_text(ea:address)
-.output discarded_aligned_pointer_to_text
-
-.decl unaligned_pointer(ea:address)
-.output unaligned_pointer
-
-discarded_aligned_pointer_to_text(EA):-
-	address_in_data(EA,_),
-	!address_in_data_refined(EA,_),
-	pointer_size(Pt_size),
-	EA % Pt_size = 0.
-
-discarded_aligned_pointer(EA):-
-	discarded_data_object(EA,Pt_size,"symbol"),
-	EA % Pt_size = 0.
-
-unaligned_pointer(EA):-
-	data_object(EA,Pt_size,"symbol"),
-	EA % Pt_size != 0.
-
-.decl immediate_symbol(ea:address,op_index:number,dest:address)
-.output immediate_symbol
-
-immediate_symbol(EA,Op_index,Dest):-
-	code(EA),
-	instruction_get_op(EA,Op_index,Op),
-	can_have_symbolic(EA),
-	!direct_jump(EA,_),
-	!direct_call(EA,_),
-	op_immediate(Op,Dest).

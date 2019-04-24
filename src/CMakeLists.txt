@@ -26,7 +26,8 @@ set(DATALOG_SOURCES
     datalog/relative_jump_tables.dl
     datalog/symbolization.dl
     datalog/use_def_analysis.dl
-    datalog/value_analysis.dl)
+    datalog/value_analysis.dl
+    datalog/debug_stats.dl)
 
 if(NOT CORES)
   set(CORES "auto")
