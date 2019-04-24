@@ -542,10 +542,7 @@ static void expandSymbolForwarding(gtirb::Module &module, souffle::SouffleProgra
 
 bool isNullReg(const std::string &reg)
 {
-    const std::vector<std::string> adapt{"NullReg64", "NullReg32", "NullReg16", "NullSReg"};
-
-    const auto found = std::find(std::begin(adapt), std::end(adapt), reg);
-    return (found != std::end(adapt));
+    return reg=="NONE";
 }
 
 static std::string getLabel(uint64_t ea)

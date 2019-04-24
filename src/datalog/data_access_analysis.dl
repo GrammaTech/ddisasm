@@ -91,13 +91,8 @@ instruction_memory_access_size(EA,Index,SizeAccess):-
 data_access_pattern(Address,Size ,0,EA):-
 	code(EA),
 	instruction_get_op(EA,Op_index,Op),
-	op_indirect(Op,NullSReg,NullReg1,NullReg2,_,Address,_),
-        instruction_memory_access_size(EA,Op_index,Size),
-    
-	null_reg(NullSReg),
-	null_reg(NullReg1),
-	null_reg(NullReg2),
-
+	op_indirect(Op,"NONE","NONE","NONE",_,Address,_),
+    instruction_memory_access_size(EA,Op_index,Size),
 	data_section(Section),
 	section(Section,SizeSect,Base),
 	Address>=Base,
@@ -107,10 +102,9 @@ data_access_pattern(Address,Size ,0,EA):-
 data_access_pattern(Address+(Offset2*Multiplier),Size ,Multiplier*Multiplier2,EA):-
 	code(EA),
 	instruction_get_op(EA,Op_index,Op),
-	op_indirect(Op,NullSReg,RegBase,RegMult,Multiplier,Address1,_),
+	op_indirect(Op,"NONE",RegBase,RegMult,Multiplier,Address1,_),
         instruction_memory_access_size(EA,Op_index,Size), 
-	null_reg(NullSReg),
-	!null_reg(RegMult),
+	RegMult!="NONE",
 
 	
 	def_used(EA_def,RegMult,EA,Op_index),
@@ -126,10 +120,10 @@ data_access_pattern(Address+(Offset2*Multiplier),Size ,Multiplier*Multiplier2,EA
 	max(Multiplier*Multiplier2,Multiplier*Multiplier2*(-1))>1,
 
 	(
-	null_reg(RegBase),
+	RegBase="NONE",
 	Address=Address1
 	;
-	!null_reg(RegBase),
+	RegBase!="NONE",
 	def_used(EA_base,RegBase,EA,Op_index),
 	best_value_reg(EA_base,RegBase,0,Address2,"complete"),
 	Address=Address1+Address2
@@ -144,9 +138,8 @@ data_access_pattern(Address+(Offset2*Multiplier),Size ,Multiplier*Multiplier2,EA
 data_access_pattern(Offset+Address,Size ,Multiplier,EA):-
 	code(EA),
 	instruction_get_op(EA,Op_index,Op),
-	op_indirect(Op,NullSReg,Reg,RegBase,MultiplierBase,Address1,_),
-        instruction_memory_access_size(EA,Op_index,Size),
-	null_reg(NullSReg),
+	op_indirect(Op,"NONE",Reg,RegBase,MultiplierBase,Address1,_),
+    instruction_memory_access_size(EA,Op_index,Size),
 	def_used(EA_def,Reg,EA,Op_index),
 	best_value_reg(EA_def,Reg,Multiplier,Offset_aux,Type),
 	(
@@ -157,10 +150,10 @@ data_access_pattern(Offset+Address,Size ,Multiplier,EA):-
 	Offset=0
 	),
 	(
-	null_reg(RegBase),
+	RegBase="NONE",
 	Address=Address1
 	;
-	!null_reg(RegBase),
+	RegBase!="NONE",
 	MultiplierBase=1,
 	def_used(EA_base,RegBase,EA,Op_index),
 	best_value_reg(EA_base,RegBase,0,Address2,"complete"),
@@ -185,10 +178,8 @@ data_access_pattern(Address,Size ,0,EA):-
 data_access_pattern(Address,1,1,EA):-
 	code(EA),
 	instruction_get_op(EA,Index,Op),
-	op_indirect(Op,NullSReg,Reg,NullReg1,_,Address,8),
-	null_reg(NullSReg),
-	null_reg(NullReg1),
-	!null_reg(Reg),
+	op_indirect(Op,"NONE",Reg,"NONE",_,Address,8),
+	Reg!="NONE",
 
 	def_used(EA_def,Reg,EA,Index),	
 	best_value_reg(EA_def,Reg,1,0,_),
@@ -201,10 +192,8 @@ data_access_pattern(Address,1,1,EA):-
 data_access_pattern(Address,1,1,EA):-
 	code(EA),
 	instruction_get_op(EA,Index,Op),
-	op_indirect(Op,NullSReg,NullReg1,Reg,1,Address,8),
-	null_reg(NullSReg),
-	null_reg(NullReg1),
-	!null_reg(Reg),
+	op_indirect(Op,"NONE","NONE",Reg,1,Address,8),
+	Reg!="NONE",
 
 	def_used(EA_def,Reg,EA,Index),
 	best_value_reg(EA_def,Reg,1,0,_),
@@ -218,9 +207,8 @@ data_access_pattern(Address,1,1,EA):-
 data_access_pattern(Address,2,2,EA):-
 	code(EA),
 	instruction_get_op(EA,Index,Op),
-	op_indirect(Op,NullSReg,Reg,Reg,1,Address,16),
-	null_reg(NullSReg),
-	!null_reg(Reg),
+	op_indirect(Op,"NONE",Reg,Reg,1,Address,16),
+	Reg!="NONE",
 	def_used(EA_def,Reg,EA,Index),	
 	best_value_reg(EA_def,Reg,1,0,_),
 
