@@ -86,9 +86,9 @@ must_fallthrough(From,To):-
 // in some obvious cases. This is specially useful for PIE code where
 // the address space starts from 0 (and therefore we have many more collisions).
 
-.decl may_have_symbolic_immediate(dest:address,src:address)
+.decl may_have_symbolic_immediate(src:address,dest:address)
 
-may_have_symbolic_immediate(Dest,Src):-
+may_have_symbolic_immediate(Src,Dest):-
 	can_have_symbolic(Src),
 	instruction_get_op(Src,_,Op),
 	op_immediate(Op,Dest),
@@ -196,7 +196,7 @@ block_limit(EA):-
 possible_target_from(Dest,Src):-
 	code_in_block_candidate(Src,_),
 	(
-	may_have_symbolic_immediate(Dest,Src);
+	may_have_symbolic_immediate(Src,Dest);
 	pc_relative_jump(Src,Dest);
 	pc_relative_call(Src,Dest)
 	).
