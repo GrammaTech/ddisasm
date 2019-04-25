@@ -265,6 +265,7 @@ data_object_candidate(EA,Size,"other"):-
   preferred_data_access(EA,Label),
 	data_access_pattern(Label,Size,_,_),
 	Size!=Pt_size,
+	Size>0,
 	pointer_size(Pt_size).
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -407,19 +408,25 @@ data_object_conflict(EA,Size,Type,EA,Size,Type2):-
   data_object_candidate(EA,Size,Type2),
 	Type!=Type2.
 
+.decl data_object_total_points(EA:address,Size:number,Type:symbol,Points:number)
+.output data_object_total_points
+
+data_object_total_points(EA,Size,Type,Points):-
+	data_object_candidate(EA,Size,Type),
+	Points=sum X:{data_object_point(EA,Size,Type,X,_)}.
 
 data_object(EA,Size,Type):-
-  data_object_candidate(EA,Size,Type),
+  data_object_total_points(EA,Size,Type,Points),
 	!discarded_data_object(EA,Size,Type),
-	(sum X:{data_object_point(EA,Size,Type,X,_)} >=2
+	(Points>=2
 	; //if the object is a string and there is no conflict we keep it no matter the evidence
 	Type="string"
 	).
 
 discarded_data_object(EA_f,Size_f,Type_f):-
   data_object_conflict(EA,Size,Type,EA2,Size2,Type2),
-	Points1=sum X:{data_object_point(EA,Size,Type,X,_)},
-	Points2=sum Y:{data_object_point(EA2,Size2,Type2,Y,_)},
+	data_object_total_points(EA,Size,Type,Points1),
+	data_object_total_points(EA2,Size2,Type2,Points2),
   (
 		Points1<Points2,
 		EA_f=EA,
