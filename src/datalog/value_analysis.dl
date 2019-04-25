@@ -91,7 +91,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
 	EA!=EA_prev.
 	
 //reset a register
-value_reg_edge(EA,Reg,0,"NONE",1,0):-
+value_reg_edge(EA,Reg,0,"NONE",0,0):-
 	def_used(EA,Reg,_,_),
 	instruction(EA,_,_,"XOR",Op1,Op2,0,0),
 	op_regdirect_contains_reg(Op1,Reg),
