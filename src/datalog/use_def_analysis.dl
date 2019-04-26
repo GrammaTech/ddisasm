@@ -166,8 +166,6 @@ reg_compared(EA,Reg,Index,Reg2,Index2):-
 local_next(EA,EA_next):-
 	code(EA),
 	may_fallthrough(EA,EA_next).
-
-
 	
 local_next(EA,EA_next):-
 	code(EA),
@@ -201,12 +199,13 @@ defined_in_block(Block,Reg):-
 
 used(EA,Reg,Index):-
 	code(EA),
+	instruction_get_src_op(EA,Index,Op),
+	op_regdirect_contains_reg(Op,Reg).
+
+used(EA,Reg,Index):-
+	code(EA),
 	instruction_get_op(EA,Index,Op),
-	(
-	op_indirect_contains_reg(Op,Reg)
-	;
-	op_regdirect_contains_reg(Op,Reg)
-	).
+	op_indirect_contains_reg(Op,Reg).
 
 //BASE CASE: used register for memory here and not accessing the stack
 used_for_address(EA,Reg,EA,Index):-

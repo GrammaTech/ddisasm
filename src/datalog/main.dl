@@ -194,9 +194,10 @@ instruction_get_dest_op(EA,1,Op):-
 
 //when the dest is used as a source as well
 instruction_get_src_op(EA,Index,Op2):-
-	instruction(EA,_,_,_Operation,_,Op2,_,_),Op2!=0,
+	instruction(EA,_,_,Operation,_,Op2,_,_),Op2!=0,
 	Index=2,
-	!mov(EA).
+	!mov(EA),
+	!op_does_not_read_dest_reg(Operation).
 //	!read_only_operation(Operation).
 
 instruction_get_src_op(EA,Index,Op):-
@@ -222,6 +223,9 @@ mov(EA):-
 	instruction_get_operation(EA,Operation),
 	contains("MOV",Operation).	
 
+.decl op_does_not_read_dest_reg(Operation:symbol)
+
+op_does_not_read_dest_reg("LEA").
 
 .decl is_nop(EA:address)
 
