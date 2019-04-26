@@ -41,7 +41,7 @@ above defined for different instruction and using the def-use chains.
 
 Then, we have a propagation phase where value_reg is computed. This
 phase chains individual value_reg_edge together.  In addition to
-chainging edges together takes care of cases such as two registers
+chaining edges together it takes care of cases such as two registers
 added together or substracted if it turns out that they can be
 expressed in terms of the same register.  It also detects possible
 loops.
@@ -63,6 +63,8 @@ or loop) and considering the value with most steps.
 .output value_reg
 
 .decl best_value_reg(EA:address,Reg:register,Multiplier:number,Offset:number,type:symbol)
+.output best_value_reg
+
 // mov reg immediate
 value_reg_edge(EA,Reg,0,"NONE",0,Immediate):-
 	def_used(EA,Reg,_,_),
