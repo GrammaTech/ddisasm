@@ -63,8 +63,6 @@ or loop) and considering the value with most steps.
 .output value_reg
 
 .decl best_value_reg(EA:address,Reg:register,Multiplier:number,Offset:number,type:symbol)
-
-.output best_value_reg
 // mov reg immediate
 value_reg_edge(EA,Reg,0,"NONE",0,Immediate):-
 	def_used(EA,Reg,_,_),
@@ -102,27 +100,29 @@ value_reg_edge(EA,Reg,EA_prev,Reg,1,Immediate):-
 	def_used(EA_prev,Reg,EA,_),
 	instruction(EA,_,_,"ADD",Op1,Op2,0,0),
 	op_immediate(Op1,Immediate),
-	op_regdirect_contains_reg(Op2,Reg),
-	EA!=EA_prev.
+	op_regdirect_contains_reg(Op2,Reg).
 
 value_reg_edge(EA,Reg,EA_prev,Reg,1,-Immediate):-
 	def_used(EA_prev,Reg,EA,_),
 	instruction(EA,_,_,"SUB",Op1,Op2,0,0),
 	op_immediate(Op1,Immediate),
-	op_regdirect_contains_reg(Op2,Reg),
-	EA!=EA_prev.
+	op_regdirect_contains_reg(Op2,Reg).
 	
 value_reg_edge(EA,Reg,EA_prev,Reg,1,1):-
 	def_used(EA_prev,Reg,EA,_),
 	instruction(EA,_,_,"INC",Op1,0,0,0),
-	op_regdirect_contains_reg(Op1,Reg),
-	EA!=EA_prev.
+	op_regdirect_contains_reg(Op1,Reg).
 	
 value_reg_edge(EA,Reg,EA_prev,Reg,1,-1):-
 	def_used(EA_prev,Reg,EA,_),
 	instruction(EA,_,_,"DEC",Op1,0,0,0),
-	op_regdirect_contains_reg(Op1,Reg),
-	EA!=EA_prev.	
+	op_regdirect_contains_reg(Op1,Reg).
+
+// add a register to itself
+value_reg_edge(EA,Reg,EA_prev,Reg,2,0):-
+	def_used(EA_prev,Reg,EA,_),
+	instruction(EA,_,_,"ADD",Op,Op,0,0),
+	op_regdirect_contains_reg(Op,Reg).
 
 //shl reg immediate
 value_reg_edge(EA,Reg,EA_prev,Reg,2^Immediate,0):-
@@ -155,8 +155,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier,Offset):-
 	instruction(EA,_,_,"LEA",Op1,Op2,0,0),
 	op_indirect(Op1,_,"NONE",Reg_origin_non_uniform,Multiplier,Offset,_),
 	track_register(Reg_origin_non_uniform,Reg_origin),
-	op_regdirect_contains_reg(Op2,Reg),
-	EA!=EA_prev.
+	op_regdirect_contains_reg(Op2,Reg).
 //lea reg [reg_origin+reg_origin*Multiplier+Offset]	
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier+1,Offset):-
 	def(EA,Reg),
@@ -164,8 +163,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier+1,Offset):-
 	instruction(EA,_,_,"LEA",Op1,Op2,0,0),
 	op_indirect(Op1,_,Reg_origin_non_uniform,Reg_origin_non_uniform,Multiplier,Offset,_),
 	track_register(Reg_origin_non_uniform,Reg_origin),
-	op_regdirect_contains_reg(Op2,Reg),
-	EA!=EA_prev.	
+	op_regdirect_contains_reg(Op2,Reg).
 //lea reg [reg_origin+Offset]
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,Offset):-
 	def(EA,Reg),
@@ -173,8 +171,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,Offset):-
 	instruction(EA,_,_,"LEA",Op1,Op2,0,0),
 	op_indirect(Op1,_,Reg_origin_non_uniform,"NONE",1,Offset,_),
 	track_register(Reg_origin_non_uniform,Reg_origin),
-	op_regdirect_contains_reg(Op2,Reg),
-	EA!=EA_prev.
+	op_regdirect_contains_reg(Op2,Reg).
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // once we have the edges that relate the values of registers at different
@@ -187,34 +184,12 @@ value_reg(EA,Reg,EA,Reg,1,0,1):-
 	def_used(EA,Reg,_,_),
 	!value_reg_edge(EA,Reg,_,_,_,_).
 
-	
-
 // possible loop
 value_reg(EA,Reg,0,"Unknown",Immediate,Base,Steps+1):-
-	def_used(EA,Reg,EA,_),
-	instruction(EA,_,_,"ADD",Op1,Op2,0,0),
-	op_immediate(Op1,Immediate),
-	op_regdirect_contains_reg(Op2,Reg),
-	// the base case
 	value_reg(EA,Reg,0,"NONE",0,Base,Steps),
+	value_reg_edge(EA,Reg,EA,Reg,1,Immediate),
+	Immediate!=0,
 	Steps+1<8.
-
-value_reg(EA,Reg,0,"Unknown",-Immediate,Base,Steps+1):-
-	def_used(EA,Reg,EA,_),
-	instruction(EA,_,_,"SUB",Op1,Op2,0,0),
-	op_immediate(Op1,Immediate),
-	op_regdirect_contains_reg(Op2,Reg),
-	// the base case
-	value_reg(EA,Reg,0,"NONE",0,Base,Steps),
-	Steps+1<8.
-
-value_reg(EA,Reg,0,"Unknown",1,Base,Steps+1):-
-	def_used(EA,Reg,EA,_),
-	instruction(EA,_,_,"INC",Op1,0,0,0),
-	op_regdirect_contains_reg(Op1,Reg),
-	// the base case
-	value_reg(EA,Reg,0,"NONE",0,Base,Steps),
-	Steps+1<8.	
 
 // This is an ad-hoc case observed quite often:
 // Reg2=Reg2-Reg1
@@ -222,7 +197,7 @@ value_reg(EA,Reg,0,"Unknown",1,Base,Steps+1):-
 // Reg2= (Reg1*mult+offset)-Reg1 = Reg1 *(mult-1)+offset
 value_reg(EA,Reg2,EA_third,Reg3,Multiplier-Multiplier2,Offset-Offset2,Steps3):-
 	def(EA,Reg2),
-	instruction(EA,_,_,"SUB",Op1,Op2,0,0),
+	instruction(EA,_,_,"SUB",Op1,Op2,0,0), Op1!=Op2,
 	op_regdirect_contains_reg(Op1,Reg1),
 	op_regdirect_contains_reg(Op2,Reg2),
 	// Reg2 is defined in EA_prev in terms of reg1
@@ -240,7 +215,7 @@ value_reg(EA,Reg2,EA_third,Reg3,Multiplier-Multiplier2,Offset-Offset2,Steps3):-
 
 value_reg(EA,Reg2,EA_third,Reg3,Multiplier+Multiplier2,Offset+Offset2,Steps3):-
 	def(EA,Reg2),
-	instruction(EA,_,_,"ADD",Op1,Op2,0,0),
+	instruction(EA,_,_,"ADD",Op1,Op2,0,0), Op1!=Op2,
 	op_regdirect_contains_reg(Op2,Reg2),
 	op_regdirect_contains_reg(Op1,Reg1),
 	def_used(EA_def1,Reg1,EA,_),
@@ -251,7 +226,7 @@ value_reg(EA,Reg2,EA_third,Reg3,Multiplier+Multiplier2,Offset+Offset2,Steps3):-
 	Multiplier>=1,
 	EA != EA_def1,
 	EA != EA_prev,
-	EA!=EA_third,
+	EA != EA_third,
 	Steps3=max(Steps+1,Steps2+1),
 	Steps3<8.
 
@@ -259,14 +234,13 @@ value_reg(EA,Reg2,EA_third,Reg3,Multiplier+Multiplier2,Offset+Offset2,Steps3):-
 value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,Steps2):-
 	value_reg(EA2,Reg2,EA3,Reg3,Multiplier2,Offset2,Steps),
 	value_reg_edge(EA1,Reg1,EA2,Reg2,Multiplier,Offset),
-	EA2!=EA1,
-	EA1!=EA3,
+	EA1!=EA2,
 	// we allow less back steps
 	(
-	  EA2<=EA1,
+	  EA2<EA1,
 	  Steps2=Steps+1
 	  ;
-	  EA2>EA1,
+	  EA2>=EA1,
 	  Steps2=Steps+4
 	),
 	Steps2<8.
