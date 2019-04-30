@@ -79,14 +79,14 @@ moved_data_label(EA,Dest,Address):-
 .decl address_comparison(EA_cmp:address,Address:address)
 
 address_comparison(EA_cmp,Dest):-
-	data_access_pattern(Dest,_,_,EA_used),
+    data_access_pattern_candidate(Dest,_,_,EA_used),
 	!instruction_get_operation(EA_used,"LEA"),
 	used_for_address(EA_cmp,Reg,EA_used,_),
 	instruction_get_operation(EA_cmp,Operation),
 	comparison_operation(Operation),
 	instruction_get_src_op(EA_cmp,_,Op1),
 	op_regdirect_contains_reg(Op1,Reg),
-	!data_access_pattern(_,_,_,EA_cmp).
+    !data_access_pattern_candidate(_,_,_,EA_cmp).
 
 
 .decl related_data_access(EA:address,Dest:address)
@@ -97,7 +97,7 @@ related_data_access(EA_def,Dest):-
 	address_comparison(EA_used,Dest),
 	def_used(EA_def,_,EA_used,Index),
 	(
-	!data_access_pattern(_,_,_,EA_def)
+    !data_access_pattern_candidate(_,_,_,EA_def)
 	;
 	instruction_get_operation(EA_def,"LEA")
 	).
@@ -149,7 +149,7 @@ moved_label(EA,Op_index,Dest,New_dest):-
 // label lands in the middle of a pointer
 moved_label(EA,Op_index,Dest,New_dest):-
 	symbolic_data_operand_candidate(EA,Op_index,Dest),
-	data_access_pattern(New_dest,_,_,EA),
+    data_access_pattern_candidate(New_dest,_,_,EA),
 	(Dest>New_dest+3
 	;
 	Dest+3<New_dest
@@ -171,7 +171,7 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	symbolic_data_operand_candidate(EA,Op_index,Dest),
 	instruction_get_op(EA,Op_index,Op),
 	op_indirect(Op,_,_,_,_,_,_),
-	data_access_pattern(Access_dest,_,Mult,EA),
+    data_access_pattern_candidate(Access_dest,_,Mult,EA),
 	(
 	Access_dest!=Dest,
 	New_dest=Access_dest
@@ -221,7 +221,7 @@ moved_label(EA,Op_index,Dest,Base+SizeSect):-
 	!symbolic_operand(EA,Op_index),
 	!pc_relative_operand(EA,Op_index,_),
 	op_indirect(Op,_,_,_,_,Dest,_),
-	data_access_pattern(Other_dest,_,_,EA),
+    data_access_pattern_candidate(Other_dest,_,_,EA),
 
 	regular_data_section(Name),
 	section(Name,SizeSect,Base),
