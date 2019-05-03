@@ -15,7 +15,7 @@ backup=()
 options=()
 install=
 noextract=()
-source=('git+https://github.com/souffle-lang/souffle.git')
+source=('git+https://github.com/souffle-lang/souffle.git#commit=5d50244c815222eb2d3d6e5b257947bf03442d6a')
 md5sums=('SKIP')
 
 _gitname=souffle
