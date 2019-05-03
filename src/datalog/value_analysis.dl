@@ -215,6 +215,24 @@ value_reg(EA,Reg2,EA_third,Reg3,Multiplier-Multiplier2,Offset-Offset2,Steps3):-
 	Steps3=max(Steps+1,Steps2+1),
 	Steps3<8.
 
+value_reg(EA,Reg_def,EA_third,Reg3,Mult1+(Mult*Mult2),Offset+Offset1+Offset2*Mult,Steps3):-
+	def(EA,Reg_def),
+	instruction(EA,_,_,"LEA",Op1,Op2,0,0),
+	op_regdirect_contains_reg(Op2,Reg_def),
+	op_indirect(Op1,_,Reg1_n,Reg2_n,Mult,Offset,_),
+	track_register(Reg1_n,Reg1),
+	track_register(Reg2_n,Reg2),
+
+	def_used(EA_def1,Reg1,EA,_),
+	value_reg(EA_def1,Reg1,EA_third,Reg3,Mult1,Offset1,Steps1),
+
+	def_used(EA_def2,Reg2,EA,_),
+	value_reg(EA_def2,Reg2,EA_third,Reg3,Mult2,Offset2,Steps2),
+	
+	Steps3=max(Steps1+1,Steps2+1),
+	Steps3<8.
+
+
 value_reg(EA,Reg2,EA_third,Reg3,Multiplier+Multiplier2,Offset+Offset2,Steps3):-
 	def(EA,Reg2),
 	instruction(EA,_,_,"ADD",Op1,Op2,0,0), Op1!=Op2,

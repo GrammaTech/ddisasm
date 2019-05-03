@@ -353,6 +353,7 @@ data_object_point(EA,Pt_size,"symbol",5,"data access"):-
 
 data_object_point(EA,Pt_size,"symbol",1,"no label conflicts"):-
   data_object_candidate(EA,Pt_size,"symbol"),
+	labeled_data_candidate(EA),
  	!labeled_data_candidate(EA+1),
 	!labeled_data_candidate(EA+2),
 	!labeled_data_candidate(EA+3),
@@ -376,7 +377,7 @@ data_object_point(EA,Size,"string",1,"long string"):-
 
 data_object_point(EA,Size,"string",2,"very long string"):-
 	data_object_candidate(EA,Size,"string"),
-	Size>16.
+	Size>=16.
 
 
 // data access negative heuristic
