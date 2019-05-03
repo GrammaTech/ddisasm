@@ -182,27 +182,22 @@ void Elf_reader::read_string(std::stringstream& str)
 
 void Elf_reader::read_relocations()
 {
-    if(int reladyn_indx = get_section_index(".rela.dyn"); reladyn_indx != -1)
+    for(size_t section_index = 0; section_index < sections.size(); section_index++)
     {
-        int num_rela = sections[reladyn_indx].sh_size / sizeof(Elf64_Rela);
-        file.seekg(sections[reladyn_indx].sh_offset, ios::beg);
-        for(int i = 0; i < num_rela; i++)
+        if(sections[section_index].sh_type == SHT_RELA)
         {
-            Elf64_Rela relocation;
-            file.read((char*)(&relocation), sizeof(Elf64_Rela));
-            relocations.push_back(relocation);
-        }
-    }
-
-    if(int relaplt_indx = get_section_index(".rela.plt"); relaplt_indx != -1)
-    {
-        int num_rela = sections[relaplt_indx].sh_size / sizeof(Elf64_Rela);
-        file.seekg(sections[relaplt_indx].sh_offset, ios::beg);
-        for(int i = 0; i < num_rela; i++)
-        {
-            Elf64_Rela relocation;
-            file.read((char*)(&relocation), sizeof(Elf64_Rela));
-            relocations.push_back(relocation);
+            int num_rela = sections[section_index].sh_size / sizeof(Elf64_Rela);
+            file.seekg(sections[section_index].sh_offset, ios::beg);
+            for(int i = 0; i < num_rela; i++)
+            {
+                Elf64_Rela relocation;
+                file.read((char*)(&relocation), sizeof(Elf64_Rela));
+                if(section_names[section_index] == ".rela.dyn"
+                   || section_names[section_index] == ".rela.plt")
+                    dyn_relocations.push_back(relocation);
+                else
+                    other_relocations.push_back(relocation);
+            }
         }
     }
 }
@@ -480,12 +475,19 @@ descriptor.  */
 void Elf_reader::print_relocations(ostream& stream)
 {
     // this depends on reading the .dynsym first, before the .symtab when reading symbols
-    for(auto relocation : relocations)
+    for(auto relocation : dyn_relocations)
     {
-        int symbol_index = ELF64_R_SYM(relocation.r_info);
+        unsigned int symbol_index = ELF64_R_SYM(relocation.r_info);
         int type = ELF64_R_TYPE(relocation.r_info);
         stream << relocation.r_offset << '\t' << get_relocation_type(type) << '\t'
                << dyn_symbol_names[symbol_index] << '\t' << relocation.r_addend << endl;
+    }
+    for(auto relocation : other_relocations)
+    {
+        unsigned int symbol_index = ELF64_R_SYM(relocation.r_info);
+        int type = ELF64_R_TYPE(relocation.r_info);
+        stream << relocation.r_offset << '\t' << get_relocation_type(type) << '\t'
+               << symbol_names[symbol_index] << '\t' << relocation.r_addend << endl;
     }
 }
 bool Elf_reader::print_relocations_to_file(const string& filename)
@@ -507,12 +509,19 @@ vector<Elf_reader::relocation> Elf_reader::get_relocations()
 {
     // this depends on reading the .dynsym first, before the .symtab when reading symbols
     vector<relocation> result;
-    for(auto relocation : relocations)
+    for(auto relocation : dyn_relocations)
     {
-        int symbol_index = ELF64_R_SYM(relocation.r_info);
+        unsigned int symbol_index = ELF64_R_SYM(relocation.r_info);
         int type = ELF64_R_TYPE(relocation.r_info);
         result.emplace_back(relocation.r_offset, get_relocation_type(type),
                             dyn_symbol_names[symbol_index], relocation.r_addend);
+    }
+    for(auto relocation : other_relocations)
+    {
+        unsigned int symbol_index = ELF64_R_SYM(relocation.r_info);
+        int type = ELF64_R_TYPE(relocation.r_info);
+        result.emplace_back(relocation.r_offset, get_relocation_type(type),
+                            symbol_names[symbol_index], relocation.r_addend);
     }
     return result;
 }

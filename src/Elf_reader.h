@@ -50,7 +50,8 @@ private:
     std::vector<Elf64_Sym> dyn_symbols;
     std::vector<std::string> dyn_symbol_names;
 
-    std::vector<Elf64_Rela> relocations;
+    std::vector<Elf64_Rela> dyn_relocations;
+    std::vector<Elf64_Rela> other_relocations;
     bool check_type();
     void read_header();
     void read_sections();
