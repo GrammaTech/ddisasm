@@ -61,9 +61,6 @@ public:
     }
 
     operator_type get_type() const;
-    // for debugging purposes
-    std::string print() const;
-
     std::string print_tabs(int64_t id) const;
 };
 
