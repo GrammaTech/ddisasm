@@ -1,0 +1,98 @@
+.decl false_negative(EA:address)
+.decl false_positive(EA:address)
+.output false_negative
+.output false_positive
+.decl relocation_in_instruction(EA:address,Rel:address)
+
+
+relocation_in_instruction(EA,Location):-
+    code(EA),
+    instruction(EA,Size,_,_,_,_,_,_),
+    relocation(Location,_,_,_),
+	EA<=Location,
+	Location<EA+Size.
+
+.decl trivial_relocation(EA:address)
+
+trivial_relocation(EA):-
+    relocation(EA,_,Symbol,0),
+    symbol(0,_,_,_,0,Symbol),
+    Symbol!="".
+
+.decl bad_symbol_constant(EA:address,cnt:number)
+.output bad_symbol_constant
+
+bad_symbol_constant(EA,Cnt):-
+    relocation_in_instruction(EA,Rel),
+    relocation(Rel,_,_,Cnt),
+    (
+	symbolic_data_operand_candidate(EA,_,Dest);
+    symbolic_code_operand_candidate(EA,_,Dest)
+    ),
+    !moved_label(EA,_,_,_),
+    section(Name,SectSize,Base),
+	Dest>=Base,
+	Dest<SectSize+Base,
+
+    section(Name2,SectSize2,Base2),
+    Name2!=Name,
+	Dest-Cnt>=Base2,
+	Dest-Cnt<SectSize2+Base2.	
+
+bad_symbol_constant(EA,Cnt):-
+    relocation_in_instruction(EA,Rel),
+    relocation(Rel,_,_,Cnt),
+    moved_label(EA,_,Orig,Dest),
+    section(Name,SectSize,Base),
+	Dest>=Base,
+	Dest<SectSize+Base,
+
+    section(Name2,SectSize2,Base2),
+    Name2!=Name,
+	Orig-Cnt>=Base2,
+	Orig-Cnt<SectSize2+Base2.	
+
+false_negative(EA):-
+    relocation_in_instruction(EA,Rel),
+    !trivial_relocation(Rel),
+    !symbolic_operand(EA,_),
+    !moved_label(EA,_,_,_).
+
+false_positive(EA):-
+    code(EA),
+    (
+        symbolic_operand(EA,_); 
+        moved_label(EA,_,_,_)
+    ),
+    !pc_relative_operand(EA,_,_),
+    !direct_jump(EA,_),
+    !direct_call(EA,_),
+    !relocation_in_instruction(EA,_).
+
+.decl zero_relocation(EA:address)
+
+zero_relocation(EA):-
+    relocation(EA,_,_,_),
+    data_byte(EA,0),
+    data_byte(EA+1,0),
+    data_byte(EA+2,0),
+    data_byte(EA+3,0),
+    data_byte(EA+4,0),
+    data_byte(EA+5,0),
+    data_byte(EA+6,0),
+    data_byte(EA+7,0).
+    
+
+false_negative(EA):-
+    data_byte(EA,_),
+    relocation(EA,_,_,_),
+    !zero_relocation(EA),
+    !symbolic_data(EA,_),
+    !symbol_minus_symbol(EA,_,_).
+
+false_positive(EA):-
+    (
+    symbolic_data(EA,_);
+    symbol_minus_symbol(EA,_,_)
+    ),
+    !relocation(EA,_,_,_).

@@ -935,7 +935,7 @@ static void updateComment(std::map<gtirb::Addr, std::string> &comments, gtirb::A
         comments[ea] = newComment;
 }
 
-static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog)
+static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool selfDiagnose)
 {
     std::map<gtirb::Addr, std::string> comments;
     for(auto &output : *prog->getRelation("data_access_pattern"))
@@ -970,11 +970,69 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog)
                    << " type(" << type << ") ";
         updateComment(comments, ea, newComment.str());
     }
+
+    for(auto &output : *prog->getRelation("value_reg"))
+    {
+        gtirb::Addr ea;
+        std::string reg, reg2;
+        int64_t multiplier, offset, ea2;
+        output >> ea >> reg >> ea2 >> reg2 >> multiplier >> offset;
+        std::ostringstream newComment;
+        newComment << reg << "=(" << reg2 << "," << std::hex << ea2 << std::dec << ")*"
+                   << multiplier << "+" << std::hex << offset << std::dec;
+        updateComment(comments, ea, newComment.str());
+    }
+
+    for(auto &output : *prog->getRelation("moved_label_class"))
+    {
+        gtirb::Addr ea;
+        std::string type;
+
+        output >> ea >> type;
+        std::ostringstream newComment;
+        newComment << " moved label-" << type;
+        updateComment(comments, ea, newComment.str());
+    }
+
+    for(auto &output : *prog->getRelation("def_used"))
+    {
+        gtirb::Addr ea_use;
+        int64_t ea_def, index;
+        std::string reg;
+        output >> ea_def >> reg >> ea_use >> index;
+        std::ostringstream newComment;
+        newComment << "def(" << reg << ", " << std::hex << ea_def << std::dec << ")";
+        updateComment(comments, ea_use, newComment.str());
+    }
+    if(selfDiagnose)
+    {
+        for(auto &output : *prog->getRelation("false_positive"))
+        {
+            gtirb::Addr ea;
+            output >> ea;
+            updateComment(comments, ea, "false positive");
+        }
+        for(auto &output : *prog->getRelation("false_negative"))
+        {
+            gtirb::Addr ea;
+            output >> ea;
+            updateComment(comments, ea, "false negative");
+        }
+        for(auto &output : *prog->getRelation("bad_symbol_constant"))
+        {
+            gtirb::Addr ea;
+            int64_t index;
+            output >> ea >> index;
+            std::ostringstream newComment;
+            newComment << "bad_symbol_constant(" << index << ")";
+            updateComment(comments, ea, newComment.str());
+        }
+    }
     module.addAuxData("comments", std::move(comments));
 }
 
 static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
-                    souffle::SouffleProgram *prog)
+                    souffle::SouffleProgram *prog, bool selfDiagnose)
 {
     gtirb::Module &module = *gtirb::Module::Create(C);
     module.setBinaryPath(filename);
@@ -992,14 +1050,37 @@ static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
     connectSymbolsToBlocks(module);
     buildFunctions(module, prog);
     buildCFG(module, prog);
-    buildComments(module, prog);
+    buildComments(module, prog, selfDiagnose);
 }
 
-static void performSanityChecks(souffle::SouffleProgram *prog)
+static void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
 {
+    bool error = false;
+    if(selfDiagnose)
+    {
+        auto falsePositives = prog->getRelation("false_positive");
+        if(falsePositives->size() > 0)
+        {
+            error = true;
+            std::cerr << "False positives: " << falsePositives->size() << std::endl;
+        }
+        auto falseNegatives = prog->getRelation("false_negative");
+        if(falseNegatives->size() > 0)
+        {
+            error = true;
+            std::cerr << "False negatives: " << falseNegatives->size() << std::endl;
+        }
+        auto badSymbolCnt = prog->getRelation("bad_symbol_constant");
+        if(badSymbolCnt->size() > 0)
+        {
+            error = true;
+            std::cerr << "Bad symbol constants: " << badSymbolCnt->size() << std::endl;
+        }
+    }
     auto blockOverlap = prog->getRelation("block_still_overlap");
     if(blockOverlap->size() > 0)
     {
+        error = true;
         std::cerr << "The conflicts between the following code blocks could not be resolved:"
                   << std::endl;
         for(auto &output : *blockOverlap)
@@ -1008,6 +1089,9 @@ static void performSanityChecks(souffle::SouffleProgram *prog)
             output >> ea;
             std::cerr << std::hex << ea << std::dec << " ";
         }
+    }
+    if(error)
+    {
         std::cerr << "Aborting" << std::endl;
         exit(1);
     }
@@ -1149,7 +1233,7 @@ souffle::tuple &operator<<(souffle::tuple &t, const std::pair<Dl_operator, int64
             t << id << op.reg1;
             break;
         case IMMEDIATE:
-            t << id << op.offset;
+            t << id << op.offset << op.size;
             break;
         case INDIRECT:
             t << id << op.reg1 << op.reg2 << op.reg3 << op.multiplier << op.offset << op.size;
@@ -1197,8 +1281,9 @@ using namespace std;
 int main(int argc, char **argv)
 {
     std::vector<std::string> sections{".plt.got", ".fini", ".init", ".plt", ".text"};
-    std::vector<std::string> dataSections{".data",        ".rodata",  ".fini_array", ".init_array",
-                                          ".data.rel.ro", ".got.plt", ".got"};
+    std::vector<std::string> dataSections{".data",       ".rodata",        ".fini_array",
+                                          ".init_array", ".data.rel.ro",   ".got.plt",
+                                          ".got",        ".tm_clone_table"};
 
     po::options_description desc("Allowed options");
     desc.add_options()                                                                    //
@@ -1216,7 +1301,9 @@ int main(int argc, char **argv)
         ("input-file", po::value<std::string>(), "file to disasemble")(
             "keep-functions,K",
             boost::program_options::value<std::vector<std::string>>()->multitoken(),
-            "Print the given functions even if they are skipped by default (e.g. _start)");
+            "Print the given functions even if they are skipped by default (e.g. _start)")(
+            "self-diagnose",
+            "use relocation information to emit a self diagnose of the symbolization process");
     po::positional_options_description pd;
     pd.add("input-file", -1);
 
@@ -1271,7 +1358,7 @@ int main(int argc, char **argv)
 
             std::cout << "Building the gtirb representation" << std::endl;
             auto &ir = *gtirb::IR::Create(C);
-            buildIR(ir, filename, elf, prog);
+            buildIR(ir, filename, elf, prog, vm.count("self-diagnose") != 0);
 
             // Output GTIRB
             if(vm.count("ir") != 0)
@@ -1315,7 +1402,7 @@ int main(int argc, char **argv)
                 writeFacts(decoder, elf, dir);
                 prog->printAll(dir);
             }
-            performSanityChecks(prog);
+            performSanityChecks(prog, vm.count("self-diagnose") != 0);
             delete prog;
             return 0;
         }

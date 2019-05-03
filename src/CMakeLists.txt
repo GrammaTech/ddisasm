@@ -27,7 +27,8 @@ set(DATALOG_SOURCES
     datalog/symbolization.dl
     datalog/use_def_analysis.dl
     datalog/value_analysis.dl
-    datalog/debug_stats.dl)
+    datalog/debug_stats.dl
+    datalog/self_diagnose.dl)
 
 if(NOT CORES)
   set(CORES "auto")
