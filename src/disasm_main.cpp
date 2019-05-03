@@ -1233,7 +1233,7 @@ souffle::tuple &operator<<(souffle::tuple &t, const std::pair<Dl_operator, int64
             t << id << op.reg1;
             break;
         case IMMEDIATE:
-            t << id << op.offset << op.size;
+            t << id << op.offset;
             break;
         case INDIRECT:
             t << id << op.reg1 << op.reg2 << op.reg3 << op.multiplier << op.offset << op.size;
