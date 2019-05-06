@@ -2,15 +2,21 @@
 .decl false_positive(EA:address)
 .output false_negative
 .output false_positive
-.decl relocation_in_instruction(EA:address,Rel:address)
+.decl relocation_in_operand(EA:address,Index:number,Rel:address)
 
 
-relocation_in_instruction(EA,Location):-
+relocation_in_operand(EA,Index,Location):-
     code(EA),
-    instruction(EA,Size,_,_,_,_,_,_),
+    instruction_immediate_offset(EA,Index,Offset),
     relocation(Location,_,_,_),
-	EA<=Location,
-	Location<EA+Size.
+    Location=EA+Offset.
+
+relocation_in_operand(EA,Index,Location):-
+    code(EA),
+    instruction_displacement_offset(EA,Index,Offset),
+    relocation(Location,_,_,_),
+    Location=EA+Offset.
+
 
 .decl trivial_relocation(EA:address)
 
@@ -19,17 +25,18 @@ trivial_relocation(EA):-
     symbol(0,_,_,_,0,Symbol),
     Symbol!="".
 
+trivial_relocation(EA):-
+    relocation(EA,_,"__TMC_END__",7).
+
+
 .decl bad_symbol_constant(EA:address,cnt:number)
 .output bad_symbol_constant
 
 bad_symbol_constant(EA,Cnt):-
-    relocation_in_instruction(EA,Rel),
+    relocation_in_operand(EA,Index,Rel),
     relocation(Rel,_,_,Cnt),
-    (
-	symbolic_data_operand_candidate(EA,_,Dest);
-    symbolic_code_operand_candidate(EA,_,Dest)
-    ),
-    !moved_label(EA,_,_,_),
+    symbolic_operand(EA,Index,Dest,_),
+    !moved_label(EA,Index,_,_),
     section(Name,SectSize,Base),
 	Dest>=Base,
 	Dest<SectSize+Base,
@@ -40,9 +47,9 @@ bad_symbol_constant(EA,Cnt):-
 	Dest-Cnt<SectSize2+Base2.	
 
 bad_symbol_constant(EA,Cnt):-
-    relocation_in_instruction(EA,Rel),
+    relocation_in_operand(EA,Index,Rel),
     relocation(Rel,_,_,Cnt),
-    moved_label(EA,_,Orig,Dest),
+    moved_label(EA,Index,Orig,Dest),
     section(Name,SectSize,Base),
 	Dest>=Base,
 	Dest<SectSize+Base,
@@ -53,21 +60,21 @@ bad_symbol_constant(EA,Cnt):-
 	Orig-Cnt<SectSize2+Base2.	
 
 false_negative(EA):-
-    relocation_in_instruction(EA,Rel),
+    relocation_in_operand(EA,Index,Rel),
     !trivial_relocation(Rel),
-    !symbolic_operand(EA,_),
-    !moved_label(EA,_,_,_).
+    !symbolic_operand(EA,Index,_,_),
+    !moved_label(EA,Index,_,_).
 
 false_positive(EA):-
     code(EA),
     (
-        symbolic_operand(EA,_); 
-        moved_label(EA,_,_,_)
+        symbolic_operand(EA,Index,_,_); 
+        moved_label(EA,Index,_,_)
     ),
-    !pc_relative_operand(EA,_,_),
+    !pc_relative_operand(EA,Index,_),
     !direct_jump(EA,_),
     !direct_call(EA,_),
-    !relocation_in_instruction(EA,_).
+    !relocation_in_operand(EA,Index,_).
 
 .decl zero_relocation(EA:address)
 
@@ -88,11 +95,21 @@ false_negative(EA):-
     relocation(EA,_,_,_),
     !zero_relocation(EA),
     !symbolic_data(EA,_),
-    !symbol_minus_symbol(EA,_,_).
+    !symbol_minus_symbol(EA,_,_),
+
+    regular_data_section(Sect),
+    section(Sect,SizeSect,BegSect),
+    EA>=BegSect,
+    EA<SizeSect+BegSect.
 
 false_positive(EA):-
     (
     symbolic_data(EA,_);
     symbol_minus_symbol(EA,_,_)
     ),
-    !relocation(EA,_,_,_).
+    !relocation(EA,_,_,_),
+
+    regular_data_section(Sect),
+    section(Sect,SizeSect,BegSect),
+    EA>=BegSect,
+    EA<SizeSect+BegSect.
