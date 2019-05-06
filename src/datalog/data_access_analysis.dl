@@ -80,7 +80,7 @@ value_reg_at_operand(EA,Op_index,Reg,Mult,Offset_final,Type):-
 	Offset_final=Offset
 	;
 	Type="incomplete",
-	Offset_final=0
+	Offset_final=max(0,Offset)
 	).
 
 // NONE registers have 0 value
@@ -134,12 +134,12 @@ data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
 
 // indirectly computed
 data_access_pattern_candidate(Address,Size,Mult,EA):-
-	data_access(EA,Op_index,"NONE",RegBase,RegMult,1,Offset1,Size),
+	data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult2,Offset1,Size),
 	value_reg_at_operand(EA,Op_index,RegMult,0,Offset2,"complete"),
 	value_reg_at_operand(EA,Op_index,RegBase,Mult,Offset3,_),
 
 	(Size<=Mult; Mult=0),
-	Address=Offset1+Offset2+Offset3,
+	Address=Offset1+Offset2*Mult2+Offset3,
 	data_section(Section),
 	section(Section,SizeSect,Base),
 	Address>=Base,
@@ -217,11 +217,19 @@ last_data_access(EA+N,Where):-
 last_data_access_from(EA,Where):-
 	last_unaligned_data_access(EA,Where).
 
+last_data_access_from(EA,Ref):-
+	data_byte(EA,_),
+	!last_unaligned_data_access(EA,_),
+	step(N),
+	Ref=EA- (EA % N),
+	possible_data_limit(Ref).
+
 last_data_access_from(EA,Where):-
 	data_byte(EA,_),
 	!last_unaligned_data_access(EA,_),
 	step(N),
 	Ref=EA- (EA % N),
+	!possible_data_limit(Ref),
 	last_data_access(Ref,Where).
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
