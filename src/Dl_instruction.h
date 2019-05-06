@@ -36,12 +36,27 @@ public:
     std::string prefix;
     std::string name;
     std::vector<int64_t> op_codes;
+    int8_t immediateOffset;
+    int8_t displacementOffset;
 
-    Dl_instruction() : address(0), size(0), prefix(), name(), op_codes(){};
+    Dl_instruction()
+        : address(0),
+          size(0),
+          prefix(),
+          name(),
+          op_codes(),
+          immediateOffset(),
+          displacementOffset(){};
 
     Dl_instruction(int64_t address, long size, const std::string& prefix, const std::string& name,
-                   std::vector<int64_t> op_codes)
-        : address(address), size(size), prefix(prefix), name(name), op_codes(op_codes){};
+                   std::vector<int64_t> op_codes, int8_t immediateOffset, int8_t displacementOffset)
+        : address(address),
+          size(size),
+          prefix(prefix),
+          name(name),
+          op_codes(op_codes),
+          immediateOffset(immediateOffset),
+          displacementOffset(displacementOffset){};
 
     std::string result_tabs();
 };

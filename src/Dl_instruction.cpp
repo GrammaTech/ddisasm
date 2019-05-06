@@ -35,5 +35,6 @@ std::string Dl_instruction::result_tabs()
         else
             o << "\t" << 0;
     }
+    o << immediateOffset << "\t" << displacementOffset;
     return o.str();
 }

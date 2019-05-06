@@ -107,7 +107,8 @@ Dl_instruction Dl_decoder::transformInstruction(cs_insn& insn)
         }
     }
     // FIXME what about the prefix?
-    return Dl_instruction(insn.address, insn.size, prefix, name, op_codes);
+    return Dl_instruction(insn.address, insn.size, prefix, name, op_codes,
+                          detail.encoding.imm_offset, detail.encoding.disp_offset);
 }
 
 Dl_operator Dl_decoder::buildOperand(const cs_x86_op& op)

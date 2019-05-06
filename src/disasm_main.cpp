@@ -230,7 +230,7 @@ struct SymbolicExpression
     }
     SymbolicExpression(souffle::tuple &tuple)
     {
-        assert(tuple.size() == 2);
+        assert(tuple.size() == 4);
         tuple >> EA >> OpNum;
     };
 
@@ -1210,7 +1210,7 @@ souffle::tuple &operator<<(souffle::tuple &t, const Dl_instruction &inst)
         else
             t << 0;
     }
-
+    t << inst.immediateOffset << inst.displacementOffset;
     return t;
 }
 
@@ -1250,7 +1250,7 @@ static void loadInputs(souffle::SouffleProgram *prog, Elf_reader &elf, const Dl_
     addRelation(prog, "section", elf.get_sections());
     addRelation(prog, "symbol", elf.get_symbols());
     addRelation(prog, "relocation", elf.get_relocations());
-    addRelation(prog, "instruction", decoder.instructions);
+    addRelation(prog, "instruction_complete", decoder.instructions);
     addRelation(prog, "address_in_data", decoder.data);
     addRelation(prog, "data_byte", decoder.data_bytes);
     addRelation(prog, "invalid_op_code", decoder.invalids);

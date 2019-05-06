@@ -110,9 +110,17 @@ This module:
 //FIXME: add eh_frames
 
 // instructions
+
+.decl instruction_complete(ea:address, size:number, prefix:symbol, opcode:symbol,
+		  op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code,
+		  immOffset:number,displacementOffset:number)
+.input instruction_complete
+
 .decl instruction(ea:address, size:number, prefix:symbol, opcode:symbol,
 		  op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code)
-.input instruction
+
+instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
+	instruction_complete(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4,_,_).
 
 .decl invalid_op_code(ea:address)
 .input invalid_op_code
@@ -141,6 +149,20 @@ This module:
 /////////////////////////////////////////////////////////////
 // auxiliary definitions
 /////////////////////////////////////////////////////////////
+
+.decl instruction_immediate_offset(EA:address,Index:number,Offset:number)
+
+instruction_immediate_offset(EA,Index,ImmediateOffset):-
+	instruction_complete(EA,_,_,_,_,_,_,_,ImmediateOffset,_),
+	instruction_get_op(EA,Index,Op),
+	op_immediate(Op,_).
+
+.decl instruction_displacement_offset(EA:address,Index:number,Offset:number)
+
+instruction_displacement_offset(EA,Index,DisplacementOffset):-
+	instruction_complete(EA,_,_,_,_,_,_,_,_,DisplacementOffset),
+	instruction_get_op(EA,Index,Op),
+	op_indirect(Op,_,_,_,_,_,_).
 
 .decl instruction_get_operation(ea:address,operation:symbol) 
 
@@ -241,6 +263,16 @@ is_nop(EA):-
 comparison_operation("CMP").
 comparison_operation("TEST").
 
+.decl arithmetic_operation(Operation:symbol)
+
+arithmetic_operation("ADD").
+arithmetic_operation("SUB").
+arithmetic_operation("INC").
+arithmetic_operation("DEC").
+arithmetic_operation("IMUL").
+arithmetic_operation("SHL").
+
+
 .decl read_only_operation(Operation:symbol)
 
 read_only_operation("TEST").
@@ -264,6 +296,7 @@ data_section(".got.plt").
 data_section(".init_array").
 data_section(".fini_array").
 data_section(".data.rel.ro").
+data_section(".tm_clone_table").
 
 .decl regular_data_section(name:symbol)
 
@@ -509,6 +542,6 @@ main_function(Main_location):-
 		    code(EA),
 		    EA>=Entry},
 	next(Prev,First_call),
-        code(Prev),
-	symbolic_code_operand_candidate(Prev,1,Main_location).
+    code(Prev),
+	symbolic_operand(Prev,1,Main_location,"code").
 
