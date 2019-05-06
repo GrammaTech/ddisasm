@@ -45,7 +45,7 @@ jump_table(EA,Initial_memory):-
 jump_table(EA,Initial_memory):-
 	code(EA),
 	indirect_jump(EA),
-	symbolic_data_operand_candidate(EA,1,Initial_memory),
+	symbolic_operand(EA,1,Initial_memory,"data"),
 	symbolic_data(Initial_memory,Dest_block),
 	refined_block(Dest_block).
 	
