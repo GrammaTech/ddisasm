@@ -67,14 +67,14 @@ data_access(EA,Op_index,Reg1,Reg2,Reg3,Mult,Offset,Size):-
     instruction_memory_access_size(EA,Op_index,Size).
 
 // the register Reg has the given value at instruction EA and operand Op_index
-.decl value_reg_at_operand(EA:address,Op_index:operand_index,Reg:register,Mult:number,Offset:number,Type:symbol)
+.decl value_reg_at_operand(EA:address,Op_index:operand_index,Reg:register,EA_from:address,Mult:number,Offset:number,Type:symbol)
 
-value_reg_at_operand(EA,Op_index,Reg,Mult,Offset_final,Type):-
-	data_access(EA,Op_index,Reg1,Reg2,Reg3,_,_,Size),
+value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,Offset_final,Type):-
+	data_access(EA,Op_index,_,Reg2,Reg3,_,_,Size),
 	(Reg=Ref2; Reg= Reg3),
 	Reg!="NONE",
 	def_used(EA_def,Reg,EA,Op_index),
-	best_value_reg(EA_def,Reg,Mult,Offset,Type),
+	best_value_reg(EA_def,Reg,EA_from,Mult,Offset,Type),
 	(
 	Type!="incomplete",
 	Offset_final=Offset
@@ -84,8 +84,8 @@ value_reg_at_operand(EA,Op_index,Reg,Mult,Offset_final,Type):-
 	).
 
 // NONE registers have 0 value
-value_reg_at_operand(EA,Op_index,Reg,0,0,"complete"):-
-	data_access(EA,Op_index,Reg1,Reg2,Reg3,Mult,Offset,Size),
+value_reg_at_operand(EA,Op_index,Reg,0,0,0,"complete"):-
+	data_access(EA,Op_index,_,Reg2,Reg3,Mult,Offset,Size),
 	(Reg=Ref2; Reg= Reg3),
 	Reg="NONE".
 
@@ -122,8 +122,8 @@ data_access_pattern_candidate(Address,Size,0,EA):-
 data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
 	data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult,Offset1,Size),
 	RegMult!="NONE",
-	value_reg_at_operand(EA,Op_index,RegMult,Mult2,Offset2,_),
-	value_reg_at_operand(EA,Op_index,RegBase,0,Offset3,"complete"),
+	value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,Offset2,_),
+	value_reg_at_operand(EA,Op_index,RegBase,_,0,Offset3,"complete"),
 	
 	(Size<=Mult*Mult2; Mult*Mult2=0),
 	Address=Offset1+(Offset2*Mult)+Offset3,
@@ -135,8 +135,8 @@ data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
 // indirectly computed
 data_access_pattern_candidate(Address,Size,Mult,EA):-
 	data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult2,Offset1,Size),
-	value_reg_at_operand(EA,Op_index,RegMult,0,Offset2,"complete"),
-	value_reg_at_operand(EA,Op_index,RegBase,Mult,Offset3,_),
+	value_reg_at_operand(EA,Op_index,RegMult,_,0,Offset2,"complete"),
+	value_reg_at_operand(EA,Op_index,RegBase,_,Mult,Offset3,_),
 
 	(Size<=Mult; Mult=0),
 	Address=Offset1+Offset2*Mult2+Offset3,
@@ -148,7 +148,7 @@ data_access_pattern_candidate(Address,Size,Mult,EA):-
 //repeated register
 data_access_pattern_candidate(Address,Size,Mult+1,EA):-
 	data_access(EA,Op_index,"NONE",Reg,Reg,Mult,Address,Size),
-	value_reg_at_operand(EA,Op_index,Reg,1,0,_),
+	value_reg_at_operand(EA,Op_index,Reg,_,1,0,_),
 	Size<=Mult+1,
 
 	data_section(Section),
@@ -166,9 +166,6 @@ data_access_pattern(Address,Size,Multiplier,From):-
 
 ///////////////////////////////////////////////////////////////////////////////
 // This code takes care of obtaining an ordering in the data_access_patterns
-.decl step(Size:number)
-
-step(8).
 
 .decl possible_data_limit(EA:address)
 
@@ -176,64 +173,21 @@ possible_data_limit(EA):-
 	labeled_data_candidate(EA);
 	data_access_pattern(EA,_,_,_).
 
-.decl last_unaligned_data_access(EA:address,Where:address)
-.output last_unaligned_data_access
+.decl last_data_access(EA:address,Where:address)
 
-last_unaligned_data_access(EA+1,EA):-
+last_data_access(EA+1,EA):-
 	possible_data_limit(EA),
-	step(N),
-	EA % N !=0.
-last_unaligned_data_access(EA+1,Where):-
-	last_unaligned_data_access(EA,Where),
-	!possible_data_limit(EA),
-	step(N),
-	EA % N !=0.
+	data_byte(EA+1,_).
 
-.decl last_data_access(EA:address,EA_access:address)
-.output last_data_access
-
-last_data_access(EA,Where):-
-	last_unaligned_data_access(EA,Where),
-	step(N),
-	EA % N =0,
-	data_byte(EA,_).
-
-last_data_access(EA+N,EA):-
-	possible_data_limit(EA),
-	step(N),
-	EA % N =0,
-	!last_unaligned_data_access(EA+N,_).
-
-last_data_access(EA+N,Where):-
+last_data_access(EA+1,Where):-
 	last_data_access(EA,Where),
-	step(N),
-	EA % N =0,
-	data_byte(EA+N,_),
-	!possible_data_limit(EA),
-	!last_unaligned_data_access(EA+N,_).
+	data_byte(EA+1,_),
+	!possible_data_limit(EA).
 
-.decl last_data_access_from(EA:address,Where:address) inline
-
-last_data_access_from(EA,Where):-
-	last_unaligned_data_access(EA,Where).
-
-last_data_access_from(EA,Ref):-
-	data_byte(EA,_),
-	!last_unaligned_data_access(EA,_),
-	step(N),
-	Ref=EA- (EA % N),
-	possible_data_limit(Ref).
-
-last_data_access_from(EA,Where):-
-	data_byte(EA,_),
-	!last_unaligned_data_access(EA,_),
-	step(N),
-	Ref=EA- (EA % N),
-	!possible_data_limit(Ref),
-	last_data_access(Ref,Where).
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // This code performs the propagation
+
 
 .decl propagated_data_access(EA:address,Mult:number,EA_ref:address)
 
@@ -249,7 +203,7 @@ propagated_data_access(EA+Mult,Mult,EA_ref):-
 	// no overlap with address array
 	address_array_range.no_overlap(EA+Mult,Pt_size),
 	//no collision with other data access pattern in between
-	last_data_access_from(EA+Mult,Last),
+	last_data_access(EA+Mult,Last),
 	(Last<=EA
 	;
 	Last>EA,

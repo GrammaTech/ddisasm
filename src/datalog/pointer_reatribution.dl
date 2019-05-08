@@ -73,73 +73,29 @@ moved_data_label(EA,Dest,Address):-
 	Address<Dest,
 	Dest<Address+Size.
 
-////////////////////////////////////////////////////////////////////////////////////
 
-
-.decl address_comparison(EA_cmp:address,Address:address)
-
-address_comparison(EA_cmp,Dest):-
-	data_access_pattern_candidate(Dest,_,_,EA_used),
-	!instruction_get_operation(EA_used,"LEA"),
-	used_for_address(EA_cmp,Reg,EA_used,_),
-	instruction_get_operation(EA_cmp,Operation),
-	comparison_operation(Operation),
-	instruction_get_src_op(EA_cmp,_,Op1),
-	op_regdirect_contains_reg(Op1,Reg),
-	!data_access_pattern_candidate(_,_,_,EA_cmp).
-
-
-.decl related_data_access(EA:address,Dest:address)
-.output related_data_access
-// there is a LEA instruction that load some address in memory
-// this address is used to access memory later somewhere else
-related_data_access(EA_def,Dest):-
-	address_comparison(EA_used,Dest),
-	def_used(EA_def,_,EA_used,Index),
-	(
-	!data_access_pattern_candidate(_,_,_,EA_def)
-	;
-	instruction_get_operation(EA_def,"LEA")
-	).
-	
 .decl moved_label_class(EA:address,Reason:symbol)
 .output moved_label_class
-
 
 
 ////////////////////////////////////////////////////////////////////////////////////
 
 .decl moved_label_candidate(EA:address,Index:number,Val:address,New_val:address,Diff:number)
 
+moved_label_candidate(EA_lea,Op_index,Dest,New_dest,Diff):-
+	cmp_reg_to_reg(EA,Reg1,Reg2),
+	def_used(EA_def1,Reg1,EA,_),
+	dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End),
 
-moved_label_candidate(EA,Op_index,Dest,New_dest,Diff):-
-	code(EA),
-	pc_relative_operand(EA,Op_index,Dest),
-	!symbolic_operand(EA,Op_index,_,_),
-	related_data_access(EA,Dest_access),
-	Dest_access!=Dest,
-	//section(Name,SectSize,Base),
-	//Dest_access>=Base,
-	//Dest_access<=SectSize+Base,
-	New_dest=Dest_access,
-	Diff=max(Dest_access-Dest,Dest-Dest_access).
+	def_used(EA_def2,Reg2,EA,_),
+	best_value_reg(EA_def2,Reg2,EA_lea,_,_,_),
 
-moved_label_candidate(EA,Op_index,Dest,New_dest,Diff):-
-	code(EA),
-	pc_relative_operand(EA,Op_index,Dest),
-	symbolic_operand(EA,Op_index,_,_),
-	section(Name,SectSize,Base),
-	Dest>=Base,
-	Dest<=SectSize+Base,
-	related_data_access(EA,Dest_access),
-	(Dest_access<Base;Dest_access>Base+SectSize),//the access is to other section
-	//get the correct section
-	section(Name2,SectSize2,Base2),
-	Dest_access>=Base2,
-	Dest_access<=SectSize2+Base2,
-	New_dest=Dest_access,
-	Diff=max(Dest_access-Dest,Dest-Dest_access).
-	
+	pc_relative_operand(EA_lea,Op_index,Dest),
+	instruction_get_operation(EA_lea,"LEA"),
+
+	Beg<= Dest,
+  Dest <= End,
+	Diff=max(New_dest-Dest,Dest-New_dest).
 ////////////////////////////////////////////////////////////////////////////////
 // indirect operand (type O)
 
@@ -206,7 +162,7 @@ moved_label(EA,Op_index,Dest,Base):-
 	regular_data_section(Name),
 	section(Name,_,Base),
 	Dest<Base,
-	Dest+4000>=Base.
+	Dest+8000>=Base.
 
 // the destination is more than the end of the section
 moved_label_class(EA,"indirect miss section above"),
@@ -227,61 +183,89 @@ moved_label(EA,Op_index,Dest,Base+SizeSect):-
 
 ////////////////////////////////////////////////////////////////////////////////
 //immediate operand (type I)
-//this considers also the case the pointer points to the wrong section (if the value is
-// already symbolic
+// consider the case where the immediate is a loop bound
 
-moved_label_class(EA,"immediate"),
-moved_label(EA,Op_index,Dest,New_dest):-
+
+.decl mov_immediate_to_reg(EA:address,Reg:register,Imm_index:number,Immediate:number)
+.decl cmp_immediate_to_reg(EA:address,Reg:register,Imm_index:number,Immediate:number)
+.decl cmp_reg_to_reg(EA:address,Reg1:register,Reg2:register)
+
+.decl moved_immediate_candidate(EA:address,Op_index:number,Immediate:number,New_immmediate:number)
+
+mov_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
 	code(EA),
-	instruction_get_src_op(EA,Op_index,Op),
-	op_immediate(Op,Dest),
-	Dest>40000,
-    //maybe add check that it points to a special section?
-    (!symbolic_operand(EA,Op_index,_,_)
-    ;
-    symbolic_operand(EA,Op_index,_,_),
-    data_section(Sect_origin),
-    !regular_data_section(Sect_origin),
-    section(Sect_origin,SizeSect_origin,Beg_origin),
-    Dest>=Beg_origin,
-    Dest<=SizeSect_origin+Beg_origin
-    ),
-	(
-	  instruction_get_operation(EA,Operation),
-	  comparison_operation(Operation)
-	;
-	  mov(EA)
-	),
+	mov(EA),
+	instruction_get_src_op(EA,Imm_index,Op),
+	op_immediate(Op,Immediate),
+	instruction_get_dest_op(EA,_,Op2),
+	op_regdirect_contains_reg(Op2,Reg).
+
+cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
+	code(EA),
+	instruction_get_operation(EA,Operation),
+	comparison_operation(Operation),
+	instruction_get_op(EA,Imm_index,Op),
+	op_immediate(Op,Immediate),
 	instruction_get_op(EA,_,Op2),
-	Op2!=Op,
-	op_regdirect_contains_reg(Op2,Reg),
+	op_regdirect_contains_reg(Op2,Reg).
 
-	local_next(EA,EA_next),
-	used_for_address(EA_next,Reg,EA_used,Op_index_used),
-	!symbolic_operand(EA_used,Op_index_used,_,_),
+cmp_reg_to_reg(EA,Reg1,Reg2):-
+	code(EA),
+	instruction_get_operation(EA,Operation),
+	comparison_operation(Operation),
+	instruction_get_op(EA,_,Op1),
+	op_regdirect_contains_reg(Op1,Reg1),
+	instruction_get_op(EA,_,Op2), Op2!=Op1,
+	op_regdirect_contains_reg(Op2,Reg2).
 
-	//get the section where it is supposed to go
-	(
-	value_reg(EA_used,_,_,_,_,Other_dest,_)
-	;
-	// a related register
-	def_used(EA_def,_,EA_used,_),
-	value_reg(EA_def,_,_,_,_,Other_dest,_)
-	),
-	Other_dest!=0,
-    	regular_data_section(Name),
-        section(Name,SizeSect,Beg),
-	Other_dest>=Beg,
-	Other_dest<=SizeSect+Beg,
-	(
-	Dest< Beg,
-	Dest+4000>=Beg,
-	New_dest=Beg
-	;
-	Dest>SizeSect+Beg,
-	Dest<=Beg+SizeSect+(SizeSect/2),
-	New_dest=SizeSect+Beg
-	).
+.decl dest_enlarged_data_section(EA:address,Reg:register,New_dest:address,Beg:address,End:address)
+
+dest_enlarged_data_section(EA_def,Reg,New_dest,Beg-Mult,Beg+SizeSect+Mult):-
+	best_value_reg(EA_def,Reg,_,Mult,New_dest,"loop"),
+	regular_data_section(Name),
+	section(Name,SizeSect,Beg),
+	New_dest>=Beg,
+	New_dest<=Beg+SizeSect.
+
+
+// immediate used to access memory
+moved_immediate_candidate(EA_from,Imm_index,Immediate,New_dest):-
+	data_access(EA_access,Op_index,_,Reg2,Reg3,_,_,Size),
+	data_access_pattern_candidate(New_dest,_,Mult,EA_access),
+
+	regular_data_section(Name),
+	section(Name,SizeSect,Beg),
+	New_dest>=Beg,
+	New_dest<=Beg+SizeSect,
+
+	(Reg=Reg2;Reg=Reg3),
+	value_reg_at_operand(EA_access,Op_index,Reg,EA_from,_,_,Type),
+	Type!="incomplete",
+	mov_immediate_to_reg(EA_from,Reg,Imm_index,Immediate),
+	New_dest<= Beg-Mult,
+  Immediate <= Beg+SizeSect+Mult.
+
+
+moved_immediate_candidate(EA,Imm_index,Immediate,New_dest):-
+	cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate),
+	def_used(EA_def,Reg,EA,_),
+	dest_enlarged_data_section(EA_def,Reg,New_dest,Beg,End),
+	Beg<= Immediate,
+  Immediate <= End.
+
+moved_immediate_candidate(EA_def2,Imm_index,Immediate,New_dest):-
+	cmp_reg_to_reg(EA,Reg1,Reg2),
+	def_used(EA_def1,Reg1,EA,_),
+	dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End),
+
+	def_used(EA_def2,Reg2,EA,_),
+	mov_immediate_to_reg(EA_def2,Reg2,Imm_index,Immediate),
+
+	Beg<= Immediate,
+  Immediate <= End.
+
+moved_label(EA,Op_index,Dest,New_dest):-
+	moved_immediate_candidate(EA,Op_index,Dest,New_dest).
 
 // If the destination is in the middle of a known symbol
 moved_label(EA,Op_index,Dest,Address):-

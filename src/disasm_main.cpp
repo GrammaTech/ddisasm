@@ -74,7 +74,7 @@ struct DecodedInstruction
 
     DecodedInstruction(souffle::tuple &tuple)
     {
-        assert(tuple.size() == 8);
+        assert(tuple.size() == 10);
 
         std::string prefix, opcode;
 
@@ -83,6 +83,8 @@ struct DecodedInstruction
         this->Op2 = tuple[5];
         this->Op3 = tuple[6];
         this->Op4 = tuple[7];
+        this->immediateOffset = tuple[8];
+        this->displacementOffset = tuple[9];
     };
 
     gtirb::Addr EA{0};
@@ -91,6 +93,8 @@ struct DecodedInstruction
     uint64_t Op2{0};
     uint64_t Op3{0};
     uint64_t Op4{0};
+    int64_t immediateOffset{0};
+    int64_t displacementOffset{0};
 };
 
 struct OpRegdirect
@@ -662,7 +666,7 @@ void buildCodeSymbolicInformation(gtirb::Module &module, souffle::SouffleProgram
         convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
         convertSortedRelation<VectorByEA<SymbolicExpression>>("symbolic_operand", prog)};
     auto decodedInstructions =
-        convertSortedRelation<VectorByEA<DecodedInstruction>>("instruction", prog);
+        convertSortedRelation<VectorByEA<DecodedInstruction>>("instruction_complete", prog);
     auto opImmediate = convertSortedRelation<VectorByN<OpImmediate>>("op_immediate", prog);
     auto opIndirect = convertSortedRelation<VectorByN<OpIndirect>>("op_indirect", prog);
     for(auto &cib : codeInBlock)
@@ -961,10 +965,10 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
 
     for(auto &output : *prog->getRelation("best_value_reg"))
     {
-        gtirb::Addr ea;
+        gtirb::Addr ea, eaOrigin;
         std::string reg, type;
         int64_t multiplier, offset;
-        output >> ea >> reg >> multiplier >> offset >> type;
+        output >> ea >> reg >> eaOrigin >> multiplier >> offset >> type;
         std::ostringstream newComment;
         newComment << reg << "=X*" << multiplier << "+" << std::hex << offset << std::dec
                    << " type(" << type << ") ";
@@ -1144,7 +1148,7 @@ static void writeFacts(Dl_decoder &decoder, Elf_reader &elf, const std::string &
     elf.print_symbols_to_file(directory + "symbol.facts");
     elf.print_relocations_to_file(directory + "relocation.facts");
 
-    std::ofstream instructions_file(directory + "instruction.facts", filemask);
+    std::ofstream instructions_file(directory + "instruction_complete.facts", filemask);
     decoder.print_instructions(instructions_file);
     instructions_file.close();
 

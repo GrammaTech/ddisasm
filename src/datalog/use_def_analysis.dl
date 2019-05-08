@@ -44,8 +44,6 @@ can get very big.
 
 // the register 'reg' at address 'ea' is later used in a memory address in 'where'
 // in the operand 'index'
-.decl used_for_address(ea:address,reg:register,where:address, index:operand_index)
-
 
 .decl used(EA:address,Reg:register,Index:operand_index)
 
@@ -144,30 +142,25 @@ op_regdirect_contains_reg(Op,Reg_uniform):-
 	op_regdirect(Op,Reg),
 	track_register(Reg,Reg_uniform).
 
-// special case where a register is compared to another
-// there is no data dependency but if one is an address the other is possibly
-// an address as well.
-.decl reg_compared(EA:address,Reg:register,Index:operand_index,Reg2:register,Index2:operand_index)
-
-reg_compared(EA,Reg,Index,Reg2,Index2):-
-	code(EA),
-	instruction_get_operation(EA,Operation),
-	comparison_operation(Operation),
-	//track the other operand
-	instruction_get_src_op(EA,Index,Op1),
-	op_regdirect_contains_reg(Op1,Reg),
-	instruction_get_src_op(EA,Index2,Op2),
-	op_regdirect_contains_reg(Op2,Reg2),
-	Op2!=Op1.
 //////////////////////////////////////////////////////////////////////////////
 //local underapproximation of control flow
 .decl local_next(ea:address,ea_next:address)
 
 local_next(EA,EA_next):-
-	code(EA),
-	may_fallthrough(EA,EA_next).
+	code_in_block(EA,Block),
+	may_fallthrough(EA,EA_next),
+	code_in_block(EA_next,Block).
+
+.decl block_next(ea:address,ea_next:address)
+
+
+block_next(EA,EA_next):-
+	code_in_block(EA,Block),
+	may_fallthrough(EA,EA_next),
+	code_in_block(EA_next,Block2),
+	Block!=Block2.
 	
-local_next(EA,EA_next):-
+block_next(EA,EA_next):-
 	code(EA),
 	direct_jump(EA,EA_next).
 
@@ -196,7 +189,6 @@ defined_in_block(Block,Reg):-
 	def(EA,Reg),
 	code_in_block(EA,Block).
 
-
 used(EA,Reg,Index):-
 	code(EA),
 	instruction_get_src_op(EA,Index,Op),
@@ -207,65 +199,64 @@ used(EA,Reg,Index):-
 	instruction_get_op(EA,Index,Op),
 	op_indirect_contains_reg(Op,Reg).
 
-//BASE CASE: used register for memory here and not accessing the stack
-used_for_address(EA,Reg,EA,Index):-
+.decl used_in_block(EA:address,Reg:register)
+
+used_in_block(Block,Reg):-
+	used(EA,Reg,_),
+	code_in_block(EA,Block).
+
+.decl block_last_def(EA:address,EA_def:address,Reg:register)
+.decl last_def(EA:address,EA_def:address,Reg:register)
+
+block_last_def(EA_next,EA,Reg):-
+	def(EA,Reg),
+	local_next(EA,EA_next).
+
+block_last_def(EA_next,EA_def,Reg):-
+	block_last_def(EA,EA_def,Reg),
+	!must_def(EA,Reg),
+	local_next(EA,EA_next).
+
+block_last_def(Block,EA_def,Reg):-
+	last_def(Block,EA_def,Reg),
+	used_in_block(Block,Reg),
+	defined_in_block(Block,Reg).
+
+last_def(Block,EA,Reg):-
+	def(EA,Reg),
+	block_next(EA,Block).
+
+last_def(Block,EA_def,Reg):-
+	block_last_def(Block_end,EA_def,Reg),
+	block_next(Block_end,Block).
+
+last_def(Block_next,EA_def,Reg):-
+	last_def(Block,EA_def,Reg),
+	!defined_in_block(Block,Reg),
+	code_in_block(Block_end,Block),
+	block_next(Block_end,Block_next).
+
+
+def_used(EA_def,Reg,EA_used,Index):-
+	used(EA_used,Reg,Index),
+	block_last_def(EA_used,EA_def,Reg).
+
+
+def_used(EA_def,Reg,EA_used,Index):-
+	used(EA_used,Reg,Index),
+	code_in_block(EA_used,Block),
+	!defined_in_block(Block,Reg),
+	last_def(Block,EA_def,Reg).
+
+.decl def_used_for_address(EA_def:address,Reg:register)
+
+def_used_for_address(EA_def,Reg):-
 	used(EA,Reg,Index),
 	instruction_get_op(EA,Index,Op),
 	op_indirect_contains_reg(Op,Reg),
-	//lea does not access memory
-	!instruction_get_operation(EA,"LEA").
-	//Reg!="RBP".
+	def_used(EA_def,Reg,EA,Index).
 
-//USED TRANSITIVELY: used to compute something used for memory later
-used_for_address(EA,Used_reg,EA,Index):-
-	//the instruction defines a register that is used for memory
-	used_for_address(EA_next,Reg_defined,_,_),
-	local_next(EA,EA_next),
-	def(EA,Reg_defined),
-	instruction_get_src_op(EA,Index,_),
-	used(EA,Used_reg,Index).
-	
-//SPECIAL CASE: the register is not used to compute an address but it is
-// compared to a register possibly containing an address
-used_for_address(EA,Reg_compared,EA,Index):-
-	used_for_address(EA_next,Reg_used,_,_),
-	local_next(EA,EA_next),
-	reg_compared(EA,Reg_used,_,Reg_compared,Index).
-
-// the same special case when the block is skipped
-used_for_address(EA,Reg_compared,EA,Index):-
-	used_for_address(Block,Reg_used,EA_used,_),
-	!defined_in_block(Block,Reg_used),
-	code_in_block(EA,Block),EA<EA_used,
-	reg_compared(EA,Reg_used,_,Reg_compared,Index).
-
-
-// propagation of uses when the register is not (necessarily) re-defined	
-// go one by one if the register is defined in the block
-used_for_address(EA,Reg,Where,Index):-
-	used_for_address(EA_next,Reg,Where,Index),
-	local_next(EA,EA_next),
-	code_in_block(EA,Block),
-	defined_in_block(Block,Reg),
-	!must_def(EA,Reg).
-
-// skip the block if the register is not defined there
-used_for_address(Block,Reg,Where,Index):-
-	used_for_address(EA_next,Reg,Where,Index),
-	local_next(EA,EA_next),
-	code_in_block(EA,Block),
-	!defined_in_block(Block,Reg).
-
-used_for_address(EA,Reg,Where,Index):-
-	used_for_address(Block,Reg,Where,Index),
-	code_in_block(EA,Block),
-	!defined_in_block(Block,Reg),
-	local_next(EA_prev,EA),
-	used(EA_prev,Reg,_).
-
-
-// once we have definitions and live uses, we can compute def_used connections
-def_used(EA_def,Reg,EA_used,Index):-
-	def(EA_def,Reg),
-	local_next(EA_def,EA_next),
-	used_for_address(EA_next,Reg,EA_used,Index).
+def_used_for_address(EA_def,Reg):-
+	def_used_for_address(EA_used,_),
+	used(EA_used,Reg,_),
+	def_used(EA_def,Reg,EA_used,_).

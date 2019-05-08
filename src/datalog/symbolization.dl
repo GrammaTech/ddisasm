@@ -162,7 +162,9 @@ labeled_data_candidate(EA):-
 	symbolic_operand(_,_,EA,"data").
 
 labeled_data_candidate(Val):-
-	address_in_data_refined(_,Val).
+	address_in_data_refined(EA,Val),
+	pointer_size(Pt_size),
+	EA % Pt_size =0.
 
 // Detect symbol-symbol
 ////////////////////////////////////////////////////////////////////////
