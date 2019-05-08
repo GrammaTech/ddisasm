@@ -147,11 +147,31 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	Mult<0, New_dest<Dest
 	).
 
+.decl moved_displacement_candidate(EA:address,Op_index:number,Dest:address,New_dest:address,Points:number)
+
+moved_label_class(EA,"miss section with access"),
+moved_displacement_candidate(EA,Op_index,Dest,Access_dest,2):-
+		code(EA),
+		instruction_get_op(EA,Op_index,Op),
+		!symbolic_operand(EA,Op_index,_,_),
+	  !pc_relative_operand(EA,Op_index,_),
+		op_indirect(Op,_,_,_,_,Dest,_),
+		
+		data_access_pattern_candidate(Access_dest,_,_,EA),
+		regular_data_section(Name),
+		section(Name,SizeSect,Base),
+		Access_dest>=Base,
+		Access_dest<Base+SizeSect,
+
+		Diff = max(Access_dest-Dest,Dest-Access_dest),
+		(Diff <Base;
+		Diff >Base+SizeSect
+		).
 
 // labels that miss the data sections but should be symbolic
 // the destination is before the data section
 moved_label_class(EA,"indirect miss section below"),
-moved_label(EA,Op_index,Dest,Base):-
+moved_displacement_candidate(EA,Op_index,Dest,Base,1):-
 	code(EA),
 	instruction_get_op(EA,Op_index,Op),
 	!symbolic_operand(EA,Op_index,_,_),
@@ -166,7 +186,7 @@ moved_label(EA,Op_index,Dest,Base):-
 
 // the destination is more than the end of the section
 moved_label_class(EA,"indirect miss section above"),
-moved_label(EA,Op_index,Dest,Base+SizeSect):-
+moved_displacement_candidate(EA,Op_index,Dest,Base+SizeSect,1):-
 	code(EA),
 	instruction_get_op(EA,Op_index,Op),
 	!symbolic_operand(EA,Op_index,_,_),
@@ -181,13 +201,22 @@ moved_label(EA,Op_index,Dest,Base+SizeSect):-
 	Dest>Base+SizeSect,
 	Dest<=Base+SizeSect+(SizeSect/2).
 
+.decl discarded_moved_displacement_candidate(EA:address,Op_index:number,Dest:address,New_dest:address)
+
+discarded_moved_displacement_candidate(EA,Op_index,Dest,New_dest):-
+	moved_displacement_candidate(EA,Op_index,Dest,New_dest,Points1),
+	moved_displacement_candidate(EA,Op_index,_,_,Points2),
+	Points2>Points1.
+
+moved_label(EA,Op_index,Dest,New_dest):-
+	moved_displacement_candidate(EA,Op_index,Dest,New_dest,_),
+	!discarded_moved_displacement_candidate(EA,Op_index,Dest,New_dest).
 ////////////////////////////////////////////////////////////////////////////////
 //immediate operand (type I)
 // consider the case where the immediate is a loop bound
 
 
 .decl mov_immediate_to_reg(EA:address,Reg:register,Imm_index:number,Immediate:number)
-.decl cmp_immediate_to_reg(EA:address,Reg:register,Imm_index:number,Immediate:number)
 .decl cmp_reg_to_reg(EA:address,Reg1:register,Reg2:register)
 
 .decl moved_immediate_candidate(EA:address,Op_index:number,Immediate:number,New_immmediate:number)
@@ -200,14 +229,7 @@ mov_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
 	instruction_get_dest_op(EA,_,Op2),
 	op_regdirect_contains_reg(Op2,Reg).
 
-cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
-	code(EA),
-	instruction_get_operation(EA,Operation),
-	comparison_operation(Operation),
-	instruction_get_op(EA,Imm_index,Op),
-	op_immediate(Op,Immediate),
-	instruction_get_op(EA,_,Op2),
-	op_regdirect_contains_reg(Op2,Reg).
+
 
 cmp_reg_to_reg(EA,Reg1,Reg2):-
 	code(EA),

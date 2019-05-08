@@ -72,6 +72,11 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
 	op_immediate(Op1,Immediate),
 	op_regdirect_contains_reg(Op2,Reg).
 
+// register implicitly defined
+value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
+	def_used_for_address(EA,Reg),
+	flow_def(EA,Reg,Immediate).
+
 value_reg_edge(EA,Reg,0,"NONE",0,Address):-
 	def_used_for_address(EA,Reg),
 	instruction(EA,Size,_,"LEA",Op1,Op2,0,0),

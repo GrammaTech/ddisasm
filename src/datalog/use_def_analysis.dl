@@ -142,6 +142,18 @@ op_regdirect_contains_reg(Op,Reg_uniform):-
 	op_regdirect(Op,Reg),
 	track_register(Reg,Reg_uniform).
 
+.decl cmp_immediate_to_reg(EA:address,Reg:register,Imm_index:number,Immediate:number)
+cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
+	code(EA),
+	instruction_get_operation(EA,Operation),
+	comparison_operation(Operation),
+	instruction_get_op(EA,Imm_index,Op),
+	op_immediate(Op,Immediate),
+	instruction_get_op(EA,_,Op2),
+	op_regdirect_contains_reg(Op2,Reg).
+
+// a register is implicitly defined by being compared to a constant and then jumping
+.decl flow_def(EA:address,Reg:register,Value:number)
 //////////////////////////////////////////////////////////////////////////////
 //local underapproximation of control flow
 .decl local_next(ea:address,ea_next:address)
@@ -176,6 +188,21 @@ def(EA,Reg):-
 	code(EA),
 	instruction_get_operation(EA,"CALL"),
 	function_non_maintained_reg(Reg).
+
+flow_def(EA_target,Reg,Immediate),
+def(EA_target,Reg):-
+	cmp_immediate_to_reg(EA,Reg,_,Immediate),
+	next(EA,EA_next),
+	direct_jump(EA_next,EA_target),
+	instruction_get_operation(EA_next,"JE").
+
+flow_def(EA_target,Reg,Immediate),
+def(EA_target,Reg):-
+	cmp_immediate_to_reg(EA,Reg,_,Immediate),
+	next(EA,EA_next),
+	direct_jump(EA_next,_),
+	next(EA_next,EA_target),
+	instruction_get_operation(EA_next,"JNE").
 
 .decl must_def(EA:address,Reg:register)
 
