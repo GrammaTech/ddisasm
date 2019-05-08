@@ -96,7 +96,7 @@ This module also computes and symbol_minus_symbol.
 .output symbolic_operand_point
 .decl symbolic_operand_total_points(ea:address,operand_index:number,points:number)
 
-symbolic_operand_candidate(EA,Op_index,Dest,"data"):-
+symbolic_operand_candidate(EA,Op_index,Dest,Type):-
 	code(EA),
 	instruction_get_op(EA,Op_index,Op),
 	(
