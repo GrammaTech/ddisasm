@@ -178,7 +178,8 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 	regular_data_section(Name),
 	section(Name,SectSize,Base),
 	(
-		Dest<Base, Distance=Base-Dest, New_dest=Base
+		Dest<Base, Distance=Base-Dest, New_dest=Base,
+		10*Dest > Base
 	;
 	 Dest>Base+SectSize, Distance=Dest-(Base+SectSize), New_dest=Base+SectSize
 	).
@@ -192,7 +193,8 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 	regular_data_section(Name),
 	section(Name,SectSize,Base),
 	(
-		Dest<Base, Distance=Base-Dest, New_dest=Base
+		Dest<Base, Distance=Base-Dest, New_dest=Base,
+		10*Dest > Base
 	;
 	 Dest>Base+SectSize, Distance=Dest-(Base+SectSize), New_dest=Base+SectSize
 	).

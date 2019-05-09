@@ -49,13 +49,30 @@ instruction_memory_access_size(EA,Index,SizeAccess):-
     instruction_get_op(EA,Index,Op),
     instruction_get_operation(EA,Operation),
     (
-        Operation="LEA",
-        SizeAccess=0
+        operation_size_exception(EA,Index,SizeAccess)
      ;
-        Operation!="LEA",
+        !operation_size_exception(EA,Index,_),
         op_indirect(Op,_,_,_,_,_,Size),
         SizeAccess=Size/8
     ).
+
+// These operations are either special like LEA (does not read memory) or
+// are not decoded corectly from capstone
+// FIXME: review this list when capstone is updated
+.decl operation_size_exception(EA:address,Op_index:number,Size:number)
+
+operation_size_exception(EA,Index,8):-
+	code(EA),
+	instruction_get_operation(EA,"MOVSD"),
+	instruction_get_op(EA,Index,Op),
+	op_indirect(Op,_,_,_,_,_,32).
+
+operation_size_exception(EA,Index,0):-
+	code(EA),
+	instruction_get_operation(EA,"LEA"),
+	instruction_get_op(EA,Index,Op),
+	op_indirect(Op,_,_,_,_,_,_).
+
 
 //there is a data access at EA in the operand Op_index
 .decl data_access(EA:address,Op_index:operand_index,Reg1:register,Reg2:register,Reg3:register,Mult:number,Offset:number,Size:number)
