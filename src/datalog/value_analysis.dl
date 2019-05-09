@@ -77,7 +77,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
 	def_used_for_address(EA,Reg),
 	flow_def(EA,Reg,Immediate).
 
-value_reg_edge(EA,Reg,0,"NONE",0,Address):-
+value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
 	def_used_for_address(EA,Reg),
 	instruction(EA,Size,_,"LEA",Op1,Op2,0,0),
 	op_indirect(Op1,_,"RIP","NONE",_,Offset,_),
@@ -96,7 +96,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
 	EA!=EA_prev.
 	
 //reset a register
-value_reg_edge(EA,Reg,0,"NONE",0,0):-
+value_reg_edge(EA,Reg,EA,"NONE",0,0):-
 	def_used_for_address(EA,Reg),
 	instruction(EA,_,_,"XOR",Op1,Op2,0,0),
 	op_regdirect_contains_reg(Op1,Reg),
