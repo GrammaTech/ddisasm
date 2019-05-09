@@ -161,9 +161,9 @@ moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
 		Access_dest<Base+SizeSect,
 
 		Diff = max(Access_dest-Dest,Dest-Access_dest),
-		(Diff <Base;
-		Diff >Base+SizeSect
-		).
+		// the remaining component does not fall on any data section
+		!data_byte(Diff,_),
+		section(".bss",BssSize,BssBeg),(Diff<BssBeg; Diff> BssBeg+BssSize).
 
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 	data_access(EA,Op_index,"NONE","NONE",RegMult,Mult,Dest,_),
