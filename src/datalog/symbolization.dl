@@ -121,6 +121,14 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
 /////////////////////////////////////////////////////////////////
 /// Final decision on symbolization of operands
 
+
+symbolic_operand_point(EA,Imm_index,-1,"compared to non-address"):-
+	cmp_immediate_to_reg(EA,Reg,Imm_index,_),
+	def_used(EA_def,Reg,EA,_),
+	def_used(EA_def,Reg,EA2,_),EA2!=EA,
+	cmp_immediate_to_reg(EA2,Reg,Imm_index2,_),
+	!symbolic_operand_candidate(EA2,Imm_index2,_,_).
+
 symbolic_operand_point(EA,Op_index,-1,"moved/compared-with-different-size"):-
 	symbolic_operand_candidate(EA,Op_index,_,_),
 	instruction_get_op(EA,Op_index,Op),
@@ -135,7 +143,7 @@ symbolic_operand_point(EA,Op_index,1,"used-for-address"):-
 	symbolic_operand_candidate(EA,Op_index,_,_),
 	instruction_get_op(EA,Op_index,Op),
 	op_immediate(Op,_),
-	def_used(EA,_,_,_).
+	def_used_for_address(EA,_).
 
 symbolic_operand_total_points(EA,Operand,Points):-
 	symbolic_operand_candidate(EA,Operand,_,_),
