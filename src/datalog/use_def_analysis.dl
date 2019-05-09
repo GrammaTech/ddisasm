@@ -166,10 +166,10 @@ local_next(EA,EA_next):-
 .decl block_next(ea:address,ea_next:address)
 
 
-block_next(EA,EA_next):-
+block_next(EA,Block2):-
 	code_in_block(EA,Block),
-	may_fallthrough(EA,EA_next),
-	code_in_block(EA_next,Block2),
+	may_fallthrough(EA,Block2),
+	block(Block2),
 	Block!=Block2.
 	
 block_next(EA,EA_next):-
@@ -255,6 +255,7 @@ last_def(Block,EA,Reg):-
 
 last_def(Block,EA_def,Reg):-
 	block_last_def(Block_end,EA_def,Reg),
+	!must_def(Block_end,Reg),
 	block_next(Block_end,Block).
 
 last_def(Block_next,EA_def,Reg):-
@@ -271,8 +272,8 @@ def_used(EA_def,Reg,EA_used,Index):-
 
 def_used(EA_def,Reg,EA_used,Index):-
 	used(EA_used,Reg,Index),
+	!block_last_def(EA_used,_,Reg),
 	code_in_block(EA_used,Block),
-	!defined_in_block(Block,Reg),
 	last_def(Block,EA_def,Reg).
 
 .decl def_used_for_address(EA_def:address,Reg:register)

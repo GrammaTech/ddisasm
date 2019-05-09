@@ -199,9 +199,6 @@ propagated_data_access(EA+Mult,Mult,EA_ref):-
 	data_byte(EA+Mult,_),
 	// no collision with next data access pattern
 	!possible_data_limit(EA+Mult),
-	pointer_size(Pt_size),
-	// no overlap with address array
-	address_array_range.no_overlap(EA+Mult,Pt_size),
 	//no collision with other data access pattern in between
 	last_data_access(EA+Mult,Last),
 	(Last<=EA

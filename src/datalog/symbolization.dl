@@ -321,25 +321,42 @@ next_address_in_data(EA,EA_next):-
 	address_in_data_refined(EA_next,_).
 
 
-.decl address_array_aux(EA:address,Distance:number)
+.decl address_array_aux(EA:address,Distance:number,type:symbol)
 
-address_array_aux(EA,Diff):-
-	address_in_data_refined(EA,_),
+address_array_aux(EA,Diff,"code"):-
+	address_in_data_refined(EA,Dest1),code(Dest1),
 	pointer_size(Pt_size),
 	EA % Pt_size =0,
 	next_address_in_data(EA,EA_next),
 	Diff= EA_next-EA,
-	address_in_data_refined(EA+Diff,_),
-	next_address_in_data(EA+Diff,EA+(2*Diff)).
+	address_in_data_refined(EA+Diff,Dest2),code(Dest2),
+	next_address_in_data(EA+Diff,EA+(2*Diff)),
+	address_in_data_refined(EA+(2*Diff),Dest3),code(Dest3).
+
+address_array_aux(EA,Diff,"data"):-
+	address_in_data_refined(EA,Dest1),data_byte(Dest1,_),
+	pointer_size(Pt_size),
+	EA % Pt_size =0,
+	next_address_in_data(EA,EA_next),
+	Diff= EA_next-EA,
+	address_in_data_refined(EA+Diff,Dest2),data_byte(Dest2,_),
+	next_address_in_data(EA+Diff,EA+(2*Diff)),
+	address_in_data_refined(EA+(2*Diff),Dest3),data_byte(Dest3,_).
 	
-address_array_aux(EA+Diff,Diff):-
-	address_array_aux(EA,Diff),
-	next_address_in_data(EA,EA+Diff).
+address_array_aux(EA+Diff,Diff,"code"):-
+	address_array_aux(EA,Diff,"code"),
+	next_address_in_data(EA,EA+Diff),
+	address_in_data_refined(EA+Diff,Dest),code(Dest).
+
+address_array_aux(EA+Diff,Diff,"data"):-
+	address_array_aux(EA,Diff,"data"),
+	next_address_in_data(EA,EA+Diff),
+	address_in_data_refined(EA+Diff,Dest),data_byte(Dest,_).
 	
 .decl address_array(EA:address)
 
 address_array(EA):-
-	address_array_aux(EA,_).
+	address_array_aux(EA,_,_).
 	
 .init address_array_range=empty_range
 
@@ -370,6 +387,12 @@ data_object_point(EA,Pt_size,"symbol",5,"data access"):-
 	;
 	data_access_pattern(Label,0,_,_)	
 	).
+// if we conflict with several other candidates we reduce the points
+data_object_point(EA,Pt_size,"symbol",-2,"multiple conflict"):-
+  data_object_candidate(EA,Pt_size,"symbol"),
+	data_object_conflict(EA,Pt_size,"symbol",EA2,_,"other"),
+	data_object_conflict(EA,Pt_size,"symbol",EA3,_,"other"),
+	EA2!=EA3.
 
 data_object_point(EA,Pt_size,"symbol",1,"no label conflicts"):-
   data_object_candidate(EA,Pt_size,"symbol"),
