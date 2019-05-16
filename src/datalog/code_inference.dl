@@ -120,6 +120,7 @@ can_have_symbolic(EA):-
 can_have_symbolic(EA):-
 	direct_call(EA,_).
 
+
 .decl invalid(EA:address)
 
 // if the decoder failed to decode any instruction at EA, EA is invalid
@@ -183,8 +184,7 @@ basic_target(Val):-
 block_limit(EA):-
 	(
 	op_immediate(_,EA);
-	pc_relative_jump(_,EA);
-	pc_relative_call(_,EA);
+	pc_relative_operand(_,_,EA);
 	basic_target(EA);
     instruction_has_loop_prefix(EA)
 	).
@@ -198,8 +198,7 @@ possible_target_from(Dest,Src):-
 	code_in_block_candidate(Src,_),
 	(
 	may_have_symbolic_immediate(Src,Dest);
-	pc_relative_jump(Src,Dest);
-	pc_relative_call(Src,Dest)
+	pc_relative_operand(Src,_,Dest)
 	).
 
 .decl possible_target(Target:address)
