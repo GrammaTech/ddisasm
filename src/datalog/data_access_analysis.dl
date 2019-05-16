@@ -139,6 +139,7 @@ data_access_pattern_candidate(Address,Size,0,EA):-
 data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
 	data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult,Offset1,Size),
 	RegMult!="NONE",
+	RegMult!=RegBase,
 	value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,Offset2,_),
 	value_reg_at_operand(EA,Op_index,RegBase,_,0,Offset3,"complete"),
 	
@@ -152,6 +153,7 @@ data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
 // indirectly computed
 data_access_pattern_candidate(Address,Size,Mult,EA):-
 	data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult2,Offset1,Size),
+	RegMult!=RegBase,
 	value_reg_at_operand(EA,Op_index,RegMult,_,0,Offset2,"complete"),
 	value_reg_at_operand(EA,Op_index,RegBase,_,Mult,Offset3,_),
 
@@ -163,11 +165,13 @@ data_access_pattern_candidate(Address,Size,Mult,EA):-
 	Address<=Base+SizeSect.
 	
 //repeated register
-data_access_pattern_candidate(Address,Size,Mult+1,EA):-
-	data_access(EA,Op_index,"NONE",Reg,Reg,Mult,Address,Size),
-	value_reg_at_operand(EA,Op_index,Reg,_,1,0,_),
-	Size<=Mult+1,
-
+data_access_pattern_candidate(Address,Size,FinalMult,EA):-
+	data_access(EA,Op_index,"NONE",Reg,Reg,Mult,Offset1,Size),
+	Reg!="NONE",
+	value_reg_at_operand(EA,Op_index,Reg,_,Mult2,Offset2,_),
+	FinalMult=Mult*Mult2+Mult2,
+	(Size<=FinalMult; FinalMult=0),
+	Address=Offset1+(Offset2*Mult)+Offset2,
 	data_section(Section),
 	section(Section,SizeSect,Base),
 	Address>=Base,

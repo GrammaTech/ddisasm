@@ -41,6 +41,8 @@
 .decl no_return_call(EA:address)
 .output no_return_call
 
+.decl no_return_call_basic(EA:address)
+
 #include "intra_procedural_SCC.dl"
 #include "ordered_set.dl"
 
@@ -54,7 +56,10 @@ no_return_function("__stack_chk_fail").
 no_return_function("__assert_fail").
 no_return_function("longjump").
 
-
+no_return_call_basic(EA):-
+	direct_call(EA,Dest),
+	plt_entry(Dest,Function),
+	no_return_function(Function).
 
 .init scc_ordered_exits=forall_ordered_set
 
@@ -108,7 +113,8 @@ no_return_resolved_jump(Src):-
 
 	
 no_return(EA):-
-	no_return_call(EA).
+	no_return_call(EA),
+	code(EA).
 
 no_return(EA):-
 	no_return(Dest),
@@ -154,17 +160,7 @@ no_return(EA):-
 ////////////////////////////////////////////////////////
 
 no_return_call(EA):-
-	no_return_function(Function),
-	relocation(Got_entry,_,Function,_),
-	pc_relative_jump(Dest,Got_entry),
-	section(".plt",Size,Beg),
-	Dest<Beg+Size,
-	Dest>=Beg,
-	op_immediate(Op,Dest),
-	instruction_get_op(EA,1,Op),
-	instruction_get_operation(EA,"CALL"),
-	code(EA).
-
+	no_return_call_basic(EA).
 
 no_return_call(EA):-
 	no_return(Dest),

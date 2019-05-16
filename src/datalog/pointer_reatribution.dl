@@ -82,19 +82,17 @@ moved_data_label(EA,Dest,Address):-
 
 .decl moved_label_candidate(EA:address,Index:number,Val:address,New_val:address,Diff:number)
 
-moved_label_candidate(EA_lea,Op_index,Dest,New_dest,Diff):-
+moved_label_candidate(EA_def2,Op_index,Dest,New_dest,Diff):-
 	cmp_reg_to_reg(EA,Reg1,Reg2),
 	def_used(EA_def1,Reg1,EA,_),
 	dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End),
 
 	def_used(EA_def2,Reg2,EA,_),
-	best_value_reg(EA_def2,Reg2,EA_lea,_,_,_),
-
-	pc_relative_operand(EA_lea,Op_index,Dest),
-	instruction_get_operation(EA_lea,"LEA"),
+	pc_relative_operand(EA_def2,Op_index,Dest),
+	instruction_get_operation(EA_def2,"LEA"),
 
 	Beg<= Dest,
-  Dest <= End,
+    Dest <= End,
 	Diff=max(New_dest-Dest,Dest-New_dest).
 ////////////////////////////////////////////////////////////////////////////////
 // indirect operand (type O)
@@ -267,9 +265,11 @@ cmp_reg_to_reg(EA,Reg1,Reg2):-
 	op_regdirect_contains_reg(Op2,Reg2).
 
 .decl dest_enlarged_data_section(EA:address,Reg:register,New_dest:address,Beg:address,End:address)
+.output dest_enlarged_data_section
 
-dest_enlarged_data_section(EA_def,Reg,New_dest,Beg-Mult,Beg+SizeSect+Mult):-
+dest_enlarged_data_section(EA_def,Reg,New_dest,Beg-MultAbs,Beg+SizeSect+MultAbs):-
 	best_value_reg(EA_def,Reg,_,Mult,New_dest,"loop"),
+	MultAbs=max(Mult,-Mult),
 	regular_data_section(Name),
 	section(Name,SizeSect,Beg),
 	New_dest>=Beg,
