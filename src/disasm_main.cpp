@@ -1062,6 +1062,9 @@ static void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose
     bool error = false;
     if(selfDiagnose)
     {
+        std::cout << "Perfoming self diagnose (this will only give the right results if the target "
+                     "program contains all the relocation information)"
+                  << std::endl;
         auto falsePositives = prog->getRelation("false_positive");
         if(falsePositives->size() > 0)
         {
@@ -1099,6 +1102,8 @@ static void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose
         std::cerr << "Aborting" << std::endl;
         exit(1);
     }
+    if(selfDiagnose && !error)
+        std::cout << "Self diagnose completed: No errors found" << std::endl;
 }
 
 static void decode(Dl_decoder &decoder, Elf_reader &elf, std::vector<std::string> sections,
@@ -1307,7 +1312,8 @@ int main(int argc, char **argv)
             boost::program_options::value<std::vector<std::string>>()->multitoken(),
             "Print the given functions even if they are skipped by default (e.g. _start)")(
             "self-diagnose",
-            "use relocation information to emit a self diagnose of the symbolization process");
+            "Use relocation information to emit a self diagnose of the symbolization process. This "
+            "option only works if the target binary contains complete relocation information.");
     po::positional_options_description pd;
     pd.add("input-file", -1);
 
