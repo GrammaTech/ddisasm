@@ -106,7 +106,7 @@ Ddisasm accepts the following parameters:
 :   Print the given functions even if they are skipped by default (e.g. _start)
 
 `--self-diagnose`
-:   This option is useful for debugging. Use relocation information to emit a self diagnose
+:   This option is useful for debugging. Use relocation information to emit a self diagnosis
     of the symbolization process. This option only works if the target
     binary contains complete relocation information. You can enable
     that in `ld` using the option `--emit-relocs`.
