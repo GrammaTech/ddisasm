@@ -69,14 +69,14 @@ $ make
 ## Running the analysis
 
 Once `ddisasm` is built, we can run complete analysis on a file by
-calling `/bin/ddisasm'`.  For example, we can run the analysis on one
+calling `build/bin/ddisasm'`.  For example, we can run the analysis on one
 of the examples as follows:
 
 ```
 cd build/bin ./ddisasm ../../examples/ex1/ex --asm ex.s
 ```
 
-The script accepts the following parameters:
+Ddisasm accepts the following parameters:
 
 `--help`
 :   produce help message
@@ -90,6 +90,9 @@ The script accepts the following parameters:
 `--ir arg`
 :   GTIRB output file
 
+`--json arg`
+:   GTIRB json output file
+
 `--asm arg`
 :   ASM output file
 
@@ -98,6 +101,15 @@ The script accepts the following parameters:
 
 `--debug-dir arg`
 :   location to write CSV files for debugging
+
+-K [ --keep-functions ] arg
+:   Print the given functions even if they are skipped by default (e.g. _start)
+
+`--self-diagnose`
+:   This option is useful for debugging. Use relocation information to emit a self diagnose
+    of the symbolization process. This option only works if the target
+    binary contains complete relocation information. You can enable
+    that in `ld` using the option `--emit-relocs`.
 
 
 ## Rewriting a project
