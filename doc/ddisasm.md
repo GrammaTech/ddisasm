@@ -50,7 +50,7 @@ Ddisasm accepts the following parameters:
 `--debug-dir arg`
 :   location to write CSV files for debugging
 
--K [ --keep-functions ] arg
+`-K [ --keep-functions ] arg`
 :   Print the given functions even if they are skipped by default (e.g. _start)
 
 `--self-diagnose`
