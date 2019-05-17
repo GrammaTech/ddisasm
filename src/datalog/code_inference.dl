@@ -90,36 +90,30 @@ must_fallthrough(From,To):-
 .decl may_have_symbolic_immediate(src:address,dest:address)
 
 may_have_symbolic_immediate(Src,Dest):-
-	can_have_symbolic(Src),
-	instruction_get_op(Src,_,Op),
+    instruction_immediate_offset(Src,Index,Offset),
+    instruction_get_op(Src,Index,Op),
 	op_immediate(Op,Dest),
-	instruction_get_operation(Src,Operation),
-	!operation_not_for_address(Operation).
+    (binary_type("DYN"),
+     relocation(Src+Offset,_,_,_)
+    ;
+     binary_type("REL"),
+     relocation(Src+Offset,_,_,_)
+	;
+     binary_type("EXEC"),
+     instruction_get_operation(Src,Operation),
+     !operation_not_for_address(Operation)
+	).
+
+may_have_symbolic_immediate(Src,Dest):-
+    direct_jump(Src,Dest).
+
+may_have_symbolic_immediate(Src,Dest):-
+    direct_call(Src,Dest).
 
 .decl operation_not_for_address(Operation:symbol)
 
 operation_not_for_address("AND").
 operation_not_for_address("XOR").
-
-.decl can_have_symbolic(EA:address)
-
-can_have_symbolic(Src):-
-	instruction(Src,Size,_,_,_,_,_,_),
-	(
-	binary_type("DYN"),
-	relocation(Location,_,_,_),
-	Src<=Location,
-	Location<Src+Size
-	;
-	binary_type("EXEC")
-	).
-
-can_have_symbolic(EA):-
-	direct_jump(EA,_).
-
-can_have_symbolic(EA):-
-	direct_call(EA,_).
-
 
 .decl invalid(EA:address)
 
@@ -168,6 +162,10 @@ basic_target(Val):-
 	address_in_data(EA,Val),
 	relocation(EA,_,_,_)
 	;
+    binary_type("REL"),
+    address_in_data(EA,Val),
+    relocation(EA,_,_,_)
+    ;
 	binary_type("EXEC"),
 	address_in_data(_,Val)
 	;

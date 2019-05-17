@@ -226,6 +226,15 @@ moved_displacement_candidate(EA,Op_index,Dest,Base+SizeSect,Dest-(Base+SizeSect)
 	Dest>Base+SizeSect,
 	Dest<=Base+SizeSect+(SizeSect/2).
 
+// references with offset in PIE or REL code
+moved_displacement_candidate(EA,Op_index,Dest,SymbolAddr,0):-
+    !binary_type("EXEC"),
+  data_access(EA,Op_index,_,_,_,_,Dest,_),
+    instruction_displacement_offset(EA,Op_index,DisplacementOffset),
+    relocation(EA+DisplacementOffset,_,Symbol,_),
+    symbol(SymbolAddr,_,_,_,_,Symbol),
+    SymbolAddr!=Dest.
+
 // we take the candidate with the shortest distance/priority
 .decl discarded_moved_displacement_candidate(EA:address,Op_index:number,Dest:address,New_dest:address)
 
@@ -311,6 +320,16 @@ moved_immediate_candidate(EA_def2,Imm_index,Immediate,New_dest):-
 
 	Beg<= Immediate,
   Immediate <= End.
+
+moved_immediate_candidate(EA,Op_index,Dest,SymbolAddr):-
+    !binary_type("EXEC"),
+    code(EA),
+    instruction_immediate_offset(EA,Op_index,ImmediateOffset),
+    instruction_get_src_op(EA,Op_index,Op),
+    op_immediate(Op,Dest),
+    relocation(EA+ImmediateOffset,_,Symbol,_),
+    symbol(SymbolAddr,_,_,_,_,Symbol),
+    SymbolAddr!=Dest.
 
 moved_label(EA,Op_index,Dest,New_dest):-
 	moved_immediate_candidate(EA,Op_index,Dest,New_dest).

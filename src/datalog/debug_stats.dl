@@ -50,8 +50,8 @@ unaligned_pointer(EA):-
 
 immediate_symbol(EA,Op_index,Dest):-
 	code(EA),
+    may_have_symbolic_immediate(EA,Dest),
 	instruction_get_op(EA,Op_index,Op),
-	can_have_symbolic(EA),
 	!direct_jump(EA,_),
 	!direct_call(EA,_),
 	op_immediate(Op,Dest).
