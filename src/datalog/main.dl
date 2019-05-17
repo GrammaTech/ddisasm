@@ -519,13 +519,8 @@ got_reference(Got_entry,Symbol):-
 	section(".got",Size,Beg),
     Got_entry>=Beg,
     Got_entry<Beg+Size,
-    relocation(Got_entry,_,Symbol,_),
-    !special_startup_symbol(Symbol).
+    relocation(Got_entry,_,Symbol,_).
 
-.decl special_startup_symbol(Symbol:symbol)
-
-special_startup_symbol("_ITM_registerTMCloneTable").
-special_startup_symbol("_ITM_deregisterTMCloneTable").
 
 //////////////////////////////////////////////////////////////////////////
 // find the main function even if it does not have a symbol
