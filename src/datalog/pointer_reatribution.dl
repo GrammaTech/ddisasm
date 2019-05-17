@@ -148,7 +148,7 @@ moved_label(EA,Op_index,Dest,New_dest):-
 
 moved_label_class(EA,"miss section with access"),
 moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
-		data_access(EA,Op_index,_,_,_,_,Dest,_),
+        data_access(EA,Op_index,_,_,_,_,Dest,_), Dest>=0,
 		!symbolic_operand(EA,Op_index,_,_),
 	  !pc_relative_operand(EA,Op_index,_),
 		
