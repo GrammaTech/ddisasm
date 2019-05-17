@@ -78,13 +78,8 @@ struct DecodedInstruction
 
         std::string prefix, opcode;
 
-        tuple >> EA >> Size >> prefix >> opcode;
-        this->Op1 = tuple[4];
-        this->Op2 = tuple[5];
-        this->Op3 = tuple[6];
-        this->Op4 = tuple[7];
-        this->immediateOffset = tuple[8];
-        this->displacementOffset = tuple[9];
+        tuple >> EA >> Size >> prefix >> opcode >> Op1 >> Op2 >> Op3 >> Op4 >> immediateOffset
+            >> displacementOffset;
     };
 
     gtirb::Addr EA{0};
