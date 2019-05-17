@@ -483,7 +483,18 @@ ambiguous_symbol(Name):-
 
 function_symbol(EA,Name):-
 	symbol(EA,_,"FUNC",_,_,Name).
-	
+
+.decl defined_symbol(ea:address,size:number,type:symbol,scope:symbol,sectionIndex:number,name:symbol)
+
+defined_symbol(EA,Size,Type,Scope,SectIndex,Name):-
+    symbol(EA,Size,Type,Scope,SectIndex,Name),
+    SHN_UNDEF=0,
+    SHN_LORESERVE=65280,
+    SHN_HIRESERVE=65535,
+    //the symbol is not undefined
+    SectIndex!=SHN_UNDEF,
+    (SectIndex<SHN_LORESERVE ; SectIndex> SHN_HIRESERVE).
+
 ////////////////////////////////////////////////////////////////////////////
 // detect references  to libraries (calls to plt)
 .decl plt_section(name:symbol)
@@ -519,7 +530,8 @@ got_reference(Got_entry,Symbol):-
 	section(".got",Size,Beg),
     Got_entry>=Beg,
     Got_entry<Beg+Size,
-    relocation(Got_entry,_,Symbol,_).
+    relocation(Got_entry,_,Symbol,_),
+    defined_symbol(_,_,_,_,_,Symbol).
 
 
 //////////////////////////////////////////////////////////////////////////
