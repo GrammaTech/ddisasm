@@ -46,6 +46,7 @@ more points.
 .decl code_in_block(ea:address,block:address)
 .decl block(block:address)
 .decl code(ea:address)
+.decl block_last_instruction(block:address,EA:address)
 
  // The postprocess refines the blocks by merging contiguous blocks
  // that are always executed together
@@ -521,6 +522,11 @@ block_points(Block,0,1,"plt call"):-
 code_in_block(EA,Block):-
 	code_in_block_candidate_refined(EA,Block),
 	!discarded_block(Block).
+
+block_last_instruction(Block,EA):-
+    code_in_block(EA,Block),
+    next(EA,Next),
+    !code_in_block(Next,Block).
 
 block(Block):-
 	code_in_block(_,Block).

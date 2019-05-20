@@ -47,28 +47,34 @@ exit point of the SCC.
  We adopt a different approach:
   - Compute reachability starting from blocks that have a back edge. At least one back edge has to be involved in cycles
   - If one of those blocks reaches itself, we have a cycle. Then compute reachability backwards from those
-    initial nodes.
-  - Finally compute the intersection. The nodes that both are reached and reach a given node.
+    initial nodes. These reachability is intersected on the fly with forward reachability.
+    Only compute blocks that are both reached and reach a given node.
 */
 .decl back_edge_reachable(BlockSrc:address,BlockDest:address)
 
 back_edge_reachable(Src,Dest):-
     intra_back_edge(Src,Dest).
 
-	
+
 back_edge_reachable(Src,Dest):-
     back_edge_reachable(Src,Intermediate), Src!=Intermediate,
-    intra_edge_initial(Intermediate,Dest).
+    intra_edge_initial(Intermediate,Dest),
+    // because of the flat layout every cycle needs a lowest backedge such that
+    // all other nodes in the cycle are above
+    // it should be enough to consider cycles from those
+    Dest <= Src.
 
 .decl back_edge_coreachable(Block:address,BlockFrom:address)
 
 back_edge_coreachable(Block,From):-
     back_edge_reachable(Block,Block),
-    intra_edge_initial(From,Block).
+    intra_edge_initial(From,Block),
+    back_edge_reachable(Block,From).
 
 back_edge_coreachable(Block,From):-
     back_edge_coreachable(Block,Intermediate), Block!=Intermediate,
-    intra_edge_initial(From,Intermediate).
+    intra_edge_initial(From,Intermediate),
+    back_edge_reachable(Block,From).
 
 
 .decl intra_edge_initial(Block_src:address,Block_dest:address)

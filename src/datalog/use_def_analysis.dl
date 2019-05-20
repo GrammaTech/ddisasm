@@ -168,13 +168,12 @@ local_next(EA,EA_next):-
 
 
 block_next(EA,Block2):-
-	code_in_block(EA,Block),
+    block_last_instruction(_,EA),
 	may_fallthrough(EA,Block2),
-	block(Block2),
-	Block!=Block2.
+    block(Block2).
 	
 block_next(EA,EA_next):-
-	code(EA),
+    block_last_instruction(_,EA),
 	direct_jump(EA,EA_next).
 
 //////////////////////////////////////////////////////////////////////////////
@@ -260,9 +259,9 @@ last_def(Block,EA_def,Reg):-
     !flow_def(Block_end,Reg,Block,_).
 
 last_def(Block_next,EA_def,Reg):-
-	last_def(Block,EA_def,Reg),
-	!defined_in_block(Block,Reg),
-	code_in_block(Block_end,Block),
+    last_def(Block,EA_def,Reg),
+    !defined_in_block(Block,Reg),
+    block_last_instruction(Block,Block_end),
     block_next(Block_end,Block_next),
     !flow_def(Block_end,Reg,Block,_).
 

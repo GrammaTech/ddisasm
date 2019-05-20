@@ -38,27 +38,27 @@ receives a property as an input and provides a predicate forall.
 .comp ordered_set{
 
 .decl pred(Set:number,element:number)
-.decl succ(Set:number,element1:number,element2:number)
+//.decl succ(Set:number,element1:number,element2:number)
 .decl first(Set:number,Element:number)
 .decl last(Set:number,Element:number)
 .decl next(Set:number,Element:number,Element2:number)
       
-succ(Set,A,B):-
+/* succ(Set,A,B):-
 	pred(Set,A),
 	pred(Set,B),
-	A<B.
+    A<B. */
 
 first(Set,A):-
 	pred(Set,A),
-	!succ(Set,_,A).
+    !next(Set,_,A).
 	
 last(Set,A):-
 	pred(Set,A),
-	!succ(Set,A,_).
+    !next(Set,A,_).
 	
 next(Set,A,B):-
 	pred(Set,A),
-	B=min D:{ succ(Set,A,D)}.
+    B=min D:{ pred(Set,A),pred(Set,D),D>A}.
 	
 }
 
