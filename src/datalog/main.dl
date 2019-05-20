@@ -531,7 +531,7 @@ got_reference(Got_entry,Symbol):-
     Got_entry>=Beg,
     Got_entry<Beg+Size,
     relocation(Got_entry,_,Symbol,_),
-    defined_symbol(_,_,_,_,_,Symbol).
+    symbol(_,_,_,Scope,_,Symbol),Scope!="WEAK".
 
 
 //////////////////////////////////////////////////////////////////////////
