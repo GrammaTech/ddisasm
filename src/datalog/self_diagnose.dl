@@ -44,7 +44,9 @@ bad_symbol_constant(EA,Cnt):-
     section(Name2,SectSize2,Base2),
     Name2!=Name,
 	Dest-Cnt>=Base2,
-	Dest-Cnt<SectSize2+Base2.	
+    Dest-Cnt<SectSize2+Base2,
+    //not pointing to the section boundary
+    Dest-Cnt != SectSize+Base.
 
 bad_symbol_constant(EA,Cnt):-
     relocation_in_operand(EA,Index,Rel),
@@ -57,7 +59,10 @@ bad_symbol_constant(EA,Cnt):-
     section(Name2,SectSize2,Base2),
     Name2!=Name,
 	Orig-Cnt>=Base2,
-	Orig-Cnt<SectSize2+Base2.	
+    Orig-Cnt<SectSize2+Base2,
+    //not pointing to the section boundary
+    Orig-Cnt != SectSize+Base.
+
 
 false_negative(EA):-
     relocation_in_operand(EA,Index,Rel),
