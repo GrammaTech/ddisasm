@@ -114,16 +114,18 @@ moved_label(EA,Op_index,Dest,New_dest):-
 
 // the pointer is likely to point to the wrong section
 moved_label_class(EA,"indirect wrong section"),
-moved_label(EA,Op_index,Dest,New_dest):-
+moved_displacement_candidate(EA,Op_index,Dest,New_dest,Diff):-
 	symbolic_operand(EA,Op_index,Dest,"data"),
 	data_access(EA,Op_index,_,_,_,_,_,_),
 	data_access_pattern_candidate(Access_dest,_,Mult,EA),
 	(
 	Access_dest!=Dest,
-	New_dest=Access_dest
+    New_dest=Access_dest,
+    Diff= max(Access_dest-Dest, Dest-Access_dest)
 	;
 	Access_dest=Dest,
-	New_dest=Dest+Mult
+    New_dest=Dest+Mult,
+  Diff=Mult
 	),
 	
 	data_section(Name),
@@ -159,10 +161,12 @@ moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
 		Access_dest<Base+SizeSect,
 
 		Diff = max(Access_dest-Dest,Dest-Access_dest),
+        10*Dest>=Base,
 		// the remaining component does not fall on any data section
 		!data_byte(Diff,_),
 		section(".bss",BssSize,BssBeg),(Diff<BssBeg; Diff> BssBeg+BssSize).
 
+moved_label_class(EA,"constant and multiplied reg"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 	data_access(EA,Op_index,"NONE","NONE",RegMult,Mult,Dest,_),
 	!instruction_get_operation(EA,"LEA"),
@@ -182,6 +186,7 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 	 Dest>Base+SectSize, Distance=Dest-(Base+SectSize), New_dest=Base+SectSize
 	).
 
+moved_label_class(EA,"constant and multiplied reg2"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 	data_access(EA,Op_index,"NONE",Reg,"NONE",_,Dest,_),
 	!instruction_get_operation(EA,"LEA"),
@@ -194,37 +199,8 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 		Dest<Base, Distance=Base-Dest, New_dest=Base,
 		10*Dest > Base
 	;
-	 Dest>Base+SectSize, Distance=Dest-(Base+SectSize), New_dest=Base+SectSize
-	).
-
-// labels that miss the data sections but should be symbolic
-// the destination is before the data section
-moved_label_class(EA,"indirect miss section below"),
-moved_displacement_candidate(EA,Op_index,Dest,Base,Base-Dest):-
-	data_access(EA,Op_index,_,_,_,_,Dest,_),
-	!symbolic_operand(EA,Op_index,_,_),
-	!pc_relative_operand(EA,Op_index,_),
-	Dest>40000,
-	
-	regular_data_section(Name),
-	section(Name,_,Base),
-	Dest<Base,
-	Dest+8000>=Base.
-
-// the destination is more than the end of the section
-moved_label_class(EA,"indirect miss section above"),
-moved_displacement_candidate(EA,Op_index,Dest,Base+SizeSect,Dest-(Base+SizeSect)):-
-	data_access(EA,Op_index,_,_,_,_,Dest,_),
-	!symbolic_operand(EA,Op_index,_,_),
-	!pc_relative_operand(EA,Op_index,_),
-	data_access_pattern_candidate(Other_dest,_,_,EA),
-
-	regular_data_section(Name),
-	section(Name,SizeSect,Base),
-	Other_dest>=Base,
-	Other_dest<=Base+SizeSect,
-	Dest>Base+SizeSect,
-	Dest<=Base+SizeSect+(SizeSect/2).
+     Dest>Base+SectSize, Distance=Dest-(Base+SectSize), New_dest=Base+SectSize
+    ).
 
 // references with offset in PIE or REL code
 moved_displacement_candidate(EA,Op_index,Dest,SymbolAddr,0):-
@@ -299,7 +275,7 @@ moved_immediate_candidate(EA_from,Imm_index,Immediate,New_dest):-
 	value_reg_at_operand(EA_access,Op_index,Reg,EA_from,_,_,Type),
 	Type!="incomplete",
 	mov_immediate_to_reg(EA_from,Reg,Imm_index,Immediate),
-	New_dest<= Beg-Mult,
+  Beg-Mult <= Immediate,
   Immediate <= Beg+SizeSect+Mult.
 
 
@@ -337,6 +313,8 @@ moved_label(EA,Op_index,Dest,New_dest):-
 // If the destination is in the middle of a known symbol
 moved_label(EA,Op_index,Dest,Address):-
  	symbolic_operand(EA,Op_index,Dest,"data"),
+    !moved_displacement_candidate(EA,Op_index,_,_,_),
+  !moved_immediate_candidate(EA,Op_index,_,_),
  	symbol(Address,Size,_,_,_,_),
  	Address<Dest,
 	Dest<Address+Size.
