@@ -58,7 +58,7 @@ target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(disasm_main PRIVATE -Wall -Wextra -Wpointer-arith)
 target_compile_options(disasm_main PRIVATE -Werror -fopenmp)
-#target_compile_options(ddisasm_main PRIVATE -O3)
+target_compile_options(disasm_main PRIVATE -O3)
 
 if( ${GTIRB_USE_SYSTEM_BOOST} MATCHES "OFF" )
   add_dependencies(disasm_main Boost)
