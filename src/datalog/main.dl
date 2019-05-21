@@ -584,6 +584,7 @@ inferred_function_name(EA,"__do_global_dtors_aux"):-
 	code_in_refined_block(EA_cmp,EA),
     instruction(EA_cmp,_,_,"CMP",Op1,_,0,0),
 	op_immediate(Op1,0),
-	pc_relative_operand(EA_cmp,2,DataEnd),
-	section(".data",SizeData,BegData),
-	DataEnd=BegData+SizeData.
+	pc_relative_operand(EA_cmp,2,DataRef),
+	section(".bss",_,BegData),
+	DataRef>=BegData,
+	DataRef<=BegData+64.
