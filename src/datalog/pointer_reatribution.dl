@@ -105,6 +105,7 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	moved_label_candidate(EA,Op_index,Dest,New_dest,Diff),
 	Diff<=Diff_min.
 
+moved_label_class(EA,"collides with pointer"),
 moved_label(EA,Op_index,Dest,New_dest):-
 	symbolic_operand(EA,Op_index,Dest,"data"),
 	//it collides with a pointer
@@ -204,12 +205,12 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 
 // references with offset in PIE or REL code
 moved_displacement_candidate(EA,Op_index,Dest,SymbolAddr,0):-
-    !binary_type("EXEC"),
+  !binary_type("EXEC"),
   data_access(EA,Op_index,_,_,_,_,Dest,_),
-    instruction_displacement_offset(EA,Op_index,DisplacementOffset),
-    relocation(EA+DisplacementOffset,_,Symbol,_),
-    symbol(SymbolAddr,_,_,_,_,Symbol),
-    SymbolAddr!=Dest.
+  instruction_displacement_offset(EA,Op_index,DisplacementOffset),
+  relocation(EA+DisplacementOffset,_,Symbol,_),
+  symbol(SymbolAddr,_,_,_,_,Symbol),
+  SymbolAddr!=Dest.
 
 // we take the candidate with the shortest distance/priority
 .decl discarded_moved_displacement_candidate(EA:address,Op_index:number,Dest:address,New_dest:address)
@@ -262,6 +263,7 @@ dest_enlarged_data_section(EA_def,Reg,New_dest,Beg-MultAbs,Beg+SizeSect+MultAbs)
 
 
 // immediate used to access memory
+moved_label_class(EA_from,"immediate used to access memory"),
 moved_immediate_candidate(EA_from,Imm_index,Immediate,New_dest):-
 	data_access(EA_access,Op_index,_,Reg2,Reg3,_,_,Size),
 	data_access_pattern_candidate(New_dest,_,Mult,EA_access),
@@ -269,7 +271,7 @@ moved_immediate_candidate(EA_from,Imm_index,Immediate,New_dest):-
 	regular_data_section(Name),
 	section(Name,SizeSect,Beg),
 	New_dest>=Beg,
-	New_dest<=Beg+SizeSect,
+	New_dest<Beg+SizeSect,
 
 	(Reg=Reg2;Reg=Reg3),
 	value_reg_at_operand(EA_access,Op_index,Reg,EA_from,_,_,Type),
@@ -311,9 +313,10 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	moved_immediate_candidate(EA,Op_index,Dest,New_dest).
 
 // If the destination is in the middle of a known symbol
+moved_label_class(EA,"middle of symbol"),
 moved_label(EA,Op_index,Dest,Address):-
  	symbolic_operand(EA,Op_index,Dest,"data"),
-    !moved_displacement_candidate(EA,Op_index,_,_,_),
+  !moved_displacement_candidate(EA,Op_index,_,_,_),
   !moved_immediate_candidate(EA,Op_index,_,_),
  	symbol(Address,Size,_,_,_,_),
  	Address<Dest,
