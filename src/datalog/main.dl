@@ -304,6 +304,7 @@ data_section(".init_array").
 data_section(".fini_array").
 data_section(".data.rel.ro").
 data_section(".tm_clone_table").
+data_section(".dynamic").
 
 .decl regular_data_section(name:symbol)
 
