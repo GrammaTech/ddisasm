@@ -446,13 +446,14 @@ static void buildSymbols(gtirb::Module &module, souffle::SouffleProgram *prog)
         else
             gtirb::emplaceSymbol(module, C, base, name, getSymbolType(sectionIndex, scope));
     }
-
-    if(!module.findSymbols("main"))
-        for(gtirb::Addr addrMain : convertRelation<gtirb::Addr>("main_function", prog))
-            gtirb::emplaceSymbol(module, C, addrMain, "main");
-    if(!module.findSymbols("_start"))
-        for(gtirb::Addr addrMain : convertRelation<gtirb::Addr>("start_function", prog))
-            gtirb::emplaceSymbol(module, C, addrMain, "_start");
+    for(auto &output : *prog->getRelation("inferred_function_name"))
+    {
+        gtirb::Addr addr;
+        std::string name;
+        output >> addr >> name;
+        if(!module.findSymbols(name))
+            gtirb::emplaceSymbol(module, C, addr, name);
+    }
 }
 
 static void buildSections(gtirb::Module &module, Elf_reader &elf, souffle::SouffleProgram *prog)
