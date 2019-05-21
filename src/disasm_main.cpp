@@ -1301,8 +1301,8 @@ using namespace std;
 int main(int argc, char **argv)
 {
     std::vector<std::string> sections{".plt.got", ".fini", ".init", ".plt", ".text"};
-    std::vector<std::string> dataSections{".data",       ".rodata",        ".fini_array",
-                                          ".init_array", ".data.rel.ro",   ".got.plt",
+    std::vector<std::string> dataSections{".data",       ".rodata",         ".fini_array",
+                                          ".init_array", ".data.rel.ro",    ".got.plt",
                                           ".got",        ".tm_clone_table", ".dynamic"};
 
     po::options_description desc("Allowed options");
