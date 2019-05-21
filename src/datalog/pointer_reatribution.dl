@@ -278,7 +278,9 @@ moved_immediate_candidate(EA_from,Imm_index,Immediate,New_dest):-
 	Type!="incomplete",
 	mov_immediate_to_reg(EA_from,Reg,Imm_index,Immediate),
   Beg-Mult <= Immediate,
-  Immediate <= Beg+SizeSect+Mult.
+  Immediate <= Beg+SizeSect+Mult,
+	//only move if the original does not fall in the section
+	(Immediate< Beg ; Immediate> Beg+SizeSect).
 
 
 moved_immediate_candidate(EA,Imm_index,Immediate,New_dest):-
