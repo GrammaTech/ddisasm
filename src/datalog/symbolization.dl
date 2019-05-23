@@ -220,6 +220,13 @@ symbol_minus_symbol_candidate(EA,EA,Symbol2):-
 	relative_address(EA+4,EA,Symbol3),
 	block(Symbol3).
 
+symbol_minus_symbol_candidate(EA,EA,Symbol2):-
+	relative_address(EA,EA,Symbol2),
+	block(Symbol2),
+	data_access_pattern(EA+4,4,4,_Ref),
+	relative_address(EA+4,EA,Symbol3),
+	block(Symbol3).
+
 // more permissive symbol_minus_symbol_candidate starting point
 symbol_minus_symbol_candidate(EA,EA,Symbol2):-
 	relative_address(EA,EA,Symbol1),
@@ -242,8 +249,16 @@ symbol_minus_symbol_candidate(EA,EA_ref,Symbol2):-
 symbol_minus_symbol_candidate(EA+4,EA_ref,Symbol):-
 	symbol_minus_symbol_candidate(EA,EA_ref,_),
   relative_address(EA+4,EA_ref,Symbol),
-	!preferred_data_access(EA+4,_),
-	block(Symbol).
+	block(Symbol),
+	(
+		!preferred_data_access(EA+4,_)
+	;
+	  preferred_data_access(EA+4,EA_label),
+    data_access_pattern(EA_label,4,4,_)
+	;
+	  preferred_data_access(EA+4,EA_label),
+    data_access_pattern(EA_label,4,0,_)
+	).
 ////////////////////////////////////////////////////////////////////////
 // address_in_data considers anything that points to the code region
 // this refinement restricts that to the beginning of the final blocks
