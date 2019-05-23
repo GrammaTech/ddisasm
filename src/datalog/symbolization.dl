@@ -97,7 +97,7 @@ This module also computes and symbol_minus_symbol.
 .decl symbolic_operand_total_points(ea:address,operand_index:number,points:number)
 
 symbolic_operand_candidate(EA,Op_index,Dest,Type):-
-    binary_type("EXEC"),
+  binary_type("EXEC"),
 	code(EA),
 	instruction_get_op(EA,Op_index,Op),
 	(
@@ -133,7 +133,10 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
     direct_call(EA,Dest),
     Op_index=1
     ;
-    direct_jump(EA,Dest),
+		direct_jump(EA,Dest),
+		//ignore artificial jumps from loop instructions/prefix
+    instruction_get_operation(EA,Operation),
+    jump_operation(Operation),
     Op_index=1
     ;
     pc_relative_operand(EA,Op_index,Dest)

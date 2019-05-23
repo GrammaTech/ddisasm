@@ -83,6 +83,7 @@ moved_data_label(EA,Dest,Address):-
 .decl moved_label_candidate(EA:address,Index:number,Val:address,New_val:address,Diff:number)
 
 moved_label_candidate(EA_def2,Op_index,Dest,New_dest,Diff):-
+  binary_type("EXEC"),
 	cmp_reg_to_reg(EA,Reg1,Reg2),
 	def_used(EA_def1,Reg1,EA,_),
 	dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End),
@@ -107,6 +108,7 @@ moved_label(EA,Op_index,Dest,New_dest):-
 
 moved_label_class(EA,"collides with pointer"),
 moved_label(EA,Op_index,Dest,New_dest):-
+  binary_type("EXEC"),
 	symbolic_operand(EA,Op_index,Dest,"data"),
 	//it collides with a pointer
 	pointer_size(Pt_size),
@@ -116,16 +118,17 @@ moved_label(EA,Op_index,Dest,New_dest):-
 // the pointer is likely to point to the wrong section
 moved_label_class(EA,"indirect wrong section"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Diff):-
+  binary_type("EXEC"),
 	symbolic_operand(EA,Op_index,Dest,"data"),
 	data_access(EA,Op_index,_,_,_,_,_,_),
 	data_access_pattern_candidate(Access_dest,_,Mult,EA),
 	(
 	Access_dest!=Dest,
-    New_dest=Access_dest,
-    Diff= max(Access_dest-Dest, Dest-Access_dest)
+  New_dest=Access_dest,
+  Diff= max(Access_dest-Dest, Dest-Access_dest)
 	;
 	Access_dest=Dest,
-    New_dest=Dest+Mult,
+  New_dest=Dest+Mult,
   Diff=Mult
 	),
 	
@@ -161,6 +164,7 @@ access_non_regular_data_section(EA,Op_index):-
 
 moved_label_class(EA,"miss section with access"),
 moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
+    binary_type("EXEC"),
     data_access(EA,Op_index,_,_,_,_,Dest,_), Dest>=0,
 		(
 			!symbolic_operand(EA,Op_index,_,_);
@@ -182,6 +186,7 @@ moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
 
 moved_label_class(EA,"constant and multiplied reg"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
+  binary_type("EXEC"),
 	data_access(EA,Op_index,"NONE","NONE",RegMult,Mult,Dest,_),
 	!instruction_get_operation(EA,"LEA"),
 	!symbolic_operand(EA,Op_index,_,_),
@@ -202,6 +207,7 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 
 moved_label_class(EA,"constant and multiplied reg2"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
+  binary_type("EXEC"),
 	data_access(EA,Op_index,"NONE",Reg,"NONE",_,Dest,_),
 	!instruction_get_operation(EA,"LEA"),
 	!symbolic_operand(EA,Op_index,_,_),
@@ -278,6 +284,7 @@ dest_enlarged_data_section(EA_def,Reg,New_dest,Beg-MultAbs,Beg+SizeSect+MultAbs)
 // immediate used to access memory
 moved_label_class(EA_from,"immediate used to access memory"),
 moved_immediate_candidate(EA_from,Imm_index,Immediate,New_dest):-
+  binary_type("EXEC"),
 	data_access(EA_access,Op_index,_,Reg2,Reg3,_,_,Size),
 	data_access_pattern_candidate(New_dest,_,Mult,EA_access),
 
@@ -297,6 +304,7 @@ moved_immediate_candidate(EA_from,Imm_index,Immediate,New_dest):-
 
 
 moved_immediate_candidate(EA,Imm_index,Immediate,New_dest):-
+  binary_type("EXEC"),
 	cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate),
 	def_used(EA_def,Reg,EA,_),
 	dest_enlarged_data_section(EA_def,Reg,New_dest,Beg,End),
@@ -304,6 +312,7 @@ moved_immediate_candidate(EA,Imm_index,Immediate,New_dest):-
   Immediate <= End.
 
 moved_immediate_candidate(EA_def2,Imm_index,Immediate,New_dest):-
+  binary_type("EXEC"),
 	cmp_reg_to_reg(EA,Reg1,Reg2),
 	def_used(EA_def1,Reg1,EA,_),
 	dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End),
@@ -315,14 +324,14 @@ moved_immediate_candidate(EA_def2,Imm_index,Immediate,New_dest):-
   Immediate <= End.
 
 moved_immediate_candidate(EA,Op_index,Dest,SymbolAddr):-
-    !binary_type("EXEC"),
-    code(EA),
-    instruction_immediate_offset(EA,Op_index,ImmediateOffset),
-    instruction_get_src_op(EA,Op_index,Op),
-    op_immediate(Op,Dest),
-    relocation(EA+ImmediateOffset,_,Symbol,_),
-    symbol(SymbolAddr,_,_,_,_,Symbol),
-    SymbolAddr!=Dest.
+  !binary_type("EXEC"),
+  code(EA),
+  instruction_immediate_offset(EA,Op_index,ImmediateOffset),
+  instruction_get_src_op(EA,Op_index,Op),
+  op_immediate(Op,Dest),
+  relocation(EA+ImmediateOffset,_,Symbol,_),
+  symbol(SymbolAddr,_,_,_,_,Symbol),
+  SymbolAddr!=Dest.
 
 moved_label(EA,Op_index,Dest,New_dest):-
 	moved_immediate_candidate(EA,Op_index,Dest,New_dest).
