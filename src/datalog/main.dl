@@ -316,6 +316,7 @@ regular_data_section(".bss").
 
 code_section(".text").
 code_section(".plt").
+code_section(".plt.sec").
 code_section(".plt.got").
 code_section(".fini").
 code_section(".init").
@@ -502,10 +503,11 @@ defined_symbol(EA,Size,Type,Scope,SectIndex,Name):-
 
 plt_section(".plt").
 plt_section(".plt.got").
+plt_section(".plt.sec").
 
 
 .decl plt_entry(ea:address, function:symbol)
-.output plt_entry
+
 
 plt_entry(EA,Function):-
 	plt_section(SecName),
@@ -515,10 +517,17 @@ plt_entry(EA,Function):-
 	pc_relative_jump(EA,Got_entry),
 	relocation(Got_entry,_,Function,_).
 
+.decl plt_block(block:address,function:symbol)
+.output plt_block
+
+plt_block(Block,Function):-
+	plt_entry(EA,Function),
+	code_in_refined_block(EA,Block).
+
 .decl plt_data_reference(ea:address)
 
 plt_data_reference(EA):-
-    plt_entry(Dest,_),
+    plt_block(Dest,_),
 	symbolic_data(EA,Dest).
 
 //////////////////////////////////////////////////////////////////////////

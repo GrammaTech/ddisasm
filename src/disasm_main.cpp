@@ -521,12 +521,12 @@ static void expandSymbolForwarding(gtirb::Module &module, souffle::SouffleProgra
 {
     auto *symbolForwarding =
         module.getAuxData<std::map<gtirb::UUID, gtirb::UUID>>("symbolForwarding");
-    for(auto &output : *prog->getRelation("plt_entry"))
+    for(auto &output : *prog->getRelation("plt_block"))
     {
         gtirb::Addr ea;
         std::string name;
         output >> ea >> name;
-        // the inference of plt_entry guarantees that there is at most one
+        // the inference of plt_block guarantees that there is at most one
         // destination symbol for each source
         auto foundSrc = module.findSymbols(ea);
         auto foundDest = module.findSymbols(name);
@@ -1300,7 +1300,7 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-    std::vector<std::string> sections{".plt.got", ".fini", ".init", ".plt", ".text"};
+    std::vector<std::string> sections{".plt.got", ".fini", ".init", ".plt", ".text", ".plt.sec"};
     std::vector<std::string> dataSections{".data",       ".rodata",         ".fini_array",
                                           ".init_array", ".data.rel.ro",    ".got.plt",
                                           ".got",        ".tm_clone_table", ".dynamic"};
