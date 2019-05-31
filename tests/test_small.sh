@@ -49,8 +49,8 @@ for ((i = 0; i < ${#examples[@]}; i++)); do
 	export CC=$compiler
 	export CXX=${cpp_compilers[$j]}
 	for optimization in  "${optimizations[@]}"; do
-	    export CFLAGS=$optimization
-	    echo "#Example $file with $compiler $optimization"
+	    export CFLAGS="$optimization $EXTRA_FLAGS"
+	    echo "#Example $file with $compiler $CFLAGS"
         if !(./reassemble_and_test.sh $strip -stir $dir${examples[$i]}) then
 	       ((error++))
 	       else

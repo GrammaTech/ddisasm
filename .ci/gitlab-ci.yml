@@ -67,7 +67,7 @@ run-arch:
     OS: 'arch'
   script:
     - docker run --cpus=8 ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
-      "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip"
+      "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip && EXTRA_FLAGS=-fcf-protection ./test_small.sh"
 
 cleanup-ubuntu16:
   stage: cleanup
