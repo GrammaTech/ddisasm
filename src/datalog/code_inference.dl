@@ -102,7 +102,7 @@ may_have_symbolic_immediate(Src,Dest):-
 	;
      binary_type("EXEC"),
      instruction_get_operation(Src,Operation),
-     !operation_not_for_address(Operation)
+     !logic_operation(Operation)
 	).
 
 may_have_symbolic_immediate(Src,Dest):-
@@ -110,11 +110,6 @@ may_have_symbolic_immediate(Src,Dest):-
 
 may_have_symbolic_immediate(Src,Dest):-
     direct_call(Src,Dest).
-
-.decl operation_not_for_address(Operation:symbol)
-
-operation_not_for_address("AND").
-operation_not_for_address("XOR").
 
 .decl invalid(EA:address)
 

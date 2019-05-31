@@ -287,6 +287,12 @@ arithmetic_operation("DEC").
 arithmetic_operation("IMUL").
 arithmetic_operation("SHL").
 
+.decl logic_operation(Operation:symbol)
+
+logic_operation("AND").
+logic_operation("XOR").
+logic_operation("OR").
+logic_operation("TEST").
 
 .decl read_only_operation(Operation:symbol)
 

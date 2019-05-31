@@ -170,6 +170,19 @@ symbolic_operand_point(EA,Imm_index,-1,"compared to non-address"):-
 	cmp_immediate_to_reg(EA2,Reg,Imm_index2,_),
 	!symbolic_operand_candidate(EA2,Imm_index2,_,_).
 
+symbolic_operand_point(EA,Imm_index,-2,"logical operation"):-
+    symbolic_operand_candidate(EA,Imm_index,_,_),
+    instruction_get_op(EA,Imm_index,Op),
+    op_immediate(Op,_),
+    instruction_get_operation(EA,Operation),
+    logic_operation(Operation).
+
+symbolic_operand_point(EA,Imm_index,-1,"compared to result of logical operation"):-
+    cmp_immediate_to_reg(EA,Reg,Imm_index,_),
+    def_used(EA_def,Reg,EA,_),
+    instruction_get_operation(EA_def,Operation),
+    logic_operation(Operation).
+
 symbolic_operand_point(EA,Op_index,-1,"moved/compared-with-different-size"):-
 	symbolic_operand_candidate(EA,Op_index,_,_),
 	instruction_get_op(EA,Op_index,Op),
