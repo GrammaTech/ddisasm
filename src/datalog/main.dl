@@ -306,6 +306,7 @@ data_section(".data.rel.ro").
 data_section(".tm_clone_table").
 data_section(".dynamic").
 
+
 .decl regular_data_section(name:symbol)
 
 regular_data_section(".rodata").
@@ -572,19 +573,19 @@ main_function(Main_location):-
     code(Prev),
 	symbolic_operand(Prev,1,Main_location,"code").
 
-.decl inferred_function_name(ea:address,name:symbol)
-.output inferred_function_name
+.decl inferred_symbol_name(ea:address,name:symbol)
+.output inferred_symbol_name
 
-inferred_function_name(EA,"_start"):-
+inferred_symbol_name(EA,"_start"):-
 	start_function(EA).
 
-inferred_function_name(EA,"main"):-
+inferred_symbol_name(EA,"main"):-
 	main_function(EA).
 
-inferred_function_name(EA,"__do_global_dtors_aux"):-
+inferred_symbol_name(EA,"__do_global_dtors_aux"):-
 	function_symbol(EA,"__do_global_dtors_aux").
 
-inferred_function_name(EA,"__do_global_dtors_aux"):-
+inferred_symbol_name(EA,"__do_global_dtors_aux"):-
 	!function_symbol(EA,"__do_global_dtors_aux"),
 	function_entry2(EA),
 	address_in_data(FiniArray,EA),
@@ -598,3 +599,7 @@ inferred_function_name(EA,"__do_global_dtors_aux"):-
 	section(".bss",_,BegData),
 	DataRef>=BegData,
 	DataRef<=BegData+64.
+
+inferred_symbol_name(EA,"_DYNAMIC"):-
+	!symbol(EA,_,_,_,_,"_DYNAMIC"),
+	section(".dynamic",_,EA).

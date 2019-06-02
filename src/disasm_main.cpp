@@ -446,7 +446,7 @@ static void buildSymbols(gtirb::Module &module, souffle::SouffleProgram *prog)
         else
             gtirb::emplaceSymbol(module, C, base, name, getSymbolType(sectionIndex, scope));
     }
-    for(auto &output : *prog->getRelation("inferred_function_name"))
+    for(auto &output : *prog->getRelation("inferred_symbol_name"))
     {
         gtirb::Addr addr;
         std::string name;
