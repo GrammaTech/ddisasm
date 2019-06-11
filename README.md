@@ -12,7 +12,7 @@ location*, *symbolization*, and *function boundaries*.  The results of
 this analysis, a refined set of datalog facts, are then translated to
 the [GTIRB](https://github.com/grammatech/gtirb) intermediate
 representation for binary analysis and reverse engineering.  The
-[GTIRB pretty printer](https://github.com/grammatech/gtirb-pprinte)
+[GTIRB pretty printer](https://github.com/grammatech/gtirb-pprinter)
 may then be used to pretty print the GTIRB to reassemblable assembly
 code.
 
