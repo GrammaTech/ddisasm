@@ -146,18 +146,20 @@ Please follow the Code Requirements in
 
 ## Some References
 
+1. [Datalog Disassembly](https://arxiv.org/abs/1906.03969)
+
 1. [Souffle](https://github.com/souffle-lang/souffle)
 
-2. [Capstone disassembler](http://www.capstone-engine.org/)
+1. [Capstone disassembler](http://www.capstone-engine.org/)
 
-3. [Control Flow Integrity for COTS Binaries](http://seclab.cs.sunysb.edu/seclab/pubs/usenix13.pdf)
+1. [Control Flow Integrity for COTS Binaries](http://seclab.cs.sunysb.edu/seclab/pubs/usenix13.pdf)
 
-4. [Alias analysis for Assembly](http://reports-archive.adm.cs.cmu.edu/anon/anon/usr/ftp/2006/CMU-CS-06-180R.pdf)
+1. [Alias analysis for Assembly](http://reports-archive.adm.cs.cmu.edu/anon/anon/usr/ftp/2006/CMU-CS-06-180R.pdf)
 
-5. [Reassembleable Disassembling](https://www.usenix.org/system/files/conference/usenixsecurity15/sec15-paper-wang-shuai.pdf)
+1. [Reassembleable Disassembling](https://www.usenix.org/system/files/conference/usenixsecurity15/sec15-paper-wang-shuai.pdf)
 
-6. [Ramblr: Making disassembly great again](https://pdfs.semanticscholar.org/dcf5/dc7e6ae2614dd0079b851e3f292148366ca8.pdf)
+1. [Ramblr: Making disassembly great again](https://pdfs.semanticscholar.org/dcf5/dc7e6ae2614dd0079b851e3f292148366ca8.pdf)
 
-7. [An In-Depth Analysis of Disassembly on Full-Scale x86/x64 Binaries](https://www.usenix.org/system/files/conference/usenixsecurity16/sec16_paper_andriesse.pdf)
+1. [An In-Depth Analysis of Disassembly on Full-Scale x86/x64 Binaries](https://www.usenix.org/system/files/conference/usenixsecurity16/sec16_paper_andriesse.pdf)
 
-8. [Binary Code is Not Easy](https://dl.acm.org/citation.cfm?id=2931047)
+1. [Binary Code is Not Easy](https://dl.acm.org/citation.cfm?id=2931047)
