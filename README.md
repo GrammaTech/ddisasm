@@ -36,7 +36,7 @@ The analysis contains two parts:
 
 - The analysis depends on [souffle](https://github.com/souffle-lang)
   being installed. Configure souffle with `--enable-64bit-domain
-  --disable-provenance`.
+  --disable-ncurses`.
 
 - For printing assembler code the datalog disassembler requires the
   [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
