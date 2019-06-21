@@ -1195,24 +1195,6 @@ static void writeFacts(Dl_decoder &decoder, Elf_reader &elf, const std::string &
     op_indirect_file.close();
 }
 
-template <typename T>
-void addRelation(souffle::SouffleProgram *prog, const std::string &name, const std::vector<T> &data)
-{
-    auto *rel = prog->getRelation(name);
-    for(const auto elt : data)
-    {
-        souffle::tuple t(rel);
-        t << elt;
-        rel->insert(t);
-    }
-}
-
-template <class Func, size_t... Is>
-constexpr void static_for(Func &&f, std::integer_sequence<size_t, Is...>)
-{
-    (f(std::integral_constant<size_t, Is>{}), ...);
-}
-
 template <class... T>
 souffle::tuple &operator<<(souffle::tuple &t, const std::tuple<T...> &x)
 {
@@ -1263,6 +1245,24 @@ souffle::tuple &operator<<(souffle::tuple &t, const std::pair<Dl_operator, int64
     }
 
     return t;
+}
+
+template <typename T>
+void addRelation(souffle::SouffleProgram *prog, const std::string &name, const std::vector<T> &data)
+{
+    auto *rel = prog->getRelation(name);
+    for(const auto elt : data)
+    {
+        souffle::tuple t(rel);
+        t << elt;
+        rel->insert(t);
+    }
+}
+
+template <class Func, size_t... Is>
+constexpr void static_for(Func &&f, std::integer_sequence<size_t, Is...>)
+{
+    (f(std::integral_constant<size_t, Is>{}), ...);
 }
 
 static void loadInputs(souffle::SouffleProgram *prog, Elf_reader &elf, const Dl_decoder &decoder)
