@@ -58,6 +58,9 @@ Use the following options to configure cmake:
 - Normally CMake will find GTIRB automatically, but if it does not you
   can pass `-Dgtirb_DIR=<path-to-gtirb-build>`.
 
+- By default ddisasm will download a copy of the boost libraries that it uses. If you want to use your local boost installation, use the flag:
+ `-DDDISASM_USE_SYSTEM_BOOST=on`
+
 Once the dependencies are installed, you can configure and build as
 follows:
 
