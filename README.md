@@ -12,7 +12,7 @@ location*, *symbolization*, and *function boundaries*.  The results of
 this analysis, a refined set of datalog facts, are then translated to
 the [GTIRB](https://github.com/grammatech/gtirb) intermediate
 representation for binary analysis and reverse engineering.  The
-[GTIRB pretty printer](https://github.com/grammatech/gtirb-pprinte)
+[GTIRB pretty printer](https://github.com/grammatech/gtirb-pprinter)
 may then be used to pretty print the GTIRB to reassemblable assembly
 code.
 
@@ -158,7 +158,7 @@ Please follow the Code Requirements in
 
 1. [Reassembleable Disassembling](https://www.usenix.org/system/files/conference/usenixsecurity15/sec15-paper-wang-shuai.pdf)
 
-1. [Ramblr: Making disassembly great again](https://pdfs.semanticscholar.org/dcf5/dc7e6ae2614dd0079b851e3f292148366ca8.pdf)
+1. [Ramblr: Making reassembly great again](https://pdfs.semanticscholar.org/dcf5/dc7e6ae2614dd0079b851e3f292148366ca8.pdf)
 
 1. [An In-Depth Analysis of Disassembly on Full-Scale x86/x64 Binaries](https://www.usenix.org/system/files/conference/usenixsecurity16/sec16_paper_andriesse.pdf)
 
