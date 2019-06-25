@@ -38,6 +38,8 @@ The analysis contains two parts:
   being installed. At the moment we rely on the [1.5.1 souffle release](https://github.com/souffle-lang/souffle/releases/tag/1.5.1) configured with `--enable-64bit-domain
   --disable-provenance`.
 
+- [Capstone version 4.0.1](http://www.capstone-engine.org/)
+
 - For printing assembler code the datalog disassembler requires the
   [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
 
