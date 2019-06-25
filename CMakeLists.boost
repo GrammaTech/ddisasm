@@ -10,6 +10,14 @@ if( UNIX )
   set( Boost_b2_Command ./b2 )
 endif()
 
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  set(Boost_toolset msvc)
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
+  set(Boost_toolset gcc)
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
+  set(Boost_toolset clang)
+endif()
+
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   set(Boost_address_model 64)
 else()
@@ -21,8 +29,8 @@ ExternalProject_Add(Boost
   PREFIX "${CMAKE_BINARY_DIR}/boost"
   URL ${Boost_url}
   UPDATE_COMMAND ""
-  CONFIGURE_COMMAND ${Boost_Bootstrap_Command} --prefix=${CMAKE_BINARY_DIR}/boost/ --with-libraries=program_options
-  BUILD_COMMAND ${Boost_b2_Command} install --prefix=${CMAKE_BINARY_DIR}/boost address-model=${Boost_address_model} link=static,shared
+  CONFIGURE_COMMAND ${Boost_Bootstrap_Command} --prefix=${CMAKE_BINARY_DIR}/boost/ --with-libraries=program_options --with-toolset=${Boost_toolset}
+  BUILD_COMMAND ${Boost_b2_Command} install --prefix=${CMAKE_BINARY_DIR}/boost address-model=${Boost_address_model} link=static,shared toolset=${Boost_toolset}
   INSTALL_COMMAND ""
   LOG_DOWNLOAD ON
   LOG_CONFIGURE ON
