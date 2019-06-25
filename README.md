@@ -37,6 +37,17 @@ The analysis contains two parts:
 - The analysis depends on [souffle](https://github.com/souffle-lang)
   being installed. At the moment we rely on the [1.5.1 souffle release](https://github.com/souffle-lang/souffle/releases/tag/1.5.1) configured with `--enable-64bit-domain
   --disable-provenance`.
+  The easiest way to install the 1.5.1 souffle release is:
+```
+$ git clone -b 1.5.1 https://github.com/souffle-lang/souffle
+```
+followed by the standard [build instructions](https://souffle-lang.github.io/docs/build/):
+```
+$ cd souffle
+$ sh ./bootstrap
+$ ./configure --enable-64bit-domain --disable-provenance
+$ sudo make -j4 install
+```
 
 - [Capstone version 4.0.1](http://www.capstone-engine.org/)
 
