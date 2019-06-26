@@ -1,5 +1,3 @@
-include(CheckCXXSourceCompiles)
-
 # ===== generated souffle code =====
 find_program(SOUFFLE souffle
 	HINTS $ENV{PATH}
@@ -49,18 +47,7 @@ add_custom_command(OUTPUT ${GENERATED_CPP}
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
 	set(OPENMP_FLAGS -fopenmp)
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
-	check_cxx_source_compiles("
-	#include <ciso646>
-	int main() {
-		return _LIBCPP_VERSION;
-	}
-	" USING_LIBCPP)
-	
-	if(${USING_LIBCPP})
-		set(OPENMP_FLAGS -fopenmp=libomp)
-	else()
-		set(OPENMP_FLAGS -fopenmp=libgomp)
-	endif()
+	set(OPENMP_FLAGS -fopenmp=libgomp)
 endif()
 
 # ===== souffle_disasm =====
