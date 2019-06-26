@@ -52,12 +52,17 @@ private:
 
     std::vector<Elf64_Rela> dyn_relocations;
     std::vector<Elf64_Rela> other_relocations;
+
+    std::vector<Elf64_Dyn> dynamic_entries;
+
     bool check_type();
     void read_header();
     void read_sections();
     void read_symbols();
     void read_dynamic_symbols();
     void read_relocations();
+    void read_dynamic_section();
+
     std::string get_relocation_type(int type);
     void print_symbol_table(std::ostream& stream, std::vector<Elf64_Sym>& symbol_table,
                             std::vector<std::string>& symbol_name_table);
@@ -94,6 +99,9 @@ public:
     void print_relocations(std::ostream&);
     bool print_relocations_to_file(const std::string& filename);
     std::vector<Elf_reader::relocation> get_relocations();
+
+    std::vector<std::string> get_libraries();
+    std::vector<std::string> get_library_paths();
 
     char* get_section(const std::string& name, uint64_t& buff, Elf64_Addr& initial_addr);
     char* get_section(const std::string& name, uint64_t& buff);

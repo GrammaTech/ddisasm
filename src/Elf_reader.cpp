@@ -44,6 +44,7 @@ Elf_reader::Elf_reader(string filename)
         read_symbols();
         read_dynamic_symbols();
         read_relocations();
+        read_dynamic_section();
     }
 }
 
@@ -197,6 +198,24 @@ void Elf_reader::read_relocations()
                     dyn_relocations.push_back(relocation);
                 else
                     other_relocations.push_back(relocation);
+            }
+        }
+    }
+}
+
+void Elf_reader::read_dynamic_section()
+{
+    for(size_t section_index = 0; section_index < sections.size(); section_index++)
+    {
+        if(sections[section_index].sh_type == SHT_DYNAMIC)
+        {
+            int num_entries = sections[section_index].sh_size / sizeof(Elf64_Dyn);
+            file.seekg(sections[section_index].sh_offset, ios::beg);
+            for(int i = 0; i < num_entries; i++)
+            {
+                Elf64_Dyn dynamic_entry;
+                file.read((char*)(&dynamic_entry), sizeof(Elf64_Dyn));
+                dynamic_entries.push_back(dynamic_entry);
             }
         }
     }
@@ -524,6 +543,46 @@ vector<Elf_reader::relocation> Elf_reader::get_relocations()
                             symbol_names[symbol_index], relocation.r_addend);
     }
     return result;
+}
+
+vector<std::string> Elf_reader::get_libraries()
+{
+    int dynstr_indx = get_section_index(".dynstr");
+    vector<std::string> libraries;
+    for(auto dyn_entry : dynamic_entries)
+    {
+        if(dyn_entry.d_tag == DT_NEEDED)
+        {
+            std::stringstream buff;
+            file.seekg((sections[dynstr_indx].sh_offset + dyn_entry.d_un.d_val), ios::beg);
+            read_string(buff);
+            libraries.push_back(buff.str());
+        }
+    }
+    return libraries;
+}
+
+vector<std::string> Elf_reader::get_library_paths()
+{
+    int dynstr_indx = get_section_index(".dynstr");
+    vector<std::string> libraryPaths;
+    for(auto dyn_entry : dynamic_entries)
+    {
+        if(dyn_entry.d_tag == DT_RPATH || dyn_entry.d_tag == DT_RUNPATH)
+        {
+            file.seekg((sections[dynstr_indx].sh_offset + dyn_entry.d_un.d_val), ios::beg);
+            std::stringstream buff;
+            read_string(buff);
+            std::string path;
+            buff.seekg(std::ios::beg);
+            while(getline(buff, path, ':'))
+            {
+                if(!path.empty())
+                    libraryPaths.push_back(path);
+            }
+        }
+    }
+    return libraryPaths;
 }
 
 int Elf_reader::get_section_index(const string& name)
