@@ -5,88 +5,170 @@ variables:
 stages:
   - check-format
   - build
-  - test-and-tag-ubuntu16
-  - test-and-tag-ubuntu18
-  - test-and-tag-arch
+  - test-and-tag
   - cleanup
+
+.build-template: &build
+  script:
+    - git clone https://git.grammatech.com/rewriting/gtirb.git
+    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git
+    - docker build -f .ci/Dockerfile.${OS}-${COMPILER} -t ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} .
+
+.cleanup-template: &cleanup
+  script:
+    - docker rmi -f ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}
 
 check-format:
   stage: check-format
   script:
     - docker build --rm -f .ci/Dockerfile.formatter .
 
-.build-template: &build
-  script:
-    - git clone https://git.grammatech.com/rewriting/gtirb.git
-    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git
-    - docker build -f .ci/Dockerfile.$OS -t ${LOCAL_IMAGE_NAME}-${OS} .
-
-build-ubuntu16:
+build-ubuntu16-gcc:
   stage: build
   variables:
     OS: 'ubuntu16'
+    COMPILER: 'gcc'
   <<: *build
 
-build-ubuntu18:
+build-ubuntu18-gcc:
   stage: build
   variables:
     OS: 'ubuntu18'
+    COMPILER: 'gcc'
   <<: *build
 
-build-arch:
+build-arch-gcc:
   stage: build
   variables:
     OS: 'arch'
+    COMPILER: 'gcc'
   <<: *build
 
-run-ubuntu16:
-  stage: test-and-tag-ubuntu16
+run-ubuntu16-gcc:
+  stage: test-and-tag
   variables:
     OS: 'ubuntu16'
+    COMPILER: 'gcc'
   script:
     - docker run  --cpus=8 ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
       "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip"
-    - if [ "$CI_BUILD_REF_NAME" == "master" ] && [ "$OS" == "ubuntu16" ];
+    - if [ "$CI_BUILD_REF_NAME" == "master" ];
       then
-        docker tag ${LOCAL_IMAGE_NAME}-${OS} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
+        docker tag ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
         docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $DOCKER_REGISTRY;
         docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
       fi
 
-run-ubuntu18:
-  stage: test-and-tag-ubuntu18
+run-ubuntu18-gcc:
+  stage: test-and-tag
   variables:
     OS: 'ubuntu18'
+    COMPILER: 'gcc'
   script:
-    - docker run --cpus=8 ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
+    - docker run --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c \
       "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip"
 
-run-arch:
-  stage: test-and-tag-arch
+run-arch-gcc:
+  stage: test-and-tag
   variables:
     OS: 'arch'
+    COMPILER: 'gcc'
   script:
-    - docker run --cpus=8 ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
+    - docker run --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c \
       "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip && EXTRA_FLAGS=-fcf-protection ./test_small.sh"
 
-cleanup-ubuntu16:
+cleanup-ubuntu16-gcc:
   stage: cleanup
   variables:
     OS: 'ubuntu16'
-  script:
-    - docker rmi -f ${LOCAL_IMAGE_NAME}-${OS}
+    COMPILER: 'gcc'
+  <<: *cleanup
 
-cleanup-ubuntu18:
+cleanup-ubuntu18-gcc:
   stage: cleanup
   variables:
     OS: 'ubuntu18'
-  script:
-    - docker rmi -f ${LOCAL_IMAGE_NAME}-${OS}
+    COMPILER: 'gcc'
+  <<: *cleanup
 
-cleanup-arch:
+cleanup-arch-gcc:
   stage: cleanup
   variables:
     OS: 'arch'
-  script:
-    - docker rmi -f ${LOCAL_IMAGE_NAME}-${OS}
+    COMPILER: 'gcc'
+  <<: *cleanup
 
+build-ubuntu16-clang:
+  stage: build
+  variables:
+    OS: 'ubuntu16'
+    COMPILER: 'clang'
+  <<: *build
+
+build-ubuntu18-clang:
+  stage: build
+  variables:
+    OS: 'ubuntu18'
+    COMPILER: 'clang'
+  <<: *build
+
+build-arch-clang:
+  stage: build
+  variables:
+    OS: 'arch'
+    COMPILER: 'clang'
+  <<: *build
+
+run-ubuntu16-clang:
+  stage: test-and-tag
+  variables:
+    OS: 'ubuntu16'
+    COMPILER: 'clang'
+  script:
+    - docker run  --cpus=8 ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
+      "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip"
+    - if [ "$CI_BUILD_REF_NAME" == "master" ];
+      then
+        docker tag ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
+        docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $DOCKER_REGISTRY;
+        docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
+      fi
+
+run-ubuntu18-clang:
+  stage: test-and-tag
+  variables:
+    OS: 'ubuntu18'
+    COMPILER: 'clang'
+  script:
+    - docker run --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c \
+      "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip"
+
+run-arch-clang:
+  stage: test-and-tag
+  variables:
+    OS: 'arch'
+    COMPILER: 'clang'
+  script:
+    - docker run --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c \
+      "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip && EXTRA_FLAGS=-fcf-protection ./test_small.sh"
+
+cleanup-ubuntu16-clang:
+  stage: cleanup
+  variables:
+    OS: 'ubuntu16'
+    COMPILER: 'clang'
+  <<: *cleanup
+
+cleanup-ubuntu18-clang:
+  stage: cleanup
+  variables:
+    OS: 'ubuntu18'
+    COMPILER: 'clang'
+  <<: *cleanup
+
+cleanup-arch-clang:
+  stage: cleanup
+  variables:
+    OS: 'arch'
+    COMPILER: 'clang'
+  <<: *cleanup

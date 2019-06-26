@@ -1,3 +1,5 @@
+include(CheckCXXSourceCompiles)
+
 # ===== generated souffle code =====
 find_program(SOUFFLE souffle
 	HINTS $ENV{PATH}
@@ -43,6 +45,24 @@ add_custom_command(OUTPUT ${GENERATED_CPP}
   COMMAND ${SOUFFLE} ${CMAKE_CURRENT_SOURCE_DIR}/datalog/main.dl -g souffle_disasm.cpp -j${CORES}
   DEPENDS ${DATALOG_SOURCES})
 
+# determine what flags to use to specify -fopenmp.
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
+	set(OPENMP_FLAGS -fopenmp)
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
+	check_cxx_source_compiles("
+	#include <ciso646>
+	int main() {
+		return _LIBCPP_VERSION;
+	}
+	" USING_LIBCPP)
+	
+	if(${USING_LIBCPP})
+		set(OPENMP_FLAGS -fopenmp=libomp)
+	else()
+		set(OPENMP_FLAGS -fopenmp=libgomp)
+	endif()
+endif()
+
 # ===== souffle_disasm =====
 # First build a static library of all the non-generated code.. This is
 # just a hack to get CMake to use different compile flags (because the
@@ -57,7 +77,8 @@ add_library(disasm_main STATIC
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(disasm_main PRIVATE -Wall -Wextra -Wpointer-arith)
-target_compile_options(disasm_main PRIVATE -Werror -fopenmp)
+target_compile_options(disasm_main PRIVATE -Werror)
+target_compile_options(disasm_main PRIVATE ${OPENMP_FLAGS})
 target_compile_options(disasm_main PRIVATE -O3)
 
 if( ${GTIRB_USE_SYSTEM_BOOST} MATCHES "OFF" )
@@ -77,8 +98,11 @@ add_executable(ddisasm
 target_link_libraries(ddisasm disasm_main)
 target_compile_definitions(ddisasm PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(ddisasm PRIVATE RAM_DOMAIN_SIZE=64)
-target_compile_options(ddisasm PRIVATE -fopenmp)
+target_compile_options(ddisasm PRIVATE ${OPENMP_FLAGS})
 target_compile_options(ddisasm PRIVATE -O3)
-target_link_libraries(ddisasm gomp)
+
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
+	target_link_libraries(ddisasm gomp)
+endif()
 
 install(TARGETS ddisasm DESTINATION bin)
