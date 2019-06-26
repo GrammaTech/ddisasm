@@ -54,7 +54,6 @@ The analysis contains two parts:
 - For printing assembler code the datalog disassembler requires the
   [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
 
-
 ## Building ddisasm
 A C++17 compiler such as gcc 7 or clang 6 is required.
 
@@ -69,8 +68,9 @@ Use the following options to configure cmake:
 - Normally CMake will find GTIRB automatically, but if it does not you
   can pass `-Dgtirb_DIR=<path-to-gtirb-build>`.
 
-- By default ddisasm will download a copy of the boost libraries that it uses. If you want to use your local boost installation, use the flag:
- `-DDDISASM_USE_SYSTEM_BOOST=on`
+- By default ddisasm will download a copy of the boost libraries that
+ it uses. If you want to use your local boost installation, use the
+ flag: `-DDDISASM_USE_SYSTEM_BOOST=on`
 
 Once the dependencies are installed, you can configure and build as
 follows:
@@ -80,7 +80,21 @@ $ cmake ./ -Bbuild
 $ cd build
 $ make
 ```
+## Building ddisasm inside a Docker image
 
+The directory [.ci](https://github.com/GrammaTech/ddisasm/tree/master/.ci) contains
+several Docker files to build ddisasm under different OS. These docker
+files assume that both GTIRB and gtirb-pprinter have been checked out
+inside the ddisasm directory.
+
+The steps to build ddisasm inside a ubuntu 16 image are:
+```
+git clone https://github.com/GrammaTech/ddisasm.git
+cd ddisasm
+git clone https://github.com/GrammaTech/gtirb.git
+git clone https://github.com/GrammaTech/gtirb-pprinter.git
+docker build -f .ci/Dockerfile.ubuntu16 -t ddisasm-ubuntu16 .
+```
 
 ## Running the analysis
 
