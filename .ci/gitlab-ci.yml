@@ -52,7 +52,7 @@ run-ubuntu16-gcc:
     OS: 'ubuntu16'
     COMPILER: 'gcc'
   script:
-    - docker run  --cpus=8 ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
+    - docker run  --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c \
       "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip"
     - if [ "$CI_BUILD_REF_NAME" == "master" ];
       then
@@ -127,7 +127,7 @@ run-ubuntu16-clang:
     OS: 'ubuntu16'
     COMPILER: 'clang'
   script:
-    - docker run  --cpus=8 ${LOCAL_IMAGE_NAME}-${OS} /bin/bash -c \
+    - docker run  --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c \
       "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip"
     - if [ "$CI_BUILD_REF_NAME" == "master" ];
       then
