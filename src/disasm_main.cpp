@@ -1046,18 +1046,6 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
     module.addAuxData("comments", std::move(comments));
 }
 
-static void collectLibraries(gtirb::Module &module, Elf_reader &elf)
-{
-    std::vector<std::string> libraries = elf.get_libraries();
-    module.addAuxData("libraries", std::move(libraries));
-}
-
-static void collectLibraryPaths(gtirb::Module &module, Elf_reader &elf)
-{
-    std::vector<std::string> libraryPaths = elf.get_library_paths();
-    module.addAuxData("libraryPaths", std::move(libraryPaths));
-}
-
 static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
                     souffle::SouffleProgram *prog, bool selfDiagnose)
 {
@@ -1078,8 +1066,8 @@ static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
     buildFunctions(module, prog);
     buildCFG(module, prog);
     buildComments(module, prog, selfDiagnose);
-    collectLibraries(module, elf);
-    collectLibraryPaths(module, elf);
+    module.addAuxData("libraries", elf.get_libraries());
+    module.addAuxData("libraryPaths", elf.get_library_paths());
 }
 
 static void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
