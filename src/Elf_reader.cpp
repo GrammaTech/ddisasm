@@ -96,10 +96,9 @@ void Elf_reader::read_sections()
     {
         // position in the begining of the name
         file.seekg((SecName_section->sh_offset + sections[i].sh_name), ios::beg);
-        std::stringstream buff;
-        read_string(buff);
-        ;
-        section_names.push_back(buff.str());
+        std::string name;
+        getline(file,name,'\0');
+        section_names.push_back(name);
     }
 }
 void Elf_reader::read_dynamic_symbols()
@@ -127,11 +126,10 @@ void Elf_reader::read_dynamic_symbols()
     // read the names
     for(auto symbol : dyn_symbols)
     {
-        std::stringstream buff;
         file.seekg((sections[dynstr_indx].sh_offset + symbol.st_name), ios::beg);
-        read_string(buff);
-        ;
-        dyn_symbol_names.push_back(buff.str());
+        std::string name;
+        getline(file,name,'\0');
+        dyn_symbol_names.push_back(name);
     }
 }
 void Elf_reader::read_symbols()
@@ -160,24 +158,11 @@ void Elf_reader::read_symbols()
     for(auto symbol : symbols)
     {
         file.seekg((sections[strtab_indx].sh_offset + symbol.st_name), ios::beg);
-        std::stringstream buff;
-        read_string(buff);
-        std::string name = buff.str();
+        std::string name;
+        getline(file,name,'\0');
         // Ignore the symbol version for now
         name = name.substr(0, name.find_first_of('@'));
         symbol_names.push_back(name);
-    }
-}
-
-void Elf_reader::read_string(std::stringstream& str)
-{
-    char character;
-    while(true)
-    {
-        file.read(&character, sizeof(char));
-        if(!character)
-            return;
-        str << character;
     }
 }
 
@@ -553,10 +538,10 @@ vector<std::string> Elf_reader::get_libraries()
     {
         if(dyn_entry.d_tag == DT_NEEDED)
         {
-            std::stringstream buff;
             file.seekg((sections[dynstr_indx].sh_offset + dyn_entry.d_un.d_val), ios::beg);
-            read_string(buff);
-            libraries.push_back(buff.str());
+            std::string library;
+            getline(file,library,'\0');
+            libraries.push_back(library);
         }
     }
     return libraries;
@@ -571,11 +556,12 @@ vector<std::string> Elf_reader::get_library_paths()
         if(dyn_entry.d_tag == DT_RPATH || dyn_entry.d_tag == DT_RUNPATH)
         {
             file.seekg((sections[dynstr_indx].sh_offset + dyn_entry.d_un.d_val), ios::beg);
-            std::stringstream buff;
-            read_string(buff);
+            std::string allPaths;
+            getline(file,allPaths,'\0');
+            std::stringstream allPathsStream(allPaths);
+            allPathsStream.seekg(std::ios::beg);
             std::string path;
-            buff.seekg(std::ios::beg);
-            while(getline(buff, path, ':'))
+            while(getline(allPathsStream, path, ':'))
             {
                 if(!path.empty())
                     libraryPaths.push_back(path);

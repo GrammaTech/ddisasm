@@ -71,7 +71,6 @@ private:
                                 const std::vector<std::string>& symbol_name_table);
 
     int get_section_index(const std::string& name);
-    void read_string(std::stringstream& str);
 
 public:
     Elf_reader(std::string filename);
