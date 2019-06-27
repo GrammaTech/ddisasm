@@ -5,7 +5,9 @@ variables:
 stages:
   - check-format
   - build
-  - test-and-tag
+  - test-and-tag-ubuntu16
+  - test-and-tag-ubuntu18
+  - test-and-tag-arch
   - cleanup
 
 .build-template: &build
@@ -45,7 +47,7 @@ build-arch-gcc:
   <<: *build
 
 run-ubuntu16-gcc:
-  stage: test-and-tag
+  stage: test-and-tag-ubuntu16
   variables:
     OS: 'ubuntu16'
     COMPILER: 'gcc'
@@ -60,7 +62,7 @@ run-ubuntu16-gcc:
       fi
 
 run-ubuntu18-gcc:
-  stage: test-and-tag
+  stage: test-and-tag-ubuntu18
   variables:
     OS: 'ubuntu18'
     COMPILER: 'gcc'
@@ -69,7 +71,7 @@ run-ubuntu18-gcc:
       "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip"
 
 run-arch-gcc:
-  stage: test-and-tag
+  stage: test-and-tag-arch
   variables:
     OS: 'arch'
     COMPILER: 'gcc'
@@ -120,7 +122,7 @@ build-arch-clang:
   <<: *build
 
 run-ubuntu16-clang:
-  stage: test-and-tag
+  stage: test-and-tag-ubuntu16
   variables:
     OS: 'ubuntu16'
     COMPILER: 'clang'
@@ -135,7 +137,7 @@ run-ubuntu16-clang:
       fi
 
 run-ubuntu18-clang:
-  stage: test-and-tag
+  stage: test-and-tag-ubuntu18
   variables:
     OS: 'ubuntu18'
     COMPILER: 'clang'
@@ -144,7 +146,7 @@ run-ubuntu18-clang:
       "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip"
 
 run-arch-clang:
-  stage: test-and-tag
+  stage: test-and-tag-arch
   variables:
     OS: 'arch'
     COMPILER: 'clang'
