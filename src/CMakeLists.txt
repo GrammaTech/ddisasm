@@ -66,7 +66,10 @@ target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(disasm_main PRIVATE -Wall -Wextra -Wpointer-arith)
 target_compile_options(disasm_main PRIVATE -Werror)
 target_compile_options(disasm_main PRIVATE ${OPENMP_FLAGS})
-target_compile_options(disasm_main PRIVATE -O3)
+
+if(NOT (${CMAKE_CXX_COMPILER_ID} STREQUAL Clang))
+  target_compile_options(disasm_main PRIVATE -O3)
+endif()
 
 if( ${GTIRB_USE_SYSTEM_BOOST} MATCHES "OFF" )
   add_dependencies(disasm_main Boost)
@@ -86,7 +89,10 @@ target_link_libraries(ddisasm disasm_main)
 target_compile_definitions(ddisasm PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(ddisasm PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(ddisasm PRIVATE ${OPENMP_FLAGS})
-target_compile_options(ddisasm PRIVATE -O3)
+
+if(NOT (${CMAKE_CXX_COMPILER_ID} STREQUAL Clang))
+  target_compile_options(ddisasm PRIVATE -O3)
+endif()
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_link_libraries(ddisasm gomp)
