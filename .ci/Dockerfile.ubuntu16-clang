@@ -15,7 +15,7 @@ ARG CXX_COMPILER=clang++-8
 
 # Install common packages
 RUN apt-get -y update && \
-    apt-get -y install software-properties-common git wget curl make
+    apt-get -y install software-properties-common curl git make wget
 
 # Install libstdc++
 RUN add-apt-repository ppa:jonathonf/gcc-7.1 && \

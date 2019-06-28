@@ -13,9 +13,9 @@ FROM ubuntu:18.04
 ARG CMAKE_VERSION=3.9
 ARG CXX_COMPILER=clang++
 
-RUN apt-get -y update && apt-get -y install autoconf automake bison clang \
-    doxygen flex git libtool make mcpp pkg-config python sqlite3 libsqlite3-dev zlib1g-dev \
-    ed libpcre3-dev libncurses5-dev wget curl cmake libstdc++-7-dev
+RUN apt-get -y update && apt-get -y install autoconf automake bison clang cmake curl \
+    doxygen ed flex git libncurses5-dev libpcre3-dev libtool libstdc++-7-dev make mcpp \
+    pkg-config python sqlite3 libsqlite3-dev wget zlib1g-dev
 
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config

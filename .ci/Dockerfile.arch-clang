@@ -16,9 +16,8 @@ ARG CXX_COMPILER=clang++
 
 RUN sed -i 's/#\[multilib\]/\[multilib\]/; /^\[multilib\]/,/^$/ s/^#//' /etc/pacman.conf
 RUN pacman --noconfirm -Syu archlinux-keyring
-RUN pacman -Syu --noconfirm git autoconf automake bison doxygen flex fakeroot sqlite libtool \
-    make pkg-config zlib mcpp gcc gcc-multilib lib32-fakeroot lib32-gcc-libs lib32-libltdl \
-    clang gdb ed cmake wget which
+RUN pacman -Syu --noconfirm autoconf automake bison clang cmake doxygen ed flex fakeroot gcc gcc-multilib gdb \
+    git lib32-fakeroot lib32-gcc-libs lib32-libltdl libtool mcpp make pkg-config sqlite wget which zlib
 
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
@@ -28,8 +27,6 @@ COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
 
 # Install capstone
 RUN cd /usr/local/src \
-#   && git clone https://github.com/aquynh/capstone \
-#   && cd capstone \
     && wget https://github.com/aquynh/capstone/archive/4.0.1.tar.gz \
     && tar xf 4.0.1.tar.gz \
     && cd capstone-4.0.1 \
