@@ -1,9 +1,9 @@
 find_program(PANDOC pandoc
-	HINTS $ENV{PATH}
-	DOC "pandoc must be in your PATH to build documentation.")
+  HINTS $ENV{PATH}
+  DOC "pandoc must be in your PATH to build documentation.")
 find_program(GZIP gzip
-	HINTS $ENV{PATH}
-	DOC "gzip must be in your PATH to build documentation.")
+  HINTS $ENV{PATH}
+  DOC "gzip must be in your PATH to build documentation.")
 if(NOT PANDOC)
   message(WARNING "pandoc was not found in your PATH. Unable to build documentation.")
 elseif(NOT GZIP)

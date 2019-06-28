@@ -1,7 +1,7 @@
 # ===== generated souffle code =====
 find_program(SOUFFLE souffle
-	HINTS $ENV{PATH}
-	DOC "souffle must be in your PATH to build disassembler.")
+  HINTS $ENV{PATH}
+  DOC "souffle must be in your PATH to build disassembler.")
 if(NOT SOUFFLE)
   message(FATAL_ERROR "souffle was not found in your PATH. Unable to build.")
 endif()
@@ -45,9 +45,9 @@ add_custom_command(OUTPUT ${GENERATED_CPP}
 
 # determine what flags to use to specify -fopenmp.
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
-	set(OPENMP_FLAGS -fopenmp)
+  set(OPENMP_FLAGS -fopenmp)
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
-	set(OPENMP_FLAGS -fopenmp=libgomp)
+  set(OPENMP_FLAGS -fopenmp=libgomp)
 endif()
 
 # ===== souffle_disasm =====
@@ -89,7 +89,7 @@ target_compile_options(ddisasm PRIVATE ${OPENMP_FLAGS})
 target_compile_options(ddisasm PRIVATE -O3)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
-	target_link_libraries(ddisasm gomp)
+  target_link_libraries(ddisasm gomp)
 endif()
 
 install(TARGETS ddisasm DESTINATION bin)
