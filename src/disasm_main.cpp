@@ -1021,14 +1021,32 @@ static void buildCFG(gtirb::Module &module, souffle::SouffleProgram *prog)
     }
 }
 
-static void updateComment(std::map<gtirb::Addr, std::string> &comments, gtirb::Addr ea,
-                          std::string newComment)
+static std::vector<gtirb::Offset> findOffsets(gtirb::Module &module, gtirb::Addr ea)
 {
-    auto existing = comments.find(ea);
-    if(existing != comments.end())
-        comments[ea] = existing->second + newComment;
-    else
-        comments[ea] = newComment;
+    std::vector<gtirb::Offset> offsets;
+    for(auto &block : module.findBlock(ea))
+    {
+        offsets.push_back(gtirb::Offset(block.getUUID(), ea - block.getAddress()));
+    }
+    for(auto &dataObject : module.findData(ea))
+    {
+        offsets.push_back(gtirb::Offset(dataObject.getUUID(), ea - dataObject.getAddress()));
+    }
+    return offsets;
+}
+
+static void updateComment(gtirb::Module &module, std::map<gtirb::Offset, std::string> &comments,
+                          gtirb::Addr ea, std::string newComment)
+{
+    std::vector<gtirb::Offset> matchingOffsets = findOffsets(module, ea);
+    for(gtirb::Offset &offset : matchingOffsets)
+    {
+        auto existing = comments.find(offset);
+        if(existing != comments.end())
+            comments[offset] = existing->second + newComment;
+        else
+            comments[offset] = newComment;
+    }
 }
 
 static void buildCfiDirectives(gtirb::Module &module, souffle::SouffleProgram *prog)
@@ -1087,7 +1105,7 @@ static void buildCfiDirectives(gtirb::Module &module, souffle::SouffleProgram *p
 
 static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool selfDiagnose)
 {
-    std::map<gtirb::Addr, std::string> comments;
+    std::map<gtirb::Offset, std::string> comments;
     for(auto &output : *prog->getRelation("data_access_pattern"))
     {
         gtirb::Addr ea;
@@ -1096,7 +1114,7 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
         std::ostringstream newComment;
         newComment << "data_access(" << size << ", " << multiplier << ", " << std::hex << from
                    << std::dec << ") ";
-        updateComment(comments, ea, newComment.str());
+        updateComment(module, comments, ea, newComment.str());
     }
 
     for(auto &output : *prog->getRelation("preferred_data_access"))
@@ -1106,7 +1124,7 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
         output >> ea >> data_access;
         std::ostringstream newComment;
         newComment << "preferred_data_access(" << std::hex << data_access << std::dec << ") ";
-        updateComment(comments, ea, newComment.str());
+        updateComment(module, comments, ea, newComment.str());
     }
 
     for(auto &output : *prog->getRelation("best_value_reg"))
@@ -1118,7 +1136,7 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
         std::ostringstream newComment;
         newComment << reg << "=X*" << multiplier << "+" << std::hex << offset << std::dec
                    << " type(" << type << ") ";
-        updateComment(comments, ea, newComment.str());
+        updateComment(module, comments, ea, newComment.str());
     }
 
     for(auto &output : *prog->getRelation("value_reg"))
@@ -1130,7 +1148,7 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
         std::ostringstream newComment;
         newComment << reg << "=(" << reg2 << "," << std::hex << ea2 << std::dec << ")*"
                    << multiplier << "+" << std::hex << offset << std::dec;
-        updateComment(comments, ea, newComment.str());
+        updateComment(module, comments, ea, newComment.str());
     }
 
     for(auto &output : *prog->getRelation("moved_label_class"))
@@ -1141,7 +1159,7 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
         output >> ea >> type;
         std::ostringstream newComment;
         newComment << " moved label-" << type;
-        updateComment(comments, ea, newComment.str());
+        updateComment(module, comments, ea, newComment.str());
     }
 
     for(auto &output : *prog->getRelation("def_used"))
@@ -1152,7 +1170,7 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
         output >> ea_def >> reg >> ea_use >> index;
         std::ostringstream newComment;
         newComment << "def(" << reg << ", " << std::hex << ea_def << std::dec << ")";
-        updateComment(comments, ea_use, newComment.str());
+        updateComment(module, comments, ea_use, newComment.str());
     }
     if(selfDiagnose)
     {
@@ -1160,13 +1178,13 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
         {
             gtirb::Addr ea;
             output >> ea;
-            updateComment(comments, ea, "false positive");
+            updateComment(module, comments, ea, "false positive");
         }
         for(auto &output : *prog->getRelation("false_negative"))
         {
             gtirb::Addr ea;
             output >> ea;
-            updateComment(comments, ea, "false negative");
+            updateComment(module, comments, ea, "false negative");
         }
         for(auto &output : *prog->getRelation("bad_symbol_constant"))
         {
@@ -1175,7 +1193,7 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
             output >> ea >> index;
             std::ostringstream newComment;
             newComment << "bad_symbol_constant(" << index << ")";
-            updateComment(comments, ea, newComment.str());
+            updateComment(module, comments, ea, newComment.str());
         }
     }
     module.addAuxData("comments", std::move(comments));
