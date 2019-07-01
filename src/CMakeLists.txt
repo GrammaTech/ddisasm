@@ -113,6 +113,7 @@ endif()
 target_link_libraries(disasm_main
   gtirb
   gtirb_pprinter
+  stdc++fs
   ${CAPSTONE}
   ${Boost_LIBRARIES}
   ${EXPERIMENTAL_LIB}
