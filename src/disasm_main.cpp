@@ -928,9 +928,9 @@ static void buildCFG(gtirb::Module &module, souffle::SouffleProgram *prog)
         gtirb::Symbol &symbol = *module.findSymbols(symbolName).begin();
         gtirb::ProxyBlock *externalBlock = symbol.getReferent<gtirb::ProxyBlock>();
         // if the symbol does not point to a ProxyBlock yet, we create it
-        if(externalBlock)
+        if(!externalBlock)
         {
-            auto *externalBlock = gtirb::ProxyBlock::Create(C);
+            externalBlock = gtirb::ProxyBlock::Create(C);
             module.addCfgNode(externalBlock);
             gtirb::setReferent(module, symbol, externalBlock);
         }
