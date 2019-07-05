@@ -73,6 +73,8 @@ This module:
 // Detection of relative jump tables
 #include "relative_jump_tables.dl"
 
+#include "exceptions.dl"
+
 // Inference of instruction boundaries
 #include "code_inference.dl"
 

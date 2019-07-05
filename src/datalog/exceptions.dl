@@ -1,0 +1,69 @@
+//===- exceptions.dl --------------------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+
+.decl fde_entry(start:address, end:address,lsda:address,personality:address)
+.input fde_entry
+.output fde_entry
+
+.decl lsda_callsite(lsdaAddress:address, index:number, start:address,end:address,landingPad:address)
+.input lsda_callsite
+.output lsda_callsite
+
+
+.decl lsda_callsite_address(lsda:address, ea:address)
+
+lsda_callsite_address(Lsda,Lsda+9):-
+    lsda_callsite(Lsda, _, _,_,_).
+
+symbol_minus_symbol(EaStart,StartFunction,StartRegion),
+symbol_minus_symbol(EaEnd,StartRegion,EndRegion):-
+    fde_entry(StartFunction, _,Lsda,_),
+    lsda_callsite(Lsda, Index, StartRegion,EndRegion,_),
+    lsda_callsite_address(Lsda,BaseAddress),
+    EaStart=BaseAddress + (Index* 13),
+    EaEnd=EaStart + 4,
+    EaLanding=EaEnd + 4.
+
+symbol_minus_symbol(EaLanding,StartFunction,LandingPad):-
+    fde_entry(StartFunction, _,Lsda,_),
+    lsda_callsite(Lsda, Index,_,_,LandingPad),
+    LandingPad!= 0,
+    lsda_callsite_address(Lsda,BaseAddress),
+    EaStart=BaseAddress + (Index* 13),
+    EaLanding=EaStart + 8.
+
+.decl cfi_directive(address:address,directive:symbol,encoding:number,reference:address)
+.output cfi_directive
+
+cfi_directive(StartFunction,".cfi_startproc",0,0):-
+    fde_entry(StartFunction, _,_,_).
+cfi_directive(EndFunction,".cfi_endproc",0,0):-
+    fde_entry(_, EndFunction,_,_).
+
+cfi_directive(StartFunction,".cfi_personality",3,Personality):-
+    fde_entry(StartFunction,_,_,Personality),
+    Personality!=0.
+
+cfi_directive(StartFunction,".cfi_lsda",3,Ldsa):-
+    fde_entry(StartFunction,_,Ldsa,_),
+    Ldsa!=0.

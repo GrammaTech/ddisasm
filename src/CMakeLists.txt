@@ -13,6 +13,7 @@ set(DATALOG_SOURCES
     datalog/cfg.dl
     datalog/data_access_analysis.dl
     datalog/empty_range.dl
+    datalog/exceptions.dl
     datalog/float_operations.dl
     datalog/function_inference.dl
     datalog/intra_procedural_cfg_completeness.dl
@@ -60,7 +61,13 @@ add_library(disasm_main STATIC
   Dl_operator.cpp
   Dl_instruction.cpp
   Dl_operator_table.cpp
-  Elf_reader.cpp)
+  Elf_reader.cpp
+  ExceptionDecoder.cpp)
+
+target_include_directories(disasm_main PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/../libehp/include
+)
+
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(disasm_main PRIVATE -Wall -Wextra -Wpointer-arith)
@@ -118,10 +125,12 @@ target_link_libraries(disasm_main
   ${Boost_LIBRARIES}
   ${EXPERIMENTAL_LIB}
   ${LIBCPP_ABI}
+  ${EHP}
 )
 
 # Now combine the static library and generated code into an
 # executable.
+
 add_executable(ddisasm
   ${GENERATED_CPP})
 target_link_libraries(ddisasm disasm_main)

@@ -35,6 +35,7 @@
 #include "BinaryReader.h"
 #include "Dl_decoder.h"
 #include "Elf_reader.h"
+#include "ExceptionDecoder.h"
 
 namespace po = boost::program_options;
 using namespace std::rel_ops;
@@ -753,8 +754,9 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
     auto symbolMinusSymbol =
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
     auto dataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", prog);
-    std::unordered_set<std::string> dataSections{
-        ".got", ".got.plt", ".data.rel.ro", ".init_array", ".fini_array", ".rodata", ".data"};
+    std::unordered_set<std::string> dataSections{".got",        ".got.plt",         ".data.rel.ro",
+                                                 ".init_array", ".fini_array",      ".rodata",
+                                                 ".data",       ".gcc_except_table"};
     std::map<gtirb::UUID, std::string> typesTable;
 
     for(auto &s : module.sections())
@@ -956,6 +958,33 @@ static void updateComment(std::map<gtirb::Addr, std::string> &comments, gtirb::A
         comments[ea] = newComment;
 }
 
+static void buildCfiDirectives(gtirb::Module &module, souffle::SouffleProgram *prog)
+{
+    std::map<gtirb::Addr, std::vector<std::tuple<std::string, uint8_t, gtirb::UUID>>> cfiDirectives;
+    for(auto &output : *prog->getRelation("cfi_directive"))
+    {
+        gtirb::Addr ea, symbolAddr;
+        std::string directive;
+        uint8_t encoding;
+        output >> ea >> directive >> encoding >> symbolAddr;
+        if(symbolAddr != gtirb::Addr(0))
+        {
+            gtirb::Symbol *symbol = getSymbol(module, symbolAddr);
+            cfiDirectives[ea].push_back(std::make_tuple(directive, encoding, symbol->getUUID()));
+        }
+        else
+        {
+            gtirb::UUID uuid;
+            if(directive == ".cfi_endproc")
+                cfiDirectives[ea].insert(cfiDirectives[ea].begin(),
+                                         std::make_tuple(directive, encoding, uuid));
+            else
+                cfiDirectives[ea].push_back(std::make_tuple(directive, encoding, uuid));
+        }
+    }
+    module.addAuxData("cfiDirectives", std::move(cfiDirectives));
+}
+
 static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool selfDiagnose)
 {
     std::map<gtirb::Addr, std::string> comments;
@@ -1068,6 +1097,7 @@ static void buildIR(gtirb::IR &ir, const std::string &filename,
     buildCodeBlocks(module, prog);
     buildCodeSymbolicInformation(module, prog);
     connectSymbolsToDataGroups(module);
+    buildCfiDirectives(module, prog);
     expandSymbolForwarding(module, prog);
     connectSymbolsToBlocks(module);
     buildFunctions(module, prog);
@@ -1273,6 +1303,9 @@ static void loadInputs(souffle::SouffleProgram *prog, std::shared_ptr<BinaryRead
                 decoder.op_dict.get_operators_of_type(operator_type::IMMEDIATE));
     addRelation(prog, "op_indirect",
                 decoder.op_dict.get_operators_of_type(operator_type::INDIRECT));
+
+    ExceptionDecoder excDecoder(elf);
+    excDecoder.addExceptionInformation(prog);
 }
 
 namespace std
@@ -1295,9 +1328,9 @@ using namespace std;
 int main(int argc, char **argv)
 {
     std::vector<std::string> sections{".plt.got", ".fini", ".init", ".plt", ".text", ".plt.sec"};
-    std::vector<std::string> dataSections{".data",       ".rodata",         ".fini_array",
-                                          ".init_array", ".data.rel.ro",    ".got.plt",
-                                          ".got",        ".tm_clone_table", ".dynamic"};
+    std::vector<std::string> dataSections{
+        ".data",    ".rodata", ".fini_array",     ".init_array", ".data.rel.ro",
+        ".got.plt", ".got",    ".tm_clone_table", ".dynamic",    ".gcc_except_table"};
 
     po::options_description desc("Allowed options");
     desc.add_options()                                                                    //
