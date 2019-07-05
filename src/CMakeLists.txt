@@ -72,11 +72,50 @@ if( ${GTIRB_USE_SYSTEM_BOOST} MATCHES "OFF" )
   add_dependencies(disasm_main Boost)
 endif()
 
+# ============ Detect how to use <experimental/filesystem> ============================
+include(CheckCXXSourceCompiles)
+
+set(EXPERIMENTAL_LIB "" CACHE STRING "The library to link with in order to use <experimental/filesystem>.")
+
+if (NOT EXPERIMENTAL_LIB)
+  set(EXFS_CODE "
+  #include <experimental/filesystem>
+  int main() {
+    std::experimental::filesystem::path p{\"an/example/path\"};
+    return std::experimental::filesystem::exists(p);
+  }
+  ")
+
+  check_cxx_source_compiles("${EXFS_CODE}" EXFS_LINK_NONE)
+
+  if(NOT EXFS_LINK_NONE)
+    foreach(EXFS_LIB stdc++fs c++experimental c++fs)
+      set(OLD_CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
+      list(APPEND CMAKE_REQUIRED_LIBRARIES ${EXFS_LIB})
+      check_cxx_source_compiles("${EXFS_CODE}" EXFS_LINK_${EXFS_LIB}_OK)
+      set(CMAKE_REQUIRED_LIBRARIES ${OLD_CMAKE_REQUIRED_LIBRARIES})
+
+      if(EXFS_LINK_${EXFS_LIB}_OK)
+        if(EXPERIMENTAL_LIB)
+          message(FATAL_ERROR "multiple candidates for library to link for <experimental/filesystem>: ${EXPERIMENTAL_LIB} and ${EXFS_LIB}. Try giving the correct one explicitly with -DEXPERIMENTAL_LIB.")
+        endif()
+        set(EXPERIMENTAL_LIB ${EXFS_LIB})
+      endif()
+    endforeach()
+
+    if (NOT EXPERIMENTAL_LIB)
+      message(FATAL_ERROR "could not find library to link for <experimental/filesystem>. Try giving it explicitly with -DEXPERIMENTAL_LIB.")
+    endif()
+  endif()
+endif()
+
+
 target_link_libraries(disasm_main
   gtirb
   gtirb_pprinter
   ${CAPSTONE}
-  ${Boost_LIBRARIES})
+  ${Boost_LIBRARIES}
+  ${EXPERIMENTAL_LIB})
 
 # Now combine the static library and generated code into an
 # executable.
