@@ -64,10 +64,6 @@ add_library(disasm_main STATIC
   Elf_reader.cpp
   ExceptionDecoder.cpp)
 
-target_include_directories(disasm_main PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/../libehp/include
-)
-
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(disasm_main PRIVATE -Wall -Wextra -Wpointer-arith)

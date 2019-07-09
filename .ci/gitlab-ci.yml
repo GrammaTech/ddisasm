@@ -14,6 +14,7 @@ stages:
   script:
     - git clone https://git.grammatech.com/rewriting/gtirb.git
     - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git
+    - git clone https://git.grammatech.com/afloresmontoya/libehp.git
     - docker build -f .ci/Dockerfile.${OS}-${COMPILER} -t ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} .
 
 .test-and-tag-template: &test-and-tag
