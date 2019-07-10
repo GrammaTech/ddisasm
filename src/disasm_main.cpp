@@ -215,11 +215,12 @@ struct MovedDataLabel
 
     MovedDataLabel(souffle::tuple &tuple)
     {
-        assert(tuple.size() == 3);
-        tuple >> EA >> Offset1 >> Offset2;
+        assert(tuple.size() == 4);
+        tuple >> EA >> Size >> Offset1 >> Offset2;
     };
 
     gtirb::Addr EA{0};
+    uint64_t Size{0};
     int64_t Offset1{0};
     int64_t Offset2{0};
 };
@@ -339,11 +340,12 @@ struct SymbolicData
 
     SymbolicData(souffle::tuple &tuple)
     {
-        assert(tuple.size() == 2);
-        tuple >> EA >> GroupContent;
+        assert(tuple.size() == 3);
+        tuple >> EA >> Size >> GroupContent;
     };
 
     gtirb::Addr EA{0};
+    uint64_t Size{0};
     gtirb::Addr GroupContent{0};
 };
 
@@ -355,12 +357,13 @@ struct SymbolMinusSymbol
 
     SymbolMinusSymbol(souffle::tuple &tuple)
     {
-        assert(tuple.size() == 3);
+        assert(tuple.size() == 4);
 
-        tuple >> EA >> Symbol1 >> Symbol2;
+        tuple >> EA >> Size >> Symbol1 >> Symbol2;
     };
 
     gtirb::Addr EA{0};
+    uint64_t Size;
     gtirb::Addr Symbol1{0};
     gtirb::Addr Symbol2{0};
 };
@@ -380,6 +383,23 @@ struct StringDataObject
 
     gtirb::Addr EA{0};
     gtirb::Addr End{0};
+};
+
+struct SymbolSpecialType
+{
+    SymbolSpecialType(gtirb::Addr ea) : EA(ea)
+    {
+    }
+
+    SymbolSpecialType(souffle::tuple &tuple)
+    {
+        assert(tuple.size() == 2);
+
+        tuple >> EA >> Type;
+    };
+
+    gtirb::Addr EA{0};
+    std::string Type;
 };
 
 template <typename T>
@@ -462,27 +482,29 @@ static void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> b
                           souffle::SouffleProgram *prog)
 {
     auto &byteMap = module.getImageByteMap();
-    byteMap.setAddrMinMax(
-        {gtirb::Addr(binary->get_min_address()), gtirb::Addr(binary->get_max_address())});
-
-    for(auto &output : *prog->getRelation("section"))
+    byteMap.setAddrMinMax({gtirb::Addr(binary->get_min_address()), gtirb::Addr(bunary->get_max_address())});
+    std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> sectionProperties;
+    for(auto &output : *prog->getRelation("section_complete"))
     {
-        assert(output.size() == 3);
+        assert(output.size() == 5);
 
         gtirb::Addr address;
-        uint64_t size;
+        uint64_t size, type, flags;
         std::string name;
-        output >> name >> size >> address;
-        module.addSection(gtirb::Section::Create(C, name, address, size));
-        if(auto section = binary->get_section_content_and_address(name))
+        output >> name >> size >> address >> type >> flags;
+        gtirb::Section *section = gtirb::Section::Create(C, name, address, size);
+        module.addSection(section);
+        sectionProperties[section->getUUID()] = std::make_tuple(type, flags);
+        if(auto sectionData = binary->get_section_content_and_address(name))
         {
-            std::vector<uint8_t> &sectionBytes = std::get<0>(*section);
+            std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
             std::byte *begin = reinterpret_cast<std::byte *>(sectionBytes.data());
             std::byte *end =
                 reinterpret_cast<std::byte *>(sectionBytes.data() + sectionBytes.size());
             byteMap.setData(address, boost::make_iterator_range(begin, end));
         }
     }
+    module.addAuxData("elfSectionProperties", std::move(sectionProperties));
 }
 
 // auxiliary function to get a symbol with an address and name
@@ -753,10 +775,14 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
         convertSortedRelation<VectorByEA<MovedDataLabel>>("moved_data_label", prog);
     auto symbolMinusSymbol =
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
+
     auto dataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", prog);
-    std::unordered_set<std::string> dataSections{".got",        ".got.plt",         ".data.rel.ro",
-                                                 ".init_array", ".fini_array",      ".rodata",
-                                                 ".data",       ".gcc_except_table"};
+    auto symbolSpecialTypes =
+        convertSortedRelation<VectorByEA<SymbolSpecialType>>("symbol_special_encoding", prog);
+
+    std::unordered_set<std::string> dataSections{".got",        ".got.plt",          ".data.rel.ro",
+                                                 ".init_array", ".fini_array",       ".rodata",
+                                                 ".data",       ".gcc_except_table", ".eh_frame"};
     std::map<gtirb::UUID, std::string> typesTable;
 
     for(auto &s : module.sections())
@@ -775,6 +801,9 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
                     auto diff = movedDataLabel->Offset1 - movedDataLabel->Offset2;
                     auto sym = getSymbol(module, gtirb::Addr(movedDataLabel->Offset2));
                     module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{diff, sym});
+                    const auto specialType = symbolSpecialTypes.find(currentAddr);
+                    if(specialType != nullptr)
+                        typesTable[d->getUUID()] = specialType->Type;
                     currentAddr += 7;
                     continue;
                 }
@@ -782,24 +811,30 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
                 const auto symbolic = symbolicData.find(currentAddr);
                 if(symbolic != nullptr)
                 {
-                    auto *d = gtirb::DataObject::Create(C, currentAddr, 8);
+                    auto *d = gtirb::DataObject::Create(C, currentAddr, symbolic->Size);
                     module.addData(d);
                     auto sym = getSymbol(module, symbolic->GroupContent);
                     module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{0, sym});
-                    currentAddr += 7;
+                    const auto specialType = symbolSpecialTypes.find(currentAddr);
+                    if(specialType != nullptr)
+                        typesTable[d->getUUID()] = specialType->Type;
+                    currentAddr += (symbolic->Size - 1);
                     continue;
                 }
                 // symbol-symbol
                 const auto symMinusSym = symbolMinusSymbol.find(currentAddr);
                 if(symMinusSym != nullptr)
                 {
-                    auto *d = gtirb::DataObject::Create(C, currentAddr, 4);
+                    auto *d = gtirb::DataObject::Create(C, currentAddr, symMinusSym->Size);
                     module.addData(d);
                     module.addSymbolicExpression(
                         gtirb::Addr(currentAddr),
                         gtirb::SymAddrAddr{1, 0, getSymbol(module, symMinusSym->Symbol2),
                                            getSymbol(module, symMinusSym->Symbol1)});
-                    currentAddr += 3;
+                    const auto specialType = symbolSpecialTypes.find(currentAddr);
+                    if(specialType != nullptr)
+                        typesTable[d->getUUID()] = specialType->Type;
+                    currentAddr += (symMinusSym->Size - 1);
                     continue;
                 }
                 // string
@@ -996,6 +1031,16 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
         std::ostringstream newComment;
         newComment << "data_access(" << size << ", " << multiplier << ", " << std::hex << from
                    << std::dec << ") ";
+        updateComment(comments, ea, newComment.str());
+    }
+
+    for(auto &output : *prog->getRelation("real_value"))
+    {
+        gtirb::Addr ea;
+        uint64_t value;
+        output >> ea >> value;
+        std::ostringstream newComment;
+        newComment << "value = " << std::hex << value << std::dec;
         updateComment(comments, ea, newComment.str());
     }
 
@@ -1291,7 +1336,7 @@ static void loadInputs(souffle::SouffleProgram *prog, std::shared_ptr<BinaryRead
 {
     addRelation<std::string>(prog, "binary_type", {binary->get_binary_type()});
     addRelation<uint64_t>(prog, "entry_point", {binary->get_entry_point()});
-    addRelation(prog, "section", binary->get_sections());
+    addRelation(prog, "section_complete", binary->get_sections());
     addRelation(prog, "symbol", binary->get_symbols());
     addRelation(prog, "relocation", binary->get_relocations());
     addRelation(prog, "instruction_complete", decoder.instructions);
@@ -1329,8 +1374,8 @@ int main(int argc, char **argv)
 {
     std::vector<std::string> sections{".plt.got", ".fini", ".init", ".plt", ".text", ".plt.sec"};
     std::vector<std::string> dataSections{
-        ".data",    ".rodata", ".fini_array",     ".init_array", ".data.rel.ro",
-        ".got.plt", ".got",    ".tm_clone_table", ".dynamic",    ".gcc_except_table"};
+        ".data", ".rodata",         ".fini_array", ".init_array",       ".data.rel.ro", ".got.plt",
+        ".got",  ".tm_clone_table", ".dynamic",    ".gcc_except_table", ".eh_frame"};
 
     po::options_description desc("Allowed options");
     desc.add_options()                                                                    //
