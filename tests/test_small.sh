@@ -33,6 +33,8 @@ examples=(
     "ex_unitialized_data ex"
     "ex_virtualDispatch ex g++"
     "ex_false_pointer_array ex"
+    "ex_exceptions1 ex g++"
+    "ex_exceptions2 ex g++"
 );
 
 strip=""
