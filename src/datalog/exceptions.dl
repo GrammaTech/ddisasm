@@ -21,49 +21,143 @@
 //
 //===----------------------------------------------------------------------===//
 
-.decl fde_entry(start:address, end:address,lsda:address,personality:address)
+.decl fde_entry(addr: address, start:address, end:address,lsda:address,personality:address, personalityPos:number)
 .input fde_entry
 .output fde_entry
 
-.decl lsda_callsite(lsdaAddress:address, index:number, start:address,end:address,landingPad:address)
+.decl lsda(lsdaAddress:address,callsiteTable:address,callsiteTableEncoding:number,
+           typeTable:address, typeTableEncoding:number, landingPadBaseAddress: address)
+.input lsda
+.output lsda
+
+.decl lsda_callsite(CallSiteTable_address:address,EA_start:address, start:address,
+    EA_end:address,end:address,
+    EA_landingPad:address,landingPad:address,EA_endLandindPad:address)
+
 .input lsda_callsite
 .output lsda_callsite
 
+.decl lsda_callsite_addresses(Start:address,End:address,LandingPad:address)
 
-.decl lsda_callsite_address(lsda:address, ea:address)
+lsda_callsite_addresses(Start,End,LandingPad):-
+    lsda_callsite(_,_,Start,_,End,_,LandingPad,_).
 
-lsda_callsite_address(Lsda,Lsda+9):-
-    lsda_callsite(Lsda, _, _,_,_).
+.decl lsda_type_entry(lsdaTypeTableAddress:address, index:number,address:address)
+.input lsda_type_entry
+.output lsda_type_entry
 
-symbol_minus_symbol(EaStart,StartFunction,StartRegion),
-symbol_minus_symbol(EaEnd,StartRegion,EndRegion):-
-    fde_entry(StartFunction, _,Lsda,_),
-    lsda_callsite(Lsda, Index, StartRegion,EndRegion,_),
-    lsda_callsite_address(Lsda,BaseAddress),
-    EaStart=BaseAddress + (Index* 13),
-    EaEnd=EaStart + 4,
-    EaLanding=EaEnd + 4.
+.decl real_value(ea:address, value:number)
+.output real_value
 
-symbol_minus_symbol(EaLanding,StartFunction,LandingPad):-
-    fde_entry(StartFunction, _,Lsda,_),
-    lsda_callsite(Lsda, Index,_,_,LandingPad),
-    LandingPad!= 0,
-    lsda_callsite_address(Lsda,BaseAddress),
-    EaStart=BaseAddress + (Index* 13),
-    EaLanding=EaStart + 8.
+/////////////////////////////////////////////////////////////////////////////////
+// Symbols in lsda callsite table
+.decl symbol_special_encoding(EA:address,encoding:symbol)
+.output symbol_special_encoding
+
+.decl special_encoding(Code:number,Name:symbol)
+
+special_encoding(1,"uleb128").
+special_encoding(9,"sleb128").
+
+.decl dwarf_encoding_size(Encoding:number,Size:number)
+
+dwarf_encoding_size(2,2).
+dwarf_encoding_size(3,4).
+dwarf_encoding_size(4,8).
+
+dwarf_encoding_size(10,2).
+dwarf_encoding_size(11,4).
+dwarf_encoding_size(12,8).
+
+
+symbol_special_encoding(EA_start,EncodingName),
+symbol_special_encoding(EA_end,EncodingName),
+symbol_special_encoding(EA_landingPad,EncodingName):-
+    lsda_callsite(CallSiteTable_address,EA_start,_,EA_end,_,EA_landingPad,_,_),
+    lsda(_,CallSiteTable_address,CallSiteEncoding,_,_,_),
+    special_encoding(Encoding,EncodingName),
+    CallSiteEncoding % 16 = Encoding.
+
+
+//region beginning
+symbol_minus_symbol(EA_start,Size,LandingPadBaseAddress,StartRegion):-
+    lsda_callsite(CallSiteTable_address, EA_start, StartRegion,EA_end,_,_,_,_),
+    lsda(_,CallSiteTable_address,_,_,_,LandingPadBaseAddress),
+    Size= EA_end-EA_start.
+
+//region end
+symbol_minus_symbol(EA_end,Size,StartRegion,EndRegion):-
+    lsda_callsite(_, _, StartRegion,EA_end,EndRegion,EA_landingPad,_,_),
+    Size= EA_landingPad-EA_end.
+
+//landing pad
+symbol_minus_symbol(EA_landingPad,Size,LandingPadBaseAddress,LandingPad):-
+    lsda_callsite(CallSiteTable_address, _, _,_,_,EA_landingPad,LandingPad,EA_endLandingPad),
+    lsda(_,CallSiteTable_address,_,_,_,LandingPadBaseAddress),
+    LandingPad!=0,
+    Size= EA_endLandingPad-EA_landingPad.
+
+// Symbols in lsda typetable
+symbolic_data(EAType,EncodingSize,Type):-
+    lsda_type_entry(LsdaTypeTableAddress, Index,Type),
+    lsda(_,_,_,LsdaTypeTableAddress, TypeTableEncoding, _),
+    TypeTableEncoding % 16 = Encoding,
+    dwarf_encoding_size(Encoding,EncodingSize),
+    EAType=LsdaTypeTableAddress-(EncodingSize*(Index+1)),
+    Type!=0.
+
+/* real_value(Offset,Val),
+symbol_minus_symbol(Offset,StartFunction,EndFunction):-
+    fde_entry(OffsetFde,StartFunction, EndFunction,_,_,_),
+    section(".eh_frame",_,StartSection),
+    Offset=StartSection+OffsetFde+8+4,
+    data_byte(Offset,Byte0),
+    data_byte(Offset+1,Byte1),
+    data_byte(Offset+2,Byte2),
+    data_byte(Offset+3,Byte3),
+    Val= -(2^32 -( Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0)).
+
+real_value(Offset,Val),
+symbol_minus_symbol(Offset,StartSection,StartFunction):-
+    fde_entry(OffsetFde,StartFunction, EndFunction,_,_,_),
+    section(".eh_frame",_,StartSection),
+    Offset=StartSection+OffsetFde+8,
+    data_byte(Offset,Byte0),
+    data_byte(Offset+1,Byte1),
+    data_byte(Offset+2,Byte2),
+    data_byte(Offset+3,Byte3),
+    Val= -(2^32 -( Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0)).
+
+symbolic_data(EA_Lsde,4,Lsde):-
+    fde_entry(OffsetFde,_, _,Lsde,_,_),
+    Lsde!=0,
+    section(".eh_frame",_,StartSection),
+    data_byte(StartSection+OffsetFde+16,4),
+    EA_Lsde=StartSection+OffsetFde+17.
+
+real_value(PersonalityPos,Val),
+symbolic_data(PersonalityPos,4,Personality):-
+    Personality!=0,
+    fde_entry(_,_, _,_,Personality,PersonalityPos),
+    data_byte(PersonalityPos,Byte0),
+    data_byte(PersonalityPos+1,Byte1),
+    data_byte(PersonalityPos+2,Byte2),
+    data_byte(PersonalityPos+3,Byte3),
+    Val= -(2^32 -( Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0)). */
+
 
 .decl cfi_directive(address:address,directive:symbol,encoding:number,reference:address)
 .output cfi_directive
 
 cfi_directive(StartFunction,".cfi_startproc",0,0):-
-    fde_entry(StartFunction, _,_,_).
+    fde_entry(_,StartFunction, _,_,_,_).
 cfi_directive(EndFunction,".cfi_endproc",0,0):-
-    fde_entry(_, EndFunction,_,_).
+    fde_entry(_,_, EndFunction,_,_,_).
 
 cfi_directive(StartFunction,".cfi_personality",3,Personality):-
-    fde_entry(StartFunction,_,_,Personality),
+    fde_entry(_,StartFunction,_,_,Personality,_),
     Personality!=0.
 
 cfi_directive(StartFunction,".cfi_lsda",3,Ldsa):-
-    fde_entry(StartFunction,_,Ldsa,_),
+    fde_entry(_,StartFunction,_,Ldsa,_,_),
     Ldsa!=0.
