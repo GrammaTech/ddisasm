@@ -63,12 +63,12 @@ This module also computes and symbol_minus_symbol.
 .decl symbolic_operand(ea:address,index:operand_index,value:address,type:symbol)
 .output symbolic_operand
 
-.decl symbolic_data(ea:address,value:address)
+.decl symbolic_data(ea:address,size:number,value:address)
 .output symbolic_data
 
 .decl symbol_minus_symbol_candidate(ea:address,symbol1:address,symbol2:address)
 
-.decl symbol_minus_symbol(ea:address,symbol1:address,symbol2:address)
+.decl symbol_minus_symbol(ea:address,size:number,symbol1:address,symbol2:address)
 .output symbol_minus_symbol
 
 // symbolic data that points to code
@@ -544,8 +544,8 @@ discarded_data_object(EA_f,Size_f,Type_f):-
 
 // predicates to export
 
-symbolic_data(EA,Val):-
-	data_object(EA,_,"symbol"),
+symbolic_data(EA,Size,Val):-
+    data_object(EA,Size,"symbol"),
   address_in_data_refined(EA,Val).
 
 string(EA,End):-
@@ -553,12 +553,12 @@ string(EA,End):-
 	string_candidate(EA,End),
 	Size=End-EA.
 
-symbol_minus_symbol(EA,Symbol1,Symbol2):-
-	data_object(EA,4,"symbol-symbol"),
+symbol_minus_symbol(EA,Size,Symbol1,Symbol2):-
+    data_object(EA,Size,"symbol-symbol"),
 	symbol_minus_symbol_candidate(EA,Symbol1,Symbol2).
 
 code_pointer_in_data(EA,Val):-
-	symbolic_data(EA,Val),
+    symbolic_data(EA,_,Val),
 	block(Val).
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -573,16 +573,16 @@ labeled_data(EA):-
 
 labeled_data(EA):-
 	address_in_data_refined(Src,EA),
-	!moved_data_label(Src,EA,_).
+    !moved_data_label(Src,_,EA,_).
 
 labeled_data(EA_moved):-
 	moved_label(_,_,_,EA_moved).
 	
 labeled_data(New_dest):-
-	moved_data_label(_,_,New_dest).
+    moved_data_label(_,_,_,New_dest).
 
 labeled_data(EA):-
-	symbol_minus_symbol(EA,EA,_).
+    symbol_minus_symbol(EA,_,EA,_).
 /////////////////////////////////////////////////////////////////////////////////
 // This facts specifies that a label should be printed in the .bss section for
 // the given address (because it is referenced somewhere)

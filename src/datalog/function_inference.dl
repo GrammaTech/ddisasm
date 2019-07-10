@@ -77,7 +77,7 @@ function_entry(EA):-
 	refined_block(EA),
 	after_function_end(EA,_),
 	!possible_target_from(EA,_),
-	!symbolic_data(_,EA),
+    !symbolic_data(_,_,EA),
 	typical_function_starter(EA).
 
 // two consecutive elements in a table with typical function beginnings
@@ -85,11 +85,12 @@ function_entry(EA):-
 	refined_block(EA),
 	after_function_end(EA,_),
 	!possible_target_from(EA,_),
-	symbolic_data(Pointer,EA),
+    pointer_size(Pt_size),
+    symbolic_data(Pointer,Pt_size,EA),
 	typical_function_starter(EA),
 	!resolved_jump(_,EA),
 
-	symbolic_data(Pointer+8,EA2),EA2!=EA,
+    symbolic_data(Pointer+Pt_size,Pt_size,EA2),EA2!=EA,
 	after_function_end(EA2,_),
 	typical_function_starter(EA2),
 	!resolved_jump(_,EA2).
@@ -106,7 +107,7 @@ function_entry(EA):-
 function_entry(EA):-
 	function_table(Label),
 	preferred_data_access(Offset,Label),
-	symbolic_data(Offset,EA),
+    symbolic_data(Offset,_,EA),
 	refined_block(EA),
 	after_function_end(EA,_).
 
@@ -246,7 +247,7 @@ function_table(Label):-
 		!unconditional_jump(Origin)
 	),
 	preferred_data_access(Offset,Label),
-	symbolic_data(Offset,EA),
+    symbolic_data(Offset,Pt_size,EA),
 	refined_block(EA).
 
 //////////////////////////////////////////////////////////////////////////////

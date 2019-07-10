@@ -99,8 +99,8 @@ false_negative(EA):-
     data_byte(EA,_),
     relocation(EA,_,_,_),
     !zero_relocation(EA),
-    !symbolic_data(EA,_),
-    !symbol_minus_symbol(EA,_,_),
+    !symbolic_data(EA,_,_),
+    !symbol_minus_symbol(EA,_,_,_),
 
     regular_data_section(Sect),
     section(Sect,SizeSect,BegSect),
@@ -109,8 +109,8 @@ false_negative(EA):-
 
 false_positive(EA):-
     (
-    symbolic_data(EA,_);
-    symbol_minus_symbol(EA,_,_)
+    symbolic_data(EA,_,_);
+    symbol_minus_symbol(EA,_,_,_)
     ),
     !relocation(EA,_,_,_),
 

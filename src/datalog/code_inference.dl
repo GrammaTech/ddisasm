@@ -173,14 +173,14 @@ basic_target(Val):-
 	code_section(Name),
 	section(Name,_,Val)
 	;
-	function_symbol(Val,_)
+    function_symbol(Val,_)
     ;
     // Exception information
-    fde_entry(Val, _,_,_);
-    fde_entry(_,Val,_,_);
-    lsda_callsite(_, _, Val, _, _);
-    lsda_callsite(_, _, _, _, Val)
-	).
+    fde_entry(_,Val, _,_,_,_);
+    fde_entry(_,_,Val,_,_,_);
+    lsda_callsite_addresses(Val, _, _);
+    lsda_callsite_addresses(_, _, Val)
+    ).
 
 .decl block_limit(EA:address)
 
@@ -521,15 +521,15 @@ block_points(Block,0,1,"plt call"):-
 
 block_points(Block,0,10,"fde-entry"):-
     block_is_overlaping(Block),
-    fde_entry(Block, _,_,_).
+    fde_entry(_,Block, _,_,_,_).
 
 block_points(Block,0,3,"exc-region"):-
     block_is_overlaping(Block),
-    lsda_callsite(_, _, Block, _, _).
+    lsda_callsite_addresses(Block, _, _).
 
 block_points(Block,0,10,"landing-pad"):-
     block_is_overlaping(Block),
-    lsda_callsite(_, _, _, _, Block).
+    lsda_callsite_addresses( _, _, Block).
 ////////////////////////////////////////////////////////////////////////////
 
 
