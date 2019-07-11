@@ -77,7 +77,12 @@ endif()
 # ---------------------------------------------------------------------------
 # capstone
 # ---------------------------------------------------------------------------
-find_library(CAPSTONE NAMES capstone)
+if (BUILD_SHARED_LIBS)
+  find_library(CAPSTONE NAMES capstone)
+else()
+  find_library(CAPSTONE NAMES libcapstone.a)
+endif()
+
 if(NOT CAPSTONE)
   message(FATAL_ERROR "capstone library not found")
 endif()
