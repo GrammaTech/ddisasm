@@ -51,6 +51,8 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 # If we're using libc++, we need to manually include libc++abi
 # (unlike with using libstdc++, which automatically does this)
+include(CheckCXXSourceCompiles)
+
 check_cxx_source_compiles("
   #include <ciso646>
   int main() {
