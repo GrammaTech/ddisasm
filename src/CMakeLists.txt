@@ -132,7 +132,7 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
 endif()
 
 if(NOT BUILD_SHARED_LIBS)
-  target_link_libraries(ddisasm -static)
+  target_link_libraries(ddisasm ${STATIC_LINK_LIBS} -static)
 endif()
 
 install(TARGETS ddisasm DESTINATION bin)
