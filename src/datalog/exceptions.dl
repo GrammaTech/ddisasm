@@ -21,21 +21,43 @@
 //
 //===----------------------------------------------------------------------===//
 
-.decl fde_entry(addr: address, start:address, end:address,lsda:address,personality:address, personalityPos:number)
+.decl cie_entry(addr: address, length:number,codeAlignmentFactor:number,DataAlignmentFactor:number)
+.input cie_entry
+
+.decl cie_encoding(addr: address, FdeEncoding:number, LsdaEncoding:number)
+.input cie_encoding
+
+.decl cie_personality(addr:address,Personality:address,PersonalityPos:address,PersonalitySize:number,Encoding:number)
+.input cie_personality
+
+
+.decl fde_entry(addr: address,length:number,cie:address, start:address, end:address,lsda:address)
 .input fde_entry
-.output fde_entry
+
+.decl fde_pointer_locations(addr:address,startLocation:address,endLocation:address, endSize:number,lsdaLocation:address,lsdaSize:number)
+.input fde_pointer_locations
+
+
+.decl fde_addresses(start:address, end:address)
+
+fde_addresses(Start,End):-
+    fde_entry(_,_,_,Start,End,_).
+
+.decl fde_instruction(addr:address,index:number,size:number,insn:symbol,op1:number,op2:number)
+.input fde_instruction
 
 .decl lsda(lsdaAddress:address,callsiteTable:address,callsiteTableEncoding:number,
            typeTable:address, typeTableEncoding:number, landingPadBaseAddress: address)
 .input lsda
-.output lsda
+
+.decl lsda_pointer_locations(lsdaAddress:address,typeTablePointerLocation:address,callsiteTablePointerLoc:address)
+.input lsda_pointer_locations
 
 .decl lsda_callsite(CallSiteTable_address:address,EA_start:address, start:address,
     EA_end:address,end:address,
     EA_landingPad:address,landingPad:address,EA_endLandindPad:address)
-
 .input lsda_callsite
-.output lsda_callsite
+
 
 .decl lsda_callsite_addresses(Start:address,End:address,LandingPad:address)
 
@@ -44,10 +66,6 @@ lsda_callsite_addresses(Start,End,LandingPad):-
 
 .decl lsda_type_entry(lsdaTypeTableAddress:address, index:number,address:address)
 .input lsda_type_entry
-.output lsda_type_entry
-
-.decl real_value(ea:address, value:number)
-.output real_value
 
 /////////////////////////////////////////////////////////////////////////////////
 // Symbols in lsda callsite table
@@ -69,6 +87,8 @@ dwarf_encoding_size(10,2).
 dwarf_encoding_size(11,4).
 dwarf_encoding_size(12,8).
 
+///////////////////////////////////////////////////////////////////////////////
+// lsda symbols
 
 symbol_special_encoding(EA_start,EncodingName),
 symbol_special_encoding(EA_end,EncodingName),
@@ -106,58 +126,258 @@ symbolic_data(EAType,EncodingSize,Type):-
     EAType=LsdaTypeTableAddress-(EncodingSize*(Index+1)),
     Type!=0.
 
-/* real_value(Offset,Val),
-symbol_minus_symbol(Offset,StartFunction,EndFunction):-
-    fde_entry(OffsetFde,StartFunction, EndFunction,_,_,_),
-    section(".eh_frame",_,StartSection),
-    Offset=StartSection+OffsetFde+8+4,
-    data_byte(Offset,Byte0),
-    data_byte(Offset+1,Byte1),
-    data_byte(Offset+2,Byte2),
-    data_byte(Offset+3,Byte3),
-    Val= -(2^32 -( Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0)).
+////////////////////////////////////////////////////////////////////////////////
+// cie symbols
 
-real_value(Offset,Val),
-symbol_minus_symbol(Offset,StartSection,StartFunction):-
-    fde_entry(OffsetFde,StartFunction, EndFunction,_,_,_),
-    section(".eh_frame",_,StartSection),
-    Offset=StartSection+OffsetFde+8,
-    data_byte(Offset,Byte0),
-    data_byte(Offset+1,Byte1),
-    data_byte(Offset+2,Byte2),
-    data_byte(Offset+3,Byte3),
-    Val= -(2^32 -( Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0)).
+// cie size
+symbol_minus_symbol(Addr,4,Addr+4,Addr+Length+4):-
+    cie_entry(Addr,Length,_,_).
 
-symbolic_data(EA_Lsde,4,Lsde):-
-    fde_entry(OffsetFde,_, _,Lsde,_,_),
-    Lsde!=0,
-    section(".eh_frame",_,StartSection),
-    data_byte(StartSection+OffsetFde+16,4),
-    EA_Lsde=StartSection+OffsetFde+17.
-
-real_value(PersonalityPos,Val),
-symbolic_data(PersonalityPos,4,Personality):-
+// personality
+symbol_special_encoding(PersonalityPos,EncodingName):-
+    cie_personality(_,Personality,PersonalityPos,_,PersonalityEncoding),
     Personality!=0,
-    fde_entry(_,_, _,_,Personality,PersonalityPos),
-    data_byte(PersonalityPos,Byte0),
-    data_byte(PersonalityPos+1,Byte1),
-    data_byte(PersonalityPos+2,Byte2),
-    data_byte(PersonalityPos+3,Byte3),
-    Val= -(2^32 -( Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0)). */
+    special_encoding(Encoding,EncodingName),
+    PersonalityEncoding % 16 = Encoding.
 
-
-.decl cfi_directive(address:address,directive:symbol,encoding:number,reference:address)
-.output cfi_directive
-
-cfi_directive(StartFunction,".cfi_startproc",0,0):-
-    fde_entry(_,StartFunction, _,_,_,_).
-cfi_directive(EndFunction,".cfi_endproc",0,0):-
-    fde_entry(_,_, EndFunction,_,_,_).
-
-cfi_directive(StartFunction,".cfi_personality",3,Personality):-
-    fde_entry(_,StartFunction,_,_,Personality,_),
+symbolic_data(PersonalityPos,Size,Personality):-
+    cie_personality(_,Personality,PersonalityPos,Size,_),
     Personality!=0.
 
-cfi_directive(StartFunction,".cfi_lsda",3,Ldsa):-
-    fde_entry(_,StartFunction,_,Ldsa,_,_),
-    Ldsa!=0.
+/////////////////////////////////////////////////////////////////////////////////
+// fde symbols
+.decl last_fde(Addr:address)
+
+last_fde(Addr):-
+    fde_entry(Addr,Length,_, _, _,_),
+    !fde_entry(Addr+Length+4,_,_, _, _,_),
+    !cie_entry(Addr+Length+4,_,_,_).
+
+
+.decl function_fde(FunctionAddr:address,BeginFde:address,Size:address)
+.output function_fde
+
+function_fde(Function,Begin,Size+4):-
+    fde_entry(Begin,Size,_,Function,_,_),
+    !last_fde(Begin).
+
+function_fde(Function,Begin,StartSection+SizeSect-Begin):-
+    fde_entry(Begin,_,_,Function,_,_),
+    last_fde(Begin),
+    section(".eh_frame",SizeSect,StartSection).
+
+
+// fde size
+symbol_minus_symbol(Addr,4,Addr+4,Addr+Length+4):-
+    fde_entry(Addr,Length,_, _, _,_),
+    !last_fde(Addr).
+
+symbol_minus_symbol(Addr,4,Addr+4,StartSection+Size):-
+    fde_entry(Addr,_,_, _, _,_),
+    last_fde(Addr),
+    section(".eh_frame",Size,StartSection).
+
+//cie offset
+symbol_minus_symbol(Addr+4,4,Cie,Addr+4):-
+    fde_entry(Addr,_,Cie, _, _,_).
+
+// begin pointer
+symbol_special_encoding(StartLocation,EncodingName),
+symbol_special_encoding(EndLocation,EncodingName):-
+    fde_pointer_locations(Addr,StartLocation,EndLocation, _,_,_),
+    fde_entry(Addr,_,Cie, StartFunction, _,_),
+    cie_encoding(Cie,FdeEncoding,_),
+    special_encoding(Encoding,EncodingName),
+    FdeEncoding % 16 = Encoding.
+
+
+symbolic_data(StartLocation,EndLocation-StartLocation,StartFunction):-
+    fde_entry(Addr,_,Cie, StartFunction, _,_),
+    cie_encoding(Cie,FdeEncoding,_),
+    FdeEncoding / 16 =0,
+    fde_pointer_locations(Addr,StartLocation,EndLocation, _,_,_).
+
+symbol_minus_symbol(StartLocation,EndLocation-StartLocation,StartLocation,StartFunction):-
+    fde_entry(Addr,_,Cie, StartFunction, _,_),
+    cie_encoding(Cie,FdeEncoding,_),
+    FdeEncoding / 16 =1,
+    fde_pointer_locations(Addr,StartLocation,EndLocation, _,_,_).
+
+
+// end pointer
+symbol_minus_symbol(EndLocation,EndSize,StartFunction,EndFunction):-
+    fde_entry(Addr,_,_, StartFunction, EndFunction,_),
+    fde_pointer_locations(Addr,_,EndLocation, EndSize,_,_).
+
+// lsda pointer
+symbol_special_encoding(LsdaLocation,EncodingName):-
+    fde_pointer_locations(Addr,_,_, _,LsdaLocation,_),
+    fde_entry(Addr,_,Cie, _, _,_),
+    cie_encoding(Cie,_,LsdaEncoding),
+    special_encoding(Encoding,EncodingName),
+    LsdaEncoding % 16 = Encoding.
+
+symbol_minus_symbol(LsdaLocation,LsdaSize,LsdaLocation,LsdaAddress):-
+    fde_entry(Addr,_,Cie, _, _,LsdaAddress),
+    fde_pointer_locations(Addr,_,_, _,LsdaLocation,LsdaSize),
+    cie_encoding(Cie,_,LsdaEncoding),
+    LsdaEncoding / 16 =1.
+
+symbolic_data(LsdaLocation,LsdaSize,LsdaAddress):-
+    fde_entry(Addr,_,Cie, _, _,LsdaAddress),
+    fde_pointer_locations(Addr,_,_, _,LsdaLocation,LsdaSize),
+    LsdaSize > 0,
+    cie_encoding(Cie,_,LsdaEncoding),
+    LsdaEncoding / 16 =0.
+
+
+// instructions
+symbol_minus_symbol(InstructionAddr+1,Size-1,Addr+Advance,Addr):-
+    fde_instruction(FdeAddr,Index,Size,"advance_loc",Advance,_),
+    Size>1,
+    fde_instruction_pos(FdeAddr,Index,InstructionAddr),
+    fde_instruction_ref(FdeAddr,Index,_,Addr),
+    fde_entry(FdeAddr,_,Cie,_,_,_),
+    cie_entry(Cie,_,1,_).
+
+// position of the instruction in the fde entry
+.decl fde_instruction_pos(FdeAddr:address,Index:number,InstructionAddr:address)
+.output fde_instruction_pos
+
+fde_instruction_pos(FdeAddr,0,InstructionAddr):-
+    fde_pointer_locations(FdeAddr,_,_, _,LsdaLocation,LsdaSize),
+    InstructionAddr=LsdaLocation+LsdaSize.
+
+fde_instruction_pos(FdeAddr,Index+1,InstructionAddr+Size):-
+    fde_instruction_pos(FdeAddr,Index,InstructionAddr),
+    fde_instruction(FdeAddr,Index,Size,_,_,_).
+
+// location to which the instruction refers
+.decl fde_instruction_ref(FdeAddr:address,Index:number,LocalIndex:number,ReferenceAddr:address)
+
+// after startproc lsda and personality
+fde_instruction_ref(FdeAddr,0,3,StartFunction):-
+    fde_entry(FdeAddr,_, _,StartFunction,_,_).
+
+fde_instruction_ref(FdeAddr,Index+1,LocalIndex+1,Addr):-
+    fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
+    fde_instruction(FdeAddr,Index,_,Insn,_,_),
+    Insn!="advance_loc",
+    Insn!="cf_advance_loc".
+
+fde_instruction_ref(FdeAddr,Index+1,0,Addr+(CodeAlignmentFactor*Advance)):-
+    fde_instruction_ref(FdeAddr,Index,_,Addr),
+    fde_entry(FdeAddr,_,Cie,_,_,_),
+    cie_entry(Cie,_,CodeAlignmentFactor,_),
+    (fde_instruction(FdeAddr,Index,_,"advance_loc",Advance,_);
+    fde_instruction(FdeAddr,Index,_,"cf_advance_loc",Advance,_)).
+
+.decl cfi_directive(BlockAddress:address,Offset:number,LocalIndex:number,directive:symbol,Reference:address, Nargs:number,arg1:number,arg2:number)
+.output cfi_directive
+
+.decl cie_operand_is_register(Insn:symbol,OpNumber:number)
+
+cie_operand_is_register("def_cfa_offset",1).
+cie_operand_is_register("def_cfa_register",1).
+cie_operand_is_register("def_cfa",1).
+cie_operand_is_register("def_cfa",2).
+cie_operand_is_register("offset",1).
+cie_operand_is_register("val_offset",1).
+cie_operand_is_register("rel_offset",1).
+cie_operand_is_register("register",1).
+cie_operand_is_register("register",2).
+cie_operand_is_register("restore",1).
+cie_operand_is_register("undefined",1).
+cie_operand_is_register("same_value",1).
+cie_operand_is_register("return_column",1).
+
+.decl cie_noperands(Insn:symbol,OpNumber:number)
+
+cie_noperands("offset",2).
+cie_noperands("restore",1).
+cie_noperands("nop",0).
+cie_noperands("def_cfa",2).
+cie_noperands("offset_extended",2).
+cie_noperands("restore_extended",1).
+cie_noperands("undefined",1).
+cie_noperands("same_value",1).
+cie_noperands("register",2).
+cie_noperands("remember_state",0).
+cie_noperands("restore_state",0).
+cie_noperands("def_cfa",2).
+cie_noperands("def_cfa_register",1).
+cie_noperands("def_cfa_offset",1).
+cie_noperands("def_cfa_expression",1).
+// this is actually two but we print them together as a single block
+cie_noperands("def_expression",1).
+cie_noperands("offset_extended_sf",2).
+cie_noperands("def_cfa_sf",2).
+cie_noperands("def_cfa_offset_sf",1).
+cie_noperands("val_offset",2).
+cie_noperands("val_offset_sf",2).
+// this is actually two but we print them together as a single block
+cie_noperands("val_expression",1).
+
+.decl special_dwarf_insn(Insn:symbol)
+
+special_dwarf_insn("GNU_arg_size").
+special_dwarf_insn("def_cfa_expression").
+special_dwarf_insn("def_expression").
+special_dwarf_insn("val_expression").
+
+cfi_directive(StartFunction,0,0,".cfi_startproc",0,0,0,0):-
+    fde_addresses(StartFunction, _),
+    refined_block(StartFunction).
+
+
+cfi_directive(StartFunction,0,1,".cfi_lsda",Lsda,1,Encoding,0):-
+    fde_entry(_,_,_,StartFunction,_,Lsda),
+    (Lsda!=0,Encoding=3;
+     Lsda=0, Encoding=255).
+
+cfi_directive(StartFunction,0,2,".cfi_personality",Personality,1,Encoding,0):-
+    fde_entry(_,_,Cie,StartFunction,_,_),
+    cie_personality(Cie,Personality,_,_,_),
+    (Personality!=0,Encoding=3;
+     Personality=0, Encoding=255).
+
+
+cfi_directive(Block,BlockSize,0,".cfi_endproc",0,0,0,0):-
+    block_information(Block,BlockSize),
+    fde_addresses(_, Block+BlockSize).
+
+
+cfi_directive(Block,Addr-Block,LocalIndex,cat(".cfi_",Insn),0,NOperands,ScaledOp1,ScaledOp2):-
+    fde_instruction(FdeAddr,Index,_,Insn,Op1,Op2),
+    cie_noperands(Insn,NOperands),
+    !special_dwarf_insn(Insn),
+    Insn!="advance_loc",
+    Insn!="cf_advance_loc",
+    Insn!="nop",
+    fde_entry(FdeAddr,_,Cie,_,_,_),
+    cie_entry(Cie,_,_,DataAlignmentFactor),
+    (
+        !cie_operand_is_register(Insn,1),
+        ScaledOp1=Op1*DataAlignmentFactor
+        ;
+        cie_operand_is_register(Insn,1),
+        ScaledOp1=Op1
+    ),
+    (
+        !cie_operand_is_register(Insn,2),
+        ScaledOp2=Op2*DataAlignmentFactor
+        ;
+        cie_operand_is_register(Insn,2),
+        ScaledOp2=Op2
+    ),
+    fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
+    code_in_refined_block(Addr,Block).
+
+cfi_directive(Block,Addr-Block,LocalIndex,".cfi_escape",InstructionBytesAddr,Size,0,0):-
+    fde_instruction(FdeAddr,Index,Size,Insn,_,_),
+    fde_instruction_pos(FdeAddr,Index,InstructionBytesAddr),
+    special_dwarf_insn(Insn),
+    fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
+    code_in_refined_block(Addr,Block).
+
+

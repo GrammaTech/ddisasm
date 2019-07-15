@@ -176,8 +176,8 @@ basic_target(Val):-
     function_symbol(Val,_)
     ;
     // Exception information
-    fde_entry(_,Val, _,_,_,_);
-    fde_entry(_,_,Val,_,_,_);
+    fde_addresses(Val,_);
+    fde_addresses(_,Val);
     lsda_callsite_addresses(Val, _, _);
     lsda_callsite_addresses(_, _, Val)
     ).
@@ -521,7 +521,7 @@ block_points(Block,0,1,"plt call"):-
 
 block_points(Block,0,10,"fde-entry"):-
     block_is_overlaping(Block),
-    fde_entry(_,Block, _,_,_,_).
+    fde_addresses(Block,_).
 
 block_points(Block,0,3,"exc-region"):-
     block_is_overlaping(Block),

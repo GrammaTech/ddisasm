@@ -25,9 +25,8 @@
 
 souffle::tuple &operator<<(souffle::tuple &t, const EHP::FDEContents_t *fde)
 {
-    t << fde->getPosition() << fde->getStartAddress() << fde->getEndAddress()
-      << fde->getLSDAAddress() << fde->getCIE().getPersonality()
-      << fde->getCIE().getPersonalityPointerPosition();
+    t << fde->getPosition() << fde->getLength() << fde->getCIE().getPosition()
+      << fde->getStartAddress() << fde->getEndAddress() << fde->getLSDAAddress();
     return t;
 }
 
@@ -48,6 +47,12 @@ souffle::tuple &operator<<(souffle::tuple &t, const EHP::LSDA_t *lsda)
     return t;
 }
 
+souffle::tuple &operator<<(souffle::tuple &t, const std::tuple<std::string, int64_t, int64_t> &x)
+{
+    t << std::get<0>(x) << std::get<1>(x) << std::get<2>(x);
+    return t;
+}
+
 ExceptionDecoder::ExceptionDecoder(Elf_reader &elf)
 {
     uint8_t ptrsize(8);
@@ -64,17 +69,78 @@ ExceptionDecoder::ExceptionDecoder(Elf_reader &elf)
     ehParser->print();
 }
 
+souffle::tuple ExceptionDecoder::getCIEEntry(souffle::Relation *relation,
+                                             const EHP::CIEContents_t *cie)
+{
+    souffle::tuple tuple(relation);
+    tuple << cie->getPosition() << cie->getLength() << cie->getCAF() << cie->getDAF();
+    return tuple;
+}
+souffle::tuple ExceptionDecoder::getCIEEncoding(souffle::Relation *relation,
+                                                const EHP::CIEContents_t *cie)
+{
+    souffle::tuple tuple(relation);
+    uint64_t fdeEnconding = cie->getFDEEncoding();
+    uint64_t lsdaEncoding = cie->getLSDAEncoding();
+    tuple << cie->getPosition() << fdeEnconding << lsdaEncoding;
+    return tuple;
+}
+souffle::tuple ExceptionDecoder::getCIEPersonality(souffle::Relation *relation,
+                                                   const EHP::CIEContents_t *cie)
+{
+    souffle::tuple tuple(relation);
+    tuple << cie->getPosition() << cie->getPersonality() << cie->getPersonalityPointerPosition()
+          << cie->getPersonalityPointerSize() << cie->getPersonalityEncoding();
+    return tuple;
+}
+
+souffle::tuple ExceptionDecoder::getFDEPointerLocations(souffle::Relation *relation,
+                                                        const EHP::FDEContents_t *fde)
+{
+    souffle::tuple tuple(relation);
+    tuple << fde->getPosition() << fde->getStartAddressPosition() << fde->getEndAddressPosition()
+          << fde->getEndAddressSize() << fde->getLSDAAddressPosition() << fde->getLSDAAddressSize();
+    return tuple;
+}
 void ExceptionDecoder::addExceptionInformation(souffle::SouffleProgram *prog)
 {
+    auto *cieRelation = prog->getRelation("cie_entry");
+    auto *cieEncodingRelation = prog->getRelation("cie_encoding");
+    auto *ciePersonalityRelation = prog->getRelation("cie_personality");
+    for(const EHP::CIEContents_t *cie : *(ehParser->getCIEs()))
+    {
+        cieRelation->insert(getCIEEntry(cieRelation, cie));
+        cieEncodingRelation->insert(getCIEEncoding(cieEncodingRelation, cie));
+        ciePersonalityRelation->insert(getCIEPersonality(ciePersonalityRelation, cie));
+    }
+
     auto *fdeRelation = prog->getRelation("fde_entry");
+    auto *fdePointerLocationsRelation = prog->getRelation("fde_pointer_locations");
+    auto *fdeInsnRelation = prog->getRelation("fde_instruction");
     auto *lsdaRelation = prog->getRelation("lsda");
     auto *callSiteRelation = prog->getRelation("lsda_callsite");
     auto *typeEntryRelation = prog->getRelation("lsda_type_entry");
+
     for(const EHP::FDEContents_t *fde : *(ehParser->getFDEs()))
     {
         souffle::tuple fdeTuple(fdeRelation);
         fdeTuple << fde;
         fdeRelation->insert(fdeTuple);
+        fdePointerLocationsRelation->insert(
+            getFDEPointerLocations(fdePointerLocationsRelation, fde));
+        uint64_t insnIndex = 0;
+        for(const EHP::EHProgramInstruction_t *insn : *(fde->getProgram().getInstructions()))
+        {
+            auto insnTuple = insn->decode();
+            souffle::tuple insnSouffleTuple(fdeInsnRelation);
+            insnSouffleTuple << fde->getPosition();
+            insnSouffleTuple << insnIndex;
+            insnSouffleTuple << insn->getSize();
+            insnSouffleTuple << insnTuple;
+            ++insnIndex;
+            fdeInsnRelation->insert(insnSouffleTuple);
+        }
+
         auto *lsda = fde->getLSDA();
         if(lsda)
         {
@@ -83,16 +149,14 @@ void ExceptionDecoder::addExceptionInformation(souffle::SouffleProgram *prog)
             lsdaTuple << lsda;
             lsdaRelation->insert(lsdaTuple);
 
-            uint64_t index = 0;
             for(const EHP::LSDACallSite_t *callSite : *(lsda->getCallSites()))
             {
                 souffle::tuple callSiteTuple(callSiteRelation);
                 callSiteTuple << lsda->getCallSiteTableAddress();
                 callSiteTuple << callSite;
                 callSiteRelation->insert(callSiteTuple);
-                ++index;
             }
-            index = 0;
+            uint64_t index = 0;
             for(const EHP::LSDATypeTableEntry_t *typeEntry : *(lsda->getTypeTable()))
             {
                 souffle::tuple typeEntryTuple(typeEntryRelation);

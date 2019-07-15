@@ -32,9 +32,15 @@ class ExceptionDecoder
 private:
     std::unique_ptr<const EHP::EHFrameParser_t> ehParser;
 
+    souffle::tuple getCIEEntry(souffle::Relation *relation, const EHP::CIEContents_t *cie);
+    souffle::tuple getCIEEncoding(souffle::Relation *relation, const EHP::CIEContents_t *cie);
+    souffle::tuple getCIEPersonality(souffle::Relation *relation, const EHP::CIEContents_t *cie);
+    souffle::tuple getFDEPointerLocations(souffle::Relation *relation,
+                                          const EHP::FDEContents_t *fde);
+
 public:
-    ExceptionDecoder(Elf_reader& elf);
-    void addExceptionInformation(souffle::SouffleProgram* prog);
+    ExceptionDecoder(Elf_reader &elf);
+    void addExceptionInformation(souffle::SouffleProgram *prog);
 };
 
 #endif /* SRC_EXCEPTION_DECODER_H_ */

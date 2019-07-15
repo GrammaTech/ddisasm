@@ -995,26 +995,50 @@ static void updateComment(std::map<gtirb::Addr, std::string> &comments, gtirb::A
 
 static void buildCfiDirectives(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
-    std::map<gtirb::Addr, std::vector<std::tuple<std::string, uint8_t, gtirb::UUID>>> cfiDirectives;
+    std::map<gtirb::Offset, std::vector<std::tuple<std::string, std::vector<int64_t>, gtirb::UUID>>>
+        cfiDirectives;
     for(auto &output : *prog->getRelation("cfi_directive"))
     {
-        gtirb::Addr ea, symbolAddr;
+        gtirb::Addr blockAddr, symbolAddr;
         std::string directive;
-        uint8_t encoding;
-        output >> ea >> directive >> encoding >> symbolAddr;
-        if(symbolAddr != gtirb::Addr(0))
+        uint64_t disp, localIndex;
+        int64_t nOperands, op1, op2;
+        output >> blockAddr >> disp >> localIndex >> directive >> symbolAddr >> nOperands >> op1
+            >> op2;
+        std::vector<int64_t> operands;
+        if(directive == ".cfi_escape")
         {
-            gtirb::Symbol *symbol = getSymbol(module, symbolAddr);
-            cfiDirectives[ea].push_back(std::make_tuple(directive, encoding, symbol->getUUID()));
+            for(std::byte byte : module.getImageByteMap().data(symbolAddr, nOperands))
+            {
+                operands.push_back(std::to_integer<int64_t>(byte));
+            }
         }
         else
         {
-            gtirb::UUID uuid;
-            if(directive == ".cfi_endproc")
-                cfiDirectives[ea].insert(cfiDirectives[ea].begin(),
-                                         std::make_tuple(directive, encoding, uuid));
+            if(nOperands > 0)
+                operands.push_back(op1);
+            if(nOperands > 1)
+                operands.push_back(op2);
+        }
+
+        auto blockRange = module.findBlock(blockAddr);
+        if(blockRange.begin() != blockRange.end() && blockAddr == blockRange.begin()->getAddress())
+        {
+            gtirb::Offset offset(blockRange.begin()->getUUID(), disp);
+            if(cfiDirectives[offset].size() < localIndex + 1)
+                cfiDirectives[offset].resize(localIndex + 1);
+
+            if(directive != ".cfi_escape" && symbolAddr != gtirb::Addr(0))
+            {
+                gtirb::Symbol *symbol = getSymbol(module, symbolAddr);
+                cfiDirectives[offset][localIndex] =
+                    std::make_tuple(directive, operands, symbol->getUUID());
+            }
             else
-                cfiDirectives[ea].push_back(std::make_tuple(directive, encoding, uuid));
+            {
+                gtirb::UUID uuid;
+                cfiDirectives[offset][localIndex] = std::make_tuple(directive, operands, uuid);
+            }
         }
     }
     module.addAuxData("cfiDirectives", std::move(cfiDirectives));
@@ -1031,16 +1055,6 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
         std::ostringstream newComment;
         newComment << "data_access(" << size << ", " << multiplier << ", " << std::hex << from
                    << std::dec << ") ";
-        updateComment(comments, ea, newComment.str());
-    }
-
-    for(auto &output : *prog->getRelation("real_value"))
-    {
-        gtirb::Addr ea;
-        uint64_t value;
-        output >> ea >> value;
-        std::ostringstream newComment;
-        newComment << "value = " << std::hex << value << std::dec;
         updateComment(comments, ea, newComment.str());
     }
 
