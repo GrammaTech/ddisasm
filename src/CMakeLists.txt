@@ -115,7 +115,9 @@ target_link_libraries(disasm_main
   gtirb_pprinter
   ${CAPSTONE}
   ${Boost_LIBRARIES}
-  ${EXPERIMENTAL_LIB})
+  ${EXPERIMENTAL_LIB}
+  ${LIBCPP_ABI}
+)
 
 # Now combine the static library and generated code into an
 # executable.
@@ -132,3 +134,7 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
 endif()
 
 install(TARGETS ddisasm DESTINATION bin)
+
+if(NOT BUILD_SHARED_LIBS)
+  target_link_libraries(ddisasm -static-libstdc++)
+endif()

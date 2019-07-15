@@ -49,6 +49,29 @@ endif()
 
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
+# If we're using libc++, we need to manually include libc++abi
+# (unlike with using libstdc++, which automatically does this)
+include(CheckCxxSourceCompiles)
+
+check_cxx_source_compiles("
+  #include <ciso646>
+  int main() {
+    return _LIBCPP_VERSION;
+  }
+" USING_LIBCPP)
+
+if(USING_LIBCPP)
+  if (BUILD_SHARED_LIBS)
+    find_library(LIBCPP_ABI NAMES c++abi)
+  else()
+    find_library(LIBCPP_ABI NAMES libc++abi.a)
+  endif()
+
+  if(NOT LIBCPP_ABI)
+    message(FATAL_ERROR "libc++abi not found")
+  endif()
+endif()
+
 # ---------------------------------------------------------------------------
 # gtirb
 # ---------------------------------------------------------------------------
