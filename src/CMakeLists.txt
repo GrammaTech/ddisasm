@@ -116,17 +116,15 @@ endif()
 target_link_libraries(disasm_main
   gtirb
   gtirb_pprinter
-  stdc++fs
+  ehp
   ${CAPSTONE}
   ${Boost_LIBRARIES}
   ${EXPERIMENTAL_LIB}
   ${LIBCPP_ABI}
-  ${EHP}
 )
 
 # Now combine the static library and generated code into an
 # executable.
-
 add_executable(ddisasm
   ${GENERATED_CPP})
 target_link_libraries(ddisasm disasm_main)
