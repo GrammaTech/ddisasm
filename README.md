@@ -72,6 +72,10 @@ Use the following options to configure cmake:
  it uses. If you want to use your local boost installation, use the
  flag: `-DDDISASM_USE_SYSTEM_BOOST=on`
 
+- ddisasm can make use of GTIRB in static library form (instead of
+ shared library form, the default) if you use the flag
+ `-DDDISASM_BUILD_SHARED_LIBS=OFF`.
+
 Once the dependencies are installed, you can configure and build as
 follows:
 
@@ -178,18 +182,18 @@ Please follow the Code Requirements in
 
 1. [Datalog Disassembly](https://arxiv.org/abs/1906.03969)
 
-1. [Souffle](https://github.com/souffle-lang/souffle)
+2. [Souffle](https://github.com/souffle-lang/souffle)
 
-1. [Capstone disassembler](http://www.capstone-engine.org/)
+3. [Capstone disassembler](http://www.capstone-engine.org/)
 
-1. [Control Flow Integrity for COTS Binaries](http://seclab.cs.sunysb.edu/seclab/pubs/usenix13.pdf)
+4. [Control Flow Integrity for COTS Binaries](http://seclab.cs.sunysb.edu/seclab/pubs/usenix13.pdf)
 
-1. [Alias analysis for Assembly](http://reports-archive.adm.cs.cmu.edu/anon/anon/usr/ftp/2006/CMU-CS-06-180R.pdf)
+5. [Alias analysis for Assembly](http://reports-archive.adm.cs.cmu.edu/anon/anon/usr/ftp/2006/CMU-CS-06-180R.pdf)
 
-1. [Reassembleable Disassembling](https://www.usenix.org/system/files/conference/usenixsecurity15/sec15-paper-wang-shuai.pdf)
+6. [Reassembleable Disassembling](https://www.usenix.org/system/files/conference/usenixsecurity15/sec15-paper-wang-shuai.pdf)
 
-1. [Ramblr: Making reassembly great again](https://pdfs.semanticscholar.org/dcf5/dc7e6ae2614dd0079b851e3f292148366ca8.pdf)
+7. [Ramblr: Making reassembly great again](https://pdfs.semanticscholar.org/dcf5/dc7e6ae2614dd0079b851e3f292148366ca8.pdf)
 
-1. [An In-Depth Analysis of Disassembly on Full-Scale x86/x64 Binaries](https://www.usenix.org/system/files/conference/usenixsecurity16/sec16_paper_andriesse.pdf)
+8. [An In-Depth Analysis of Disassembly on Full-Scale x86/x64 Binaries](https://www.usenix.org/system/files/conference/usenixsecurity16/sec16_paper_andriesse.pdf)
 
-1. [Binary Code is Not Easy](https://dl.acm.org/citation.cfm?id=2931047)
+9. [Binary Code is Not Easy](https://dl.acm.org/citation.cfm?id=2931047)
