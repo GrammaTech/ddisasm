@@ -843,7 +843,7 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
                 {
                     auto *d = gtirb::DataObject::Create(C, currentAddr, str->End - currentAddr);
                     module.addData(d);
-                    typesTable[d->getUUID()] = std::string{"char[]"};
+                    typesTable[d->getUUID()] = std::string{"string"};
 
                     // Because the loop is going to increment this counter, don't skip a byte.
                     currentAddr = str->End - 1;
