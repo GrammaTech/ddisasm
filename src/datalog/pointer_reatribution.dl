@@ -66,11 +66,11 @@ moved_data_label(EA,Size,Dest,New_dest):-
 
 //if something points to the middle of a known symbol we express it as symbol+constant
 //as long as it is not code
-moved_data_label(EA,Size,Dest,Address):-
-    symbolic_data(EA,Size,Dest),
-	!code(Dest),
-	symbol(Address,Size,_,_,_,_),
-	Address<Dest,
+moved_data_label(EA,SizePointer,Dest,Address):-
+    symbolic_data(EA,SizePointer,Dest),
+    !code(Dest),
+    symbol(Address,Size,_,_,_,_),
+    Address<Dest,
 	Dest<Address+Size.
 
 
