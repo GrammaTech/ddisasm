@@ -999,16 +999,18 @@ static void buildCfiDirectives(gtirb::Module &module, souffle::SouffleProgram *p
         cfiDirectives;
     for(auto &output : *prog->getRelation("cfi_directive"))
     {
-        gtirb::Addr blockAddr, symbolAddr;
+        gtirb::Addr blockAddr, reference;
         std::string directive;
         uint64_t disp, localIndex;
         int64_t nOperands, op1, op2;
-        output >> blockAddr >> disp >> localIndex >> directive >> symbolAddr >> nOperands >> op1
+        output >> blockAddr >> disp >> localIndex >> directive >> reference >> nOperands >> op1
             >> op2;
         std::vector<int64_t> operands;
+        // cfi_escape directives have a sequence of bytes as operands (the raw bytes of the dwarf
+        // instruction). The address 'reference' points to these bytes.
         if(directive == ".cfi_escape")
         {
-            for(std::byte byte : module.getImageByteMap().data(symbolAddr, nOperands))
+            for(std::byte byte : module.getImageByteMap().data(reference, nOperands))
             {
                 operands.push_back(std::to_integer<int64_t>(byte));
             }
@@ -1028,9 +1030,10 @@ static void buildCfiDirectives(gtirb::Module &module, souffle::SouffleProgram *p
             if(cfiDirectives[offset].size() < localIndex + 1)
                 cfiDirectives[offset].resize(localIndex + 1);
 
-            if(directive != ".cfi_escape" && symbolAddr != gtirb::Addr(0))
+            if(directive != ".cfi_escape" && reference != gtirb::Addr(0))
             {
-                gtirb::Symbol *symbol = getSymbol(module, symbolAddr);
+                // for normal directives (not cfi_escape) the reference points to a symbol.
+                gtirb::Symbol *symbol = getSymbol(module, reference);
                 cfiDirectives[offset][localIndex] =
                     std::make_tuple(directive, operands, symbol->getUUID());
             }
