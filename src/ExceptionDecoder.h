@@ -35,10 +35,21 @@ private:
     souffle::tuple getCIEEntry(souffle::Relation *relation, const EHP::CIEContents_t *cie);
     souffle::tuple getCIEEncoding(souffle::Relation *relation, const EHP::CIEContents_t *cie);
     souffle::tuple getCIEPersonality(souffle::Relation *relation, const EHP::CIEContents_t *cie);
+    souffle::tuple getFDE(souffle::Relation *relation, const EHP::FDEContents_t *fde);
     souffle::tuple getFDEPointerLocations(souffle::Relation *relation,
                                           const EHP::FDEContents_t *fde);
-    souffle::tuple getLsdaPointerLocations(souffle::Relation *relation,
-                                           const EHP::FDEContents_t *fde, const EHP::LSDA_t *lsda);
+    souffle::tuple getEHProgramInstruction(souffle::Relation *relation, uint64_t index,
+                                           const EHP::EHProgramInstruction_t *insn,
+                                           const EHP::FDEContents_t *fde);
+    souffle::tuple getLSDA(souffle::Relation *relation, const EHP::LSDA_t *lsda,
+                           const EHP::FDEContents_t *fde);
+    souffle::tuple getLSDAPointerLocations(souffle::Relation *relation, const EHP::LSDA_t *lsda,
+                                           const EHP::FDEContents_t *fde);
+    souffle::tuple getLSDACallSite(souffle::Relation *relation, const EHP::LSDACallSite_t *callSite,
+                                   const EHP::LSDA_t *lsda);
+    souffle::tuple getLSDATypetableEntry(souffle::Relation *relation, uint64_t index,
+                                         const EHP::LSDATypeTableEntry_t *typeEntry,
+                                         const EHP::LSDA_t *lsda);
 
 public:
     ExceptionDecoder(Elf_reader &elf);
