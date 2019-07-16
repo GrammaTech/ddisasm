@@ -40,7 +40,7 @@
 .decl fde_instruction(addr:address,index:number,size:number,insn:symbol,op1:number,op2:number)
 .input fde_instruction
 
-.decl lsda(lsdaAddress:address,callsiteTable:address,callsiteTableEncoding:number,
+.decl lsda(lsdaAddress:address,callsiteTable:address,callsiteTableEncoding:number,callSiteTableLength:number,
            typeTable:address, typeTableEncoding:number, landingPadBaseAddress: address)
 .input lsda
 
@@ -57,7 +57,8 @@
 /////////////////////////////////////////////////////////////////////////////////
 // output predicates
 
-.decl cfi_directive(BlockAddress:address,Offset:number,LocalIndex:number,directive:symbol,Reference:address, Nargs:number,arg1:number,arg2:number)
+.decl cfi_directive(BlockAddress:address,Offset:number,LocalIndex:number,
+                    directive:symbol,Reference:address, Nargs:number,arg1:number,arg2:number)
 .output cfi_directive
 
 // symbol_special_encoding marks symbols that are encoded with uleb128 or sleb128.
@@ -78,13 +79,30 @@ lsda_callsite_addresses(Start,End,LandingPad):-
 
 
 /////////////////////////////////////////////////////////////////////////////////
+// Symbols in lsda
+
+// type table pointer
+symbol_special_encoding(TypeTablePointerLocation,"uleb128"),
+symbol_minus_symbol(TypeTablePointerLocation,Size,CallsiteTablePointerLoc-1,LsdaTypeTableAddress):-
+    lsda_pointer_locations(Lsda,TypeTablePointerLocation,CallsiteTablePointerLoc),
+    lsda(Lsda,_,_,_,LsdaTypeTableAddress, _, _),
+    Size = (CallsiteTablePointerLoc-1) - TypeTablePointerLocation.
+
+//callsite table size
+symbol_special_encoding(CallsiteTablePointerLoc,"uleb128"),
+symbol_minus_symbol(CallsiteTablePointerLoc,Size,CallSiteTable_address,CallSiteTable_address+CallSiteTableLength):-
+    lsda_pointer_locations(Lsda,_,CallsiteTablePointerLoc),
+    lsda(Lsda,CallSiteTable_address,_,CallSiteTableLength,_, _, _),
+    Size=CallSiteTable_address - CallsiteTablePointerLoc.
+
+/////////////////////////////////////////////////////////////////////////////////
 // Symbols in lsda callsite table
 
 symbol_special_encoding(EA_start,EncodingName),
 symbol_special_encoding(EA_end,EncodingName),
 symbol_special_encoding(EA_landingPad,EncodingName):-
     lsda_callsite(CallSiteTable_address,EA_start,_,EA_end,_,EA_landingPad,_,_),
-    lsda(_,CallSiteTable_address,CallSiteEncoding,_,_,_),
+    lsda(_,CallSiteTable_address,CallSiteEncoding,_,_,_,_),
     special_encoding(Encoding,EncodingName),
     CallSiteEncoding % 16 = Encoding.
 
@@ -92,7 +110,7 @@ symbol_special_encoding(EA_landingPad,EncodingName):-
 //region beginning
 symbol_minus_symbol(EA_start,Size,LandingPadBaseAddress,StartRegion):-
     lsda_callsite(CallSiteTable_address, EA_start, StartRegion,EA_end,_,_,_,_),
-    lsda(_,CallSiteTable_address,_,_,_,LandingPadBaseAddress),
+    lsda(_,CallSiteTable_address,_,_,_,_,LandingPadBaseAddress),
     Size= EA_end-EA_start.
 
 //region end
@@ -103,14 +121,15 @@ symbol_minus_symbol(EA_end,Size,StartRegion,EndRegion):-
 //landing pad
 symbol_minus_symbol(EA_landingPad,Size,LandingPadBaseAddress,LandingPad):-
     lsda_callsite(CallSiteTable_address, _, _,_,_,EA_landingPad,LandingPad,EA_endLandingPad),
-    lsda(_,CallSiteTable_address,_,_,_,LandingPadBaseAddress),
+    lsda(_,CallSiteTable_address,_,_,_,_,LandingPadBaseAddress),
     LandingPad!=0,
     Size= EA_endLandingPad-EA_landingPad.
 
+///////////////////////////////////////////////////////////////////////////////
 // Symbols in lsda typetable
 symbolic_data(EAType,EncodingSize,Type):-
     lsda_type_entry(LsdaTypeTableAddress, Index,Type),
-    lsda(_,_,_,LsdaTypeTableAddress, TypeTableEncoding, _),
+    lsda(_,_,_,_,LsdaTypeTableAddress, TypeTableEncoding, _),
     TypeTableEncoding % 16 = Encoding,
     dwarf_encoding_size(Encoding,EncodingSize),
     EAType=LsdaTypeTableAddress-(EncodingSize*(Index+1)),
@@ -242,7 +261,6 @@ last_fde(Addr):-
 // position of the instruction in the fde entry
 
 .decl fde_instruction_pos(FdeAddr:address,Index:number,InstructionAddr:address)
-.output fde_instruction_pos
 
 fde_instruction_pos(FdeAddr,0,InstructionAddr):-
     fde_pointer_locations(FdeAddr,_,_, _,LsdaLocation,LsdaSize),

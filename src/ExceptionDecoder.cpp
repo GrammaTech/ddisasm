@@ -42,8 +42,8 @@ souffle::tuple &operator<<(souffle::tuple &t, const EHP::LSDACallSite_t *callSit
 souffle::tuple &operator<<(souffle::tuple &t, const EHP::LSDA_t *lsda)
 {
     t << lsda->getCallSiteTableAddress() << lsda->getCallSiteTableEncoding()
-      << lsda->getTypeTableAddress() << lsda->getTypeTableEncoding()
-      << lsda->getLandingPadBaseAddress();
+      << lsda->getCallSiteTableLength() << lsda->getTypeTableAddress()
+      << lsda->getTypeTableEncoding() << lsda->getLandingPadBaseAddress();
     return t;
 }
 
@@ -102,6 +102,17 @@ souffle::tuple ExceptionDecoder::getFDEPointerLocations(souffle::Relation *relat
           << fde->getEndAddressSize() << fde->getLSDAAddressPosition() << fde->getLSDAAddressSize();
     return tuple;
 }
+
+souffle::tuple ExceptionDecoder::getLsdaPointerLocations(souffle::Relation *relation,
+                                                         const EHP::FDEContents_t *fde,
+                                                         const EHP::LSDA_t *lsda)
+{
+    souffle::tuple tuple(relation);
+    tuple << fde->getLSDAAddress() << lsda->getTypeTableAddressLocation()
+          << lsda->getCallSiteTableAddressLocation();
+    return tuple;
+}
+
 void ExceptionDecoder::addExceptionInformation(souffle::SouffleProgram *prog)
 {
     auto *cieRelation = prog->getRelation("cie_entry");
@@ -118,6 +129,7 @@ void ExceptionDecoder::addExceptionInformation(souffle::SouffleProgram *prog)
     auto *fdePointerLocationsRelation = prog->getRelation("fde_pointer_locations");
     auto *fdeInsnRelation = prog->getRelation("fde_instruction");
     auto *lsdaRelation = prog->getRelation("lsda");
+    auto *lsdaPointerLocationsRelation = prog->getRelation("lsda_pointer_locations");
     auto *callSiteRelation = prog->getRelation("lsda_callsite");
     auto *typeEntryRelation = prog->getRelation("lsda_type_entry");
 
@@ -142,13 +154,14 @@ void ExceptionDecoder::addExceptionInformation(souffle::SouffleProgram *prog)
         }
 
         auto *lsda = fde->getLSDA();
-        if(lsda)
+        if(lsda && fde->getLSDAAddress() != 0)
         {
             souffle::tuple lsdaTuple(lsdaRelation);
             lsdaTuple << fde->getLSDAAddress();
             lsdaTuple << lsda;
             lsdaRelation->insert(lsdaTuple);
-
+            lsdaPointerLocationsRelation->insert(
+                getLsdaPointerLocations(lsdaPointerLocationsRelation, fde, lsda));
             for(const EHP::LSDACallSite_t *callSite : *(lsda->getCallSites()))
             {
                 souffle::tuple callSiteTuple(callSiteRelation);

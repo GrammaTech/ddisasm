@@ -37,6 +37,8 @@ private:
     souffle::tuple getCIEPersonality(souffle::Relation *relation, const EHP::CIEContents_t *cie);
     souffle::tuple getFDEPointerLocations(souffle::Relation *relation,
                                           const EHP::FDEContents_t *fde);
+    souffle::tuple getLsdaPointerLocations(souffle::Relation *relation,
+                                           const EHP::FDEContents_t *fde, const EHP::LSDA_t *lsda);
 
 public:
     ExceptionDecoder(Elf_reader &elf);
