@@ -796,7 +796,7 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
                 const auto movedDataLabel = movedDataLabels.find(currentAddr);
                 if(movedDataLabel != nullptr)
                 {
-                    auto *d = gtirb::DataObject::Create(C, currentAddr, 8);
+                    auto *d = gtirb::DataObject::Create(C, currentAddr, movedDataLabel->Size);
                     module.addData(d);
                     auto diff = movedDataLabel->Offset1 - movedDataLabel->Offset2;
                     auto sym = getSymbol(module, gtirb::Addr(movedDataLabel->Offset2));
@@ -804,7 +804,7 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
                     const auto specialType = symbolSpecialTypes.find(currentAddr);
                     if(specialType != nullptr)
                         typesTable[d->getUUID()] = specialType->Type;
-                    currentAddr += 7;
+                    currentAddr += (movedDataLabel->Size) - 1;
                     continue;
                 }
                 // symbol+0

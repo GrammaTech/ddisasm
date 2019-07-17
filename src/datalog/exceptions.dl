@@ -86,14 +86,16 @@ symbol_special_encoding(TypeTablePointerLocation,"uleb128"),
 symbol_minus_symbol(TypeTablePointerLocation,Size,CallsiteTablePointerLoc-1,LsdaTypeTableAddress):-
     lsda_pointer_locations(Lsda,TypeTablePointerLocation,CallsiteTablePointerLoc),
     lsda(Lsda,_,_,_,LsdaTypeTableAddress, _, _),
-    Size = (CallsiteTablePointerLoc-1) - TypeTablePointerLocation.
+    Size = (CallsiteTablePointerLoc-1) - TypeTablePointerLocation,
+    Size>0.
 
 //callsite table size
 symbol_special_encoding(CallsiteTablePointerLoc,"uleb128"),
 symbol_minus_symbol(CallsiteTablePointerLoc,Size,CallSiteTable_address,CallSiteTable_address+CallSiteTableLength):-
     lsda_pointer_locations(Lsda,_,CallsiteTablePointerLoc),
     lsda(Lsda,CallSiteTable_address,_,CallSiteTableLength,_, _, _),
-    Size=CallSiteTable_address - CallsiteTablePointerLoc.
+    Size=CallSiteTable_address - CallsiteTablePointerLoc,
+    Size>0.
 
 /////////////////////////////////////////////////////////////////////////////////
 // Symbols in lsda callsite table
@@ -111,19 +113,22 @@ symbol_special_encoding(EA_landingPad,EncodingName):-
 symbol_minus_symbol(EA_start,Size,LandingPadBaseAddress,StartRegion):-
     lsda_callsite(CallSiteTable_address, EA_start, StartRegion,EA_end,_,_,_,_),
     lsda(_,CallSiteTable_address,_,_,_,_,LandingPadBaseAddress),
-    Size= EA_end-EA_start.
+    Size= EA_end-EA_start,
+    Size>0.
 
 //region end
 symbol_minus_symbol(EA_end,Size,StartRegion,EndRegion):-
     lsda_callsite(_, _, StartRegion,EA_end,EndRegion,EA_landingPad,_,_),
-    Size= EA_landingPad-EA_end.
+    Size= EA_landingPad-EA_end,
+    Size>0.
 
 //landing pad
 symbol_minus_symbol(EA_landingPad,Size,LandingPadBaseAddress,LandingPad):-
     lsda_callsite(CallSiteTable_address, _, _,_,_,EA_landingPad,LandingPad,EA_endLandingPad),
     lsda(_,CallSiteTable_address,_,_,_,_,LandingPadBaseAddress),
     LandingPad!=0,
-    Size= EA_endLandingPad-EA_landingPad.
+    Size= EA_endLandingPad-EA_landingPad,
+    Size>0.
 
 ///////////////////////////////////////////////////////////////////////////////
 // Symbols in lsda typetable
@@ -192,13 +197,15 @@ symbol_minus_symbol(StartLocation,EndLocation-StartLocation,StartLocation,StartF
     cie_encoding(Cie,FdeEncoding,_),
     // pc-relative encoding
     FdeEncoding / 16 =1,
-    fde_pointer_locations(Addr,StartLocation,EndLocation, _,_,_).
+    fde_pointer_locations(Addr,StartLocation,EndLocation, _,_,_),
+    EndLocation-StartLocation>0.
 
 
 // end pointer
 symbol_minus_symbol(EndLocation,EndSize,StartFunction,EndFunction):-
     fde_entry(Addr,_,_, StartFunction, EndFunction,_),
-    fde_pointer_locations(Addr,_,EndLocation, EndSize,_,_).
+    fde_pointer_locations(Addr,_,EndLocation, EndSize,_,_),
+    EndSize>0.
 
 // lsda pointer
 symbol_special_encoding(LsdaLocation,EncodingName):-
@@ -219,6 +226,7 @@ symbolic_data(LsdaLocation,LsdaSize,LsdaAddress):-
 symbol_minus_symbol(LsdaLocation,LsdaSize,LsdaLocation,LsdaAddress):-
     fde_entry(Addr,_,Cie, _, _,LsdaAddress),
     fde_pointer_locations(Addr,_,_, _,LsdaLocation,LsdaSize),
+    LsdaSize > 0,
     cie_encoding(Cie,_,LsdaEncoding),
     // pc-relative enconding
     LsdaEncoding / 16 =1.
