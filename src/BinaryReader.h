@@ -34,6 +34,7 @@ public:
     using section = std::tuple<std::string, uint64_t, uint64_t>;
     using relocation = std::tuple<uint64_t, std::string, std::string, uint64_t>;
 
+    virtual ~BinaryReader() = default;
     virtual bool is_valid() = 0;
     virtual uint64_t get_max_address() = 0;
     virtual uint64_t get_min_address() = 0;
