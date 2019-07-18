@@ -35,12 +35,12 @@ Dl_decoder::Dl_decoder()
     cs_option(this->csHandle, CS_OPT_DETAIL, CS_OPT_ON);
 }
 
-void Dl_decoder::decode_section(char* buf, uint64_t size, int64_t ea)
+void Dl_decoder::decode_section(uint8_t* buf, uint64_t size, int64_t ea)
 {
     while(size > 0)
     {
         cs_insn* insn;
-        size_t count = cs_disasm(this->csHandle, (const uint8_t*)buf, size, ea, 1, &insn);
+        size_t count = cs_disasm(this->csHandle, buf, size, ea, 1, &insn);
         if(count == 0)
         {
             invalids.push_back(ea);
@@ -148,14 +148,14 @@ bool can_be_address(uint64_t num, uint64_t min_address, uint64_t max_address)
                                       //     ||  (num+min_address<=max_address); //offset
 }
 
-void Dl_decoder::store_data_section(char* buf, uint64_t size, int64_t ea, uint64_t min_address,
+void Dl_decoder::store_data_section(uint8_t* buf, uint64_t size, int64_t ea, uint64_t min_address,
                                     uint64_t max_address)
 {
     while(size > 0)
     {
         // store the byte
-        unsigned char content_byte = *buf;
-        data_bytes.push_back(Dl_data<unsigned char>(ea, content_byte));
+        uint8_t content_byte = *buf;
+        data_bytes.push_back(Dl_data<uint8_t>(ea, content_byte));
 
         // store the address
         if(size >= 8)

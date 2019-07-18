@@ -23,6 +23,7 @@
 
 #ifndef BINARY_READER_H_
 #define BINARY_READER_H_
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -49,7 +50,7 @@ public:
     virtual std::vector<std::string> get_libraries() = 0;
     virtual std::vector<std::string> get_library_paths() = 0;
 
-    virtual char* get_section(const std::string& name, uint64_t& buff, uint64_t& initial_addr) = 0;
-    virtual char* get_section(const std::string& name, uint64_t& buff) = 0;
+    virtual std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> get_section(
+        const std::string& name) = 0;
 };
 #endif /* BINARY_READER_H_ */

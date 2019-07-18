@@ -480,38 +480,20 @@ uint64_t Elf_reader::get_max_address()
     return max_address;
 }
 
-char* Elf_reader::get_section(const string& name, uint64_t& size, Elf64_Addr& initial_addr)
+std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> Elf_reader::get_section(
+    const string& name)
 {
     int index = get_section_index(name);
     if(index == -1)
-    {
-        size = 0;
-        return nullptr;
-    }
+        return nullopt;
     if(sections[index].sh_type == SHT_NOBITS)
-    {
-        size = 0;
-        return nullptr;
-    }
-    size = sections[index].sh_size;
-    initial_addr = sections[index].sh_addr;
-    char* buff;
-    try
-    {
-        buff = new char[size];
-    }
-    catch(std::bad_alloc& ba)
-    {
-        std::cerr << "bad_alloc caught: " << ba.what() << "trying to allocate for " << name << endl;
-        return nullptr;
-    }
-    file.seekg((sections[index].sh_offset), ios::beg);
-    file.read(buff, size);
-    return buff;
-}
+        return nullopt;
 
-char* Elf_reader::get_section(const string& name, uint64_t& size)
-{
-    Elf64_Addr initial_addr;
-    return get_section(name, size, initial_addr);
+    uint64_t size = sections[index].sh_size;
+    uint64_t initial_addr = sections[index].sh_addr;
+    vector<uint8_t> bytes;
+    bytes.resize(size);
+    file.seekg((sections[index].sh_offset), ios::beg);
+    file.read(reinterpret_cast<char*>(bytes.data()), size);
+    return std::make_tuple(bytes, initial_addr);
 }

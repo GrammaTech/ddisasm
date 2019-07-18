@@ -473,12 +473,14 @@ static void buildSections(gtirb::Module &module, std::unique_ptr<BinaryReader> &
         std::string name;
         output >> name >> size >> address;
         module.addSection(gtirb::Section::Create(C, name, address, size));
-        if(char *data = binary->get_section(name, size))
+        auto section = binary->get_section(name);
+        if(section)
         {
-            std::byte *begin = reinterpret_cast<std::byte *>(data);
-            std::byte *end = reinterpret_cast<std::byte *>(data + size);
+            std::vector<uint8_t> &sectionBytes = std::get<0>(*section);
+            std::byte *begin = reinterpret_cast<std::byte *>(sectionBytes.data());
+            std::byte *end =
+                reinterpret_cast<std::byte *>(sectionBytes.data() + sectionBytes.size());
             byteMap.setData(address, boost::make_iterator_range(begin, end));
-            delete[] data;
         }
     }
 }
@@ -1128,13 +1130,11 @@ static void decode(Dl_decoder &decoder, std::unique_ptr<BinaryReader> &binary,
 {
     for(const auto &section_name : sections)
     {
-        uint64_t size;
-        uint64_t address;
-        char *buff = binary->get_section(section_name, size, address);
-        if(buff != nullptr)
+        auto section = binary->get_section(section_name);
+        if(section)
         {
-            decoder.decode_section(buff, size, address);
-            delete[] buff;
+            decoder.decode_section(std::get<0>(*section).data(), std::get<0>(*section).size(),
+                                   std::get<1>(*section));
         }
         else
         {
@@ -1145,13 +1145,11 @@ static void decode(Dl_decoder &decoder, std::unique_ptr<BinaryReader> &binary,
     uint64_t max_address = binary->get_max_address();
     for(const auto &section_name : data_sections)
     {
-        uint64_t size;
-        uint64_t address;
-        char *buff = binary->get_section(section_name, size, address);
-        if(buff != nullptr)
+        auto section = binary->get_section(section_name);
+        if(section)
         {
-            decoder.store_data_section(buff, size, address, min_address, max_address);
-            delete[] buff;
+            decoder.store_data_section(std::get<0>(*section).data(), std::get<0>(*section).size(),
+                                       std::get<1>(*section), min_address, max_address);
         }
         else
         {
