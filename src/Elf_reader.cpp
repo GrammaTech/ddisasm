@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <cstring>
 #include <iostream>
+#include <sstream>
 using namespace std;
 
 Elf_reader::Elf_reader(string filename)
@@ -210,53 +211,10 @@ bool Elf_reader::is_valid()
 {
     return valid;
 }
-void Elf_reader::print_entry_point(ostream& stream)
-{
-    stream << header.e_entry << endl;
-}
 
 uint64_t Elf_reader::get_entry_point()
 {
     return header.e_entry;
-}
-
-bool Elf_reader::print_entry_point_to_file(const string& filename)
-{
-    ofstream file(filename, ios::out | ios::binary);
-    if(file.is_open())
-    {
-        print_entry_point(file);
-        file.close();
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-bool Elf_reader::print_binary_type_to_file(const string& filename)
-{
-    static string binary_type_names[6] = {"NONE", /* No file type */
-                                          "REL",  /* Relocatable file */
-                                          "EXEC", /* Executable file */
-                                          "DYN",  /* Shared object file */
-                                          "CORE", /* Core file */
-                                          "NUM"}; /* Number of defined types */
-    ofstream file(filename, ios::out | ios::binary);
-    if(file.is_open())
-    {
-        if(header.e_type < 6)
-            file << binary_type_names[header.e_type];
-        else
-            file << "OTHER";
-        file.close();
-        return true;
-    }
-    else
-    {
-        return false;
-    }
 }
 
 string Elf_reader::get_binary_type()
@@ -274,20 +232,6 @@ string Elf_reader::get_binary_type()
     return "OTHER";
 }
 
-void Elf_reader::print_sections(ostream& stream)
-{
-    auto sect_it = sections.begin();
-    auto sect_names_it = section_names.begin();
-    while(sect_it != sections.end())
-    {
-        if(*sect_names_it != "" && sect_it->sh_flags & SHF_ALLOC)
-            stream << *sect_names_it << '\t' << sect_it->sh_size << '\t' << sect_it->sh_addr
-                   << endl;
-        ++sect_it;
-        ++sect_names_it;
-    }
-}
-
 vector<Elf_reader::section> Elf_reader::get_sections()
 {
     auto sect_it = sections.begin();
@@ -301,21 +245,6 @@ vector<Elf_reader::section> Elf_reader::get_sections()
         ++sect_names_it;
     }
     return result;
-}
-
-bool Elf_reader::print_sections_to_file(const string& filename)
-{
-    ofstream file(filename, ios::out | ios::binary);
-    if(file.is_open())
-    {
-        print_sections(file);
-        file.close();
-        return true;
-    }
-    else
-    {
-        return false;
-    }
 }
 
 string get_symbol_scope_str(unsigned char info)
@@ -395,12 +324,6 @@ void Elf_reader::add_symbols_from_table(std::vector<symbol>& out,
     }
 }
 
-void Elf_reader::print_symbols(ostream& stream)
-{
-    print_symbol_table(stream, symbols, symbol_names);
-    print_symbol_table(stream, dyn_symbols, dyn_symbol_names);
-}
-
 vector<Elf_reader::symbol> Elf_reader::get_symbols()
 {
     vector<symbol> result;
@@ -409,20 +332,7 @@ vector<Elf_reader::symbol> Elf_reader::get_symbols()
 
     return result;
 }
-bool Elf_reader::print_symbols_to_file(const string& filename)
-{
-    ofstream file(filename, ios::out | ios::binary);
-    if(file.is_open())
-    {
-        print_symbols(file);
-        file.close();
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
+
 string Elf_reader::get_relocation_type(int type)
 {
     static string type_names[40] = {
@@ -475,38 +385,6 @@ descriptor.  */
         "R_X86_64_RELATIVE64",      /* 64-bit adjust by program base */
         "R_X86_64_NUM"};
     return type_names[type];
-}
-void Elf_reader::print_relocations(ostream& stream)
-{
-    // this depends on reading the .dynsym first, before the .symtab when reading symbols
-    for(auto relocation : dyn_relocations)
-    {
-        unsigned int symbol_index = ELF64_R_SYM(relocation.r_info);
-        int type = ELF64_R_TYPE(relocation.r_info);
-        stream << relocation.r_offset << '\t' << get_relocation_type(type) << '\t'
-               << dyn_symbol_names[symbol_index] << '\t' << relocation.r_addend << endl;
-    }
-    for(auto relocation : other_relocations)
-    {
-        unsigned int symbol_index = ELF64_R_SYM(relocation.r_info);
-        int type = ELF64_R_TYPE(relocation.r_info);
-        stream << relocation.r_offset << '\t' << get_relocation_type(type) << '\t'
-               << symbol_names[symbol_index] << '\t' << relocation.r_addend << endl;
-    }
-}
-bool Elf_reader::print_relocations_to_file(const string& filename)
-{
-    ofstream file(filename, ios::out | ios::binary);
-    if(file.is_open())
-    {
-        print_relocations(file);
-        file.close();
-        return true;
-    }
-    else
-    {
-        return false;
-    }
 }
 
 vector<Elf_reader::relocation> Elf_reader::get_relocations()
