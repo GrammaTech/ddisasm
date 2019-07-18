@@ -111,5 +111,21 @@ if(NOT CAPSTONE)
 endif()
 
 
+
+# Use LIEF with 'find_package()'
+# ==============================
+
+# Custom path to the LIEF install directory
+set(LIEF_ROOT CACHE PATH ${CMAKE_INSTALL_PREFIX})
+
+# Directory to 'FindLIEF.cmake'
+list(APPEND CMAKE_MODULE_PATH ${LIEF_ROOT}/share/LIEF/cmake)
+
+# include 'FindLIEF.cmake'
+include(FindLIEF)
+
+# Find LIEF
+find_package(LIEF REQUIRED COMPONENTS STATIC)
+
 add_subdirectory(src)
 add_subdirectory(doc)

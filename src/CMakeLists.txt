@@ -60,7 +60,9 @@ add_library(disasm_main STATIC
   Dl_operator.cpp
   Dl_instruction.cpp
   Dl_operator_table.cpp
-  Elf_reader.cpp)
+  Elf_reader.cpp
+  LIEFBinaryReader.cpp
+  )
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(disasm_main PRIVATE -Wall -Wextra -Wpointer-arith)
@@ -109,6 +111,10 @@ if (NOT EXPERIMENTAL_LIB)
   endif()
 endif()
 
+target_include_directories(disasm_main
+  PUBLIC
+  ${LIEF_INCLUDE_DIRS}
+)
 
 target_link_libraries(disasm_main
   gtirb
@@ -117,6 +123,7 @@ target_link_libraries(disasm_main
   ${Boost_LIBRARIES}
   ${EXPERIMENTAL_LIB}
   ${LIBCPP_ABI}
+  ${LIEF_LIBRARIES}
 )
 
 # Now combine the static library and generated code into an
