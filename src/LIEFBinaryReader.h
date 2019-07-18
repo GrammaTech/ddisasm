@@ -23,8 +23,9 @@
 
 #ifndef LIEF_BINARY_READER_H_
 #define LIEF_BINARY_READER_H_
-#include <vector>
+#include <LIEF/LIEF.hpp>
 #include <string>
+#include <vector>
 #include "BinaryReader.h"
 
 class LIEFBinaryReader : public BinaryReader
@@ -35,28 +36,29 @@ public:
     using section = std::tuple<std::string, uint64_t, uint64_t>;
     using relocation = std::tuple<uint64_t, std::string, std::string, uint64_t>;
 
-    LIEFBinaryReader(std::string filename);
+    LIEFBinaryReader(const std::string& filename);
     ~LIEFBinaryReader() = default;
-     bool is_valid() override;
-     uint64_t get_max_address() override;
-     uint64_t get_min_address() override;
+    bool is_valid() override;
+    uint64_t get_max_address() override;
+    uint64_t get_min_address() override;
 
-     std::vector<BinaryReader::section> get_sections() override;
-     std::string get_binary_type() override;
-     uint64_t get_entry_point() override;
-     std::vector<BinaryReader::symbol> get_symbols() override;
+    std::vector<BinaryReader::section> get_sections() override;
+    std::string get_binary_type() override;
+    uint64_t get_entry_point() override;
+    std::vector<BinaryReader::symbol> get_symbols() override;
 
-     std::vector<BinaryReader::relocation> get_relocations() override;
+    std::vector<BinaryReader::relocation> get_relocations() override;
 
-     std::vector<std::string> get_libraries() override;
-     std::vector<std::string> get_library_paths() override;
+    std::vector<std::string> get_libraries() override;
+    std::vector<std::string> get_library_paths() override;
 
-     char* get_section(const std::string& name, uint64_t& buff, uint64_t& initial_addr) override;
-     char* get_section(const std::string& name, uint64_t& buff) override;
+    std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> get_section(
+        const std::string& name) override;
 
 private:
     std::unique_ptr<LIEF::Binary> bin;
-
-
+    std::string getSymbolType(LIEF::ELF::ELF_SYMBOL_TYPES type);
+    std::string getSymbolBinding(LIEF::ELF::SYMBOL_BINDINGS binding);
+    std::string getRelocationType(uint32_t type);
 };
 #endif /* LIEF_BINARY_READER_H_ */

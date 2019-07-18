@@ -34,7 +34,7 @@
 #include <vector>
 #include "BinaryReader.h"
 #include "Dl_decoder.h"
-#include "Elf_reader.h"
+#include "LIEFBinaryReader.h"
 
 namespace po = boost::program_options;
 using namespace std::rel_ops;
@@ -441,8 +441,9 @@ static void buildSymbols(gtirb::Module &module, souffle::SouffleProgram *prog)
         std::string type, scope, name;
         output >> base >> size >> type >> scope >> sectionIndex >> name;
         // Symbols with special section index do not have an address
-        if(sectionIndex == SHN_UNDEF
-           || (sectionIndex >= SHN_LORESERVE && sectionIndex <= SHN_HIRESERVE))
+        if(sectionIndex == static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)
+           || (sectionIndex >= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_LORESERVE)
+               && sectionIndex <= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)))
             gtirb::emplaceSymbol(module, C, name);
         else
             gtirb::emplaceSymbol(module, C, base, name, getSymbolType(sectionIndex, scope));
@@ -1347,8 +1348,7 @@ int main(int argc, char **argv)
     }
 
     std::string filename = vm["input-file"].as<std::string>();
-
-    std::unique_ptr<BinaryReader> binary(new Elf_reader(filename));
+    std::unique_ptr<BinaryReader> binary(new LIEFBinaryReader(filename));
     if(!binary->is_valid())
     {
         std::cerr << "There was a problem loading the binary file " << filename << "\n";
