@@ -32,6 +32,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "BinaryReader.h"
 #include "Dl_decoder.h"
 #include "Elf_reader.h"
 
@@ -456,10 +457,12 @@ static void buildSymbols(gtirb::Module &module, souffle::SouffleProgram *prog)
     }
 }
 
-static void buildSections(gtirb::Module &module, Elf_reader &elf, souffle::SouffleProgram *prog)
+static void buildSections(gtirb::Module &module, std::unique_ptr<BinaryReader> &binary,
+                          souffle::SouffleProgram *prog)
 {
     auto &byteMap = module.getImageByteMap();
-    byteMap.setAddrMinMax({gtirb::Addr(elf.get_min_address()), gtirb::Addr(elf.get_max_address())});
+    byteMap.setAddrMinMax(
+        {gtirb::Addr(binary->get_min_address()), gtirb::Addr(binary->get_max_address())});
 
     for(auto &output : *prog->getRelation("section"))
     {
@@ -470,7 +473,7 @@ static void buildSections(gtirb::Module &module, Elf_reader &elf, souffle::Souff
         std::string name;
         output >> name >> size >> address;
         module.addSection(gtirb::Section::Create(C, name, address, size));
-        if(char *data = elf.get_section(name, size))
+        if(char *data = binary->get_section(name, size))
         {
             std::byte *begin = reinterpret_cast<std::byte *>(data);
             std::byte *end = reinterpret_cast<std::byte *>(data + size);
@@ -1048,8 +1051,9 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
     module.addAuxData("comments", std::move(comments));
 }
 
-static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
-                    souffle::SouffleProgram *prog, bool selfDiagnose)
+static void buildIR(gtirb::IR &ir, const std::string &filename,
+                    std::unique_ptr<BinaryReader> &binary, souffle::SouffleProgram *prog,
+                    bool selfDiagnose)
 {
     gtirb::Module &module = *gtirb::Module::Create(C);
     module.setBinaryPath(filename);
@@ -1058,7 +1062,7 @@ static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
     ir.addModule(&module);
     buildSymbols(module, prog);
     buildSymbolForwarding(module, prog);
-    buildSections(module, elf, prog);
+    buildSections(module, binary, prog);
     buildDataGroups(module, prog);
     buildCodeBlocks(module, prog);
     buildCodeSymbolicInformation(module, prog);
@@ -1068,8 +1072,8 @@ static void buildIR(gtirb::IR &ir, const std::string &filename, Elf_reader &elf,
     buildFunctions(module, prog);
     buildCFG(module, prog);
     buildComments(module, prog, selfDiagnose);
-    module.addAuxData("libraries", elf.get_libraries());
-    module.addAuxData("libraryPaths", elf.get_library_paths());
+    module.addAuxData("libraries", binary->get_libraries());
+    module.addAuxData("libraryPaths", binary->get_library_paths());
 }
 
 static void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
@@ -1121,14 +1125,14 @@ static void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose
         std::cout << "Self diagnose completed: No errors found" << std::endl;
 }
 
-static void decode(Dl_decoder &decoder, Elf_reader &elf, std::vector<std::string> sections,
-                   std::vector<std::string> data_sections)
+static void decode(Dl_decoder &decoder, std::unique_ptr<BinaryReader> &binary,
+                   std::vector<std::string> sections, std::vector<std::string> data_sections)
 {
     for(const auto &section_name : sections)
     {
         uint64_t size;
         uint64_t address;
-        char *buff = elf.get_section(section_name, size, address);
+        char *buff = binary->get_section(section_name, size, address);
         if(buff != nullptr)
         {
             decoder.decode_section(buff, size, address);
@@ -1139,13 +1143,13 @@ static void decode(Dl_decoder &decoder, Elf_reader &elf, std::vector<std::string
             std::cerr << "Section " << section_name << " not found\n";
         }
     }
-    uint64_t min_address = elf.get_min_address();
-    uint64_t max_address = elf.get_max_address();
+    uint64_t min_address = binary->get_min_address();
+    uint64_t max_address = binary->get_max_address();
     for(const auto &section_name : data_sections)
     {
         uint64_t size;
         uint64_t address;
-        char *buff = elf.get_section(section_name, size, address);
+        char *buff = binary->get_section(section_name, size, address);
         if(buff != nullptr)
         {
             decoder.store_data_section(buff, size, address, min_address, max_address);
@@ -1158,43 +1162,28 @@ static void decode(Dl_decoder &decoder, Elf_reader &elf, std::vector<std::string
     }
 }
 
-static void writeFacts(Dl_decoder &decoder, Elf_reader &elf, const std::string &directory)
+static void writeFacts(souffle::SouffleProgram *prog, const std::string &directory)
 {
     std::ios_base::openmode filemask = std::ios::out;
-
-    elf.print_binary_type_to_file(directory + "binary_type.facts");
-    elf.print_entry_point_to_file(directory + "entry_point.facts");
-    elf.print_sections_to_file(directory + "section.facts");
-    elf.print_symbols_to_file(directory + "symbol.facts");
-    elf.print_relocations_to_file(directory + "relocation.facts");
-
-    std::ofstream instructions_file(directory + "instruction_complete.facts", filemask);
-    decoder.print_instructions(instructions_file);
-    instructions_file.close();
-
-    std::ofstream data_file(directory + "address_in_data.facts", filemask);
-    decoder.print_data(data_file);
-    data_file.close();
-
-    std::ofstream data_bytes_file(directory + "data_byte.facts", filemask);
-    decoder.print_data_bytes(data_bytes_file);
-    data_bytes_file.close();
-
-    std::ofstream invalids_file(directory + "invalid_op_code.facts", filemask);
-    decoder.print_invalids(invalids_file);
-    invalids_file.close();
-
-    std::ofstream op_regdirect_file(directory + "op_regdirect.facts", filemask);
-    decoder.print_operators_of_type(operator_type::REG, op_regdirect_file);
-    op_regdirect_file.close();
-
-    std::ofstream op_immediate_file(directory + "op_immediate.facts", filemask);
-    decoder.print_operators_of_type(operator_type::IMMEDIATE, op_immediate_file);
-    op_immediate_file.close();
-
-    std::ofstream op_indirect_file(directory + "op_indirect.facts", filemask);
-    decoder.print_operators_of_type(operator_type::INDIRECT, op_indirect_file);
-    op_indirect_file.close();
+    for(souffle::Relation *relation : prog->getInputRelations())
+    {
+        std::ofstream file(directory + relation->getName() + ".facts", filemask);
+        souffle::SymbolTable symbolTable = relation->getSymbolTable();
+        for(souffle::tuple tuple : *relation)
+        {
+            for(size_t i = 0; i < tuple.size(); i++)
+            {
+                if(i > 0)
+                    file << "\t";
+                if(relation->getAttrType(i)[0] == 's')
+                    file << symbolTable.resolve(tuple[i]);
+                else
+                    file << tuple[i];
+            }
+            file << std::endl;
+        }
+        file.close();
+    }
 }
 
 template <class Func, size_t... Is>
@@ -1267,13 +1256,14 @@ void addRelation(souffle::SouffleProgram *prog, const std::string &name, const s
     }
 }
 
-static void loadInputs(souffle::SouffleProgram *prog, Elf_reader &elf, const Dl_decoder &decoder)
+static void loadInputs(souffle::SouffleProgram *prog, std::unique_ptr<BinaryReader> &binary,
+                       const Dl_decoder &decoder)
 {
-    addRelation<std::string>(prog, "binary_type", {elf.get_binary_type()});
-    addRelation<uint64_t>(prog, "entry_point", {elf.get_entry_point()});
-    addRelation(prog, "section", elf.get_sections());
-    addRelation(prog, "symbol", elf.get_symbols());
-    addRelation(prog, "relocation", elf.get_relocations());
+    addRelation<std::string>(prog, "binary_type", {binary->get_binary_type()});
+    addRelation<uint64_t>(prog, "entry_point", {binary->get_entry_point()});
+    addRelation(prog, "section", binary->get_sections());
+    addRelation(prog, "symbol", binary->get_symbols());
+    addRelation(prog, "relocation", binary->get_relocations());
     addRelation(prog, "instruction_complete", decoder.instructions);
     addRelation(prog, "address_in_data", decoder.data);
     addRelation(prog, "data_byte", decoder.data_bytes);
@@ -1362,28 +1352,27 @@ int main(int argc, char **argv)
 
     std::string filename = vm["input-file"].as<std::string>();
 
-    Elf_reader elf(filename);
-    if(!elf.is_valid())
+    std::unique_ptr<BinaryReader> binary(new Elf_reader(filename));
+    if(!binary->is_valid())
     {
         std::cerr << "There was a problem loading the binary file " << filename << "\n";
         return 1;
     }
-
     Dl_decoder decoder;
-    decode(decoder, elf, vm["sect"].as<std::vector<std::string>>(),
+    decode(decoder, binary, vm["sect"].as<std::vector<std::string>>(),
            vm["data_sect"].as<std::vector<std::string>>());
     std::cout << "Decoding the binary" << std::endl;
     if(souffle::SouffleProgram *prog = souffle::ProgramFactory::newInstance("souffle_disasm"))
     {
         try
         {
-            loadInputs(prog, elf, decoder);
+            loadInputs(prog, binary, decoder);
             std::cout << "Disassembling" << std::endl;
             prog->run();
 
             std::cout << "Building the gtirb representation" << std::endl;
             auto &ir = *gtirb::IR::Create(C);
-            buildIR(ir, filename, elf, prog, vm.count("self-diagnose") != 0);
+            buildIR(ir, filename, binary, prog, vm.count("self-diagnose") != 0);
 
             // Output GTIRB
             if(vm.count("ir") != 0)
@@ -1424,7 +1413,7 @@ int main(int argc, char **argv)
                 std::cout << "Writing facts to debug dir " << vm["debug-dir"].as<std::string>()
                           << std::endl;
                 auto dir = vm["debug-dir"].as<std::string>() + "/";
-                writeFacts(decoder, elf, dir);
+                writeFacts(prog, dir);
                 prog->printAll(dir);
             }
             performSanityChecks(prog, vm.count("self-diagnose") != 0);

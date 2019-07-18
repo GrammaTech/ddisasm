@@ -26,10 +26,11 @@
 
 #include <elf.h>
 #include <fstream>
+#include <tuple>
 #include <vector>
-#include "souffle/SouffleInterface.h"
+#include "BinaryReader.h"
 
-class Elf_reader
+class Elf_reader : public BinaryReader
 {
 public:
     using symbol =
@@ -76,34 +77,20 @@ public:
     Elf_reader(std::string filename);
     ~Elf_reader();
 
-    bool is_valid();
-    uint64_t get_max_address();
-    uint64_t get_min_address();
-    void print_sections(std::ostream&);
-    bool print_sections_to_file(const std::string& filename);
+    bool is_valid() override;
+    uint64_t get_max_address() override;
+    uint64_t get_min_address() override;
 
-    std::vector<section> get_sections();
+    std::vector<section> get_sections() override;
+    std::string get_binary_type() override;
+    uint64_t get_entry_point() override;
+    std::vector<symbol> get_symbols() override;
+    std::vector<relocation> get_relocations() override;
 
-    bool print_binary_type_to_file(const std::string& filename);
-    std::string get_binary_type();
+    std::vector<std::string> get_libraries() override;
+    std::vector<std::string> get_library_paths() override;
 
-    void print_entry_point(std::ostream&);
-    bool print_entry_point_to_file(const std::string& filename);
-    uint64_t get_entry_point();
-
-    void print_symbols(std::ostream&);
-    bool print_symbols_to_file(const std::string& filename);
-    std::vector<symbol> get_symbols();
-
-    void print_relocations(std::ostream&);
-    bool print_relocations_to_file(const std::string& filename);
-    std::vector<Elf_reader::relocation> get_relocations();
-
-    std::vector<std::string> get_libraries();
-    std::vector<std::string> get_library_paths();
-
-    char* get_section(const std::string& name, uint64_t& buff, Elf64_Addr& initial_addr);
-    char* get_section(const std::string& name, uint64_t& buff);
+    char* get_section(const std::string& name, uint64_t& buff, Elf64_Addr& initial_addr) override;
+    char* get_section(const std::string& name, uint64_t& buff) override;
 };
-
 #endif /* ELF_READER_H_ */
