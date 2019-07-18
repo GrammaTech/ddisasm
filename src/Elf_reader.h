@@ -90,7 +90,7 @@ public:
     std::vector<std::string> get_libraries() override;
     std::vector<std::string> get_library_paths() override;
 
-    char* get_section(const std::string& name, uint64_t& buff, Elf64_Addr& initial_addr) override;
-    char* get_section(const std::string& name, uint64_t& buff) override;
+    std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> get_section(
+        const std::string& name) override;
 };
 #endif /* ELF_READER_H_ */
