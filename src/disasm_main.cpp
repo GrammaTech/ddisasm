@@ -1183,21 +1183,6 @@ static void writeFacts(souffle::SouffleProgram *prog, const std::string &directo
     }
 }
 
-template <class Func, size_t... Is>
-constexpr void static_for(Func &&f, std::integer_sequence<size_t, Is...>)
-{
-    (f(std::integral_constant<size_t, Is>{}), ...);
-}
-
-template <class... T>
-souffle::tuple &operator<<(souffle::tuple &t, const std::tuple<T...> &x)
-{
-    static_for([&t, &x](auto i) { t << get<i>(x); },
-               std::make_index_sequence<std::tuple_size<std::tuple<T...>>::value>{});
-
-    return t;
-}
-
 souffle::tuple &operator<<(souffle::tuple &t, const Dl_instruction &inst)
 {
     t << inst.address << inst.size << inst.prefix << inst.name;
@@ -1238,6 +1223,25 @@ souffle::tuple &operator<<(souffle::tuple &t, const std::pair<Dl_operator, int64
             break;
     }
 
+    return t;
+}
+
+souffle::tuple &operator<<(souffle::tuple &t, const Section &section)
+{
+    t << section.name << section.size << section.address;
+    return t;
+}
+
+souffle::tuple &operator<<(souffle::tuple &t, const Symbol &symbol)
+{
+    t << symbol.address << symbol.size << symbol.type << symbol.scope << symbol.sectionIndex
+      << symbol.name;
+    return t;
+}
+
+souffle::tuple &operator<<(souffle::tuple &t, const Relocation &relocation)
+{
+    t << relocation.address << relocation.type << relocation.name << relocation.addend;
     return t;
 }
 
