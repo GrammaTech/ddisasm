@@ -97,9 +97,14 @@ uint64_t LIEFBinaryReader::get_min_address()
 std::vector<Section> LIEFBinaryReader::get_sections()
 {
     std::vector<Section> sectionTuples;
-    for(auto& section : bin->sections())
+    if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
     {
-        sectionTuples.push_back({section.name(), section.size(), section.virtual_address()});
+        for(auto& section : elf->sections())
+        {
+            if(section.flags_list().count(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC))
+                sectionTuples.push_back(
+                    {section.name(), section.size(), section.virtual_address()});
+        }
     }
     return sectionTuples;
 }
@@ -142,7 +147,7 @@ std::vector<Symbol> LIEFBinaryReader::get_symbols()
             if(foundVersion != std::string::npos)
                 symbolName = symbolName.substr(0, foundVersion);
             // FIXME: do symbols in PE have an equivalent concept?
-            symbolTuples.push_back({symbol.value(), symbol.size(), "NOTYPE", "GLOBAL",
+            symbolTuples.push_back({symbol.value(), 0, "NOTYPE", "GLOBAL",
                                     static_cast<uint64_t>(symbol.section_number()), symbolName});
         }
     }
