@@ -143,7 +143,7 @@ std::vector<Symbol> LIEFBinaryReader::get_symbols()
                 symbolName = symbolName.substr(0, foundVersion);
             // FIXME: do symbols in PE have an equivalent concept?
             symbolTuples.push_back({symbol.value(), symbol.size(), "NOTYPE", "GLOBAL",
-                                    symbol.section_number(), symbolName});
+                                    static_cast<uint64_t>(symbol.section_number()), symbolName});
         }
     }
     return symbolTuples;
