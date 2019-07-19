@@ -30,10 +30,8 @@ LIEFBinaryReader::LIEFBinaryReader(const std::string& filename)
 
 bool LIEFBinaryReader::is_valid()
 {
-    std::cout << "checking validity" << std::endl;
-    return bin->format() == LIEF::EXE_FORMATS::FORMAT_ELF;
-    std::cout << "checked" << std::endl;
-    // TODO PE binaries
+    return bin->format() == LIEF::EXE_FORMATS::FORMAT_ELF
+           || bin->format() == LIEF::EXE_FORMATS::FORMAT_PE;
 }
 
 std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
@@ -61,7 +59,14 @@ uint64_t LIEFBinaryReader::get_max_address()
             }
         }
     }
-    // TODO PE binaries
+
+    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
+    {
+        for(auto& section : pe->sections())
+        {
+            max_address = std::max(max_address, section.virtual_address() + section.size());
+        }
+    }
     return max_address;
 }
 
@@ -79,7 +84,13 @@ uint64_t LIEFBinaryReader::get_min_address()
             }
         }
     }
-    // TODO PE binaries
+    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
+    {
+        for(auto& section : pe->sections())
+        {
+            min_address = std::min(min_address, section.virtual_address());
+        }
+    }
     return min_address;
 }
 
@@ -119,6 +130,20 @@ std::vector<Symbol> LIEFBinaryReader::get_symbols()
             symbolTuples.push_back({symbol.value(), symbol.size(), getSymbolType(symbol.type()),
                                     getSymbolBinding(symbol.binding()), symbol.section_idx(),
                                     symbolName});
+        }
+    }
+
+    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
+    {
+        for(auto& symbol : pe->symbols())
+        {
+            std::string symbolName = symbol.name();
+            std::size_t foundVersion = symbolName.find('@');
+            if(foundVersion != std::string::npos)
+                symbolName = symbolName.substr(0, foundVersion);
+            // FIXME: do symbols in PE have an equivalent concept?
+            symbolTuples.push_back({symbol.value(), symbol.size(), "NOTYPE", "GLOBAL",
+                                    symbol.section_number(), symbolName});
         }
     }
     return symbolTuples;
