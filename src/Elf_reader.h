@@ -90,7 +90,7 @@ public:
     std::vector<std::string> get_libraries() override;
     std::vector<std::string> get_library_paths() override;
 
-    std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> get_section(
+    std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> get_section_content_and_address(
         const std::string& name) override;
 };
 #endif /* ELF_READER_H_ */
