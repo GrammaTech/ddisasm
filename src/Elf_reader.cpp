@@ -480,8 +480,8 @@ uint64_t Elf_reader::get_max_address()
     return max_address;
 }
 
-std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> Elf_reader::get_section(
-    const string& name)
+std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
+Elf_reader::get_section_content_and_address(const string& name)
 {
     int index = get_section_index(name);
     if(index == -1)
