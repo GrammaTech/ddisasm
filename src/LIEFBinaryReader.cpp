@@ -39,13 +39,10 @@ bool LIEFBinaryReader::is_valid()
 std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
 LIEFBinaryReader::get_section_content_and_address(const std::string& name)
 {
-    if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
+    for(auto& section : bin->sections())
     {
-        for(auto& section : elf->sections())
-        {
-            if(section.name() == name)
-                return std::make_tuple(section.content(), section.virtual_address());
-        }
+        if(section.name() == name)
+            return std::make_tuple(section.content(), section.virtual_address());
     }
     return std::nullopt;
 }
