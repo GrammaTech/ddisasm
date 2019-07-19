@@ -27,30 +27,50 @@
 #include <string>
 #include <vector>
 
+struct Symbol
+{
+    uint64_t address;
+    uint64_t size;
+    std::string type;
+    std::string scope;
+    uint64_t sectionIndex;
+    std::string name;
+};
+
+struct Section
+{
+    std::string name;
+    uint64_t size;
+    uint64_t address;
+};
+
+struct Relocation
+{
+    uint64_t address;
+    std::string type;
+    std::string name;
+    int64_t addend;
+};
+
 class BinaryReader
 {
 public:
-    using symbol =
-        std::tuple<uint64_t, uint64_t, std::string, std::string, std::uint64_t, std::string>;
-    using section = std::tuple<std::string, uint64_t, uint64_t>;
-    using relocation = std::tuple<uint64_t, std::string, std::string, uint64_t>;
-
     virtual ~BinaryReader() = default;
     virtual bool is_valid() = 0;
     virtual uint64_t get_max_address() = 0;
     virtual uint64_t get_min_address() = 0;
 
-    virtual std::vector<section> get_sections() = 0;
+    virtual std::vector<Section> get_sections() = 0;
     virtual std::string get_binary_type() = 0;
     virtual uint64_t get_entry_point() = 0;
-    virtual std::vector<symbol> get_symbols() = 0;
+    virtual std::vector<Symbol> get_symbols() = 0;
 
-    virtual std::vector<BinaryReader::relocation> get_relocations() = 0;
+    virtual std::vector<Relocation> get_relocations() = 0;
 
     virtual std::vector<std::string> get_libraries() = 0;
     virtual std::vector<std::string> get_library_paths() = 0;
 
-    virtual std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> get_section(
-        const std::string& name) = 0;
+    virtual std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
+    get_section_content_and_address(const std::string& name) = 0;
 };
 #endif /* BINARY_READER_H_ */

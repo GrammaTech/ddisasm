@@ -458,7 +458,7 @@ static void buildSymbols(gtirb::Module &module, souffle::SouffleProgram *prog)
     }
 }
 
-static void buildSections(gtirb::Module &module, std::unique_ptr<BinaryReader> &binary,
+static void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                           souffle::SouffleProgram *prog)
 {
     auto &byteMap = module.getImageByteMap();
@@ -474,7 +474,7 @@ static void buildSections(gtirb::Module &module, std::unique_ptr<BinaryReader> &
         std::string name;
         output >> name >> size >> address;
         module.addSection(gtirb::Section::Create(C, name, address, size));
-        auto section = binary->get_section(name);
+        auto section = binary->get_section_content_and_address(name);
         if(section)
         {
             std::vector<uint8_t> &sectionBytes = std::get<0>(*section);
@@ -1053,7 +1053,7 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
 }
 
 static void buildIR(gtirb::IR &ir, const std::string &filename,
-                    std::unique_ptr<BinaryReader> &binary, souffle::SouffleProgram *prog,
+                    std::shared_ptr<BinaryReader> binary, souffle::SouffleProgram *prog,
                     bool selfDiagnose)
 {
     gtirb::Module &module = *gtirb::Module::Create(C);
@@ -1126,13 +1126,13 @@ static void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose
         std::cout << "Self diagnose completed: No errors found" << std::endl;
 }
 
-static void decode(Dl_decoder &decoder, std::unique_ptr<BinaryReader> &binary,
-                   std::vector<std::string> sections, std::vector<std::string> data_sections)
+static void decode(Dl_decoder &decoder, std::shared_ptr<BinaryReader> binary,
+                   const std::vector<std::string> &sections,
+                   const std::vector<std::string> &data_sections)
 {
     for(const auto &section_name : sections)
     {
-        auto section = binary->get_section(section_name);
-        if(section)
+        if(auto section = binary->get_section_content_and_address(section_name))
         {
             decoder.decode_section(std::get<0>(*section).data(), std::get<0>(*section).size(),
                                    std::get<1>(*section));
@@ -1146,8 +1146,7 @@ static void decode(Dl_decoder &decoder, std::unique_ptr<BinaryReader> &binary,
     uint64_t max_address = binary->get_max_address();
     for(const auto &section_name : data_sections)
     {
-        auto section = binary->get_section(section_name);
-        if(section)
+        if(auto section = binary->get_section_content_and_address(section_name))
         {
             decoder.store_data_section(std::get<0>(*section).data(), std::get<0>(*section).size(),
                                        std::get<1>(*section), min_address, max_address);
@@ -1181,21 +1180,6 @@ static void writeFacts(souffle::SouffleProgram *prog, const std::string &directo
         }
         file.close();
     }
-}
-
-template <class Func, size_t... Is>
-constexpr void static_for(Func &&f, std::integer_sequence<size_t, Is...>)
-{
-    (f(std::integral_constant<size_t, Is>{}), ...);
-}
-
-template <class... T>
-souffle::tuple &operator<<(souffle::tuple &t, const std::tuple<T...> &x)
-{
-    static_for([&t, &x](auto i) { t << get<i>(x); },
-               std::make_index_sequence<std::tuple_size<std::tuple<T...>>::value>{});
-
-    return t;
 }
 
 souffle::tuple &operator<<(souffle::tuple &t, const Dl_instruction &inst)
@@ -1241,6 +1225,25 @@ souffle::tuple &operator<<(souffle::tuple &t, const std::pair<Dl_operator, int64
     return t;
 }
 
+souffle::tuple &operator<<(souffle::tuple &t, const Section &section)
+{
+    t << section.name << section.size << section.address;
+    return t;
+}
+
+souffle::tuple &operator<<(souffle::tuple &t, const Symbol &symbol)
+{
+    t << symbol.address << symbol.size << symbol.type << symbol.scope << symbol.sectionIndex
+      << symbol.name;
+    return t;
+}
+
+souffle::tuple &operator<<(souffle::tuple &t, const Relocation &relocation)
+{
+    t << relocation.address << relocation.type << relocation.name << relocation.addend;
+    return t;
+}
+
 template <typename T>
 void addRelation(souffle::SouffleProgram *prog, const std::string &name, const std::vector<T> &data)
 {
@@ -1253,7 +1256,7 @@ void addRelation(souffle::SouffleProgram *prog, const std::string &name, const s
     }
 }
 
-static void loadInputs(souffle::SouffleProgram *prog, std::unique_ptr<BinaryReader> &binary,
+static void loadInputs(souffle::SouffleProgram *prog, std::shared_ptr<BinaryReader> binary,
                        const Dl_decoder &decoder)
 {
     addRelation<std::string>(prog, "binary_type", {binary->get_binary_type()});
@@ -1348,7 +1351,7 @@ int main(int argc, char **argv)
     }
 
     std::string filename = vm["input-file"].as<std::string>();
-    std::unique_ptr<BinaryReader> binary(new LIEFBinaryReader(filename));
+    std::shared_ptr<BinaryReader> binary(new LIEFBinaryReader(filename));
     if(!binary->is_valid())
     {
         std::cerr << "There was a problem loading the binary file " << filename << "\n";

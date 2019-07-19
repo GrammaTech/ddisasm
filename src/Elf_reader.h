@@ -32,12 +32,6 @@
 
 class Elf_reader : public BinaryReader
 {
-public:
-    using symbol =
-        std::tuple<uint64_t, uint64_t, std::string, std::string, std::uint64_t, std::string>;
-    using section = std::tuple<std::string, uint64_t, uint64_t>;
-    using relocation = std::tuple<uint64_t, std::string, std::string, uint64_t>;
-
 private:
     std::ifstream file;
     bool valid;
@@ -67,7 +61,7 @@ private:
     std::string get_relocation_type(int type);
     void print_symbol_table(std::ostream& stream, std::vector<Elf64_Sym>& symbol_table,
                             std::vector<std::string>& symbol_name_table);
-    void add_symbols_from_table(std::vector<symbol>& out,
+    void add_symbols_from_table(std::vector<Symbol>& out,
                                 const std::vector<Elf64_Sym>& symbol_table,
                                 const std::vector<std::string>& symbol_name_table);
 
@@ -81,16 +75,16 @@ public:
     uint64_t get_max_address() override;
     uint64_t get_min_address() override;
 
-    std::vector<section> get_sections() override;
+    std::vector<Section> get_sections() override;
     std::string get_binary_type() override;
     uint64_t get_entry_point() override;
-    std::vector<symbol> get_symbols() override;
-    std::vector<relocation> get_relocations() override;
+    std::vector<Symbol> get_symbols() override;
+    std::vector<Relocation> get_relocations() override;
 
     std::vector<std::string> get_libraries() override;
     std::vector<std::string> get_library_paths() override;
 
-    std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> get_section(
+    std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> get_section_content_and_address(
         const std::string& name) override;
 };
 #endif /* ELF_READER_H_ */

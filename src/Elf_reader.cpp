@@ -232,15 +232,15 @@ string Elf_reader::get_binary_type()
     return "OTHER";
 }
 
-vector<Elf_reader::section> Elf_reader::get_sections()
+vector<Section> Elf_reader::get_sections()
 {
     auto sect_it = sections.begin();
     auto sect_names_it = section_names.begin();
-    vector<section> result;
+    vector<Section> result;
     while(sect_it != sections.end())
     {
         if(*sect_names_it != "" && sect_it->sh_flags & SHF_ALLOC)
-            result.emplace_back(*sect_names_it, sect_it->sh_size, sect_it->sh_addr);
+            result.push_back({*sect_names_it, sect_it->sh_size, sect_it->sh_addr});
         ++sect_it;
         ++sect_names_it;
     }
@@ -288,25 +288,7 @@ string get_symbol_type_str(unsigned char type)
     }
 }
 
-void Elf_reader::print_symbol_table(ostream& stream, std::vector<Elf64_Sym>& symbol_table,
-                                    std::vector<string>& symbol_name_table)
-{
-    auto symbol_it = symbol_table.begin();
-    auto symbol_names_it = symbol_name_table.begin();
-    while(symbol_it != symbol_table.end())
-    {
-        if(*symbol_names_it != "")
-            stream << symbol_it->st_value << '\t' << symbol_it->st_size << '\t'
-                   << get_symbol_type_str(symbol_it->st_info) << '\t'
-                   << get_symbol_scope_str(symbol_it->st_info) << '\t' << symbol_it->st_shndx
-                   << '\t' << *symbol_names_it << endl;
-
-        ++symbol_it;
-        ++symbol_names_it;
-    }
-}
-
-void Elf_reader::add_symbols_from_table(std::vector<symbol>& out,
+void Elf_reader::add_symbols_from_table(std::vector<Symbol>& out,
                                         const std::vector<Elf64_Sym>& symbol_table,
                                         const std::vector<string>& symbol_name_table)
 {
@@ -315,18 +297,18 @@ void Elf_reader::add_symbols_from_table(std::vector<symbol>& out,
     while(symbol_it != symbol_table.end())
     {
         if(*symbol_names_it != "")
-            out.emplace_back(
-                symbol_it->st_value, symbol_it->st_size, get_symbol_type_str(symbol_it->st_info),
-                get_symbol_scope_str(symbol_it->st_info), symbol_it->st_shndx, *symbol_names_it);
+            out.push_back(
+                {symbol_it->st_value, symbol_it->st_size, get_symbol_type_str(symbol_it->st_info),
+                 get_symbol_scope_str(symbol_it->st_info), symbol_it->st_shndx, *symbol_names_it});
 
         ++symbol_it;
         ++symbol_names_it;
     }
 }
 
-vector<Elf_reader::symbol> Elf_reader::get_symbols()
+vector<Symbol> Elf_reader::get_symbols()
 {
-    vector<symbol> result;
+    vector<Symbol> result;
     add_symbols_from_table(result, symbols, symbol_names);
     add_symbols_from_table(result, dyn_symbols, dyn_symbol_names);
 
@@ -387,23 +369,23 @@ descriptor.  */
     return type_names[type];
 }
 
-vector<Elf_reader::relocation> Elf_reader::get_relocations()
+vector<Relocation> Elf_reader::get_relocations()
 {
     // this depends on reading the .dynsym first, before the .symtab when reading symbols
-    vector<relocation> result;
+    vector<Relocation> result;
     for(auto relocation : dyn_relocations)
     {
         unsigned int symbol_index = ELF64_R_SYM(relocation.r_info);
         int type = ELF64_R_TYPE(relocation.r_info);
-        result.emplace_back(relocation.r_offset, get_relocation_type(type),
-                            dyn_symbol_names[symbol_index], relocation.r_addend);
+        result.push_back({relocation.r_offset, get_relocation_type(type),
+                          dyn_symbol_names[symbol_index], relocation.r_addend});
     }
     for(auto relocation : other_relocations)
     {
         unsigned int symbol_index = ELF64_R_SYM(relocation.r_info);
         int type = ELF64_R_TYPE(relocation.r_info);
-        result.emplace_back(relocation.r_offset, get_relocation_type(type),
-                            symbol_names[symbol_index], relocation.r_addend);
+        result.push_back({relocation.r_offset, get_relocation_type(type),
+                          symbol_names[symbol_index], relocation.r_addend});
     }
     return result;
 }
@@ -480,8 +462,8 @@ uint64_t Elf_reader::get_max_address()
     return max_address;
 }
 
-std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> Elf_reader::get_section(
-    const string& name)
+std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
+Elf_reader::get_section_content_and_address(const string& name)
 {
     int index = get_section_index(name);
     if(index == -1)
