@@ -116,9 +116,13 @@ std::vector<BinaryReader::symbol> LIEFBinaryReader::get_symbols()
     {
         for(auto& symbol : elf->symbols())
         {
+            std::string symbolName = symbol.name();
+            std::size_t foundVersion = symbolName.find('@');
+            if(foundVersion != std::string::npos)
+                symbolName = symbolName.substr(0, foundVersion);
             symbolTuples.emplace_back(symbol.value(), symbol.size(), getSymbolType(symbol.type()),
                                       getSymbolBinding(symbol.binding()), symbol.section_idx(),
-                                      symbol.name());
+                                      symbolName);
         }
     }
     return symbolTuples;
