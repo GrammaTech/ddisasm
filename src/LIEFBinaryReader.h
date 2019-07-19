@@ -31,28 +31,23 @@
 class LIEFBinaryReader : public BinaryReader
 {
 public:
-    using symbol =
-        std::tuple<uint64_t, uint64_t, std::string, std::string, std::uint64_t, std::string>;
-    using section = std::tuple<std::string, uint64_t, uint64_t>;
-    using relocation = std::tuple<uint64_t, std::string, std::string, uint64_t>;
-
     LIEFBinaryReader(const std::string& filename);
     ~LIEFBinaryReader() = default;
     bool is_valid() override;
     uint64_t get_max_address() override;
     uint64_t get_min_address() override;
 
-    std::vector<BinaryReader::section> get_sections() override;
+    std::vector<Section> get_sections() override;
     std::string get_binary_type() override;
     uint64_t get_entry_point() override;
-    std::vector<BinaryReader::symbol> get_symbols() override;
+    std::vector<Symbol> get_symbols() override;
 
-    std::vector<BinaryReader::relocation> get_relocations() override;
+    std::vector<Relocation> get_relocations() override;
 
     std::vector<std::string> get_libraries() override;
     std::vector<std::string> get_library_paths() override;
 
-    std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> get_section(
+    std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> get_section_content_and_address(
         const std::string& name) override;
 
 private:

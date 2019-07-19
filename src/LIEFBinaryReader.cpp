@@ -36,8 +36,8 @@ bool LIEFBinaryReader::is_valid()
     // TODO PE binaries
 }
 
-std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> LIEFBinaryReader::get_section(
-    const std::string& name)
+std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
+LIEFBinaryReader::get_section_content_and_address(const std::string& name)
 {
     if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
     {
@@ -86,13 +86,12 @@ uint64_t LIEFBinaryReader::get_min_address()
     return min_address;
 }
 
-std::vector<BinaryReader::section> LIEFBinaryReader::get_sections()
+std::vector<Section> LIEFBinaryReader::get_sections()
 {
-    std::vector<BinaryReader::section> sectionTuples;
+    std::vector<Section> sectionTuples;
     for(auto& section : bin->sections())
     {
-        sectionTuples.push_back(
-            std::make_tuple(section.name(), section.size(), section.virtual_address()));
+        sectionTuples.push_back({section.name(), section.size(), section.virtual_address()});
     }
     return sectionTuples;
 }
@@ -109,9 +108,9 @@ uint64_t LIEFBinaryReader::get_entry_point()
     return bin->entrypoint();
 }
 
-std::vector<BinaryReader::symbol> LIEFBinaryReader::get_symbols()
+std::vector<Symbol> LIEFBinaryReader::get_symbols()
 {
-    std::vector<BinaryReader::symbol> symbolTuples;
+    std::vector<Symbol> symbolTuples;
     if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
     {
         for(auto& symbol : elf->symbols())
@@ -120,24 +119,23 @@ std::vector<BinaryReader::symbol> LIEFBinaryReader::get_symbols()
             std::size_t foundVersion = symbolName.find('@');
             if(foundVersion != std::string::npos)
                 symbolName = symbolName.substr(0, foundVersion);
-            symbolTuples.emplace_back(symbol.value(), symbol.size(), getSymbolType(symbol.type()),
-                                      getSymbolBinding(symbol.binding()), symbol.section_idx(),
-                                      symbolName);
+            symbolTuples.push_back({symbol.value(), symbol.size(), getSymbolType(symbol.type()),
+                                    getSymbolBinding(symbol.binding()), symbol.section_idx(),
+                                    symbolName});
         }
     }
     return symbolTuples;
 }
 
-std::vector<BinaryReader::relocation> LIEFBinaryReader::get_relocations()
+std::vector<Relocation> LIEFBinaryReader::get_relocations()
 {
-    std::vector<BinaryReader::relocation> relocationTuples;
+    std::vector<Relocation> relocationTuples;
     if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
     {
         for(auto& relocation : elf->relocations())
         {
-            relocationTuples.emplace_back(relocation.address(),
-                                          getRelocationType(relocation.type()),
-                                          relocation.symbol().name(), relocation.addend());
+            relocationTuples.push_back({relocation.address(), getRelocationType(relocation.type()),
+                                        relocation.symbol().name(), relocation.addend()});
         }
     }
     return relocationTuples;
