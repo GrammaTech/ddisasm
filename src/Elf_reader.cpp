@@ -484,3 +484,15 @@ Elf_reader::get_section_content_and_address(const string& name)
     file.read(reinterpret_cast<char*>(bytes.data()), size);
     return std::make_tuple(bytes, initial_addr);
 }
+
+std::vector<DataDirectory> Elf_reader::get_data_directories()
+{
+    std::vector<DataDirectory> empty;
+    return empty;
+}
+
+std::vector<ImportEntry> Elf_reader::get_import_entries()
+{
+    std::vector<ImportEntry> empty;
+    return empty;
+}

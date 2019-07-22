@@ -971,6 +971,17 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
         updateComment(comments, ea, newComment.str());
     }
 
+    for(auto &output : *prog->getRelation("data_directory"))
+    {
+        gtirb::Addr ea;
+        uint64_t size;
+        std::string type;
+        output >> ea >> size >> type;
+        std::ostringstream newComment;
+        newComment << "data_directory:" << type;
+        updateComment(comments, ea, newComment.str());
+    }
+
     for(auto &output : *prog->getRelation("preferred_data_access"))
     {
         gtirb::Addr ea;
@@ -1245,6 +1256,18 @@ souffle::tuple &operator<<(souffle::tuple &t, const Relocation &relocation)
     return t;
 }
 
+souffle::tuple &operator<<(souffle::tuple &t, const DataDirectory &directory)
+{
+    t << directory.address << directory.size << directory.type;
+    return t;
+}
+
+souffle::tuple &operator<<(souffle::tuple &t, const ImportEntry &iEntry)
+{
+    t << iEntry.iat_address << iEntry.ordinal << iEntry.function << iEntry.library;
+    return t;
+}
+
 template <typename T>
 void addRelation(souffle::SouffleProgram *prog, const std::string &name, const std::vector<T> &data)
 {
@@ -1266,6 +1289,8 @@ static void loadInputs(souffle::SouffleProgram *prog, std::shared_ptr<BinaryRead
     addRelation(prog, "section", binary->get_sections());
     addRelation(prog, "symbol", binary->get_symbols());
     addRelation(prog, "relocation", binary->get_relocations());
+    addRelation(prog, "data_directory", binary->get_data_directories());
+    addRelation(prog, "import_entry", binary->get_import_entries());
     addRelation(prog, "instruction_complete", decoder.instructions);
     addRelation(prog, "address_in_data", decoder.data);
     addRelation(prog, "data_byte", decoder.data_bytes);

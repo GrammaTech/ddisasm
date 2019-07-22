@@ -200,6 +200,81 @@ std::vector<std::string> LIEFBinaryReader::get_library_paths()
     return libraryPaths;
 }
 
+std::vector<DataDirectory> LIEFBinaryReader::get_data_directories()
+{
+    std::vector<DataDirectory> dataDirectories;
+    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
+    {
+        for(auto& directory : pe->data_directories())
+        {
+            dataDirectories.push_back(
+                {directory.RVA(), directory.size(), getDataDirectoryType(directory.type())});
+        }
+    }
+    return dataDirectories;
+}
+
+std::vector<ImportEntry> LIEFBinaryReader::get_import_entries()
+{
+    std::vector<ImportEntry> importEntries;
+    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
+    {
+        for(auto& import : pe->imports())
+        {
+            for(auto& importEntry : import.entries())
+            {
+                int16_t ordinal = importEntry.is_ordinal() ? importEntry.ordinal() : -1;
+                std::string functionName = importEntry.is_ordinal() ? "" : importEntry.name();
+                importEntries.push_back(
+                    {importEntry.iat_address(), ordinal, functionName, import.name()});
+            }
+        }
+    }
+    return importEntries;
+}
+
+std::string LIEFBinaryReader::getDataDirectoryType(LIEF::PE::DATA_DIRECTORY type)
+{
+    switch(type)
+    {
+        case LIEF::PE::DATA_DIRECTORY::EXPORT_TABLE:
+            return "EXPORT_TABLE";
+        case LIEF::PE::DATA_DIRECTORY::IMPORT_TABLE:
+            return "IMPORT_TABLE";
+        case LIEF::PE::DATA_DIRECTORY::RESOURCE_TABLE:
+            return "RESOURCE_TABLE";
+        case LIEF::PE::DATA_DIRECTORY::EXCEPTION_TABLE:
+            return "EXCEPTION_TABLE";
+        case LIEF::PE::DATA_DIRECTORY::CERTIFICATE_TABLE:
+            return "CERTIFICATE_TABLE";
+        case LIEF::PE::DATA_DIRECTORY::BASE_RELOCATION_TABLE:
+            return "BASE_RELOCATION_TABLE";
+        case LIEF::PE::DATA_DIRECTORY::DEBUG:
+            return "DEBUG";
+        case LIEF::PE::DATA_DIRECTORY::ARCHITECTURE:
+            return "ARCHITECTURE";
+        case LIEF::PE::DATA_DIRECTORY::GLOBAL_PTR:
+            return "GLOBAL_PTR";
+        case LIEF::PE::DATA_DIRECTORY::TLS_TABLE:
+            return "TLS_TABLE";
+        case LIEF::PE::DATA_DIRECTORY::LOAD_CONFIG_TABLE:
+            return "LOAD_CONFIG_TABLE";
+        case LIEF::PE::DATA_DIRECTORY::BOUND_IMPORT:
+            return "BOUND_IMPORT";
+        case LIEF::PE::DATA_DIRECTORY::IAT:
+            return "IAT";
+        case LIEF::PE::DATA_DIRECTORY::DELAY_IMPORT_DESCRIPTOR:
+            return "DELAY_IMPORT_DESCRIPTOR";
+        case LIEF::PE::DATA_DIRECTORY::CLR_RUNTIME_HEADER:
+            return "CLR_RUNTIME_HEADER";
+        case LIEF::PE::DATA_DIRECTORY::NUM_DATA_DIRECTORIES:
+            return "NUM_DATA_DIRECTORIES";
+        default:
+            assert("unkown data directory type");
+            return "OTHER";
+    }
+}
+
 std::string LIEFBinaryReader::getSymbolType(LIEF::ELF::ELF_SYMBOL_TYPES type)
 {
     switch(type)
