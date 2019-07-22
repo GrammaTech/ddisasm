@@ -61,6 +61,8 @@ public:
     virtual uint64_t get_min_address() = 0;
 
     virtual std::vector<Section> get_sections() = 0;
+    // ELF or PE
+    virtual std::string get_binary_format() = 0;
     virtual std::string get_binary_type() = 0;
     virtual uint64_t get_entry_point() = 0;
     virtual std::vector<Symbol> get_symbols() = 0;

@@ -13,6 +13,7 @@ set(DATALOG_SOURCES
     datalog/cfg.dl
     datalog/data_access_analysis.dl
     datalog/empty_range.dl
+    datalog/elf_binaries.dl
     datalog/float_operations.dl
     datalog/function_inference.dl
     datalog/intra_procedural_cfg_completeness.dl
@@ -21,6 +22,7 @@ set(DATALOG_SOURCES
     datalog/main.dl
     datalog/no_return_analysis.dl
     datalog/ordered_set.dl
+    datalog/pe_binaries.dl
     datalog/pointer_reatribution.dl
     datalog/printable_chars.dl
     datalog/relative_jump_tables.dl

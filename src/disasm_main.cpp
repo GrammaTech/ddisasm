@@ -753,8 +753,9 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
     auto symbolMinusSymbol =
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
     auto dataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", prog);
-    std::unordered_set<std::string> dataSections{
-        ".got", ".got.plt", ".data.rel.ro", ".init_array", ".fini_array", ".rodata", ".data"};
+    std::unordered_set<std::string> dataSections{".got",        ".got.plt",    ".data.rel.ro",
+                                                 ".init_array", ".fini_array", ".rodata",
+                                                 ".data",       ".rdata"};
     std::map<gtirb::UUID, std::string> typesTable;
 
     for(auto &s : module.sections())
@@ -1259,6 +1260,7 @@ void addRelation(souffle::SouffleProgram *prog, const std::string &name, const s
 static void loadInputs(souffle::SouffleProgram *prog, std::shared_ptr<BinaryReader> binary,
                        const Dl_decoder &decoder)
 {
+    addRelation<std::string>(prog, "binary_format", {binary->get_binary_format()});
     addRelation<std::string>(prog, "binary_type", {binary->get_binary_type()});
     addRelation<uint64_t>(prog, "entry_point", {binary->get_entry_point()});
     addRelation(prog, "section", binary->get_sections());
@@ -1295,9 +1297,9 @@ using namespace std;
 int main(int argc, char **argv)
 {
     std::vector<std::string> sections{".plt.got", ".fini", ".init", ".plt", ".text", ".plt.sec"};
-    std::vector<std::string> dataSections{".data",       ".rodata",         ".fini_array",
-                                          ".init_array", ".data.rel.ro",    ".got.plt",
-                                          ".got",        ".tm_clone_table", ".dynamic"};
+    std::vector<std::string> dataSections{
+        ".data",    ".rodata", ".fini_array",     ".init_array", ".data.rel.ro",
+        ".got.plt", ".got",    ".tm_clone_table", ".dynamic",    ".rdata"};
 
     po::options_description desc("Allowed options");
     desc.add_options()                                                                    //

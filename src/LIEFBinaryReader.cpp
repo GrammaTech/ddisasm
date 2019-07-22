@@ -106,19 +106,40 @@ std::vector<Section> LIEFBinaryReader::get_sections()
                     {section.name(), section.size(), section.virtual_address()});
         }
     }
+
+    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
+    {
+        for(auto& section : pe->sections())
+        {
+            sectionTuples.push_back({section.name(), section.size(), section.virtual_address()});
+        }
+    }
     return sectionTuples;
+}
+
+std::string LIEFBinaryReader::get_binary_format()
+{
+    if(bin->format() == LIEF::EXE_FORMATS::FORMAT_ELF)
+        return "ELF";
+    if(bin->format() == LIEF::EXE_FORMATS::FORMAT_PE)
+        return "PE";
+    return "UNKNOWN";
 }
 
 std::string LIEFBinaryReader::get_binary_type()
 {
-    if(bin->is_pie())
+    if(bin->format() == LIEF::EXE_FORMATS::FORMAT_ELF && bin->is_pie())
         return "DYN";
     return "EXEC";
 }
 
 uint64_t LIEFBinaryReader::get_entry_point()
 {
-    return bin->entrypoint();
+    if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
+        return elf->entrypoint();
+    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
+        return pe->optional_header().addressof_entrypoint();
+    return 0;
 }
 
 std::vector<Symbol> LIEFBinaryReader::get_symbols()
@@ -143,9 +164,6 @@ std::vector<Symbol> LIEFBinaryReader::get_symbols()
         for(auto& symbol : pe->symbols())
         {
             std::string symbolName = symbol.name();
-            std::size_t foundVersion = symbolName.find('@');
-            if(foundVersion != std::string::npos)
-                symbolName = symbolName.substr(0, foundVersion);
             // FIXME: do symbols in PE have an equivalent concept?
             symbolTuples.push_back({symbol.value(), 0, "NOTYPE", "GLOBAL",
                                     static_cast<uint64_t>(symbol.section_number()), symbolName});
