@@ -128,6 +128,7 @@ target_compile_definitions(ddisasm PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(ddisasm PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(ddisasm PRIVATE ${OPENMP_FLAGS})
 target_compile_options(ddisasm PRIVATE -O3)
+target_compile_options(ddisasm PRIVATE -Wno-parentheses-equality)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_link_libraries(ddisasm gomp)
