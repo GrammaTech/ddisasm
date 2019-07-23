@@ -86,6 +86,7 @@ symbol_special_encoding(TypeTablePointerLocation,"uleb128"),
 symbol_minus_symbol(TypeTablePointerLocation,Size,CallsiteTablePointerLoc-1,LsdaTypeTableAddress):-
     lsda_pointer_locations(Lsda,TypeTablePointerLocation,CallsiteTablePointerLoc),
     lsda(Lsda,_,_,_,LsdaTypeTableAddress, _, _),
+    LsdaTypeTableAddress!=0,
     Size = (CallsiteTablePointerLoc-1) - TypeTablePointerLocation,
     Size>0.
 

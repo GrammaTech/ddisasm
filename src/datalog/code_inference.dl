@@ -177,7 +177,6 @@ basic_target(Val):-
     ;
     // Exception information
     fde_addresses(Val,_);
-    fde_addresses(_,Val);
     lsda_callsite_addresses(Val, _, _);
     lsda_callsite_addresses(_, _, Val)
     ).
