@@ -188,7 +188,8 @@ block_limit(EA):-
 	op_immediate(_,EA);
 	pc_relative_operand(_,_,EA);
 	basic_target(EA);
-    instruction_has_loop_prefix(EA)
+    instruction_has_loop_prefix(EA);
+    fde_addresses(_,EA)
 	).
 
 // The targets are computed incrementally now as we traverse the code
