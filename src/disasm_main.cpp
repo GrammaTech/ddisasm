@@ -611,7 +611,8 @@ void buildSymbolic(gtirb::Module &module, DecodedInstruction instruction, gtirb:
             assert(movedLabel->Offset1 == immediate);
             auto diff = movedLabel->Offset1 - movedLabel->Offset2;
             auto sym = getSymbol(module, gtirb::Addr(movedLabel->Offset2));
-            module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{diff, sym});
+            module.addSymbolicExpression(ea + instruction.immediateOffset,
+                                         gtirb::SymAddrConst{diff, sym});
             return;
         }
 
@@ -623,7 +624,8 @@ void buildSymbolic(gtirb::Module &module, DecodedInstruction instruction, gtirb:
            != range.second)
         {
             auto sym = getSymbol(module, gtirb::Addr(immediate));
-            module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{0, sym});
+            module.addSymbolicExpression(ea + instruction.immediateOffset,
+                                         gtirb::SymAddrConst{0, sym});
             return;
         }
     }
@@ -643,7 +645,8 @@ void buildSymbolic(gtirb::Module &module, DecodedInstruction instruction, gtirb:
         {
             auto diff = movedLabel->Offset1 - movedLabel->Offset2;
             auto sym = getSymbol(module, gtirb::Addr(movedLabel->Offset2));
-            module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{diff, sym});
+            module.addSymbolicExpression(ea + instruction.displacementOffset,
+                                         gtirb::SymAddrConst{diff, sym});
             return;
         }
 
@@ -659,12 +662,14 @@ void buildSymbolic(gtirb::Module &module, DecodedInstruction instruction, gtirb:
             {
                 auto address = ea + foundInd->Offset + instruction.Size;
                 auto sym = getSymbol(module, address);
-                module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{0, sym});
+                module.addSymbolicExpression(ea + instruction.displacementOffset,
+                                             gtirb::SymAddrConst{0, sym});
             }
             else
             {
                 auto sym = getSymbol(module, gtirb::Addr(op.Offset));
-                module.addSymbolicExpression(ea + index, gtirb::SymAddrConst{0, sym});
+                module.addSymbolicExpression(ea + instruction.displacementOffset,
+                                             gtirb::SymAddrConst{0, sym});
             }
         }
     }
