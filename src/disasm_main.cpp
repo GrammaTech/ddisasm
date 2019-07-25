@@ -473,8 +473,7 @@ static void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> b
         std::string name;
         output >> name >> size >> address;
         module.addSection(gtirb::Section::Create(C, name, address, size));
-        auto section = binary->get_section_content_and_address(name);
-        if(section)
+        if(auto section = binary->get_section_content_and_address(name))
         {
             std::vector<uint8_t> &sectionBytes = std::get<0>(*section);
             std::byte *begin = reinterpret_cast<std::byte *>(sectionBytes.data());
