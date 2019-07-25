@@ -594,9 +594,6 @@ void buildSymbolic(gtirb::Module &module, DecodedInstruction instruction, gtirb:
                    const VectorByN<OpImmediate> &opImmediate,
                    const VectorByN<OpIndirect> &opIndirect)
 {
-    // FIXME: we're faking the operand offset here, assuming it's equal
-    // to index. This works as long as the pretty-printer does the same
-    // thing, but it isn't right.
     const auto foundImm = opImmediate.find(operand);
     if(foundImm != nullptr)
     {
