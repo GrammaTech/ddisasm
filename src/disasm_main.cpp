@@ -856,7 +856,7 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
         }
     }
     buildBSS(module, prog);
-    module.addAuxData("types", std::move(typesTable));
+    module.addAuxData("encodings", std::move(typesTable));
 }
 
 static void connectSymbolsToDataGroups(gtirb::Module &module)
