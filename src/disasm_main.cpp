@@ -482,7 +482,8 @@ static void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> b
                           souffle::SouffleProgram *prog)
 {
     auto &byteMap = module.getImageByteMap();
-    byteMap.setAddrMinMax({gtirb::Addr(binary->get_min_address()), gtirb::Addr(bunary->get_max_address())});
+    byteMap.setAddrMinMax(
+        {gtirb::Addr(binary->get_min_address()), gtirb::Addr(binary->get_max_address())});
     std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> sectionProperties;
     for(auto &output : *prog->getRelation("section_complete"))
     {
@@ -1366,7 +1367,7 @@ static void loadInputs(souffle::SouffleProgram *prog, std::shared_ptr<BinaryRead
     addRelation(prog, "op_indirect",
                 decoder.op_dict.get_operators_of_type(operator_type::INDIRECT));
 
-    ExceptionDecoder excDecoder(elf);
+    ExceptionDecoder excDecoder(binary);
     excDecoder.addExceptionInformation(prog);
 }
 

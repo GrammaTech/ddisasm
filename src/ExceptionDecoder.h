@@ -24,7 +24,7 @@
 #ifndef SRC_EXCEPTION_DECODER_H_
 #define SRC_EXCEPTION_DECODER_H_
 #include <souffle/SouffleInterface.h>
-#include "Elf_reader.h"
+#include "BinaryReader.h"
 #include "ehp.hpp"
 
 class ExceptionDecoder
@@ -52,7 +52,7 @@ private:
                                          const EHP::LSDA_t *lsda);
 
 public:
-    ExceptionDecoder(Elf_reader &elf);
+    ExceptionDecoder(std::shared_ptr<BinaryReader> binary);
     void addExceptionInformation(souffle::SouffleProgram *prog);
 };
 

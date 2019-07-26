@@ -42,6 +42,8 @@ struct Section
     std::string name;
     uint64_t size;
     uint64_t address;
+    uint64_t type;
+    uint64_t flags;
 };
 
 struct Relocation

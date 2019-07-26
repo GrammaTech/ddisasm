@@ -23,17 +23,30 @@
 
 #include "ExceptionDecoder.h"
 
-ExceptionDecoder::ExceptionDecoder(Elf_reader &elf)
+ExceptionDecoder::ExceptionDecoder(std::shared_ptr<BinaryReader> binary)
 {
     uint8_t ptrsize(8);
-    uint64_t size;
-    uint64_t addressEhFrame, addressEhFrameHeader, addressGccExcept;
-    char *buff = elf.get_section(".eh_frame", size, addressEhFrame);
-    std::string ehFrame(buff, size);
-    buff = elf.get_section(".eh_frame_hdr", size, addressEhFrameHeader);
-    std::string ehFrameHeader(buff, size);
-    buff = elf.get_section(".gcc_except_table", size, addressGccExcept);
-    std::string gccExcept(buff, size);
+    std::string ehFrame, ehFrameHeader, gccExcept;
+    uint64_t addressEhFrame(0), addressEhFrameHeader(0), addressGccExcept(0);
+
+    if(auto ehFrameTuple = binary->get_section_content_and_address(".eh_frame"))
+    {
+        std::vector<uint8_t> ehFrameContent = std::get<0>(*ehFrameTuple);
+        addressEhFrame = std::get<1>(*ehFrameTuple);
+        ehFrame.assign(ehFrameContent.begin(), ehFrameContent.end());
+    }
+    if(auto ehFrameHeaderTuple = binary->get_section_content_and_address(".eh_frame_hdr"))
+    {
+        std::vector<uint8_t> ehFrameHeaderContent = std::get<0>(*ehFrameHeaderTuple);
+        addressEhFrameHeader = std::get<1>(*ehFrameHeaderTuple);
+        ehFrameHeader.assign(ehFrameHeaderContent.begin(), ehFrameHeaderContent.end());
+    }
+    if(auto gccExceptTuple = binary->get_section_content_and_address(".gcc_except_table"))
+    {
+        std::vector<uint8_t> gccExceptContent = std::get<0>(*gccExceptTuple);
+        addressGccExcept = std::get<1>(*gccExceptTuple);
+        gccExcept.assign(gccExceptContent.begin(), gccExceptContent.end());
+    }
     ehParser = EHP::EHFrameParser_t::factory(ptrsize, ehFrame, addressEhFrame, ehFrameHeader,
                                              addressEhFrameHeader, gccExcept, addressGccExcept);
 }
