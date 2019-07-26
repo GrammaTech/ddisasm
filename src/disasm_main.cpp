@@ -1320,7 +1320,7 @@ souffle::tuple &operator<<(souffle::tuple &t, const std::pair<Dl_operator, int64
 
 souffle::tuple &operator<<(souffle::tuple &t, const Section &section)
 {
-    t << section.name << section.size << section.address;
+    t << section.name << section.size << section.address << section.type << section.flags;
     return t;
 }
 
