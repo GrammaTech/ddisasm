@@ -1,10 +1,10 @@
 CXX="g++"
 all: ex.cpp
-    $(CXX) ex.cpp $(CFLAGS) -o ex
-    ./ex > out.txt
+	$(CXX) ex.cpp $(CFLAGS) -o ex
+	./ex > out.txt
 clean:
-    rm -f ex out.txt
-    rm -fr ex.unstripped *.s *.old*  dl_files
+	rm -f ex out.txt
+	rm -fr ex.unstripped *.s *.old*  dl_files
 check:
-    ./ex >/tmp/res.txt
-    bash ./test.sh
+	./ex >/tmp/res.txt
+	bash ./test.sh
