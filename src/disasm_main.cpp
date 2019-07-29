@@ -1021,6 +1021,8 @@ static void buildCFG(gtirb::Module &module, souffle::SouffleProgram *prog)
     }
 }
 
+// In general, it is expected that findOffsets returns a vector with zero or one items
+// because blocks and data objects typically do not overlap.
 static std::vector<gtirb::Offset> findOffsets(gtirb::Module &module, gtirb::Addr ea)
 {
     std::vector<gtirb::Offset> offsets;
@@ -1043,7 +1045,10 @@ static void updateComment(gtirb::Module &module, std::map<gtirb::Offset, std::st
     {
         auto existing = comments.find(offset);
         if(existing != comments.end())
-            comments[offset] = existing->second + newComment;
+        {
+            existing->second += ", ";
+            existing->second += newComment;
+        }
         else
             comments[offset] = newComment;
     }
@@ -1113,7 +1118,7 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
         output >> ea >> size >> multiplier >> from;
         std::ostringstream newComment;
         newComment << "data_access(" << size << ", " << multiplier << ", " << std::hex << from
-                   << std::dec << ") ";
+                   << std::dec << ")";
         updateComment(module, comments, ea, newComment.str());
     }
 
@@ -1123,7 +1128,7 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
         uint64_t data_access;
         output >> ea >> data_access;
         std::ostringstream newComment;
-        newComment << "preferred_data_access(" << std::hex << data_access << std::dec << ") ";
+        newComment << "preferred_data_access(" << std::hex << data_access << std::dec << ")";
         updateComment(module, comments, ea, newComment.str());
     }
 
@@ -1135,7 +1140,7 @@ static void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, 
         output >> ea >> reg >> eaOrigin >> multiplier >> offset >> type;
         std::ostringstream newComment;
         newComment << reg << "=X*" << multiplier << "+" << std::hex << offset << std::dec
-                   << " type(" << type << ") ";
+                   << " type(" << type << ")";
         updateComment(module, comments, ea, newComment.str());
     }
 
