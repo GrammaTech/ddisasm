@@ -493,16 +493,19 @@ static void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> b
         uint64_t size, type, flags;
         std::string name;
         output >> name >> size >> address >> type >> flags;
-        gtirb::Section *section = gtirb::Section::Create(C, name, address, size);
-        module.addSection(section);
-        sectionProperties[section->getUUID()] = std::make_tuple(type, flags);
-        if(auto sectionData = binary->get_section_content_and_address(name))
+        if(flags & SHF_ALLOC)
         {
-            std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
-            std::byte *begin = reinterpret_cast<std::byte *>(sectionBytes.data());
-            std::byte *end =
-                reinterpret_cast<std::byte *>(sectionBytes.data() + sectionBytes.size());
-            byteMap.setData(address, boost::make_iterator_range(begin, end));
+            gtirb::Section *section = gtirb::Section::Create(C, name, address, size);
+            module.addSection(section);
+            sectionProperties[section->getUUID()] = std::make_tuple(type, flags);
+            if(auto sectionData = binary->get_section_content_and_address(name))
+            {
+                std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
+                std::byte *begin = reinterpret_cast<std::byte *>(sectionBytes.data());
+                std::byte *end =
+                    reinterpret_cast<std::byte *>(sectionBytes.data() + sectionBytes.size());
+                byteMap.setData(address, boost::make_iterator_range(begin, end));
+            }
         }
     }
     module.addAuxData("elfSectionProperties", std::move(sectionProperties));
