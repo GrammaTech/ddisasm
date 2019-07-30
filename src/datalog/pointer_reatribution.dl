@@ -183,7 +183,7 @@ moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
 		!data_byte(Diff,_),
 		section(".bss",BssSize,BssBeg),(Diff<BssBeg; Diff> BssBeg+BssSize).
 
-moved_label_class(EA,"constant and multiplied reg"),
+moved_label_class(EA,"constant + multiplied reg"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
   binary_type("EXEC"),
 	data_access(EA,Op_index,"NONE","NONE",RegMult,Mult,Dest,_),
@@ -204,7 +204,7 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 	 Dest>Base+SectSize, Distance=Dest-(Base+SectSize), New_dest=Base+SectSize
 	).
 
-moved_label_class(EA,"constant and multiplied reg2"),
+moved_label_class(EA,"constant + multiplied reg2"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
   binary_type("EXEC"),
 	data_access(EA,Op_index,"NONE",Reg,"NONE",_,Dest,_),
@@ -219,6 +219,22 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 		10*Dest > Base
 	;
      Dest>Base+SectSize, Distance=Dest-(Base+SectSize), New_dest=Base+SectSize
+    ).
+
+moved_label_class(EA,"constant + repeated reg"),
+moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
+    binary_type("EXEC"),
+    data_access(EA,Op_index,"NONE",Reg,Reg,_,Dest,_),
+    !instruction_get_operation(EA,"LEA"),
+    !symbolic_operand(EA,Op_index,_,_),
+    regular_data_section(Name),
+    section(Name,SectSize,Base),
+    // the destination is below or above the section
+    (
+        Dest<Base, Distance=Base-Dest, New_dest=Base,
+        10*Dest > Base
+    ;
+        Dest>Base+SectSize, Distance=Dest-(Base+SectSize), New_dest=Base+SectSize
     ).
 
 // references with offset in PIE or REL code
