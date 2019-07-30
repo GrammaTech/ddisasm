@@ -142,15 +142,21 @@ op_regdirect_contains_reg(Op,Reg_uniform):-
 	op_regdirect(Op,Reg),
 	track_register(Reg,Reg_uniform).
 
-.decl cmp_immediate_to_reg(EA:address,Reg:register,Imm_index:number,Immediate:number)
-cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
+.decl op_immediate_and_reg(EA:address,Operation:symbol,Reg:register,Imm_index:number,Immediate:number)
+
+op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate):-
 	code(EA),
 	instruction_get_operation(EA,Operation),
-	comparison_operation(Operation),
 	instruction_get_op(EA,Imm_index,Op),
 	op_immediate(Op,Immediate),
 	instruction_get_op(EA,_,Op2),
 	op_regdirect_contains_reg(Op2,Reg).
+
+.decl cmp_immediate_to_reg(EA:address,Reg:register,Imm_index:number,Immediate:number)
+
+cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
+    op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate),
+    comparison_operation(Operation).
 
 // a register is implicitly defined by being compared to a constant and then jumping
 // this definition only takes place in between the jump and the target that implies equality
