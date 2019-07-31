@@ -8,6 +8,7 @@ endif()
 
 
 set(DATALOG_SOURCES
+    datalog/bitmasks.dl
     datalog/code_inference.dl
     datalog/code_inference_postprocess.dl
     datalog/cfg.dl

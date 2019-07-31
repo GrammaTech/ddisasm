@@ -55,6 +55,7 @@ This module also computes and symbol_minus_symbol.
 */
 
 #include "empty_range.dl"
+#include "bitmasks.dl"
 #include "use_def_analysis.dl"
 #include "value_analysis.dl"
 #include "data_access_analysis.dl" // data_access_analysis uses predicates from here
@@ -170,18 +171,19 @@ symbolic_operand_point(EA,Imm_index,-1,"compared to non-address"):-
 	cmp_immediate_to_reg(EA2,Reg,Imm_index2,_),
 	!symbolic_operand_candidate(EA2,Imm_index2,_,_).
 
-symbolic_operand_point(EA,Imm_index,-1,"logical operation"):-
+symbolic_operand_point(EA,Imm_index,-1,"immediate is bitmask"):-
     symbolic_operand_candidate(EA,Imm_index,_,_),
     instruction_get_op(EA,Imm_index,Op),
     op_immediate(Op,_),
     instruction_get_operation(EA,Operation),
     logic_operation(Operation).
 
-symbolic_operand_point(EA,Imm_index,-1,"operated on the result of logical operation"):-
+ symbolic_operand_point(EA,Imm_index,-1,"operated on the result of logical operation"):-
     op_immediate_and_reg(EA,_,Reg,Imm_index,_),
     def_used(EA_def,Reg,EA,_),
     instruction_get_operation(EA_def,Operation),
-    logic_operation(Operation).
+    logic_operation(Operation),
+    !low_pass_filter(EA_def).
 
 symbolic_operand_point(EA,Op_index,-1,"moved/compared-with-different-size"):-
 	symbolic_operand_candidate(EA,Op_index,_,_),
