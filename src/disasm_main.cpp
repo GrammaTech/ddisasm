@@ -349,6 +349,24 @@ struct SymbolicData
     gtirb::Addr GroupContent{0};
 };
 
+struct SymbolicExpr
+{
+    SymbolicExpr(gtirb::Addr ea) : EA(ea)
+    {
+    }
+
+    SymbolicExpr(souffle::tuple &tuple)
+    {
+        assert(tuple.size() == 4);
+        tuple >> EA >> Size >> Symbol >> Addend;
+    };
+
+    gtirb::Addr EA{0};
+    uint64_t Size{0};
+    std::string Symbol;
+    int64_t Addend{0};
+};
+
 struct SymbolMinusSymbol
 {
     SymbolMinusSymbol(gtirb::Addr ea) : EA(ea)
@@ -777,6 +795,8 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
     auto symbolicData = convertSortedRelation<VectorByEA<SymbolicData>>("symbolic_data", prog);
     auto movedDataLabels =
         convertSortedRelation<VectorByEA<MovedDataLabel>>("moved_data_label", prog);
+    auto symbolicExprs =
+        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_to_undef_symbol", prog);
     auto symbolMinusSymbol =
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
 
@@ -796,6 +816,20 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
             auto limit = addressLimit(s);
             for(auto currentAddr = s.getAddress(); currentAddr < limit; currentAddr++)
             {
+                // undefined symbol
+                const auto symbolicExpr = symbolicExprs.find(currentAddr);
+                if(symbolicExpr != nullptr)
+                {
+                    auto *d = gtirb::DataObject::Create(C, currentAddr, symbolicExpr->Size);
+                    module.addData(d);
+                    auto foundSymbol = module.findSymbols(symbolicExpr->Symbol);
+                    if(foundSymbol.begin() != foundSymbol.end())
+                        module.addSymbolicExpression(
+                            currentAddr,
+                            gtirb::SymAddrConst{symbolicExpr->Addend, &*foundSymbol.begin()});
+                    currentAddr += (symbolicExpr->Size) - 1;
+                    continue;
+                }
                 // symbol+constant
                 const auto movedDataLabel = movedDataLabels.find(currentAddr);
                 if(movedDataLabel != nullptr)
