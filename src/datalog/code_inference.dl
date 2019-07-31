@@ -536,6 +536,11 @@ block_points(Block,0,10,"fde-entry"):-
     block_is_overlaping(Block),
     fde_addresses(Block,_).
 
+block_points(Block,0,2,"padding nop block"):-
+    block_is_overlaping(Block),
+    fde_addresses(_,Block),
+    is_nop(Block).
+
 block_points(Block,0,3,"exc-region"):-
     block_is_overlaping(Block),
     lsda_callsite_addresses(Block, _, _).
