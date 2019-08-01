@@ -796,7 +796,7 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
     auto movedDataLabels =
         convertSortedRelation<VectorByEA<MovedDataLabel>>("moved_data_label", prog);
     auto symbolicExprs =
-        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_to_undef_symbol", prog);
+        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog);
     auto symbolMinusSymbol =
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
 

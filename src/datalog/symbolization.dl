@@ -66,9 +66,9 @@ This module also computes and symbol_minus_symbol.
 .decl symbolic_data(ea:address,size:number,value:address)
 .output symbolic_data
 
-// Symbolic expression that contain undefined symbols (and need a relocation)
-.decl symbolic_expr_to_undef_symbol(ea:address,size:number,symbol:symbol,Addend:number)
-.output symbolic_expr_to_undef_symbol
+// Symbolic expression generated from relocations
+.decl symbolic_expr_from_relocation(ea:address,size:number,symbol:symbol,Addend:number)
+.output symbolic_expr_from_relocation
 
 .decl symbol_minus_symbol_candidate(ea:address,symbol1:address,symbol2:address)
 
@@ -567,15 +567,13 @@ code_pointer_in_data(EA,Val):-
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-symbolic_expr_to_undef_symbol(EA,8,Symbol,Addend):-
+symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
     relocation(EA,"R_X86_64_64",Symbol,Addend),
-    symbol(_,_,_,_,_,Symbol),
-    !defined_symbol(_,_,_,_,_,Symbol).
+    symbol(_,_,_,_,_,Symbol).
 
-symbolic_expr_to_undef_symbol(EA,4,Symbol,Addend):-
+symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
     relocation(EA,"R_X86_64_32",Symbol,Addend),
-    symbol(_,_,_,_,_,Symbol),
-    !defined_symbol(_,_,_,_,_,Symbol).
+    symbol(_,_,_,_,_,Symbol).
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Final label decision
