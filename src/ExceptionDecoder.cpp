@@ -76,6 +76,12 @@ void ExceptionDecoder::addExceptionInformation(souffle::SouffleProgram *prog)
         fdeRelation->insert(getFDE(fdeRelation, fde));
         fdePtrLocationsRelation->insert(getFDEPointerLocations(fdePtrLocationsRelation, fde));
         uint64_t insnIndex = 0;
+        for(const EHP::EHProgramInstruction_t *insn :
+            *(fde->getCIE().getProgram().getInstructions()))
+        {
+            fdeInsnRelation->insert(getEHProgramInstruction(fdeInsnRelation, insnIndex, insn, fde));
+            ++insnIndex;
+        }
         for(const EHP::EHProgramInstruction_t *insn : *(fde->getProgram().getInstructions()))
         {
             fdeInsnRelation->insert(getEHProgramInstruction(fdeInsnRelation, insnIndex, insn, fde));
