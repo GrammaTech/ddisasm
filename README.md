@@ -54,6 +54,9 @@ The analysis contains two parts:
 - For printing assembler code the datalog disassembler requires the
   [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
 
+- Ddisasm uses [libehp](https://git.zephyr-software.com/opensrc/libehp) to read exception
+  information
+
 ## Building ddisasm
 A C++17 compiler such as gcc 7 or clang 6 is required.
 
