@@ -55,7 +55,7 @@ plt_block(Block,Function):-
 
 plt_data_reference(EA):-
     plt_block(Dest,_),
-	symbolic_data(EA,Dest).
+	symbolic_data(EA,_,Dest).
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -116,20 +116,21 @@ inferred_symbol_name(EA,"__do_global_dtors_aux"):-
 	function_symbol(EA,"__do_global_dtors_aux").
 
 inferred_symbol_name(EA,"__do_global_dtors_aux"):-
-    binary_format("ELF"),
 	!function_symbol(EA,"__do_global_dtors_aux"),
 	function_entry2(EA),
+	// referenced from .fini_array
 	address_in_data(FiniArray,EA),
 	section(".fini_array",Size,Beg),
 	FiniArray>=Beg,
 	FiniArray<Beg+Size,
+	// compare a value in bss with 0 in the first block
 	code_in_refined_block(EA_cmp,EA),
     instruction(EA_cmp,_,_,"CMP",Op1,_,0,0),
 	op_immediate(Op1,0),
 	pc_relative_operand(EA_cmp,2,DataRef),
-	section(".bss",_,BegData),
+	section(".bss",SizeBss,BegData),
 	DataRef>=BegData,
-	DataRef<=BegData+64.
+	DataRef<=BegData+SizeBss.
 
 inferred_symbol_name(EA,"_DYNAMIC"):-
     binary_format("ELF"),

@@ -153,8 +153,6 @@ possible_ea(EA):-
 
 .decl basic_target(ea:address)
 
-// FIXME: add exception frame addresses
-
 basic_target(Val):-
 	(
  	relative_address(_,_,Val)
@@ -175,8 +173,13 @@ basic_target(Val):-
 	code_section(Name),
 	section(Name,_,Val)
 	;
-	function_symbol(Val,_)
-	).
+    function_symbol(Val,_)
+    ;
+    // Exception information
+    fde_addresses(Val,_);
+    lsda_callsite_addresses(Val, _, _);
+    lsda_callsite_addresses(_, _, Val)
+    ).
 
 .decl block_limit(EA:address)
 
@@ -185,7 +188,8 @@ block_limit(EA):-
 	op_immediate(_,EA);
 	pc_relative_operand(_,_,EA);
 	basic_target(EA);
-    instruction_has_loop_prefix(EA)
+    instruction_has_loop_prefix(EA);
+    fde_addresses(_,EA)
 	).
 
 // The targets are computed incrementally now as we traverse the code
@@ -265,17 +269,30 @@ possible_target(EA):-
 // Now we detect and resolve conflics within the different blocks
 
 //First remove common tails
+.decl common_tail(EA:address)
+
+common_tail(EA):-
+    code_in_block_candidate(EA,Block),
+    code_in_block_candidate(EA,Block2),
+    Block!=Block2,
+    next(EA_prev,EA),
+    code_in_block_candidate(EA_prev,Block),
+    !code_in_block_candidate(EA_prev,Block2).
+
 .decl code_in_block_candidate_refined(EA:address,Block:address)
 
 code_in_block_candidate_refined(Block,Block):-
 	code_in_block_candidate(Block,Block).
 
+code_in_block_candidate_refined(Block,Block):-
+    common_tail(Block).
+
 code_in_block_candidate_refined(EA_next,Block):-
 	code_in_block_candidate_refined(EA,Block),
 	next(EA,EA_next),
-	code_in_block_candidate(EA_next,Block),
-	!code_in_block_candidate(EA_next,EA_next).
-
+    code_in_block_candidate(EA_next,_),
+    !code_in_block_candidate(EA_next,EA_next),
+    !common_tail(EA_next).
 
 .decl block_candidate_limit(EA:address,Limit:address)
 
@@ -515,7 +532,22 @@ block_points(Block,0,1,"plt call"):-
 	code_in_block_candidate_refined(EA,Block),
 	plt_entry(Block_dest,_).
 
+block_points(Block,0,10,"fde-entry"):-
+    block_is_overlaping(Block),
+    fde_addresses(Block,_).
 
+block_points(Block,0,2,"padding nop block"):-
+    block_is_overlaping(Block),
+    fde_addresses(_,Block),
+    is_nop(Block).
+
+block_points(Block,0,3,"exc-region"):-
+    block_is_overlaping(Block),
+    lsda_callsite_addresses(Block, _, _).
+
+block_points(Block,0,10,"landing-pad"):-
+    block_is_overlaping(Block),
+    lsda_callsite_addresses( _, _, Block).
 ////////////////////////////////////////////////////////////////////////////
 
 

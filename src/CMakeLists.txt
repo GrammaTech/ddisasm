@@ -14,6 +14,7 @@ set(DATALOG_SOURCES
     datalog/data_access_analysis.dl
     datalog/empty_range.dl
     datalog/elf_binaries.dl
+    datalog/exceptions.dl
     datalog/float_operations.dl
     datalog/function_inference.dl
     datalog/intra_procedural_cfg_completeness.dl
@@ -63,8 +64,9 @@ add_library(disasm_main STATIC
   Dl_instruction.cpp
   Dl_operator_table.cpp
   Elf_reader.cpp
-  LIEFBinaryReader.cpp
-  )
+  ExceptionDecoder.cpp
+  LIEFBinaryReader.cpp)
+
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(disasm_main PRIVATE -Wall -Wextra -Wpointer-arith)
@@ -121,6 +123,7 @@ target_include_directories(disasm_main
 target_link_libraries(disasm_main
   gtirb
   gtirb_pprinter
+  ehp
   ${CAPSTONE}
   ${Boost_LIBRARIES}
   ${EXPERIMENTAL_LIB}
@@ -137,6 +140,7 @@ target_compile_definitions(ddisasm PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(ddisasm PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(ddisasm PRIVATE ${OPENMP_FLAGS})
 target_compile_options(ddisasm PRIVATE -O3)
+target_compile_options(ddisasm PRIVATE -Wno-parentheses-equality)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_link_libraries(ddisasm gomp)

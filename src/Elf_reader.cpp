@@ -244,8 +244,9 @@ vector<Section> Elf_reader::get_sections()
     vector<Section> result;
     while(sect_it != sections.end())
     {
-        if(*sect_names_it != "" && sect_it->sh_flags & SHF_ALLOC)
-            result.push_back({*sect_names_it, sect_it->sh_size, sect_it->sh_addr});
+        if(*sect_names_it != "")
+            result.push_back({*sect_names_it, sect_it->sh_size, sect_it->sh_addr, sect_it->sh_type,
+                              sect_it->sh_flags});
         ++sect_it;
         ++sect_names_it;
     }

@@ -39,6 +39,15 @@ Function inference has two phases:
 #include "no_return_analysis.dl"
 #include "intra_procedural_cfg_completeness.dl"
 
+.decl block_in_between_fde(Block:address)
+
+block_in_between_fde(Block):-
+    refined_block(Block),
+    fde_addresses(Begin,End),
+    Begin< Block,
+    Block< End.
+
+
 .decl function_entry(EA:address)
 .output function_entry
 // very certain sources
@@ -63,6 +72,8 @@ function_entry(EA):-
 	refined_block(EA),
 	section(_,_,EA).
 
+function_entry(EA):-
+    fde_addresses(EA,_).
 
 // pointer in special sections
 function_entry(EA):-
@@ -74,22 +85,25 @@ function_entry(EA):-
 
 // not referenced anywhere
 function_entry(EA):-
-	refined_block(EA),
-	after_function_end(EA,_),
-	!possible_target_from(EA,_),
-	!symbolic_data(_,EA),
+    refined_block(EA),
+    !block_in_between_fde(EA),
+    after_function_end(EA,_),
+    !possible_target_from(EA,_),
+    !symbolic_data(_,_,EA),
 	typical_function_starter(EA).
 
 // two consecutive elements in a table with typical function beginnings
 function_entry(EA):-
-	refined_block(EA),
-	after_function_end(EA,_),
-	!possible_target_from(EA,_),
-	symbolic_data(Pointer,EA),
+    refined_block(EA),
+    !block_in_between_fde(EA),
+    after_function_end(EA,_),
+    !possible_target_from(EA,_),
+    pointer_size(Pt_size),
+    symbolic_data(Pointer,Pt_size,EA),
 	typical_function_starter(EA),
 	!resolved_jump(_,EA),
 
-	symbolic_data(Pointer+8,EA2),EA2!=EA,
+    symbolic_data(Pointer+Pt_size,Pt_size,EA2),EA2!=EA,
 	after_function_end(EA2,_),
 	typical_function_starter(EA2),
 	!resolved_jump(_,EA2).
@@ -97,6 +111,7 @@ function_entry(EA):-
 // the address is moved to a register
 function_entry(EA):-
 	refined_block(EA),
+    !block_in_between_fde(EA),
 	after_function_end(EA,_),
 	possible_target_from(EA,Src),
 	code(Src),
@@ -105,16 +120,18 @@ function_entry(EA):-
 // // reference from function table
 function_entry(EA):-
 	function_table(Label),
-	preferred_data_access(Offset,Label),
-	symbolic_data(Offset,EA),
-	refined_block(EA),
-	after_function_end(EA,_).
+    preferred_data_access(Offset,Label),
+    symbolic_data(Offset,_,EA),
+    refined_block(EA),
+    !block_in_between_fde(EA),
+    after_function_end(EA,_).
 
 // // referenced from lonely pointer
 function_entry(EA):-
 	pointer_size(Pt_size),
 	code_pointer_in_data(Offset,EA),
 	after_function_end(EA,_),
+    !block_in_between_fde(EA),
 	!code_pointer_in_data(Offset+Pt_size,_),
 	!code_pointer_in_data(Offset-Pt_size,_).
 
@@ -127,6 +144,7 @@ function_entry(EA2):-
 	code_pointer_in_data(Offset+Pt_size,EA2),
 	!resolved_jump(_,EA2),
 	after_function_end(EA2,_),
+    !block_in_between_fde(EA2),
 	!labeled_data(Offset+Pt_size).
 
 function_entry(EA2):-
@@ -136,6 +154,7 @@ function_entry(EA2):-
 	!labeled_data(Offset),
 	code_pointer_in_data(Offset-Pt_size,EA2),
 	!resolved_jump(_,EA2),
+    !block_in_between_fde(EA2),
 	after_function_end(EA2,_).
 
 function_entry(EA2):-
@@ -144,6 +163,7 @@ function_entry(EA2):-
 	code_pointer_in_data(Offset+Pt_size,EA2),
 	!resolved_jump(_,EA2),
 	after_function_end(EA2,_),
+    !block_in_between_fde(EA2),
 	!labeled_data(Offset+Pt_size).
 
 function_entry(EA2):-
@@ -152,6 +172,7 @@ function_entry(EA2):-
 	!labeled_data(Offset),
 	code_pointer_in_data(Offset-Pt_size,EA2),
 	!resolved_jump(_,EA2),
+    !block_in_between_fde(EA2),
 	after_function_end(EA2,_).
 
 
@@ -159,6 +180,7 @@ function_entry(EA2):-
 //propagation: jumped from another function (there is a function boundary in between)
 function_entry2(EA):-
 	refined_block(EA),
+    !block_in_between_fde(EA),
 	after_function_end(EA,_),
 	direct_jump(Src,EA),
 	unconditional_jump(Src),
@@ -192,6 +214,7 @@ function_entry2(EA):-
 	after_function_end(EA,End),
 	
 	refined_block(EA),
+    !block_in_between_fde(EA),
 	!is_nop(EA),
 	!resolved_jump(_,EA),
 	//cannot be reached from before
@@ -221,6 +244,7 @@ function_entry2(EA2):-
 	code_pointer_in_data(Offset+Pt_size,EA2),
 	!resolved_jump(_,EA2),
 	after_function_end(EA2,_),
+    !block_in_between_fde(EA2),
 	!labeled_data(Offset+Pt_size).
 
 function_entry2(EA2):-
@@ -230,6 +254,7 @@ function_entry2(EA2):-
 	!labeled_data(Offset),
 	code_pointer_in_data(Offset-Pt_size,EA2),
 	!resolved_jump(_,EA2),
+    !block_in_between_fde(EA2),
 	after_function_end(EA2,_).
 
 //////////////////////////////////////////////////////////////////////////////
@@ -244,10 +269,11 @@ function_table(Label):-
 	;
 		Mult>Pt_size,
 		!unconditional_jump(Origin)
-	),
-	preferred_data_access(Offset,Label),
-	symbolic_data(Offset,EA),
-	refined_block(EA).
+    ),
+    preferred_data_access(Offset,Label),
+    symbolic_data(Offset,Pt_size,EA),
+    refined_block(EA),
+    !block_in_between_fde(EA).
 
 //////////////////////////////////////////////////////////////////////////////
 // heuristic markers

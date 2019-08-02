@@ -77,6 +77,8 @@ This module:
 // Detection of relative jump tables
 #include "relative_jump_tables.dl"
 
+#include "exceptions.dl"
+
 // Inference of instruction boundaries
 #include "code_inference.dl"
 
@@ -101,8 +103,22 @@ This module:
 .decl symbol(ea:address,size:number,type:symbol,scope:symbol,sectionIndex:number,name:symbol)
 .input symbol
 
+.decl section_complete(name:symbol,size:number,addr:address,type:number,flags:number)
+.input section_complete
+
 .decl section(name:symbol,size:number,addr:address)
-.input section
+section(Name,Size,Addr):-
+    section_complete(Name,Size,Addr,_,Flags),
+    elf_section_flag("SHF_ALLOC",Pos_Alloc),
+    (Flags / (2^Pos_Alloc)) % 2 = 1.
+
+.decl elf_section_flag(Name:symbol,Position:number)
+
+elf_section_flag("SHF_WRITE",0).
+elf_section_flag("SHF_ALLOC",1).
+elf_section_flag("SHF_EXECINSTR",2).
+
+
 
 .decl relocation(ea:address,type:symbol,name:symbol,addend:number)
 .input relocation
@@ -113,7 +129,6 @@ This module:
 .decl binary_format(Format:symbol)
 .input binary_format
 
-//FIXME: add eh_frames
 
 // instructions
 

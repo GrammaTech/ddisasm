@@ -52,7 +52,7 @@ compute an address but this is also no enough.
 
 */
 
-.decl moved_data_label(EA:address,Dest:address,New_dest:address)
+.decl moved_data_label(EA:address,Size:number,Dest:address,New_dest:address)
 .output moved_data_label
 
 .decl moved_label(EA:address,Index:number,Val:address,New_val:address)
@@ -60,17 +60,17 @@ compute an address but this is also no enough.
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-moved_data_label(EA,Dest,New_dest):-
-	symbolic_data(EA,Dest),
+moved_data_label(EA,Size,Dest,New_dest):-
+    symbolic_data(EA,Size,Dest),
 	address_in_data_refined_range.overlap(Dest,8,New_dest).
 
 //if something points to the middle of a known symbol we express it as symbol+constant
 //as long as it is not code
-moved_data_label(EA,Dest,Address):-
-	symbolic_data(EA,Dest),
-	!code(Dest),
-	symbol(Address,Size,_,_,_,_),
-	Address<Dest,
+moved_data_label(EA,SizePointer,Dest,Address):-
+    symbolic_data(EA,SizePointer,Dest),
+    !code(Dest),
+    symbol(Address,Size,_,_,_,_),
+    Address<Dest,
 	Dest<Address+Size.
 
 
@@ -112,7 +112,7 @@ moved_label(EA,Op_index,Dest,New_dest):-
 	//it collides with a pointer
 	pointer_size(Pt_size),
 	address_in_data_refined_range.overlap(Dest,Pt_size,New_dest),
-	symbolic_data(New_dest,_).
+    symbolic_data(New_dest,_,_).
 
 // the pointer is likely to point to the wrong section
 moved_label_class(EA,"indirect wrong section"),
