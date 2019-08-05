@@ -22,7 +22,7 @@
 //===----------------------------------------------------------------------===//
 /**
 Compilers sometimes generate expressions of the form
-symbol+constant. I can happen that such expression falls in the 1) middle
+symbol+constant. It can happen that such expression falls in the 1) middle
 of a pointer, 2) outside the data sections or 3) falls into a data section
 that is different from the one of symbol.  We want to detect those
 cases and generate the adequate symbol+constant.
@@ -58,6 +58,10 @@ compute an address but this is also no enough.
 .decl moved_label(EA:address,Index:number,Val:address,New_val:address)
 .output moved_label
 
+// this predicate is just for debugging purposes
+.decl moved_label_class(EA:address,Reason:symbol)
+.output moved_label_class
+
 ////////////////////////////////////////////////////////////////////////////////////
 
 moved_data_label(EA,Size,Dest,New_dest):-
@@ -72,11 +76,6 @@ moved_data_label(EA,SizePointer,Dest,Address):-
     symbol(Address,Size,_,_,_,_),
     Address<Dest,
 	Dest<Address+Size.
-
-
-.decl moved_label_class(EA:address,Reason:symbol)
-.output moved_label_class
-
 
 ////////////////////////////////////////////////////////////////////////////////////
 
@@ -117,18 +116,18 @@ moved_label(EA,Op_index,Dest,New_dest):-
 // the pointer is likely to point to the wrong section
 moved_label_class(EA,"indirect wrong section"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Diff):-
-  binary_type("EXEC"),
+    binary_type("EXEC"),
 	symbolic_operand(EA,Op_index,Dest,"data"),
 	data_access(EA,Op_index,_,_,_,_,_,_),
 	data_access_pattern_candidate(Access_dest,_,Mult,EA),
 	(
 	Access_dest!=Dest,
-  New_dest=Access_dest,
-  Diff= max(Access_dest-Dest, Dest-Access_dest)
+    New_dest=Access_dest,
+    Diff= max(Access_dest-Dest, Dest-Access_dest)
 	;
 	Access_dest=Dest,
-  New_dest=Dest+Mult,
-  Diff=Mult
+    New_dest=Dest+Mult,
+    Diff=Mult
 	),
 	
 	data_section(Name),
@@ -165,62 +164,65 @@ moved_label_class(EA,"miss section with access"),
 moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
     binary_type("EXEC"),
     data_access(EA,Op_index,_,_,_,_,Dest,_), Dest>=0,
-		(
-			!symbolic_operand(EA,Op_index,_,_);
-		  access_non_regular_data_section(EA,Op_index)
-		),
-	  !pc_relative_operand(EA,Op_index,_),
-		
-		data_access_pattern_candidate(Access_dest,_,_,EA),
-		regular_data_section(Name),
-		section(Name,SizeSect,Base),
-		Access_dest>=Base,
-		Access_dest<Base+SizeSect,
+    (
+        !symbolic_operand(EA,Op_index,_,_);
+        access_non_regular_data_section(EA,Op_index)
+    ),
+    !pc_relative_operand(EA,Op_index,_),
+    data_access_pattern_candidate(Access_dest,_,_,EA),
+    regular_data_section(Name),
+    section(Name,SizeSect,Base),
+    Access_dest>=Base,
+    Access_dest<Base+SizeSect,
 
-		Diff = max(Access_dest-Dest,Dest-Access_dest),
-        10*Dest>=Base,
-		// the remaining component does not fall on any data section
-		!data_byte(Diff,_),
-		section(".bss",BssSize,BssBeg),(Diff<BssBeg; Diff> BssBeg+BssSize).
+    Diff = max(Access_dest-Dest,Dest-Access_dest),
+    10*Dest>=Base,
+    // the remaining component does not fall on any data section
+    !data_byte(Diff,_),
+    section(".bss",BssSize,BssBeg),(Diff<BssBeg; Diff> BssBeg+BssSize).
 
+// We have an access with a register that is multiplied by something
+// If the register does not contain the base address, then the displacement should contain it.
 moved_label_class(EA,"constant + multiplied reg"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
-  binary_type("EXEC"),
-	data_access(EA,Op_index,"NONE","NONE",RegMult,Mult,Dest,_),
-	!instruction_get_operation(EA,"LEA"),
-	!symbolic_operand(EA,Op_index,_,_),
-	!pc_relative_operand(EA,Op_index,_),
-	( 
-	Mult>1
+    binary_type("EXEC"),
+    data_access(EA,Op_index,"NONE","NONE",RegMult,Mult,Dest,_),
+    !instruction_get_operation(EA,"LEA"),
+    !symbolic_operand(EA,Op_index,_,_),
+    !pc_relative_operand(EA,Op_index,_),
+    (
+        Mult>1
 	;
-	value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,0,_),Mult2>1
+        value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,0,_),Mult2>1
 	),
-	regular_data_section(Name),
-	section(Name,SectSize,Base),
-	(
-		Dest<Base, Distance=Base-Dest, New_dest=Base,
-		10*Dest > Base
-	;
-	 Dest>Base+SectSize, Distance=Dest-(Base+SectSize), New_dest=Base+SectSize
-	).
-
-moved_label_class(EA,"constant + multiplied reg2"),
-moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
-  binary_type("EXEC"),
-	data_access(EA,Op_index,"NONE",Reg,"NONE",_,Dest,_),
-	!instruction_get_operation(EA,"LEA"),
-	!symbolic_operand(EA,Op_index,_,_),
-	!pc_relative_operand(EA,Op_index,_),
-	value_reg_at_operand(EA,Op_index,Reg,_,Mult2,0,_), Mult2>1,
-	regular_data_section(Name),
-	section(Name,SectSize,Base),
-	(
-		Dest<Base, Distance=Base-Dest, New_dest=Base,
-		10*Dest > Base
-	;
-     Dest>Base+SectSize, Distance=Dest-(Base+SectSize), New_dest=Base+SectSize
+    regular_data_section(Name),
+    section(Name,SectSize,Base),
+    (
+        Dest<Base, Distance=Base-Dest, New_dest=Base,
+        10*Dest > Base
+    ;
+        Dest>Base+SectSize, Distance=Dest-(Base+SectSize), New_dest=Base+SectSize
     ).
 
+//Same case as before with the other register
+moved_label_class(EA,"constant + multiplied reg2"),
+moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
+    binary_type("EXEC"),
+    data_access(EA,Op_index,"NONE",Reg,"NONE",_,Dest,_),
+    !instruction_get_operation(EA,"LEA"),
+    !symbolic_operand(EA,Op_index,_,_),
+    !pc_relative_operand(EA,Op_index,_),
+    value_reg_at_operand(EA,Op_index,Reg,_,Mult2,0,_), Mult2>1,
+    regular_data_section(Name),
+    section(Name,SectSize,Base),
+    (
+        Dest<Base, Distance=Base-Dest, New_dest=Base,
+        10*Dest > Base
+    ;
+        Dest>Base+SectSize, Distance=Dest-(Base+SectSize), New_dest=Base+SectSize
+    ).
+
+// Same case as before but with a repeated register
 moved_label_class(EA,"constant + repeated reg"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
     binary_type("EXEC"),
@@ -239,12 +241,12 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 
 // references with offset in PIE or REL code
 moved_displacement_candidate(EA,Op_index,Dest,SymbolAddr,0):-
-  !binary_type("EXEC"),
-  data_access(EA,Op_index,_,_,_,_,Dest,_),
-  instruction_displacement_offset(EA,Op_index,DisplacementOffset),
-  relocation(EA+DisplacementOffset,_,Symbol,_),
-  symbol(SymbolAddr,_,_,_,_,Symbol),
-  SymbolAddr!=Dest.
+    !binary_type("EXEC"),
+    data_access(EA,Op_index,_,_,_,_,Dest,_),
+    instruction_displacement_offset(EA,Op_index,DisplacementOffset),
+    relocation(EA+DisplacementOffset,_,Symbol,_),
+    symbol(SymbolAddr,_,_,_,_,Symbol),
+    SymbolAddr!=Dest.
 
 // we take the candidate with the shortest distance/priority
 .decl discarded_moved_displacement_candidate(EA:address,Op_index:number,Dest:address,New_dest:address)
@@ -299,64 +301,64 @@ dest_enlarged_data_section(EA_def,Reg,New_dest,Beg-MultAbs,Beg+SizeSect+MultAbs)
 // immediate used to access memory
 moved_label_class(EA_from,"immediate used to access memory"),
 moved_immediate_candidate(EA_from,Imm_index,Immediate,New_dest):-
-  binary_type("EXEC"),
-	data_access(EA_access,Op_index,_,Reg2,Reg3,_,_,Size),
-	data_access_pattern_candidate(New_dest,_,Mult,EA_access),
+    binary_type("EXEC"),
+    data_access(EA_access,Op_index,_,Reg2,Reg3,_,_,Size),
+    data_access_pattern_candidate(New_dest,_,Mult,EA_access),
 
-	regular_data_section(Name),
-	section(Name,SizeSect,Beg),
-	New_dest>=Beg,
-	New_dest<Beg+SizeSect,
+    regular_data_section(Name),
+    section(Name,SizeSect,Beg),
+    New_dest>=Beg,
+    New_dest<Beg+SizeSect,
 
-	(Reg=Reg2;Reg=Reg3),
-	value_reg_at_operand(EA_access,Op_index,Reg,EA_from,_,_,Type),
-	Type!="incomplete",
-	mov_immediate_to_reg(EA_from,Reg,Imm_index,Immediate),
-  Beg-Mult <= Immediate,
-  Immediate <= Beg+SizeSect+Mult,
-	//only move if the original does not fall in the section
-	(Immediate< Beg ; Immediate> Beg+SizeSect).
+    (Reg=Reg2;Reg=Reg3),
+    value_reg_at_operand(EA_access,Op_index,Reg,EA_from,_,_,Type),
+    Type!="incomplete",
+    mov_immediate_to_reg(EA_from,Reg,Imm_index,Immediate),
+    Beg-Mult <= Immediate,
+    Immediate <= Beg+SizeSect+Mult,
+    //only move if the original does not fall in the section
+    (Immediate< Beg ; Immediate> Beg+SizeSect).
 
 
 moved_immediate_candidate(EA,Imm_index,Immediate,New_dest):-
-  binary_type("EXEC"),
-	cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate),
-	def_used(EA_def,Reg,EA,_),
-	dest_enlarged_data_section(EA_def,Reg,New_dest,Beg,End),
-	Beg<= Immediate,
-  Immediate <= End.
+    binary_type("EXEC"),
+    cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate),
+    def_used(EA_def,Reg,EA,_),
+    dest_enlarged_data_section(EA_def,Reg,New_dest,Beg,End),
+    Beg<= Immediate,
+    Immediate <= End.
 
 moved_immediate_candidate(EA_def2,Imm_index,Immediate,New_dest):-
-  binary_type("EXEC"),
-	cmp_reg_to_reg(EA,Reg1,Reg2),
-	def_used(EA_def1,Reg1,EA,_),
-	dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End),
+    binary_type("EXEC"),
+    cmp_reg_to_reg(EA,Reg1,Reg2),
+    def_used(EA_def1,Reg1,EA,_),
+    dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End),
 
-	def_used(EA_def2,Reg2,EA,_),
-	mov_immediate_to_reg(EA_def2,Reg2,Imm_index,Immediate),
+    def_used(EA_def2,Reg2,EA,_),
+    mov_immediate_to_reg(EA_def2,Reg2,Imm_index,Immediate),
 
-	Beg<= Immediate,
-  Immediate <= End.
+    Beg<= Immediate,
+    Immediate <= End.
 
 moved_immediate_candidate(EA,Op_index,Dest,SymbolAddr):-
-  !binary_type("EXEC"),
-  code(EA),
-  instruction_immediate_offset(EA,Op_index,ImmediateOffset),
-  instruction_get_src_op(EA,Op_index,Op),
-  op_immediate(Op,Dest),
-  relocation(EA+ImmediateOffset,_,Symbol,_),
-  symbol(SymbolAddr,_,_,_,_,Symbol),
-  SymbolAddr!=Dest.
+    !binary_type("EXEC"),
+    code(EA),
+    instruction_immediate_offset(EA,Op_index,ImmediateOffset),
+    instruction_get_src_op(EA,Op_index,Op),
+    op_immediate(Op,Dest),
+    relocation(EA+ImmediateOffset,_,Symbol,_),
+    symbol(SymbolAddr,_,_,_,_,Symbol),
+    SymbolAddr!=Dest.
 
 moved_label(EA,Op_index,Dest,New_dest):-
-	moved_immediate_candidate(EA,Op_index,Dest,New_dest).
+    moved_immediate_candidate(EA,Op_index,Dest,New_dest).
 
 // If the destination is in the middle of a known symbol
 moved_label_class(EA,"middle of symbol"),
 moved_label(EA,Op_index,Dest,Address):-
- 	symbolic_operand(EA,Op_index,Dest,"data"),
-  !moved_displacement_candidate(EA,Op_index,_,_,_),
-  !moved_immediate_candidate(EA,Op_index,_,_),
- 	symbol(Address,Size,_,_,_,_),
- 	Address<Dest,
-	Dest<Address+Size.
+    symbolic_operand(EA,Op_index,Dest,"data"),
+    !moved_displacement_candidate(EA,Op_index,_,_,_),
+    !moved_immediate_candidate(EA,Op_index,_,_),
+    symbol(Address,Size,_,_,_,_),
+    Address<Dest,
+    Dest<Address+Size.
