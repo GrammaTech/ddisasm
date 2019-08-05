@@ -107,7 +107,7 @@ symbol_special_encoding(EA_landingPad,EncodingName):-
     lsda_callsite(CallSiteTable_address,EA_start,_,EA_end,_,EA_landingPad,_,_),
     lsda(_,CallSiteTable_address,CallSiteEncoding,_,_,_,_),
     special_encoding(Encoding,EncodingName),
-    CallSiteEncoding % 16 = Encoding.
+    CallSiteEncoding band 0xF = Encoding.
 
 
 //region beginning
@@ -136,8 +136,8 @@ symbol_minus_symbol(EA_landingPad,Size,LandingPadBaseAddress,LandingPad):-
 symbolic_data(EAType,EncodingSize,Type):-
     lsda_type_entry(LsdaTypeTableAddress, Index,Type),
     lsda(_,_,_,_,LsdaTypeTableAddress, TypeTableEncoding, _),
-    TypeTableEncoding % 16 = Encoding,
-    (TypeTableEncoding / 16) % 2 = 0,
+    TypeTableEncoding band 0xF = Encoding,
+    TypeTableEncoding band 0x10 = 0,
     dwarf_encoding_size(Encoding,EncodingSize),
     EAType=LsdaTypeTableAddress-(EncodingSize*(Index+1)),
     Type!=0.
@@ -145,8 +145,8 @@ symbolic_data(EAType,EncodingSize,Type):-
 symbol_minus_symbol(EAType,EncodingSize,EAType,Type):-
     lsda_type_entry(LsdaTypeTableAddress, Index,Type),
     lsda(_,_,_,_,LsdaTypeTableAddress, TypeTableEncoding, _),
-    TypeTableEncoding % 16 = Encoding,
-    (TypeTableEncoding / 16) % 2 = 1,
+    TypeTableEncoding band 0xF = Encoding,
+    TypeTableEncoding band 0x10 > 0,
     dwarf_encoding_size(Encoding,EncodingSize),
     EAType=LsdaTypeTableAddress-(EncodingSize*(Index+1)),
     Type!=0.
@@ -163,7 +163,7 @@ symbol_special_encoding(PersonalityPos,EncodingName):-
     cie_personality(_,Personality,PersonalityPos,_,PersonalityEncoding),
     Personality!=0,
     special_encoding(Encoding,EncodingName),
-    PersonalityEncoding % 16 = Encoding.
+    PersonalityEncoding band 0xF = Encoding.
 
 symbolic_data(PersonalityPos,Size,Personality):-
     cie_personality(_,Personality,PersonalityPos,Size,_),
@@ -193,21 +193,21 @@ symbol_special_encoding(EndLocation,EncodingName):-
     fde_entry(Addr,_,Cie, StartFunction, _,_),
     cie_encoding(Cie,FdeEncoding,_),
     special_encoding(Encoding,EncodingName),
-    FdeEncoding % 16 = Encoding.
+    FdeEncoding band 0xF = Encoding.
 
 
 symbolic_data(StartLocation,EndLocation-StartLocation,StartFunction):-
     fde_entry(Addr,_,Cie, StartFunction, _,_),
     cie_encoding(Cie,FdeEncoding,_),
     // absolute encoding
-    FdeEncoding / 16 =0,
+    FdeEncoding band 0x10 =0,
     fde_pointer_locations(Addr,StartLocation,EndLocation, _,_,_).
 
 symbol_minus_symbol(StartLocation,EndLocation-StartLocation,StartLocation,StartFunction):-
     fde_entry(Addr,_,Cie, StartFunction, _,_),
     cie_encoding(Cie,FdeEncoding,_),
     // pc-relative encoding
-    FdeEncoding / 16 =1,
+    FdeEncoding band 0x10 >0,
     fde_pointer_locations(Addr,StartLocation,EndLocation, _,_,_),
     EndLocation-StartLocation>0.
 
@@ -224,7 +224,7 @@ symbol_special_encoding(LsdaLocation,EncodingName):-
     fde_entry(Addr,_,Cie, _, _,_),
     cie_encoding(Cie,_,LsdaEncoding),
     special_encoding(Encoding,EncodingName),
-    LsdaEncoding % 16 = Encoding.
+    LsdaEncoding band 0xF = Encoding.
 
 symbolic_data(LsdaLocation,LsdaSize,LsdaAddress):-
     fde_entry(Addr,_,Cie, _, _,LsdaAddress),
@@ -232,7 +232,7 @@ symbolic_data(LsdaLocation,LsdaSize,LsdaAddress):-
     LsdaSize > 0,
     cie_encoding(Cie,_,LsdaEncoding),
     // absolute encoding
-    LsdaEncoding / 16 =0.
+    LsdaEncoding band 0x10 =0.
 
 symbol_minus_symbol(LsdaLocation,LsdaSize,LsdaLocation,LsdaAddress):-
     fde_entry(Addr,_,Cie, _, _,LsdaAddress),
@@ -240,7 +240,7 @@ symbol_minus_symbol(LsdaLocation,LsdaSize,LsdaLocation,LsdaAddress):-
     LsdaSize > 0,
     cie_encoding(Cie,_,LsdaEncoding),
     // pc-relative enconding
-    LsdaEncoding / 16 =1.
+    LsdaEncoding band 0x10 >0.
 
 
 // instructions
