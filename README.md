@@ -34,9 +34,8 @@ The analysis contains two parts:
 
 - [GTIRB](https://github.com/grammatech/gtirb)
 
-- The analysis depends on [souffle](https://github.com/souffle-lang)
-  being installed. At the moment we rely on the [1.6.1 souffle release](https://github.com/souffle-lang/souffle/releases/tag/1.5.1) configured with `--enable-64bit-domain
-  --disable-ncurses`.
+- The analysis depends on [souffle](https://github.com/souffle-lang) version **1.5.1 or higher** configured with support for 64 bit numbers `--enable-64bit-domain`.
+  At the moment we rely on the [1.6.1 souffle release](https://github.com/souffle-lang/souffle/releases/tag/1.6.1).
   The easiest way to install the 1.6.1 souffle release is:
   ```
   git clone -b 1.6.1 https://github.com/souffle-lang/souffle
@@ -45,7 +44,7 @@ The analysis contains two parts:
   ```
   cd souffle
   sh ./bootstrap
-  ./configure --enable-64bit-domain --disable-ncurses
+  ./configure --enable-64bit-domain
   sudo make -j4 install
   ```
 
@@ -55,7 +54,7 @@ The analysis contains two parts:
   [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
 
 - Ddisasm uses [libehp](https://git.zephyr-software.com/opensrc/libehp) to read exception
-  information
+  information. You can compile libehp with CMake by following the steps on its readme.
 
 ## Building ddisasm
 A C++17 compiler such as gcc 7 or clang 6 is required.
