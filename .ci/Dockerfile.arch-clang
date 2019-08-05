@@ -1,37 +1,19 @@
-FROM archlinux/base as souffle
-RUN sed -i 's/#\[multilib\]/\[multilib\]/; /^\[multilib\]/,/^$/ s/^#//' /etc/pacman.conf
-RUN pacman --noconfirm -Syu archlinux-keyring
-RUN pacman -Syu --noconfirm git autoconf automake bison doxygen flex fakeroot sqlite \
-    libtool make pkg-config zlib mcpp gcc gcc-multilib lib32-fakeroot lib32-gcc-libs lib32-libltdl
-# Enable makepkg as root.
-RUN sed -i "s/^\(OPT_LONG=(\)/\1'asroot' /;s/EUID == 0/1 == 0/" /usr/bin/makepkg
-RUN mkdir -p /aur/souffle
-COPY .ci/PKGBUILD /aur/souffle
-RUN cd /aur/souffle && makepkg --asroot --noconfirm -si
-
 FROM archlinux/base
 
 ARG CMAKE_VERSION=3.9
 ARG CXX_COMPILER=clang++
 
-RUN sed -i 's/#\[multilib\]/\[multilib\]/; /^\[multilib\]/,/^$/ s/^#//' /etc/pacman.conf
 RUN pacman --noconfirm -Syu archlinux-keyring
-RUN pacman -Syu --noconfirm autoconf automake bison clang cmake doxygen ed flex fakeroot gcc gcc-multilib gdb \
-    git lib32-fakeroot lib32-gcc-libs lib32-libltdl libtool mcpp make pkg-config sqlite wget which zlib
+RUN pacman -Syu --noconfirm git autoconf automake doxygen fakeroot libtool \
+    make pkg-config mcpp gcc clang cmake wget base-devel
 
-COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
-COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
-COPY --from=souffle /usr/bin/souffle /usr/bin/souffle
-COPY --from=souffle /usr/bin/souffle-profile /usr/bin/souffle-profile
-COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
+RUN pacman --noconfirm -Syu archlinux-keyring
+RUN sed -i "s/^\(OPT_LONG=(\)/\1'asroot' /;s/EUID == 0/1 == 0/" /usr/bin/makepkg
+RUN git clone --depth 1 https://aur.archlinux.org/yay.git /yay-aur
+RUN sed -i "s|^  make|  sed -i 's/os.Geteuid()/1/' main.go install.go\\n  make|" /yay-aur/PKGBUILD
+RUN cd /yay-aur && makepkg --noconfirm -si
+RUN yay --noconfirm -Sy souffle capstone
 
-# Install capstone
-RUN cd /usr/local/src \
-    && wget https://github.com/aquynh/capstone/archive/4.0.1.tar.gz \
-    && tar xf 4.0.1.tar.gz \
-    && cd capstone-4.0.1 \
-    && CAPSTONE_ARCHS=x86 ./make.sh \
-    && CAPSTONE_ARCHS=x86 ./make.sh install
 
 COPY . /ddisasm
 
