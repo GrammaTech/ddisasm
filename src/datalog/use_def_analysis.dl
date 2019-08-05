@@ -32,9 +32,6 @@ and only if those chains are related eventually to an access to memory.
 -'def_used' intersects the two previous facts to obtain def-use chains.
 
 The traversal of used_for_address is kept intra-procedural (not following call edges).
-
-TODO: there is probably a more efficient way of doing this, the tables for usef_for_address
-can get very big.
 */
 
 
@@ -50,95 +47,6 @@ can get very big.
 //The 'reg' is defined in 'ea_def' and used in 'ea_used' in the operand with index 'index_used'	
 .decl def_used(ea_def:address,reg:register,ea_used:address,index_used:operand_index)
 .output def_used
-
-////////////////////////////////////////////////////////////////////////
-// hard-coded facts about the analysis
-///////////////////////////////////////////////////
-	
-// limit the registers that are tracked
-// and transform the names to their 64 bits version
-.decl track_register(Reg32:register,Reg64:register)
-
-track_register("EAX","RAX").
-track_register("RAX","RAX").
-
-track_register("EBX","RBX").
-track_register("RBX","RBX").
-
-track_register("ECX","RCX").
-track_register("RCX","RCX").
-
-track_register("EDX","RDX").
-track_register("RDX","RDX").
-
-track_register("EDI","RDI").
-track_register("RDI","RDI").
-
-track_register("ESI","RSI").
-track_register("RSI","RSI").
-
-track_register("RBP","RBP").
-track_register("EBP","RBP").
-
-track_register("R8","R8").
-track_register("R8D","R8").
-
-track_register("R9","R9").
-track_register("R9D","R9").
-
-track_register("R10","R10").
-track_register("R10D","R10").
-
-track_register("R11","R11").
-track_register("R11D","R11").
-
-track_register("R12","R12").
-track_register("R12D","R12").
-
-track_register("R13","R13").
-track_register("R13D","R13").
-
-track_register("R14","R14").
-track_register("R14D","R14").
-
-track_register("R15","R15").
-track_register("R15D","R15").
-
-// this specifies the registers whose value is not kept through a function call
-// according to the 'System V AMD64 ABI' calling convention.
-.decl function_non_maintained_reg(reg:register)
-
-function_non_maintained_reg("RAX").
-function_non_maintained_reg("RCX").
-function_non_maintained_reg("RDX").
-function_non_maintained_reg("RDI").
-function_non_maintained_reg("RSI").
-
-function_non_maintained_reg("R8").
-function_non_maintained_reg("R9").
-function_non_maintained_reg("R10").
-function_non_maintained_reg("R11").
-
-////////////////////////////////////////////////////////////////////////
-// Auxiliary predicates
-/////////////////////////////////////////////////////
-
-.decl op_indirect_contains_reg(op:operand_code,reg:register)
-
-// we ignore segment registers
-op_indirect_contains_reg(Op,Reg_uniform):-
-	op_indirect(Op,_,Reg2,_,_,_,_),
-	track_register(Reg2,Reg_uniform).
-	
-op_indirect_contains_reg(Op,Reg_uniform):-
-	op_indirect(Op,_,_,Reg3,_,_,_),
-	track_register(Reg3,Reg_uniform).
-
-.decl op_regdirect_contains_reg(op:operand_code,reg:register)
-
-op_regdirect_contains_reg(Op,Reg_uniform):-
-	op_regdirect(Op,Reg),
-	track_register(Reg,Reg_uniform).
 
 // a register is implicitly defined by being compared to a constant and then jumping
 // this definition only takes place in between the jump and the target that implies equality

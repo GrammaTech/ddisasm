@@ -69,6 +69,7 @@ This module:
 #include "printable_chars.dl"
 #include "jump_operations.dl"
 #include "interrupt_operations.dl"
+#include "registers.dl"
 
 // Detection of relative jump tables
 #include "relative_jump_tables.dl"
@@ -486,6 +487,27 @@ halt(EA):-
 
 halt(EA):-
 	instruction_get_operation(EA,"UD2").
+
+//////////////////////////////////////////////////////////////////////////////////
+// Operations to abstract features of instructions
+
+.decl op_indirect_contains_reg(op:operand_code,reg:register)
+
+// we ignore segment registers
+op_indirect_contains_reg(Op,Reg_uniform):-
+    op_indirect(Op,_,Reg2,_,_,_,_),
+    track_register(Reg2,Reg_uniform).
+
+op_indirect_contains_reg(Op,Reg_uniform):-
+    op_indirect(Op,_,_,Reg3,_,_,_),
+    track_register(Reg3,Reg_uniform).
+
+.decl op_regdirect_contains_reg(op:operand_code,reg:register)
+
+op_regdirect_contains_reg(Op,Reg_uniform):-
+    op_regdirect(Op,Reg),
+    track_register(Reg,Reg_uniform).
+
 
 // The instruction at EA has operation Operation and two operands: a register Reg and an immediate Immediate
 .decl op_immediate_and_reg(EA:address,Operation:symbol,Reg:register,Imm_index:number,Immediate:number)
