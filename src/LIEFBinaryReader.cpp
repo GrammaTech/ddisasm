@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "LIEFBinaryReader.h"
+#include <cassert>
 
 LIEFBinaryReader::LIEFBinaryReader(const std::string& filename)
 {
