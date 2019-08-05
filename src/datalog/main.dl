@@ -356,11 +356,6 @@ next(EA,EA+Size):-
 .decl pc_relative_operand(src:address,index:number, dest:address)
 .output pc_relative_operand
 
-// pc_relative_operand(EA,Index,Dest):-
-// 	pc_relative_operand_complete(EA,Index,Dest,_).
-
-// .decl pc_relative_operand_complete(src:address,index:number, dest:address, size:number)
-
 pc_relative_operand(EA,Index,EA_next+Offset):-
 	instruction_get_op(EA, Index, Op),
     op_indirect(Op,"NONE","RIP","NONE",1,Offset,_),
@@ -492,6 +487,25 @@ halt(EA):-
 halt(EA):-
 	instruction_get_operation(EA,"UD2").
 
+// The instruction at EA has operation Operation and two operands: a register Reg and an immediate Immediate
+.decl op_immediate_and_reg(EA:address,Operation:symbol,Reg:register,Imm_index:number,Immediate:number)
+
+op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate):-
+    code(EA),
+    instruction_get_operation(EA,Operation),
+    instruction_get_op(EA,Imm_index,Op),
+    op_immediate(Op,Immediate),
+    instruction_get_op(EA,_,Op2),
+    op_regdirect_contains_reg(Op2,Reg).
+
+// The instruction at EA is a comparison between a register Reg and an immediate Immediate
+.decl cmp_immediate_to_reg(EA:address,Reg:register,Imm_index:number,Immediate:number)
+
+cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
+    op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate),
+    comparison_operation(Operation).
+
+/////////////////////////////////////////////////////////////////////////////////
 .decl ambiguous_symbol(name:symbol)
 .output ambiguous_symbol
 
