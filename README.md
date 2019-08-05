@@ -91,7 +91,7 @@ $ make
 
 The directory [.ci](https://github.com/GrammaTech/ddisasm/tree/master/.ci) contains
 several Docker files to build ddisasm under different OS. These docker
-files assume that both GTIRB and gtirb-pprinter have been checked out
+files assume that  GTIRB, gtirb-pprinter and libehp have been checked out
 inside the ddisasm directory.
 
 The steps to build ddisasm inside a ubuntu 16 image are:
@@ -100,6 +100,7 @@ git clone https://github.com/GrammaTech/ddisasm.git
 cd ddisasm
 git clone https://github.com/GrammaTech/gtirb.git
 git clone https://github.com/GrammaTech/gtirb-pprinter.git
+git clone https://git.zephyr-software.com/opensrc/libehp
 docker build -f .ci/Dockerfile.ubuntu16 -t ddisasm-ubuntu16 .
 ```
 
