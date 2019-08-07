@@ -32,36 +32,22 @@ The analysis contains two parts:
 
 ## Dependencies
 
-- [GTIRB](https://github.com/grammatech/gtirb)
+ddisasm uses C++17, and requires a compiler which supports
+that standard such as gcc 7, clang 6, or MSVC 2017.
 
-- The analysis depends on [souffle](https://github.com/souffle-lang) version **1.5.1 or higher** configured with support for 64 bit numbers `--enable-64bit-domain`.
-  At the moment we rely on the [1.6.1 souffle release](https://github.com/souffle-lang/souffle/releases/tag/1.6.1).
-  The easiest way to install the 1.6.1 souffle release is:
-  ```
-  git clone -b 1.6.1 https://github.com/souffle-lang/souffle
-  ```
-  followed by the standard [souffle build instructions](https://souffle-lang.github.io/docs/build/):
-  ```
-  cd souffle
-  sh ./bootstrap
-  ./configure --enable-64bit-domain
-  sudo make -j4 install
-  ```
+To build and install ddisasm, the following requirements
+should be installed:
 
-- [Capstone version 4.0.1](http://www.capstone-engine.org/)
+- [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
+- [Souffle](https://souffle-lang.github.io), version 1.5.1 or higher
+  - Must be configured with support for 64 bit numbers (via `--enable-64bit-domain` during configuration)
+- [libehp](https://git.zephyr-software.com/opensrc/libehp), version 1.0.0 or higher
 
-- For printing assembler code the datalog disassembler requires the
-  [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
-
-- Ddisasm uses [libehp](https://git.zephyr-software.com/opensrc/libehp) to read exception
-  information. You can compile libehp with CMake by following the steps on its readme.
+Note that these versions are newer than what your package manager may provide
+by default: This is true on Ubuntu 18, Debian 10, and others. Prefer building
+these dependencies from sources to avoid versioning problems.
 
 ## Building ddisasm
-A C++17 compiler such as gcc 7 or clang 6 is required.
-
-Boost (1.67 or later) and [GTIRB](https://github.com/grammatech/gtirb)
-are required.
-
 Use the following options to configure cmake:
 
 - You can tell CMake which compiler to use with
@@ -69,10 +55,6 @@ Use the following options to configure cmake:
 
 - Normally CMake will find GTIRB automatically, but if it does not you
   can pass `-Dgtirb_DIR=<path-to-gtirb-build>`.
-
-- By default ddisasm will download a copy of the boost libraries that
- it uses. If you want to use your local boost installation, use the
- flag: `-DDDISASM_USE_SYSTEM_BOOST=on`
 
 - ddisasm can make use of GTIRB in static library form (instead of
  shared library form, the default) if you use the flag
