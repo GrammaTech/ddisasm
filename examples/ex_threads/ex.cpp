@@ -1,18 +1,18 @@
 #include <iostream>
 #include <thread>
 
-thread_local int i = 0;
+thread_local int threadLocal = 0;
 
 void foo()
 {
-    std::cout << "foo " << i << std::endl;
-    i++;
+    std::cout << "foo " << threadLocal << std::endl;
+    threadLocal++;
 }
 
 void bar(int x)
 {
-    std::cout << "bar " << i << std::endl;
-    i++;
+    std::cout << "bar " << threadLocal << std::endl;
+    threadLocal++;
 }
 
 int main()

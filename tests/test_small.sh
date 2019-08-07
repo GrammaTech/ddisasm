@@ -34,7 +34,7 @@ examples=(
     "ex_stat ex"
     "ex_struct ex"
     "ex_switch ex"
-    "ex_threads ex g++ -lpthread"
+#   "ex_threads ex g++ -lpthread"
     "ex_unitialized_data ex"
     "ex_virtualDispatch ex g++"
 );
