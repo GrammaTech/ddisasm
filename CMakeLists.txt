@@ -94,15 +94,27 @@ find_package(ehp REQUIRED)
 # ---------------------------------------------------------------------------
 # Boost
 # ---------------------------------------------------------------------------
+set(Boost_NO_BOOST_CMAKE ON) # Boost version 1.70 and greater doesn't put results in ${Boost_LIBRARIES}, etc. unless you set this to ON
 
-add_compile_options(-DBOOST_SYSTEM_NO_DEPRECATED)
+set(BOOST_MIN_VERSION 1.67)
+set(BOOST_REQUIRED_COMPONENTS program_options)
+find_package(Boost ${BOOST_MIN_VERSION} REQUIRED COMPONENTS ${BOOST_REQUIRED_COMPONENTS})
 
-if( ${DDISASM_USE_SYSTEM_BOOST} MATCHES "OFF" )
-  include( CMakeLists.boost )
-else()
-  find_package(Boost 1.67 REQUIRED COMPONENTS program_options)
-  include_directories(${Boost_INCLUDE_DIRS})
+if(NOT ${Boost_FOUND})
+  message(FATAL_ERROR
+  " No Boost installation found.\n"
+  " - If Boost is not installed, install it from souce.\n"
+  "   You can get the latest version of Boost at:\n"
+  "       https://www.boost.org/\n"
+  " - If Boost is installed, make sure the installation location is in your PATH,\n"
+  "   it is at least version ${BOOST_MIN_VERSION}, and it has the following libraries:\n"
+  "       ${BOOST_REQUIRED_COMPONENTS}\n"
+  )
 endif()
+
+add_compile_options(-DBOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE)
+add_compile_options(-DBOOST_SYSTEM_NO_DEPRECATED)
+include_directories(${Boost_INCLUDE_DIRS})
 
 # ---------------------------------------------------------------------------
 # capstone
@@ -114,9 +126,18 @@ else()
 endif()
 
 if(NOT CAPSTONE)
-  message(FATAL_ERROR "capstone library not found")
+  message(FATAL_ERROR
+  " No Capstone installation found.\n"
+  " - If Capstone is not installed, install it from souce.\n"
+  "   You can get the latest version of Capstone at:\n"
+  "       http://www.capstone-engine.org/\n"
+  " - If Capstone is installed, make sure the installation location is in your PATH,\n"
+  "   and it is at least version 4.0.1.\n"
+  )
 endif()
 
-
+# ---------------------------------------------------------------------------
+# source files
+# ---------------------------------------------------------------------------
 add_subdirectory(src)
 add_subdirectory(doc)
