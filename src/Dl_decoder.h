@@ -40,7 +40,6 @@ public:
     Dl_data(int64_t ea, Content content) : ea(ea), content(content)
     {
     }
-    std::string result_tabs();
 };
 
 class Dl_decoder
@@ -51,7 +50,7 @@ public:
     Dl_operator_table op_dict;
     std::vector<Dl_instruction> instructions;
     std::vector<int64_t> invalids;
-    std::vector<Dl_data<int64_t>> data;
+    std::vector<Dl_data<int64_t>> data_addresses;
     std::vector<Dl_data<unsigned char>> data_bytes;
     Dl_decoder();
     void decode_section(uint8_t* buff, uint64_t size, int64_t ea);
@@ -60,12 +59,6 @@ public:
     Dl_operator buildOperand(const cs_x86_op& op);
     void store_data_section(uint8_t* buff, uint64_t size, int64_t ea, uint64_t min_address,
                             uint64_t max_address);
-
-    void print_instructions(std::ofstream& fbuf);
-    void print_operators_of_type(operator_type type, std::ofstream& fbuf);
-    void print_invalids(std::ofstream& fbuf);
-    void print_data(std::ofstream& fbuf);
-    void print_data_bytes(std::ofstream& fbuf);
 };
 
 #endif /* SRC_DL_DECODER_H_ */

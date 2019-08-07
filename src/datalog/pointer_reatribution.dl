@@ -179,7 +179,8 @@ moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
     10*Dest>=Base,
     // the remaining component does not fall on any data section
     !data_byte(Diff,_),
-    section(".bss",BssSize,BssBeg),(Diff<BssBeg; Diff> BssBeg+BssSize).
+    // does not fall in bss sections
+    bss_section_limits(BssBeg,BssEnd),(Diff<BssBeg; Diff> BssEnd).
 
 // We have an access with a register that is multiplied by something
 // If the register does not contain the base address, then the displacement should contain it.

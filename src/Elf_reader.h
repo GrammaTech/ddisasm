@@ -76,6 +76,9 @@ public:
     uint64_t get_min_address() override;
 
     std::vector<Section> get_sections() override;
+    std::vector<Section> get_code_sections() override;
+    std::vector<Section> get_non_zero_data_sections() override;
+
     std::string get_binary_type() override;
     uint64_t get_entry_point() override;
     std::vector<Symbol> get_symbols() override;

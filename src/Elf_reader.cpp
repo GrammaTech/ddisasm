@@ -24,8 +24,10 @@
 #include "Elf_reader.h"
 #include <algorithm>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <sstream>
+
 using namespace std;
 
 Elf_reader::Elf_reader(string filename)
@@ -246,6 +248,30 @@ vector<Section> Elf_reader::get_sections()
         ++sect_names_it;
     }
     return result;
+}
+
+vector<Section> Elf_reader::get_code_sections()
+{
+    vector<Section> sections = get_sections();
+    auto isExeSection = [](Section& s) { return s.flags & SHF_EXECINSTR; };
+    sections.erase(
+        std::remove_if(std::begin(sections), std::end(sections), std::not_fn(isExeSection)),
+        std::end(sections));
+    return sections;
+}
+
+vector<Section> Elf_reader::get_non_zero_data_sections()
+{
+    vector<Section> sections = get_sections();
+    auto isNonZeroDataSection = [](Section& s) {
+        return (s.flags & SHF_ALLOC) && !(s.flags & SHF_EXECINSTR)
+               && (s.type == SHT_PROGBITS || s.type == SHT_INIT_ARRAY || s.type == SHT_FINI_ARRAY
+                   || s.type == SHT_PREINIT_ARRAY);
+    };
+    sections.erase(
+        std::remove_if(std::begin(sections), std::end(sections), std::not_fn(isNonZeroDataSection)),
+        std::end(sections));
+    return sections;
 }
 
 string get_symbol_scope_str(unsigned char info)
