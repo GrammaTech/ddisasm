@@ -521,17 +521,45 @@ elf_section_flag("SHF_WRITE",0).
 elf_section_flag("SHF_ALLOC",1).
 elf_section_flag("SHF_EXECINSTR",2).
 
+.decl elf_section_type(Name:symbol,Code:number)
+
+elf_section_type("NULL",0).
+elf_section_type("PROGBITS",1).
+elf_section_type("SYMTAB",2).
+elf_section_type("STRTAB",3).
+elf_section_type("RELA",4).
+elf_section_type("HASH",5).
+elf_section_type("DYNAMIC",6).
+elf_section_type("NOTE",7).
+elf_section_type("NOBITS",8).
+elf_section_type("REL",9).
+elf_section_type("SHLIB",10).
+elf_section_type("DYNSYM",11).
+
+elf_section_type("INIT_ARRAY",14).
+elf_section_type("FINI_ARRAY",15).
+elf_section_type("PREINIT_ARRAY",16).
+elf_section_type("GROUP",17).
+elf_section_type("SYMTAB_SHNDX",18).
+elf_section_type("NUM",19).
+
 .decl data_section(name:symbol)
 
 data_section(Name):-
-    section_complete(Name,_,_,_,Flags),
+    section_complete(Name,_,_,Type,Flags),
     elf_section_flag("SHF_EXECINSTR",Pos_Exec), Flags band (2^Pos_Exec)  = 0,
-    elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc)  > 0.
+    elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc)  > 0,
+    (elf_section_type("PROGBITS",Type);
+     elf_section_type("NOBITS",Type);
+     elf_section_type("INIT_ARRAY",Type);
+     elf_section_type("FINI_ARRAY",Type);
+     elf_section_type("PREINIT_ARRAY",Type)
+    ).
+
 
 .decl special_data_section(name:symbol)
 
 special_data_section(".data.rel.ro").
-special_data_section(".dynamic").
 special_data_section(".fini_array").
 special_data_section(".got").
 special_data_section(".got.plt").
