@@ -118,12 +118,6 @@ Ddisasm accepts the following parameters:
 `--help`
 :   produce help message
 
-`--sect arg (=.plt.got,.fini,.init,.plt,.text,)`
-:   code sections to decode
-
-`--data_sect arg (=.data,.rodata,.fini_array,.init_array,.data.rel.ro,.got.plt,.got,)`
-:   data sections to consider
-
 `--ir arg`
 :   GTIRB output file
 
