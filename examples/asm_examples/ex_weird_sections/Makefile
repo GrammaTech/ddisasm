@@ -1,6 +1,6 @@
 
 all: ex_original.s
-	gcc ex_original.s  -o ex
+	gcc ex_original.s  -no-pie -o ex
 	@./ex > out.txt
 clean:
 	rm -f ex out.txt
