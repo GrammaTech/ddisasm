@@ -5,7 +5,7 @@ ARG CXX_COMPILER=clang++
 
 RUN pacman --noconfirm -Syu archlinux-keyring
 RUN pacman -Syu --noconfirm git autoconf automake doxygen fakeroot libtool \
-    make pkg-config mcpp gcc clang cmake wget base-devel
+    make pkg-config mcpp gcc clang cmake wget base-devel boost protobuf
 
 RUN pacman --noconfirm -Syu archlinux-keyring
 RUN sed -i "s/^\(OPT_LONG=(\)/\1'asroot' /;s/EUID == 0/1 == 0/" /usr/bin/makepkg

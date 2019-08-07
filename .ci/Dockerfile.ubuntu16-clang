@@ -49,6 +49,28 @@ RUN curl -SL https://cmake.org/files/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.0-Linu
 
 RUN ldconfig
 
+# Install Boost
+RUN curl -L https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.gz > boost.tar.gz && \
+    tar vxfz boost.tar.gz && \
+    cd boost_1_67_0 && \
+    ./bootstrap.sh --prefix=/usr --with-libraries=filesystem,program_options,system --with-toolset=clang && \
+    ./b2 install --prefix=/usr toolset=clang && \
+    rm ../boost.tar.gz && \
+    cd .. && \
+    rm -rf boost_1_67_0
+
+# Install protobuf
+RUN cd /usr/local/src \
+    && wget https://github.com/google/protobuf/releases/download/v3.7.0/protobuf-cpp-3.7.0.tar.gz \
+    && tar xf protobuf-cpp-3.7.0.tar.gz \
+    && cd protobuf-3.7.0 \
+    && ./configure \
+    && make \
+    && make install \
+    && cd .. \
+    && rm -rf protobuf-3.7.0 protobuf-cpp-3.7.0.tar.gz
+RUN ldconfig
+
 # Install capstone
 RUN cd /usr/local/src \
     && wget https://github.com/aquynh/capstone/archive/4.0.1.tar.gz \
