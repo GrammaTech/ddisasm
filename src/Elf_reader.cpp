@@ -393,6 +393,8 @@ descriptor.  */
         "R_X86_64_IRELATIVE",       /* Adjust indirectly by program base */
         "R_X86_64_RELATIVE64",      /* 64-bit adjust by program base */
         "R_X86_64_NUM"};
+    if(type >= 40)
+        return "UNKNOWN(" + std::to_string(type) + ")";
     return type_names[type];
 }
 
@@ -404,15 +406,26 @@ vector<Relocation> Elf_reader::get_relocations()
     {
         unsigned int symbol_index = ELF64_R_SYM(relocation.r_info);
         int type = ELF64_R_TYPE(relocation.r_info);
-        result.push_back({relocation.r_offset, get_relocation_type(type),
-                          dyn_symbol_names[symbol_index], relocation.r_addend});
+        std::string symbol_name;
+        if(symbol_index < dyn_symbol_names.size())
+            symbol_name = dyn_symbol_names[symbol_index];
+        else
+            symbol_name = symbol_names[symbol_index];
+        result.push_back(
+            {relocation.r_offset, get_relocation_type(type), symbol_name, relocation.r_addend});
     }
     for(auto relocation : other_relocations)
     {
         unsigned int symbol_index = ELF64_R_SYM(relocation.r_info);
         int type = ELF64_R_TYPE(relocation.r_info);
-        result.push_back({relocation.r_offset, get_relocation_type(type),
-                          symbol_names[symbol_index], relocation.r_addend});
+
+        std::string symbol_name;
+        if(symbol_index < dyn_symbol_names.size())
+            symbol_name = dyn_symbol_names[symbol_index];
+        else
+            symbol_name = symbol_names[symbol_index];
+        result.push_back(
+            {relocation.r_offset, get_relocation_type(type), symbol_name, relocation.r_addend});
     }
     return result;
 }
