@@ -333,8 +333,16 @@ cfi_directive(StartFunction,0,2,".cfi_personality",Personality,1,Encoding,0):-
 
 
 cfi_directive(Block,BlockSize,0,".cfi_endproc",0,0,0,0):-
-    block_information(Block,BlockSize),
-    fde_addresses(_, Block+BlockSize).
+    fde_addresses(_, EndAddress),
+    block_information(Block,BlockSize,EndAddress).
+
+cfi_directive(Block,BlockSize,0,".cfi_endproc",0,0,0,0):-
+    fde_addresses(_, EA),
+    !block_information(_,_,EA),
+    after_end(EA,End),
+    refined_block_last_instruction(Block,End),
+    block_information(Block,BlockSize,_).
+
 
 // directives that correspond to an instruction
 cfi_directive(Block,Addr-Block,LocalIndex,cat(".cfi_",Insn),0,NOperands,ScaledOp1,ScaledOp2):-

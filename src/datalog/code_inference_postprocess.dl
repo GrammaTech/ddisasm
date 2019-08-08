@@ -33,7 +33,7 @@
 .decl refined_block(block:address)
 .output refined_block
 
-.decl block_information(block:address,size:number)
+.decl block_information(block:address,size:number,endAddress:address)
 .output block_information
 
 .decl refined_block_last_instruction(block:address,EA:address)
@@ -76,7 +76,7 @@ refined_block_last_instruction(Block,EA):-
     next(EA,Next),
     !code_in_refined_block(Next,Block).
 
-block_information(Block,BlockSize):-
+block_information(Block,BlockSize,LastEA+InsnSize):-
     refined_block_last_instruction(Block,LastEA),
     instruction(LastEA, InsnSize, _, _,_, _, _, _),
     BlockSize= LastEA+InsnSize - Block.
