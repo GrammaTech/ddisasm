@@ -47,6 +47,7 @@ more points.
 .decl block(block:address)
 .decl code(ea:address)
 .decl block_last_instruction(block:address,EA:address)
+.decl overlapping_instruction(EA:address)
 
  // The postprocess refines the blocks by merging contiguous blocks
  // that are always executed together
@@ -365,6 +366,52 @@ discarded_block(Block):-
 	),
 	code_in_block_candidate_refined(EA,Block).
 
+//////////////////////////////////////////////////////////////////////
+//special cases
+
+// 2 blocks composed only of nops
+// keep the one that starts before (implicit in block_overlap)
+discarded_block(Block2):-
+    block_overlap(Block,Block2),
+    // same number of points
+    block_total_points(Block,Points),
+    block_total_points(Block2,Points),
+    // both blocks contain only nops
+    nop_block(Block),
+    nop_block(Block2).
+
+
+// a conflicting block with at least one non nop instruction
+.decl block_with_non_nop(Block:address)
+// a conflicting block composed solely of nops
+.decl nop_block(Block:address)
+.output nop_block
+
+block_with_non_nop(Block):-
+    block_is_overlaping(Block),
+    code_in_block_candidate_refined(EA,Block),
+    !is_nop(EA).
+
+nop_block(Block):-
+    block_is_overlaping(Block),
+    !block_with_non_nop(Block).
+
+
+// two blocks where the first instruction is overlapping and only different because of a prefix
+// we discard the second block but register the instruction without prefix as code
+overlapping_instruction(Block2),
+code_in_block(Block2,Block),
+discarded_block(Block2):-
+    block_overlap(Block,Block2),
+    // same number of points
+    block_total_points(Block,Points),
+    block_total_points(Block2,Points),
+    // one has an extra prefix with respect to the other
+    instruction(Block,Size,_,OpCode,Op1,Op2,Op3,Op4),
+    instruction(Block2,Size2,_,OpCode,Op1,Op2,Op3,Op4),
+    Block2 - Block = Size - Size2.
+
+
 /**
  The heuristics give a variable number of points for things like number
  of predecessors, how the block is reached (through direct jump, fallthough, etc.)
@@ -542,6 +589,11 @@ block_points(Block,0,2,"padding nop block"):-
     block_is_overlaping(Block),
     fde_addresses(_,Block),
     is_nop(Block).
+
+block_points(Block,0,-1,"overlap long nop"):-
+    block_is_overlaping(Block),
+    instruction_range(Block,EA_nop),
+    is_nop(EA_nop).
 
 block_points(Block,0,3,"exc-region"):-
     block_is_overlaping(Block),

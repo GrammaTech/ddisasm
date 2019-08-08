@@ -77,6 +77,12 @@ moved_data_label(EA,SizePointer,Dest,Address):-
     Address<Dest,
 	Dest<Address+Size.
 
+// create a symbol+constant for overlapping instructions
+moved_data_label(EA,SizePointer,Dest,Address):-
+    symbolic_data(EA,SizePointer,Dest),
+    overlapping_instruction(Dest),
+    code_in_block(Dest,Address).
+
 ////////////////////////////////////////////////////////////////////////////////////
 
 .decl moved_label_candidate(EA:address,Index:number,Val:address,New_val:address,Diff:number)
@@ -363,3 +369,10 @@ moved_label(EA,Op_index,Dest,Address):-
     symbol(Address,Size,_,_,_,_),
     Address<Dest,
     Dest<Address+Size.
+
+// if the destination is an overlapping instruction
+moved_label_class(EA,"overlapping instruction"),
+moved_label(EA,Op_index,Dest,Block):-
+    symbolic_operand(EA,Op_index,Dest,"code"),
+    overlapping_instruction(Dest),
+    code_in_block(Dest,Block).
