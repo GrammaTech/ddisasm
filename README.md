@@ -38,7 +38,9 @@ that standard such as gcc 7, clang 6, or MSVC 2017.
 To build and install ddisasm, the following requirements
 should be installed:
 
+- [gtirb](https://github.com/grammatech/gtirb)
 - [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
+- [Capstone](http://www.capstone-engine.org/), version 4.0.1 or later
 - [Souffle](https://souffle-lang.github.io), version 1.5.1 or higher
   - Must be configured with support for 64 bit numbers (via `--enable-64bit-domain` during configuration)
 - [libehp](https://git.zephyr-software.com/opensrc/libehp), version 1.0.0 or higher
