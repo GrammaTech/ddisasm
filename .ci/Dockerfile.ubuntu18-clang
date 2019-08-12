@@ -14,8 +14,8 @@ ARG CMAKE_VERSION=3.9
 ARG CXX_COMPILER=clang++
 
 RUN apt-get -y update && apt-get -y install autoconf automake bison clang cmake curl \
-    doxygen ed flex git libncurses5-dev libpcre3-dev libtool libstdc++-7-dev make mcpp \
-    pkg-config python sqlite3 libsqlite3-dev wget zlib1g-dev
+    doxygen ed flex git libncurses5-dev libpcre3-dev libprotobuf-dev libtool libstdc++-7-dev \
+    make mcpp pkg-config protobuf-compiler python sqlite3 libsqlite3-dev wget zlib1g-dev
 
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
@@ -32,18 +32,6 @@ RUN curl -L https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.t
     rm ../boost.tar.gz && \
     cd .. && \
     rm -rf boost_1_67_0
-
-# Install protobuf
-RUN cd /usr/local/src \
-    && wget https://github.com/google/protobuf/releases/download/v3.7.0/protobuf-cpp-3.7.0.tar.gz \
-    && tar xf protobuf-cpp-3.7.0.tar.gz \
-    && cd protobuf-3.7.0 \
-    && ./configure \
-    && make \
-    && make install \
-    && cd .. \
-    && rm -rf protobuf-3.7.0 protobuf-cpp-3.7.0.tar.gz
-RUN ldconfig
 
 # Install capstone
 RUN cd /usr/local/src \
