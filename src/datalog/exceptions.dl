@@ -314,58 +314,57 @@ fde_instruction_ref(FdeAddr,Index+1,0,Addr+(CodeAlignmentFactor*Advance)):-
 
 
 // special directives
-cfi_directive(StartFunction,0,0,".cfi_startproc",0,0,0,0):-
-    fde_addresses(StartFunction, _),
-    refined_block(StartFunction).
 
+// only generate startproc and endproc together or none
+cfi_directive(StartFunction,0,0,".cfi_startproc",0,0,0,0),
+cfi_directive(Block,BlockSize,0,".cfi_endproc",0,0,0,0):-
+    fde_addresses(StartFunction, EndAddress),
+    refined_block(StartFunction),
+    block_information(Block,BlockSize,EndAddress).
 
+cfi_directive(StartFunction,0,0,".cfi_startproc",0,0,0,0),
+cfi_directive(Block,BlockSize,0,".cfi_endproc",0,0,0,0):-
+    fde_addresses(StartFunction, EA),
+    refined_block(StartFunction),
+    !block_information(_,_,EA),
+    after_end(EA,End),
+    refined_block_last_instruction(Block,End),
+    block_information(Block,BlockSize,_).
+
+// only generate other directives if startproc was generated
 cfi_directive(StartFunction,0,1,".cfi_lsda",Lsda,1,Encoding,0):-
     fde_entry(_,_,Cie,StartFunction,_,Lsda),
+    cfi_directive(StartFunction,_,_,".cfi_startproc",_,_,_,_),
     cie_encoding(Cie, _, LsdaEncoding),
     (Lsda!=0,Encoding=LsdaEncoding;
      Lsda=0, Encoding=255).
 
 cfi_directive(StartFunction,0,2,".cfi_personality",Personality,1,Encoding,0):-
     fde_entry(_,_,Cie,StartFunction,_,_),
+    cfi_directive(StartFunction,_,_,".cfi_startproc",_,_,_,_),
     cie_personality(Cie,Personality,_,_,PersonalityEnconding),
     (Personality!=0,Encoding=PersonalityEnconding;
      Personality=0, Encoding=255).
 
-
-cfi_directive(Block,BlockSize,0,".cfi_endproc",0,0,0,0):-
-    fde_addresses(_, EndAddress),
-    block_information(Block,BlockSize,EndAddress).
-
-cfi_directive(Block,BlockSize,0,".cfi_endproc",0,0,0,0):-
-    fde_addresses(_, EA),
-    !block_information(_,_,EA),
-    after_end(EA,End),
-    refined_block_last_instruction(Block,End),
-    block_information(Block,BlockSize,_).
-
-
 // directives that correspond to an instruction
-cfi_directive(Block,Addr-Block,LocalIndex,cat(".cfi_",Insn),0,NOperands,ScaledOp1,ScaledOp2):-
+cfi_directive(Block,Addr-Block,LocalIndex,CfiInsn,0,NOperands,ScaledOp1,ScaledOp2):-
     fde_instruction(FdeAddr,Index,_,Insn,Op1,Op2),
-    cie_noperands(Insn,NOperands),
-    Insn!="advance_loc",
-    Insn!="cf_advance_loc",
-    Insn!="nop",
-    Insn!="unhandled_instruction",
-    fde_entry(FdeAddr,_,Cie,_,_,_),
+    fde_entry(FdeAddr,_,Cie,StartFunction,_,_),
+    cfi_directive(StartFunction,_,_,".cfi_startproc",_,_,_,_),
+    dwarf_to_cfi(Insn,NOperands,CfiInsn),
     cie_entry(Cie,_,_,DataAlignmentFactor),
     (
-        !cie_operand_is_register(Insn,1),
+        !cfi_operand_is_register(Insn,1),
         ScaledOp1=Op1*DataAlignmentFactor
         ;
-        cie_operand_is_register(Insn,1),
+        cfi_operand_is_register(Insn,1),
         ScaledOp1=Op1
     ),
     (
-        !cie_operand_is_register(Insn,2),
+        !cfi_operand_is_register(Insn,2),
         ScaledOp2=Op2*DataAlignmentFactor
         ;
-        cie_operand_is_register(Insn,2),
+        cfi_operand_is_register(Insn,2),
         ScaledOp2=Op2
     ),
     fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
@@ -374,6 +373,8 @@ cfi_directive(Block,Addr-Block,LocalIndex,cat(".cfi_",Insn),0,NOperands,ScaledOp
 // instructions that are encoded as a block of bytes (because they don't have their own cfi directive)
 cfi_directive(Block,Addr-Block,LocalIndex,".cfi_escape",InstructionBytesAddr,Size,0,0):-
     fde_instruction(FdeAddr,Index,Size,"unhandled_instruction",_,_),
+    fde_entry(FdeAddr,_,_,StartFunction,_,_),
+    cfi_directive(StartFunction,_,_,".cfi_startproc",_,_,_,_),
     fde_instruction_pos(FdeAddr,Index,InstructionBytesAddr),
     fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
     code_in_refined_block(Addr,Block).
@@ -381,40 +382,43 @@ cfi_directive(Block,Addr-Block,LocalIndex,".cfi_escape",InstructionBytesAddr,Siz
 /////////////////////////////////////////////////////////////////
 // Auxiliary predicates for cfi directives
 
-.decl cie_operand_is_register(Insn:symbol,OpNumber:number)
+.decl cfi_operand_is_register(Insn:symbol,OpNumber:number)
 
-cie_operand_is_register("def_cfa_offset",1).
-cie_operand_is_register("def_cfa_register",1).
-cie_operand_is_register("def_cfa",1).
-cie_operand_is_register("def_cfa",2).
-cie_operand_is_register("offset",1).
-cie_operand_is_register("val_offset",1).
-cie_operand_is_register("rel_offset",1).
-cie_operand_is_register("register",1).
-cie_operand_is_register("register",2).
-cie_operand_is_register("restore",1).
-cie_operand_is_register("undefined",1).
-cie_operand_is_register("same_value",1).
-cie_operand_is_register("return_column",1).
+cfi_operand_is_register("def_cfa",1).
+cfi_operand_is_register("def_cfa",2). //non-factored
+cfi_operand_is_register("def_cfa_sf",1).
+cfi_operand_is_register("def_cfa_offset",1).
+cfi_operand_is_register("def_cfa_register",1).
+cfi_operand_is_register("offset",1).
+cfi_operand_is_register("offset_extended",1).
+cfi_operand_is_register("offset_extended_sf",1).
+cfi_operand_is_register("register",1).
+cfi_operand_is_register("register",2).
+cfi_operand_is_register("rel_offset",1).
+cfi_operand_is_register("restore",1).
+cfi_operand_is_register("return_column",1).
+cfi_operand_is_register("same_value",1).
+cfi_operand_is_register("undefined",1).
+cfi_operand_is_register("val_offset",1).
 
-.decl cie_noperands(Insn:symbol,OpNumber:number)
 
-cie_noperands("offset",2).
-cie_noperands("restore",1).
-cie_noperands("nop",0).
-cie_noperands("def_cfa",2).
-cie_noperands("offset_extended",2).
-cie_noperands("restore_extended",1).
-cie_noperands("undefined",1).
-cie_noperands("same_value",1).
-cie_noperands("register",2).
-cie_noperands("remember_state",0).
-cie_noperands("restore_state",0).
-cie_noperands("def_cfa",2).
-cie_noperands("def_cfa_register",1).
-cie_noperands("def_cfa_offset",1).
-cie_noperands("offset_extended_sf",2).
-cie_noperands("def_cfa_sf",2).
-cie_noperands("def_cfa_offset_sf",1).
-cie_noperands("val_offset",2).
-cie_noperands("val_offset_sf",2).
+.decl dwarf_to_cfi(DwarfInsn:symbol,OpNumber:number,CfiInsn:symbol)
+
+
+dwarf_to_cfi("def_cfa",2,".cfi_def_cfa").
+dwarf_to_cfi("def_cfa_offset",1,".cfi_def_cfa_offset").
+dwarf_to_cfi("def_cfa_offset_sf",1,".cfi_def_cfa_offset").
+dwarf_to_cfi("def_cfa_register",1,".cfi_def_cfa_register").
+dwarf_to_cfi("def_cfa_sf",2,".cfi_def_cfa").
+dwarf_to_cfi("offset",2,".cfi_offset").
+dwarf_to_cfi("offset_extended",2,".cfi_offset").
+dwarf_to_cfi("offset_extended_sf",2,".cfi_offset").
+dwarf_to_cfi("register",2,".cfi_register").
+dwarf_to_cfi("remember_state",0,".cfi_remember_state").
+dwarf_to_cfi("restore",1,".cfi_restore").
+dwarf_to_cfi("restore_extended",1,".cfi_restore").
+dwarf_to_cfi("restore_state",0,".cfi_restore_state").
+dwarf_to_cfi("same_value",1,".cfi_same_value").
+dwarf_to_cfi("undefined",1,".cfi_undefined").
+dwarf_to_cfi("val_offset",2,".cfi_val_offset").
+dwarf_to_cfi("val_offset_sf",2,".cfi_val_offset").
