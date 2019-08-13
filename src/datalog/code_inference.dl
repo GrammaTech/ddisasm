@@ -47,7 +47,7 @@ more points.
 .decl block(block:address)
 .decl code(ea:address)
 .decl block_last_instruction(block:address,EA:address)
-.decl overlapping_instruction(EA:address)
+.decl overlapping_instruction(EA:address, EA2: address)
 
  // The postprocess refines the blocks by merging contiguous blocks
  // that are always executed together
@@ -399,8 +399,7 @@ nop_block(Block):-
 
 // two blocks where the first instruction is overlapping and only different because of a prefix
 // we discard the second block but register the instruction without prefix as code
-overlapping_instruction(Block2),
-code_in_block(Block2,Block),
+overlapping_instruction(Block2,Block),
 discarded_block(Block2):-
     block_overlap(Block,Block2),
     // same number of points
@@ -608,6 +607,10 @@ block_points(Block,0,10,"landing-pad"):-
 code_in_block(EA,Block):-
 	code_in_block_candidate_refined(EA,Block),
 	!discarded_block(Block).
+
+code_in_block(EA,Block):-
+    overlapping_instruction(EA,Block),
+    code_in_block(Block,Block).
 
 block_last_instruction(Block,EA):-
     code_in_block(EA,Block),
