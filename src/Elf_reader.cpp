@@ -344,7 +344,8 @@ vector<Symbol> Elf_reader::get_symbols()
 
 string Elf_reader::get_relocation_type(int type)
 {
-    static string type_names[40] = {
+    static const int type_names_size = 40;
+    static string type_names[type_names_size] = {
         "R_X86_64_NONE",
         "R_X86_64_64",              /* Direct 64 bit  */
         "R_X86_64_PC32",            /* PC relative 32 bit signed */
@@ -393,7 +394,7 @@ descriptor.  */
         "R_X86_64_IRELATIVE",       /* Adjust indirectly by program base */
         "R_X86_64_RELATIVE64",      /* 64-bit adjust by program base */
         "R_X86_64_NUM"};
-    if(type >= 40)
+    if(type >= type_names_size)
         return "UNKNOWN(" + std::to_string(type) + ")";
     return type_names[type];
 }
