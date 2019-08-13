@@ -342,10 +342,9 @@ vector<Symbol> Elf_reader::get_symbols()
     return result;
 }
 
-string Elf_reader::get_relocation_type(int type)
+string Elf_reader::get_relocation_type(unsigned int type)
 {
-    static const int type_names_size = 40;
-    static string type_names[type_names_size] = {
+    static vector<string> type_names = {
         "R_X86_64_NONE",
         "R_X86_64_64",              /* Direct 64 bit  */
         "R_X86_64_PC32",            /* PC relative 32 bit signed */
@@ -394,7 +393,7 @@ descriptor.  */
         "R_X86_64_IRELATIVE",       /* Adjust indirectly by program base */
         "R_X86_64_RELATIVE64",      /* 64-bit adjust by program base */
         "R_X86_64_NUM"};
-    if(type >= type_names_size)
+    if(type >= type_names.size())
         return "UNKNOWN(" + std::to_string(type) + ")";
     return type_names[type];
 }
@@ -417,14 +416,14 @@ vector<Relocation> Elf_reader::get_relocations()
     for(auto relocation : dyn_relocations)
     {
         unsigned int symbol_index = ELF64_R_SYM(relocation.r_info);
-        int type = ELF64_R_TYPE(relocation.r_info);
+        unsigned int type = ELF64_R_TYPE(relocation.r_info);
         result.push_back({relocation.r_offset, get_relocation_type(type),
                           get_symbol_name(symbol_index), relocation.r_addend});
     }
     for(auto relocation : other_relocations)
     {
         unsigned int symbol_index = ELF64_R_SYM(relocation.r_info);
-        int type = ELF64_R_TYPE(relocation.r_info);
+        unsigned int type = ELF64_R_TYPE(relocation.r_info);
         result.push_back({relocation.r_offset, get_relocation_type(type),
                           get_symbol_name(symbol_index), relocation.r_addend});
     }

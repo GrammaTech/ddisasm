@@ -58,7 +58,7 @@ private:
     void read_relocations();
     void read_dynamic_section();
 
-    std::string get_relocation_type(int type);
+    std::string get_relocation_type(unsigned int type);
     void print_symbol_table(std::ostream& stream, std::vector<Elf64_Sym>& symbol_table,
                             std::vector<std::string>& symbol_name_table);
     void add_symbols_from_table(std::vector<Symbol>& out,
