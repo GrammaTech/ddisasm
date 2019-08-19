@@ -561,6 +561,9 @@ data_section(Name):-
 
 special_data_section(".data.rel.ro").
 special_data_section(".fini_array").
+special_data_section(".eh_frame").
+special_data_section(".eh_frame_hdr").
+special_data_section(".gcc_except_table").
 special_data_section(".got").
 special_data_section(".got.plt").
 special_data_section(".init_array").
