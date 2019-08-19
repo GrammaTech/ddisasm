@@ -10,6 +10,8 @@ RUN cd souffle && cp include/souffle/RamTypes.h /usr/include/souffle/
 
 FROM ubuntu:18.04
 
+ENV LD_LIBRARY_PATH /usr/local/lib:$LD_LIBRARY_PATH
+
 ARG CMAKE_VERSION=3.9
 ARG CXX_COMPILER=clang++
 
@@ -27,8 +29,8 @@ COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
 RUN curl -L https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.gz > boost.tar.gz && \
     tar vxfz boost.tar.gz > /dev/null && \
     cd boost_1_67_0 && \
-    ./bootstrap.sh --prefix=/usr --with-libraries=filesystem,program_options,system --with-toolset=clang > /dev/null && \
-    ./b2 install --prefix=/usr toolset=clang > /dev/null && \
+    ./bootstrap.sh --prefix=/usr/local --with-libraries=filesystem,program_options,system --with-toolset=clang > /dev/null && \
+    ./b2 install --prefix=/usr/local toolset=clang > /dev/null && \
     rm ../boost.tar.gz && \
     cd .. && \
     rm -rf boost_1_67_0
