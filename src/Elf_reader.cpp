@@ -411,8 +411,8 @@ vector<Relocation> Elf_reader::get_relocations()
         // relocations without a symbol have index==0
         if(symbol_index)
         {
-            assert(symbol_index < dyn_symbol_names.size(),
-                   "dynamic symbol table smaller than expected");
+            assert(symbol_index < dyn_symbol_names.size()
+                   && "dynamic symbol table smaller than expected");
             symbol_name = dyn_symbol_names[symbol_index];
         }
         result.push_back(
@@ -427,7 +427,7 @@ vector<Relocation> Elf_reader::get_relocations()
         // relocations without a symbol have index==0
         if(symbol_index)
         {
-            assert(symbol_index < symbol_names.size(), "symbol table smaller than expected");
+            assert(symbol_index < symbol_names.size() && "symbol table smaller than expected");
             symbol_name = symbol_names[symbol_index];
         }
         result.push_back(
