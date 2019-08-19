@@ -14,6 +14,6 @@ check:
 	@ echo "A" |./ex > /tmp/res.txt
 	@ echo "B" |./ex >> /tmp/res.txt
 	@ echo "C" |./ex >> /tmp/res.txt
-	@ bash ./test.sh
+	@ diff out.txt /tmp/res.txt && echo TEST OK
 
 

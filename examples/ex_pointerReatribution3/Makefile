@@ -10,4 +10,4 @@ clean:
 	rm -fr ex.unstripped *.s *.old*  dl_files
 check:
 	@./ex > /tmp/res.txt
-	@ bash ./test.sh
+	@ diff out.txt /tmp/res.txt && echo TEST OK
