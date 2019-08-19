@@ -1,6 +1,6 @@
 
 all: ex_original.s
-	gcc ex_original.s -pie  -o ex
+	$(CC) ex_original.s -pie  -o ex
 	@./ex > out.txt
 clean:
 	rm -f ex out.txt
