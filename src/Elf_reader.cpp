@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Elf_reader.h"
+#include <assert.h>
 #include <algorithm>
 #include <cstring>
 #include <functional>
