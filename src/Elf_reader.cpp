@@ -76,7 +76,7 @@ bool Elf_reader::check_type()
     }
     if(header.e_ident[EI_CLASS] != ELFCLASS64)
     {
-        std::cerr << "Not ELF-64\n";
+        cerr << "Not ELF-64\n";
         return false;
     }
     return true;
@@ -99,7 +99,7 @@ void Elf_reader::read_sections()
     {
         // position in the begining of the name
         file.seekg((SecName_section->sh_offset + sections[i].sh_name), ios::beg);
-        std::string name;
+        string name;
         getline(file, name, '\0');
         section_names.push_back(name);
     }
@@ -130,7 +130,7 @@ void Elf_reader::read_dynamic_symbols()
     for(auto symbol : dyn_symbols)
     {
         file.seekg((sections[dynstr_indx].sh_offset + symbol.st_name), ios::beg);
-        std::string name;
+        string name;
         getline(file, name, '\0');
         dyn_symbol_names.push_back(name);
     }
@@ -161,7 +161,7 @@ void Elf_reader::read_symbols()
     for(auto symbol : symbols)
     {
         file.seekg((sections[strtab_indx].sh_offset + symbol.st_name), ios::beg);
-        std::string name;
+        string name;
         getline(file, name, '\0');
         // Ignore the symbol version for now
         name = name.substr(0, name.find_first_of('@'));
@@ -254,9 +254,7 @@ vector<Section> Elf_reader::get_code_sections()
 {
     vector<Section> sections = get_sections();
     auto isExeSection = [](Section& s) { return s.flags & SHF_EXECINSTR; };
-    sections.erase(
-        std::remove_if(std::begin(sections), std::end(sections), std::not_fn(isExeSection)),
-        std::end(sections));
+    sections.erase(remove_if(begin(sections), end(sections), not_fn(isExeSection)), end(sections));
     return sections;
 }
 
@@ -268,9 +266,8 @@ vector<Section> Elf_reader::get_non_zero_data_sections()
                && (s.type == SHT_PROGBITS || s.type == SHT_INIT_ARRAY || s.type == SHT_FINI_ARRAY
                    || s.type == SHT_PREINIT_ARRAY);
     };
-    sections.erase(
-        std::remove_if(std::begin(sections), std::end(sections), std::not_fn(isNonZeroDataSection)),
-        std::end(sections));
+    sections.erase(remove_if(begin(sections), end(sections), not_fn(isNonZeroDataSection)),
+                   end(sections));
     return sections;
 }
 
@@ -315,9 +312,8 @@ string get_symbol_type_str(unsigned char type)
     }
 }
 
-void Elf_reader::add_symbols_from_table(std::vector<Symbol>& out,
-                                        const std::vector<Elf64_Sym>& symbol_table,
-                                        const std::vector<string>& symbol_name_table)
+void Elf_reader::add_symbols_from_table(vector<Symbol>& out, const vector<Elf64_Sym>& symbol_table,
+                                        const vector<string>& symbol_name_table)
 {
     auto symbol_it = symbol_table.begin();
     auto symbol_names_it = symbol_name_table.begin();
@@ -417,16 +413,16 @@ vector<Relocation> Elf_reader::get_relocations()
     return result;
 }
 
-vector<std::string> Elf_reader::get_libraries()
+vector<string> Elf_reader::get_libraries()
 {
     int dynstr_indx = get_section_index(".dynstr");
-    vector<std::string> libraries;
+    vector<string> libraries;
     for(auto dyn_entry : dynamic_entries)
     {
         if(dyn_entry.d_tag == DT_NEEDED)
         {
             file.seekg((sections[dynstr_indx].sh_offset + dyn_entry.d_un.d_val), ios::beg);
-            std::string library;
+            string library;
             getline(file, library, '\0');
             libraries.push_back(library);
         }
@@ -434,20 +430,20 @@ vector<std::string> Elf_reader::get_libraries()
     return libraries;
 }
 
-vector<std::string> Elf_reader::get_library_paths()
+vector<string> Elf_reader::get_library_paths()
 {
     int dynstr_indx = get_section_index(".dynstr");
-    vector<std::string> libraryPaths;
+    vector<string> libraryPaths;
     for(auto dyn_entry : dynamic_entries)
     {
         if(dyn_entry.d_tag == DT_RPATH || dyn_entry.d_tag == DT_RUNPATH)
         {
             file.seekg((sections[dynstr_indx].sh_offset + dyn_entry.d_un.d_val), ios::beg);
-            std::string allPaths;
+            string allPaths;
             getline(file, allPaths, '\0');
-            std::stringstream allPathsStream(allPaths);
-            allPathsStream.seekg(std::ios::beg);
-            std::string path;
+            stringstream allPathsStream(allPaths);
+            allPathsStream.seekg(ios::beg);
+            string path;
             while(getline(allPathsStream, path, ':'))
             {
                 if(!path.empty())
@@ -489,8 +485,8 @@ uint64_t Elf_reader::get_max_address()
     return max_address;
 }
 
-std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
-Elf_reader::get_section_content_and_address(const string& name)
+optional<tuple<vector<uint8_t>, uint64_t>> Elf_reader::get_section_content_and_address(
+    const string& name)
 {
     int index = get_section_index(name);
     if(index == -1)
@@ -504,5 +500,5 @@ Elf_reader::get_section_content_and_address(const string& name)
     bytes.resize(size);
     file.seekg((sections[index].sh_offset), ios::beg);
     file.read(reinterpret_cast<char*>(bytes.data()), size);
-    return std::make_tuple(bytes, initial_addr);
+    return make_tuple(bytes, initial_addr);
 }
