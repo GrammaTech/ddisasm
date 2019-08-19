@@ -400,32 +400,30 @@ descriptor.  */
 
 vector<Relocation> Elf_reader::get_relocations()
 {
-    auto get_symbol_name = [this](unsigned int symbol_index) {
-        std::string symbol_name;
-        if(symbol_index < dyn_symbol_names.size())
-            symbol_name = dyn_symbol_names[symbol_index];
-        else
-        {
-            if(symbol_index < symbol_names.size())
-                symbol_name = symbol_names[symbol_index];
-        }
-        return symbol_name;
-    };
-    // this depends on reading the .dynsym first, before the .symtab when reading symbols
     vector<Relocation> result;
+    // dynamic relocations refer to dynsym table
     for(auto relocation : dyn_relocations)
     {
         unsigned int symbol_index = ELF64_R_SYM(relocation.r_info);
         unsigned int type = ELF64_R_TYPE(relocation.r_info);
-        result.push_back({relocation.r_offset, get_relocation_type(type),
-                          get_symbol_name(symbol_index), relocation.r_addend});
+        string symbol_name;
+        // relocations without a symbol have index==0
+        if(symbol_index)
+            symbol_name = dyn_symbol_names[symbol_index];
+        result.push_back(
+            {relocation.r_offset, get_relocation_type(type), symbol_name, relocation.r_addend});
     }
+    // other relocations refer to symtab
     for(auto relocation : other_relocations)
     {
         unsigned int symbol_index = ELF64_R_SYM(relocation.r_info);
         unsigned int type = ELF64_R_TYPE(relocation.r_info);
-        result.push_back({relocation.r_offset, get_relocation_type(type),
-                          get_symbol_name(symbol_index), relocation.r_addend});
+        string symbol_name;
+        // relocations without a symbol have index==0
+        if(symbol_index)
+            symbol_name = symbol_names[symbol_index];
+        result.push_back(
+            {relocation.r_offset, get_relocation_type(type), symbol_name, relocation.r_addend});
     }
     return result;
 }
