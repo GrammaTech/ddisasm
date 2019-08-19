@@ -784,16 +784,6 @@ void buildBSS(gtirb::Module &module, souffle::SouffleProgram *prog)
                 auto *d = gtirb::DataObject::Create(C, *i, *next - *i);
                 module.addData(d);
             }
-            else
-            {
-                // Continue to the end of the section.
-                int64_t remaining = addressLimit(*bss_section) - *i;
-                if(remaining > 0)
-                {
-                    auto *d = gtirb::DataObject::Create(C, *i, remaining);
-                    module.addData(d);
-                }
-            }
         }
     }
 }

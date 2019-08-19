@@ -615,13 +615,15 @@ labeled_data(EA):-
 /////////////////////////////////////////////////////////////////////////////////
 // This facts specifies that a label should be printed in the .bss section for
 // the given address (because it is referenced somewhere)
-bss_data(Base):-
+
+bss_data(Base),
+bss_data(Base+SizeSect):-
     bss_section(SectionName),
-    section(SectionName,_,Base).
+    section(SectionName,SizeSect,Base).
 
 bss_data(EA):-
     labeled_data(EA),
     bss_section(SectionName),
     section(SectionName,SizeSect,Base),
     EA>=Base,
-    EA<=Base+SizeSect.
+    EA<Base+SizeSect.
