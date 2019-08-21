@@ -94,9 +94,13 @@ find_package(ehp REQUIRED)
 # ---------------------------------------------------------------------------
 # Boost
 # ---------------------------------------------------------------------------
-set(Boost_NO_BOOST_CMAKE ON) # Boost version 1.70 and greater doesn't put results in ${Boost_LIBRARIES}, etc. unless you set this to ON
-
 find_package(Boost 1.67 REQUIRED COMPONENTS program_options)
+
+if(NOT Boost_LIBRARIES)
+  message(FATAL_ERROR "\
+Boost was detected as being installed, but no libraries were found.
+Try specifying -DBoost_NO_BOOST_CMAKE=ON on the command line.")
+endif()
 
 add_compile_options(-DBOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE)
 add_compile_options(-DBOOST_SYSTEM_NO_DEPRECATED)
