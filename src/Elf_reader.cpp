@@ -264,6 +264,8 @@ vector<Section> Elf_reader::get_non_zero_data_sections()
     auto isNonZeroDataSection = [](Section& s) {
         bool is_allocated = s.flags & SHF_ALLOC;
         bool is_not_executable = !(s.flags & SHF_EXECINSTR);
+        // SHT_NOBITS is not considered here because it is for data sections but without initial
+        // data (zero initialized)
         bool is_non_zero_program_data = s.type == SHT_PROGBITS || s.type == SHT_INIT_ARRAY
                                         || s.type == SHT_FINI_ARRAY || s.type == SHT_PREINIT_ARRAY;
         return is_allocated && is_not_executable && is_non_zero_program_data;

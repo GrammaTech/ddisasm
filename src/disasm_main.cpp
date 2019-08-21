@@ -774,16 +774,14 @@ void buildBSS(gtirb::Module &module, souffle::SouffleProgram *prog)
         // fall within the range of the section
         auto beginning =
             std::lower_bound(bssData.begin(), bssData.end(), bss_section->getAddress());
-        auto end = std::upper_bound(bssData.begin(), bssData.end(), addressLimit(*bss_section));
+        // end points to the address at the end of the bss section
+        auto end = std::lower_bound(bssData.begin(), bssData.end(), addressLimit(*bss_section));
         for(auto i = beginning; i != end; ++i)
         {
             auto next = i;
             next++;
-            if(next != end)
-            {
-                auto *d = gtirb::DataObject::Create(C, *i, *next - *i);
-                module.addData(d);
-            }
+            auto *d = gtirb::DataObject::Create(C, *i, *next - *i);
+            module.addData(d);
         }
     }
 }
