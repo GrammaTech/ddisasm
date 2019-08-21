@@ -488,9 +488,17 @@ data_object_point(EA,Pt_size,"symbol",2,"aligned"):-
   data_object_candidate(EA,Pt_size,"symbol"),
 	EA % Pt_size =0.
 
+data_object_point(EA,Pt_size,"symbol",-1,"point-to-exception-section"):-
+    data_object_candidate(EA,Pt_size,"symbol"),
+    address_in_data_refined(EA,Dest),
+    exception_section(Name),
+    section(Name,SectSize,Base),
+    Dest >= Base, Dest < Base+SectSize.
+
+
 data_object_point(EA,Pt_size,"symbol",10,"has relocation"):-
-  !binary_type("EXEC"),
-  data_object_candidate(EA,Pt_size,"symbol"),
+    !binary_type("EXEC"),
+    data_object_candidate(EA,Pt_size,"symbol"),
     relocation(EA,_,_,_).
 
 data_object_point(EA,Size,"string",0,"basic point"):-

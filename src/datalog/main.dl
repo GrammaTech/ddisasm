@@ -553,17 +553,24 @@ data_section(Name):-
      elf_section_type("NOBITS",Type);
      elf_section_type("INIT_ARRAY",Type);
      elf_section_type("FINI_ARRAY",Type);
-     elf_section_type("PREINIT_ARRAY",Type)
+     elf_section_type("PREINIT_ARRAY",Type);
+     elf_section_type("DYNAMIC",Type)
     ).
 
+.decl exception_section(name:symbol)
+
+exception_section(".eh_frame").
+exception_section(".eh_frame_hdr").
+exception_section(".gcc_except_table").
 
 .decl special_data_section(name:symbol)
 
+special_data_section(Section):-
+    exception_section(Section).
+
 special_data_section(".data.rel.ro").
+special_data_section(".dynamic").
 special_data_section(".fini_array").
-special_data_section(".eh_frame").
-special_data_section(".eh_frame_hdr").
-special_data_section(".gcc_except_table").
 special_data_section(".got").
 special_data_section(".got.plt").
 special_data_section(".init_array").
