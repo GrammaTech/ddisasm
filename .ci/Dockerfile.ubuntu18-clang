@@ -2,9 +2,9 @@ FROM ubuntu:18.04 as souffle
 RUN apt-get -y update && apt-get -y install automake bison build-essential \
     doxygen flex git libtool make mcpp pkg-config sqlite3 libsqlite3-dev \
     zlib1g-dev libffi-dev
-RUN git clone -b 1.5.1 https://github.com/souffle-lang/souffle
+RUN git clone -b 1.6.1 https://github.com/souffle-lang/souffle
 RUN cd souffle && sh ./bootstrap
-RUN cd souffle && ./configure --prefix=/usr --enable-64bit-domain --disable-provenance
+RUN cd souffle && ./configure --prefix=/usr --enable-64bit-domain --disable-ncurses
 RUN cd souffle && make -j4 install
 RUN cd souffle && cp include/souffle/RamTypes.h /usr/include/souffle/
 

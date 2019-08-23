@@ -121,6 +121,67 @@ std::vector<Section> LIEFBinaryReader::get_sections()
     return sectionTuples;
 }
 
+std::vector<Section> LIEFBinaryReader::get_code_sections()
+{
+    std::vector<Section> sections = get_sections();
+    if(dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
+    {
+        using sectFlags = LIEF::ELF::ELF_SECTION_FLAGS;
+        auto isExeSection = [](Section& s) {
+            return s.flags & static_cast<uint64_t>(sectFlags::SHF_EXECINSTR);
+        };
+        sections.erase(
+            std::remove_if(std::begin(sections), std::end(sections), std::not_fn(isExeSection)),
+            std::end(sections));
+    }
+    if(dynamic_cast<LIEF::PE::Binary*>(bin.get()))
+    {
+        using sectCharacteristics = LIEF::PE::SECTION_CHARACTERISTICS;
+        auto isExeSection = [](Section& s) {
+            return s.flags & static_cast<uint64_t>(sectCharacteristics::IMAGE_SCN_CNT_CODE);
+        };
+        sections.erase(
+            std::remove_if(std::begin(sections), std::end(sections), std::not_fn(isExeSection)),
+            std::end(sections));
+    }
+    return sections;
+}
+
+std::vector<Section> LIEFBinaryReader::get_non_zero_data_sections()
+{
+    std::vector<Section> sections = get_sections();
+    if(dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
+    {
+        using sectFlags = LIEF::ELF::ELF_SECTION_FLAGS;
+        using sectType = LIEF::ELF::ELF_SECTION_TYPES;
+        auto isNonZeroDataSection = [](Section& s) {
+            bool is_allocated = s.flags & static_cast<uint64_t>(sectFlags::SHF_ALLOC);
+            bool is_not_executable = !(s.flags & static_cast<uint64_t>(sectFlags::SHF_EXECINSTR));
+            // SHT_NOBITS is not considered here because it is for data sections but without initial
+            // data (zero initialized)
+            bool is_non_zero_program_data =
+                s.type == static_cast<uint64_t>(sectType::SHT_PROGBITS)
+                || s.type == static_cast<uint64_t>(sectType::SHT_INIT_ARRAY)
+                || s.type == static_cast<uint64_t>(sectType::SHT_FINI_ARRAY)
+                || s.type == static_cast<uint64_t>(sectType::SHT_PREINIT_ARRAY);
+            return is_allocated && is_not_executable && is_non_zero_program_data;
+        };
+        sections.erase(remove_if(begin(sections), end(sections), std::not_fn(isNonZeroDataSection)),
+                       end(sections));
+    }
+    if(dynamic_cast<LIEF::PE::Binary*>(bin.get()))
+    {
+        using sectCharacteristics = LIEF::PE::SECTION_CHARACTERISTICS;
+        auto isNonZeroDataSection = [](Section& s) {
+            return s.flags
+                   & static_cast<uint64_t>(sectCharacteristics::IMAGE_SCN_CNT_INITIALIZED_DATA);
+        };
+        sections.erase(remove_if(begin(sections), end(sections), std::not_fn(isNonZeroDataSection)),
+                       end(sections));
+    }
+    return sections;
+}
+
 std::string LIEFBinaryReader::get_binary_format()
 {
     if(bin->format() == LIEF::EXE_FORMATS::FORMAT_ELF)

@@ -8,6 +8,7 @@ endif()
 
 
 set(DATALOG_SOURCES
+    datalog/bitmasks.dl
     datalog/code_inference.dl
     datalog/code_inference_postprocess.dl
     datalog/cfg.dl
@@ -27,6 +28,7 @@ set(DATALOG_SOURCES
     datalog/pointer_reatribution.dl
     datalog/printable_chars.dl
     datalog/relative_jump_tables.dl
+    datalog/registers.dl
     datalog/symbolization.dl
     datalog/use_def_analysis.dl
     datalog/value_analysis.dl

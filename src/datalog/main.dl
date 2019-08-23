@@ -73,6 +73,7 @@ This module:
 #include "printable_chars.dl"
 #include "jump_operations.dl"
 #include "interrupt_operations.dl"
+#include "registers.dl"
 
 // Detection of relative jump tables
 #include "relative_jump_tables.dl"
@@ -105,20 +106,6 @@ This module:
 
 .decl section_complete(name:symbol,size:number,addr:address,type:number,flags:number)
 .input section_complete
-
-.decl section(name:symbol,size:number,addr:address)
-section(Name,Size,Addr):-
-    section_complete(Name,Size,Addr,_,Flags),
-    elf_section_flag("SHF_ALLOC",Pos_Alloc),
-    (Flags / (2^Pos_Alloc)) % 2 = 1.
-
-.decl elf_section_flag(Name:symbol,Position:number)
-
-elf_section_flag("SHF_WRITE",0).
-elf_section_flag("SHF_ALLOC",1).
-elf_section_flag("SHF_EXECINSTR",2).
-
-
 
 .decl relocation(ea:address,type:symbol,name:symbol,addend:number)
 .input relocation
@@ -295,6 +282,12 @@ arithmetic_operation("DEC").
 arithmetic_operation("IMUL").
 arithmetic_operation("SHL").
 
+.decl logic_operation(Operation:symbol)
+
+logic_operation("AND").
+logic_operation("XOR").
+logic_operation("OR").
+logic_operation("TEST").
 
 .decl read_only_operation(Operation:symbol)
 
@@ -314,39 +307,6 @@ one_op_write("POP").
 .decl pointer_size(n:number) inline
 pointer_size(8).
 
-.decl data_section(name:symbol)
-
-data_section(".rodata").
-data_section(".data").
-data_section(".bss").
-data_section(".got").
-data_section(".got.plt").
-data_section(".init_array").
-data_section(".fini_array").
-data_section(".data.rel.ro").
-data_section(".tm_clone_table").
-data_section(".dynamic").
-data_section(".rdata").
-
-
-.decl regular_data_section(name:symbol)
-
-regular_data_section(".rodata").
-regular_data_section(".data").
-regular_data_section(".bss").
-regular_data_section(".rdata").
-
-.decl code_section(name:symbol)
-
-code_section(".text").
-code_section(".plt").
-code_section(".plt.sec").
-code_section(".plt.got").
-code_section(".fini").
-code_section(".init").
-
-
-
 /////////////////////////////////////////////////////////////
 // inference of basic facts
 /////////////////////////////////////////////////////////////
@@ -359,11 +319,6 @@ next(EA,EA+Size):-
 	
 .decl pc_relative_operand(src:address,index:number, dest:address)
 .output pc_relative_operand
-
-// pc_relative_operand(EA,Index,Dest):-
-// 	pc_relative_operand_complete(EA,Index,Dest,_).
-
-// .decl pc_relative_operand_complete(src:address,index:number, dest:address, size:number)
 
 pc_relative_operand(EA,Index,EA_next+Offset):-
 	instruction_get_op(EA, Index, Op),
@@ -496,6 +451,46 @@ halt(EA):-
 halt(EA):-
 	instruction_get_operation(EA,"UD2").
 
+//////////////////////////////////////////////////////////////////////////////////
+// Operations to abstract features of instructions
+
+.decl op_indirect_contains_reg(op:operand_code,reg:register)
+
+// we ignore segment registers
+op_indirect_contains_reg(Op,Reg_uniform):-
+    op_indirect(Op,_,Reg2,_,_,_,_),
+    track_register(Reg2,Reg_uniform).
+
+op_indirect_contains_reg(Op,Reg_uniform):-
+    op_indirect(Op,_,_,Reg3,_,_,_),
+    track_register(Reg3,Reg_uniform).
+
+.decl op_regdirect_contains_reg(op:operand_code,reg:register)
+
+op_regdirect_contains_reg(Op,Reg_uniform):-
+    op_regdirect(Op,Reg),
+    track_register(Reg,Reg_uniform).
+
+
+// The instruction at EA has operation Operation and two operands: a register Reg and an immediate Immediate
+.decl op_immediate_and_reg(EA:address,Operation:symbol,Reg:register,Imm_index:number,Immediate:number)
+
+op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate):-
+    code(EA),
+    instruction_get_operation(EA,Operation),
+    instruction_get_op(EA,Imm_index,Op),
+    op_immediate(Op,Immediate),
+    instruction_get_op(EA,_,Op2),
+    op_regdirect_contains_reg(Op2,Reg).
+
+// The instruction at EA is a comparison between a register Reg and an immediate Immediate
+.decl cmp_immediate_to_reg(EA:address,Reg:register,Imm_index:number,Immediate:number)
+
+cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
+    op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate),
+    comparison_operation(Operation).
+
+/////////////////////////////////////////////////////////////////////////////////
 .decl ambiguous_symbol(name:symbol)
 .output ambiguous_symbol
 
@@ -520,7 +515,32 @@ defined_symbol(EA,Size,Type,Scope,SectIndex,Name):-
     //the symbol is not undefined
     SectIndex!=SHN_UNDEF,
     (SectIndex<SHN_LORESERVE ; SectIndex> SHN_HIRESERVE).
+////////////////////////////////////////////////////////////////////////////////////////
 
+.decl section(name:symbol,size:number,addr:address)
+.decl data_section(name:symbol)
+.decl special_data_section(name:symbol)
+.decl regular_data_section(name:symbol)
+
+regular_data_section(Name):-
+    data_section(Name),
+    !special_data_section(Name).
+
+.decl code_section(name:symbol)
 
 .decl inferred_symbol_name(ea:address,name:symbol)
 .output inferred_symbol_name
+
+.decl bss_section(name:symbol)
+.output bss_section
+
+.decl bss_section_limits(Begin:address,End:address)
+.output bss_section_limits
+
+bss_section_limits(0,0):-
+    !bss_section(_).
+
+bss_section_limits(Begin,LastSect+SizeLast):-
+    Begin = min X:{ bss_section(Name),section(Name,_,X)},
+    LastSect = max X:{ bss_section(Name),section(Name,_,X)},
+    section(_,SizeLast,LastSect).

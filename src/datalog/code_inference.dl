@@ -102,7 +102,7 @@ may_have_symbolic_immediate(Src,Dest):-
 	;
      binary_type("EXEC"),
      instruction_get_operation(Src,Operation),
-     !operation_not_for_address(Operation)
+     !logic_operation(Operation)
 	).
 
 may_have_symbolic_immediate(Src,Dest):-
@@ -110,11 +110,6 @@ may_have_symbolic_immediate(Src,Dest):-
 
 may_have_symbolic_immediate(Src,Dest):-
     direct_call(Src,Dest).
-
-.decl operation_not_for_address(Operation:symbol)
-
-operation_not_for_address("AND").
-operation_not_for_address("XOR").
 
 .decl invalid(EA:address)
 
@@ -342,6 +337,11 @@ block_is_overlaping(Block):-
 // We need to solve the block overlaps
 // we do it with heuristics
 ///
+.decl block_total_points(ea_block:address, points:number)
+
+block_total_points(Block,Points):-
+	block_is_overlaping(Block),
+	Points = sum X:{block_points(Block,_,X,_)}.
 
 .decl discarded_block(ea_block:address)
 .output discarded_block
@@ -352,7 +352,9 @@ discarded_block(Block):-
 	   block_overlap(Block2,Block)
 	),
 	// keep the block that has more points
-	sum X:{block_points(Block,_,X,_)} < sum Y:{block_points(Block2,_,Y,_)}.
+	block_total_points(Block,Points),
+	block_total_points(Block2,Points2),
+	Points < Points2.
 
 // propagate discarding blocks through direct jumps or calls
 discarded_block(Block):-

@@ -106,7 +106,6 @@ Dl_instruction Dl_decoder::transformInstruction(cs_insn& insn)
             op_codes.push_back(index);
         }
     }
-    // FIXME what about the prefix?
     return Dl_instruction(insn.address, insn.size, prefix, name, op_codes,
                           detail.encoding.imm_offset, detail.encoding.disp_offset);
 }
@@ -162,52 +161,10 @@ void Dl_decoder::store_data_section(uint8_t* buf, uint64_t size, int64_t ea, uin
         {
             uint64_t content = *((int64_t*)buf);
             if(can_be_address(content, min_address, max_address))
-                data.push_back(Dl_data<int64_t>(ea, content));
+                data_addresses.push_back(Dl_data<int64_t>(ea, content));
         }
         ++ea;
         ++buf;
         --size;
     }
-}
-
-void Dl_decoder::print_instructions(std::ofstream& fbuf)
-{
-    for(auto instruction : instructions)
-    {
-        fbuf << instruction.result_tabs() << endl;
-    }
-}
-void Dl_decoder::print_operators_of_type(operator_type type, ofstream& fbuf)
-{
-    op_dict.print_operators_of_type(type, fbuf);
-}
-void Dl_decoder::print_invalids(ofstream& fbuf)
-{
-    for(auto invalid : invalids)
-    {
-        fbuf << invalid << endl;
-    }
-}
-
-void Dl_decoder::print_data(ofstream& fbuf)
-{
-    for(auto data_item : data)
-    {
-        fbuf << data_item.result_tabs() << endl;
-    }
-}
-void Dl_decoder::print_data_bytes(ofstream& fbuf)
-{
-    for(auto data_item : data_bytes)
-    {
-        fbuf << data_item.result_tabs() << endl;
-    }
-}
-
-template <class Content>
-std::string Dl_data<Content>::result_tabs()
-{
-    ostringstream o;
-    o << ea << '\t' << static_cast<int64_t>(content);
-    return o.str();
 }

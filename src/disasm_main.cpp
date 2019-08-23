@@ -757,42 +757,39 @@ void buildCodeBlocks(gtirb::Module &module, souffle::SouffleProgram *prog)
     }
 }
 
-// Create DataObjects for labeled objects in the BSS section, without adding
+// Create DataObjects for labeled objects in the BSS sections, without adding
 // data to the ImageByteMap.
 
 void buildBSS(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
-    auto bssData = convertRelation<gtirb::Addr>("bss_data", prog);
-    const auto bss_section = module.findSection(".bss");
-    if(bss_section == module.section_by_name_end())
+    std::vector<gtirb::Addr> bssData = convertRelation<gtirb::Addr>("bss_data", prog);
+    std::sort(bssData.begin(), bssData.end());
+
+    for(auto &output : *prog->getRelation("bss_section"))
     {
-        std::cerr << "Section .bss not found\n";
-        return;
-    }
-    // We assume there is at most one section with the name ".bss"
-    for(size_t i = 0; i < bssData.size(); ++i)
-    {
-        const gtirb::Addr current = bssData[i];
-        if(i != bssData.size() - 1)
+        std::string sectionName;
+        output >> sectionName;
+        const auto bss_section = module.findSection(sectionName);
+        if(bss_section == module.section_by_name_end())
+            continue;
+        // for each bss section we divide in data objects according to the bss_data markers that
+        // fall within the range of the section
+        auto beginning =
+            std::lower_bound(bssData.begin(), bssData.end(), bss_section->getAddress());
+        // end points to the address at the end of the bss section
+        auto end = std::lower_bound(bssData.begin(), bssData.end(), addressLimit(*bss_section));
+        for(auto i = beginning; i != end; ++i)
         {
-            gtirb::Addr next = bssData[i + 1];
-            auto *d = gtirb::DataObject::Create(C, gtirb::Addr(current), next - current);
+            auto next = i;
+            next++;
+            auto *d = gtirb::DataObject::Create(C, *i, *next - *i);
             module.addData(d);
-        }
-        else
-        {
-            // Continue to the end of the section.
-            int64_t remaining = addressLimit(*bss_section) - current;
-            if(remaining > 0)
-            {
-                auto *d = gtirb::DataObject::Create(C, gtirb::Addr(current), remaining);
-                module.addData(d);
-            }
         }
     }
 }
 
-void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
+void buildDataGroups(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
+                     souffle::SouffleProgram *prog)
 {
     auto symbolicData = convertSortedRelation<VectorByEA<SymbolicData>>("symbolic_data", prog);
     auto movedDataLabels =
@@ -805,16 +802,14 @@ void buildDataGroups(gtirb::Module &module, souffle::SouffleProgram *prog)
     auto dataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", prog);
     auto symbolSpecialTypes =
         convertSortedRelation<VectorByEA<SymbolSpecialType>>("symbol_special_encoding", prog);
-
-    std::unordered_set<std::string> dataSections{
-        ".got",    ".got.plt", ".data.rel.ro", ".init_array",       ".fini_array",
-        ".rodata", ".rdata",   ".data",        ".gcc_except_table", ".eh_frame"};
     std::map<gtirb::UUID, std::string> typesTable;
 
-    for(auto &s : module.sections())
+    for(auto &section : binary->get_non_zero_data_sections())
     {
-        if(dataSections.count(s.getName()))
+        auto foundSection = module.findSection(section.name);
+        if(foundSection != module.section_by_name_end())
         {
+            gtirb::Section &s = *foundSection;
             auto limit = addressLimit(s);
             for(auto currentAddr = s.getAddress(); currentAddr < limit; currentAddr++)
             {
@@ -1229,7 +1224,7 @@ static void buildIR(gtirb::IR &ir, const std::string &filename,
     buildSymbols(module, prog);
     buildSymbolForwarding(module, prog);
     buildSections(module, binary, prog);
-    buildDataGroups(module, prog);
+    buildDataGroups(module, binary, prog);
     buildCodeBlocks(module, prog);
     buildCodeSymbolicInformation(module, prog);
     connectSymbolsToDataGroups(module);
@@ -1292,34 +1287,24 @@ static void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose
         std::cout << "Self diagnose completed: No errors found" << std::endl;
 }
 
-static void decode(Dl_decoder &decoder, std::shared_ptr<BinaryReader> binary,
-                   const std::vector<std::string> &sections,
-                   const std::vector<std::string> &data_sections)
+static void decode(Dl_decoder &decoder, std::shared_ptr<BinaryReader> binary)
 {
-    for(const auto &section_name : sections)
+    for(const auto &codeSection : binary->get_code_sections())
     {
-        if(auto section = binary->get_section_content_and_address(section_name))
+        if(auto section = binary->get_section_content_and_address(codeSection.name))
         {
             decoder.decode_section(std::get<0>(*section).data(), std::get<0>(*section).size(),
                                    std::get<1>(*section));
         }
-        else
-        {
-            std::cerr << "Section " << section_name << " not found\n";
-        }
     }
     uint64_t min_address = binary->get_min_address();
     uint64_t max_address = binary->get_max_address();
-    for(const auto &section_name : data_sections)
+    for(const auto &dataSection : binary->get_non_zero_data_sections())
     {
-        if(auto section = binary->get_section_content_and_address(section_name))
+        if(auto section = binary->get_section_content_and_address(dataSection.name))
         {
             decoder.store_data_section(std::get<0>(*section).data(), std::get<0>(*section).size(),
                                        std::get<1>(*section), min_address, max_address);
-        }
-        else
-        {
-            std::cerr << "Section " << section_name << " not found\n";
         }
     }
 }
@@ -1437,8 +1422,8 @@ void addRelation(souffle::SouffleProgram *prog, const std::string &name, const s
 static void loadInputs(souffle::SouffleProgram *prog, std::shared_ptr<BinaryReader> binary,
                        const Dl_decoder &decoder)
 {
-    addRelation<std::string>(prog, "binary_format", {binary->get_binary_format()});
     addRelation<std::string>(prog, "binary_type", {binary->get_binary_type()});
+    addRelation<std::string>(prog, "binary_format", {binary->get_binary_format()});
     addRelation<uint64_t>(prog, "entry_point", {binary->get_entry_point()});
     addRelation(prog, "section_complete", binary->get_sections());
     addRelation(prog, "symbol", binary->get_symbols());
@@ -1446,7 +1431,7 @@ static void loadInputs(souffle::SouffleProgram *prog, std::shared_ptr<BinaryRead
     addRelation(prog, "data_directory", binary->get_data_directories());
     addRelation(prog, "import_entry", binary->get_import_entries());
     addRelation(prog, "instruction_complete", decoder.instructions);
-    addRelation(prog, "address_in_data", decoder.data);
+    addRelation(prog, "address_in_data", decoder.data_addresses);
     addRelation(prog, "data_byte", decoder.data_bytes);
     addRelation(prog, "invalid_op_code", decoder.invalids);
     addRelation(prog, "op_regdirect", decoder.op_dict.get_operators_of_type(operator_type::REG));
@@ -1478,33 +1463,15 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-    std::vector<std::string> sections{".plt.got", ".fini", ".init", ".plt", ".text", ".plt.sec"};
-    std::vector<std::string> dataSections{".data",
-                                          ".rodata",
-                                          ".rdata",
-                                          ".fini_array",
-                                          ".init_array",
-                                          ".data.rel.ro",
-                                          ".got.plt",
-                                          ".got",
-                                          ".tm_clone_table",
-                                          ".dynamic",
-                                          ".gcc_except_table",
-                                          ".eh_frame"};
-
     po::options_description desc("Allowed options");
-    desc.add_options()                                                                    //
-        ("help", "produce help message")                                                  //
-        ("sect", po::value<std::vector<std::string>>()->default_value(sections),          //
-         "sections to decode")                                                            //
-        ("data_sect", po::value<std::vector<std::string>>()->default_value(dataSections), //
-         "data sections to consider")                                                     //
-        ("ir", po::value<std::string>(), "GTIRB output file")                             //
-        ("json", po::value<std::string>(), "GTIRB json output file")                      //
-        ("asm", po::value<std::string>(), "ASM output file")                              //
-        ("debug", "generate assembler file with debugging information")                   //
-        ("debug-dir", po::value<std::string>(),                                           //
-         "location to write CSV files for debugging")                                     //
+    desc.add_options()                                                  //
+        ("help", "produce help message")                                //
+        ("ir", po::value<std::string>(), "GTIRB output file")           //
+        ("json", po::value<std::string>(), "GTIRB json output file")    //
+        ("asm", po::value<std::string>(), "ASM output file")            //
+        ("debug", "generate assembler file with debugging information") //
+        ("debug-dir", po::value<std::string>(),                         //
+         "location to write CSV files for debugging")                   //
         ("input-file", po::value<std::string>(), "file to disasemble")(
             "keep-functions,K",
             boost::program_options::value<std::vector<std::string>>()->multitoken(),
@@ -1551,8 +1518,7 @@ int main(int argc, char **argv)
         return 1;
     }
     Dl_decoder decoder;
-    decode(decoder, binary, vm["sect"].as<std::vector<std::string>>(),
-           vm["data_sect"].as<std::vector<std::string>>());
+    decode(decoder, binary);
     std::cout << "Decoding the binary" << std::endl;
     if(souffle::SouffleProgram *prog = souffle::ProgramFactory::newInstance("souffle_disasm"))
     {

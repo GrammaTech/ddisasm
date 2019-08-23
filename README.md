@@ -34,18 +34,17 @@ The analysis contains two parts:
 
 - [GTIRB](https://github.com/grammatech/gtirb)
 
-- The analysis depends on [souffle](https://github.com/souffle-lang)
-  being installed. At the moment we rely on the [1.5.1 souffle release](https://github.com/souffle-lang/souffle/releases/tag/1.5.1) configured with `--enable-64bit-domain
-  --disable-provenance`.
-  The easiest way to install the 1.5.1 souffle release is:
+- The analysis depends on [souffle](https://github.com/souffle-lang) version **1.5.1 or higher** configured with support for 64 bit numbers `--enable-64bit-domain`.
+  At the moment we rely on the [1.6.1 souffle release](https://github.com/souffle-lang/souffle/releases/tag/1.6.1).
+  The easiest way to install the 1.6.1 souffle release is:
   ```
-  git clone -b 1.5.1 https://github.com/souffle-lang/souffle
+  git clone -b 1.6.1 https://github.com/souffle-lang/souffle
   ```
   followed by the standard [souffle build instructions](https://souffle-lang.github.io/docs/build/):
   ```
   cd souffle
   sh ./bootstrap
-  ./configure --enable-64bit-domain --disable-provenance
+  ./configure --enable-64bit-domain
   sudo make -j4 install
   ```
 
@@ -53,6 +52,9 @@ The analysis contains two parts:
 
 - For printing assembler code the datalog disassembler requires the
   [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
+
+- Ddisasm uses [libehp](https://git.zephyr-software.com/opensrc/libehp) to read exception
+  information. You can compile libehp with CMake by following the steps on its readme.
 
 ## Building ddisasm
 A C++17 compiler such as gcc 7 or clang 6 is required.
@@ -88,7 +90,7 @@ $ make
 
 The directory [.ci](https://github.com/GrammaTech/ddisasm/tree/master/.ci) contains
 several Docker files to build ddisasm under different OS. These docker
-files assume that both GTIRB and gtirb-pprinter have been checked out
+files assume that  GTIRB, gtirb-pprinter and libehp have been checked out
 inside the ddisasm directory.
 
 The steps to build ddisasm inside a ubuntu 16 image are:
@@ -97,6 +99,7 @@ git clone https://github.com/GrammaTech/ddisasm.git
 cd ddisasm
 git clone https://github.com/GrammaTech/gtirb.git
 git clone https://github.com/GrammaTech/gtirb-pprinter.git
+git clone https://git.zephyr-software.com/opensrc/libehp
 docker build -f .ci/Dockerfile.ubuntu16 -t ddisasm-ubuntu16 .
 ```
 
@@ -114,12 +117,6 @@ Ddisasm accepts the following parameters:
 
 `--help`
 :   produce help message
-
-`--sect arg (=.plt.got,.fini,.init,.plt,.text,)`
-:   code sections to decode
-
-`--data_sect arg (=.data,.rodata,.fini_array,.init_array,.data.rel.ro,.got.plt,.got,)`
-:   data sections to consider
 
 `--ir arg`
 :   GTIRB output file
@@ -181,18 +178,17 @@ Please follow the Code Requirements in
 
 ddisasm generates the following AuxData tables:
 
-| Key              | Type                                           | Purpose                                                                                                                              |
-|------------------|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| comments         | `std::map<gtirb::Addr, std::string>`           | Per-instruction comments.                                                                                                            |
-| functionEntries    | `std::map<gtirb::UUID, std::set<gtirb::UUID>>` | UUIDs of the blocks that are entry points of functions.                                                                                              |
-| functionBlocks    | `std::map<gtirb::UUID, std::set<gtirb::UUID>>` | UUIDs of the blocks that belong to each function.                                                                                              |
-
-| symbolForwarding | `std::map<gtirb::UUID, gtirb::UUID>`           | Map from symbols to other symbols. This table is used to forward symbols due to relocations or due to the use of plt and got tables. |
-| encodings            | `std::map<gtirb::UUID,std::string>`            | Map from (typed) data objects to the encoding of the data,  expressed as a std::string containing an assembler encoding specifier: "string", "uleb128" or "sleb128".     |
-| elfSectionProperties | `std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>>` | Map from section UUIDs to tuples with the ELF section types and flags. |
-| cfiDirectives   | `std::map<gtirb::Offset, std::vector<std::tuple<std::string, std::vector<int64_t>, gtirb::UUID>>>` | Map from Offsets to  vector of cfi directives. A cfi directive contains: a string describing the directive, a vector  of numeric arguments, and an optional symbolic argument (represented with the UUID of the symbol). |
-| libraries        | `std::vector<std::string>`       | Names of the libraries that are needed.                                          |
-| libraryPaths     | `std::vector<std::string>`       | Paths contained in the rpath of the binary                                       |
+| Key                  | Type                                                                                               | Purpose                                                                                                                                                                                                                |
+|----------------------|----------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| comments             | `std::map<gtirb::Offset, std::string>`                                                             | Per-instruction comments.                                                                                                                                                                                              |
+| functionEntries      | `std::map<gtirb::UUID, std::set<gtirb::UUID>>`                                                     | UUIDs of the blocks that are entry points of functions.                                                                                                                                                                |
+| functionBlocks       | `std::map<gtirb::UUID, std::set<gtirb::UUID>>`                                                     | UUIDs of the blocks that belong to each function.                                                                                                                                                                      |
+| symbolForwarding     | `std::map<gtirb::UUID, gtirb::UUID>`                                                               | Map from symbols to other symbols. This table is used to forward symbols due to relocations or due to the use of plt and got tables.                                                                                   |
+| encodings            | `std::map<gtirb::UUID, std::string>`                                                               | Map from (typed) data objects to the encoding of the data, expressed as a `std::string` containing an assembler encoding specifier: "string", "uleb128" or "sleb128".                                                  |
+| elfSectionProperties | `std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>>`                                            | Map from section UUIDs to tuples with the ELF section types and flags.                                                                                                                                                 |
+| cfiDirectives        | `std::map<gtirb::Offset, std::vector<std::tuple<std::string, std::vector<int64_t>, gtirb::UUID>>>` | Map from Offsets to vector of cfi directives. A cfi directive contains: a string describing the directive, a vector of numeric arguments, and an optional symbolic argument (represented with the UUID of the symbol). |
+| libraries            | `std::vector<std::string>`                                                                         | Names of the libraries that are needed.                                                                                                                                                                                |
+| libraryPaths         | `std::vector<std::string>`                                                                         | Paths contained in the rpath of the binary.                                                                                                                                                                            |
 
 ## Some References
 

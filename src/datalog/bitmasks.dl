@@ -1,0 +1,58 @@
+//===- bitmasks.dl -----------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+This module detects specific kinds of bitmasks and bitmask operations.
+
+*/
+
+// auxiliary component to generate all the numbers in a range
+.comp counter{
+
+    .decl range(Begin:number,End:number)
+    .decl num(N:number)
+
+    num(N):-
+        range(N,_).
+    num(N+1):-
+        num(N),
+        range(_,End),
+        N+1<End.
+}
+
+
+// a low pass mask is a bitmap mask of the form 0^*1^+
+.decl low_pass_mask(Mask:number)
+
+.init available_bits=counter
+// generate numbers from 1 to 32 or 64 depending on the pointer size
+available_bits.range(1,8*Pt_size):-
+    pointer_size(Pt_size).
+
+low_pass_mask((2^N)-1):-
+    available_bits.num(N).
+
+.decl low_pass_filter(EA:address)
+
+low_pass_filter(EA):-
+    op_immediate_and_reg(EA,"AND",_,_,Imm),
+    low_pass_mask(Imm).
