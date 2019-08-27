@@ -75,6 +75,7 @@ public:
     uint64_t get_max_address() override;
     uint64_t get_min_address() override;
 
+    std::string get_binary_format() override;
     std::vector<Section> get_sections() override;
     std::vector<Section> get_code_sections() override;
     std::vector<Section> get_non_zero_data_sections() override;

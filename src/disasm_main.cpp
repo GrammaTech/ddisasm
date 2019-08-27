@@ -1398,6 +1398,7 @@ static void loadInputs(souffle::SouffleProgram *prog, std::shared_ptr<BinaryRead
                        const Dl_decoder &decoder)
 {
     addRelation<std::string>(prog, "binary_type", {binary->get_binary_type()});
+    addRelation<std::string>(prog, "binary_format", {binary->get_binary_format()});
     addRelation<uint64_t>(prog, "entry_point", {binary->get_entry_point()});
     addRelation(prog, "section_complete", binary->get_sections());
     addRelation(prog, "symbol", binary->get_symbols());

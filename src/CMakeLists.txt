@@ -14,6 +14,7 @@ set(DATALOG_SOURCES
     datalog/cfg.dl
     datalog/data_access_analysis.dl
     datalog/empty_range.dl
+    datalog/elf_binaries.dl
     datalog/exceptions.dl
     datalog/float_operations.dl
     datalog/function_inference.dl

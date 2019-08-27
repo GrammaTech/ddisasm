@@ -220,6 +220,11 @@ uint64_t Elf_reader::get_entry_point()
     return header.e_entry;
 }
 
+string Elf_reader::get_binary_format()
+{
+    return "ELF";
+}
+
 string Elf_reader::get_binary_type()
 {
     static string binary_type_names[] = {
