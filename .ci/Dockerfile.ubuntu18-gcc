@@ -13,8 +13,13 @@ FROM ubuntu:18.04
 ENV LD_LIBRARY_PATH /usr/local/lib:$LD_LIBRARY_PATH
 
 ARG CMAKE_VERSION=3.9
+ARG BOOST_VERSION=1.67.0
 ARG CXX_COMPILER=g++-7
 
+# Use bash for more convenient variable substitution syntax
+SHELL ["/bin/bash", "-c"]
+
+# Install common packages
 RUN apt-get -y update && apt-get -y install autoconf automake bison build-essential clang \
     doxygen flex git libprotobuf-dev libtool make mcpp pkg-config protobuf-compiler python \
     sqlite3 libsqlite3-dev zlib1g-dev ed libpcre3-dev libncurses5-dev wget curl cmake
@@ -26,14 +31,14 @@ COPY --from=souffle /usr/bin/souffle-profile /usr/bin/souffle-profile
 COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
 
 # Install Boost
-RUN curl -L https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.gz > boost.tar.gz && \
+RUN curl -L https://dl.bintray.com/boostorg/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION//./_}.tar.gz > boost.tar.gz && \
     tar vxfz boost.tar.gz > /dev/null && \
-    cd boost_1_67_0 && \
+    cd boost_${BOOST_VERSION//./_} && \
     ./bootstrap.sh --prefix=/usr/local --with-libraries=filesystem,program_options,system > /dev/null && \
     ./b2 install --prefix=/usr/local > /dev/null && \
     rm ../boost.tar.gz && \
     cd .. && \
-    rm -rf boost_1_67_0
+    rm -rf boost_${BOOST_VERSION//./_}
 
 # Install capstone
 RUN cd /usr/local/src \
