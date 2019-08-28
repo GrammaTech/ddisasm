@@ -33,8 +33,17 @@ stages:
 
 .test-arch-template: &test-arch
   script:
+    - if [ "$CI_COMMIT_REF_SLUG" = "master" ];
+      then
+          PUSH_TAG=latest;
+      else
+          PUSH_TAG=$CI_COMMIT_REF_SLUG;
+      fi
     - docker run --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c \
       "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip && EXTRA_FLAGS=-fcf-protection ./test_small.sh"
+    - docker tag ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}-${COMPILER}:${PUSH_TAG};
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $DOCKER_REGISTRY;
+    - docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}-${COMPILER}:${PUSH_TAG};
 
 .cleanup-template: &cleanup
   script:
