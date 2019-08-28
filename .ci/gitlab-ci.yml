@@ -1,6 +1,6 @@
 variables:
   DOCKER_REGISTRY: "docker.grammatech.com"
-  LOCAL_IMAGE_NAME: '$CI_BUILD_REF_NAME-$CI_PIPELINE_ID'
+  LOCAL_IMAGE_NAME: '$CI_COMMIT_REF_SLUG-$CI_PIPELINE_ID'
 
 stages:
   - check-format
@@ -19,14 +19,17 @@ stages:
 
 .test-and-tag-template: &test-and-tag
   script:
+    - if [ "$CI_COMMIT_REF_SLUG" = "master" ];
+      then
+          PUSH_TAG=latest;
+      else
+          PUSH_TAG=$CI_COMMIT_REF_SLUG;
+      fi
     - docker run  --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c \
       "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip"
-    - if [ "$COMPILER" == "gcc" ] && [ "$OS" == "ubuntu16" ] && [ "$CI_BUILD_REF_NAME" == "master" ];
-      then
-        docker tag ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
-        docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $DOCKER_REGISTRY;
-        docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
-      fi
+    - docker tag ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}-${COMPILER}:${PUSH_TAG};
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $DOCKER_REGISTRY;
+    - docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}-${COMPILER}:${PUSH_TAG};
 
 .test-arch-template: &test-arch
   script:
