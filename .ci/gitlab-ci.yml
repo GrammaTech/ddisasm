@@ -1,6 +1,6 @@
 variables:
   DOCKER_REGISTRY: "docker.grammatech.com"
-  LOCAL_IMAGE_NAME: '$CI_COMMIT_REF_SLUG-$CI_PIPELINE_ID'
+  LOCAL_IMAGE_NAME: '$CI_BUILD_REF_NAME-$CI_PIPELINE_ID'
 
 stages:
   - check-format
