@@ -100,7 +100,7 @@ run-arch-gcc:
   variables:
     OS: 'arch'
     COMPILER: 'gcc'
-  <<: *test-arch
+  <<: *test-and-tag
 
 run-ubuntu16-clang:
   stage: test-and-tag-ubuntu16
@@ -122,7 +122,7 @@ run-arch-clang:
     OS: 'arch'
     COMPILER: 'clang'
   script:
-  <<: *test-arch
+  <<: *test-and-tag
 
 cleanup-ubuntu16-gcc:
   stage: cleanup
