@@ -14,10 +14,9 @@ void print(){
 }
 
 int main() {
-    puts("Storing data"); 
+    puts("Storing data");
     init();
     puts("Printing data");
     print();
     return 0;
 }
-
