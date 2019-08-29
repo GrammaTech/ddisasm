@@ -36,7 +36,7 @@ Perform a intra-procedural completeness analysis.
 jump_table(EA,Initial_memory):-
 	code(EA),
 	indirect_jump(EA),
-	pointer_size(Pt_size),
+    arch.pointer_size(Pt_size),
 	data_access_pattern(Initial_memory,Pt_size,Pt_size,EA),
     symbolic_data(Initial_memory,Pt_size,Dest_block),
 	refined_block(Dest_block).
@@ -45,14 +45,14 @@ jump_table(EA,Initial_memory):-
 jump_table(EA,Initial_memory):-
 	code(EA),
 	indirect_jump(EA),
-    pointer_size(Pt_size),
+    arch.pointer_size(Pt_size),
 	symbolic_operand(EA,1,Initial_memory,"data"),
     symbolic_data(Initial_memory,Pt_size,Dest_block),
 	refined_block(Dest_block).
 	
 jump_table(EA,Memory+Pt_size):-
 	jump_table(EA,Memory),
-    pointer_size(Pt_size),
+    arch.pointer_size(Pt_size),
     symbolic_data(Memory+Pt_size,Pt_size,Dest_block),
 	refined_block(Dest_block),
     !data_access_pattern(Memory+Pt_size,_,_,_).
@@ -60,7 +60,7 @@ jump_table(EA,Memory+Pt_size):-
 // we have another access to the same table (the access can be before or after)
 jump_table(EA,Memory+Pt_size):-
 	jump_table(EA,Memory),
-	pointer_size(Pt_size),
+    arch.pointer_size(Pt_size),
     symbolic_data(Memory,Pt_size,Content_prev),
     symbolic_data(Memory+Pt_size,Pt_size,Content_next),
     refined_block(Content_next),
@@ -178,7 +178,7 @@ must_intra_reachable(Block,Next):-
 
 reaches_segment(Block,Segment):-
 	intra_reachable(Block,Reached),
-	!is_nop(Block),
+    !arch.is_nop(Block),
 	must_intra_reachable(Segment,Reached).
 
 

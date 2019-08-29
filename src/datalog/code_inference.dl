@@ -67,10 +67,10 @@ more points.
 .decl may_fallthrough(o:address,d:address)
 
 may_fallthrough(From,To):-
-	next(From,To),
-	!return(From),
-	!unconditional_jump(From),
-	!halt(From),
+    next(From,To),
+    !return(From),
+    !unconditional_jump(From),
+    !halt(From),
 	!no_return_call_basic(From).
 		
 .decl must_fallthrough(o:address,d:address)
@@ -78,8 +78,8 @@ may_fallthrough(From,To):-
 must_fallthrough(From,To):-
 	may_fallthrough(From,To),
 	instruction_get_operation(From,Operation),
-    Operation!="CALL",
-    !interrupt_operation(Operation),
+    !arch.call_operation(Operation),
+    !arch.interrupt_operation(Operation),
 	!instruction_has_loop_prefix(From),
     !conditional_jump(From).
 
@@ -103,7 +103,7 @@ may_have_symbolic_immediate(Src,Dest):-
 	;
      binary_type("EXEC"),
      instruction_get_operation(Src,Operation),
-     !logic_operation(Operation)
+     !arch.logic_operation(Operation)
 	).
 
 may_have_symbolic_immediate(Src,Dest):-
@@ -250,14 +250,14 @@ after_end(Next,End):-
 
 after_end(Next,End):-
 	after_end(EA,End),
-	is_nop(EA),
+    arch.is_nop(EA),
 	!block_limit(EA),
 	next(EA,Next).
 
 possible_target(EA):-
 	after_end(EA,_),
 	(
-	!is_nop(EA);
+    !arch.is_nop(EA);
 	block_limit(EA)
 	).
 ///////////////////////////////////////////////////////////////////////
@@ -555,7 +555,7 @@ block_points(Block,0,1,"plt call"):-
 	block_is_overlaping(Block),
 	direct_call(EA,Block_dest),
 	code_in_block_candidate_refined(EA,Block),
-	plt_entry(Block_dest,_).
+    plt_entry(Block_dest,_).
 
 block_points(Block,0,10,"fde-entry"):-
     block_is_overlaping(Block),
@@ -564,12 +564,12 @@ block_points(Block,0,10,"fde-entry"):-
 block_points(Block,0,2,"padding nop block"):-
     block_is_overlaping(Block),
     fde_addresses(_,Block),
-    is_nop(Block).
+    arch.is_nop(Block).
 
 block_points(Block,0,-1,"overlap long nop"):-
     block_is_overlaping(Block),
     instruction_range(Block,EA_nop),
-    is_nop(EA_nop).
+    arch.is_nop(EA_nop).
 
 block_points(Block,0,3,"exc-region"):-
     block_is_overlaping(Block),

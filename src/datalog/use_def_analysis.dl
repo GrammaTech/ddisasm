@@ -82,27 +82,30 @@ def(EA,Reg):-
 
 def(EA,Reg):-
 	code(EA),
-	instruction_get_operation(EA,"CALL"),
-	function_non_maintained_reg(Reg).
+    instruction_get_operation(EA,Operation),
+    arch.call_operation(Operation),
+    arch.function_non_maintained_reg(Reg).
 
 flow_def(EA_jump,Reg,EA_target,Immediate):-
 	cmp_immediate_to_reg(EA,Reg,_,Immediate),
     next(EA,EA_jump),
     direct_jump(EA_jump,EA_target),
-    instruction_get_operation(EA_jump,"JE").
+    instruction_get_operation(EA_jump,Operation),
+    arch.jump_equal_operation(Operation).
 
 flow_def(EA_jump,Reg,EA_target,Immediate):-
 	cmp_immediate_to_reg(EA,Reg,_,Immediate),
     next(EA,EA_jump),
     direct_jump(EA_jump,_),
     next(EA_jump,EA_target),
-    instruction_get_operation(EA_jump,"JNE").
+    instruction_get_operation(EA_jump,Operation),
+    arch.jump_unequal_operation(Operation).
 
 .decl must_def(EA:address,Reg:register)
 
 must_def(EA,Reg):-
 	def(EA,Reg),
-	!conditional_mov(EA).
+    !arch.conditional_mov(EA).
 
 .decl defined_in_block(EA:address,Reg:register)
 

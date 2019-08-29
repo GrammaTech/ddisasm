@@ -90,3 +90,7 @@ function_non_maintained_reg("R8").
 function_non_maintained_reg("R9").
 function_non_maintained_reg("R10").
 function_non_maintained_reg("R11").
+
+.decl pc_register(reg:register)
+
+pc_register("RIP").

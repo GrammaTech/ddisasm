@@ -16,23 +16,24 @@ set(DATALOG_SOURCES
     datalog/empty_range.dl
     datalog/elf_binaries.dl
     datalog/exceptions.dl
-    datalog/float_operations.dl
     datalog/function_inference.dl
     datalog/intra_procedural_cfg_completeness.dl
     datalog/intra_procedural_SCC.dl
-    datalog/jump_operations.dl
     datalog/main.dl
     datalog/no_return_analysis.dl
     datalog/ordered_set.dl
     datalog/pointer_reatribution.dl
     datalog/printable_chars.dl
     datalog/relative_jump_tables.dl
-    datalog/registers.dl
     datalog/symbolization.dl
     datalog/use_def_analysis.dl
     datalog/value_analysis.dl
     datalog/debug_stats.dl
-    datalog/self_diagnose.dl)
+    datalog/self_diagnose.dl
+    datalog/x64/arch_x64.dl
+    datalog/x64/float_operations.dl
+    datalog/x64/jump_operations.dl
+    datalog/x64/registers.dl)
 
 if(NOT CORES)
   set(CORES "auto")

@@ -114,7 +114,7 @@ moved_label(EA,Op_index,Dest,New_dest):-
   binary_type("EXEC"),
 	symbolic_operand(EA,Op_index,Dest,"data"),
 	//it collides with a pointer
-	pointer_size(Pt_size),
+    arch.pointer_size(Pt_size),
 	address_in_data_refined_range.overlap(Dest,Pt_size,New_dest),
     symbolic_data(New_dest,_,_).
 
@@ -277,7 +277,7 @@ moved_label(EA,Op_index,Dest,New_dest):-
 
 mov_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
 	code(EA),
-	mov(EA),
+    arch.mov(EA),
 	instruction_get_src_op(EA,Imm_index,Op),
 	op_immediate(Op,Immediate),
 	instruction_get_dest_op(EA,_,Op2),
@@ -286,7 +286,7 @@ mov_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
 cmp_reg_to_reg(EA,Reg1,Reg2):-
 	code(EA),
 	instruction_get_operation(EA,Operation),
-	comparison_operation(Operation),
+    arch.cmp_operation(Operation),
 	instruction_get_op(EA,_,Op1),
 	op_regdirect_contains_reg(Op1,Reg1),
 	instruction_get_op(EA,_,Op2), Op2!=Op1,

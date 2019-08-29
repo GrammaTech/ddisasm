@@ -106,7 +106,8 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
 value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
 	def_used_for_address(EA,Reg),
 	instruction(EA,Size,_,"LEA",Op1,Op2,0,0),
-	op_indirect(Op1,_,"RIP","NONE",_,Offset,_),
+    op_indirect(Op1,_,PcReg,"NONE",_,Offset,_),
+    arch.pc_register(PcReg),
 	op_regdirect_contains_reg(Op2,Reg),
 	Address=EA+Size+Offset.
 	
@@ -114,7 +115,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
 	def_used_for_address(EA_prev,Reg_origin),
 	def_used(EA_prev,Reg_origin,EA,_),
-	mov(EA),
+    arch.mov(EA),
 	instruction_get_op(EA,1,Op1),
 	op_regdirect_contains_reg(Op1,Reg_origin),
 	instruction_get_op(EA,2,Op2),
@@ -195,7 +196,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier,Offset):-
 	def_used(EA_prev,Reg_origin,EA,1),
 	instruction(EA,_,_,"LEA",Op1,Op2,0,0),
 	op_indirect(Op1,_,"NONE",Reg_origin_non_uniform,Multiplier,Offset,_),
-	track_register(Reg_origin_non_uniform,Reg_origin),
+    arch.track_register(Reg_origin_non_uniform,Reg_origin),
 	op_regdirect_contains_reg(Op2,Reg).
 //lea reg [reg_origin+reg_origin*Multiplier+Offset]	
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier+1,Offset):-
@@ -203,7 +204,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier+1,Offset):-
 	def_used(EA_prev,Reg_origin,EA,1),
 	instruction(EA,_,_,"LEA",Op1,Op2,0,0),
 	op_indirect(Op1,_,Reg_origin_non_uniform,Reg_origin_non_uniform,Multiplier,Offset,_),
-	track_register(Reg_origin_non_uniform,Reg_origin),
+    arch.track_register(Reg_origin_non_uniform,Reg_origin),
 	op_regdirect_contains_reg(Op2,Reg).
 //lea reg [reg_origin+Offset]
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,Offset):-
@@ -211,7 +212,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,Offset):-
 	def_used(EA_prev,Reg_origin,EA,1),
 	instruction(EA,_,_,"LEA",Op1,Op2,0,0),
 	op_indirect(Op1,_,Reg_origin_non_uniform,"NONE",1,Offset,_),
-	track_register(Reg_origin_non_uniform,Reg_origin),
+    arch.track_register(Reg_origin_non_uniform,Reg_origin),
 	op_regdirect_contains_reg(Op2,Reg).
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -253,8 +254,8 @@ abstracted_multiple_reg_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset):-
 	instruction(EA,_,_,"LEA",Op1,Op2,0,0),
 	op_regdirect_contains_reg(Op2,Reg_def),
 	op_indirect(Op1,_,Reg1_n,Reg2_n,Mult,Offset,_),
-	track_register(Reg1_n,Reg1),
-	track_register(Reg2_n,Reg2),
+    arch.track_register(Reg1_n,Reg1),
+    arch.track_register(Reg2_n,Reg2),
 	Reg1!=Reg2.
 
 // deal with arithmetic operations on two registers when their value ultimately refers to the same register

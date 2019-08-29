@@ -1,0 +1,144 @@
+
+//===- arch_x64.dl --------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+Define a set predicates to abstract from x64 specific instruction set
+and characteristics
+*/
+
+
+.comp X64 {
+
+#include "jump_operations.dl"
+#include "interrupt_operations.dl"
+#include "registers.dl"
+
+.decl conditional_mov(EA:address)
+
+conditional_mov(EA):-
+    instruction_get_operation(EA,Operation),
+    contains("CMOV",Operation).
+
+.decl mov(EA:address)
+
+mov(EA):-
+    instruction_get_operation(EA,Operation),
+    contains("MOV",Operation).
+
+.decl is_nop(EA:address)
+
+is_nop(EA):-
+    instruction_get_operation(EA,"NOP").
+
+is_nop(EA):-
+    instruction(EA,_,_,"XCHG",Op,Op,0,0),
+    op_regdirect(Op,"AX").
+
+.decl op_does_not_read_dest_reg(Operation:symbol)
+
+op_does_not_read_dest_reg("LEA").
+op_does_not_read_dest_reg("POP").
+
+
+
+.decl arithmetic_operation(Operation:symbol)
+
+arithmetic_operation("ADD").
+arithmetic_operation("SUB").
+arithmetic_operation("INC").
+arithmetic_operation("DEC").
+arithmetic_operation("IMUL").
+arithmetic_operation("SHL").
+
+.decl logic_operation(Operation:symbol)
+
+logic_operation("AND").
+logic_operation("XOR").
+logic_operation("OR").
+logic_operation("TEST").
+
+.decl read_only_operation(Operation:symbol)
+
+read_only_operation("TEST").
+read_only_operation("CMP").
+
+.decl write_only_operation(Operation:symbol)
+
+write_only_operation("POP").
+
+.decl one_op_write(Operation:symbol)
+
+one_op_write("INC").
+one_op_write("DEC").
+one_op_write("POP").
+
+.decl pointer_size(n:number) inline
+
+pointer_size(8).
+
+.decl loop_operation(operation:symbol)
+
+loop_operation("LOOP").
+loop_operation("LOOPNE").
+loop_operation("LOOPE").
+
+.decl loop_prefix(prefix:symbol)
+
+loop_prefix("REP").
+loop_prefix("REPE").
+loop_prefix("REPNE").
+
+.decl call_operation(operation:symbol)
+
+call_operation("CALL").
+
+.decl return_operation(operation:symbol)
+
+return_operation("RET").
+
+.decl halt_operation(operation:symbol)
+
+halt_operation("HLT").
+halt_operation("UD2").
+
+.decl cmp_operation(Operation:symbol)
+
+cmp_operation("CMP").
+cmp_operation("TEST").
+
+// These operations are either special like LEA (does not read memory) or
+// are not decoded corectly from capstone
+// FIXME: review this list when capstone is updated
+.decl operation_size_exception(EA:address,Op_index:number,Size:number)
+
+operation_size_exception(EA,Index,8):-
+    instruction_get_operation(EA,"MOVSD"),
+    instruction_get_op(EA,Index,Op),
+    op_indirect(Op,_,_,_,_,_,32).
+
+operation_size_exception(EA,Index,0):-
+    instruction_get_operation(EA,"LEA"),
+    instruction_get_op(EA,Index,Op),
+    op_indirect(Op,_,_,_,_,_,_).
+
+}

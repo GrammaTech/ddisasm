@@ -46,7 +46,7 @@ This module detects specific kinds of bitmasks and bitmask operations.
 .init available_bits=counter
 // generate numbers from 1 to 32 or 64 depending on the pointer size
 available_bits.range(1,8*Pt_size):-
-    pointer_size(Pt_size).
+    arch.pointer_size(Pt_size).
 
 low_pass_mask((2^N)-1):-
     available_bits.num(N).

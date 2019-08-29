@@ -98,7 +98,7 @@ function_entry(EA):-
     !block_in_between_fde(EA),
     after_function_end(EA,_),
     !possible_target_from(EA,_),
-    pointer_size(Pt_size),
+    arch.pointer_size(Pt_size),
     symbolic_data(Pointer,Pt_size,EA),
 	typical_function_starter(EA),
 	!resolved_jump(_,EA),
@@ -115,7 +115,7 @@ function_entry(EA):-
 	after_function_end(EA,_),
 	possible_target_from(EA,Src),
 	code(Src),
-	mov(Src).
+    arch.mov(Src).
 
 // // reference from function table
 function_entry(EA):-
@@ -128,7 +128,7 @@ function_entry(EA):-
 
 // // referenced from lonely pointer
 function_entry(EA):-
-	pointer_size(Pt_size),
+    arch.pointer_size(Pt_size),
 	code_pointer_in_data(Offset,EA),
 	after_function_end(EA,_),
     !block_in_between_fde(EA),
@@ -139,7 +139,7 @@ function_entry(EA):-
 // a compact function table (it is enough to determine one of the pointers is a function)
 function_entry(EA2):-
 	function_entry(EA),
-	pointer_size(Pt_size),
+    arch.pointer_size(Pt_size),
 	code_pointer_in_data(Offset,EA),
 	code_pointer_in_data(Offset+Pt_size,EA2),
 	!resolved_jump(_,EA2),
@@ -149,7 +149,7 @@ function_entry(EA2):-
 
 function_entry(EA2):-
 	function_entry(EA),
-	pointer_size(Pt_size),
+    arch.pointer_size(Pt_size),
 	code_pointer_in_data(Offset,EA),
 	!labeled_data(Offset),
 	code_pointer_in_data(Offset-Pt_size,EA2),
@@ -159,7 +159,7 @@ function_entry(EA2):-
 
 function_entry(EA2):-
 	plt_data_reference(Offset),
-	pointer_size(Pt_size),
+    arch.pointer_size(Pt_size),
 	code_pointer_in_data(Offset+Pt_size,EA2),
 	!resolved_jump(_,EA2),
 	after_function_end(EA2,_),
@@ -168,7 +168,7 @@ function_entry(EA2):-
 
 function_entry(EA2):-
 	plt_data_reference(Offset),
-	pointer_size(Pt_size),
+    arch.pointer_size(Pt_size),
 	!labeled_data(Offset),
 	code_pointer_in_data(Offset-Pt_size,EA2),
 	!resolved_jump(_,EA2),
@@ -215,19 +215,20 @@ function_entry2(EA):-
 	
 	refined_block(EA),
     !block_in_between_fde(EA),
-	!is_nop(EA),
+    !arch.is_nop(EA),
 	!resolved_jump(_,EA),
 	//cannot be reached from before
 	//!intra_reachable(Function,EA),
 	EA<= min Y:reaches_segment(Y,EA),	
 	//with this we want to avoid dead code missed by the compiler
+    instruction_get_operation(End,Operation),
 	(
-	instruction_get_operation(End,"CALL"),
+    arch.call_operation(Operation),
 	!intra_edge_dir(EA,_,"back"),
 	!goes_back(EA,_,"cjump"),
 	!unconditional_jump(EA)
 	;
-	!instruction_get_operation(End,"CALL")
+    !arch.call_operation(Operation)
 	).
 
 
@@ -239,7 +240,7 @@ in_function(Block,Function):-
 
 function_entry2(EA2):-
 	function_entry2(EA),
-	pointer_size(Pt_size),
+    arch.pointer_size(Pt_size),
 	code_pointer_in_data(Offset,EA),
 	code_pointer_in_data(Offset+Pt_size,EA2),
 	!resolved_jump(_,EA2),
@@ -249,7 +250,7 @@ function_entry2(EA2):-
 
 function_entry2(EA2):-
 	function_entry2(EA),
-	pointer_size(Pt_size),
+    arch.pointer_size(Pt_size),
 	code_pointer_in_data(Offset,EA),
 	!labeled_data(Offset),
 	code_pointer_in_data(Offset-Pt_size,EA2),
@@ -262,10 +263,11 @@ function_entry2(EA2):-
 .decl function_table(Label:address)
 
 function_table(Label):-
-	pointer_size(Pt_size),
+    arch.pointer_size(Pt_size),
 	data_access_pattern(Label,Pt_size,Mult,Origin),
+    instruction_get_operation(Origin,Operation),
 	(
-		instruction_get_operation(Origin,"CALL")
+        arch.call_operation(Operation)
 	;
 		Mult>Pt_size,
 		!unconditional_jump(Origin)
@@ -312,7 +314,7 @@ after_function_end(Next,End):-
 
 after_function_end(Next,End):-
 	after_function_end(EA,End),
-	is_nop(EA),
+    arch.is_nop(EA),
 	next(EA,Next).
 
 .decl function_end(EA:address)
