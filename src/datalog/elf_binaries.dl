@@ -1,0 +1,201 @@
+//===- elf_binaries.dl --------------------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+
+
+// This module defines predicates and rules specific of ELF binaries
+section(Name,Size,Addr):-
+    binary_format("ELF"),
+    section_complete(Name,Size,Addr,_,Flags),
+    elf_section_flag("SHF_ALLOC",Pos_Alloc),
+    Flags band (2^Pos_Alloc)  > 0.
+
+.decl elf_section_flag(Name:symbol,Position:number)
+
+elf_section_flag("SHF_WRITE",0).
+elf_section_flag("SHF_ALLOC",1).
+elf_section_flag("SHF_EXECINSTR",2).
+
+.decl elf_section_type(Name:symbol,Code:number)
+
+elf_section_type("NULL",0).
+elf_section_type("PROGBITS",1).
+elf_section_type("SYMTAB",2).
+elf_section_type("STRTAB",3).
+elf_section_type("RELA",4).
+elf_section_type("HASH",5).
+elf_section_type("DYNAMIC",6).
+elf_section_type("NOTE",7).
+elf_section_type("NOBITS",8).
+elf_section_type("REL",9).
+elf_section_type("SHLIB",10).
+elf_section_type("DYNSYM",11).
+
+elf_section_type("INIT_ARRAY",14).
+elf_section_type("FINI_ARRAY",15).
+elf_section_type("PREINIT_ARRAY",16).
+elf_section_type("GROUP",17).
+elf_section_type("SYMTAB_SHNDX",18).
+elf_section_type("NUM",19).
+
+data_section(Name):-
+    section_complete(Name,_,_,Type,Flags),
+    elf_section_flag("SHF_EXECINSTR",Pos_Exec), Flags band (2^Pos_Exec)  = 0,
+    elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc)  > 0,
+    (elf_section_type("PROGBITS",Type);
+     elf_section_type("NOBITS",Type);
+     elf_section_type("INIT_ARRAY",Type);
+     elf_section_type("FINI_ARRAY",Type);
+     elf_section_type("PREINIT_ARRAY",Type);
+     elf_section_type("DYNAMIC",Type)
+    ).
+
+exception_section(".eh_frame").
+exception_section(".eh_frame_hdr").
+exception_section(".gcc_except_table").
+
+special_data_section(Section):-
+    exception_section(Section).
+
+special_data_section(".data.rel.ro").
+special_data_section(".dynamic").
+special_data_section(".fini_array").
+special_data_section(".got").
+special_data_section(".got.plt").
+special_data_section(".init_array").
+special_data_section(".tm_clone_table").
+
+code_section(Name):-
+    binary_format("ELF"),
+    section_complete(Name,_,_,_,Flags),
+    elf_section_flag("SHF_EXECINSTR",Pos_Exec), Flags band (2^Pos_Exec)  > 0.
+
+////////////////////////////////////////////////////////////////////////////
+// detect references  to libraries (calls to plt)
+.decl plt_section(name:symbol)
+
+plt_section(".plt").
+plt_section(".plt.got").
+plt_section(".plt.sec").
+
+bss_section(Name):-
+    binary_format("ELF"),
+    section_complete(Name,_,_,Type,Flags),
+    elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc)  > 0,
+    SHT_NOBITS = 8,
+    Type = SHT_NOBITS.
+
+////////////////////////////////////////////////////////////////////////////
+// detect references  to libraries (calls to plt)
+.decl plt_entry(ea:address, function:symbol)
+
+
+plt_entry(EA,Function):-
+    plt_section(SecName),
+    section(SecName,Size,Beg),
+    EA<Beg+Size,
+    EA>=Beg,
+    pc_relative_jump(EA,Got_entry),
+    relocation(Got_entry,_,Function,_).
+
+plt_block(Block,Function):-
+    plt_entry(EA,Function),
+    code_in_refined_block(EA,Block).
+
+.decl plt_data_reference(ea:address)
+
+plt_data_reference(EA):-
+    plt_block(Dest,_),
+    symbolic_data(EA,_,Dest).
+
+//////////////////////////////////////////////////////////////////////////
+
+got_reference(Got_entry,Symbol):-
+    pc_relative_operand(_,_,Got_entry),
+    section(".got",Size,Beg),
+    Got_entry>=Beg,
+    Got_entry<Beg+Size,
+    relocation(Got_entry,_,Symbol,_),
+    symbol(_,_,_,Scope,_,Symbol),Scope!="WEAK".
+
+
+//////////////////////////////////////////////////////////////////////////
+// find the main function even if it does not have a symbol
+//
+.decl start_function(ea:address)
+
+start_function(EA):-
+    binary_format("ELF"),
+    function_symbol(EA,"_start").
+
+start_function(Start_location):-
+    binary_format("ELF"),
+    !function_symbol(Start_location,"_start"),
+    entry_point(Start_location).
+
+main_function(EA):-
+    binary_format("ELF"),
+    function_symbol(EA,"main").
+
+main_function(Main_location):-
+    binary_format("ELF"),
+    !function_symbol(Main_location,"main"),
+    First_call= min EA:{
+            start_function(Entry),
+            instruction_get_operation(EA,"CALL"),
+            code(EA),
+            EA>=Entry},
+    next(Prev,First_call),
+    code(Prev),
+    symbolic_operand(Prev,1,Main_location,"code").
+
+inferred_symbol_name(EA,"_start"):-
+    start_function(EA).
+
+inferred_symbol_name(EA,"main"):-
+    main_function(EA).
+
+inferred_symbol_name(EA,"__do_global_dtors_aux"):-
+    function_symbol(EA,"__do_global_dtors_aux").
+
+inferred_symbol_name(EA,"__do_global_dtors_aux"):-
+    !function_symbol(EA,"__do_global_dtors_aux"),
+    function_entry2(EA),
+    // referenced from .fini_array
+    address_in_data(FiniArray,EA),
+    section(".fini_array",Size,Beg),
+    FiniArray>=Beg,
+    FiniArray<Beg+Size,
+    // compare a value in bss with 0 in the first block
+    code_in_refined_block(EA_cmp,EA),
+    instruction(EA_cmp,_,_,"CMP",Op1,_,0,0),
+    op_immediate(Op1,0),
+    pc_relative_operand(EA_cmp,2,DataRef),
+    bss_section(SectionName),
+    section(SectionName,SizeBss,BegData),
+    DataRef>=BegData,
+    DataRef<=BegData+SizeBss.
+
+inferred_symbol_name(EA,"_DYNAMIC"):-
+    binary_format("ELF"),
+    !symbol(EA,_,_,_,_,"_DYNAMIC"),
+    section(".dynamic",_,EA).
