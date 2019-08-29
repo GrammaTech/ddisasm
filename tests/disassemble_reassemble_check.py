@@ -15,8 +15,9 @@ class bcolors:
 
 def compile(compiler,cpp_compiler,optimizations,extra_flags):
     """
-    Clean the project 'make_dir' and then compile it using the compiler
-    'compiler', the cxx compiler 'cpp_compiler' and the CFLAGS and CXXFLAGS.
+    Clean the project and compile it using the compiler
+    'compiler', the cxx compiler 'cpp_compiler' and the flags in
+    'optimizations' and 'extra_flags'
     """
     os.environ['CC'] = compiler
     os.environ['CXX'] = cpp_compiler
@@ -27,6 +28,7 @@ def compile(compiler,cpp_compiler,optimizations,extra_flags):
     os.environ.pop('CC',None)
     os.environ.pop('CXX',None)
     os.environ.pop('CFLAGS',None)
+    os.environ.pop('CXXFLAGS',None)
     return completedProcess.returncode==0
 
 def dissasemble(binary,strip):
@@ -52,7 +54,7 @@ def dissasemble(binary,strip):
 
 def reassemble(compiler,binary,extra_flags):
     """
-    Reassemble the assembly file binary+'.s' into a new binary 'original_name'.
+    Reassemble the assembly file binary+'.s' into a new binary
     """
     print("# Reassembling "+binary+ ".s into "+ binary)
     print("compile command: "+' '.join([compiler,binary+'.s','-o',binary]+extra_flags))
@@ -121,9 +123,6 @@ def disassemble_reassemble_test(make_dir,binary,
     return total_errors==0
 
 if __name__ == '__main__':
-    """
-    Disassemble reassemble and test a project with ddisasm
-    """
     parser = argparse.ArgumentParser(description='Disassemble reassemble and test a project with ddisasm')
     parser.add_argument('make_dir', help='project to test')
     parser.add_argument('binary', help='binary within the project')
