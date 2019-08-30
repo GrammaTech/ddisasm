@@ -19,16 +19,16 @@ def compile(compiler,cpp_compiler,optimizations,extra_flags):
     'compiler', the cxx compiler 'cpp_compiler' and the flags in
     'optimizations' and 'extra_flags'
     """
-    os.environ['CC'] = compiler
-    os.environ['CXX'] = cpp_compiler
-    os.environ['CFLAGS'] = optimizations +' '+ ' '.join(extra_flags)
-    os.environ['CXXFLAGS'] = optimizations +' '+ ' '.join(extra_flags)
-    subprocess.run(['make','clean','-e'])
-    completedProcess=subprocess.run(['make','-e'])
-    os.environ.pop('CC',None)
-    os.environ.pop('CXX',None)
-    os.environ.pop('CFLAGS',None)
-    os.environ.pop('CXXFLAGS',None)
+    def quote_args(*args):
+        return ' '.join(shlex.quote(arg) for arg in args)
+    # Copy the current environment and modify the copy.
+    env = dict(os.environ)
+    env['CC'] = compiler
+    env['CXX'] = cpp_compiler
+    env['CFLAGS'] = quote_args(optimizations, *extra_flags)
+    env['CXXFLAGS'] = quote_args(optimizations, *extra_flags)
+    subprocess.run(['make', 'clean', '-e'], env=env)
+    completedProcess = subprocess.run(['make', '-e'], env=env)
     return completedProcess.returncode==0
 
 def dissasemble(binary,strip):
