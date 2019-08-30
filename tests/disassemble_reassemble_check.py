@@ -1,7 +1,7 @@
-from timeit import default_timer as timer
+import argparse
 import os
 import subprocess
-import argparse
+from timeit import default_timer as timer
 
 class bcolors:
     """
