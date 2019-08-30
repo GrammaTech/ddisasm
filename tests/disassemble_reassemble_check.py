@@ -13,6 +13,24 @@ class bcolors:
     FAIL = '\033[91m'
     ENDC = '\033[0m'
 
+    @classmethod
+    def okblue(cls, *args):
+        return cls.OKBLUE + ' '.join(args) + cls.ENDC
+
+    @classmethod
+    def okgreen(cls, *args):
+        return cls.OKGREEN + ' '.join(args) + cls.ENDC
+
+    @classmethod
+    def warning(cls, *args):
+        return cls.WARNING + ' '.join(args) + cls.ENDC
+
+    @classmethod
+    def fail(cls, *args):
+        return cls.FAIL + ' '.join(args) + cls.ENDC
+
+
+
 def compile(compiler,cpp_compiler,optimizations,extra_flags):
     """
     Clean the project and compile it using the compiler
@@ -27,8 +45,9 @@ def compile(compiler,cpp_compiler,optimizations,extra_flags):
     env['CXX'] = cpp_compiler
     env['CFLAGS'] = quote_args(optimizations, *extra_flags)
     env['CXXFLAGS'] = quote_args(optimizations, *extra_flags)
-    subprocess.run(['make', 'clean', '-e'], env=env)
-    completedProcess = subprocess.run(['make', '-e'], env=env)
+    completedProcess = subprocess.run(['make', 'clean', '-e'], env=env, stdout=subprocess.DEVNULL)
+    if(completedProcess == 0):
+        completedProcess = subprocess.run(['make', '-e'], env=env, stdout=subprocess.DEVNULL)
     return completedProcess.returncode==0
 
 def dissasemble(binary,strip):
@@ -43,13 +62,13 @@ def dissasemble(binary,strip):
         subprocess.run(['strip','--strip-unneeded',target_binary])
     print('# Disassembling '+target_binary+'\n')
     start=timer()
-    completedProcess=subprocess.run(['ddisasm',target_binary,'--asm',binary+'.s'], stderr=subprocess.PIPE)
+    completedProcess=subprocess.run(['ddisasm',target_binary,'--asm',binary+'.s'])
     time_spent=timer()-start
     if completedProcess.returncode==0:
-        print(bcolors.OKGREEN+'Disassembly succeed\n'+bcolors.ENDC,flush=True)
+        print(bcolors.okgreen('Disassembly succeed'),flush=True)
         return True,time_spent
     else:
-        print(bcolors.FAIL+'Disassembly failed\n'+bcolors.ENDC,flush=True)
+        print(bcolors.fail('Disassembly failed'),flush=True)
         return False,time_spent
 
 def reassemble(compiler,binary,extra_flags):
@@ -60,9 +79,9 @@ def reassemble(compiler,binary,extra_flags):
     print("compile command:", compiler, binary + '.s', '-o', binary, *extra_flags)
     completedProcess=subprocess.run([compiler,binary+'.s','-o',binary]+extra_flags)
     if(completedProcess.returncode!=0):
-        print(bcolors.WARNING+'# Reassembly failed\n'+bcolors.ENDC)
+        print(bcolors.warning('# Reassembly failed\n'))
         return False
-    print(bcolors.OKGREEN+"# Reassembly succeed"+bcolors.ENDC)
+    print(bcolors.okgreen("# Reassembly succeed"))
     return True
 
 def test():
@@ -72,10 +91,10 @@ def test():
     print("# testing\n")
     completedProcess=subprocess.run(['make','check','-e'], stderr=subprocess.DEVNULL)
     if(completedProcess.returncode!=0):
-        print(bcolors.WARNING+'# Testing FAILED\n'+bcolors.ENDC)
+        print(bcolors.warning('# Testing FAILED\n'))
         return False
     else:
-        print(bcolors.OKGREEN+'# Testing SUCCEED\n'+bcolors.ENDC)
+        print(bcolors.okgreen('# Testing SUCCEED\n'))
         return True
 
 def disassemble_reassemble_test(make_dir,binary,
@@ -98,7 +117,7 @@ def disassemble_reassemble_test(make_dir,binary,
     os.chdir(make_dir)
     for compiler,cpp_compiler in compilers:
         for optimization in optimizations:
-            print(bcolors.OKBLUE+ 'Project '+make_dir+' with '+ compiler+' and '+ optimization+' '+' '.join(extra_compile_flags)+bcolors.ENDC)
+            print(bcolors.okblue('Project', make_dir, 'with', compiler,'and', optimization, *extra_compile_flags))
             if not compile(compiler,cpp_compiler,optimization,extra_compile_flags):
                 compile_errors+=1
                 continue
@@ -108,13 +127,13 @@ def disassemble_reassemble_test(make_dir,binary,
                 disassembly_errors+=1
                 continue
             if not should_reassemble:
-                print(bcolors.WARNING+ " No reassemble"+bcolors.ENDC)
+                print(bcolors.warning(" No reassemble"))
                 continue
             if not reassemble(reassembly_compiler,binary,extra_reassemble_flags):
                 reassembly_errors+=1
                 continue
             if not should_test:
-                print(bcolors.WARNING+ " No testing"+bcolors.ENDC)
+                print(bcolors.warning(" No testing"))
                 continue
             if not test():
                 test_errors+=1
@@ -130,7 +149,7 @@ if __name__ == '__main__':
     parser.add_argument('--extra_reassemble_flags',nargs="*",type=str,default=[])
     parser.add_argument('--reassembly_compiler',type=str,default='gcc')
     parser.add_argument('--c_compilers',nargs="*" ,type=str,default=['gcc','clang'])
-    parser.add_argument('--cpp_compilers',nargs="*" ,type=str,default=['g++','clang++'])
+    parser.add_argument('--cxx_compilers',nargs="*" ,type=str,default=['g++','clang++'])
     parser.add_argument('--optimizations',nargs="*",type=str,default=['-O0','-O1','-O2','-O3','-Os'])
     parser.add_argument('--strip', help='strip binaries before disassembling',action='store_true',default=False)
     parser.add_argument('--skip_test', help='skip testing', action='store_true')
@@ -141,7 +160,7 @@ if __name__ == '__main__':
         extra_compile_flags=args.extra_compile_flags,
         extra_reassemble_flags=args.extra_reassemble_flags,
         reassembly_compiler=args.reassembly_compiler,
-        compilers=zip(args.c_compilers,args.cpp_compilers),
+        compilers=zip(args.c_compilers,args.cxx_compilers),
         optimizations=args.optimizations,
         strip=args.strip,
         should_reassemble= not args.skip_reassemble,
