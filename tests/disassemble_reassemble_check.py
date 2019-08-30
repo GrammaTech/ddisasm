@@ -56,8 +56,8 @@ def reassemble(compiler,binary,extra_flags):
     """
     Reassemble the assembly file binary+'.s' into a new binary
     """
-    print("# Reassembling "+binary+ ".s into "+ binary)
-    print("compile command: "+' '.join([compiler,binary+'.s','-o',binary]+extra_flags))
+    print("# Reassembling", binary + ".s", "into", binary)
+    print("compile command:", compiler, binary + '.s', '-o', binary, *extra_flags)
     completedProcess=subprocess.run([compiler,binary+'.s','-o',binary]+extra_flags)
     if(completedProcess.returncode!=0):
         print(bcolors.WARNING+'# Reassembly failed\n'+bcolors.ENDC)
