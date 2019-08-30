@@ -70,7 +70,7 @@ def test():
     Test the project with  'make check'.
     """
     print("# testing\n")
-    completedProcess=subprocess.run(['make','check','-e'], stderr=subprocess.PIPE)
+    completedProcess=subprocess.run(['make','check','-e'], stderr=subprocess.DEVNULL)
     if(completedProcess.returncode!=0):
         print(bcolors.WARNING+'# Testing FAILED\n'+bcolors.ENDC)
         return False
