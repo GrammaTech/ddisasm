@@ -102,8 +102,6 @@ Boost was detected as being installed, but no libraries were found.
 Try specifying -DBoost_NO_BOOST_CMAKE=ON on the command line.")
 endif()
 
-add_compile_options(-DBOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE)
-add_compile_options(-DBOOST_SYSTEM_NO_DEPRECATED)
 include_directories(${Boost_INCLUDE_DIRS})
 
 # ---------------------------------------------------------------------------
