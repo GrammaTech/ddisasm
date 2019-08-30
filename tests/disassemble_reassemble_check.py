@@ -1,4 +1,5 @@
 import argparse
+import contextlib
 import os
 import shlex
 import subprocess
@@ -47,24 +48,32 @@ def compile(compiler,cpp_compiler,optimizations,extra_flags):
     env['CFLAGS'] = quote_args(optimizations, *extra_flags)
     env['CXXFLAGS'] = quote_args(optimizations, *extra_flags)
     completedProcess = subprocess.run(['make', 'clean', '-e'], env=env, stdout=subprocess.DEVNULL)
-    if(completedProcess == 0):
+    if completedProcess.returncode == 0:
         completedProcess = subprocess.run(['make', '-e'], env=env, stdout=subprocess.DEVNULL)
     return completedProcess.returncode==0
+
+@contextlib.contextmanager
+def get_target(binary,strip):
+    if strip:
+            print('# stripping binary\n')
+            subprocess.run(['cp',binary,binary+'.stripped'])
+            binary=binary+'.stripped'
+            subprocess.run(['strip','--strip-unneeded',binary])
+    try:
+        yield binary
+    finally:
+        if strip:
+            os.remove(binary)
 
 def dissasemble(binary,strip):
     """
     Disassemble the binary 'binary'
     """
-    target_binary=binary
-    if strip:
-        print('# stripping binary\n')
-        subprocess.run(['cp',binary,binary+'.stripped'])
-        target_binary=binary+'.stripped'
-        subprocess.run(['strip','--strip-unneeded',target_binary])
-    print('# Disassembling '+target_binary+'\n')
-    start=timer()
-    completedProcess=subprocess.run(['ddisasm',target_binary,'--asm',binary+'.s'])
-    time_spent=timer()-start
+    with get_target(binary,strip) as target_binary:
+        print('# Disassembling '+target_binary+'\n')
+        start=timer()
+        completedProcess=subprocess.run(['ddisasm',target_binary,'--asm',binary+'.s'])
+        time_spent=timer()-start
     if completedProcess.returncode==0:
         print(bcolors.okgreen('Disassembly succeed'),flush=True)
         return True,time_spent
