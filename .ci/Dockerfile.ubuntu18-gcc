@@ -11,8 +11,6 @@ RUN cd souffle && cp include/souffle/RamTypes.h /usr/include/souffle/
 FROM ubuntu:18.04
 
 ENV LD_LIBRARY_PATH /usr/local/lib:$LD_LIBRARY_PATH
-
-ARG CMAKE_VERSION=3.9
 ARG BOOST_VERSION=1.67.0
 ARG CXX_COMPILER=g++-7
 
