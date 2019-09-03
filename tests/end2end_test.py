@@ -32,7 +32,7 @@ class TestSmall(unittest.TestCase):
     # Examples that fail the tests
     #thread local storage
     def test_threads(self): self.assertTrue(dis_reasm_test(ex_dir/'ex_threads','ex',reassembly_compiler='g++',
-        skip_test=True,extra_reassemble_flags=['-lpthread']))
+        skip_test=True,extra_reassemble_flags=['-no-pie','-lpthread']))
 
     # Examples that fail to reassemble
     #static binary with libc
@@ -74,7 +74,11 @@ class TestAsmExamples(unittest.TestCase):
         self.assertTrue(dis_reasm_test(asm_dir/'ex_pointerReatribution3_clang','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=['']))
 
     def test_asm_pointerReatribution3_pie(self):
-        self.assertTrue(dis_reasm_test(asm_dir/'ex_pointerReatribution3_pie','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=['']))
+        self.assertTrue(dis_reasm_test(asm_dir/'ex_pointerReatribution3_pie','ex',
+            extra_compile_flags=['-pie'],
+            c_compilers=['gcc'],
+            cxx_compilers=['g++'],
+            optimizations=['']))
 
     def test_asm_weird_section(self):
         self.assertTrue(dis_reasm_test(asm_dir/'ex_weird_sections','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=['']))

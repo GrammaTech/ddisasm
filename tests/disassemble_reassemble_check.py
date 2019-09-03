@@ -116,7 +116,7 @@ def test():
 
 def disassemble_reassemble_test(make_dir,binary,
                                 extra_compile_flags=[],
-                                extra_reassemble_flags=[],
+                                extra_reassemble_flags=['-no-pie'],
                                 reassembly_compiler='gcc',
                                 c_compilers=['gcc','clang'],
                                 cxx_compilers=['g++','clang++'],
