@@ -31,7 +31,27 @@ class bcolors:
     def fail(cls, *args):
         return cls.FAIL + ' '.join(args) + cls.ENDC
 
+@contextlib.contextmanager
+def get_target(binary,strip):
+    if strip:
+            print('# stripping binary\n')
+            subprocess.run(['cp',binary,binary+'.stripped'])
+            binary=binary+'.stripped'
+            subprocess.run(['strip','--strip-unneeded',binary])
+    try:
+        yield binary
+    finally:
+        if strip:
+            os.remove(binary)
 
+@contextlib.contextmanager
+def cd(new_dir):
+    prev_dir=os.getcwd()
+    os.chdir(str(new_dir))
+    try:
+        yield
+    finally:
+        os.chdir(prev_dir)
 
 def compile(compiler,cpp_compiler,optimizations,extra_flags):
     """
@@ -51,19 +71,6 @@ def compile(compiler,cpp_compiler,optimizations,extra_flags):
     if completedProcess.returncode == 0:
         completedProcess = subprocess.run(['make', '-e'], env=env, stdout=subprocess.DEVNULL)
     return completedProcess.returncode==0
-
-@contextlib.contextmanager
-def get_target(binary,strip):
-    if strip:
-            print('# stripping binary\n')
-            subprocess.run(['cp',binary,binary+'.stripped'])
-            binary=binary+'.stripped'
-            subprocess.run(['strip','--strip-unneeded',binary])
-    try:
-        yield binary
-    finally:
-        if strip:
-            os.remove(binary)
 
 def dissasemble(binary,strip):
     """
@@ -120,35 +127,34 @@ def disassemble_reassemble_test(make_dir,binary,
     """
     Disassemble, reassemble and test an example with the given compilers and optimizations.
     """
+    assert len(c_compilers) == len(cxx_compilers)
     compile_errors=0
     disassembly_errors=0
     reassembly_errors=0
     test_errors=0
-    current_dir=os.getcwd()
-    os.chdir(make_dir)
-    for compiler,cpp_compiler in zip(c_compilers,cxx_compilers):
-        for optimization in optimizations:
-            print(bcolors.okblue('Project', make_dir, 'with', compiler,'and', optimization, *extra_compile_flags))
-            if not compile(compiler,cpp_compiler,optimization,extra_compile_flags):
-                compile_errors+=1
-                continue
-            success,time= dissasemble(binary,strip)
-            print("Time "+str(time))
-            if not success:
-                disassembly_errors+=1
-                continue
-            if skip_reassemble:
-                print(bcolors.warning(" No reassemble"))
-                continue
-            if not reassemble(reassembly_compiler,binary,extra_reassemble_flags):
-                reassembly_errors+=1
-                continue
-            if skip_test:
-                print(bcolors.warning(" No testing"))
-                continue
-            if not test():
-                test_errors+=1
-    os.chdir(current_dir)
+    with cd(make_dir):
+        for compiler,cpp_compiler in zip(c_compilers,cxx_compilers):
+            for optimization in optimizations:
+                print(bcolors.okblue('Project', str(make_dir), 'with', compiler,'and', optimization, *extra_compile_flags))
+                if not compile(compiler,cpp_compiler,optimization,extra_compile_flags):
+                    compile_errors+=1
+                    continue
+                success,time= dissasemble(binary,strip)
+                print("Time "+str(time))
+                if not success:
+                    disassembly_errors+=1
+                    continue
+                if skip_reassemble:
+                    print(bcolors.warning(" No reassemble"))
+                    continue
+                if not reassemble(reassembly_compiler,binary,extra_reassemble_flags):
+                    reassembly_errors+=1
+                    continue
+                if skip_test:
+                    print(bcolors.warning(" No testing"))
+                    continue
+                if not test():
+                    test_errors+=1
     total_errors=compile_errors+disassembly_errors+reassembly_errors+test_errors
     return total_errors==0
 
