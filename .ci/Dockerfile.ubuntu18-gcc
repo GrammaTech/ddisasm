@@ -1,7 +1,8 @@
 FROM ubuntu:18.04 as souffle
 RUN apt-get -y update && apt-get -y install automake bison build-essential \
-    doxygen flex git libtool make mcpp pkg-config sqlite3 libsqlite3-dev \
-    zlib1g-dev libffi-dev
+    doxygen flex git libffi-dev libtool make mcpp pkg-config python3 \
+    sqlite3 libsqlite3-dev zlib1g-dev
+
 RUN git clone -b 1.6.1 https://github.com/souffle-lang/souffle
 RUN cd souffle && sh ./bootstrap
 RUN cd souffle && ./configure --prefix=/usr --enable-64bit-domain --disable-ncurses
