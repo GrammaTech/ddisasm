@@ -29,12 +29,12 @@ class TestSmall(unittest.TestCase):
     def test_uninitialized_data(self): self.assertTrue(dis_reasm_test(ex_dir/'ex_uninitialized_data','ex'))
     def test_virtualDispatch(self): self.assertTrue(dis_reasm_test(ex_dir/'ex_virtualDispatch','ex',reassembly_compiler='g++'))
 
-    # Examples that fail the tests
-    #thread local storage
-    def test_threads(self): self.assertTrue(dis_reasm_test(ex_dir/'ex_threads','ex',reassembly_compiler='g++',
-        skip_test=True,extra_reassemble_flags=['-no-pie','-lpthread']))
 
     # Examples that fail to reassemble
+
+    #thread local storage
+    def test_threads(self): self.assertTrue(dis_reasm_test(ex_dir/'ex_threads','ex',reassembly_compiler='g++',skip_reassemble=True))
+
     #static binary with libc
     def test_ex1_static(self):
         self.assertTrue(dis_reasm_test(ex_dir/'ex1','ex',skip_reassemble=True,
