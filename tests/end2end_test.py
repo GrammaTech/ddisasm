@@ -1,5 +1,7 @@
 import unittest
 from disassemble_reassemble_check import disassemble_reassemble_test as dis_reasm_test
+from disassemble_reassemble_check import compile
+import os
 
 ex_dir='./examples/'
 asm_dir='./examples/asm_examples/'
@@ -29,15 +31,16 @@ class TestSmall(unittest.TestCase):
     # Examples that fail the tests
     #thread local storage
     def test_threads(self): self.assertTrue(dis_reasm_test(ex_dir+'ex_threads','ex',reassembly_compiler='g++',
-        should_test=False,extra_reassemble_flags=['-lpthread']))
+        skip_test=True,extra_reassemble_flags=['-lpthread']))
 
     # Examples that fail to reassemble
     #static binary with libc
     def test_ex1_static(self):
-        self.assertTrue(dis_reasm_test(ex_dir+'ex1','ex',should_reassemble=False,
+        self.assertTrue(dis_reasm_test(ex_dir+'ex1','ex',skip_reassemble=True,
             extra_compile_flags=['-static'],
-            compilers=[('gcc','g++')],
-            optimizations=['']))
+            c_compilers=['gcc'],
+            cxx_compilers=['g++'],
+            optimizations=['-O0']))
 
 class TestSmallStrip(unittest.TestCase):
     def test_1(self): self.assertTrue(dis_reasm_test(ex_dir+'ex1','ex',strip=True))
@@ -64,23 +67,32 @@ class TestSmallStrip(unittest.TestCase):
 class TestAsmExamples(unittest.TestCase):
 
     def test_asm_pointerReatribution3(self):
-        self.assertTrue(dis_reasm_test(asm_dir+'ex_pointerReatribution3','ex',compilers=[('gcc','g++')],optimizations=['']))
+        self.assertTrue(dis_reasm_test(asm_dir+'ex_pointerReatribution3','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=['']))
 
     def test_asm_pointerReatribution3_clang(self):
-        self.assertTrue(dis_reasm_test(asm_dir+'ex_pointerReatribution3_clang','ex',compilers=[('gcc','g++')],optimizations=['']))
+        self.assertTrue(dis_reasm_test(asm_dir+'ex_pointerReatribution3_clang','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=['']))
 
     def test_asm_pointerReatribution3_pie(self):
-        self.assertTrue(dis_reasm_test(asm_dir+'ex_pointerReatribution3_pie','ex',compilers=[('gcc','g++')],optimizations=['']))
+        self.assertTrue(dis_reasm_test(asm_dir+'ex_pointerReatribution3_pie','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=['']))
 
     def test_asm_weird_section(self):
-        self.assertTrue(dis_reasm_test(asm_dir+'ex_weird_sections','ex',compilers=[('gcc','g++')],optimizations=['']))
+        self.assertTrue(dis_reasm_test(asm_dir+'ex_weird_sections','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=['']))
 
 class TestSpecialFlags(unittest.TestCase):
     # test binary compiled with -fcf-protection
     def test_fcf_protection(self):
-        self.assertTrue(dis_reasm_test(ex_dir+'ex1','ex',compilers=[('gcc','g++')],
-            optimizations=[''],
-            extra_compile_flags=['-fcf-protection']))
+        # check if the -fcf-protection is supported by the compiler (only newer versions support it)
+        current_dir=os.getcwd()
+        os.chdir(ex_dir+'ex1')
+        flag_supported=compile('gcc','g++','',['-fcf-protection'])
+        os.chdir(current_dir)
+        if flag_supported:
+            self.assertTrue(dis_reasm_test(ex_dir+'ex1','ex',
+                c_compilers=['gcc'],cxx_compilers=['g++'],
+                optimizations=[''],
+                extra_compile_flags=['-fcf-protection']))
+        else:
+            print('Flag -fcf-protection not supported')
 
 
 if __name__ == '__main__':

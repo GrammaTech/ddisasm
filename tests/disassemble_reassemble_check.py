@@ -111,11 +111,12 @@ def disassemble_reassemble_test(make_dir,binary,
                                 extra_compile_flags=[],
                                 extra_reassemble_flags=[],
                                 reassembly_compiler='gcc',
-                                compilers=[('gcc','g++'),('clang','clang++')],
+                                c_compilers=['gcc','clang'],
+                                cxx_compilers=['g++','clang++'],
                                 optimizations=['-O0','-O1','-O2','-O3','-Os'],
                                 strip=False,
-                                should_reassemble=True,
-                                should_test=True):
+                                skip_reassemble=False,
+                                skip_test=False):
     """
     Disassemble, reassemble and test an example with the given compilers and optimizations.
     """
@@ -125,7 +126,7 @@ def disassemble_reassemble_test(make_dir,binary,
     test_errors=0
     current_dir=os.getcwd()
     os.chdir(make_dir)
-    for compiler,cpp_compiler in compilers:
+    for compiler,cpp_compiler in zip(c_compilers,cxx_compilers):
         for optimization in optimizations:
             print(bcolors.okblue('Project', make_dir, 'with', compiler,'and', optimization, *extra_compile_flags))
             if not compile(compiler,cpp_compiler,optimization,extra_compile_flags):
@@ -136,13 +137,13 @@ def disassemble_reassemble_test(make_dir,binary,
             if not success:
                 disassembly_errors+=1
                 continue
-            if not should_reassemble:
+            if skip_reassemble:
                 print(bcolors.warning(" No reassemble"))
                 continue
             if not reassemble(reassembly_compiler,binary,extra_reassemble_flags):
                 reassembly_errors+=1
                 continue
-            if not should_test:
+            if skip_test:
                 print(bcolors.warning(" No testing"))
                 continue
             if not test():
@@ -166,12 +167,4 @@ if __name__ == '__main__':
     parser.add_argument('--skip_reassemble', help='skip reassemble', action='store_true')
 
     args = parser.parse_args()
-    disassemble_reassemble_test(args.make_dir,args.binary,
-        extra_compile_flags=args.extra_compile_flags,
-        extra_reassemble_flags=args.extra_reassemble_flags,
-        reassembly_compiler=args.reassembly_compiler,
-        compilers=zip(args.c_compilers,args.cxx_compilers),
-        optimizations=args.optimizations,
-        strip=args.strip,
-        should_reassemble= not args.skip_reassemble,
-        should_test= not args.skip_test)
+    disassemble_reassemble_test(**args.__dict__)
