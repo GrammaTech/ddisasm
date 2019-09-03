@@ -1,6 +1,6 @@
 FROM ubuntu:18.04 as souffle
 RUN apt-get -y update && apt-get -y install automake bison build-essential \
-    doxygen flex git libffi-dev libtool make mcpp pkg-config python3 \
+    doxygen flex git libffi-dev libtool make mcpp pkg-config \
     sqlite3 libsqlite3-dev zlib1g-dev
 
 RUN git clone -b 1.6.1 https://github.com/souffle-lang/souffle
@@ -20,9 +20,9 @@ ARG CXX_COMPILER=clang++
 SHELL ["/bin/bash", "-c"]
 
 # Install common packages
-RUN apt-get -y update && apt-get -y install autoconf automake bison clang cmake curl \
-    doxygen ed flex git libncurses5-dev libpcre3-dev libprotobuf-dev libtool libstdc++-7-dev \
-    make mcpp pkg-config protobuf-compiler python sqlite3 libsqlite3-dev wget zlib1g-dev
+RUN apt-get -y update && apt-get -y install autoconf automake clang cmake \
+    curl doxygen git libprotobuf-dev libtool libstdc++-7-dev \
+    make mcpp pkg-config protobuf-compiler python3 wget zlib1g-dev
 
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config

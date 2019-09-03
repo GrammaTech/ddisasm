@@ -1,7 +1,7 @@
 FROM ubuntu:16.04 as souffle
 RUN apt-get -y update && apt-get -y install automake bison build-essential \
     doxygen flex g++ gcc gcc-multilib g++-multilib git libffi-dev libtool  \
-    make mcpp pkg-config python3 sqlite3 libsqlite3-dev zlib1g-dev
+    make mcpp pkg-config sqlite3 libsqlite3-dev zlib1g-dev
 
 RUN git clone -b 1.6.1 https://github.com/souffle-lang/souffle
 RUN cd souffle && sh ./bootstrap
@@ -26,10 +26,10 @@ RUN apt-get -y update && \
     apt-get -y install software-properties-common && \
     add-apt-repository ppa:jonathonf/gcc-7.1 && \
     apt-get -y update
-RUN apt-get -y update && apt-get -y install autoconf automake bison build-essential clang \
-    doxygen flex g++ gcc gcc-multilib g++-multilib git libtool make mcpp pkg-config \
-    sqlite3 libsqlite3-dev zlib1g-dev clang ed libpcre3-dev libncurses5-dev wget \
-    curl libc++1 libc++abi1 gcc-7 g++-7
+RUN apt-get -y update && apt-get -y install autoconf automake build-essential \
+    clang curl doxygen g++ g++-7 gcc gcc-7 gcc-multilib git g++-multilib \
+    libc++1 libc++abi1 libtool make mcpp \
+    pkg-config python3 wget zlib1g-dev
 
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
