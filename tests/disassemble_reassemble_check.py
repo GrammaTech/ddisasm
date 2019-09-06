@@ -34,10 +34,10 @@ class bcolors:
 @contextlib.contextmanager
 def get_target(binary,strip):
     if strip:
-            print('# stripping binary\n')
-            subprocess.run(['cp',binary,binary+'.stripped'])
-            binary=binary+'.stripped'
-            subprocess.run(['strip','--strip-unneeded',binary])
+        print('# stripping binary\n')
+        subprocess.run(['cp',binary,binary+'.stripped'])
+        binary=binary+'.stripped'
+        subprocess.run(['strip','--strip-unneeded',binary])
     try:
         yield binary
     finally:
@@ -53,10 +53,10 @@ def cd(new_dir):
     finally:
         os.chdir(prev_dir)
 
-def compile(compiler,cpp_compiler,optimizations,extra_flags):
+def compile(compiler,cxx_compiler,optimizations,extra_flags):
     """
     Clean the project and compile it using the compiler
-    'compiler', the cxx compiler 'cpp_compiler' and the flags in
+    'compiler', the cxx compiler 'cxx_compiler' and the flags in
     'optimizations' and 'extra_flags'
     """
     def quote_args(*args):
@@ -64,7 +64,7 @@ def compile(compiler,cpp_compiler,optimizations,extra_flags):
     # Copy the current environment and modify the copy.
     env = dict(os.environ)
     env['CC'] = compiler
-    env['CXX'] = cpp_compiler
+    env['CXX'] = cxx_compiler
     env['CFLAGS'] = quote_args(optimizations, *extra_flags)
     env['CXXFLAGS'] = quote_args(optimizations, *extra_flags)
     completedProcess = subprocess.run(['make', 'clean', '-e'], env=env, stdout=subprocess.DEVNULL)
@@ -133,10 +133,10 @@ def disassemble_reassemble_test(make_dir,binary,
     reassembly_errors=0
     test_errors=0
     with cd(make_dir):
-        for compiler,cpp_compiler in zip(c_compilers,cxx_compilers):
+        for compiler,cxx_compiler in zip(c_compilers,cxx_compilers):
             for optimization in optimizations:
                 print(bcolors.okblue('Project', str(make_dir), 'with', compiler,'and', optimization, *extra_compile_flags))
-                if not compile(compiler,cpp_compiler,optimization,extra_compile_flags):
+                if not compile(compiler,cxx_compiler,optimization,extra_compile_flags):
                     compile_errors+=1
                     continue
                 success,time= dissasemble(binary,strip)
