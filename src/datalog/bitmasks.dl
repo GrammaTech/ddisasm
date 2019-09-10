@@ -43,7 +43,7 @@ This module detects specific kinds of bitmasks and bitmask operations.
 // a low pass mask is a bitmap mask of the form 0^*1^+
 .decl low_pass_mask(Mask:number)
 
-.init available_bits=counter
+.init available_bits = counter
 // generate numbers from 1 to 32 or 64 depending on the pointer size
 available_bits.range(1,8*Pt_size):-
     arch.pointer_size(Pt_size).

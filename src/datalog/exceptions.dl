@@ -86,17 +86,17 @@ symbol_special_encoding(TypeTablePointerLocation,"uleb128"),
 symbol_minus_symbol(TypeTablePointerLocation,Size,CallsiteTablePointerLoc-1,LsdaTypeTableAddress):-
     lsda_pointer_locations(Lsda,TypeTablePointerLocation,CallsiteTablePointerLoc),
     lsda(Lsda,_,_,_,LsdaTypeTableAddress, _, _),
-    LsdaTypeTableAddress!=0,
+    LsdaTypeTableAddress != 0,
     Size = (CallsiteTablePointerLoc-1) - TypeTablePointerLocation,
-    Size>0.
+    Size > 0.
 
 //callsite table size
 symbol_special_encoding(CallsiteTablePointerLoc,"uleb128"),
 symbol_minus_symbol(CallsiteTablePointerLoc,Size,CallSiteTable_address,CallSiteTable_address+CallSiteTableLength):-
     lsda_pointer_locations(Lsda,_,CallsiteTablePointerLoc),
     lsda(Lsda,CallSiteTable_address,_,CallSiteTableLength,_, _, _),
-    Size=CallSiteTable_address - CallsiteTablePointerLoc,
-    Size>0.
+    Size = CallSiteTable_address - CallsiteTablePointerLoc,
+    Size > 0.
 
 /////////////////////////////////////////////////////////////////////////////////
 // Symbols in lsda callsite table
@@ -114,22 +114,22 @@ symbol_special_encoding(EA_landingPad,EncodingName):-
 symbol_minus_symbol(EA_start,Size,LandingPadBaseAddress,StartRegion):-
     lsda_callsite(CallSiteTable_address, EA_start, StartRegion,EA_end,_,_,_,_),
     lsda(_,CallSiteTable_address,_,_,_,_,LandingPadBaseAddress),
-    Size= EA_end-EA_start,
-    Size>0.
+    Size = EA_end-EA_start,
+    Size > 0.
 
 //region end
 symbol_minus_symbol(EA_end,Size,StartRegion,EndRegion):-
     lsda_callsite(_, _, StartRegion,EA_end,EndRegion,EA_landingPad,_,_),
-    Size= EA_landingPad-EA_end,
-    Size>0.
+    Size = EA_landingPad-EA_end,
+    Size > 0.
 
 //landing pad
 symbol_minus_symbol(EA_landingPad,Size,LandingPadBaseAddress,LandingPad):-
     lsda_callsite(CallSiteTable_address, _, _,_,_,EA_landingPad,LandingPad,EA_endLandingPad),
     lsda(_,CallSiteTable_address,_,_,_,_,LandingPadBaseAddress),
-    LandingPad!=0,
-    Size= EA_endLandingPad-EA_landingPad,
-    Size>0.
+    LandingPad != 0,
+    Size = EA_endLandingPad-EA_landingPad,
+    Size > 0.
 
 ///////////////////////////////////////////////////////////////////////////////
 // Symbols in lsda typetable
@@ -140,7 +140,7 @@ symbolic_data(EAType,EncodingSize,Type):-
     TypeTableEncoding band 0x10 = 0,
     dwarf_encoding_size(Encoding,EncodingSize),
     EAType=LsdaTypeTableAddress-(EncodingSize*(Index+1)),
-    Type!=0.
+    Type != 0.
 
 symbol_minus_symbol(EAType,EncodingSize,EAType,Type):-
     lsda_type_entry(LsdaTypeTableAddress, Index,Type),
@@ -149,7 +149,7 @@ symbol_minus_symbol(EAType,EncodingSize,EAType,Type):-
     TypeTableEncoding band 0x10 > 0,
     dwarf_encoding_size(Encoding,EncodingSize),
     EAType=LsdaTypeTableAddress-(EncodingSize*(Index+1)),
-    Type!=0.
+    Type != 0.
 
 ////////////////////////////////////////////////////////////////////////////////
 // cie symbols
@@ -161,13 +161,13 @@ symbol_minus_symbol(Addr,4,Addr+4,Addr+Length+4):-
 // personality
 symbol_special_encoding(PersonalityPos,EncodingName):-
     cie_personality(_,Personality,PersonalityPos,_,PersonalityEncoding),
-    Personality!=0,
+    Personality != 0,
     special_encoding(Encoding,EncodingName),
     PersonalityEncoding band 0xF = Encoding.
 
 symbolic_data(PersonalityPos,Size,Personality):-
     cie_personality(_,Personality,PersonalityPos,Size,_),
-    Personality!=0.
+    Personality != 0.
 
 /////////////////////////////////////////////////////////////////////////////////
 // fde symbols
@@ -200,23 +200,23 @@ symbolic_data(StartLocation,EndLocation-StartLocation,StartFunction):-
     fde_entry(Addr,_,Cie, StartFunction, _,_),
     cie_encoding(Cie,FdeEncoding,_),
     // absolute encoding
-    FdeEncoding band 0x10 =0,
+    FdeEncoding band 0x10 = 0,
     fde_pointer_locations(Addr,StartLocation,EndLocation, _,_,_).
 
 symbol_minus_symbol(StartLocation,EndLocation-StartLocation,StartLocation,StartFunction):-
     fde_entry(Addr,_,Cie, StartFunction, _,_),
     cie_encoding(Cie,FdeEncoding,_),
     // pc-relative encoding
-    FdeEncoding band 0x10 >0,
+    FdeEncoding band 0x10 > 0,
     fde_pointer_locations(Addr,StartLocation,EndLocation, _,_,_),
-    EndLocation-StartLocation>0.
+    EndLocation-StartLocation > 0.
 
 
 // end pointer
 symbol_minus_symbol(EndLocation,EndSize,StartFunction,EndFunction):-
     fde_entry(Addr,_,_, StartFunction, EndFunction,_),
     fde_pointer_locations(Addr,_,EndLocation, EndSize,_,_),
-    EndSize>0.
+    EndSize > 0.
 
 // lsda pointer
 symbol_special_encoding(LsdaLocation,EncodingName):-
@@ -232,7 +232,7 @@ symbolic_data(LsdaLocation,LsdaSize,LsdaAddress):-
     LsdaSize > 0,
     cie_encoding(Cie,_,LsdaEncoding),
     // absolute encoding
-    LsdaEncoding band 0x10 =0.
+    LsdaEncoding band 0x10 = 0.
 
 symbol_minus_symbol(LsdaLocation,LsdaSize,LsdaLocation,LsdaAddress):-
     fde_entry(Addr,_,Cie, _, _,LsdaAddress),
@@ -240,13 +240,13 @@ symbol_minus_symbol(LsdaLocation,LsdaSize,LsdaLocation,LsdaAddress):-
     LsdaSize > 0,
     cie_encoding(Cie,_,LsdaEncoding),
     // pc-relative enconding
-    LsdaEncoding band 0x10 >0.
+    LsdaEncoding band 0x10 > 0.
 
 
 // instructions
 symbol_minus_symbol(InstructionAddr+1,Size-1,Addr+Advance,Addr):-
     fde_instruction(FdeAddr,Index,Size,"advance_loc",Advance,_),
-    Size>1,
+    Size > 1,
     fde_instruction_pos(FdeAddr,Index,InstructionAddr),
     fde_instruction_ref(FdeAddr,Index,_,Addr),
     fde_entry(FdeAddr,_,Cie,_,_,_),
@@ -299,15 +299,17 @@ fde_instruction_ref(FdeAddr,0,3,StartFunction):-
 fde_instruction_ref(FdeAddr,Index+1,LocalIndex+1,Addr):-
     fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
     fde_instruction(FdeAddr,Index,_,Insn,_,_),
-    Insn!="advance_loc",
-    Insn!="cf_advance_loc".
+    Insn != "advance_loc",
+    Insn != "cf_advance_loc".
 
 fde_instruction_ref(FdeAddr,Index+1,0,Addr+(CodeAlignmentFactor*Advance)):-
     fde_instruction_ref(FdeAddr,Index,_,Addr),
     fde_entry(FdeAddr,_,Cie,_,_,_),
     cie_entry(Cie,_,CodeAlignmentFactor,_),
-    (fde_instruction(FdeAddr,Index,_,"advance_loc",Advance,_);
-    fde_instruction(FdeAddr,Index,_,"cf_advance_loc",Advance,_)).
+    (
+        fde_instruction(FdeAddr,Index,_,"advance_loc",Advance,_);
+        fde_instruction(FdeAddr,Index,_,"cf_advance_loc",Advance,_)
+    ).
 
 //////////////////////////////////////////////////////////////////////////////////
 // Computation of cfi directives
@@ -336,15 +338,19 @@ cfi_directive(StartFunction,0,1,".cfi_lsda",Lsda,1,Encoding,0):-
     fde_entry(_,_,Cie,StartFunction,_,Lsda),
     cfi_directive(StartFunction,_,_,".cfi_startproc",_,_,_,_),
     cie_encoding(Cie, _, LsdaEncoding),
-    (Lsda!=0,Encoding=LsdaEncoding;
-     Lsda=0, Encoding=255).
+    (
+        Lsda != 0, Encoding = LsdaEncoding;
+        Lsda = 0, Encoding = 255
+     ).
 
 cfi_directive(StartFunction,0,2,".cfi_personality",Personality,1,Encoding,0):-
     fde_entry(_,_,Cie,StartFunction,_,_),
     cfi_directive(StartFunction,_,_,".cfi_startproc",_,_,_,_),
     cie_personality(Cie,Personality,_,_,PersonalityEnconding),
-    (Personality!=0,Encoding=PersonalityEnconding;
-     Personality=0, Encoding=255).
+    (
+        Personality != 0, Encoding = PersonalityEnconding;
+        Personality = 0, Encoding = 255
+    ).
 
 // directives that correspond to an instruction
 cfi_directive(Block,Addr-Block,LocalIndex,CfiInsn,0,NOperands,ScaledOp1,ScaledOp2):-
@@ -355,17 +361,17 @@ cfi_directive(Block,Addr-Block,LocalIndex,CfiInsn,0,NOperands,ScaledOp1,ScaledOp
     cie_entry(Cie,_,_,DataAlignmentFactor),
     (
         !cfi_operand_is_register(Insn,1),
-        ScaledOp1=Op1*DataAlignmentFactor
+        ScaledOp1 = Op1*DataAlignmentFactor
         ;
         cfi_operand_is_register(Insn,1),
-        ScaledOp1=Op1
+        ScaledOp1 = Op1
     ),
     (
         !cfi_operand_is_register(Insn,2),
-        ScaledOp2=Op2*DataAlignmentFactor
+        ScaledOp2 = Op2*DataAlignmentFactor
         ;
         cfi_operand_is_register(Insn,2),
-        ScaledOp2=Op2
+        ScaledOp2 = Op2
     ),
     fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
     code_in_refined_block(Addr,Block).

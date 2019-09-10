@@ -34,81 +34,80 @@ Perform a intra-procedural completeness analysis.
 
 //use the data access pattern
 jump_table(EA,Initial_memory):-
-	code(EA),
-	indirect_jump(EA),
+    code(EA),
+    indirect_jump(EA),
     arch.pointer_size(Pt_size),
-	data_access_pattern(Initial_memory,Pt_size,Pt_size,EA),
+    data_access_pattern(Initial_memory,Pt_size,Pt_size,EA),
     symbolic_data(Initial_memory,Pt_size,Dest_block),
-	refined_block(Dest_block).
+    refined_block(Dest_block).
 
 //use just the constant in the jump
 jump_table(EA,Initial_memory):-
-	code(EA),
-	indirect_jump(EA),
+    code(EA),
+    indirect_jump(EA),
     arch.pointer_size(Pt_size),
-	symbolic_operand(EA,1,Initial_memory,"data"),
+    symbolic_operand(EA,1,Initial_memory,"data"),
     symbolic_data(Initial_memory,Pt_size,Dest_block),
-	refined_block(Dest_block).
-	
+    refined_block(Dest_block).
+
 jump_table(EA,Memory+Pt_size):-
-	jump_table(EA,Memory),
+    jump_table(EA,Memory),
     arch.pointer_size(Pt_size),
     symbolic_data(Memory+Pt_size,Pt_size,Dest_block),
-	refined_block(Dest_block),
+    refined_block(Dest_block),
     !data_access_pattern(Memory+Pt_size,_,_,_).
 
 // we have another access to the same table (the access can be before or after)
 jump_table(EA,Memory+Pt_size):-
-	jump_table(EA,Memory),
+    jump_table(EA,Memory),
     arch.pointer_size(Pt_size),
     symbolic_data(Memory,Pt_size,Content_prev),
     symbolic_data(Memory+Pt_size,Pt_size,Content_next),
     refined_block(Content_next),
     data_access_pattern(Memory+Pt_size,Pt_size,Pt_size,EA),
-	(
-	EA<Content_prev,
-	EA<Content_next
-	;
-	EA>Content_prev,
-	EA>Content_next
-	).
+    (
+        EA < Content_prev,
+        EA < Content_next
+        ;
+        EA > Content_prev,
+        EA > Content_next
+    ).
 
 // Resolve easy jumps that access a straightforward jump table
 .decl resolved_jump(Src:address,Dest:address)
 .output resolved_jump
 
 resolved_jump(EA,Dest):-
-	jump_table(EA,Memory),
+    jump_table(EA,Memory),
     symbolic_data(Memory,_,Dest),
-	refined_block(Dest).
-	
+    refined_block(Dest).
+
 //////////////////////////////////////////////////////////////////////////////
 // record blocks that have jumps that are not resolved
 .decl incomplete_block(block:address,Cause:address)
 
 incomplete_block(Block,EA):-
-	code_in_refined_block(EA,Block),
-	(
-	  reg_jump(EA)
-	;
-	  indirect_jump(EA)
-	),	
-	!resolved_jump(EA,_).
+    code_in_refined_block(EA,Block),
+    (
+        reg_jump(EA);
+        indirect_jump(EA)
+    ),
+    !resolved_jump(EA,_).
 
 .decl complete_block(block:address)
 
 complete_block(Block):-
-	refined_block(Block),
-	!incomplete_block(Block,_).
+    refined_block(Block),
+    !incomplete_block(Block,_).
 
 // record blocks that contain a ret instruction
 .decl block_contains_ret(block:address)
 .output block_contains_ret
 
 block_contains_ret(Block):-
-	code_in_refined_block(EA,Block),
-	return(EA).
-	
+    code_in_refined_block(EA,Block),
+    return(EA).
+
 //////////////////////////////////////////////////////////////////////////////
 // compute reachability without crossing function boundaries
 // This is computed without knowing all the functions though to avoid
@@ -116,42 +115,43 @@ block_contains_ret(Block):-
 .decl intra_reachable(Block:address,Function:address)
 
 intra_reachable(Block,Block):-
-	refined_block(Block).
-	
+    refined_block(Block).
+
 intra_reachable(Src,Dest):-
-	intra_reachable(Src,A),
-	intra_edge(A,Dest),Dest>=Src.
-	
+    intra_reachable(Src,A),
+    intra_edge(A,Dest),
+    Dest >= Src.
+
 
 .decl intra_edge(Block_src:address,Block_dest:address)
 .output intra_edge
 
 intra_edge(Src,Dest):-
-	code_in_refined_block(EA,Src),
-	direct_jump(EA,Dest),
-	!function_entry(Dest).
+    code_in_refined_block(EA,Src),
+    direct_jump(EA,Dest),
+    !function_entry(Dest).
 
 intra_edge(Src,Dest):-
-	code_in_refined_block(EA,Src),
-	pc_relative_jump(EA,Dest),
-	!function_entry(Dest).
-	
-intra_edge(Src,Dest):-
-	code_in_refined_block(EA,Src),
-	may_fallthrough(EA,Dest),
-	!no_return_call(EA),
-	code_in_refined_block(Dest,Dest).
+    code_in_refined_block(EA,Src),
+    pc_relative_jump(EA,Dest),
+    !function_entry(Dest).
 
 intra_edge(Src,Dest):-
-	code_in_refined_block(EA,Src),
-	resolved_jump(EA,Dest).
+    code_in_refined_block(EA,Src),
+    may_fallthrough(EA,Dest),
+    !no_return_call(EA),
+    code_in_refined_block(Dest,Dest).
+
+intra_edge(Src,Dest):-
+    code_in_refined_block(EA,Src),
+    resolved_jump(EA,Dest).
 
 .decl intra_edge_dir(Src:address,Dest:address,Dir:symbol)
 
 intra_edge_dir(Src,Dest,"fwd"):-
-	intra_edge(Src,Dest),Dest>=Src.
+    intra_edge(Src,Dest),Dest >= Src.
 intra_edge_dir(Src,Dest,"back"):-
-	intra_edge(Src,Dest),Dest<Src.	
+    intra_edge(Src,Dest),Dest < Src.
 
 //////////////////////////////////////////////////////////////////////////////
 // underapproximation of reachable blocks
@@ -160,15 +160,15 @@ intra_edge_dir(Src,Dest,"back"):-
 .decl must_intra_reachable(Block:address,Next:address)
 
 must_intra_reachable(Block,Block):-
-	refined_block(Block),
-	after_function_end(Block,_).
+    refined_block(Block),
+    after_function_end(Block,_).
 
 must_intra_reachable(Block,Next):-
-	must_intra_reachable(Block,Reach),
-	code_in_refined_block(EA,Reach),
-	may_fallthrough(EA,Next),
-	!no_return_call(EA),
-	refined_block(Next).
+    must_intra_reachable(Block,Reach),
+    code_in_refined_block(EA,Reach),
+    may_fallthrough(EA,Next),
+    !no_return_call(EA),
+    refined_block(Next).
 
 
 // a restricted version of common ancestor
@@ -177,9 +177,9 @@ must_intra_reachable(Block,Next):-
 .decl reaches_segment(Block:address,Segment:address)
 
 reaches_segment(Block,Segment):-
-	intra_reachable(Block,Reached),
+    intra_reachable(Block,Reached),
     !arch.is_nop(Block),
-	must_intra_reachable(Segment,Reached).
+    must_intra_reachable(Segment,Reached).
 
 
 // under-approximate the fact that a block goes back (to an address before itself)
@@ -188,28 +188,27 @@ reaches_segment(Block,Segment):-
 .decl goes_back(Src:address,Dest:address,how:symbol)
 
 goes_back(Src,Dest,"cjump"):-
-	intra_reachable(Src,Middle),
-	intra_edge(Middle,Dest),
-	Dest<Src,
-	// try to discard tail calls
-	(
-	 !unconditional_jump(Middle)
-	;
-	//not a call to the beginning of a function
-	 !after_function_end(Dest,_)
-	 ).
+    intra_reachable(Src,Middle),
+    intra_edge(Middle,Dest),
+    Dest < Src,
+    // try to discard tail calls
+    (
+        !unconditional_jump(Middle);
+        //not a call to the beginning of a function
+        !after_function_end(Dest,_)
+    ).
 //////////////////////////////////////////////////////////////////////////////
 // use reachability to compute incomplete and complete cfg
-	
+
 .decl incomplete_cfg(Block:address)
 .output incomplete_cfg
 
 incomplete_cfg(Block):-
-	intra_reachable(Block,Dest),
-	incomplete_block(Dest,_).
+    intra_reachable(Block,Dest),
+    incomplete_block(Dest,_).
 
 .decl complete_cfg(Block:address)
 
 complete_cfg(Block):-
-	refined_block(Block),
-	!incomplete_cfg(Block).
+    refined_block(Block),
+    !incomplete_cfg(Block).

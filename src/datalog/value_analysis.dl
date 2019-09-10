@@ -67,153 +67,156 @@ or loop) and considering the value with most steps.
 
 // mov reg immediate
 value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
-	def_used_for_address(EA,Reg),
-	instruction(EA,_,_,"MOV",Op1,Op2,0,0),
-	op_immediate(Op1,Immediate),
-	op_regdirect_contains_reg(Op2,Reg).
+    def_used_for_address(EA,Reg),
+    instruction(EA,_,_,"MOV",Op1,Op2,0,0),
+    op_immediate(Op1,Immediate),
+    op_regdirect_contains_reg(Op2,Reg).
 
 // mov DWORD from memory
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
-	def_used_for_address(EA,Reg),
-	instruction(EA,_,_,"MOV",Op1,Op2,0,0),
-	op_regdirect_contains_reg(Op2,Reg),
-	op_indirect(Op1,"NONE","NONE","NONE",_,Offset,32),
-	data_byte(Offset,Byte0),
-  data_byte(Offset+1,Byte1),
-	data_byte(Offset+2,Byte2),
-	data_byte(Offset+3,Byte3),
-	Byte3<=128,
-	Val= (Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0).
+    def_used_for_address(EA,Reg),
+    instruction(EA,_,_,"MOV",Op1,Op2,0,0),
+    op_regdirect_contains_reg(Op2,Reg),
+    op_indirect(Op1,"NONE","NONE","NONE",_,Offset,32),
+    data_byte(Offset,Byte0),
+    data_byte(Offset+1,Byte1),
+    data_byte(Offset+2,Byte2),
+    data_byte(Offset+3,Byte3),
+    Byte3 <= 128,
+    Val = (Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0).
 
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
-	def_used_for_address(EA,Reg),
-	instruction(EA,_,_,"MOV",Op1,Op2,0,0),
-	op_regdirect_contains_reg(Op2,Reg),
-	op_indirect(Op1,_,_,_,_,_,32),
-	pc_relative_operand(EA,1,Offset),
-	data_byte(Offset,Byte0),
-  data_byte(Offset+1,Byte1),
-	data_byte(Offset+2,Byte2),
-	data_byte(Offset+3,Byte3),
-	Byte3<=128,
-	Val= (Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0).
+    def_used_for_address(EA,Reg),
+    instruction(EA,_,_,"MOV",Op1,Op2,0,0),
+    op_regdirect_contains_reg(Op2,Reg),
+    op_indirect(Op1,_,_,_,_,_,32),
+    pc_relative_operand(EA,1,Offset),
+    data_byte(Offset,Byte0),
+    data_byte(Offset+1,Byte1),
+    data_byte(Offset+2,Byte2),
+    data_byte(Offset+3,Byte3),
+    Byte3 <= 128,
+    Val = (Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0).
 
 // register implicitly defined
 value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
-	def_used_for_address(EA,Reg),
+    def_used_for_address(EA,Reg),
     flow_def(EA,Reg,_,Immediate).
 
 value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
-	def_used_for_address(EA,Reg),
-	instruction(EA,Size,_,"LEA",Op1,Op2,0,0),
+    def_used_for_address(EA,Reg),
+    instruction(EA,Size,_,"LEA",Op1,Op2,0,0),
     op_indirect(Op1,_,PcReg,"NONE",_,Offset,_),
     arch.pc_register(PcReg),
-	op_regdirect_contains_reg(Op2,Reg),
-	Address=EA+Size+Offset.
-	
+    op_regdirect_contains_reg(Op2,Reg),
+    Address = EA+Size+Offset.
+
 //mov reg reg_origin
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
-	def_used_for_address(EA_prev,Reg_origin),
-	def_used(EA_prev,Reg_origin,EA,_),
+    def_used_for_address(EA_prev,Reg_origin),
+    def_used(EA_prev,Reg_origin,EA,_),
     arch.mov(EA),
-	instruction_get_op(EA,1,Op1),
-	op_regdirect_contains_reg(Op1,Reg_origin),
-	instruction_get_op(EA,2,Op2),
-	op_regdirect_contains_reg(Op2,Reg),
-	EA!=EA_prev.
-	
+    instruction_get_op(EA,1,Op1),
+    op_regdirect_contains_reg(Op1,Reg_origin),
+    instruction_get_op(EA,2,Op2),
+    op_regdirect_contains_reg(Op2,Reg),
+    EA != EA_prev.
+
 //reset a register
 value_reg_edge(EA,Reg,EA,"NONE",0,0):-
-	def_used_for_address(EA,Reg),
-	instruction(EA,_,_,"XOR",Op1,Op2,0,0),
-	op_regdirect_contains_reg(Op1,Reg),
-	op_regdirect_contains_reg(Op2,Reg).
-	
+    def_used_for_address(EA,Reg),
+    instruction(EA,_,_,"XOR",Op1,Op2,0,0),
+    op_regdirect_contains_reg(Op1,Reg),
+    op_regdirect_contains_reg(Op2,Reg).
+
 //add reg immediate
 value_reg_edge(EA,Reg,EA_prev,Reg,1,Immediate):-
-	def_used_for_address(EA_prev,Reg),
-	def_used(EA_prev,Reg,EA,_),
-	instruction(EA,_,_,"ADD",Op1,Op2,0,0),
-	op_immediate(Op1,Immediate),
-	op_regdirect_contains_reg(Op2,Reg).
+    def_used_for_address(EA_prev,Reg),
+    def_used(EA_prev,Reg,EA,_),
+    instruction(EA,_,_,"ADD",Op1,Op2,0,0),
+    op_immediate(Op1,Immediate),
+    op_regdirect_contains_reg(Op2,Reg).
 
 value_reg_edge(EA,Reg,EA_prev,Reg,1,-Immediate):-
-	def_used_for_address(EA_prev,Reg),
-	def_used(EA_prev,Reg,EA,_),
-	instruction(EA,_,_,"SUB",Op1,Op2,0,0),
-	op_immediate(Op1,Immediate),
-	op_regdirect_contains_reg(Op2,Reg).
-	
+    def_used_for_address(EA_prev,Reg),
+    def_used(EA_prev,Reg,EA,_),
+    instruction(EA,_,_,"SUB",Op1,Op2,0,0),
+    op_immediate(Op1,Immediate),
+    op_regdirect_contains_reg(Op2,Reg).
+
 value_reg_edge(EA,Reg,EA_prev,Reg,1,1):-
-	def_used_for_address(EA_prev,Reg),
-	def_used(EA_prev,Reg,EA,_),
-	instruction(EA,_,_,"INC",Op1,0,0,0),
-	op_regdirect_contains_reg(Op1,Reg).
-	
+    def_used_for_address(EA_prev,Reg),
+    def_used(EA_prev,Reg,EA,_),
+    instruction(EA,_,_,"INC",Op1,0,0,0),
+    op_regdirect_contains_reg(Op1,Reg).
+    
 value_reg_edge(EA,Reg,EA_prev,Reg,1,-1):-
-	def_used_for_address(EA_prev,Reg),
-	def_used(EA_prev,Reg,EA,_),
-	instruction(EA,_,_,"DEC",Op1,0,0,0),
-	op_regdirect_contains_reg(Op1,Reg).
+    def_used_for_address(EA_prev,Reg),
+    def_used(EA_prev,Reg,EA,_),
+    instruction(EA,_,_,"DEC",Op1,0,0,0),
+    op_regdirect_contains_reg(Op1,Reg).
 
 // add a register to itself
 value_reg_edge(EA,Reg,EA_prev,Reg,2,0):-
-	def_used_for_address(EA_prev,Reg),
-	def_used(EA_prev,Reg,EA,_),
-	instruction(EA,_,_,"ADD",Op,Op,0,0),
-	op_regdirect_contains_reg(Op,Reg).
+    def_used_for_address(EA_prev,Reg),
+    def_used(EA_prev,Reg,EA,_),
+    instruction(EA,_,_,"ADD",Op,Op,0,0),
+    op_regdirect_contains_reg(Op,Reg).
 
 //shl reg immediate
 value_reg_edge(EA,Reg,EA_prev,Reg,2^Immediate,0):-
-	def_used_for_address(EA_prev,Reg),
-	def_used(EA_prev,Reg,EA,_),
-	instruction(EA,_,_,"SHL",Op1,Op2,0,0),
-	op_immediate(Op1,Immediate),
-	op_regdirect_contains_reg(Op2,Reg),
-	EA!=EA_prev.
+    def_used_for_address(EA_prev,Reg),
+    def_used(EA_prev,Reg,EA,_),
+    instruction(EA,_,_,"SHL",Op1,Op2,0,0),
+    op_immediate(Op1,Immediate),
+    op_regdirect_contains_reg(Op2,Reg),
+    EA != EA_prev.
 
 //mul reg reg immediate
 value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
-	def_used_for_address(EA_prev,Reg2),
-	def_used(EA_prev,Reg2,EA,_),
-	instruction(EA,_,_,"IMUL",Op1,Op2,Op3,0),
-	op_immediate(Op2,Immediate),
-	op_regdirect_contains_reg(Op3,Reg),
-	op_regdirect_contains_reg(Op1,Reg2),
-	EA!=EA_prev.
+    def_used_for_address(EA_prev,Reg2),
+    def_used(EA_prev,Reg2,EA,_),
+    instruction(EA,_,_,"IMUL",Op1,Op2,Op3,0),
+    op_immediate(Op2,Immediate),
+    op_regdirect_contains_reg(Op3,Reg),
+    op_regdirect_contains_reg(Op1,Reg2),
+    EA != EA_prev.
+
 //mul reg immediate
 value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
-	def_used_for_address(EA_prev,Reg2),
-	def_used(EA_prev,Reg2,EA,_),
-	instruction(EA,_,_,"IMUL",Op1,Op2,0,0),
-	op_immediate(Op1,Immediate),
-	op_regdirect_contains_reg(Op2,Reg),
-	EA!=EA_prev.
-	
+    def_used_for_address(EA_prev,Reg2),
+    def_used(EA_prev,Reg2,EA,_),
+    instruction(EA,_,_,"IMUL",Op1,Op2,0,0),
+    op_immediate(Op1,Immediate),
+    op_regdirect_contains_reg(Op2,Reg),
+    EA != EA_prev.
+
 //lea reg [reg_origin*Multiplier+Offset]
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier,Offset):-
-	def_used_for_address(EA,Reg),
-	def_used(EA_prev,Reg_origin,EA,1),
-	instruction(EA,_,_,"LEA",Op1,Op2,0,0),
-	op_indirect(Op1,_,"NONE",Reg_origin_non_uniform,Multiplier,Offset,_),
+    def_used_for_address(EA,Reg),
+    def_used(EA_prev,Reg_origin,EA,1),
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0),
+    op_indirect(Op1,_,"NONE",Reg_origin_non_uniform,Multiplier,Offset,_),
     arch.track_register(Reg_origin_non_uniform,Reg_origin),
-	op_regdirect_contains_reg(Op2,Reg).
-//lea reg [reg_origin+reg_origin*Multiplier+Offset]	
+    op_regdirect_contains_reg(Op2,Reg).
+
+//lea reg [reg_origin+reg_origin*Multiplier+Offset]
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier+1,Offset):-
-	def_used_for_address(EA,Reg),
-	def_used(EA_prev,Reg_origin,EA,1),
-	instruction(EA,_,_,"LEA",Op1,Op2,0,0),
-	op_indirect(Op1,_,Reg_origin_non_uniform,Reg_origin_non_uniform,Multiplier,Offset,_),
+    def_used_for_address(EA,Reg),
+    def_used(EA_prev,Reg_origin,EA,1),
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0),
+    op_indirect(Op1,_,Reg_origin_non_uniform,Reg_origin_non_uniform,Multiplier,Offset,_),
     arch.track_register(Reg_origin_non_uniform,Reg_origin),
-	op_regdirect_contains_reg(Op2,Reg).
+    op_regdirect_contains_reg(Op2,Reg).
+
 //lea reg [reg_origin+Offset]
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,Offset):-
-	def_used_for_address(EA,Reg),
-	def_used(EA_prev,Reg_origin,EA,1),
-	instruction(EA,_,_,"LEA",Op1,Op2,0,0),
-	op_indirect(Op1,_,Reg_origin_non_uniform,"NONE",1,Offset,_),
+    def_used_for_address(EA,Reg),
+    def_used(EA_prev,Reg_origin,EA,1),
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0),
+    op_indirect(Op1,_,Reg_origin_non_uniform,"NONE",1,Offset,_),
     arch.track_register(Reg_origin_non_uniform,Reg_origin),
-	op_regdirect_contains_reg(Op2,Reg).
+    op_regdirect_contains_reg(Op2,Reg).
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // once we have the edges that relate the values of registers at different
@@ -221,82 +224,82 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,Offset):-
 
 //base cases
 value_reg(EA,Reg,EA,"NONE",Mult,Immediate,1):-
-	value_reg_edge(EA,Reg,EA,"NONE",Mult,Immediate).
+    value_reg_edge(EA,Reg,EA,"NONE",Mult,Immediate).
 value_reg(EA,Reg,EA,Reg,1,0,1):-
-	def_used_for_address(EA,Reg),
-	!value_reg_edge(EA,Reg,_,_,_,_).
+    def_used_for_address(EA,Reg),
+    !value_reg_edge(EA,Reg,_,_,_,_).
 
 // possible loop
 value_reg(EA,Reg,EA_from,"Unknown",Immediate,Base,Steps+1):-
-	value_reg(EA,Reg,EA_from,"NONE",0,Base,Steps),
-	value_reg_edge(EA,Reg,EA,Reg,1,Immediate),
-	Immediate!=0,
-	Steps+1<8.
+    value_reg(EA,Reg,EA_from,"NONE",0,Base,Steps),
+    value_reg_edge(EA,Reg,EA,Reg,1,Immediate),
+    Immediate != 0,
+    Steps+1 < 8.
 
 
 // arithmetic operation on two registers
 .decl abstracted_multiple_reg_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
 
 abstracted_multiple_reg_operation(EA,Reg2,Reg2,Reg1,-1,0):-
-	def_used_for_address(EA,Reg2),
-	instruction(EA,_,_,"SUB",Op1,Op2,0,0), Op1!=Op2,
-	op_regdirect_contains_reg(Op1,Reg1),
-	op_regdirect_contains_reg(Op2,Reg2).
+    def_used_for_address(EA,Reg2),
+    instruction(EA,_,_,"SUB",Op1,Op2,0,0), Op1 != Op2,
+    op_regdirect_contains_reg(Op1,Reg1),
+    op_regdirect_contains_reg(Op2,Reg2).
 
 abstracted_multiple_reg_operation(EA,Reg2,Reg1,Reg2,1,0):-
-	def_used_for_address(EA,Reg2),
-	instruction(EA,_,_,"ADD",Op1,Op2,0,0), Op1!=Op2,
-	op_regdirect_contains_reg(Op2,Reg2),
-	op_regdirect_contains_reg(Op1,Reg1).
+    def_used_for_address(EA,Reg2),
+    instruction(EA,_,_,"ADD",Op1,Op2,0,0), Op1 != Op2,
+    op_regdirect_contains_reg(Op2,Reg2),
+    op_regdirect_contains_reg(Op1,Reg1).
 
 abstracted_multiple_reg_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset):-
-	def_used_for_address(EA,Reg_def),
-	instruction(EA,_,_,"LEA",Op1,Op2,0,0),
-	op_regdirect_contains_reg(Op2,Reg_def),
-	op_indirect(Op1,_,Reg1_n,Reg2_n,Mult,Offset,_),
+    def_used_for_address(EA,Reg_def),
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0),
+    op_regdirect_contains_reg(Op2,Reg_def),
+    op_indirect(Op1,_,Reg1_n,Reg2_n,Mult,Offset,_),
     arch.track_register(Reg1_n,Reg1),
     arch.track_register(Reg2_n,Reg2),
-	Reg1!=Reg2.
+    Reg1 != Reg2.
 
 // deal with arithmetic operations on two registers when their value ultimately refers to the same register
 value_reg(EA,Reg_def,EA_third,Reg3,Mult1+(Mult*Mult2),Offset+Offset1+Offset2*Mult,Steps3):-
-	abstracted_multiple_reg_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
-	def_used(EA_def1,Reg1,EA,_),
-	value_reg(EA_def1,Reg1,EA_third,Reg3,Mult1,Offset1,Steps1),
-	def_used(EA_def2,Reg2,EA,_),
-	value_reg(EA_def2,Reg2,EA_third,Reg3,Mult2,Offset2,Steps2),
-	EA != EA_def1,
-	EA != EA_def2,
-	EA != EA_third,
-	Steps3=max(Steps1+1,Steps2+1),
-	Steps3<8.
+    abstracted_multiple_reg_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
+    def_used(EA_def1,Reg1,EA,_),
+    value_reg(EA_def1,Reg1,EA_third,Reg3,Mult1,Offset1,Steps1),
+    def_used(EA_def2,Reg2,EA,_),
+    value_reg(EA_def2,Reg2,EA_third,Reg3,Mult2,Offset2,Steps2),
+    EA != EA_def1,
+    EA != EA_def2,
+    EA != EA_third,
+    Steps3 = max(Steps1+1,Steps2+1),
+    Steps3 < 8.
 
 
 // normal propagation
 value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,Steps2):-
-	value_reg(EA2,Reg2,EA3,Reg3,Multiplier2,Offset2,Steps),
-	value_reg_edge(EA1,Reg1,EA2,Reg2,Multiplier,Offset),
-	EA1!=EA2,
-	// we allow less back steps
-	(
-	  EA2<EA1,
-	  Steps2=Steps+1
-	  ;
-	  EA2>=EA1,
-	  Steps2=Steps+4
-	),
-	Steps2<8.
+    value_reg(EA2,Reg2,EA3,Reg3,Multiplier2,Offset2,Steps),
+    value_reg_edge(EA1,Reg1,EA2,Reg2,Multiplier,Offset),
+    EA1 != EA2,
+    // we allow less back steps
+    (
+        EA2 < EA1,
+        Steps2 = Steps+1
+        ;
+        EA2 >= EA1,
+        Steps2 = Steps+4
+    ),
+    Steps2 < 8.
 
 
 best_value_reg(EA,Reg,EA_from,Multiplier,Offset,"loop"):-
-	value_reg(EA,Reg,EA_from,"Unknown",Multiplier,Offset,_).
+    value_reg(EA,Reg,EA_from,"Unknown",Multiplier,Offset,_).
 
 best_value_reg(EA,Reg,EA_from,Multiplier,Offset,"complete"):-
-	value_reg(EA,Reg,EA_from,"NONE",Multiplier,Offset,_),
-	!value_reg(EA,Reg,_,"Unknown",_,_,_).
-	
+    value_reg(EA,Reg,EA_from,"NONE",Multiplier,Offset,_),
+    !value_reg(EA,Reg,_,"Unknown",_,_,_).
+
 best_value_reg(EA,Reg,0,MaxMultiplier,Offset,"incomplete"):-
-	value_reg(EA,Reg,_,_,MaxMultiplier,Offset,_),
-	!value_reg(EA,Reg,_,"Unknown",_,_,_),
-	!value_reg(EA,Reg,_,"NONE",_,_,_),
-	MaxMultiplier >=max Multiplier:{value_reg(EA,Reg,_,_,Multiplier,_,_)}.
+    value_reg(EA,Reg,_,_,MaxMultiplier,Offset,_),
+    !value_reg(EA,Reg,_,"Unknown",_,_,_),
+    !value_reg(EA,Reg,_,"NONE",_,_,_),
+    MaxMultiplier >= max Multiplier:{value_reg(EA,Reg,_,_,Multiplier,_,_)}.

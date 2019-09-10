@@ -44,22 +44,22 @@ receives a property as an input and provides a predicate forall.
 .decl next(Set:number,Element:number,Element2:number)
       
 /* succ(Set,A,B):-
-	pred(Set,A),
-	pred(Set,B),
+    pred(Set,A),
+    pred(Set,B),
     A<B. */
 
 first(Set,A):-
-	pred(Set,A),
+    pred(Set,A),
     !next(Set,_,A).
-	
+
 last(Set,A):-
-	pred(Set,A),
+    pred(Set,A),
     !next(Set,A,_).
-	
+
 next(Set,A,B):-
-	pred(Set,A),
-    B=min D:{ pred(Set,A),pred(Set,D),D>A}.
-	
+    pred(Set,A),
+    B = min D:{ pred(Set,A),pred(Set,D),D>A}.
+
 }
 
 .comp forall_ordered_set : ordered_set{
@@ -69,18 +69,18 @@ next(Set,A,B):-
 .decl forall(Set:number)
 
 forall(Set):-
-	last(Set,EA),
-	forall_accum(Set,EA).
-	
+    last(Set,EA),
+    forall_accum(Set,EA).
+
 .decl forall_accum(Set:number,Element:number)
 
 forall_accum(Set,Element):-
-	first(Set,Element),
-	property(Element).
-	
+    first(Set,Element),
+    property(Element).
+
 forall_accum(Set,Element):-
-	forall_accum(Set,Prev),
-	next(Set,Prev,Element),
-	property(Element).
+    forall_accum(Set,Prev),
+    next(Set,Prev,Element),
+    property(Element).
 
 }

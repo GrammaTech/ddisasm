@@ -44,8 +44,8 @@ Function inference has two phases:
 block_in_between_fde(Block):-
     refined_block(Block),
     fde_addresses(Begin,End),
-    Begin< Block,
-    Block< End.
+    Begin < Block,
+    Block < End.
 
 
 .decl function_entry(EA:address)
@@ -53,35 +53,35 @@ block_in_between_fde(Block):-
 // very certain sources
 
 function_entry(EA):-
-	function_symbol(EA,_).
+    function_symbol(EA,_).
 
 function_entry(EA):-
-	main_function(EA).
+    main_function(EA).
 
 function_entry(EA):-
-	start_function(EA).
+    start_function(EA).
 
 //called
 function_entry(EA):-
-	direct_call(EA_caller,EA),
-	code(EA_caller),
-	refined_block(EA).
+    direct_call(EA_caller,EA),
+    code(EA_caller),
+    refined_block(EA).
 
 //section start
 function_entry(EA):-
-	refined_block(EA),
-	section(_,_,EA).
+    refined_block(EA),
+    section(_,_,EA).
 
 function_entry(EA):-
     fde_addresses(EA,_).
 
 // pointer in special sections
 function_entry(EA):-
-	code_pointer_in_data(Src,EA),
-	function_pointer_section(Name),
-	section(Name,Size,Base),
-	Src>=Base,
-	Src < Base+Size.
+    code_pointer_in_data(Src,EA),
+    function_pointer_section(Name),
+    section(Name,Size,Base),
+    Src >= Base,
+    Src < Base+Size.
 
 // not referenced anywhere
 function_entry(EA):-
@@ -90,7 +90,7 @@ function_entry(EA):-
     after_function_end(EA,_),
     !possible_target_from(EA,_),
     !symbolic_data(_,_,EA),
-	typical_function_starter(EA).
+    typical_function_starter(EA).
 
 // two consecutive elements in a table with typical function beginnings
 function_entry(EA):-
@@ -100,26 +100,26 @@ function_entry(EA):-
     !possible_target_from(EA,_),
     arch.pointer_size(Pt_size),
     symbolic_data(Pointer,Pt_size,EA),
-	typical_function_starter(EA),
-	!resolved_jump(_,EA),
+    typical_function_starter(EA),
+    !resolved_jump(_,EA),
 
     symbolic_data(Pointer+Pt_size,Pt_size,EA2),EA2!=EA,
-	after_function_end(EA2,_),
-	typical_function_starter(EA2),
-	!resolved_jump(_,EA2).
+    after_function_end(EA2,_),
+    typical_function_starter(EA2),
+    !resolved_jump(_,EA2).
 
 // the address is moved to a register
 function_entry(EA):-
-	refined_block(EA),
+    refined_block(EA),
     !block_in_between_fde(EA),
-	after_function_end(EA,_),
-	possible_target_from(EA,Src),
-	code(Src),
+    after_function_end(EA,_),
+    possible_target_from(EA,Src),
+    code(Src),
     arch.mov(Src).
 
 // // reference from function table
 function_entry(EA):-
-	function_table(Label),
+    function_table(Label),
     preferred_data_access(Offset,Label),
     symbolic_data(Offset,_,EA),
     refined_block(EA),
@@ -129,68 +129,68 @@ function_entry(EA):-
 // // referenced from lonely pointer
 function_entry(EA):-
     arch.pointer_size(Pt_size),
-	code_pointer_in_data(Offset,EA),
-	after_function_end(EA,_),
+    code_pointer_in_data(Offset,EA),
+    after_function_end(EA,_),
     !block_in_between_fde(EA),
-	!code_pointer_in_data(Offset+Pt_size,_),
-	!code_pointer_in_data(Offset-Pt_size,_).
+    !code_pointer_in_data(Offset+Pt_size,_),
+    !code_pointer_in_data(Offset-Pt_size,_).
 
 
 // a compact function table (it is enough to determine one of the pointers is a function)
 function_entry(EA2):-
-	function_entry(EA),
+    function_entry(EA),
     arch.pointer_size(Pt_size),
-	code_pointer_in_data(Offset,EA),
-	code_pointer_in_data(Offset+Pt_size,EA2),
-	!resolved_jump(_,EA2),
-	after_function_end(EA2,_),
+    code_pointer_in_data(Offset,EA),
+    code_pointer_in_data(Offset+Pt_size,EA2),
+    !resolved_jump(_,EA2),
+    after_function_end(EA2,_),
     !block_in_between_fde(EA2),
-	!labeled_data(Offset+Pt_size).
+    !labeled_data(Offset+Pt_size).
 
 function_entry(EA2):-
-	function_entry(EA),
+    function_entry(EA),
     arch.pointer_size(Pt_size),
-	code_pointer_in_data(Offset,EA),
-	!labeled_data(Offset),
-	code_pointer_in_data(Offset-Pt_size,EA2),
-	!resolved_jump(_,EA2),
+    code_pointer_in_data(Offset,EA),
+    !labeled_data(Offset),
+    code_pointer_in_data(Offset-Pt_size,EA2),
+    !resolved_jump(_,EA2),
     !block_in_between_fde(EA2),
-	after_function_end(EA2,_).
+    after_function_end(EA2,_).
 
 function_entry(EA2):-
-	plt_data_reference(Offset),
+    plt_data_reference(Offset),
     arch.pointer_size(Pt_size),
-	code_pointer_in_data(Offset+Pt_size,EA2),
-	!resolved_jump(_,EA2),
-	after_function_end(EA2,_),
+    code_pointer_in_data(Offset+Pt_size,EA2),
+    !resolved_jump(_,EA2),
+    after_function_end(EA2,_),
     !block_in_between_fde(EA2),
-	!labeled_data(Offset+Pt_size).
+    !labeled_data(Offset+Pt_size).
 
 function_entry(EA2):-
-	plt_data_reference(Offset),
+    plt_data_reference(Offset),
     arch.pointer_size(Pt_size),
-	!labeled_data(Offset),
-	code_pointer_in_data(Offset-Pt_size,EA2),
-	!resolved_jump(_,EA2),
+    !labeled_data(Offset),
+    code_pointer_in_data(Offset-Pt_size,EA2),
+    !resolved_jump(_,EA2),
     !block_in_between_fde(EA2),
-	after_function_end(EA2,_).
+    after_function_end(EA2,_).
 
 
 ////////////////
 //propagation: jumped from another function (there is a function boundary in between)
 function_entry2(EA):-
-	refined_block(EA),
+    refined_block(EA),
     !block_in_between_fde(EA),
-	after_function_end(EA,_),
-	direct_jump(Src,EA),
-	unconditional_jump(Src),
-	code(Src),
-	function_entry(Middle),
-	(
-	Src>=Middle,Middle>EA
-	;
-	Src<Middle,Middle<=EA
-	).
+    after_function_end(EA,_),
+    direct_jump(Src,EA),
+    unconditional_jump(Src),
+    code(Src),
+    function_entry(Middle),
+    (
+        Src >= Middle, Middle > EA
+        ;
+        Src < Middle, Middle <= EA
+    ).
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -204,59 +204,59 @@ function_entry2(EA):-
 .output in_function
 
 function_entry2(EA):-
-	function_entry(EA).
-	
+    function_entry(EA).
+
 function_entry2(EA):-
-	in_function(Block,Function),
-	Function<=Block,
-	complete_cfg(Function),
-	code_in_refined_block(End,Block),
-	after_function_end(EA,End),
-	
-	refined_block(EA),
+    in_function(Block,Function),
+    Function <= Block,
+    complete_cfg(Function),
+    code_in_refined_block(End,Block),
+    after_function_end(EA,End),
+
+    refined_block(EA),
     !block_in_between_fde(EA),
     !arch.is_nop(EA),
-	!resolved_jump(_,EA),
-	//cannot be reached from before
-	//!intra_reachable(Function,EA),
-	EA<= min Y:reaches_segment(Y,EA),	
-	//with this we want to avoid dead code missed by the compiler
+    !resolved_jump(_,EA),
+    //cannot be reached from before
+    //!intra_reachable(Function,EA),
+    EA <= min Y:reaches_segment(Y,EA),
+    //with this we want to avoid dead code missed by the compiler
     instruction_get_operation(End,Operation),
-	(
-    arch.call_operation(Operation),
-	!intra_edge_dir(EA,_,"back"),
-	!goes_back(EA,_,"cjump"),
-	!unconditional_jump(EA)
-	;
-    !arch.call_operation(Operation)
-	).
+    (
+        arch.call_operation(Operation),
+        !intra_edge_dir(EA,_,"back"),
+        !goes_back(EA,_,"cjump"),
+        !unconditional_jump(EA)
+    ;
+        !arch.call_operation(Operation)
+    ).
 
 
 in_function(Block,Function):-
-	function_entry2(Function),
-	intra_reachable(Function,Block).
+    function_entry2(Function),
+    intra_reachable(Function,Block).
 
 //we repeat the propagation in the data sections
 
 function_entry2(EA2):-
-	function_entry2(EA),
+    function_entry2(EA),
     arch.pointer_size(Pt_size),
-	code_pointer_in_data(Offset,EA),
-	code_pointer_in_data(Offset+Pt_size,EA2),
-	!resolved_jump(_,EA2),
-	after_function_end(EA2,_),
+    code_pointer_in_data(Offset,EA),
+    code_pointer_in_data(Offset+Pt_size,EA2),
+    !resolved_jump(_,EA2),
+    after_function_end(EA2,_),
     !block_in_between_fde(EA2),
-	!labeled_data(Offset+Pt_size).
+    !labeled_data(Offset+Pt_size).
 
 function_entry2(EA2):-
-	function_entry2(EA),
+    function_entry2(EA),
     arch.pointer_size(Pt_size),
-	code_pointer_in_data(Offset,EA),
-	!labeled_data(Offset),
-	code_pointer_in_data(Offset-Pt_size,EA2),
-	!resolved_jump(_,EA2),
+    code_pointer_in_data(Offset,EA),
+    !labeled_data(Offset),
+    code_pointer_in_data(Offset-Pt_size,EA2),
+    !resolved_jump(_,EA2),
     !block_in_between_fde(EA2),
-	after_function_end(EA2,_).
+    after_function_end(EA2,_).
 
 //////////////////////////////////////////////////////////////////////////////
 // auxiliary predicates
@@ -264,13 +264,13 @@ function_entry2(EA2):-
 
 function_table(Label):-
     arch.pointer_size(Pt_size),
-	data_access_pattern(Label,Pt_size,Mult,Origin),
+    data_access_pattern(Label,Pt_size,Mult,Origin),
     instruction_get_operation(Origin,Operation),
-	(
+    (
         arch.call_operation(Operation)
-	;
-		Mult>Pt_size,
-		!unconditional_jump(Origin)
+    ;
+        Mult > Pt_size,
+        !unconditional_jump(Origin)
     ),
     preferred_data_access(Offset,Label),
     symbolic_data(Offset,Pt_size,EA),
@@ -290,43 +290,43 @@ function_pointer_section(".got.plt").
 .decl typical_function_starter(EA:address)
 
 // typical_function_starter(EA):-
-// 	instruction(EA,_,_,"PUSH",_,_,_,_).
+//  instruction(EA,_,_,"PUSH",_,_,_,_).
 
 typical_function_starter(EA):-
-	instruction(EA,_,_,"SUB",Op1,Op2,_,_),
-	op_immediate(Op1,_),
-	op_regdirect(Op2,"RSP").
-	
+    instruction(EA,_,_,"SUB",Op1,Op2,_,_),
+    op_immediate(Op1,_),
+    op_regdirect(Op2,"RSP").
+
 typical_function_starter(EA):-
-	instruction(EA,_,_,"PUSH",Op1,_,_,_),
- 	op_regdirect(Op1,"RBP").
-	
+    instruction(EA,_,_,"PUSH",Op1,_,_,_),
+    op_regdirect(Op1,"RBP").
+
 //////////////////////////////////////////////////////////////////////////////
 // functions can start after a block that does not fallthrough
 
 .decl after_function_end(EA:address,End:address)
 
 after_function_end(Next,End):-
-	code(End),
-	function_end(End),
-	next(End,Next).
+    code(End),
+    function_end(End),
+    next(End,Next).
 
 
 after_function_end(Next,End):-
-	after_function_end(EA,End),
+    after_function_end(EA,End),
     arch.is_nop(EA),
-	next(EA,Next).
+    next(EA,Next).
 
 .decl function_end(EA:address)
 
 function_end(EA):-
-	return(EA).
+    return(EA).
 
 function_end(EA):-
-	unconditional_jump(EA).
-	
-function_end(EA):-
-	halt(EA).	
+    unconditional_jump(EA).
 
 function_end(EA):-
-	no_return_call(EA).
+    halt(EA).
+
+function_end(EA):-
+    no_return_call(EA).

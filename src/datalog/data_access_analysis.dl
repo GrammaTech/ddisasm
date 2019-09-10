@@ -50,43 +50,43 @@ instruction_memory_access_size(EA,Index,SizeAccess):-
     instruction_get_operation(EA,Operation),
     (
         arch.operation_size_exception(EA,Index,SizeAccess)
-     ;
+        ;
         !arch.operation_size_exception(EA,Index,_),
         op_indirect(Op,_,_,_,_,_,Size),
-        SizeAccess=Size/8
+        SizeAccess = Size/8
     ).
 
 //there is a data access at EA in the operand Op_index
 .decl data_access(EA:address,Op_index:operand_index,Reg1:register,Reg2:register,Reg3:register,Mult:number,Offset:number,Size:number)
 
 data_access(EA,Op_index,Reg1,Reg2,Reg3,Mult,Offset,Size):-
-	code(EA),
-	instruction_get_op(EA,Op_index,Op),
-	op_indirect(Op,Reg1,Reg2,Reg3,Mult,Offset,_),
+    code(EA),
+    instruction_get_op(EA,Op_index,Op),
+    op_indirect(Op,Reg1,Reg2,Reg3,Mult,Offset,_),
     instruction_memory_access_size(EA,Op_index,Size).
 
 // the register Reg has the given value at instruction EA and operand Op_index
 .decl value_reg_at_operand(EA:address,Op_index:operand_index,Reg:register,EA_from:address,Mult:number,Offset:number,Type:symbol)
 
 value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,Offset_final,Type):-
-	data_access(EA,Op_index,_,Reg2,Reg3,_,_,Size),
-	(Reg=Ref2; Reg= Reg3),
-	Reg!="NONE",
-	def_used(EA_def,Reg,EA,Op_index),
-	best_value_reg(EA_def,Reg,EA_from,Mult,Offset,Type),
-	(
-	Type!="incomplete",
-	Offset_final=Offset
-	;
-	Type="incomplete",
-	Offset_final=max(0,Offset)
-	).
+    data_access(EA,Op_index,_,Reg2,Reg3,_,_,Size),
+    (Reg = Ref2; Reg = Reg3),
+    Reg!="NONE",
+    def_used(EA_def,Reg,EA,Op_index),
+    best_value_reg(EA_def,Reg,EA_from,Mult,Offset,Type),
+    (
+        Type!="incomplete",
+        Offset_final=Offset
+        ;
+        Type="incomplete",
+        Offset_final=max(0,Offset)
+    ).
 
 // NONE registers have 0 value
 value_reg_at_operand(EA,Op_index,Reg,0,0,0,"complete"):-
-	data_access(EA,Op_index,_,Reg2,Reg3,Mult,Offset,Size),
-	(Reg=Ref2; Reg= Reg3),
-	Reg="NONE".
+    data_access(EA,Op_index,_,Reg2,Reg3,Mult,Offset,Size),
+    (Reg = Ref2; Reg = Reg3),
+    Reg="NONE".
 
 .decl data_access_pattern(Address:address,Size:number,Multiplier:number,FromWhere:address)
 .output data_access_pattern
@@ -101,70 +101,70 @@ value_reg_at_operand(EA,Op_index,Reg,0,0,0,"complete"):-
     
 //single access
 data_access_pattern_candidate(Address,Size,0,EA):-
-	data_access(EA,_,"NONE","NONE","NONE",_,Address,Size),
-	data_section(Section),
-	section(Section,SizeSect,Base),
-	Address>=Base,
-	Address<=Base+SizeSect.
+    data_access(EA,_,"NONE","NONE","NONE",_,Address,Size),
+    data_section(Section),
+    section(Section,SizeSect,Base),
+    Address >= Base,
+    Address <= Base+SizeSect.
 
 // pc relative
 data_access_pattern_candidate(Address,Size,0,EA):-
-	code(EA),
-	pc_relative_operand(EA,Op_index,Address),
+    code(EA),
+    pc_relative_operand(EA,Op_index,Address),
     instruction_memory_access_size(EA,Op_index,Size),
-	data_section(Section),
-	section(Section,SizeSect,Base),
-	Address>=Base,
-	Address<=Base+SizeSect.
+    data_section(Section),
+    section(Section,SizeSect,Base),
+    Address >= Base,
+    Address <= Base+SizeSect.
 
 // directly computed
 data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
-	data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult,Offset1,Size),
-	RegMult!="NONE",
-	RegMult!=RegBase,
-	value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,Offset2,_),
-	value_reg_at_operand(EA,Op_index,RegBase,_,0,Offset3,"complete"),
-	
-	(Size<=Mult*Mult2; Mult*Mult2=0),
-	Address=Offset1+(Offset2*Mult)+Offset3,
-	data_section(Section),
-	section(Section,SizeSect,Base),
-	Address>=Base,
-	Address<=Base+SizeSect.
+    data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult,Offset1,Size),
+    RegMult != "NONE",
+    RegMult != RegBase,
+    value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,Offset2,_),
+    value_reg_at_operand(EA,Op_index,RegBase,_,0,Offset3,"complete"),
+
+    (Size <= Mult*Mult2; Mult*Mult2 = 0),
+    Address = Offset1+(Offset2*Mult)+Offset3,
+    data_section(Section),
+    section(Section,SizeSect,Base),
+    Address >= Base,
+    Address <= Base+SizeSect.
 
 // indirectly computed
 data_access_pattern_candidate(Address,Size,Mult,EA):-
-	data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult2,Offset1,Size),
-	RegMult!=RegBase,
-	value_reg_at_operand(EA,Op_index,RegMult,_,0,Offset2,"complete"),
-	value_reg_at_operand(EA,Op_index,RegBase,_,Mult,Offset3,_),
+    data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult2,Offset1,Size),
+    RegMult != RegBase,
+    value_reg_at_operand(EA,Op_index,RegMult,_,0,Offset2,"complete"),
+    value_reg_at_operand(EA,Op_index,RegBase,_,Mult,Offset3,_),
 
-	(Size<=Mult; Mult=0),
-	Address=Offset1+Offset2*Mult2+Offset3,
-	data_section(Section),
-	section(Section,SizeSect,Base),
-	Address>=Base,
-	Address<=Base+SizeSect.
-	
+    (Size <= Mult; Mult = 0),
+    Address = Offset1+Offset2*Mult2+Offset3,
+    data_section(Section),
+    section(Section,SizeSect,Base),
+    Address >= Base,
+    Address <= Base+SizeSect.
+
 //repeated register
 data_access_pattern_candidate(Address,Size,FinalMult,EA):-
-	data_access(EA,Op_index,"NONE",Reg,Reg,Mult,Offset1,Size),
-	Reg!="NONE",
-	value_reg_at_operand(EA,Op_index,Reg,_,Mult2,Offset2,_),
-	FinalMult=Mult*Mult2+Mult2,
-	(Size<=FinalMult; FinalMult=0),
-	Address=Offset1+(Offset2*Mult)+Offset2,
-	data_section(Section),
-	section(Section,SizeSect,Base),
-	Address>=Base,
-	Address<=Base+SizeSect.
+    data_access(EA,Op_index,"NONE",Reg,Reg,Mult,Offset1,Size),
+    Reg != "NONE",
+    value_reg_at_operand(EA,Op_index,Reg,_,Mult2,Offset2,_),
+    FinalMult = Mult*Mult2+Mult2,
+    (Size <= FinalMult; FinalMult = 0),
+    Address = Offset1+(Offset2*Mult)+Offset2,
+    data_section(Section),
+    section(Section,SizeSect,Base),
+    Address >= Base,
+    Address <= Base+SizeSect.
 
 // select the access pattern with highest multiplier
 data_access_pattern(Address,Size,Multiplier,From):-
-	data_access_pattern_candidate(Address,Size,Multiplier,From),
-	data_byte(Address,_),
-	MaxMult =max MaxMult : data_access_pattern_candidate(Address,Size,MaxMult,_),
-	Multiplier>=MaxMult.
+    data_access_pattern_candidate(Address,Size,Multiplier,From),
+    data_byte(Address,_),
+    MaxMult = max MaxMult : data_access_pattern_candidate(Address,Size,MaxMult,_),
+    Multiplier >= MaxMult.
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -173,19 +173,19 @@ data_access_pattern(Address,Size,Multiplier,From):-
 .decl possible_data_limit(EA:address)
 
 possible_data_limit(EA):-
-	labeled_data_candidate(EA);
-	data_access_pattern(EA,_,_,_).
+    labeled_data_candidate(EA);
+    data_access_pattern(EA,_,_,_).
 
 .decl last_data_access(EA:address,Where:address)
 
 last_data_access(EA+1,EA):-
-	possible_data_limit(EA),
-	data_byte(EA+1,_).
+    possible_data_limit(EA),
+    data_byte(EA+1,_).
 
 last_data_access(EA+1,Where):-
-	last_data_access(EA,Where),
-	data_byte(EA+1,_),
-	!possible_data_limit(EA).
+    last_data_access(EA,Where),
+    data_byte(EA+1,_),
+    !possible_data_limit(EA).
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -195,21 +195,22 @@ last_data_access(EA+1,Where):-
 .decl propagated_data_access(EA:address,Mult:number,EA_ref:address)
 
 propagated_data_access(EA,Mult,EA):-
-	data_access_pattern(EA,_,Mult,_).
+    data_access_pattern(EA,_,Mult,_).
 
 propagated_data_access(EA+Mult,Mult,EA_ref):-
-	propagated_data_access(EA,Mult,EA_ref),
-	data_byte(EA+Mult,_),
-	// no collision with next data access pattern
-	!possible_data_limit(EA+Mult),
-	//no collision with other data access pattern in between
-	last_data_access(EA+Mult,Last),
-	(Last<=EA
-	;
-	Last>EA,
-	data_access_pattern(Last,Size,Mult,_),
-	Last+Size<= EA+Mult
-	).
+    propagated_data_access(EA,Mult,EA_ref),
+    data_byte(EA+Mult,_),
+    // no collision with next data access pattern
+    !possible_data_limit(EA+Mult),
+    //no collision with other data access pattern in between
+    last_data_access(EA+Mult,Last),
+    (
+        Last <= EA
+        ;
+        Last > EA,
+        data_access_pattern(Last,Size,Mult,_),
+        Last+Size <= EA+Mult
+    ).
 
 preferred_data_access(EA,EA_label):-
-	propagated_data_access(EA,_,EA_label).
+    propagated_data_access(EA,_,EA_label).

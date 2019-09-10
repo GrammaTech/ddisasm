@@ -9,13 +9,13 @@ relocation_in_operand(EA,Index,Location):-
     code(EA),
     instruction_immediate_offset(EA,Index,Offset),
     relocation(Location,_,_,_),
-    Location=EA+Offset.
+    Location = EA+Offset.
 
 relocation_in_operand(EA,Index,Location):-
     code(EA),
     instruction_displacement_offset(EA,Index,Offset),
     relocation(Location,_,_,_),
-    Location=EA+Offset.
+    Location = EA+Offset.
 
 
 .decl trivial_relocation(EA:address)
@@ -23,7 +23,7 @@ relocation_in_operand(EA,Index,Location):-
 trivial_relocation(EA):-
     relocation(EA,_,Symbol,0),
     symbol(0,_,_,_,0,Symbol),
-    Symbol!="".
+    Symbol != "".
 
 trivial_relocation(EA):-
     relocation(EA,_,"__TMC_END__",7).
@@ -38,13 +38,13 @@ bad_symbol_constant(EA,Cnt):-
     symbolic_operand(EA,Index,Dest,_),
     !moved_label(EA,Index,_,_),
     section(Name,SectSize,Base),
-	Dest>=Base,
-	Dest<SectSize+Base,
+    Dest >= Base,
+    Dest < SectSize+Base,
 
     section(Name2,SectSize2,Base2),
-    Name2!=Name,
-	Dest-Cnt>=Base2,
-    Dest-Cnt<SectSize2+Base2,
+    Name2 != Name,
+    Dest-Cnt >= Base2,
+    Dest-Cnt < SectSize2+Base2,
     //not pointing to the section boundary
     Dest-Cnt != SectSize+Base.
 
@@ -53,13 +53,13 @@ bad_symbol_constant(EA,Cnt):-
     relocation(Rel,_,_,Cnt),
     moved_label(EA,Index,Orig,Dest),
     section(Name,SectSize,Base),
-	Dest>=Base,
-	Dest<SectSize+Base,
+    Dest >= Base,
+    Dest < SectSize+Base,
 
     section(Name2,SectSize2,Base2),
-    Name2!=Name,
-	Orig-Cnt>=Base2,
-    Orig-Cnt<SectSize2+Base2,
+    Name2 != Name,
+    Orig-Cnt >= Base2,
+    Orig-Cnt < SectSize2+Base2,
     //not pointing to the section boundary
     Orig-Cnt != SectSize+Base.
 
@@ -104,17 +104,17 @@ false_negative(EA):-
 
     regular_data_section(Sect),
     section(Sect,SizeSect,BegSect),
-    EA>=BegSect,
-    EA<SizeSect+BegSect.
+    EA >= BegSect,
+    EA < SizeSect+BegSect.
 
 false_positive(EA):-
     (
-    symbolic_data(EA,_,_);
-    symbol_minus_symbol(EA,_,_,_)
+        symbolic_data(EA,_,_);
+        symbol_minus_symbol(EA,_,_,_)
     ),
     !relocation(EA,_,_,_),
 
     regular_data_section(Sect),
     section(Sect,SizeSect,BegSect),
-    EA>=BegSect,
-    EA<SizeSect+BegSect.
+    EA >= BegSect,
+    EA < SizeSect+BegSect.

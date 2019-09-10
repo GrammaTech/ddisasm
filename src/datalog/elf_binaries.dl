@@ -61,12 +61,12 @@ data_section(Name):-
     section_complete(Name,_,_,Type,Flags),
     elf_section_flag("SHF_EXECINSTR",Pos_Exec), Flags band (2^Pos_Exec)  = 0,
     elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc)  > 0,
-    (elf_section_type("PROGBITS",Type);
-     elf_section_type("NOBITS",Type);
-     elf_section_type("INIT_ARRAY",Type);
-     elf_section_type("FINI_ARRAY",Type);
-     elf_section_type("PREINIT_ARRAY",Type);
-     elf_section_type("DYNAMIC",Type)
+    (   elf_section_type("PROGBITS",Type);
+        elf_section_type("NOBITS",Type);
+        elf_section_type("INIT_ARRAY",Type);
+        elf_section_type("FINI_ARRAY",Type);
+        elf_section_type("PREINIT_ARRAY",Type);
+        elf_section_type("DYNAMIC",Type)
     ).
 
 exception_section(".eh_frame").
@@ -100,7 +100,7 @@ plt_section(".plt.sec").
 bss_section(Name):-
     binary_format("ELF"),
     section_complete(Name,_,_,Type,Flags),
-    elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc)  > 0,
+    elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc) > 0,
     SHT_NOBITS = 8,
     Type = SHT_NOBITS.
 
@@ -112,8 +112,8 @@ bss_section(Name):-
 plt_entry(EA,Function):-
     plt_section(SecName),
     section(SecName,Size,Beg),
-    EA<Beg+Size,
-    EA>=Beg,
+    EA < Beg+Size,
+    EA >= Beg,
     pc_relative_jump(EA,Got_entry),
     relocation(Got_entry,_,Function,_).
 
@@ -132,10 +132,10 @@ plt_data_reference(EA):-
 got_reference(Got_entry,Symbol):-
     pc_relative_operand(_,_,Got_entry),
     section(".got",Size,Beg),
-    Got_entry>=Beg,
-    Got_entry<Beg+Size,
+    Got_entry >= Beg,
+    Got_entry < Beg+Size,
     relocation(Got_entry,_,Symbol,_),
-    symbol(_,_,_,Scope,_,Symbol),Scope!="WEAK".
+    symbol(_,_,_,Scope,_,Symbol), Scope != "WEAK".
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -159,11 +159,12 @@ main_function(EA):-
 main_function(Main_location):-
     binary_format("ELF"),
     !function_symbol(Main_location,"main"),
-    First_call= min EA:{
-            start_function(Entry),
-            instruction_get_operation(EA,"CALL"),
-            code(EA),
-            EA>=Entry},
+    First_call = min EA:{
+        start_function(Entry),
+        instruction_get_operation(EA,"CALL"),
+        code(EA),
+        EA>=Entry
+    },
     next(Prev,First_call),
     code(Prev),
     symbolic_operand(Prev,1,Main_location,"code").
@@ -183,8 +184,8 @@ inferred_symbol_name(EA,"__do_global_dtors_aux"):-
     // referenced from .fini_array
     address_in_data(FiniArray,EA),
     section(".fini_array",Size,Beg),
-    FiniArray>=Beg,
-    FiniArray<Beg+Size,
+    FiniArray >= Beg,
+    FiniArray < Beg+Size,
     // compare a value in bss with 0 in the first block
     code_in_refined_block(EA_cmp,EA),
     instruction(EA_cmp,_,_,"CMP",Op1,_,0,0),
@@ -192,8 +193,8 @@ inferred_symbol_name(EA,"__do_global_dtors_aux"):-
     pc_relative_operand(EA_cmp,2,DataRef),
     bss_section(SectionName),
     section(SectionName,SizeBss,BegData),
-    DataRef>=BegData,
-    DataRef<=BegData+SizeBss.
+    DataRef >= BegData,
+    DataRef <= BegData+SizeBss.
 
 inferred_symbol_name(EA,"_DYNAMIC"):-
     binary_format("ELF"),

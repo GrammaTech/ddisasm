@@ -36,30 +36,30 @@ This module generates the control flow graph of the disassembled code
 
 cfg_edge(Src,Dest,Conditional,Indirect,"branch"):-
     block_last_instruction(Src,EA),
-	(
-     direct_jump(EA,Dest), Indirect="false";
-     pc_relative_jump(EA,Dest), Indirect="false";
-     resolved_jump(EA,Dest), Indirect="true"
+    (
+        direct_jump(EA,Dest), Indirect = "false";
+        pc_relative_jump(EA,Dest), Indirect = "false";
+        resolved_jump(EA,Dest), Indirect = "true"
     ),
     refined_block(Dest),
     (
-     unconditional_jump(EA),Conditional="false" ;
-     !unconditional_jump(EA),Conditional="true"
+        unconditional_jump(EA), Conditional = "false";
+        !unconditional_jump(EA),Conditional = "true"
     ).
 
 cfg_edge(Src,Dest,"false","false","call"):-
     block_last_instruction(Src,EA),
     (
-	direct_call(EA,Dest);
-    pc_relative_call(EA,Dest)
+        direct_call(EA,Dest);
+        pc_relative_call(EA,Dest)
     ),
     refined_block(Dest).
 
 cfg_edge(Src,Dest,"false","false","fallthrough"):-
-	block_last_instruction(Src,EA),
-	may_fallthrough(EA,Dest),
+    block_last_instruction(Src,EA),
+    may_fallthrough(EA,Dest),
     !no_return_call(EA),
-	code_in_refined_block(Dest,Dest).
+    code_in_refined_block(Dest,Dest).
 
 cfg_edge(ReturnBlock,NextBlock,"false","false","return"):-
     cfg_edge(Caller,Block,_,_,"call"),
@@ -72,19 +72,19 @@ cfg_edge(ReturnBlock,NextBlock,"false","false","return"):-
 cfg_edge_to_top(Src,Conditional,"branch"):-
     block_last_instruction(Src,EA),
     (
-    reg_jump(EA);
-    indirect_jump(EA)
+        reg_jump(EA);
+        indirect_jump(EA)
     ),
     (
-     unconditional_jump(EA),Conditional="false" ;
-     !unconditional_jump(EA),Conditional="true"
+        unconditional_jump(EA), Conditional = "false";
+        !unconditional_jump(EA), Conditional = "true"
     ).
 
 cfg_edge_to_top(Src,"false","call"):-
-	block_last_instruction(Src,EA),
+    block_last_instruction(Src,EA),
     (
-    reg_call(EA);
-    indirect_call(EA)
+        reg_call(EA);
+        indirect_call(EA)
     ).
 
 cfg_edge_to_symbol(Src,Symbol):-
