@@ -66,7 +66,9 @@ add_library(disasm_main STATIC
   Dl_instruction.cpp
   Dl_operator_table.cpp
   Elf_reader.cpp
-  ExceptionDecoder.cpp)
+  ExceptionDecoder.cpp
+  GtirbModuleDisassembler.cpp
+  GtirbZeroBuilder.cpp)
 
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
