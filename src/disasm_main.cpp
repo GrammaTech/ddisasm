@@ -255,6 +255,9 @@ int main(int argc, char **argv)
         std::cerr << "There was a problem loading the binary file " << filename << "\n";
         return 1;
     }
+    std::cout << "Building the initial gtirb representation" << std::endl;
+    gtirb::Context context;
+    gtirb::IR *ir = buildZeroIR(filename, binary, context);
     Dl_decoder decoder;
     decode(decoder, binary);
     std::cout << "Decoding the binary" << std::endl;
@@ -265,63 +268,59 @@ int main(int argc, char **argv)
             loadInputs(prog, binary, decoder);
             std::cout << "Disassembling" << std::endl;
             prog->run();
-
-            std::cout << "Building the gtirb representation" << std::endl;
-            gtirb::Context context;
-            gtirb::IR *ir = buildZeroIR(filename, binary, context);
-            disassembleModule(context, *(ir->modules().begin()), binary, prog,
-                              vm.count("self-diagnose") != 0);
-
-            // Output GTIRB
-            if(vm.count("ir") != 0)
-            {
-                std::ofstream out(vm["ir"].as<std::string>());
-                ir->save(out);
-            }
-            // Output json GTIRB
-            if(vm.count("json") != 0)
-            {
-                std::ofstream out(vm["json"].as<std::string>());
-                ir->saveJSON(out);
-            }
-            // Pretty-print
-            gtirb_pprint::PrettyPrinter pprinter;
-            pprinter.setDebug(vm.count("debug"));
-            if(vm.count("keep-functions") != 0)
-            {
-                for(auto keep : vm["keep-functions"].as<std::vector<std::string>>())
-                {
-                    pprinter.keepFunction(keep);
-                }
-            }
-            if(vm.count("asm") != 0)
-            {
-                std::cout << "Printing assembler" << std::endl;
-                std::ofstream out(vm["asm"].as<std::string>());
-                pprinter.print(out, context, *ir);
-            }
-            else if(vm.count("ir") == 0)
-            {
-                std::cout << "Printing assembler" << std::endl;
-                pprinter.print(std::cout, context, *ir);
-            }
-
-            if(vm.count("debug-dir") != 0)
-            {
-                std::cout << "Writing facts to debug dir " << vm["debug-dir"].as<std::string>()
-                          << std::endl;
-                auto dir = vm["debug-dir"].as<std::string>() + "/";
-                writeFacts(prog, dir);
-                prog->printAll(dir);
-            }
-            performSanityChecks(prog, vm.count("self-diagnose") != 0);
-            delete prog;
-            return 0;
         }
         catch(std::exception &e)
         {
             souffle::SignalHandler::instance()->error(e.what());
         }
+        std::cout << "Populating gtirb representation" << std::endl;
+        disassembleModule(context, *(ir->modules().begin()), prog, vm.count("self-diagnose") != 0);
+
+        // Output GTIRB
+        if(vm.count("ir") != 0)
+        {
+            std::ofstream out(vm["ir"].as<std::string>());
+            ir->save(out);
+        }
+        // Output json GTIRB
+        if(vm.count("json") != 0)
+        {
+            std::ofstream out(vm["json"].as<std::string>());
+            ir->saveJSON(out);
+        }
+        // Pretty-print
+        gtirb_pprint::PrettyPrinter pprinter;
+        pprinter.setDebug(vm.count("debug"));
+        if(vm.count("keep-functions") != 0)
+        {
+            for(auto keep : vm["keep-functions"].as<std::vector<std::string>>())
+            {
+                pprinter.keepFunction(keep);
+            }
+        }
+        if(vm.count("asm") != 0)
+        {
+            std::cout << "Printing assembler" << std::endl;
+            std::ofstream out(vm["asm"].as<std::string>());
+            pprinter.print(out, context, *ir);
+        }
+        else if(vm.count("ir") == 0)
+        {
+            std::cout << "Printing assembler" << std::endl;
+            pprinter.print(std::cout, context, *ir);
+        }
+
+        if(vm.count("debug-dir") != 0)
+        {
+            std::cout << "Writing facts to debug dir " << vm["debug-dir"].as<std::string>()
+                      << std::endl;
+            auto dir = vm["debug-dir"].as<std::string>() + "/";
+            writeFacts(prog, dir);
+            prog->printAll(dir);
+        }
+        performSanityChecks(prog, vm.count("self-diagnose") != 0);
+        delete prog;
+        return 0;
     }
     else
     {

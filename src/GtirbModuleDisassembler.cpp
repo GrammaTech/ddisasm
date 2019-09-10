@@ -742,8 +742,7 @@ void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
     }
 }
 
-void buildDataGroups(gtirb::Context &context, gtirb::Module &module,
-                     std::shared_ptr<BinaryReader> binary, souffle::SouffleProgram *prog)
+void buildDataGroups(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     auto symbolicData = convertSortedRelation<VectorByEA<SymbolicData>>("symbolic_data", prog);
     auto movedDataLabels =
@@ -758,9 +757,11 @@ void buildDataGroups(gtirb::Context &context, gtirb::Module &module,
         convertSortedRelation<VectorByEA<SymbolSpecialType>>("symbol_special_encoding", prog);
     std::map<gtirb::UUID, std::string> typesTable;
 
-    for(auto &section : binary->get_non_zero_data_sections())
+    for(auto &output : *prog->getRelation("non_zero_data_section"))
     {
-        auto foundSection = module.findSection(section.name);
+        std::string sectionName;
+        output >> sectionName;
+        auto foundSection = module.findSection(sectionName);
         if(foundSection != module.section_by_name_end())
         {
             gtirb::Section &s = *foundSection;
@@ -1158,12 +1159,11 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
 }
 
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
-                       std::shared_ptr<BinaryReader> binary, souffle::SouffleProgram *prog,
-                       bool selfDiagnose)
+                       souffle::SouffleProgram *prog, bool selfDiagnose)
 {
     buildSymbols(context, module, prog);
     buildSymbolForwarding(context, module, prog);
-    buildDataGroups(context, module, binary, prog);
+    buildDataGroups(context, module, prog);
     buildCodeBlocks(context, module, prog);
     buildCodeSymbolicInformation(context, module, prog);
     connectSymbolsToDataGroups(module);

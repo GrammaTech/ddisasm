@@ -456,6 +456,9 @@ regular_data_section(Name):-
     data_section(Name),
     !special_data_section(Name).
 
+.decl non_zero_data_section(name:symbol)
+.output non_zero_data_section
+
 .decl bss_section_limits(Begin:address,End:address)
 .output bss_section_limits
 

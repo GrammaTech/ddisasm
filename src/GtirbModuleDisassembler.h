@@ -29,8 +29,7 @@
 #define GTIRB_MODULE_DISASSEMBLER_H_
 
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
-                       std::shared_ptr<BinaryReader> binary, souffle::SouffleProgram *prog,
-                       bool selfDiagnose);
+                       souffle::SouffleProgram *prog, bool selfDiagnose);
 void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose);
 
 #endif // GTIRB_MODULE_DISASSEMBLER_H_
