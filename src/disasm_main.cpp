@@ -131,20 +131,20 @@ souffle::tuple &operator<<(souffle::tuple &t, const std::pair<Dl_operator, int64
     return t;
 }
 
-souffle::tuple &operator<<(souffle::tuple &t, const Section &section)
+souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Section &section)
 {
     t << section.name << section.size << section.address << section.type << section.flags;
     return t;
 }
 
-souffle::tuple &operator<<(souffle::tuple &t, const Symbol &symbol)
+souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Symbol &symbol)
 {
     t << symbol.address << symbol.size << symbol.type << symbol.scope << symbol.sectionIndex
       << symbol.name;
     return t;
 }
 
-souffle::tuple &operator<<(souffle::tuple &t, const Relocation &relocation)
+souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Relocation &relocation)
 {
     t << relocation.address << relocation.type << relocation.name << relocation.addend;
     return t;
@@ -162,15 +162,47 @@ void addRelation(souffle::SouffleProgram *prog, const std::string &name, const s
     }
 }
 
-static void loadInputs(souffle::SouffleProgram *prog, std::shared_ptr<BinaryReader> binary,
+std::string getFileFormatString(gtirb::FileFormat format)
+{
+    switch(format)
+    {
+        case gtirb::FileFormat::COFF:
+            return "COFF";
+        case gtirb::FileFormat::ELF:
+            return "ELF";
+        case gtirb::FileFormat::PE:
+            return "PE";
+        case gtirb::FileFormat::IdaProDb32:
+            return "IdaProDb32";
+        case gtirb::FileFormat::IdaProDb64:
+            return "IdaProDb64";
+        case gtirb::FileFormat::XCOFF:
+            return "XCOFF";
+        case gtirb::FileFormat::MACHO:
+            return "MACHO";
+        case gtirb::FileFormat::RAW:
+            return "RAW";
+        case gtirb::FileFormat::Undefined:
+        default:
+            return "Undefined";
+    }
+}
+
+static void loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module,
                        const Dl_decoder &decoder)
 {
-    addRelation<std::string>(prog, "binary_type", {binary->get_binary_type()});
-    addRelation<std::string>(prog, "binary_format", {binary->get_binary_format()});
-    addRelation<uint64_t>(prog, "entry_point", {binary->get_entry_point()});
-    addRelation(prog, "section_complete", binary->get_sections());
-    addRelation(prog, "symbol", binary->get_symbols());
-    addRelation(prog, "relocation", binary->get_relocations());
+    std::cout << "adding 1" << std::endl;
+    addRelation<std::string>(prog, "binary_type",
+                             *module.getAuxData<std::vector<std::string>>("binary_type"));
+    addRelation<std::string>(prog, "binary_format", {getFileFormatString(module.getFileFormat())});
+    std::cout << "adding 1" << std::endl;
+    addRelation<uint64_t>(prog, "entry_point",
+                          *module.getAuxData<std::vector<uint64_t>>("entry_point"));
+    addRelation(prog, "section_complete",
+                *module.getAuxData<std::vector<InitialAuxData::Section>>("section_complete"));
+    addRelation(prog, "symbol", *module.getAuxData<std::vector<InitialAuxData::Symbol>>("symbol"));
+    addRelation(prog, "relocation",
+                *module.getAuxData<std::vector<InitialAuxData::Relocation>>("relocation"));
     addRelation(prog, "instruction_complete", decoder.instructions);
     addRelation(prog, "address_in_data", decoder.data_addresses);
     addRelation(prog, "data_byte", decoder.data_bytes);
@@ -181,7 +213,7 @@ static void loadInputs(souffle::SouffleProgram *prog, std::shared_ptr<BinaryRead
     addRelation(prog, "op_indirect",
                 decoder.op_dict.get_operators_of_type(operator_type::INDIRECT));
 
-    ExceptionDecoder excDecoder(binary);
+    ExceptionDecoder excDecoder(module);
     excDecoder.addExceptionInformation(prog);
 }
 
@@ -258,6 +290,7 @@ int main(int argc, char **argv)
     std::cout << "Building the initial gtirb representation" << std::endl;
     gtirb::Context context;
     gtirb::IR *ir = buildZeroIR(filename, binary, context);
+    gtirb::Module &module = *(ir->modules().begin());
     Dl_decoder decoder;
     decode(decoder, binary);
     std::cout << "Decoding the binary" << std::endl;
@@ -265,7 +298,7 @@ int main(int argc, char **argv)
     {
         try
         {
-            loadInputs(prog, binary, decoder);
+            loadInputs(prog, module, decoder);
             std::cout << "Disassembling" << std::endl;
             prog->run();
         }
@@ -274,7 +307,7 @@ int main(int argc, char **argv)
             souffle::SignalHandler::instance()->error(e.what());
         }
         std::cout << "Populating gtirb representation" << std::endl;
-        disassembleModule(context, *(ir->modules().begin()), prog, vm.count("self-diagnose") != 0);
+        disassembleModule(context, module, prog, vm.count("self-diagnose") != 0);
 
         // Output GTIRB
         if(vm.count("ir") != 0)

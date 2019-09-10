@@ -54,17 +54,30 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
     module.addAuxData("elfSectionProperties", std::move(sectionProperties));
 }
 
+void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
+{
+    std::vector<std::string> binaryType = {binary->get_binary_type()};
+    module.addAuxData("binary_type", binaryType);
+    std::vector<uint64_t> entryPoint = {binary->get_entry_point()};
+    module.addAuxData("entry_point", entryPoint);
+    module.addAuxData("section_complete", binary->get_sections());
+    module.addAuxData("symbol", binary->get_symbols());
+    module.addAuxData("relocation", binary->get_relocations());
+    module.addAuxData("libraries", binary->get_libraries());
+    module.addAuxData("libraryPaths", binary->get_library_paths());
+}
+
 gtirb::IR *buildZeroIR(const std::string &filename, std::shared_ptr<BinaryReader> binary,
                        gtirb::Context &context)
 {
     auto ir = gtirb::IR::Create(context);
     gtirb::Module &module = *gtirb::Module::Create(context);
     module.setBinaryPath(filename);
-    module.setFileFormat(gtirb::FileFormat::ELF);
+    module.setFileFormat(binary->get_binary_format());
     module.setISAID(gtirb::ISAID::X64);
     ir->addModule(&module);
     buildSections(module, binary, context);
-    module.addAuxData("libraries", binary->get_libraries());
-    module.addAuxData("libraryPaths", binary->get_library_paths());
+    addAuxiliaryTables(module, binary);
+
     return ir;
 }

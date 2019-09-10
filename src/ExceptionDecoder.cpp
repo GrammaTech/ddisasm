@@ -23,29 +23,38 @@
 
 #include "ExceptionDecoder.h"
 
-ExceptionDecoder::ExceptionDecoder(std::shared_ptr<BinaryReader> binary)
+ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
 {
     uint8_t ptrsize(8);
     std::string ehFrame, ehFrameHeader, gccExcept;
     uint64_t addressEhFrame(0), addressEhFrameHeader(0), addressGccExcept(0);
 
-    if(auto ehFrameTuple = binary->get_section_content_and_address(".eh_frame"))
+    auto ehFrameSection = module.findSection(".eh_frame");
+    if(ehFrameSection != module.section_by_name_end())
     {
-        std::vector<uint8_t> ehFrameContent = std::get<0>(*ehFrameTuple);
-        addressEhFrame = std::get<1>(*ehFrameTuple);
-        ehFrame.assign(ehFrameContent.begin(), ehFrameContent.end());
+        gtirb::ImageByteMap::const_range bytes =
+            getBytes(module.getImageByteMap(), *ehFrameSection);
+        addressEhFrame = static_cast<uint64_t>(ehFrameSection->getAddress());
+        ehFrame.assign(reinterpret_cast<const uint8_t *>(&*bytes.begin()),
+                       reinterpret_cast<const uint8_t *>(&*bytes.end()));
     }
-    if(auto ehFrameHeaderTuple = binary->get_section_content_and_address(".eh_frame_hdr"))
+    auto ehFrameHeaderSection = module.findSection(".eh_frame_hdr");
+    if(ehFrameHeaderSection != module.section_by_name_end())
     {
-        std::vector<uint8_t> ehFrameHeaderContent = std::get<0>(*ehFrameHeaderTuple);
-        addressEhFrameHeader = std::get<1>(*ehFrameHeaderTuple);
-        ehFrameHeader.assign(ehFrameHeaderContent.begin(), ehFrameHeaderContent.end());
+        gtirb::ImageByteMap::const_range bytes =
+            getBytes(module.getImageByteMap(), *ehFrameHeaderSection);
+        addressEhFrameHeader = static_cast<uint64_t>(ehFrameHeaderSection->getAddress());
+        ehFrameHeader.assign(reinterpret_cast<const uint8_t *>(&*bytes.begin()),
+                             reinterpret_cast<const uint8_t *>(&*bytes.end()));
     }
-    if(auto gccExceptTuple = binary->get_section_content_and_address(".gcc_except_table"))
+    auto gccExceptSection = module.findSection(".gcc_except_table");
+    if(gccExceptSection != module.section_by_name_end())
     {
-        std::vector<uint8_t> gccExceptContent = std::get<0>(*gccExceptTuple);
-        addressGccExcept = std::get<1>(*gccExceptTuple);
-        gccExcept.assign(gccExceptContent.begin(), gccExceptContent.end());
+        gtirb::ImageByteMap::const_range bytes =
+            getBytes(module.getImageByteMap(), *gccExceptSection);
+        addressGccExcept = static_cast<uint64_t>(gccExceptSection->getAddress());
+        gccExcept.assign(reinterpret_cast<const uint8_t *>(&*bytes.begin()),
+                         reinterpret_cast<const uint8_t *>(&*bytes.end()));
     }
     ehParser = EHP::EHFrameParser_t::factory(ptrsize, ehFrame, addressEhFrame, ehFrameHeader,
                                              addressEhFrameHeader, gccExcept, addressGccExcept);

@@ -220,9 +220,9 @@ uint64_t Elf_reader::get_entry_point()
     return header.e_entry;
 }
 
-string Elf_reader::get_binary_format()
+gtirb::FileFormat Elf_reader::get_binary_format()
 {
-    return "ELF";
+    return gtirb::FileFormat::ELF;
 }
 
 string Elf_reader::get_binary_type()
@@ -240,11 +240,11 @@ string Elf_reader::get_binary_type()
     return "OTHER";
 }
 
-vector<Section> Elf_reader::get_sections()
+vector<InitialAuxData::Section> Elf_reader::get_sections()
 {
     auto sect_it = sections.begin();
     auto sect_names_it = section_names.begin();
-    vector<Section> result;
+    vector<InitialAuxData::Section> result;
     while(sect_it != sections.end())
     {
         if(*sect_names_it != "")
@@ -256,18 +256,18 @@ vector<Section> Elf_reader::get_sections()
     return result;
 }
 
-vector<Section> Elf_reader::get_code_sections()
+vector<InitialAuxData::Section> Elf_reader::get_code_sections()
 {
-    vector<Section> sections = get_sections();
-    auto isExeSection = [](Section& s) { return s.flags & SHF_EXECINSTR; };
+    vector<InitialAuxData::Section> sections = get_sections();
+    auto isExeSection = [](InitialAuxData::Section& s) { return s.flags & SHF_EXECINSTR; };
     sections.erase(remove_if(begin(sections), end(sections), not_fn(isExeSection)), end(sections));
     return sections;
 }
 
-vector<Section> Elf_reader::get_non_zero_data_sections()
+vector<InitialAuxData::Section> Elf_reader::get_non_zero_data_sections()
 {
-    vector<Section> sections = get_sections();
-    auto isNonZeroDataSection = [](Section& s) {
+    vector<InitialAuxData::Section> sections = get_sections();
+    auto isNonZeroDataSection = [](InitialAuxData::Section& s) {
         bool is_allocated = s.flags & SHF_ALLOC;
         bool is_not_executable = !(s.flags & SHF_EXECINSTR);
         // SHT_NOBITS is not considered here because it is for data sections but without initial
@@ -322,7 +322,8 @@ string get_symbol_type_str(unsigned char type)
     }
 }
 
-void Elf_reader::add_symbols_from_table(vector<Symbol>& out, const vector<Elf64_Sym>& symbol_table,
+void Elf_reader::add_symbols_from_table(vector<InitialAuxData::Symbol>& out,
+                                        const vector<Elf64_Sym>& symbol_table,
                                         const vector<string>& symbol_name_table)
 {
     auto symbol_it = symbol_table.begin();
@@ -339,9 +340,9 @@ void Elf_reader::add_symbols_from_table(vector<Symbol>& out, const vector<Elf64_
     }
 }
 
-vector<Symbol> Elf_reader::get_symbols()
+vector<InitialAuxData::Symbol> Elf_reader::get_symbols()
 {
-    vector<Symbol> result;
+    vector<InitialAuxData::Symbol> result;
     add_symbols_from_table(result, symbols, symbol_names);
     add_symbols_from_table(result, dyn_symbols, dyn_symbol_names);
 
@@ -404,9 +405,9 @@ descriptor.  */
     return type_names[type];
 }
 
-vector<Relocation> Elf_reader::get_relocations()
+vector<InitialAuxData::Relocation> Elf_reader::get_relocations()
 {
-    vector<Relocation> result;
+    vector<InitialAuxData::Relocation> result;
     // dynamic relocations refer to dynsym table
     for(auto relocation : dyn_relocations)
     {
