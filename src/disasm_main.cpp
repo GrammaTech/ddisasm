@@ -23,6 +23,7 @@
 #include <PrettyPrinter.h>
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
+#include <algorithm>
 #include <boost/program_options.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <cstddef>
@@ -42,29 +43,52 @@
 namespace po = boost::program_options;
 using namespace std::rel_ops;
 
-static void decode(Dl_decoder &decoder, std::shared_ptr<BinaryReader> binary)
+void decode(Dl_decoder &decoder, gtirb::Module &module)
 {
-    for(const auto &codeSection : binary->get_code_sections())
+    std::cout << "decode" << std::endl;
+    auto isNonZeroDataSection = [](const InitialAuxData::Section &s) {
+        bool is_allocated = s.flags & SHF_ALLOC;
+        bool is_not_executable = !(s.flags & SHF_EXECINSTR);
+        // SHT_NOBITS is not considered here because it is for data sections but without initial
+        // data (zero initialized)
+        bool is_non_zero_program_data = s.type == SHT_PROGBITS || s.type == SHT_INIT_ARRAY
+                                        || s.type == SHT_FINI_ARRAY || s.type == SHT_PREINIT_ARRAY;
+        return is_allocated && is_not_executable && is_non_zero_program_data;
+    };
+    auto isExeSection = [](const InitialAuxData::Section &s) { return s.flags & SHF_EXECINSTR; };
+
+    auto minMax = module.getImageByteMap().getAddrMinMax();
+    for(const auto &sectionInfo :
+        *module.getAuxData<std::vector<InitialAuxData::Section>>("section_complete"))
     {
-        if(auto section = binary->get_section_content_and_address(codeSection.name))
+        if(isExeSection(sectionInfo))
         {
-            decoder.decode_section(std::get<0>(*section).data(), std::get<0>(*section).size(),
-                                   std::get<1>(*section));
+            auto section = module.findSection(sectionInfo.name);
+            if(section != module.section_by_name_end())
+            {
+                gtirb::ImageByteMap::const_range bytes =
+                    gtirb::getBytes(module.getImageByteMap(), *section);
+                decoder.decode_section(reinterpret_cast<const uint8_t *>(&*bytes.begin()),
+                                       bytes.size(), static_cast<uint64_t>(section->getAddress()));
+            }
         }
-    }
-    uint64_t min_address = binary->get_min_address();
-    uint64_t max_address = binary->get_max_address();
-    for(const auto &dataSection : binary->get_non_zero_data_sections())
-    {
-        if(auto section = binary->get_section_content_and_address(dataSection.name))
+        if(isNonZeroDataSection(sectionInfo))
         {
-            decoder.store_data_section(std::get<0>(*section).data(), std::get<0>(*section).size(),
-                                       std::get<1>(*section), min_address, max_address);
+            auto section = module.findSection(sectionInfo.name);
+            if(section != module.section_by_name_end())
+            {
+                gtirb::ImageByteMap::const_range bytes =
+                    gtirb::getBytes(module.getImageByteMap(), *section);
+                decoder.store_data_section(
+                    reinterpret_cast<const uint8_t *>(&*bytes.begin()), bytes.size(),
+                    static_cast<uint64_t>(section->getAddress()),
+                    static_cast<uint64_t>(minMax.first), static_cast<uint64_t>(minMax.second));
+            }
         }
     }
 }
 
-static void writeFacts(souffle::SouffleProgram *prog, const std::string &directory)
+void writeFacts(souffle::SouffleProgram *prog, const std::string &directory)
 {
     std::ios_base::openmode filemask = std::ios::out;
     for(souffle::Relation *relation : prog->getInputRelations())
@@ -191,11 +215,9 @@ std::string getFileFormatString(gtirb::FileFormat format)
 static void loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module,
                        const Dl_decoder &decoder)
 {
-    std::cout << "adding 1" << std::endl;
     addRelation<std::string>(prog, "binary_type",
                              *module.getAuxData<std::vector<std::string>>("binary_type"));
     addRelation<std::string>(prog, "binary_format", {getFileFormatString(module.getFileFormat())});
-    std::cout << "adding 1" << std::endl;
     addRelation<uint64_t>(prog, "entry_point",
                           *module.getAuxData<std::vector<uint64_t>>("entry_point"));
     addRelation(prog, "section_complete",
@@ -292,7 +314,7 @@ int main(int argc, char **argv)
     gtirb::IR *ir = buildZeroIR(filename, binary, context);
     gtirb::Module &module = *(ir->modules().begin());
     Dl_decoder decoder;
-    decode(decoder, binary);
+    decode(decoder, module);
     std::cout << "Decoding the binary" << std::endl;
     if(souffle::SouffleProgram *prog = souffle::ProgramFactory::newInstance("souffle_disasm"))
     {

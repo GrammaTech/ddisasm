@@ -53,11 +53,11 @@ public:
     std::vector<Dl_data<int64_t>> data_addresses;
     std::vector<Dl_data<unsigned char>> data_bytes;
     Dl_decoder();
-    void decode_section(uint8_t* buff, uint64_t size, int64_t ea);
+    void decode_section(const uint8_t* buff, uint64_t size, int64_t ea);
     std::string getRegisterName(unsigned int reg);
     Dl_instruction transformInstruction(cs_insn& insn);
     Dl_operator buildOperand(const cs_x86_op& op);
-    void store_data_section(uint8_t* buff, uint64_t size, int64_t ea, uint64_t min_address,
+    void store_data_section(const uint8_t* buff, uint64_t size, int64_t ea, uint64_t min_address,
                             uint64_t max_address);
 };
 

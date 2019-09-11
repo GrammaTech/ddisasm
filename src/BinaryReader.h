@@ -154,8 +154,6 @@ public:
 
     virtual gtirb::FileFormat get_binary_format() = 0;
     virtual std::vector<InitialAuxData::Section> get_sections() = 0;
-    virtual std::vector<InitialAuxData::Section> get_code_sections() = 0;
-    virtual std::vector<InitialAuxData::Section> get_non_zero_data_sections() = 0;
 
     virtual std::string get_binary_type() = 0;
     virtual uint64_t get_entry_point() = 0;

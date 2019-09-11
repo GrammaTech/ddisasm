@@ -23,7 +23,6 @@
 
 #include "Elf_reader.h"
 #include <assert.h>
-#include <algorithm>
 #include <cstring>
 #include <functional>
 #include <iostream>
@@ -254,31 +253,6 @@ vector<InitialAuxData::Section> Elf_reader::get_sections()
         ++sect_names_it;
     }
     return result;
-}
-
-vector<InitialAuxData::Section> Elf_reader::get_code_sections()
-{
-    vector<InitialAuxData::Section> sections = get_sections();
-    auto isExeSection = [](InitialAuxData::Section& s) { return s.flags & SHF_EXECINSTR; };
-    sections.erase(remove_if(begin(sections), end(sections), not_fn(isExeSection)), end(sections));
-    return sections;
-}
-
-vector<InitialAuxData::Section> Elf_reader::get_non_zero_data_sections()
-{
-    vector<InitialAuxData::Section> sections = get_sections();
-    auto isNonZeroDataSection = [](InitialAuxData::Section& s) {
-        bool is_allocated = s.flags & SHF_ALLOC;
-        bool is_not_executable = !(s.flags & SHF_EXECINSTR);
-        // SHT_NOBITS is not considered here because it is for data sections but without initial
-        // data (zero initialized)
-        bool is_non_zero_program_data = s.type == SHT_PROGBITS || s.type == SHT_INIT_ARRAY
-                                        || s.type == SHT_FINI_ARRAY || s.type == SHT_PREINIT_ARRAY;
-        return is_allocated && is_not_executable && is_non_zero_program_data;
-    };
-    sections.erase(remove_if(begin(sections), end(sections), not_fn(isNonZeroDataSection)),
-                   end(sections));
-    return sections;
 }
 
 string get_symbol_scope_str(unsigned char info)

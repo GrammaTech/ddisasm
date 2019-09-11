@@ -35,7 +35,7 @@ Dl_decoder::Dl_decoder()
     cs_option(this->csHandle, CS_OPT_DETAIL, CS_OPT_ON);
 }
 
-void Dl_decoder::decode_section(uint8_t* buf, uint64_t size, int64_t ea)
+void Dl_decoder::decode_section(const uint8_t* buf, uint64_t size, int64_t ea)
 {
     while(size > 0)
     {
@@ -147,8 +147,8 @@ bool can_be_address(uint64_t num, uint64_t min_address, uint64_t max_address)
                                       //     ||  (num+min_address<=max_address); //offset
 }
 
-void Dl_decoder::store_data_section(uint8_t* buf, uint64_t size, int64_t ea, uint64_t min_address,
-                                    uint64_t max_address)
+void Dl_decoder::store_data_section(const uint8_t* buf, uint64_t size, int64_t ea,
+                                    uint64_t min_address, uint64_t max_address)
 {
     while(size > 0)
     {
