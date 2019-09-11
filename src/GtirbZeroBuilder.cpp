@@ -23,6 +23,8 @@
 
 #include "GtirbZeroBuilder.h"
 #include <elf.h>
+#include "BinaryReader.h"
+#include "Elf_reader.h"
 
 void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                    gtirb::Context &context)
@@ -67,9 +69,11 @@ void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> bin
     module.addAuxData("libraryPaths", binary->get_library_paths());
 }
 
-gtirb::IR *buildZeroIR(const std::string &filename, std::shared_ptr<BinaryReader> binary,
-                       gtirb::Context &context)
+gtirb::IR *buildZeroIR(const std::string &filename, gtirb::Context &context)
 {
+    std::shared_ptr<BinaryReader> binary(new Elf_reader(filename));
+    if(!binary->is_valid())
+        return nullptr;
     auto ir = gtirb::IR::Create(context);
     gtirb::Module &module = *gtirb::Module::Create(context);
     module.setBinaryPath(filename);

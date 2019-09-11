@@ -59,9 +59,6 @@ public:
           size(size)
     {
     }
-
-    operator_type get_type() const;
-    std::string print_tabs(int64_t id) const;
 };
 
 struct compare_operators

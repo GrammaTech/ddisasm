@@ -24,7 +24,6 @@
 #ifndef SRC_EXCEPTION_DECODER_H_
 #define SRC_EXCEPTION_DECODER_H_
 #include <souffle/SouffleInterface.h>
-#include "BinaryReader.h"
 #include "ehp.hpp"
 #include "gtirb/gtirb.hpp"
 

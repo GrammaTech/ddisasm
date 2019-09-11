@@ -24,33 +24,6 @@
 #include "Dl_operator.h"
 #include <sstream>
 
-std::string Dl_operator::print_tabs(int64_t id) const
-{
-    std::ostringstream o;
-    switch(type)
-    {
-        case NONE:
-        default:
-            return "none";
-        case REG:
-            o << id << '\t' << reg1;
-            return o.str();
-        case IMMEDIATE:
-            o << id << '\t' << offset;
-            return o.str();
-        case INDIRECT:
-            o << id << '\t' << reg1 << '\t' << reg2 << '\t' << reg3 << '\t' << multiplier << '\t'
-              << offset << '\t' << size;
-            ;
-            return o.str();
-    }
-}
-
-operator_type Dl_operator::get_type() const
-{
-    return type;
-}
-
 bool compare_operators::operator()(const Dl_operator& op1, const Dl_operator& op2) const
 {
     if(op1.type == op2.type)

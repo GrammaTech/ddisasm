@@ -27,9 +27,7 @@
 #include "Dl_operator.h"
 
 #include <cstdint>
-#include <fstream>
 #include <map>
-#include <string>
 #include <vector>
 
 class Dl_operator_table
@@ -47,8 +45,6 @@ public:
     } // we reserve 0 for empty operators
 
     int64_t add(Dl_operator op);
-    void print_operators_of_type(operator_type type, std::ofstream& fbuf);
-    void print(std::string directory, std::ios_base::openmode filemask);
     std::vector<std::pair<Dl_operator, int64_t>> get_operators_of_type(operator_type type) const;
 };
 

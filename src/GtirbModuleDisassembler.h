@@ -23,7 +23,6 @@
 
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
-#include "BinaryReader.h"
 
 #ifndef GTIRB_MODULE_DISASSEMBLER_H_
 #define GTIRB_MODULE_DISASSEMBLER_H_

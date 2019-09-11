@@ -23,13 +23,44 @@
 
 #ifndef SRC_DL_DECODER_H_
 #define SRC_DL_DECODER_H_
-#include "Dl_instruction.h"
+#include <capstone/capstone.h>
+#include <souffle/SouffleInterface.h>
+#include <gtirb/gtirb.hpp>
 #include "Dl_operator.h"
 #include "Dl_operator_table.h"
 
-#include <capstone/capstone.h>
-#include <cstdint>
 #include <vector>
+
+class Dl_instruction
+{
+public:
+    int64_t address;
+    long size;
+    std::string prefix;
+    std::string name;
+    std::vector<int64_t> op_codes;
+    int8_t immediateOffset;
+    int8_t displacementOffset;
+
+    Dl_instruction()
+        : address(0),
+          size(0),
+          prefix(),
+          name(),
+          op_codes(),
+          immediateOffset(),
+          displacementOffset(){};
+
+    Dl_instruction(int64_t address, long size, const std::string& prefix, const std::string& name,
+                   std::vector<int64_t> op_codes, int8_t immediateOffset, int8_t displacementOffset)
+        : address(address),
+          size(size),
+          prefix(prefix),
+          name(name),
+          op_codes(op_codes),
+          immediateOffset(immediateOffset),
+          displacementOffset(displacementOffset){};
+};
 
 template <class Content>
 struct Dl_data
@@ -44,21 +75,28 @@ public:
 
 class Dl_decoder
 {
+private:
     csh csHandle;
-
-public:
     Dl_operator_table op_dict;
     std::vector<Dl_instruction> instructions;
     std::vector<int64_t> invalids;
     std::vector<Dl_data<int64_t>> data_addresses;
     std::vector<Dl_data<unsigned char>> data_bytes;
-    Dl_decoder();
     void decode_section(const uint8_t* buff, uint64_t size, int64_t ea);
     std::string getRegisterName(unsigned int reg);
     Dl_instruction transformInstruction(cs_insn& insn);
     Dl_operator buildOperand(const cs_x86_op& op);
     void store_data_section(const uint8_t* buff, uint64_t size, int64_t ea, uint64_t min_address,
                             uint64_t max_address);
+    void loadInputs(souffle::SouffleProgram* prog, gtirb::Module& module);
+    template <typename T>
+    void addRelation(souffle::SouffleProgram* prog, const std::string& name,
+                     const std::vector<T>& data);
+    std::string getFileFormatString(gtirb::FileFormat format);
+
+public:
+    Dl_decoder();
+    souffle::SouffleProgram* decode(gtirb::Module& module);
 };
 
 #endif /* SRC_DL_DECODER_H_ */

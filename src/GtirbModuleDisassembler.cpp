@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "GtirbModuleDisassembler.h"
+// FIXME: remove once section properties are generic
 #include <elf.h>
 #include <boost/uuid/uuid_generators.hpp>
 

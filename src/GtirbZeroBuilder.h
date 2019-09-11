@@ -22,13 +22,10 @@
 //===----------------------------------------------------------------------===//
 
 #include <gtirb/gtirb.hpp>
-#include <memory>
-#include "BinaryReader.h"
 
 #ifndef GTIRB_ZERO_BUILDER_H_
 #define GTIRB_ZERO_BUILDER_H_
 
-gtirb::IR* buildZeroIR(const std::string& filename, std::shared_ptr<BinaryReader> binary,
-                       gtirb::Context& context);
+gtirb::IR* buildZeroIR(const std::string& filename, gtirb::Context& context);
 
 #endif // GTIRB_ZERO_BUILDER_H_
