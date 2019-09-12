@@ -356,6 +356,7 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
                           *module.getAuxData<std::vector<uint64_t>>("entry_point"));
     addRelation(prog, "relocation",
                 *module.getAuxData<std::vector<InitialAuxData::Relocation>>("relocation"));
+    module.removeAuxData("relocation");
     addRelation(prog, "instruction_complete", instructions);
     addRelation(prog, "address_in_data", data_addresses);
     addRelation(prog, "data_byte", data_bytes);
@@ -364,6 +365,7 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
     addMapToRelation(prog, "op_immediate", op_dict.immTable);
     addMapToRelation(prog, "op_indirect", op_dict.indirectTable);
     addSymbols(prog, module);
+    module.removeAuxData("extraSymbolInfo");
     addSections(prog, module);
     ExceptionDecoder excDecoder(module);
     excDecoder.addExceptionInformation(prog);
