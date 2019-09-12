@@ -64,6 +64,8 @@ private:
     void store_data_section(const uint8_t* buff, uint64_t size, uint64_t ea, uint64_t min_address,
                             uint64_t max_address);
     void loadInputs(souffle::SouffleProgram* prog, gtirb::Module& module);
+    void addSymbols(souffle::SouffleProgram* prog, gtirb::Module& module);
+
     template <typename T>
     void addRelation(souffle::SouffleProgram* prog, const std::string& name,
                      const std::vector<T>& data);

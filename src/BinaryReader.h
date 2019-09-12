@@ -113,37 +113,6 @@ struct gtirb::auxdata_traits<InitialAuxData::Relocation>
     }
 };
 
-template <>
-struct gtirb::auxdata_traits<InitialAuxData::Symbol>
-{
-    static std::string type_id()
-    {
-        return "InitialSymbol";
-    }
-
-    static void toBytes(const InitialAuxData::Symbol& Object, to_iterator It)
-    {
-        auxdata_traits<uint64_t>::toBytes(Object.address, It);
-        auxdata_traits<uint64_t>::toBytes(Object.size, It);
-        auxdata_traits<std::string>::toBytes(Object.type, It);
-        auxdata_traits<std::string>::toBytes(Object.scope, It);
-        auxdata_traits<uint64_t>::toBytes(Object.sectionIndex, It);
-        auxdata_traits<std::string>::toBytes(Object.name, It);
-    }
-
-    static from_iterator fromBytes(InitialAuxData::Symbol& Object, from_iterator It)
-    {
-        It = auxdata_traits<uint64_t>::fromBytes(Object.address, It);
-        It = auxdata_traits<uint64_t>::fromBytes(Object.size, It);
-        It = auxdata_traits<std::string>::fromBytes(Object.type, It);
-        It = auxdata_traits<std::string>::fromBytes(Object.scope, It);
-        It = auxdata_traits<uint64_t>::fromBytes(Object.sectionIndex, It);
-        It = auxdata_traits<std::string>::fromBytes(Object.name, It);
-
-        return It;
-    }
-};
-
 class BinaryReader
 {
 public:

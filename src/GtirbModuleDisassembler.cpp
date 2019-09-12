@@ -443,33 +443,9 @@ T convertSortedRelation(const std::string &relation, souffle::SouffleProgram *pr
     return result;
 }
 
-gtirb::Symbol::StorageKind getSymbolType(uint64_t sectionIndex, std::string scope)
+void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
+                          souffle::SouffleProgram *prog)
 {
-    if(sectionIndex == 0)
-        return gtirb::Symbol::StorageKind::Undefined;
-    if(scope == "GLOBAL")
-        return gtirb::Symbol::StorageKind::Normal;
-    if(scope == "LOCAL")
-        return gtirb::Symbol::StorageKind::Local;
-    return gtirb::Symbol::StorageKind::Extern;
-}
-
-void buildSymbols(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
-{
-    for(auto &output : *prog->getRelation("symbol"))
-    {
-        assert(output.size() == 6);
-        gtirb::Addr base;
-        uint64_t size, sectionIndex;
-        std::string type, scope, name;
-        output >> base >> size >> type >> scope >> sectionIndex >> name;
-        // Symbols with special section index do not have an address
-        if(sectionIndex == SHN_UNDEF
-           || (sectionIndex >= SHN_LORESERVE && sectionIndex <= SHN_HIRESERVE))
-            gtirb::emplaceSymbol(module, context, name);
-        else
-            gtirb::emplaceSymbol(module, context, base, name, getSymbolType(sectionIndex, scope));
-    }
     for(auto &output : *prog->getRelation("inferred_symbol_name"))
     {
         gtirb::Addr addr;
@@ -1162,7 +1138,7 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
                        souffle::SouffleProgram *prog, bool selfDiagnose)
 {
-    buildSymbols(context, module, prog);
+    buildInferredSymbols(context, module, prog);
     buildSymbolForwarding(context, module, prog);
     buildDataGroups(context, module, prog);
     buildCodeBlocks(context, module, prog);

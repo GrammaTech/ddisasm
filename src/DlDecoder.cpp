@@ -24,6 +24,7 @@
 #include "DlDecoder.h"
 #include "BinaryReader.h"
 #include "ExceptionDecoder.h"
+#include "GtirbZeroBuilder.h"
 // FIXME: remove once section properties are generic
 #include <elf.h>
 #include <souffle/CompiledSouffle.h>
@@ -248,13 +249,6 @@ souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Section &sec
     return t;
 }
 
-souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Symbol &symbol)
-{
-    t << symbol.address << symbol.size << symbol.type << symbol.scope << symbol.sectionIndex
-      << symbol.name;
-    return t;
-}
-
 souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Relocation &relocation)
 {
     t << relocation.address << relocation.type << relocation.name << relocation.addend;
@@ -312,6 +306,34 @@ std::string DlDecoder::getFileFormatString(gtirb::FileFormat format)
             return "Undefined";
     }
 }
+
+souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Symbol &symbol)
+{
+    t << symbol.address << symbol.size << symbol.type << symbol.scope << symbol.sectionIndex
+      << symbol.name;
+    return t;
+}
+
+void DlDecoder::addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
+{
+    auto *rel = prog->getRelation("symbol");
+    auto *extraInfoTable =
+        module.getAuxData<std::map<gtirb::UUID, ExtraSymbolInfo>>("extraSymbolInfo");
+    for(auto &symbol : module.symbols())
+    {
+        souffle::tuple t(rel);
+        if(auto address = symbol.getAddress())
+            t << static_cast<uint64_t>(*address);
+        else
+            t << 0;
+        auto found = extraInfoTable->find(symbol.getUUID());
+        assert(found != extraInfoTable->end() && "Symbol missing from extraSymbolInfo");
+        ExtraSymbolInfo &extraInfo = found->second;
+        t << extraInfo.size << extraInfo.type << extraInfo.scope << extraInfo.sectionIndex
+          << symbol.getName();
+        rel->insert(t);
+    }
+}
 void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
     addRelation<std::string>(prog, "binary_type",
@@ -321,7 +343,7 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
                           *module.getAuxData<std::vector<uint64_t>>("entry_point"));
     addRelation(prog, "section_complete",
                 *module.getAuxData<std::vector<InitialAuxData::Section>>("section_complete"));
-    addRelation(prog, "symbol", *module.getAuxData<std::vector<InitialAuxData::Symbol>>("symbol"));
+
     addRelation(prog, "relocation",
                 *module.getAuxData<std::vector<InitialAuxData::Relocation>>("relocation"));
     addRelation(prog, "instruction_complete", instructions);
@@ -334,4 +356,5 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
 
     ExceptionDecoder excDecoder(module);
     excDecoder.addExceptionInformation(prog);
+    addSymbols(prog, module);
 }

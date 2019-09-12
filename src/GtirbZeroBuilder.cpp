@@ -26,6 +26,29 @@
 #include "BinaryReader.h"
 #include "ElfReader.h"
 
+std::string gtirb::auxdata_traits<ExtraSymbolInfo>::type_id()
+{
+    return "ExtraSymbolInfo";
+}
+
+void gtirb::auxdata_traits<ExtraSymbolInfo>::toBytes(const ExtraSymbolInfo &Object, to_iterator It)
+{
+    auxdata_traits<uint64_t>::toBytes(Object.size, It);
+    auxdata_traits<std::string>::toBytes(Object.type, It);
+    auxdata_traits<std::string>::toBytes(Object.scope, It);
+    auxdata_traits<uint64_t>::toBytes(Object.sectionIndex, It);
+}
+
+gtirb::from_iterator gtirb::auxdata_traits<ExtraSymbolInfo>::fromBytes(ExtraSymbolInfo &Object,
+                                                                       from_iterator It)
+{
+    It = auxdata_traits<uint64_t>::fromBytes(Object.size, It);
+    It = auxdata_traits<std::string>::fromBytes(Object.type, It);
+    It = auxdata_traits<std::string>::fromBytes(Object.scope, It);
+    It = auxdata_traits<uint64_t>::fromBytes(Object.sectionIndex, It);
+    return It;
+}
+
 void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                    gtirb::Context &context)
 {
@@ -56,6 +79,37 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
     module.addAuxData("elfSectionProperties", std::move(sectionProperties));
 }
 
+gtirb::Symbol::StorageKind getSymbolType(uint64_t sectionIndex, std::string scope)
+{
+    if(sectionIndex == 0)
+        return gtirb::Symbol::StorageKind::Undefined;
+    if(scope == "GLOBAL")
+        return gtirb::Symbol::StorageKind::Normal;
+    if(scope == "LOCAL")
+        return gtirb::Symbol::StorageKind::Local;
+    return gtirb::Symbol::StorageKind::Extern;
+}
+
+void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
+                  gtirb::Context &context)
+{
+    std::map<gtirb::UUID, ExtraSymbolInfo> extraSymbolInfoTable;
+    for(auto &binSymbol : binary->get_symbols())
+    {
+        // Symbols with special section index do not have an address
+        gtirb::Symbol *symbol;
+        if(binSymbol.sectionIndex == SHN_UNDEF
+           || (binSymbol.sectionIndex >= SHN_LORESERVE && binSymbol.sectionIndex <= SHN_HIRESERVE))
+            symbol = gtirb::emplaceSymbol(module, context, binSymbol.name);
+        else
+            symbol = gtirb::emplaceSymbol(module, context, gtirb::Addr(binSymbol.address),
+                                          binSymbol.name,
+                                          getSymbolType(binSymbol.sectionIndex, binSymbol.scope));
+        extraSymbolInfoTable[symbol->getUUID()] = {binSymbol.size, binSymbol.type, binSymbol.scope,
+                                                   binSymbol.sectionIndex};
+    }
+    module.addAuxData("extraSymbolInfo", std::move(extraSymbolInfoTable));
+}
 void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
 {
     std::vector<std::string> binaryType = {binary->get_binary_type()};
@@ -63,7 +117,6 @@ void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> bin
     std::vector<uint64_t> entryPoint = {binary->get_entry_point()};
     module.addAuxData("entry_point", entryPoint);
     module.addAuxData("section_complete", binary->get_sections());
-    module.addAuxData("symbol", binary->get_symbols());
     module.addAuxData("relocation", binary->get_relocations());
     module.addAuxData("libraries", binary->get_libraries());
     module.addAuxData("libraryPaths", binary->get_library_paths());
@@ -81,6 +134,7 @@ gtirb::IR *buildZeroIR(const std::string &filename, gtirb::Context &context)
     module.setISAID(gtirb::ISAID::X64);
     ir->addModule(&module);
     buildSections(module, binary, context);
+    buildSymbols(module, binary, context);
     addAuxiliaryTables(module, binary);
 
     return ir;

@@ -26,6 +26,22 @@
 #ifndef GTIRB_ZERO_BUILDER_H_
 #define GTIRB_ZERO_BUILDER_H_
 
+struct ExtraSymbolInfo
+{
+    uint64_t size;
+    std::string type;
+    std::string scope;
+    uint64_t sectionIndex;
+};
+
+template <>
+struct gtirb::auxdata_traits<ExtraSymbolInfo>
+{
+    static std::string type_id();
+    static void toBytes(const ExtraSymbolInfo& Object, to_iterator It);
+    static from_iterator fromBytes(ExtraSymbolInfo& Object, from_iterator It);
+};
+
 gtirb::IR* buildZeroIR(const std::string& filename, gtirb::Context& context);
 
 #endif // GTIRB_ZERO_BUILDER_H_
