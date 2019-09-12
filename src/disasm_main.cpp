@@ -28,7 +28,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "Dl_decoder.h"
+#include "DlDecoder.h"
 #include "GtirbModuleDisassembler.h"
 #include "GtirbZeroBuilder.h"
 
@@ -132,7 +132,7 @@ int main(int argc, char **argv)
     gtirb::Module &module = *(ir->modules().begin());
     souffle::SouffleProgram *prog;
     {
-        Dl_decoder decoder;
+        DlDecoder decoder;
         std::cout << "Decoding the binary" << std::endl;
         prog = decoder.decode(module);
     }

@@ -61,8 +61,8 @@ endif()
 # generated souffle code won't build with -Wall -Werror).
 add_library(disasm_main STATIC
   disasm_main.cpp
-  Dl_decoder.cpp
-  Dl_operator_table.cpp
+  DlDecoder.cpp
+  DlOperandTable.cpp
   Elf_reader.cpp
   ExceptionDecoder.cpp
   GtirbModuleDisassembler.cpp

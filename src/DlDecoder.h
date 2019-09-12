@@ -1,4 +1,4 @@
-//===- Dl_decoder.h ---------------------------------------------*- C++ -*-===//
+//===- DlDecoder.h ---------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -26,11 +26,11 @@
 #include <capstone/capstone.h>
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
-#include "Dl_operator_table.h"
+#include "DlOperandTable.h"
 
 #include <vector>
 
-struct Dl_instruction
+struct DlInstruction
 {
     uint64_t address;
     long size;
@@ -42,24 +42,24 @@ struct Dl_instruction
 };
 
 template <class Content>
-struct Dl_data
+struct DlData
 {
     uint64_t ea;
     Content content;
 };
 
-class Dl_decoder
+class DlDecoder
 {
 private:
     csh csHandle;
-    Dl_operator_table op_dict;
-    std::vector<Dl_instruction> instructions;
+    DlOperandTable op_dict;
+    std::vector<DlInstruction> instructions;
     std::vector<uint64_t> invalids;
-    std::vector<Dl_data<uint64_t>> data_addresses;
-    std::vector<Dl_data<unsigned char>> data_bytes;
+    std::vector<DlData<uint64_t>> data_addresses;
+    std::vector<DlData<unsigned char>> data_bytes;
     void decode_section(const uint8_t* buff, uint64_t size, uint64_t ea);
     std::string getRegisterName(unsigned int reg);
-    Dl_instruction transformInstruction(cs_insn& insn);
+    DlInstruction transformInstruction(cs_insn& insn);
     std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const cs_x86_op& op);
     void store_data_section(const uint8_t* buff, uint64_t size, uint64_t ea, uint64_t min_address,
                             uint64_t max_address);
@@ -73,7 +73,7 @@ private:
     std::string getFileFormatString(gtirb::FileFormat format);
 
 public:
-    Dl_decoder();
+    DlDecoder();
     souffle::SouffleProgram* decode(gtirb::Module& module);
 };
 

@@ -1,4 +1,4 @@
-//===- Dl_operator_table.cpp ------------------------------------*- C++ -*-===//
+//===- DlOperandTable.cpp ------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -21,7 +21,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Dl_operator_table.h"
+#include "DlOperandTable.h"
 
 souffle::tuple &operator<<(souffle::tuple &t, const std::pair<ImmOp, uint64_t> &pair)
 {
@@ -51,7 +51,7 @@ souffle::tuple &operator<<(souffle::tuple &t, const std::pair<IndirectOp, uint64
 }
 
 template <typename T>
-int64_t Dl_operator_table::addToTable(std::map<T, uint64_t> &opTable, T op)
+int64_t DlOperandTable::addToTable(std::map<T, uint64_t> &opTable, T op)
 {
     auto pair = opTable.find(op);
     if(pair != opTable.end())
@@ -63,7 +63,7 @@ int64_t Dl_operator_table::addToTable(std::map<T, uint64_t> &opTable, T op)
     }
 }
 
-int64_t Dl_operator_table::add(std::variant<ImmOp, RegOp, IndirectOp> op)
+int64_t DlOperandTable::add(std::variant<ImmOp, RegOp, IndirectOp> op)
 {
     switch(op.index())
     {

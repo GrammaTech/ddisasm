@@ -1,4 +1,4 @@
-//===- Dl_operator_table.h --------------------------------------*- C++ -*-===//
+//===- DlOperandTable.h --------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -51,7 +51,7 @@ struct IndirectOp
                                       const std::pair<IndirectOp, uint64_t> &pair);
 };
 
-class Dl_operator_table
+class DlOperandTable
 {
 private:
     // we reserve 0 for empty operators

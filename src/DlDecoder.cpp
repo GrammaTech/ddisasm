@@ -1,4 +1,4 @@
-//===- Dl_decoder.cpp -------------------------------------------*- C++ -*-===//
+//===- DlDecoder.cpp -------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -21,7 +21,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Dl_decoder.h"
+#include "DlDecoder.h"
 #include <souffle/CompiledSouffle.h>
 #include <algorithm>
 #include <iostream>
@@ -33,13 +33,13 @@
 
 using namespace std;
 
-Dl_decoder::Dl_decoder()
+DlDecoder::DlDecoder()
 {
     cs_open(CS_ARCH_X86, CS_MODE_64, &this->csHandle); // == CS_ERR_OK
     cs_option(this->csHandle, CS_OPT_DETAIL, CS_OPT_ON);
 }
 
-souffle::SouffleProgram *Dl_decoder::decode(gtirb::Module &module)
+souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
 {
     auto isNonZeroDataSection = [](const InitialAuxData::Section &s) {
         bool is_allocated = s.flags & SHF_ALLOC;
@@ -89,7 +89,7 @@ souffle::SouffleProgram *Dl_decoder::decode(gtirb::Module &module)
     return nullptr;
 }
 
-void Dl_decoder::decode_section(const uint8_t *buf, uint64_t size, uint64_t ea)
+void DlDecoder::decode_section(const uint8_t *buf, uint64_t size, uint64_t ea)
 {
     while(size > 0)
     {
@@ -110,7 +110,7 @@ void Dl_decoder::decode_section(const uint8_t *buf, uint64_t size, uint64_t ea)
     }
 }
 
-void Dl_decoder::store_data_section(const uint8_t *buf, uint64_t size, uint64_t ea,
+void DlDecoder::store_data_section(const uint8_t *buf, uint64_t size, uint64_t ea,
                                     uint64_t min_address, uint64_t max_address)
 {
     auto can_be_address = [min_address, max_address](uint64_t num) {
@@ -142,7 +142,7 @@ std::string str_toupper(std::string s)
     return s;
 }
 
-std::string Dl_decoder::getRegisterName(unsigned int reg)
+std::string DlDecoder::getRegisterName(unsigned int reg)
 {
     if(reg == X86_REG_INVALID)
         return "NONE";
@@ -150,7 +150,7 @@ std::string Dl_decoder::getRegisterName(unsigned int reg)
     return name;
 }
 
-Dl_instruction Dl_decoder::transformInstruction(cs_insn &insn)
+DlInstruction DlDecoder::transformInstruction(cs_insn &insn)
 {
     std::vector<uint64_t> op_codes;
     std::string prefix_name = insn.mnemonic;
@@ -195,7 +195,7 @@ Dl_instruction Dl_decoder::transformInstruction(cs_insn &insn)
             detail.encoding.disp_offset};
 }
 
-std::variant<ImmOp, RegOp, IndirectOp> Dl_decoder::buildOperand(const cs_x86_op &op)
+std::variant<ImmOp, RegOp, IndirectOp> DlDecoder::buildOperand(const cs_x86_op &op)
 {
     switch(op.type)
     {
@@ -220,7 +220,7 @@ std::variant<ImmOp, RegOp, IndirectOp> Dl_decoder::buildOperand(const cs_x86_op 
     }
 }
 
-souffle::tuple &operator<<(souffle::tuple &t, const Dl_instruction &inst)
+souffle::tuple &operator<<(souffle::tuple &t, const DlInstruction &inst)
 {
     t << inst.address << inst.size << inst.prefix << inst.name;
     for(size_t i = 0; i < 4; ++i)
@@ -235,7 +235,7 @@ souffle::tuple &operator<<(souffle::tuple &t, const Dl_instruction &inst)
 }
 
 template <class T>
-souffle::tuple &operator<<(souffle::tuple &t, const Dl_data<T> &data)
+souffle::tuple &operator<<(souffle::tuple &t, const DlData<T> &data)
 {
     t << data.ea << static_cast<int64_t>(data.content);
     return t;
@@ -261,7 +261,7 @@ souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Relocation &
 }
 
 template <typename T>
-void Dl_decoder::addRelation(souffle::SouffleProgram *prog, const std::string &name,
+void DlDecoder::addRelation(souffle::SouffleProgram *prog, const std::string &name,
                              const std::vector<T> &data)
 {
     auto *rel = prog->getRelation(name);
@@ -274,7 +274,7 @@ void Dl_decoder::addRelation(souffle::SouffleProgram *prog, const std::string &n
 }
 
 template <typename T>
-void Dl_decoder::addMapToRelation(souffle::SouffleProgram *prog, const std::string &name,
+void DlDecoder::addMapToRelation(souffle::SouffleProgram *prog, const std::string &name,
                                   const std::map<T, uint64_t> &data)
 {
     auto *rel = prog->getRelation(name);
@@ -286,7 +286,7 @@ void Dl_decoder::addMapToRelation(souffle::SouffleProgram *prog, const std::stri
     }
 }
 
-std::string Dl_decoder::getFileFormatString(gtirb::FileFormat format)
+std::string DlDecoder::getFileFormatString(gtirb::FileFormat format)
 {
     switch(format)
     {
@@ -311,7 +311,7 @@ std::string Dl_decoder::getFileFormatString(gtirb::FileFormat format)
             return "Undefined";
     }
 }
-void Dl_decoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
+void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
     addRelation<std::string>(prog, "binary_type",
                              *module.getAuxData<std::vector<std::string>>("binary_type"));
