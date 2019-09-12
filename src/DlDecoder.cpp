@@ -208,8 +208,8 @@ std::variant<ImmOp, RegOp, IndirectOp> DlDecoder::buildOperand(const cs_x86_op &
             IndirectOp I = {getRegisterName(op.mem.segment),
                             getRegisterName(op.mem.base),
                             getRegisterName(op.mem.index),
-                            op.mem.disp,
                             op.mem.scale,
+                            op.mem.disp,
                             op.size * 8};
             return I;
         }
