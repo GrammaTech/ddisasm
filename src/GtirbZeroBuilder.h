@@ -42,6 +42,8 @@ struct gtirb::auxdata_traits<ExtraSymbolInfo>
     static from_iterator fromBytes(ExtraSymbolInfo& Object, from_iterator It);
 };
 
+using SectionProperties = std::tuple<uint64_t, uint64_t>;
+
 gtirb::IR* buildZeroIR(const std::string& filename, gtirb::Context& context);
 
 #endif // GTIRB_ZERO_BUILDER_H_

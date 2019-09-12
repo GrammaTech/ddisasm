@@ -43,44 +43,45 @@ DlDecoder::DlDecoder()
 
 souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
 {
-    auto isNonZeroDataSection = [](const InitialAuxData::Section &s) {
-        bool is_allocated = s.flags & SHF_ALLOC;
-        bool is_not_executable = !(s.flags & SHF_EXECINSTR);
+    auto isNonZeroDataSection = [](const SectionProperties &s) {
+        uint64_t type = std::get<0>(s);
+        uint64_t flags = std::get<1>(s);
+        bool is_allocated = flags & SHF_ALLOC;
+        bool is_not_executable = !(flags & SHF_EXECINSTR);
         // SHT_NOBITS is not considered here because it is for data sections but without initial
         // data (zero initialized)
-        bool is_non_zero_program_data = s.type == SHT_PROGBITS || s.type == SHT_INIT_ARRAY
-                                        || s.type == SHT_FINI_ARRAY || s.type == SHT_PREINIT_ARRAY;
+        bool is_non_zero_program_data = type == SHT_PROGBITS || type == SHT_INIT_ARRAY
+                                        || type == SHT_FINI_ARRAY || type == SHT_PREINIT_ARRAY;
         return is_allocated && is_not_executable && is_non_zero_program_data;
     };
-    auto isExeSection = [](const InitialAuxData::Section &s) { return s.flags & SHF_EXECINSTR; };
+    auto isExeSection = [](const SectionProperties &s) {
+        uint64_t flags = std::get<1>(s);
+        return flags & SHF_EXECINSTR;
+    };
 
     auto minMax = module.getImageByteMap().getAddrMinMax();
-    for(const auto &sectionInfo :
-        *module.getAuxData<std::vector<InitialAuxData::Section>>("section_complete"))
+    auto *extraInfoTable =
+        module.getAuxData<std::map<gtirb::UUID, SectionProperties>>("elfSectionProperties");
+    for(auto &section : module.sections())
     {
-        if(isExeSection(sectionInfo))
+        auto found = extraInfoTable->find(section.getUUID());
+        assert(found != extraInfoTable->end() && "Section missing from elfSectionProperties");
+        SectionProperties &extraInfo = found->second;
+        if(isExeSection(extraInfo))
         {
-            auto section = module.findSection(sectionInfo.name);
-            if(section != module.section_by_name_end())
-            {
-                gtirb::ImageByteMap::const_range bytes =
-                    gtirb::getBytes(module.getImageByteMap(), *section);
-                decode_section(reinterpret_cast<const uint8_t *>(&*bytes.begin()), bytes.size(),
-                               static_cast<uint64_t>(section->getAddress()));
-            }
+            gtirb::ImageByteMap::const_range bytes =
+                gtirb::getBytes(module.getImageByteMap(), section);
+            decode_section(reinterpret_cast<const uint8_t *>(&*bytes.begin()), bytes.size(),
+                           static_cast<uint64_t>(section.getAddress()));
         }
-        if(isNonZeroDataSection(sectionInfo))
+        if(isNonZeroDataSection(extraInfo))
         {
-            auto section = module.findSection(sectionInfo.name);
-            if(section != module.section_by_name_end())
-            {
-                gtirb::ImageByteMap::const_range bytes =
-                    gtirb::getBytes(module.getImageByteMap(), *section);
-                store_data_section(reinterpret_cast<const uint8_t *>(&*bytes.begin()), bytes.size(),
-                                   static_cast<uint64_t>(section->getAddress()),
-                                   static_cast<uint64_t>(minMax.first),
-                                   static_cast<uint64_t>(minMax.second));
-            }
+            gtirb::ImageByteMap::const_range bytes =
+                gtirb::getBytes(module.getImageByteMap(), section);
+            store_data_section(reinterpret_cast<const uint8_t *>(&*bytes.begin()), bytes.size(),
+                               static_cast<uint64_t>(section.getAddress()),
+                               static_cast<uint64_t>(minMax.first),
+                               static_cast<uint64_t>(minMax.second));
         }
     }
     if(auto prog = souffle::ProgramFactory::newInstance("souffle_disasm"))
@@ -243,12 +244,6 @@ souffle::tuple &operator<<(souffle::tuple &t, const DlData<T> &data)
     return t;
 }
 
-souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Section &section)
-{
-    t << section.name << section.size << section.address << section.type << section.flags;
-    return t;
-}
-
 souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Relocation &relocation)
 {
     t << relocation.address << relocation.type << relocation.name << relocation.addend;
@@ -334,6 +329,24 @@ void DlDecoder::addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
         rel->insert(t);
     }
 }
+
+void DlDecoder::addSections(souffle::SouffleProgram *prog, gtirb::Module &module)
+{
+    auto *rel = prog->getRelation("section_complete");
+    auto *extraInfoTable =
+        module.getAuxData<std::map<gtirb::UUID, SectionProperties>>("elfSectionProperties");
+    for(auto &section : module.sections())
+    {
+        souffle::tuple t(rel);
+        auto found = extraInfoTable->find(section.getUUID());
+        assert(found != extraInfoTable->end() && "Section missing from elfSectionProperties");
+        SectionProperties &extraInfo = found->second;
+        t << section.getName() << section.getSize() << static_cast<uint64_t>(section.getAddress())
+          << std::get<0>(extraInfo) << std::get<1>(extraInfo);
+        rel->insert(t);
+    }
+}
+
 void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
     addRelation<std::string>(prog, "binary_type",
@@ -341,9 +354,6 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
     addRelation<std::string>(prog, "binary_format", {getFileFormatString(module.getFileFormat())});
     addRelation<uint64_t>(prog, "entry_point",
                           *module.getAuxData<std::vector<uint64_t>>("entry_point"));
-    addRelation(prog, "section_complete",
-                *module.getAuxData<std::vector<InitialAuxData::Section>>("section_complete"));
-
     addRelation(prog, "relocation",
                 *module.getAuxData<std::vector<InitialAuxData::Relocation>>("relocation"));
     addRelation(prog, "instruction_complete", instructions);
@@ -353,8 +363,8 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
     addMapToRelation(prog, "op_regdirect", op_dict.regTable);
     addMapToRelation(prog, "op_immediate", op_dict.immTable);
     addMapToRelation(prog, "op_indirect", op_dict.indirectTable);
-
+    addSymbols(prog, module);
+    addSections(prog, module);
     ExceptionDecoder excDecoder(module);
     excDecoder.addExceptionInformation(prog);
-    addSymbols(prog, module);
 }

@@ -55,7 +55,7 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
     auto &byteMap = module.getImageByteMap();
     byteMap.setAddrMinMax(
         {gtirb::Addr(binary->get_min_address()), gtirb::Addr(binary->get_max_address())});
-    std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> sectionProperties;
+    std::map<gtirb::UUID, SectionProperties> sectionProperties;
     for(auto &binSection : binary->get_sections())
     {
         if(binSection.flags & SHF_ALLOC)
@@ -116,7 +116,6 @@ void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> bin
     module.addAuxData("binary_type", binaryType);
     std::vector<uint64_t> entryPoint = {binary->get_entry_point()};
     module.addAuxData("entry_point", entryPoint);
-    module.addAuxData("section_complete", binary->get_sections());
     module.addAuxData("relocation", binary->get_relocations());
     module.addAuxData("libraries", binary->get_libraries());
     module.addAuxData("libraryPaths", binary->get_library_paths());

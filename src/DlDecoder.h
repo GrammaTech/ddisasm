@@ -63,8 +63,9 @@ private:
     std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const cs_x86_op& op);
     void store_data_section(const uint8_t* buff, uint64_t size, uint64_t ea, uint64_t min_address,
                             uint64_t max_address);
-    void loadInputs(souffle::SouffleProgram* prog, gtirb::Module& module);
     void addSymbols(souffle::SouffleProgram* prog, gtirb::Module& module);
+    void addSections(souffle::SouffleProgram* prog, gtirb::Module& module);
+    void loadInputs(souffle::SouffleProgram* prog, gtirb::Module& module);
 
     template <typename T>
     void addRelation(souffle::SouffleProgram* prog, const std::string& name,

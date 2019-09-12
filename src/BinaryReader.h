@@ -60,34 +60,6 @@ namespace InitialAuxData
 } // namespace InitialAuxData
 
 template <>
-struct gtirb::auxdata_traits<InitialAuxData::Section>
-{
-    static std::string type_id()
-    {
-        return "InitialSection";
-    }
-
-    static void toBytes(const InitialAuxData::Section& Object, to_iterator It)
-    {
-        auxdata_traits<std::string>::toBytes(Object.name, It);
-        auxdata_traits<uint64_t>::toBytes(Object.address, It);
-        auxdata_traits<uint64_t>::toBytes(Object.size, It);
-        auxdata_traits<uint64_t>::toBytes(Object.flags, It);
-        auxdata_traits<uint64_t>::toBytes(Object.type, It);
-    }
-
-    static from_iterator fromBytes(InitialAuxData::Section& Object, from_iterator It)
-    {
-        It = auxdata_traits<std::string>::fromBytes(Object.name, It);
-        It = auxdata_traits<uint64_t>::fromBytes(Object.address, It);
-        It = auxdata_traits<uint64_t>::fromBytes(Object.size, It);
-        It = auxdata_traits<uint64_t>::fromBytes(Object.flags, It);
-        It = auxdata_traits<uint64_t>::fromBytes(Object.type, It);
-        return It;
-    }
-};
-
-template <>
 struct gtirb::auxdata_traits<InitialAuxData::Relocation>
 {
     static std::string type_id()
