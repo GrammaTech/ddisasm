@@ -23,30 +23,66 @@
 
 #include "Dl_operator_table.h"
 
-int64_t Dl_operator_table::add_to_dict(op_dict& dict, Dl_operator op)
+souffle::tuple &operator<<(souffle::tuple &t, const std::pair<ImmOp, uint64_t> &pair)
 {
-    auto pair = dict.find(op);
-    if(pair != dict.end())
+    auto &[imm, id] = pair;
+    t << id << imm;
+    return t;
+}
+
+souffle::tuple &operator<<(souffle::tuple &t, const std::pair<RegOp, uint64_t> &pair)
+{
+    auto &[reg, id] = pair;
+    t << id << reg;
+    return t;
+}
+
+constexpr bool operator<(const IndirectOp &LHS, const IndirectOp &RHS) noexcept
+{
+    return std::tie(LHS.reg1, LHS.reg2, LHS.reg3, LHS.multiplier, LHS.displacement, LHS.size)
+           < std::tie(RHS.reg1, RHS.reg2, RHS.reg3, RHS.multiplier, RHS.displacement, RHS.size);
+}
+
+souffle::tuple &operator<<(souffle::tuple &t, const std::pair<IndirectOp, uint64_t> &pair)
+{
+    auto &[op, id] = pair;
+    t << id << op.reg1 << op.reg2 << op.reg3 << op.multiplier << op.displacement << op.size;
+    return t;
+}
+
+template <typename T>
+int64_t Dl_operator_table::addToTable(std::map<T, uint64_t> &opTable, T op)
+{
+    auto pair = opTable.find(op);
+    if(pair != opTable.end())
         return (pair->second);
     else
     {
-        dict[op] = curr_index;
+        opTable[op] = curr_index;
         return curr_index++;
     }
 }
 
-int64_t Dl_operator_table::add(Dl_operator op)
+int64_t Dl_operator_table::add(std::variant<ImmOp, RegOp, IndirectOp> op)
 {
-    return add_to_dict(dicts[op.type], op);
-}
-
-std::vector<std::pair<Dl_operator, int64_t>> Dl_operator_table::get_operators_of_type(
-    operator_type type) const
-{
-    std::vector<std::pair<Dl_operator, int64_t>> result;
-    for(const auto& pair : dicts[type])
+    switch(op.index())
     {
-        result.push_back(pair);
+        case 0:
+        {
+            auto imm = std::get<ImmOp>(op);
+            return addToTable(immTable, imm);
+        }
+        case 1:
+        {
+            auto reg = std::get<RegOp>(op);
+            return addToTable(regTable, reg);
+        }
+        case 2:
+        {
+            auto indirect = std::get<IndirectOp>(op);
+            return addToTable(indirectTable, indirect);
+        }
     }
-    return result;
+    assert("Operand has invalid value");
+    return 0;
 }

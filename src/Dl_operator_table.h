@@ -24,28 +24,46 @@
 #ifndef SRC_DL_OPERATOR_TABLE_H_
 #define SRC_DL_OPERATOR_TABLE_H_
 
-#include "Dl_operator.h"
-
+#include <souffle/SouffleInterface.h>
 #include <cstdint>
 #include <map>
+#include <variant>
 #include <vector>
+
+using ImmOp = int64_t;
+
+souffle::tuple &operator<<(souffle::tuple &t, const std::pair<ImmOp, uint64_t> &pair);
+
+using RegOp = std::string;
+
+souffle::tuple &operator<<(souffle::tuple &t, const std::pair<RegOp, uint64_t> &pair);
+
+struct IndirectOp
+{
+    std::string reg1;
+    std::string reg2;
+    std::string reg3;
+    int64_t multiplier;
+    int64_t displacement;
+    int size;
+    friend constexpr bool operator<(const IndirectOp &LHS, const IndirectOp &RHS) noexcept;
+    friend souffle::tuple &operator<<(souffle::tuple &t,
+                                      const std::pair<IndirectOp, uint64_t> &pair);
+};
 
 class Dl_operator_table
 {
-    using op_dict = std::map<Dl_operator, int64_t, compare_operators>;
-
 private:
-    op_dict dicts[operator_type::INDIRECT + 1];
-    int64_t curr_index;
-    int64_t add_to_dict(op_dict& dict, Dl_operator op);
+    // we reserve 0 for empty operators
+    uint64_t curr_index = 1;
+    template <typename T>
+    int64_t addToTable(std::map<T, uint64_t> &opTable, T op);
 
 public:
-    Dl_operator_table() : dicts(), curr_index(1)
-    {
-    } // we reserve 0 for empty operators
-
-    int64_t add(Dl_operator op);
-    std::vector<std::pair<Dl_operator, int64_t>> get_operators_of_type(operator_type type) const;
+    std::map<ImmOp, uint64_t> immTable;
+    std::map<RegOp, uint64_t> regTable;
+    std::map<IndirectOp, uint64_t> indirectTable;
+    int64_t add(std::variant<ImmOp, RegOp, IndirectOp> op);
 };
 
 #endif /* SRC_DL_OPERATOR_TABLE_H_ */

@@ -89,7 +89,7 @@ souffle::SouffleProgram *Dl_decoder::decode(gtirb::Module &module)
     return nullptr;
 }
 
-void Dl_decoder::decode_section(const uint8_t *buf, uint64_t size, int64_t ea)
+void Dl_decoder::decode_section(const uint8_t *buf, uint64_t size, uint64_t ea)
 {
     while(size > 0)
     {
@@ -110,7 +110,7 @@ void Dl_decoder::decode_section(const uint8_t *buf, uint64_t size, int64_t ea)
     }
 }
 
-void Dl_decoder::store_data_section(const uint8_t *buf, uint64_t size, int64_t ea,
+void Dl_decoder::store_data_section(const uint8_t *buf, uint64_t size, uint64_t ea,
                                     uint64_t min_address, uint64_t max_address)
 {
     auto can_be_address = [min_address, max_address](uint64_t num) {
@@ -121,14 +121,14 @@ void Dl_decoder::store_data_section(const uint8_t *buf, uint64_t size, int64_t e
     {
         // store the byte
         uint8_t content_byte = *buf;
-        data_bytes.push_back(Dl_data<uint8_t>(ea, content_byte));
+        data_bytes.push_back({ea, content_byte});
 
         // store the address
         if(size >= 8)
         {
             uint64_t content = *((int64_t *)buf);
             if(can_be_address(content))
-                data_addresses.push_back(Dl_data<int64_t>(ea, content));
+                data_addresses.push_back({ea, content});
         }
         ++ea;
         ++buf;
@@ -152,7 +152,7 @@ std::string Dl_decoder::getRegisterName(unsigned int reg)
 
 Dl_instruction Dl_decoder::transformInstruction(cs_insn &insn)
 {
-    std::vector<int64_t> op_codes;
+    std::vector<uint64_t> op_codes;
     std::string prefix_name = insn.mnemonic;
     std::string prefix, name;
     size_t pos = prefix_name.find(' ');
@@ -175,49 +175,49 @@ Dl_instruction Dl_decoder::transformInstruction(cs_insn &insn)
         for(int i = 1; i < opCount; i++)
         {
             const auto &op = detail.operands[i];
-            int64_t index = op_dict.add(this->buildOperand(op));
+            uint64_t index = op_dict.add(this->buildOperand(op));
             op_codes.push_back(index);
         }
         // we put the destination operand at the end
         if(opCount > 0)
         {
             const auto &op = detail.operands[0];
-            int64_t index = op_dict.add(this->buildOperand(op));
+            uint64_t index = op_dict.add(this->buildOperand(op));
             op_codes.push_back(index);
         }
     }
-    return Dl_instruction(insn.address, insn.size, prefix, name, op_codes,
-                          detail.encoding.imm_offset, detail.encoding.disp_offset);
+    return {insn.address,
+            insn.size,
+            prefix,
+            name,
+            op_codes,
+            detail.encoding.imm_offset,
+            detail.encoding.disp_offset};
 }
 
-Dl_operator Dl_decoder::buildOperand(const cs_x86_op &op)
+std::variant<ImmOp, RegOp, IndirectOp> Dl_decoder::buildOperand(const cs_x86_op &op)
 {
-    Dl_operator curr_op;
     switch(op.type)
     {
         case X86_OP_REG:
-            curr_op.type = operator_type::REG;
-            curr_op.reg1 = getRegisterName(op.reg);
-            break;
+            return getRegisterName(op.reg);
         case X86_OP_IMM:
-            curr_op.type = operator_type::IMMEDIATE;
-            curr_op.offset = op.imm;
-            break;
+            return op.imm;
         case X86_OP_MEM:
-            curr_op.type = operator_type::INDIRECT;
-            curr_op.reg1 = getRegisterName(op.mem.segment);
-            curr_op.reg2 = getRegisterName(op.mem.base);
-            curr_op.reg3 = getRegisterName(op.mem.index);
-            curr_op.offset = op.mem.disp;
-            curr_op.multiplier = op.mem.scale;
-            break;
+        {
+            IndirectOp I = {getRegisterName(op.mem.segment),
+                            getRegisterName(op.mem.base),
+                            getRegisterName(op.mem.index),
+                            op.mem.disp,
+                            op.mem.scale,
+                            op.size * 8};
+            return I;
+        }
         case X86_OP_INVALID:
+        default:
             std::cerr << "invalid operand\n";
             exit(1);
     }
-    // size in bits
-    curr_op.size = op.size * 8;
-    return curr_op;
 }
 
 souffle::tuple &operator<<(souffle::tuple &t, const Dl_instruction &inst)
@@ -238,28 +238,6 @@ template <class T>
 souffle::tuple &operator<<(souffle::tuple &t, const Dl_data<T> &data)
 {
     t << data.ea << static_cast<int64_t>(data.content);
-    return t;
-}
-
-souffle::tuple &operator<<(souffle::tuple &t, const std::pair<Dl_operator, int64_t> &pair)
-{
-    auto &[op, id] = pair;
-    switch(op.type)
-    {
-        case NONE:
-        default:
-            break;
-        case REG:
-            t << id << op.reg1;
-            break;
-        case IMMEDIATE:
-            t << id << op.offset;
-            break;
-        case INDIRECT:
-            t << id << op.reg1 << op.reg2 << op.reg3 << op.multiplier << op.offset << op.size;
-            break;
-    }
-
     return t;
 }
 
@@ -288,6 +266,19 @@ void Dl_decoder::addRelation(souffle::SouffleProgram *prog, const std::string &n
 {
     auto *rel = prog->getRelation(name);
     for(const auto elt : data)
+    {
+        souffle::tuple t(rel);
+        t << elt;
+        rel->insert(t);
+    }
+}
+
+template <typename T>
+void Dl_decoder::addMapToRelation(souffle::SouffleProgram *prog, const std::string &name,
+                                  const std::map<T, uint64_t> &data)
+{
+    auto *rel = prog->getRelation(name);
+    for(const auto &elt : data)
     {
         souffle::tuple t(rel);
         t << elt;
@@ -336,9 +327,9 @@ void Dl_decoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module
     addRelation(prog, "address_in_data", data_addresses);
     addRelation(prog, "data_byte", data_bytes);
     addRelation(prog, "invalid_op_code", invalids);
-    addRelation(prog, "op_regdirect", op_dict.get_operators_of_type(operator_type::REG));
-    addRelation(prog, "op_immediate", op_dict.get_operators_of_type(operator_type::IMMEDIATE));
-    addRelation(prog, "op_indirect", op_dict.get_operators_of_type(operator_type::INDIRECT));
+    addMapToRelation(prog, "op_regdirect", op_dict.regTable);
+    addMapToRelation(prog, "op_immediate", op_dict.immTable);
+    addMapToRelation(prog, "op_indirect", op_dict.indirectTable);
 
     ExceptionDecoder excDecoder(module);
     excDecoder.addExceptionInformation(prog);

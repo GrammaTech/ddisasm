@@ -62,7 +62,6 @@ endif()
 add_library(disasm_main STATIC
   disasm_main.cpp
   Dl_decoder.cpp
-  Dl_operator.cpp
   Dl_operator_table.cpp
   Elf_reader.cpp
   ExceptionDecoder.cpp

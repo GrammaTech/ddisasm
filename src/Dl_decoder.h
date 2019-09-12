@@ -26,51 +26,26 @@
 #include <capstone/capstone.h>
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
-#include "Dl_operator.h"
 #include "Dl_operator_table.h"
 
 #include <vector>
 
-class Dl_instruction
+struct Dl_instruction
 {
-public:
-    int64_t address;
+    uint64_t address;
     long size;
     std::string prefix;
     std::string name;
-    std::vector<int64_t> op_codes;
-    int8_t immediateOffset;
-    int8_t displacementOffset;
-
-    Dl_instruction()
-        : address(0),
-          size(0),
-          prefix(),
-          name(),
-          op_codes(),
-          immediateOffset(),
-          displacementOffset(){};
-
-    Dl_instruction(int64_t address, long size, const std::string& prefix, const std::string& name,
-                   std::vector<int64_t> op_codes, int8_t immediateOffset, int8_t displacementOffset)
-        : address(address),
-          size(size),
-          prefix(prefix),
-          name(name),
-          op_codes(op_codes),
-          immediateOffset(immediateOffset),
-          displacementOffset(displacementOffset){};
+    std::vector<uint64_t> op_codes;
+    uint8_t immediateOffset;
+    uint8_t displacementOffset;
 };
 
 template <class Content>
 struct Dl_data
 {
-public:
-    int64_t ea;
+    uint64_t ea;
     Content content;
-    Dl_data(int64_t ea, Content content) : ea(ea), content(content)
-    {
-    }
 };
 
 class Dl_decoder
@@ -79,19 +54,22 @@ private:
     csh csHandle;
     Dl_operator_table op_dict;
     std::vector<Dl_instruction> instructions;
-    std::vector<int64_t> invalids;
-    std::vector<Dl_data<int64_t>> data_addresses;
+    std::vector<uint64_t> invalids;
+    std::vector<Dl_data<uint64_t>> data_addresses;
     std::vector<Dl_data<unsigned char>> data_bytes;
-    void decode_section(const uint8_t* buff, uint64_t size, int64_t ea);
+    void decode_section(const uint8_t* buff, uint64_t size, uint64_t ea);
     std::string getRegisterName(unsigned int reg);
     Dl_instruction transformInstruction(cs_insn& insn);
-    Dl_operator buildOperand(const cs_x86_op& op);
-    void store_data_section(const uint8_t* buff, uint64_t size, int64_t ea, uint64_t min_address,
+    std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const cs_x86_op& op);
+    void store_data_section(const uint8_t* buff, uint64_t size, uint64_t ea, uint64_t min_address,
                             uint64_t max_address);
     void loadInputs(souffle::SouffleProgram* prog, gtirb::Module& module);
     template <typename T>
     void addRelation(souffle::SouffleProgram* prog, const std::string& name,
                      const std::vector<T>& data);
+    template <typename T>
+    void addMapToRelation(souffle::SouffleProgram* prog, const std::string& name,
+                          const std::map<T, uint64_t>& data);
     std::string getFileFormatString(gtirb::FileFormat format);
 
 public:

@@ -130,9 +130,13 @@ int main(int argc, char **argv)
         return 1;
     }
     gtirb::Module &module = *(ir->modules().begin());
-    Dl_decoder decoder;
-    std::cout << "Decoding the binary" << std::endl;
-    if(souffle::SouffleProgram *prog = decoder.decode(module))
+    souffle::SouffleProgram *prog;
+    {
+        Dl_decoder decoder;
+        std::cout << "Decoding the binary" << std::endl;
+        prog = decoder.decode(module);
+    }
+    if(prog)
     {
         std::cout << "Disassembling" << std::endl;
         try
