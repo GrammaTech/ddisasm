@@ -149,7 +149,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg,1,1):-
     def_used(EA_prev,Reg,EA,_),
     instruction(EA,_,_,"INC",Op1,0,0,0),
     op_regdirect_contains_reg(Op1,Reg).
-    
+
 value_reg_edge(EA,Reg,EA_prev,Reg,1,-1):-
     def_used_for_address(EA_prev,Reg),
     def_used(EA_prev,Reg,EA,_),

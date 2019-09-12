@@ -317,7 +317,7 @@ reg_jump(EA):-
     arch.jump_operation(Operation),
     op_regdirect(Op1,_).
 
-// indirect jump    
+// indirect jump
  .decl indirect_jump(src:address)
 
 indirect_jump(EA):-

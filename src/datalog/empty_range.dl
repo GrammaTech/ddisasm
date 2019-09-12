@@ -101,7 +101,7 @@ no_overlap(EA,8):-
     !in_ea(EA-6),
     !in_ea(EA-7).
 
- 
+
 no_overlap(EA,16):-
     data_byte(EA,_),
     !in_ea(EA-1),

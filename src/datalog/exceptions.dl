@@ -341,7 +341,7 @@ cfi_directive(StartFunction,0,1,".cfi_lsda",Lsda,1,Encoding,0):-
     (
         Lsda != 0, Encoding = LsdaEncoding;
         Lsda = 0, Encoding = 255
-     ).
+    ).
 
 cfi_directive(StartFunction,0,2,".cfi_personality",Personality,1,Encoding,0):-
     fde_entry(_,_,Cie,StartFunction,_,_),
