@@ -22,14 +22,15 @@
 //===----------------------------------------------------------------------===//
 
 #include "DlDecoder.h"
+#include "BinaryReader.h"
+#include "ExceptionDecoder.h"
+// FIXME: remove once section properties are generic
+#include <elf.h>
 #include <souffle/CompiledSouffle.h>
 #include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <string>
-#include "BinaryReader.h"
-#include "Elf_reader.h"
-#include "ExceptionDecoder.h"
 
 using namespace std;
 
@@ -111,7 +112,7 @@ void DlDecoder::decode_section(const uint8_t *buf, uint64_t size, uint64_t ea)
 }
 
 void DlDecoder::store_data_section(const uint8_t *buf, uint64_t size, uint64_t ea,
-                                    uint64_t min_address, uint64_t max_address)
+                                   uint64_t min_address, uint64_t max_address)
 {
     auto can_be_address = [min_address, max_address](uint64_t num) {
         return ((num >= min_address) && (num <= max_address));
@@ -262,7 +263,7 @@ souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Relocation &
 
 template <typename T>
 void DlDecoder::addRelation(souffle::SouffleProgram *prog, const std::string &name,
-                             const std::vector<T> &data)
+                            const std::vector<T> &data)
 {
     auto *rel = prog->getRelation(name);
     for(const auto elt : data)
@@ -275,7 +276,7 @@ void DlDecoder::addRelation(souffle::SouffleProgram *prog, const std::string &na
 
 template <typename T>
 void DlDecoder::addMapToRelation(souffle::SouffleProgram *prog, const std::string &name,
-                                  const std::map<T, uint64_t> &data)
+                                 const std::map<T, uint64_t> &data)
 {
     auto *rel = prog->getRelation(name);
     for(const auto &elt : data)

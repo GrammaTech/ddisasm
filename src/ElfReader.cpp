@@ -297,8 +297,8 @@ string get_symbol_type_str(unsigned char type)
 }
 
 void ElfReader::add_symbols_from_table(vector<InitialAuxData::Symbol>& out,
-                                        const vector<Elf64_Sym>& symbol_table,
-                                        const vector<string>& symbol_name_table)
+                                       const vector<Elf64_Sym>& symbol_table,
+                                       const vector<string>& symbol_name_table)
 {
     auto symbol_it = symbol_table.begin();
     auto symbol_names_it = symbol_name_table.begin();

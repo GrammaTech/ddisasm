@@ -63,7 +63,7 @@ add_library(disasm_main STATIC
   disasm_main.cpp
   DlDecoder.cpp
   DlOperandTable.cpp
-  Elf_reader.cpp
+  ElfReader.cpp
   ExceptionDecoder.cpp
   GtirbModuleDisassembler.cpp
   GtirbZeroBuilder.cpp)
