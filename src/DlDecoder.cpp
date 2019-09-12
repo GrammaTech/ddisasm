@@ -264,6 +264,19 @@ void DlDecoder::addRelation(souffle::SouffleProgram *prog, const std::string &na
 }
 
 template <typename T>
+void DlDecoder::addSetToRelation(souffle::SouffleProgram *prog, const std::string &name,
+                                 const std::set<T> &data)
+{
+    auto *rel = prog->getRelation(name);
+    for(const auto elt : data)
+    {
+        souffle::tuple t(rel);
+        t << elt;
+        rel->insert(t);
+    }
+}
+
+template <typename T>
 void DlDecoder::addMapToRelation(souffle::SouffleProgram *prog, const std::string &name,
                                  const std::map<T, uint64_t> &data)
 {
@@ -354,8 +367,8 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
     addRelation<std::string>(prog, "binary_format", {getFileFormatString(module.getFileFormat())});
     addRelation<uint64_t>(prog, "entry_point",
                           *module.getAuxData<std::vector<uint64_t>>("entry_point"));
-    addRelation(prog, "relocation",
-                *module.getAuxData<std::vector<InitialAuxData::Relocation>>("relocation"));
+    addSetToRelation(prog, "relocation",
+                     *module.getAuxData<std::set<InitialAuxData::Relocation>>("relocation"));
     module.removeAuxData("relocation");
     addRelation(prog, "instruction_complete", instructions);
     addRelation(prog, "address_in_data", data_addresses);

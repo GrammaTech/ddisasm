@@ -71,6 +71,9 @@ private:
     void addRelation(souffle::SouffleProgram* prog, const std::string& name,
                      const std::vector<T>& data);
     template <typename T>
+    void addSetToRelation(souffle::SouffleProgram* prog, const std::string& name,
+                          const std::set<T>& data);
+    template <typename T>
     void addMapToRelation(souffle::SouffleProgram* prog, const std::string& name,
                           const std::map<T, uint64_t>& data);
     std::string getFileFormatString(gtirb::FileFormat format);

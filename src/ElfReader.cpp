@@ -239,16 +239,16 @@ string ElfReader::get_binary_type()
     return "OTHER";
 }
 
-vector<InitialAuxData::Section> ElfReader::get_sections()
+set<InitialAuxData::Section> ElfReader::get_sections()
 {
     auto sect_it = sections.begin();
     auto sect_names_it = section_names.begin();
-    vector<InitialAuxData::Section> result;
+    set<InitialAuxData::Section> result;
     while(sect_it != sections.end())
     {
         if(*sect_names_it != "")
-            result.push_back({*sect_names_it, sect_it->sh_size, sect_it->sh_addr, sect_it->sh_type,
-                              sect_it->sh_flags});
+            result.insert({*sect_names_it, sect_it->sh_size, sect_it->sh_addr, sect_it->sh_type,
+                           sect_it->sh_flags});
         ++sect_it;
         ++sect_names_it;
     }
@@ -296,7 +296,7 @@ string get_symbol_type_str(unsigned char type)
     }
 }
 
-void ElfReader::add_symbols_from_table(vector<InitialAuxData::Symbol>& out,
+void ElfReader::add_symbols_from_table(set<InitialAuxData::Symbol>& out,
                                        const vector<Elf64_Sym>& symbol_table,
                                        const vector<string>& symbol_name_table)
 {
@@ -305,7 +305,7 @@ void ElfReader::add_symbols_from_table(vector<InitialAuxData::Symbol>& out,
     while(symbol_it != symbol_table.end())
     {
         if(*symbol_names_it != "")
-            out.push_back(
+            out.insert(
                 {symbol_it->st_value, symbol_it->st_size, get_symbol_type_str(symbol_it->st_info),
                  get_symbol_scope_str(symbol_it->st_info), symbol_it->st_shndx, *symbol_names_it});
 
@@ -314,9 +314,9 @@ void ElfReader::add_symbols_from_table(vector<InitialAuxData::Symbol>& out,
     }
 }
 
-vector<InitialAuxData::Symbol> ElfReader::get_symbols()
+set<InitialAuxData::Symbol> ElfReader::get_symbols()
 {
-    vector<InitialAuxData::Symbol> result;
+    set<InitialAuxData::Symbol> result;
     add_symbols_from_table(result, symbols, symbol_names);
     add_symbols_from_table(result, dyn_symbols, dyn_symbol_names);
 
@@ -379,9 +379,9 @@ descriptor.  */
     return type_names[type];
 }
 
-vector<InitialAuxData::Relocation> ElfReader::get_relocations()
+set<InitialAuxData::Relocation> ElfReader::get_relocations()
 {
-    vector<InitialAuxData::Relocation> result;
+    set<InitialAuxData::Relocation> result;
     // dynamic relocations refer to dynsym table
     for(auto relocation : dyn_relocations)
     {
@@ -395,7 +395,7 @@ vector<InitialAuxData::Relocation> ElfReader::get_relocations()
                    && "dynamic symbol table smaller than expected");
             symbol_name = dyn_symbol_names[symbol_index];
         }
-        result.push_back(
+        result.insert(
             {relocation.r_offset, get_relocation_type(type), symbol_name, relocation.r_addend});
     }
     // other relocations refer to symtab
@@ -410,7 +410,7 @@ vector<InitialAuxData::Relocation> ElfReader::get_relocations()
             assert(symbol_index < symbol_names.size() && "symbol table smaller than expected");
             symbol_name = symbol_names[symbol_index];
         }
-        result.push_back(
+        result.insert(
             {relocation.r_offset, get_relocation_type(type), symbol_name, relocation.r_addend});
     }
     return result;

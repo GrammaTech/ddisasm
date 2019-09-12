@@ -26,8 +26,8 @@
 
 #include <elf.h>
 #include <fstream>
+#include <set>
 #include <tuple>
-#include <vector>
 #include "BinaryReader.h"
 
 class ElfReader : public BinaryReader
@@ -59,9 +59,7 @@ private:
     void read_dynamic_section();
 
     std::string get_relocation_type(unsigned int type);
-    void print_symbol_table(std::ostream& stream, std::vector<Elf64_Sym>& symbol_table,
-                            std::vector<std::string>& symbol_name_table);
-    void add_symbols_from_table(std::vector<InitialAuxData::Symbol>& out,
+    void add_symbols_from_table(std::set<InitialAuxData::Symbol>& out,
                                 const std::vector<Elf64_Sym>& symbol_table,
                                 const std::vector<std::string>& symbol_name_table);
 
@@ -76,12 +74,12 @@ public:
     uint64_t get_min_address() override;
 
     gtirb::FileFormat get_binary_format() override;
-    std::vector<InitialAuxData::Section> get_sections() override;
+    std::set<InitialAuxData::Section> get_sections() override;
 
     std::string get_binary_type() override;
     uint64_t get_entry_point() override;
-    std::vector<InitialAuxData::Symbol> get_symbols() override;
-    std::vector<InitialAuxData::Relocation> get_relocations() override;
+    std::set<InitialAuxData::Symbol> get_symbols() override;
+    std::set<InitialAuxData::Relocation> get_relocations() override;
 
     std::vector<std::string> get_libraries() override;
     std::vector<std::string> get_library_paths() override;
