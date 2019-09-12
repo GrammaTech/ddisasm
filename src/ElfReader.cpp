@@ -1,4 +1,4 @@
-//===- Elf_reader.cpp -------------------------------------------*- C++ -*-===//
+//===- ElfReader.cpp -------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -21,7 +21,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Elf_reader.h"
+#include "ElfReader.h"
 #include <assert.h>
 #include <cstring>
 #include <functional>
@@ -30,7 +30,7 @@
 
 using namespace std;
 
-Elf_reader::Elf_reader(string filename)
+ElfReader::ElfReader(string filename)
     : file(filename, ios::in | ios::binary),
       valid(false),
       header(),
@@ -51,13 +51,13 @@ Elf_reader::Elf_reader(string filename)
     }
 }
 
-Elf_reader::~Elf_reader()
+ElfReader::~ElfReader()
 {
     if(file.is_open())
         file.close();
 }
 
-void Elf_reader::read_header()
+void ElfReader::read_header()
 {
     if(file.is_open())
     {
@@ -66,7 +66,7 @@ void Elf_reader::read_header()
     }
 }
 
-bool Elf_reader::check_type()
+bool ElfReader::check_type()
 {
     const unsigned char magic_num[] = {ELFMAG0, ELFMAG1, ELFMAG2, ELFMAG3};
     if(memcmp(header.e_ident, magic_num, sizeof(magic_num)) != 0)
@@ -81,7 +81,7 @@ bool Elf_reader::check_type()
     }
     return true;
 }
-void Elf_reader::read_sections()
+void ElfReader::read_sections()
 {
     // moving to the sections
     file.seekg(header.e_shoff, ios::beg);
@@ -104,7 +104,7 @@ void Elf_reader::read_sections()
         section_names.push_back(name);
     }
 }
-void Elf_reader::read_dynamic_symbols()
+void ElfReader::read_dynamic_symbols()
 {
     int dynsym_indx = 0, dynstr_indx = 0;
 
@@ -135,7 +135,7 @@ void Elf_reader::read_dynamic_symbols()
         dyn_symbol_names.push_back(name);
     }
 }
-void Elf_reader::read_symbols()
+void ElfReader::read_symbols()
 {
     int symtab_indx = 0, strtab_indx = 0;
 
@@ -169,7 +169,7 @@ void Elf_reader::read_symbols()
     }
 }
 
-void Elf_reader::read_relocations()
+void ElfReader::read_relocations()
 {
     for(size_t section_index = 0; section_index < sections.size(); section_index++)
     {
@@ -191,7 +191,7 @@ void Elf_reader::read_relocations()
     }
 }
 
-void Elf_reader::read_dynamic_section()
+void ElfReader::read_dynamic_section()
 {
     for(size_t section_index = 0; section_index < sections.size(); section_index++)
     {
@@ -209,22 +209,22 @@ void Elf_reader::read_dynamic_section()
     }
 }
 
-bool Elf_reader::is_valid()
+bool ElfReader::is_valid()
 {
     return valid;
 }
 
-uint64_t Elf_reader::get_entry_point()
+uint64_t ElfReader::get_entry_point()
 {
     return header.e_entry;
 }
 
-gtirb::FileFormat Elf_reader::get_binary_format()
+gtirb::FileFormat ElfReader::get_binary_format()
 {
     return gtirb::FileFormat::ELF;
 }
 
-string Elf_reader::get_binary_type()
+string ElfReader::get_binary_type()
 {
     static string binary_type_names[] = {
         "NONE", /* No file type */
@@ -239,7 +239,7 @@ string Elf_reader::get_binary_type()
     return "OTHER";
 }
 
-vector<InitialAuxData::Section> Elf_reader::get_sections()
+vector<InitialAuxData::Section> ElfReader::get_sections()
 {
     auto sect_it = sections.begin();
     auto sect_names_it = section_names.begin();
@@ -296,7 +296,7 @@ string get_symbol_type_str(unsigned char type)
     }
 }
 
-void Elf_reader::add_symbols_from_table(vector<InitialAuxData::Symbol>& out,
+void ElfReader::add_symbols_from_table(vector<InitialAuxData::Symbol>& out,
                                         const vector<Elf64_Sym>& symbol_table,
                                         const vector<string>& symbol_name_table)
 {
@@ -314,7 +314,7 @@ void Elf_reader::add_symbols_from_table(vector<InitialAuxData::Symbol>& out,
     }
 }
 
-vector<InitialAuxData::Symbol> Elf_reader::get_symbols()
+vector<InitialAuxData::Symbol> ElfReader::get_symbols()
 {
     vector<InitialAuxData::Symbol> result;
     add_symbols_from_table(result, symbols, symbol_names);
@@ -323,7 +323,7 @@ vector<InitialAuxData::Symbol> Elf_reader::get_symbols()
     return result;
 }
 
-string Elf_reader::get_relocation_type(unsigned int type)
+string ElfReader::get_relocation_type(unsigned int type)
 {
     static vector<string> type_names = {
         "R_X86_64_NONE",
@@ -379,7 +379,7 @@ descriptor.  */
     return type_names[type];
 }
 
-vector<InitialAuxData::Relocation> Elf_reader::get_relocations()
+vector<InitialAuxData::Relocation> ElfReader::get_relocations()
 {
     vector<InitialAuxData::Relocation> result;
     // dynamic relocations refer to dynsym table
@@ -416,7 +416,7 @@ vector<InitialAuxData::Relocation> Elf_reader::get_relocations()
     return result;
 }
 
-vector<string> Elf_reader::get_libraries()
+vector<string> ElfReader::get_libraries()
 {
     int dynstr_indx = get_section_index(".dynstr");
     vector<string> libraries;
@@ -433,7 +433,7 @@ vector<string> Elf_reader::get_libraries()
     return libraries;
 }
 
-vector<string> Elf_reader::get_library_paths()
+vector<string> ElfReader::get_library_paths()
 {
     int dynstr_indx = get_section_index(".dynstr");
     vector<string> libraryPaths;
@@ -457,7 +457,7 @@ vector<string> Elf_reader::get_library_paths()
     return libraryPaths;
 }
 
-int Elf_reader::get_section_index(const string& name)
+int ElfReader::get_section_index(const string& name)
 {
     for(size_t i = 0; i < section_names.size(); ++i)
     {
@@ -467,7 +467,7 @@ int Elf_reader::get_section_index(const string& name)
     return -1;
 }
 
-uint64_t Elf_reader::get_min_address()
+uint64_t ElfReader::get_min_address()
 {
     uint64_t min_address = UINTMAX_MAX;
     for(auto section : sections)
@@ -477,7 +477,7 @@ uint64_t Elf_reader::get_min_address()
     }
     return min_address;
 }
-uint64_t Elf_reader::get_max_address()
+uint64_t ElfReader::get_max_address()
 {
     uint64_t max_address = 0;
     for(auto section : sections)
@@ -488,7 +488,7 @@ uint64_t Elf_reader::get_max_address()
     return max_address;
 }
 
-optional<tuple<vector<uint8_t>, uint64_t>> Elf_reader::get_section_content_and_address(
+optional<tuple<vector<uint8_t>, uint64_t>> ElfReader::get_section_content_and_address(
     const string& name)
 {
     int index = get_section_index(name);

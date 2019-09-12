@@ -1,4 +1,4 @@
-//===- Elf_reader.h ---------------------------------------------*- C++ -*-===//
+//===- ElfReader.h ---------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -30,7 +30,7 @@
 #include <vector>
 #include "BinaryReader.h"
 
-class Elf_reader : public BinaryReader
+class ElfReader : public BinaryReader
 {
 private:
     std::ifstream file;
@@ -68,8 +68,8 @@ private:
     int get_section_index(const std::string& name);
 
 public:
-    Elf_reader(std::string filename);
-    ~Elf_reader();
+    ElfReader(std::string filename);
+    ~ElfReader();
 
     bool is_valid() override;
     uint64_t get_max_address() override;
