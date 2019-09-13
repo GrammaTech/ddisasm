@@ -196,7 +196,7 @@ function_entry2(EA):-
 //////////////////////////////////////////////////////////////////////////////
 // refinement using complete_cfg, reachability information and no_return information
 
- 
+
 .decl function_entry2(EA:address)
 .output function_entry2
 

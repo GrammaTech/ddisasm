@@ -16,12 +16,8 @@ set(DATALOG_SOURCES
     datalog/empty_range.dl
     datalog/elf_binaries.dl
     datalog/exceptions.dl
-    datalog/function_inference.dl
-    datalog/intra_procedural_cfg_completeness.dl
-    datalog/intra_procedural_SCC.dl
+    datalog/basic_function_inference.dl
     datalog/main.dl
-    datalog/no_return_analysis.dl
-    datalog/ordered_set.dl
     datalog/pointer_reatribution.dl
     datalog/printable_chars.dl
     datalog/relative_jump_tables.dl

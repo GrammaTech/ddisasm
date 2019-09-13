@@ -34,6 +34,64 @@ This module generates the control flow graph of the disassembled code
 .decl cfg_edge_to_symbol(src:address,symbol:symbol)
 .output cfg_edge_to_symbol
 
+/////////////////////////////////////////////////////////////////////////////////
+// jump table identification
+.decl jump_table(Src:address,Data:address)
+
+//use the data access pattern
+jump_table(EA,Initial_memory):-
+    code(EA),
+    indirect_jump(EA),
+    arch.pointer_size(Pt_size),
+    data_access_pattern(Initial_memory,Pt_size,Pt_size,EA),
+    symbolic_data(Initial_memory,Pt_size,Dest_block),
+    refined_block(Dest_block).
+
+//use just the constant in the jump
+jump_table(EA,Initial_memory):-
+    code(EA),
+    indirect_jump(EA),
+    arch.pointer_size(Pt_size),
+    symbolic_operand(EA,1,Initial_memory,"data"),
+    symbolic_data(Initial_memory,Pt_size,Dest_block),
+    refined_block(Dest_block).
+
+jump_table(EA,Memory+Pt_size):-
+    jump_table(EA,Memory),
+    arch.pointer_size(Pt_size),
+    symbolic_data(Memory+Pt_size,Pt_size,Dest_block),
+    refined_block(Dest_block),
+    !data_access_pattern(Memory+Pt_size,_,_,_).
+
+// we have another access to the same table (the access can be before or after)
+jump_table(EA,Memory+Pt_size):-
+    jump_table(EA,Memory),
+    arch.pointer_size(Pt_size),
+    symbolic_data(Memory,Pt_size,Content_prev),
+    symbolic_data(Memory+Pt_size,Pt_size,Content_next),
+    refined_block(Content_next),
+    data_access_pattern(Memory+Pt_size,Pt_size,Pt_size,EA),
+    (
+        EA < Content_prev,
+        EA < Content_next
+        ;
+        EA > Content_prev,
+        EA > Content_next
+    ).
+
+// Resolve easy jumps that access a straightforward jump table
+.decl resolved_jump(Src:address,Dest:address)
+.output resolved_jump
+
+resolved_jump(EA,Dest):-
+    jump_table(EA,Memory),
+    symbolic_data(Memory,_,Dest),
+    refined_block(Dest).
+
+
+//////////////////////////////////////////////////////////////////////////////
+// edge creation
+
 cfg_edge(Src,Dest,Conditional,Indirect,"branch"):-
     block_last_instruction(Src,EA),
     (

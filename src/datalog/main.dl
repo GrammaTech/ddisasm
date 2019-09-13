@@ -32,11 +32,6 @@ The disassembly has 3 main components:
     - data_access_analysis.dl
     - pointer_reatribution.dl
 
- 3- function_inference.pl
-    -intra_procedural_cfg_completeness.dl
-    -no_return_analysis.dl
-    -intra_procedural_SCC.dl
-
 In addition there are several modules that consider special cases,
 generic components and tables.
 
@@ -88,7 +83,7 @@ This module:
 #include "symbolization.dl"
 
 // Inferece of function boundaries
-#include "function_inference.dl"
+#include "basic_function_inference.dl"
 
 // predicates for debugging and statistics
 #include "debug_stats.dl"
@@ -484,3 +479,13 @@ bss_section_limits(Begin,LastSect+SizeLast):-
 
 .decl inferred_symbol_name(ea:address,name:symbol)
 .output inferred_symbol_name
+
+
+.decl no_return_call(EA:address)
+
+.decl no_return_function(Name:symbol)
+
+no_return_call(EA):-
+    direct_call(EA,Dest),
+    plt_entry(Dest,Function),
+    no_return_function(Function).

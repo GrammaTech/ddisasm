@@ -45,7 +45,7 @@ block_needs_merging(Block):-
     block(Block),
     must_fallthrough(Code,Block),
     code(Code),
-    //not reference anywhere
+    //not referenced anywhere
     !symbolic_operand(_,_,Block,_),
     !code_pointer_in_data(_,Block),
     !symbol_minus_symbol(_,_,_,Block),

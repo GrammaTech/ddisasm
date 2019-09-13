@@ -184,7 +184,7 @@ inferred_symbol_name(EA,"__do_global_dtors_aux"):-
 
 inferred_symbol_name(EA,"__do_global_dtors_aux"):-
     !function_symbol(EA,"__do_global_dtors_aux"),
-    function_entry2(EA),
+    function_entry(EA),
     // referenced from .fini_array
     address_in_data(FiniArray,EA),
     section(".fini_array",Size,Beg),
@@ -204,3 +204,11 @@ inferred_symbol_name(EA,"_DYNAMIC"):-
     binary_format("ELF"),
     !symbol(EA,_,_,_,_,"_DYNAMIC"),
     section(".dynamic",_,EA).
+
+
+no_return_function("exit"):-binary_format("ELF").
+no_return_function("_exit"):-binary_format("ELF").
+no_return_function("abort"):-binary_format("ELF").
+no_return_function("__stack_chk_fail"):-binary_format("ELF").
+no_return_function("__assert_fail"):-binary_format("ELF").
+no_return_function("longjump"):-binary_format("ELF").

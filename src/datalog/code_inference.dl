@@ -71,7 +71,7 @@ may_fallthrough(From,To):-
     !return(From),
     !unconditional_jump(From),
     !halt(From),
-    !no_return_call_basic(From).
+    !no_return_call(From).
 
 .decl must_fallthrough(o:address,d:address)
 

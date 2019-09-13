@@ -42,7 +42,7 @@ receives a property as an input and provides a predicate forall.
 .decl first(Set:number,Element:number)
 .decl last(Set:number,Element:number)
 .decl next(Set:number,Element:number,Element2:number)
-      
+
 /* succ(Set,A,B):-
     pred(Set,A),
     pred(Set,B),
