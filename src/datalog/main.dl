@@ -483,6 +483,7 @@ bss_section_limits(Begin,LastSect+SizeLast):-
 
 
 .decl no_return_call(EA:address)
+.decl function_pointer_section(Name:symbol)
 
 .decl no_return_function(Name:symbol)
 

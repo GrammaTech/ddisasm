@@ -89,6 +89,9 @@ code_section(Name):-
     section_complete(Name,_,_,_,Flags),
     elf_section_flag("SHF_EXECINSTR",Pos_Exec), Flags band (2^Pos_Exec)  > 0.
 
+function_pointer_section(".init_array"):-binary_format("ELF").
+function_pointer_section(".fini_array"):-binary_format("ELF").
+function_pointer_section(".got.plt"):-binary_format("ELF").
 ////////////////////////////////////////////////////////////////////////////
 // detect references  to libraries (calls to plt)
 .decl plt_section(name:symbol)

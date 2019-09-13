@@ -52,6 +52,16 @@ function_entry(EA):-
         code(EA_caller)
     ).
 
+// pointer in special sections
+function_without_callframe(EA),
+function_entry(EA):-
+    code_pointer_in_data(Src,EA),
+    !fde_addresses(EA,_),
+    function_pointer_section(Name),
+    section(Name,Size,Base),
+    Src >= Base,
+    Src < Base+Size.
+
 .decl in_function_initial(Block:address,Function:address)
 
 in_function_initial(Block,Block):-
