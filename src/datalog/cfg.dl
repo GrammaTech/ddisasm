@@ -122,8 +122,8 @@ cfg_edge(Src,Dest,"false","false","fallthrough"):-
 cfg_edge(ReturnBlock,NextBlock,"false","false","return"):-
     cfg_edge(Caller,Block,_,_,"call"),
     cfg_edge(Caller,NextBlock,_,_,"fallthrough"),
-    in_function(Block,FunctionEntry),
-    in_function(ReturnBlock,FunctionEntry),
+    function_inference.in_function(Block,FunctionEntry),
+    function_inference.in_function(ReturnBlock,FunctionEntry),
     block_last_instruction(ReturnBlock,Insn),
     return(Insn).
 

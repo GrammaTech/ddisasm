@@ -151,6 +151,7 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
 // Initialize components
 
 .init arch = X64
+.init function_inference = basic_function_inference
 
 /////////////////////////////////////////////////////////////
 // auxiliary definitions

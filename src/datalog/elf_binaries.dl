@@ -184,7 +184,7 @@ inferred_symbol_name(EA,"__do_global_dtors_aux"):-
 
 inferred_symbol_name(EA,"__do_global_dtors_aux"):-
     !function_symbol(EA,"__do_global_dtors_aux"),
-    function_entry(EA),
+    function_inference.function_entry(EA),
     // referenced from .fini_array
     address_in_data(FiniArray,EA),
     section(".fini_array",Size,Beg),
