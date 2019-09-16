@@ -56,3 +56,10 @@ low_pass_mask((2^N)-1):-
 low_pass_filter(EA):-
     op_immediate_and_reg(EA,"AND",_,_,Imm),
     low_pass_mask(Imm).
+
+.decl is_xor_reset(EA:address)
+
+is_xor_reset(EA):-
+    instruction(EA,_,_,"XOR",Op1,Op2,0,0),
+    op_regdirect_contains_reg(Op1,Reg),
+    op_regdirect_contains_reg(Op2,Reg).

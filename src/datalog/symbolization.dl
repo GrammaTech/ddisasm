@@ -183,7 +183,8 @@ symbolic_operand_point(EA,Imm_index,-1,"immediate is bitmask"):-
     def_used(EA_def,Reg,EA,_),
     instruction_get_operation(EA_def,Operation),
     arch.logic_operation(Operation),
-    !low_pass_filter(EA_def).
+    !low_pass_filter(EA_def),
+    !is_xor_reset(EA_def).
 
 symbolic_operand_point(EA,Op_index,-1,"moved/compared-with-different-size"):-
     symbolic_operand_candidate(EA,Op_index,_,_),
