@@ -62,7 +62,8 @@ add_library(disasm_main STATIC
   ElfReader.cpp
   ExceptionDecoder.cpp
   GtirbModuleDisassembler.cpp
-  GtirbZeroBuilder.cpp)
+  GtirbZeroBuilder.cpp
+  passes/SccPass.cpp)
 
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
@@ -136,6 +137,10 @@ target_compile_options(ddisasm PRIVATE -Wno-parentheses-equality)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_link_libraries(ddisasm gomp)
+endif()
+
+if(DDISASM_ENABLE_TESTS)
+  add_subdirectory(tests)
 endif()
 
 install(TARGETS ddisasm DESTINATION bin)

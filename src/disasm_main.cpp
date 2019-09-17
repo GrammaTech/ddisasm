@@ -31,6 +31,7 @@
 #include "DlDecoder.h"
 #include "GtirbModuleDisassembler.h"
 #include "GtirbZeroBuilder.h"
+#include "passes/SccPass.h"
 
 namespace po = boost::program_options;
 
@@ -149,7 +150,7 @@ int main(int argc, char **argv)
         }
         std::cout << "Populating gtirb representation" << std::endl;
         disassembleModule(context, module, prog, vm.count("self-diagnose") != 0);
-
+        computeSCCs(module);
         // Output GTIRB
         if(vm.count("ir") != 0)
         {

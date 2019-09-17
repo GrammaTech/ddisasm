@@ -11,6 +11,8 @@ PROJECT(DDISASM)
 # Global Options (CMake)
 #
 
+option(DDISASM_ENABLE_TESTS "Enable building and running unit tests." ON)
+
 # This just sets the builtin BUILD_SHARED_LIBS, but if defaults to ON
 # instead of OFF.
 option(DDISASM_BUILD_SHARED_LIBS "Build shared libraries." ON)
@@ -124,15 +126,58 @@ if(NOT CAPSTONE)
   )
 endif()
 
+
+# ---------------------------------------------------------------------------
+# Google Test Application
+# ---------------------------------------------------------------------------
+if(DDISASM_ENABLE_TESTS)
+        enable_testing()
+        # Pull in Google Test
+        # https://github.com/google/googletest/tree/master/googletest#incorporating-into-an-existing-cmake-project
+
+        # Download and unpack googletest at configure time
+        configure_file(CMakeLists.googletest googletest-download/CMakeLists.txt)
+
+        execute_process(COMMAND "${CMAKE_COMMAND}" -G "${CMAKE_GENERATOR}" .
+                RESULT_VARIABLE result
+                WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/googletest-download" )
+
+        if(result)
+                message(WARNING "CMake step for googletest failed: ${result}")
+        endif()
+
+        execute_process(COMMAND "${CMAKE_COMMAND}" --build .
+                RESULT_VARIABLE result
+                WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/googletest-download" )
+
+        if(result)
+                message(WARNING "Build step for googletest failed: ${result}")
+        endif()
+
+        # Prevent overriding the parent project's compiler/linker
+        # settings on Windows
+        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+
+        # Add googletest directly to our build. This defines
+        # the gtest and gtest_main targets.
+        add_subdirectory("${CMAKE_BINARY_DIR}/googletest-src"
+                                         "${CMAKE_BINARY_DIR}/googletest-build"
+                                         EXCLUDE_FROM_ALL)
+
+        include_directories("${gtest_SOURCE_DIR}/include")
+endif()
+
 # ---------------------------------------------------------------------------
 # source files
 # ---------------------------------------------------------------------------
 add_subdirectory(src)
 add_subdirectory(doc)
 
-find_program(PYTHON "python3")
-enable_testing()
-add_test(NAME python_tests
-    COMMAND ${PYTHON} -m unittest discover tests "*_test.py"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/"
-    )
+if(DDISASM_ENABLE_TESTS)
+  find_program(PYTHON "python3")
+
+  add_test(NAME python_tests
+      COMMAND ${PYTHON} -m unittest discover tests "*_test.py"
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/"
+  )
+endif()
