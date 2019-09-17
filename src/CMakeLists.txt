@@ -1,3 +1,5 @@
+add_subdirectory(passes)
+
 # ===== generated souffle code =====
 find_program(SOUFFLE souffle
   HINTS $ENV{PATH}
@@ -5,7 +7,6 @@ find_program(SOUFFLE souffle
 if(NOT SOUFFLE)
   message(FATAL_ERROR "souffle was not found in your PATH. Unable to build.")
 endif()
-
 
 set(DATALOG_SOURCES
     datalog/bitmasks.dl
@@ -62,8 +63,7 @@ add_library(disasm_main STATIC
   ElfReader.cpp
   ExceptionDecoder.cpp
   GtirbModuleDisassembler.cpp
-  GtirbZeroBuilder.cpp
-  passes/SccPass.cpp)
+  GtirbZeroBuilder.cpp)
 
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
@@ -122,6 +122,7 @@ target_link_libraries(disasm_main
   ${Boost_LIBRARIES}
   ${EXPERIMENTAL_LIB}
   ${LIBCPP_ABI}
+  scc_pass
 )
 
 # Now combine the static library and generated code into an
