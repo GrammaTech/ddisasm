@@ -12,9 +12,7 @@ ELSE()
 ENDIF()
 
 add_executable(TestDdisasm
-        SccPass.Test.cpp
-        ../passes/SccPass.cpp
-        )
+        SccPass.Test.cpp)
 
 target_link_libraries(
         ${PROJECT_NAME}
