@@ -1,5 +1,3 @@
-add_subdirectory(passes)
-
 # ===== generated souffle code =====
 find_program(SOUFFLE souffle
   HINTS $ENV{PATH}
@@ -51,6 +49,9 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
   set(OPENMP_FLAGS -fopenmp=libgomp)
 endif()
+# ====== passes ============
+
+add_subdirectory(passes)
 
 # ===== souffle_disasm =====
 # First build a static library of all the non-generated code.. This is
@@ -122,14 +123,20 @@ target_link_libraries(disasm_main
   ${Boost_LIBRARIES}
   ${EXPERIMENTAL_LIB}
   ${LIBCPP_ABI}
-  scc_pass
 )
 
 # Now combine the static library and generated code into an
 # executable.
 add_executable(ddisasm
   ${GENERATED_CPP})
-target_link_libraries(ddisasm disasm_main)
+
+target_link_libraries(ddisasm
+  disasm_main
+  scc_pass
+  -Wl,--whole-archive
+  no_return_pass
+  -Wl,--no-whole-archive
+  )
 target_compile_definitions(ddisasm PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(ddisasm PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(ddisasm PRIVATE ${OPENMP_FLAGS})

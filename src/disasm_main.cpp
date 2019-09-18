@@ -31,6 +31,7 @@
 #include "DlDecoder.h"
 #include "GtirbModuleDisassembler.h"
 #include "GtirbZeroBuilder.h"
+#include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
 
 namespace po = boost::program_options;
@@ -89,7 +90,9 @@ int main(int argc, char **argv)
             "Print the given functions even if they are skipped by default (e.g. _start)")(
             "self-diagnose",
             "Use relocation information to emit a self diagnose of the symbolization process. This "
-            "option only works if the target binary contains complete relocation information.");
+            "option only works if the target binary contains complete relocation information.")(
+            "advanced-functions",
+            "Perform additional analyses to compute more precise function boundaries.");
     po::positional_options_description pd;
     pd.add("input-file", -1);
 
@@ -150,7 +153,11 @@ int main(int argc, char **argv)
         }
         std::cout << "Populating gtirb representation" << std::endl;
         disassembleModule(context, module, prog, vm.count("self-diagnose") != 0);
+
+        std::cout << "Computing intra-procedural SCCs" << std::endl;
         computeSCCs(module);
+        std::cout << "Computing no return analysis" << std::endl;
+        computeNoReturn(module);
         // Output GTIRB
         if(vm.count("ir") != 0)
         {
