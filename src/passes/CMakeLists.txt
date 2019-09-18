@@ -31,6 +31,9 @@ add_library(no_return_pass STATIC
   ${NO_RETURN_CPP}
   )
 
+target_link_libraries(no_return_pass
+  gtirb)
+
 target_compile_definitions(no_return_pass PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(no_return_pass PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(no_return_pass PRIVATE ${OPENMP_FLAGS})
