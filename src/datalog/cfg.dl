@@ -145,6 +145,12 @@ cfg_edge_to_top(Src,"false","call"):-
         indirect_call(EA)
     ).
 
+// a return to top if no other return exists
+cfg_edge_to_top(Src,"false","return"):-
+    block_last_instruction(Src,EA),
+    return(Insn),
+    !cfg_edge(Src,_,_,_,"return").
+
 cfg_edge_to_symbol(Src,Symbol):-
     block_last_instruction(Src,EA),
     plt_entry(EA,Symbol).
