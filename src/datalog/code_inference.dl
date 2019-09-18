@@ -514,7 +514,7 @@ block_points(Block,Block_pred2,Points,cat("fallthrough-transitive ",Why)):-
     code_in_block_candidate_refined(EA,Block_pred),
     block_is_overlaping(Block_pred),
     block_points(Block_pred,Block_pred2,Points,Why),
-    Points > 0.
+    Points != 0.
 
 block_points(Block,Block_pred2,Points-1,cat("multiple-fallthrough-transitive ",Why)):-
     block_is_overlaping(Block),
