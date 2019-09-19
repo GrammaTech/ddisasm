@@ -147,10 +147,20 @@ cfg_edge_to_top(Src,"false","call"):-
 
 // a return to top if no other return exists
 cfg_edge_to_top(Src,"false","return"):-
-    block_last_instruction(Src,EA),
+    block_last_instruction(Src,Insn),
     return(Insn),
     !cfg_edge(Src,_,_,_,"return").
 
 cfg_edge_to_symbol(Src,Symbol):-
     block_last_instruction(Src,EA),
     plt_entry(EA,Symbol).
+
+// pc relative jump with undefined destination
+cfg_edge_to_top(Src,Conditional,"branch"):-
+    block_last_instruction(Src,EA),
+    pc_relative_jump(EA,Dest),
+    !refined_block(Dest),
+    (
+        unconditional_jump(EA), Conditional = "false";
+        !unconditional_jump(EA),Conditional = "true"
+    ).

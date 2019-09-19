@@ -21,13 +21,25 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <gtirb/gtirb.hpp>
-
 #ifndef NO_RETURN_PASS_H_
 #define NO_RETURN_PASS_H_
 
+#include <souffle/SouffleInterface.h>
+#include <gtirb/gtirb.hpp>
+#include <optional>
+
 // Refine the CFG by removing fallthrough edges whenever there is a call to a block that never
 // returns.
-void computeNoReturn(gtirb::Module &module);
+class NoReturnPass
+{
+private:
+    std::optional<std::string> DebugDir;
 
+    void populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M);
+    std::set<gtirb::Block*> updateCFG(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M);
+
+public:
+    void setDebugDir(std::string Path);
+    std::set<gtirb::Block*> computeNoReturn(gtirb::Module& module);
+};
 #endif // NO_RETURN_PASS_H_

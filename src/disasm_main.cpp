@@ -28,6 +28,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include "DatalogUtils.h"
 #include "DlDecoder.h"
 #include "GtirbModuleDisassembler.h"
 #include "GtirbZeroBuilder.h"
@@ -35,30 +36,6 @@
 #include "passes/SccPass.h"
 
 namespace po = boost::program_options;
-
-void writeFacts(souffle::SouffleProgram *prog, const std::string &directory)
-{
-    std::ios_base::openmode filemask = std::ios::out;
-    for(souffle::Relation *relation : prog->getInputRelations())
-    {
-        std::ofstream file(directory + relation->getName() + ".facts", filemask);
-        souffle::SymbolTable symbolTable = relation->getSymbolTable();
-        for(souffle::tuple tuple : *relation)
-        {
-            for(size_t i = 0; i < tuple.size(); i++)
-            {
-                if(i > 0)
-                    file << "\t";
-                if(relation->getAttrType(i)[0] == 's')
-                    file << symbolTable.resolve(tuple[i]);
-                else
-                    file << tuple[i];
-            }
-            file << std::endl;
-        }
-        file.close();
-    }
-}
 
 namespace std
 {
@@ -91,8 +68,8 @@ int main(int argc, char **argv)
             "self-diagnose",
             "Use relocation information to emit a self diagnose of the symbolization process. This "
             "option only works if the target binary contains complete relocation information.")(
-            "advanced-functions",
-            "Perform additional analyses to compute more precise function boundaries.");
+            "skip-function-analysis",
+            "Skip additional analyses to compute more precise function boundaries.");
     po::positional_options_description pd;
     pd.add("input-file", -1);
 
@@ -154,10 +131,16 @@ int main(int argc, char **argv)
         std::cout << "Populating gtirb representation" << std::endl;
         disassembleModule(context, module, prog, vm.count("self-diagnose") != 0);
 
-        std::cout << "Computing intra-procedural SCCs" << std::endl;
-        computeSCCs(module);
-        std::cout << "Computing no return analysis" << std::endl;
-        computeNoReturn(module);
+        if(vm.count("skip-function-analysis") == 0)
+        {
+            std::cout << "Computing intra-procedural SCCs" << std::endl;
+            computeSCCs(module);
+            std::cout << "Computing no return analysis" << std::endl;
+            NoReturnPass NoReturn;
+            if(vm.count("debug-dir") != 0)
+                NoReturn.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
+            NoReturn.computeNoReturn(module);
+        }
         // Output GTIRB
         if(vm.count("ir") != 0)
         {

@@ -12,7 +12,8 @@ ELSE()
 ENDIF()
 
 add_executable(TestDdisasm
-        SccPass.Test.cpp)
+        SccPass.Test.cpp
+        NoReturnPass.Test.cpp)
 
 target_link_libraries(
         ${PROJECT_NAME}
@@ -22,6 +23,9 @@ target_link_libraries(
         gtest_main
         gtirb
         scc_pass
+        -Wl,--whole-archive
+        no_return_pass
+        -Wl,--no-whole-archive
 )
 
 # Add tests to make test

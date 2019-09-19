@@ -1,4 +1,4 @@
-//===- GtirbToDatalog.h ---------------------------------------------*- C++ -*-===//
+//===- DatalogUtils.h ---------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -21,17 +21,21 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef GTIRB_TO_DATALOG_H_
-#define GTIRB_TO_DATALOG_H_
+#ifndef DATALOG_UTILS_H_
+#define DATALOG_UTILS_H_
 
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 
+void writeFacts(souffle::SouffleProgram* prog, const std::string& directory);
+
 class GtirbToDatalog
 {
 private:
     std::shared_ptr<souffle::SouffleProgram> Prog;
+
+    void populateEdgeProperties(souffle::tuple& T, const gtirb::EdgeLabel& Label);
 
 public:
     GtirbToDatalog(std::shared_ptr<souffle::SouffleProgram> P) : Prog(P)

@@ -49,6 +49,16 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
   set(OPENMP_FLAGS -fopenmp=libgomp)
 endif()
+
+# ====== datalog_utils ======
+
+add_library(datalog_utils STATIC
+  DatalogUtils.cpp)
+
+target_compile_definitions(datalog_utils PRIVATE __EMBEDDED_SOUFFLE__)
+target_compile_definitions(datalog_utils PRIVATE RAM_DOMAIN_SIZE=64)
+target_compile_options(datalog_utils PRIVATE ${OPENMP_FLAGS})
+target_compile_options(datalog_utils PRIVATE -O3)
 # ====== passes ============
 
 add_subdirectory(passes)
@@ -119,6 +129,7 @@ target_link_libraries(disasm_main
   gtirb
   gtirb_pprinter
   ehp
+  datalog_utils
   ${CAPSTONE}
   ${Boost_LIBRARIES}
   ${EXPERIMENTAL_LIB}

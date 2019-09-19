@@ -27,12 +27,12 @@ add_custom_command(OUTPUT ${NO_RETURN_CPP}
 
 add_library(no_return_pass STATIC
   NoReturnPass.cpp
-  GtirbToDatalog.cpp
   ${NO_RETURN_CPP}
   )
 
 target_link_libraries(no_return_pass
-  gtirb)
+  gtirb
+  datalog_utils)
 
 target_compile_definitions(no_return_pass PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(no_return_pass PRIVATE RAM_DOMAIN_SIZE=64)

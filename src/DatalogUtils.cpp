@@ -21,15 +21,43 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "GtirbToDatalog.h"
+#include "DatalogUtils.h"
 
-souffle::tuple& operator<<(souffle::tuple& T, const gtirb::EdgeLabel& Label)
+void writeFacts(souffle::SouffleProgram* prog, const std::string& directory)
 {
-    assert(Label && "Found edge without a label");
+    std::ios_base::openmode filemask = std::ios::out;
+    for(souffle::Relation* relation : prog->getInputRelations())
+    {
+        std::ofstream file(directory + relation->getName() + ".facts", filemask);
+        souffle::SymbolTable symbolTable = relation->getSymbolTable();
+        for(souffle::tuple tuple : *relation)
+        {
+            for(size_t i = 0; i < tuple.size(); i++)
+            {
+                if(i > 0)
+                    file << "\t";
+                if(relation->getAttrType(i)[0] == 's')
+                    file << symbolTable.resolve(tuple[i]);
+                else
+                    file << tuple[i];
+            }
+            file << std::endl;
+        }
+        file.close();
+    }
+}
+
+void GtirbToDatalog::populateEdgeProperties(souffle::tuple& T, const gtirb::EdgeLabel& Label)
+{
+    assert(Label.has_value() && "Found edge without a label");
     if(std::get<gtirb::ConditionalEdge>(*Label) == gtirb::ConditionalEdge::OnTrue)
         T << "true";
+    else
+        T << "false";
     if(std::get<gtirb::DirectEdge>(*Label) == gtirb::DirectEdge::IsIndirect)
         T << "true";
+    else
+        T << "false";
     switch(std::get<gtirb::EdgeType>(*Label))
     {
         case gtirb::EdgeType::Branch:
@@ -51,7 +79,6 @@ souffle::tuple& operator<<(souffle::tuple& T, const gtirb::EdgeLabel& Label)
             T << "sysret";
             break;
     }
-    return T;
 }
 
 void GtirbToDatalog::populateBlocks(gtirb::Module& M)
@@ -73,7 +100,6 @@ void GtirbToDatalog::populateCfgEdges(gtirb::Module& M)
         if(gtirb::ProxyBlock* Proxy = Symbol.getReferent<gtirb::ProxyBlock>())
             InvSymbolMap[Proxy] = Symbol.getName();
     }
-
     gtirb::CFG& Cfg = M.getCFG();
     auto* EdgeRel = Prog->getRelation("cfg_edge");
     auto* TopEdgeRel = Prog->getRelation("cfg_edge_to_top");
@@ -82,30 +108,30 @@ void GtirbToDatalog::populateCfgEdges(gtirb::Module& M)
     {
         if(gtirb::Block* Src = dyn_cast<gtirb::Block>(Cfg[Edge.m_source]))
         {
-            if(gtirb::Block* Dest = dyn_cast<gtirb::Block>(Cfg[Edge.m_source]))
+            if(gtirb::Block* Dest = dyn_cast<gtirb::Block>(Cfg[Edge.m_target]))
             {
                 souffle::tuple T(EdgeRel);
                 T << static_cast<uint64_t>(Src->getAddress())
                   << static_cast<uint64_t>(Dest->getAddress());
-                T << Edge.get_property();
+                populateEdgeProperties(T, Edge.get_property());
                 EdgeRel->insert(T);
             }
 
-            if(gtirb::ProxyBlock* Dest = dyn_cast<gtirb::ProxyBlock>(Cfg[Edge.m_source]))
+            if(gtirb::ProxyBlock* Dest = dyn_cast<gtirb::ProxyBlock>(Cfg[Edge.m_target]))
             {
                 auto foundSymbol = InvSymbolMap.find(Dest);
                 if(foundSymbol != InvSymbolMap.end())
                 {
                     souffle::tuple T(SymbolEdgeRel);
                     T << static_cast<uint64_t>(Src->getAddress()) << foundSymbol->second;
-                    T << Edge.get_property();
+                    populateEdgeProperties(T, Edge.get_property());
                     SymbolEdgeRel->insert(T);
                 }
                 else
                 {
                     souffle::tuple T(TopEdgeRel);
-                    T << static_cast<uint64_t>(Src->getAddress()) << foundSymbol->second;
-                    T << Edge.get_property();
+                    T << static_cast<uint64_t>(Src->getAddress());
+                    populateEdgeProperties(T, Edge.get_property());
                     TopEdgeRel->insert(T);
                 }
             }
@@ -128,5 +154,6 @@ void GtirbToDatalog::populateSccs(gtirb::Module& M)
         souffle::tuple T(InSccRel);
         T << Found->second << SccBlockIndex[Found->second]++
           << static_cast<uint64_t>(Block.getAddress());
+        InSccRel->insert(T);
     }
 }

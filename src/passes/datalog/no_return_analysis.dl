@@ -21,13 +21,18 @@
 //
 //===----------------------------------------------------------------------===//
 /**
- no_return and no_return_call are mutually recursive definitions
- that implement a must analysis that propagates over (potentially) the
- whole program.
+ A SCC does not return if none of the exits returns and none of the blocks in the SCC return.
+ 'scc_no_return' computes the SCCs that do not return by checking
+ all the blocks in the scc incrementally with the help of
+ 'scc_partial_no_return' and 'block_in_scc_no_return'.
 
- The analysis is a must analysis so it cannot propagate if there are jumps that are not defined
- In order to propagate through SCC we need to compute their exits
- if none of their exits return, and the CFG is complete, the SCC never returns.
+ 'block_in_scc_no_return' checks that all the exits lead to blocks that do not return and
+  the block itself does not have a return.
+
+ A block does not return 'no_return' if it is in a SCC that does not return.
+
+ The analysis is conservative in the sense that it does not follow indirect control flow.
+ Any block with indirect outgoing edges will not qualify as no returning.
 */
 .number_type address
 .number_type scc
@@ -46,22 +51,31 @@
 
 
 .decl direct_call(src:address,dest:address)
-.decl direct_jump(src:address,dest:address)
-.decl fallthrough(src:address,dest:address)
-.decl return(srd:address)
+.decl direct_jump_outside_scc(src:address,dest:address)
+.decl fallthrough_outside_scc(src:address,dest:address)
+.decl return(src:address)
+.output return
 
 direct_call(Src,Dest):-
     cfg_edge(Src,Dest,_,"false","call").
 
-direct_jump(Src,Dest):-
-    cfg_edge(Src,Dest,_,"false","jump").
+direct_jump_outside_scc(Src,Dest):-
+    cfg_edge(Src,Dest,_,"false","jump"),
+    in_scc(Scc1,_,Src),
+    in_scc(Scc2,_,Dest),
+    Scc1!=Scc2.
 
-fallthrough(Src,Dest):-
-    cfg_edge(Src,Dest,_,"false","fallthrough").
+fallthrough_outside_scc(Src,Dest):-
+    cfg_edge(Src,Dest,_,"false","fallthrough"),
+    in_scc(Scc1,_,Src),
+    in_scc(Scc2,_,Dest),
+    Scc1!=Scc2.
 
 return(Src):-
-    cfg_edge(Src,Dest,_,_,"return");
-    cfg_edge_to_top(Src,_,_,"return").
+    cfg_edge(Src,_,_,_,"return");
+    cfg_edge_to_top(Src,_,_,"return");
+    cfg_edge(Src,_,_,_,"sysret");
+    cfg_edge_to_top(Src,_,_,"sysret").
 
 .decl incomplete_block(src:address)
 
@@ -74,9 +88,10 @@ incomplete_block(Src):-
 .output no_return
 
 .decl block_call_no_return(Block:address)
-.output no_return
+.output block_call_no_return
 
 .decl scc_no_return(Scc:scc)
+.output scc_no_return
 
 // initial seeds for the analysis
 .decl no_return_function(Name:symbol)
@@ -89,17 +104,6 @@ no_return_function("__assert_fail").
 no_return_function("longjump").
 
 ////////////////////////////////////////////////////////////////////////////
-.decl block_in_scc_has_exit(scc:scc,block:address,exit:address)
-
-
-block_in_scc_has_exit(Scc,Block,Exit):-
-    in_scc(Scc,_,Block),
-    (
-        direct_jump(Block,Exit);
-        fallthrough(Block,Exit)
-    ),
-    !in_scc(Scc,_,Exit).
-
 
 .decl last_in_scc(Scc:scc, MaxIndex:number)
 
@@ -107,44 +111,29 @@ last_in_scc(Scc,MaxIndex):-
     in_scc(Scc,_,_),
     MaxIndex = max X: {in_scc(Scc,X,_)}.
 
-.decl scc_complete_block(Scc:scc,Index:number)
+.decl scc_partial_no_return(Scc:scc,Index:number)
+.output scc_partial_no_return
 
-scc_complete_block(Scc,0):-
+.decl block_in_scc_no_return(Block:address)
+
+scc_partial_no_return(Scc,0):-
     in_scc(Scc,0,Block),
-    !incomplete_block(Block),
-    !return(Block).
+    block_in_scc_no_return(Block).
 
-scc_complete_block(Scc,N+1):-
-    scc_complete_block(Scc,N),
+scc_partial_no_return(Scc,N+1):-
+    scc_partial_no_return(Scc,N),
     in_scc(Scc,N+1,Block),
-    !incomplete_block(Block),
-    !return(Block).
+    block_in_scc_no_return(Block).
 
-.decl scc_exit_no_return(Scc:scc,Index:number)
-
-scc_exit_no_return(Scc,0):-
-    in_scc(Scc,0,Block),
-    (
-        block_in_scc_has_exit(Scc,Block,Exit),
-        no_return(Exit)
-        ;
-        !block_in_scc_has_exit(Scc,Block,_)
-    ).
-
-scc_exit_no_return(Scc,N+1):-
-    scc_exit_no_return(Scc,N),
-    in_scc(Scc,N+1,Block),
-    (
-        block_in_scc_has_exit(Scc,Block,Exit),
-        no_return(Exit)
-        ;
-        !block_in_scc_has_exit(Scc,Block,_)
-    ).
-
+// if all the blocks do not return, then the scc does not return
 scc_no_return(Scc):-
     last_in_scc(Scc,MaxBlockIndex),
-    scc_complete_block(Scc,MaxBlockIndex),
-    scc_exit_no_return(Scc,MaxBlockIndex).
+    scc_partial_no_return(Scc,MaxBlockIndex).
+
+// we assign no_return to all the blocks in the scc
+no_return(Block):-
+    scc_no_return(Scc),
+    in_scc(Scc,_,Block).
 
 /////////////////////////////////////////////////////////////////////
 
@@ -157,30 +146,25 @@ block_call_no_return(Block):-
     no_return(Next),
     direct_call(Block,Next).
 
-no_return(Block):-
+// we assume that a block is ended by a call, jump, return or something else
+// thus a block cannot have a call and a return or a jump and a call.
+
+block_in_scc_no_return(Block):-
     block_call_no_return(Block).
 
-//inconditional jump
-no_return(Block):-
-    no_return(Dest),
-    direct_jump(Block,Dest),
-    !fallthrough(Block,_).
-
-// conditional jump
-no_return(Block):-
-    no_return(Next),
-    fallthrough(Block,Next),
-    direct_jump(Block,Dest),
-    no_return(Dest).
-
-// only fallthrough
-no_return(Block):-
-    no_return(Next),
-    fallthrough(Block,Next),
-    !direct_jump(Block,_),
-    !incomplete_block(Block).
-
-
-no_return(Block):-
-    scc_no_return(SCC),
-    in_scc(SCC,_,Block).
+block_in_scc_no_return(Block):-
+    in_scc(_,_,Block),
+    !incomplete_block(Block),
+    !return(Block),
+    (
+        direct_jump_outside_scc(Block,Dest),
+        no_return(Dest)
+        ;
+        !direct_jump_outside_scc(Block,_)
+    ),
+    (
+        fallthrough_outside_scc(Block,Dest2),
+        no_return(Dest2)
+        ;
+        !fallthrough_outside_scc(Block,_)
+    ).

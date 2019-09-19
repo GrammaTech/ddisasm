@@ -23,24 +23,23 @@
 
 #include "NoReturnPass.h"
 #include <souffle/CompiledSouffle.h>
-#include <souffle/SouffleInterface.h>
-#include "GtirbToDatalog.h"
+#include "../DatalogUtils.h"
 
-void populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M)
+void NoReturnPass::populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M)
 {
     GtirbToDatalog Loader(P);
-    Loader.populateCfgEdges(M);
     Loader.populateSccs(M);
+    Loader.populateCfgEdges(M);
 }
 
-void updateCFG(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M)
+std::set<gtirb::Block*> NoReturnPass::updateCFG(std::shared_ptr<souffle::SouffleProgram> P,
+                                                gtirb::Module& M)
 {
     std::set<gtirb::Block*> NoReturn;
     for(auto& Output : *P->getRelation("block_call_no_return"))
     {
-        uint64_t A;
-        A = Output[0];
-        gtirb::Addr BlockAddr(A);
+        gtirb::Addr BlockAddr(Output[0]);
+        // this should correspond to only one block
         for(auto& Block : M.findBlock(BlockAddr))
         {
             NoReturn.insert(&Block);
@@ -56,21 +55,29 @@ void updateCFG(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M)
             return false;
         },
         Cfg);
+    return NoReturn;
 }
 
-// souffle::SouffleProgram* get_instance(std::string name);
+void NoReturnPass::setDebugDir(std::string Path)
+{
+    DebugDir = Path;
+}
 
-void computeNoReturn(gtirb::Module& M)
+std::set<gtirb::Block*> NoReturnPass::computeNoReturn(gtirb::Module& M)
 {
     auto Prog = std::shared_ptr<souffle::SouffleProgram>(
         souffle::ProgramFactory::newInstance("souffle_no_return"));
-    // auto Prog = get_instance("souffle_no_return");
     if(!Prog)
     {
-        std::cerr << "Could not create souffle program" << std::endl;
+        std::cerr << "Could not create souffle_no_return program" << std::endl;
         exit(1);
     }
     populateSouffleProg(Prog, M);
     Prog->run();
-    updateCFG(Prog, M);
+    if(DebugDir)
+    {
+        writeFacts(&*Prog, *DebugDir);
+        Prog->printAll(*DebugDir);
+    }
+    return updateCFG(Prog, M);
 }
