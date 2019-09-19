@@ -55,6 +55,9 @@ endif()
 add_library(datalog_utils STATIC
   DatalogUtils.cpp)
 
+target_link_libraries(datalog_utils
+  gtirb)
+
 target_compile_definitions(datalog_utils PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(datalog_utils PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(datalog_utils PRIVATE ${OPENMP_FLAGS})
