@@ -26,20 +26,10 @@
 #include <capstone/capstone.h>
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
+#include "DatalogUtils.h"
 #include "DlOperandTable.h"
 
 #include <vector>
-
-struct DlInstruction
-{
-    uint64_t address;
-    long size;
-    std::string prefix;
-    std::string name;
-    std::vector<uint64_t> op_codes;
-    uint8_t immediateOffset;
-    uint8_t displacementOffset;
-};
 
 template <class Content>
 struct DlData
@@ -62,7 +52,7 @@ private:
     void loadInputs(souffle::SouffleProgram* prog, gtirb::Module& module);
     void storeDataSection(gtirb::ImageByteMap::const_range& sectionBytes, uint64_t size,
                           gtirb::Addr ea, gtirb::Addr min_address, gtirb::Addr max_address);
-    DlInstruction transformInstruction(cs_insn& insn);
+
 
 public:
     DlDecoder();

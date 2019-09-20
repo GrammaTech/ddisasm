@@ -32,6 +32,7 @@
 #include "DlDecoder.h"
 #include "GtirbModuleDisassembler.h"
 #include "GtirbZeroBuilder.h"
+#include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
 
@@ -68,7 +69,7 @@ int main(int argc, char **argv)
             "self-diagnose",
             "Use relocation information to emit a self diagnose of the symbolization process. This "
             "option only works if the target binary contains complete relocation information.")(
-            "skip-function-analysis",
+            "skip-function-analysis,F",
             "Skip additional analyses to compute more precise function boundaries.");
     po::positional_options_description pd;
     pd.add("input-file", -1);
@@ -137,9 +138,15 @@ int main(int argc, char **argv)
             computeSCCs(module);
             std::cout << "Computing no return analysis" << std::endl;
             NoReturnPass NoReturn;
+            FunctionInferencePass FunctionInference;
             if(vm.count("debug-dir") != 0)
+            {
                 NoReturn.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
+                FunctionInference.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
+            }
             NoReturn.computeNoReturn(module);
+            std::cout << "Detecting additional functions" << std::endl;
+            FunctionInference.computeFunctions(context, module);
         }
         // Output GTIRB
         if(vm.count("ir") != 0)

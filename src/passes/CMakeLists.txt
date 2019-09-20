@@ -16,7 +16,7 @@ set(NO_RETURN_DATALOG_SOURCES
 set(NO_RETURN_CPP "${CMAKE_BINARY_DIR}/src/passes/souffle_no_return.cpp")
 
 add_custom_command(OUTPUT ${NO_RETURN_CPP}
-  # Souffle incldes the path of the output file in the generated
+  # Souffle includes the path of the output file in the generated
   # program name. Change directory and use a relative path so the name
   # does not depend on build location.
   WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/passes"
@@ -27,8 +27,7 @@ add_custom_command(OUTPUT ${NO_RETURN_CPP}
 
 add_library(no_return_pass STATIC
   NoReturnPass.cpp
-  ${NO_RETURN_CPP}
-  )
+  ${NO_RETURN_CPP})
 
 target_link_libraries(no_return_pass
   gtirb
@@ -38,3 +37,33 @@ target_compile_definitions(no_return_pass PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(no_return_pass PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(no_return_pass PRIVATE ${OPENMP_FLAGS})
 target_compile_options(no_return_pass PRIVATE -O3)
+
+#============ Function inference pass =========
+
+set(FUNCTION_INFERENCE_DATALOG_SOURCES
+  datalog/function_inference.dl)
+
+set(FUNCTION_INFERENCE_CPP "${CMAKE_BINARY_DIR}/src/passes/souffle_function_inference.cpp")
+
+add_custom_command(OUTPUT ${FUNCTION_INFERENCE_CPP}
+  # Souffle includes the path of the output file in the generated
+  # program name. Change directory and use a relative path so the name
+  # does not depend on build location.
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/passes"
+  COMMAND ${SOUFFLE} ${CMAKE_CURRENT_SOURCE_DIR}/datalog/function_inference.dl -g souffle_function_inference.cpp -j${CORES}
+  DEPENDS ${FUNCTION_INFERENCE_DATALOG_SOURCES})
+
+
+
+add_library(function_inference_pass STATIC
+  FunctionInferencePass.cpp
+  ${FUNCTION_INFERENCE_CPP})
+
+target_link_libraries(function_inference_pass
+  gtirb
+  datalog_utils)
+
+target_compile_definitions(function_inference_pass PRIVATE __EMBEDDED_SOUFFLE__)
+target_compile_definitions(function_inference_pass PRIVATE RAM_DOMAIN_SIZE=64)
+target_compile_options(function_inference_pass PRIVATE ${OPENMP_FLAGS})
+target_compile_options(function_inference_pass PRIVATE -O3)

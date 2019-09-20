@@ -53,10 +53,12 @@ endif()
 # ====== datalog_utils ======
 
 add_library(datalog_utils STATIC
-  DatalogUtils.cpp)
+  DatalogUtils.cpp
+  DlOperandTable.cpp)
 
 target_link_libraries(datalog_utils
-  gtirb)
+  gtirb
+  ${CAPSTONE})
 
 target_compile_definitions(datalog_utils PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(datalog_utils PRIVATE RAM_DOMAIN_SIZE=64)
@@ -73,7 +75,6 @@ add_subdirectory(passes)
 add_library(disasm_main STATIC
   disasm_main.cpp
   DlDecoder.cpp
-  DlOperandTable.cpp
   ElfReader.cpp
   ExceptionDecoder.cpp
   GtirbModuleDisassembler.cpp
@@ -149,6 +150,7 @@ target_link_libraries(ddisasm
   scc_pass
   -Wl,--whole-archive
   no_return_pass
+  function_inference_pass
   -Wl,--no-whole-archive
   )
 target_compile_definitions(ddisasm PRIVATE __EMBEDDED_SOUFFLE__)

@@ -60,7 +60,7 @@ direct_call(Src,Dest):-
     cfg_edge(Src,Dest,_,"false","call").
 
 direct_jump_outside_scc(Src,Dest):-
-    cfg_edge(Src,Dest,_,"false","jump"),
+    cfg_edge(Src,Dest,_,"false","branch"),
     in_scc(Scc1,_,Src),
     in_scc(Scc2,_,Dest),
     Scc1!=Scc2.
@@ -80,9 +80,9 @@ return(Src):-
 .decl incomplete_block(src:address)
 
 incomplete_block(Src):-
-    cfg_edge(Src,_,_,"true","jump");
-    cfg_edge_to_top(Src,_,"true","jump");
-    cfg_edge_to_symbol(Src,_,_,"true","jump").
+    cfg_edge(Src,_,_,"true","branch");
+    cfg_edge_to_top(Src,_,"true","branch");
+    cfg_edge_to_symbol(Src,_,_,"true","branch").
 
 .decl no_return(Block:address)
 .output no_return

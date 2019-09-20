@@ -21,312 +21,262 @@
 //
 //===----------------------------------------------------------------------===//
 /**
-Function inference has two phases:
+Function inference: Infer additional function entries based on
+identifying function pointers and based on identifying complete functions.
 
-- The first one uses symbol information and heuristics.
 
-- The second phase adds new functions by finding blocks of code that
- are contiguous (but not reachable) to a complete function. A
- complete function is a function that does not have unresolved jumps.
-
-   - intra_procedural_cfg_completeness computes reachability
-    and cfgs that are complete (all their jumps resolved)
-    it uses the functions inferred in the first phase.
-
-   - no_return_analysis helps detecting potential function end points.
 */
 
-#include "no_return_analysis.dl"
-#include "intra_procedural_cfg_completeness.dl"
+.number_type address
+.number_type scc
+.number_type operand_code
+.symbol_type register
+
+.decl block(Address:address, Size:number)
+.input block
+
+.decl next_block(Block1:address,Block2:address)
+.input next_block
+///////////////////////////////////////////////////
+.decl instruction(ea:address, size:number, prefix:symbol, opcode:symbol,
+          op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code,
+          immOffset:number,displacementOffset:number)
+.input instruction
+
+// three kinds of operators
+.decl op_regdirect(code:operand_code,register_name:register)
+.input op_regdirect
+
+.decl op_immediate(code:operand_code,offset:number)
+.input op_immediate
+
+.decl op_indirect(code:operand_code,reg1:register, reg2:register, reg3:register,
+        multiplier:number, offset:number, size_value:number)
+.input op_indirect
+
+//////////////////////////////////////////////////////////////
+
+.decl cfg_edge(Src:address,Dest:address,Conditional:symbol,Indirect:symbol,Type:symbol)
+.input cfg_edge
+
+.decl cfg_edge_to_top(Src:address,Conditional:symbol,Indirect:symbol,Type:symbol)
+.input cfg_edge_to_top
+
+.decl cfg_edge_to_symbol(Src:address,Symbol:symbol,Conditional:symbol,Indirect:symbol,Type:symbol)
+.input cfg_edge_to_symbol
+
+.decl symbolic_expression(Address:address,Symbol:address,Offset:number)
+.input symbolic_expression
+
+.decl symbol_minus_symbol(Address:address,Symbol1:address,Symbol2:address,Offset:number)
+.input symbol_minus_symbol
+
+.decl fde_addresses(Begin:address,End:address)
+.input fde_addresses
+
+.decl function_entry(Address:address)
+.input function_entry
+
+.decl function_entry_final(Address:address)
+.output function_entry_final
+
+.decl in_function_final(Block:address,Function:address)
+.output in_function_final
+/////////////////////////////////////////////////////////////////////
+// Component instantiation and chaining
+.init phase1 = FunctionPropagation
+.init phase2 = FunctionPropagation
+
+phase1.function_entry_initial(function):-
+    function_entry(function).
+
+phase2.function_entry_initial(function):-
+    phase1.function_entry_final(function).
+
+function_entry_final(Function):-
+    phase2.function_entry_final(Function).
+
+
+in_function_final(Function,Function):-
+    function_entry_final(Function).
+
+in_function_final(Block,Function):-
+    in_function_final(BlockPrev,Function),
+    next_block(BlockPrev,Block),
+    !function_entry_final(Block).
+
+//////////////////////////////////////////////////////////////////
+// auxiliary predicates
+
+.decl fallthrough(Src:address,Dest:address)
+
+fallthrough(Src,Dest):-
+    cfg_edge(Src,Dest,_,_,"fallthrough").
+
+.decl unconditional_jump(Src:address,Dest:address)
+
+unconditional_jump(Src,Dest):-
+    cfg_edge(Src,Dest,"false",_,"branch").
+
+.decl incomplete_block(src:address)
+
+incomplete_block(Src):-
+    cfg_edge(Src,_,_,"true","branch");
+    cfg_edge_to_top(Src,_,"true","branch");
+    cfg_edge_to_symbol(Src,_,_,"true","branch").
 
 .decl block_in_between_fde(Block:address)
 
 block_in_between_fde(Block):-
-    refined_block(Block),
+    block(Block,_),
     fde_addresses(Begin,End),
     Begin < Block,
     Block < End.
 
+.decl candidate_block(Block:address)
 
-.decl function_entry(EA:address)
-.output function_entry
-// very certain sources
+candidate_block(Block):-
+    block(Block,_),
+    next_block(Prev,Block),
+    !fallthrough(Prev,Block),
+    !block_in_between_fde(Block).
 
-function_entry(EA):-
-    function_symbol(EA,_).
+.decl typical_function_start(EA:address)
 
-function_entry(EA):-
-    main_function(EA).
-
-function_entry(EA):-
-    start_function(EA).
-
-//called
-function_entry(EA):-
-    direct_call(EA_caller,EA),
-    code(EA_caller),
-    refined_block(EA).
-
-//section start
-function_entry(EA):-
-    refined_block(EA),
-    section(_,_,EA).
-
-function_entry(EA):-
-    fde_addresses(EA,_).
-
-// pointer in special sections
-function_entry(EA):-
-    code_pointer_in_data(Src,EA),
-    function_pointer_section(Name),
-    section(Name,Size,Base),
-    Src >= Base,
-    Src < Base+Size.
-
-// not referenced anywhere
-function_entry(EA):-
-    refined_block(EA),
-    !block_in_between_fde(EA),
-    after_function_end(EA,_),
-    !possible_target_from(EA,_),
-    !symbolic_data(_,_,EA),
-    typical_function_starter(EA).
-
-// two consecutive elements in a table with typical function beginnings
-function_entry(EA):-
-    refined_block(EA),
-    !block_in_between_fde(EA),
-    after_function_end(EA,_),
-    !possible_target_from(EA,_),
-    arch.pointer_size(Pt_size),
-    symbolic_data(Pointer,Pt_size,EA),
-    typical_function_starter(EA),
-    !resolved_jump(_,EA),
-
-    symbolic_data(Pointer+Pt_size,Pt_size,EA2),EA2!=EA,
-    after_function_end(EA2,_),
-    typical_function_starter(EA2),
-    !resolved_jump(_,EA2).
-
-// the address is moved to a register
-function_entry(EA):-
-    refined_block(EA),
-    !block_in_between_fde(EA),
-    after_function_end(EA,_),
-    possible_target_from(EA,Src),
-    code(Src),
-    arch.mov(Src).
-
-// // reference from function table
-function_entry(EA):-
-    function_table(Label),
-    preferred_data_access(Offset,Label),
-    symbolic_data(Offset,_,EA),
-    refined_block(EA),
-    !block_in_between_fde(EA),
-    after_function_end(EA,_).
-
-// // referenced from lonely pointer
-function_entry(EA):-
-    arch.pointer_size(Pt_size),
-    code_pointer_in_data(Offset,EA),
-    after_function_end(EA,_),
-    !block_in_between_fde(EA),
-    !code_pointer_in_data(Offset+Pt_size,_),
-    !code_pointer_in_data(Offset-Pt_size,_).
-
-
-// a compact function table (it is enough to determine one of the pointers is a function)
-function_entry(EA2):-
-    function_entry(EA),
-    arch.pointer_size(Pt_size),
-    code_pointer_in_data(Offset,EA),
-    code_pointer_in_data(Offset+Pt_size,EA2),
-    !resolved_jump(_,EA2),
-    after_function_end(EA2,_),
-    !block_in_between_fde(EA2),
-    !labeled_data(Offset+Pt_size).
-
-function_entry(EA2):-
-    function_entry(EA),
-    arch.pointer_size(Pt_size),
-    code_pointer_in_data(Offset,EA),
-    !labeled_data(Offset),
-    code_pointer_in_data(Offset-Pt_size,EA2),
-    !resolved_jump(_,EA2),
-    !block_in_between_fde(EA2),
-    after_function_end(EA2,_).
-
-function_entry(EA2):-
-    plt_data_reference(Offset),
-    arch.pointer_size(Pt_size),
-    code_pointer_in_data(Offset+Pt_size,EA2),
-    !resolved_jump(_,EA2),
-    after_function_end(EA2,_),
-    !block_in_between_fde(EA2),
-    !labeled_data(Offset+Pt_size).
-
-function_entry(EA2):-
-    plt_data_reference(Offset),
-    arch.pointer_size(Pt_size),
-    !labeled_data(Offset),
-    code_pointer_in_data(Offset-Pt_size,EA2),
-    !resolved_jump(_,EA2),
-    !block_in_between_fde(EA2),
-    after_function_end(EA2,_).
-
-
-////////////////
-//propagation: jumped from another function (there is a function boundary in between)
-function_entry2(EA):-
-    refined_block(EA),
-    !block_in_between_fde(EA),
-    after_function_end(EA,_),
-    direct_jump(Src,EA),
-    unconditional_jump(Src),
-    code(Src),
-    function_entry(Middle),
-    (
-        Src >= Middle, Middle > EA
-        ;
-        Src < Middle, Middle <= EA
-    ).
-
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-// refinement using complete_cfg, reachability information and no_return information
-
-
-.decl function_entry2(EA:address)
-.output function_entry2
-
-.decl in_function(EA:address,Function:address)
-.output in_function
-
-function_entry2(EA):-
-    function_entry(EA).
-
-function_entry2(EA):-
-    in_function(Block,Function),
-    Function <= Block,
-    complete_cfg(Function),
-    code_in_refined_block(End,Block),
-    after_function_end(EA,End),
-
-    refined_block(EA),
-    !block_in_between_fde(EA),
-    !arch.is_nop(EA),
-    !resolved_jump(_,EA),
-    //cannot be reached from before
-    //!intra_reachable(Function,EA),
-    EA <= min Y:reaches_segment(Y,EA),
-    //with this we want to avoid dead code missed by the compiler
-    instruction_get_operation(End,Operation),
-    (
-        arch.call_operation(Operation),
-        !intra_edge_dir(EA,_,"back"),
-        !goes_back(EA,_,"cjump"),
-        !unconditional_jump(EA)
-    ;
-        !arch.call_operation(Operation)
-    ).
-
-
-in_function(Block,Function):-
-    function_entry2(Function),
-    intra_reachable(Function,Block).
-
-//we repeat the propagation in the data sections
-
-function_entry2(EA2):-
-    function_entry2(EA),
-    arch.pointer_size(Pt_size),
-    code_pointer_in_data(Offset,EA),
-    code_pointer_in_data(Offset+Pt_size,EA2),
-    !resolved_jump(_,EA2),
-    after_function_end(EA2,_),
-    !block_in_between_fde(EA2),
-    !labeled_data(Offset+Pt_size).
-
-function_entry2(EA2):-
-    function_entry2(EA),
-    arch.pointer_size(Pt_size),
-    code_pointer_in_data(Offset,EA),
-    !labeled_data(Offset),
-    code_pointer_in_data(Offset-Pt_size,EA2),
-    !resolved_jump(_,EA2),
-    !block_in_between_fde(EA2),
-    after_function_end(EA2,_).
-
-//////////////////////////////////////////////////////////////////////////////
-// auxiliary predicates
-.decl function_table(Label:address)
-
-function_table(Label):-
-    arch.pointer_size(Pt_size),
-    data_access_pattern(Label,Pt_size,Mult,Origin),
-    instruction_get_operation(Origin,Operation),
-    (
-        arch.call_operation(Operation)
-    ;
-        Mult > Pt_size,
-        !unconditional_jump(Origin)
-    ),
-    preferred_data_access(Offset,Label),
-    symbolic_data(Offset,Pt_size,EA),
-    refined_block(EA),
-    !block_in_between_fde(EA).
-
-//////////////////////////////////////////////////////////////////////////////
-// heuristic markers
-.decl function_pointer_section(Name:symbol)
-
-function_pointer_section(".init_array").
-function_pointer_section(".fini_array").
-function_pointer_section(".got.plt").
-
-
-
-.decl typical_function_starter(EA:address)
-
-// typical_function_starter(EA):-
-//  instruction(EA,_,_,"PUSH",_,_,_,_).
-
-typical_function_starter(EA):-
-    instruction(EA,_,_,"SUB",Op1,Op2,_,_),
+typical_function_start(Block):-
+    block(Block,_),
+    instruction(Block,_,_,"SUB",Op1,Op2,_,_,_,_),
     op_immediate(Op1,_),
     op_regdirect(Op2,"RSP").
 
-typical_function_starter(EA):-
-    instruction(EA,_,_,"PUSH",Op1,_,_,_),
+typical_function_start(Block):-
+    block(Block,_),
+    instruction(Block,_,_,"PUSH",Op1,_,_,_,_,_),
     op_regdirect(Op1,"RBP").
 
-//////////////////////////////////////////////////////////////////////////////
-// functions can start after a block that does not fallthrough
+.decl symbolic_expression_in_code(Address:address,Symbol:address,Offset:number)
+.output symbolic_expression_in_code
 
-.decl after_function_end(EA:address,End:address)
+symbolic_expression_in_code(Address,Symbol,Offset):-
+    block(Block,Size),
+    symbolic_expression(Address,Symbol,Offset),
+    Address >= Block,
+    Address < Block+Size.
 
-after_function_end(Next,End):-
-    code(End),
-    function_end(End),
-    next(End,Next).
+.decl symbolic_expression_in_data(Address:address,Symbol:address,Offset:number)
+.output symbolic_expression_in_data
 
+symbolic_expression_in_data(Address,Symbol,Offset):-
+    symbolic_expression(Address,Symbol,Offset),
+    !symbolic_expression_in_code(Address,Symbol,Offset).
 
-after_function_end(Next,End):-
-    after_function_end(EA,End),
-    arch.is_nop(EA),
-    next(EA,Next).
+/////////////////////////////////////////////////////////////////////
+// Component to obtain additional function entries
 
-.decl function_end(EA:address)
+.comp FunctionPropagation {
 
-function_end(EA):-
-    return(EA).
+    .decl function_entry_initial(Address:address)
+    .decl function_entry_final(Address:address)
 
-function_end(EA):-
-    unconditional_jump(EA).
+    .decl reason(Address:address,Why:symbol)
+    .output reason
 
-function_end(EA):-
-    halt(EA).
+    // not referenced anywhere
+    reason(Block,"not referenced anywhere"),
+    function_entry_initial(Block):-
+        candidate_block(Block),
+        !symbolic_expression(_,Block,_),
+        !symbol_minus_symbol(_,Block,_,_),
+        !symbol_minus_symbol(_,_,Block,_),
+        typical_function_start(Block).
 
-function_end(EA):-
-    no_return_call(EA).
+    function_entry_initial(Block):-
+        function_pointer(_,Block).
+
+    .decl function_pointer(Address:address,Dest:address)
+
+    // any pointer that does not seems to belong to a jump table is likely a function pointer
+    function_pointer(Address,Dest):-
+        symbolic_expression(Address,Dest,0),
+        function_entry_initial(Dest).
+
+    // isolated pointer
+    reason(Dest,"isolated pointer"),
+    function_pointer(Address,Dest):-
+        symbolic_expression_in_data(Address,Dest,0),
+        candidate_block(Dest),
+        !symbolic_expression_in_data(Address-8,_,0),
+        !symbolic_expression_in_data(Address+8,_,0).
+
+    // consecutive function pointers
+    reason(Dest,"consecutive function pointers"),
+    function_pointer(Address,Dest):-
+        symbolic_expression_in_data(Address,Dest,0),
+        candidate_block(Dest),
+        (
+            function_pointer(Address-8,_);
+            function_pointer(Address+8,_)
+        ).
+
+    // two typical function starts together
+    reason(Dest,"typical function starts together"),
+    function_pointer(Address,Dest):-
+        symbolic_expression_in_data(Address,Dest,0),
+        candidate_block(Dest),
+        typical_function_start(Dest),
+        symbolic_expression_in_data(Address+8,Dest2,0),
+        candidate_block(Dest2),
+        typical_function_start(Dest2).
+
+    //Initial propagation: jumped from another function (there is a function boundary in between)
+    reason(Block,"jumped from another function"),
+    function_entry_initial(Block):-
+        candidate_block(Block),
+        unconditional_jump(Src,Block),
+        function_entry_initial(Middle),
+        (
+            Src >= Middle, Middle > Block
+            ;
+            Src < Middle, Middle <= Block
+        ).
+
+    // propagation based on completeness
+    function_entry_final(Block):-
+        function_entry_initial(Block).
+
+    reason(Block,"after complete function"),
+    function_entry_final(Block):-
+        candidate_block(Block),
+        next_block(Prev,Block),
+        reach_from_entry(Prev,Function),
+        complete_function(Function),
+        !reach_from_entry(Block,Function).
+
+    // Completeness computation
+    .decl reach_from_entry(Block:address,Function:address)
+
+    reach_from_entry(Function,Function):-
+        function_entry_initial(Function).
+
+    reach_from_entry(Dest,Function):-
+        reach_from_entry(Src,Function),
+        cfg_edge(Src,Dest,_,"false","branch"),
+        !function_entry_initial(Dest).
+
+    reach_from_entry(Dest,Function):-
+        reach_from_entry(Src,Function),
+        cfg_edge(Src,Dest,_,"false","fallthrough"),
+        !function_entry_initial(Dest).
+
+    .decl incomplete_function(Function:address)
+
+    incomplete_function(Function):-
+        reach_from_entry(Block,Function),
+        incomplete_block(Block).
+
+    .decl complete_function(Function:address)
+
+    complete_function(Function):-
+        function_entry_initial(Function),
+        incomplete_function(Function).
+}

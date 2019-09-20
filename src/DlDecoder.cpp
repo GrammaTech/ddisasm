@@ -33,61 +33,9 @@
 #include <sstream>
 #include <string>
 
-std::string str_toupper(std::string s)
-{
-    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::toupper(c); });
-    return s;
-}
-
-std::string getRegisterName(const csh &CsHandle, unsigned int reg)
-{
-    if(reg == X86_REG_INVALID)
-        return "NONE";
-    std::string name = str_toupper(cs_reg_name(CsHandle, reg));
-    return name;
-}
-
-std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh &CsHandle, const cs_x86_op &op)
-{
-    switch(op.type)
-    {
-        case X86_OP_REG:
-            return getRegisterName(CsHandle, op.reg);
-        case X86_OP_IMM:
-            return op.imm;
-        case X86_OP_MEM:
-        {
-            IndirectOp I = {getRegisterName(CsHandle, op.mem.segment),
-                            getRegisterName(CsHandle, op.mem.base),
-                            getRegisterName(CsHandle, op.mem.index),
-                            op.mem.scale,
-                            op.mem.disp,
-                            op.size * 8};
-            return I;
-        }
-        case X86_OP_INVALID:
-        default:
-            throw std::logic_error("Found invalid operand");
-    }
-}
-
 souffle::tuple &operator<<(souffle::tuple &t, const gtirb::Addr &a)
 {
     t << static_cast<uint64_t>(a);
-    return t;
-}
-
-souffle::tuple &operator<<(souffle::tuple &t, const DlInstruction &inst)
-{
-    t << inst.address << inst.size << inst.prefix << inst.name;
-    for(size_t i = 0; i < 4; ++i)
-    {
-        if(i < inst.op_codes.size())
-            t << inst.op_codes[i];
-        else
-            t << 0;
-    }
-    t << inst.immediateOffset << inst.displacementOffset;
     return t;
 }
 
@@ -109,18 +57,6 @@ souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Symbol &symb
     t << symbol.address << symbol.size << symbol.type << symbol.scope << symbol.sectionIndex
       << symbol.name;
     return t;
-}
-
-template <typename T>
-void addToRelation(souffle::SouffleProgram *prog, const std::string &name, const T &data)
-{
-    auto *rel = prog->getRelation(name);
-    for(const auto &elt : data)
-    {
-        souffle::tuple t(rel);
-        t << elt;
-        rel->insert(t);
-    }
 }
 
 std::string getFileFormatString(gtirb::FileFormat format)
@@ -255,14 +191,14 @@ void DlDecoder::decodeSection(gtirb::ImageByteMap::const_range &sectionBytes, ui
     while(size > 0)
     {
         cs_insn *insn;
-        size_t count = cs_disasm(this->csHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
+        size_t count = cs_disasm(csHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
         if(count == 0)
         {
             invalids.push_back(ea);
         }
         else
         {
-            instructions.push_back(this->transformInstruction(*insn));
+            instructions.push_back(GtirbToDatalog::transformInstruction(csHandle,op_dict,*insn));
             cs_free(insn, count);
         }
         ++ea;
@@ -297,64 +233,24 @@ void DlDecoder::storeDataSection(gtirb::ImageByteMap::const_range &sectionBytes,
     }
 }
 
-DlInstruction DlDecoder::transformInstruction(cs_insn &insn)
-{
-    std::vector<uint64_t> op_codes;
-    std::string prefix_name = str_toupper(insn.mnemonic);
-    std::string prefix, name;
-    size_t pos = prefix_name.find(' ');
-    if(pos != std::string::npos)
-    {
-        prefix = prefix_name.substr(0, pos);
-        name = prefix_name.substr(pos + 1);
-    }
-    else
-    {
-        prefix = "";
-        name = prefix_name;
-    }
-
-    auto &detail = insn.detail->x86;
-    if(name != "NOP")
-    {
-        auto opCount = detail.op_count;
-        // skip the destination operand
-        for(int i = 0; i < opCount; i++)
-        {
-            const auto &op = detail.operands[i];
-            uint64_t index = op_dict.add(buildOperand(csHandle, op));
-            op_codes.push_back(index);
-        }
-        // we put the destination operand at the end
-        if(opCount > 0)
-            std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
-    }
-    return {insn.address,
-            insn.size,
-            prefix,
-            name,
-            op_codes,
-            detail.encoding.imm_offset,
-            detail.encoding.disp_offset};
-}
-
 void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
-    addToRelation(prog, "binary_type", *module.getAuxData<std::vector<std::string>>("binaryType"));
-    addToRelation<std::vector<std::string>>(prog, "binary_format",
-                                            {getFileFormatString(module.getFileFormat())});
-    addToRelation<std::vector<gtirb::Addr>>(
-        prog, "entry_point", *module.getAuxData<std::vector<gtirb::Addr>>("entryPoint"));
-    addToRelation(prog, "relocation",
-                  *module.getAuxData<std::set<InitialAuxData::Relocation>>("relocations"));
-    module.removeAuxData("relocation");
-    addToRelation(prog, "instruction_complete", instructions);
-    addToRelation(prog, "address_in_data", data_addresses);
-    addToRelation(prog, "data_byte", data_bytes);
-    addToRelation(prog, "invalid_op_code", invalids);
-    addToRelation(prog, "op_regdirect", op_dict.regTable);
-    addToRelation(prog, "op_immediate", op_dict.immTable);
-    addToRelation(prog, "op_indirect", op_dict.indirectTable);
+    GtirbToDatalog::addToRelation<std::vector<std::string>>(
+        prog, "binary_type", *module.getAuxData<std::vector<std::string>>("binary_type"));
+    GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "binary_format",
+                                             {getFileFormatString(module.getFileFormat())});
+    GtirbToDatalog::addToRelation<std::vector<gtirb::Addr>>(prog, "entry_point",
+                                          *module.getAuxData<std::vector<gtirb::Addr>>("entry_point"));
+    GtirbToDatalog::addToRelation(
+        prog, "relocation", *module.getAuxData<std::set<InitialAuxData::Relocation>>("relocations"));
+    module.removeAuxData("relocations");
+    GtirbToDatalog::addToRelation(prog, "instruction_complete", instructions);
+    GtirbToDatalog::addToRelation(prog, "address_in_data", data_addresses);
+    GtirbToDatalog::addToRelation(prog, "data_byte", data_bytes);
+    GtirbToDatalog::addToRelation(prog, "invalid_op_code", invalids);
+    GtirbToDatalog::addToRelation(prog, "op_regdirect", op_dict.regTable);
+    GtirbToDatalog::addToRelation(prog, "op_immediate", op_dict.immTable);
+    GtirbToDatalog::addToRelation(prog, "op_indirect", op_dict.indirectTable);
     addSymbols(prog, module);
     module.removeAuxData("extraSymbolInfo");
     addSections(prog, module);
