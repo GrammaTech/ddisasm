@@ -223,10 +223,10 @@ void GtirbToDatalog::populateInstructions(gtirb::Module& M)
             Insns.push_back(GtirbToDatalog::transformInstruction(csHandle, OpDict, Insn[i]));
         }
     }
-    GtirbToDatalog::addRelation(&*Prog, "instruction", Insns);
-    GtirbToDatalog::addMapToRelation(&*Prog, "op_regdirect", OpDict.regTable);
-    GtirbToDatalog::addMapToRelation(&*Prog, "op_immediate", OpDict.immTable);
-    GtirbToDatalog::addMapToRelation(&*Prog, "op_indirect", OpDict.indirectTable);
+    GtirbToDatalog::addToRelation(&*Prog, "instruction", Insns);
+    GtirbToDatalog::addToRelation(&*Prog, "op_regdirect", OpDict.regTable);
+    GtirbToDatalog::addToRelation(&*Prog, "op_immediate", OpDict.immTable);
+    GtirbToDatalog::addToRelation(&*Prog, "op_indirect", OpDict.indirectTable);
 }
 
 void GtirbToDatalog::populateCfgEdges(gtirb::Module& M)
