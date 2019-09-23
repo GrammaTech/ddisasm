@@ -31,7 +31,7 @@ void FunctionInferencePass::populateSouffleProg(std::shared_ptr<souffle::Souffle
 {
     GtirbToDatalog Loader(P);
     Loader.populateBlocks(M);
-    Loader.populateInstructions(M);
+    Loader.populateInstructions(M, 1);
     Loader.populateCfgEdges(M);
     Loader.populateSymbolicExpressions(M);
     Loader.populateFdeEntries(Ctx, M);

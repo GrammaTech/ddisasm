@@ -87,7 +87,7 @@ std::string str_toupper(std::string s)
     return s;
 }
 
-std::string GtirbToDatalog::getRegisterName(csh& CsHandle, unsigned int reg)
+std::string GtirbToDatalog::getRegisterName(const csh& CsHandle, unsigned int reg)
 {
     if(reg == X86_REG_INVALID)
         return "NONE";
@@ -95,8 +95,8 @@ std::string GtirbToDatalog::getRegisterName(csh& CsHandle, unsigned int reg)
     return name;
 }
 
-DlInstruction GtirbToDatalog::transformInstruction(csh& CsHandle, DlOperandTable& OpDict,
-                                                   cs_insn& insn)
+DlInstruction GtirbToDatalog::transformInstruction(const csh& CsHandle, DlOperandTable& OpDict,
+                                                   const cs_insn& insn)
 {
     std::vector<uint64_t> op_codes;
     std::string prefix_name = str_toupper(insn.mnemonic);
@@ -137,7 +137,7 @@ DlInstruction GtirbToDatalog::transformInstruction(csh& CsHandle, DlOperandTable
             detail.encoding.disp_offset};
 }
 
-std::variant<ImmOp, RegOp, IndirectOp> GtirbToDatalog::buildOperand(csh& CsHandle,
+std::variant<ImmOp, RegOp, IndirectOp> GtirbToDatalog::buildOperand(const csh& CsHandle,
                                                                     const cs_x86_op& op)
 {
     switch(op.type)
@@ -177,7 +177,7 @@ souffle::tuple& operator<<(souffle::tuple& t, const DlInstruction& inst)
     return t;
 }
 
-void GtirbToDatalog::populateBlocks(gtirb::Module& M)
+void GtirbToDatalog::populateBlocks(const gtirb::Module& M)
 {
     if(M.blocks().empty())
         return;
@@ -201,7 +201,7 @@ void GtirbToDatalog::populateBlocks(gtirb::Module& M)
     }
 }
 
-void GtirbToDatalog::populateInstructions(gtirb::Module& M)
+void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int InstructionLimit)
 {
     csh csHandle;
     cs_open(CS_ARCH_X86, CS_MODE_64, &csHandle); // == CS_ERR_OK
@@ -212,8 +212,9 @@ void GtirbToDatalog::populateInstructions(gtirb::Module& M)
     {
         cs_insn* Insn;
         gtirb::ImageByteMap::const_range Bytes = getBytes(M.getImageByteMap(), Block);
-        size_t Count = cs_disasm(csHandle, reinterpret_cast<const uint8_t*>(&Bytes[0]),
-                                 Bytes.size(), static_cast<uint64_t>(Block.getAddress()), 0, &Insn);
+        size_t Count =
+            cs_disasm(csHandle, reinterpret_cast<const uint8_t*>(&Bytes[0]), Bytes.size(),
+                      static_cast<uint64_t>(Block.getAddress()), InstructionLimit, &Insn);
 
         // Exception-safe cleanup of instructions
         std::unique_ptr<cs_insn, std::function<void(cs_insn*)>> freeInsn(
@@ -229,23 +230,23 @@ void GtirbToDatalog::populateInstructions(gtirb::Module& M)
     GtirbToDatalog::addToRelation(&*Prog, "op_indirect", OpDict.indirectTable);
 }
 
-void GtirbToDatalog::populateCfgEdges(gtirb::Module& M)
+void GtirbToDatalog::populateCfgEdges(const gtirb::Module& M)
 {
-    std::map<gtirb::ProxyBlock*, std::string> InvSymbolMap;
+    std::map<const gtirb::ProxyBlock*, std::string> InvSymbolMap;
     for(auto& Symbol : M.symbols())
     {
-        if(gtirb::ProxyBlock* Proxy = Symbol.getReferent<gtirb::ProxyBlock>())
+        if(const gtirb::ProxyBlock* Proxy = Symbol.getReferent<gtirb::ProxyBlock>())
             InvSymbolMap[Proxy] = Symbol.getName();
     }
-    gtirb::CFG& Cfg = M.getCFG();
+    const gtirb::CFG& Cfg = M.getCFG();
     auto* EdgeRel = Prog->getRelation("cfg_edge");
     auto* TopEdgeRel = Prog->getRelation("cfg_edge_to_top");
     auto* SymbolEdgeRel = Prog->getRelation("cfg_edge_to_symbol");
     for(auto& Edge : Cfg.m_edges)
     {
-        if(gtirb::Block* Src = dyn_cast<gtirb::Block>(Cfg[Edge.m_source]))
+        if(const gtirb::Block* Src = dyn_cast<gtirb::Block>(Cfg[Edge.m_source]))
         {
-            if(gtirb::Block* Dest = dyn_cast<gtirb::Block>(Cfg[Edge.m_target]))
+            if(const gtirb::Block* Dest = dyn_cast<gtirb::Block>(Cfg[Edge.m_target]))
             {
                 souffle::tuple T(EdgeRel);
                 T << static_cast<uint64_t>(Src->getAddress())
@@ -254,7 +255,7 @@ void GtirbToDatalog::populateCfgEdges(gtirb::Module& M)
                 EdgeRel->insert(T);
             }
 
-            if(gtirb::ProxyBlock* Dest = dyn_cast<gtirb::ProxyBlock>(Cfg[Edge.m_target]))
+            if(const gtirb::ProxyBlock* Dest = dyn_cast<gtirb::ProxyBlock>(Cfg[Edge.m_target]))
             {
                 auto foundSymbol = InvSymbolMap.find(Dest);
                 if(foundSymbol != InvSymbolMap.end())
@@ -295,7 +296,7 @@ void GtirbToDatalog::populateSccs(gtirb::Module& M)
     }
 }
 
-void GtirbToDatalog::populateSymbolicExpressions(gtirb::Module& M)
+void GtirbToDatalog::populateSymbolicExpressions(const gtirb::Module& M)
 {
     auto* SymExprRel = Prog->getRelation("symbolic_expression");
     auto* SymMinusSymRel = Prog->getRelation("symbol_minus_symbol");
@@ -337,7 +338,7 @@ void GtirbToDatalog::populateSymbolicExpressions(gtirb::Module& M)
     }
 }
 
-void GtirbToDatalog::populateFdeEntries(gtirb::Context& Ctx, gtirb::Module& M)
+void GtirbToDatalog::populateFdeEntries(const gtirb::Context& Ctx, gtirb::Module& M)
 {
     std::set<gtirb::Addr> FdeStart;
     std::set<gtirb::Addr> FdeEnd;
@@ -348,8 +349,8 @@ void GtirbToDatalog::populateFdeEntries(gtirb::Context& Ctx, gtirb::Module& M)
         return;
     for(auto& Pair : *CfiDirectives)
     {
-        gtirb::Block* Block =
-            dyn_cast<gtirb::Block>(gtirb::Node::getByUUID(Ctx, Pair.first.ElementId));
+        auto* Block =
+            dyn_cast<const gtirb::Block>(gtirb::Node::getByUUID(Ctx, Pair.first.ElementId));
         assert(Block && "Found CFI directive that does no belong to a block");
         for(auto& Directive : Pair.second)
         {
@@ -371,7 +372,7 @@ void GtirbToDatalog::populateFdeEntries(gtirb::Context& Ctx, gtirb::Module& M)
     }
 }
 
-void GtirbToDatalog::populateFunctionEntries(gtirb::Context& Ctx, gtirb::Module& M)
+void GtirbToDatalog::populateFunctionEntries(const gtirb::Context& Ctx, gtirb::Module& M)
 {
     auto* FunctionEntries =
         M.getAuxData<std::map<gtirb::UUID, std::set<gtirb::UUID>>>("functionEntries");

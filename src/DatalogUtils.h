@@ -51,15 +51,17 @@ private:
     std::shared_ptr<souffle::SouffleProgram> Prog;
 
     void populateEdgeProperties(souffle::tuple &T, const gtirb::EdgeLabel &Label);
-    static std::variant<ImmOp, RegOp, IndirectOp> buildOperand(csh &CsHandle, const cs_x86_op &op);
-    static std::string getRegisterName(csh &CsHandle, unsigned int reg);
+    static std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh &CsHandle,
+                                                               const cs_x86_op &op);
+    static std::string getRegisterName(const csh &CsHandle, unsigned int reg);
 
 public:
     GtirbToDatalog(std::shared_ptr<souffle::SouffleProgram> P) : Prog(P)
     {
     }
 
-    static DlInstruction transformInstruction(csh &CsHandle, DlOperandTable &OpDict, cs_insn &insn);
+    static DlInstruction transformInstruction(const csh &CsHandle, DlOperandTable &OpDict,
+                                              const cs_insn &insn);
 
     template <typename T>
     static void addToRelation(souffle::SouffleProgram *prog, const std::string &name,
@@ -76,13 +78,13 @@ public:
         }
     }
 
-    void populateBlocks(gtirb::Module &M);
-    void populateInstructions(gtirb::Module &M);
-    void populateCfgEdges(gtirb::Module &M);
+    void populateBlocks(const gtirb::Module &M);
+    void populateInstructions(const gtirb::Module &M, int InstructionLimit = 0);
+    void populateCfgEdges(const gtirb::Module &M);
     void populateSccs(gtirb::Module &M);
-    void populateSymbolicExpressions(gtirb::Module &M);
-    void populateFdeEntries(gtirb::Context &Ctx, gtirb::Module &M);
-    void populateFunctionEntries(gtirb::Context &Ctx, gtirb::Module &M);
+    void populateSymbolicExpressions(const gtirb::Module &M);
+    void populateFdeEntries(const gtirb::Context &Ctx, gtirb::Module &M);
+    void populateFunctionEntries(const gtirb::Context &Ctx, gtirb::Module &M);
 };
 
 #endif
