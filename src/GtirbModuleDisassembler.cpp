@@ -923,6 +923,19 @@ void buildCfiDirectives(gtirb::Context &context, gtirb::Module &module,
     module.addAuxData("cfiDirectives", std::move(cfiDirectives));
 }
 
+void buildPadding(gtirb::Module &module, souffle::SouffleProgram *prog)
+{
+    std::map<gtirb::Addr, uint64_t> padding;
+    for(auto &output : *prog->getRelation("padding"))
+    {
+        gtirb::Addr ea;
+        uint64_t size;
+        output >> ea >> size;
+        padding[ea] = size;
+    }
+    module.addAuxData("padding", std::move(padding));
+}
+
 void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool selfDiagnose)
 {
     std::map<gtirb::Offset, std::string> comments;
@@ -1033,6 +1046,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     connectSymbolsToBlocks(module);
     buildFunctions(module, prog);
     buildCFG(context, module, prog);
+    buildPadding(module, prog);
     buildComments(module, prog, selfDiagnose);
 }
 

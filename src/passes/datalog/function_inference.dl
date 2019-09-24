@@ -74,6 +74,9 @@ identifying function pointers and based on identifying complete functions.
 .decl fde_addresses(Begin:address,End:address)
 .input fde_addresses
 
+.decl padding(Begin:address,Size:number)
+.input padding
+
 .decl function_entry(Address:address)
 .input function_entry
 
@@ -133,13 +136,31 @@ block_in_between_fde(Block):-
     Begin < Block,
     Block < End.
 
-.decl candidate_block(Block:address)
+.decl block_in_padding(Block:address)
 
-candidate_block(Block):-
+block_in_padding(Block):-
+    padding(Beg,Size),
+    block(Block,_),
+    Beg <= Block, Block < Beg+Size.
+
+.decl block_after_no_fallthrough(Block:address)
+
+block_after_no_fallthrough(Block):-
     block(Block,_),
     next_block(Prev,Block),
     !fallthrough(Prev,Block),
     !block_in_between_fde(Block).
+
+block_after_no_fallthrough(Block):-
+    block_after_no_fallthrough(Prev),
+    block_in_padding(Prev),
+    next_block(Prev,Block).
+
+.decl candidate_block(Block:address)
+
+candidate_block(Block):-
+    block_after_no_fallthrough(Block),
+    !block_in_padding(Block).
 
 .decl typical_function_start(EA:address)
 

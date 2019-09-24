@@ -392,3 +392,17 @@ void GtirbToDatalog::populateFunctionEntries(const gtirb::Context& Ctx, gtirb::M
         }
     }
 }
+
+void GtirbToDatalog::populatePadding(gtirb::Module& M)
+{
+    auto* Padding = M.getAuxData<std::map<gtirb::Addr, uint64_t>>("padding");
+    if(!Padding)
+        return;
+    auto* PaddingRel = Prog->getRelation("padding");
+    for(auto& Pair : *Padding)
+    {
+        souffle::tuple T(PaddingRel);
+        T << static_cast<uint64_t>(Pair.first) << Pair.second;
+        PaddingRel->insert(T);
+    }
+}

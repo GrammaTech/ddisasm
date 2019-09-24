@@ -85,6 +85,7 @@ public:
     void populateSymbolicExpressions(const gtirb::Module &M);
     void populateFdeEntries(const gtirb::Context &Ctx, gtirb::Module &M);
     void populateFunctionEntries(const gtirb::Context &Ctx, gtirb::Module &M);
+    void populatePadding(gtirb::Module &M);
 };
 
 #endif
