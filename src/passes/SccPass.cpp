@@ -51,7 +51,7 @@ void computeSCCs(gtirb::Module& module)
     KeepIntraProcedural Filter;
     boost::filtered_graph<gtirb::CFG, KeepIntraProcedural> CfgFiltered(Cfg, Filter);
 
-    std::vector<int> Components(boost::num_vertices(Cfg));
+    std::vector<int64_t> Components(boost::num_vertices(Cfg));
     boost::strong_components(CfgFiltered,
                              boost::make_iterator_property_map(
                                  Components.begin(), boost::get(boost::vertex_index, CfgFiltered)));

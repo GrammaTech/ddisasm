@@ -26,7 +26,7 @@
 #ifndef SCC_PASS_H_
 #define SCC_PASS_H_
 
-using SccMap = std::map<gtirb::UUID, int>;
+using SccMap = std::map<gtirb::UUID, int64_t>;
 
 // Compute strongly connected components and store them in a AuxData table SccMap called "SCCs"
 void computeSCCs(gtirb::Module &module);

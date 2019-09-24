@@ -280,7 +280,7 @@ void GtirbToDatalog::populateCfgEdges(const gtirb::Module& M)
 void GtirbToDatalog::populateSccs(gtirb::Module& M)
 {
     auto* InSccRel = Prog->getRelation("in_scc");
-    auto* SccTable = M.getAuxData<std::map<gtirb::UUID, int>>("SCCs");
+    auto* SccTable = M.getAuxData<std::map<gtirb::UUID, int64_t>>("SCCs");
     assert(SccTable && "SCCs AuxData table missing from GTIRB module");
     std::vector<int> SccBlockIndex;
     for(auto& Block : M.blocks())

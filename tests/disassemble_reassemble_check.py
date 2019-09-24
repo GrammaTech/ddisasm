@@ -72,14 +72,14 @@ def compile(compiler,cxx_compiler,optimizations,extra_flags):
         completedProcess = subprocess.run(['make', '-e'], env=env, stdout=subprocess.DEVNULL)
     return completedProcess.returncode==0
 
-def dissasemble(binary,strip):
+def disassemble(binary,strip,format='--asm',extension='s',extra_args=[]):
     """
     Disassemble the binary 'binary'
     """
     with get_target(binary,strip) as target_binary:
         print('# Disassembling '+target_binary+'\n')
         start=timer()
-        completedProcess=subprocess.run(['ddisasm',target_binary,'--asm',binary+'.s'])
+        completedProcess=subprocess.run(['ddisasm',target_binary,format,binary+'.'+extension]+extra_args)
         time_spent=timer()-start
     if completedProcess.returncode==0:
         print(bcolors.okgreen('Disassembly succeed'),flush=True)
@@ -139,7 +139,7 @@ def disassemble_reassemble_test(make_dir,binary,
                 if not compile(compiler,cxx_compiler,optimization,extra_compile_flags):
                     compile_errors+=1
                     continue
-                success,time= dissasemble(binary,strip)
+                success,time= disassemble(binary,strip)
                 print("Time "+str(time))
                 if not success:
                     disassembly_errors+=1
