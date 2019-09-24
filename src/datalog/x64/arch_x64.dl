@@ -112,6 +112,10 @@ loop_prefix("REPNE").
 
 call_operation("CALL").
 
+.decl syscall_operation(operation:symbol)
+
+syscall_operation("SYSCALL").
+
 .decl return_operation(operation:symbol)
 
 return_operation("RET").

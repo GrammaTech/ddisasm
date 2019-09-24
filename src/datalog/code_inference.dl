@@ -79,6 +79,7 @@ must_fallthrough(From,To):-
     may_fallthrough(From,To),
     instruction_get_operation(From,Operation),
     !arch.call_operation(Operation),
+    !arch.syscall_operation(Operation),
     !arch.interrupt_operation(Operation),
     !instruction_has_loop_prefix(From),
     !conditional_jump(From).
@@ -170,7 +171,7 @@ basic_target(Val):-
         code_section(Name),
         section(Name,_,Val)
         ;
-        function_symbol(Val,_)
+        defined_symbol(Val,_,_,_,_,_)
         ;
         // Exception information
         fde_addresses(Val,_)
