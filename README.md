@@ -17,19 +17,6 @@ may then be used to pretty print the GTIRB to reassemblable assembly
 code.
 
 
-## Introduction
-
-The analysis contains two parts:
-
-- The C++ files take care of reading an elf file and generating facts
-  that represent all the information contained in the binary.
-
-- `src/datalog/*.dl` contains the specification of the analyses in
-  datalog.  It takes the basic facts and computes likely EAs, chunks
-  of code, etc. The results are represented in GTIRB or can be printed
-  to assembler code using the gtirb-pprinter.
-
-
 ## Dependencies
 
 ddisasm uses C++17, and requires a compiler which supports
@@ -117,7 +104,7 @@ Ddisasm accepts the following parameters:
 `--debug-dir arg`
 :   location to write CSV files for debugging
 
--K [ --keep-functions ] arg
+`-K [ --keep-functions ] arg`
 :   Print the given functions even if they are skipped by default (e.g. _start)
 
 `--self-diagnose`
@@ -125,6 +112,8 @@ Ddisasm accepts the following parameters:
     of the symbolization process. This option only works if the target
     binary contains complete relocation information. You can enable
     that in `ld` using the option `--emit-relocs`.
+`-F [ --skip-function-analysis ]`
+:   Skip additional analyses to compute more precise function boundaries.
 
 
 ## Rewriting a project
