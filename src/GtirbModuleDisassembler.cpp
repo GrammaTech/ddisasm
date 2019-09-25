@@ -1,4 +1,4 @@
-//===- GtirbModuleDisassembler.cpp ---------------------------------------------*- C++ -*-===//
+//===- GtirbModuleDisassembler.cpp ------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //

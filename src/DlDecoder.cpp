@@ -1,4 +1,4 @@
-//===- DlDecoder.cpp -------------------------------------------*- C++ -*-===//
+//===- DlDecoder.cpp --------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -363,12 +363,12 @@ void DlDecoder::addSections(souffle::SouffleProgram *prog, gtirb::Module &module
 void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
     addRelation<std::string>(prog, "binary_type",
-                             *module.getAuxData<std::vector<std::string>>("binary_type"));
+                             *module.getAuxData<std::vector<std::string>>("binaryType"));
     addRelation<std::string>(prog, "binary_format", {getFileFormatString(module.getFileFormat())});
     addRelation<uint64_t>(prog, "entry_point",
-                          *module.getAuxData<std::vector<uint64_t>>("entry_point"));
+                          *module.getAuxData<std::vector<uint64_t>>("entryPoint"));
     addSetToRelation(prog, "relocation",
-                     *module.getAuxData<std::set<InitialAuxData::Relocation>>("relocation"));
+                     *module.getAuxData<std::set<InitialAuxData::Relocation>>("relocations"));
     module.removeAuxData("relocation");
     addRelation(prog, "instruction_complete", instructions);
     addRelation(prog, "address_in_data", data_addresses);

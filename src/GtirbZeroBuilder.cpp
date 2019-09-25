@@ -1,4 +1,4 @@
-//===- GtirbZeroBuilder.cpp ---------------------------------------------*- C++ -*-===//
+//===- GtirbZeroBuilder.cpp -------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -113,10 +113,10 @@ void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
 void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
 {
     std::vector<std::string> binaryType = {binary->get_binary_type()};
-    module.addAuxData("binary_type", binaryType);
+    module.addAuxData("binaryType", binaryType);
     std::vector<uint64_t> entryPoint = {binary->get_entry_point()};
-    module.addAuxData("entry_point", entryPoint);
-    module.addAuxData("relocation", binary->get_relocations());
+    module.addAuxData("entryPoint", entryPoint);
+    module.addAuxData("relocations", binary->get_relocations());
     module.addAuxData("libraries", binary->get_libraries());
     module.addAuxData("libraryPaths", binary->get_library_paths());
 }
