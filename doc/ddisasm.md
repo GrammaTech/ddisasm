@@ -52,6 +52,7 @@ Ddisasm accepts the following parameters:
     of the symbolization process. This option only works if the target
     binary contains complete relocation information. You can enable
     that in `ld` using the option `--emit-relocs`.
+
 `-F [ --skip-function-analysis ]`
 :   Skip additional analyses to compute more precise function boundaries.
 
