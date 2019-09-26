@@ -982,9 +982,10 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
     for(auto &output : *prog->getRelation("moved_label_class"))
     {
         gtirb::Addr ea;
+        uint64_t opIndex;
         std::string type;
 
-        output >> ea >> type;
+        output >> ea >> opIndex >> type;
         std::ostringstream newComment;
         newComment << " moved label-" << type;
         updateComment(module, comments, ea, newComment.str());
