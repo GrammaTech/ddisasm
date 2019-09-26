@@ -59,7 +59,7 @@ compute an address but this is also no enough.
 .output moved_label
 
 // this predicate is just for debugging purposes
-.decl moved_label_class(EA:address,Reason:symbol)
+.decl moved_label_class(EA:address,Index:number,Reason:symbol)
 .output moved_label_class
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -102,14 +102,14 @@ moved_label_candidate(EA_def2,Op_index,Dest,New_dest,Diff):-
 // indirect operand (type O)
 
 //pc-relative that misses the data sections
-moved_label_class(EA,"pc-relative miss data-sections"),
+moved_label_class(EA,Op_index,"pc-relative miss data-sections"),
 moved_label(EA,Op_index,Dest,New_dest):-
     moved_label_candidate(EA,Op_index,Dest,_,_),
     Diff_min = min X:moved_label_candidate(EA,Op_index,Dest,_,X),
     moved_label_candidate(EA,Op_index,Dest,New_dest,Diff),
     Diff <= Diff_min.
 
-moved_label_class(EA,"collides with pointer"),
+moved_label_class(EA,Op_index,"collides with pointer"),
 moved_label(EA,Op_index,Dest,New_dest):-
     binary_type("EXEC"),
     symbolic_operand(EA,Op_index,Dest,"data"),
@@ -119,7 +119,7 @@ moved_label(EA,Op_index,Dest,New_dest):-
     symbolic_data(New_dest,_,_).
 
 // the pointer is likely to point to the wrong section
-moved_label_class(EA,"indirect wrong section"),
+moved_label_class(EA,Op_index,"indirect wrong section"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Diff):-
     binary_type("EXEC"),
     symbolic_operand(EA,Op_index,Dest,"data"),
@@ -165,7 +165,7 @@ access_non_regular_data_section(EA,Op_index):-
 
 .decl moved_displacement_candidate(EA:address,Op_index:number,Dest:address,New_dest:address,Priority:number)
 
-moved_label_class(EA,"miss section with access"),
+moved_label_class(EA,Op_index,"miss section with access"),
 moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
     binary_type("EXEC"),
     data_access(EA,Op_index,_,_,_,_,Dest,_), Dest >= 0,
@@ -189,7 +189,7 @@ moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
 
 // We have an access with a register that is multiplied by something
 // If the register does not contain the base address, then the displacement should contain it.
-moved_label_class(EA,"constant + multiplied reg"),
+moved_label_class(EA,Op_index,"constant + multiplied reg"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
     binary_type("EXEC"),
     data_access(EA,Op_index,"NONE","NONE",RegMult,Mult,Dest,_),
@@ -210,7 +210,7 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
     ).
 
 //Same case as before with the other register
-moved_label_class(EA,"constant + multiplied reg2"),
+moved_label_class(EA,Op_index,"constant + multiplied reg2"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
     binary_type("EXEC"),
     data_access(EA,Op_index,"NONE",Reg,"NONE",_,Dest,_),
@@ -228,7 +228,7 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
     ).
 
 // Same case as before but with a repeated register
-moved_label_class(EA,"constant + repeated reg"),
+moved_label_class(EA,Op_index,"constant + repeated reg"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
     binary_type("EXEC"),
     data_access(EA,Op_index,"NONE",Reg,Reg,_,Dest,_),
@@ -304,7 +304,7 @@ dest_enlarged_data_section(EA_def,Reg,New_dest,Beg-MultAbs,Beg+SizeSect+MultAbs)
 
 
 // immediate used to access memory
-moved_label_class(EA_from,"immediate used to access memory"),
+moved_label_class(EA_from,Imm_index,"immediate used to access memory"),
 moved_immediate_candidate(EA_from,Imm_index,Immediate,New_dest):-
     binary_type("EXEC"),
     data_access(EA_access,Op_index,_,Reg2,Reg3,_,_,Size),
@@ -324,7 +324,7 @@ moved_immediate_candidate(EA_from,Imm_index,Immediate,New_dest):-
     //only move if the original does not fall in the section
     (Immediate < Beg ; Immediate > Beg+SizeSect).
 
-
+moved_label_class(EA,Imm_index,"immediate loop bound"),
 moved_immediate_candidate(EA,Imm_index,Immediate,New_dest):-
     binary_type("EXEC"),
     cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate),
@@ -333,6 +333,7 @@ moved_immediate_candidate(EA,Imm_index,Immediate,New_dest):-
     Beg <= Immediate,
     Immediate <= End.
 
+moved_label_class(EA,Imm_index,"loaded immediate loop bound"),
 moved_immediate_candidate(EA_def2,Imm_index,Immediate,New_dest):-
     binary_type("EXEC"),
     cmp_reg_to_reg(EA,Reg1,Reg2),
@@ -359,7 +360,7 @@ moved_label(EA,Op_index,Dest,New_dest):-
     moved_immediate_candidate(EA,Op_index,Dest,New_dest).
 
 // If the destination is in the middle of a known symbol
-moved_label_class(EA,"middle of symbol"),
+moved_label_class(EA,Op_index,"middle of symbol"),
 moved_label(EA,Op_index,Dest,Address):-
     symbolic_operand(EA,Op_index,Dest,"data"),
     !moved_displacement_candidate(EA,Op_index,_,_,_),
@@ -369,7 +370,7 @@ moved_label(EA,Op_index,Dest,Address):-
     Dest < Address+Size.
 
 // if the destination is an overlapping instruction
-moved_label_class(EA,"overlapping instruction"),
+moved_label_class(EA,Op_index,"overlapping instruction"),
 moved_label(EA,Op_index,Dest,Block):-
     symbolic_operand(EA,Op_index,Dest,"code"),
     overlapping_instruction(Dest,Block).

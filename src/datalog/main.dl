@@ -158,6 +158,7 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
 /////////////////////////////////////////////////////////////
 
 .decl instruction_immediate_offset(EA:address,Index:number,Offset:number)
+.output instruction_immediate_offset
 
 instruction_immediate_offset(EA,Index,ImmediateOffset):-
     instruction_complete(EA,_,_,_,_,_,_,_,ImmediateOffset,_),
@@ -165,6 +166,7 @@ instruction_immediate_offset(EA,Index,ImmediateOffset):-
     op_immediate(Op,_).
 
 .decl instruction_displacement_offset(EA:address,Index:number,Offset:number)
+.output instruction_displacement_offset
 
 instruction_displacement_offset(EA,Index,DisplacementOffset):-
     instruction_complete(EA,_,_,_,_,_,_,_,_,DisplacementOffset),
