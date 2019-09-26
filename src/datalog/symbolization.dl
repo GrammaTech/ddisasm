@@ -159,6 +159,9 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
 /////////////////////////////////////////////////////////////////
 /// Final decision on symbolization of operands
 
+symbolic_operand_point(EA,Index,0,"operand bias"):-
+    symbolic_operand_candidate(EA,Index,_,_).
+
 // no decision needs to be made with pie code
 symbolic_operand_point(EA,Index,10,"pie code"):-
     !binary_type("EXEC"),
@@ -178,7 +181,7 @@ symbolic_operand_point(EA,Imm_index,-1,"immediate is bitmask"):-
     instruction_get_operation(EA,Operation),
     arch.logic_operation(Operation).
 
- symbolic_operand_point(EA,Imm_index,-1,"operated on the result of logical operation"):-
+ symbolic_operand_point(EA,Imm_index,-1,"operated on logical operation result"):-
     op_immediate_and_reg(EA,_,Reg,Imm_index,_),
     def_used(EA_def,Reg,EA,_),
     instruction_get_operation(EA_def,Operation),
@@ -205,10 +208,6 @@ symbolic_operand_point(EA,Op_index,1,"used-for-address"):-
 symbolic_operand_total_points(EA,Operand,Points):-
     symbolic_operand_candidate(EA,Operand,_,_),
     Points = sum X:{symbolic_operand_point(EA,Operand,X,_)}.
-
-symbolic_operand_total_points(EA,Operand,0):-
-    symbolic_operand_candidate(EA,Operand,_,_),
-    !symbolic_operand_point(EA,Operand,_,_).
 
 symbolic_operand(EA,Op_index,Value,Type):-
     symbolic_operand_candidate(EA,Op_index,Value,Type),
@@ -446,11 +445,11 @@ address_array_range.in_ea(EA):-
 //////////////////////////////////////////////////////////////////////////////////
 // Final decision on symbolization of data
 
-data_object_point(EA,4,"symbol-symbol",4,"basic point"):-
-    data_object_candidate(EA,4,"symbol-symbol").
+data_object_point(EA,Pt_size,Type,2,"data object bias"):-
+    data_object_candidate(EA,Pt_size,Type).
 
-data_object_point(EA,Pt_size,"symbol",0,"basic point"):-
-    data_object_candidate(EA,Pt_size,"symbol").
+data_object_point(EA,4,"symbol-symbol",4,"symbol-symbol"):-
+    data_object_candidate(EA,4,"symbol-symbol").
 
 // Pointer array heuristic
 data_object_point(EA,Pt_size,"symbol",3,"pointer array"):-
@@ -500,9 +499,6 @@ data_object_point(EA,Pt_size,"symbol",10,"has relocation"):-
     data_object_candidate(EA,Pt_size,"symbol"),
     relocation(EA,_,_,_).
 
-data_object_point(EA,Size,"string",0,"basic point"):-
-    data_object_candidate(EA,Size,"string").
-
 //extra point if the string is long
 data_object_point(EA,Size,"string",3,"long string"):-
     data_object_candidate(EA,Size,"string"),
@@ -514,7 +510,7 @@ data_object_point(EA,Size,"other",4,"data access"):-
     Size < 16.
 
 //sometimes we load pointers into xmm
-data_object_point(EA,Size,"other",1,"data access"):-
+data_object_point(EA,Size,"other",1,"data access xmm"):-
   data_object_candidate(EA,Size,"other"),
     Size >= 16.
 
@@ -548,7 +544,7 @@ data_object(EA,Size,Type):-
     data_object_total_points(EA,Size,Type,Points),
     !discarded_data_object(EA,Size,Type),
     (
-        Points >= 2; //if the object is a string and there is no conflict we keep it no matter the evidence
+        Points >= 0; //if the object is a string and there is no conflict we keep it no matter the evidence
         Type = "string"
     ).
 
