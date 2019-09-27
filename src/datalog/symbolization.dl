@@ -445,7 +445,7 @@ address_array_range.in_ea(EA):-
 //////////////////////////////////////////////////////////////////////////////////
 // Final decision on symbolization of data
 
-data_object_point(EA,Pt_size,Type,2,"data object bias"):-
+data_object_point(EA,Pt_size,Type,-2,"data object bias"):-
     data_object_candidate(EA,Pt_size,Type).
 
 data_object_point(EA,4,"symbol-symbol",4,"symbol-symbol"):-
