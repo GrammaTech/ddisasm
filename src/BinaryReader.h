@@ -69,9 +69,9 @@ constexpr bool operator<(const Symbol &LHS, const Symbol &RHS) noexcept
         std::string name;
         int64_t addend;
 
-        friend constexpr bool operator<(const Relocation &LHS, const Relocation &RHS) noexcept
+        constexpr bool operator<(const Relocation &RHS) noexcept
         {
-            return std::tie(LHS.address, LHS.type, LHS.name, LHS.addend)
+            return std::tie(address, type, name, addend);
                    < std::tie(RHS.address, RHS.type, RHS.name, RHS.addend);
         }
     };
