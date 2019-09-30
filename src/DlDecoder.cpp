@@ -182,7 +182,7 @@ DlInstruction DlDecoder::transformInstruction(cs_insn &insn)
     {
         auto opCount = detail.op_count;
         // skip the destination operand
-        for(int i = 1; i < opCount; i++)
+        for(int i = 0; i < opCount; i++)
         {
             const auto &op = detail.operands[i];
             uint64_t index = op_dict.add(this->buildOperand(op));
@@ -190,11 +190,7 @@ DlInstruction DlDecoder::transformInstruction(cs_insn &insn)
         }
         // we put the destination operand at the end
         if(opCount > 0)
-        {
-            const auto &op = detail.operands[0];
-            uint64_t index = op_dict.add(this->buildOperand(op));
-            op_codes.push_back(index);
-        }
+            std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
     }
     return {insn.address,
             insn.size,
