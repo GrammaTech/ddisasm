@@ -270,7 +270,7 @@ void DlDecoder::addSetToRelation(souffle::SouffleProgram *prog, const std::strin
                                  const std::set<T> &data)
 {
     auto *rel = prog->getRelation(name);
-    for(const auto& elt : data)
+    for(const auto &elt : data)
     {
         souffle::tuple t(rel);
         t << elt;
