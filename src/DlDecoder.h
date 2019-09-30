@@ -58,19 +58,11 @@ private:
     std::vector<DlData<gtirb::Addr>> data_addresses;
     std::vector<DlData<unsigned char>> data_bytes;
     void decodeSection(gtirb::ImageByteMap::const_range& sectionBytes, uint64_t size,
-                        gtirb::Addr ea);
-    std::string getRegisterName(unsigned int reg);
-    DlInstruction transformInstruction(cs_insn& insn);
-    std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const cs_x86_op& op);
-    void storeDataSection(gtirb::ImageByteMap::const_range& sectionBytes, uint64_t size,
-                            gtirb::Addr ea, gtirb::Addr min_address, gtirb::Addr max_address);
-    void addSymbols(souffle::SouffleProgram* prog, gtirb::Module& module);
-    void addSections(souffle::SouffleProgram* prog, gtirb::Module& module);
+                       gtirb::Addr ea);
     void loadInputs(souffle::SouffleProgram* prog, gtirb::Module& module);
-
-    template <typename T>
-    void addToRelation(souffle::SouffleProgram* prog, const std::string& name, const T& data);
-    std::string getFileFormatString(gtirb::FileFormat format);
+    void storeDataSection(gtirb::ImageByteMap::const_range& sectionBytes, uint64_t size,
+                          gtirb::Addr ea, gtirb::Addr min_address, gtirb::Addr max_address);
+    DlInstruction transformInstruction(cs_insn& insn);
 
 public:
     DlDecoder();

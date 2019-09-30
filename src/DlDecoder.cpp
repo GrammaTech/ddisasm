@@ -33,181 +33,33 @@
 #include <sstream>
 #include <string>
 
-using namespace std;
-
-DlDecoder::DlDecoder()
-{
-    cs_open(CS_ARCH_X86, CS_MODE_64, &this->csHandle); // == CS_ERR_OK
-    cs_option(this->csHandle, CS_OPT_DETAIL, CS_OPT_ON);
-}
-
-souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
-{
-    auto isNonZeroDataSection = [](const SectionProperties &s) {
-        uint64_t type = std::get<0>(s);
-        uint64_t flags = std::get<1>(s);
-        bool is_allocated = flags & SHF_ALLOC;
-        bool is_not_executable = !(flags & SHF_EXECINSTR);
-        // SHT_NOBITS is not considered here because it is for data sections but without initial
-        // data (zero initialized)
-        bool is_non_zero_program_data = type == SHT_PROGBITS || type == SHT_INIT_ARRAY
-                                        || type == SHT_FINI_ARRAY || type == SHT_PREINIT_ARRAY;
-        return is_allocated && is_not_executable && is_non_zero_program_data;
-    };
-    auto isExeSection = [](const SectionProperties &s) {
-        uint64_t flags = std::get<1>(s);
-        return flags & SHF_EXECINSTR;
-    };
-
-    auto minMax = module.getImageByteMap().getAddrMinMax();
-    auto *extraInfoTable =
-        module.getAuxData<std::map<gtirb::UUID, SectionProperties>>("elfSectionProperties");
-    for(auto &section : module.sections())
-    {
-        auto found = extraInfoTable->find(section.getUUID());
-        if(found == extraInfoTable->end())
-            throw std::logic_error("Section " + section.getName()
-                                   + " missing from elfSectionProperties AuxData table");
-        SectionProperties &extraInfo = found->second;
-        if(isExeSection(extraInfo))
-        {
-            gtirb::ImageByteMap::const_range bytes =
-                gtirb::getBytes(module.getImageByteMap(), section);
-            decodeSection(bytes, bytes.size(), section.getAddress());
-        }
-        if(isNonZeroDataSection(extraInfo))
-        {
-            gtirb::ImageByteMap::const_range bytes =
-                gtirb::getBytes(module.getImageByteMap(), section);
-            storeDataSection(bytes, bytes.size(), section.getAddress(), minMax.first,
-                               minMax.second);
-        }
-    }
-    if(auto prog = souffle::ProgramFactory::newInstance("souffle_disasm"))
-    {
-        loadInputs(prog, module);
-        return prog;
-    }
-    return nullptr;
-}
-
-void DlDecoder::decodeSection(gtirb::ImageByteMap::const_range &sectionBytes, uint64_t size,
-                               gtirb::Addr ea)
-{
-    auto buf = reinterpret_cast<const uint8_t *>(&*sectionBytes.begin());
-    while(size > 0)
-    {
-        cs_insn *insn;
-        size_t count = cs_disasm(this->csHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
-        if(count == 0)
-        {
-            invalids.push_back(ea);
-        }
-        else
-        {
-            instructions.push_back(this->transformInstruction(*insn));
-            cs_free(insn, count);
-        }
-        ++ea;
-        ++buf;
-        --size;
-    }
-}
-
-void DlDecoder::storeDataSection(gtirb::ImageByteMap::const_range &sectionBytes, uint64_t size,
-                                   gtirb::Addr ea, gtirb::Addr min_address, gtirb::Addr max_address)
-{
-    auto can_be_address = [min_address, max_address](gtirb::Addr num) {
-        return ((num >= min_address) && (num <= max_address));
-    };
-    auto buf = reinterpret_cast<const uint8_t *>(&*sectionBytes.begin());
-    while(size > 0)
-    {
-        // store the byte
-        uint8_t content_byte = *buf;
-        data_bytes.push_back({ea, content_byte});
-
-        // store the address
-        if(size >= 8)
-        {
-            gtirb::Addr content(*((int64_t *)buf));
-            if(can_be_address(content))
-                data_addresses.push_back({ea, content});
-        }
-        ++ea;
-        ++buf;
-        --size;
-    }
-}
-
 std::string str_toupper(std::string s)
 {
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::toupper(c); });
     return s;
 }
 
-std::string DlDecoder::getRegisterName(unsigned int reg)
+std::string getRegisterName(const csh &CsHandle, unsigned int reg)
 {
     if(reg == X86_REG_INVALID)
         return "NONE";
-    std::string name = str_toupper(cs_reg_name(this->csHandle, reg));
+    std::string name = str_toupper(cs_reg_name(CsHandle, reg));
     return name;
 }
 
-DlInstruction DlDecoder::transformInstruction(cs_insn &insn)
-{
-    std::vector<uint64_t> op_codes;
-    std::string prefix_name = str_toupper(insn.mnemonic);
-    std::string prefix, name;
-    size_t pos = prefix_name.find(' ');
-    if(pos != std::string::npos)
-    {
-        prefix = prefix_name.substr(0, pos);
-        name = prefix_name.substr(pos + 1);
-    }
-    else
-    {
-        prefix = "";
-        name = prefix_name;
-    }
-
-    auto &detail = insn.detail->x86;
-    if(name != "NOP")
-    {
-        auto opCount = detail.op_count;
-        // skip the destination operand
-        for(int i = 0; i < opCount; i++)
-        {
-            const auto &op = detail.operands[i];
-            uint64_t index = op_dict.add(this->buildOperand(op));
-            op_codes.push_back(index);
-        }
-        // we put the destination operand at the end
-        if(opCount > 0)
-            std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
-    }
-    return {insn.address,
-            insn.size,
-            prefix,
-            name,
-            op_codes,
-            detail.encoding.imm_offset,
-            detail.encoding.disp_offset};
-}
-
-std::variant<ImmOp, RegOp, IndirectOp> DlDecoder::buildOperand(const cs_x86_op &op)
+std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh &CsHandle, const cs_x86_op &op)
 {
     switch(op.type)
     {
         case X86_OP_REG:
-            return getRegisterName(op.reg);
+            return getRegisterName(CsHandle, op.reg);
         case X86_OP_IMM:
             return op.imm;
         case X86_OP_MEM:
         {
-            IndirectOp I = {getRegisterName(op.mem.segment),
-                            getRegisterName(op.mem.base),
-                            getRegisterName(op.mem.index),
+            IndirectOp I = {getRegisterName(CsHandle, op.mem.segment),
+                            getRegisterName(CsHandle, op.mem.base),
+                            getRegisterName(CsHandle, op.mem.index),
                             op.mem.scale,
                             op.mem.disp,
                             op.size * 8};
@@ -260,7 +112,7 @@ souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Symbol &symb
 }
 
 template <typename T>
-void DlDecoder::addToRelation(souffle::SouffleProgram *prog, const std::string &name, const T &data)
+void addToRelation(souffle::SouffleProgram *prog, const std::string &name, const T &data)
 {
     auto *rel = prog->getRelation(name);
     for(const auto &elt : data)
@@ -271,7 +123,7 @@ void DlDecoder::addToRelation(souffle::SouffleProgram *prog, const std::string &
     }
 }
 
-std::string DlDecoder::getFileFormatString(gtirb::FileFormat format)
+std::string getFileFormatString(gtirb::FileFormat format)
 {
     switch(format)
     {
@@ -297,7 +149,7 @@ std::string DlDecoder::getFileFormatString(gtirb::FileFormat format)
     }
 }
 
-void DlDecoder::addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
+void addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
     auto *rel = prog->getRelation("symbol");
     auto *extraInfoTable =
@@ -321,7 +173,7 @@ void DlDecoder::addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
     }
 }
 
-void DlDecoder::addSections(souffle::SouffleProgram *prog, gtirb::Module &module)
+void addSections(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
     auto *rel = prog->getRelation("section_complete");
     auto *extraInfoTable =
@@ -338,6 +190,152 @@ void DlDecoder::addSections(souffle::SouffleProgram *prog, gtirb::Module &module
           << std::get<0>(extraInfo) << std::get<1>(extraInfo);
         rel->insert(t);
     }
+}
+
+DlDecoder::DlDecoder()
+{
+    cs_open(CS_ARCH_X86, CS_MODE_64, &this->csHandle); // == CS_ERR_OK
+    cs_option(this->csHandle, CS_OPT_DETAIL, CS_OPT_ON);
+}
+
+souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
+{
+    auto isNonZeroDataSection = [](const SectionProperties &s) {
+        uint64_t type = std::get<0>(s);
+        uint64_t flags = std::get<1>(s);
+        bool is_allocated = flags & SHF_ALLOC;
+        bool is_not_executable = !(flags & SHF_EXECINSTR);
+        // SHT_NOBITS is not considered here because it is for data sections but without initial
+        // data (zero initialized)
+        bool is_non_zero_program_data = type == SHT_PROGBITS || type == SHT_INIT_ARRAY
+                                        || type == SHT_FINI_ARRAY || type == SHT_PREINIT_ARRAY;
+        return is_allocated && is_not_executable && is_non_zero_program_data;
+    };
+    auto isExeSection = [](const SectionProperties &s) {
+        uint64_t flags = std::get<1>(s);
+        return flags & SHF_EXECINSTR;
+    };
+
+    auto minMax = module.getImageByteMap().getAddrMinMax();
+    auto *extraInfoTable =
+        module.getAuxData<std::map<gtirb::UUID, SectionProperties>>("elfSectionProperties");
+    for(auto &section : module.sections())
+    {
+        auto found = extraInfoTable->find(section.getUUID());
+        if(found == extraInfoTable->end())
+            throw std::logic_error("Section " + section.getName()
+                                   + " missing from elfSectionProperties AuxData table");
+        SectionProperties &extraInfo = found->second;
+        if(isExeSection(extraInfo))
+        {
+            gtirb::ImageByteMap::const_range bytes =
+                gtirb::getBytes(module.getImageByteMap(), section);
+            decodeSection(bytes, bytes.size(), section.getAddress());
+        }
+        if(isNonZeroDataSection(extraInfo))
+        {
+            gtirb::ImageByteMap::const_range bytes =
+                gtirb::getBytes(module.getImageByteMap(), section);
+            storeDataSection(bytes, bytes.size(), section.getAddress(), minMax.first,
+                             minMax.second);
+        }
+    }
+    if(auto prog = souffle::ProgramFactory::newInstance("souffle_disasm"))
+    {
+        loadInputs(prog, module);
+        return prog;
+    }
+    return nullptr;
+}
+
+void DlDecoder::decodeSection(gtirb::ImageByteMap::const_range &sectionBytes, uint64_t size,
+                              gtirb::Addr ea)
+{
+    auto buf = reinterpret_cast<const uint8_t *>(&*sectionBytes.begin());
+    while(size > 0)
+    {
+        cs_insn *insn;
+        size_t count = cs_disasm(this->csHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
+        if(count == 0)
+        {
+            invalids.push_back(ea);
+        }
+        else
+        {
+            instructions.push_back(this->transformInstruction(*insn));
+            cs_free(insn, count);
+        }
+        ++ea;
+        ++buf;
+        --size;
+    }
+}
+
+void DlDecoder::storeDataSection(gtirb::ImageByteMap::const_range &sectionBytes, uint64_t size,
+                                 gtirb::Addr ea, gtirb::Addr min_address, gtirb::Addr max_address)
+{
+    auto can_be_address = [min_address, max_address](gtirb::Addr num) {
+        return ((num >= min_address) && (num <= max_address));
+    };
+    auto buf = reinterpret_cast<const uint8_t *>(&*sectionBytes.begin());
+    while(size > 0)
+    {
+        // store the byte
+        uint8_t content_byte = *buf;
+        data_bytes.push_back({ea, content_byte});
+
+        // store the address
+        if(size >= 8)
+        {
+            gtirb::Addr content(*((int64_t *)buf));
+            if(can_be_address(content))
+                data_addresses.push_back({ea, content});
+        }
+        ++ea;
+        ++buf;
+        --size;
+    }
+}
+
+DlInstruction DlDecoder::transformInstruction(cs_insn &insn)
+{
+    std::vector<uint64_t> op_codes;
+    std::string prefix_name = str_toupper(insn.mnemonic);
+    std::string prefix, name;
+    size_t pos = prefix_name.find(' ');
+    if(pos != std::string::npos)
+    {
+        prefix = prefix_name.substr(0, pos);
+        name = prefix_name.substr(pos + 1);
+    }
+    else
+    {
+        prefix = "";
+        name = prefix_name;
+    }
+
+    auto &detail = insn.detail->x86;
+    if(name != "NOP")
+    {
+        auto opCount = detail.op_count;
+        // skip the destination operand
+        for(int i = 0; i < opCount; i++)
+        {
+            const auto &op = detail.operands[i];
+            uint64_t index = op_dict.add(buildOperand(csHandle, op));
+            op_codes.push_back(index);
+        }
+        // we put the destination operand at the end
+        if(opCount > 0)
+            std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
+    }
+    return {insn.address,
+            insn.size,
+            prefix,
+            name,
+            op_codes,
+            detail.encoding.imm_offset,
+            detail.encoding.disp_offset};
 }
 
 void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
