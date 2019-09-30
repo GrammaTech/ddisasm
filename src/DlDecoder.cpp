@@ -67,7 +67,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
         auto found = extraInfoTable->find(section.getUUID());
         if(found == extraInfoTable->end())
             throw std::logic_error("Section " + section.getName()
-                                   + " missing from elfSectionProperties");
+                                   + " missing from elfSectionProperties AuxData table");
         SectionProperties &extraInfo = found->second;
         if(isExeSection(extraInfo))
         {
@@ -310,7 +310,10 @@ void DlDecoder::addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
         else
             t << 0;
         auto found = extraInfoTable->find(symbol.getUUID());
-        assert(found != extraInfoTable->end() && "Symbol missing from extraSymbolInfo");
+        if(found == extraInfoTable->end())
+            throw std::logic_error("Symbol " + symbol.getName()
+                                   + " missing from extraSymbolInfo AuxData table");
+
         ExtraSymbolInfo &extraInfo = found->second;
         t << extraInfo.size << extraInfo.type << extraInfo.scope << extraInfo.sectionIndex
           << symbol.getName();
@@ -327,7 +330,9 @@ void DlDecoder::addSections(souffle::SouffleProgram *prog, gtirb::Module &module
     {
         souffle::tuple t(rel);
         auto found = extraInfoTable->find(section.getUUID());
-        assert(found != extraInfoTable->end() && "Section missing from elfSectionProperties");
+        if(found == extraInfoTable->end())
+            throw std::logic_error("Section " + section.getName()
+                                   + " missing from elfSectionProperties AuxData table");
         SectionProperties &extraInfo = found->second;
         t << section.getName() << section.getSize() << section.getAddress()
           << std::get<0>(extraInfo) << std::get<1>(extraInfo);
