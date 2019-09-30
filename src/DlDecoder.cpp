@@ -35,12 +35,6 @@
 
 using namespace std;
 
-souffle::tuple &operator<<(souffle::tuple &t, const gtirb::Addr &a)
-{
-    t << static_cast<uint64_t>(a);
-    return t;
-}
-
 DlDecoder::DlDecoder()
 {
     cs_open(CS_ARCH_X86, CS_MODE_64, &this->csHandle); // == CS_ERR_OK
@@ -225,6 +219,12 @@ std::variant<ImmOp, RegOp, IndirectOp> DlDecoder::buildOperand(const cs_x86_op &
     }
 }
 
+souffle::tuple &operator<<(souffle::tuple &t, const gtirb::Addr &a)
+{
+    t << static_cast<uint64_t>(a);
+    return t;
+}
+
 souffle::tuple &operator<<(souffle::tuple &t, const DlInstruction &inst)
 {
     t << inst.address << inst.size << inst.prefix << inst.name;
@@ -249,6 +249,13 @@ souffle::tuple &operator<<(souffle::tuple &t, const DlData<T> &data)
 souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Relocation &relocation)
 {
     t << relocation.address << relocation.type << relocation.name << relocation.addend;
+    return t;
+}
+
+souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Symbol &symbol)
+{
+    t << symbol.address << symbol.size << symbol.type << symbol.scope << symbol.sectionIndex
+      << symbol.name;
     return t;
 }
 
@@ -288,13 +295,6 @@ std::string DlDecoder::getFileFormatString(gtirb::FileFormat format)
         default:
             return "Undefined";
     }
-}
-
-souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Symbol &symbol)
-{
-    t << symbol.address << symbol.size << symbol.type << symbol.scope << symbol.sectionIndex
-      << symbol.name;
-    return t;
 }
 
 void DlDecoder::addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
