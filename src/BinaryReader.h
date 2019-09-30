@@ -55,9 +55,9 @@ constexpr bool operator<(const Symbol &LHS, const Symbol &RHS) noexcept
         uint64_t type;
         uint64_t flags;
 
-        friend constexpr bool operator<(const Section &LHS, const Section &RHS) noexcept
+        constexpr bool operator<(const Section &RHS) noexcept
         {
-            return std::tie(LHS.name, LHS.size, LHS.address, LHS.type, LHS.flags)
+            return std::tie(name, size, address, type, flags);
                    < std::tie(RHS.name, RHS.size, RHS.address, RHS.type, RHS.flags);
         }
     };
