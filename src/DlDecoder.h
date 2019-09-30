@@ -69,14 +69,7 @@ private:
     void loadInputs(souffle::SouffleProgram* prog, gtirb::Module& module);
 
     template <typename T>
-    void addRelation(souffle::SouffleProgram* prog, const std::string& name,
-                     const std::vector<T>& data);
-    template <typename T>
-    void addSetToRelation(souffle::SouffleProgram* prog, const std::string& name,
-                          const std::set<T>& data);
-    template <typename T>
-    void addMapToRelation(souffle::SouffleProgram* prog, const std::string& name,
-                          const std::map<T, uint64_t>& data);
+    void addToRelation(souffle::SouffleProgram* prog, const std::string& name, const T& data);
     std::string getFileFormatString(gtirb::FileFormat format);
 
 public:

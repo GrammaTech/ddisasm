@@ -253,34 +253,7 @@ souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Relocation &
 }
 
 template <typename T>
-void DlDecoder::addRelation(souffle::SouffleProgram *prog, const std::string &name,
-                            const std::vector<T> &data)
-{
-    auto *rel = prog->getRelation(name);
-    for(const auto &elt : data)
-    {
-        souffle::tuple t(rel);
-        t << elt;
-        rel->insert(t);
-    }
-}
-
-template <typename T>
-void DlDecoder::addSetToRelation(souffle::SouffleProgram *prog, const std::string &name,
-                                 const std::set<T> &data)
-{
-    auto *rel = prog->getRelation(name);
-    for(const auto &elt : data)
-    {
-        souffle::tuple t(rel);
-        t << elt;
-        rel->insert(t);
-    }
-}
-
-template <typename T>
-void DlDecoder::addMapToRelation(souffle::SouffleProgram *prog, const std::string &name,
-                                 const std::map<T, uint64_t> &data)
+void DlDecoder::addToRelation(souffle::SouffleProgram *prog, const std::string &name, const T &data)
 {
     auto *rel = prog->getRelation(name);
     for(const auto &elt : data)
@@ -364,21 +337,21 @@ void DlDecoder::addSections(souffle::SouffleProgram *prog, gtirb::Module &module
 
 void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
-    addRelation<std::string>(prog, "binary_type",
-                             *module.getAuxData<std::vector<std::string>>("binaryType"));
-    addRelation<std::string>(prog, "binary_format", {getFileFormatString(module.getFileFormat())});
-    addRelation<uint64_t>(prog, "entry_point",
-                          *module.getAuxData<std::vector<uint64_t>>("entryPoint"));
-    addSetToRelation(prog, "relocation",
-                     *module.getAuxData<std::set<InitialAuxData::Relocation>>("relocations"));
+    addToRelation(prog, "binary_type", *module.getAuxData<std::vector<std::string>>("binaryType"));
+    addToRelation<std::vector<std::string>>(prog, "binary_format",
+                                            {getFileFormatString(module.getFileFormat())});
+    addToRelation<std::vector<gtirb::Addr>>(
+        prog, "entry_point", *module.getAuxData<std::vector<gtirb::Addr>>("entryPoint"));
+    addToRelation(prog, "relocation",
+                  *module.getAuxData<std::set<InitialAuxData::Relocation>>("relocations"));
     module.removeAuxData("relocation");
-    addRelation(prog, "instruction_complete", instructions);
-    addRelation(prog, "address_in_data", data_addresses);
-    addRelation(prog, "data_byte", data_bytes);
-    addRelation(prog, "invalid_op_code", invalids);
-    addMapToRelation(prog, "op_regdirect", op_dict.regTable);
-    addMapToRelation(prog, "op_immediate", op_dict.immTable);
-    addMapToRelation(prog, "op_indirect", op_dict.indirectTable);
+    addToRelation(prog, "instruction_complete", instructions);
+    addToRelation(prog, "address_in_data", data_addresses);
+    addToRelation(prog, "data_byte", data_bytes);
+    addToRelation(prog, "invalid_op_code", invalids);
+    addToRelation(prog, "op_regdirect", op_dict.regTable);
+    addToRelation(prog, "op_immediate", op_dict.immTable);
+    addToRelation(prog, "op_indirect", op_dict.indirectTable);
     addSymbols(prog, module);
     module.removeAuxData("extraSymbolInfo");
     addSections(prog, module);
