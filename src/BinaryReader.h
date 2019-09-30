@@ -38,14 +38,13 @@ namespace InitialAuxData
         std::string scope;
         uint64_t sectionIndex;
         std::string name;
+    };
 
-};
-
-constexpr bool operator<(const Symbol &LHS, const Symbol &RHS) noexcept
-{
-  return std::tie(LHS.address, LHS.size, LHS.type, LHS.scope, LHS.sectionIndex, LHS.name)
-         < std::tie(RHS.address, RHS.size, RHS.type, RHS.scope, RHS.sectionIndex, RHS.name);
-}
+    constexpr bool operator<(const Symbol &LHS, const Symbol &RHS) noexcept
+    {
+        return std::tie(LHS.address, LHS.size, LHS.type, LHS.scope, LHS.sectionIndex, LHS.name)
+               < std::tie(RHS.address, RHS.size, RHS.type, RHS.scope, RHS.sectionIndex, RHS.name);
+    }
 
     struct Section
     {
@@ -54,13 +53,13 @@ constexpr bool operator<(const Symbol &LHS, const Symbol &RHS) noexcept
         uint64_t address;
         uint64_t type;
         uint64_t flags;
-
-        constexpr bool operator<(const Section &RHS) noexcept
-        {
-            return std::tie(name, size, address, type, flags);
-                   < std::tie(RHS.name, RHS.size, RHS.address, RHS.type, RHS.flags);
-        }
     };
+
+    constexpr bool operator<(const Section &LHS, const Section &RHS) noexcept
+    {
+        return std::tie(LHS.name, LHS.size, LHS.address, LHS.type, LHS.flags)
+               < std::tie(RHS.name, RHS.size, RHS.address, RHS.type, RHS.flags);
+    }
 
     struct Relocation
     {
@@ -68,13 +67,13 @@ constexpr bool operator<(const Symbol &LHS, const Symbol &RHS) noexcept
         std::string type;
         std::string name;
         int64_t addend;
-
-        constexpr bool operator<(const Relocation &RHS) noexcept
-        {
-            return std::tie(address, type, name, addend);
-                   < std::tie(RHS.address, RHS.type, RHS.name, RHS.addend);
-        }
     };
+
+    constexpr bool operator<(const Relocation &LHS, const Relocation &RHS) noexcept
+    {
+        return std::tie(LHS.address, LHS.type, LHS.name, LHS.addend)
+               < std::tie(RHS.address, RHS.type, RHS.name, RHS.addend);
+    }
 
 } // namespace InitialAuxData
 
