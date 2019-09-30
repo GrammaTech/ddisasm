@@ -134,7 +134,7 @@ struct CodeInBlock
     {
         assert(tuple.size() == 2);
 
-        tuple >> EA >> this->BlockAddress;
+        tuple >> EA >> BlockAddress;
     };
 
     gtirb::Addr EA{0};
@@ -239,76 +239,14 @@ struct BlockPoints
 };
 
 template <typename T>
-class VectorByEA
-{
-public:
-    explicit VectorByEA() = default;
-    using const_iterator = typename std::vector<T>::const_iterator;
-    void sort()
-    {
-        std::sort(this->contents.begin(), this->contents.end(),
-                  [](const auto &left, const auto &right) { return left.EA < right.EA; });
-    }
-
-    std::pair<const_iterator, const_iterator> equal_range(gtirb::Addr ea) const
-    {
-        T key(ea);
-        return std::equal_range(
-            this->contents.begin(), this->contents.end(), key,
-            [](const auto &left, const auto &right) { return left.EA < right.EA; });
-    }
-
-    const T *find(gtirb::Addr ea) const
-    {
-        auto inst = this->equal_range(ea);
-        if(inst.first != this->contents.end() && inst.first->EA == ea)
-        {
-            return &*inst.first;
-        }
-        else
-        {
-            return nullptr;
-        }
-    }
-
-    std::vector<T> contents;
-};
+using VectorByEA = boost::multi_index_container<
+    T, boost::multi_index::indexed_by<boost::multi_index::ordered_non_unique<
+           boost::multi_index::member<T, decltype(T::EA), &T::EA>>>>;
 
 template <typename T>
-class VectorByN
-{
-public:
-    explicit VectorByN() = default;
-    using const_iterator = typename std::vector<T>::const_iterator;
-    void sort()
-    {
-        std::sort(this->contents.begin(), this->contents.end(),
-                  [](const auto &left, const auto &right) { return left.N < right.N; });
-    }
-
-    std::pair<const_iterator, const_iterator> equal_range(uint64_t n) const
-    {
-        T key(n);
-        return std::equal_range(
-            this->contents.begin(), this->contents.end(), key,
-            [](const auto &left, const auto &right) { return left.N < right.N; });
-    }
-
-    const T *find(uint64_t n) const
-    {
-        auto inst = this->equal_range(n);
-        if(inst.first != this->contents.end() && inst.first->N == n)
-        {
-            return &*inst.first;
-        }
-        else
-        {
-            return nullptr;
-        }
-    }
-
-    std::vector<T> contents;
-};
+using VectorByN = boost::multi_index_container<
+    T, boost::multi_index::indexed_by<boost::multi_index::ordered_non_unique<
+           boost::multi_index::member<T, decltype(T::N), &T::N>>>>;
 
 struct SymbolicInfo
 {
@@ -429,15 +367,15 @@ std::vector<gtirb::Addr> convertRelation<gtirb::Addr>(const std::string &relatio
     return result;
 }
 
-template <typename T>
-T convertSortedRelation(const std::string &relation, souffle::SouffleProgram *prog)
+template <typename Container, typename Elem>
+Container convertSortedRelation(const std::string &relation, souffle::SouffleProgram *prog)
 {
-    T result;
+    Container result;
     for(auto &output : *prog->getRelation(relation))
     {
-        result.contents.emplace_back(output);
+        Elem elem(output);
+        result.insert(elem);
     }
-    result.sort();
     return result;
 }
 
@@ -570,7 +508,7 @@ void buildSymbolic(gtirb::Context &context, gtirb::Module &module, DecodedInstru
                    const VectorByN<OpIndirect> &opIndirect)
 {
     const auto foundImm = opImmediate.find(operand);
-    if(foundImm != nullptr)
+    if(foundImm != opImmediate.end())
     {
         int64_t immediate = foundImm->Immediate;
         auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
@@ -604,7 +542,7 @@ void buildSymbolic(gtirb::Context &context, gtirb::Module &module, DecodedInstru
 
     const auto foundInd = opIndirect.find(operand);
 
-    if(foundInd != nullptr)
+    if(foundInd != opIndirect.end())
     {
         auto op = *foundInd;
 
@@ -652,16 +590,19 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
 {
     auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", prog);
     SymbolicInfo symbolicInfo{
-        convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
-        convertSortedRelation<VectorByEA<SymbolicExpression>>("symbolic_operand", prog)};
+        convertSortedRelation<VectorByEA<MovedLabel>, MovedLabel>("moved_label", prog),
+        convertSortedRelation<VectorByEA<SymbolicExpression>, SymbolicExpression>(
+            "symbolic_operand", prog)};
     auto decodedInstructions =
-        convertSortedRelation<VectorByEA<DecodedInstruction>>("instruction_complete", prog);
-    auto opImmediate = convertSortedRelation<VectorByN<OpImmediate>>("op_immediate", prog);
-    auto opIndirect = convertSortedRelation<VectorByN<OpIndirect>>("op_indirect", prog);
+        convertSortedRelation<VectorByEA<DecodedInstruction>, DecodedInstruction>(
+            "instruction_complete", prog);
+    auto opImmediate =
+        convertSortedRelation<VectorByN<OpImmediate>, OpImmediate>("op_immediate", prog);
+    auto opIndirect = convertSortedRelation<VectorByN<OpIndirect>, OpIndirect>("op_indirect", prog);
     for(auto &cib : codeInBlock)
     {
         const auto inst = decodedInstructions.find(cib.EA);
-        assert(inst != nullptr);
+        assert(inst != decodedInstructions.end());
         buildSymbolic(context, module, *inst, cib.EA, inst->Op1, 1, symbolicInfo, opImmediate,
                       opIndirect);
         buildSymbolic(context, module, *inst, cib.EA, inst->Op2, 2, symbolicInfo, opImmediate,
@@ -675,8 +616,8 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
 
 void buildCodeBlocks(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
 {
-    auto blockInformation =
-        convertSortedRelation<VectorByEA<BlockInformation>>("block_information", prog);
+    auto blockInformation = convertSortedRelation<VectorByEA<BlockInformation>, BlockInformation>(
+        "block_information", prog);
     for(auto &output : *prog->getRelation("refined_block"))
     {
         gtirb::Addr blockAddress;
@@ -719,17 +660,21 @@ void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
 
 void buildDataGroups(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
 {
-    auto symbolicData = convertSortedRelation<VectorByEA<SymbolicData>>("symbolic_data", prog);
+    auto symbolicData =
+        convertSortedRelation<VectorByEA<SymbolicData>, SymbolicData>("symbolic_data", prog);
     auto movedDataLabels =
-        convertSortedRelation<VectorByEA<MovedDataLabel>>("moved_data_label", prog);
-    auto symbolicExprs =
-        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog);
+        convertSortedRelation<VectorByEA<MovedDataLabel>, MovedDataLabel>("moved_data_label", prog);
+    auto symbolicExprs = convertSortedRelation<VectorByEA<SymbolicExpr>, SymbolicExpr>(
+        "symbolic_expr_from_relocation", prog);
     auto symbolMinusSymbol =
-        convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
+        convertSortedRelation<VectorByEA<SymbolMinusSymbol>, SymbolMinusSymbol>(
+            "symbol_minus_symbol", prog);
 
-    auto dataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", prog);
+    auto dataStrings =
+        convertSortedRelation<VectorByEA<StringDataObject>, StringDataObject>("string", prog);
     auto symbolSpecialTypes =
-        convertSortedRelation<VectorByEA<SymbolSpecialType>>("symbol_special_encoding", prog);
+        convertSortedRelation<VectorByEA<SymbolSpecialType>, SymbolSpecialType>(
+            "symbol_special_encoding", prog);
     std::map<gtirb::UUID, std::string> typesTable;
 
     for(auto &output : *prog->getRelation("non_zero_data_section"))
@@ -745,7 +690,7 @@ void buildDataGroups(gtirb::Context &context, gtirb::Module &module, souffle::So
             {
                 // undefined symbol
                 const auto symbolicExpr = symbolicExprs.find(currentAddr);
-                if(symbolicExpr != nullptr)
+                if(symbolicExpr != symbolicExprs.end())
                 {
                     auto *d = gtirb::DataObject::Create(context, currentAddr, symbolicExpr->Size);
                     module.addData(d);
@@ -759,7 +704,7 @@ void buildDataGroups(gtirb::Context &context, gtirb::Module &module, souffle::So
                 }
                 // symbol+constant
                 const auto movedDataLabel = movedDataLabels.find(currentAddr);
-                if(movedDataLabel != nullptr)
+                if(movedDataLabel != movedDataLabels.end())
                 {
                     auto *d = gtirb::DataObject::Create(context, currentAddr, movedDataLabel->Size);
                     module.addData(d);
@@ -767,28 +712,28 @@ void buildDataGroups(gtirb::Context &context, gtirb::Module &module, souffle::So
                     auto sym = getSymbol(context, module, gtirb::Addr(movedDataLabel->Offset2));
                     module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{diff, sym});
                     const auto specialType = symbolSpecialTypes.find(currentAddr);
-                    if(specialType != nullptr)
+                    if(specialType != symbolSpecialTypes.end())
                         typesTable[d->getUUID()] = specialType->Type;
                     currentAddr += (movedDataLabel->Size) - 1;
                     continue;
                 }
                 // symbol+0
                 const auto symbolic = symbolicData.find(currentAddr);
-                if(symbolic != nullptr)
+                if(symbolic != symbolicData.end())
                 {
                     auto *d = gtirb::DataObject::Create(context, currentAddr, symbolic->Size);
                     module.addData(d);
                     auto sym = getSymbol(context, module, symbolic->GroupContent);
                     module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{0, sym});
                     const auto specialType = symbolSpecialTypes.find(currentAddr);
-                    if(specialType != nullptr)
+                    if(specialType != symbolSpecialTypes.end())
                         typesTable[d->getUUID()] = specialType->Type;
                     currentAddr += (symbolic->Size - 1);
                     continue;
                 }
                 // symbol-symbol
                 const auto symMinusSym = symbolMinusSymbol.find(currentAddr);
-                if(symMinusSym != nullptr)
+                if(symMinusSym != symbolMinusSymbol.end())
                 {
                     auto *d = gtirb::DataObject::Create(context, currentAddr, symMinusSym->Size);
                     module.addData(d);
@@ -797,14 +742,14 @@ void buildDataGroups(gtirb::Context &context, gtirb::Module &module, souffle::So
                         gtirb::SymAddrAddr{1, 0, getSymbol(context, module, symMinusSym->Symbol2),
                                            getSymbol(context, module, symMinusSym->Symbol1)});
                     const auto specialType = symbolSpecialTypes.find(currentAddr);
-                    if(specialType != nullptr)
+                    if(specialType != symbolSpecialTypes.end())
                         typesTable[d->getUUID()] = specialType->Type;
                     currentAddr += (symMinusSym->Size - 1);
                     continue;
                 }
                 // string
                 const auto str = dataStrings.find(currentAddr);
-                if(str != nullptr)
+                if(str != dataStrings.end())
                 {
                     auto *d =
                         gtirb::DataObject::Create(context, currentAddr, str->End - currentAddr);
