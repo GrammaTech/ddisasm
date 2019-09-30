@@ -23,6 +23,7 @@
 
 #include "GtirbModuleDisassembler.h"
 #include <boost/uuid/uuid_generators.hpp>
+#include "DlOperandTable.h"
 
 // souffle uses a signed integer for all numbers (either 32 or 64 bits
 // dependin on compilation flags). Allow conversion to other types.
@@ -54,79 +55,58 @@ souffle::tuple &operator>>(souffle::tuple &t, uint8_t &byte)
 
 struct DecodedInstruction
 {
-    DecodedInstruction(gtirb::Addr ea) : EA(ea)
-    {
-    }
+    gtirb::Addr EA;
+    uint64_t Size;
+    std::map<uint64_t, std::variant<ImmOp, IndirectOp>> Operands;
+    int64_t immediateOffset;
+    int64_t displacementOffset;
+};
 
-    DecodedInstruction(souffle::tuple &tuple)
+std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SouffleProgram *prog)
+{
+    std::map<uint64_t, ImmOp> Immediates;
+    for(auto &output : *prog->getRelation("op_immediate"))
     {
-        assert(tuple.size() == 10);
-
+        uint64_t operandCode;
+        ImmOp immediate;
+        output >> operandCode >> immediate;
+        Immediates[operandCode] = immediate;
+    };
+    std::map<uint64_t, IndirectOp> Indirects;
+    for(auto &output : *prog->getRelation("op_indirect"))
+    {
+        uint64_t operandCode, size;
+        IndirectOp indirect;
+        output >> operandCode >> indirect.reg1 >> indirect.reg2 >> indirect.reg3
+            >> indirect.multiplier >> indirect.displacement >> size;
+        Indirects[operandCode] = indirect;
+    };
+    std::map<gtirb::Addr, DecodedInstruction> insns;
+    for(auto &output : *prog->getRelation("instruction_complete"))
+    {
+        DecodedInstruction insn;
+        gtirb::Addr EA;
         std::string prefix, opcode;
-
-        tuple >> EA >> Size >> prefix >> opcode >> Op1 >> Op2 >> Op3 >> Op4 >> immediateOffset
-            >> displacementOffset;
-    };
-
-    gtirb::Addr EA{0};
-    uint64_t Size{0};
-    uint64_t Op1{0};
-    uint64_t Op2{0};
-    uint64_t Op3{0};
-    uint64_t Op4{0};
-    int64_t immediateOffset{0};
-    int64_t displacementOffset{0};
-};
-
-struct OpRegdirect
-{
-    OpRegdirect(souffle::tuple &tuple)
-    {
-        assert(tuple.size() == 2);
-        tuple >> N >> Register;
-    };
-
-    uint64_t N{0};
-    std::string Register;
-};
-
-struct OpImmediate
-{
-    OpImmediate(uint64_t n) : N(n)
-    {
+        output >> EA >> insn.Size >> prefix >> opcode;
+        for(size_t i = 1; i <= 4; i++)
+        {
+            uint64_t operandIndex;
+            output >> operandIndex;
+            auto foundImmediate = Immediates.find(operandIndex);
+            if(foundImmediate != Immediates.end())
+                insn.Operands[i] = foundImmediate->second;
+            else
+            {
+                auto foundIndirect = Indirects.find(operandIndex);
+                if(foundIndirect != Indirects.end())
+                    insn.Operands[i] = foundIndirect->second;
+            }
+        }
+        output >> insn.immediateOffset >> insn.displacementOffset;
+        insns[EA] = insn;
     }
-
-    OpImmediate(souffle::tuple &tuple)
-    {
-        assert(tuple.size() == 2);
-        tuple >> N >> Immediate;
-    };
-
-    uint64_t N{0};
-    int64_t Immediate{0};
-};
-
-struct OpIndirect
-{
-    OpIndirect(uint64_t n) : N(n)
-    {
-    }
-
-    OpIndirect(souffle::tuple &tuple)
-    {
-        assert(tuple.size() == 7);
-
-        tuple >> N >> SReg >> Reg1 >> Reg2 >> Multiplier >> Offset >> Size;
-    }
-
-    uint64_t N{0};
-    std::string SReg;
-    std::string Reg1;
-    std::string Reg2;
-    int64_t Multiplier{0};
-    int64_t Offset{0};
-    uint64_t Size{0};
-};
+    return insns;
+}
 
 struct CodeInBlock
 {
@@ -182,13 +162,13 @@ struct MovedLabel
     MovedLabel(souffle::tuple &tuple)
     {
         assert(tuple.size() == 4);
-        tuple >> EA >> OpNum >> Offset1 >> Offset2;
+        tuple >> EA >> OperandIndex >> Address1 >> Address2;
     };
 
     gtirb::Addr EA{0};
-    uint64_t OpNum{0};
-    int64_t Offset1{0};
-    int64_t Offset2{0};
+    uint64_t OperandIndex{0};
+    int64_t Address1{0};
+    int64_t Address2{0};
 };
 
 struct MovedDataLabel
@@ -200,28 +180,25 @@ struct MovedDataLabel
     MovedDataLabel(souffle::tuple &tuple)
     {
         assert(tuple.size() == 4);
-        tuple >> EA >> Size >> Offset1 >> Offset2;
+        tuple >> EA >> Size >> Address1 >> Address2;
     };
 
     gtirb::Addr EA{0};
     uint64_t Size{0};
-    int64_t Offset1{0};
-    int64_t Offset2{0};
+    int64_t Address1{0};
+    int64_t Address2{0};
 };
 
 struct SymbolicExpression
 {
-    SymbolicExpression(gtirb::Addr ea) : EA(ea)
-    {
-    }
     SymbolicExpression(souffle::tuple &tuple)
     {
         assert(tuple.size() == 4);
-        tuple >> EA >> OpNum;
+        tuple >> EA >> OperandIndex;
     };
 
     gtirb::Addr EA{0};
-    uint64_t OpNum{0};
+    uint64_t OperandIndex{0};
 };
 
 struct BlockPoints
@@ -242,11 +219,6 @@ template <typename T>
 using VectorByEA = boost::multi_index_container<
     T, boost::multi_index::indexed_by<boost::multi_index::ordered_non_unique<
            boost::multi_index::member<T, decltype(T::EA), &T::EA>>>>;
-
-template <typename T>
-using VectorByN = boost::multi_index_container<
-    T, boost::multi_index::indexed_by<boost::multi_index::ordered_non_unique<
-           boost::multi_index::member<T, decltype(T::N), &T::N>>>>;
 
 struct SymbolicInfo
 {
@@ -358,12 +330,10 @@ std::vector<gtirb::Addr> convertRelation<gtirb::Addr>(const std::string &relatio
                                                       souffle::SouffleProgram *prog)
 {
     std::vector<gtirb::Addr> result;
-    auto *r = prog->getRelation(relation);
-    std::transform(r->begin(), r->end(), std::back_inserter(result), [](auto &tuple) {
-        gtirb::Addr addr;
-        tuple >> addr;
-        return addr;
-    });
+    for(auto &output : *prog->getRelation(relation))
+    {
+        result.emplace_back(output[0]);
+    };
     return result;
 }
 
@@ -502,85 +472,72 @@ gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::
     return sym;
 }
 
-void buildSymbolic(gtirb::Context &context, gtirb::Module &module, DecodedInstruction instruction,
-                   gtirb::Addr &ea, uint64_t operand, uint64_t index,
-                   const SymbolicInfo &symbolicInfo, const VectorByN<OpImmediate> &opImmediate,
-                   const VectorByN<OpIndirect> &opIndirect)
+void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, const gtirb::Addr &ea,
+                            const DecodedInstruction &instruction, uint64_t index, ImmOp &immediate,
+                            const SymbolicInfo &symbolicInfo)
 {
-    const auto foundImm = opImmediate.find(operand);
-    if(foundImm != opImmediate.end())
+    // Symbol+constant case
+    auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
+    if(auto movedLabel =
+           std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
+                        [index](const auto &element) { return element.OperandIndex == index; });
+       movedLabel != rangeMovedLabel.second)
     {
-        int64_t immediate = foundImm->Immediate;
-        auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
-        if(auto movedLabel = std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
-                                          [ea, index](const auto &element) {
-                                              return (element.EA == ea) && (element.OpNum == index);
-                                          });
-           movedLabel != rangeMovedLabel.second)
-        {
-            assert(movedLabel->Offset1 == immediate);
-            auto diff = movedLabel->Offset1 - movedLabel->Offset2;
-            auto sym = getSymbol(context, module, gtirb::Addr(movedLabel->Offset2));
-            module.addSymbolicExpression(ea + instruction.immediateOffset,
-                                         gtirb::SymAddrConst{diff, sym});
-            return;
-        }
-
-        auto range = symbolicInfo.SymbolicExpressions.equal_range(ea);
-        if(std::find_if(range.first, range.second,
-                        [ea, index](const auto &element) {
-                            return (element.EA == ea) && (element.OpNum == index);
-                        })
-           != range.second)
-        {
-            auto sym = getSymbol(context, module, gtirb::Addr(immediate));
-            module.addSymbolicExpression(ea + instruction.immediateOffset,
-                                         gtirb::SymAddrConst{0, sym});
-            return;
-        }
+        assert(movedLabel->Address1 == immediate);
+        auto diff = movedLabel->Address1 - movedLabel->Address2;
+        auto sym = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
+        module.addSymbolicExpression(ea + instruction.immediateOffset,
+                                     gtirb::SymAddrConst{diff, sym});
+        return;
     }
-
-    const auto foundInd = opIndirect.find(operand);
-
-    if(foundInd != opIndirect.end())
+    // Symbol+0 case
+    auto range = symbolicInfo.SymbolicExpressions.equal_range(ea);
+    if(std::find_if(range.first, range.second,
+                    [index](const auto &element) { return element.OperandIndex == index; })
+       != range.second)
     {
-        auto op = *foundInd;
+        auto sym = getSymbol(context, module, gtirb::Addr(immediate));
+        module.addSymbolicExpression(ea + instruction.immediateOffset, gtirb::SymAddrConst{0, sym});
+        return;
+    }
+}
 
-        auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
-        if(auto movedLabel = std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
-                                          [ea, index](const auto &element) {
-                                              return (element.EA == ea) && (element.OpNum == index);
-                                          });
-           movedLabel != rangeMovedLabel.second)
+void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const gtirb::Addr &ea,
+                           const DecodedInstruction &instruction, uint64_t index,
+                           IndirectOp &indirect, const SymbolicInfo &symbolicInfo)
+{
+    // Symbol+constant case
+    auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
+    if(auto movedLabel =
+           std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
+                        [index](const auto &element) { return element.OperandIndex == index; });
+       movedLabel != rangeMovedLabel.second)
+    {
+        auto diff = movedLabel->Address1 - movedLabel->Address2;
+        auto sym = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
+        module.addSymbolicExpression(ea + instruction.displacementOffset,
+                                     gtirb::SymAddrConst{diff, sym});
+        return;
+    }
+    // Symbol+0 case
+    auto range = symbolicInfo.SymbolicExpressions.equal_range(ea);
+    if(std::find_if(range.first, range.second,
+                    [index](const auto &element) { return element.OperandIndex == index; })
+       != range.second)
+    {
+        if(indirect.reg2 == std::string{"RIP"} && indirect.multiplier == 1
+           && isNullReg(indirect.reg1) && isNullReg(indirect.reg3))
         {
-            auto diff = movedLabel->Offset1 - movedLabel->Offset2;
-            auto sym = getSymbol(context, module, gtirb::Addr(movedLabel->Offset2));
+            auto address = ea + indirect.displacement + instruction.Size;
+            auto sym = getSymbol(context, module, address);
             module.addSymbolicExpression(ea + instruction.displacementOffset,
-                                         gtirb::SymAddrConst{diff, sym});
-            return;
+                                         gtirb::SymAddrConst{0, sym});
         }
-
-        auto range = symbolicInfo.SymbolicExpressions.equal_range(ea);
-        if(std::find_if(range.first, range.second,
-                        [ea, index](const auto &element) {
-                            return (element.EA == ea) && (element.OpNum == index);
-                        })
-           != range.second)
+        else
         {
-            if(op.Reg1 == std::string{"RIP"} && op.Multiplier == 1 && isNullReg(op.SReg)
-               && isNullReg(op.Reg2))
-            {
-                auto address = ea + foundInd->Offset + instruction.Size;
-                auto sym = getSymbol(context, module, address);
-                module.addSymbolicExpression(ea + instruction.displacementOffset,
-                                             gtirb::SymAddrConst{0, sym});
-            }
-            else
-            {
-                auto sym = getSymbol(context, module, gtirb::Addr(op.Offset));
-                module.addSymbolicExpression(ea + instruction.displacementOffset,
-                                             gtirb::SymAddrConst{0, sym});
-            }
+            auto sym = getSymbol(context, module, gtirb::Addr(indirect.displacement));
+            module.addSymbolicExpression(ea + instruction.displacementOffset,
+                                         gtirb::SymAddrConst{0, sym});
         }
     }
 }
@@ -593,24 +550,21 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
         convertSortedRelation<VectorByEA<MovedLabel>, MovedLabel>("moved_label", prog),
         convertSortedRelation<VectorByEA<SymbolicExpression>, SymbolicExpression>(
             "symbolic_operand", prog)};
-    auto decodedInstructions =
-        convertSortedRelation<VectorByEA<DecodedInstruction>, DecodedInstruction>(
-            "instruction_complete", prog);
-    auto opImmediate =
-        convertSortedRelation<VectorByN<OpImmediate>, OpImmediate>("op_immediate", prog);
-    auto opIndirect = convertSortedRelation<VectorByN<OpIndirect>, OpIndirect>("op_indirect", prog);
+    std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
+
     for(auto &cib : codeInBlock)
     {
         const auto inst = decodedInstructions.find(cib.EA);
         assert(inst != decodedInstructions.end());
-        buildSymbolic(context, module, *inst, cib.EA, inst->Op1, 1, symbolicInfo, opImmediate,
-                      opIndirect);
-        buildSymbolic(context, module, *inst, cib.EA, inst->Op2, 2, symbolicInfo, opImmediate,
-                      opIndirect);
-        buildSymbolic(context, module, *inst, cib.EA, inst->Op3, 3, symbolicInfo, opImmediate,
-                      opIndirect);
-        buildSymbolic(context, module, *inst, cib.EA, inst->Op4, 4, symbolicInfo, opImmediate,
-                      opIndirect);
+        for(auto &op : inst->second.Operands)
+        {
+            if(auto *immediate = std::get_if<ImmOp>(&op.second))
+                buildSymbolicImmediate(context, module, inst->first, inst->second, op.first,
+                                       *immediate, symbolicInfo);
+            if(auto *indirect = std::get_if<IndirectOp>(&op.second))
+                buildSymbolicIndirect(context, module, inst->first, inst->second, op.first,
+                                      *indirect, symbolicInfo);
+        }
     }
 }
 
@@ -708,8 +662,8 @@ void buildDataGroups(gtirb::Context &context, gtirb::Module &module, souffle::So
                 {
                     auto *d = gtirb::DataObject::Create(context, currentAddr, movedDataLabel->Size);
                     module.addData(d);
-                    auto diff = movedDataLabel->Offset1 - movedDataLabel->Offset2;
-                    auto sym = getSymbol(context, module, gtirb::Addr(movedDataLabel->Offset2));
+                    auto diff = movedDataLabel->Address1 - movedDataLabel->Address2;
+                    auto sym = getSymbol(context, module, gtirb::Addr(movedDataLabel->Address2));
                     module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{diff, sym});
                     const auto specialType = symbolSpecialTypes.find(currentAddr);
                     if(specialType != symbolSpecialTypes.end())
