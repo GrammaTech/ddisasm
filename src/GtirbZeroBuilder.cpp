@@ -114,7 +114,7 @@ void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> bin
 {
     std::vector<std::string> binaryType = {binary->get_binary_type()};
     module.addAuxData("binaryType", binaryType);
-    std::vector<uint64_t> entryPoint = {binary->get_entry_point()};
+    std::vector<gtirb::Addr> entryPoint = {gtirb::Addr(binary->get_entry_point())};
     module.addAuxData("entryPoint", entryPoint);
     module.addAuxData("relocations", binary->get_relocations());
     module.addAuxData("libraries", binary->get_libraries());
