@@ -221,8 +221,7 @@ std::variant<ImmOp, RegOp, IndirectOp> DlDecoder::buildOperand(const cs_x86_op &
         }
         case X86_OP_INVALID:
         default:
-            std::cerr << "invalid operand\n";
-            exit(1);
+            throw std::logic_error("Found invalid operand");
     }
 }
 
