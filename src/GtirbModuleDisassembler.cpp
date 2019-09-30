@@ -713,11 +713,11 @@ void buildDataGroups(gtirb::Context &context, gtirb::Module &module, souffle::So
 
 void connectSymbolsToDataGroups(gtirb::Module &module)
 {
-    std::for_each(module.data_begin(), module.data_end(), [&module](auto &d) {
-        auto found = module.findSymbols(d.getAddress());
-        std::for_each(found.begin(), found.end(),
-                      [&d, &module](auto &sym) { gtirb::setReferent(module, sym, &d); });
-    });
+    for(auto &d : module.data())
+    {
+        for(auto &symbol : module.findSymbols(d.getAddress()))
+            gtirb::setReferent(module, symbol, &d);
+    }
 }
 
 void connectSymbolsToBlocks(gtirb::Module &module)
