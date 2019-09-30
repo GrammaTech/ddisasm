@@ -44,7 +44,7 @@ struct DlInstruction
 template <class Content>
 struct DlData
 {
-    uint64_t ea;
+    gtirb::Addr ea;
     Content content;
 };
 
@@ -54,15 +54,16 @@ private:
     csh csHandle;
     DlOperandTable op_dict;
     std::vector<DlInstruction> instructions;
-    std::vector<uint64_t> invalids;
-    std::vector<DlData<uint64_t>> data_addresses;
+    std::vector<gtirb::Addr> invalids;
+    std::vector<DlData<gtirb::Addr>> data_addresses;
     std::vector<DlData<unsigned char>> data_bytes;
-    void decode_section(const uint8_t* buff, uint64_t size, uint64_t ea);
+    void decode_section(gtirb::ImageByteMap::const_range& sectionBytes, uint64_t size,
+                        gtirb::Addr ea);
     std::string getRegisterName(unsigned int reg);
     DlInstruction transformInstruction(cs_insn& insn);
     std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const cs_x86_op& op);
-    void store_data_section(const uint8_t* buff, uint64_t size, uint64_t ea, uint64_t min_address,
-                            uint64_t max_address);
+    void store_data_section(gtirb::ImageByteMap::const_range& sectionBytes, uint64_t size,
+                            gtirb::Addr ea, gtirb::Addr min_address, gtirb::Addr max_address);
     void addSymbols(souffle::SouffleProgram* prog, gtirb::Module& module);
     void addSections(souffle::SouffleProgram* prog, gtirb::Module& module);
     void loadInputs(souffle::SouffleProgram* prog, gtirb::Module& module);

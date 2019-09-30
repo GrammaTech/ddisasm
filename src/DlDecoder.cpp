@@ -35,6 +35,12 @@
 
 using namespace std;
 
+souffle::tuple &operator<<(souffle::tuple &t, const gtirb::Addr &a)
+{
+    t << static_cast<uint64_t>(a);
+    return t;
+}
+
 DlDecoder::DlDecoder()
 {
     cs_open(CS_ARCH_X86, CS_MODE_64, &this->csHandle); // == CS_ERR_OK
@@ -65,23 +71,22 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
     for(auto &section : module.sections())
     {
         auto found = extraInfoTable->find(section.getUUID());
-        assert(found != extraInfoTable->end() && "Section missing from elfSectionProperties");
+        if(found == extraInfoTable->end())
+            throw std::logic_error("Section " + section.getName()
+                                   + " missing from elfSectionProperties");
         SectionProperties &extraInfo = found->second;
         if(isExeSection(extraInfo))
         {
             gtirb::ImageByteMap::const_range bytes =
                 gtirb::getBytes(module.getImageByteMap(), section);
-            decode_section(reinterpret_cast<const uint8_t *>(&*bytes.begin()), bytes.size(),
-                           static_cast<uint64_t>(section.getAddress()));
+            decode_section(bytes, bytes.size(), section.getAddress());
         }
         if(isNonZeroDataSection(extraInfo))
         {
             gtirb::ImageByteMap::const_range bytes =
                 gtirb::getBytes(module.getImageByteMap(), section);
-            store_data_section(reinterpret_cast<const uint8_t *>(&*bytes.begin()), bytes.size(),
-                               static_cast<uint64_t>(section.getAddress()),
-                               static_cast<uint64_t>(minMax.first),
-                               static_cast<uint64_t>(minMax.second));
+            store_data_section(bytes, bytes.size(), section.getAddress(), minMax.first,
+                               minMax.second);
         }
     }
     if(auto prog = souffle::ProgramFactory::newInstance("souffle_disasm"))
@@ -92,12 +97,14 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
     return nullptr;
 }
 
-void DlDecoder::decode_section(const uint8_t *buf, uint64_t size, uint64_t ea)
+void DlDecoder::decode_section(gtirb::ImageByteMap::const_range &sectionBytes, uint64_t size,
+                               gtirb::Addr ea)
 {
+    auto buf = reinterpret_cast<const uint8_t *>(&*sectionBytes.begin());
     while(size > 0)
     {
         cs_insn *insn;
-        size_t count = cs_disasm(this->csHandle, buf, size, ea, 1, &insn);
+        size_t count = cs_disasm(this->csHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
         if(count == 0)
         {
             invalids.push_back(ea);
@@ -113,13 +120,13 @@ void DlDecoder::decode_section(const uint8_t *buf, uint64_t size, uint64_t ea)
     }
 }
 
-void DlDecoder::store_data_section(const uint8_t *buf, uint64_t size, uint64_t ea,
-                                   uint64_t min_address, uint64_t max_address)
+void DlDecoder::store_data_section(gtirb::ImageByteMap::const_range &sectionBytes, uint64_t size,
+                                   gtirb::Addr ea, gtirb::Addr min_address, gtirb::Addr max_address)
 {
-    auto can_be_address = [min_address, max_address](uint64_t num) {
+    auto can_be_address = [min_address, max_address](gtirb::Addr num) {
         return ((num >= min_address) && (num <= max_address));
     };
-
+    auto buf = reinterpret_cast<const uint8_t *>(&*sectionBytes.begin());
     while(size > 0)
     {
         // store the byte
@@ -129,7 +136,7 @@ void DlDecoder::store_data_section(const uint8_t *buf, uint64_t size, uint64_t e
         // store the address
         if(size >= 8)
         {
-            uint64_t content = *((int64_t *)buf);
+            gtirb::Addr content(*((int64_t *)buf));
             if(can_be_address(content))
                 data_addresses.push_back({ea, content});
         }
@@ -240,7 +247,7 @@ souffle::tuple &operator<<(souffle::tuple &t, const DlInstruction &inst)
 template <class T>
 souffle::tuple &operator<<(souffle::tuple &t, const DlData<T> &data)
 {
-    t << data.ea << static_cast<int64_t>(data.content);
+    t << data.ea << data.content;
     return t;
 }
 
@@ -331,7 +338,7 @@ void DlDecoder::addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
     {
         souffle::tuple t(rel);
         if(auto address = symbol.getAddress())
-            t << static_cast<uint64_t>(*address);
+            t << *address;
         else
             t << 0;
         auto found = extraInfoTable->find(symbol.getUUID());
@@ -354,7 +361,7 @@ void DlDecoder::addSections(souffle::SouffleProgram *prog, gtirb::Module &module
         auto found = extraInfoTable->find(section.getUUID());
         assert(found != extraInfoTable->end() && "Section missing from elfSectionProperties");
         SectionProperties &extraInfo = found->second;
-        t << section.getName() << section.getSize() << static_cast<uint64_t>(section.getAddress())
+        t << section.getName() << section.getSize() << section.getAddress()
           << std::get<0>(extraInfo) << std::get<1>(extraInfo);
         rel->insert(t);
     }
