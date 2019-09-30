@@ -39,13 +39,13 @@ namespace InitialAuxData
         uint64_t sectionIndex;
         std::string name;
 
-        friend constexpr bool operator<(const Symbol &LHS, const Symbol &RHS) noexcept
-        {
-            return std::tie(LHS.address, LHS.size, LHS.type, LHS.scope, LHS.sectionIndex, LHS.name)
-                   < std::tie(RHS.address, RHS.size, RHS.type, RHS.scope, RHS.sectionIndex,
-                              RHS.name);
-        }
-    };
+};
+
+constexpr bool operator<(const Symbol &LHS, const Symbol &RHS) noexcept
+{
+  return std::tie(LHS.address, LHS.size, LHS.type, LHS.scope, LHS.sectionIndex, LHS.name)
+         < std::tie(RHS.address, RHS.size, RHS.type, RHS.scope, RHS.sectionIndex, RHS.name);
+}
 
     struct Section
     {
