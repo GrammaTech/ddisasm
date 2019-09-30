@@ -73,13 +73,13 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
         {
             gtirb::ImageByteMap::const_range bytes =
                 gtirb::getBytes(module.getImageByteMap(), section);
-            decode_section(bytes, bytes.size(), section.getAddress());
+            decodeSection(bytes, bytes.size(), section.getAddress());
         }
         if(isNonZeroDataSection(extraInfo))
         {
             gtirb::ImageByteMap::const_range bytes =
                 gtirb::getBytes(module.getImageByteMap(), section);
-            store_data_section(bytes, bytes.size(), section.getAddress(), minMax.first,
+            storeDataSection(bytes, bytes.size(), section.getAddress(), minMax.first,
                                minMax.second);
         }
     }
@@ -91,7 +91,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
     return nullptr;
 }
 
-void DlDecoder::decode_section(gtirb::ImageByteMap::const_range &sectionBytes, uint64_t size,
+void DlDecoder::decodeSection(gtirb::ImageByteMap::const_range &sectionBytes, uint64_t size,
                                gtirb::Addr ea)
 {
     auto buf = reinterpret_cast<const uint8_t *>(&*sectionBytes.begin());
@@ -114,7 +114,7 @@ void DlDecoder::decode_section(gtirb::ImageByteMap::const_range &sectionBytes, u
     }
 }
 
-void DlDecoder::store_data_section(gtirb::ImageByteMap::const_range &sectionBytes, uint64_t size,
+void DlDecoder::storeDataSection(gtirb::ImageByteMap::const_range &sectionBytes, uint64_t size,
                                    gtirb::Addr ea, gtirb::Addr min_address, gtirb::Addr max_address)
 {
     auto can_be_address = [min_address, max_address](gtirb::Addr num) {
