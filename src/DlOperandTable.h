@@ -32,11 +32,7 @@
 
 using ImmOp = int64_t;
 
-souffle::tuple &operator<<(souffle::tuple &t, const std::pair<ImmOp, uint64_t> &pair);
-
 using RegOp = std::string;
-
-souffle::tuple &operator<<(souffle::tuple &t, const std::pair<RegOp, uint64_t> &pair);
 
 struct IndirectOp
 {
@@ -46,10 +42,18 @@ struct IndirectOp
     int64_t multiplier;
     int64_t displacement;
     int size;
-    friend constexpr bool operator<(const IndirectOp &LHS, const IndirectOp &RHS) noexcept;
-    friend souffle::tuple &operator<<(souffle::tuple &t,
-                                      const std::pair<IndirectOp, uint64_t> &pair);
 };
+
+constexpr bool operator<(const IndirectOp &LHS, const IndirectOp &RHS) noexcept;
+souffle::tuple &operator<<(souffle::tuple &t, const IndirectOp &op);
+
+template <class T>
+souffle::tuple &operator<<(souffle::tuple &t, const std::pair<T, uint64_t> &pair)
+{
+    auto &[elem, id] = pair;
+    t << id << elem;
+    return t;
+}
 
 class DlOperandTable
 {

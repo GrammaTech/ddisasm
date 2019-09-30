@@ -23,30 +23,15 @@
 
 #include "DlOperandTable.h"
 
-souffle::tuple &operator<<(souffle::tuple &t, const std::pair<ImmOp, uint64_t> &pair)
-{
-    auto &[imm, id] = pair;
-    t << id << imm;
-    return t;
-}
-
-souffle::tuple &operator<<(souffle::tuple &t, const std::pair<RegOp, uint64_t> &pair)
-{
-    auto &[reg, id] = pair;
-    t << id << reg;
-    return t;
-}
-
 constexpr bool operator<(const IndirectOp &LHS, const IndirectOp &RHS) noexcept
 {
     return std::tie(LHS.reg1, LHS.reg2, LHS.reg3, LHS.multiplier, LHS.displacement, LHS.size)
            < std::tie(RHS.reg1, RHS.reg2, RHS.reg3, RHS.multiplier, RHS.displacement, RHS.size);
 }
 
-souffle::tuple &operator<<(souffle::tuple &t, const std::pair<IndirectOp, uint64_t> &pair)
+souffle::tuple &operator<<(souffle::tuple &t, const IndirectOp &op)
 {
-    auto &[op, id] = pair;
-    t << id << op.reg1 << op.reg2 << op.reg3 << op.multiplier << op.displacement << op.size;
+    t << op.reg1 << op.reg2 << op.reg3 << op.multiplier << op.displacement << op.size;
     return t;
 }
 
@@ -65,24 +50,12 @@ int64_t DlOperandTable::addToTable(std::map<T, uint64_t> &opTable, T op)
 
 int64_t DlOperandTable::add(std::variant<ImmOp, RegOp, IndirectOp> op)
 {
-    switch(op.index())
-    {
-        case 0:
-        {
-            auto imm = std::get<ImmOp>(op);
-            return addToTable(immTable, imm);
-        }
-        case 1:
-        {
-            auto reg = std::get<RegOp>(op);
-            return addToTable(regTable, reg);
-        }
-        case 2:
-        {
-            auto indirect = std::get<IndirectOp>(op);
-            return addToTable(indirectTable, indirect);
-        }
-    }
+    if(auto *imm = std::get_if<ImmOp>(&op))
+        return addToTable(immTable, *imm);
+    if(auto *reg = std::get_if<RegOp>(&op))
+        return addToTable(regTable, *reg);
+    if(auto *indirect = std::get_if<IndirectOp>(&op))
+        return addToTable(indirectTable, *indirect);
     assert("Operand has invalid value");
     return 0;
 }
