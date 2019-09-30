@@ -163,18 +163,18 @@ std::string DlDecoder::getRegisterName(unsigned int reg)
 DlInstruction DlDecoder::transformInstruction(cs_insn &insn)
 {
     std::vector<uint64_t> op_codes;
-    std::string prefix_name = insn.mnemonic;
+    std::string prefix_name = str_toupper(insn.mnemonic);
     std::string prefix, name;
     size_t pos = prefix_name.find(' ');
     if(pos != std::string::npos)
     {
-        prefix = str_toupper(prefix_name.substr(0, pos));
-        name = str_toupper(prefix_name.substr(pos + 1, prefix_name.length() - (pos + 1)));
+        prefix = prefix_name.substr(0, pos);
+        name = prefix_name.substr(pos + 1);
     }
     else
     {
         prefix = "";
-        name = str_toupper(prefix_name);
+        name = prefix_name;
     }
 
     auto &detail = insn.detail->x86;
