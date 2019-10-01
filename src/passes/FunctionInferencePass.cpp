@@ -1,4 +1,4 @@
-//===- FunctionInferencePass.cpp ---------------------------------------------*- C++ -*-===//
+//===- FunctionInferencePass.cpp --------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //

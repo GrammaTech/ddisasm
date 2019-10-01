@@ -1,4 +1,4 @@
-//===- ExceptionDecoder.cpp ------------------------------------------*- C++ -*-===//
+//===- ExceptionDecoder.cpp -------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
