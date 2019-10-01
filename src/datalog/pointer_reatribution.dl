@@ -333,7 +333,7 @@ moved_immediate_candidate(EA,Imm_index,Immediate,New_dest):-
     Beg <= Immediate,
     Immediate <= End.
 
-moved_label_class(EA,Imm_index,"loaded immediate loop bound"),
+moved_label_class(EA_def2,Imm_index,"loaded immediate loop bound"),
 moved_immediate_candidate(EA_def2,Imm_index,Immediate,New_dest):-
     binary_type("EXEC"),
     cmp_reg_to_reg(EA,Reg1,Reg2),
@@ -346,6 +346,7 @@ moved_immediate_candidate(EA_def2,Imm_index,Immediate,New_dest):-
     Beg <= Immediate,
     Immediate <= End.
 
+moved_label_class(EA,Op_index,"pie relocation"),
 moved_immediate_candidate(EA,Op_index,Dest,SymbolAddr):-
     !binary_type("EXEC"),
     code(EA),
