@@ -33,33 +33,34 @@
 #include <sstream>
 #include <string>
 
-namespace souffle{
-souffle::tuple &operator<<(souffle::tuple &t, const gtirb::Addr &a)
+namespace souffle
 {
-    t << static_cast<uint64_t>(a);
-    return t;
-}
+    souffle::tuple &operator<<(souffle::tuple &t, const gtirb::Addr &a)
+    {
+        t << static_cast<uint64_t>(a);
+        return t;
+    }
 
-template <class T>
-souffle::tuple &operator<<(souffle::tuple &t, const DlData<T> &data)
-{
-    t << data.ea << data.content;
-    return t;
-}
+    template <class T>
+    souffle::tuple &operator<<(souffle::tuple &t, const DlData<T> &data)
+    {
+        t << data.ea << data.content;
+        return t;
+    }
 
-souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Relocation &relocation)
-{
-    t << relocation.address << relocation.type << relocation.name << relocation.addend;
-    return t;
-}
+    souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Relocation &relocation)
+    {
+        t << relocation.address << relocation.type << relocation.name << relocation.addend;
+        return t;
+    }
 
-souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Symbol &symbol)
-{
-    t << symbol.address << symbol.size << symbol.type << symbol.scope << symbol.sectionIndex
-      << symbol.name;
-    return t;
-}
-}
+    souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Symbol &symbol)
+    {
+        t << symbol.address << symbol.size << symbol.type << symbol.scope << symbol.sectionIndex
+          << symbol.name;
+        return t;
+    }
+} // namespace souffle
 
 std::string getFileFormatString(gtirb::FileFormat format)
 {
@@ -200,7 +201,7 @@ void DlDecoder::decodeSection(gtirb::ImageByteMap::const_range &sectionBytes, ui
         }
         else
         {
-            instructions.push_back(GtirbToDatalog::transformInstruction(csHandle,op_dict,*insn));
+            instructions.push_back(GtirbToDatalog::transformInstruction(csHandle, op_dict, *insn));
             cs_free(insn, count);
         }
         ++ea;
@@ -239,12 +240,13 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
     GtirbToDatalog::addToRelation<std::vector<std::string>>(
         prog, "binary_type", *module.getAuxData<std::vector<std::string>>("binary_type"));
-    GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "binary_format",
-                                             {getFileFormatString(module.getFileFormat())});
-    GtirbToDatalog::addToRelation<std::vector<gtirb::Addr>>(prog, "entry_point",
-                                          *module.getAuxData<std::vector<gtirb::Addr>>("entry_point"));
+    GtirbToDatalog::addToRelation<std::vector<std::string>>(
+        prog, "binary_format", {getFileFormatString(module.getFileFormat())});
+    GtirbToDatalog::addToRelation<std::vector<gtirb::Addr>>(
+        prog, "entry_point", *module.getAuxData<std::vector<gtirb::Addr>>("entry_point"));
     GtirbToDatalog::addToRelation(
-        prog, "relocation", *module.getAuxData<std::set<InitialAuxData::Relocation>>("relocations"));
+        prog, "relocation",
+        *module.getAuxData<std::set<InitialAuxData::Relocation>>("relocations"));
     module.removeAuxData("relocations");
     GtirbToDatalog::addToRelation(prog, "instruction_complete", instructions);
     GtirbToDatalog::addToRelation(prog, "address_in_data", data_addresses);

@@ -53,7 +53,6 @@ private:
     void storeDataSection(gtirb::ImageByteMap::const_range& sectionBytes, uint64_t size,
                           gtirb::Addr ea, gtirb::Addr min_address, gtirb::Addr max_address);
 
-
 public:
     DlDecoder();
     souffle::SouffleProgram* decode(gtirb::Module& module);

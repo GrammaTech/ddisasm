@@ -113,14 +113,14 @@ DlInstruction GtirbToDatalog::transformInstruction(const csh& CsHandle, DlOperan
         name = prefix_name;
     }
 
-    auto &detail = insn.detail->x86;
+    auto& detail = insn.detail->x86;
     if(name != "NOP")
     {
         auto opCount = detail.op_count;
         // skip the destination operand
         for(int i = 0; i < opCount; i++)
         {
-            const auto &op = detail.operands[i];
+            const auto& op = detail.operands[i];
             uint64_t index = OpDict.add(buildOperand(CsHandle, op));
             op_codes.push_back(index);
         }

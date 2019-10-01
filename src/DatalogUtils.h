@@ -64,8 +64,7 @@ public:
                                               const cs_insn &insn);
 
     template <typename T>
-    static void addToRelation(souffle::SouffleProgram *prog, const std::string &name,
-                            const T &data)
+    static void addToRelation(souffle::SouffleProgram *prog, const std::string &name, const T &data)
     {
         if(auto *rel = prog->getRelation(name))
         {
