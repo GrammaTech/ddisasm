@@ -49,6 +49,7 @@ class GtirbToDatalog
 {
 private:
     std::shared_ptr<souffle::SouffleProgram> Prog;
+
 public:
     GtirbToDatalog(std::shared_ptr<souffle::SouffleProgram> P) : Prog(P)
     {

@@ -95,8 +95,7 @@ std::string getRegisterName(const csh& CsHandle, unsigned int reg)
     return name;
 }
 
-std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& CsHandle,
-                                                                    const cs_x86_op& op)
+std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& CsHandle, const cs_x86_op& op)
 {
     switch(op.type)
     {
