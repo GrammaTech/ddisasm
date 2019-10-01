@@ -162,19 +162,28 @@ DlInstruction GtirbToDatalog::transformInstruction(const csh& CsHandle, DlOperan
             detail.encoding.disp_offset};
 }
 
-souffle::tuple& operator<<(souffle::tuple& t, const DlInstruction& inst)
+namespace souffle
 {
-    t << inst.address << inst.size << inst.prefix << inst.name;
-    for(size_t i = 0; i < 4; ++i)
+    souffle::tuple& operator<<(souffle::tuple& t, const gtirb::Addr& a)
     {
-        if(i < inst.op_codes.size())
-            t << inst.op_codes[i];
-        else
-            t << 0;
+        t << static_cast<uint64_t>(a);
+        return t;
     }
-    t << inst.immediateOffset << inst.displacementOffset;
-    return t;
-}
+
+    souffle::tuple& operator<<(souffle::tuple& t, const DlInstruction& inst)
+    {
+        t << inst.address << inst.size << inst.prefix << inst.name;
+        for(size_t i = 0; i < 4; ++i)
+        {
+            if(i < inst.op_codes.size())
+                t << inst.op_codes[i];
+            else
+                t << 0;
+        }
+        t << inst.immediateOffset << inst.displacementOffset;
+        return t;
+    }
+} // namespace souffle
 
 void GtirbToDatalog::populateBlocks(const gtirb::Module& M)
 {
@@ -186,14 +195,13 @@ void GtirbToDatalog::populateBlocks(const gtirb::Module& M)
     for(auto& Block : M.blocks())
     {
         souffle::tuple T(BlocksRel);
-        T << static_cast<uint64_t>(Block.getAddress()) << Block.getSize();
+        T << Block.getAddress() << Block.getSize();
         BlocksRel->insert(T);
 
         if(PrevBlockAddr < Block.getAddress())
         {
             souffle::tuple TupleNext(NextBlockRel);
-            TupleNext << static_cast<uint64_t>(PrevBlockAddr)
-                      << static_cast<uint64_t>(Block.getAddress());
+            TupleNext << PrevBlockAddr << Block.getAddress();
             NextBlockRel->insert(TupleNext);
         }
         PrevBlockAddr = Block.getAddress();
@@ -248,8 +256,7 @@ void GtirbToDatalog::populateCfgEdges(const gtirb::Module& M)
             if(const gtirb::Block* Dest = dyn_cast<gtirb::Block>(Cfg[Edge.m_target]))
             {
                 souffle::tuple T(EdgeRel);
-                T << static_cast<uint64_t>(Src->getAddress())
-                  << static_cast<uint64_t>(Dest->getAddress());
+                T << Src->getAddress() << Dest->getAddress();
                 populateEdgeProperties(T, Edge.get_property());
                 EdgeRel->insert(T);
             }
@@ -260,14 +267,14 @@ void GtirbToDatalog::populateCfgEdges(const gtirb::Module& M)
                 if(foundSymbol != InvSymbolMap.end())
                 {
                     souffle::tuple T(SymbolEdgeRel);
-                    T << static_cast<uint64_t>(Src->getAddress()) << foundSymbol->second;
+                    T << Src->getAddress() << foundSymbol->second;
                     populateEdgeProperties(T, Edge.get_property());
                     SymbolEdgeRel->insert(T);
                 }
                 else
                 {
                     souffle::tuple T(TopEdgeRel);
-                    T << static_cast<uint64_t>(Src->getAddress());
+                    T << Src->getAddress();
                     populateEdgeProperties(T, Edge.get_property());
                     TopEdgeRel->insert(T);
                 }
@@ -289,8 +296,7 @@ void GtirbToDatalog::populateSccs(gtirb::Module& M)
         if(SccBlockIndex.size() <= Found->second)
             SccBlockIndex.resize(Found->second + 1);
         souffle::tuple T(InSccRel);
-        T << Found->second << SccBlockIndex[Found->second]++
-          << static_cast<uint64_t>(Block.getAddress());
+        T << Found->second << SccBlockIndex[Found->second]++ << Block.getAddress();
         InSccRel->insert(T);
     }
 }
@@ -301,37 +307,26 @@ void GtirbToDatalog::populateSymbolicExpressions(const gtirb::Module& M)
     auto* SymMinusSymRel = Prog->getRelation("symbol_minus_symbol");
     for(auto& SymExpr : M.symbolic_exprs())
     {
-        auto Addrs = M.getAddrsForSymbolicExpression(SymExpr);
-        assert(!Addrs.empty() && "Symbolic expression without address");
-        gtirb::Addr Addr(*Addrs.begin());
-        switch(SymExpr.index())
+        for(auto& Addr : M.getAddrsForSymbolicExpression(SymExpr))
         {
-            case 0:
-                break;
-            case 1:
+            if(auto* AddrConst = std::get_if<gtirb::SymAddrConst>(&SymExpr))
             {
-                auto AddrConst = std::get<gtirb::SymAddrConst>(SymExpr);
-                if(AddrConst.Sym->getAddress())
+                if(AddrConst->Sym->getAddress())
                 {
                     souffle::tuple T(SymExprRel);
-                    T << static_cast<uint64_t>(Addr)
-                      << static_cast<uint64_t>(*AddrConst.Sym->getAddress()) << AddrConst.Offset;
+                    T << Addr << *AddrConst->Sym->getAddress() << AddrConst->Offset;
                     SymExprRel->insert(T);
                 }
-                break;
             }
-            case 2:
+            if(auto* AddrAddr = std::get_if<gtirb::SymAddrAddr>(&SymExpr))
             {
-                auto AddrAddr = std::get<gtirb::SymAddrAddr>(SymExpr);
-                if(AddrAddr.Sym1->getAddress() && AddrAddr.Sym2->getAddress())
+                if(AddrAddr->Sym1->getAddress() && AddrAddr->Sym2->getAddress())
                 {
                     souffle::tuple T(SymMinusSymRel);
-                    T << static_cast<uint64_t>(Addr)
-                      << static_cast<uint64_t>(*AddrAddr.Sym1->getAddress())
-                      << static_cast<uint64_t>(*AddrAddr.Sym2->getAddress()) << AddrAddr.Offset;
+                    T << Addr << *AddrAddr->Sym1->getAddress() << *AddrAddr->Sym2->getAddress()
+                      << AddrAddr->Offset;
                     SymMinusSymRel->insert(T);
                 }
-                break;
             }
         }
     }
@@ -366,7 +361,7 @@ void GtirbToDatalog::populateFdeEntries(const gtirb::Context& Ctx, gtirb::Module
     for(; StartIt != FdeStart.end(); ++StartIt, ++EndIt)
     {
         souffle::tuple T(FdeAddresses);
-        T << static_cast<uint64_t>(*StartIt) << static_cast<uint64_t>(*EndIt);
+        T << *StartIt << *EndIt;
         FdeAddresses->insert(T);
     }
 }
@@ -385,7 +380,7 @@ void GtirbToDatalog::populateFunctionEntries(const gtirb::Context& Ctx, gtirb::M
             if(auto* Block = dyn_cast<gtirb::Block>(gtirb::Node::getByUUID(Ctx, UUID)))
             {
                 souffle::tuple T(FunctionEntryRel);
-                T << static_cast<uint64_t>(Block->getAddress());
+                T << Block->getAddress();
                 FunctionEntryRel->insert(T);
             }
         }
@@ -401,7 +396,7 @@ void GtirbToDatalog::populatePadding(gtirb::Module& M)
     for(auto& Pair : *Padding)
     {
         souffle::tuple T(PaddingRel);
-        T << static_cast<uint64_t>(Pair.first) << Pair.second;
+        T << Pair.first << Pair.second;
         PaddingRel->insert(T);
     }
 }

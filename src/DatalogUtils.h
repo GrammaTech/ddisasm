@@ -43,7 +43,11 @@ struct DlInstruction
     uint8_t displacementOffset;
 };
 
-souffle::tuple &operator<<(souffle::tuple &t, const DlInstruction &inst);
+namespace souffle
+{
+    souffle::tuple &operator<<(souffle::tuple &t, const gtirb::Addr &a);
+    souffle::tuple &operator<<(souffle::tuple &t, const DlInstruction &inst);
+} // namespace souffle
 
 class GtirbToDatalog
 {

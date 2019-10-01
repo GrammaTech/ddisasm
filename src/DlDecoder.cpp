@@ -35,12 +35,6 @@
 
 namespace souffle
 {
-    souffle::tuple &operator<<(souffle::tuple &t, const gtirb::Addr &a)
-    {
-        t << static_cast<uint64_t>(a);
-        return t;
-    }
-
     template <class T>
     souffle::tuple &operator<<(souffle::tuple &t, const DlData<T> &data)
     {
