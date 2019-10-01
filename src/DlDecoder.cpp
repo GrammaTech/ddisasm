@@ -239,11 +239,11 @@ void DlDecoder::storeDataSection(gtirb::ImageByteMap::const_range &sectionBytes,
 void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
     GtirbToDatalog::addToRelation<std::vector<std::string>>(
-        prog, "binary_type", *module.getAuxData<std::vector<std::string>>("binary_type"));
+        prog, "binary_type", *module.getAuxData<std::vector<std::string>>("binaryType"));
     GtirbToDatalog::addToRelation<std::vector<std::string>>(
         prog, "binary_format", {getFileFormatString(module.getFileFormat())});
     GtirbToDatalog::addToRelation<std::vector<gtirb::Addr>>(
-        prog, "entry_point", *module.getAuxData<std::vector<gtirb::Addr>>("entry_point"));
+        prog, "entry_point", *module.getAuxData<std::vector<gtirb::Addr>>("entryPoint"));
     GtirbToDatalog::addToRelation(
         prog, "relocation",
         *module.getAuxData<std::set<InitialAuxData::Relocation>>("relocations"));

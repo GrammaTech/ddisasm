@@ -49,12 +49,6 @@ class GtirbToDatalog
 {
 private:
     std::shared_ptr<souffle::SouffleProgram> Prog;
-
-    void populateEdgeProperties(souffle::tuple &T, const gtirb::EdgeLabel &Label);
-    static std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh &CsHandle,
-                                                               const cs_x86_op &op);
-    static std::string getRegisterName(const csh &CsHandle, unsigned int reg);
-
 public:
     GtirbToDatalog(std::shared_ptr<souffle::SouffleProgram> P) : Prog(P)
     {

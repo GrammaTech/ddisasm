@@ -47,7 +47,7 @@ void writeFacts(souffle::SouffleProgram* prog, const std::string& directory)
     }
 }
 
-void GtirbToDatalog::populateEdgeProperties(souffle::tuple& T, const gtirb::EdgeLabel& Label)
+void populateEdgeProperties(souffle::tuple& T, const gtirb::EdgeLabel& Label)
 {
     assert(Label.has_value() && "Found edge without a label");
     if(std::get<gtirb::ConditionalEdge>(*Label) == gtirb::ConditionalEdge::OnTrue)
@@ -87,12 +87,38 @@ std::string str_toupper(std::string s)
     return s;
 }
 
-std::string GtirbToDatalog::getRegisterName(const csh& CsHandle, unsigned int reg)
+std::string getRegisterName(const csh& CsHandle, unsigned int reg)
 {
     if(reg == X86_REG_INVALID)
         return "NONE";
     std::string name = str_toupper(cs_reg_name(CsHandle, reg));
     return name;
+}
+
+std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& CsHandle,
+                                                                    const cs_x86_op& op)
+{
+    switch(op.type)
+    {
+        case X86_OP_REG:
+            return getRegisterName(CsHandle, op.reg);
+        case X86_OP_IMM:
+            return op.imm;
+        case X86_OP_MEM:
+        {
+            IndirectOp I = {getRegisterName(CsHandle, op.mem.segment),
+                            getRegisterName(CsHandle, op.mem.base),
+                            getRegisterName(CsHandle, op.mem.index),
+                            op.mem.scale,
+                            op.mem.disp,
+                            op.size * 8};
+            return I;
+        }
+        case X86_OP_INVALID:
+        default:
+            std::cerr << "invalid operand\n";
+            exit(1);
+    }
 }
 
 DlInstruction GtirbToDatalog::transformInstruction(const csh& CsHandle, DlOperandTable& OpDict,
@@ -135,32 +161,6 @@ DlInstruction GtirbToDatalog::transformInstruction(const csh& CsHandle, DlOperan
             op_codes,
             detail.encoding.imm_offset,
             detail.encoding.disp_offset};
-}
-
-std::variant<ImmOp, RegOp, IndirectOp> GtirbToDatalog::buildOperand(const csh& CsHandle,
-                                                                    const cs_x86_op& op)
-{
-    switch(op.type)
-    {
-        case X86_OP_REG:
-            return getRegisterName(CsHandle, op.reg);
-        case X86_OP_IMM:
-            return op.imm;
-        case X86_OP_MEM:
-        {
-            IndirectOp I = {getRegisterName(CsHandle, op.mem.segment),
-                            getRegisterName(CsHandle, op.mem.base),
-                            getRegisterName(CsHandle, op.mem.index),
-                            op.mem.scale,
-                            op.mem.disp,
-                            op.size * 8};
-            return I;
-        }
-        case X86_OP_INVALID:
-        default:
-            std::cerr << "invalid operand\n";
-            exit(1);
-    }
 }
 
 souffle::tuple& operator<<(souffle::tuple& t, const DlInstruction& inst)
