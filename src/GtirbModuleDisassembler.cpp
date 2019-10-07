@@ -337,7 +337,7 @@ std::vector<gtirb::Addr> convertRelation<gtirb::Addr>(const std::string &relatio
     return result;
 }
 
-template <typename Container, typename Elem>
+template <typename Container, typename Elem = typename Container::value_type>
 Container convertSortedRelation(const std::string &relation, souffle::SouffleProgram *prog)
 {
     Container result;
