@@ -548,9 +548,8 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
 {
     auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", prog);
     SymbolicInfo symbolicInfo{
-        convertSortedRelation<VectorByEA<MovedLabel>, MovedLabel>("moved_label", prog),
-        convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>, SymbolicExpressionNoOffset>(
-            "symbolic_operand", prog)};
+        convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
+        convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog)};
     std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
 
     for(auto &cib : codeInBlock)
@@ -571,8 +570,8 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
 
 void buildCodeBlocks(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
 {
-    auto blockInformation = convertSortedRelation<VectorByEA<BlockInformation>, BlockInformation>(
-        "block_information", prog);
+    auto blockInformation =
+        convertSortedRelation<VectorByEA<BlockInformation>>("block_information", prog);
     for(auto &output : *prog->getRelation("refined_block"))
     {
         gtirb::Addr blockAddress;
@@ -615,21 +614,17 @@ void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
 
 void buildDataGroups(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
 {
-    auto symbolicData =
-        convertSortedRelation<VectorByEA<SymbolicData>, SymbolicData>("symbolic_data", prog);
+    auto symbolicData = convertSortedRelation<VectorByEA<SymbolicData>>("symbolic_data", prog);
     auto movedDataLabels =
-        convertSortedRelation<VectorByEA<MovedDataLabel>, MovedDataLabel>("moved_data_label", prog);
-    auto symbolicExprs = convertSortedRelation<VectorByEA<SymbolicExpr>, SymbolicExpr>(
-        "symbolic_expr_from_relocation", prog);
+        convertSortedRelation<VectorByEA<MovedDataLabel>>("moved_data_label", prog);
+    auto symbolicExprs =
+        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog);
     auto symbolMinusSymbol =
-        convertSortedRelation<VectorByEA<SymbolMinusSymbol>, SymbolMinusSymbol>(
-            "symbol_minus_symbol", prog);
+        convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
 
-    auto dataStrings =
-        convertSortedRelation<VectorByEA<StringDataObject>, StringDataObject>("string", prog);
+    auto dataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", prog);
     auto symbolSpecialTypes =
-        convertSortedRelation<VectorByEA<SymbolSpecialType>, SymbolSpecialType>(
-            "symbol_special_encoding", prog);
+        convertSortedRelation<VectorByEA<SymbolSpecialType>>("symbol_special_encoding", prog);
     std::map<gtirb::UUID, std::string> typesTable;
 
     for(auto &output : *prog->getRelation("non_zero_data_section"))
