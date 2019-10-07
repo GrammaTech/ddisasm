@@ -55,6 +55,7 @@ private:
 
 public:
     DlDecoder();
+    ~DlDecoder();
     souffle::SouffleProgram* decode(gtirb::Module& module);
 };
 

@@ -209,9 +209,13 @@ void GtirbToDatalog::populateBlocks(const gtirb::Module& M)
 
 void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int InstructionLimit)
 {
-    csh csHandle;
-    cs_open(CS_ARCH_X86, CS_MODE_64, &csHandle); // == CS_ERR_OK
-    cs_option(csHandle, CS_OPT_DETAIL, CS_OPT_ON);
+    csh CsHandle;
+    cs_open(CS_ARCH_X86, CS_MODE_64, &CsHandle); // == CS_ERR_OK
+    cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
+    // Exception-safe capstone handle closing
+    std::unique_ptr<csh, std::function<void(csh*)>> CloseCapstoneHandle(
+        &CsHandle, [](csh* H) { cs_close(H); });
+
     std::vector<DlInstruction> Insns;
     DlOperandTable OpDict;
     for(auto& Block : M.blocks())
@@ -219,7 +223,7 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
         cs_insn* Insn;
         gtirb::ImageByteMap::const_range Bytes = getBytes(M.getImageByteMap(), Block);
         size_t Count =
-            cs_disasm(csHandle, reinterpret_cast<const uint8_t*>(&Bytes[0]), Bytes.size(),
+            cs_disasm(CsHandle, reinterpret_cast<const uint8_t*>(&Bytes[0]), Bytes.size(),
                       static_cast<uint64_t>(Block.getAddress()), InstructionLimit, &Insn);
 
         // Exception-safe cleanup of instructions
@@ -227,7 +231,7 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
             Insn, [Count](cs_insn* i) { cs_free(i, Count); });
         for(size_t i = 0; i < Count; ++i)
         {
-            Insns.push_back(GtirbToDatalog::transformInstruction(csHandle, OpDict, Insn[i]));
+            Insns.push_back(GtirbToDatalog::transformInstruction(CsHandle, OpDict, Insn[i]));
         }
     }
     GtirbToDatalog::addToRelation(&*Prog, "instruction", Insns);

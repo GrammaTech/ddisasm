@@ -131,6 +131,11 @@ DlDecoder::DlDecoder()
     cs_option(this->csHandle, CS_OPT_DETAIL, CS_OPT_ON);
 }
 
+DlDecoder::~DlDecoder()
+{
+    cs_close(&this->csHandle);
+}
+
 souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
 {
     auto isNonZeroDataSection = [](const SectionProperties &s) {
