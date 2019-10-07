@@ -142,7 +142,6 @@ DlInstruction GtirbToDatalog::transformInstruction(const csh& CsHandle, DlOperan
     if(name != "NOP")
     {
         auto opCount = detail.op_count;
-        // skip the destination operand
         for(int i = 0; i < opCount; i++)
         {
             const auto& op = detail.operands[i];
