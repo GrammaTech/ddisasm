@@ -111,6 +111,9 @@ void addSections(souffle::SouffleProgram *prog, gtirb::Module &module)
     auto *rel = prog->getRelation("section_complete");
     auto *extraInfoTable =
         module.getAuxData<std::map<gtirb::UUID, SectionProperties>>("elfSectionProperties");
+    if(!extraInfoTable)
+        throw std::logic_error("missing elfSectionProperties AuxData table");
+
     for(auto &section : module.sections())
     {
         souffle::tuple t(rel);
@@ -157,6 +160,8 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
     auto minMax = module.getImageByteMap().getAddrMinMax();
     auto *extraInfoTable =
         module.getAuxData<std::map<gtirb::UUID, SectionProperties>>("elfSectionProperties");
+    if(!extraInfoTable)
+        throw std::logic_error("missing elfSectionProperties AuxData table");
     for(auto &section : module.sections())
     {
         auto found = extraInfoTable->find(section.getUUID());
