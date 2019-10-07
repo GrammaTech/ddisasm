@@ -87,18 +87,19 @@ struct gtirb::auxdata_traits<InitialAuxData::Relocation>
 
     static void toBytes(const InitialAuxData::Relocation &Object, to_iterator It)
     {
-        auxdata_traits<uint64_t>::toBytes(Object.address, It);
-        auxdata_traits<std::string>::toBytes(Object.type, It);
-        auxdata_traits<std::string>::toBytes(Object.name, It);
-        auxdata_traits<int64_t>::toBytes(Object.addend, It);
+        auxdata_traits<std::tuple<uint64_t, std::string, std::string, int64_t>>::toBytes(
+            std::make_tuple(Object.address, Object.type, Object.name, Object.addend), It);
     }
 
     static from_iterator fromBytes(InitialAuxData::Relocation &Object, from_iterator It)
     {
-        It = auxdata_traits<uint64_t>::fromBytes(Object.address, It);
-        It = auxdata_traits<std::string>::fromBytes(Object.type, It);
-        It = auxdata_traits<std::string>::fromBytes(Object.name, It);
-        It = auxdata_traits<int64_t>::fromBytes(Object.addend, It);
+        std::tuple<uint64_t, std::string, std::string, int64_t> Tuple;
+        auxdata_traits<std::tuple<uint64_t, std::string, std::string, int64_t>>::fromBytes(Tuple,
+                                                                                           It);
+        Object.address = std::get<0>(Tuple);
+        Object.type = std::get<1>(Tuple);
+        Object.name = std::get<2>(Tuple);
+        Object.addend = std::get<3>(Tuple);
         return It;
     }
 };
