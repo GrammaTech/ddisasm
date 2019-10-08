@@ -96,7 +96,7 @@ find_package(ehp REQUIRED)
 # ---------------------------------------------------------------------------
 # Boost
 # ---------------------------------------------------------------------------
-find_package(Boost 1.67 REQUIRED COMPONENTS program_options)
+find_package(Boost 1.67 REQUIRED COMPONENTS filesystem program_options system)
 
 if(NOT Boost_LIBRARIES)
   message(FATAL_ERROR "\
