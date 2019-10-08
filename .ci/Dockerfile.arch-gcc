@@ -18,7 +18,7 @@ USER ddisasm
 RUN yay --noconfirm -Sy souffle capstone
 
 
-COPY . /ddisasm
+COPY --chown=ddisasm . /ddisasm
 
 # Build GTIRB
 RUN rm -rf /ddisasm/gtirb/build /ddisasm/gtirb/CMakeCache.txt /ddisasm/gtirb/CMakeFiles /ddisasm/gtirb/CMakeScripts
