@@ -96,13 +96,11 @@ find_package(ehp REQUIRED)
 # ---------------------------------------------------------------------------
 # Boost
 # ---------------------------------------------------------------------------
-find_package(Boost 1.67 REQUIRED COMPONENTS filesystem program_options system)
+# we do not yet support Boost's new cmake support that was introduced in 1.70.0
+# Boost_NO_BOOST_CMAKE, luckily, disables this new feature
+set(Boost_NO_BOOST_CMAKE ON)
 
-if(NOT Boost_LIBRARIES)
-  message(FATAL_ERROR "\
-Boost was detected as being installed, but no libraries were found.
-Try specifying -DBoost_NO_BOOST_CMAKE=ON on the command line.")
-endif()
+find_package(Boost 1.67 REQUIRED COMPONENTS program_options)
 
 include_directories(${Boost_INCLUDE_DIRS})
 
