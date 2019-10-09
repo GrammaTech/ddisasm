@@ -214,7 +214,7 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
     cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
     // Exception-safe capstone handle closing
     std::unique_ptr<csh, std::function<void(csh*)>> CloseCapstoneHandle(
-        &CsHandle, [](csh* H) { cs_close(H); });
+        &CsHandle, cs_close);
 
     std::vector<DlInstruction> Insns;
     DlOperandTable OpDict;
