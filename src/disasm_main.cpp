@@ -20,7 +20,7 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#include <PrettyPrinter.h>
+#include <gtirb_pprinter/PrettyPrinter.hpp>
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 #include <boost/program_options.hpp>
