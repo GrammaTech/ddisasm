@@ -157,9 +157,10 @@ std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
             std::size_t foundVersion = symbolName.find('@');
             if(foundVersion != std::string::npos)
                 symbolName = symbolName.substr(0, foundVersion);
-            symbolTuples.insert({symbol.value(), symbol.size(), getSymbolType(symbol.type()),
-                                 getSymbolBinding(symbol.binding()), symbol.section_idx(),
-                                 symbolName});
+            if(symbol.type() != LIEF::ELF::ELF_SYMBOL_TYPES::STT_SECTION)
+                symbolTuples.insert({symbol.value(), symbol.size(), getSymbolType(symbol.type()),
+                                     getSymbolBinding(symbol.binding()), symbol.section_idx(),
+                                     symbolName});
         }
     }
 
