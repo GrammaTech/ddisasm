@@ -1,0 +1,95 @@
+//===- basic_function_inference.dl ------------------------------------*- C++ -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+Function inference based on call frames.
+*/
+
+.comp basic_function_inference{
+
+.decl function_entry(Block:address)
+.output function_entry
+.decl in_function(Block:address,Function:address)
+.output in_function
+
+.decl function_without_callframe(Block:address)
+.output function_without_callframe
+
+function_entry(Begin):-
+    fde_addresses(Begin,_),
+    refined_block(Begin).
+
+function_without_callframe(EA),
+function_entry(EA):-
+    refined_block(EA),
+    !fde_addresses(EA,_),
+    (
+        function_symbol(EA,_);
+        main_function(EA);
+        start_function(EA);
+        section(_,_,EA);
+        //called
+        direct_call(EA_caller,EA),
+        code(EA_caller)
+    ).
+
+// pointer in special sections
+function_without_callframe(EA),
+function_entry(EA):-
+    code_pointer_in_data(Src,EA),
+    !fde_addresses(EA,_),
+    function_pointer_section(Name),
+    section(Name,Size,Base),
+    Src >= Base,
+    Src < Base+Size.
+
+.decl in_function_initial(Block:address,Function:address)
+
+in_function_initial(Block,Block):-
+    function_entry(Block).
+
+in_function_initial(Block,Begin):-
+    refined_block(Block),
+    fde_addresses(Begin,End),
+    function_entry(Begin),
+    Begin <= Block,
+    Block < End.
+
+// assign functions to blocks that do not fall within
+// any callframe based on the assumption that functions
+// are contiguous and their entry point is at the beginning
+
+.decl not_in_function_initial(Block:address)
+
+not_in_function_initial(Block):-
+    refined_block(Block),
+    !in_function_initial(Block,_).
+
+in_function(Block,Function):-
+    in_function_initial(Block,Function).
+
+in_function(Block,Function):-
+    not_in_function_initial(Block),
+    // in most cases function_without_callframe should be small
+    Function = max X:{function_without_callframe(X),X<Block}.
+
+}

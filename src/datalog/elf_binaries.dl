@@ -22,8 +22,9 @@
 //===----------------------------------------------------------------------===//
 
 
-// This module defines predicates specific of ELF binaries
+// This module defines predicates and rules specific of ELF binaries
 section(Name,Size,Addr):-
+    binary_format("ELF"),
     section_complete(Name,Size,Addr,_,Flags),
     elf_section_flag("SHF_ALLOC",Pos_Alloc),
     Flags band (2^Pos_Alloc)  > 0.
@@ -60,14 +61,23 @@ data_section(Name):-
     section_complete(Name,_,_,Type,Flags),
     elf_section_flag("SHF_EXECINSTR",Pos_Exec), Flags band (2^Pos_Exec)  = 0,
     elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc)  > 0,
-    (elf_section_type("PROGBITS",Type);
-     elf_section_type("NOBITS",Type);
-     elf_section_type("INIT_ARRAY",Type);
-     elf_section_type("FINI_ARRAY",Type);
-     elf_section_type("PREINIT_ARRAY",Type)
+    (   elf_section_type("PROGBITS",Type);
+        elf_section_type("NOBITS",Type);
+        elf_section_type("INIT_ARRAY",Type);
+        elf_section_type("FINI_ARRAY",Type);
+        elf_section_type("PREINIT_ARRAY",Type);
+        elf_section_type("DYNAMIC",Type)
     ).
 
+exception_section(".eh_frame").
+exception_section(".eh_frame_hdr").
+exception_section(".gcc_except_table").
+
+special_data_section(Section):-
+    exception_section(Section).
+
 special_data_section(".data.rel.ro").
+special_data_section(".dynamic").
 special_data_section(".fini_array").
 special_data_section(".got").
 special_data_section(".got.plt").
@@ -75,9 +85,13 @@ special_data_section(".init_array").
 special_data_section(".tm_clone_table").
 
 code_section(Name):-
+    binary_format("ELF"),
     section_complete(Name,_,_,_,Flags),
     elf_section_flag("SHF_EXECINSTR",Pos_Exec), Flags band (2^Pos_Exec)  > 0.
 
+function_pointer_section(".init_array"):-binary_format("ELF").
+function_pointer_section(".fini_array"):-binary_format("ELF").
+function_pointer_section(".got.plt"):-binary_format("ELF").
 ////////////////////////////////////////////////////////////////////////////
 // detect references  to libraries (calls to plt)
 .decl plt_section(name:symbol)
@@ -87,33 +101,32 @@ plt_section(".plt.got").
 plt_section(".plt.sec").
 
 bss_section(Name):-
+    binary_format("ELF"),
     section_complete(Name,_,_,Type,Flags),
-    elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc)  > 0,
+    elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc) > 0,
     SHT_NOBITS = 8,
     Type = SHT_NOBITS.
 
+non_zero_data_section(Name):-
+    data_section(Name),
+    !bss_section(Name),
+    Name != ".dynamic".
 ////////////////////////////////////////////////////////////////////////////
 // detect references  to libraries (calls to plt)
-
-
-
 .decl plt_entry(ea:address, function:symbol)
 
 
 plt_entry(EA,Function):-
-	plt_section(SecName),
-	section(SecName,Size,Beg),
-	EA<Beg+Size,
-	EA>=Beg,
-	pc_relative_jump(EA,Got_entry),
-	relocation(Got_entry,_,Function,_).
-
-.decl plt_block(block:address,function:symbol)
-.output plt_block
+    plt_section(SecName),
+    section(SecName,Size,Beg),
+    EA < Beg+Size,
+    EA >= Beg,
+    pc_relative_jump(EA,Got_entry),
+    relocation(Got_entry,_,Function,_).
 
 plt_block(Block,Function):-
-	plt_entry(EA,Function),
-	code_in_refined_block(EA,Block).
+    plt_entry(EA,Function),
+    code_in_refined_block(EA,Block).
 
 .decl plt_data_reference(ea:address)
 
@@ -123,16 +136,13 @@ plt_data_reference(EA):-
 
 //////////////////////////////////////////////////////////////////////////
 
-.decl got_reference(Got_entry:address,Symbol:symbol)
-.output got_reference
-
 got_reference(Got_entry,Symbol):-
     pc_relative_operand(_,_,Got_entry),
-	section(".got",Size,Beg),
-    Got_entry>=Beg,
-    Got_entry<Beg+Size,
+    section(".got",Size,Beg),
+    Got_entry >= Beg,
+    Got_entry < Beg+Size,
     relocation(Got_entry,_,Symbol,_),
-    symbol(_,_,_,Scope,_,Symbol),Scope!="WEAK".
+    symbol(_,_,_,Scope,_,Symbol), Scope != "WEAK".
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -142,59 +152,66 @@ got_reference(Got_entry,Symbol):-
 
 start_function(EA):-
     binary_format("ELF"),
-	function_symbol(EA,"_start").
-	
+    function_symbol(EA,"_start").
+
 start_function(Start_location):-
     binary_format("ELF"),
-	!function_symbol(Start_location,"_start"),
-	entry_point(Start_location).
-
-.decl main_function(ea:address)
+    !function_symbol(Start_location,"_start"),
+    entry_point(Start_location).
 
 main_function(EA):-
     binary_format("ELF"),
-	function_symbol(EA,"main").
+    function_symbol(EA,"main").
 
 main_function(Main_location):-
     binary_format("ELF"),
-	!function_symbol(Main_location,"main"),
-	First_call= min EA:{
-		    start_function(Entry),
-		    instruction_get_operation(EA,"CALL"),
-		    code(EA),
-		    EA>=Entry},
-	next(Prev,First_call),
+    !function_symbol(Main_location,"main"),
+    First_call = min EA:{
+        start_function(Entry),
+        instruction_get_operation(EA,"CALL"),
+        code(EA),
+        EA>=Entry
+    },
+    next(Prev,First_call),
     code(Prev),
-	symbolic_operand(Prev,1,Main_location,"code").
+    symbolic_operand(Prev,1,Main_location,"code").
 
 inferred_symbol_name(EA,"_start"):-
-	start_function(EA).
+    start_function(EA).
 
 inferred_symbol_name(EA,"main"):-
-	main_function(EA).
+    main_function(EA).
 
 inferred_symbol_name(EA,"__do_global_dtors_aux"):-
-	function_symbol(EA,"__do_global_dtors_aux").
+    function_symbol(EA,"__do_global_dtors_aux").
 
 inferred_symbol_name(EA,"__do_global_dtors_aux"):-
-	!function_symbol(EA,"__do_global_dtors_aux"),
-	function_entry2(EA),
-	// referenced from .fini_array
-	address_in_data(FiniArray,EA),
-	section(".fini_array",Size,Beg),
-	FiniArray>=Beg,
-	FiniArray<Beg+Size,
-	// compare a value in bss with 0 in the first block
-	code_in_refined_block(EA_cmp,EA),
+    !function_symbol(EA,"__do_global_dtors_aux"),
+    function_inference.function_entry(EA),
+    // referenced from .fini_array
+    address_in_data(FiniArray,EA),
+    section(".fini_array",Size,Beg),
+    FiniArray >= Beg,
+    FiniArray < Beg+Size,
+    // compare a value in bss with 0 in the first block
+    code_in_refined_block(EA_cmp,EA),
     instruction(EA_cmp,_,_,"CMP",Op1,_,0,0),
-	op_immediate(Op1,0),
-	pc_relative_operand(EA_cmp,2,DataRef),
+    op_immediate(Op1,0),
+    pc_relative_operand(EA_cmp,2,DataRef),
     bss_section(SectionName),
     section(SectionName,SizeBss,BegData),
-	DataRef>=BegData,
-	DataRef<=BegData+SizeBss.
+    DataRef >= BegData,
+    DataRef <= BegData+SizeBss.
 
 inferred_symbol_name(EA,"_DYNAMIC"):-
     binary_format("ELF"),
-	!symbol(EA,_,_,_,_,"_DYNAMIC"),
-	section(".dynamic",_,EA).
+    !symbol(EA,_,_,_,_,"_DYNAMIC"),
+    section(".dynamic",_,EA).
+
+
+no_return_function("exit"):-binary_format("ELF").
+no_return_function("_exit"):-binary_format("ELF").
+no_return_function("abort"):-binary_format("ELF").
+no_return_function("__stack_chk_fail"):-binary_format("ELF").
+no_return_function("__assert_fail"):-binary_format("ELF").
+no_return_function("longjump"):-binary_format("ELF").

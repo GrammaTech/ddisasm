@@ -32,26 +32,26 @@
 .output unaligned_pointer
 
 discarded_aligned_pointer_to_text(EA):-
-	address_in_data(EA,_),
-	!address_in_data_refined(EA,_),
-	pointer_size(Pt_size),
-	EA % Pt_size = 0.
+    address_in_data(EA,_),
+    !address_in_data_refined(EA,_),
+    arch.pointer_size(Pt_size),
+    EA % Pt_size = 0.
 
 discarded_aligned_pointer(EA):-
-	discarded_data_object(EA,Pt_size,"symbol"),
-	EA % Pt_size = 0.
+    discarded_data_object(EA,Pt_size,"symbol"),
+    EA % Pt_size = 0.
 
 unaligned_pointer(EA):-
-	data_object(EA,Pt_size,"symbol"),
-	EA % Pt_size != 0.
+    data_object(EA,Pt_size,"symbol"),
+    EA % Pt_size != 0.
 
 .decl immediate_symbol(ea:address,op_index:number,dest:address)
 .output immediate_symbol
 
 immediate_symbol(EA,Op_index,Dest):-
-	code(EA),
+    code(EA),
     may_have_symbolic_immediate(EA,Dest),
-	instruction_get_op(EA,Op_index,Op),
-	!direct_jump(EA,_),
-	!direct_call(EA,_),
-	op_immediate(Op,Dest).
+    instruction_get_op(EA,Op_index,Op),
+    !direct_jump(EA,_),
+    !direct_call(EA,_),
+    op_immediate(Op,Dest).

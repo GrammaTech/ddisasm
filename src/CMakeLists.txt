@@ -6,7 +6,6 @@ if(NOT SOUFFLE)
   message(FATAL_ERROR "souffle was not found in your PATH. Unable to build.")
 endif()
 
-
 set(DATALOG_SOURCES
     datalog/bitmasks.dl
     datalog/code_inference.dl
@@ -16,24 +15,20 @@ set(DATALOG_SOURCES
     datalog/empty_range.dl
     datalog/elf_binaries.dl
     datalog/exceptions.dl
-    datalog/float_operations.dl
-    datalog/function_inference.dl
-    datalog/intra_procedural_cfg_completeness.dl
-    datalog/intra_procedural_SCC.dl
-    datalog/jump_operations.dl
+    datalog/basic_function_inference.dl
     datalog/main.dl
-    datalog/no_return_analysis.dl
-    datalog/ordered_set.dl
-    datalog/pe_binaries.dl
     datalog/pointer_reatribution.dl
     datalog/printable_chars.dl
     datalog/relative_jump_tables.dl
-    datalog/registers.dl
     datalog/symbolization.dl
     datalog/use_def_analysis.dl
     datalog/value_analysis.dl
     datalog/debug_stats.dl
-    datalog/self_diagnose.dl)
+    datalog/self_diagnose.dl
+    datalog/x64/arch_x64.dl
+    datalog/x64/float_operations.dl
+    datalog/x64/jump_operations.dl
+    datalog/x64/registers.dl)
 
 if(NOT CORES)
   set(CORES "auto")
@@ -55,18 +50,34 @@ elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
   set(OPENMP_FLAGS -fopenmp=libgomp)
 endif()
 
+# ====== datalog_utils ======
+
+add_library(datalog_utils STATIC
+  DatalogUtils.cpp
+  DlOperandTable.cpp)
+
+target_link_libraries(datalog_utils
+  gtirb
+  ${CAPSTONE})
+
+target_compile_definitions(datalog_utils PRIVATE __EMBEDDED_SOUFFLE__)
+target_compile_definitions(datalog_utils PRIVATE RAM_DOMAIN_SIZE=64)
+target_compile_options(datalog_utils PRIVATE ${OPENMP_FLAGS})
+target_compile_options(datalog_utils PRIVATE -O3)
+# ====== passes ============
+
+add_subdirectory(passes)
+
 # ===== souffle_disasm =====
 # First build a static library of all the non-generated code.. This is
 # just a hack to get CMake to use different compile flags (because the
 # generated souffle code won't build with -Wall -Werror).
 add_library(disasm_main STATIC
   disasm_main.cpp
-  Dl_decoder.cpp
-  Dl_operator.cpp
-  Dl_instruction.cpp
-  Dl_operator_table.cpp
-  Elf_reader.cpp
+  DlDecoder.cpp
   ExceptionDecoder.cpp
+  GtirbModuleDisassembler.cpp
+  GtirbZeroBuilder.cpp
   LIEFBinaryReader.cpp)
 
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
@@ -126,6 +137,7 @@ target_link_libraries(disasm_main
   gtirb
   gtirb_pprinter
   ehp
+  datalog_utils
   ${CAPSTONE}
   ${Boost_LIBRARIES}
   ${EXPERIMENTAL_LIB}
@@ -137,7 +149,15 @@ target_link_libraries(disasm_main
 # executable.
 add_executable(ddisasm
   ${GENERATED_CPP})
-target_link_libraries(ddisasm disasm_main)
+
+target_link_libraries(ddisasm
+  disasm_main
+  scc_pass
+  -Wl,--whole-archive
+  no_return_pass
+  function_inference_pass
+  -Wl,--no-whole-archive
+  )
 target_compile_definitions(ddisasm PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(ddisasm PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(ddisasm PRIVATE ${OPENMP_FLAGS})
@@ -146,6 +166,10 @@ target_compile_options(ddisasm PRIVATE -Wno-parentheses-equality)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_link_libraries(ddisasm gomp)
+endif()
+
+if(DDISASM_ENABLE_TESTS)
+  add_subdirectory(tests)
 endif()
 
 install(TARGETS ddisasm DESTINATION bin)

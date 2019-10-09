@@ -1,4 +1,4 @@
-//===- ExceptionDecoder.h-------------------------------------------*- C++ -*-===//
+//===- ExceptionDecoder.h----------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -24,8 +24,8 @@
 #ifndef SRC_EXCEPTION_DECODER_H_
 #define SRC_EXCEPTION_DECODER_H_
 #include <souffle/SouffleInterface.h>
-#include "BinaryReader.h"
 #include "ehp.hpp"
+#include "gtirb/gtirb.hpp"
 
 class ExceptionDecoder
 {
@@ -52,7 +52,7 @@ private:
                                          const EHP::LSDA_t *lsda);
 
 public:
-    ExceptionDecoder(std::shared_ptr<BinaryReader> binary);
+    ExceptionDecoder(gtirb::Module &module);
     void addExceptionInformation(souffle::SouffleProgram *prog);
 };
 

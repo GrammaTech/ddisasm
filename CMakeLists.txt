@@ -11,6 +11,8 @@ PROJECT(DDISASM)
 # Global Options (CMake)
 #
 
+option(DDISASM_ENABLE_TESTS "Enable building and running unit tests." ON)
+
 # This just sets the builtin BUILD_SHARED_LIBS, but if defaults to ON
 # instead of OFF.
 option(DDISASM_BUILD_SHARED_LIBS "Build shared libraries." ON)
@@ -94,15 +96,15 @@ find_package(ehp REQUIRED)
 # ---------------------------------------------------------------------------
 # Boost
 # ---------------------------------------------------------------------------
+find_package(Boost 1.67 REQUIRED COMPONENTS filesystem program_options system)
 
-add_compile_options(-DBOOST_SYSTEM_NO_DEPRECATED)
-
-if( ${DDISASM_USE_SYSTEM_BOOST} MATCHES "OFF" )
-  include( CMakeLists.boost )
-else()
-  find_package(Boost 1.67 REQUIRED COMPONENTS program_options)
-  include_directories(${Boost_INCLUDE_DIRS})
+if(NOT Boost_LIBRARIES)
+  message(FATAL_ERROR "\
+Boost was detected as being installed, but no libraries were found.
+Try specifying -DBoost_NO_BOOST_CMAKE=ON on the command line.")
 endif()
+
+include_directories(${Boost_INCLUDE_DIRS})
 
 # ---------------------------------------------------------------------------
 # capstone
@@ -114,10 +116,15 @@ else()
 endif()
 
 if(NOT CAPSTONE)
-  message(FATAL_ERROR "capstone library not found")
+  message(FATAL_ERROR
+  " No Capstone installation found.\n"
+  " - If Capstone is not installed, install it from souce.\n"
+  "   You can get the latest version of Capstone at:\n"
+  "       http://www.capstone-engine.org/\n"
+  " - If Capstone is installed, make sure the installation location is in your PATH,\n"
+  "   and it is at least version 4.0.1.\n"
+  )
 endif()
-
-
 
 # Use LIEF with 'find_package()'
 # ==============================
@@ -134,5 +141,58 @@ include(FindLIEF)
 # Find LIEF
 find_package(LIEF REQUIRED COMPONENTS STATIC)
 
+# ---------------------------------------------------------------------------
+# Google Test Application
+# ---------------------------------------------------------------------------
+if(DDISASM_ENABLE_TESTS)
+        enable_testing()
+        # Pull in Google Test
+        # https://github.com/google/googletest/tree/master/googletest#incorporating-into-an-existing-cmake-project
+
+        # Download and unpack googletest at configure time
+        configure_file(CMakeLists.googletest googletest-download/CMakeLists.txt)
+
+        execute_process(COMMAND "${CMAKE_COMMAND}" -G "${CMAKE_GENERATOR}" .
+                RESULT_VARIABLE result
+                WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/googletest-download" )
+
+        if(result)
+                message(WARNING "CMake step for googletest failed: ${result}")
+        endif()
+
+        execute_process(COMMAND "${CMAKE_COMMAND}" --build .
+                RESULT_VARIABLE result
+                WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/googletest-download" )
+
+        if(result)
+                message(WARNING "Build step for googletest failed: ${result}")
+        endif()
+
+        # Prevent overriding the parent project's compiler/linker
+        # settings on Windows
+        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+
+        # Add googletest directly to our build. This defines
+        # the gtest and gtest_main targets.
+        add_subdirectory("${CMAKE_BINARY_DIR}/googletest-src"
+                                         "${CMAKE_BINARY_DIR}/googletest-build"
+                                         EXCLUDE_FROM_ALL)
+
+        include_directories("${gtest_SOURCE_DIR}/include")
+endif()
+
+# ---------------------------------------------------------------------------
+# source files
+# ---------------------------------------------------------------------------
+
 add_subdirectory(src)
 add_subdirectory(doc)
+
+if(DDISASM_ENABLE_TESTS)
+  find_program(PYTHON "python3")
+
+  add_test(NAME python_tests
+      COMMAND ${PYTHON} -m unittest discover tests "*_test.py"
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/"
+  )
+endif()

@@ -19,19 +19,16 @@ stages:
 
 .test-and-tag-template: &test-and-tag
   script:
-    - docker run  --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c \
-      "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip"
-    - if [ "$COMPILER" == "gcc" ] && [ "$OS" == "ubuntu16" ] && [ "$CI_BUILD_REF_NAME" == "master" ];
+    - if [ "$CI_COMMIT_REF_SLUG" = "master" ];
       then
-        docker tag ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
-        docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $DOCKER_REGISTRY;
-        docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}:latest;
+          PUSH_TAG=latest;
+      else
+          PUSH_TAG=$CI_COMMIT_REF_SLUG;
       fi
-
-.test-arch-template: &test-arch
-  script:
-    - docker run --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c \
-      "cd tests/ && ./test_small.sh && ./test_small.sh -strip && ./test_assembler_examples.sh -strip && EXTRA_FLAGS=-fcf-protection ./test_small.sh"
+    - docker run  --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c "cd build/ && ctest -V"
+    - docker tag ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}-${COMPILER}:${PUSH_TAG};
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $DOCKER_REGISTRY;
+    - docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}-${COMPILER}:${PUSH_TAG};
 
 .cleanup-template: &cleanup
   script:
@@ -103,7 +100,7 @@ run-arch-gcc:
   variables:
     OS: 'arch'
     COMPILER: 'gcc'
-  <<: *test-arch
+  <<: *test-and-tag
 
 run-ubuntu16-clang:
   stage: test-and-tag-ubuntu16
@@ -125,7 +122,7 @@ run-arch-clang:
     OS: 'arch'
     COMPILER: 'clang'
   script:
-  <<: *test-arch
+  <<: *test-and-tag
 
 cleanup-ubuntu16-gcc:
   stage: cleanup

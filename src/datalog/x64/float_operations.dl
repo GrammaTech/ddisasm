@@ -76,4 +76,3 @@ float_operation("SQRTSS").
 float_operation("SQRTSD").
 float_operation("SQRTPS").
 float_operation("SQRTPD").
-

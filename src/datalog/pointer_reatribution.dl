@@ -66,7 +66,7 @@ compute an address but this is also no enough.
 
 moved_data_label(EA,Size,Dest,New_dest):-
     symbolic_data(EA,Size,Dest),
-	address_in_data_refined_range.overlap(Dest,8,New_dest).
+    address_in_data_refined_range.overlap(Dest,8,New_dest).
 
 //if something points to the middle of a known symbol we express it as symbol+constant
 //as long as it is not code
@@ -74,96 +74,101 @@ moved_data_label(EA,SizePointer,Dest,Address):-
     symbolic_data(EA,SizePointer,Dest),
     !code(Dest),
     symbol(Address,Size,_,_,_,_),
-    Address<Dest,
-	Dest<Address+Size.
+    Address < Dest,
+    Dest < Address+Size.
+
+// create a symbol+constant for overlapping instructions
+moved_data_label(EA,SizePointer,Dest,Address):-
+    symbolic_data(EA,SizePointer,Dest),
+    overlapping_instruction(Dest,Address).
 
 ////////////////////////////////////////////////////////////////////////////////////
 
 .decl moved_label_candidate(EA:address,Index:number,Val:address,New_val:address,Diff:number)
 
 moved_label_candidate(EA_def2,Op_index,Dest,New_dest,Diff):-
-	cmp_reg_to_reg(EA,Reg1,Reg2),
-	def_used(EA_def1,Reg1,EA,_),
-	dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End),
+    cmp_reg_to_reg(EA,Reg1,Reg2),
+    def_used(EA_def1,Reg1,EA,_),
+    dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End),
 
-	def_used(EA_def2,Reg2,EA,_),
-	pc_relative_operand(EA_def2,Op_index,Dest),
-	instruction_get_operation(EA_def2,"LEA"),
+    def_used(EA_def2,Reg2,EA,_),
+    pc_relative_operand(EA_def2,Op_index,Dest),
+    instruction_get_operation(EA_def2,"LEA"),
 
-	Beg<= Dest,
+    Beg <= Dest,
     Dest <= End,
-	Diff=max(New_dest-Dest,Dest-New_dest).
+    Diff = max(New_dest-Dest,Dest-New_dest).
 ////////////////////////////////////////////////////////////////////////////////
 // indirect operand (type O)
 
 //pc-relative that misses the data sections
 moved_label_class(EA,"pc-relative miss data-sections"),
 moved_label(EA,Op_index,Dest,New_dest):-
-	moved_label_candidate(EA,Op_index,Dest,_,_),
-	Diff_min=min X:moved_label_candidate(EA,Op_index,Dest,_,X),
-	moved_label_candidate(EA,Op_index,Dest,New_dest,Diff),
-	Diff<=Diff_min.
+    moved_label_candidate(EA,Op_index,Dest,_,_),
+    Diff_min = min X:moved_label_candidate(EA,Op_index,Dest,_,X),
+    moved_label_candidate(EA,Op_index,Dest,New_dest,Diff),
+    Diff <= Diff_min.
 
 moved_label_class(EA,"collides with pointer"),
 moved_label(EA,Op_index,Dest,New_dest):-
-  binary_type("EXEC"),
-	symbolic_operand(EA,Op_index,Dest,"data"),
-	//it collides with a pointer
-	pointer_size(Pt_size),
-	address_in_data_refined_range.overlap(Dest,Pt_size,New_dest),
+    binary_type("EXEC"),
+    symbolic_operand(EA,Op_index,Dest,"data"),
+    //it collides with a pointer
+    arch.pointer_size(Pt_size),
+    address_in_data_refined_range.overlap(Dest,Pt_size,New_dest),
     symbolic_data(New_dest,_,_).
 
 // the pointer is likely to point to the wrong section
 moved_label_class(EA,"indirect wrong section"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Diff):-
     binary_type("EXEC"),
-	symbolic_operand(EA,Op_index,Dest,"data"),
-	data_access(EA,Op_index,_,_,_,_,_,_),
-	data_access_pattern_candidate(Access_dest,_,Mult,EA),
-	(
-	Access_dest!=Dest,
-    New_dest=Access_dest,
-    Diff= max(Access_dest-Dest, Dest-Access_dest)
-	;
-	Access_dest=Dest,
-    New_dest=Dest+Mult,
-    Diff=Mult
-	),
-	
-	data_section(Name),
-	section(Name,SectSize,Base),
-	Dest>=Base,Dest<=Base+SectSize,
+    symbolic_operand(EA,Op_index,Dest,"data"),
+    data_access(EA,Op_index,_,_,_,_,_,_),
+    data_access_pattern_candidate(Access_dest,_,Mult,EA),
+    (
+        Access_dest != Dest,
+        New_dest = Access_dest,
+        Diff = max(Access_dest-Dest, Dest-Access_dest)
+        ;
+        Access_dest = Dest,
+        New_dest = Dest+Mult,
+        Diff = Mult
+    ),
 
-	regular_data_section(Name2), Name2!= Name,
-	section(Name2,SectSize2,Base2),
-	New_dest>=Base2,New_dest<=Base2+SectSize2,
+    data_section(Name),
+    section(Name,SectSize,Base),
+    Dest >= Base, Dest <= Base+SectSize,
 
-	// sections can have one overlapping address
-	Dest!=Base2,
-	
-	//we are going to move in the direction of the other section
-	(
-	Mult>0,New_dest>Dest
-	;
-	Mult<0, New_dest<Dest
-	).
+    regular_data_section(Name2), Name2 != Name,
+    section(Name2,SectSize2,Base2),
+    New_dest >= Base2, New_dest <= Base2+SectSize2,
+
+    // sections can have one overlapping address
+    Dest != Base2,
+
+    //we are going to move in the direction of the other section
+    (
+        Mult > 0, New_dest > Dest
+        ;
+        Mult < 0, New_dest < Dest
+    ).
 
 .decl access_non_regular_data_section(EA:address,Op_index:number)
 
 access_non_regular_data_section(EA,Op_index):-
-	data_access(EA,Op_index,_,_,_,_,Dest,_),
-	data_section(Name),
-	!regular_data_section(Name),
-	section(Name,SizeSect,Base),
-	Dest>=Base,
-	Dest<Base+SizeSect.
+    data_access(EA,Op_index,_,_,_,_,Dest,_),
+    data_section(Name),
+    !regular_data_section(Name),
+    section(Name,SizeSect,Base),
+    Dest >= Base,
+    Dest < Base+SizeSect.
 
 .decl moved_displacement_candidate(EA:address,Op_index:number,Dest:address,New_dest:address,Priority:number)
 
 moved_label_class(EA,"miss section with access"),
 moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
     binary_type("EXEC"),
-    data_access(EA,Op_index,_,_,_,_,Dest,_), Dest>=0,
+    data_access(EA,Op_index,_,_,_,_,Dest,_), Dest >= 0,
     (
         !symbolic_operand(EA,Op_index,_,_);
         access_non_regular_data_section(EA,Op_index)
@@ -172,15 +177,15 @@ moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
     data_access_pattern_candidate(Access_dest,_,_,EA),
     regular_data_section(Name),
     section(Name,SizeSect,Base),
-    Access_dest>=Base,
-    Access_dest<Base+SizeSect,
+    Access_dest >= Base,
+    Access_dest < Base+SizeSect,
 
     Diff = max(Access_dest-Dest,Dest-Access_dest),
-    10*Dest>=Base,
+    10*Dest >= Base,
     // the remaining component does not fall on any data section
     !data_byte(Diff,_),
     // does not fall in bss sections
-    bss_section_limits(BssBeg,BssEnd),(Diff<BssBeg; Diff> BssEnd).
+    bss_section_limits(BssBeg,BssEnd),(Diff < BssBeg; Diff > BssEnd).
 
 // We have an access with a register that is multiplied by something
 // If the register does not contain the base address, then the displacement should contain it.
@@ -192,17 +197,16 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
     !symbolic_operand(EA,Op_index,_,_),
     !pc_relative_operand(EA,Op_index,_),
     (
-        Mult>1
-	;
-        value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,0,_),Mult2>1
-	),
+        Mult>1;
+        value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,0,_), Mult2>1
+    ),
     regular_data_section(Name),
     section(Name,SectSize,Base),
     (
-        Dest<Base, Distance=Base-Dest, New_dest=Base,
+        Dest < Base, Distance = Base-Dest, New_dest = Base,
         10*Dest > Base
-    ;
-        Dest>Base+SectSize, Distance=Dest-(Base+SectSize), New_dest=Base+SectSize
+        ;
+        Dest > Base+SectSize, Distance = Dest-(Base+SectSize), New_dest = Base+SectSize
     ).
 
 //Same case as before with the other register
@@ -217,10 +221,10 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
     regular_data_section(Name),
     section(Name,SectSize,Base),
     (
-        Dest<Base, Distance=Base-Dest, New_dest=Base,
+        Dest < Base, Distance = Base-Dest, New_dest = Base,
         10*Dest > Base
-    ;
-        Dest>Base+SectSize, Distance=Dest-(Base+SectSize), New_dest=Base+SectSize
+        ;
+        Dest>Base+SectSize, Distance = Dest-(Base+SectSize), New_dest = Base+SectSize
     ).
 
 // Same case as before but with a repeated register
@@ -234,10 +238,10 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
     section(Name,SectSize,Base),
     // the destination is below or above the section
     (
-        Dest<Base, Distance=Base-Dest, New_dest=Base,
+        Dest < Base, Distance = Base-Dest, New_dest = Base,
         10*Dest > Base
     ;
-        Dest>Base+SectSize, Distance=Dest-(Base+SectSize), New_dest=Base+SectSize
+        Dest > Base+SectSize, Distance = Dest-(Base+SectSize), New_dest = Base+SectSize
     ).
 
 // references with offset in PIE or REL code
@@ -247,19 +251,19 @@ moved_displacement_candidate(EA,Op_index,Dest,SymbolAddr,0):-
     instruction_displacement_offset(EA,Op_index,DisplacementOffset),
     relocation(EA+DisplacementOffset,_,Symbol,_),
     symbol(SymbolAddr,_,_,_,_,Symbol),
-    SymbolAddr!=Dest.
+    SymbolAddr != Dest.
 
 // we take the candidate with the shortest distance/priority
 .decl discarded_moved_displacement_candidate(EA:address,Op_index:number,Dest:address,New_dest:address)
 
 discarded_moved_displacement_candidate(EA,Op_index,Dest,New_dest):-
-	moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance1),
-	moved_displacement_candidate(EA,Op_index,_,_,Distance2),
-	Distance2<Distance1.
+    moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance1),
+    moved_displacement_candidate(EA,Op_index,_,_,Distance2),
+    Distance2 < Distance1.
 
 moved_label(EA,Op_index,Dest,New_dest):-
-	moved_displacement_candidate(EA,Op_index,Dest,New_dest,_),
-	!discarded_moved_displacement_candidate(EA,Op_index,Dest,New_dest).
+    moved_displacement_candidate(EA,Op_index,Dest,New_dest,_),
+    !discarded_moved_displacement_candidate(EA,Op_index,Dest,New_dest).
 ////////////////////////////////////////////////////////////////////////////////
 //immediate operand (type I)
 // consider the case where the immediate is a loop bound
@@ -271,32 +275,32 @@ moved_label(EA,Op_index,Dest,New_dest):-
 .decl moved_immediate_candidate(EA:address,Op_index:number,Immediate:number,New_immmediate:number)
 
 mov_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
-	code(EA),
-	mov(EA),
-	instruction_get_src_op(EA,Imm_index,Op),
-	op_immediate(Op,Immediate),
-	instruction_get_dest_op(EA,_,Op2),
-	op_regdirect_contains_reg(Op2,Reg).
+    code(EA),
+    arch.mov(EA),
+    instruction_get_src_op(EA,Imm_index,Op),
+    op_immediate(Op,Immediate),
+    instruction_get_dest_op(EA,_,Op2),
+    op_regdirect_contains_reg(Op2,Reg).
 
 cmp_reg_to_reg(EA,Reg1,Reg2):-
-	code(EA),
-	instruction_get_operation(EA,Operation),
-	comparison_operation(Operation),
-	instruction_get_op(EA,_,Op1),
-	op_regdirect_contains_reg(Op1,Reg1),
-	instruction_get_op(EA,_,Op2), Op2!=Op1,
-	op_regdirect_contains_reg(Op2,Reg2).
+    code(EA),
+    instruction_get_operation(EA,Operation),
+    arch.cmp_operation(Operation),
+    instruction_get_op(EA,_,Op1),
+    op_regdirect_contains_reg(Op1,Reg1),
+    instruction_get_op(EA,_,Op2), Op2!=Op1,
+    op_regdirect_contains_reg(Op2,Reg2).
 
 .decl dest_enlarged_data_section(EA:address,Reg:register,New_dest:address,Beg:address,End:address)
 .output dest_enlarged_data_section
 
 dest_enlarged_data_section(EA_def,Reg,New_dest,Beg-MultAbs,Beg+SizeSect+MultAbs):-
-	best_value_reg(EA_def,Reg,_,Mult,New_dest,"loop"),
-	MultAbs=max(Mult,-Mult),
-	regular_data_section(Name),
-	section(Name,SizeSect,Beg),
-	New_dest>=Beg,
-	New_dest<=Beg+SizeSect.
+    best_value_reg(EA_def,Reg,_,Mult,New_dest,"loop"),
+    MultAbs = max(Mult,-Mult),
+    regular_data_section(Name),
+    section(Name,SizeSect,Beg),
+    New_dest >= Beg,
+    New_dest <= Beg+SizeSect.
 
 
 // immediate used to access memory
@@ -308,17 +312,17 @@ moved_immediate_candidate(EA_from,Imm_index,Immediate,New_dest):-
 
     regular_data_section(Name),
     section(Name,SizeSect,Beg),
-    New_dest>=Beg,
-    New_dest<Beg+SizeSect,
+    New_dest >= Beg,
+    New_dest < Beg+SizeSect,
 
-    (Reg=Reg2;Reg=Reg3),
+    (Reg = Reg2; Reg = Reg3),
     value_reg_at_operand(EA_access,Op_index,Reg,EA_from,_,_,Type),
-    Type!="incomplete",
+    Type != "incomplete",
     mov_immediate_to_reg(EA_from,Reg,Imm_index,Immediate),
     Beg-Mult <= Immediate,
     Immediate <= Beg+SizeSect+Mult,
     //only move if the original does not fall in the section
-    (Immediate< Beg ; Immediate> Beg+SizeSect).
+    (Immediate < Beg ; Immediate > Beg+SizeSect).
 
 
 moved_immediate_candidate(EA,Imm_index,Immediate,New_dest):-
@@ -326,7 +330,7 @@ moved_immediate_candidate(EA,Imm_index,Immediate,New_dest):-
     cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate),
     def_used(EA_def,Reg,EA,_),
     dest_enlarged_data_section(EA_def,Reg,New_dest,Beg,End),
-    Beg<= Immediate,
+    Beg <= Immediate,
     Immediate <= End.
 
 moved_immediate_candidate(EA_def2,Imm_index,Immediate,New_dest):-
@@ -338,7 +342,7 @@ moved_immediate_candidate(EA_def2,Imm_index,Immediate,New_dest):-
     def_used(EA_def2,Reg2,EA,_),
     mov_immediate_to_reg(EA_def2,Reg2,Imm_index,Immediate),
 
-    Beg<= Immediate,
+    Beg <= Immediate,
     Immediate <= End.
 
 moved_immediate_candidate(EA,Op_index,Dest,SymbolAddr):-
@@ -349,7 +353,7 @@ moved_immediate_candidate(EA,Op_index,Dest,SymbolAddr):-
     op_immediate(Op,Dest),
     relocation(EA+ImmediateOffset,_,Symbol,_),
     symbol(SymbolAddr,_,_,_,_,Symbol),
-    SymbolAddr!=Dest.
+    SymbolAddr != Dest.
 
 moved_label(EA,Op_index,Dest,New_dest):-
     moved_immediate_candidate(EA,Op_index,Dest,New_dest).
@@ -361,5 +365,11 @@ moved_label(EA,Op_index,Dest,Address):-
     !moved_displacement_candidate(EA,Op_index,_,_,_),
     !moved_immediate_candidate(EA,Op_index,_,_),
     symbol(Address,Size,_,_,_,_),
-    Address<Dest,
-    Dest<Address+Size.
+    Address < Dest,
+    Dest < Address+Size.
+
+// if the destination is an overlapping instruction
+moved_label_class(EA,"overlapping instruction"),
+moved_label(EA,Op_index,Dest,Block):-
+    symbolic_operand(EA,Op_index,Dest,"code"),
+    overlapping_instruction(Dest,Block).

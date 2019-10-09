@@ -1,4 +1,4 @@
-//===- bitmasks.dl -----------------------------------------*- datalog -*-===//
+//===- SccPass.h ------------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -20,46 +20,15 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-/**
-This module detects specific kinds of bitmasks and bitmask operations.
 
-*/
+#include <gtirb/gtirb.hpp>
 
-// auxiliary component to generate all the numbers in a range
-.comp counter{
+#ifndef SCC_PASS_H_
+#define SCC_PASS_H_
 
-    .decl range(Begin:number,End:number)
-    .decl num(N:number)
+using SccMap = std::map<gtirb::UUID, int64_t>;
 
-    num(N):-
-        range(N,_).
-    num(N+1):-
-        num(N),
-        range(_,End),
-        N+1<End.
-}
+// Compute strongly connected components and store them in a AuxData table SccMap called "SCCs"
+void computeSCCs(gtirb::Module &module);
 
-
-// a low pass mask is a bitmap mask of the form 0^*1^+
-.decl low_pass_mask(Mask:number)
-
-.init available_bits = counter
-// generate numbers from 1 to 32 or 64 depending on the pointer size
-available_bits.range(1,8*Pt_size):-
-    arch.pointer_size(Pt_size).
-
-low_pass_mask((2^N)-1):-
-    available_bits.num(N).
-
-.decl low_pass_filter(EA:address)
-
-low_pass_filter(EA):-
-    op_immediate_and_reg(EA,"AND",_,_,Imm),
-    low_pass_mask(Imm).
-
-.decl is_xor_reset(EA:address)
-
-is_xor_reset(EA):-
-    instruction(EA,_,_,"XOR",Op1,Op2,0,0),
-    op_regdirect_contains_reg(Op1,Reg),
-    op_regdirect_contains_reg(Op2,Reg).
+#endif // SCC_PASS_H_

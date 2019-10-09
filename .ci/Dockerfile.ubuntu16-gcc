@@ -1,7 +1,8 @@
 FROM ubuntu:16.04 as souffle
 RUN apt-get -y update && apt-get -y install automake bison build-essential \
-    doxygen flex g++ gcc gcc-multilib g++-multilib git libtool make mcpp \
-    pkg-config  sqlite3 libsqlite3-dev zlib1g-dev libffi-dev
+    doxygen flex g++ gcc gcc-multilib g++-multilib git libffi-dev libtool  \
+    make mcpp pkg-config sqlite3 libsqlite3-dev zlib1g-dev
+
 RUN git clone -b 1.6.1 https://github.com/souffle-lang/souffle
 RUN cd souffle && sh ./bootstrap
 RUN cd souffle && ./configure --prefix=/usr --enable-64bit-domain --disable-ncurses
@@ -10,18 +11,25 @@ RUN cd souffle && cp include/souffle/RamTypes.h /usr/include/souffle/
 
 FROM ubuntu:16.04
 
+ENV LD_LIBRARY_PATH /usr/local/lib:$LD_LIBRARY_PATH
+
 ARG CMAKE_VERSION=3.9
+ARG BOOST_VERSION=1.67.0
+ARG PROTOBUF_VERSION=3.7.0
 ARG CXX_COMPILER=g++-7
+
+# Use bash for more convenient variable substitution syntax
+SHELL ["/bin/bash", "-c"]
 
 # Copy souffle
 RUN apt-get -y update && \
     apt-get -y install software-properties-common && \
     add-apt-repository ppa:jonathonf/gcc-7.1 && \
     apt-get -y update
-RUN apt-get -y update && apt-get -y install autoconf automake bison build-essential clang \
-    doxygen flex g++ gcc gcc-multilib g++-multilib git libtool make mcpp pkg-config \
-    sqlite3 libsqlite3-dev zlib1g-dev clang ed libpcre3-dev libncurses5-dev wget \
-    curl libc++1 libc++abi1 gcc-7 g++-7
+RUN apt-get -y update && apt-get -y install autoconf automake build-essential \
+    clang curl doxygen g++ g++-7 gcc gcc-7 gcc-multilib git g++-multilib \
+    libc++1 libc++abi1 libtool make mcpp \
+    pkg-config python3 python3-pip wget zlib1g-dev
 
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
@@ -48,6 +56,28 @@ RUN curl -SL https://cmake.org/files/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.0-Linu
 
 RUN ldconfig
 
+# Install Boost
+RUN curl -L https://dl.bintray.com/boostorg/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION//./_}.tar.gz > boost.tar.gz && \
+    tar vxfz boost.tar.gz > /dev/null && \
+    cd boost_${BOOST_VERSION//./_} && \
+    ./bootstrap.sh --prefix=/usr/local --with-libraries=filesystem,program_options,system > /dev/null && \
+    ./b2 install --prefix=/usr/local > /dev/null && \
+    rm ../boost.tar.gz && \
+    cd .. && \
+    rm -rf boost_${BOOST_VERSION//./_}
+
+# Install protobuf
+RUN cd /usr/local/src \
+    && wget https://github.com/google/protobuf/releases/download/v${PROTOBUF_VERSION}/protobuf-cpp-${PROTOBUF_VERSION}.tar.gz \
+    && tar xf protobuf-cpp-${PROTOBUF_VERSION}.tar.gz \
+    && cd protobuf-${PROTOBUF_VERSION} \
+    && ./configure \
+    && make \
+    && make install \
+    && cd .. \
+    && rm -rf protobuf-${PROTOBUF_VERSION} protobuf-cpp-${PROTOBUF_VERSION}.tar.gz
+RUN ldconfig
+
 # Install capstone
 RUN cd /usr/local/src \
     && wget https://github.com/aquynh/capstone/archive/4.0.1.tar.gz \
@@ -70,7 +100,7 @@ COPY . /ddisasm
 
 # Build GTIRB
 RUN rm -rf /ddisasm/gtirb/build /ddisasm/gtirb/CMakeCache.txt /ddisasm/gtirb/CMakeFiles /ddisasm/gtirb/CMakeScripts
-RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER}  && cd build &&  make
+RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER}  && cd build &&  make install
 
 # Build gtirb-pprinter
 RUN rm -rf /ddisasm/gtirb-pprinter/build /ddisasm/gtirb-pprinter/CMakeCache.txt /ddisasm/gtirb-pprinter/CMakeFiles /ddisasm/gtirb-pprinter/CMakeScripts

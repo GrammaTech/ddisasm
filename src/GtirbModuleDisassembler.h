@@ -1,4 +1,4 @@
-//===- jump_operations.dl ---------------------------------------*- C++ -*-===//
+//===- GtirbModuleDisassembler.h --------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -20,34 +20,15 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-/**
-The set of jump operations in x64
-*/
-.decl jump_operation(n:symbol)
 
-jump_operation("JCXZ").
-jump_operation("JECXZ").
-jump_operation("JRCXZ").
-jump_operation("JO").
-jump_operation("JNO").
-jump_operation("JB").
-jump_operation("JNB").
-jump_operation("JZ").
-jump_operation("JNZ").
-jump_operation("JNA").	
-jump_operation("JA").
-jump_operation("JS").
-jump_operation("JNS").
-jump_operation("JP").
-jump_operation("JNP").
-jump_operation("JL").
-jump_operation("JGE").
-jump_operation("JLE").
-jump_operation("JG").
-jump_operation("JC").
-jump_operation("JAE").
-jump_operation("JE").
-jump_operation("JNE").
-jump_operation("JBE").
-jump_operation("JNBE").
-jump_operation("JMP").
+#include <souffle/SouffleInterface.h>
+#include <gtirb/gtirb.hpp>
+
+#ifndef GTIRB_MODULE_DISASSEMBLER_H_
+#define GTIRB_MODULE_DISASSEMBLER_H_
+
+void disassembleModule(gtirb::Context &context, gtirb::Module &module,
+                       souffle::SouffleProgram *prog, bool selfDiagnose);
+void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose);
+
+#endif // GTIRB_MODULE_DISASSEMBLER_H_

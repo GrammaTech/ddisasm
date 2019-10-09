@@ -1,4 +1,4 @@
-//===- Dl_operator.h --------------------------------------------*- C++ -*-===//
+//===- DlOperandTable.h -----------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -21,52 +21,53 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef SRC_DL_OPERATOR_H_
-#define SRC_DL_OPERATOR_H_
+#ifndef SRC_DL_OPERATOR_TABLE_H_
+#define SRC_DL_OPERATOR_TABLE_H_
 
+#include <souffle/SouffleInterface.h>
 #include <cstdint>
-#include <string>
+#include <map>
+#include <variant>
+#include <vector>
 
-enum operator_type
-{
-    NONE,
-    REG,
-    IMMEDIATE,
-    INDIRECT
-};
+using ImmOp = int64_t;
 
-class Dl_operator
+using RegOp = std::string;
+
+struct IndirectOp
 {
-private:
-public:
-    operator_type type;
     std::string reg1;
     std::string reg2;
     std::string reg3;
     int64_t multiplier;
-    int64_t offset;
-    short size;
-
-    Dl_operator(operator_type type = operator_type::NONE, std::string reg1 = "none",
-                std::string reg2 = "none", std::string reg3 = "none", int64_t offset = 0,
-                int64_t multiplier = 1, int64_t = 0, short size = 0)
-        : type(type),
-          reg1(reg1),
-          reg2(reg2),
-          reg3(reg3),
-          multiplier(multiplier),
-          offset(offset),
-          size(size)
-    {
-    }
-
-    operator_type get_type() const;
-    std::string print_tabs(int64_t id) const;
+    int64_t displacement;
+    int size;
 };
 
-struct compare_operators
+constexpr bool operator<(const IndirectOp &LHS, const IndirectOp &RHS) noexcept;
+souffle::tuple &operator<<(souffle::tuple &t, const IndirectOp &op);
+
+template <class T>
+souffle::tuple &operator<<(souffle::tuple &t, const std::pair<T, uint64_t> &pair)
 {
-    bool operator()(const Dl_operator& op1, const Dl_operator& op2) const;
+    auto &[elem, id] = pair;
+    t << id << elem;
+    return t;
+}
+
+class DlOperandTable
+{
+private:
+    // we reserve 0 for empty operators
+    uint64_t curr_index = 1;
+    template <typename T>
+    int64_t addToTable(std::map<T, uint64_t> &opTable, T op);
+
+public:
+    std::map<ImmOp, uint64_t> immTable;
+    std::map<RegOp, uint64_t> regTable;
+    std::map<IndirectOp, uint64_t> indirectTable;
+    int64_t add(std::variant<ImmOp, RegOp, IndirectOp> op);
 };
 
-#endif /* SRC_DL_OPERATOR_H_ */
+#endif /* SRC_DL_OPERATOR_TABLE_H_ */

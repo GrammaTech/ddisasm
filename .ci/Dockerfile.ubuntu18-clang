@@ -1,7 +1,8 @@
 FROM ubuntu:18.04 as souffle
 RUN apt-get -y update && apt-get -y install automake bison build-essential \
-    doxygen flex git libtool make mcpp pkg-config sqlite3 libsqlite3-dev \
-    zlib1g-dev libffi-dev
+    doxygen flex git libffi-dev libtool make mcpp pkg-config \
+    sqlite3 libsqlite3-dev zlib1g-dev
+
 RUN git clone -b 1.6.1 https://github.com/souffle-lang/souffle
 RUN cd souffle && sh ./bootstrap
 RUN cd souffle && ./configure --prefix=/usr --enable-64bit-domain --disable-ncurses
@@ -10,18 +11,34 @@ RUN cd souffle && cp include/souffle/RamTypes.h /usr/include/souffle/
 
 FROM ubuntu:18.04
 
-ARG CMAKE_VERSION=3.9
+ENV LD_LIBRARY_PATH /usr/local/lib:$LD_LIBRARY_PATH
+
+ARG BOOST_VERSION=1.67.0
 ARG CXX_COMPILER=clang++
 
-RUN apt-get -y update && apt-get -y install autoconf automake bison clang cmake curl \
-    doxygen ed flex git libncurses5-dev libpcre3-dev libtool libstdc++-7-dev make mcpp \
-    pkg-config python sqlite3 libsqlite3-dev wget zlib1g-dev
+# Use bash for more convenient variable substitution syntax
+SHELL ["/bin/bash", "-c"]
+
+# Install common packages
+RUN apt-get -y update && apt-get -y install autoconf automake clang cmake \
+    curl doxygen git libprotobuf-dev libtool libstdc++-7-dev \
+    make mcpp pkg-config protobuf-compiler python3 python3-pip wget zlib1g-dev
 
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
 COPY --from=souffle /usr/bin/souffle /usr/bin/souffle
 COPY --from=souffle /usr/bin/souffle-profile /usr/bin/souffle-profile
 COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
+
+# Install Boost
+RUN curl -L https://dl.bintray.com/boostorg/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION//./_}.tar.gz > boost.tar.gz && \
+    tar vxfz boost.tar.gz > /dev/null && \
+    cd boost_${BOOST_VERSION//./_} && \
+    ./bootstrap.sh --prefix=/usr/local --with-libraries=filesystem,program_options,system --with-toolset=clang > /dev/null && \
+    ./b2 install --prefix=/usr/local toolset=clang > /dev/null && \
+    rm ../boost.tar.gz && \
+    cd .. && \
+    rm -rf boost_${BOOST_VERSION//./_}
 
 # Install capstone
 RUN cd /usr/local/src \
@@ -45,7 +62,7 @@ COPY . /ddisasm
 
 # Build GTIRB
 RUN rm -rf /ddisasm/gtirb/build /ddisasm/gtirb/CMakeCache.txt /ddisasm/gtirb/CMakeFiles /ddisasm/gtirb/CMakeScripts
-RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build &&  make
+RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build &&  make install
 
 # Build gtirb-pprinter
 RUN rm -rf /ddisasm/gtirb-pprinter/build /ddisasm/gtirb-pprinter/CMakeCache.txt /ddisasm/gtirb-pprinter/CMakeFiles /ddisasm/gtirb-pprinter/CMakeScripts

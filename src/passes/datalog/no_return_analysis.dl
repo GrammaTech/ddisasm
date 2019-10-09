@@ -1,0 +1,170 @@
+//===- no_return_analysis.dl ------------------------------------*- C++ -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+ A SCC does not return if none of the exits returns and none of the blocks in the SCC return.
+ 'scc_no_return' computes the SCCs that do not return by checking
+ all the blocks in the scc incrementally with the help of
+ 'scc_partial_no_return' and 'block_in_scc_no_return'.
+
+ 'block_in_scc_no_return' checks that all the exits lead to blocks that do not return and
+  the block itself does not have a return.
+
+ A block does not return 'no_return' if it is in a SCC that does not return.
+
+ The analysis is conservative in the sense that it does not follow indirect control flow.
+ Any block with indirect outgoing edges will not qualify as no returning.
+*/
+.number_type address
+.number_type scc
+
+.decl cfg_edge(src:address,dest:address,conditional:symbol,indirect:symbol,type:symbol)
+.input cfg_edge
+
+.decl cfg_edge_to_top(src:address,conditional:symbol,indirect:symbol,type:symbol)
+.input cfg_edge_to_top
+
+.decl cfg_edge_to_symbol(src:address,symbol:symbol,conditional:symbol,indirect:symbol,type:symbol)
+.input cfg_edge_to_symbol
+
+.decl in_scc(scc:scc,index:number,block:address)
+.input in_scc
+
+
+.decl direct_call(src:address,dest:address)
+.decl direct_jump_outside_scc(src:address,dest:address)
+.decl fallthrough_outside_scc(src:address,dest:address)
+.decl return(src:address)
+.output return
+
+direct_call(Src,Dest):-
+    cfg_edge(Src,Dest,_,"false","call").
+
+direct_jump_outside_scc(Src,Dest):-
+    cfg_edge(Src,Dest,_,"false","branch"),
+    in_scc(Scc1,_,Src),
+    in_scc(Scc2,_,Dest),
+    Scc1!=Scc2.
+
+fallthrough_outside_scc(Src,Dest):-
+    cfg_edge(Src,Dest,_,"false","fallthrough"),
+    in_scc(Scc1,_,Src),
+    in_scc(Scc2,_,Dest),
+    Scc1!=Scc2.
+
+return(Src):-
+    cfg_edge(Src,_,_,_,"return");
+    cfg_edge_to_top(Src,_,_,"return");
+    cfg_edge(Src,_,_,_,"sysret");
+    cfg_edge_to_top(Src,_,_,"sysret").
+
+.decl incomplete_block(src:address)
+
+incomplete_block(Src):-
+    cfg_edge(Src,_,_,"true","branch");
+    cfg_edge_to_top(Src,_,"true","branch");
+    cfg_edge_to_symbol(Src,_,_,"true","branch").
+
+.decl no_return(Block:address)
+.output no_return
+
+.decl block_call_no_return(Block:address)
+.output block_call_no_return
+
+.decl scc_no_return(Scc:scc)
+.output scc_no_return
+
+// initial seeds for the analysis
+.decl no_return_function(Name:symbol)
+
+no_return_function("exit").
+no_return_function("_exit").
+no_return_function("abort").
+no_return_function("__stack_chk_fail").
+no_return_function("__assert_fail").
+no_return_function("longjump").
+
+////////////////////////////////////////////////////////////////////////////
+
+.decl last_in_scc(Scc:scc, MaxIndex:number)
+
+last_in_scc(Scc,MaxIndex):-
+    in_scc(Scc,_,_),
+    MaxIndex = max X: {in_scc(Scc,X,_)}.
+
+.decl scc_partial_no_return(Scc:scc,Index:number)
+.output scc_partial_no_return
+
+.decl block_in_scc_no_return(Block:address)
+
+scc_partial_no_return(Scc,0):-
+    in_scc(Scc,0,Block),
+    block_in_scc_no_return(Block).
+
+scc_partial_no_return(Scc,N+1):-
+    scc_partial_no_return(Scc,N),
+    in_scc(Scc,N+1,Block),
+    block_in_scc_no_return(Block).
+
+// if all the blocks do not return, then the scc does not return
+scc_no_return(Scc):-
+    last_in_scc(Scc,MaxBlockIndex),
+    scc_partial_no_return(Scc,MaxBlockIndex).
+
+// we assign no_return to all the blocks in the scc
+no_return(Block):-
+    scc_no_return(Scc),
+    in_scc(Scc,_,Block).
+
+/////////////////////////////////////////////////////////////////////
+
+// a block does not return if it ends in a call that does no return
+block_call_no_return(Block):-
+    cfg_edge_to_symbol(Block,Symbol,_,_,"call"),
+    no_return_function(Symbol).
+
+block_call_no_return(Block):-
+    no_return(Next),
+    direct_call(Block,Next).
+
+// we assume that a block is ended by a call, jump, return or something else
+// thus a block cannot have a call and a return or a jump and a call.
+
+block_in_scc_no_return(Block):-
+    block_call_no_return(Block).
+
+block_in_scc_no_return(Block):-
+    in_scc(_,_,Block),
+    !incomplete_block(Block),
+    !return(Block),
+    (
+        direct_jump_outside_scc(Block,Dest),
+        no_return(Dest)
+        ;
+        !direct_jump_outside_scc(Block,_)
+    ),
+    (
+        fallthrough_outside_scc(Block,Dest2),
+        no_return(Dest2)
+        ;
+        !fallthrough_outside_scc(Block,_)
+    ).

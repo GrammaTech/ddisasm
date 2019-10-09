@@ -1,4 +1,4 @@
-//===- Dl_operator_table.h --------------------------------------*- C++ -*-===//
+//===- GtirbZeroBuilder.h ---------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -21,35 +21,29 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef SRC_DL_OPERATOR_TABLE_H_
-#define SRC_DL_OPERATOR_TABLE_H_
+#include <gtirb/gtirb.hpp>
 
-#include "Dl_operator.h"
+#ifndef GTIRB_ZERO_BUILDER_H_
+#define GTIRB_ZERO_BUILDER_H_
 
-#include <cstdint>
-#include <fstream>
-#include <map>
-#include <string>
-#include <vector>
-
-class Dl_operator_table
+struct ExtraSymbolInfo
 {
-    using op_dict = std::map<Dl_operator, int64_t, compare_operators>;
-
-private:
-    op_dict dicts[operator_type::INDIRECT + 1];
-    int64_t curr_index;
-    int64_t add_to_dict(op_dict& dict, Dl_operator op);
-
-public:
-    Dl_operator_table() : dicts(), curr_index(1)
-    {
-    } // we reserve 0 for empty operators
-
-    int64_t add(Dl_operator op);
-    void print_operators_of_type(operator_type type, std::ofstream& fbuf);
-    void print(std::string directory, std::ios_base::openmode filemask);
-    std::vector<std::pair<Dl_operator, int64_t>> get_operators_of_type(operator_type type) const;
+    uint64_t size;
+    std::string type;
+    std::string scope;
+    uint64_t sectionIndex;
 };
 
-#endif /* SRC_DL_OPERATOR_TABLE_H_ */
+template <>
+struct gtirb::auxdata_traits<ExtraSymbolInfo>
+{
+    static std::string type_id();
+    static void toBytes(const ExtraSymbolInfo& Object, to_iterator It);
+    static from_iterator fromBytes(ExtraSymbolInfo& Object, from_iterator It);
+};
+
+using SectionProperties = std::tuple<uint64_t, uint64_t>;
+
+gtirb::IR* buildZeroIR(const std::string& filename, gtirb::Context& context);
+
+#endif // GTIRB_ZERO_BUILDER_H_

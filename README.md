@@ -17,51 +17,26 @@ may then be used to pretty print the GTIRB to reassemblable assembly
 code.
 
 
-## Introduction
-
-The analysis contains two parts:
-
-- The C++ files take care of reading an elf file and generating facts
-  that represent all the information contained in the binary.
-
-- `src/datalog/*.dl` contains the specification of the analyses in
-  datalog.  It takes the basic facts and computes likely EAs, chunks
-  of code, etc. The results are represented in GTIRB or can be printed
-  to assembler code using the gtirb-pprinter.
-
-
 ## Dependencies
 
-- [GTIRB](https://github.com/grammatech/gtirb)
+ddisasm uses C++17, and requires a compiler which supports
+that standard such as gcc 7, clang 6, or MSVC 2017.
 
-- The analysis depends on [souffle](https://github.com/souffle-lang) version **1.5.1 or higher** configured with support for 64 bit numbers `--enable-64bit-domain`.
-  At the moment we rely on the [1.6.1 souffle release](https://github.com/souffle-lang/souffle/releases/tag/1.6.1).
-  The easiest way to install the 1.6.1 souffle release is:
-  ```
-  git clone -b 1.6.1 https://github.com/souffle-lang/souffle
-  ```
-  followed by the standard [souffle build instructions](https://souffle-lang.github.io/docs/build/):
-  ```
-  cd souffle
-  sh ./bootstrap
-  ./configure --enable-64bit-domain
-  sudo make -j4 install
-  ```
+To build and install ddisasm, the following requirements
+should be installed:
 
-- [Capstone version 4.0.1](http://www.capstone-engine.org/)
+- [gtirb](https://github.com/grammatech/gtirb)
+- [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
+- [Capstone](http://www.capstone-engine.org/), version 4.0.1 or later
+- [Souffle](https://souffle-lang.github.io), version 1.5.1 or higher
+  - Must be configured with support for 64 bit numbers (via `--enable-64bit-domain` during configuration)
+- [libehp](https://git.zephyr-software.com/opensrc/libehp), version 1.0.0 or higher
 
-- For printing assembler code the datalog disassembler requires the
-  [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
-
-- Ddisasm uses [libehp](https://git.zephyr-software.com/opensrc/libehp) to read exception
-  information. You can compile libehp with CMake by following the steps on its readme.
+Note that these versions are newer than what your package manager may provide
+by default: This is true on Ubuntu 18, Debian 10, and others. Prefer building
+these dependencies from sources to avoid versioning problems.
 
 ## Building ddisasm
-A C++17 compiler such as gcc 7 or clang 6 is required.
-
-Boost (1.67 or later) and [GTIRB](https://github.com/grammatech/gtirb)
-are required.
-
 Use the following options to configure cmake:
 
 - You can tell CMake which compiler to use with
@@ -69,10 +44,6 @@ Use the following options to configure cmake:
 
 - Normally CMake will find GTIRB automatically, but if it does not you
   can pass `-Dgtirb_DIR=<path-to-gtirb-build>`.
-
-- By default ddisasm will download a copy of the boost libraries that
- it uses. If you want to use your local boost installation, use the
- flag: `-DDDISASM_USE_SYSTEM_BOOST=on`
 
 - ddisasm can make use of GTIRB in static library form (instead of
  shared library form, the default) if you use the flag
@@ -133,7 +104,7 @@ Ddisasm accepts the following parameters:
 `--debug-dir arg`
 :   location to write CSV files for debugging
 
--K [ --keep-functions ] arg
+`-K [ --keep-functions ] arg`
 :   Print the given functions even if they are skipped by default (e.g. _start)
 
 `--self-diagnose`
@@ -141,6 +112,9 @@ Ddisasm accepts the following parameters:
     of the symbolization process. This option only works if the target
     binary contains complete relocation information. You can enable
     that in `ld` using the option `--emit-relocs`.
+
+`-F [ --skip-function-analysis ]`
+:   Skip additional analyses to compute more precise function boundaries.
 
 
 ## Rewriting a project
@@ -189,6 +163,8 @@ ddisasm generates the following AuxData tables:
 | cfiDirectives        | `std::map<gtirb::Offset, std::vector<std::tuple<std::string, std::vector<int64_t>, gtirb::UUID>>>` | Map from Offsets to vector of cfi directives. A cfi directive contains: a string describing the directive, a vector of numeric arguments, and an optional symbolic argument (represented with the UUID of the symbol). |
 | libraries            | `std::vector<std::string>`                                                                         | Names of the libraries that are needed.                                                                                                                                                                                |
 | libraryPaths         | `std::vector<std::string>`                                                                         | Paths contained in the rpath of the binary.                                                                                                                                                                            |
+| padding              | `std::map<gtirb::Addr, uint64_t>`                                                                  | Address where there is padding and the length of the padding in bytes.                                                                                                                                                 |
+| SCCs                 | `std::map<gtirb::UUID, int64_t>`                                                                   | The intra-procedural SCC identifier of each block                                                                                                                                                                      |
 
 ## Some References
 

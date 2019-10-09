@@ -95,17 +95,17 @@ uint64_t LIEFBinaryReader::get_min_address()
     return min_address;
 }
 
-std::vector<Section> LIEFBinaryReader::get_sections()
+std::set<InitialAuxData::Section> LIEFBinaryReader::get_sections()
 {
-    std::vector<Section> sectionTuples;
+    std::set<InitialAuxData::Section> sectionTuples;
     if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
     {
         for(auto& section : elf->sections())
         {
             if(section.flags_list().count(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC))
-                sectionTuples.push_back({section.name(), section.size(), section.virtual_address(),
-                                         static_cast<uint64_t>(section.type()),
-                                         static_cast<uint64_t>(section.flags())});
+                sectionTuples.insert({section.name(), section.size(), section.virtual_address(),
+                                      static_cast<uint64_t>(section.type()),
+                                      static_cast<uint64_t>(section.flags())});
         }
     }
 
@@ -114,81 +114,20 @@ std::vector<Section> LIEFBinaryReader::get_sections()
         for(auto& section : pe->sections())
         {
             // FIXME: should we encode section type?
-            sectionTuples.push_back({section.name(), section.size(), section.virtual_address(), 0,
-                                     section.characteristics()});
+            sectionTuples.insert({section.name(), section.size(), section.virtual_address(), 0,
+                                  section.characteristics()});
         }
     }
     return sectionTuples;
 }
 
-std::vector<Section> LIEFBinaryReader::get_code_sections()
-{
-    std::vector<Section> sections = get_sections();
-    if(dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
-    {
-        using sectFlags = LIEF::ELF::ELF_SECTION_FLAGS;
-        auto isExeSection = [](Section& s) {
-            return s.flags & static_cast<uint64_t>(sectFlags::SHF_EXECINSTR);
-        };
-        sections.erase(
-            std::remove_if(std::begin(sections), std::end(sections), std::not_fn(isExeSection)),
-            std::end(sections));
-    }
-    if(dynamic_cast<LIEF::PE::Binary*>(bin.get()))
-    {
-        using sectCharacteristics = LIEF::PE::SECTION_CHARACTERISTICS;
-        auto isExeSection = [](Section& s) {
-            return s.flags & static_cast<uint64_t>(sectCharacteristics::IMAGE_SCN_CNT_CODE);
-        };
-        sections.erase(
-            std::remove_if(std::begin(sections), std::end(sections), std::not_fn(isExeSection)),
-            std::end(sections));
-    }
-    return sections;
-}
-
-std::vector<Section> LIEFBinaryReader::get_non_zero_data_sections()
-{
-    std::vector<Section> sections = get_sections();
-    if(dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
-    {
-        using sectFlags = LIEF::ELF::ELF_SECTION_FLAGS;
-        using sectType = LIEF::ELF::ELF_SECTION_TYPES;
-        auto isNonZeroDataSection = [](Section& s) {
-            bool is_allocated = s.flags & static_cast<uint64_t>(sectFlags::SHF_ALLOC);
-            bool is_not_executable = !(s.flags & static_cast<uint64_t>(sectFlags::SHF_EXECINSTR));
-            // SHT_NOBITS is not considered here because it is for data sections but without initial
-            // data (zero initialized)
-            bool is_non_zero_program_data =
-                s.type == static_cast<uint64_t>(sectType::SHT_PROGBITS)
-                || s.type == static_cast<uint64_t>(sectType::SHT_INIT_ARRAY)
-                || s.type == static_cast<uint64_t>(sectType::SHT_FINI_ARRAY)
-                || s.type == static_cast<uint64_t>(sectType::SHT_PREINIT_ARRAY);
-            return is_allocated && is_not_executable && is_non_zero_program_data;
-        };
-        sections.erase(remove_if(begin(sections), end(sections), std::not_fn(isNonZeroDataSection)),
-                       end(sections));
-    }
-    if(dynamic_cast<LIEF::PE::Binary*>(bin.get()))
-    {
-        using sectCharacteristics = LIEF::PE::SECTION_CHARACTERISTICS;
-        auto isNonZeroDataSection = [](Section& s) {
-            return s.flags
-                   & static_cast<uint64_t>(sectCharacteristics::IMAGE_SCN_CNT_INITIALIZED_DATA);
-        };
-        sections.erase(remove_if(begin(sections), end(sections), std::not_fn(isNonZeroDataSection)),
-                       end(sections));
-    }
-    return sections;
-}
-
-std::string LIEFBinaryReader::get_binary_format()
+gtirb::FileFormat LIEFBinaryReader::get_binary_format()
 {
     if(bin->format() == LIEF::EXE_FORMATS::FORMAT_ELF)
-        return "ELF";
+        return gtirb::FileFormat::ELF;
     if(bin->format() == LIEF::EXE_FORMATS::FORMAT_PE)
-        return "PE";
-    return "UNKNOWN";
+        return gtirb::FileFormat::PE;
+    return gtirb::FileFormat::Undefined;
 }
 
 std::string LIEFBinaryReader::get_binary_type()
@@ -207,9 +146,9 @@ uint64_t LIEFBinaryReader::get_entry_point()
     return 0;
 }
 
-std::vector<Symbol> LIEFBinaryReader::get_symbols()
+std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
 {
-    std::vector<Symbol> symbolTuples;
+    std::set<InitialAuxData::Symbol> symbolTuples;
     if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
     {
         for(auto& symbol : elf->symbols())
@@ -218,9 +157,9 @@ std::vector<Symbol> LIEFBinaryReader::get_symbols()
             std::size_t foundVersion = symbolName.find('@');
             if(foundVersion != std::string::npos)
                 symbolName = symbolName.substr(0, foundVersion);
-            symbolTuples.push_back({symbol.value(), symbol.size(), getSymbolType(symbol.type()),
-                                    getSymbolBinding(symbol.binding()), symbol.section_idx(),
-                                    symbolName});
+            symbolTuples.insert({symbol.value(), symbol.size(), getSymbolType(symbol.type()),
+                                 getSymbolBinding(symbol.binding()), symbol.section_idx(),
+                                 symbolName});
         }
     }
 
@@ -230,22 +169,22 @@ std::vector<Symbol> LIEFBinaryReader::get_symbols()
         {
             std::string symbolName = symbol.name();
             // FIXME: do symbols in PE have an equivalent concept?
-            symbolTuples.push_back({symbol.value(), 0, "NOTYPE", "GLOBAL",
-                                    static_cast<uint64_t>(symbol.section_number()), symbolName});
+            symbolTuples.insert({symbol.value(), 0, "NOTYPE", "GLOBAL",
+                                 static_cast<uint64_t>(symbol.section_number()), symbolName});
         }
     }
     return symbolTuples;
 }
 
-std::vector<Relocation> LIEFBinaryReader::get_relocations()
+std::set<InitialAuxData::Relocation> LIEFBinaryReader::get_relocations()
 {
-    std::vector<Relocation> relocationTuples;
+    std::set<InitialAuxData::Relocation> relocationTuples;
     if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
     {
         for(auto& relocation : elf->relocations())
         {
-            relocationTuples.push_back({relocation.address(), getRelocationType(relocation.type()),
-                                        relocation.symbol().name(), relocation.addend()});
+            relocationTuples.insert({relocation.address(), getRelocationType(relocation.type()),
+                                     relocation.symbol().name(), relocation.addend()});
         }
     }
     return relocationTuples;

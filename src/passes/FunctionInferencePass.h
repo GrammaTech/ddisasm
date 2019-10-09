@@ -1,4 +1,4 @@
-//===- Dl_instruction.cpp ---------------------------------------*- C++ -*-===//
+//===- FunctionInferencePass.h ----------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -21,21 +21,25 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Dl_instruction.h"
-#include <sstream>
+#ifndef FUNCTION_INFERENCE_PASS_H_
+#define FUNCTION_INFERENCE_PASS_H_
 
-std::string Dl_instruction::result_tabs()
+#include <souffle/SouffleInterface.h>
+#include <gtirb/gtirb.hpp>
+#include <optional>
+
+// Refine function boundaries
+class FunctionInferencePass
 {
-    std::ostringstream o;
-    o << address << "\t" << size << "\t" << prefix << "\t" << name;
-    for(size_t i = 0; i < 4; ++i)
-    {
-        if(i < op_codes.size())
-            o << "\t" << op_codes[i];
-        else
-            o << "\t" << 0;
-    }
-    o << "\t" << static_cast<int16_t>(immediateOffset) << "\t"
-      << static_cast<int16_t>(displacementOffset);
-    return o.str();
-}
+private:
+    std::optional<std::string> DebugDir;
+
+    void populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Context& Ctx,
+                             gtirb::Module& M);
+    void updateFunctions(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M);
+
+public:
+    void setDebugDir(std::string Path);
+    void computeFunctions(gtirb::Context& Ctx, gtirb::Module& module);
+};
+#endif // FUNCTION_INFERENCE_PASS_H_

@@ -1,4 +1,4 @@
-//===- bitmasks.dl -----------------------------------------*- datalog -*-===//
+//===- NoReturnPass.h -------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -20,46 +20,26 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-/**
-This module detects specific kinds of bitmasks and bitmask operations.
 
-*/
+#ifndef NO_RETURN_PASS_H_
+#define NO_RETURN_PASS_H_
 
-// auxiliary component to generate all the numbers in a range
-.comp counter{
+#include <souffle/SouffleInterface.h>
+#include <gtirb/gtirb.hpp>
+#include <optional>
 
-    .decl range(Begin:number,End:number)
-    .decl num(N:number)
+// Refine the CFG by removing fallthrough edges whenever there is a call to a block that never
+// returns.
+class NoReturnPass
+{
+private:
+    std::optional<std::string> DebugDir;
 
-    num(N):-
-        range(N,_).
-    num(N+1):-
-        num(N),
-        range(_,End),
-        N+1<End.
-}
+    void populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M);
+    std::set<gtirb::Block*> updateCFG(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M);
 
-
-// a low pass mask is a bitmap mask of the form 0^*1^+
-.decl low_pass_mask(Mask:number)
-
-.init available_bits = counter
-// generate numbers from 1 to 32 or 64 depending on the pointer size
-available_bits.range(1,8*Pt_size):-
-    arch.pointer_size(Pt_size).
-
-low_pass_mask((2^N)-1):-
-    available_bits.num(N).
-
-.decl low_pass_filter(EA:address)
-
-low_pass_filter(EA):-
-    op_immediate_and_reg(EA,"AND",_,_,Imm),
-    low_pass_mask(Imm).
-
-.decl is_xor_reset(EA:address)
-
-is_xor_reset(EA):-
-    instruction(EA,_,_,"XOR",Op1,Op2,0,0),
-    op_regdirect_contains_reg(Op1,Reg),
-    op_regdirect_contains_reg(Op2,Reg).
+public:
+    void setDebugDir(std::string Path);
+    std::set<gtirb::Block*> computeNoReturn(gtirb::Module& module);
+};
+#endif // NO_RETURN_PASS_H_
