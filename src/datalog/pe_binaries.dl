@@ -98,3 +98,20 @@ code_section(Section):-
 symbol(0,0,"NONE","GLOBAL",0,Function),
 got_reference(Address,Function):-
     import_entry(Address,_,Function,_).
+
+//PE binaries have plt-like entries
+// These are no delimited to their own section
+plt_block(EA,Function):-
+    pc_relative_jump(EA,Got_entry),
+    unconditional_jump(EA),
+    got_reference(Got_entry,Function),
+    code_in_refined_block(EA,EA).
+
+// the call to main is right after the call to "__p___argc"
+main_function(EA):-
+    code(EA1),
+    direct_call(EA1,PLT_ARGC),
+    plt_block(PLT_ARGC,"__p___argc"),
+    next(EA1,Block),
+    code_in_refined_block(EA_call_main,Block),
+    direct_call(EA_call_main,EA).
