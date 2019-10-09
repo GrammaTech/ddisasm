@@ -1,0 +1,303 @@
+//===- function_inference.dl ------------------------------------*- C++ -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+Function inference: Infer additional function entries based on
+identifying function pointers and based on identifying complete functions.
+
+
+*/
+
+.number_type address
+.number_type scc
+.number_type operand_code
+.symbol_type register
+
+.decl block(Address:address, Size:number)
+.input block
+
+.decl next_block(Block1:address,Block2:address)
+.input next_block
+///////////////////////////////////////////////////
+.decl instruction(ea:address, size:number, prefix:symbol, opcode:symbol,
+          op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code,
+          immOffset:number,displacementOffset:number)
+.input instruction
+
+// three kinds of operators
+.decl op_regdirect(code:operand_code,register_name:register)
+.input op_regdirect
+
+.decl op_immediate(code:operand_code,offset:number)
+.input op_immediate
+
+.decl op_indirect(code:operand_code,reg1:register, reg2:register, reg3:register,
+        multiplier:number, offset:number, size_value:number)
+.input op_indirect
+
+//////////////////////////////////////////////////////////////
+
+.decl cfg_edge(Src:address,Dest:address,Conditional:symbol,Indirect:symbol,Type:symbol)
+.input cfg_edge
+
+.decl cfg_edge_to_top(Src:address,Conditional:symbol,Indirect:symbol,Type:symbol)
+.input cfg_edge_to_top
+
+.decl cfg_edge_to_symbol(Src:address,Symbol:symbol,Conditional:symbol,Indirect:symbol,Type:symbol)
+.input cfg_edge_to_symbol
+
+.decl symbolic_expression(Address:address,Symbol:address,Offset:number)
+.input symbolic_expression
+
+.decl symbol_minus_symbol(Address:address,Symbol1:address,Symbol2:address,Offset:number)
+.input symbol_minus_symbol
+
+.decl fde_addresses(Begin:address,End:address)
+.input fde_addresses
+
+.decl padding(Begin:address,Size:number)
+.input padding
+
+.decl function_entry(Address:address)
+.input function_entry
+
+.decl function_entry_final(Address:address)
+.output function_entry_final
+
+.decl in_function_final(Block:address,Function:address)
+.output in_function_final
+/////////////////////////////////////////////////////////////////////
+// Component instantiation and chaining
+.init phase1 = FunctionPropagation
+.init phase2 = FunctionPropagation
+
+phase1.function_entry_initial(function):-
+    function_entry(function).
+
+phase2.function_entry_initial(function):-
+    phase1.function_entry_final(function).
+
+function_entry_final(Function):-
+    phase2.function_entry_final(Function).
+
+
+in_function_final(Function,Function):-
+    function_entry_final(Function).
+
+in_function_final(Block,Function):-
+    in_function_final(BlockPrev,Function),
+    next_block(BlockPrev,Block),
+    !function_entry_final(Block).
+
+//////////////////////////////////////////////////////////////////
+// auxiliary predicates
+
+.decl fallthrough(Src:address,Dest:address)
+
+fallthrough(Src,Dest):-
+    cfg_edge(Src,Dest,_,_,"fallthrough").
+
+.decl unconditional_jump(Src:address,Dest:address)
+
+unconditional_jump(Src,Dest):-
+    cfg_edge(Src,Dest,"false",_,"branch").
+
+.decl incomplete_block(src:address)
+
+incomplete_block(Src):-
+    cfg_edge(Src,_,_,"true","branch");
+    cfg_edge_to_top(Src,_,"true","branch");
+    cfg_edge_to_symbol(Src,_,_,"true","branch").
+
+.decl block_in_between_fde(Block:address)
+
+block_in_between_fde(Block):-
+    block(Block,_),
+    fde_addresses(Begin,End),
+    Begin < Block,
+    Block < End.
+
+.decl block_in_padding(Block:address)
+
+block_in_padding(Block):-
+    padding(Beg,Size),
+    block(Block,_),
+    Beg <= Block, Block < Beg+Size.
+
+.decl block_after_no_fallthrough(Block:address)
+
+block_after_no_fallthrough(Block):-
+    block(Block,_),
+    next_block(Prev,Block),
+    !fallthrough(Prev,Block),
+    !block_in_between_fde(Block).
+
+block_after_no_fallthrough(Block):-
+    block_after_no_fallthrough(Prev),
+    block_in_padding(Prev),
+    next_block(Prev,Block).
+
+.decl candidate_block(Block:address)
+
+candidate_block(Block):-
+    block_after_no_fallthrough(Block),
+    !block_in_padding(Block).
+
+.decl typical_function_start(EA:address)
+
+typical_function_start(Block):-
+    block(Block,_),
+    instruction(Block,_,_,"SUB",Op1,Op2,_,_,_,_),
+    op_immediate(Op1,_),
+    op_regdirect(Op2,"RSP").
+
+typical_function_start(Block):-
+    block(Block,_),
+    instruction(Block,_,_,"PUSH",Op1,_,_,_,_,_),
+    op_regdirect(Op1,"RBP").
+
+.decl symbolic_expression_in_code(Address:address,Symbol:address,Offset:number)
+.output symbolic_expression_in_code
+
+symbolic_expression_in_code(Address,Symbol,Offset):-
+    block(Block,Size),
+    symbolic_expression(Address,Symbol,Offset),
+    Address >= Block,
+    Address < Block+Size.
+
+.decl symbolic_expression_in_data(Address:address,Symbol:address,Offset:number)
+.output symbolic_expression_in_data
+
+symbolic_expression_in_data(Address,Symbol,Offset):-
+    symbolic_expression(Address,Symbol,Offset),
+    !symbolic_expression_in_code(Address,Symbol,Offset).
+
+/////////////////////////////////////////////////////////////////////
+// Component to obtain additional function entries
+
+.comp FunctionPropagation {
+
+    .decl function_entry_initial(Address:address)
+    .decl function_entry_final(Address:address)
+
+    .decl reason(Address:address,Why:symbol)
+    .output reason
+
+    // not referenced anywhere
+    reason(Block,"not referenced anywhere"),
+    function_entry_initial(Block):-
+        candidate_block(Block),
+        !symbolic_expression(_,Block,_),
+        !symbol_minus_symbol(_,Block,_,_),
+        !symbol_minus_symbol(_,_,Block,_),
+        typical_function_start(Block).
+
+    function_entry_initial(Block):-
+        function_pointer(_,Block).
+
+    .decl function_pointer(Address:address,Dest:address)
+
+    // any pointer that does not seems to belong to a jump table is likely a function pointer
+    function_pointer(Address,Dest):-
+        symbolic_expression(Address,Dest,0),
+        function_entry_initial(Dest).
+
+    // isolated pointer
+    reason(Dest,"isolated pointer"),
+    function_pointer(Address,Dest):-
+        symbolic_expression_in_data(Address,Dest,0),
+        candidate_block(Dest),
+        !symbolic_expression_in_data(Address-8,_,0),
+        !symbolic_expression_in_data(Address+8,_,0).
+
+    // consecutive function pointers
+    reason(Dest,"consecutive function pointers"),
+    function_pointer(Address,Dest):-
+        symbolic_expression_in_data(Address,Dest,0),
+        candidate_block(Dest),
+        (
+            function_pointer(Address-8,_);
+            function_pointer(Address+8,_)
+        ).
+
+    // two typical function starts together
+    reason(Dest,"typical function starts together"),
+    function_pointer(Address,Dest):-
+        symbolic_expression_in_data(Address,Dest,0),
+        candidate_block(Dest),
+        typical_function_start(Dest),
+        symbolic_expression_in_data(Address+8,Dest2,0),
+        candidate_block(Dest2),
+        typical_function_start(Dest2).
+
+    //Initial propagation: jumped from another function (there is a function boundary in between)
+    reason(Block,"jumped from another function"),
+    function_entry_initial(Block):-
+        candidate_block(Block),
+        unconditional_jump(Src,Block),
+        function_entry_initial(Middle),
+        (
+            Src >= Middle, Middle > Block
+            ;
+            Src < Middle, Middle <= Block
+        ).
+
+    // propagation based on completeness
+    function_entry_final(Block):-
+        function_entry_initial(Block).
+
+    reason(Block,"after complete function"),
+    function_entry_final(Block):-
+        candidate_block(Block),
+        next_block(Prev,Block),
+        reach_from_entry(Prev,Function),
+        complete_function(Function),
+        !reach_from_entry(Block,Function).
+
+    // Completeness computation
+    .decl reach_from_entry(Block:address,Function:address)
+
+    reach_from_entry(Function,Function):-
+        function_entry_initial(Function).
+
+    reach_from_entry(Dest,Function):-
+        reach_from_entry(Src,Function),
+        cfg_edge(Src,Dest,_,"false","branch"),
+        !function_entry_initial(Dest).
+
+    reach_from_entry(Dest,Function):-
+        reach_from_entry(Src,Function),
+        cfg_edge(Src,Dest,_,"false","fallthrough"),
+        !function_entry_initial(Dest).
+
+    .decl incomplete_function(Function:address)
+
+    incomplete_function(Function):-
+        reach_from_entry(Block,Function),
+        incomplete_block(Block).
+
+    .decl complete_function(Function:address)
+
+    complete_function(Function):-
+        function_entry_initial(Function),
+        incomplete_function(Function).
+}

@@ -53,6 +53,9 @@ Ddisasm accepts the following parameters:
     binary contains complete relocation information. You can enable
     that in `ld` using the option `--emit-relocs`.
 
+`-F [ --skip-function-analysis ]`
+:   Skip additional analyses to compute more precise function boundaries.
+
 # EXAMPLES
 
 **ddisasm** ./examples/ex1/ex

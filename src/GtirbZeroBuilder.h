@@ -1,4 +1,4 @@
-//===- Dl_operator_table.cpp ------------------------------------*- C++ -*-===//
+//===- GtirbZeroBuilder.h ---------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -21,39 +21,29 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Dl_operator_table.h"
+#include <gtirb/gtirb.hpp>
 
-int64_t Dl_operator_table::add_to_dict(op_dict& dict, Dl_operator op)
-{
-    auto pair = dict.find(op);
-    if(pair != dict.end())
-        return (pair->second);
-    else
-    {
-        dict[op] = curr_index;
-        return curr_index++;
-    }
-}
+#ifndef GTIRB_ZERO_BUILDER_H_
+#define GTIRB_ZERO_BUILDER_H_
 
-int64_t Dl_operator_table::add(Dl_operator op)
+struct ExtraSymbolInfo
 {
-    return add_to_dict(dicts[op.get_type()], op);
-}
-void Dl_operator_table::print_operators_of_type(operator_type type, std::ofstream& fbuf)
-{
-    for(auto pair : dicts[type])
-    {
-        fbuf << pair.first.print_tabs(pair.second) << std::endl;
-    }
-}
+    uint64_t size;
+    std::string type;
+    std::string scope;
+    uint64_t sectionIndex;
+};
 
-std::vector<std::pair<Dl_operator, int64_t>> Dl_operator_table::get_operators_of_type(
-    operator_type type) const
+template <>
+struct gtirb::auxdata_traits<ExtraSymbolInfo>
 {
-    std::vector<std::pair<Dl_operator, int64_t>> result;
-    for(const auto& pair : dicts[type])
-    {
-        result.push_back(pair);
-    }
-    return result;
-}
+    static std::string type_id();
+    static void toBytes(const ExtraSymbolInfo& Object, to_iterator It);
+    static from_iterator fromBytes(ExtraSymbolInfo& Object, from_iterator It);
+};
+
+using SectionProperties = std::tuple<uint64_t, uint64_t>;
+
+gtirb::IR* buildZeroIR(const std::string& filename, gtirb::Context& context);
+
+#endif // GTIRB_ZERO_BUILDER_H_

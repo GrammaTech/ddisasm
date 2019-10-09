@@ -1,4 +1,4 @@
-//===- Dl_decoder.h ---------------------------------------------*- C++ -*-===//
+//===- DlDecoder.h ----------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -23,42 +23,40 @@
 
 #ifndef SRC_DL_DECODER_H_
 #define SRC_DL_DECODER_H_
-#include "Dl_instruction.h"
-#include "Dl_operator.h"
-#include "Dl_operator_table.h"
-
 #include <capstone/capstone.h>
-#include <cstdint>
+#include <souffle/SouffleInterface.h>
+#include <gtirb/gtirb.hpp>
+#include "DatalogUtils.h"
+#include "DlOperandTable.h"
+
 #include <vector>
 
 template <class Content>
-struct Dl_data
+struct DlData
 {
-public:
-    int64_t ea;
+    gtirb::Addr ea;
     Content content;
-    Dl_data(int64_t ea, Content content) : ea(ea), content(content)
-    {
-    }
 };
 
-class Dl_decoder
+class DlDecoder
 {
+private:
     csh csHandle;
+    DlOperandTable op_dict;
+    std::vector<DlInstruction> instructions;
+    std::vector<gtirb::Addr> invalids;
+    std::vector<DlData<gtirb::Addr>> data_addresses;
+    std::vector<DlData<unsigned char>> data_bytes;
+    void decodeSection(gtirb::ImageByteMap::const_range& sectionBytes, uint64_t size,
+                       gtirb::Addr ea);
+    void loadInputs(souffle::SouffleProgram* prog, gtirb::Module& module);
+    void storeDataSection(gtirb::ImageByteMap::const_range& sectionBytes, uint64_t size,
+                          gtirb::Addr ea, gtirb::Addr min_address, gtirb::Addr max_address);
 
 public:
-    Dl_operator_table op_dict;
-    std::vector<Dl_instruction> instructions;
-    std::vector<int64_t> invalids;
-    std::vector<Dl_data<int64_t>> data_addresses;
-    std::vector<Dl_data<unsigned char>> data_bytes;
-    Dl_decoder();
-    void decode_section(uint8_t* buff, uint64_t size, int64_t ea);
-    std::string getRegisterName(unsigned int reg);
-    Dl_instruction transformInstruction(cs_insn& insn);
-    Dl_operator buildOperand(const cs_x86_op& op);
-    void store_data_section(uint8_t* buff, uint64_t size, int64_t ea, uint64_t min_address,
-                            uint64_t max_address);
+    DlDecoder();
+    ~DlDecoder();
+    souffle::SouffleProgram* decode(gtirb::Module& module);
 };
 
 #endif /* SRC_DL_DECODER_H_ */

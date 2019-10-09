@@ -89,6 +89,9 @@ code_section(Name):-
     section_complete(Name,_,_,_,Flags),
     elf_section_flag("SHF_EXECINSTR",Pos_Exec), Flags band (2^Pos_Exec)  > 0.
 
+function_pointer_section(".init_array"):-binary_format("ELF").
+function_pointer_section(".fini_array"):-binary_format("ELF").
+function_pointer_section(".got.plt"):-binary_format("ELF").
 ////////////////////////////////////////////////////////////////////////////
 // detect references  to libraries (calls to plt)
 .decl plt_section(name:symbol)
@@ -104,6 +107,10 @@ bss_section(Name):-
     SHT_NOBITS = 8,
     Type = SHT_NOBITS.
 
+non_zero_data_section(Name):-
+    data_section(Name),
+    !bss_section(Name),
+    Name != ".dynamic".
 ////////////////////////////////////////////////////////////////////////////
 // detect references  to libraries (calls to plt)
 .decl plt_entry(ea:address, function:symbol)
@@ -180,7 +187,7 @@ inferred_symbol_name(EA,"__do_global_dtors_aux"):-
 
 inferred_symbol_name(EA,"__do_global_dtors_aux"):-
     !function_symbol(EA,"__do_global_dtors_aux"),
-    function_entry2(EA),
+    function_inference.function_entry(EA),
     // referenced from .fini_array
     address_in_data(FiniArray,EA),
     section(".fini_array",Size,Beg),
@@ -200,3 +207,11 @@ inferred_symbol_name(EA,"_DYNAMIC"):-
     binary_format("ELF"),
     !symbol(EA,_,_,_,_,"_DYNAMIC"),
     section(".dynamic",_,EA).
+
+
+no_return_function("exit"):-binary_format("ELF").
+no_return_function("_exit"):-binary_format("ELF").
+no_return_function("abort"):-binary_format("ELF").
+no_return_function("__stack_chk_fail"):-binary_format("ELF").
+no_return_function("__assert_fail"):-binary_format("ELF").
+no_return_function("longjump"):-binary_format("ELF").

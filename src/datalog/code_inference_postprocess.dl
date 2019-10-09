@@ -24,6 +24,7 @@
 /*
   After symbolization, we merge blocks that start at addresses
   that are never referenced and must fallthrough from another block.
+  Compute padding regions.
 
 */
     
@@ -45,13 +46,14 @@ block_needs_merging(Block):-
     block(Block),
     must_fallthrough(Code,Block),
     code(Code),
-    //not reference anywhere
+    //not referenced anywhere
     !symbolic_operand(_,_,Block,_),
     !code_pointer_in_data(_,Block),
     !symbol_minus_symbol(_,_,_,Block),
     !moved_data_label(_,_,_,Block),
     !moved_label(_,_,_,Block),
     !function_symbol(Block,_),
+    !defined_symbol(Block,_,_,_,_,_),
     !start_function(Block),
     !instruction_has_loop_prefix(Block).
     
@@ -80,3 +82,34 @@ block_information(Block,BlockSize,LastEA+InsnSize):-
     refined_block_last_instruction(Block,LastEA),
     instruction(LastEA, InsnSize, _, _,_, _, _, _),
     BlockSize= LastEA+InsnSize - Block.
+
+////////////////////////////////////////////////////////
+// Compute padding regions
+
+.decl padding(EA:address,Size:number)
+.output padding
+
+// blocks with only nops are padding
+padding(EA,Size):-
+    nop_block(EA),
+    block_information(EA,Size,_).
+
+// padding that does not form a block
+padding(EA,Size):-
+    after_end(NonNop,End),
+    //this condition guarantees that we take the last after_end of a sequence of nops
+    !arch.is_nop(NonNop),
+    next(End,EA),
+    Size = NonNop-EA.
+
+.decl block_has_non_nop(Block:address)
+
+block_has_non_nop(Block):-
+    code_in_refined_block(EA,Block),
+    !arch.is_nop(EA).
+
+.decl nop_block(Block:address)
+
+nop_block(Block):-
+    refined_block(Block),
+    !block_has_non_nop(Block).

@@ -1,4 +1,4 @@
-//===- Dl_instruction.cpp ---------------------------------------*- C++ -*-===//
+//===- GtirbModuleDisassembler.h --------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -21,21 +21,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Dl_instruction.h"
-#include <sstream>
+#include <souffle/SouffleInterface.h>
+#include <gtirb/gtirb.hpp>
 
-std::string Dl_instruction::result_tabs()
-{
-    std::ostringstream o;
-    o << address << "\t" << size << "\t" << prefix << "\t" << name;
-    for(size_t i = 0; i < 4; ++i)
-    {
-        if(i < op_codes.size())
-            o << "\t" << op_codes[i];
-        else
-            o << "\t" << 0;
-    }
-    o << "\t" << static_cast<int16_t>(immediateOffset) << "\t"
-      << static_cast<int16_t>(displacementOffset);
-    return o.str();
-}
+#ifndef GTIRB_MODULE_DISASSEMBLER_H_
+#define GTIRB_MODULE_DISASSEMBLER_H_
+
+void disassembleModule(gtirb::Context &context, gtirb::Module &module,
+                       souffle::SouffleProgram *prog, bool selfDiagnose);
+void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose);
+
+#endif // GTIRB_MODULE_DISASSEMBLER_H_

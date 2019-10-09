@@ -17,19 +17,6 @@ may then be used to pretty print the GTIRB to reassemblable assembly
 code.
 
 
-## Introduction
-
-The analysis contains two parts:
-
-- The C++ files take care of reading an elf file and generating facts
-  that represent all the information contained in the binary.
-
-- `src/datalog/*.dl` contains the specification of the analyses in
-  datalog.  It takes the basic facts and computes likely EAs, chunks
-  of code, etc. The results are represented in GTIRB or can be printed
-  to assembler code using the gtirb-pprinter.
-
-
 ## Dependencies
 
 ddisasm uses C++17, and requires a compiler which supports
@@ -117,7 +104,7 @@ Ddisasm accepts the following parameters:
 `--debug-dir arg`
 :   location to write CSV files for debugging
 
--K [ --keep-functions ] arg
+`-K [ --keep-functions ] arg`
 :   Print the given functions even if they are skipped by default (e.g. _start)
 
 `--self-diagnose`
@@ -125,6 +112,9 @@ Ddisasm accepts the following parameters:
     of the symbolization process. This option only works if the target
     binary contains complete relocation information. You can enable
     that in `ld` using the option `--emit-relocs`.
+
+`-F [ --skip-function-analysis ]`
+:   Skip additional analyses to compute more precise function boundaries.
 
 
 ## Rewriting a project
@@ -173,6 +163,8 @@ ddisasm generates the following AuxData tables:
 | cfiDirectives        | `std::map<gtirb::Offset, std::vector<std::tuple<std::string, std::vector<int64_t>, gtirb::UUID>>>` | Map from Offsets to vector of cfi directives. A cfi directive contains: a string describing the directive, a vector of numeric arguments, and an optional symbolic argument (represented with the UUID of the symbol). |
 | libraries            | `std::vector<std::string>`                                                                         | Names of the libraries that are needed.                                                                                                                                                                                |
 | libraryPaths         | `std::vector<std::string>`                                                                         | Paths contained in the rpath of the binary.                                                                                                                                                                            |
+| padding              | `std::map<gtirb::Addr, uint64_t>`                                                                  | Address where there is padding and the length of the padding in bytes.                                                                                                                                                 |
+| SCCs                 | `std::map<gtirb::UUID, int64_t>`                                                                   | The intra-procedural SCC identifier of each block                                                                                                                                                                      |
 
 ## Some References
 

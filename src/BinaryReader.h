@@ -26,32 +26,82 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "gtirb/gtirb.hpp"
 
-struct Symbol
+namespace InitialAuxData
 {
-    uint64_t address;
-    uint64_t size;
-    std::string type;
-    std::string scope;
-    uint64_t sectionIndex;
-    std::string name;
-};
+    struct Symbol
+    {
+        uint64_t address;
+        uint64_t size;
+        std::string type;
+        std::string scope;
+        uint64_t sectionIndex;
+        std::string name;
+    };
 
-struct Section
-{
-    std::string name;
-    uint64_t size;
-    uint64_t address;
-    uint64_t type;
-    uint64_t flags;
-};
+    constexpr bool operator<(const Symbol &LHS, const Symbol &RHS) noexcept
+    {
+        return std::tie(LHS.address, LHS.size, LHS.type, LHS.scope, LHS.sectionIndex, LHS.name)
+               < std::tie(RHS.address, RHS.size, RHS.type, RHS.scope, RHS.sectionIndex, RHS.name);
+    }
 
-struct Relocation
+    struct Section
+    {
+        std::string name;
+        uint64_t size;
+        uint64_t address;
+        uint64_t type;
+        uint64_t flags;
+    };
+
+    constexpr bool operator<(const Section &LHS, const Section &RHS) noexcept
+    {
+        return std::tie(LHS.name, LHS.size, LHS.address, LHS.type, LHS.flags)
+               < std::tie(RHS.name, RHS.size, RHS.address, RHS.type, RHS.flags);
+    }
+
+    struct Relocation
+    {
+        uint64_t address;
+        std::string type;
+        std::string name;
+        int64_t addend;
+    };
+
+    constexpr bool operator<(const Relocation &LHS, const Relocation &RHS) noexcept
+    {
+        return std::tie(LHS.address, LHS.type, LHS.name, LHS.addend)
+               < std::tie(RHS.address, RHS.type, RHS.name, RHS.addend);
+    }
+
+} // namespace InitialAuxData
+
+template <>
+struct gtirb::auxdata_traits<InitialAuxData::Relocation>
 {
-    uint64_t address;
-    std::string type;
-    std::string name;
-    int64_t addend;
+    static std::string type_id()
+    {
+        return "InitialRelocation";
+    }
+
+    static void toBytes(const InitialAuxData::Relocation &Object, to_iterator It)
+    {
+        auxdata_traits<std::tuple<uint64_t, std::string, std::string, int64_t>>::toBytes(
+            std::make_tuple(Object.address, Object.type, Object.name, Object.addend), It);
+    }
+
+    static from_iterator fromBytes(InitialAuxData::Relocation &Object, from_iterator It)
+    {
+        std::tuple<uint64_t, std::string, std::string, int64_t> Tuple;
+        auxdata_traits<std::tuple<uint64_t, std::string, std::string, int64_t>>::fromBytes(Tuple,
+                                                                                           It);
+        Object.address = std::get<0>(Tuple);
+        Object.type = std::get<1>(Tuple);
+        Object.name = std::get<2>(Tuple);
+        Object.addend = std::get<3>(Tuple);
+        return It;
+    }
 };
 
 class BinaryReader
@@ -62,21 +112,20 @@ public:
     virtual uint64_t get_max_address() = 0;
     virtual uint64_t get_min_address() = 0;
 
-    virtual std::string get_binary_format() = 0;
-    virtual std::vector<Section> get_sections() = 0;
-    virtual std::vector<Section> get_code_sections() = 0;
-    virtual std::vector<Section> get_non_zero_data_sections() = 0;
+    virtual gtirb::FileFormat get_binary_format() = 0;
+    virtual std::set<InitialAuxData::Section> get_sections() = 0;
 
     virtual std::string get_binary_type() = 0;
     virtual uint64_t get_entry_point() = 0;
-    virtual std::vector<Symbol> get_symbols() = 0;
+    virtual std::set<InitialAuxData::Symbol> get_symbols() = 0;
 
-    virtual std::vector<Relocation> get_relocations() = 0;
+    virtual std::set<InitialAuxData::Relocation> get_relocations() = 0;
 
     virtual std::vector<std::string> get_libraries() = 0;
     virtual std::vector<std::string> get_library_paths() = 0;
 
     virtual std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
-    get_section_content_and_address(const std::string& name) = 0;
+    get_section_content_and_address(const std::string &name) = 0;
 };
+
 #endif /* BINARY_READER_H_ */

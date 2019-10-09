@@ -1,4 +1,4 @@
-//===- Dl_operator_table.h --------------------------------------*- C++ -*-===//
+//===- FunctionInferencePass.h ----------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -21,35 +21,25 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef SRC_DL_OPERATOR_TABLE_H_
-#define SRC_DL_OPERATOR_TABLE_H_
+#ifndef FUNCTION_INFERENCE_PASS_H_
+#define FUNCTION_INFERENCE_PASS_H_
 
-#include "Dl_operator.h"
+#include <souffle/SouffleInterface.h>
+#include <gtirb/gtirb.hpp>
+#include <optional>
 
-#include <cstdint>
-#include <fstream>
-#include <map>
-#include <string>
-#include <vector>
-
-class Dl_operator_table
+// Refine function boundaries
+class FunctionInferencePass
 {
-    using op_dict = std::map<Dl_operator, int64_t, compare_operators>;
-
 private:
-    op_dict dicts[operator_type::INDIRECT + 1];
-    int64_t curr_index;
-    int64_t add_to_dict(op_dict& dict, Dl_operator op);
+    std::optional<std::string> DebugDir;
+
+    void populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Context& Ctx,
+                             gtirb::Module& M);
+    void updateFunctions(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M);
 
 public:
-    Dl_operator_table() : dicts(), curr_index(1)
-    {
-    } // we reserve 0 for empty operators
-
-    int64_t add(Dl_operator op);
-    void print_operators_of_type(operator_type type, std::ofstream& fbuf);
-    void print(std::string directory, std::ios_base::openmode filemask);
-    std::vector<std::pair<Dl_operator, int64_t>> get_operators_of_type(operator_type type) const;
+    void setDebugDir(std::string Path);
+    void computeFunctions(gtirb::Context& Ctx, gtirb::Module& module);
 };
-
-#endif /* SRC_DL_OPERATOR_TABLE_H_ */
+#endif // FUNCTION_INFERENCE_PASS_H_

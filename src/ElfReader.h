@@ -1,4 +1,4 @@
-//===- Elf_reader.h ---------------------------------------------*- C++ -*-===//
+//===- ElfReader.h ----------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -26,11 +26,11 @@
 
 #include <elf.h>
 #include <fstream>
+#include <set>
 #include <tuple>
-#include <vector>
 #include "BinaryReader.h"
 
-class Elf_reader : public BinaryReader
+class ElfReader : public BinaryReader
 {
 private:
     std::ifstream file;
@@ -59,31 +59,27 @@ private:
     void read_dynamic_section();
 
     std::string get_relocation_type(unsigned int type);
-    void print_symbol_table(std::ostream& stream, std::vector<Elf64_Sym>& symbol_table,
-                            std::vector<std::string>& symbol_name_table);
-    void add_symbols_from_table(std::vector<Symbol>& out,
+    void add_symbols_from_table(std::set<InitialAuxData::Symbol>& out,
                                 const std::vector<Elf64_Sym>& symbol_table,
                                 const std::vector<std::string>& symbol_name_table);
 
     int get_section_index(const std::string& name);
 
 public:
-    Elf_reader(std::string filename);
-    ~Elf_reader();
+    ElfReader(std::string filename);
+    ~ElfReader();
 
     bool is_valid() override;
     uint64_t get_max_address() override;
     uint64_t get_min_address() override;
 
-    std::string get_binary_format() override;
-    std::vector<Section> get_sections() override;
-    std::vector<Section> get_code_sections() override;
-    std::vector<Section> get_non_zero_data_sections() override;
+    gtirb::FileFormat get_binary_format() override;
+    std::set<InitialAuxData::Section> get_sections() override;
 
     std::string get_binary_type() override;
     uint64_t get_entry_point() override;
-    std::vector<Symbol> get_symbols() override;
-    std::vector<Relocation> get_relocations() override;
+    std::set<InitialAuxData::Symbol> get_symbols() override;
+    std::set<InitialAuxData::Relocation> get_relocations() override;
 
     std::vector<std::string> get_libraries() override;
     std::vector<std::string> get_library_paths() override;
