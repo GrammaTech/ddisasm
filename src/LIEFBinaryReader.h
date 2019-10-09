@@ -47,8 +47,8 @@ public:
     std::vector<std::string> get_libraries() override;
     std::vector<std::string> get_library_paths() override;
 
-    std::vector<DataDirectory> get_data_directories() override;
-    std::vector<ImportEntry> get_import_entries() override;
+    std::vector<InitialAuxData::DataDirectory> get_data_directories() override;
+    std::vector<InitialAuxData::ImportEntry> get_import_entries() override;
 
     std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> get_section_content_and_address(
         const std::string& name) override;

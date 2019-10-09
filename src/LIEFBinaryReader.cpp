@@ -205,9 +205,9 @@ std::vector<std::string> LIEFBinaryReader::get_library_paths()
     return libraryPaths;
 }
 
-std::vector<DataDirectory> LIEFBinaryReader::get_data_directories()
+std::vector<InitialAuxData::DataDirectory> LIEFBinaryReader::get_data_directories()
 {
-    std::vector<DataDirectory> dataDirectories;
+    std::vector<InitialAuxData::DataDirectory> dataDirectories;
     if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
     {
         for(auto& directory : pe->data_directories())
@@ -219,9 +219,9 @@ std::vector<DataDirectory> LIEFBinaryReader::get_data_directories()
     return dataDirectories;
 }
 
-std::vector<ImportEntry> LIEFBinaryReader::get_import_entries()
+std::vector<InitialAuxData::ImportEntry> LIEFBinaryReader::get_import_entries()
 {
-    std::vector<ImportEntry> importEntries;
+    std::vector<InitialAuxData::ImportEntry> importEntries;
     if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
     {
         for(auto& import : pe->imports())

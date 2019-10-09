@@ -54,6 +54,20 @@ namespace souffle
           << symbol.name;
         return t;
     }
+
+    souffle::tuple &operator<<(souffle::tuple &t,
+                               const InitialAuxData::DataDirectory &DataDirectory)
+    {
+        t << DataDirectory.address << DataDirectory.size << DataDirectory.type;
+        return t;
+    }
+
+    souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::ImportEntry &ImportEntry)
+    {
+        t << ImportEntry.iat_address << ImportEntry.ordinal << ImportEntry.function
+          << ImportEntry.library;
+        return t;
+    }
 } // namespace souffle
 
 std::string getFileFormatString(gtirb::FileFormat format)
@@ -252,6 +266,16 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
         prog, "relocation",
         *module.getAuxData<std::set<InitialAuxData::Relocation>>("relocations"));
     module.removeAuxData("relocations");
+    if(module.getFileFormat() == gtirb::FileFormat::PE)
+    {
+        GtirbToDatalog::addToRelation(
+            prog, "data_directory",
+            *module.getAuxData<std::vector<InitialAuxData::DataDirectory>>("dataDirectories"));
+        GtirbToDatalog::addToRelation(
+            prog, "import_entry",
+            *module.getAuxData<std::vector<InitialAuxData::ImportEntry>>("importEntries"));
+    }
+
     GtirbToDatalog::addToRelation(prog, "instruction_complete", instructions);
     GtirbToDatalog::addToRelation(prog, "address_in_data", data_addresses);
     GtirbToDatalog::addToRelation(prog, "data_byte", data_bytes);
