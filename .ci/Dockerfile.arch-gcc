@@ -25,7 +25,7 @@ RUN cd /home/ddisasm \
     && cd build \
     && cmake -DLIEF_PYTHON_API=off -DCMAKE_BUILD_TYPE=Release .. \
     && cmake --build . --target LIB_LIEF_STATIC --config Release \
-    && make install
+    && sudo make install
 
 COPY --chown=ddisasm . /ddisasm
 
