@@ -96,12 +96,19 @@ find_package(ehp REQUIRED)
 # ---------------------------------------------------------------------------
 # Boost
 # ---------------------------------------------------------------------------
-find_package(Boost 1.67 REQUIRED COMPONENTS filesystem program_options system)
+set(BOOST_COMPONENTS filesystem program_options system)
+find_package(Boost 1.67 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
 
-if(NOT Boost_LIBRARIES)
-  message(FATAL_ERROR "\
-Boost was detected as being installed, but no libraries were found.
-Try specifying -DBoost_NO_BOOST_CMAKE=ON on the command line.")
+# Boost versions 1.70.0+ may use Boost's provided CMake support rather than
+# CMake's internal Boost support. The former uses "Boost::boost" and so on,
+# while the latter uses "Boost_BOOST" and so on. This normalizes the two cases
+# to use Boost_INCLUDE_DIRS and Boost_LIBRARIES.
+if(TARGET Boost::headers)
+  get_target_property(Boost_INCLUDE_DIRS Boost::headers
+                      INTERFACE_INCLUDE_DIRECTORIES)
+  foreach(BOOST_COMPONENT ${BOOST_COMPONENTS})
+    list(APPEND Boost_LIBRARIES Boost::${BOOST_COMPONENT})
+  endforeach()
 endif()
 
 include_directories(${Boost_INCLUDE_DIRS})
