@@ -38,10 +38,23 @@ bool LIEFBinaryReader::is_valid()
 std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
 LIEFBinaryReader::get_section_content_and_address(const std::string& name)
 {
-    for(auto& section : bin->sections())
+    if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
     {
-        if(section.name() == name)
-            return std::make_tuple(section.content(), section.virtual_address());
+        for(auto& section : elf->sections())
+        {
+            if(section.name() == name && section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS)
+                return std::make_tuple(section.content(), section.virtual_address());
+        }
+    }
+    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
+    {
+        for(auto& section : pe->sections())
+        {
+            if(section.name() == name
+               && !section.has_characteristic(
+                      LIEF::PE::SECTION_CHARACTERISTICS::IMAGE_SCN_CNT_UNINITIALIZED_DATA))
+                return std::make_tuple(section.content(), section.virtual_address());
+        }
     }
     return std::nullopt;
 }
