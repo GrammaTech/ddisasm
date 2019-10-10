@@ -174,6 +174,8 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
             gtirb::ImageByteMap::const_range bytes =
                 gtirb::getBytes(module.getImageByteMap(), section);
             decodeSection(bytes, bytes.size(), section.getAddress());
+            storeDataSection(bytes, bytes.size(), section.getAddress(), minMax.first,
+                             minMax.second);
         }
         if(isNonZeroDataSection(extraInfo))
         {

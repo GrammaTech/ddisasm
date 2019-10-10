@@ -639,79 +639,73 @@ void buildDataGroups(gtirb::Context &context, gtirb::Module &module, souffle::So
         convertSortedRelation<VectorByEA<SymbolSpecialType>>("symbol_special_encoding", prog);
     std::map<gtirb::UUID, std::string> typesTable;
 
-    for(auto &output : *prog->getRelation("non_zero_data_section"))
+    for(auto &output : *prog->getRelation("data_segment"))
     {
-        std::string sectionName;
-        output >> sectionName;
-        auto foundSection = module.findSection(sectionName);
-        if(foundSection != module.section_by_name_end())
+        gtirb::Addr begin, end;
+        output >> begin >> end;
+        for(auto currentAddr = begin; currentAddr < end;
+            /*incremented in each case*/)
         {
-            gtirb::Section &s = *foundSection;
-            auto limit = addressLimit(s);
-            for(auto currentAddr = s.getAddress(); currentAddr < limit;
-                /*incremented in each case*/)
+            gtirb::DataObject *d;
+            // undefined symbol
+            if(const auto symbolicExpr = symbolicExprs.find(currentAddr);
+               symbolicExpr != symbolicExprs.end())
             {
-                gtirb::DataObject *d;
-                // undefined symbol
-                if(const auto symbolicExpr = symbolicExprs.find(currentAddr);
-                   symbolicExpr != symbolicExprs.end())
-                {
-                    d = gtirb::DataObject::Create(context, currentAddr, symbolicExpr->Size);
-                    auto foundSymbol = module.findSymbols(symbolicExpr->Symbol);
-                    if(foundSymbol.begin() != foundSymbol.end())
-                        module.addSymbolicExpression(
-                            currentAddr,
-                            gtirb::SymAddrConst{symbolicExpr->Addend, &*foundSymbol.begin()});
-                }
-                else
-                    // symbol+constant
-                    if(const auto movedDataLabel = movedDataLabels.find(currentAddr);
-                       movedDataLabel != movedDataLabels.end())
-                {
-                    d = gtirb::DataObject::Create(context, currentAddr, movedDataLabel->Size);
-                    auto diff = movedDataLabel->Address1 - movedDataLabel->Address2;
-                    auto sym = getSymbol(context, module, gtirb::Addr(movedDataLabel->Address2));
-                    module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{diff, sym});
-                }
-                else
-                    // symbol+0
-                    if(const auto symbolic = symbolicData.find(currentAddr);
-                       symbolic != symbolicData.end())
-                {
-                    d = gtirb::DataObject::Create(context, currentAddr, symbolic->Size);
-                    auto sym = getSymbol(context, module, symbolic->GroupContent);
-                    module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{0, sym});
-                }
-                else
-                    // symbol-symbol
-                    if(const auto symMinusSym = symbolMinusSymbol.find(currentAddr);
-                       symMinusSym != symbolMinusSymbol.end())
-                {
-                    d = gtirb::DataObject::Create(context, currentAddr, symMinusSym->Size);
+                d = gtirb::DataObject::Create(context, currentAddr, symbolicExpr->Size);
+                auto foundSymbol = module.findSymbols(symbolicExpr->Symbol);
+                if(foundSymbol.begin() != foundSymbol.end())
                     module.addSymbolicExpression(
-                        gtirb::Addr(currentAddr),
-                        gtirb::SymAddrAddr{1, 0, getSymbol(context, module, symMinusSym->Symbol2),
-                                           getSymbol(context, module, symMinusSym->Symbol1)});
-                }
-                else
-                    // string
-                    if(const auto str = dataStrings.find(currentAddr); str != dataStrings.end())
-                {
-                    d = gtirb::DataObject::Create(context, currentAddr, str->End - currentAddr);
-                    typesTable[d->getUUID()] = std::string{"string"};
-                }
-                else
-                {
-                    // Store raw data
-                    d = gtirb::DataObject::Create(context, currentAddr, 1);
-                }
-                // symbol special types
-                const auto specialType = symbolSpecialTypes.find(currentAddr);
-                if(specialType != symbolSpecialTypes.end())
-                    typesTable[d->getUUID()] = specialType->Type;
-                module.addData(d);
-                currentAddr += d->getSize();
+                        currentAddr,
+                        gtirb::SymAddrConst{symbolicExpr->Addend, &*foundSymbol.begin()});
             }
+            else
+                // symbol+constant
+                if(const auto movedDataLabel = movedDataLabels.find(currentAddr);
+                   movedDataLabel != movedDataLabels.end())
+            {
+                d = gtirb::DataObject::Create(context, currentAddr, movedDataLabel->Size);
+                auto diff = movedDataLabel->Address1 - movedDataLabel->Address2;
+                auto sym = getSymbol(context, module, gtirb::Addr(movedDataLabel->Address2));
+                module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{diff, sym});
+            }
+            else
+                // symbol+0
+                if(const auto symbolic = symbolicData.find(currentAddr);
+                   symbolic != symbolicData.end())
+            {
+                d = gtirb::DataObject::Create(context, currentAddr, symbolic->Size);
+                auto sym = getSymbol(context, module, symbolic->GroupContent);
+                module.addSymbolicExpression(currentAddr, gtirb::SymAddrConst{0, sym});
+            }
+            else
+                // symbol-symbol
+                if(const auto symMinusSym = symbolMinusSymbol.find(currentAddr);
+                   symMinusSym != symbolMinusSymbol.end())
+            {
+                d = gtirb::DataObject::Create(context, currentAddr, symMinusSym->Size);
+                module.addSymbolicExpression(
+                    gtirb::Addr(currentAddr),
+                    gtirb::SymAddrAddr{1, 0, getSymbol(context, module, symMinusSym->Symbol2),
+                                       getSymbol(context, module, symMinusSym->Symbol1)});
+            }
+            else
+                // string
+                if(const auto str = dataStrings.find(currentAddr); str != dataStrings.end())
+            {
+                d = gtirb::DataObject::Create(context, currentAddr, str->End - currentAddr);
+                typesTable[d->getUUID()] = std::string{"string"};
+            }
+            else
+            {
+                // Store raw data
+                d = gtirb::DataObject::Create(context, currentAddr, 1);
+            }
+            // symbol special types
+            const auto specialType = symbolSpecialTypes.find(currentAddr);
+            if(specialType != symbolSpecialTypes.end())
+                typesTable[d->getUUID()] = specialType->Type;
+            module.addData(d);
+            currentAddr += d->getSize();
         }
     }
     buildBSS(context, module, prog);
