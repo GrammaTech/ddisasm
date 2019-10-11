@@ -111,7 +111,7 @@ false_negative(EA):-
     !zero_relocation(EA),
     !symbolic_data(EA,_,_),
     !symbol_minus_symbol(EA,_,_,_),
-
+    //FIXME code segments
     regular_data_section(Sect),
     section(Sect,SizeSect,BegSect),
     EA >= BegSect,

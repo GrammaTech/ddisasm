@@ -71,7 +71,7 @@ This module also computes and symbol_minus_symbol.
 .decl symbolic_expr_from_relocation(ea:address,size:number,symbol:symbol,Addend:number)
 .output symbolic_expr_from_relocation
 
-.decl symbol_minus_symbol_candidate(ea:address,symbol1:address,symbol2:address)
+.decl symbol_minus_symbol_candidate(ea:address,size:number,symbol1:address,symbol2:address)
 
 .decl symbol_minus_symbol(ea:address,size:number,symbol1:address,symbol2:address)
 .output symbol_minus_symbol
@@ -114,10 +114,8 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
     (
         code(Dest), Type="code"
         ;
-        data_section(Name),
-        section(Name,SizeSect,Base),
-        Dest >= Base,
-        Dest <= Base+SizeSect,
+        data_segment(Begin,End),
+        Dest >= Begin, Dest <= End,
         Type = "data"
     ).
 
@@ -150,10 +148,9 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
     (
         code(Dest), Type = "code"
         ;
-        data_section(Name),
-        section(Name,SizeSect,Base),
-        Dest >= Base,
-        Dest <= Base+SizeSect,
+        data_segment(Begin,End),
+        Dest >= Begin,
+        Dest <= End,
         Type = "data"
     ).
 
@@ -233,50 +230,50 @@ labeled_data_candidate(Val):-
 
 // Detect symbol-symbol
 ////////////////////////////////////////////////////////////////////////
-symbol_minus_symbol_candidate(EA,EA,Symbol2):-
-    data_access_pattern(EA,4,4,_Ref),
-    relative_address(EA,EA,Symbol2),
+symbol_minus_symbol_candidate(EA,Size,EA,Symbol2):-
+    data_access_pattern(EA,Size,Size,_Ref),
+    relative_address(EA,EA,Symbol2,Size),
     block(Symbol2),
-    relative_address(EA+4,EA,Symbol3),
+    relative_address(EA+Size,EA,Symbol3,Size),
     block(Symbol3).
 
-symbol_minus_symbol_candidate(EA,EA,Symbol2):-
-    relative_address(EA,EA,Symbol2),
+symbol_minus_symbol_candidate(EA,Size,EA,Symbol2):-
+    relative_address(EA,EA,Symbol2,Size),
     block(Symbol2),
-    data_access_pattern(EA+4,4,4,_Ref),
-    relative_address(EA+4,EA,Symbol3),
+    data_access_pattern(EA+Size,Size,Size,_Ref),
+    relative_address(EA+Size,EA,Symbol3,Size),
     block(Symbol3).
 
 // more permissive symbol_minus_symbol_candidate starting point
-symbol_minus_symbol_candidate(EA,EA,Symbol2):-
-    relative_address(EA,EA,Symbol1),
+symbol_minus_symbol_candidate(EA,Size,EA,Symbol2):-
+    relative_address(EA,EA,Symbol1,Size),
     block(Symbol1),
-    relative_address(EA+4,EA,Symbol2),
-    !preferred_data_access(EA+4,_),
+    relative_address(EA+Size,EA,Symbol2,Size),
+    !preferred_data_access(EA+Size,_),
     block(Symbol2),
-    relative_address(EA+8,EA,Symbol3),
-    !preferred_data_access(EA+8,_),
+    relative_address(EA+(2*Size),EA,Symbol3,Size),
+    !preferred_data_access(EA+(2*Size),_),
     block(Symbol3).
 
-symbol_minus_symbol_candidate(EA,EA_ref,Symbol2):-
-    symbol_minus_symbol_candidate(EA_label,EA_ref,_),
+symbol_minus_symbol_candidate(EA,Size,EA_ref,Symbol2):-
+    symbol_minus_symbol_candidate(EA_label,Size,EA_ref,_),
     preferred_data_access(EA,EA_label),
-    relative_address(EA,EA_ref,Symbol2),
+    relative_address(EA,EA_ref,Symbol2,Size),
     block(Symbol2).
 
 //more permissive symbol_minus_symbol_candidate propagation
-symbol_minus_symbol_candidate(EA+4,EA_ref,Symbol):-
-    symbol_minus_symbol_candidate(EA,EA_ref,_),
-    relative_address(EA+4,EA_ref,Symbol),
+symbol_minus_symbol_candidate(EA+Size,Size,EA_ref,Symbol):-
+    symbol_minus_symbol_candidate(EA,Size,EA_ref,_),
+    relative_address(EA+Size,EA_ref,Symbol,Size),
     block(Symbol),
     (
-        !preferred_data_access(EA+4,_)
+        !preferred_data_access(EA+Size,_)
         ;
-        preferred_data_access(EA+4,EA_label),
-        data_access_pattern(EA_label,4,4,_)
+        preferred_data_access(EA+Size,EA_label),
+        data_access_pattern(EA_label,Size,Size,_)
         ;
-        preferred_data_access(EA+4,EA_label),
-        data_access_pattern(EA_label,4,0,_)
+        preferred_data_access(EA+Size,EA_label),
+        data_access_pattern(EA_label,Size,0,_)
     ).
 ////////////////////////////////////////////////////////////////////////
 // address_in_data considers anything that points to the code region
@@ -287,10 +284,8 @@ address_in_data_refined(EA,Val):-
     binary_type("DYN"),
     address_in_data(EA,Val),
     relocation(EA,_,_,_),
-    data_section(Name),
-    section(Name,Size,Beg),
-    Val >= Beg,
-    Val <= Size+Beg.
+    data_segment(Beg,End),
+    Val >= Beg, Val <= End.
 
 address_in_data_refined(EA,Val):-
     binary_type("DYN"),
@@ -301,10 +296,9 @@ address_in_data_refined(EA,Val):-
 address_in_data_refined(EA,Val):-
     binary_type("EXEC"),
     address_in_data(EA,Val),
-    data_section(Name),
-    section(Name,Size,Beg),
+    data_segment(Beg,End),
     Val >= Beg,
-    Val <= Size+Beg.
+    Val <= End.
       
 address_in_data_refined(EA,Val):-
     binary_type("EXEC"),
@@ -355,8 +349,8 @@ string_part(EA+1,Base):-
 
 .decl data_object(ea:address,size:number,type:symbol)
 
-data_object_candidate(EA,4,"symbol-symbol"):-
-    symbol_minus_symbol_candidate(EA,_,_).
+data_object_candidate(EA,Size,"symbol-symbol"):-
+    symbol_minus_symbol_candidate(EA,Size,_,_).
 
 data_object_candidate(EA,Pt_size,"symbol"):-
     arch.pointer_size(Pt_size),
@@ -448,6 +442,9 @@ address_array_range.in_ea(EA):-
 
 data_object_point(EA,Pt_size,Type,-2,"data object bias"):-
     data_object_candidate(EA,Pt_size,Type).
+
+data_object_point(EA,8,"symbol-symbol",5,"quad symbol-symbol"):-
+    data_object_candidate(EA,8,"symbol-symbol").
 
 data_object_point(EA,4,"symbol-symbol",4,"symbol-symbol"):-
     data_object_candidate(EA,4,"symbol-symbol").
@@ -578,7 +575,7 @@ string(EA,End):-
 
 symbol_minus_symbol(EA,Size,Symbol1,Symbol2):-
     data_object(EA,Size,"symbol-symbol"),
-    symbol_minus_symbol_candidate(EA,Symbol1,Symbol2).
+    symbol_minus_symbol_candidate(EA,Size,Symbol1,Symbol2).
 
 code_pointer_in_data(EA,Val):-
     symbolic_data(EA,_,Val),

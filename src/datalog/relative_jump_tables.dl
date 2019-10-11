@@ -25,16 +25,31 @@ This module deals exclusively with detecting jump tables with relative addresses
 */
 
 
-.decl data_dword(EA:address,Val:number)
+.decl data_word(EA:address,Val:number,Size:number)
 
-data_dword(EA,Val):-
+data_word(EA,Val,4):-
     data_byte(EA,Byte0), EA % 4 = 0,//jump tables are assumed to be aligned
     data_byte(EA+1,Byte1),
     data_byte(EA+2,Byte2),
     data_byte(EA+3,Byte3),
     Byte3 >= 128,//the number is negative
-    Val = -(2^32 -( Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0)).
+    Val = -(2^32 -( Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0)),
+    Val != 0.
 
+data_word(EA,Val,8):-
+    data_byte(EA,Byte0), EA % 8 = 0,//jump tables are assumed to be aligned
+    data_byte(EA+1,Byte1),
+    data_byte(EA+2,Byte2),
+    data_byte(EA+3,Byte3),
+    data_byte(EA+4,Byte4),
+    data_byte(EA+5,Byte5),
+    data_byte(EA+6,Byte6),
+    data_byte(EA+7,Byte7),
+    //Byte7 < 128,// the number is positive
+
+    Val =  (Byte7*2^56)  bor (Byte6*2^48)   bor (Byte5*2^40)  bor (Byte4*2^32) +
+           (Byte3*2^24) bor (Byte2*2^16) bor (Byte1*2^8) bor Byte0,
+    Val != 0.
 
 .decl take_address(Src:address,Address_taken:address)
 
@@ -42,21 +57,29 @@ take_address(Src,Address):-
     pc_relative_operand(Src,1,Address),
     instruction_get_operation(Src,"LEA").
 
-.decl relative_address_start(EA:address,Reference:address,Val:address)
+.decl relative_address_start(EA:address,Reference:address,Val:address,Size:number)
 
-relative_address_start(EA,EA,EA+Diff):-
+relative_address_start(EA,EA,Val,Size):-
     take_address(_,EA),
-    data_dword(EA,Diff),
-    instruction(EA+Diff,_,_,_,_,_,_,_).
+    data_word(EA,Diff,Size),
+    (
+        Val = EA-Diff;
+        Val = EA+Diff
+    ),
+    instruction(Val,_,_,_,_,_,_,_).
 
-.decl relative_address(EA:address,Reference:address,Val:address)
+.decl relative_address(EA:address,Reference:address,Val:address,Size:number)
 .output relative_address
 
-relative_address(EA,EA,Symbol2):-
-    relative_address_start(EA,EA,Symbol2).
+relative_address(EA,EA,Symbol2,Size):-
+    relative_address_start(EA,EA,Symbol2,Size).
 
-relative_address(EA+4,Ref,Ref+Diff):-
-    relative_address(EA,Ref,_),
-    data_dword(EA+4,Diff),
-    instruction(Ref+Diff,_,_,_,_,_,_,_),
-    !relative_address_start(EA+4,_,_).
+relative_address(EA+Size,Ref,Val,Size):-
+    relative_address(EA,Ref,_,Size),
+    data_word(EA+Size,Diff,Size),
+    (
+        Val = Ref-Diff;
+        Val = Ref+Diff
+    ),
+    instruction(Val,_,_,_,_,_,_,_),
+    !relative_address_start(EA+Size,_,_,_).

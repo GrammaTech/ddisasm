@@ -639,7 +639,7 @@ void buildDataGroups(gtirb::Context &context, gtirb::Module &module, souffle::So
         convertSortedRelation<VectorByEA<SymbolSpecialType>>("symbol_special_encoding", prog);
     std::map<gtirb::UUID, std::string> typesTable;
 
-    for(auto &output : *prog->getRelation("data_segment"))
+    for(auto &output : *prog->getRelation("initialized_data_segment"))
     {
         gtirb::Addr begin, end;
         output >> begin >> end;
