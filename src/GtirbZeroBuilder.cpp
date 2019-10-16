@@ -73,7 +73,11 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
     std::map<gtirb::UUID, SectionProperties> sectionProperties;
     for(auto &binSection : binary->get_sections())
     {
-        if(binSection.flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC))
+        if((binary->get_binary_format() == gtirb::FileFormat::ELF
+            && (binSection.flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC)))
+           || (binary->get_binary_format() == gtirb::FileFormat::PE
+               && (binSection.flags
+                   & static_cast<int>(LIEF::PE::SECTION_CHARACTERISTICS::IMAGE_SCN_MEM_READ))))
         {
             gtirb::Section *section = gtirb::Section::Create(
                 context, binSection.name, gtirb::Addr(binSection.address), binSection.size);
