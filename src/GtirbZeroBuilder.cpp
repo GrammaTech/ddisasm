@@ -48,12 +48,28 @@ gtirb::from_iterator gtirb::auxdata_traits<ExtraSymbolInfo>::fromBytes(ExtraSymb
     return It;
 }
 
-void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
-                   gtirb::Context &context)
+void buildByteMap(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
 {
     auto &byteMap = module.getImageByteMap();
     byteMap.setAddrMinMax(
         {gtirb::Addr(binary->get_min_address()), gtirb::Addr(binary->get_max_address())});
+    for(auto &binSection : binary->get_sections())
+    {
+        if(auto sectionData = binary->get_section_content_and_address(binSection.name))
+        {
+            std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
+            std::byte *begin = reinterpret_cast<std::byte *>(sectionBytes.data());
+            std::byte *end =
+                reinterpret_cast<std::byte *>(sectionBytes.data() + sectionBytes.size());
+            byteMap.setData(gtirb::Addr(binSection.address),
+                            boost::make_iterator_range(begin, end));
+        }
+    }
+}
+
+void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
+                   gtirb::Context &context)
+{
     std::map<gtirb::UUID, SectionProperties> sectionProperties;
     for(auto &binSection : binary->get_sections())
     {
@@ -64,15 +80,6 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
             module.addSection(section);
             sectionProperties[section->getUUID()] =
                 std::make_tuple(binSection.type, binSection.flags);
-            if(auto sectionData = binary->get_section_content_and_address(binSection.name))
-            {
-                std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
-                std::byte *begin = reinterpret_cast<std::byte *>(sectionBytes.data());
-                std::byte *end =
-                    reinterpret_cast<std::byte *>(sectionBytes.data() + sectionBytes.size());
-                byteMap.setData(gtirb::Addr(binSection.address),
-                                boost::make_iterator_range(begin, end));
-            }
         }
     }
     module.addAuxData("elfSectionProperties", std::move(sectionProperties));
@@ -139,6 +146,7 @@ gtirb::IR *buildZeroIR(const std::string &filename, gtirb::Context &context)
     module.setFileFormat(binary->get_binary_format());
     module.setISAID(gtirb::ISAID::X64);
     ir->addModule(&module);
+    buildByteMap(module, binary);
     buildSections(module, binary, context);
     buildSymbols(module, binary, context);
     addAuxiliaryTables(module, binary);
