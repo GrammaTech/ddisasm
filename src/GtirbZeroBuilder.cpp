@@ -104,14 +104,17 @@ void buildByteMap(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
         {gtirb::Addr(binary->get_min_address()), gtirb::Addr(binary->get_max_address())});
     for(auto &binSection : binary->get_sections())
     {
-        if(auto sectionData = binary->get_section_content_and_address(binSection.name))
+        if(isAllocatedSection(binary->get_binary_format(), binSection.flags))
         {
-            std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
-            std::byte *begin = reinterpret_cast<std::byte *>(sectionBytes.data());
-            std::byte *end =
-                reinterpret_cast<std::byte *>(sectionBytes.data() + sectionBytes.size());
-            byteMap.setData(gtirb::Addr(binSection.address),
-                            boost::make_iterator_range(begin, end));
+            if(auto sectionData = binary->get_section_content_and_address(binSection.name))
+            {
+                std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
+                std::byte *begin = reinterpret_cast<std::byte *>(sectionBytes.data());
+                std::byte *end =
+                    reinterpret_cast<std::byte *>(sectionBytes.data() + sectionBytes.size());
+                byteMap.setData(gtirb::Addr(binSection.address),
+                                boost::make_iterator_range(begin, end));
+            }
         }
     }
 }
