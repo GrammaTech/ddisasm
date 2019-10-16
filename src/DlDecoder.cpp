@@ -22,16 +22,14 @@
 //===----------------------------------------------------------------------===//
 
 #include "DlDecoder.h"
-#include "BinaryReader.h"
-#include "ExceptionDecoder.h"
-#include "GtirbZeroBuilder.h"
-// FIXME: remove once section properties are generic
-#include <elf.h>
 #include <souffle/CompiledSouffle.h>
 #include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include "BinaryReader.h"
+#include "ExceptionDecoder.h"
+#include "GtirbZeroBuilder.h"
 
 namespace souffle
 {
@@ -155,21 +153,7 @@ DlDecoder::~DlDecoder()
 
 souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
 {
-    auto isNonZeroDataSection = [](const SectionProperties &s) {
-        uint64_t type = std::get<0>(s);
-        uint64_t flags = std::get<1>(s);
-        bool is_allocated = flags & SHF_ALLOC;
-        bool is_not_executable = !(flags & SHF_EXECINSTR);
-        // SHT_NOBITS is not considered here because it is for data sections but without initial
-        // data (zero initialized)
-        bool is_non_zero_program_data = type == SHT_PROGBITS || type == SHT_INIT_ARRAY
-                                        || type == SHT_FINI_ARRAY || type == SHT_PREINIT_ARRAY;
-        return is_allocated && is_not_executable && is_non_zero_program_data;
-    };
-    auto isExeSection = [](const SectionProperties &s) {
-        uint64_t flags = std::get<1>(s);
-        return flags & SHF_EXECINSTR;
-    };
+    const gtirb::FileFormat format = module.getFileFormat();
 
     auto minMax = module.getImageByteMap().getAddrMinMax();
     auto *extraInfoTable =
@@ -183,13 +167,13 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
             throw std::logic_error("Section " + section.getName()
                                    + " missing from elfSectionProperties AuxData table");
         SectionProperties &extraInfo = found->second;
-        if(isExeSection(extraInfo))
+        if(isExeSection(format, extraInfo))
         {
             gtirb::ImageByteMap::const_range bytes =
                 gtirb::getBytes(module.getImageByteMap(), section);
             decodeSection(bytes, bytes.size(), section.getAddress());
         }
-        if(isNonZeroDataSection(extraInfo))
+        if(isNonZeroDataSection(format, extraInfo))
         {
             gtirb::ImageByteMap::const_range bytes =
                 gtirb::getBytes(module.getImageByteMap(), section);
