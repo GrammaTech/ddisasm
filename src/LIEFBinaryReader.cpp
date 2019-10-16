@@ -116,8 +116,7 @@ std::set<InitialAuxData::Section> LIEFBinaryReader::get_sections()
         for(auto& section : elf->sections())
         {
             if(section.flags_list().count(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC))
-                sectionTuples.insert({section.name(), section.content().size(),
-                                      section.virtual_address(),
+                sectionTuples.insert({section.name(), section.size(), section.virtual_address(),
                                       static_cast<uint64_t>(section.type()),
                                       static_cast<uint64_t>(section.flags())});
         }
