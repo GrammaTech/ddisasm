@@ -1,9 +1,13 @@
 # ===== generated souffle code =====
-find_program(SOUFFLE souffle
-  HINTS $ENV{PATH}
-  DOC "souffle must be in your PATH to build disassembler.")
-if(NOT SOUFFLE)
-  message(FATAL_ERROR "souffle was not found in your PATH. Unable to build.")
+# On windows, wsl is used to call souffle.  There is no good way to 'find'
+# souffle in wsl, so we skip this step entirely and will hard-code the call.
+if(NOT WIN32)
+  find_program(SOUFFLE souffle
+    HINTS $ENV{PATH}
+    DOC "souffle must be in your PATH to build disassembler.")
+  if(NOT SOUFFLE)
+    message(FATAL_ERROR "souffle was not found in your PATH. Unable to build.")
+  endif()
 endif()
 
 set(DATALOG_SOURCES
@@ -35,13 +39,23 @@ if(NOT CORES)
 endif()
 
 set(GENERATED_CPP "${CMAKE_BINARY_DIR}/src/souffle_disasm.cpp")
-add_custom_command(OUTPUT ${GENERATED_CPP}
-  # Souffle incldes the path of the output file in the generated
-  # program name. Change directory and use a relative path so the name
-  # does not depend on build location.
-  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
-  COMMAND ${SOUFFLE} ${CMAKE_CURRENT_SOURCE_DIR}/datalog/main.dl -g souffle_disasm.cpp -j${CORES}
-  DEPENDS ${DATALOG_SOURCES})
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  add_custom_command(OUTPUT ${GENERATED_CPP}
+    # Souffle includes the path of the output file in the generated
+    # program name. Change directory and use a relative path so the name
+    # does not depend on build location.
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
+    COMMAND wsl souffle ../../src/datalog/main.dl -g souffle_disasm.cpp -j${CORES}
+    DEPENDS ${DATALOG_SOURCES})
+else()
+  add_custom_command(OUTPUT ${GENERATED_CPP}
+    # Souffle includes the path of the output file in the generated
+    # program name. Change directory and use a relative path so the name
+    # does not depend on build location.
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
+    COMMAND ${SOUFFLE} ${CMAKE_CURRENT_SOURCE_DIR}/datalog/main.dl -g souffle_disasm.cpp -j${CORES}
+    DEPENDS ${DATALOG_SOURCES})
+endif()
 
 # determine what flags to use to specify -fopenmp.
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
