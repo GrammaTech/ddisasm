@@ -96,10 +96,44 @@ add_library(disasm_main STATIC
 
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
-target_compile_options(disasm_main PRIVATE -Wall -Wextra -Wpointer-arith)
-target_compile_options(disasm_main PRIVATE -Werror)
 target_compile_options(disasm_main PRIVATE ${OPENMP_FLAGS})
-target_compile_options(disasm_main PRIVATE -O3)
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  target_compile_options(disasm_main PRIVATE "-permissive-")
+  target_compile_options(disasm_main PRIVATE "-EHsc")
+
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:Debug>:-D_DEBUG>)
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:Debug>:-DDEBUG>)
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:Debug>:-MDd>)
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:Debug>:-Ob0>) # Disables inline expansion
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:Debug>:-Od>) # Disables optimization, speeding compilation and simplifying debugging. https://msdn.microsoft.com/en-us/library/k1ack8f1.aspx
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:Debug>:-RTC1>) # Enables run-time error checking.
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:Debug>:-W4>) # Sets warning level.
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:Debug>:-Zi>) # Generates complete debugging information.
+
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:RelWithDebInfo>:-D_NDEBUG>)
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:RelWithDebInfo>:-DNDEBUG>)
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:RelWithDebInfo>:-MD>)
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:RelWithDebInfo>:-O2>) # Creates fast code.
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:RelWithDebInfo>:-Ob2>) # The default value. Allows expansion of functions marked as inline, __inline, or __forceinline, and any other function that the compiler chooses.
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:RelWithDebInfo>:-Oi>) # Generates intrinsic functions.
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:RelWithDebInfo>:-Ot>) # Favors fast code.
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:RelWithDebInfo>:-W4>) # Sets warning level.
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:RelWithDebInfo>:-Zi>) # Generates complete debugging information.
+
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:Release>:-D_NDEBUG>)
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:Release>:-DNDEBUG>)
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:Release>:-MD>)
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:Release>:-O2>) # Creates fast code.
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:Release>:-Ob2>) # The default value. Allows expansion of functions marked as inline, __inline, or __forceinline, and any other function that the compiler chooses.
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:Release>:-Oi>) # Generates intrinsic functions.
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:Release>:-Ot>) # Favors fast code.
+  target_compile_options(disasm_main PRIVATE $<$<CONFIG:Release>:-W4>) # Sets warning level.
+else()
+  target_compile_options(disasm_main PRIVATE -O3)
+  target_compile_options(disasm_main PRIVATE -Wall)
+  target_compile_options(disasm_main PRIVATE -Wextra -Wpointer-arith)
+  target_compile_options(disasm_main PRIVATE -Werror)
+endif()
 
 if( ${GTIRB_USE_SYSTEM_BOOST} MATCHES "OFF" )
   add_dependencies(disasm_main Boost)
@@ -170,8 +204,41 @@ target_link_libraries(ddisasm
 target_compile_definitions(ddisasm PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(ddisasm PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(ddisasm PRIVATE ${OPENMP_FLAGS})
-target_compile_options(ddisasm PRIVATE -O3)
-target_compile_options(ddisasm PRIVATE -Wno-parentheses-equality)
+
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  target_compile_options(ddisasm PRIVATE -permissive-)
+  target_compile_options(ddisasm PRIVATE -bigobj)
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:Debug>:-D_DEBUG>)
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:Debug>:-DDEBUG>)
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:Debug>:-MDd>)
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:Debug>:-Ob0>) # Disables inline expansion
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:Debug>:-Od>) # Disables optimization, speeding compilation and simplifying debugging. https://msdn.microsoft.com/en-us/library/k1ack8f1.aspx
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:Debug>:-RTC1>) # Enables run-time error checking.
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:Debug>:-W4>) # Sets warning level.
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:Debug>:-Zi>) # Generates complete debugging information.
+
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:RelWithDebInfo>:-D_NDEBUG>)
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:RelWithDebInfo>:-DNDEBUG>)
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:RelWithDebInfo>:-MD>)
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:RelWithDebInfo>:-O2>) # Creates fast code.
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:RelWithDebInfo>:-Ob2>) # The default value. Allows expansion of functions marked as inline, __inline, or __forceinline, and any other function that the compiler chooses.
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:RelWithDebInfo>:-Oi>) # Generates intrinsic functions.
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:RelWithDebInfo>:-Ot>) # Favors fast code.
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:RelWithDebInfo>:-W4>) # Sets warning level.
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:RelWithDebInfo>:-Zi>) # Generates complete debugging information.
+
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:Release>:-D_NDEBUG>)
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:Release>:-DNDEBUG>)
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:Release>:-MD>)
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:Release>:-O2>) # Creates fast code.
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:Release>:-Ob2>) # The default value. Allows expansion of functions marked as inline, __inline, or __forceinline, and any other function that the compiler chooses.
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:Release>:-Oi>) # Generates intrinsic functions.
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:Release>:-Ot>) # Favors fast code.
+  target_compile_options(ddisasm PRIVATE $<$<CONFIG:Release>:-W4>) # Sets warning level.
+else()
+  target_compile_options(ddisasm PRIVATE -O3)
+  target_compile_options(ddisasm PRIVATE -Wno-parentheses-equality)
+endif()
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_link_libraries(ddisasm gomp)
