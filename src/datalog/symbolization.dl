@@ -236,28 +236,32 @@ labeled_data_candidate(Val):-
 // there are two variants Reference- Dest and Dest-Reference
 // (so far they seem to coincide with the size)
 
-symbol_minus_symbol_candidate(EA,Size,EA,Symbol1):-
-    relative_address(EA,Size,EA,Symbol1),
-    block(Symbol1),
+symbol_minus_symbol_candidate(EA,Size,EA,Symbol):-
+    relative_address(EA,Size,EA,Symbol),
+    block(Symbol),
     data_word(EA,Size,Diff),
-    Diff = Symbol1-EA.
+    Diff = Symbol-EA.
 
-symbol_minus_symbol_candidate(EA,Size,Symbol1,EA):-
-    relative_address(EA,Size,EA,Symbol1),
-    block(Symbol1),
+symbol_minus_symbol_candidate(EA,Size,Symbol,EA):-
+    relative_address(EA,Size,EA,Symbol),
+    block(Symbol),
     data_word(EA,Size,Diff),
-    Diff = EA-Symbol1.
+    Diff = EA-Symbol.
 
 // symbol_minus_symbol_candidate propagation
 symbol_minus_symbol_candidate(EA+Size,Size,EA_ref,Symbol):-
     symbol_minus_symbol_candidate(EA,Size,EA_ref,_),
     relative_address(EA+Size,Size,EA_ref,Symbol),
-    block(Symbol).
+    block(Symbol),
+    data_word(EA+Size,Size,Diff),
+    Diff = Symbol-EA_ref.
 
 symbol_minus_symbol_candidate(EA+Size,Size,Symbol,EA_ref):-
     symbol_minus_symbol_candidate(EA,Size,_,EA_ref),
     relative_address(EA+Size,Size,EA_ref,Symbol),
-    block(Symbol).
+    block(Symbol),
+    data_word(EA+Size,Size,Diff),
+    Diff = EA_ref-Symbol.
 ////////////////////////////////////////////////////////////////////////
 // address_in_data considers anything that points to the code region
 // this refinement restricts that to the beginning of the final blocks
