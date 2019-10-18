@@ -72,6 +72,7 @@ This module also computes and symbol_minus_symbol.
 .output symbolic_expr_from_relocation
 
 .decl symbol_minus_symbol_candidate(ea:address,size:number,symbol1:address,symbol2:address)
+.output symbol_minus_symbol_candidate
 
 .decl symbol_minus_symbol(ea:address,size:number,symbol1:address,symbol2:address)
 .output symbol_minus_symbol
@@ -230,51 +231,33 @@ labeled_data_candidate(Val):-
 
 // Detect symbol-symbol
 ////////////////////////////////////////////////////////////////////////
-symbol_minus_symbol_candidate(EA,Size,EA,Symbol2):-
-    data_access_pattern(EA,Size,Size,_Ref),
-    relative_address(EA,EA,Symbol2,Size),
-    block(Symbol2),
-    relative_address(EA+Size,EA,Symbol3,Size),
-    block(Symbol3).
 
-symbol_minus_symbol_candidate(EA,Size,EA,Symbol2):-
-    relative_address(EA,EA,Symbol2,Size),
-    block(Symbol2),
-    data_access_pattern(EA+Size,Size,Size,_Ref),
-    relative_address(EA+Size,EA,Symbol3,Size),
-    block(Symbol3).
+// symbol_minus_symbol_candidate starting point
+// there are two variants Reference- Dest and Dest-Reference
+// (so far they seem to coincide with the size)
 
-// more permissive symbol_minus_symbol_candidate starting point
-symbol_minus_symbol_candidate(EA,Size,EA,Symbol2):-
-    relative_address(EA,EA,Symbol1,Size),
+symbol_minus_symbol_candidate(EA,Size,EA,Symbol1):-
+    relative_address(EA,Size,EA,Symbol1),
     block(Symbol1),
-    relative_address(EA+Size,EA,Symbol2,Size),
-    !preferred_data_access(EA+Size,_),
-    block(Symbol2),
-    relative_address(EA+(2*Size),EA,Symbol3,Size),
-    !preferred_data_access(EA+(2*Size),_),
-    block(Symbol3).
+    data_word(EA,Size,Diff),
+    Diff = Symbol1-EA.
 
-symbol_minus_symbol_candidate(EA,Size,EA_ref,Symbol2):-
-    symbol_minus_symbol_candidate(EA_label,Size,EA_ref,_),
-    preferred_data_access(EA,EA_label),
-    relative_address(EA,EA_ref,Symbol2,Size),
-    block(Symbol2).
+symbol_minus_symbol_candidate(EA,Size,Symbol1,EA):-
+    relative_address(EA,Size,EA,Symbol1),
+    block(Symbol1),
+    data_word(EA,Size,Diff),
+    Diff = EA-Symbol1.
 
-//more permissive symbol_minus_symbol_candidate propagation
+// symbol_minus_symbol_candidate propagation
 symbol_minus_symbol_candidate(EA+Size,Size,EA_ref,Symbol):-
     symbol_minus_symbol_candidate(EA,Size,EA_ref,_),
-    relative_address(EA+Size,EA_ref,Symbol,Size),
-    block(Symbol),
-    (
-        !preferred_data_access(EA+Size,_)
-        ;
-        preferred_data_access(EA+Size,EA_label),
-        data_access_pattern(EA_label,Size,Size,_)
-        ;
-        preferred_data_access(EA+Size,EA_label),
-        data_access_pattern(EA_label,Size,0,_)
-    ).
+    relative_address(EA+Size,Size,EA_ref,Symbol),
+    block(Symbol).
+
+symbol_minus_symbol_candidate(EA+Size,Size,Symbol,EA_ref):-
+    symbol_minus_symbol_candidate(EA,Size,_,EA_ref),
+    relative_address(EA+Size,Size,EA_ref,Symbol),
+    block(Symbol).
 ////////////////////////////////////////////////////////////////////////
 // address_in_data considers anything that points to the code region
 // this refinement restricts that to the beginning of the final blocks

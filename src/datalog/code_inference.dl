@@ -153,7 +153,7 @@ possible_ea(EA):-
 
 basic_target(Val):-
     (
-        relative_address(_,_,Val,_)
+        relative_address(_,_,_,Val)
         ;
         binary_type("DYN"),
         address_in_data(EA,Val),
@@ -337,10 +337,16 @@ block_is_overlaping(Block):-
         block_overlap(_,Block)
     ).
 
+block_points(Block,0,-6,"overlap with relative jump"),
 block_is_overlaping(Block):-
-    code_in_block_candidate_refined(_,Block),
-    relative_address(EA,_,_,Size),
-    EA <= Block, Block < EA+Size.
+    block_candidate_limit(Block,Limit),
+    relative_address(Beg,Size,_,_),
+    (
+        Block <= Beg, Beg< Limit
+        ;
+        Beg < Block, Block< Beg+Size
+    ).
+
 //////////////////////////////////////////////////////////////////////
 // We need to solve the block overlaps
 // we do it with heuristics
@@ -406,10 +412,10 @@ discarded_block(Block2):-
 .output block_points
 
 
-block_points(Block,0,-4,"overlap with relative jump"):-
+block_points(Block,0,-6,"possible relative jump table start"):-
     block_is_overlaping(Block),
-    relative_address(EA,_,_,Size),
-    EA <= Block, Block < EA+Size.
+    relative_address(Block,_,_,_),
+    take_address(_,Block).
 
 block_points(Block,0,0,"basic point"):-
     block_is_overlaping(Block),
@@ -510,7 +516,7 @@ block_points(Block,0,3,"appears"):-
 
 block_points(Block,0,3,"in relative jump table"):-
     block_is_overlaping(Block),
-    relative_address(_,_,Block,_).
+    relative_address(_,_,_,Block).
 
 // give a point if it may fallthrough to another block
 block_points(Block,Block_succ,1,"fallthough_to"):-
