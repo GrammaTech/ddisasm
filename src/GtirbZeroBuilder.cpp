@@ -103,7 +103,6 @@ void buildByteMap(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
     byteMap.setAddrMinMax(
         {gtirb::Addr(binary->get_min_address()), gtirb::Addr(binary->get_max_address())});
     byteMap.setEntryPointAddress(gtirb::Addr(binary->get_entry_point()));
-    std::map<gtirb::UUID, SectionProperties> sectionProperties;
     for(auto &binSection : binary->get_sections())
     {
         if(isAllocatedSection(binary->get_binary_format(), binSection.flags))
