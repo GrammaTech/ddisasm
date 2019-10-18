@@ -210,9 +210,7 @@ std::set<InitialAuxData::Relocation> LIEFBinaryReader::get_relocations()
 
 std::vector<std::string> LIEFBinaryReader::get_libraries()
 {
-    std::vector<std::string> libraries;
-    // TODO
-    return libraries;
+    return bin->imported_libraries();
 }
 
 std::vector<std::string> LIEFBinaryReader::get_library_paths()
