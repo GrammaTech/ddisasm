@@ -70,7 +70,8 @@ relative_address_start(EA,Size,EA,Dest):-
         Dest = EA-Diff;
         Dest = EA+Diff
     ),
-    instruction(Dest,_,_,_,_,_,_,_).
+    possible_ea(Dest).
+
 
 relative_address(EA+Size,Size,Ref,Dest):-
     relative_address(EA,Size,Ref,_),
@@ -79,5 +80,5 @@ relative_address(EA+Size,Size,Ref,Dest):-
         Dest = Ref-Diff;
         Dest = Ref+Diff
     ),
-    instruction(Dest,_,_,_,_,_,_,_),
+    possible_ea(Dest),
     !relative_address_start(EA+Size,_,_,_).

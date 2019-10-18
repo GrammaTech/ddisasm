@@ -491,7 +491,7 @@ block_points(Block,Block_pred,2,"must-fallthrough"):-
     code_in_block_candidate_refined(EA,Block_pred),
     !block_is_overlaping(Block_pred).
 
-block_points(Block,Block_pred,6,"may-fallthrough"):-
+block_points(Block,Block_pred,7,"may-fallthrough"):-
     block_is_overlaping(Block),
     may_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,Block_pred),
@@ -536,14 +536,18 @@ block_points(Block,Block_pred2,Points,cat("fallthrough-transitive ",Why)):-
     block_points(Block_pred,Block_pred2,Points,Why),
     Points != 0.
 
-block_points(Block,Block_pred2,Points-1,cat("multiple-fallthrough-transitive ",Why)):-
+block_points(Block,Block_pred2,Points2,cat("multiple-fallthrough-transitive ",Why)):-
     block_is_overlaping(Block),
     may_fallthrough(EA,Block),
     multiple_fallthrough_to(Block),
     code_in_block_candidate_refined(EA,Block_pred),
     block_is_overlaping(Block_pred),
     block_points(Block_pred,Block_pred2,Points,Why),
-    Points > 1.
+    (
+        Points > 1, Points2 = Points-1
+        ;
+        Points < -1, Points2 = Points+1
+    ).
 
 block_points(Block,Block_pred2,Points,"jump-transitive"):-
     block_is_overlaping(Block),
