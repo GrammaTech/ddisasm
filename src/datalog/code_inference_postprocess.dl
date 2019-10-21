@@ -1,4 +1,4 @@
-//===- code_inference_postprocess.dl ----------------------------------------*- C++ -*-===//
+//===- code_inference_postprocess.dl ------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //

@@ -1,4 +1,4 @@
-//===- printable_chars.dl ---------------------------------------*- C++ -*-===//
+//===- printable_chars.dl -----------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //

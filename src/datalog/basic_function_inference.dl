@@ -1,4 +1,4 @@
-//===- basic_function_inference.dl ------------------------------------*- C++ -*-===//
+//===- basic_function_inference.dl --------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //

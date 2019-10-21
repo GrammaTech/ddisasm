@@ -1,4 +1,4 @@
-//===- data_access_analysis.dl ----------------------------------*- C++ -*-===//
+//===- data_access_analysis.dl ------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
