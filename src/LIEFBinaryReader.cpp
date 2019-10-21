@@ -190,6 +190,16 @@ std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
             symbolTuples.insert({symbol.value(), 0, "NOTYPE", "GLOBAL",
                                  static_cast<uint64_t>(symbol.section_number()), symbolName});
         }
+        // FIXME: Modify Symbol type to allow imports to be "first class" symbols or
+        //        create a secondary expandSymbolForwarding workflow for the PE format.
+        for(auto& import : pe->imports())
+        {
+            for(auto& importEntry : import.entries())
+            {
+                std::string functionName = importEntry.is_ordinal() ? "" : importEntry.name();
+                symbolTuples.insert({0, 0, "", "", 1, functionName});
+            }
+        }
     }
     return symbolTuples;
 }
