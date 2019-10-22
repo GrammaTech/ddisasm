@@ -196,8 +196,7 @@ std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
         {
             for(auto& importEntry : import.entries())
             {
-                std::string functionName = importEntry.is_ordinal() ? "" : importEntry.name();
-                symbolTuples.insert({0, 0, "", "", 1, functionName});
+                symbolTuples.insert({0, 0, "", "", 1, importEntry.name()});
             }
         }
     }
