@@ -66,14 +66,16 @@ compute an address but this is also no enough.
 
 moved_data_label(EA,Size,Dest,New_dest):-
     symbolic_data(EA,Size,Dest),
-    address_in_data_refined_range.overlap(Dest,8,New_dest).
+    address_in_data_refined_range.overlap(Dest,8,New_dest),
+    symbolic_data(New_dest,8,_).
 
 //if something points to the middle of a known symbol we express it as symbol+constant
 //as long as it is not code
 moved_data_label(EA,SizePointer,Dest,Address):-
     symbolic_data(EA,SizePointer,Dest),
     !code(Dest),
-    symbol(Address,Size,_,_,_,_),
+    symbol(Address,Size,_,_,_,Name),
+    !function_symbol(Address,Name),
     Address < Dest,
     Dest < Address+Size.
 
