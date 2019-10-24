@@ -117,7 +117,7 @@ void ElfReader::read_dynamic_symbols()
             dynstr_indx = i;
     }
     // dynamic table
-    int num_symbols = sections[dynsym_indx].sh_size / sizeof(Elf64_Sym);
+    int num_symbols = static_cast<int>(sections[dynsym_indx].sh_size / sizeof(Elf64_Sym));
     file.seekg(sections[dynsym_indx].sh_offset, ios::beg);
     for(int i = 0; i < num_symbols; i++)
     {
@@ -148,7 +148,7 @@ void ElfReader::read_symbols()
             strtab_indx = i;
     }
     // other symbols
-    int num_symbols = sections[symtab_indx].sh_size / sizeof(Elf64_Sym);
+    int num_symbols = static_cast<int>(sections[symtab_indx].sh_size / sizeof(Elf64_Sym));
     file.seekg(sections[symtab_indx].sh_offset, ios::beg);
     for(int i = 0; i < num_symbols; i++)
     {
@@ -175,7 +175,7 @@ void ElfReader::read_relocations()
     {
         if(sections[section_index].sh_type == SHT_RELA)
         {
-            int num_rela = sections[section_index].sh_size / sizeof(Elf64_Rela);
+            int num_rela = static_cast<int>(sections[section_index].sh_size / sizeof(Elf64_Rela));
             file.seekg(sections[section_index].sh_offset, ios::beg);
             for(int i = 0; i < num_rela; i++)
             {
@@ -197,7 +197,7 @@ void ElfReader::read_dynamic_section()
     {
         if(sections[section_index].sh_type == SHT_DYNAMIC)
         {
-            int num_entries = sections[section_index].sh_size / sizeof(Elf64_Dyn);
+            int num_entries = static_cast<int>(sections[section_index].sh_size / sizeof(Elf64_Dyn));
             file.seekg(sections[section_index].sh_offset, ios::beg);
             for(int i = 0; i < num_entries; i++)
             {
