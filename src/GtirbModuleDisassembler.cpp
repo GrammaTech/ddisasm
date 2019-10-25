@@ -49,7 +49,7 @@ souffle::tuple &operator>>(souffle::tuple &t, uint8_t &byte)
     t >> x;
     assert(x >= 0);
     assert(x < 256);
-    byte = x;
+    byte = static_cast<uint8_t>(x);
     return t;
 }
 

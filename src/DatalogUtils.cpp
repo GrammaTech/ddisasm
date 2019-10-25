@@ -83,7 +83,7 @@ void populateEdgeProperties(souffle::tuple& T, const gtirb::EdgeLabel& Label)
 
 std::string str_toupper(std::string s)
 {
-    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::toupper(c); });
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<unsigned char>(std::toupper(c)); });
     return s;
 }
 
@@ -288,7 +288,7 @@ void GtirbToDatalog::populateCfgEdges(const gtirb::Module& M)
 void GtirbToDatalog::populateSccs(gtirb::Module& M)
 {
     auto* InSccRel = Prog->getRelation("in_scc");
-    auto* SccTable = M.getAuxData<std::map<gtirb::UUID, int64_t>>("SCCs");
+    auto* SccTable = M.getAuxData<std::map<gtirb::UUID, uint64_t>>("SCCs");
     assert(SccTable && "SCCs AuxData table missing from GTIRB module");
     std::vector<int> SccBlockIndex;
     for(auto& Block : M.blocks())

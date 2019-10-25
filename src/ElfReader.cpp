@@ -462,7 +462,7 @@ int ElfReader::get_section_index(const string& name)
     for(size_t i = 0; i < section_names.size(); ++i)
     {
         if(name == section_names[i])
-            return i;
+            return static_cast<int>(i);
     }
     return -1;
 }
