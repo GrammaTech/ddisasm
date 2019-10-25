@@ -353,9 +353,9 @@ gtirb::Symbol::StorageKind getSymbolType(const std::string &scope)
 {
     if(scope.empty())
         return gtirb::Symbol::StorageKind::Undefined;
-    if(scope == "Normal" || scope == "GLOBAL")
+    if(scope == "Normal")
         return gtirb::Symbol::StorageKind::Normal;
-    if(scope == "Static" || scope == "LOCAL")
+    if(scope == "Static")
         return gtirb::Symbol::StorageKind::Static;
     return gtirb::Symbol::StorageKind::Extern;
 }
