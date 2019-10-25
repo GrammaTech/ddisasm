@@ -351,13 +351,13 @@ Container convertSortedRelation(const std::string &relation, souffle::SoufflePro
 
 gtirb::Symbol::StorageKind getSymbolType(const std::string &scope)
 {
-    if(scope.empty())
-        return gtirb::Symbol::StorageKind::Undefined;
+    if(scope == "Extern")
+        return gtirb::Symbol::StorageKind::Extern;
     if(scope == "Normal")
         return gtirb::Symbol::StorageKind::Normal;
     if(scope == "Static")
         return gtirb::Symbol::StorageKind::Static;
-    return gtirb::Symbol::StorageKind::Extern;
+    return gtirb::Symbol::StorageKind::Undefined;
 }
 
 void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
