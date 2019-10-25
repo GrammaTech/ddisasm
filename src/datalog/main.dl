@@ -480,9 +480,11 @@ bss_section_limits(Begin,LastSect+SizeLast):-
 // find special functions and symbols
 .decl main_function(ea:address)
 
-.decl inferred_symbol_name(ea:address,name:symbol)
+.decl inferred_symbol_name(ea:address,name:symbol,scope:symbol)
 .output inferred_symbol_name
 
+inferred_symbol_name(EA,"main","Normal"):-
+    main_function(EA).
 
 .decl no_return_call(EA:address)
 .decl function_pointer_section(Name:symbol)

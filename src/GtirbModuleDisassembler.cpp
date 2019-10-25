@@ -349,6 +349,17 @@ Container convertSortedRelation(const std::string &relation, souffle::SoufflePro
     return result;
 }
 
+gtirb::Symbol::StorageKind getSymbolType(const std::string &scope)
+{
+    if(scope.empty())
+        return gtirb::Symbol::StorageKind::Undefined;
+    if(scope == "Normal" || scope == "GLOBAL")
+        return gtirb::Symbol::StorageKind::Normal;
+    if(scope == "Static" || scope == "LOCAL")
+        return gtirb::Symbol::StorageKind::Static;
+    return gtirb::Symbol::StorageKind::Extern;
+}
+
 void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
@@ -356,9 +367,10 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
     {
         gtirb::Addr addr;
         std::string name;
-        output >> addr >> name;
+        std::string scope;
+        output >> addr >> name >> scope;
         if(!module.findSymbols(name))
-            gtirb::emplaceSymbol(module, context, addr, name);
+            gtirb::emplaceSymbol(module, context, addr, name, getSymbolType(scope));
     }
 }
 
