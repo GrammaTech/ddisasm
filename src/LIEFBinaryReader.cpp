@@ -127,12 +127,8 @@ std::set<InitialAuxData::Section> LIEFBinaryReader::get_sections()
         for(auto& section : pe->sections())
         {
             // FIXME: should we encode section type?
-            // FIXME: Use section.size() instead of section.content().size():
-            //        We truncate the section size because requesting a region
-            //        from gtirb::getBytes that is larger than what was stored
-            //        will return an empty range.
-            sectionTuples.insert({section.name(), section.content().size(),
-                                  section.virtual_address(), 0, section.characteristics()});
+            sectionTuples.insert({section.name(), section.virtual_size(), section.virtual_address(),
+                                  0, section.characteristics()});
         }
     }
     return sectionTuples;

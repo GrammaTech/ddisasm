@@ -115,6 +115,14 @@ void buildByteMap(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
                     reinterpret_cast<std::byte *>(sectionBytes.data() + sectionBytes.size());
                 byteMap.setData(gtirb::Addr(binSection.address),
                                 boost::make_iterator_range(begin, end));
+
+                // Fill incomplete section with zeroes.
+                if(sectionBytes.size() < binSection.size)
+                {
+                    std::cerr << "Warning: Zero filling section: " << binSection.name << '\n';
+                    byteMap.setData(gtirb::Addr(binSection.address + sectionBytes.size()),
+                                    binSection.size - sectionBytes.size(), std::byte(0));
+                }
             }
         }
     }
