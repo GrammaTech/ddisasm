@@ -22,7 +22,7 @@ set(NO_RETURN_DATALOG_SOURCES
 
 set(NO_RETURN_CPP "${CMAKE_BINARY_DIR}/src/passes/souffle_no_return.cpp")
 
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+if(WIN32)
   add_custom_command(OUTPUT ${NO_RETURN_CPP}
     # Souffle includes the path of the output file in the generated
     # program name. Change directory and use a relative path so the name
@@ -89,7 +89,7 @@ set(FUNCTION_INFERENCE_DATALOG_SOURCES
 
 set(FUNCTION_INFERENCE_CPP "${CMAKE_BINARY_DIR}/src/passes/souffle_function_inference.cpp")
 
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+if(WIN32)
   add_custom_command(OUTPUT ${FUNCTION_INFERENCE_CPP}
     # Souffle includes the path of the output file in the generated
     # program name. Change directory and use a relative path so the name

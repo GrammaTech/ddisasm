@@ -39,7 +39,7 @@ if(NOT CORES)
 endif()
 
 set(GENERATED_CPP "${CMAKE_BINARY_DIR}/src/souffle_disasm.cpp")
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+if(WIN32)
   add_custom_command(OUTPUT ${GENERATED_CPP}
     # Souffle includes the path of the output file in the generated
     # program name. Change directory and use a relative path so the name
