@@ -66,6 +66,7 @@ endif()
 
 # Set common settings for MSVC
 function(set_common_msvc_options TARGET_NAME)
+  target_compile_options(${TARGET_NAME} PRIVATE "-WX")
   target_compile_options(${TARGET_NAME} PRIVATE "-permissive-")
   target_compile_options(${TARGET_NAME} PRIVATE "-EHsc")
 
