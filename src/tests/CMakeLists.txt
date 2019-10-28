@@ -33,6 +33,8 @@ target_compile_options(${PROJECT_NAME} PRIVATE ${OPENMP_FLAGS})
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_link_libraries(${PROJECT_NAME} gomp)
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  target_compile_options(${PROJECT_NAME} PRIVATE -EHsc)
 endif()
 
 # Add tests to make test
