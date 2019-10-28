@@ -83,7 +83,8 @@ void populateEdgeProperties(souffle::tuple& T, const gtirb::EdgeLabel& Label)
 
 std::string str_toupper(std::string s)
 {
-    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<unsigned char>(std::toupper(c)); });
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c) { return static_cast<unsigned char>(std::toupper(c)); });
     return s;
 }
 
