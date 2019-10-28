@@ -55,7 +55,7 @@ bool isNonZeroDataSection(const gtirb::FileFormat format, const SectionPropertie
         return is_allocated && is_not_executable && is_non_zero_program_data;
     }
 
-    if(format == gtirb::FileFormat::ELF)
+    if(format == gtirb::FileFormat::PE)
     {
         return flags
                & static_cast<int>(
