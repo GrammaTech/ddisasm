@@ -62,6 +62,8 @@ instruction_memory_access_size(EA,Index,SizeAccess):-
 data_access(EA,Op_index,Reg1,Reg2,Reg3,Mult,Offset,Size):-
     code(EA),
     instruction_get_op(EA,Op_index,Op),
+    instruction_get_operation(EA,Operation),
+    Operation != "LEA",
     op_indirect(Op,Reg1,Reg2,Reg3,Mult,Offset,_),
     instruction_memory_access_size(EA,Op_index,Size).
 
@@ -75,12 +77,18 @@ value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,Offset_final,Type):-
     def_used(EA_def,Reg,EA,Op_index),
     best_value_reg(EA_def,Reg,EA_from,Mult,Offset,Type),
     (
-        Type!="incomplete",
-        Offset_final=Offset
+        Offset_final = max(Offset,0)
         ;
-        Type="incomplete",
-        Offset_final=max(0,Offset)
+        Type = "incomplete",
+        Offset_final = 0
     ).
+
+// case where there is not apparent definition
+value_reg_at_operand(EA,Op_index,Reg,0,1,0,"incomplete"):-
+    data_access(EA,Op_index,_,Reg2,Reg3,_,_,Size),
+    (Reg = Reg2; Reg = Reg3),
+    Reg!="NONE",
+    !def_used(_,Reg,EA,Op_index).
 
 // NONE registers have 0 value
 value_reg_at_operand(EA,Op_index,Reg,0,0,0,"complete"):-
@@ -102,20 +110,18 @@ value_reg_at_operand(EA,Op_index,Reg,0,0,0,"complete"):-
 //single access
 data_access_pattern_candidate(Address,Size,0,EA):-
     data_access(EA,_,"NONE","NONE","NONE",_,Address,Size),
-    data_section(Section),
-    section(Section,SizeSect,Base),
-    Address >= Base,
-    Address <= Base+SizeSect.
+    data_segment(Beg,End),
+    Address >= Beg,
+    Address <= End.
 
 // pc relative
 data_access_pattern_candidate(Address,Size,0,EA):-
     code(EA),
     pc_relative_operand(EA,Op_index,Address),
     instruction_memory_access_size(EA,Op_index,Size),
-    data_section(Section),
-    section(Section,SizeSect,Base),
-    Address >= Base,
-    Address <= Base+SizeSect.
+    data_segment(Beg,End),
+    Address >= Beg,
+    Address <= End.
 
 // directly computed
 data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
@@ -127,10 +133,9 @@ data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
 
     (Size <= Mult*Mult2; Mult*Mult2 = 0),
     Address = Offset1+(Offset2*Mult)+Offset3,
-    data_section(Section),
-    section(Section,SizeSect,Base),
-    Address >= Base,
-    Address <= Base+SizeSect.
+    data_segment(Beg,End),
+    Address >= Beg,
+    Address <= End.
 
 // indirectly computed
 data_access_pattern_candidate(Address,Size,Mult,EA):-
@@ -141,10 +146,9 @@ data_access_pattern_candidate(Address,Size,Mult,EA):-
 
     (Size <= Mult; Mult = 0),
     Address = Offset1+Offset2*Mult2+Offset3,
-    data_section(Section),
-    section(Section,SizeSect,Base),
-    Address >= Base,
-    Address <= Base+SizeSect.
+    data_segment(Beg,End),
+    Address >= Beg,
+    Address <= End.
 
 //repeated register
 data_access_pattern_candidate(Address,Size,FinalMult,EA):-
@@ -154,10 +158,9 @@ data_access_pattern_candidate(Address,Size,FinalMult,EA):-
     FinalMult = Mult*Mult2+Mult2,
     (Size <= FinalMult; FinalMult = 0),
     Address = Offset1+(Offset2*Mult)+Offset2,
-    data_section(Section),
-    section(Section,SizeSect,Base),
-    Address >= Base,
-    Address <= Base+SizeSect.
+    data_segment(Beg,End),
+    Address >= Beg,
+    Address <= End.
 
 // select the access pattern with highest multiplier
 data_access_pattern(Address,Size,Multiplier,From):-
@@ -167,6 +170,8 @@ data_access_pattern(Address,Size,Multiplier,From):-
     Multiplier >= MaxMult.
 
 
+data_access_pattern(Address,Size,Size,From):-
+    data_access_pattern_candidate(Address,Size,Size,From).
 ///////////////////////////////////////////////////////////////////////////////
 // This code takes care of obtaining an ordering in the data_access_patterns
 
@@ -174,7 +179,8 @@ data_access_pattern(Address,Size,Multiplier,From):-
 
 possible_data_limit(EA):-
     labeled_data_candidate(EA);
-    data_access_pattern(EA,_,_,_).
+    data_access_pattern(EA,_,_,_);
+    data_segment(_,EA).
 
 .decl last_data_access(EA:address,Where:address)
 
