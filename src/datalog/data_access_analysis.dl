@@ -70,12 +70,23 @@ data_access(EA,Op_index,Reg1,Reg2,Reg3,Mult,Offset,Size):-
 // the register Reg has the given value at instruction EA and operand Op_index
 .decl value_reg_at_operand(EA:address,Op_index:operand_index,Reg:register,EA_from:address,Mult:number,Offset:number,Type:symbol)
 
+.decl value_reg_at_operand_loop(EA:address,Op_index:operand_index,Reg:register,EA_from:address,Mult:number,Offset:number,Type:symbol)
+
+value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,Offset,"loop"),
+value_reg_at_operand_loop(EA,Op_index,Reg,EA_from,Mult,Offset,"loop"):-
+    data_access(EA,Op_index,_,Reg2,Reg3,_,_,Size),
+    (Reg = Ref2; Reg = Reg3),
+    Reg!="NONE",
+    def_used(EA_def,Reg,EA,Op_index),
+    best_value_reg(EA_def,Reg,EA_from,Mult,Offset,"loop").
+
 value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,Offset_final,Type):-
     data_access(EA,Op_index,_,Reg2,Reg3,_,_,Size),
     (Reg = Ref2; Reg = Reg3),
     Reg!="NONE",
     def_used(EA_def,Reg,EA,Op_index),
     best_value_reg(EA_def,Reg,EA_from,Mult,Offset,Type),
+    !value_reg_at_operand_loop(EA,Op_index,Reg,_,_,_,_),
     (
         Offset_final = max(Offset,0)
         ;
@@ -100,6 +111,7 @@ value_reg_at_operand(EA,Op_index,Reg,0,0,0,"complete"):-
 .output data_access_pattern
 
 .decl data_access_pattern_candidate(Address:address,Size:number,Multiplier:number,FromWhere:address)
+.output data_access_pattern_candidate
 
 .decl preferred_data_access(ea:address,ea_data_access:address)
 .output preferred_data_access
@@ -130,8 +142,11 @@ data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
     RegMult != RegBase,
     value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,Offset2,_),
     value_reg_at_operand(EA,Op_index,RegBase,_,0,Offset3,"complete"),
-
-    (Size <= Mult*Mult2; Mult*Mult2 = 0),
+    (
+        Mult*Mult2 > 0, Size <= Mult*Mult2;
+        Mult*Mult2 = 0;
+        Mult*Mult2 < 0, Size <= -(Mult*Mult2)
+    ),
     Address = Offset1+(Offset2*Mult)+Offset3,
     data_segment(Beg,End),
     Address >= Beg,
@@ -143,8 +158,11 @@ data_access_pattern_candidate(Address,Size,Mult,EA):-
     RegMult != RegBase,
     value_reg_at_operand(EA,Op_index,RegMult,_,0,Offset2,"complete"),
     value_reg_at_operand(EA,Op_index,RegBase,_,Mult,Offset3,_),
-
-    (Size <= Mult; Mult = 0),
+    (
+        Mult > 0, Size <= Mult;
+        Mult = 0;
+        Mult < 0, Size <= -Mult
+    ),
     Address = Offset1+Offset2*Mult2+Offset3,
     data_segment(Beg,End),
     Address >= Beg,
@@ -162,16 +180,25 @@ data_access_pattern_candidate(Address,Size,FinalMult,EA):-
     Address >= Beg,
     Address <= End.
 
-// select the access pattern with highest multiplier
+
 data_access_pattern(Address,Size,Multiplier,From):-
     data_access_pattern_candidate(Address,Size,Multiplier,From),
     data_byte(Address,_),
-    MaxMult = max MaxMult : data_access_pattern_candidate(Address,Size,MaxMult,_),
-    Multiplier >= MaxMult.
+    (
+        // select the access pattern with highest multiplier
+        MaxMult = max MaxMult : data_access_pattern_candidate(Address,Size,MaxMult,_),
+        Multiplier >= MaxMult
+        ;
+        // or if the multiplier is equal to the size of the access
+        Multiplier = Size
+    ),
+    (
+        // if it is an indirect call or jump, the destination should be a potential address
+        address_in_data(Address,_);
+        !indirect_jump(From),
+        !indirect_call(From)
+    ).
 
-
-data_access_pattern(Address,Size,Size,From):-
-    data_access_pattern_candidate(Address,Size,Size,From).
 ///////////////////////////////////////////////////////////////////////////////
 // This code takes care of obtaining an ordering in the data_access_patterns
 
