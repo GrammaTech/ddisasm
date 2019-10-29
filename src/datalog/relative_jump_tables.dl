@@ -28,6 +28,12 @@ This module deals exclusively with detecting jump tables with relative addresses
 .decl data_word(EA:address,Size:number,Val:number)
 .output data_word
 
+data_word(EA,2,Val):-
+    data_byte(EA,Byte0), EA % 2 = 0,//jump tables are assumed to be aligned
+    data_byte(EA+1,Byte1),
+    Byte1 < 128,//the number is positive
+    Val = Byte1*2^8 + Byte0.
+
 data_word(EA,4,Val):-
     data_byte(EA,Byte0), EA % 4 = 0,//jump tables are assumed to be aligned
     data_byte(EA+1,Byte1),
@@ -51,6 +57,7 @@ data_word(EA,8,Val):-
            (Byte3*2^24) bor (Byte2*2^16) bor (Byte1*2^8) bor Byte0,
     Val != 0.
 
+
 .decl take_address(Src:address,Address_taken:address)
 
 take_address(Src,Address):-
@@ -66,18 +73,18 @@ relative_address(EA,Size,EA,Dest),
 relative_address_start(EA,Size,EA,Dest):-
     take_address(_,EA),
     data_word(EA,Size,Diff),
+    Size >= 4,
     (
         Dest = EA-Diff;
         Dest = EA+Diff
     ),
     possible_ea(Dest).
 
-
 relative_address(EA+Size,Size,Ref,Dest):-
     relative_address(EA,Size,Ref,_),
     data_word(EA+Size,Size,Diff),
     (
-        Dest = Ref-Diff;
+        Dest = Ref-Diff,Size >= 4;
         Dest = Ref+Diff
     ),
     possible_ea(Dest),
