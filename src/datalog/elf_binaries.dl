@@ -82,6 +82,8 @@ special_data_section(".fini_array").
 special_data_section(".got").
 special_data_section(".got.plt").
 special_data_section(".init_array").
+special_data_section(".interp").
+special_data_section(".jcr").
 special_data_section(".tm_clone_table").
 
 code_section(Name):-
