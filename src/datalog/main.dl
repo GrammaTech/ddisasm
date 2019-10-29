@@ -307,13 +307,12 @@ pc_relative_jump(EA,Dest):-
     pc_relative_operand(EA,1,Dest).
 
 // jump to the address of a register
-// for now we do not compute anything about these
- .decl reg_jump(src:address)
+ .decl reg_jump(src:address,Reg:symbol)
 
-reg_jump(EA):-
+reg_jump(EA,Reg):-
     instruction(EA,_,_,Operation,Op1,_,_,_),
     arch.jump_operation(Operation),
-    op_regdirect(Op1,_).
+    op_regdirect(Op1,Reg).
 
 // indirect jump
  .decl indirect_jump(src:address)
@@ -345,13 +344,13 @@ pc_relative_call(Src,Dest):-
 
 
 // for now we do not compute anything about these
-.decl reg_call(src:address)
+.decl reg_call(src:address,reg:register)
 .output reg_call
 
-reg_call(EA):-
+reg_call(EA,Reg):-
     arch.call_operation(Operation),
     instruction(EA,_,_,Operation,Op1,_,_,_),
-    op_regdirect(Op1,_).
+    op_regdirect(Op1,Reg).
 
  .decl indirect_call(src:address)
 // .output indirect_call
@@ -400,7 +399,6 @@ op_regdirect_contains_reg(Op,Reg_uniform):-
 .decl op_immediate_and_reg(EA:address,Operation:symbol,Reg:register,Imm_index:number,Immediate:number)
 
 op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate):-
-    code(EA),
     instruction_get_operation(EA,Operation),
     instruction_get_op(EA,Imm_index,Op),
     op_immediate(Op,Immediate),

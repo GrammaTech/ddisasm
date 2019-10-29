@@ -54,6 +54,7 @@ low_pass_mask((2^N)-1):-
 .decl low_pass_filter(EA:address)
 
 low_pass_filter(EA):-
+    code(EA),
     op_immediate_and_reg(EA,"AND",_,_,Imm),
     low_pass_mask(Imm).
 
