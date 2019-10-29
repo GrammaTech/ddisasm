@@ -107,6 +107,59 @@ plt_block(EA,Function):-
     got_reference(Got_entry,Function),
     code_in_refined_block(EA,EA).
 
+// Base Relocation Table
+.decl base_relocation_type(Name:symbol,Val:number)
+base_relocation_type("IMAGE_REL_BASED_DIR64", 10).
+
+.decl reloc_section(Name:symbol)
+reloc_section(Section):-
+    binary_format("PE"),
+    data_directory(DataDirAddr, DataDirSize, "BASE_RELOCATION_TABLE"),
+    DataDirSize > 0,
+    section_complete(Section, _, SectionAddr, _, _),
+    DataDirAddr = SectionAddr.
+
+.decl base_relocation_field(EA:address,Val:number)
+base_relocation_field(EA,Val):-
+    data_byte(EA,  Byte0),
+    data_byte(EA+1,Byte1),
+    data_byte(EA+2,Byte2),
+    data_byte(EA+3,Byte3),
+    Val = (Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0).
+
+.decl base_relocation_block(EA:address,Page:address,Size:number)
+.output base_relocation_block
+base_relocation_block(EA,Page,Size):-
+    reloc_section(Section),
+    section(Section,SizeReloc,BegReloc),
+    base_relocation_field(EA,  Page),
+    base_relocation_field(EA+4,Size),
+    EA >= BegReloc,
+    EA+Size <= BegReloc+SizeReloc,
+    Page % 0x1000 = 0.
+
+.decl base_relocation_entry(EA:address,Type:number,Offset:number)
+.output base_relocation_entry
+base_relocation_entry(EA,Type,Offset):-
+    base_relocation_block(Addr,Page,Size),
+    EA >= Addr+8,
+    EA % 2 = 0,
+    EA+2 <= Addr+Size,
+    data_byte(EA,   Byte0),
+    data_byte(EA+1, Byte1),
+    Type = (Byte1 band 0xF0) / 2^4,
+    Offset = ((Byte1 band 0x0F)*2^8 + Byte0).
+
+.decl base_relocation(Addr:address)
+.output base_relocation
+base_relocation(Addr):-
+  base_relocation_type("IMAGE_REL_BASED_DIR64", Type),
+  base_relocation_block(BlockEA,Page,Size),
+  base_relocation_entry(EntryEA,Type,Offset),
+  EntryEA > BlockEA,
+  EntryEA < BlockEA+Size,
+  Addr = Page + Offset.
+
 // the call to main is right after the call to "__p___argc"
 main_function(EA):-
     code(EA1),
