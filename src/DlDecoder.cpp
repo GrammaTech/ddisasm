@@ -181,6 +181,9 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
                 gtirb::getBytes(module.getImageByteMap(), section);
             storeDataSection(bytes, bytes.size(), section.getAddress(), minMax.first,
                              minMax.second);
+            uint64_t baseAddr = static_cast<uint64_t>(module.getImageByteMap().getBaseAddress());
+            storeDataSection(bytes, bytes.size(), section.getAddress(), baseAddr + minMax.first,
+                             baseAddr + minMax.second);
         }
     }
     if(auto prog = souffle::ProgramFactory::newInstance("souffle_disasm"))
@@ -249,6 +252,8 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
     gtirb::ImageByteMap &byteMap = module.getImageByteMap();
     GtirbToDatalog::addToRelation<std::vector<gtirb::Addr>>(prog, "entry_point",
                                                             {byteMap.getEntryPointAddress()});
+    GtirbToDatalog::addToRelation<std::vector<gtirb::Addr>>(prog, "base_address",
+                                                            {byteMap.getBaseAddress()});
     GtirbToDatalog::addToRelation(
         prog, "relocation",
         *module.getAuxData<std::set<InitialAuxData::Relocation>>("relocations"));

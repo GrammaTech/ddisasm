@@ -183,6 +183,7 @@ public:
 
     virtual std::string get_binary_type() = 0;
     virtual uint64_t get_entry_point() = 0;
+    virtual uint64_t get_base_address() = 0;
     virtual std::set<InitialAuxData::Symbol> get_symbols() = 0;
 
     virtual std::set<InitialAuxData::Relocation> get_relocations() = 0;

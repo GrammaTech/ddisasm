@@ -97,6 +97,9 @@ This module:
 .decl entry_point(ea:address)
 .input entry_point
 
+.decl base_address(ea:address)
+.input base_address
+
 .decl symbol(ea:address,size:number,type:symbol,scope:symbol,sectionIndex:number,name:symbol)
 .input symbol
 
