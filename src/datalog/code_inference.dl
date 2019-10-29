@@ -516,7 +516,8 @@ block_points(Block,0,3,"appears"):-
 
 block_points(Block,0,3,"in relative jump table"):-
     block_is_overlaping(Block),
-    relative_address(_,_,_,Block).
+    relative_address(_,Size,_,Block),
+    Size>2.
 
 // give a point if it may fallthrough to another block
 block_points(Block,Block_succ,1,"fallthough_to"):-
@@ -536,6 +537,18 @@ block_points(Block,Block_pred2,Points,cat("fallthrough-transitive ",Why)):-
     block_points(Block_pred,Block_pred2,Points,Why),
     Points != 0.
 
+block_points(Block,Block_pred2,Points2,cat("fits-transitive",Why)):-
+    block_is_overlaping(Block),
+    after_end(Block,EA),
+    code_in_block_candidate_refined(EA,Block_pred),
+    block_is_overlaping(Block_pred),
+    block_points(Block_pred,Block_pred2,Points,Why),
+    (
+        Points > 2, Points2 = Points-2
+        ;
+        Points < -2, Points2 = Points+2
+    ).
+
 block_points(Block,Block_pred2,Points2,cat("multiple-fallthrough-transitive ",Why)):-
     block_is_overlaping(Block),
     may_fallthrough(EA,Block),
@@ -552,16 +565,20 @@ block_points(Block,Block_pred2,Points2,cat("multiple-fallthrough-transitive ",Wh
 block_points(Block,Block_pred2,Points,"jump-transitive"):-
     block_is_overlaping(Block),
     direct_jump(EA,Block),
+    // do not count instructions that fallthrough and jump to the same place twice
+    !may_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,Block_pred),
     block_is_overlaping(Block_pred),
-    block_points(Block_pred,Block_pred2,Points,_).
+    block_points(Block_pred,Block_pred2,Points,_),
+    Points != 0.
 
 block_points(Block,Block_pred2,Points,"call-transitive"):-
     block_is_overlaping(Block),
-    direct_jump(EA,Block),
+    direct_call(EA,Block),
     code_in_block_candidate_refined(EA,Block_pred),
     block_is_overlaping(Block_pred),
-    block_points(Block_pred,Block_pred2,Points,_).
+    block_points(Block_pred,Block_pred2,Points,_),
+    Points != 0.
 
 block_points(Block,0,1,"has well-defined jump"):-
     block_is_overlaping(Block),
