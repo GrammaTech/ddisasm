@@ -146,14 +146,7 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Diff):-
     New_dest >= Base2, New_dest <= Base2+SectSize2,
 
     // sections can have one overlapping address
-    Dest != Base2,
-
-    //we are going to move in the direction of the other section
-    (
-        Mult > 0, New_dest > Dest
-        ;
-        Mult < 0, New_dest < Dest
-    ).
+    Dest != Base2.
 
 .decl access_non_regular_data_section(EA:address,Op_index:number)
 
