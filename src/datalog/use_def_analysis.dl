@@ -188,6 +188,15 @@ def_used_for_address(EA_def,Reg):-
     def_used(EA_def,Reg,EA,Index).
 
 def_used_for_address(EA_def,Reg):-
+    reg_jump(EA_used,Reg),
+    def_used(EA_def,Reg,EA_used,_).
+
+def_used_for_address(EA_def,Reg):-
+    reg_call(EA_used,Reg),
+    def_used(EA_def,Reg,EA_used,_).
+
+
+def_used_for_address(EA_def,Reg):-
     def_used_for_address(EA_used,_),
     used(EA_used,Reg,_),
     def_used(EA_def,Reg,EA_used,_).
