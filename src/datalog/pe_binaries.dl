@@ -121,7 +121,7 @@ reloc_section(Section):-
 
 .decl base_relocation_field(EA:address,Val:number)
 base_relocation_field(EA,Val):-
-    data_byte(EA,  Byte0),
+    data_byte(EA,  Byte0), EA % 4 = 0,
     data_byte(EA+1,Byte1),
     data_byte(EA+2,Byte2),
     data_byte(EA+3,Byte3),
@@ -134,9 +134,18 @@ base_relocation_block(EA,Page,Size):-
     section(Section,SizeReloc,BegReloc),
     base_relocation_field(EA,  Page),
     base_relocation_field(EA+4,Size),
-    EA >= BegReloc,
+    EA = BegReloc,
     EA+Size <= BegReloc+SizeReloc,
     Page % 0x1000 = 0.
+
+base_relocation_block(NextEA,NextPage,NextSize):-
+    base_relocation_block(EA,_,Size),
+    reloc_section(Section),
+    section(Section,SizeReloc,BegReloc),
+    NextEA = EA+Size,
+    base_relocation_field(NextEA,NextPage),
+    base_relocation_field(NextEA+4,NextSize),
+    NextEA+NextSize <= BegReloc+SizeReloc.
 
 .decl base_relocation_entry(EA:address,Type:number,Offset:number)
 .output base_relocation_entry
