@@ -272,6 +272,31 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult1+(Mult*Mult2),Offset+Offset1+Offset2*Mul
     Steps3 = max(Steps1+1,Steps2+1),
     Steps3 < 8.
 
+// one of the registers is a constant
+value_reg(EA,Reg_def,EA_third,Reg3,Mult*Mult2,Offset+Offset1+Offset2*Mult,Steps3):-
+    abstracted_multiple_reg_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
+    def_used(EA_def1,Reg1,EA,_),
+    value_reg(EA_def1,Reg1,_,"NONE",_,Offset1,Steps1),
+    def_used(EA_def2,Reg2,EA,_),
+    value_reg(EA_def2,Reg2,EA_third,Reg3,Mult2,Offset2,Steps2),
+    EA != EA_def1,
+    EA != EA_def2,
+    EA != EA_third,
+    Steps3 = max(Steps1+1,Steps2+1),
+    Steps3 < 8.
+
+value_reg(EA,Reg_def,EA_third,Reg3,Mult1,Offset+Offset1+Offset2*Mult,Steps3):-
+    abstracted_multiple_reg_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
+    def_used(EA_def1,Reg1,EA,_),
+    value_reg(EA_def1,Reg1,EA_third,Reg3,Mult1,Offset1,Steps1),
+    def_used(EA_def2,Reg2,EA,_),
+    value_reg(EA_def2,Reg2,_,"NONE",_,Offset2,Steps2),
+    EA != EA_def1,
+    EA != EA_def2,
+    EA != EA_third,
+    Steps3 = max(Steps1+1,Steps2+1),
+    Steps3 < 8.
+
 
 // normal propagation
 value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,Steps2):-
@@ -297,7 +322,7 @@ best_value_reg(EA,Reg,EA_from,Multiplier,Offset,"complete"):-
     !value_reg(EA,Reg,_,"Unknown",_,_,_).
 
 best_value_reg(EA,Reg,0,MaxMultiplier,Offset,"incomplete"):-
-    value_reg(EA,Reg,_,_,MaxMultiplier,Offset,_),
+    value_reg(EA,Reg,_,OtherReg,MaxMultiplier,Offset,_),
+    OtherReg != "NONE",
     !value_reg(EA,Reg,_,"Unknown",_,_,_),
-    !value_reg(EA,Reg,_,"NONE",_,_,_),
     MaxMultiplier >= max Multiplier:{value_reg(EA,Reg,_,_,Multiplier,_,_)}.
