@@ -263,9 +263,11 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
         GtirbToDatalog::addToRelation(
             prog, "data_directory",
             *module.getAuxData<std::vector<InitialAuxData::DataDirectory>>("dataDirectories"));
+        module.removeAuxData("dataDirectories");
         GtirbToDatalog::addToRelation(
             prog, "import_entry",
             *module.getAuxData<std::vector<InitialAuxData::ImportEntry>>("importEntries"));
+        module.removeAuxData("importEntries");
     }
 
     GtirbToDatalog::addToRelation(prog, "instruction_complete", instructions);
