@@ -8,6 +8,8 @@ if(NOT WIN32)
   if(NOT SOUFFLE)
     message(FATAL_ERROR "souffle was not found in your PATH. Unable to build.")
   endif()
+else()
+  set(SOUFFLE wsl souffle)
 endif()
 
 set(DATALOG_SOURCES
@@ -38,24 +40,22 @@ if(NOT CORES)
   set(CORES "auto")
 endif()
 
-set(GENERATED_CPP "${CMAKE_BINARY_DIR}/src/souffle_disasm.cpp")
 if(WIN32)
-  add_custom_command(OUTPUT ${GENERATED_CPP}
-    # Souffle includes the path of the output file in the generated
-    # program name. Change directory and use a relative path so the name
-    # does not depend on build location.
-    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
-    COMMAND wsl souffle ../../src/datalog/main.dl -g souffle_disasm.cpp -j${CORES}
-    DEPENDS ${DATALOG_SOURCES})
+  set(SOUFFLE_DISASM_MAIN
+    "$$(wslpath ${CMAKE_CURRENT_SOURCE_DIR}/datalog/main.dl)")
 else()
+  set(SOUFFLE_DISASM_MAIN
+    ${CMAKE_CURRENT_SOURCE_DIR}/datalog/main.dl)
+endif()
+
+set(GENERATED_CPP "${CMAKE_BINARY_DIR}/src/souffle_disasm.cpp")
   add_custom_command(OUTPUT ${GENERATED_CPP}
     # Souffle includes the path of the output file in the generated
     # program name. Change directory and use a relative path so the name
     # does not depend on build location.
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
-    COMMAND ${SOUFFLE} ${CMAKE_CURRENT_SOURCE_DIR}/datalog/main.dl -g souffle_disasm.cpp -j${CORES}
+    COMMAND ${SOUFFLE} ${SOUFFLE_DISASM_MAIN} -g souffle_disasm.cpp -j${CORES}
     DEPENDS ${DATALOG_SOURCES})
-endif()
 
 # determine what flags to use to specify -fopenmp.
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)

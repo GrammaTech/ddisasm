@@ -18,27 +18,25 @@ endif()
 #============ No return pass =================
 
 set(NO_RETURN_DATALOG_SOURCES
-    datalog/no_return_analysis.dl)
+  datalog/no_return_analysis.dl)
+
+if(WIN32)
+  set(NO_RETURN_DATALOG_MAIN
+    "$$(wslpath ${CMAKE_CURRENT_SOURCE_DIR}/datalog/no_return_analysis.dl)")
+else()
+  set(NO_RETURN_DATALOG_MAIN
+     ${CMAKE_CURRENT_SOURCE_DIR}/datalog/no_return_analysis.dl)
+endif()
 
 set(NO_RETURN_CPP "${CMAKE_BINARY_DIR}/src/passes/souffle_no_return.cpp")
 
-if(WIN32)
-  add_custom_command(OUTPUT ${NO_RETURN_CPP}
-    # Souffle includes the path of the output file in the generated
-    # program name. Change directory and use a relative path so the name
-    # does not depend on build location.
-    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/passes"
-    COMMAND wsl souffle ../../../src/passes/datalog/no_return_analysis.dl -g souffle_no_return.cpp -j${CORES}
-    DEPENDS ${NO_RETURN_DATALOG_SOURCES})
-else()
-  add_custom_command(OUTPUT ${NO_RETURN_CPP}
-    # Souffle includes the path of the output file in the generated
-    # program name. Change directory and use a relative path so the name
-    # does not depend on build location.
-    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/passes"
-    COMMAND ${SOUFFLE} ${CMAKE_CURRENT_SOURCE_DIR}/datalog/no_return_analysis.dl -g souffle_no_return.cpp -j${CORES}
-    DEPENDS ${NO_RETURN_DATALOG_SOURCES})
-endif()
+add_custom_command(OUTPUT ${NO_RETURN_CPP}
+  # Souffle includes the path of the output file in the generated
+  # program name. Change directory and use a relative path so the name
+  # does not depend on build location.
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/passes"
+  COMMAND ${SOUFFLE} ${NO_RETURN_DATALOG_MAIN} -g souffle_no_return.cpp -j${CORES}
+  DEPENDS ${NO_RETURN_DATALOG_SOURCES})
 
 
 
@@ -84,28 +82,26 @@ endif()
 
 #============ Function inference pass =========
 
+if(WIN32)
+  set(FUNCTION_INFERENCE_DATALOG_MAIN
+    "$$(wslpath ${CMAKE_CURRENT_SOURCE_DIR}/datalog/function_inference.dl)")
+else()
+  set(FUNCTION_INFERENCE_DATALOG_MAIN
+    ${CMAKE_CURRENT_SOURCE_DIR}/datalog/function_inference.dl)
+endif()
+
 set(FUNCTION_INFERENCE_DATALOG_SOURCES
   datalog/function_inference.dl)
 
 set(FUNCTION_INFERENCE_CPP "${CMAKE_BINARY_DIR}/src/passes/souffle_function_inference.cpp")
 
-if(WIN32)
-  add_custom_command(OUTPUT ${FUNCTION_INFERENCE_CPP}
-    # Souffle includes the path of the output file in the generated
-    # program name. Change directory and use a relative path so the name
-    # does not depend on build location.
-    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/passes"
-    COMMAND wsl souffle ../../../src/passes/datalog/function_inference.dl -g souffle_function_inference.cpp -j${CORES}
-    DEPENDS ${FUNCTION_INFERENCE_DATALOG_SOURCES})
-else()
-  add_custom_command(OUTPUT ${FUNCTION_INFERENCE_CPP}
-    # Souffle includes the path of the output file in the generated
-    # program name. Change directory and use a relative path so the name
-    # does not depend on build location.
-    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/passes"
-    COMMAND ${SOUFFLE} ${CMAKE_CURRENT_SOURCE_DIR}/datalog/function_inference.dl -g souffle_function_inference.cpp -j${CORES}
-    DEPENDS ${FUNCTION_INFERENCE_DATALOG_SOURCES})
-endif()
+add_custom_command(OUTPUT ${FUNCTION_INFERENCE_CPP}
+  # Souffle includes the path of the output file in the generated
+  # program name. Change directory and use a relative path so the name
+  # does not depend on build location.
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/passes"
+  COMMAND ${SOUFFLE} ${FUNCTION_INFERENCE_DATALOG_MAIN} -g souffle_function_inference.cpp -j${CORES}
+  DEPENDS ${FUNCTION_INFERENCE_DATALOG_SOURCES})
 
 
 
