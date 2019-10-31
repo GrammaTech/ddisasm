@@ -87,6 +87,7 @@ def(EA,Reg):-
     arch.function_non_maintained_reg(Reg).
 
 flow_def(EA_jump,Reg,EA_target,Immediate):-
+    code(EA),
     cmp_immediate_to_reg(EA,Reg,_,Immediate),
     next(EA,EA_jump),
     direct_jump(EA_jump,EA_target),
@@ -94,6 +95,7 @@ flow_def(EA_jump,Reg,EA_target,Immediate):-
     arch.jump_equal_operation(Operation).
 
 flow_def(EA_jump,Reg,EA_target,Immediate):-
+    code(EA),
     cmp_immediate_to_reg(EA,Reg,_,Immediate),
     next(EA,EA_jump),
     direct_jump(EA_jump,_),

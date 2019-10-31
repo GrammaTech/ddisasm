@@ -228,7 +228,8 @@ last_data_access(EA+1,Where):-
 .decl propagated_data_access(EA:address,Mult:number,EA_ref:address)
 
 propagated_data_access(EA,Mult,EA):-
-    data_access_pattern(EA,_,Mult,_).
+    data_access_pattern(EA,_,Mult,_),
+    Mult > 0.
 
 propagated_data_access(EA+Mult,Mult,EA_ref):-
     propagated_data_access(EA,Mult,EA_ref),
