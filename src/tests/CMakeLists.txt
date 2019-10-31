@@ -26,7 +26,6 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
         no_return_pass
   )
   target_link_options(${PROJECT_NAME} PRIVATE
-    /WHOLEARCHIVE:scc_pass$<$<CONFIG:Debug>:d>
     /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>)
 else()
   target_link_libraries(${PROJECT_NAME}

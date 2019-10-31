@@ -231,8 +231,8 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
     function_inference_pass
     )
   target_link_options(ddisasm PRIVATE
-    /WHOLEARCHIVE:scc_pass$<$<CONFIG:Debug>:d>
-    /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>)
+    /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>
+    /WHOLEARCHIVE:function_inference_pass$<$<CONFIG:Debug>:d>)
 else()
   target_link_libraries(ddisasm
     disasm_main
