@@ -38,7 +38,7 @@ else()
         scc_pass
         -Wl,--whole-archive
         no_return_pass
-        -Wl,--whole-archive
+        -Wl,--no-whole-archive
   )
 endif()
 
