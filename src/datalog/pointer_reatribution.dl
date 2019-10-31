@@ -91,14 +91,14 @@ moved_data_label(EA,SizePointer,Dest,Address):-
 moved_label_candidate(EA_def2,Op_index,Dest,New_dest,Diff):-
     cmp_reg_to_reg(EA,Reg1,Reg2),
     def_used(EA_def1,Reg1,EA,_),
-    dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End),
+    dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End,OldBeg,OldEnd),
 
     def_used(EA_def2,Reg2,EA,_),
     pc_relative_operand(EA_def2,Op_index,Dest),
     instruction_get_operation(EA_def2,"LEA"),
 
-    Beg <= Dest,
-    Dest <= End,
+    Beg <= Dest, Dest <= End,
+    (OldBeg > Dest ; Dest > OldEnd),
     Diff = max(New_dest-Dest,Dest-New_dest).
 ////////////////////////////////////////////////////////////////////////////////
 // indirect operand (type O)
@@ -286,10 +286,10 @@ cmp_reg_to_reg(EA,Reg1,Reg2):-
     instruction_get_op(EA,_,Op2), Op2!=Op1,
     op_regdirect_contains_reg(Op2,Reg2).
 
-.decl dest_enlarged_data_section(EA:address,Reg:register,New_dest:address,Beg:address,End:address)
+.decl dest_enlarged_data_section(EA:address,Reg:register,New_dest:address,Beg:address,End:address,OldBeg:address,OldEnd:address)
 .output dest_enlarged_data_section
 
-dest_enlarged_data_section(EA_def,Reg,New_dest,Beg-MultAbs,Beg+SizeSect+MultAbs):-
+dest_enlarged_data_section(EA_def,Reg,New_dest,Beg-MultAbs,Beg+SizeSect+MultAbs,Beg,Beg+SizeSect):-
     best_value_reg(EA_def,Reg,_,Mult,New_dest,"loop"),
     MultAbs = max(Mult,-Mult),
     regular_data_section(Name),
@@ -324,22 +324,22 @@ moved_immediate_candidate(EA,Imm_index,Immediate,New_dest):-
     binary_type("EXEC"),
     cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate),
     def_used(EA_def,Reg,EA,_),
-    dest_enlarged_data_section(EA_def,Reg,New_dest,Beg,End),
-    Beg <= Immediate,
-    Immediate <= End.
+    dest_enlarged_data_section(EA_def,Reg,New_dest,Beg,End,OldBeg,OldEnd),
+    Beg <= Immediate, Immediate <= End,
+    (OldBeg > Immediate ; Immediate > OldEnd).
 
 moved_label_class(EA_def2,Imm_index,"loaded immediate loop bound"),
 moved_immediate_candidate(EA_def2,Imm_index,Immediate,New_dest):-
     binary_type("EXEC"),
     cmp_reg_to_reg(EA,Reg1,Reg2),
     def_used(EA_def1,Reg1,EA,_),
-    dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End),
+    dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End,OldBeg,OldEnd),
 
     def_used(EA_def2,Reg2,EA,_),
     mov_immediate_to_reg(EA_def2,Reg2,Imm_index,Immediate),
 
-    Beg <= Immediate,
-    Immediate <= End.
+    Beg <= Immediate,Immediate <= End,
+    (OldBeg > Immediate ; Immediate > OldEnd).
 
 moved_label_class(EA,Op_index,"pie relocation"),
 moved_immediate_candidate(EA,Op_index,Dest,SymbolAddr):-
