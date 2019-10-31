@@ -326,7 +326,7 @@ moved_immediate_candidate(EA,Imm_index,Immediate,New_dest):-
     def_used(EA_def,Reg,EA,_),
     dest_enlarged_data_section(EA_def,Reg,New_dest,Beg,End,OldBeg,OldEnd),
     Beg <= Immediate, Immediate <= End,
-    (OldBeg > Immediate ; Immediate > OldEnd).
+    (OldBeg > Immediate ; Immediate >= OldEnd).
 
 moved_label_class(EA_def2,Imm_index,"loaded immediate loop bound"),
 moved_immediate_candidate(EA_def2,Imm_index,Immediate,New_dest):-
@@ -339,7 +339,7 @@ moved_immediate_candidate(EA_def2,Imm_index,Immediate,New_dest):-
     mov_immediate_to_reg(EA_def2,Reg2,Imm_index,Immediate),
 
     Beg <= Immediate,Immediate <= End,
-    (OldBeg > Immediate ; Immediate > OldEnd).
+    (OldBeg > Immediate ; Immediate >= OldEnd).
 
 moved_label_class(EA,Op_index,"pie relocation"),
 moved_immediate_candidate(EA,Op_index,Dest,SymbolAddr):-
