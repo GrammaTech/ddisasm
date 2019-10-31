@@ -108,7 +108,8 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
     (
         op_immediate(Op,Dest);
         pc_relative_operand(EA,Op_index,Dest);
-        op_indirect(Op,_,_,_,_,Dest,_)
+        op_indirect(Op,_,_,_,_,Dest,_),
+        !pc_relative_operand(EA,Op_index,_)
     ),
     (
         code(Dest), Type="code"
