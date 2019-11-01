@@ -135,11 +135,6 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_compile_definitions(datalog_utils PRIVATE _CRT_SECURE_NO_WARNINGS)
   target_compile_definitions(datalog_utils PRIVATE _CRT_NONSTDC_NO_WARNINGS)
 
-  target_compile_options(datalog_utils PRIVATE -wd4275) # Non-dll interface base classes.
-  target_compile_options(datalog_utils PRIVATE -wd4251) # class 'type' needs to have dll-
-                                                        # interface to be used by clients of class
-                                                        # 'type2'
-
   set_common_msvc_options(datalog_utils)
 else()
   target_compile_options(datalog_utils PRIVATE -O3)
@@ -168,10 +163,14 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_compile_definitions(disasm_main PRIVATE _CRT_SECURE_NO_WARNINGS)
   target_compile_definitions(disasm_main PRIVATE _CRT_NONSTDC_NO_WARNINGS)
 
-  target_compile_options(disasm_main PRIVATE -wd4275) # Non-dll interface base classes.
-  target_compile_options(disasm_main PRIVATE -wd4251) # class 'type' needs to have dll-
-                                                      # interface to be used by clients of class
-                                                      # 'type2'
+  # From LIEF:
+  target_compile_options(disasm_main PRIVATE -wd4146) # unary minus operator applied to unsigned
+                                                      # type, result still unsigned
+  target_compile_options(disasm_main PRIVATE -wd4267) # actual alignment (8) is greater than the
+                                                      # value specified in __declspec(align())
+  target_compile_options(disasm_main PRIVATE -wd4359) # conversion from 'size_t' to 'type', possible loss of data
+  target_compile_options(disasm_main PRIVATE -wd4245) # conversion from 'type1' to 'type2', signed/unsigned
+                                                      # mismatch
 
   set_common_msvc_options(disasm_main)
 else()

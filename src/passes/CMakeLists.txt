@@ -9,10 +9,6 @@ target_link_libraries(scc_pass
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   set_common_msvc_options(scc_pass)
-  target_compile_options(scc_pass PRIVATE -wd4275) # Non-dll interface base classes.
-  target_compile_options(scc_pass PRIVATE -wd4251) # class 'type' needs to have dll-
-                                                   # interface to be used by clients of class
-                                                   # 'type2'
 endif()
 
 #============ No return pass =================
@@ -56,16 +52,6 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   set_common_msvc_options(no_return_pass)
 
   set_souffle_msvc_options(no_return_pass)
-
-  target_compile_options(no_return_pass PRIVATE -wd4275) # Non-dll interface base classes.
-  target_compile_options(no_return_pass PRIVATE -wd4251) # class 'type' needs to have dll-
-                                                                  # interface to be used by clients of class
-                                                                  # 'type2'
-
-  target_compile_options(no_return_pass PRIVATE -wd4275) # Non-dll interface base classes.
-  target_compile_options(no_return_pass PRIVATE -wd4251) # class 'type' needs to have dll-
-                                                         # interface to be used by clients of class
-                                                         # 'type2'
 else()
   target_compile_options(no_return_pass PRIVATE -O3)
 endif()
@@ -114,11 +100,6 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_compile_definitions(function_inference_pass PRIVATE _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING)
 
   set_souffle_msvc_options(function_inference_pass)
-
-  target_compile_options(function_inference_pass PRIVATE -wd4275) # Non-dll interface base classes.
-  target_compile_options(function_inference_pass PRIVATE -wd4251) # class 'type' needs to have dll-
-                                                                  # interface to be used by clients of class
-                                                                  # 'type2'
 else()
   target_compile_options(function_inference_pass PRIVATE -O3)
 endif()
