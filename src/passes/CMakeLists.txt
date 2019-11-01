@@ -55,9 +55,6 @@ target_compile_options(no_return_pass PRIVATE ${OPENMP_FLAGS})
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   set_common_msvc_options(no_return_pass)
 
-  target_compile_definitions(no_return_pass PRIVATE _CRT_NONSTDC_NO_WARNINGS)
-  target_compile_definitions(no_return_pass PRIVATE _CRT_SECURE_NO_WARNINGS)
-
   set_souffle_msvc_options(no_return_pass)
 
   target_compile_options(no_return_pass PRIVATE -wd4275) # Non-dll interface base classes.
@@ -115,8 +112,6 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   set_common_msvc_options(function_inference_pass)
 
   target_compile_definitions(function_inference_pass PRIVATE _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING)
-  target_compile_definitions(function_inference_pass PRIVATE _CRT_NONSTDC_NO_WARNINGS)
-  target_compile_definitions(function_inference_pass PRIVATE _CRT_SECURE_NO_WARNINGS)
 
   set_souffle_msvc_options(function_inference_pass)
 
