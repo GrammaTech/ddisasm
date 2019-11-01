@@ -86,9 +86,9 @@ moved_data_label(EA,SizePointer,Dest,Address):-
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-.decl moved_label_candidate(EA:address,Index:number,Val:address,New_val:address,Diff:number)
+.decl moved_pc_relative_candidate(EA:address,Index:number,Val:address,New_val:address,Diff:number)
 
-moved_label_candidate(EA_def2,Op_index,Dest,New_dest,Diff):-
+moved_pc_relative_candidate(EA_def2,Op_index,Dest,New_dest,Diff):-
     cmp_reg_to_reg(EA,Reg1,Reg2),
     def_used(EA_def1,Reg1,EA,_),
     dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End,OldBeg,OldEnd),
@@ -100,15 +100,32 @@ moved_label_candidate(EA_def2,Op_index,Dest,New_dest,Diff):-
     Beg <= Dest, Dest <= End,
     (OldBeg > Dest ; Dest > OldEnd),
     Diff = max(New_dest-Dest,Dest-New_dest).
+
+// a RIP relative reference is always symbolic. If we have no better
+// candidates we just find the closest data section
+moved_pc_relative_candidate(EA,Op_index,Dest,New_dest,Diff):-
+    code(EA),
+    pc_relative_operand(EA,Op_index,Dest),
+    !symbolic_operand(EA,Op_index,_,_),
+    regular_data_section(Name),
+    section(Name,SizeSect,Base),
+    (
+        Base > Dest,
+        New_dest = Base
+        ;
+        Dest > Base+SizeSect,
+        New_dest = Base+SizeSect
+    ),
+    Diff = max(New_dest-Dest,Dest-New_dest).
+
 ////////////////////////////////////////////////////////////////////////////////
 // indirect operand (type O)
 
 //pc-relative that misses the data sections
 moved_label_class(EA,Op_index,"pc-relative miss data-sections"),
 moved_label(EA,Op_index,Dest,New_dest):-
-    moved_label_candidate(EA,Op_index,Dest,_,_),
-    Diff_min = min X:moved_label_candidate(EA,Op_index,Dest,_,X),
-    moved_label_candidate(EA,Op_index,Dest,New_dest,Diff),
+    moved_pc_relative_candidate(EA,Op_index,Dest,New_dest,Diff),
+    Diff_min = min X:moved_pc_relative_candidate(EA,Op_index,Dest,_,X),
     Diff <= Diff_min.
 
 moved_label_class(EA,Op_index,"collides with pointer"),
@@ -124,7 +141,7 @@ moved_label(EA,Op_index,Dest,New_dest):-
 moved_label_class(EA,Op_index,"indirect wrong section"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Diff):-
     binary_type("EXEC"),
-    symbolic_operand(EA,Op_index,Dest,"data"),
+    symbolic_operand(EA,Op_index,Dest,_),
     data_access(EA,Op_index,_,_,_,_,_,_),
     data_access_pattern_candidate(Access_dest,_,Mult,EA),
     (
@@ -137,7 +154,6 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Diff):-
         Diff = Mult
     ),
 
-    data_section(Name),
     section(Name,SectSize,Base),
     Dest >= Base, Dest <= Base+SectSize,
 
@@ -146,7 +162,17 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Diff):-
     New_dest >= Base2, New_dest <= Base2+SectSize2,
 
     // sections can have one overlapping address
-    Dest != Base2.
+    Dest != Base2,
+    // There seems to be an asymmetry here
+    // Requiring the movement to be consistent with the sign of the
+    // multiplier works very well for positive multipliers, not so much
+    // for negative ones.
+    (
+        Mult > 0, New_dest > Dest
+        ;
+        Mult <= 0
+    ).
+
 
 .decl access_non_regular_data_section(EA:address,Op_index:number)
 
@@ -162,6 +188,7 @@ access_non_regular_data_section(EA,Op_index):-
     Dest2 < Base+SizeSect.
 
 .decl moved_displacement_candidate(EA:address,Op_index:number,Dest:address,New_dest:address,Priority:number)
+.output moved_displacement_candidate
 
 moved_label_class(EA,Op_index,"miss section with access"),
 moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
@@ -177,7 +204,7 @@ moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
 
     Diff = max(Access_dest-Dest,Dest-Access_dest),
     10*Dest >= Base,
-    // the remaining component does not fall on any data section
+    // the remaining component does not fall on any data or code section
     !data_byte(Diff,_),
     // does not fall in bss sections
     bss_section_limits(BssBeg,BssEnd),(Diff < BssBeg; Diff > BssEnd).
