@@ -62,8 +62,6 @@ instruction_memory_access_size(EA,Index,SizeAccess):-
 data_access(EA,Op_index,Reg1,Reg2,Reg3,Mult,Offset,Size):-
     code(EA),
     instruction_get_op(EA,Op_index,Op),
-    instruction_get_operation(EA,Operation),
-    Operation != "LEA",
     op_indirect(Op,Reg1,Reg2,Reg3,Mult,Offset,_),
     instruction_memory_access_size(EA,Op_index,Size).
 
@@ -183,6 +181,8 @@ data_access_pattern_candidate(Address,Size,FinalMult,EA):-
 
 data_access_pattern(Address,Size,Multiplier,From):-
     data_access_pattern_candidate(Address,Size,Multiplier,From),
+    instruction_get_operation(From,Operation),
+    Operation != "LEA",
     data_byte(Address,_),
     (
         // select the access pattern with highest multiplier
