@@ -180,6 +180,12 @@ symbolic_operand_point(EA,Imm_index,-1,"immediate is bitmask"):-
     instruction_get_operation(EA,Operation),
     arch.logic_operation(Operation).
 
+symbolic_operand_point(EA,Imm_index,-2,"point to exception section"):-
+    symbolic_operand_candidate(EA,Imm_index,Dest,_),
+    exception_section(Name),
+    section(Name,SectSize,Base),
+    Base <= Dest, Dest < Base+SectSize.
+
  symbolic_operand_point(EA,Imm_index,-1,"operated on logical operation result"):-
     op_immediate_and_reg(EA,_,Reg,Imm_index,_),
     def_used(EA_def,Reg,EA,_),
@@ -459,9 +465,9 @@ next_address_in_data(EA,EA_next):-
     address_in_data_refined(EA_next,_).
 
 
-.decl address_array_aux(EA:address,Distance:number,type:symbol)
+.decl address_array_aux(EA:address,Distance:number,type:symbol,InitialEA:address)
 
-address_array_aux(EA,Diff,"code"):-
+address_array_aux(EA,Diff,"code",EA):-
     address_in_data_refined(EA,Dest1),code(Dest1),
     arch.pointer_size(Pt_size),
     EA % Pt_size = 0,
@@ -471,7 +477,7 @@ address_array_aux(EA,Diff,"code"):-
     next_address_in_data(EA+Diff,EA+(2*Diff)),
     address_in_data_refined(EA+(2*Diff),Dest3),code(Dest3).
 
-address_array_aux(EA,Diff,"data"):-
+address_array_aux(EA,Diff,"data",EA):-
     address_in_data_refined(EA,Dest1),data_byte(Dest1,_),
     arch.pointer_size(Pt_size),
     EA % Pt_size = 0,
@@ -486,13 +492,13 @@ address_array_aux(EA,Diff,"data"):-
     Begin <= Dest3, Dest3 <=End.
 
 
-address_array_aux(EA+Diff,Diff,"code"):-
-    address_array_aux(EA,Diff,"code"),
+address_array_aux(EA+Diff,Diff,"code",InitialEA):-
+    address_array_aux(EA,Diff,"code",InitialEA),
     next_address_in_data(EA,EA+Diff),
     address_in_data_refined(EA+Diff,Dest),code(Dest).
 
-address_array_aux(EA+Diff,Diff,"data"):-
-    address_array_aux(EA,Diff,"data"),
+address_array_aux(EA+Diff,Diff,"data",InitialEA):-
+    address_array_aux(EA,Diff,"data",InitialEA),
     address_in_data_refined(EA,Dest1),
     next_address_in_data(EA,EA+Diff),
     address_in_data_refined(EA+Diff,Dest2),data_byte(Dest2,_),
@@ -500,15 +506,15 @@ address_array_aux(EA+Diff,Diff,"data"):-
     Begin <= Dest1, Dest1 <=End,
     Begin <= Dest2, Dest2 <=End.
 
-.decl address_array(EA:address,Distance:number)
+.decl address_array(EA:address,Distance:number,InitialEA:address)
 
-address_array(EA,Distance):-
-    address_array_aux(EA,Distance,_).
+address_array(EA,Distance,InitialEA):-
+    address_array_aux(EA,Distance,_,InitialEA).
 
 .init address_array_range=empty_range
 
 address_array_range.in_ea(EA):-
-    address_array(EA,_).
+    address_array(EA,_,_).
 
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -530,26 +536,26 @@ data_object_point(EA,Size,"symbol-symbol",4,"symbol-symbol"):-
 // Pointer array heuristic
 data_object_point(EA,Pt_size,"symbol",3,"pointer array"):-
     data_object_candidate(EA,Pt_size,"symbol"),
-    address_array(EA,_).
+    address_array(EA,_,_).
 
 // a pointer array should point to the same type
 data_object_point(EA,Size,Type,2,"pointed by pointer array"),
 data_object_point(EA2,Size2,Type,2,"pointed by pointer array"),
 data_object_point(EA3,Size3,Type,2,"pointed by pointer array"),
 data_object_point(EA4,Size4,Type,2,"pointed by pointer array"):-
-    address_array(EA_array,Distance),
+    address_array(EA_array,Distance,InitialEA),
     address_in_data(EA_array,EA),
     data_object_candidate(EA,Size,Type),
 
-    address_array(EA_array+Distance,Distance),
+    address_array(EA_array+Distance,Distance,InitialEA),
     address_in_data(EA_array+Distance,EA2),
     data_object_candidate(EA2,Size2,Type),
 
-    address_array(EA_array+2*Distance,Distance),
+    address_array(EA_array+2*Distance,Distance,InitialEA),
     address_in_data(EA_array+2*Distance,EA3),
     data_object_candidate(EA3,Size3,Type),
 
-    address_array(EA_array+3*Distance,Distance),
+    address_array(EA_array+3*Distance,Distance,InitialEA),
     address_in_data(EA_array+3*Distance,EA4),
     data_object_candidate(EA4,Size4,Type).
 
@@ -695,6 +701,10 @@ symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
 
 symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
     relocation(EA,"R_X86_64_32",Symbol,Addend),
+    symbol(_,_,_,_,_,Symbol).
+
+symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
+    relocation(EA,"R_X86_64_32S",Symbol,Addend),
     symbol(_,_,_,_,_,Symbol).
 
 ///////////////////////////////////////////////////////////////////////////////////////////
