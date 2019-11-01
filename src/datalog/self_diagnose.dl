@@ -89,7 +89,8 @@ false_negative(Location):-
         instruction_immediate_offset(EA,Index,Offset);
         instruction_displacement_offset(EA,Index,Offset)
     ),
-    Location=EA+Offset.
+    Location = EA+Offset,
+    !symbolic_expr_from_relocation(Location,_,_,_).
 
 false_positive(Location):-
     code(EA),
