@@ -220,12 +220,6 @@ using VectorByEA = boost::multi_index_container<
     T, boost::multi_index::indexed_by<boost::multi_index::ordered_non_unique<
            boost::multi_index::member<T, decltype(T::EA), &T::EA>>>>;
 
-struct SymbolicInfo
-{
-    VectorByEA<MovedLabel> MovedLabels;
-    VectorByEA<SymbolicExpressionNoOffset> SymbolicExpressionNoOffsets;
-};
-
 struct SymbolicData
 {
     SymbolicData(gtirb::Addr ea) : EA(ea)
@@ -312,6 +306,13 @@ struct SymbolSpecialType
 
     gtirb::Addr EA{0};
     std::string Type;
+};
+
+struct SymbolicInfo
+{
+    VectorByEA<MovedLabel> MovedLabels;
+    VectorByEA<SymbolicExpressionNoOffset> SymbolicExpressionNoOffsets;
+    VectorByEA<SymbolicExpr> SymbolicExpressionsFromRelocations;
 };
 
 template <typename T>
@@ -488,6 +489,20 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
                             const DecodedInstruction &instruction, uint64_t index, ImmOp &immediate,
                             const SymbolicInfo &symbolicInfo)
 {
+    // Symbolic expression form relocation
+    if(const auto symbolicExpr =
+           symbolicInfo.SymbolicExpressionsFromRelocations.find(ea + instruction.immediateOffset);
+       symbolicExpr != symbolicInfo.SymbolicExpressionsFromRelocations.end())
+    {
+        auto foundSymbol = module.findSymbols(symbolicExpr->Symbol);
+        if(foundSymbol.begin() != foundSymbol.end())
+        {
+            module.addSymbolicExpression(
+                ea + instruction.immediateOffset,
+                gtirb::SymAddrConst{symbolicExpr->Addend, &*foundSymbol.begin()});
+            return;
+        }
+    }
     // Symbol+constant case
     auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
     if(auto movedLabel =
@@ -518,6 +533,20 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
                            const DecodedInstruction &instruction, uint64_t index,
                            IndirectOp &indirect, const SymbolicInfo &symbolicInfo)
 {
+    // Symbolic expression form relocation
+    if(const auto symbolicExpr = symbolicInfo.SymbolicExpressionsFromRelocations.find(
+           ea + instruction.displacementOffset);
+       symbolicExpr != symbolicInfo.SymbolicExpressionsFromRelocations.end())
+    {
+        auto foundSymbol = module.findSymbols(symbolicExpr->Symbol);
+        if(foundSymbol.begin() != foundSymbol.end())
+        {
+            module.addSymbolicExpression(
+                ea + instruction.displacementOffset,
+                gtirb::SymAddrConst{symbolicExpr->Addend, &*foundSymbol.begin()});
+            return;
+        }
+    }
     // Symbol+constant case
     auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
     if(auto movedLabel =
@@ -561,7 +590,8 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
     auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", prog);
     SymbolicInfo symbolicInfo{
         convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
-        convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog)};
+        convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog),
+        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog)};
     std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
 
     for(auto &cib : codeInBlock)
@@ -943,7 +973,8 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
     for(auto &output : *prog->getRelation("data_access_pattern"))
     {
         gtirb::Addr ea;
-        uint64_t size, multiplier, from;
+        uint64_t size, from;
+        int64_t multiplier;
         output >> ea >> size >> multiplier >> from;
         std::ostringstream newComment;
         newComment << "data_access(" << size << ", " << multiplier << ", " << std::hex << from
