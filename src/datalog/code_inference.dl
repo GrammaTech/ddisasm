@@ -244,12 +244,8 @@ code_in_block_candidate(EA,EA):-
 
 after_end(Next,End):-
     code_in_block_candidate(End,_),
-    (
-        unconditional_jump(End);
-        return(End);
-        halt(End)
-    ),
-    next(End,Next).
+    next(End,Next),
+    !may_fallthrough(End,Next).
 
 after_end(Next,End):-
     after_end(EA,End),
