@@ -265,11 +265,11 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
     def_used(EA_base,Reg,EA_jump,_),
     (
         abstracted_multiple_reg_operation(EA_base,Reg,Reg,Reg2,Mult,0);
-        abstracted_multiple_reg_operation(EA_base,Reg,Reg2,Reg,1,0)
+        abstracted_multiple_reg_operation(EA_base,Reg,Reg2,Reg,1,0), Mult = 1
     ),
     (
-        Mult=1,Operation= "ADD";
-        Mult=-1,Operation= "SUB"
+        Mult = 1,Operation= "ADD";
+        Mult = -1,Operation= "SUB"
     ),
     (
         RegBase = Reg, RegDiff = Reg2;
