@@ -173,20 +173,6 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Diff):-
         Mult <= 0
     ).
 
-
-.decl access_non_regular_data_section(EA:address,Op_index:number)
-
-access_non_regular_data_section(EA,Op_index):-
-    data_access(EA,Op_index,_,_,_,_,Dest,_),
-    symbolic_operand(EA,Op_index,Dest2,_),
-    data_section(Name),
-    !regular_data_section(Name),
-    section(Name,SizeSect,Base),
-    Dest >= Base,
-    Dest < Base+SizeSect,
-    Dest2 >= Base,
-    Dest2 < Base+SizeSect.
-
 .decl moved_displacement_candidate(EA:address,Op_index:number,Dest:address,New_dest:address,Priority:number)
 .output moved_displacement_candidate
 
@@ -313,7 +299,8 @@ cmp_reg_to_reg(EA,Reg1,Reg2):-
     instruction_get_op(EA,_,Op2), Op2!=Op1,
     op_regdirect_contains_reg(Op2,Reg2).
 
-.decl dest_enlarged_data_section(EA:address,Reg:register,New_dest:address,Beg:address,End:address,OldBeg:address,OldEnd:address)
+.decl dest_enlarged_data_section(EA:address,Reg:register,New_dest:address,
+            Beg:address,End:address,OldBeg:address,OldEnd:address)
 .output dest_enlarged_data_section
 
 dest_enlarged_data_section(EA_def,Reg,New_dest,Beg-MultAbs,Beg+SizeSect+MultAbs,Beg,Beg+SizeSect):-
@@ -343,7 +330,7 @@ moved_immediate_candidate(EA_from,Imm_index,Immediate,New_dest):-
     mov_immediate_to_reg(EA_from,Reg,Imm_index,Immediate),
     Beg-Mult <= Immediate,
     Immediate <= Beg+SizeSect+Mult,
-    //only move if the original does not fall in the section
+    //only move if the original does not fall in the original section
     (Immediate < Beg ; Immediate > Beg+SizeSect).
 
 moved_label_class(EA,Imm_index,"immediate loop bound"),

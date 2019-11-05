@@ -64,6 +64,11 @@ take_address(Src,Address):-
     pc_relative_operand(Src,1,Address),
     instruction_get_operation(Src,"LEA").
 
+/*
+This detects potential jump tables even before any of the data analyses is performed.
+It is used to find jump tables in the code section.
+
+*/
 .decl relative_address(EA:address,Size:number,Reference:address,Dest:address)
 .output relative_address
 

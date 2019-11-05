@@ -229,13 +229,22 @@ last_data_access(EA+1,Where):-
 
 propagated_data_access(EA,Mult,EA):-
     data_access_pattern(EA,_,Mult,_),
+    // We only propagate data accesses with positive multipliers (for now)
+    // This is just easier and gives us enough information.
     Mult > 0.
 
 propagated_data_access(EA+Mult,Mult,EA_ref):-
     propagated_data_access(EA,Mult,EA_ref),
     data_byte(EA+Mult,_),
     // no collision with next data access pattern
-    !possible_data_limit(EA+Mult),
+    (
+        !possible_data_limit(EA+Mult)
+        ;
+        // single access from the same address
+        possible_data_limit(EA+Mult),
+        data_access_pattern(EA+Mult,S,0,From),
+        data_access_pattern(EA_ref,S,Mult,From)
+    ),
     //no collision with other data access pattern in between
     last_data_access(EA+Mult,Last),
     (

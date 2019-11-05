@@ -412,8 +412,43 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
     module.addAuxData("symbolForwarding", std::move(symbolForwarding));
 }
 
+bool isNullReg(const std::string &reg)
+{
+    return reg == "NONE";
+}
+
+std::string getLabel(uint64_t ea)
+{
+    std::stringstream ss;
+    ss << ".L_" << std::hex << ea;
+    return ss.str();
+}
+
+gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::Addr ea)
+{
+    const auto *symbolForwarding =
+        module.getAuxData<std::map<gtirb::UUID, gtirb::UUID>>("symbolForwarding");
+    auto found = module.findSymbols(ea);
+    if(!found.empty())
+    {
+        gtirb::Symbol *bestSymbol = &*found.begin();
+        for(auto it = found.begin(); it != found.end(); it++)
+        {
+            auto forwardSymbol = symbolForwarding->find(it->getUUID());
+            if(forwardSymbol != symbolForwarding->end())
+                bestSymbol = &*it;
+        }
+        return bestSymbol;
+    }
+    auto *sym = gtirb::Symbol::Create(context, ea, getLabel(uint64_t(ea)),
+                                      gtirb::Symbol::StorageKind::Local);
+    module.addSymbol(sym);
+    return sym;
+}
+
 // Expand the SymbolForwarding table with plt references
-void expandSymbolForwarding(gtirb::Module &module, souffle::SouffleProgram *prog)
+void expandSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
+                            souffle::SouffleProgram *prog)
 {
     auto *symbolForwarding =
         module.getAuxData<std::map<gtirb::UUID, gtirb::UUID>>("symbolForwarding");
@@ -449,40 +484,18 @@ void expandSymbolForwarding(gtirb::Module &module, souffle::SouffleProgram *prog
             }
         }
     }
-}
-
-bool isNullReg(const std::string &reg)
-{
-    return reg == "NONE";
-}
-
-std::string getLabel(uint64_t ea)
-{
-    std::stringstream ss;
-    ss << ".L_" << std::hex << ea;
-    return ss.str();
-}
-
-gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::Addr ea)
-{
-    const auto *symbolForwarding =
-        module.getAuxData<std::map<gtirb::UUID, gtirb::UUID>>("symbolForwarding");
-    auto found = module.findSymbols(ea);
-    if(!found.empty())
+    for(auto &output : *prog->getRelation("got_local_reference"))
     {
-        gtirb::Symbol *bestSymbol = &*found.begin();
-        for(auto it = found.begin(); it != found.end(); it++)
+        gtirb::Addr ea, dest;
+
+        output >> ea >> dest;
+        auto foundSrc = module.findSymbols(ea);
+        gtirb::Symbol *destSymbol = getSymbol(context, module, dest);
+        for(gtirb::Symbol &src : foundSrc)
         {
-            auto forwardSymbol = symbolForwarding->find(it->getUUID());
-            if(forwardSymbol != symbolForwarding->end())
-                bestSymbol = &*it;
+            (*symbolForwarding)[src.getUUID()] = destSymbol->getUUID();
         }
-        return bestSymbol;
     }
-    auto *sym = gtirb::Symbol::Create(context, ea, getLabel(uint64_t(ea)),
-                                      gtirb::Symbol::StorageKind::Local);
-    module.addSymbol(sym);
-    return sym;
 }
 
 void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, const gtirb::Addr &ea,
@@ -1065,6 +1078,19 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
     module.addAuxData("comments", std::move(comments));
 }
 
+void buildJumpTableRanges(gtirb::Module &module, souffle::SouffleProgram *prog)
+{
+    std::map<gtirb::Addr, std::string> tableRanges;
+    for(auto &output : *prog->getRelation("compact_table_range"))
+    {
+        gtirb::Addr beg, end;
+        output >> beg >> end;
+        std::ostringstream newComment;
+        tableRanges[beg] = "# Jump Table Start";
+        tableRanges[end] = "# Jump Table End";
+    }
+    module.addAuxData("tableRanges", std::move(tableRanges));
+}
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
                        souffle::SouffleProgram *prog, bool selfDiagnose)
 {
@@ -1075,12 +1101,13 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildCodeSymbolicInformation(context, module, prog);
     connectSymbolsToDataGroups(module);
     buildCfiDirectives(context, module, prog);
-    expandSymbolForwarding(module, prog);
+    expandSymbolForwarding(context, module, prog);
     connectSymbolsToBlocks(module);
     buildFunctions(module, prog);
     buildCFG(context, module, prog);
     buildPadding(module, prog);
     buildComments(module, prog, selfDiagnose);
+    buildJumpTableRanges(module, prog);
 }
 
 void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)

@@ -466,6 +466,10 @@ bss_section_limits(Begin,LastSect+SizeLast):-
     LastSect = max X:{ bss_section(Name),section(Name,_,X)},
     section(_,SizeLast,LastSect).
 
+/*
+data segments can be data sections or fragments of the code section that
+contain data instead of code.
+*/
 .decl initialized_data_segment(Begin:address,End:address)
 .output initialized_data_segment
 
@@ -492,6 +496,9 @@ data_segment(Begin,End):-
 
 .decl got_reference(Got_entry:address,Symbol:symbol)
 .output got_reference
+
+.decl got_local_reference(Got_entry:address,Dest:address)
+.output got_local_reference
 
 //////////////////////////////////////////////////////////////////////////
 // find special functions and symbols

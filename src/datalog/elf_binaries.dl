@@ -146,6 +146,22 @@ got_reference(Got_entry,Symbol):-
     relocation(Got_entry,_,Symbol,_),
     symbol(_,_,_,Scope,_,Symbol), Scope != "WEAK".
 
+got_reference(Got_entry,Symbol):-
+    pc_relative_operand(_,_,Got_entry),
+    section(".got",Size,Beg),
+    Got_entry >= Beg,
+    Got_entry < Beg+Size,
+    symbolic_data(Got_entry,8,Dest),
+    symbol(Dest,_,_,_,_,Symbol).
+
+got_local_reference(Got_entry,Dest):-
+    pc_relative_operand(_,_,Got_entry),
+    section(".got",Size,Beg),
+    Got_entry >= Beg,
+    Got_entry < Beg+Size,
+    symbolic_data(Got_entry,8,Dest),
+    !got_reference(Got_entry,_).
+
 
 //////////////////////////////////////////////////////////////////////////
 // find the main function even if it does not have a symbol

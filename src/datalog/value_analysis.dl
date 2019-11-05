@@ -272,7 +272,7 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult1+(Mult*Mult2),Offset+Offset1+Offset2*Mul
     Steps3 = max(Steps1+1,Steps2+1),
     Steps3 < 8.
 
-// one of the registers is a constant
+// deal with arithmetic operation on two registers when one of the registers contains a constant
 value_reg(EA,Reg_def,EA_third,Reg3,Mult*Mult2,Offset+Offset1+Offset2*Mult,Steps3):-
     abstracted_multiple_reg_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
     def_used(EA_def1,Reg1,EA,_),
@@ -291,6 +291,7 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult*Mult2,Offset+Offset1+Offset2*Mult,Steps3
     Steps3 = max(Steps1+1,Steps2+1),
     Steps3 < 8.
 
+// the other register constains a constant.
 value_reg(EA,Reg_def,EA_third,Reg3,Mult1,Offset+Offset1+Offset2*Mult,Steps3):-
     abstracted_multiple_reg_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
     def_used(EA_def1,Reg1,EA,_),

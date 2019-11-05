@@ -137,6 +137,8 @@ false_negative(EA):-
 false_positive(EA):-
     (
         symbolic_data(EA,_,_);
+        // it looks like jump tables where each entry 2 or less bytes do not have
+        // relocations associated to them.
         symbol_minus_symbol(EA,Size,_,_), Size>2
     ),
     !relocation(EA,_,_,_),
