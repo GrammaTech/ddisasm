@@ -296,11 +296,11 @@ void GtirbToDatalog::populateSccs(gtirb::Module& M)
     {
         auto Found = SccTable->find(Block.getUUID());
         assert(Found != SccTable->end() && "Block missing from SCCs table");
-        uint64_t FoundSize = Found->second;
-        if(SccBlockIndex.size() <= FoundSize)
-            SccBlockIndex.resize(FoundSize + 1);
+        uint64_t SccIndex = Found->second;
+        if(SccBlockIndex.size() <= SccIndex)
+            SccBlockIndex.resize(SccIndex + 1);
         souffle::tuple T(InSccRel);
-        T << Found->second << SccBlockIndex[FoundSize]++ << Block.getAddress();
+        T << SccIndex << SccBlockIndex[SccIndex]++ << Block.getAddress();
         InSccRel->insert(T);
     }
 }
