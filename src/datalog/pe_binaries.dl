@@ -176,10 +176,16 @@ base_relocation(Addr):-
 .decl base_relative_operand(EA:address,Index:number,Dest:address)
 .output base_relative_operand
 
-base_relative_operand(EA_used,Index,Value):-
+symbol_minus_symbol(EA_used+Disp_offset,4,ImageBase,Value),
+base_relative_operand(EA_used,Op_index,Value):-
     pc_relative_operand(EA_def,_,0),
-    def_used(EA_def,_,EA_used,Index),
-    symbolic_operand(EA_used,Index,Value,_).
+    def_used(EA_def,_,EA_used,Op_index),
+    symbolic_operand(EA_used,Op_index,Value,_),
+    instruction_displacement_offset(EA_used,Op_index,Disp_offset),
+    base_address(ImageBase).
+
+inferred_symbol_name(ImageBase,".L_0","Static"):-
+    base_address(ImageBase).
 
 // the call to main is right after the call to "__p___argc"
 main_function(EA):-
