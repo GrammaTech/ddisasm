@@ -681,6 +681,19 @@ void buildDataDirectories(gtirb::Module &module, souffle::SouffleProgram *prog)
     }
     module.addAuxData("dataDirectories", std::move(dataDirectories));
 }
+void buildBaseRelativeOperands(gtirb::Module &module, souffle::SouffleProgram *prog)
+{
+    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>> baseRelativeOperands;
+    for(auto &output : *prog->getRelation("base_relative_operand"))
+    {
+        uint64_t address;
+        uint64_t opIndex;
+        uint64_t value;
+        output >> address >> opIndex >> value;
+        baseRelativeOperands.push_back({address, opIndex, value});
+    }
+    module.addAuxData("baseRelativeOperands", std::move(baseRelativeOperands));
+}
 
 void buildDataGroups(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
 {
@@ -1099,6 +1112,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildInferredSymbols(context, module, prog);
     buildSymbolForwarding(context, module, prog);
     buildDataDirectories(module, prog);
+    buildBaseRelativeOperands(module, prog);
     buildDataGroups(context, module, prog);
     buildCodeBlocks(context, module, prog);
     buildCodeSymbolicInformation(context, module, prog);

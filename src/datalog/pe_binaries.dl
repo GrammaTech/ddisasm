@@ -173,6 +173,14 @@ base_relocation(Addr):-
     base_address(BaseAddr),
     Val = Data - BaseAddr.
 
+.decl base_relative_operand(EA:address,Index:number,Dest:address)
+.output base_relative_operand
+
+base_relative_operand(EA_used,Index,Value):-
+    pc_relative_operand(EA_def,_,0),
+    def_used(EA_def,_,EA_used,Index),
+    symbolic_operand(EA_used,Index,Value,_).
+
 // the call to main is right after the call to "__p___argc"
 main_function(EA):-
     code(EA1),
