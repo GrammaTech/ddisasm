@@ -175,7 +175,7 @@ void ElfReader::read_relocations()
     {
         if(sections[section_index].sh_type == SHT_RELA)
         {
-            uint64_t num_rela = sections[section_index].sh_size / sizeof(Elf64_Rela));
+            uint64_t num_rela = sections[section_index].sh_size / sizeof(Elf64_Rela);
             file.seekg(sections[section_index].sh_offset, ios::beg);
             for(uint64_t i = 0; i < num_rela; i++)
             {
