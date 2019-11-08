@@ -72,7 +72,6 @@ function(set_common_msvc_options TARGET_NAME)
   target_compile_options(${TARGET_NAME} PRIVATE "-bigobj")
 
   target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-D_DEBUG>)
-  target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-DDEBUG>)
   target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-MDd>)
   target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-Ob0>) # Disables inline expansion
   target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-Od>) # Disables optimization, speeding compilation and simplifying debugging. https://msdn.microsoft.com/en-us/library/k1ack8f1.aspx
