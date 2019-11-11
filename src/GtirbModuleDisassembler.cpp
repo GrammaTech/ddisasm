@@ -274,6 +274,13 @@ struct SymbolMinusSymbol
     gtirb::Addr Symbol2{0};
 };
 
+struct SymbolicInfo
+{
+    VectorByEA<MovedLabel> MovedLabels;
+    VectorByEA<SymbolicExpressionNoOffset> SymbolicExpressionNoOffsets;
+    VectorByEA<SymbolMinusSymbol> SymbolicBaseMinusConst;
+};
+
 struct StringDataObject
 {
     StringDataObject(gtirb::Addr ea) : EA(ea)
@@ -596,6 +603,19 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
                                          gtirb::SymAddrConst{0, sym});
         }
     }
+    // Special case for implicit ImageBase-Symbol, relative addresses
+    auto rangeRelSym =
+        symbolicInfo.SymbolicBaseMinusConst.equal_range(ea + instruction.displacementOffset);
+    if(auto relSym = rangeRelSym.first; relSym != rangeRelSym.second)
+    {
+        auto data =
+            gtirb::DataObject::Create(context, gtirb::Addr(indirect.displacement), relSym->Size);
+        module.addSymbolicExpression(
+            gtirb::Addr(relSym->EA),
+            gtirb::SymAddrAddr{1, 0, getSymbol(context, module, relSym->Symbol1),
+                               getSymbol(context, module, relSym->Symbol2)});
+        module.addData(data);
+    }
 }
 
 void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module,
@@ -605,7 +625,8 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
     SymbolicInfo symbolicInfo{
         convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
         convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog),
-        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog)};
+        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog),
+        convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog)};
     std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
 
     for(auto &cib : codeInBlock)
@@ -680,19 +701,6 @@ void buildDataDirectories(gtirb::Module &module, souffle::SouffleProgram *prog)
         dataDirectories.push_back({type, address, size});
     }
     module.addAuxData("dataDirectories", std::move(dataDirectories));
-}
-void buildBaseRelativeOperands(gtirb::Module &module, souffle::SouffleProgram *prog)
-{
-    std::vector<std::tuple<uint64_t, uint64_t, uint64_t>> baseRelativeOperands;
-    for(auto &output : *prog->getRelation("base_relative_operand"))
-    {
-        uint64_t address;
-        uint64_t opIndex;
-        uint64_t value;
-        output >> address >> opIndex >> value;
-        baseRelativeOperands.push_back({address, opIndex, value});
-    }
-    module.addAuxData("baseRelativeOperands", std::move(baseRelativeOperands));
 }
 
 void buildDataGroups(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
@@ -1112,7 +1120,6 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildInferredSymbols(context, module, prog);
     buildSymbolForwarding(context, module, prog);
     buildDataDirectories(module, prog);
-    buildBaseRelativeOperands(module, prog);
     buildDataGroups(context, module, prog);
     buildCodeBlocks(context, module, prog);
     buildCodeSymbolicInformation(context, module, prog);

@@ -177,10 +177,11 @@ base_relocation(Addr):-
 .output base_relative_operand
 
 symbol_minus_symbol(EA_used+Disp_offset,4,ImageBase,Value),
+symbolic_operand_point(EA_used,Op_index,-1,"base-relative"),
 base_relative_operand(EA_used,Op_index,Value):-
     pc_relative_operand(EA_def,_,0),
     def_used(EA_def,_,EA_used,Op_index),
-    symbolic_operand(EA_used,Op_index,Value,_),
+    symbolic_operand_candidate(EA_used,Op_index,Value,_),
     instruction_displacement_offset(EA_used,Op_index,Disp_offset),
     base_address(ImageBase).
 
