@@ -181,11 +181,11 @@ base_relative_operand(EA_used,Op_index,Value):-
     def_used(EA_def,_,EA_used,Op_index),
     symbolic_operand_candidate(EA_used,Op_index,Value,_).
 
-.decl inferred_symbol_minus_symbol(EA:address,Index:number,Dest:address)
+.decl base_relative_symbolic_operand(EA:address,Index:number,Dest:address)
 
 symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,Value),
 symbolic_operand_point(EA,Op_index,-1,"base-relative"),
-inferred_symbol_minus_symbol(EA,Op_index,Value):-
+base_relative_symbolic_operand(EA,Op_index,Value):-
     base_relative_operand(EA,Op_index,Value),
     instruction_displacement_offset(EA,Op_index,Disp_offset),
     instruction_get_op(EA,Op_index,Op),
@@ -222,6 +222,33 @@ base_relative_jump(EA_relop,EA):-
 base_relative_jump_table(EA_jmp,Value):-
     base_relative_jump(EA_relop,EA_jmp),
     base_relative_operand(EA_relop,_,Value).
+
+.decl base_relative_dword(EA:address,Val:number)
+base_relative_dword(EA,Val):-
+    data_byte(EA,  Byte0), EA % 4 = 0,
+    data_byte(EA+1,Byte1),
+    data_byte(EA+2,Byte2),
+    data_byte(EA+3,Byte3),
+    Val = (Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0).
+
+.decl base_relative_address(EA:address,Reference:address,Value:address)
+.output base_relative_address
+
+base_relative_address(EA,EA,Val):-
+    base_relative_jump_table(_,EA),
+    base_relative_dword(EA,Val).
+
+base_relative_address(EA+4,Ref,Val):-
+    base_relative_address(EA,Ref,_),
+    base_relative_dword(EA+4,Val),
+    Val > 0.
+
+.decl base_relative_symbolic_data(EA:address,Size:number,Value:address)
+
+symbol_minus_symbol(EA,4,Val,ImageBase),
+base_relative_symbolic_data(EA,4,Val):-
+    base_relative_address(EA,_,Val),
+    base_address(ImageBase).
 
 // the call to main is right after the call to "__p___argc"
 main_function(EA):-
