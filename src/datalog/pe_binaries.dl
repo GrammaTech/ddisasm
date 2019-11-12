@@ -176,13 +176,20 @@ base_relocation(Addr):-
 .decl base_relative_operand(EA:address,Index:number,Dest:address)
 .output base_relative_operand
 
-symbol_minus_symbol(EA_used+Disp_offset,4,ImageBase,Value),
-symbolic_operand_point(EA_used,Op_index,-1,"base-relative"),
 base_relative_operand(EA_used,Op_index,Value):-
     pc_relative_operand(EA_def,_,0),
     def_used(EA_def,_,EA_used,Op_index),
-    symbolic_operand_candidate(EA_used,Op_index,Value,_),
-    instruction_displacement_offset(EA_used,Op_index,Disp_offset),
+    symbolic_operand_candidate(EA_used,Op_index,Value,_).
+
+.decl inferred_symbol_minus_symbol(EA:address,Index:number,Dest:address)
+
+symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,Value),
+symbolic_operand_point(EA,Op_index,-1,"base-relative"),
+inferred_symbol_minus_symbol(EA,Op_index,Value):-
+    base_relative_operand(EA,Op_index,Value),
+    instruction_displacement_offset(EA,Op_index,Disp_offset),
+    instruction_get_op(EA,Op_index,Op),
+    op_indirect(Op,_,_,_,_,_,Size),
     base_address(ImageBase).
 
 inferred_symbol_name(ImageBase,".L_0","Static"):-
