@@ -246,6 +246,7 @@ base_relative_address(EA+4,Ref,Val):-
 .decl base_relative_symbolic_data(EA:address,Size:number,Value:address)
 
 symbol_minus_symbol(EA,4,Val,ImageBase),
+data_object_point(EA,8,"symbol",-1,"base-relative"),
 base_relative_symbolic_data(EA,4,Val):-
     base_relative_address(EA,_,Val),
     base_address(ImageBase).
