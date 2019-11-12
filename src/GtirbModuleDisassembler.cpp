@@ -608,13 +608,10 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
         symbolicInfo.SymbolicBaseMinusConst.equal_range(ea + instruction.displacementOffset);
     if(auto relSym = rangeRelSym.first; relSym != rangeRelSym.second)
     {
-        auto data =
-            gtirb::DataObject::Create(context, gtirb::Addr(indirect.displacement), relSym->Size);
         module.addSymbolicExpression(
             gtirb::Addr(relSym->EA),
             gtirb::SymAddrAddr{1, 0, getSymbol(context, module, relSym->Symbol1),
                                getSymbol(context, module, relSym->Symbol2)});
-        module.addData(data);
     }
 }
 
