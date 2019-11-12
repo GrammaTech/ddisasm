@@ -89,8 +89,7 @@ false_negative(Location):-
         instruction_immediate_offset(EA,Index,Offset);
         instruction_displacement_offset(EA,Index,Offset)
     ),
-    Location = EA+Offset,
-    !symbolic_expr_from_relocation(Location,_,_,_).
+    Location = EA+Offset.
 
 false_positive(Location):-
     code(EA),
@@ -137,9 +136,9 @@ false_negative(EA):-
 false_positive(EA):-
     (
         symbolic_data(EA,_,_);
-        // it looks like jump tables where each entry 2 or less bytes do not have
+        // it looks like jump tables where each entry 4 or less bytes do not have
         // relocations associated to them.
-        symbol_minus_symbol(EA,Size,_,_), Size>2
+        symbol_minus_symbol(EA,Size,_,_), Size>4
     ),
     !relocation(EA,_,_,_),
 

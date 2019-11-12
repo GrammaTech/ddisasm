@@ -144,15 +144,9 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Diff):-
     symbolic_operand(EA,Op_index,Dest,_),
     data_access(EA,Op_index,_,_,_,_,_,_),
     data_access_pattern_candidate(Access_dest,_,Mult,EA),
-    (
-        Access_dest != Dest,
-        New_dest = Access_dest,
-        Diff = max(Access_dest-Dest, Dest-Access_dest)
-        ;
-        Access_dest = Dest,
-        New_dest = Dest+Mult,
-        Diff = Mult
-    ),
+    Access_dest != Dest,
+    New_dest = Access_dest,
+    Diff = max(Access_dest-Dest, Dest-Access_dest),
 
     section(Name,SectSize,Base),
     Dest >= Base, Dest <= Base+SectSize,
@@ -262,16 +256,16 @@ moved_displacement_candidate(EA,Op_index,Dest,SymbolAddr,0):-
     SymbolAddr != Dest.
 
 // we take the candidate with the shortest distance/priority
-.decl discarded_moved_displacement_candidate(EA:address,Op_index:number,Dest:address,New_dest:address)
+.decl discarded_moved_displacement_candidate(EA:address,Op_index:number,Dest:address,New_dest:address,Distance:number)
 
-discarded_moved_displacement_candidate(EA,Op_index,Dest,New_dest):-
+discarded_moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance1):-
     moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance1),
     moved_displacement_candidate(EA,Op_index,_,_,Distance2),
     Distance2 < Distance1.
 
 moved_label(EA,Op_index,Dest,New_dest):-
-    moved_displacement_candidate(EA,Op_index,Dest,New_dest,_),
-    !discarded_moved_displacement_candidate(EA,Op_index,Dest,New_dest).
+    moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance),
+    !discarded_moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance).
 ////////////////////////////////////////////////////////////////////////////////
 //immediate operand (type I)
 // consider the case where the immediate is a loop bound

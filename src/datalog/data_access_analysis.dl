@@ -70,13 +70,25 @@ data_access(EA,Op_index,Reg1,Reg2,Reg3,Mult,Offset,Size):-
 
 .decl value_reg_at_operand_loop(EA:address,Op_index:operand_index,Reg:register,EA_from:address,Mult:number,Offset:number,Type:symbol)
 
+// the access is after the increment
 value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,Offset,"loop"),
 value_reg_at_operand_loop(EA,Op_index,Reg,EA_from,Mult,Offset,"loop"):-
     data_access(EA,Op_index,_,Reg2,Reg3,_,_,Size),
     (Reg = Ref2; Reg = Reg3),
     Reg!="NONE",
     def_used(EA_def,Reg,EA,Op_index),
-    best_value_reg(EA_def,Reg,EA_from,Mult,Offset,"loop").
+    best_value_reg(EA_def,Reg,EA_from,Mult,Offset,"loop"),
+    !def_used(EA_from,Reg,EA,Op_index).
+
+// the access is before the increment
+value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,Offset-Mult,"loop"),
+value_reg_at_operand_loop(EA,Op_index,Reg,EA_from,Mult,Offset-Mult,"loop"):-
+    data_access(EA,Op_index,_,Reg2,Reg3,_,_,Size),
+    (Reg = Ref2; Reg = Reg3),
+    Reg!="NONE",
+    def_used(EA_def,Reg,EA,Op_index),
+    best_value_reg(EA_def,Reg,EA_from,Mult,Offset,"loop"),
+    def_used(EA_from,Reg,EA,Op_index).
 
 value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,Offset_final,Type):-
     data_access(EA,Op_index,_,Reg2,Reg3,_,_,Size),

@@ -617,6 +617,11 @@ data_object_point(EA,Size,"string",3,"long string"):-
     data_object_candidate(EA,Size,"string"),
     Size > 5.
 
+data_object_point(EA,Size,"string",-2,"string in jump table"):-
+    data_object_candidate(EA,Size,"string"),
+    preferred_data_access(EA,EA_ref),
+    jump_table_start(_,_,EA_ref,_,_).
+
 // data access negative heuristic
 data_object_point(EA,Size,"other",4,"data access"):-
   data_object_candidate(EA,Size,"other"),

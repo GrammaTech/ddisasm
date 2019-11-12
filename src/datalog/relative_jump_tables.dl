@@ -43,6 +43,14 @@ data_word(EA,4,Val):-
     Val = -(2^32 -( Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0)),
     Val != 0.
 
+data_word(EA,4,Val):-
+    data_byte(EA,Byte0), EA % 4 = 0,//jump tables are assumed to be aligned
+    data_byte(EA+1,Byte1),
+    data_byte(EA+2,Byte2),
+    data_byte(EA+3,Byte3),
+    Byte3 < 128,//the number is positive
+    Val =  Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0.
+
 data_word(EA,8,Val):-
     data_byte(EA,Byte0), EA % 8 = 0,//jump tables are assumed to be aligned
     data_byte(EA+1,Byte1),
@@ -78,7 +86,11 @@ relative_address(EA,Size,EA,Dest),
 relative_address_start(EA,Size,EA,Dest):-
     take_address(_,EA),
     data_word(EA,Size,Diff),
-    Size >= 4,
+    (
+        Size = 4, Diff <= 0
+        ;
+        Size = 8
+    ),
     (
         Dest = EA-Diff;
         Dest = EA+Diff
