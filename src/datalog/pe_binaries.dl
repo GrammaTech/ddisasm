@@ -195,6 +195,34 @@ inferred_symbol_minus_symbol(EA,Op_index,Value):-
 inferred_symbol_name(ImageBase,".L_0","Static"):-
     base_address(ImageBase).
 
+.decl base_relative_operation(EA_relop:address,EA:address)
+.output base_relative_operation
+
+base_relative_operation(EA_relop,EA_inst):-
+    base_relative_operand(EA_relop,_,_),
+    def_used(EA_relop,_,EA_inst,_).
+
+base_relative_operation(EA_relop,EA_next):-
+    base_relative_operand(EA_relop,_,_),
+    def_used(EA_relop,_,EA_inst,_),
+    def_used(EA_inst,_,EA_next,_).
+
+.decl base_relative_jump(EA_relop:address,EA:address)
+.output base_relative_jump
+
+// TODO: narrow by restricting base_relative_operation chain to operations a
+//       jump table address calculation would actually use.
+base_relative_jump(EA_relop,EA):-
+    reg_jump(EA),
+    base_relative_operation(EA_relop,EA).
+
+.decl base_relative_jump_table(EA:address,Value:number)
+.output base_relative_jump_table
+
+base_relative_jump_table(EA_jmp,Value):-
+    base_relative_jump(EA_relop,EA_jmp),
+    base_relative_operand(EA_relop,_,Value).
+
 // the call to main is right after the call to "__p___argc"
 main_function(EA):-
     code(EA1),
