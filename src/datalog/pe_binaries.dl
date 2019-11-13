@@ -237,16 +237,30 @@ base_relative_dword(EA,Val):-
     data_byte(EA+3,Byte3),
     Val = (Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0).
 
+base_relative_dword(EA,Val):-
+    !code(EA),
+    code_byte(EA,  Byte0), EA % 4 = 0,
+    code_byte(EA+1,Byte1),
+    code_byte(EA+2,Byte2),
+    code_byte(EA+3,Byte3),
+    Val = (Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0).
+
+.decl base_relative_address_start(EA:address,Reference:address,Value:address)
+
+base_relative_address_start(EA,EA,Val):-
+    base_relative_jump_table(_,EA),
+    base_relative_dword(EA,Val).
+
 .decl base_relative_address(EA:address,Reference:address,Value:address)
 .output base_relative_address
 
 base_relative_address(EA,EA,Val):-
-    base_relative_jump_table(_,EA),
-    base_relative_dword(EA,Val).
+    base_relative_address_start(EA,EA,Val).
 
 base_relative_address(EA+4,Ref,Val):-
     base_relative_address(EA,Ref,_),
     base_relative_dword(EA+4,Val),
+    !base_relative_address_start(EA+4,_,_),
     Val > 0.
 
 .decl base_relative_symbolic_data(EA:address,Size:number,Value:address)

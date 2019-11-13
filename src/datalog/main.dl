@@ -147,6 +147,10 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
 .decl data_byte(ea:address,value:number)
 .input data_byte
 
+//data from code sections
+.decl code_byte(ea:address,value:number)
+.input code_byte
+
 .decl address_in_data(ea:address,value:number)
 
 .input address_in_data
