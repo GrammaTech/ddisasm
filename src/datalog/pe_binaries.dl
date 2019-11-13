@@ -181,6 +181,12 @@ base_relative_operand(EA_used,Op_index,Value):-
     def_used(EA_def,_,EA_used,Op_index),
     symbolic_operand_candidate(EA_used,Op_index,Value,_).
 
+base_relative_operand(EA_used,Op_index,Value):-
+    pc_relative_operand(EA_def,_,0),
+    def_used(EA_def,_,EA_used,Op_index),
+    instruction_get_op(EA_used,Op_index,Op),
+    op_indirect(Op,_,_,_,_,Value,_).
+
 .decl base_relative_symbolic_operand(EA:address,Index:number,Dest:address)
 
 symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,Value),
