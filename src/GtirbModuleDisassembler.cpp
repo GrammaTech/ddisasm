@@ -610,8 +610,8 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
     {
         module.addSymbolicExpression(
             gtirb::Addr(relSym->EA),
-            gtirb::SymAddrAddr{1, 0, getSymbol(context, module, relSym->Symbol1),
-                               getSymbol(context, module, relSym->Symbol2)});
+            gtirb::SymAddrAddr{1, 0, getSymbol(context, module, relSym->Symbol2),
+                               getSymbol(context, module, relSym->Symbol1)});
     }
 }
 
