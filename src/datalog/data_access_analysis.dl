@@ -247,7 +247,7 @@ propagated_data_access(EA,Mult,EA):-
     data_access_pattern(EA,_,Mult,_),
     // We only propagate data accesses with positive multipliers (for now)
     // This is just easier and gives us enough information.
-    Mult > 0.
+    Mult >= 0.
 
 propagated_data_access(EA+Mult,Mult,EA_ref):-
     propagated_data_access(EA,Mult,EA_ref),
@@ -270,10 +270,6 @@ propagated_data_access(EA+Mult,Mult,EA_ref):-
         data_access_pattern(Last,Size,Mult,_),
         Last+Size <= EA+Mult
     ).
-
-preferred_data_access(EA,EA):-
-    data_access_pattern(EA,_,Mult,_),
-    Mult = 0.
 
 preferred_data_access(EA,EA_label):-
     propagated_data_access(EA,_,EA_label).
