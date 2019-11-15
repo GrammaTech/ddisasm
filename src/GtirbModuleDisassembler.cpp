@@ -484,6 +484,7 @@ void expandSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
             }
         }
     }
+    // GOT reference that does not point to an external symbol but to a location in the code.
     for(auto &output : *prog->getRelation("got_local_reference"))
     {
         gtirb::Addr ea, dest;
@@ -1081,7 +1082,7 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
 void buildJumpTableRanges(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     std::map<gtirb::Addr, std::string> tableRanges;
-    for(auto &output : *prog->getRelation("compact_table_range"))
+    for(auto &output : *prog->getRelation("compact_jump_table_range"))
     {
         gtirb::Addr beg, end;
         output >> beg >> end;

@@ -230,3 +230,21 @@ no_return_function("abort"):-binary_format("ELF").
 no_return_function("__stack_chk_fail"):-binary_format("ELF").
 no_return_function("__assert_fail"):-binary_format("ELF").
 no_return_function("longjump"):-binary_format("ELF").
+
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
+symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
+    binary_format("ELF"),
+    relocation(EA,"R_X86_64_64",Symbol,Addend),
+    symbol(_,_,_,_,_,Symbol).
+
+symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
+    binary_format("ELF"),
+    relocation(EA,"R_X86_64_32",Symbol,Addend),
+    symbol(_,_,_,_,_,Symbol).
+
+symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
+    binary_format("ELF"),
+    relocation(EA,"R_X86_64_32S",Symbol,Addend),
+    symbol(_,_,_,_,_,Symbol).

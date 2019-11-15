@@ -56,10 +56,10 @@ immediate_symbol(EA,Op_index,Dest):-
     !direct_call(EA,_),
     op_immediate(Op,Dest).
 
-.decl compact_table_range(Beg:address,End:address)
-.output compact_table_range
+.decl compact_jump_table_range(Beg:address,End:address)
+.output compact_jump_table_range
 
-compact_table_range(Beg,End):-
+compact_jump_table_range(Beg,End):-
     symbol_minus_symbol(EA,Size,_,Symbol2),
     symbol_minus_symbol_candidate(EA,Size,_,Symbol2,"second"),
     Size <=2,
@@ -68,7 +68,7 @@ compact_table_range(Beg,End):-
     Beg = min(Min,Symbol2),
     End = max(Max,Symbol2).
 
-compact_table_range(Beg,End):-
+compact_jump_table_range(Beg,End):-
     symbol_minus_symbol(EA,Size,Symbol1,_),
     symbol_minus_symbol_candidate(EA,Size,Symbol1,_,"first"),
     Size <=2,

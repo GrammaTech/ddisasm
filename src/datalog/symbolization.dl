@@ -238,70 +238,7 @@ labeled_data_candidate(Val):-
 // Detect symbol-symbol
 ////////////////////////////////////////////////////////////////////////
 
-// detect jump tables
-
-.decl jump_table_start(EA_jump:address,Size:number,TableStart:address,TableRef:address,Operation:symbol)
-.output jump_table_start
-
-jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
-    reg_jump(EA_jump,_),
-    code(EA_jump),
-    def_used(EA_base,Reg,EA_jump,_),
-    op_immediate_and_reg(EA_base,Operation,Reg,_,TableReference),
-    (
-        Operation= "ADD";
-        Operation= "SUB"
-    ),
-    def_used(EA_read,Reg,EA_base,_),
-    data_access_pattern(TableStart,Size,Size,EA_read),
-    (
-        code(TableReference);
-        TableStart=TableReference
-    ).
-
-jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
-    reg_jump(EA_jump,_),
-    code(EA_jump),
-    def_used(EA_base,Reg,EA_jump,_),
-    (
-        abstracted_multiple_reg_operation(EA_base,Reg,Reg,Reg2,Mult,0);
-        abstracted_multiple_reg_operation(EA_base,Reg,Reg2,Reg,1,0), Mult = 1
-    ),
-    (
-        Mult = 1,Operation= "ADD";
-        Mult = -1,Operation= "SUB"
-    ),
-    (
-        RegBase = Reg, RegDiff = Reg2;
-        RegBase = Reg2, RegDiff = Reg
-    ),
-    def_used(EA_read,RegBase,EA_base,_),
-    data_access_pattern(TableStart,Size,Size,EA_read),
-
-    def_used(EA_def_ref,RegDiff,EA_base,_),
-    best_value_reg(EA_def_ref,RegDiff,_,_,TableReference,"complete"),
-    (
-        code(TableReference);
-        TableStart=TableReference
-    ).
-
-jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
-    reg_jump(EA_jump,_),
-    code(EA_jump),
-    def_used(EA_base,Reg,EA_jump,_),
-    instruction_get_operation(EA_base,Operation),
-    (
-        Operation = "ADD";
-        Operation = "SUB"
-    ),
-    data_access_pattern(TableStart,Size,Size,EA_base),
-
-    def_used(EA_def_ref,Reg,EA_base,_),
-    best_value_reg(EA_def_ref,Reg,_,_,TableReference,"complete"),
-    (
-        code(TableReference);
-        TableStart=TableReference
-    ).
+// Symbol-Symbol candidate keeps track of which symbol is the reference and which is the target
 
 symbol_minus_symbol_candidate(TableStart,Size,TableReference,Dest,"first"):-
     jump_table_start(_,Size,TableStart,TableReference,"ADD"),
@@ -477,6 +414,7 @@ address_array_aux(EA,Diff,"code",EA):-
     next_address_in_data(EA+Diff,EA+(2*Diff)),
     address_in_data_refined(EA+(2*Diff),Dest3),code(Dest3).
 
+
 address_array_aux(EA,Diff,"data",EA):-
     address_in_data_refined(EA,Dest1),data_byte(Dest1,_),
     arch.pointer_size(Pt_size),
@@ -487,9 +425,10 @@ address_array_aux(EA,Diff,"data",EA):-
     next_address_in_data(EA+Diff,EA+(2*Diff)),
     address_in_data_refined(EA+(2*Diff),Dest3),data_byte(Dest3,_),
     data_segment(Begin,End),
-    Begin <= Dest1, Dest1 <=End,
-    Begin <= Dest2, Dest2 <=End,
-    Begin <= Dest3, Dest3 <=End.
+    // a pointer array pointing to data, should point to the same section
+    Begin <= Dest1, Dest1 <= End,
+    Begin <= Dest2, Dest2 <= End,
+    Begin <= Dest3, Dest3 <= End.
 
 
 address_array_aux(EA+Diff,Diff,"code",InitialEA):-
@@ -503,8 +442,9 @@ address_array_aux(EA+Diff,Diff,"data",InitialEA):-
     next_address_in_data(EA,EA+Diff),
     address_in_data_refined(EA+Diff,Dest2),data_byte(Dest2,_),
     data_segment(Begin,End),
-    Begin <= Dest1, Dest1 <=End,
-    Begin <= Dest2, Dest2 <=End.
+    // a pointer array pointing to data, should point to the same section
+    Begin <= Dest1, Dest1 <= End,
+    Begin <= Dest2, Dest2 <= End.
 
 .decl address_array(EA:address,Distance:number,InitialEA:address)
 
@@ -526,19 +466,17 @@ data_object_point(EA,Pt_size,Type,-2,"data object bias"):-
 data_object_point(EA,8,"symbol-symbol",5,"quad symbol-symbol"):-
     data_object_candidate(EA,8,"symbol-symbol").
 
-data_object_point(EA,4,"symbol-symbol",4,"symbol-symbol"):-
-    data_object_candidate(EA,4,"symbol-symbol").
-
 data_object_point(EA,Size,"symbol-symbol",4,"symbol-symbol"):-
     data_object_candidate(EA,Size,"symbol-symbol"),
-    Size < 4.
+    Size <= 4.
 
 // Pointer array heuristic
 data_object_point(EA,Pt_size,"symbol",3,"pointer array"):-
     data_object_candidate(EA,Pt_size,"symbol"),
     address_array(EA,_,_).
 
-// a pointer array should point to the same type
+// a pointer array should point to elements of the same type
+// the pointed elements get points if they are all the same type
 data_object_point(EA,Size,Type,2,"pointed by pointer array"),
 data_object_point(EA2,Size2,Type,2,"pointed by pointer array"),
 data_object_point(EA3,Size3,Type,2,"pointed by pointer array"),
@@ -697,20 +635,6 @@ symbol_minus_symbol(EA,Size,Symbol1,Symbol2):-
 code_pointer_in_data(EA,Val):-
     symbolic_data(EA,_,Val),
     block(Val).
-
-////////////////////////////////////////////////////////////////////////////////////////////
-
-symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
-    relocation(EA,"R_X86_64_64",Symbol,Addend),
-    symbol(_,_,_,_,_,Symbol).
-
-symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
-    relocation(EA,"R_X86_64_32",Symbol,Addend),
-    symbol(_,_,_,_,_,Symbol).
-
-symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
-    relocation(EA,"R_X86_64_32S",Symbol,Addend),
-    symbol(_,_,_,_,_,Symbol).
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Final label decision
