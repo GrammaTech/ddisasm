@@ -271,5 +271,9 @@ propagated_data_access(EA+Mult,Mult,EA_ref):-
         Last+Size <= EA+Mult
     ).
 
+preferred_data_access(EA,EA):-
+    data_access_pattern(EA,_,Mult,_),
+    Mult = 0.
+
 preferred_data_access(EA,EA_label):-
     propagated_data_access(EA,_,EA_label).
