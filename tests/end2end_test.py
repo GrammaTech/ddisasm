@@ -81,7 +81,38 @@ class TestAsmExamples(unittest.TestCase):
             optimizations=['']))
 
     def test_asm_weird_section(self):
-        self.assertTrue(dis_reasm_test(asm_dir/'ex_weird_sections','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=['']))
+        self.assertTrue(dis_reasm_test(asm_dir/'ex_weird_sections','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=[''],strip=True))
+
+    def test_asm_relative_switch(self):
+        self.assertTrue(dis_reasm_test(asm_dir/'ex_relative_switch','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=[''],strip=True))
+
+    def test_asm_relative_switch_sizes(self):
+        self.assertTrue(dis_reasm_test(asm_dir/'ex_relative_switch_sizes','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=[''],strip=True))
+
+class TestAsmExamplesStrip(unittest.TestCase):
+
+    def test_asm_pointerReatribution3(self):
+        self.assertTrue(dis_reasm_test(asm_dir/'ex_pointerReatribution3','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=[''],strip=True))
+
+    def test_asm_pointerReatribution3_clang(self):
+        self.assertTrue(dis_reasm_test(asm_dir/'ex_pointerReatribution3_clang','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=[''],strip=True))
+
+    def test_asm_pointerReatribution3_pie(self):
+        self.assertTrue(dis_reasm_test(asm_dir/'ex_pointerReatribution3_pie','ex',
+            extra_compile_flags=['-pie'],
+            c_compilers=['gcc'],
+            cxx_compilers=['g++'],
+            optimizations=[''],
+            strip=True))
+
+    def test_asm_weird_section(self):
+        self.assertTrue(dis_reasm_test(asm_dir/'ex_weird_sections','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=[''],strip=True))
+
+    def test_asm_relative_switch(self):
+        self.assertTrue(dis_reasm_test(asm_dir/'ex_relative_switch','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=[''],strip=True))
+
+    def test_asm_relative_switch_sizes(self):
+        self.assertTrue(dis_reasm_test(asm_dir/'ex_relative_switch_sizes','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=[''],strip=True))
 
 class TestSpecialFlags(unittest.TestCase):
     # test binary compiled with -fcf-protection
