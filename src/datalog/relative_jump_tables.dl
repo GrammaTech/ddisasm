@@ -1,4 +1,4 @@
-//===- relative_jump_tables.dl ----------------------------------*- C++ -*-===//
+//===- relative_jump_tables.dl ------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //

@@ -176,16 +176,13 @@ main_function(Main_location):-
     code(Prev),
     symbolic_operand(Prev,1,Main_location,"code").
 
-inferred_symbol_name(EA,"_start"):-
+inferred_symbol_name(EA,"_start","Normal"):-
     start_function(EA).
 
-inferred_symbol_name(EA,"main"):-
-    main_function(EA).
-
-inferred_symbol_name(EA,"__do_global_dtors_aux"):-
+inferred_symbol_name(EA,"__do_global_dtors_aux","Static"):-
     function_symbol(EA,"__do_global_dtors_aux").
 
-inferred_symbol_name(EA,"__do_global_dtors_aux"):-
+inferred_symbol_name(EA,"__do_global_dtors_aux","Static"):-
     !function_symbol(EA,"__do_global_dtors_aux"),
     function_inference.function_entry(EA),
     // referenced from .fini_array
@@ -203,7 +200,7 @@ inferred_symbol_name(EA,"__do_global_dtors_aux"):-
     DataRef >= BegData,
     DataRef <= BegData+SizeBss.
 
-inferred_symbol_name(EA,"_DYNAMIC"):-
+inferred_symbol_name(EA,"_DYNAMIC","Static"):-
     binary_format("ELF"),
     !symbol(EA,_,_,_,_,"_DYNAMIC"),
     section(".dynamic",_,EA).

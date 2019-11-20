@@ -83,7 +83,8 @@ void populateEdgeProperties(souffle::tuple& T, const gtirb::EdgeLabel& Label)
 
 std::string str_toupper(std::string s)
 {
-    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::toupper(c); });
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c) { return static_cast<unsigned char>(std::toupper(c)); });
     return s;
 }
 
@@ -295,10 +296,11 @@ void GtirbToDatalog::populateSccs(gtirb::Module& M)
     {
         auto Found = SccTable->find(Block.getUUID());
         assert(Found != SccTable->end() && "Block missing from SCCs table");
-        if(SccBlockIndex.size() <= Found->second)
-            SccBlockIndex.resize(Found->second + 1);
+        uint64_t SccIndex = Found->second;
+        if(SccBlockIndex.size() <= SccIndex)
+            SccBlockIndex.resize(SccIndex + 1);
         souffle::tuple T(InSccRel);
-        T << Found->second << SccBlockIndex[Found->second]++ << Block.getAddress();
+        T << SccIndex << SccBlockIndex[SccIndex]++ << Block.getAddress();
         InSccRel->insert(T);
     }
 }

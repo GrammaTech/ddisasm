@@ -35,8 +35,9 @@ ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
         gtirb::ImageByteMap::const_range bytes =
             getBytes(module.getImageByteMap(), *ehFrameSection);
         addressEhFrame = static_cast<uint64_t>(ehFrameSection->getAddress());
+        auto end = &bytes.back() + 1;
         ehFrame.assign(reinterpret_cast<const char *>(&*bytes.begin()),
-                       reinterpret_cast<const char *>(&*bytes.end()));
+                       reinterpret_cast<const char *>(end));
     }
     auto ehFrameHeaderSection = module.findSection(".eh_frame_hdr");
     if(ehFrameHeaderSection != module.section_by_name_end())
@@ -44,8 +45,9 @@ ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
         gtirb::ImageByteMap::const_range bytes =
             getBytes(module.getImageByteMap(), *ehFrameHeaderSection);
         addressEhFrameHeader = static_cast<uint64_t>(ehFrameHeaderSection->getAddress());
+        auto end = &bytes.back() + 1;
         ehFrameHeader.assign(reinterpret_cast<const char *>(&*bytes.begin()),
-                             reinterpret_cast<const char *>(&*bytes.end()));
+                             reinterpret_cast<const char *>(end));
     }
     auto gccExceptSection = module.findSection(".gcc_except_table");
     if(gccExceptSection != module.section_by_name_end())
@@ -53,8 +55,9 @@ ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
         gtirb::ImageByteMap::const_range bytes =
             getBytes(module.getImageByteMap(), *gccExceptSection);
         addressGccExcept = static_cast<uint64_t>(gccExceptSection->getAddress());
+        auto end = &bytes.back() + 1;
         gccExcept.assign(reinterpret_cast<const char *>(&*bytes.begin()),
-                         reinterpret_cast<const char *>(&*bytes.end()));
+                         reinterpret_cast<const char *>(end));
     }
     ehParser = EHP::EHFrameParser_t::factory(ptrsize, ehFrame, addressEhFrame, ehFrameHeader,
                                              addressEhFrameHeader, gccExcept, addressGccExcept);

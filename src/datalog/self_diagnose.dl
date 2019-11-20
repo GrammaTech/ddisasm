@@ -64,13 +64,18 @@ bad_symbol_constant(EA,Cnt):-
     Orig-Cnt != SectSize+Base.
 
 
-false_negative(EA):-
+false_negative(Location):-
     relocation_in_operand(EA,Index,Rel),
     !trivial_relocation(Rel),
     !symbolic_operand(EA,Index,_,_),
-    !moved_label(EA,Index,_,_).
+    !moved_label(EA,Index,_,_),
+    (
+        instruction_immediate_offset(EA,Index,Offset);
+        instruction_displacement_offset(EA,Index,Offset)
+    ),
+    Location=EA+Offset.
 
-false_positive(EA):-
+false_positive(Location):-
     code(EA),
     (
         symbolic_operand(EA,Index,_,_); 
@@ -79,7 +84,12 @@ false_positive(EA):-
     !pc_relative_operand(EA,Index,_),
     !direct_jump(EA,_),
     !direct_call(EA,_),
-    !relocation_in_operand(EA,Index,_).
+    !relocation_in_operand(EA,Index,_),
+    (
+        instruction_immediate_offset(EA,Index,Offset);
+        instruction_displacement_offset(EA,Index,Offset)
+    ),
+    Location=EA+Offset.
 
 .decl zero_relocation(EA:address)
 

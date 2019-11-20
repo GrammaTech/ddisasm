@@ -117,9 +117,9 @@ void ElfReader::read_dynamic_symbols()
             dynstr_indx = i;
     }
     // dynamic table
-    int num_symbols = sections[dynsym_indx].sh_size / sizeof(Elf64_Sym);
+    uint64_t num_symbols = sections[dynsym_indx].sh_size / sizeof(Elf64_Sym);
     file.seekg(sections[dynsym_indx].sh_offset, ios::beg);
-    for(int i = 0; i < num_symbols; i++)
+    for(uint64_t i = 0; i < num_symbols; i++)
     {
         Elf64_Sym symbol;
         file.read((char*)(&symbol), sizeof(Elf64_Sym));
@@ -148,9 +148,9 @@ void ElfReader::read_symbols()
             strtab_indx = i;
     }
     // other symbols
-    int num_symbols = sections[symtab_indx].sh_size / sizeof(Elf64_Sym);
+    uint64_t num_symbols = sections[symtab_indx].sh_size / sizeof(Elf64_Sym);
     file.seekg(sections[symtab_indx].sh_offset, ios::beg);
-    for(int i = 0; i < num_symbols; i++)
+    for(uint64_t i = 0; i < num_symbols; i++)
     {
         Elf64_Sym symbol;
         file.read((char*)(&symbol), sizeof(Elf64_Sym));
@@ -175,9 +175,9 @@ void ElfReader::read_relocations()
     {
         if(sections[section_index].sh_type == SHT_RELA)
         {
-            int num_rela = sections[section_index].sh_size / sizeof(Elf64_Rela);
+            uint64_t num_rela = sections[section_index].sh_size / sizeof(Elf64_Rela);
             file.seekg(sections[section_index].sh_offset, ios::beg);
-            for(int i = 0; i < num_rela; i++)
+            for(uint64_t i = 0; i < num_rela; i++)
             {
                 Elf64_Rela relocation;
                 file.read((char*)(&relocation), sizeof(Elf64_Rela));
@@ -197,9 +197,9 @@ void ElfReader::read_dynamic_section()
     {
         if(sections[section_index].sh_type == SHT_DYNAMIC)
         {
-            int num_entries = sections[section_index].sh_size / sizeof(Elf64_Dyn);
+            uint64_t num_entries = sections[section_index].sh_size / sizeof(Elf64_Dyn);
             file.seekg(sections[section_index].sh_offset, ios::beg);
-            for(int i = 0; i < num_entries; i++)
+            for(uint64_t i = 0; i < num_entries; i++)
             {
                 Elf64_Dyn dynamic_entry;
                 file.read((char*)(&dynamic_entry), sizeof(Elf64_Dyn));
@@ -462,7 +462,7 @@ int ElfReader::get_section_index(const string& name)
     for(size_t i = 0; i < section_names.size(); ++i)
     {
         if(name == section_names[i])
-            return i;
+            return static_cast<int>(i);
     }
     return -1;
 }

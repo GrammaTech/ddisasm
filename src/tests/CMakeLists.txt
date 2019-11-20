@@ -15,7 +15,20 @@ add_executable(TestDdisasm
         SccPass.Test.cpp
         NoReturnPass.Test.cpp)
 
-target_link_libraries(${PROJECT_NAME}
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  target_link_libraries(${PROJECT_NAME}
+        ${SYSLIBS}
+        ${Boost_LIBRARIES}
+        gtest
+        gtest_main
+        gtirb
+        scc_pass
+        no_return_pass
+  )
+  target_link_options(${PROJECT_NAME} PRIVATE
+    /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>)
+else()
+  target_link_libraries(${PROJECT_NAME}
         ${SYSLIBS}
         ${Boost_LIBRARIES}
         gtest
@@ -25,7 +38,8 @@ target_link_libraries(${PROJECT_NAME}
         -Wl,--whole-archive
         no_return_pass
         -Wl,--no-whole-archive
-)
+  )
+endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(${PROJECT_NAME} PRIVATE RAM_DOMAIN_SIZE=64)
@@ -33,6 +47,9 @@ target_compile_options(${PROJECT_NAME} PRIVATE ${OPENMP_FLAGS})
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_link_libraries(${PROJECT_NAME} gomp)
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  target_compile_options(${PROJECT_NAME} PRIVATE -EHsc)
+  target_link_options(${PROJECT_NAME} PRIVATE /NODEFAULTLIB:LIBCMTD)
 endif()
 
 # Add tests to make test

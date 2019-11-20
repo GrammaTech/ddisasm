@@ -49,7 +49,7 @@ souffle::tuple &operator>>(souffle::tuple &t, uint8_t &byte)
     t >> x;
     assert(x >= 0);
     assert(x < 256);
-    byte = x;
+    byte = static_cast<uint8_t>(x);
     return t;
 }
 
@@ -349,6 +349,17 @@ Container convertSortedRelation(const std::string &relation, souffle::SoufflePro
     return result;
 }
 
+gtirb::Symbol::StorageKind getSymbolType(const std::string &scope)
+{
+    if(scope == "Extern")
+        return gtirb::Symbol::StorageKind::Extern;
+    if(scope == "Normal")
+        return gtirb::Symbol::StorageKind::Normal;
+    if(scope == "Static")
+        return gtirb::Symbol::StorageKind::Static;
+    return gtirb::Symbol::StorageKind::Undefined;
+}
+
 void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
@@ -356,9 +367,10 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
     {
         gtirb::Addr addr;
         std::string name;
-        output >> addr >> name;
+        std::string scope;
+        output >> addr >> name >> scope;
         if(!module.findSymbols(name))
-            gtirb::emplaceSymbol(module, context, addr, name);
+            gtirb::emplaceSymbol(module, context, addr, name, getSymbolType(scope));
     }
 }
 
@@ -982,9 +994,10 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
     for(auto &output : *prog->getRelation("moved_label_class"))
     {
         gtirb::Addr ea;
+        uint64_t opIndex;
         std::string type;
 
-        output >> ea >> type;
+        output >> ea >> opIndex >> type;
         std::ostringstream newComment;
         newComment << " moved label-" << type;
         updateComment(module, comments, ea, newComment.str());
