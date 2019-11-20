@@ -2,16 +2,16 @@
 .decl false_positive(EA:address)
 .output false_negative
 .output false_positive
-.decl relocation_in_operand(EA:address,Index:number,Rel:address)
+.decl relocation_in_operand(EA:address,Index:number,Rel:address,InsnOffset:number)
 
 
-relocation_in_operand(EA,Index,Location):-
+relocation_in_operand(EA,Index,Location,Offset):-
     code(EA),
     instruction_immediate_offset(EA,Index,Offset),
     relocation(Location,_,_,_),
     Location = EA+Offset.
 
-relocation_in_operand(EA,Index,Location):-
+relocation_in_operand(EA,Index,Location,Offset):-
     code(EA),
     instruction_displacement_offset(EA,Index,Offset),
     relocation(Location,_,_,_),
@@ -33,8 +33,16 @@ trivial_relocation(EA):-
 .output bad_symbol_constant
 
 bad_symbol_constant(EA,Cnt):-
-    relocation_in_operand(EA,Index,Rel),
+    relocation_in_operand(EA,Index,Rel,InsnOffset),
     relocation(Rel,_,_,Cnt),
+    (
+        pc_relative_operand(EA,Index,_),
+        instruction(EA,InsnSize,_,_,_,_,_,_),
+        Cnt2 = Cnt+ (InsnSize-InsnOffset)
+        ;
+        !pc_relative_operand(EA,Index,_),
+        Cnt2 = Cnt
+    ),
     symbolic_operand(EA,Index,Dest,_),
     !moved_label(EA,Index,_,_),
     section(Name,SectSize,Base),
@@ -43,14 +51,22 @@ bad_symbol_constant(EA,Cnt):-
 
     section(Name2,SectSize2,Base2),
     Name2 != Name,
-    Dest-Cnt >= Base2,
-    Dest-Cnt < SectSize2+Base2,
+    Dest-Cnt2 >= Base2,
+    Dest-Cnt2 < SectSize2+Base2,
     //not pointing to the section boundary
-    Dest-Cnt != SectSize+Base.
+    Dest-Cnt2 != SectSize+Base.
 
 bad_symbol_constant(EA,Cnt):-
-    relocation_in_operand(EA,Index,Rel),
+    relocation_in_operand(EA,Index,Rel,InsnOffset),
     relocation(Rel,_,_,Cnt),
+    (
+        pc_relative_operand(EA,Index,_),
+        instruction(EA,InsnSize,_,_,_,_,_,_),
+        Cnt2 = Cnt+ (InsnSize-InsnOffset)
+        ;
+        !pc_relative_operand(EA,Index,_),
+        Cnt2 = Cnt
+    ),
     moved_label(EA,Index,Orig,Dest),
     section(Name,SectSize,Base),
     Dest >= Base,
@@ -58,14 +74,14 @@ bad_symbol_constant(EA,Cnt):-
 
     section(Name2,SectSize2,Base2),
     Name2 != Name,
-    Orig-Cnt >= Base2,
-    Orig-Cnt < SectSize2+Base2,
+    Orig-Cnt2 >= Base2,
+    Orig-Cnt2 < SectSize2+Base2,
     //not pointing to the section boundary
-    Orig-Cnt != SectSize+Base.
+    Orig-Cnt2 != SectSize+Base.
 
 
 false_negative(Location):-
-    relocation_in_operand(EA,Index,Rel),
+    relocation_in_operand(EA,Index,Rel,_),
     !trivial_relocation(Rel),
     !symbolic_operand(EA,Index,_,_),
     !moved_label(EA,Index,_,_),
@@ -73,7 +89,7 @@ false_negative(Location):-
         instruction_immediate_offset(EA,Index,Offset);
         instruction_displacement_offset(EA,Index,Offset)
     ),
-    Location=EA+Offset.
+    Location = EA+Offset.
 
 false_positive(Location):-
     code(EA),
@@ -84,7 +100,7 @@ false_positive(Location):-
     !pc_relative_operand(EA,Index,_),
     !direct_jump(EA,_),
     !direct_call(EA,_),
-    !relocation_in_operand(EA,Index,_),
+    !relocation_in_operand(EA,Index,_,_),
     (
         instruction_immediate_offset(EA,Index,Offset);
         instruction_displacement_offset(EA,Index,Offset)
@@ -111,7 +127,6 @@ false_negative(EA):-
     !zero_relocation(EA),
     !symbolic_data(EA,_,_),
     !symbol_minus_symbol(EA,_,_,_),
-
     regular_data_section(Sect),
     section(Sect,SizeSect,BegSect),
     EA >= BegSect,
@@ -120,7 +135,9 @@ false_negative(EA):-
 false_positive(EA):-
     (
         symbolic_data(EA,_,_);
-        symbol_minus_symbol(EA,_,_,_)
+        // it looks like jump tables where each entry 4 or less bytes do not have
+        // relocations associated to them.
+        symbol_minus_symbol(EA,Size,_,_), Size>4
     ),
     !relocation(EA,_,_,_),
 

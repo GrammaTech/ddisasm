@@ -130,7 +130,7 @@ cfg_edge(ReturnBlock,NextBlock,"false","false","return"):-
 cfg_edge_to_top(Src,Conditional,"branch"):-
     block_last_instruction(Src,EA),
     (
-        reg_jump(EA);
+        reg_jump(EA,_);
         indirect_jump(EA)
     ),
     (
@@ -141,7 +141,7 @@ cfg_edge_to_top(Src,Conditional,"branch"):-
 cfg_edge_to_top(Src,"false","call"):-
     block_last_instruction(Src,EA),
     (
-        reg_call(EA);
+        reg_call(EA,_);
         indirect_call(EA)
     ).
 

@@ -71,7 +71,8 @@ This module also computes and symbol_minus_symbol.
 .decl symbolic_expr_from_relocation(ea:address,size:number,symbol:symbol,Addend:number)
 .output symbolic_expr_from_relocation
 
-.decl symbol_minus_symbol_candidate(ea:address,symbol1:address,symbol2:address)
+.decl symbol_minus_symbol_candidate(ea:address,size:number,symbol1:address,symbol2:address,Reference:symbol)
+.output symbol_minus_symbol_candidate
 
 .decl symbol_minus_symbol(ea:address,size:number,symbol1:address,symbol2:address)
 .output symbol_minus_symbol
@@ -114,10 +115,8 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
     (
         code(Dest), Type="code"
         ;
-        data_section(Name),
-        section(Name,SizeSect,Base),
-        Dest >= Base,
-        Dest <= Base+SizeSect,
+        data_segment(Begin,End),
+        Dest >= Begin, Dest <= End,
         Type = "data"
     ).
 
@@ -150,10 +149,9 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
     (
         code(Dest), Type = "code"
         ;
-        data_section(Name),
-        section(Name,SizeSect,Base),
-        Dest >= Base,
-        Dest <= Base+SizeSect,
+        data_segment(Begin,End),
+        Dest >= Begin,
+        Dest <= End,
         Type = "data"
     ).
 
@@ -181,6 +179,12 @@ symbolic_operand_point(EA,Imm_index,-1,"immediate is bitmask"):-
     op_immediate(Op,_),
     instruction_get_operation(EA,Operation),
     arch.logic_operation(Operation).
+
+symbolic_operand_point(EA,Imm_index,-2,"point to exception section"):-
+    symbolic_operand_candidate(EA,Imm_index,Dest,_),
+    exception_section(Name),
+    section(Name,SectSize,Base),
+    Base <= Dest, Dest < Base+SectSize.
 
  symbolic_operand_point(EA,Imm_index,-1,"operated on logical operation result"):-
     op_immediate_and_reg(EA,_,Reg,Imm_index,_),
@@ -233,51 +237,51 @@ labeled_data_candidate(Val):-
 
 // Detect symbol-symbol
 ////////////////////////////////////////////////////////////////////////
-symbol_minus_symbol_candidate(EA,EA,Symbol2):-
-    data_access_pattern(EA,4,4,_Ref),
-    relative_address(EA,EA,Symbol2),
-    block(Symbol2),
-    relative_address(EA+4,EA,Symbol3),
-    block(Symbol3).
 
-symbol_minus_symbol_candidate(EA,EA,Symbol2):-
-    relative_address(EA,EA,Symbol2),
-    block(Symbol2),
-    data_access_pattern(EA+4,4,4,_Ref),
-    relative_address(EA+4,EA,Symbol3),
-    block(Symbol3).
+// Symbol-Symbol candidate keeps track of which symbol is the reference and which is the target
 
-// more permissive symbol_minus_symbol_candidate starting point
-symbol_minus_symbol_candidate(EA,EA,Symbol2):-
-    relative_address(EA,EA,Symbol1),
-    block(Symbol1),
-    relative_address(EA+4,EA,Symbol2),
-    !preferred_data_access(EA+4,_),
-    block(Symbol2),
-    relative_address(EA+8,EA,Symbol3),
-    !preferred_data_access(EA+8,_),
-    block(Symbol3).
-
-symbol_minus_symbol_candidate(EA,EA_ref,Symbol2):-
-    symbol_minus_symbol_candidate(EA_label,EA_ref,_),
-    preferred_data_access(EA,EA_label),
-    relative_address(EA,EA_ref,Symbol2),
-    block(Symbol2).
-
-//more permissive symbol_minus_symbol_candidate propagation
-symbol_minus_symbol_candidate(EA+4,EA_ref,Symbol):-
-    symbol_minus_symbol_candidate(EA,EA_ref,_),
-    relative_address(EA+4,EA_ref,Symbol),
-    block(Symbol),
+symbol_minus_symbol_candidate(TableStart,Size,TableReference,Dest,"first"):-
+    jump_table_start(_,Size,TableStart,TableReference,"ADD"),
     (
-        !preferred_data_access(EA+4,_)
-        ;
-        preferred_data_access(EA+4,EA_label),
-        data_access_pattern(EA_label,4,4,_)
-        ;
-        preferred_data_access(EA+4,EA_label),
-        data_access_pattern(EA_label,4,0,_)
-    ).
+        Size > 1,data_word(TableStart,Size,Diff);
+        Size = 1,data_byte(TableStart,Diff)
+    ),
+    Dest = TableReference + Diff,
+    code(Dest).
+
+symbol_minus_symbol_candidate(TableStart,Size,Dest,TableReference,"second"):-
+    jump_table_start(_,Size,TableStart,TableReference,"SUB"),
+    (
+        Size > 1,data_word(TableStart,Size,Diff);
+        Size = 1,data_byte(TableStart,Diff)
+    ),
+    Dest = TableReference - Diff,
+    code(Dest).
+
+symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first"):-
+    symbol_minus_symbol_candidate(EA,Size,Reference,_,"first"),
+    !jump_table_start(_,_,EA+Size,_,_),
+    (
+        Size>1,data_word(EA+Size,Size,Diff);
+        Size=1,data_byte(EA+Size,Diff)
+    ),
+    Symbol = Reference + Diff,
+    code(Symbol),
+    preferred_data_access(EA+Size,Label),
+    data_access_pattern(Label,Size,Size,_).
+
+symbol_minus_symbol_candidate(EA+Size,Size,Symbol,Reference,"second"):-
+    symbol_minus_symbol_candidate(EA,Size,_,Reference,"second"),
+    !jump_table_start(_,_,EA+Size,_,_),
+    (
+        Size>1,data_word(EA+Size,Size,Diff);
+        Size=1,data_byte(EA+Size,Diff)
+    ),
+    Symbol = Reference - Diff,
+    code(Symbol),
+    preferred_data_access(EA+Size,Label),
+    data_access_pattern(Label,Size,Size,_).
+
 ////////////////////////////////////////////////////////////////////////
 // address_in_data considers anything that points to the code region
 // this refinement restricts that to the beginning of the final blocks
@@ -287,10 +291,8 @@ address_in_data_refined(EA,Val):-
     binary_type("DYN"),
     address_in_data(EA,Val),
     relocation(EA,_,_,_),
-    data_section(Name),
-    section(Name,Size,Beg),
-    Val >= Beg,
-    Val <= Size+Beg.
+    data_segment(Beg,End),
+    Val >= Beg, Val <= End.
 
 address_in_data_refined(EA,Val):-
     binary_type("DYN"),
@@ -301,10 +303,9 @@ address_in_data_refined(EA,Val):-
 address_in_data_refined(EA,Val):-
     binary_type("EXEC"),
     address_in_data(EA,Val),
-    data_section(Name),
-    section(Name,Size,Beg),
+    data_segment(Beg,End),
     Val >= Beg,
-    Val <= Size+Beg.
+    Val <= End.
       
 address_in_data_refined(EA,Val):-
     binary_type("EXEC"),
@@ -355,8 +356,8 @@ string_part(EA+1,Base):-
 
 .decl data_object(ea:address,size:number,type:symbol)
 
-data_object_candidate(EA,4,"symbol-symbol"):-
-    symbol_minus_symbol_candidate(EA,_,_).
+data_object_candidate(EA,Size,"symbol-symbol"):-
+    symbol_minus_symbol_candidate(EA,Size,_,_,_).
 
 data_object_candidate(EA,Pt_size,"symbol"):-
     arch.pointer_size(Pt_size),
@@ -371,7 +372,8 @@ data_object_candidate(EA,Size,"other"):-
     data_access_pattern(Label,Size,_,_),
     Size != Pt_size,
     Size > 0,
-    arch.pointer_size(Pt_size).
+    arch.pointer_size(Pt_size),
+    !symbol_minus_symbol_candidate(EA,Size,_,_,_).
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Heuristic: If there are at least 3 consecutive addresses
@@ -400,9 +402,9 @@ next_address_in_data(EA,EA_next):-
     address_in_data_refined(EA_next,_).
 
 
-.decl address_array_aux(EA:address,Distance:number,type:symbol)
+.decl address_array_aux(EA:address,Distance:number,type:symbol,InitialEA:address)
 
-address_array_aux(EA,Diff,"code"):-
+address_array_aux(EA,Diff,"code",EA):-
     address_in_data_refined(EA,Dest1),code(Dest1),
     arch.pointer_size(Pt_size),
     EA % Pt_size = 0,
@@ -412,7 +414,8 @@ address_array_aux(EA,Diff,"code"):-
     next_address_in_data(EA+Diff,EA+(2*Diff)),
     address_in_data_refined(EA+(2*Diff),Dest3),code(Dest3).
 
-address_array_aux(EA,Diff,"data"):-
+
+address_array_aux(EA,Diff,"data",EA):-
     address_in_data_refined(EA,Dest1),data_byte(Dest1,_),
     arch.pointer_size(Pt_size),
     EA % Pt_size = 0,
@@ -420,27 +423,38 @@ address_array_aux(EA,Diff,"data"):-
     Diff = EA_next-EA,
     address_in_data_refined(EA+Diff,Dest2),data_byte(Dest2,_),
     next_address_in_data(EA+Diff,EA+(2*Diff)),
-    address_in_data_refined(EA+(2*Diff),Dest3),data_byte(Dest3,_).
+    address_in_data_refined(EA+(2*Diff),Dest3),data_byte(Dest3,_),
+    data_segment(Begin,End),
+    // a pointer array pointing to data, should point to the same section
+    Begin <= Dest1, Dest1 <= End,
+    Begin <= Dest2, Dest2 <= End,
+    Begin <= Dest3, Dest3 <= End.
 
-address_array_aux(EA+Diff,Diff,"code"):-
-    address_array_aux(EA,Diff,"code"),
+
+address_array_aux(EA+Diff,Diff,"code",InitialEA):-
+    address_array_aux(EA,Diff,"code",InitialEA),
     next_address_in_data(EA,EA+Diff),
     address_in_data_refined(EA+Diff,Dest),code(Dest).
 
-address_array_aux(EA+Diff,Diff,"data"):-
-    address_array_aux(EA,Diff,"data"),
+address_array_aux(EA+Diff,Diff,"data",InitialEA):-
+    address_array_aux(EA,Diff,"data",InitialEA),
+    address_in_data_refined(EA,Dest1),
     next_address_in_data(EA,EA+Diff),
-    address_in_data_refined(EA+Diff,Dest),data_byte(Dest,_).
+    address_in_data_refined(EA+Diff,Dest2),data_byte(Dest2,_),
+    data_segment(Begin,End),
+    // a pointer array pointing to data, should point to the same section
+    Begin <= Dest1, Dest1 <= End,
+    Begin <= Dest2, Dest2 <= End.
 
-.decl address_array(EA:address)
+.decl address_array(EA:address,Distance:number,InitialEA:address)
 
-address_array(EA):-
-    address_array_aux(EA,_,_).
+address_array(EA,Distance,InitialEA):-
+    address_array_aux(EA,Distance,_,InitialEA).
 
 .init address_array_range=empty_range
 
 address_array_range.in_ea(EA):-
-    address_array(EA).
+    address_array(EA,_,_).
 
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -449,13 +463,39 @@ address_array_range.in_ea(EA):-
 data_object_point(EA,Pt_size,Type,-2,"data object bias"):-
     data_object_candidate(EA,Pt_size,Type).
 
-data_object_point(EA,4,"symbol-symbol",4,"symbol-symbol"):-
-    data_object_candidate(EA,4,"symbol-symbol").
+data_object_point(EA,8,"symbol-symbol",5,"quad symbol-symbol"):-
+    data_object_candidate(EA,8,"symbol-symbol").
+
+data_object_point(EA,Size,"symbol-symbol",4,"symbol-symbol"):-
+    data_object_candidate(EA,Size,"symbol-symbol"),
+    Size <= 4.
 
 // Pointer array heuristic
 data_object_point(EA,Pt_size,"symbol",3,"pointer array"):-
     data_object_candidate(EA,Pt_size,"symbol"),
-    address_array(EA).
+    address_array(EA,_,_).
+
+// a pointer array should point to elements of the same type
+// the pointed elements get points if they are all the same type
+data_object_point(EA,Size,Type,2,"pointed by pointer array"),
+data_object_point(EA2,Size2,Type,2,"pointed by pointer array"),
+data_object_point(EA3,Size3,Type,2,"pointed by pointer array"),
+data_object_point(EA4,Size4,Type,2,"pointed by pointer array"):-
+    address_array(EA_array,Distance,InitialEA),
+    address_in_data(EA_array,EA),
+    data_object_candidate(EA,Size,Type),
+
+    address_array(EA_array+Distance,Distance,InitialEA),
+    address_in_data(EA_array+Distance,EA2),
+    data_object_candidate(EA2,Size2,Type),
+
+    address_array(EA_array+2*Distance,Distance,InitialEA),
+    address_in_data(EA_array+2*Distance,EA3),
+    data_object_candidate(EA3,Size3,Type),
+
+    address_array(EA_array+3*Distance,Distance,InitialEA),
+    address_in_data(EA_array+3*Distance,EA4),
+    data_object_candidate(EA4,Size4,Type).
 
 // data access heuristic
 data_object_point(EA,Pt_size,"symbol",5,"data access"):-
@@ -487,10 +527,17 @@ data_object_point(EA,Pt_size,"symbol",2,"aligned"):-
     data_object_candidate(EA,Pt_size,"symbol"),
     EA % Pt_size = 0.
 
-data_object_point(EA,Pt_size,"symbol",-1,"point-to-exception-section"):-
+data_object_point(EA,Pt_size,"symbol",-2,"point-to-exception-section"):-
     data_object_candidate(EA,Pt_size,"symbol"),
     address_in_data_refined(EA,Dest),
     exception_section(Name),
+    section(Name,SectSize,Base),
+    Dest >= Base, Dest < Base+SectSize.
+
+data_object_point(EA,Pt_size,"symbol",-1,"point-to-special-section"):-
+    data_object_candidate(EA,Pt_size,"symbol"),
+    address_in_data_refined(EA,Dest),
+    special_data_section(Name),
     section(Name,SectSize,Base),
     Dest >= Base, Dest < Base+SectSize.
 
@@ -501,9 +548,17 @@ data_object_point(EA,Pt_size,"symbol",10,"has relocation"):-
     relocation(EA,_,_,_).
 
 //extra point if the string is long
+data_object_point(EA,Size,"string",2,"string basic point"):-
+    data_object_candidate(EA,Size,"string").
+
 data_object_point(EA,Size,"string",3,"long string"):-
     data_object_candidate(EA,Size,"string"),
     Size > 5.
+
+data_object_point(EA,Size,"string",-2,"string in jump table"):-
+    data_object_candidate(EA,Size,"string"),
+    preferred_data_access(EA,EA_ref),
+    jump_table_start(_,_,EA_ref,_,_).
 
 // data access negative heuristic
 data_object_point(EA,Size,"other",4,"data access"):-
@@ -544,10 +599,7 @@ data_object_total_points(EA,Size,Type,Points):-
 data_object(EA,Size,Type):-
     data_object_total_points(EA,Size,Type,Points),
     !discarded_data_object(EA,Size,Type),
-    (
-        Points >= 0; //if the object is a string and there is no conflict we keep it no matter the evidence
-        Type = "string"
-    ).
+    Points >= 0.
 
 discarded_data_object(EA_f,Size_f,Type_f):-
     data_object_conflict(EA,Size,Type,EA2,Size2,Type2),
@@ -578,21 +630,11 @@ string(EA,End):-
 
 symbol_minus_symbol(EA,Size,Symbol1,Symbol2):-
     data_object(EA,Size,"symbol-symbol"),
-    symbol_minus_symbol_candidate(EA,Symbol1,Symbol2).
+    symbol_minus_symbol_candidate(EA,Size,Symbol1,Symbol2,_).
 
 code_pointer_in_data(EA,Val):-
     symbolic_data(EA,_,Val),
     block(Val).
-
-////////////////////////////////////////////////////////////////////////////////////////////
-
-symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
-    relocation(EA,"R_X86_64_64",Symbol,Addend),
-    symbol(_,_,_,_,_,Symbol).
-
-symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
-    relocation(EA,"R_X86_64_32",Symbol,Addend),
-    symbol(_,_,_,_,_,Symbol).
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Final label decision

@@ -82,6 +82,8 @@ special_data_section(".fini_array").
 special_data_section(".got").
 special_data_section(".got.plt").
 special_data_section(".init_array").
+special_data_section(".interp").
+special_data_section(".jcr").
 special_data_section(".tm_clone_table").
 
 code_section(Name):-
@@ -143,6 +145,22 @@ got_reference(Got_entry,Symbol):-
     Got_entry < Beg+Size,
     relocation(Got_entry,_,Symbol,_),
     symbol(_,_,_,Scope,_,Symbol), Scope != "WEAK".
+
+got_reference(Got_entry,Symbol):-
+    pc_relative_operand(_,_,Got_entry),
+    section(".got",Size,Beg),
+    Got_entry >= Beg,
+    Got_entry < Beg+Size,
+    symbolic_data(Got_entry,8,Dest),
+    symbol(Dest,_,_,_,_,Symbol).
+
+got_local_reference(Got_entry,Dest):-
+    pc_relative_operand(_,_,Got_entry),
+    section(".got",Size,Beg),
+    Got_entry >= Beg,
+    Got_entry < Beg+Size,
+    symbolic_data(Got_entry,8,Dest),
+    !got_reference(Got_entry,_).
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -212,3 +230,21 @@ no_return_function("abort"):-binary_format("ELF").
 no_return_function("__stack_chk_fail"):-binary_format("ELF").
 no_return_function("__assert_fail"):-binary_format("ELF").
 no_return_function("longjump"):-binary_format("ELF").
+
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
+symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
+    binary_format("ELF"),
+    relocation(EA,"R_X86_64_64",Symbol,Addend),
+    symbol(_,_,_,_,_,Symbol).
+
+symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
+    binary_format("ELF"),
+    relocation(EA,"R_X86_64_32",Symbol,Addend),
+    symbol(_,_,_,_,_,Symbol).
+
+symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
+    binary_format("ELF"),
+    relocation(EA,"R_X86_64_32S",Symbol,Addend),
+    symbol(_,_,_,_,_,Symbol).

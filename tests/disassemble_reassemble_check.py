@@ -96,7 +96,7 @@ def reassemble(compiler,binary,extra_flags):
     print("compile command:", compiler, binary + '.s', '-o', binary, *extra_flags)
     completedProcess=subprocess.run([compiler,binary+'.s','-o',binary]+extra_flags)
     if(completedProcess.returncode!=0):
-        print(bcolors.warning('# Reassembly failed\n'))
+        print(bcolors.fail('# Reassembly failed\n'))
         return False
     print(bcolors.okgreen("# Reassembly succeed"))
     return True
@@ -108,7 +108,7 @@ def test():
     print("# testing\n")
     completedProcess=subprocess.run(['make','check','-e'], stderr=subprocess.DEVNULL)
     if(completedProcess.returncode!=0):
-        print(bcolors.warning('# Testing FAILED\n'))
+        print(bcolors.fail('# Testing FAILED\n'))
         return False
     else:
         print(bcolors.okgreen('# Testing SUCCEED\n'))

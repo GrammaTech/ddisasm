@@ -308,13 +308,12 @@ pc_relative_jump(EA,Dest):-
     pc_relative_operand(EA,1,Dest).
 
 // jump to the address of a register
-// for now we do not compute anything about these
- .decl reg_jump(src:address)
+ .decl reg_jump(src:address,Reg:symbol)
 
-reg_jump(EA):-
+reg_jump(EA,Reg):-
     instruction(EA,_,_,Operation,Op1,_,_,_),
     arch.jump_operation(Operation),
-    op_regdirect(Op1,_).
+    op_regdirect(Op1,Reg).
 
 // indirect jump
  .decl indirect_jump(src:address)
@@ -346,13 +345,13 @@ pc_relative_call(Src,Dest):-
 
 
 // for now we do not compute anything about these
-.decl reg_call(src:address)
+.decl reg_call(src:address,reg:register)
 .output reg_call
 
-reg_call(EA):-
+reg_call(EA,Reg):-
     arch.call_operation(Operation),
     instruction(EA,_,_,Operation,Op1,_,_,_),
-    op_regdirect(Op1,_).
+    op_regdirect(Op1,Reg).
 
  .decl indirect_call(src:address)
 // .output indirect_call
@@ -401,7 +400,6 @@ op_regdirect_contains_reg(Op,Reg_uniform):-
 .decl op_immediate_and_reg(EA:address,Operation:symbol,Reg:register,Imm_index:number,Immediate:number)
 
 op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate):-
-    code(EA),
     instruction_get_operation(EA,Operation),
     instruction_get_op(EA,Imm_index,Op),
     op_immediate(Op,Immediate),
@@ -469,6 +467,29 @@ bss_section_limits(Begin,LastSect+SizeLast):-
     LastSect = max X:{ bss_section(Name),section(Name,_,X)},
     section(_,SizeLast,LastSect).
 
+/*
+data segments can be data sections or fragments of the code section that
+contain data instead of code.
+*/
+.decl initialized_data_segment(Begin:address,End:address)
+.output initialized_data_segment
+
+initialized_data_segment(Begin,Begin+Size):-
+    non_zero_data_section(Section),
+    section(Section,Size,Begin).
+
+initialized_data_segment(Begin,End):-
+    data_in_code(Begin,End).
+
+.decl data_segment(Begin:address,End:address)
+
+data_segment(Begin,Begin+Size):-
+    data_section(Section),
+    section(Section,Size,Begin).
+
+data_segment(Begin,End):-
+    initialized_data_segment(Begin,End).
+
 ////////////////////////////////////////////////////////////////////////////
 // detect references  to libraries (calls to plt)
 .decl plt_block(block:address,function:symbol)
@@ -476,6 +497,9 @@ bss_section_limits(Begin,LastSect+SizeLast):-
 
 .decl got_reference(Got_entry:address,Symbol:symbol)
 .output got_reference
+
+.decl got_local_reference(Got_entry:address,Dest:address)
+.output got_local_reference
 
 //////////////////////////////////////////////////////////////////////////
 // find special functions and symbols

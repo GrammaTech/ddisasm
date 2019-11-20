@@ -5,4 +5,4 @@ Asm examples can be use to exercise specific patterns without relying on the com
 This can be useful to exercise:
   - different kinds of pointer reatribution patterns
   - jump table patterns
-  - weird constructs e.g. overlaping instructions, data in code sections, etc.
+  - weird constructs e.g. overlapping instructions, data in code sections, etc.
