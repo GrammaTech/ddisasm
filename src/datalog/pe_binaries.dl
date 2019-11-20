@@ -219,7 +219,7 @@ base_relative_operation(EA_relop,EA_next):-
 // TODO: narrow by restricting base_relative_operation chain to operations a
 //       jump table address calculation would actually use.
 base_relative_jump(EA_relop,EA):-
-    reg_jump(EA),
+    reg_jump(EA,_),
     base_relative_operation(EA_relop,EA).
 
 .decl base_relative_jump_table(EA:address,Value:number)

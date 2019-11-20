@@ -274,13 +274,6 @@ struct SymbolMinusSymbol
     gtirb::Addr Symbol2{0};
 };
 
-struct SymbolicInfo
-{
-    VectorByEA<MovedLabel> MovedLabels;
-    VectorByEA<SymbolicExpressionNoOffset> SymbolicExpressionNoOffsets;
-    VectorByEA<SymbolMinusSymbol> SymbolicBaseMinusConst;
-};
-
 struct StringDataObject
 {
     StringDataObject(gtirb::Addr ea) : EA(ea)
@@ -320,6 +313,7 @@ struct SymbolicInfo
     VectorByEA<MovedLabel> MovedLabels;
     VectorByEA<SymbolicExpressionNoOffset> SymbolicExpressionNoOffsets;
     VectorByEA<SymbolicExpr> SymbolicExpressionsFromRelocations;
+    VectorByEA<SymbolMinusSymbol> SymbolicBaseMinusConst;
 };
 
 template <typename T>
