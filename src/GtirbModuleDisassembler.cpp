@@ -1079,19 +1079,6 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
     module.addAuxData("comments", std::move(comments));
 }
 
-void buildJumpTableRanges(gtirb::Module &module, souffle::SouffleProgram *prog)
-{
-    std::map<gtirb::Addr, std::string> tableRanges;
-    for(auto &output : *prog->getRelation("compact_jump_table_range"))
-    {
-        gtirb::Addr beg, end;
-        output >> beg >> end;
-        std::ostringstream newComment;
-        tableRanges[beg] = "# Jump Table Start";
-        tableRanges[end] = "# Jump Table End";
-    }
-    module.addAuxData("tableRanges", std::move(tableRanges));
-}
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
                        souffle::SouffleProgram *prog, bool selfDiagnose)
 {
@@ -1108,7 +1095,6 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildCFG(context, module, prog);
     buildPadding(module, prog);
     buildComments(module, prog, selfDiagnose);
-    buildJumpTableRanges(module, prog);
 }
 
 void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
