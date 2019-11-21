@@ -237,14 +237,6 @@ base_relative_dword(EA,Val):-
     data_byte(EA+3,Byte3),
     Val = (Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0).
 
-base_relative_dword(EA,Val):-
-    !code(EA),
-    code_byte(EA,  Byte0), EA % 4 = 0,
-    code_byte(EA+1,Byte1),
-    code_byte(EA+2,Byte2),
-    code_byte(EA+3,Byte3),
-    Val = (Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0).
-
 .decl base_relative_address_start(EA:address,Reference:address,Value:address)
 
 base_relative_address_start(EA,EA,Val):-

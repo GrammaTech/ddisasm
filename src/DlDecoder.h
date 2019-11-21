@@ -46,7 +46,6 @@ private:
     std::vector<DlInstruction> instructions;
     std::vector<gtirb::Addr> invalids;
     std::vector<DlData<gtirb::Addr>> data_addresses;
-    std::vector<DlData<unsigned char>> code_bytes;
     std::vector<DlData<unsigned char>> data_bytes;
     void decodeSection(gtirb::ImageByteMap::const_range& sectionBytes, uint64_t size,
                        gtirb::Addr ea);

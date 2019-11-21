@@ -200,10 +200,6 @@ void DlDecoder::decodeSection(gtirb::ImageByteMap::const_range &sectionBytes, ui
     auto buf = reinterpret_cast<const uint8_t *>(&*sectionBytes.begin());
     while(size > 0)
     {
-        // store the byte
-        uint8_t content_byte = *buf;
-        code_bytes.push_back({ea, content_byte});
-
         // store the instruction
         cs_insn *insn;
         size_t count = cs_disasm(csHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
@@ -277,7 +273,6 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
 
     GtirbToDatalog::addToRelation(prog, "instruction_complete", instructions);
     GtirbToDatalog::addToRelation(prog, "address_in_data", data_addresses);
-    GtirbToDatalog::addToRelation(prog, "code_byte", code_bytes);
     GtirbToDatalog::addToRelation(prog, "data_byte", data_bytes);
     GtirbToDatalog::addToRelation(prog, "invalid_op_code", invalids);
     GtirbToDatalog::addToRelation(prog, "op_regdirect", op_dict.regTable);

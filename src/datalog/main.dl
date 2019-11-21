@@ -143,13 +143,9 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
         multiplier:number, offset:number, size_value:number)
 .input op_indirect
 
-//data from data sections
+// data from sections
 .decl data_byte(ea:address,value:number)
 .input data_byte
-
-//data from code sections
-.decl code_byte(ea:address,value:number)
-.input code_byte
 
 .decl address_in_data(ea:address,value:number)
 
