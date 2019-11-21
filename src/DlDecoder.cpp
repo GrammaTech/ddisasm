@@ -200,7 +200,6 @@ void DlDecoder::decodeSection(gtirb::ImageByteMap::const_range &sectionBytes, ui
     auto buf = reinterpret_cast<const uint8_t *>(&*sectionBytes.begin());
     while(size > 0)
     {
-        // store the instruction
         cs_insn *insn;
         size_t count = cs_disasm(csHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
         if(count == 0)

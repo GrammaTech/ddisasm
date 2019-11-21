@@ -23,6 +23,7 @@ set(DATALOG_SOURCES
     datalog/exceptions.dl
     datalog/basic_function_inference.dl
     datalog/main.dl
+    datalog/pe_binaries.dl
     datalog/pointer_reatribution.dl
     datalog/printable_chars.dl
     datalog/relative_jump_tables.dl
