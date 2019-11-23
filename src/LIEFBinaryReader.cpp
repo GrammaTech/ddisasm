@@ -163,8 +163,6 @@ uint64_t LIEFBinaryReader::get_entry_point()
 
 uint64_t LIEFBinaryReader::get_base_address()
 {
-    if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
-        return elf->imagebase();
     if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
         return pe->optional_header().imagebase();
     return 0;
