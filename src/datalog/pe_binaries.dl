@@ -176,19 +176,21 @@ base_relocation(Addr):-
 .output base_relative_operand
 
 base_relative_operand(EA_used,Op_index,Value):-
-    pc_relative_operand(EA_def,_,0),
+    base_address(ImageBase),
+    pc_relative_operand(EA_def,_,ImageBase),
     def_used(EA_def,_,EA_used,Op_index),
     symbolic_operand_candidate(EA_used,Op_index,Value,_).
 
 base_relative_operand(EA_used,Op_index,Value):-
-    pc_relative_operand(EA_def,_,0),
+    base_address(ImageBase),
+    pc_relative_operand(EA_def,_,ImageBase),
     def_used(EA_def,_,EA_used,Op_index),
     instruction_get_op(EA_used,Op_index,Op),
     op_indirect(Op,_,_,_,_,Value,_).
 
 .decl base_relative_symbolic_operand(EA:address,Index:number,Dest:address)
 
-symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,Value),
+symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value),
 symbolic_operand_point(EA,Op_index,-1,"base-relative"),
 base_relative_symbolic_operand(EA,Op_index,Value):-
     base_relative_operand(EA,Op_index,Value),
@@ -224,7 +226,8 @@ base_relative_jump(EA_relop,EA):-
 .decl base_relative_jump_table(EA:address,Value:number)
 .output base_relative_jump_table
 
-base_relative_jump_table(EA_jmp,Value):-
+base_relative_jump_table(EA_jmp,ImageBase+Value):-
+    base_address(ImageBase),
     base_relative_jump(EA_relop,EA_jmp),
     base_relative_operand(EA_relop,_,Value).
 
@@ -246,7 +249,7 @@ base_relative_address(EA+4,Ref,Val):-
 
 .decl base_relative_symbolic_data(EA:address,Size:number,Value:address)
 
-symbol_minus_symbol(EA,4,ImageBase,Val),
+symbol_minus_symbol(EA,4,ImageBase,ImageBase+Val),
 data_object_point(EA,8,"symbol",-1,"base-relative"),
 base_relative_symbolic_data(EA,4,Val):-
     base_relative_address(EA,_,Val),

@@ -114,14 +114,14 @@ void buildByteMap(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
                 std::byte *begin = reinterpret_cast<std::byte *>(sectionBytes.data());
                 std::byte *end =
                     reinterpret_cast<std::byte *>(sectionBytes.data() + sectionBytes.size());
-                byteMap.setData(gtirb::Addr(binSection.address),
+                byteMap.setData(gtirb::Addr(binary->get_base_address() + binSection.address),
                                 boost::make_iterator_range(begin, end));
-
                 // Fill incomplete section with zeroes.
                 if(sectionBytes.size() < binSection.size)
                 {
                     std::cerr << "Warning: Zero filling section: " << binSection.name << '\n';
-                    byteMap.setData(gtirb::Addr(binSection.address + sectionBytes.size()),
+                    byteMap.setData(gtirb::Addr(binary->get_base_address() + binSection.address
+                                                + sectionBytes.size()),
                                     binSection.size - sectionBytes.size(), std::byte(0));
                 }
             }
@@ -139,7 +139,8 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
         if(isAllocatedSection(binary->get_binary_format(), binSection.flags))
         {
             gtirb::Section *section = gtirb::Section::Create(
-                context, binSection.name, gtirb::Addr(binSection.address), binSection.size);
+                context, binSection.name,
+                gtirb::Addr(binary->get_base_address() + binSection.address), binSection.size);
             module.addSection(section);
             sectionProperties[section->getUUID()] =
                 std::make_tuple(binSection.type, binSection.flags);

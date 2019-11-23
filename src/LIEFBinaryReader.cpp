@@ -43,7 +43,8 @@ LIEFBinaryReader::get_section_content_and_address(const std::string& name)
         for(auto& section : elf->sections())
         {
             if(section.name() == name && section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS)
-                return std::make_tuple(section.content(), section.virtual_address());
+                return std::make_tuple(section.content(),
+                                       get_base_address() + section.virtual_address());
         }
     }
     if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
@@ -53,7 +54,8 @@ LIEFBinaryReader::get_section_content_and_address(const std::string& name)
             if(section.name() == name
                && !section.has_characteristic(
                       LIEF::PE::SECTION_CHARACTERISTICS::IMAGE_SCN_CNT_UNINITIALIZED_DATA))
-                return std::make_tuple(section.content(), section.virtual_address());
+                return std::make_tuple(section.content(),
+                                       get_base_address() + section.virtual_address());
         }
     }
     return std::nullopt;
@@ -81,7 +83,7 @@ uint64_t LIEFBinaryReader::get_max_address()
             max_address = std::max(max_address, section.virtual_address() + section.size());
         }
     }
-    return max_address;
+    return get_base_address() + max_address;
 }
 
 uint64_t LIEFBinaryReader::get_min_address()
@@ -105,7 +107,7 @@ uint64_t LIEFBinaryReader::get_min_address()
             min_address = std::min(min_address, section.virtual_address());
         }
     }
-    return min_address;
+    return get_base_address() + min_address;
 }
 
 std::set<InitialAuxData::Section> LIEFBinaryReader::get_sections()
@@ -155,7 +157,7 @@ uint64_t LIEFBinaryReader::get_entry_point()
     if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
         return elf->entrypoint();
     if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
-        return pe->optional_header().addressof_entrypoint();
+        return get_base_address() + pe->optional_header().addressof_entrypoint();
     return 0;
 }
 
@@ -259,8 +261,8 @@ std::vector<InitialAuxData::ImportEntry> LIEFBinaryReader::get_import_entries()
             {
                 int16_t ordinal = importEntry.is_ordinal() ? importEntry.ordinal() : -1;
                 std::string functionName = importEntry.is_ordinal() ? "" : importEntry.name();
-                importEntries.push_back(
-                    {importEntry.iat_address(), ordinal, functionName, import.name()});
+                importEntries.push_back({get_base_address() + importEntry.iat_address(), ordinal,
+                                         functionName, import.name()});
             }
         }
     }
