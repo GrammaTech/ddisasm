@@ -267,21 +267,23 @@ base_relative_symbolic_data(EA,4,Val):-
 // move heuristic.
 
 // mov ECX,DWORD PTR [R9+R8*4+(IMAGEREL N_1a050)]
-relative_address(Offset,Mult,Offset,Val),
-relative_address_start(Offset,Mult,Offset,Val):-
+relative_address(ImageBase+Offset,Mult,ImageBase+Offset,ImageBase+Val),
+relative_address_start(ImageBase+Offset,Mult,ImageBase+Offset,ImageBase+Val):-
+    base_address(ImageBase),
     instruction_get_operation(EA,"MOV"),
     instruction_get_src_op(EA,_,Op),
     op_indirect(Op,_,_,_,Mult,Offset,Size),
     Offset > 0,
     Mult * 8 = Size,
     (Mult = 4; Mult = 8),
-    data_word(Offset,Mult,Val),
-    possible_ea(Val).
+    data_word(ImageBase+Offset,Mult,Val),
+    possible_ea(ImageBase+Val).
 
-relative_address(EA+Size,Size,Ref,Dest):-
+relative_address(EA+Size,Size,Ref,ImageBase+Dest):-
+    base_address(ImageBase),
     relative_address(EA,Size,Ref,_),
     data_word(EA+Size,Size,Dest),
-    possible_ea(Dest),
+    possible_ea(ImageBase+Dest),
     !relative_address_start(EA+Size,_,_,_).
 
 // the call to main is right after the call to "__p___argc"
