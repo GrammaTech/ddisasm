@@ -59,19 +59,19 @@ $ make
 ```
 ## Building ddisasm inside a Docker image
 
-The directory [.ci](https://github.com/GrammaTech/ddisasm/tree/master/.ci) contains
-several Docker files to build ddisasm under different OS. These docker
-files assume that  GTIRB, gtirb-pprinter and libehp have been checked out
-inside the ddisasm directory.
+The directory [.ci](https://github.com/GrammaTech/ddisasm/tree/master/.ci)
+contains several Docker files to build ddisasm under different OS and compiler.
+These docker files assume that GTIRB, gtirb-pprinter and libehp have been
+checked out inside the ddisasm directory.
 
-The steps to build ddisasm inside a ubuntu 16 image are:
+The steps to build ddisasm inside a ubuntu 16 image using clang are:
 ```
 git clone https://github.com/GrammaTech/ddisasm.git
 cd ddisasm
 git clone https://github.com/GrammaTech/gtirb.git
 git clone https://github.com/GrammaTech/gtirb-pprinter.git
 git clone https://git.zephyr-software.com/opensrc/libehp
-docker build -f .ci/Dockerfile.ubuntu16 -t ddisasm-ubuntu16 .
+docker build -f .ci/Dockerfile.ubuntu16-clang -t ddisasm-ubuntu16-clang .
 ```
 
 ## Running the analysis
@@ -81,7 +81,7 @@ calling `build/bin/ddisasm'`.  For example, we can run the analysis on one
 of the examples as follows:
 
 ```
-cd build/bin ./ddisasm ../../examples/ex1/ex --asm ex.s
+cd build/bin && ./ddisasm ../../examples/ex1/ex --asm ex.s
 ```
 
 Ddisasm accepts the following parameters:
