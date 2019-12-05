@@ -127,7 +127,7 @@ base_relative_symbolic_operand(EA,Op_index,Value):-
     op_indirect(Op,_,_,_,_,_,Size),
     base_address(ImageBase).
 
-inferred_symbol_name(ImageBase,".L_0","Static"):-
+inferred_symbol_name(ImageBase,"__ImageBase","Static"):-
     base_address(ImageBase).
 
 .decl base_relative_operation(EA_relop:address,EA:address)
