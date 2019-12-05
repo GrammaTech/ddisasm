@@ -119,7 +119,6 @@ base_relative_operand(EA_used,Op_index,Value):-
 .decl base_relative_symbolic_operand(EA:address,Index:number,Dest:address)
 
 symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value),
-symbolic_operand_point(EA,Op_index,-1,"base-relative"),
 base_relative_symbolic_operand(EA,Op_index,Value):-
     base_relative_operand(EA,Op_index,Value),
     instruction_displacement_offset(EA,Op_index,Disp_offset),
