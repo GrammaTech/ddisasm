@@ -119,10 +119,12 @@ void buildByteMap(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
                 // Fill incomplete section with zeroes.
                 if(sectionBytes.size() < binSection.size)
                 {
-                    std::cerr << "Warning: Zero filling section: " << binSection.name << '\n';
-                    byteMap.setData(gtirb::Addr(binary->get_base_address() + binSection.address
-                                                + sectionBytes.size()),
-                                    binSection.size - sectionBytes.size(), std::byte(0));
+                    gtirb::Addr start = gtirb::Addr(binary->get_base_address() + binSection.address
+                                                    + sectionBytes.size());
+                    size_t size = binSection.size - sectionBytes.size();
+                    std::cerr << "Warning: Zero filling uninitialized section fragment: " << start
+                              << '-' << start + size << '\n';
+                    byteMap.setData(start, size, std::byte(0));
                 }
             }
         }
