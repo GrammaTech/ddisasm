@@ -59,8 +59,9 @@ ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
         gccExcept.assign(reinterpret_cast<const char *>(&*bytes.begin()),
                          reinterpret_cast<const char *>(end));
     }
-    ehParser = EHP::EHFrameParser_t::factory(ptrsize, ehFrame, addressEhFrame, ehFrameHeader,
-                                             addressEhFrameHeader, gccExcept, addressGccExcept);
+    ehParser = EHP::EHFrameParser_t::factory(ptrsize, EHP::EHPEndianness_t::HOST, ehFrame,
+                                             addressEhFrame, ehFrameHeader, addressEhFrameHeader,
+                                             gccExcept, addressGccExcept);
 }
 
 void ExceptionDecoder::addExceptionInformation(souffle::SouffleProgram *prog)
