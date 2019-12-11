@@ -27,6 +27,7 @@
 #include <gtirb_pprinter/PrettyPrinter.hpp>
 #include <iostream>
 #include <string>
+#include <thread>
 #include <vector>
 #include "DatalogUtils.h"
 #include "DlDecoder.h"
@@ -62,15 +63,16 @@ int main(int argc, char **argv)
         ("debug", "generate assembler file with debugging information") //
         ("debug-dir", po::value<std::string>(),                         //
          "location to write CSV files for debugging")                   //
-        ("input-file", po::value<std::string>(), "file to disasemble")(
-            "keep-functions,K",
-            boost::program_options::value<std::vector<std::string>>()->multitoken(),
-            "Print the given functions even if they are skipped by default (e.g. _start)")(
-            "self-diagnose",
-            "Use relocation information to emit a self diagnose of the symbolization process. This "
-            "option only works if the target binary contains complete relocation information.")(
-            "skip-function-analysis,F",
-            "Skip additional analyses to compute more precise function boundaries.");
+        ("input-file", po::value<std::string>(), "file to disasemble")  //
+        ("keep-functions,K", po::value<std::vector<std::string>>()->multitoken(),
+         "Print the given functions even if they are skipped by default (e.g. _start)") //
+        ("self-diagnose",
+         "Use relocation information to emit a self diagnose of the symbolization process. This "
+         "option only works if the target binary contains complete relocation information.") //
+        ("skip-function-analysis,F",
+         "Skip additional analyses to compute more precise function boundaries.") //
+        ("threads,j", po::value<unsigned int>()->default_value(std::thread::hardware_concurrency()),
+         "Number of cores to use. It is set to the number of cores in the machine by default");
     po::positional_options_description pd;
     pd.add("input-file", -1);
 
@@ -121,6 +123,8 @@ int main(int argc, char **argv)
     if(prog)
     {
         std::cout << "Disassembling" << std::endl;
+        unsigned int NThreads = vm["threads"].as<unsigned int>();
+        prog->setNumThreads(NThreads);
         try
         {
             prog->run();
@@ -144,9 +148,9 @@ int main(int argc, char **argv)
                 NoReturn.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
                 FunctionInference.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
             }
-            NoReturn.computeNoReturn(module);
+            NoReturn.computeNoReturn(module, NThreads);
             std::cout << "Detecting additional functions" << std::endl;
-            FunctionInference.computeFunctions(context, module);
+            FunctionInference.computeFunctions(context, module, NThreads);
         }
         // Output GTIRB
         if(vm.count("ir") != 0)

@@ -31,7 +31,7 @@ add_custom_command(OUTPUT ${NO_RETURN_CPP}
   # program name. Change directory and use a relative path so the name
   # does not depend on build location.
   WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/passes"
-  COMMAND ${SOUFFLE} ${NO_RETURN_DATALOG_MAIN} -g souffle_no_return.cpp -j${CORES}
+  COMMAND ${SOUFFLE} ${NO_RETURN_DATALOG_MAIN} -g souffle_no_return.cpp -jauto
   DEPENDS ${NO_RETURN_DATALOG_SOURCES})
 
 
@@ -76,7 +76,7 @@ add_custom_command(OUTPUT ${FUNCTION_INFERENCE_CPP}
   # program name. Change directory and use a relative path so the name
   # does not depend on build location.
   WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/passes"
-  COMMAND ${SOUFFLE} ${FUNCTION_INFERENCE_DATALOG_MAIN} -g souffle_function_inference.cpp -j${CORES}
+  COMMAND ${SOUFFLE} ${FUNCTION_INFERENCE_DATALOG_MAIN} -g souffle_function_inference.cpp -jauto
   DEPENDS ${FUNCTION_INFERENCE_DATALOG_SOURCES})
 
 

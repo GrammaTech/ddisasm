@@ -40,6 +40,6 @@ private:
 
 public:
     void setDebugDir(std::string Path);
-    std::set<gtirb::Block*> computeNoReturn(gtirb::Module& module);
+    std::set<gtirb::Block*> computeNoReturn(gtirb::Module& module, unsigned int NThreads = 1);
 };
 #endif // NO_RETURN_PASS_H_

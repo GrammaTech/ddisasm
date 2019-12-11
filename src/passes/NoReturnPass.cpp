@@ -63,7 +63,7 @@ void NoReturnPass::setDebugDir(std::string Path)
     DebugDir = Path;
 }
 
-std::set<gtirb::Block*> NoReturnPass::computeNoReturn(gtirb::Module& M)
+std::set<gtirb::Block*> NoReturnPass::computeNoReturn(gtirb::Module& M, unsigned int NThreads)
 {
     auto Prog = std::shared_ptr<souffle::SouffleProgram>(
         souffle::ProgramFactory::newInstance("souffle_no_return"));
@@ -73,6 +73,7 @@ std::set<gtirb::Block*> NoReturnPass::computeNoReturn(gtirb::Module& M)
         exit(1);
     }
     populateSouffleProg(Prog, M);
+    Prog->setNumThreads(NThreads);
     Prog->run();
     if(DebugDir)
     {

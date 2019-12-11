@@ -80,7 +80,8 @@ void FunctionInferencePass::setDebugDir(std::string Path)
     DebugDir = Path;
 }
 
-void FunctionInferencePass::computeFunctions(gtirb::Context& Ctx, gtirb::Module& M)
+void FunctionInferencePass::computeFunctions(gtirb::Context& Ctx, gtirb::Module& M,
+                                             unsigned int NThreads)
 {
     auto Prog = std::shared_ptr<souffle::SouffleProgram>(
         souffle::ProgramFactory::newInstance("souffle_function_inference"));
@@ -90,6 +91,7 @@ void FunctionInferencePass::computeFunctions(gtirb::Context& Ctx, gtirb::Module&
         exit(1);
     }
     populateSouffleProg(Prog, Ctx, M);
+    Prog->setNumThreads(NThreads);
     Prog->run();
     if(DebugDir)
     {

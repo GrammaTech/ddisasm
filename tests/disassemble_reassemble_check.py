@@ -79,7 +79,7 @@ def disassemble(binary,strip,format='--asm',extension='s',extra_args=[]):
     with get_target(binary,strip) as target_binary:
         print('# Disassembling '+target_binary+'\n')
         start=timer()
-        completedProcess=subprocess.run(['ddisasm',target_binary,format,binary+'.'+extension]+extra_args)
+        completedProcess=subprocess.run(['ddisasm',target_binary,format,binary+'.'+extension,'-j','2']+extra_args)
         time_spent=timer()-start
     if completedProcess.returncode==0:
         print(bcolors.okgreen('Disassembly succeed'),flush=True)
