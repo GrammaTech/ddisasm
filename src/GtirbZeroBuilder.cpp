@@ -241,7 +241,7 @@ gtirb::IR *buildZeroIR(const std::string &filename, gtirb::Context &context)
     gtirb::Module &module = *gtirb::Module::Create(context);
     module.setBinaryPath(filename);
     module.setFileFormat(binary->get_binary_format());
-    module.setISA(gtirb::ISA::X64);
+    module.setISA(binary->get_binary_architecture());
     ir->addModule(&module);
 
     // Populate Module with pre-analysis data

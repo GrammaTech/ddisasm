@@ -147,10 +147,10 @@ void addSections(souffle::SouffleProgram *prog, gtirb::Module &module)
     }
 }
 
-DlDecoder::DlDecoder()
+DlDecoder::DlDecoder(gtirb::ISAID Isa)
 {
-    cs_open(CS_ARCH_X86, CS_MODE_64, &this->csHandle); // == CS_ERR_OK
-    cs_option(this->csHandle, CS_OPT_DETAIL, CS_OPT_ON);
+    if(!initializeCapstoneHandle(Isa, this->csHandle))
+        throw std::logic_error("Unsupported architecture");
 }
 
 DlDecoder::~DlDecoder()

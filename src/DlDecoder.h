@@ -53,7 +53,7 @@ private:
                           gtirb::Addr max_address);
 
 public:
-    DlDecoder();
+    DlDecoder(gtirb::ISAID Isa);
     ~DlDecoder();
     souffle::SouffleProgram* decode(gtirb::Module& module);
 };

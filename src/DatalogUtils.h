@@ -31,6 +31,7 @@
 #include "DlOperandTable.h"
 
 void writeFacts(souffle::SouffleProgram *prog, const std::string &directory);
+bool initializeCapstoneHandle(gtirb::ISAID isa, csh &csHandle);
 
 struct DlInstruction
 {

@@ -48,6 +48,19 @@ void writeFacts(souffle::SouffleProgram* prog, const std::string& directory)
     }
 }
 
+bool initializeCapstoneHandle(gtirb::ISAID Isa, csh& CsHandle)
+{
+    switch(Isa)
+    {
+        case gtirb::ISAID::X64:
+            cs_open(CS_ARCH_X86, CS_MODE_64, &CsHandle); // == CS_ERR_OK
+            cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
+            return true;
+        default:
+            return false;
+    }
+}
+
 void populateEdgeProperties(souffle::tuple& T, const gtirb::EdgeLabel& Label)
 {
     assert(Label.has_value() && "Found edge without a label");
@@ -219,8 +232,7 @@ void GtirbToDatalog::populateBlocks(const gtirb::Module& M)
 void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int InstructionLimit)
 {
     csh CsHandle;
-    cs_open(CS_ARCH_X86, CS_MODE_64, &CsHandle); // == CS_ERR_OK
-    cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
+    initializeCapstoneHandle(M.getISAID(), CsHandle);
     // Exception-safe capstone handle closing
     std::unique_ptr<csh, std::function<void(csh*)>> CloseCapstoneHandle(&CsHandle, cs_close);
 

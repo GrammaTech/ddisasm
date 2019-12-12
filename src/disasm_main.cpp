@@ -160,7 +160,7 @@ int main(int argc, char **argv)
     gtirb::Module &module = *(ir->modules().begin());
     souffle::SouffleProgram *prog;
     {
-        DlDecoder decoder;
+        DlDecoder decoder(module.getISAID());
         std::cout << "Decoding the binary" << std::endl;
         prog = decoder.decode(module);
     }
