@@ -1,11 +1,15 @@
 FROM ubuntu:16.04 as souffle
+RUN apt-get -y update && \
+    apt-get -y install software-properties-common && \
+    add-apt-repository ppa:jonathonf/gcc-7.1 && \
+    apt-get -y update
 RUN apt-get -y update && apt-get -y install automake bison build-essential \
-    doxygen flex g++ gcc gcc-multilib g++-multilib git libffi-dev libtool  \
+    doxygen flex g++ g++-7 gcc gcc-7 git libffi-dev libtool  \
     make mcpp pkg-config sqlite3 libsqlite3-dev zlib1g-dev
 
 RUN git clone -b 1.7.1 https://github.com/souffle-lang/souffle
 RUN cd souffle && sh ./bootstrap
-RUN cd souffle && ./configure --prefix=/usr --enable-64bit-domain --disable-ncurses
+RUN cd souffle && CC=gcc-7 CXX=g++-7 ./configure --prefix=/usr --enable-64bit-domain --disable-ncurses
 RUN cd souffle && make -j4 install
 RUN cd souffle && cp include/souffle/RamTypes.h /usr/include/souffle/
 
