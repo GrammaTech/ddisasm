@@ -53,19 +53,6 @@ namespace souffle
         return t;
     }
 
-    souffle::tuple &operator<<(souffle::tuple &t,
-                               const InitialAuxData::DataDirectory &DataDirectory)
-    {
-        t << DataDirectory.address << DataDirectory.size << DataDirectory.type;
-        return t;
-    }
-
-    souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::ImportEntry &ImportEntry)
-    {
-        t << ImportEntry.iat_address << ImportEntry.ordinal << ImportEntry.function
-          << ImportEntry.library;
-        return t;
-    }
 } // namespace souffle
 
 std::string getFileFormatString(gtirb::FileFormat format)
@@ -153,8 +140,6 @@ DlDecoder::~DlDecoder()
 
 souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
 {
-    const gtirb::FileFormat format = module.getFileFormat();
-
     auto minMax = module.getImageByteMap().getAddrMinMax();
     auto *extraInfoTable =
         module.getAuxData<std::map<gtirb::UUID, SectionProperties>>("elfSectionProperties");
@@ -167,7 +152,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
             throw std::logic_error("Section " + section.getName()
                                    + " missing from elfSectionProperties AuxData table");
         SectionProperties &extraInfo = found->second;
-        if(isExeSection(format, extraInfo))
+        if(isExeSection(extraInfo))
         {
             gtirb::ImageByteMap::const_range bytes =
                 gtirb::getBytes(module.getImageByteMap(), section);
@@ -175,7 +160,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
             storeDataSection(bytes, bytes.size(), section.getAddress(), minMax.first,
                              minMax.second);
         }
-        if(isNonZeroDataSection(format, extraInfo))
+        if(isNonZeroDataSection(extraInfo))
         {
             gtirb::ImageByteMap::const_range bytes =
                 gtirb::getBytes(module.getImageByteMap(), section);
@@ -253,15 +238,6 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
         prog, "relocation",
         *module.getAuxData<std::set<InitialAuxData::Relocation>>("relocations"));
     module.removeAuxData("relocations");
-    if(module.getFileFormat() == gtirb::FileFormat::PE)
-    {
-        GtirbToDatalog::addToRelation(
-            prog, "data_directory",
-            *module.getAuxData<std::vector<InitialAuxData::DataDirectory>>("dataDirectories"));
-        GtirbToDatalog::addToRelation(
-            prog, "import_entry",
-            *module.getAuxData<std::vector<InitialAuxData::ImportEntry>>("importEntries"));
-    }
 
     GtirbToDatalog::addToRelation(prog, "instruction_complete", instructions);
     GtirbToDatalog::addToRelation(prog, "address_in_data", data_addresses);

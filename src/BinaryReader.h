@@ -75,20 +75,6 @@ namespace InitialAuxData
                < std::tie(RHS.address, RHS.type, RHS.name, RHS.addend);
     }
 
-    struct DataDirectory
-    {
-        uint64_t address;
-        uint64_t size;
-        std::string type;
-    };
-
-    struct ImportEntry
-    {
-        uint64_t iat_address;
-        int64_t ordinal;
-        std::string function;
-        std::string library;
-    };
 } // namespace InitialAuxData
 
 template <>
@@ -118,58 +104,6 @@ struct gtirb::auxdata_traits<InitialAuxData::Relocation>
     }
 };
 
-template <>
-struct gtirb::auxdata_traits<InitialAuxData::DataDirectory>
-{
-    static std::string type_id()
-    {
-        return "DataDirectory";
-    }
-
-    static void toBytes(const InitialAuxData::DataDirectory &Object, to_iterator It)
-    {
-        auxdata_traits<std::tuple<uint64_t, uint64_t, std::string>>::toBytes(
-            std::make_tuple(Object.address, Object.size, Object.type), It);
-    }
-
-    static from_iterator fromBytes(InitialAuxData::DataDirectory &Object, from_iterator It)
-    {
-        std::tuple<uint64_t, uint64_t, std::string> Tuple;
-        auxdata_traits<std::tuple<uint64_t, uint64_t, std::string>>::fromBytes(Tuple, It);
-        Object.address = std::get<0>(Tuple);
-        Object.size = std::get<1>(Tuple);
-        Object.type = std::get<2>(Tuple);
-        return It;
-    }
-};
-
-template <>
-struct gtirb::auxdata_traits<InitialAuxData::ImportEntry>
-{
-    static std::string type_id()
-    {
-        return "ImportEntry";
-    }
-
-    static void toBytes(const InitialAuxData::ImportEntry &Object, to_iterator It)
-    {
-        auxdata_traits<std::tuple<uint64_t, int64_t, std::string, std::string>>::toBytes(
-            std::make_tuple(Object.iat_address, Object.ordinal, Object.function, Object.library),
-            It);
-    }
-
-    static from_iterator fromBytes(InitialAuxData::ImportEntry &Object, from_iterator It)
-    {
-        std::tuple<uint64_t, int64_t, std::string, std::string> Tuple;
-        auxdata_traits<std::tuple<uint64_t, int64_t, std::string, std::string>>::fromBytes(Tuple,
-                                                                                           It);
-        Object.iat_address = std::get<0>(Tuple);
-        Object.ordinal = std::get<1>(Tuple);
-        Object.function = std::get<2>(Tuple);
-        Object.library = std::get<3>(Tuple);
-        return It;
-    }
-};
 class BinaryReader
 {
 public:
@@ -189,8 +123,6 @@ public:
 
     virtual std::vector<std::string> get_libraries() = 0;
     virtual std::vector<std::string> get_library_paths() = 0;
-    virtual std::vector<InitialAuxData::DataDirectory> get_data_directories() = 0;
-    virtual std::vector<InitialAuxData::ImportEntry> get_import_entries() = 0;
 
     virtual std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
     get_section_content_and_address(const std::string &name) = 0;

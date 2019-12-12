@@ -62,7 +62,6 @@ This module:
 
 // binary format specific predicates
 #include "elf_binaries.dl"
-#include "pe_binaries.dl"
 
 // architecture specific predicates
 #include "x64/arch_x64.dl"

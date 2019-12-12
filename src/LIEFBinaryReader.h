@@ -47,9 +47,6 @@ public:
     std::vector<std::string> get_libraries() override;
     std::vector<std::string> get_library_paths() override;
 
-    std::vector<InitialAuxData::DataDirectory> get_data_directories() override;
-    std::vector<InitialAuxData::ImportEntry> get_import_entries() override;
-
     std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> get_section_content_and_address(
         const std::string& name) override;
 
@@ -57,7 +54,6 @@ private:
     std::unique_ptr<LIEF::Binary> bin;
     std::string getSymbolType(LIEF::ELF::ELF_SYMBOL_TYPES type);
     std::string getSymbolBinding(LIEF::ELF::SYMBOL_BINDINGS binding);
-    std::string getDataDirectoryType(LIEF::PE::DATA_DIRECTORY type);
     std::string getRelocationType(uint32_t type);
 };
 #endif /* LIEF_BINARY_READER_H_ */

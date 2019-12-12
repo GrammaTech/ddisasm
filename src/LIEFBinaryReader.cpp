@@ -31,8 +31,7 @@ LIEFBinaryReader::LIEFBinaryReader(const std::string& filename)
 
 bool LIEFBinaryReader::is_valid()
 {
-    return bin->format() == LIEF::EXE_FORMATS::FORMAT_ELF
-           || bin->format() == LIEF::EXE_FORMATS::FORMAT_PE;
+    return bin->format() == LIEF::EXE_FORMATS::FORMAT_ELF;
 }
 
 std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
@@ -43,16 +42,6 @@ LIEFBinaryReader::get_section_content_and_address(const std::string& name)
         for(auto& section : elf->sections())
         {
             if(section.name() == name && section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS)
-                return std::make_tuple(section.content(), section.virtual_address());
-        }
-    }
-    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
-    {
-        for(auto& section : pe->sections())
-        {
-            if(section.name() == name
-               && !section.has_characteristic(
-                      LIEF::PE::SECTION_CHARACTERISTICS::IMAGE_SCN_CNT_UNINITIALIZED_DATA))
                 return std::make_tuple(section.content(), section.virtual_address());
         }
     }
@@ -74,13 +63,6 @@ uint64_t LIEFBinaryReader::get_max_address()
         }
     }
 
-    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
-    {
-        for(auto& section : pe->sections())
-        {
-            max_address = std::max(max_address, section.virtual_address() + section.size());
-        }
-    }
     return max_address;
 }
 
@@ -96,13 +78,6 @@ uint64_t LIEFBinaryReader::get_min_address()
             {
                 min_address = std::min(min_address, section.virtual_address());
             }
-        }
-    }
-    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
-    {
-        for(auto& section : pe->sections())
-        {
-            min_address = std::min(min_address, section.virtual_address());
         }
     }
     return min_address;
@@ -122,19 +97,6 @@ std::set<InitialAuxData::Section> LIEFBinaryReader::get_sections()
         }
     }
 
-    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
-    {
-        for(auto& section : pe->sections())
-        {
-            // FIXME: should we encode section type?
-            // FIXME: Use section.size() instead of section.content().size():
-            //        We truncate the section size because requesting a region
-            //        from gtirb::getBytes that is larger than what was stored
-            //        will return an empty range.
-            sectionTuples.insert({section.name(), section.content().size(),
-                                  section.virtual_address(), 0, section.characteristics()});
-        }
-    }
     return sectionTuples;
 }
 
@@ -142,8 +104,6 @@ gtirb::FileFormat LIEFBinaryReader::get_binary_format()
 {
     if(bin->format() == LIEF::EXE_FORMATS::FORMAT_ELF)
         return gtirb::FileFormat::ELF;
-    if(bin->format() == LIEF::EXE_FORMATS::FORMAT_PE)
-        return gtirb::FileFormat::PE;
     return gtirb::FileFormat::Undefined;
 }
 
@@ -158,8 +118,6 @@ uint64_t LIEFBinaryReader::get_entry_point()
 {
     if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
         return elf->entrypoint();
-    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
-        return pe->optional_header().addressof_entrypoint();
     return 0;
 }
 
@@ -181,16 +139,6 @@ std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
         }
     }
 
-    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
-    {
-        for(auto& symbol : pe->symbols())
-        {
-            std::string symbolName = symbol.name();
-            // FIXME: do symbols in PE have an equivalent concept?
-            symbolTuples.insert({symbol.value(), 0, "NOTYPE", "GLOBAL",
-                                 static_cast<uint64_t>(symbol.section_number()), symbolName});
-        }
-    }
     return symbolTuples;
 }
 
@@ -220,81 +168,6 @@ std::vector<std::string> LIEFBinaryReader::get_library_paths()
     std::vector<std::string> libraryPaths;
     // TODO
     return libraryPaths;
-}
-
-std::vector<InitialAuxData::DataDirectory> LIEFBinaryReader::get_data_directories()
-{
-    std::vector<InitialAuxData::DataDirectory> dataDirectories;
-    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
-    {
-        for(auto& directory : pe->data_directories())
-        {
-            dataDirectories.push_back(
-                {directory.RVA(), directory.size(), getDataDirectoryType(directory.type())});
-        }
-    }
-    return dataDirectories;
-}
-
-std::vector<InitialAuxData::ImportEntry> LIEFBinaryReader::get_import_entries()
-{
-    std::vector<InitialAuxData::ImportEntry> importEntries;
-    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
-    {
-        for(auto& import : pe->imports())
-        {
-            for(auto& importEntry : import.entries())
-            {
-                int16_t ordinal = importEntry.is_ordinal() ? importEntry.ordinal() : -1;
-                std::string functionName = importEntry.is_ordinal() ? "" : importEntry.name();
-                importEntries.push_back(
-                    {importEntry.iat_address(), ordinal, functionName, import.name()});
-            }
-        }
-    }
-    return importEntries;
-}
-
-std::string LIEFBinaryReader::getDataDirectoryType(LIEF::PE::DATA_DIRECTORY type)
-{
-    switch(type)
-    {
-        case LIEF::PE::DATA_DIRECTORY::EXPORT_TABLE:
-            return "EXPORT_TABLE";
-        case LIEF::PE::DATA_DIRECTORY::IMPORT_TABLE:
-            return "IMPORT_TABLE";
-        case LIEF::PE::DATA_DIRECTORY::RESOURCE_TABLE:
-            return "RESOURCE_TABLE";
-        case LIEF::PE::DATA_DIRECTORY::EXCEPTION_TABLE:
-            return "EXCEPTION_TABLE";
-        case LIEF::PE::DATA_DIRECTORY::CERTIFICATE_TABLE:
-            return "CERTIFICATE_TABLE";
-        case LIEF::PE::DATA_DIRECTORY::BASE_RELOCATION_TABLE:
-            return "BASE_RELOCATION_TABLE";
-        case LIEF::PE::DATA_DIRECTORY::DEBUG:
-            return "DEBUG";
-        case LIEF::PE::DATA_DIRECTORY::ARCHITECTURE:
-            return "ARCHITECTURE";
-        case LIEF::PE::DATA_DIRECTORY::GLOBAL_PTR:
-            return "GLOBAL_PTR";
-        case LIEF::PE::DATA_DIRECTORY::TLS_TABLE:
-            return "TLS_TABLE";
-        case LIEF::PE::DATA_DIRECTORY::LOAD_CONFIG_TABLE:
-            return "LOAD_CONFIG_TABLE";
-        case LIEF::PE::DATA_DIRECTORY::BOUND_IMPORT:
-            return "BOUND_IMPORT";
-        case LIEF::PE::DATA_DIRECTORY::IAT:
-            return "IAT";
-        case LIEF::PE::DATA_DIRECTORY::DELAY_IMPORT_DESCRIPTOR:
-            return "DELAY_IMPORT_DESCRIPTOR";
-        case LIEF::PE::DATA_DIRECTORY::CLR_RUNTIME_HEADER:
-            return "CLR_RUNTIME_HEADER";
-        case LIEF::PE::DATA_DIRECTORY::NUM_DATA_DIRECTORIES:
-            return "NUM_DATA_DIRECTORIES";
-        default:
-            assert("unkown data directory type");
-            return "OTHER";
-    }
 }
 
 std::string LIEFBinaryReader::getSymbolType(LIEF::ELF::ELF_SYMBOL_TYPES type)

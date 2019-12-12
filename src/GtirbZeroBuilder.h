@@ -43,9 +43,9 @@ struct gtirb::auxdata_traits<ExtraSymbolInfo>
 };
 
 using SectionProperties = std::tuple<uint64_t, uint64_t>;
-bool isAllocatedSection(const gtirb::FileFormat format, int flags);
-bool isNonZeroDataSection(const gtirb::FileFormat format, const SectionProperties& s);
-bool isExeSection(const gtirb::FileFormat format, const SectionProperties& s);
+bool isAllocatedSection(int flags);
+bool isNonZeroDataSection(const SectionProperties& s);
+bool isExeSection(const SectionProperties& s);
 
 gtirb::IR* buildZeroIR(const std::string& filename, gtirb::Context& context);
 

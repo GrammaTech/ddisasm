@@ -25,53 +25,33 @@
 #include "BinaryReader.h"
 #include "LIEFBinaryReader.h"
 
-bool isExeSection(const gtirb::FileFormat format, const SectionProperties &s)
+bool isExeSection(const SectionProperties &s)
 {
     uint64_t flags = std::get<1>(s);
-    if(format == gtirb::FileFormat::ELF)
-        return flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_EXECINSTR);
-    else if(format == gtirb::FileFormat::PE)
-        return flags & static_cast<int>(LIEF::PE::SECTION_CHARACTERISTICS::IMAGE_SCN_CNT_CODE);
-    return false;
+    return flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_EXECINSTR);
 };
 
-bool isNonZeroDataSection(const gtirb::FileFormat format, const SectionProperties &s)
+bool isNonZeroDataSection(const SectionProperties &s)
 {
     uint64_t type = std::get<0>(s);
     uint64_t flags = std::get<1>(s);
 
-    if(format == gtirb::FileFormat::ELF)
-    {
-        bool is_allocated = flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC);
-        bool is_not_executable =
-            !(flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_EXECINSTR));
-        // SHT_NOBITS is not considered here because it is for data sections but without initial
-        // data (zero initialized)
-        bool is_non_zero_program_data =
-            type == static_cast<int>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS)
-            || type == static_cast<int>(LIEF::ELF::ELF_SECTION_TYPES::SHT_INIT_ARRAY)
-            || type == static_cast<int>(LIEF::ELF::ELF_SECTION_TYPES::SHT_FINI_ARRAY)
-            || type == static_cast<int>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PREINIT_ARRAY);
-        return is_allocated && is_not_executable && is_non_zero_program_data;
-    }
-
-    if(format == gtirb::FileFormat::ELF)
-    {
-        return flags
-               & static_cast<int>(
-                     LIEF::PE::SECTION_CHARACTERISTICS::IMAGE_SCN_CNT_INITIALIZED_DATA);
-    }
-
-    return false;
+    bool is_allocated = flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC);
+    bool is_not_executable =
+        !(flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_EXECINSTR));
+    // SHT_NOBITS is not considered here because it is for data sections but without initial
+    // data (zero initialized)
+    bool is_non_zero_program_data =
+        type == static_cast<int>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS)
+        || type == static_cast<int>(LIEF::ELF::ELF_SECTION_TYPES::SHT_INIT_ARRAY)
+        || type == static_cast<int>(LIEF::ELF::ELF_SECTION_TYPES::SHT_FINI_ARRAY)
+        || type == static_cast<int>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PREINIT_ARRAY);
+    return is_allocated && is_not_executable && is_non_zero_program_data;
 };
 
-bool isAllocatedSection(const gtirb::FileFormat format, int flags)
+bool isAllocatedSection(int flags)
 {
-    if(format == gtirb::FileFormat::ELF)
-        return (flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC));
-    else if(format == gtirb::FileFormat::PE)
-        return (flags & static_cast<int>(LIEF::PE::SECTION_CHARACTERISTICS::IMAGE_SCN_MEM_READ));
-    return false;
+    return (flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC));
 }
 
 std::string gtirb::auxdata_traits<ExtraSymbolInfo>::type_id()
@@ -106,7 +86,7 @@ void buildByteMap(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
     std::map<gtirb::UUID, SectionProperties> sectionProperties;
     for(auto &binSection : binary->get_sections())
     {
-        if(isAllocatedSection(binary->get_binary_format(), binSection.flags))
+        if(isAllocatedSection(binSection.flags))
         {
             if(auto sectionData = binary->get_section_content_and_address(binSection.name))
             {
@@ -124,11 +104,10 @@ void buildByteMap(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
 void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                    gtirb::Context &context)
 {
-    // const gtirb::FileFormat format = binary->get_binary_format();
     std::map<gtirb::UUID, SectionProperties> sectionProperties;
     for(auto &binSection : binary->get_sections())
     {
-        if(isAllocatedSection(binary->get_binary_format(), binSection.flags))
+        if(isAllocatedSection(binSection.flags))
         {
             gtirb::Section *section = gtirb::Section::Create(
                 context, binSection.name, gtirb::Addr(binSection.address), binSection.size);
@@ -181,11 +160,6 @@ void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> bin
     module.addAuxData("relocations", binary->get_relocations());
     module.addAuxData("libraries", binary->get_libraries());
     module.addAuxData("libraryPaths", binary->get_library_paths());
-    if(binary->get_binary_format() == gtirb::FileFormat::PE)
-    {
-        module.addAuxData("dataDirectories", binary->get_data_directories());
-        module.addAuxData("importEntries", binary->get_import_entries());
-    }
 }
 
 gtirb::IR *buildZeroIR(const std::string &filename, gtirb::Context &context)
