@@ -52,8 +52,6 @@ public:
 
 private:
     std::unique_ptr<LIEF::Binary> bin;
-    std::string getSymbolType(LIEF::ELF::ELF_SYMBOL_TYPES type);
-    std::string getSymbolBinding(LIEF::ELF::SYMBOL_BINDINGS binding);
-    std::string getRelocationType(uint32_t type);
+    std::string getRelocationType(const LIEF::ELF::Relocation& entry);
 };
 #endif /* LIEF_BINARY_READER_H_ */
