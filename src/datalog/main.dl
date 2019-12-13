@@ -66,6 +66,7 @@ This module:
 
 // architecture specific predicates
 #include "x64/arch_x64.dl"
+#include "ARM/arch_arm.dl"
 
 // tables with basic facts
 #include "printable_chars.dl"
@@ -154,7 +155,7 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
 ///////////////////////////////////////////////////////////////
 // Initialize components
 
-.init arch = X64
+.init arch = ARM
 .init function_inference = basic_function_inference
 
 /////////////////////////////////////////////////////////////

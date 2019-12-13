@@ -147,17 +147,6 @@ void addSections(souffle::SouffleProgram *prog, gtirb::Module &module)
     }
 }
 
-DlDecoder::DlDecoder(gtirb::ISAID Isa)
-{
-    if(!initializeCapstoneHandle(Isa, this->csHandle))
-        throw std::logic_error("Unsupported architecture");
-}
-
-DlDecoder::~DlDecoder()
-{
-    cs_close(&this->csHandle);
-}
-
 souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
 {
     const gtirb::FileFormat format = module.getFileFormat();
@@ -202,7 +191,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
     return nullptr;
 }
 
-void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
+void DlDecoder::decodeX64Section(const gtirb::ByteInterval &byteInterval)
 {
     assert(byteInterval.getAddress() && "Failed to decode section without address.");
     assert(byteInterval.getSize() == byteInterval.getInitializedSize()
@@ -214,19 +203,59 @@ void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
     while(size > 0)
     {
         cs_insn *insn;
-        size_t count = cs_disasm(csHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
+        size_t count =
+            cs_disasm(CsHandle.RawHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
         if(count == 0)
         {
             invalids.push_back(ea);
         }
         else
         {
-            instructions.push_back(GtirbToDatalog::transformInstruction(csHandle, op_dict, *insn));
+            instructions.push_back(GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn));
             cs_free(insn, count);
         }
         ++ea;
         ++buf;
         --size;
+    }
+}
+
+void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
+{
+    gtirb::Addr ea = byteInterval.getAddress().value();
+    uint64_t size = byteInterval.getInitializedSize();
+    auto buf = byteInterval.rawBytes<const unsigned char>();
+    while(size > 0)
+    {
+        cs_insn *insn;
+        size_t count =
+            cs_disasm(CsHandle.RawHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
+        if(count == 0)
+        {
+            invalids.push_back(ea);
+        }
+        else
+        {
+            instructions.push_back(GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn));
+            cs_free(insn, count);
+        }
+        ea += 4;
+        buf += 4;
+        size -= 4;
+    }
+}
+void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
+{
+    switch(this->CsHandle.Isa)
+    {
+        case gtirb::ISA::X64:
+            decodeX64Section(byteInterval);
+            break;
+        case gtirb::ISA::ARM:
+            decodeARMSection(byteInterval);
+            break;
+        default:
+            exit(1);
     }
 }
 

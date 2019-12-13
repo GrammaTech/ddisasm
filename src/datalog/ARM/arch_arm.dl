@@ -1,0 +1,160 @@
+
+//===- arch_x64.dl --------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+Define a set predicates to abstract from x64 specific instruction set
+and characteristics
+*/
+
+
+.comp ARM {
+
+#include "jump_operations.dl"
+#include "interrupt_operations.dl"
+#include "registers.dl"
+
+.decl conditional_mov(EA:address)
+
+//conditional_mov(EA):-
+//    instruction_get_operation(EA,Operation),
+//    contains("CMOV",Operation).
+
+.decl mov(EA:address)
+
+mov(EA):-
+    (
+        instruction_get_operation(EA,"MOV");
+        instruction_get_operation(EA,"LDR")
+    ).
+
+
+.decl is_nop(EA:address)
+
+is_nop(EA):-
+    instruction_get_operation(EA,"NOP").
+
+.decl op_does_not_read_dest_reg(Operation:symbol)
+
+
+
+
+
+.decl arithmetic_operation(Operation:symbol)
+
+arithmetic_operation("ADD").
+arithmetic_operation("ADC").
+arithmetic_operation("DEC").
+arithmetic_operation("MUL").
+arithmetic_operation("MLA").
+arithmetic_operation("MVN").
+arithmetic_operation("RSB").
+arithmetic_operation("RSC").
+arithmetic_operation("SBC").
+arithmetic_operation("SHL").
+arithmetic_operation("SUB").
+
+
+.decl logic_operation(Operation:symbol)
+
+logic_operation("BIC").
+logic_operation("EOR").
+logic_operation("AND").
+logic_operation("XOR").
+logic_operation("OR").
+logic_operation("TEST").
+
+.decl read_only_operation(Operation:symbol)
+
+read_only_operation("CMN").
+read_only_operation("CMP").
+read_only_operation("TEQ").
+read_only_operation("TST").
+
+.decl write_only_operation(Operation:symbol)
+
+
+.decl one_op_write(Operation:symbol)
+
+
+.decl pointer_size(n:number) inline
+
+pointer_size(4).
+
+.decl loop_operation(operation:symbol)
+
+
+.decl loop_prefix(prefix:symbol)
+
+
+.decl call_operation(operation:symbol)
+
+call_operation("BL").
+
+.decl syscall_operation(operation:symbol)
+
+syscall_operation("SWI").
+
+.decl return_operation(operation:symbol)
+
+// fixme: maybe we need to check the register
+return_operation("BX").
+
+.decl halt_operation(operation:symbol)
+
+
+.decl cmp_operation(Operation:symbol)
+
+cmp_operation("CMP").
+cmp_operation("CMN").
+cmp_operation("TEQ").
+cmp_operation("TST").
+
+
+.decl operation_size_exception(EA:address,Op_index:number,Size:number)
+
+//TODO
+// arithmetic operation on two source registers
+.decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
+
+reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
+    instruction(EA,_,_,"SUB",Op1,Op2,0,0), Op1 != Op2,
+    op_regdirect_contains_reg(Op1,Reg1),
+    op_regdirect_contains_reg(Op2,Reg2).
+
+reg_reg_arithmetic_operation(EA,Reg2,Reg1,Reg2,1,0):-
+    instruction(EA,_,_,"ADD",Op1,Op2,0,0), Op1 != Op2,
+    op_regdirect_contains_reg(Op2,Reg2),
+    op_regdirect_contains_reg(Op1,Reg1).
+
+reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset):-
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0),
+    op_regdirect_contains_reg(Op2,Reg_def),
+    op_indirect(Op1,_,Reg1_n,Reg2_n,Mult,Offset,_),
+    arch.track_register(Reg1_n,Reg1),
+    arch.track_register(Reg2_n,Reg2),
+    Reg1 != Reg2.
+
+reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
+    reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
+
+}

@@ -48,17 +48,28 @@ void writeFacts(souffle::SouffleProgram* prog, const std::string& directory)
     }
 }
 
-bool initializeCapstoneHandle(gtirb::ISAID Isa, csh& CsHandle)
+MultiArchCapstoneHandle::MultiArchCapstoneHandle(gtirb::ISA Isa)
 {
+    this->Isa = Isa;
     switch(Isa)
     {
-        case gtirb::ISAID::X64:
-            cs_open(CS_ARCH_X86, CS_MODE_64, &CsHandle); // == CS_ERR_OK
-            cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
-            return true;
+        case gtirb::ISA::X64:
+            cs_open(CS_ARCH_X86, CS_MODE_64, &this->RawHandle); // == CS_ERR_OK
+            cs_option(this->RawHandle, CS_OPT_DETAIL, CS_OPT_ON);
+            break;
+        case gtirb::ISA::ARM:
+            cs_open(CS_ARCH_ARM, CS_MODE_ARM, &this->RawHandle); // == CS_ERR_OK
+            cs_option(this->RawHandle, CS_OPT_DETAIL, CS_OPT_ON);
+            break;
         default:
-            return false;
+            this->Isa = gtirb::ISA::ValidButUnsupported;
     }
+}
+
+MultiArchCapstoneHandle::~MultiArchCapstoneHandle()
+{
+    if(this->Isa != gtirb::ISA::ValidButUnsupported)
+        cs_close(&this->RawHandle);
 }
 
 void populateEdgeProperties(souffle::tuple& T, const gtirb::EdgeLabel& Label)
@@ -102,27 +113,27 @@ std::string str_toupper(std::string s)
     return s;
 }
 
-std::string getRegisterName(const csh& CsHandle, unsigned int reg)
+std::string getRegisterName(const csh& RawHandle, unsigned int reg)
 {
     if(reg == X86_REG_INVALID)
         return "NONE";
-    std::string name = str_toupper(cs_reg_name(CsHandle, reg));
+    std::string name = str_toupper(cs_reg_name(RawHandle, reg));
     return name;
 }
 
-std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& CsHandle, const cs_x86_op& op)
+std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& RawHandle, const cs_x86_op& op)
 {
     switch(op.type)
     {
         case X86_OP_REG:
-            return getRegisterName(CsHandle, op.reg);
+            return getRegisterName(RawHandle, op.reg);
         case X86_OP_IMM:
             return op.imm;
         case X86_OP_MEM:
         {
-            IndirectOp I = {getRegisterName(CsHandle, op.mem.segment),
-                            getRegisterName(CsHandle, op.mem.base),
-                            getRegisterName(CsHandle, op.mem.index),
+            IndirectOp I = {getRegisterName(RawHandle, op.mem.segment),
+                            getRegisterName(RawHandle, op.mem.base),
+                            getRegisterName(RawHandle, op.mem.index),
                             op.mem.scale,
                             op.mem.disp,
                             op.size * 8};
@@ -135,8 +146,39 @@ std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& CsHandle, const c
     }
 }
 
-DlInstruction GtirbToDatalog::transformInstruction(const csh& CsHandle, DlOperandTable& OpDict,
-                                                   const cs_insn& insn)
+std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& RawHandle, const cs_arm_op& op)
+{
+    switch(op.type)
+    {
+        case ARM_OP_REG:
+            return getRegisterName(RawHandle, op.reg);
+        case ARM_OP_IMM:
+            return op.imm;
+        case ARM_OP_MEM:
+        {
+            IndirectOp I = {"NONE",
+                            getRegisterName(RawHandle, op.mem.base),
+                            getRegisterName(RawHandle, op.mem.index),
+                            op.mem.scale * (1 << op.mem.lshift),
+                            op.mem.disp,
+                            32};
+            return I;
+        }
+        // TODO
+        case ARM_OP_FP:
+        case ARM_OP_CIMM:   ///< C-Immediate (coprocessor registers)
+        case ARM_OP_PIMM:   ///< P-Immediate (coprocessor registers)
+        case ARM_OP_SETEND: ///< operand for SETEND instruction
+        case ARM_OP_SYSREG: ///< MSR/MRS special register operand
+        case ARM_OP_INVALID:
+        default:
+            std::cerr << "invalid operand\n";
+            exit(1);
+    }
+}
+
+DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle& CsHandle,
+                                                   DlOperandTable& OpDict, const cs_insn& insn)
 {
     std::vector<uint64_t> op_codes;
     std::string prefix_name = str_toupper(insn.mnemonic);
@@ -152,28 +194,57 @@ DlInstruction GtirbToDatalog::transformInstruction(const csh& CsHandle, DlOperan
         prefix = "";
         name = prefix_name;
     }
-
-    auto& detail = insn.detail->x86;
-    if(name != "NOP")
+    switch(CsHandle.Isa)
     {
-        auto opCount = detail.op_count;
-        for(int i = 0; i < opCount; i++)
+        case gtirb::ISA::X64:
         {
-            const auto& op = detail.operands[i];
-            uint64_t index = OpDict.add(buildOperand(CsHandle, op));
-            op_codes.push_back(index);
+            auto& detail = insn.detail->x86;
+            if(name != "NOP")
+            {
+                auto opCount = detail.op_count;
+                for(int i = 0; i < opCount; i++)
+                {
+                    const auto& op = detail.operands[i];
+                    uint64_t index = OpDict.add(buildOperand(CsHandle.RawHandle, op));
+                    op_codes.push_back(index);
+                }
+                // we put the destination operand at the end
+                if(opCount > 0)
+                    std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
+                return {insn.address,
+                        insn.size,
+                        prefix,
+                        name,
+                        op_codes,
+                        detail.encoding.imm_offset,
+                        detail.encoding.disp_offset};
+            }
         }
-        // we put the destination operand at the end
-        if(opCount > 0)
-            std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
+        case gtirb::ISA::ARM:
+        {
+            auto& detail = insn.detail->arm;
+            if(name != "NOP")
+            {
+                auto opCount = detail.op_count;
+                for(int i = 0; i < opCount; i++)
+                {
+                    const auto& op = detail.operands[i];
+                    uint64_t index = OpDict.add(buildOperand(CsHandle.RawHandle, op));
+                    op_codes.push_back(index);
+                }
+                // we put the destination operand at the end
+                if(opCount > 0)
+                    std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
+            }
+            return {insn.address, insn.size, prefix, name, op_codes,
+                    // FIXME
+                    0, 0};
+        }
+
+        default:
+            std::cerr << "Tried to decode instruction with unsupported architecture";
+            exit(1);
     }
-    return {insn.address,
-            insn.size,
-            prefix,
-            name,
-            op_codes,
-            detail.encoding.imm_offset,
-            detail.encoding.disp_offset};
 }
 
 namespace souffle
@@ -231,11 +302,7 @@ void GtirbToDatalog::populateBlocks(const gtirb::Module& M)
 
 void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int InstructionLimit)
 {
-    csh CsHandle;
-    initializeCapstoneHandle(M.getISAID(), CsHandle);
-    // Exception-safe capstone handle closing
-    std::unique_ptr<csh, std::function<void(csh*)>> CloseCapstoneHandle(&CsHandle, cs_close);
-
+    MultiArchCapstoneHandle CsHandle(M.getISA());
     std::vector<DlInstruction> Insns;
     DlOperandTable OpDict;
     for(auto& Block : M.code_blocks())
@@ -247,7 +314,7 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
         uint64_t InitSize = Bytes->getInitializedSize();
         assert(Bytes->getSize() == InitSize && "Found partially initialized code block.");
         size_t Count =
-            cs_disasm(CsHandle, Bytes->rawBytes<uint8_t>(), InitSize,
+            cs_disasm(CsHandle.RawHandle, Bytes->rawBytes<uint8_t>(), InitSize,
                       static_cast<uint64_t>(*Block.getAddress()), InstructionLimit, &Insn);
 
         // Exception-safe cleanup of instructions

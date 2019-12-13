@@ -31,7 +31,6 @@
 #include "DlOperandTable.h"
 
 void writeFacts(souffle::SouffleProgram *prog, const std::string &directory);
-bool initializeCapstoneHandle(gtirb::ISAID isa, csh &csHandle);
 
 struct DlInstruction
 {
@@ -50,6 +49,15 @@ namespace souffle
     souffle::tuple &operator<<(souffle::tuple &t, const DlInstruction &inst);
 } // namespace souffle
 
+class MultiArchCapstoneHandle
+{
+public:
+    gtirb::ISA Isa;
+    csh RawHandle;
+    MultiArchCapstoneHandle(gtirb::ISA Isa);
+    ~MultiArchCapstoneHandle();
+};
+
 class GtirbToDatalog
 {
 private:
@@ -60,8 +68,8 @@ public:
     {
     }
 
-    static DlInstruction transformInstruction(const csh &CsHandle, DlOperandTable &OpDict,
-                                              const cs_insn &insn);
+    static DlInstruction transformInstruction(const MultiArchCapstoneHandle &CsHandle,
+                                              DlOperandTable &OpDict, const cs_insn &insn);
 
     template <typename T>
     static void addToRelation(souffle::SouffleProgram *prog, const std::string &name, const T &data)
