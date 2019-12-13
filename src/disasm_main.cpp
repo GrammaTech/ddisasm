@@ -178,12 +178,12 @@ int main(int argc, char **argv)
         {
             std::cout << "Printing assembler" << std::endl;
             std::ofstream out(vm["asm"].as<std::string>());
-            pprinter.print(out, context, *ir);
+            pprinter.print(out, context, module);
         }
         else if(vm.count("ir") == 0)
         {
             std::cout << "Printing assembler" << std::endl;
-            pprinter.print(std::cout, context, *ir);
+            pprinter.print(std::cout, context, module);
         }
 
         if(vm.count("debug-dir") != 0)
