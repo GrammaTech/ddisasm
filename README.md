@@ -28,9 +28,10 @@ should be installed:
 - [gtirb](https://github.com/grammatech/gtirb)
 - [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
 - [Capstone](http://www.capstone-engine.org/), version 4.0.1 or later
-- [Souffle](https://souffle-lang.github.io), version 1.5.1 or higher
+- [Souffle](https://souffle-lang.github.io), version 1.7.0 or higher
   - Must be configured with support for 64 bit numbers (via `--enable-64bit-domain` during configuration)
 - [libehp](https://git.zephyr-software.com/opensrc/libehp), version 1.0.0 or higher
+- [LIEF](https://lief.quarkslab.com/), version 0.9.0 or higher
 
 Note that these versions are newer than what your package manager may provide
 by default: This is true on Ubuntu 18, Debian 10, and others. Prefer building
@@ -59,19 +60,19 @@ $ make
 ```
 ## Building ddisasm inside a Docker image
 
-The directory [.ci](https://github.com/GrammaTech/ddisasm/tree/master/.ci) contains
-several Docker files to build ddisasm under different OS. These docker
-files assume that  GTIRB, gtirb-pprinter and libehp have been checked out
-inside the ddisasm directory.
+The directory [.ci](https://github.com/GrammaTech/ddisasm/tree/master/.ci)
+contains several Docker files to build ddisasm under different OS and compiler.
+These docker files assume that GTIRB, gtirb-pprinter and libehp have been
+checked out inside the ddisasm directory.
 
-The steps to build ddisasm inside a ubuntu 16 image are:
+The steps to build ddisasm inside a ubuntu 16 image using clang are:
 ```
 git clone https://github.com/GrammaTech/ddisasm.git
 cd ddisasm
 git clone https://github.com/GrammaTech/gtirb.git
 git clone https://github.com/GrammaTech/gtirb-pprinter.git
 git clone https://git.zephyr-software.com/opensrc/libehp
-docker build -f .ci/Dockerfile.ubuntu16 -t ddisasm-ubuntu16 .
+docker build -f .ci/Dockerfile.ubuntu16-clang -t ddisasm-ubuntu16-clang .
 ```
 
 ## Running the analysis
@@ -81,7 +82,7 @@ calling `build/bin/ddisasm'`.  For example, we can run the analysis on one
 of the examples as follows:
 
 ```
-cd build/bin ./ddisasm ../../examples/ex1/ex --asm ex.s
+cd build/bin && ./ddisasm ../../examples/ex1/ex --asm ex.s
 ```
 
 Ddisasm accepts the following parameters:
@@ -116,6 +117,8 @@ Ddisasm accepts the following parameters:
 `-F [ --skip-function-analysis ]`
 :   Skip additional analyses to compute more precise function boundaries.
 
+`-j [ --threads ]`
+:   Number of cores to use. It is set to the number of cores in the machine by default.
 
 ## Rewriting a project
 

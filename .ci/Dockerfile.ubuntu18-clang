@@ -3,7 +3,7 @@ RUN apt-get -y update && apt-get -y install automake bison build-essential \
     doxygen flex git libffi-dev libtool make mcpp pkg-config \
     sqlite3 libsqlite3-dev zlib1g-dev
 
-RUN git clone -b 1.6.1 https://github.com/souffle-lang/souffle
+RUN git clone -b 1.7.1 https://github.com/souffle-lang/souffle
 RUN cd souffle && sh ./bootstrap
 RUN cd souffle && ./configure --prefix=/usr --enable-64bit-domain --disable-ncurses
 RUN cd souffle && make -j4 install
@@ -76,5 +76,5 @@ RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER}
 ENV TERM xterm
 RUN rm -rf /ddisasm/build /ddisasm/CMakeCache.txt /ddisasm/CMakeFiles /ddisasm/CMakeScripts
 WORKDIR /ddisasm
-RUN cmake ./  -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCORES=8 -DLIEF_ROOT=/usr/ && cd build && make
+RUN cmake ./  -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DLIEF_ROOT=/usr/ && cd build && make
 ENV PATH=/ddisasm/build/bin:$PATH

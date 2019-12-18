@@ -399,7 +399,7 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
         uint64_t offset;
         std::string type, name;
         output >> ea >> type >> name >> offset;
-        if(type == "R_X86_64_COPY")
+        if(type == "COPY")
         {
             gtirb::Symbol *copySymbol = findSymbol(module, ea, name);
             if(copySymbol)

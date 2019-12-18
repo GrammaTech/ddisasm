@@ -236,15 +236,15 @@ no_return_function("longjump"):-binary_format("ELF").
 
 symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
     binary_format("ELF"),
-    relocation(EA,"R_X86_64_64",Symbol,Addend),
+    relocation(EA,"R64",Symbol,Addend),
     symbol(_,_,_,_,_,Symbol).
 
 symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
     binary_format("ELF"),
-    relocation(EA,"R_X86_64_32",Symbol,Addend),
+    relocation(EA,"R32",Symbol,Addend),
     symbol(_,_,_,_,_,Symbol).
 
 symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
     binary_format("ELF"),
-    relocation(EA,"R_X86_64_32S",Symbol,Addend),
+    relocation(EA,"R32S",Symbol,Addend),
     symbol(_,_,_,_,_,Symbol).

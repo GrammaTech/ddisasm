@@ -180,9 +180,9 @@ std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
             if(foundVersion != std::string::npos)
                 symbolName = symbolName.substr(0, foundVersion);
             if(symbol.type() != LIEF::ELF::ELF_SYMBOL_TYPES::STT_SECTION)
-                symbolTuples.insert({symbol.value(), symbol.size(), getSymbolType(symbol.type()),
-                                     getSymbolBinding(symbol.binding()), symbol.section_idx(),
-                                     symbolName});
+                symbolTuples.insert(
+                    {symbol.value(), symbol.size(), LIEF::ELF::to_string(symbol.type()),
+                     LIEF::ELF::to_string(symbol.binding()), symbol.section_idx(), symbolName});
         }
     }
 
@@ -215,7 +215,7 @@ std::set<InitialAuxData::Relocation> LIEFBinaryReader::get_relocations()
     {
         for(auto& relocation : elf->relocations())
         {
-            relocationTuples.insert({relocation.address(), getRelocationType(relocation.type()),
+            relocationTuples.insert({relocation.address(), getRelocationType(relocation),
                                      relocation.symbol().name(), relocation.addend()});
         }
     }
@@ -242,7 +242,7 @@ std::vector<InitialAuxData::DataDirectory> LIEFBinaryReader::get_data_directorie
         for(auto& directory : pe->data_directories())
         {
             dataDirectories.push_back(
-                {directory.RVA(), directory.size(), getDataDirectoryType(directory.type())});
+                {directory.RVA(), directory.size(), LIEF::PE::to_string(directory.type())});
         }
     }
     return dataDirectories;
@@ -267,137 +267,23 @@ std::vector<InitialAuxData::ImportEntry> LIEFBinaryReader::get_import_entries()
     return importEntries;
 }
 
-std::string LIEFBinaryReader::getDataDirectoryType(LIEF::PE::DATA_DIRECTORY type)
+std::string LIEFBinaryReader::getRelocationType(const LIEF::ELF::Relocation& entry)
 {
-    switch(type)
+    switch(entry.architecture())
     {
-        case LIEF::PE::DATA_DIRECTORY::EXPORT_TABLE:
-            return "EXPORT_TABLE";
-        case LIEF::PE::DATA_DIRECTORY::IMPORT_TABLE:
-            return "IMPORT_TABLE";
-        case LIEF::PE::DATA_DIRECTORY::RESOURCE_TABLE:
-            return "RESOURCE_TABLE";
-        case LIEF::PE::DATA_DIRECTORY::EXCEPTION_TABLE:
-            return "EXCEPTION_TABLE";
-        case LIEF::PE::DATA_DIRECTORY::CERTIFICATE_TABLE:
-            return "CERTIFICATE_TABLE";
-        case LIEF::PE::DATA_DIRECTORY::BASE_RELOCATION_TABLE:
-            return "BASE_RELOCATION_TABLE";
-        case LIEF::PE::DATA_DIRECTORY::DEBUG:
-            return "DEBUG";
-        case LIEF::PE::DATA_DIRECTORY::ARCHITECTURE:
-            return "ARCHITECTURE";
-        case LIEF::PE::DATA_DIRECTORY::GLOBAL_PTR:
-            return "GLOBAL_PTR";
-        case LIEF::PE::DATA_DIRECTORY::TLS_TABLE:
-            return "TLS_TABLE";
-        case LIEF::PE::DATA_DIRECTORY::LOAD_CONFIG_TABLE:
-            return "LOAD_CONFIG_TABLE";
-        case LIEF::PE::DATA_DIRECTORY::BOUND_IMPORT:
-            return "BOUND_IMPORT";
-        case LIEF::PE::DATA_DIRECTORY::IAT:
-            return "IAT";
-        case LIEF::PE::DATA_DIRECTORY::DELAY_IMPORT_DESCRIPTOR:
-            return "DELAY_IMPORT_DESCRIPTOR";
-        case LIEF::PE::DATA_DIRECTORY::CLR_RUNTIME_HEADER:
-            return "CLR_RUNTIME_HEADER";
-        case LIEF::PE::DATA_DIRECTORY::NUM_DATA_DIRECTORIES:
-            return "NUM_DATA_DIRECTORIES";
+        case LIEF::ELF::ARCH::EM_X86_64:
+            return LIEF::ELF::to_string(static_cast<LIEF::ELF::RELOC_x86_64>(entry.type()));
+        case LIEF::ELF::ARCH::EM_386:
+            return LIEF::ELF::to_string(static_cast<LIEF::ELF::RELOC_i386>(entry.type()));
+        case LIEF::ELF::ARCH::EM_ARM:
+            return LIEF::ELF::to_string(static_cast<LIEF::ELF::RELOC_ARM>(entry.type()));
+        case LIEF::ELF::ARCH::EM_AARCH64:
+            return LIEF::ELF::to_string(static_cast<LIEF::ELF::RELOC_AARCH64>(entry.type()));
+        case LIEF::ELF::ARCH::EM_PPC:
+            return LIEF::ELF::to_string(static_cast<LIEF::ELF::RELOC_POWERPC32>(entry.type()));
+        case LIEF::ELF::ARCH::EM_PPC64:
+            return LIEF::ELF::to_string(static_cast<LIEF::ELF::RELOC_POWERPC64>(entry.type()));
         default:
-            assert("unkown data directory type");
-            return "OTHER";
+            return std::to_string(entry.type());
     }
-}
-
-std::string LIEFBinaryReader::getSymbolType(LIEF::ELF::ELF_SYMBOL_TYPES type)
-{
-    switch(type)
-    {
-        case LIEF::ELF::ELF_SYMBOL_TYPES::STT_NOTYPE:
-            return "NOTYPE";
-        case LIEF::ELF::ELF_SYMBOL_TYPES::STT_OBJECT:
-            return "OBJECT";
-        case LIEF::ELF::ELF_SYMBOL_TYPES::STT_FUNC:
-            return "FUNC";
-        case LIEF::ELF::ELF_SYMBOL_TYPES::STT_SECTION:
-            return "SECTION";
-        case LIEF::ELF::ELF_SYMBOL_TYPES::STT_FILE:
-            return "FILE";
-        case LIEF::ELF::ELF_SYMBOL_TYPES::STT_COMMON:
-            return "COMMON";
-        case LIEF::ELF::ELF_SYMBOL_TYPES::STT_TLS:
-            return "TLS";
-        default:
-            return "OTHER";
-    }
-}
-
-std::string LIEFBinaryReader::getSymbolBinding(LIEF::ELF::SYMBOL_BINDINGS binding)
-{
-    switch(binding)
-    {
-        case LIEF::ELF::SYMBOL_BINDINGS::STB_LOCAL:
-            return "LOCAL";
-        case LIEF::ELF::SYMBOL_BINDINGS::STB_GLOBAL:
-            return "GLOBAL";
-        case LIEF::ELF::SYMBOL_BINDINGS::STB_WEAK:
-            return "WEAK";
-        default:
-            return "OTHER";
-    }
-}
-std::string LIEFBinaryReader::getRelocationType(uint32_t type)
-{
-    static std::string type_names[40] = {
-        "R_X86_64_NONE",
-        "R_X86_64_64",              /* Direct 64 bit  */
-        "R_X86_64_PC32",            /* PC relative 32 bit signed */
-        "R_X86_64_GOT32",           /* 32 bit GOT entry */
-        "R_X86_64_PLT32",           /* 32 bit PLT address */
-        "R_X86_64_COPY",            /* Copy symbol at runtime */
-        "R_X86_64_GLOB_DAT",        /* Create GOT entry */
-        "R_X86_64_JUMP_SLOT",       /* Create PLT entry */
-        "R_X86_64_RELATIVE",        /* Adjust by program base */
-        "R_X86_64_GOTPCREL",        /* 32 bit signed PC relative
-   offset to GOT */
-        "R_X86_64_32",              /* Direct 32 bit zero extended */
-        "R_X86_64_32S",             /* Direct 32 bit sign extended */
-        "R_X86_64_16",              /* Direct 16 bit zero extended */
-        "R_X86_64_PC16",            /* 16 bit sign extended pc relative */
-        "R_X86_64_8",               /* Direct 8 bit sign extended  */
-        "R_X86_64_PC8",             /* 8 bit sign extended pc relative */
-        "R_X86_64_DTPMOD64",        /* ID of module containing symbol */
-        "R_X86_64_DTPOFF64",        /* Offset in module's TLS block */
-        "R_X86_64_TPOFF64",         /* Offset in initial TLS block */
-        "R_X86_64_TLSGD",           /* 32 bit signed PC relative offset
-                 to two GOT entries for GD symbol */
-        "R_X86_64_TLSLD",           /* 32 bit signed PC relative offset
-       to two GOT entries for LD symbol */
-        "R_X86_64_DTPOFF32",        /* Offset in TLS block */
-        "R_X86_64_GOTTPOFF",        /* 32 bit signed PC relative offset
-   to GOT entry for IE symbol */
-        "R_X86_64_TPOFF32",         /* Offset in initial TLS block */
-        "R_X86_64_PC64",            /* PC relative 64 bit */
-        "R_X86_64_GOTOFF64",        /* 64 bit offset to GOT */
-        "R_X86_64_GOTPC32",         /* 32 bit signed pc relative
-   offset to GOT */
-        "R_X86_64_GOT64",           /* 64-bit GOT entry offset */
-        "R_X86_64_GOTPCREL64",      /* 64-bit PC relative offset
-    to GOT entry */
-        "R_X86_64_GOTPC64",         /* 64-bit PC relative offset to GOT */
-        "R_X86_64_GOTPLT64",        /* like GOT64, says PLT entry needed */
-        "R_X86_64_PLTOFF64",        /* 64-bit GOT relative offset
-      to PLT entry */
-        "R_X86_64_SIZE32",          /* Size of symbol plus 32-bit addend */
-        "R_X86_64_SIZE64",          /* Size of symbol plus 64-bit addend */
-        "R_X86_64_GOTPC32_TLSDESC", /* GOT offset for TLS descriptor.  */
-        "R_X86_64_TLSDESC_CALL",    /* Marker for call through TLS
-descriptor.  */
-        "R_X86_64_TLSDESC",         /* TLS descriptor.  */
-        "R_X86_64_IRELATIVE",       /* Adjust indirectly by program base */
-        "R_X86_64_RELATIVE64",      /* 64-bit adjust by program base */
-        "R_X86_64_NUM"};
-    if(type < 40)
-        return type_names[type];
-    return "UNKNOWN";
 }

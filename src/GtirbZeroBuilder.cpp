@@ -155,7 +155,7 @@ gtirb::Symbol::StorageKind getSymbolType(uint64_t sectionIndex, std::string scop
 {
     if(sectionIndex == 0)
         return gtirb::Symbol::StorageKind::Undefined;
-    if(scope == "GLOBAL")
+    if(scope == "GLOBAL" || scope == "WEAK")
         return gtirb::Symbol::StorageKind::Normal;
     if(scope == "LOCAL")
         return gtirb::Symbol::StorageKind::Local;

@@ -56,6 +56,9 @@ Ddisasm accepts the following parameters:
 `-F [ --skip-function-analysis ]`
 :   Skip additional analyses to compute more precise function boundaries.
 
+`-j [ --threads ]`
+:   Number of cores to use. It is set to the number of cores in the machine by default.
+
 # EXAMPLES
 
 **ddisasm** ./examples/ex1/ex
