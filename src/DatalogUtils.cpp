@@ -117,6 +117,8 @@ std::string getRegisterName(const csh& RawHandle, unsigned int reg)
 {
     if(reg == X86_REG_INVALID)
         return "NONE";
+    if(reg == ARM_REG_INVALID)
+        return "NONE";
     std::string name = str_toupper(cs_reg_name(RawHandle, reg));
     return name;
 }
