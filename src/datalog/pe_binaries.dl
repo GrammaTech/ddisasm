@@ -172,6 +172,7 @@ base_relative_address(EA+4,Ref,Val):-
     base_relative_address(EA,Ref,_),
     data_word(EA+4,4,Val),
     propagated_data_access(EA,4,Ref),
+    !arch.is_nop(EA+4),
     !base_relative_address_start(EA+4,_,_),
     Val > 0.
 
