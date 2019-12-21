@@ -333,7 +333,7 @@ block_is_overlapping(Block):-
         block_overlap(_,Block)
     ).
 
-block_points(Block,0,-6,"overlap with relative-jump-table"),
+block_points(Block,0,-9,"overlap with relative-jump-table"),
 block_is_overlapping(Block):-
     block_candidate_limit(Block,Limit),
     relative_address(Beg,Size,_,_),

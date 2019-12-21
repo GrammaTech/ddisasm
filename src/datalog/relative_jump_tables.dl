@@ -35,7 +35,7 @@ data_word(EA,2,Val):-
     Val = Byte1*2^8 + Byte0.
 
 data_word(EA,4,Val):-
-    data_byte(EA,Byte0), EA % 4 = 0,//jump tables are assumed to be aligned
+    data_byte(EA,Byte0),// EA % 4 = 0,//jump tables are assumed to be aligned
     data_byte(EA+1,Byte1),
     data_byte(EA+2,Byte2),
     data_byte(EA+3,Byte3),
@@ -103,6 +103,7 @@ relative_address_start(EA,Size,EA,Dest):-
     possible_ea(Dest).
 
 relative_address(EA+Size,Size,Ref,Dest):-
+    binary_format("ELF"),
     relative_address(EA,Size,Ref,_),
     data_word(EA+Size,Size,Diff),
     (

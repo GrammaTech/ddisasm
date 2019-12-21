@@ -213,6 +213,24 @@ relative_address(EA+Size,Size,Ref,ImageBase+Dest):-
     possible_ea(ImageBase+Dest),
     !relative_address_start(EA+Size,_,_,_).
 
+labeled_data_candidate(ImageBase+Dest):-
+    base_address(ImageBase),
+    base_relative_symbolic_operand(_,_,Dest),
+    !base_relative_jump_table(_,ImageBase+Dest).
+
+.decl dos_header_symbolic_operand(EA:address,Dest:number)
+.output dos_header_symbolic_operand
+
+symbolic_expr_from_relocation(EA+Disp_offset,Size/8,"__ImageBase",Dest-ImageBase),
+dos_header_symbolic_operand(EA,Dest):-
+    base_address(ImageBase),
+    pc_relative_operand(EA,_,Dest),
+    instruction_displacement_offset(EA,Op_index,Disp_offset),
+    instruction_get_op(EA,Op_index,Op),
+    op_indirect(Op,_,_,_,_,_,Size),
+    Dest > ImageBase,
+    Dest < ImageBase + 64.
+
 // the call to main is right after the call to "__p___argc"
 main_function(EA):-
     code(EA1),
@@ -221,3 +239,4 @@ main_function(EA):-
     next(EA1,Block),
     code_in_refined_block(EA_call_main,Block),
     direct_call(EA_call_main,EA).
+ 
