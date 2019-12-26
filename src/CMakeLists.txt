@@ -129,6 +129,8 @@ target_compile_options(datalog_utils PRIVATE ${OPENMP_FLAGS})
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_compile_definitions(datalog_utils PRIVATE _CRT_SECURE_NO_WARNINGS)
   target_compile_definitions(datalog_utils PRIVATE _CRT_NONSTDC_NO_WARNINGS)
+  # This warning is coming from protocol buffers headers
+  target_compile_definitions(datalog_utils PRIVATE _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING)
 
   set_common_msvc_options(datalog_utils)
 else()
