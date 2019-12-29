@@ -160,6 +160,12 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_compile_definitions(disasm_main PRIVATE _CRT_SECURE_NO_WARNINGS)
   target_compile_definitions(disasm_main PRIVATE _CRT_NONSTDC_NO_WARNINGS)
 
+  # Warnings from LIEF
+  target_compile_options(disasm_main PRIVATE -wd4245) # conversion from 'type1' to 'type2', signed/unsigned mismatch
+  target_compile_options(disasm_main PRIVATE -wd4146) # unary minus operator applied to unsigned type, result still unsigned
+  target_compile_options(disasm_main PRIVATE -wd4267) # conversion from 'size_t' to 'type', possible loss of data
+  target_compile_options(disasm_main PRIVATE -wd4359) # actual alignment (8) is greater than the value specified in __declspec(align())
+
   set_common_msvc_options(disasm_main)
 else()
   target_compile_options(disasm_main PRIVATE -O3)
