@@ -9,6 +9,9 @@ target_link_libraries(scc_pass
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   set_common_msvc_options(scc_pass)
+
+  # From protocol buffers
+  target_compile_definitions(scc_pass PRIVATE _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING)
 endif()
 
 #============ No return pass =================
@@ -96,8 +99,6 @@ target_compile_options(function_inference_pass PRIVATE ${OPENMP_FLAGS})
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   set_common_msvc_options(function_inference_pass)
-
-  target_compile_definitions(function_inference_pass PRIVATE _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING)
 
   set_souffle_msvc_options(function_inference_pass)
 else()
