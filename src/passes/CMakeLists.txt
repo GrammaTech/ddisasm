@@ -10,6 +10,11 @@ target_link_libraries(scc_pass
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   set_common_msvc_options(scc_pass)
 
+  # The following warning is coming from the bgl, but only in release mdoe
+  if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+    target_compile_options(scc_pass PRIVATE -wd4172) # returning address of local variable or temporary
+  endif()
+
   # From protocol buffers
   target_compile_definitions(scc_pass PRIVATE _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING)
 endif()
