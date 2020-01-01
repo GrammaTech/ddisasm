@@ -10,6 +10,11 @@ stages:
   - test-and-tag-arch
   - cleanup
 
+# The two build templates below ultimately call the build script for the
+# appropriate platform & task (the .ci/build-*.sh scripts).
+# For windows builds, this is done directly. For linux builds, the build script
+# is called in the Dockerfile.
+
 .build-template: &build
   script:
     - git clone https://git.grammatech.com/rewriting/gtirb.git

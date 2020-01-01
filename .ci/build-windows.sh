@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Called in gitlab-ci.yml
+
 BUILD_TYPE=$1
 
 mkdir gtirb/build

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# This script is called in the linux Dockerfiles.
+
 CXX_COMPILER=$1
 
 # Build GTIRB
