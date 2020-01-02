@@ -183,3 +183,27 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
         code(TableReference);
         TableStart=TableReference
     ).
+
+// mov EAX,EAX
+// lea RDX,QWORD PTR [RAX*4]
+// lea RAX,QWORD PTR [RIP+.L_f74b4]
+// mov EAX,DWORD PTR [RDX+RAX*1]
+// movsxd RDX,EAX
+// lea RAX,QWORD PTR [RIP+.L_f74b4]
+// add RAX,RDX
+// jmp RAX
+jump_table_start(EA_jump,Size,TableStart,TableReference,"ADD"):-
+    reg_jump(EA_jump,_),
+    code(EA_jump),
+    def_used(EA_base,Reg,EA_jump,_),
+    instruction_get_operation(EA_base,"ADD"),
+    (
+        RegBase = Reg, RegDiff = Reg2;
+        RegBase = Reg2, RegDiff = Reg
+    ),
+    def_used(EA_def_diff,RegDiff,EA_base,_),
+    instruction_get_operation(EA_def_diff,"MOVSXD"),
+    def_used(EA_def_ref,RegBase,EA_base,_),
+    take_address(EA_def_ref,TableStart),
+    data_access_pattern(TableStart,Size,Size,EA_read),
+    TableReference = TableStart.
