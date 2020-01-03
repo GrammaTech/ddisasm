@@ -1,0 +1,193 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "gusztavvargadr/windows-10"
+
+  config.vm.provision "setup-gitlab-requirements", type: "shell", inline: <<-SHELL
+    cd $HOME
+    Invoke-WebRequest https://www.cygwin.com/setup-x86_64.exe -OutFile setup-x86_64.exe
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = "C:\\Users\\vagrant\\setup-x86_64.exe"
+    $startInfo.Arguments = "--no-shortcuts --no-desktop -q --site http://cygwin.mirror.constant.com --packages git,cygrunsrv,openssh"
+    $startInfo.UseShellExecute = $true
+    $startInfo.CreateNoWindow = $false
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    $process.Start()
+    $process.WaitForExit()
+    C:\\cygwin64\\bin\\bash.exe --login -c "/bin/ssh-host-config -y -c ntsec -p 22"
+    C:\\cygwin64\\bin\\bash.exe --login -c "net stop sshd"
+    cmd.exe /C "sc config ""sshd"" start= disabled"
+    C:\\cygwin64\\bin\\bash.exe --login -c "net start cygsshd"
+    cmd.exe /C "sc config ""cygsshd"" start=auto"
+    choco install -y git-lfs
+    C:\\cygwin64\\bin\\bash.exe --login -c  "mkdir ~/.ssh"
+    C:\\cygwin64\\bin\\bash.exe --login -c  "echo 'git.grammatech.com' > ~/.ssh/known_hosts"
+  SHELL
+
+  config.vm.provision "setup-dev-tools", type: "shell", inline: <<-SHELL
+    choco install -y git
+    choco install -y cmake
+    choco install -y ninja
+    choco install -y python3
+    cd $HOME
+    Invoke-WebRequest "https://download.visualstudio.microsoft.com/download/pr/449a624c-a30d-4cc3-b971-fcf6a375a8c5/788ee02bb853726c9c2aed2c291cdbf23389a75d8e61ed98bb3bdd2410087f7e/vs_Community.exe" -OutFile vs_community.exe
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = "C:\\Users\\vagrant\\vs_community.exe"
+    $startInfo.Arguments = "--installPath ""C:\\VS"" --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.VC.CoreBuildTools --add Microsoft.VisualStudio.Component.VC.Redist.14.Latest --add Microsoft.VisualStudio.Component.Windows10SDK --add Microsoft.VisualStudio.Component.Windows10SDK.18362 --includeRecommended --passive --wait"
+    $startInfo.UseShellExecute = $true
+    $startInfo.CreateNoWindow = $false
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    $process.Start()
+    $process.WaitForExit()
+  SHELL
+
+  # The provisioner belows uses the installer from sourceforge, because it is
+  # MUCH faster than downloading the zip archive and using powershell's
+  # Expand-Archive cmdlet.  The b2 invocation is not actually building any of
+  # the libraries, it's just installing them from a staging folder provided by
+  # the installer.  It is still necessary to bootstrap b2 even when using the
+  # installer.
+  config.vm.provision "install-boost", type: "shell", inline: <<-SHELL
+    cd $HOME
+    Invoke-WebRequest "https://ayera.dl.sourceforge.net/project/boost/boost-binaries/1.67.0/boost_1_67_0-msvc-14.1-64.exe" -OutFile "boost_1_67_0-msvc-14.1-64.exe"
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = "C:\\Users\\vagrant\\boost_1_67_0-msvc-14.1-64.exe"
+    $startInfo.Arguments = "/NORESTART /DIR=""C:\\Boost-stage"" /SILENT"
+    $startInfo.UseShellExecute = $true
+    $startInfo.CreateNoWindow = $false
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    $process.Start()
+    $process.WaitForExit()
+    cd C:\\Boost-stage
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && .\\bootstrap.bat"
+    $msvc_path = & C:\\cygwin64\\bin\\bash.exe --login -c 'find /cygdrive/c/VS/VC/Tools/MSVC/ -maxdepth 1 | tail -n +2 | xargs -i basename {}'
+    Set-Content -Path "C:\\Boost-stage\\project-config.jam" -Value @"
+import option ;
+
+using msvc : 14.1 : "C:\\\\VS\\\\VC\\\\Tools\\\\MSVC\\\\$msvc_path\\\\bin\\\\Hostx64\\\\x64\\\\cl.exe" ;
+
+option.set keep-going : false ;
+
+"@
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && .\\b2.exe install address-model=64 variant=debug,release link=shared runtime-link=shared --with-program_options --with-filesystem --with-system"
+  SHELL
+
+  config.vm.provision "build-protobuf", type: "shell", inline: <<-SHELL
+    cd $HOME
+    git clone https://github.com/protocolbuffers/protobuf.git
+    cd protobuf
+    git checkout tags/v3.7.0
+
+    mkdir cmake-build-debug
+    cd cmake-build-debug
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja"" -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=OFF -Dprotobuf_MSVC_STATIC_RUNTIME=OFF ../cmake"
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja install"
+
+    cd ..
+    mkdir cmake-build-release
+    cd cmake-build-release
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja"" -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=OFF -Dprotobuf_MSVC_STATIC_RUNTIME=OFF -DCMAKE_BUILD_TYPE=Release ../cmake"
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja install"
+  SHELL
+
+  config.vm.provision "build-capstone", type: "shell", inline: <<-SHELL
+    cd $HOME
+    Invoke-WebRequest https://github.com/aquynh/capstone/archive/4.0.1.zip -OutFile 4.0.1.zip
+    Expand-Archive .\\4.0.1.zip -DestinationPath .
+    mkdir /cygdrive/C/capstone-debug
+    mkdir /cygdrive/C/capstone-release
+
+    cd capstone-4.0.1
+    mkdir build-debug
+    cd build-debug
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja""  -DCMAKE_INSTALL_PREFIX=C:\\capstone-debug .."
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja install"
+
+    cd ..
+    mkdir build-release
+    cd build-release
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja"" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=C:\\capstone-release .."
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja install"
+  SHELL
+
+  config.vm.provision "get-elf.h", type: "shell", inline: <<-SHELL
+    $include_path= & C:\\cygwin64\\bin\\bash.exe --login -c 'find /cygdrive/c/VS/VC/Tools/MSVC/ -maxdepth 1 | tail -n +2 | cygpath -wf -'
+     C:\\Windows\\System32\\curl.exe https://git.musl-libc.org/cgit/musl/plain/include/elf.h > "$include_path\\include\\elf.h"
+  SHELL
+
+  config.vm.provision "build-lief", type: "shell", inline: <<-SHELL
+    cd $HOME
+    git clone -b 0.9.0 https://github.com/lief-project/LIEF.git
+    mkdir /cygdrive/C/lief-debug
+    mkdir /cygdrive/C/lief-release
+
+    cd LIEF
+    mkdir build-debug
+    cd build-debug
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja"" -DLIEF_EXAMPLES=OFF -DLIEF_USE_CRT_DEBUG=MDd -DLIEF_PYTHON_API=OFF -DCMAKE_INSTALL_PREFIX=C:\\lief-debug .."
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja"" -DLIEF_EXAMPLES=OFF -DLIEF_USE_CRT_DEBUG=MDd -DLIEF_PYTHON_API=OFF -DCMAKE_INSTALL_PREFIX=C:\\lief-debug .."
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja install"
+
+    cd ..
+    mkdir build-release
+    cd build-release
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja"" -DLIEF_EXAMPLES=OFF -DLIEF_USE_CRT_RELEASE=MD -DCMAKE_BUILD_TYPE=Release -DLIEF_PYTHON_API=OFF -DCMAKE_INSTALL_PREFIX=C:\\lief-release .."
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja install"
+  SHELL
+
+  config.vm.provision "setup-wsl-1", type: "shell", inline: <<-SHELL
+    Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -NoRestart
+  SHELL
+
+  config.vm.provision :reload
+
+  config.vm.provision "setup-wsl-2", type: "shell", inline: <<-SHELL
+    $jobs = @()
+    $jobs += Start-Job -Name AddUbuntuJob -ScriptBlock {
+        Invoke-WebRequest -Uri https://aka.ms/wsl-ubuntu-1804 -OutFile Ubuntu.appx -UseBasicParsing
+        Add-AppxPackage Ubuntu.appx
+    }
+
+    Wait-Job -Job $jobs
+  SHELL
+
+  config.vm.provision "generate-souffle-setup-script", type: "shell", inline: <<-SHELL
+    cd $HOME
+    $wsl_script = @"
+apt-get update
+apt-get -y install libffi-dev libsqlite3-dev zlib1g-dev bison flex libncurses5-dev automake m4 libtool build-essential mcpp
+git clone -b 1.7.1-msvc-fixes https://github.com/brianfairservice/souffle.git
+cd souffle
+sh ./bootstrap
+./configure --enable-64bit-domain
+make -j8 install
+"@
+    Set-Content -Path setup-souffle.sh -Value $wsl_script
+
+    $script = @"
+ubuntu1804 install --root
+wsl -- bash /mnt/c/Users/vagrant/setup-souffle.sh
+"@
+    Set-Content -Path setup-script.ps1 -Value $script
+
+    echo @"
+#################################
+VM SETUP IS NOT COMPLETE
+
+You must RDP into the VM and run the powershell script C:\\Users\\vagrant\\setup-script.ps1
+
+This manual step is required because wsl cannot be setup through vagrant due to a windows permissions error.
+#################################
+"@
+  SHELL
+end
