@@ -204,6 +204,14 @@ std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
                 symbolTuples.insert({0, 0, "", "", 1, importEntry.name()});
             }
         }
+        if(pe->has_exports())
+        {
+            for(auto& entry : pe->get_export().entries())
+            {
+                uint64_t address = get_base_address() + entry.address();
+                symbolTuples.insert({address, 0, "", "GLOBAL", 1, entry.name()});
+            }
+        }
     }
     return symbolTuples;
 }
