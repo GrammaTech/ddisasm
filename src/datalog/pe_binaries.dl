@@ -171,7 +171,8 @@ base_relative_address_start(EA,EA,Val):-
 base_relative_address(EA+4,Ref,Val):-
     base_relative_address(EA,Ref,_),
     data_word(EA+4,4,Val),
-    propagated_data_access(EA,4,Ref),
+    // FIXME: Not working for sqlite /Ox
+    // propagated_data_access(EA,4,Ref),
     !arch.is_nop(EA+4),
     !base_relative_address_start(EA+4,_,_),
     !data_access_pattern(EA+4,1,1,_),
