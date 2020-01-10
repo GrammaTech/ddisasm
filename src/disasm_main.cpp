@@ -155,7 +155,7 @@ int main(int argc, char **argv)
         // Output GTIRB
         if(vm.count("ir") != 0)
         {
-            std::ofstream out(vm["ir"].as<std::string>());
+            std::ofstream out(vm["ir"].as<std::string>(), std::ios::out | std::ios::binary);
             ir->save(out);
         }
         // Output json GTIRB
