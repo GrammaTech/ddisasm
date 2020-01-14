@@ -68,7 +68,7 @@ more points.
 
 may_fallthrough(From,To):-
     next(From,To),
-    !return(From),
+    !arch.return(From),
     !unconditional_jump(From),
     !halt(From),
     !no_return_call(From).
@@ -206,6 +206,7 @@ possible_target_from(Dest,Src):-
 
 .decl possible_target(Target:address)
 .decl code_in_block_candidate(EA:address,EA_block:address)
+.output code_in_block_candidate
 
 possible_target(EA):-
     basic_target(EA).

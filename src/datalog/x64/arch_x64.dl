@@ -54,6 +54,13 @@ is_nop(EA):-
     instruction(EA,_,_,"XCHG",Op,Op,0,0),
     op_regdirect(Op,"AX").
 
+// Returns
+.decl return(n:address)
+
+return(EA):-
+    return_operation(Operation),
+    instruction_get_operation(EA,Operation).
+
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
 op_does_not_read_dest_reg("LEA").

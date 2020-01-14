@@ -115,8 +115,8 @@ std::string str_toupper(std::string s)
 
 std::string getRegisterName(const csh& RawHandle, unsigned int reg)
 {
-    if(reg == X86_REG_INVALID)
-        return "NONE";
+    //   if(reg == X86_REG_INVALID)
+    //       return "NONE";
     if(reg == ARM_REG_INVALID)
         return "NONE";
     std::string name = str_toupper(cs_reg_name(RawHandle, reg));
@@ -167,11 +167,16 @@ std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& RawHandle, const 
             return I;
         }
         // TODO
-        case ARM_OP_FP:
-        case ARM_OP_CIMM:   ///< C-Immediate (coprocessor registers)
-        case ARM_OP_PIMM:   ///< P-Immediate (coprocessor registers)
-        case ARM_OP_SETEND: ///< operand for SETEND instruction
+        case ARM_OP_CIMM: ///< C-Immediate (coprocessor registers)
+            return op.imm;
+        case ARM_OP_PIMM: ///< P-Immediate (coprocessor registers)
+            return op.imm;
         case ARM_OP_SYSREG: ///< MSR/MRS special register operand
+            return "MSR";
+        case ARM_OP_FP:
+            std::cerr << "fp\n";
+        case ARM_OP_SETEND: ///< operand for SETEND instruction
+            std::cerr << "setend\n";
         case ARM_OP_INVALID:
         default:
             std::cerr << "invalid operand\n";

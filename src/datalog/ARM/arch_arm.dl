@@ -53,6 +53,20 @@ mov(EA):-
 is_nop(EA):-
     instruction_get_operation(EA,"NOP").
 
+// Returns
+.decl return(n:address)
+
+return(EA):-
+    return_operation(Operation),
+    instruction_get_operation(EA,Operation).
+
+return(EA):-
+    instruction_get_operation(EA,"POP"),
+    instruction_get_op(EA,_,Op),
+    op_regdirect(Op,Reg),
+    pc_register(Reg).
+
+
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
 

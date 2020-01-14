@@ -197,11 +197,12 @@ struct SymbolicExpressionNoOffset
     SymbolicExpressionNoOffset(souffle::tuple &tuple)
     {
         assert(tuple.size() == 4);
-        tuple >> EA >> OperandIndex;
+        tuple >> EA >> OperandIndex >> Dest;
     };
 
     gtirb::Addr EA{0};
     uint64_t OperandIndex{0};
+    uint64_t Dest{0};
 };
 
 struct BlockPoints
@@ -555,11 +556,12 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
     }
     // Symbol+0 case
     auto range = symbolicInfo.SymbolicExpressionNoOffsets.equal_range(ea);
-    if(std::find_if(range.first, range.second,
-                    [index](const auto &element) { return element.OperandIndex == index; })
-       != range.second)
+    if(auto symOp =
+           std::find_if(range.first, range.second,
+                        [index](const auto &element) { return element.OperandIndex == index; });
+       symOp != range.second)
     {
-        auto sym = getSymbol(context, module, gtirb::Addr(immediate));
+        auto sym = getSymbol(context, module, gtirb::Addr(symOp->Dest));
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(module, ea,
                                                               instruction.immediateOffset, 0, sym);
         return;
