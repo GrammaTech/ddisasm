@@ -83,6 +83,19 @@ block_information(Block,BlockSize,LastEA+InsnSize):-
     instruction(LastEA, InsnSize, _, _,_, _, _, _),
     BlockSize= LastEA+InsnSize - Block.
 
+.decl next_refined_block_in_section(Block:address, NextBlock:address)
+
+next_refined_block_in_section(Block,NextBlock):-
+    refined_block(Block),
+    next_block_in_section(Block,NextBlock),
+    refined_block(NextBlock).
+
+next_refined_block_in_section(PrevBlock,Block):-
+    refined_block(Block),
+    next_block_in_section(PrevMerged,Block),
+    block_needs_merging(PrevMerged),
+    code_in_refined_block(PrevMerged,PrevBlock).
+
 ////////////////////////////////////////////////////////
 // Compute padding regions
 

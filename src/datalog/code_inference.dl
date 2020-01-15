@@ -662,3 +662,21 @@ data_in_code_propagate(EA+1,Begin,SectionLimit):-
 data_in_code(Begin,End):-
     data_in_code_propagate(End,Begin,_),
     !data_in_code_propagate(End+1,Begin,_).
+
+
+.decl next_block_in_section(Block:address,NextBlock:address)
+// Blocks are either contiguous or separated by data segments
+// This assumes there are no remaining overlapping blocks.
+
+next_block_in_section(Block,NextBlock):-
+    block_last_instruction(Block,LastInsn),
+    next(LastInsn,NextBlock),
+    block(NextBlock).
+
+next_block_in_section(Block,NextBlock):-
+    block_last_instruction(Block,LastInsn),
+    next(LastInsn,DataBegin),
+    data_in_code(DataBegin,DataEnd),
+    DataEnd+1 = NextBlock,
+    block(NextBlock).
+
