@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 ex_dir=Path('./examples/')
+asm_dir=Path('./examples/asm_examples/')
 
 class TestFunctionInference(unittest.TestCase):
 
@@ -68,6 +69,28 @@ class TestFunctionInference(unittest.TestCase):
     def test_functions_switch_clang(self): self.check_function_inference(ex_dir/'ex_switch','ex','clang','clang++','-O3')
     def test_functions_uninitialized_data_clang(self): self.check_function_inference(ex_dir/'ex_uninitialized_data','ex','clang','clang++','-O3')
     def test_functions_virtualDispatch_clang(self): self.check_function_inference(ex_dir/'ex_virtualDispatch','ex','clang','clang++','-O3')
+
+
+    def check_in_function(self,make_dir):
+        """
+        Check that function analysis assigns all blocks to a function unless they are padding blocks.
+        """
+        with cd(make_dir):
+            self.assertTrue(compile('gcc','g++','-O0',[]))
+            self.assertTrue(disassemble('ex',False,format='--ir',extension='gtirb',
+                extra_args=['--skip-function-analysis']))
+            module = gtirb.IR.load_protobuf('ex.gtirb').modules[0]
+            function_blocks = module.aux_data.get('functionBlocks').data
+            padding = set(module.aux_data.get('padding').data.keys())
+            blocks_in_function = {block for block_set in function_blocks.values() for block in block_set}
+            for block in module.blocks:
+                assert (block in blocks_in_function) or (block.address in padding)
+
+    def test_in_function_no_cfi(self):
+        self.check_in_function(asm_dir/'ex_switch_in_code_no_cfi')
+
+    def test_in_function_with_cfi(self):
+        self.check_in_function(asm_dir/'ex_switch_in_code')
 
 
 if __name__ == '__main__':

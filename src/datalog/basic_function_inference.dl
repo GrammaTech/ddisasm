@@ -88,12 +88,11 @@ in_function(Block,Function):-
     in_function_initial(Block,Function).
 
 in_function(Function,Function):-
-    not_in_function_initial(Function),
     function_without_callframe(Function).
 
 in_function(Block,Function):-
+    function_without_callframe(Function),
     in_function(Block_prev,Function),
-    not_in_function_initial(Block_prev),
     next_refined_block_in_section(Block_prev,Block),
     not_in_function_initial(Block),
     !function_without_callframe(Block).
