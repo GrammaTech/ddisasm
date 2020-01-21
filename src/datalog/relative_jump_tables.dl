@@ -67,8 +67,8 @@ data_word(EA,8,Val):-
 .decl take_address(Src:address,Address_taken:address)
 
 take_address(Src,Address):-
-    pc_relative_operand(Src,1,Address),
-    instruction_get_operation(Src,"LEA").
+    pc_relative_operand(Src,DecodeMode,1,Address),
+    instruction_get_operation(Src,DecodeMode,"LEA").
 
 /*
 This detects potential jump tables even before any of the data analyses is performed.
@@ -101,7 +101,7 @@ relative_address_start(EA,Size,EA,Dest):-
         Dest = EA-Diff;
         Dest = EA+Diff
     ),
-    possible_ea(Dest).
+    possible_ea(Dest,_).
 
 relative_address(EA+Size,Size,Ref,Dest):-
     binary_format("ELF"),
@@ -111,7 +111,7 @@ relative_address(EA+Size,Size,Ref,Dest):-
         Dest = Ref-Diff,Size >= 4;
         Dest = Ref+Diff
     ),
-    possible_ea(Dest),
+    possible_ea(Dest,_),
     !relative_address_start(EA+Size,_,_,_).
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // detect jump tables precisely once we have all results of the analyses
@@ -123,10 +123,10 @@ relative_address(EA+Size,Size,Ref,Dest):-
 //  add REG, TableReference
 //  jmp REG
 jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
-    reg_jump(EA_jump,_),
-    code(EA_jump),
+    reg_jump(EA_jump,DecodeMode,_),
+    code(EA_jump,DecodeMode),
     def_used(EA_base,Reg,EA_jump,_),
-    op_immediate_and_reg(EA_base,Operation,Reg,_,TableReference),
+    op_immediate_and_reg(EA_base,DecodeMode,Operation,Reg,_,TableReference),
     (
         Operation= "ADD";
         Operation= "SUB"
@@ -134,7 +134,7 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
     def_used(EA_read,Reg,EA_base,_),
     data_access_pattern(TableStart,Size,Size,EA_read),
     (
-        code(TableReference);
+        code(TableReference,_);
         TableStart=TableReference
     ).
 
@@ -143,10 +143,10 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
 //  add REG, REG2 (or add REG2,REG)
 //  jmp REG
 jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
-    reg_jump(EA_jump,_),
-    code(EA_jump),
+    reg_jump(EA_jump,DecodeMode,_),
+    code(EA_jump,DecodeMode),
     def_used(EA_base,Reg,EA_jump,_),
-    arch.reg_reg_arithmetic_operation(EA_base,Reg,Reg,Reg2,Mult,0),
+    arch.reg_reg_arithmetic_operation(EA_base,DecodeMode,Reg,Reg,Reg2,Mult,0),
     (
         Mult = 1,Operation= "ADD";
         Mult = -1,Operation= "SUB"
@@ -161,7 +161,7 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
     def_used(EA_def_ref,RegDiff,EA_base,_),
     best_value_reg(EA_def_ref,RegDiff,_,_,TableReference,"complete"),
     (
-        code(TableReference);
+        code(TableReference,_);
         TableStart=TableReference
     ).
 
@@ -169,10 +169,11 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
 //  add REG, SIZE PTR [_*Size+TableStart]
 //  jmp REG
 jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
-    reg_jump(EA_jump,_),
-    code(EA_jump),
+    reg_jump(EA_jump,DecodeMode,_),
+    code(EA_jump,DecodeMode),
     def_used(EA_base,Reg,EA_jump,_),
-    instruction_get_operation(EA_base,Operation),
+    code(EA_base,DecodeModeBase),
+    instruction_get_operation(EA_base,DecodeModeBase,Operation),
     (
         Operation = "ADD";
         Operation = "SUB"
@@ -182,7 +183,7 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
     def_used(EA_def_ref,Reg,EA_base,_),
     best_value_reg(EA_def_ref,Reg,_,_,TableReference,"complete"),
     (
-        code(TableReference);
+        code(TableReference,_);
         TableStart=TableReference
     ).
 

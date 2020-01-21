@@ -27,25 +27,25 @@
   Compute padding regions.
 
 */
-
-.decl code_in_refined_block(ea:address,block:address)
+    
+.decl code_in_refined_block(ea:address,DecodeMode:symbol,block:address)
 .output code_in_refined_block
 
-.decl refined_block(block:address)
+.decl refined_block(block:address,DecodeMode:symbol)
 .output refined_block
 
 .decl block_information(block:address,size:number,endAddress:address)
 .output block_information
 
-.decl refined_block_last_instruction(block:address,EA:address)
+.decl refined_block_last_instruction(block:address,DecodeMode:symbol,EA:address)
 
 // a block that is not referenced anywhere
 .decl block_needs_merging(block:address)
 
 block_needs_merging(Block):-
-    block(Block),
-    must_fallthrough(Code,Block),
-    code(Code),
+    block(Block,DecodeMode),
+    must_fallthrough(Code,DecodeMode,Block),
+    code(Code,DecodeMode),
     //not referenced anywhere
     !symbolic_operand(_,_,Block,_),
     !code_pointer_in_data(_,Block),
@@ -55,32 +55,33 @@ block_needs_merging(Block):-
     !function_symbol(Block,_),
     !defined_symbol(Block,_,_,_,_,_),
     !entry_point(Block),
-    !instruction_has_loop_prefix(Block).
+    !instruction_has_loop_prefix(Block,DecodeMode).
 
 
-refined_block(Block):-
-     block(Block),
+refined_block(Block,DecodeMode):-
+     block(Block,DecodeMode),
     !block_needs_merging(Block).
+     
+code_in_refined_block(EA,DecodeMode,Block):-
+    refined_block(Block,DecodeMode),
+    code_in_block(EA,DecodeMode,Block).
 
-code_in_refined_block(EA,Block):-
-    refined_block(Block),
-    code_in_block(EA,Block).
-
-code_in_refined_block(EA,Block):-
+code_in_refined_block(EA,DecodeMode,Block):-
     block_needs_merging(OldBlock),
-    code_in_block(EA,OldBlock),
-    must_fallthrough(Prev,OldBlock),
-    code_in_refined_block(Prev,Block).
+    code_in_block(EA,DecodeMode,OldBlock),
+    must_fallthrough(Prev,DecodeMode,OldBlock),
+    code_in_refined_block(Prev,DecodeMode,Block).
 
 
-refined_block_last_instruction(Block,EA):-
-    code_in_refined_block(EA,Block),
-    next(EA,Next),
-    !code_in_refined_block(Next,Block).
+refined_block_last_instruction(Block,DecodeMode,EA):-
+    code_in_refined_block(EA,DecodeMode,Block),
+    next(EA,DecodeMode,Next),
+    !code_in_refined_block(Next,DecodeMode,Block).
 
 block_information(Block,BlockSize,LastEA+InsnSize):-
-    refined_block_last_instruction(Block,LastEA),
-    instruction(LastEA, InsnSize, _, _,_, _, _, _),
+    refined_block(Block,DecodeMode),
+    refined_block_last_instruction(Block,DecodeMode,LastEA),
+    instruction(LastEA, InsnSize, _, _,_, _, _, _, DecodeMode),
     BlockSize= LastEA+InsnSize - Block.
 
 .decl next_refined_block_in_section(Block:address, NextBlock:address)
@@ -111,19 +112,20 @@ padding(EA,Size):-
 padding(EA,Size):-
     after_end(NonNop,End),
     //this condition guarantees that we take the last after_end of a sequence of nops
-    !arch.is_nop(NonNop),
-    next(End,EA),
+    !arch.is_nop(NonNop,_),
+    //FIXME: this should be specified
+    next(End,_,EA),
     Size = NonNop-EA,
     Size > 0.
 
 .decl block_has_non_nop(Block:address)
 
 block_has_non_nop(Block):-
-    code_in_refined_block(EA,Block),
-    !arch.is_nop(EA).
+    code_in_refined_block(EA,DecodeMode,Block),
+    !arch.is_nop(EA,DecodeMode).
 
 .decl nop_block(Block:address)
 
 nop_block(Block):-
-    refined_block(Block),
+    refined_block(Block,_),
     !block_has_non_nop(Block).

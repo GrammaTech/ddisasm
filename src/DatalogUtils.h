@@ -32,6 +32,12 @@
 
 void writeFacts(souffle::SouffleProgram *prog, const std::string &directory);
 
+enum DecodeMode
+{
+    NORMAL,
+    THUMB
+};
+
 struct DlInstruction
 {
     uint64_t address;
@@ -41,6 +47,7 @@ struct DlInstruction
     std::vector<uint64_t> op_codes;
     uint8_t immediateOffset;
     uint8_t displacementOffset;
+    DecodeMode decodeMode;
 };
 
 namespace souffle
@@ -56,6 +63,7 @@ public:
     csh RawHandle;
     MultiArchCapstoneHandle(gtirb::ISA Isa);
     ~MultiArchCapstoneHandle();
+    DecodeMode setDecodeMode(uint64_t mode);
 };
 
 class GtirbToDatalog
@@ -69,7 +77,8 @@ public:
     }
 
     static DlInstruction transformInstruction(const MultiArchCapstoneHandle &CsHandle,
-                                              DlOperandTable &OpDict, const cs_insn &insn);
+                                              DlOperandTable &OpDict, const cs_insn &insn,
+                                              DecodeMode DecodeMode);
 
     template <typename T>
     static void addToRelation(souffle::SouffleProgram *prog, const std::string &name, const T &data)

@@ -98,6 +98,19 @@ std::string getFileFormatString(const gtirb::FileFormat format)
     }
 }
 
+std::string getISAString(gtirb::ISA format)
+{
+    switch(format)
+    {
+        case gtirb::ISA::X64:
+            return "X64";
+        case gtirb::ISA::ARM:
+            return "ARM";
+        default:
+            return "Undefined";
+    }
+}
+
 void addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
     auto *rel = prog->getRelation("symbol");
@@ -183,7 +196,19 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
             }
         }
     }
-    if(auto prog = souffle::ProgramFactory::newInstance("souffle_disasm"))
+    souffle::SouffleProgram *prog;
+    switch(module.getISA())
+    {
+        case gtirb::ISA::X64:
+            prog = souffle::ProgramFactory::newInstance("souffle_disasm_x64");
+            break;
+        case gtirb::ISA::ARM:
+            prog = souffle::ProgramFactory::newInstance("souffle_disasm_arm32");
+            break;
+        default:
+            throw std::runtime_error("Unsupported ISA ");
+    }
+    if(prog)
     {
         loadInputs(prog, module);
         return prog;
@@ -211,7 +236,8 @@ void DlDecoder::decodeX64Section(const gtirb::ByteInterval &byteInterval)
         }
         else
         {
-            instructions.push_back(GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn));
+            instructions.push_back(
+                GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn, DecodeMode::NORMAL));
             cs_free(insn, count);
         }
         ++ea;
@@ -225,24 +251,37 @@ void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
     gtirb::Addr ea = byteInterval.getAddress().value();
     uint64_t size = byteInterval.getInitializedSize();
     auto buf = byteInterval.rawBytes<const unsigned char>();
-    while(size > 0)
-    {
-        cs_insn *insn;
-        size_t count =
-            cs_disasm(CsHandle.RawHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
-        if(count == 0)
+    auto decode_in_mode = [&byteInterval, this](uint64_t size, gtirb::Addr ea, DecodeMode mode) {
+       auto buf = byteInterval.rawBytes<const unsigned char>();
+        int InsnSize = 4;
+        if(mode == DecodeMode::THUMB)
+            InsnSize = 2;
+        while(size > 0)
         {
-            invalids.push_back(ea);
+            int increment = InsnSize;
+            cs_insn *insn;
+            size_t count =
+                cs_disasm(CsHandle.RawHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
+            if(count == 0)
+            {
+                invalids.push_back(ea);
+            }
+            else
+            {
+                instructions.push_back(
+                    GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn, mode));
+                increment = insn->size;
+                cs_free(insn, count);
+            }
+            ea += increment;
+            buf += increment;
+            size -= increment;
         }
-        else
-        {
-            instructions.push_back(GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn));
-            cs_free(insn, count);
-        }
-        ea += 4;
-        buf += 4;
-        size -= 4;
-    }
+    };
+    cs_option(CsHandle.RawHandle, CS_OPT_MODE, CS_MODE_ARM);
+    decode_in_mode(size, ea, DecodeMode::NORMAL);
+    cs_option(CsHandle.RawHandle, CS_OPT_MODE, CS_MODE_THUMB);
+    decode_in_mode(size, ea, DecodeMode::THUMB);
 }
 void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
 {
@@ -323,6 +362,8 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
                                       *module.getAuxData<gtirb::schema::InitialImportEntries>());
         module.removeAuxData<gtirb::schema::InitialImportEntries>();
     }
+    GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "binary_isa",
+                                                            {getISAString(module.getISA())});
 
     GtirbToDatalog::addToRelation(prog, "instruction_complete", instructions);
     GtirbToDatalog::addToRelation(prog, "address_in_data", data_addresses);

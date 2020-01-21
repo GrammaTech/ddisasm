@@ -321,16 +321,16 @@ fde_instruction_ref(FdeAddr,Index+1,0,Addr+(CodeAlignmentFactor*Advance)):-
 cfi_directive(StartFunction,0,0,".cfi_startproc",0,0,0,0),
 cfi_directive(Block,BlockSize,0,".cfi_endproc",0,0,0,0):-
     fde_addresses(StartFunction, EndAddress),
-    refined_block(StartFunction),
+    refined_block(StartFunction,_),
     block_information(Block,BlockSize,EndAddress).
 
 cfi_directive(StartFunction,0,0,".cfi_startproc",0,0,0,0),
 cfi_directive(Block,BlockSize,0,".cfi_endproc",0,0,0,0):-
     fde_addresses(StartFunction, EA),
-    refined_block(StartFunction),
+    refined_block(StartFunction,_),
     !block_information(_,_,EA),
     after_end(EA,End),
-    refined_block_last_instruction(Block,End),
+    refined_block_last_instruction(Block,_,End),
     block_information(Block,BlockSize,_).
 
 // only generate other directives if startproc was generated
@@ -374,7 +374,7 @@ cfi_directive(Block,Addr-Block,LocalIndex,CfiInsn,0,NOperands,ScaledOp1,ScaledOp
         ScaledOp2 = Op2
     ),
     fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
-    code_in_refined_block(Addr,Block).
+    code_in_refined_block(Addr,_,Block).
 
 // instructions that are encoded as a block of bytes (because they don't have their own cfi directive)
 cfi_directive(Block,Addr-Block,LocalIndex,".cfi_escape",InstructionBytesAddr,Size,0,0):-
@@ -383,7 +383,7 @@ cfi_directive(Block,Addr-Block,LocalIndex,".cfi_escape",InstructionBytesAddr,Siz
     cfi_directive(StartFunction,_,_,".cfi_startproc",_,_,_,_),
     fde_instruction_pos(FdeAddr,Index,InstructionBytesAddr),
     fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
-    code_in_refined_block(Addr,Block).
+    code_in_refined_block(Addr,_,Block).
 
 /////////////////////////////////////////////////////////////////
 // Auxiliary predicates for cfi directives

@@ -45,15 +45,22 @@ else()
   set(SOUFFLE_DISASM_MAIN ${CMAKE_CURRENT_SOURCE_DIR}/datalog/main.dl)
 endif()
 
-set(GENERATED_CPP "${CMAKE_BINARY_DIR}/src/souffle_disasm.cpp")
-add_custom_command(
-  OUTPUT ${GENERATED_CPP}
-         # Souffle includes the path of the output file in the generated program
-         # name. Change directory and use a relative path so the name does not
-         # depend on build location.
-  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
-  COMMAND ${SOUFFLE} ${SOUFFLE_DISASM_MAIN} -g souffle_disasm.cpp -jauto
-  DEPENDS ${DATALOG_SOURCES})
+set(GENERATED_X64_CPP "${CMAKE_BINARY_DIR}/src/souffle_disasm_x64.cpp")
+  add_custom_command(OUTPUT ${GENERATED_X64_CPP}
+    # Souffle includes the path of the output file in the generated
+    # program name. Change directory and use a relative path so the name
+    # does not depend on build location.
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
+    COMMAND ${SOUFFLE} ${SOUFFLE_DISASM_MAIN} -g souffle_disasm_x64.cpp -jauto -MISA=1
+    DEPENDS ${DATALOG_SOURCES})
+set(GENERATED_ARM32_CPP "${CMAKE_BINARY_DIR}/src/souffle_disasm_arm32.cpp")
+  add_custom_command(OUTPUT ${GENERATED_ARM32_CPP}
+    # Souffle includes the path of the output file in the generated
+    # program name. Change directory and use a relative path so the name
+    # does not depend on build location.
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
+    COMMAND ${SOUFFLE} ${SOUFFLE_DISASM_MAIN} -g souffle_disasm_arm32.cpp -jauto -MISA=2
+    DEPENDS ${DATALOG_SOURCES})
 
 # determine what flags to use to specify -fopenmp.
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
@@ -302,8 +309,11 @@ target_link_libraries(
   ${LIBCPP_ABI}
   ${LIEF_LIBRARIES})
 
-# Now combine the static library and generated code into an executable.
-add_executable(ddisasm ${GENERATED_CPP})
+# Now combine the static library and generated code into an
+# executable.
+add_executable(ddisasm
+  ${GENERATED_X64_CPP}
+  ${GENERATED_ARM32_CPP})
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_link_libraries(ddisasm disasm_main scc_pass no_return_pass

@@ -33,36 +33,36 @@ and characteristics
 #include "interrupt_operations.dl"
 #include "registers.dl"
 
-.decl conditional_mov(EA:address)
+.decl conditional_mov(EA:address,DecodeMode:symbol)
 
-//conditional_mov(EA):-
-//    instruction_get_operation(EA,Operation),
+//conditional_mov(EA,DecodeMode):-
+//    instruction_get_operation(EA,DecodeMode,Operation),
 //    contains("CMOV",Operation).
 
-.decl mov(EA:address)
+.decl mov(EA:address,DecodeMode:symbol)
 
-mov(EA):-
+mov(EA,DecodeMode):-
     (
-        instruction_get_operation(EA,"MOV");
-        instruction_get_operation(EA,"LDR")
+        instruction_get_operation(EA,DecodeMode,"MOV");
+        instruction_get_operation(EA,DecodeMode,"LDR")
     ).
 
 
-.decl is_nop(EA:address)
+.decl is_nop(EA:address,DecodeMode:symbol)
 
-is_nop(EA):-
-    instruction_get_operation(EA,"NOP").
+is_nop(EA,DecodeMode):-
+    instruction_get_operation(EA,DecodeMode,"NOP").
 
 // Returns
-.decl return(n:address)
+.decl return(n:address,DecodeMode:symbol)
 
-return(EA):-
+return(EA,DecodeMode):-
     return_operation(Operation),
-    instruction_get_operation(EA,Operation).
+    instruction_get_operation(EA,DecodeMode,Operation).
 
-return(EA):-
-    instruction_get_operation(EA,"POP"),
-    instruction_get_op(EA,_,Op),
+return(EA,DecodeMode):-
+    instruction_get_operation(EA,DecodeMode,"POP"),
+    instruction_get_op(EA,DecodeMode,_,Op),
     op_regdirect(Op,Reg),
     pc_register(Reg).
 
@@ -148,27 +148,27 @@ cmp_operation("TST").
 
 //TODO
 // arithmetic operation on two source registers
-.decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
+.decl reg_reg_arithmetic_operation(EA:address,DecodeMode:symbol,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
 
-reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
-    instruction(EA,_,_,"SUB",Op1,Op2,0,0), Op1 != Op2,
+reg_reg_arithmetic_operation(EA,DecodeMode,Reg2,Reg2,Reg1,-1,0):-
+    instruction(EA,_,_,"SUB",Op1,Op2,0,0,DecodeMode), Op1 != Op2,
     op_regdirect_contains_reg(Op1,Reg1),
     op_regdirect_contains_reg(Op2,Reg2).
 
-reg_reg_arithmetic_operation(EA,Reg2,Reg1,Reg2,1,0):-
-    instruction(EA,_,_,"ADD",Op1,Op2,0,0), Op1 != Op2,
+reg_reg_arithmetic_operation(EA,DecodeMode,Reg2,Reg1,Reg2,1,0):-
+    instruction(EA,_,_,"ADD",Op1,Op2,0,0,DecodeMode), Op1 != Op2,
     op_regdirect_contains_reg(Op2,Reg2),
     op_regdirect_contains_reg(Op1,Reg1).
 
-reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset):-
-    instruction(EA,_,_,"LEA",Op1,Op2,0,0),
+reg_reg_arithmetic_operation(EA,DecodeMode,Reg_def,Reg1,Reg2,Mult,Offset):-
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0,DecodeMode),
     op_regdirect_contains_reg(Op2,Reg_def),
     op_indirect(Op1,_,Reg1_n,Reg2_n,Mult,Offset,_),
     arch.track_register(Reg1_n,Reg1),
     arch.track_register(Reg2_n,Reg2),
     Reg1 != Reg2.
 
-reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
-    reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
+reg_reg_arithmetic_operation(EA,DecodeMode,Reg_def,Reg2,Reg1,1,0):-
+    reg_reg_arithmetic_operation(EA,DecodeMode,Reg_def,Reg1,Reg2,1,0).
 
 }

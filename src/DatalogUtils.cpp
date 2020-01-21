@@ -72,6 +72,21 @@ MultiArchCapstoneHandle::~MultiArchCapstoneHandle()
         cs_close(&this->RawHandle);
 }
 
+DecodeMode MultiArchCapstoneHandle::setDecodeMode(uint64_t mode)
+{
+    // 1 for THUMB 0 for regular ARM
+    if(mode)
+    {
+        cs_option(this->RawHandle, CS_OPT_MODE, CS_MODE_THUMB);
+        return DecodeMode::THUMB;
+    }
+    else
+    {
+        cs_option(this->RawHandle, CS_OPT_MODE, CS_MODE_ARM);
+        return DecodeMode::NORMAL;
+    }
+}
+
 void populateEdgeProperties(souffle::tuple& T, const gtirb::EdgeLabel& Label)
 {
     assert(Label.has_value() && "Found edge without a label");
@@ -185,7 +200,8 @@ std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& RawHandle, const 
 }
 
 DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle& CsHandle,
-                                                   DlOperandTable& OpDict, const cs_insn& insn)
+                                                   DlOperandTable& OpDict, const cs_insn& insn,
+                                                   DecodeMode DecodeMode)
 {
     std::vector<uint64_t> op_codes;
     std::string prefix_name = str_toupper(insn.mnemonic);
@@ -224,7 +240,8 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
                         name,
                         op_codes,
                         detail.encoding.imm_offset,
-                        detail.encoding.disp_offset};
+                        detail.encoding.disp_offset,
+                        DecodeMode};
             }
         }
         case gtirb::ISA::ARM:
@@ -245,7 +262,7 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
             }
             return {insn.address, insn.size, prefix, name, op_codes,
                     // FIXME
-                    0, 0};
+                    0, 0, DecodeMode};
         }
 
         default:
@@ -273,6 +290,15 @@ namespace souffle
                 t << 0;
         }
         t << inst.immediateOffset << inst.displacementOffset;
+        switch(inst.decodeMode)
+        {
+            case DecodeMode::NORMAL:
+                t << "Normal";
+                break;
+            case DecodeMode::THUMB:
+                t << "Thumb";
+                break;
+        }
         return t;
     }
 } // namespace souffle
@@ -320,6 +346,7 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
         const gtirb::ByteInterval* Bytes = Block.getByteInterval();
         uint64_t InitSize = Bytes->getInitializedSize();
         assert(Bytes->getSize() == InitSize && "Found partially initialized code block.");
+        DecodeMode DecodeMode = CsHandle.setDecodeMode(Block.getDecodeMode());
         size_t Count =
             cs_disasm(CsHandle.RawHandle, Bytes->rawBytes<uint8_t>(), InitSize,
                       static_cast<uint64_t>(*Block.getAddress()), InstructionLimit, &Insn);
@@ -329,7 +356,8 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
             Insn, [Count](cs_insn* i) { cs_free(i, Count); });
         for(size_t i = 0; i < Count; ++i)
         {
-            Insns.push_back(GtirbToDatalog::transformInstruction(CsHandle, OpDict, Insn[i]));
+            Insns.push_back(
+                GtirbToDatalog::transformInstruction(CsHandle, OpDict, Insn[i], DecodeMode));
         }
     }
     GtirbToDatalog::addToRelation(&*Prog, "instruction", Insns);

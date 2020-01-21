@@ -123,12 +123,12 @@ plt_entry(EA,Function):-
     section(SecName,Size,Beg),
     EA < Beg+Size,
     EA >= Beg,
-    pc_relative_jump(EA,Got_entry),
+    pc_relative_jump(EA,_,Got_entry),
     relocation(Got_entry,_,Function,_).
 
 plt_block(Block,Function):-
     plt_entry(EA,Function),
-    code_in_refined_block(EA,Block).
+    code_in_refined_block(EA,_,Block).
 
 .decl plt_data_reference(ea:address)
 
@@ -139,7 +139,7 @@ plt_data_reference(EA):-
 //////////////////////////////////////////////////////////////////////////
 
 got_reference(Got_entry,Symbol):-
-    pc_relative_operand(_,_,Got_entry),
+    pc_relative_operand(_,_,_,Got_entry),
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
@@ -148,7 +148,7 @@ got_reference(Got_entry,Symbol):-
     symbol(_,_,_,Scope,_,Symbol), Scope != "WEAK".
 
 got_reference(Got_entry,Symbol):-
-    pc_relative_operand(_,_,Got_entry),
+    pc_relative_operand(_,_,_,Got_entry),
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
@@ -156,7 +156,7 @@ got_reference(Got_entry,Symbol):-
     symbol(Dest,_,_,_,_,Symbol).
 
 got_local_reference(Got_entry,Dest):-
-    pc_relative_operand(_,_,Got_entry),
+    pc_relative_operand(_,_,_,Got_entry),
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
@@ -187,12 +187,12 @@ main_function(Main_location):-
     !function_symbol(Main_location,"main"),
     First_call = min EA:{
         start_function(Entry),
-        instruction_get_operation(EA,"CALL"),
-        code(EA),
+        instruction_get_operation(EA,DecodeMode,"CALL"),
+        code(EA,DecodeMode),
         EA>=Entry
     },
-    next(Prev,First_call),
-    code(Prev),
+    next(Prev,DecodeMode,First_call),
+    code(Prev,DecodeMode),
     symbolic_operand(Prev,1,Main_location,"code").
 
 inferred_symbol_name(EA,"_start","GLOBAL"):-
@@ -210,10 +210,10 @@ inferred_symbol_name(EA,"__do_global_dtors_aux","LOCAL"):-
     FiniArray >= Beg,
     FiniArray < Beg+Size,
     // compare a value in bss with 0 in the first block
-    code_in_refined_block(EA_cmp,EA),
-    instruction(EA_cmp,_,_,"CMP",Op1,_,0,0),
+    code_in_refined_block(EA_cmp,DecodeMode,EA),
+    instruction(EA_cmp,_,_,"CMP",Op1,_,0,0,DecodeMode),
     op_immediate(Op1,0),
-    pc_relative_operand(EA_cmp,2,DataRef),
+    pc_relative_operand(EA_cmp,DecodeMode,2,DataRef),
     bss_section(SectionName),
     section(SectionName,SizeBss,BegData),
     DataRef >= BegData,

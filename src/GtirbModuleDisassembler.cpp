@@ -115,9 +115,9 @@ struct CodeInBlock
 {
     CodeInBlock(souffle::tuple &tuple)
     {
-        assert(tuple.size() == 2);
-
-        tuple >> EA >> BlockAddress;
+        assert(tuple.size() == 3);
+        std::string DecodeMode;
+        tuple >> EA >> DecodeMode >> BlockAddress;
     };
 
     gtirb::Addr EA{0};
@@ -673,7 +673,8 @@ void buildCodeBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
     for(auto &output : *prog->getRelation("refined_block"))
     {
         gtirb::Addr blockAddress;
-        output >> blockAddress;
+        std::string decodeMode;
+        output >> blockAddress >> decodeMode;
         if(auto sections = module.findSectionsOn(blockAddress); !sections.empty())
         {
             gtirb::Section &section = *sections.begin();
@@ -683,7 +684,8 @@ void buildCodeBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                 if(gtirb::ByteInterval &byteInterval = *it.begin(); byteInterval.getAddress())
                 {
                     uint64_t blockOffset = blockAddress - *byteInterval.getAddress();
-                    byteInterval.addBlock<gtirb::CodeBlock>(context, blockOffset, size);
+                    uint64_t isThumb = decodeMode == "THUMB";
+                    byteInterval.addBlock<gtirb::CodeBlock>(context, blockOffset, size, isThumb);
                 }
             }
         }

@@ -40,7 +40,7 @@ identifying function pointers and based on identifying complete functions.
 ///////////////////////////////////////////////////
 .decl instruction(ea:address, size:number, prefix:symbol, opcode:symbol,
           op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code,
-          immOffset:number,displacementOffset:number)
+          immOffset:number,displacementOffset:number, decodeMode: symbol)
 .input instruction
 
 // three kinds of operators
@@ -166,13 +166,13 @@ candidate_block(Block):-
 
 typical_function_start(Block):-
     block(Block,_),
-    instruction(Block,_,_,"SUB",Op1,Op2,_,_,_,_),
+    instruction(Block,_,_,"SUB",Op1,Op2,_,_,_,_,_),
     op_immediate(Op1,_),
     op_regdirect(Op2,"RSP").
 
 typical_function_start(Block):-
     block(Block,_),
-    instruction(Block,_,_,"PUSH",Op1,_,_,_,_,_),
+    instruction(Block,_,_,"PUSH",Op1,_,_,_,_,_,_),
     op_regdirect(Op1,"RBP").
 
 .decl symbolic_expression_in_code(Address:address,Symbol:address,Offset:number)

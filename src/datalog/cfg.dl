@@ -40,27 +40,27 @@ This module generates the control flow graph of the disassembled code
 
 //use the data access pattern
 jump_table(EA,Initial_memory):-
-    code(EA),
-    indirect_jump(EA),
+    code(EA,DecodeMode),
+    indirect_jump(EA,DecodeMode),
     arch.pointer_size(Pt_size),
     data_access_pattern(Initial_memory,Pt_size,Pt_size,EA),
     symbolic_data(Initial_memory,Pt_size,Dest_block),
-    refined_block(Dest_block).
+    refined_block(Dest_block,_).
 
 //use just the constant in the jump
 jump_table(EA,Initial_memory):-
-    code(EA),
-    indirect_jump(EA),
+    code(EA,DecodeMode),
+    indirect_jump(EA,DecodeMode),
     arch.pointer_size(Pt_size),
     symbolic_operand(EA,1,Initial_memory,"data"),
     symbolic_data(Initial_memory,Pt_size,Dest_block),
-    refined_block(Dest_block).
+    refined_block(Dest_block,_).
 
 jump_table(EA,Memory+Pt_size):-
     jump_table(EA,Memory),
     arch.pointer_size(Pt_size),
     symbolic_data(Memory+Pt_size,Pt_size,Dest_block),
-    refined_block(Dest_block),
+    refined_block(Dest_block,_),
     !data_access_pattern(Memory+Pt_size,_,_,_).
 
 // we have another access to the same table (the access can be before or after)
@@ -69,7 +69,7 @@ jump_table(EA,Memory+Pt_size):-
     arch.pointer_size(Pt_size),
     symbolic_data(Memory,Pt_size,Content_prev),
     symbolic_data(Memory+Pt_size,Pt_size,Content_next),
-    refined_block(Content_next),
+    refined_block(Content_next,_),
     data_access_pattern(Memory+Pt_size,Pt_size,Pt_size,EA),
     (
         EA < Content_prev,
@@ -80,88 +80,90 @@ jump_table(EA,Memory+Pt_size):-
     ).
 
 // Resolve easy jumps that access a straightforward jump table
-.decl resolved_jump(Src:address,Dest:address)
+.decl resolved_jump(Src:address,DecodeMode:symbol,Dest:address)
 .output resolved_jump
 
-resolved_jump(EA,Dest):-
+resolved_jump(EA,DecodeMode,Dest):-
     jump_table(EA,Memory),
+    code(EA,DecodeMode),
     symbolic_data(Memory,_,Dest),
-    refined_block(Dest).
+    refined_block(Dest,_).
 
 
 //////////////////////////////////////////////////////////////////////////////
 // edge creation
 
 cfg_edge(Src,Dest,Conditional,Indirect,"branch"):-
-    block_last_instruction(Src,EA),
+    refined_block_last_instruction(Src,DecodeMode,EA),
     (
-        direct_jump(EA,Dest), Indirect = "false";
-        pc_relative_jump(EA,Dest), Indirect = "false";
-        resolved_jump(EA,Dest), Indirect = "true"
+        direct_jump(EA,DecodeMode,Dest), Indirect = "false";
+        pc_relative_jump(EA,DecodeMode,Dest), Indirect = "false";
+        resolved_jump(EA,DecodeMode,Dest), Indirect = "true"
     ),
-    refined_block(Dest),
+    refined_block(Dest,_),
     (
-        unconditional_jump(EA), Conditional = "false";
-        !unconditional_jump(EA),Conditional = "true"
+        unconditional_jump(EA,DecodeMode), Conditional = "false";
+        !unconditional_jump(EA,DecodeMode),Conditional = "true"
     ).
 
 cfg_edge(Src,Dest,"false","false","call"):-
-    block_last_instruction(Src,EA),
+    refined_block_last_instruction(Src,DecodeMode,EA),
     (
-        direct_call(EA,Dest);
-        pc_relative_call(EA,Dest)
+        direct_call(EA,DecodeMode,Dest);
+        pc_relative_call(EA,DecodeMode,Dest)
     ),
-    refined_block(Dest).
+    refined_block(Dest,_).
 
 cfg_edge(Src,Dest,"false","false","fallthrough"):-
-    block_last_instruction(Src,EA),
-    may_fallthrough(EA,Dest),
-    !no_return_call(EA),
-    code_in_refined_block(Dest,Dest).
+    refined_block_last_instruction(Src,DecodeMode,EA),
+    may_fallthrough(EA,DecodeMode,Dest),
+    !no_return_call(EA,DecodeMode),
+    code_in_refined_block(Dest,_,Dest).
 
 cfg_edge(ReturnBlock,NextBlock,"false","false","return"):-
     cfg_edge(Caller,Block,_,_,"call"),
     cfg_edge(Caller,NextBlock,_,_,"fallthrough"),
     function_inference.in_function(Block,FunctionEntry),
     function_inference.in_function(ReturnBlock,FunctionEntry),
-    block_last_instruction(ReturnBlock,Insn),
-    arch.return(Insn).
+    refined_block_last_instruction(ReturnBlock,DecodeMode,Insn),
+    refined_block(ReturnBlock,DecodeMode),
+    arch.return(Insn,DecodeMode).
 
 cfg_edge_to_top(Src,Conditional,"branch"):-
-    block_last_instruction(Src,EA),
+    refined_block_last_instruction(Src,DecodeMode,EA),
     (
-        reg_jump(EA,_);
-        indirect_jump(EA)
+        reg_jump(EA,DecodeMode,_);
+        indirect_jump(EA,DecodeMode)
     ),
     (
-        unconditional_jump(EA), Conditional = "false";
-        !unconditional_jump(EA), Conditional = "true"
+        unconditional_jump(EA,DecodeMode), Conditional = "false";
+        !unconditional_jump(EA,DecodeMode), Conditional = "true"
     ).
 
 cfg_edge_to_top(Src,"false","call"):-
-    block_last_instruction(Src,EA),
+    refined_block_last_instruction(Src,DecodeMode,EA),
     (
-        reg_call(EA,_);
-        indirect_call(EA)
+        reg_call(EA,DecodeMode,_);
+        indirect_call(EA,DecodeMode)
     ).
 
 // a return to top if no other return exists
 cfg_edge_to_top(Src,"false","return"):-
-    block_last_instruction(Src,Insn),
-    arch.return(Insn),
+    refined_block_last_instruction(Src,DecodeMode,Insn),
+    arch.return(Insn,DecodeMode),
     !cfg_edge(Src,_,_,_,"return").
 
 cfg_edge_to_symbol(Src,Symbol):-
-    block_last_instruction(Src,EA),
+    refined_block_last_instruction(Src,EA),
     plt_entry(EA,Symbol),
     !defined_symbol(_,_,_,_,_,Symbol).
 
 // pc relative jump with undefined destination
 cfg_edge_to_top(Src,Conditional,"branch"):-
-    block_last_instruction(Src,EA),
-    pc_relative_jump(EA,Dest),
-    !refined_block(Dest),
+    refined_block_last_instruction(Src,DecodeMode,EA),
+    pc_relative_jump(EA,DecodeMode,Dest),
+    !refined_block(Dest,_),
     (
-        unconditional_jump(EA), Conditional = "false";
-        !unconditional_jump(EA),Conditional = "true"
+        unconditional_jump(EA,DecodeMode), Conditional = "false";
+        !unconditional_jump(EA,DecodeMode),Conditional = "true"
     ).
