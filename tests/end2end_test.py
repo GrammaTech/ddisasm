@@ -92,8 +92,11 @@ class TestAsmExamples(unittest.TestCase):
     def test_asm_switch_in_code(self):
         self.assertTrue(dis_reasm_test(asm_dir/'ex_switch_in_code','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=['']))
 
-    def test_asm_switch_in_code(self):
+    def test_asm_switch_in_code2(self):
         self.assertTrue(dis_reasm_test(asm_dir/'ex_switch_in_code2','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=['']))
+
+    def test_asm_switch_in_code3(self):
+        self.assertTrue(dis_reasm_test(asm_dir/'ex_switch_in_code3','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=['']))
 
 class TestAsmExamplesStrip(unittest.TestCase):
 
@@ -123,9 +126,11 @@ class TestAsmExamplesStrip(unittest.TestCase):
     def test_asm_switch_in_code(self):
         self.assertTrue(dis_reasm_test(asm_dir/'ex_switch_in_code','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=['']))
 
-    def test_asm_switch_in_code(self):
+    def test_asm_switch_in_code2(self):
         self.assertTrue(dis_reasm_test(asm_dir/'ex_switch_in_code2','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=[''],strip=True))
 
+    def test_asm_switch_in_code3(self):
+        self.assertTrue(dis_reasm_test(asm_dir/'ex_switch_in_code3','ex',c_compilers=['gcc'],cxx_compilers=['g++'],optimizations=[''],strip=True))
 
 class TestSpecialFlags(unittest.TestCase):
     # test binary compiled with -fcf-protection
