@@ -205,5 +205,5 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,"ADD"):-
     instruction_get_operation(EA_def_diff,"MOVSXD"),
     def_used(EA_def_ref,RegBase,EA_base,_),
     take_address(EA_def_ref,TableStart),
-    data_access_pattern(TableStart,Size,Size,EA_read),
+    data_access_pattern(TableStart,Size,_,EA_read),
     TableReference = TableStart.
