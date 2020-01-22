@@ -50,7 +50,6 @@ class TestSmall(unittest.TestCase):
     @unittest.skipUnless(platform.system() == 'Linux', 'This test is linux only.')
     def test_virtualDispatch(self): self.assertTrue(dis_reasm_test(ex_dir/'ex_virtualDispatch','ex',reassembly_compiler='g++'))
 
-
     # Examples that fail to reassemble
 
     #thread local storage
@@ -67,6 +66,7 @@ class TestSmall(unittest.TestCase):
             optimizations=['-O0']))
 
 class TestSmallStrip(unittest.TestCase):
+    # Linux tests
     @unittest.skipUnless(platform.system() == 'Linux', 'This test is linux only.')
     def test_1(self): self.assertTrue(dis_reasm_test(ex_dir/'ex1','ex',strip=True))
     @unittest.skipUnless(platform.system() == 'Linux', 'This test is linux only.')
@@ -108,6 +108,75 @@ class TestSmallStrip(unittest.TestCase):
     @unittest.skipUnless(platform.system() == 'Linux', 'This test is linux only.')
     def test_virtualDispatch(self): self.assertTrue(dis_reasm_test(ex_dir/'ex_virtualDispatch','ex',reassembly_compiler='g++',strip=True))
 
+    # Windows tests
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_1_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex1', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_2modulesPIC_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_2modulesPIC', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_confusing_data_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_confusing_data', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))
+
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_false_pointer_array_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_false_pointer_array', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))
+
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_float_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_float', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))        
+
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_fprintf_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_fprintf', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))
+
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_noreturn_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_noreturn', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))
+
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_pointerReatribution_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_pointerReatribution', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))        
+
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_pointerReatribution2_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_pointerReatribution2', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))        
+
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_pointerReatribution3_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_pointerReatribution3', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))        
+        
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_struct_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_struct', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))                
+
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_switch_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_switch', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))
+        
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_uninitialized_data_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_uninitialized_data', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_legacy_switch_001_data_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_legacy_switch.001', 'main.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))
+
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_legacy_switch_002_data_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_legacy_switch.002', 'main.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_legacy_switch_003_data_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_legacy_switch.003', 'main.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_legacy_switch_004_data_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_legacy_switch.004', 'main.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_memberPointer_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_memberPointer', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))
+    def test_virtualDispatch_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_virtualDispatch', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))
+        
 class TestAsmExamples(unittest.TestCase):
     @unittest.skipUnless(platform.system() == 'Linux', 'This test is linux only.')
     def test_asm_pointerReatribution3(self):

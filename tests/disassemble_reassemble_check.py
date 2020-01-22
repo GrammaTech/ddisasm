@@ -3,6 +3,7 @@ import contextlib
 import os
 import shlex
 import subprocess
+import platform
 from timeit import default_timer as timer
 
 class bcolors:
@@ -53,7 +54,16 @@ def cd(new_dir):
     finally:
         os.chdir(prev_dir)
 
-def compile(compiler,cxx_compiler,optimizations,extra_flags):
+
+def make(target=''):
+    target = [] if target == '' else [target]
+    if platform.system() == 'Linux':
+        return ['make', '-e'] + target
+    elif platform.system() == 'Windows':
+        return ['nmake', '/E', '/F', 'Makefile.windows'] + target
+
+
+def compile(compiler, cxx_compiler, optimizations, extra_flags):
     """
     Clean the project and compile it using the compiler
     'compiler', the cxx compiler 'cxx_compiler' and the flags in
@@ -67,16 +77,19 @@ def compile(compiler,cxx_compiler,optimizations,extra_flags):
     env['CXX'] = cxx_compiler
     env['CFLAGS'] = quote_args(optimizations, *extra_flags)
     env['CXXFLAGS'] = quote_args(optimizations, *extra_flags)
-    completedProcess = subprocess.run(['make', 'clean', '-e'], env=env, stdout=subprocess.DEVNULL)
+    completedProcess = subprocess.run(make('clean'), env=env,
+                                      stdout=subprocess.DEVNULL)
     if completedProcess.returncode == 0:
-        completedProcess = subprocess.run(['make', '-e'], env=env, stdout=subprocess.DEVNULL)
-    return completedProcess.returncode==0
+        completedProcess = subprocess.run(make(), env=env,
+                                          stdout=subprocess.DEVNULL)
+    return completedProcess.returncode == 0
 
-def disassemble(binary,strip,format='--asm',extension='s',extra_args=[]):
+
+def disassemble(binary, strip, format='--asm', extension='s', extra_args=[]):
     """
     Disassemble the binary 'binary'
     """
-    with get_target(binary,strip) as target_binary:
+    with get_target(binary, strip) as target_binary:
         print('# Disassembling '+target_binary+'\n')
         start=timer()
         completedProcess=subprocess.run(['ddisasm',target_binary,format,binary+'.'+extension,'-j','2']+extra_args)
@@ -88,39 +101,55 @@ def disassemble(binary,strip,format='--asm',extension='s',extra_args=[]):
         print(bcolors.fail('Disassembly failed'),flush=True)
         return False,time_spent
 
-def reassemble(compiler,binary,extra_flags):
+    
+def reassemble(compiler, binary, extra_flags):
     """
     Reassemble the assembly file binary+'.s' into a new binary
     """
     print("# Reassembling", binary + ".s", "into", binary)
-    print("compile command:", compiler, binary + '.s', '-o', binary, *extra_flags)
-    completedProcess=subprocess.run([compiler,binary+'.s','-o',binary]+extra_flags)
-    if(completedProcess.returncode!=0):
+    if platform.system() == 'Linux':
+        print("compile command:", compiler, binary + '.s', '-o',
+              binary, *extra_flags)
+        completedProcess = subprocess.run([compiler, binary + '.s',
+                                           '-o', binary] + extra_flags)
+    elif platform.system() == 'Windows':
+        out_arg = '/OUT:' + binary
+        if '/link' not in extra_flags:
+            extra_flags = extra_flags + ['/link', out_arg]
+        else:
+            extra_flags = extra_flags + [out_arg]
+        print("compile command:", compiler, binary + '.s', *extra_flags)
+        completedProcess = subprocess.run([compiler, binary + '.s'] +
+                                          extra_flags)
+    if(completedProcess.returncode != 0):
         print(bcolors.fail('# Reassembly failed\n'))
         return False
     print(bcolors.okgreen("# Reassembly succeed"))
     return True
+
 
 def test():
     """
     Test the project with  'make check'.
     """
     print("# testing\n")
-    completedProcess=subprocess.run(['make','check','-e'], stderr=subprocess.DEVNULL)
-    if(completedProcess.returncode!=0):
+    completedProcess = subprocess.run(make('check'), stderr=subprocess.DEVNULL)
+    if(completedProcess.returncode != 0):
         print(bcolors.fail('# Testing FAILED\n'))
         return False
     else:
         print(bcolors.okgreen('# Testing SUCCEED\n'))
         return True
 
-def disassemble_reassemble_test(make_dir,binary,
+    
+def disassemble_reassemble_test(make_dir, binary,
                                 extra_compile_flags=[],
                                 extra_reassemble_flags=['-no-pie'],
                                 reassembly_compiler='gcc',
-                                c_compilers=['gcc','clang'],
-                                cxx_compilers=['g++','clang++'],
-                                optimizations=['-O0','-O1','-O2','-O3','-Os'],
+                                c_compilers=['gcc', 'clang'],
+                                cxx_compilers=['g++', 'clang++'],
+                                optimizations=['-O0', '-O1', '-O2', '-O3',
+                                               '-Os'],
                                 strip=False,
                                 skip_reassemble=False,
                                 skip_test=False):

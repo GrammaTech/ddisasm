@@ -1,0 +1,16 @@
+CFLAGS="/Fa"
+
+all: ex.c
+        cl /nologo $(CFLAGS) ex.c
+	@ echo A |ex > out.txt
+	@ echo B |ex >> out.txt
+	@ echo C |ex >> out.txt
+clean:
+	del /F /Q *.exe *.obj *.asm out.txt check.txt mllink$$.lnk
+        del /F /Q ex.unstripped *.s *.old*
+	if exist dl_files { rmdir /Q /S dl_files }
+check:
+	@ echo A |ex > check.txt
+	@ echo B |ex >> check.txt
+	@ echo C |ex >> check.txt
+	@ FC out.txt check.txt && echo TEST OK
