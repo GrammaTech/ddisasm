@@ -19,6 +19,10 @@ switch:
   add     rax, rdx
   jmp     rax
 
+done:
+  xor eax, eax
+  ret
+
     .section        .rodata
     .align 4
     .align 4
@@ -31,9 +35,7 @@ switch:
   lea	rdi, [rip + .L.str]
   call	puts@PLT
 
-  mov ebx, 0
-  mov eax, 1
-  int 0x80
+  jmp done
 
 .type	.L.str,@object          # @.str
 .section	.rodata.str1.1,"aMS",@progbits,1
