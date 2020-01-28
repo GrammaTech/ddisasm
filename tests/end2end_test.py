@@ -1,6 +1,7 @@
 import platform
 import unittest
 from disassemble_reassemble_check import disassemble_reassemble_test as dis_reasm_test
+from disassemble_reassemble_check import skip_reassemble, reassemble_using_makefile
 from disassemble_reassemble_check import compile,cd
 import os
 from pathlib import Path
@@ -174,8 +175,12 @@ class TestSmallStrip(unittest.TestCase):
     @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
     def test_memberPointer_win(self):
         self.assertTrue(dis_reasm_test('..\examples\ex_memberPointer', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
     def test_virtualDispatch_win(self):
         self.assertTrue(dis_reasm_test('..\examples\ex_virtualDispatch', 'ex.exe', [], ['/link', '/subsystem:console', '/entry:__EntryPoint'], 'ml64', ['cl'], ['cl'], ['/Od']))
+    @unittest.skipUnless(platform.system() == 'Windows', 'This test is windows only.')
+    def test_simple_dll_win(self):
+        self.assertTrue(dis_reasm_test('..\examples\ex_simple_dll', 'test.dll', [], [], 'ml64', ['cl'], ['cl'], ['/Od'], False, reassemble_using_makefile))
         
 class TestAsmExamples(unittest.TestCase):
     @unittest.skipUnless(platform.system() == 'Linux', 'This test is linux only.')

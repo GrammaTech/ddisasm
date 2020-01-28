@@ -101,6 +101,11 @@ def disassemble(binary, strip, format='--asm', extension='s', extra_args=[]):
         print(bcolors.fail('Disassembly failed'),flush=True)
         return False,time_spent
 
+
+def skip_reassemble(compiler, binary, extra_flags):
+    print(bcolors.warning(" No reassemble"))    
+    return True
+
     
 def reassemble(compiler, binary, extra_flags):
     """
@@ -121,6 +126,23 @@ def reassemble(compiler, binary, extra_flags):
         print("compile command:", compiler, binary + '.s', *extra_flags)
         completedProcess = subprocess.run([compiler, binary + '.s'] +
                                           extra_flags)
+    if(completedProcess.returncode != 0):
+        print(bcolors.fail('# Reassembly failed\n'))
+        return False
+    print(bcolors.okgreen("# Reassembly succeed"))
+    return True
+
+
+def reassemble_using_makefile(assembler, binary, extra_flags):
+    def quote_args(*args):
+        return ' '.join(shlex.quote(arg) for arg in args)
+    # Copy the current environment and modify the copy.
+    env = dict(os.environ)
+    env['AS'] = assembler
+    env['ASFLAGS'] = quote_args(*extra_flags)
+    print("# Reassembling", binary + ".s", "into", binary)    
+    completedProcess = subprocess.run(make('reassemble'), env=env,
+                                      stdout=subprocess.DEVNULL)
     if(completedProcess.returncode != 0):
         print(bcolors.fail('# Reassembly failed\n'))
         return False
@@ -151,7 +173,7 @@ def disassemble_reassemble_test(make_dir, binary,
                                 optimizations=['-O0', '-O1', '-O2', '-O3',
                                                '-Os'],
                                 strip=False,
-                                skip_reassemble=False,
+                                reassemble_function=reassemble,
                                 skip_test=False):
     """
     Disassemble, reassemble and test an example with the given compilers and optimizations.
@@ -173,10 +195,7 @@ def disassemble_reassemble_test(make_dir, binary,
                 if not success:
                     disassembly_errors+=1
                     continue
-                if skip_reassemble:
-                    print(bcolors.warning(" No reassemble"))
-                    continue
-                if not reassemble(reassembly_compiler,binary,extra_reassemble_flags):
+                if not reassemble_function(reassembly_compiler,binary,extra_reassemble_flags):
                     reassembly_errors+=1
                     continue
                 if skip_test:
