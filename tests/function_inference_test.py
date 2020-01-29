@@ -127,9 +127,11 @@ class TestFunctionInference(unittest.TestCase):
             for block in module.blocks:
                 assert (block in blocks_in_function) or (block.address in padding)
 
+    @unittest.skipUnless(platform.system() == 'Linux', 'This test is linux only.')
     def test_in_function_no_cfi(self):
         self.check_in_function(asm_dir/'ex_switch_in_code_no_cfi')
 
+    @unittest.skipUnless(platform.system() == 'Linux', 'This test is linux only.')
     def test_in_function_with_cfi(self):
         self.check_in_function(asm_dir/'ex_switch_in_code')
 
