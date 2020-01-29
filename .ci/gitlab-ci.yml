@@ -10,12 +10,24 @@ stages:
   - test-and-tag-arch
   - cleanup
 
+# The two build templates below ultimately call the build script for the
+# appropriate platform & task (the .ci/build-*.sh scripts).
+# For windows builds, this is done directly. For linux builds, the build script
+# is called in the Dockerfile.
+
 .build-template: &build
   script:
     - git clone https://git.grammatech.com/rewriting/gtirb.git
     - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git
     - git clone https://git.zephyr-software.com/opensrc/libehp
     - docker build -f .ci/Dockerfile.${OS}-${COMPILER} -t ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} .
+
+.build-windows-template: &build-windows
+  script:
+    - git clone https://git.grammatech.com/rewriting/gtirb.git
+    - git clone -b master https://git.grammatech.com/rewriting/gtirb-pprinter.git
+    - git clone https://github.com/brianfairservice/libehp.git
+    - .ci/build-windows.sh ${BUILD_TYPE}
 
 .test-and-tag-template: &test-and-tag
   script:
@@ -80,6 +92,22 @@ build-arch-clang:
     OS: 'arch'
     COMPILER: 'clang'
   <<: *build
+
+build-windows-debug:
+  stage: build
+  tags:
+    - ddisasm-windows
+  variables:
+    BUILD_TYPE: 'Debug'
+  <<: *build-windows
+
+build-windows-release:
+  stage: build
+  tags:
+    - ddisasm-windows
+  variables:
+    BUILD_TYPE: 'Release'
+  <<: *build-windows
 
 run-ubuntu16-gcc:
   stage: test-and-tag-ubuntu16

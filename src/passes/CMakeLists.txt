@@ -9,6 +9,11 @@ target_link_libraries(scc_pass
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   set_common_msvc_options(scc_pass)
+
+  # The following warning is coming from the bgl, but only in release mode
+  if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+    target_compile_options(scc_pass PRIVATE -wd4172) # returning address of local variable or temporary
+  endif()
 endif()
 
 #============ No return pass =================
@@ -96,8 +101,6 @@ target_compile_options(function_inference_pass PRIVATE ${OPENMP_FLAGS})
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   set_common_msvc_options(function_inference_pass)
-
-  target_compile_definitions(function_inference_pass PRIVATE _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING)
 
   set_souffle_msvc_options(function_inference_pass)
 else()

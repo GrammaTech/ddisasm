@@ -155,9 +155,14 @@ target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(disasm_main PRIVATE ${OPENMP_FLAGS})
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  target_compile_definitions(disasm_main PRIVATE _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING)
   target_compile_definitions(disasm_main PRIVATE _CRT_SECURE_NO_WARNINGS)
   target_compile_definitions(disasm_main PRIVATE _CRT_NONSTDC_NO_WARNINGS)
+
+  # Warnings from LIEF
+  target_compile_options(disasm_main PRIVATE -wd4245) # conversion from 'type1' to 'type2', signed/unsigned mismatch
+  target_compile_options(disasm_main PRIVATE -wd4146) # unary minus operator applied to unsigned type, result still unsigned
+  target_compile_options(disasm_main PRIVATE -wd4267) # conversion from 'size_t' to 'type', possible loss of data
+  target_compile_options(disasm_main PRIVATE -wd4359) # actual alignment (8) is greater than the value specified in __declspec(align())
 
   set_common_msvc_options(disasm_main)
 else()
@@ -174,36 +179,63 @@ endif()
 # ============ Detect how to use <experimental/filesystem> ============================
 include(CheckCXXSourceCompiles)
 
-set(EXPERIMENTAL_LIB "" CACHE STRING "The library to link with in order to use <experimental/filesystem>.")
+# Detect how to use <experimental/filesystem> for non-msvc compilers.  On the
+# latest version of MSVC, the experimental filesystem library is deprecated.
+set(USE_STD_FILESYSTEM_LIB_DEFAULT OFF)
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  set(USE_STD_FILESYSTEM_LIB_DEFAULT ON)
+endif()
 
-if (NOT EXPERIMENTAL_LIB)
-  set(EXFS_CODE "
-  #include <experimental/filesystem>
-  int main() {
-    std::experimental::filesystem::path p{\"an/example/path\"};
-    return std::experimental::filesystem::exists(p);
-  }
-  ")
+option(USE_STD_FILESYSTEM_LIB
+  "Use the standard filesystem library instead of the experimental filesystem library"
+  ${USE_STD_FILESYSTEM_LIB_DEFAULT})
 
-  check_cxx_source_compiles("${EXFS_CODE}" EXFS_LINK_NONE)
+if(USE_STD_FILESYSTEM_LIB)
+  add_definitions(-DUSE_STD_FILESYSTEM_LIB)
+else()
+  set(EXPERIMENTAL_LIB
+      ""
+      CACHE STRING
+            "The library to link with in order to use <experimental/filesystem>.")
 
-  if(NOT EXFS_LINK_NONE)
-    foreach(EXFS_LIB stdc++fs c++experimental c++fs)
-      set(OLD_CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
-      list(APPEND CMAKE_REQUIRED_LIBRARIES ${EXFS_LIB})
-      check_cxx_source_compiles("${EXFS_CODE}" EXFS_LINK_${EXFS_LIB}_OK)
-      set(CMAKE_REQUIRED_LIBRARIES ${OLD_CMAKE_REQUIRED_LIBRARIES})
+  if(NOT EXPERIMENTAL_LIB)
+    set(EXFS_CODE "
+    #include <experimental/filesystem>
+    int main() {
+      std::experimental::filesystem::path p{\"an/example/path\"};
+      return std::experimental::filesystem::exists(p);
+    }
+    ")
 
-      if(EXFS_LINK_${EXFS_LIB}_OK)
-        if(EXPERIMENTAL_LIB)
-          message(FATAL_ERROR "multiple candidates for library to link for <experimental/filesystem>: ${EXPERIMENTAL_LIB} and ${EXFS_LIB}. Try giving the correct one explicitly with -DEXPERIMENTAL_LIB.")
+    check_cxx_source_compiles("${EXFS_CODE}" EXFS_LINK_NONE)
+
+    if(NOT EXFS_LINK_NONE)
+      foreach(EXFS_LIB
+              stdc++fs
+              c++experimental
+              c++fs)
+        set(OLD_CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
+        list(APPEND CMAKE_REQUIRED_LIBRARIES ${EXFS_LIB})
+        check_cxx_source_compiles("${EXFS_CODE}" EXFS_LINK_${EXFS_LIB}_OK)
+        set(CMAKE_REQUIRED_LIBRARIES ${OLD_CMAKE_REQUIRED_LIBRARIES})
+
+        if(EXFS_LINK_${EXFS_LIB}_OK)
+          if(EXPERIMENTAL_LIB)
+            message(
+              FATAL_ERROR
+                "multiple candidates for library to link for <experimental/filesystem>: ${EXPERIMENTAL_LIB} and ${EXFS_LIB}. Try giving the correct one explicitly with -DEXPERIMENTAL_LIB."
+              )
+          endif()
+          set(EXPERIMENTAL_LIB ${EXFS_LIB})
         endif()
-        set(EXPERIMENTAL_LIB ${EXFS_LIB})
-      endif()
-    endforeach()
+      endforeach()
 
-    if (NOT EXPERIMENTAL_LIB)
-      message(FATAL_ERROR "could not find library to link for <experimental/filesystem>. Try giving it explicitly with -DEXPERIMENTAL_LIB.")
+      if(NOT EXPERIMENTAL_LIB)
+        message(
+          FATAL_ERROR
+            "could not find library to link for <experimental/filesystem>. Try giving it explicitly with -DEXPERIMENTAL_LIB."
+          )
+      endif()
     endif()
   endif()
 endif()
@@ -256,7 +288,6 @@ target_compile_definitions(ddisasm PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(ddisasm PRIVATE ${OPENMP_FLAGS})
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  target_compile_definitions(ddisasm PRIVATE _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING)
   target_link_options(ddisasm PRIVATE -NODEFAULTLIB:LIBCMTD)
 
   set_common_msvc_options(ddisasm)

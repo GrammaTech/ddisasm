@@ -92,31 +92,18 @@ RUN cd /usr/local/src \
 
 # Install LIEF
 RUN cd /usr/local/src \
-    && git clone -b 0.9.0 https://github.com/lief-project/LIEF.git \
+    && git clone -b 0.10.0 https://github.com/lief-project/LIEF.git \
     && cd LIEF \
     && mkdir build \
     && cd build \
-    && cmake -DLIEF_PYTHON_API=off -DCMAKE_BUILD_TYPE=Release .. \
-    && cmake --build . --target LIB_LIEF_STATIC --config Release \
+    && cmake -DLIEF_PYTHON_API=off -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=Off .. \
+    && make \
     && make install
 
 COPY . /ddisasm
 
-# Build GTIRB
-RUN rm -rf /ddisasm/gtirb/build /ddisasm/gtirb/CMakeCache.txt /ddisasm/gtirb/CMakeFiles /ddisasm/gtirb/CMakeScripts
-RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER}  && cd build &&  make install
-
-# Build gtirb-pprinter
-RUN rm -rf /ddisasm/gtirb-pprinter/build /ddisasm/gtirb-pprinter/CMakeCache.txt /ddisasm/gtirb-pprinter/CMakeFiles /ddisasm/gtirb-pprinter/CMakeScripts
-RUN cd /ddisasm/gtirb-pprinter/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build &&  make
-
-# Build ehp
-RUN rm -rf /ddisasm/libehp/build /ddisasm/libehp/CMakeCache.txt /ddisasm/libehp/CMakeFiles /ddisasm/libehp/CMakeScripts
-RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build &&  make
-
-# Build ddisasm
 ENV TERM xterm
-RUN rm -rf /ddisasm/build /ddisasm/CMakeCache.txt /ddisasm/CMakeFiles /ddisasm/CMakeScripts
-WORKDIR /ddisasm
-RUN cmake ./  -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DLIEF_ROOT=/usr/ && cd build && make
 ENV PATH=/ddisasm/build/bin:$PATH
+
+RUN /ddisasm/.ci/build-linux.sh ${CXX_COMPILER}
+WORKDIR /ddisasm/
