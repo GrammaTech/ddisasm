@@ -55,12 +55,12 @@ class TestSmall(unittest.TestCase):
 
     #thread local storage
     @unittest.skipUnless(platform.system() == 'Linux', 'This test is linux only.')
-    def test_threads(self): self.assertTrue(dis_reasm_test(ex_dir/'ex_threads','ex',reassembly_compiler='g++',skip_reassemble=True))
+    def test_threads(self): self.assertTrue(dis_reasm_test(ex_dir/'ex_threads','ex',reassembly_compiler='g++',reassemble_function=skip_reassemble))
 
     #static binary with libc
     @unittest.skipUnless(platform.system() == 'Linux', 'This test is linux only.')
     def test_ex1_static(self):
-        self.assertTrue(dis_reasm_test(ex_dir/'ex1','ex',skip_reassemble=True,
+        self.assertTrue(dis_reasm_test(ex_dir/'ex1','ex',reassemble_function=skip_reassemble,
             extra_compile_flags=['-static'],
             c_compilers=['gcc'],
             cxx_compilers=['g++'],
