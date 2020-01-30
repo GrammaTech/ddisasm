@@ -14,6 +14,11 @@ else()
 endif()
 
 set(DATALOG_SOURCES
+    datalog/ARM/arch_arm.dl
+    datalog/ARM/float_operations.dl
+    datalog/ARM/jump_operations.dl
+    datalog/ARM/registers.dl
+    datalog/arm_binaries.dl
     datalog/bitmasks.dl
     datalog/code_inference.dl
     datalog/code_inference_postprocess.dl

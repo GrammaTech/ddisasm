@@ -151,13 +151,6 @@ possible_ea(EA,DecodeMode):-
 
 .decl basic_target(ea:address, DecodeMode:symbol)
 
-basic_target(Val,"Thumb"):-
-    binary_isa("ARM"),
-    defined_symbol(Val,_,_,_,_,"$t").
-basic_target(Val,"Normal"):-
-    binary_isa("ARM"),
-    defined_symbol(Val,_,_,_,_,"$a").
-
 
 basic_target(Val,"Normal"):-
     binary_isa("X64"),

@@ -1,0 +1,40 @@
+
+
+basic_target(Val,"Thumb"):-
+    binary_isa("ARM"),
+    defined_symbol(Val,_,_,_,_,"$t").
+basic_target(Val,"Normal"):-
+    binary_isa("ARM"),
+    defined_symbol(Val,_,_,_,_,"$a").
+
+
+block_points(Block,DecodeMode,0,-9,"overlap with literal pool"),
+block_is_overlapping(Block,DecodeMode):-
+    binary_isa("ARM"),
+    block_candidate_limit(Block,DecodeMode,Limit),
+    defined_symbol(Val,_,_,_,_,"$d"),
+    Block <= Val, Val< Limit.
+
+inferred_symbol_name(Addr-1,cat(NameVal,"_t"),"Normal"):-
+    binary_isa("ARM"),
+    defined_symbol(Addr,_,"FUNC",_,_,NameVal),
+    Addr % 2 = 1.
+
+symbolic_operand_candidate(EA,Op_index,Dest,Type),
+symbolic_operand_candidate(EA+4,Op_index2,Dest,Type):-
+    code(EA,DecodeMode),
+    code(EA+4,DecodeMode),
+    instruction_get_operation(EA,DecodeMode,"MOVW"),
+    instruction_get_operation(EA+4,DecodeMode,"MOVT"),
+    instruction_get_op(EA,DecodeMode,Op_index,Op),
+    op_immediate(Op,DestLow),
+    instruction_get_op(EA+4,DecodeMode,Op_index2,Op2),
+    op_immediate(Op2,DestHigh),
+    Dest = (DestHigh*2^16) bor DestLow,
+  (
+        code(Dest,_), Type="code"
+        ;
+        data_segment(Begin,End),
+        Dest >= Begin, Dest <= End,
+        Type = "data"
+    ).

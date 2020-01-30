@@ -164,6 +164,7 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4,DecodeMode):-
     .init arch = X64
 #else
     .init arch = ARM
+    #include "arm_binaries.dl"
 #endif
 
 .init function_inference = basic_function_inference
