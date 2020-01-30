@@ -684,7 +684,7 @@ void buildCodeBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                 if(gtirb::ByteInterval &byteInterval = *it.begin(); byteInterval.getAddress())
                 {
                     uint64_t blockOffset = blockAddress - *byteInterval.getAddress();
-                    uint64_t isThumb = decodeMode == "THUMB";
+                    uint64_t isThumb = decodeMode == "Thumb";
                     byteInterval.addBlock<gtirb::CodeBlock>(context, blockOffset, size, isThumb);
                 }
             }
