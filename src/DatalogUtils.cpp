@@ -128,29 +128,37 @@ std::string str_toupper(std::string s)
     return s;
 }
 
-std::string getRegisterName(const csh& RawHandle, unsigned int reg)
+std::string getRegisterName(const MultiArchCapstoneHandle& CsHandle, unsigned int reg)
 {
-    //   if(reg == X86_REG_INVALID)
-    //       return "NONE";
-    if(reg == ARM_REG_INVALID)
-        return "NONE";
-    std::string name = str_toupper(cs_reg_name(RawHandle, reg));
+    switch(CsHandle.Isa)
+    {
+        case gtirb::ISAID::X64:
+            if(reg == X86_REG_INVALID)
+                return "NONE";
+            break;
+        case gtirb::ISAID::ARM:
+            if(reg == ARM_REG_INVALID)
+                return "NONE";
+            break;
+    }
+    std::string name = str_toupper(cs_reg_name(CsHandle.RawHandle, reg));
     return name;
 }
 
-std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& RawHandle, const cs_x86_op& op)
+std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const MultiArchCapstoneHandle& CsHandle,
+                                                    const cs_x86_op& op)
 {
     switch(op.type)
     {
         case X86_OP_REG:
-            return getRegisterName(RawHandle, op.reg);
+            return getRegisterName(CsHandle, op.reg);
         case X86_OP_IMM:
             return op.imm;
         case X86_OP_MEM:
         {
-            IndirectOp I = {getRegisterName(RawHandle, op.mem.segment),
-                            getRegisterName(RawHandle, op.mem.base),
-                            getRegisterName(RawHandle, op.mem.index),
+            IndirectOp I = {getRegisterName(CsHandle, op.mem.segment),
+                            getRegisterName(CsHandle, op.mem.base),
+                            getRegisterName(CsHandle, op.mem.index),
                             op.mem.scale,
                             op.mem.disp,
                             op.size * 8};
@@ -163,19 +171,20 @@ std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& RawHandle, const 
     }
 }
 
-std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& RawHandle, const cs_arm_op& op)
+std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const MultiArchCapstoneHandle& CsHandle,
+                                                    const cs_arm_op& op)
 {
     switch(op.type)
     {
         case ARM_OP_REG:
-            return getRegisterName(RawHandle, op.reg);
+            return getRegisterName(CsHandle, op.reg);
         case ARM_OP_IMM:
             return op.imm;
         case ARM_OP_MEM:
         {
             IndirectOp I = {"NONE",
-                            getRegisterName(RawHandle, op.mem.base),
-                            getRegisterName(RawHandle, op.mem.index),
+                            getRegisterName(CsHandle, op.mem.base),
+                            getRegisterName(CsHandle, op.mem.index),
                             op.mem.scale * (1 << op.mem.lshift),
                             op.mem.disp,
                             32};
@@ -228,7 +237,7 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
                 for(int i = 0; i < opCount; i++)
                 {
                     const auto& op = detail.operands[i];
-                    uint64_t index = OpDict.add(buildOperand(CsHandle.RawHandle, op));
+                    uint64_t index = OpDict.add(buildOperand(CsHandle, op));
                     op_codes.push_back(index);
                 }
                 // we put the destination operand at the end
@@ -253,7 +262,7 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
                 for(int i = 0; i < opCount; i++)
                 {
                     const auto& op = detail.operands[i];
-                    uint64_t index = OpDict.add(buildOperand(CsHandle.RawHandle, op));
+                    uint64_t index = OpDict.add(buildOperand(CsHandle, op));
                     op_codes.push_back(index);
                 }
                 // we put the destination operand at the end
