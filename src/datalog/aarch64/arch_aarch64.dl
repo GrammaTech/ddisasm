@@ -2,7 +2,6 @@
 //===- arch_aarch64.dl --------------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
-//  Copyright (C) 2020, The Binrat Developers.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -14,6 +13,12 @@
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 //  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
 /**
@@ -28,8 +33,11 @@ and characteristics
 #include "interrupt_operations.dl"
 #include "registers.dl"
 
-/* CMOV is not used by arm64 */
 .decl conditional_mov(EA:address)
+
+conditional_mov(EA):-
+    instruction_get_operation(EA,Operation),
+    contains("CMOV",Operation).
 
 .decl mov(EA:address)
 
@@ -37,14 +45,19 @@ mov(EA):-
     instruction_get_operation(EA,Operation),
     contains("MOV",Operation).
 
-/* TODO: Should all hint instructions be added? */
 .decl is_nop(EA:address)
 
 is_nop(EA):-
     instruction_get_operation(EA,"NOP").
 
+is_nop(EA):-
+    instruction(EA,_,_,"XCHG",Op,Op,0,0),
+    op_regdirect(Op,"AX").
+
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
+op_does_not_read_dest_reg("LEA").
+op_does_not_read_dest_reg("POP").
 
 
 
@@ -52,20 +65,21 @@ is_nop(EA):-
 
 arithmetic_operation("ADD").
 arithmetic_operation("SUB").
-/* TODO: is 'MUL' too broad? */
-arithmetic_operation("MUL").
-/* TODO: is 'SHL' appropriate? See LSL/LSR/ASR/ROR */
+arithmetic_operation("INC").
+arithmetic_operation("DEC").
+arithmetic_operation("IMUL").
 arithmetic_operation("SHL").
 
 .decl logic_operation(Operation:symbol)
 
 logic_operation("AND").
 logic_operation("XOR").
-logic_operation("ORN").
-logic_operation("EON").
+logic_operation("OR").
+logic_operation("TEST").
 
 .decl read_only_operation(Operation:symbol)
 
+read_only_operation("TEST").
 read_only_operation("CMP").
 
 .decl write_only_operation(Operation:symbol)
@@ -74,11 +88,9 @@ write_only_operation("POP").
 
 .decl one_op_write(Operation:symbol)
 
-/* TODO: are there any ARM instructions worth adding here?
 one_op_write("INC").
 one_op_write("DEC").
 one_op_write("POP").
-*/
 
 .decl pointer_size(n:number) inline
 
@@ -86,22 +98,23 @@ pointer_size(8).
 
 .decl loop_operation(operation:symbol)
 
-/* TODO: are there equivalents for ARM?
 loop_operation("LOOP").
 loop_operation("LOOPNE").
 loop_operation("LOOPE").
-*/
 
-/* prefixes are not used by arm64 */
 .decl loop_prefix(prefix:symbol)
 
-/* calls are not used by arm64 */
+loop_prefix("REP").
+loop_prefix("REPE").
+loop_prefix("REPNE").
+
 .decl call_operation(operation:symbol)
+
+call_operation("CALL").
 
 .decl syscall_operation(operation:symbol)
 
-/* TODO: This is mapped from x86 'SYSCALL'. Is it close enough? */
-syscall_operation("SVC").
+syscall_operation("SYSCALL").
 
 .decl return_operation(operation:symbol)
 
@@ -110,18 +123,18 @@ return_operation("RET").
 .decl halt_operation(operation:symbol)
 
 halt_operation("HLT").
+halt_operation("UD2").
 
 .decl cmp_operation(Operation:symbol)
 
 cmp_operation("CMP").
-
+cmp_operation("TEST").
 
 // These operations are either special like LEA (does not read memory) or
 // are not decoded corectly from capstone
 // FIXME: review this list when capstone is updated
 .decl operation_size_exception(EA:address,Op_index:number,Size:number)
 
-/* TODO: Neither are present on ARM, but check usage of operation_size_exception
 operation_size_exception(EA,Index,8):-
     instruction_get_operation(EA,"MOVSD"),
     instruction_get_op(EA,Index,Op),
@@ -131,7 +144,7 @@ operation_size_exception(EA,Index,0):-
     instruction_get_operation(EA,"LEA"),
     instruction_get_op(EA,Index,Op),
     op_indirect(Op,_,_,_,_,_,_).
-*/
+
 
 
 // arithmetic operation on two source registers
@@ -146,6 +159,14 @@ reg_reg_arithmetic_operation(EA,Reg2,Reg1,Reg2,1,0):-
     instruction(EA,_,_,"ADD",Op1,Op2,0,0), Op1 != Op2,
     op_regdirect_contains_reg(Op2,Reg2),
     op_regdirect_contains_reg(Op1,Reg1).
+
+reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset):-
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0),
+    op_regdirect_contains_reg(Op2,Reg_def),
+    op_indirect(Op1,_,Reg1_n,Reg2_n,Mult,Offset,_),
+    arch.track_register(Reg1_n,Reg1),
+    arch.track_register(Reg2_n,Reg2),
+    Reg1 != Reg2.
 
 reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
     reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
