@@ -198,7 +198,7 @@ def disassemble_reassemble_test(make_dir, binary,
                 if not reassemble_function(reassembly_compiler,binary,extra_reassemble_flags):
                     reassembly_errors+=1
                     continue
-                if skip_test:
+                if skip_test or reassemble_function == skip_reassemble:
                     print(bcolors.warning(" No testing"))
                     continue
                 if not test():
