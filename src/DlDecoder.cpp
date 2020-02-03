@@ -111,6 +111,19 @@ std::string getISAString(gtirb::ISA format)
     }
 }
 
+unsigned int getISAPointerSize(gtirb::ISA Isa)
+{
+    switch(Isa)
+    {
+        case gtirb::ISA::X64:
+            return 8;
+        case gtirb::ISA::ARM:
+            return 4;
+        default:
+            throw std::runtime_error("Unsupported ISA ");
+    }
+}
+
 void addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
     auto *rel = prog->getRelation("symbol");
@@ -185,14 +198,14 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
             for(const auto byteInterval : section.byte_intervals())
             {
                 decodeSection(byteInterval);
-                storeDataSection(byteInterval, minAddr, maxAddr);
+                storeDataSection(byteInterval, minAddr, maxAddr,getISAPointerSize(module.getISA()));
             }
         }
         if(isNonZeroDataSection(format, extraInfo))
         {
             for(const auto byteInterval : section.byte_intervals())
             {
-                storeDataSection(byteInterval, minAddr, maxAddr);
+                storeDataSection(byteInterval, minAddr, maxAddr,getISAPointerSize(module.getISA()));
             }
         }
     }
@@ -299,7 +312,7 @@ void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
 }
 
 void DlDecoder::storeDataSection(const gtirb::ByteInterval &byteInterval, gtirb::Addr min_address,
-                                 gtirb::Addr max_address)
+                                 gtirb::Addr max_address,unsigned int PointerSize)
 {
     assert(byteInterval.getAddress() && "Failed to store section without address.");
     assert(byteInterval.getSize() == byteInterval.getInitializedSize()
@@ -318,9 +331,13 @@ void DlDecoder::storeDataSection(const gtirb::ByteInterval &byteInterval, gtirb:
         data_bytes.push_back({ea, content_byte});
 
         // store the address
-        if(size >= 8)
+        if(size >= PointerSize)
         {
-            gtirb::Addr content(*((int64_t *)buf));
+            gtirb::Addr content;
+            if(PointerSize == 8)
+                content = gtirb::Addr(*((uint64_t *)buf));
+            if(PointerSize == 4)
+                content = gtirb::Addr(*((uint32_t *)buf));
             if(can_be_address(content))
                 data_addresses.push_back({ea, content});
         }

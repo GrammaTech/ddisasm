@@ -70,7 +70,7 @@ block_next(EA,Block2):-
 
 block_next(EA,EA_next):-
     block_last_instruction(_,DecodeMode,EA),
-    direct_jump(EA,DecodeMode,EA_next).
+    direct_jump(EA,DecodeMode,EA_next,_).
 
 //////////////////////////////////////////////////////////////////////////////
 // Main definitions
@@ -90,7 +90,7 @@ flow_def(EA_jump,Reg,EA_target,Immediate):-
     code(EA,DecodeMode),
     cmp_immediate_to_reg(EA,DecodeMode,Reg,_,Immediate),
     next(EA,DecodeMode,EA_jump),
-    direct_jump(EA_jump,DecodeMode,EA_target),
+    direct_jump(EA_jump,DecodeMode,EA_target,_),
     instruction_get_operation(EA_jump,DecodeMode,Operation),
     arch.jump_equal_operation(Operation).
 
@@ -98,7 +98,7 @@ flow_def(EA_jump,Reg,EA_target,Immediate):-
     code(EA,DecodeMode),
     cmp_immediate_to_reg(EA,DecodeMode,Reg,_,Immediate),
     next(EA,DecodeMode,EA_jump),
-    direct_jump(EA_jump,DecodeMode,_),
+    direct_jump(EA_jump,DecodeMode,_,_),
     next(EA_jump,DecodeMode,EA_target),
     instruction_get_operation(EA_jump,DecodeMode,Operation),
     arch.jump_unequal_operation(Operation).

@@ -33,6 +33,20 @@ and characteristics
 #include "interrupt_operations.dl"
 #include "registers.dl"
 
+.decl existing_decode_modes(DecodeMode:symbol)
+
+existing_decode_modes("Normal").
+
+
+.decl other_decode_mode(DecodeMode:symbol,DecodeMode2:symbol)
+
+other_decode_mode(DecodeMode,DecodeMode2):-
+    existing_decode_modes(DecodeMode),
+    existing_decode_modes(DecodeMode2),
+    DecodeMode != DecodeMode2.
+
+
+
 .decl conditional_mov(EA:address,DecodeMode:symbol)
 
 conditional_mov(EA,DecodeMode):-
@@ -60,6 +74,12 @@ is_nop(EA,DecodeMode):-
 return(EA,DecodeMode):-
     return_operation(Operation),
     instruction_get_operation(EA,DecodeMode,Operation).
+
+.decl jump(EA:address,DecodeMode:symbol)
+
+jump(EA,DecodeMode):-
+    instruction_get_operation(EA,DecodeMode,Operation),
+    jump_operation(Operation).
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
@@ -136,6 +156,9 @@ halt_operation("UD2").
 
 cmp_operation("CMP").
 cmp_operation("TEST").
+
+.decl switch_decode_mode_operation(operation:symbol)
+
 
 // These operations are either special like LEA (does not read memory) or
 // are not decoded correctly from capstone

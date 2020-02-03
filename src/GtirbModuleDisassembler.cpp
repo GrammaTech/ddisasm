@@ -65,7 +65,8 @@ struct DecodedInstruction
     int64_t displacementOffset;
 };
 
-std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SouffleProgram *prog)
+std::map<std::pair<gtirb::Addr, std::string>, DecodedInstruction> recoverInstructions(
+    souffle::SouffleProgram *prog)
 {
     std::map<uint64_t, ImmOp> Immediates;
     for(auto &output : *prog->getRelation("op_immediate"))
@@ -84,7 +85,7 @@ std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SoufflePr
             >> indirect.multiplier >> indirect.displacement >> size;
         Indirects[operandCode] = indirect;
     };
-    std::map<gtirb::Addr, DecodedInstruction> insns;
+    std::map<std::pair<gtirb::Addr, std::string>, DecodedInstruction> insns;
     for(auto &output : *prog->getRelation("instruction_complete"))
     {
         DecodedInstruction insn;
@@ -106,7 +107,9 @@ std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SoufflePr
             }
         }
         output >> insn.immediateOffset >> insn.displacementOffset;
-        insns[EA] = insn;
+        std::string DecodeMode;
+        output >> DecodeMode;
+        insns[std::pair(EA, DecodeMode)] = insn;
     }
     return insns;
 }
@@ -116,11 +119,11 @@ struct CodeInBlock
     CodeInBlock(souffle::tuple &tuple)
     {
         assert(tuple.size() == 3);
-        std::string DecodeMode;
         tuple >> EA >> DecodeMode >> BlockAddress;
     };
 
     gtirb::Addr EA{0};
+    std::string DecodeMode;
     gtirb::Addr BlockAddress{0};
 };
 
@@ -648,19 +651,20 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
         convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog),
         convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog),
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog)};
-    std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
+    std::map<std::pair<gtirb::Addr, std::string>, DecodedInstruction> decodedInstructions =
+        recoverInstructions(prog);
 
     for(auto &cib : codeInBlock)
     {
-        const auto inst = decodedInstructions.find(cib.EA);
+        const auto inst = decodedInstructions.find(std::pair(cib.EA, cib.DecodeMode));
         assert(inst != decodedInstructions.end());
         for(auto &op : inst->second.Operands)
         {
             if(auto *immediate = std::get_if<ImmOp>(&op.second))
-                buildSymbolicImmediate(context, module, inst->first, inst->second, op.first,
+                buildSymbolicImmediate(context, module, inst->first.first, inst->second, op.first,
                                        *immediate, symbolicInfo);
             if(auto *indirect = std::get_if<IndirectOp>(&op.second))
-                buildSymbolicIndirect(context, module, inst->first, inst->second, op.first,
+                buildSymbolicIndirect(context, module, inst->first.first, inst->second, op.first,
                                       *indirect, symbolicInfo);
         }
     }

@@ -132,11 +132,11 @@ std::string getRegisterName(const MultiArchCapstoneHandle& CsHandle, unsigned in
 {
     switch(CsHandle.Isa)
     {
-        case gtirb::ISAID::X64:
+        case gtirb::ISA::X64:
             if(reg == X86_REG_INVALID)
                 return "NONE";
             break;
-        case gtirb::ISAID::ARM:
+        case gtirb::ISA::ARM:
             if(reg == ARM_REG_INVALID)
                 return "NONE";
             break;
@@ -259,6 +259,9 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
             if(name != "NOP")
             {
                 auto opCount = detail.op_count;
+                // FIXME: Consider cases such as pop, push, ldm, stm that contain a register bitmap
+                // Probably we should just store the register bitmap here and interpret it in
+                // datalog.
                 for(int i = 0; i < opCount; i++)
                 {
                     const auto& op = detail.operands[i];
@@ -269,9 +272,7 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
                 if(opCount > 0)
                     std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
             }
-            return {insn.address, insn.size, prefix, name, op_codes,
-                    // FIXME
-                    0, 0, DecodeMode};
+            return {insn.address, insn.size, prefix, name, op_codes, 0, 0, DecodeMode};
         }
 
         default:

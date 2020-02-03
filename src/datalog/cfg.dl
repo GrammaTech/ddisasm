@@ -96,8 +96,8 @@ resolved_jump(EA,DecodeMode,Dest):-
 cfg_edge(Src,Dest,Conditional,Indirect,"branch"):-
     refined_block_last_instruction(Src,DecodeMode,EA),
     (
-        direct_jump(EA,DecodeMode,Dest), Indirect = "false";
-        pc_relative_jump(EA,DecodeMode,Dest), Indirect = "false";
+        direct_jump(EA,DecodeMode,Dest,_), Indirect = "false";
+        pc_relative_jump(EA,DecodeMode,Dest,_), Indirect = "false";
         resolved_jump(EA,DecodeMode,Dest), Indirect = "true"
     ),
     refined_block(Dest,_),
@@ -109,10 +109,10 @@ cfg_edge(Src,Dest,Conditional,Indirect,"branch"):-
 cfg_edge(Src,Dest,"false","false","call"):-
     refined_block_last_instruction(Src,DecodeMode,EA),
     (
-        direct_call(EA,DecodeMode,Dest);
-        pc_relative_call(EA,DecodeMode,Dest)
+        direct_call(EA,DecodeMode,Dest,DecodeModeDest);
+        pc_relative_call(EA,DecodeMode,Dest,DecodeModeDest)
     ),
-    refined_block(Dest,_).
+    refined_block(Dest,DecodeModeDest).
 
 cfg_edge(Src,Dest,"false","false","fallthrough"):-
     refined_block_last_instruction(Src,DecodeMode,EA),
@@ -161,8 +161,8 @@ cfg_edge_to_symbol(Src,Symbol):-
 // pc relative jump with undefined destination
 cfg_edge_to_top(Src,Conditional,"branch"):-
     refined_block_last_instruction(Src,DecodeMode,EA),
-    pc_relative_jump(EA,DecodeMode,Dest),
-    !refined_block(Dest,_),
+    pc_relative_jump(EA,DecodeMode,Dest,DecodeModeDest),
+    !refined_block(Dest,DecodeModeDest),
     (
         unconditional_jump(EA,DecodeMode), Conditional = "false";
         !unconditional_jump(EA,DecodeMode),Conditional = "true"

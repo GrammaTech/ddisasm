@@ -33,6 +33,19 @@ and characteristics
 #include "interrupt_operations.dl"
 #include "registers.dl"
 
+
+.decl existing_decode_modes(DecodeMode:symbol)
+
+existing_decode_modes("Normal").
+existing_decode_modes("Thumb").
+
+.decl other_decode_mode(DecodeMode:symbol,DecodeMode2:symbol)
+
+other_decode_mode(DecodeMode,DecodeMode2):-
+    existing_decode_modes(DecodeMode),
+    existing_decode_modes(DecodeMode2),
+    DecodeMode != DecodeMode2.
+
 .decl conditional_mov(EA:address,DecodeMode:symbol)
 
 //conditional_mov(EA,DecodeMode):-
@@ -65,6 +78,18 @@ return(EA,DecodeMode):-
     instruction_get_op(EA,DecodeMode,_,Op),
     op_regdirect(Op,Reg),
     pc_register(Reg).
+
+.decl jump(EA:address,DecodeMode:symbol)
+.output jump
+
+jump(EA,DecodeMode):-
+    instruction_get_operation(EA,DecodeMode,Operation),
+    jump_operation(Operation).
+
+jump(EA,DecodeMode):-
+    instruction_get_operation(EA,DecodeMode,"LDR"),
+    instruction_get_dest_op(EA,DecodeMode,_,Op),
+    op_regdirect(Op,"PC").
 
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
@@ -123,6 +148,74 @@ pointer_size(4).
 .decl call_operation(operation:symbol)
 
 call_operation("BL").
+call_operation("BLEQ").
+call_operation("BLNE").
+call_operation("BLCS").
+call_operation("BLCC").
+call_operation("BLMI").
+call_operation("BLPL").
+call_operation("BLVS").
+call_operation("BLVC").
+call_operation("BLHI").
+call_operation("BLLS").
+call_operation("BLGE").
+call_operation("BLLT").
+call_operation("BLGT").
+call_operation("BLLE").
+call_operation("BLAL").
+
+call_operation("BLX").
+call_operation("BLXEQ").
+call_operation("BLXNE").
+call_operation("BLXCS").
+call_operation("BLXCC").
+call_operation("BLXMI").
+call_operation("BLXPL").
+call_operation("BLXVS").
+call_operation("BLXVC").
+call_operation("BLXHI").
+call_operation("BLXLS").
+call_operation("BLXGE").
+call_operation("BLXLT").
+call_operation("BLXGT").
+call_operation("BLXLE").
+call_operation("BLXAL").
+
+.decl switch_decode_mode_operation(operation:symbol)
+
+switch_decode_mode_operation("BLX").
+switch_decode_mode_operation("BLXEQ").
+switch_decode_mode_operation("BLXNE").
+switch_decode_mode_operation("BLXCS").
+switch_decode_mode_operation("BLXCC").
+switch_decode_mode_operation("BLXMI").
+switch_decode_mode_operation("BLXPL").
+switch_decode_mode_operation("BLXVS").
+switch_decode_mode_operation("BLXVC").
+switch_decode_mode_operation("BLXHI").
+switch_decode_mode_operation("BLXLS").
+switch_decode_mode_operation("BLXGE").
+switch_decode_mode_operation("BLXLT").
+switch_decode_mode_operation("BLXGT").
+switch_decode_mode_operation("BLXLE").
+switch_decode_mode_operation("BLXAL").
+
+switch_decode_mode_operation("BX").
+switch_decode_mode_operation("BXEQ").
+switch_decode_mode_operation("BXNE").
+switch_decode_mode_operation("BXCS").
+switch_decode_mode_operation("BXCC").
+switch_decode_mode_operation("BXMI").
+switch_decode_mode_operation("BXPL").
+switch_decode_mode_operation("BXVS").
+switch_decode_mode_operation("BXVC").
+switch_decode_mode_operation("BXHI").
+switch_decode_mode_operation("BXLS").
+switch_decode_mode_operation("BXGE").
+switch_decode_mode_operation("BXLT").
+switch_decode_mode_operation("BXGT").
+switch_decode_mode_operation("BXLE").
+switch_decode_mode_operation("BXAL").
 
 .decl syscall_operation(operation:symbol)
 

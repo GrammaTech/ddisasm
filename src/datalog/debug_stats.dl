@@ -52,6 +52,6 @@ immediate_symbol(EA,Op_index,Dest):-
     code(EA,DecodeMode),
     may_have_symbolic_immediate(EA,DecodeMode,Dest),
     instruction_get_op(EA,DecodeMode,Op_index,Op),
-    !direct_jump(EA,DecodeMode,_),
-    !direct_call(EA,DecodeMode,_),
+    !direct_jump(EA,DecodeMode,_,_),
+    !direct_call(EA,DecodeMode,_,_),
     op_immediate(Op,Dest).

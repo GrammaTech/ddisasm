@@ -48,7 +48,7 @@ function_entry(EA):-
         start_function(EA);
         section(_,_,EA);
         //called
-        direct_call(EA_caller,DecodeMode,EA),
+        direct_call(EA_caller,DecodeMode,EA,_),
         code(EA_caller,DecodeMode)
     ).
 

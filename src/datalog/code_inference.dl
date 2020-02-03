@@ -108,39 +108,39 @@ may_have_symbolic_immediate(Src,DecodeMode,Dest):-
         !arch.logic_operation(Operation)
     ).
 
-may_have_symbolic_immediate(Src,DecodeMode,Dest):-
-    direct_jump(Src,DecodeMode,Dest).
-
-may_have_symbolic_immediate(Src,DecodeMode,Dest):-
-    direct_call(Src,DecodeMode,Dest).
 
 .decl invalid(EA:address,DecodeMode:symbol)
+.output invalid
+.decl invalid_edge(EA:address,DecodeMode:symbol,EA2:address)
+.output invalid_edge
 
 // if the decoder failed to decode any instruction at EA, EA is invalid
 invalid(EA,DecodeMode):-
     invalid_op_code(EA,DecodeMode).
 
 // if EA contains a direct call or jump to something that cannot be code, it is invalid
+invalid_edge(EA,DecodeMode,Not_code),
 invalid(EA,DecodeMode):-
     (
-        must_fallthrough(EA,DecodeMode,Not_code);
-        direct_jump(EA,DecodeMode,Not_code);
-        direct_call(EA,DecodeMode,Not_code)
+        must_fallthrough(EA,DecodeMode,Not_code), DecodeMode2 = DecodeMode;
+        direct_jump(EA,DecodeMode,Not_code,DecodeMode2);
+        direct_call(EA,DecodeMode,Not_code,DecodeMode2)
         //pc_relative_jump(EA,Not_code);
         //pc_relative_call(EA,Not_code)
     ),
-    !instruction(Not_code,_,_,_,_,_,_,_,DecodeMode).
+    !instruction(Not_code,_,_,_,_,_,_,_,DecodeMode2).
 
 // propagate the invalid instructions backwards until ret or jmp (encoded in must_fallthrough)
 // propagate through direct jumps and calls
+invalid_edge(From,DecodeMode,To),
 invalid(From,DecodeMode):-
-    invalid(To,DecodeMode),
+    invalid(To,DecodeModeTo),
     (
-        must_fallthrough(From,DecodeMode,To);
-        direct_jump(From,DecodeMode,To);
-        direct_call(From,DecodeMode,To);
-        pc_relative_jump(From,DecodeMode,To);
-        pc_relative_call(From,DecodeMode,To)
+        must_fallthrough(From,DecodeMode,To), DecodeModeTo = DecodeMode;
+        direct_jump(From,DecodeMode,To,DecodeModeTo);
+        direct_call(From,DecodeMode,To,DecodeModeTo);
+        pc_relative_jump(From,DecodeMode,To,DecodeModeTo);
+        pc_relative_call(From,DecodeMode,To,DecodeModeTo)
     ).
 
 .decl possible_ea(EA:address,DecodeMode:symbol)
@@ -199,11 +199,17 @@ block_limit(EA):-
 
 .decl possible_target_from(dest:address, DecodeMode:symbol ,src:address)
 
-possible_target_from(Dest,DecodeMode,Src):-
+possible_target_from(Dest,DecodeModeDest,Src):-
     code_in_block_candidate(Src,DecodeMode,_),
     (
-        may_have_symbolic_immediate(Src,DecodeMode,Dest);
-        pc_relative_operand(Src,DecodeMode,_,Dest)
+        may_have_symbolic_immediate(Src,DecodeMode,Dest),
+        arch.existing_decode_modes(DecodeModeDest)
+        ;
+        direct_jump(Src,DecodeMode,Dest,DecodeModeDest);
+        direct_call(Src,DecodeMode,Dest,DecodeModeDest);
+        pc_relative_jump(Src,DecodeMode,Dest,DecodeModeDest);
+        pc_relative_call(Src,DecodeMode,Dest,DecodeModeDest)
+
     ).
 
 .decl possible_target(Target:address, DecodeMode:symbol)
@@ -314,10 +320,10 @@ block_candidate_limit(Block,DecodeMode,Next):-
 
 multiple_fallthrough_to(Block):-
     may_fallthrough(EA,DecodeMode,Block),
-    code_in_block_candidate_refined(EA,DecodeMode,Block_pred),
+    code_in_block_candidate_refined(EA,DecodeMode,BlockPred),
     may_fallthrough(EA2,DecodeMode,Block),
-    code_in_block_candidate_refined(EA2,DecodeMode,Block_pred2),
-    Block_pred != Block_pred2.
+    code_in_block_candidate_refined(EA2,DecodeMode,BlockPred2),
+    BlockPred != BlockPred2.
 
 .decl instruction_range(EA:address,DecodeMode:symbol,EA_Instruction:address)
 
@@ -392,10 +398,10 @@ discarded_block(Block,DecodeMode):-
 
 // propagate discarding blocks through direct jumps or calls
 discarded_block(Block,DecodeMode):-
-    discarded_block(Block2,DecodeMode),
+    discarded_block(Block2,DecodeMode2),
     (
-        direct_jump(EA,DecodeMode,Block2);
-        direct_call(EA,DecodeMode,Block2)
+        direct_jump(EA,DecodeMode,Block2,DecodeMode2);
+        direct_call(EA,DecodeMode,Block2,DecodeMode2)
     ),
     code_in_block_candidate_refined(EA,DecodeMode,Block).
 
@@ -487,48 +493,48 @@ block_points(Block,DecodeMode,0,1,"address in data array"):-
         address_in_data(Address-8,_)
     ).
 
-block_points(Block,DecodeMode,Block_pred,6,"direct jump"):-
+block_points(Block,DecodeMode,BlockPred,6,"direct jump"):-
     block_is_overlapping(Block,DecodeMode),
-    direct_jump(EA,DecodeMode,Block),
-    code_in_block_candidate_refined(EA,DecodeMode,Block_pred),
-    Block_pred != Block,
-    !block_is_overlapping(Block_pred,DecodeMode).
+    direct_jump(EA,DecodeModePred,Block,DecodeMode),
+    code_in_block_candidate_refined(EA,DecodeModePred,BlockPred),
+    BlockPred != Block,
+    !block_is_overlapping(BlockPred,DecodeModePred).
 
-block_points(Block,DecodeMode,Block_pred,6,"direct call"):-
+block_points(Block,DecodeMode,BlockPred,6,"direct call"):-
     block_is_overlapping(Block,DecodeMode),
-    direct_call(EA,DecodeMode,Block),
-    code_in_block_candidate_refined(EA,DecodeMode,Block_pred),
-    Block_pred != Block,
-    !block_is_overlapping(Block_pred,DecodeMode).
+    direct_call(EA,DecodeModePred,Block,DecodeMode),
+    code_in_block_candidate_refined(EA,DecodeModePred,BlockPred),
+    BlockPred != Block,
+    !block_is_overlapping(BlockPred,DecodeModePred).
 
-block_points(Block,DecodeMode,Block_pred,2,"must-fallthrough"):-
+block_points(Block,DecodeMode,BlockPred,2,"must-fallthrough"):-
     block_is_overlapping(Block,DecodeMode),
     must_fallthrough(EA,DecodeMode,Block),
-    code_in_block_candidate_refined(EA,DecodeMode,Block_pred),
-    !block_is_overlapping(Block_pred,DecodeMode).
+    code_in_block_candidate_refined(EA,DecodeMode,BlockPred),
+    !block_is_overlapping(BlockPred,DecodeMode).
 
-block_points(Block,DecodeMode,Block_pred,7,"may-fallthrough"):-
+block_points(Block,DecodeMode,BlockPred,7,"may-fallthrough"):-
     block_is_overlapping(Block,DecodeMode),
     may_fallthrough(EA,DecodeMode,Block),
-    code_in_block_candidate_refined(EA,DecodeMode,Block_pred),
-    !block_is_overlapping(Block_pred,DecodeMode).
+    code_in_block_candidate_refined(EA,DecodeMode,BlockPred),
+    !block_is_overlapping(BlockPred,DecodeMode).
 
 // it fits but the previous block does not fallthrough
-block_points(Block,DecodeMode,Block_pred,2,"fits"):-
+block_points(Block,DecodeMode,BlockPred,2,"fits"):-
     block_is_overlapping(Block,DecodeMode),
     after_end(Block,EA),
-    code_in_block_candidate_refined(EA,DecodeMode,Block_pred),
-    !block_is_overlapping(Block_pred,DecodeMode).
+    code_in_block_candidate_refined(EA,DecodeMode,BlockPred),
+    !block_is_overlapping(BlockPred,DecodeMode).
 
 // its address appears somewhere
 block_points(Block,DecodeMode,0,3,"appears"):-
     block_is_overlapping(Block,DecodeMode),
     possible_target_from(Block,DecodeMode,EA),
-    !direct_jump(EA,DecodeMode,Block),
-    !direct_call(EA,DecodeMode,Block),
-    code_in_block_candidate_refined(EA,DecodeMode,Block_pred),
-    Block_pred != Block,
-    !block_is_overlapping(Block_pred,DecodeMode).
+    !direct_jump(EA,DecodeModePred,Block,DecodeMode),
+    !direct_call(EA,DecodeModePred,Block,DecodeMode),
+    code_in_block_candidate_refined(EA,DecodeModePred,BlockPred),
+    BlockPred != Block,
+    !block_is_overlapping(BlockPred,DecodeModePred).
 
 block_points(Block,DecodeMode,0,3,"relative jump table target"):-
     block_is_overlapping(Block,DecodeMode),
@@ -543,77 +549,77 @@ block_points(Block,DecodeMode,Block_succ,1,"fallthough_to"):-
     !block_is_overlapping(Block_succ,DecodeMode).
 
 // transitivity for fallthrough and direct jumps and calls
-block_points(Block,DecodeMode,Block_pred2,Points,cat("fallthrough-transitive ",Why)):-
+block_points(Block,DecodeMode,BlockPred2,Points,cat("fallthrough-transitive ",Why)):-
     block_is_overlapping(Block,DecodeMode),
     may_fallthrough(EA,DecodeMode,Block),
     !multiple_fallthrough_to(Block),
-    code_in_block_candidate_refined(EA,DecodeMode,Block_pred),
-    block_is_overlapping(Block_pred,DecodeMode),
-    block_points(Block_pred,DecodeMode,Block_pred2,Points,Why),
+    code_in_block_candidate_refined(EA,DecodeMode,BlockPred),
+    block_is_overlapping(BlockPred,DecodeMode),
+    block_points(BlockPred,DecodeMode,BlockPred2,Points,Why),
     Points != 0.
 
-block_points(Block,DecodeMode,Block_pred2,Points2,cat("fits-transitive",Why)):-
+block_points(Block,DecodeMode,BlockPred2,Points2,cat("fits-transitive",Why)):-
     block_is_overlapping(Block,DecodeMode),
     after_end(Block,EA),
-    code_in_block_candidate_refined(EA,DecodeMode,Block_pred),
-    block_is_overlapping(Block_pred,DecodeMode),
-    block_points(Block_pred,_,Block_pred2,Points,Why),
+    code_in_block_candidate_refined(EA,DecodeMode,BlockPred),
+    block_is_overlapping(BlockPred,DecodeMode),
+    block_points(BlockPred,_,BlockPred2,Points,Why),
     (
         Points > 2, Points2 = Points-2
         ;
         Points < -2, Points2 = Points+2
     ).
 
-block_points(Block,DecodeMode,Block_pred2,Points2,cat("multiple-fallthrough-transitive ",Why)):-
+block_points(Block,DecodeMode,BlockPred2,Points2,cat("multiple-fallthrough-transitive ",Why)):-
     block_is_overlapping(Block,DecodeMode),
     may_fallthrough(EA,DecodeMode,Block),
     multiple_fallthrough_to(Block),
-    code_in_block_candidate_refined(EA,DecodeMode,Block_pred),
-    block_is_overlapping(Block_pred,DecodeMode),
-    block_points(Block_pred,DecodeMode,Block_pred2,Points,Why),
+    code_in_block_candidate_refined(EA,DecodeMode,BlockPred),
+    block_is_overlapping(BlockPred,DecodeMode),
+    block_points(BlockPred,DecodeMode,BlockPred2,Points,Why),
     (
         Points > 1, Points2 = Points-1
         ;
         Points < -1, Points2 = Points+1
     ).
 
-block_points(Block,DecodeMode,Block_pred2,Points,"jump-transitive"):-
+block_points(Block,DecodeMode,BlockPred2,Points,"jump-transitive"):-
     block_is_overlapping(Block,DecodeMode),
-    direct_jump(EA,DecodeMode,Block),
+    direct_jump(EA,DecodeModePred,Block,DecodeMode),
     // do not count instructions that fallthrough and jump to the same place twice
     !may_fallthrough(EA,DecodeMode,Block),
-    code_in_block_candidate_refined(EA,DecodeMode,Block_pred),
-    block_is_overlapping(Block_pred,DecodeMode),
-    block_points(Block_pred,DecodeMode,Block_pred2,Points,_),
+    code_in_block_candidate_refined(EA,DecodeModePred,BlockPred),
+    block_is_overlapping(BlockPred,DecodeModePred),
+    block_points(BlockPred,DecodeModePred,BlockPred2,Points,_),
     Points != 0.
 
-block_points(Block,DecodeMode,Block_pred2,Points,"call-transitive"):-
+block_points(Block,DecodeMode,BlockPred2,Points,"call-transitive"):-
     block_is_overlapping(Block,DecodeMode),
-    direct_call(EA,DecodeMode,Block),
-    code_in_block_candidate_refined(EA,DecodeMode,Block_pred),
-    block_is_overlapping(Block_pred,DecodeMode),
-    block_points(Block_pred,DecodeMode,Block_pred2,Points,_),
+    direct_call(EA,DecodeModePred,Block,DecodeMode),
+    code_in_block_candidate_refined(EA,DecodeModePred,BlockPred),
+    block_is_overlapping(BlockPred,DecodeModePred),
+    block_points(BlockPred,DecodeMode,BlockPred2,Points,_),
     Points != 0.
 
 block_points(Block,DecodeMode,0,1,"has well-defined jump"):-
     block_is_overlapping(Block,DecodeMode),
-    direct_jump(EA,DecodeMode,Block_dest),
+    direct_jump(EA,DecodeMode,BlockDest,DecodeModeDest),
     code_in_block_candidate_refined(EA,DecodeMode,Block),
-    code_in_block_candidate_refined(_,DecodeMode,Block_dest),
-    !block_is_overlapping(Block_dest,DecodeMode).
+    code_in_block_candidate_refined(_,DecodeModeDest,BlockDest),
+    !block_is_overlapping(BlockDest,DecodeModeDest).
 
 block_points(Block,DecodeMode,0,1,"has well-defined call"):-
     block_is_overlapping(Block,DecodeMode),
-    direct_call(EA,DecodeMode,Block_dest),
+    direct_call(EA,DecodeMode,BlockDest,DecodeModeDest),
     code_in_block_candidate_refined(EA,DecodeMode,Block),
-    code_in_block_candidate_refined(_,DecodeMode,Block_dest),
-    !block_is_overlapping(Block_dest,DecodeMode).
+    code_in_block_candidate_refined(_,DecodeModeDest,BlockDest),
+    !block_is_overlapping(BlockDest,DecodeModeDest).
 
 block_points(Block,DecodeMode,0,1,"plt call"):-
     block_is_overlapping(Block,DecodeMode),
-    direct_call(EA,DecodeMode,Block_dest),
+    direct_call(EA,DecodeMode,BlockDest,_),
     code_in_block_candidate_refined(EA,DecodeMode,Block),
-    plt_entry(Block_dest,_).
+    plt_entry(BlockDest,_).
 
 block_points(Block,DecodeMode,0,10,"fde-entry"):-
     block_is_overlapping(Block,DecodeMode),

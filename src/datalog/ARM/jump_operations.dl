@@ -46,6 +46,23 @@ jump_operation("BGT").
 jump_operation("BLE").
 jump_operation("BAL").
 
+jump_operation("BX").
+jump_operation("BXEQ").
+jump_operation("BXNE").
+jump_operation("BXCS").
+jump_operation("BXCC").
+jump_operation("BXMI").
+jump_operation("BXPL").
+jump_operation("BXVS").
+jump_operation("BXVC").
+jump_operation("BXHI").
+jump_operation("BXLS").
+jump_operation("BXGE").
+jump_operation("BXLT").
+jump_operation("BXGT").
+jump_operation("BXLE").
+jump_operation("BXAL").
+
 
 
 unconditional_jump_operation("B").

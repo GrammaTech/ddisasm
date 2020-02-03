@@ -101,8 +101,8 @@ false_positive(Location):-
         moved_label(EA,Index,_,_)
     ),
     !pc_relative_operand(EA,DecodeMode,Index,_),
-    !direct_jump(EA,DecodeMode,_),
-    !direct_call(EA,DecodeMode,_),
+    !direct_jump(EA,DecodeMode,_,_),
+    !direct_call(EA,DecodeMode,_,_),
     !relocation_in_operand(EA,Index,_,_),
     (
         instruction_immediate_offset(EA,DecodeMode,Index,Offset);

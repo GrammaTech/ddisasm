@@ -52,7 +52,7 @@ private:
     void decodeSection(const gtirb::ByteInterval& byteInterval);
     void loadInputs(souffle::SouffleProgram* prog, gtirb::Module& module);
     void storeDataSection(const gtirb::ByteInterval& byteInterval, gtirb::Addr min_address,
-                          gtirb::Addr max_address);
+                          gtirb::Addr max_address,unsigned int PointerSize);
 
 public:
     DlDecoder(gtirb::ISA Isa) : CsHandle(Isa){};
