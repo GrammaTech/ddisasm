@@ -351,18 +351,6 @@ Container convertSortedRelation(const std::string &relation, souffle::SoufflePro
     return result;
 }
 
-// TODO:
-// gtirb::Symbol::StorageKind getSymbolType(const std::string &scope)
-// {
-//     if(scope == "Extern")
-//         return gtirb::Symbol::StorageKind::Extern;
-//     if(scope == "Normal")
-//         return gtirb::Symbol::StorageKind::Normal;
-//     if(scope == "Static")
-//         return gtirb::Symbol::StorageKind::Static;
-//     return gtirb::Symbol::StorageKind::Undefined;
-// }
-
 void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
@@ -374,7 +362,7 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
         output >> addr >> name >> scope;
         if(!module.findSymbols(name))
         {
-            // TODO: Use getSymbolType() and add type to addSymbol arguments.
+            // TODO: Symbol type
             module.addSymbol(context, addr, name);
         }
     }
@@ -682,13 +670,17 @@ void buildCodeBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
     {
         gtirb::Addr blockAddress;
         output >> blockAddress;
-        for(auto section : module.findSectionsIn(blockAddress))
+        if(auto it = module.findSectionsIn(blockAddress); !it.empty())
         {
+            gtirb::Section &section = *it.begin();
             uint64_t size = blockInformation.find(blockAddress)->size;
-            for(auto byteInterval : section.findByteIntervalsIn(blockAddress))
+            if(auto it = section.findByteIntervalsIn(blockAddress); !it.empty())
             {
-                uint64_t blockOffset = blockAddress - byteInterval.getAddress().value();
-                byteInterval.addBlock<gtirb::CodeBlock>(context, blockOffset, size);
+                if(gtirb::ByteInterval &byteInterval = *it.begin(); byteInterval.getAddress())
+                {
+                    uint64_t blockOffset = blockAddress - *byteInterval.getAddress();
+                    byteInterval.addBlock<gtirb::CodeBlock>(context, blockOffset, size);
+                }
             }
         }
     }
@@ -1188,8 +1180,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     expandSymbolForwarding(context, module, prog);
     connectSymbolsToBlocks(module);
     buildFunctions(module, prog);
-    // FIXME
-    // buildCFG(context, module, prog);
+    buildCFG(context, module, prog);
     buildPadding(module, prog);
     buildComments(module, prog, selfDiagnose);
 }
