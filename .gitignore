@@ -21,6 +21,8 @@ examples/**/ex.s
 examples/**/ex.unstripped
 examples/**/out.txt
 
-gtirb/
+/gtirb
+/gtirb-pprinter
+/libehp
 wiki/
 build/

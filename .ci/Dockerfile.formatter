@@ -1,17 +1,21 @@
 FROM ubuntu:18.04
 
-RUN apt-get -y update && \
-    apt-get -y install python2.7 clang-format git curl
+RUN apt-get update \
+    && apt-get -y install \
+    python3 \
+    python3-pip \
+    clang-format \
+    git \
+    curl
 
-RUN curl https://llvm.org/svn/llvm-project/cfe/trunk/tools/clang-format/git-clang-format > /usr/bin/git-clang-format
-RUN chmod +x /usr/bin/git-clang-format
+RUN pip3 install pre-commit
 
-COPY . /gt/ddisasm/
-WORKDIR /gt/ddisasm/
+COPY . /ddisasm
+WORKDIR /ddisasm
 
-## Run clang-format on the last commit
-RUN git clang-format origin/master --extensions cpp,h
+# cdonfigure pre-commit, so Docker caches the configuration step.
+# This invocation won't actually run formatters on any files.
+RUN pre-commit run; echo "Configured pre-commit."
 
-## Run clang-format on all source files.
-# RUN (find src -name "*.cpp" -or -name "*.h")|xargs -I{} clang-format -i {}
-# RUN [[ $(git diff --shortstat 2> /dev/null | tail -n1) == "" ]]
+# Actually run pre-commit, reporting an error if any file needs formatted.
+CMD pre-commit run --all-files
