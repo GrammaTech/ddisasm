@@ -189,15 +189,20 @@ void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> bin
 
 gtirb::IR *buildZeroIR(const std::string &filename, gtirb::Context &context)
 {
+    // Parse binary file
     std::shared_ptr<BinaryReader> binary(new LIEFBinaryReader(filename));
     if(!binary->is_valid())
         return nullptr;
+
+    // Intialize IR and Module
     auto ir = gtirb::IR::Create(context);
     gtirb::Module &module = *gtirb::Module::Create(context);
     module.setBinaryPath(filename);
     module.setFileFormat(binary->get_binary_format());
     module.setISA(gtirb::ISA::X64);
     ir->addModule(&module);
+
+    // Populate Module with pre-analysis data
     buildSections(module, binary, context);
     buildSymbols(module, binary, context);
     addEntryBlock(module, binary, context);
