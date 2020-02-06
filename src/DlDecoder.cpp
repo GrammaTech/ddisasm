@@ -242,11 +242,16 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
         prog, "binary_type", *module.getAuxData<std::vector<std::string>>("binaryType"));
     GtirbToDatalog::addToRelation<std::vector<std::string>>(
         prog, "binary_format", {getFileFormatString(module.getFileFormat())});
-    if(gtirb::CodeBlock *block = module.getEntryPoint(); block != nullptr && block->getAddress())
+
+    if(gtirb::CodeBlock *block = module.getEntryPoint(); block != nullptr)
     {
-        GtirbToDatalog::addToRelation<std::vector<gtirb::Addr>>(prog, "entry_point",
-                                                                {*block->getAddress()});
+        if(block->getAddress())
+        {
+            GtirbToDatalog::addToRelation<std::vector<gtirb::Addr>>(prog, "entry_point",
+                                                                    {*block->getAddress()});
+        }
     }
+
     GtirbToDatalog::addToRelation(
         prog, "relocation",
         *module.getAuxData<std::set<InitialAuxData::Relocation>>("relocations"));
