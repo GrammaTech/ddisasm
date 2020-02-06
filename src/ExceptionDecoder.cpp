@@ -29,35 +29,46 @@ ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
     std::string ehFrame, ehFrameHeader, gccExcept;
     uint64_t addressEhFrame(0), addressEhFrameHeader(0), addressGccExcept(0);
 
-    auto ehFrameSection = module.findSection(".eh_frame");
-    if(ehFrameSection != module.section_by_name_end())
+    auto ehFrameSection = module.findSections(".eh_frame");
+    if(ehFrameSection != module.sections_by_name_end())
     {
-        gtirb::ImageByteMap::const_range bytes =
-            getBytes(module.getImageByteMap(), *ehFrameSection);
-        addressEhFrame = static_cast<uint64_t>(ehFrameSection->getAddress());
-        auto end = &bytes.back() + 1;
-        ehFrame.assign(reinterpret_cast<const char *>(&*bytes.begin()),
-                       reinterpret_cast<const char *>(end));
+        assert(ehFrameSection->getAddress() && "Found .eh_frame section without address.");
+        addressEhFrame = static_cast<uint64_t>(*ehFrameSection->getAddress());
+        for(const auto &block : ehFrameSection->code_blocks())
+        {
+            const char *bytes = block.rawBytes<const char>();
+            // TODO: Use something safer than pointer arith?
+            const char *end = bytes + block.getSize();
+            ehFrame.assign(bytes, end);
+        }
     }
-    auto ehFrameHeaderSection = module.findSection(".eh_frame_hdr");
-    if(ehFrameHeaderSection != module.section_by_name_end())
+    auto ehFrameHeaderSection = module.findSections(".eh_frame_hdr");
+    if(ehFrameHeaderSection != module.sections_by_name_end())
     {
-        gtirb::ImageByteMap::const_range bytes =
-            getBytes(module.getImageByteMap(), *ehFrameHeaderSection);
-        addressEhFrameHeader = static_cast<uint64_t>(ehFrameHeaderSection->getAddress());
-        auto end = &bytes.back() + 1;
-        ehFrameHeader.assign(reinterpret_cast<const char *>(&*bytes.begin()),
-                             reinterpret_cast<const char *>(end));
+        assert(ehFrameHeaderSection->getAddress()
+               && "Found .eh_frame_hdr section without address.");
+        addressEhFrameHeader = static_cast<uint64_t>(*ehFrameHeaderSection->getAddress());
+        for(const auto &block : ehFrameSection->code_blocks())
+        {
+            const char *bytes = block.rawBytes<char>();
+            // TODO: Use something safer than pointer arith?
+            const char *end = bytes + block.getSize();
+            ehFrameHeader.assign(bytes, end);
+        }
     }
-    auto gccExceptSection = module.findSection(".gcc_except_table");
-    if(gccExceptSection != module.section_by_name_end())
+    auto gccExceptSection = module.findSections(".gcc_except_table");
+    if(gccExceptSection != module.sections_by_name_end())
     {
-        gtirb::ImageByteMap::const_range bytes =
-            getBytes(module.getImageByteMap(), *gccExceptSection);
-        addressGccExcept = static_cast<uint64_t>(gccExceptSection->getAddress());
-        auto end = &bytes.back() + 1;
-        gccExcept.assign(reinterpret_cast<const char *>(&*bytes.begin()),
-                         reinterpret_cast<const char *>(end));
+        assert(gccExceptSection->getAddress()
+               && "Found .gcc_except_table section without address.");
+        addressGccExcept = static_cast<uint64_t>(*gccExceptSection->getAddress());
+        for(const auto &block : gccExceptSection->code_blocks())
+        {
+            const char *bytes = block.rawBytes<char>();
+            // TODO: Use something safer than pointer arith?
+            const char *end = bytes + block.getSize();
+            ehFrameHeader.assign(bytes, end);
+        }
     }
     ehParser = EHP::EHFrameParser_t::factory(ptrsize, EHP::EHPEndianness_t::HOST, ehFrame,
                                              addressEhFrame, ehFrameHeader, addressEhFrameHeader,
