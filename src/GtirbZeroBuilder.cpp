@@ -96,124 +96,116 @@ gtirb::from_iterator gtirb::auxdata_traits<ExtraSymbolInfo>::fromBytes(ExtraSymb
     It = auxdata_traits<uint64_t>::fromBytes(Object.sectionIndex, It);
     return It;
 }
-
-void buildByteMap(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
-{
-    auto &byteMap = module.getImageByteMap();
-    byteMap.setAddrMinMax(
-        {gtirb::Addr(binary->get_min_address()), gtirb::Addr(binary->get_max_address())});
-    byteMap.setEntryPointAddress(gtirb::Addr(binary->get_entry_point()));
-    byteMap.setBaseAddress(gtirb::Addr(binary->get_base_address()));
-    for(auto &binSection : binary->get_sections())
-    {
-        if(isAllocatedSection(binary->get_binary_format(), binSection.flags))
-        {
-            if(auto sectionData = binary->get_section_content_and_address(binSection.name))
-            {
-                std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
-                std::byte *begin = reinterpret_cast<std::byte *>(sectionBytes.data());
-                std::byte *end =
-                    reinterpret_cast<std::byte *>(sectionBytes.data() + sectionBytes.size());
-                byteMap.setData(gtirb::Addr(binary->get_base_address() + binSection.address),
-                                boost::make_iterator_range(begin, end));
-                // Fill incomplete section with zeroes.
-                if(sectionBytes.size() < binSection.size)
-                {
-                    gtirb::Addr start = gtirb::Addr(binary->get_base_address() + binSection.address
-                                                    + sectionBytes.size());
-                    size_t size = binSection.size - sectionBytes.size();
-                    std::cerr << "Warning: Zero filling uninitialized section fragment: " << start
-                              << '-' << start + size << '\n';
-                    byteMap.setData(start, size, std::byte(0));
-                }
-            }
-        }
-    }
-}
-
 void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                    gtirb::Context &context)
 {
-    // const gtirb::FileFormat format = binary->get_binary_format();
     std::map<gtirb::UUID, SectionProperties> sectionProperties;
     for(auto &binSection : binary->get_sections())
     {
         if(isAllocatedSection(binary->get_binary_format(), binSection.flags))
         {
-            gtirb::Section *section = gtirb::Section::Create(
-                context, binSection.name,
-                gtirb::Addr(binary->get_base_address() + binSection.address), binSection.size);
-            module.addSection(section);
-            sectionProperties[section->getUUID()] =
-                std::make_tuple(binSection.type, binSection.flags);
-        }
-    }
-    module.addAuxData("elfSectionProperties", std::move(sectionProperties));
-}
+            // Create Section object and set common flags
+            gtirb::Section *section = module.addSection(context, binSection.name);
+            section->addFlag(gtirb::SectionFlag::Loaded);
+            // TODO: Add other section flags (Readable, Writable, ...)
 
-gtirb::Symbol::StorageKind getSymbolType(uint64_t sectionIndex, std::string scope)
-{
-    if(sectionIndex == 0)
-        return gtirb::Symbol::StorageKind::Undefined;
-    if(scope == "GLOBAL" || scope == "WEAK")
-        return gtirb::Symbol::StorageKind::Normal;
-    if(scope == "LOCAL")
-        return gtirb::Symbol::StorageKind::Local;
-    return gtirb::Symbol::StorageKind::Extern;
-}
+            /// Add allocated section contents to a single contiguous ByteInterval.
+            if(isAllocatedSection(binSection.flags))
+            {
+                std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
+                gtirb::ByteInterval *byteInterval = section->addByteInterval(
+                    context, gtirb::Addr(binSection.address), binSection.size);
+                if(auto sectionData = binary->get_section_content_and_address(binSection.name))
+                {
+                    std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
+                    byteInterval->insertBytes<uint8_t>(byteInterval->bytes_begin<uint8_t>(),
+                                                       sectionBytes.begin(), sectionBytes.end());
+                }
+            }
 
-void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
-                  gtirb::Context &context)
-{
-    std::map<gtirb::UUID, ExtraSymbolInfo> extraSymbolInfoTable;
-    for(auto &binSymbol : binary->get_symbols())
-    {
-        // Symbols with special section index do not have an address
-        gtirb::Symbol *symbol;
-        if(binSymbol.sectionIndex == static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)
-           || (binSymbol.sectionIndex
-                   >= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_LORESERVE)
-               && binSymbol.sectionIndex
-                      <= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)))
-            symbol = gtirb::emplaceSymbol(module, context, binSymbol.name);
-        else
-            symbol = gtirb::emplaceSymbol(module, context, gtirb::Addr(binSymbol.address),
-                                          binSymbol.name,
-                                          getSymbolType(binSymbol.sectionIndex, binSymbol.scope));
-        extraSymbolInfoTable[symbol->getUUID()] = {binSymbol.size, binSymbol.type, binSymbol.scope,
-                                                   binSymbol.sectionIndex};
-    }
-    module.addAuxData("extraSymbolInfo", std::move(extraSymbolInfoTable));
-}
-void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
-{
-    std::vector<std::string> binaryType = {binary->get_binary_type()};
-    module.addAuxData("binaryType", binaryType);
-    module.addAuxData("relocations", binary->get_relocations());
-    module.addAuxData("libraries", binary->get_libraries());
-    module.addAuxData("libraryPaths", binary->get_library_paths());
-    if(binary->get_binary_format() == gtirb::FileFormat::PE)
-    {
-        module.addAuxData("dataDirectories", binary->get_data_directories());
-        module.addAuxData("importEntries", binary->get_import_entries());
-    }
-}
+            void buildSections(gtirb::Module & module, std::shared_ptr<BinaryReader> binary,
+                               gtirb::Context & context)
+            {
+                std::map<gtirb::UUID, SectionProperties> sectionProperties;
+                for(auto &binSection : binary->get_sections())
+                {
+                    if(isAllocatedSection(binSection.flags))
+                    {
+                        gtirb::Section *section = gtirb::Section::Create(
+                            context, binSection.name, gtirb::Addr(binSection.address),
+                            binSection.size);
+                        module.addSection(section);
+                        // Add object specific flags to elfSectionProperties AuxData table.
+                        sectionProperties[section->getUUID()] =
+                            std::make_tuple(binSection.type, binSection.flags);
+                    }
+                }
+                if(auto entryBlock =
+                       module.findCodeBlocksIn(gtirb::Addr(binary->get_entry_point()));
+                   !entryBlock.empty())
+                {
+                    module.setEntryPoint(&*entryBlock.begin());
+                }
+                module.addAuxData("elfSectionProperties", std::move(sectionProperties));
+            }
 
-gtirb::IR *buildZeroIR(const std::string &filename, gtirb::Context &context)
-{
-    std::shared_ptr<BinaryReader> binary(new LIEFBinaryReader(filename));
-    if(!binary->is_valid())
-        return nullptr;
-    auto ir = gtirb::IR::Create(context);
-    gtirb::Module &module = *gtirb::Module::Create(context);
-    module.setBinaryPath(filename);
-    module.setFileFormat(binary->get_binary_format());
-    module.setISAID(gtirb::ISAID::X64);
-    ir->addModule(&module);
-    buildByteMap(module, binary);
-    buildSections(module, binary, context);
-    buildSymbols(module, binary, context);
-    addAuxiliaryTables(module, binary);
+            void buildSymbols(gtirb::Module & module, std::shared_ptr<BinaryReader> binary,
+                              gtirb::Context & context)
+            {
+                std::map<gtirb::UUID, ExtraSymbolInfo> extraSymbolInfoTable;
+                for(auto &binSymbol : binary->get_symbols())
+                {
+                    // Symbols with special section index do not have an address
+                    gtirb::Symbol *symbol;
+                    if(binSymbol.sectionIndex
+                           == static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)
+                       || (binSymbol.sectionIndex
+                               >= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_LORESERVE)
+                           && binSymbol.sectionIndex
+                                  <= static_cast<int>(
+                                         LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)))
+                    {
+                        symbol = module.addSymbol(context, binSymbol.name);
+                    }
+                    else
+                    {
+                        // TODO: Add symbol type
+                        symbol = module.addSymbol(context, gtirb::Addr(binSymbol.address),
+                                                  binSymbol.name);
+                    }
+                    extraSymbolInfoTable[symbol->getUUID()] = {
+                        binSymbol.size, binSymbol.type, binSymbol.scope, binSymbol.sectionIndex};
+                }
+                module.addAuxData("extraSymbolInfo", std::move(extraSymbolInfoTable));
+            }
+            void addAuxiliaryTables(gtirb::Module & module, std::shared_ptr<BinaryReader> binary)
+            {
+                std::vector<std::string> binaryType = {binary->get_binary_type()};
+                module.addAuxData("binaryType", binaryType);
+                module.addAuxData("relocations", binary->get_relocations());
+                module.addAuxData("libraries", binary->get_libraries());
+                module.addAuxData("libraryPaths", binary->get_library_paths());
+                if(binary->get_binary_format() == gtirb::FileFormat::PE)
+                {
+                    module.addAuxData("dataDirectories", binary->get_data_directories());
+                    module.addAuxData("importEntries", binary->get_import_entries());
+                }
+            }
 
-    return ir;
-}
+            gtirb::IR *buildZeroIR(const std::string &filename, gtirb::Context &context)
+            {
+                std::shared_ptr<BinaryReader> binary(new LIEFBinaryReader(filename));
+                if(!binary->is_valid())
+                    return nullptr;
+                auto ir = gtirb::IR::Create(context);
+                gtirb::Module &module = *gtirb::Module::Create(context);
+                module.setBinaryPath(filename);
+                module.setFileFormat(binary->get_binary_format());
+                module.setISA(gtirb::ISA::X64);
+                ir->addModule(&module);
+                buildSections(module, binary, context);
+                buildSymbols(module, binary, context);
+                addAuxiliaryTables(module, binary);
+
+                return ir;
+            }

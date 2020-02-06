@@ -32,24 +32,24 @@ void NoReturnPass::populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> 
     Loader.populateCfgEdges(M);
 }
 
-std::set<gtirb::Block*> NoReturnPass::updateCFG(std::shared_ptr<souffle::SouffleProgram> P,
-                                                gtirb::Module& M)
+std::set<gtirb::CodeBlock*> NoReturnPass::updateCFG(std::shared_ptr<souffle::SouffleProgram> P,
+                                                    gtirb::Module& M)
 {
-    std::set<gtirb::Block*> NoReturn;
+    std::set<gtirb::CodeBlock*> NoReturn;
     for(auto& Output : *P->getRelation("block_call_no_return"))
     {
         gtirb::Addr BlockAddr(Output[0]);
         // this should correspond to only one block
-        for(auto& Block : M.findBlock(BlockAddr))
+        for(auto& Block : M.findCodeBlocksIn(BlockAddr))
         {
             NoReturn.insert(&Block);
         }
     }
-    gtirb::CFG& Cfg = M.getCFG();
+    gtirb::CFG& Cfg = M.getIR()->getCFG();
     boost::remove_edge_if(
         [&](auto Edge) {
             gtirb::EdgeLabel Label = *static_cast<const gtirb::EdgeLabel*>(Edge.get_property());
-            if(auto* Block = dyn_cast<gtirb::Block>(Cfg[Edge.m_source]))
+            if(auto* Block = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_source]))
                 return NoReturn.count(Block) && Label
                        && std::get<gtirb::EdgeType>(*Label) == gtirb::EdgeType::Fallthrough;
             return false;
@@ -63,7 +63,7 @@ void NoReturnPass::setDebugDir(std::string Path)
     DebugDir = Path;
 }
 
-std::set<gtirb::Block*> NoReturnPass::computeNoReturn(gtirb::Module& M, unsigned int NThreads)
+std::set<gtirb::CodeBlock*> NoReturnPass::computeNoReturn(gtirb::Module& M, unsigned int NThreads)
 {
     auto Prog = std::shared_ptr<souffle::SouffleProgram>(
         souffle::ProgramFactory::newInstance("souffle_no_return"));

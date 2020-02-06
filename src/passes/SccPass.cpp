@@ -47,7 +47,7 @@ public:
 void computeSCCs(gtirb::Module& module)
 {
     SccMap Sccs;
-    auto& Cfg = module.getCFG();
+    auto& Cfg = module.getIR()->getCFG();
     KeepIntraProcedural Filter;
     boost::filtered_graph<gtirb::CFG, KeepIntraProcedural> CfgFiltered(Cfg, Filter);
 
