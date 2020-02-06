@@ -107,11 +107,12 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                 std::make_tuple(binSection.type, binSection.flags);
         }
     }
-    if(auto entryBlock = module.findCodeBlocksIn(gtirb::Addr(binary->get_entry_point()));
-       !entryBlock.empty())
-    {
-        module.setEntryPoint(&*entryBlock.begin());
-    }
+    // TODO:
+    // if(auto entryBlock = module.findCodeBlocksIn(gtirb::Addr(binary->get_entry_point()));
+    //    !entryBlock.empty())
+    // {
+    //     module.setEntryPoint(&*entryBlock.begin());
+    // }
     module.addAuxData("elfSectionProperties", std::move(sectionProperties));
 }
 
