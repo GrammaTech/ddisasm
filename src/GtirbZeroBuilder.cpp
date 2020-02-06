@@ -128,11 +128,6 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                 std::make_tuple(binSection.type, binSection.flags);
         }
     }
-    if(auto entryBlock = module.findCodeBlocksIn(gtirb::Addr(binary->get_entry_point()));
-       !entryBlock.empty())
-    {
-        module.setEntryPoint(&*entryBlock.begin());
-    }
     module.addAuxData("elfSectionProperties", std::move(sectionProperties));
 }
 
@@ -162,6 +157,22 @@ void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
     }
     module.addAuxData("extraSymbolInfo", std::move(extraSymbolInfoTable));
 }
+
+void addEntryBlock(gtirb::Module &Module, std::shared_ptr<BinaryReader> Binary,
+                   gtirb::Context &Context)
+{
+    gtirb::Addr Entry = gtirb::Addr(Binary->get_entry_point());
+    if(auto It = Module.findByteIntervalsIn(Entry); !It.empty())
+    {
+        if(gtirb::ByteInterval &Interval = *It.begin(); Interval.getAddress())
+        {
+            uint64_t Offset = Entry - *Interval.getAddress();
+            gtirb::CodeBlock *Block = Interval.addBlock<gtirb::CodeBlock>(Context, Offset, 0);
+            Module.setEntryPoint(Block);
+        }
+    }
+}
+
 void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
 {
     std::vector<std::string> binaryType = {binary->get_binary_type()};
@@ -189,6 +200,7 @@ gtirb::IR *buildZeroIR(const std::string &filename, gtirb::Context &context)
     ir->addModule(&module);
     buildSections(module, binary, context);
     buildSymbols(module, binary, context);
+    addEntryBlock(module, binary, context);
     addAuxiliaryTables(module, binary);
 
     return ir;
