@@ -4,8 +4,7 @@
 #include <gtirb/gtirb.hpp>
 #include "../passes/SccPass.h"
 
-// TODO:
-
+// TODO
 // TEST(Unit_SccPass, loop)
 // {
 //     gtirb::Context Ctx;

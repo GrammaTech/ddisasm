@@ -512,7 +512,7 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
        symbolicExpr != symbolicInfo.SymbolicExpressionsFromRelocations.end())
     {
         auto foundSymbol = module.findSymbols(symbolicExpr->Symbol);
-        if(!foundSymbol.empty())
+        if(foundSymbol.begin() != foundSymbol.end())
         {
             for(auto block : module.findCodeBlocksIn(ea))
             {
@@ -853,12 +853,11 @@ void connectSymbolsToDataGroups(gtirb::Module &module)
 
 void connectSymbolsToBlocks(gtirb::Module &module)
 {
-    auto &cfg = module.getIR()->getCFG();
-    for(auto &block : blocks(cfg))
+    for(auto &block : module.code_blocks())
     {
         for(auto &symbol : module.findSymbols(block.getAddress().value()))
         {
-            symbol.setReferent(&block);
+            symbol.setReferent<gtirb::CodeBlock>(&block);
         }
     }
 }
@@ -921,8 +920,8 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
         output >> srcAddr >> destAddr >> conditional >> indirect >> type;
 
         // ddisasm guarantees that these blocks exist
-        const gtirb::CodeBlock *src = &*module.findCodeBlocksAt(srcAddr).begin();
-        const gtirb::CodeBlock *dest = &*module.findCodeBlocksAt(destAddr).begin();
+        const gtirb::CodeBlock *src = &*module.findCodeBlocksIn(srcAddr).begin();
+        const gtirb::CodeBlock *dest = &*module.findCodeBlocksIn(destAddr).begin();
 
         auto isConditional = conditional == "true" ? gtirb::ConditionalEdge::OnTrue
                                                    : gtirb::ConditionalEdge::OnFalse;
@@ -933,15 +932,13 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
         auto E = addEdge(src, dest, cfg);
         cfg[*E] = std::make_tuple(isConditional, isIndirect, edgeType);
     }
-    auto *topBlock = gtirb::ProxyBlock::Create(context);
-    // FIXME:
-    // module.addCfgNode(topBlock);
+    auto *topBlock = module.addProxyBlock(context);
     for(auto &output : *prog->getRelation("cfg_edge_to_top"))
     {
         gtirb::Addr srcAddr;
         std::string conditional, type;
         output >> srcAddr >> conditional >> type;
-        const gtirb::CodeBlock *src = &*module.findCodeBlocksAt(srcAddr).begin();
+        const gtirb::CodeBlock *src = &*module.findCodeBlocksIn(srcAddr).begin();
         auto isConditional = conditional == "true" ? gtirb::ConditionalEdge::OnTrue
                                                    : gtirb::ConditionalEdge::OnFalse;
         gtirb::EdgeType edgeType = getEdgeType(type);
@@ -953,16 +950,14 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
         gtirb::Addr srcAddr;
         std::string symbolName;
         output >> srcAddr >> symbolName;
-        const gtirb::CodeBlock *src = &*module.findCodeBlocksAt(srcAddr).begin();
+        const gtirb::CodeBlock *src = &*module.findCodeBlocksIn(srcAddr).begin();
         gtirb::Symbol &symbol = *module.findSymbols(symbolName).begin();
         gtirb::ProxyBlock *externalBlock = symbol.getReferent<gtirb::ProxyBlock>();
         // if the symbol does not point to a ProxyBlock yet, we create it
         if(!externalBlock)
         {
-            externalBlock = gtirb::ProxyBlock::Create(context);
-            // FIXME:
-            // module.addCfgNode(externalBlock);
-            // gtirb::setReferent(module, symbol, externalBlock);
+            externalBlock = module.addProxyBlock(context);
+            symbol.setReferent(externalBlock);
         }
         auto E = addEdge(src, externalBlock, cfg);
         cfg[*E] = std::make_tuple(gtirb::ConditionalEdge::OnFalse, gtirb::DirectEdge::IsIndirect,
@@ -1193,7 +1188,8 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     expandSymbolForwarding(context, module, prog);
     connectSymbolsToBlocks(module);
     buildFunctions(module, prog);
-    buildCFG(context, module, prog);
+    // FIXME
+    // buildCFG(context, module, prog);
     buildPadding(module, prog);
     buildComments(module, prog, selfDiagnose);
 }
