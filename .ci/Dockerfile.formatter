@@ -13,9 +13,4 @@ RUN pip3 install pre-commit
 COPY . /ddisasm
 WORKDIR /ddisasm
 
-# cdonfigure pre-commit, so Docker caches the configuration step.
-# This invocation won't actually run formatters on any files.
-RUN pre-commit run; echo "Configured pre-commit."
-
-# Actually run pre-commit, reporting an error if any file needs formatted.
-CMD pre-commit run --all-files
+RUN pre-commit run --all-files
