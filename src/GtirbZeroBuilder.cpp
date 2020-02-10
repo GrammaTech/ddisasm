@@ -84,26 +84,22 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
     {
         if(isAllocatedSection(binSection.flags))
         {
-            // Create Section object and set common flags
-            gtirb::Section *section = module.addSection(context, binSection.name);
-            section->addFlag(gtirb::SectionFlag::Loaded);
-            // TODO: Add other section flags (Readable, Writable, ...)
-
-            /// Add allocated section contents to a single contiguous ByteInterval.
-            if(isAllocatedSection(binSection.flags))
+            if(auto sectionData = binary->get_section_content_and_address(binSection.name))
             {
-                if(auto sectionData = binary->get_section_content_and_address(binSection.name))
-                {
-                    std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
-                    section->addByteInterval(context, gtirb::Addr(binSection.address),
-                                             sectionBytes.begin(), sectionBytes.end(),
-                                             binSection.size);
-                }
-            }
+                // Create Section object and set common flags
+                gtirb::Section *section = module.addSection(context, binSection.name);
+                section->addFlag(gtirb::SectionFlag::Loaded);
+                // TODO: Add other section flags (Readable, Writable, ...)
 
-            // Add object specific flags to elfSectionProperties AuxData table.
-            sectionProperties[section->getUUID()] =
-                std::make_tuple(binSection.type, binSection.flags);
+                /// Add allocated section contents to a single contiguous ByteInterval.
+                std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
+                section->addByteInterval(context, gtirb::Addr(binSection.address),
+                                         sectionBytes.begin(), sectionBytes.end(), binSection.size);
+
+                // Add object specific flags to elfSectionProperties AuxData table.
+                sectionProperties[section->getUUID()] =
+                    std::make_tuple(binSection.type, binSection.flags);
+            }
         }
     }
     module.addAuxData("elfSectionProperties", std::move(sectionProperties));
