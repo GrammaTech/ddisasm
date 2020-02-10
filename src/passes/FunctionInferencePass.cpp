@@ -48,8 +48,8 @@ void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProg
     for(auto& Output : *P->getRelation("function_entry_final"))
     {
         gtirb::Addr FunctionEntry(Output[0]);
-        auto BlockRange = M.findBlocksIn(FunctionEntry);
-        if(BlockRange.begin() != BlockRange.end())
+        auto BlockRange = M.findCodeBlocksAt(FunctionEntry);
+        if(!BlockRange.empty())
         {
             const gtirb::UUID& EntryBlockUUID = BlockRange.begin()->getUUID();
             gtirb::UUID FunctionUUID = Generator();
@@ -62,7 +62,7 @@ void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProg
     {
         gtirb::Addr BlockAddr(Output[0]), FunctionEntryAddr(Output[1]);
         auto BlockRange = M.findCodeBlocksIn(BlockAddr);
-        if(BlockRange.begin() != BlockRange.end())
+        if(!BlockRange.empty())
         {
             gtirb::CodeBlock* Block = &*BlockRange.begin();
             gtirb::UUID FunctionEntryUUID = FunctionEntry2function[FunctionEntryAddr];

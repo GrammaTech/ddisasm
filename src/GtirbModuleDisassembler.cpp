@@ -837,11 +837,12 @@ void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
     {
         gtirb::Addr functionEntry;
         output >> functionEntry;
-        auto blockRange = module.findCodeBlocksIn(functionEntry);
-        if(blockRange.begin() != blockRange.end())
+        auto blockRange = module.findCodeBlocksAt(functionEntry);
+        if(!blockRange.empty())
         {
             const gtirb::UUID &entryBlockUUID = blockRange.begin()->getUUID();
             gtirb::UUID functionUUID = generator();
+
             functionEntry2function[functionEntry] = functionUUID;
             functionEntries[functionUUID].insert(entryBlockUUID);
         }
@@ -853,13 +854,14 @@ void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
         gtirb::Addr blockAddr, functionEntryAddr;
         output >> blockAddr >> functionEntryAddr;
         auto blockRange = module.findCodeBlocksIn(blockAddr);
-        if(blockRange.begin() != blockRange.end())
+        if(!blockRange.empty())
         {
             gtirb::CodeBlock *block = &*blockRange.begin();
             gtirb::UUID functionEntryUUID = functionEntry2function[functionEntryAddr];
             functionBlocks[functionEntryUUID].insert(block->getUUID());
         }
     }
+
     module.addAuxData("functionEntries", std::move(functionEntries));
     module.addAuxData("functionBlocks", std::move(functionBlocks));
 }
