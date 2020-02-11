@@ -122,9 +122,9 @@ int main(int argc, char **argv)
     std::cout << "Building the initial gtirb representation" << std::endl;
     gtirb::Context context;
     gtirb::IR *ir = nullptr;
-    LIEF::ARCHITECTURES arch;
+    LIEF::ARCHITECTURES lief_arch;
     LIEF::ENDIANNESS endianness;
-    std::tie(ir, arch, endianness) = buildZeroIR(filename, context);
+    std::tie(ir, lief_arch, endianness) = buildZeroIR(filename, context);
 
     if(!ir)
     {
@@ -134,12 +134,17 @@ int main(int argc, char **argv)
     gtirb::Module &module = *(ir->modules().begin());
     souffle::SouffleProgram *prog = nullptr;
 
-    if(std::optional<DlDecoder*> dec = make_decoder(arch)) {
+    cs_arch arch;
+    cs_mode mode;
+    if(std::optional<DlDecoder*> dec = make_decoder(lief_arch)) {
         DlDecoder* decoder = *dec;
         std::cout << "Decoding the binary" << std::endl;
         prog = decoder->decode(module);
+        arch = decoder->getArch();
+        mode = decoder->getMode();
         delete decoder;
     }
+
     if(prog)
     {
         std::cout << "Disassembling" << std::endl;

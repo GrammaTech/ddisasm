@@ -57,6 +57,8 @@ public:
     virtual ~DlDecoder() = default;
     DlDecoder() = default;
     virtual souffle::SouffleProgram* decode(gtirb::Module& module) = 0;
+    virtual cs_arch getArch() const = 0;
+    virtual cs_mode getMode() const = 0;
 };
 
 #endif /* SRC_DL_DECODER_H_ */
