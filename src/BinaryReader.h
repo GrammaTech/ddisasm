@@ -114,6 +114,8 @@ public:
 
     virtual gtirb::FileFormat get_binary_format() = 0;
     virtual std::set<InitialAuxData::Section> get_sections() = 0;
+    virtual std::set<gtirb::SectionFlag> get_section_flags(
+        const InitialAuxData::Section &section) = 0;
 
     virtual std::string get_binary_type() = 0;
     virtual uint64_t get_entry_point() = 0;
