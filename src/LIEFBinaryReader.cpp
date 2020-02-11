@@ -34,6 +34,13 @@ bool LIEFBinaryReader::is_valid()
     return bin->format() == LIEF::EXE_FORMATS::FORMAT_ELF;
 }
 
+
+std::tuple<LIEF::ARCHITECTURES, LIEF::ENDIANNESS> LIEFBinaryReader::get_container_info() {
+    LIEF::Header header = this->bin->header();
+    return std::make_tuple(header.architecture(), header.endianness());
+}
+
+
 std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
 LIEFBinaryReader::get_section_content_and_address(const std::string& name)
 {

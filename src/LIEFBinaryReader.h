@@ -46,6 +46,7 @@ public:
 
     std::vector<std::string> get_libraries() override;
     std::vector<std::string> get_library_paths() override;
+    std::tuple<LIEF::ARCHITECTURES, LIEF::ENDIANNESS> get_container_info() override;
 
     std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> get_section_content_and_address(
         const std::string& name) override;

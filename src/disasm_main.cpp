@@ -30,7 +30,8 @@
 #include <thread>
 #include <vector>
 #include "DatalogUtils.h"
-#include "DlDecoder.h"
+#include "X86Decoder.h"
+#include "AArch64Decoder.h"
 #include "GtirbModuleDisassembler.h"
 #include "GtirbZeroBuilder.h"
 #include "passes/FunctionInferencePass.h"
@@ -51,6 +52,19 @@ namespace std
         return os;
     }
 } // namespace std
+
+//TODO: Move this function to another part
+std::optional<DlDecoder*> make_decoder(LIEF::ARCHITECTURES arch) {
+    if(arch == LIEF::ARCHITECTURES::ARCH_X86) {
+        return std::make_optional(new X86Decoder());
+    } else if(arch == LIEF::ARCHITECTURES::ARCH_ARM64) {
+        return std::make_optional(new AArch64Decoder());
+    } else {
+        //DEFAULT TO X86 for now
+        return std::nullopt;
+    }
+}
+
 
 int main(int argc, char **argv)
 {
@@ -107,18 +121,24 @@ int main(int argc, char **argv)
     std::string filename = vm["input-file"].as<std::string>();
     std::cout << "Building the initial gtirb representation" << std::endl;
     gtirb::Context context;
-    gtirb::IR *ir = buildZeroIR(filename, context);
+    gtirb::IR *ir = nullptr;
+    LIEF::ARCHITECTURES arch;
+    LIEF::ENDIANNESS endianness;
+    std::tie(ir, arch, endianness) = buildZeroIR(filename, context);
+
     if(!ir)
     {
         std::cerr << "There was a problem loading the binary file " << filename << "\n";
         return 1;
     }
     gtirb::Module &module = *(ir->modules().begin());
-    souffle::SouffleProgram *prog;
-    {
-        DlDecoder decoder;
+    souffle::SouffleProgram *prog = nullptr;
+
+    if(std::optional<DlDecoder*> dec = make_decoder(arch)) {
+        DlDecoder* decoder = *dec;
         std::cout << "Decoding the binary" << std::endl;
-        prog = decoder.decode(module);
+        prog = decoder->decode(module);
+        delete decoder;
     }
     if(prog)
     {

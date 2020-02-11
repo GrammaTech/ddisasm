@@ -1,4 +1,4 @@
-//===- GtirbZeroBuilder.h ---------------------------------------*- C++ -*-===//
+//===- interrupt_operations.dl ------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -20,34 +20,13 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+/**
+The set of interrupt operations in x64
+*/
 
-#include <gtirb/gtirb.hpp>
-#include <LIEF/LIEF.hpp>
+.decl interrupt_operation(n:symbol)
 
-#ifndef GTIRB_ZERO_BUILDER_H_
-#define GTIRB_ZERO_BUILDER_H_
-
-struct ExtraSymbolInfo
-{
-    uint64_t size;
-    std::string type;
-    std::string scope;
-    uint64_t sectionIndex;
-};
-
-template <>
-struct gtirb::auxdata_traits<ExtraSymbolInfo>
-{
-    static std::string type_id();
-    static void toBytes(const ExtraSymbolInfo& Object, to_iterator It);
-    static from_iterator fromBytes(ExtraSymbolInfo& Object, from_iterator It);
-};
-
-using SectionProperties = std::tuple<uint64_t, uint64_t>;
-bool isAllocatedSection(int flags);
-bool isNonZeroDataSection(const SectionProperties& s);
-bool isExeSection(const SectionProperties& s);
-
-std::tuple<gtirb::IR*, LIEF::ARCHITECTURES, LIEF::ENDIANNESS> buildZeroIR(const std::string& filename, gtirb::Context& context);
-
-#endif // GTIRB_ZERO_BUILDER_H_
+interrupt_operation("INT").
+interrupt_operation("INTO").
+interrupt_operation("INT1").
+interrupt_operation("INT3").

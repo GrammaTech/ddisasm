@@ -162,11 +162,15 @@ void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> bin
     module.addAuxData("libraryPaths", binary->get_library_paths());
 }
 
-gtirb::IR *buildZeroIR(const std::string &filename, gtirb::Context &context)
+std::tuple<gtirb::IR*, LIEF::ARCHITECTURES, LIEF::ENDIANNESS> buildZeroIR(const std::string &filename, gtirb::Context &context)
 {
     std::shared_ptr<BinaryReader> binary(new LIEFBinaryReader(filename));
+    LIEF::ARCHITECTURES arch;
+    LIEF::ENDIANNESS endianness;
+    std::tie(arch, endianness) = binary->get_container_info();
+
     if(!binary->is_valid())
-        return nullptr;
+        return std::make_tuple(nullptr, LIEF::ARCHITECTURES::ARCH_NONE, LIEF::ENDIANNESS::ENDIAN_NONE);
     auto ir = gtirb::IR::Create(context);
     gtirb::Module &module = *gtirb::Module::Create(context);
     module.setBinaryPath(filename);
@@ -178,5 +182,5 @@ gtirb::IR *buildZeroIR(const std::string &filename, gtirb::Context &context)
     buildSymbols(module, binary, context);
     addAuxiliaryTables(module, binary);
 
-    return ir;
+    return std::make_tuple(ir, arch, endianness);
 }

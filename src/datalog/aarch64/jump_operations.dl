@@ -1,4 +1,4 @@
-//===- GtirbZeroBuilder.h ---------------------------------------*- C++ -*-===//
+//===- jump_operations.dl -----------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -20,34 +20,46 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+/**
+The set of jump operations in x64
+*/
+.decl jump_operation(n:symbol)
+.decl unconditional_jump_operation(n:symbol)
 
-#include <gtirb/gtirb.hpp>
-#include <LIEF/LIEF.hpp>
+.decl jump_equal_operation(n:symbol)
+.decl jump_unequal_operation(n:symbol)
 
-#ifndef GTIRB_ZERO_BUILDER_H_
-#define GTIRB_ZERO_BUILDER_H_
+jump_operation("JCXZ").
+jump_operation("JECXZ").
+jump_operation("JRCXZ").
+jump_operation("JO").
+jump_operation("JNO").
+jump_operation("JB").
+jump_operation("JNB").
+jump_operation("JZ").
+jump_operation("JNZ").
+jump_operation("JNA").
+jump_operation("JA").
+jump_operation("JS").
+jump_operation("JNS").
+jump_operation("JP").
+jump_operation("JNP").
+jump_operation("JL").
+jump_operation("JGE").
+jump_operation("JLE").
+jump_operation("JG").
+jump_operation("JC").
+jump_operation("JAE").
+jump_operation("JE").
+jump_operation("JNE").
+jump_operation("JBE").
+jump_operation("JNBE").
+jump_operation("JMP").
 
-struct ExtraSymbolInfo
-{
-    uint64_t size;
-    std::string type;
-    std::string scope;
-    uint64_t sectionIndex;
-};
+unconditional_jump_operation("JMP").
 
-template <>
-struct gtirb::auxdata_traits<ExtraSymbolInfo>
-{
-    static std::string type_id();
-    static void toBytes(const ExtraSymbolInfo& Object, to_iterator It);
-    static from_iterator fromBytes(ExtraSymbolInfo& Object, from_iterator It);
-};
+jump_equal_operation("JE").
+jump_equal_operation("JZ").
 
-using SectionProperties = std::tuple<uint64_t, uint64_t>;
-bool isAllocatedSection(int flags);
-bool isNonZeroDataSection(const SectionProperties& s);
-bool isExeSection(const SectionProperties& s);
-
-std::tuple<gtirb::IR*, LIEF::ARCHITECTURES, LIEF::ENDIANNESS> buildZeroIR(const std::string& filename, gtirb::Context& context);
-
-#endif // GTIRB_ZERO_BUILDER_H_
+jump_unequal_operation("JNE").
+jump_unequal_operation("JNZ").

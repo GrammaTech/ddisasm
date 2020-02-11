@@ -90,10 +90,36 @@ std::string str_toupper(std::string s)
 
 std::string getRegisterName(const csh& CsHandle, unsigned int reg)
 {
-    if(reg == X86_REG_INVALID)
+    if(reg == ARM64_REG_INVALID || reg == X86_REG_INVALID)
         return "NONE";
+
     std::string name = str_toupper(cs_reg_name(CsHandle, reg));
     return name;
+}
+
+std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& CsHandle, const cs_arm64_op& op)
+{
+    switch(op.type)
+    {
+        case ARM64_OP_REG:
+            return getRegisterName(CsHandle, op.reg);
+        case ARM64_OP_IMM:
+            return op.imm;
+        case ARM64_OP_MEM:
+        {
+            IndirectOp I = {getRegisterName(CsHandle, ARM64_REG_INVALID),
+                            getRegisterName(CsHandle, op.mem.base),
+                            getRegisterName(CsHandle, op.mem.index),
+                            1,
+                            op.mem.disp,
+                            4 * 8};
+            return I;
+        }
+        case ARM64_OP_INVALID:
+        default:
+            std::cerr << "invalid operand\n";
+            exit(1);
+    }
 }
 
 std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& CsHandle, const cs_x86_op& op)
@@ -121,7 +147,7 @@ std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& CsHandle, const c
     }
 }
 
-DlInstruction GtirbToDatalog::transformInstruction(const csh& CsHandle, DlOperandTable& OpDict,
+DlInstruction GtirbToDatalog::transformInstruction(const cs_arch arch, const csh& CsHandle, DlOperandTable& OpDict,
                                                    const cs_insn& insn)
 {
     std::vector<uint64_t> op_codes;
@@ -139,6 +165,30 @@ DlInstruction GtirbToDatalog::transformInstruction(const csh& CsHandle, DlOperan
         name = prefix_name;
     }
 
+    if (arch == CS_ARCH_ARM64) {
+        auto& detail = insn.detail->arm64;
+        if(name != "NOP")
+        {
+            auto opCount = detail.op_count;
+            for(int i = 0; i < opCount; i++)
+            {
+                const auto& op = detail.operands[i];
+                uint64_t index = OpDict.add(buildOperand(CsHandle, op));
+                op_codes.push_back(index);
+            }
+            // we put the destination operand at the end
+            if(opCount > 0)
+                std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
+        }
+        return {insn.address,
+                insn.size,
+                prefix,
+                name,
+                op_codes,
+                0,
+                0};
+    }
+    // default to x86
     auto& detail = insn.detail->x86;
     if(name != "NOP")
     {
@@ -211,7 +261,7 @@ void GtirbToDatalog::populateBlocks(const gtirb::Module& M)
 void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int InstructionLimit)
 {
     csh CsHandle;
-    cs_open(CS_ARCH_X86, CS_MODE_64, &CsHandle); // == CS_ERR_OK
+    cs_open(arch, mode, &CsHandle); // == CS_ERR_OK
     cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
     // Exception-safe capstone handle closing
     std::unique_ptr<csh, std::function<void(csh*)>> CloseCapstoneHandle(&CsHandle, cs_close);
@@ -231,7 +281,7 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
             Insn, [Count](cs_insn* i) { cs_free(i, Count); });
         for(size_t i = 0; i < Count; ++i)
         {
-            Insns.push_back(GtirbToDatalog::transformInstruction(CsHandle, OpDict, Insn[i]));
+            Insns.push_back(GtirbToDatalog::transformInstruction(arch, CsHandle, OpDict, Insn[i]));
         }
     }
     GtirbToDatalog::addToRelation(&*Prog, "instruction", Insns);

@@ -1,0 +1,96 @@
+//===- registers.dl --------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/*
+This module establishes basic information about register:
+ - Which registers and tracked/considered in the different analyses
+ - Whether they all callee or caller saved according to the ABI
+
+*/
+
+// limit the registers that are tracked
+// and transform the names to their 64 bits version
+.decl track_register(Reg32:register,Reg64:register)
+
+track_register("EAX","RAX").
+track_register("RAX","RAX").
+
+track_register("EBX","RBX").
+track_register("RBX","RBX").
+
+track_register("ECX","RCX").
+track_register("RCX","RCX").
+
+track_register("EDX","RDX").
+track_register("RDX","RDX").
+
+track_register("EDI","RDI").
+track_register("RDI","RDI").
+
+track_register("ESI","RSI").
+track_register("RSI","RSI").
+
+track_register("RBP","RBP").
+track_register("EBP","RBP").
+
+track_register("R8","R8").
+track_register("R8D","R8").
+
+track_register("R9","R9").
+track_register("R9D","R9").
+
+track_register("R10","R10").
+track_register("R10D","R10").
+
+track_register("R11","R11").
+track_register("R11D","R11").
+
+track_register("R12","R12").
+track_register("R12D","R12").
+
+track_register("R13","R13").
+track_register("R13D","R13").
+
+track_register("R14","R14").
+track_register("R14D","R14").
+
+track_register("R15","R15").
+track_register("R15D","R15").
+
+// this specifies the registers whose value is not kept through a function call
+// according to the 'System V AMD64 ABI' calling convention.
+.decl function_non_maintained_reg(reg:register)
+
+function_non_maintained_reg("RAX").
+function_non_maintained_reg("RCX").
+function_non_maintained_reg("RDX").
+function_non_maintained_reg("RDI").
+function_non_maintained_reg("RSI").
+
+function_non_maintained_reg("R8").
+function_non_maintained_reg("R9").
+function_non_maintained_reg("R10").
+function_non_maintained_reg("R11").
+
+.decl pc_register(reg:register)
+
+pc_register("RIP").

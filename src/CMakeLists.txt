@@ -12,7 +12,7 @@ else()
   set(SOUFFLE wsl souffle)
 endif()
 
-set(DATALOG_SOURCES
+set(DATALOG_BASE_SOURCES
     datalog/bitmasks.dl
     datalog/code_inference.dl
     datalog/code_inference_postprocess.dl
@@ -30,11 +30,17 @@ set(DATALOG_SOURCES
     datalog/use_def_analysis.dl
     datalog/value_analysis.dl
     datalog/debug_stats.dl
-    datalog/self_diagnose.dl
+    datalog/self_diagnose.dl)
+set(DATALOG_X64_SOURCES
     datalog/x64/arch_x64.dl
     datalog/x64/float_operations.dl
     datalog/x64/jump_operations.dl
     datalog/x64/registers.dl)
+set(DATALOG_AARCH64_SOURCES
+    datalog/aarch64/arch_aarch64.dl
+    datalog/aarch64/float_operations.dl
+    datalog/aarch64/jump_operations.dl
+    datalog/aarch64/registers.dl)
 
 if(WIN32)
   set(SOUFFLE_DISASM_MAIN
@@ -44,14 +50,23 @@ else()
     ${CMAKE_CURRENT_SOURCE_DIR}/datalog/main.dl)
 endif()
 
-set(GENERATED_CPP "${CMAKE_BINARY_DIR}/src/souffle_disasm.cpp")
-  add_custom_command(OUTPUT ${GENERATED_CPP}
+set(GENERATED_CPP_ARM64 "${CMAKE_BINARY_DIR}/src/souffle_disasm_aarch64.cpp")
+add_custom_command(OUTPUT ${GENERATED_CPP_ARM64}
     # Souffle includes the path of the output file in the generated
     # program name. Change directory and use a relative path so the name
     # does not depend on build location.
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
-    COMMAND ${SOUFFLE} ${SOUFFLE_DISASM_MAIN} -g souffle_disasm.cpp -jauto
-    DEPENDS ${DATALOG_SOURCES})
+    COMMAND ${SOUFFLE} ${SOUFFLE_DISASM_MAIN} -g souffle_disasm_aarch64.cpp -jauto -MARCH=aarch64
+    DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_ARM64_SOURCES})
+
+set(GENERATED_CPP_X64 "${CMAKE_BINARY_DIR}/src/souffle_disasm_x64.cpp")
+  add_custom_command(OUTPUT ${GENERATED_CPP_X64}
+    # Souffle includes the path of the output file in the generated
+    # program name. Change directory and use a relative path so the name
+    # does not depend on build location.
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
+    COMMAND ${SOUFFLE} ${SOUFFLE_DISASM_MAIN} -g souffle_disasm_x64.cpp -jauto -MARCH=x64
+    DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_X64_SOURCES})
 
 # determine what flags to use to specify -fopenmp.
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
@@ -145,6 +160,8 @@ add_subdirectory(passes)
 add_library(disasm_main STATIC
   disasm_main.cpp
   DlDecoder.cpp
+  AArch64Decoder.cpp
+  X86Decoder.cpp
   ExceptionDecoder.cpp
   GtirbModuleDisassembler.cpp
   GtirbZeroBuilder.cpp
@@ -259,7 +276,8 @@ target_link_libraries(disasm_main
 # Now combine the static library and generated code into an
 # executable.
 add_executable(ddisasm
-  ${GENERATED_CPP})
+  ${GENERATED_CPP_ARM64}
+  ${GENERATED_CPP_X64})
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_link_libraries(ddisasm

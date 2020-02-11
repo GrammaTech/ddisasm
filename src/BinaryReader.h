@@ -27,6 +27,7 @@
 #include <string>
 #include <vector>
 #include "gtirb/gtirb.hpp"
+#include <LIEF/LIEF.hpp>
 
 namespace InitialAuxData
 {
@@ -123,6 +124,8 @@ public:
 
     virtual std::vector<std::string> get_libraries() = 0;
     virtual std::vector<std::string> get_library_paths() = 0;
+
+    virtual std::tuple<LIEF::ARCHITECTURES, LIEF::ENDIANNESS> get_container_info() = 0;
 
     virtual std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
     get_section_content_and_address(const std::string &name) = 0;
