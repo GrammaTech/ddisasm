@@ -108,8 +108,10 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
             {
                 // Create Section object and set common flags
                 gtirb::Section *section = module.addSection(context, binSection.name);
-                section->addFlag(gtirb::SectionFlag::Loaded);
-                // TODO: Add other section flags (Readable, Writable, ...)
+                for(auto flag : binary->get_section_flags(binSection))
+                {
+                    section->addFlag(flag);
+                }
 
                 /// Add allocated section contents to a single contiguous ByteInterval.
                 std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);

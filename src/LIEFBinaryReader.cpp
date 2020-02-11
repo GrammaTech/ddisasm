@@ -136,6 +136,44 @@ std::set<InitialAuxData::Section> LIEFBinaryReader::get_sections()
     return sectionTuples;
 }
 
+std::set<gtirb::SectionFlag> LIEFBinaryReader::get_section_flags(
+    const InitialAuxData::Section& section)
+{
+    std::set<gtirb::SectionFlag> Flags;
+
+    if(dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
+    {
+        bool is_allocated =
+            section.flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC);
+        bool is_executable =
+            section.flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_EXECINSTR);
+        bool is_writable =
+            section.flags && static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
+        bool is_initialized =
+            is_allocated
+            && section.type != static_cast<int>(LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS);
+        if(is_allocated)
+        {
+            Flags.insert(gtirb::SectionFlag::Loaded);
+            Flags.insert(gtirb::SectionFlag::Readable);
+        }
+        if(is_executable)
+        {
+            Flags.insert(gtirb::SectionFlag::Executable);
+        }
+        if(is_writable)
+        {
+            Flags.insert(gtirb::SectionFlag::Writable);
+        }
+        if(is_initialized)
+        {
+            Flags.insert(gtirb::SectionFlag::Initialized);
+        }
+    }
+
+    return std::move(Flags);
+}
+
 gtirb::FileFormat LIEFBinaryReader::get_binary_format()
 {
     if(bin->format() == LIEF::EXE_FORMATS::FORMAT_ELF)
