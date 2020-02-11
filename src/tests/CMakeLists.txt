@@ -12,8 +12,16 @@ ELSE()
 ENDIF()
 
 add_executable(TestDdisasm
+        GtirbZeroBuilder.Test.cpp
+        LIEFBinaryReader.Test.cpp
         SccPass.Test.cpp
         NoReturnPass.Test.cpp)
+
+add_library(zero_builder STATIC
+  ../GtirbZeroBuilder.cpp
+  ../LIEFBinaryReader.cpp)
+
+target_link_libraries(zero_builder gtirb ${LIEF_LIBRARIES})
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_link_libraries(${PROJECT_NAME}
@@ -24,6 +32,7 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
         gtirb
         scc_pass
         no_return_pass
+        zero_builder
   )
   target_link_options(${PROJECT_NAME} PRIVATE
     /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>)
@@ -38,6 +47,7 @@ else()
         -Wl,--whole-archive
         no_return_pass
         -Wl,--no-whole-archive
+        zero_builder
   )
 endif()
 
