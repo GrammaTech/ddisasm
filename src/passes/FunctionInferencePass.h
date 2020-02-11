@@ -24,6 +24,7 @@
 #ifndef FUNCTION_INFERENCE_PASS_H_
 #define FUNCTION_INFERENCE_PASS_H_
 
+#include <capstone/capstone.h>
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 #include <optional>
@@ -35,11 +36,11 @@ private:
     std::optional<std::string> DebugDir;
 
     void populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Context& Ctx,
-                             gtirb::Module& M);
+                             gtirb::Module& M, cs_arch arch, cs_mode mode);
     void updateFunctions(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M);
 
 public:
     void setDebugDir(std::string Path);
-    void computeFunctions(gtirb::Context& Ctx, gtirb::Module& module, unsigned int NThreads);
+    void computeFunctions(gtirb::Context& Ctx, gtirb::Module& module, cs_arch arch, cs_mode mode, unsigned int NThreads);
 };
 #endif // FUNCTION_INFERENCE_PASS_H_

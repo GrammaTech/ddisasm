@@ -173,9 +173,9 @@ int main(int argc, char **argv)
                 NoReturn.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
                 FunctionInference.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
             }
-            NoReturn.computeNoReturn(module, NThreads);
+            NoReturn.computeNoReturn(module, arch, mode, NThreads);
             std::cout << "Detecting additional functions" << std::endl;
-            FunctionInference.computeFunctions(context, module, NThreads);
+            FunctionInference.computeFunctions(context, module, arch, mode, NThreads);
         }
         // Output GTIRB
         if(vm.count("ir") != 0)
