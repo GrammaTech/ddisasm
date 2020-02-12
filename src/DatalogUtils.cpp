@@ -403,15 +403,12 @@ void GtirbToDatalog::populateFunctionEntries(const gtirb::Context& Ctx, gtirb::M
     {
         for(auto& UUID : Pair.second)
         {
-            if(auto* Node = gtirb::Node::getByUUID(Ctx, UUID); Node != nullptr)
+            if(auto* Block = dyn_cast<gtirb::CodeBlock>(gtirb::Node::getByUUID(Ctx, UUID)))
             {
-                if(auto* Block = dyn_cast<gtirb::CodeBlock>(Node))
-                {
-                    assert(Block->getAddress() && "Found code block without address.");
-                    souffle::tuple T(FunctionEntryRel);
-                    T << *Block->getAddress();
-                    FunctionEntryRel->insert(T);
-                }
+                assert(Block->getAddress() && "Found code block without address.");
+                souffle::tuple T(FunctionEntryRel);
+                T << *Block->getAddress();
+                FunctionEntryRel->insert(T);
             }
         }
     }
