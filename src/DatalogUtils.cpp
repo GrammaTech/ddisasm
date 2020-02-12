@@ -196,19 +196,22 @@ void GtirbToDatalog::populateBlocks(const gtirb::Module& M)
 
     for(auto& Block : M.code_blocks())
     {
-        assert(Block.getAddress() && PrevBlockAddr && "Found code block without address.");
+        uint64_t BlockSize = Block.getSize();
+        std::optional<gtirb::Addr> BlockAddr = Block.getAddress();
+
+        assert(BlockAddr && PrevBlockAddr && "Found code block without address.");
 
         souffle::tuple T(BlocksRel);
-        T << *Block.getAddress() << Block.getSize();
+        T << *BlockAddr << BlockSize;
         BlocksRel->insert(T);
 
-        if(*PrevBlockAddr < Block.getAddress())
+        if(*PrevBlockAddr < *BlockAddr)
         {
             souffle::tuple TupleNext(NextBlockRel);
-            TupleNext << *PrevBlockAddr << *Block.getAddress();
+            TupleNext << *PrevBlockAddr << *BlockAddr;
             NextBlockRel->insert(TupleNext);
         }
-        PrevBlockAddr = Block.getAddress();
+        PrevBlockAddr = BlockAddr;
     }
 }
 
