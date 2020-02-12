@@ -104,24 +104,28 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
     {
         if(isAllocatedSection(binary->get_binary_format(), binSection.flags))
         {
+            // Create Section object and set common flags
+            gtirb::Section *section = module.addSection(context, binSection.name);
+            for(auto flag : binary->get_section_flags(binSection))
+            {
+                section->addFlag(flag);
+            }
             if(auto sectionData = binary->get_section_content_and_address(binSection.name))
             {
-                // Create Section object and set common flags
-                gtirb::Section *section = module.addSection(context, binSection.name);
-                for(auto flag : binary->get_section_flags(binSection))
-                {
-                    section->addFlag(flag);
-                }
-
-                /// Add allocated section contents to a single contiguous ByteInterval.
+                // Add allocated section contents to a single contiguous ByteInterval.
                 std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
                 section->addByteInterval(context, gtirb::Addr(binSection.address),
                                          sectionBytes.begin(), sectionBytes.end(), binSection.size);
-
-                // Add object specific flags to elfSectionProperties AuxData table.
-                sectionProperties[section->getUUID()] =
-                    std::make_tuple(binSection.type, binSection.flags);
             }
+            else
+            {
+                // Add an uninitialized section.
+                section->addByteInterval(context, gtirb::Addr(binSection.address), binSection.size,
+                                         0);
+            }
+            // Add object specific flags to elfSectionProperties AuxData table.
+            sectionProperties[section->getUUID()] =
+                std::make_tuple(binSection.type, binSection.flags);
         }
     }
     module.addAuxData("elfSectionProperties", std::move(sectionProperties));
