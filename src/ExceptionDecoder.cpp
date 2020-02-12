@@ -32,13 +32,18 @@ ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
     auto ehFrameSection = module.findSections(".eh_frame");
     if(ehFrameSection != module.sections_by_name_end())
     {
-        assert(ehFrameSection->getAddress() && "Found .eh_frame section without address.");
+        assert(ehFrameSection->getAddress() && "Found .eh_frame section without an address.");
         addressEhFrame = static_cast<uint64_t>(*ehFrameSection->getAddress());
-        for(const auto &block : ehFrameSection->code_blocks())
+        if(auto it = ehFrameSection->findByteIntervalsAt(*ehFrameSection->getAddress());
+           !it.empty())
         {
-            const char *bytes = block.rawBytes<const char>();
+            const gtirb::ByteInterval &interval = *it.begin();
+            assert(ehFrameSection->getSize() == interval.getSize()
+                   && "Expected single .eh_frame byte interval.");
+
+            const char *bytes = interval.rawBytes<const char>();
             // TODO: Use something safer than pointer arith?
-            const char *end = bytes + block.getSize();
+            const char *end = bytes + interval.getSize();
             ehFrame.assign(bytes, end);
         }
     }
@@ -46,13 +51,18 @@ ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
     if(ehFrameHeaderSection != module.sections_by_name_end())
     {
         assert(ehFrameHeaderSection->getAddress()
-               && "Found .eh_frame_hdr section without address.");
+               && "Found .eh_frame_hdr section without an address.");
         addressEhFrameHeader = static_cast<uint64_t>(*ehFrameHeaderSection->getAddress());
-        for(const auto &block : ehFrameSection->code_blocks())
+        if(auto it = ehFrameHeaderSection->findByteIntervalsAt(*ehFrameHeaderSection->getAddress());
+           !it.empty())
         {
-            const char *bytes = block.rawBytes<char>();
+            const gtirb::ByteInterval &interval = *it.begin();
+            assert(ehFrameHeaderSection->getSize() == interval.getSize()
+                   && "Expected single .eh_frame_hdr byte interval.");
+
+            const char *bytes = interval.rawBytes<const char>();
             // TODO: Use something safer than pointer arith?
-            const char *end = bytes + block.getSize();
+            const char *end = bytes + interval.getSize();
             ehFrameHeader.assign(bytes, end);
         }
     }
@@ -60,13 +70,18 @@ ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
     if(gccExceptSection != module.sections_by_name_end())
     {
         assert(gccExceptSection->getAddress()
-               && "Found .gcc_except_table section without address.");
+               && "Found .gcc_except_table section without an address.");
         addressGccExcept = static_cast<uint64_t>(*gccExceptSection->getAddress());
-        for(const auto &block : gccExceptSection->code_blocks())
+        if(auto it = gccExceptSection->findByteIntervalsAt(*gccExceptSection->getAddress());
+           !it.empty())
         {
-            const char *bytes = block.rawBytes<char>();
+            const gtirb::ByteInterval &interval = *it.begin();
+            assert(gccExceptSection->getSize() == interval.getSize()
+                   && "Expected single .gcc_except_table byte interval.");
+
+            const char *bytes = interval.rawBytes<char>();
             // TODO: Use something safer than pointer arith?
-            const char *end = bytes + block.getSize();
+            const char *end = bytes + interval.getSize();
             ehFrameHeader.assign(bytes, end);
         }
     }
