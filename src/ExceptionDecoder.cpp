@@ -79,7 +79,7 @@ ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
 
             const char *bytes = interval.rawBytes<char>();
             const char *end = bytes + interval.getInitializedSize();
-            ehFrameHeader.assign(bytes, end);
+            gccExcept.assign(bytes, end);
         }
     }
     ehParser = EHP::EHFrameParser_t::factory(ptrsize, EHP::EHPEndianness_t::HOST, ehFrame,
