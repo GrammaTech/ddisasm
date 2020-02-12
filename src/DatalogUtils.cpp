@@ -187,29 +187,28 @@ namespace souffle
 
 void GtirbToDatalog::populateBlocks(const gtirb::Module& M)
 {
-    if(M.blocks().empty())
+    if(M.code_blocks().empty())
         return;
+
     auto* BlocksRel = Prog->getRelation("block");
     auto* NextBlockRel = Prog->getRelation("next_block");
-    if(!M.code_blocks().empty())
+    std::optional<gtirb::Addr> PrevBlockAddr = M.code_blocks().begin()->getAddress();
+
+    for(auto& Block : M.code_blocks())
     {
-        std::optional<gtirb::Addr> PrevBlockAddr = M.code_blocks().begin()->getAddress();
-        for(auto& Block : M.code_blocks())
+        assert(Block.getAddress() && PrevBlockAddr && "Found code block without address.");
+
+        souffle::tuple T(BlocksRel);
+        T << *Block.getAddress() << Block.getSize();
+        BlocksRel->insert(T);
+
+        if(*PrevBlockAddr < Block.getAddress())
         {
-            assert(Block.getAddress() && PrevBlockAddr && "Found code block without address.");
-
-            souffle::tuple T(BlocksRel);
-            T << *Block.getAddress() << Block.getSize();
-            BlocksRel->insert(T);
-
-            if(*PrevBlockAddr < Block.getAddress())
-            {
-                souffle::tuple TupleNext(NextBlockRel);
-                TupleNext << *PrevBlockAddr << *Block.getAddress();
-                NextBlockRel->insert(TupleNext);
-            }
-            PrevBlockAddr = Block.getAddress();
+            souffle::tuple TupleNext(NextBlockRel);
+            TupleNext << *PrevBlockAddr << *Block.getAddress();
+            NextBlockRel->insert(TupleNext);
         }
+        PrevBlockAddr = Block.getAddress();
     }
 }
 
