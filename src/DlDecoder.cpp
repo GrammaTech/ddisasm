@@ -115,7 +115,7 @@ void addSections(souffle::SouffleProgram *prog, gtirb::Module &module)
 
     for(auto &section : module.sections())
     {
-        assert(section.getAddress() && "Section has no address..");
+        assert(section.getAddress() && "Section has no address.");
         assert(section.getSize() && "Section has non-calculable size.");
 
         souffle::tuple t(rel);
@@ -215,7 +215,7 @@ void DlDecoder::storeDataSection(const gtirb::ByteInterval &byteInterval, gtirb:
         return ((num >= min_address) && (num <= max_address));
     };
     gtirb::Addr ea = byteInterval.getAddress().value();
-    uint64_t size = byteInterval.getSize();
+    uint64_t size = byteInterval.getInitializedSize();
     auto buf = byteInterval.rawBytes<const uint8_t>();
     while(size > 0)
     {
