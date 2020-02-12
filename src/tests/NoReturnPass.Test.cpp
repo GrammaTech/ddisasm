@@ -30,7 +30,8 @@ gtirb::EdgeLabel simpleJump()
 TEST(Unit_NoReturnPass, remove_simple_fallthrough)
 {
     gtirb::Context Ctx;
-    auto* M = gtirb::Module::Create(Ctx);
+    gtirb::IR* IR = gtirb::IR::Create(Ctx);
+    gtirb::Module* M = IR->addModule(Ctx);
     gtirb::Section* S = M->addSection(Ctx, "");
     gtirb::ByteInterval* I = S->addByteInterval(Ctx, gtirb::Addr(0), 2);
 
@@ -48,17 +49,16 @@ TEST(Unit_NoReturnPass, remove_simple_fallthrough)
 
     gtirb::CFG& Cfg = M->getIR()->getCFG();
 
-    // FIXME:
-    // Cfg[*addEdge(B1, B2, Cfg)] = simpleFallthrough();
-    // Cfg[*addEdge(B1, ExternalBlock, Cfg)] = simpleCall();
-    // Cfg[*addEdge(B2, TopBlock, Cfg)] = simpleReturn();
+    Cfg[*addEdge(B1, B2, Cfg)] = simpleFallthrough();
+    Cfg[*addEdge(B1, ExternalBlock, Cfg)] = simpleCall();
+    Cfg[*addEdge(B2, TopBlock, Cfg)] = simpleReturn();
 
-    // computeSCCs(*M);
-    // std::set<gtirb::Block*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
+    computeSCCs(*M);
+    std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
 
-    // EXPECT_TRUE(CallNoReturn.count(B1));
-    // EXPECT_FALSE(CallNoReturn.count(B2));
-    // EXPECT_EQ(2, Cfg.m_edges.size());
+    EXPECT_TRUE(CallNoReturn.count(B1));
+    EXPECT_FALSE(CallNoReturn.count(B2));
+    EXPECT_EQ(2, Cfg.m_edges.size());
 }
 
 TEST(Unit_NoReturnPass, one_path_returns)
@@ -71,7 +71,8 @@ TEST(Unit_NoReturnPass, one_path_returns)
     B6
     */
     gtirb::Context Ctx;
-    auto* M = gtirb::Module::Create(Ctx);
+    gtirb::IR* IR = gtirb::IR::Create(Ctx);
+    gtirb::Module* M = IR->addModule(Ctx);
     gtirb::Section* S = M->addSection(Ctx, "");
     gtirb::ByteInterval* I = S->addByteInterval(Ctx, gtirb::Addr(0), 7);
 
@@ -92,30 +93,29 @@ TEST(Unit_NoReturnPass, one_path_returns)
     M->addProxyBlock(TopBlock);
 
     gtirb::CFG& Cfg = M->getIR()->getCFG();
-    // FIXME:
-    // Cfg[*addEdge(B1, B6, Cfg)] = simpleFallthrough();
-    // Cfg[*addEdge(B3, B4, Cfg)] = simpleFallthrough();
-    // Cfg[*addEdge(B2, B5, Cfg)] = simpleFallthrough();
+    Cfg[*addEdge(B1, B6, Cfg)] = simpleFallthrough();
+    Cfg[*addEdge(B3, B4, Cfg)] = simpleFallthrough();
+    Cfg[*addEdge(B2, B5, Cfg)] = simpleFallthrough();
 
-    // Cfg[*addEdge(B2, B3, Cfg)] = simpleJump();
+    Cfg[*addEdge(B2, B3, Cfg)] = simpleJump();
 
-    // Cfg[*addEdge(B1, B2, Cfg)] = simpleCall();
-    // Cfg[*addEdge(B3, ExitBlock, Cfg)] = simpleCall();
+    Cfg[*addEdge(B1, B2, Cfg)] = simpleCall();
+    Cfg[*addEdge(B3, ExitBlock, Cfg)] = simpleCall();
 
-    // Cfg[*addEdge(B4, B6, Cfg)] = simpleReturn();
-    // Cfg[*addEdge(B5, B6, Cfg)] = simpleReturn();
-    // Cfg[*addEdge(B6, TopBlock, Cfg)] = simpleReturn();
+    Cfg[*addEdge(B4, B6, Cfg)] = simpleReturn();
+    Cfg[*addEdge(B5, B6, Cfg)] = simpleReturn();
+    Cfg[*addEdge(B6, TopBlock, Cfg)] = simpleReturn();
 
-    // EXPECT_EQ(9, Cfg.m_edges.size());
-    // computeSCCs(*M);
-    // std::set<gtirb::Block*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
+    EXPECT_EQ(9, Cfg.m_edges.size());
+    computeSCCs(*M);
+    std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
 
-    // EXPECT_TRUE(CallNoReturn.count(B3));
-    // EXPECT_FALSE(CallNoReturn.count(B1));
-    // EXPECT_EQ(8, Cfg.m_edges.size());
+    EXPECT_TRUE(CallNoReturn.count(B3));
+    EXPECT_FALSE(CallNoReturn.count(B1));
+    EXPECT_EQ(8, Cfg.m_edges.size());
 }
 
-TEST(Unit_NoRetunPass, two_paths_no_return)
+TEST(Unit_NoReturnPass, two_paths_no_return)
 {
     /*
     B1 -c> B2 ->B3 -c> Exit
@@ -127,7 +127,8 @@ TEST(Unit_NoRetunPass, two_paths_no_return)
     B7
     */
     gtirb::Context Ctx;
-    auto* M = gtirb::Module::Create(Ctx);
+    gtirb::IR* IR = gtirb::IR::Create(Ctx);
+    gtirb::Module* M = IR->addModule(Ctx);
     gtirb::Section* S = M->addSection(Ctx, "");
     gtirb::ByteInterval* I = S->addByteInterval(Ctx, gtirb::Addr(0), 8);
 
@@ -150,33 +151,31 @@ TEST(Unit_NoRetunPass, two_paths_no_return)
 
     gtirb::CFG& Cfg = M->getIR()->getCFG();
 
-    // FIXME:
-    //     Cfg[*addEdge(B1, B7, Cfg)] = simpleFallthrough();
-    //     Cfg[*addEdge(B3, B4, Cfg)] = simpleFallthrough();
-    //     Cfg[*addEdge(B2, B5, Cfg)] = simpleFallthrough();
-    //     Cfg[*addEdge(B5, B6, Cfg)] = simpleFallthrough();
+    Cfg[*addEdge(B1, B7, Cfg)] = simpleFallthrough();
+    Cfg[*addEdge(B3, B4, Cfg)] = simpleFallthrough();
+    Cfg[*addEdge(B2, B5, Cfg)] = simpleFallthrough();
+    Cfg[*addEdge(B5, B6, Cfg)] = simpleFallthrough();
+    Cfg[*addEdge(B2, B3, Cfg)] = simpleJump();
 
-    //     Cfg[*addEdge(B2, B3, Cfg)] = simpleJump();
+    Cfg[*addEdge(B1, B2, Cfg)] = simpleCall();
+    Cfg[*addEdge(B3, ExitBlock, Cfg)] = simpleCall();
+    Cfg[*addEdge(B5, ExitBlock, Cfg)] = simpleCall();
 
-    //     Cfg[*addEdge(B1, B2, Cfg)] = simpleCall();
-    //     Cfg[*addEdge(B3, ExitBlock, Cfg)] = simpleCall();
-    //     Cfg[*addEdge(B5, ExitBlock, Cfg)] = simpleCall();
+    Cfg[*addEdge(B4, B7, Cfg)] = simpleReturn();
+    Cfg[*addEdge(B6, B7, Cfg)] = simpleReturn();
+    Cfg[*addEdge(B7, TopBlock, Cfg)] = simpleReturn();
 
-    //     Cfg[*addEdge(B4, B7, Cfg)] = simpleReturn();
-    //     Cfg[*addEdge(B6, B7, Cfg)] = simpleReturn();
-    //     Cfg[*addEdge(B7, TopBlock, Cfg)] = simpleReturn();
+    EXPECT_EQ(11, Cfg.m_edges.size());
+    computeSCCs(*M);
+    std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
 
-    //     EXPECT_EQ(11, Cfg.m_edges.size());
-    //     computeSCCs(*M);
-    //     std::set<gtirb::Block*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
-
-    //     EXPECT_TRUE(CallNoReturn.count(B3));
-    //     EXPECT_TRUE(CallNoReturn.count(B5));
-    //     EXPECT_TRUE(CallNoReturn.count(B1));
-    //     EXPECT_EQ(8, Cfg.m_edges.size());
+    EXPECT_TRUE(CallNoReturn.count(B3));
+    EXPECT_TRUE(CallNoReturn.count(B5));
+    EXPECT_TRUE(CallNoReturn.count(B1));
+    EXPECT_EQ(8, Cfg.m_edges.size());
 }
 
-TEST(Unit_NoRetunPass, loop_no_return)
+TEST(Unit_NoReturnPass, loop_no_return)
 {
     /*
     B1 -c> B2
@@ -189,7 +188,8 @@ TEST(Unit_NoRetunPass, loop_no_return)
     B6 -ret->Top
     */
     gtirb::Context Ctx;
-    auto* M = gtirb::Module::Create(Ctx);
+    gtirb::IR* IR = gtirb::IR::Create(Ctx);
+    gtirb::Module* M = IR->addModule(Ctx);
     gtirb::Section* S = M->addSection(Ctx, "");
     gtirb::ByteInterval* I = S->addByteInterval(Ctx, gtirb::Addr(0), 7);
 
@@ -211,25 +211,24 @@ TEST(Unit_NoRetunPass, loop_no_return)
 
     gtirb::CFG& Cfg = M->getIR()->getCFG();
 
-    // FIXME:
-    // Cfg[*addEdge(B1, B6, Cfg)] = simpleFallthrough();
-    // Cfg[*addEdge(B2, B3, Cfg)] = simpleFallthrough();
-    // Cfg[*addEdge(B3, B4, Cfg)] = simpleFallthrough();
-    // Cfg[*addEdge(B4, B5, Cfg)] = simpleFallthrough();
+    Cfg[*addEdge(B1, B6, Cfg)] = simpleFallthrough();
+    Cfg[*addEdge(B2, B3, Cfg)] = simpleFallthrough();
+    Cfg[*addEdge(B3, B4, Cfg)] = simpleFallthrough();
+    Cfg[*addEdge(B4, B5, Cfg)] = simpleFallthrough();
 
-    // Cfg[*addEdge(B3, B2, Cfg)] = simpleJump();
+    Cfg[*addEdge(B3, B2, Cfg)] = simpleJump();
 
-    // Cfg[*addEdge(B1, B2, Cfg)] = simpleCall();
-    // Cfg[*addEdge(B4, ExitBlock, Cfg)] = simpleCall();
+    Cfg[*addEdge(B1, B2, Cfg)] = simpleCall();
+    Cfg[*addEdge(B4, ExitBlock, Cfg)] = simpleCall();
 
-    // Cfg[*addEdge(B5, TopBlock, Cfg)] = simpleReturn();
-    // Cfg[*addEdge(B6, TopBlock, Cfg)] = simpleReturn();
+    Cfg[*addEdge(B5, TopBlock, Cfg)] = simpleReturn();
+    Cfg[*addEdge(B6, TopBlock, Cfg)] = simpleReturn();
 
-    // EXPECT_EQ(9, Cfg.m_edges.size());
-    // computeSCCs(*M);
-    // std::set<gtirb::Block*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
+    EXPECT_EQ(9, Cfg.m_edges.size());
+    computeSCCs(*M);
+    std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
 
-    // EXPECT_TRUE(CallNoReturn.count(B4));
-    // EXPECT_TRUE(CallNoReturn.count(B1));
-    // EXPECT_EQ(7, Cfg.m_edges.size());
+    EXPECT_TRUE(CallNoReturn.count(B4));
+    EXPECT_TRUE(CallNoReturn.count(B1));
+    EXPECT_EQ(7, Cfg.m_edges.size());
 }
