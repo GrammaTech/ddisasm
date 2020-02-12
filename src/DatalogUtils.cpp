@@ -265,12 +265,16 @@ void GtirbToDatalog::populateCfgEdges(const gtirb::Module& M)
     {
         if(const gtirb::CodeBlock* Src = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_source]))
         {
-            assert(Src->getAddress() && "Found code block without address.");
+            std::optional<gtirb::Addr> SrcAddr = Src->getAddress();
+            assert(SrcAddr && "Found source block without address.");
+
             if(const gtirb::CodeBlock* Dest = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_target]))
             {
-                assert(Dest->getAddress() && "Found code block without address.");
+                std::optional<gtirb::Addr> DestAddr = Dest->getAddress();
+                assert(DestAddr && "Found destination block without address.");
+
                 souffle::tuple T(EdgeRel);
-                T << *Src->getAddress() << *Dest->getAddress();
+                T << *SrcAddr << *DestAddr;
                 populateEdgeProperties(T, Edge.get_property());
                 EdgeRel->insert(T);
             }
@@ -281,14 +285,14 @@ void GtirbToDatalog::populateCfgEdges(const gtirb::Module& M)
                 if(foundSymbol != InvSymbolMap.end())
                 {
                     souffle::tuple T(SymbolEdgeRel);
-                    T << *Src->getAddress() << foundSymbol->second;
+                    T << *SrcAddr << foundSymbol->second;
                     populateEdgeProperties(T, Edge.get_property());
                     SymbolEdgeRel->insert(T);
                 }
                 else
                 {
                     souffle::tuple T(TopEdgeRel);
-                    T << *Src->getAddress();
+                    T << *SrcAddr;
                     populateEdgeProperties(T, Edge.get_property());
                     TopEdgeRel->insert(T);
                 }
