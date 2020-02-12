@@ -1033,7 +1033,7 @@ void buildCfiDirectives(gtirb::Context &context, gtirb::Module &module,
                 operands.push_back(op2);
         }
 
-        auto blockRange = module.findCodeBlocksAt(blockAddr);
+        auto blockRange = module.findCodeBlocksIn(blockAddr);
         if(blockRange.begin() != blockRange.end() && blockAddr == blockRange.begin()->getAddress())
         {
             gtirb::Offset offset(blockRange.begin()->getUUID(), disp);
