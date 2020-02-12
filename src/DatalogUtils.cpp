@@ -232,7 +232,7 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
         cs_insn* Insn;
         const gtirb::ByteInterval* Bytes = Block.getByteInterval();
         size_t Count =
-            cs_disasm(CsHandle, Bytes->rawBytes<uint8_t>(), Bytes->getSize(),
+            cs_disasm(CsHandle, Bytes->rawBytes<uint8_t>(), Bytes->getInitializedSize(),
                       static_cast<uint64_t>(*Block.getAddress()), InstructionLimit, &Insn);
 
         // Exception-safe cleanup of instructions

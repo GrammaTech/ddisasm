@@ -146,7 +146,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
     assert(module.getSize() && "Module has non-calculable size.");
     gtirb::Addr minAddr = *module.getAddress();
 
-    assert(module.getAddress() && "Module has no addressable section data.");
+    assert(module.getAddress() && "Module has non-addressable section data.");
     gtirb::Addr maxAddr = *module.getAddress() + *module.getSize();
 
     auto *extraInfoTable =
@@ -187,7 +187,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
 void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
 {
     gtirb::Addr ea = byteInterval.getAddress().value();
-    uint64_t size = byteInterval.getSize();
+    uint64_t size = byteInterval.getInitializedSize();
     auto buf = byteInterval.rawBytes<const unsigned char>();
     while(size > 0)
     {

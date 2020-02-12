@@ -43,7 +43,7 @@ ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
 
             const char *bytes = interval.rawBytes<const char>();
             // TODO: Use something safer than pointer arith?
-            const char *end = bytes + interval.getSize();
+            const char *end = bytes + interval.getInitializedSize();
             ehFrame.assign(bytes, end);
         }
     }
@@ -62,7 +62,7 @@ ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
 
             const char *bytes = interval.rawBytes<const char>();
             // TODO: Use something safer than pointer arith?
-            const char *end = bytes + interval.getSize();
+            const char *end = bytes + interval.getInitializedSize();
             ehFrameHeader.assign(bytes, end);
         }
     }
@@ -81,7 +81,7 @@ ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
 
             const char *bytes = interval.rawBytes<char>();
             // TODO: Use something safer than pointer arith?
-            const char *end = bytes + interval.getSize();
+            const char *end = bytes + interval.getInitializedSize();
             ehFrameHeader.assign(bytes, end);
         }
     }
