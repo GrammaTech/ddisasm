@@ -42,7 +42,6 @@ ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
                    && "Expected single .eh_frame byte interval.");
 
             const char *bytes = interval.rawBytes<const char>();
-            // TODO: Use something safer than pointer arith?
             const char *end = bytes + interval.getInitializedSize();
             ehFrame.assign(bytes, end);
         }
@@ -61,7 +60,6 @@ ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
                    && "Expected single .eh_frame_hdr byte interval.");
 
             const char *bytes = interval.rawBytes<const char>();
-            // TODO: Use something safer than pointer arith?
             const char *end = bytes + interval.getInitializedSize();
             ehFrameHeader.assign(bytes, end);
         }
@@ -80,7 +78,6 @@ ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
                    && "Expected single .gcc_except_table byte interval.");
 
             const char *bytes = interval.rawBytes<char>();
-            // TODO: Use something safer than pointer arith?
             const char *end = bytes + interval.getInitializedSize();
             ehFrameHeader.assign(bytes, end);
         }
