@@ -83,8 +83,9 @@ TEST(Unit_NoReturnPass, one_path_returns)
     gtirb::CodeBlock* B6 = I->addBlock<gtirb::CodeBlock>(Ctx, 6, 1);
 
     auto ExitBlock = gtirb::ProxyBlock::Create(Ctx);
-    auto Symbol = M->addSymbol(Ctx, "exit");
     M->addProxyBlock(ExitBlock);
+
+    auto Symbol = M->addSymbol(Ctx, "exit");
     Symbol->setReferent(ExitBlock);
 
     auto TopBlock = gtirb::ProxyBlock::Create(Ctx);
@@ -139,8 +140,9 @@ TEST(Unit_NoRetunPass, two_paths_no_return)
     gtirb::CodeBlock* B7 = I->addBlock<gtirb::CodeBlock>(Ctx, 7, 1);
 
     auto ExitBlock = gtirb::ProxyBlock::Create(Ctx);
-    auto Symbol = M->addSymbol(Ctx, "exit");
     M->addProxyBlock(ExitBlock);
+
+    auto Symbol = M->addSymbol(Ctx, "exit");
     Symbol->setReferent(ExitBlock);
 
     auto TopBlock = gtirb::ProxyBlock::Create(Ctx);
@@ -199,8 +201,9 @@ TEST(Unit_NoRetunPass, loop_no_return)
     gtirb::CodeBlock* B6 = I->addBlock<gtirb::CodeBlock>(Ctx, 6, 1);
 
     auto ExitBlock = gtirb::ProxyBlock::Create(Ctx);
-    auto Symbol = M->addSymbol(Ctx, "exit");
     M->addProxyBlock(ExitBlock);
+
+    auto Symbol = M->addSymbol(Ctx, "exit");
     Symbol->setReferent(ExitBlock);
 
     auto TopBlock = gtirb::ProxyBlock::Create(Ctx);
