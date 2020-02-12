@@ -840,25 +840,35 @@ void buildDataGroups(gtirb::Context &context, gtirb::Module &module, souffle::So
     module.addAuxData("encodings", std::move(typesTable));
 }
 
-void connectSymbolsToDataGroups(gtirb::Module &module)
+void connectSymbolsToDataBlocks(gtirb::Module &module)
 {
-    for(auto &d : module.data_blocks())
+    std::vector<std::tuple<gtirb::DataBlock *, gtirb::Symbol *>> connect;
+    for(auto &block : module.data_blocks())
     {
-        for(auto &symbol : module.findSymbols(d.getAddress().value()))
+        for(auto &symbol : module.findSymbols(block.getAddress().value()))
         {
-            symbol.setReferent<gtirb::DataBlock>(&d);
+            connect.push_back(std::make_tuple(&block, &symbol));
         }
+    }
+    for(auto [block, symbol] : connect)
+    {
+        symbol->setReferent<gtirb::DataBlock>(block);
     }
 }
 
-void connectSymbolsToBlocks(gtirb::Module &module)
+void connectSymbolsToCodeBlocks(gtirb::Module &module)
 {
+    std::vector<std::tuple<gtirb::CodeBlock *, gtirb::Symbol *>> connect;
     for(auto &block : module.code_blocks())
     {
         for(auto &symbol : module.findSymbols(block.getAddress().value()))
         {
-            symbol.setReferent<gtirb::CodeBlock>(&block);
+            connect.push_back(std::make_tuple(&block, &symbol));
         }
+    }
+    for(auto [block, symbol] : connect)
+    {
+        symbol->setReferent<gtirb::CodeBlock>(block);
     }
 }
 
@@ -1185,10 +1195,10 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildDataGroups(context, module, prog);
     buildCodeBlocks(context, module, prog);
     buildCodeSymbolicInformation(context, module, prog);
-    connectSymbolsToDataGroups(module);
+    connectSymbolsToDataBlocks(module);
     buildCfiDirectives(context, module, prog);
     expandSymbolForwarding(context, module, prog);
-    connectSymbolsToBlocks(module);
+    connectSymbolsToCodeBlocks(module);
     buildFunctions(module, prog);
     buildCFG(context, module, prog);
     buildPadding(module, prog);
