@@ -729,21 +729,7 @@ void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
     }
 }
 
-void buildDataDirectories(gtirb::Module &module, souffle::SouffleProgram *prog)
-{
-    std::vector<std::tuple<std::string, uint64_t, uint64_t>> dataDirectories;
-    for(auto &output : *prog->getRelation("data_directory"))
-    {
-        uint64_t address;
-        uint64_t size;
-        std::string type;
-        output >> address >> size >> type;
-        dataDirectories.push_back({type, address, size});
-    }
-    module.addAuxData("dataDirectories", std::move(dataDirectories));
-}
-
-void buildDataGroups(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
+void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     auto symbolicData = convertSortedRelation<VectorByEA<SymbolicData>>("symbolic_data", prog);
     auto movedDataLabels =
@@ -1192,7 +1178,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildInferredSymbols(context, module, prog);
     buildSymbolForwarding(context, module, prog);
     buildDataDirectories(module, prog);
-    buildDataGroups(context, module, prog);
+    buildDataBlocks(context, module, prog);
     buildCodeBlocks(context, module, prog);
     buildCodeSymbolicInformation(context, module, prog);
     connectSymbolsToDataBlocks(module);
