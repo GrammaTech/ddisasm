@@ -368,13 +368,16 @@ void GtirbToDatalog::populateFdeEntries(const gtirb::Context& Ctx, gtirb::Module
         auto* Block =
             dyn_cast<const gtirb::CodeBlock>(gtirb::Node::getByUUID(Ctx, Pair.first.ElementId));
         assert(Block && "Found CFI directive that does no belong to a block");
-        assert(Block->getAddress() && "Found code block without address.");
+
+        std::optional<gtirb::Addr> BlockAddr = Block->getAddress();
+        assert(BlockAddr && "Found code block without address.");
+
         for(auto& Directive : Pair.second)
         {
             if(std::get<0>(Directive) == ".cfi_startproc")
-                FdeStart.insert(*Block->getAddress() + Pair.first.Displacement);
+                FdeStart.insert(*BlockAddr + Pair.first.Displacement);
             if(std::get<0>(Directive) == ".cfi_endproc")
-                FdeEnd.insert(*Block->getAddress() + Pair.first.Displacement);
+                FdeEnd.insert(*BlockAddr + Pair.first.Displacement);
         }
     }
     assert(FdeStart.size() == FdeEnd.size() && "Malformed CFI directives");
