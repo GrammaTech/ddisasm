@@ -336,7 +336,7 @@ void GtirbToDatalog::populateSymbolicExpressions(const gtirb::Module& M)
                 if(AddrConst->Sym->getAddress())
                 {
                     souffle::tuple T(SymExprRel);
-                    T << *Addr << *AddrConst->Sym->getAddress() << AddrConst->Offset;
+                    T << *Addr << *(AddrConst->Sym->getAddress()) << AddrConst->Offset;
                     SymExprRel->insert(T);
                 }
             }
@@ -345,7 +345,7 @@ void GtirbToDatalog::populateSymbolicExpressions(const gtirb::Module& M)
                 if(AddrAddr->Sym1->getAddress() && AddrAddr->Sym2->getAddress())
                 {
                     souffle::tuple T(SymMinusSymRel);
-                    T << *Addr << *AddrAddr->Sym1->getAddress() << *AddrAddr->Sym2->getAddress()
+                    T << *Addr << *(AddrAddr->Sym1->getAddress()) << *(AddrAddr->Sym2->getAddress())
                       << AddrAddr->Offset;
                     SymMinusSymRel->insert(T);
                 }
