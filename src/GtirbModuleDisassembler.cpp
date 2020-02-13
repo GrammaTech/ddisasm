@@ -1160,6 +1160,20 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
     module.addAuxData("comments", std::move(comments));
 }
 
+void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
+{
+    for(auto &output : *prog->getRelation("entry_point"))
+    {
+        gtirb::Addr ea;
+        output >> ea;
+        if(const auto it = module.findCodeBlocksAt(ea); !it.empty())
+        {
+            module.setEntryPoint(&*it.begin());
+        }
+    }
+    assert(module.getEntryPoint() && "Failed to set module entry point.");
+}
+
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
                        souffle::SouffleProgram *prog, bool selfDiagnose)
 {
@@ -1176,6 +1190,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildCFG(context, module, prog);
     buildPadding(module, prog);
     buildComments(module, prog, selfDiagnose);
+    updateEntryPoint(module, prog);
 }
 
 void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
