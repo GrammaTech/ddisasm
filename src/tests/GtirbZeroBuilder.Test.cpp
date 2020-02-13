@@ -19,6 +19,7 @@ TEST_P(GtirbZeroBuilderTest, buildSections)
     std::unique_ptr<LIEF::ELF::Binary> ELF = LIEF::ELF::Parser::parse(Path);
     std::unordered_set<std::string> Names;
     std::unordered_map<std::string, size_t> Sizes;
+    std::unordered_map<std::string, uint64_t> Addresses;
 
     for(const auto& Section : ELF->sections())
     {
@@ -26,6 +27,7 @@ TEST_P(GtirbZeroBuilderTest, buildSections)
         {
             Names.insert(Section.name());
             Sizes[Section.name()] = Section.size();
+            Addresses[Section.name()] = Section.virtual_address();
         }
     }
 
@@ -34,6 +36,7 @@ TEST_P(GtirbZeroBuilderTest, buildSections)
         const std::string& Name = Section.getName();
         EXPECT_EQ(Names.count(Name), 1);
         EXPECT_EQ(Sizes[Name], Section.getSize());
+        EXPECT_EQ(Addresses[Name], static_cast<uint64_t>(Section.getAddress().value()));
     }
 }
 
