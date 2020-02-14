@@ -167,7 +167,8 @@ def disassemble_reassemble_test(
     skip_test=False,
 ):
     """
-    Disassemble, reassemble and test an example with the given compilers and optimizations.
+    Disassemble, reassemble and test an example with the given compilers and
+    optimizations.
     """
     assert len(c_compilers) == len(cxx_compilers)
     compile_errors = 0

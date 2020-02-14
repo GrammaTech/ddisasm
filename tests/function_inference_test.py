@@ -3,7 +3,6 @@ import unittest
 from disassemble_reassemble_check import compile, disassemble, cd
 import gtirb
 
-import os
 from pathlib import Path
 
 ex_dir = Path("./examples/")
@@ -20,9 +19,12 @@ class TestFunctionInference(unittest.TestCase):
     def check_function_inference(
         self, make_dir, binary, c_compiler, cxx_compiler, optimization
     ):
-        """ Test that the function inference finds all the functions
-            Compare the functions found with only function symbols and calls in a non-stripped binary
-            with the functions found with the advanced analysis in the stripped binary"""
+        """
+        Test that the function inference finds all the functions compare the
+        functions found with only function symbols and calls in a non-stripped
+        binary with the functions found with the advanced analysis in the
+        stripped binary
+        """
         with cd(make_dir):
             self.assertTrue(
                 compile(c_compiler, cxx_compiler, optimization, [])
