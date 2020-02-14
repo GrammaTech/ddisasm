@@ -5,7 +5,7 @@
 
 .section .bss2 , "wa", @nobits
 .align 32
-array:	
+array:
 	.zero	4000
 
 	.text

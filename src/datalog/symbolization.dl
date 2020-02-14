@@ -306,7 +306,7 @@ address_in_data_refined(EA,Val):-
     data_segment(Beg,End),
     Val >= Beg,
     Val <= End.
-      
+
 address_in_data_refined(EA,Val):-
     binary_type("EXEC"),
     address_in_data(EA,Val),

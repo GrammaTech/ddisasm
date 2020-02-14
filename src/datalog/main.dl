@@ -177,7 +177,7 @@ instruction_displacement_offset(EA,Index,DisplacementOffset):-
     instruction_get_op(EA,Index,Op),
     op_indirect(Op,_,_,_,_,_,_).
 
-.decl instruction_get_operation(ea:address,operation:symbol) 
+.decl instruction_get_operation(ea:address,operation:symbol)
 
 instruction_get_operation(EA,Operation):-
     instruction(EA,_,_,Operation,_,_,_,_).

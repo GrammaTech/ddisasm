@@ -128,7 +128,7 @@ value_reg_at_operand(EA,Op_index,Reg,0,0,0,"complete"):-
 
 //////////////////////////////////////////////////
 
-    
+
 //single access
 data_access_pattern_candidate(Address,Size,0,EA):-
     data_access(EA,_,"NONE","NONE","NONE",_,Address,Size),

@@ -166,7 +166,7 @@ fun:                                    # @fun
 .Lfunc_end5:
     .size	fun, .Lfunc_end5-fun
     .cfi_endproc
-         
+
   .p2align	2
 // here we have a table of relative offsets in code
 .LJTI5_0:
