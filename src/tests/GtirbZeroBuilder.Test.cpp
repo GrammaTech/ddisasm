@@ -38,6 +38,9 @@ TEST_P(GtirbZeroBuilderTest, buildSections)
         EXPECT_EQ(Sizes[Name], Section.getSize());
         EXPECT_EQ(Addresses[Name], static_cast<uint64_t>(Section.getAddress().value()));
     }
+
+    const gtirb::CodeBlock* EntryPoint = Module.getEntryPoint();
+    EXPECT_EQ(EntryPoint->getAddress().value(), gtirb::Addr(ELF->entrypoint()));
 }
 
 INSTANTIATE_TEST_SUITE_P(InstantiationName, GtirbZeroBuilderTest, testing::Values("hello.x64.elf"));
