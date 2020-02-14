@@ -4,7 +4,6 @@ from disassemble_reassemble_check import (
     disassemble_reassemble_test as dis_reasm_test,
 )
 from disassemble_reassemble_check import compile, cd
-import os
 from pathlib import Path
 
 ex_dir = Path("./examples/")
@@ -645,8 +644,8 @@ class TestSpecialFlags(unittest.TestCase):
         platform.system() == "Linux", "This test is linux only."
     )
     def test_fcf_protection(self):
-        # check if the -fcf-protection is supported by the compiler (only newer versions support it)
-        current_dir = os.getcwd()
+        # check if the -fcf-protection is supported by the compiler
+        # (only newer versions support it)
         with cd(ex_dir / "ex1"):
             flag_supported = compile("gcc", "g++", "", ["-fcf-protection"])
         if flag_supported:
