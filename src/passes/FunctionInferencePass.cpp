@@ -27,9 +27,9 @@
 #include "../DatalogUtils.h"
 
 void FunctionInferencePass::populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P,
-                                                gtirb::Context& Ctx, gtirb::Module& M)
+                                                gtirb::Context& Ctx, gtirb::Module& M, cs_arch arch, cs_mode mode)
 {
-    GtirbToDatalog Loader(P);
+    GtirbToDatalog Loader(P, arch, mode);
     Loader.populateBlocks(M);
     Loader.populateInstructions(M, 1);
     Loader.populateCfgEdges(M);
@@ -80,7 +80,7 @@ void FunctionInferencePass::setDebugDir(std::string Path)
     DebugDir = Path;
 }
 
-void FunctionInferencePass::computeFunctions(gtirb::Context& Ctx, gtirb::Module& M,
+void FunctionInferencePass::computeFunctions(gtirb::Context& Ctx, gtirb::Module& M, cs_arch arch, cs_mode mode,
                                              unsigned int NThreads)
 {
     auto Prog = std::shared_ptr<souffle::SouffleProgram>(
@@ -90,7 +90,7 @@ void FunctionInferencePass::computeFunctions(gtirb::Context& Ctx, gtirb::Module&
         std::cerr << "Could not create souffle_function_inference program" << std::endl;
         exit(1);
     }
-    populateSouffleProg(Prog, Ctx, M);
+    populateSouffleProg(Prog, Ctx, M, arch, mode);
     Prog->setNumThreads(NThreads);
     Prog->run();
     if(DebugDir)

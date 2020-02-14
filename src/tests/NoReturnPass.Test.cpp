@@ -1,3 +1,4 @@
+#include <capstone/capstone.h>
 #include <gtest/gtest.h>
 #include <gtirb/gtirb.hpp>
 #include "../passes/NoReturnPass.h"
@@ -48,7 +49,7 @@ TEST(Unit_NoRetunPass, remove_simple_fallthrough)
     Cfg[*addEdge(B2, TopBlock, Cfg)] = simpleReturn();
 
     computeSCCs(*M);
-    std::set<gtirb::Block*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
+    std::set<gtirb::Block*> CallNoReturn = NoReturnPass().computeNoReturn(*M, CS_ARCH_X86, CS_MODE_64);
 
     EXPECT_TRUE(CallNoReturn.count(B1));
     EXPECT_FALSE(CallNoReturn.count(B2));
@@ -97,7 +98,7 @@ TEST(Unit_NoRetunPass, one_path_returns)
 
     EXPECT_EQ(9, Cfg.m_edges.size());
     computeSCCs(*M);
-    std::set<gtirb::Block*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
+    std::set<gtirb::Block*> CallNoReturn = NoReturnPass().computeNoReturn(*M, CS_ARCH_X86, CS_MODE_64);
 
     EXPECT_TRUE(CallNoReturn.count(B3));
     EXPECT_FALSE(CallNoReturn.count(B1));
@@ -151,7 +152,7 @@ TEST(Unit_NoRetunPass, two_paths_no_return)
 
     EXPECT_EQ(11, Cfg.m_edges.size());
     computeSCCs(*M);
-    std::set<gtirb::Block*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
+    std::set<gtirb::Block*> CallNoReturn = NoReturnPass().computeNoReturn(*M, CS_ARCH_X86, CS_MODE_64);
 
     EXPECT_TRUE(CallNoReturn.count(B3));
     EXPECT_TRUE(CallNoReturn.count(B5));
@@ -204,7 +205,7 @@ TEST(Unit_NoRetunPass, loop_no_return)
 
     EXPECT_EQ(9, Cfg.m_edges.size());
     computeSCCs(*M);
-    std::set<gtirb::Block*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
+    std::set<gtirb::Block*> CallNoReturn = NoReturnPass().computeNoReturn(*M, CS_ARCH_X86, CS_MODE_64);
 
     EXPECT_TRUE(CallNoReturn.count(B4));
     EXPECT_TRUE(CallNoReturn.count(B1));

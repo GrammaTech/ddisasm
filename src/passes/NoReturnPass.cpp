@@ -25,9 +25,9 @@
 #include <souffle/CompiledSouffle.h>
 #include "../DatalogUtils.h"
 
-void NoReturnPass::populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M)
+void NoReturnPass::populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M, cs_arch arch, cs_mode mode)
 {
-    GtirbToDatalog Loader(P);
+    GtirbToDatalog Loader(P, arch, mode);
     Loader.populateSccs(M);
     Loader.populateCfgEdges(M);
 }
@@ -63,7 +63,7 @@ void NoReturnPass::setDebugDir(std::string Path)
     DebugDir = Path;
 }
 
-std::set<gtirb::Block*> NoReturnPass::computeNoReturn(gtirb::Module& M, unsigned int NThreads)
+std::set<gtirb::Block*> NoReturnPass::computeNoReturn(gtirb::Module& M, cs_arch arch, cs_mode mode, unsigned int NThreads)
 {
     auto Prog = std::shared_ptr<souffle::SouffleProgram>(
         souffle::ProgramFactory::newInstance("souffle_no_return"));
@@ -72,7 +72,7 @@ std::set<gtirb::Block*> NoReturnPass::computeNoReturn(gtirb::Module& M, unsigned
         std::cerr << "Could not create souffle_no_return program" << std::endl;
         exit(1);
     }
-    populateSouffleProg(Prog, M);
+    populateSouffleProg(Prog, M, arch, mode);
     Prog->setNumThreads(NThreads);
     Prog->run();
     if(DebugDir)

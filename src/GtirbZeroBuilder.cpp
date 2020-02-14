@@ -175,7 +175,15 @@ std::tuple<gtirb::IR*, LIEF::ARCHITECTURES, LIEF::ENDIANNESS> buildZeroIR(const 
     gtirb::Module &module = *gtirb::Module::Create(context);
     module.setBinaryPath(filename);
     module.setFileFormat(binary->get_binary_format());
-    module.setISAID(gtirb::ISAID::X64);
+
+    if (arch == LIEF::ARCHITECTURES::ARCH_X86) {
+        module.setISAID(gtirb::ISAID::X64);
+    } else if (arch == LIEF::ARCHITECTURES::ARCH_ARM64) {
+        module.setISAID(gtirb::ISAID::ARM);
+    } else {
+        assert(false && "unsupported architecture");
+    }
+
     ir->addModule(&module);
     buildByteMap(module, binary);
     buildSections(module, binary, context);
