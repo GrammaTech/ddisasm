@@ -203,3 +203,23 @@ if(DDISASM_ENABLE_TESTS)
       WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/"
   )
 endif()
+
+# ---------------------------------------------------------------------------
+# Package generation with cpack
+# ---------------------------------------------------------------------------
+set(CMAKE_PROJECT_HOMEPAGE_URL https://github.com/grammatech/ddisasm)
+
+# set(CPACK_PACKAGE_VERSION_MAJOR ${GTIRB_PPRINTER_MAJOR_VERSION})
+# set(CPACK_PACKAGE_VERSION_MINOR ${GTIRB_PPRINTER_MINOR_VERSION})
+# set(CPACK_PACKAGE_VERSION_PATCH ${GTIRB_PPRINTER_PATCH_VERSION})
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
+  "A fast disassembler which is accurate enough for the resulting assembly code to be reassembled. The disassembler implemented using the datalog (souffle) declarative logic programming language to compile disassembly rules and heuristics."
+)
+set(CPACK_PACKAGE_VEDOR "GrammaTech Inc.")
+set(CPACK_PACKAGE_CONTACT gtirb@grammatech.com)
+set(CPACK_PACKAGE_DESCRIPTION_FILE ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
+set(CPACK_PACKAGE_RESOURCE_FILE_LICENSE ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt)
+
+set(CPACK_DEBIAN_PACKAGE_SECTION devel)
+
+include(CPack)
