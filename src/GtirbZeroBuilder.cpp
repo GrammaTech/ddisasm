@@ -96,6 +96,7 @@ gtirb::from_iterator gtirb::auxdata_traits<ExtraSymbolInfo>::fromBytes(ExtraSymb
     It = auxdata_traits<uint64_t>::fromBytes(Object.sectionIndex, It);
     return It;
 }
+
 void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                    gtirb::Context &context)
 {
