@@ -63,4 +63,8 @@ elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
 endif()
 
 # Add tests to make test
-add_test(NAME TestDdisasm COMMAND $<TARGET_FILE:${PROJECT_NAME}>)
+add_test(
+  NAME TestDdisasm
+  COMMAND $<TARGET_FILE:${PROJECT_NAME}>
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/"
+)
