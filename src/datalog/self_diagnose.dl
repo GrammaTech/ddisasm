@@ -94,7 +94,7 @@ false_negative(Location):-
 false_positive(Location):-
     code(EA),
     (
-        symbolic_operand(EA,Index,_,_); 
+        symbolic_operand(EA,Index,_,_);
         moved_label(EA,Index,_,_)
     ),
     !pc_relative_operand(EA,Index,_),
@@ -119,7 +119,7 @@ zero_relocation(EA):-
     data_byte(EA+5,0),
     data_byte(EA+6,0),
     data_byte(EA+7,0).
-    
+
 
 false_negative(EA):-
     data_byte(EA,_),

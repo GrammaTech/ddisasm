@@ -2,8 +2,8 @@ CC="gcc"
 CFLAGS=
 
 
-all: ex.c 
-	$(CC) ex.c fun.c  $(CFLAGS) -fPIC -o ex 
+all: ex.c
+	$(CC) ex.c fun.c  $(CFLAGS) -fPIC -o ex
 	@./ex > out.txt
 clean:
 	rm -f ex out.txt

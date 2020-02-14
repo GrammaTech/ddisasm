@@ -1,54 +1,46 @@
-SET(PROJECT_NAME TestDdisasm)
+set(PROJECT_NAME TestDdisasm)
 
 include_directories(${GTEST_INCLUDE_DIRS})
 
-IF(UNIX AND NOT WIN32)
-        SET(SYSLIBS
-                dl
-        )
-ELSE()
-        SET(SYSLIBS
-        )
-ENDIF()
+if(UNIX AND NOT WIN32)
+  set(SYSLIBS dl)
+else()
+  set(SYSLIBS)
+endif()
 
-add_executable(TestDdisasm
-        GtirbZeroBuilder.Test.cpp
-        LIEFBinaryReader.Test.cpp
-        SccPass.Test.cpp
-        NoReturnPass.Test.cpp)
+add_executable(TestDdisasm GtirbZeroBuilder.Test.cpp LIEFBinaryReader.Test.cpp
+                           SccPass.Test.cpp NoReturnPass.Test.cpp)
 
-add_library(zero_builder STATIC
-  ../GtirbZeroBuilder.cpp
-  ../LIEFBinaryReader.cpp)
+add_library(zero_builder STATIC ../GtirbZeroBuilder.cpp ../LIEFBinaryReader.cpp)
 
 target_link_libraries(zero_builder gtirb ${LIEF_LIBRARIES})
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  target_link_libraries(${PROJECT_NAME}
-        ${SYSLIBS}
-        ${Boost_LIBRARIES}
-        gtest
-        gtest_main
-        gtirb
-        scc_pass
-        no_return_pass
-        zero_builder
-  )
+  target_link_libraries(
+    ${PROJECT_NAME}
+    ${SYSLIBS}
+    ${Boost_LIBRARIES}
+    gtest
+    gtest_main
+    gtirb
+    scc_pass
+    no_return_pass
+    zero_builder)
   target_link_options(${PROJECT_NAME} PRIVATE
-    /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>)
+                      /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>)
 else()
-  target_link_libraries(${PROJECT_NAME}
-        ${SYSLIBS}
-        ${Boost_LIBRARIES}
-        gtest
-        gtest_main
-        gtirb
-        scc_pass
-        -Wl,--whole-archive
-        no_return_pass
-        -Wl,--no-whole-archive
-        zero_builder
-  )
+  target_link_libraries(
+    ${PROJECT_NAME}
+    ${SYSLIBS}
+    ${Boost_LIBRARIES}
+    gtest
+    gtest_main
+    gtirb
+    scc_pass
+    -Wl,--whole-archive
+    no_return_pass
+    -Wl,--no-whole-archive
+    zero_builder)
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE __EMBEDDED_SOUFFLE__)
@@ -66,5 +58,4 @@ endif()
 add_test(
   NAME TestDdisasm
   COMMAND $<TARGET_FILE:${PROJECT_NAME}>
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/"
-)
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/")

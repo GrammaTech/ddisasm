@@ -3,9 +3,9 @@
 #
 
 # Need 3.9 to support CXX_STANDARD=17 and protobuf
-CMAKE_MINIMUM_REQUIRED(VERSION 3.9.0)
+cmake_minimum_required(VERSION 3.9.0)
 
-PROJECT(DDISASM)
+project(DDISASM)
 
 #
 # Global Options (CMake)
@@ -13,8 +13,8 @@ PROJECT(DDISASM)
 
 option(DDISASM_ENABLE_TESTS "Enable building and running unit tests." ON)
 
-# This just sets the builtin BUILD_SHARED_LIBS, but if defaults to ON
-# instead of OFF.
+# This just sets the builtin BUILD_SHARED_LIBS, but if defaults to ON instead of
+# OFF.
 option(DDISASM_BUILD_SHARED_LIBS "Build shared libraries." ON)
 option(DDISASM_USE_SYSTEM_BOOST "Use system-wide installation of Boost." OFF)
 if(DDISASM_BUILD_SHARED_LIBS)
@@ -24,12 +24,20 @@ else()
 endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-if (WIN32)
-  set(CMAKE_DEBUG_POSTFIX          "d" CACHE STRING "add a postfix, usually d on windows")
+if(WIN32)
+  set(CMAKE_DEBUG_POSTFIX
+      "d"
+      CACHE STRING "add a postfix, usually d on windows")
 endif()
-set(CMAKE_RELEASE_POSTFIX        ""  CACHE STRING "add a postfix, usually empty on windows")
-set(CMAKE_RELWITHDEBINFO_POSTFIX ""  CACHE STRING "add a postfix, usually empty on windows")
-set(CMAKE_MINSIZEREL_POSTFIX     ""  CACHE STRING "add a postfix, usually empty on windows")
+set(CMAKE_RELEASE_POSTFIX
+    ""
+    CACHE STRING "add a postfix, usually empty on windows")
+set(CMAKE_RELWITHDEBINFO_POSTFIX
+    ""
+    CACHE STRING "add a postfix, usually empty on windows")
+set(CMAKE_MINSIZEREL_POSTFIX
+    ""
+    CACHE STRING "add a postfix, usually empty on windows")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -40,9 +48,8 @@ set(CMAKE_CXX_STANDARD 17)
 # Error if it's not available
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Specifically check for gcc-7 or later. gcc-5 is installed on many
-# systems and will accept -std=c++17, but does not fully support the
-# standard.
+# Specifically check for gcc-7 or later. gcc-5 is installed on many systems and
+# will accept -std=c++17, but does not fully support the standard.
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "7.0.0")
     message(FATAL_ERROR "gcc 7 or later is required to build gtirb")
@@ -51,19 +58,21 @@ endif()
 
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
-# If we're using libc++, we need to manually include libc++abi
-# (unlike with using libstdc++, which automatically does this)
+# If we're using libc++, we need to manually include libc++abi (unlike with
+# using libstdc++, which automatically does this)
 include(CheckCXXSourceCompiles)
 
-check_cxx_source_compiles("
+check_cxx_source_compiles(
+  "
   #include <ciso646>
   int main() {
     return _LIBCPP_VERSION;
   }
-" USING_LIBCPP)
+"
+  USING_LIBCPP)
 
 if(USING_LIBCPP)
-  if (BUILD_SHARED_LIBS)
+  if(BUILD_SHARED_LIBS)
     find_library(LIBCPP_ABI NAMES c++abi)
   else()
     find_library(LIBCPP_ABI NAMES libc++abi.a)
@@ -92,7 +101,6 @@ find_package(gtirb_pprinter REQUIRED)
 
 find_package(ehp REQUIRED)
 
-
 # ---------------------------------------------------------------------------
 # Boost
 # ---------------------------------------------------------------------------
@@ -116,21 +124,21 @@ include_directories(${Boost_INCLUDE_DIRS})
 # ---------------------------------------------------------------------------
 # capstone
 # ---------------------------------------------------------------------------
-if (BUILD_SHARED_LIBS)
+if(BUILD_SHARED_LIBS)
   find_library(CAPSTONE NAMES capstone)
 else()
   find_library(CAPSTONE NAMES libcapstone.a)
 endif()
 
 if(NOT CAPSTONE)
-  message(FATAL_ERROR
-  " No Capstone installation found.\n"
-  " - If Capstone is not installed, install it from souce.\n"
-  "   You can get the latest version of Capstone at:\n"
-  "       http://www.capstone-engine.org/\n"
-  " - If Capstone is installed, make sure the installation location is in your PATH,\n"
-  "   and it is at least version 4.0.1.\n"
-  )
+  message(
+    FATAL_ERROR
+      " No Capstone installation found.\n"
+      " - If Capstone is not installed, install it from souce.\n"
+      "   You can get the latest version of Capstone at:\n"
+      "       http://www.capstone-engine.org/\n"
+      " - If Capstone is installed, make sure the installation location is in your PATH,\n"
+      "   and it is at least version 4.0.1.\n")
 endif()
 
 # Use LIEF with 'find_package()'
@@ -152,40 +160,43 @@ find_package(LIEF REQUIRED COMPONENTS STATIC)
 # Google Test Application
 # ---------------------------------------------------------------------------
 if(DDISASM_ENABLE_TESTS)
-        enable_testing()
-        # Pull in Google Test
-        # https://github.com/google/googletest/tree/master/googletest#incorporating-into-an-existing-cmake-project
+  enable_testing()
+  # Pull in Google Test
+  # https://github.com/google/googletest/tree/master/googletest#incorporating-
+  # into-an-existing-cmake-project
 
-        # Download and unpack googletest at configure time
-        configure_file(CMakeLists.googletest googletest-download/CMakeLists.txt)
+  # Download and unpack googletest at configure time
+  configure_file(CMakeLists.googletest googletest-download/CMakeLists.txt)
 
-        execute_process(COMMAND "${CMAKE_COMMAND}" -G "${CMAKE_GENERATOR}" .
-                RESULT_VARIABLE result
-                WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/googletest-download" )
+  execute_process(
+    COMMAND "${CMAKE_COMMAND}" -G "${CMAKE_GENERATOR}" .
+    RESULT_VARIABLE result
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/googletest-download")
 
-        if(result)
-                message(WARNING "CMake step for googletest failed: ${result}")
-        endif()
+  if(result)
+    message(WARNING "CMake step for googletest failed: ${result}")
+  endif()
 
-        execute_process(COMMAND "${CMAKE_COMMAND}" --build .
-                RESULT_VARIABLE result
-                WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/googletest-download" )
+  execute_process(
+    COMMAND "${CMAKE_COMMAND}" --build .
+    RESULT_VARIABLE result
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/googletest-download")
 
-        if(result)
-                message(WARNING "Build step for googletest failed: ${result}")
-        endif()
+  if(result)
+    message(WARNING "Build step for googletest failed: ${result}")
+  endif()
 
-        # Prevent overriding the parent project's compiler/linker
-        # settings on Windows
-        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+  # Prevent overriding the parent project's compiler/linker settings on Windows
+  set(gtest_force_shared_crt
+      ON
+      CACHE BOOL "" FORCE)
 
-        # Add googletest directly to our build. This defines
-        # the gtest and gtest_main targets.
-        add_subdirectory("${CMAKE_BINARY_DIR}/googletest-src"
-                                         "${CMAKE_BINARY_DIR}/googletest-build"
-                                         EXCLUDE_FROM_ALL)
+  # Add googletest directly to our build. This defines the gtest and gtest_main
+  # targets.
+  add_subdirectory("${CMAKE_BINARY_DIR}/googletest-src"
+                   "${CMAKE_BINARY_DIR}/googletest-build" EXCLUDE_FROM_ALL)
 
-        include_directories("${gtest_SOURCE_DIR}/include")
+  include_directories("${gtest_SOURCE_DIR}/include")
 endif()
 
 # ---------------------------------------------------------------------------
@@ -198,10 +209,10 @@ add_subdirectory(doc)
 if(DDISASM_ENABLE_TESTS)
   find_program(PYTHON "python3")
 
-  add_test(NAME python_tests
-      COMMAND ${PYTHON} -m unittest discover tests "*_test.py"
-      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/"
-  )
+  add_test(
+    NAME python_tests
+    COMMAND ${PYTHON} -m unittest discover tests "*_test.py"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/")
 endif()
 
 # ---------------------------------------------------------------------------

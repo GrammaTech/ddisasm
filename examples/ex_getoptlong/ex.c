@@ -1,47 +1,39 @@
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <getopt.h>
 
-
-
-int
-main (int argc, char **argv)
+int main(int argc, char **argv)
 {
-  int c;
+    int c;
 
-  while (1)
+    while(1)
     {
-      static struct option long_options[] =
+        static struct option long_options[] = {
+            {"verbose", no_argument, 0, 'v'}, {"add", no_argument, 0, 'a'}, {0, 0, 0, 0}};
+        /* getopt_long stores the option index here. */
+        int option_index = 0;
+
+        c = getopt_long(argc, argv, "av", long_options, &option_index);
+
+        /* Detect the end of the options. */
+        if(c == -1)
+            break;
+
+        switch(c)
         {
-          {"verbose", no_argument,       0, 'v'},
-          {"add",     no_argument,       0, 'a'},
-          {0, 0, 0, 0}
-        };
-      /* getopt_long stores the option index here. */
-      int option_index = 0;
+            case 'v':
+                puts("option -v\n");
+                break;
+            case 'a':
+                puts("option -a\n");
+                break;
+            case '?':
+                /* getopt_long already printed an error message. */
+                break;
 
-      c = getopt_long (argc, argv, "av",
-                       long_options, &option_index);
-
-      /* Detect the end of the options. */
-      if (c == -1)
-        break;
-
-      switch (c)
-        {
-        case 'v':
-          puts ("option -v\n");
-          break;
-        case 'a':
-          puts ("option -a\n");
-          break;
-        case '?':
-          /* getopt_long already printed an error message. */
-          break;
-
-        default:
-          abort ();
+            default:
+                abort();
         }
     }
-  return 0;
+    return 0;
 }
