@@ -8,7 +8,7 @@ RUN apt-get update \
     git \
     curl
 
-RUN pip3 install pre-commit
+RUN pip3 install pre-commit 'six>1.12.0'
 
 COPY . /ddisasm
 WORKDIR /ddisasm
