@@ -43,4 +43,5 @@ TEST_P(GtirbZeroBuilderTest, buildSections)
     EXPECT_EQ(EntryPoint->getAddress().value(), gtirb::Addr(ELF->entrypoint()));
 }
 
-INSTANTIATE_TEST_SUITE_P(InstantiationName, GtirbZeroBuilderTest, testing::Values("hello.x64.elf"));
+INSTANTIATE_TEST_SUITE_P(InstantiationName, GtirbZeroBuilderTest,
+                         testing::Values("inputs/hello.x64.elf"));
