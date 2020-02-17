@@ -192,6 +192,17 @@ int main(int argc, char **argv)
         // Pretty-print
         gtirb_pprint::PrettyPrinter pprinter;
         pprinter.setDebug(vm.count("debug"));
+
+        std::tuple<std::string, std::string> target;
+        if (arch == CS_ARCH_X86) {
+            target = std::tuple<std::string, std::string>("elf", "intel");
+        } else if (arch == CS_ARCH_ARM64) {
+            target = std::tuple<std::string, std::string>("elf", "aarch64");
+        } else {
+            assert(false && "unsupported architecture");
+        }
+        pprinter.setTarget(target);
+
         if(vm.count("keep-functions") != 0)
         {
             for(auto keep : vm["keep-functions"].as<std::vector<std::string>>())
