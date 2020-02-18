@@ -135,7 +135,7 @@ std::set<gtirb::SectionFlag> LIEFBinaryReader::get_section_flags(
         }
     }
 
-    return std::move(Flags);
+    return Flags;
 }
 
 gtirb::FileFormat LIEFBinaryReader::get_binary_format()
