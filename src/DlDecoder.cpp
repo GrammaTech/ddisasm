@@ -276,7 +276,17 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
     GtirbToDatalog::addToRelation(prog, "op_immediate", op_dict.immTable);
     GtirbToDatalog::addToRelation(prog, "op_indirect", op_dict.indirectTable);
     addSymbols(prog, module);
+
+    auto *extraInfoTable =
+        module.getAuxData<std::map<gtirb::UUID, ExtraSymbolInfo>>("extraSymbolInfo");
+    std::map<gtirb::UUID, std::string> symbolType;
+    for(auto &[uuid, info] : *extraInfoTable)
+    {
+        symbolType.insert({uuid, info.scope});
+    }
+    module.addAuxData("symbolType", std::move(symbolType));
     module.removeAuxData("extraSymbolInfo");
+
     addSections(prog, module);
     ExceptionDecoder excDecoder(module);
     excDecoder.addExceptionInformation(prog);
