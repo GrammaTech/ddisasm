@@ -517,6 +517,7 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
         auto foundSymbol = module.findSymbols(symbolicExpr->Symbol);
         if(foundSymbol.begin() != foundSymbol.end())
         {
+            // FIXME: We need to handle overlapping sections here.
             addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
                 module, ea, instruction.immediateOffset, symbolicExpr->Addend,
                 &*foundSymbol.begin());
