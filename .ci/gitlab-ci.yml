@@ -21,7 +21,7 @@ stages:
     - git clone https://git.grammatech.com/rewriting/gtirb.git
     - git clone -b master https://git.grammatech.com/rewriting/gtirb-pprinter.git
     - git clone https://git.zephyr-software.com/opensrc/libehp
-    - docker build -f .ci/Dockerfile.${OS}-${COMPILER} -t ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} .
+    - docker build -f .ci/Dockerfile.${OS}-${COMPILER} -t ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} --build-arg CPACK_GENERATOR=${CPACK_GENERATOR} .
 
 .build-windows-template: &build-windows
   script:
@@ -64,6 +64,7 @@ build-ubuntu18-gcc:
   variables:
     OS: 'ubuntu18'
     COMPILER: 'gcc'
+    CPACK_GENERATOR: 'DEB'
   <<: *build
 
 build-arch-gcc:
