@@ -70,25 +70,25 @@ namespace souffle
 
 std::string getFileFormatString(const gtirb::FileFormat format)
 {
-    switch(static_cast<int>(format))
+    switch(format)
     {
-        case static_cast<int>(gtirb::FileFormat::COFF):
+        case gtirb::FileFormat::COFF:
             return "COFF";
-        case static_cast<int>(gtirb::FileFormat::ELF):
+        case gtirb::FileFormat::ELF:
             return "ELF";
-        case static_cast<int>(gtirb::FileFormat::PE):
+        case gtirb::FileFormat::PE:
             return "PE";
-        case static_cast<int>(gtirb::FileFormat::IdaProDb32):
+        case gtirb::FileFormat::IdaProDb32:
             return "IdaProDb32";
-        case static_cast<int>(gtirb::FileFormat::IdaProDb64):
+        case gtirb::FileFormat::IdaProDb64:
             return "IdaProDb64";
-        case static_cast<int>(gtirb::FileFormat::XCOFF):
+        case gtirb::FileFormat::XCOFF:
             return "XCOFF";
-        case static_cast<int>(gtirb::FileFormat::MACHO):
+        case gtirb::FileFormat::MACHO:
             return "MACHO";
-        case static_cast<int>(gtirb::FileFormat::RAW):
+        case gtirb::FileFormat::RAW:
             return "RAW";
-        case static_cast<int>(gtirb::FileFormat::Undefined):
+        case gtirb::FileFormat::Undefined:
         default:
             return "Undefined";
     }
