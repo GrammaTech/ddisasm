@@ -152,6 +152,14 @@ run-arch-clang:
   script:
   <<: *test-and-tag
 
+test-debian-installer:
+  stage: test-and-tag-ubuntu18
+  variables:
+    OS: 'ubuntu18'
+    COMPILER: 'gcc'
+  script:
+    - docker run --rm ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c "cd build/ && dpkg -i DDISASM-0.1.1-Linux.deb && cd / && rm -rf /ddisasm && which ddisasm"
+
 cleanup-ubuntu16-gcc:
   stage: cleanup
   variables:
