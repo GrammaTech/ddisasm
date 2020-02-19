@@ -186,6 +186,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
 
 void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
 {
+    assert(byteInterval.getAddress() && "Failed to decode section without address.");
     gtirb::Addr ea = byteInterval.getAddress().value();
     uint64_t size = byteInterval.getInitializedSize();
     auto buf = byteInterval.rawBytes<const unsigned char>();
