@@ -231,8 +231,11 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
 
         cs_insn* Insn;
         const gtirb::ByteInterval* Bytes = Block.getByteInterval();
+        uint64_t Size = Bytes->getSize();
+        uint64_t InitSize = Bytes->getInitializedSize();
+        assert(Size == InitSize && "Found partially initialized code block.");
         size_t Count =
-            cs_disasm(CsHandle, Bytes->rawBytes<uint8_t>(), Bytes->getInitializedSize(),
+            cs_disasm(CsHandle, Bytes->rawBytes<uint8_t>(), InitSize,
                       static_cast<uint64_t>(*Block.getAddress()), InstructionLimit, &Insn);
 
         // Exception-safe cleanup of instructions
@@ -367,7 +370,7 @@ void GtirbToDatalog::populateFdeEntries(const gtirb::Context& Ctx, gtirb::Module
     {
         auto* Block =
             dyn_cast<const gtirb::CodeBlock>(gtirb::Node::getByUUID(Ctx, Pair.first.ElementId));
-        assert(Block && "Found CFI directive that does no belong to a block");
+        assert(Block && "Found CFI directive that does not belong to a block");
 
         std::optional<gtirb::Addr> BlockAddr = Block->getAddress();
         assert(BlockAddr && "Found code block without address.");

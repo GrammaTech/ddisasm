@@ -11,9 +11,9 @@ protected:
     void SetUp() override
     {
         const std::string& Path(GetParam());
-        Binary = std::make_unique<LIEFBinaryReader>(Path);
+        Binary = new LIEFBinaryReader(Path);
     }
-    std::unique_ptr<BinaryReader> Binary;
+    LIEFBinaryReader* Binary;
 };
 
 TEST_P(LIEFBinaryReaderTest, is_valid)
@@ -36,6 +36,5 @@ TEST_P(LIEFBinaryReaderTest, get_entry_point)
     EXPECT_GT(Binary->get_entry_point(), 0);
 }
 
-const char* INPUT_BINARIES[] = {"inputs/hello.x64.elf"};
 INSTANTIATE_TEST_SUITE_P(InstantiationName, LIEFBinaryReaderTest,
-                         testing::ValuesIn(INPUT_BINARIES));
+                         testing::Values("inputs/hello.x64.elf"));
