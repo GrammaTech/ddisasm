@@ -8,6 +8,7 @@ stages:
   - test-and-tag-ubuntu16
   - test-and-tag-ubuntu18
   - test-and-tag-arch
+  - deploy
   - cleanup
 
 # The two build templates below ultimately call the build script for the
@@ -201,3 +202,16 @@ cleanup-arch-clang:
     OS: 'arch'
     COMPILER: 'clang'
   <<: *cleanup
+  
+debian-installer:
+  stage: deploy
+  variables:
+    OS: 'ubuntu18'
+    COMPILER: 'gcc'
+  script:
+    - export CONTAINER_FILE=${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}.container
+    - mkdir -p $(dirname ${CONTAINER_FILE})
+    - docker create --cidfile=${CONTAINER_FILE} ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}
+    - docker cp $(cat ${CONTAINER_FILE}):/ddisasm/build ./build-artifacts
+    - docker container rm -f $(cat ${CONTAINER_FILE})
+    - file ./build-artifacts/DDISASM-*-Linux.deb
