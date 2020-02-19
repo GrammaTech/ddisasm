@@ -187,6 +187,9 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
 void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
 {
     assert(byteInterval.getAddress() && "Failed to decode section without address.");
+    assert(byteInterval.getSize() == byteInterval.getInitializedSize()
+           && "Failed to decode section with partially initialized byte interval.");
+
     gtirb::Addr ea = byteInterval.getAddress().value();
     uint64_t size = byteInterval.getInitializedSize();
     auto buf = byteInterval.rawBytes<const unsigned char>();
@@ -212,6 +215,10 @@ void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
 void DlDecoder::storeDataSection(const gtirb::ByteInterval &byteInterval, gtirb::Addr min_address,
                                  gtirb::Addr max_address)
 {
+    assert(byteInterval.getAddress() && "Failed to store section without address.");
+    assert(byteInterval.getSize() == byteInterval.getInitializedSize()
+           && "Failed to store section with partially initialized byte interval.");
+
     auto can_be_address = [min_address, max_address](gtirb::Addr num) {
         return ((num >= min_address) && (num <= max_address));
     };
