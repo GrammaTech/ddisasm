@@ -210,9 +210,9 @@ debian-installer:
     OS: 'ubuntu18'
     COMPILER: 'gcc'
   script:
-    - export CONTAINER_FILE=${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}.container
-    - mkdir -p $(dirname ${CONTAINER_FILE})
+    - export CONTAINER_FILE=$(mktemp -d)/cidfile
     - docker create --cidfile=${CONTAINER_FILE} ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}
     - docker cp $(cat ${CONTAINER_FILE}):/ddisasm/build ./build-artifacts
     - docker container rm -f $(cat ${CONTAINER_FILE})
+    - rm -rf $(dirname ${CONTAINER_FILE})
     - file ./build-artifacts/DDISASM-*-Linux.deb
