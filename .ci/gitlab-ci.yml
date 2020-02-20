@@ -209,10 +209,16 @@ debian-installer:
   variables:
     OS: 'ubuntu18'
     COMPILER: 'gcc'
+  artifacts:
+    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
+    paths:
+      - ./DDISASM-*-Linux.deb
   script:
     - export CONTAINER_FILE=$(mktemp -d)/cidfile
     - docker create --cidfile=${CONTAINER_FILE} ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}
     - docker cp $(cat ${CONTAINER_FILE}):/ddisasm/build ./build-artifacts
     - docker container rm -f $(cat ${CONTAINER_FILE})
     - rm -rf $(dirname ${CONTAINER_FILE})
-    - file ./build-artifacts/DDISASM-*-Linux.deb
+    - mv ./build-artifacts/DDISASM-*-Linux.deb ./
+    - rm -rf ./build-artifacts
+    - file ./DDISASM-*-Linux.deb
