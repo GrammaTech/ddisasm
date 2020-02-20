@@ -209,9 +209,9 @@ endif()
 # ---------------------------------------------------------------------------
 set(CMAKE_PROJECT_HOMEPAGE_URL https://github.com/grammatech/ddisasm)
 
-# set(CPACK_PACKAGE_VERSION_MAJOR ${GTIRB_PPRINTER_MAJOR_VERSION})
-# set(CPACK_PACKAGE_VERSION_MINOR ${GTIRB_PPRINTER_MINOR_VERSION})
-# set(CPACK_PACKAGE_VERSION_PATCH ${GTIRB_PPRINTER_PATCH_VERSION})
+# set(CPACK_PACKAGE_VERSION_MAJOR ${DDISASM_MAJOR_VERSION})
+# set(CPACK_PACKAGE_VERSION_MINOR ${DDISASM_MINOR_VERSION})
+# set(CPACK_PACKAGE_VERSION_PATCH ${DDISASM_PATCH_VERSION})
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
   "A fast disassembler which is accurate enough for the resulting assembly code to be reassembled. The disassembler implemented using the datalog (souffle) declarative logic programming language to compile disassembly rules and heuristics."
 )
