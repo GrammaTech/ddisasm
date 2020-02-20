@@ -8,6 +8,7 @@ stages:
   - test-and-tag-ubuntu16
   - test-and-tag-ubuntu18
   - test-and-tag-arch
+  - test-installers
   - deploy
   - cleanup
 
@@ -155,7 +156,7 @@ run-arch-clang:
   <<: *test-and-tag
 
 test-debian-installer:
-  stage: test-and-tag-ubuntu18
+  stage: test-installers
   variables:
     OS: 'ubuntu18'
     COMPILER: 'gcc'
