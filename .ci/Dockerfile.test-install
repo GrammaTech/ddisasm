@@ -5,4 +5,4 @@ WORKDIR /ddisasm/build
 RUN dpkg -i DDISASM-*-Linux.deb
 WORKDIR /
 RUN rm -rf /ddisasm/build
-RUN LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib ddisasm --help || test $? -eq 1
+RUN ddisasm --help || test $? -eq 1
