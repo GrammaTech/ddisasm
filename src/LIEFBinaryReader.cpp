@@ -239,7 +239,7 @@ std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
         {
             for(auto& importEntry : import.entries())
             {
-                symbolTuples.insert({0, 0, "", "", 1, importEntry.name()});
+                symbolTuples.insert({0, 0, "", "EXTERN", 1, importEntry.name()});
             }
         }
         if(pe->has_exports())
@@ -247,7 +247,7 @@ std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
             for(auto& entry : pe->get_export().entries())
             {
                 uint64_t address = get_base_address() + entry.address();
-                symbolTuples.insert({address, 0, "", "GLOBAL", 1, entry.name()});
+                symbolTuples.insert({address, 0, "", "PUBLIC", 1, entry.name()});
             }
         }
     }
