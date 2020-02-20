@@ -115,8 +115,20 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
             {
                 // Add allocated section contents to a single contiguous ByteInterval.
                 std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
-                section->addByteInterval(context, gtirb::Addr(binSection.address),
-                                         sectionBytes.begin(), sectionBytes.end(), binSection.size);
+                gtirb::ByteInterval *byteInterval = section->addByteInterval(
+                    context, gtirb::Addr(binSection.address), sectionBytes.begin(),
+                    sectionBytes.end(), binSection.size);
+                // Fill incomplete section with zeroes.
+                if(sectionBytes.size() < binSection.size)
+                {
+                    size_t size = binSection.size - sectionBytes.size();
+                    gtirb::Addr start = *byteInterval->getAddress() + byteInterval->getSize();
+                    std::cerr << "Warning: Zero filling uninitialized section fragment: " << start
+                              << '-' << start + size << '\n';
+                    std::vector<uint8_t> zeroes(size, 0);
+                    byteInterval->insertBytes<uint8_t>(byteInterval->bytes_end<uint8_t>(),
+                                                       zeroes.begin(), zeroes.end());
+                }
             }
             else
             {
