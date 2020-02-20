@@ -160,7 +160,7 @@ test-debian-installer:
     OS: 'ubuntu18'
     COMPILER: 'gcc'
   script:
-    - docker run --rm ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c "cd build/ && dpkg -i DDISASM-*-Linux.deb && cd / && rm -rf /ddisasm && which ddisasm"
+    - docker build --rm -f .ci/Dockerfile.test-install --build-arg IMAGE=${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} .
 
 cleanup-ubuntu16-gcc:
   stage: cleanup
