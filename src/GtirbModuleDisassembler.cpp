@@ -1152,12 +1152,11 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
     {
         gtirb::Addr ea;
         output >> ea;
-        if(const auto it = module.findCodeBlocksAt(ea); !it.empty())
+        if(const auto it = module.findCodeBlocksIn(ea); !it.empty())
         {
             module.setEntryPoint(&*it.begin());
         }
     }
-    assert(module.getEntryPoint() && "Failed to set module entry point.");
 }
 
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
