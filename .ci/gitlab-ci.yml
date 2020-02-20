@@ -221,4 +221,3 @@ debian-installer:
     - rm -rf $(dirname ${CONTAINER_FILE})
     - mv ./build-artifacts/DDISASM-*-Linux.deb ./
     - rm -rf ./build-artifacts
-    - file ./DDISASM-*-Linux.deb
