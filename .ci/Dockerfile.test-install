@@ -4,5 +4,5 @@ FROM $IMAGE
 WORKDIR /ddisasm/build
 RUN dpkg -i DDISASM-*-Linux.deb
 WORKDIR /
-RUN rm -rf /ddisasm/build
+RUN rm -rf /ddisasm
 RUN ddisasm --help || test $? -eq 1
