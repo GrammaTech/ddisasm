@@ -231,6 +231,8 @@ set(CPACK_PACKAGE_CONTACT gtirb@grammatech.com)
 set(CPACK_PACKAGE_DESCRIPTION_FILE ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
 set(CPACK_PACKAGE_RESOURCE_FILE_LICENSE ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt)
 
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "gtirb (>=0.3.0), gtirb_pprinter (>=0.1.1), ehp (>=0.1.1), libboost-dev (>=1.67), libprotobuf-dev (>=3.0.0), libcapstone-dev (>=4.0.1)")
+
 set(CPACK_DEBIAN_PACKAGE_SECTION devel)
 
 include(CPack)
