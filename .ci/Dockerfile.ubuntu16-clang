@@ -102,6 +102,18 @@ RUN cd /usr/local/src \
 
 COPY . /ddisasm
 
+# Install GTIRB
+RUN rm -rf /ddisasm/gtirb/build /ddisasm/gtirb/CMakeCache.txt /ddisasm/gtirb/CMakeFiles /ddisasm/gtirb/CMakeScripts
+RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build && which sudo 2>&1 >/dev/null && sudo make install || make install
+
+# Install gtirb-pprinter
+RUN rm -rf /ddisasm/gtirb-pprinter/build /ddisasm/gtirb-pprinter/CMakeCache.txt /ddisasm/gtirb-pprinter/CMakeFiles /ddisasm/gtirb-pprinter/CMakeScripts
+RUN cd /ddisasm/gtirb-pprinter/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build && make && make install
+
+# Install ehp
+RUN rm -rf /ddisasm/libehp/build /ddisasm/libehp/CMakeCache.txt /ddisasm/libehp/CMakeFiles /ddisasm/libehp/CMakeScripts
+RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build &&  make && make install
+
 ENV TERM xterm
 ENV PATH=/ddisasm/build/bin:$PATH
 
