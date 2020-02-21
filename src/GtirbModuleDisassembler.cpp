@@ -494,7 +494,7 @@ template <class ExprType, typename... Args>
 void addSymbolicExpressionToCodeBlock(gtirb::Module &Module, gtirb::Addr Addr, uint64_t Offset,
                                       Args... A)
 {
-    if(auto it = Module.findCodeBlocksIn(Addr); !it.empty())
+    if(auto it = Module.findCodeBlocksOn(Addr); !it.empty())
     {
         gtirb::CodeBlock &Block = *it.begin();
         gtirb::ByteInterval *ByteInterval = Block.getByteInterval();
@@ -609,10 +609,16 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
         symbolicInfo.SymbolicBaseMinusConst.equal_range(ea + instruction.displacementOffset);
     if(auto relSym = rangeRelSym.first; relSym != rangeRelSym.second)
     {
-        module.addSymbolicExpression(
-            gtirb::Addr(relSym->EA),
-            gtirb::SymAddrAddr{1, 0, getSymbol(context, module, relSym->Symbol2),
-                               getSymbol(context, module, relSym->Symbol1)});
+        if(auto it = module.findCodeBlocksOn(ea); !it.empty())
+        {
+            gtirb::CodeBlock &block = *it.begin();
+            gtirb::ByteInterval *byteInterval = block.getByteInterval();
+            uint64_t blockOffset =
+                static_cast<uint64_t>(relSym->EA - byteInterval->getAddress().value());
+            byteInterval->addSymbolicExpression<gtirb::SymAddrAddr>(
+                blockOffset, 1, 0, getSymbol(context, module, relSym->Symbol2),
+                getSymbol(context, module, relSym->Symbol1));
+        }
     }
 }
 
@@ -651,11 +657,11 @@ void buildCodeBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
     {
         gtirb::Addr blockAddress;
         output >> blockAddress;
-        if(auto it = module.findSectionsIn(blockAddress); !it.empty())
+        if(auto it = module.findSectionsOn(blockAddress); !it.empty())
         {
             gtirb::Section &section = *it.begin();
             uint64_t size = blockInformation.find(blockAddress)->size;
-            if(auto it = section.findByteIntervalsIn(blockAddress); !it.empty())
+            if(auto it = section.findByteIntervalsOn(blockAddress); !it.empty())
             {
                 if(gtirb::ByteInterval &byteInterval = *it.begin(); byteInterval.getAddress())
                 {
@@ -692,7 +698,7 @@ void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
         {
             auto next = i;
             next++;
-            if(auto it = module.findByteIntervalsIn(*i); !it.empty())
+            if(auto it = module.findByteIntervalsOn(*i); !it.empty())
             {
                 gtirb::ByteInterval &byteInterval = *it.begin();
                 uint64_t blockOffset = *i - byteInterval.getAddress().value();
@@ -726,7 +732,7 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
             /*incremented in each case*/)
         {
             gtirb::DataBlock *d;
-            if(auto it = module.findByteIntervalsIn(currentAddr); !it.empty())
+            if(auto it = module.findByteIntervalsOn(currentAddr); !it.empty())
             {
                 if(gtirb::ByteInterval &byteInterval = *it.begin(); byteInterval.getAddress())
                 {
@@ -857,7 +863,7 @@ void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
     {
         gtirb::Addr blockAddr, functionEntryAddr;
         output >> blockAddr >> functionEntryAddr;
-        auto blockRange = module.findCodeBlocksIn(blockAddr);
+        auto blockRange = module.findCodeBlocksOn(blockAddr);
         if(!blockRange.empty())
         {
             gtirb::CodeBlock *block = &*blockRange.begin();
@@ -892,8 +898,8 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
         output >> srcAddr >> destAddr >> conditional >> indirect >> type;
 
         // ddisasm guarantees that these blocks exist
-        const gtirb::CodeBlock *src = &*module.findCodeBlocksIn(srcAddr).begin();
-        const gtirb::CodeBlock *dest = &*module.findCodeBlocksIn(destAddr).begin();
+        const gtirb::CodeBlock *src = &*module.findCodeBlocksOn(srcAddr).begin();
+        const gtirb::CodeBlock *dest = &*module.findCodeBlocksOn(destAddr).begin();
 
         auto isConditional = conditional == "true" ? gtirb::ConditionalEdge::OnTrue
                                                    : gtirb::ConditionalEdge::OnFalse;
@@ -910,7 +916,7 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
         gtirb::Addr srcAddr;
         std::string conditional, type;
         output >> srcAddr >> conditional >> type;
-        const gtirb::CodeBlock *src = &*module.findCodeBlocksIn(srcAddr).begin();
+        const gtirb::CodeBlock *src = &*module.findCodeBlocksOn(srcAddr).begin();
         auto isConditional = conditional == "true" ? gtirb::ConditionalEdge::OnTrue
                                                    : gtirb::ConditionalEdge::OnFalse;
         gtirb::EdgeType edgeType = getEdgeType(type);
@@ -922,7 +928,7 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
         gtirb::Addr srcAddr;
         std::string symbolName;
         output >> srcAddr >> symbolName;
-        const gtirb::CodeBlock *src = &*module.findCodeBlocksIn(srcAddr).begin();
+        const gtirb::CodeBlock *src = &*module.findCodeBlocksOn(srcAddr).begin();
         gtirb::Symbol &symbol = *module.findSymbols(symbolName).begin();
         gtirb::ProxyBlock *externalBlock = symbol.getReferent<gtirb::ProxyBlock>();
         // if the symbol does not point to a ProxyBlock yet, we create it
@@ -942,11 +948,11 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
 std::vector<gtirb::Offset> findOffsets(gtirb::Module &module, gtirb::Addr ea)
 {
     std::vector<gtirb::Offset> offsets;
-    for(auto &block : module.findCodeBlocksIn(ea))
+    for(auto &block : module.findCodeBlocksOn(ea))
     {
         offsets.push_back(gtirb::Offset(block.getUUID(), ea - block.getAddress().value()));
     }
-    for(auto &dataObject : module.findDataBlocksIn(ea))
+    for(auto &dataObject : module.findDataBlocksOn(ea))
     {
         offsets.push_back(
             gtirb::Offset(dataObject.getUUID(), ea - dataObject.getAddress().value()));
@@ -989,7 +995,7 @@ void buildCfiDirectives(gtirb::Context &context, gtirb::Module &module,
         // instruction). The address 'reference' points to these bytes.
         if(directive == ".cfi_escape")
         {
-            if(const auto it = module.findByteIntervalsIn(reference); !it.empty())
+            if(const auto it = module.findByteIntervalsOn(reference); !it.empty())
             {
                 if(const gtirb::ByteInterval &interval = *it.begin(); interval.getAddress())
                 {
@@ -1011,7 +1017,7 @@ void buildCfiDirectives(gtirb::Context &context, gtirb::Module &module,
                 operands.push_back(op2);
         }
 
-        auto blockRange = module.findCodeBlocksIn(blockAddr);
+        auto blockRange = module.findCodeBlocksOn(blockAddr);
         if(blockRange.begin() != blockRange.end() && blockAddr == blockRange.begin()->getAddress())
         {
             gtirb::Offset offset(blockRange.begin()->getUUID(), disp);
@@ -1152,7 +1158,7 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
     {
         gtirb::Addr ea;
         output >> ea;
-        if(const auto it = module.findCodeBlocksIn(ea); !it.empty())
+        if(const auto it = module.findCodeBlocksOn(ea); !it.empty())
         {
             module.setEntryPoint(&*it.begin());
         }

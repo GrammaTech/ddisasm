@@ -177,7 +177,7 @@ void addEntryBlock(gtirb::Module &Module, std::shared_ptr<BinaryReader> Binary,
                    gtirb::Context &Context)
 {
     gtirb::Addr Entry = gtirb::Addr(Binary->get_entry_point());
-    if(auto It = Module.findByteIntervalsIn(Entry); !It.empty())
+    if(auto It = Module.findByteIntervalsOn(Entry); !It.empty())
     {
         if(gtirb::ByteInterval &Interval = *It.begin(); Interval.getAddress())
         {
