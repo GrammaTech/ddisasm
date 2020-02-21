@@ -3,6 +3,6 @@ FROM $IMAGE
 
 WORKDIR /ddisasm/build
 RUN dpkg -i DDISASM-*-Linux.deb
-WORKDIR /
-RUN rm -rf /ddisasm
-RUN ddisasm --help || test $? -eq 1
+WORKDIR /ddisasm
+RUN rm -rf /ddisasm/build
+RUN PYTHONPATH=$PYTHONPATH:/ddisasm/tests python3 -m unittest end2end_test.TestSmall.test_1
