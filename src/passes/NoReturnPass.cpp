@@ -40,7 +40,7 @@ std::set<gtirb::CodeBlock*> NoReturnPass::updateCFG(std::shared_ptr<souffle::Sou
     {
         gtirb::Addr BlockAddr(Output[0]);
         // this should correspond to only one block
-        for(auto& Block : M.findCodeBlocksIn(BlockAddr))
+        for(auto& Block : M.findCodeBlocksOn(BlockAddr))
         {
             NoReturn.insert(&Block);
         }

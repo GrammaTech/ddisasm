@@ -142,7 +142,7 @@ void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
 void addEntryBlock(gtirb::Module &Module, std::shared_ptr<BinaryReader> Binary,
                    gtirb::Context &Context)
 {
-    gtirb::Addr Entry = gtirb::Addr(Binary->get_entry_point());
+    gtirb::Addr Entry = findByteIntervalsOn>get_entry_point());
     if(auto It = Module.findByteIntervalsIn(Entry); !It.empty())
     {
         if(gtirb::ByteInterval &Interval = *It.begin(); Interval.getAddress())
