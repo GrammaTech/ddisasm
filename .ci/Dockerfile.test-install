@@ -2,7 +2,8 @@ ARG IMAGE="docker.grammatech.com/rewriting/ddisasm/ubuntu18-gcc"
 FROM $IMAGE
 
 WORKDIR /ddisasm/build
-RUN dpkg -i DDISASM-*-Linux.deb
+ARG INSTALLER="dpkg -i DDISASM-*-Linux.deb"
+RUN $INSTALLER
 WORKDIR /ddisasm
 RUN rm -rf /ddisasm/build
 RUN PYTHONPATH=$PYTHONPATH:/ddisasm/tests python3 -m unittest end2end_test.TestSmall.test_1
