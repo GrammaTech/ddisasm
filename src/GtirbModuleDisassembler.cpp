@@ -639,9 +639,9 @@ void buildCodeBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
     {
         gtirb::Addr blockAddress;
         output >> blockAddress;
-        if(auto it = module.findSectionsOn(blockAddress); !it.empty())
+        if(auto sections = module.findSectionsOn(blockAddress); !sections.empty())
         {
-            gtirb::Section &section = *it.begin();
+            gtirb::Section &section = *sections.begin();
             uint64_t size = blockInformation.find(blockAddress)->size;
             if(auto it = section.findByteIntervalsOn(blockAddress); !it.empty())
             {
