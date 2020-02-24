@@ -61,7 +61,7 @@ void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProg
     for(auto& Output : *P->getRelation("in_function_final"))
     {
         gtirb::Addr BlockAddr(Output[0]), FunctionEntryAddr(Output[1]);
-        auto BlockRange = M.findCodeBlocksOn(BlockAddr);
+        auto BlockRange = M.findCodeBlocksIn(BlockAddr);
         if(!BlockRange.empty())
         {
             gtirb::CodeBlock* Block = &*BlockRange.begin();

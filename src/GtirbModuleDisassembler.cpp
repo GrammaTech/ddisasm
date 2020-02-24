@@ -502,7 +502,6 @@ void addSymbolicExpressionToCodeBlock(gtirb::Module &Module, gtirb::Addr Addr, u
         uint64_t BlockOffset = static_cast<uint64_t>(Addr - *BaseAddr + Offset);
         ByteInterval->addSymbolicExpression<ExprType>(BlockOffset, A...);
     }
-    findCodeBlocksOn
 }
 
 void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, const gtirb::Addr &ea,
@@ -524,7 +523,7 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
             return;
         }
     }
-    // Symbol+constant casefindCodeBlocksOn
+    // Symbol+constant case
     auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
     if(auto movedLabel =
            std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
@@ -541,7 +540,7 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
     // Symbol+0 case
     auto range = symbolicInfo.SymbolicExpressionNoOffsets.equal_range(ea);
     if(std::find_if(range.first, range.second,
-                    [index](findCodeBlocksOnent) { return element.OperandIndex == index; })
+                    [index](const auto &element) { return element.OperandIndex == index; })
        != range.second)
     {
         auto sym = getSymbol(context, module, gtirb::Addr(immediate));
@@ -565,7 +564,7 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
         {
             addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
                 module, ea, instruction.displacementOffset, symbolicExpr->Addend,
-                &*foundSymbol.befindCodeBlocksOn
+                &*foundSymbol.begin());
             return;
         }
     }
@@ -587,30 +586,29 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
     if(std::find_if(range.first, range.second,
                     [index](const auto &element) { return element.OperandIndex == index; })
        != range.second)
-        findCodeBlocksOn
+    {
+        // Special case for RIP-relative references
+        if(indirect.reg2 == std::string{"RIP"} && indirect.multiplier == 1
+           && isNullReg(indirect.reg1) && isNullReg(indirect.reg3))
         {
-            // Special case for RIP-relative references
-            if(indirect.reg2 == std::string{"RIP"} && indirect.multiplier == 1
-               && isNullReg(indirect.reg1) && isNullReg(indirect.reg3))
-            {
-                auto address = ea + indirect.displacement + instruction.Size;
-                auto sym = getSymbol(context, module, address);
-                addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-                    module, ea, instruction.displacementOffset, 0, sym);
-            }
-            else
-            {
-                auto sym = getSymbol(context, module, gtirb::Addr(indirect.displacement));
-                addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-                    module, ea, instruction.displacementOffset, 0, sym);
-            }
+            auto address = ea + indirect.displacement + instruction.Size;
+            auto sym = getSymbol(context, module, address);
+            addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
+                module, ea, instruction.displacementOffset, 0, sym);
         }
+        else
+        {
+            auto sym = getSymbol(context, module, gtirb::Addr(indirect.displacement));
+            addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
+                module, ea, instruction.displacementOffset, 0, sym);
+        }
+    }
 }
 
 void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module,
                                   souffle::SouffleProgram *prog)
 {
-    findCodeBlocksOn auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", prog);
+    auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", prog);
     SymbolicInfo symbolicInfo{
         convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
         convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog),
@@ -621,7 +619,7 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
     {
         const auto inst = decodedInstructions.find(cib.EA);
         assert(inst != decodedInstructions.end());
-        for(auto &op : inst->secfindCodeBlocksOn
+        for(auto &op : inst->second.Operands)
         {
             if(auto *immediate = std::get_if<ImmOp>(&op.second))
                 buildSymbolicImmediate(context, module, inst->first, inst->second, op.first,
@@ -667,15 +665,15 @@ void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
 
     for(auto &output : *prog->getRelation("bss_section"))
     {
-        std::string sectionNfindSectionsOn output >> sectionName;
+        std::string sectionName;
+        output >> sectionName;
         const auto bss_section = module.findSections(sectionName);
         if(bss_section == module.sections_by_name_end())
             continue;
-        findByteIntervalsOn
-            // for each bss section we divide in data objects according to the bss_data markers that
-            // fall within the range of the section
-            auto beginning =
-                std::lower_bound(bssData.begin(), bssData.end(), bss_section->getAddress().value());
+        // for each bss section we divide in data objects according to the bss_data markers that
+        // fall within the range of the section
+        auto beginning =
+            std::lower_bound(bssData.begin(), bssData.end(), bss_section->getAddress().value());
         // end points to the address at the end of the bss section
         auto end = std::lower_bound(bssData.begin(), bssData.end(), addressLimit(*bss_section));
         for(auto i = beginning; i != end; ++i)
@@ -708,7 +706,7 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
         convertSortedRelation<VectorByEA<SymbolSpecialType>>("symbol_special_encoding", prog);
     std::map<gtirb::UUID, std::string> typesTable;
 
-    for(auto &output : *prog->gefindByteIntervalsOnzed_data_segment"))
+    for(auto &output : *prog->getRelation("initialized_data_segment"))
     {
         gtirb::Addr begin, end;
         output >> begin >> end;
@@ -741,8 +739,8 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                         auto diff = movedDataLabel->Address1 - movedDataLabel->Address2;
                         auto sym =
                             getSymbol(context, module, gtirb::Addr(movedDataLabel->Address2));
-                        byteInterval.addSymbolicExpression<gtirb::SymAddrConst>(
-                            blockOffset, diff, findByteIntervalsOn sym);
+                        byteInterval.addSymbolicExpression<gtirb::SymAddrConst>(blockOffset, diff,
+                                                                                sym);
                     }
                     else
                         // symbol+0
@@ -863,7 +861,9 @@ void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
 gtirb::EdgeType getEdgeType(const std::string &type)
 {
     if(type == "branch")
-        return gtirb::EdgeType::BfindCodeBlocksOn if(type == "call") return gtirb::EdgeType::Call;
+        return gtirb::EdgeType::Branch;
+    if(type == "call")
+        return gtirb::EdgeType::Call;
     if(type == "return")
         return gtirb::EdgeType::Return;
     // TODO syscall and sysret
@@ -897,9 +897,8 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
     {
         gtirb::Addr srcAddr;
         std::string conditional, type;
-        findCodeBlocksOn output >> srcAddr >> conditional
-            >> typefindCodeBlocksOn const gtirb::CodeBlock *src =
-            &*module.findCodeBlocksIn(srcAddr).begin();
+        output >> srcAddr >> conditional >> type;
+        const gtirb::CodeBlock *src = &*module.findCodeBlocksIn(srcAddr).begin();
         auto isConditional = conditional == "true" ? gtirb::ConditionalEdge::OnTrue
                                                    : gtirb::ConditionalEdge::OnFalse;
         gtirb::EdgeType edgeType = getEdgeType(type);
@@ -916,11 +915,10 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
         gtirb::ProxyBlock *externalBlock = symbol.getReferent<gtirb::ProxyBlock>();
         // if the symbol does not point to a ProxyBlock yet, we create it
         if(!externalBlock)
-            findCodeBlocksOn
-            {
-                externalBlock = module.addProxyBlock(context);
-                symbol.setReferent(externalBlock);
-            }
+        {
+            externalBlock = module.addProxyBlock(context);
+            symbol.setReferent(externalBlock);
+        }
         auto E = addEdge(src, externalBlock, cfg);
         cfg[*E] = std::make_tuple(gtirb::ConditionalEdge::OnFalse, gtirb::DirectEdge::IsIndirect,
                                   gtirb::EdgeType::Branch);
@@ -928,7 +926,7 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
 }
 
 // In general, it is expected that findOffsets returns a vector with zero or one items
-// because blocks and data objects typically dofindCodeBlocksOn
+// because blocks and data objects typically do not overlap.
 std::vector<gtirb::Offset> findOffsets(gtirb::Module &module, gtirb::Addr ea)
 {
     std::vector<gtirb::Offset> offsets;
@@ -948,12 +946,12 @@ void updateComment(gtirb::Module &module, std::map<gtirb::Offset, std::string> &
                    gtirb::Addr ea, std::string newComment)
 {
     std::vector<gtirb::Offset> matchingOffsets = findOffsets(module, ea);
-    for(gtirb::Offset &offsetfindCodeBlocksOnts)
+    for(gtirb::Offset &offset : matchingOffsets)
     {
         auto existing = comments.find(offset);
         if(existing != comments.end())
         {
-            findDataBlocksOn existing->second += ", ";
+            existing->second += ", ";
             existing->second += newComment;
         }
         else
@@ -996,7 +994,7 @@ void buildCfiDirectives(gtirb::Context &context, gtirb::Module &module,
         else
         {
             if(nOperands > 0)
-                findByteIntervalsOn operands.push_back(op1);
+                operands.push_back(op1);
             if(nOperands > 1)
                 operands.push_back(op2);
         }
@@ -1018,8 +1016,7 @@ void buildCfiDirectives(gtirb::Context &context, gtirb::Module &module,
             else
             {
                 gtirb::UUID uuid;
-                findCodeBlocksOn cfiDirectives[offset][localIndex] =
-                    std::make_tuple(directive, operands, uuid);
+                cfiDirectives[offset][localIndex] = std::make_tuple(directive, operands, uuid);
             }
         }
     }
