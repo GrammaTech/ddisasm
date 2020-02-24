@@ -2,6 +2,13 @@
 
 # Called in gitlab-ci.yml
 
+# These options prevent false negatives in the jobs which use this script.
+# They also make failures of the script more transparent.
+set -o xtrace
+set -o nounset
+set -o errexit
+set -o pipefail
+
 BUILD_TYPE=$1
 
 mkdir gtirb/build
