@@ -148,7 +148,7 @@ std::set<gtirb::SectionFlag> LIEFBinaryReader::get_section_flags(
         bool is_executable =
             section.flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_EXECINSTR);
         bool is_writable =
-            section.flags && static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
+            section.flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
         bool is_initialized =
             is_allocated
             && section.type != static_cast<int>(LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS);
