@@ -1,6 +1,7 @@
 #include "test.h"
 
-int main() {
-  message();
-  return 0;
+int main()
+{
+    message();
+    return 0;
 }

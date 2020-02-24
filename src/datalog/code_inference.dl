@@ -678,4 +678,3 @@ next_block_in_section(Block,NextBlock):-
     next(LastInsn,DataBegin),
     data_in_code(DataBegin,NextBlock),
     block(NextBlock).
-

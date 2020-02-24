@@ -37,4 +37,3 @@ cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
 if [ "$BUILD_TYPE" == 'Release' ]; then
     PATH="$PATH;$DDISASM_BIN;C:\\Boost\\lib;$GTIRB_BIN;$GTIRB_PPRINTER_BIN" cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && C:\\PROGRA~1\\CMake\\bin\\ctest.exe -V"
 fi
-

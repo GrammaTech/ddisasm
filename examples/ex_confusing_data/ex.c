@@ -1,6 +1,6 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 
 int16_t array[12] = {10, 11, 12, 1443, 64, 0, 0, 0, // 00 00 00 00 00 40 05 A1 the address of main
                      17, 18, 19, 20};

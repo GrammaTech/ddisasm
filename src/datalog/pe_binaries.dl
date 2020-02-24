@@ -242,4 +242,3 @@ main_function(EA):-
     next(EA1,Block),
     code_in_refined_block(EA_call_main,Block),
     direct_call(EA_call_main,EA).
- 
