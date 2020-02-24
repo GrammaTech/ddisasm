@@ -26,8 +26,8 @@ stages:
 
 .build-windows-template: &build-windows
   script:
-    - git clone https://git.grammatech.com/rewriting/gtirb.git
-    - git clone -b master https://git.grammatech.com/rewriting/gtirb-pprinter.git
+    - git clone -b protobuf-refactoring-1-phase-2 https://git.grammatech.com/rewriting/gtirb.git
+    - git clone -b jrobbins/byte-intervals https://git.grammatech.com/rewriting/gtirb-pprinter.git
     - git clone https://github.com/brianfairservice/libehp.git
     - .ci/build-windows.sh ${BUILD_TYPE}
 
