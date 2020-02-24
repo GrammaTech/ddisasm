@@ -231,9 +231,8 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
 
         cs_insn* Insn;
         const gtirb::ByteInterval* Bytes = Block.getByteInterval();
-        uint64_t Size = Bytes->getSize();
         uint64_t InitSize = Bytes->getInitializedSize();
-        assert(Size == InitSize && "Found partially initialized code block.");
+        assert(Bytes->getSize() == InitSize && "Found partially initialized code block.");
         size_t Count =
             cs_disasm(CsHandle, Bytes->rawBytes<uint8_t>(), InitSize,
                       static_cast<uint64_t>(*Block.getAddress()), InstructionLimit, &Insn);
