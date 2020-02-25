@@ -8,12 +8,7 @@ else()
   set(SYSLIBS)
 endif()
 
-add_executable(TestDdisasm GtirbZeroBuilder.Test.cpp LIEFBinaryReader.Test.cpp
-                           SccPass.Test.cpp NoReturnPass.Test.cpp)
-
-add_library(zero_builder STATIC ../GtirbZeroBuilder.cpp ../LIEFBinaryReader.cpp)
-
-target_link_libraries(zero_builder gtirb ${LIEF_LIBRARIES})
+add_executable(TestDdisasm SccPass.Test.cpp NoReturnPass.Test.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_link_libraries(
@@ -24,8 +19,7 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
     gtest_main
     gtirb
     scc_pass
-    no_return_pass
-    zero_builder)
+    no_return_pass)
   target_link_options(${PROJECT_NAME} PRIVATE
                       /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>)
 else()
@@ -39,8 +33,7 @@ else()
     scc_pass
     -Wl,--whole-archive
     no_return_pass
-    -Wl,--no-whole-archive
-    zero_builder)
+    -Wl,--no-whole-archive)
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE __EMBEDDED_SOUFFLE__)
