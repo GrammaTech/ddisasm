@@ -19,15 +19,15 @@ stages:
 
 .build-template: &build
   script:
-    - git clone -b protobuf-refactoring-1-phase-2 https://git.grammatech.com/rewriting/gtirb.git
-    - git clone -b jrobbins/byte-intervals https://git.grammatech.com/rewriting/gtirb-pprinter.git
+    - git clone https://git.grammatech.com/rewriting/gtirb.git
+    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git
     - git clone https://git.zephyr-software.com/opensrc/libehp
     - docker build -f .ci/Dockerfile.${OS}-${COMPILER} -t ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} --build-arg CPACK_GENERATOR=${CPACK_GENERATOR} .
 
 .build-windows-template: &build-windows
   script:
-    - git clone -b protobuf-refactoring-1-phase-2 https://git.grammatech.com/rewriting/gtirb.git
-    - git clone -b jrobbins/byte-intervals https://git.grammatech.com/rewriting/gtirb-pprinter.git
+    - git clone https://git.grammatech.com/rewriting/gtirb.git
+    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git
     - git clone https://github.com/brianfairservice/libehp.git
     - .ci/build-windows.sh ${BUILD_TYPE}
 
