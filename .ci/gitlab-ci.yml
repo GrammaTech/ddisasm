@@ -204,7 +204,7 @@ cleanup-arch-clang:
     OS: 'arch'
     COMPILER: 'clang'
   <<: *cleanup
-  
+
 debian-installer:
   stage: deploy
   variables:

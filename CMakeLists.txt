@@ -224,7 +224,7 @@ set(CMAKE_PROJECT_HOMEPAGE_URL https://github.com/grammatech/ddisasm)
 # set(CPACK_PACKAGE_VERSION_MINOR ${DDISASM_MINOR_VERSION})
 # set(CPACK_PACKAGE_VERSION_PATCH ${DDISASM_PATCH_VERSION})
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
-  "A fast disassembler which is accurate enough for the resulting assembly code to be reassembled. The disassembler implemented using the datalog (souffle) declarative logic programming language to compile disassembly rules and heuristics."
+    "A fast disassembler which is accurate enough for the resulting assembly code to be reassembled. The disassembler implemented using the datalog (souffle) declarative logic programming language to compile disassembly rules and heuristics."
 )
 set(CPACK_PACKAGE_VEDOR "GrammaTech Inc.")
 set(CPACK_PACKAGE_CONTACT gtirb@grammatech.com)
