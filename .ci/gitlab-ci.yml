@@ -17,8 +17,8 @@ stages:
 
 .build-template: &build
   script:
-    - git clone -b protobuf-refactoring-1-phase-2 https://git.grammatech.com/rewriting/gtirb.git
-    - git clone -b jrobbins/byte-intervals-windows https://git.grammatech.com/rewriting/gtirb-pprinter.git
+    - git clone https://git.grammatech.com/rewriting/gtirb.git
+    - git clone -b windows-support https://git.grammatech.com/rewriting/gtirb-pprinter.git
     - git clone https://git.zephyr-software.com/opensrc/libehp
     - docker build -f .ci/Dockerfile.${OS}-${COMPILER} -t ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} .
 
