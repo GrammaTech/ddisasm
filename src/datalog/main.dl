@@ -507,7 +507,7 @@ data_segment(Begin,End):-
 .decl inferred_symbol_name(ea:address,name:symbol,scope:symbol)
 .output inferred_symbol_name
 
-inferred_symbol_name(EA,"main","Normal"):-
+inferred_symbol_name(EA,"main","GLOBAL"):-
     main_function(EA).
 
 .decl no_return_call(EA:address)
