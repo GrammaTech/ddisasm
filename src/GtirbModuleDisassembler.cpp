@@ -354,6 +354,7 @@ Container convertSortedRelation(const std::string &relation, souffle::SoufflePro
 void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
+    auto *symbolType = module.getAuxData<std::map<gtirb::UUID, std::string>>("symbolType");
     for(auto &output : *prog->getRelation("inferred_symbol_name"))
     {
         gtirb::Addr addr;
@@ -362,8 +363,11 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
         output >> addr >> name >> scope;
         if(!module.findSymbols(name))
         {
-            // TODO: Symbol type
-            module.addSymbol(context, addr, name);
+            gtirb::Symbol *symbol = module.addSymbol(context, addr, name);
+            if(symbolType)
+            {
+                symbolType->insert({symbol->getUUID(), scope});
+            }
         }
     }
 }
@@ -433,8 +437,16 @@ gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::
         }
         return bestSymbol;
     }
-    // TODO: Add symbol kind
-    return module.addSymbol(context, ea, getLabel(uint64_t(ea)));
+
+    gtirb::Symbol *symbol = module.addSymbol(context, ea, getLabel(uint64_t(ea)));
+
+    auto *symbolType = module.getAuxData<std::map<gtirb::UUID, std::string>>("symbolType");
+    if(symbolType)
+    {
+        symbolType->insert({symbol->getUUID(), "LOCAL"});
+    }
+
+    return symbol;
 }
 
 // Expand the SymbolForwarding table with plt references

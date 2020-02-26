@@ -2,13 +2,20 @@
 
 # Called in gitlab-ci.yml
 
+# These options prevent false negatives in the jobs which use this script.
+# They also make failures of the script more transparent.
+set -o xtrace
+set -o nounset
+set -o errexit
+set -o pipefail
+
 BUILD_TYPE=$1
 
 mkdir gtirb/build
 pushd gtirb/build
 GTIRB_BIN=$(cygpath -w $(pwd)/bin)
 cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && C:\\PROGRA~1\\CMake\\bin\\cmake.exe -G "Ninja" -DBOOST_ROOT=\"C:\\Boost\" -DCMAKE_PREFIX_PATH=\"C:\\Program Files (x86)\\protobuf\" -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DPYTHON=C:\\Python38\\python.exe -DCMAKE_INSTALL_PREFIX=\"C:\\gtirb-$BUILD_TYPE\" .."
-cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja && ninja install"
+cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja -j 1 && ninja install"
 PATH="$PATH:$(pwd)/bin"
 popd
 
