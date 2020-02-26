@@ -197,6 +197,11 @@ void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> bin
     module.addAuxData("libraries", binary->get_libraries());
     module.addAuxData("libraryPaths", binary->get_library_paths());
     module.addAuxData("baseAddress", gtirb::Addr(binary->get_base_address()));
+    if(binary->get_binary_format() == gtirb::FileFormat::PE)
+    {
+        module.addAuxData("dataDirectories", binary->get_data_directories());
+        module.addAuxData("importEntries", binary->get_import_entries());
+    }
 }
 
 gtirb::IR *buildZeroIR(const std::string &filename, gtirb::Context &context)
