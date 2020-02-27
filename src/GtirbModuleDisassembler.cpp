@@ -836,6 +836,7 @@ void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     std::map<gtirb::UUID, std::set<gtirb::UUID>> functionEntries;
     std::map<gtirb::Addr, gtirb::UUID> functionEntry2function;
+    std::map<gtirb::UUID, gtirb::UUID> functionName;
     boost::uuids::random_generator generator;
     for(auto &output : *prog->getRelation("function_inference.function_entry"))
     {
@@ -849,6 +850,11 @@ void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
 
             functionEntry2function[functionEntry] = functionUUID;
             functionEntries[functionUUID].insert(entryBlockUUID);
+
+            for(const auto &symbol : module.findSymbols(functionEntry))
+            {
+                functionName.insert({entryBlockUUID, symbol.getUUID()});
+            }
         }
     }
 
@@ -868,6 +874,7 @@ void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
 
     module.addAuxData("functionEntries", std::move(functionEntries));
     module.addAuxData("functionBlocks", std::move(functionBlocks));
+    module.addAuxData("functionName", std::move(functionName));
 }
 
 gtirb::EdgeType getEdgeType(const std::string &type)
