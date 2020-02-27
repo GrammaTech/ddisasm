@@ -90,6 +90,7 @@ def compile(compiler, cxx_compiler, optimizations, extra_flags):
         completedProcess = subprocess.run(
             make(), env=env, stdout=subprocess.DEVNULL
         )
+    return completedProcess.returncode == 0
 
 
 def disassemble(binary, strip, format="--asm", extension="s", extra_args=[]):
