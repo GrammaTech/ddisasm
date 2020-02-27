@@ -870,7 +870,7 @@ void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
 
             for(const auto &symbol : module.findSymbols(functionEntry))
             {
-                functionName.insert({entryBlockUUID, symbol.getUUID()});
+                functionName.insert({functionUUID, symbol.getUUID()});
             }
         }
     }
