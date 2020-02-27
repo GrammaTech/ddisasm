@@ -374,3 +374,7 @@ class TestSmallStripWindows(unittest.TestCase):
                 reassemble_function=skip_reassemble,
             )
         )
+
+
+if __name__ == "__main__":
+    unittest.main()
