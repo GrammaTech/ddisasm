@@ -26,3 +26,4 @@ examples/**/out.txt
 /libehp
 wiki/
 build/
+__pycache__/
