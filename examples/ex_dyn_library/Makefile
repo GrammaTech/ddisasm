@@ -1,10 +1,9 @@
 CC="gcc"
 CFLAGS=
 
-
 all: ex.c fun.c
-	$(CC) fun.c  -shared $(CFLAGS) -fPIC -o  fun.so 
-	$(CC) ex.c   $(CFLAGS)  fun.so -o ex 
+	$(CC) fun.c  -shared $(CFLAGS) -fPIC -o  fun.so
+	$(CC) ex.c   $(CFLAGS)  fun.so -o ex
 	@LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. ./ex > out.txt
 clean:
 	rm -f ex out.txt
