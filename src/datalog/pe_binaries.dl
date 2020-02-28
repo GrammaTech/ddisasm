@@ -244,5 +244,5 @@ main_function(EA):-
     direct_call(EA_call_main,EA).
 
 inferred_symbol_name(EA,"main","PUBLIC"):-
-    binary_format("ELF"),
+    binary_format("PE"),
     main_function(EA).
