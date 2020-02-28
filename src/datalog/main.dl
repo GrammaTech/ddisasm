@@ -512,6 +512,7 @@ data_segment(Begin,End):-
 .output inferred_symbol_name
 
 inferred_symbol_name(EA,"main","GLOBAL"):-
+    binary_format("ELF"),
     main_function(EA).
 
 .decl no_return_call(EA:address)
