@@ -1,6 +1,7 @@
 import platform
 import unittest
 from disassemble_reassemble_check import (
+    skip_reassemble,
     disassemble_reassemble_test as dis_reasm_test,
 )
 from disassemble_reassemble_check import compile, cd
@@ -171,7 +172,7 @@ class TestSmall(unittest.TestCase):
                 ex_dir / "ex_threads",
                 "ex",
                 reassembly_compiler="g++",
-                skip_reassemble=True,
+                reassemble_function=skip_reassemble,
             )
         )
 
@@ -184,7 +185,7 @@ class TestSmall(unittest.TestCase):
             dis_reasm_test(
                 ex_dir / "ex1",
                 "ex",
-                skip_reassemble=True,
+                reassemble_function=skip_reassemble,
                 extra_compile_flags=["-static"],
                 c_compilers=["gcc"],
                 cxx_compilers=["g++"],
