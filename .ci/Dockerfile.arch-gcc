@@ -29,17 +29,19 @@ RUN cd /home/ddisasm \
 
 COPY --chown=ddisasm . /ddisasm
 
+# In arch we do not install things in /usr/local (see https://wiki.archlinux.org/index.php/Arch_package_guidelines#Package_Etiquette).
+
 # Install GTIRB
 RUN rm -rf /ddisasm/gtirb/build /ddisasm/gtirb/CMakeCache.txt /ddisasm/gtirb/CMakeFiles /ddisasm/gtirb/CMakeScripts
-RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DGTIRB_JAVA_API=OFF && cd build && which sudo 2>&1 >/dev/null && sudo make install || make install
+RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DGTIRB_JAVA_API=OFF -DCMAKE_INSTALL_PREFIX=/usr && cd build && which sudo 2>&1 >/dev/null && sudo make install || make install
 
 # Install gtirb-pprinter
 RUN rm -rf /ddisasm/gtirb-pprinter/build /ddisasm/gtirb-pprinter/CMakeCache.txt /ddisasm/gtirb-pprinter/CMakeFiles /ddisasm/gtirb-pprinter/CMakeScripts
-RUN cd /ddisasm/gtirb-pprinter/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build && which sudo 2>&1 >/dev/null && sudo make install || make install
+RUN cd /ddisasm/gtirb-pprinter/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_INSTALL_PREFIX=/usr && cd build && which sudo 2>&1 >/dev/null && sudo make install || make install
 
 # Install ehp
 RUN rm -rf /ddisasm/libehp/build /ddisasm/libehp/CMakeCache.txt /ddisasm/libehp/CMakeFiles /ddisasm/libehp/CMakeScripts
-RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build && which sudo 2>&1 >/dev/null && sudo make install || make install
+RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_INSTALL_PREFIX=/usr && cd build && which sudo 2>&1 >/dev/null && sudo make install || make install
 
 ENV TERM xterm
 ENV PATH=/ddisasm/build/bin:$PATH
