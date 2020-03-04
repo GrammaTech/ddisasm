@@ -22,11 +22,14 @@
 //===----------------------------------------------------------------------===//
 
 #include "DlDecoder.h"
+
 #include <souffle/CompiledSouffle.h>
+
 #include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <string>
+
 #include "BinaryReader.h"
 #include "ExceptionDecoder.h"
 #include "GtirbZeroBuilder.h"
@@ -258,7 +261,6 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
             GtirbToDatalog::addToRelation<std::vector<gtirb::Addr>>(prog, "entry_point",
                                                                     {*address});
             module.setEntryPoint(nullptr);
-            gtirb::removeVertex(dyn_cast<gtirb::CfgNode>(block), module.getIR()->getCFG());
             block->getByteInterval()->removeBlock(block);
         }
     }
