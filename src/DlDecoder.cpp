@@ -87,8 +87,7 @@ std::string getFileFormatString(const gtirb::FileFormat format)
 void addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
     auto *rel = prog->getRelation("symbol");
-    auto *extraInfoTable =
-        module.getAuxData<std::map<gtirb::UUID, ExtraSymbolInfo>>("extraSymbolInfo");
+    auto *SymbolInfo = module.getAuxData<std::map<gtirb::UUID, ElfSymbolInfo>>("elfSymbolInfo");
     for(auto &symbol : module.symbols())
     {
         souffle::tuple t(rel);
@@ -96,14 +95,13 @@ void addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
             t << *address;
         else
             t << 0;
-        auto found = extraInfoTable->find(symbol.getUUID());
-        if(found == extraInfoTable->end())
+        auto found = SymbolInfo->find(symbol.getUUID());
+        if(found == SymbolInfo->end())
             throw std::logic_error("Symbol " + symbol.getName()
-                                   + " missing from extraSymbolInfo AuxData table");
+                                   + " missing from elfSymbolInfo AuxData table");
 
-        ExtraSymbolInfo &extraInfo = found->second;
-        t << extraInfo.size << extraInfo.type << extraInfo.scope << extraInfo.sectionIndex
-          << symbol.getName();
+        ElfSymbolInfo &Info = found->second;
+        t << Info.Size << Info.Type << Info.Scope << Info.SectionIndex << symbol.getName();
         rel->insert(t);
     }
 }
@@ -278,17 +276,6 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
     GtirbToDatalog::addToRelation(prog, "op_immediate", op_dict.immTable);
     GtirbToDatalog::addToRelation(prog, "op_indirect", op_dict.indirectTable);
     addSymbols(prog, module);
-
-    auto *extraInfoTable =
-        module.getAuxData<std::map<gtirb::UUID, ExtraSymbolInfo>>("extraSymbolInfo");
-    std::map<gtirb::UUID, std::string> symbolType;
-    for(auto &[uuid, info] : *extraInfoTable)
-    {
-        symbolType.insert({uuid, info.scope});
-    }
-    module.addAuxData("symbolType", std::move(symbolType));
-    module.removeAuxData("extraSymbolInfo");
-
     addSections(prog, module);
     ExceptionDecoder excDecoder(module);
     excDecoder.addExceptionInformation(prog);

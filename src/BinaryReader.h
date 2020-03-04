@@ -36,6 +36,7 @@ namespace InitialAuxData
         uint64_t size;
         std::string type;
         std::string scope;
+        std::string visibility;
         uint64_t sectionIndex;
         std::string name;
     };

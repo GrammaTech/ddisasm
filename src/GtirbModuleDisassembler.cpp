@@ -25,6 +25,8 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include "DlOperandTable.h"
 
+using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>;
+
 // souffle uses a signed integer for all numbers (either 32 or 64 bits
 // dependin on compilation flags). Allow conversion to other types.
 souffle::tuple &operator>>(souffle::tuple &t, uint64_t &number)
@@ -350,10 +352,23 @@ Container convertSortedRelation(const std::string &relation, souffle::SoufflePro
     return result;
 }
 
+std::string getElfSymbolType(gtirb::Symbol &Symbol)
+{
+    if(Symbol.getReferent<gtirb::CodeBlock>())
+    {
+        return "FUNC";
+    }
+    if(Symbol.getReferent<gtirb::DataBlock>())
+    {
+        return "OBJECT";
+    }
+    return "NOTYPE";
+}
+
 void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
-    auto *symbolType = module.getAuxData<std::map<gtirb::UUID, std::string>>("symbolType");
+    auto *SymbolInfo = module.getAuxData<std::map<gtirb::UUID, ElfSymbolInfo>>("elfSymbolInfo");
     for(auto &output : *prog->getRelation("inferred_symbol_name"))
     {
         gtirb::Addr addr;
@@ -363,9 +378,10 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
         if(!module.findSymbols(name))
         {
             gtirb::Symbol *symbol = module.addSymbol(context, addr, name);
-            if(symbolType)
+            if(SymbolInfo)
             {
-                symbolType->insert({symbol->getUUID(), scope});
+                ElfSymbolInfo Info = {0, getElfSymbolType(*symbol), scope, "DEFAULT", 0};
+                SymbolInfo->insert({symbol->getUUID(), Info});
             }
         }
     }
@@ -439,10 +455,11 @@ gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::
 
     gtirb::Symbol *symbol = module.addSymbol(context, ea, getLabel(uint64_t(ea)));
 
-    auto *symbolType = module.getAuxData<std::map<gtirb::UUID, std::string>>("symbolType");
-    if(symbolType)
+    auto *SymbolInfo = module.getAuxData<std::map<gtirb::UUID, ElfSymbolInfo>>("elfSymbolInfo");
+    if(SymbolInfo)
     {
-        symbolType->insert({symbol->getUUID(), "LOCAL"});
+        ElfSymbolInfo Info = {0, getElfSymbolType(*symbol), "LOCAL", "DEFAULT", 0};
+        SymbolInfo->insert({symbol->getUUID(), Info});
     }
 
     return symbol;
@@ -985,8 +1002,8 @@ void buildCfiDirectives(gtirb::Context &context, gtirb::Module &module,
         output >> blockAddr >> disp >> localIndex >> directive >> reference >> nOperands >> op1
             >> op2;
         std::vector<int64_t> operands;
-        // cfi_escape directives have a sequence of bytes as operands (the raw bytes of the dwarf
-        // instruction). The address 'reference' points to these bytes.
+        // cfi_escape directives have a sequence of bytes as operands (the raw bytes of the
+        // dwarf instruction). The address 'reference' points to these bytes.
         if(directive == ".cfi_escape")
         {
             if(const auto it = module.findByteIntervalsOn(reference); !it.empty())

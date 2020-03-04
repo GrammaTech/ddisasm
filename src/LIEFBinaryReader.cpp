@@ -173,7 +173,8 @@ std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
             if(symbol.type() != LIEF::ELF::ELF_SYMBOL_TYPES::STT_SECTION)
                 symbolTuples.insert(
                     {symbol.value(), symbol.size(), LIEF::ELF::to_string(symbol.type()),
-                     LIEF::ELF::to_string(symbol.binding()), symbol.section_idx(), symbolName});
+                     LIEF::ELF::to_string(symbol.binding()),
+                     LIEF::ELF::to_string(symbol.visibility()), symbol.section_idx(), symbolName});
         }
     }
 

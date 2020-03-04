@@ -54,26 +54,33 @@ bool isAllocatedSection(int flags)
     return (flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC));
 }
 
-std::string gtirb::auxdata_traits<ExtraSymbolInfo>::type_id()
+std::string gtirb::auxdata_traits<ElfSymbolInfo>::type_id()
 {
-    return "ExtraSymbolInfo";
+    return gtirb::auxdata_traits<
+        std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>>::type_id();
 }
 
-void gtirb::auxdata_traits<ExtraSymbolInfo>::toBytes(const ExtraSymbolInfo &Object, to_iterator It)
+void gtirb::auxdata_traits<ElfSymbolInfo>::toBytes(const ElfSymbolInfo &Object, to_iterator It)
 {
-    auxdata_traits<uint64_t>::toBytes(Object.size, It);
-    auxdata_traits<std::string>::toBytes(Object.type, It);
-    auxdata_traits<std::string>::toBytes(Object.scope, It);
-    auxdata_traits<uint64_t>::toBytes(Object.sectionIndex, It);
+    auxdata_traits<std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>>::toBytes(
+        std::make_tuple(Object.Size, Object.Type, Object.Scope, Object.Visibility,
+                        Object.SectionIndex),
+        It);
 }
 
-gtirb::from_iterator gtirb::auxdata_traits<ExtraSymbolInfo>::fromBytes(ExtraSymbolInfo &Object,
-                                                                       from_iterator It)
+gtirb::from_iterator gtirb::auxdata_traits<ElfSymbolInfo>::fromBytes(ElfSymbolInfo &Object,
+                                                                     from_iterator It)
 {
-    It = auxdata_traits<uint64_t>::fromBytes(Object.size, It);
-    It = auxdata_traits<std::string>::fromBytes(Object.type, It);
-    It = auxdata_traits<std::string>::fromBytes(Object.scope, It);
-    It = auxdata_traits<uint64_t>::fromBytes(Object.sectionIndex, It);
+    std::tuple<uint64_t, std::string, std::string, std::string, uint64_t> Tuple;
+    It = auxdata_traits<
+        std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>>::fromBytes(Tuple,
+                                                                                          It);
+    Object.Size = std::get<0>(Tuple);
+    Object.Type = std::get<1>(Tuple);
+    Object.Scope = std::get<2>(Tuple);
+    Object.Visibility = std::get<3>(Tuple);
+    Object.SectionIndex = std::get<4>(Tuple);
+
     return It;
 }
 
@@ -115,7 +122,7 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
 void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                   gtirb::Context &context)
 {
-    std::map<gtirb::UUID, ExtraSymbolInfo> extraSymbolInfoTable;
+    std::map<gtirb::UUID, ElfSymbolInfo> elfSymbolInfo;
     for(auto &binSymbol : binary->get_symbols())
     {
         // Symbols with special section index do not have an address
@@ -133,10 +140,10 @@ void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
             // TODO: Add symbol type
             symbol = module.addSymbol(context, gtirb::Addr(binSymbol.address), binSymbol.name);
         }
-        extraSymbolInfoTable[symbol->getUUID()] = {binSymbol.size, binSymbol.type, binSymbol.scope,
-                                                   binSymbol.sectionIndex};
+        elfSymbolInfo[symbol->getUUID()] = {binSymbol.size, binSymbol.type, binSymbol.scope,
+                                            binSymbol.visibility, binSymbol.sectionIndex};
     }
-    module.addAuxData("extraSymbolInfo", std::move(extraSymbolInfoTable));
+    module.addAuxData("elfSymbolInfo", std::move(elfSymbolInfo));
 }
 
 void addEntryBlock(gtirb::Module &Module, std::shared_ptr<BinaryReader> Binary,
