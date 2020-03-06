@@ -22,7 +22,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "GtirbModuleDisassembler.h"
+
 #include <boost/uuid/uuid_generators.hpp>
+
 #include "DlOperandTable.h"
 
 using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>;
@@ -804,35 +806,36 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
     module.addAuxData("encodings", std::move(typesTable));
 }
 
-void connectSymbolsToDataBlocks(gtirb::Module &module)
+void connectSymbolsToBlocks(gtirb::Module &Module)
 {
-    std::multimap<gtirb::DataBlock *, gtirb::Symbol *> connect;
-    for(auto &block : module.data_blocks())
+    std::map<gtirb::Symbol *, gtirb::CodeBlock *> ConnectToCode;
+    std::map<gtirb::Symbol *, gtirb::DataBlock *> ConnectToData;
+    for(auto &Symbol : Module.symbols_by_addr())
     {
-        for(auto &symbol : module.findSymbols(block.getAddress().value()))
+        if(Symbol.getAddress())
         {
-            connect.insert({&block, &symbol});
+            bool assigned = false;
+            for(auto &Block : Module.findCodeBlocksAt(*Symbol.getAddress()))
+            {
+                ConnectToCode[&Symbol] = &Block;
+                assigned = true;
+                continue;
+            }
+            if(!assigned)
+                for(auto &Block : Module.findDataBlocksAt(*Symbol.getAddress()))
+                {
+                    ConnectToData[&Symbol] = &Block;
+                    continue;
+                }
         }
     }
-    for(auto [block, symbol] : connect)
+    for(auto [Symbol, Block] : ConnectToCode)
     {
-        symbol->setReferent<gtirb::DataBlock>(block);
+        Symbol->setReferent<gtirb::CodeBlock>(Block);
     }
-}
-
-void connectSymbolsToCodeBlocks(gtirb::Module &module)
-{
-    std::multimap<gtirb::CodeBlock *, gtirb::Symbol *> connect;
-    for(auto &block : module.code_blocks())
+    for(auto [Symbol, Block] : ConnectToData)
     {
-        for(auto &symbol : module.findSymbols(block.getAddress().value()))
-        {
-            connect.insert({&block, &symbol});
-        }
-    }
-    for(auto [block, symbol] : connect)
-    {
-        symbol->setReferent<gtirb::CodeBlock>(block);
+        Symbol->setReferent<gtirb::DataBlock>(Block);
     }
 }
 
@@ -1179,10 +1182,9 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildDataBlocks(context, module, prog);
     buildCodeBlocks(context, module, prog);
     buildCodeSymbolicInformation(context, module, prog);
-    connectSymbolsToDataBlocks(module);
+    connectSymbolsToBlocks(module);
     buildCfiDirectives(context, module, prog);
     expandSymbolForwarding(context, module, prog);
-    connectSymbolsToCodeBlocks(module);
     buildFunctions(module, prog);
     buildCFG(context, module, prog);
     buildPadding(module, prog);
