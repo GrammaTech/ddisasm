@@ -43,6 +43,7 @@ public:
     gtirb::FileFormat get_binary_format() override;
     std::string get_binary_type() override;
     uint64_t get_entry_point() override;
+    uint64_t get_base_address() override;
     std::set<InitialAuxData::Symbol> get_symbols() override;
     std::set<InitialAuxData::Relocation> get_relocations() override;
 

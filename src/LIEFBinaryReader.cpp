@@ -42,7 +42,8 @@ LIEFBinaryReader::get_section_content_and_address(const std::string& name)
         for(auto& section : elf->sections())
         {
             if(section.name() == name && section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS)
-                return std::make_tuple(section.content(), section.virtual_address());
+                return std::make_tuple(section.content(),
+                                       get_base_address() + section.virtual_address());
         }
     }
     return std::nullopt;
@@ -63,7 +64,7 @@ uint64_t LIEFBinaryReader::get_max_address()
         }
     }
 
-    return max_address;
+    return get_base_address() + max_address;
 }
 
 uint64_t LIEFBinaryReader::get_min_address()
@@ -80,7 +81,7 @@ uint64_t LIEFBinaryReader::get_min_address()
             }
         }
     }
-    return min_address;
+    return get_base_address() + min_address;
 }
 
 std::set<InitialAuxData::Section> LIEFBinaryReader::get_sections()
@@ -156,6 +157,11 @@ uint64_t LIEFBinaryReader::get_entry_point()
 {
     if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
         return elf->entrypoint();
+    return 0;
+}
+
+uint64_t LIEFBinaryReader::get_base_address()
+{
     return 0;
 }
 
