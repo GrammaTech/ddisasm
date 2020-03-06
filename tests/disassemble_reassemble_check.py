@@ -3,6 +3,7 @@ import contextlib
 import os
 import shlex
 import subprocess
+import platform
 from timeit import default_timer as timer
 
 
@@ -58,6 +59,14 @@ def cd(new_dir):
         os.chdir(prev_dir)
 
 
+def make(target=""):
+    target = [] if target == "" else [target]
+    if platform.system() == "Linux":
+        return ["make", "-e"] + target
+    elif platform.system() == "Windows":
+        return ["nmake", "/E", "/F", "Makefile.windows"] + target
+
+
 def compile(compiler, cxx_compiler, optimizations, extra_flags):
     """
     Clean the project and compile it using the compiler
@@ -75,11 +84,11 @@ def compile(compiler, cxx_compiler, optimizations, extra_flags):
     env["CFLAGS"] = quote_args(optimizations, *extra_flags)
     env["CXXFLAGS"] = quote_args(optimizations, *extra_flags)
     completedProcess = subprocess.run(
-        ["make", "clean", "-e"], env=env, stdout=subprocess.DEVNULL
+        make("clean"), env=env, stdout=subprocess.DEVNULL
     )
     if completedProcess.returncode == 0:
         completedProcess = subprocess.run(
-            ["make", "-e"], env=env, stdout=subprocess.DEVNULL
+            make(), env=env, stdout=subprocess.DEVNULL
         )
     return completedProcess.returncode == 0
 
@@ -111,16 +120,56 @@ def disassemble(binary, strip, format="--asm", extension="s", extra_args=[]):
         return False, time_spent
 
 
+def skip_reassemble(compiler, binary, extra_flags):
+    print(bcolors.warning(" No reassemble"))
+    return True
+
+
 def reassemble(compiler, binary, extra_flags):
     """
     Reassemble the assembly file binary+'.s' into a new binary
     """
     print("# Reassembling", binary + ".s", "into", binary)
-    print(
-        "compile command:", compiler, binary + ".s", "-o", binary, *extra_flags
-    )
+    if platform.system() == "Linux":
+        print(
+            "compile command:",
+            compiler,
+            binary + ".s",
+            "-o",
+            binary,
+            *extra_flags
+        )
+        completedProcess = subprocess.run(
+            [compiler, binary + ".s", "-o", binary] + extra_flags
+        )
+    elif platform.system() == "Windows":
+        out_arg = "/OUT:" + binary
+        if "/link" not in extra_flags:
+            extra_flags = extra_flags + ["/link", out_arg]
+        else:
+            extra_flags = extra_flags + [out_arg]
+        print("compile command:", compiler, binary + ".s", *extra_flags)
+        completedProcess = subprocess.run(
+            [compiler, binary + ".s"] + extra_flags
+        )
+    if completedProcess.returncode != 0:
+        print(bcolors.fail("# Reassembly failed\n"))
+        return False
+    print(bcolors.okgreen("# Reassembly succeed"))
+    return True
+
+
+def reassemble_using_makefile(assembler, binary, extra_flags):
+    def quote_args(*args):
+        return " ".join(shlex.quote(arg) for arg in args)
+
+    # Copy the current environment and modify the copy.
+    env = dict(os.environ)
+    env["AS"] = assembler
+    env["ASFLAGS"] = quote_args(*extra_flags)
+    print("# Reassembling", binary + ".s", "into", binary)
     completedProcess = subprocess.run(
-        [compiler, binary + ".s", "-o", binary] + extra_flags
+        make("reassemble"), env=env, stdout=subprocess.DEVNULL
     )
     if completedProcess.returncode != 0:
         print(bcolors.fail("# Reassembly failed\n"))
@@ -134,9 +183,7 @@ def test():
     Test the project with  'make check'.
     """
     print("# testing\n")
-    completedProcess = subprocess.run(
-        ["make", "check", "-e"], stderr=subprocess.DEVNULL
-    )
+    completedProcess = subprocess.run(make("check"), stderr=subprocess.DEVNULL)
     if completedProcess.returncode != 0:
         print(bcolors.fail("# Testing FAILED\n"))
         return False
@@ -155,7 +202,7 @@ def disassemble_reassemble_test(
     cxx_compilers=["g++", "clang++"],
     optimizations=["-O0", "-O1", "-O2", "-O3", "-Os"],
     strip=False,
-    skip_reassemble=False,
+    reassemble_function=reassemble,
     skip_test=False,
 ):
     """
@@ -191,15 +238,12 @@ def disassemble_reassemble_test(
                 if not success:
                     disassembly_errors += 1
                     continue
-                if skip_reassemble:
-                    print(bcolors.warning(" No reassemble"))
-                    continue
-                if not reassemble(
+                if not reassemble_function(
                     reassembly_compiler, binary, extra_reassemble_flags
                 ):
                     reassembly_errors += 1
                     continue
-                if skip_test:
+                if skip_test or reassemble_function == skip_reassemble:
                     print(bcolors.warning(" No testing"))
                     continue
                 if not test():

@@ -101,9 +101,23 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
             if(auto sectionData = binary->get_section_content_and_address(binSection.name))
             {
                 // Add allocated section contents to a single contiguous ByteInterval.
+                gtirb::Addr sectionAddr =
+                    gtirb::Addr(binary->get_base_address() + binSection.address);
                 std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
-                section->addByteInterval(context, gtirb::Addr(binSection.address),
-                                         sectionBytes.begin(), sectionBytes.end(), binSection.size);
+                gtirb::ByteInterval *byteInterval =
+                    section->addByteInterval(context, sectionAddr, sectionBytes.begin(),
+                                             sectionBytes.end(), binSection.size);
+                // Fill incomplete section with zeroes.
+                if(sectionBytes.size() < binSection.size)
+                {
+                    size_t size = binSection.size - sectionBytes.size();
+                    gtirb::Addr start = *byteInterval->getAddress() + byteInterval->getSize();
+                    std::cerr << "Warning: Zero filling uninitialized section fragment: " << start
+                              << '-' << start + size << '\n';
+                    std::vector<uint8_t> zeroes(size, 0);
+                    byteInterval->insertBytes<uint8_t>(byteInterval->bytes_end<uint8_t>(),
+                                                       zeroes.begin(), zeroes.end());
+                }
             }
             else
             {
@@ -159,6 +173,7 @@ void addEntryBlock(gtirb::Module &Module, std::shared_ptr<BinaryReader> Binary,
             Module.setEntryPoint(Block);
         }
     }
+    assert(Module.getEntryPoint() && "Failed to set module entry point.");
 }
 
 void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
