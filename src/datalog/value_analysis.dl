@@ -272,6 +272,7 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult*Mult2,Offset+Offset1+Offset2*Mult,Steps3
     EA != EA_def2,
     value_reg(EA_def2,Reg2,EA_third,Reg3,Mult2,Offset2,Steps2),
     EA != EA_third,
+    Reg3 != "NONE",
     Steps2+2 < StepLimit,
     // this is an empirical restriction. There is no logical problem
     // with having a negative multiplier but it appears in cases
@@ -294,6 +295,7 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult1,Offset+Offset1+Offset2*Mult,Steps3):-
     def_used(EA_def1,Reg1,EA,_),
     EA != EA_def1,
     value_reg(EA_def1,Reg1,EA_third,Reg3,Mult1,Offset1,Steps1),
+    Reg3 != "NONE",
     EA != EA_third,
     Steps1+2 < StepLimit,
 

@@ -220,35 +220,8 @@ std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
             if(symbol.type() != LIEF::ELF::ELF_SYMBOL_TYPES::STT_SECTION)
                 symbolTuples.insert(
                     {symbol.value(), symbol.size(), LIEF::ELF::to_string(symbol.type()),
-                     LIEF::ELF::to_string(symbol.binding()), symbol.section_idx(), symbolName});
-        }
-    }
-
-    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()))
-    {
-        for(auto& symbol : pe->symbols())
-        {
-            std::string symbolName = symbol.name();
-            // FIXME: do symbols in PE have an equivalent concept?
-            symbolTuples.insert({symbol.value(), 0, "NOTYPE", "GLOBAL",
-                                 static_cast<uint64_t>(symbol.section_number()), symbolName});
-        }
-        // FIXME: Modify Symbol type to allow imports to be "first class" symbols or
-        //        create a secondary expandSymbolForwarding workflow for the PE format.
-        for(auto& import : pe->imports())
-        {
-            for(auto& importEntry : import.entries())
-            {
-                symbolTuples.insert({0, 0, "", "EXTERN", 1, importEntry.name()});
-            }
-        }
-        if(pe->has_exports())
-        {
-            for(auto& entry : pe->get_export().entries())
-            {
-                uint64_t address = get_base_address() + entry.address();
-                symbolTuples.insert({address, 0, "", "PUBLIC", 1, entry.name()});
-            }
+                     LIEF::ELF::to_string(symbol.binding()),
+                     LIEF::ELF::to_string(symbol.visibility()), symbol.section_idx(), symbolName});
         }
     }
     return symbolTuples;

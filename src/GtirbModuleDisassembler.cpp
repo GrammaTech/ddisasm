@@ -22,8 +22,12 @@
 //===----------------------------------------------------------------------===//
 
 #include "GtirbModuleDisassembler.h"
+
 #include <boost/uuid/uuid_generators.hpp>
+
 #include "DlOperandTable.h"
+
+using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>;
 
 // souffle uses a signed integer for all numbers (either 32 or 64 bits
 // dependin on compilation flags). Allow conversion to other types.
@@ -354,7 +358,7 @@ Container convertSortedRelation(const std::string &relation, souffle::SoufflePro
 void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
-    auto *symbolType = module.getAuxData<std::map<gtirb::UUID, std::string>>("symbolType");
+    auto *SymbolInfo = module.getAuxData<std::map<gtirb::UUID, ElfSymbolInfo>>("elfSymbolInfo");
     for(auto &output : *prog->getRelation("inferred_symbol_name"))
     {
         gtirb::Addr addr;
@@ -364,9 +368,10 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
         if(!module.findSymbols(name))
         {
             gtirb::Symbol *symbol = module.addSymbol(context, addr, name);
-            if(symbolType)
+            if(SymbolInfo)
             {
-                symbolType->insert({symbol->getUUID(), scope});
+                ElfSymbolInfo Info = {0, "NONE", scope, "DEFAULT", 0};
+                SymbolInfo->insert({symbol->getUUID(), Info});
             }
         }
     }
@@ -440,10 +445,11 @@ gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::
 
     gtirb::Symbol *symbol = module.addSymbol(context, ea, getLabel(uint64_t(ea)));
 
-    auto *symbolType = module.getAuxData<std::map<gtirb::UUID, std::string>>("symbolType");
-    if(symbolType)
+    auto *SymbolInfo = module.getAuxData<std::map<gtirb::UUID, ElfSymbolInfo>>("elfSymbolInfo");
+    if(SymbolInfo)
     {
-        symbolType->insert({symbol->getUUID(), "LOCAL"});
+        ElfSymbolInfo Info = {0, "NONE", "LOCAL", "DEFAULT", 0};
+        SymbolInfo->insert({symbol->getUUID(), Info});
     }
 
     return symbol;
@@ -832,35 +838,36 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
     module.addAuxData("encodings", std::move(typesTable));
 }
 
-void connectSymbolsToDataBlocks(gtirb::Module &module)
+void connectSymbolsToBlocks(gtirb::Module &Module)
 {
-    std::multimap<gtirb::DataBlock *, gtirb::Symbol *> connect;
-    for(auto &block : module.data_blocks())
+    std::map<gtirb::Symbol *, gtirb::CodeBlock *> ConnectToCode;
+    std::map<gtirb::Symbol *, gtirb::DataBlock *> ConnectToData;
+    for(auto &Symbol : Module.symbols_by_addr())
     {
-        for(auto &symbol : module.findSymbols(block.getAddress().value()))
+        if(Symbol.getAddress())
         {
-            connect.insert({&block, &symbol});
+            bool assigned = false;
+            for(auto &Block : Module.findCodeBlocksAt(*Symbol.getAddress()))
+            {
+                ConnectToCode[&Symbol] = &Block;
+                assigned = true;
+                continue;
+            }
+            if(!assigned)
+                for(auto &Block : Module.findDataBlocksAt(*Symbol.getAddress()))
+                {
+                    ConnectToData[&Symbol] = &Block;
+                    continue;
+                }
         }
     }
-    for(auto [block, symbol] : connect)
+    for(auto [Symbol, Block] : ConnectToCode)
     {
-        symbol->setReferent<gtirb::DataBlock>(block);
+        Symbol->setReferent<gtirb::CodeBlock>(Block);
     }
-}
-
-void connectSymbolsToCodeBlocks(gtirb::Module &module)
-{
-    std::multimap<gtirb::CodeBlock *, gtirb::Symbol *> connect;
-    for(auto &block : module.code_blocks())
+    for(auto [Symbol, Block] : ConnectToData)
     {
-        for(auto &symbol : module.findSymbols(block.getAddress().value()))
-        {
-            connect.insert({&block, &symbol});
-        }
-    }
-    for(auto [block, symbol] : connect)
-    {
-        symbol->setReferent<gtirb::CodeBlock>(block);
+        Symbol->setReferent<gtirb::DataBlock>(Block);
     }
 }
 
@@ -868,6 +875,7 @@ void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     std::map<gtirb::UUID, std::set<gtirb::UUID>> functionEntries;
     std::map<gtirb::Addr, gtirb::UUID> functionEntry2function;
+    std::map<gtirb::UUID, gtirb::UUID> functionName;
     boost::uuids::random_generator generator;
     for(auto &output : *prog->getRelation("function_inference.function_entry"))
     {
@@ -881,6 +889,11 @@ void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
 
             functionEntry2function[functionEntry] = functionUUID;
             functionEntries[functionUUID].insert(entryBlockUUID);
+
+            for(const auto &symbol : module.findSymbols(functionEntry))
+            {
+                functionName.insert({functionUUID, symbol.getUUID()});
+            }
         }
     }
 
@@ -900,6 +913,7 @@ void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
 
     module.addAuxData("functionEntries", std::move(functionEntries));
     module.addAuxData("functionBlocks", std::move(functionBlocks));
+    module.addAuxData("functionName", std::move(functionName));
 }
 
 gtirb::EdgeType getEdgeType(const std::string &type)
@@ -1017,8 +1031,8 @@ void buildCfiDirectives(gtirb::Context &context, gtirb::Module &module,
         output >> blockAddr >> disp >> localIndex >> directive >> reference >> nOperands >> op1
             >> op2;
         std::vector<int64_t> operands;
-        // cfi_escape directives have a sequence of bytes as operands (the raw bytes of the dwarf
-        // instruction). The address 'reference' points to these bytes.
+        // cfi_escape directives have a sequence of bytes as operands (the raw bytes of the
+        // dwarf instruction). The address 'reference' points to these bytes.
         if(directive == ".cfi_escape")
         {
             if(const auto it = module.findByteIntervalsOn(reference); !it.empty())
@@ -1184,11 +1198,12 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
     {
         gtirb::Addr ea;
         output >> ea;
-        if(const auto it = module.findCodeBlocksOn(ea); !it.empty())
+        if(const auto it = module.findCodeBlocksAt(ea); !it.empty())
         {
             module.setEntryPoint(&*it.begin());
         }
     }
+    assert(module.getEntryPoint() && "Failed to set module entry point.");
 }
 
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
@@ -1200,10 +1215,9 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildDataBlocks(context, module, prog);
     buildCodeBlocks(context, module, prog);
     buildCodeSymbolicInformation(context, module, prog);
-    connectSymbolsToDataBlocks(module);
+    connectSymbolsToBlocks(module);
     buildCfiDirectives(context, module, prog);
     expandSymbolForwarding(context, module, prog);
-    connectSymbolsToCodeBlocks(module);
     buildFunctions(module, prog);
     buildCFG(context, module, prog);
     buildPadding(module, prog);

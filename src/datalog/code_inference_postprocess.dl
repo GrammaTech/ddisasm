@@ -54,7 +54,7 @@ block_needs_merging(Block):-
     !moved_label(_,_,_,Block),
     !function_symbol(Block,_),
     !defined_symbol(Block,_,_,_,_,_),
-    !start_function(Block),
+    !entry_point(Block),
     !instruction_has_loop_prefix(Block).
 
 
@@ -113,7 +113,8 @@ padding(EA,Size):-
     //this condition guarantees that we take the last after_end of a sequence of nops
     !arch.is_nop(NonNop),
     next(End,EA),
-    Size = NonNop-EA.
+    Size = NonNop-EA,
+    Size > 0.
 
 .decl block_has_non_nop(Block:address)
 

@@ -120,6 +120,19 @@ moved_pc_relative_candidate(EA,Op_index,Dest,New_dest,Diff):-
     ),
     Diff = max(New_dest-Dest,Dest-New_dest).
 
+//References to exception sections should match a cie or fde entry
+moved_pc_relative_candidate(EA,Op_index,Dest,New_dest,Diff):-
+    code(EA),
+    pc_relative_operand(EA,Op_index,Dest),
+    !symbolic_operand(EA,Op_index,_,_),
+    exception_section(Name),
+    section(Name,SizeSect,Base),
+    (
+        cie_entry(Dest, _,_,_);
+        fde_entry(Dest,_,_,_,_,_)
+    ),
+    New_dest = Base,
+    Diff = max(New_dest-Dest,Dest-New_dest).
 ////////////////////////////////////////////////////////////////////////////////
 // indirect operand (type O)
 
