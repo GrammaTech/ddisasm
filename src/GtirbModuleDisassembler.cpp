@@ -352,19 +352,6 @@ Container convertSortedRelation(const std::string &relation, souffle::SoufflePro
     return result;
 }
 
-std::string getElfSymbolType(gtirb::Symbol &Symbol)
-{
-    if(Symbol.getReferent<gtirb::CodeBlock>())
-    {
-        return "FUNC";
-    }
-    if(Symbol.getReferent<gtirb::DataBlock>())
-    {
-        return "OBJECT";
-    }
-    return "NOTYPE";
-}
-
 void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
@@ -380,7 +367,7 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
             gtirb::Symbol *symbol = module.addSymbol(context, addr, name);
             if(SymbolInfo)
             {
-                ElfSymbolInfo Info = {0, getElfSymbolType(*symbol), scope, "DEFAULT", 0};
+                ElfSymbolInfo Info = {0, "NONE", scope, "DEFAULT", 0};
                 SymbolInfo->insert({symbol->getUUID(), Info});
             }
         }
@@ -458,7 +445,7 @@ gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::
     auto *SymbolInfo = module.getAuxData<std::map<gtirb::UUID, ElfSymbolInfo>>("elfSymbolInfo");
     if(SymbolInfo)
     {
-        ElfSymbolInfo Info = {0, getElfSymbolType(*symbol), "LOCAL", "DEFAULT", 0};
+        ElfSymbolInfo Info = {0, "NONE", "LOCAL", "DEFAULT", 0};
         SymbolInfo->insert({symbol->getUUID(), Info});
     }
 
