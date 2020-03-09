@@ -286,6 +286,20 @@ std::vector<InitialAuxData::ImportEntry> LIEFBinaryReader::get_import_entries()
     return importEntries;
 }
 
+std::vector<InitialAuxData::ExportEntry> LIEFBinaryReader::get_export_entries()
+{
+    std::vector<InitialAuxData::ExportEntry> ExportEntries;
+    if(auto* pe = dynamic_cast<LIEF::PE::Binary*>(bin.get()); pe->has_exports())
+    {
+        for(auto& Entry : pe->get_export().entries())
+        {
+            ExportEntries.push_back(
+                {get_base_address() + Entry.address(), Entry.ordinal(), Entry.name()});
+        }
+    }
+    return ExportEntries;
+}
+
 std::string LIEFBinaryReader::getRelocationType(const LIEF::ELF::Relocation& entry)
 {
     switch(entry.architecture())

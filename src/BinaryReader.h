@@ -90,6 +90,13 @@ namespace InitialAuxData
         std::string function;
         std::string library;
     };
+
+    struct ExportEntry
+    {
+        uint64_t address;
+        uint16_t ordinal;
+        std::string name;
+    };
 } // namespace InitialAuxData
 
 template <>
@@ -195,6 +202,7 @@ public:
     virtual std::vector<std::string> get_library_paths() = 0;
     virtual std::vector<InitialAuxData::DataDirectory> get_data_directories() = 0;
     virtual std::vector<InitialAuxData::ImportEntry> get_import_entries() = 0;
+    virtual std::vector<InitialAuxData::ExportEntry> get_export_entries() = 0;
 
     virtual std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
     get_section_content_and_address(const std::string &name) = 0;

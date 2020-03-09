@@ -181,6 +181,24 @@ void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
         }
         module.addAuxData("elfSymbolInfo", std::move(elfSymbolInfo));
     }
+    if(binary->get_binary_format() == gtirb::FileFormat::PE)
+    {
+        std::vector<gtirb::UUID> ImportedSymbols;
+        std::vector<gtirb::UUID> ExportedSymbols;
+        for(const auto &Entry : binary->get_import_entries())
+        {
+            gtirb::Symbol *Symbol = module.addSymbol(context, Entry.function);
+            ImportedSymbols.push_back(Symbol->getUUID());
+        }
+        for(auto &Entry : binary->get_export_entries())
+        {
+            gtirb::Addr Addr(Entry.address);
+            gtirb::Symbol *Symbol = module.addSymbol(context, Addr, Entry.name);
+            ExportedSymbols.push_back(Symbol->getUUID());
+            module.addAuxData("peImportedSymbols", std::move(ImportedSymbols));
+            module.addAuxData("peExportedSymbols", std::move(ExportedSymbols));
+        }
+    }
 }
 
 void addEntryBlock(gtirb::Module &Module, std::shared_ptr<BinaryReader> Binary,

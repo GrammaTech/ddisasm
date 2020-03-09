@@ -217,6 +217,7 @@ else()
   target_compile_options(disasm_main PRIVATE -Wall)
   target_compile_options(disasm_main PRIVATE -Wextra -Wpointer-arith)
   target_compile_options(disasm_main PRIVATE -Werror)
+  target_compile_options(disasm_main PRIVATE -g)
 endif()
 
 if(${GTIRB_USE_SYSTEM_BOOST} MATCHES "OFF")
