@@ -358,19 +358,22 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
     auto *SymbolInfo = module.getAuxData<std::map<gtirb::UUID, ElfSymbolInfo>>("elfSymbolInfo");
-    for(auto &output : *prog->getRelation("inferred_symbol_name"))
+    if(SymbolInfo)
     {
-        gtirb::Addr addr;
-        std::string name;
-        std::string scope;
-        output >> addr >> name >> scope;
-        if(!module.findSymbols(name))
+        for(auto &output : *prog->getRelation("inferred_symbol_name"))
         {
-            gtirb::Symbol *symbol = module.addSymbol(context, addr, name);
-            if(SymbolInfo)
+            gtirb::Addr addr;
+            std::string name;
+            std::string scope;
+            output >> addr >> name >> scope;
+            if(!module.findSymbols(name))
             {
-                ElfSymbolInfo Info = {0, "NONE", scope, "DEFAULT", 0};
-                SymbolInfo->insert({symbol->getUUID(), Info});
+                gtirb::Symbol *symbol = module.addSymbol(context, addr, name);
+                if(SymbolInfo)
+                {
+                    ElfSymbolInfo Info = {0, "NONE", scope, "DEFAULT", 0};
+                    SymbolInfo->insert({symbol->getUUID(), Info});
+                }
             }
         }
     }

@@ -136,28 +136,31 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
 void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                   gtirb::Context &context)
 {
-    std::map<gtirb::UUID, ElfSymbolInfo> elfSymbolInfo;
-    for(auto &binSymbol : binary->get_symbols())
+    if(binary->get_binary_format() == gtirb::FileFormat::ELF)
     {
-        // Symbols with special section index do not have an address
-        gtirb::Symbol *symbol;
-        if(binSymbol.sectionIndex == static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)
-           || (binSymbol.sectionIndex
-                   >= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_LORESERVE)
-               && binSymbol.sectionIndex
-                      <= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)))
+        std::map<gtirb::UUID, ElfSymbolInfo> elfSymbolInfo;
+        for(auto &binSymbol : binary->get_symbols())
         {
-            symbol = module.addSymbol(context, binSymbol.name);
+            // Symbols with special section index do not have an address
+            gtirb::Symbol *symbol;
+            if(binSymbol.sectionIndex
+                   == static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)
+               || (binSymbol.sectionIndex
+                       >= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_LORESERVE)
+                   && binSymbol.sectionIndex
+                          <= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)))
+            {
+                symbol = module.addSymbol(context, binSymbol.name);
+            }
+            else
+            {
+                symbol = module.addSymbol(context, gtirb::Addr(binSymbol.address), binSymbol.name);
+            }
+            elfSymbolInfo[symbol->getUUID()] = {binSymbol.size, binSymbol.type, binSymbol.scope,
+                                                binSymbol.visibility, binSymbol.sectionIndex};
         }
-        else
-        {
-            // TODO: Add symbol type
-            symbol = module.addSymbol(context, gtirb::Addr(binSymbol.address), binSymbol.name);
-        }
-        elfSymbolInfo[symbol->getUUID()] = {binSymbol.size, binSymbol.type, binSymbol.scope,
-                                            binSymbol.visibility, binSymbol.sectionIndex};
+        module.addAuxData("elfSymbolInfo", std::move(elfSymbolInfo));
     }
-    module.addAuxData("elfSymbolInfo", std::move(elfSymbolInfo));
 }
 
 void addEntryBlock(gtirb::Module &Module, std::shared_ptr<BinaryReader> Binary,

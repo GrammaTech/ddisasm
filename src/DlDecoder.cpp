@@ -88,21 +88,24 @@ void addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
     auto *rel = prog->getRelation("symbol");
     auto *SymbolInfo = module.getAuxData<std::map<gtirb::UUID, ElfSymbolInfo>>("elfSymbolInfo");
-    for(auto &symbol : module.symbols())
+    if(SymbolInfo)
     {
-        souffle::tuple t(rel);
-        if(auto address = symbol.getAddress())
-            t << *address;
-        else
-            t << 0;
-        auto found = SymbolInfo->find(symbol.getUUID());
-        if(found == SymbolInfo->end())
-            throw std::logic_error("Symbol " + symbol.getName()
-                                   + " missing from elfSymbolInfo AuxData table");
+        for(auto &symbol : module.symbols())
+        {
+            souffle::tuple t(rel);
+            if(auto address = symbol.getAddress())
+                t << *address;
+            else
+                t << 0;
+            auto found = SymbolInfo->find(symbol.getUUID());
+            if(found == SymbolInfo->end())
+                throw std::logic_error("Symbol " + symbol.getName()
+                                       + " missing from elfSymbolInfo AuxData table");
 
-        ElfSymbolInfo &Info = found->second;
-        t << Info.Size << Info.Type << Info.Scope << Info.SectionIndex << symbol.getName();
-        rel->insert(t);
+            ElfSymbolInfo &Info = found->second;
+            t << Info.Size << Info.Type << Info.Scope << Info.SectionIndex << symbol.getName();
+            rel->insert(t);
+        }
     }
 }
 
