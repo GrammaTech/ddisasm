@@ -129,7 +129,7 @@ public:
     virtual std::vector<std::string> get_library_paths() = 0;
 
     virtual std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
-    get_section_content_and_address(const std::string &name) = 0;
+    get_section_content_and_address(const std::string &name, uint64_t addr) = 0;
 };
 
 #endif /* BINARY_READER_H_ */

@@ -35,13 +35,14 @@ bool LIEFBinaryReader::is_valid()
 }
 
 std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
-LIEFBinaryReader::get_section_content_and_address(const std::string& name)
+LIEFBinaryReader::get_section_content_and_address(const std::string& name, uint64_t addr)
 {
     if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
     {
         for(auto& section : elf->sections())
         {
-            if(section.name() == name && section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS)
+            if(section.name() == name && (get_base_address() + section.virtual_address()) == addr
+               && section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS)
                 return std::make_tuple(section.content(),
                                        get_base_address() + section.virtual_address());
         }
@@ -92,7 +93,8 @@ std::set<InitialAuxData::Section> LIEFBinaryReader::get_sections()
         for(auto& section : elf->sections())
         {
             if(section.flags_list().count(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC))
-                sectionTuples.insert({section.name(), section.size(), section.virtual_address(),
+                sectionTuples.insert({section.name(), section.size(),
+                                      get_base_address() + section.virtual_address(),
                                       static_cast<uint64_t>(section.type()),
                                       static_cast<uint64_t>(section.flags())});
         }
