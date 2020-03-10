@@ -52,7 +52,7 @@ LIEFBinaryReader::get_section_content_and_address(const std::string& name, uint6
     {
         for(auto& section : pe->sections())
         {
-            if(section.name() == name
+            if(section.name() == name && (get_base_address() + section.virtual_address()) == addr
                && !section.has_characteristic(
                       LIEF::PE::SECTION_CHARACTERISTICS::IMAGE_SCN_CNT_UNINITIALIZED_DATA))
                 return std::make_tuple(section.content(),
@@ -131,8 +131,9 @@ std::set<InitialAuxData::Section> LIEFBinaryReader::get_sections()
         for(auto& section : pe->sections())
         {
             // FIXME: should we encode section type?
-            sectionTuples.insert({section.name(), section.virtual_size(), section.virtual_address(),
-                                  0, section.characteristics()});
+            sectionTuples.insert({section.name(), section.virtual_size(),
+                                  get_base_address() + section.virtual_address(), 0,
+                                  section.characteristics()});
         }
     }
     return sectionTuples;
