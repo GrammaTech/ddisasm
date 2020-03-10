@@ -195,9 +195,9 @@ void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
             gtirb::Addr Addr(Entry.address);
             gtirb::Symbol *Symbol = module.addSymbol(context, Addr, Entry.name);
             ExportedSymbols.push_back(Symbol->getUUID());
-            module.addAuxData("peImportedSymbols", std::move(ImportedSymbols));
-            module.addAuxData("peExportedSymbols", std::move(ExportedSymbols));
         }
+        module.addAuxData("peImportedSymbols", std::move(ImportedSymbols));
+        module.addAuxData("peExportedSymbols", std::move(ExportedSymbols));
     }
 }
 
