@@ -118,11 +118,11 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
             {
                 section->addFlag(flag);
             }
-            if(auto sectionData = binary->get_section_content_and_address(binSection.name))
+            if(auto sectionData =
+                   binary->get_section_content_and_address(binSection.name, binSection.address))
             {
                 // Add allocated section contents to a single contiguous ByteInterval.
-                gtirb::Addr sectionAddr =
-                    gtirb::Addr(binary->get_base_address() + binSection.address);
+                gtirb::Addr sectionAddr = gtirb::Addr(binSection.address);
                 std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
                 gtirb::ByteInterval *byteInterval =
                     section->addByteInterval(context, sectionAddr, sectionBytes.begin(),

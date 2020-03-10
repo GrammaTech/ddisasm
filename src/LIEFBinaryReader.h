@@ -55,7 +55,7 @@ public:
     std::vector<InitialAuxData::ExportEntry> get_export_entries() override;
 
     std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> get_section_content_and_address(
-        const std::string& name) override;
+        const std::string& name, uint64_t addr) override;
 
 private:
     std::unique_ptr<LIEF::Binary> bin;
