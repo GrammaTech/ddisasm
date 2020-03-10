@@ -240,7 +240,7 @@ int main(int argc, char **argv)
         {
             for(auto keep : vm["keep-functions"].as<std::vector<std::string>>())
             {
-                pprinter.keepFunction(keep);
+                pprinter.symbolPolicy().keep(keep);
             }
         }
         if(vm.count("asm") != 0)
