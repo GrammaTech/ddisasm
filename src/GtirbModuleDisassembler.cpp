@@ -786,27 +786,28 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                     uint64_t blockOffset = currentAddr - *byteInterval.getAddress();
                     gtirb::Offset Offset = gtirb::Offset(byteInterval.getUUID(), blockOffset);
 
-                    // // Accumulate zeroed region without symbols into a single DataBlock.
-                    // gtirb::Addr Addr(currentAddr);
-                    // auto Bytes = byteInterval.bytes_begin<uint8_t>() + blockOffset;
-                    // while(Bytes != byteInterval.bytes_end<uint8_t>() && *Bytes == 0
-                    //       && symbolicExprs.find(Addr) == symbolicExprs.end()
-                    //       && movedDataLabels.find(Addr) == movedDataLabels.end()
-                    //       && symbolicData.find(Addr) == symbolicData.end()
-                    //       && symbolMinusSymbol.find(Addr) == symbolMinusSymbol.end()
-                    //       && dataStrings.find(Addr) == dataStrings.end()
-                    //       && symbolSpecialTypes.find(Addr) == symbolSpecialTypes.end())
-                    // {
-                    //     Addr++;
-                    //     Bytes++;
-                    // }
-                    // if(Addr - currentAddr > 1)
-                    // {
-                    //     d = gtirb::DataBlock::Create(context, Addr - currentAddr);
-                    //     byteInterval.addBlock<gtirb::DataBlock>(blockOffset, d);
-                    //     currentAddr += d->getSize();
-                    //     continue;
-                    // }
+                    // Accumulate zeroed region with no symbols into a single DataBlock.
+                    gtirb::Addr Addr(currentAddr);
+                    auto Bytes = byteInterval.bytes_begin<uint8_t>() + blockOffset;
+                    while(Bytes != byteInterval.bytes_end<uint8_t>() && *Bytes == 0
+                          && symbolicExprs.find(Addr) == symbolicExprs.end()
+                          && movedDataLabels.find(Addr) == movedDataLabels.end()
+                          && symbolicData.find(Addr) == symbolicData.end()
+                          && symbolMinusSymbol.find(Addr) == symbolMinusSymbol.end()
+                          && dataStrings.find(Addr) == dataStrings.end()
+                          && symbolSpecialTypes.find(Addr) == symbolSpecialTypes.end()
+                          && module.findSymbols(Addr).empty())
+                    {
+                        Addr++;
+                        Bytes++;
+                    }
+                    if(Addr - currentAddr > 1)
+                    {
+                        d = gtirb::DataBlock::Create(context, Addr - currentAddr);
+                        byteInterval.addBlock<gtirb::DataBlock>(blockOffset, d);
+                        currentAddr += d->getSize();
+                        continue;
+                    }
 
                     // undefined symbol
                     if(const auto symbolicExpr = symbolicExprs.find(currentAddr);
