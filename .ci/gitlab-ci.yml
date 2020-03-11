@@ -5,9 +5,7 @@ variables:
 stages:
   - check-format
   - build
-  - test-and-tag-ubuntu16
-  - test-and-tag-ubuntu18
-  - test-and-tag-arch
+  - test-and-tag
   - test-installers
   - deploy
   - cleanup
@@ -113,42 +111,42 @@ build-windows-release:
   <<: *build-windows
 
 run-ubuntu16-gcc:
-  stage: test-and-tag-ubuntu16
+  stage: test-and-tag
   variables:
     OS: 'ubuntu16'
     COMPILER: 'gcc'
   <<: *test-and-tag
 
 run-ubuntu18-gcc:
-  stage: test-and-tag-ubuntu18
+  stage: test-and-tag
   variables:
     OS: 'ubuntu18'
     COMPILER: 'gcc'
   <<: *test-and-tag
 
 run-arch-gcc:
-  stage: test-and-tag-arch
+  stage: test-and-tag
   variables:
     OS: 'arch'
     COMPILER: 'gcc'
   <<: *test-and-tag
 
 run-ubuntu16-clang:
-  stage: test-and-tag-ubuntu16
+  stage: test-and-tag
   variables:
     OS: 'ubuntu16'
     COMPILER: 'clang'
   <<: *test-and-tag
 
 run-ubuntu18-clang:
-  stage: test-and-tag-ubuntu18
+  stage: test-and-tag
   variables:
     OS: 'ubuntu18'
     COMPILER: 'clang'
   <<: *test-and-tag
 
 run-arch-clang:
-  stage: test-and-tag-arch
+  stage: test-and-tag
   variables:
     OS: 'arch'
     COMPILER: 'clang'

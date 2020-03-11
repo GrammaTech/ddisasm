@@ -107,7 +107,7 @@ def disassemble(binary, strip, format="--asm", extension="s", extra_args=[]):
                 format,
                 binary + "." + extension,
                 "-j",
-                "2",
+                "1",
             ]
             + extra_args
         )
