@@ -37,6 +37,14 @@
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
 
+#ifdef USE_STD_FILESYSTEM_LIB
+#include <filesystem>
+namespace fs = std::filesystem;
+#else
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#endif // USE_STD_FILESYSTEM_LIB
+
 namespace po = boost::program_options;
 
 namespace std
@@ -105,6 +113,12 @@ int main(int argc, char **argv)
     }
 
     std::string filename = vm["input-file"].as<std::string>();
+    if(!fs::exists(filename))
+    {
+        std::cerr << "Error: input binary " << filename << " does not exist" << std::endl;
+        return 1;
+    }
+
     std::cout << "Building the initial gtirb representation" << std::endl;
     gtirb::Context context;
     gtirb::IR *ir = buildZeroIR(filename, context);
