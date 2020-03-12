@@ -112,7 +112,8 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                 if(sectionBytes.size() < binSection.size)
                 {
                     size_t size = binSection.size - sectionBytes.size();
-                    gtirb::Addr start = *byteInterval->getAddress() + byteInterval->getSize();
+                    gtirb::Addr start =
+                        *byteInterval->getAddress() + byteInterval->getInitializedSize();
                     std::cerr << "Warning: Zero filling uninitialized section fragment: " << start
                               << '-' << start + size << '\n';
                     std::vector<uint8_t> zeroes(size, 0);
