@@ -796,7 +796,8 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                           && symbolMinusSymbol.find(Addr) == symbolMinusSymbol.end()
                           && dataStrings.find(Addr) == dataStrings.end()
                           && symbolSpecialTypes.find(Addr) == symbolSpecialTypes.end()
-                          && module.findSymbols(Addr).empty())
+                          && module.findSymbols(Addr).empty()
+                          && module.findCodeBlocksAt(Addr).empty())
                     {
                         Addr++;
                         Bytes++;
@@ -1335,8 +1336,8 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildInferredSymbols(context, module, prog);
     buildSymbolForwarding(context, module, prog);
     buildDataDirectories(module, prog);
-    buildDataBlocks(context, module, prog);
     buildCodeBlocks(context, module, prog);
+    buildDataBlocks(context, module, prog);
     buildCodeSymbolicInformation(context, module, prog);
     buildCfiDirectives(context, module, prog);
     expandSymbolForwarding(context, module, prog);
