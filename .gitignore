@@ -30,4 +30,4 @@ examples/**/*.so
 /libehp
 wiki/
 build/
-tests/__pycache__/
+__pycache__/
