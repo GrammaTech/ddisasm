@@ -24,6 +24,7 @@
 #include "FunctionInferencePass.h"
 #include <souffle/CompiledSouffle.h>
 #include <boost/uuid/uuid_generators.hpp>
+#include "../AuxDataSchema.h"
 #include "../DatalogUtils.h"
 
 void FunctionInferencePass::populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P,
@@ -69,10 +70,10 @@ void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProg
             FunctionBlocks[FunctionEntryUUID].insert(Block->getUUID());
         }
     }
-    M.removeAuxData("functionEntries");
-    M.removeAuxData("functionBlocks");
-    M.addAuxData("functionEntries", std::move(FunctionEntries));
-    M.addAuxData("functionBlocks", std::move(FunctionBlocks));
+    M.removeAuxData<gtirb::schema::FunctionEntries>();
+    M.removeAuxData<gtirb::schema::FunctionBlocks>();
+    M.addAuxData<gtirb::schema::FunctionEntries>(std::move(FunctionEntries));
+    M.addAuxData<gtirb::schema::FunctionBlocks>(std::move(FunctionBlocks));
 }
 
 void FunctionInferencePass::setDebugDir(std::string Path)

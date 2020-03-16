@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "GtirbZeroBuilder.h"
+#include "AuxDataSchema.h"
 #include "BinaryReader.h"
 #include "LIEFBinaryReader.h"
 
@@ -54,10 +55,10 @@ bool isAllocatedSection(int flags)
     return (flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC));
 }
 
-std::string gtirb::auxdata_traits<ElfSymbolInfo>::type_id()
+std::string gtirb::auxdata_traits<ElfSymbolInfo>::type_name()
 {
     return gtirb::auxdata_traits<
-        std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>>::type_id();
+        std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>>::type_name();
 }
 
 void gtirb::auxdata_traits<ElfSymbolInfo>::toBytes(const ElfSymbolInfo &Object, to_iterator It)
@@ -130,7 +131,7 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                 std::make_tuple(binSection.type, binSection.flags);
         }
     }
-    module.addAuxData("elfSectionProperties", std::move(sectionProperties));
+    module.addAuxData<gtirb::schema::ElfSectionProperties>(std::move(sectionProperties));
 }
 
 void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
@@ -159,7 +160,7 @@ void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
             elfSymbolInfo[symbol->getUUID()] = {binSymbol.size, binSymbol.type, binSymbol.scope,
                                                 binSymbol.visibility, binSymbol.sectionIndex};
         }
-        module.addAuxData("elfSymbolInfo", std::move(elfSymbolInfo));
+        module.addAuxData<gtirb::schema::ElfSymbolInfoAD>(std::move(elfSymbolInfo));
     }
 }
 
@@ -182,10 +183,10 @@ void addEntryBlock(gtirb::Module &Module, std::shared_ptr<BinaryReader> Binary,
 void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
 {
     std::vector<std::string> binaryType = {binary->get_binary_type()};
-    module.addAuxData("binaryType", binaryType);
-    module.addAuxData("relocations", binary->get_relocations());
-    module.addAuxData("libraries", binary->get_libraries());
-    module.addAuxData("libraryPaths", binary->get_library_paths());
+    module.addAuxData<gtirb::schema::BinaryType>(std::move(binaryType));
+    module.addAuxData<gtirb::schema::Relocations>(binary->get_relocations());
+    module.addAuxData<gtirb::schema::Libraries>(binary->get_libraries());
+    module.addAuxData<gtirb::schema::LibraryPaths>(binary->get_library_paths());
 }
 
 gtirb::IR *buildZeroIR(const std::string &filename, gtirb::Context &context)

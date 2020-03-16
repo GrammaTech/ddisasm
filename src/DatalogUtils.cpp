@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "DatalogUtils.h"
+#include "AuxDataSchema.h"
 
 void writeFacts(souffle::SouffleProgram* prog, const std::string& directory)
 {
@@ -306,7 +307,7 @@ void GtirbToDatalog::populateCfgEdges(const gtirb::Module& M)
 void GtirbToDatalog::populateSccs(gtirb::Module& M)
 {
     auto* InSccRel = Prog->getRelation("in_scc");
-    auto* SccTable = M.getAuxData<std::map<gtirb::UUID, int64_t>>("SCCs");
+    auto* SccTable = M.getAuxData<gtirb::schema::Sccs>();
     assert(SccTable && "SCCs AuxData table missing from GTIRB module");
     std::vector<int> SccBlockIndex;
     for(auto& Block : M.code_blocks())
@@ -360,9 +361,7 @@ void GtirbToDatalog::populateFdeEntries(const gtirb::Context& Ctx, gtirb::Module
 {
     std::set<gtirb::Addr> FdeStart;
     std::set<gtirb::Addr> FdeEnd;
-    auto* CfiDirectives = M.getAuxData<std::map<
-        gtirb::Offset, std::vector<std::tuple<std::string, std::vector<int64_t>, gtirb::UUID>>>>(
-        "cfiDirectives");
+    auto* CfiDirectives = M.getAuxData<gtirb::schema::CfiDirectives>();
     if(!CfiDirectives)
         return;
     for(auto& Pair : *CfiDirectives)
@@ -396,8 +395,7 @@ void GtirbToDatalog::populateFdeEntries(const gtirb::Context& Ctx, gtirb::Module
 
 void GtirbToDatalog::populateFunctionEntries(const gtirb::Context& Ctx, gtirb::Module& M)
 {
-    auto* FunctionEntries =
-        M.getAuxData<std::map<gtirb::UUID, std::set<gtirb::UUID>>>("functionEntries");
+    auto* FunctionEntries = M.getAuxData<gtirb::schema::FunctionEntries>();
     if(!FunctionEntries)
         return;
     auto* FunctionEntryRel = Prog->getRelation("function_entry");
@@ -418,7 +416,7 @@ void GtirbToDatalog::populateFunctionEntries(const gtirb::Context& Ctx, gtirb::M
 
 void GtirbToDatalog::populatePadding(gtirb::Module& M)
 {
-    auto* Padding = M.getAuxData<std::map<gtirb::Addr, uint64_t>>("padding");
+    auto* Padding = M.getAuxData<gtirb::schema::Padding>();
     if(!Padding)
         return;
     auto* PaddingRel = Prog->getRelation("padding");

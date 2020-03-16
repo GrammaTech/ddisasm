@@ -81,7 +81,7 @@ namespace InitialAuxData
 template <>
 struct gtirb::auxdata_traits<InitialAuxData::Relocation>
 {
-    static std::string type_id()
+    static std::string type_name()
     {
         return "InitialRelocation";
     }

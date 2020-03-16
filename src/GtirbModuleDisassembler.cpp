@@ -25,9 +25,8 @@
 
 #include <boost/uuid/uuid_generators.hpp>
 
+#include "AuxDataSchema.h"
 #include "DlOperandTable.h"
-
-using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>;
 
 // souffle uses a signed integer for all numbers (either 32 or 64 bits
 // dependin on compilation flags). Allow conversion to other types.
@@ -357,7 +356,7 @@ Container convertSortedRelation(const std::string &relation, souffle::SoufflePro
 void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
-    auto *SymbolInfo = module.getAuxData<std::map<gtirb::UUID, ElfSymbolInfo>>("elfSymbolInfo");
+    auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
     for(auto &output : *prog->getRelation("inferred_symbol_name"))
     {
         gtirb::Addr addr;
@@ -410,7 +409,7 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
             }
         }
     }
-    module.addAuxData("symbolForwarding", std::move(symbolForwarding));
+    module.addAuxData<gtirb::schema::SymbolForwarding>(std::move(symbolForwarding));
 }
 
 bool isNullReg(const std::string &reg)
@@ -427,8 +426,7 @@ std::string getLabel(uint64_t ea)
 
 gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::Addr ea)
 {
-    const auto *symbolForwarding =
-        module.getAuxData<std::map<gtirb::UUID, gtirb::UUID>>("symbolForwarding");
+    const auto *symbolForwarding = module.getAuxData<gtirb::schema::SymbolForwarding>();
     auto found = module.findSymbols(ea);
     if(!found.empty())
     {
@@ -444,7 +442,7 @@ gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::
 
     gtirb::Symbol *symbol = module.addSymbol(context, ea, getLabel(uint64_t(ea)));
 
-    auto *SymbolInfo = module.getAuxData<std::map<gtirb::UUID, ElfSymbolInfo>>("elfSymbolInfo");
+    auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
     if(SymbolInfo)
     {
         ElfSymbolInfo Info = {0, "NONE", "LOCAL", "DEFAULT", 0};
@@ -458,8 +456,7 @@ gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::
 void expandSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
                             souffle::SouffleProgram *prog)
 {
-    auto *symbolForwarding =
-        module.getAuxData<std::map<gtirb::UUID, gtirb::UUID>>("symbolForwarding");
+    auto *symbolForwarding = module.getAuxData<gtirb::schema::SymbolForwarding>();
     for(auto &output : *prog->getRelation("plt_block"))
     {
         gtirb::Addr ea;
@@ -803,7 +800,7 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
         }
     }
     buildBSS(context, module, prog);
-    module.addAuxData("encodings", std::move(typesTable));
+    module.addAuxData<gtirb::schema::Encodings>(std::move(typesTable));
 }
 
 void connectSymbolsToBlocks(gtirb::Module &Module)
@@ -879,9 +876,9 @@ void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
         }
     }
 
-    module.addAuxData("functionEntries", std::move(functionEntries));
-    module.addAuxData("functionBlocks", std::move(functionBlocks));
-    module.addAuxData("functionName", std::move(functionName));
+    module.addAuxData<gtirb::schema::FunctionEntries>(std::move(functionEntries));
+    module.addAuxData<gtirb::schema::FunctionBlocks>(std::move(functionBlocks));
+    module.addAuxData<gtirb::schema::FunctionNames>(std::move(functionName));
 }
 
 gtirb::EdgeType getEdgeType(const std::string &type)
@@ -1046,7 +1043,7 @@ void buildCfiDirectives(gtirb::Context &context, gtirb::Module &module,
             }
         }
     }
-    module.addAuxData("cfiDirectives", std::move(cfiDirectives));
+    module.addAuxData<gtirb::schema::CfiDirectives>(std::move(cfiDirectives));
 }
 
 void buildPadding(gtirb::Module &module, souffle::SouffleProgram *prog)
@@ -1059,7 +1056,7 @@ void buildPadding(gtirb::Module &module, souffle::SouffleProgram *prog)
         output >> ea >> size;
         padding[ea] = size;
     }
-    module.addAuxData("padding", std::move(padding));
+    module.addAuxData<gtirb::schema::Padding>(std::move(padding));
 }
 
 void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool selfDiagnose)
@@ -1157,7 +1154,7 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
             updateComment(module, comments, ea, newComment.str());
         }
     }
-    module.addAuxData("comments", std::move(comments));
+    module.addAuxData<gtirb::schema::Comments>(std::move(comments));
 }
 
 void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)

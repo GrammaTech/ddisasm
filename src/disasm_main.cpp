@@ -29,6 +29,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include "AuxDataSchema.h"
 #include "DatalogUtils.h"
 #include "DlDecoder.h"
 #include "GtirbModuleDisassembler.h"
@@ -60,8 +61,32 @@ namespace std
     }
 } // namespace std
 
+void registerAuxDataTypes()
+{
+    using namespace gtirb::schema;
+    gtirb::AuxDataContainer::registerAuxDataType<Comments>();
+    gtirb::AuxDataContainer::registerAuxDataType<FunctionEntries>();
+    gtirb::AuxDataContainer::registerAuxDataType<FunctionBlocks>();
+    gtirb::AuxDataContainer::registerAuxDataType<FunctionNames>();
+    gtirb::AuxDataContainer::registerAuxDataType<Padding>();
+    gtirb::AuxDataContainer::registerAuxDataType<SymbolForwarding>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolInfoAD>();
+    gtirb::AuxDataContainer::registerAuxDataType<BinaryType>();
+    gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
+    gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
+    gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
+    gtirb::AuxDataContainer::registerAuxDataType<PeSectionProperties>();
+    gtirb::AuxDataContainer::registerAuxDataType<CfiDirectives>();
+    gtirb::AuxDataContainer::registerAuxDataType<Libraries>();
+    gtirb::AuxDataContainer::registerAuxDataType<LibraryPaths>();
+    gtirb::AuxDataContainer::registerAuxDataType<DataDirectories>();
+}
+
 int main(int argc, char **argv)
 {
+    registerAuxDataTypes();
+
     po::options_description desc("Allowed options");
     desc.add_options()                                                  //
         ("help", "produce help message")                                //

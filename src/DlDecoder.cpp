@@ -30,6 +30,7 @@
 #include <sstream>
 #include <string>
 
+#include "AuxDataSchema.h"
 #include "BinaryReader.h"
 #include "ExceptionDecoder.h"
 #include "GtirbZeroBuilder.h"
@@ -87,7 +88,7 @@ std::string getFileFormatString(const gtirb::FileFormat format)
 void addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
     auto *rel = prog->getRelation("symbol");
-    auto *SymbolInfo = module.getAuxData<std::map<gtirb::UUID, ElfSymbolInfo>>("elfSymbolInfo");
+    auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
     if(SymbolInfo)
     {
         for(auto &symbol : module.symbols())
@@ -112,8 +113,7 @@ void addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
 void addSections(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
     auto *rel = prog->getRelation("section_complete");
-    auto *extraInfoTable =
-        module.getAuxData<std::map<gtirb::UUID, SectionProperties>>("elfSectionProperties");
+    auto *extraInfoTable = module.getAuxData<gtirb::schema::ElfSectionProperties>();
     if(!extraInfoTable)
         throw std::logic_error("missing elfSectionProperties AuxData table");
 
@@ -153,8 +153,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
     assert(module.getAddress() && "Module has non-addressable section data.");
     gtirb::Addr maxAddr = *module.getAddress() + *module.getSize();
 
-    auto *extraInfoTable =
-        module.getAuxData<std::map<gtirb::UUID, SectionProperties>>("elfSectionProperties");
+    auto *extraInfoTable = module.getAuxData<gtirb::schema::ElfSectionProperties>();
     if(!extraInfoTable)
         throw std::logic_error("missing elfSectionProperties AuxData table");
     for(auto &section : module.sections())
@@ -251,7 +250,7 @@ void DlDecoder::storeDataSection(const gtirb::ByteInterval &byteInterval, gtirb:
 void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
     GtirbToDatalog::addToRelation<std::vector<std::string>>(
-        prog, "binary_type", *module.getAuxData<std::vector<std::string>>("binaryType"));
+        prog, "binary_type", *module.getAuxData<gtirb::schema::BinaryType>());
     GtirbToDatalog::addToRelation<std::vector<std::string>>(
         prog, "binary_format", {getFileFormatString(module.getFileFormat())});
 
@@ -266,10 +265,9 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
         }
     }
 
-    GtirbToDatalog::addToRelation(
-        prog, "relocation",
-        *module.getAuxData<std::set<InitialAuxData::Relocation>>("relocations"));
-    module.removeAuxData("relocations");
+    GtirbToDatalog::addToRelation(prog, "relocation",
+                                  *module.getAuxData<gtirb::schema::Relocations>());
+    module.removeAuxData<gtirb::schema::Relocations>();
 
     GtirbToDatalog::addToRelation(prog, "instruction_complete", instructions);
     GtirbToDatalog::addToRelation(prog, "address_in_data", data_addresses);
