@@ -56,7 +56,7 @@ add_custom_command(OUTPUT ${GENERATED_CPP_ARM64}
     # program name. Change directory and use a relative path so the name
     # does not depend on build location.
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
-    COMMAND ${SOUFFLE} ${SOUFFLE_DISASM_MAIN} -g souffle_disasm_aarch64.cpp -jauto -MARCH=aarch64
+    COMMAND ${SOUFFLE} ${SOUFFLE_DISASM_MAIN} -g souffle_disasm_aarch64.cpp -jauto -MAARCH64=
     DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_ARM64_SOURCES})
 
 set(GENERATED_CPP_X64 "${CMAKE_BINARY_DIR}/src/souffle_disasm_x64.cpp")
@@ -65,7 +65,7 @@ set(GENERATED_CPP_X64 "${CMAKE_BINARY_DIR}/src/souffle_disasm_x64.cpp")
     # program name. Change directory and use a relative path so the name
     # does not depend on build location.
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
-    COMMAND ${SOUFFLE} ${SOUFFLE_DISASM_MAIN} -g souffle_disasm_x64.cpp -jauto -MARCH=x64
+    COMMAND ${SOUFFLE} ${SOUFFLE_DISASM_MAIN} -g souffle_disasm_x64.cpp -jauto
     DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_X64_SOURCES})
 
 # determine what flags to use to specify -fopenmp.
