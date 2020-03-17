@@ -102,7 +102,7 @@ namespace InitialAuxData
 template <>
 struct gtirb::auxdata_traits<InitialAuxData::Relocation>
 {
-    static std::string type_id()
+    static std::string type_name()
     {
         return "InitialRelocation";
     }
@@ -129,7 +129,7 @@ struct gtirb::auxdata_traits<InitialAuxData::Relocation>
 template <>
 struct gtirb::auxdata_traits<InitialAuxData::DataDirectory>
 {
-    static std::string type_id()
+    static std::string type_name()
     {
         return "DataDirectory";
     }
@@ -154,7 +154,7 @@ struct gtirb::auxdata_traits<InitialAuxData::DataDirectory>
 template <>
 struct gtirb::auxdata_traits<InitialAuxData::ImportEntry>
 {
-    static std::string type_id()
+    static std::string type_name()
     {
         return "ImportEntry";
     }

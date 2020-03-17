@@ -163,7 +163,7 @@ endfunction()
 
 add_library(datalog_utils STATIC DatalogUtils.cpp DlOperandTable.cpp)
 
-target_link_libraries(datalog_utils gtirb ${CAPSTONE})
+target_link_libraries(datalog_utils gtirb proto ${CAPSTONE})
 
 target_compile_definitions(datalog_utils PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(datalog_utils PRIVATE RAM_DOMAIN_SIZE=64)

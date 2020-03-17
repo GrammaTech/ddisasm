@@ -8,7 +8,7 @@ else()
   set(SYSLIBS)
 endif()
 
-add_executable(TestDdisasm SccPass.Test.cpp NoReturnPass.Test.cpp)
+add_executable(TestDdisasm Main.Test.cpp SccPass.Test.cpp NoReturnPass.Test.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_link_libraries(

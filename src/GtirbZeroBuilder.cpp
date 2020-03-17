@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "GtirbZeroBuilder.h"
+#include "AuxDataSchema.h"
 #include "BinaryReader.h"
 #include "LIEFBinaryReader.h"
 
@@ -74,10 +75,10 @@ bool isAllocatedSection(const gtirb::FileFormat format, int flags)
     return false;
 }
 
-std::string gtirb::auxdata_traits<ElfSymbolInfo>::type_id()
+std::string gtirb::auxdata_traits<ElfSymbolInfo>::type_name()
 {
     return gtirb::auxdata_traits<
-        std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>>::type_id();
+        std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>>::type_name();
 }
 
 void gtirb::auxdata_traits<ElfSymbolInfo>::toBytes(const ElfSymbolInfo &Object, to_iterator It)
@@ -150,7 +151,7 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                 std::make_tuple(binSection.type, binSection.flags);
         }
     }
-    module.addAuxData("elfSectionProperties", std::move(sectionProperties));
+    module.addAuxData<gtirb::schema::ElfSectionProperties>(std::move(sectionProperties));
 }
 
 void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
@@ -179,7 +180,7 @@ void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
             elfSymbolInfo[symbol->getUUID()] = {binSymbol.size, binSymbol.type, binSymbol.scope,
                                                 binSymbol.visibility, binSymbol.sectionIndex};
         }
-        module.addAuxData("elfSymbolInfo", std::move(elfSymbolInfo));
+        module.addAuxData<gtirb::schema::ElfSymbolInfoAD>(std::move(elfSymbolInfo));
     }
     if(binary->get_binary_format() == gtirb::FileFormat::PE)
     {
@@ -196,8 +197,8 @@ void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
             gtirb::Symbol *Symbol = module.addSymbol(context, Addr, Entry.name);
             ExportedSymbols.push_back(Symbol->getUUID());
         }
-        module.addAuxData("peImportedSymbols", std::move(ImportedSymbols));
-        module.addAuxData("peExportedSymbols", std::move(ExportedSymbols));
+        module.addAuxData<gtirb::schema::PeImportedSymbols>(std::move(ImportedSymbols));
+        module.addAuxData<gtirb::schema::PeExportedSymbols>(std::move(ExportedSymbols));
     }
 }
 
@@ -220,15 +221,15 @@ void addEntryBlock(gtirb::Module &Module, std::shared_ptr<BinaryReader> Binary,
 void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
 {
     std::vector<std::string> binaryType = {binary->get_binary_type()};
-    module.addAuxData("binaryType", binaryType);
-    module.addAuxData("relocations", binary->get_relocations());
-    module.addAuxData("libraries", binary->get_libraries());
-    module.addAuxData("libraryPaths", binary->get_library_paths());
-    module.addAuxData("baseAddress", gtirb::Addr(binary->get_base_address()));
+    module.addAuxData<gtirb::schema::BinaryType>(std::move(binaryType));
+    module.addAuxData<gtirb::schema::Relocations>(binary->get_relocations());
+    module.addAuxData<gtirb::schema::Libraries>(binary->get_libraries());
+    module.addAuxData<gtirb::schema::LibraryPaths>(binary->get_library_paths());
+    module.addAuxData<gtirb::schema::BaseAddress>(gtirb::Addr(binary->get_base_address()));
     if(binary->get_binary_format() == gtirb::FileFormat::PE)
     {
-        module.addAuxData("dataDirectories", binary->get_data_directories());
-        module.addAuxData("importEntries", binary->get_import_entries());
+        module.addAuxData<gtirb::schema::InitialDataDirectories>(binary->get_data_directories());
+        module.addAuxData<gtirb::schema::InitialImportEntries>(binary->get_import_entries());
     }
 }
 
