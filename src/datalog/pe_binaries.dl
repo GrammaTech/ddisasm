@@ -247,3 +247,27 @@ main_function(EA):-
 inferred_symbol_name(EA,"main","PUBLIC"):-
     binary_format("PE"),
     main_function(EA).
+
+.decl intraprocedural_base_relative_op(EA:address,Value:number)
+.output intraprocedural_base_relative_op
+
+// symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value),
+intraprocedural_base_relative_op(EA,Value):-
+    // Indirect load of memory address,
+    (
+    instruction_get_operation(EA,"MOV");
+    instruction_get_operation(EA,"LEA")
+    ),
+    instruction_get_op(EA,Op_index,Op),
+    instruction_displacement_offset(EA,Op_index,Disp_offset),
+    op_indirect(Op,"NONE",Reg,"NONE",1,Value,Size), Value > 0,
+    code_in_refined_block(EA,_),
+    // ignoring non-tracked registers (e.g. stack pointer),
+    arch.track_register(Reg32,Reg),
+    // with, no provenance for register value
+    !def_used(_,Reg,EA,_),
+    !def_used(_,Reg32,EA,_),
+    !base_relative_operation(_,EA),
+    // where the offset is a valid RVA.
+    base_address(ImageBase),
+    code(ImageBase+Value).
