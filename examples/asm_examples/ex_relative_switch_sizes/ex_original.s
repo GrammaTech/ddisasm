@@ -191,7 +191,7 @@ fun:
 ..___tag_value_fun.27:
                                 # LOE rbx rbp r12 r13 r14d r15d
 ..B2.22:                        # Preds ..B2.21 ..B2.32 ..B2.33 ..B2.34 ..B2.35
-                                #      
+                                #
                                 # Execution count [5.00e+00]
         incl      %r14d                                         #58.11
         incl      %r13d                                         #58.11

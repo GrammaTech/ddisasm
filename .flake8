@@ -1,0 +1,8 @@
+# Black feels free to violate some rules because they're PEP8 extensions and
+# not PEP8 itself. So we must ignore:
+#   E203: Whitespace before ':': Black does "a[b : c]"; flake8 wants "a[b:c]".
+#   W503: Line break occurred before a binary operator: Black puts operators in front of lines, flake8 wants them after.
+# more detail is available at https://black.readthedocs.io/en/stable/the_black_code_style.html.
+
+[flake8]
+ignore = E203,W503

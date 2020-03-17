@@ -37,6 +37,7 @@ namespace InitialAuxData
         uint64_t size;
         std::string type;
         std::string scope;
+        std::string visibility;
         uint64_t sectionIndex;
         std::string name;
     };
@@ -115,9 +116,12 @@ public:
 
     virtual gtirb::FileFormat get_binary_format() = 0;
     virtual std::set<InitialAuxData::Section> get_sections() = 0;
+    virtual std::set<gtirb::SectionFlag> get_section_flags(
+        const InitialAuxData::Section &section) = 0;
 
     virtual std::string get_binary_type() = 0;
     virtual uint64_t get_entry_point() = 0;
+    virtual uint64_t get_base_address() = 0;
     virtual std::set<InitialAuxData::Symbol> get_symbols() = 0;
 
     virtual std::set<InitialAuxData::Relocation> get_relocations() = 0;
@@ -128,7 +132,7 @@ public:
     virtual std::tuple<LIEF::ARCHITECTURES, LIEF::ENDIANNESS> get_container_info() = 0;
 
     virtual std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
-    get_section_content_and_address(const std::string &name) = 0;
+    get_section_content_and_address(const std::string &name, uint64_t addr) = 0;
 };
 
 #endif /* BINARY_READER_H_ */

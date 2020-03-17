@@ -22,11 +22,14 @@
 //===----------------------------------------------------------------------===//
 
 #include "DlDecoder.h"
+
 #include <souffle/CompiledSouffle.h>
+
 #include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <string>
+
 #include "BinaryReader.h"
 #include "ExceptionDecoder.h"
 #include "GtirbZeroBuilder.h"
@@ -55,7 +58,7 @@ namespace souffle
 
 } // namespace souffle
 
-std::string getFileFormatString(gtirb::FileFormat format)
+std::string getFileFormatString(const gtirb::FileFormat format)
 {
     switch(format)
     {
@@ -84,24 +87,25 @@ std::string getFileFormatString(gtirb::FileFormat format)
 void addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
 {
     auto *rel = prog->getRelation("symbol");
-    auto *extraInfoTable =
-        module.getAuxData<std::map<gtirb::UUID, ExtraSymbolInfo>>("extraSymbolInfo");
-    for(auto &symbol : module.symbols())
+    auto *SymbolInfo = module.getAuxData<std::map<gtirb::UUID, ElfSymbolInfo>>("elfSymbolInfo");
+    if(SymbolInfo)
     {
-        souffle::tuple t(rel);
-        if(auto address = symbol.getAddress())
-            t << *address;
-        else
-            t << 0;
-        auto found = extraInfoTable->find(symbol.getUUID());
-        if(found == extraInfoTable->end())
-            throw std::logic_error("Symbol " + symbol.getName()
-                                   + " missing from extraSymbolInfo AuxData table");
+        for(auto &symbol : module.symbols())
+        {
+            souffle::tuple t(rel);
+            if(auto address = symbol.getAddress())
+                t << *address;
+            else
+                t << 0;
+            auto found = SymbolInfo->find(symbol.getUUID());
+            if(found == SymbolInfo->end())
+                throw std::logic_error("Symbol " + symbol.getName()
+                                       + " missing from elfSymbolInfo AuxData table");
 
-        ExtraSymbolInfo &extraInfo = found->second;
-        t << extraInfo.size << extraInfo.type << extraInfo.scope << extraInfo.sectionIndex
-          << symbol.getName();
-        rel->insert(t);
+            ElfSymbolInfo &Info = found->second;
+            t << Info.Size << Info.Type << Info.Scope << Info.SectionIndex << symbol.getName();
+            rel->insert(t);
+        }
     }
 }
 
@@ -115,13 +119,16 @@ void addSections(souffle::SouffleProgram *prog, gtirb::Module &module)
 
     for(auto &section : module.sections())
     {
+        assert(section.getAddress() && "Section has no address.");
+        assert(section.getSize() && "Section has non-calculable size.");
+
         souffle::tuple t(rel);
         auto found = extraInfoTable->find(section.getUUID());
         if(found == extraInfoTable->end())
             throw std::logic_error("Section " + section.getName()
                                    + " missing from elfSectionProperties AuxData table");
         SectionProperties &extraInfo = found->second;
-        t << section.getName() << section.getSize() << section.getAddress()
+        t << section.getName() << *section.getSize() << *section.getAddress()
           << std::get<0>(extraInfo) << std::get<1>(extraInfo);
         rel->insert(t);
     }
@@ -141,7 +148,12 @@ DlDecoder::~DlDecoder()
 
 souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
 {
-    auto minMax = module.getImageByteMap().getAddrMinMax();
+    assert(module.getSize() && "Module has non-calculable size.");
+    gtirb::Addr minAddr = *module.getAddress();
+
+    assert(module.getAddress() && "Module has non-addressable section data.");
+    gtirb::Addr maxAddr = *module.getAddress() + *module.getSize();
+
     auto *extraInfoTable =
         module.getAuxData<std::map<gtirb::UUID, SectionProperties>>("elfSectionProperties");
     if(!extraInfoTable)
@@ -155,18 +167,18 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
         SectionProperties &extraInfo = found->second;
         if(isExeSection(extraInfo))
         {
-            gtirb::ImageByteMap::const_range bytes =
-                gtirb::getBytes(module.getImageByteMap(), section);
-            decodeSection(bytes, bytes.size(), section.getAddress());
-            storeDataSection(bytes, bytes.size(), section.getAddress(), minMax.first,
-                             minMax.second);
+            for(const auto byteInterval : section.byte_intervals())
+            {
+                decodeSection(byteInterval);
+                storeDataSection(byteInterval, minAddr, maxAddr);
+            }
         }
         if(isNonZeroDataSection(extraInfo))
         {
-            gtirb::ImageByteMap::const_range bytes =
-                gtirb::getBytes(module.getImageByteMap(), section);
-            storeDataSection(bytes, bytes.size(), section.getAddress(), minMax.first,
-                             minMax.second);
+            for(const auto byteInterval : section.byte_intervals())
+            {
+                storeDataSection(byteInterval, minAddr, maxAddr);
+            }
         }
     }
     if(auto prog = souffle::ProgramFactory::newInstance("souffle_disasm"))
@@ -177,13 +189,19 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
     return nullptr;
 }
 
-void DlDecoder::storeDataSection(gtirb::ImageByteMap::const_range &sectionBytes, uint64_t size,
-                                 gtirb::Addr ea, gtirb::Addr min_address, gtirb::Addr max_address)
+void DlDecoder::storeDataSection(const gtirb::ByteInterval &byteInterval, gtirb::Addr min_address,
+                                 gtirb::Addr max_address)
 {
+    assert(byteInterval.getAddress() && "Failed to store section without address.");
+    assert(byteInterval.getSize() == byteInterval.getInitializedSize()
+           && "Failed to store section with partially initialized byte interval.");
+
     auto can_be_address = [min_address, max_address](gtirb::Addr num) {
         return ((num >= min_address) && (num <= max_address));
     };
-    auto buf = reinterpret_cast<const uint8_t *>(&*sectionBytes.begin());
+    gtirb::Addr ea = byteInterval.getAddress().value();
+    uint64_t size = byteInterval.getInitializedSize();
+    auto buf = byteInterval.rawBytes<const uint8_t>();
     while(size > 0)
     {
         // store the byte
@@ -209,9 +227,18 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
         prog, "binary_type", *module.getAuxData<std::vector<std::string>>("binaryType"));
     GtirbToDatalog::addToRelation<std::vector<std::string>>(
         prog, "binary_format", {getFileFormatString(module.getFileFormat())});
-    gtirb::ImageByteMap &byteMap = module.getImageByteMap();
-    GtirbToDatalog::addToRelation<std::vector<gtirb::Addr>>(prog, "entry_point",
-                                                            {byteMap.getEntryPointAddress()});
+
+    if(gtirb::CodeBlock *block = module.getEntryPoint())
+    {
+        if(std::optional<gtirb::Addr> address = block->getAddress())
+        {
+            GtirbToDatalog::addToRelation<std::vector<gtirb::Addr>>(prog, "entry_point",
+                                                                    {*address});
+            module.setEntryPoint(nullptr);
+            block->getByteInterval()->removeBlock(block);
+        }
+    }
+
     GtirbToDatalog::addToRelation(
         prog, "relocation",
         *module.getAuxData<std::set<InitialAuxData::Relocation>>("relocations"));
@@ -225,7 +252,6 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
     GtirbToDatalog::addToRelation(prog, "op_immediate", op_dict.immTable);
     GtirbToDatalog::addToRelation(prog, "op_indirect", op_dict.indirectTable);
     addSymbols(prog, module);
-    module.removeAuxData("extraSymbolInfo");
     addSections(prog, module);
     ExceptionDecoder excDecoder(module);
     excDecoder.addExceptionInformation(prog);

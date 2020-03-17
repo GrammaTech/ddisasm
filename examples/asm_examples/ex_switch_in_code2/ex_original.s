@@ -126,7 +126,7 @@ fun:                                    # @fun
     lea	eax, [rbx - 1]
     cmp	eax, 3
     ja	.LBB5_8
-# %bb.3:       
+# %bb.3:
     mov r13, r14
     mov	rax, qword ptr [r14 + 8*rax]
     sub	r13, rax

@@ -42,14 +42,16 @@ std::tuple<LIEF::ARCHITECTURES, LIEF::ENDIANNESS> LIEFBinaryReader::get_containe
 
 
 std::optional<std::tuple<std::vector<uint8_t>, uint64_t>>
-LIEFBinaryReader::get_section_content_and_address(const std::string& name)
+LIEFBinaryReader::get_section_content_and_address(const std::string& name, uint64_t addr)
 {
     if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
     {
         for(auto& section : elf->sections())
         {
-            if(section.name() == name && section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS)
-                return std::make_tuple(section.content(), section.virtual_address());
+            if(section.name() == name && (get_base_address() + section.virtual_address()) == addr
+               && section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS)
+                return std::make_tuple(section.content(),
+                                       get_base_address() + section.virtual_address());
         }
     }
     return std::nullopt;
@@ -70,7 +72,7 @@ uint64_t LIEFBinaryReader::get_max_address()
         }
     }
 
-    return max_address;
+    return get_base_address() + max_address;
 }
 
 uint64_t LIEFBinaryReader::get_min_address()
@@ -87,7 +89,7 @@ uint64_t LIEFBinaryReader::get_min_address()
             }
         }
     }
-    return min_address;
+    return get_base_address() + min_address;
 }
 
 std::set<InitialAuxData::Section> LIEFBinaryReader::get_sections()
@@ -98,13 +100,52 @@ std::set<InitialAuxData::Section> LIEFBinaryReader::get_sections()
         for(auto& section : elf->sections())
         {
             if(section.flags_list().count(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC))
-                sectionTuples.insert({section.name(), section.size(), section.virtual_address(),
+                sectionTuples.insert({section.name(), section.size(),
+                                      get_base_address() + section.virtual_address(),
                                       static_cast<uint64_t>(section.type()),
                                       static_cast<uint64_t>(section.flags())});
         }
     }
 
     return sectionTuples;
+}
+
+std::set<gtirb::SectionFlag> LIEFBinaryReader::get_section_flags(
+    const InitialAuxData::Section& section)
+{
+    std::set<gtirb::SectionFlag> Flags;
+
+    if(dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
+    {
+        bool is_allocated =
+            section.flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC);
+        bool is_executable =
+            section.flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_EXECINSTR);
+        bool is_writable =
+            section.flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
+        bool is_initialized =
+            is_allocated
+            && section.type != static_cast<int>(LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS);
+        if(is_allocated)
+        {
+            Flags.insert(gtirb::SectionFlag::Loaded);
+            Flags.insert(gtirb::SectionFlag::Readable);
+        }
+        if(is_executable)
+        {
+            Flags.insert(gtirb::SectionFlag::Executable);
+        }
+        if(is_writable)
+        {
+            Flags.insert(gtirb::SectionFlag::Writable);
+        }
+        if(is_initialized)
+        {
+            Flags.insert(gtirb::SectionFlag::Initialized);
+        }
+    }
+
+    return Flags;
 }
 
 gtirb::FileFormat LIEFBinaryReader::get_binary_format()
@@ -128,6 +169,11 @@ uint64_t LIEFBinaryReader::get_entry_point()
     return 0;
 }
 
+uint64_t LIEFBinaryReader::get_base_address()
+{
+    return 0;
+}
+
 std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
 {
     std::set<InitialAuxData::Symbol> symbolTuples;
@@ -142,7 +188,8 @@ std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
             if(symbol.type() != LIEF::ELF::ELF_SYMBOL_TYPES::STT_SECTION)
                 symbolTuples.insert(
                     {symbol.value(), symbol.size(), LIEF::ELF::to_string(symbol.type()),
-                     LIEF::ELF::to_string(symbol.binding()), symbol.section_idx(), symbolName});
+                     LIEF::ELF::to_string(symbol.binding()),
+                     LIEF::ELF::to_string(symbol.visibility()), symbol.section_idx(), symbolName});
         }
     }
 

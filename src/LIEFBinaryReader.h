@@ -24,6 +24,7 @@
 #ifndef LIEF_BINARY_READER_H_
 #define LIEF_BINARY_READER_H_
 #include <LIEF/LIEF.hpp>
+#include <gtirb/gtirb.hpp>
 #include <string>
 #include <vector>
 #include "BinaryReader.h"
@@ -38,9 +39,11 @@ public:
     uint64_t get_min_address() override;
 
     std::set<InitialAuxData::Section> get_sections() override;
+    std::set<gtirb::SectionFlag> get_section_flags(const InitialAuxData::Section& section) override;
     gtirb::FileFormat get_binary_format() override;
     std::string get_binary_type() override;
     uint64_t get_entry_point() override;
+    uint64_t get_base_address() override;
     std::set<InitialAuxData::Symbol> get_symbols() override;
     std::set<InitialAuxData::Relocation> get_relocations() override;
 
@@ -49,7 +52,7 @@ public:
     std::tuple<LIEF::ARCHITECTURES, LIEF::ENDIANNESS> get_container_info() override;
 
     std::optional<std::tuple<std::vector<uint8_t>, uint64_t>> get_section_content_and_address(
-        const std::string& name) override;
+        const std::string& name, uint64_t addr) override;
 
 private:
     std::unique_ptr<LIEF::Binary> bin;
