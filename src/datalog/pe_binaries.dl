@@ -252,7 +252,7 @@ inferred_symbol_name(EA,"main","PUBLIC"):-
 .output intraprocedural_base_relative_op
 
 // symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value),
-intraprocedural_base_relative_op(EA,Value):-
+inferred_base_relative_op(EA,Value):-
     // Indirect load of memory address,
     (
     instruction_get_operation(EA,"MOV");
@@ -260,8 +260,8 @@ intraprocedural_base_relative_op(EA,Value):-
     ),
     instruction_get_op(EA,Op_index,Op),
     instruction_displacement_offset(EA,Op_index,Disp_offset),
-    op_indirect(Op,"NONE",Reg,"NONE",1,Value,Size), Value > 0,
-    code_in_refined_block(EA,_),
+    op_indirect(Op,"NONE",Reg,"NONE",_,Value,Size), Value > 0,
+    code(EA),
     // ignoring non-tracked registers (e.g. stack pointer),
     arch.track_register(Reg32,Reg),
     // with, no provenance for register value
