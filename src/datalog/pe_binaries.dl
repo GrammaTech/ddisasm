@@ -248,8 +248,8 @@ inferred_symbol_name(EA,"main","PUBLIC"):-
     binary_format("PE"),
     main_function(EA).
 
-.decl intraprocedural_base_relative_op(EA:address,Value:number)
-.output intraprocedural_base_relative_op
+.decl inferred_base_relative_op(EA:address,Value:number)
+.output inferred_base_relative_op
 
 // symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value),
 inferred_base_relative_op(EA,Value):-
