@@ -29,68 +29,163 @@ This module establishes basic information about register:
 
 // limit the registers that are tracked
 // and transform the names to their 64 bits version
+// TODO (azreika): finalise - ref: https://wiki.cdot.senecacollege.ca/wiki/AArch64_Register_and_Instruction_Quick_Start
 .decl track_register(Reg32:register,Reg64:register)
 
-track_register("EAX","RAX").
-track_register("RAX","RAX").
+track_register("W0", "R0").
+track_register("X0", "R0").
+track_register("R0", "R0").
 
-track_register("EBX","RBX").
-track_register("RBX","RBX").
+track_register("W1", "R1").
+track_register("X1", "R1").
+track_register("R1", "R1").
 
-track_register("ECX","RCX").
-track_register("RCX","RCX").
+track_register("W2", "R2").
+track_register("X2", "R2").
+track_register("R2", "R2").
 
-track_register("EDX","RDX").
-track_register("RDX","RDX").
+track_register("W3", "R3").
+track_register("X3", "R3").
+track_register("R3", "R3").
 
-track_register("EDI","RDI").
-track_register("RDI","RDI").
+track_register("W4", "R4").
+track_register("X4", "R4").
+track_register("R4", "R4").
 
-track_register("ESI","RSI").
-track_register("RSI","RSI").
+track_register("W5", "R5").
+track_register("X5", "R5").
+track_register("R5", "R5").
 
-track_register("RBP","RBP").
-track_register("EBP","RBP").
+track_register("W6", "R6").
+track_register("X6", "R6").
+track_register("R6", "R6").
 
-track_register("R8","R8").
-track_register("R8D","R8").
+track_register("W7", "R7").
+track_register("X7", "R7").
+track_register("R7", "R7").
 
-track_register("R9","R9").
-track_register("R9D","R9").
+track_register("W8", "R8").
+track_register("X8", "R8").
+track_register("R8", "R8").
 
-track_register("R10","R10").
-track_register("R10D","R10").
+track_register("W9", "R9").
+track_register("X9", "R9").
+track_register("R9", "R9").
 
-track_register("R11","R11").
-track_register("R11D","R11").
+track_register("W10", "R10").
+track_register("X10", "R10").
+track_register("R10", "R10").
 
-track_register("R12","R12").
-track_register("R12D","R12").
+track_register("W11", "R11").
+track_register("X11", "R11").
+track_register("R11", "R11").
 
-track_register("R13","R13").
-track_register("R13D","R13").
+track_register("W12", "R12").
+track_register("X12", "R12").
+track_register("R12", "R12").
 
-track_register("R14","R14").
-track_register("R14D","R14").
+track_register("W13", "R13").
+track_register("X13", "R13").
+track_register("R13", "R13").
 
-track_register("R15","R15").
-track_register("R15D","R15").
+track_register("W14", "R14").
+track_register("X14", "R14").
+track_register("R14", "R14").
+
+track_register("W15", "R15").
+track_register("X15", "R15").
+track_register("R15", "R15").
+
+track_register("W16", "R16").
+track_register("X16", "R16").
+track_register("R16", "R16").
+
+track_register("W17", "R17").
+track_register("X17", "R17").
+track_register("R17", "R17").
+
+track_register("W18", "R18").
+track_register("X18", "R18").
+track_register("R18", "R18").
+
+track_register("W19", "R19").
+track_register("X19", "R19").
+track_register("R19", "R19").
+
+track_register("W20", "R20").
+track_register("X20", "R20").
+track_register("R20", "R20").
+
+track_register("W21", "R21").
+track_register("X21", "R21").
+track_register("R21", "R21").
+
+track_register("W22", "R22").
+track_register("X22", "R22").
+track_register("R22", "R22").
+
+track_register("W23", "R23").
+track_register("X23", "R23").
+track_register("R23", "R23").
+
+track_register("W24", "R24").
+track_register("X24", "R24").
+track_register("R24", "R24").
+
+track_register("W25", "R25").
+track_register("X25", "R25").
+track_register("R25", "R25").
+
+track_register("W26", "R26").
+track_register("X26", "R26").
+track_register("R26", "R26").
+
+track_register("W27", "R27").
+track_register("X27", "R27").
+track_register("R27", "R27").
+
+track_register("W28", "R28").
+track_register("X28", "R28").
+track_register("R28", "R28").
+
+track_register("W29", "R29").
+track_register("X29", "R29").
+track_register("R29", "R29").
+
+track_register("W30", "R30").
+track_register("X30", "R30").
+track_register("R30", "R30").
+
+track_register("W31", "R31").
+track_register("X31", "R31").
+track_register("R31", "R31").
 
 // this specifies the registers whose value is not kept through a function call
 // according to the 'System V AMD64 ABI' calling convention.
 .decl function_non_maintained_reg(reg:register)
 
-function_non_maintained_reg("RAX").
-function_non_maintained_reg("RCX").
-function_non_maintained_reg("RDX").
-function_non_maintained_reg("RDI").
-function_non_maintained_reg("RSI").
-
+function_non_maintained_reg("R0").
+function_non_maintained_reg("R1").
+function_non_maintained_reg("R2").
+function_non_maintained_reg("R3").
+function_non_maintained_reg("R4").
+function_non_maintained_reg("R5").
+function_non_maintained_reg("R6").
+function_non_maintained_reg("R7").
 function_non_maintained_reg("R8").
 function_non_maintained_reg("R9").
 function_non_maintained_reg("R10").
 function_non_maintained_reg("R11").
+function_non_maintained_reg("R12").
+function_non_maintained_reg("R13").
+function_non_maintained_reg("R14").
+function_non_maintained_reg("R15").
+function_non_maintained_reg("R16").
+function_non_maintained_reg("R17").
+function_non_maintained_reg("R18").
+function_non_maintained_reg("R29").
+function_non_maintained_reg("R30").
+function_non_maintained_reg("R31").
 
+// PC is not a register in aarch64
 .decl pc_register(reg:register)
-
-pc_register("RIP").

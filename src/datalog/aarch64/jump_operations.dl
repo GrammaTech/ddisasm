@@ -29,37 +29,18 @@ The set of jump operations in aarch64
 .decl jump_equal_operation(n:symbol)
 .decl jump_unequal_operation(n:symbol)
 
-jump_operation("JCXZ").
-jump_operation("JECXZ").
-jump_operation("JRCXZ").
-jump_operation("JO").
-jump_operation("JNO").
-jump_operation("JB").
-jump_operation("JNB").
-jump_operation("JZ").
-jump_operation("JNZ").
-jump_operation("JNA").
-jump_operation("JA").
-jump_operation("JS").
-jump_operation("JNS").
-jump_operation("JP").
-jump_operation("JNP").
-jump_operation("JL").
-jump_operation("JGE").
-jump_operation("JLE").
-jump_operation("JG").
-jump_operation("JC").
-jump_operation("JAE").
-jump_operation("JE").
-jump_operation("JNE").
-jump_operation("JBE").
-jump_operation("JNBE").
-jump_operation("JMP").
+// TODO (azreika): finalise - ref: https://wiki.cdot.senecacollege.ca/wiki/AArch64_Register_and_Instruction_Quick_Start
+jump_operation("BL").
+jump_operation("B").
+jump_operation("BR").
+jump_operation("BX").
+jump_operation("B.NE").
+jump_operation("B.LT").
+jump_operation("B.GT").
+jump_operation("B.EQ").
 
-unconditional_jump_operation("JMP").
+unconditional_jump_operation("BR").
+unconditional_jump_operation("BL").
 
-jump_equal_operation("JE").
-jump_equal_operation("JZ").
-
-jump_unequal_operation("JNE").
-jump_unequal_operation("JNZ").
+jump_equal_operation("B.EQ").
+jump_unequal_operation("B.NE").
