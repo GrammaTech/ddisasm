@@ -28,14 +28,18 @@ and characteristics
 #include "interrupt_operations.dl"
 #include "registers.dl"
 
+.decl move_operation(Operation:symbol)
+move_operation(Operation) :-
+    instruction_get_operation(_, Operation),
+    contains("MOV", Operation).
+
 /* CMOV is not used by arm64 */
 .decl conditional_mov(EA:address)
 
 .decl mov(EA:address)
-
 mov(EA):-
     instruction_get_operation(EA,Operation),
-    contains("MOV",Operation).
+    move_operation(Operation).
 
 /* TODO: Should all hint instructions be added? */
 .decl is_nop(EA:address)
@@ -133,6 +137,7 @@ operation_size_exception(EA,Index,0):-
     op_indirect(Op,_,_,_,_,_,_).
 */
 
+// TODO (azreika): should be a load operation?: move_operation("ADRP").
 
 // arithmetic operation on two source registers
 .decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
