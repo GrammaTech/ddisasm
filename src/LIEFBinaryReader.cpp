@@ -185,7 +185,11 @@ std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
             std::size_t foundVersion = symbolName.find('@');
             if(foundVersion != std::string::npos)
                 symbolName = symbolName.substr(0, foundVersion);
-            if(symbol.type() != LIEF::ELF::ELF_SYMBOL_TYPES::STT_SECTION)
+
+            /* TODO (azreika): ignore no-typed symbols - otherwise get `$<X>` style symbols,
+             * which I don't understand, so double check this */
+            if(symbol.type() != LIEF::ELF::ELF_SYMBOL_TYPES::STT_SECTION &&
+                    symbol.type() != LIEF::ELF::ELF_SYMBOL_TYPES::STT_NOTYPE)
                 symbolTuples.insert(
                     {symbol.value(), symbol.size(), LIEF::ELF::to_string(symbol.type()),
                      LIEF::ELF::to_string(symbol.binding()),
