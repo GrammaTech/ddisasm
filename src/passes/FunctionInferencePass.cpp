@@ -60,7 +60,6 @@ void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProg
             for(const auto& Symbol : M.findSymbols(FunctionEntry))
             {
                 FunctionNames.insert({FunctionUUID, Symbol.getUUID()});
-                break;
             }
         }
     }
