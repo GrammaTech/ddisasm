@@ -123,22 +123,18 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                    binary->get_section_content_and_address(binSection.name, binSection.address))
             {
                 // Add allocated section contents to a single contiguous ByteInterval.
-                gtirb::Addr sectionAddr = gtirb::Addr(binSection.address);
-                std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
-                gtirb::ByteInterval *byteInterval =
-                    section->addByteInterval(context, sectionAddr, sectionBytes.begin(),
-                                             sectionBytes.end(), binSection.size);
-                // Fill incomplete section with zeroes.
-                if(sectionBytes.size() < binSection.size)
+                gtirb::Addr Addr = gtirb::Addr(binSection.address);
+                std::vector<uint8_t> &Bytes = std::get<0>(*sectionData);
+                if(Bytes.size() < binSection.size)
                 {
-                    size_t size = binSection.size - sectionBytes.size();
-                    gtirb::Addr start = *byteInterval->getAddress() + byteInterval->getSize();
-                    std::cerr << "Warning: Zero filling uninitialized section fragment: " << start
-                              << '-' << start + size << '\n';
-                    std::vector<uint8_t> zeroes(size, 0);
-                    byteInterval->insertBytes<uint8_t>(byteInterval->bytes_end<uint8_t>(),
-                                                       zeroes.begin(), zeroes.end());
+                    // Fill incomplete section with zeroes.
+                    std::cerr << "Warning: Zero filling uninitialized section fragment: "
+                              << Addr + Bytes.size() << '-' << Addr + binSection.size << " ("
+                              << binSection.name << ")\n";
+                    Bytes.resize(binSection.size, 0);
                 }
+                section->addByteInterval(context, Addr, Bytes.begin(), Bytes.end(),
+                                         binSection.size);
             }
             else
             {

@@ -98,12 +98,11 @@ option.set keep-going : false ;
 
   config.vm.provision "build-capstone", type: "shell", inline: <<-SHELL
     cd $HOME
-    Invoke-WebRequest https://github.com/aquynh/capstone/archive/4.0.1.zip -OutFile 4.0.1.zip
-    Expand-Archive .\\4.0.1.zip -DestinationPath .
+    git clone -b next https://github.com/GrammaTech/capstone.git
     mkdir /cygdrive/C/capstone-debug
     mkdir /cygdrive/C/capstone-release
 
-    cd capstone-4.0.1
+    cd capstone
     mkdir build-debug
     cd build-debug
     cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja""  -DCMAKE_INSTALL_PREFIX=C:\\capstone-debug .."
