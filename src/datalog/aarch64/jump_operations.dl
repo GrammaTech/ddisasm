@@ -23,6 +23,26 @@
 /**
 The set of jump operations in aarch64
 */
+.decl condition_code(c:symbol)
+condition_code("EQ").
+condition_code("NE").
+condition_code("GT").
+condition_code("LT").
+condition_code("GE").
+condition_code("LE").
+condition_code("CS").
+condition_code("HS").
+condition_code("CC").
+condition_code("LO").
+condition_code("MI").
+condition_code("PL").
+condition_code("AL").
+condition_code("NV").
+condition_code("VS").
+condition_code("VC").
+condition_code("HI").
+condition_code("LS").
+
 .decl jump_operation(n:symbol)
 .decl unconditional_jump_operation(n:symbol)
 
@@ -30,12 +50,16 @@ The set of jump operations in aarch64
 .decl jump_unequal_operation(n:symbol)
 
 // TODO (azreika): finalise - ref: https://wiki.cdot.senecacollege.ca/wiki/AArch64_Register_and_Instruction_Quick_Start
+// TODO (azreika): these are technically condition codes... should check this out
 jump_operation("BL").
 jump_operation("B").
 jump_operation("BR").
 jump_operation("BX").
+jump_operation(cat("B.", Condition)) :- condition_code(Condition).
+
 jump_operation("B.NE").
 jump_operation("B.LT").
+jump_operation("B.LE").
 jump_operation("B.GT").
 jump_operation("B.EQ").
 

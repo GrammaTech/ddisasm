@@ -311,6 +311,19 @@ pc_relative_jump(EA,Dest):-
     arch.jump_operation(Operation),
     pc_relative_operand(EA,1,Dest).
 
+// TODO (azreika): refactor this slightly so it makes more sense for both x86 and arm64
+pc_relative_jump(EA,Base+Offset):-
+    // first is ADRP REG IMM
+    instruction_get_operation(EA,"ADRP"),
+    instruction_get_op(EA,1,BaseOp),
+    op_immediate(BaseOp,Base),
+
+    // then LDR REG [REG, OFFSET]
+    next(EA,NextEA),
+    instruction_get_operation(NextEA,"LDR"),
+    instruction_get_op(NextEA,1,OffsetOp),
+    op_indirect(OffsetOp,"NONE",_,"NONE",1,Offset,_).
+
 // jump to the address of a register
  .decl reg_jump(src:address,Reg:symbol)
 

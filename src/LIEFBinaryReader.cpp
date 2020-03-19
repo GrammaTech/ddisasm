@@ -186,14 +186,15 @@ std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
             if(foundVersion != std::string::npos)
                 symbolName = symbolName.substr(0, foundVersion);
 
-            /* TODO (azreika): ignore no-typed symbols - otherwise get `$<X>` style symbols,
-             * which I don't understand, so double check this */
+            /* TODO (azreika): ignore empty and "$.*" style symbols to fix a bug with symbolisation;
+             * not sure why they come up, so double check this properly */
             if(symbol.type() != LIEF::ELF::ELF_SYMBOL_TYPES::STT_SECTION &&
-                    symbol.type() != LIEF::ELF::ELF_SYMBOL_TYPES::STT_NOTYPE)
+                    symbol.name().length() > 0 && symbol.name()[0] != '$') {
                 symbolTuples.insert(
                     {symbol.value(), symbol.size(), LIEF::ELF::to_string(symbol.type()),
                      LIEF::ELF::to_string(symbol.binding()),
                      LIEF::ELF::to_string(symbol.visibility()), symbol.section_idx(), symbolName});
+            }
         }
     }
 
