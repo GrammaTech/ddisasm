@@ -143,7 +143,8 @@ got_reference(Got_entry,Symbol):-
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
-    relocation(Got_entry,_,Symbol,_),
+    relocation(Got_entry,RelType,Symbol,_),
+    RelType != "RELATIVE",
     symbol(_,_,_,Scope,_,Symbol), Scope != "WEAK".
 
 got_reference(Got_entry,Symbol):-
