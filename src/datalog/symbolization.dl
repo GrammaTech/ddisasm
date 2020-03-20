@@ -341,6 +341,7 @@ string_part(EA+1,Base):-
     string_part(EA,Base),
     data_byte(EA+1,Byte),
     !labeled_data_candidate(EA+1),
+    !preferred_data_access(EA+1,_),
     printable_char(Byte).
 
 ///////////////////////////////////////////////////////////////////////////
