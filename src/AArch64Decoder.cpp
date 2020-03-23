@@ -3,10 +3,12 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+
+#include "AArch64Decoder.h"
+#include "AuxDataSchema.h"
 #include "BinaryReader.h"
 #include "ExceptionDecoder.h"
 #include "GtirbZeroBuilder.h"
-#include "AArch64Decoder.h"
 
 
 AArch64Decoder::AArch64Decoder()
@@ -33,8 +35,7 @@ souffle::SouffleProgram *AArch64Decoder::decode(gtirb::Module &module)
     assert(module.getAddress() && "Module has non-addressable section data.");
     gtirb::Addr maxAddr = *module.getAddress() + *module.getSize();
 
-    auto *extraInfoTable =
-        module.getAuxData<std::map<gtirb::UUID, SectionProperties>>("elfSectionProperties");
+    auto *extraInfoTable = module.getAuxData<gtirb::schema::ElfSectionProperties>();
     if(!extraInfoTable)
         throw std::logic_error("missing elfSectionProperties AuxData table");
     for(auto &section : module.sections())
@@ -66,7 +67,7 @@ souffle::SouffleProgram *AArch64Decoder::decode(gtirb::Module &module)
     return nullptr;
 }
 
-void AArch64Decoder::decodeSection(const gtirb::ByteInterval &byteInterval)
+void AArch64Decoder::decodeSection(const gtirb::ByteInterval& byteInterval)
 {
     assert(byteInterval.getAddress() && "Failed to decode section without address.");
     assert(byteInterval.getSize() == byteInterval.getInitializedSize()

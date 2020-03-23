@@ -32,7 +32,7 @@ public:
     X86Decoder();
     virtual ~X86Decoder();
     souffle::SouffleProgram* decode(gtirb::Module& module);
-    void decodeSection(const gtirb::ByteInterval &byteInterval);
+    void decodeSection(const gtirb::ByteInterval& byteInterval);
     cs_arch getArch() const override {
         return CS_ARCH_X86;
     }
