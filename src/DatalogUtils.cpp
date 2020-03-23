@@ -115,6 +115,30 @@ std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& CsHandle, const c
                             4 * 8};
             return I;
         }
+        case ARM64_OP_FP:
+            std::cerr << "unsupported: FP\n";
+            return 0;
+        case ARM64_OP_CIMM:
+            std::cerr << "unsupported: CIMM\n";
+            return 0;
+        case ARM64_OP_REG_MRS:
+            std::cerr << "unsupported: MRS\n";
+            return 0;
+        case ARM64_OP_REG_MSR:
+            std::cerr << "unsupported: MSR\n";
+            return 0;
+        case ARM64_OP_PSTATE:
+            std::cerr << "unsupported: PSTATE\n";
+            return 0;
+        case ARM64_OP_SYS:
+            std::cerr << "unsupported: SYS\n";
+            return 0;
+        case ARM64_OP_PREFETCH:
+            std::cerr << "unsupported: PREFETCH\n";
+            return 0;
+        case ARM64_OP_BARRIER:
+            std::cerr << "unsupported: BARRIER\n";
+            return 0;
         case ARM64_OP_INVALID:
         default:
             std::cerr << "invalid operand\n";
