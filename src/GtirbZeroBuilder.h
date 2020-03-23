@@ -39,7 +39,7 @@ struct ElfSymbolInfo
 template <>
 struct gtirb::auxdata_traits<ElfSymbolInfo>
 {
-    static std::string type_id();
+    static std::string type_name();
     static void toBytes(const ElfSymbolInfo& Object, to_iterator It);
     static from_iterator fromBytes(ElfSymbolInfo& Object, from_iterator It);
 };

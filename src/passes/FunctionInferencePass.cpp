@@ -24,6 +24,7 @@
 #include "FunctionInferencePass.h"
 #include <souffle/CompiledSouffle.h>
 #include <boost/uuid/uuid_generators.hpp>
+#include "../AuxDataSchema.h"
 #include "../DatalogUtils.h"
 
 void FunctionInferencePass::populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P,
@@ -44,6 +45,7 @@ void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProg
 {
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
     std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2function;
+    std::map<gtirb::UUID, gtirb::UUID> FunctionNames;
     boost::uuids::random_generator Generator;
     for(auto& Output : *P->getRelation("function_entry_final"))
     {
@@ -55,6 +57,10 @@ void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProg
             gtirb::UUID FunctionUUID = Generator();
             FunctionEntry2function[FunctionEntry] = FunctionUUID;
             FunctionEntries[FunctionUUID].insert(EntryBlockUUID);
+            for(const auto& Symbol : M.findSymbols(FunctionEntry))
+            {
+                FunctionNames.insert({FunctionUUID, Symbol.getUUID()});
+            }
         }
     }
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionBlocks;
@@ -69,10 +75,12 @@ void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProg
             FunctionBlocks[FunctionEntryUUID].insert(Block->getUUID());
         }
     }
-    M.removeAuxData("functionEntries");
-    M.removeAuxData("functionBlocks");
-    M.addAuxData("functionEntries", std::move(FunctionEntries));
-    M.addAuxData("functionBlocks", std::move(FunctionBlocks));
+    M.removeAuxData<gtirb::schema::FunctionEntries>();
+    M.removeAuxData<gtirb::schema::FunctionBlocks>();
+    M.removeAuxData<gtirb::schema::FunctionNames>();
+    M.addAuxData<gtirb::schema::FunctionEntries>(std::move(FunctionEntries));
+    M.addAuxData<gtirb::schema::FunctionBlocks>(std::move(FunctionBlocks));
+    M.addAuxData<gtirb::schema::FunctionNames>(std::move(FunctionNames));
 }
 
 void FunctionInferencePass::setDebugDir(std::string Path)

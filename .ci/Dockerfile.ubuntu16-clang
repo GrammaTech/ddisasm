@@ -27,7 +27,7 @@ SHELL ["/bin/bash", "-c"]
 
 # Install common packages
 RUN apt-get -y update && \
-    apt-get -y install software-properties-common curl git make python3 python3-pip wget
+    apt-get -y install apt-transport-https curl git make python3 python3-pip software-properties-common wget
 
 # Install libstdc++
 RUN add-apt-repository ppa:jonathonf/gcc-7.1 && \
@@ -84,9 +84,8 @@ RUN ldconfig
 
 # Install capstone
 RUN cd /usr/local/src \
-    && wget https://github.com/aquynh/capstone/archive/4.0.1.tar.gz \
-    && tar xf 4.0.1.tar.gz \
-    && cd capstone-4.0.1 \
+    && git clone -b next https://github.com/GrammaTech/capstone.git \
+    && cd capstone \
     && CAPSTONE_ARCHS=x86 ./make.sh \
     && CAPSTONE_ARCHS=x86 ./make.sh install
 

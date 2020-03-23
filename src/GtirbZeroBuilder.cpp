@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "GtirbZeroBuilder.h"
+#include "AuxDataSchema.h"
 #include "BinaryReader.h"
 #include "LIEFBinaryReader.h"
 
@@ -54,10 +55,10 @@ bool isAllocatedSection(int flags)
     return (flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC));
 }
 
-std::string gtirb::auxdata_traits<ElfSymbolInfo>::type_id()
+std::string gtirb::auxdata_traits<ElfSymbolInfo>::type_name()
 {
     return gtirb::auxdata_traits<
-        std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>>::type_id();
+        std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>>::type_name();
 }
 
 void gtirb::auxdata_traits<ElfSymbolInfo>::toBytes(const ElfSymbolInfo &Object, to_iterator It)
@@ -102,22 +103,18 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                    binary->get_section_content_and_address(binSection.name, binSection.address))
             {
                 // Add allocated section contents to a single contiguous ByteInterval.
-                gtirb::Addr sectionAddr = gtirb::Addr(binSection.address);
-                std::vector<uint8_t> &sectionBytes = std::get<0>(*sectionData);
-                gtirb::ByteInterval *byteInterval =
-                    section->addByteInterval(context, sectionAddr, sectionBytes.begin(),
-                                             sectionBytes.end(), binSection.size);
-                // Fill incomplete section with zeroes.
-                if(sectionBytes.size() < binSection.size)
+                gtirb::Addr Addr = gtirb::Addr(binSection.address);
+                std::vector<uint8_t> &Bytes = std::get<0>(*sectionData);
+                if(Bytes.size() < binSection.size)
                 {
-                    size_t size = binSection.size - sectionBytes.size();
-                    gtirb::Addr start = *byteInterval->getAddress() + byteInterval->getSize();
-                    std::cerr << "Warning: Zero filling uninitialized section fragment: " << start
-                              << '-' << start + size << '\n';
-                    std::vector<uint8_t> zeroes(size, 0);
-                    byteInterval->insertBytes<uint8_t>(byteInterval->bytes_end<uint8_t>(),
-                                                       zeroes.begin(), zeroes.end());
+                    // Fill incomplete section with zeroes.
+                    std::cerr << "Warning: Zero filling uninitialized section fragment: "
+                              << Addr + Bytes.size() << '-' << Addr + binSection.size << " ("
+                              << binSection.name << ")\n";
+                    Bytes.resize(binSection.size, 0);
                 }
+                section->addByteInterval(context, Addr, Bytes.begin(), Bytes.end(),
+                                         binSection.size);
             }
             else
             {
@@ -130,7 +127,7 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                 std::make_tuple(binSection.type, binSection.flags);
         }
     }
-    module.addAuxData("elfSectionProperties", std::move(sectionProperties));
+    module.addAuxData<gtirb::schema::ElfSectionProperties>(std::move(sectionProperties));
 }
 
 void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
@@ -159,7 +156,7 @@ void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
             elfSymbolInfo[symbol->getUUID()] = {binSymbol.size, binSymbol.type, binSymbol.scope,
                                                 binSymbol.visibility, binSymbol.sectionIndex};
         }
-        module.addAuxData("elfSymbolInfo", std::move(elfSymbolInfo));
+        module.addAuxData<gtirb::schema::ElfSymbolInfoAD>(std::move(elfSymbolInfo));
     }
 }
 
@@ -182,10 +179,10 @@ void addEntryBlock(gtirb::Module &Module, std::shared_ptr<BinaryReader> Binary,
 void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> binary)
 {
     std::vector<std::string> binaryType = {binary->get_binary_type()};
-    module.addAuxData("binaryType", binaryType);
-    module.addAuxData("relocations", binary->get_relocations());
-    module.addAuxData("libraries", binary->get_libraries());
-    module.addAuxData("libraryPaths", binary->get_library_paths());
+    module.addAuxData<gtirb::schema::BinaryType>(std::move(binaryType));
+    module.addAuxData<gtirb::schema::Relocations>(binary->get_relocations());
+    module.addAuxData<gtirb::schema::Libraries>(binary->get_libraries());
+    module.addAuxData<gtirb::schema::LibraryPaths>(binary->get_library_paths());
 }
 
 std::tuple<gtirb::IR*, LIEF::ARCHITECTURES, LIEF::ENDIANNESS> buildZeroIR(const std::string &filename, gtirb::Context &context)
