@@ -23,6 +23,8 @@
 /**
 The set of jump operations in aarch64
 */
+
+/* Condition codes - apply to all branch operations */
 .decl condition_code(c:symbol)
 condition_code("EQ").
 condition_code("NE").
@@ -44,27 +46,17 @@ condition_code("HI").
 condition_code("LS").
 
 .decl jump_operation(n:symbol)
-.decl unconditional_jump_operation(n:symbol)
-
-.decl jump_equal_operation(n:symbol)
-.decl jump_unequal_operation(n:symbol)
-
-// TODO (azreika): finalise - ref: https://wiki.cdot.senecacollege.ca/wiki/AArch64_Register_and_Instruction_Quick_Start
-// TODO (azreika): these are technically condition codes... should check this out
-jump_operation("BL").
-jump_operation("B").
-jump_operation("BR").
-jump_operation("BX").
+jump_operation(Op) :- unconditional_jump_operation(Op).
 jump_operation(cat("B.", Condition)) :- condition_code(Condition).
 
-jump_operation("B.NE").
-jump_operation("B.LT").
-jump_operation("B.LE").
-jump_operation("B.GT").
-jump_operation("B.EQ").
-
+.decl unconditional_jump_operation(n:symbol)
+unconditional_jump_operation("B").
 unconditional_jump_operation("BR").
 unconditional_jump_operation("BL").
+unconditional_jump_operation("BX").
 
+.decl jump_equal_operation(n:symbol)
 jump_equal_operation("B.EQ").
-jump_unequal_operation("B.NE").
+
+.decl jump_unequal_operation(n:symbol)
+jump_equal_operation("B.NE").

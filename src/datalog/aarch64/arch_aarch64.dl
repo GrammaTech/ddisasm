@@ -16,11 +16,11 @@
 //  GNU Affero General Public License for more details.
 //
 //===----------------------------------------------------------------------===//
-/**
-Define a set predicates to abstract from aarch64 specific instruction set
-and characteristics
-*/
 
+/**
+ * Define a set of predicates to model aarch64 specific instructions
+ * and characteristics
+ */
 
 .comp ARM64 {
 
@@ -28,29 +28,30 @@ and characteristics
 #include "interrupt_operations.dl"
 #include "registers.dl"
 
+// TODO: these variants should be cleaned so only relevant ones are included
+
+/* Define all variants of the move operation */
 .decl move_operation(Operation:symbol)
 move_operation(Operation) :-
     instruction_get_operation(_, Operation),
     contains("MOV", Operation).
 
-/* CMOV is not used by arm64 */
-.decl conditional_mov(EA:address)
-
+/* Find all addresses where a move instruction is used */
 .decl mov(EA:address)
 mov(EA):-
     instruction_get_operation(EA,Operation),
     move_operation(Operation).
 
+/* Define all variants of a conditional move operation */
+/* CMOV is not used by arm64 */
+.decl conditional_mov(EA:address)
+
 /* TODO: Should all hint instructions be added? */
 .decl is_nop(EA:address)
-
 is_nop(EA):-
     instruction_get_operation(EA,"NOP").
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
-
-
-
 
 .decl arithmetic_operation(Operation:symbol)
 

@@ -21,11 +21,11 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-/**
-Define a set predicates to abstract from x64 specific instruction set
-and characteristics
-*/
 
+/**
+ * Define a set of predicates to model x86-64 specific instructions
+ * and characteristics
+ */
 
 .comp X64 {
 
