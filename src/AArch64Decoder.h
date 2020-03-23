@@ -35,6 +35,12 @@ public:
     souffle::SouffleProgram* decode(gtirb::Module& module);
     void decodeSection(gtirb::ImageByteMap::const_range& sectionBytes, uint64_t size,
                        gtirb::Addr ea);
+    cs_arch getArch() const override {
+        return CS_ARCH_ARM64;
+    }
+    cs_mode getMode() const override {
+        return CS_MODE_ARM;
+    }
 };
 
 #endif /* SRC_AARCH64_DECODER_H_ */

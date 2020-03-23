@@ -24,6 +24,7 @@
 #ifndef NO_RETURN_PASS_H_
 #define NO_RETURN_PASS_H_
 
+#include <capstone/capstone.h>
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 #include <optional>
@@ -35,12 +36,11 @@ class NoReturnPass
 private:
     std::optional<std::string> DebugDir;
 
-    void populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M);
-    std::set<gtirb::CodeBlock*> updateCFG(std::shared_ptr<souffle::SouffleProgram> P,
-                                          gtirb::Module& M);
+    void populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M, cs_arch arch, cs_mode mode);
+    std::set<gtirb::CodeBlock*> updateCFG(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M);
 
 public:
     void setDebugDir(std::string Path);
-    std::set<gtirb::CodeBlock*> computeNoReturn(gtirb::Module& module, unsigned int NThreads = 1);
+    std::set<gtirb::CodeBlock*> computeNoReturn(gtirb::Module& module, cs_arch arch, cs_mode mode, unsigned int NThreads = 1);
 };
 #endif // NO_RETURN_PASS_H_
