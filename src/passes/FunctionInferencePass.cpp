@@ -24,6 +24,7 @@
 #include "FunctionInferencePass.h"
 #include <souffle/CompiledSouffle.h>
 #include <boost/uuid/uuid_generators.hpp>
+#include "../AuxDataSchema.h"
 #include "../DatalogUtils.h"
 
 void FunctionInferencePass::populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P,
@@ -44,35 +45,42 @@ void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProg
 {
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
     std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2function;
+    std::map<gtirb::UUID, gtirb::UUID> FunctionNames;
     boost::uuids::random_generator Generator;
     for(auto& Output : *P->getRelation("function_entry_final"))
     {
         gtirb::Addr FunctionEntry(Output[0]);
-        auto BlockRange = M.findBlock(FunctionEntry);
-        if(BlockRange.begin() != BlockRange.end())
+        auto BlockRange = M.findCodeBlocksAt(FunctionEntry);
+        if(!BlockRange.empty())
         {
             const gtirb::UUID& EntryBlockUUID = BlockRange.begin()->getUUID();
             gtirb::UUID FunctionUUID = Generator();
             FunctionEntry2function[FunctionEntry] = FunctionUUID;
             FunctionEntries[FunctionUUID].insert(EntryBlockUUID);
+            for(const auto& Symbol : M.findSymbols(FunctionEntry))
+            {
+                FunctionNames.insert({FunctionUUID, Symbol.getUUID()});
+            }
         }
     }
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionBlocks;
     for(auto& Output : *P->getRelation("in_function_final"))
     {
         gtirb::Addr BlockAddr(Output[0]), FunctionEntryAddr(Output[1]);
-        auto BlockRange = M.findBlock(BlockAddr);
-        if(BlockRange.begin() != BlockRange.end())
+        auto BlockRange = M.findCodeBlocksOn(BlockAddr);
+        if(!BlockRange.empty())
         {
-            gtirb::Block* Block = &*BlockRange.begin();
+            gtirb::CodeBlock* Block = &*BlockRange.begin();
             gtirb::UUID FunctionEntryUUID = FunctionEntry2function[FunctionEntryAddr];
             FunctionBlocks[FunctionEntryUUID].insert(Block->getUUID());
         }
     }
-    M.removeAuxData("functionEntries");
-    M.removeAuxData("functionBlocks");
-    M.addAuxData("functionEntries", std::move(FunctionEntries));
-    M.addAuxData("functionBlocks", std::move(FunctionBlocks));
+    M.removeAuxData<gtirb::schema::FunctionEntries>();
+    M.removeAuxData<gtirb::schema::FunctionBlocks>();
+    M.removeAuxData<gtirb::schema::FunctionNames>();
+    M.addAuxData<gtirb::schema::FunctionEntries>(std::move(FunctionEntries));
+    M.addAuxData<gtirb::schema::FunctionBlocks>(std::move(FunctionBlocks));
+    M.addAuxData<gtirb::schema::FunctionNames>(std::move(FunctionNames));
 }
 
 void FunctionInferencePass::setDebugDir(std::string Path)

@@ -36,10 +36,11 @@ private:
     std::optional<std::string> DebugDir;
 
     void populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M);
-    std::set<gtirb::Block*> updateCFG(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M);
+    std::set<gtirb::CodeBlock*> updateCFG(std::shared_ptr<souffle::SouffleProgram> P,
+                                          gtirb::Module& M);
 
 public:
     void setDebugDir(std::string Path);
-    std::set<gtirb::Block*> computeNoReturn(gtirb::Module& module, unsigned int NThreads = 1);
+    std::set<gtirb::CodeBlock*> computeNoReturn(gtirb::Module& module, unsigned int NThreads = 1);
 };
 #endif // NO_RETURN_PASS_H_

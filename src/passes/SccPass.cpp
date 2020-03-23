@@ -27,6 +27,7 @@
 #include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/graph_utility.hpp>
 #include <boost/graph/strong_components.hpp>
+#include "../AuxDataSchema.h"
 
 class KeepIntraProcedural
 {
@@ -47,7 +48,7 @@ public:
 void computeSCCs(gtirb::Module& module)
 {
     SccMap Sccs;
-    auto& Cfg = module.getCFG();
+    auto& Cfg = module.getIR()->getCFG();
     KeepIntraProcedural Filter;
     boost::filtered_graph<gtirb::CFG, KeepIntraProcedural> CfgFiltered(Cfg, Filter);
 
@@ -62,5 +63,5 @@ void computeSCCs(gtirb::Module& module)
         Sccs[N->getUUID()] = Component;
         Index++;
     }
-    module.addAuxData("SCCs", std::move(Sccs));
+    module.addAuxData<gtirb::schema::Sccs>(std::move(Sccs));
 }

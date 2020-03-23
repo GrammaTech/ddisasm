@@ -36,18 +36,18 @@ souffle::SouffleProgram* X86Decoder::decode(gtirb::Module &module)
         SectionProperties &extraInfo = found->second;
         if(isExeSection(extraInfo))
         {
-            gtirb::ImageByteMap::const_range bytes =
-                gtirb::getBytes(module.getImageByteMap(), section);
-            decodeSection(bytes, bytes.size(), section.getAddress());
-            storeDataSection(bytes, bytes.size(), section.getAddress(), minMax.first,
-                             minMax.second);
+            for(const auto byteInterval : section.byte_intervals())
+            {
+                decodeSection(byteInterval);
+                storeDataSection(byteInterval, minAddr, maxAddr);
+            }
         }
         if(isNonZeroDataSection(extraInfo))
         {
-            gtirb::ImageByteMap::const_range bytes =
-                gtirb::getBytes(module.getImageByteMap(), section);
-            storeDataSection(bytes, bytes.size(), section.getAddress(), minMax.first,
-                             minMax.second);
+            for(const auto byteInterval : section.byte_intervals())
+            {
+                storeDataSection(byteInterval, minAddr, maxAddr);
+            }
         }
     }
     if(auto prog = souffle::ProgramFactory::newInstance("souffle_disasm_x64"))
@@ -62,7 +62,13 @@ souffle::SouffleProgram* X86Decoder::decode(gtirb::Module &module)
 void X86Decoder::decodeSection(gtirb::ImageByteMap::const_range &sectionBytes, uint64_t size,
                               gtirb::Addr ea)
 {
-    auto buf = reinterpret_cast<const uint8_t *>(&*sectionBytes.begin());
+    assert(byteInterval.getAddress() && "Failed to decode section without address.");
+    assert(byteInterval.getSize() == byteInterval.getInitializedSize()
+           && "Failed to decode section with partially initialized byte interval.");
+
+    gtirb::Addr ea = byteInterval.getAddress().value();
+    uint64_t size = byteInterval.getInitializedSize();
+    auto buf = byteInterval.rawBytes<const unsigned char>();
     while(size > 0)
     {
         cs_insn *insn;

@@ -15,7 +15,14 @@ RUN cd /yay-aur && makepkg --noconfirm -si
 RUN   useradd ddisasm && echo "ddisasm ALL=NOPASSWD: ALL" > /etc/sudoers.d/ddisasm
 RUN mkdir /home/ddisasm && chown ddisasm /home/ddisasm
 USER ddisasm
-RUN yay --noconfirm -Sy souffle capstone
+RUN yay --noconfirm -Sy souffle
+
+# Install capstone
+RUN cd /home/ddisasm \
+    && git clone -b next https://github.com/GrammaTech/capstone.git \
+    && cd capstone \
+    && CAPSTONE_ARCHS=x86 ./make.sh \
+    && CAPSTONE_ARCHS=x86 sudo ./make.sh install
 
 # Install LIEF
 RUN cd /home/ddisasm \
@@ -28,6 +35,18 @@ RUN cd /home/ddisasm \
     && sudo make install
 
 COPY --chown=ddisasm . /ddisasm
+
+# Install GTIRB
+RUN rm -rf /ddisasm/gtirb/build /ddisasm/gtirb/CMakeCache.txt /ddisasm/gtirb/CMakeFiles /ddisasm/gtirb/CMakeScripts
+RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DGTIRB_JAVA_API=OFF -DCMAKE_INSTALL_PREFIX=/usr && cd build && which sudo 2>&1 >/dev/null && sudo make install || make install
+
+# Install gtirb-pprinter
+RUN rm -rf /ddisasm/gtirb-pprinter/build /ddisasm/gtirb-pprinter/CMakeCache.txt /ddisasm/gtirb-pprinter/CMakeFiles /ddisasm/gtirb-pprinter/CMakeScripts
+RUN cd /ddisasm/gtirb-pprinter/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_INSTALL_PREFIX=/usr && cd build && which sudo 2>&1 >/dev/null && sudo make install || make install
+
+# Install ehp
+RUN rm -rf /ddisasm/libehp/build /ddisasm/libehp/CMakeCache.txt /ddisasm/libehp/CMakeFiles /ddisasm/libehp/CMakeScripts
+RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_INSTALL_PREFIX=/usr && cd build && which sudo 2>&1 >/dev/null && sudo make install || make install
 
 ENV TERM xterm
 ENV PATH=/ddisasm/build/bin:$PATH

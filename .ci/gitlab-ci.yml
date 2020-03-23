@@ -5,9 +5,9 @@ variables:
 stages:
   - check-format
   - build
-  - test-and-tag-ubuntu16
-  - test-and-tag-ubuntu18
-  - test-and-tag-arch
+  - test-and-tag
+  - test-installers
+  - deploy
   - cleanup
 
 # The two build templates below ultimately call the build script for the
@@ -20,7 +20,7 @@ stages:
     - git clone https://git.grammatech.com/rewriting/gtirb.git
     - git clone -b master https://git.grammatech.com/rewriting/gtirb-pprinter.git
     - git clone https://git.zephyr-software.com/opensrc/libehp
-    - docker build -f .ci/Dockerfile.${OS}-${COMPILER} -t ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} .
+    - docker build -f .ci/Dockerfile.${OS}-${COMPILER} -t ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} --build-arg CPACK_GENERATOR=${CPACK_GENERATOR} .
 
 .build-windows-template: &build-windows
   script:
@@ -63,6 +63,7 @@ build-ubuntu18-gcc:
   variables:
     OS: 'ubuntu18'
     COMPILER: 'gcc'
+    CPACK_GENERATOR: 'DEB'
   <<: *build
 
 build-arch-gcc:
@@ -110,47 +111,55 @@ build-windows-release:
   <<: *build-windows
 
 run-ubuntu16-gcc:
-  stage: test-and-tag-ubuntu16
+  stage: test-and-tag
   variables:
     OS: 'ubuntu16'
     COMPILER: 'gcc'
   <<: *test-and-tag
 
 run-ubuntu18-gcc:
-  stage: test-and-tag-ubuntu18
+  stage: test-and-tag
   variables:
     OS: 'ubuntu18'
     COMPILER: 'gcc'
   <<: *test-and-tag
 
 run-arch-gcc:
-  stage: test-and-tag-arch
+  stage: test-and-tag
   variables:
     OS: 'arch'
     COMPILER: 'gcc'
   <<: *test-and-tag
 
 run-ubuntu16-clang:
-  stage: test-and-tag-ubuntu16
+  stage: test-and-tag
   variables:
     OS: 'ubuntu16'
     COMPILER: 'clang'
   <<: *test-and-tag
 
 run-ubuntu18-clang:
-  stage: test-and-tag-ubuntu18
+  stage: test-and-tag
   variables:
     OS: 'ubuntu18'
     COMPILER: 'clang'
   <<: *test-and-tag
 
 run-arch-clang:
-  stage: test-and-tag-arch
+  stage: test-and-tag
   variables:
     OS: 'arch'
     COMPILER: 'clang'
   script:
   <<: *test-and-tag
+
+test-debian-installer:
+  stage: test-installers
+  variables:
+    OS: 'ubuntu18'
+    COMPILER: 'gcc'
+  script:
+    - docker build --rm -f .ci/Dockerfile.test-install --build-arg IMAGE=${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} .
 
 cleanup-ubuntu16-gcc:
   stage: cleanup
@@ -193,3 +202,21 @@ cleanup-arch-clang:
     OS: 'arch'
     COMPILER: 'clang'
   <<: *cleanup
+
+debian-installer:
+  stage: deploy
+  variables:
+    OS: 'ubuntu18'
+    COMPILER: 'gcc'
+  artifacts:
+    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
+    paths:
+      - ./DDISASM-*-Linux.deb
+  script:
+    - export CONTAINER_FILE=$(mktemp -d)/cidfile
+    - docker create --cidfile=${CONTAINER_FILE} ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}
+    - docker cp $(cat ${CONTAINER_FILE}):/ddisasm/build ./build-artifacts
+    - docker container rm -f $(cat ${CONTAINER_FILE})
+    - rm -rf $(dirname ${CONTAINER_FILE})
+    - mv ./build-artifacts/DDISASM-*-Linux.deb ./
+    - rm -rf ./build-artifacts

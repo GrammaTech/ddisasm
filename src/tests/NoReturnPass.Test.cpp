@@ -27,35 +27,41 @@ gtirb::EdgeLabel simpleJump()
                            gtirb::EdgeType::Branch);
 }
 
-TEST(Unit_NoRetunPass, remove_simple_fallthrough)
+TEST(Unit_NoReturnPass, remove_simple_fallthrough)
 {
     gtirb::Context Ctx;
-    auto* M = gtirb::Module::Create(Ctx);
-    gtirb::Block* B1 = emplaceBlock(*M, Ctx, gtirb::Addr(0), 1);
-    gtirb::Block* B2 = emplaceBlock(*M, Ctx, gtirb::Addr(1), 1);
+    gtirb::IR* IR = gtirb::IR::Create(Ctx);
+    gtirb::Module* M = IR->addModule(Ctx);
+    gtirb::Section* S = M->addSection(Ctx, "");
+    gtirb::ByteInterval* I = S->addByteInterval(Ctx, gtirb::Addr(0), 2);
+
+    gtirb::CodeBlock* B1 = I->addBlock<gtirb::CodeBlock>(Ctx, 0, 1);
+    gtirb::CodeBlock* B2 = I->addBlock<gtirb::CodeBlock>(Ctx, 1, 1);
 
     auto ExternalBlock = gtirb::ProxyBlock::Create(Ctx);
-    auto Symbol = gtirb::emplaceSymbol(*M, Ctx, "exit");
-    M->addCfgNode(ExternalBlock);
-    gtirb::setReferent(*M, *Symbol, ExternalBlock);
+    M->addProxyBlock(ExternalBlock);
+
+    auto Symbol = M->addSymbol(Ctx, "exit");
+    Symbol->setReferent(ExternalBlock);
 
     auto TopBlock = gtirb::ProxyBlock::Create(Ctx);
-    M->addCfgNode(TopBlock);
+    M->addProxyBlock(TopBlock);
 
-    gtirb::CFG& Cfg = M->getCFG();
+    gtirb::CFG& Cfg = M->getIR()->getCFG();
+
     Cfg[*addEdge(B1, B2, Cfg)] = simpleFallthrough();
     Cfg[*addEdge(B1, ExternalBlock, Cfg)] = simpleCall();
     Cfg[*addEdge(B2, TopBlock, Cfg)] = simpleReturn();
 
     computeSCCs(*M);
-    std::set<gtirb::Block*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
+    std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
 
     EXPECT_TRUE(CallNoReturn.count(B1));
     EXPECT_FALSE(CallNoReturn.count(B2));
     EXPECT_EQ(2, Cfg.m_edges.size());
 }
 
-TEST(Unit_NoRetunPass, one_path_returns)
+TEST(Unit_NoReturnPass, one_path_returns)
 {
     /*
     B1 -c> B2 ->B3 -c> Exit
@@ -65,23 +71,28 @@ TEST(Unit_NoRetunPass, one_path_returns)
     B6
     */
     gtirb::Context Ctx;
-    auto* M = gtirb::Module::Create(Ctx);
-    gtirb::Block* B1 = emplaceBlock(*M, Ctx, gtirb::Addr(1), 1);
-    gtirb::Block* B2 = emplaceBlock(*M, Ctx, gtirb::Addr(2), 1);
-    gtirb::Block* B3 = emplaceBlock(*M, Ctx, gtirb::Addr(3), 1);
-    gtirb::Block* B4 = emplaceBlock(*M, Ctx, gtirb::Addr(4), 1);
-    gtirb::Block* B5 = emplaceBlock(*M, Ctx, gtirb::Addr(5), 1);
-    gtirb::Block* B6 = emplaceBlock(*M, Ctx, gtirb::Addr(6), 1);
+    gtirb::IR* IR = gtirb::IR::Create(Ctx);
+    gtirb::Module* M = IR->addModule(Ctx);
+    gtirb::Section* S = M->addSection(Ctx, "");
+    gtirb::ByteInterval* I = S->addByteInterval(Ctx, gtirb::Addr(0), 7);
+
+    gtirb::CodeBlock* B1 = I->addBlock<gtirb::CodeBlock>(Ctx, 1, 1);
+    gtirb::CodeBlock* B2 = I->addBlock<gtirb::CodeBlock>(Ctx, 2, 1);
+    gtirb::CodeBlock* B3 = I->addBlock<gtirb::CodeBlock>(Ctx, 3, 1);
+    gtirb::CodeBlock* B4 = I->addBlock<gtirb::CodeBlock>(Ctx, 4, 1);
+    gtirb::CodeBlock* B5 = I->addBlock<gtirb::CodeBlock>(Ctx, 5, 1);
+    gtirb::CodeBlock* B6 = I->addBlock<gtirb::CodeBlock>(Ctx, 6, 1);
 
     auto ExitBlock = gtirb::ProxyBlock::Create(Ctx);
-    auto Symbol = gtirb::emplaceSymbol(*M, Ctx, "exit");
-    M->addCfgNode(ExitBlock);
-    gtirb::setReferent(*M, *Symbol, ExitBlock);
+    M->addProxyBlock(ExitBlock);
+
+    auto Symbol = M->addSymbol(Ctx, "exit");
+    Symbol->setReferent(ExitBlock);
 
     auto TopBlock = gtirb::ProxyBlock::Create(Ctx);
-    M->addCfgNode(TopBlock);
+    M->addProxyBlock(TopBlock);
 
-    gtirb::CFG& Cfg = M->getCFG();
+    gtirb::CFG& Cfg = M->getIR()->getCFG();
     Cfg[*addEdge(B1, B6, Cfg)] = simpleFallthrough();
     Cfg[*addEdge(B3, B4, Cfg)] = simpleFallthrough();
     Cfg[*addEdge(B2, B5, Cfg)] = simpleFallthrough();
@@ -97,14 +108,14 @@ TEST(Unit_NoRetunPass, one_path_returns)
 
     EXPECT_EQ(9, Cfg.m_edges.size());
     computeSCCs(*M);
-    std::set<gtirb::Block*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
+    std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
 
     EXPECT_TRUE(CallNoReturn.count(B3));
     EXPECT_FALSE(CallNoReturn.count(B1));
     EXPECT_EQ(8, Cfg.m_edges.size());
 }
 
-TEST(Unit_NoRetunPass, two_paths_no_return)
+TEST(Unit_NoReturnPass, two_paths_no_return)
 {
     /*
     B1 -c> B2 ->B3 -c> Exit
@@ -116,29 +127,34 @@ TEST(Unit_NoRetunPass, two_paths_no_return)
     B7
     */
     gtirb::Context Ctx;
-    auto* M = gtirb::Module::Create(Ctx);
-    gtirb::Block* B1 = emplaceBlock(*M, Ctx, gtirb::Addr(1), 1);
-    gtirb::Block* B2 = emplaceBlock(*M, Ctx, gtirb::Addr(2), 1);
-    gtirb::Block* B3 = emplaceBlock(*M, Ctx, gtirb::Addr(3), 1);
-    gtirb::Block* B4 = emplaceBlock(*M, Ctx, gtirb::Addr(4), 1);
-    gtirb::Block* B5 = emplaceBlock(*M, Ctx, gtirb::Addr(5), 1);
-    gtirb::Block* B6 = emplaceBlock(*M, Ctx, gtirb::Addr(6), 1);
-    gtirb::Block* B7 = emplaceBlock(*M, Ctx, gtirb::Addr(7), 1);
+    gtirb::IR* IR = gtirb::IR::Create(Ctx);
+    gtirb::Module* M = IR->addModule(Ctx);
+    gtirb::Section* S = M->addSection(Ctx, "");
+    gtirb::ByteInterval* I = S->addByteInterval(Ctx, gtirb::Addr(0), 8);
+
+    gtirb::CodeBlock* B1 = I->addBlock<gtirb::CodeBlock>(Ctx, 1, 1);
+    gtirb::CodeBlock* B2 = I->addBlock<gtirb::CodeBlock>(Ctx, 2, 1);
+    gtirb::CodeBlock* B3 = I->addBlock<gtirb::CodeBlock>(Ctx, 3, 1);
+    gtirb::CodeBlock* B4 = I->addBlock<gtirb::CodeBlock>(Ctx, 4, 1);
+    gtirb::CodeBlock* B5 = I->addBlock<gtirb::CodeBlock>(Ctx, 5, 1);
+    gtirb::CodeBlock* B6 = I->addBlock<gtirb::CodeBlock>(Ctx, 6, 1);
+    gtirb::CodeBlock* B7 = I->addBlock<gtirb::CodeBlock>(Ctx, 7, 1);
 
     auto ExitBlock = gtirb::ProxyBlock::Create(Ctx);
-    auto Symbol = gtirb::emplaceSymbol(*M, Ctx, "exit");
-    M->addCfgNode(ExitBlock);
-    gtirb::setReferent(*M, *Symbol, ExitBlock);
+    M->addProxyBlock(ExitBlock);
+
+    auto Symbol = M->addSymbol(Ctx, "exit");
+    Symbol->setReferent(ExitBlock);
 
     auto TopBlock = gtirb::ProxyBlock::Create(Ctx);
-    M->addCfgNode(TopBlock);
+    M->addProxyBlock(TopBlock);
 
-    gtirb::CFG& Cfg = M->getCFG();
+    gtirb::CFG& Cfg = M->getIR()->getCFG();
+
     Cfg[*addEdge(B1, B7, Cfg)] = simpleFallthrough();
     Cfg[*addEdge(B3, B4, Cfg)] = simpleFallthrough();
     Cfg[*addEdge(B2, B5, Cfg)] = simpleFallthrough();
     Cfg[*addEdge(B5, B6, Cfg)] = simpleFallthrough();
-
     Cfg[*addEdge(B2, B3, Cfg)] = simpleJump();
 
     Cfg[*addEdge(B1, B2, Cfg)] = simpleCall();
@@ -151,7 +167,7 @@ TEST(Unit_NoRetunPass, two_paths_no_return)
 
     EXPECT_EQ(11, Cfg.m_edges.size());
     computeSCCs(*M);
-    std::set<gtirb::Block*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
+    std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
 
     EXPECT_TRUE(CallNoReturn.count(B3));
     EXPECT_TRUE(CallNoReturn.count(B5));
@@ -159,7 +175,7 @@ TEST(Unit_NoRetunPass, two_paths_no_return)
     EXPECT_EQ(8, Cfg.m_edges.size());
 }
 
-TEST(Unit_NoRetunPass, loop_no_return)
+TEST(Unit_NoReturnPass, loop_no_return)
 {
     /*
     B1 -c> B2
@@ -172,23 +188,29 @@ TEST(Unit_NoRetunPass, loop_no_return)
     B6 -ret->Top
     */
     gtirb::Context Ctx;
-    auto* M = gtirb::Module::Create(Ctx);
-    gtirb::Block* B1 = emplaceBlock(*M, Ctx, gtirb::Addr(1), 1);
-    gtirb::Block* B2 = emplaceBlock(*M, Ctx, gtirb::Addr(2), 1);
-    gtirb::Block* B3 = emplaceBlock(*M, Ctx, gtirb::Addr(3), 1);
-    gtirb::Block* B4 = emplaceBlock(*M, Ctx, gtirb::Addr(4), 1);
-    gtirb::Block* B5 = emplaceBlock(*M, Ctx, gtirb::Addr(5), 1);
-    gtirb::Block* B6 = emplaceBlock(*M, Ctx, gtirb::Addr(6), 1);
+    gtirb::IR* IR = gtirb::IR::Create(Ctx);
+    gtirb::Module* M = IR->addModule(Ctx);
+    gtirb::Section* S = M->addSection(Ctx, "");
+    gtirb::ByteInterval* I = S->addByteInterval(Ctx, gtirb::Addr(0), 7);
+
+    gtirb::CodeBlock* B1 = I->addBlock<gtirb::CodeBlock>(Ctx, 1, 1);
+    gtirb::CodeBlock* B2 = I->addBlock<gtirb::CodeBlock>(Ctx, 2, 1);
+    gtirb::CodeBlock* B3 = I->addBlock<gtirb::CodeBlock>(Ctx, 3, 1);
+    gtirb::CodeBlock* B4 = I->addBlock<gtirb::CodeBlock>(Ctx, 4, 1);
+    gtirb::CodeBlock* B5 = I->addBlock<gtirb::CodeBlock>(Ctx, 5, 1);
+    gtirb::CodeBlock* B6 = I->addBlock<gtirb::CodeBlock>(Ctx, 6, 1);
 
     auto ExitBlock = gtirb::ProxyBlock::Create(Ctx);
-    auto Symbol = gtirb::emplaceSymbol(*M, Ctx, "exit");
-    M->addCfgNode(ExitBlock);
-    gtirb::setReferent(*M, *Symbol, ExitBlock);
+    M->addProxyBlock(ExitBlock);
+
+    auto Symbol = M->addSymbol(Ctx, "exit");
+    Symbol->setReferent(ExitBlock);
 
     auto TopBlock = gtirb::ProxyBlock::Create(Ctx);
-    M->addCfgNode(TopBlock);
+    M->addProxyBlock(TopBlock);
 
-    gtirb::CFG& Cfg = M->getCFG();
+    gtirb::CFG& Cfg = M->getIR()->getCFG();
+
     Cfg[*addEdge(B1, B6, Cfg)] = simpleFallthrough();
     Cfg[*addEdge(B2, B3, Cfg)] = simpleFallthrough();
     Cfg[*addEdge(B3, B4, Cfg)] = simpleFallthrough();
@@ -204,7 +226,7 @@ TEST(Unit_NoRetunPass, loop_no_return)
 
     EXPECT_EQ(9, Cfg.m_edges.size());
     computeSCCs(*M);
-    std::set<gtirb::Block*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
+    std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
 
     EXPECT_TRUE(CallNoReturn.count(B4));
     EXPECT_TRUE(CallNoReturn.count(B1));

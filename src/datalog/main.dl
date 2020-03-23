@@ -145,7 +145,7 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
         multiplier:number, offset:number, size_value:number)
 .input op_indirect
 
-//data from data sections
+// data from sections
 .decl data_byte(ea:address,value:number)
 .input data_byte
 
@@ -178,7 +178,7 @@ instruction_displacement_offset(EA,Index,DisplacementOffset):-
     instruction_get_op(EA,Index,Op),
     op_indirect(Op,_,_,_,_,_,_).
 
-.decl instruction_get_operation(ea:address,operation:symbol) 
+.decl instruction_get_operation(ea:address,operation:symbol)
 
 instruction_get_operation(EA,Operation):-
     instruction(EA,_,_,Operation,_,_,_,_).
@@ -512,7 +512,8 @@ data_segment(Begin,End):-
 .decl inferred_symbol_name(ea:address,name:symbol,scope:symbol)
 .output inferred_symbol_name
 
-inferred_symbol_name(EA,"main","Normal"):-
+inferred_symbol_name(EA,"main","GLOBAL"):-
+    binary_format("ELF"),
     main_function(EA).
 
 .decl no_return_call(EA:address)

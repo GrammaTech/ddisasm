@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "DatalogUtils.h"
+#include "AuxDataSchema.h"
 
 void writeFacts(souffle::SouffleProgram* prog, const std::string& directory)
 {
@@ -237,24 +238,31 @@ namespace souffle
 
 void GtirbToDatalog::populateBlocks(const gtirb::Module& M)
 {
-    if(M.blocks().empty())
+    if(M.code_blocks().empty())
         return;
+
     auto* BlocksRel = Prog->getRelation("block");
     auto* NextBlockRel = Prog->getRelation("next_block");
-    gtirb::Addr PrevBlockAddr = M.blocks().begin()->getAddress();
-    for(auto& Block : M.blocks())
+    std::optional<gtirb::Addr> PrevBlockAddr = M.code_blocks().begin()->getAddress();
+
+    for(auto& Block : M.code_blocks())
     {
+        uint64_t BlockSize = Block.getSize();
+        std::optional<gtirb::Addr> BlockAddr = Block.getAddress();
+
+        assert(BlockAddr && PrevBlockAddr && "Found code block without address.");
+
         souffle::tuple T(BlocksRel);
-        T << Block.getAddress() << Block.getSize();
+        T << *BlockAddr << BlockSize;
         BlocksRel->insert(T);
 
-        if(PrevBlockAddr < Block.getAddress())
+        if(*PrevBlockAddr < *BlockAddr)
         {
             souffle::tuple TupleNext(NextBlockRel);
-            TupleNext << PrevBlockAddr << Block.getAddress();
+            TupleNext << *PrevBlockAddr << *BlockAddr;
             NextBlockRel->insert(TupleNext);
         }
-        PrevBlockAddr = Block.getAddress();
+        PrevBlockAddr = BlockAddr;
     }
 }
 
@@ -268,13 +276,17 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
 
     std::vector<DlInstruction> Insns;
     DlOperandTable OpDict;
-    for(auto& Block : M.blocks())
+    for(auto& Block : M.code_blocks())
     {
+        assert(Block.getAddress() && "Found code block without address.");
+
         cs_insn* Insn;
-        gtirb::ImageByteMap::const_range Bytes = getBytes(M.getImageByteMap(), Block);
+        const gtirb::ByteInterval* Bytes = Block.getByteInterval();
+        uint64_t InitSize = Bytes->getInitializedSize();
+        assert(Bytes->getSize() == InitSize && "Found partially initialized code block.");
         size_t Count =
-            cs_disasm(CsHandle, reinterpret_cast<const uint8_t*>(&Bytes[0]), Bytes.size(),
-                      static_cast<uint64_t>(Block.getAddress()), InstructionLimit, &Insn);
+            cs_disasm(CsHandle, Bytes->rawBytes<uint8_t>(), InitSize,
+                      static_cast<uint64_t>(*Block.getAddress()), InstructionLimit, &Insn);
 
         // Exception-safe cleanup of instructions
         std::unique_ptr<cs_insn, std::function<void(cs_insn*)>> freeInsn(
@@ -298,18 +310,24 @@ void GtirbToDatalog::populateCfgEdges(const gtirb::Module& M)
         if(const gtirb::ProxyBlock* Proxy = Symbol.getReferent<gtirb::ProxyBlock>())
             InvSymbolMap[Proxy] = Symbol.getName();
     }
-    const gtirb::CFG& Cfg = M.getCFG();
+    const gtirb::CFG& Cfg = M.getIR()->getCFG();
     auto* EdgeRel = Prog->getRelation("cfg_edge");
     auto* TopEdgeRel = Prog->getRelation("cfg_edge_to_top");
     auto* SymbolEdgeRel = Prog->getRelation("cfg_edge_to_symbol");
     for(auto& Edge : Cfg.m_edges)
     {
-        if(const gtirb::Block* Src = dyn_cast<gtirb::Block>(Cfg[Edge.m_source]))
+        if(const gtirb::CodeBlock* Src = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_source]))
         {
-            if(const gtirb::Block* Dest = dyn_cast<gtirb::Block>(Cfg[Edge.m_target]))
+            std::optional<gtirb::Addr> SrcAddr = Src->getAddress();
+            assert(SrcAddr && "Found source block without address.");
+
+            if(const gtirb::CodeBlock* Dest = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_target]))
             {
+                std::optional<gtirb::Addr> DestAddr = Dest->getAddress();
+                assert(DestAddr && "Found destination block without address.");
+
                 souffle::tuple T(EdgeRel);
-                T << Src->getAddress() << Dest->getAddress();
+                T << *SrcAddr << *DestAddr;
                 populateEdgeProperties(T, Edge.get_property());
                 EdgeRel->insert(T);
             }
@@ -320,14 +338,14 @@ void GtirbToDatalog::populateCfgEdges(const gtirb::Module& M)
                 if(foundSymbol != InvSymbolMap.end())
                 {
                     souffle::tuple T(SymbolEdgeRel);
-                    T << Src->getAddress() << foundSymbol->second;
+                    T << *SrcAddr << foundSymbol->second;
                     populateEdgeProperties(T, Edge.get_property());
                     SymbolEdgeRel->insert(T);
                 }
                 else
                 {
                     souffle::tuple T(TopEdgeRel);
-                    T << Src->getAddress();
+                    T << *SrcAddr;
                     populateEdgeProperties(T, Edge.get_property());
                     TopEdgeRel->insert(T);
                 }
@@ -339,18 +357,19 @@ void GtirbToDatalog::populateCfgEdges(const gtirb::Module& M)
 void GtirbToDatalog::populateSccs(gtirb::Module& M)
 {
     auto* InSccRel = Prog->getRelation("in_scc");
-    auto* SccTable = M.getAuxData<std::map<gtirb::UUID, int64_t>>("SCCs");
+    auto* SccTable = M.getAuxData<gtirb::schema::Sccs>();
     assert(SccTable && "SCCs AuxData table missing from GTIRB module");
     std::vector<int> SccBlockIndex;
-    for(auto& Block : M.blocks())
+    for(auto& Block : M.code_blocks())
     {
+        assert(Block.getAddress() && "Found code block without address.");
         auto Found = SccTable->find(Block.getUUID());
         assert(Found != SccTable->end() && "Block missing from SCCs table");
         uint64_t SccIndex = Found->second;
         if(SccBlockIndex.size() <= SccIndex)
             SccBlockIndex.resize(SccIndex + 1);
         souffle::tuple T(InSccRel);
-        T << SccIndex << SccBlockIndex[SccIndex]++ << Block.getAddress();
+        T << SccIndex << SccBlockIndex[SccIndex]++ << *Block.getAddress();
         InSccRel->insert(T);
     }
 }
@@ -359,16 +378,18 @@ void GtirbToDatalog::populateSymbolicExpressions(const gtirb::Module& M)
 {
     auto* SymExprRel = Prog->getRelation("symbolic_expression");
     auto* SymMinusSymRel = Prog->getRelation("symbol_minus_symbol");
-    for(auto& SymExpr : M.symbolic_exprs())
+    for(const auto& SymExprElem : M.symbolic_expressions())
     {
-        for(auto& Addr : M.getAddrsForSymbolicExpression(SymExpr))
+        const gtirb::ByteInterval* Bytes = SymExprElem.getByteInterval();
+        const gtirb::SymbolicExpression& SymExpr = SymExprElem.getSymbolicExpression();
+        if(std::optional<gtirb::Addr> Addr = Bytes->getAddress(); Addr)
         {
             if(auto* AddrConst = std::get_if<gtirb::SymAddrConst>(&SymExpr))
             {
                 if(AddrConst->Sym->getAddress())
                 {
                     souffle::tuple T(SymExprRel);
-                    T << Addr << *AddrConst->Sym->getAddress() << AddrConst->Offset;
+                    T << *Addr << *(AddrConst->Sym->getAddress()) << AddrConst->Offset;
                     SymExprRel->insert(T);
                 }
             }
@@ -377,7 +398,7 @@ void GtirbToDatalog::populateSymbolicExpressions(const gtirb::Module& M)
                 if(AddrAddr->Sym1->getAddress() && AddrAddr->Sym2->getAddress())
                 {
                     souffle::tuple T(SymMinusSymRel);
-                    T << Addr << *AddrAddr->Sym1->getAddress() << *AddrAddr->Sym2->getAddress()
+                    T << *Addr << *(AddrAddr->Sym1->getAddress()) << *(AddrAddr->Sym2->getAddress())
                       << AddrAddr->Offset;
                     SymMinusSymRel->insert(T);
                 }
@@ -390,22 +411,24 @@ void GtirbToDatalog::populateFdeEntries(const gtirb::Context& Ctx, gtirb::Module
 {
     std::set<gtirb::Addr> FdeStart;
     std::set<gtirb::Addr> FdeEnd;
-    auto* CfiDirectives = M.getAuxData<std::map<
-        gtirb::Offset, std::vector<std::tuple<std::string, std::vector<int64_t>, gtirb::UUID>>>>(
-        "cfiDirectives");
+    auto* CfiDirectives = M.getAuxData<gtirb::schema::CfiDirectives>();
     if(!CfiDirectives)
         return;
     for(auto& Pair : *CfiDirectives)
     {
         auto* Block =
-            dyn_cast<const gtirb::Block>(gtirb::Node::getByUUID(Ctx, Pair.first.ElementId));
-        assert(Block && "Found CFI directive that does no belong to a block");
+            dyn_cast<const gtirb::CodeBlock>(gtirb::Node::getByUUID(Ctx, Pair.first.ElementId));
+        assert(Block && "Found CFI directive that does not belong to a block");
+
+        std::optional<gtirb::Addr> BlockAddr = Block->getAddress();
+        assert(BlockAddr && "Found code block without address.");
+
         for(auto& Directive : Pair.second)
         {
             if(std::get<0>(Directive) == ".cfi_startproc")
-                FdeStart.insert(Block->getAddress() + Pair.first.Displacement);
+                FdeStart.insert(*BlockAddr + Pair.first.Displacement);
             if(std::get<0>(Directive) == ".cfi_endproc")
-                FdeEnd.insert(Block->getAddress() + Pair.first.Displacement);
+                FdeEnd.insert(*BlockAddr + Pair.first.Displacement);
         }
     }
     assert(FdeStart.size() == FdeEnd.size() && "Malformed CFI directives");
@@ -422,8 +445,7 @@ void GtirbToDatalog::populateFdeEntries(const gtirb::Context& Ctx, gtirb::Module
 
 void GtirbToDatalog::populateFunctionEntries(const gtirb::Context& Ctx, gtirb::Module& M)
 {
-    auto* FunctionEntries =
-        M.getAuxData<std::map<gtirb::UUID, std::set<gtirb::UUID>>>("functionEntries");
+    auto* FunctionEntries = M.getAuxData<gtirb::schema::FunctionEntries>();
     if(!FunctionEntries)
         return;
     auto* FunctionEntryRel = Prog->getRelation("function_entry");
@@ -431,10 +453,11 @@ void GtirbToDatalog::populateFunctionEntries(const gtirb::Context& Ctx, gtirb::M
     {
         for(auto& UUID : Pair.second)
         {
-            if(auto* Block = dyn_cast<gtirb::Block>(gtirb::Node::getByUUID(Ctx, UUID)))
+            if(auto* Block = dyn_cast<gtirb::CodeBlock>(gtirb::Node::getByUUID(Ctx, UUID)))
             {
+                assert(Block->getAddress() && "Found code block without address.");
                 souffle::tuple T(FunctionEntryRel);
-                T << Block->getAddress();
+                T << *Block->getAddress();
                 FunctionEntryRel->insert(T);
             }
         }
@@ -443,7 +466,7 @@ void GtirbToDatalog::populateFunctionEntries(const gtirb::Context& Ctx, gtirb::M
 
 void GtirbToDatalog::populatePadding(gtirb::Module& M)
 {
-    auto* Padding = M.getAuxData<std::map<gtirb::Addr, uint64_t>>("padding");
+    auto* Padding = M.getAuxData<gtirb::schema::Padding>();
     if(!Padding)
         return;
     auto* PaddingRel = Prog->getRelation("padding");

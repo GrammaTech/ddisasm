@@ -29,6 +29,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include "AuxDataSchema.h"
 #include "DatalogUtils.h"
 #include "X86Decoder.h"
 #include "AArch64Decoder.h"
@@ -37,6 +38,14 @@
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
+
+#ifdef USE_STD_FILESYSTEM_LIB
+#include <filesystem>
+namespace fs = std::filesystem;
+#else
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#endif // USE_STD_FILESYSTEM_LIB
 
 namespace po = boost::program_options;
 
@@ -65,9 +74,32 @@ std::optional<DlDecoder*> make_decoder(LIEF::ARCHITECTURES arch) {
     }
 }
 
+void registerAuxDataTypes()
+{
+    using namespace gtirb::schema;
+    gtirb::AuxDataContainer::registerAuxDataType<Comments>();
+    gtirb::AuxDataContainer::registerAuxDataType<FunctionEntries>();
+    gtirb::AuxDataContainer::registerAuxDataType<FunctionBlocks>();
+    gtirb::AuxDataContainer::registerAuxDataType<FunctionNames>();
+    gtirb::AuxDataContainer::registerAuxDataType<Padding>();
+    gtirb::AuxDataContainer::registerAuxDataType<SymbolForwarding>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolInfoAD>();
+    gtirb::AuxDataContainer::registerAuxDataType<BinaryType>();
+    gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
+    gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
+    gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
+    gtirb::AuxDataContainer::registerAuxDataType<PeSectionProperties>();
+    gtirb::AuxDataContainer::registerAuxDataType<CfiDirectives>();
+    gtirb::AuxDataContainer::registerAuxDataType<Libraries>();
+    gtirb::AuxDataContainer::registerAuxDataType<LibraryPaths>();
+    gtirb::AuxDataContainer::registerAuxDataType<DataDirectories>();
+}
 
 int main(int argc, char **argv)
 {
+    registerAuxDataTypes();
+
     po::options_description desc("Allowed options");
     desc.add_options()                                                  //
         ("help", "produce help message")                                //
@@ -119,6 +151,12 @@ int main(int argc, char **argv)
     }
 
     std::string filename = vm["input-file"].as<std::string>();
+    if(!fs::exists(filename))
+    {
+        std::cerr << "Error: input binary " << filename << " does not exist" << std::endl;
+        return 1;
+    }
+
     std::cout << "Building the initial gtirb representation" << std::endl;
     gtirb::Context context;
     gtirb::IR *ir = nullptr;

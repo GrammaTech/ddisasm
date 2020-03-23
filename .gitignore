@@ -18,9 +18,16 @@ standalone_compilation.tar.bz2
 examples/**/dl_files
 examples/**/ex.old
 examples/**/ex.s
+examples/**/ex.stripped
 examples/**/ex.unstripped
 examples/**/out.txt
+examples/**/ex
+examples/**/*.gtirb
+examples/**/*.so
 
-gtirb/
+/gtirb
+/gtirb-pprinter
+/libehp
 wiki/
 build/
+__pycache__/

@@ -42,9 +42,8 @@ RUN curl -L https://dl.bintray.com/boostorg/release/${BOOST_VERSION}/source/boos
 
 # Install capstone
 RUN cd /usr/local/src \
-    && wget https://github.com/aquynh/capstone/archive/4.0.1.tar.gz \
-    && tar xf 4.0.1.tar.gz \
-    && cd capstone-4.0.1 \
+    && git clone -b next https://github.com/GrammaTech/capstone.git \
+    && cd capstone \
     && CAPSTONE_ARCHS=x86 ./make.sh \
     && CAPSTONE_ARCHS=x86 ./make.sh install
 
@@ -60,8 +59,23 @@ RUN cd /usr/local/src \
 
 COPY . /ddisasm
 
+# Install GTIRB
+RUN rm -rf /ddisasm/gtirb/build /ddisasm/gtirb/CMakeCache.txt /ddisasm/gtirb/CMakeFiles /ddisasm/gtirb/CMakeScripts
+RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DGTIRB_JAVA_API=OFF && cd build && which sudo 2>&1 >/dev/null && sudo make install || make install
+
+# Install gtirb-pprinter
+RUN rm -rf /ddisasm/gtirb-pprinter/build /ddisasm/gtirb-pprinter/CMakeCache.txt /ddisasm/gtirb-pprinter/CMakeFiles /ddisasm/gtirb-pprinter/CMakeScripts
+RUN cd /ddisasm/gtirb-pprinter/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build && make && make install
+
+# Install ehp
+RUN rm -rf /ddisasm/libehp/build /ddisasm/libehp/CMakeCache.txt /ddisasm/libehp/CMakeFiles /ddisasm/libehp/CMakeScripts
+RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build &&  make && make install
+
 ENV TERM xterm
 ENV PATH=/ddisasm/build/bin:$PATH
 
 RUN /ddisasm/.ci/build-linux.sh ${CXX_COMPILER}
+ARG CPACK_GENERATOR=""
+RUN if [ ! -z "${CPACK_GENERATOR}" ] ; then cd /ddisasm/build && cpack -G "${CPACK_GENERATOR}"; fi
+
 WORKDIR /ddisasm/
