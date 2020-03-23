@@ -287,7 +287,10 @@ std::vector<InitialAuxData::ImportEntry> LIEFBinaryReader::get_import_entries()
             for(auto& importEntry : import.entries())
             {
                 int16_t ordinal = importEntry.is_ordinal() ? importEntry.ordinal() : -1;
-                std::string functionName = importEntry.is_ordinal() ? "" : importEntry.name();
+                std::string functionName =
+                    importEntry.is_ordinal()
+                        ? import.name() + '@' + std::to_string(importEntry.ordinal())
+                        : importEntry.name();
                 importEntries.push_back({get_base_address() + importEntry.iat_address(), ordinal,
                                          functionName, import.name()});
             }
