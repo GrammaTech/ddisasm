@@ -207,7 +207,7 @@ void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
         }
         else
         {
-            instructions.push_back(GtirbToDatalog::transformInstruction(csHandle, op_dict, *insn));
+            instructions.push_back(GtirbToDatalog::transformInstruction(getArch(), csHandle, op_dict, *insn));
             cs_free(insn, count);
         }
         ++ea;

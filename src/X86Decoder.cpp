@@ -4,6 +4,8 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+
+#include "AuxDataSchema.h"
 #include "BinaryReader.h"
 #include "ExceptionDecoder.h"
 #include "GtirbZeroBuilder.h"
@@ -22,9 +24,13 @@ X86Decoder::~X86Decoder()
 
 souffle::SouffleProgram* X86Decoder::decode(gtirb::Module &module)
 {
-    auto minMax = module.getImageByteMap().getAddrMinMax();
-    auto *extraInfoTable =
-        module.getAuxData<std::map<gtirb::UUID, SectionProperties>>("elfSectionProperties");
+    assert(module.getSize() && "Module has non-calculable size.");
+    gtirb::Addr minAddr = *module.getAddress();
+
+    assert(module.getAddress() && "Module has non-addressable section data.");
+    gtirb::Addr maxAddr = *module.getAddress() + *module.getSize();
+
+    auto *extraInfoTable = module.getAuxData<gtirb::schema::ElfSectionProperties>();
     if(!extraInfoTable)
         throw std::logic_error("missing elfSectionProperties AuxData table");
     for(auto &section : module.sections())
@@ -59,8 +65,7 @@ souffle::SouffleProgram* X86Decoder::decode(gtirb::Module &module)
 }
 
 
-void X86Decoder::decodeSection(gtirb::ImageByteMap::const_range &sectionBytes, uint64_t size,
-                              gtirb::Addr ea)
+void X86Decoder::decodeSection(const gtirb::ByteInterval& byteInterval)
 {
     assert(byteInterval.getAddress() && "Failed to decode section without address.");
     assert(byteInterval.getSize() == byteInterval.getInitializedSize()

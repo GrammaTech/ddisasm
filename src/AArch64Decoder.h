@@ -33,8 +33,7 @@ public:
     AArch64Decoder();
     ~AArch64Decoder();
     souffle::SouffleProgram* decode(gtirb::Module& module);
-    void decodeSection(gtirb::ImageByteMap::const_range& sectionBytes, uint64_t size,
-                       gtirb::Addr ea);
+    void decodeSection(const gtirb::ByteInterval& byteInterval);
     cs_arch getArch() const override {
         return CS_ARCH_ARM64;
     }

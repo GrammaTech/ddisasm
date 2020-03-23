@@ -3,10 +3,12 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+
+#include "AArch64Decoder.h"
+#include "AuxDataSchema.h"
 #include "BinaryReader.h"
 #include "ExceptionDecoder.h"
 #include "GtirbZeroBuilder.h"
-#include "AArch64Decoder.h"
 
 
 AArch64Decoder::AArch64Decoder()
@@ -67,8 +69,7 @@ souffle::SouffleProgram *AArch64Decoder::decode(gtirb::Module &module)
     return nullptr;
 }
 
-void AArch64Decoder::decodeSection(gtirb::ImageByteMap::const_range &sectionBytes, uint64_t size,
-                              gtirb::Addr ea)
+void AArch64Decoder::decodeSection(const gtirb::ByteInterval& byteInterval)
 {
     assert(byteInterval.getAddress() && "Failed to decode section without address.");
     assert(byteInterval.getSize() == byteInterval.getInitializedSize()

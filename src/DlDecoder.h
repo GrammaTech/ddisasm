@@ -47,9 +47,9 @@ protected:
     std::vector<gtirb::Addr> invalids;
     std::vector<DlData<gtirb::Addr>> data_addresses;
     std::vector<DlData<unsigned char>> data_bytes;
-    void decodeSection(const gtirb::ByteInterval& byteInterval);
-    void loadInputs(souffle::SouffleProgram* prog, gtirb::Module& module);
-    void storeDataSection(const gtirb::ByteInterval& byteInterval, gtirb::Addr min_address,
+    virtual void decodeSection(const gtirb::ByteInterval& byteInterval) = 0;
+    virtual void loadInputs(souffle::SouffleProgram* prog, gtirb::Module& module);
+    virtual void storeDataSection(const gtirb::ByteInterval& byteInterval, gtirb::Addr min_address,
                           gtirb::Addr max_address);
 
 public:
