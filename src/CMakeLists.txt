@@ -57,7 +57,7 @@ add_custom_command(OUTPUT ${GENERATED_CPP_ARM64}
     # does not depend on build location.
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
     COMMAND ${SOUFFLE} ${SOUFFLE_DISASM_MAIN} -g souffle_disasm_aarch64.cpp -jauto -MAARCH64=
-    DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_ARM64_SOURCES})
+    DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_AARCH64_SOURCES})
 
 set(GENERATED_CPP_X64 "${CMAKE_BINARY_DIR}/src/souffle_disasm_x64.cpp")
   add_custom_command(OUTPUT ${GENERATED_CPP_X64}
