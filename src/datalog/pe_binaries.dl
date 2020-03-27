@@ -244,9 +244,8 @@ dos_header_symbolic_operand(EA,Dest):-
 // lea R9,QWORD PTR [$L_180015e50]  ; base address
 // add R8,R9
 // call R8
-data_object_point(EA,Size,"symbol-symbol",5,"special case"), // XXX
-symbol_minus_symbol_candidate(EA,Size,Base,Base+Offset,"first"),
-relative_offset_table(EA,Size/8,EA,Base+Offset):-
+jump_table_start(EA_call,Size/8,EA,Base,"ADD"),
+relative_offset_table(EA,Size/8,Base,Base+Offset):-
     // CALL register
     reg_call(EA_call,Reg_call),
 
@@ -271,7 +270,22 @@ relative_offset_table(EA,Size/8,EA,Base+Offset):-
     def_used(EA_table,Reg_index,EA_index,_),
     instruction_get_operation(EA_table,"LEA"),
     pc_relative_operand(EA_table,_,EA),
-    data_word(EA,Size/8,Offset).
+    data_word(EA,Size/8,Offset),
+    code(Base+Offset).
+
+symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first"):-
+    relative_offset_table(_,Size,Reference,_),
+    symbol_minus_symbol_candidate(EA,Size,Reference,_,"first"),
+    !jump_table_start(_,_,EA+Size,_,_),
+    (
+        Size>1,data_word(EA+Size,Size,Diff);
+        Size=1,data_byte(EA+Size,Diff)
+    ),
+    Symbol = Reference + Diff,
+    code(Symbol).
+    // TODO: These would be nice, can we use them?
+    // preferred_data_access(EA+Size,Label),
+    // data_access_pattern(Label,Size,Size,_).
 
 // the call to main is right after the call to "__p___argc"
 main_function(EA):-
