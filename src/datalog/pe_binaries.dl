@@ -236,12 +236,52 @@ dos_header_symbolic_operand(EA,Dest):-
     Dest > ImageBase,
     Dest < ImageBase + 64.
 
+// // Detect potential label-relative offset table before data analyses.
+// // lea R8,QWORD PTR [$L_180016d58]  ; load offset-table
+// // mov R8,QWORD PTR [R8+RDX*8-16]   ; index offset-table
+// // lea R9,QWORD PTR [$L_180015e50]  ; load base address
+// relative_address(TableStart,Size/8,TableReference,Dest),
+// relative_address_start(TableStart,Size/8,TableReference,Dest):-
+//   // load offset-table
+//   take_address(EA_table,TableStart),
+//   // index offset-table
+//   next(EA_table,EA_index),
+//   instruction_get_operation(EA_index,"MOV"),
+//   instruction_get_src_op(EA,_,Op),
+//   op_indirect(Op,_,_,_,Mult,_,Size), Mult * 8 = Size,
+//   // load base address
+//   next(EA_index,EA_base),
+//   take_address(EA_base,TableReference),
+//   possible_ea(TableReference),
+//   // add and call register
+//   next(EA_base,EA_add),
+//   instruction_get_operation(EA_add,"ADD"),
+//   next(EA_add,EA_call),
+//   reg_call(EA_call,_),
+//   data_word(TableStart,Size/8,Diff),
+//   Dest = TableReference + Diff,
+//   possible_ea(Dest).
+
+block_points(Dest,0,-6,"possible label-relative-jump-table start"):-
+    take_address(EA,Dest),
+    instruction_get_dest_op(EA,_,Op_table),
+    op_regdirect(Op_table,Reg),
+
+    next(EA,EA_index),
+    instruction_get_src_op(EA_index,_,Op_index),
+    op_indirect_contains_reg(Op_index,Reg),
+
+    code_in_block_candidate(EA,Block),
+    code_in_block_candidate(EA_call,Block),
+    reg_call(EA_call,Reg).
+
 .decl relative_offset_table(EA:address,Size:number,Base:address,Dest:address)
 .output relative_offset_table
 
+// Find the jump table precisely after we have th results of the analyses.
 // lea R8,QWORD PTR [$L_180016d58]  ; load offset-table
 // mov R8,QWORD PTR [R8+RDX*8-16]   ; index offset-table
-// lea R9,QWORD PTR [$L_180015e50]  ; base address
+// lea R9,QWORD PTR [$L_180015e50]  ; load base address
 // add R8,R9
 // call R8
 jump_table_start(EA_call,Size/8,EA,Base,"ADD"),
