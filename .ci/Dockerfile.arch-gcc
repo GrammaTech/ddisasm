@@ -5,7 +5,7 @@ ARG CXX_COMPILER=g++
 
 RUN pacman --noconfirm -Syu archlinux-keyring
 RUN pacman -Syu --noconfirm autoconf automake base-devel boost clang cmake \
-        doxygen fakeroot gcc git libtool make mcpp pkg-config protobuf python3 python-pip sudo wget
+        doxygen fakeroot gcc git libtool make mcpp pkg-config protobuf python3 python-pip sudo unzip wget
 
 RUN pacman --noconfirm -Syu archlinux-keyring
 RUN sed -i "s/^\(OPT_LONG=(\)/\1'asroot' /;s/EUID == 0/1 == 0/" /usr/bin/makepkg
@@ -39,12 +39,12 @@ COPY --chown=ddisasm . /ddisasm
 # In arch we do not install things in /usr/local (see https://wiki.archlinux.org/index.php/Arch_package_guidelines#Package_Etiquette).
 
 # Install GTIRB
-RUN rm -rf /ddisasm/gtirb/build /ddisasm/gtirb/CMakeCache.txt /ddisasm/gtirb/CMakeFiles /ddisasm/gtirb/CMakeScripts
-RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DGTIRB_JAVA_API=OFF -DCMAKE_INSTALL_PREFIX=/usr \
-    && cd build \
-    && which sudo 2>&1 >/dev/null \
-    && sudo make install || make install \
-    && sudo make install-python || make install-python
+WORKDIR /gt/
+RUN sudo chown ddisasm .
+RUN GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" /ddisasm/CMakeLists.txt || echo "master") | sed 's/check_gtirb_branch(//') && \
+    curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=tar-arch --output "gtirb-artifacts.zip"
+RUN unzip gtirb-artifacts.zip && tar xzf GTIRB*.tar.gz
+RUN sudo cp -r $(find . -type d -name GTIRB-*-Linux)/* /usr/
 
 # Install gtirb-pprinter
 RUN rm -rf /ddisasm/gtirb-pprinter/build /ddisasm/gtirb-pprinter/CMakeCache.txt /ddisasm/gtirb-pprinter/CMakeFiles /ddisasm/gtirb-pprinter/CMakeScripts
