@@ -19,7 +19,7 @@ ENV LD_LIBRARY_PATH /usr/local/lib:$LD_LIBRARY_PATH
 
 ARG CMAKE_VERSION=3.10
 ARG BOOST_VERSION=1.67
-ARG PROTOBUF_VERSION=3.7.0
+ARG PROTOBUF_VERSION=3.1.0-0ubuntu1~maarten0
 ARG CXX_COMPILER=clang++-8
 
 # Use bash for more convenient variable substitution syntax
@@ -60,21 +60,13 @@ RUN curl -SL https://cmake.org/files/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.0-Linu
 
 RUN ldconfig
 
-# Install Boost
+# Install boost and protobuf
 RUN add-apt-repository ppa:mhier/libboost-latest && \
+    add-apt-repository ppa:maarten-fonville/protobuf && \
     apt-get -y update && \
-    apt-get -y install libboost${BOOST_VERSION}-dev
+    apt-get -y install libboost${BOOST_VERSION}-dev libprotobuf-dev=$PROTOBUF_VERSION \
+        protobuf-compiler=$PROTOBUF_VERSION
 
-# Install protobuf
-RUN cd /usr/local/src \
-    && wget https://github.com/google/protobuf/releases/download/v${PROTOBUF_VERSION}/protobuf-cpp-${PROTOBUF_VERSION}.tar.gz \
-    && tar xf protobuf-cpp-${PROTOBUF_VERSION}.tar.gz \
-    && cd protobuf-${PROTOBUF_VERSION} \
-    && ./configure \
-    && make \
-    && make install \
-    && cd .. \
-    && rm -rf protobuf-${PROTOBUF_VERSION} protobuf-cpp-${PROTOBUF_VERSION}.tar.gz
 RUN ldconfig
 
 # Install capstone
