@@ -87,14 +87,14 @@ endif()
 # gtirb
 # ---------------------------------------------------------------------------
 
-find_package(gtirb REQUIRED)
+find_package(gtirb 1.2.0 REQUIRED)
 check_gtirb_branch(bfairservice/debian-dependencies)
 
 # ---------------------------------------------------------------------------
 # pretty-printer
 # ---------------------------------------------------------------------------
 
-find_package(gtirb_pprinter REQUIRED)
+find_package(gtirb_pprinter 1.2.0 REQUIRED)
 check_gtirb_pprinter_branch(bfairservice/debian-dependencies)
 
 # ---------------------------------------------------------------------------
