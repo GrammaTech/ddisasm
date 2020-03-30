@@ -163,7 +163,7 @@ list(APPEND CMAKE_MODULE_PATH ${LIEF_ROOT}/share/LIEF/cmake)
 include(FindLIEF)
 
 # Find LIEF
-find_package(LIEF REQUIRED COMPONENTS STATIC)
+find_package(LIEF 0.10.0 REQUIRED COMPONENTS STATIC)
 
 # ---------------------------------------------------------------------------
 # Google Test Application
