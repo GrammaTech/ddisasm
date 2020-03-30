@@ -56,7 +56,7 @@ RUN cd /usr/local/src \
 COPY . /ddisasm
 
 # Install GTIRB
-RUN GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt || echo "master") | sed 's/check_gtirb_branch(//') && \
+RUN GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" /ddisasm/CMakeLists.txt || echo "master") | sed 's/check_gtirb_branch(//') && \
     curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-ubuntu18 --output "gtirb-artifacts.zip"
 RUN unzip -o gtirb-artifacts.zip && dpkg -i GTIRB*.deb
 
