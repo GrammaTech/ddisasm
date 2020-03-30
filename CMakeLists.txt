@@ -86,15 +86,15 @@ endif()
 # ---------------------------------------------------------------------------
 # gtirb
 # ---------------------------------------------------------------------------
-
-find_package(gtirb 1.2.0 REQUIRED)
+set(GTIRB_MINIMUM_VERSION 1.2.0)
+find_package(gtirb ${GTIRB_MINIMUM_VERSION} REQUIRED)
 check_gtirb_branch(bfairservice/debian-dependencies)
 
 # ---------------------------------------------------------------------------
 # pretty-printer
 # ---------------------------------------------------------------------------
-
-find_package(gtirb_pprinter 1.2.0 REQUIRED)
+set(GTIRB_PPRINTER_MINIMUM_VERSION 1.2.0)
+find_package(gtirb_pprinter ${GTIRB_PPRINTER_MINIMUM_VERSION} REQUIRED)
 check_gtirb_pprinter_branch(bfairservice/debian-dependencies)
 
 # ---------------------------------------------------------------------------
@@ -240,7 +240,7 @@ set(CPACK_PACKAGE_CONTACT gtirb@grammatech.com)
 set(CPACK_PACKAGE_DESCRIPTION_FILE ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
 set(CPACK_PACKAGE_RESOURCE_FILE_LICENSE ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt)
 
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "gtirb (>=0.3.0), gtirb_pprinter (>=0.1.1), ehp (>=0.1.1), libboost-dev (>=1.67), libprotobuf-dev (>=3.0.0), libcapstone-dev (>=4.0.1)")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "gtirb (>=${GTIRB_MINIMUM_VERSION}), gtirb_pprinter (>=${GTIRB_PPRINTER_MINIMUM_VERSION}), ehp (>=0.1.1), libboost-dev (>=1.67) | libboost1.67-dev, libcapstone-dev (>=4.0.1)")
 
 set(CPACK_DEBIAN_PACKAGE_SECTION devel)
 
