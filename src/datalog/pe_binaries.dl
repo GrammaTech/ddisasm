@@ -236,19 +236,15 @@ dos_header_symbolic_operand(EA,Dest):-
     Dest > ImageBase,
     Dest < ImageBase + 64.
 
-// block_points(Dest,0,-9,"possible label-relative-jump-table start"):-
-//     take_address(EA,Dest),
-//     instruction_get_dest_op(EA,_,Op_table),
-//     op_regdirect(Op_table,Reg),
-//
-//     next(EA,EA_index),
-//     instruction_get_src_op(EA_index,_,Op_index),
-//     op_indirect_contains_reg(Op_index,Reg),
-//
-//     code_in_block_candidate(EA,Block),
-//     code_in_block_candidate(EA_call,Block),
-//     reg_call(EA_call,Reg).
+.decl relative_offset_table(EA:address,Size:number,Base:address,Dest:address)
+.output relative_offset_table
 
+// lea R8,QWORD PTR [$L_180016d58]  ; load offset-table
+// mov R8,QWORD PTR [R8+RDX*8-16]   ; index offset-table
+// lea R9,QWORD PTR [$L_180015e50]  ; load base address
+// add R8,R9
+// call R8
+// Detect potential label-relative offset table before data analyses.
 relative_address(Table,8,Ref,Dest),
 relative_address_start(Table,8,Ref,Dest):-
     // loads table address
@@ -271,15 +267,7 @@ relative_address(EA+Size,Size,Ref,Dest):-
     possible_ea(Dest),
     !relative_address_start(EA+Size,_,_,_).
 
-.decl relative_offset_table(EA:address,Size:number,Base:address,Dest:address)
-.output relative_offset_table
-
-// Find the jump table precisely after we have th results of the analyses.
-// lea R8,QWORD PTR [$L_180016d58]  ; load offset-table
-// mov R8,QWORD PTR [R8+RDX*8-16]   ; index offset-table
-// lea R9,QWORD PTR [$L_180015e50]  ; load base address
-// add R8,R9
-// call R8
+// Find the jump table precisely after we have the results of the analyses.
 jump_table_start(EA_call,Size/8,EA,Base,"ADD"),
 relative_offset_table(EA,Size/8,Base,Base+Offset):-
     // CALL register
