@@ -70,11 +70,8 @@ RUN add-apt-repository ppa:mhier/libboost-latest && \
 RUN ldconfig
 
 # Install capstone
-RUN cd /usr/local/src \
-    && git clone -b next https://github.com/GrammaTech/capstone.git \
-    && cd capstone \
-    && CAPSTONE_ARCHS=x86 ./make.sh \
-    && CAPSTONE_ARCHS=x86 ./make.sh install
+COPY libcapstone-dev_4.0.1-1_amd64.deb ./
+RUN dpkg -i libcapstone-dev_4.0.1-1_amd64.deb
 
 # Install LIEF
 RUN cd /usr/local/src \

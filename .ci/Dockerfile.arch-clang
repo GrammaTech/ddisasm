@@ -4,7 +4,7 @@ ARG CMAKE_VERSION=3.9
 ARG CXX_COMPILER=clang++
 
 RUN pacman --noconfirm -Syu archlinux-keyring
-RUN pacman -Syu --noconfirm autoconf automake base-devel boost clang cmake \
+RUN pacman -Syu --noconfirm autoconf automake base-devel boost capstone clang cmake \
         doxygen fakeroot gcc git libtool make mcpp pkg-config protobuf python3 python-pip sudo wget unzip
 
 RUN pacman --noconfirm -Syu archlinux-keyring
@@ -16,13 +16,6 @@ RUN   useradd ddisasm && echo "ddisasm ALL=NOPASSWD: ALL" > /etc/sudoers.d/ddisa
 RUN mkdir /home/ddisasm && chown ddisasm /home/ddisasm
 USER ddisasm
 RUN yay --noconfirm -Sy souffle
-
-# Install capstone
-RUN cd /home/ddisasm \
-    && git clone -b next https://github.com/GrammaTech/capstone.git \
-    && cd capstone \
-    && CAPSTONE_ARCHS=x86 ./make.sh \
-    && CAPSTONE_ARCHS=x86 sudo ./make.sh install
 
 # Install LIEF
 RUN cd /home/ddisasm \
