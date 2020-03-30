@@ -132,7 +132,14 @@ else()
   find_library(CAPSTONE NAMES libcapstone.a)
 endif()
 
-if(NOT CAPSTONE)
+if(CAPSTONE)
+  find_program(CSTOOL "cstool")
+  execute_process(COMMAND "${CSTOOL}" "-v" OUTPUT_VARIABLE CSTOOL_VERSION)
+  string(REGEX MATCH "v([0-9]+\.[0-9]+\.[0-9]+)" CSTOOL_VERSION "${CSTOOL_VERSION}")
+  set(CSTOOL_VERSION "${CMAKE_MATCH_1}")
+endif()
+
+if(NOT CAPSTONE OR "${CSTOOL_VERSION}" VERSION_LESS "4.0.1")
   message(
     FATAL_ERROR
       " No Capstone installation found.\n"
