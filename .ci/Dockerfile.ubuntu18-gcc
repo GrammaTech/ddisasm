@@ -57,8 +57,9 @@ RUN GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" /ddisasm/CMakeLists.txt
 RUN unzip -o gtirb-artifacts.zip && dpkg -i GTIRB*.deb
 
 # Install gtirb-pprinter
-RUN rm -rf /ddisasm/gtirb-pprinter/build /ddisasm/gtirb-pprinter/CMakeCache.txt /ddisasm/gtirb-pprinter/CMakeFiles /ddisasm/gtirb-pprinter/CMakeScripts
-RUN cd /ddisasm/gtirb-pprinter/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build && make && make install
+RUN GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" /ddisasm/CMakeLists.txt || echo "master") | sed 's/check_gtirb_pprinter_branch(//') && \
+    curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=ubuntu18-installer --output "gtirb-pprinter-artifacts.zip"
+RUN unzip -o gtirb-pprinter-artifacts.zip && dpkg -i gtirb_pprinter*.deb
 
 # Install ehp
 RUN rm -rf /ddisasm/libehp/build /ddisasm/libehp/CMakeCache.txt /ddisasm/libehp/CMakeFiles /ddisasm/libehp/CMakeScripts
