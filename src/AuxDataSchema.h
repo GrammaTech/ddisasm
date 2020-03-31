@@ -124,6 +124,13 @@ namespace gtirb
             typedef std::vector<std::tuple<std::string, uint64_t, uint64_t>> Type;
         };
 
+        /// \brief Auxiliary data that stores the size of symbolic expressions.
+        struct SymbolicExpressionSizes
+        {
+            static constexpr const char* Name = "symbolicExpressionSizes";
+            typedef std::map<gtirb::Offset, uint64_t> Type;
+        };
+
     } // namespace schema
 } // namespace gtirb
 

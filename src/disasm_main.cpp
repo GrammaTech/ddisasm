@@ -82,6 +82,7 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<Libraries>();
     gtirb::AuxDataContainer::registerAuxDataType<LibraryPaths>();
     gtirb::AuxDataContainer::registerAuxDataType<DataDirectories>();
+    gtirb::AuxDataContainer::registerAuxDataType<SymbolicExpressionSizes>();
 }
 
 void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_clock> Start)
