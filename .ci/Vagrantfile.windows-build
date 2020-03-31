@@ -26,6 +26,15 @@ Vagrant.configure("2") do |config|
     C:\\cygwin64\\bin\\bash.exe --login -c  "echo 'git.grammatech.com' > ~/.ssh/known_hosts"
   SHELL
 
+  config.vm.provision "setup-gitlab-runner", type: "shell", inline: <<-SHELL
+    cd $HOME
+    mkdir C:\\GitLab-Runner
+    Invoke-WebRequest https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-windows-amd64.exe -OutFile C:\\GitLab-Runner\\gitlab-runner.exe
+    C:\\GitLab-Runner\\gitlab-runner.exe install
+    C:\\GitLab-Runner\\gitlab-runner.exe start
+    cmd.exe /C 'setx /M PATH "%PATH%;C:\\GitLab-Runner"'
+  SHELL
+
   config.vm.provision "setup-dev-tools", type: "shell", inline: <<-SHELL
     choco install -y git
     choco install -y cmake
