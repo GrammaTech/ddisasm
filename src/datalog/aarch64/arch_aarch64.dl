@@ -100,7 +100,7 @@ loop_operation("LOOPE").
 /* prefixes are not used by arm64 */
 .decl loop_prefix(prefix:symbol)
 
-/* calls are not used by arm64 */
+/* TODO: calls are not used by arm64, but bl might be equivalent? */
 .decl call_operation(operation:symbol)
 
 .decl syscall_operation(operation:symbol)
