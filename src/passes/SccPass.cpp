@@ -52,16 +52,30 @@ void computeSCCs(gtirb::Module& module)
     KeepIntraProcedural Filter;
     boost::filtered_graph<gtirb::CFG, KeepIntraProcedural> CfgFiltered(Cfg, Filter);
 
-    std::vector<int64_t> Components(boost::num_vertices(Cfg));
-    boost::strong_components(CfgFiltered,
-                             boost::make_iterator_property_map(
-                                 Components.begin(), boost::get(boost::vertex_index, CfgFiltered)));
-    int Index = 0;
-    for(auto Component : Components)
+    typedef std::map<gtirb::CFG::vertex_descriptor, size_t> PropertyMap;
+
+    // Property map to store SCCs
+    PropertyMap SccComponents;
+    boost::associative_property_map<PropertyMap> SccComponentsMap(SccComponents);
+
+    // Create property map with indexes.
+    // This is needed because we use lists for storing vertices.
+    PropertyMap Index;
+    boost::associative_property_map<PropertyMap> IndexMap(Index);
+    size_t I = 0;
+    for(auto Vertex : boost::make_iterator_range(boost::vertices(Cfg)))
     {
-        gtirb::Node* N = Cfg[Index];
-        Sccs[N->getUUID()] = Component;
-        Index++;
+        boost::put(IndexMap, Vertex, I++);
+    }
+
+    // Compute the Sccs
+    strong_components(CfgFiltered, SccComponentsMap, vertex_index_map(IndexMap));
+
+    // Store them in AuxData
+    for(auto Vertex : boost::make_iterator_range(vertices(Cfg)))
+    {
+        gtirb::Node* N = Cfg[Vertex];
+        Sccs[N->getUUID()] = SccComponents[Vertex];
     }
     module.addAuxData<gtirb::schema::Sccs>(std::move(Sccs));
 }
