@@ -518,8 +518,8 @@ void addSymbolicExpressionToCodeBlock(gtirb::Module &Module, gtirb::Addr Addr, u
         ByteInterval->addSymbolicExpression<ExprType>(BlockOffset, A...);
         if(auto *Sizes = Module.getAuxData<gtirb::schema::SymbolicExpressionSizes>())
         {
-            gtirb::Offset Offset = gtirb::Offset(ByteInterval->getUUID(), BlockOffset);
-            (*Sizes)[Offset] = Size;
+            gtirb::Offset O = gtirb::Offset(ByteInterval->getUUID(), BlockOffset);
+            (*Sizes)[O] = Size;
         }
     }
 }
