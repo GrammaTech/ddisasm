@@ -50,8 +50,8 @@ add_custom_command(
          # Souffle includes the path of the output file in the generated program
          # name. Change directory and use a relative path so the name does not
          # depend on build location.
-  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
-  COMMAND ${SOUFFLE} ${SOUFFLE_DISASM_MAIN} -g souffle_disasm.cpp -jauto
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/datalog/"
+  COMMAND ${SOUFFLE} ${SOUFFLE_DISASM_MAIN} -g ${GENERATED_CPP} -jauto
   DEPENDS ${DATALOG_SOURCES})
 
 # determine what flags to use to specify -fopenmp.
