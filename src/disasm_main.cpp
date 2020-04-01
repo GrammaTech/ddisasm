@@ -38,6 +38,7 @@
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
+#include "Version.h"
 
 #ifdef USE_STD_FILESYSTEM_LIB
 #include <filesystem>
@@ -114,6 +115,7 @@ int main(int argc, char **argv)
     po::options_description desc("Allowed options");
     desc.add_options()                                                  //
         ("help", "produce help message")                                //
+        ("version", "display ddisasm version")                          //
         ("ir", po::value<std::string>(), "GTIRB output file")           //
         ("json", po::value<std::string>(), "GTIRB json output file")    //
         ("asm", po::value<std::string>(), "ASM output file")            //
@@ -146,6 +148,12 @@ int main(int argc, char **argv)
                       << "Disassemble INPUT_FILE and output assembly code and/or gtirb.\n\n"
                       << desc << "\n";
             return 1;
+        }
+        if(vm.count("version"))
+        {
+            std::cout << "v" << DDISASM_MAJOR_VERSION << "." << DDISASM_MINOR_VERSION
+                      << "." << DDISASM_PATCH_VERSION << "\n";
+            return EXIT_SUCCESS;
         }
         po::notify(vm);
     }

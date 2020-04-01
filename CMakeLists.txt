@@ -7,6 +7,18 @@ cmake_minimum_required(VERSION 3.9.0)
 
 project(DDISASM)
 
+# Get version
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/version.txt" ver)
+
+string(REGEX MATCH "VERSION_MAJOR ([0-9]*)" _ ${ver})
+set(DDISASM_MAJOR_VERSION ${CMAKE_MATCH_1})
+
+string(REGEX MATCH "VERSION_MINOR ([0-9]*)" _ ${ver})
+set(DDISASM_MINOR_VERSION ${CMAKE_MATCH_1})
+
+string(REGEX MATCH "VERSION_PATCH ([0-9]*)" _ ${ver})
+set(DDISASM_PATCH_VERSION ${CMAKE_MATCH_1})
+
 #
 # Global Options (CMake)
 #
@@ -229,9 +241,9 @@ endif()
 # ---------------------------------------------------------------------------
 set(CMAKE_PROJECT_HOMEPAGE_URL https://github.com/grammatech/ddisasm)
 
-# set(CPACK_PACKAGE_VERSION_MAJOR ${DDISASM_MAJOR_VERSION})
-# set(CPACK_PACKAGE_VERSION_MINOR ${DDISASM_MINOR_VERSION})
-# set(CPACK_PACKAGE_VERSION_PATCH ${DDISASM_PATCH_VERSION})
+set(CPACK_PACKAGE_VERSION_MAJOR ${DDISASM_MAJOR_VERSION})
+set(CPACK_PACKAGE_VERSION_MINOR ${DDISASM_MINOR_VERSION})
+set(CPACK_PACKAGE_VERSION_PATCH ${DDISASM_PATCH_VERSION})
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
     "A fast disassembler which is accurate enough for the resulting assembly code to be reassembled. The disassembler implemented using the datalog (souffle) declarative logic programming language to compile disassembly rules and heuristics."
 )
