@@ -515,8 +515,7 @@ void addSymbolicExpressionToCodeBlock(gtirb::Module &Module, gtirb::Addr Addr, u
         std::optional<gtirb::Addr> BaseAddr = ByteInterval->getAddress();
         assert(BaseAddr && "Found byte interval without address.");
         uint64_t BlockOffset = static_cast<uint64_t>(Addr - *BaseAddr + Offset);
-        gtirb::SymbolicExpression Symbolic =
-            ByteInterval->addSymbolicExpression<ExprType>(BlockOffset, A...);
+        ByteInterval->addSymbolicExpression<ExprType>(BlockOffset, A...);
         if(auto *Sizes = Module.getAuxData<gtirb::schema::SymbolicExpressionSizes>())
         {
             gtirb::Offset Offset = gtirb::Offset(ByteInterval->getUUID(), BlockOffset);
