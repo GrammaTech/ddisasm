@@ -201,11 +201,9 @@ cleanup-arch-clang:
     COMPILER: 'clang'
   <<: *cleanup
 
-debian-installer:
+
+.linux-installer-template: &linux-installer
   stage: deploy
-  variables:
-    OS: 'ubuntu18'
-    COMPILER: 'gcc'
   artifacts:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
@@ -216,5 +214,24 @@ debian-installer:
     - docker cp $(cat ${CONTAINER_FILE}):/ddisasm/build ./build-artifacts
     - docker container rm -f $(cat ${CONTAINER_FILE})
     - rm -rf $(dirname ${CONTAINER_FILE})
-    - mv ./build-artifacts/DDISASM-*-Linux.deb ./
+    - mv ./build-artifacts/DDISASM-*-Linux.${EXTENSION} ./
     - rm -rf ./build-artifacts
+    - if [ -f .ci/Dockerfile.test-${OS}-package ]; then docker build -f .ci/Dockerfile.test-${OS}-package -t ${LOCAL_IMAGE_NAME}-${OS}-package-test .; docker rmi ${LOCAL_IMAGE_NAME}-${OS}-package-test; fi
+
+ubuntu16-installer:
+  variables:
+    OS: 'ubuntu16'
+    EXTENSION: 'deb'
+  <<: *linux-installer
+
+ubuntu18-installer:
+  variables:
+    OS: 'ubuntu18'
+    EXTENSION: 'deb'
+  <<: *linux-installer
+
+arch-tar:
+  variables:
+    OS: 'arch'
+    EXTENSION: 'tar.gz'
+  <<: *linux-installer

@@ -1,0 +1,37 @@
+FROM ubuntu:16.04
+
+# Use bash for more convenient variable substitution syntax
+SHELL ["/bin/bash", "-c"]
+
+# dpkg-dev: for dpkg-scanpackages
+# software-properties-common: for add-apt-repository
+RUN apt-get -y update && apt-get -y install curl dpkg-dev software-properties-common \
+    unzip
+
+# for protobuf >=3.0.0
+RUN add-apt-repository ppa:maarten-fonville/protobuf
+
+# for boost 1.67
+RUN add-apt-repository ppa:mhier/libboost-latest
+
+# setup gtirb package
+COPY CMakeLists.txt ./
+RUN GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt || echo "master") | sed 's/check_gtirb_branch(//') && \
+    curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-ubuntu16 --output "gtirb-artifacts.zip"
+RUN unzip -o gtirb-artifacts.zip
+
+# setup gtirb_pprinter package
+RUN GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt || echo "master") | sed 's/check_gtirb_pprinter_branch(//') && \
+    curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=ubuntu16-installer --output "gtirb-pprinter-artifacts.zip"
+RUN unzip -o gtirb-pprinter-artifacts.zip
+
+# setup apt repository
+COPY *.deb ./
+RUN mkdir -p /gt/apt-repo
+RUN cp *.deb /gt/apt-repo/
+RUN cd /gt/apt-repo && dpkg-scanpackages . /dev/null > Packages
+RUN echo $'\ndeb file:/gt/apt-repo ./\n' >> /etc/apt/sources.list
+
+# install & test ddisasm
+RUN apt-get update && apt-get install -y --allow-unauthenticated ddisasm
+RUN ddisasm --version
