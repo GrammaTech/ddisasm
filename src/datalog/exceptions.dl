@@ -72,6 +72,23 @@
 fde_addresses(Start,End):-
     fde_entry(_,_,_,Start,End,_).
 
+// The fde addresses restricted to existing blocks
+.decl fde_block_addresses(FdeAddr:address,StartAddr:address,EndAddr:address)
+
+fde_block_addresses(FdeAddr,Start,EndAddr):-
+    fde_entry(FdeAddr,_,_,Start,EndAddr,_),
+    refined_block(Start),
+    block_information(_,_,EndAddr).
+
+fde_block_addresses(FdeAddr,Start,EndBlock):-
+    fde_entry(FdeAddr,_,_,Start,EndAddr,_),
+    refined_block(Start),
+    // this case moves the end address to the end of the last block
+    !block_information(_,_,EndAddr),
+    after_end(EndAddr,End),
+    refined_block_last_instruction(Block,End),
+    block_information(Block,_,EndBlock).
+
 .decl lsda_callsite_addresses(Start:address,End:address,LandingPad:address)
 
 lsda_callsite_addresses(Start,End,LandingPad):-
@@ -289,6 +306,12 @@ fde_instruction_pos(FdeAddr,Index+1,InstructionAddr+Size):-
     fde_instruction_pos(FdeAddr,Index,InstructionAddr),
     fde_instruction(FdeAddr,Index,Size,_,_,_).
 
+.decl last_fde_instruction(FdeAddr:address,Index:number)
+
+last_fde_instruction(FdeAddr,Index+1):-
+    fde_instruction(FdeAddr,Index,_,_,_,_),
+    !fde_instruction(FdeAddr,Index+1,_,_,_,_).
+
 // location to which the instruction refers
 .decl fde_instruction_ref(FdeAddr:address,Index:number,LocalIndex:number,ReferenceAddr:address)
 
@@ -296,11 +319,16 @@ fde_instruction_pos(FdeAddr,Index+1,InstructionAddr+Size):-
 fde_instruction_ref(FdeAddr,0,3,StartFunction):-
     fde_entry(FdeAddr,_, _,StartFunction,_,_).
 
-fde_instruction_ref(FdeAddr,Index+1,LocalIndex+1,Addr):-
+fde_instruction_ref(FdeAddr,Index+1,NextLocalIndex,Addr):-
     fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
     fde_instruction(FdeAddr,Index,_,Insn,_,_),
     Insn != "advance_loc",
-    Insn != "cf_advance_loc".
+    Insn != "cf_advance_loc",
+    (
+        Insn = "nop", NextLocalIndex = LocalIndex
+        ;
+        Insn != "nop", NextLocalIndex = LocalIndex+1
+    ).
 
 fde_instruction_ref(FdeAddr,Index+1,0,Addr+(CodeAlignmentFactor*Advance)):-
     fde_instruction_ref(FdeAddr,Index,_,Addr),
@@ -311,32 +339,37 @@ fde_instruction_ref(FdeAddr,Index+1,0,Addr+(CodeAlignmentFactor*Advance)):-
         fde_instruction(FdeAddr,Index,_,"cf_advance_loc",Advance,_)
     ).
 
+.decl endproc_local_index(FdeAddr:address,LocalIndex:number)
+
+endproc_local_index(FdeAddr,LocalIndex):-
+    fde_entry(FdeAddr,_, _,_,EndAddr,_),
+    last_fde_instruction(FdeAddr,Index),
+    fde_instruction_ref(FdeAddr,Index,LastLocalIndex,Addr),
+    (
+        Addr = EndAddr, LocalIndex = LastLocalIndex
+        ;
+        Addr != EndAddr, LocalIndex = 0
+    ).
+
+
 //////////////////////////////////////////////////////////////////////////////////
 // Computation of cfi directives
-
 
 // special directives
 
 // only generate startproc and endproc together or none
-cfi_directive(StartFunction,0,0,".cfi_startproc",0,0,0,0),
-cfi_directive(Block,BlockSize,0,".cfi_endproc",0,0,0,0):-
-    fde_addresses(StartFunction, EndAddress),
-    refined_block(StartFunction),
-    block_information(Block,BlockSize,EndAddress).
 
 cfi_directive(StartFunction,0,0,".cfi_startproc",0,0,0,0),
-cfi_directive(Block,BlockSize,0,".cfi_endproc",0,0,0,0):-
-    fde_addresses(StartFunction, EA),
-    refined_block(StartFunction),
-    !block_information(_,_,EA),
-    after_end(EA,End),
-    refined_block_last_instruction(Block,End),
-    block_information(Block,BlockSize,_).
+cfi_directive(Block,BlockSize,LastLocalIndex,".cfi_endproc",0,0,0,0):-
+    fde_block_addresses(FdeAddr,StartFunction, EndAddr),
+    block_information(Block,BlockSize,EndAddr),
+    endproc_local_index(FdeAddr,LastLocalIndex).
 
-// only generate other directives if startproc was generated
+
+// only generate other directives if the block range was generated
 cfi_directive(StartFunction,0,1,".cfi_lsda",Lsda,1,Encoding,0):-
-    fde_entry(_,_,Cie,StartFunction,_,Lsda),
-    cfi_directive(StartFunction,_,_,".cfi_startproc",_,_,_,_),
+    fde_entry(FdeAddr,_,Cie,StartFunction,_,Lsda),
+    fde_block_addresses(FdeAddr,_,_),
     cie_encoding(Cie, _, LsdaEncoding),
     (
         Lsda != 0, Encoding = LsdaEncoding;
@@ -344,8 +377,8 @@ cfi_directive(StartFunction,0,1,".cfi_lsda",Lsda,1,Encoding,0):-
     ).
 
 cfi_directive(StartFunction,0,2,".cfi_personality",Personality,1,Encoding,0):-
-    fde_entry(_,_,Cie,StartFunction,_,_),
-    cfi_directive(StartFunction,_,_,".cfi_startproc",_,_,_,_),
+    fde_entry(FdeAddr,_,Cie,StartFunction,_,_),
+    fde_block_addresses(FdeAddr,_,_),
     cie_personality(Cie,Personality,_,_,PersonalityEnconding),
     (
         Personality != 0, Encoding = PersonalityEnconding;
@@ -353,10 +386,10 @@ cfi_directive(StartFunction,0,2,".cfi_personality",Personality,1,Encoding,0):-
     ).
 
 // directives that correspond to an instruction
-cfi_directive(Block,Addr-Block,LocalIndex,CfiInsn,0,NOperands,ScaledOp1,ScaledOp2):-
+cfi_directive(Block,Offset,LocalIndex,CfiInsn,0,NOperands,ScaledOp1,ScaledOp2):-
     fde_instruction(FdeAddr,Index,_,Insn,Op1,Op2),
-    fde_entry(FdeAddr,_,Cie,StartFunction,_,_),
-    cfi_directive(StartFunction,_,_,".cfi_startproc",_,_,_,_),
+    fde_entry(FdeAddr,_,Cie,_,_,_),
+    fde_block_addresses(FdeAddr,_,EndBlockAddr),
     dwarf_to_cfi(Insn,NOperands,CfiInsn),
     cie_entry(Cie,_,_,DataAlignmentFactor),
     (
@@ -374,16 +407,30 @@ cfi_directive(Block,Addr-Block,LocalIndex,CfiInsn,0,NOperands,ScaledOp1,ScaledOp
         ScaledOp2 = Op2
     ),
     fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
-    code_in_refined_block(Addr,Block).
+    (
+        Addr >= EndBlockAddr,
+        block_information(Block,Offset,EndBlockAddr)
+        ;
+        Addr < EndBlockAddr,
+        code_in_refined_block(Addr,Block),
+        Offset = Addr-Block
+    ).
+
 
 // instructions that are encoded as a block of bytes (because they don't have their own cfi directive)
-cfi_directive(Block,Addr-Block,LocalIndex,".cfi_escape",InstructionBytesAddr,Size,0,0):-
+cfi_directive(Block,Offset,LocalIndex,".cfi_escape",InstructionBytesAddr,Size,0,0):-
     fde_instruction(FdeAddr,Index,Size,"unhandled_instruction",_,_),
-    fde_entry(FdeAddr,_,_,StartFunction,_,_),
-    cfi_directive(StartFunction,_,_,".cfi_startproc",_,_,_,_),
+    fde_block_addresses(FdeAddr,_,EndBlockAddr),
     fde_instruction_pos(FdeAddr,Index,InstructionBytesAddr),
     fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
-    code_in_refined_block(Addr,Block).
+    (
+        Addr >= EndBlockAddr,
+        block_information(Block,Offset,EndBlockAddr)
+        ;
+        Addr < EndBlockAddr,
+        code_in_refined_block(Addr,Block),
+        Offset = Addr-Block
+    ).
 
 /////////////////////////////////////////////////////////////////
 // Auxiliary predicates for cfi directives
