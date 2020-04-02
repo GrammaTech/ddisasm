@@ -235,62 +235,63 @@ dos_header_symbolic_operand(EA,Dest):-
     Dest > ImageBase,
     Dest < ImageBase + 64.
 
-// Detect potential byte-offset, indirect jump-table index before data analyses.
-// lea R14,[__ImageBase]
-// ...
-// movsxd RAX,EDX
-// movzx EAX,BYTE PTR [R14+RAX*1+(IMAGEREL N_18001cf9c)]
-// mov ECX,DWORD PTR [R14+RAX*4+(IMAGEREL N_18001cf38)]
-// add RCX,R14
-// jmp RCX
-relative_address(Table,1,Ref,Dest),
-relative_address_start(Table,1,Ref,Dest):-
-    base_address(ImageBase),
-    // base-relative table address load and index
-    instruction_get_src_op(EA1,_,Op1),
-    op_indirect(Op1,_,_,_,1,Offset1,8),
-    Table = ImageBase+Offset1,
-    data_byte(Table,Byte),
-    // loads base-relative reference address
-    next(EA1,EA2),
-    instruction_get_src_op(EA2,_,Op2),
-    op_indirect(Op2,_,_,_,4,Offset2,32),
-    Ref = ImageBase + Offset2,
-    Dest = Ref + Byte.
-
-relative_address(EA+1,1,Ref,Dest):-
-    base_address(ImageBase),
-    relative_address(EA,1,Ref,_),
-    data_byte(EA+1,Byte),
-    Dest = Ref + Byte * 4,
-    data_word(Dest,4,Word),
-    possible_ea(ImageBase+Word),
-    !relative_address_start(EA+1,_,_,_).
-
-.decl indirect_jump_table_start(IndexTable:address,Addr:address)
-.output indirect_jump_table_start
-
-indirect_jump_table_start(IndexTable,AddrTable):-
-    data_access_pattern(IndexTable,1,1,EA_indirect),
-    data_access_pattern(AddrTable,4,4,EA_direct),
-    def_used(EA_indirect,_,EA_direct,_),
-    def_used(EA_direct,_,EA_add,_),
-    instruction_get_operation(EA_add,"ADD"),
-    def_used(EA_add,_,EA_jump,_),
-    reg_jump(EA_jump,_).
-
-symbol_minus_symbol_candidate(EA,1,Table,Symbol,"first"):-
-    indirect_jump_table_start(EA,Table),
-    data_byte(EA,Index),
-    Symbol = Table + Index * 4,
-    base_relative_address(Symbol,Table,_).
-
-symbol_minus_symbol_candidate(EA+1,1,Table,Symbol,"first"):-
-    symbol_minus_symbol_candidate(EA,1,Table,_,"first"),
-    !indirect_jump_table_start(EA+1,_),
-    data_byte(EA+1,Index),
-    Symbol = Table + Index * 4,
-    base_relative_address(Symbol,Table,_).
+// TODO: Add a 'Scale' parameter and implement division by scale in the printer.
+// // Detect potential byte-offset, indirect jump-table index before data analyses.
+// // lea R14,[__ImageBase]
+// // ...
+// // movsxd RAX,EDX
+// // movzx EAX,BYTE PTR [R14+RAX*1+(IMAGEREL N_18001cf9c)]
+// // mov ECX,DWORD PTR [R14+RAX*4+(IMAGEREL N_18001cf38)]
+// // add RCX,R14
+// // jmp RCX
+// relative_address(Table,1,Ref,Dest),
+// relative_address_start(Table,1,Ref,Dest):-
+//     base_address(ImageBase),
+//     // base-relative table address load and index
+//     instruction_get_src_op(EA1,_,Op1),
+//     op_indirect(Op1,_,_,_,1,Offset1,8),
+//     Table = ImageBase+Offset1,
+//     data_byte(Table,Byte),
+//     // loads base-relative reference address
+//     next(EA1,EA2),
+//     instruction_get_src_op(EA2,_,Op2),
+//     op_indirect(Op2,_,_,_,4,Offset2,32),
+//     Ref = ImageBase + Offset2,
+//     Dest = Ref + Byte.
+//
+// relative_address(EA+1,1,Ref,Dest):-
+//     base_address(ImageBase),
+//     relative_address(EA,1,Ref,_),
+//     data_byte(EA+1,Byte),
+//     Dest = Ref + Byte * 4,
+//     data_word(Dest,4,Word),
+//     possible_ea(ImageBase+Word),
+//     !relative_address_start(EA+1,_,_,_).
+//
+// .decl indirect_jump_table_start(IndexTable:address,Addr:address)
+// .output indirect_jump_table_start
+//
+// indirect_jump_table_start(IndexTable,AddrTable):-
+//     data_access_pattern(IndexTable,1,1,EA_indirect),
+//     data_access_pattern(AddrTable,4,4,EA_direct),
+//     def_used(EA_indirect,_,EA_direct,_),
+//     def_used(EA_direct,_,EA_add,_),
+//     instruction_get_operation(EA_add,"ADD"),
+//     def_used(EA_add,_,EA_jump,_),
+//     reg_jump(EA_jump,_).
+//
+// symbol_minus_symbol_candidate(EA,1,Table,Symbol,"first"):-
+//     indirect_jump_table_start(EA,Table),
+//     data_byte(EA,Index),
+//     Symbol = Table + Index * 4,
+//     base_relative_address(Symbol,Table,_).
+//
+// symbol_minus_symbol_candidate(EA+1,1,Table,Symbol,"first"):-
+//     symbol_minus_symbol_candidate(EA,1,Table,_,"first"),
+//     !indirect_jump_table_start(EA+1,_),
+//     data_byte(EA+1,Index),
+//     Symbol = Table + Index * 4,
+//     base_relative_address(Symbol,Table,_).
 
 .decl relative_offset_table(EA:address,Size:number,Base:address,Dest:address)
 .output relative_offset_table
