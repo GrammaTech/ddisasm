@@ -21,17 +21,23 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-/**
-Define a set predicates to abstract from x64 specific instruction set
-and characteristics
-*/
 
+/**
+ * Define a set of predicates to model x86-64 specific instructions
+ * and characteristics
+ */
 
 .comp X64 {
 
 #include "jump_operations.dl"
 #include "interrupt_operations.dl"
 #include "registers.dl"
+
+// TODO (azreika): check that this isn't too broad - used to just be "MOV"
+.decl move_operation(Operation:symbol)
+move_operation(Operation) :-
+    instruction_get_operation(_, Operation),
+    contains("MOV", Operation).
 
 .decl conditional_mov(EA:address)
 
@@ -43,7 +49,7 @@ conditional_mov(EA):-
 
 mov(EA):-
     instruction_get_operation(EA,Operation),
-    contains("MOV",Operation).
+    move_operation(Operation).
 
 .decl is_nop(EA:address)
 

@@ -9,7 +9,7 @@
 #include "BinaryReader.h"
 #include "ExceptionDecoder.h"
 #include "GtirbZeroBuilder.h"
-
+#include "X86Decoder.h"
 
 X86Decoder::X86Decoder()
 {
@@ -42,16 +42,14 @@ souffle::SouffleProgram* X86Decoder::decode(gtirb::Module &module)
         SectionProperties &extraInfo = found->second;
         if(isExeSection(extraInfo))
         {
-            for(const auto byteInterval : section.byte_intervals())
-            {
+            for (const auto byteInterval : section.byte_intervals()) {
                 decodeSection(byteInterval);
                 storeDataSection(byteInterval, minAddr, maxAddr);
             }
         }
         if(isNonZeroDataSection(extraInfo))
         {
-            for(const auto byteInterval : section.byte_intervals())
-            {
+            for (const auto byteInterval : section.byte_intervals()) {
                 storeDataSection(byteInterval, minAddr, maxAddr);
             }
         }

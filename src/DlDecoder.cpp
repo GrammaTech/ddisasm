@@ -134,18 +134,6 @@ void addSections(souffle::SouffleProgram *prog, gtirb::Module &module)
     }
 }
 
-/*
-DlDecoder::DlDecoder()
-{
-    cs_open(CS_ARCH_X86, CS_MODE_64, &this->csHandle); // == CS_ERR_OK
-    cs_option(this->csHandle, CS_OPT_DETAIL, CS_OPT_ON);
-}
-
-DlDecoder::~DlDecoder()
-{
-    cs_close(&this->csHandle);
-}*/
-
 souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
 {
     assert(module.getSize() && "Module has non-calculable size.");

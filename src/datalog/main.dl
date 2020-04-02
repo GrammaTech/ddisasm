@@ -263,6 +263,25 @@ pc_relative_operand(EA,Index,EA_next+Offset):-
     arch.pc_register(Reg),
     next(EA,EA_next).
 
+pc_relative_operand(EA,1,Base+Offset) :-
+    collect_relative(EA, _, Base,Offset).
+
+pc_relative_operand(EA,2,Base+Offset) :-
+    collect_relative(_,EA,Base,Offset).
+
+// TODO (azreika): clean this up
+.decl collect_relative(ea:address, nextea:address, adrpval:number, addval:number)
+.output collect_relative()
+collect_relative(EA, NextEA, Base, Offset) :-
+    instruction_get_operation(EA,"ADRP"),
+    instruction_get_op(EA,1,BaseOp),
+    op_immediate(BaseOp,Base),
+
+    next(EA,NextEA),
+    instruction_get_operation(NextEA,"ADD"),
+    instruction_get_op(NextEA,2,OffsetOp),
+    op_immediate(OffsetOp,Offset).
+
 .decl instruction_has_loop_prefix(EA:address)
 
 instruction_has_loop_prefix(EA):-
@@ -310,6 +329,19 @@ pc_relative_jump(EA,Dest):-
     instruction_get_operation(EA,Operation),
     arch.jump_operation(Operation),
     pc_relative_operand(EA,1,Dest).
+
+// TODO (azreika): refactor this slightly so it makes more sense for both x86 and arm64
+pc_relative_jump(EA,Base+Offset):-
+    // first is ADRP REG IMM
+    instruction_get_operation(EA,"ADRP"),
+    instruction_get_op(EA,1,BaseOp),
+    op_immediate(BaseOp,Base),
+
+    // then LDR REG [REG, OFFSET]
+    next(EA,NextEA),
+    instruction_get_operation(NextEA,"LDR"),
+    instruction_get_op(NextEA,1,OffsetOp),
+    op_indirect(OffsetOp,"NONE",_,"NONE",1,Offset,_).
 
 // jump to the address of a register
  .decl reg_jump(src:address,Reg:symbol)

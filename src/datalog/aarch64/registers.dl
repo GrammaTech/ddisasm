@@ -29,68 +29,131 @@ This module establishes basic information about register:
 
 // limit the registers that are tracked
 // and transform the names to their 64 bits version
+// TODO (azreika): finalise - ref: https://wiki.cdot.senecacollege.ca/wiki/AArch64_Register_and_Instruction_Quick_Start
 .decl track_register(Reg32:register,Reg64:register)
 
-track_register("EAX","RAX").
-track_register("RAX","RAX").
+track_register("W0", "X0").
+track_register("X0", "X0").
 
-track_register("EBX","RBX").
-track_register("RBX","RBX").
+track_register("W1", "X1").
+track_register("X1", "X1").
 
-track_register("ECX","RCX").
-track_register("RCX","RCX").
+track_register("W2", "X2").
+track_register("X2", "X2").
 
-track_register("EDX","RDX").
-track_register("RDX","RDX").
+track_register("W3", "X3").
+track_register("X3", "X3").
 
-track_register("EDI","RDI").
-track_register("RDI","RDI").
+track_register("W4", "X4").
+track_register("X4", "X4").
 
-track_register("ESI","RSI").
-track_register("RSI","RSI").
+track_register("W5", "X5").
+track_register("X5", "X5").
 
-track_register("RBP","RBP").
-track_register("EBP","RBP").
+track_register("W6", "X6").
+track_register("X6", "X6").
 
-track_register("R8","R8").
-track_register("R8D","R8").
+track_register("W7", "X7").
+track_register("X7", "X7").
 
-track_register("R9","R9").
-track_register("R9D","R9").
+track_register("W8", "X8").
+track_register("X8", "X8").
 
-track_register("R10","R10").
-track_register("R10D","R10").
+track_register("W9", "X9").
+track_register("X9", "X9").
 
-track_register("R11","R11").
-track_register("R11D","R11").
+track_register("W10", "X10").
+track_register("X10", "X10").
 
-track_register("R12","R12").
-track_register("R12D","R12").
+track_register("W11", "X11").
+track_register("X11", "X11").
 
-track_register("R13","R13").
-track_register("R13D","R13").
+track_register("W12", "X12").
+track_register("X12", "X12").
 
-track_register("R14","R14").
-track_register("R14D","R14").
+track_register("W13", "X13").
+track_register("X13", "X13").
 
-track_register("R15","R15").
-track_register("R15D","R15").
+track_register("W14", "X14").
+track_register("X14", "X14").
+
+track_register("W15", "X15").
+track_register("X15", "X15").
+
+track_register("W16", "X16").
+track_register("X16", "X16").
+
+track_register("W17", "X17").
+track_register("X17", "X17").
+
+track_register("W18", "X18").
+track_register("X18", "X18").
+
+track_register("W19", "X19").
+track_register("X19", "X19").
+
+track_register("W20", "X20").
+track_register("X20", "X20").
+
+track_register("W21", "X21").
+track_register("X21", "X21").
+
+track_register("W22", "X22").
+track_register("X22", "X22").
+
+track_register("W23", "X23").
+track_register("X23", "X23").
+
+track_register("W24", "X24").
+track_register("X24", "X24").
+
+track_register("W25", "X25").
+track_register("X25", "X25").
+
+track_register("W26", "X26").
+track_register("X26", "X26").
+
+track_register("W27", "X27").
+track_register("X27", "X27").
+
+track_register("W28", "X28").
+track_register("X28", "X28").
+
+track_register("W29", "X29").
+track_register("X29", "X29").
+
+track_register("W30", "X30").
+track_register("X30", "X30").
+
+track_register("W31", "X31").
+track_register("X31", "X31").
 
 // this specifies the registers whose value is not kept through a function call
 // according to the 'System V AMD64 ABI' calling convention.
 .decl function_non_maintained_reg(reg:register)
 
-function_non_maintained_reg("RAX").
-function_non_maintained_reg("RCX").
-function_non_maintained_reg("RDX").
-function_non_maintained_reg("RDI").
-function_non_maintained_reg("RSI").
+function_non_maintained_reg("X0").
+function_non_maintained_reg("X1").
+function_non_maintained_reg("X2").
+function_non_maintained_reg("X3").
+function_non_maintained_reg("X4").
+function_non_maintained_reg("X5").
+function_non_maintained_reg("X6").
+function_non_maintained_reg("X7").
+function_non_maintained_reg("X8").
+function_non_maintained_reg("X9").
+function_non_maintained_reg("X10").
+function_non_maintained_reg("X11").
+function_non_maintained_reg("X12").
+function_non_maintained_reg("X13").
+function_non_maintained_reg("X14").
+function_non_maintained_reg("X15").
+function_non_maintained_reg("X16").
+function_non_maintained_reg("X17").
+function_non_maintained_reg("X18").
+function_non_maintained_reg("X29").
+function_non_maintained_reg("X30").
+function_non_maintained_reg("X31").
 
-function_non_maintained_reg("R8").
-function_non_maintained_reg("R9").
-function_non_maintained_reg("R10").
-function_non_maintained_reg("R11").
-
+// PC is not a register in aarch64
 .decl pc_register(reg:register)
-
-pc_register("RIP").

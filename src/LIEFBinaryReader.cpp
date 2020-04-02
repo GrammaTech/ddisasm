@@ -185,11 +185,16 @@ std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
             std::size_t foundVersion = symbolName.find('@');
             if(foundVersion != std::string::npos)
                 symbolName = symbolName.substr(0, foundVersion);
-            if(symbol.type() != LIEF::ELF::ELF_SYMBOL_TYPES::STT_SECTION)
+
+            /* TODO (azreika): ignore empty and "$.*" style symbols to fix a bug with symbolisation;
+             * not sure why they come up, so double check this properly */
+            if(symbol.type() != LIEF::ELF::ELF_SYMBOL_TYPES::STT_SECTION &&
+                    symbol.name().length() > 0 && symbol.name()[0] != '$') {
                 symbolTuples.insert(
                     {symbol.value(), symbol.size(), LIEF::ELF::to_string(symbol.type()),
                      LIEF::ELF::to_string(symbol.binding()),
                      LIEF::ELF::to_string(symbol.visibility()), symbol.section_idx(), symbolName});
+            }
         }
     }
 
