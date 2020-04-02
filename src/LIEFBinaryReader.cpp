@@ -191,16 +191,21 @@ std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
 
 std::set<InitialAuxData::Relocation> LIEFBinaryReader::get_relocations()
 {
-    std::set<InitialAuxData::Relocation> relocationTuples;
-    if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
+    std::set<InitialAuxData::Relocation> RelocationTuples;
+    if(auto* Elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
     {
-        for(auto& relocation : elf->relocations())
+        for(auto& Relocation : Elf->relocations())
         {
-            relocationTuples.insert({relocation.address(), getRelocationType(relocation),
-                                     relocation.symbol().name(), relocation.addend()});
+            std::string SymbolName;
+            if(Relocation.has_symbol())
+            {
+                SymbolName = Relocation.symbol().name();
+            }
+            RelocationTuples.insert({Relocation.address(), getRelocationType(Relocation),
+                                     SymbolName, Relocation.addend()});
         }
     }
-    return relocationTuples;
+    return RelocationTuples;
 }
 
 std::vector<std::string> LIEFBinaryReader::get_libraries()
