@@ -9,7 +9,7 @@ Vagrant.configure("2") do |config|
     Invoke-WebRequest https://www.cygwin.com/setup-x86_64.exe -OutFile setup-x86_64.exe
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = "C:\\Users\\vagrant\\setup-x86_64.exe"
-    $startInfo.Arguments = "--no-shortcuts --no-desktop -q --site http://cygwin.mirror.constant.com --packages git,cygrunsrv,openssh"
+    $startInfo.Arguments = "--no-shortcuts --no-desktop -q --site http://cygwin.mirror.constant.com --packages git,cygrunsrv,openssh,unzip"
     $startInfo.UseShellExecute = $true
     $startInfo.CreateNoWindow = $false
     $process = New-Object System.Diagnostics.Process
