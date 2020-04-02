@@ -263,12 +263,16 @@ pc_relative_operand(EA,Index,EA_next+Offset):-
     arch.pc_register(Reg),
     next(EA,EA_next).
 
-pc_relative_operand(EA,-1,Dest) :-
-    collect_relative(EA, Dest).
+pc_relative_operand(EA,1,Base+Offset) :-
+    collect_relative(EA, _, Base,Offset).
+
+pc_relative_operand(EA,2,Base+Offset) :-
+    collect_relative(_,EA,Base,Offset).
 
 // TODO (azreika): clean this up
-.decl collect_relative(ea:address, value:number)
-collect_relative(EA, Offset+Base) :-
+.decl collect_relative(ea:address, nextea:address, adrpval:number, addval:number)
+.output collect_relative()
+collect_relative(EA, NextEA, Base, Offset) :-
     instruction_get_operation(EA,"ADRP"),
     instruction_get_op(EA,1,BaseOp),
     op_immediate(BaseOp,Base),
