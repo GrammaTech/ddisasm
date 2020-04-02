@@ -23,6 +23,7 @@
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 #include <boost/program_options.hpp>
+#include <chrono>
 #include <gtirb/gtirb.hpp>
 #include <gtirb_pprinter/PrettyPrinter.hpp>
 #include <iostream>
@@ -81,6 +82,18 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<Libraries>();
     gtirb::AuxDataContainer::registerAuxDataType<LibraryPaths>();
     gtirb::AuxDataContainer::registerAuxDataType<DataDirectories>();
+}
+
+void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_clock> Start)
+{
+    auto End = std::chrono::high_resolution_clock::now();
+    std::cout << " - Time spent: ";
+    int secs = std::chrono::duration_cast<std::chrono::seconds>(End - Start).count();
+    if(secs != 0)
+        std::cout << secs << "s" << std::endl;
+    else
+        std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(End - Start).count()
+                  << "ms" << std::endl;
 }
 
 int main(int argc, char **argv)
@@ -144,9 +157,13 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    std::cout << "Building the initial gtirb representation" << std::endl;
+    std::cout << "Building the initial gtirb representation " << std::flush;
     gtirb::Context context;
+
+    auto StartBuildZeroIR = std::chrono::high_resolution_clock::now();
     gtirb::IR *ir = buildZeroIR(filename, context);
+    printElapsedTimeSince(StartBuildZeroIR);
+
     if(!ir)
     {
         std::cerr << "There was a problem loading the binary file " << filename << "\n";
@@ -156,14 +173,17 @@ int main(int argc, char **argv)
     souffle::SouffleProgram *prog;
     {
         DlDecoder decoder;
-        std::cout << "Decoding the binary" << std::endl;
+        std::cout << "Decoding the binary " << std::flush;
+        auto StartDecode = std::chrono::high_resolution_clock::now();
         prog = decoder.decode(module);
+        printElapsedTimeSince(StartDecode);
     }
     if(prog)
     {
-        std::cout << "Disassembling" << std::endl;
+        std::cout << "Disassembling " << std::flush;
         unsigned int NThreads = vm["threads"].as<unsigned int>();
         prog->setNumThreads(NThreads);
+        auto StartDisassembling = std::chrono::high_resolution_clock::now();
         try
         {
             prog->run();
@@ -172,14 +192,19 @@ int main(int argc, char **argv)
         {
             souffle::SignalHandler::instance()->error(e.what());
         }
-        std::cout << "Populating gtirb representation" << std::endl;
+        printElapsedTimeSince(StartDisassembling);
+        std::cout << "Populating gtirb representation " << std::flush;
+        auto StartGtirbBuilding = std::chrono::high_resolution_clock::now();
         disassembleModule(context, module, prog, vm.count("self-diagnose") != 0);
+        printElapsedTimeSince(StartGtirbBuilding);
 
         if(vm.count("skip-function-analysis") == 0)
         {
-            std::cout << "Computing intra-procedural SCCs" << std::endl;
+            std::cout << "Computing intra-procedural SCCs " << std::flush;
+            auto StartSCCsComputation = std::chrono::high_resolution_clock::now();
             computeSCCs(module);
-            std::cout << "Computing no return analysis" << std::endl;
+            printElapsedTimeSince(StartSCCsComputation);
+            std::cout << "Computing no return analysis " << std::flush;
             NoReturnPass NoReturn;
             FunctionInferencePass FunctionInference;
             if(vm.count("debug-dir") != 0)
@@ -187,9 +212,13 @@ int main(int argc, char **argv)
                 NoReturn.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
                 FunctionInference.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
             }
+            auto StartNoReturnAnalysis = std::chrono::high_resolution_clock::now();
             NoReturn.computeNoReturn(module, NThreads);
-            std::cout << "Detecting additional functions" << std::endl;
+            printElapsedTimeSince(StartNoReturnAnalysis);
+            std::cout << "Detecting additional functions " << std::flush;
+            auto StartFunctionAnalysis = std::chrono::high_resolution_clock::now();
             FunctionInference.computeFunctions(context, module, NThreads);
+            printElapsedTimeSince(StartFunctionAnalysis);
         }
         // Output GTIRB
         if(vm.count("ir") != 0)
@@ -215,9 +244,11 @@ int main(int argc, char **argv)
         }
         if(vm.count("asm") != 0)
         {
-            std::cout << "Printing assembler" << std::endl;
+            std::cout << "Printing assembler " << std::flush;
+            auto StartPrinting = std::chrono::high_resolution_clock::now();
             std::ofstream out(vm["asm"].as<std::string>());
             pprinter.print(out, context, module);
+            printElapsedTimeSince(StartPrinting);
         }
         else if(vm.count("ir") == 0)
         {
