@@ -35,10 +35,10 @@
 #include "DlDecoder.h"
 #include "GtirbModuleDisassembler.h"
 #include "GtirbZeroBuilder.h"
+#include "Version.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
-#include "Version.h"
 
 #ifdef USE_STD_FILESYSTEM_LIB
 #include <filesystem>
@@ -151,8 +151,8 @@ int main(int argc, char **argv)
         }
         if(vm.count("version"))
         {
-            std::cout << "v" << DDISASM_MAJOR_VERSION << "." << DDISASM_MINOR_VERSION
-                      << "." << DDISASM_PATCH_VERSION << "\n";
+            std::cout << "v" << DDISASM_MAJOR_VERSION << "." << DDISASM_MINOR_VERSION << "."
+                      << DDISASM_PATCH_VERSION << "\n";
             return EXIT_SUCCESS;
         }
         po::notify(vm);
