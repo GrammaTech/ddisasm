@@ -59,7 +59,7 @@ RUN unzip -o gtirb-artifacts.zip && dpkg -i GTIRB*.deb
 
 # Install gtirb-pprinter
 RUN GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" /ddisasm/CMakeLists.txt || echo "master") | sed 's/check_gtirb_pprinter_branch(//') && \
-    curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=ubuntu18-installer --output "gtirb-pprinter-artifacts.zip"
+    curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-ubuntu18 --output "gtirb-pprinter-artifacts.zip"
 RUN unzip -o gtirb-pprinter-artifacts.zip && dpkg -i gtirb_pprinter*.deb
 
 # Install ehp

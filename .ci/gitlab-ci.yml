@@ -221,20 +221,23 @@ cleanup-arch-clang:
     - rm -rf ./build-artifacts
     - if [ -f .ci/Dockerfile.test-${OS}-package ]; then docker build -f .ci/Dockerfile.test-${OS}-package -t ${LOCAL_IMAGE_NAME}-${OS}-package-test .; docker rmi ${LOCAL_IMAGE_NAME}-${OS}-package-test; fi
 
-ubuntu16-installer:
+debian-installer-ubuntu16:
   variables:
     OS: 'ubuntu16'
+    COMPILER: 'g++-7'
     EXTENSION: 'deb'
   <<: *linux-installer
 
-ubuntu18-installer:
+debian-installer-ubuntu18:
   variables:
     OS: 'ubuntu18'
+    COMPILER: 'g++-7'
     EXTENSION: 'deb'
   <<: *linux-installer
 
-arch-tar:
+tar-arch:
   variables:
     OS: 'arch'
+    COMPILER: 'g++'
     EXTENSION: 'tar.gz'
   <<: *linux-installer

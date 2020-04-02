@@ -41,7 +41,7 @@ RUN sudo cp -r $(find . -type d -name GTIRB-*-Linux)/* /usr/
 
 # Install gtirb-pprinter
 RUN GTIRB_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" /ddisasm/CMakeLists.txt || echo "master") | sed 's/check_gtirb_pprinter_branch(//') && \
-    curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=arch-tar --output "gtirb-pprinter-artifacts.zip"
+    curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=tar-arch --output "gtirb-pprinter-artifacts.zip"
 RUN unzip gtirb-pprinter-artifacts.zip && tar xzf gtirb_pprinter*.tar.gz
 RUN sudo cp -r $(find . -type d -name gtirb_pprinter*-Linux)/* /usr/
 
