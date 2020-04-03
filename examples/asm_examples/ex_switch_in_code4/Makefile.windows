@@ -1,9 +1,9 @@
-all: dll
+all:
 	ml64.exe ex.asm
 	@ ex > out.txt
 clean:
 	del /F /Q *.exe *.obj *.asm out.txt check.txt mllink$$.lnk
-  del /F /Q ex.unstripped *.s *.old*
+	del /F /Q ex.unstripped *.s *.old*
 check:
 	@ ex > check.txt
 	@ FC out.txt check.txt && echo TEST OK
