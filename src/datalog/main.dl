@@ -302,7 +302,7 @@ conditional_jump(EA):-
 
 direct_jump(EA,Dest):-
     arch.jump(EA),
-    instruction(EA,_,_,Operation,Op1,_,_,_),
+    instruction_get_op(EA,1,Op1),
     op_immediate(Op1,Dest).
 
 direct_jump(EA,Dest):-
@@ -320,7 +320,6 @@ direct_jump(EA,EA):-
 
 pc_relative_jump(EA,Dest):-
     arch.jump(EA),
-    instruction_get_operation(EA,Operation),
     pc_relative_operand(EA,1,Dest).
 
 // jump to the address of a register

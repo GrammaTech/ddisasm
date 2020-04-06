@@ -22,7 +22,7 @@
 //
 //===----------------------------------------------------------------------===//
 /**
-Define a set predicates to abstract from x64 specific instruction set
+Define a set predicates to abstract from ARM specific instruction set
 and characteristics
 */
 
@@ -168,42 +168,6 @@ call_operation("BLXLT").
 call_operation("BLXGT").
 call_operation("BLXLE").
 call_operation("BLXAL").
-
-.decl switch_decode_mode_operation(operation:symbol)
-
-switch_decode_mode_operation("BLX").
-switch_decode_mode_operation("BLXEQ").
-switch_decode_mode_operation("BLXNE").
-switch_decode_mode_operation("BLXCS").
-switch_decode_mode_operation("BLXCC").
-switch_decode_mode_operation("BLXMI").
-switch_decode_mode_operation("BLXPL").
-switch_decode_mode_operation("BLXVS").
-switch_decode_mode_operation("BLXVC").
-switch_decode_mode_operation("BLXHI").
-switch_decode_mode_operation("BLXLS").
-switch_decode_mode_operation("BLXGE").
-switch_decode_mode_operation("BLXLT").
-switch_decode_mode_operation("BLXGT").
-switch_decode_mode_operation("BLXLE").
-switch_decode_mode_operation("BLXAL").
-
-switch_decode_mode_operation("BX").
-switch_decode_mode_operation("BXEQ").
-switch_decode_mode_operation("BXNE").
-switch_decode_mode_operation("BXCS").
-switch_decode_mode_operation("BXCC").
-switch_decode_mode_operation("BXMI").
-switch_decode_mode_operation("BXPL").
-switch_decode_mode_operation("BXVS").
-switch_decode_mode_operation("BXVC").
-switch_decode_mode_operation("BXHI").
-switch_decode_mode_operation("BXLS").
-switch_decode_mode_operation("BXGE").
-switch_decode_mode_operation("BXLT").
-switch_decode_mode_operation("BXGT").
-switch_decode_mode_operation("BXLE").
-switch_decode_mode_operation("BXAL").
 
 .decl syscall_operation(operation:symbol)
 

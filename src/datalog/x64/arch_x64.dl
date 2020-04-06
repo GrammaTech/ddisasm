@@ -143,9 +143,6 @@ halt_operation("UD2").
 cmp_operation("CMP").
 cmp_operation("TEST").
 
-.decl switch_decode_mode_operation(operation:symbol)
-
-
 // These operations are either special like LEA (does not read memory) or
 // are not decoded correctly from capstone
 // FIXME: review this list when capstone is updated

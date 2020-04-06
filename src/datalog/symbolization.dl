@@ -295,17 +295,18 @@ address_in_data_refined(EA,Val):-
     Val >= Beg, Val <= End.
 
 address_in_data_refined(EA,Val):-
+    binary_type("DYN"),
+    address_in_data(EA,Val),
+    relocation(EA,_,_,_),
+    block(Val).
+
+address_in_data_refined(EA,Val):-
     binary_type("EXEC"),
     address_in_data(EA,Val),
     data_segment(Beg,End),
     Val >= Beg,
     Val <= End.
 
-address_in_data_refined(EA,Val):-
-    binary_type("DYN"),
-    address_in_data(EA,Val),
-    relocation(EA,_,_,_),
-    block(Val).
 
 address_in_data_refined(EA,Val):-
     binary_type("EXEC"),

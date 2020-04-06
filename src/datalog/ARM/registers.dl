@@ -61,15 +61,15 @@ track_register("LR","LR").
 
 
 // this specifies the registers whose value is not kept through a function call
-// according to the 'System V AMD64 ABI' calling convention.
+// according to the ARM calling convention.
 .decl function_non_maintained_reg(reg:register)
 
 function_non_maintained_reg("R0").
 function_non_maintained_reg("R1").
 function_non_maintained_reg("R2").
 function_non_maintained_reg("R3").
-function_non_maintained_reg("R12").
 
+function_non_maintained_reg("R12").
 function_non_maintained_reg("R13").
 function_non_maintained_reg("R14").
 

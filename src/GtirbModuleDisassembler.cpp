@@ -1202,7 +1202,7 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
             module.setEntryPoint(&*it.begin());
         }
     }
-    // assert(module.getEntryPoint() && "Failed to set module entry point.");
+    assert(module.getEntryPoint() && "Failed to set module entry point.");
 }
 
 void shiftThumbBlocks(gtirb::Module &Module)

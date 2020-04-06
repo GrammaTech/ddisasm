@@ -199,7 +199,6 @@ data_access_pattern_candidate(Address,Size,FinalMult,EA):-
 
 data_access_pattern(Address,Size,Multiplier,From):-
     data_access_pattern_candidate(Address,Size,Multiplier,From),
-    code(From),
     instruction_get_operation(From,Operation),
     Operation != "LEA",
     data_byte(Address,_),

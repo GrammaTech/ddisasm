@@ -111,7 +111,6 @@ may_have_symbolic_immediate(Src,Dest):-
 
 
 .decl invalid(EA:address)
-.output invalid
 
 // if the decoder failed to decode any instruction at EA, EA is invalid
 invalid(EA):-
@@ -120,7 +119,7 @@ invalid(EA):-
 // if EA contains a direct call or jump to something that cannot be code, it is invalid
 invalid(EA):-
     (
-        must_fallthrough(EA,Not_code),
+        must_fallthrough(EA,Not_code);
         direct_jump(EA,Not_code);
         direct_call(EA,Not_code)
         //pc_relative_jump(EA,Not_code);
@@ -147,7 +146,6 @@ possible_ea(EA):-
     !invalid(EA).
 
 .decl basic_target(ea:address)
-
 
 basic_target(Val):-
     binary_isa("X64"),
@@ -194,7 +192,7 @@ block_limit(EA):-
 // The targets are computed incrementally now as we traverse the code
 // likely_ea and possible_target_from are mutually recursive
 
-.decl possible_target_from(dest:address ,src:address)
+.decl possible_target_from(dest:address,src:address)
 
 possible_target_from(Dest,Src):-
     code_in_block_candidate(Src,_),
@@ -344,7 +342,7 @@ block_overlap(Block1,Block2):-
     BegAddr2 < EndAddr1.
 
 // This uses instruction_range as an optimization
-// TODO: We can remove this once souffle implement range queries.
+// TODO: We can remove this once souffle implements range queries.
 // An instruction of one block starts in the middle of another one from a different block
 block_overlap(EA_block,EA_block2):-
     !binary_isa("ARM"),

@@ -94,7 +94,6 @@ moved_pc_relative_candidate(EA_def2,Op_index,Dest,New_dest,Diff):-
     def_used(EA_def1,Reg1,EA,_),
     dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End,OldBeg,OldEnd),
 
-    code(EA_def2),
     def_used(EA_def2,Reg2,EA,_),
     pc_relative_operand(EA_def2,Op_index,Dest),
     instruction_get_operation(EA_def2,"LEA"),
@@ -347,7 +346,6 @@ moved_immediate_candidate(EA_from,Imm_index,Immediate,New_dest):-
 moved_label_class(EA,Imm_index,"immediate loop bound"),
 moved_immediate_candidate(EA,Imm_index,Immediate,New_dest):-
     binary_type("EXEC"),
-    code(EA),
     cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate),
     def_used(EA_def,Reg,EA,_),
     dest_enlarged_data_section(EA_def,Reg,New_dest,Beg,End,OldBeg,OldEnd),

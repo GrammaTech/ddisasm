@@ -241,7 +241,6 @@ value_reg(EA,Reg,EA_from,"Unknown",Immediate,Base,Steps+1):-
 value_reg(EA,Reg_def,EA_third,Reg3,Mult1+(Mult*Mult2),Offset+Offset1+Offset2*Mult,Steps3):-
     step_limit(StepLimit),
     def_used_for_address(EA,Reg_def),
-    code(EA),
     arch.reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
     Reg1 != Reg2,
     def_used(EA_def1,Reg1,EA,_),
@@ -261,7 +260,6 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult1+(Mult*Mult2),Offset+Offset1+Offset2*Mul
 value_reg(EA,Reg_def,EA_third,Reg3,Mult*Mult2,Offset+Offset1+Offset2*Mult,Steps3):-
     step_limit(StepLimit),
     def_used_for_address(EA,Reg_def),
-    code(EA),
     arch.reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
     Reg1 != Reg2,
 
@@ -286,7 +284,6 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult*Mult2,Offset+Offset1+Offset2*Mult,Steps3
 value_reg(EA,Reg_def,EA_third,Reg3,Mult1,Offset+Offset1+Offset2*Mult,Steps3):-
     step_limit(StepLimit),
     def_used_for_address(EA,Reg_def),
-    code(EA),
     arch.reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
     Reg1 != Reg2,
 
