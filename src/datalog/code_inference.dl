@@ -130,7 +130,6 @@ invalid(EA):-
 
 // propagate the invalid instructions backwards until ret or jmp (encoded in must_fallthrough)
 // propagate through direct jumps and calls
-invalid_edge(From,To),
 invalid(From):-
     invalid(To),
     (
