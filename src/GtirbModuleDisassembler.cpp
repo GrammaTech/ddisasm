@@ -518,8 +518,8 @@ void addSymbolicExpressionToCodeBlock(gtirb::Module &Module, gtirb::Addr Addr, u
         ByteInterval->addSymbolicExpression<ExprType>(BlockOffset, A...);
         if(auto *Sizes = Module.getAuxData<gtirb::schema::SymbolicExpressionSizes>())
         {
-            gtirb::Offset O = gtirb::Offset(ByteInterval->getUUID(), BlockOffset);
-            (*Sizes)[O] = Size;
+            gtirb::Offset ExpressionOffset = gtirb::Offset(ByteInterval->getUUID(), BlockOffset);
+            (*Sizes)[ExpressionOffset] = Size;
         }
     }
 }
@@ -765,7 +765,7 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                             getSymbol(context, module, gtirb::Addr(movedDataLabel->Address2));
                         byteInterval.addSymbolicExpression<gtirb::SymAddrConst>(blockOffset, diff,
                                                                                 sym);
-                        SymbolicSizes[Offset] = 8;
+                        SymbolicSizes[Offset] = movedDataLabel->Size;
                     }
                     else
                         // symbol+0
