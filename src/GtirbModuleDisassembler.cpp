@@ -197,13 +197,12 @@ struct SymbolicExpressionNoOffset
 {
     SymbolicExpressionNoOffset(souffle::tuple &tuple)
     {
-        assert(tuple.size() == 5);
-        tuple >> EA >> OperandIndex >> Size;
+        assert(tuple.size() == 4);
+        tuple >> EA >> OperandIndex;
     };
 
     gtirb::Addr EA{0};
     uint64_t OperandIndex{0};
-    uint64_t Size{0};
 };
 
 struct BlockPoints
@@ -561,13 +560,12 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
     }
     // Symbol+0 case
     auto range = symbolicInfo.SymbolicExpressionNoOffsets.equal_range(ea);
-    if(auto Operand =
-           std::find_if(range.first, range.second,
-                        [index](const auto &element) { return element.OperandIndex == index; });
-       Operand != range.second)
+    if(std::find_if(range.first, range.second,
+                    [index](const auto &element) { return element.OperandIndex == index; })
+       != range.second)
     {
         auto sym = getSymbol(context, module, gtirb::Addr(immediate));
-        addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(module, ea, Operand->Size,
+        addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(module, ea, 8,
                                                               instruction.immediateOffset, 0, sym);
         return;
     }
@@ -634,8 +632,7 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
     auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", prog);
     SymbolicInfo symbolicInfo{
         convertSortedRelation<VectorByEA<MovedLabel>>("moved_label_size", prog),
-        convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand_size",
-                                                                      prog),
+        convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog),
         convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog)};
     std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
 
