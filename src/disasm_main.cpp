@@ -87,13 +87,13 @@ void registerAuxDataTypes()
 void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_clock> Start)
 {
     auto End = std::chrono::high_resolution_clock::now();
-    std::cout << " - Time spent: ";
+    std::cout << " (";
     int secs = std::chrono::duration_cast<std::chrono::seconds>(End - Start).count();
     if(secs != 0)
-        std::cout << secs << "s" << std::endl;
+        std::cout << secs << "s)" << std::endl;
     else
         std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(End - Start).count()
-                  << "ms" << std::endl;
+                  << "ms)" << std::endl;
 }
 
 int main(int argc, char **argv)
