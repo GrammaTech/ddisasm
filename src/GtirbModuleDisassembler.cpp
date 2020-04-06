@@ -515,6 +515,11 @@ void addSymbolicExpressionToCodeBlock(gtirb::Module &Module, gtirb::Addr Addr, u
         gtirb::ByteInterval *ByteInterval = Block.getByteInterval();
         std::optional<gtirb::Addr> BaseAddr = ByteInterval->getAddress();
         assert(BaseAddr && "Found byte interval without address.");
+        // In ARM we substract one for symexprs in thumb mode.
+        if(Module.getISA() == gtirb::ISA::ARM)
+        {
+            Addr -= static_cast<uint64_t>(Addr) & 1;
+        }
         uint64_t BlockOffset = static_cast<uint64_t>(Addr - *BaseAddr + Offset);
         ByteInterval->addSymbolicExpression<ExprType>(BlockOffset, A...);
     }
@@ -569,7 +574,7 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
 
 void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const gtirb::Addr &ea,
                            const DecodedInstruction &instruction, uint64_t index,
-                           IndirectOp &indirect, const SymbolicInfo &symbolicInfo)
+                           const SymbolicInfo &symbolicInfo)
 {
     // Symbolic expression form relocation
     if(const auto symbolicExpr = symbolicInfo.SymbolicExpressionsFromRelocations.find(
@@ -600,22 +605,11 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
     }
     // Symbol+0 case
     auto range = symbolicInfo.SymbolicExpressionNoOffsets.equal_range(ea);
-    if(std::find_if(range.first, range.second,
-                    [index](const auto &element) { return element.OperandIndex == index; })
-       != range.second)
+    for(auto it = range.first; it != range.second; it++)
     {
-        // Special case for RIP-relative references
-        if(indirect.reg2 == std::string{"RIP"} && indirect.multiplier == 1
-           && isNullReg(indirect.reg1) && isNullReg(indirect.reg3))
+        if(it->OperandIndex == index)
         {
-            auto address = ea + indirect.displacement + instruction.Size;
-            auto sym = getSymbol(context, module, address);
-            addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-                module, ea, instruction.displacementOffset, 0, sym);
-        }
-        else
-        {
-            auto sym = getSymbol(context, module, gtirb::Addr(indirect.displacement));
+            auto sym = getSymbol(context, module, gtirb::Addr(it->Dest));
             addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
                 module, ea, instruction.displacementOffset, 0, sym);
         }
@@ -658,9 +652,9 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
             if(auto *immediate = std::get_if<ImmOp>(&op.second))
                 buildSymbolicImmediate(context, module, inst->first, inst->second, op.first,
                                        *immediate, symbolicInfo);
-            if(auto *indirect = std::get_if<IndirectOp>(&op.second))
+            if(std::get_if<IndirectOp>(&op.second))
                 buildSymbolicIndirect(context, module, inst->first, inst->second, op.first,
-                                      *indirect, symbolicInfo);
+                                      symbolicInfo);
         }
     }
 }
@@ -1215,29 +1209,16 @@ void shiftThumbBlocks(gtirb::Module &Module)
     for(auto *BI : BIs)
     {
         std::vector<gtirb::CodeBlock *> ThumbBlocks;
-        std::vector<gtirb::ByteInterval::SymbolicExpressionElement> SymbolicExprs;
         for(auto &CodeBlock : BI->code_blocks())
         {
             if(CodeBlock.getOffset() & 1)
             {
                 ThumbBlocks.push_back(&CodeBlock);
-                for(gtirb::ByteInterval::SymbolicExpressionElement SymbolicExprElement :
-                    BI->findSymbolicExpressionsAtOffset(
-                        CodeBlock.getOffset(), CodeBlock.getOffset() + CodeBlock.getSize()))
-                {
-                    SymbolicExprs.push_back(SymbolicExprElement);
-                }
             }
         }
         for(auto *CodeBlock : ThumbBlocks)
         {
             BI->addBlock(CodeBlock->getOffset() - 1, CodeBlock);
-        }
-        for(auto &SymbolicExpr : SymbolicExprs)
-        {
-            BI->removeSymbolicExpression(SymbolicExpr.getOffset());
-            BI->addSymbolicExpression(SymbolicExpr.getOffset() - 1,
-                                      SymbolicExpr.getSymbolicExpression());
         }
     }
 }

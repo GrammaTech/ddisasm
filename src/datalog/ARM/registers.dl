@@ -56,7 +56,7 @@ track_register("R14","LR").
 track_register("LR","LR").
 
 //track_register("R15","PC").
-//track_register("PC","PC").
+track_register("PC","PC").
 
 
 

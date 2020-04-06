@@ -55,14 +55,16 @@ plt_entry(EA,Function):-
     relocation(Got_entry,_,Function,_).
 
 symbolic_operand_candidate(EA,Op_index,Dest,Type),
-symbolic_operand_candidate(EA+4,Op_index2,Dest,Type):-
+symbolic_operand_candidate(EA2,Op_index2,Dest,Type):-
+    binary_isa("ARM"),
     code(EA),
-    code(EA+4),
+    next(EA,EA2),
+    code(EA2),
     instruction_get_operation(EA,"MOVW"),
-    instruction_get_operation(EA+4,"MOVT"),
+    instruction_get_operation(EA2,"MOVT"),
     instruction_get_op(EA,Op_index,Op),
     op_immediate(Op,DestLow),
-    instruction_get_op(EA+4,Op_index2,Op2),
+    instruction_get_op(EA2,Op_index2,Op2),
     op_immediate(Op2,DestHigh),
     Dest = (DestHigh*2^16) bor DestLow,
   (
@@ -72,3 +74,17 @@ symbolic_operand_candidate(EA+4,Op_index2,Dest,Type):-
         Dest >= Begin, Dest <= End,
         Type = "data"
     ).
+
+symbol_minus_symbol_candidate(Addr,Size,EARef,Dest,"no_table"):-
+    binary_isa("ARM"),
+    data_access_pattern(Addr,Size,0,EABase),
+    def_used(EABase,Reg,EAAddPC,_),
+    arch.reg_reg_arithmetic_operation(EAAddPC,Reg,Reg,PC,1,0),
+    arch.pc_register(PC),
+
+    EARef = EAAddPC + 4 - (EAAddPC band 1),
+    data_word(Addr,Size,Diff),
+    Dest = EARef + Diff,
+
+    data_segment(Begin,End),
+    Dest >= Begin, Dest <= End.
