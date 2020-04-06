@@ -1,5 +1,31 @@
 
-.output possible_ea
+//===- arm_binaries.dl --------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+Define a set predicates to abstract from ARM specific instruction set
+and characteristics
+*/
+
 
 basic_target(Val+1):-
     binary_isa("ARM"),
@@ -15,6 +41,18 @@ block_is_overlapping(Block):-
     block_candidate_boundaries(Block,BlockBegAddr,BlockEndAddr),
     defined_symbol(Val,_,_,_,_,"$d"),
     BlockBegAddr <= Val, Val< BlockEndAddr.
+
+plt_entry(EA,Function):-
+    binary_isa("ARM"),
+    plt_section(SecName),
+    section(SecName,Size,Beg),
+    EA < Beg+Size,
+    EA >= Beg,
+    arch.jump(EA),
+    instruction_get_op(EA,_,Op),
+    op_indirect(Op,_, _, _,_, Offset, _),
+    Got_entry = 65536+ EA + Offset,
+    relocation(Got_entry,_,Function,_).
 
 symbolic_operand_candidate(EA,Op_index,Dest,Type),
 symbolic_operand_candidate(EA+4,Op_index2,Dest,Type):-

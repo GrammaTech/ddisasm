@@ -118,18 +118,6 @@ non_zero_data_section(Name):-
 .decl plt_entry(ea:address, function:symbol)
 
 plt_entry(EA,Function):-
-    binary_isa("ARM"),
-    plt_section(SecName),
-    section(SecName,Size,Beg),
-    EA < Beg+Size,
-    EA >= Beg,
-    arch.jump(EA),
-    instruction_get_op(EA,_,Op),
-    op_indirect(Op,_, _, _,_, Offset, _),
-    Got_entry = 65536+ EA + Offset,
-    relocation(Got_entry,_,Function,_).
-
-plt_entry(EA,Function):-
     binary_isa("X64"),
     plt_section(SecName),
     section(SecName,Size,Beg),
