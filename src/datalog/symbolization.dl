@@ -307,11 +307,11 @@ address_in_data_refined(EA,Val):-
     Val >= Beg,
     Val <= End.
 
-
 address_in_data_refined(EA,Val):-
     binary_type("EXEC"),
     address_in_data(EA,Val),
     block(Val).
+
 
 .init address_in_data_refined_range=empty_range
 
