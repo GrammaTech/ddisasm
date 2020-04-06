@@ -528,6 +528,15 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
                             const DecodedInstruction &instruction, uint64_t index, ImmOp &immediate,
                             const SymbolicInfo &symbolicInfo)
 {
+    uint64_t ImmSize = 0;
+    if(instruction.immediateOffset > 0)
+    {
+        uint64_t Size = instruction.Size;
+        uint64_t Imm = instruction.immediateOffset;
+        uint64_t Disp = instruction.displacementOffset;
+        ImmSize = Disp > Imm ? Disp - Imm : Size - Imm;
+    }
+
     // Symbolic expression from relocation
     if(const auto symbolicExpr =
            symbolicInfo.SymbolicExpressionsFromRelocations.find(ea + instruction.immediateOffset);
@@ -554,8 +563,7 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
         auto diff = movedLabel->Address1 - movedLabel->Address2;
         auto sym = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-            module, ea, instruction.Size - instruction.immediateOffset, instruction.immediateOffset,
-            diff, sym);
+            module, ea, ImmSize, instruction.immediateOffset, diff, sym);
         return;
     }
     // Symbol+0 case
@@ -565,9 +573,8 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
        != range.second)
     {
         auto sym = getSymbol(context, module, gtirb::Addr(immediate));
-        addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-            module, ea, instruction.Size - instruction.immediateOffset, instruction.immediateOffset,
-            0, sym);
+        addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(module, ea, ImmSize,
+                                                              instruction.immediateOffset, 0, sym);
         return;
     }
 }
@@ -576,6 +583,15 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
                            const DecodedInstruction &instruction, uint64_t index,
                            IndirectOp &indirect, const SymbolicInfo &symbolicInfo)
 {
+    uint64_t DispSize = 0;
+    if(instruction.displacementOffset > 0)
+    {
+        uint64_t Size = instruction.Size;
+        uint64_t Imm = instruction.immediateOffset;
+        uint64_t Disp = instruction.displacementOffset;
+        DispSize = Imm > Disp ? Imm - Disp : Size - Disp;
+    }
+
     // Symbolic expression form relocation
     if(const auto symbolicExpr = symbolicInfo.SymbolicExpressionsFromRelocations.find(
            ea + instruction.displacementOffset);
@@ -600,8 +616,7 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
         auto diff = movedLabel->Address1 - movedLabel->Address2;
         auto sym = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-            module, ea, instruction.Size - instruction.displacementOffset,
-            instruction.displacementOffset, diff, sym);
+            module, ea, DispSize, instruction.displacementOffset, diff, sym);
         return;
     }
     // Symbol+0 case
@@ -617,15 +632,13 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
             auto address = ea + indirect.displacement + instruction.Size;
             auto sym = getSymbol(context, module, address);
             addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-                module, ea, instruction.Size - instruction.displacementOffset,
-                instruction.displacementOffset, 0, sym);
+                module, ea, DispSize, instruction.displacementOffset, 0, sym);
         }
         else
         {
             auto sym = getSymbol(context, module, gtirb::Addr(indirect.displacement));
             addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-                module, ea, instruction.Size - instruction.displacementOffset,
-                instruction.displacementOffset, 0, sym);
+                module, ea, DispSize, instruction.displacementOffset, 0, sym);
         }
     }
 }
