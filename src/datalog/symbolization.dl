@@ -64,6 +64,10 @@ This module also computes and symbol_minus_symbol.
 .decl symbolic_operand(ea:address,index:operand_index,value:address,type:symbol)
 .output symbolic_operand
 
+.decl symbolic_operand_size(ea:address,index:operand_index,value:address,type:symbol,
+size:number)
+.output symbolic_operand_size
+
 .decl symbolic_data(ea:address,size:number,value:address)
 .output symbolic_data
 
@@ -219,6 +223,15 @@ symbolic_operand(EA,Op_index,Value,Type):-
     symbolic_operand_total_points(EA,Op_index,Points),
     Points >= 0.
 
+
+symbolic_operand_size(EA,Index,Value,Type,Size):-
+    symbolic_operand(EA,Index,Value,Type),
+    (
+      instruction_immediate_offset(EA,_,Offset);
+      instruction_displacement_offset(EA,_,Offset)
+    ),
+    instruction(EA,Total,_,_,_,_,_,_),
+    Size = Total - Offset.
 
 ///////////////////////////////
 // label candidates before moving
