@@ -164,14 +164,15 @@ struct MovedLabel
 
     MovedLabel(souffle::tuple &tuple)
     {
-        assert(tuple.size() == 4);
-        tuple >> EA >> OperandIndex >> Address1 >> Address2;
+        assert(tuple.size() == 5);
+        tuple >> EA >> OperandIndex >> Address1 >> Address2 >> Size;
     };
 
     gtirb::Addr EA{0};
     uint64_t OperandIndex{0};
     int64_t Address1{0};
     int64_t Address2{0};
+    uint64_t Size{0};
 };
 
 struct MovedDataLabel
@@ -554,7 +555,7 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
         auto diff = movedLabel->Address1 - movedLabel->Address2;
         auto sym = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-            module, ea, 8, instruction.immediateOffset, diff, sym);
+            module, ea, movedLabel->Size, instruction.immediateOffset, diff, sym);
         return;
     }
     // Symbol+0 case
@@ -630,7 +631,7 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
 {
     auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", prog);
     SymbolicInfo symbolicInfo{
-        convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
+        convertSortedRelation<VectorByEA<MovedLabel>>("moved_label_size", prog),
         convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog),
         convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog)};
     std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
