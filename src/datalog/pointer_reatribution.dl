@@ -94,10 +94,10 @@ moved_pc_relative_candidate(EA_def2,Op_index,Dest,New_dest,Diff):-
     def_used(EA_def1,Reg1,EA,_),
     dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End,OldBeg,OldEnd),
 
-    code(EA_def22),
+    code(EA_def2),
     def_used(EA_def2,Reg2,EA,_),
-    pc_relative_operand(EA_def22,Op_index,Dest),
-    instruction_get_operation(EA_def22,"LEA"),
+    pc_relative_operand(EA_def2,Op_index,Dest),
+    instruction_get_operation(EA_def2,"LEA"),
 
     Beg <= Dest, Dest <= End,
     (OldBeg > Dest ; Dest > OldEnd),
@@ -190,7 +190,6 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Diff):-
 moved_label_class(EA,Op_index,"miss section with access"),
 moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
     binary_type("EXEC"),
-    code(EA),
     data_access(EA,Op_index,_,_,_,_,Dest,_), Dest >= 0,
     !symbolic_operand(EA,Op_index,_,_),
     !pc_relative_operand(EA,Op_index,_),
@@ -212,7 +211,6 @@ moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
 moved_label_class(EA,Op_index,"constant + multiplied reg"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
     binary_type("EXEC"),
-    code(EA),
     data_access(EA,Op_index,"NONE","NONE",RegMult,Mult,Dest,_),
     !instruction_get_operation(EA,"LEA"),
     !symbolic_operand(EA,Op_index,_,_),
@@ -234,7 +232,6 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 moved_label_class(EA,Op_index,"constant + multiplied reg2"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
     binary_type("EXEC"),
-    code(EA),
     data_access(EA,Op_index,"NONE",Reg,"NONE",_,Dest,_),
     !instruction_get_operation(EA,"LEA"),
     !symbolic_operand(EA,Op_index,_,_),
@@ -253,7 +250,6 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 moved_label_class(EA,Op_index,"constant + repeated reg"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
     binary_type("EXEC"),
-    code(EA),
     data_access(EA,Op_index,"NONE",Reg,Reg,_,Dest,_),
     !instruction_get_operation(EA,"LEA"),
     !symbolic_operand(EA,Op_index,_,_),
@@ -271,7 +267,6 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 moved_displacement_candidate(EA,Op_index,Dest,SymbolAddr,0):-
     !binary_type("EXEC"),
     data_access(EA,Op_index,_,_,_,_,Dest,_),
-    code(EA),
     instruction_displacement_offset(EA,Op_index,DisplacementOffset),
     relocation(EA+DisplacementOffset,_,Symbol,_),
     symbol(SymbolAddr,_,_,_,_,Symbol),

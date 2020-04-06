@@ -107,11 +107,8 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
     code(EA),
     instruction_get_op(EA,Op_index,Op),
     (
-        op_immediate(Op,Dest)
-        ;
-        pc_relative_operand(EA,Op_index,Dest),
-        !binary_isa("ARM")
-        ;
+        op_immediate(Op,Dest);
+        pc_relative_operand(EA,Op_index,Dest);
         op_indirect(Op,_,_,_,_,Dest,_),
         !pc_relative_operand(EA,Op_index,_)
     ),
@@ -170,16 +167,13 @@ symbolic_operand_point(EA,Index,10,"pie code"):-
     symbolic_operand_candidate(EA,Index,_,_).
 
 symbolic_operand_point(EA,Imm_index,-1,"compared to non-address"):-
-    code(EA),
     cmp_immediate_to_reg(EA,Reg,Imm_index,_),
     def_used(EA_def,Reg,EA,_),
     def_used(EA_def,Reg,EA2,_), EA2 != EA,
-    code(EA22),
-    cmp_immediate_to_reg(EA22,Reg,Imm_index2,_),
+    cmp_immediate_to_reg(EA2,Reg,Imm_index2,_),
     !symbolic_operand_candidate(EA2,Imm_index2,_,_).
 
 symbolic_operand_point(EA,Imm_index,-1,"immediate is bitmask"):-
-    code(EA),
     symbolic_operand_candidate(EA,Imm_index,_,_),
     instruction_get_op(EA,Imm_index,Op),
     op_immediate(Op,_),
@@ -193,7 +187,6 @@ symbolic_operand_point(EA,Imm_index,-2,"point to exception section"):-
     Base <= Dest, Dest < Base+SectSize.
 
  symbolic_operand_point(EA,Imm_index,-1,"operated on logical operation result"):-
-    code(EA),
     op_immediate_and_reg(EA,_,Reg,Imm_index,_),
     def_used(EA_def,Reg,EA,_),
     instruction_get_operation(EA_def,Operation),
@@ -202,7 +195,6 @@ symbolic_operand_point(EA,Imm_index,-2,"point to exception section"):-
     !is_xor_reset(EA_def).
 
 symbolic_operand_point(EA,Op_index,-1,"moved/compared-with-different-size"):-
-    code(EA),
     symbolic_operand_candidate(EA,Op_index,_,_),
     instruction_get_op(EA,Op_index,Op),
     op_immediate(Op,_),
@@ -213,7 +205,6 @@ symbolic_operand_point(EA,Op_index,-1,"moved/compared-with-different-size"):-
 
 
 symbolic_operand_point(EA,Op_index,1,"used-for-address"):-
-    code(EA),
     symbolic_operand_candidate(EA,Op_index,_,_),
     instruction_get_op(EA,Op_index,Op),
     op_immediate(Op,_),
@@ -295,7 +286,6 @@ symbol_minus_symbol_candidate(EA+Size,Size,Symbol,Reference,"second"):-
 // address_in_data considers anything that points to the code region
 // this refinement restricts that to the beginning of the final blocks
 .decl address_in_data_refined(EA:address,Val:number)
-.output address_in_data_refined
 
 address_in_data_refined(EA,Val):-
     binary_type("DYN"),
@@ -312,51 +302,15 @@ address_in_data_refined(EA,Val):-
     Val <= End.
 
 address_in_data_refined(EA,Val):-
-    binary_isa("X64"),
     binary_type("DYN"),
     address_in_data(EA,Val),
     relocation(EA,_,_,_),
     block(Val).
 
 address_in_data_refined(EA,Val):-
-    binary_isa("X64"),
     binary_type("EXEC"),
     address_in_data(EA,Val),
     block(Val).
-
-address_in_data_refined(EA,RealVal):-
-    binary_isa("ARM"),
-    binary_type("DYN"),
-    address_in_data(EA,Val),
-    relocation(EA,_,_,_),
-    (
-        Val % 2 = 1,
-        DecodeMode = "Thumb",
-        RealVal = Val-1
-    ;
-        Val % 2 = 0,
-        DecodeMode = "Normal",
-        RealVal = Val
-    ),
-    block(RealVal).
-
-address_in_data_refined(EA,RealVal):-
-    binary_isa("ARM"),
-    binary_type("EXEC"),
-    address_in_data(EA,Val),
-    (
-        Val % 2 = 1,
-        DecodeMode = "Thumb",
-        RealVal = Val-1
-    ;
-        Val % 2 = 0,
-        DecodeMode = "Normal",
-        RealVal = Val
-    ),
-    block(RealVal).
-
-
-
 
 .init address_in_data_refined_range=empty_range
 

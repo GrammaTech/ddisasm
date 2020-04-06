@@ -33,9 +33,6 @@ and characteristics
 #include "interrupt_operations.dl"
 #include "registers.dl"
 
-
-
-
 .decl conditional_mov(EA:address)
 
 conditional_mov(EA):-

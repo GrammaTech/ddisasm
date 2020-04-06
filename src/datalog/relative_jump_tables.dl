@@ -172,8 +172,8 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
     reg_jump(EA_jump,_),
     code(EA_jump),
     def_used(EA_base,Reg,EA_jump,_),
-    code(EA_baseBase),
-    instruction_get_operation(EA_baseBase,Operation),
+    code(EA_base),
+    instruction_get_operation(EA_base,Operation),
     (
         Operation = "ADD";
         Operation = "SUB"

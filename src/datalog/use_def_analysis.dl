@@ -107,7 +107,6 @@ flow_def(EA_jump,Reg,EA_target,Immediate):-
 
 must_def(EA,Reg):-
     def(EA,Reg),
-    code(EA),
     !arch.conditional_mov(EA).
 
 .decl defined_in_block(EA:address,Reg:register)
@@ -186,18 +185,15 @@ def_used(EA_def,Reg,EA_used,Index):-
 
 def_used_for_address(EA_def,Reg):-
     used(EA,Reg,Index),
-    code(EA),
     instruction_get_op(EA,Index,Op),
     op_indirect_contains_reg(Op,Reg),
     def_used(EA_def,Reg,EA,Index).
 
 def_used_for_address(EA_def,Reg):-
-    code(EA_used),
     reg_jump(EA_used,Reg),
     def_used(EA_def,Reg,EA_used,_).
 
 def_used_for_address(EA_def,Reg):-
-    code(EA_used),
     reg_call(EA_used,Reg),
     def_used(EA_def,Reg,EA_used,_).
 

@@ -112,15 +112,12 @@ may_have_symbolic_immediate(Src,Dest):-
 
 .decl invalid(EA:address)
 .output invalid
-.decl invalid_edge(EA:address,EA2:address)
-.output invalid_edge
 
 // if the decoder failed to decode any instruction at EA, EA is invalid
 invalid(EA):-
     invalid_op_code(EA).
 
 // if EA contains a direct call or jump to something that cannot be code, it is invalid
-invalid_edge(EA,Not_code),
 invalid(EA):-
     (
         must_fallthrough(EA,Not_code),
@@ -235,7 +232,6 @@ code_in_block_candidate(EA,Start):-
     !block_limit(EA).
 
 
-
 // if reached a block limit or an instruction that does not necessarily
 // fallthrough continue exploring but start a new block
 code_in_block_candidate(EA,EA):-
@@ -262,7 +258,6 @@ after_end(Next,End):-
     arch.is_nop(EA),
     !block_limit(EA),
     next(EA,Next).
-
 
 possible_target(EA):-
     after_end(EA,_),
@@ -318,7 +313,6 @@ block_candidate_boundaries(Block, BegAddr,EndAddr):-
 
 // auxiliary predicate to detect that there are several candidates that fallthrough into a third candidate block
 .decl multiple_fallthrough_to(Block:address)
-// This only makes sense within a single decode mode
 
 multiple_fallthrough_to(Block):-
     may_fallthrough(EA,Block),
@@ -351,9 +345,8 @@ block_overlap(Block1,Block2):-
     BegAddr2 < EndAddr1.
 
 // This uses instruction_range as an optimization
-// We can remove this once souffle implement range queries.
-
-// an instruction of one block starts in the middle of another one from a different block
+// TODO: We can remove this once souffle implement range queries.
+// An instruction of one block starts in the middle of another one from a different block
 block_overlap(EA_block,EA_block2):-
     !binary_isa("ARM"),
     code_in_block_candidate_refined(EA,EA_block),
@@ -393,12 +386,12 @@ block_total_points(Block,Points):-
 
 discarded_block(Block):-
     (
-        block_overlap(Block,Block22);
-        block_overlap(Block22,Block)
+        block_overlap(Block,Block2);
+        block_overlap(Block2,Block)
     ),
     // keep the block that has more points
     block_total_points(Block,Points),
-    block_total_points(Block22,Points2),
+    block_total_points(Block2,Points2),
     Points < Points2.
 
 discarded_block(Block):-
@@ -407,10 +400,10 @@ discarded_block(Block):-
 
 // propagate discarding blocks through direct jumps or calls
 discarded_block(Block):-
-    discarded_block(Block22),
+    discarded_block(Block2),
     (
-        direct_jump(EA,Block22);
-        direct_call(EA,Block22)
+        direct_jump(EA,Block2);
+        direct_call(EA,Block2)
     ),
     code_in_block_candidate_refined(EA,Block).
 
@@ -673,10 +666,10 @@ block(Block):-
 code(EA):-
     code_in_block(EA,_).
 
-block_still_overlap(Block,Block22):-
-    block_overlap(Block,Block22),
+block_still_overlap(Block,Block2):-
+    block_overlap(Block,Block2),
     !discarded_block(Block),
-    !discarded_block(Block22).
+    !discarded_block(Block2).
 
 
 .decl data_in_code_propagate(Current:address,Initial:address,SectionLimit:address)

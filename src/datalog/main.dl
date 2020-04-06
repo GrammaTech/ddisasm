@@ -345,10 +345,10 @@ indirect_jump(EA):-
 .decl direct_call(src:address, dest:address)
 .output direct_call
 
-direct_call(EA,Dest2):-
+direct_call(EA,Dest):-
     arch.call_operation(Operation),
     instruction(EA,_,_,Operation,Op1,_,_,_),
-    op_immediate(Op1,Dest2).
+    op_immediate(Op1,Dest).
 
 .decl pc_relative_call(src:address,dest:address)
 .output pc_relative_call
