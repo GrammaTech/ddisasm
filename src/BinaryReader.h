@@ -187,7 +187,7 @@ public:
     virtual uint64_t get_min_address() = 0;
 
     virtual gtirb::FileFormat get_binary_format() = 0;
-    virtual gtirb::ISAID get_binary_architecture() = 0;
+    virtual gtirb::ISA get_binary_architecture() = 0;
     virtual std::set<InitialAuxData::Section> get_sections() = 0;
     virtual std::set<gtirb::SectionFlag> get_section_flags(
         const InitialAuxData::Section &section) = 0;

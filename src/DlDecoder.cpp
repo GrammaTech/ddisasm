@@ -198,14 +198,16 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
             for(const auto byteInterval : section.byte_intervals())
             {
                 decodeSection(byteInterval);
-                storeDataSection(byteInterval, minAddr, maxAddr,getISAPointerSize(module.getISA()));
+                storeDataSection(byteInterval, minAddr, maxAddr,
+                                 getISAPointerSize(module.getISA()));
             }
         }
         if(isNonZeroDataSection(format, extraInfo))
         {
             for(const auto byteInterval : section.byte_intervals())
             {
-                storeDataSection(byteInterval, minAddr, maxAddr,getISAPointerSize(module.getISA()));
+                storeDataSection(byteInterval, minAddr, maxAddr,
+                                 getISAPointerSize(module.getISA()));
             }
         }
     }
@@ -249,8 +251,7 @@ void DlDecoder::decodeX64Section(const gtirb::ByteInterval &byteInterval)
         }
         else
         {
-            instructions.push_back(
-                GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn, DecodeMode::NORMAL));
+            instructions.push_back(GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn));
             cs_free(insn, count);
         }
         ++ea;
@@ -263,12 +264,14 @@ void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
 {
     gtirb::Addr ea = byteInterval.getAddress().value();
     uint64_t size = byteInterval.getInitializedSize();
-    auto buf = byteInterval.rawBytes<const unsigned char>();
     auto decode_in_mode = [&byteInterval, this](uint64_t size, gtirb::Addr ea, DecodeMode mode) {
-       auto buf = byteInterval.rawBytes<const unsigned char>();
+        auto buf = byteInterval.rawBytes<const unsigned char>();
         int InsnSize = 4;
         if(mode == DecodeMode::THUMB)
+        {
             InsnSize = 2;
+            ea++;
+        }
         while(size > 0)
         {
             int increment = InsnSize;
@@ -282,7 +285,7 @@ void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
             else
             {
                 instructions.push_back(
-                    GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn, mode));
+                    GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn));
                 increment = insn->size;
                 cs_free(insn, count);
             }
@@ -312,7 +315,7 @@ void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
 }
 
 void DlDecoder::storeDataSection(const gtirb::ByteInterval &byteInterval, gtirb::Addr min_address,
-                                 gtirb::Addr max_address,unsigned int PointerSize)
+                                 gtirb::Addr max_address, unsigned int PointerSize)
 {
     assert(byteInterval.getAddress() && "Failed to store section without address.");
     assert(byteInterval.getSize() == byteInterval.getInitializedSize()

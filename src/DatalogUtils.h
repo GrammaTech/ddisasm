@@ -47,7 +47,6 @@ struct DlInstruction
     std::vector<uint64_t> op_codes;
     uint8_t immediateOffset;
     uint8_t displacementOffset;
-    DecodeMode decodeMode;
 };
 
 namespace souffle
@@ -77,8 +76,7 @@ public:
     }
 
     static DlInstruction transformInstruction(const MultiArchCapstoneHandle &CsHandle,
-                                              DlOperandTable &OpDict, const cs_insn &insn,
-                                              DecodeMode DecodeMode);
+                                              DlOperandTable &OpDict, const cs_insn &insn);
 
     template <typename T>
     static void addToRelation(souffle::SouffleProgram *prog, const std::string &name, const T &data)

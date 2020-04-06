@@ -36,11 +36,11 @@ Function inference based on call frames.
 
 function_entry(Begin):-
     fde_addresses(Begin,_),
-    refined_block(Begin,_).
+    refined_block(Begin).
 
 function_without_callframe(EA),
 function_entry(EA):-
-    refined_block(EA,_),
+    refined_block(EA),
     !fde_addresses(EA,_),
     (
         function_symbol(EA,_);
@@ -48,8 +48,8 @@ function_entry(EA):-
         start_function(EA);
         section(_,_,EA);
         //called
-        direct_call(EA_caller,DecodeMode,EA,_),
-        code(EA_caller,DecodeMode)
+        direct_call(EA_caller,EA),
+        code(EA_caller)
     ).
 
 // pointer in special sections
@@ -68,7 +68,7 @@ in_function_initial(Block,Block):-
     function_entry(Block).
 
 in_function_initial(Block,Begin):-
-    refined_block(Block,_),
+    refined_block(Block),
     fde_addresses(Begin,End),
     function_entry(Begin),
     Begin <= Block,
@@ -81,7 +81,7 @@ in_function_initial(Block,Begin):-
 .decl not_in_function_initial(Block:address)
 
 not_in_function_initial(Block):-
-    refined_block(Block,_),
+    refined_block(Block),
     !in_function_initial(Block,_).
 
 in_function(Block,Function):-

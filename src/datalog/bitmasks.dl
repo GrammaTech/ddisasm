@@ -51,16 +51,16 @@ available_bits.range(1,8*Pt_size):-
 low_pass_mask((2^N)-1):-
     available_bits.num(N).
 
-.decl low_pass_filter(EA:address,DecodeMode:symbol)
+.decl low_pass_filter(EA:address)
 
-low_pass_filter(EA,DecodeMode):-
-    code(EA,DecodeMode),
-    op_immediate_and_reg(EA,DecodeMode,"AND",_,_,Imm),
+low_pass_filter(EA):-
+    code(EA),
+    op_immediate_and_reg(EA,"AND",_,_,Imm),
     low_pass_mask(Imm).
 
-.decl is_xor_reset(EA:address,DecodeMode:symbol)
+.decl is_xor_reset(EA:address)
 
-is_xor_reset(EA,DecodeMode):-
-    instruction(EA,_,_,"XOR",Op1,Op2,0,0,DecodeMode),
+is_xor_reset(EA):-
+    instruction(EA,_,_,"XOR",Op1,Op2,0,0),
     op_regdirect_contains_reg(Op1,Reg),
     op_regdirect_contains_reg(Op2,Reg).

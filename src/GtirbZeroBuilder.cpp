@@ -150,12 +150,6 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
     module.addAuxData<gtirb::schema::ElfSectionProperties>(std::move(sectionProperties));
 }
 
-void fixArmSymbol(InitialAuxData::Symbol &Symbol)
-{
-    if(Symbol.type == "FUNC" && (Symbol.address % 2) == 1)
-        Symbol.address--;
-}
-
 void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                   gtirb::Context &context)
 {
@@ -177,8 +171,6 @@ void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
             }
             else
             {
-                if(module.getISA() == gtirb::ISA::ARM)
-                    fixArmSymbol(binSymbol);
                 symbol = module.addSymbol(context, gtirb::Addr(binSymbol.address), binSymbol.name);
             }
             elfSymbolInfo[symbol->getUUID()] = {binSymbol.size, binSymbol.type, binSymbol.scope,

@@ -209,8 +209,7 @@ std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const MultiArchCapstoneHandl
 }
 
 DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle& CsHandle,
-                                                   DlOperandTable& OpDict, const cs_insn& insn,
-                                                   DecodeMode DecodeMode)
+                                                   DlOperandTable& OpDict, const cs_insn& insn)
 {
     std::vector<uint64_t> op_codes;
     std::string prefix_name = str_toupper(insn.mnemonic);
@@ -249,8 +248,7 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
                         name,
                         op_codes,
                         detail.encoding.imm_offset,
-                        detail.encoding.disp_offset,
-                        DecodeMode};
+                        detail.encoding.disp_offset};
             }
         }
         case gtirb::ISA::ARM:
@@ -272,7 +270,7 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
                 if(opCount > 0)
                     std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
             }
-            return {insn.address, insn.size, prefix, name, op_codes, 0, 0, DecodeMode};
+            return {insn.address, insn.size, prefix, name, op_codes, 0, 0};
         }
 
         default:
@@ -300,15 +298,6 @@ namespace souffle
                 t << 0;
         }
         t << inst.immediateOffset << inst.displacementOffset;
-        switch(inst.decodeMode)
-        {
-            case DecodeMode::NORMAL:
-                t << "Normal";
-                break;
-            case DecodeMode::THUMB:
-                t << "Thumb";
-                break;
-        }
         return t;
     }
 } // namespace souffle
@@ -366,8 +355,7 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
             Insn, [Count](cs_insn* i) { cs_free(i, Count); });
         for(size_t i = 0; i < Count; ++i)
         {
-            Insns.push_back(
-                GtirbToDatalog::transformInstruction(CsHandle, OpDict, Insn[i], DecodeMode));
+            Insns.push_back(GtirbToDatalog::transformInstruction(CsHandle, OpDict, Insn[i]));
         }
     }
     GtirbToDatalog::addToRelation(&*Prog, "instruction", Insns);

@@ -73,7 +73,7 @@ moved_data_label(EA,Size,Dest,New_dest):-
 //as long as it is not code
 moved_data_label(EA,SizePointer,Dest,Address):-
     symbolic_data(EA,SizePointer,Dest),
-    !code(Dest,_),
+    !code(Dest),
     symbol(Address,Size,_,_,_,Name),
     !function_symbol(Address,Name),
     Address < Dest,
@@ -82,7 +82,7 @@ moved_data_label(EA,SizePointer,Dest,Address):-
 // create a symbol+constant for overlapping instructions
 moved_data_label(EA,SizePointer,Dest,Address):-
     symbolic_data(EA,SizePointer,Dest),
-    overlapping_instruction(Dest,_,Address).
+    overlapping_instruction(Dest,Address).
 
 ////////////////////////////////////////////////////////////////////////////////////
 
@@ -94,10 +94,10 @@ moved_pc_relative_candidate(EA_def2,Op_index,Dest,New_dest,Diff):-
     def_used(EA_def1,Reg1,EA,_),
     dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End,OldBeg,OldEnd),
 
-    code(EA_def2,DecodeMode2),
+    code(EA_def22),
     def_used(EA_def2,Reg2,EA,_),
-    pc_relative_operand(EA_def2,DecodeMode2,Op_index,Dest),
-    instruction_get_operation(EA_def2,DecodeMode2,"LEA"),
+    pc_relative_operand(EA_def22,Op_index,Dest),
+    instruction_get_operation(EA_def22,"LEA"),
 
     Beg <= Dest, Dest <= End,
     (OldBeg > Dest ; Dest > OldEnd),
@@ -106,10 +106,10 @@ moved_pc_relative_candidate(EA_def2,Op_index,Dest,New_dest,Diff):-
 // a RIP relative reference is always symbolic. If we have no better
 // candidates we just find the closest data section
 moved_pc_relative_candidate(EA,Op_index,Dest,New_dest,Diff):-
-    code(EA,DecodeMode),
+    code(EA),
     binary_format("ELF"),
     binary_isa("X64"),
-    pc_relative_operand(EA,DecodeMode,Op_index,Dest),
+    pc_relative_operand(EA,Op_index,Dest),
     !symbolic_operand(EA,Op_index,_,_),
     regular_data_section(Name),
     section(Name,SizeSect,Base),
@@ -190,10 +190,10 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Diff):-
 moved_label_class(EA,Op_index,"miss section with access"),
 moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
     binary_type("EXEC"),
-    code(EA,DecodeMode),
+    code(EA),
     data_access(EA,Op_index,_,_,_,_,Dest,_), Dest >= 0,
     !symbolic_operand(EA,Op_index,_,_),
-    !pc_relative_operand(EA,DecodeMode,Op_index,_),
+    !pc_relative_operand(EA,Op_index,_),
     data_access_pattern_candidate(Access_dest,_,_,EA),
     regular_data_section(Name),
     section(Name,SizeSect,Base),
@@ -212,11 +212,11 @@ moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
 moved_label_class(EA,Op_index,"constant + multiplied reg"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
     binary_type("EXEC"),
-    code(EA,DecodeMode),
+    code(EA),
     data_access(EA,Op_index,"NONE","NONE",RegMult,Mult,Dest,_),
-    !instruction_get_operation(EA,DecodeMode,"LEA"),
+    !instruction_get_operation(EA,"LEA"),
     !symbolic_operand(EA,Op_index,_,_),
-    !pc_relative_operand(EA,DecodeMode,Op_index,_),
+    !pc_relative_operand(EA,Op_index,_),
     (
         Mult>1;
         value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,0,_), Mult2>1
@@ -234,11 +234,11 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 moved_label_class(EA,Op_index,"constant + multiplied reg2"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
     binary_type("EXEC"),
-    code(EA,DecodeMode),
+    code(EA),
     data_access(EA,Op_index,"NONE",Reg,"NONE",_,Dest,_),
-    !instruction_get_operation(EA,DecodeMode,"LEA"),
+    !instruction_get_operation(EA,"LEA"),
     !symbolic_operand(EA,Op_index,_,_),
-    !pc_relative_operand(EA,DecodeMode,Op_index,_),
+    !pc_relative_operand(EA,Op_index,_),
     value_reg_at_operand(EA,Op_index,Reg,_,Mult2,0,_), Mult2>1,
     regular_data_section(Name),
     section(Name,SectSize,Base),
@@ -253,9 +253,9 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 moved_label_class(EA,Op_index,"constant + repeated reg"),
 moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
     binary_type("EXEC"),
-    code(EA,DecodeMode),
+    code(EA),
     data_access(EA,Op_index,"NONE",Reg,Reg,_,Dest,_),
-    !instruction_get_operation(EA,DecodeMode,"LEA"),
+    !instruction_get_operation(EA,"LEA"),
     !symbolic_operand(EA,Op_index,_,_),
     regular_data_section(Name),
     section(Name,SectSize,Base),
@@ -271,8 +271,8 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 moved_displacement_candidate(EA,Op_index,Dest,SymbolAddr,0):-
     !binary_type("EXEC"),
     data_access(EA,Op_index,_,_,_,_,Dest,_),
-    code(EA,DecodeMode),
-    instruction_displacement_offset(EA,DecodeMode,Op_index,DisplacementOffset),
+    code(EA),
+    instruction_displacement_offset(EA,Op_index,DisplacementOffset),
     relocation(EA+DisplacementOffset,_,Symbol,_),
     symbol(SymbolAddr,_,_,_,_,Symbol),
     SymbolAddr != Dest.
@@ -299,20 +299,20 @@ moved_label(EA,Op_index,Dest,New_dest):-
 .decl moved_immediate_candidate(EA:address,Op_index:number,Immediate:number,New_immmediate:number)
 
 mov_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
-    code(EA,DecodeMode),
-    arch.mov(EA,DecodeMode),
-    instruction_get_src_op(EA,DecodeMode,Imm_index,Op),
+    code(EA),
+    arch.mov(EA),
+    instruction_get_src_op(EA,Imm_index,Op),
     op_immediate(Op,Immediate),
-    instruction_get_dest_op(EA,DecodeMode,_,Op2),
+    instruction_get_dest_op(EA,_,Op2),
     op_regdirect_contains_reg(Op2,Reg).
 
 cmp_reg_to_reg(EA,Reg1,Reg2):-
-    code(EA,DecodeMode),
-    instruction_get_operation(EA,DecodeMode,Operation),
+    code(EA),
+    instruction_get_operation(EA,Operation),
     arch.cmp_operation(Operation),
-    instruction_get_op(EA,DecodeMode,_,Op1),
+    instruction_get_op(EA,_,Op1),
     op_regdirect_contains_reg(Op1,Reg1),
-    instruction_get_op(EA,DecodeMode,_,Op2), Op2!=Op1,
+    instruction_get_op(EA,_,Op2), Op2!=Op1,
     op_regdirect_contains_reg(Op2,Reg2).
 
 .decl dest_enlarged_data_section(EA:address,Reg:register,New_dest:address,
@@ -352,8 +352,8 @@ moved_immediate_candidate(EA_from,Imm_index,Immediate,New_dest):-
 moved_label_class(EA,Imm_index,"immediate loop bound"),
 moved_immediate_candidate(EA,Imm_index,Immediate,New_dest):-
     binary_type("EXEC"),
-    code(EA,DecodeMode),
-    cmp_immediate_to_reg(EA,DecodeMode,Reg,Imm_index,Immediate),
+    code(EA),
+    cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate),
     def_used(EA_def,Reg,EA,_),
     dest_enlarged_data_section(EA_def,Reg,New_dest,Beg,End,OldBeg,OldEnd),
     Beg <= Immediate, Immediate <= End,
@@ -375,9 +375,9 @@ moved_immediate_candidate(EA_def2,Imm_index,Immediate,New_dest):-
 moved_label_class(EA,Op_index,"pie relocation"),
 moved_immediate_candidate(EA,Op_index,Dest,SymbolAddr):-
     !binary_type("EXEC"),
-    code(EA,DecodeMode),
-    instruction_immediate_offset(EA,DecodeMode,Op_index,ImmediateOffset),
-    instruction_get_src_op(EA,DecodeMode,Op_index,Op),
+    code(EA),
+    instruction_immediate_offset(EA,Op_index,ImmediateOffset),
+    instruction_get_src_op(EA,Op_index,Op),
     op_immediate(Op,Dest),
     relocation(EA+ImmediateOffset,_,Symbol,_),
     symbol(SymbolAddr,_,_,_,_,Symbol),
@@ -401,4 +401,4 @@ moved_label(EA,Op_index,Dest,Address):-
 moved_label_class(EA,Op_index,"overlapping instruction"),
 moved_label(EA,Op_index,Dest,Block):-
     symbolic_operand(EA,Op_index,Dest,"code"),
-    overlapping_instruction(Dest,_,Block).
+    overlapping_instruction(Dest,Block).

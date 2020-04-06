@@ -49,9 +49,9 @@ unaligned_pointer(EA):-
 .output immediate_symbol
 
 immediate_symbol(EA,Op_index,Dest):-
-    code(EA,DecodeMode),
-    may_have_symbolic_immediate(EA,DecodeMode,Dest),
-    instruction_get_op(EA,DecodeMode,Op_index,Op),
-    !direct_jump(EA,DecodeMode,_,_),
-    !direct_call(EA,DecodeMode,_,_),
+    code(EA),
+    may_have_symbolic_immediate(EA,Dest),
+    instruction_get_op(EA,Op_index,Op),
+    !direct_jump(EA,_),
+    !direct_call(EA,_),
     op_immediate(Op,Dest).

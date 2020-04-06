@@ -65,8 +65,7 @@ struct DecodedInstruction
     int64_t displacementOffset;
 };
 
-std::map<std::pair<gtirb::Addr, std::string>, DecodedInstruction> recoverInstructions(
-    souffle::SouffleProgram *prog)
+std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SouffleProgram *prog)
 {
     std::map<uint64_t, ImmOp> Immediates;
     for(auto &output : *prog->getRelation("op_immediate"))
@@ -85,7 +84,7 @@ std::map<std::pair<gtirb::Addr, std::string>, DecodedInstruction> recoverInstruc
             >> indirect.multiplier >> indirect.displacement >> size;
         Indirects[operandCode] = indirect;
     };
-    std::map<std::pair<gtirb::Addr, std::string>, DecodedInstruction> insns;
+    std::map<gtirb::Addr, DecodedInstruction> insns;
     for(auto &output : *prog->getRelation("instruction_complete"))
     {
         DecodedInstruction insn;
@@ -107,9 +106,7 @@ std::map<std::pair<gtirb::Addr, std::string>, DecodedInstruction> recoverInstruc
             }
         }
         output >> insn.immediateOffset >> insn.displacementOffset;
-        std::string DecodeMode;
-        output >> DecodeMode;
-        insns[std::pair(EA, DecodeMode)] = insn;
+        insns[EA] = insn;
     }
     return insns;
 }
@@ -118,12 +115,11 @@ struct CodeInBlock
 {
     CodeInBlock(souffle::tuple &tuple)
     {
-        assert(tuple.size() == 3);
-        tuple >> EA >> DecodeMode >> BlockAddress;
+        assert(tuple.size() == 2);
+        tuple >> EA >> BlockAddress;
     };
 
     gtirb::Addr EA{0};
-    std::string DecodeMode;
     gtirb::Addr BlockAddress{0};
 };
 
@@ -651,20 +647,19 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
         convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog),
         convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog),
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog)};
-    std::map<std::pair<gtirb::Addr, std::string>, DecodedInstruction> decodedInstructions =
-        recoverInstructions(prog);
+    std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
 
     for(auto &cib : codeInBlock)
     {
-        const auto inst = decodedInstructions.find(std::pair(cib.EA, cib.DecodeMode));
+        const auto inst = decodedInstructions.find(cib.EA);
         assert(inst != decodedInstructions.end());
         for(auto &op : inst->second.Operands)
         {
             if(auto *immediate = std::get_if<ImmOp>(&op.second))
-                buildSymbolicImmediate(context, module, inst->first.first, inst->second, op.first,
+                buildSymbolicImmediate(context, module, inst->first, inst->second, op.first,
                                        *immediate, symbolicInfo);
             if(auto *indirect = std::get_if<IndirectOp>(&op.second))
-                buildSymbolicIndirect(context, module, inst->first.first, inst->second, op.first,
+                buildSymbolicIndirect(context, module, inst->first, inst->second, op.first,
                                       *indirect, symbolicInfo);
         }
     }
@@ -677,8 +672,7 @@ void buildCodeBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
     for(auto &output : *prog->getRelation("refined_block"))
     {
         gtirb::Addr blockAddress;
-        std::string decodeMode;
-        output >> blockAddress >> decodeMode;
+        output >> blockAddress;
         if(auto sections = module.findSectionsOn(blockAddress); !sections.empty())
         {
             gtirb::Section &section = *sections.begin();
@@ -688,7 +682,7 @@ void buildCodeBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                 if(gtirb::ByteInterval &byteInterval = *it.begin(); byteInterval.getAddress())
                 {
                     uint64_t blockOffset = blockAddress - *byteInterval.getAddress();
-                    uint64_t isThumb = decodeMode == "Thumb";
+                    uint64_t isThumb = static_cast<uint64_t>(blockAddress) & 1;
                     byteInterval.addBlock<gtirb::CodeBlock>(context, blockOffset, size, isThumb);
                 }
             }
@@ -1208,7 +1202,44 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
             module.setEntryPoint(&*it.begin());
         }
     }
-    assert(module.getEntryPoint() && "Failed to set module entry point.");
+    // assert(module.getEntryPoint() && "Failed to set module entry point.");
+}
+
+void shiftThumbBlocks(gtirb::Module &Module)
+{
+    std::vector<gtirb::ByteInterval *> BIs;
+    for(auto &BI : Module.byte_intervals())
+    {
+        BIs.push_back(&BI);
+    }
+    for(auto *BI : BIs)
+    {
+        std::vector<gtirb::CodeBlock *> ThumbBlocks;
+        std::vector<gtirb::ByteInterval::SymbolicExpressionElement> SymbolicExprs;
+        for(auto &CodeBlock : BI->code_blocks())
+        {
+            if(CodeBlock.getOffset() & 1)
+            {
+                ThumbBlocks.push_back(&CodeBlock);
+                for(gtirb::ByteInterval::SymbolicExpressionElement SymbolicExprElement :
+                    BI->findSymbolicExpressionsAtOffset(
+                        CodeBlock.getOffset(), CodeBlock.getOffset() + CodeBlock.getSize()))
+                {
+                    SymbolicExprs.push_back(SymbolicExprElement);
+                }
+            }
+        }
+        for(auto *CodeBlock : ThumbBlocks)
+        {
+            BI->addBlock(CodeBlock->getOffset() - 1, CodeBlock);
+        }
+        for(auto &SymbolicExpr : SymbolicExprs)
+        {
+            BI->removeSymbolicExpression(SymbolicExpr.getOffset());
+            BI->addSymbolicExpression(SymbolicExpr.getOffset() - 1,
+                                      SymbolicExpr.getSymbolicExpression());
+        }
+    }
 }
 
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
@@ -1228,6 +1259,10 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildPadding(module, prog);
     buildComments(module, prog, selfDiagnose);
     updateEntryPoint(module, prog);
+    if(module.getISA() == gtirb::ISA::ARM)
+    {
+        shiftThumbBlocks(module);
+    }
 }
 
 void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)

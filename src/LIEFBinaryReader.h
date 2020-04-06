@@ -41,7 +41,7 @@ public:
     std::set<InitialAuxData::Section> get_sections() override;
     std::set<gtirb::SectionFlag> get_section_flags(const InitialAuxData::Section& section) override;
     gtirb::FileFormat get_binary_format() override;
-    gtirb::ISAID get_binary_architecture() override;
+    gtirb::ISA get_binary_architecture() override;
     std::string get_binary_type() override;
     uint64_t get_entry_point() override;
     uint64_t get_base_address() override;

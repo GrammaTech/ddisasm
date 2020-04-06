@@ -124,16 +124,16 @@ This module:
 
 .decl instruction_complete(ea:address, size:number, prefix:symbol, opcode:symbol,
           op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code,
-          immOffset:number,displacementOffset:number, decodeMode: symbol)
+          immOffset:number,displacementOffset:number)
 .input instruction_complete
 
 .decl instruction(ea:address, size:number, prefix:symbol, opcode:symbol,
-          op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code, decodeMode: symbol)
+          op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code)
 
-instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4,DecodeMode):-
-    instruction_complete(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4,_,_,DecodeMode).
+instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
+    instruction_complete(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4,_,_).
 
-.decl invalid_op_code(ea:address,DecodeMode:symbol)
+.decl invalid_op_code(ea:address)
 .input invalid_op_code
 
 // three kinds of operators
@@ -173,31 +173,31 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4,DecodeMode):-
 // auxiliary definitions
 /////////////////////////////////////////////////////////////
 
-.decl instruction_immediate_offset(EA:address,DecodeMode:symbol,Index:number,Offset:number)
+.decl instruction_immediate_offset(EA:address,Index:number,Offset:number)
 .output instruction_immediate_offset
 
-instruction_immediate_offset(EA,DecodeMode,Index,ImmediateOffset):-
-    instruction_complete(EA,_,_,_,_,_,_,_,ImmediateOffset,_,DecodeMode),
-    instruction_get_op(EA,DecodeMode,Index,Op),
+instruction_immediate_offset(EA,Index,ImmediateOffset):-
+    instruction_complete(EA,_,_,_,_,_,_,_,ImmediateOffset,_),
+    instruction_get_op(EA,Index,Op),
     op_immediate(Op,_).
 
-.decl instruction_displacement_offset(EA:address,DecodeMode:symbol,Index:number,Offset:number)
+.decl instruction_displacement_offset(EA:address,Index:number,Offset:number)
 .output instruction_displacement_offset
 
-instruction_displacement_offset(EA,DecodeMode,Index,DisplacementOffset):-
-    instruction_complete(EA,_,_,_,_,_,_,_,_,DisplacementOffset,DecodeMode),
-    instruction_get_op(EA,DecodeMode,Index,Op),
+instruction_displacement_offset(EA,Index,DisplacementOffset):-
+    instruction_complete(EA,_,_,_,_,_,_,_,_,DisplacementOffset),
+    instruction_get_op(EA,Index,Op),
     op_indirect(Op,_,_,_,_,_,_).
 
-.decl instruction_get_operation(ea:address,DecodeMode:symbol,operation:symbol) 
+.decl instruction_get_operation(ea:address,operation:symbol)
 
-instruction_get_operation(EA,DecodeMode,Operation):-
-    instruction(EA,_,_,Operation,_,_,_,_,DecodeMode).
+instruction_get_operation(EA,Operation):-
+    instruction(EA,_,_,Operation,_,_,_,_).
 
-.decl instruction_get_op(ea:address,DecodeMode:symbol, index:number, operator:operand_code)
+.decl instruction_get_op(ea:address, index:number, operator:operand_code)
 
-instruction_get_op(EA,DecodeMode,Index,Op):-
-    instruction(EA,_,_,_,Op1,Op2,Op3,Op4,DecodeMode),
+instruction_get_op(EA,Index,Op):-
+    instruction(EA,_,_,_,Op1,Op2,Op3,Op4),
     (
         Op1 != 0,
         Op = Op1, Index = 1
@@ -212,10 +212,10 @@ instruction_get_op(EA,DecodeMode,Index,Op):-
         Op = Op4, Index = 4
     ).
 
-.decl instruction_get_dest_op(ea:address,DecodeMode:symbol,index:number,op:operand_code)
+.decl instruction_get_dest_op(ea:address,index:number,op:operand_code)
 
-instruction_get_dest_op(EA,DecodeMode,Index,Op):-
-    instruction(EA,_,_,Operation,_,Op2,Op3,Op4,DecodeMode),
+instruction_get_dest_op(EA,Index,Op):-
+    instruction(EA,_,_,Operation,_,Op2,Op3,Op4),
     !arch.read_only_operation(Operation),
     (
         Op4 = 0,
@@ -233,25 +233,25 @@ instruction_get_dest_op(EA,DecodeMode,Index,Op):-
         Op = Op4,
         Index = 4
     ).
-instruction_get_dest_op(EA,DecodeMode,1,Op):-
-    instruction(EA,_,_,Operation,Op,0,0,0,DecodeMode),
+instruction_get_dest_op(EA,1,Op):-
+    instruction(EA,_,_,Operation,Op,0,0,0),
     arch.one_op_write(Operation).
 
-.decl instruction_get_src_op(ea:address,DecodeMode:symbol,Index:operand_index,op:operand_code)
+.decl instruction_get_src_op(ea:address,Index:operand_index,op:operand_code)
 
 //when the dest is used as a source as well
-instruction_get_src_op(EA,DecodeMode,Index,Op2):-
-    instruction(EA,_,_,Operation,_,Op2,_,_,DecodeMode),Op2 != 0,
+instruction_get_src_op(EA,Index,Op2):-
+    instruction(EA,_,_,Operation,_,Op2,_,_),Op2 != 0,
     Index = 2,
-    !arch.mov(EA,DecodeMode),
+    !arch.mov(EA),
     !arch.op_does_not_read_dest_reg(Operation),
     !arch.write_only_operation(Operation).
 
-instruction_get_src_op(EA,DecodeMode,Index,Op):-
+instruction_get_src_op(EA,Index,Op):-
     (
-        instruction(EA,_,_,Operation,Op,_,_,_,DecodeMode), Op != 0, Index = 1;
-        instruction(EA,_,_,Operation,_,Op,Op3,_,DecodeMode), Op != 0, Op3 != 0, Index = 2;
-        instruction(EA,_,_,Operation,_,_,Op,Op4,DecodeMode), Op != 0, Op4 != 0, Index = 3
+        instruction(EA,_,_,Operation,Op,_,_,_), Op != 0, Index = 1;
+        instruction(EA,_,_,Operation,_,Op,Op3,_), Op != 0, Op3 != 0, Index = 2;
+        instruction(EA,_,_,Operation,_,_,Op,Op4), Op != 0, Op4 != 0, Index = 3
     ),
     !arch.write_only_operation(Operation).
 
@@ -260,164 +260,135 @@ instruction_get_src_op(EA,DecodeMode,Index,Op):-
 /////////////////////////////////////////////////////////////
 
 
-.decl next(n:address,DecodeMode:symbol,m:address)
+.decl next(n:address,m:address)
 
-next(EA,DecodeMode,EA+Size):-
-    instruction(EA,Size,_,_,_,_,_,_,DecodeMode).
+next(EA,EA+Size):-
+    instruction(EA,Size,_,_,_,_,_,_).
 
-.decl pc_relative_operand(src:address,DecodeMode:symbol,index:number, dest:address)
+.decl pc_relative_operand(src:address,index:number, dest:address)
 .output pc_relative_operand
 
-pc_relative_operand(EA,DecodeMode,Index,EA_next+Offset):-
-    instruction_get_op(EA,DecodeMode, Index, Op),
+pc_relative_operand(EA,Index,EA_next+Offset):-
+    instruction_get_op(EA, Index, Op),
     op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
     arch.pc_register(Reg),
-    next(EA,DecodeMode,EA_next).
+    next(EA,EA_next).
 
-.decl instruction_has_loop_prefix(EA:address,DecodeMode:symbol)
+.decl instruction_has_loop_prefix(EA:address)
 
-instruction_has_loop_prefix(EA,DecodeMode):-
-    instruction(EA,_,Prefix,_,_,_,_,_,DecodeMode),
+instruction_has_loop_prefix(EA):-
+    instruction(EA,_,Prefix,_,_,_,_,_),
     arch.loop_prefix(Prefix).
 
 // JUMPS
-.decl unconditional_jump(n:address,DecodeMode:symbol)
+.decl unconditional_jump(n:address)
 
-unconditional_jump(EA,DecodeMode):-
-    arch.jump(EA,DecodeMode),
-    instruction_get_operation(EA,DecodeMode,Operation),
+unconditional_jump(EA):-
+    arch.jump(EA),
+    instruction_get_operation(EA,Operation),
     arch.unconditional_jump_operation(Operation).
 
-.decl conditional_jump(src:address,DecodeMode:symbol)
+.decl conditional_jump(src:address)
 
-conditional_jump(EA,DecodeMode):-
-    arch.jump(EA,DecodeMode),
-    instruction_get_operation(EA,DecodeMode,Operation),
+conditional_jump(EA):-
+    arch.jump(EA),
+    instruction_get_operation(EA,Operation),
     !arch.unconditional_jump_operation(Operation).
 
 
 // direct jumps
-.decl direct_jump(src:address,DecodeMode:symbol, dest:address, DecodeModeDest: symbol)
+.decl direct_jump(src:address, dest:address)
 .output direct_jump
 
-direct_jump(EA,DecodeMode,Dest,DecodeMode2):-
-    arch.jump(EA,DecodeMode),
-    instruction(EA,_,_,Operation,Op1,_,_,_,DecodeMode),
-    op_immediate(Op1,Dest),
-    (
-        arch.switch_decode_mode_operation(Operation),
-        arch.other_decode_mode(DecodeMode,DecodeMode2)
-        ;
-        !arch.switch_decode_mode_operation(Operation),
-        DecodeMode2= DecodeMode
-    ).
+direct_jump(EA,Dest):-
+    arch.jump(EA),
+    instruction(EA,_,_,Operation,Op1,_,_,_),
+    op_immediate(Op1,Dest).
 
-direct_jump(EA,DecodeMode,Dest,DecodeMode):-
-    instruction(EA,_,_,Operation,_,Op2,_,_,DecodeMode),
+direct_jump(EA,Dest):-
+    instruction(EA,_,_,Operation,_,Op2,_,_),
     arch.loop_operation(Operation),
     op_immediate(Op2,Dest).
 
-direct_jump(EA,DecodeMode,EA,DecodeMode):-
-    instruction_has_loop_prefix(EA,DecodeMode).
+direct_jump(EA,EA):-
+    instruction_has_loop_prefix(EA).
 
 // Special kinds of indirect jumps
 // PC relative jumps
-.decl pc_relative_jump(src:address,DecodeMode:symbol, dest:address, DecodeModeDest: symbol)
+.decl pc_relative_jump(src:address, dest:address)
 .output pc_relative_jump
 
-pc_relative_jump(EA,DecodeMode,Dest,DecodeMode2):-
-    arch.jump(EA,DecodeMode),
-    instruction_get_operation(EA,DecodeMode,Operation),
-    pc_relative_operand(EA,DecodeMode,1,Dest),
-    (
-        arch.switch_decode_mode_operation(Operation),
-        arch.other_decode_mode(DecodeMode,DecodeMode2)
-        ;
-        !arch.switch_decode_mode_operation(Operation),
-        DecodeMode2= DecodeMode
-    ).
+pc_relative_jump(EA,Dest):-
+    arch.jump(EA),
+    instruction_get_operation(EA,Operation),
+    pc_relative_operand(EA,1,Dest).
 
 // jump to the address of a register
- .decl reg_jump(src:address,DecodeMode:symbol,Reg:symbol)
+ .decl reg_jump(src:address,Reg:symbol)
 
-reg_jump(EA,DecodeMode,Reg):-
-    arch.jump(EA,DecodeMode),
-    instruction(EA,_,_,_,Op1,_,_,_,DecodeMode),
+reg_jump(EA,Reg):-
+    arch.jump(EA),
+    instruction(EA,_,_,_,Op1,_,_,_),
     op_regdirect(Op1,Reg).
 
 // indirect jump
- .decl indirect_jump(src:address,DecodeMode:symbol)
+ .decl indirect_jump(src:address)
 
-indirect_jump(EA,DecodeMode):-
-    arch.jump(EA,DecodeMode),
-    instruction(EA,_,_,_,Op1,_,_,_,DecodeMode),
+indirect_jump(EA):-
+    arch.jump(EA),
+    instruction(EA,_,_,_,Op1,_,_,_),
     op_indirect(Op1,_,_,_, _,_,_),
-    !pc_relative_jump(EA,DecodeMode,_,_).
+    !pc_relative_jump(EA,_).
 
 // CALLS
 // direct calls
-.decl direct_call(src:address,DecodeMode:symbol, dest:address, DecodeModeDest: symbol)
+.decl direct_call(src:address, dest:address)
 .output direct_call
 
-direct_call(EA,DecodeMode,Dest,DecodeMode2):-
+direct_call(EA,Dest2):-
     arch.call_operation(Operation),
-    instruction(EA,_,_,Operation,Op1,_,_,_,DecodeMode),
-    op_immediate(Op1,Dest),
-        (
-        arch.switch_decode_mode_operation(Operation),
-        arch.other_decode_mode(DecodeMode,DecodeMode2)
-        ;
-        !arch.switch_decode_mode_operation(Operation),
-        DecodeMode2= DecodeMode
-    ).
+    instruction(EA,_,_,Operation,Op1,_,_,_),
+    op_immediate(Op1,Dest2).
 
-
-.decl pc_relative_call(src:address,DecodeMode:symbol,dest:address, DecodeModeDest: symbol)
+.decl pc_relative_call(src:address,dest:address)
 .output pc_relative_call
 
-pc_relative_call(Src,DecodeMode,Dest, DecodeMode2):-
-    instruction_get_operation(Src,DecodeMode,Operation),
+pc_relative_call(Src,Dest):-
+    instruction_get_operation(Src,Operation),
     arch.call_operation(Operation),
-    pc_relative_operand(Src,DecodeMode,1,Dest),
-        (
-        arch.switch_decode_mode_operation(Operation),
-        arch.other_decode_mode(DecodeMode,DecodeMode2)
-        ;
-        !arch.switch_decode_mode_operation(Operation),
-        DecodeMode2= DecodeMode
-    ).
+    pc_relative_operand(Src,1,Dest).
 
 
 // for now we do not compute anything about these
-.decl reg_call(src:address,DecodeMode:symbol,reg:register)
+.decl reg_call(src:address,reg:register)
 .output reg_call
 
-reg_call(EA,DecodeMode,Reg):-
+reg_call(EA,Reg):-
     arch.call_operation(Operation),
-    instruction(EA,_,_,Operation,Op1,_,_,_,DecodeMode),
+    instruction(EA,_,_,Operation,Op1,_,_,_),
     op_regdirect(Op1,Reg).
 
- .decl indirect_call(src:address,DecodeMode:symbol)
+ .decl indirect_call(src:address)
 // .output indirect_call
 
-indirect_call(EA,DecodeMode):-
+indirect_call(EA):-
     arch.call_operation(Operation),
-    instruction(EA,_,_,Operation,Op1,_,_,_,DecodeMode),
+    instruction(EA,_,_,Operation,Op1,_,_,_),
     op_indirect(Op1,_,_,_,_,_,_),
-    !pc_relative_call(EA,DecodeMode,_,_).
+    !pc_relative_call(EA,_).
 
 // Returns
-.decl return(n:address,DecodeMode:symbol)
+.decl return(n:address)
 
-return(EA,DecodeMode):-
+return(EA):-
     arch.return_operation(Operation),
-    instruction_get_operation(EA,DecodeMode,Operation).
+    instruction_get_operation(EA,Operation).
 
-.decl halt(EA:address,DecodeMode:symbol)
+.decl halt(EA:address)
 
-halt(EA,DecodeMode):-
+halt(EA):-
     arch.halt_operation(Operation),
-    instruction_get_operation(EA,DecodeMode,Operation).
+    instruction_get_operation(EA,Operation).
 
 //////////////////////////////////////////////////////////////////////////////////
 // Operations to abstract features of instructions
@@ -441,20 +412,20 @@ op_regdirect_contains_reg(Op,Reg_uniform):-
 
 
 // The instruction at EA has operation Operation and two operands: a register Reg and an immediate Immediate
-.decl op_immediate_and_reg(EA:address,DecodeMode:symbol,Operation:symbol,Reg:register,Imm_index:number,Immediate:number)
+.decl op_immediate_and_reg(EA:address,Operation:symbol,Reg:register,Imm_index:number,Immediate:number)
 
-op_immediate_and_reg(EA,DecodeMode,Operation,Reg,Imm_index,Immediate):-
-    instruction_get_operation(EA,DecodeMode,Operation),
-    instruction_get_op(EA,DecodeMode,Imm_index,Op),
+op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate):-
+    instruction_get_operation(EA,Operation),
+    instruction_get_op(EA,Imm_index,Op),
     op_immediate(Op,Immediate),
-    instruction_get_op(EA,DecodeMode,_,Op2),
+    instruction_get_op(EA,_,Op2),
     op_regdirect_contains_reg(Op2,Reg).
 
 // The instruction at EA is a comparison between a register Reg and an immediate Immediate
-.decl cmp_immediate_to_reg(EA:address,DecodeMode:symbol,Reg:register,Imm_index:number,Immediate:number)
+.decl cmp_immediate_to_reg(EA:address,Reg:register,Imm_index:number,Immediate:number)
 
-cmp_immediate_to_reg(EA,DecodeMode,Reg,Imm_index,Immediate):-
-    op_immediate_and_reg(EA,DecodeMode,Operation,Reg,Imm_index,Immediate),
+cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
+    op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate),
     arch.cmp_operation(Operation).
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -556,12 +527,12 @@ inferred_symbol_name(EA,"main","GLOBAL"):-
     binary_format("ELF"),
     main_function(EA).
 
-.decl no_return_call(EA:address,DecodeMode:symbol)
+.decl no_return_call(EA:address)
 .decl function_pointer_section(Name:symbol)
 
 .decl no_return_function(Name:symbol)
 
-no_return_call(EA,DecodeMode):-
-    direct_call(EA,DecodeMode,Dest,_),
+no_return_call(EA):-
+    direct_call(EA,Dest),
     plt_entry(Dest,Function),
     no_return_function(Function).

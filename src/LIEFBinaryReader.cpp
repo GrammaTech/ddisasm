@@ -186,25 +186,25 @@ gtirb::FileFormat LIEFBinaryReader::get_binary_format()
     return gtirb::FileFormat::Undefined;
 }
 
-gtirb::ISAID LIEFBinaryReader::get_binary_architecture()
+gtirb::ISA LIEFBinaryReader::get_binary_architecture()
 {
     switch(bin->header().architecture())
     {
         case LIEF::ARCHITECTURES::ARCH_X86:
             if(bin->header().is_32())
-                return gtirb::ISAID::IA32;
+                return gtirb::ISA::IA32;
             else
-                return gtirb::ISAID::X64;
+                return gtirb::ISA::X64;
         case LIEF::ARCHITECTURES::ARCH_PPC:
-            return gtirb::ISAID::PPC32;
+            return gtirb::ISA::PPC32;
         case LIEF::ARCHITECTURES::ARCH_ARM:
-            return gtirb::ISAID::ARM;
+            return gtirb::ISA::ARM;
         case LIEF::ARCHITECTURES::ARCH_ARM64:
-            return gtirb::ISAID::ValidButUnsupported;
+            return gtirb::ISA::ValidButUnsupported;
         case LIEF::ARCHITECTURES::ARCH_NONE:
-            return gtirb::ISAID::Undefined;
+            return gtirb::ISA::Undefined;
         default:
-            return gtirb::ISAID::ValidButUnsupported;
+            return gtirb::ISA::ValidButUnsupported;
     }
 }
 

@@ -68,14 +68,14 @@ or loop) and considering the value with most steps.
 // mov reg immediate
 value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
     def_used_for_address(EA,Reg),
-    code(EA,DecodeMode),
-    op_immediate_and_reg(EA,DecodeMode,"MOV",Reg,_,Immediate).
+    code(EA),
+    op_immediate_and_reg(EA,"MOV",Reg,_,Immediate).
 
 // mov DWORD from memory
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     def_used_for_address(EA,Reg),
-    code(EA,DecodeMode),
-    instruction(EA,_,_,"MOV",Op1,Op2,0,0,DecodeMode),
+    code(EA),
+    instruction(EA,_,_,"MOV",Op1,Op2,0,0),
     op_regdirect_contains_reg(Op2,Reg),
     op_indirect(Op1,"NONE","NONE","NONE",_,Offset,32),
     data_byte(Offset,Byte0),
@@ -87,11 +87,11 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
 
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     def_used_for_address(EA,Reg),
-    code(EA,DecodeMode),
-    instruction(EA,_,_,"MOV",Op1,Op2,0,0,DecodeMode),
+    code(EA),
+    instruction(EA,_,_,"MOV",Op1,Op2,0,0),
     op_regdirect_contains_reg(Op2,Reg),
     op_indirect(Op1,_,_,_,_,_,32),
-    pc_relative_operand(EA,DecodeMode,1,Offset),
+    pc_relative_operand(EA,1,Offset),
     data_byte(Offset,Byte0),
     data_byte(Offset+1,Byte1),
     data_byte(Offset+2,Byte2),
@@ -106,8 +106,8 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
 
 value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
     def_used_for_address(EA,Reg),
-    code(EA,DecodeMode),
-    instruction(EA,Size,_,"LEA",Op1,Op2,0,0,DecodeMode),
+    code(EA),
+    instruction(EA,Size,_,"LEA",Op1,Op2,0,0),
     op_indirect(Op1,_,PcReg,"NONE",_,Offset,_),
     arch.pc_register(PcReg),
     op_regdirect_contains_reg(Op2,Reg),
@@ -117,65 +117,65 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
     def_used_for_address(EA_prev,Reg_origin),
     def_used(EA_prev,Reg_origin,EA,_),
-    code(EA,DecodeMode),
-    arch.mov(EA,DecodeMode),
-    instruction_get_op(EA,DecodeMode,1,Op1),
+    code(EA),
+    arch.mov(EA),
+    instruction_get_op(EA,1,Op1),
     op_regdirect_contains_reg(Op1,Reg_origin),
-    instruction_get_op(EA,DecodeMode,2,Op2),
+    instruction_get_op(EA,2,Op2),
     op_regdirect_contains_reg(Op2,Reg),
     EA != EA_prev.
 
 //reset a register
 value_reg_edge(EA,Reg,EA,"NONE",0,0):-
     def_used_for_address(EA,Reg),
-    code(EA,DecodeMode),
-    is_xor_reset(EA,DecodeMode).
+    code(EA),
+    is_xor_reset(EA).
 
 //add reg immediate
 value_reg_edge(EA,Reg,EA_prev,Reg,1,Immediate):-
     def_used_for_address(EA_prev,Reg),
     def_used(EA_prev,Reg,EA,_),
-    code(EA,DecodeMode),
-    instruction(EA,_,_,"ADD",Op1,Op2,0,0,DecodeMode),
+    code(EA),
+    instruction(EA,_,_,"ADD",Op1,Op2,0,0),
     op_immediate(Op1,Immediate),
     op_regdirect_contains_reg(Op2,Reg).
 
 value_reg_edge(EA,Reg,EA_prev,Reg,1,-Immediate):-
     def_used_for_address(EA_prev,Reg),
     def_used(EA_prev,Reg,EA,_),
-    code(EA,DecodeMode),
-    instruction(EA,_,_,"SUB",Op1,Op2,0,0,DecodeMode),
+    code(EA),
+    instruction(EA,_,_,"SUB",Op1,Op2,0,0),
     op_immediate(Op1,Immediate),
     op_regdirect_contains_reg(Op2,Reg).
 
 value_reg_edge(EA,Reg,EA_prev,Reg,1,1):-
     def_used_for_address(EA_prev,Reg),
     def_used(EA_prev,Reg,EA,_),
-    code(EA,DecodeMode),
-    instruction(EA,_,_,"INC",Op1,0,0,0,DecodeMode),
+    code(EA),
+    instruction(EA,_,_,"INC",Op1,0,0,0),
     op_regdirect_contains_reg(Op1,Reg).
 
 value_reg_edge(EA,Reg,EA_prev,Reg,1,-1):-
     def_used_for_address(EA_prev,Reg),
     def_used(EA_prev,Reg,EA,_),
-    code(EA,DecodeMode),
-    instruction(EA,_,_,"DEC",Op1,0,0,0,DecodeMode),
+    code(EA),
+    instruction(EA,_,_,"DEC",Op1,0,0,0),
     op_regdirect_contains_reg(Op1,Reg).
 
 // add a register to itself
 value_reg_edge(EA,Reg,EA_prev,Reg,2,0):-
     def_used_for_address(EA_prev,Reg),
     def_used(EA_prev,Reg,EA,_),
-    code(EA,DecodeMode),
-    instruction(EA,_,_,"ADD",Op,Op,0,0,DecodeMode),
+    code(EA),
+    instruction(EA,_,_,"ADD",Op,Op,0,0),
     op_regdirect_contains_reg(Op,Reg).
 
 //shl reg immediate
 value_reg_edge(EA,Reg,EA_prev,Reg,2^Immediate,0):-
     def_used_for_address(EA_prev,Reg),
     def_used(EA_prev,Reg,EA,_),
-    code(EA,DecodeMode),
-    instruction(EA,_,_,"SHL",Op1,Op2,0,0,DecodeMode),
+    code(EA),
+    instruction(EA,_,_,"SHL",Op1,Op2,0,0),
     op_immediate(Op1,Immediate),
     op_regdirect_contains_reg(Op2,Reg),
     EA != EA_prev.
@@ -184,8 +184,8 @@ value_reg_edge(EA,Reg,EA_prev,Reg,2^Immediate,0):-
 value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
     def_used_for_address(EA_prev,Reg2),
     def_used(EA_prev,Reg2,EA,_),
-    code(EA,DecodeMode),
-    instruction(EA,_,_,"IMUL",Op1,Op2,Op3,0,DecodeMode),
+    code(EA),
+    instruction(EA,_,_,"IMUL",Op1,Op2,Op3,0),
     op_immediate(Op2,Immediate),
     op_regdirect_contains_reg(Op3,Reg),
     op_regdirect_contains_reg(Op1,Reg2),
@@ -195,8 +195,8 @@ value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
 value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
     def_used_for_address(EA_prev,Reg2),
     def_used(EA_prev,Reg2,EA,_),
-    code(EA,DecodeMode),
-    instruction(EA,_,_,"IMUL",Op1,Op2,0,0,DecodeMode),
+    code(EA),
+    instruction(EA,_,_,"IMUL",Op1,Op2,0,0),
     op_immediate(Op1,Immediate),
     op_regdirect_contains_reg(Op2,Reg),
     EA != EA_prev.
@@ -205,8 +205,8 @@ value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier,Offset):-
     def_used_for_address(EA,Reg),
     def_used(EA_prev,Reg_origin,EA,1),
-    code(EA,DecodeMode),
-    instruction(EA,_,_,"LEA",Op1,Op2,0,0,DecodeMode),
+    code(EA),
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0),
     op_indirect(Op1,_,"NONE",Reg_origin_non_uniform,Multiplier,Offset,_),
     arch.track_register(Reg_origin_non_uniform,Reg_origin),
     op_regdirect_contains_reg(Op2,Reg).
@@ -215,8 +215,8 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier,Offset):-
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier+1,Offset):-
     def_used_for_address(EA,Reg),
     def_used(EA_prev,Reg_origin,EA,1),
-    code(EA,DecodeMode),
-    instruction(EA,_,_,"LEA",Op1,Op2,0,0,DecodeMode),
+    code(EA),
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0),
     op_indirect(Op1,_,Reg_origin_non_uniform,Reg_origin_non_uniform,Multiplier,Offset,_),
     arch.track_register(Reg_origin_non_uniform,Reg_origin),
     op_regdirect_contains_reg(Op2,Reg).
@@ -225,8 +225,8 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier+1,Offset):-
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,Offset):-
     def_used_for_address(EA,Reg),
     def_used(EA_prev,Reg_origin,EA,1),
-    code(EA,DecodeMode),
-    instruction(EA,_,_,"LEA",Op1,Op2,0,0,DecodeMode),
+    code(EA),
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0),
     op_indirect(Op1,_,Reg_origin_non_uniform,"NONE",1,Offset,_),
     arch.track_register(Reg_origin_non_uniform,Reg_origin),
     op_regdirect_contains_reg(Op2,Reg).
@@ -258,8 +258,8 @@ value_reg(EA,Reg,EA_from,"Unknown",Immediate,Base,Steps+1):-
 value_reg(EA,Reg_def,EA_third,Reg3,Mult1+(Mult*Mult2),Offset+Offset1+Offset2*Mult,Steps3):-
     step_limit(StepLimit),
     def_used_for_address(EA,Reg_def),
-    code(EA,DecodeMode),
-    arch.reg_reg_arithmetic_operation(EA,DecodeMode,Reg_def,Reg1,Reg2,Mult,Offset),
+    code(EA),
+    arch.reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
     Reg1 != Reg2,
     def_used(EA_def1,Reg1,EA,_),
     EA != EA_def1,
@@ -278,8 +278,8 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult1+(Mult*Mult2),Offset+Offset1+Offset2*Mul
 value_reg(EA,Reg_def,EA_third,Reg3,Mult*Mult2,Offset+Offset1+Offset2*Mult,Steps3):-
     step_limit(StepLimit),
     def_used_for_address(EA,Reg_def),
-    code(EA,DecodeMode),
-    arch.reg_reg_arithmetic_operation(EA,DecodeMode,Reg_def,Reg1,Reg2,Mult,Offset),
+    code(EA),
+    arch.reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
     Reg1 != Reg2,
 
     def_used(EA_def1,Reg1,EA,_),
@@ -303,8 +303,8 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult*Mult2,Offset+Offset1+Offset2*Mult,Steps3
 value_reg(EA,Reg_def,EA_third,Reg3,Mult1,Offset+Offset1+Offset2*Mult,Steps3):-
     step_limit(StepLimit),
     def_used_for_address(EA,Reg_def),
-    code(EA,DecodeMode),
-    arch.reg_reg_arithmetic_operation(EA,DecodeMode,Reg_def,Reg1,Reg2,Mult,Offset),
+    code(EA),
+    arch.reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
     Reg1 != Reg2,
 
     def_used(EA_def2,Reg2,EA,_),

@@ -160,7 +160,7 @@ int main(int argc, char **argv)
     gtirb::Module &module = *(ir->modules().begin());
     souffle::SouffleProgram *prog;
     {
-        DlDecoder decoder(module.getISAID());
+        DlDecoder decoder(module.getISA());
         std::cout << "Decoding the binary" << std::endl;
         prog = decoder.decode(module);
     }
@@ -183,6 +183,13 @@ int main(int argc, char **argv)
         catch(std::exception &e)
         {
             souffle::SignalHandler::instance()->error(e.what());
+        }
+        if(vm.count("debug-dir") != 0)
+        {
+            std::cout << "Writing results to debug dir " << vm["debug-dir"].as<std::string>()
+                      << std::endl;
+            auto dir = vm["debug-dir"].as<std::string>() + "/";
+            prog->printAll(dir);
         }
         std::cout << "Populating gtirb representation" << std::endl;
         disassembleModule(context, module, prog, vm.count("self-diagnose") != 0);
@@ -237,13 +244,6 @@ int main(int argc, char **argv)
             pprinter.print(std::cout, context, module);
         }
 
-        if(vm.count("debug-dir") != 0)
-        {
-            std::cout << "Writing results to debug dir " << vm["debug-dir"].as<std::string>()
-                      << std::endl;
-            auto dir = vm["debug-dir"].as<std::string>() + "/";
-            prog->printAll(dir);
-        }
         performSanityChecks(prog, vm.count("self-diagnose") != 0);
         delete prog;
     }

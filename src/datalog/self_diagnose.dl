@@ -6,14 +6,14 @@
 
 
 relocation_in_operand(EA,Index,Location,Offset):-
-    code(EA,DecodeMode),
-    instruction_immediate_offset(EA,DecodeMode,Index,Offset),
+    code(EA),
+    instruction_immediate_offset(EA,Index,Offset),
     relocation(Location,_,_,_),
     Location = EA+Offset.
 
 relocation_in_operand(EA,Index,Location,Offset):-
-    code(EA,DecodeMode),
-    instruction_displacement_offset(EA,DecodeMode,Index,Offset),
+    code(EA),
+    instruction_displacement_offset(EA,Index,Offset),
     relocation(Location,_,_,_),
     Location = EA+Offset.
 
@@ -33,15 +33,15 @@ trivial_relocation(EA):-
 .output bad_symbol_constant
 
 bad_symbol_constant(EA,Cnt):-
-    code(EA,DecodeMode),
+    code(EA),
     relocation_in_operand(EA,Index,Rel,InsnOffset),
     relocation(Rel,_,_,Cnt),
     (
-        pc_relative_operand(EA,DecodeMode,Index,_),
-        instruction(EA,InsnSize,_,_,_,_,_,_,DecodeMode),
+        pc_relative_operand(EA,Index,_),
+        instruction(EA,InsnSize,_,_,_,_,_,_),
         Cnt2 = Cnt+ (InsnSize-InsnOffset)
         ;
-        !pc_relative_operand(EA,DecodeMode,Index,_),
+        !pc_relative_operand(EA,Index,_),
         Cnt2 = Cnt
     ),
     symbolic_operand(EA,Index,Dest,_),
@@ -58,15 +58,15 @@ bad_symbol_constant(EA,Cnt):-
     Dest-Cnt2 != SectSize+Base.
 
 bad_symbol_constant(EA,Cnt):-
-    code(EA,DecodeMode),
+    code(EA),
     relocation_in_operand(EA,Index,Rel,InsnOffset),
     relocation(Rel,_,_,Cnt),
     (
-        pc_relative_operand(EA,DecodeMode,Index,_),
-        instruction(EA,InsnSize,_,_,_,_,_,_,DecodeMode),
+        pc_relative_operand(EA,Index,_),
+        instruction(EA,InsnSize,_,_,_,_,_,_),
         Cnt2 = Cnt+ (InsnSize-InsnOffset)
         ;
-        !pc_relative_operand(EA,DecodeMode,Index,_),
+        !pc_relative_operand(EA,Index,_),
         Cnt2 = Cnt
     ),
     moved_label(EA,Index,Orig,Dest),
@@ -84,29 +84,29 @@ bad_symbol_constant(EA,Cnt):-
 
 false_negative(Location):-
     relocation_in_operand(EA,Index,Rel,_),
-    code(EA,DecodeMode),
+    code(EA),
     !trivial_relocation(Rel),
     !symbolic_operand(EA,Index,_,_),
     !moved_label(EA,Index,_,_),
     (
-        instruction_immediate_offset(EA,DecodeMode,Index,Offset);
-        instruction_displacement_offset(EA,DecodeMode,Index,Offset)
+        instruction_immediate_offset(EA,Index,Offset);
+        instruction_displacement_offset(EA,Index,Offset)
     ),
     Location = EA+Offset.
 
 false_positive(Location):-
-    code(EA,DecodeMode),
+    code(EA),
     (
         symbolic_operand(EA,Index,_,_);
         moved_label(EA,Index,_,_)
     ),
-    !pc_relative_operand(EA,DecodeMode,Index,_),
-    !direct_jump(EA,DecodeMode,_,_),
-    !direct_call(EA,DecodeMode,_,_),
+    !pc_relative_operand(EA,Index,_),
+    !direct_jump(EA,_),
+    !direct_call(EA,_),
     !relocation_in_operand(EA,Index,_,_),
     (
-        instruction_immediate_offset(EA,DecodeMode,Index,Offset);
-        instruction_displacement_offset(EA,DecodeMode,Index,Offset)
+        instruction_immediate_offset(EA,Index,Offset);
+        instruction_displacement_offset(EA,Index,Offset)
     ),
     Location=EA+Offset.
 

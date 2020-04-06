@@ -33,52 +33,41 @@ and characteristics
 #include "interrupt_operations.dl"
 #include "registers.dl"
 
-.decl existing_decode_modes(DecodeMode:symbol)
-
-existing_decode_modes("Normal").
-
-
-.decl other_decode_mode(DecodeMode:symbol,DecodeMode2:symbol)
-
-other_decode_mode(DecodeMode,DecodeMode2):-
-    existing_decode_modes(DecodeMode),
-    existing_decode_modes(DecodeMode2),
-    DecodeMode != DecodeMode2.
 
 
 
-.decl conditional_mov(EA:address,DecodeMode:symbol)
+.decl conditional_mov(EA:address)
 
-conditional_mov(EA,DecodeMode):-
-    instruction_get_operation(EA,DecodeMode,Operation),
+conditional_mov(EA):-
+    instruction_get_operation(EA,Operation),
     contains("CMOV",Operation).
 
-.decl mov(EA:address,DecodeMode:symbol)
+.decl mov(EA:address)
 
-mov(EA,DecodeMode):-
-    instruction_get_operation(EA,DecodeMode,Operation),
+mov(EA):-
+    instruction_get_operation(EA,Operation),
     contains("MOV",Operation).
 
-.decl is_nop(EA:address,DecodeMode:symbol)
+.decl is_nop(EA:address)
 
-is_nop(EA,DecodeMode):-
-    instruction_get_operation(EA,DecodeMode,"NOP").
+is_nop(EA):-
+    instruction_get_operation(EA,"NOP").
 
-is_nop(EA,DecodeMode):-
-    instruction(EA,_,_,"XCHG",Op,Op,0,0,DecodeMode),
+is_nop(EA):-
+    instruction(EA,_,_,"XCHG",Op,Op,0,0),
     op_regdirect(Op,"AX").
 
 // Returns
-.decl return(n:address,DecodeMode:symbol)
+.decl return(n:address)
 
-return(EA,DecodeMode):-
+return(EA):-
     return_operation(Operation),
-    instruction_get_operation(EA,DecodeMode,Operation).
+    instruction_get_operation(EA,Operation).
 
-.decl jump(EA:address,DecodeMode:symbol)
+.decl jump(EA:address)
 
-jump(EA,DecodeMode):-
-    instruction_get_operation(EA,DecodeMode,Operation),
+jump(EA):-
+    instruction_get_operation(EA,Operation),
     jump_operation(Operation).
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
@@ -166,39 +155,39 @@ cmp_operation("TEST").
 .decl operation_size_exception(EA:address,Op_index:number,Size:number)
 
 operation_size_exception(EA,Index,8):-
-    instruction_get_operation(EA,DecodeMode,"MOVSD"),
-    instruction_get_op(EA,DecodeMode,Index,Op),
+    instruction_get_operation(EA,"MOVSD"),
+    instruction_get_op(EA,Index,Op),
     op_indirect(Op,_,_,_,_,_,32).
 
 operation_size_exception(EA,Index,0):-
-    instruction_get_operation(EA,DecodeMode,"LEA"),
-    instruction_get_op(EA,DecodeMode,Index,Op),
+    instruction_get_operation(EA,"LEA"),
+    instruction_get_op(EA,Index,Op),
     op_indirect(Op,_,_,_,_,_,_).
 
 
 
 // arithmetic operation on two source registers
-.decl reg_reg_arithmetic_operation(EA:address,DecodeMode:symbol,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
+.decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
 
-reg_reg_arithmetic_operation(EA,DecodeMode,Reg2,Reg2,Reg1,-1,0):-
-    instruction(EA,_,_,"SUB",Op1,Op2,0,0,DecodeMode), Op1 != Op2,
+reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
+    instruction(EA,_,_,"SUB",Op1,Op2,0,0), Op1 != Op2,
     op_regdirect_contains_reg(Op1,Reg1),
     op_regdirect_contains_reg(Op2,Reg2).
 
-reg_reg_arithmetic_operation(EA,DecodeMode,Reg2,Reg1,Reg2,1,0):-
-    instruction(EA,_,_,"ADD",Op1,Op2,0,0,DecodeMode), Op1 != Op2,
+reg_reg_arithmetic_operation(EA,Reg2,Reg1,Reg2,1,0):-
+    instruction(EA,_,_,"ADD",Op1,Op2,0,0), Op1 != Op2,
     op_regdirect_contains_reg(Op2,Reg2),
     op_regdirect_contains_reg(Op1,Reg1).
 
-reg_reg_arithmetic_operation(EA,DecodeMode,Reg_def,Reg1,Reg2,Mult,Offset):-
-    instruction(EA,_,_,"LEA",Op1,Op2,0,0,DecodeMode),
+reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset):-
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0),
     op_regdirect_contains_reg(Op2,Reg_def),
     op_indirect(Op1,_,Reg1_n,Reg2_n,Mult,Offset,_),
     arch.track_register(Reg1_n,Reg1),
     arch.track_register(Reg2_n,Reg2),
     Reg1 != Reg2.
 
-reg_reg_arithmetic_operation(EA,DecodeMode,Reg_def,Reg2,Reg1,1,0):-
-    reg_reg_arithmetic_operation(EA,DecodeMode,Reg_def,Reg1,Reg2,1,0).
+reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
+    reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
 
 }

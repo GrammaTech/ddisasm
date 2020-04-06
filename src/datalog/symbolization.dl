@@ -104,19 +104,19 @@ This module also computes and symbol_minus_symbol.
 
 symbolic_operand_candidate(EA,Op_index,Dest,Type):-
   binary_type("EXEC"),
-    code(EA,DecodeMode),
-    instruction_get_op(EA,DecodeMode,Op_index,Op),
+    code(EA),
+    instruction_get_op(EA,Op_index,Op),
     (
         op_immediate(Op,Dest)
         ;
-        pc_relative_operand(EA,DecodeMode,Op_index,Dest),
+        pc_relative_operand(EA,Op_index,Dest),
         !binary_isa("ARM")
         ;
         op_indirect(Op,_,_,_,_,Dest,_),
-        !pc_relative_operand(EA,DecodeMode,Op_index,_)
+        !pc_relative_operand(EA,Op_index,_)
     ),
     (
-        code(Dest,_), Type="code"
+        code(Dest), Type="code"
         ;
         data_segment(Begin,End),
         Dest >= Begin, Dest <= End,
@@ -126,31 +126,31 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
 // Deal with pie and relocatable code
 symbolic_operand_candidate(EA,Op_index,Dest,Type):-
   !binary_type("EXEC"),
-    code(EA,DecodeMode),
+    code(EA),
     (
-        instruction_immediate_offset(EA,DecodeMode,Op_index,ImmediateOffset),
+        instruction_immediate_offset(EA,Op_index,ImmediateOffset),
         relocation(EA+ImmediateOffset,_,Symbol,Addend),
         symbol(SymbolAddr,_,_,_,_,Symbol),
         Dest = SymbolAddr+Addend
         ;
-        instruction_displacement_offset(EA,DecodeMode,Op_index,DisplacementOffset),
+        instruction_displacement_offset(EA,Op_index,DisplacementOffset),
         relocation(EA+DisplacementOffset,_,Symbol,Addend),
         symbol(SymbolAddr,_,_,_,_,Symbol),
         Dest = SymbolAddr+Addend
         ;
-        direct_call(EA,DecodeMode,Dest,_),
+        direct_call(EA,Dest),
         Op_index = 1
         ;
-        direct_jump(EA,DecodeMode,Dest,_),
+        direct_jump(EA,Dest),
         //ignore artificial jumps from loop instructions/prefix
-        instruction_get_operation(EA,DecodeMode,Operation),
+        instruction_get_operation(EA,Operation),
         arch.jump_operation(Operation),
         Op_index = 1
         ;
-        pc_relative_operand(EA,DecodeMode,Op_index,Dest)
+        pc_relative_operand(EA,Op_index,Dest)
     ),
     (
-        code(Dest,_), Type = "code"
+        code(Dest), Type = "code"
         ;
         data_segment(Begin,End),
         Dest >= Begin,
@@ -170,20 +170,20 @@ symbolic_operand_point(EA,Index,10,"pie code"):-
     symbolic_operand_candidate(EA,Index,_,_).
 
 symbolic_operand_point(EA,Imm_index,-1,"compared to non-address"):-
-    code(EA,DecodeMode),
-    cmp_immediate_to_reg(EA,DecodeMode,Reg,Imm_index,_),
+    code(EA),
+    cmp_immediate_to_reg(EA,Reg,Imm_index,_),
     def_used(EA_def,Reg,EA,_),
     def_used(EA_def,Reg,EA2,_), EA2 != EA,
-    code(EA2,DecodeMode2),
-    cmp_immediate_to_reg(EA2,DecodeMode2,Reg,Imm_index2,_),
+    code(EA22),
+    cmp_immediate_to_reg(EA22,Reg,Imm_index2,_),
     !symbolic_operand_candidate(EA2,Imm_index2,_,_).
 
 symbolic_operand_point(EA,Imm_index,-1,"immediate is bitmask"):-
-    code(EA,DecodeMode),
+    code(EA),
     symbolic_operand_candidate(EA,Imm_index,_,_),
-    instruction_get_op(EA,DecodeMode,Imm_index,Op),
+    instruction_get_op(EA,Imm_index,Op),
     op_immediate(Op,_),
-    instruction_get_operation(EA,DecodeMode,Operation),
+    instruction_get_operation(EA,Operation),
     arch.logic_operation(Operation).
 
 symbolic_operand_point(EA,Imm_index,-2,"point to exception section"):-
@@ -193,29 +193,29 @@ symbolic_operand_point(EA,Imm_index,-2,"point to exception section"):-
     Base <= Dest, Dest < Base+SectSize.
 
  symbolic_operand_point(EA,Imm_index,-1,"operated on logical operation result"):-
-    code(EA,DecodeMode),
-    op_immediate_and_reg(EA,DecodeMode,_,Reg,Imm_index,_),
+    code(EA),
+    op_immediate_and_reg(EA,_,Reg,Imm_index,_),
     def_used(EA_def,Reg,EA,_),
-    instruction_get_operation(EA_def,DecodeMode,Operation),
+    instruction_get_operation(EA_def,Operation),
     arch.logic_operation(Operation),
-    !low_pass_filter(EA_def,DecodeMode),
-    !is_xor_reset(EA_def,DecodeMode).
+    !low_pass_filter(EA_def),
+    !is_xor_reset(EA_def).
 
 symbolic_operand_point(EA,Op_index,-1,"moved/compared-with-different-size"):-
-    code(EA,DecodeMode),
+    code(EA),
     symbolic_operand_candidate(EA,Op_index,_,_),
-    instruction_get_op(EA,DecodeMode,Op_index,Op),
+    instruction_get_op(EA,Op_index,Op),
     op_immediate(Op,_),
-    instruction_get_op(EA,DecodeMode,_,Op2),
+    instruction_get_op(EA,_,Op2),
     op_indirect(Op2,_,_,_,_,_,Size),
     arch.pointer_size(Pt_size),
     Size/8 < Pt_size.
 
 
 symbolic_operand_point(EA,Op_index,1,"used-for-address"):-
-    code(EA,DecodeMode),
+    code(EA),
     symbolic_operand_candidate(EA,Op_index,_,_),
-    instruction_get_op(EA,DecodeMode,Op_index,Op),
+    instruction_get_op(EA,Op_index,Op),
     op_immediate(Op,_),
     def_used_for_address(EA,_).
 
@@ -256,7 +256,7 @@ symbol_minus_symbol_candidate(TableStart,Size,TableReference,Dest,"first"):-
         Size = 1,data_byte(TableStart,Diff)
     ),
     Dest = TableReference + Diff,
-    code(Dest,_).
+    code(Dest).
 
 symbol_minus_symbol_candidate(TableStart,Size,Dest,TableReference,"second"):-
     jump_table_start(_,Size,TableStart,TableReference,"SUB"),
@@ -265,7 +265,7 @@ symbol_minus_symbol_candidate(TableStart,Size,Dest,TableReference,"second"):-
         Size = 1,data_byte(TableStart,Diff)
     ),
     Dest = TableReference - Diff,
-    code(Dest,_).
+    code(Dest).
 
 symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first"):-
     symbol_minus_symbol_candidate(EA,Size,Reference,_,"first"),
@@ -275,7 +275,7 @@ symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first"):-
         Size=1,data_byte(EA+Size,Diff)
     ),
     Symbol = Reference + Diff,
-    code(Symbol,_),
+    code(Symbol),
     preferred_data_access(EA+Size,Label),
     data_access_pattern(Label,Size,Size,_).
 
@@ -287,7 +287,7 @@ symbol_minus_symbol_candidate(EA+Size,Size,Symbol,Reference,"second"):-
         Size=1,data_byte(EA+Size,Diff)
     ),
     Symbol = Reference - Diff,
-    code(Symbol,_),
+    code(Symbol),
     preferred_data_access(EA+Size,Label),
     data_access_pattern(Label,Size,Size,_).
 
@@ -316,44 +316,44 @@ address_in_data_refined(EA,Val):-
     binary_type("DYN"),
     address_in_data(EA,Val),
     relocation(EA,_,_,_),
-    block(Val,_).
-      
+    block(Val).
+
 address_in_data_refined(EA,Val):-
     binary_isa("X64"),
     binary_type("EXEC"),
     address_in_data(EA,Val),
-    block(Val,_).
+    block(Val).
 
 address_in_data_refined(EA,RealVal):-
     binary_isa("ARM"),
     binary_type("DYN"),
     address_in_data(EA,Val),
     relocation(EA,_,_,_),
-    (   
-        Val % 2 = 1, 
-        DecodeMode = "Thumb", 
+    (
+        Val % 2 = 1,
+        DecodeMode = "Thumb",
         RealVal = Val-1
     ;
-        Val % 2 = 0, 
-        DecodeMode = "Normal", 
+        Val % 2 = 0,
+        DecodeMode = "Normal",
         RealVal = Val
     ),
-    block(RealVal,DecodeMode).
-      
+    block(RealVal).
+
 address_in_data_refined(EA,RealVal):-
     binary_isa("ARM"),
     binary_type("EXEC"),
     address_in_data(EA,Val),
-    (   
-        Val % 2 = 1, 
-        DecodeMode = "Thumb", 
+    (
+        Val % 2 = 1,
+        DecodeMode = "Thumb",
         RealVal = Val-1
     ;
-        Val % 2 = 0, 
-        DecodeMode = "Normal", 
+        Val % 2 = 0,
+        DecodeMode = "Normal",
         RealVal = Val
     ),
-    block(RealVal,DecodeMode).
+    block(RealVal).
 
 
 
@@ -451,14 +451,14 @@ next_address_in_data(EA,EA_next):-
 .decl address_array_aux(EA:address,Distance:number,type:symbol,InitialEA:address)
 
 address_array_aux(EA,Diff,"code",EA):-
-    address_in_data_refined(EA,Dest1),code(Dest1,_),
+    address_in_data_refined(EA,Dest1),code(Dest1),
     arch.pointer_size(Pt_size),
     EA % Pt_size = 0,
     next_address_in_data(EA,EA_next),
     Diff = EA_next-EA,
-    address_in_data_refined(EA+Diff,Dest2),code(Dest2,_),
+    address_in_data_refined(EA+Diff,Dest2),code(Dest2),
     next_address_in_data(EA+Diff,EA+(2*Diff)),
-    address_in_data_refined(EA+(2*Diff),Dest3),code(Dest3,_).
+    address_in_data_refined(EA+(2*Diff),Dest3),code(Dest3).
 
 
 address_array_aux(EA,Diff,"data",EA):-
@@ -480,7 +480,7 @@ address_array_aux(EA,Diff,"data",EA):-
 address_array_aux(EA+Diff,Diff,"code",InitialEA):-
     address_array_aux(EA,Diff,"code",InitialEA),
     next_address_in_data(EA,EA+Diff),
-    address_in_data_refined(EA+Diff,Dest),code(Dest,_).
+    address_in_data_refined(EA+Diff,Dest),code(Dest).
 
 address_array_aux(EA+Diff,Diff,"data",InitialEA):-
     address_array_aux(EA,Diff,"data",InitialEA),
@@ -680,7 +680,7 @@ symbol_minus_symbol(EA,Size,Symbol1,Symbol2):-
 
 code_pointer_in_data(EA,Val):-
     symbolic_data(EA,_,Val),
-    block(Val,_).
+    block(Val).
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Final label decision
