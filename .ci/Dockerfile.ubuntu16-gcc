@@ -31,9 +31,9 @@ RUN apt-get -y update && \
     add-apt-repository ppa:jonathonf/gcc-7.1 && \
     apt-get -y update
 RUN apt-get -y update && apt-get -y install autoconf automake build-essential \
-    clang curl doxygen g++ g++-7 gcc gcc-7 gcc-multilib git g++-multilib \
-    libc++1 libc++abi1 libtool make mcpp \
-    pkg-config python3 python3-pip wget zlib1g-dev
+    clang curl doxygen g++ g++-7 gcc gcc-7 gcc-arm-linux-gnueabihf gcc-multilib \
+    git g++-multilib libc++1 libc++abi1 libtool make mcpp \
+    pkg-config python3 python3-pip qemu wget zlib1g-dev
 
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config

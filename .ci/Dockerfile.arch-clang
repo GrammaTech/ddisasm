@@ -5,7 +5,8 @@ ARG CXX_COMPILER=clang++
 
 RUN pacman --noconfirm -Syu archlinux-keyring
 RUN pacman -Syu --noconfirm autoconf automake base-devel boost clang cmake \
-        doxygen fakeroot gcc git libtool make mcpp pkg-config protobuf python3 python-pip sudo wget
+        doxygen fakeroot gcc gcc-arm-linux-gnueabihf git libtool make mcpp \
+        pkg-config protobuf python3 python-pip qemu sudo wget
 
 RUN pacman --noconfirm -Syu archlinux-keyring
 RUN sed -i "s/^\(OPT_LONG=(\)/\1'asroot' /;s/EUID == 0/1 == 0/" /usr/bin/makepkg

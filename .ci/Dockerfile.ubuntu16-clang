@@ -27,7 +27,8 @@ SHELL ["/bin/bash", "-c"]
 
 # Install common packages
 RUN apt-get -y update && \
-    apt-get -y install apt-transport-https curl git make python3 python3-pip software-properties-common wget
+    apt-get -y install apt-transport-https curl gcc-arm-linux-gnueabihf \
+    git make python3 python3-pip qemy software-properties-common wget
 
 # Install libstdc++
 RUN add-apt-repository ppa:jonathonf/gcc-7.1 && \

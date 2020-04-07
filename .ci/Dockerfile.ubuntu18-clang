@@ -21,9 +21,9 @@ SHELL ["/bin/bash", "-c"]
 
 # Install common packages
 RUN apt-get -y update && apt-get -y install autoconf automake clang cmake \
-    curl doxygen git libprotobuf-dev libtool libstdc++-7-dev \
-    make mcpp pkg-config protobuf-compiler python3 python3-pip \
-    software-properties-common wget zlib1g-dev
+    curl doxygen gcc-arm-linux-gnueabihf git libprotobuf-dev libtool \
+    libstdc++-7-dev make mcpp pkg-config protobuf-compiler python3 \
+    python3-pip qemu software-properties-common wget zlib1g-dev
 
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
