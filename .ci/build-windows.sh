@@ -18,6 +18,9 @@ curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRAN
 unzip gtirb-artifacts.zip
 unzip GTIRB-*-win64.zip
 
+# Install GTIRB python API
+easy_install gtirb-*-py*.egg
+
 # Install the pretty printer
 GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt || echo "master") | sed 's/check_gtirb_pprinter_branch(//')
 curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=build-windows-${BUILD_TYPE,,} --output "gtirb-pprinter-artifacts.zip"
