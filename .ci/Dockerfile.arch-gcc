@@ -5,8 +5,8 @@ ARG CXX_COMPILER=g++
 
 RUN pacman --noconfirm -Syu archlinux-keyring
 RUN pacman -Syu --noconfirm autoconf automake base-devel boost clang cmake \
-        doxygen fakeroot gcc gcc-arm-linux-gnueabihf git libtool make mcpp \
-        pkg-config protobuf python3 python-pip quemu sudo wget
+        doxygen fakeroot gcc git libtool make mcpp \
+        pkg-config protobuf python3 python-pip qemu sudo wget
 
 RUN pacman --noconfirm -Syu archlinux-keyring
 RUN sed -i "s/^\(OPT_LONG=(\)/\1'asroot' /;s/EUID == 0/1 == 0/" /usr/bin/makepkg
@@ -16,7 +16,7 @@ RUN cd /yay-aur && makepkg --noconfirm -si
 RUN   useradd ddisasm && echo "ddisasm ALL=NOPASSWD: ALL" > /etc/sudoers.d/ddisasm
 RUN mkdir /home/ddisasm && chown ddisasm /home/ddisasm
 USER ddisasm
-RUN yay --noconfirm -Sy souffle
+RUN yay --noconfirm -Sy souffle arm-linux-gnueabi-gcc
 
 # Install capstone
 RUN cd /home/ddisasm \
