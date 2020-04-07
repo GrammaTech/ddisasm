@@ -32,12 +32,6 @@
 
 void writeFacts(souffle::SouffleProgram *prog, const std::string &directory);
 
-enum DecodeMode
-{
-    NORMAL,
-    THUMB
-};
-
 struct DlInstruction
 {
     uint64_t address;
@@ -62,7 +56,7 @@ public:
     csh RawHandle;
     MultiArchCapstoneHandle(gtirb::ISA Isa);
     ~MultiArchCapstoneHandle();
-    DecodeMode setDecodeMode(uint64_t mode);
+    void setDecodeMode(uint64_t mode);
 };
 
 class GtirbToDatalog

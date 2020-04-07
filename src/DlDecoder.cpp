@@ -264,10 +264,10 @@ void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
 {
     gtirb::Addr ea = byteInterval.getAddress().value();
     uint64_t size = byteInterval.getInitializedSize();
-    auto decode_in_mode = [&byteInterval, this](uint64_t size, gtirb::Addr ea, DecodeMode mode) {
+    auto decode_in_mode = [&byteInterval, this](uint64_t size, gtirb::Addr ea, bool thumb) {
         auto buf = byteInterval.rawBytes<const unsigned char>();
         int InsnSize = 4;
-        if(mode == DecodeMode::THUMB)
+        if(thumb)
         {
             InsnSize = 2;
             ea++;
@@ -295,9 +295,9 @@ void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
         }
     };
     cs_option(CsHandle.RawHandle, CS_OPT_MODE, CS_MODE_ARM);
-    decode_in_mode(size, ea, DecodeMode::NORMAL);
+    decode_in_mode(size, ea, false);
     cs_option(CsHandle.RawHandle, CS_OPT_MODE, CS_MODE_THUMB);
-    decode_in_mode(size, ea, DecodeMode::THUMB);
+    decode_in_mode(size, ea, true);
 }
 void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
 {
