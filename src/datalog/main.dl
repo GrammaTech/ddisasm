@@ -282,6 +282,16 @@ collect_relative(EA, NextEA, Base, Offset) :-
     instruction_get_op(NextEA,2,OffsetOp),
     op_immediate(OffsetOp,Offset).
 
+collect_relative(EA, NextEA, Base, Offset) :-
+    instruction_get_operation(EA,"ADRP"),
+    instruction_get_op(EA,1,BaseOp),
+    op_immediate(BaseOp,Base),
+
+    next(EA,NextEA),
+    instruction_get_operation(NextEA,"LDR"),
+    instruction_get_op(NextEA,1,OffsetOp),
+    op_indirect(OffsetOp,"NONE",_,"NONE",1,Offset,_).
+
 .decl instruction_has_loop_prefix(EA:address)
 
 instruction_has_loop_prefix(EA):-
