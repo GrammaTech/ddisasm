@@ -87,9 +87,14 @@ not_in_function_initial(Block):-
 in_function(Block,Function):-
     in_function_initial(Block,Function).
 
+in_function(Function,Function):-
+    function_without_callframe(Function).
+
 in_function(Block,Function):-
+    function_without_callframe(Function),
+    in_function(Block_prev,Function),
+    next_refined_block_in_section(Block_prev,Block),
     not_in_function_initial(Block),
-    // in most cases function_without_callframe should be small
-    Function = max X:{function_without_callframe(X),X<Block}.
+    !function_without_callframe(Block).
 
 }

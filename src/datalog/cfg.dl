@@ -93,7 +93,7 @@ resolved_jump(EA,Dest):-
 // edge creation
 
 cfg_edge(Src,Dest,Conditional,Indirect,"branch"):-
-    block_last_instruction(Src,EA),
+    refined_block_last_instruction(Src,EA),
     (
         direct_jump(EA,Dest), Indirect = "false";
         pc_relative_jump(EA,Dest), Indirect = "false";
@@ -106,7 +106,7 @@ cfg_edge(Src,Dest,Conditional,Indirect,"branch"):-
     ).
 
 cfg_edge(Src,Dest,"false","false","call"):-
-    block_last_instruction(Src,EA),
+    refined_block_last_instruction(Src,EA),
     (
         direct_call(EA,Dest);
         pc_relative_call(EA,Dest)
@@ -114,21 +114,22 @@ cfg_edge(Src,Dest,"false","false","call"):-
     refined_block(Dest).
 
 cfg_edge(Src,Dest,"false","false","fallthrough"):-
-    block_last_instruction(Src,EA),
+    refined_block_last_instruction(Src,EA),
     may_fallthrough(EA,Dest),
     !no_return_call(EA),
-    code_in_refined_block(Dest,Dest).
+    code_in_refined_block(Dest,Dest),
+    next_refined_block_in_section(Src,Dest).
 
 cfg_edge(ReturnBlock,NextBlock,"false","false","return"):-
     cfg_edge(Caller,Block,_,_,"call"),
     cfg_edge(Caller,NextBlock,_,_,"fallthrough"),
     function_inference.in_function(Block,FunctionEntry),
     function_inference.in_function(ReturnBlock,FunctionEntry),
-    block_last_instruction(ReturnBlock,Insn),
+    refined_block_last_instruction(ReturnBlock,Insn),
     return(Insn).
 
 cfg_edge_to_top(Src,Conditional,"branch"):-
-    block_last_instruction(Src,EA),
+    refined_block_last_instruction(Src,EA),
     (
         reg_jump(EA,_);
         indirect_jump(EA)
@@ -139,7 +140,7 @@ cfg_edge_to_top(Src,Conditional,"branch"):-
     ).
 
 cfg_edge_to_top(Src,"false","call"):-
-    block_last_instruction(Src,EA),
+    refined_block_last_instruction(Src,EA),
     (
         reg_call(EA,_);
         indirect_call(EA)
@@ -147,18 +148,18 @@ cfg_edge_to_top(Src,"false","call"):-
 
 // a return to top if no other return exists
 cfg_edge_to_top(Src,"false","return"):-
-    block_last_instruction(Src,Insn),
+    refined_block_last_instruction(Src,Insn),
     return(Insn),
     !cfg_edge(Src,_,_,_,"return").
 
 cfg_edge_to_symbol(Src,Symbol):-
-    block_last_instruction(Src,EA),
+    refined_block_last_instruction(Src,EA),
     plt_entry(EA,Symbol),
     !defined_symbol(_,_,_,_,_,Symbol).
 
 // pc relative jump with undefined destination
 cfg_edge_to_top(Src,Conditional,"branch"):-
-    block_last_instruction(Src,EA),
+    refined_block_last_instruction(Src,EA),
     pc_relative_jump(EA,Dest),
     !refined_block(Dest),
     (

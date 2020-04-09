@@ -89,6 +89,7 @@ moved_data_label(EA,SizePointer,Dest,Address):-
 .decl moved_pc_relative_candidate(EA:address,Index:number,Val:address,New_val:address,Diff:number)
 
 moved_pc_relative_candidate(EA_def2,Op_index,Dest,New_dest,Diff):-
+    binary_format("ELF"),
     cmp_reg_to_reg(EA,Reg1,Reg2),
     def_used(EA_def1,Reg1,EA,_),
     dest_enlarged_data_section(EA_def1,Reg1,New_dest,Beg,End,OldBeg,OldEnd),
@@ -105,6 +106,7 @@ moved_pc_relative_candidate(EA_def2,Op_index,Dest,New_dest,Diff):-
 // candidates we just find the closest data section
 moved_pc_relative_candidate(EA,Op_index,Dest,New_dest,Diff):-
     code(EA),
+    binary_format("ELF"),
     pc_relative_operand(EA,Op_index,Dest),
     !symbolic_operand(EA,Op_index,_,_),
     regular_data_section(Name),
