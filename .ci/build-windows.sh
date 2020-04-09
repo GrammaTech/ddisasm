@@ -28,7 +28,7 @@ unzip gtirb-pprinter-artifacts.zip
 unzip gtirb_pprinter-*-win64.zip
 
 # Install libehp
-mkdir libehp/build
+mkdir -p libehp/build
 pushd libehp/build
 cd ..
 cd build
@@ -39,14 +39,14 @@ popd
 # Build ddisasm
 GTIRB_DIR=$(cygpath -m $(realpath $(find ./ -type d -name GTIRB-*-win64)/lib/gtirb))
 GTIRB_PPRINTER_DIR=$(cygpath -m $(realpath $(find ./ -type d -name gtirb_pprinter-*-win64)/lib/gtirb_pprinter))
-mkdir build
+mkdir -p build
 cd build
 cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && C:\\PROGRA~1\\CMake\\bin\\cmake.exe -G \"Ninja\" -DBOOST_ROOT=\"C:\\Boost\" -DCAPSTONE=\"C:\\capstone-${BUILD_TYPE}\\lib\\capstone.lib\" -DLIEF_ROOT=\"C:\\lief-${BUILD_TYPE}\" -DDDISASM_USE_SYSTEM_BOOST=ON -DDDISASM_BUILD_SHARED_LIBS=ON -DCMAKE_CXX_FLAGS=\"/I C:\\capstone-${BUILD_TYPE}\\include /I C:\\users\\vagrant\\AppData\\local\\Packages\\CanonicalGroupLimited.Ubuntu18.04onWindows_79rhkp1fndgsc\\localstate\\rootfs\\usr\\local\\include /DBOOST_ALL_DYN_LINK\" -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_PROGRAM_PATH=\"C:\\capstone-${BUILD_TYPE}\\bin\" -DPYTHON=C:\\Python38\\python.exe  -Dgtirb_DIR=$GTIRB_DIR -Dgtirb_pprinter_DIR=$GTIRB_PPRINTER_DIR .."
 cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
 
 # Generate windows package
 cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && C:\\PROGRA~1\\CMake\\bin\\cpack.exe -G ZIP"
-cp ./DDISASM-*-Win64.zip ../
+cp ./DDISASM-*-win64.zip ../
 
 # Collect extra dlls needed to run ddisasm
 ZIP_FILE=(DDISASM-*-Win64.zip)
@@ -59,4 +59,5 @@ GTIRB_PPRINTER_DLL=$GTIRB_PPRINTER_DIR/../../bin/gtirb_pprinter$(echo $BUILD_TYP
 cp $GTIRB_PPRINTER_DLL $BASE_DIRECTORY/bin/$(basename $GTIRB_PPRINTER_DLL)
 
 # Test ddisasm
-PATH="$PATH;$BASE_DIRECTORY/bin" cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && C:\\PROGRA~1\\CMake\\bin\\ctest.exe -V"
+cp $BASE_DIRECTORY/bin/*.dll /bin
+cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && C:\\PROGRA~1\\CMake\\bin\\ctest.exe -V"
