@@ -280,13 +280,14 @@ struct SymbolMinusSymbol
 struct RelativeADRP {
     RelativeADRP(gtirb::Addr ea) : EA(ea) {}
     RelativeADRP(souffle::tuple &tuple) {
-        assert(tuple.size() == 4);
-        tuple >> EA >> NextEA >> Base >> Offset;
+        assert(tuple.size() == 5);
+        tuple >> EA >> NextEA >> Base >> Offset >> Type;
     }
     gtirb::Addr EA{0};
     gtirb::Addr NextEA{0};
     uint64_t Base{0};
     uint64_t Offset{0};
+    std::string Type{"NONE"};
 };
 
 struct StringDataObject
@@ -422,6 +423,16 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
         }
     }
     module.addAuxData<gtirb::schema::SymbolForwarding>(std::move(symbolForwarding));
+
+    std::map<gtirb::Addr, SymbolPrefixInfo> res;
+    for (auto& output : *prog->getRelation("symbol_prefix")) {
+        gtirb::Addr ea;
+        uint64_t index;
+        std::string prefix;
+        output >> ea >> index >> prefix;
+        res[ea] = SymbolPrefixInfo{.index=index,.prefix=prefix};
+    }
+    module.addAuxData<gtirb::schema::SymbolPrefixes>(std::move(res));
 }
 
 bool isNullReg(const std::string &reg)

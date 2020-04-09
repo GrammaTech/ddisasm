@@ -36,6 +36,19 @@ struct ElfSymbolInfo
     uint64_t SectionIndex;
 };
 
+struct SymbolPrefixInfo {
+    uint64_t index;
+    std::string prefix;
+};
+
+template <>
+struct gtirb::auxdata_traits<SymbolPrefixInfo>
+{
+    static std::string type_name();
+    static void toBytes(const SymbolPrefixInfo& Object, to_iterator It);
+    static from_iterator fromBytes(SymbolPrefixInfo& Object, from_iterator It);
+};
+
 template <>
 struct gtirb::auxdata_traits<ElfSymbolInfo>
 {
