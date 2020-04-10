@@ -414,7 +414,7 @@ void GtirbToDatalog::populateFunctionEntries(const gtirb::Context& Ctx, gtirb::M
     }
 }
 
-void GtirbToDatalog::populatePadding(gtirb::Module& M)
+void GtirbToDatalog::populatePadding(const gtirb::Context& Ctx, gtirb::Module& M)
 {
     auto* Padding = M.getAuxData<gtirb::schema::Padding>();
     if(!Padding)
@@ -423,14 +423,12 @@ void GtirbToDatalog::populatePadding(gtirb::Module& M)
     for(auto& [Offset, Size] : *Padding)
     {
         souffle::tuple T(PaddingRel);
-        for(auto& ByteInterval : M.byte_intervals())
+        auto* ByteInterval =
+            dyn_cast_or_null<gtirb::ByteInterval>(gtirb::Node::getByUUID(Ctx, Offset.ElementId));
+        if(ByteInterval && ByteInterval->getAddress())
         {
-            if(ByteInterval.getUUID() == Offset.ElementId && ByteInterval.getAddress())
-            {
-                T << *ByteInterval.getAddress() + Offset.Displacement << Size;
-                break;
-            }
+            T << *ByteInterval->getAddress() + Offset.Displacement << Size;
+            PaddingRel->insert(T);
         }
-        PaddingRel->insert(T);
     }
 }
