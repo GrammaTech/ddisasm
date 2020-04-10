@@ -106,7 +106,6 @@ find_package(gtirb ${GTIRB_MINIMUM_VERSION} REQUIRED)
 # ---------------------------------------------------------------------------
 set(GTIRB_PPRINTER_MINIMUM_VERSION 1.2.0)
 find_package(gtirb_pprinter ${GTIRB_PPRINTER_MINIMUM_VERSION} REQUIRED)
-check_gtirb_pprinter_branch(bfairservice/debian-dependencies)
 
 # ---------------------------------------------------------------------------
 # libehp

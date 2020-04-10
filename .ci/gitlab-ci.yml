@@ -30,7 +30,7 @@ stages:
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-ubuntu18 --output "gtirb-ubuntu18-artifacts.zip"
     - unzip -l gtirb-ubuntu18-artifacts.zip
     # Acquire gtirb pprinter artifacts
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt || echo "v1.2.0") | sed 's/check_gtirb_pprinter_branch(//')
+    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt || echo "master") | sed 's/check_gtirb_pprinter_branch(//')
     - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=tar-arch --output "gtirb-pprinter-arch-artifacts.zip"
     - unzip -l gtirb-pprinter-arch-artifacts.zip
