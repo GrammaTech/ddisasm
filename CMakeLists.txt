@@ -100,7 +100,6 @@ endif()
 # ---------------------------------------------------------------------------
 set(GTIRB_MINIMUM_VERSION 1.2.0)
 find_package(gtirb ${GTIRB_MINIMUM_VERSION} REQUIRED)
-check_gtirb_branch(master)
 
 # ---------------------------------------------------------------------------
 # pretty-printer

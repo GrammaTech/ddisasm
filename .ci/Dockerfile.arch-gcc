@@ -32,16 +32,14 @@ COPY --chown=ddisasm . /ddisasm
 # In arch we do not install things in /usr/local (see https://wiki.archlinux.org/index.php/Arch_package_guidelines#Package_Etiquette).
 
 # Install GTIRB
-COPY gtirb-arch-artifacts.zip ./gtirb-artifacts.zip
-RUN unzip gtirb-artifacts.zip && \
-    tar xzf GTIRB*.tar.gz --strip-components=1 -C /usr/local && \
+RUN cd /ddisasm && unzip gtirb-arch-artifacts.zip && \
+    sudo tar xzf GTIRB*.tar.gz --strip-components=1 -C /usr/ && \
     rm GTIRB*.tar.gz
 
 # Install gtirb-pprinter
-RUN GTIRB_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" /ddisasm/CMakeLists.txt || echo "master") | sed 's/check_gtirb_pprinter_branch(//') && \
-    curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=tar-arch --output "gtirb-pprinter-artifacts.zip"
-RUN unzip gtirb-pprinter-artifacts.zip && tar xzf gtirb_pprinter*.tar.gz
-RUN sudo cp -r $(find . -type d -name gtirb_pprinter*-Linux)/* /usr/
+RUN cd /ddisasm && unzip gtirb-pprinter-arch-artifacts.zip && \
+    sudo tar xzf gtirb_pprinter*.tar.gz --strip-components=1 -C /usr/ && \
+    rm gtirb_pprinter*.tar.gz
 
 # Install ehp
 RUN rm -rf /ddisasm/libehp/build /ddisasm/libehp/CMakeCache.txt /ddisasm/libehp/CMakeFiles /ddisasm/libehp/CMakeScripts
