@@ -98,7 +98,7 @@ COPY . /ddisasm
 
 # Install GTIRB
 RUN rm -rf /ddisasm/gtirb/build /ddisasm/gtirb/CMakeCache.txt /ddisasm/gtirb/CMakeFiles /ddisasm/gtirb/CMakeScripts
-RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DGTIRB_JAVA_API=OFF -DCMAKE_INSTALL_PREFIX=/usr \
+RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DGTIRB_JAVA_API=OFF \
     && cd build \
     && which sudo 2>&1 >/dev/null \
     && sudo make install || make install \
