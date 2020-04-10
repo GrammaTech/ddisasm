@@ -55,7 +55,8 @@ private:
 public:
     DlDecoder();
     ~DlDecoder();
-    souffle::SouffleProgram* decode(gtirb::Module& module);
+    souffle::SouffleProgram* decode(gtirb::Module& module,
+                                    const std::vector<std::string>& DisasmOptions);
 };
 
 #endif /* SRC_DL_DECODER_H_ */

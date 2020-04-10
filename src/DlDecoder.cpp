@@ -146,7 +146,8 @@ DlDecoder::~DlDecoder()
     cs_close(&this->csHandle);
 }
 
-souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
+souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module,
+                                           const std::vector<std::string> &DisasmOptions)
 {
     assert(module.getSize() && "Module has non-calculable size.");
     gtirb::Addr minAddr = *module.getAddress();
@@ -183,6 +184,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
     if(auto prog = souffle::ProgramFactory::newInstance("souffle_disasm"))
     {
         loadInputs(prog, module);
+        GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "option", DisasmOptions);
         return prog;
     }
     return nullptr;

@@ -111,6 +111,9 @@ This module:
 .decl binary_format(Format:symbol)
 .input binary_format
 
+.decl option(Option:symbol)
+.input option
+
 
 // instructions
 

@@ -98,6 +98,15 @@ void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_
                   << "ms)" << std::endl;
 }
 
+std::vector<std::string> createDisasmOptions(const po::variables_map &vm)
+{
+    std::vector<std::string> Options;
+    if(vm.count("no-cfi-directives"))
+    {
+        Options.push_back("no-cfi-directives");
+    }
+    return Options;
+}
 int main(int argc, char **argv)
 {
     registerAuxDataTypes();
@@ -119,6 +128,8 @@ int main(int argc, char **argv)
          "option only works if the target binary contains complete relocation information.") //
         ("skip-function-analysis,F",
          "Skip additional analyses to compute more precise function boundaries.") //
+        ("no-cfi-directives",
+         "Do not produce cfi directives. Instead it produces symbolic expressions in .eh_frame.") //
         ("threads,j", po::value<unsigned int>()->default_value(std::thread::hardware_concurrency()),
          "Number of cores to use. It is set to the number of cores in the machine by default");
     po::positional_options_description pd;
@@ -177,7 +188,8 @@ int main(int argc, char **argv)
         DlDecoder decoder;
         std::cout << "Decoding the binary " << std::flush;
         auto StartDecode = std::chrono::high_resolution_clock::now();
-        prog = decoder.decode(module);
+        std::vector<std::string> DisasmOptions = createDisasmOptions(vm);
+        prog = decoder.decode(module, DisasmOptions);
         printElapsedTimeSince(StartDecode);
     }
     if(prog)

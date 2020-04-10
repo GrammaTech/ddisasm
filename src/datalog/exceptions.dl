@@ -173,16 +173,19 @@ symbol_minus_symbol(EAType,EncodingSize,EAType,Type):-
 
 // cie size
 symbol_minus_symbol(Addr,4,Addr+4,Addr+Length+4):-
+    option("no-cfi-directives"),
     cie_entry(Addr,Length,_,_).
 
 // personality
 symbol_special_encoding(PersonalityPos,EncodingName):-
+    option("no-cfi-directives"),
     cie_personality(_,Personality,PersonalityPos,_,PersonalityEncoding),
     Personality != 0,
     special_encoding(Encoding,EncodingName),
     PersonalityEncoding band 0xF = Encoding.
 
 symbolic_data(PersonalityPos,Size,Personality):-
+    option("no-cfi-directives"),
     cie_personality(_,Personality,PersonalityPos,Size,_),
     Personality != 0.
 
@@ -191,21 +194,25 @@ symbolic_data(PersonalityPos,Size,Personality):-
 
 // fde size
 symbol_minus_symbol(Addr,4,Addr+4,Addr+Length+4):-
+    option("no-cfi-directives"),
     fde_entry(Addr,Length,_, _, _,_),
     !last_fde(Addr).
 
 symbol_minus_symbol(Addr,4,Addr+4,StartSection+Size):-
+    option("no-cfi-directives"),
     fde_entry(Addr,_,_, _, _,_),
     last_fde(Addr),
     section(".eh_frame",Size,StartSection).
 
 //cie offset
 symbol_minus_symbol(Addr+4,4,Cie,Addr+4):-
+    option("no-cfi-directives"),
     fde_entry(Addr,_,Cie, _, _,_).
 
 // begin pointer
 symbol_special_encoding(StartLocation,EncodingName),
 symbol_special_encoding(EndLocation,EncodingName):-
+    option("no-cfi-directives"),
     fde_pointer_locations(Addr,StartLocation,EndLocation, _,_,_),
     fde_entry(Addr,_,Cie, StartFunction, _,_),
     cie_encoding(Cie,FdeEncoding,_),
@@ -214,6 +221,7 @@ symbol_special_encoding(EndLocation,EncodingName):-
 
 
 symbolic_data(StartLocation,EndLocation-StartLocation,StartFunction):-
+    option("no-cfi-directives"),
     fde_entry(Addr,_,Cie, StartFunction, _,_),
     cie_encoding(Cie,FdeEncoding,_),
     // absolute encoding
@@ -221,6 +229,7 @@ symbolic_data(StartLocation,EndLocation-StartLocation,StartFunction):-
     fde_pointer_locations(Addr,StartLocation,EndLocation, _,_,_).
 
 symbol_minus_symbol(StartLocation,EndLocation-StartLocation,StartLocation,StartFunction):-
+    option("no-cfi-directives"),
     fde_entry(Addr,_,Cie, StartFunction, _,_),
     cie_encoding(Cie,FdeEncoding,_),
     // pc-relative encoding
@@ -231,12 +240,14 @@ symbol_minus_symbol(StartLocation,EndLocation-StartLocation,StartLocation,StartF
 
 // end pointer
 symbol_minus_symbol(EndLocation,EndSize,StartFunction,EndFunction):-
+    option("no-cfi-directives"),
     fde_entry(Addr,_,_, StartFunction, EndFunction,_),
     fde_pointer_locations(Addr,_,EndLocation, EndSize,_,_),
     EndSize > 0.
 
 // lsda pointer
 symbol_special_encoding(LsdaLocation,EncodingName):-
+    option("no-cfi-directives"),
     fde_pointer_locations(Addr,_,_, _,LsdaLocation,_),
     fde_entry(Addr,_,Cie, _, _,_),
     cie_encoding(Cie,_,LsdaEncoding),
@@ -244,6 +255,7 @@ symbol_special_encoding(LsdaLocation,EncodingName):-
     LsdaEncoding band 0xF = Encoding.
 
 symbolic_data(LsdaLocation,LsdaSize,LsdaAddress):-
+    option("no-cfi-directives"),
     fde_entry(Addr,_,Cie, _, _,LsdaAddress),
     fde_pointer_locations(Addr,_,_, _,LsdaLocation,LsdaSize),
     LsdaSize > 0,
@@ -252,6 +264,7 @@ symbolic_data(LsdaLocation,LsdaSize,LsdaAddress):-
     LsdaEncoding band 0x10 = 0.
 
 symbol_minus_symbol(LsdaLocation,LsdaSize,LsdaLocation,LsdaAddress):-
+    option("no-cfi-directives"),
     fde_entry(Addr,_,Cie, _, _,LsdaAddress),
     fde_pointer_locations(Addr,_,_, _,LsdaLocation,LsdaSize),
     LsdaSize > 0,
@@ -262,6 +275,7 @@ symbol_minus_symbol(LsdaLocation,LsdaSize,LsdaLocation,LsdaAddress):-
 
 // instructions
 symbol_minus_symbol(InstructionAddr+1,Size-1,Addr+Advance,Addr):-
+    option("no-cfi-directives"),
     fde_instruction(FdeAddr,Index,Size,"advance_loc",Advance,_),
     Size > 1,
     fde_instruction_pos(FdeAddr,Index,InstructionAddr),
@@ -361,6 +375,7 @@ endproc_local_index(FdeAddr,LocalIndex):-
 
 cfi_directive(StartFunction,0,0,".cfi_startproc",0,0,0,0),
 cfi_directive(Block,BlockSize,LastLocalIndex,".cfi_endproc",0,0,0,0):-
+    !option("no-cfi-directives"),
     fde_block_addresses(FdeAddr,StartFunction, EndAddr),
     block_information(Block,BlockSize,EndAddr),
     endproc_local_index(FdeAddr,LastLocalIndex).
@@ -368,6 +383,7 @@ cfi_directive(Block,BlockSize,LastLocalIndex,".cfi_endproc",0,0,0,0):-
 
 // only generate other directives if the block range was generated
 cfi_directive(StartFunction,0,1,".cfi_lsda",Lsda,1,Encoding,0):-
+    !option("no-cfi-directives"),
     fde_entry(FdeAddr,_,Cie,StartFunction,_,Lsda),
     fde_block_addresses(FdeAddr,_,_),
     cie_encoding(Cie, _, LsdaEncoding),
@@ -377,6 +393,7 @@ cfi_directive(StartFunction,0,1,".cfi_lsda",Lsda,1,Encoding,0):-
     ).
 
 cfi_directive(StartFunction,0,2,".cfi_personality",Personality,1,Encoding,0):-
+    !option("no-cfi-directives"),
     fde_entry(FdeAddr,_,Cie,StartFunction,_,_),
     fde_block_addresses(FdeAddr,_,_),
     cie_personality(Cie,Personality,_,_,PersonalityEnconding),
@@ -387,6 +404,7 @@ cfi_directive(StartFunction,0,2,".cfi_personality",Personality,1,Encoding,0):-
 
 // directives that correspond to an instruction
 cfi_directive(Block,Offset,LocalIndex,CfiInsn,0,NOperands,ScaledOp1,ScaledOp2):-
+    !option("no-cfi-directives"),
     fde_instruction(FdeAddr,Index,_,Insn,Op1,Op2),
     fde_entry(FdeAddr,_,Cie,_,_,_),
     fde_block_addresses(FdeAddr,_,EndBlockAddr),
@@ -419,6 +437,7 @@ cfi_directive(Block,Offset,LocalIndex,CfiInsn,0,NOperands,ScaledOp1,ScaledOp2):-
 
 // instructions that are encoded as a block of bytes (because they don't have their own cfi directive)
 cfi_directive(Block,Offset,LocalIndex,".cfi_escape",InstructionBytesAddr,Size,0,0):-
+    !option("no-cfi-directives"),
     fde_instruction(FdeAddr,Index,Size,"unhandled_instruction",_,_),
     fde_block_addresses(FdeAddr,_,EndBlockAddr),
     fde_instruction_pos(FdeAddr,Index,InstructionBytesAddr),
