@@ -1070,17 +1070,26 @@ void buildCfiDirectives(gtirb::Context &context, gtirb::Module &module,
     module.addAuxData<gtirb::schema::CfiDirectives>(std::move(cfiDirectives));
 }
 
-void buildPadding(gtirb::Module &module, souffle::SouffleProgram *prog)
+void buildPadding(gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
-    std::map<gtirb::Addr, uint64_t> padding;
-    for(auto &output : *prog->getRelation("padding"))
+    std::map<gtirb::Offset, uint64_t> Padding;
+    for(auto &Output : *Prog->getRelation("padding"))
     {
-        gtirb::Addr ea;
-        uint64_t size;
-        output >> ea >> size;
-        padding[ea] = size;
+        gtirb::Addr EA;
+        uint64_t Size;
+        Output >> EA >> Size;
+        for(auto &ByteInterval : Module.findByteIntervalsOn(EA))
+        {
+            if(ByteInterval.getAddress())
+            {
+                uint64_t BlockOffset = EA - *ByteInterval.getAddress();
+                gtirb::Offset Offset = gtirb::Offset(ByteInterval.getUUID(), BlockOffset);
+                Padding[Offset] = Size;
+            }
+            break;
+        }
     }
-    module.addAuxData<gtirb::schema::Padding>(std::move(padding));
+    Module.addAuxData<gtirb::schema::Padding>(std::move(Padding));
 }
 
 void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool selfDiagnose)

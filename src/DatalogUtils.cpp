@@ -420,10 +420,17 @@ void GtirbToDatalog::populatePadding(gtirb::Module& M)
     if(!Padding)
         return;
     auto* PaddingRel = Prog->getRelation("padding");
-    for(auto& Pair : *Padding)
+    for(auto& [Offset, Size] : *Padding)
     {
         souffle::tuple T(PaddingRel);
-        T << Pair.first << Pair.second;
+        for(auto& ByteInterval : M.byte_intervals())
+        {
+            if(ByteInterval.getUUID() == Offset.ElementId && ByteInterval.getAddress())
+            {
+                T << *ByteInterval.getAddress() + Offset.Displacement << Size;
+                break;
+            }
+        }
         PaddingRel->insert(T);
     }
 }
