@@ -30,12 +30,10 @@ RUN cd /home/ddisasm \
 COPY --chown=ddisasm . /ddisasm
 
 # Install GTIRB
-WORKDIR /gt/
-RUN sudo chown ddisasm .
-RUN GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" /ddisasm/CMakeLists.txt || echo "master") | sed 's/check_gtirb_branch(//') && \
-    curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=tar-arch --output "gtirb-artifacts.zip"
-RUN unzip gtirb-artifacts.zip && tar xzf GTIRB*.tar.gz
-RUN sudo cp -r $(find . -type d -name GTIRB-*-Linux)/* /usr/
+COPY gtirb-arch-artifacts.zip ./gtirb-artifacts.zip
+RUN unzip gtirb-artifacts.zip && \
+    tar xzf GTIRB*.tar.gz --strip-components=1 -C /usr/local && \
+    rm GTIRB*.tar.gz
 
 # Install gtirb-pprinter
 RUN GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" /ddisasm/CMakeLists.txt || echo "master") | sed 's/check_gtirb_pprinter_branch(//') && \
