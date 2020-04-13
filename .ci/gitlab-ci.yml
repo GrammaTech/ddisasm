@@ -62,7 +62,7 @@ stages:
     - unzip gtirb-artifacts.zip
     - unzip GTIRB-*-win64.zip
     - mkdir gtirb-egg && cp *.egg gtirb-egg/
-    - docker run -v $(pwd)/gtirb-egg:/gtirb-egg:ro --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c "python3 -m pip install protobuf && wget https://bootstrap.pypa.io/ez_setup.py -O - | sudo python3 && (easy_install /gtirb-egg/gtirb-*-py*.egg || true) && cd build/ && ctest -V"
+    - docker run -v $(pwd)/gtirb-egg:/gtirb-egg:ro --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c "python3 -m pip install protobuf && wget https://bootstrap.pypa.io/ez_setup.py -O - | (sudo python3 || python3) && (easy_install /gtirb-egg/gtirb-*-py*.egg || true) && cd build/ && ctest -V"
     - docker tag ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}-${COMPILER}:${PUSH_TAG};
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $DOCKER_REGISTRY;
     - docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}-${COMPILER}:${PUSH_TAG};
