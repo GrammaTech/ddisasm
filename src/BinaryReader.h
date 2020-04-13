@@ -54,6 +54,7 @@ namespace InitialAuxData
         uint64_t address;
         uint64_t type;
         uint64_t flags;
+        uint64_t index;
     };
 
     constexpr bool operator<(const Section &LHS, const Section &RHS) noexcept

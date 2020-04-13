@@ -90,13 +90,15 @@ std::set<InitialAuxData::Section> LIEFBinaryReader::get_sections()
     std::set<InitialAuxData::Section> sectionTuples;
     if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
     {
+        uint64_t Index = 0;
         for(auto& section : elf->sections())
         {
             if(section.flags_list().count(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC))
                 sectionTuples.insert({section.name(), section.size(),
                                       get_base_address() + section.virtual_address(),
                                       static_cast<uint64_t>(section.type()),
-                                      static_cast<uint64_t>(section.flags())});
+                                      static_cast<uint64_t>(section.flags()), Index});
+            Index++;
         }
     }
 

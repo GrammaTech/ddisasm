@@ -59,6 +59,7 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                    gtirb::Context &context)
 {
     std::map<gtirb::UUID, SectionProperties> sectionProperties;
+    std::map<uint64_t, gtirb::UUID> SectionIndex;
     for(auto &binSection : binary->get_sections())
     {
         if(isAllocatedSection(binSection.flags))
@@ -95,9 +96,11 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
             // Add object specific flags to elfSectionProperties AuxData table.
             sectionProperties[section->getUUID()] =
                 std::make_tuple(binSection.type, binSection.flags);
+            SectionIndex[binSection.index] = section->getUUID();
         }
     }
     module.addAuxData<gtirb::schema::ElfSectionProperties>(std::move(sectionProperties));
+    module.addAuxData<gtirb::schema::ElfSectionIndex>(std::move(SectionIndex));
 }
 
 void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,

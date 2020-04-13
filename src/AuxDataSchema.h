@@ -79,6 +79,13 @@ namespace gtirb
             typedef std::map<gtirb::UUID, std::string> Type;
         };
 
+        /// \brief Auxiliary data mapping a section index to a section UUID.
+        struct ElfSectionIndex
+        {
+            static constexpr const char* Name = "elfSectionIndex";
+            typedef std::map<uint64_t, gtirb::UUID> Type;
+        };
+
         /// \brief Auxiliary data covering ELF section properties.
         struct ElfSectionProperties
         {

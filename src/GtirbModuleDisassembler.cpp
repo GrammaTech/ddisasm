@@ -1203,6 +1203,55 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
     assert(module.getEntryPoint() && "Failed to set module entry point.");
 }
 
+void resolveIntegralSymbols(gtirb::Context &C, gtirb::Module &M)
+{
+    // Find common (integral) section-end and section-start symbols.
+    auto *SymbolInfo = M.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    auto *SectionIndex = M.getAuxData<gtirb::schema::ElfSectionIndex>();
+    std::map<gtirb::Symbol *, gtirb::Node *> ConnectToEnd;
+    for(auto &Symbol : M.symbols())
+    {
+        if(!Symbol.hasReferent() && Symbol.getAddress())
+        {
+            ElfSymbolInfo Info = (*SymbolInfo)[Symbol.getUUID()];
+            if(auto It = SectionIndex->find(Info.SectionIndex); It != SectionIndex->end())
+            {
+                gtirb::Node *N = gtirb::Node::getByUUID(C, It->second);
+                if(auto *Section = dyn_cast_or_null<gtirb::Section>(N);
+                   Section && Section->getSize() && Section->getAddress())
+                {
+                    if(*Symbol.getAddress() == (*Section->getAddress() + *Section->getSize()))
+                    {
+                        for(auto Block : Section->blocks())
+                        {
+                            ConnectToEnd[&Symbol] = &Block;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for(auto [Symbol, Node] : ConnectToEnd)
+    {
+        std::cerr << Symbol->getName() << '\n';
+        if(gtirb::CodeBlock *Block = dyn_cast_or_null<gtirb::CodeBlock>(Node))
+        {
+            gtirb::Symbol *S = M.addSymbol(C, Symbol->getName());
+            S->setReferent<gtirb::CodeBlock>(Block);
+            S->setAtEnd(true);
+            // M.removeSymbol(Symbol);
+        }
+        else if(gtirb::DataBlock *Block = dyn_cast_or_null<gtirb::DataBlock>(Node))
+        {
+            gtirb::Symbol *S = M.addSymbol(C, Symbol->getName());
+            S->setReferent<gtirb::DataBlock>(Block);
+            S->setAtEnd(true);
+            // M.removeSymbol(Symbol);
+        }
+    }
+    M.removeAuxData<gtirb::schema::ElfSectionIndex>();
+}
+
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
                        souffle::SouffleProgram *prog, bool selfDiagnose)
 {
@@ -1219,6 +1268,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildPadding(module, prog);
     buildComments(module, prog, selfDiagnose);
     updateEntryPoint(module, prog);
+    resolveIntegralSymbols(context, module);
 }
 
 void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
