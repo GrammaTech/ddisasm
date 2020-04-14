@@ -1262,14 +1262,14 @@ void resolveIntegralSymbols(gtirb::Context &C, gtirb::Module &M)
     for(auto [Symbol, T] : ConnectToBlock)
     {
         auto [Node, AtEnd] = T;
-        if(gtirb::CodeBlock *Block = dyn_cast_or_null<gtirb::CodeBlock>(Node))
+        if(gtirb::CodeBlock *CodeBlock = dyn_cast_or_null<gtirb::CodeBlock>(Node))
         {
-            Symbol->setReferent(Block);
+            Symbol->setReferent(CodeBlock);
             Symbol->setAtEnd(AtEnd);
         }
-        else if(gtirb::DataBlock *Block = dyn_cast_or_null<gtirb::DataBlock>(Node))
+        else if(gtirb::DataBlock *DataBlock = dyn_cast_or_null<gtirb::DataBlock>(Node))
         {
-            Symbol->setReferent(Block);
+            Symbol->setReferent(DataBlock);
             Symbol->setAtEnd(AtEnd);
         }
     }
