@@ -1247,12 +1247,11 @@ void resolveIntegralSymbols(gtirb::Context &C, gtirb::Module &M)
                     {
                         // FIXME: We effectively "clamp" this symbol from is original location to
                         // the beginning of the section. We move the symbol.
-                        for(auto &Block : Section->blocks())
+                        if(auto It = Section->blocks(); !It.empty())
                         {
                             std::cerr << "\nWARNING: Moving symbol " << Symbol.getName()
                                       << " to first block of section.\n";
-                            ConnectToBlock[&Symbol] = std::make_tuple(&Block, false);
-                            break;
+                            ConnectToBlock[&Symbol] = std::make_tuple(&*It.begin(), false);
                         }
                     }
                 }
