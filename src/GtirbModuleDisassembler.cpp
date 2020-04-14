@@ -1078,15 +1078,14 @@ void buildPadding(gtirb::Module &Module, souffle::SouffleProgram *Prog)
         gtirb::Addr EA;
         uint64_t Size;
         Output >> EA >> Size;
-        for(auto &ByteInterval : Module.findByteIntervalsOn(EA))
+        if(auto It = Module.findByteIntervalsOn(EA); !It.empty())
         {
-            if(ByteInterval.getAddress())
+            if(gtirb::ByteInterval &ByteInterval = *It.begin(); ByteInterval.getAddress())
             {
                 uint64_t BlockOffset = EA - *ByteInterval.getAddress();
                 gtirb::Offset Offset = gtirb::Offset(ByteInterval.getUUID(), BlockOffset);
                 Padding[Offset] = Size;
             }
-            break;
         }
     }
     Module.addAuxData<gtirb::schema::Padding>(std::move(Padding));
