@@ -1203,50 +1203,74 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
     assert(module.getEntryPoint() && "Failed to set module entry point.");
 }
 
+gtirb::Section *findSectionByIndex(gtirb::Context &C, gtirb::Module &M, uint64_t Index)
+{
+    auto *SectionIndex = M.getAuxData<gtirb::schema::ElfSectionIndex>();
+    if(auto It = SectionIndex->find(Index); It != SectionIndex->end())
+    {
+        gtirb::Node *N = gtirb::Node::getByUUID(C, It->second);
+        if(auto *Section = dyn_cast_or_null<gtirb::Section>(N))
+        {
+            return Section;
+        }
+    }
+    return nullptr;
+};
+
 void resolveIntegralSymbols(gtirb::Context &C, gtirb::Module &M)
 {
     // Find common (integral) section-end and section-start symbols.
     auto *SymbolInfo = M.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
-    auto *SectionIndex = M.getAuxData<gtirb::schema::ElfSectionIndex>();
-    std::map<gtirb::Symbol *, gtirb::Node *> ConnectToEnd;
+    std::map<gtirb::Symbol *, std::tuple<gtirb::Node *, bool>> ConnectToBlock;
     for(auto &Symbol : M.symbols())
     {
         if(!Symbol.hasReferent() && Symbol.getAddress())
         {
             ElfSymbolInfo Info = (*SymbolInfo)[Symbol.getUUID()];
-            if(auto It = SectionIndex->find(Info.SectionIndex); It != SectionIndex->end())
+            if(gtirb::Section *Section = findSectionByIndex(C, M, Info.SectionIndex);
+               Section && Section->getAddress() && Section->getSize())
             {
-                gtirb::Node *N = gtirb::Node::getByUUID(C, It->second);
-                if(auto *Section = dyn_cast_or_null<gtirb::Section>(N);
-                   Section && Section->getSize() && Section->getAddress())
+                // Symbol points to byte immediately following section.
+                if(*Symbol.getAddress() == (*Section->getAddress() + *Section->getSize()))
                 {
-                    if(*Symbol.getAddress() == (*Section->getAddress() + *Section->getSize()))
+                    for(auto &Block : Section->blocks())
                     {
-                        for(auto Block : Section->blocks())
+                        ConnectToBlock[&Symbol] = std::make_tuple(&Block, true);
+                    }
+                }
+                else if(*Symbol.getAddress() < *Section->getAddress())
+                {
+                    // Symbol is between sections (tsk-tsk compiler).
+                    if(gtirb::Section *Previous = findSectionByIndex(C, M, Info.SectionIndex - 1);
+                       Previous && Previous->getAddress() && Previous->getSize()
+                       && *Symbol.getAddress() >= (*Previous->getAddress() + *Previous->getSize()))
+                    {
+                        // FIXME: We effectively "clamp" this symbol from is original location to
+                        // the beginning of the section. We move the symbol.
+                        for(auto &Block : Section->blocks())
                         {
-                            ConnectToEnd[&Symbol] = &Block;
+                            std::cerr << "\nWARNING: Moving symbol " << Symbol.getName()
+                                      << " to first block of section.\n";
+                            ConnectToBlock[&Symbol] = std::make_tuple(&Block, false);
+                            break;
                         }
                     }
                 }
             }
         }
     }
-    for(auto [Symbol, Node] : ConnectToEnd)
+    for(auto [Symbol, T] : ConnectToBlock)
     {
-        std::cerr << Symbol->getName() << '\n';
+        auto [Node, AtEnd] = T;
         if(gtirb::CodeBlock *Block = dyn_cast_or_null<gtirb::CodeBlock>(Node))
         {
-            gtirb::Symbol *S = M.addSymbol(C, Symbol->getName());
-            S->setReferent<gtirb::CodeBlock>(Block);
-            S->setAtEnd(true);
-            // M.removeSymbol(Symbol);
+            Symbol->setReferent(Block);
+            Symbol->setAtEnd(AtEnd);
         }
         else if(gtirb::DataBlock *Block = dyn_cast_or_null<gtirb::DataBlock>(Node))
         {
-            gtirb::Symbol *S = M.addSymbol(C, Symbol->getName());
-            S->setReferent<gtirb::DataBlock>(Block);
-            S->setAtEnd(true);
-            // M.removeSymbol(Symbol);
+            Symbol->setReferent(Block);
+            Symbol->setAtEnd(AtEnd);
         }
     }
     M.removeAuxData<gtirb::schema::ElfSectionIndex>();
