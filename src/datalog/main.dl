@@ -257,7 +257,7 @@ symbol_prefix(ea, 1, ":got_lo12:") :-
     relocation(Base+Offset, "GLOB_DAT", _, _).
 symbol_prefix(ea, 2, ":lo12:") :-
     collect_relative(_,ea,Base,Offset,"ADD"),
-    !relocation(Base+Offset, "GLOB+DAT", _, _).
+    !relocation(Base+Offset, "GLOB_DAT", _, _).
 .output symbol_prefix()
 
 .decl next(n:address,m:address)
