@@ -55,10 +55,23 @@ bool isAllocatedSection(int flags)
     return (flags & static_cast<int>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC));
 }
 
+std::string gtirb::auxdata_traits<SymbolPrefixInfo>::type_name()
+{
+    return gtirb::auxdata_traits<
+        std::tuple<uint64_t, std::string>>::type_name();
+}
+
 std::string gtirb::auxdata_traits<ElfSymbolInfo>::type_name()
 {
     return gtirb::auxdata_traits<
         std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>>::type_name();
+}
+
+void gtirb::auxdata_traits<SymbolPrefixInfo>::toBytes(const SymbolPrefixInfo& Object, to_iterator It)
+{
+    auxdata_traits<std::tuple<uint64_t, std::string>>::toBytes(
+        std::make_tuple(Object.index, Object.prefix),
+        It);
 }
 
 void gtirb::auxdata_traits<ElfSymbolInfo>::toBytes(const ElfSymbolInfo &Object, to_iterator It)
@@ -67,6 +80,19 @@ void gtirb::auxdata_traits<ElfSymbolInfo>::toBytes(const ElfSymbolInfo &Object, 
         std::make_tuple(Object.Size, Object.Type, Object.Scope, Object.Visibility,
                         Object.SectionIndex),
         It);
+}
+
+gtirb::from_iterator gtirb::auxdata_traits<SymbolPrefixInfo>::fromBytes(SymbolPrefixInfo& Object,
+                                                                     from_iterator It)
+{
+    std::tuple<uint64_t, std::string> Tuple;
+    It = auxdata_traits<
+        std::tuple<uint64_t, std::string>>::fromBytes(Tuple,
+                                                                                          It);
+    Object.index = std::get<0>(Tuple);
+    Object.prefix = std::get<1>(Tuple);
+
+    return It;
 }
 
 gtirb::from_iterator gtirb::auxdata_traits<ElfSymbolInfo>::fromBytes(ElfSymbolInfo &Object,

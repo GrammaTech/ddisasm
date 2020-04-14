@@ -277,6 +277,19 @@ struct SymbolMinusSymbol
     gtirb::Addr Symbol2{0};
 };
 
+struct RelativeADRP {
+    RelativeADRP(gtirb::Addr ea) : EA(ea) {}
+    RelativeADRP(souffle::tuple &tuple) {
+        assert(tuple.size() == 5);
+        tuple >> EA >> NextEA >> Base >> Offset >> Type;
+    }
+    gtirb::Addr EA{0};
+    gtirb::Addr NextEA{0};
+    uint64_t Base{0};
+    uint64_t Offset{0};
+    std::string Type{"NONE"};
+};
+
 struct StringDataObject
 {
     StringDataObject(gtirb::Addr ea) : EA(ea)
@@ -410,6 +423,16 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
         }
     }
     module.addAuxData<gtirb::schema::SymbolForwarding>(std::move(symbolForwarding));
+
+    std::map<gtirb::Addr, SymbolPrefixInfo> res;
+    for (auto& output : *prog->getRelation("symbol_prefix")) {
+        gtirb::Addr ea;
+        uint64_t index;
+        std::string prefix;
+        output >> ea >> index >> prefix;
+        res[ea] = SymbolPrefixInfo{.index=index,.prefix=prefix};
+    }
+    module.addAuxData<gtirb::schema::SymbolPrefixes>(std::move(res));
 }
 
 bool isNullReg(const std::string &reg)
@@ -628,6 +651,8 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
         convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
         convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog),
         convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog)};
+
+    auto relativeAdrp = convertSortedRelation<VectorByEA<RelativeADRP>>("collect_relative", prog);
     std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
 
     for(auto &cib : codeInBlock)
@@ -642,6 +667,15 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
             if(auto *indirect = std::get_if<IndirectOp>(&op.second))
                 buildSymbolicIndirect(context, module, inst->first, inst->second, op.first,
                                       *indirect, symbolicInfo);
+        }
+        for (auto& relAdrp : relativeAdrp) {
+            long int imm = relAdrp.Base + relAdrp.Offset;
+            if (relAdrp.EA == inst->first) {
+                buildSymbolicImmediate(context, module, inst->first, inst->second, 1, imm, symbolicInfo);
+            }
+            if (relAdrp.NextEA == inst->first) {
+                buildSymbolicImmediate(context, module, inst->first, inst->second, 2, imm, symbolicInfo);
+            }
         }
     }
 }
