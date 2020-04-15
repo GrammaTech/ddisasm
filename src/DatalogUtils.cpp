@@ -423,19 +423,14 @@ void GtirbToDatalog::populatePadding(const gtirb::Context& Ctx, gtirb::Module& M
     for(auto& [Offset, Size] : *Padding)
     {
         souffle::tuple T(PaddingRel);
-        // FIXME: Find ByteInterval by UUID, instead of looping;
-        //        gtirb::Node::getByUUID returns null here, which means we most
-        //        likely have a bug elsewere from an iterator invalidation.
-        // auto* ByteInterval =
-        //     dyn_cast_or_null<gtirb::ByteInterval>(gtirb::Node::getByUUID(Ctx, Offset.ElementId));
-        for(auto& ByteInterval : M.byte_intervals())
+        auto* ByteInterval =
+            dyn_cast_or_null<gtirb::ByteInterval>(gtirb::Node::getByUUID(Ctx, Offset.ElementId));
+        assert(ByteInterval && "Failed to find ByteInterval by UUID.");
+        if(ByteInterval->getAddress())
         {
-            if(ByteInterval.getUUID() == Offset.ElementId && ByteInterval.getAddress())
-            {
-                gtirb::Addr Addr = *ByteInterval.getAddress() + Offset.Displacement;
-                T << Addr << Size;
-                PaddingRel->insert(T);
-            }
+            gtirb::Addr Addr = *ByteInterval->getAddress() + Offset.Displacement;
+            T << Addr << Size;
+            PaddingRel->insert(T);
         }
     }
 }

@@ -166,7 +166,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
         SectionProperties &extraInfo = found->second;
         if(isExeSection(extraInfo))
         {
-            for(const auto byteInterval : section.byte_intervals())
+            for(auto &byteInterval : section.byte_intervals())
             {
                 decodeSection(byteInterval);
                 storeDataSection(byteInterval, minAddr, maxAddr);
@@ -174,7 +174,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
         }
         if(isNonZeroDataSection(extraInfo))
         {
-            for(const auto byteInterval : section.byte_intervals())
+            for(auto &byteInterval : section.byte_intervals())
             {
                 storeDataSection(byteInterval, minAddr, maxAddr);
             }
