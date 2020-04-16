@@ -827,37 +827,113 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
     module.addAuxData<gtirb::schema::SymbolicExpressionSizes>(std::move(SymbolicSizes));
 }
 
-void connectSymbolsToBlocks(gtirb::Module &Module)
+gtirb::Section *findSectionByIndex(gtirb::Context &C, gtirb::Module &M, uint64_t Index)
 {
-    std::map<gtirb::Symbol *, gtirb::CodeBlock *> ConnectToCode;
-    std::map<gtirb::Symbol *, gtirb::DataBlock *> ConnectToData;
+    auto *SectionIndex = M.getAuxData<gtirb::schema::ElfSectionIndex>();
+    if(auto It = SectionIndex->find(Index); It != SectionIndex->end())
+    {
+        gtirb::Node *N = gtirb::Node::getByUUID(C, It->second);
+        if(auto *Section = dyn_cast_or_null<gtirb::Section>(N))
+        {
+            return Section;
+        }
+    }
+    return nullptr;
+};
+
+void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
+{
+    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+
+    std::map<gtirb::Symbol *, std::tuple<gtirb::Node *, bool>> ConnectToBlock;
     for(auto &Symbol : Module.symbols_by_addr())
     {
         if(Symbol.getAddress())
         {
-            bool assigned = false;
-            for(auto &Block : Module.findCodeBlocksAt(*Symbol.getAddress()))
+            gtirb::Addr Addr = *Symbol.getAddress();
+            if(auto It = Module.findCodeBlocksOn(Addr); !It.empty())
             {
-                ConnectToCode[&Symbol] = &Block;
-                assigned = true;
-                continue;
-            }
-            if(!assigned)
-                for(auto &Block : Module.findDataBlocksAt(*Symbol.getAddress()))
+                gtirb::CodeBlock &Block = It.front();
+                if(Addr > *Block.getAddress())
                 {
-                    ConnectToData[&Symbol] = &Block;
+                    std::cerr << "WARNING: Found integral symbol code-block interior: "
+                              << Symbol.getName() << std::endl;
                     continue;
                 }
+                ConnectToBlock[&Symbol] = {&Block, false};
+                continue;
+            }
+            if(auto It = Module.findDataBlocksOn(Addr); !It.empty())
+            {
+                gtirb::DataBlock &Block = It.front();
+                if(Addr > *Block.getAddress())
+                {
+                    std::cerr << "WARNING: Found integral symbol code-block interior: "
+                              << Symbol.getName() << std::endl;
+                    continue;
+                }
+                ConnectToBlock[&Symbol] = {&Block, false};
+                continue;
+            }
+            if(auto It = Module.findSectionsOn(Addr - 1); !It.empty())
+            {
+                if(gtirb::Section &Section = It.front(); Section.getAddress() && Section.getSize())
+                {
+                    // Symbol points to byte immediately following section.
+                    if(Addr == (*Section.getAddress() + *Section.getSize()))
+                    {
+                        for(auto &Block : Section.blocks())
+                        {
+                            ConnectToBlock[&Symbol] = {&Block, true};
+                        }
+                        continue;
+                    }
+                }
+            }
+            if(SymbolInfo && SymbolInfo->count(Symbol.getUUID()) > 0)
+            {
+                ElfSymbolInfo Info = (*SymbolInfo)[Symbol.getUUID()];
+                uint64_t SectionIndex = std::get<4>(Info);
+                if(gtirb::Section *Section = findSectionByIndex(Context, Module, SectionIndex);
+                   Section && Section->getAddress() && Section->getSize())
+                {
+                    // Symbol is between sections (tsk-tsk compiler).
+                    // FIXME: We actually need to find the previous section in __segment__.
+                    if(gtirb::Section *Previous =
+                           findSectionByIndex(Context, Module, SectionIndex - 1);
+                       Previous && Previous->getAddress() && Previous->getSize())
+                    {
+                        if(Addr >= (*Previous->getAddress() + *Previous->getSize()))
+                        {
+                            if(auto It = Section->blocks(); !It.empty())
+                            {
+                                std::cerr << "WARNING: Moving symbol to first block of section: "
+                                          << Symbol.getName() << std::endl;
+                                ConnectToBlock[&Symbol] = {&*It.begin(), false};
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
-    for(auto [Symbol, Block] : ConnectToCode)
+
+    for(auto [Symbol, T] : ConnectToBlock)
     {
-        Symbol->setReferent<gtirb::CodeBlock>(Block);
+        auto [Node, AtEnd] = T;
+        if(gtirb::CodeBlock *CodeBlock = dyn_cast_or_null<gtirb::CodeBlock>(Node))
+        {
+            Symbol->setReferent(CodeBlock);
+            Symbol->setAtEnd(AtEnd);
+        }
+        else if(gtirb::DataBlock *DataBlock = dyn_cast_or_null<gtirb::DataBlock>(Node))
+        {
+            Symbol->setReferent(DataBlock);
+            Symbol->setAtEnd(AtEnd);
+        }
     }
-    for(auto [Symbol, Block] : ConnectToData)
-    {
-        Symbol->setReferent<gtirb::DataBlock>(Block);
-    }
+
+    Module.removeAuxData<gtirb::schema::ElfSectionIndex>();
 }
 
 void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
@@ -1203,79 +1279,6 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
     assert(module.getEntryPoint() && "Failed to set module entry point.");
 }
 
-gtirb::Section *findSectionByIndex(gtirb::Context &C, gtirb::Module &M, uint64_t Index)
-{
-    auto *SectionIndex = M.getAuxData<gtirb::schema::ElfSectionIndex>();
-    if(auto It = SectionIndex->find(Index); It != SectionIndex->end())
-    {
-        gtirb::Node *N = gtirb::Node::getByUUID(C, It->second);
-        if(auto *Section = dyn_cast_or_null<gtirb::Section>(N))
-        {
-            return Section;
-        }
-    }
-    return nullptr;
-};
-
-void resolveIntegralSymbols(gtirb::Context &C, gtirb::Module &M)
-{
-    // Find common (integral) section-end and section-start symbols.
-    auto *SymbolInfo = M.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
-    std::map<gtirb::Symbol *, std::tuple<gtirb::Node *, bool>> ConnectToBlock;
-    for(auto &Symbol : M.symbols())
-    {
-        if(!Symbol.hasReferent() && Symbol.getAddress())
-        {
-            ElfSymbolInfo Info = (*SymbolInfo)[Symbol.getUUID()];
-            uint64_t SectionIndex = std::get<4>(Info);
-            if(gtirb::Section *Section = findSectionByIndex(C, M, SectionIndex);
-               Section && Section->getAddress() && Section->getSize())
-            {
-                // Symbol points to byte immediately following section.
-                if(*Symbol.getAddress() == (*Section->getAddress() + *Section->getSize()))
-                {
-                    for(auto &Block : Section->blocks())
-                    {
-                        ConnectToBlock[&Symbol] = std::make_tuple(&Block, true);
-                    }
-                }
-                else if(*Symbol.getAddress() < *Section->getAddress())
-                {
-                    // Symbol is between sections (tsk-tsk compiler).
-                    if(gtirb::Section *Previous = findSectionByIndex(C, M, SectionIndex - 1);
-                       Previous && Previous->getAddress() && Previous->getSize()
-                       && *Symbol.getAddress() >= (*Previous->getAddress() + *Previous->getSize()))
-                    {
-                        // FIXME: We effectively "clamp" this symbol from is original location to
-                        // the beginning of the section. We move the symbol.
-                        if(auto It = Section->blocks(); !It.empty())
-                        {
-                            std::cerr << "\nWARNING: Moving symbol " << Symbol.getName()
-                                      << " to first block of section.\n";
-                            ConnectToBlock[&Symbol] = std::make_tuple(&*It.begin(), false);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    for(auto [Symbol, T] : ConnectToBlock)
-    {
-        auto [Node, AtEnd] = T;
-        if(gtirb::CodeBlock *CodeBlock = dyn_cast_or_null<gtirb::CodeBlock>(Node))
-        {
-            Symbol->setReferent(CodeBlock);
-            Symbol->setAtEnd(AtEnd);
-        }
-        else if(gtirb::DataBlock *DataBlock = dyn_cast_or_null<gtirb::DataBlock>(Node))
-        {
-            Symbol->setReferent(DataBlock);
-            Symbol->setAtEnd(AtEnd);
-        }
-    }
-    M.removeAuxData<gtirb::schema::ElfSectionIndex>();
-}
-
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
                        souffle::SouffleProgram *prog, bool selfDiagnose)
 {
@@ -1284,7 +1287,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildDataBlocks(context, module, prog);
     buildCodeBlocks(context, module, prog);
     buildCodeSymbolicInformation(context, module, prog);
-    connectSymbolsToBlocks(module);
+    connectSymbolsToBlocks(context, module);
     buildCfiDirectives(context, module, prog);
     expandSymbolForwarding(context, module, prog);
     buildFunctions(module, prog);
@@ -1292,7 +1295,6 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildPadding(module, prog);
     buildComments(module, prog, selfDiagnose);
     updateEntryPoint(module, prog);
-    resolveIntegralSymbols(context, module);
 }
 
 void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
