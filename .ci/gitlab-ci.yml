@@ -58,11 +58,10 @@ stages:
           PUSH_TAG=$CI_COMMIT_REF_SLUG;
       fi
     - GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt || echo "v1.3.1") | sed 's/check_gtirb_branch(//')
-    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=build-windows-msvc-release --output "gtirb-artifacts.zip"
-    - unzip gtirb-artifacts.zip
-    - unzip GTIRB-*-win64.zip
-    - mkdir gtirb-egg && cp *.egg gtirb-egg/
-    - docker run -v $(pwd)/gtirb-egg:/gtirb-egg:ro --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c "python3 -m pip install protobuf && wget https://bootstrap.pypa.io/ez_setup.py -O - | (sudo python3 || python3) && (easy_install /gtirb-egg/gtirb-*-py*.egg || true) && cd build/ && ctest -V"
+    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=python-wheel --output "gtirb-wheel.zip"
+    - unzip gtirb-wheel.zip
+    - mkdir gtirb-wheel && cp *.whl gtirb-wheel/
+    - docker run -v $(pwd)/gtirb-wheel:/gtirb-wheel:ro --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c "python3 -m pip install pip --upgrade && python3 -m pip install /gtirb-wheel/gtirb-*-py*.whl && cd build/ && ctest -V"
     - docker tag ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}-${COMPILER}:${PUSH_TAG};
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $DOCKER_REGISTRY;
     - docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}-${COMPILER}:${PUSH_TAG};
