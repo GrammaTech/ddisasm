@@ -1227,7 +1227,8 @@ void resolveIntegralSymbols(gtirb::Context &C, gtirb::Module &M)
         if(!Symbol.hasReferent() && Symbol.getAddress())
         {
             ElfSymbolInfo Info = (*SymbolInfo)[Symbol.getUUID()];
-            if(gtirb::Section *Section = findSectionByIndex(C, M, Info.SectionIndex);
+            uint64_t SectionIndex = std::get<4>(Info);
+            if(gtirb::Section *Section = findSectionByIndex(C, M, SectionIndex);
                Section && Section->getAddress() && Section->getSize())
             {
                 // Symbol points to byte immediately following section.
@@ -1241,7 +1242,7 @@ void resolveIntegralSymbols(gtirb::Context &C, gtirb::Module &M)
                 else if(*Symbol.getAddress() < *Section->getAddress())
                 {
                     // Symbol is between sections (tsk-tsk compiler).
-                    if(gtirb::Section *Previous = findSectionByIndex(C, M, Info.SectionIndex - 1);
+                    if(gtirb::Section *Previous = findSectionByIndex(C, M, SectionIndex - 1);
                        Previous && Previous->getAddress() && Previous->getSize()
                        && *Symbol.getAddress() >= (*Previous->getAddress() + *Previous->getSize()))
                     {
