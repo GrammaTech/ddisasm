@@ -423,16 +423,20 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
         }
     }
     module.addAuxData<gtirb::schema::SymbolForwarding>(std::move(symbolForwarding));
+}
 
-    std::map<gtirb::Addr, SymbolPrefixInfo> res;
+// Build the AD table for symbolic operand information
+void buildSymbolicOperandInfo(gtirb::Context& /* context */, gtirb::Module& module,
+        souffle::SouffleProgram* prog) {
+    std::map<gtirb::Addr, SymbolicOperandInfo> res;
     for (auto& output : *prog->getRelation("symbol_prefix")) {
         gtirb::Addr ea;
         uint64_t index;
         std::string prefix;
         output >> ea >> index >> prefix;
-        res[ea] = SymbolPrefixInfo{.index=index,.prefix=prefix};
+        res[ea] = SymbolicOperandInfo{.Index=index,.Prefix=prefix};
     }
-    module.addAuxData<gtirb::schema::SymbolPrefixes>(std::move(res));
+    module.addAuxData<gtirb::schema::SymbolicOperandInfoAD>(std::move(res));
 }
 
 bool isNullReg(const std::string &reg)
@@ -1210,6 +1214,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
 {
     buildInferredSymbols(context, module, prog);
     buildSymbolForwarding(context, module, prog);
+    buildSymbolicOperandInfo(context, module, prog);
     buildDataBlocks(context, module, prog);
     buildCodeBlocks(context, module, prog);
     buildCodeSymbolicInformation(context, module, prog);
