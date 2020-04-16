@@ -57,7 +57,7 @@ stages:
       else
           PUSH_TAG=$CI_COMMIT_REF_SLUG;
       fi
-    - GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt || echo "v1.3.1") | sed 's/check_gtirb_branch(//')
+    - GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt || echo "bfairservice/build-wheel") | sed 's/check_gtirb_branch(//')
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=python-wheel --output "gtirb-wheel.zip"
     - unzip gtirb-wheel.zip
     - mkdir gtirb-wheel && cp *.whl gtirb-wheel/
