@@ -104,7 +104,8 @@ void addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
                                        + " missing from elfSymbolInfo AuxData table");
 
             ElfSymbolInfo &Info = found->second;
-            t << Info.Size << Info.Type << Info.Scope << Info.SectionIndex << symbol.getName();
+            t << std::get<0>(Info) << std::get<1>(Info) << std::get<2>(Info) << std::get<4>(Info)
+              << symbol.getName();
             rel->insert(t);
         }
     }

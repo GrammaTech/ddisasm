@@ -26,22 +26,7 @@
 #ifndef GTIRB_ZERO_BUILDER_H_
 #define GTIRB_ZERO_BUILDER_H_
 
-struct ElfSymbolInfo
-{
-    uint64_t Size;
-    std::string Type;
-    std::string Scope;
-    std::string Visibility;
-    uint64_t SectionIndex;
-};
-
-template <>
-struct gtirb::auxdata_traits<ElfSymbolInfo>
-{
-    static std::string type_name();
-    static void toBytes(const ElfSymbolInfo& Object, to_iterator It);
-    static from_iterator fromBytes(ElfSymbolInfo& Object, from_iterator It);
-};
+using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>;
 
 using SectionProperties = std::tuple<uint64_t, uint64_t>;
 bool isAllocatedSection(int flags);
