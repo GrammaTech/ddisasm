@@ -1285,7 +1285,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildCfiDirectives(context, module, prog);
     expandSymbolForwarding(context, module, prog);
     // This should be done after creating all the symbols.
-    connectSymbolsToBlocks(context,module);
+    connectSymbolsToBlocks(context, module);
     // These functions should not create additional symbols.
     buildFunctions(module, prog);
     buildCFG(context, module, prog);
