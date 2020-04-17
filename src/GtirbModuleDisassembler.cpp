@@ -898,7 +898,7 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
                    Section && Section->getAddress() && Section->getSize())
                 {
                     // Symbol is between sections (tsk-tsk compiler).
-                    // FIXME: We actually need to find the previous section in the segment.
+                    // FIXME: We actually need to find the previous section in the loaded segment.
                     if(gtirb::Section *Previous =
                            findSectionByIndex(Context, Module, SectionIndex - 1);
                        Previous && Previous->getAddress() && Previous->getSize())
