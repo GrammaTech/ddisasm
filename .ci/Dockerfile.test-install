@@ -5,5 +5,4 @@ WORKDIR /ddisasm/build
 ARG INSTALLER="make install"
 RUN $INSTALLER
 WORKDIR /ddisasm
-RUN rm -rf /ddisasm/build
 RUN PYTHONPATH=$PYTHONPATH:/ddisasm/tests python3 -m unittest end2end_test.TestSmall.test_1
