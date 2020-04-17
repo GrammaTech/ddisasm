@@ -36,10 +36,6 @@ RUN add-apt-repository ppa:mhier/libboost-latest && \
     apt-get -y update && \
     apt-get -y install libboost${BOOST_VERSION}-dev
 
-# Install capstone
-COPY libcapstone-dev_4.0.1-1_amd64.deb ./
-RUN dpkg -i libcapstone-dev_4.0.1-1_amd64.deb
-
 # Install LIEF
 RUN cd /usr/local/src \
     && git clone -b 0.10.0 https://github.com/lief-project/LIEF.git \
@@ -52,17 +48,17 @@ RUN cd /usr/local/src \
 
 COPY . /ddisasm
 
+# Install capstone
+RUN dpkg -i /ddisasm/libcapstone-dev_4.0.1-1_amd64.deb
+
 # Install GTIRB
-COPY gtirb-ubuntu18-artifacts.zip ./gtirb-artifacts.zip
-RUN unzip -o gtirb-artifacts.zip && dpkg -i GTIRB*.deb
+RUN unzip -o /ddisasm/gtirb-ubuntu18-artifacts.zip && dpkg -i GTIRB*.deb
 
 # Install gtirb-pprinter
-COPY gtirb-pprinter-ubuntu18-artifacts.zip ./gtirb-pprinter-artifacts.zip
-RUN unzip -o gtirb-pprinter-artifacts.zip && dpkg -i gtirb_pprinter*.deb
+RUN unzip -o /ddisasm/gtirb-pprinter-ubuntu18-artifacts.zip && dpkg -i gtirb_pprinter*.deb
 
 # Install ehp
-COPY ehp_0.1.1-1_amd64.deb ./
-RUN dpkg -i ehp_0.1.1-1_amd64.deb
+RUN dpkg -i /ddisasm/ehp_0.1.1-1_amd64.deb
 
 ENV TERM xterm
 ENV PATH=/ddisasm/build/bin:$PATH
