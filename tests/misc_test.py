@@ -34,7 +34,15 @@ class MultModuleTests(unittest.TestCase):
             ir_binary.modules.append(ir_library.modules[0])
             ir_binary.save_protobuf("two_modules.gtirb")
             completedProcess = subprocess.run(
-                ["gtirb-pprinter", "--ir", "two_modules.gtirb", "-b", binary]
+                [
+                    "gtirb-pprinter",
+                    "--ir",
+                    "two_modules.gtirb",
+                    "-b",
+                    binary,
+                    "--skip-symbol",
+                    "_end",
+                ]
             )
             assert completedProcess.returncode == 0
             assert test()
@@ -111,3 +119,6 @@ class AuxDataTests(unittest.TestCase):
                     ]
                     break
             assert found
+
+if __name__ == "__main__":
+    unittest.main()
