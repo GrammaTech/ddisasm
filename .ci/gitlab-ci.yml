@@ -6,7 +6,6 @@ stages:
   - check-format
   - build
   - test-and-tag
-  - test-installers
   - deploy
   - cleanup
 
@@ -177,8 +176,8 @@ run-arch-clang:
   script:
   <<: *test-and-tag
 
-test-debian-installer:
-  stage: test-installers
+test-make-install:
+  stage: test-and-tag
   variables:
     OS: 'ubuntu18'
     COMPILER: 'gcc'

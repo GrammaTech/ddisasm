@@ -2,7 +2,7 @@ ARG IMAGE="docker.grammatech.com/rewriting/ddisasm/ubuntu18-gcc"
 FROM $IMAGE
 
 WORKDIR /ddisasm/build
-ARG INSTALLER="dpkg -i DDISASM-*-Linux.deb"
+ARG INSTALLER="make install"
 RUN $INSTALLER
 WORKDIR /ddisasm
 RUN rm -rf /ddisasm/build
