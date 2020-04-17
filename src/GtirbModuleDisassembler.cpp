@@ -882,11 +882,12 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
                     // Symbol points to byte immediately following section.
                     if(Addr == (*Section.getAddress() + *Section.getSize()))
                     {
-                        for(auto &Block : Section.blocks())
+                        if(auto BlockIt = Section.findBlocksOn(Addr - 1); !BlockIt.empty())
                         {
+                            gtirb::Node &Block = BlockIt.front();
                             ConnectToBlock[&Symbol] = {&Block, true};
+                            continue;
                         }
-                        continue;
                     }
                 }
             }
@@ -897,21 +898,12 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
                 if(gtirb::Section *Section = findSectionByIndex(Context, Module, SectionIndex);
                    Section && Section->getAddress() && Section->getSize())
                 {
-                    // Symbol is between sections (tsk-tsk compiler).
-                    // FIXME: We actually need to find the previous section in the loaded segment.
-                    if(gtirb::Section *Previous =
-                           findSectionByIndex(Context, Module, SectionIndex - 1);
-                       Previous && Previous->getAddress() && Previous->getSize())
+                    if(auto It = Section->blocks(); !It.empty())
                     {
-                        if(Addr >= (*Previous->getAddress() + *Previous->getSize()))
-                        {
-                            if(auto It = Section->blocks(); !It.empty())
-                            {
-                                std::cerr << "WARNING: Moving symbol to first block of section: "
-                                          << Symbol.getName() << std::endl;
-                                ConnectToBlock[&Symbol] = {&*It.begin(), false};
-                            }
-                        }
+                        std::cerr << "WARNING: Moving symbol to first block of section: "
+                                  << Symbol.getName() << std::endl;
+                        ConnectToBlock[&Symbol] = {&*It.begin(), false};
+                        continue;
                     }
                 }
             }
