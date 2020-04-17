@@ -120,5 +120,6 @@ class AuxDataTests(unittest.TestCase):
                     break
             assert found
 
+
 if __name__ == "__main__":
     unittest.main()
