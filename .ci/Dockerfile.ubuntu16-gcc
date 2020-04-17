@@ -58,16 +58,12 @@ RUN ln -s /usr/lib/gcc/x86_64-linux-gnu/5/crtend.o /usr/lib/x86_64-linux-gnu/
 RUN curl -SL https://cmake.org/files/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.0-Linux-x86_64.tar.gz \
     |tar -xz --strip-components=1 -C /usr/local
 
-RUN ldconfig
-
 # Install boost and protobuf
 RUN add-apt-repository ppa:mhier/libboost-latest && \
     add-apt-repository ppa:maarten-fonville/protobuf && \
     apt-get -y update && \
     apt-get -y install libboost${BOOST_VERSION}-dev libprotobuf-dev=$PROTOBUF_VERSION \
         protobuf-compiler=$PROTOBUF_VERSION
-
-RUN ldconfig
 
 # Install LIEF
 RUN cd /usr/local/src \
