@@ -856,7 +856,7 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
                 gtirb::CodeBlock &Block = It.front();
                 if(Addr > *Block.getAddress())
                 {
-                    std::cerr << "WARNING: Found integral symbol to code-block interior: "
+                    std::cerr << "WARNING: Found integral symbol pointing into existing block:"
                               << Symbol.getName() << std::endl;
                     continue;
                 }
@@ -868,7 +868,7 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
                 gtirb::DataBlock &Block = It.front();
                 if(Addr > *Block.getAddress())
                 {
-                    std::cerr << "WARNING: Found integral symbol to data-block interior: "
+                    std::cerr << "WARNING: Found integral symbol pointing into existing block: "
                               << Symbol.getName() << std::endl;
                     continue;
                 }
