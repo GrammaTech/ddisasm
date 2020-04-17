@@ -428,13 +428,13 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
 // Build the AD table for symbolic operand information
 void buildSymbolicOperandInfo(gtirb::Context& /* context */, gtirb::Module& module,
         souffle::SouffleProgram* prog) {
-    std::map<gtirb::Addr, SymbolicOperandInfo> res;
+    std::map<gtirb::Addr, std::tuple<uint64_t, std::string>> res;
     for (auto& output : *prog->getRelation("symbol_prefix")) {
         gtirb::Addr ea;
         uint64_t index;
         std::string prefix;
         output >> ea >> index >> prefix;
-        res[ea] = SymbolicOperandInfo{.Index=index,.Prefix=prefix};
+        res[ea] = std::tuple(index, prefix);
     }
     module.addAuxData<gtirb::schema::SymbolicOperandInfoAD>(std::move(res));
 }

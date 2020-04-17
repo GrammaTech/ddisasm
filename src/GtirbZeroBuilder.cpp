@@ -85,27 +85,6 @@ gtirb::from_iterator gtirb::auxdata_traits<ElfSymbolInfo>::fromBytes(ElfSymbolIn
     return It;
 }
 
-std::string gtirb::auxdata_traits<SymbolicOperandInfo>::type_name()
-{
-    return gtirb::auxdata_traits<std::tuple<uint64_t, std::string>>::type_name();
-}
-
-void gtirb::auxdata_traits<SymbolicOperandInfo>::toBytes(const SymbolicOperandInfo& Object, to_iterator It)
-{
-    auxdata_traits<std::tuple<uint64_t, std::string>>::toBytes(
-        std::make_tuple(Object.Index, Object.Prefix), It);
-}
-
-gtirb::from_iterator gtirb::auxdata_traits<SymbolicOperandInfo>::fromBytes(
-        SymbolicOperandInfo& Object,from_iterator It)
-{
-    std::tuple<uint64_t, std::string> Tuple;
-    It = auxdata_traits<std::tuple<uint64_t, std::string>>::fromBytes(Tuple, It);
-    Object.Index = std::get<0>(Tuple);
-    Object.Prefix = std::get<1>(Tuple);
-    return It;
-}
-
 void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                    gtirb::Context &context)
 {
