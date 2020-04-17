@@ -898,12 +898,15 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
                 if(gtirb::Section *Section = findSectionByIndex(Context, Module, SectionIndex);
                    Section && Section->getAddress() && Section->getSize())
                 {
-                    if(auto It = Section->blocks(); !It.empty())
+                    if(Addr < Section->getAddress())
                     {
-                        std::cerr << "WARNING: Moving symbol to first block of section: "
-                                  << Symbol.getName() << std::endl;
-                        ConnectToBlock[&Symbol] = {&*It.begin(), false};
-                        continue;
+                        if(auto It = Section->blocks(); !It.empty())
+                        {
+                            std::cerr << "WARNING: Moving symbol to first block of section: "
+                                      << Symbol.getName() << std::endl;
+                            ConnectToBlock[&Symbol] = {&*It.begin(), false};
+                            continue;
+                        }
                     }
                 }
             }
