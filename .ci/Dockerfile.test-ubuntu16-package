@@ -17,16 +17,16 @@ RUN add-apt-repository ppa:mhier/libboost-latest
 # setup gtirb package
 COPY CMakeLists.txt ./
 RUN GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt || echo "master") | sed 's/check_gtirb_branch(//') && \
-    curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-ubuntu16 --output "gtirb-artifacts.zip"
-RUN unzip -o gtirb-artifacts.zip
+    curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-ubuntu16 --output "/gt/apt-repo/gtirb-artifacts.zip"
+RUN cd /gt/apt-repo/ && unzip -o /gt/apt-repo/gtirb-artifacts.zip
 
 # setup gtirb_pprinter package
 RUN GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt || echo "master") | sed 's/check_gtirb_pprinter_branch(//') && \
-    curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-ubuntu16 --output "gtirb-pprinter-artifacts.zip"
-RUN unzip -o gtirb-pprinter-artifacts.zip
+    curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-ubuntu16 --output "/gt/apt-repo/gtirb-pprinter-artifacts.zip"
+RUN cd /gt/apt-repo/ && unzip -o /gt/apt-repo/gtirb-pprinter-artifacts.zip
 
 # setup apt repository
-COPY *.deb ./
+
 RUN mkdir -p /gt/apt-repo
 RUN cp *.deb /gt/apt-repo/
 RUN cd /gt/apt-repo && dpkg-scanpackages . /dev/null > Packages
