@@ -22,7 +22,7 @@ unzip GTIRB-*-win64.zip
 easy_install gtirb-*-py*.egg
 
 # Install the pretty printer
-GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt || echo "master") | sed 's/check_gtirb_pprinter_branch(//')
+GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt || echo "bfairservice/gtirb-version") | sed 's/check_gtirb_pprinter_branch(//')
 curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=build-windows-${BUILD_TYPE,,} --output "gtirb-pprinter-artifacts.zip"
 unzip gtirb-pprinter-artifacts.zip
 unzip gtirb_pprinter-*-win64.zip
