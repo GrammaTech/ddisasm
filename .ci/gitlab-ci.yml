@@ -20,7 +20,7 @@ stages:
     - cp /u4/TARBALLS/debloat/pkgs/ehp_0.1.1-1_amd64.deb ./ # for ubuntu
     - git clone https://git.zephyr-software.com/opensrc/libehp.git # for arch
     # Acquire gtirb artifacts
-    - GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt || echo "v1.3.1") | sed 's/check_gtirb_branch(//')
+    - GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt || echo "v1.4.3") | sed 's/check_gtirb_branch(//')
     - "echo \"GTIRB_BRANCH is: $GTIRB_BRANCH\""
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=tar-arch --output "gtirb-arch-artifacts.zip"
     - unzip -l gtirb-arch-artifacts.zip
@@ -56,7 +56,7 @@ stages:
       else
           PUSH_TAG=$CI_COMMIT_REF_SLUG;
       fi
-    - GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt || echo "bfairservice/build-wheel") | sed 's/check_gtirb_branch(//')
+    - GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt || echo "v1.4.3") | sed 's/check_gtirb_branch(//')
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=python-wheel --output "gtirb-wheel.zip"
     - unzip gtirb-wheel.zip
     - mkdir gtirb-wheel && cp *.whl gtirb-wheel/
