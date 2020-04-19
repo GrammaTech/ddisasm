@@ -19,7 +19,9 @@ unzip gtirb-artifacts.zip
 unzip GTIRB-*-win64.zip
 
 # Install GTIRB python API
-easy_install gtirb-*-py*.egg
+curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=python-wheel --output "gtirb-wheel.zip"
+unzip gtirb-wheel.zip
+python -m pip install pip --upgrade && python -m pip install gtirb-*-py*.whl
 
 # Install the pretty printer
 GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt || echo "bfairservice/gtirb-version") | sed 's/check_gtirb_pprinter_branch(//')
