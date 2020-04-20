@@ -79,6 +79,7 @@ build-ubuntu16-gcc:
   variables:
     OS: 'ubuntu16'
     COMPILER: 'gcc'
+    CPACK_GENERATOR: 'DEB'
   <<: *build
 
 build-ubuntu18-gcc:
