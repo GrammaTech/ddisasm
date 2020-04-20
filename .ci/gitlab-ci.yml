@@ -246,20 +246,20 @@ cleanup-arch-clang:
 debian-installer-ubuntu16:
   variables:
     OS: 'ubuntu16'
-    COMPILER: 'g++-7'
+    COMPILER: 'gcc'
     EXTENSION: 'deb'
   <<: *linux-installer
 
 debian-installer-ubuntu18:
   variables:
     OS: 'ubuntu18'
-    COMPILER: 'g++-7'
+    COMPILER: 'gcc'
     EXTENSION: 'deb'
   <<: *linux-installer
 
 tar-arch:
   variables:
     OS: 'arch'
-    COMPILER: 'g++'
+    COMPILER: 'gcc'
     EXTENSION: 'tar.gz'
   <<: *linux-installer
