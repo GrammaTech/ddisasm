@@ -93,6 +93,7 @@ build-arch-gcc:
   variables:
     OS: 'arch'
     COMPILER: 'gcc'
+    CPACK_GENERATOR: 'TGZ'
   <<: *build
 
 build-ubuntu16-clang:

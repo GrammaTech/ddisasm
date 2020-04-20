@@ -46,4 +46,7 @@ ENV TERM xterm
 ENV PATH=/ddisasm/build/bin:$PATH
 
 RUN /ddisasm/.ci/build-linux.sh ${CXX_COMPILER}
+ARG CPACK_GENERATOR=""
+RUN if [ ! -z "${CPACK_GENERATOR}" ] ; then cd /ddisasm/build && cpack -G "${CPACK_GENERATOR}"; fi
+
 WORKDIR /ddisasm/
