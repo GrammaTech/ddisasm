@@ -47,7 +47,7 @@ RUN cd /usr/local/src \
 COPY . /ddisasm
 
 # Install capstone
-RUN dpkg -i /ddisasm/libcapstone-dev_4.0.1-1_amd64.deb
+RUN dpkg -i /ddisasm/libcapstone-dev_*_amd64.deb
 
 # Install GTIRB
 RUN unzip -o /ddisasm/gtirb-ubuntu18-artifacts.zip && dpkg -i GTIRB*.deb
