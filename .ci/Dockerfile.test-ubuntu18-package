@@ -11,22 +11,18 @@ RUN apt-get -y update && apt-get -y install curl dpkg-dev software-properties-co
 # for boost 1.67
 RUN add-apt-repository ppa:mhier/libboost-latest
 
-# setup gtirb package
-COPY CMakeLists.txt ./
-RUN GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt || echo "master") | sed 's/check_gtirb_branch(//') && \
-    curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-ubuntu18 --output "gtirb-artifacts.zip"
-RUN unzip gtirb-artifacts.zip
-
-# setup gtirb_pprinter package
-RUN GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt || echo "master") | sed 's/check_gtirb_pprinter_branch(//') && \
-    curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-ubuntu18 --output "gtirb-pprinter-artifacts.zip"
-RUN unzip -o gtirb-pprinter-artifacts.zip
-
 # setup apt repository
-COPY *.deb ./
-RUN mkdir -p /gt/apt-repo
-RUN cp *.deb /gt/apt-repo/
+COPY DDISASM-*-Linux.deb /gt/apt-repo/
+COPY libcapstone-dev_*_amd64.deb /gt/apt-repo/
+COPY ehp_*_amd64.deb /gt/apt-repo/
+COPY gtirb-ubuntu18-artifacts.zip /gt/apt-repo/
+COPY gtirb-pprinter-ubuntu18-artifacts.zip /gt/apt-repo/
+WORKDIR /gt/apt-repo/
+RUN unzip -o /gt/apt-repo/gtirb-ubuntu18-artifacts.zip
+RUN unzip -o /gt/apt-repo/gtirb-pprinter-ubuntu18-artifacts.zip
 RUN cd /gt/apt-repo && dpkg-scanpackages . /dev/null > Packages
+
+# Add the local repository
 RUN echo $'\ndeb [trusted=yes] file:/gt/apt-repo ./\n' >> /etc/apt/sources.list
 
 # install & test ddisasm
