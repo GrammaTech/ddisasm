@@ -235,6 +235,20 @@ cleanup-arch-clang:
     paths:
       - ./DDISASM-*-Linux.deb
   script:
+    # Acquire gtirb artifacts
+    - GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt || echo "v1.4.3") | sed 's/check_gtirb_branch(//')
+    - "echo \"GTIRB_BRANCH is: $GTIRB_BRANCH\""
+    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=tar-arch --output "gtirb-arch-artifacts.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-ubuntu16 --output "gtirb-ubuntu16-artifacts.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-ubuntu18 --output "gtirb-ubuntu18-artifacts.zip"
+    # Acquire gtirb pprinter artifacts
+    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt || echo "bfairservice/gtirb-version") | sed 's/check_gtirb_pprinter_branch(//')
+    - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
+    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=tar-arch --output "gtirb-pprinter-arch-artifacts.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-ubuntu16 --output "gtirb-pprinter-ubuntu16-artifacts.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-ubuntu18 --output "gtirb-pprinter-ubuntu18-artifacts.zip"
+    - cp /u4/TARBALLS/debloat/pkgs/libcapstone-dev_4.0.1-1_amd64.deb ./
+    - cp /u4/TARBALLS/debloat/pkgs/ehp_0.1.1-1_amd64.deb ./
     - export CONTAINER_FILE=$(mktemp -d)/cidfile
     - docker create --cidfile=${CONTAINER_FILE} ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}
     - docker cp $(cat ${CONTAINER_FILE}):/ddisasm/build ./build-artifacts

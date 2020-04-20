@@ -14,22 +14,18 @@ RUN add-apt-repository ppa:maarten-fonville/protobuf
 # for boost 1.67
 RUN add-apt-repository ppa:mhier/libboost-latest
 
-# setup gtirb package
-COPY CMakeLists.txt ./
-RUN GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt || echo "master") | sed 's/check_gtirb_branch(//') && \
-    curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-ubuntu16 --output "/gt/apt-repo/gtirb-artifacts.zip"
-RUN cd /gt/apt-repo/ && unzip -o /gt/apt-repo/gtirb-artifacts.zip
-
-# setup gtirb_pprinter package
-RUN GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt || echo "master") | sed 's/check_gtirb_pprinter_branch(//') && \
-    curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-ubuntu16 --output "/gt/apt-repo/gtirb-pprinter-artifacts.zip"
-RUN cd /gt/apt-repo/ && unzip -o /gt/apt-repo/gtirb-pprinter-artifacts.zip
-
 # setup apt repository
-
-RUN mkdir -p /gt/apt-repo
-RUN cp *.deb /gt/apt-repo/
+COPY DDISASM-*-Linux.deb /gt/apt-repo/
+COPY libcapstone-dev_*_amd64.deb /gt/apt-repo/
+COPY ehp_*_amd64.deb /gt/apt-repo/
+COPY gtirb-ubuntu16-artifacts.zip /gt/apt-repo/
+COPY gtirb-pprinter-ubuntu16-artifacts.zip /gt/apt-repo/
+WORKDIR /gt/apt-repo/
+RUN unzip -o /gt/apt-repo/gtirb-ubuntu16-artifacts.zip
+RUN unzip -o /gt/apt-repo/gtirb-pprinter-ubuntu16-artifacts.zip
 RUN cd /gt/apt-repo && dpkg-scanpackages . /dev/null > Packages
+
+# Add the loca repository
 RUN echo $'\ndeb file:/gt/apt-repo ./\n' >> /etc/apt/sources.list
 
 # install & test ddisasm
