@@ -44,8 +44,8 @@
 // First we split blocks if there is a symbol pointing to the middle
 
 .decl block_needs_splitting_at(EA:address)
-.decl code_in_block_splitted(ea:address,block:address)
-.decl block_splitted(block:address)
+.decl code_in_split_block(ea:address,block:address)
+.decl split_block(block:address)
 
 block_needs_splitting_at(EA):-
     // only these sym exprs should be able to point to the middle of a block.
@@ -59,16 +59,16 @@ block_needs_splitting_at(EA):-
     EA != Block.
 
 
-block_splitted(Block):-
+split_block(Block):-
     block(Block).
-block_splitted(EA):-
+split_block(EA):-
     block_needs_splitting_at(EA).
 
-code_in_block_splitted(Block,Block):-
-    block_splitted(Block).
+code_in_split_block(Block,Block):-
+    split_block(Block).
 
-code_in_block_splitted(EA,Block):-
-    code_in_block_splitted(PrevEA,Block),
+code_in_split_block(EA,Block):-
+    code_in_split_block(PrevEA,Block),
     code_in_block(PrevEA,PrevBlock),
     next(PrevEA,EA),
     code_in_block(EA,PrevBlock),
@@ -81,7 +81,7 @@ code_in_block_splitted(EA,Block):-
 .decl block_needs_merging(block:address)
 
 block_needs_merging(Block):-
-    block_splitted(Block),
+    split_block(Block),
     must_fallthrough(Code,Block),
     code(Code),
     //not referenced anywhere
@@ -99,16 +99,16 @@ block_needs_merging(Block):-
     !fde_addresses(_,Block).
 
 refined_block(Block):-
-    block_splitted(Block),
+    split_block(Block),
     !block_needs_merging(Block).
 
 code_in_refined_block(EA,Block):-
     refined_block(Block),
-    code_in_block_splitted(EA,Block).
+    code_in_split_block(EA,Block).
 
 code_in_refined_block(EA,Block):-
     block_needs_merging(OldBlock),
-    code_in_block_splitted(EA,OldBlock),
+    code_in_split_block(EA,OldBlock),
     must_fallthrough(Prev,OldBlock),
     code_in_refined_block(Prev,Block).
 
