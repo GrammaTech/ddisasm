@@ -48,10 +48,9 @@ cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
 
 # Generate windows package
 cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && C:\\PROGRA~1\\CMake\\bin\\cpack.exe -G ZIP"
-cp ./DDISASM-*-win64.zip ../
 
 # Collect extra dlls needed to run ddisasm
-ZIP_FILE=(DDISASM-*-Win64.zip)
+ZIP_FILE=(DDISASM-*-win64.zip)
 BASE_DIRECTORY="${ZIP_FILE%.*}"
 mkdir -p $BASE_DIRECTORY/bin
 cp /cygdrive/c/Boost/lib/boost_*-vc141-mt$(echo $BUILD_TYPE | sed 's/Debug/-gd/;s/Release//')-x64-1_67.dll $BASE_DIRECTORY/bin/
@@ -59,6 +58,8 @@ GTIRB_DLL=$GTIRB_DIR/../../bin/gtirb$(echo $BUILD_TYPE | sed 's/Debug/d/;s/Relea
 cp $GTIRB_DLL $BASE_DIRECTORY/bin/$(basename $GTIRB_DLL)
 GTIRB_PPRINTER_DLL=$GTIRB_PPRINTER_DIR/../../bin/gtirb_pprinter$(echo $BUILD_TYPE | sed 's/Debug/d/;s/Release//').dll
 cp $GTIRB_PPRINTER_DLL $BASE_DIRECTORY/bin/$(basename $GTIRB_PPRINTER_DLL)
+zip -u $ZIP_FILE $BASE_DIRECTORY/bin/*.dll
+cp ./DDISASM-*-win64.zip ../
 
 # Test ddisasm
 cp $BASE_DIRECTORY/bin/*.dll /bin
