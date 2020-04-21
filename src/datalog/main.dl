@@ -256,14 +256,14 @@ instruction_get_src_op(EA,Index,Op):-
 
 .decl symbol_prefix(ea:address, index:number, prefix:symbol)
 symbol_prefix(ea, 1, ":got:") :-
-    collect_relative(ea,_,Base,Offset,"LDR"),
-    relocation(Base+Offset, "GLOB_DAT", _, _).
+    collect_relative(ea,_,Dest,"LDR"),
+    relocation(Dest, "GLOB_DAT", _, _).
 symbol_prefix(ea, 1, ":got_lo12:") :-
-    collect_relative(_,ea,Base,Offset,"LDR"),
-    relocation(Base+Offset, "GLOB_DAT", _, _).
+    collect_relative(_,ea,Dest,"LDR"),
+    relocation(Dest, "GLOB_DAT", _, _).
 symbol_prefix(ea, 2, ":lo12:") :-
-    collect_relative(_,ea,Base,Offset,"ADD"),
-    !relocation(Base+Offset, "GLOB_DAT", _, _).
+    collect_relative(_,ea,Dest,"ADD"),
+    !relocation(Dest, "GLOB_DAT", _, _).
 .output symbol_prefix()
 
 .decl next(n:address,m:address)
@@ -280,37 +280,45 @@ pc_relative_operand(EA,Index,EA_next+Offset):-
     arch.pc_register(Reg),
     next(EA,EA_next).
 
-pc_relative_operand(EA,1,Base+Offset) :-
-    collect_relative(EA, _, Base,Offset,_).
+pc_relative_operand(EA,1,Dest) :-
+    collect_relative(EA, _, Dest,_).
 
-pc_relative_operand(EA,2,Base+Offset) :-
-    collect_relative(_,EA,Base,Offset,"ADD").
+pc_relative_operand(EA,2,Dest) :-
+    collect_relative(_,EA,Dest,"ADD").
 
-pc_relative_operand(EA,2,Base+Offset) :-
-    collect_relative(_,EA,Base,Offset,"LDR").
+pc_relative_operand(EA,2,Dest) :-
+    collect_relative(_,EA,Dest,"LDR").
 
-// TODO (azreika): clean this up
-.decl collect_relative(ea:address, nextea:address, adrpval:number, addval:number, type:symbol)
-.output collect_relative()
-collect_relative(EA, NextEA, Base, Offset, "ADD") :-
-    instruction_get_operation(EA,"ADRP"),
-    instruction_get_op(EA,1,BaseOp),
-    op_immediate(BaseOp,Base),
+.decl collect_relative(ea:address, nextea:address, dest:number, type:symbol)
+collect_relative(EA, NextEA, Base + Offset, "ADD") :-
+    // ADRP <Register> <Immediate>
+    // e.g. adrp x0, BaseOp
+    instruction_get_operation(EA, "ADRP"),
+    instruction_get_op(EA, 1, BaseOp),
+    op_immediate(BaseOp, Base),
 
-    next(EA,NextEA),
-    instruction_get_operation(NextEA,"ADD"),
-    instruction_get_op(NextEA,2,OffsetOp),
-    op_immediate(OffsetOp,Offset).
+    next(EA, NextEA),
 
-collect_relative(EA, NextEA, Base, Offset, "LDR") :-
-    instruction_get_operation(EA,"ADRP"),
-    instruction_get_op(EA,1,BaseOp),
-    op_immediate(BaseOp,Base),
+    // ADD <Register> <Register> <Immediate>
+    // e.g. add x0, x0, <OffsetOp>
+    instruction_get_operation(NextEA, "ADD"),
+    instruction_get_op(NextEA, 2, OffsetOp),
+    op_immediate(OffsetOp, Offset).
 
-    next(EA,NextEA),
-    instruction_get_operation(NextEA,"LDR"),
-    instruction_get_op(NextEA,1,OffsetOp),
-    op_indirect(OffsetOp,"NONE",_,"NONE",1,Offset,_).
+collect_relative(EA, NextEA, Base + Offset, "LDR") :-
+    // ADRP <Register> <Immediate>
+    // e.g. adrp x0, BaseOp
+    instruction_get_operation(EA, "ADRP"),
+    instruction_get_op(EA, 1, BaseOp),
+    op_immediate(BaseOp, Base),
+
+    next(EA, NextEA),
+
+    // LDR <Register> <IndirectOp>
+    // e.g. ldr x0, [x0, <OffsetOp>]
+    instruction_get_operation(NextEA, "LDR"),
+    instruction_get_op(NextEA, 1, OffsetOp),
+    op_indirect(OffsetOp, "NONE", _, "NONE", 1, Offset, _).
 
 .decl instruction_has_loop_prefix(EA:address)
 

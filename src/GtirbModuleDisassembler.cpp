@@ -280,13 +280,12 @@ struct SymbolMinusSymbol
 struct RelativeADRP {
     RelativeADRP(gtirb::Addr ea) : EA(ea) {}
     RelativeADRP(souffle::tuple &tuple) {
-        assert(tuple.size() == 5);
-        tuple >> EA >> NextEA >> Base >> Offset >> Type;
+        assert(tuple.size() == 4);
+        tuple >> EA >> NextEA >> Dest >> Type;
     }
     gtirb::Addr EA{0};
     gtirb::Addr NextEA{0};
-    uint64_t Base{0};
-    uint64_t Offset{0};
+    uint64_t Dest{0};
     std::string Type{"NONE"};
 };
 
@@ -673,12 +672,12 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
                                       *indirect, symbolicInfo);
         }
         for (auto& relAdrp : relativeAdrp) {
-            long int imm = relAdrp.Base + relAdrp.Offset;
+            long int dest = relAdrp.Dest;
             if (relAdrp.EA == inst->first) {
-                buildSymbolicImmediate(context, module, inst->first, inst->second, 1, imm, symbolicInfo);
+                buildSymbolicImmediate(context, module, inst->first, inst->second, 1, dest, symbolicInfo);
             }
             if (relAdrp.NextEA == inst->first) {
-                buildSymbolicImmediate(context, module, inst->first, inst->second, 2, imm, symbolicInfo);
+                buildSymbolicImmediate(context, module, inst->first, inst->second, 2, dest, symbolicInfo);
             }
         }
     }
