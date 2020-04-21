@@ -277,9 +277,9 @@ struct SymbolMinusSymbol
     gtirb::Addr Symbol2{0};
 };
 
-struct RelativeADRP {
-    RelativeADRP(gtirb::Addr ea) : EA(ea) {}
-    RelativeADRP(souffle::tuple &tuple) {
+struct SplitLoad {
+    SplitLoad(gtirb::Addr ea) : EA(ea) {}
+    SplitLoad(souffle::tuple &tuple) {
         assert(tuple.size() == 4);
         tuple >> EA >> NextEA >> Dest >> Type;
     }
@@ -655,7 +655,7 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
         convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog),
         convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog)};
 
-    auto relativeAdrp = convertSortedRelation<VectorByEA<RelativeADRP>>("collect_relative", prog);
+    auto splitLoad = convertSortedRelation<VectorByEA<SplitLoad>>("split_load", prog);
     std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
 
     for(auto &cib : codeInBlock)
@@ -671,12 +671,12 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
                 buildSymbolicIndirect(context, module, inst->first, inst->second, op.first,
                                       *indirect, symbolicInfo);
         }
-        for (auto& relAdrp : relativeAdrp) {
-            long int dest = relAdrp.Dest;
-            if (relAdrp.EA == inst->first) {
+        for (auto& splitLoad : splitLoad) {
+            long int dest = splitLoad.Dest;
+            if (splitLoad.EA == inst->first) {
                 buildSymbolicImmediate(context, module, inst->first, inst->second, 1, dest, symbolicInfo);
             }
-            if (relAdrp.NextEA == inst->first) {
+            if (splitLoad.NextEA == inst->first) {
                 buildSymbolicImmediate(context, module, inst->first, inst->second, 2, dest, symbolicInfo);
             }
         }
