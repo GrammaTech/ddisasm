@@ -37,7 +37,7 @@ void FunctionInferencePass::populateSouffleProg(std::shared_ptr<souffle::Souffle
     Loader.populateSymbolicExpressions(M);
     Loader.populateFdeEntries(Ctx, M);
     Loader.populateFunctionEntries(Ctx, M);
-    Loader.populatePadding(M);
+    Loader.populatePadding(Ctx, M);
 }
 
 void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProgram> P,

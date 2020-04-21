@@ -79,6 +79,13 @@ namespace gtirb
             typedef std::map<gtirb::UUID, std::string> Type;
         };
 
+        /// \brief Auxiliary data mapping a section index to a section UUID.
+        struct ElfSectionIndex
+        {
+            static constexpr const char* Name = "elfSectionIndex";
+            typedef std::map<uint64_t, gtirb::UUID> Type;
+        };
+
         /// \brief Auxiliary data covering ELF section properties.
         struct ElfSectionProperties
         {
@@ -157,6 +164,13 @@ namespace gtirb
         {
             static constexpr const char* Name = "InitialImportEntries";
             typedef std::vector<InitialAuxData::ImportEntry> Type;
+        };
+
+        /// \brief Auxiliary data that stores the size of symbolic expressions.
+        struct SymbolicExpressionSizes
+        {
+            static constexpr const char* Name = "symbolicExpressionSizes";
+            typedef std::map<gtirb::Offset, uint64_t> Type;
         };
 
     } // namespace schema

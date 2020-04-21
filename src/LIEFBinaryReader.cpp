@@ -116,13 +116,15 @@ std::set<InitialAuxData::Section> LIEFBinaryReader::get_sections()
     std::set<InitialAuxData::Section> sectionTuples;
     if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
     {
+        uint64_t Index = 0;
         for(auto& section : elf->sections())
         {
             if(section.flags_list().count(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC))
                 sectionTuples.insert({section.name(), section.size(),
                                       get_base_address() + section.virtual_address(),
                                       static_cast<uint64_t>(section.type()),
-                                      static_cast<uint64_t>(section.flags())});
+                                      static_cast<uint64_t>(section.flags()), Index});
+            Index++;
         }
     }
 
@@ -133,7 +135,7 @@ std::set<InitialAuxData::Section> LIEFBinaryReader::get_sections()
             // FIXME: should we encode section type?
             sectionTuples.insert({section.name(), section.virtual_size(),
                                   get_base_address() + section.virtual_address(), 0,
-                                  section.characteristics()});
+                                  section.characteristics(), 0});
         }
     }
     return sectionTuples;
@@ -232,16 +234,21 @@ std::set<InitialAuxData::Symbol> LIEFBinaryReader::get_symbols()
 
 std::set<InitialAuxData::Relocation> LIEFBinaryReader::get_relocations()
 {
-    std::set<InitialAuxData::Relocation> relocationTuples;
-    if(auto* elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
+    std::set<InitialAuxData::Relocation> RelocationTuples;
+    if(auto* Elf = dynamic_cast<LIEF::ELF::Binary*>(bin.get()))
     {
-        for(auto& relocation : elf->relocations())
+        for(auto& Relocation : Elf->relocations())
         {
-            relocationTuples.insert({relocation.address(), getRelocationType(relocation),
-                                     relocation.symbol().name(), relocation.addend()});
+            std::string SymbolName;
+            if(Relocation.has_symbol())
+            {
+                SymbolName = Relocation.symbol().name();
+            }
+            RelocationTuples.insert({Relocation.address(), getRelocationType(Relocation),
+                                     SymbolName, Relocation.addend()});
         }
     }
-    return relocationTuples;
+    return RelocationTuples;
 }
 
 std::vector<std::string> LIEFBinaryReader::get_libraries()

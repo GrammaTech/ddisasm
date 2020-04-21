@@ -117,7 +117,8 @@ void addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
                                        + " missing from elfSymbolInfo AuxData table");
 
             ElfSymbolInfo &Info = found->second;
-            t << Info.Size << Info.Type << Info.Scope << Info.SectionIndex << symbol.getName();
+            t << std::get<0>(Info) << std::get<1>(Info) << std::get<2>(Info) << std::get<4>(Info)
+              << symbol.getName();
             rel->insert(t);
         }
     }
@@ -158,7 +159,8 @@ DlDecoder::~DlDecoder()
     cs_close(&this->csHandle);
 }
 
-souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
+souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module,
+                                           const std::vector<std::string> &DisasmOptions)
 {
     const gtirb::FileFormat format = module.getFileFormat();
 
@@ -180,7 +182,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
         SectionProperties &extraInfo = found->second;
         if(isExeSection(format, extraInfo))
         {
-            for(const auto byteInterval : section.byte_intervals())
+            for(auto &byteInterval : section.byte_intervals())
             {
                 decodeSection(byteInterval);
                 storeDataSection(byteInterval, minAddr, maxAddr);
@@ -188,7 +190,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
         }
         if(isNonZeroDataSection(format, extraInfo))
         {
-            for(const auto byteInterval : section.byte_intervals())
+            for(auto &byteInterval : section.byte_intervals())
             {
                 storeDataSection(byteInterval, minAddr, maxAddr);
             }
@@ -197,6 +199,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module)
     if(auto prog = souffle::ProgramFactory::newInstance("souffle_disasm"))
     {
         loadInputs(prog, module);
+        GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "option", DisasmOptions);
         return prog;
     }
     return nullptr;

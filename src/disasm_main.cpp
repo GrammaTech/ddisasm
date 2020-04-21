@@ -23,6 +23,7 @@
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 #include <boost/program_options.hpp>
+#include <chrono>
 #include <gtirb/gtirb.hpp>
 #include <gtirb_pprinter/PrettyPrinter.hpp>
 #include <iostream>
@@ -76,6 +77,7 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
     gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfSectionIndex>();
     gtirb::AuxDataContainer::registerAuxDataType<PeSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<CfiDirectives>();
     gtirb::AuxDataContainer::registerAuxDataType<Libraries>();
@@ -86,8 +88,30 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<PeExportedSymbols>();
     gtirb::AuxDataContainer::registerAuxDataType<InitialDataDirectories>();
     gtirb::AuxDataContainer::registerAuxDataType<InitialImportEntries>();
+    gtirb::AuxDataContainer::registerAuxDataType<SymbolicExpressionSizes>();
 }
 
+void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_clock> Start)
+{
+    auto End = std::chrono::high_resolution_clock::now();
+    std::cout << " (";
+    int secs = std::chrono::duration_cast<std::chrono::seconds>(End - Start).count();
+    if(secs != 0)
+        std::cout << secs << "s)" << std::endl;
+    else
+        std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(End - Start).count()
+                  << "ms)" << std::endl;
+}
+
+std::vector<std::string> createDisasmOptions(const po::variables_map &vm)
+{
+    std::vector<std::string> Options;
+    if(vm.count("no-cfi-directives"))
+    {
+        Options.push_back("no-cfi-directives");
+    }
+    return Options;
+}
 int main(int argc, char **argv)
 {
     registerAuxDataTypes();
@@ -109,6 +133,8 @@ int main(int argc, char **argv)
          "option only works if the target binary contains complete relocation information.") //
         ("skip-function-analysis,F",
          "Skip additional analyses to compute more precise function boundaries.") //
+        ("no-cfi-directives",
+         "Do not produce cfi directives. Instead it produces symbolic expressions in .eh_frame.") //
         ("threads,j", po::value<unsigned int>()->default_value(std::thread::hardware_concurrency()),
          "Number of cores to use. It is set to the number of cores in the machine by default");
     po::positional_options_description pd;
@@ -149,9 +175,13 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    std::cout << "Building the initial gtirb representation" << std::endl;
+    std::cout << "Building the initial gtirb representation " << std::flush;
     gtirb::Context context;
+
+    auto StartBuildZeroIR = std::chrono::high_resolution_clock::now();
     gtirb::IR *ir = buildZeroIR(filename, context);
+    printElapsedTimeSince(StartBuildZeroIR);
+
     if(!ir)
     {
         std::cerr << "There was a problem loading the binary file " << filename << "\n";
@@ -161,8 +191,11 @@ int main(int argc, char **argv)
     souffle::SouffleProgram *prog;
     {
         DlDecoder decoder;
-        std::cout << "Decoding the binary" << std::endl;
-        prog = decoder.decode(module);
+        std::cout << "Decoding the binary " << std::flush;
+        auto StartDecode = std::chrono::high_resolution_clock::now();
+        std::vector<std::string> DisasmOptions = createDisasmOptions(vm);
+        prog = decoder.decode(module, DisasmOptions);
+        printElapsedTimeSince(StartDecode);
     }
     if(prog)
     {
@@ -173,9 +206,10 @@ int main(int argc, char **argv)
             auto dir = vm["debug-dir"].as<std::string>() + "/";
             writeFacts(prog, dir);
         }
-        std::cout << "Disassembling" << std::endl;
+        std::cout << "Disassembling" << std::flush;
         unsigned int NThreads = vm["threads"].as<unsigned int>();
         prog->setNumThreads(NThreads);
+        auto StartDisassembling = std::chrono::high_resolution_clock::now();
         try
         {
             prog->run();
@@ -184,14 +218,19 @@ int main(int argc, char **argv)
         {
             souffle::SignalHandler::instance()->error(e.what());
         }
-        std::cout << "Populating gtirb representation" << std::endl;
+        printElapsedTimeSince(StartDisassembling);
+        std::cout << "Populating gtirb representation " << std::flush;
+        auto StartGtirbBuilding = std::chrono::high_resolution_clock::now();
         disassembleModule(context, module, prog, vm.count("self-diagnose") != 0);
+        printElapsedTimeSince(StartGtirbBuilding);
 
         if(vm.count("skip-function-analysis") == 0)
         {
-            std::cout << "Computing intra-procedural SCCs" << std::endl;
+            std::cout << "Computing intra-procedural SCCs " << std::flush;
+            auto StartSCCsComputation = std::chrono::high_resolution_clock::now();
             computeSCCs(module);
-            std::cout << "Computing no return analysis" << std::endl;
+            printElapsedTimeSince(StartSCCsComputation);
+            std::cout << "Computing no return analysis " << std::flush;
             NoReturnPass NoReturn;
             FunctionInferencePass FunctionInference;
             if(vm.count("debug-dir") != 0)
@@ -199,9 +238,13 @@ int main(int argc, char **argv)
                 NoReturn.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
                 FunctionInference.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
             }
+            auto StartNoReturnAnalysis = std::chrono::high_resolution_clock::now();
             NoReturn.computeNoReturn(module, NThreads);
-            std::cout << "Detecting additional functions" << std::endl;
+            printElapsedTimeSince(StartNoReturnAnalysis);
+            std::cout << "Detecting additional functions " << std::flush;
+            auto StartFunctionAnalysis = std::chrono::high_resolution_clock::now();
             FunctionInference.computeFunctions(context, module, NThreads);
+            printElapsedTimeSince(StartFunctionAnalysis);
         }
         // Output GTIRB
         if(vm.count("ir") != 0)
@@ -227,9 +270,11 @@ int main(int argc, char **argv)
         }
         if(vm.count("asm") != 0)
         {
-            std::cout << "Printing assembler" << std::endl;
+            std::cout << "Printing assembler " << std::flush;
+            auto StartPrinting = std::chrono::high_resolution_clock::now();
             std::ofstream out(vm["asm"].as<std::string>());
             pprinter.print(out, context, module);
+            printElapsedTimeSince(StartPrinting);
         }
         else if(vm.count("ir") == 0)
         {

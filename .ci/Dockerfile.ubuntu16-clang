@@ -17,7 +17,7 @@ FROM ubuntu:16.04
 
 ENV LD_LIBRARY_PATH /usr/local/lib:$LD_LIBRARY_PATH
 
-ARG CMAKE_VERSION=3.9
+ARG CMAKE_VERSION=3.10
 ARG BOOST_VERSION=1.67
 ARG PROTOBUF_VERSION=3.7.0
 ARG CXX_COMPILER=clang++-8
@@ -98,7 +98,11 @@ COPY . /ddisasm
 
 # Install GTIRB
 RUN rm -rf /ddisasm/gtirb/build /ddisasm/gtirb/CMakeCache.txt /ddisasm/gtirb/CMakeFiles /ddisasm/gtirb/CMakeScripts
-RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DGTIRB_JAVA_API=OFF && cd build && which sudo 2>&1 >/dev/null && sudo make install || make install
+RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DGTIRB_JAVA_API=OFF \
+    && cd build \
+    && which sudo 2>&1 >/dev/null \
+    && sudo make install || make install \
+    && sudo make install-python || make install-python
 
 # Install gtirb-pprinter
 RUN rm -rf /ddisasm/gtirb-pprinter/build /ddisasm/gtirb-pprinter/CMakeCache.txt /ddisasm/gtirb-pprinter/CMakeFiles /ddisasm/gtirb-pprinter/CMakeScripts

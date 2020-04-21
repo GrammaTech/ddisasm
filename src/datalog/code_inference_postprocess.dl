@@ -55,7 +55,9 @@ block_needs_merging(Block):-
     !function_symbol(Block,_),
     !defined_symbol(Block,_,_,_,_,_),
     !entry_point(Block),
-    !instruction_has_loop_prefix(Block).
+    !instruction_has_loop_prefix(Block),
+    !fde_addresses(Block,_),
+    !fde_addresses(_,Block).
 
 
 refined_block(Block):-

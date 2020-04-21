@@ -38,21 +38,22 @@ set(DATALOG_SOURCES
     datalog/x64/jump_operations.dl
     datalog/x64/registers.dl)
 
+set(SOUFFLE_DATALOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/datalog/)
+set(GENERATED_CPP souffle_disasm.cpp)
 if(WIN32)
-  set(SOUFFLE_DISASM_MAIN
-      "$$(wslpath ${CMAKE_CURRENT_SOURCE_DIR}/datalog/main.dl)")
+  set(GENERATED_CPP_PATH
+      "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm.cpp)")
 else()
-  set(SOUFFLE_DISASM_MAIN ${CMAKE_CURRENT_SOURCE_DIR}/datalog/main.dl)
+  set(GENERATED_CPP_PATH ${CMAKE_BINARY_DIR}/src/souffle_disasm.cpp)
 endif()
 
-set(GENERATED_CPP "${CMAKE_BINARY_DIR}/src/souffle_disasm.cpp")
 add_custom_command(
   OUTPUT ${GENERATED_CPP}
          # Souffle includes the path of the output file in the generated program
          # name. Change directory and use a relative path so the name does not
          # depend on build location.
-  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/"
-  COMMAND ${SOUFFLE} ${SOUFFLE_DISASM_MAIN} -g souffle_disasm.cpp -jauto
+  WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
+  COMMAND ${SOUFFLE} main.dl -g ${GENERATED_CPP_PATH} -jauto
   DEPENDS ${DATALOG_SOURCES})
 
 # determine what flags to use to specify -fopenmp.

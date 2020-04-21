@@ -75,40 +75,11 @@ bool isAllocatedSection(const gtirb::FileFormat format, int flags)
     return false;
 }
 
-std::string gtirb::auxdata_traits<ElfSymbolInfo>::type_name()
-{
-    return gtirb::auxdata_traits<
-        std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>>::type_name();
-}
-
-void gtirb::auxdata_traits<ElfSymbolInfo>::toBytes(const ElfSymbolInfo &Object, to_iterator It)
-{
-    auxdata_traits<std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>>::toBytes(
-        std::make_tuple(Object.Size, Object.Type, Object.Scope, Object.Visibility,
-                        Object.SectionIndex),
-        It);
-}
-
-gtirb::from_iterator gtirb::auxdata_traits<ElfSymbolInfo>::fromBytes(ElfSymbolInfo &Object,
-                                                                     from_iterator It)
-{
-    std::tuple<uint64_t, std::string, std::string, std::string, uint64_t> Tuple;
-    It = auxdata_traits<
-        std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>>::fromBytes(Tuple,
-                                                                                          It);
-    Object.Size = std::get<0>(Tuple);
-    Object.Type = std::get<1>(Tuple);
-    Object.Scope = std::get<2>(Tuple);
-    Object.Visibility = std::get<3>(Tuple);
-    Object.SectionIndex = std::get<4>(Tuple);
-
-    return It;
-}
-
 void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                    gtirb::Context &context)
 {
     std::map<gtirb::UUID, SectionProperties> sectionProperties;
+    std::map<uint64_t, gtirb::UUID> SectionIndex;
     for(auto &binSection : binary->get_sections())
     {
         if(isAllocatedSection(binary->get_binary_format(), binSection.flags))
@@ -145,9 +116,11 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
             // Add object specific flags to elfSectionProperties AuxData table.
             sectionProperties[section->getUUID()] =
                 std::make_tuple(binSection.type, binSection.flags);
+            SectionIndex[binSection.index] = section->getUUID();
         }
     }
     module.addAuxData<gtirb::schema::ElfSectionProperties>(std::move(sectionProperties));
+    module.addAuxData<gtirb::schema::ElfSectionIndex>(std::move(SectionIndex));
 }
 
 void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
