@@ -147,6 +147,18 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
 .decl op_immediate(code:operand_code,offset:number)
 .input op_immediate
 
+.decl op_prefetch(code:operand_code, prefetch_type:symbol)
+.input op_prefetch
+.output op_prefetch
+
+.decl op_barrier(code:operand_code, prefetch_type:symbol)
+.input op_barrier
+.output op_barrier
+
+.decl op_other(code:operand_code,value:symbol,otherValue:number)
+.input op_other()
+.output op_other()
+
 .decl op_indirect(code:operand_code,reg1:register, reg2:register, reg3:register,
         multiplier:number, offset:number, size_value:number)
 .input op_indirect

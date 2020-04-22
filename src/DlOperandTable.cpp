@@ -29,6 +29,33 @@ constexpr bool operator<(const IndirectOp &LHS, const IndirectOp &RHS) noexcept
            < std::tie(RHS.reg1, RHS.reg2, RHS.reg3, RHS.multiplier, RHS.displacement, RHS.size);
 }
 
+constexpr bool operator<(const OtherOp& LHS, const OtherOp& RHS) noexcept {
+    return std::tie(LHS.value, LHS.otherValue) < std::tie(RHS.value, RHS.otherValue);
+}
+
+souffle::tuple& operator<<(souffle::tuple& t, const OtherOp& op) {
+    t << op.value << op.otherValue;
+    return t;
+}
+
+constexpr bool operator<(const BarrierOp& LHS, const BarrierOp& RHS) noexcept {
+    return std::tie(LHS.value) < std::tie(RHS.value);
+}
+
+souffle::tuple& operator<<(souffle::tuple& t, const BarrierOp& op) {
+    t << op.value;
+    return t;
+}
+
+constexpr bool operator<(const PrefetchOp& LHS, const PrefetchOp& RHS) noexcept {
+    return std::tie(LHS.value) < std::tie(RHS.value);
+}
+
+souffle::tuple& operator<<(souffle::tuple& t, const PrefetchOp& op) {
+    t << op.value;
+    return t;
+}
+
 souffle::tuple &operator<<(souffle::tuple &t, const IndirectOp &op)
 {
     t << op.reg1 << op.reg2 << op.reg3 << op.multiplier << op.displacement << op.size;
@@ -56,6 +83,21 @@ int64_t DlOperandTable::add(std::variant<ImmOp, RegOp, IndirectOp> op)
         return addToTable(regTable, *reg);
     if(auto *indirect = std::get_if<IndirectOp>(&op))
         return addToTable(indirectTable, *indirect);
+    assert("Operand has invalid value");
+    return 0;
+}
+
+int64_t DlOperandTable::add(std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp> op) {
+    if(auto *imm = std::get_if<ImmOp>(&op))
+        return addToTable(immTable, *imm);
+    if(auto *reg = std::get_if<RegOp>(&op))
+        return addToTable(regTable, *reg);
+    if(auto *indirect = std::get_if<IndirectOp>(&op))
+        return addToTable(indirectTable, *indirect);
+    if(auto *prfop = std::get_if<PrefetchOp>(&op))
+        return addToTable(prefetchTable, *prfop);
+    if(auto *bop = std::get_if<BarrierOp>(&op))
+        return addToTable(barrierTable, *bop);
     assert("Operand has invalid value");
     return 0;
 }
