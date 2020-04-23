@@ -194,7 +194,7 @@ void addAuxiliaryTables(gtirb::Module &module, std::shared_ptr<BinaryReader> bin
     module.addAuxData<gtirb::schema::Relocations>(binary->get_relocations());
     module.addAuxData<gtirb::schema::Libraries>(binary->get_libraries());
     module.addAuxData<gtirb::schema::LibraryPaths>(binary->get_library_paths());
-    module.addAuxData<gtirb::schema::BaseAddress>(gtirb::Addr(binary->get_base_address()));
+    module.setPreferredAddr(gtirb::Addr(binary->get_base_address()));
     if(binary->get_binary_format() == gtirb::FileFormat::PE)
     {
         module.addAuxData<gtirb::schema::InitialDataDirectories>(binary->get_data_directories());

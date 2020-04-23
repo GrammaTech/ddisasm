@@ -282,8 +282,8 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
             block->getByteInterval()->removeBlock(block);
         }
     }
-    GtirbToDatalog::addToRelation<std::vector<gtirb::Addr>>(
-        prog, "base_address", {*module.getAuxData<gtirb::schema::BaseAddress>()});
+    GtirbToDatalog::addToRelation<std::vector<gtirb::Addr>>(prog, "base_address",
+                                                            {module.getPreferredAddr()});
 
     GtirbToDatalog::addToRelation(prog, "relocation",
                                   *module.getAuxData<gtirb::schema::Relocations>());

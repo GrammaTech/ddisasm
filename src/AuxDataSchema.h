@@ -131,13 +131,6 @@ namespace gtirb
             typedef std::vector<std::tuple<std::string, uint64_t, uint64_t>> Type;
         };
 
-        /// \brief Auxiliary data for the base address of an executable module.
-        struct BaseAddress
-        {
-            static constexpr const char* Name = "baseAddress";
-            typedef gtirb::Addr Type;
-        };
-
         /// \brief Auxiliary data for the UUIDs of imported symbols in a PE file.
         struct PeImportedSymbols
         {
