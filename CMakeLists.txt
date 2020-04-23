@@ -113,7 +113,7 @@ find_package(gtirb_pprinter 1.2.1 REQUIRED)
 # libehp
 # ---------------------------------------------------------------------------
 
-find_package(ehp REQUIRED)
+find_library(ehp_LIBRARY NAMES ehp)
 
 # ---------------------------------------------------------------------------
 # Boost
