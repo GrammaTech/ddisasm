@@ -90,7 +90,8 @@ RUN dpkg -i /ddisasm/ehp_0.1.1-1_amd64.deb
 ENV TERM xterm
 ENV PATH=/ddisasm/build/bin:$PATH
 
-RUN /ddisasm/.ci/build-linux.sh ${CXX_COMPILER}
+RUN cd /ddisasm && cmake ./  -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DLIEF_ROOT=/usr/ && cd build && make
+
 ARG CPACK_GENERATOR=""
 RUN if [ ! -z "${CPACK_GENERATOR}" ] ; then cd /ddisasm/build && cpack -G "${CPACK_GENERATOR}"; fi
 
