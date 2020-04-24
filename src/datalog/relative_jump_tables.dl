@@ -61,8 +61,7 @@ data_word(EA,8,Val):-
     data_byte(EA+7,Byte7),
 
     Val =  (Byte7*2^56)  bor (Byte6*2^48)   bor (Byte5*2^40)  bor (Byte4*2^32) +
-           (Byte3*2^24) bor (Byte2*2^16) bor (Byte1*2^8) bor Byte0,
-    Val != 0.
+           (Byte3*2^24) bor (Byte2*2^16) bor (Byte1*2^8) bor Byte0.
 
 
 .decl take_address(Src:address,Address_taken:address)

@@ -261,7 +261,7 @@ relative_address_start(Table,8,Ref,Dest):-
 relative_address(EA+Size,Size,Ref,Dest):-
     binary_format("PE"), Size > 4,
     relative_address(EA,Size,Ref,_),
-    data_word_maybe_zero(EA+Size,Size,Diff),
+    data_word(EA+Size,Size,Diff),
     Dest = Ref+Diff,
     possible_ea(Dest),
     !relative_address_start(EA+Size,_,_,_).
@@ -296,26 +296,11 @@ relative_offset_table(EA,Size/8,Base,Base+Offset):-
     data_word(EA,Size/8,Offset),
     code(Base+Offset).
 
-.decl data_word_maybe_zero(EA:address,Size:number,Val:number)
-data_word_maybe_zero(EA,8,Val):-
-    data_byte(EA,Byte0),
-    (binary_format("PE"); EA % 8 = 0),//jump tables are assumed to be aligned
-    data_byte(EA+1,Byte1),
-    data_byte(EA+2,Byte2),
-    data_byte(EA+3,Byte3),
-    data_byte(EA+4,Byte4),
-    data_byte(EA+5,Byte5),
-    data_byte(EA+6,Byte6),
-    data_byte(EA+7,Byte7),
-
-    Val =  (Byte7*2^56)  bor (Byte6*2^48)   bor (Byte5*2^40)  bor (Byte4*2^32) +
-           (Byte3*2^24) bor (Byte2*2^16) bor (Byte1*2^8) bor Byte0.
-
 symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first"):-
     relative_offset_table(_,Size,Reference,_),
     symbol_minus_symbol_candidate(EA,Size,Reference,_,"first"),
     !jump_table_start(_,_,EA+Size,_,_),
-    data_word_maybe_zero(EA+Size,Size,Diff), Size > 1,
+    data_word(EA+Size,Size,Diff), Size > 1,
     Symbol = Reference + Diff,
     code(Symbol).
     // TODO: These would be nice, can we use them?
