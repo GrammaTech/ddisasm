@@ -250,7 +250,7 @@ relative_address_start(Table,8,Ref,Dest):-
     take_address(EA1,Table),
     next(EA1,EA2),
     // indexes table
-    instruction_get_operation(EA2,"MOV"),
+    arch.mov(EA2),
     next(EA2,EA3),
     // loads reference address
     take_address(EA3,Ref),
