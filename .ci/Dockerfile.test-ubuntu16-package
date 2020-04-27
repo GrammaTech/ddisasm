@@ -25,7 +25,7 @@ RUN unzip -o /gt/apt-repo/gtirb-ubuntu16-artifacts.zip
 RUN unzip -o /gt/apt-repo/gtirb-pprinter-ubuntu16-artifacts.zip
 RUN cd /gt/apt-repo && dpkg-scanpackages . /dev/null > Packages
 
-# Add the loca repository
+# Add the local repository
 RUN echo $'\ndeb file:/gt/apt-repo ./\n' >> /etc/apt/sources.list
 
 # install & test ddisasm
