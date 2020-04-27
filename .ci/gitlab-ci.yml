@@ -35,8 +35,7 @@ stages:
     - unzip -l gtirb-pprinter-${OS}-artifacts.zip
     # Extra packages
     - cp /u4/TARBALLS/debloat/pkgs/libcapstone-dev_4.0.1-gt1_amd64.deb ./
-    - cp /u4/TARBALLS/debloat/pkgs/ehp_0.1.1-1_amd64.deb ./ # for ubuntu
-    - git clone https://git.zephyr-software.com/opensrc/libehp.git # for arch
+    - git clone https://git.zephyr-software.com/opensrc/libehp.git && pushd libehp && git reset --hard ddb106c4c1e521bf4b282d17e2a8abf0aa0fe721 && popd
     - docker build -f .ci/Dockerfile.${OS}-${COMPILER} -t ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} --build-arg CPACK_GENERATOR=${CPACK_GENERATOR} .
 
 .build-windows-template: &build-windows
@@ -254,7 +253,6 @@ cleanup-arch-clang:
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter-${OS}-artifacts.zip"
     # Acquire extra packages
     - cp /u4/TARBALLS/debloat/pkgs/libcapstone-dev_4.0.1-gt1_amd64.deb ./
-    - cp /u4/TARBALLS/debloat/pkgs/ehp_0.1.1-1_amd64.deb ./
     # Get ddisasm package
     - export CONTAINER_FILE=$(mktemp -d)/cidfile
     - docker create --cidfile=${CONTAINER_FILE} ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}

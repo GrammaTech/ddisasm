@@ -2,3 +2,8 @@
 ./CMakeCache.txt
 ./CMakeFiles
 ./CMakeScripts
+
+./libehp/build
+./libehp/CMakeCache.txt
+./libehp/CMakeFiles
+./libehp/CMakeScripts
