@@ -5,8 +5,6 @@
 # Need 3.9 to support CXX_STANDARD=17 and protobuf
 cmake_minimum_required(VERSION 3.9.0)
 
-project(DDISASM)
-
 # Get version
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/version.txt" ver)
 
@@ -18,6 +16,12 @@ set(DDISASM_MINOR_VERSION ${CMAKE_MATCH_1})
 
 string(REGEX MATCH "VERSION_PATCH ([0-9]*)" _ ${ver})
 set(DDISASM_PATCH_VERSION ${CMAKE_MATCH_1})
+
+project(
+  DDISASM
+  VERSION
+    "${DDISASM_MAJOR_VERSION}.${DDISASM_MINOR_VERSION}.${DDISASM_PATCH_VERSION}"
+)
 
 #
 # Global Options (CMake)
