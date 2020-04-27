@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 # Called in gitlab-ci.yml
