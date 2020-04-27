@@ -189,7 +189,7 @@ add_library(
   GtirbModuleDisassembler.cpp GtirbZeroBuilder.cpp LIEFBinaryReader.cpp)
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Version.h.in"
-               "${CMAKE_BINARY_DIR}/include/Version.h")
+               "${CMAKE_BINARY_DIR}/include/Version.h" @ONLY)
 target_include_directories(
   disasm_main PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
 
