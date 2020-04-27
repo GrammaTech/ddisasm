@@ -13,7 +13,8 @@ set -o pipefail
 BUILD_TYPE=$1
 
 # Install GTIRB
-GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt || echo "v1.4.4") | sed 's/check_gtirb_branch(//')
+GTIRB_BRANCH=$(sed -e '/find_package(gtirb /!d' -e 's/[^.0-9]//g' CMakeLists.txt)
+GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_branch(//') || echo v${GTIRB_BRANCH:?})
 curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=build-windows-msvc-${BUILD_TYPE,,} --output "gtirb-artifacts.zip"
 unzip gtirb-artifacts.zip
 unzip GTIRB-*-win64.zip
@@ -24,7 +25,8 @@ unzip gtirb-wheel.zip
 python -m pip install pip --upgrade && python -m pip install gtirb-*-py*.whl
 
 # Install the pretty printer
-GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt || echo "v1.2.1") | sed 's/check_gtirb_pprinter_branch(//')
+GTIRB_PPRINTER_BRANCH=$(sed -e '/find_package(gtirb_pprinter /!d' -e 's/[^.0-9]//g' CMakeLists.txt)
+GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo v${GTIRB_PPRINTER_BRANCH:?})
 curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=build-windows-${BUILD_TYPE,,} --output "gtirb-pprinter-artifacts.zip"
 unzip gtirb-pprinter-artifacts.zip
 unzip gtirb_pprinter-*-win64.zip
