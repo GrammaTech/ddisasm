@@ -1,8 +1,6 @@
 variables:
   DOCKER_REGISTRY: "docker.grammatech.com"
   LOCAL_IMAGE_NAME: '$CI_BUILD_REF_NAME-$CI_PIPELINE_ID'
-  DEFAULT_GTIRB_BRANCH: 'v1.4.4'
-  DEFAULT_GTIRB_PPRINTER_BRANCH: 'v1.2.1'
 
 stages:
   - check-format
