@@ -44,7 +44,10 @@ RUN cd /usr/local/src \
     && make \
     && make install
 
-COPY . /ddisasm
+COPY libcapstone-dev_*_amd64.deb /ddisasm/
+COPY ehp_*_amd64.deb /ddisasm/
+COPY gtirb-ubuntu18-artifacts.zip /ddisasm/
+COPY gtirb-pprinter-ubuntu18-artifacts.zip /ddisasm/
 
 # Install capstone
 RUN dpkg -i /ddisasm/libcapstone-dev_*_amd64.deb
@@ -60,6 +63,8 @@ RUN dpkg -i /ddisasm/ehp_0.1.1-1_amd64.deb
 
 ENV TERM xterm
 ENV PATH=/ddisasm/build/bin:$PATH
+
+COPY . /ddisasm
 
 RUN cd /ddisasm && cmake ./  -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DLIEF_ROOT=/usr/ && cd build && make
 

@@ -27,9 +27,10 @@ RUN cd /home/ddisasm \
     && make \
     && sudo make install
 
-COPY --chown=ddisasm . /ddisasm
-
 # In arch we do not install things in /usr/local (see https://wiki.archlinux.org/index.php/Arch_package_guidelines#Package_Etiquette).
+
+COPY --chown=ddisasm gtirb-arch-artifacts.zip /ddisasm/
+COPY --chown=ddisasm gtirb-pprinter-arch-artifacts.zip /ddisasm/
 
 # Install GTIRB
 RUN cd /ddisasm && unzip gtirb-arch-artifacts.zip && \
@@ -40,6 +41,8 @@ RUN cd /ddisasm && unzip gtirb-arch-artifacts.zip && \
 RUN cd /ddisasm && unzip gtirb-pprinter-arch-artifacts.zip && \
     sudo tar xzf gtirb_pprinter*.tar.gz --strip-components=1 -C /usr/ && \
     rm gtirb_pprinter*.tar.gz
+
+COPY --chown=ddisasm . /ddisasm
 
 # Install ehp
 RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_INSTALL_PREFIX=/usr && cd build && which sudo 2>&1 >/dev/null && sudo make install || make install
