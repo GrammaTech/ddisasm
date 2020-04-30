@@ -63,5 +63,5 @@ zip -u $ZIP_FILE $BASE_DIRECTORY/bin/*.dll
 cp ./DDISASM-*-win64.zip ../
 
 # Test ddisasm
-cp $BASE_DIRECTORY/bin/*.dll /bin
+cp $BASE_DIRECTORY/bin/*.dll ./bin
 cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && C:\\PROGRA~1\\CMake\\bin\\ctest.exe -V"
