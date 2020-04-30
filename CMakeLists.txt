@@ -113,7 +113,46 @@ find_package(gtirb_pprinter 1.2.1 REQUIRED)
 # libehp
 # ---------------------------------------------------------------------------
 
-find_library(ehp_LIBRARY NAMES ehp)
+# ehp builds the necessary cmake files, but does not install them. If
+# find_package fails, fall back to looking for the library and header file
+# directly.
+
+if(NOT ehp_LIBRARIES OR NOT ehp_INCLUDE_DIR)
+  find_package(ehp QUIET)
+  if(ehp_FOUND)
+    # When find_package finds ehp, it runs add_library(ehp) which this project
+    # must link against by name.
+    set(ehp_LIBRARIES ehp)
+  else()
+    find_library(
+      ehp_LIBRARIES
+      NAMES ehp
+      HINTS ${ehp_ROOT}/lib $ENV{ehp_ROOT}/lib)
+    if(ehp_LIBRARIES)
+      message(STATUS "Found ehp: ${ehp_LIBRARIES}")
+    else()
+      message(
+        SEND_ERROR
+          "could not find ehp library file\n"
+          "Try setting \"ehp_ROOT\" to the ehp installation directory, or set "
+          "\"ehp_DIR\" to the ehp build directory.")
+    endif()
+
+    find_path(
+      ehp_INCLUDE_DIR
+      NAMES ehp.hpp
+      HINTS ${ehp_ROOT}/include $ENV{ehp_ROOT}/include)
+    if(ehp_INCLUDE_DIR)
+      message(STATUS "Found ehp: ${ehp_INCLUDE_DIR}")
+    else()
+      message(
+        SEND_ERROR
+          "could not find ehp header file: ehp.hpp\n"
+          "Try setting \"ehp_ROOT\" to the ehp installation directory, or set "
+          "\"ehp_DIR\" to the ehp build directory.")
+    endif()
+  endif()
+endif()
 
 # ---------------------------------------------------------------------------
 # Boost

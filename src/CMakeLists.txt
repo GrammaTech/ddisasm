@@ -192,6 +192,9 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Version.h.in"
                "${CMAKE_BINARY_DIR}/include/Version.h" @ONLY)
 target_include_directories(
   disasm_main PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
+if(ehp_INCLUDE_DIR)
+  target_include_directories(disasm_main PRIVATE ${ehp_INCLUDE_DIR})
+endif()
 
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
@@ -297,10 +300,10 @@ target_link_libraries(
   disasm_main
   gtirb
   gtirb_pprinter
-  ehp
   datalog_utils
   ${CAPSTONE}
   ${Boost_LIBRARIES}
+  ${ehp_LIBRARIES}
   ${EXPERIMENTAL_LIB}
   ${LIBCPP_ABI}
   ${LIEF_LIBRARIES})
