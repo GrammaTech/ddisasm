@@ -11,8 +11,6 @@ RUN cd souffle && cp include/souffle/RamTypes.h /usr/include/souffle/
 
 FROM ubuntu:18.04
 
-ENV LD_LIBRARY_PATH /usr/local/lib:$LD_LIBRARY_PATH
-
 ARG BOOST_VERSION=1.67
 ARG CXX_COMPILER=clang++
 
@@ -23,7 +21,7 @@ SHELL ["/bin/bash", "-c"]
 RUN apt-get -y update && apt-get -y install autoconf automake clang cmake \
     curl doxygen git libprotobuf-dev libtool libstdc++-7-dev \
     make mcpp pkg-config protobuf-compiler python3 python3-pip \
-    software-properties-common wget zlib1g-dev
+    software-properties-common unzip wget zlib1g-dev
 
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
@@ -36,13 +34,6 @@ RUN add-apt-repository ppa:mhier/libboost-latest && \
     apt-get -y update && \
     apt-get -y install libboost${BOOST_VERSION}-dev
 
-# Install capstone
-RUN cd /usr/local/src \
-    && git clone -b next https://github.com/GrammaTech/capstone.git \
-    && cd capstone \
-    && CAPSTONE_ARCHS=x86 ./make.sh \
-    && CAPSTONE_ARCHS=x86 ./make.sh install
-
 # Install LIEF
 RUN cd /usr/local/src \
     && git clone -b 0.10.0 https://github.com/lief-project/LIEF.git \
@@ -53,28 +44,29 @@ RUN cd /usr/local/src \
     && make \
     && make install
 
-COPY . /ddisasm
+COPY libcapstone-dev_*_amd64.deb /ddisasm/
+COPY gtirb-ubuntu18-artifacts.zip /ddisasm/
+COPY gtirb-pprinter-ubuntu18-artifacts.zip /ddisasm/
+
+# Install capstone
+RUN dpkg -i /ddisasm/libcapstone-dev_*_amd64.deb
 
 # Install GTIRB
-RUN rm -rf /ddisasm/gtirb/build /ddisasm/gtirb/CMakeCache.txt /ddisasm/gtirb/CMakeFiles /ddisasm/gtirb/CMakeScripts
-RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DGTIRB_JAVA_API=OFF \
-    && cd build \
-    && which sudo 2>&1 >/dev/null \
-    && sudo make install || make install \
-    && sudo make install-python || make install-python
+RUN unzip -o /ddisasm/gtirb-ubuntu18-artifacts.zip && dpkg -i GTIRB*.deb
 
 # Install gtirb-pprinter
-RUN rm -rf /ddisasm/gtirb-pprinter/build /ddisasm/gtirb-pprinter/CMakeCache.txt /ddisasm/gtirb-pprinter/CMakeFiles /ddisasm/gtirb-pprinter/CMakeScripts
-RUN cd /ddisasm/gtirb-pprinter/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build && make && make install
-
-# Install ehp
-RUN rm -rf /ddisasm/libehp/build /ddisasm/libehp/CMakeCache.txt /ddisasm/libehp/CMakeFiles /ddisasm/libehp/CMakeScripts
-RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build &&  make && make install
+RUN unzip -o /ddisasm/gtirb-pprinter-ubuntu18-artifacts.zip && dpkg -i gtirb_pprinter*.deb
 
 ENV TERM xterm
 ENV PATH=/ddisasm/build/bin:$PATH
 
-RUN /ddisasm/.ci/build-linux.sh ${CXX_COMPILER}
+COPY . /ddisasm
+
+# Install ehp
+RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DEHP_BUILD_SHARED_LIBS=OFF && cd build &&  make && make install
+
+RUN cd /ddisasm && cmake ./  -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DLIEF_ROOT=/usr/ && cd build && make
+
 ARG CPACK_GENERATOR=""
 RUN if [ ! -z "${CPACK_GENERATOR}" ] ; then cd /ddisasm/build && cpack -G "${CPACK_GENERATOR}"; fi
 

@@ -189,7 +189,8 @@ block_limit(EA):-
         pc_relative_operand(_,_,EA);
         basic_target(EA);
         instruction_has_loop_prefix(EA);
-        fde_addresses(_,EA)
+        fde_addresses(_,EA);
+        lsda_callsite_addresses(_,EA, _)
     ).
 
 // The targets are computed incrementally now as we traverse the code

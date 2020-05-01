@@ -22,7 +22,8 @@
 //===----------------------------------------------------------------------===//
 
 /*
-  After symbolization, we merge blocks that start at addresses
+  After symbolization, we split blocks if there are symbols pointing to
+  the middle of the block and then merge blocks that start at addresses
   that are never referenced and must fallthrough from another block.
   Compute padding regions.
 
@@ -39,17 +40,55 @@
 
 .decl refined_block_last_instruction(block:address,EA:address)
 
+////////////////////////////////////////////////////////
+// First we split blocks if there is a symbol pointing to the middle
+
+.decl block_needs_splitting_at(EA:address)
+.decl code_in_split_block(ea:address,block:address)
+.decl split_block(block:address)
+
+block_needs_splitting_at(EA):-
+    // only these sym exprs should be able to point to the middle of a block.
+    // other kinds of symbols we considered as potential block limits during
+    // code inference.
+    (
+        symbol_minus_symbol(_,_,_,EA);
+        symbol_minus_symbol(_,_,EA,_)
+    ),
+    code_in_block(EA,Block),
+    EA != Block.
+
+
+split_block(Block):-
+    block(Block).
+split_block(EA):-
+    block_needs_splitting_at(EA).
+
+code_in_split_block(Block,Block):-
+    split_block(Block).
+
+code_in_split_block(EA,Block):-
+    code_in_split_block(PrevEA,Block),
+    code_in_block(PrevEA,PrevBlock),
+    next(PrevEA,EA),
+    code_in_block(EA,PrevBlock),
+    !block_needs_splitting_at(EA).
+
+////////////////////////////////////////////////////////
+// Once we have split blocks, we merge the ones that can be merged.
+
 // a block that is not referenced anywhere
 .decl block_needs_merging(block:address)
 
 block_needs_merging(Block):-
-    block(Block),
+    split_block(Block),
     must_fallthrough(Code,Block),
     code(Code),
     //not referenced anywhere
     !symbolic_operand(_,_,Block,_),
     !code_pointer_in_data(_,Block),
     !symbol_minus_symbol(_,_,_,Block),
+    !symbol_minus_symbol(_,_,Block,_),
     !moved_data_label(_,_,_,Block),
     !moved_label(_,_,_,Block),
     !function_symbol(Block,_),
@@ -59,21 +98,22 @@ block_needs_merging(Block):-
     !fde_addresses(Block,_),
     !fde_addresses(_,Block).
 
-
 refined_block(Block):-
-     block(Block),
+    split_block(Block),
     !block_needs_merging(Block).
 
 code_in_refined_block(EA,Block):-
     refined_block(Block),
-    code_in_block(EA,Block).
+    code_in_split_block(EA,Block).
 
 code_in_refined_block(EA,Block):-
     block_needs_merging(OldBlock),
-    code_in_block(EA,OldBlock),
+    code_in_split_block(EA,OldBlock),
     must_fallthrough(Prev,OldBlock),
     code_in_refined_block(Prev,Block).
 
+////////////////////////////////////////////////////////
+// Finally, we compute additional information about the new blocks.
 
 refined_block_last_instruction(Block,EA):-
     code_in_refined_block(EA,Block),

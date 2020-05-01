@@ -191,6 +191,11 @@ add_library(
   disasm_main.cpp DlDecoder.cpp ExceptionDecoder.cpp
   GtirbModuleDisassembler.cpp GtirbZeroBuilder.cpp LIEFBinaryReader.cpp)
 
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Version.h.in"
+               "${CMAKE_BINARY_DIR}/include/Version.h" @ONLY)
+target_include_directories(
+  disasm_main PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
+
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(disasm_main PRIVATE ${OPENMP_FLAGS})
