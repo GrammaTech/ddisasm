@@ -127,12 +127,12 @@ build-windows-msvc-debug:
     BUILD_TYPE: 'Debug'
   <<: *build-windows
 
-build-windows-msvc-release:
+build-windows-msvc-relwithdebinfo:
   stage: build
   tags:
     - ddisasm-windows
   variables:
-    BUILD_TYPE: 'Release'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *build-windows
 
 run-ubuntu16-gcc:
