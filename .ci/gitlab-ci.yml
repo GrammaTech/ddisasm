@@ -119,7 +119,7 @@ build-arch-clang:
     COMPILER: 'clang'
   <<: *build
 
-build-windows-debug:
+build-windows-msvc-debug:
   stage: build
   tags:
     - ddisasm-windows
@@ -127,7 +127,7 @@ build-windows-debug:
     BUILD_TYPE: 'Debug'
   <<: *build-windows
 
-build-windows-release:
+build-windows-msvc-release:
   stage: build
   tags:
     - ddisasm-windows
