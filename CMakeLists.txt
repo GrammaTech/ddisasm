@@ -119,6 +119,13 @@ find_package(ehp REQUIRED)
 # ---------------------------------------------------------------------------
 # Boost
 # ---------------------------------------------------------------------------
+#
+# Note: we would like to use std::filsystem. However, currently, std::filesystem
+# is not provided in clang 6 or gcc 7, both of which are the default installed
+# versions for Ubuntu 18. Instead in that context, one can use the
+# "experimental" version fo filesystem. But we've decided that it's simpler to
+# just use boost::filesystem instead until we (eventually) drop support for
+# Ubuntu 18.
 set(BOOST_COMPONENTS filesystem program_options system)
 find_package(Boost 1.67 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
 

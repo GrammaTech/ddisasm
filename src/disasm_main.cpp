@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
+#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <chrono>
 #include <gtirb/gtirb.hpp>
@@ -40,14 +41,7 @@
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
 
-#ifdef USE_STD_FILESYSTEM_LIB
-#include <filesystem>
-namespace fs = std::filesystem;
-#else
-#include <experimental/filesystem>
-namespace fs = std::experimental::filesystem;
-#endif // USE_STD_FILESYSTEM_LIB
-
+namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
 namespace std
