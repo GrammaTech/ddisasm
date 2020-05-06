@@ -22,9 +22,12 @@
 //===----------------------------------------------------------------------===//
 
 #include "GtirbZeroBuilder.h"
+#include <boost/filesystem.hpp>
 #include "AuxDataSchema.h"
 #include "BinaryReader.h"
 #include "LIEFBinaryReader.h"
+
+namespace fs = boost::filesystem;
 
 bool isExeSection(const SectionProperties &s)
 {
@@ -169,6 +172,7 @@ gtirb::IR *buildZeroIR(const std::string &filename, gtirb::Context &context)
     auto ir = gtirb::IR::Create(context);
     gtirb::Module &module = *gtirb::Module::Create(context);
     module.setBinaryPath(filename);
+    module.setName(fs::path(filename).filename().generic_string());
     module.setFileFormat(binary->get_binary_format());
     module.setISA(gtirb::ISA::X64);
     ir->addModule(&module);
