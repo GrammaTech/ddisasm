@@ -102,6 +102,18 @@ find_package(gtirb_pprinter REQUIRED)
 find_package(ehp REQUIRED)
 
 # ---------------------------------------------------------------------------
+# DWARF
+# ---------------------------------------------------------------------------
+if (BUILD_SHARED_LIBS)
+  find_library(DWARF NAMES dwarf)
+endif()
+
+if(NOT DWARF)
+  message(FATAL_ERROR
+  " No DWARF installation found.\n")
+endif()
+
+# ---------------------------------------------------------------------------
 # Boost
 # ---------------------------------------------------------------------------
 set(BOOST_COMPONENTS filesystem program_options system)
