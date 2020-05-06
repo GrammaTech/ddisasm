@@ -38,6 +38,7 @@
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
+#include "DwarfMap.hpp"
 
 #ifdef USE_STD_FILESYSTEM_LIB
 #include <filesystem>
@@ -107,6 +108,7 @@ int main(int argc, char **argv)
         ("ir", po::value<std::string>(), "GTIRB output file")           //
         ("json", po::value<std::string>(), "GTIRB json output file")    //
         ("asm", po::value<std::string>(), "ASM output file")            //
+        ("dwarf", "Dwarf analysis")
         ("debug", "generate assembler file with debugging information") //
         ("debug-dir", po::value<std::string>(),                         //
          "location to write CSV files for debugging")                   //
