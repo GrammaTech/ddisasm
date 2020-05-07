@@ -143,7 +143,10 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
 //  add REG, REG2 (or add REG2,REG)
 //  jmp REG
 jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
-    reg_jump(EA_jump,_),
+    (
+        reg_call(EA_jump,_);
+        reg_jump(EA_jump,_)
+    ),
     code(EA_jump),
     def_used(EA_base,Reg,EA_jump,_),
     arch.reg_reg_arithmetic_operation(EA_base,Reg,Reg,Reg2,Mult,0),

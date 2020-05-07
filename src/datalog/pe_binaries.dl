@@ -235,11 +235,8 @@ dos_header_symbolic_operand(EA,Dest):-
     Dest > ImageBase,
     Dest < ImageBase + 64.
 
-.decl relative_offset_table(EA:address,Size:number,Base:address,Dest:address)
-.output relative_offset_table
-
 // lea R8,QWORD PTR [$L_180016d58]  ; load offset-table
-// mov R8,QWORD PTR [R8+RDX*8-16]   ; index offset-table
+// mov R8,QWORD PTR [R8+RDX*8-16]   ; index into offset-table
 // lea R9,QWORD PTR [$L_180015e50]  ; load base address
 // add R8,R9
 // call R8
@@ -266,38 +263,8 @@ relative_address(EA+Size,Size,Ref,Dest):-
     possible_ea(Dest),
     !relative_address_start(EA+Size,_,_,_).
 
-// Find the jump table precisely after we have the results of the analyses.
-jump_table_start(EA_call,Size/8,EA,Base,"ADD"),
-relative_offset_table(EA,Size/8,Base,Base+Offset):-
-    // CALL register
-    reg_call(EA_call,Reg_call),
-
-    // which was defined in an ADD,
-    def_used(EA_add,Reg_call,EA_call,_),
-    instruction(EA_add,_,_,"ADD",_,_,_,_),
-
-    // where one register is a base address
-    def_used(EA_base,_,EA_add,_),
-    instruction_get_operation(EA_base,"LEA"),
-    pc_relative_operand(EA_base,_,Base),
-    code(Base),
-
-    // and the other an offset from an offset-table
-    def_used(EA_index,Reg_index,EA_add,_),
-    instruction_get_operation(EA_index,"MOV"),
-    instruction_get_src_op(EA_index,_,Op_index),
-    op_indirect(Op_index,_,Reg_index,_,Mult,_,Size),
-    Mult * 8 = Size,
-
-    // referencing the start of a table
-    def_used(EA_table,Reg_index,EA_index,_),
-    instruction_get_operation(EA_table,"LEA"),
-    pc_relative_operand(EA_table,_,EA),
-    data_word(EA,Size/8,Offset),
-    code(Base+Offset).
-
 symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first"):-
-    relative_offset_table(_,Size,Reference,_),
+    jump_table_start(_,Size,_,Reference,_),
     symbol_minus_symbol_candidate(EA,Size,Reference,_,"first"),
     !jump_table_start(_,_,EA+Size,_,_),
     data_word(EA+Size,Size,Diff), Size > 1,
