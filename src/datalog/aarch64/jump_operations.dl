@@ -52,7 +52,6 @@ jump_operation(cat("B.", Condition)) :- condition_code(Condition).
 .decl unconditional_jump_operation(n:symbol)
 unconditional_jump_operation("B").
 unconditional_jump_operation("BR").
-unconditional_jump_operation("BL").
 unconditional_jump_operation("BX").
 
 .decl jump_equal_operation(n:symbol)
