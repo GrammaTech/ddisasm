@@ -88,13 +88,16 @@ gtirb::from_iterator gtirb::auxdata_traits<ElfSymbolInfo>::fromBytes(ElfSymbolIn
 void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
                    gtirb::Context &context)
 {
+    std::map<gtirb::UUID, SectionProperties> dwarfSections;
+    std::map<gtirb::UUID, SectionProperties> allSections;
     std::map<gtirb::UUID, SectionProperties> sectionProperties;
     for(auto &binSection : binary->get_sections())
     {
+        gtirb::Section *section = module.addSection(context, binSection.name);
         if(isAllocatedSection(binSection.flags))
         {
             // Create Section object and set common flags
-            gtirb::Section *section = module.addSection(context, binSection.name);
+
             for(auto flag : binary->get_section_flags(binSection))
             {
                 section->addFlag(flag);
@@ -125,9 +128,70 @@ void buildSections(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
             // Add object specific flags to elfSectionProperties AuxData table.
             sectionProperties[section->getUUID()] =
                 std::make_tuple(binSection.type, binSection.flags);
+        } else {
+            //TODO: Clean up this component
+            static std::vector<std::string> sectionNames{
+                ".debug_abbrev",
+                ".debug_aranges",
+                ".debug_frame",
+                ".debug_info",
+                ".debug_line",
+                ".debug_loc",
+                ".debug_macinfo",
+                ".debug_types",
+                ".debug_str",
+                ".debug_ranges",
+                ".debug_pubnames",
+                ".debug_pubtypes"
+            };
+
+            auto gtirbName = binSection.name;
+            for(std::string sName : sectionNames)
+            {
+                if(gtirbName == sName)
+                {
+                    //Detected the debug section
+                    //Debug section isn't allocatable
+                    //gtirb::Section *section = gtirb::Section::Create(
+                    //    context, binSection.name, gtirb::Addr(binSection.address),
+                    //        binSection.size);
+                    // TODO: Turn into a separate method
+                    gtirb::Section *section = module.addSection(context, binSection.name);
+                    for(auto flag : binary->get_section_flags(binSection))
+                    {
+                        section->addFlag(flag);
+                    }
+                    if(auto sectionData =
+                        binary->get_section_content_and_address(binSection.name,
+                        binSection.address))
+                    {
+                        // Add allocated section contents to a single contiguous ByteInterval.
+                        gtirb::Addr Addr = gtirb::Addr(binSection.address);
+                        std::vector<uint8_t> &Bytes = std::get<0>(*sectionData);
+                        if(Bytes.size() < binSection.size)
+                        {
+                            // Fill incomplete section with zeroes.
+                            std::cerr << "Warning: Zero filling uninitialized section fragment: "
+                                      << Addr + Bytes.size() << '-' << Addr + binSection.size << " ("
+                                      << binSection.name << ")\n";
+                            Bytes.resize(binSection.size, 0);
+                        }
+                        section->addByteInterval(context, Addr, Bytes.begin(), Bytes.end(),
+                                                 binSection.size);
+                    }
+
+                    module.addSection(section);
+                    dwarfSections[section->getUUID()] =
+                        std::make_tuple(binSection.type, binSection.flags);;
+
+                    break;
+                }
+            }
         }
     }
     module.addAuxData<gtirb::schema::ElfSectionProperties>(std::move(sectionProperties));
+    module.addAuxData<gtirb::schema::AllElfSectionProperties>(std::move(allSections));
+    module.addAuxData<gtirb::schema::DWARFElfSectionProperties>(std::move(dwarfSections));
 }
 
 void buildSymbols(gtirb::Module &module, std::shared_ptr<BinaryReader> binary,
