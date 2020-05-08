@@ -42,7 +42,7 @@ stages:
   artifacts:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
-      - ./DDISASM-*-win64.zip
+      - ./DDISASM-*-win64
   script:
     - git clone https://github.com/brianfairservice/libehp.git
     - .ci/build-windows.sh ${BUILD_TYPE}

@@ -53,14 +53,14 @@ cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && C:\\PROGRA~1\\CMake\\b
 # Collect extra dlls needed to run ddisasm
 ZIP_FILE=(DDISASM-*-win64.zip)
 BASE_DIRECTORY="${ZIP_FILE%.*}"
-mkdir -p $BASE_DIRECTORY/bin
-cp /cygdrive/c/Boost/lib/boost_*-vc141-mt$(echo $BUILD_TYPE | sed 's/Debug/-gd/;s/Release//')-x64-1_67.dll $BASE_DIRECTORY/bin/
-GTIRB_DLL=$GTIRB_DIR/../../bin/gtirb$(echo $BUILD_TYPE | sed 's/Debug/d/;s/Release//').dll
+unzip $ZIP_FILE
+cp /cygdrive/c/Boost/lib/boost_*-vc141-mt$(echo $BUILD_TYPE | sed 's/Debug/-gd/;s/RelWithDebInfo//')-x64-1_67.dll $BASE_DIRECTORY/bin/
+GTIRB_DLL=$GTIRB_DIR/../../bin/gtirb$(echo $BUILD_TYPE | sed 's/Debug/d/;s/RelWithDebInfo//').dll
 cp $GTIRB_DLL $BASE_DIRECTORY/bin/$(basename $GTIRB_DLL)
-GTIRB_PPRINTER_DLL=$GTIRB_PPRINTER_DIR/../../bin/gtirb_pprinter$(echo $BUILD_TYPE | sed 's/Debug/d/;s/Release//').dll
+GTIRB_PPRINTER_DLL=$GTIRB_PPRINTER_DIR/../../bin/gtirb_pprinter$(echo $BUILD_TYPE | sed 's/Debug/d/;s/RelWithDebInfo//').dll
 cp $GTIRB_PPRINTER_DLL $BASE_DIRECTORY/bin/$(basename $GTIRB_PPRINTER_DLL)
-zip -u $ZIP_FILE $BASE_DIRECTORY/bin/*.dll
-cp ./DDISASM-*-win64.zip ../
+cp bin/ddisasm.pdb $BASE_DIRECTORY/bin
+cp ./$BASE_DIRECTORY ../
 
 # Test ddisasm
 cp $BASE_DIRECTORY/bin/*.dll ./bin
