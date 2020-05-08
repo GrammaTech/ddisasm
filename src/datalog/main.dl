@@ -64,12 +64,18 @@ This module:
 #include "elf_binaries.dl"
 
 // architecture specific predicates
-#ifdef AARCH64
-#include "aarch64/arch_aarch64.dl"
-.init arch = ARM64
+#ifndef ARCH
+    #define ARCH X64
+#endif
+
+#if ARCH == ARM64
+    #include "aarch64/arch_aarch64.dl"
+    .init arch = ARM64
+#elif ARCH == X64
+    #include "x64/arch_x64.dl"
+    .init arch = X64
 #else
-#include "x64/arch_x64.dl"
-.init arch = X64
+    #error "Undefined value for ARCH"
 #endif
 
 // tables with basic facts
@@ -140,6 +146,18 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
 
 .decl op_immediate(code:operand_code,offset:number)
 .input op_immediate
+
+.decl op_prefetch(code:operand_code, prefetch_type:symbol)
+.input op_prefetch
+.output op_prefetch
+
+.decl op_barrier(code:operand_code, prefetch_type:symbol)
+.input op_barrier
+.output op_barrier
+
+.decl op_other(code:operand_code,value:symbol,otherValue:number)
+.input op_other()
+.output op_other()
 
 .decl op_indirect(code:operand_code,reg1:register, reg2:register, reg3:register,
         multiplier:number, offset:number, size_value:number)
@@ -249,16 +267,19 @@ instruction_get_src_op(EA,Index,Op):-
 /////////////////////////////////////////////////////////////
 
 .decl symbol_prefix(ea:address, index:number, prefix:symbol)
-symbol_prefix(ea, 1, ":got:") :-
-    collect_relative(ea,_,Base,Offset,"LDR"),
-    relocation(Base+Offset, "GLOB_DAT", _, _).
-symbol_prefix(ea, 1, ":got_lo12:") :-
-    collect_relative(_,ea,Base,Offset,"LDR"),
-    relocation(Base+Offset, "GLOB_DAT", _, _).
-symbol_prefix(ea, 2, ":lo12:") :-
-    collect_relative(_,ea,Base,Offset,"ADD"),
-    !relocation(Base+Offset, "GLOB_DAT", _, _).
 .output symbol_prefix()
+
+symbol_prefix(ea, 1, ":got:") :-
+    split_load(ea, _, Dest, "LDR"),
+    relocation(Dest, "GLOB_DAT", _, _).
+
+symbol_prefix(ea, 1, ":got_lo12:") :-
+    split_load(_, ea, Dest, "LDR"),
+    relocation(Dest, "GLOB_DAT", _, _).
+
+symbol_prefix(ea, 2, ":lo12:") :-
+    split_load(_, ea, Dest, "ADD"),
+    !relocation(Dest, "GLOB_DAT", _, _).
 
 .decl next(n:address,m:address)
 
@@ -274,37 +295,43 @@ pc_relative_operand(EA,Index,EA_next+Offset):-
     arch.pc_register(Reg),
     next(EA,EA_next).
 
-pc_relative_operand(EA,1,Base+Offset) :-
-    collect_relative(EA, _, Base,Offset,_).
+pc_relative_operand(EA, 1, Dest) :-
+    split_load(EA, _, Dest, _).
 
-pc_relative_operand(EA,2,Base+Offset) :-
-    collect_relative(_,EA,Base,Offset,"ADD").
+pc_relative_operand(EA, 2, Dest) :-
+    split_load(_, EA, Dest, _).
 
-pc_relative_operand(EA,2,Base+Offset) :-
-    collect_relative(_,EA,Base,Offset,"LDR").
+// Compute an immediate load performed across two consecutive instructions
+.decl split_load(ea:address, nextea:address, dest:number, type:symbol)
+split_load(EA, NextEA, Base + Offset, "ADD") :-
+    // ADRP <Register> <Immediate>
+    // e.g. adrp x0, BaseOp
+    instruction_get_operation(EA, "ADRP"),
+    instruction_get_op(EA, 1, BaseOp),
+    op_immediate(BaseOp, Base),
 
-// TODO (azreika): clean this up
-.decl collect_relative(ea:address, nextea:address, adrpval:number, addval:number, type:symbol)
-.output collect_relative()
-collect_relative(EA, NextEA, Base, Offset, "ADD") :-
-    instruction_get_operation(EA,"ADRP"),
-    instruction_get_op(EA,1,BaseOp),
-    op_immediate(BaseOp,Base),
+    next(EA, NextEA),
 
-    next(EA,NextEA),
-    instruction_get_operation(NextEA,"ADD"),
-    instruction_get_op(NextEA,2,OffsetOp),
-    op_immediate(OffsetOp,Offset).
+    // ADD <Register> <Register> <Immediate>
+    // e.g. add x0, x0, <OffsetOp>
+    instruction_get_operation(NextEA, "ADD"),
+    instruction_get_op(NextEA, 2, OffsetOp),
+    op_immediate(OffsetOp, Offset).
 
-collect_relative(EA, NextEA, Base, Offset, "LDR") :-
-    instruction_get_operation(EA,"ADRP"),
-    instruction_get_op(EA,1,BaseOp),
-    op_immediate(BaseOp,Base),
+split_load(EA, NextEA, Base + Offset, "LDR") :-
+    // ADRP <Register> <Immediate>
+    // e.g. adrp x0, BaseOp
+    instruction_get_operation(EA, "ADRP"),
+    instruction_get_op(EA, 1, BaseOp),
+    op_immediate(BaseOp, Base),
 
-    next(EA,NextEA),
-    instruction_get_operation(NextEA,"LDR"),
-    instruction_get_op(NextEA,1,OffsetOp),
-    op_indirect(OffsetOp,"NONE",_,"NONE",1,Offset,_).
+    next(EA, NextEA),
+
+    // LDR <Register> <IndirectOp>
+    // e.g. ldr x0, [x0, <OffsetOp>]
+    instruction_get_operation(NextEA, "LDR"),
+    instruction_get_op(NextEA, 1, OffsetOp),
+    op_indirect(OffsetOp, "NONE", _, "NONE", 1, Offset, _).
 
 .decl instruction_has_loop_prefix(EA:address)
 
@@ -354,18 +381,8 @@ pc_relative_jump(EA,Dest):-
     arch.jump_operation(Operation),
     pc_relative_operand(EA,1,Dest).
 
-// TODO (azreika): refactor this slightly so it makes more sense for both x86 and arm64
-pc_relative_jump(EA,Base+Offset):-
-    // first is ADRP REG IMM
-    instruction_get_operation(EA,"ADRP"),
-    instruction_get_op(EA,1,BaseOp),
-    op_immediate(BaseOp,Base),
-
-    // then LDR REG [REG, OFFSET]
-    next(EA,NextEA),
-    instruction_get_operation(NextEA,"LDR"),
-    instruction_get_op(NextEA,1,OffsetOp),
-    op_indirect(OffsetOp,"NONE",_,"NONE",1,Offset,_).
+pc_relative_jump(EA, Dest):-
+    split_load(EA, _, Dest, "LDR").
 
 // jump to the address of a register
  .decl reg_jump(src:address,Reg:symbol)

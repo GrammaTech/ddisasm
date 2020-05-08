@@ -88,7 +88,7 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<BinaryType>();
     gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
     gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
-    gtirb::AuxDataContainer::registerAuxDataType<SymbolPrefixes>();
+    gtirb::AuxDataContainer::registerAuxDataType<SymbolicOperandInfoAD>();
     gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<PeSectionProperties>();
