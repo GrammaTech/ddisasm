@@ -1,6 +1,7 @@
 os: linux
 dist: bionic
 arch: amd64
+language: generic
 
 jobs:
   include:
