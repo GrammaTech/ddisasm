@@ -19,5 +19,6 @@ jobs:
       - docker exec binrattester /bin/sh -c "cd /ddisasm && cmake -DLIEF_ROOT=/usr . -Bbuild && cd build && make install -j2"
         # Now register the new libraries so they are usable
       - docker exec binrattester /bin/sh -c "ldconfig"
-      - docker exec binrattester /bin/sh -c "ddisasm --help"
+        # Currently calling help returns an error code ...
+      - docker exec binrattester /bin/sh -c "ddisasm --help || true"
     after_script: docker container stop binrattester
