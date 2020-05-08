@@ -91,6 +91,8 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<SymbolicOperandInfoAD>();
     gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
+    gtirb::AuxDataContainer::registerAuxDataType<AllElfSectionProperties>();
+    gtirb::AuxDataContainer::registerAuxDataType<DWARFElfSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<PeSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<CfiDirectives>();
     gtirb::AuxDataContainer::registerAuxDataType<Libraries>();

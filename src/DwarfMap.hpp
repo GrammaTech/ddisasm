@@ -6,7 +6,7 @@
 #include <map>
 #include <stdint.h>
 #include <libdwarf/libdwarf.h>
-#include <dwarf.h>
+#include <libdwarf/dwarf.h>
 #include <gtirb/gtirb.hpp>
 #include "AuxDataSchema.h"
 
