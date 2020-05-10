@@ -1,6 +1,7 @@
 os: linux
 dist: bionic
 arch: amd64
+language: generic
 
 jobs:
   include:
@@ -14,7 +15,9 @@ jobs:
       - docker run -d -t --name binrattester -w /ddisasm --mount src="$(pwd)",target=/ddisasm,type=bind binrats/ddisasm-base /bin/sh
     script:
       - docker exec binrattester /bin/sh -c "cd /ddisasm/gtirb && git checkout -b d3 D3.0 && cmake . -Bbuild && cd build && make install -j2"
-      - docker exec binrattester /bin/sh -c "cd /ddisasm/gtirb-pprinter && git checkout -b d3 D3.0 && cmake . -Bbuild && cd build && make install -j2"
+      - docker exec binrattester /bin/sh -c "cd /ddisasm/gtirb-pprinter && cmake . -Bbuild && cd build && make install -j2"
       - docker exec binrattester /bin/sh -c "cd /ddisasm && cmake -DLIEF_ROOT=/usr . -Bbuild && cd build && make install -j2"
-      - docker exec binrattester /bin/sh -c "ddisasm --help"
+        # Now register the new libraries so they are usable
+      - docker exec binrattester /bin/sh -c "ldconfig"
+      - docker exec binrattester /bin/sh -c "cd /ddisasm/examples/ex1 && make && ddisasm --dwarf ex"
     after_script: docker container stop binrattester
