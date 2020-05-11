@@ -154,6 +154,7 @@ base_relative_jump(EA_relop,EA):-
 .decl base_relative_jump_table(EA:address,Value:number)
 .output base_relative_jump_table
 
+data_access_pattern_candidate(ImageBase+Value,4,4,EA_jmp),
 base_relative_jump_table(EA_jmp,ImageBase+Value):-
     base_address(ImageBase),
     base_relative_jump(EA_relop,EA_jmp),
@@ -172,8 +173,7 @@ base_relative_address_start(EA,EA,Val):-
 base_relative_address(EA+4,Ref,Val):-
     base_relative_address(EA,Ref,_),
     data_word(EA+4,4,Val),
-    // FIXME: Not working for sqlite /Ox
-    // propagated_data_access(EA,4,Ref),
+    propagated_data_access(EA,4,Ref),
     !arch.is_nop(EA+4),
     !base_relative_address_start(EA+4,_,_),
     !data_access_pattern(EA+4,1,1,_),
