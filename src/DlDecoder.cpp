@@ -267,7 +267,6 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
     GtirbToDatalog::addToRelation(prog, "op_indirect", op_dict.indirectTable);
     GtirbToDatalog::addToRelation(prog, "op_prefetch", op_dict.prefetchTable);
     GtirbToDatalog::addToRelation(prog, "op_barrier", op_dict.barrierTable);
-    GtirbToDatalog::addToRelation(prog, "op_other", op_dict.otherTable);
     addSymbols(prog, module);
     addSections(prog, module);
     ExceptionDecoder excDecoder(module);

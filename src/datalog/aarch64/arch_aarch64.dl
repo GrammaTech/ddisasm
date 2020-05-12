@@ -46,7 +46,6 @@ mov(EA):-
 /* CMOV is not used by arm64 */
 .decl conditional_mov(EA:address)
 
-/* TODO: Should all hint instructions be added? */
 .decl is_nop(EA:address)
 is_nop(EA):-
     instruction_get_operation(EA,"NOP").

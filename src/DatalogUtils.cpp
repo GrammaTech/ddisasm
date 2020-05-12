@@ -405,7 +405,6 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
     GtirbToDatalog::addToRelation(&*Prog, "op_regdirect", OpDict.regTable);
     GtirbToDatalog::addToRelation(&*Prog, "op_immediate", OpDict.immTable);
     GtirbToDatalog::addToRelation(&*Prog, "op_indirect", OpDict.indirectTable);
-    GtirbToDatalog::addToRelation(&*Prog, "op_other", OpDict.otherTable);
     GtirbToDatalog::addToRelation(&*Prog, "op_prefetch", OpDict.prefetchTable);
     GtirbToDatalog::addToRelation(&*Prog, "op_barrier", OpDict.barrierTable);
 }
