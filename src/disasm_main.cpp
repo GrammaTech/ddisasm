@@ -63,14 +63,12 @@ namespace std
     }
 } // namespace std
 
-//TODO: Move this function to another part
 std::optional<DlDecoder*> make_decoder(LIEF::ARCHITECTURES arch) {
     if(arch == LIEF::ARCHITECTURES::ARCH_X86) {
         return std::make_optional(new X86Decoder());
     } else if(arch == LIEF::ARCHITECTURES::ARCH_ARM64) {
         return std::make_optional(new AArch64Decoder());
     } else {
-        //DEFAULT TO X86 for now
         return std::nullopt;
     }
 }
