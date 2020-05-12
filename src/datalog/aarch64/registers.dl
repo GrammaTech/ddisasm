@@ -24,12 +24,10 @@
 This module establishes basic information about register:
  - Which registers and tracked/considered in the different analyses
  - Whether they all callee or caller saved according to the ABI
-
 */
 
 // limit the registers that are tracked
 // and transform the names to their 64 bits version
-// TODO (azreika): finalise - ref: https://wiki.cdot.senecacollege.ca/wiki/AArch64_Register_and_Instruction_Quick_Start
 .decl track_register(Reg32:register,Reg64:register)
 
 track_register("W0", "X0").

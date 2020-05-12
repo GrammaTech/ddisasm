@@ -33,7 +33,6 @@
 #include "interrupt_operations.dl"
 #include "registers.dl"
 
-// TODO (azreika): check that this isn't too broad - used to just be "MOV"
 .decl move_operation(Operation:symbol)
 move_operation(Operation) :-
     instruction_get_operation(_, Operation),
