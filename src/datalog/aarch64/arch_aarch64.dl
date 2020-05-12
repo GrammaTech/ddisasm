@@ -28,13 +28,13 @@
 #include "interrupt_operations.dl"
 #include "registers.dl"
 
-// TODO: these variants should be cleaned so only relevant ones are included
-
 /* Define all variants of the move operation */
 .decl move_operation(Operation:symbol)
 move_operation(Operation) :-
     instruction_get_operation(_, Operation),
     contains("MOV", Operation).
+
+move_operation("MVN").
 
 /* Find all addresses where a move instruction is used */
 .decl mov(EA:address)
@@ -56,45 +56,36 @@ is_nop(EA):-
 
 arithmetic_operation("ADD").
 arithmetic_operation("SUB").
-/* TODO: is 'MUL' too broad? */
 arithmetic_operation("MUL").
-/* TODO: is 'SHL' appropriate? See LSL/LSR/ASR/ROR */
-arithmetic_operation("SHL").
+
+arithmetic_operation("LSL").
+arithmetic_operation("LSR").
+arithmetic_operation("ASR").
+arithmetic_operation("ROR").
 
 .decl logic_operation(Operation:symbol)
 
 logic_operation("AND").
 logic_operation("XOR").
-logic_operation("ORN").
+logic_operation("ORR").
 logic_operation("EON").
+logic_operation("ORN").
+logic_operation("BIC").
 
 .decl read_only_operation(Operation:symbol)
 
 read_only_operation("CMP").
+read_only_operation("TST").
 
 .decl write_only_operation(Operation:symbol)
 
-write_only_operation("POP").
-
 .decl one_op_write(Operation:symbol)
-
-/* TODO: are there any ARM instructions worth adding here?
-one_op_write("INC").
-one_op_write("DEC").
-one_op_write("POP").
-*/
 
 .decl pointer_size(n:number) inline
 
 pointer_size(8).
 
 .decl loop_operation(operation:symbol)
-
-/* TODO: are there equivalents for ARM?
-loop_operation("LOOP").
-loop_operation("LOOPNE").
-loop_operation("LOOPE").
-*/
 
 /* prefixes are not used by arm64 */
 .decl loop_prefix(prefix:symbol)
@@ -104,7 +95,6 @@ call_operation("BL").
 
 .decl syscall_operation(operation:symbol)
 
-/* TODO: This is mapped from x86 'SYSCALL'. Is it close enough? */
 syscall_operation("SVC").
 
 .decl return_operation(operation:symbol)
@@ -124,20 +114,6 @@ cmp_operation("CMP").
 // are not decoded corectly from capstone
 // FIXME: review this list when capstone is updated
 .decl operation_size_exception(EA:address,Op_index:number,Size:number)
-
-/* TODO: Neither are present on ARM, but check usage of operation_size_exception
-operation_size_exception(EA,Index,8):-
-    instruction_get_operation(EA,"MOVSD"),
-    instruction_get_op(EA,Index,Op),
-    op_indirect(Op,_,_,_,_,_,32).
-
-operation_size_exception(EA,Index,0):-
-    instruction_get_operation(EA,"LEA"),
-    instruction_get_op(EA,Index,Op),
-    op_indirect(Op,_,_,_,_,_,_).
-*/
-
-// TODO (azreika): should be a load operation?: move_operation("ADRP").
 
 // arithmetic operation on two source registers
 .decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
