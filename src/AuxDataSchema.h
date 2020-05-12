@@ -166,6 +166,13 @@ namespace gtirb
             typedef std::map<gtirb::Offset, uint64_t> Type;
         };
 
+        /// \brief Auxiliary data that stores the version of ddisasm used to
+        // produce the GTIRB.
+        struct DdisasmVersion
+        {
+            static constexpr const char* Name = "ddisasmVersion";
+            typedef std::string Type;
+        };
     } // namespace schema
 } // namespace gtirb
 

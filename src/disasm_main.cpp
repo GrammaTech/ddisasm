@@ -83,6 +83,7 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<InitialDataDirectories>();
     gtirb::AuxDataContainer::registerAuxDataType<InitialImportEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<SymbolicExpressionSizes>();
+    gtirb::AuxDataContainer::registerAuxDataType<DdisasmVersion>();
 }
 
 void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_clock> Start)
@@ -149,8 +150,7 @@ int main(int argc, char **argv)
         }
         if(vm.count("version"))
         {
-            std::cout << "v" << DDISASM_MAJOR_VERSION << "." << DDISASM_MINOR_VERSION << "."
-                      << DDISASM_PATCH_VERSION << "\n";
+            std::cout << DDISASM_FULL_VERSION_STRING << "\n";
             return EXIT_SUCCESS;
         }
         po::notify(vm);
