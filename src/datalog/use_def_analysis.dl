@@ -60,6 +60,14 @@ local_next(EA,EA_next):-
     may_fallthrough(EA,EA_next),
     code_in_block(EA_next,Block).
 
+.decl inter_procedural_jump(Src:address,Dest:address)
+
+inter_procedural_jump(Src,Dest):-
+    unconditional_jump(Src),
+    direct_jump(Src,Dest),
+    direct_call(OtherSrc,Dest),
+    code(OtherSrc).
+
 .decl block_next(ea:address,ea_next:address)
 
 
@@ -70,7 +78,10 @@ block_next(EA,Block2):-
 
 block_next(EA,EA_next):-
     block_last_instruction(_,EA),
-    direct_jump(EA,EA_next).
+    direct_jump(EA,EA_next),
+    !inter_procedural_jump(EA,EA_next).
+
+
 
 //////////////////////////////////////////////////////////////////////////////
 // Main definitions

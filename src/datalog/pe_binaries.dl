@@ -154,7 +154,6 @@ base_relative_jump(EA_relop,EA):-
 .decl base_relative_jump_table(EA:address,Value:number)
 .output base_relative_jump_table
 
-data_access_pattern_candidate(ImageBase+Value,4,4,EA_jmp),
 base_relative_jump_table(EA_jmp,ImageBase+Value):-
     base_address(ImageBase),
     base_relative_jump(EA_relop,EA_jmp),

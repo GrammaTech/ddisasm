@@ -153,7 +153,6 @@ data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
     RegMult != RegBase,
     value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,Offset2,_),
     value_reg_at_operand(EA,Op_index,RegBase,_,0,Offset3,"complete"),
-    (!binary_format("PE"); base_address(ImageBase), Offset3 != ImageBase),
     // the absolute value of the multiplier cannot be
     // smaller that the size (unless we have 0 multiplier)
     (
