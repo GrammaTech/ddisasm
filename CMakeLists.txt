@@ -23,6 +23,16 @@ project(
     "${DDISASM_MAJOR_VERSION}.${DDISASM_MINOR_VERSION}.${DDISASM_PATCH_VERSION}"
 )
 
+execute_process(
+  COMMAND git log --pretty=format:%h -n 1
+  OUTPUT_VARIABLE DDISASM_BUILD_REVISION
+  ERROR_QUIET)
+if(DDISASM_BUILD_REVISION STREQUAL "")
+  set(DDISASM_BUILD_REVISION "UNKNOWN")
+endif()
+
+string(TIMESTAMP DDISASM_BUILD_DATE "%Y-%m-%d")
+
 #
 # Global Options (CMake)
 #

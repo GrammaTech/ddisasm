@@ -26,6 +26,7 @@
 #include "AuxDataSchema.h"
 #include "BinaryReader.h"
 #include "LIEFBinaryReader.h"
+#include "Version.h"
 
 namespace fs = boost::filesystem;
 
@@ -170,6 +171,8 @@ gtirb::IR *buildZeroIR(const std::string &filename, gtirb::Context &context)
 
     // Intialize IR and Module
     auto ir = gtirb::IR::Create(context);
+    ir->addAuxData<gtirb::schema::DdisasmVersion>(DDISASM_FULL_VERSION_STRING);
+
     gtirb::Module &module = *gtirb::Module::Create(context);
     module.setBinaryPath(filename);
     module.setName(fs::path(filename).filename().generic_string());
