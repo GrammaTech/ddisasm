@@ -54,6 +54,11 @@ void DwarfMap::traverse_compilation_units() {
             dwarf_cu_next = false;
             break;
         }
+        if(result == DW_DLV_NO_ENTRY) {
+            //Completed
+            dwarf_cu_next = false;
+            break;
+        }
 
 
         result = dwarf_siblingof(this->debug,no_die,&cu_die,&error);
@@ -63,7 +68,7 @@ void DwarfMap::traverse_compilation_units() {
             break;
         }
 
-
+        traverse(cu_die, 0);
 		dwarf_dealloc(this->debug,cu_die,DW_DLA_DIE);
     }
 
