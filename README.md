@@ -58,21 +58,31 @@ $ cmake ./ -Bbuild
 $ cd build
 $ make
 ```
-## Building ddisasm inside a Docker image
 
-The directory [.ci](https://github.com/GrammaTech/ddisasm/tree/master/.ci)
-contains several Docker files to build ddisasm under different OS and compiler.
-These docker files assume that GTIRB, gtirb-pprinter and libehp have been
-checked out inside the ddisasm directory.
+## Installing ddisasm on ubuntu16 and 18
+Packages for Ubuntu 16 and 18 are available in the GTIRB apt repository.
+Ddisasm has some dependencies which are not available in the official
+repositories, and so certain PPAs must be added to the system in order for
+Ddisasm to be installed.
 
-The steps to build ddisasm inside a ubuntu 16 image using clang are:
+Instructions for adding the appropriate PPAS and installing ddisasm on each
+platform follow.
+
+### Ubuntu16
+```sh
+sudo add-apt-repository ppa:maarten-fonville/protobuf
+sudo add-apt-repository ppa:mhier/libboost-latest
+echo "deb https://grammatech.github.io/gtirb/pkgs/xenial ./" | sudo tee -a /etc/apt/sources.list.d/gtirb.list
+sudo apt-get update
+sudo apt-get install --allow-unauthenticated ddisasm
 ```
-git clone https://github.com/GrammaTech/ddisasm.git
-cd ddisasm
-git clone https://github.com/GrammaTech/gtirb.git
-git clone https://github.com/GrammaTech/gtirb-pprinter.git
-git clone https://git.zephyr-software.com/opensrc/libehp
-docker build -f .ci/Dockerfile.ubuntu16-clang -t ddisasm-ubuntu16-clang .
+
+### Ubuntu18
+```sh
+sudo add-apt-repository ppa:mhier/libboost-latest
+echo "deb [trusted=yes] https://grammatech.github.io/gtirb/pkgs/bionic ./" | sudo tee -a /etc/apt/sources.list.d/gtirb.list
+sudo apt-get update
+sudo apt-get install ddisasm
 ```
 
 ## Running the analysis
