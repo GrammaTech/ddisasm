@@ -64,18 +64,14 @@ This module:
 #include "elf_binaries.dl"
 
 // architecture specific predicates
-#ifndef ARCH
-    #define ARCH X64
-#endif
-
-#if ARCH == ARM64
+#ifdef ARCH_ARM64
     #include "aarch64/arch_aarch64.dl"
     .init arch = ARM64
-#elif ARCH == X64
+#elif defined(ARCH_AMD64)
     #include "x64/arch_x64.dl"
     .init arch = X64
 #else
-    #error "Undefined value for ARCH"
+    #error "Undefined architecture"
 #endif
 
 // tables with basic facts
