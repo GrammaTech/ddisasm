@@ -253,12 +253,13 @@ std::tuple<gtirb::IR*, LIEF::ARCHITECTURES, LIEF::ENDIANNESS> buildZeroIR(const 
 {
     // Parse binary file
     std::shared_ptr<BinaryReader> binary(new LIEFBinaryReader(filename));
-    LIEF::ARCHITECTURES arch;
-    LIEF::ENDIANNESS endianness;
-    std::tie(arch, endianness) = binary->get_container_info();
 
     if(!binary->is_valid())
         return std::make_tuple(nullptr, LIEF::ARCHITECTURES::ARCH_NONE, LIEF::ENDIANNESS::ENDIAN_NONE);
+
+    LIEF::ARCHITECTURES arch;
+    LIEF::ENDIANNESS endianness;
+    std::tie(arch, endianness) = binary->get_container_info();
 
     // Intialize IR and Module
     auto ir = gtirb::IR::Create(context);
