@@ -31,7 +31,7 @@ LIEFBinaryReader::LIEFBinaryReader(const std::string& filename)
 
 bool LIEFBinaryReader::is_valid()
 {
-    return bin->format() == LIEF::EXE_FORMATS::FORMAT_ELF;
+    return bin != nullptr && bin->format() == LIEF::EXE_FORMATS::FORMAT_ELF;
 }
 
 
