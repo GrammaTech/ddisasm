@@ -143,7 +143,7 @@ void DwarfMap::flag_constsym(gtirb::Module& module) {
 
     std::map<gtirb::UUID, std::tuple<gtirb::UUID, uint8_t>> in_debug;
     for(auto i = module.symbols().begin(); i != module.symbols().end(); i++) {
-        gtirb::Symbol symentry = *i;
+        const gtirb::Symbol& symentry = *i;
 
         uint64_t found = 0;
         if(std::optional<gtirb::Addr> addr = symentry.getAddress()) {
