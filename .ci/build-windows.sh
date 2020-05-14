@@ -17,7 +17,6 @@ GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt | sed 's/che
 FIXED_BUILD_TYPE=$(echo $BUILD_TYPE | sed 's/Debug/Debug/;s/RelWithDebInfo/Release/')
 curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=build-windows-msvc-${BUILD_TYPE,,} --output "gtirb-artifacts.zip"
 unzip gtirb-artifacts.zip
-unzip GTIRB-*-win64.zip
 
 # Install GTIRB python API
 curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=python-wheel --output "gtirb-wheel.zip"
