@@ -52,10 +52,10 @@ COPY gtirb-pprinter-ubuntu18-artifacts.zip /ddisasm/
 RUN dpkg -i /ddisasm/libcapstone-dev_*_amd64.deb
 
 # Install GTIRB
-RUN unzip -o /ddisasm/gtirb-ubuntu18-artifacts.zip && dpkg -i GTIRB*.deb
+RUN unzip -o /ddisasm/gtirb-ubuntu18-artifacts.zip && dpkg -i libgtirb.deb libgtirb-dev.deb
 
 # Install gtirb-pprinter
-RUN unzip -o /ddisasm/gtirb-pprinter-ubuntu18-artifacts.zip && dpkg -i gtirb_pprinter*.deb
+RUN unzip -o /ddisasm/gtirb-pprinter-ubuntu18-artifacts.zip && dpkg -i libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
 
 ENV TERM xterm
 ENV PATH=/ddisasm/build/bin:$PATH
