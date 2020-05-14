@@ -44,7 +44,7 @@ stages:
     paths:
       - ./DDISASM-*-win64
   script:
-    - git clone https://github.com/brianfairservice/libehp.git
+    - git clone https://git.zephyr-software.com/opensrc/libehp.git
     - .ci/build-windows.sh ${BUILD_TYPE}
 
 .test-and-tag-template: &test-and-tag
