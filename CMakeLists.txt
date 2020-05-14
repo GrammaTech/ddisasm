@@ -107,7 +107,7 @@ find_package(gtirb 1.5.2 REQUIRED)
 # ---------------------------------------------------------------------------
 # pretty-printer
 # ---------------------------------------------------------------------------
-find_package(gtirb_pprinter 1.2.4 REQUIRED)
+find_package(gtirb_pprinter 1.2.6 REQUIRED)
 check_gtirb_pprinter_branch(windows-support)
 
 # ---------------------------------------------------------------------------
