@@ -29,12 +29,9 @@ constexpr bool operator<(const IndirectOp &LHS, const IndirectOp &RHS) noexcept
            < std::tie(RHS.reg1, RHS.reg2, RHS.reg3, RHS.multiplier, RHS.displacement, RHS.size);
 }
 
-constexpr bool operator<(const OtherOp& LHS, const OtherOp& RHS) noexcept {
-    return std::tie(LHS.value, LHS.otherValue) < std::tie(RHS.value, RHS.otherValue);
-}
-
-souffle::tuple& operator<<(souffle::tuple& t, const OtherOp& op) {
-    t << op.value << op.otherValue;
+souffle::tuple &operator<<(souffle::tuple &t, const IndirectOp &op)
+{
+    t << op.reg1 << op.reg2 << op.reg3 << op.multiplier << op.displacement << op.size;
     return t;
 }
 
@@ -53,12 +50,6 @@ constexpr bool operator<(const PrefetchOp& LHS, const PrefetchOp& RHS) noexcept 
 
 souffle::tuple& operator<<(souffle::tuple& t, const PrefetchOp& op) {
     t << op.value;
-    return t;
-}
-
-souffle::tuple &operator<<(souffle::tuple &t, const IndirectOp &op)
-{
-    t << op.reg1 << op.reg2 << op.reg3 << op.multiplier << op.displacement << op.size;
     return t;
 }
 

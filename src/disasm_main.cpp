@@ -63,14 +63,12 @@ namespace std
     }
 } // namespace std
 
-//TODO: Move this function to another part
 std::optional<DlDecoder*> make_decoder(LIEF::ARCHITECTURES arch) {
     if(arch == LIEF::ARCHITECTURES::ARCH_X86) {
         return std::make_optional(new X86Decoder());
     } else if(arch == LIEF::ARCHITECTURES::ARCH_ARM64) {
         return std::make_optional(new AArch64Decoder());
     } else {
-        //DEFAULT TO X86 for now
         return std::nullopt;
     }
 }
@@ -111,6 +109,8 @@ int main(int argc, char **argv)
         ("ir", po::value<std::string>(), "GTIRB output file")           //
         ("json", po::value<std::string>(), "GTIRB json output file")    //
         ("asm", po::value<std::string>(), "ASM output file")            //
+        ("arch", po::value<std::string>(),
+         "Set binary architecture (arm64 or x64). Automatically detected if not set.") //
         ("dwarf", "Dwarf analysis")
         ("debug", "generate assembler file with debugging information") //
         ("debug-dir", po::value<std::string>(),                         //
@@ -172,6 +172,23 @@ int main(int argc, char **argv)
     LIEF::ARCHITECTURES lief_arch;
     LIEF::ENDIANNESS endianness;
     std::tie(ir, lief_arch, endianness) = buildZeroIR(filename, context);
+
+    if (vm.count("arch") != 0) {
+        std::string arch_opt_value = vm["arch"].as<std::string>();
+        LIEF::ARCHITECTURES set_arch;
+        if (arch_opt_value == "x64")
+            set_arch = LIEF::ARCHITECTURES::ARCH_X86;
+        else if (arch_opt_value == "arm64")
+            set_arch = LIEF::ARCHITECTURES::ARCH_ARM64;
+        else {
+            std::cerr << "Error: unsupported architecture chosen with --arch flag" << std::endl;
+            return 1;
+        }
+
+        if (set_arch != lief_arch)
+            std::cerr << "Warning: detected architecture differs from set architecture" << std::endl;
+        lief_arch = set_arch;
+    }
 
     if(!ir)
     {
