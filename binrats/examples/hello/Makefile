@@ -3,12 +3,23 @@ ARM64CC=aarch64-linux-gnu-gcc
 
 CFLAGS=-g
 
+TESTNAME=hello
 
-all: hello.c
-	$(AMD64CC) hello.c  $(CFLAGS) -o hello_amd64
-	ddisasm hello_amd64 --asm=amd64.s
-	$(ARM64CC) hello.c  $(CFLAGS) -o hello_arm64
-	ddisasm hello_arm64 --asm=arm64.s
+DD=../../../build/bin/ddisasm
+OUT_AMD64=$(TESTNAME)_amd64
+OUT_ARM64=$(TESTNAME)_arm64
+
+.PHONY: all clean
+
+all: amd64 arm64
+
+amd64: $(TESTNAME).c
+	$(AMD64CC) $^  $(CFLAGS) -o $(OUT_AMD64)
+	$(DD) $(OUT_AMD64) --asm=amd64.s $(DD_FLAGS)
+
+arm64: $(TESTNAME).c
+	$(ARM64CC) $^  $(CFLAGS) -o $(OUT_ARM64)
+	$(DD) $(OUT_ARM64) --asm=arm64.s $(DD_FLAGS)
 
 clean:
-	rm hello_amd64 hello_arm64 arm64.s amd64.s
+	rm -f $(OUT_ARM64) $(OUT_AMD64) arm64.s amd64.s
