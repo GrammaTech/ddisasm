@@ -90,6 +90,7 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<AllElfSectionProperties>();
+    gtirb::AuxDataContainer::registerAuxDataType<FlaggedSections>();
     gtirb::AuxDataContainer::registerAuxDataType<DWARFElfSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<PeSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<CfiDirectives>();
@@ -162,6 +163,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
+
+
+
     std::cout << "Building the initial gtirb representation" << std::endl;
     gtirb::Context context;
     gtirb::IR *ir = nullptr;
@@ -191,6 +195,9 @@ int main(int argc, char **argv)
         std::cerr << "There was a problem loading the binary file " << filename << "\n";
         return 1;
     }
+
+
+
     gtirb::Module &module = *(ir->modules().begin());
     souffle::SouffleProgram *prog = nullptr;
 
@@ -220,6 +227,15 @@ int main(int argc, char **argv)
         }
         std::cout << "Populating gtirb representation" << std::endl;
         disassembleModule(context, module, prog, vm.count("self-diagnose") != 0);
+
+
+
+        if(vm.count("dwarf") != 0) {
+            DwarfMap dmap(filename);
+            dmap.extract_dwarf_data();
+            dmap.flag_constsym(module);
+        }
+
 
         if(vm.count("skip-function-analysis") == 0)
         {
@@ -262,6 +278,7 @@ int main(int argc, char **argv)
             assert(false && "unsupported architecture");
         }
         pprinter.setTarget(target);
+
 
         if(vm.count("keep-functions") != 0)
         {

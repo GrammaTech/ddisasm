@@ -1,5 +1,5 @@
 CC="gcc"
-CFLAGS=
+CFLAGS=-g
 
 
 all: ex.c
