@@ -848,7 +848,7 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                     const auto specialType = symbolSpecialTypes.find(currentAddr);
                     if(specialType != symbolSpecialTypes.end())
                         typesTable[d->getUUID()] = specialType->Type;
-                    byteInterval.addBlock<gtirb::DataBlock>(blockOffset, d);
+                    byteInterval.addBlock(blockOffset, d);
                     currentAddr += d->getSize();
                 }
             }
