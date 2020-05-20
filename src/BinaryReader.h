@@ -139,20 +139,24 @@ struct gtirb::auxdata_traits<InitialAuxData::DataDirectory>
         return "DataDirectory";
     }
 
-    static void toBytes(const InitialAuxData::DataDirectory &Object, to_iterator It)
+    static void toBytes(const InitialAuxData::DataDirectory &Object, ToByteRange &TBR)
     {
         auxdata_traits<std::tuple<uint64_t, uint64_t, std::string>>::toBytes(
-            std::make_tuple(Object.address, Object.size, Object.type), It);
+            std::make_tuple(Object.address, Object.size, Object.type), TBR);
     }
 
-    static from_iterator fromBytes(InitialAuxData::DataDirectory &Object, from_iterator It)
+    static bool fromBytes(InitialAuxData::DataDirectory &Object, FromByteRange &FBR)
     {
         std::tuple<uint64_t, uint64_t, std::string> Tuple;
-        auxdata_traits<std::tuple<uint64_t, uint64_t, std::string>>::fromBytes(Tuple, It);
-        Object.address = std::get<0>(Tuple);
-        Object.size = std::get<1>(Tuple);
-        Object.type = std::get<2>(Tuple);
-        return It;
+        bool Success =
+            auxdata_traits<std::tuple<uint64_t, uint64_t, std::string>>::fromBytes(Tuple, FBR);
+        if(Success)
+        {
+            Object.address = std::get<0>(Tuple);
+            Object.size = std::get<1>(Tuple);
+            Object.type = std::get<2>(Tuple);
+        }
+        return Success;
     }
 };
 
@@ -164,25 +168,30 @@ struct gtirb::auxdata_traits<InitialAuxData::ImportEntry>
         return "ImportEntry";
     }
 
-    static void toBytes(const InitialAuxData::ImportEntry &Object, to_iterator It)
+    static void toBytes(const InitialAuxData::ImportEntry &Object, ToByteRange &TBR)
     {
         auxdata_traits<std::tuple<uint64_t, int64_t, std::string, std::string>>::toBytes(
             std::make_tuple(Object.iat_address, Object.ordinal, Object.function, Object.library),
-            It);
+            TBR);
     }
 
-    static from_iterator fromBytes(InitialAuxData::ImportEntry &Object, from_iterator It)
+    static bool fromBytes(InitialAuxData::ImportEntry &Object, FromByteRange &FBR)
     {
         std::tuple<uint64_t, int64_t, std::string, std::string> Tuple;
-        auxdata_traits<std::tuple<uint64_t, int64_t, std::string, std::string>>::fromBytes(Tuple,
-                                                                                           It);
-        Object.iat_address = std::get<0>(Tuple);
-        Object.ordinal = std::get<1>(Tuple);
-        Object.function = std::get<2>(Tuple);
-        Object.library = std::get<3>(Tuple);
-        return It;
+        bool Success =
+            auxdata_traits<std::tuple<uint64_t, int64_t, std::string, std::string>>::fromBytes(
+                Tuple, FBR);
+        if(Success)
+        {
+            Object.iat_address = std::get<0>(Tuple);
+            Object.ordinal = std::get<1>(Tuple);
+            Object.function = std::get<2>(Tuple);
+            Object.library = std::get<3>(Tuple);
+        }
+        return Success;
     }
 };
+
 class BinaryReader
 {
 public:
