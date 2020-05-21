@@ -34,7 +34,6 @@ void DwarfMap::traverse_compilation_units() {
     Dwarf_Unsigned cu_header_len = 0;
 	Dwarf_Unsigned abbrev_offset = 0;
 	Dwarf_Unsigned next_cu_header_index = 0;
-	//Dwarf_Unsigned current_cu_index = 0;
 	Dwarf_Half version_stamp = 0;
 	Dwarf_Half address_size = 0;
 	Dwarf_Error error = 0;
@@ -121,23 +120,20 @@ void DwarfMap::retrieve_die_data(Dwarf_Die die) {
 	    && !dwarf_loclist(attr, &loc_list, &num_loc, &error);
     !dwarf_tag(die,&tag,&error) && dwarf_get_TAG_name(tag,&tagname);
 
-    //printf("%d %d %d %d %d\n", got_name, got_line, got_file, got_loclist, loc_list[0].ld_cents);
-
     if(got_loclist && loc_list[0].ld_cents == 1) {
         dwarf_formref(attr, &ptr_address, &error);
 
         if(tag == DW_TAG_variable) {
-            //printf("<%llu:%llu> tag: %d %s  name: %s loc: %lld\n",in_file, in_line,tag,tagname,name,
-            // loc_list[0].ld_s[0].lr_number);
 
             this->dwarfdata.insert(std::make_pair(
                     loc_list[0].ld_s[0].lr_number,
-                DwarfData(
-                    loc_list[0].ld_s[0].lr_number,
-                    new std::string(name),
-                    tag,
-                    in_file,
-                    in_line)));
+                    DwarfData(
+                        loc_list[0].ld_s[0].lr_number,
+                        new std::string(name),
+                        tag,
+                        in_file,
+                        in_line)
+                    ));
         }
     }
     dwarf_dealloc(this->debug,name,DW_DLA_STRING);
@@ -185,8 +181,6 @@ DwarfData::DwarfData(uint64_t addr,
 	this->file_no = file_no;
 	this->line_no = line_no;
 }
-
-
 
 DwarfData::~DwarfData() { /* NO-OP */ }
 
