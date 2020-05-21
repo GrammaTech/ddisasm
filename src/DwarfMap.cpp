@@ -38,7 +38,6 @@ void DwarfMap::traverse_compilation_units() {
 	Dwarf_Half version_stamp = 0;
 	Dwarf_Half address_size = 0;
 	Dwarf_Error error = 0;
-
     bool dwarf_cu_next = true;
 
     while(dwarf_cu_next) {
@@ -60,7 +59,6 @@ void DwarfMap::traverse_compilation_units() {
             break;
         }
 
-
         result = dwarf_siblingof(this->debug,no_die,&cu_die,&error);
         if(result == DW_DLV_NO_ENTRY) {
             printf("Error in dwarf_siblingof on CU die \n");
@@ -71,7 +69,6 @@ void DwarfMap::traverse_compilation_units() {
         traverse(cu_die, 0);
 		dwarf_dealloc(this->debug,cu_die,DW_DLA_DIE);
     }
-
 }
 
 void DwarfMap::traverse(Dwarf_Die die, int level) {
@@ -116,20 +113,32 @@ void DwarfMap::retrieve_die_data(Dwarf_Die die) {
     Dwarf_Off  ptr_address = 0;
 
 
-    int got_name = !dwarf_diename(die,&name,&error);
-    int got_line = !dwarf_attr(die, DW_AT_decl_line, &attr, &error) && !dwarf_formudata(attr, &in_line, &error);
-    int got_file = !dwarf_attr(die, DW_AT_decl_file, &attr, &error) && !dwarf_formudata(attr, &in_file, &error);
+    dwarf_diename(die,&name,&error);
+    !dwarf_attr(die, DW_AT_decl_line, &attr, &error) && !dwarf_formudata(attr, &in_line, &error);
+    !dwarf_attr(die, DW_AT_decl_file, &attr, &error) && !dwarf_formudata(attr, &in_file, &error);
     int got_loclist = !dwarf_hasattr(die, DW_AT_location, &bAttr, &error) && !dwarf_attr(die, DW_AT_location,
         &attr, &error)
 	    && !dwarf_loclist(attr, &loc_list, &num_loc, &error);
-    int got_tag_name = !dwarf_tag(die,&tag,&error) && dwarf_get_TAG_name(tag,&tagname);
+    !dwarf_tag(die,&tag,&error) && dwarf_get_TAG_name(tag,&tagname);
 
-    if(got_loclist && loc_list[0].ld_cents == 1 && got_name && got_file && got_line && got_tag_name) {
+    //printf("%d %d %d %d %d\n", got_name, got_line, got_file, got_loclist, loc_list[0].ld_cents);
+
+    if(got_loclist && loc_list[0].ld_cents == 1) {
         dwarf_formref(attr, &ptr_address, &error);
 
-        this->dwarfdata.insert(std::make_pair(loc_list[0].ld_s[0].lr_number,
-            DwarfData(loc_list[0].ld_s[0].lr_number, new std::string(name),
-                tag, in_file, in_line)));
+        if(tag == DW_TAG_variable) {
+            //printf("<%llu:%llu> tag: %d %s  name: %s loc: %lld\n",in_file, in_line,tag,tagname,name,
+            // loc_list[0].ld_s[0].lr_number);
+
+            this->dwarfdata.insert(std::make_pair(
+                    loc_list[0].ld_s[0].lr_number,
+                DwarfData(
+                    loc_list[0].ld_s[0].lr_number,
+                    new std::string(name),
+                    tag,
+                    in_file,
+                    in_line)));
+        }
     }
     dwarf_dealloc(this->debug,name,DW_DLA_STRING);
 }
@@ -141,11 +150,11 @@ void DwarfMap::extract_dwarf_data() {
 
 void DwarfMap::flag_constsym(gtirb::Module& module) {
 
-    std::map<gtirb::UUID, std::tuple<gtirb::UUID, uint8_t>> in_debug;
+    std::map<gtirb::UUID, gtirb::UUID> in_debug;
     for(auto i = module.symbols().begin(); i != module.symbols().end(); i++) {
         const gtirb::Symbol& symentry = *i;
 
-        uint64_t found = 0;
+
         if(std::optional<gtirb::Addr> addr = symentry.getAddress()) {
             //what is this? Apparently implicit conversion does not work
             //but explicit usage
@@ -153,11 +162,12 @@ void DwarfMap::flag_constsym(gtirb::Module& module) {
             uint64_t ad = (*addr).operator uint64_t();
             auto entryFound = this->dwarfdata.find(ad);
             //If the section is not dwarf, analyse it.
-            if(entryFound == this->dwarfdata.end()) {
-                found = 1;
+            if(entryFound != this->dwarfdata.end()) {
+                in_debug[symentry.getUUID()] = symentry.getUUID();
             }
+
         }
-        in_debug[symentry.getUUID()] = std::make_tuple(symentry.getUUID(), found);
+
 
     }
     module.addAuxData<gtirb::schema::FlaggedSections>(std::move(in_debug));
@@ -178,7 +188,5 @@ DwarfData::DwarfData(uint64_t addr,
 
 
 
-DwarfData::~DwarfData() {
-    delete this->name;
-}
+DwarfData::~DwarfData() { /* NO-OP */ }
 
