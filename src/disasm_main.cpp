@@ -173,6 +173,8 @@ int main(int argc, char **argv)
     LIEF::ENDIANNESS endianness;
     std::tie(ir, lief_arch, endianness) = buildZeroIR(filename, context);
 
+
+
     if (vm.count("arch") != 0) {
         std::string arch_opt_value = vm["arch"].as<std::string>();
         LIEF::ARCHITECTURES set_arch;

@@ -89,7 +89,7 @@ namespace gtirb
         struct FlaggedSections
         {
             static constexpr const char* Name = "FlaggedSections";
-            typedef std::map<gtirb::UUID, std::tuple<gtirb::UUID, uint8_t>> Type;
+            typedef std::map<gtirb::UUID, gtirb::UUID> Type;
         };
 
         /// \brief Auxiliary data covering ELF section properties.
