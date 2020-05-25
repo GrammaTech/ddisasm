@@ -266,7 +266,7 @@ struct SymbolMinusSymbol
 
     SymbolMinusSymbol(souffle::tuple &tuple)
     {
-        assert(tuple.size() == 4);
+        assert(tuple.size() == 5);
 
         tuple >> EA >> Size >> Symbol1 >> Symbol2;
     };
@@ -275,6 +275,7 @@ struct SymbolMinusSymbol
     uint64_t Size;
     gtirb::Addr Symbol1{0};
     gtirb::Addr Symbol2{0};
+    int64_t Scale;
 };
 
 struct StringDataObject
@@ -796,7 +797,8 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                     {
                         d = gtirb::DataBlock::Create(context, symMinusSym->Size);
                         byteInterval.addSymbolicExpression<gtirb::SymAddrAddr>(
-                            blockOffset, 1, 0, getSymbol(context, module, symMinusSym->Symbol2),
+                            blockOffset, symMinusSym->Scale, 0,
+                            getSymbol(context, module, symMinusSym->Symbol2),
                             getSymbol(context, module, symMinusSym->Symbol1));
                         SymbolicSizes[Offset] = symMinusSym->Size;
                     }

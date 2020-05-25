@@ -100,7 +100,7 @@ lsda_callsite_addresses(Start,End,LandingPad):-
 
 // type table pointer
 symbol_special_encoding(TypeTablePointerLocation,"uleb128"),
-symbol_minus_symbol(TypeTablePointerLocation,Size,CallsiteTablePointerLoc-1,LsdaTypeTableAddress):-
+symbol_minus_symbol(TypeTablePointerLocation,Size,CallsiteTablePointerLoc-1,LsdaTypeTableAddress,1):-
     lsda_pointer_locations(Lsda,TypeTablePointerLocation,CallsiteTablePointerLoc),
     lsda(Lsda,_,_,_,LsdaTypeTableAddress, _, _),
     LsdaTypeTableAddress != 0,
@@ -109,7 +109,7 @@ symbol_minus_symbol(TypeTablePointerLocation,Size,CallsiteTablePointerLoc-1,Lsda
 
 //callsite table size
 symbol_special_encoding(CallsiteTablePointerLoc,"uleb128"),
-symbol_minus_symbol(CallsiteTablePointerLoc,Size,CallSiteTable_address,CallSiteTable_address+CallSiteTableLength):-
+symbol_minus_symbol(CallsiteTablePointerLoc,Size,CallSiteTable_address,CallSiteTable_address+CallSiteTableLength,1):-
     lsda_pointer_locations(Lsda,_,CallsiteTablePointerLoc),
     lsda(Lsda,CallSiteTable_address,_,CallSiteTableLength,_, _, _),
     Size = CallSiteTable_address - CallsiteTablePointerLoc,
@@ -128,20 +128,20 @@ symbol_special_encoding(EA_landingPad,EncodingName):-
 
 
 //region beginning
-symbol_minus_symbol(EA_start,Size,LandingPadBaseAddress,StartRegion):-
+symbol_minus_symbol(EA_start,Size,LandingPadBaseAddress,StartRegion,1):-
     lsda_callsite(CallSiteTable_address, EA_start, StartRegion,EA_end,_,_,_,_),
     lsda(_,CallSiteTable_address,_,_,_,_,LandingPadBaseAddress),
     Size = EA_end-EA_start,
     Size > 0.
 
 //region end
-symbol_minus_symbol(EA_end,Size,StartRegion,EndRegion):-
+symbol_minus_symbol(EA_end,Size,StartRegion,EndRegion,1):-
     lsda_callsite(_, _, StartRegion,EA_end,EndRegion,EA_landingPad,_,_),
     Size = EA_landingPad-EA_end,
     Size > 0.
 
 //landing pad
-symbol_minus_symbol(EA_landingPad,Size,LandingPadBaseAddress,LandingPad):-
+symbol_minus_symbol(EA_landingPad,Size,LandingPadBaseAddress,LandingPad,1):-
     lsda_callsite(CallSiteTable_address, _, _,_,_,EA_landingPad,LandingPad,EA_endLandingPad),
     lsda(_,CallSiteTable_address,_,_,_,_,LandingPadBaseAddress),
     LandingPad != 0,
@@ -159,7 +159,7 @@ symbolic_data(EAType,EncodingSize,Type):-
     EAType=LsdaTypeTableAddress-(EncodingSize*(Index+1)),
     Type != 0.
 
-symbol_minus_symbol(EAType,EncodingSize,EAType,Type):-
+symbol_minus_symbol(EAType,EncodingSize,EAType,Type,1):-
     lsda_type_entry(LsdaTypeTableAddress, Index,Type),
     lsda(_,_,_,_,LsdaTypeTableAddress, TypeTableEncoding, _),
     TypeTableEncoding band 0xF = Encoding,
@@ -172,7 +172,7 @@ symbol_minus_symbol(EAType,EncodingSize,EAType,Type):-
 // cie symbols
 
 // cie size
-symbol_minus_symbol(Addr,4,Addr+4,Addr+Length+4):-
+symbol_minus_symbol(Addr,4,Addr+4,Addr+Length+4,1):-
     option("no-cfi-directives"),
     cie_entry(Addr,Length,_,_).
 
@@ -193,19 +193,19 @@ symbolic_data(PersonalityPos,Size,Personality):-
 // fde symbols
 
 // fde size
-symbol_minus_symbol(Addr,4,Addr+4,Addr+Length+4):-
+symbol_minus_symbol(Addr,4,Addr+4,Addr+Length+4,1):-
     option("no-cfi-directives"),
     fde_entry(Addr,Length,_, _, _,_),
     !last_fde(Addr).
 
-symbol_minus_symbol(Addr,4,Addr+4,StartSection+Size):-
+symbol_minus_symbol(Addr,4,Addr+4,StartSection+Size,1):-
     option("no-cfi-directives"),
     fde_entry(Addr,_,_, _, _,_),
     last_fde(Addr),
     section(".eh_frame",Size,StartSection).
 
 //cie offset
-symbol_minus_symbol(Addr+4,4,Cie,Addr+4):-
+symbol_minus_symbol(Addr+4,4,Cie,Addr+4,1):-
     option("no-cfi-directives"),
     fde_entry(Addr,_,Cie, _, _,_).
 
@@ -228,7 +228,7 @@ symbolic_data(StartLocation,EndLocation-StartLocation,StartFunction):-
     FdeEncoding band 0x10 = 0,
     fde_pointer_locations(Addr,StartLocation,EndLocation, _,_,_).
 
-symbol_minus_symbol(StartLocation,EndLocation-StartLocation,StartLocation,StartFunction):-
+symbol_minus_symbol(StartLocation,EndLocation-StartLocation,StartLocation,StartFunction,1):-
     option("no-cfi-directives"),
     fde_entry(Addr,_,Cie, StartFunction, _,_),
     cie_encoding(Cie,FdeEncoding,_),
@@ -239,7 +239,7 @@ symbol_minus_symbol(StartLocation,EndLocation-StartLocation,StartLocation,StartF
 
 
 // end pointer
-symbol_minus_symbol(EndLocation,EndSize,StartFunction,EndFunction):-
+symbol_minus_symbol(EndLocation,EndSize,StartFunction,EndFunction,1):-
     option("no-cfi-directives"),
     fde_entry(Addr,_,_, StartFunction, EndFunction,_),
     fde_pointer_locations(Addr,_,EndLocation, EndSize,_,_),
@@ -263,7 +263,7 @@ symbolic_data(LsdaLocation,LsdaSize,LsdaAddress):-
     // absolute encoding
     LsdaEncoding band 0x10 = 0.
 
-symbol_minus_symbol(LsdaLocation,LsdaSize,LsdaLocation,LsdaAddress):-
+symbol_minus_symbol(LsdaLocation,LsdaSize,LsdaLocation,LsdaAddress,1):-
     option("no-cfi-directives"),
     fde_entry(Addr,_,Cie, _, _,LsdaAddress),
     fde_pointer_locations(Addr,_,_, _,LsdaLocation,LsdaSize),
@@ -274,7 +274,7 @@ symbol_minus_symbol(LsdaLocation,LsdaSize,LsdaLocation,LsdaAddress):-
 
 
 // instructions
-symbol_minus_symbol(InstructionAddr+1,Size-1,Addr+Advance,Addr):-
+symbol_minus_symbol(InstructionAddr+1,Size-1,Addr+Advance,Addr,1):-
     option("no-cfi-directives"),
     fde_instruction(FdeAddr,Index,Size,"advance_loc",Advance,_),
     Size > 1,

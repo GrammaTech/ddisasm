@@ -71,10 +71,10 @@ This module also computes and symbol_minus_symbol.
 .decl symbolic_expr_from_relocation(ea:address,size:number,symbol:symbol,Addend:number)
 .output symbolic_expr_from_relocation
 
-.decl symbol_minus_symbol_candidate(ea:address,size:number,symbol1:address,symbol2:address,Reference:symbol)
+.decl symbol_minus_symbol_candidate(ea:address,size:number,symbol1:address,symbol2:address,Reference:symbol,Scale:number)
 .output symbol_minus_symbol_candidate
 
-.decl symbol_minus_symbol(ea:address,size:number,symbol1:address,symbol2:address)
+.decl symbol_minus_symbol(ea:address,size:number,symbol1:address,symbol2:address,scale:number)
 .output symbol_minus_symbol
 
 // symbolic data that points to code
@@ -240,7 +240,7 @@ labeled_data_candidate(Val):-
 
 // Symbol-Symbol candidate keeps track of which symbol is the reference and which is the target
 
-symbol_minus_symbol_candidate(TableStart,Size,TableReference,Dest,"first"):-
+symbol_minus_symbol_candidate(TableStart,Size,TableReference,Dest,"first",1):-
     jump_table_start(_,Size,TableStart,TableReference,"ADD"),
     (
         Size > 1,data_word(TableStart,Size,Diff);
@@ -249,7 +249,7 @@ symbol_minus_symbol_candidate(TableStart,Size,TableReference,Dest,"first"):-
     Dest = TableReference + Diff,
     code(Dest).
 
-symbol_minus_symbol_candidate(TableStart,Size,Dest,TableReference,"second"):-
+symbol_minus_symbol_candidate(TableStart,Size,Dest,TableReference,"second",1):-
     jump_table_start(_,Size,TableStart,TableReference,"SUB"),
     (
         Size > 1,data_word(TableStart,Size,Diff);
@@ -258,8 +258,8 @@ symbol_minus_symbol_candidate(TableStart,Size,Dest,TableReference,"second"):-
     Dest = TableReference - Diff,
     code(Dest).
 
-symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first"):-
-    symbol_minus_symbol_candidate(EA,Size,Reference,_,"first"),
+symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first",Scale):-
+    symbol_minus_symbol_candidate(EA,Size,Reference,_,"first",Scale),
     !jump_table_start(_,_,EA+Size,_,_),
     (
         Size>1,data_word(EA+Size,Size,Diff);
@@ -270,8 +270,8 @@ symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first"):-
     preferred_data_access(EA+Size,Label),
     data_access_pattern(Label,Size,Size,_).
 
-symbol_minus_symbol_candidate(EA+Size,Size,Symbol,Reference,"second"):-
-    symbol_minus_symbol_candidate(EA,Size,_,Reference,"second"),
+symbol_minus_symbol_candidate(EA+Size,Size,Symbol,Reference,"second",Scale):-
+    symbol_minus_symbol_candidate(EA,Size,_,Reference,"second",Scale),
     !jump_table_start(_,_,EA+Size,_,_),
     (
         Size>1,data_word(EA+Size,Size,Diff);
@@ -358,7 +358,7 @@ string_part(EA+1,Base):-
 .decl data_object(ea:address,size:number,type:symbol)
 
 data_object_candidate(EA,Size,"symbol-symbol"):-
-    symbol_minus_symbol_candidate(EA,Size,_,_,_).
+    symbol_minus_symbol_candidate(EA,Size,_,_,_,_).
 
 data_object_candidate(EA,Pt_size,"symbol"):-
     arch.pointer_size(Pt_size),
@@ -374,7 +374,7 @@ data_object_candidate(EA,Size,"other"):-
     Size != Pt_size,
     Size > 0,
     arch.pointer_size(Pt_size),
-    !symbol_minus_symbol_candidate(EA,Size,_,_,_).
+    !symbol_minus_symbol_candidate(EA,Size,_,_,_,_).
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Heuristic: If there are at least 3 consecutive addresses
@@ -629,9 +629,9 @@ string(EA,End):-
     string_candidate(EA,End),
     Size = End-EA.
 
-symbol_minus_symbol(EA,Size,Symbol1,Symbol2):-
+symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale):-
     data_object(EA,Size,"symbol-symbol"),
-    symbol_minus_symbol_candidate(EA,Size,Symbol1,Symbol2,_).
+    symbol_minus_symbol_candidate(EA,Size,Symbol1,Symbol2,_,Scale).
 
 code_pointer_in_data(EA,Val):-
     symbolic_data(EA,_,Val),
@@ -658,7 +658,7 @@ labeled_data(New_dest):-
     moved_data_label(_,_,_,New_dest).
 
 labeled_data(EA):-
-    symbol_minus_symbol(EA,_,EA,_).
+    symbol_minus_symbol(EA,_,EA,_,_).
 /////////////////////////////////////////////////////////////////////////////////
 // This facts specifies that a label should be printed in the .bss section for
 // the given address (because it is referenced somewhere)

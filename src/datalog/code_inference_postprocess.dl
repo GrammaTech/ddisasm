@@ -52,8 +52,8 @@ block_needs_splitting_at(EA):-
     // other kinds of symbols we considered as potential block limits during
     // code inference.
     (
-        symbol_minus_symbol(_,_,_,EA);
-        symbol_minus_symbol(_,_,EA,_)
+        symbol_minus_symbol(_,_,_,EA,_);
+        symbol_minus_symbol(_,_,EA,_,_)
     ),
     code_in_block(EA,Block),
     EA != Block.
@@ -87,8 +87,8 @@ block_needs_merging(Block):-
     //not referenced anywhere
     !symbolic_operand(_,_,Block,_),
     !code_pointer_in_data(_,Block),
-    !symbol_minus_symbol(_,_,_,Block),
-    !symbol_minus_symbol(_,_,Block,_),
+    !symbol_minus_symbol(_,_,_,Block,_),
+    !symbol_minus_symbol(_,_,Block,_,_),
     !moved_data_label(_,_,_,Block),
     !moved_label(_,_,_,Block),
     !function_symbol(Block,_),
