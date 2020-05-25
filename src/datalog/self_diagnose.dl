@@ -126,7 +126,7 @@ false_negative(EA):-
     relocation(EA,_,_,_),
     !zero_relocation(EA),
     !symbolic_data(EA,_,_),
-    !symbol_minus_symbol(EA,_,_,_),
+    !symbol_minus_symbol(EA,_,_,_,_),
     regular_data_section(Sect),
     section(Sect,SizeSect,BegSect),
     EA >= BegSect,
@@ -137,7 +137,7 @@ false_positive(EA):-
         symbolic_data(EA,_,_);
         // it looks like jump tables where each entry 4 or less bytes do not have
         // relocations associated to them.
-        symbol_minus_symbol(EA,Size,_,_), Size>4
+        symbol_minus_symbol(EA,Size,_,_,_), Size>4
     ),
     !relocation(EA,_,_,_),
 
