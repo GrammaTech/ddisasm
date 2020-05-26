@@ -84,7 +84,7 @@ RUN dpkg -i /ddisasm/libcapstone-dev_*_amd64.deb
 RUN unzip -o /ddisasm/gtirb-ubuntu16-artifacts.zip && dpkg -i libgtirb.deb libgtirb-dev.deb
 
 # Install gtirb-pprinter
-RUN unzip -o /ddisasm/gtirb-pprinter-ubuntu16-artifacts.zip && dpkg -i libgtirb-pprinter.deb libgtirb-pprinter-dev.deb gtirb-pprinter.deb
+RUN unzip -o /ddisasm/gtirb-pprinter-ubuntu16-artifacts.zip && dpkg -i libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
 
 ENV TERM xterm
 ENV PATH=/ddisasm/build/bin:$PATH

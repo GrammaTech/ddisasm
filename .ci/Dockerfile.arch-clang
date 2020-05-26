@@ -4,8 +4,10 @@ ARG CMAKE_VERSION=3.9
 ARG CXX_COMPILER=clang++
 
 RUN pacman --noconfirm -Syu archlinux-keyring
-RUN pacman -Syu --noconfirm autoconf automake base-devel boost capstone clang cmake \
-        doxygen fakeroot gcc git libtool make mcpp pkg-config protobuf python3 python-pip sudo wget unzip
+RUN pacman -Syu --noconfirm autoconf automake base-devel boost clang cmake \
+        doxygen fakeroot gcc git libtool make mcpp pkg-config protobuf \
+        python3 python-pip sudo wget unzip
+RUN python3 -m pip install wheel
 
 RUN pacman --noconfirm -Syu archlinux-keyring
 RUN sed -i "s/^\(OPT_LONG=(\)/\1'asroot' /;s/EUID == 0/1 == 0/" /usr/bin/makepkg
@@ -14,43 +16,34 @@ RUN sed -i "s|^  cd \"\$srcdir/\$pkgname-\$pkgver\"|&\\n  sed -i 's/os.Geteuid()
 RUN cd /yay-aur && makepkg --noconfirm -si
 RUN   useradd ddisasm && echo "ddisasm ALL=NOPASSWD: ALL" > /etc/sudoers.d/ddisasm
 RUN mkdir /home/ddisasm && chown ddisasm /home/ddisasm
-
-# Install GTIRB
-COPY gtirb-arch-artifacts.zip ./gtirb-artifacts.zip
-RUN unzip gtirb-artifacts.zip && \
-    pacman --noconfirm -U gtirb-git*.pkg.tar.xz && \
-    rm gtirb-git*.pkg.tar.xz
-
-# Install gtirb-pprinter
-COPY gtirb-pprinter-arch-artifacts.zip ./gtirb-pprinter-artifacts.zip
-RUN unzip gtirb-pprinter-artifacts.zip && \
-    pacman --noconfirm -U gtirb-pprinter-git*.pkg.tar.xz && \
-    rm gtirb-pprinter-git*.pkg.tar.xz
-
 USER ddisasm
-RUN yay --noconfirm -Sy souffle
-
-# Install LIEF
-RUN cd /home/ddisasm \
-    && git clone -b 0.10.0 https://github.com/lief-project/LIEF.git \
-    && cd LIEF \
-    && mkdir build \
-    && cd build \
-    && cmake -DLIEF_PYTHON_API=off -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=Off .. \
-    && make \
-    && sudo make install
+RUN yay --noconfirm -Sy pandoc capstone libehp-git souffle lief
 
 COPY --chown=ddisasm . /ddisasm
 
-# Install ehp
-RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_INSTALL_PREFIX=/usr && cd build && which sudo 2>&1 >/dev/null && sudo make install || make install
+# Install GTIRB
+RUN cd /ddisasm && unzip gtirb-arch-artifacts.zip \
+    && sudo pacman --noconfirm -U *.tar.xz \
+    && rm *.tar.xz
+
+# Install gtirb-pprinter
+RUN cd /ddisasm && unzip gtirb-pprinter-arch-artifacts.zip \
+    && sudo pacman --noconfirm -U *.tar.xz \
+    && rm *.tar.xz
+
+COPY --chown=ddisasm . /ddisasm
 
 ENV TERM xterm
-ENV PATH=/ddisasm/build/bin:$PATH
 
-RUN cd /ddisasm && cmake ./  -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DLIEF_ROOT=/usr/ && cd build && make
-
-ARG CPACK_GENERATOR=""
-RUN if [ ! -z "${CPACK_GENERATOR}" ] ; then cd /ddisasm/build && cpack -G "${CPACK_GENERATOR}"; fi
+# Install ddisasm
+RUN mkdir /home/ddisasm/ddisasm-aur
+COPY .ci/PKGBUILD /home/ddisasm/ddisasm-aur/PKGBUILD
+RUN sudo chown -R ddisasm /home/ddisasm/ddisasm-aur/
+WORKDIR /home/ddisasm/ddisasm-aur/
+RUN sed -i 's|git://github.com/grammatech/ddisasm.git|git+file:///ddisasm|' PKGBUILD
+RUN makepkg
+RUN sudo pacman --noconfirm -U *.pkg.tar.xz
+RUN sudo mkdir -p /ddisasm/build/
+RUN sudo cp *.pkg.tar.xz /ddisasm/build/
 
 WORKDIR /ddisasm/

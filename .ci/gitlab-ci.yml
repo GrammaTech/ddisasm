@@ -60,7 +60,7 @@ stages:
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=python-wheel --output "gtirb-wheel.zip"
     - unzip gtirb-wheel.zip
     - mkdir gtirb-wheel && cp *.whl gtirb-wheel/
-    - docker run -v $(pwd)/gtirb-wheel:/gtirb-wheel:ro --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c "python3 -m pip install pip --upgrade && python3 -m pip install /gtirb-wheel/gtirb-*-py*.whl && cd build/ && ctest -V"
+    - docker run -v $(pwd)/gtirb-wheel:/gtirb-wheel:ro --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c "python3 -m pip install pip --upgrade && python3 -m pip install /gtirb-wheel/gtirb-*-py*.whl && (cd build/ || cd /home/ddisasm/ddisasm-aur/src/ddisasm/build ) && ctest -V"
     - docker tag ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}-${COMPILER}:${PUSH_TAG};
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $DOCKER_REGISTRY;
     - docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}-${COMPILER}:${PUSH_TAG};
@@ -234,7 +234,7 @@ cleanup-arch-clang:
   artifacts:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
-      - ./DDISASM-*-Linux.deb
+      - ./*.${EXTENSION}
   script:
     - case $OS in
        ubuntu16) JOB_NAME='debian-installer-ubuntu16' ;;
@@ -259,7 +259,7 @@ cleanup-arch-clang:
     - docker cp $(cat ${CONTAINER_FILE}):/ddisasm/build ./build-artifacts
     - docker container rm -f $(cat ${CONTAINER_FILE})
     - rm -rf $(dirname ${CONTAINER_FILE})
-    - mv ./build-artifacts/DDISASM-*-Linux.${EXTENSION} ./
+    - mv ./build-artifacts/*.${EXTENSION} ./
     - rm -rf ./build-artifacts
     # Run the test
     - if [ -f .ci/Dockerfile.test-${OS}-package ]; then docker build -f .ci/Dockerfile.test-${OS}-package -t ${LOCAL_IMAGE_NAME}-${OS}-package-test .; docker rmi ${LOCAL_IMAGE_NAME}-${OS}-package-test; fi
@@ -278,9 +278,9 @@ debian-installer-ubuntu18:
     EXTENSION: 'deb'
   <<: *linux-installer
 
-tar-arch:
+package-arch:
   variables:
     OS: 'arch'
     COMPILER: 'gcc'
-    EXTENSION: 'tar.gz'
+    EXTENSION: 'pkg.tar.xz'
   <<: *linux-installer

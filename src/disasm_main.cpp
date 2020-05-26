@@ -113,7 +113,7 @@ int main(int argc, char **argv)
 
     po::options_description desc("Allowed options");
     desc.add_options()                                                  //
-        ("help", "produce help message")                                //
+        ("help,h", "produce help message")                              //
         ("version", "display ddisasm version")                          //
         ("ir", po::value<std::string>(), "GTIRB output file")           //
         ("json", po::value<std::string>(), "GTIRB json output file")    //
