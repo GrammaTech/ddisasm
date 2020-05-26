@@ -658,7 +658,9 @@ labeled_data(New_dest):-
     moved_data_label(_,_,_,New_dest).
 
 labeled_data(EA):-
-    symbol_minus_symbol(EA,_,EA,_,_).
+    symbol_minus_symbol(_,_,EA,_,_);
+    symbol_minus_symbol(_,_,_,EA,_).
+
 /////////////////////////////////////////////////////////////////////////////////
 // This facts specifies that a label should be printed in the .bss section for
 // the given address (because it is referenced somewhere)
