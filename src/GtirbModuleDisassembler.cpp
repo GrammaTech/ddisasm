@@ -641,16 +641,10 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
         symbolicInfo.SymbolicBaseMinusConst.equal_range(ea + instruction.displacementOffset);
     if(auto relSym = rangeRelSym.first; relSym != rangeRelSym.second)
     {
-        if(auto it = module.findCodeBlocksOn(ea); !it.empty())
-        {
-            gtirb::CodeBlock &block = *it.begin();
-            gtirb::ByteInterval *byteInterval = block.getByteInterval();
-            uint64_t blockOffset =
-                static_cast<uint64_t>(relSym->EA - byteInterval->getAddress().value());
-            byteInterval->addSymbolicExpression<gtirb::SymAddrAddr>(
-                blockOffset, 1, 0, getSymbol(context, module, relSym->Symbol2),
-                getSymbol(context, module, relSym->Symbol1));
-        }
+        auto sym1 = getSymbol(context, module, gtirb::Addr(relSym->Symbol1));
+        auto sym2 = getSymbol(context, module, gtirb::Addr(relSym->Symbol2));
+        addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(
+            module, ea, DispSize, instruction.displacementOffset, 1, 0, sym2, sym1);
     }
 }
 
