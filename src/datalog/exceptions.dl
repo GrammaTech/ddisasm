@@ -274,14 +274,14 @@ symbol_minus_symbol(LsdaLocation,LsdaSize,LsdaLocation,LsdaAddress,1):-
 
 
 // instructions
-symbol_minus_symbol(InstructionAddr+1,Size-1,Addr+Advance,Addr,1):-
+symbol_minus_symbol(InstructionAddr+1,Size-1,Addr+(Advance*CodeAlignmentFactor),Addr,CodeAlignmentFactor):-
     option("no-cfi-directives"),
     fde_instruction(FdeAddr,Index,Size,"advance_loc",Advance,_),
     Size > 1,
     fde_instruction_pos(FdeAddr,Index,InstructionAddr),
     fde_instruction_ref(FdeAddr,Index,_,Addr),
     fde_entry(FdeAddr,_,Cie,_,_,_),
-    cie_entry(Cie,_,1,_).
+    cie_entry(Cie,_,CodeAlignmentFactor,_).
 
 /////////////////////////////////////////////////////////////////
 // Auxiliary predicates for symbols
