@@ -118,7 +118,7 @@ base_relative_operand(EA_used,Op_index,Value):-
 
 .decl base_relative_symbolic_operand(EA:address,Index:number,Dest:address)
 
-symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value),
+symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value,1),
 base_relative_symbolic_operand(EA,Op_index,Value):-
     base_relative_operand(EA,Op_index,Value),
     instruction_displacement_offset(EA,Op_index,Disp_offset),
@@ -180,7 +180,7 @@ base_relative_address(EA+4,Ref,Val):-
 
 .decl base_relative_symbolic_data(EA:address,Size:number,Value:address)
 
-symbol_minus_symbol_candidate(EA,4,ImageBase,ImageBase+Val,"first"),
+symbol_minus_symbol_candidate(EA,4,ImageBase,ImageBase+Val,"first",1),
 base_relative_symbolic_data(EA,4,Val):-
     base_relative_address(EA,_,Val),
     base_address(ImageBase),
@@ -262,9 +262,9 @@ relative_address(EA+Size,Size,Ref,Dest):-
     possible_ea(Dest),
     !relative_address_start(EA+Size,_,_,_).
 
-symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first"):-
+symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first",Scale):-
     jump_table_start(_,Size,_,Reference,_),
-    symbol_minus_symbol_candidate(EA,Size,Reference,_,"first"),
+    symbol_minus_symbol_candidate(EA,Size,Reference,_,"first",Scale),
     !jump_table_start(_,_,EA+Size,_,_),
     data_word(EA+Size,Size,Diff), Size > 1,
     Symbol = Reference + Diff,
