@@ -81,7 +81,10 @@ block_next(EA,EA_next):-
     direct_jump(EA,EA_next),
     !inter_procedural_jump(EA,EA_next).
 
-
+block_next(EA,EA_next):-
+    block_last_instruction(_,EA),
+    jump_table_start_s(EA,Size,TableReference,TableReference,_),
+    relative_address(_,Size,TableReference,EA_next).
 
 //////////////////////////////////////////////////////////////////////////////
 // Main definitions
@@ -154,10 +157,10 @@ block_last_def(EA_next,EA_def,Reg):-
     !must_def(EA,Reg),
     local_next(EA,EA_next).
 
-block_last_def(Block,EA_def,Reg):-
-    last_def(Block,EA_def,Reg),
-    used_in_block(Block,Reg),
-    defined_in_block(Block,Reg).
+//block_last_def(Block,EA_def,Reg):-
+//   last_def(Block,EA_def,Reg),
+//    used_in_block(Block,Reg),
+//    defined_in_block(Block,Reg).
 
 last_def(Block,EA,Reg):-
     def(EA,Reg),

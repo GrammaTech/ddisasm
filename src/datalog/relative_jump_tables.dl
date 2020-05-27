@@ -113,6 +113,31 @@ relative_address(EA+Size,Size,Ref,Dest):-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // detect jump tables precisely once we have all results of the analyses
 
+.decl jump_table_start_s(EA_jump:address,Size:number,TableStart:address,TableRef:address,Operation:symbol)
+
+jump_table_start_s(EA_jump,Size,TableStart,TableReference,Operation):-
+    (
+        reg_call(EA_jump,_);
+        reg_jump(EA_jump,_)
+    ),
+    code(EA_jump),
+    def_used(EA_base,Reg,EA_jump,_),
+    arch.reg_reg_arithmetic_operation(EA_base,Reg,Reg,Reg2,Mult,0),
+    (
+        Mult = 1,Operation= "ADD";
+        Mult = -1,Operation= "SUB"
+    ),
+    (
+        RegBase = Reg, RegDiff = Reg2;
+        RegBase = Reg2, RegDiff = Reg
+    ),
+    def_used(EA_read,RegBase,EA_base,_),
+    instruction_memory_access_size(EA_read,_,Size),
+
+    def_used(EA_def_ref,RegDiff,EA_base,_),
+    value_reg_edge(EA_def_ref,RegDiff,EA,"NONE",0,TableReference),
+    TableStart=TableReference.
+
 .decl jump_table_start(EA_jump:address,Size:number,TableStart:address,TableRef:address,Operation:symbol)
 .output jump_table_start
 
