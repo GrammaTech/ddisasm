@@ -83,7 +83,8 @@ block_next(EA,EA_next):-
 
 block_next(EA,EA_next):-
     block_last_instruction(_,EA),
-    jump_table_start_s(EA,Size,TableReference,TableReference,_),
+    jump_table_start(EA,Size,TableReference,TableReference,_),
+    //FIMXE: Do better propagation of the jump table.
     relative_address(_,Size,TableReference,EA_next).
 
 //////////////////////////////////////////////////////////////////////////////
@@ -145,8 +146,10 @@ used_in_block(Block,Reg):-
     used(EA,Reg,_),
     code_in_block(EA,Block).
 
+// the last address where a register whas defined within the block
 .decl block_last_def(EA:address,EA_def:address,Reg:register)
-.decl last_def(EA:address,EA_def:address,Reg:register)
+
+
 
 block_last_def(EA_next,EA,Reg):-
     def(EA,Reg),
@@ -157,10 +160,8 @@ block_last_def(EA_next,EA_def,Reg):-
     !must_def(EA,Reg),
     local_next(EA,EA_next).
 
-//block_last_def(Block,EA_def,Reg):-
-//   last_def(Block,EA_def,Reg),
-//    used_in_block(Block,Reg),
-//    defined_in_block(Block,Reg).
+// the last address where a register was defined at the basic block level.
+.decl last_def(EA:address,EA_def:address,Reg:register)
 
 last_def(Block,EA,Reg):-
     def(EA,Reg),
