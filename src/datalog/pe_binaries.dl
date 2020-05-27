@@ -247,7 +247,6 @@ relative_address_start(ImageBase+OffsetUnsigned,MultUnsigned,ImageBase,Dest,"fir
     Dest = as(ImageBaseSigned + Diff,address),
     possible_ea(Dest).
 
-// TODO: Add a 'Scale' parameter and implement division by scale in the printer.
 // Detect potential byte-offset, indirect jump-table index before data analyses.
 // lea R14,[__ImageBase]
 // ...
@@ -292,17 +291,18 @@ indirect_jump_table_start(IndexTable,AddrTable):-
     def_used(EA_add,_,EA_jump,_),
     reg_jump(EA_jump,_).
 
-symbol_minus_symbol_candidate(EA,1,Table,Symbol,"first"):-
+symbol_minus_symbol_candidate(EA,1,Table,Symbol,"first",Scale):-
     indirect_jump_table_start(EA,Table),
     data_byte(EA,Index),
-    Symbol = Table + Index * 4,
+    Scale = 4,
+    Symbol = Table + Index * Scale,
     base_relative_address(Symbol,Table,_).
 
-symbol_minus_symbol_candidate(EA+1,1,Table,Symbol,"first"):-
-    symbol_minus_symbol_candidate(EA,1,Table,_,"first"),
+symbol_minus_symbol_candidate(EA+1,1,Table,Symbol,"first",Scale):-
+    symbol_minus_symbol_candidate(EA,1,Table,_,"first",Scale),
     !indirect_jump_table_start(EA+1,_),
     data_byte(EA+1,Index),
-    Symbol = Table + Index * 4,
+    Symbol = Table + Index * Scale,
     base_relative_address(Symbol,Table,_).
 
 // the call to main is right after the call to "__p___argc"
