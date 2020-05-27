@@ -268,7 +268,7 @@ struct SymbolMinusSymbol
     {
         assert(tuple.size() == 5);
 
-        tuple >> EA >> Size >> Symbol1 >> Symbol2;
+        tuple >> EA >> Size >> Symbol1 >> Symbol2 >> Scale;
     };
 
     gtirb::Addr EA{0};
