@@ -114,6 +114,33 @@ relative_address(EA+Size,Size,Ref,Dest):-
 // detect jump tables precisely once we have all results of the analyses
 
 
+// auxiliary predicate for detecting accessing an element of a jump table.
+.decl jump_table_element_access(EA:address,Size:number,TableStart:address)
+
+jump_table_element_access(EA,Size,TableStart):-
+    data_access(EA,_,"NONE","NONE",RegIndex,Size,TableStart,Size),
+    RegIndex != "NONE",
+    data_segment(Beg,End),
+    TableStart >= Beg,
+    TableStart <= End.
+
+jump_table_element_access(EA,1,TableStart):-
+    data_access(EA,_,"NONE",RegBase,"NONE",_,TableStart,1),
+    RegBase != "NONE",
+    data_segment(Beg,End),
+    TableStart >= Beg,
+    TableStart <= End.
+
+jump_table_element_access(EA,Size,TableStart):-
+    data_access(EA,_,"NONE",RegBase,RegIndex,Size,0,Size),
+    RegIndex != "NONE",
+    def_used(EA_regdef,RegBase,EA,_),
+    value_reg_edge(EA_regdef,RegBase,_,"NONE",0,TableStart),
+    data_segment(Beg,End),
+    TableStart >= Beg,
+    TableStart <= End.
+
+
 .decl jump_table_start(EA_jump:address,Size:number,TableStart:address,TableRef:address,Operation:symbol)
 .output jump_table_start
 
@@ -130,13 +157,7 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
         Operation= "SUB"
     ),
     def_used(EA_read,Reg,EA_base,_),
-    (
-        data_access(EA_read,_,"NONE","NONE",_,Size,TableStart,Size)
-        ;
-        data_access(EA_read,_,"NONE",RegBaseAccess,_,Size,0,Size),
-        def_used(EA_regDef,RegBaseAccess,EA_read,_),
-        value_reg_edge(EA_regDef,RegBaseAccess,_,"NONE",0,TableStart)
-    ),
+    jump_table_element_access(EA_read,Size,TableStart),
     (
         code(TableReference);
         TableStart=TableReference
@@ -163,14 +184,7 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
         RegBase = Reg2, RegDiff = Reg
     ),
     def_used(EA_read,RegBase,EA_base,_),
-    (
-        data_access(EA_read,_,"NONE","NONE",_,Size,TableStart,Size)
-        ;
-        data_access(EA_read,_,"NONE",RegBaseAccess,_,Size,0,Size),
-        def_used(EA_regDef,RegBaseAccess,EA_read,_),
-        value_reg_edge(EA_regDef,RegBaseAccess,_,"NONE",0,TableStart)
-    ),
-
+    jump_table_element_access(EA_read,Size,TableStart),
     def_used(EA_def_ref,RegDiff,EA_base,_),
     value_reg_edge(EA_def_ref,RegDiff,_,"NONE",0,TableReference),
     (
@@ -190,14 +204,7 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
         Operation = "ADD";
         Operation = "SUB"
     ),
-    (
-        data_access(EA_base,_,"NONE","NONE",_,Size,TableStart,Size)
-        ;
-        data_access(EA_base,_,"NONE",RegBaseAccess,_,Size,0,Size),
-        def_used(EA_regDef,RegBaseAccess,EA_base,_),
-        value_reg_edge(EA_regDef,RegBaseAccess,_,"NONE",0,TableStart)
-    ),
-
+    jump_table_element_access(EA_base,Size,TableStart),
     def_used(EA_def_ref,Reg,EA_base,_),
     value_reg_edge(EA_def_ref,Reg,_,"NONE",0,TableReference),
     (
@@ -229,5 +236,5 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,"ADD"):-
     // FIXME: Not sure of the intended meaning of this one EA_read is not matched
     //data_access_pattern(TableStart,Size,_,EA_read),
     def_used(EA_def_diff2,_,EA_def_diff,_),
-    data_access(EA_def_diff2,_,_,_,_,_,_,Size),
+    jump_table_element_access(EA_def_diff2,Size,TableStart),
     TableReference = TableStart.
