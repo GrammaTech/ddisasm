@@ -224,20 +224,29 @@ data_access_pattern(Address,Size,Multiplier,From):-
 
 possible_data_limit(EA):-
     labeled_data_candidate(EA);
-    data_access_pattern(EA,_,_,_);
     data_segment(_,EA).
+
+.decl last_data_limit(EA:address,Where:address)
+
+last_data_limit(EA+1,EA):-
+    possible_data_limit(EA),
+    data_byte(EA+1,_).
+
+last_data_limit(EA+1,Where):-
+    last_data_limit(EA,Where),
+    data_byte(EA+1,_),
+    !possible_data_limit(EA).
 
 .decl last_data_access(EA:address,Where:address)
 
 last_data_access(EA+1,EA):-
-    possible_data_limit(EA),
+    data_access_pattern(EA,_,_,_),
     data_byte(EA+1,_).
 
 last_data_access(EA+1,Where):-
     last_data_access(EA,Where),
     data_byte(EA+1,_),
-    !possible_data_limit(EA).
-
+    !data_access_pattern(EA,_,_,_).
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // This code performs the propagation
@@ -254,23 +263,25 @@ propagated_data_access(EA,Mult,EA):-
 propagated_data_access(EA+Mult,Mult,EA_ref):-
     propagated_data_access(EA,Mult,EA_ref),
     data_byte(EA+Mult,_),
-    // no collision with next data access pattern
+    // no collision with data limits
+    !possible_data_limit(EA+Mult),
+    last_data_limit(EA+Mult,LastDataLimit), LastDataLimit <= EA,
+    // no collision with data accesses
     (
-        !possible_data_limit(EA+Mult)
-        ;
-        // single access from the same address
-        possible_data_limit(EA+Mult),
+        !data_access_pattern(EA+Mult,_,_,_);
+        // unless accessed from same address
         data_access_pattern(EA+Mult,S,0,From),
         data_access_pattern(EA_ref,S,Mult,From)
     ),
     //no collision with other data access pattern in between
-    last_data_access(EA+Mult,Last),
+    last_data_access(EA+Mult,LastDataAccess),
     (
-        Last <= EA
+        LastDataAccess <= EA
         ;
-        Last > EA,
-        data_access_pattern(Last,Size,Mult,_),
-        Last+Size <= EA+Mult
+        //unless it has same multiplier and does not overlap
+        LastDataAccess > EA,
+        data_access_pattern(LastDataAccess,Size,Mult,_),
+        LastDataAccess+Size <= EA+Mult
     ).
 
 preferred_data_access(EA,EA_label):-
