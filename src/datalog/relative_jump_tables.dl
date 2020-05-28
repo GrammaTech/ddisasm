@@ -234,5 +234,5 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,"ADD"):-
     def_used(EA_def_ref,RegBase,EA_base,_),
     take_address(EA_def_ref,TableStart),
     def_used(EA_def_diff2,_,EA_def_diff,_),
-    jump_table_element_access(EA_def_diff2,Size,TableStart),
+    data_access(EA_def_diff2,_,"NONE",_,_,_,_,Size),
     TableReference = TableStart.
