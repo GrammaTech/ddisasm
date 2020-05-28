@@ -84,7 +84,7 @@ block_next(EA,EA_next):-
 block_next(EA,EA_next):-
     block_last_instruction(_,EA),
     jump_table_start(EA,Size,TableReference,TableReference,_),
-    //FIMXE: Do better propagation of the jump table.
+    //FIXME: Do better propagation of the jump table.
     relative_address(_,Size,TableReference,EA_next).
 
 //////////////////////////////////////////////////////////////////////////////
