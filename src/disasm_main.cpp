@@ -196,7 +196,14 @@ int main(int argc, char **argv)
     }
     if(prog)
     {
-        std::cout << "Disassembling " << std::flush;
+        if(vm.count("debug-dir") != 0)
+        {
+            std::cout << "Writing facts to debug dir " << vm["debug-dir"].as<std::string>()
+                      << std::endl;
+            auto dir = vm["debug-dir"].as<std::string>() + "/";
+            writeFacts(prog, dir);
+        }
+        std::cout << "Disassembling" << std::flush;
         unsigned int NThreads = vm["threads"].as<unsigned int>();
         prog->setNumThreads(NThreads);
         auto StartDisassembling = std::chrono::high_resolution_clock::now();
@@ -274,10 +281,9 @@ int main(int argc, char **argv)
 
         if(vm.count("debug-dir") != 0)
         {
-            std::cout << "Writing facts to debug dir " << vm["debug-dir"].as<std::string>()
+            std::cout << "Writing results to debug dir " << vm["debug-dir"].as<std::string>()
                       << std::endl;
             auto dir = vm["debug-dir"].as<std::string>() + "/";
-            writeFacts(prog, dir);
             prog->printAll(dir);
         }
         performSanityChecks(prog, vm.count("self-diagnose") != 0);
