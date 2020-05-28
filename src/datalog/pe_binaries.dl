@@ -262,17 +262,6 @@ relative_address(EA+Size,Size,Ref,Dest):-
     possible_ea(Dest),
     !relative_address_start(EA+Size,_,_,_).
 
-symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first",Scale):-
-    jump_table_start(_,Size,_,Reference,_),
-    symbol_minus_symbol_candidate(EA,Size,Reference,_,"first",Scale),
-    !jump_table_start(_,_,EA+Size,_,_),
-    data_word(EA+Size,Size,Diff), Size > 1,
-    Symbol = Reference + Diff,
-    code(Symbol).
-    // TODO: These would be nice, can we use them?
-    // preferred_data_access(EA+Size,Label),
-    // data_access_pattern(Label,Size,Size,_).
-
 // the call to main is right after the call to "__p___argc"
 main_function(EA):-
     code(EA1),
