@@ -63,7 +63,7 @@ cp -r ./$BASE_DIRECTORY ../
 cp $BASE_DIRECTORY/bin/*.dll ./bin
 
 # We don't run the tests on the debug build because they take over 3 hours.
-if [ "$BUILD_TYPE" == 'Release' ]; then
+if [ "$BUILD_TYPE" == 'RelWithDebInfo' ]; then
   DDISASM_BIN=$(cygpath -w $(pwd)/bin)
   PATH="$PATH;$DDISASM_BIN" cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && C:\\PROGRA~1\\CMake\\bin\\ctest.exe -V"
 fi
