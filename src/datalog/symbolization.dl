@@ -572,9 +572,29 @@ data_object_point(EA,Size,"other",1,"data access xmm"):-
 //range mismatch
 data_object_conflict(EA,Size,Type,EA2,Size2,Type2):-
     data_object_candidate(EA,Size,Type),
+    data_object_candidate_range(EA,EA2),
     data_object_candidate(EA2,Size2,Type2),
     EA2 > EA,
     EA2 < EA+Size.
+
+// FIXME: This is an optimization until souffle supports range queries.
+// Currently souffle cannot filter predicates based on inequalities
+// so the range mismatch for data_object_conflict is quadratic on
+// the size of data_object_candidate. To avoid that we can use this
+// auxiliary predicate so each data_object_candidate is only matched by a limited
+// number of other data_object_candidate.
+
+// A data_object_candidate starting at address EAStart has a byte at address EA.
+.decl data_object_candidate_range(EAStart:address,EA:address)
+
+data_object_candidate_range(EAStart, EAStart+1):-
+    data_object_candidate(EAStart,Size,_),
+    Size > 0.
+
+data_object_candidate_range(EAStart,EA+1):-
+    data_object_candidate_range(EAStart,EA),
+    data_object_candidate(EAStart,Size,_),
+    EA+1 < Size.
 
 //size mismatch
 data_object_conflict(EA,Size,Type,EA,Size2,Type2):-
