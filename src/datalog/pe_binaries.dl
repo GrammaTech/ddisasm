@@ -178,6 +178,9 @@ base_relative_address(EA+4,Ref,Val):-
     !data_access_pattern(EA+4,1,1,_),
     Val > 0.
 
+labeled_data_candidate(EA):-
+    base_relative_address_start(EA,_,_).
+
 .decl base_relative_symbolic_data(EA:address,Size:number,Value:address)
 
 symbol_minus_symbol_candidate(EA,4,ImageBase,ImageBase+Val,"first",1),
