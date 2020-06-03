@@ -3,6 +3,12 @@ variables:
   LOCAL_IMAGE_NAME: '$CI_BUILD_REF_NAME-$CI_PIPELINE_ID'
   GTIRB_BRANCH: "master"
 
+before_script:
+  - case "$(uname -s)" in
+        CYGWIN*) systeminfo;;
+        *) docker info;;
+    esac
+
 stages:
   - check-format
   - build
