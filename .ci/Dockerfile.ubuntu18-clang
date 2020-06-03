@@ -63,9 +63,11 @@ ENV PATH=/ddisasm/build/bin:$PATH
 COPY . /ddisasm
 
 # Install ehp
-RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DEHP_BUILD_SHARED_LIBS=OFF && cd build &&  make && make install
+ARG BUILD_TYPE=RelWithDebInfo
+RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DEHP_BUILD_SHARED_LIBS=OFF && cd build &&  make && make install
 
-RUN cd /ddisasm && cmake ./  -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DLIEF_ROOT=/usr/ && cd build && make
+# Build ddisasm
+RUN cd /ddisasm && cmake ./  -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DLIEF_ROOT=/usr/ -DCMAKE_BUILD_TYPE=$BUILD_TYPE && cd build && make
 
 ARG CPACK_GENERATOR=""
 RUN if [ ! -z "${CPACK_GENERATOR}" ] ; then cd /ddisasm/build && cpack -G "${CPACK_GENERATOR}"; fi
