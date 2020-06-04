@@ -12,7 +12,7 @@ RUN apt-get -y update && apt-get -y install curl dpkg-dev software-properties-co
 RUN add-apt-repository ppa:mhier/libboost-latest
 
 # setup apt repository
-COPY DDISASM-*-Linux.deb /gt/apt-repo/
+COPY ddisasm*x.deb /gt/apt-repo/
 COPY libcapstone-dev_*_amd64.deb /gt/apt-repo/
 COPY gtirb-ubuntu18-artifacts.zip /gt/apt-repo/
 COPY gtirb-pprinter-ubuntu18-artifacts.zip /gt/apt-repo/

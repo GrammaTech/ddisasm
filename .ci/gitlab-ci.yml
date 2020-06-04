@@ -39,7 +39,7 @@ stages:
     # Extra packages
     - cp /u4/TARBALLS/debloat/pkgs/libcapstone-dev_4.0.1-gt1_amd64.deb ./
     - git clone https://git.zephyr-software.com/opensrc/libehp.git && pushd libehp && git reset --hard ddb106c4c1e521bf4b282d17e2a8abf0aa0fe721 && popd
-    - docker build -f .ci/Dockerfile.${OS}-${COMPILER} -t ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} --build-arg CPACK_GENERATOR=${CPACK_GENERATOR} .
+    - docker build -f .ci/Dockerfile.${OS}-${COMPILER} -t ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} --build-arg CPACK_GENERATOR=${CPACK_GENERATOR} --build-arg CMAKE_BUILD_TYPE=$BUILD_TYPE .
 
 .build-windows-template: &build-windows
   artifacts:
@@ -81,6 +81,7 @@ build-ubuntu16-gcc:
     OS: 'ubuntu16'
     COMPILER: 'gcc'
     CPACK_GENERATOR: 'DEB'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *build
 
 build-ubuntu18-gcc:
@@ -89,6 +90,7 @@ build-ubuntu18-gcc:
     OS: 'ubuntu18'
     COMPILER: 'gcc'
     CPACK_GENERATOR: 'DEB'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *build
 
 build-arch-gcc:
@@ -97,6 +99,7 @@ build-arch-gcc:
     OS: 'arch'
     COMPILER: 'gcc'
     CPACK_GENERATOR: 'TGZ'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *build
 
 build-ubuntu16-clang:
@@ -104,6 +107,7 @@ build-ubuntu16-clang:
   variables:
     OS: 'ubuntu16'
     COMPILER: 'clang'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *build
 
 build-ubuntu18-clang:
@@ -111,6 +115,7 @@ build-ubuntu18-clang:
   variables:
     OS: 'ubuntu18'
     COMPILER: 'clang'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *build
 
 build-arch-clang:
@@ -118,6 +123,7 @@ build-arch-clang:
   variables:
     OS: 'arch'
     COMPILER: 'clang'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *build
 
 build-windows-msvc-debug:
