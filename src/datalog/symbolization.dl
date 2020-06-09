@@ -84,6 +84,10 @@ This module also computes and symbol_minus_symbol.
 .decl labeled_data(ea:address)
 .output labeled_data
 
+// How data sections are divided into elements by labels or data objects
+.decl data_object_boundary(EA:address)
+.output data_object_boundary
+
 // labels of un-initialized data
 .decl bss_data(ea:address)
 .output bss_data
@@ -666,7 +670,7 @@ labeled_data(EA):-
     !moved_label(Src,_,EA,_).
 
 labeled_data(EA):-
-    address_in_data_refined(Src,EA),
+    symbolic_data(Src,_,EA),
     !moved_data_label(Src,_,EA,_).
 
 labeled_data(EA_moved):-
@@ -678,6 +682,17 @@ labeled_data(New_dest):-
 labeled_data(EA):-
     symbol_minus_symbol(_,_,EA,_,_);
     symbol_minus_symbol(_,_,_,EA,_).
+
+labeled_data(EA):-
+    fde_entry(_,_,_,_,_,EA).
+
+data_object_boundary(EA):-
+    labeled_data(EA);
+    symbolic_data(EA,_,_);
+    string(EA,_);
+    symbol_minus_symbol(EA,_,_,_,_);
+    symbolic_expr_from_relocation(EA,_,_,_);
+    moved_data_label(EA,_,_,_).
 
 /////////////////////////////////////////////////////////////////////////////////
 // This facts specifies that a label should be printed in the .bss section for
