@@ -35,11 +35,12 @@
 #include "DatalogUtils.h"
 #include "DlDecoder.h"
 #include "GtirbModuleDisassembler.h"
-#include "GtirbZeroBuilder.h"
 #include "Version.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
+
+#include "gtirb-builder/GtirbBuilder.h"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -80,8 +81,8 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<DataDirectories>();
     gtirb::AuxDataContainer::registerAuxDataType<PeImportedSymbols>();
     gtirb::AuxDataContainer::registerAuxDataType<PeExportedSymbols>();
-    gtirb::AuxDataContainer::registerAuxDataType<InitialDataDirectories>();
-    gtirb::AuxDataContainer::registerAuxDataType<InitialImportEntries>();
+    gtirb::AuxDataContainer::registerAuxDataType<DataDirectories>();
+    gtirb::AuxDataContainer::registerAuxDataType<ImportEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<SymbolicExpressionSizes>();
     gtirb::AuxDataContainer::registerAuxDataType<DdisasmVersion>();
 }
@@ -169,33 +170,32 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    std::cout << "Building the initial gtirb representation " << std::flush;
+    auto StartBuildZeroIR = std::chrono::high_resolution_clock::now();
     std::string filename = vm["input-file"].as<std::string>();
-    if(!fs::exists(filename))
+    auto GTIRB = GtirbBuilder::read(filename);
+    if(!GTIRB)
     {
-        std::cerr << "Error: input binary " << filename << " does not exist" << std::endl;
+        std::cerr << "\nERROR: " << filename << ": " << GTIRB.getError().message() << "\n";
         return 1;
     }
-
-    std::cout << "Building the initial gtirb representation " << std::flush;
-    gtirb::Context context;
-
-    auto StartBuildZeroIR = std::chrono::high_resolution_clock::now();
-    gtirb::IR *ir = buildZeroIR(filename, context);
+    // Add `ddisasmVersion' aux data table.
+    GTIRB->IR->addAuxData<gtirb::schema::DdisasmVersion>(DDISASM_FULL_VERSION_STRING);
     printElapsedTimeSince(StartBuildZeroIR);
 
-    if(!ir)
+    if(!GTIRB->IR)
     {
         std::cerr << "There was a problem loading the binary file " << filename << "\n";
         return 1;
     }
-    gtirb::Module &module = *(ir->modules().begin());
+    gtirb::Module &Module = *(GTIRB->IR->modules().begin());
     souffle::SouffleProgram *prog;
     {
         DlDecoder decoder;
         std::cout << "Decoding the binary " << std::flush;
         auto StartDecode = std::chrono::high_resolution_clock::now();
         std::vector<std::string> DisasmOptions = createDisasmOptions(vm);
-        prog = decoder.decode(module, DisasmOptions);
+        prog = decoder.decode(Module, DisasmOptions);
         printElapsedTimeSince(StartDecode);
     }
     if(prog)
@@ -222,14 +222,14 @@ int main(int argc, char **argv)
         printElapsedTimeSince(StartDisassembling);
         std::cout << "Populating gtirb representation " << std::flush;
         auto StartGtirbBuilding = std::chrono::high_resolution_clock::now();
-        disassembleModule(context, module, prog, vm.count("self-diagnose") != 0);
+        disassembleModule(*GTIRB->Context, Module, prog, vm.count("self-diagnose") != 0);
         printElapsedTimeSince(StartGtirbBuilding);
 
         if(vm.count("skip-function-analysis") == 0)
         {
             std::cout << "Computing intra-procedural SCCs " << std::flush;
             auto StartSCCsComputation = std::chrono::high_resolution_clock::now();
-            computeSCCs(module);
+            computeSCCs(Module);
             printElapsedTimeSince(StartSCCsComputation);
             std::cout << "Computing no return analysis " << std::flush;
             NoReturnPass NoReturn;
@@ -240,24 +240,24 @@ int main(int argc, char **argv)
                 FunctionInference.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
             }
             auto StartNoReturnAnalysis = std::chrono::high_resolution_clock::now();
-            NoReturn.computeNoReturn(module, NThreads);
+            NoReturn.computeNoReturn(Module, NThreads);
             printElapsedTimeSince(StartNoReturnAnalysis);
             std::cout << "Detecting additional functions " << std::flush;
             auto StartFunctionAnalysis = std::chrono::high_resolution_clock::now();
-            FunctionInference.computeFunctions(context, module, NThreads);
+            FunctionInference.computeFunctions(*GTIRB->Context, Module, NThreads);
             printElapsedTimeSince(StartFunctionAnalysis);
         }
         // Output GTIRB
         if(vm.count("ir") != 0)
         {
             std::ofstream out(vm["ir"].as<std::string>(), std::ios::out | std::ios::binary);
-            ir->save(out);
+            GTIRB->IR->save(out);
         }
         // Output json GTIRB
         if(vm.count("json") != 0)
         {
             std::ofstream out(vm["json"].as<std::string>());
-            ir->saveJSON(out);
+            GTIRB->IR->saveJSON(out);
         }
         // Pretty-print
         gtirb_pprint::PrettyPrinter pprinter;
@@ -274,13 +274,13 @@ int main(int argc, char **argv)
             std::cout << "Printing assembler " << std::flush;
             auto StartPrinting = std::chrono::high_resolution_clock::now();
             std::ofstream out(vm["asm"].as<std::string>());
-            pprinter.print(out, context, module);
+            pprinter.print(out, *GTIRB->Context, Module);
             printElapsedTimeSince(StartPrinting);
         }
         else if(vm.count("ir") == 0)
         {
             std::cout << "Printing assembler" << std::endl;
-            pprinter.print(std::cout, context, module);
+            pprinter.print(std::cout, *GTIRB->Context, Module);
         }
 
         if(vm.count("debug-dir") != 0)

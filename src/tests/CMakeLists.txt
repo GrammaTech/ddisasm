@@ -8,7 +8,8 @@ else()
   set(SYSLIBS)
 endif()
 
-add_executable(TestDdisasm Main.Test.cpp SccPass.Test.cpp NoReturnPass.Test.cpp)
+add_executable(TestDdisasm Main.Test.cpp SccPass.Test.cpp NoReturnPass.Test.cpp
+                           ElfReader.Test.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_link_libraries(
@@ -18,6 +19,7 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
     gtest
     gtest_main
     gtirb
+    gtirb_builder
     scc_pass
     no_return_pass)
   target_link_options(${PROJECT_NAME} PRIVATE
@@ -30,6 +32,7 @@ else()
     gtest
     gtest_main
     gtirb
+    gtirb_builder
     scc_pass
     -Wl,--whole-archive
     no_return_pass
@@ -45,6 +48,8 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_compile_options(${PROJECT_NAME} PRIVATE -EHsc)
   target_link_options(${PROJECT_NAME} PRIVATE /NODEFAULTLIB:LIBCMTD)
+  set_msvc_lief_options(${PROJECT_NAME})
+  set_common_msvc_options(${PROJECT_NAME})
 endif()
 
 # Add tests to make test

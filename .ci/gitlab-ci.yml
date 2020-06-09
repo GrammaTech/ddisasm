@@ -1,6 +1,7 @@
 variables:
   DOCKER_REGISTRY: "docker.grammatech.com"
   LOCAL_IMAGE_NAME: '$CI_BUILD_REF_NAME-$CI_PIPELINE_ID'
+  GTIRB_BRANCH: "master"
 
 stages:
   - check-format
@@ -22,14 +23,10 @@ stages:
        arch) JOB_NAME='package-arch' ;;
        esac
     # Acquire gtirb artifacts
-    - GTIRB_BRANCH=$(sed -e '/find_package(gtirb /!d' -e 's/[^.0-9]//g' CMakeLists.txt)
-    - GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_branch(//') || echo v${GTIRB_BRANCH:?})
-    - "echo \"GTIRB_BRANCH is: $GTIRB_BRANCH\""
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=${JOB_NAME} --output "gtirb-${OS}-artifacts.zip"
     - unzip -l gtirb-${OS}-artifacts.zip
     # Acquire gtirb pprinter artifacts
-    - GTIRB_PPRINTER_BRANCH=$(sed -e '/find_package(gtirb_pprinter /!d' -e 's/[^.0-9]//g' CMakeLists.txt)
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo v${GTIRB_PPRINTER_BRANCH:?})
+    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
     - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter-${OS}-artifacts.zip"
     - unzip -l gtirb-pprinter-${OS}-artifacts.zip
@@ -55,8 +52,6 @@ stages:
       else
           PUSH_TAG=$CI_COMMIT_REF_SLUG;
       fi
-    - GTIRB_BRANCH=$(sed -e '/find_package(gtirb /!d' -e 's/[^.0-9]//g' CMakeLists.txt)
-    - GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_branch(//') || echo v${GTIRB_BRANCH:?})
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=python-wheel --output "gtirb-wheel.zip"
     - unzip gtirb-wheel.zip
     - mkdir gtirb-wheel && cp *.whl gtirb-wheel/
@@ -242,13 +237,9 @@ cleanup-arch-clang:
        arch) JOB_NAME='package-arch' ;;
        esac
     # Acquire gtirb artifacts
-    - GTIRB_BRANCH=$(sed -e '/find_package(gtirb /!d' -e 's/[^.0-9]//g' CMakeLists.txt)
-    - GTIRB_BRANCH=$((grep -Eo "check_gtirb_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_branch(//') || echo v${GTIRB_BRANCH:?})
-    - "echo \"GTIRB_BRANCH is: $GTIRB_BRANCH\""
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=${JOB_NAME} --output "gtirb-${OS}-artifacts.zip"
     # Acquire gtirb pprinter artifacts
-    - GTIRB_PPRINTER_BRANCH=$(sed -e '/find_package(gtirb_pprinter /!d' -e 's/[^.0-9]//g' CMakeLists.txt)
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo v${GTIRB_PPRINTER_BRANCH:?})
+    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
     - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter-${OS}-artifacts.zip"
     # Acquire extra packages

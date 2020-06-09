@@ -31,9 +31,8 @@
 #include <string>
 
 #include "AuxDataSchema.h"
-#include "BinaryReader.h"
 #include "ExceptionDecoder.h"
-#include "GtirbZeroBuilder.h"
+#include "gtirb-builder/ElfReader.h"
 
 namespace souffle
 {
@@ -44,32 +43,27 @@ namespace souffle
         return t;
     }
 
-    souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Relocation &relocation)
+    souffle::tuple &operator<<(souffle::tuple &t, const ElfRelocation &ElfRelocation)
     {
-        t << relocation.address << relocation.type << relocation.name << relocation.addend;
+        auto &[Addr, Type, Name, Addend] = ElfRelocation;
+        t << Addr << Type << Name << Addend;
         return t;
     }
 
-    souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Symbol &symbol)
+    souffle::tuple &operator<<(souffle::tuple &t, const DataDirectory &DataDirectory)
     {
-        t << symbol.address << symbol.size << symbol.type << symbol.scope << symbol.sectionIndex
-          << symbol.name;
+        auto &[Type, Address, Size] = DataDirectory;
+        t << Address << Size << Type;
         return t;
     }
 
-    souffle::tuple &operator<<(souffle::tuple &t,
-                               const InitialAuxData::DataDirectory &DataDirectory)
+    souffle::tuple &operator<<(souffle::tuple &t, const ImportEntry &ImportEntry)
     {
-        t << DataDirectory.address << DataDirectory.size << DataDirectory.type;
+        auto &[Address, Ordinal, Function, Library] = ImportEntry;
+        t << Address << Ordinal << Function << Library;
         return t;
     }
 
-    souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::ImportEntry &ImportEntry)
-    {
-        t << ImportEntry.iat_address << ImportEntry.ordinal << ImportEntry.function
-          << ImportEntry.library;
-        return t;
-    }
 } // namespace souffle
 
 std::string getFileFormatString(const gtirb::FileFormat format)
@@ -162,25 +156,17 @@ DlDecoder::~DlDecoder()
 souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module,
                                            const std::vector<std::string> &DisasmOptions)
 {
-    const gtirb::FileFormat format = module.getFileFormat();
-
     assert(module.getSize() && "Module has non-calculable size.");
     gtirb::Addr minAddr = *module.getAddress();
 
     assert(module.getAddress() && "Module has non-addressable section data.");
     gtirb::Addr maxAddr = *module.getAddress() + *module.getSize();
 
-    auto *extraInfoTable = module.getAuxData<gtirb::schema::ElfSectionProperties>();
-    if(!extraInfoTable)
-        throw std::logic_error("missing elfSectionProperties AuxData table");
     for(auto &section : module.sections())
     {
-        auto found = extraInfoTable->find(section.getUUID());
-        if(found == extraInfoTable->end())
-            throw std::logic_error("Section " + section.getName()
-                                   + " missing from elfSectionProperties AuxData table");
-        SectionProperties &extraInfo = found->second;
-        if(isExeSection(format, extraInfo))
+        bool is_executable = section.isFlagSet(gtirb::SectionFlag::Executable);
+        bool is_initialized = section.isFlagSet(gtirb::SectionFlag::Initialized);
+        if(is_executable)
         {
             for(auto &byteInterval : section.byte_intervals())
             {
@@ -188,7 +174,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module,
                 storeDataSection(byteInterval, minAddr, maxAddr);
             }
         }
-        if(isNonZeroDataSection(format, extraInfo))
+        if(is_initialized)
         {
             for(auto &byteInterval : section.byte_intervals())
             {
@@ -208,8 +194,6 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module,
 void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
 {
     assert(byteInterval.getAddress() && "Failed to decode section without address.");
-    assert(byteInterval.getSize() == byteInterval.getInitializedSize()
-           && "Failed to decode section with partially initialized byte interval.");
 
     gtirb::Addr ea = byteInterval.getAddress().value();
     uint64_t size = byteInterval.getInitializedSize();
@@ -237,8 +221,6 @@ void DlDecoder::storeDataSection(const gtirb::ByteInterval &byteInterval, gtirb:
                                  gtirb::Addr max_address)
 {
     assert(byteInterval.getAddress() && "Failed to store section without address.");
-    assert(byteInterval.getSize() == byteInterval.getInitializedSize()
-           && "Failed to store section with partially initialized byte interval.");
 
     auto can_be_address = [min_address, max_address](gtirb::Addr num) {
         return ((num >= min_address) && (num <= max_address));
@@ -285,17 +267,21 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
     GtirbToDatalog::addToRelation<std::vector<gtirb::Addr>>(prog, "base_address",
                                                             {module.getPreferredAddr()});
 
-    GtirbToDatalog::addToRelation(prog, "relocation",
-                                  *module.getAuxData<gtirb::schema::Relocations>());
-    module.removeAuxData<gtirb::schema::Relocations>();
-    if(module.getFileFormat() == gtirb::FileFormat::PE)
+    if(auto *Relocations = module.getAuxData<gtirb::schema::Relocations>())
     {
-        GtirbToDatalog::addToRelation(prog, "data_directory",
-                                      *module.getAuxData<gtirb::schema::InitialDataDirectories>());
-        module.removeAuxData<gtirb::schema::InitialDataDirectories>();
-        GtirbToDatalog::addToRelation(prog, "import_entry",
-                                      *module.getAuxData<gtirb::schema::InitialImportEntries>());
-        module.removeAuxData<gtirb::schema::InitialImportEntries>();
+        GtirbToDatalog::addToRelation(prog, "relocation", *Relocations);
+        module.removeAuxData<gtirb::schema::Relocations>();
+    }
+
+    if(auto *DataDirectories = module.getAuxData<gtirb::schema::DataDirectories>())
+    {
+        GtirbToDatalog::addToRelation(prog, "data_directory", *DataDirectories);
+    }
+
+    if(auto *ImportEntries = module.getAuxData<gtirb::schema::ImportEntries>())
+    {
+        GtirbToDatalog::addToRelation(prog, "import_entry", *ImportEntries);
+        module.removeAuxData<gtirb::schema::ImportEntries>();
     }
 
     GtirbToDatalog::addToRelation(prog, "instruction_complete", instructions);
@@ -305,8 +291,10 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
     GtirbToDatalog::addToRelation(prog, "op_regdirect", op_dict.regTable);
     GtirbToDatalog::addToRelation(prog, "op_immediate", op_dict.immTable);
     GtirbToDatalog::addToRelation(prog, "op_indirect", op_dict.indirectTable);
+
     addSymbols(prog, module);
     addSections(prog, module);
+
     ExceptionDecoder excDecoder(module);
     excDecoder.addExceptionInformation(prog);
 }

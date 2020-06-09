@@ -24,13 +24,23 @@
 #ifndef DDISASM_AUXDATASCHEMA_H
 #define DDISASM_AUXDATASCHEMA_H
 
-#include <gtirb/gtirb.hpp>
 #include <map>
 #include <string>
 #include <tuple>
 #include <vector>
-#include "BinaryReader.h"
-#include "GtirbZeroBuilder.h"
+
+#include <gtirb/gtirb.hpp>
+
+using ElfRelocation = std::tuple<uint64_t, std::string, std::string, int64_t>;
+using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>;
+using SectionProperties = std::tuple<uint64_t, uint64_t>;
+
+// DataDirectory: (type, addr, size).
+using DataDirectory = std::tuple<std::string, uint64_t, uint64_t>;
+// ImportEntry: (iat_address, ordinal, function, library).
+using ImportEntry = std::tuple<uint64_t, int64_t, std::string, std::string>;
+// ExportEntry: (address, ordinal, name).
+using ExportEntry = std::tuple<uint64_t, int64_t, std::string>;
 
 /// \file AuxDataSchema.h
 /// \ingroup AUXDATA_GROUP
@@ -69,7 +79,7 @@ namespace gtirb
         struct Relocations
         {
             static constexpr const char* Name = "relocations";
-            typedef std::set<InitialAuxData::Relocation> Type;
+            typedef std::set<ElfRelocation> Type;
         };
 
         /// \brief Auxiliary data covering data object encoding specifiers.
@@ -128,7 +138,7 @@ namespace gtirb
         struct DataDirectories
         {
             static constexpr const char* Name = "dataDirectories";
-            typedef std::vector<std::tuple<std::string, uint64_t, uint64_t>> Type;
+            typedef std::vector<DataDirectory> Type;
         };
 
         /// \brief Auxiliary data for the UUIDs of imported symbols in a PE file.
@@ -145,18 +155,11 @@ namespace gtirb
             typedef std::vector<gtirb::UUID> Type;
         };
 
-        /// \brief Auxiliary data that tracks data directories for windows binaries.
-        struct InitialDataDirectories
-        {
-            static constexpr const char* Name = "InitialDataDirectories";
-            typedef std::vector<InitialAuxData::DataDirectory> Type;
-        };
-
         /// \brief Auxiliary data representing the import table of a PE file.
-        struct InitialImportEntries
+        struct ImportEntries
         {
-            static constexpr const char* Name = "InitialImportEntries";
-            typedef std::vector<InitialAuxData::ImportEntry> Type;
+            static constexpr const char* Name = "importEntries";
+            typedef std::vector<ImportEntry> Type;
         };
 
         /// \brief Auxiliary data that stores the size of symbolic expressions.
