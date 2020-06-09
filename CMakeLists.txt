@@ -5,7 +5,33 @@
 # Need 3.9 to support CXX_STANDARD=17 and protobuf
 cmake_minimum_required(VERSION 3.9.0)
 
-project(DDISASM)
+# Get version
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/version.txt" ver)
+
+string(REGEX MATCH "VERSION_MAJOR ([0-9]*)" _ ${ver})
+set(DDISASM_MAJOR_VERSION ${CMAKE_MATCH_1})
+
+string(REGEX MATCH "VERSION_MINOR ([0-9]*)" _ ${ver})
+set(DDISASM_MINOR_VERSION ${CMAKE_MATCH_1})
+
+string(REGEX MATCH "VERSION_PATCH ([0-9]*)" _ ${ver})
+set(DDISASM_PATCH_VERSION ${CMAKE_MATCH_1})
+
+project(
+  DDISASM
+  VERSION
+    "${DDISASM_MAJOR_VERSION}.${DDISASM_MINOR_VERSION}.${DDISASM_PATCH_VERSION}"
+)
+
+execute_process(
+  COMMAND git log --pretty=format:%h -n 1
+  OUTPUT_VARIABLE DDISASM_BUILD_REVISION
+  ERROR_QUIET)
+if(DDISASM_BUILD_REVISION STREQUAL "")
+  set(DDISASM_BUILD_REVISION "UNKNOWN")
+endif()
+
+string(TIMESTAMP DDISASM_BUILD_DATE "%Y-%m-%d")
 
 #
 # Global Options (CMake)
@@ -86,24 +112,69 @@ endif()
 # ---------------------------------------------------------------------------
 # gtirb
 # ---------------------------------------------------------------------------
-
-find_package(gtirb REQUIRED)
+find_package(gtirb 1.8.6 REQUIRED)
 
 # ---------------------------------------------------------------------------
 # pretty-printer
 # ---------------------------------------------------------------------------
-
-find_package(gtirb_pprinter REQUIRED)
+find_package(gtirb_pprinter 1.2.7 REQUIRED)
+check_gtirb_pprinter_branch(windows-support)
 
 # ---------------------------------------------------------------------------
 # libehp
 # ---------------------------------------------------------------------------
 
-find_package(ehp REQUIRED)
+# ehp builds the necessary cmake files, but does not install them. If
+# find_package fails, fall back to looking for the library and header file
+# directly.
+
+if(NOT ehp_LIBRARIES OR NOT ehp_INCLUDE_DIR)
+  find_package(ehp QUIET)
+  if(ehp_FOUND)
+    # When find_package finds ehp, it runs add_library(ehp) which this project
+    # must link against by name.
+    set(ehp_LIBRARIES ehp)
+  else()
+    find_library(
+      ehp_LIBRARIES
+      NAMES ehp
+      HINTS ${ehp_ROOT}/lib $ENV{ehp_ROOT}/lib)
+    if(ehp_LIBRARIES)
+      message(STATUS "Found ehp: ${ehp_LIBRARIES}")
+    else()
+      message(
+        SEND_ERROR
+          "could not find ehp library file\n"
+          "Try setting \"ehp_ROOT\" to the ehp installation directory, or set "
+          "\"ehp_DIR\" to the ehp build directory.")
+    endif()
+
+    find_path(
+      ehp_INCLUDE_DIR
+      NAMES ehp.hpp
+      HINTS ${ehp_ROOT}/include $ENV{ehp_ROOT}/include)
+    if(ehp_INCLUDE_DIR)
+      message(STATUS "Found ehp: ${ehp_INCLUDE_DIR}")
+    else()
+      message(
+        SEND_ERROR
+          "could not find ehp header file: ehp.hpp\n"
+          "Try setting \"ehp_ROOT\" to the ehp installation directory, or set "
+          "\"ehp_DIR\" to the ehp build directory.")
+    endif()
+  endif()
+endif()
 
 # ---------------------------------------------------------------------------
 # Boost
 # ---------------------------------------------------------------------------
+#
+# Note: we would like to use std::filsystem. However, currently, std::filesystem
+# is not provided in clang 6 or gcc 7, both of which are the default installed
+# versions for Ubuntu 18. Instead in that context, one can use the
+# "experimental" version fo filesystem. But we've decided that it's simpler to
+# just use boost::filesystem instead until we (eventually) drop support for
+# Ubuntu 18.
 set(BOOST_COMPONENTS filesystem program_options system)
 find_package(Boost 1.67 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
 
@@ -130,7 +201,15 @@ else()
   find_library(CAPSTONE NAMES libcapstone.a)
 endif()
 
-if(NOT CAPSTONE)
+if(CAPSTONE)
+  find_program(CSTOOL "cstool")
+  execute_process(COMMAND "${CSTOOL}" "-v" OUTPUT_VARIABLE CSTOOL_VERSION)
+  string(REGEX MATCH "v([0-9]+\.[0-9]+\.[0-9]+)" CSTOOL_VERSION
+               "${CSTOOL_VERSION}")
+  set(CSTOOL_VERSION "${CMAKE_MATCH_1}")
+endif()
+
+if(NOT CAPSTONE OR "${CSTOOL_VERSION}" VERSION_LESS "4.0.1")
   message(
     FATAL_ERROR
       " No Capstone installation found.\n"
@@ -154,7 +233,7 @@ list(APPEND CMAKE_MODULE_PATH ${LIEF_ROOT}/share/LIEF/cmake)
 include(FindLIEF)
 
 # Find LIEF
-find_package(LIEF REQUIRED COMPONENTS STATIC)
+find_package(LIEF 0.10.0 REQUIRED COMPONENTS STATIC)
 
 # ---------------------------------------------------------------------------
 # Google Test Application
@@ -220,9 +299,9 @@ endif()
 # ---------------------------------------------------------------------------
 set(CMAKE_PROJECT_HOMEPAGE_URL https://github.com/grammatech/ddisasm)
 
-# set(CPACK_PACKAGE_VERSION_MAJOR ${DDISASM_MAJOR_VERSION})
-# set(CPACK_PACKAGE_VERSION_MINOR ${DDISASM_MINOR_VERSION})
-# set(CPACK_PACKAGE_VERSION_PATCH ${DDISASM_PATCH_VERSION})
+set(CPACK_PACKAGE_VERSION_MAJOR ${DDISASM_MAJOR_VERSION})
+set(CPACK_PACKAGE_VERSION_MINOR ${DDISASM_MINOR_VERSION})
+set(CPACK_PACKAGE_VERSION_PATCH ${DDISASM_PATCH_VERSION})
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
     "A fast disassembler which is accurate enough for the resulting assembly code to be reassembled. The disassembler implemented using the datalog (souffle) declarative logic programming language to compile disassembly rules and heuristics."
 )
@@ -230,6 +309,10 @@ set(CPACK_PACKAGE_VEDOR "GrammaTech Inc.")
 set(CPACK_PACKAGE_CONTACT gtirb@grammatech.com)
 set(CPACK_PACKAGE_DESCRIPTION_FILE ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
 set(CPACK_PACKAGE_RESOURCE_FILE_LICENSE ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt)
+
+set(CPACK_DEBIAN_PACKAGE_DEPENDS
+    "libstdc++6, libc6, libgcc1, libgomp1, libgtirb (>=${gtirb_VERSION}), libgtirb-pprinter (>=${gtirb_pprinter_VERSION}), libboost-dev (>=1.67) | libboost1.67-dev, libcapstone-dev (=1:4.0.1-gt1)"
+)
 
 set(CPACK_DEBIAN_PACKAGE_SECTION devel)
 

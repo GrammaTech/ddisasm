@@ -15,11 +15,9 @@ RUN cd souffle && cp include/souffle/RamTypes.h /usr/include/souffle/
 
 FROM ubuntu:16.04
 
-ENV LD_LIBRARY_PATH /usr/local/lib:$LD_LIBRARY_PATH
-
-ARG CMAKE_VERSION=3.9
+ARG CMAKE_VERSION=3.10
 ARG BOOST_VERSION=1.67
-ARG PROTOBUF_VERSION=3.7.0
+ARG PROTOBUF_VERSION=3.1.0-0ubuntu1~maarten0
 ARG CXX_COMPILER=clang++-8
 
 # Use bash for more convenient variable substitution syntax
@@ -27,8 +25,7 @@ SHELL ["/bin/bash", "-c"]
 
 # Install common packages
 RUN apt-get -y update && \
-    apt-get -y install apt-transport-https curl gcc-arm-linux-gnueabi \
-    git make python3 python3-pip qemu software-properties-common wget
+    apt-get -y install apt-transport-https curl git make python3 python3-pip qemu software-properties-common unzip wget
 
 # Install libstdc++
 RUN add-apt-repository ppa:jonathonf/gcc-7.1 && \
@@ -59,31 +56,12 @@ COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
 RUN curl -SL https://cmake.org/files/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.0-Linux-x86_64.tar.gz \
     |tar -xz --strip-components=1 -C /usr/local
 
-RUN ldconfig
-
-# Install Boost
+# Install boost and protobuf
 RUN add-apt-repository ppa:mhier/libboost-latest && \
+    add-apt-repository ppa:maarten-fonville/protobuf && \
     apt-get -y update && \
-    apt-get -y install libboost${BOOST_VERSION}-dev
-
-# Install protobuf
-RUN cd /usr/local/src \
-    && wget https://github.com/google/protobuf/releases/download/v${PROTOBUF_VERSION}/protobuf-cpp-${PROTOBUF_VERSION}.tar.gz \
-    && tar xf protobuf-cpp-${PROTOBUF_VERSION}.tar.gz \
-    && cd protobuf-${PROTOBUF_VERSION} \
-    && ./configure \
-    && make \
-    && make install \
-    && cd .. \
-    && rm -rf protobuf-${PROTOBUF_VERSION} protobuf-cpp-${PROTOBUF_VERSION}.tar.gz
-RUN ldconfig
-
-# Install capstone
-RUN cd /usr/local/src \
-    && git clone -b next https://github.com/GrammaTech/capstone.git \
-    && cd capstone \
-    && CAPSTONE_ARCHS=x86 ./make.sh \
-    && CAPSTONE_ARCHS=x86 ./make.sh install
+    apt-get -y install libboost${BOOST_VERSION}-dev libprotobuf-dev=$PROTOBUF_VERSION \
+        protobuf-compiler=$PROTOBUF_VERSION
 
 # Install LIEF
 RUN cd /usr/local/src \
@@ -95,24 +73,29 @@ RUN cd /usr/local/src \
     && make \
     && make install
 
-COPY . /ddisasm
+COPY libcapstone-dev_*_amd64.deb /ddisasm/
+COPY gtirb-ubuntu16-artifacts.zip /ddisasm/
+COPY gtirb-pprinter-ubuntu16-artifacts.zip /ddisasm/
+
+# Install capstone
+RUN dpkg -i /ddisasm/libcapstone-dev_*_amd64.deb
 
 # Install GTIRB
-RUN rm -rf /ddisasm/gtirb/build /ddisasm/gtirb/CMakeCache.txt /ddisasm/gtirb/CMakeFiles /ddisasm/gtirb/CMakeScripts
-RUN cd /ddisasm/gtirb/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DGTIRB_JAVA_API=OFF && cd build && which sudo 2>&1 >/dev/null && sudo make install || make install
+RUN unzip -o /ddisasm/gtirb-ubuntu16-artifacts.zip && dpkg -i libgtirb.deb libgtirb-dev.deb
 
 # Install gtirb-pprinter
-RUN rm -rf /ddisasm/gtirb-pprinter/build /ddisasm/gtirb-pprinter/CMakeCache.txt /ddisasm/gtirb-pprinter/CMakeFiles /ddisasm/gtirb-pprinter/CMakeScripts
-RUN cd /ddisasm/gtirb-pprinter/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build && make && make install
-
-# Install ehp
-RUN rm -rf /ddisasm/libehp/build /ddisasm/libehp/CMakeCache.txt /ddisasm/libehp/CMakeFiles /ddisasm/libehp/CMakeScripts
-RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} && cd build &&  make && make install
+RUN unzip -o /ddisasm/gtirb-pprinter-ubuntu16-artifacts.zip && dpkg -i libgtirb-pprinter.deb libgtirb-pprinter-dev.deb gtirb-pprinter.deb
 
 ENV TERM xterm
 ENV PATH=/ddisasm/build/bin:$PATH
 
-RUN /ddisasm/.ci/build-linux.sh ${CXX_COMPILER}
+COPY . /ddisasm
+
+# Install ehp
+RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DEHP_BUILD_SHARED_LIBS=OFF && cd build &&  make && make install
+
+RUN cd /ddisasm && cmake ./  -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DLIEF_ROOT=/usr/ && cd build && make
+
 ARG CPACK_GENERATOR=""
 RUN if [ ! -z "${CPACK_GENERATOR}" ] ; then cd /ddisasm/build && cpack -G "${CPACK_GENERATOR}"; fi
 

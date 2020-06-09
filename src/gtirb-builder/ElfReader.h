@@ -1,6 +1,6 @@
-//===- GtirbZeroBuilder.h ---------------------------------------*- C++ -*-===//
+//===- ElfReader.h ----------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2020 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,34 +20,25 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#ifndef ELF_GTIRB_BUILDER_H_
+#define ELF_GTIRB_BUILDER_H_
 
-#include <gtirb/gtirb.hpp>
+#include "./GtirbBuilder.h"
 
-#ifndef GTIRB_ZERO_BUILDER_H_
-#define GTIRB_ZERO_BUILDER_H_
-
-struct ElfSymbolInfo
+class ElfReader : public GtirbBuilder
 {
-    uint64_t Size;
-    std::string Type;
-    std::string Scope;
-    std::string Visibility;
-    uint64_t SectionIndex;
+public:
+    ElfReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary);
+
+protected:
+    std::shared_ptr<LIEF::ELF::Binary> Elf;
+
+    void buildSections() override;
+    void buildSymbols() override;
+    void addEntryBlock() override;
+    void addAuxData() override;
+
+    std::string getRelocationType(const LIEF::ELF::Relocation &Entry);
 };
 
-template <>
-struct gtirb::auxdata_traits<ElfSymbolInfo>
-{
-    static std::string type_name();
-    static void toBytes(const ElfSymbolInfo& Object, to_iterator It);
-    static from_iterator fromBytes(ElfSymbolInfo& Object, from_iterator It);
-};
-
-using SectionProperties = std::tuple<uint64_t, uint64_t>;
-bool isAllocatedSection(const gtirb::FileFormat format, int flags);
-bool isNonZeroDataSection(const gtirb::FileFormat format, const SectionProperties& s);
-bool isExeSection(const gtirb::FileFormat format, const SectionProperties& s);
-
-gtirb::IR* buildZeroIR(const std::string& filename, gtirb::Context& context);
-
-#endif // GTIRB_ZERO_BUILDER_H_
+#endif // ELF_GTIRB_BUILDER_H_

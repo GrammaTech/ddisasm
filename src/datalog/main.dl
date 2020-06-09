@@ -119,6 +119,8 @@ This module:
 .decl binary_isa(isa:symbol)
 .input binary_isa
 
+.decl option(Option:symbol)
+.input option
 
 // instructions
 

@@ -118,7 +118,7 @@ base_relative_operand(EA_used,Op_index,Value):-
 
 .decl base_relative_symbolic_operand(EA:address,Index:number,Dest:address)
 
-symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value),
+symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value,1),
 base_relative_symbolic_operand(EA,Op_index,Value):-
     base_relative_operand(EA,Op_index,Value),
     instruction_displacement_offset(EA,Op_index,Disp_offset),
@@ -172,19 +172,22 @@ base_relative_address_start(EA,EA,Val):-
 base_relative_address(EA+4,Ref,Val):-
     base_relative_address(EA,Ref,_),
     data_word(EA+4,4,Val),
-    // FIXME: Not working for sqlite /Ox
-    // propagated_data_access(EA,4,Ref),
+    propagated_data_access(EA,4,Ref),
     !arch.is_nop(EA+4),
     !base_relative_address_start(EA+4,_,_),
     !data_access_pattern(EA+4,1,1,_),
     Val > 0.
 
+labeled_data_candidate(EA):-
+    base_relative_address_start(EA,_,_).
+
 .decl base_relative_symbolic_data(EA:address,Size:number,Value:address)
 
-symbol_minus_symbol_candidate(EA,4,ImageBase,ImageBase+Val,"first"),
+symbol_minus_symbol_candidate(EA,4,ImageBase,ImageBase+Val,"first",1),
 base_relative_symbolic_data(EA,4,Val):-
     base_relative_address(EA,_,Val),
-    base_address(ImageBase).
+    base_address(ImageBase),
+    code(ImageBase+Val).
 
 // TODO: Create use-def component for block candidates.
 //   OR  Treat these as address arrays instead of jump tables?
@@ -203,8 +206,7 @@ relative_address_start(ImageBase+Offset,Mult,ImageBase+Offset,ImageBase+Val):-
     base_address(ImageBase),
     instruction_get_operation(EA,"MOV"),
     instruction_get_src_op(EA,_,Op),
-    op_indirect(Op,_,_,_,Mult,Offset,Size),
-    Offset > 0,
+    op_indirect(Op,_,_,_,Mult,Offset,Size), Offset > 0,
     Mult * 8 = Size,
     (Mult = 4; Mult = 8),
     data_word(ImageBase+Offset,Mult,Val),
@@ -234,6 +236,34 @@ dos_header_symbolic_operand(EA,Dest):-
     op_indirect(Op,_,_,_,_,_,Size),
     Dest > ImageBase,
     Dest < ImageBase + 64.
+
+// lea R8,QWORD PTR [$L_180016d58]  ; load offset-table
+// mov R8,QWORD PTR [R8+RDX*8-16]   ; index into offset-table
+// lea R9,QWORD PTR [$L_180015e50]  ; load base address
+// add R8,R9
+// call R8
+// Detect potential label-relative offset table before data analyses.
+relative_address(Table,8,Ref,Dest),
+relative_address_start(Table,8,Ref,Dest):-
+    // loads table address
+    take_address(EA1,Table),
+    next(EA1,EA2),
+    // indexes table
+    arch.mov(EA2),
+    next(EA2,EA3),
+    // loads reference address
+    take_address(EA3,Ref),
+    data_word(Table,8,Diff),
+    Dest = Ref + Diff,
+    possible_ea(Dest).
+
+relative_address(EA+Size,Size,Ref,Dest):-
+    binary_format("PE"), Size > 4,
+    relative_address(EA,Size,Ref,_),
+    data_word(EA+Size,Size,Diff),
+    Dest = Ref+Diff,
+    possible_ea(Dest),
+    !relative_address_start(EA+Size,_,_,_).
 
 // the call to main is right after the call to "__p___argc"
 main_function(EA):-

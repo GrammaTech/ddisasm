@@ -57,12 +57,12 @@ instruction_memory_access_size(EA,Index,SizeAccess):-
     ).
 
 //there is a data access at EA in the operand Op_index
-.decl data_access(EA:address,Op_index:operand_index,Reg1:register,Reg2:register,Reg3:register,Mult:number,Offset:number,Size:number)
+.decl data_access(EA:address,Op_index:operand_index,RegSegment:register,RegBase:register,RegIndex:register,Mult:number,Offset:number,Size:number)
 
-data_access(EA,Op_index,Reg1,Reg2,Reg3,Mult,Offset,Size):-
+data_access(EA,Op_index,RegSegment,RegBase,RegIndex,Mult,Offset,Size):-
     code(EA),
     instruction_get_op(EA,Op_index,Op),
-    op_indirect(Op,Reg1,Reg2,Reg3,Mult,Offset,_),
+    op_indirect(Op,RegSegment,RegBase,RegIndex,Mult,Offset,_),
     instruction_memory_access_size(EA,Op_index,Size).
 
 // the register Reg has the given value at instruction EA and operand Op_index
@@ -224,23 +224,35 @@ data_access_pattern(Address,Size,Multiplier,From):-
 
 possible_data_limit(EA):-
     labeled_data_candidate(EA);
-    data_access_pattern(EA,_,_,_);
     data_segment(_,EA).
+
+.decl last_data_limit(EA:address,Where:address)
+
+last_data_limit(EA+1,EA):-
+    possible_data_limit(EA),
+    data_byte(EA+1,_).
+
+last_data_limit(EA+1,Where):-
+    last_data_limit(EA,Where),
+    data_byte(EA+1,_),
+    !possible_data_limit(EA).
 
 .decl last_data_access(EA:address,Where:address)
 
 last_data_access(EA+1,EA):-
-    possible_data_limit(EA),
+    data_access_pattern(EA,_,_,_),
     data_byte(EA+1,_).
 
 last_data_access(EA+1,Where):-
     last_data_access(EA,Where),
     data_byte(EA+1,_),
-    !possible_data_limit(EA).
-
+    !data_access_pattern(EA,_,_,_).
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
-// This code performs the propagation
+// This code performs the propagation of data accesses according to their multiplier
+// One data access is propagated through the data section until the next one is found.
+// Once the next one is found, we can still propagate if the data accesses are "synchronized"
+// i.e. they have the same multiplier or they are accessed from the same address in code.
 
 
 .decl propagated_data_access(EA:address,Mult:number,EA_ref:address)
@@ -251,26 +263,45 @@ propagated_data_access(EA,Mult,EA):-
     // This is just easier and gives us enough information.
     Mult >= 0.
 
+
+// For all the range where the access at EA_access is the last one (using last_data_access),
+// we can propagate the data access at all points, in regular intervals using Mult,
+// at the same time (without a recursive rule).
+// This is much more efficient than the recursive rule below.
+propagated_data_access(EA_prop,Mult,EA_access):-
+    last_data_access(EA_prop,EA_access),
+    data_access_pattern(EA_access,_,Mult,_), Mult > 0,
+    (EA_prop - EA_access) % Mult = 0,
+    // no collision with data limits
+    !possible_data_limit(EA_prop),
+    last_data_limit(EA_prop,LastDataLimit), LastDataLimit <= EA_access,
+    // no direct collision with data accesses
+    (
+        !data_access_pattern(EA_prop,_,_,_);
+        // unless accessed from same address
+        data_access_pattern(EA_prop,S,0,From),
+        data_access_pattern(EA_access,S,Mult,From)
+    ).
+
+// If there have been data accesses in between, we still propagate
+// previous data accesses as long as they have the same multiplier
+// and the don't collide directly.
 propagated_data_access(EA+Mult,Mult,EA_ref):-
     propagated_data_access(EA,Mult,EA_ref),
-    data_byte(EA+Mult,_),
-    // no collision with next data access pattern
+    // There is a data access in between
+    last_data_access(EA+Mult,LastDataAccess), LastDataAccess > EA,
+    //But it is "synchronized": It has the same multiplier and it does not collide
+    data_access_pattern(LastDataAccess,Size,Mult,_),
+    LastDataAccess+Size <= EA+Mult,
+    // no collision with data limits
+    !possible_data_limit(EA+Mult),
+    last_data_limit(EA+Mult,LastDataLimit), LastDataLimit <= EA,
+    // no direct collision with data accesses
     (
-        !possible_data_limit(EA+Mult)
-        ;
-        // single access from the same address
-        possible_data_limit(EA+Mult),
+        !data_access_pattern(EA+Mult,_,_,_);
+        // unless accessed from same address
         data_access_pattern(EA+Mult,S,0,From),
         data_access_pattern(EA_ref,S,Mult,From)
-    ),
-    //no collision with other data access pattern in between
-    last_data_access(EA+Mult,Last),
-    (
-        Last <= EA
-        ;
-        Last > EA,
-        data_access_pattern(Last,Size,Mult,_),
-        Last+Size <= EA+Mult
     ).
 
 preferred_data_access(EA,EA_label):-

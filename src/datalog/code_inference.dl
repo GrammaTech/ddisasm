@@ -186,7 +186,8 @@ block_limit(EA):-
         pc_relative_operand(_,_,EA);
         basic_target(EA);
         instruction_has_loop_prefix(EA);
-        fde_addresses(_,EA)
+        fde_addresses(_,EA);
+        lsda_callsite_addresses(_,EA, _)
     ).
 
 // The targets are computed incrementally now as we traverse the code
@@ -435,8 +436,7 @@ discarded_block(Block2):-
 
 block_points(Block,0,-6,"possible relative-jump-table start"):-
     block_is_overlapping(Block),
-    relative_address(Block,_,_,_),
-    take_address(_,Block).
+    relative_address_start(Block,_,_,_).
 
 block_points(Block,0,0,"basic point"):-
     block_is_overlapping(Block),

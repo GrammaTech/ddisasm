@@ -43,30 +43,39 @@ set(DATALOG_SOURCES
     datalog/x64/jump_operations.dl
     datalog/x64/registers.dl)
 
+set(SOUFFLE_DATALOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/datalog/)
+set(GENERATED_X64_CPP souffle_disasm_x64.cpp)
 if(WIN32)
-  set(SOUFFLE_DISASM_MAIN
-      "$$(wslpath ${CMAKE_CURRENT_SOURCE_DIR}/datalog/main.dl)")
+  set(GENERATED_X64_CPP_PATH
+      "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_x64.cpp)")
 else()
-  set(SOUFFLE_DISASM_MAIN ${CMAKE_CURRENT_SOURCE_DIR}/datalog/main.dl)
+  set(GENERATED_X64_CPP_PATH ${CMAKE_BINARY_DIR}/src/souffle_disasm_x64.cpp)
 endif()
 
-set(GENERATED_X64_CPP "${CMAKE_BINARY_DIR}/src/souffle_disasm_x64.cpp")
 add_custom_command(
   OUTPUT ${GENERATED_X64_CPP}
          # Souffle includes the path of the output file in the generated program
          # name. Change directory and use a relative path so the name does not
          # depend on build location.
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/datalog/"
-  COMMAND ${SOUFFLE} main.dl -g ${GENERATED_X64_CPP} -jauto -MISA=1
+  WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
+  COMMAND ${SOUFFLE} main.dl -g ${GENERATED_X64_CPP_PATH} -jauto -MISA=1
   DEPENDS ${DATALOG_SOURCES})
-set(GENERATED_ARM32_CPP "${CMAKE_BINARY_DIR}/src/souffle_disasm_arm32.cpp")
+
+set(GENERATED_ARM32_CPP souffle_disasm_arm32.cpp)
+if(WIN32)
+  set(GENERATED_ARM32_CPP_PATH
+      "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_arm32.cpp)")
+else()
+  set(GENERATED_ARM32_CPP_PATH ${CMAKE_BINARY_DIR}/src/souffle_disasm_arm32.cpp)
+endif()
+
 add_custom_command(
   OUTPUT ${GENERATED_ARM32_CPP}
          # Souffle includes the path of the output file in the generated program
          # name. Change directory and use a relative path so the name does not
          # depend on build location.
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/datalog/"
-  COMMAND ${SOUFFLE} main.dl -g ${GENERATED_ARM32_CPP} -jauto -MISA=2
+  WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
+  COMMAND ${SOUFFLE} main.dl -g ${GENERATED_ARM32_CPP_PATH} -jauto -MISA=2
   DEPENDS ${DATALOG_SOURCES})
 
 # determine what flags to use to specify -fopenmp.
@@ -191,40 +200,39 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
 else()
   target_compile_options(datalog_utils PRIVATE -O3)
 endif()
+
 # ====== passes ============
 
 add_subdirectory(passes)
+
+# ====== builder ===========
+
+add_subdirectory(gtirb-builder)
 
 # ===== souffle_disasm =====
 # First build a static library of all the non-generated code.. This is just a
 # hack to get CMake to use different compile flags (because the generated
 # souffle code won't build with -Wall -Werror).
-add_library(
-  disasm_main STATIC
-  disasm_main.cpp DlDecoder.cpp ExceptionDecoder.cpp
-  GtirbModuleDisassembler.cpp GtirbZeroBuilder.cpp LIEFBinaryReader.cpp)
+add_library(disasm_main STATIC disasm_main.cpp DlDecoder.cpp
+                               ExceptionDecoder.cpp GtirbModuleDisassembler.cpp)
+
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Version.h.in"
+               "${CMAKE_BINARY_DIR}/include/Version.h" @ONLY)
+target_include_directories(
+  disasm_main PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
+if(ehp_INCLUDE_DIR)
+  target_include_directories(disasm_main PRIVATE ${ehp_INCLUDE_DIR})
+endif()
 
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(disasm_main PRIVATE ${OPENMP_FLAGS})
+
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_compile_definitions(disasm_main PRIVATE _CRT_SECURE_NO_WARNINGS)
   target_compile_definitions(disasm_main PRIVATE _CRT_NONSTDC_NO_WARNINGS)
 
-  # Warnings from LIEF
-  target_compile_options(
-    disasm_main PRIVATE -wd4245) # conversion from 'type1' to 'type2',
-                                 # signed/unsigned mismatch
-  target_compile_options(
-    disasm_main PRIVATE -wd4146) # unary minus operator applied to unsigned
-                                 # type, result still unsigned
-  target_compile_options(
-    disasm_main PRIVATE -wd4267) # conversion from 'size_t' to 'type', possible
-                                 # loss of data
-  target_compile_options(
-    disasm_main PRIVATE -wd4359) # actual alignment (8) is greater than the
-                                 # value specified in __declspec(align())
-
+  set_msvc_lief_options(disasm_main)
   set_common_msvc_options(disasm_main)
 else()
   target_compile_options(disasm_main PRIVATE -O3)
@@ -237,84 +245,17 @@ if(${GTIRB_USE_SYSTEM_BOOST} MATCHES "OFF")
   add_dependencies(disasm_main Boost)
 endif()
 
-# ============ Detect how to use <experimental/filesystem>
-# ============================
-include(CheckCXXSourceCompiles)
-
-# Detect how to use <experimental/filesystem> for non-msvc compilers.  On the
-# latest version of MSVC, the experimental filesystem library is deprecated.
-set(USE_STD_FILESYSTEM_LIB_DEFAULT OFF)
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  set(USE_STD_FILESYSTEM_LIB_DEFAULT ON)
-endif()
-
-option(
-  USE_STD_FILESYSTEM_LIB
-  "Use the standard filesystem library instead of the experimental filesystem library"
-  ${USE_STD_FILESYSTEM_LIB_DEFAULT})
-
-if(USE_STD_FILESYSTEM_LIB)
-  add_definitions(-DUSE_STD_FILESYSTEM_LIB)
-else()
-  set(EXPERIMENTAL_LIB
-      ""
-      CACHE
-        STRING
-        "The library to link with in order to use <experimental/filesystem>.")
-
-  if(NOT EXPERIMENTAL_LIB)
-    set(EXFS_CODE
-        "
-    #include <experimental/filesystem>
-    int main() {
-      std::experimental::filesystem::path p{\"an/example/path\"};
-      return std::experimental::filesystem::exists(p);
-    }
-    ")
-
-    check_cxx_source_compiles("${EXFS_CODE}" EXFS_LINK_NONE)
-
-    if(NOT EXFS_LINK_NONE)
-      foreach(EXFS_LIB stdc++fs c++experimental c++fs)
-        set(OLD_CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
-        list(APPEND CMAKE_REQUIRED_LIBRARIES ${EXFS_LIB})
-        check_cxx_source_compiles("${EXFS_CODE}" EXFS_LINK_${EXFS_LIB}_OK)
-        set(CMAKE_REQUIRED_LIBRARIES ${OLD_CMAKE_REQUIRED_LIBRARIES})
-
-        if(EXFS_LINK_${EXFS_LIB}_OK)
-          if(EXPERIMENTAL_LIB)
-            message(
-              FATAL_ERROR
-                "multiple candidates for library to link for <experimental/filesystem>: ${EXPERIMENTAL_LIB} and ${EXFS_LIB}. Try giving the correct one explicitly with -DEXPERIMENTAL_LIB."
-            )
-          endif()
-          set(EXPERIMENTAL_LIB ${EXFS_LIB})
-        endif()
-      endforeach()
-
-      if(NOT EXPERIMENTAL_LIB)
-        message(
-          FATAL_ERROR
-            "could not find library to link for <experimental/filesystem>. Try giving it explicitly with -DEXPERIMENTAL_LIB."
-        )
-      endif()
-    endif()
-  endif()
-endif()
-
-target_include_directories(disasm_main PUBLIC ${LIEF_INCLUDE_DIRS})
-
 target_link_libraries(
   disasm_main
   gtirb
   gtirb_pprinter
-  ehp
+  gtirb_builder
   datalog_utils
   ${CAPSTONE}
   ${Boost_LIBRARIES}
+  ${ehp_LIBRARIES}
   ${EXPERIMENTAL_LIB}
-  ${LIBCPP_ABI}
-  ${LIEF_LIBRARIES})
+  ${LIBCPP_ABI})
 
 # Now combine the static library and generated code into an executable.
 add_executable(ddisasm ${GENERATED_X64_CPP} ${GENERATED_ARM32_CPP})
