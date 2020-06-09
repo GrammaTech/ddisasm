@@ -330,18 +330,6 @@ std::vector<T> convertRelation(const std::string &relation, souffle::SouffleProg
     return result;
 }
 
-template <>
-std::vector<gtirb::Addr> convertRelation<gtirb::Addr>(const std::string &relation,
-                                                      souffle::SouffleProgram *prog)
-{
-    std::vector<gtirb::Addr> result;
-    for(auto &output : *prog->getRelation(relation))
-    {
-        result.emplace_back(output[0]);
-    };
-    return result;
-}
-
 template <typename Container, typename Elem = typename Container::value_type>
 Container convertSortedRelation(const std::string &relation, souffle::SouffleProgram *prog)
 {
@@ -351,6 +339,18 @@ Container convertSortedRelation(const std::string &relation, souffle::SoufflePro
         Elem elem(output);
         result.insert(elem);
     }
+    return result;
+}
+
+template <>
+std::set<gtirb::Addr> convertSortedRelation<std::set<gtirb::Addr>>(const std::string &relation,
+                                                                   souffle::SouffleProgram *prog)
+{
+    std::set<gtirb::Addr> result;
+    for(auto &output : *prog->getRelation(relation))
+    {
+        result.insert(gtirb::Addr(output[0]));
+    };
     return result;
 }
 
@@ -692,9 +692,7 @@ void buildCodeBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
 
 void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
 {
-    std::vector<gtirb::Addr> bssData = convertRelation<gtirb::Addr>("bss_data", prog);
-    std::sort(bssData.begin(), bssData.end());
-
+    auto bssData = convertSortedRelation<std::set<gtirb::Addr>>("bss_data", prog);
     for(auto &output : *prog->getRelation("bss_section"))
     {
         std::string sectionName;
@@ -704,10 +702,9 @@ void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
             continue;
         // for each bss section we divide in data objects according to the bss_data markers that
         // fall within the range of the section
-        auto beginning =
-            std::lower_bound(bssData.begin(), bssData.end(), bss_section->getAddress().value());
+        auto beginning = bssData.lower_bound(bss_section->getAddress().value());
         // end points to the address at the end of the bss section
-        auto end = std::lower_bound(bssData.begin(), bssData.end(), addressLimit(*bss_section));
+        auto end = bssData.lower_bound(*addressLimit(*bss_section));
         for(auto i = beginning; i != end; ++i)
         {
             auto next = i;
@@ -736,6 +733,7 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
     auto dataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", prog);
     auto symbolSpecialTypes =
         convertSortedRelation<VectorByEA<SymbolSpecialType>>("symbol_special_encoding", prog);
+    auto DataBoundary = convertSortedRelation<std::set<gtirb::Addr>>("data_object_boundary", prog);
     std::map<gtirb::UUID, std::string> typesTable;
 
     std::map<gtirb::Offset, uint64_t> SymbolicSizes;
@@ -744,6 +742,8 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
     {
         gtirb::Addr begin, end;
         output >> begin >> end;
+        // we don't create data blocks that exceed the data segment
+        DataBoundary.insert(end);
         for(auto currentAddr = begin; currentAddr < end;
             /*incremented in each case*/)
         {
@@ -752,10 +752,12 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
             {
                 if(gtirb::ByteInterval &byteInterval = *it.begin(); byteInterval.getAddress())
                 {
+                    // do not cross byte intervals.
+                    DataBoundary.insert(*byteInterval.getAddress() + byteInterval.getSize());
                     uint64_t blockOffset = currentAddr - *byteInterval.getAddress();
                     gtirb::Offset Offset = gtirb::Offset(byteInterval.getUUID(), blockOffset);
 
-                    // undefined symbol
+                    // symbolic expression created from relocation
                     if(const auto symbolicExpr = symbolicExprs.find(currentAddr);
                        symbolicExpr != symbolicExprs.end())
                     {
@@ -811,8 +813,9 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                     }
                     else
                     {
-                        // Store raw data
-                        d = gtirb::DataBlock::Create(context, 1);
+                        // Accumulate region with no symbols into a single DataBlock.
+                        auto NextDataObject = DataBoundary.lower_bound(currentAddr + 1);
+                        d = gtirb::DataBlock::Create(context, *NextDataObject - currentAddr);
                     }
                     // symbol special types
                     const auto specialType = symbolSpecialTypes.find(currentAddr);
@@ -1281,8 +1284,8 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
 {
     buildInferredSymbols(context, module, prog);
     buildSymbolForwarding(context, module, prog);
-    buildDataBlocks(context, module, prog);
     buildCodeBlocks(context, module, prog);
+    buildDataBlocks(context, module, prog);
     buildCodeSymbolicInformation(context, module, prog);
     buildCfiDirectives(context, module, prog);
     expandSymbolForwarding(context, module, prog);
