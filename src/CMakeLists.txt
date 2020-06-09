@@ -175,18 +175,21 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
 else()
   target_compile_options(datalog_utils PRIVATE -O3)
 endif()
+
 # ====== passes ============
 
 add_subdirectory(passes)
+
+# ====== builder ===========
+
+add_subdirectory(gtirb-builder)
 
 # ===== souffle_disasm =====
 # First build a static library of all the non-generated code.. This is just a
 # hack to get CMake to use different compile flags (because the generated
 # souffle code won't build with -Wall -Werror).
-add_library(
-  disasm_main STATIC
-  disasm_main.cpp DlDecoder.cpp ExceptionDecoder.cpp
-  GtirbModuleDisassembler.cpp GtirbZeroBuilder.cpp LIEFBinaryReader.cpp)
+add_library(disasm_main STATIC disasm_main.cpp DlDecoder.cpp
+                               ExceptionDecoder.cpp GtirbModuleDisassembler.cpp)
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Version.h.in"
                "${CMAKE_BINARY_DIR}/include/Version.h" @ONLY)
@@ -199,24 +202,12 @@ endif()
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(disasm_main PRIVATE ${OPENMP_FLAGS})
+
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_compile_definitions(disasm_main PRIVATE _CRT_SECURE_NO_WARNINGS)
   target_compile_definitions(disasm_main PRIVATE _CRT_NONSTDC_NO_WARNINGS)
 
-  # Warnings from LIEF
-  target_compile_options(
-    disasm_main PRIVATE -wd4245) # conversion from 'type1' to 'type2',
-                                 # signed/unsigned mismatch
-  target_compile_options(
-    disasm_main PRIVATE -wd4146) # unary minus operator applied to unsigned
-                                 # type, result still unsigned
-  target_compile_options(
-    disasm_main PRIVATE -wd4267) # conversion from 'size_t' to 'type', possible
-                                 # loss of data
-  target_compile_options(
-    disasm_main PRIVATE -wd4359) # actual alignment (8) is greater than the
-                                 # value specified in __declspec(align())
-
+  set_msvc_lief_options(disasm_main)
   set_common_msvc_options(disasm_main)
 else()
   target_compile_options(disasm_main PRIVATE -O3)
@@ -229,19 +220,17 @@ if(${GTIRB_USE_SYSTEM_BOOST} MATCHES "OFF")
   add_dependencies(disasm_main Boost)
 endif()
 
-target_include_directories(disasm_main PUBLIC ${LIEF_INCLUDE_DIRS})
-
 target_link_libraries(
   disasm_main
   gtirb
   gtirb_pprinter
+  gtirb_builder
   datalog_utils
   ${CAPSTONE}
   ${Boost_LIBRARIES}
   ${ehp_LIBRARIES}
   ${EXPERIMENTAL_LIB}
-  ${LIBCPP_ABI}
-  ${LIEF_LIBRARIES})
+  ${LIBCPP_ABI})
 
 # Now combine the static library and generated code into an executable.
 add_executable(ddisasm ${GENERATED_CPP})

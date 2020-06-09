@@ -31,9 +31,8 @@
 #include <string>
 
 #include "AuxDataSchema.h"
-#include "BinaryReader.h"
 #include "ExceptionDecoder.h"
-#include "GtirbZeroBuilder.h"
+#include "gtirb-builder/ElfReader.h"
 
 namespace souffle
 {
@@ -44,16 +43,10 @@ namespace souffle
         return t;
     }
 
-    souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Relocation &relocation)
+    souffle::tuple &operator<<(souffle::tuple &t, const ElfRelocation &ElfRelocation)
     {
-        t << relocation.address << relocation.type << relocation.name << relocation.addend;
-        return t;
-    }
-
-    souffle::tuple &operator<<(souffle::tuple &t, const InitialAuxData::Symbol &symbol)
-    {
-        t << symbol.address << symbol.size << symbol.type << symbol.scope << symbol.sectionIndex
-          << symbol.name;
+        auto &[Addr, Type, Name, Addend] = ElfRelocation;
+        t << Addr << Type << Name << Addend;
         return t;
     }
 
@@ -155,17 +148,11 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module,
     assert(module.getAddress() && "Module has non-addressable section data.");
     gtirb::Addr maxAddr = *module.getAddress() + *module.getSize();
 
-    auto *extraInfoTable = module.getAuxData<gtirb::schema::ElfSectionProperties>();
-    if(!extraInfoTable)
-        throw std::logic_error("missing elfSectionProperties AuxData table");
     for(auto &section : module.sections())
     {
-        auto found = extraInfoTable->find(section.getUUID());
-        if(found == extraInfoTable->end())
-            throw std::logic_error("Section " + section.getName()
-                                   + " missing from elfSectionProperties AuxData table");
-        SectionProperties &extraInfo = found->second;
-        if(isExeSection(extraInfo))
+        bool is_executable = section.isFlagSet(gtirb::SectionFlag::Executable);
+        bool is_initialized = section.isFlagSet(gtirb::SectionFlag::Initialized);
+        if(is_executable)
         {
             for(auto &byteInterval : section.byte_intervals())
             {
@@ -173,7 +160,7 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module,
                 storeDataSection(byteInterval, minAddr, maxAddr);
             }
         }
-        if(isNonZeroDataSection(extraInfo))
+        if(is_initialized)
         {
             for(auto &byteInterval : section.byte_intervals())
             {
@@ -193,8 +180,6 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module,
 void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
 {
     assert(byteInterval.getAddress() && "Failed to decode section without address.");
-    assert(byteInterval.getSize() == byteInterval.getInitializedSize()
-           && "Failed to decode section with partially initialized byte interval.");
 
     gtirb::Addr ea = byteInterval.getAddress().value();
     uint64_t size = byteInterval.getInitializedSize();
@@ -222,8 +207,6 @@ void DlDecoder::storeDataSection(const gtirb::ByteInterval &byteInterval, gtirb:
                                  gtirb::Addr max_address)
 {
     assert(byteInterval.getAddress() && "Failed to store section without address.");
-    assert(byteInterval.getSize() == byteInterval.getInitializedSize()
-           && "Failed to store section with partially initialized byte interval.");
 
     auto can_be_address = [min_address, max_address](gtirb::Addr num) {
         return ((num >= min_address) && (num <= max_address));
@@ -268,9 +251,11 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
         }
     }
 
-    GtirbToDatalog::addToRelation(prog, "relocation",
-                                  *module.getAuxData<gtirb::schema::Relocations>());
-    module.removeAuxData<gtirb::schema::Relocations>();
+    if(auto *Relocations = module.getAuxData<gtirb::schema::Relocations>())
+    {
+        GtirbToDatalog::addToRelation(prog, "relocation", *Relocations);
+        module.removeAuxData<gtirb::schema::Relocations>();
+    }
 
     GtirbToDatalog::addToRelation(prog, "instruction_complete", instructions);
     GtirbToDatalog::addToRelation(prog, "address_in_data", data_addresses);
@@ -279,8 +264,10 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
     GtirbToDatalog::addToRelation(prog, "op_regdirect", op_dict.regTable);
     GtirbToDatalog::addToRelation(prog, "op_immediate", op_dict.immTable);
     GtirbToDatalog::addToRelation(prog, "op_indirect", op_dict.indirectTable);
+
     addSymbols(prog, module);
     addSections(prog, module);
+
     ExceptionDecoder excDecoder(module);
     excDecoder.addExceptionInformation(prog);
 }

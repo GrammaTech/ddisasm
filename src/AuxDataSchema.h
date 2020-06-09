@@ -24,13 +24,16 @@
 #ifndef DDISASM_AUXDATASCHEMA_H
 #define DDISASM_AUXDATASCHEMA_H
 
-#include <gtirb/gtirb.hpp>
 #include <map>
 #include <string>
 #include <tuple>
 #include <vector>
-#include "BinaryReader.h"
-#include "GtirbZeroBuilder.h"
+
+#include <gtirb/gtirb.hpp>
+
+using ElfRelocation = std::tuple<uint64_t, std::string, std::string, int64_t>;
+using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>;
+using SectionProperties = std::tuple<uint64_t, uint64_t>;
 
 /// \file AuxDataSchema.h
 /// \ingroup AUXDATA_GROUP
@@ -69,7 +72,7 @@ namespace gtirb
         struct Relocations
         {
             static constexpr const char* Name = "relocations";
-            typedef std::set<InitialAuxData::Relocation> Type;
+            typedef std::set<ElfRelocation> Type;
         };
 
         /// \brief Auxiliary data covering data object encoding specifiers.

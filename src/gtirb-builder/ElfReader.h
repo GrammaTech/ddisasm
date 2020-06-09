@@ -1,6 +1,6 @@
-//===- GtirbZeroBuilder.h ---------------------------------------*- C++ -*-===//
+//===- ElfReader.h ----------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2020 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,19 +20,25 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#ifndef ELF_GTIRB_BUILDER_H_
+#define ELF_GTIRB_BUILDER_H_
 
-#include <gtirb/gtirb.hpp>
+#include "./GtirbBuilder.h"
 
-#ifndef GTIRB_ZERO_BUILDER_H_
-#define GTIRB_ZERO_BUILDER_H_
+class ElfReader : public GtirbBuilder
+{
+public:
+    ElfReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary);
 
-using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>;
+protected:
+    std::shared_ptr<LIEF::ELF::Binary> Elf;
 
-using SectionProperties = std::tuple<uint64_t, uint64_t>;
-bool isAllocatedSection(int flags);
-bool isNonZeroDataSection(const SectionProperties& s);
-bool isExeSection(const SectionProperties& s);
+    void buildSections() override;
+    void buildSymbols() override;
+    void addEntryBlock() override;
+    void addAuxData() override;
 
-gtirb::IR* buildZeroIR(const std::string& filename, gtirb::Context& context);
+    std::string getRelocationType(const LIEF::ELF::Relocation &Entry);
+};
 
-#endif // GTIRB_ZERO_BUILDER_H_
+#endif // ELF_GTIRB_BUILDER_H_
