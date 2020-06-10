@@ -54,13 +54,19 @@ MultiArchCapstoneHandle::MultiArchCapstoneHandle(gtirb::ISA Isa)
     switch(Isa)
     {
         case gtirb::ISA::X64:
-            cs_open(CS_ARCH_X86, CS_MODE_64, &this->RawHandle); // == CS_ERR_OK
+        {
+            cs_err Err = cs_open(CS_ARCH_X86, CS_MODE_64, &this->RawHandle);
+            assert(Err == CS_ERR_OK || "Failed to initialize X64 disassembler");
             cs_option(this->RawHandle, CS_OPT_DETAIL, CS_OPT_ON);
             break;
+        }
         case gtirb::ISA::ARM:
-            cs_open(CS_ARCH_ARM, CS_MODE_ARM, &this->RawHandle); // == CS_ERR_OK
+        {
+            cs_err Err = cs_open(CS_ARCH_ARM, CS_MODE_ARM, &this->RawHandle);
+            assert(Err == CS_ERR_OK || "Failed to initialize ARM disassembler");
             cs_option(this->RawHandle, CS_OPT_DETAIL, CS_OPT_ON);
             break;
+        }
         default:
             this->Isa = gtirb::ISA::ValidButUnsupported;
     }
