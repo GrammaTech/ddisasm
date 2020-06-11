@@ -875,6 +875,13 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
     std::map<gtirb::Symbol *, std::tuple<gtirb::Node *, bool>> ConnectToBlock;
     for(auto &Symbol : Module.symbols_by_addr())
     {
+        // FIXME:
+        std::string Name = Symbol.getName();
+        if(Name == "$a" || Name == "$d" || Name == "$t" || Name == "$x")
+        {
+            continue;
+        }
+
         if(Symbol.getAddress())
         {
             gtirb::Addr Addr = *Symbol.getAddress();
