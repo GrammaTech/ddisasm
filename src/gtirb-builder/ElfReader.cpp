@@ -109,8 +109,8 @@ void ElfReader::buildSections()
 
 void ElfReader::buildSymbols()
 {
-    std::set<std::tuple<std::string, uint64_t, uint64_t, std::string, std::string, std::string,
-                        uint64_t>>
+    std::set<std::tuple<uint64_t, uint64_t, std::string, std::string, std::string, uint64_t,
+                        std::string>>
         Symbols;
     for(auto &Symbol : Elf->symbols())
     {
@@ -129,18 +129,18 @@ void ElfReader::buildSymbols()
         }
 
         Symbols.insert({
-            Name,
             Symbol.value(),
             Symbol.size(),
             LIEF::ELF::to_string(Symbol.type()),
             LIEF::ELF::to_string(Symbol.binding()),
             LIEF::ELF::to_string(Symbol.visibility()),
             Symbol.shndx(),
+            Name,
         });
     }
 
     std::map<gtirb::UUID, ElfSymbolInfo> SymbolInfo;
-    for(auto &[Name, Value, Size, Type, Scope, Visibility, Index] : Symbols)
+    for(auto &[Value, Size, Type, Scope, Visibility, Index, Name] : Symbols)
     {
         gtirb::Symbol *S;
 
