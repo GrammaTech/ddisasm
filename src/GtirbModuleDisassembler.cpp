@@ -1310,32 +1310,52 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
 
 void shiftThumbBlocks(gtirb::Module &Module)
 {
-    std::vector<gtirb::ByteInterval *> BIs;
+    // Find thumb code blocks.
+    std::vector<std::tuple<gtirb::CodeBlock *, uint64_t>> ThumbBlocks;
     for(auto &BI : Module.byte_intervals())
     {
-        BIs.push_back(&BI);
-    }
-    for(auto *BI : BIs)
-    {
-        std::vector<gtirb::CodeBlock *> ThumbBlocks;
-        for(auto &CodeBlock : BI->code_blocks())
+        for(auto &CodeBlock : BI.code_blocks())
         {
-            if(CodeBlock.getOffset() & 1)
+            uint64_t Offset = CodeBlock.getOffset();
+            if(Offset & 1)
             {
-                ThumbBlocks.push_back(&CodeBlock);
+                ThumbBlocks.emplace_back(&CodeBlock, Offset);
             }
         }
-        for(auto *CodeBlock : ThumbBlocks)
-        {
-            gtirb::ChangeStatus Status = BI->addBlock(CodeBlock->getOffset() - 1, CodeBlock);
-            assert(Status == gtirb::ChangeStatus::Accepted && "Failed to move thumb block.");
-        }
+    }
+    // Shift thumb code blocks.
+    for(auto [CodeBlock, Offset] : ThumbBlocks)
+    {
+        gtirb::ByteInterval *BI = CodeBlock->getByteInterval();
+
+        // Remove the CodeBlock from the ByteInterval.
+        gtirb::ChangeStatus Remove = BI->removeBlock(CodeBlock);
+        assert(Remove == gtirb::ChangeStatus::Accepted && "Failed to remove thumb block.");
+
+        // Add the CodeBlock back at the original offset less one.
+        gtirb::ChangeStatus Add = BI->addBlock(Offset - 1, CodeBlock);
+        assert(Add == gtirb::ChangeStatus::Accepted && "Failed to add thumb block.");
     }
 }
 
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
                        souffle::SouffleProgram *prog, bool selfDiagnose)
 {
+    // FIXME:
+    std::vector<gtirb::Symbol *> MappingSymbols;
+    for(auto &Symbol : module.symbols())
+    {
+        std::string Name = Symbol.getName();
+        if(Name == "$a" || Name == "$d" || Name == "$t" || Name == "$x")
+        {
+            MappingSymbols.push_back(&Symbol);
+        }
+    }
+    for(auto *Symbol : MappingSymbols)
+    {
+        module.removeSymbol(Symbol);
+    }
+
     buildInferredSymbols(context, module, prog);
     buildSymbolForwarding(context, module, prog);
     buildDataDirectories(module, prog);
