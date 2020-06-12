@@ -1327,7 +1327,8 @@ void shiftThumbBlocks(gtirb::Module &Module)
         }
         for(auto *CodeBlock : ThumbBlocks)
         {
-            BI->addBlock(CodeBlock->getOffset() - 1, CodeBlock);
+            gtirb::ChangeStatus Status = BI->addBlock(CodeBlock->getOffset() - 1, CodeBlock);
+            assert(Status == gtirb::ChangeStatus::Accepted && "Failed to move thumb block.");
         }
     }
 }
