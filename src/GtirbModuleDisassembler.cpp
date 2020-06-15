@@ -881,12 +881,14 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
             if(auto It = Module.findCodeBlocksAt(Addr); !It.empty())
             {
                 gtirb::CodeBlock &Block = It.front();
+                assert(Addr == *Block.getAddress());
                 ConnectToBlock[&Symbol] = {&Block, false};
                 continue;
             }
             if(auto It = Module.findDataBlocksAt(Addr); !It.empty())
             {
                 gtirb::DataBlock &Block = It.front();
+                assert(Addr == *Block.getAddress());
                 ConnectToBlock[&Symbol] = {&Block, false};
                 continue;
             }
