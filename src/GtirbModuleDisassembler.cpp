@@ -878,6 +878,18 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
         if(Symbol.getAddress())
         {
             gtirb::Addr Addr = *Symbol.getAddress();
+            if(auto It = Module.findCodeBlocksAt(Addr); !It.empty())
+            {
+                gtirb::CodeBlock &Block = It.front();
+                ConnectToBlock[&Symbol] = {&Block, false};
+                continue;
+            }
+            if(auto It = Module.findDataBlocksAt(Addr); !It.empty())
+            {
+                gtirb::DataBlock &Block = It.front();
+                ConnectToBlock[&Symbol] = {&Block, false};
+                continue;
+            }
             if(auto It = Module.findCodeBlocksOn(Addr); !It.empty())
             {
                 gtirb::CodeBlock &Block = It.front();
@@ -887,8 +899,6 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
                               << Symbol.getName() << std::endl;
                     continue;
                 }
-                ConnectToBlock[&Symbol] = {&Block, false};
-                continue;
             }
             if(auto It = Module.findDataBlocksOn(Addr); !It.empty())
             {
@@ -899,8 +909,6 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
                               << Symbol.getName() << std::endl;
                     continue;
                 }
-                ConnectToBlock[&Symbol] = {&Block, false};
-                continue;
             }
             if(auto It = Module.findSectionsOn(Addr - 1); !It.empty())
             {
