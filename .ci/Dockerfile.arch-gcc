@@ -13,6 +13,7 @@ RUN pacman --noconfirm -Syu archlinux-keyring
 RUN sed -i "s/^\(OPT_LONG=(\)/\1'asroot' /;s/EUID == 0/1 == 0/" /usr/bin/makepkg
 RUN git clone --depth 1 https://aur.archlinux.org/yay.git /yay-aur
 RUN sed -i "s|^  cd \"\$srcdir/\$pkgname-\$pkgver\"|&\\n  sed -i 's/os.Geteuid()/1/' main.go install.go|" /yay-aur/PKGBUILD
+RUN sed -i "s/package() {/package() {\n  unset LDFLAGS/" /yay-aur/PKGBUILD
 RUN cd /yay-aur && makepkg --noconfirm -si
 RUN   useradd ddisasm && echo "ddisasm ALL=NOPASSWD: ALL" > /etc/sudoers.d/ddisasm
 RUN mkdir /home/ddisasm && chown ddisasm /home/ddisasm
