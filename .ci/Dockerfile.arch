@@ -19,33 +19,3 @@ RUN   useradd ddisasm && echo "ddisasm ALL=NOPASSWD: ALL" > /etc/sudoers.d/ddisa
 RUN mkdir /home/ddisasm && chown ddisasm /home/ddisasm
 USER ddisasm
 RUN yay --noconfirm -Sy pandoc capstone libehp-git souffle lief
-
-COPY --chown=ddisasm . /ddisasm
-
-# Install GTIRB
-RUN cd /ddisasm && unzip gtirb-arch-artifacts.zip \
-    && sudo pacman --noconfirm -U *.tar.xz \
-    && rm *.tar.xz
-
-# Install gtirb-pprinter
-RUN cd /ddisasm && unzip gtirb-pprinter-arch-artifacts.zip \
-    && sudo pacman --noconfirm -U *.tar.xz \
-    && rm *.tar.xz
-
-COPY --chown=ddisasm . /ddisasm
-
-ENV TERM xterm
-
-# Install ddisasm
-RUN mkdir /home/ddisasm/ddisasm-aur
-COPY .ci/PKGBUILD /home/ddisasm/ddisasm-aur/PKGBUILD
-RUN sudo chown -R ddisasm /home/ddisasm/ddisasm-aur/
-WORKDIR /home/ddisasm/ddisasm-aur/
-RUN sed -i 's|git://github.com/grammatech/ddisasm.git|git+file:///ddisasm|' PKGBUILD
-ARG BUILD_TYPE=RelWithDebInfo
-RUN makepkg
-RUN sudo pacman --noconfirm -U *.pkg.tar.xz
-RUN sudo mkdir -p /ddisasm/build/
-RUN sudo cp *.pkg.tar.xz /ddisasm/build/
-
-WORKDIR /ddisasm/

@@ -1,8 +1,0 @@
-ARG IMAGE="docker.grammatech.com/rewriting/ddisasm/ubuntu18-gcc"
-FROM $IMAGE
-
-WORKDIR /ddisasm/build
-ARG INSTALLER="make install"
-RUN $INSTALLER
-WORKDIR /ddisasm
-RUN PYTHONPATH=$PYTHONPATH:/ddisasm/tests python3 -m unittest end2end_test.TestSmall.test_1
