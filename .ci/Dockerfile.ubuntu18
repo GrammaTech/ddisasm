@@ -12,13 +12,13 @@ RUN cd souffle && cp include/souffle/RamTypes.h /usr/include/souffle/
 FROM ubuntu:18.04
 
 ARG BOOST_VERSION=1.67
-ARG CXX_COMPILER=g++-7
+ARG CXX_COMPILER=clang++
 
 # Use bash for more convenient variable substitution syntax
 SHELL ["/bin/bash", "-c"]
 
 # Install common packages
-RUN apt-get -y update && apt-get -y install autoconf automake clang cmake \
+RUN apt-get -y update && apt-get -y install autoconf automake clang clang-format cmake \
     curl doxygen git libprotobuf-dev libtool libstdc++-7-dev \
     make mcpp pkg-config protobuf-compiler python3 python3-pip \
     software-properties-common unzip wget zlib1g-dev
@@ -44,36 +44,20 @@ RUN cd /usr/local/src \
     && make \
     && make install
 
-COPY libcapstone-dev_*_amd64.deb /ddisasm/
-COPY gtirb-ubuntu18-artifacts.zip /ddisasm/
-COPY gtirb-pprinter-ubuntu18-artifacts.zip /ddisasm/
-
 # Install capstone
+COPY libcapstone-dev_*_amd64.deb /ddisasm/
 RUN dpkg -i /ddisasm/libcapstone-dev_*_amd64.deb
 
-# Install GTIRB
-RUN unzip -o /ddisasm/gtirb-ubuntu18-artifacts.zip && dpkg -i libgtirb.deb libgtirb-dev.deb
+# Install libehp
+RUN git clone https://git.zephyr-software.com/opensrc/libehp.git \
+    && cd libehp \
+    && git reset --hard ddb106c4c1e521bf4b282d17e2a8abf0aa0fe721 \
+    && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DEHP_BUILD_SHARED_LIBS=OFF \
+    && cd build \
+    && make && make install
 
-# Install gtirb-pprinter
-RUN unzip -o /ddisasm/gtirb-pprinter-ubuntu18-artifacts.zip && dpkg -i libgtirb-pprinter.deb libgtirb-pprinter-dev.deb gtirb-pprinter.deb
-
-ENV TERM xterm
-ENV PATH=/ddisasm/build/bin:$PATH
-
-COPY . /ddisasm
-
-# Install ehp
-ARG BUILD_TYPE=RelWithDebInfo
-RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DEHP_BUILD_SHARED_LIBS=OFF && cd build &&  make && make install
-
-# Build ddisasm
-RUN cd /ddisasm && cmake ./  -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DLIEF_ROOT=/usr/ -DCMAKE_BUILD_TYPE=$BUILD_TYPE && cd build && make
-
-ARG CPACK_GENERATOR=""
-RUN if [ ! -z "${CPACK_GENERATOR}" ] ; then \
-    cd /ddisasm/build && \
-    cpack -G "${CPACK_GENERATOR}" -D CPACK_DDISASM_DEBIAN_PACKAGE=ddisasm && \
-    cpack -G "${CPACK_GENERATOR}" -D CPACK_DDISASM_DEBIAN_PACKAGE=debug ; \
-  fi
-
-WORKDIR /ddisasm/
+RUN python3 -m pip install pre-commit
+WORKDIR /pre-commit-setup
+RUN git init
+COPY .pre-commit-config.yaml .
+RUN pre-commit install-hooks
