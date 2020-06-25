@@ -194,6 +194,10 @@ add_subdirectory(gtirb-builder)
 add_library(disasm_main STATIC disasm_main.cpp DlDecoder.cpp
                                ExceptionDecoder.cpp GtirbModuleDisassembler.cpp)
 
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
+  target_compile_options(disasm_main PRIVATE -Wno-unused-parameter)
+endif()
+
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Version.h.in"
                "${CMAKE_BINARY_DIR}/include/Version.h" @ONLY)
 target_include_directories(
@@ -262,7 +266,8 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   set_souffle_msvc_options(ddisasm)
 else()
   target_compile_options(ddisasm PRIVATE -O3)
-  target_compile_options(ddisasm PRIVATE -Wno-parentheses-equality)
+  target_compile_options(ddisasm PRIVATE -Wno-parentheses-equality
+                                         -Wno-unused-parameter)
 endif()
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
@@ -302,5 +307,5 @@ install(
   DESTINATION bin)
 
 if(NOT BUILD_SHARED_LIBS)
-  target_link_libraries(ddisasm -static-libstdc++)
+  target_link_libraries(ddisasm PRIVATE -static-libstdc++)
 endif()
