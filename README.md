@@ -35,7 +35,23 @@ should be installed:
 
 Note that these versions are newer than what your package manager may provide
 by default: This is true on Ubuntu 18, Debian 10, and others. Prefer building
-these dependencies from sources to avoid versioning problems.
+these dependencies from sources to avoid versioning problems. Alternatively,
+you can use the GrammaTech PPA to get the correct versions of the dependencies.
+
+### Ubuntu16
+```sh
+sudo add-apt-repository ppa:maarten-fonville/protobuf
+sudo add-apt-repository ppa:mhier/libboost-latest
+echo "deb https://grammatech.github.io/gtirb/pkgs/xenial ./" | sudo tee -a /etc/apt/sources.list.d/gtirb.list
+sudo apt-get update
+```
+
+### Ubuntu18
+```sh
+sudo add-apt-repository ppa:mhier/libboost-latest
+echo "deb [trusted=yes] https://grammatech.github.io/gtirb/pkgs/bionic ./" | sudo tee -a /etc/apt/sources.list.d/gtirb.list
+sudo apt-get update
+```
 
 ## Building ddisasm
 Use the following options to configure cmake:
@@ -43,8 +59,13 @@ Use the following options to configure cmake:
 - You can tell CMake which compiler to use with
   `-DCMAKE_CXX_COMPILER=<compiler>`.
 
-- Normally CMake will find GTIRB automatically, but if it does not you
-  can pass `-Dgtirb_DIR=<path-to-gtirb-build>`.
+- You can tell CMake about the paths to its dependencies as follows:
+
+ Option | Use
+ ------ | -----
+ `LIEF_ROOT` | Path to the LIEF installation dir
+ `gtirb_DIR` | Path to the GTIRB installation dir
+ `gtirb_pprinter_DIR` | Path to the gtirb-pprinter build dir
 
 - ddisasm can make use of GTIRB in static library form (instead of
  shared library form, the default) if you use the flag
@@ -65,23 +86,16 @@ Ddisasm has some dependencies which are not available in the official
 repositories, and so certain PPAs must be added to the system in order for
 Ddisasm to be installed.
 
-Instructions for adding the appropriate PPAS and installing ddisasm on each
-platform follow.
+Instructions for adding the appropriate PPAS are listed above, and can be used
+to install ddisasm as described below.
 
 ### Ubuntu16
 ```sh
-sudo add-apt-repository ppa:maarten-fonville/protobuf
-sudo add-apt-repository ppa:mhier/libboost-latest
-echo "deb https://grammatech.github.io/gtirb/pkgs/xenial ./" | sudo tee -a /etc/apt/sources.list.d/gtirb.list
-sudo apt-get update
 sudo apt-get install --allow-unauthenticated ddisasm
 ```
 
 ### Ubuntu18
 ```sh
-sudo add-apt-repository ppa:mhier/libboost-latest
-echo "deb [trusted=yes] https://grammatech.github.io/gtirb/pkgs/bionic ./" | sudo tee -a /etc/apt/sources.list.d/gtirb.list
-sudo apt-get update
 sudo apt-get install ddisasm
 ```
 
