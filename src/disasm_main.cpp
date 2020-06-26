@@ -20,12 +20,12 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include <fcntl.h>
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <chrono>
-#include <fcntl.h>
 #include <gtirb/gtirb.hpp>
 #include <gtirb_pprinter/PrettyPrinter.hpp>
 #if defined(_MSC_VER)
@@ -116,27 +116,32 @@ std::vector<std::string> createDisasmOptions(const po::variables_map &vm)
     return Options;
 }
 
-static bool isStdoutATerminal() {
+static bool isStdoutATerminal()
+{
 #if defined(_MSC_VER)
-  return _isatty(_fileno(stdout));
+    return _isatty(_fileno(stdout));
 #else
-  return isatty(fileno(stdout));
+    return isatty(fileno(stdout));
 #endif
 }
 
-static void setStdoutToBinary() {
-  // Check to see if we're running a tty vs a pipe. If a tty, then we
-  // want to warn the user if we're going to open in binary mode.
-  if (isStdoutATerminal()) {
-    std::cerr << "Refusing to set stdout to binary mode when stdout is a terminal\n";
-  } else {
+static void setStdoutToBinary()
+{
+    // Check to see if we're running a tty vs a pipe. If a tty, then we
+    // want to warn the user if we're going to open in binary mode.
+    if(isStdoutATerminal())
+    {
+        std::cerr << "Refusing to set stdout to binary mode when stdout is a terminal\n";
+    }
+    else
+    {
 #if defined(_MSC_VER)
-    _setmode(_fileno(stdout), _O_BINARY);
+        _setmode(_fileno(stdout), _O_BINARY);
 #else
-    stdout = freopen(NULL, "wb", stdout);
-    assert(stdout && "Failed to reopen stdout");
+        stdout = freopen(NULL, "wb", stdout);
+        assert(stdout && "Failed to reopen stdout");
 #endif
-  }
+    }
 }
 
 int main(int argc, char **argv)
@@ -144,27 +149,27 @@ int main(int argc, char **argv)
     registerAuxDataTypes();
 
     po::options_description desc("Allowed options");
-    desc.add_options()
-        ("help,h", "produce help message")
-        ("version", "display ddisasm version")
-        ("ir", po::value<std::string>()->implicit_value("-"), "Specifies the GTIRB output file; use '-' to print to stdout")
-        ("json", po::value<std::string>()->implicit_value("-"), "Specifies the GTIRB json output file; use '-' to print to stdout")
-        ("asm", po::value<std::string>()->implicit_value("-"), "Specifies the ASM output file; use to '-' print to stdout")
-        ("debug", "generate assembler file with debugging information")
-        ("debug-dir", po::value<std::string>(),
-         "location to write CSV files for debugging")
-        ("input-file", po::value<std::string>(), "file to disasemble")
-        ("keep-functions,K", po::value<std::vector<std::string>>()->multitoken(),
-         "Print the given functions even if they are skipped by default (e.g. _start)")
-        ("self-diagnose",
-         "Use relocation information to emit a self diagnose of the symbolization process. This "
-         "option only works if the target binary contains complete relocation information.")
-        ("skip-function-analysis,F",
-         "Skip additional analyses to compute more precise function boundaries.")
-        ("no-cfi-directives",
-         "Do not produce cfi directives. Instead it produces symbolic expressions in .eh_frame.")
-        ("threads,j", po::value<unsigned int>()->default_value(std::thread::hardware_concurrency()),
-         "Number of cores to use. It is set to the number of cores in the machine by default");
+    desc.add_options()("help,h", "produce help message")("version", "display ddisasm version")(
+        "ir", po::value<std::string>()->implicit_value("-"),
+        "Specifies the GTIRB output file; use '-' to print to stdout")(
+        "json", po::value<std::string>()->implicit_value("-"),
+        "Specifies the GTIRB json output file; use '-' to print to stdout")(
+        "asm", po::value<std::string>()->implicit_value("-"),
+        "Specifies the ASM output file; use to '-' print to stdout")(
+        "debug", "generate assembler file with debugging information")(
+        "debug-dir", po::value<std::string>(), "location to write CSV files for debugging")(
+        "input-file", po::value<std::string>(), "file to disasemble")(
+        "keep-functions,K", po::value<std::vector<std::string>>()->multitoken(),
+        "Print the given functions even if they are skipped by default (e.g. _start)")(
+        "self-diagnose",
+        "Use relocation information to emit a self diagnose of the symbolization process. This "
+        "option only works if the target binary contains complete relocation information.")(
+        "skip-function-analysis,F",
+        "Skip additional analyses to compute more precise function boundaries.")(
+        "no-cfi-directives",
+        "Do not produce cfi directives. Instead it produces symbolic expressions in .eh_frame.")(
+        "threads,j", po::value<unsigned int>()->default_value(std::thread::hardware_concurrency()),
+        "Number of cores to use. It is set to the number of cores in the machine by default");
     po::positional_options_description pd;
     pd.add("input-file", -1);
 
@@ -282,21 +287,27 @@ int main(int argc, char **argv)
         if(vm.count("ir") != 0)
         {
             std::string name = vm["ir"].as<std::string>();
-	    if (name == "-") {
+            if(name == "-")
+            {
                 setStdoutToBinary();
                 GTIRB->IR->save(std::cout);
-	    } else {
-              std::ofstream out(name, std::ios::out | std::ios::binary);
-              GTIRB->IR->save(out);
-	    }
+            }
+            else
+            {
+                std::ofstream out(name, std::ios::out | std::ios::binary);
+                GTIRB->IR->save(out);
+            }
         }
         // Output json GTIRB
         if(vm.count("json") != 0)
         {
             std::string name = vm["json"].as<std::string>();
-            if (name == "-") {
+            if(name == "-")
+            {
                 GTIRB->IR->saveJSON(std::cout);
-            } else {
+            }
+            else
+            {
                 std::ofstream out(vm["json"].as<std::string>());
                 GTIRB->IR->saveJSON(out);
             }
@@ -315,12 +326,15 @@ int main(int argc, char **argv)
         {
             std::cerr << "Printing assembler " << std::flush;
             auto StartPrinting = std::chrono::high_resolution_clock::now();
-	    std::string name = vm["asm"].as<std::string>();
-            if (name == "-") {
+            std::string name = vm["asm"].as<std::string>();
+            if(name == "-")
+            {
                 pprinter.print(std::cout, *GTIRB->Context, Module);
-            } else {
-              std::ofstream out(name);
-              pprinter.print(out, *GTIRB->Context, Module);
+            }
+            else
+            {
+                std::ofstream out(name);
+                pprinter.print(out, *GTIRB->Context, Module);
             }
             printElapsedTimeSince(StartPrinting);
         }
