@@ -91,6 +91,7 @@ function(set_common_msvc_options TARGET_NAME)
   target_compile_options(${TARGET_NAME} PRIVATE "-permissive-")
   target_compile_options(${TARGET_NAME} PRIVATE "-EHsc")
   target_compile_options(${TARGET_NAME} PRIVATE "-bigobj")
+  target_compile_options(${TARGET_NAME} PRIVATE "-wd4189")
 
   target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-D_DEBUG>)
   target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-MDd>)
