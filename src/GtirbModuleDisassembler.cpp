@@ -586,7 +586,7 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
                         [index](const auto &element) { return element.OperandIndex == index; });
        symOp != range.second)
     {
-        auto sym = getSymbol(context, module, gtirb::Addr(immediate));
+        auto sym = getSymbol(context, module, gtirb::Addr(symOp->Dest));
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
             module, ea, instruction.Size - instruction.immediateOffset, instruction.immediateOffset,
             0, sym);
