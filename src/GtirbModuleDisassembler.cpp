@@ -355,6 +355,13 @@ std::set<gtirb::Addr> convertSortedRelation<std::set<gtirb::Addr>>(const std::st
     return result;
 }
 
+std::string getLabel(uint64_t ea)
+{
+    std::stringstream ss;
+    ss << ".L_" << std::hex << ea;
+    return ss.str();
+}
+
 void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
@@ -431,13 +438,6 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
 bool isNullReg(const std::string &reg)
 {
     return reg == "NONE";
-}
-
-std::string getLabel(uint64_t ea)
-{
-    std::stringstream ss;
-    ss << ".L_" << std::hex << ea;
-    return ss.str();
 }
 
 gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::Addr ea)
