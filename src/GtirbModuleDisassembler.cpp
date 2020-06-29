@@ -375,6 +375,20 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
             }
         }
     }
+    // Rename ARM mapping symbols.
+    std::vector<gtirb::Symbol *> MappingSymbols;
+    for(auto &Symbol : module.symbols())
+    {
+        std::string Name = Symbol.getName();
+        if(Name == "$a" || Name == "$d" || Name.substr(0, 2) == "$t" || Name == "$x")
+        {
+            MappingSymbols.push_back(&Symbol);
+        }
+    }
+    for(auto *Symbol : MappingSymbols)
+    {
+        Symbol->setName(getLabel(uint64_t(*Symbol->getAddress())));
+    }
 }
 
 // auxiliary function to get a symbol with an address and name
@@ -1357,21 +1371,6 @@ void shiftThumbBlocks(gtirb::Module &Module)
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
                        souffle::SouffleProgram *prog, bool selfDiagnose)
 {
-    // FIXME:
-    std::vector<gtirb::Symbol *> MappingSymbols;
-    for(auto &Symbol : module.symbols())
-    {
-        std::string Name = Symbol.getName();
-        if(Name == "$a" || Name == "$d" || Name.substr(0, 2) == "$t" || Name == "$x")
-        {
-            MappingSymbols.push_back(&Symbol);
-        }
-    }
-    for(auto *Symbol : MappingSymbols)
-    {
-        Symbol->setName(getLabel(uint64_t(*Symbol->getAddress())));
-    }
-
     buildInferredSymbols(context, module, prog);
     buildSymbolForwarding(context, module, prog);
     buildDataDirectories(module, prog);
