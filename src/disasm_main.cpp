@@ -20,6 +20,7 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include <fcntl.h>
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 #include <boost/filesystem.hpp>
@@ -27,9 +28,15 @@
 #include <chrono>
 #include <gtirb/gtirb.hpp>
 #include <gtirb_pprinter/PrettyPrinter.hpp>
+#if defined(_MSC_VER)
+#include <io.h>
+#endif
 #include <iostream>
 #include <string>
 #include <thread>
+#if defined(__unix__)
+#include <unistd.h>
+#endif
 #include <vector>
 #include "AuxDataSchema.h"
 #include "DatalogUtils.h"
@@ -90,12 +97,12 @@ void registerAuxDataTypes()
 void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_clock> Start)
 {
     auto End = std::chrono::high_resolution_clock::now();
-    std::cout << " (";
+    std::cerr << " (";
     int secs = std::chrono::duration_cast<std::chrono::seconds>(End - Start).count();
     if(secs != 0)
-        std::cout << secs << "s)" << std::endl;
+        std::cerr << secs << "s)" << std::endl;
     else
-        std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(End - Start).count()
+        std::cerr << std::chrono::duration_cast<std::chrono::milliseconds>(End - Start).count()
                   << "ms)" << std::endl;
 }
 
@@ -108,32 +115,61 @@ std::vector<std::string> createDisasmOptions(const po::variables_map &vm)
     }
     return Options;
 }
+
+static bool isStdoutATerminal()
+{
+#if defined(_MSC_VER)
+    return _isatty(_fileno(stdout));
+#else
+    return isatty(fileno(stdout));
+#endif
+}
+
+static void setStdoutToBinary()
+{
+    // Check to see if we're running a tty vs a pipe. If a tty, then we
+    // want to warn the user if we're going to open in binary mode.
+    if(isStdoutATerminal())
+    {
+        std::cerr << "Refusing to set stdout to binary mode when stdout is a terminal\n";
+    }
+    else
+    {
+#if defined(_MSC_VER)
+        _setmode(_fileno(stdout), _O_BINARY);
+#else
+        stdout = freopen(NULL, "wb", stdout);
+        assert(stdout && "Failed to reopen stdout");
+#endif
+    }
+}
+
 int main(int argc, char **argv)
 {
     registerAuxDataTypes();
 
     po::options_description desc("Allowed options");
-    desc.add_options()                                                  //
-        ("help,h", "produce help message")                              //
-        ("version", "display ddisasm version")                          //
-        ("ir", po::value<std::string>(), "GTIRB output file")           //
-        ("json", po::value<std::string>(), "GTIRB json output file")    //
-        ("asm", po::value<std::string>(), "ASM output file")            //
-        ("debug", "generate assembler file with debugging information") //
-        ("debug-dir", po::value<std::string>(),                         //
-         "location to write CSV files for debugging")                   //
-        ("input-file", po::value<std::string>(), "file to disasemble")  //
-        ("keep-functions,K", po::value<std::vector<std::string>>()->multitoken(),
-         "Print the given functions even if they are skipped by default (e.g. _start)") //
-        ("self-diagnose",
-         "Use relocation information to emit a self diagnose of the symbolization process. This "
-         "option only works if the target binary contains complete relocation information.") //
-        ("skip-function-analysis,F",
-         "Skip additional analyses to compute more precise function boundaries.") //
-        ("no-cfi-directives",
-         "Do not produce cfi directives. Instead it produces symbolic expressions in .eh_frame.") //
-        ("threads,j", po::value<unsigned int>()->default_value(std::thread::hardware_concurrency()),
-         "Number of cores to use. It is set to the number of cores in the machine by default");
+    desc.add_options()("help,h", "produce help message")("version", "display ddisasm version")(
+        "ir", po::value<std::string>()->implicit_value("-"),
+        "Specifies the GTIRB output file; use '-' to print to stdout")(
+        "json", po::value<std::string>()->implicit_value("-"),
+        "Specifies the GTIRB json output file; use '-' to print to stdout")(
+        "asm", po::value<std::string>()->implicit_value("-"),
+        "Specifies the ASM output file; use to '-' print to stdout")(
+        "debug", "generate assembler file with debugging information")(
+        "debug-dir", po::value<std::string>(), "location to write CSV files for debugging")(
+        "input-file", po::value<std::string>(), "file to disasemble")(
+        "keep-functions,K", po::value<std::vector<std::string>>()->multitoken(),
+        "Print the given functions even if they are skipped by default (e.g. _start)")(
+        "self-diagnose",
+        "Use relocation information to emit a self diagnose of the symbolization process. This "
+        "option only works if the target binary contains complete relocation information.")(
+        "skip-function-analysis,F",
+        "Skip additional analyses to compute more precise function boundaries.")(
+        "no-cfi-directives",
+        "Do not produce cfi directives. Instead it produces symbolic expressions in .eh_frame.")(
+        "threads,j", po::value<unsigned int>()->default_value(std::thread::hardware_concurrency()),
+        "Number of cores to use. It is set to the number of cores in the machine by default");
     po::positional_options_description pd;
     pd.add("input-file", -1);
 
@@ -170,7 +206,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    std::cout << "Building the initial gtirb representation " << std::flush;
+    std::cerr << "Building the initial gtirb representation " << std::flush;
     auto StartBuildZeroIR = std::chrono::high_resolution_clock::now();
     std::string filename = vm["input-file"].as<std::string>();
     auto GTIRB = GtirbBuilder::read(filename);
@@ -202,12 +238,12 @@ int main(int argc, char **argv)
     {
         if(vm.count("debug-dir") != 0)
         {
-            std::cout << "Writing facts to debug dir " << vm["debug-dir"].as<std::string>()
+            std::cerr << "Writing facts to debug dir " << vm["debug-dir"].as<std::string>()
                       << std::endl;
             auto dir = vm["debug-dir"].as<std::string>() + "/";
             writeFacts(prog, dir);
         }
-        std::cout << "Disassembling" << std::flush;
+        std::cerr << "Disassembling" << std::flush;
         unsigned int NThreads = vm["threads"].as<unsigned int>();
         prog->setNumThreads(NThreads);
         auto StartDisassembling = std::chrono::high_resolution_clock::now();
@@ -220,18 +256,18 @@ int main(int argc, char **argv)
             souffle::SignalHandler::instance()->error(e.what());
         }
         printElapsedTimeSince(StartDisassembling);
-        std::cout << "Populating gtirb representation " << std::flush;
+        std::cerr << "Populating gtirb representation " << std::flush;
         auto StartGtirbBuilding = std::chrono::high_resolution_clock::now();
         disassembleModule(*GTIRB->Context, Module, prog, vm.count("self-diagnose") != 0);
         printElapsedTimeSince(StartGtirbBuilding);
 
         if(vm.count("skip-function-analysis") == 0)
         {
-            std::cout << "Computing intra-procedural SCCs " << std::flush;
+            std::cerr << "Computing intra-procedural SCCs " << std::flush;
             auto StartSCCsComputation = std::chrono::high_resolution_clock::now();
             computeSCCs(Module);
             printElapsedTimeSince(StartSCCsComputation);
-            std::cout << "Computing no return analysis " << std::flush;
+            std::cerr << "Computing no return analysis " << std::flush;
             NoReturnPass NoReturn;
             FunctionInferencePass FunctionInference;
             if(vm.count("debug-dir") != 0)
@@ -242,7 +278,7 @@ int main(int argc, char **argv)
             auto StartNoReturnAnalysis = std::chrono::high_resolution_clock::now();
             NoReturn.computeNoReturn(Module, NThreads);
             printElapsedTimeSince(StartNoReturnAnalysis);
-            std::cout << "Detecting additional functions " << std::flush;
+            std::cerr << "Detecting additional functions " << std::flush;
             auto StartFunctionAnalysis = std::chrono::high_resolution_clock::now();
             FunctionInference.computeFunctions(*GTIRB->Context, Module, NThreads);
             printElapsedTimeSince(StartFunctionAnalysis);
@@ -250,14 +286,31 @@ int main(int argc, char **argv)
         // Output GTIRB
         if(vm.count("ir") != 0)
         {
-            std::ofstream out(vm["ir"].as<std::string>(), std::ios::out | std::ios::binary);
-            GTIRB->IR->save(out);
+            std::string name = vm["ir"].as<std::string>();
+            if(name == "-")
+            {
+                setStdoutToBinary();
+                GTIRB->IR->save(std::cout);
+            }
+            else
+            {
+                std::ofstream out(name, std::ios::out | std::ios::binary);
+                GTIRB->IR->save(out);
+            }
         }
         // Output json GTIRB
         if(vm.count("json") != 0)
         {
-            std::ofstream out(vm["json"].as<std::string>());
-            GTIRB->IR->saveJSON(out);
+            std::string name = vm["json"].as<std::string>();
+            if(name == "-")
+            {
+                GTIRB->IR->saveJSON(std::cout);
+            }
+            else
+            {
+                std::ofstream out(vm["json"].as<std::string>());
+                GTIRB->IR->saveJSON(out);
+            }
         }
         // Pretty-print
         gtirb_pprint::PrettyPrinter pprinter;
@@ -271,21 +324,29 @@ int main(int argc, char **argv)
         }
         if(vm.count("asm") != 0)
         {
-            std::cout << "Printing assembler " << std::flush;
+            std::cerr << "Printing assembler " << std::flush;
             auto StartPrinting = std::chrono::high_resolution_clock::now();
-            std::ofstream out(vm["asm"].as<std::string>());
-            pprinter.print(out, *GTIRB->Context, Module);
+            std::string name = vm["asm"].as<std::string>();
+            if(name == "-")
+            {
+                pprinter.print(std::cout, *GTIRB->Context, Module);
+            }
+            else
+            {
+                std::ofstream out(name);
+                pprinter.print(out, *GTIRB->Context, Module);
+            }
             printElapsedTimeSince(StartPrinting);
         }
-        else if(vm.count("ir") == 0)
+        else if(vm.count("ir") == 0 && vm.count("json") == 0)
         {
-            std::cout << "Printing assembler" << std::endl;
+            std::cerr << "Printing assembler" << std::endl;
             pprinter.print(std::cout, *GTIRB->Context, Module);
         }
 
         if(vm.count("debug-dir") != 0)
         {
-            std::cout << "Writing results to debug dir " << vm["debug-dir"].as<std::string>()
+            std::cerr << "Writing results to debug dir " << vm["debug-dir"].as<std::string>()
                       << std::endl;
             auto dir = vm["debug-dir"].as<std::string>() + "/";
             prog->printAll(dir);
