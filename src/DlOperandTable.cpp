@@ -35,20 +35,24 @@ souffle::tuple &operator<<(souffle::tuple &t, const IndirectOp &op)
     return t;
 }
 
-constexpr bool operator<(const BarrierOp& LHS, const BarrierOp& RHS) noexcept {
+constexpr bool operator<(const BarrierOp &LHS, const BarrierOp &RHS) noexcept
+{
     return std::tie(LHS.value) < std::tie(RHS.value);
 }
 
-souffle::tuple& operator<<(souffle::tuple& t, const BarrierOp& op) {
+souffle::tuple &operator<<(souffle::tuple &t, const BarrierOp &op)
+{
     t << op.value;
     return t;
 }
 
-constexpr bool operator<(const PrefetchOp& LHS, const PrefetchOp& RHS) noexcept {
+constexpr bool operator<(const PrefetchOp &LHS, const PrefetchOp &RHS) noexcept
+{
     return std::tie(LHS.value) < std::tie(RHS.value);
 }
 
-souffle::tuple& operator<<(souffle::tuple& t, const PrefetchOp& op) {
+souffle::tuple &operator<<(souffle::tuple &t, const PrefetchOp &op)
+{
     t << op.value;
     return t;
 }
@@ -78,7 +82,8 @@ int64_t DlOperandTable::add(std::variant<ImmOp, RegOp, IndirectOp> op)
     return 0;
 }
 
-int64_t DlOperandTable::add(std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp> op) {
+int64_t DlOperandTable::add(std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp> op)
+{
     if(auto *imm = std::get_if<ImmOp>(&op))
         return addToTable(immTable, *imm);
     if(auto *reg = std::get_if<RegOp>(&op))

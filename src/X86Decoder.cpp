@@ -22,7 +22,7 @@ X86Decoder::~X86Decoder()
     cs_close(&this->csHandle);
 }
 
-souffle::SouffleProgram* X86Decoder::decode(gtirb::Module &module)
+souffle::SouffleProgram *X86Decoder::decode(gtirb::Module &module)
 {
     assert(module.getSize() && "Module has non-calculable size.");
     gtirb::Addr minAddr = *module.getAddress();
@@ -42,14 +42,16 @@ souffle::SouffleProgram* X86Decoder::decode(gtirb::Module &module)
         SectionProperties &extraInfo = found->second;
         if(isExeSection(extraInfo))
         {
-            for (const auto byteInterval : section.byte_intervals()) {
+            for(const auto byteInterval : section.byte_intervals())
+            {
                 decodeSection(byteInterval);
                 storeDataSection(byteInterval, minAddr, maxAddr);
             }
         }
         if(isNonZeroDataSection(extraInfo))
         {
-            for (const auto byteInterval : section.byte_intervals()) {
+            for(const auto byteInterval : section.byte_intervals())
+            {
                 storeDataSection(byteInterval, minAddr, maxAddr);
             }
         }
@@ -62,8 +64,7 @@ souffle::SouffleProgram* X86Decoder::decode(gtirb::Module &module)
     return nullptr;
 }
 
-
-void X86Decoder::decodeSection(const gtirb::ByteInterval& byteInterval)
+void X86Decoder::decodeSection(const gtirb::ByteInterval &byteInterval)
 {
     assert(byteInterval.getAddress() && "Failed to decode section without address.");
     assert(byteInterval.getSize() == byteInterval.getInitializedSize()
@@ -82,7 +83,8 @@ void X86Decoder::decodeSection(const gtirb::ByteInterval& byteInterval)
         }
         else
         {
-            instructions.push_back(GtirbToDatalog::transformInstruction(CS_ARCH_X86, csHandle, op_dict, *insn));
+            instructions.push_back(
+                GtirbToDatalog::transformInstruction(CS_ARCH_X86, csHandle, op_dict, *insn));
             cs_free(insn, count);
         }
         ++ea;
@@ -90,5 +92,3 @@ void X86Decoder::decodeSection(const gtirb::ByteInterval& byteInterval)
         --size;
     }
 }
-
-

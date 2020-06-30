@@ -167,13 +167,12 @@ endif()
 # ---------------------------------------------------------------------------
 # DWARF
 # ---------------------------------------------------------------------------
-if (BUILD_SHARED_LIBS)
+if(BUILD_SHARED_LIBS)
   find_library(DWARF NAMES dwarf)
 endif()
 
 if(NOT DWARF)
-  message(FATAL_ERROR
-  " No DWARF installation found.\n")
+  message(FATAL_ERROR " No DWARF installation found.\n")
 endif()
 
 # ---------------------------------------------------------------------------

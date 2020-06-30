@@ -6,14 +6,16 @@
 
 typedef struct user_t user_t;
 
-struct user_t {
+struct user_t
+{
     user_t* next;
     char name[BUFF_LEN];
     char password[BUFF_LEN];
     size_t balance;
 };
 
-user_t* setup_users() {
+user_t* setup_users()
+{
     user_t* user_admin = malloc(sizeof(user_t));
     strcpy(user_admin->name, "admin");
     strcpy(user_admin->password, "4dm1n__4eva");
@@ -36,19 +38,24 @@ user_t* setup_users() {
     return user_admin;
 }
 
-void print_users(user_t* users) {
+void print_users(user_t* users)
+{
     printf("--- USERS ---\n");
     size_t count = 0;
-    while (users != NULL) {
+    while(users != NULL)
+    {
         printf(" %02ld. %s\n", ++count, users->name);
         users = users->next;
     }
     printf("\n");
 }
 
-user_t* getUser(user_t* user_list, char* name) {
-    while (user_list != NULL) {
-        if (strcmp(user_list->name, name) == 0) {
+user_t* getUser(user_t* user_list, char* name)
+{
+    while(user_list != NULL)
+    {
+        if(strcmp(user_list->name, name) == 0)
+        {
             return user_list;
         }
         user_list = user_list->next;
@@ -56,7 +63,8 @@ user_t* getUser(user_t* user_list, char* name) {
     return NULL;
 }
 
-int main() {
+int main()
+{
     user_t* users = setup_users();
 
     printf("Welcome to BigBank Australia!\n");
@@ -66,7 +74,8 @@ int main() {
     scanf("%255s", username);
 
     user_t* user = getUser(users, username);
-    if (user == NULL) {
+    if(user == NULL)
+    {
         printf("User < %s > does not exist.\n", username);
         return 0;
     }
@@ -74,7 +83,8 @@ int main() {
     char password[BUFF_LEN];
     printf("Password: ");
     scanf("%255s", password);
-    if (strcmp(user->password, password) != 0) {
+    if(strcmp(user->password, password) != 0)
+    {
         printf("ERROR: incorrect password\n");
         return 0;
     }

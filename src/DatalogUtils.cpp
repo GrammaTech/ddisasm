@@ -98,8 +98,10 @@ std::string getRegisterName(const csh& CsHandle, unsigned int reg)
     return name;
 }
 
-std::string getPrefetchValue(const arm64_prefetch_op prefetch) {
-    switch (prefetch) {
+std::string getPrefetchValue(const arm64_prefetch_op prefetch)
+{
+    switch(prefetch)
+    {
         case ARM64_PRFM_PLDL1KEEP:
             return std::string("pldl1keep");
         case ARM64_PRFM_PLDL1STRM:
@@ -143,8 +145,10 @@ std::string getPrefetchValue(const arm64_prefetch_op prefetch) {
     }
 }
 
-std::string getBarrierOp(const arm64_barrier_op barrier) {
-    switch (barrier) {
+std::string getBarrierOp(const arm64_barrier_op barrier)
+{
+    switch(barrier)
+    {
         case ARM64_BARRIER_OSHLD:
             return std::string("oshld");
         case ARM64_BARRIER_OSHST:
@@ -176,7 +180,8 @@ std::string getBarrierOp(const arm64_barrier_op barrier) {
     }
 }
 
-std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp> buildOperand(const csh& CsHandle, const cs_arm64_op& op)
+std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp> buildOperand(const csh& CsHandle,
+                                                                           const cs_arm64_op& op)
 {
     switch(op.type)
     {
@@ -212,11 +217,13 @@ std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp> buildOperand(const
         case ARM64_OP_SYS:
             std::cerr << "unsupported: SYS\n";
             return 0;
-        case ARM64_OP_PREFETCH: {
+        case ARM64_OP_PREFETCH:
+        {
             PrefetchOp I = {getPrefetchValue(op.prefetch)};
             return I;
         }
-        case ARM64_OP_BARRIER: {
+        case ARM64_OP_BARRIER:
+        {
             BarrierOp I = {getBarrierOp(op.barrier)};
             return I;
         }
@@ -252,8 +259,8 @@ std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& CsHandle, const c
     }
 }
 
-DlInstruction GtirbToDatalog::transformInstruction(const cs_arch arch, const csh& CsHandle, DlOperandTable& OpDict,
-                                                   const cs_insn& insn)
+DlInstruction GtirbToDatalog::transformInstruction(const cs_arch arch, const csh& CsHandle,
+                                                   DlOperandTable& OpDict, const cs_insn& insn)
 {
     std::vector<uint64_t> op_codes;
     std::string prefix_name = str_toupper(insn.mnemonic);
@@ -270,8 +277,27 @@ DlInstruction GtirbToDatalog::transformInstruction(const cs_arch arch, const csh
         name = prefix_name;
     }
 
-    if (arch == CS_ARCH_ARM64) {
+    if(arch == CS_ARCH_ARM64)
+    {
         auto& detail = insn.detail->arm64;
+        if(name != "NOP")
+        {
+            auto opCount = detail.op_count;
+            for(int i = 0; i < opCount; i++)
+            {
+                const auto& op = detail.operands[i];
+                uint64_t index = OpDict.add(buildOperand(CsHandle, op));
+                op_codes.push_back(index);
+            }
+            // we put the destination operand at the end
+            if(opCount > 0)
+                std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
+        }
+        return {insn.address, insn.size, prefix, name, op_codes, 0, 0};
+    }
+    else if(arch == CS_ARCH_X86)
+    {
+        auto& detail = insn.detail->x86;
         if(name != "NOP")
         {
             auto opCount = detail.op_count;
@@ -290,30 +316,8 @@ DlInstruction GtirbToDatalog::transformInstruction(const cs_arch arch, const csh
                 prefix,
                 name,
                 op_codes,
-                0,
-                0};
-    } else if (arch == CS_ARCH_X86) {
-        auto& detail = insn.detail->x86;
-        if(name != "NOP")
-        {
-            auto opCount = detail.op_count;
-            for(int i = 0; i < opCount; i++)
-            {
-                const auto& op = detail.operands[i];
-                uint64_t index = OpDict.add(buildOperand(CsHandle, op));
-                op_codes.push_back(index);
-            }
-            // we put the destination operand at the end
-            if(opCount > 0)
-                std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
-        }
-        return {insn.address,
-            insn.size,
-            prefix,
-            name,
-            op_codes,
-            detail.encoding.imm_offset,
-            detail.encoding.disp_offset};
+                detail.encoding.imm_offset,
+                detail.encoding.disp_offset};
     }
     assert(false && "unexpected architecture");
 }

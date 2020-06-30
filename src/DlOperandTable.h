@@ -34,11 +34,13 @@ using ImmOp = int64_t;
 
 using RegOp = std::string;
 
-struct PrefetchOp {
+struct PrefetchOp
+{
     std::string value;
 };
 
-struct BarrierOp {
+struct BarrierOp
+{
     std::string value;
 };
 
@@ -52,8 +54,8 @@ struct IndirectOp
     int size;
 };
 
-constexpr bool operator<(const IndirectOp &LHS, const IndirectOp &RHS) noexcept;
-souffle::tuple &operator<<(souffle::tuple &t, const IndirectOp &op);
+constexpr bool operator<(const IndirectOp& LHS, const IndirectOp& RHS) noexcept;
+souffle::tuple& operator<<(souffle::tuple& t, const IndirectOp& op);
 
 constexpr bool operator<(const PrefetchOp& LHS, const PrefetchOp& RHS) noexcept;
 souffle::tuple& operator<<(souffle::tuple& t, const PrefetchOp& op);
@@ -62,9 +64,9 @@ constexpr bool operator<(const BarrierOp& LHS, const BarrierOp& RHS) noexcept;
 souffle::tuple& operator<<(souffle::tuple& t, const BarrierOp& op);
 
 template <class T>
-souffle::tuple &operator<<(souffle::tuple &t, const std::pair<T, uint64_t> &pair)
+souffle::tuple& operator<<(souffle::tuple& t, const std::pair<T, uint64_t>& pair)
 {
-    auto &[elem, id] = pair;
+    auto& [elem, id] = pair;
     t << id << elem;
     return t;
 }
@@ -75,7 +77,7 @@ private:
     // we reserve 0 for empty operators
     uint64_t curr_index = 1;
     template <typename T>
-    int64_t addToTable(std::map<T, uint64_t> &opTable, T op);
+    int64_t addToTable(std::map<T, uint64_t>& opTable, T op);
 
 public:
     std::map<ImmOp, uint64_t> immTable;

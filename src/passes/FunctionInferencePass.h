@@ -41,6 +41,7 @@ private:
 
 public:
     void setDebugDir(std::string Path);
-    void computeFunctions(gtirb::Context& Ctx, gtirb::Module& module, cs_arch arch, cs_mode mode, unsigned int NThreads);
+    void computeFunctions(gtirb::Context& Ctx, gtirb::Module& module, cs_arch arch, cs_mode mode,
+                          unsigned int NThreads);
 };
 #endif // FUNCTION_INFERENCE_PASS_H_

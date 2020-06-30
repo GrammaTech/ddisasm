@@ -55,7 +55,8 @@ TEST(Unit_NoReturnPass, remove_simple_fallthrough)
     Cfg[*addEdge(B2, TopBlock, Cfg)] = simpleReturn();
 
     computeSCCs(*M);
-    std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M, CS_ARCH_X86, CS_MODE_64);
+    std::set<gtirb::CodeBlock*> CallNoReturn =
+        NoReturnPass().computeNoReturn(*M, CS_ARCH_X86, CS_MODE_64);
 
     EXPECT_TRUE(CallNoReturn.count(B1));
     EXPECT_FALSE(CallNoReturn.count(B2));
@@ -109,7 +110,8 @@ TEST(Unit_NoReturnPass, one_path_returns)
 
     EXPECT_EQ(9, Cfg.m_edges.size());
     computeSCCs(*M);
-    std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M, CS_ARCH_X86, CS_MODE_64);
+    std::set<gtirb::CodeBlock*> CallNoReturn =
+        NoReturnPass().computeNoReturn(*M, CS_ARCH_X86, CS_MODE_64);
 
     EXPECT_TRUE(CallNoReturn.count(B3));
     EXPECT_FALSE(CallNoReturn.count(B1));
@@ -168,7 +170,8 @@ TEST(Unit_NoReturnPass, two_paths_no_return)
 
     EXPECT_EQ(11, Cfg.m_edges.size());
     computeSCCs(*M);
-    std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M, CS_ARCH_X86, CS_MODE_64);
+    std::set<gtirb::CodeBlock*> CallNoReturn =
+        NoReturnPass().computeNoReturn(*M, CS_ARCH_X86, CS_MODE_64);
 
     EXPECT_TRUE(CallNoReturn.count(B3));
     EXPECT_TRUE(CallNoReturn.count(B5));
@@ -227,7 +230,8 @@ TEST(Unit_NoReturnPass, loop_no_return)
 
     EXPECT_EQ(9, Cfg.m_edges.size());
     computeSCCs(*M);
-    std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M, CS_ARCH_X86, CS_MODE_64);
+    std::set<gtirb::CodeBlock*> CallNoReturn =
+        NoReturnPass().computeNoReturn(*M, CS_ARCH_X86, CS_MODE_64);
 
     EXPECT_TRUE(CallNoReturn.count(B4));
     EXPECT_TRUE(CallNoReturn.count(B1));

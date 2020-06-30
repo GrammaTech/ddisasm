@@ -62,7 +62,7 @@ setup_users:
 # END   - Function Header
 
 setup_users:
-.cfi_startproc 
+.cfi_startproc
 .cfi_lsda 255
 .cfi_personality 255
 .cfi_def_cfa 31, 0
@@ -163,8 +163,8 @@ setup_users:
 .cfi_restore 30
 .cfi_restore 29
 .cfi_def_cfa_offset 0
-            ret 
-.cfi_endproc 
+            ret
+.cfi_endproc
 # BEGIN - Function Header
 #-----------------------------------
 .align 16
@@ -175,7 +175,7 @@ print_users:
 # END   - Function Header
 
 print_users:
-.cfi_startproc 
+.cfi_startproc
 .cfi_lsda 255
 .cfi_personality 255
 .cfi_def_cfa 31, 0
@@ -236,8 +236,8 @@ print_users:
 .cfi_restore 30
 .cfi_restore 29
 .cfi_def_cfa_offset 0
-            ret 
-.cfi_endproc 
+            ret
+.cfi_endproc
 # BEGIN - Function Header
 #-----------------------------------
 .align 4
@@ -248,7 +248,7 @@ getUser:
 # END   - Function Header
 
 getUser:
-.cfi_startproc 
+.cfi_startproc
 .cfi_lsda 255
 .cfi_personality 255
 .cfi_def_cfa 31, 0
@@ -290,8 +290,8 @@ getUser:
 .cfi_restore 30
 .cfi_restore 29
 .cfi_def_cfa_offset 0
-            ret 
-.cfi_endproc 
+            ret
+.cfi_endproc
 # BEGIN - Function Header
 #-----------------------------------
 .align 4
@@ -302,7 +302,7 @@ main:
 # END   - Function Header
 
 main:
-.cfi_startproc 
+.cfi_startproc
 .cfi_lsda 255
 .cfi_personality 255
 .cfi_def_cfa 31, 0
@@ -454,8 +454,8 @@ main:
 .cfi_restore 29
 .cfi_restore 30
 .cfi_def_cfa_offset 0
-            ret 
-.cfi_endproc 
+            ret
+.cfi_endproc
 #===================================
 
 #===================================

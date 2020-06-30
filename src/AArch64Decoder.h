@@ -20,12 +20,10 @@
 #include <capstone/capstone.h>
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
-#include "DlDecoder.h"
-#include "DatalogUtils.h"
-#include "DlOperandTable.h"
 #include <vector>
-
-
+#include "DatalogUtils.h"
+#include "DlDecoder.h"
+#include "DlOperandTable.h"
 
 class AArch64Decoder : public DlDecoder
 {
@@ -34,10 +32,12 @@ public:
     ~AArch64Decoder();
     souffle::SouffleProgram* decode(gtirb::Module& module);
     void decodeSection(const gtirb::ByteInterval& byteInterval);
-    cs_arch getArch() const override {
+    cs_arch getArch() const override
+    {
         return CS_ARCH_ARM64;
     }
-    cs_mode getMode() const override {
+    cs_mode getMode() const override
+    {
         return CS_MODE_ARM;
     }
 };

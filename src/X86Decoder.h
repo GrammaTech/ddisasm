@@ -22,8 +22,8 @@
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 #include "DatalogUtils.h"
-#include "DlOperandTable.h"
 #include "DlDecoder.h"
+#include "DlOperandTable.h"
 
 #include <vector>
 class X86Decoder : public DlDecoder
@@ -33,10 +33,12 @@ public:
     virtual ~X86Decoder();
     souffle::SouffleProgram* decode(gtirb::Module& module);
     void decodeSection(const gtirb::ByteInterval& byteInterval);
-    cs_arch getArch() const override {
+    cs_arch getArch() const override
+    {
         return CS_ARCH_X86;
     }
-    cs_mode getMode() const override {
+    cs_mode getMode() const override
+    {
         return CS_MODE_64;
     }
 };

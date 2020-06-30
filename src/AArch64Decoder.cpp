@@ -10,7 +10,6 @@
 #include "ExceptionDecoder.h"
 #include "GtirbZeroBuilder.h"
 
-
 AArch64Decoder::AArch64Decoder()
 {
     cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &this->csHandle); // == CS_ERR_OK
@@ -47,14 +46,16 @@ souffle::SouffleProgram *AArch64Decoder::decode(gtirb::Module &module)
         SectionProperties &extraInfo = found->second;
         if(isExeSection(extraInfo))
         {
-            for (const auto byteInterval : section.byte_intervals()) {
+            for(const auto byteInterval : section.byte_intervals())
+            {
                 decodeSection(byteInterval);
                 storeDataSection(byteInterval, minAddr, maxAddr);
             }
         }
         if(isNonZeroDataSection(extraInfo))
         {
-            for (const auto byteInterval : section.byte_intervals()) {
+            for(const auto byteInterval : section.byte_intervals())
+            {
                 storeDataSection(byteInterval, minAddr, maxAddr);
             }
         }
@@ -67,7 +68,7 @@ souffle::SouffleProgram *AArch64Decoder::decode(gtirb::Module &module)
     return nullptr;
 }
 
-void AArch64Decoder::decodeSection(const gtirb::ByteInterval& byteInterval)
+void AArch64Decoder::decodeSection(const gtirb::ByteInterval &byteInterval)
 {
     assert(byteInterval.getAddress() && "Failed to decode section without address.");
     assert(byteInterval.getSize() == byteInterval.getInitializedSize()
@@ -86,7 +87,8 @@ void AArch64Decoder::decodeSection(const gtirb::ByteInterval& byteInterval)
         }
         else
         {
-            instructions.push_back(GtirbToDatalog::transformInstruction(CS_ARCH_ARM64, csHandle, op_dict, *insn));
+            instructions.push_back(
+                GtirbToDatalog::transformInstruction(CS_ARCH_ARM64, csHandle, op_dict, *insn));
             cs_free(insn, count);
         }
         ++ea;
