@@ -297,8 +297,9 @@ endif()
 # ---------------------------------------------------------------------------
 # Package generation with cpack
 # ---------------------------------------------------------------------------
-set(CMAKE_PROJECT_HOMEPAGE_URL https://github.com/grammatech/ddisasm)
+set(CPACK_PROJECT_CONFIG_FILE ${CMAKE_CURRENT_SOURCE_DIR}/cpack-config.cmake)
 
+set(CMAKE_PROJECT_HOMEPAGE_URL https://github.com/grammatech/ddisasm)
 set(CPACK_PACKAGE_VERSION_MAJOR ${DDISASM_MAJOR_VERSION})
 set(CPACK_PACKAGE_VERSION_MINOR ${DDISASM_MINOR_VERSION})
 set(CPACK_PACKAGE_VERSION_PATCH ${DDISASM_PATCH_VERSION})
@@ -310,10 +311,10 @@ set(CPACK_PACKAGE_CONTACT gtirb@grammatech.com)
 set(CPACK_PACKAGE_DESCRIPTION_FILE ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
 set(CPACK_PACKAGE_RESOURCE_FILE_LICENSE ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt)
 
-set(CPACK_DEBIAN_PACKAGE_DEPENDS
-    "libstdc++6, libc6, libgcc1, libgomp1, libgtirb (>=${gtirb_VERSION}), libgtirb-pprinter (>=${gtirb_pprinter_VERSION}), libboost-dev (>=1.67) | libboost1.67-dev, libcapstone-dev (=1:4.0.1-gt1)"
-)
-
 set(CPACK_DEBIAN_PACKAGE_SECTION devel)
+
+set(CPACK_DDISASM_VERSION "${PROJECT_VERSION}")
+set(CPACK_GTIRB_VERSION "${gtirb_VERSION}")
+set(CPACK_GTIRB_PPRINTER_VERSION "${gtirb_pprinter_VERSION}")
 
 include(CPack)

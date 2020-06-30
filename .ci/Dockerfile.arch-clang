@@ -42,6 +42,7 @@ COPY .ci/PKGBUILD /home/ddisasm/ddisasm-aur/PKGBUILD
 RUN sudo chown -R ddisasm /home/ddisasm/ddisasm-aur/
 WORKDIR /home/ddisasm/ddisasm-aur/
 RUN sed -i 's|git://github.com/grammatech/ddisasm.git|git+file:///ddisasm|' PKGBUILD
+ARG BUILD_TYPE=RelWithDebInfo
 RUN makepkg
 RUN sudo pacman --noconfirm -U *.pkg.tar.xz
 RUN sudo mkdir -p /ddisasm/build/

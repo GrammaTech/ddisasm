@@ -3,6 +3,12 @@ variables:
   LOCAL_IMAGE_NAME: '$CI_BUILD_REF_NAME-$CI_PIPELINE_ID'
   GTIRB_BRANCH: "master"
 
+before_script:
+  - case "$(uname -s)" in
+        CYGWIN*) systeminfo;;
+        *) docker info;;
+    esac
+
 stages:
   - check-format
   - build
@@ -35,7 +41,7 @@ stages:
     # Extra packages
     - cp /u4/TARBALLS/debloat/pkgs/libcapstone-dev_4.0.1-gt1_amd64.deb ./
     - git clone https://git.zephyr-software.com/opensrc/libehp.git && pushd libehp && git reset --hard ddb106c4c1e521bf4b282d17e2a8abf0aa0fe721 && popd
-    - docker build -f .ci/Dockerfile.${OS}-${COMPILER} -t ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} --build-arg CPACK_GENERATOR=${CPACK_GENERATOR} .
+    - docker build -f .ci/Dockerfile.${OS}-${COMPILER} -t ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}-${BUILD_TYPE,,} --build-arg CPACK_GENERATOR=${CPACK_GENERATOR} --build-arg CMAKE_BUILD_TYPE=$BUILD_TYPE .
 
 .build-windows-template: &build-windows
   artifacts:
@@ -57,14 +63,14 @@ stages:
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=python-wheel --output "gtirb-wheel.zip"
     - unzip gtirb-wheel.zip
     - mkdir gtirb-wheel && cp *.whl gtirb-wheel/
-    - docker run -v $(pwd)/gtirb-wheel:/gtirb-wheel:ro --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} /bin/bash -c "python3 -m pip install pip --upgrade && python3 -m pip install /gtirb-wheel/gtirb-*-py*.whl && ( cd /home/ddisasm/ddisasm-aur/src/ddisasm/build || cd build/  && ctest -V )"
-    - docker tag ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}-${COMPILER}:${PUSH_TAG};
+    - docker run -v $(pwd)/gtirb-wheel:/gtirb-wheel:ro --cpus=8 ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}-${BUILD_TYPE,,} /bin/bash -c "python3 -m pip install pip --upgrade && python3 -m pip install /gtirb-wheel/gtirb-*-py*.whl && ( cd /home/ddisasm/ddisasm-aur/src/ddisasm/build || cd build/  && ctest -V )"
+    - docker tag ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}-${BUILD_TYPE,,} $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}-${COMPILER}-${BUILD_TYPE,,}:${PUSH_TAG};
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $DOCKER_REGISTRY;
-    - docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}-${COMPILER}:${PUSH_TAG};
+    - docker push $DOCKER_REGISTRY/$CI_PROJECT_PATH/${OS}-${COMPILER}-${BUILD_TYPE,,}:${PUSH_TAG};
 
 .cleanup-template: &cleanup
   script:
-    - docker rmi -f ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}
+    - docker rmi -f ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}-${BUILD_TYPE,,}
 
 check-format:
   stage: check-format
@@ -77,6 +83,7 @@ build-ubuntu16-gcc:
     OS: 'ubuntu16'
     COMPILER: 'gcc'
     CPACK_GENERATOR: 'DEB'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *build
 
 build-ubuntu18-gcc:
@@ -85,6 +92,7 @@ build-ubuntu18-gcc:
     OS: 'ubuntu18'
     COMPILER: 'gcc'
     CPACK_GENERATOR: 'DEB'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *build
 
 build-arch-gcc:
@@ -92,21 +100,7 @@ build-arch-gcc:
   variables:
     OS: 'arch'
     COMPILER: 'gcc'
-    CPACK_GENERATOR: 'TGZ'
-  <<: *build
-
-build-ubuntu16-clang:
-  stage: build
-  variables:
-    OS: 'ubuntu16'
-    COMPILER: 'clang'
-  <<: *build
-
-build-ubuntu18-clang:
-  stage: build
-  variables:
-    OS: 'ubuntu18'
-    COMPILER: 'clang'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *build
 
 build-arch-clang:
@@ -114,6 +108,23 @@ build-arch-clang:
   variables:
     OS: 'arch'
     COMPILER: 'clang'
+    BUILD_TYPE: 'RelWithDebInfo'
+  <<: *build
+
+build-arch-gcc-debug:
+  stage: build
+  variables:
+    OS: 'arch'
+    COMPILER: 'gcc'
+    BUILD_TYPE: 'Debug'
+  <<: *build
+
+build-arch-clang-debug:
+  stage: build
+  variables:
+    OS: 'arch'
+    COMPILER: 'clang'
+    BUILD_TYPE: 'Debug'
   <<: *build
 
 build-windows-msvc-debug:
@@ -137,6 +148,7 @@ run-ubuntu16-gcc:
   variables:
     OS: 'ubuntu16'
     COMPILER: 'gcc'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *test-and-tag
 
 run-ubuntu18-gcc:
@@ -144,6 +156,7 @@ run-ubuntu18-gcc:
   variables:
     OS: 'ubuntu18'
     COMPILER: 'gcc'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *test-and-tag
 
 run-arch-gcc:
@@ -151,20 +164,7 @@ run-arch-gcc:
   variables:
     OS: 'arch'
     COMPILER: 'gcc'
-  <<: *test-and-tag
-
-run-ubuntu16-clang:
-  stage: test-and-tag
-  variables:
-    OS: 'ubuntu16'
-    COMPILER: 'clang'
-  <<: *test-and-tag
-
-run-ubuntu18-clang:
-  stage: test-and-tag
-  variables:
-    OS: 'ubuntu18'
-    COMPILER: 'clang'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *test-and-tag
 
 run-arch-clang:
@@ -172,6 +172,24 @@ run-arch-clang:
   variables:
     OS: 'arch'
     COMPILER: 'clang'
+    BUILD_TYPE: 'RelWithDebInfo'
+  script:
+  <<: *test-and-tag
+
+run-arch-gcc-debug:
+  stage: test-and-tag
+  variables:
+    OS: 'arch'
+    COMPILER: 'gcc'
+    BUILD_TYPE: 'Debug'
+  <<: *test-and-tag
+
+run-arch-clang-debug:
+  stage: test-and-tag
+  variables:
+    OS: 'arch'
+    COMPILER: 'clang'
+    BUILD_TYPE: 'Debug'
   script:
   <<: *test-and-tag
 
@@ -180,14 +198,16 @@ test-make-install:
   variables:
     OS: 'ubuntu18'
     COMPILER: 'gcc'
+    BUILD_TYPE: 'RelWithDebInfo'
   script:
-    - docker build --rm -f .ci/Dockerfile.test-install --build-arg IMAGE=${LOCAL_IMAGE_NAME}-${OS}-${COMPILER} .
+    - docker build --rm -f .ci/Dockerfile.test-install --build-arg IMAGE=${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}-${BUILD_TYPE,,} .
 
 cleanup-ubuntu16-gcc:
   stage: cleanup
   variables:
     OS: 'ubuntu16'
     COMPILER: 'gcc'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *cleanup
 
 cleanup-ubuntu18-gcc:
@@ -195,6 +215,7 @@ cleanup-ubuntu18-gcc:
   variables:
     OS: 'ubuntu18'
     COMPILER: 'gcc'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *cleanup
 
 cleanup-arch-gcc:
@@ -202,20 +223,7 @@ cleanup-arch-gcc:
   variables:
     OS: 'arch'
     COMPILER: 'gcc'
-  <<: *cleanup
-
-cleanup-ubuntu16-clang:
-  stage: cleanup
-  variables:
-    OS: 'ubuntu16'
-    COMPILER: 'clang'
-  <<: *cleanup
-
-cleanup-ubuntu18-clang:
-  stage: cleanup
-  variables:
-    OS: 'ubuntu18'
-    COMPILER: 'clang'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *cleanup
 
 cleanup-arch-clang:
@@ -223,8 +231,24 @@ cleanup-arch-clang:
   variables:
     OS: 'arch'
     COMPILER: 'clang'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *cleanup
 
+cleanup-arch-gcc-debug:
+  stage: cleanup
+  variables:
+    OS: 'arch'
+    COMPILER: 'gcc'
+    BUILD_TYPE: 'Debug'
+  <<: *cleanup
+
+cleanup-arch-clang-debug:
+  stage: cleanup
+  variables:
+    OS: 'arch'
+    COMPILER: 'clang'
+    BUILD_TYPE: 'Debug'
+  <<: *cleanup
 
 .linux-installer-template: &linux-installer
   stage: deploy
@@ -248,7 +272,7 @@ cleanup-arch-clang:
     - cp /u4/TARBALLS/debloat/pkgs/libcapstone-dev_4.0.1-gt1_amd64.deb ./
     # Get ddisasm package
     - export CONTAINER_FILE=$(mktemp -d)/cidfile
-    - docker create --cidfile=${CONTAINER_FILE} ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}
+    - docker create --cidfile=${CONTAINER_FILE} ${LOCAL_IMAGE_NAME}-${OS}-${COMPILER}-${BUILD_TYPE,,}
     - docker cp $(cat ${CONTAINER_FILE}):/ddisasm/build ./build-artifacts
     - docker container rm -f $(cat ${CONTAINER_FILE})
     - rm -rf $(dirname ${CONTAINER_FILE})
@@ -262,6 +286,7 @@ debian-installer-ubuntu16:
     OS: 'ubuntu16'
     COMPILER: 'gcc'
     EXTENSION: 'deb'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *linux-installer
 
 debian-installer-ubuntu18:
@@ -269,6 +294,7 @@ debian-installer-ubuntu18:
     OS: 'ubuntu18'
     COMPILER: 'gcc'
     EXTENSION: 'deb'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *linux-installer
 
 package-arch:
@@ -276,4 +302,5 @@ package-arch:
     OS: 'arch'
     COMPILER: 'gcc'
     EXTENSION: 'pkg.tar.xz'
+    BUILD_TYPE: 'RelWithDebInfo'
   <<: *linux-installer

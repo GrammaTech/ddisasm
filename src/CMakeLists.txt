@@ -217,6 +217,10 @@ add_subdirectory(gtirb-builder)
 add_library(disasm_main STATIC disasm_main.cpp DlDecoder.cpp
                                ExceptionDecoder.cpp GtirbModuleDisassembler.cpp)
 
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
+  target_compile_options(disasm_main PRIVATE -Wno-unused-parameter)
+endif()
+
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Version.h.in"
                "${CMAKE_BINARY_DIR}/include/Version.h" @ONLY)
 target_include_directories(
@@ -269,13 +273,8 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
     /WHOLEARCHIVE:function_inference_pass$<$<CONFIG:Debug>:d>)
 else()
   target_link_libraries(
-    ddisasm
-    disasm_main
-    scc_pass
-    -Wl,--whole-archive
-    no_return_pass
-    function_inference_pass
-    -Wl,--no-whole-archive)
+    ddisasm PRIVATE disasm_main scc_pass -Wl,--whole-archive no_return_pass
+                    function_inference_pass -Wl,--no-whole-archive)
 endif()
 
 target_compile_definitions(ddisasm PRIVATE __EMBEDDED_SOUFFLE__)
@@ -290,19 +289,46 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   set_souffle_msvc_options(ddisasm)
 else()
   target_compile_options(ddisasm PRIVATE -O3)
-  target_compile_options(ddisasm PRIVATE -Wno-parentheses-equality)
+  target_compile_options(ddisasm PRIVATE -Wno-parentheses-equality
+                                         -Wno-unused-parameter)
 endif()
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
-  target_link_libraries(ddisasm gomp)
+  target_link_libraries(ddisasm PRIVATE gomp)
 endif()
 
 if(DDISASM_ENABLE_TESTS)
   add_subdirectory(tests)
 endif()
 
-install(TARGETS ddisasm DESTINATION bin)
+if(UNIX
+   AND NOT CYGWIN
+   AND ("${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo" OR "${CMAKE_BUILD_TYPE}"
+                                                           STREQUAL "Debug"))
+  string(
+    RANDOM
+    LENGTH 32
+    ALPHABET "abcdef0123456789" BUILD_ID)
+  string(SUBSTRING "${BUILD_ID}" 0 2 BUILD_ID_PREFIX)
+  string(SUBSTRING "${BUILD_ID}" 2 32 BUILD_ID_SUFFIX)
+  target_link_libraries(ddisasm PRIVATE "-Wl,--build-id=0x${BUILD_ID}")
+  add_custom_command(
+    TARGET ddisasm
+    POST_BUILD
+    COMMAND objcopy --only-keep-debug $<TARGET_FILE:ddisasm>
+            ${CMAKE_BINARY_DIR}/bin/${BUILD_ID_SUFFIX}.debug
+    COMMAND objcopy --strip-debug $<TARGET_FILE:ddisasm>)
+  install(
+    FILES "${CMAKE_BINARY_DIR}/bin/${BUILD_ID_SUFFIX}.debug"
+    COMPONENT debug-file
+    DESTINATION "lib/debug/.build-id/${BUILD_ID_PREFIX}")
+endif()
+
+install(
+  TARGETS ddisasm
+  COMPONENT ddisasm
+  DESTINATION bin)
 
 if(NOT BUILD_SHARED_LIBS)
-  target_link_libraries(ddisasm -static-libstdc++)
+  target_link_libraries(ddisasm PRIVATE -static-libstdc++)
 endif()
