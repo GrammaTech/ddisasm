@@ -128,17 +128,6 @@ void ElfReader::buildSymbols()
             Name = Name.substr(0, Version);
         }
 
-        // TODO:
-        // Skip ARM 'mapping symbols'.
-        // if(Elf->header().machine_type() == LIEF::ELF::ARCH::EM_ARM)
-        // {
-        //     if(Name == "$a" || Name == "$d" || Name == "$t" || Name == "$x")
-        //     {
-        //         std::cout << "SKIPPING: " << Name << "\n";
-        //         continue;
-        //     }
-        // }
-
         Symbols.insert({
             Name,
             Symbol.value(),
