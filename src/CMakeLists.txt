@@ -257,7 +257,6 @@ target_link_libraries(
 add_executable(ddisasm
   ${GENERATED_CPP_ARM64}
   ${GENERATED_CPP_X64})
->>>>>>> binrats/master
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_link_libraries(ddisasm disasm_main scc_pass no_return_pass
