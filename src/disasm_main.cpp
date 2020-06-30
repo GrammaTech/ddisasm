@@ -31,11 +31,13 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include "AArch64Decoder.h"
 #include "AuxDataSchema.h"
 #include "DatalogUtils.h"
-#include "DlDecoder.h"
+#include "DwarfMap.hpp"
 #include "GtirbModuleDisassembler.h"
 #include "Version.h"
+#include "X86Decoder.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
@@ -58,6 +60,22 @@ namespace std
     }
 } // namespace std
 
+std::optional<DlDecoder *> make_decoder(LIEF::ARCHITECTURES arch)
+{
+    if(arch == LIEF::ARCHITECTURES::ARCH_X86)
+    {
+        return std::make_optional(new X86Decoder());
+    }
+    else if(arch == LIEF::ARCHITECTURES::ARCH_ARM64)
+    {
+        return std::make_optional(new AArch64Decoder());
+    }
+    else
+    {
+        return std::nullopt;
+    }
+}
+
 void registerAuxDataTypes()
 {
     using namespace gtirb::schema;
@@ -71,9 +89,13 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<BinaryType>();
     gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
     gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
+    gtirb::AuxDataContainer::registerAuxDataType<SymbolicOperandInfoAD>();
     gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionIndex>();
+    gtirb::AuxDataContainer::registerAuxDataType<AllElfSectionProperties>();
+    gtirb::AuxDataContainer::registerAuxDataType<FlaggedSections>();
+    gtirb::AuxDataContainer::registerAuxDataType<DWARFElfSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<PeSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<CfiDirectives>();
     gtirb::AuxDataContainer::registerAuxDataType<Libraries>();
@@ -109,16 +131,19 @@ int main(int argc, char **argv)
     registerAuxDataTypes();
 
     po::options_description desc("Allowed options");
-    desc.add_options()                                                  //
-        ("help,h", "produce help message")                              //
-        ("version", "display ddisasm version")                          //
-        ("ir", po::value<std::string>(), "GTIRB output file")           //
-        ("json", po::value<std::string>(), "GTIRB json output file")    //
-        ("asm", po::value<std::string>(), "ASM output file")            //
-        ("debug", "generate assembler file with debugging information") //
-        ("debug-dir", po::value<std::string>(),                         //
-         "location to write CSV files for debugging")                   //
-        ("input-file", po::value<std::string>(), "file to disasemble")  //
+    desc.add_options()                                               //
+        ("help,h", "produce help message")                           //
+        ("version", "display ddisasm version")                       //
+        ("ir", po::value<std::string>(), "GTIRB output file")        //
+        ("json", po::value<std::string>(), "GTIRB json output file") //
+        ("asm", po::value<std::string>(), "ASM output file")         //
+        ("arch", po::value<std::string>(),
+         "Set binary architecture (arm64 or x64). Automatically detected if not set.") //
+        ("dwarf", "Dwarf analysis")("debug",
+                                    "generate assembler file with debugging information") //
+        ("debug-dir", po::value<std::string>(),                                           //
+         "location to write CSV files for debugging")                                     //
+        ("input-file", po::value<std::string>(), "file to disasemble")                    //
         ("keep-functions,K", po::value<std::vector<std::string>>()->multitoken(),
          "Print the given functions even if they are skipped by default (e.g. _start)") //
         ("self-diagnose",
@@ -179,11 +204,6 @@ int main(int argc, char **argv)
     GTIRB->IR->addAuxData<gtirb::schema::DdisasmVersion>(DDISASM_FULL_VERSION_STRING);
     printElapsedTimeSince(StartBuildZeroIR);
 
-    if(!GTIRB->IR)
-    {
-        std::cerr << "There was a problem loading the binary file " << filename << "\n";
-        return 1;
-    }
     gtirb::Module &Module = *(GTIRB->IR->modules().begin());
     souffle::SouffleProgram *prog;
     {
@@ -194,6 +214,7 @@ int main(int argc, char **argv)
         prog = decoder.decode(Module, DisasmOptions);
         printElapsedTimeSince(StartDecode);
     }
+
     if(prog)
     {
         if(vm.count("debug-dir") != 0)
@@ -220,6 +241,13 @@ int main(int argc, char **argv)
         auto StartGtirbBuilding = std::chrono::high_resolution_clock::now();
         disassembleModule(*GTIRB->Context, Module, prog, vm.count("self-diagnose") != 0);
         printElapsedTimeSince(StartGtirbBuilding);
+
+        if(vm.count("dwarf") != 0)
+        {
+            DwarfMap dmap(filename);
+            dmap.extract_dwarf_data();
+            dmap.flag_constsym(module);
+        }
 
         if(vm.count("skip-function-analysis") == 0)
         {
@@ -258,6 +286,22 @@ int main(int argc, char **argv)
         // Pretty-print
         gtirb_pprint::PrettyPrinter pprinter;
         pprinter.setDebug(vm.count("debug"));
+
+        std::tuple<std::string, std::string> target;
+        if(arch == CS_ARCH_X86)
+        {
+            target = std::tuple<std::string, std::string>("elf", "intel");
+        }
+        else if(arch == CS_ARCH_ARM64)
+        {
+            target = std::tuple<std::string, std::string>("elf", "aarch64");
+        }
+        else
+        {
+            assert(false && "unsupported architecture");
+        }
+        pprinter.setTarget(target);
+
         if(vm.count("keep-functions") != 0)
         {
             for(auto keep : vm["keep-functions"].as<std::vector<std::string>>())

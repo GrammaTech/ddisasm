@@ -194,7 +194,8 @@ void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
         }
         else
         {
-            instructions.push_back(GtirbToDatalog::transformInstruction(csHandle, op_dict, *insn));
+            instructions.push_back(
+                GtirbToDatalog::transformInstruction(getArch(), csHandle, op_dict, *insn));
             cs_free(insn, count);
         }
         ++ea;
@@ -264,6 +265,8 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
     GtirbToDatalog::addToRelation(prog, "op_regdirect", op_dict.regTable);
     GtirbToDatalog::addToRelation(prog, "op_immediate", op_dict.immTable);
     GtirbToDatalog::addToRelation(prog, "op_indirect", op_dict.indirectTable);
+    GtirbToDatalog::addToRelation(prog, "op_prefetch", op_dict.prefetchTable);
+    GtirbToDatalog::addToRelation(prog, "op_barrier", op_dict.barrierTable);
 
     addSymbols(prog, module);
     addSections(prog, module);

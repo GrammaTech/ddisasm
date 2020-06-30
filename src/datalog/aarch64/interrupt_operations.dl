@@ -1,4 +1,4 @@
-//===- NoReturnPass.h -------------------------------------------*- C++ -*-===//
+//===- interrupt_operations.dl ------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -20,27 +20,13 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+/**
+The set of interrupt operations in x64
+*/
 
-#ifndef NO_RETURN_PASS_H_
-#define NO_RETURN_PASS_H_
+.decl interrupt_operation(n:symbol)
 
-#include <capstone/capstone.h>
-#include <souffle/SouffleInterface.h>
-#include <gtirb/gtirb.hpp>
-#include <optional>
-
-// Refine the CFG by removing fallthrough edges whenever there is a call to a block that never
-// returns.
-class NoReturnPass
-{
-private:
-    std::optional<std::string> DebugDir;
-
-    void populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M, cs_arch arch, cs_mode mode);
-    std::set<gtirb::CodeBlock*> updateCFG(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M);
-
-public:
-    void setDebugDir(std::string Path);
-    std::set<gtirb::CodeBlock*> computeNoReturn(gtirb::Module& module, cs_arch arch, cs_mode mode, unsigned int NThreads = 1);
-};
-#endif // NO_RETURN_PASS_H_
+interrupt_operation("INT").
+interrupt_operation("INTO").
+interrupt_operation("INT1").
+interrupt_operation("INT3").

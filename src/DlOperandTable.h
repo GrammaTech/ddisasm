@@ -34,6 +34,14 @@ using ImmOp = int64_t;
 
 using RegOp = std::string;
 
+struct PrefetchOp {
+    std::string value;
+};
+
+struct BarrierOp {
+    std::string value;
+};
+
 struct IndirectOp
 {
     std::string reg1;
@@ -46,6 +54,12 @@ struct IndirectOp
 
 constexpr bool operator<(const IndirectOp &LHS, const IndirectOp &RHS) noexcept;
 souffle::tuple &operator<<(souffle::tuple &t, const IndirectOp &op);
+
+constexpr bool operator<(const PrefetchOp& LHS, const PrefetchOp& RHS) noexcept;
+souffle::tuple& operator<<(souffle::tuple& t, const PrefetchOp& op);
+
+constexpr bool operator<(const BarrierOp& LHS, const BarrierOp& RHS) noexcept;
+souffle::tuple& operator<<(souffle::tuple& t, const BarrierOp& op);
 
 template <class T>
 souffle::tuple &operator<<(souffle::tuple &t, const std::pair<T, uint64_t> &pair)
@@ -67,7 +81,10 @@ public:
     std::map<ImmOp, uint64_t> immTable;
     std::map<RegOp, uint64_t> regTable;
     std::map<IndirectOp, uint64_t> indirectTable;
+    std::map<PrefetchOp, uint64_t> prefetchTable;
+    std::map<BarrierOp, uint64_t> barrierTable;
     int64_t add(std::variant<ImmOp, RegOp, IndirectOp> op);
+    int64_t add(std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp> op);
 };
 
 #endif /* SRC_DL_OPERATOR_TABLE_H_ */

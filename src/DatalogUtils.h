@@ -53,13 +53,16 @@ class GtirbToDatalog
 {
 private:
     std::shared_ptr<souffle::SouffleProgram> Prog;
+    cs_arch arch;
+    cs_mode mode;
 
 public:
-    GtirbToDatalog(std::shared_ptr<souffle::SouffleProgram> P) : Prog(P)
+    GtirbToDatalog(std::shared_ptr<souffle::SouffleProgram> P, cs_arch arch,
+                   cs_mode mode) : Prog(P), arch(arch), mode(mode)
     {
     }
 
-    static DlInstruction transformInstruction(const csh &CsHandle, DlOperandTable &OpDict,
+    static DlInstruction transformInstruction(const cs_arch arch, const csh &CsHandle, DlOperandTable &OpDict,
                                               const cs_insn &insn);
 
     template <typename T>

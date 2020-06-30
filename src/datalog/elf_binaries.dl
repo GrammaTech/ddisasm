@@ -187,7 +187,8 @@ main_function(Main_location):-
     !function_symbol(Main_location,"main"),
     First_call = min EA:{
         start_function(Entry),
-        instruction_get_operation(EA,"CALL"),
+        instruction_get_operation(EA, CallOp),
+        arch.call_operation(CallOp),
         code(EA),
         EA>=Entry
     },

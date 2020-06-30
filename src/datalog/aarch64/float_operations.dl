@@ -1,0 +1,78 @@
+//===- float_operations.dl ----------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+Define a set of floating point operations
+*/
+.decl float_operation(operation:symbol)
+
+
+float_operation("MOVSS").
+float_operation("MOVSD").
+// am I missing more?
+float_operation("MOVSD2").
+
+float_operation("MOVUPS").
+float_operation("MOVUPD").
+float_operation("MOVAPS").
+float_operation("MOVAPD").
+
+float_operation("ADDSS").
+float_operation("ADDSD").
+float_operation("ADDPS").
+float_operation("ADDPD").
+
+float_operation("SUBSS").
+float_operation("SUBSD").
+float_operation("SUBPS").
+float_operation("SUBPD").
+
+float_operation("MULSS").
+float_operation("MULSD").
+float_operation("MULPS").
+float_operation("MULPD").
+
+float_operation("DIVSS").
+float_operation("DIVSD").
+float_operation("DIVPS").
+float_operation("DIVPD").
+
+float_operation("MINSS").
+float_operation("MINSD").
+float_operation("MINPS").
+float_operation("MINPD").
+
+float_operation("MAXSS").
+float_operation("MAXSD").
+float_operation("MAXPS").
+float_operation("MAXPD").
+
+
+float_operation("ROUNDSS").
+float_operation("ROUNDSD").
+float_operation("ROUNDPS").
+float_operation("ROUNDPD").
+
+float_operation("SQRTSS").
+float_operation("SQRTSD").
+float_operation("SQRTPS").
+float_operation("SQRTPD").

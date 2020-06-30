@@ -91,10 +91,140 @@ std::string str_toupper(std::string s)
 
 std::string getRegisterName(const csh& CsHandle, unsigned int reg)
 {
-    if(reg == X86_REG_INVALID)
+    if(reg == ARM64_REG_INVALID || reg == X86_REG_INVALID)
         return "NONE";
+
     std::string name = str_toupper(cs_reg_name(CsHandle, reg));
     return name;
+}
+
+std::string getPrefetchValue(const arm64_prefetch_op prefetch) {
+    switch (prefetch) {
+        case ARM64_PRFM_PLDL1KEEP:
+            return std::string("pldl1keep");
+        case ARM64_PRFM_PLDL1STRM:
+            return std::string("pldl1strm");
+        case ARM64_PRFM_PLDL2KEEP:
+            return std::string("pldl2keep");
+        case ARM64_PRFM_PLDL2STRM:
+            return std::string("pldl2strm");
+        case ARM64_PRFM_PLDL3KEEP:
+            return std::string("pldl3keep");
+        case ARM64_PRFM_PLDL3STRM:
+            return std::string("pldl3strm");
+        case ARM64_PRFM_PLIL1KEEP:
+            return std::string("plil1keep");
+        case ARM64_PRFM_PLIL1STRM:
+            return std::string("plil1strm");
+        case ARM64_PRFM_PLIL2KEEP:
+            return std::string("plil2keep");
+        case ARM64_PRFM_PLIL2STRM:
+            return std::string("plil2strm");
+        case ARM64_PRFM_PLIL3KEEP:
+            return std::string("plil3keep");
+        case ARM64_PRFM_PLIL3STRM:
+            return std::string("plil3strm");
+        case ARM64_PRFM_PSTL1KEEP:
+            return std::string("pstl1keep");
+        case ARM64_PRFM_PSTL1STRM:
+            return std::string("pstl1strm");
+        case ARM64_PRFM_PSTL2KEEP:
+            return std::string("pstl2keep");
+        case ARM64_PRFM_PSTL2STRM:
+            return std::string("pstl2strm");
+        case ARM64_PRFM_PSTL3KEEP:
+            return std::string("pstl3keep");
+        case ARM64_PRFM_PSTL3STRM:
+            return std::string("pstl3strm");
+        case ARM64_PRFM_INVALID:
+        default:
+            std::cerr << "invalid operand\n";
+            exit(1);
+    }
+}
+
+std::string getBarrierOp(const arm64_barrier_op barrier) {
+    switch (barrier) {
+        case ARM64_BARRIER_OSHLD:
+            return std::string("oshld");
+        case ARM64_BARRIER_OSHST:
+            return std::string("oshst");
+        case ARM64_BARRIER_OSH:
+            return std::string("osh");
+        case ARM64_BARRIER_NSHLD:
+            return std::string("nshld");
+        case ARM64_BARRIER_NSHST:
+            return std::string("nshst");
+        case ARM64_BARRIER_NSH:
+            return std::string("nsh");
+        case ARM64_BARRIER_ISHLD:
+            return std::string("ishld");
+        case ARM64_BARRIER_ISHST:
+            return std::string("ishst");
+        case ARM64_BARRIER_ISH:
+            return std::string("ish");
+        case ARM64_BARRIER_LD:
+            return std::string("ld");
+        case ARM64_BARRIER_ST:
+            return std::string("st");
+        case ARM64_BARRIER_SY:
+            return std::string("sy");
+        case ARM64_BARRIER_INVALID:
+        default:
+            std::cerr << "invalid operand\n";
+            exit(1);
+    }
+}
+
+std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp> buildOperand(const csh& CsHandle, const cs_arm64_op& op)
+{
+    switch(op.type)
+    {
+        case ARM64_OP_REG:
+            return getRegisterName(CsHandle, op.reg);
+        case ARM64_OP_IMM:
+            return op.imm;
+        case ARM64_OP_MEM:
+        {
+            IndirectOp I = {getRegisterName(CsHandle, ARM64_REG_INVALID),
+                            getRegisterName(CsHandle, op.mem.base),
+                            getRegisterName(CsHandle, op.mem.index),
+                            1,
+                            op.mem.disp,
+                            4 * 8};
+            return I;
+        }
+        case ARM64_OP_FP:
+            std::cerr << "unsupported: FP\n";
+            return 0;
+        case ARM64_OP_CIMM:
+            std::cerr << "unsupported: CIMM\n";
+            return 0;
+        case ARM64_OP_REG_MRS:
+            std::cerr << "unsupported: MRS\n";
+            return 0;
+        case ARM64_OP_REG_MSR:
+            std::cerr << "unsupported: MSR\n";
+            return 0;
+        case ARM64_OP_PSTATE:
+            std::cerr << "unsupported: PSTATE\n";
+            return 0;
+        case ARM64_OP_SYS:
+            std::cerr << "unsupported: SYS\n";
+            return 0;
+        case ARM64_OP_PREFETCH: {
+            PrefetchOp I = {getPrefetchValue(op.prefetch)};
+            return I;
+        }
+        case ARM64_OP_BARRIER: {
+            BarrierOp I = {getBarrierOp(op.barrier)};
+            return I;
+        }
+        case ARM64_OP_INVALID:
+        default:
+            std::cerr << "invalid operand\n";
+            exit(1);
+    }
 }
 
 std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& CsHandle, const cs_x86_op& op)
@@ -122,7 +252,7 @@ std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& CsHandle, const c
     }
 }
 
-DlInstruction GtirbToDatalog::transformInstruction(const csh& CsHandle, DlOperandTable& OpDict,
+DlInstruction GtirbToDatalog::transformInstruction(const cs_arch arch, const csh& CsHandle, DlOperandTable& OpDict,
                                                    const cs_insn& insn)
 {
     std::vector<uint64_t> op_codes;
@@ -140,27 +270,52 @@ DlInstruction GtirbToDatalog::transformInstruction(const csh& CsHandle, DlOperan
         name = prefix_name;
     }
 
-    auto& detail = insn.detail->x86;
-    if(name != "NOP")
-    {
-        auto opCount = detail.op_count;
-        for(int i = 0; i < opCount; i++)
+    if (arch == CS_ARCH_ARM64) {
+        auto& detail = insn.detail->arm64;
+        if(name != "NOP")
         {
-            const auto& op = detail.operands[i];
-            uint64_t index = OpDict.add(buildOperand(CsHandle, op));
-            op_codes.push_back(index);
+            auto opCount = detail.op_count;
+            for(int i = 0; i < opCount; i++)
+            {
+                const auto& op = detail.operands[i];
+                uint64_t index = OpDict.add(buildOperand(CsHandle, op));
+                op_codes.push_back(index);
+            }
+            // we put the destination operand at the end
+            if(opCount > 0)
+                std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
         }
-        // we put the destination operand at the end
-        if(opCount > 0)
-            std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
-    }
-    return {insn.address,
+        return {insn.address,
+                insn.size,
+                prefix,
+                name,
+                op_codes,
+                0,
+                0};
+    } else if (arch == CS_ARCH_X86) {
+        auto& detail = insn.detail->x86;
+        if(name != "NOP")
+        {
+            auto opCount = detail.op_count;
+            for(int i = 0; i < opCount; i++)
+            {
+                const auto& op = detail.operands[i];
+                uint64_t index = OpDict.add(buildOperand(CsHandle, op));
+                op_codes.push_back(index);
+            }
+            // we put the destination operand at the end
+            if(opCount > 0)
+                std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
+        }
+        return {insn.address,
             insn.size,
             prefix,
             name,
             op_codes,
             detail.encoding.imm_offset,
             detail.encoding.disp_offset};
+    }
+    assert(false && "unexpected architecture");
 }
 
 namespace souffle
@@ -219,7 +374,7 @@ void GtirbToDatalog::populateBlocks(const gtirb::Module& M)
 void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int InstructionLimit)
 {
     csh CsHandle;
-    cs_open(CS_ARCH_X86, CS_MODE_64, &CsHandle); // == CS_ERR_OK
+    cs_open(arch, mode, &CsHandle); // == CS_ERR_OK
     cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
     // Exception-safe capstone handle closing
     std::unique_ptr<csh, std::function<void(csh*)>> CloseCapstoneHandle(&CsHandle, cs_close);
@@ -243,13 +398,15 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
             Insn, [Count](cs_insn* i) { cs_free(i, Count); });
         for(size_t i = 0; i < Count; ++i)
         {
-            Insns.push_back(GtirbToDatalog::transformInstruction(CsHandle, OpDict, Insn[i]));
+            Insns.push_back(GtirbToDatalog::transformInstruction(arch, CsHandle, OpDict, Insn[i]));
         }
     }
     GtirbToDatalog::addToRelation(&*Prog, "instruction", Insns);
     GtirbToDatalog::addToRelation(&*Prog, "op_regdirect", OpDict.regTable);
     GtirbToDatalog::addToRelation(&*Prog, "op_immediate", OpDict.immTable);
     GtirbToDatalog::addToRelation(&*Prog, "op_indirect", OpDict.indirectTable);
+    GtirbToDatalog::addToRelation(&*Prog, "op_prefetch", OpDict.prefetchTable);
+    GtirbToDatalog::addToRelation(&*Prog, "op_barrier", OpDict.barrierTable);
 }
 
 void GtirbToDatalog::populateCfgEdges(const gtirb::Module& M)

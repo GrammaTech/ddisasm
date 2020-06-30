@@ -35,6 +35,24 @@ souffle::tuple &operator<<(souffle::tuple &t, const IndirectOp &op)
     return t;
 }
 
+constexpr bool operator<(const BarrierOp& LHS, const BarrierOp& RHS) noexcept {
+    return std::tie(LHS.value) < std::tie(RHS.value);
+}
+
+souffle::tuple& operator<<(souffle::tuple& t, const BarrierOp& op) {
+    t << op.value;
+    return t;
+}
+
+constexpr bool operator<(const PrefetchOp& LHS, const PrefetchOp& RHS) noexcept {
+    return std::tie(LHS.value) < std::tie(RHS.value);
+}
+
+souffle::tuple& operator<<(souffle::tuple& t, const PrefetchOp& op) {
+    t << op.value;
+    return t;
+}
+
 template <typename T>
 int64_t DlOperandTable::addToTable(std::map<T, uint64_t> &opTable, T op)
 {
@@ -56,6 +74,21 @@ int64_t DlOperandTable::add(std::variant<ImmOp, RegOp, IndirectOp> op)
         return addToTable(regTable, *reg);
     if(auto *indirect = std::get_if<IndirectOp>(&op))
         return addToTable(indirectTable, *indirect);
+    assert("Operand has invalid value");
+    return 0;
+}
+
+int64_t DlOperandTable::add(std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp> op) {
+    if(auto *imm = std::get_if<ImmOp>(&op))
+        return addToTable(immTable, *imm);
+    if(auto *reg = std::get_if<RegOp>(&op))
+        return addToTable(regTable, *reg);
+    if(auto *indirect = std::get_if<IndirectOp>(&op))
+        return addToTable(indirectTable, *indirect);
+    if(auto *prfop = std::get_if<PrefetchOp>(&op))
+        return addToTable(prefetchTable, *prfop);
+    if(auto *bop = std::get_if<BarrierOp>(&op))
+        return addToTable(barrierTable, *bop);
     assert("Operand has invalid value");
     return 0;
 }
