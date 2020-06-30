@@ -1,5 +1,4 @@
-
-//===- arch_x64.dl --------------------------------------*- datalog -*-===//
+//===- arch_x64.dl ------------------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -33,12 +32,11 @@ and characteristics
 #include "interrupt_operations.dl"
 #include "registers.dl"
 
-
+// TODO:
 .decl conditional_mov(EA:address)
-
-//conditional_mov(EA):-
-//    instruction_get_operation(EA,Operation),
-//    contains("CMOV",Operation).
+// conditional_mov(EA):-
+//     instruction_get_operation(EA,Operation),
+//     contains("CMOV",Operation).
 
 .decl mov(EA:address)
 
@@ -47,7 +45,6 @@ mov(EA):-
         instruction_get_operation(EA,"MOV");
         instruction_get_operation(EA,"LDR")
     ).
-
 
 .decl is_nop(EA:address)
 
@@ -79,12 +76,8 @@ jump(EA):-
     instruction_get_dest_op(EA,_,Op),
     op_regdirect(Op,"PC").
 
-
+// TODO:
 .decl op_does_not_read_dest_reg(Operation:symbol)
-
-
-
-
 
 .decl arithmetic_operation(Operation:symbol)
 
@@ -99,7 +92,6 @@ arithmetic_operation("RSC").
 arithmetic_operation("SBC").
 arithmetic_operation("SHL").
 arithmetic_operation("SUB").
-
 
 .decl logic_operation(Operation:symbol)
 
@@ -119,19 +111,18 @@ read_only_operation("TST").
 
 .decl write_only_operation(Operation:symbol)
 
-
+// TODO:
 .decl one_op_write(Operation:symbol)
-
 
 .decl pointer_size(n:number) inline
 
 pointer_size(4).
 
+// TODO:
 .decl loop_operation(operation:symbol)
 
-
+// TODO:
 .decl loop_prefix(prefix:symbol)
-
 
 .decl call_operation(operation:symbol)
 
@@ -175,11 +166,11 @@ syscall_operation("SWI").
 
 .decl return_operation(operation:symbol)
 
-// fixme: maybe we need to check the register
+// FIXME: maybe we need to check the register
 return_operation("BX").
 
+// TODO:
 .decl halt_operation(operation:symbol)
-
 
 .decl cmp_operation(Operation:symbol)
 
@@ -188,10 +179,10 @@ cmp_operation("CMN").
 cmp_operation("TEQ").
 cmp_operation("TST").
 
-
+// TODO:
 .decl operation_size_exception(EA:address,Op_index:number,Size:number)
 
-//TODO
+// TODO:
 // arithmetic operation on two source registers
 .decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
 .output reg_reg_arithmetic_operation

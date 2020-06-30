@@ -1,4 +1,4 @@
-//===- registers.dl --------------------------------------*- datalog -*-===//
+//===- registers.dl -----------------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -24,11 +24,10 @@
 This module stablishes basic information about register:
  - Which registers and tracked/considered in the different analyses
  - Whether they all callee or caller saved according to the ABI
-
 */
 
-// limit the registers that are tracked
-// and transform the names to their 64 bits version
+// Limit the registers that are tracked and transform the names to their 64-bit
+// versions.
 .decl track_register(RegName:register,RegGenericName:register)
 
 track_register("R0","R0").
@@ -58,9 +57,7 @@ track_register("LR","LR").
 //track_register("R15","PC").
 track_register("PC","PC").
 
-
-
-// this specifies the registers whose value is not kept through a function call
+// This specifies the registers whose value is not kept through a function call
 // according to the ARM calling convention.
 .decl function_non_maintained_reg(reg:register)
 
@@ -72,7 +69,6 @@ function_non_maintained_reg("R3").
 function_non_maintained_reg("R12").
 function_non_maintained_reg("R13").
 function_non_maintained_reg("R14").
-
 
 .decl pc_register(reg:register)
 

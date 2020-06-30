@@ -63,8 +63,6 @@ jump_operation("BXGT").
 jump_operation("BXLE").
 jump_operation("BXAL").
 
-
-
 unconditional_jump_operation("B").
 
 jump_equal_operation("BEQ").
