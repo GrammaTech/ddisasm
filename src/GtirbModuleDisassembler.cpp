@@ -1356,7 +1356,7 @@ void shiftThumbBlocks(gtirb::Module &Module)
     // Shift thumb code blocks.
     for(auto [CodeBlock, Offset] : ThumbBlocks)
     {
-        gtirb::ChangeStatus Status;
+        [[maybe_unused]] gtirb::ChangeStatus Status;
         gtirb::ByteInterval *BI = CodeBlock->getByteInterval();
 
         // Remove the CodeBlock from the ByteInterval.
