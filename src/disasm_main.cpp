@@ -20,17 +20,20 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#include <souffle/CompiledSouffle.h>
-#include <souffle/SouffleInterface.h>
-#include <boost/filesystem.hpp>
-#include <boost/program_options.hpp>
 #include <chrono>
-#include <gtirb/gtirb.hpp>
-#include <gtirb_pprinter/PrettyPrinter.hpp>
 #include <iostream>
 #include <string>
 #include <thread>
 #include <vector>
+
+#include <souffle/CompiledSouffle.h>
+#include <souffle/SouffleInterface.h>
+#include <boost/filesystem.hpp>
+#include <boost/program_options.hpp>
+
+#include <gtirb/gtirb.hpp>
+#include <gtirb_pprinter/PrettyPrinter.hpp>
+
 #include "AArch64Decoder.h"
 #include "AuxDataSchema.h"
 #include "DatalogUtils.h"
@@ -38,11 +41,10 @@
 #include "GtirbModuleDisassembler.h"
 #include "Version.h"
 #include "X86Decoder.h"
+#include "gtirb-builder/GtirbBuilder.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
-
-#include "gtirb-builder/GtirbBuilder.h"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
