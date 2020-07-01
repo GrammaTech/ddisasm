@@ -34,6 +34,8 @@
 #include <gtirb/gtirb.hpp>
 #include <gtirb_pprinter/PrettyPrinter.hpp>
 
+#include "gtirb-builder/GtirbBuilder.h"
+
 #include "AArch64Decoder.h"
 #include "AuxDataSchema.h"
 #include "DatalogUtils.h"
@@ -41,7 +43,6 @@
 #include "GtirbModuleDisassembler.h"
 #include "Version.h"
 #include "X86Decoder.h"
-#include "gtirb-builder/GtirbBuilder.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"

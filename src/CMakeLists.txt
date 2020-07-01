@@ -214,7 +214,7 @@ add_subdirectory(gtirb-builder)
 add_library(
   disasm_main STATIC
   disasm_main.cpp DlDecoder.cpp AArch64Decoder.cpp X86Decoder.cpp
-  ExceptionDecoder.cpp GtirbModuleDisassembler.cpp)
+  ExceptionDecoder.cpp GtirbModuleDisassembler.cpp DwarfMap.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_compile_options(disasm_main PRIVATE -Wno-unused-parameter)

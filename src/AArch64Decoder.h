@@ -28,6 +28,7 @@
 class AArch64Decoder : public DlDecoder
 {
 public:
+    AArch64Decoder() : DlDecoder(gtirb::ISA::ARM64){};
     souffle::SouffleProgram* decode(gtirb::Module& module,
                                     const std::vector<std::string>& DisasmOptions);
     void decodeSection(const gtirb::ByteInterval& byteInterval);

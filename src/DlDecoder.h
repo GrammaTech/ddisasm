@@ -53,8 +53,7 @@ protected:
                                   gtirb::Addr max_address);
 
 public:
-    DlDecoder();
-    ~DlDecoder();
+    DlDecoder(gtirb::ISA Isa) : CsHandle(Isa){};
     souffle::SouffleProgram* decode(gtirb::Module& module,
                                     const std::vector<std::string>& DisasmOptions);
 };
