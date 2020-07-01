@@ -110,12 +110,6 @@ namespace gtirb
             typedef std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> Type;
         };
 
-        struct AllElfSectionProperties
-        {
-            static constexpr const char* Name = "allElfSectionProperties";
-            typedef std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> Type;
-        };
-
         struct DWARFElfSectionProperties
         {
             static constexpr const char* Name = "DWARFElfSectionProperties";

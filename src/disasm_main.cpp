@@ -80,7 +80,6 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionIndex>();
-    gtirb::AuxDataContainer::registerAuxDataType<AllElfSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<FlaggedSections>();
     gtirb::AuxDataContainer::registerAuxDataType<DWARFElfSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<PeSectionProperties>();
