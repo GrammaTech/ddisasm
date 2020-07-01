@@ -374,7 +374,9 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
             }
             return {insn.address, insn.size, prefix, name, op_codes, 0, 0};
         }
-            assert(false && "unexpected architecture");
+        default:
+            std::cerr << "Tried to decode instruction with unsupported architecture";
+            exit(1);
     }
 }
 
