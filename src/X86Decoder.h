@@ -18,9 +18,6 @@
 #ifndef SRC_X86_DECODER_H_
 #define SRC_X86_DECODER_H_
 
-#include <vector>
-
-#include <capstone/capstone.h>
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 

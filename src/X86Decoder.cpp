@@ -1,14 +1,5 @@
 #include "X86Decoder.h"
 
-#include <algorithm>
-#include <iostream>
-#include <sstream>
-#include <string>
-
-#include "AuxDataSchema.h"
-#include "ExceptionDecoder.h"
-#include "X86Decoder.h"
-
 souffle::SouffleProgram *X86Decoder::decode(gtirb::Module &module,
                                             const std::vector<std::string> &DisasmOptions)
 {
@@ -41,6 +32,7 @@ souffle::SouffleProgram *X86Decoder::decode(gtirb::Module &module,
     if(auto prog = souffle::ProgramFactory::newInstance("souffle_disasm_x64"))
     {
         loadInputs(prog, module);
+        GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "option", DisasmOptions);
         return prog;
     }
     return nullptr;

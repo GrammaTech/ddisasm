@@ -1,11 +1,4 @@
-#include <algorithm>
-#include <iostream>
-#include <sstream>
-#include <string>
-
 #include "AArch64Decoder.h"
-#include "AuxDataSchema.h"
-#include "ExceptionDecoder.h"
 
 /**
  * AArch64 Decoder
@@ -44,6 +37,7 @@ souffle::SouffleProgram *AArch64Decoder::decode(gtirb::Module &module,
     if(auto prog = souffle::ProgramFactory::newInstance("souffle_disasm_aarch64"))
     {
         loadInputs(prog, module);
+        GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "option", DisasmOptions);
         return prog;
     }
     return nullptr;
