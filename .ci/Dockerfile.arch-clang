@@ -5,7 +5,7 @@ ARG CXX_COMPILER=clang++
 
 RUN pacman --noconfirm -Syu archlinux-keyring
 RUN pacman -Syu --noconfirm autoconf automake base-devel boost clang cmake \
-        doxygen fakeroot gcc git libtool make mcpp pkg-config protobuf \
+        doxygen fakeroot gcc git libdwarf libtool make mcpp pkg-config protobuf \
         python3 python-pip sudo wget unzip
 RUN python3 -m pip install wheel
 

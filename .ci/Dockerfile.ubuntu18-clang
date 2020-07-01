@@ -19,7 +19,7 @@ SHELL ["/bin/bash", "-c"]
 
 # Install common packages
 RUN apt-get -y update && apt-get -y install autoconf automake clang cmake \
-    curl doxygen git libprotobuf-dev libtool libstdc++-7-dev \
+    curl doxygen git libdwarf-dev libprotobuf-dev libtool libstdc++-7-dev \
     make mcpp pkg-config protobuf-compiler python3 python3-pip \
     software-properties-common unzip wget zlib1g-dev
 
