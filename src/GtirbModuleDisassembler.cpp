@@ -1333,7 +1333,6 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildInferredSymbols(context, module, prog);
     buildSymbolForwarding(context, module, prog);
     buildSymbolicOperandInfo(context, module, prog);
-    buildDataBlocks(context, module, prog);
     buildCodeBlocks(context, module, prog);
     buildDataBlocks(context, module, prog);
     buildCodeSymbolicInformation(context, module, prog);
