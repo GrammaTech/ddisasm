@@ -60,22 +60,6 @@ namespace std
     }
 } // namespace std
 
-std::optional<DlDecoder *> make_decoder(LIEF::ARCHITECTURES arch)
-{
-    if(arch == LIEF::ARCHITECTURES::ARCH_X86)
-    {
-        return std::make_optional(new X86Decoder());
-    }
-    else if(arch == LIEF::ARCHITECTURES::ARCH_ARM64)
-    {
-        return std::make_optional(new AArch64Decoder());
-    }
-    else
-    {
-        return std::nullopt;
-    }
-}
-
 void registerAuxDataTypes()
 {
     using namespace gtirb::schema;
@@ -191,6 +175,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    // Parse and build a GTIRB module from a supported binary object file.
     std::cout << "Building the initial gtirb representation " << std::flush;
     auto StartBuildZeroIR = std::chrono::high_resolution_clock::now();
     std::string filename = vm["input-file"].as<std::string>();
@@ -200,18 +185,44 @@ int main(int argc, char **argv)
         std::cerr << "\nERROR: " << filename << ": " << GTIRB.getError().message() << "\n";
         return 1;
     }
+
     // Add `ddisasmVersion' aux data table.
     GTIRB->IR->addAuxData<gtirb::schema::DdisasmVersion>(DDISASM_FULL_VERSION_STRING);
     printElapsedTimeSince(StartBuildZeroIR);
 
+    if(!GTIRB->IR)
+    {
+        std::cerr << "There was a problem loading the binary file " << filename << "\n";
+        return 1;
+    }
+
+    // Decode and load GTIRB Module into the SouffleProgram context.
     gtirb::Module &Module = *(GTIRB->IR->modules().begin());
     souffle::SouffleProgram *prog;
     {
-        DlDecoder decoder;
         std::cout << "Decoding the binary " << std::flush;
         auto StartDecode = std::chrono::high_resolution_clock::now();
         std::vector<std::string> DisasmOptions = createDisasmOptions(vm);
-        prog = decoder.decode(Module, DisasmOptions);
+
+        switch(Module.getISA())
+        {
+            case gtirb::ISA::X64:
+            {
+                X86Decoder Decoder;
+                prog = Decoder.decode(Module, DisasmOptions);
+            }
+            break;
+            case gtirb::ISA::ARM64:
+            {
+                AArch64Decoder Decoder;
+                prog = Decoder.decode(Module, DisasmOptions);
+            }
+            break;
+            default:
+                std::cerr << "Unsupported architecture\n";
+                return 1;
+        }
+
         printElapsedTimeSince(StartDecode);
     }
 
@@ -246,7 +257,7 @@ int main(int argc, char **argv)
         {
             DwarfMap dmap(filename);
             dmap.extract_dwarf_data();
-            dmap.flag_constsym(module);
+            dmap.flag_constsym(Module);
         }
 
         if(vm.count("skip-function-analysis") == 0)
@@ -286,21 +297,6 @@ int main(int argc, char **argv)
         // Pretty-print
         gtirb_pprint::PrettyPrinter pprinter;
         pprinter.setDebug(vm.count("debug"));
-
-        std::tuple<std::string, std::string> target;
-        if(arch == CS_ARCH_X86)
-        {
-            target = std::tuple<std::string, std::string>("elf", "intel");
-        }
-        else if(arch == CS_ARCH_ARM64)
-        {
-            target = std::tuple<std::string, std::string>("elf", "aarch64");
-        }
-        else
-        {
-            assert(false && "unsupported architecture");
-        }
-        pprinter.setTarget(target);
 
         if(vm.count("keep-functions") != 0)
         {

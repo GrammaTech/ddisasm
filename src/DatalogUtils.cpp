@@ -48,6 +48,50 @@ void writeFacts(souffle::SouffleProgram* prog, const std::string& directory)
     }
 }
 
+MultiArchCapstoneHandle::MultiArchCapstoneHandle(gtirb::ISA Isa)
+{
+    this->Isa = Isa;
+    cs_err Err = CS_ERR_OK;
+    switch(Isa)
+    {
+        case gtirb::ISA::X64:
+        {
+            Err = cs_open(CS_ARCH_X86, CS_MODE_64, &this->RawHandle);
+            assert(Err == CS_ERR_OK && "Failed to initialize X64 disassembler");
+            cs_option(this->RawHandle, CS_OPT_DETAIL, CS_OPT_ON);
+            break;
+        }
+        case gtirb::ISA::ARM64:
+        {
+            Err = cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &this->RawHandle);
+            assert(Err == CS_ERR_OK && "Failed to initialize ARM64 disassembler");
+            cs_option(this->RawHandle, CS_OPT_DETAIL, CS_OPT_ON);
+            break;
+        }
+        default:
+            this->Isa = gtirb::ISA::ValidButUnsupported;
+    }
+}
+
+MultiArchCapstoneHandle::~MultiArchCapstoneHandle()
+{
+    if(this->Isa != gtirb::ISA::ValidButUnsupported)
+        cs_close(&this->RawHandle);
+}
+
+void MultiArchCapstoneHandle::setDecodeMode(uint64_t mode)
+{
+    // 1 for THUMB 0 for regular ARM
+    if(mode)
+    {
+        cs_option(this->RawHandle, CS_OPT_MODE, CS_MODE_THUMB);
+    }
+    else
+    {
+        cs_option(this->RawHandle, CS_OPT_MODE, CS_MODE_ARM);
+    }
+}
+
 void populateEdgeProperties(souffle::tuple& T, const gtirb::EdgeLabel& Label)
 {
     assert(Label.has_value() && "Found edge without a label");
@@ -89,12 +133,20 @@ std::string str_toupper(std::string s)
     return s;
 }
 
-std::string getRegisterName(const csh& CsHandle, unsigned int reg)
+std::string getRegisterName(const MultiArchCapstoneHandle& CsHandle, unsigned int reg)
 {
-    if(reg == ARM64_REG_INVALID || reg == X86_REG_INVALID)
-        return "NONE";
-
-    std::string name = str_toupper(cs_reg_name(CsHandle, reg));
+    switch(CsHandle.Isa)
+    {
+        case gtirb::ISA::X64:
+            if(reg == X86_REG_INVALID)
+                return "NONE";
+            break;
+        case gtirb::ISA::ARM64:
+            if(reg == ARM_REG_INVALID)
+                return "NONE";
+            break;
+    }
+    std::string name = str_toupper(cs_reg_name(CsHandle.RawHandle, reg));
     return name;
 }
 
@@ -180,8 +232,8 @@ std::string getBarrierOp(const arm64_barrier_op barrier)
     }
 }
 
-std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp> buildOperand(const csh& CsHandle,
-                                                                           const cs_arm64_op& op)
+std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp> buildOperand(
+    const MultiArchCapstoneHandle& CsHandle, const cs_arm64_op& op)
 {
     switch(op.type)
     {
@@ -234,7 +286,8 @@ std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp> buildOperand(const
     }
 }
 
-std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& CsHandle, const cs_x86_op& op)
+std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const MultiArchCapstoneHandle& CsHandle,
+                                                    const cs_x86_op& op)
 {
     switch(op.type)
     {
@@ -259,7 +312,7 @@ std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const csh& CsHandle, const c
     }
 }
 
-DlInstruction GtirbToDatalog::transformInstruction(const cs_arch arch, const csh& CsHandle,
+DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle& CsHandle,
                                                    DlOperandTable& OpDict, const cs_insn& insn)
 {
     std::vector<uint64_t> op_codes;
@@ -277,49 +330,52 @@ DlInstruction GtirbToDatalog::transformInstruction(const cs_arch arch, const csh
         name = prefix_name;
     }
 
-    if(arch == CS_ARCH_ARM64)
+    switch(CsHandle.Isa)
     {
-        auto& detail = insn.detail->arm64;
-        if(name != "NOP")
+        case gtirb::ISA::X64:
         {
-            auto opCount = detail.op_count;
-            for(int i = 0; i < opCount; i++)
+            auto& detail = insn.detail->x86;
+            if(name != "NOP")
             {
-                const auto& op = detail.operands[i];
-                uint64_t index = OpDict.add(buildOperand(CsHandle, op));
-                op_codes.push_back(index);
+                auto opCount = detail.op_count;
+                for(int i = 0; i < opCount; i++)
+                {
+                    const auto& op = detail.operands[i];
+                    uint64_t index = OpDict.add(buildOperand(CsHandle, op));
+                    op_codes.push_back(index);
+                }
+                // we put the destination operand at the end
+                if(opCount > 0)
+                    std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
             }
-            // we put the destination operand at the end
-            if(opCount > 0)
-                std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
+            return {insn.address,
+                    insn.size,
+                    prefix,
+                    name,
+                    op_codes,
+                    detail.encoding.imm_offset,
+                    detail.encoding.disp_offset};
         }
-        return {insn.address, insn.size, prefix, name, op_codes, 0, 0};
-    }
-    else if(arch == CS_ARCH_X86)
-    {
-        auto& detail = insn.detail->x86;
-        if(name != "NOP")
+        case gtirb::ISA::ARM64:
         {
-            auto opCount = detail.op_count;
-            for(int i = 0; i < opCount; i++)
+            auto& detail = insn.detail->arm64;
+            if(name != "NOP")
             {
-                const auto& op = detail.operands[i];
-                uint64_t index = OpDict.add(buildOperand(CsHandle, op));
-                op_codes.push_back(index);
+                auto opCount = detail.op_count;
+                for(int i = 0; i < opCount; i++)
+                {
+                    const auto& op = detail.operands[i];
+                    uint64_t index = OpDict.add(buildOperand(CsHandle, op));
+                    op_codes.push_back(index);
+                }
+                // we put the destination operand at the end
+                if(opCount > 0)
+                    std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
             }
-            // we put the destination operand at the end
-            if(opCount > 0)
-                std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
+            return {insn.address, insn.size, prefix, name, op_codes, 0, 0};
         }
-        return {insn.address,
-                insn.size,
-                prefix,
-                name,
-                op_codes,
-                detail.encoding.imm_offset,
-                detail.encoding.disp_offset};
+            assert(false && "unexpected architecture");
     }
-    assert(false && "unexpected architecture");
 }
 
 namespace souffle
@@ -377,12 +433,7 @@ void GtirbToDatalog::populateBlocks(const gtirb::Module& M)
 
 void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int InstructionLimit)
 {
-    csh CsHandle;
-    cs_open(arch, mode, &CsHandle); // == CS_ERR_OK
-    cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
-    // Exception-safe capstone handle closing
-    std::unique_ptr<csh, std::function<void(csh*)>> CloseCapstoneHandle(&CsHandle, cs_close);
-
+    MultiArchCapstoneHandle CsHandle(M.getISA());
     std::vector<DlInstruction> Insns;
     DlOperandTable OpDict;
     for(auto& Block : M.code_blocks())
@@ -394,7 +445,7 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
         uint64_t InitSize = Bytes->getInitializedSize();
         assert(Bytes->getSize() == InitSize && "Found partially initialized code block.");
         size_t Count =
-            cs_disasm(CsHandle, Bytes->rawBytes<uint8_t>(), InitSize,
+            cs_disasm(CsHandle.RawHandle, Bytes->rawBytes<uint8_t>(), InitSize,
                       static_cast<uint64_t>(*Block.getAddress()), InstructionLimit, &Insn);
 
         // Exception-safe cleanup of instructions
@@ -402,7 +453,7 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
             Insn, [Count](cs_insn* i) { cs_free(i, Count); });
         for(size_t i = 0; i < Count; ++i)
         {
-            Insns.push_back(GtirbToDatalog::transformInstruction(arch, CsHandle, OpDict, Insn[i]));
+            Insns.push_back(GtirbToDatalog::transformInstruction(CsHandle, OpDict, Insn[i]));
         }
     }
     GtirbToDatalog::addToRelation(&*Prog, "instruction", Insns);

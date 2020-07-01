@@ -17,10 +17,12 @@
 
 #ifndef SRC_AARCH64_DECODER_H_
 #define SRC_AARCH64_DECODER_H_
+#include <vector>
+
 #include <capstone/capstone.h>
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
-#include <vector>
+
 #include "DatalogUtils.h"
 #include "DlDecoder.h"
 #include "DlOperandTable.h"
@@ -28,18 +30,9 @@
 class AArch64Decoder : public DlDecoder
 {
 public:
-    AArch64Decoder();
-    ~AArch64Decoder();
-    souffle::SouffleProgram* decode(gtirb::Module& module);
+    souffle::SouffleProgram* decode(gtirb::Module& module,
+                                    const std::vector<std::string>& DisasmOptions);
     void decodeSection(const gtirb::ByteInterval& byteInterval);
-    cs_arch getArch() const override
-    {
-        return CS_ARCH_ARM64;
-    }
-    cs_mode getMode() const override
-    {
-        return CS_MODE_ARM;
-    }
 };
 
 #endif /* SRC_AARCH64_DECODER_H_ */

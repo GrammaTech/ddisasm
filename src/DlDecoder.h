@@ -41,7 +41,7 @@ struct DlData
 class DlDecoder
 {
 protected:
-    csh csHandle;
+    MultiArchCapstoneHandle CsHandle;
     DlOperandTable op_dict;
     std::vector<DlInstruction> instructions;
     std::vector<gtirb::Addr> invalids;

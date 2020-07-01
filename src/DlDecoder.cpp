@@ -128,17 +128,6 @@ void addSections(souffle::SouffleProgram *prog, gtirb::Module &module)
     }
 }
 
-DlDecoder::DlDecoder()
-{
-    cs_open(CS_ARCH_X86, CS_MODE_64, &this->csHandle); // == CS_ERR_OK
-    cs_option(this->csHandle, CS_OPT_DETAIL, CS_OPT_ON);
-}
-
-DlDecoder::~DlDecoder()
-{
-    cs_close(&this->csHandle);
-}
-
 souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module,
                                            const std::vector<std::string> &DisasmOptions)
 {
@@ -187,15 +176,15 @@ void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
     while(size > 0)
     {
         cs_insn *insn;
-        size_t count = cs_disasm(csHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
+        size_t count =
+            cs_disasm(CsHandle.RawHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
         if(count == 0)
         {
             invalids.push_back(ea);
         }
         else
         {
-            instructions.push_back(
-                GtirbToDatalog::transformInstruction(getArch(), csHandle, op_dict, *insn));
+            instructions.push_back(GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn));
             cs_free(insn, count);
         }
         ++ea;

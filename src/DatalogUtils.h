@@ -49,6 +49,16 @@ namespace souffle
     souffle::tuple &operator<<(souffle::tuple &t, const DlInstruction &inst);
 } // namespace souffle
 
+class MultiArchCapstoneHandle
+{
+public:
+    gtirb::ISA Isa;
+    csh RawHandle;
+    MultiArchCapstoneHandle(gtirb::ISA Isa);
+    ~MultiArchCapstoneHandle();
+    void setDecodeMode(uint64_t mode);
+};
+
 class GtirbToDatalog
 {
 private:
@@ -57,12 +67,11 @@ private:
     cs_mode mode;
 
 public:
-    GtirbToDatalog(std::shared_ptr<souffle::SouffleProgram> P, cs_arch arch, cs_mode mode)
-        : Prog(P), arch(arch), mode(mode)
+    GtirbToDatalog(std::shared_ptr<souffle::SouffleProgram> P) : Prog(P)
     {
     }
 
-    static DlInstruction transformInstruction(const cs_arch arch, const csh &CsHandle,
+    static DlInstruction transformInstruction(const MultiArchCapstoneHandle &CsHandle,
                                               DlOperandTable &OpDict, const cs_insn &insn);
 
     template <typename T>

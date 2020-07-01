@@ -112,7 +112,7 @@ gtirb::ISA GtirbBuilder::isa()
         case LIEF::ARCHITECTURES::ARCH_ARM:
             return gtirb::ISA::ARM;
         case LIEF::ARCHITECTURES::ARCH_ARM64:
-            return gtirb::ISA::ValidButUnsupported;
+            return gtirb::ISA::ARM64;
         case LIEF::ARCHITECTURES::ARCH_NONE:
             return gtirb::ISA::Undefined;
         default:

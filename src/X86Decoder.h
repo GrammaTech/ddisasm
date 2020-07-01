@@ -18,29 +18,22 @@
 #ifndef SRC_X86_DECODER_H_
 #define SRC_X86_DECODER_H_
 
+#include <vector>
+
 #include <capstone/capstone.h>
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
+
 #include "DatalogUtils.h"
 #include "DlDecoder.h"
 #include "DlOperandTable.h"
 
-#include <vector>
 class X86Decoder : public DlDecoder
 {
 public:
-    X86Decoder();
-    virtual ~X86Decoder();
-    souffle::SouffleProgram* decode(gtirb::Module& module);
+    souffle::SouffleProgram* decode(gtirb::Module& module,
+                                    const std::vector<std::string>& DisasmOptions);
     void decodeSection(const gtirb::ByteInterval& byteInterval);
-    cs_arch getArch() const override
-    {
-        return CS_ARCH_X86;
-    }
-    cs_mode getMode() const override
-    {
-        return CS_MODE_64;
-    }
 };
 
 #endif /* SRC_X86_DECODER_H_ */
