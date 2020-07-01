@@ -64,7 +64,8 @@ if(WIN32)
   set(GENERATED_ARM64_CPP_PATH
       "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_arm64.cpp)")
 else()
-  set(GENERATED_ARM64_CPP_PATH "${CMAKE_BINARY_DIR}/src/souffle_disasm_arm64.cpp")
+  set(GENERATED_ARM64_CPP_PATH
+      "${CMAKE_BINARY_DIR}/src/souffle_disasm_arm64.cpp")
 endif()
 
 add_custom_command(
@@ -213,8 +214,13 @@ add_subdirectory(gtirb-builder)
 # souffle code won't build with -Wall -Werror).
 add_library(
   disasm_main STATIC
-  disasm_main.cpp DlDecoder.cpp AArch64Decoder.cpp X86Decoder.cpp
-  ExceptionDecoder.cpp GtirbModuleDisassembler.cpp DwarfMap.cpp)
+  disasm_main.cpp
+  DlDecoder.cpp
+  AArch64Decoder.cpp
+  X86Decoder.cpp
+  ExceptionDecoder.cpp
+  GtirbModuleDisassembler.cpp
+  DwarfMap.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_compile_options(disasm_main PRIVATE -Wno-unused-parameter)
