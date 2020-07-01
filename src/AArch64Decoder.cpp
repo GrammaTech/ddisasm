@@ -34,7 +34,7 @@ souffle::SouffleProgram *AArch64Decoder::decode(gtirb::Module &module,
             }
         }
     }
-    if(auto prog = souffle::ProgramFactory::newInstance("souffle_disasm_aarch64"))
+    if(auto prog = souffle::ProgramFactory::newInstance("souffle_disasm_arm64"))
     {
         loadInputs(prog, module);
         GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "option", DisasmOptions);
