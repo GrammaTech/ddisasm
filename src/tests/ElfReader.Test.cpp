@@ -97,4 +97,20 @@ TEST_P(ElfReaderTest, libraries)
     EXPECT_EQ(Libraries, ModuleLibraries);
 }
 
-INSTANTIATE_TEST_SUITE_P(GtirbBuilderTests, ElfReaderTest, testing::Values("inputs/hello.x64.elf"));
+TEST_P(ElfReaderTest, libraryPaths)
+{
+    if(GetParam() == "input/man")
+    {
+        gtirb::ErrorOr<GTIRB> GTIRB = GtirbBuilder::read(GetParam());
+        gtirb::Module& Module = *(GTIRB->IR->modules().begin());
+
+        auto* AuxData = Module.getAuxData<gtirb::schema::LibraryPaths>();
+        EXPECT_NE(AuxData, nullptr);
+
+        std::vector<std::string> Paths = {"/usr/lib/man-db"};
+        EXPECT_EQ(*AuxData, Paths);
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(GtirbBuilderTests, ElfReaderTest,
+                         testing::Values("inputs/hello.x64.elf", "inputs/man"));
