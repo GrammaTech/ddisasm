@@ -1,0 +1,42 @@
+import platform
+import unittest
+from disassemble_reassemble_check import (
+    disassemble_reassemble_test as dis_reasm_test,
+)
+from pathlib import Path
+
+asm_dir = Path("./examples/binrats/")
+
+
+class TestArm64BinratsExamples(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_arm64_binrats_hello(self):
+        self.assertTrue(
+            dis_reasm_test(
+                asm_dir / "hello",
+                "hello",
+                c_compilers=["aarch64-linux-gnu-gcc"],
+                cxx_compilers=["aarch64-linux-gnu-g++"],
+                reassembly_compiler="aarch64-linux-gnu-gcc",
+            )
+        )
+
+    # TODO: Fix invalid operand
+    # @unittest.skipUnless(
+    #     platform.system() == "Linux", "This test is linux only."
+    # )
+    # def test_arm64_binrats_password(self):
+    #     self.assertTrue(
+    #         dis_reasm_test(
+    #             asm_dir / "password",
+    #             "password",
+    #             c_compilers=["aarch64-linux-gnu-gcc"],
+    #             cxx_compilers=["aarch64-linux-gnu-g++"],
+    #             reassembly_compiler="aarch64-linux-gnu-gcc",
+    #         )
+    #     )
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,25 +1,20 @@
-AMD64CC=x86_64-linux-gnu-gcc
-ARM64CC=aarch64-linux-gnu-gcc
 
-CFLAGS=-g
-
-TESTNAME=password
-
-DD=../../../build/bin/ddisasm
-OUT_AMD64=$(TESTNAME)_amd64
-OUT_ARM64=$(TESTNAME)_arm64
-
-.PHONY: all clean
-
-all: amd64 arm64
-
-amd64: $(TESTNAME).c
-	$(AMD64CC) $^  $(CFLAGS) -o $(OUT_AMD64)
-	$(DD) $(OUT_AMD64) --asm=amd64.s $(DD_FLAGS)
-
-arm64: $(TESTNAME).c
-	$(ARM64CC) $^  $(CFLAGS) -o $(OUT_ARM64)
-	$(DD) $(OUT_ARM64) --asm=arm64.s $(DD_FLAGS)
-
+all: password.c
+	aarch64-linux-gnu-gcc password.c -o password
+	@ echo "foo" \
+    | qemu-aarch64 -L /usr/aarch64-linux-gnu password \
+    > out.txt
+	@ echo "admin\n4dm1n__4eva" \
+    | qemu-aarch64 -L /usr/aarch64-linux-gnu password \
+    >> out.txt
 clean:
-	rm -f $(OUT_ARM64) $(OUT_AMD64) arm64.s amd64.s
+	rm -f password out.txt
+check:
+	@ echo "foo" \
+    | qemu-aarch64 -L /usr/aarch64-linux-gnu password \
+    > /tmp/res.txt
+	@ echo "admin\n4dm1n__4eva" \
+    | qemu-aarch64 -L /usr/aarch64-linux-gnu password \
+    >> /tmp/res.txt
+	@ diff out.txt /tmp/res.txt && echo TEST OK
+
