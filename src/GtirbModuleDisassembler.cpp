@@ -906,19 +906,6 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
                 ConnectToBlock[&Symbol] = {&Block, false};
                 continue;
             }
-            // FIXME: Decouple ARM-specfic code.
-            if(Module.getISA() == gtirb::ISA::ARM)
-            {
-                if(auto It = Module.findCodeBlocksAt(Addr + 1); !It.empty())
-                {
-                    gtirb::CodeBlock &Block = It.front();
-                    if(static_cast<uint64_t>(*Block.getAddress()) & 1)
-                    {
-                        ConnectToBlock[&Symbol] = {&Block, false};
-                        continue;
-                    }
-                }
-            }
             if(auto It = Module.findCodeBlocksOn(Addr); !It.empty())
             {
                 gtirb::CodeBlock &Block = It.front();

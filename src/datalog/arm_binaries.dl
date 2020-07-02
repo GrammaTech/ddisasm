@@ -82,19 +82,10 @@ symbol_minus_symbol_candidate(Addr,Size,EARef,Dest,"no_table",Scale):-
     arch.reg_reg_arithmetic_operation(EAAddPC,Reg,Reg,PC,1,0),
     arch.pc_register(PC),
 
-    EARef = EAAddPC + 4 - (EAAddPC band 1),
+    EARef = EAAddPC + 4,
     data_word(Addr,Size,Diff),
-    Dest = EARef + Diff,
+    Dest = EARef + Diff - (EAAddPC band 1),
 
     data_segment(Begin,End),
     Dest >= Begin, Dest <= End,
     Scale = 1.
-
-block_needs_splitting_at(EA+1):-
-    (
-        symbol_minus_symbol(_,_,_,EA,_);
-        symbol_minus_symbol(_,_,EA,_,_)
-    ),
-    code_in_block(EA+1,Block),
-    (Block band 1) = 1,
-    EA != Block.
