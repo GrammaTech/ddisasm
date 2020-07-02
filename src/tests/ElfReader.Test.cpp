@@ -107,8 +107,8 @@ TEST_P(ElfReaderTest, libraryPaths)
         auto* AuxData = Module.getAuxData<gtirb::schema::LibraryPaths>();
         EXPECT_NE(AuxData, nullptr);
 
-        std::vector<std::string> Paths = {"/usr/lib/man-db"};
-        EXPECT_EQ(*AuxData, Paths);
+        std::vector<std::string> LibraryPaths = {"/usr/lib/man-db"};
+        EXPECT_EQ(*AuxData, LibraryPaths);
     }
 }
 
