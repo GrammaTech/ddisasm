@@ -199,8 +199,8 @@ void ElfReader::addAuxData()
     }
     Module->addAuxData<gtirb::schema::Relocations>(std::move(RelocationTuples));
 
-    // TODO: Add `libraries' aux data table.
-    Module->addAuxData<gtirb::schema::Libraries>({});
+    std::vector<std::string> Libraries = Elf->imported_libraries();
+    Module->addAuxData<gtirb::schema::Libraries>(std::move(Libraries));
 
     // TODO: Add `libraryPaths' aux data table.
     Module->addAuxData<gtirb::schema::LibraryPaths>({});

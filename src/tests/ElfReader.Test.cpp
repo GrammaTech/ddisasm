@@ -72,4 +72,29 @@ TEST_P(ElfReaderTest, sections)
     }
 }
 
+TEST_P(ElfReaderTest, libraries)
+{
+    int Index = 0;
+    std::unordered_set<std::string> Libraries;
+    for(const auto& DynamicEntry : ELF->dynamic_entries())
+    {
+        if(const auto DynamicEntryLibrary =
+               dynamic_cast<const LIEF::ELF::DynamicEntryLibrary*>(&DynamicEntry))
+        {
+            if(DynamicEntryLibrary->tag() == LIEF::ELF::DYNAMIC_TAGS::DT_NEEDED)
+            {
+                Libraries.insert(DynamicEntryLibrary->name());
+            }
+        }
+    }
+
+    gtirb::ErrorOr<GTIRB> GTIRB = GtirbBuilder::read(GetParam());
+    gtirb::Module& Module = *(GTIRB->IR->modules().begin());
+
+    auto* AuxData = Module.getAuxData<gtirb::schema::Libraries>();
+    EXPECT_NE(AuxData, nullptr);
+    std::unordered_set<std::string> ModuleLibraries(AuxData->begin(), AuxData->end());
+    EXPECT_EQ(Libraries, ModuleLibraries);
+}
+
 INSTANTIATE_TEST_SUITE_P(GtirbBuilderTests, ElfReaderTest, testing::Values("inputs/hello.x64.elf"));
