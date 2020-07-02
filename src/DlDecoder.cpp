@@ -286,6 +286,7 @@ void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
     cs_option(CsHandle.RawHandle, CS_OPT_MODE, CS_MODE_THUMB);
     decode_in_mode(size, ea, true);
 }
+
 void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
 {
     switch(this->CsHandle.Isa)
@@ -297,6 +298,7 @@ void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
             decodeARMSection(byteInterval);
             break;
         default:
+            std::cerr << "Tried to decode section with unsupported architecture\n";
             exit(1);
     }
 }
