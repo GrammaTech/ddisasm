@@ -81,14 +81,17 @@ MultiArchCapstoneHandle::~MultiArchCapstoneHandle()
 
 void MultiArchCapstoneHandle::setDecodeMode(uint64_t mode)
 {
-    // 1 for THUMB 0 for regular ARM
-    if(mode)
+    if(this->Isa == gtirb::ISA::ARM)
     {
-        cs_option(this->RawHandle, CS_OPT_MODE, CS_MODE_THUMB);
-    }
-    else
-    {
-        cs_option(this->RawHandle, CS_OPT_MODE, CS_MODE_ARM);
+        // 1 for THUMB 0 for regular ARM
+        if(mode)
+        {
+            cs_option(this->RawHandle, CS_OPT_MODE, CS_MODE_THUMB);
+        }
+        else
+        {
+            cs_option(this->RawHandle, CS_OPT_MODE, CS_MODE_ARM);
+        }
     }
 }
 
