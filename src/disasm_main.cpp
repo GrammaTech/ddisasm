@@ -228,7 +228,7 @@ int main(int argc, char **argv)
     souffle::SouffleProgram *prog;
     {
         DlDecoder decoder(Module.getISA());
-        std::cout << "Decoding the binary " << std::flush;
+        std::cerr << "Decoding the binary " << std::flush;
         auto StartDecode = std::chrono::high_resolution_clock::now();
         std::vector<std::string> DisasmOptions = createDisasmOptions(vm);
         prog = decoder.decode(Module, DisasmOptions);
