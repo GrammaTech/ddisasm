@@ -162,7 +162,7 @@ int main(int argc, char **argv)
         "Specifies the ASM output file; use to '-' print to stdout")(
         "debug", "generate assembler file with debugging information")(
         "debug-dir", po::value<std::string>(), "location to write CSV files for debugging")(
-        "input-file", po::value<std::string>(), "file to disasemble")(
+        "dwarf", "Dwarf analysis")("input-file", po::value<std::string>(), "file to disasemble")(
         "keep-functions,K", po::value<std::vector<std::string>>()->multitoken(),
         "Print the given functions even if they are skipped by default (e.g. _start)")(
         "self-diagnose",
