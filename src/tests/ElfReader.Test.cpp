@@ -99,7 +99,7 @@ TEST_P(ElfReaderTest, libraries)
 
 TEST_P(ElfReaderTest, libraryPaths)
 {
-    if(GetParam() == "input/man")
+    if(GetParam() == "inputs/man")
     {
         gtirb::ErrorOr<GTIRB> GTIRB = GtirbBuilder::read(GetParam());
         gtirb::Module& Module = *(GTIRB->IR->modules().begin());
