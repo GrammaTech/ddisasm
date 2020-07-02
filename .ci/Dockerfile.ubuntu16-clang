@@ -4,7 +4,7 @@ RUN apt-get -y update && \
     add-apt-repository ppa:jonathonf/gcc-7.1 && \
     apt-get -y update
 RUN apt-get -y update && apt-get -y install automake bison build-essential \
-    doxygen flex g++ g++-7 gcc gcc-7 git libdwarf-dev libffi-dev libtool  \
+    doxygen flex g++ g++-7 gcc gcc-7 git libffi-dev libtool  \
     make mcpp pkg-config sqlite3 libsqlite3-dev zlib1g-dev
 
 RUN git clone -b 1.7.1 https://github.com/souffle-lang/souffle
@@ -25,7 +25,8 @@ SHELL ["/bin/bash", "-c"]
 
 # Install common packages
 RUN apt-get -y update && \
-    apt-get -y install apt-transport-https curl git make python3 python3-pip software-properties-common unzip wget
+    apt-get -y install apt-transport-https curl git libdwarf-dev make python3
+    python3-pip software-properties-common unzip wget
 
 # Install cross-platform utils
 RUN apt-get -y update && \
