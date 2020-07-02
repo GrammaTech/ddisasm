@@ -7,4 +7,3 @@ clean:
 check:
 	qemu-aarch64 -L /usr/aarch64-linux-gnu hello > /tmp/res.txt
 	@ diff out.txt /tmp/res.txt && echo TEST OK
-

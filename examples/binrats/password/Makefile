@@ -17,4 +17,3 @@ check:
     | qemu-aarch64 -L /usr/aarch64-linux-gnu password \
     >> /tmp/res.txt
 	@ diff out.txt /tmp/res.txt && echo TEST OK
-
