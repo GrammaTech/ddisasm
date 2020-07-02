@@ -370,6 +370,13 @@ std::set<gtirb::Addr> convertSortedRelation<std::set<gtirb::Addr>>(const std::st
     return result;
 }
 
+std::string getLabel(uint64_t ea)
+{
+    std::stringstream ss;
+    ss << ".L_" << std::hex << ea;
+    return ss.str();
+}
+
 void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
@@ -389,6 +396,20 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                 SymbolInfo->insert({symbol->getUUID(), Info});
             }
         }
+    }
+    // Rename ARM mapping symbols.
+    std::vector<gtirb::Symbol *> MappingSymbols;
+    for(auto &Symbol : module.symbols())
+    {
+        std::string Name = Symbol.getName();
+        if(Name == "$a" || Name == "$d" || Name.substr(0, 2) == "$t" || Name == "$x")
+        {
+            MappingSymbols.push_back(&Symbol);
+        }
+    }
+    for(auto *Symbol : MappingSymbols)
+    {
+        Symbol->setName(getLabel(uint64_t(*Symbol->getAddress())));
     }
 }
 
@@ -448,13 +469,6 @@ void buildSymbolicOperandInfo(gtirb::Context & /* context */, gtirb::Module &mod
 bool isNullReg(const std::string &reg)
 {
     return reg == "NONE";
-}
-
-std::string getLabel(uint64_t ea)
-{
-    std::stringstream ss;
-    ss << ".L_" << std::hex << ea;
-    return ss.str();
 }
 
 gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::Addr ea)
