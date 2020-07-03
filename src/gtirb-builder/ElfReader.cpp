@@ -207,11 +207,11 @@ void ElfReader::addAuxData()
     {
         if(const auto RunPath = dynamic_cast<const LIEF::ELF::DynamicEntryRunPath *>(&Entry))
         {
-            Paths.insert(Paths.end(),RunPath->paths().begin(),RunPath->paths().end());
+            Paths.insert(Paths.end(), RunPath->paths().begin(), RunPath->paths().end());
         }
         if(const auto Rpath = dynamic_cast<const LIEF::ELF::DynamicEntryRpath *>(&Entry))
         {
-            Paths.insert(Paths.end(),Rpath->paths().begin(),Rpath->paths().end());
+            Paths.insert(Paths.end(), Rpath->paths().begin(), Rpath->paths().end());
         }
     }
     Module->addAuxData<gtirb::schema::LibraryPaths>(std::move(Paths));
