@@ -211,10 +211,7 @@ void ElfReader::addAuxData()
         }
         if(const auto Rpath = dynamic_cast<const LIEF::ELF::DynamicEntryRpath *>(&Entry))
         {
-            for(std::string LibPath : Rpath->paths())
-            {
-                Paths.push_back(LibPath);
-            }
+            Paths.insert(Paths.end(),Rpath->paths().begin(),Rpath->paths().end());
         }
     }
     Module->addAuxData<gtirb::schema::LibraryPaths>(std::move(Paths));
