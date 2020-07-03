@@ -207,16 +207,16 @@ void ElfReader::addAuxData()
     {
         if(const auto RunPath = dynamic_cast<const LIEF::ELF::DynamicEntryRunPath *>(&Entry))
         {
-            for(std::string Path : RunPath->paths())
+            for(std::string LibPath : RunPath->paths())
             {
-                Paths.push_back(Path);
+                Paths.push_back(LibPath);
             }
         }
         if(const auto Rpath = dynamic_cast<const LIEF::ELF::DynamicEntryRpath *>(&Entry))
         {
-            for(std::string Path : Rpath->paths())
+            for(std::string LibPath : Rpath->paths())
             {
-                Paths.push_back(Path);
+                Paths.push_back(LibPath);
             }
         }
     }
