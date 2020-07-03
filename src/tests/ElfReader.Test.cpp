@@ -74,7 +74,6 @@ TEST_P(ElfReaderTest, sections)
 
 TEST_P(ElfReaderTest, libraries)
 {
-    int Index = 0;
     std::unordered_set<std::string> Libraries;
     for(const auto& DynamicEntry : ELF->dynamic_entries())
     {
