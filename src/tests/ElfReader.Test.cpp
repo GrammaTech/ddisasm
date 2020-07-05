@@ -96,7 +96,7 @@ TEST_P(ElfReaderTest, libraries)
     EXPECT_EQ(Libraries, ModuleLibraries);
 }
 
-TEST(ElfReaderTest, libraryPaths)
+TEST_P(ElfReaderTest, libraryPaths)
 {
     gtirb::ErrorOr<GTIRB> GTIRB = GtirbBuilder::read("inputs/man");
     gtirb::Module& Module = *(GTIRB->IR->modules().begin());
