@@ -244,10 +244,10 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
             cs_x86& detail = insn.detail->x86;
             if(name != "NOP")
             {
-                auto opCount = detail.op_count;
+                uint8_t opCount = detail.op_count;
                 for(int i = 0; i < opCount; i++)
                 {
-                    const auto& op = detail.operands[i];
+                    cs_x86_op& op = detail.operands[i];
                     uint64_t index = OpDict.add(buildOperand(CsHandle, op));
                     op_codes.push_back(index);
                 }
@@ -274,7 +274,7 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
                 // datalog.
                 for(int i = 0; i < opCount; i++)
                 {
-                    const auto& op = detail.operands[i];
+                    cs_arm_op& op = detail.operands[i];
                     uint64_t index = OpDict.add(buildOperand(CsHandle, op));
                     op_codes.push_back(index);
                 }
