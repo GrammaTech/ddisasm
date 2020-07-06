@@ -394,9 +394,9 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
     }
     for(auto *Symbol : MappingSymbols)
     {
-        if(Symbol->getAddress())
+        if(std::optional<gtirb::Addr> A = Symbol->getAddress())
         {
-            Symbol->setName(getLabel(uint64_t(*Symbol->getAddress())));
+            Symbol->setName(getLabel(static_cast<uint64_t>(*A)));
         }
     }
 }
