@@ -52,11 +52,24 @@ namespace souffle
 class MultiArchCapstoneHandle
 {
 public:
-    gtirb::ISA Isa;
-    csh RawHandle;
-    MultiArchCapstoneHandle(gtirb::ISA Isa);
+    explicit MultiArchCapstoneHandle(gtirb::ISA Isa);
     ~MultiArchCapstoneHandle();
+
+    csh getHandle() const
+    {
+        return RawHandle;
+    };
+
+    gtirb::ISA getIsa() const
+    {
+        return Isa;
+    }
+
     void setDecodeMode(uint64_t mode);
+
+private:
+    gtirb::ISA Isa{gtirb::ISA::ValidButUnsupported};
+    csh RawHandle = CS_ERR_ARCH;
 };
 
 class GtirbToDatalog

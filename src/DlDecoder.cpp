@@ -232,7 +232,7 @@ void DlDecoder::decodeX64Section(const gtirb::ByteInterval &byteInterval)
     {
         cs_insn *insn;
         size_t count =
-            cs_disasm(CsHandle.RawHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
+            cs_disasm(CsHandle.getHandle(), buf, size, static_cast<uint64_t>(ea), 1, &insn);
         if(count == 0)
         {
             invalids.push_back(ea);
@@ -265,7 +265,7 @@ void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
             size_t increment = InsnSize;
             cs_insn *insn;
             size_t count =
-                cs_disasm(CsHandle.RawHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
+                cs_disasm(CsHandle.getHandle(), buf, size, static_cast<uint64_t>(ea), 1, &insn);
             if(count == 0)
             {
                 invalids.push_back(ea);
@@ -282,15 +282,15 @@ void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
             size -= increment;
         }
     };
-    cs_option(CsHandle.RawHandle, CS_OPT_MODE, CS_MODE_ARM);
+    cs_option(CsHandle.getHandle(), CS_OPT_MODE, CS_MODE_ARM);
     decode_in_mode(size, ea, false);
-    cs_option(CsHandle.RawHandle, CS_OPT_MODE, CS_MODE_THUMB);
+    cs_option(CsHandle.getHandle(), CS_OPT_MODE, CS_MODE_THUMB);
     decode_in_mode(size, ea, true);
 }
 
 void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
 {
-    switch(this->CsHandle.Isa)
+    switch(CsHandle.getIsa())
     {
         case gtirb::ISA::X64:
             decodeX64Section(byteInterval);

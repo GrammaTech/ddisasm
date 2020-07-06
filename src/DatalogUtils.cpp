@@ -55,41 +55,41 @@ MultiArchCapstoneHandle::MultiArchCapstoneHandle(gtirb::ISA I) : Isa(I)
     {
         case gtirb::ISA::X64:
         {
-            Err = cs_open(CS_ARCH_X86, CS_MODE_64, &this->RawHandle);
+            Err = cs_open(CS_ARCH_X86, CS_MODE_64, &RawHandle);
             assert(Err == CS_ERR_OK && "Failed to initialize X64 disassembler");
-            cs_option(this->RawHandle, CS_OPT_DETAIL, CS_OPT_ON);
+            cs_option(RawHandle, CS_OPT_DETAIL, CS_OPT_ON);
             break;
         }
         case gtirb::ISA::ARM:
         {
-            Err = cs_open(CS_ARCH_ARM, CS_MODE_ARM, &this->RawHandle);
+            Err = cs_open(CS_ARCH_ARM, CS_MODE_ARM, &RawHandle);
             assert(Err == CS_ERR_OK && "Failed to initialize ARM disassembler");
-            cs_option(this->RawHandle, CS_OPT_DETAIL, CS_OPT_ON);
+            cs_option(RawHandle, CS_OPT_DETAIL, CS_OPT_ON);
             break;
         }
         default:
-            this->Isa = gtirb::ISA::ValidButUnsupported;
+            Isa = gtirb::ISA::ValidButUnsupported;
     }
 }
 
 MultiArchCapstoneHandle::~MultiArchCapstoneHandle()
 {
-    if(this->Isa != gtirb::ISA::ValidButUnsupported)
-        cs_close(&this->RawHandle);
+    if(Isa != gtirb::ISA::ValidButUnsupported)
+        cs_close(&RawHandle);
 }
 
 void MultiArchCapstoneHandle::setDecodeMode(uint64_t mode)
 {
-    if(this->Isa == gtirb::ISA::ARM)
+    if(Isa == gtirb::ISA::ARM)
     {
         // 1 for THUMB 0 for regular ARM
         if(mode == 1)
         {
-            cs_option(this->RawHandle, CS_OPT_MODE, CS_MODE_THUMB);
+            cs_option(RawHandle, CS_OPT_MODE, CS_MODE_THUMB);
         }
         else
         {
-            cs_option(this->RawHandle, CS_OPT_MODE, CS_MODE_ARM);
+            cs_option(RawHandle, CS_OPT_MODE, CS_MODE_ARM);
         }
     }
 }
@@ -137,7 +137,7 @@ std::string str_toupper(std::string s)
 
 std::string getRegisterName(const MultiArchCapstoneHandle& CsHandle, unsigned int reg)
 {
-    switch(CsHandle.Isa)
+    switch(CsHandle.getIsa())
     {
         case gtirb::ISA::X64:
             if(reg == X86_REG_INVALID)
@@ -151,7 +151,7 @@ std::string getRegisterName(const MultiArchCapstoneHandle& CsHandle, unsigned in
             std::cerr << "Tried to resolve register name for unsupported architecture";
             exit(1);
     }
-    std::string name = str_toupper(cs_reg_name(CsHandle.RawHandle, reg));
+    std::string name = str_toupper(cs_reg_name(CsHandle.getHandle(), reg));
     return name;
 }
 
@@ -237,7 +237,7 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
         prefix = "";
         name = prefix_name;
     }
-    switch(CsHandle.Isa)
+    switch(CsHandle.getIsa())
     {
         case gtirb::ISA::X64:
         {
@@ -348,7 +348,7 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
 {
     // Initialize instruction decoder.
     MultiArchCapstoneHandle CsHandle(M.getISA());
-    if(CsHandle.Isa == gtirb::ISA::ValidButUnsupported)
+    if(CsHandle.getIsa() == gtirb::ISA::ValidButUnsupported)
     {
         std::cerr << "Disassembling module with unsupported architecture\n";
         exit(1);
@@ -367,7 +367,7 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
         assert(Bytes->getSize() == InitSize && "Found partially initialized code block.");
         CsHandle.setDecodeMode(Block.getDecodeMode());
         size_t Count =
-            cs_disasm(CsHandle.RawHandle, Bytes->rawBytes<uint8_t>(), InitSize,
+            cs_disasm(CsHandle.getHandle(), Bytes->rawBytes<uint8_t>(), InitSize,
                       static_cast<uint64_t>(*Block.getAddress()), InstructionLimit, &Insn);
 
         // Exception-safe cleanup of instructions
