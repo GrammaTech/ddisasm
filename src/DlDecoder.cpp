@@ -262,7 +262,7 @@ void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
         }
         while(size)
         {
-            int increment = InsnSize;
+            uint8_t increment = InsnSize;
             cs_insn *insn;
             size_t count =
                 cs_disasm(CsHandle.RawHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
@@ -279,6 +279,8 @@ void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
             cs_free(insn, count);
             ea += increment;
             buf += increment;
+            if(increment > size)
+                break;
             size -= increment;
         }
     };
