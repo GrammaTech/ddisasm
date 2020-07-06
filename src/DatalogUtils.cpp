@@ -244,7 +244,7 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
             cs_x86& detail = insn.detail->x86;
             if(name != "NOP")
             {
-                uint8_t opCount = detail.op_count;
+                int opCount = detail.op_count;
                 for(int i = 0; i < opCount; i++)
                 {
                     cs_x86_op& op = detail.operands[i];
@@ -268,7 +268,7 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
             cs_arm& detail = insn.detail->arm;
             if(name != "NOP")
             {
-                uint8_t opCount = detail.op_count;
+                int opCount = detail.op_count;
                 // FIXME: Consider cases such as pop, push, ldm, stm that contain a register bitmap
                 // Probably we should just store the register bitmap here and interpret it in
                 // datalog.
