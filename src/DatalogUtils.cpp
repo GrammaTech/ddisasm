@@ -48,10 +48,9 @@ void writeFacts(souffle::SouffleProgram* prog, const std::string& directory)
     }
 }
 
-MultiArchCapstoneHandle::MultiArchCapstoneHandle(gtirb::ISA Isa)
+MultiArchCapstoneHandle::MultiArchCapstoneHandle(gtirb::ISA I) : Isa(I)
 {
-    this->Isa = Isa;
-    cs_err Err = CS_ERR_OK;
+    [[maybe_unused]] cs_err Err = CS_ERR_OK;
     switch(Isa)
     {
         case gtirb::ISA::X64:
@@ -84,7 +83,7 @@ void MultiArchCapstoneHandle::setDecodeMode(uint64_t mode)
     if(this->Isa == gtirb::ISA::ARM)
     {
         // 1 for THUMB 0 for regular ARM
-        if(mode)
+        if(mode == 1)
         {
             cs_option(this->RawHandle, CS_OPT_MODE, CS_MODE_THUMB);
         }
@@ -148,6 +147,9 @@ std::string getRegisterName(const MultiArchCapstoneHandle& CsHandle, unsigned in
             if(reg == ARM_REG_INVALID)
                 return "NONE";
             break;
+        default:
+            std::cerr << "Tried to resolve register name for unsupported architecture";
+            exit(1);
     }
     std::string name = str_toupper(cs_reg_name(CsHandle.RawHandle, reg));
     return name;
@@ -206,9 +208,11 @@ std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const MultiArchCapstoneHandl
         case ARM_OP_SYSREG: ///< MSR/MRS special register operand
             return "MSR";
         case ARM_OP_FP:
-            std::cerr << "fp\n";
+            std::cerr << "unhandled ARM operand: fp (ARM_OP_FP)\n";
+            exit(1);
         case ARM_OP_SETEND: ///< operand for SETEND instruction
-            std::cerr << "setend\n";
+            std::cerr << "unhandled ARM operand: setend (ARM_OP_SETEND)\n";
+            exit(1);
         case ARM_OP_INVALID:
         default:
             std::cerr << "invalid operand\n";
@@ -237,7 +241,7 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
     {
         case gtirb::ISA::X64:
         {
-            auto& detail = insn.detail->x86;
+            cs_x86& detail = insn.detail->x86;
             if(name != "NOP")
             {
                 auto opCount = detail.op_count;
@@ -247,7 +251,7 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
                     uint64_t index = OpDict.add(buildOperand(CsHandle, op));
                     op_codes.push_back(index);
                 }
-                // we put the destination operand at the end
+                // Put the destination operand at the end of the operand list.
                 if(opCount > 0)
                     std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
                 return {insn.address,
@@ -261,10 +265,10 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
         }
         case gtirb::ISA::ARM:
         {
-            auto& detail = insn.detail->arm;
+            cs_arm& detail = insn.detail->arm;
             if(name != "NOP")
             {
-                auto opCount = detail.op_count;
+                uint8_t opCount = detail.op_count;
                 // FIXME: Consider cases such as pop, push, ldm, stm that contain a register bitmap
                 // Probably we should just store the register bitmap here and interpret it in
                 // datalog.
@@ -274,7 +278,7 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
                     uint64_t index = OpDict.add(buildOperand(CsHandle, op));
                     op_codes.push_back(index);
                 }
-                // we put the destination operand at the end
+                // Put the destination operand at the end of the operand list.
                 if(opCount > 0)
                     std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
             }
@@ -342,7 +346,15 @@ void GtirbToDatalog::populateBlocks(const gtirb::Module& M)
 
 void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int InstructionLimit)
 {
+    // Initialize instruction decoder.
     MultiArchCapstoneHandle CsHandle(M.getISA());
+    if(CsHandle.Isa == gtirb::ISA::ValidButUnsupported)
+    {
+        std::cerr << "Disassembling module with unsupported architecture\n";
+        exit(1);
+    }
+
+    // Decode and transform instructions for all blocks on the module.
     std::vector<DlInstruction> Insns;
     DlOperandTable OpDict;
     for(auto& Block : M.code_blocks())
@@ -366,6 +378,7 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
             Insns.push_back(GtirbToDatalog::transformInstruction(CsHandle, OpDict, Insn[i]));
         }
     }
+
     GtirbToDatalog::addToRelation(&*Prog, "instruction", Insns);
     GtirbToDatalog::addToRelation(&*Prog, "op_regdirect", OpDict.regTable);
     GtirbToDatalog::addToRelation(&*Prog, "op_immediate", OpDict.immTable);
