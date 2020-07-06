@@ -254,7 +254,7 @@ void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
     uint64_t size = byteInterval.getInitializedSize();
     auto decode_in_mode = [&byteInterval, this](uint64_t size, gtirb::Addr ea, bool thumb) {
         auto buf = byteInterval.rawBytes<const unsigned char>();
-        uint8_t InsnSize = 4;
+        size_t InsnSize = 4;
         if(thumb)
         {
             InsnSize = 2;
@@ -262,7 +262,7 @@ void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
         }
         while(size > InsnSize)
         {
-            uint8_t increment = InsnSize;
+            size_t increment = InsnSize;
             cs_insn *insn;
             size_t count =
                 cs_disasm(CsHandle.RawHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
