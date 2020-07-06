@@ -260,7 +260,7 @@ void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
             InsnSize = 2;
             ea++;
         }
-        while(size > InsnSize)
+        while(size >= InsnSize)
         {
             size_t increment = InsnSize;
             cs_insn *insn;
