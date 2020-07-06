@@ -355,7 +355,7 @@ std::set<gtirb::Addr> convertSortedRelation<std::set<gtirb::Addr>>(const std::st
     return result;
 }
 
-std::string getLabel(uint64_t ea)
+static std::string getLabel(uint64_t ea)
 {
     std::stringstream ss;
     ss << ".L_" << std::hex << ea;

@@ -92,7 +92,7 @@ std::string getFileFormatString(const gtirb::FileFormat format)
     }
 }
 
-std::string getISAString(gtirb::ISA format)
+const char *getISAString(gtirb::ISA format)
 {
     switch(format)
     {
@@ -107,6 +107,7 @@ std::string getISAString(gtirb::ISA format)
 
 unsigned int getISAPointerSize(gtirb::ISA Isa)
 {
+    // FIXME: Generalize this for all architectures, supported and unsupported.
     switch(Isa)
     {
         case gtirb::ISA::X64:
@@ -239,8 +240,8 @@ void DlDecoder::decodeX64Section(const gtirb::ByteInterval &byteInterval)
         else
         {
             instructions.push_back(GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn));
-            cs_free(insn, count);
         }
+        cs_free(insn, count);
         ++ea;
         ++buf;
         --size;
@@ -259,7 +260,7 @@ void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
             InsnSize = 2;
             ea++;
         }
-        while(size > 0)
+        while(size)
         {
             int increment = InsnSize;
             cs_insn *insn;
@@ -274,8 +275,8 @@ void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
                 instructions.push_back(
                     GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn));
                 increment = insn->size;
-                cs_free(insn, count);
             }
+            cs_free(insn, count);
             ea += increment;
             buf += increment;
             size -= increment;
@@ -326,7 +327,7 @@ void DlDecoder::storeDataSection(const gtirb::ByteInterval &byteInterval, gtirb:
             gtirb::Addr content;
             if(PointerSize == 8)
                 content = gtirb::Addr(*((uint64_t *)buf));
-            if(PointerSize == 4)
+            else if(PointerSize == 4)
                 content = gtirb::Addr(*((uint32_t *)buf));
             if(can_be_address(content))
                 data_addresses.push_back({ea, content});
