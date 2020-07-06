@@ -1346,16 +1346,22 @@ void shiftThumbBlocks(gtirb::Module &Module)
     // Shift thumb code blocks.
     for(auto [CodeBlock, Offset] : ThumbBlocks)
     {
-        [[maybe_unused]] gtirb::ChangeStatus Status;
+        gtirb::ChangeStatus Status;
         gtirb::ByteInterval *BI = CodeBlock->getByteInterval();
 
         // Remove the CodeBlock from the ByteInterval.
         Status = BI->removeBlock(CodeBlock);
-        assert(Status == gtirb::ChangeStatus::Accepted && "Failed to remove thumb block.");
+        if(Status != gtirb::ChangeStatus::Accepted)
+        {
+            std::cerr << "Failed to remove thumb block: " << BI->getAddress() << "\n";
+        }
 
         // Add the CodeBlock back at the original offset less one.
         Status = BI->addBlock(Offset - 1, CodeBlock);
-        assert(Status == gtirb::ChangeStatus::Accepted && "Failed to add thumb block.");
+        if(Status != gtirb::ChangeStatus::Accepted)
+        {
+            std::cerr << "Failed to add thumb block: " << BI->getAddress() << "\n";
+        }
     }
 }
 
