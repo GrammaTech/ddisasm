@@ -370,7 +370,7 @@ std::set<gtirb::Addr> convertSortedRelation<std::set<gtirb::Addr>>(const std::st
     return result;
 }
 
-std::string getLabel(uint64_t ea)
+static std::string getLabel(uint64_t ea)
 {
     std::stringstream ss;
     ss << ".L_" << std::hex << ea;
@@ -409,7 +409,10 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
     }
     for(auto *Symbol : MappingSymbols)
     {
-        Symbol->setName(getLabel(uint64_t(*Symbol->getAddress())));
+        if(std::optional<gtirb::Addr> A = Symbol->getAddress())
+        {
+            Symbol->setName(getLabel(static_cast<uint64_t>(*A)));
+        }
     }
 }
 

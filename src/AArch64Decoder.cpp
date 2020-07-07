@@ -56,7 +56,7 @@ void AArch64Decoder::decodeSection(const gtirb::ByteInterval &byteInterval)
     {
         cs_insn *insn;
         size_t count =
-            cs_disasm(CsHandle.RawHandle, buf, size, static_cast<uint64_t>(ea), 1, &insn);
+            cs_disasm(CsHandle.getHandle(), buf, size, static_cast<uint64_t>(ea), 1, &insn);
         if(count == 0)
         {
             invalids.push_back(ea);

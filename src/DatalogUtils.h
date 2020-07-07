@@ -49,14 +49,34 @@ namespace souffle
     souffle::tuple &operator<<(souffle::tuple &t, const DlInstruction &inst);
 } // namespace souffle
 
+// FIXME: Decode modes should be implemented by GTIRB proper.
+enum class DecodeMode : uint64_t
+{
+    Default = 0,
+    Thumb = 1,
+};
+
 class MultiArchCapstoneHandle
 {
 public:
-    gtirb::ISA Isa;
-    csh RawHandle;
     MultiArchCapstoneHandle(gtirb::ISA Isa);
     ~MultiArchCapstoneHandle();
-    void setDecodeMode(uint64_t mode);
+
+    csh getHandle() const
+    {
+        return RawHandle;
+    }
+
+    gtirb::ISA getIsa() const
+    {
+        return Isa;
+    }
+
+    void setDecodeMode(DecodeMode Mode);
+
+private:
+    gtirb::ISA Isa = gtirb::ISA::ValidButUnsupported;
+    csh RawHandle = CS_ERR_ARCH;
 };
 
 class GtirbToDatalog
