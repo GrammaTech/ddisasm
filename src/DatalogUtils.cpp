@@ -78,18 +78,19 @@ MultiArchCapstoneHandle::~MultiArchCapstoneHandle()
         cs_close(&RawHandle);
 }
 
-void MultiArchCapstoneHandle::setDecodeMode(uint64_t mode)
+void MultiArchCapstoneHandle::setDecodeMode(DecodeMode Mode)
 {
-    if(Isa == gtirb::ISA::ARM)
+    switch(Isa)
     {
-        // 1 for THUMB 0 for regular ARM
-        if(mode == 1)
+        case gtirb::ISA::ARM:
         {
-            cs_option(RawHandle, CS_OPT_MODE, CS_MODE_THUMB);
-        }
-        else
-        {
-            cs_option(RawHandle, CS_OPT_MODE, CS_MODE_ARM);
+            switch(Mode)
+            {
+                case DecodeMode::Thumb:
+                    cs_option(RawHandle, CS_OPT_MODE, CS_MODE_THUMB);
+                case DecodeMode::Default:
+                    cs_option(RawHandle, CS_OPT_MODE, CS_MODE_ARM);
+            }
         }
     }
 }
@@ -365,7 +366,7 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
         const gtirb::ByteInterval* Bytes = Block.getByteInterval();
         uint64_t InitSize = Bytes->getInitializedSize();
         assert(Bytes->getSize() == InitSize && "Found partially initialized code block.");
-        CsHandle.setDecodeMode(Block.getDecodeMode());
+        CsHandle.setDecodeMode((DecodeMode)Block.getDecodeMode());
         size_t Count =
             cs_disasm(CsHandle.getHandle(), Bytes->rawBytes<uint8_t>(), InitSize,
                       static_cast<uint64_t>(*Block.getAddress()), InstructionLimit, &Insn);
