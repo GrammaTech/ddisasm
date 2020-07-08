@@ -171,8 +171,10 @@ if(BUILD_SHARED_LIBS)
   find_library(DWARF NAMES dwarf)
 endif()
 
-if(NOT DWARF)
-  message(FATAL_ERROR " No DWARF installation found.\n")
+if(DWARF)
+  add_definitions(-DWITH_DWARF_SUPPORT)
+else()
+  message(STATUS "No DWARF installation found.\n")
 endif()
 
 # ---------------------------------------------------------------------------

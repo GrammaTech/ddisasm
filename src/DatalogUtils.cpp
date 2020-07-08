@@ -195,7 +195,7 @@ std::string getPrefetchValue(const arm64_prefetch_op prefetch)
             return std::string("pstl3strm");
         case ARM64_PRFM_INVALID:
         default:
-            std::cerr << "invalid operand\n";
+            std::cerr << "invalid operand (prefetch)\n";
             exit(1);
     }
 }
@@ -230,7 +230,7 @@ std::string getBarrierOp(const arm64_barrier_op barrier)
             return std::string("sy");
         case ARM64_BARRIER_INVALID:
         default:
-            std::cerr << "invalid operand\n";
+            std::cerr << "invalid operand (barrier)\n";
             exit(1);
     }
 }

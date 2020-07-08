@@ -46,13 +46,16 @@
 #include "AArch64Decoder.h"
 #include "AuxDataSchema.h"
 #include "DatalogUtils.h"
-#include "DwarfMap.hpp"
 #include "GtirbModuleDisassembler.h"
 #include "Version.h"
 #include "X86Decoder.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
+
+#ifdef WITH_DWARF_SUPPORT
+#include "DwarfMap.hpp"
+#endif
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -290,9 +293,13 @@ int main(int argc, char **argv)
 
         if(vm.count("dwarf") != 0)
         {
+#ifdef WITH_DWARF_SUPPORT
             DwarfMap dmap(filename);
             dmap.extract_dwarf_data();
             dmap.flag_constsym(Module);
+#else
+            std::cerr << "DWARF not supported.";
+#endif
         }
 
         if(vm.count("skip-function-analysis") == 0)

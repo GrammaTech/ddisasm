@@ -219,8 +219,12 @@ add_library(
   AArch64Decoder.cpp
   X86Decoder.cpp
   ExceptionDecoder.cpp
-  GtirbModuleDisassembler.cpp
-  DwarfMap.cpp)
+  GtirbModuleDisassembler.cpp)
+
+if(DWARF)
+  target_sources(disasm_main PRIVATE DwarfMap.cpp)
+  target_link_libraries(disasm_main ${DWARF})
+endif()
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_compile_options(disasm_main PRIVATE -Wno-unused-parameter)
@@ -265,8 +269,7 @@ target_link_libraries(
   ${Boost_LIBRARIES}
   ${ehp_LIBRARIES}
   ${EXPERIMENTAL_LIB}
-  ${LIBCPP_ABI}
-  ${DWARF})
+  ${LIBCPP_ABI})
 
 # Now combine the static library and generated code into an executable.
 add_executable(ddisasm ${GENERATED_ARM64_CPP} ${GENERATED_X64_CPP})
