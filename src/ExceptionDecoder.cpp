@@ -23,7 +23,7 @@
 
 #include "ExceptionDecoder.h"
 
-ExceptionDecoder::ExceptionDecoder(gtirb::Module &module)
+ExceptionDecoder::ExceptionDecoder(const gtirb::Module &module)
 {
     uint8_t ptrsize(8);
     std::string ehFrame, ehFrameHeader, gccExcept;

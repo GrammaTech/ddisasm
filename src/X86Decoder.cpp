@@ -1,6 +1,6 @@
 #include "X86Decoder.h"
 
-souffle::SouffleProgram *X86Decoder::decode(gtirb::Module &module,
+souffle::SouffleProgram *X86Decoder::decode(const gtirb::Module &module,
                                             const std::vector<std::string> &DisasmOptions)
 {
     assert(module.getSize() && "Module has non-calculable size.");
@@ -9,7 +9,7 @@ souffle::SouffleProgram *X86Decoder::decode(gtirb::Module &module,
     assert(module.getAddress() && "Module has non-addressable section data.");
     gtirb::Addr maxAddr = *module.getAddress() + *module.getSize();
 
-    for(auto &section : module.sections())
+    for(const auto &section : module.sections())
     {
         bool is_executable = section.isFlagSet(gtirb::SectionFlag::Executable);
         bool is_initialized = section.isFlagSet(gtirb::SectionFlag::Initialized);

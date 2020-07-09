@@ -264,6 +264,16 @@ int main(int argc, char **argv)
         printElapsedTimeSince(StartDecode);
     }
 
+    // Remove initial entry point.
+    Module.setEntryPoint(nullptr);
+    if(gtirb::CodeBlock *Block = Module.getEntryPoint())
+    {
+        Block->getByteInterval()->removeBlock(Block);
+    }
+
+    // Remove placeholder relocation data.
+    Module.removeAuxData<gtirb::schema::Relocations>();
+
     if(prog)
     {
         if(vm.count("debug-dir") != 0)

@@ -48,13 +48,13 @@ protected:
     std::vector<DlData<gtirb::Addr>> data_addresses;
     std::vector<DlData<unsigned char>> data_bytes;
     virtual void decodeSection(const gtirb::ByteInterval& byteInterval) = 0;
-    virtual void loadInputs(souffle::SouffleProgram* prog, gtirb::Module& module);
+    virtual void loadInputs(souffle::SouffleProgram* prog, const gtirb::Module& module);
     virtual void storeDataSection(const gtirb::ByteInterval& byteInterval, gtirb::Addr min_address,
                                   gtirb::Addr max_address);
 
 public:
     DlDecoder(gtirb::ISA Isa) : CsHandle(Isa){};
-    souffle::SouffleProgram* decode(gtirb::Module& module,
+    souffle::SouffleProgram* decode(const gtirb::Module& module,
                                     const std::vector<std::string>& DisasmOptions);
 };
 

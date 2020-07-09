@@ -1,11 +1,22 @@
+//===- AArch64Decoder.h -----------------------------------------*- C++ -*-===//
+//
+//  Copyright (c) 2020, The Binrat Developers.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//===----------------------------------------------------------------------===//
 #include "AArch64Decoder.h"
 
-/**
- * AArch64 Decoder
- * Currently uses the x86 variant just to ensure that we have a sound
- * structure to the project
- */
-souffle::SouffleProgram *AArch64Decoder::decode(gtirb::Module &module,
+souffle::SouffleProgram *AArch64Decoder::decode(const gtirb::Module &module,
                                                 const std::vector<std::string> &DisasmOptions)
 {
     assert(module.getSize() && "Module has non-calculable size.");
@@ -14,7 +25,7 @@ souffle::SouffleProgram *AArch64Decoder::decode(gtirb::Module &module,
     assert(module.getAddress() && "Module has non-addressable section data.");
     gtirb::Addr maxAddr = *module.getAddress() + *module.getSize();
 
-    for(auto &section : module.sections())
+    for(const gtirb::Section &section : module.sections())
     {
         bool is_executable = section.isFlagSet(gtirb::SectionFlag::Executable);
         bool is_initialized = section.isFlagSet(gtirb::SectionFlag::Initialized);
@@ -34,7 +45,7 @@ souffle::SouffleProgram *AArch64Decoder::decode(gtirb::Module &module,
             }
         }
     }
-    if(auto prog = souffle::ProgramFactory::newInstance("souffle_disasm_arm64"))
+    if(auto *prog = souffle::ProgramFactory::newInstance("souffle_disasm_arm64"))
     {
         loadInputs(prog, module);
         GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "option", DisasmOptions);
