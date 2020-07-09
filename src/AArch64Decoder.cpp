@@ -19,10 +19,9 @@
 souffle::SouffleProgram *AArch64Decoder::decode(const gtirb::Module &module,
                                                 const std::vector<std::string> &DisasmOptions)
 {
-    assert(module.getSize() && "Module has non-calculable size.");
-    gtirb::Addr minAddr = *module.getAddress();
-
     assert(module.getAddress() && "Module has non-addressable section data.");
+    gtirb::Addr minAddr = *module.getAddress();
+    assert(module.getSize() && "Module has non-calculable size.");
     gtirb::Addr maxAddr = *module.getAddress() + *module.getSize();
 
     for(const gtirb::Section &section : module.sections())
