@@ -23,38 +23,29 @@ ARG CXX_COMPILER=g++-7
 # Use bash for more convenient variable substitution syntax
 SHELL ["/bin/bash", "-c"]
 
+# Copy souffle
 RUN apt-get -y update && \
     apt-get -y install software-properties-common && \
     add-apt-repository ppa:jonathonf/gcc-7.1 && \
     apt-get -y update
-
-RUN apt-get -y update && apt-get -y install autoconf automake build-essential \
-    clang curl doxygen g++ g++-7 gcc gcc-7 gcc-multilib git g++-multilib \
+RUN apt-get -y update && apt-get -y install apt-transport-https autoconf automake build-essential \
+    curl doxygen g++ g++-7 gcc gcc-7 gcc-multilib git g++-multilib \
     libc++1 libc++abi1 libtool make mcpp \
     pkg-config python3 python3-pip wget unzip zlib1g-dev
 
-RUN apt-get -y update && \
-    apt-get -y install gcc-arm-linux-gnueabihf qemu
-
-# Copy souffle
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
 COPY --from=souffle /usr/bin/souffle /usr/bin/souffle
 COPY --from=souffle /usr/bin/souffle-profile /usr/bin/souffle-profile
 COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
 
-# Fix symlinks for libc++/libc++abi.
-RUN ln -s libc++.so.1 /usr/lib/x86_64-linux-gnu/libc++.so
-RUN ln -s libc++abi.so.1 /usr/lib/x86_64-linux-gnu/libc++abi.so
+# Install clang 3.8.0
+RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|apt-key add - && \
+    add-apt-repository 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-8 main' && \
+    apt-get -y update && \
+    apt-get -y install clang-8 libc++-8-dev
 
-# We use clang to build examples during testing. But clang 3.8 is not
-# compatible with the gcc-7 headers. So we need to work around this
-RUN mv /usr/bin/clang++ /usr/bin/clang++.real
-RUN printf "#\!/bin/sh\nclang++.real --gcc-toolchain=/usr/lib/gcc/x86_64-linux-gnu/5.4.0 -L/usr/lib/gcc/x86_64-linux-gnu/5.4.0/ -I/usr/include/c++/5/ -I/usr/include/x86_64-linux-gnu/c++/5/ \$*\n" > /usr/bin/clang++
-RUN chmod a+x /usr/bin/clang++
-RUN ln -s /usr/lib/gcc/x86_64-linux-gnu/5/crtbegin.o /usr/lib/x86_64-linux-gnu/
-RUN ln -s /usr/lib/gcc/x86_64-linux-gnu/5/crtend.o /usr/lib/x86_64-linux-gnu/
-
+RUN ln -s /usr/bin/clang++-8 /usr/bin/clang++ && ln -s /usr/bin/clang-8 /usr/bin/clang
 
 # Install CMake
 RUN curl -SL https://cmake.org/files/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.0-Linux-x86_64.tar.gz \
@@ -77,36 +68,18 @@ RUN cd /usr/local/src \
     && make \
     && make install
 
-COPY libcapstone-dev_*_amd64.deb /ddisasm/
-COPY gtirb-ubuntu16-artifacts.zip /ddisasm/
-COPY gtirb-pprinter-ubuntu16-artifacts.zip /ddisasm/
-
 # Install capstone
+COPY libcapstone-dev_*_amd64.deb /ddisasm/
 RUN dpkg -i /ddisasm/libcapstone-dev_*_amd64.deb
 
-# Install GTIRB
-RUN unzip -o /ddisasm/gtirb-ubuntu16-artifacts.zip && dpkg -i libgtirb.deb libgtirb-dev.deb
+# Install libehp
+RUN git clone https://git.zephyr-software.com/opensrc/libehp.git \
+    && cd libehp \
+    && git reset --hard ddb106c4c1e521bf4b282d17e2a8abf0aa0fe721 \
+    && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DEHP_BUILD_SHARED_LIBS=OFF \
+    && cd build \
+    && make && make install
 
-# Install gtirb-pprinter
-RUN unzip -o /ddisasm/gtirb-pprinter-ubuntu16-artifacts.zip && dpkg -i libgtirb-pprinter.deb libgtirb-pprinter-dev.deb gtirb-pprinter.deb
-
-ENV TERM xterm
-ENV PATH=/ddisasm/build/bin:$PATH
-
-COPY . /ddisasm
-
-# Build & Install ehp
-ARG BUILD_TYPE=RelWithDebInfo
-RUN cd /ddisasm/libehp/ && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DEHP_BUILD_SHARED_LIBS=OFF && cd build &&  make && make install
-
-# Build ddisasm
-RUN cd /ddisasm && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DLIEF_ROOT=/usr/ -DCMAKE_BUILD_TYPE=$BUILD_TYPE && cd build && make
-
-ARG CPACK_GENERATOR=""
-RUN if [ ! -z "${CPACK_GENERATOR}" ] ; then \
-    cd /ddisasm/build && \
-    cpack -G "${CPACK_GENERATOR}" -D CPACK_DDISASM_DEBIAN_PACKAGE=ddisasm && \
-    cpack -G "${CPACK_GENERATOR}" -D CPACK_DDISASM_DEBIAN_PACKAGE=debug ; \
-  fi
-
-WORKDIR /ddisasm/
+# Install cross-platform utils
+RUN apt-get -y update && \
+    apt-get -y install gcc-arm-linux-gnueabihf qemu
