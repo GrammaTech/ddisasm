@@ -1,5 +1,4 @@
 import distro
-import platform
 import unittest
 from disassemble_reassemble_check import (
     disassemble_reassemble_test as dis_reasm_test,
