@@ -1,3 +1,4 @@
+import distro
 import platform
 import unittest
 from disassemble_reassemble_check import (
@@ -10,7 +11,7 @@ asm_dir = Path("./examples/arm_asm_examples/")
 
 class TestArmAsmExamples(unittest.TestCase):
     @unittest.skipUnless(
-        platform.system() == "Linux", "This test is linux only."
+        distro.id() == "ubuntu", "This test is Ubuntu only."
     )
     def test_arm_asm_ex1(self):
         self.assertTrue(
@@ -26,7 +27,7 @@ class TestArmAsmExamples(unittest.TestCase):
         )
 
     @unittest.skipUnless(
-        platform.system() == "Linux", "This test is linux only."
+        distro.id() == "ubuntu", "This test is Ubuntu only."
     )
     def test_arm_asm_ex1_no_pie(self):
         self.assertTrue(

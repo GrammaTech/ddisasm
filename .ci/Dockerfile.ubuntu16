@@ -23,16 +23,20 @@ ARG CXX_COMPILER=g++-7
 # Use bash for more convenient variable substitution syntax
 SHELL ["/bin/bash", "-c"]
 
-# Copy souffle
+# Add repository for GCC 7.1
 RUN apt-get -y update && \
     apt-get -y install software-properties-common && \
     add-apt-repository ppa:jonathonf/gcc-7.1 && \
     apt-get -y update
+
+# Install common packages
 RUN apt-get -y update && apt-get -y install apt-transport-https autoconf automake build-essential \
     curl doxygen g++ g++-7 gcc gcc-7 gcc-multilib git g++-multilib \
     libc++1 libc++abi1 libtool make mcpp \
     pkg-config python3 python3-pip wget unzip zlib1g-dev
+RUN python3 -m pip install distro
 
+# Copy souffle
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
 COPY --from=souffle /usr/bin/souffle /usr/bin/souffle
