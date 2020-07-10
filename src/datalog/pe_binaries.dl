@@ -101,6 +101,7 @@ got_reference(Address,Function):-
 //PE binaries have plt-like entries
 // These are no delimited to their own section
 plt_block(EA,Function):-
+    binary_format("PE"),
     pc_relative_jump(EA,Got_entry),
     unconditional_jump(EA),
     got_reference(Got_entry,Function),
