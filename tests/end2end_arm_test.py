@@ -10,9 +10,7 @@ asm_dir = Path("./examples/arm_asm_examples/")
 
 
 class TestArmAsmExamples(unittest.TestCase):
-    @unittest.skipUnless(
-        distro.id() == "ubuntu", "This test is Ubuntu only."
-    )
+    @unittest.skipUnless(distro.id() == "ubuntu", "This test is Ubuntu only.")
     def test_arm_asm_ex1(self):
         self.assertTrue(
             dis_reasm_test(
@@ -26,9 +24,7 @@ class TestArmAsmExamples(unittest.TestCase):
             )
         )
 
-    @unittest.skipUnless(
-        distro.id() == "ubuntu", "This test is Ubuntu only."
-    )
+    @unittest.skipUnless(distro.id() == "ubuntu", "This test is Ubuntu only.")
     def test_arm_asm_ex1_no_pie(self):
         self.assertTrue(
             dis_reasm_test(
