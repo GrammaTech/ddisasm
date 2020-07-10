@@ -5,7 +5,7 @@ from disassemble_reassemble_check import (
 )
 from pathlib import Path
 
-asm_dir = Path("./examples/binrats/")
+asm_dir = Path("./examples/arm64/")
 
 
 class TestArm64BinratsExamples(unittest.TestCase):
