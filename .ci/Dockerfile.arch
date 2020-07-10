@@ -19,3 +19,19 @@ RUN   useradd ddisasm && echo "ddisasm ALL=NOPASSWD: ALL" > /etc/sudoers.d/ddisa
 RUN mkdir /home/ddisasm && chown ddisasm /home/ddisasm
 USER ddisasm
 RUN yay --noconfirm -Sy pandoc capstone libehp-git souffle lief
+
+# Install cross-platform utils
+RUN pacman --noconfirm -Sy awk bison binutils coreutils diffutils file gettext patch
+
+RUN yay --noconfirm -Sy \
+  arm-linux-gnueabihf-binutils \
+  arm-linux-gnueabihf-gcc-stage1 \
+  arm-linux-gnueabihf-linux-api-headers \
+  arm-linux-gnueabihf-glibc-headers
+
+RUN yay --noconfirm --useask -Sy \
+  arm-linux-gnueabihf-gcc-stage2 \
+  arm-linux-gnueabihf-glibc \
+
+RUN yay --noconfirm --useask -Sy \
+  arm-linux-gnueabihf-gcc
