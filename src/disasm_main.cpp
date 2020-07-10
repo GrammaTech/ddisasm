@@ -54,7 +54,7 @@
 #include "passes/SccPass.h"
 
 #ifdef WITH_DWARF_SUPPORT
-#include "DwarfMap.hpp"
+#include "DwarfMap.h"
 #endif
 
 namespace fs = boost::filesystem;
