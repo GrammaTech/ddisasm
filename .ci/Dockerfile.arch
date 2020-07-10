@@ -29,11 +29,6 @@ RUN yay --noconfirm -Sy \
   arm-linux-gnueabihf-linux-api-headers \
   arm-linux-gnueabihf-glibc-headers
 
-RUN yay --noconfirm --useask -Sy \
-  arm-linux-gnueabihf-gcc-stage2
-
-RUN yay --noconfirm -Sy \
-  arm-linux-gnueabihf-glibc
-
-RUN yay --noconfirm --useask -Sy \
-  arm-linux-gnueabihf-gcc
+RUN yay --noconfirm --useask -Sy arm-linux-gnueabihf-gcc-stage2
+RUN yay --noconfirm --useask -Sy arm-linux-gnueabihf-glibc
+RUN yay --noconfirm --useask -Sy arm-linux-gnueabihf-gcc
