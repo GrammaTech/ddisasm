@@ -31,7 +31,7 @@ RUN yay --noconfirm -Sy \
 
 RUN yay --noconfirm --useask -Sy \
   arm-linux-gnueabihf-gcc-stage2 \
-  arm-linux-gnueabihf-glibc \
+  arm-linux-gnueabihf-glibc
 
 RUN yay --noconfirm --useask -Sy \
   arm-linux-gnueabihf-gcc
