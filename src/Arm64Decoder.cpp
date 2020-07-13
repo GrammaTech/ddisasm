@@ -65,7 +65,7 @@ void Arm64Decoder::decodeSection(const gtirb::ByteInterval &byteInterval)
     assert(byteInterval.getSize() == byteInterval.getInitializedSize()
            && "Failed to decode section with partially initialized byte interval.");
 
-    gtirb::Addr ea = byteInterval.getAddress().value();
+    gtirb::Addr ea = *byteInterval.getAddress();
     uint64_t size = byteInterval.getInitializedSize();
     auto buf = byteInterval.rawBytes<const unsigned char>();
     while(size > 0)
