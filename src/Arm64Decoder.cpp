@@ -32,9 +32,9 @@ souffle::SouffleProgram *Arm64Decoder::decode(const gtirb::Module &module,
 
     for(const gtirb::Section &section : module.sections())
     {
-        bool is_executable = section.isFlagSet(gtirb::SectionFlag::Executable);
-        bool is_initialized = section.isFlagSet(gtirb::SectionFlag::Initialized);
-        if(is_executable)
+        bool Exec = section.isFlagSet(gtirb::SectionFlag::Executable);
+        bool Init = section.isFlagSet(gtirb::SectionFlag::Initialized);
+        if(Exec)
         {
             for(const auto &byteInterval : section.byte_intervals())
             {
@@ -42,7 +42,7 @@ souffle::SouffleProgram *Arm64Decoder::decode(const gtirb::Module &module,
                 storeDataSection(byteInterval, minAddr, maxAddr);
             }
         }
-        if(is_initialized)
+        if(Init)
         {
             for(const auto &byteInterval : section.byte_intervals())
             {
