@@ -1,4 +1,4 @@
-//===- AArch64Decoder.h -----------------------------------------*- C++ -*-===//
+//===- Arm64Decoder.h -------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -31,10 +31,10 @@
 #include "DlDecoder.h"
 #include "DlOperandTable.h"
 
-class AArch64Decoder : public DlDecoder
+class Arm64Decoder : public DlDecoder
 {
 public:
-    AArch64Decoder() : DlDecoder(gtirb::ISA::ARM64){};
+    Arm64Decoder() : DlDecoder(gtirb::ISA::ARM64){};
     souffle::SouffleProgram* decode(const gtirb::Module& module,
                                     const std::vector<std::string>& DisasmOptions);
     void decodeSection(const gtirb::ByteInterval& byteInterval);

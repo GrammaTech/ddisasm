@@ -214,7 +214,7 @@ add_subdirectory(gtirb-builder)
 # souffle code won't build with -Wall -Werror).
 add_library(
   disasm_main STATIC
-  disasm_main.cpp DlDecoder.cpp AArch64Decoder.cpp X86Decoder.cpp
+  disasm_main.cpp DlDecoder.cpp Arm64Decoder.cpp X86Decoder.cpp
   ExceptionDecoder.cpp GtirbModuleDisassembler.cpp)
 
 if(DWARF)

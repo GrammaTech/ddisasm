@@ -1,4 +1,4 @@
-//===- AArch64Decoder.cpp ---------------------------------------*- C++ -*-===//
+//===- Arm64Decoder.cpp -----------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -20,10 +20,10 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#include "AArch64Decoder.h"
+#include "Arm64Decoder.h"
 
-souffle::SouffleProgram *AArch64Decoder::decode(const gtirb::Module &module,
-                                                const std::vector<std::string> &DisasmOptions)
+souffle::SouffleProgram *Arm64Decoder::decode(const gtirb::Module &module,
+                                              const std::vector<std::string> &DisasmOptions)
 {
     assert(module.getAddress() && "Module has non-addressable section data.");
     gtirb::Addr minAddr = *module.getAddress();
@@ -59,7 +59,7 @@ souffle::SouffleProgram *AArch64Decoder::decode(const gtirb::Module &module,
     return nullptr;
 }
 
-void AArch64Decoder::decodeSection(const gtirb::ByteInterval &byteInterval)
+void Arm64Decoder::decodeSection(const gtirb::ByteInterval &byteInterval)
 {
     assert(byteInterval.getAddress() && "Failed to decode section without address.");
     assert(byteInterval.getSize() == byteInterval.getInitializedSize()

@@ -43,7 +43,7 @@
 
 #include "gtirb-builder/GtirbBuilder.h"
 
-#include "AArch64Decoder.h"
+#include "Arm64Decoder.h"
 #include "AuxDataSchema.h"
 #include "DatalogUtils.h"
 #include "GtirbModuleDisassembler.h"
@@ -252,7 +252,7 @@ int main(int argc, char **argv)
             break;
             case gtirb::ISA::ARM64:
             {
-                AArch64Decoder Decoder;
+                Arm64Decoder Decoder;
                 prog = Decoder.decode(Module, DisasmOptions);
             }
             break;
