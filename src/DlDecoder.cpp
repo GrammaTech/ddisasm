@@ -149,7 +149,7 @@ souffle::SouffleProgram *DlDecoder::decode(const gtirb::Module &module,
                 storeDataSection(byteInterval, minAddr, maxAddr);
             }
         }
-        if(Init)
+        else if(Init)
         {
             for(auto &byteInterval : section.byte_intervals())
             {
