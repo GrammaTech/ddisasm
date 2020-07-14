@@ -67,7 +67,7 @@ void Arm64Decoder::decodeSection(const gtirb::ByteInterval &byteInterval)
 
     gtirb::Addr ea = *byteInterval.getAddress();
     uint64_t size = byteInterval.getInitializedSize();
-    auto buf = byteInterval.rawBytes<const unsigned char>();
+    const auto *buf = byteInterval.rawBytes<const uint8_t>();
     while(size > 0)
     {
         cs_insn *insn;
@@ -80,8 +80,8 @@ void Arm64Decoder::decodeSection(const gtirb::ByteInterval &byteInterval)
         else
         {
             instructions.push_back(GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn));
-            cs_free(insn, count);
         }
+        cs_free(insn, count);
         ++ea;
         ++buf;
         --size;
