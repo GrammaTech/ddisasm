@@ -147,6 +147,7 @@ static void setStdoutToBinary()
 int main(int argc, char **argv)
 {
     registerAuxDataTypes();
+    gtirb_pprint::registerPrettyPrinters();
 
     po::options_description desc("Allowed options");
     desc.add_options()("help,h", "produce help message")("version", "display ddisasm version")(
