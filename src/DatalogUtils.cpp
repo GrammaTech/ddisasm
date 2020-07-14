@@ -153,46 +153,46 @@ std::string getRegisterName(const MultiArchCapstoneHandle& CsHandle, unsigned in
     return name;
 }
 
-std::string getPrefetchValue(const arm64_prefetch_op prefetch)
+const char* getPrefetchValue(const arm64_prefetch_op prefetch)
 {
     switch(prefetch)
     {
         case ARM64_PRFM_PLDL1KEEP:
-            return std::string("pldl1keep");
+            return "pldl1keep";
         case ARM64_PRFM_PLDL1STRM:
-            return std::string("pldl1strm");
+            return "pldl1strm";
         case ARM64_PRFM_PLDL2KEEP:
-            return std::string("pldl2keep");
+            return "pldl2keep";
         case ARM64_PRFM_PLDL2STRM:
-            return std::string("pldl2strm");
+            return "pldl2strm";
         case ARM64_PRFM_PLDL3KEEP:
-            return std::string("pldl3keep");
+            return "pldl3keep";
         case ARM64_PRFM_PLDL3STRM:
-            return std::string("pldl3strm");
+            return "pldl3strm";
         case ARM64_PRFM_PLIL1KEEP:
-            return std::string("plil1keep");
+            return "plil1keep";
         case ARM64_PRFM_PLIL1STRM:
-            return std::string("plil1strm");
+            return "plil1strm";
         case ARM64_PRFM_PLIL2KEEP:
-            return std::string("plil2keep");
+            return "plil2keep";
         case ARM64_PRFM_PLIL2STRM:
-            return std::string("plil2strm");
+            return "plil2strm";
         case ARM64_PRFM_PLIL3KEEP:
-            return std::string("plil3keep");
+            return "plil3keep";
         case ARM64_PRFM_PLIL3STRM:
-            return std::string("plil3strm");
+            return "plil3strm";
         case ARM64_PRFM_PSTL1KEEP:
-            return std::string("pstl1keep");
+            return "pstl1keep";
         case ARM64_PRFM_PSTL1STRM:
-            return std::string("pstl1strm");
+            return "pstl1strm";
         case ARM64_PRFM_PSTL2KEEP:
-            return std::string("pstl2keep");
+            return "pstl2keep";
         case ARM64_PRFM_PSTL2STRM:
-            return std::string("pstl2strm");
+            return "pstl2strm";
         case ARM64_PRFM_PSTL3KEEP:
-            return std::string("pstl3keep");
+            return "pstl3keep";
         case ARM64_PRFM_PSTL3STRM:
-            return std::string("pstl3strm");
+            return "pstl3strm";
         case ARM64_PRFM_INVALID:
         default:
             std::cerr << "invalid operand (prefetch)\n";
@@ -200,34 +200,34 @@ std::string getPrefetchValue(const arm64_prefetch_op prefetch)
     }
 }
 
-std::string getBarrierOp(const arm64_barrier_op barrier)
+const char* getBarrierOp(const arm64_barrier_op barrier)
 {
     switch(barrier)
     {
         case ARM64_BARRIER_OSHLD:
-            return std::string("oshld");
+            return "oshld";
         case ARM64_BARRIER_OSHST:
-            return std::string("oshst");
+            return "oshst";
         case ARM64_BARRIER_OSH:
-            return std::string("osh");
+            return "osh";
         case ARM64_BARRIER_NSHLD:
-            return std::string("nshld");
+            return "nshld";
         case ARM64_BARRIER_NSHST:
-            return std::string("nshst");
+            return "nshst";
         case ARM64_BARRIER_NSH:
-            return std::string("nsh");
+            return "nsh";
         case ARM64_BARRIER_ISHLD:
-            return std::string("ishld");
+            return "ishld";
         case ARM64_BARRIER_ISHST:
-            return std::string("ishst");
+            return "ishst";
         case ARM64_BARRIER_ISH:
-            return std::string("ish");
+            return "ish";
         case ARM64_BARRIER_LD:
-            return std::string("ld");
+            return "ld";
         case ARM64_BARRIER_ST:
-            return std::string("st");
+            return "st";
         case ARM64_BARRIER_SY:
-            return std::string("sy");
+            return "sy";
         case ARM64_BARRIER_INVALID:
         default:
             std::cerr << "invalid operand (barrier)\n";
