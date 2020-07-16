@@ -182,7 +182,18 @@ void ElfReader::addEntryBlock()
 void ElfReader::addAuxData()
 {
     // Add `binaryType' aux data table.
-    std::vector<std::string> BinaryType = {Elf->is_pie() ? "DYN" : "EXEC"};
+    std::vector<std::string> BinaryType;
+    switch(Elf->header().file_type())
+    {
+        case LIEF::ELF::E_TYPE::ET_DYN:
+            BinaryType.emplace_back("DYN");
+            break;
+        case LIEF::ELF::E_TYPE::ET_EXEC:
+            BinaryType.emplace_back("EXEC");
+            break;
+        default:
+            assert(!"Unknown value for ELF file's e_type!");
+    }
     Module->addAuxData<gtirb::schema::BinaryType>(std::move(BinaryType));
 
     // Add `relocations' aux data table.
