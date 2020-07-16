@@ -530,7 +530,7 @@ data_object_point(EA,Pt_size,"symbol",2,"aligned"):-
     data_object_candidate(EA,Pt_size,"symbol"),
     EA % Pt_size = 0.
 
-data_object_point(EA,Pt_size,"symbol",-2,"point-to-exception-section"):-
+data_object_point(EA,Pt_size,"symbol",-5,"point-to-exception-section"):-
     data_object_candidate(EA,Pt_size,"symbol"),
     address_in_data_refined(EA,Dest),
     exception_section(Name),
