@@ -713,7 +713,7 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
         }
         for(auto &Load : splitLoad)
         {
-            long int dest = Load.Dest;
+            ImmOp dest = Load.Dest;
             if(Load.EA == inst->first)
             {
                 buildSymbolicImmediate(context, module, inst->first, inst->second, 1, dest,
