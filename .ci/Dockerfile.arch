@@ -7,7 +7,7 @@ RUN pacman --noconfirm -Syu archlinux-keyring
 RUN pacman -Syu --noconfirm autoconf automake base-devel boost clang cmake \
         doxygen fakeroot gcc git libdwarf libtool make mcpp pkg-config protobuf \
         python3 python-pip sudo wget unzip
-RUN python3 -m pip install wheel
+RUN python3 -m pip install wheel distro
 
 RUN pacman --noconfirm -Syu archlinux-keyring
 RUN sed -i "s/^\(OPT_LONG=(\)/\1'asroot' /;s/EUID == 0/1 == 0/" /usr/bin/makepkg
