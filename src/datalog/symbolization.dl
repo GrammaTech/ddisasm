@@ -550,6 +550,11 @@ data_object_point(EA,Pt_size,"symbol",10,"has relocation"):-
     data_object_candidate(EA,Pt_size,"symbol"),
     relocation(EA,_,_,_).
 
+data_object_point(EA,Pt_size,"symbol",-10,"has no relocation"):-
+    !binary_type("EXEC"),
+    data_object_candidate(EA,Pt_size,"symbol"),
+    !relocation(EA,_,_,_).
+
 //extra point if the string is long
 data_object_point(EA,Size,"string",2,"string basic point"):-
     data_object_candidate(EA,Size,"string").
