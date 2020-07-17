@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-DwarfMap::DwarfMap(const std::string filename)
+DwarfMap::DwarfMap(const std::string& filename)
 {
     this->dwarf_fd = open(filename.c_str(), O_RDONLY);
     if(this->dwarf_fd > 0)
@@ -40,14 +40,16 @@ DwarfMap::DwarfMap(const std::string filename)
             fprintf(stderr, "Unable to open executable");
             dwarf_finish(this->debug, &this->error);
             close(this->dwarf_fd);
+            this->dwarf_fd = 0;
         }
     }
 }
 
 DwarfMap::~DwarfMap()
 {
-    if(dwarf_finish(this->debug, &this->error) == DW_DLV_OK)
+    if(this->dwarf_fd > 0)
     {
+        dwarf_finish(this->debug, &this->error);
         close(this->dwarf_fd);
     }
 }
@@ -152,10 +154,9 @@ void DwarfMap::retrieve_die_data(Dwarf_Die die)
 
         if(tag == DW_TAG_variable)
         {
-            this->dwarfdata.insert(
-                std::make_pair(loc_list[0].ld_s[0].lr_number,
-                               DwarfData(loc_list[0].ld_s[0].lr_number, new std::string(name), tag,
-                                         in_file, in_line)));
+            this->dwarfdata.insert(std::make_pair(
+                loc_list[0].ld_s[0].lr_number,
+                DwarfData(loc_list[0].ld_s[0].lr_number, name, tag, in_file, in_line)));
         }
     }
     dwarf_dealloc(this->debug, name, DW_DLA_STRING);
@@ -173,12 +174,9 @@ void DwarfMap::flag_constsym(gtirb::Module& module)
     {
         const gtirb::Symbol& symentry = *i;
 
-        if(std::optional<gtirb::Addr> addr = symentry.getAddress())
+        if(std::optional<gtirb::Addr> addr = symentry.getAddress(); addr)
         {
-            // what is this? Apparently implicit conversion does not work
-            // but explicit usage
-            // Would static cast be preferrable?
-            uint64_t ad = (*addr).operator uint64_t();
+            auto ad = static_cast<uint64_t>(*addr);
             auto entryFound = this->dwarfdata.find(ad);
             // If the section is not dwarf, analyse it.
             if(entryFound != this->dwarfdata.end())
@@ -190,16 +188,12 @@ void DwarfMap::flag_constsym(gtirb::Module& module)
     module.addAuxData<gtirb::schema::FlaggedSections>(std::move(in_debug));
 }
 
-DwarfData::DwarfData(uint64_t addr, std::string* name, Dwarf_Half tag, Dwarf_Unsigned file_no,
+DwarfData::DwarfData(uint64_t addr, const char* name, Dwarf_Half tag, Dwarf_Unsigned file_no,
                      Dwarf_Unsigned line_no)
 {
     this->addr = addr;
-    this->name = name;
+    this->name = {name};
     this->tag = tag;
     this->file_no = file_no;
     this->line_no = line_no;
-}
-
-DwarfData::~DwarfData()
-{ /* NO-OP */
 }
