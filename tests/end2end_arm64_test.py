@@ -21,7 +21,7 @@ class TestArm64BinratsExamples(unittest.TestCase):
             )
         )
 
-    # TODO: Fix invalid operand
+    # FIXME: Propagate invalid operands to invalid instructions.
     # @unittest.skipUnless(distro.id() == "ubuntu",
     # "This test is Ubuntu only.")
     # def test_arm64_binrats_password(self):
