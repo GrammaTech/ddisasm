@@ -25,7 +25,7 @@ RUN apt-get -y update && apt-get -y install autoconf automake clang clang-format
 
 # Install cross-platform utils
 RUN apt-get -y update && \
-    apt-get -y install gcc-aarch64-linux-gnu qemu
+    apt-get -y install gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu qemu
 
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config

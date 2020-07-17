@@ -26,6 +26,10 @@ RUN apt-get -y install clang-format unzip \
     make mcpp pkg-config protobuf-compiler python3 python3-pip \
     software-properties-common wget zlib1g-dev
 
+# Install cross-platform utils
+RUN apt-get -y update && \
+    apt-get -y install gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu qemu
+
 # Install LIEF
 RUN cd /usr/local/src \
     && git clone -b 0.10.0 https://github.com/lief-project/LIEF.git \
