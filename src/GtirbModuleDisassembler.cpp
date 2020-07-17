@@ -280,10 +280,10 @@ struct SymbolMinusSymbol
 
 struct SplitLoad
 {
-    SplitLoad(gtirb::Addr ea) : EA(ea)
+    explicit SplitLoad(gtirb::Addr ea) : EA(ea)
     {
     }
-    SplitLoad(souffle::tuple &tuple)
+    explicit SplitLoad(souffle::tuple &tuple)
     {
         assert(tuple.size() == 4);
         tuple >> EA >> NextEA >> Dest >> Type;
