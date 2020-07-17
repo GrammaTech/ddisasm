@@ -81,7 +81,10 @@ class LibrarySymbolsTests(unittest.TestCase):
                 for e in bar_block.outgoing_edges
                 if e.label.type == gtirb.Edge.Type.Call
             ][0]
-            assert [s.name for s in m.sections_on(callee.address)] == [".plt"]
+            assert [s.name for s in m.sections_on(callee.address)][0] in [
+                ".plt",
+                ".plt.sec",
+            ]
 
 
 class AuxDataTests(unittest.TestCase):
