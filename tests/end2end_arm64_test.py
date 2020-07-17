@@ -1,4 +1,4 @@
-import platform
+import distro
 import unittest
 from disassemble_reassemble_check import (
     disassemble_reassemble_test as dis_reasm_test,
@@ -9,9 +9,7 @@ asm_dir = Path("./examples/arm64/")
 
 
 class TestArm64BinratsExamples(unittest.TestCase):
-    @unittest.skipUnless(
-        platform.system() == "Linux", "This test is linux only."
-    )
+    @unittest.skipUnless(distro.id() == "ubuntu", "This test is Ubuntu only.")
     def test_arm64_binrats_hello(self):
         self.assertTrue(
             dis_reasm_test(
@@ -24,9 +22,7 @@ class TestArm64BinratsExamples(unittest.TestCase):
         )
 
     # TODO: Fix invalid operand
-    # @unittest.skipUnless(
-    #     platform.system() == "Linux", "This test is linux only."
-    # )
+    # @unittest.skipUnless(distro.id() == "ubuntu", "This test is Ubuntu only.")
     # def test_arm64_binrats_password(self):
     #     self.assertTrue(
     #         dis_reasm_test(
