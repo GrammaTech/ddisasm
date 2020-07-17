@@ -711,15 +711,15 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
                 buildSymbolicIndirect(context, module, inst->first, inst->second, op.first,
                                       *indirect, symbolicInfo);
         }
-        for(auto &splitLoad : splitLoad)
+        for(auto &Load : splitLoad)
         {
-            long int dest = splitLoad.Dest;
-            if(splitLoad.EA == inst->first)
+            long int dest = Load.Dest;
+            if(Load.EA == inst->first)
             {
                 buildSymbolicImmediate(context, module, inst->first, inst->second, 1, dest,
                                        symbolicInfo);
             }
-            if(splitLoad.NextEA == inst->first)
+            if(Load.NextEA == inst->first)
             {
                 buildSymbolicImmediate(context, module, inst->first, inst->second, 2, dest,
                                        symbolicInfo);
