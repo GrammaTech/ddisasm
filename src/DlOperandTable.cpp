@@ -35,9 +35,9 @@ souffle::tuple &operator<<(souffle::tuple &t, const IndirectOp &op)
     return t;
 }
 
-constexpr bool operator<(const BarrierOp &LHS, const BarrierOp &RHS) noexcept
+bool operator<(const BarrierOp &LHS, const BarrierOp &RHS) noexcept
 {
-    return std::tie(LHS.value) < std::tie(RHS.value);
+    return LHS.value < RHS.value;
 }
 
 souffle::tuple &operator<<(souffle::tuple &t, const BarrierOp &op)
@@ -46,9 +46,9 @@ souffle::tuple &operator<<(souffle::tuple &t, const BarrierOp &op)
     return t;
 }
 
-constexpr bool operator<(const PrefetchOp &LHS, const PrefetchOp &RHS) noexcept
+bool operator<(const PrefetchOp &LHS, const PrefetchOp &RHS) noexcept
 {
-    return std::tie(LHS.value) < std::tie(RHS.value);
+    return LHS.value < RHS.value;
 }
 
 souffle::tuple &operator<<(souffle::tuple &t, const PrefetchOp &op)

@@ -57,10 +57,10 @@ struct IndirectOp
 constexpr bool operator<(const IndirectOp& LHS, const IndirectOp& RHS) noexcept;
 souffle::tuple& operator<<(souffle::tuple& t, const IndirectOp& op);
 
-constexpr bool operator<(const PrefetchOp& LHS, const PrefetchOp& RHS) noexcept;
+bool operator<(const PrefetchOp& LHS, const PrefetchOp& RHS) noexcept;
 souffle::tuple& operator<<(souffle::tuple& t, const PrefetchOp& op);
 
-constexpr bool operator<(const BarrierOp& LHS, const BarrierOp& RHS) noexcept;
+bool operator<(const BarrierOp& LHS, const BarrierOp& RHS) noexcept;
 souffle::tuple& operator<<(souffle::tuple& t, const BarrierOp& op);
 
 template <class T>
