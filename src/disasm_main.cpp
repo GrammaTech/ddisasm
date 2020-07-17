@@ -266,11 +266,11 @@ int main(int argc, char **argv)
     }
 
     // Remove initial entry point.
-    Module.setEntryPoint(nullptr);
     if(gtirb::CodeBlock *Block = Module.getEntryPoint())
     {
         Block->getByteInterval()->removeBlock(Block);
     }
+    Module.setEntryPoint(nullptr);
 
     // Remove placeholder relocation data.
     Module.removeAuxData<gtirb::schema::Relocations>();

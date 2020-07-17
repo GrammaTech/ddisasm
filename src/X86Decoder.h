@@ -36,8 +36,8 @@ class X86Decoder : public DlDecoder
 public:
     X86Decoder() : DlDecoder(gtirb::ISA::X64){};
     souffle::SouffleProgram* decode(const gtirb::Module& module,
-                                    const std::vector<std::string>& DisasmOptions);
-    void decodeSection(const gtirb::ByteInterval& byteInterval);
+                                    const std::vector<std::string>& DisasmOptions) override;
+    void decodeSection(const gtirb::ByteInterval& byteInterval) override;
 };
 
 #endif /* SRC_X86_DECODER_H_ */

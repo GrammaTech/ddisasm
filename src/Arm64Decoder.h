@@ -38,8 +38,8 @@ public:
     {
     }
     souffle::SouffleProgram* decode(const gtirb::Module& module,
-                                    const std::vector<std::string>& DisasmOptions);
-    void decodeSection(const gtirb::ByteInterval& byteInterval);
+                                    const std::vector<std::string>& DisasmOptions) override;
+    void decodeSection(const gtirb::ByteInterval& byteInterval) override;
 };
 
 #endif /* SRC_AARCH64_DECODER_H_ */

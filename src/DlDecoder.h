@@ -55,8 +55,8 @@ protected:
 public:
     explicit DlDecoder(gtirb::ISA Isa) : CsHandle(Isa){};
     virtual ~DlDecoder() = default;
-    souffle::SouffleProgram* decode(const gtirb::Module& module,
-                                    const std::vector<std::string>& DisasmOptions);
+    virtual souffle::SouffleProgram* decode(const gtirb::Module& module,
+                                            const std::vector<std::string>& DisasmOptions);
 };
 
 #endif /* SRC_DL_DECODER_H_ */
