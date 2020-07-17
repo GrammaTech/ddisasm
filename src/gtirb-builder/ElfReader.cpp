@@ -192,6 +192,7 @@ void ElfReader::addAuxData()
             BinaryType.emplace_back("EXEC");
             break;
         default:
+            // FIXME: Return an error code here (and wherever else we assert).
             assert(!"Unknown value for ELF file's e_type!");
     }
     Module->addAuxData<gtirb::schema::BinaryType>(std::move(BinaryType));
