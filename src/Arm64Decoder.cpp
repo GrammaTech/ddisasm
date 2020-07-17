@@ -82,8 +82,8 @@ void Arm64Decoder::decodeSection(const gtirb::ByteInterval &byteInterval)
             instructions.push_back(GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn));
         }
         cs_free(insn, count);
-        ++ea;
-        ++buf;
-        --size;
+        ea += 4;
+        buf += 4;
+        size -= 4;
     }
 }
