@@ -167,14 +167,15 @@ endif()
 # ---------------------------------------------------------------------------
 # DWARF
 # ---------------------------------------------------------------------------
-if(BUILD_SHARED_LIBS)
+option(DDISASM_USE_DWARF "Enable DWARF debug info support" OFF)
+
+if(DDISASM_USE_DWARF)
   find_library(DWARF NAMES dwarf)
 endif()
-
 if(DWARF)
   add_definitions(-DWITH_DWARF_SUPPORT)
 else()
-  message(STATUS "No DWARF installation found.\n")
+  message(STATUS "No DWARF installation found.")
 endif()
 
 # ---------------------------------------------------------------------------
