@@ -9,7 +9,10 @@ asm_dir = Path("./examples/arm64/")
 
 
 class TestArm64BinratsExamples(unittest.TestCase):
-    @unittest.skipUnless(distro.id() == "ubuntu", "This test is Ubuntu only.")
+    @unittest.skipUnless(
+        distro.id() == "ubuntu" and distro.major_version() in ("18", "20"),
+        "This test is Ubuntu 18 and 20 only.",
+    )
     def test_arm64_binrats_hello(self):
         self.assertTrue(
             dis_reasm_test(
