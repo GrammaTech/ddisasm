@@ -217,11 +217,6 @@ add_library(
   disasm_main.cpp DlDecoder.cpp Arm64Decoder.cpp X86Decoder.cpp
   ExceptionDecoder.cpp GtirbModuleDisassembler.cpp)
 
-if(DWARF)
-  target_sources(disasm_main PRIVATE DwarfMap.cpp)
-  target_link_libraries(disasm_main ${DWARF})
-endif()
-
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_compile_options(disasm_main PRIVATE -Wno-unused-parameter)
 endif()

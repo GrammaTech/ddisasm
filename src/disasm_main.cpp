@@ -53,10 +53,6 @@
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
 
-#ifdef WITH_DWARF_SUPPORT
-#include "DwarfMap.h"
-#endif
-
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
@@ -90,8 +86,6 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionIndex>();
-    gtirb::AuxDataContainer::registerAuxDataType<FlaggedSections>();
-    gtirb::AuxDataContainer::registerAuxDataType<DWARFElfSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<PeSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<CfiDirectives>();
     gtirb::AuxDataContainer::registerAuxDataType<Libraries>();
@@ -166,7 +160,7 @@ int main(int argc, char **argv)
         "Specifies the ASM output file; use to '-' print to stdout")(
         "debug", "generate assembler file with debugging information")(
         "debug-dir", po::value<std::string>(), "location to write CSV files for debugging")(
-        "dwarf", "Dwarf analysis")("input-file", po::value<std::string>(), "file to disasemble")(
+        "input-file", po::value<std::string>(), "file to disasemble")(
         "keep-functions,K", po::value<std::vector<std::string>>()->multitoken(),
         "Print the given functions even if they are skipped by default (e.g. _start)")(
         "self-diagnose",
@@ -301,17 +295,6 @@ int main(int argc, char **argv)
         auto StartGtirbBuilding = std::chrono::high_resolution_clock::now();
         disassembleModule(*GTIRB->Context, Module, prog, vm.count("self-diagnose") != 0);
         printElapsedTimeSince(StartGtirbBuilding);
-
-        if(vm.count("dwarf") != 0)
-        {
-#ifdef WITH_DWARF_SUPPORT
-            DwarfMap dmap(filename);
-            dmap.extract_dwarf_data();
-            dmap.flag_constsym(Module);
-#else
-            std::cerr << "DWARF not supported.";
-#endif
-        }
 
         if(vm.count("skip-function-analysis") == 0)
         {

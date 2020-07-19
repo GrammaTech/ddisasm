@@ -97,22 +97,10 @@ namespace gtirb
             typedef std::map<uint64_t, gtirb::UUID> Type;
         };
 
-        struct FlaggedSections
-        {
-            static constexpr const char* Name = "FlaggedSections";
-            typedef std::map<gtirb::UUID, gtirb::UUID> Type;
-        };
-
         /// \brief Auxiliary data covering ELF section properties.
         struct ElfSectionProperties
         {
             static constexpr const char* Name = "elfSectionProperties";
-            typedef std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> Type;
-        };
-
-        struct DWARFElfSectionProperties
-        {
-            static constexpr const char* Name = "DWARFElfSectionProperties";
             typedef std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> Type;
         };
 
