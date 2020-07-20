@@ -32,6 +32,11 @@ identifying function pointers and based on identifying complete functions.
 .number_type operand_code
 .symbol_type register
 
+#include "Ph2_call_inference.dl"
+ //#include "optional_code_inference.dl"
+ //#include "optional_basic_function_inference.dl"
+ //.init function_inference = basic_function_inference
+
 .decl block(Address:address, Size:number)
 .input block
 

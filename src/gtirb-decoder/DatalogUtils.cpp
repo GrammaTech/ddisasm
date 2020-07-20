@@ -97,35 +97,46 @@ void MultiArchCapstoneHandle::setDecodeMode(DecodeMode Mode)
 
 void populateEdgeProperties(souffle::tuple& T, const gtirb::EdgeLabel& Label)
 {
-    assert(Label.has_value() && "Found edge without a label");
-    if(std::get<gtirb::ConditionalEdge>(*Label) == gtirb::ConditionalEdge::OnTrue)
-        T << "true";
-    else
-        T << "false";
-    if(std::get<gtirb::DirectEdge>(*Label) == gtirb::DirectEdge::IsIndirect)
-        T << "true";
-    else
-        T << "false";
-    switch(std::get<gtirb::EdgeType>(*Label))
+    if (Label.has_value())
     {
+        if(std::get<gtirb::ConditionalEdge>(*Label) == gtirb::ConditionalEdge::OnTrue)
+            T << "true";
+        else
+            T << "false";
+        if(std::get<gtirb::DirectEdge>(*Label) == gtirb::DirectEdge::IsIndirect)
+            T << "true";
+        else
+            T << "false";
+        switch(std::get<gtirb::EdgeType>(*Label))
+        {
         case gtirb::EdgeType::Branch:
-            T << "branch";
-            break;
+          T << "branch";
+          break;
         case gtirb::EdgeType::Call:
-            T << "call";
-            break;
+          T << "call";
+          break;
         case gtirb::EdgeType::Fallthrough:
-            T << "fallthrough";
-            break;
+          T << "fallthrough";
+          break;
         case gtirb::EdgeType::Return:
-            T << "return";
-            break;
+          T << "return";
+          break;
         case gtirb::EdgeType::Syscall:
-            T << "syscall";
-            break;
+          T << "syscall";
+          break;
         case gtirb::EdgeType::Sysret:
-            T << "sysret";
-            break;
+          T << "sysret";
+          break;
+        }
+    }
+    else
+    {
+        static bool problem_report = false;
+        if (!problem_report)
+        {
+            std::cout << "\nWARNING: Found edge without a label\n";
+            problem_report = true;
+        }
     }
 }
 

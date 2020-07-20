@@ -38,6 +38,18 @@ void FunctionInferencePass::populateSouffleProg(std::shared_ptr<souffle::Souffle
     Loader.populateFdeEntries(Ctx, M);
     Loader.populateFunctionEntries(Ctx, M);
     Loader.populatePadding(Ctx, M);
+
+    // GHN 2020-06-29 additional populates needed if we're handling a
+    // tbdisasm GTIRB input
+    gtirb::schema::BinaryType::Type *btype = M.getAuxData<gtirb::schema::BinaryType>();
+    if (btype && btype->at(0) == std::string("GTIRB")) {
+        // Check value, add relations
+        std::cout << "We got GTIRB, load extra relations.\n";
+        GtirbToDatalog::addToRelation<std::vector<std::string>>(
+            P.get(), "binary_format", {std::string("GTIRB")});
+        // Placeholder for other things, e.g.
+        // Loader.populateTBBlocks(M);
+    }
 }
 
 void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProgram> P,

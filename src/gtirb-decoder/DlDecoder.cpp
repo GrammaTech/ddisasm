@@ -121,7 +121,11 @@ void addSections(souffle::SouffleProgram *prog, const gtirb::Module &module)
     auto *rel = prog->getRelation("section_complete");
     auto *extraInfoTable = module.getAuxData<gtirb::schema::ElfSectionProperties>();
     if(!extraInfoTable)
+#if 0    // GHN
         throw std::logic_error("missing elfSectionProperties AuxData table");
+#else
+    return;
+#endif
 
     for(auto &section : module.sections())
     {
@@ -237,8 +241,14 @@ void DlDecoder::storeDataSection(const gtirb::ByteInterval &byteInterval, gtirb:
 
 void DlDecoder::loadInputs(souffle::SouffleProgram *prog, const gtirb::Module &module)
 {
-    GtirbToDatalog::addToRelation<std::vector<std::string>>(
-        prog, "binary_type", *module.getAuxData<gtirb::schema::BinaryType>());
+    // GHN 2020-06-26
+    // Can't figure out how to get this in from GTIRB so I'm adding protection instead.
+    gtirb::schema::BinaryType::Type *btype = module.getAuxData<gtirb::schema::BinaryType>();
+    if (btype)
+    {
+	GtirbToDatalog::addToRelation<std::vector<std::string>>(
+            prog, "binary_type", *btype);
+    }
     GtirbToDatalog::addToRelation<std::vector<std::string>>(
         prog, "binary_format", {getFileFormatString(module.getFileFormat())});
 
@@ -269,8 +279,10 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, const gtirb::Module &m
     GtirbToDatalog::addToRelation(prog, "op_prefetch", op_dict.prefetchTable);
     GtirbToDatalog::addToRelation(prog, "op_barrier", op_dict.barrierTable);
 
+#if 0	// TODO crude bypass - this must be fixed
     addSymbols(prog, module);
     addSections(prog, module);
+#endif
 
     ExceptionDecoder excDecoder(module);
     excDecoder.addExceptionInformation(prog);

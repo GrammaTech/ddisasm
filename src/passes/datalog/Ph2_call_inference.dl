@@ -1,0 +1,68 @@
+//===- Ph2_call_inference.dl --------------------*- datalog -*-===//
+//
+//  Copyright (C) 2020 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+This module infers call structure from the control flow graph passed in a GTIRB
+*/
+
+.decl binary_format(Type:symbol)
+.input binary_format
+
+//// Minimal mock from code_inference.dl
+//// TODO - Evaluate if this is right and where it belongs
+//.decl code(ea:address)
+//.input code
+
+.decl direct_call(src:address, dest:address)
+.output direct_call
+
+direct_call(Src,Dest):-
+    binary_format("GTIRB"),
+    cfg_edge(Src,Dest,_,"false","call").
+
+.decl indirect_call(src:address, dest:address)
+.output indirect_call
+
+indirect_call(Src,Dest):-
+    binary_format("GTIRB"),
+    cfg_edge(Src,Dest,_,"true","call").
+
+//// Minimal mock from code_inference_postprocess.dl
+//// TODO - Evaluate if this is right and where it belongs
+// Note this implements a different definition of block(Address,Size) instead of block(Address)
+.decl refined_block(block:address)
+.output refined_block
+
+refined_block(Block):-
+    binary_format("GTIRB"),    
+    block(Block,_).
+
+//// Imported from basic_function_inference.dl
+//// TODO - Should probably be split out
+//.decl function_entry(Block:address)
+//.output function_entry
+//.decl in_function(Block:address,Function:address)
+//.output in_function
+
+function_entry(EA):-
+    refined_block(EA),
+    direct_call(_,EA).
