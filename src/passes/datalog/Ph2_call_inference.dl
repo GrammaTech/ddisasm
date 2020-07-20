@@ -53,7 +53,7 @@ indirect_call(Src,Dest):-
 .output refined_block
 
 refined_block(Block):-
-    binary_format("GTIRB"),    
+    binary_format("GTIRB"),
     block(Block,_).
 
 //// Imported from basic_function_inference.dl
