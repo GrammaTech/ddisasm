@@ -178,7 +178,7 @@ int main(int argc, char **argv)
         return 1;
     }
     auto IR = *NewIRp;
-            
+
     // Add `ddisasmVersion' aux data table.
     IR->addAuxData<gtirb::schema::DdisasmVersion>(DDISASM_FULL_VERSION_STRING);
     printElapsedTimeSince(StartReadBaseIR);
@@ -193,13 +193,13 @@ int main(int argc, char **argv)
 
     std::vector<std::string> BinaryType = {"GTIRB"};
     Module.addAuxData<gtirb::schema::BinaryType>(std::move(BinaryType));
-    
+
     // Core of new code - functional analysis only
     std::cout << "Computing intra-procedural SCCs " << std::flush;
     auto StartSCCsComputation = std::chrono::high_resolution_clock::now();
     computeSCCs(Module);
     printElapsedTimeSince(StartSCCsComputation);
-    
+
     unsigned int NThreads = vm["threads"].as<unsigned int>();
     std::cout << "Computing no return analysis " << std::flush;
     NoReturnPass NoReturn;
@@ -253,6 +253,6 @@ int main(int argc, char **argv)
         std::cout << "Printing assembler" << std::endl;
         pprinter.print(std::cout, Context, Module);
     }
-    
+
     return 0;
 }
