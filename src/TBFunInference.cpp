@@ -122,7 +122,7 @@ int main(int argc, char **argv)
         ("debug", "generate assembler file with debugging information") //
         ("debug-dir", po::value<std::string>(),                         //
          "location to write CSV files for debugging")                   //
-        ("input-file", po::value<std::string>(), "gtirb input file")  //
+        ("input-file", po::value<std::string>(), "gtirb input file")    //
         ("keep-functions,K", po::value<std::vector<std::string>>()->multitoken(),
          "Print the given functions even if they are skipped by default (e.g. _start)") //
         ("self-diagnose",
@@ -172,7 +172,7 @@ int main(int argc, char **argv)
     std::ifstream In(filename);
     gtirb::Context Context;
     auto NewIRp = gtirb::IR::load(Context, In);
-    if (!NewIRp)
+    if(!NewIRp)
     {
         std::cerr << "\nERROR: " << filename << ": " << NewIRp.getError().message() << "\n";
         return 1;

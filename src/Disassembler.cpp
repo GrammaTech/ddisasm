@@ -1346,24 +1346,36 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
 }
 
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
-                       souffle::SouffleProgram *prog, bool selfDiagnose,
-		       int skipstep)
+                       souffle::SouffleProgram *prog, bool selfDiagnose, int skipstep)
 {
-  if (!(skipstep & 0x0001)) buildInferredSymbols(context, module, prog);
-  if (!(skipstep & 0x0002)) buildSymbolForwarding(context, module, prog);
-  if (!(skipstep & 0x0004)) buildCodeBlocks(context, module, prog);
-  if (!(skipstep & 0x0008)) buildDataBlocks(context, module, prog);
-  if (!(skipstep & 0x0010)) buildCodeSymbolicInformation(context, module, prog);
-  if (!(skipstep & 0x0020)) buildCfiDirectives(context, module, prog);
-  if (!(skipstep & 0x0040)) expandSymbolForwarding(context, module, prog);
+    if(!(skipstep & 0x0001))
+        buildInferredSymbols(context, module, prog);
+    if(!(skipstep & 0x0002))
+        buildSymbolForwarding(context, module, prog);
+    if(!(skipstep & 0x0004))
+        buildCodeBlocks(context, module, prog);
+    if(!(skipstep & 0x0008))
+        buildDataBlocks(context, module, prog);
+    if(!(skipstep & 0x0010))
+        buildCodeSymbolicInformation(context, module, prog);
+    if(!(skipstep & 0x0020))
+        buildCfiDirectives(context, module, prog);
+    if(!(skipstep & 0x0040))
+        expandSymbolForwarding(context, module, prog);
     // This should be done after creating all the symbols.
-  if (!(skipstep & 0x0080)) connectSymbolsToBlocks(context, module);
+    if(!(skipstep & 0x0080))
+        connectSymbolsToBlocks(context, module);
     // These functions should not create additional symbols.
-  if (!(skipstep & 0x0100)) buildFunctions(module, prog);
-  if (!(skipstep & 0x0200)) buildCFG(context, module, prog);
-  if (!(skipstep & 0x0400)) buildPadding(module, prog);
-  if (!(skipstep & 0x0800)) buildComments(module, prog, selfDiagnose);
-  if (!(skipstep & 0x1000)) updateEntryPoint(module, prog);
+    if(!(skipstep & 0x0100))
+        buildFunctions(module, prog);
+    if(!(skipstep & 0x0200))
+        buildCFG(context, module, prog);
+    if(!(skipstep & 0x0400))
+        buildPadding(module, prog);
+    if(!(skipstep & 0x0800))
+        buildComments(module, prog, selfDiagnose);
+    if(!(skipstep & 0x1000))
+        updateEntryPoint(module, prog);
 }
 
 void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)

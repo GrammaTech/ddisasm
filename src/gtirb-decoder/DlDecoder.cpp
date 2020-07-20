@@ -121,27 +121,27 @@ void addSections(souffle::SouffleProgram *prog, const gtirb::Module &module)
     auto *rel = prog->getRelation("section_complete");
     auto *extraInfoTable = module.getAuxData<gtirb::schema::ElfSectionProperties>();
     if(!extraInfoTable)
-#if 0    // GHN
+#if 0 // GHN
         throw std::logic_error("missing elfSectionProperties AuxData table");
 #else
-    return;
+        return;
 #endif
 
-    for(auto &section : module.sections())
-    {
-        assert(section.getAddress() && "Section has no address.");
-        assert(section.getSize() && "Section has non-calculable size.");
+        for(auto &section : module.sections())
+        {
+            assert(section.getAddress() && "Section has no address.");
+            assert(section.getSize() && "Section has non-calculable size.");
 
-        souffle::tuple t(rel);
-        auto found = extraInfoTable->find(section.getUUID());
-        if(found == extraInfoTable->end())
-            throw std::logic_error("Section " + section.getName()
-                                   + " missing from elfSectionProperties AuxData table");
-        const SectionProperties &extraInfo = found->second;
-        t << section.getName() << *section.getSize() << *section.getAddress()
-          << std::get<0>(extraInfo) << std::get<1>(extraInfo);
-        rel->insert(t);
-    }
+            souffle::tuple t(rel);
+            auto found = extraInfoTable->find(section.getUUID());
+            if(found == extraInfoTable->end())
+                throw std::logic_error("Section " + section.getName()
+                                       + " missing from elfSectionProperties AuxData table");
+            SectionProperties &extraInfo = found->second;
+            t << section.getName() << *section.getSize() << *section.getAddress()
+              << std::get<0>(extraInfo) << std::get<1>(extraInfo);
+            rel->insert(t);
+        }
 }
 
 souffle::SouffleProgram *DlDecoder::decode(const gtirb::Module &module,
@@ -244,10 +244,9 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, const gtirb::Module &m
     // GHN 2020-06-26
     // Can't figure out how to get this in from GTIRB so I'm adding protection instead.
     gtirb::schema::BinaryType::Type *btype = module.getAuxData<gtirb::schema::BinaryType>();
-    if (btype)
+    if(btype)
     {
-	GtirbToDatalog::addToRelation<std::vector<std::string>>(
-            prog, "binary_type", *btype);
+        GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "binary_type", *btype);
     }
     GtirbToDatalog::addToRelation<std::vector<std::string>>(
         prog, "binary_format", {getFileFormatString(module.getFileFormat())});
@@ -279,7 +278,7 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, const gtirb::Module &m
     GtirbToDatalog::addToRelation(prog, "op_prefetch", op_dict.prefetchTable);
     GtirbToDatalog::addToRelation(prog, "op_barrier", op_dict.barrierTable);
 
-#if 0	// TODO crude bypass - this must be fixed
+#if 0 // TODO crude bypass - this must be fixed
     addSymbols(prog, module);
     addSections(prog, module);
 #endif

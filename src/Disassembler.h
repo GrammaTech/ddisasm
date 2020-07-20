@@ -28,8 +28,7 @@
 #define GTIRB_MODULE_DISASSEMBLER_H_
 
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
-                       souffle::SouffleProgram *prog, bool selfDiagnose,
-		       int skipstep = 0);
+                       souffle::SouffleProgram *prog, bool selfDiagnose, int skipstep = 0);
 void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose);
 
 #endif // GTIRB_MODULE_DISASSEMBLER_H_
