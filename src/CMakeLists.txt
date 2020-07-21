@@ -38,11 +38,9 @@ set(DATALOG_X64_SOURCES datalog/x64/arch_x64.dl datalog/x64/float_operations.dl
                         datalog/x64/jump_operations.dl datalog/x64/registers.dl)
 
 set(DATALOG_ARM_SOURCES
-  datalog/ARM/arch_arm.dl
-  datalog/ARM/float_operations.dl
-  datalog/ARM/jump_operations.dl
-  datalog/ARM/registers.dl
-  datalog/arm_binaries.dl)
+    datalog/ARM/arch_arm.dl datalog/ARM/float_operations.dl
+    datalog/ARM/jump_operations.dl datalog/ARM/registers.dl
+    datalog/arm_binaries.dl)
 
 set(DATALOG_ARM64_SOURCES
     datalog/aarch64/arch_aarch64.dl datalog/aarch64/float_operations.dl
@@ -78,9 +76,9 @@ endif()
 
 add_custom_command(
   OUTPUT ${GENERATED_ARM64_CPP}
-  # Souffle includes the path of the output file in the generated program
-  # name. Change directory and use a relative path so the name does not
-  # depend on build location.
+         # Souffle includes the path of the output file in the generated program
+         # name. Change directory and use a relative path so the name does not
+         # depend on build location.
   WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
   COMMAND ${SOUFFLE} main.dl -g ${GENERATED_ARM64_CPP_PATH} -jauto -MARCH_ARM64
   DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_ARM64_SOURCES})
@@ -95,9 +93,9 @@ endif()
 
 add_custom_command(
   OUTPUT ${GENERATED_ARM32_CPP}
-  # Souffle includes the path of the output file in the generated program
-  # name. Change directory and use a relative path so the name does not
-  # depend on build location.
+         # Souffle includes the path of the output file in the generated program
+         # name. Change directory and use a relative path so the name does not
+         # depend on build location.
   WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
   COMMAND ${SOUFFLE} main.dl -g ${GENERATED_ARM32_CPP_PATH} -jauto -MARCH_ARM32
   DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_ARM32_SOURCES})
@@ -239,8 +237,13 @@ add_subdirectory(gtirb-builder)
 # souffle code won't build with -Wall -Werror).
 add_library(
   disasm_main STATIC
-  disasm_main.cpp DlDecoder.cpp ArmDecoder.cpp Arm64Decoder.cpp X86Decoder.cpp
-  ExceptionDecoder.cpp GtirbModuleDisassembler.cpp)
+  disasm_main.cpp
+  DlDecoder.cpp
+  ArmDecoder.cpp
+  Arm64Decoder.cpp
+  X86Decoder.cpp
+  ExceptionDecoder.cpp
+  GtirbModuleDisassembler.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_compile_options(disasm_main PRIVATE -Wno-unused-parameter)
@@ -288,7 +291,8 @@ target_link_libraries(
   ${LIBCPP_ABI})
 
 # Now combine the static library and generated code into an executable.
-add_executable(ddisasm ${GENERATED_X64_CPP} ${GENERATED_ARM32_CPP} ${GENERATED_ARM64_CPP})
+add_executable(ddisasm ${GENERATED_X64_CPP} ${GENERATED_ARM32_CPP}
+                       ${GENERATED_ARM64_CPP})
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_link_libraries(ddisasm disasm_main scc_pass no_return_pass

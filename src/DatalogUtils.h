@@ -65,7 +65,7 @@ public:
     csh getHandle() const
     {
         return RawHandle;
-    };
+    }
 
     gtirb::ISA getIsa() const
     {
@@ -75,7 +75,7 @@ public:
     void setDecodeMode(DecodeMode mode);
 
 private:
-    gtirb::ISA Isa{gtirb::ISA::ValidButUnsupported};
+    gtirb::ISA Isa = gtirb::ISA::ValidButUnsupported;
     csh RawHandle = CS_ERR_ARCH;
 };
 
