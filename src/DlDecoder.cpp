@@ -100,6 +100,8 @@ const char *getISAString(gtirb::ISA format)
             return "X64";
         case gtirb::ISA::ARM:
             return "ARM";
+        case gtirb::ISA::ARM64:
+            return "ARM64";
         default:
             return "Undefined";
     }
