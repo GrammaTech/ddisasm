@@ -78,6 +78,19 @@ std::string getFileFormatString(const gtirb::FileFormat format)
     }
 }
 
+const char *getISAString(gtirb::ISA format)
+{
+    switch(format)
+    {
+        case gtirb::ISA::X64:
+            return "X64";
+        case gtirb::ISA::ARM64:
+            return "ARM";
+        default:
+            return "Undefined";
+    }
+}
+
 void addSymbols(souffle::SouffleProgram *prog, const gtirb::Module &module)
 {
     auto *rel = prog->getRelation("symbol");
@@ -243,6 +256,9 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, const gtirb::Module &m
     {
         GtirbToDatalog::addToRelation(prog, "relocation", *Relocations);
     }
+
+    GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "binary_isa",
+                                                            {getISAString(module.getISA())});
 
     GtirbToDatalog::addToRelation(prog, "instruction_complete", instructions);
     GtirbToDatalog::addToRelation(prog, "address_in_data", data_addresses);

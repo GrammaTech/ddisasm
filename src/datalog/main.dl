@@ -119,6 +119,9 @@ This module:
 .decl binary_format(Format:symbol)
 .input binary_format
 
+.decl binary_isa(isa:symbol)
+.input binary_isa
+
 .decl option(Option:symbol)
 .input option
 
@@ -285,6 +288,7 @@ next(EA,EA+Size):-
 .output pc_relative_operand
 
 pc_relative_operand(EA,Index,EA_next+Offset):-
+    !binary_isa("ARM"),
     instruction_get_op(EA, Index, Op),
     op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
     arch.pc_register(Reg),
@@ -344,8 +348,8 @@ unconditional_jump(EA):-
 .decl conditional_jump(src:address)
 
 conditional_jump(EA):-
+    arch.jump(EA),
     instruction_get_operation(EA,Operation),
-    arch.jump_operation(Operation),
     !arch.unconditional_jump_operation(Operation).
 
 
@@ -354,8 +358,8 @@ conditional_jump(EA):-
 .output direct_jump
 
 direct_jump(EA,Dest):-
-    instruction(EA,_,_,Operation,Op1,_,_,_),
-    arch.jump_operation(Operation),
+    arch.jump(EA),
+    instruction_get_op(EA,1,Op1),
     op_immediate(Op1,Dest).
 
 direct_jump(EA,Dest):-
@@ -372,8 +376,7 @@ direct_jump(EA,EA):-
 .output pc_relative_jump
 
 pc_relative_jump(EA,Dest):-
-    instruction_get_operation(EA,Operation),
-    arch.jump_operation(Operation),
+    arch.jump(EA),
     pc_relative_operand(EA,1,Dest).
 
 pc_relative_jump(EA, Dest):-
@@ -383,16 +386,16 @@ pc_relative_jump(EA, Dest):-
  .decl reg_jump(src:address,Reg:symbol)
 
 reg_jump(EA,Reg):-
-    instruction(EA,_,_,Operation,Op1,_,_,_),
-    arch.jump_operation(Operation),
+    arch.jump(EA),
+    instruction(EA,_,_,_,Op1,_,_,_),
     op_regdirect(Op1,Reg).
 
 // indirect jump
  .decl indirect_jump(src:address)
 
 indirect_jump(EA):-
-    instruction(EA,_,_,Operation,Op1,_,_,_),
-    arch.jump_operation(Operation),
+    arch.jump(EA),
+    instruction(EA,_,_,_,Op1,_,_,_),
     op_indirect(Op1,_,_,_, _,_,_),
     !pc_relative_jump(EA,_).
 

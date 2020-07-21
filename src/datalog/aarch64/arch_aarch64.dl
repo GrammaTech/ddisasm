@@ -54,6 +54,19 @@ mov(EA):-
 is_nop(EA):-
     instruction_get_operation(EA,"NOP").
 
+// Returns
+.decl return(n:address)
+
+return(EA):-
+    return_operation(Operation),
+    instruction_get_operation(EA,Operation).
+
+.decl jump(EA:address)
+
+jump(EA):-
+    instruction_get_operation(EA,Operation),
+    jump_operation(Operation).
+
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
 .decl arithmetic_operation(Operation:symbol)
