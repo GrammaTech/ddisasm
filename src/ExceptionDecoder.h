@@ -52,7 +52,7 @@ private:
                                          const EHP::LSDA_t *lsda);
 
 public:
-    ExceptionDecoder(gtirb::Module &module);
+    ExceptionDecoder(const gtirb::Module &module);
     void addExceptionInformation(souffle::SouffleProgram *prog);
 };
 

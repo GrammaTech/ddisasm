@@ -40,24 +40,26 @@ struct DlData
 
 class DlDecoder
 {
-private:
+protected:
     MultiArchCapstoneHandle CsHandle;
     DlOperandTable op_dict;
     std::vector<DlInstruction> instructions;
     std::vector<gtirb::Addr> invalids;
     std::vector<DlData<gtirb::Addr>> data_addresses;
     std::vector<DlData<unsigned char>> data_bytes;
-    void decodeX64Section(const gtirb::ByteInterval& byteInterval);
-    void decodeARMSection(const gtirb::ByteInterval& byteInterval);
-    void decodeSection(const gtirb::ByteInterval& byteInterval);
-    void loadInputs(souffle::SouffleProgram* prog, gtirb::Module& module);
-    void storeDataSection(const gtirb::ByteInterval& byteInterval, gtirb::Addr min_address,
-                          gtirb::Addr max_address, unsigned int PointerSize);
+
+    virtual void decodeSection(const gtirb::ByteInterval& byteInterval) = 0;
+    virtual void loadInputs(souffle::SouffleProgram* prog, const gtirb::Module& module);
+    virtual void storeDataSection(const gtirb::ByteInterval& byteInterval, gtirb::Addr min_address,
+                                  gtirb::Addr max_address);
+
+    unsigned int getISAPointerSize() const;
 
 public:
-    DlDecoder(gtirb::ISA Isa) : CsHandle(Isa){};
-    souffle::SouffleProgram* decode(gtirb::Module& module,
-                                    const std::vector<std::string>& DisasmOptions);
+    explicit DlDecoder(gtirb::ISA Isa) : CsHandle(Isa){};
+    virtual ~DlDecoder() = default;
+    virtual souffle::SouffleProgram* decode(const gtirb::Module& module,
+                                            const std::vector<std::string>& DisasmOptions);
 };
 
 #endif /* SRC_DL_DECODER_H_ */

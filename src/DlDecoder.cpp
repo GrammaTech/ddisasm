@@ -105,12 +105,14 @@ const char *getISAString(gtirb::ISA format)
     }
 }
 
-unsigned int getISAPointerSize(gtirb::ISA Isa)
+unsigned int DlDecoder::getISAPointerSize() const
 {
     // FIXME: Generalize this for all architectures, supported and unsupported.
-    switch(Isa)
+    switch(CsHandle.getIsa())
     {
         case gtirb::ISA::X64:
+            return 8;
+        case gtirb::ISA::ARM64:
             return 8;
         case gtirb::ISA::ARM:
             return 4;
@@ -119,7 +121,7 @@ unsigned int getISAPointerSize(gtirb::ISA Isa)
     }
 }
 
-void addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
+void addSymbols(souffle::SouffleProgram *prog, const gtirb::Module &module)
 {
     auto *rel = prog->getRelation("symbol");
     auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
@@ -145,7 +147,7 @@ void addSymbols(souffle::SouffleProgram *prog, gtirb::Module &module)
     }
 }
 
-void addSections(souffle::SouffleProgram *prog, gtirb::Module &module)
+void addSections(souffle::SouffleProgram *prog, const gtirb::Module &module)
 {
     auto *rel = prog->getRelation("section_complete");
     auto *extraInfoTable = module.getAuxData<gtirb::schema::ElfSectionProperties>();
@@ -162,14 +164,14 @@ void addSections(souffle::SouffleProgram *prog, gtirb::Module &module)
         if(found == extraInfoTable->end())
             throw std::logic_error("Section " + section.getName()
                                    + " missing from elfSectionProperties AuxData table");
-        SectionProperties &extraInfo = found->second;
+        const SectionProperties &extraInfo = found->second;
         t << section.getName() << *section.getSize() << *section.getAddress()
           << std::get<0>(extraInfo) << std::get<1>(extraInfo);
         rel->insert(t);
     }
 }
 
-souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module,
+souffle::SouffleProgram *DlDecoder::decode(const gtirb::Module &module,
                                            const std::vector<std::string> &DisasmOptions)
 {
     assert(module.getSize() && "Module has non-calculable size.");
@@ -180,23 +182,21 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module,
 
     for(auto &section : module.sections())
     {
-        bool is_executable = section.isFlagSet(gtirb::SectionFlag::Executable);
-        bool is_initialized = section.isFlagSet(gtirb::SectionFlag::Initialized);
-        if(is_executable)
+        bool Exec = section.isFlagSet(gtirb::SectionFlag::Executable);
+        bool Init = section.isFlagSet(gtirb::SectionFlag::Initialized);
+        if(Exec)
         {
             for(auto &byteInterval : section.byte_intervals())
             {
                 decodeSection(byteInterval);
-                storeDataSection(byteInterval, minAddr, maxAddr,
-                                 getISAPointerSize(module.getISA()));
+                storeDataSection(byteInterval, minAddr, maxAddr);
             }
         }
-        if(is_initialized)
+        else if(Init)
         {
             for(auto &byteInterval : section.byte_intervals())
             {
-                storeDataSection(byteInterval, minAddr, maxAddr,
-                                 getISAPointerSize(module.getISA()));
+                storeDataSection(byteInterval, minAddr, maxAddr);
             }
         }
     }
@@ -221,97 +221,15 @@ souffle::SouffleProgram *DlDecoder::decode(gtirb::Module &module,
     return nullptr;
 }
 
-void DlDecoder::decodeX64Section(const gtirb::ByteInterval &byteInterval)
-{
-    assert(byteInterval.getAddress() && "Failed to decode section without address.");
-
-    gtirb::Addr ea = byteInterval.getAddress().value();
-    uint64_t size = byteInterval.getInitializedSize();
-    auto buf = byteInterval.rawBytes<const unsigned char>();
-    while(size > 0)
-    {
-        cs_insn *insn;
-        size_t count =
-            cs_disasm(CsHandle.getHandle(), buf, size, static_cast<uint64_t>(ea), 1, &insn);
-        if(count == 0)
-        {
-            invalids.push_back(ea);
-        }
-        else
-        {
-            instructions.push_back(GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn));
-        }
-        cs_free(insn, count);
-        ++ea;
-        ++buf;
-        --size;
-    }
-}
-
-void DlDecoder::decodeARMSection(const gtirb::ByteInterval &byteInterval)
-{
-    gtirb::Addr ea = byteInterval.getAddress().value();
-    uint64_t size = byteInterval.getInitializedSize();
-    auto decode_in_mode = [&byteInterval, this](uint64_t size, gtirb::Addr ea, bool thumb) {
-        auto buf = byteInterval.rawBytes<const unsigned char>();
-        size_t InsnSize = 4;
-        if(thumb)
-        {
-            InsnSize = 2;
-            ea++;
-        }
-        while(size >= InsnSize)
-        {
-            size_t increment = InsnSize;
-            cs_insn *insn;
-            size_t count =
-                cs_disasm(CsHandle.getHandle(), buf, size, static_cast<uint64_t>(ea), 1, &insn);
-            if(count == 0)
-            {
-                invalids.push_back(ea);
-            }
-            else
-            {
-                instructions.push_back(
-                    GtirbToDatalog::transformInstruction(CsHandle, op_dict, *insn));
-                increment = insn->size;
-            }
-            cs_free(insn, count);
-            ea += increment;
-            buf += increment;
-            size -= increment;
-        }
-    };
-    cs_option(CsHandle.getHandle(), CS_OPT_MODE, CS_MODE_ARM);
-    decode_in_mode(size, ea, false);
-    cs_option(CsHandle.getHandle(), CS_OPT_MODE, CS_MODE_THUMB);
-    decode_in_mode(size, ea, true);
-}
-
-void DlDecoder::decodeSection(const gtirb::ByteInterval &byteInterval)
-{
-    switch(CsHandle.getIsa())
-    {
-        case gtirb::ISA::X64:
-            decodeX64Section(byteInterval);
-            break;
-        case gtirb::ISA::ARM:
-            decodeARMSection(byteInterval);
-            break;
-        default:
-            std::cerr << "Tried to decode section with unsupported architecture\n";
-            exit(1);
-    }
-}
-
 void DlDecoder::storeDataSection(const gtirb::ByteInterval &byteInterval, gtirb::Addr min_address,
-                                 gtirb::Addr max_address, unsigned int PointerSize)
+                                 gtirb::Addr max_address)
 {
     assert(byteInterval.getAddress() && "Failed to store section without address.");
 
     auto can_be_address = [min_address, max_address](gtirb::Addr num) {
         return ((num >= min_address) && (num <= max_address));
     };
+    unsigned int PointerSize = getISAPointerSize();
     gtirb::Addr ea = byteInterval.getAddress().value();
     uint64_t size = byteInterval.getInitializedSize();
     auto buf = byteInterval.rawBytes<const uint8_t>();
@@ -338,21 +256,19 @@ void DlDecoder::storeDataSection(const gtirb::ByteInterval &byteInterval, gtirb:
     }
 }
 
-void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
+void DlDecoder::loadInputs(souffle::SouffleProgram *prog, const gtirb::Module &module)
 {
     GtirbToDatalog::addToRelation<std::vector<std::string>>(
         prog, "binary_type", *module.getAuxData<gtirb::schema::BinaryType>());
     GtirbToDatalog::addToRelation<std::vector<std::string>>(
         prog, "binary_format", {getFileFormatString(module.getFileFormat())});
 
-    if(gtirb::CodeBlock *block = module.getEntryPoint())
+    if(const gtirb::CodeBlock *block = module.getEntryPoint())
     {
         if(std::optional<gtirb::Addr> address = block->getAddress())
         {
             GtirbToDatalog::addToRelation<std::vector<gtirb::Addr>>(prog, "entry_point",
                                                                     {*address});
-            module.setEntryPoint(nullptr);
-            block->getByteInterval()->removeBlock(block);
         }
     }
     GtirbToDatalog::addToRelation<std::vector<gtirb::Addr>>(prog, "base_address",
@@ -361,7 +277,6 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
     if(auto *Relocations = module.getAuxData<gtirb::schema::Relocations>())
     {
         GtirbToDatalog::addToRelation(prog, "relocation", *Relocations);
-        module.removeAuxData<gtirb::schema::Relocations>();
     }
 
     if(auto *DataDirectories = module.getAuxData<gtirb::schema::DataDirectories>())
@@ -372,7 +287,6 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
     if(auto *ImportEntries = module.getAuxData<gtirb::schema::ImportEntries>())
     {
         GtirbToDatalog::addToRelation(prog, "import_entry", *ImportEntries);
-        module.removeAuxData<gtirb::schema::ImportEntries>();
     }
 
     GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "binary_isa",
@@ -385,6 +299,8 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, gtirb::Module &module)
     GtirbToDatalog::addToRelation(prog, "op_regdirect", op_dict.regTable);
     GtirbToDatalog::addToRelation(prog, "op_immediate", op_dict.immTable);
     GtirbToDatalog::addToRelation(prog, "op_indirect", op_dict.indirectTable);
+    GtirbToDatalog::addToRelation(prog, "op_prefetch", op_dict.prefetchTable);
+    GtirbToDatalog::addToRelation(prog, "op_barrier", op_dict.barrierTable);
 
     addSymbols(prog, module);
     addSections(prog, module);

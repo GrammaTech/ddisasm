@@ -29,7 +29,7 @@ RUN python3 -m pip install distro
 
 # Install cross-platform utils
 RUN apt-get -y update && \
-    apt-get -y install gcc-arm-linux-gnueabihf qemu-user
+    apt-get -y install gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu qemu-user
 
 # Install LIEF
 RUN cd /usr/local/src \

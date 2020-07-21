@@ -1,0 +1,61 @@
+//===- jump_operations.dl -----------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2020 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+The set of jump operations in aarch64
+*/
+
+/* Condition codes - apply to all branch operations */
+.decl condition_code(c:symbol)
+condition_code("EQ").
+condition_code("NE").
+condition_code("GT").
+condition_code("LT").
+condition_code("GE").
+condition_code("LE").
+condition_code("CS").
+condition_code("HS").
+condition_code("CC").
+condition_code("LO").
+condition_code("MI").
+condition_code("PL").
+condition_code("AL").
+condition_code("NV").
+condition_code("VS").
+condition_code("VC").
+condition_code("HI").
+condition_code("LS").
+
+.decl jump_operation(n:symbol)
+jump_operation(Op) :- unconditional_jump_operation(Op).
+jump_operation(cat("B.", Condition)) :- condition_code(Condition).
+
+.decl unconditional_jump_operation(n:symbol)
+unconditional_jump_operation("B").
+unconditional_jump_operation("BR").
+unconditional_jump_operation("BX").
+
+.decl jump_equal_operation(n:symbol)
+jump_equal_operation("B.EQ").
+
+.decl jump_unequal_operation(n:symbol)
+jump_equal_operation("B.NE").

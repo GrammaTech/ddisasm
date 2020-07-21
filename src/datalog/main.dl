@@ -65,8 +65,19 @@ This module:
 #include "pe_binaries.dl"
 
 // architecture specific predicates
-#include "x64/arch_x64.dl"
-#include "ARM/arch_arm.dl"
+#ifdef ARCH_ARM64
+    #include "aarch64/arch_aarch64.dl"
+    .init arch = ARM64
+#elif defined(ARCH_ARM32)
+    #include "ARM/arch_arm.dl"
+    .init arch = ARM
+    #include "arm_binaries.dl"
+#elif defined(ARCH_AMD64)
+    #include "x64/arch_x64.dl"
+    .init arch = X64
+#else
+    #error "Undefined architecture"
+#endif
 
 // tables with basic facts
 #include "printable_chars.dl"
@@ -145,6 +156,14 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
 .decl op_immediate(code:operand_code,offset:number)
 .input op_immediate
 
+.decl op_prefetch(code:operand_code, prefetch_type:symbol)
+.input op_prefetch
+.output op_prefetch
+
+.decl op_barrier(code:operand_code, prefetch_type:symbol)
+.input op_barrier
+.output op_barrier
+
 .decl op_indirect(code:operand_code,reg1:register, reg2:register, reg3:register,
         multiplier:number, offset:number, size_value:number)
 .input op_indirect
@@ -156,18 +175,6 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
 .decl address_in_data(ea:address,value:number)
 
 .input address_in_data
-
-///////////////////////////////////////////////////////////////
-// Initialize components
-#define X64_CODE 1
-#define ARM_CODE 2
-
-#if ISA == X64_CODE
-    .init arch = X64
-#else
-    .init arch = ARM
-    #include "arm_binaries.dl"
-#endif
 
 .init function_inference = basic_function_inference
 
@@ -261,6 +268,20 @@ instruction_get_src_op(EA,Index,Op):-
 // inference of basic facts
 /////////////////////////////////////////////////////////////
 
+.decl symbol_prefix(ea:address, index:number, prefix:symbol)
+.output symbol_prefix()
+
+symbol_prefix(ea, 1, ":got:") :-
+    split_load(ea, _, Dest, "LDR"),
+    relocation(Dest, "GLOB_DAT", _, _).
+
+symbol_prefix(ea, 1, ":got_lo12:") :-
+    split_load(_, ea, Dest, "LDR"),
+    relocation(Dest, "GLOB_DAT", _, _).
+
+symbol_prefix(ea, 2, ":lo12:") :-
+    split_load(_, ea, Dest, "ADD"),
+    !relocation(Dest, "GLOB_DAT", _, _).
 
 .decl next(n:address,m:address)
 
@@ -284,6 +305,43 @@ pc_relative_operand(EA,Index,NextEA+Offset):-
     arch.pc_register(Reg),
     NextEA = EA - (EA band 1) +4.
 
+pc_relative_operand(EA, 1, Dest) :-
+    split_load(EA, _, Dest, _).
+
+pc_relative_operand(EA, 2, Dest) :-
+    split_load(_, EA, Dest, _).
+
+// Compute an immediate load performed across two consecutive instructions
+.decl split_load(ea:address, nextea:address, dest:number, type:symbol)
+split_load(EA, NextEA, Base + Offset, "ADD") :-
+    // ADRP <Register> <Immediate>
+    // e.g. adrp x0, BaseOp
+    instruction_get_operation(EA, "ADRP"),
+    instruction_get_op(EA, 1, BaseOp),
+    op_immediate(BaseOp, Base),
+
+    next(EA, NextEA),
+
+    // ADD <Register> <Register> <Immediate>
+    // e.g. add x0, x0, <OffsetOp>
+    instruction_get_operation(NextEA, "ADD"),
+    instruction_get_op(NextEA, 2, OffsetOp),
+    op_immediate(OffsetOp, Offset).
+
+split_load(EA, NextEA, Base + Offset, "LDR") :-
+    // ADRP <Register> <Immediate>
+    // e.g. adrp x0, BaseOp
+    instruction_get_operation(EA, "ADRP"),
+    instruction_get_op(EA, 1, BaseOp),
+    op_immediate(BaseOp, Base),
+
+    next(EA, NextEA),
+
+    // LDR <Register> <IndirectOp>
+    // e.g. ldr x0, [x0, <OffsetOp>]
+    instruction_get_operation(NextEA, "LDR"),
+    instruction_get_op(NextEA, 1, OffsetOp),
+    op_indirect(OffsetOp, "NONE", _, "NONE", 1, Offset, _).
 
 .decl instruction_has_loop_prefix(EA:address)
 
@@ -332,6 +390,9 @@ direct_jump(EA,EA):-
 pc_relative_jump(EA,Dest):-
     arch.jump(EA),
     pc_relative_operand(EA,1,Dest).
+
+pc_relative_jump(EA, Dest):-
+    split_load(EA, _, Dest, "LDR").
 
 // jump to the address of a register
  .decl reg_jump(src:address,Reg:symbol)

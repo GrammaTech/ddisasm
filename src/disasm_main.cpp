@@ -21,28 +21,35 @@
 //
 //===----------------------------------------------------------------------===//
 #include <fcntl.h>
+#include <chrono>
+#include <iostream>
+#include <string>
+#include <thread>
+#include <vector>
+#if defined(_MSC_VER)
+#include <io.h>
+#endif
+#if defined(__unix__)
+#include <unistd.h>
+#endif
+
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
-#include <chrono>
+
 #include <gtirb/gtirb.hpp>
 #include <gtirb_pprinter/PrettyPrinter.hpp>
-#if defined(_MSC_VER)
-#include <io.h>
-#endif
-#include <iostream>
-#include <string>
-#include <thread>
-#if defined(__unix__)
-#include <unistd.h>
-#endif
-#include <vector>
+
+#include "gtirb-builder/GtirbBuilder.h"
+
+#include "Arm64Decoder.h"
+#include "ArmDecoder.h"
 #include "AuxDataSchema.h"
 #include "DatalogUtils.h"
-#include "DlDecoder.h"
 #include "GtirbModuleDisassembler.h"
 #include "Version.h"
+#include "X86Decoder.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
@@ -78,6 +85,7 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<BinaryType>();
     gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
     gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
+    gtirb::AuxDataContainer::registerAuxDataType<SymbolicOperandInfoAD>();
     gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionIndex>();
@@ -207,6 +215,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    // Parse and build a GTIRB module from a supported binary object file.
     std::cerr << "Building the initial gtirb representation " << std::flush;
     auto StartBuildZeroIR = std::chrono::high_resolution_clock::now();
     std::string filename = vm["input-file"].as<std::string>();
@@ -216,6 +225,7 @@ int main(int argc, char **argv)
         std::cerr << "\nERROR: " << filename << ": " << GTIRB.getError().message() << "\n";
         return 1;
     }
+
     // Add `ddisasmVersion' aux data table.
     GTIRB->IR->addAuxData<gtirb::schema::DdisasmVersion>(DDISASM_FULL_VERSION_STRING);
     printElapsedTimeSince(StartBuildZeroIR);
@@ -225,16 +235,55 @@ int main(int argc, char **argv)
         std::cerr << "There was a problem loading the binary file " << filename << "\n";
         return 1;
     }
+
+    // Decode and load GTIRB Module into the SouffleProgram context.
     gtirb::Module &Module = *(GTIRB->IR->modules().begin());
     souffle::SouffleProgram *prog;
     {
-        DlDecoder decoder(Module.getISA());
         std::cerr << "Decoding the binary " << std::flush;
         auto StartDecode = std::chrono::high_resolution_clock::now();
         std::vector<std::string> DisasmOptions = createDisasmOptions(vm);
-        prog = decoder.decode(Module, DisasmOptions);
+        switch(Module.getISA())
+        {
+            case gtirb::ISA::X64:
+            {
+                X86Decoder Decoder;
+                prog = Decoder.decode(Module, DisasmOptions);
+            }
+            break;
+            case gtirb::ISA::ARM:
+            {
+                ArmDecoder Decoder;
+                prog = Decoder.decode(Module, DisasmOptions);
+            }
+            break;
+            case gtirb::ISA::ARM64:
+            {
+                Arm64Decoder Decoder;
+                prog = Decoder.decode(Module, DisasmOptions);
+            }
+            break;
+            default:
+                std::cerr << "Unsupported architecture\n";
+                return 1;
+        }
+
         printElapsedTimeSince(StartDecode);
     }
+
+    // Remove initial entry point.
+    if(gtirb::CodeBlock *Block = Module.getEntryPoint())
+    {
+        Block->getByteInterval()->removeBlock(Block);
+    }
+    Module.setEntryPoint(nullptr);
+
+    // Remove placeholder relocation data.
+    Module.removeAuxData<gtirb::schema::Relocations>();
+
+    // Remove temporary import entry data.
+    Module.removeAuxData<gtirb::schema::ImportEntries>();
+
     if(prog)
     {
         if(vm.count("debug-dir") != 0)
@@ -316,6 +365,7 @@ int main(int argc, char **argv)
         // Pretty-print
         gtirb_pprint::PrettyPrinter pprinter;
         pprinter.setDebug(vm.count("debug"));
+
         if(vm.count("keep-functions") != 0)
         {
             for(auto keep : vm["keep-functions"].as<std::vector<std::string>>())

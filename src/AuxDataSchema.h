@@ -75,6 +75,14 @@ namespace gtirb
             typedef std::map<gtirb::UUID, int64_t> Type;
         };
 
+        /// \brief Auxiliary data that keeps track of info associated
+        /// with each individual appearance of a symbolic operand.
+        struct SymbolicOperandInfoAD
+        {
+            static constexpr const char* Name = "symbolicOperandInfo";
+            typedef std::map<gtirb::Addr, std::tuple<uint64_t, std::string>> Type;
+        };
+
         /// \brief Auxiliary data describing a binary's relocation records
         struct Relocations
         {

@@ -86,4 +86,4 @@ RUN git clone https://git.zephyr-software.com/opensrc/libehp.git \
 
 # Install cross-platform utils
 RUN apt-get -y update && \
-    apt-get -y install gcc-arm-linux-gnueabihf qemu
+    apt-get -y install gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu qemu

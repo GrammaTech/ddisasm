@@ -1,0 +1,157 @@
+//===- registers.dl -----------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2020 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/*
+This module establishes basic information about register:
+ - Which registers and tracked/considered in the different analyses
+ - Whether they all callee or caller saved according to the ABI
+*/
+
+// limit the registers that are tracked
+// and transform the names to their 64 bits version
+.decl track_register(Reg32:register,Reg64:register)
+
+track_register("W0", "X0").
+track_register("X0", "X0").
+
+track_register("W1", "X1").
+track_register("X1", "X1").
+
+track_register("W2", "X2").
+track_register("X2", "X2").
+
+track_register("W3", "X3").
+track_register("X3", "X3").
+
+track_register("W4", "X4").
+track_register("X4", "X4").
+
+track_register("W5", "X5").
+track_register("X5", "X5").
+
+track_register("W6", "X6").
+track_register("X6", "X6").
+
+track_register("W7", "X7").
+track_register("X7", "X7").
+
+track_register("W8", "X8").
+track_register("X8", "X8").
+
+track_register("W9", "X9").
+track_register("X9", "X9").
+
+track_register("W10", "X10").
+track_register("X10", "X10").
+
+track_register("W11", "X11").
+track_register("X11", "X11").
+
+track_register("W12", "X12").
+track_register("X12", "X12").
+
+track_register("W13", "X13").
+track_register("X13", "X13").
+
+track_register("W14", "X14").
+track_register("X14", "X14").
+
+track_register("W15", "X15").
+track_register("X15", "X15").
+
+track_register("W16", "X16").
+track_register("X16", "X16").
+
+track_register("W17", "X17").
+track_register("X17", "X17").
+
+track_register("W18", "X18").
+track_register("X18", "X18").
+
+track_register("W19", "X19").
+track_register("X19", "X19").
+
+track_register("W20", "X20").
+track_register("X20", "X20").
+
+track_register("W21", "X21").
+track_register("X21", "X21").
+
+track_register("W22", "X22").
+track_register("X22", "X22").
+
+track_register("W23", "X23").
+track_register("X23", "X23").
+
+track_register("W24", "X24").
+track_register("X24", "X24").
+
+track_register("W25", "X25").
+track_register("X25", "X25").
+
+track_register("W26", "X26").
+track_register("X26", "X26").
+
+track_register("W27", "X27").
+track_register("X27", "X27").
+
+track_register("W28", "X28").
+track_register("X28", "X28").
+
+track_register("W29", "X29").
+track_register("X29", "X29").
+
+track_register("W30", "X30").
+track_register("X30", "X30").
+
+track_register("W31", "X31").
+track_register("X31", "X31").
+
+// this specifies the registers whose value is not kept through a function call
+// according to the 'System V AMD64 ABI' calling convention.
+.decl function_non_maintained_reg(reg:register)
+
+function_non_maintained_reg("X0").
+function_non_maintained_reg("X1").
+function_non_maintained_reg("X2").
+function_non_maintained_reg("X3").
+function_non_maintained_reg("X4").
+function_non_maintained_reg("X5").
+function_non_maintained_reg("X6").
+function_non_maintained_reg("X7").
+function_non_maintained_reg("X8").
+function_non_maintained_reg("X9").
+function_non_maintained_reg("X10").
+function_non_maintained_reg("X11").
+function_non_maintained_reg("X12").
+function_non_maintained_reg("X13").
+function_non_maintained_reg("X14").
+function_non_maintained_reg("X15").
+function_non_maintained_reg("X16").
+function_non_maintained_reg("X17").
+function_non_maintained_reg("X18").
+function_non_maintained_reg("X29").
+function_non_maintained_reg("X30").
+function_non_maintained_reg("X31").
+
+// PC is not a register in aarch64
+.decl pc_register(reg:register)

@@ -211,11 +211,24 @@ void ElfReader::addAuxData()
     }
     Module->addAuxData<gtirb::schema::Relocations>(std::move(RelocationTuples));
 
-    // TODO: Add `libraries' aux data table.
-    Module->addAuxData<gtirb::schema::Libraries>({});
+    std::vector<std::string> Libraries = Elf->imported_libraries();
+    Module->addAuxData<gtirb::schema::Libraries>(std::move(Libraries));
 
-    // TODO: Add `libraryPaths' aux data table.
-    Module->addAuxData<gtirb::schema::LibraryPaths>({});
+    std::vector<std::string> LibraryPaths;
+    for(const auto &Entry : Elf->dynamic_entries())
+    {
+        if(const auto RunPath = dynamic_cast<const LIEF::ELF::DynamicEntryRunPath *>(&Entry))
+        {
+            std::vector<std::string> Paths = RunPath->paths();
+            LibraryPaths.insert(LibraryPaths.end(), Paths.begin(), Paths.end());
+        }
+        if(const auto Rpath = dynamic_cast<const LIEF::ELF::DynamicEntryRpath *>(&Entry))
+        {
+            std::vector<std::string> Paths = Rpath->paths();
+            LibraryPaths.insert(LibraryPaths.end(), Paths.begin(), Paths.end());
+        }
+    }
+    Module->addAuxData<gtirb::schema::LibraryPaths>(std::move(LibraryPaths));
 }
 
 std::string ElfReader::getRelocationType(const LIEF::ELF::Relocation &Entry)

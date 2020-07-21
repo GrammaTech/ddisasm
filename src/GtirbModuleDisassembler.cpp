@@ -278,6 +278,22 @@ struct SymbolMinusSymbol
     int64_t Scale;
 };
 
+struct SplitLoad
+{
+    explicit SplitLoad(gtirb::Addr ea) : EA(ea)
+    {
+    }
+    explicit SplitLoad(souffle::tuple &tuple)
+    {
+        assert(tuple.size() == 4);
+        tuple >> EA >> NextEA >> Dest >> Type;
+    }
+    gtirb::Addr EA{0};
+    gtirb::Addr NextEA{0};
+    uint64_t Dest{0};
+    std::string Type{"NONE"};
+};
+
 struct StringDataObject
 {
     StringDataObject(gtirb::Addr ea) : EA(ea)
@@ -436,6 +452,22 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
         }
     }
     module.addAuxData<gtirb::schema::SymbolForwarding>(std::move(symbolForwarding));
+}
+
+// Build the AD table for symbolic operand information
+void buildSymbolicOperandInfo(gtirb::Context & /* context */, gtirb::Module &module,
+                              souffle::SouffleProgram *prog)
+{
+    std::map<gtirb::Addr, std::tuple<uint64_t, std::string>> res;
+    for(auto &output : *prog->getRelation("symbol_prefix"))
+    {
+        gtirb::Addr ea;
+        uint64_t index;
+        std::string prefix;
+        output >> ea >> index >> prefix;
+        res[ea] = std::tuple(index, prefix);
+    }
+    module.addAuxData<gtirb::schema::SymbolicOperandInfoAD>(std::move(res));
 }
 
 bool isNullReg(const std::string &reg)
@@ -669,6 +701,7 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
         convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog),
         convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog),
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog)};
+    auto splitLoad = convertSortedRelation<VectorByEA<SplitLoad>>("split_load", prog);
     std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
 
     for(auto &cib : codeInBlock)
@@ -683,6 +716,20 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
             if(std::get_if<IndirectOp>(&op.second))
                 buildSymbolicIndirect(context, module, inst->first, inst->second, op.first,
                                       symbolicInfo);
+        }
+        for(auto &Load : splitLoad)
+        {
+            ImmOp dest = Load.Dest;
+            if(Load.EA == inst->first)
+            {
+                buildSymbolicImmediate(context, module, inst->first, inst->second, 1, dest,
+                                       symbolicInfo);
+            }
+            if(Load.NextEA == inst->first)
+            {
+                buildSymbolicImmediate(context, module, inst->first, inst->second, 2, dest,
+                                       symbolicInfo);
+            }
         }
     }
 }
@@ -1320,6 +1367,7 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
     {
         gtirb::Addr ea;
         output >> ea;
+
         if(const auto it = module.findCodeBlocksAt(ea); !it.empty())
         {
             module.setEntryPoint(&*it.begin());
@@ -1370,6 +1418,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
 {
     buildInferredSymbols(context, module, prog);
     buildSymbolForwarding(context, module, prog);
+    buildSymbolicOperandInfo(context, module, prog);
     buildDataDirectories(module, prog);
     buildCodeBlocks(context, module, prog);
     buildDataBlocks(context, module, prog);

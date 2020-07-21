@@ -67,6 +67,13 @@ MultiArchCapstoneHandle::MultiArchCapstoneHandle(gtirb::ISA I) : Isa(I)
             cs_option(RawHandle, CS_OPT_DETAIL, CS_OPT_ON);
             break;
         }
+        case gtirb::ISA::ARM64:
+        {
+            Err = cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &RawHandle);
+            assert(Err == CS_ERR_OK && "Failed to initialize ARM64 disassembler");
+            cs_option(RawHandle, CS_OPT_DETAIL, CS_OPT_ON);
+            break;
+        }
         default:
             Isa = gtirb::ISA::ValidButUnsupported;
     }
@@ -148,12 +155,152 @@ std::string getRegisterName(const MultiArchCapstoneHandle& CsHandle, unsigned in
             if(reg == ARM_REG_INVALID)
                 return "NONE";
             break;
+        case gtirb::ISA::ARM64:
+            if(reg == ARM_REG_INVALID)
+                return "NONE";
+            break;
         default:
             std::cerr << "Tried to resolve register name for unsupported architecture";
             exit(1);
     }
     std::string name = str_toupper(cs_reg_name(CsHandle.getHandle(), reg));
     return name;
+}
+
+const char* getPrefetchValue(const arm64_prefetch_op prefetch)
+{
+    switch(prefetch)
+    {
+        case ARM64_PRFM_PLDL1KEEP:
+            return "pldl1keep";
+        case ARM64_PRFM_PLDL1STRM:
+            return "pldl1strm";
+        case ARM64_PRFM_PLDL2KEEP:
+            return "pldl2keep";
+        case ARM64_PRFM_PLDL2STRM:
+            return "pldl2strm";
+        case ARM64_PRFM_PLDL3KEEP:
+            return "pldl3keep";
+        case ARM64_PRFM_PLDL3STRM:
+            return "pldl3strm";
+        case ARM64_PRFM_PLIL1KEEP:
+            return "plil1keep";
+        case ARM64_PRFM_PLIL1STRM:
+            return "plil1strm";
+        case ARM64_PRFM_PLIL2KEEP:
+            return "plil2keep";
+        case ARM64_PRFM_PLIL2STRM:
+            return "plil2strm";
+        case ARM64_PRFM_PLIL3KEEP:
+            return "plil3keep";
+        case ARM64_PRFM_PLIL3STRM:
+            return "plil3strm";
+        case ARM64_PRFM_PSTL1KEEP:
+            return "pstl1keep";
+        case ARM64_PRFM_PSTL1STRM:
+            return "pstl1strm";
+        case ARM64_PRFM_PSTL2KEEP:
+            return "pstl2keep";
+        case ARM64_PRFM_PSTL2STRM:
+            return "pstl2strm";
+        case ARM64_PRFM_PSTL3KEEP:
+            return "pstl3keep";
+        case ARM64_PRFM_PSTL3STRM:
+            return "pstl3strm";
+        case ARM64_PRFM_INVALID:
+        default:
+            std::cerr << "invalid operand (prefetch)\n";
+            exit(1);
+    }
+}
+
+const char* getBarrierOp(const arm64_barrier_op barrier)
+{
+    switch(barrier)
+    {
+        case ARM64_BARRIER_OSHLD:
+            return "oshld";
+        case ARM64_BARRIER_OSHST:
+            return "oshst";
+        case ARM64_BARRIER_OSH:
+            return "osh";
+        case ARM64_BARRIER_NSHLD:
+            return "nshld";
+        case ARM64_BARRIER_NSHST:
+            return "nshst";
+        case ARM64_BARRIER_NSH:
+            return "nsh";
+        case ARM64_BARRIER_ISHLD:
+            return "ishld";
+        case ARM64_BARRIER_ISHST:
+            return "ishst";
+        case ARM64_BARRIER_ISH:
+            return "ish";
+        case ARM64_BARRIER_LD:
+            return "ld";
+        case ARM64_BARRIER_ST:
+            return "st";
+        case ARM64_BARRIER_SY:
+            return "sy";
+        case ARM64_BARRIER_INVALID:
+        default:
+            std::cerr << "invalid operand (barrier)\n";
+            exit(1);
+    }
+}
+
+std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp> buildOperand(
+    const MultiArchCapstoneHandle& CsHandle, const cs_arm64_op& op)
+{
+    switch(op.type)
+    {
+        case ARM64_OP_REG:
+            return getRegisterName(CsHandle, op.reg);
+        case ARM64_OP_IMM:
+            return op.imm;
+        case ARM64_OP_MEM:
+        {
+            IndirectOp I = {getRegisterName(CsHandle, ARM64_REG_INVALID),
+                            getRegisterName(CsHandle, op.mem.base),
+                            getRegisterName(CsHandle, op.mem.index),
+                            1,
+                            op.mem.disp,
+                            4 * 8};
+            return I;
+        }
+        case ARM64_OP_FP:
+            std::cerr << "unsupported: FP\n";
+            return 0;
+        case ARM64_OP_CIMM:
+            std::cerr << "unsupported: CIMM\n";
+            return 0;
+        case ARM64_OP_REG_MRS:
+            std::cerr << "unsupported: MRS\n";
+            return 0;
+        case ARM64_OP_REG_MSR:
+            std::cerr << "unsupported: MSR\n";
+            return 0;
+        case ARM64_OP_PSTATE:
+            std::cerr << "unsupported: PSTATE\n";
+            return 0;
+        case ARM64_OP_SYS:
+            std::cerr << "unsupported: SYS\n";
+            return 0;
+        case ARM64_OP_PREFETCH:
+        {
+            PrefetchOp I = {getPrefetchValue(op.prefetch)};
+            return I;
+        }
+        case ARM64_OP_BARRIER:
+        {
+            BarrierOp I = {getBarrierOp(op.barrier)};
+            return I;
+        }
+        case ARM64_OP_INVALID:
+        default:
+            std::cerr << "invalid operand\n";
+            exit(1);
+    }
 }
 
 std::variant<ImmOp, RegOp, IndirectOp> buildOperand(const MultiArchCapstoneHandle& CsHandle,
@@ -238,6 +385,7 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
         prefix = "";
         name = prefix_name;
     }
+
     switch(CsHandle.getIsa())
     {
         case gtirb::ISA::X64:
@@ -255,14 +403,32 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
                 // Put the destination operand at the end of the operand list.
                 if(opCount > 0)
                     std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
-                return {insn.address,
-                        insn.size,
-                        prefix,
-                        name,
-                        op_codes,
-                        detail.encoding.imm_offset,
-                        detail.encoding.disp_offset};
             }
+            return {insn.address,
+                    insn.size,
+                    prefix,
+                    name,
+                    op_codes,
+                    detail.encoding.imm_offset,
+                    detail.encoding.disp_offset};
+        }
+        case gtirb::ISA::ARM64:
+        {
+            cs_arm64& detail = insn.detail->arm64;
+            if(name != "NOP")
+            {
+                int opCount = detail.op_count;
+                for(int i = 0; i < opCount; i++)
+                {
+                    cs_arm64_op& op = detail.operands[i];
+                    uint64_t index = OpDict.add(buildOperand(CsHandle, op));
+                    op_codes.push_back(index);
+                }
+                // Put the destination operand at the end of the operand list.
+                if(opCount > 0)
+                    std::rotate(op_codes.begin(), op_codes.begin() + 1, op_codes.end());
+            }
+            return {insn.address, insn.size, prefix, name, op_codes, 0, 0};
         }
         case gtirb::ISA::ARM:
         {
@@ -285,7 +451,6 @@ DlInstruction GtirbToDatalog::transformInstruction(const MultiArchCapstoneHandle
             }
             return {insn.address, insn.size, prefix, name, op_codes, 0, 0};
         }
-
         default:
             std::cerr << "Tried to decode instruction with unsupported architecture";
             exit(1);
@@ -384,6 +549,8 @@ void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int Instructio
     GtirbToDatalog::addToRelation(&*Prog, "op_regdirect", OpDict.regTable);
     GtirbToDatalog::addToRelation(&*Prog, "op_immediate", OpDict.immTable);
     GtirbToDatalog::addToRelation(&*Prog, "op_indirect", OpDict.indirectTable);
+    GtirbToDatalog::addToRelation(&*Prog, "op_prefetch", OpDict.prefetchTable);
+    GtirbToDatalog::addToRelation(&*Prog, "op_barrier", OpDict.barrierTable);
 }
 
 void GtirbToDatalog::populateCfgEdges(const gtirb::Module& M)

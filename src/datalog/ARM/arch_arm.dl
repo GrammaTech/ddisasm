@@ -32,6 +32,14 @@ and characteristics
 #include "interrupt_operations.dl"
 #include "registers.dl"
 
+// Define all variants of the move operation.
+.decl move_operation(Operation:symbol)
+move_operation(Operation) :-
+    instruction_get_operation(_, Operation),
+    contains("MOV", Operation).
+
+move_operation("MVN").
+
 // TODO:
 .decl conditional_mov(EA:address)
 // conditional_mov(EA):-
