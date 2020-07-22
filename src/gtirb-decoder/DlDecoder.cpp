@@ -31,7 +31,6 @@
 #include <string>
 
 #include "../AuxDataSchema.h"
-#include "../gtirb-builder/ElfReader.h"
 #include "ExceptionDecoder.h"
 
 namespace souffle
