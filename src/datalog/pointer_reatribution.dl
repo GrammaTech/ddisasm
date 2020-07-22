@@ -107,6 +107,7 @@ moved_pc_relative_candidate(EA_def2,Op_index,Dest,New_dest,Diff):-
 moved_pc_relative_candidate(EA,Op_index,Dest,New_dest,Diff):-
     code(EA),
     binary_format("ELF"),
+    binary_isa("X64"),
     pc_relative_operand(EA,Op_index,Dest),
     !symbolic_operand(EA,Op_index,_,_),
     regular_data_section(Name),

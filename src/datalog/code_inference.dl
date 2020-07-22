@@ -68,7 +68,7 @@ more points.
 
 may_fallthrough(From,To):-
     next(From,To),
-    !return(From),
+    !arch.return(From),
     !unconditional_jump(From),
     !halt(From),
     !no_return_call(From).

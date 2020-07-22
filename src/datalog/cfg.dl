@@ -85,6 +85,7 @@ jump_table(EA,Memory+Pt_size):-
 
 resolved_jump(EA,Dest):-
     jump_table(EA,Memory),
+    code(EA),
     symbolic_data(Memory,_,Dest),
     refined_block(Dest).
 
@@ -126,7 +127,7 @@ cfg_edge(ReturnBlock,NextBlock,"false","false","return"):-
     function_inference.in_function(Block,FunctionEntry),
     function_inference.in_function(ReturnBlock,FunctionEntry),
     refined_block_last_instruction(ReturnBlock,Insn),
-    return(Insn).
+    arch.return(Insn).
 
 cfg_edge_to_top(Src,Conditional,"branch"):-
     refined_block_last_instruction(Src,EA),
@@ -149,7 +150,7 @@ cfg_edge_to_top(Src,"false","call"):-
 // a return to top if no other return exists
 cfg_edge_to_top(Src,"false","return"):-
     refined_block_last_instruction(Src,Insn),
-    return(Insn),
+    arch.return(Insn),
     !cfg_edge(Src,_,_,_,"return").
 
 cfg_edge_to_symbol(Src,Symbol):-
