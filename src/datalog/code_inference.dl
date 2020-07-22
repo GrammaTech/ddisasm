@@ -148,7 +148,6 @@ possible_ea(EA):-
 .decl basic_target(ea:address)
 
 basic_target(Val):-
-    binary_isa("X64"),
     (
         relative_address(_,_,_,Val)
         ;

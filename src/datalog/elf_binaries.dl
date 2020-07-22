@@ -118,7 +118,6 @@ non_zero_data_section(Name):-
 .decl plt_entry(ea:address, function:symbol)
 
 plt_entry(EA,Function):-
-    binary_isa("X64"),
     plt_section(SecName),
     section(SecName,Size,Beg),
     EA < Beg+Size,
