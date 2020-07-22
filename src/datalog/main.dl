@@ -342,6 +342,7 @@ instruction_has_loop_prefix(EA):-
 .decl unconditional_jump(n:address)
 
 unconditional_jump(EA):-
+    arch.jump(EA),
     instruction_get_operation(EA,Operation),
     arch.unconditional_jump_operation(Operation).
 
