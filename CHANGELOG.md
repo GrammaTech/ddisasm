@@ -1,3 +1,8 @@
+# 1.1.1
+
+* Restructure gtirb-to-datalog into `gtirb-decoder` component.
+* Move `ddisasm_main.cpp` to `Main.cpp`.
+* Move `GtirbModuleDisassembler.cpp` to `Disassembler.cpp`.
 
 # 1.1.0
 
