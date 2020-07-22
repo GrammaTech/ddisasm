@@ -1,4 +1,4 @@
-//===- disasm_main.cpp ------------------------------------------*- C++ -*-===//
+//===- Main.cpp -------------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -42,13 +42,13 @@
 #include <gtirb_pprinter/PrettyPrinter.hpp>
 
 #include "gtirb-builder/GtirbBuilder.h"
+#include "gtirb-decoder/Arm64Decoder.h"
+#include "gtirb-decoder/DatalogUtils.h"
+#include "gtirb-decoder/X86Decoder.h"
 
-#include "Arm64Decoder.h"
 #include "AuxDataSchema.h"
-#include "DatalogUtils.h"
-#include "GtirbModuleDisassembler.h"
+#include "Disassembler.h"
 #include "Version.h"
-#include "X86Decoder.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"

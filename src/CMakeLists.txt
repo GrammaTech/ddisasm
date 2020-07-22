@@ -181,41 +181,23 @@ function(set_souffle_msvc_options TARGET_NAME)
                                     # declaration
 endfunction()
 
-# ====== datalog_utils ======
+# ====== builder ===========
 
-add_library(datalog_utils STATIC DatalogUtils.cpp DlOperandTable.cpp)
+add_subdirectory(gtirb-builder)
 
-target_link_libraries(datalog_utils gtirb proto ${CAPSTONE})
+# ====== decoder ===========
 
-target_compile_definitions(datalog_utils PRIVATE __EMBEDDED_SOUFFLE__)
-target_compile_definitions(datalog_utils PRIVATE RAM_DOMAIN_SIZE=64)
-target_compile_options(datalog_utils PRIVATE ${OPENMP_FLAGS})
-
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  target_compile_definitions(datalog_utils PRIVATE _CRT_SECURE_NO_WARNINGS)
-  target_compile_definitions(datalog_utils PRIVATE _CRT_NONSTDC_NO_WARNINGS)
-
-  set_common_msvc_options(datalog_utils)
-else()
-  target_compile_options(datalog_utils PRIVATE -O3)
-endif()
+add_subdirectory(gtirb-decoder)
 
 # ====== passes ============
 
 add_subdirectory(passes)
 
-# ====== builder ===========
-
-add_subdirectory(gtirb-builder)
-
 # ===== souffle_disasm =====
 # First build a static library of all the non-generated code.. This is just a
 # hack to get CMake to use different compile flags (because the generated
 # souffle code won't build with -Wall -Werror).
-add_library(
-  disasm_main STATIC
-  disasm_main.cpp DlDecoder.cpp Arm64Decoder.cpp X86Decoder.cpp
-  ExceptionDecoder.cpp GtirbModuleDisassembler.cpp)
+add_library(disasm_main STATIC Disassembler.cpp Main.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_compile_options(disasm_main PRIVATE -Wno-unused-parameter)
@@ -255,10 +237,10 @@ target_link_libraries(
   gtirb
   gtirb_pprinter
   gtirb_builder
+  gtirb_decoder
   datalog_utils
   ${CAPSTONE}
   ${Boost_LIBRARIES}
-  ${ehp_LIBRARIES}
   ${EXPERIMENTAL_LIB}
   ${LIBCPP_ABI})
 

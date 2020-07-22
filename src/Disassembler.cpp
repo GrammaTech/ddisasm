@@ -1,4 +1,4 @@
-//===- GtirbModuleDisassembler.cpp ------------------------------*- C++ -*-===//
+//===- Disassembler.cpp -----------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -21,12 +21,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "GtirbModuleDisassembler.h"
+#include "Disassembler.h"
 
 #include <boost/uuid/uuid_generators.hpp>
 
 #include "AuxDataSchema.h"
-#include "DlOperandTable.h"
+#include "gtirb-decoder/DlOperandTable.h"
 
 // souffle uses a signed integer for all numbers (either 32 or 64 bits
 // dependin on compilation flags). Allow conversion to other types.

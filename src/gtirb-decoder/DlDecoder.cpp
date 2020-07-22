@@ -30,9 +30,9 @@
 #include <sstream>
 #include <string>
 
-#include "AuxDataSchema.h"
+#include "../AuxDataSchema.h"
+#include "../gtirb-builder/ElfReader.h"
 #include "ExceptionDecoder.h"
-#include "gtirb-builder/ElfReader.h"
 
 namespace souffle
 {

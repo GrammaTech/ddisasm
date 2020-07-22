@@ -20,12 +20,12 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
-#include "FunctionInferencePass.h"
 #include <souffle/CompiledSouffle.h>
 #include <boost/uuid/uuid_generators.hpp>
+
 #include "../AuxDataSchema.h"
-#include "../DatalogUtils.h"
+#include "../gtirb-decoder/DatalogUtils.h"
+#include "FunctionInferencePass.h"
 
 void FunctionInferencePass::populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P,
                                                 gtirb::Context& Ctx, gtirb::Module& M)

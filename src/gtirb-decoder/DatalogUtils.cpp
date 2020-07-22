@@ -22,7 +22,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "DatalogUtils.h"
-#include "AuxDataSchema.h"
+#include "../AuxDataSchema.h"
 
 void writeFacts(souffle::SouffleProgram* prog, const std::string& directory)
 {
