@@ -21,8 +21,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef SRC_AARCH64_DECODER_H_
-#define SRC_AARCH64_DECODER_H_
+#ifndef SRC_ARM64_DECODER_H_
+#define SRC_ARM64_DECODER_H_
 
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
@@ -42,4 +42,4 @@ public:
     void decodeSection(const gtirb::ByteInterval& byteInterval) override;
 };
 
-#endif /* SRC_AARCH64_DECODER_H_ */
+#endif /* SRC_ARM64_DECODER_H_ */
