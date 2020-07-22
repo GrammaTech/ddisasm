@@ -117,7 +117,6 @@ non_zero_data_section(Name):-
 // detect references  to libraries (calls to plt)
 .decl plt_entry(ea:address, function:symbol)
 
-
 plt_entry(EA,Function):-
     plt_section(SecName),
     section(SecName,Size,Beg),

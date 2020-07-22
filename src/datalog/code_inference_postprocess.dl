@@ -96,7 +96,8 @@ block_needs_merging(Block):-
     !entry_point(Block),
     !instruction_has_loop_prefix(Block),
     !fde_addresses(Block,_),
-    !fde_addresses(_,Block).
+    !fde_addresses(_,Block),
+    !block_needs_splitting_at(Block).
 
 refined_block(Block):-
     split_block(Block),
