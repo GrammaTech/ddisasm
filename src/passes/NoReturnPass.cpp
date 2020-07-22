@@ -21,9 +21,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "NoReturnPass.h"
 #include <souffle/CompiledSouffle.h>
-#include "../DatalogUtils.h"
+
+#include "../gtirb-decoder/DatalogUtils.h"
+#include "NoReturnPass.h"
 
 void NoReturnPass::populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M)
 {
