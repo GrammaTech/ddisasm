@@ -54,12 +54,18 @@ mov(EA):-
 is_nop(EA):-
     instruction_get_operation(EA,"NOP").
 
-// TODO: Returns
+// Returns
 .decl return(n:address)
 
-// TODO: Jumps
+return(EA):-
+    return_operation(Operation),
+    instruction_get_operation(EA,Operation).
+
 .decl jump(EA:address)
-.output jump
+
+jump(EA):-
+    instruction_get_operation(EA,Operation),
+    jump_operation(Operation).
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
 

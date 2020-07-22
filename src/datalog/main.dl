@@ -66,15 +66,15 @@ This module:
 
 // architecture specific predicates
 #ifdef ARCH_ARM64
-    #include "aarch64/arch_aarch64.dl"
     .init arch = ARM64
+    #include "aarch64/arch_aarch64.dl"
 #elif defined(ARCH_ARM32)
-    #include "ARM/arch_arm.dl"
     .init arch = ARM
+    #include "ARM/arch_arm.dl"
     #include "arm_binaries.dl"
 #elif defined(ARCH_AMD64)
-    #include "x64/arch_x64.dl"
     .init arch = X64
+    #include "x64/arch_x64.dl"
 #else
     #error "Undefined architecture"
 #endif
