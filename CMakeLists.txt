@@ -39,6 +39,25 @@ string(TIMESTAMP DDISASM_BUILD_DATE "%Y-%m-%d")
 
 option(DDISASM_ENABLE_TESTS "Enable building and running unit tests." ON)
 
+# The libraries can be static while the drivers can link in other things in a
+# shared manner. This option allows for this possibility.
+option(
+  DDISASM_STATIC_DRIVERS
+  "Attempt to make any driver executables as statically-linked as possible.
+Implies DDISASM_BUILD_SHARED_LIBS=OFF."
+  OFF)
+
+if(DDISASM_STATIC_DRIVERS)
+  set(DDISASM_BUILD_SHARED_LIBS OFF)
+  set(Boost_USE_STATIC_LIBS ON)
+
+  if(WIN32)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
+  else()
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+  endif()
+endif()
+
 # This just sets the builtin BUILD_SHARED_LIBS, but if defaults to ON instead of
 # OFF.
 option(DDISASM_BUILD_SHARED_LIBS "Build shared libraries." ON)
