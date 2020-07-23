@@ -247,6 +247,15 @@ target_link_libraries(
 # Now combine the static library and generated code into an executable.
 add_executable(ddisasm ${GENERATED_ARM64_CPP} ${GENERATED_X64_CPP})
 
+if(DDISASM_STATIC_DRIVERS)
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+    # We do not want to statically link in the STL here, as MSVC is a bit
+    # prickly about STL ABIs.
+  else()
+    target_link_libraries(ddisasm PRIVATE -static-libstdc++ -static-libgcc)
+  endif()
+endif()
+
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_link_libraries(ddisasm disasm_main scc_pass no_return_pass
                         function_inference_pass)
@@ -276,7 +285,11 @@ else()
 endif()
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
-  target_link_libraries(ddisasm PRIVATE gomp)
+  if(DDISASM_STATIC_DRIVERS)
+    target_link_libraries(ddisasm PRIVATE -l:libgomp.a)
+  else()
+    target_link_libraries(ddisasm PRIVATE gomp)
+  endif()
 endif()
 
 if(DDISASM_ENABLE_TESTS)
@@ -310,7 +323,3 @@ install(
   TARGETS ddisasm
   COMPONENT ddisasm
   DESTINATION bin)
-
-if(NOT BUILD_SHARED_LIBS)
-  target_link_libraries(ddisasm PRIVATE -static-libstdc++)
-endif()
