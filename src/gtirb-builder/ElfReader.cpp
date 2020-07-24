@@ -38,22 +38,22 @@ void ElfReader::buildSections()
     uint64_t Index = 0;
     for(auto &Section : Elf->sections())
     {
-        bool is_allocated = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC);
-        bool is_executable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_EXECINSTR);
-        bool is_writable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
+        bool Allocated = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC);
+        bool Executable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_EXECINSTR);
+        bool Writable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
         // SHT_NOBITS is not considered here because it is for data sections but
         // without initial data (zero initialized)
-        bool is_non_zero_program_data =
+        bool NonZeroProgramData =
             Section.type() == LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS
             || Section.type() == LIEF::ELF::ELF_SECTION_TYPES::SHT_INIT_ARRAY
             || Section.type() == LIEF::ELF::ELF_SECTION_TYPES::SHT_FINI_ARRAY
             || Section.type() == LIEF::ELF::ELF_SECTION_TYPES::SHT_PREINIT_ARRAY;
-        bool is_initialized = is_allocated && is_non_zero_program_data;
-        // TODO: Move .tbss section
+        bool Initialized = Allocated && NonZeroProgramData;
+        // FIXME: Move .tbss section
         bool is_tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
 
         // Skip sections that are not loaded into memory.
-        if(!is_allocated || is_tls)
+        if(!Allocated || is_tls)
         {
             Index++;
             continue;
@@ -63,26 +63,26 @@ void ElfReader::buildSections()
         gtirb::Section *S = Module->addSection(*Context, Section.name());
 
         // Add section flags to GTIRB Section.
-        if(is_allocated)
+        if(Allocated)
         {
             S->addFlag(gtirb::SectionFlag::Loaded);
             S->addFlag(gtirb::SectionFlag::Readable);
         }
-        if(is_executable)
+        if(Executable)
         {
             S->addFlag(gtirb::SectionFlag::Executable);
         }
-        if(is_writable)
+        if(Writable)
         {
             S->addFlag(gtirb::SectionFlag::Writable);
         }
-        if(is_initialized)
+        if(Initialized)
         {
             S->addFlag(gtirb::SectionFlag::Initialized);
         }
 
         gtirb::Addr Addr = gtirb::Addr(Section.virtual_address());
-        if(is_initialized)
+        if(Initialized)
         {
             // Add allocated section contents to a single, contiguous ByteInterval.
             std::vector<uint8_t> Bytes = Section.content();
