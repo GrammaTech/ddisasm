@@ -67,7 +67,7 @@ This module:
 // architecture specific predicates
 #ifdef ARCH_ARM64
     .init arch = ARM64
-    #include "aarch64/arch_aarch64.dl"
+    #include "arm64/arch_arm64.dl"
 #elif defined(ARCH_ARM32)
     .init arch = ARM
     #include "ARM/arch_arm.dl"

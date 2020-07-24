@@ -43,8 +43,8 @@ set(DATALOG_ARM_SOURCES
     datalog/arm_binaries.dl)
 
 set(DATALOG_ARM64_SOURCES
-    datalog/aarch64/arch_aarch64.dl datalog/aarch64/float_operations.dl
-    datalog/aarch64/jump_operations.dl datalog/aarch64/registers.dl)
+    datalog/arm64/arch_arm64.dl datalog/arm64/float_operations.dl
+    datalog/arm64/jump_operations.dl datalog/arm64/registers.dl)
 
 set(SOUFFLE_DATALOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/datalog/)
 
