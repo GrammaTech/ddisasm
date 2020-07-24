@@ -50,10 +50,10 @@ void ElfReader::buildSections()
             || Section.type() == LIEF::ELF::ELF_SECTION_TYPES::SHT_PREINIT_ARRAY;
         bool Initialized = Allocated && NonZeroProgramData;
         // FIXME: Move .tbss section
-        bool is_tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
+        bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
 
         // Skip sections that are not loaded into memory.
-        if(!Allocated || is_tls)
+        if(!Allocated || Tls)
         {
             Index++;
             continue;
