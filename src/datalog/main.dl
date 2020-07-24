@@ -70,7 +70,7 @@ This module:
     #include "arm64/arch_arm64.dl"
 #elif defined(ARCH_ARM32)
     .init arch = ARM
-    #include "ARM/arch_arm.dl"
+    #include "arm/arch_arm.dl"
     #include "arm_binaries.dl"
 #elif defined(ARCH_AMD64)
     .init arch = X64

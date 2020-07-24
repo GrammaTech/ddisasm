@@ -37,9 +37,9 @@ set(DATALOG_BASE_SOURCES
 set(DATALOG_X64_SOURCES datalog/x64/arch_x64.dl datalog/x64/float_operations.dl
                         datalog/x64/jump_operations.dl datalog/x64/registers.dl)
 
-set(DATALOG_ARM_SOURCES
-    datalog/ARM/arch_arm.dl datalog/ARM/float_operations.dl
-    datalog/ARM/jump_operations.dl datalog/ARM/registers.dl
+set(DATALOG_arm_SOURCES
+    datalog/arm/arch_arm.dl datalog/arm/float_operations.dl
+    datalog/arm/jump_operations.dl datalog/arm/registers.dl
     datalog/arm_binaries.dl)
 
 set(DATALOG_ARM64_SOURCES
