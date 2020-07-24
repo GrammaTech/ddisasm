@@ -23,6 +23,17 @@
 
 #include "DatalogLoader.h"
 
+std::optional<std::shared_ptr<souffle::SouffleProgram>> DatalogLoader::prog()
+{
+    // Build the Souffle context.
+    if(auto Program =
+           std::shared_ptr<souffle::SouffleProgram>(souffle::ProgramFactory::newInstance(Name)))
+    {
+        return Program;
+    }
+    return std::nullopt;
+}
+
 void DatalogLoader::load(const gtirb::Context& Context, const gtirb::Module& Module)
 {
     // Load all GTIRB sections.
@@ -30,9 +41,6 @@ void DatalogLoader::load(const gtirb::Context& Context, const gtirb::Module& Mod
     {
         Sections.load(Section);
     }
-
-    // Build the Souffle context.
-    // ...
 }
 
 void SectionDecoder::load(const gtirb::Section& Section)

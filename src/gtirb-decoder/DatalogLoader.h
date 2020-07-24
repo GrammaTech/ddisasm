@@ -24,8 +24,10 @@
 #define SRC_DATALOG_DECODER_H_
 
 #include <optional>
+#include <string>
 #include <vector>
 
+#include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 
 class DataDecoder
@@ -98,7 +100,7 @@ public:
     ~DatalogLoader() = default;
 
     virtual void load(const gtirb::Context& C, const gtirb::Module& M);
-    // std::shared_ptr<souffle::SouffleProgram> load(gtirb::Context& C, gtirb::Module& M);
+    virtual std::optional<std::shared_ptr<souffle::SouffleProgram>> prog();
 
 private:
     std::string Name;

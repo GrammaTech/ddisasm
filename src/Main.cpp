@@ -258,6 +258,8 @@ int main(int argc, char **argv)
 
         printElapsedTimeSince(StartDecode);
     }
+    // FIXME:
+    // GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "option", DisasmOptions);
 
     // Remove initial entry point.
     if(gtirb::CodeBlock *Block = Module.getEntryPoint())
