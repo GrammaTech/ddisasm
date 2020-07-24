@@ -44,14 +44,14 @@ void PeReader::buildSections()
     for(auto &Section : Pe->sections())
     {
         using Flags = LIEF::PE::SECTION_CHARACTERISTICS;
-        bool is_executable = Section.has_characteristic(Flags::IMAGE_SCN_MEM_EXECUTE);
-        bool is_readable = Section.has_characteristic(Flags::IMAGE_SCN_MEM_READ);
-        bool is_writable = Section.has_characteristic(Flags::IMAGE_SCN_MEM_WRITE);
-        bool is_initialized = !Section.has_characteristic(Flags::IMAGE_SCN_CNT_UNINITIALIZED_DATA);
-        bool is_allocated = is_readable;
+        bool Executable = Section.has_characteristic(Flags::IMAGE_SCN_MEM_EXECUTE);
+        bool Readable = Section.has_characteristic(Flags::IMAGE_SCN_MEM_READ);
+        bool Writable = Section.has_characteristic(Flags::IMAGE_SCN_MEM_WRITE);
+        bool Initialized = !Section.has_characteristic(Flags::IMAGE_SCN_CNT_UNINITIALIZED_DATA);
+        bool Allocated = Readable;
 
         // Skip sections that are not loaded into memory.
-        if(!is_allocated)
+        if(!Allocated)
         {
             continue;
         }
@@ -59,20 +59,20 @@ void PeReader::buildSections()
         gtirb::Section *S = Module->addSection(*Context, Section.name());
 
         // Add section flags to GTIRB Section.
-        if(is_allocated)
+        if(Allocated)
         {
             S->addFlag(gtirb::SectionFlag::Loaded);
             S->addFlag(gtirb::SectionFlag::Readable);
         }
-        if(is_executable)
+        if(Executable)
         {
             S->addFlag(gtirb::SectionFlag::Executable);
         }
-        if(is_writable)
+        if(Writable)
         {
             S->addFlag(gtirb::SectionFlag::Writable);
         }
-        if(is_initialized)
+        if(Initialized)
         {
             S->addFlag(gtirb::SectionFlag::Initialized);
         }
@@ -81,7 +81,7 @@ void PeReader::buildSections()
         gtirb::Addr ImageBase = gtirb::Addr(Pe->optional_header().imagebase());
         gtirb::Addr Addr = gtirb::Addr(ImageBase + Section.virtual_address());
         uint64_t Size = Section.virtual_size();
-        if(is_initialized)
+        if(Initialized)
         {
             // Add allocated section contents to a single, contiguous ByteInterval.
             std::vector<uint8_t> Bytes = Section.content();
