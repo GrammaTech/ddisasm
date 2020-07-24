@@ -6,7 +6,7 @@ ARG CXX_COMPILER=g++
 RUN pacman --noconfirm -Syu archlinux-keyring
 RUN pacman -Syu --noconfirm autoconf automake base-devel boost clang cmake \
         doxygen fakeroot gcc git libtool make mcpp pkg-config protobuf \
-        python3 python-pip qemu-arch-extra sudo wget unzip
+        python3 python-pip sudo wget unzip
 RUN python3 -m pip install wheel distro
 
 RUN pacman --noconfirm -Syu archlinux-keyring
@@ -22,13 +22,3 @@ RUN yay --noconfirm -Sy pandoc capstone libehp-git souffle lief
 
 # Install cross-platform utils
 RUN sudo pacman --noconfirm -Sy awk bison binutils coreutils diffutils file gettext patch
-
-RUN yay --noconfirm -Sy \
-  arm-linux-gnueabihf-binutils \
-  arm-linux-gnueabihf-gcc-stage1 \
-  arm-linux-gnueabihf-linux-api-headers \
-  arm-linux-gnueabihf-glibc-headers
-
-RUN yay --noconfirm --useask -Sy arm-linux-gnueabihf-gcc-stage2
-RUN yay --noconfirm --useask -Sy arm-linux-gnueabihf-glibc
-RUN yay --noconfirm --useask -Sy arm-linux-gnueabihf-gcc
