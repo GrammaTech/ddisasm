@@ -30,7 +30,7 @@ namespace souffle
 {
     souffle::tuple &operator<<(souffle::tuple &T, const gtirb::Addr &A);
 
-    souffle::tuple &operator<<(souffle::tuple &T, const InstructionDecoder::Instruction &I);
+    // souffle::tuple &operator<<(souffle::tuple &T, const InstructionDecoder::Instruction &I);
 
     template <typename U>
     souffle::tuple &operator<<(souffle::tuple &T, const DataDecoder::Data<U> &Data)
@@ -71,6 +71,36 @@ void DatalogProgram::insert(const std::string &Name, const std::vector<std::stri
 
 template <>
 void DatalogProgram::insert(const std::string &Name, const std::vector<gtirb::Addr> &Data)
+{
+    if(auto *Relation = Program->getRelation(Name))
+    {
+        for(const auto Element : Data)
+        {
+            souffle::tuple Row(Relation);
+            Row << Element;
+            Relation->insert(Row);
+        }
+    }
+}
+
+template <>
+void DatalogProgram::insert(const std::string &Name,
+                            const std::vector<DataDecoder::Data<gtirb::Addr>> &Data)
+{
+    if(auto *Relation = Program->getRelation(Name))
+    {
+        for(const auto Element : Data)
+        {
+            souffle::tuple Row(Relation);
+            Row << Element;
+            Relation->insert(Row);
+        }
+    }
+}
+
+template <>
+void DatalogProgram::insert(const std::string &Name,
+                            const std::vector<DataDecoder::Data<uint8_t>> &Data)
 {
     if(auto *Relation = Program->getRelation(Name))
     {

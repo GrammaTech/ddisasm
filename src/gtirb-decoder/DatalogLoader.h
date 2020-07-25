@@ -51,6 +51,7 @@ public:
     };
 
     virtual void load(const gtirb::ByteInterval& I);
+    virtual void populate(DatalogProgram& P);
 
 private:
     std::vector<Data<uint8_t>> Bytes;
@@ -72,6 +73,8 @@ public:
     };
 
     virtual void load(const gtirb::ByteInterval& I);
+    virtual void populate(DatalogProgram& P);
+
     virtual std::optional<Instruction> decode(const uint8_t* Bytes, uint64_t Size)
     {
         return std::nullopt;
@@ -107,20 +110,6 @@ private:
     std::string BinaryFormat;
     std::string BinaryType;
     gtirb::Addr EntryPoint;
-};
-
-class SymbolDecoder : public GtirbDecoder
-{
-public:
-    virtual void load(const gtirb::Module& M) override;
-    virtual void populate(DatalogProgram& P) override;
-};
-
-class AuxDataDecoder : public GtirbDecoder
-{
-public:
-    virtual void load(const gtirb::Module& M) override;
-    virtual void populate(DatalogProgram& P) override;
 };
 
 class DatalogLoader

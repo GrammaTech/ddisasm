@@ -125,22 +125,6 @@ void FormatDecoder::populate(DatalogProgram& Program)
     Program.insert<std::vector<gtirb::Addr>>("entry_point", {EntryPoint});
 }
 
-void SymbolDecoder::load(const gtirb::Module& Module)
-{
-}
-
-void SymbolDecoder::populate(DatalogProgram& Program)
-{
-}
-
-void AuxDataDecoder::load(const gtirb::Module& Module)
-{
-}
-
-void AuxDataDecoder::populate(DatalogProgram& Program)
-{
-}
-
 void SectionDecoder::load(const gtirb::Module& Module)
 {
     for(const auto& Section : Module.sections())
@@ -153,7 +137,7 @@ void SectionDecoder::load(const gtirb::Module& Module)
             for(const auto& ByteInterval : Section.byte_intervals())
             {
                 Code.load(ByteInterval);
-                // Data.load(ByteInterval);
+                Data.load(ByteInterval);
             }
         }
         else if(Initialized)
@@ -168,6 +152,8 @@ void SectionDecoder::load(const gtirb::Module& Module)
 
 void SectionDecoder::populate(DatalogProgram& Program)
 {
+    Code.populate(Program);
+    Data.populate(Program);
 }
 
 void InstructionDecoder::load(const gtirb::ByteInterval& ByteInterval)
@@ -194,6 +180,12 @@ void InstructionDecoder::load(const gtirb::ByteInterval& ByteInterval)
     }
 }
 
+void InstructionDecoder::populate(DatalogProgram& Program)
+{
+    // Program.insert("instruction_complete", Instructions);
+    // Program.insert("invalid_op_code", InvalidInstructions);
+}
+
 void DataDecoder::load(const gtirb::ByteInterval& ByteInterval)
 {
     assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
@@ -218,7 +210,7 @@ void DataDecoder::load(const gtirb::ByteInterval& ByteInterval)
     uint64_t Size = ByteInterval.getInitializedSize();
     auto Data = ByteInterval.rawBytes<const uint8_t>();
 
-    // FIXME: Window size should be sensitive to the architecture.
+    // FIXME: Window size should be respective the architecture.
     while(Size >= 8)
     {
         // Store single byte.
@@ -239,4 +231,10 @@ void DataDecoder::load(const gtirb::ByteInterval& ByteInterval)
         ++Data;
         --Size;
     }
+}
+
+void DataDecoder::populate(DatalogProgram& Program)
+{
+    Program.insert("data_byte", Bytes);
+    Program.insert("address_in_data", Addresses);
 }

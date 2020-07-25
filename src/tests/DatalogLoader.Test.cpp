@@ -8,8 +8,10 @@ class DatalogLoaderTest : public ::testing::TestWithParam<const char *>
 {
 };
 
-class TestSymbolDecoder : public SymbolDecoder
+class TestDecoder : public GtirbDecoder
 {
+    void load(const gtirb::Module &M){};
+    void populate(DatalogProgram &P){};
 };
 
 TEST_P(DatalogLoaderTest, loadElfGtirb)
@@ -20,10 +22,8 @@ TEST_P(DatalogLoaderTest, loadElfGtirb)
     gtirb::Module &Module = *(GTIRB->IR->modules().begin());
 
     std::vector<std::shared_ptr<GtirbDecoder>> Decoders = {
-        std::make_shared<FormatDecoder>(),
-        std::make_shared<TestSymbolDecoder>(),
+        std::make_shared<TestDecoder>(),
         std::make_shared<SectionDecoder>(),
-        std::make_shared<AuxDataDecoder>(),
     };
     DatalogLoader ElfLoader = DatalogLoader("test", Decoders);
     ElfLoader.load(Module);
