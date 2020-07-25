@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "DatalogLoader.h"
+#include "../AuxDataSchema.h"
 #include "DatalogProgram.h"
 
 const char* format(const gtirb::FileFormat Format)
@@ -70,12 +71,10 @@ std::optional<DatalogProgram> DatalogLoader::program()
            std::shared_ptr<souffle::SouffleProgram>(souffle::ProgramFactory::newInstance(Name)))
     {
         DatalogProgram Program{SouffleProgram};
-
-        Decoders.Format.populate(Program);
-        Decoders.Symbols.populate(Program);
-        Decoders.Sections.populate(Program);
-        Decoders.AuxData.populate(Program);
-
+        for(auto& Decoder : Decoders)
+        {
+            Decoder->populate(Program);
+        }
         return Program;
     }
     return std::nullopt;
@@ -83,33 +82,34 @@ std::optional<DatalogProgram> DatalogLoader::program()
 
 void DatalogLoader::load(const gtirb::Module& Module)
 {
-    // Load all GTIRB sections.
-    for(const auto& Section : Module.sections())
+    for(auto& Decoder : Decoders)
     {
-        Decoders.Sections.load(Section);
+        Decoder->load(Module);
     }
-
-    // Load all GTIRB symbols.
-    Decoders.Symbols.load(Module);
-
-    // Load all auxiliary data tables.
-    Decoders.AuxData.load(Module);
-
-    // TODO:
-    // Load all exceptions information.
-    // ExceptionDecoder.load(Module);
 }
 
 void FormatDecoder::load(const gtirb::Module& Module)
 {
+    // Binary architecture.
     BinaryIsa = isa(Module.getISA());
+
+    // Binary file format.
     BinaryFormat = format(Module.getFileFormat());
+
+    // Binary entry point.
     if(const gtirb::CodeBlock* Block = Module.getEntryPoint())
     {
         if(std::optional<gtirb::Addr> Addr = Block->getAddress())
         {
             EntryPoint = *Addr;
         }
+    }
+
+    // Binary object type.
+    if(auto S = Module.getAuxData<gtirb::schema::BinaryType>())
+    {
+        // FIXME: Change toe AuxData type to a plain string.
+        BinaryType = S->at(0);
     }
 }
 
@@ -120,24 +120,27 @@ void FormatDecoder::populate(DatalogProgram& Program)
     Program.insert<std::vector<gtirb::Addr>>("entry_point", {EntryPoint});
 }
 
-void SectionDecoder::load(const gtirb::Section& Section)
+void SectionDecoder::load(const gtirb::Module& Module)
 {
-    bool Executable = Section.isFlagSet(gtirb::SectionFlag::Executable);
-    bool Initialized = Section.isFlagSet(gtirb::SectionFlag::Initialized);
+    for(const auto& Section : Module.sections())
+    {
+        bool Executable = Section.isFlagSet(gtirb::SectionFlag::Executable);
+        bool Initialized = Section.isFlagSet(gtirb::SectionFlag::Initialized);
 
-    if(Executable)
-    {
-        for(const auto& ByteInterval : Section.byte_intervals())
+        if(Executable)
         {
-            Code.load(ByteInterval);
-            Data.load(ByteInterval);
+            for(const auto& ByteInterval : Section.byte_intervals())
+            {
+                Code.load(ByteInterval);
+                Data.load(ByteInterval);
+            }
         }
-    }
-    else if(Initialized)
-    {
-        for(const auto& ByteInterval : Section.byte_intervals())
+        else if(Initialized)
         {
-            Data.load(ByteInterval);
+            for(const auto& ByteInterval : Section.byte_intervals())
+            {
+                Data.load(ByteInterval);
+            }
         }
     }
 }

@@ -33,6 +33,13 @@
 #include "DatalogProgram.h"
 #include "DatalogUtils.h"
 
+class GtirbDecoder
+{
+public:
+    virtual void load(const gtirb::Module& M) = 0;
+    virtual void populate(DatalogProgram& P) = 0;
+};
+
 class DataDecoder
 {
 public:
@@ -44,8 +51,6 @@ public:
     };
 
     virtual void load(const gtirb::ByteInterval& I);
-    // virtual std::vector<Data<uint8_t>> bytes();
-    // virtual std::vector<Data<gtirb::Addr>> addresses();
 
 private:
     std::vector<Data<uint8_t>> Bytes;
@@ -67,7 +72,6 @@ public:
     };
 
     virtual void load(const gtirb::ByteInterval& I);
-
     virtual std::optional<Instruction> decode(const uint8_t* bytes, uint64_t size){};
 
 private:
@@ -75,13 +79,13 @@ private:
     std::vector<gtirb::Addr> InvalidInstructions;
 };
 
-class SectionDecoder
+class SectionDecoder : public GtirbDecoder
 {
 public:
     SectionDecoder() = default;
     SectionDecoder(InstructionDecoder& C, DataDecoder& D) : Code{C}, Data{D} {};
 
-    virtual void load(const gtirb::Section& S);
+    virtual void load(const gtirb::Module& M);
     virtual void populate(DatalogProgram& P){};
 
 private:
@@ -89,11 +93,11 @@ private:
     InstructionDecoder Code;
 };
 
-class FormatDecoder
+class FormatDecoder : public GtirbDecoder
 {
 public:
-    virtual void load(const gtirb::Module& M);
-    virtual void populate(DatalogProgram& P);
+    virtual void load(const gtirb::Module& M) override;
+    virtual void populate(DatalogProgram& P) override;
 
 private:
     std::string BinaryIsa;
@@ -102,15 +106,15 @@ private:
     gtirb::Addr EntryPoint;
 };
 
-class SymbolDecoder
+class SymbolDecoder : public GtirbDecoder
 {
 public:
     // TODO:
-    virtual void load(const gtirb::Module& M){};
-    virtual void populate(DatalogProgram& P){};
+    virtual void load(const gtirb::Module& M) override{};
+    virtual void populate(DatalogProgram& P) override{};
 };
 
-class AuxDataDecoder
+class AuxDataDecoder : public GtirbDecoder
 {
 public:
     // TODO:
@@ -121,14 +125,7 @@ public:
 class DatalogLoader
 {
 public:
-    struct GtirbDecoders
-    {
-        FormatDecoder Format;
-        SymbolDecoder Symbols;
-        SectionDecoder Sections;
-        AuxDataDecoder AuxData;
-        // ExceptionDecoder Exceptions;
-    };
+    using GtirbDecoders = std::vector<std::shared_ptr<GtirbDecoder>>;
 
     DatalogLoader(std::string N, GtirbDecoders D) : Name{N}, Decoders{D} {};
     ~DatalogLoader() = default;
@@ -136,9 +133,9 @@ public:
     virtual void load(const gtirb::Module& M);
     virtual std::optional<DatalogProgram> program();
 
-private:
+protected:
     std::string Name;
-    GtirbDecoders Decoders;
+    GtirbDecoders& Decoders;
 };
 
 #endif /* SRC_DATALOG_DECODER_H_ */
