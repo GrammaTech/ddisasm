@@ -75,6 +75,8 @@ public:
     virtual void load(const gtirb::ByteInterval& I);
     virtual void populate(DatalogProgram& P);
 
+    // TODO: Make this a pure-virtual method, which will have to be implemented
+    //       by an architecture-specific subclass
     virtual std::optional<Instruction> decode(const uint8_t* Bytes, uint64_t Size)
     {
         return std::nullopt;
@@ -97,6 +99,27 @@ public:
 private:
     DataDecoder Data;
     InstructionDecoder Code;
+};
+
+class SymbolDecoder : public GtirbDecoder
+{
+public:
+    struct Symbol
+    {
+        gtirb::Addr Addr;
+        uint64_t Size;
+        std::string Type;
+        std::string Binding;
+        std::string Visibility;
+        uint64_t SectionIndex;
+        std::string Name;
+    };
+
+    virtual void load(const gtirb::Module& M) override;
+    virtual void populate(DatalogProgram& P) override;
+
+private:
+    std::vector<Symbol> Symbols;
 };
 
 class FormatDecoder : public GtirbDecoder

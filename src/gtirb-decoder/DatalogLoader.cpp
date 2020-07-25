@@ -24,7 +24,7 @@
 #include "DatalogLoader.h"
 #include "../AuxDataSchema.h"
 
-const char* format(const gtirb::FileFormat Format)
+const char* binaryFormat(const gtirb::FileFormat Format)
 {
     switch(Format)
     {
@@ -50,7 +50,7 @@ const char* format(const gtirb::FileFormat Format)
     }
 }
 
-const char* isa(gtirb::ISA Arch)
+const char* binaryISA(gtirb::ISA Arch)
 {
     switch(Arch)
     {
@@ -93,10 +93,10 @@ void DatalogLoader::load(const gtirb::Module& Module)
 void FormatDecoder::load(const gtirb::Module& Module)
 {
     // Binary architecture.
-    BinaryIsa = isa(Module.getISA());
+    BinaryIsa = binaryISA(Module.getISA());
 
     // Binary file format.
-    BinaryFormat = format(Module.getFileFormat());
+    BinaryFormat = binaryFormat(Module.getFileFormat());
 
     // Binary entry point.
     if(const gtirb::CodeBlock* Block = Module.getEntryPoint())
@@ -123,6 +123,21 @@ void FormatDecoder::populate(DatalogProgram& Program)
     Program.insert<std::vector<std::string>>("binary_type", {BinaryIsa});
     Program.insert<std::vector<std::string>>("binary_format", {BinaryFormat});
     Program.insert<std::vector<gtirb::Addr>>("entry_point", {EntryPoint});
+}
+
+void SymbolDecoder::load(const gtirb::Module& Module)
+{
+    for(auto& Symbol : Module.symbols())
+    {
+        std::string Name = Symbol.getName();
+        gtirb::Addr Addr = Symbol.getAddress().value_or(gtirb::Addr(0));
+        Symbols.push_back({Addr, 0, "NOTYPE", "GLOBAL", "DEFAULT", 0, Name});
+    }
+}
+
+void SymbolDecoder::populate(DatalogProgram& Program)
+{
+    // Program.insert("symbol", Symbols);
 }
 
 void SectionDecoder::load(const gtirb::Module& Module)
@@ -184,6 +199,11 @@ void InstructionDecoder::populate(DatalogProgram& Program)
 {
     // Program.insert("instruction_complete", Instructions);
     // Program.insert("invalid_op_code", InvalidInstructions);
+    // GtirbToDatalog::addToRelation(prog, "op_regdirect", op_dict.regTable);
+    // GtirbToDatalog::addToRelation(prog, "op_immediate", op_dict.immTable);
+    // GtirbToDatalog::addToRelation(prog, "op_indirect", op_dict.indirectTable);
+    // GtirbToDatalog::addToRelation(prog, "op_prefetch", op_dict.prefetchTable);
+    // GtirbToDatalog::addToRelation(prog, "op_barrier", op_dict.barrierTable);
 }
 
 void DataDecoder::load(const gtirb::ByteInterval& ByteInterval)
