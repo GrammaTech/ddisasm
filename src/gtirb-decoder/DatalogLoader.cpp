@@ -142,33 +142,54 @@ void SymbolDecoder::populate(DatalogProgram& Program)
 
 void SectionDecoder::load(const gtirb::Module& Module)
 {
+    // FIXME: We should either rename this AuxData table or split it.
+    auto* SectionProperties = Module.getAuxData<gtirb::schema::ElfSectionProperties>();
+
+    // FIXME: Error handling.
+    if(!SectionProperties)
+    {
+        throw std::logic_error("missing elfSectionProperties AuxData table");
+    }
+
     for(const auto& Section : Module.sections())
     {
-        bool Executable = Section.isFlagSet(gtirb::SectionFlag::Executable);
-        bool Initialized = Section.isFlagSet(gtirb::SectionFlag::Initialized);
+        assert(Section.getAddress() && "Section has no address.");
+        assert(Section.getSize() && "Section has non-calculable size.");
 
-        if(Executable)
+        auto It = SectionProperties->find(Section.getUUID());
+
+        // FIXME: Error handling.
+        if(It == SectionProperties->end())
         {
-            for(const auto& ByteInterval : Section.byte_intervals())
-            {
-                Code.load(ByteInterval);
-                Data.load(ByteInterval);
-            }
+            throw std::logic_error("Section " + Section.getName()
+                                   + " missing from elfSectionProperties AuxData table");
         }
-        else if(Initialized)
-        {
-            for(const auto& ByteInterval : Section.byte_intervals())
-            {
-                Data.load(ByteInterval);
-            }
-        }
+
+        auto [Type, Flags] = It->second;
+        Sections.push_back(
+            {Section.getName(), *Section.getSize(), *Section.getAddress(), Type, Flags});
     }
 }
 
 void SectionDecoder::populate(DatalogProgram& Program)
 {
-    Code.populate(Program);
-    Data.populate(Program);
+    // Program.insert("section_complete", Sections);
+}
+
+void InstructionDecoder::load(const gtirb::Module& Module)
+{
+    for(const auto& Section : Module.sections())
+    {
+        bool Executable = Section.isFlagSet(gtirb::SectionFlag::Executable);
+
+        if(Executable)
+        {
+            for(const auto& ByteInterval : Section.byte_intervals())
+            {
+                load(ByteInterval);
+            }
+        }
+    }
 }
 
 void InstructionDecoder::load(const gtirb::ByteInterval& ByteInterval)
@@ -204,6 +225,23 @@ void InstructionDecoder::populate(DatalogProgram& Program)
     // GtirbToDatalog::addToRelation(prog, "op_indirect", op_dict.indirectTable);
     // GtirbToDatalog::addToRelation(prog, "op_prefetch", op_dict.prefetchTable);
     // GtirbToDatalog::addToRelation(prog, "op_barrier", op_dict.barrierTable);
+}
+
+void DataDecoder::load(const gtirb::Module& Module)
+{
+    for(const auto& Section : Module.sections())
+    {
+        bool Initialized = Section.isFlagSet(gtirb::SectionFlag::Initialized);
+        bool Executable = Section.isFlagSet(gtirb::SectionFlag::Executable);
+
+        if(Executable || Initialized)
+        {
+            for(const auto& ByteInterval : Section.byte_intervals())
+            {
+                load(ByteInterval);
+            }
+        }
+    }
 }
 
 void DataDecoder::load(const gtirb::ByteInterval& ByteInterval)

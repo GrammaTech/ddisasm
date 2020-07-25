@@ -40,7 +40,7 @@ public:
     virtual void populate(DatalogProgram& P) = 0;
 };
 
-class DataDecoder
+class DataDecoder : public GtirbDecoder
 {
 public:
     template <class T>
@@ -50,20 +50,21 @@ public:
         T Item;
     };
 
-    virtual void load(const gtirb::ByteInterval& I);
-    virtual void populate(DatalogProgram& P);
+    void load(const gtirb::Module& M) override;
+    void load(const gtirb::ByteInterval& I);
+    void populate(DatalogProgram& P) override;
 
 private:
     std::vector<Data<uint8_t>> Bytes;
     std::vector<Data<gtirb::Addr>> Addresses;
 };
 
-class InstructionDecoder
+class InstructionDecoder : public GtirbDecoder
 {
 public:
     struct Instruction
     {
-        uint64_t Address;
+        gtirb::Addr Address;
         long Size;
         std::string Prefix;
         std::string Name;
@@ -72,8 +73,9 @@ public:
         uint8_t DisplacementOffset;
     };
 
-    virtual void load(const gtirb::ByteInterval& I);
-    virtual void populate(DatalogProgram& P);
+    void load(const gtirb::Module& M) override;
+    void load(const gtirb::ByteInterval& I);
+    void populate(DatalogProgram& P) override;
 
     // TODO: Make this a pure-virtual method, which will have to be implemented
     //       by an architecture-specific subclass
@@ -90,15 +92,20 @@ private:
 class SectionDecoder : public GtirbDecoder
 {
 public:
-    SectionDecoder() = default;
-    SectionDecoder(InstructionDecoder& C, DataDecoder& D) : Code{C}, Data{D} {};
+    struct Section
+    {
+        std::string Name;
+        uint64_t Size;
+        gtirb::Addr Addr;
+        uint64_t Type;
+        uint64_t Flags;
+    };
 
-    virtual void load(const gtirb::Module& M) override;
-    virtual void populate(DatalogProgram& P) override;
+    void load(const gtirb::Module& M) override;
+    void populate(DatalogProgram& P) override;
 
 private:
-    DataDecoder Data;
-    InstructionDecoder Code;
+    std::vector<Section> Sections;
 };
 
 class SymbolDecoder : public GtirbDecoder
@@ -115,8 +122,8 @@ public:
         std::string Name;
     };
 
-    virtual void load(const gtirb::Module& M) override;
-    virtual void populate(DatalogProgram& P) override;
+    void load(const gtirb::Module& M) override;
+    void populate(DatalogProgram& P) override;
 
 private:
     std::vector<Symbol> Symbols;
@@ -125,8 +132,8 @@ private:
 class FormatDecoder : public GtirbDecoder
 {
 public:
-    virtual void load(const gtirb::Module& M) override;
-    virtual void populate(DatalogProgram& P) override;
+    void load(const gtirb::Module& M) override;
+    void populate(DatalogProgram& P) override;
 
 private:
     std::string BinaryIsa;
@@ -140,13 +147,19 @@ class DatalogLoader
 public:
     using GtirbDecoders = std::vector<std::shared_ptr<GtirbDecoder>>;
 
-    DatalogLoader(std::string N, GtirbDecoders D) : Name{N}, Decoders{D} {};
+    DatalogLoader(std::string N) : Name{N}, Decoders{} {};
     ~DatalogLoader() = default;
 
-    virtual void load(const gtirb::Module& M);
-    virtual std::optional<DatalogProgram> program();
+    void load(const gtirb::Module& M);
+    std::optional<DatalogProgram> program();
 
-protected:
+    template <typename T>
+    void add()
+    {
+        Decoders.push_back(std::make_shared<T>());
+    }
+
+private:
     std::string Name;
     GtirbDecoders Decoders;
 };

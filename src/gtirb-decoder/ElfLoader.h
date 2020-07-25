@@ -1,4 +1,4 @@
-//===- DatalogProgram.h -----------------------------------------*- C++ -*-===//
+//===- ElfLoader.h ----------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -20,26 +20,34 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_DATALOG_PROGRAM_H_
-#define SRC_DATALOG_PROGRAM_H_
-
-#include <memory>
-
-#include <souffle/SouffleInterface.h>
+#ifndef SRC_ELF_LOADER_H_
+#define SRC_ELF_LOADER_H_
 
 #include "DatalogLoader.h"
 
-class DatalogProgram
+class ElfSymbolDecoder : public SymbolDecoder
 {
 public:
-    DatalogProgram(std::shared_ptr<souffle::SouffleProgram> P) : Program{P} {};
-    ~DatalogProgram() = default;
+    using Symbol = SymbolDecoder::Symbol;
 
-    template <typename T>
-    void insert(const std::string& Name, const T& Data);
+    void load(const gtirb::Module& M) override;
+    void populate(DatalogProgram& P) override;
 
 private:
-    std::shared_ptr<souffle::SouffleProgram> Program;
+    std::vector<Symbol> Symbols;
 };
 
-#endif /* SRC_DATALOG_PROGRAM_H_ */
+class ElfLoader : public DatalogLoader
+{
+public:
+    ElfLoader() : DatalogLoader("souffle_disasm_x64")
+    {
+        add<FormatDecoder>();
+        add<SectionDecoder>();
+        add<InstructionDecoder>();
+        add<DataDecoder>();
+        add<ElfSymbolDecoder>();
+    }
+};
+
+#endif /* SRC_ELF_LOADER_H_ */

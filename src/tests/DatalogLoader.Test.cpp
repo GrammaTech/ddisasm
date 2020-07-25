@@ -16,17 +16,18 @@ class TestDecoder : public GtirbDecoder
 
 TEST_P(DatalogLoaderTest, loadElfGtirb)
 {
+    // Create GTIRB.
     auto GTIRB = GtirbBuilder::read(GetParam());
     EXPECT_TRUE(GTIRB);
-
     gtirb::Module &Module = *(GTIRB->IR->modules().begin());
 
-    std::vector<std::shared_ptr<GtirbDecoder>> Decoders = {
-        std::make_shared<TestDecoder>(),
-        std::make_shared<SectionDecoder>(),
-    };
-    DatalogLoader ElfLoader = DatalogLoader("test", Decoders);
-    ElfLoader.load(Module);
+    // Load GTIRB.
+    DatalogLoader TestLoader = DatalogLoader("test");
+    TestLoader.add<TestDecoder>();
+    TestLoader.load(Module);
+
+    // Build Souffle context.
+    std::optional<DatalogProgram> TestProgram = TestLoader.program();
 }
 
 INSTANTIATE_TEST_SUITE_P(GtirbDecoderTests, DatalogLoaderTest,
