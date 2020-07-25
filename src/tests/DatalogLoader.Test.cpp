@@ -16,6 +16,7 @@ TEST_P(DatalogLoaderTest, loadElfGtirb)
 {
     auto GTIRB = GtirbBuilder::read(GetParam());
     EXPECT_TRUE(GTIRB);
+
     gtirb::Module &Module = *(GTIRB->IR->modules().begin());
 
     std::vector<std::shared_ptr<GtirbDecoder>> Decoders = {

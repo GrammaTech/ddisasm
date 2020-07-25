@@ -23,7 +23,6 @@
 
 #include "DatalogLoader.h"
 #include "../AuxDataSchema.h"
-#include "DatalogProgram.h"
 
 const char* format(const gtirb::FileFormat Format)
 {
@@ -82,9 +81,12 @@ std::optional<DatalogProgram> DatalogLoader::program()
 
 void DatalogLoader::load(const gtirb::Module& Module)
 {
-    for(auto& Decoder : Decoders)
+    for(std::shared_ptr<GtirbDecoder> Decoder : Decoders)
     {
-        Decoder->load(Module);
+        if(Decoder)
+        {
+            Decoder->load(Module);
+        }
     }
 }
 
@@ -106,10 +108,13 @@ void FormatDecoder::load(const gtirb::Module& Module)
     }
 
     // Binary object type.
-    if(auto S = Module.getAuxData<gtirb::schema::BinaryType>())
+    if(auto AuxData = Module.getAuxData<gtirb::schema::BinaryType>())
     {
         // FIXME: Change toe AuxData type to a plain string.
-        BinaryType = S->at(0);
+        for(auto& Type : *AuxData)
+        {
+            BinaryType = Type;
+        }
     }
 }
 
@@ -118,6 +123,22 @@ void FormatDecoder::populate(DatalogProgram& Program)
     Program.insert<std::vector<std::string>>("binary_type", {BinaryIsa});
     Program.insert<std::vector<std::string>>("binary_format", {BinaryFormat});
     Program.insert<std::vector<gtirb::Addr>>("entry_point", {EntryPoint});
+}
+
+void SymbolDecoder::load(const gtirb::Module& Module)
+{
+}
+
+void SymbolDecoder::populate(DatalogProgram& Program)
+{
+}
+
+void AuxDataDecoder::load(const gtirb::Module& Module)
+{
+}
+
+void AuxDataDecoder::populate(DatalogProgram& Program)
+{
 }
 
 void SectionDecoder::load(const gtirb::Module& Module)
@@ -132,7 +153,7 @@ void SectionDecoder::load(const gtirb::Module& Module)
             for(const auto& ByteInterval : Section.byte_intervals())
             {
                 Code.load(ByteInterval);
-                Data.load(ByteInterval);
+                // Data.load(ByteInterval);
             }
         }
         else if(Initialized)
@@ -143,6 +164,10 @@ void SectionDecoder::load(const gtirb::Module& Module)
             }
         }
     }
+}
+
+void SectionDecoder::populate(DatalogProgram& Program)
+{
 }
 
 void InstructionDecoder::load(const gtirb::ByteInterval& ByteInterval)

@@ -20,8 +20,8 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_DATALOG_DECODER_H_
-#define SRC_DATALOG_DECODER_H_
+#ifndef SRC_DATALOG_LOADER_H_
+#define SRC_DATALOG_LOADER_H_
 
 #include <optional>
 #include <string>
@@ -72,7 +72,10 @@ public:
     };
 
     virtual void load(const gtirb::ByteInterval& I);
-    virtual std::optional<Instruction> decode(const uint8_t* bytes, uint64_t size){};
+    virtual std::optional<Instruction> decode(const uint8_t* Bytes, uint64_t Size)
+    {
+        return std::nullopt;
+    }
 
 private:
     std::vector<Instruction> Instructions;
@@ -85,8 +88,8 @@ public:
     SectionDecoder() = default;
     SectionDecoder(InstructionDecoder& C, DataDecoder& D) : Code{C}, Data{D} {};
 
-    virtual void load(const gtirb::Module& M);
-    virtual void populate(DatalogProgram& P){};
+    virtual void load(const gtirb::Module& M) override;
+    virtual void populate(DatalogProgram& P) override;
 
 private:
     DataDecoder Data;
@@ -109,17 +112,15 @@ private:
 class SymbolDecoder : public GtirbDecoder
 {
 public:
-    // TODO:
-    virtual void load(const gtirb::Module& M) override{};
-    virtual void populate(DatalogProgram& P) override{};
+    virtual void load(const gtirb::Module& M) override;
+    virtual void populate(DatalogProgram& P) override;
 };
 
 class AuxDataDecoder : public GtirbDecoder
 {
 public:
-    // TODO:
-    void load(const gtirb::Module& M){};
-    virtual void populate(DatalogProgram& P){};
+    virtual void load(const gtirb::Module& M) override;
+    virtual void populate(DatalogProgram& P) override;
 };
 
 class DatalogLoader
@@ -135,7 +136,7 @@ public:
 
 protected:
     std::string Name;
-    GtirbDecoders& Decoders;
+    GtirbDecoders Decoders;
 };
 
-#endif /* SRC_DATALOG_DECODER_H_ */
+#endif /* SRC_DATALOG_LOADER_H_ */
