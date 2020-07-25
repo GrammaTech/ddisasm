@@ -30,12 +30,12 @@
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 
+#include "DatalogProgram.h"
+#include "DatalogUtils.h"
+
 class DataDecoder
 {
 public:
-    DataDecoder() = default;
-    ~DataDecoder() = default;
-
     template <class T>
     struct Data
     {
@@ -44,6 +44,8 @@ public:
     };
 
     virtual void load(const gtirb::ByteInterval& I);
+    // virtual std::vector<Data<uint8_t>> bytes();
+    // virtual std::vector<Data<gtirb::Addr>> addresses();
 
 private:
     std::vector<Data<uint8_t>> Bytes;
@@ -53,9 +55,6 @@ private:
 class InstructionDecoder
 {
 public:
-    InstructionDecoder() = default;
-    ~InstructionDecoder() = default;
-
     struct Instruction
     {
         uint64_t Address;
@@ -69,8 +68,7 @@ public:
 
     virtual void load(const gtirb::ByteInterval& I);
 
-protected:
-    virtual std::optional<Instruction> decode(const uint8_t* bytes, uint64_t size);
+    virtual std::optional<Instruction> decode(const uint8_t* bytes, uint64_t size){};
 
 private:
     std::vector<Instruction> Instructions;
@@ -81,30 +79,66 @@ class SectionDecoder
 {
 public:
     SectionDecoder() = default;
-    ~SectionDecoder() = default;
-
     SectionDecoder(InstructionDecoder& C, DataDecoder& D) : Code{C}, Data{D} {};
 
     virtual void load(const gtirb::Section& S);
+    virtual void populate(DatalogProgram& P){};
 
 private:
     DataDecoder Data;
     InstructionDecoder Code;
 };
 
+class FormatDecoder
+{
+public:
+    virtual void load(const gtirb::Module& M);
+    virtual void populate(DatalogProgram& P);
+
+private:
+    std::string BinaryIsa;
+    std::string BinaryFormat;
+    std::string BinaryType;
+    gtirb::Addr EntryPoint;
+};
+
+class SymbolDecoder
+{
+public:
+    // TODO:
+    virtual void load(const gtirb::Module& M){};
+    virtual void populate(DatalogProgram& P){};
+};
+
+class AuxDataDecoder
+{
+public:
+    // TODO:
+    void load(const gtirb::Module& M){};
+    virtual void populate(DatalogProgram& P){};
+};
+
 class DatalogLoader
 {
 public:
-    DatalogLoader(const std::string& N) : Name{N} {};
-    DatalogLoader(const std::string& N, SectionDecoder L) : Name{N}, Sections{L} {};
+    struct GtirbDecoders
+    {
+        FormatDecoder Format;
+        SymbolDecoder Symbols;
+        SectionDecoder Sections;
+        AuxDataDecoder AuxData;
+        // ExceptionDecoder Exceptions;
+    };
+
+    DatalogLoader(std::string N, GtirbDecoders D) : Name{N}, Decoders{D} {};
     ~DatalogLoader() = default;
 
-    virtual void load(const gtirb::Context& C, const gtirb::Module& M);
-    virtual std::optional<std::shared_ptr<souffle::SouffleProgram>> prog();
+    virtual void load(const gtirb::Module& M);
+    virtual std::optional<DatalogProgram> program();
 
 private:
     std::string Name;
-    SectionDecoder Sections;
+    GtirbDecoders Decoders;
 };
 
 #endif /* SRC_DATALOG_DECODER_H_ */

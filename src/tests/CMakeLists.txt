@@ -9,7 +9,7 @@ else()
 endif()
 
 add_executable(TestDdisasm Main.Test.cpp SccPass.Test.cpp NoReturnPass.Test.cpp
-                           ElfReader.Test.cpp)
+                           ElfReader.Test.cpp DatalogLoader.Test.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_link_libraries(
@@ -20,6 +20,7 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
     gtest_main
     gtirb
     gtirb_builder
+    gtirb_decoder
     scc_pass
     no_return_pass)
   target_link_options(${PROJECT_NAME} PRIVATE
@@ -33,6 +34,7 @@ else()
     gtest_main
     gtirb
     gtirb_builder
+    gtirb_decoder
     scc_pass
     -Wl,--whole-archive
     no_return_pass

@@ -22,25 +22,102 @@
 //===----------------------------------------------------------------------===//
 
 #include "DatalogLoader.h"
+#include "DatalogProgram.h"
 
-std::optional<std::shared_ptr<souffle::SouffleProgram>> DatalogLoader::prog()
+const char* format(const gtirb::FileFormat Format)
+{
+    switch(Format)
+    {
+        case gtirb::FileFormat::COFF:
+            return "COFF";
+        case gtirb::FileFormat::ELF:
+            return "ELF";
+        case gtirb::FileFormat::PE:
+            return "PE";
+        case gtirb::FileFormat::IdaProDb32:
+            return "IdaProDb32";
+        case gtirb::FileFormat::IdaProDb64:
+            return "IdaProDb64";
+        case gtirb::FileFormat::XCOFF:
+            return "XCOFF";
+        case gtirb::FileFormat::MACHO:
+            return "MACHO";
+        case gtirb::FileFormat::RAW:
+            return "RAW";
+        case gtirb::FileFormat::Undefined:
+        default:
+            return "Undefined";
+    }
+}
+
+const char* isa(gtirb::ISA Arch)
+{
+    switch(Arch)
+    {
+        case gtirb::ISA::X64:
+            return "X64";
+        case gtirb::ISA::ARM64:
+            return "ARM";
+        default:
+            return "Undefined";
+    }
+}
+
+std::optional<DatalogProgram> DatalogLoader::program()
 {
     // Build the Souffle context.
-    if(auto Program =
+    if(auto SouffleProgram =
            std::shared_ptr<souffle::SouffleProgram>(souffle::ProgramFactory::newInstance(Name)))
     {
+        DatalogProgram Program{SouffleProgram};
+
+        Decoders.Format.populate(Program);
+        Decoders.Symbols.populate(Program);
+        Decoders.Sections.populate(Program);
+        Decoders.AuxData.populate(Program);
+
         return Program;
     }
     return std::nullopt;
 }
 
-void DatalogLoader::load(const gtirb::Context& Context, const gtirb::Module& Module)
+void DatalogLoader::load(const gtirb::Module& Module)
 {
     // Load all GTIRB sections.
     for(const auto& Section : Module.sections())
     {
-        Sections.load(Section);
+        Decoders.Sections.load(Section);
     }
+
+    // Load all GTIRB symbols.
+    Decoders.Symbols.load(Module);
+
+    // Load all auxiliary data tables.
+    Decoders.AuxData.load(Module);
+
+    // TODO:
+    // Load all exceptions information.
+    // ExceptionDecoder.load(Module);
+}
+
+void FormatDecoder::load(const gtirb::Module& Module)
+{
+    BinaryIsa = isa(Module.getISA());
+    BinaryFormat = format(Module.getFileFormat());
+    if(const gtirb::CodeBlock* Block = Module.getEntryPoint())
+    {
+        if(std::optional<gtirb::Addr> Addr = Block->getAddress())
+        {
+            EntryPoint = *Addr;
+        }
+    }
+}
+
+void FormatDecoder::populate(DatalogProgram& Program)
+{
+    Program.insert<std::vector<std::string>>("binary_type", {BinaryIsa});
+    Program.insert<std::vector<std::string>>("binary_format", {BinaryFormat});
+    Program.insert<std::vector<gtirb::Addr>>("entry_point", {EntryPoint});
 }
 
 void SectionDecoder::load(const gtirb::Section& Section)
