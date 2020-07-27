@@ -27,14 +27,64 @@
 
 #include <capstone/capstone.h>
 
-using Instruction = InstructionDecoder::Instruction;
-
-using Operand = std::variant<InstructionDecoder::ImmOp, InstructionDecoder::RegOp,
-                             InstructionDecoder::IndirectOp>;
-
 class Arm64Decoder : public InstructionDecoder
 {
 public:
+    using Instruction = InstructionDecoder::Instruction;
+
+    struct BarrierOp
+    {
+        std::string Value;
+        bool operator<(const BarrierOp& Op) const noexcept
+        {
+            return Value < Op.Value;
+        }
+    };
+
+    struct PrefetchOp
+    {
+        std::string Value;
+        bool operator<(const PrefetchOp& Op) const noexcept
+        {
+            return Value < Op.Value;
+        }
+    };
+
+    using Operand = std::variant<InstructionDecoder::ImmOp, InstructionDecoder::RegOp,
+                                 InstructionDecoder::IndirectOp, PrefetchOp, BarrierOp>;
+
+    struct OperandTable : public InstructionDecoder::OperandTable
+    {
+        // TODO: Why do we have to redefine these?
+        uint64_t operator()(ImmOp Op)
+        {
+            return add(ImmTable, Op);
+        }
+
+        uint64_t operator()(RegOp Op)
+        {
+            return add(RegTable, Op);
+        }
+
+        uint64_t operator()(IndirectOp Op)
+        {
+            return add(IndirectTable, Op);
+        }
+
+        uint64_t operator()(BarrierOp Op)
+        {
+            return add(BarrierTable, Op);
+        }
+
+        uint64_t operator()(PrefetchOp Op)
+        {
+            return add(PrefetchTable, Op);
+        }
+
+        std::map<BarrierOp, uint64_t> BarrierTable;
+        std::map<PrefetchOp, uint64_t> PrefetchTable;
+    };
+
     Arm64Decoder()
     {
         [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM64, CS_MODE_64, &CsHandle);
@@ -49,6 +99,8 @@ public:
     std::optional<Instruction> disasm(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
 private:
+    OperandTable Operands;
+
     std::optional<Operand> build(const cs_arm64_op& CsOp);
     std::optional<Instruction> build(const cs_insn& CsInstruction);
     std::tuple<std::string, std::string> splitMnemonic(const cs_insn& CsInstruction);

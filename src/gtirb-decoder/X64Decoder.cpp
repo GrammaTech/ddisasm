@@ -27,7 +27,8 @@
 #include <algorithm>
 #include <string>
 
-std::optional<Instruction> X64Decoder::disasm(const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
+std::optional<X64Decoder::Instruction> X64Decoder::disasm(const uint8_t* Bytes, uint64_t Size,
+                                                          uint64_t Addr)
 {
     cs_insn* Instruction;
     size_t Count = cs_disasm(CsHandle, Bytes, Size, Addr, 1, &Instruction);
@@ -39,7 +40,7 @@ std::optional<Instruction> X64Decoder::disasm(const uint8_t* Bytes, uint64_t Siz
     return std::nullopt;
 }
 
-std::optional<Instruction> X64Decoder::build(const cs_insn& CsInstruction)
+std::optional<X64Decoder::Instruction> X64Decoder::build(const cs_insn& CsInstruction)
 {
     cs_x86& Details = CsInstruction.detail->x86;
     auto [Prefix, Name] = splitMnemonic(CsInstruction);
@@ -54,7 +55,7 @@ std::optional<Instruction> X64Decoder::build(const cs_insn& CsInstruction)
             cs_x86_op& CsOp = Details.operands[i];
 
             // Build operand for datalog fact.
-            std::optional<Operand> Op = build(CsOp);
+            std::optional<X64Decoder::Operand> Op = build(CsOp);
             if(!Op)
             {
                 return std::nullopt;
@@ -73,7 +74,7 @@ std::optional<Instruction> X64Decoder::build(const cs_insn& CsInstruction)
 
     uint64_t Addr(CsInstruction.address), Size(CsInstruction.size);
     uint8_t Imm(Details.encoding.imm_offset), Disp(Details.encoding.disp_offset);
-    return Instruction{Addr, Size, Prefix, Name, OpCodes, Imm, Disp};
+    return X64Decoder::Instruction{Addr, Size, Prefix, Name, OpCodes, Imm, Disp};
 }
 
 std::tuple<std::string, std::string> X64Decoder::splitMnemonic(const cs_insn& CsInstruction)
@@ -101,7 +102,7 @@ std::tuple<std::string, std::string> X64Decoder::splitMnemonic(const cs_insn& Cs
     return {Prefix, Name};
 }
 
-std::optional<Operand> X64Decoder::build(const cs_x86_op& CsOp)
+std::optional<X64Decoder::Operand> X64Decoder::build(const cs_x86_op& CsOp)
 {
     // FIXME:
     auto str_toupper = [](std::string s) {

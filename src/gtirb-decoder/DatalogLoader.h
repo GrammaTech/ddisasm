@@ -91,6 +91,8 @@ public:
         };
     };
 
+    using Operand = std::variant<ImmOp, RegOp, IndirectOp>;
+
     struct OperandTable
     {
         template <typename T>
