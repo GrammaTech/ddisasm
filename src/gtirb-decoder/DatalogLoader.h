@@ -150,7 +150,7 @@ public:
     DatalogLoader(std::string N) : Name{N}, Decoders{} {};
     ~DatalogLoader() = default;
 
-    void load(const gtirb::Module& M);
+    void decode(const gtirb::Module& M);
     std::optional<DatalogProgram> program();
 
     template <typename T>

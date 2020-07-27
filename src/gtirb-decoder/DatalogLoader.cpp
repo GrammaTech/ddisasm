@@ -79,7 +79,7 @@ std::optional<DatalogProgram> DatalogLoader::program()
     return std::nullopt;
 }
 
-void DatalogLoader::load(const gtirb::Module& Module)
+void DatalogLoader::decode(const gtirb::Module& Module)
 {
     for(std::shared_ptr<GtirbDecoder> Decoder : Decoders)
     {

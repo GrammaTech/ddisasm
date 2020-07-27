@@ -29,14 +29,40 @@
 
 #include "DatalogLoader.h"
 
+class DatalogLoader;
+
 class DatalogProgram
 {
 public:
     DatalogProgram(std::shared_ptr<souffle::SouffleProgram> P) : Program{P} {};
     ~DatalogProgram() = default;
 
+    static std::optional<DatalogProgram> load(gtirb::Module& Module);
+
     template <typename T>
     void insert(const std::string& Name, const T& Data);
+
+    void writeFacts(const std::string& Directory);
+    void writeRelations(const std::string& Directory)
+    {
+        Program->printAll(Directory);
+    }
+
+    void threads(uint8_t N)
+    {
+        Program->setNumThreads(N);
+    }
+
+    void run()
+    {
+        Program->run();
+    }
+
+    // FIXME:
+    souffle::SouffleProgram* operator*()
+    {
+        return Program.get();
+    }
 
 private:
     std::shared_ptr<souffle::SouffleProgram> Program;

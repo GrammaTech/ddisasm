@@ -24,7 +24,7 @@ TEST_P(DatalogLoaderTest, loadElfGtirb)
     // Load GTIRB.
     DatalogLoader TestLoader = DatalogLoader("test");
     TestLoader.add<TestDecoder>();
-    TestLoader.load(Module);
+    TestLoader.decode(Module);
 
     // Build Souffle context.
     std::optional<DatalogProgram> TestProgram = TestLoader.program();

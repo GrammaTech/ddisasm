@@ -42,9 +42,8 @@
 #include <gtirb_pprinter/PrettyPrinter.hpp>
 
 #include "gtirb-builder/GtirbBuilder.h"
-#include "gtirb-decoder/Arm64Decoder.h"
-#include "gtirb-decoder/DatalogUtils.h"
-#include "gtirb-decoder/X86Decoder.h"
+#include "gtirb-decoder/DatalogLoader.h"
+#include "gtirb-decoder/DatalogProgram.h"
 
 #include "AuxDataSchema.h"
 #include "Disassembler.h"
@@ -230,36 +229,16 @@ int main(int argc, char **argv)
     }
 
     // Decode and load GTIRB Module into the SouffleProgram context.
+    std::cerr << "Decoding the binary " << std::flush;
+    auto StartDecode = std::chrono::high_resolution_clock::now();
+    std::vector<std::string> DisasmOptions = createDisasmOptions(vm);
+
     gtirb::Module &Module = *(GTIRB->IR->modules().begin());
-    souffle::SouffleProgram *prog;
-    {
-        std::cerr << "Decoding the binary " << std::flush;
-        auto StartDecode = std::chrono::high_resolution_clock::now();
-        std::vector<std::string> DisasmOptions = createDisasmOptions(vm);
-
-        switch(Module.getISA())
-        {
-            case gtirb::ISA::X64:
-            {
-                X86Decoder Decoder;
-                prog = Decoder.decode(Module, DisasmOptions);
-            }
-            break;
-            case gtirb::ISA::ARM64:
-            {
-                Arm64Decoder Decoder;
-                prog = Decoder.decode(Module, DisasmOptions);
-            }
-            break;
-            default:
-                std::cerr << "Unsupported architecture\n";
-                return 1;
-        }
-
-        printElapsedTimeSince(StartDecode);
-    }
+    std::optional<DatalogProgram> Souffle = DatalogProgram::load(Module);
     // FIXME:
     // GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "option", DisasmOptions);
+
+    printElapsedTimeSince(StartDecode);
 
     // Remove initial entry point.
     if(gtirb::CodeBlock *Block = Module.getEntryPoint())
@@ -271,22 +250,22 @@ int main(int argc, char **argv)
     // Remove placeholder relocation data.
     Module.removeAuxData<gtirb::schema::Relocations>();
 
-    if(prog)
+    if(Souffle)
     {
         if(vm.count("debug-dir") != 0)
         {
             std::cerr << "Writing facts to debug dir " << vm["debug-dir"].as<std::string>()
                       << std::endl;
             auto dir = vm["debug-dir"].as<std::string>() + "/";
-            writeFacts(prog, dir);
+            Souffle->writeFacts(dir);
         }
         std::cerr << "Disassembling" << std::flush;
         unsigned int NThreads = vm["threads"].as<unsigned int>();
-        prog->setNumThreads(NThreads);
+        Souffle->threads(NThreads);
         auto StartDisassembling = std::chrono::high_resolution_clock::now();
         try
         {
-            prog->run();
+            Souffle->run();
         }
         catch(std::exception &e)
         {
@@ -295,7 +274,7 @@ int main(int argc, char **argv)
         printElapsedTimeSince(StartDisassembling);
         std::cerr << "Populating gtirb representation " << std::flush;
         auto StartGtirbBuilding = std::chrono::high_resolution_clock::now();
-        disassembleModule(*GTIRB->Context, Module, prog, vm.count("self-diagnose") != 0);
+        disassembleModule(*GTIRB->Context, Module, **Souffle, vm.count("self-diagnose") != 0);
         printElapsedTimeSince(StartGtirbBuilding);
 
         if(vm.count("skip-function-analysis") == 0)
@@ -387,10 +366,9 @@ int main(int argc, char **argv)
             std::cerr << "Writing results to debug dir " << vm["debug-dir"].as<std::string>()
                       << std::endl;
             auto dir = vm["debug-dir"].as<std::string>() + "/";
-            prog->printAll(dir);
+            Souffle->writeFacts(dir);
         }
-        performSanityChecks(prog, vm.count("self-diagnose") != 0);
-        delete prog;
+        performSanityChecks(**Souffle, vm.count("self-diagnose") != 0);
     }
     else
     {

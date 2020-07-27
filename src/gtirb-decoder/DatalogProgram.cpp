@@ -26,6 +26,8 @@
 #include "DatalogLoader.h"
 #include "DatalogProgram.h"
 
+#include "ElfLoader.h"
+
 namespace souffle
 {
     souffle::tuple &operator<<(souffle::tuple &T, const gtirb::Addr &A);
@@ -110,5 +112,43 @@ void DatalogProgram::insert(const std::string &Name,
             Row << Element;
             Relation->insert(Row);
         }
+    }
+}
+
+std::optional<DatalogProgram> DatalogProgram::load(gtirb::Module &Module)
+{
+    // TODO:
+    ElfLoader Loader;
+    Loader.decode(Module);
+    return Loader.program();
+}
+
+void DatalogProgram::writeFacts(const std::string &Directory)
+{
+    std::ios_base::openmode FileMask = std::ios::out;
+    for(souffle::Relation *Relation : Program->getInputRelations())
+    {
+        std::ofstream File(Directory + Relation->getName() + ".facts", FileMask);
+        souffle::SymbolTable SymbolTable = Relation->getSymbolTable();
+        for(souffle::tuple Tuple : *Relation)
+        {
+            for(size_t I = 0; I < Tuple.size(); I++)
+            {
+                if(I > 0)
+                {
+                    File << "\t";
+                }
+                if(Relation->getAttrType(I)[0] == 's')
+                {
+                    File << SymbolTable.resolve(Tuple[I]);
+                }
+                else
+                {
+                    File << Tuple[I];
+                }
+            }
+            File << std::endl;
+        }
+        File.close();
     }
 }
