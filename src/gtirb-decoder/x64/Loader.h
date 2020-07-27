@@ -1,4 +1,4 @@
-//===- X86Decoder.h ---------------------------------------------*- C++ -*-===//
+//===- x64Loader.h ----------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -20,24 +20,7 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#ifndef SRC_X64_LOADER_H_
+#define SRC_X64_LOADER_H_
 
-#ifndef SRC_X86_DECODER_H_
-#define SRC_X86_DECODER_H_
-
-#include <souffle/SouffleInterface.h>
-#include <gtirb/gtirb.hpp>
-
-#include "DatalogUtils.h"
-#include "DlDecoder.h"
-#include "DlOperandTable.h"
-
-class X86Decoder : public DlDecoder
-{
-public:
-    X86Decoder() : DlDecoder(gtirb::ISA::X64){};
-    souffle::SouffleProgram* decode(const gtirb::Module& module,
-                                    const std::vector<std::string>& DisasmOptions) override;
-    void decodeSection(const gtirb::ByteInterval& byteInterval) override;
-};
-
-#endif /* SRC_X86_DECODER_H_ */
+#endif

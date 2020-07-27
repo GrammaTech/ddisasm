@@ -231,12 +231,9 @@ int main(int argc, char **argv)
     // Decode and load GTIRB Module into the SouffleProgram context.
     std::cerr << "Decoding the binary " << std::flush;
     auto StartDecode = std::chrono::high_resolution_clock::now();
-    std::vector<std::string> DisasmOptions = createDisasmOptions(vm);
 
     gtirb::Module &Module = *(GTIRB->IR->modules().begin());
     std::optional<DatalogProgram> Souffle = DatalogProgram::load(Module);
-    // FIXME:
-    // GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "option", DisasmOptions);
 
     printElapsedTimeSince(StartDecode);
 
@@ -252,6 +249,9 @@ int main(int argc, char **argv)
 
     if(Souffle)
     {
+        // FIXME:
+        // Souffle->insert("option", createDisasmOptions(vm));
+
         if(vm.count("debug-dir") != 0)
         {
             std::cerr << "Writing facts to debug dir " << vm["debug-dir"].as<std::string>()

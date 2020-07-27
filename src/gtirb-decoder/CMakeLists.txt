@@ -24,7 +24,7 @@ endif()
 # GTIRB Decoder
 # ##############################################################################
 
-add_library(gtirb_decoder STATIC DlDecoder.cpp Arm64Decoder.cpp X86Decoder.cpp
+add_library(gtirb_decoder STATIC DlDecoder.cpp
   ExceptionDecoder.cpp DatalogLoader.cpp DatalogProgram.cpp
   ElfLoader.cpp)
 

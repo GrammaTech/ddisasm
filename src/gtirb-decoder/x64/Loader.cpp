@@ -1,4 +1,4 @@
-//===- Arm64Decoder.h -------------------------------------------*- C++ -*-===//
+//===- x64Loader.h ----------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -20,26 +20,3 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
-#ifndef SRC_ARM64_DECODER_H_
-#define SRC_ARM64_DECODER_H_
-
-#include <souffle/SouffleInterface.h>
-#include <gtirb/gtirb.hpp>
-
-#include "DatalogUtils.h"
-#include "DlDecoder.h"
-#include "DlOperandTable.h"
-
-class Arm64Decoder : public DlDecoder
-{
-public:
-    Arm64Decoder() : DlDecoder(gtirb::ISA::ARM64)
-    {
-    }
-    souffle::SouffleProgram* decode(const gtirb::Module& module,
-                                    const std::vector<std::string>& DisasmOptions) override;
-    void decodeSection(const gtirb::ByteInterval& byteInterval) override;
-};
-
-#endif /* SRC_ARM64_DECODER_H_ */
