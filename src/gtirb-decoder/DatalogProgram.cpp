@@ -58,10 +58,23 @@ void DatalogProgram::insert(const std::string &Name, const T &Data)
 
 std::optional<DatalogProgram> DatalogProgram::load(gtirb::Module &Module)
 {
-    // TODO:
-    ElfX64Loader Loader;
-    Loader.decode(Module);
-    return Loader.program();
+    // TODO: Target registration
+    switch(Module.getISA())
+    {
+        case gtirb::ISA::X64:
+        {
+            ElfX64Loader Loader;
+            Loader.decode(Module);
+            return Loader.program();
+        }
+        case gtirb::ISA::ARM64:
+        {
+            ElfArm64Loader Loader;
+            Loader.decode(Module);
+            return Loader.program();
+        }
+    }
+    return std::nullopt;
 }
 
 void DatalogProgram::writeFacts(const std::string &Directory)

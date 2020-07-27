@@ -23,23 +23,37 @@
 #ifndef SRC_ARM64_DECODER_H_
 #define SRC_ARM64_DECODER_H_
 
-#include "CapstoneDecoder.h"
 #include "DatalogLoader.h"
 
 #include <capstone/capstone.h>
 
-class Arm64Decoder : public CapstoneDecoder
+using Instruction = InstructionDecoder::Instruction;
+
+using Operand = std::variant<InstructionDecoder::ImmOp, InstructionDecoder::RegOp,
+                             InstructionDecoder::IndirectOp>;
+
+class Arm64Decoder : public InstructionDecoder
 {
 public:
-    Arm64Decoder() : CapstoneDecoder(CS_ARCH_ARM64, CS_MODE_ARM){};
-
-    std::optional<Instruction> disasm(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override
+    Arm64Decoder()
     {
-        return CapstoneDecoder::disasm(&cs_detail::arm64, Bytes, Size, Addr);
+        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM64, CS_MODE_64, &CsHandle);
+        assert(Err == CS_ERR_OK && "Failed to initialize ARM64 disassembler.");
+        cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
+    }
+    ~Arm64Decoder()
+    {
+        cs_close(&CsHandle);
     }
 
-protected:
+    std::optional<Instruction> disasm(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
+
+private:
     std::optional<Operand> build(const cs_arm64_op& CsOp);
+    std::optional<Instruction> build(const cs_insn& CsInstruction);
+    std::tuple<std::string, std::string> splitMnemonic(const cs_insn& CsInstruction);
+
+    csh CsHandle = CS_ERR_ARCH;
 };
 
 #endif /* SRC_ARM64_DECODER_H_ */

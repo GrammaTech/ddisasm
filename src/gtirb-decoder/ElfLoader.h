@@ -26,6 +26,8 @@
 #include "DatalogLoader.h"
 
 #include "ExceptionDecoder.h"
+
+#include "Arm64Decoder.h"
 #include "X64Decoder.h"
 
 class ElfSymbolDecoder : public SymbolDecoder
@@ -60,6 +62,21 @@ public:
         add<X64Decoder>();
         add<DataDecoder>();
         add<ElfSymbolDecoder>();
+        add<ElfExceptionDecoder>();
+    }
+};
+
+class ElfArm64Loader : public DatalogLoader
+{
+public:
+    ElfArm64Loader() : DatalogLoader("souffle_disasm_arm64")
+    {
+        add<FormatDecoder>();
+        add<SectionDecoder>();
+        add<Arm64Decoder>();
+        add<DataDecoder>();
+        add<ElfSymbolDecoder>();
+        add<ElfExceptionDecoder>();
     }
 };
 
