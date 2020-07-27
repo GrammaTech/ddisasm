@@ -59,7 +59,7 @@ void DatalogProgram::insert(const std::string &Name, const T &Data)
 std::optional<DatalogProgram> DatalogProgram::load(gtirb::Module &Module)
 {
     // TODO:
-    ElfLoader Loader;
+    ElfX64Loader Loader;
     Loader.decode(Module);
     return Loader.program();
 }

@@ -64,8 +64,8 @@ class InstructionDecoder : public GtirbDecoder
 public:
     struct Instruction
     {
-        gtirb::Addr Address;
-        long Size;
+        uint64_t Address;
+        uint64_t Size;
         std::string Prefix;
         std::string Name;
         std::vector<uint64_t> OpCodes;
@@ -73,18 +73,74 @@ public:
         uint8_t DisplacementOffset;
     };
 
+    using ImmOp = int64_t;
+
+    using RegOp = std::string;
+
+    struct IndirectOp
+    {
+        std::string reg1;
+        std::string reg2;
+        std::string reg3;
+        int64_t multiplier;
+        int64_t displacement;
+        int size;
+
+        constexpr bool operator<(const IndirectOp& Op) const noexcept
+        {
+            return std::tie(reg1, reg2, reg3, multiplier, displacement, size)
+                   < std::tie(Op.reg1, Op.reg2, Op.reg3, Op.multiplier, Op.displacement, Op.size);
+        };
+    };
+
+    struct OperandTable
+    {
+        template <typename T>
+        uint64_t add(std::map<T, uint64_t>& OpTable, T Op)
+        {
+            if(auto Pair = OpTable.find(Op); Pair != OpTable.end())
+            {
+                return Pair->second;
+            }
+            else
+            {
+                OpTable[Op] = Index;
+                return Index++;
+            }
+        }
+
+        uint64_t operator()(ImmOp Op)
+        {
+            return add(ImmTable, Op);
+        }
+
+        uint64_t operator()(RegOp Op)
+        {
+            return add(RegTable, Op);
+        }
+
+        uint64_t operator()(IndirectOp Op)
+        {
+            return add(IndirectTable, Op);
+        }
+
+        // We reserve 0 for empty operators.
+        uint64_t Index = 1;
+
+        std::map<ImmOp, uint64_t> ImmTable;
+        std::map<RegOp, uint64_t> RegTable;
+        std::map<IndirectOp, uint64_t> IndirectTable;
+    };
+
     void load(const gtirb::Module& M) override;
     void load(const gtirb::ByteInterval& I);
     void populate(DatalogProgram& P) override;
 
-    // TODO: Make this a pure-virtual method, which will have to be implemented
-    //       by an architecture-specific subclass
-    virtual std::optional<Instruction> decode(const uint8_t* Bytes, uint64_t Size)
-    {
-        return std::nullopt;
-    }
+    virtual std::optional<Instruction> disasm(const uint8_t* Bytes, uint64_t Size,
+                                              uint64_t Addr) = 0;
 
-private:
+protected:
+    OperandTable Operands;
     std::vector<Instruction> Instructions;
     std::vector<gtirb::Addr> InvalidInstructions;
 };

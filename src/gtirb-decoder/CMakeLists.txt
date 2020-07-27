@@ -26,7 +26,7 @@ endif()
 
 add_library(gtirb_decoder STATIC DlDecoder.cpp
   ExceptionDecoder.cpp DatalogLoader.cpp DatalogProgram.cpp
-  ElfLoader.cpp)
+  ElfLoader.cpp X64Decoder.cpp)
 
 target_link_libraries(gtirb_decoder datalog_utils gtirb ${ehp_LIBRARIES})
 

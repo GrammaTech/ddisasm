@@ -1,4 +1,4 @@
-//===- ElfLoader.h ----------------------------------------------*- C++ -*-===//
+//===- X64Decoder.h ---------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -20,36 +20,40 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_ELF_LOADER_H_
-#define SRC_ELF_LOADER_H_
+#ifndef SRC_X64_DECODER_H_
+#define SRC_X64_DECODER_H_
 
 #include "DatalogLoader.h"
 
-#include "X64Decoder.h"
+#include <capstone/capstone.h>
 
-class ElfSymbolDecoder : public SymbolDecoder
+using Instruction = InstructionDecoder::Instruction;
+
+using Operand = std::variant<InstructionDecoder::ImmOp, InstructionDecoder::RegOp,
+                             InstructionDecoder::IndirectOp>;
+
+class X64Decoder : public InstructionDecoder
 {
 public:
-    using Symbol = SymbolDecoder::Symbol;
+    X64Decoder()
+    {
+        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_X86, CS_MODE_64, &CsHandle);
+        assert(Err == CS_ERR_OK && "Failed to initialize X64 disassembler.");
+        cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
+    }
+    ~X64Decoder()
+    {
+        cs_close(&CsHandle);
+    }
 
-    void load(const gtirb::Module& M) override;
-    void populate(DatalogProgram& P) override;
+    std::optional<Instruction> disasm(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
 private:
-    std::vector<Symbol> Symbols;
+    std::optional<Operand> build(const cs_x86_op& CsOp);
+    std::optional<Instruction> build(const cs_insn& CsInstruction);
+    std::tuple<std::string, std::string> splitMnemonic(const cs_insn& CsInstruction);
+
+    csh CsHandle = CS_ERR_ARCH;
 };
 
-class ElfX64Loader : public DatalogLoader
-{
-public:
-    ElfX64Loader() : DatalogLoader("souffle_disasm_x64")
-    {
-        add<FormatDecoder>();
-        add<SectionDecoder>();
-        add<X64Decoder>();
-        add<DataDecoder>();
-        add<ElfSymbolDecoder>();
-    }
-};
-
-#endif /* SRC_ELF_LOADER_H_ */
+#endif /* SRC_X64_DECODER_H_ */

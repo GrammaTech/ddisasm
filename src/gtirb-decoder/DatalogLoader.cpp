@@ -196,19 +196,19 @@ void InstructionDecoder::load(const gtirb::ByteInterval& ByteInterval)
 {
     assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
 
-    gtirb::Addr Addr = *ByteInterval.getAddress();
+    uint64_t Addr = static_cast<uint64_t>(*ByteInterval.getAddress());
     uint64_t Size = ByteInterval.getInitializedSize();
     auto Data = ByteInterval.rawBytes<const uint8_t>();
 
     while(Size > 0)
     {
-        if(std::optional<Instruction> Instruction = decode(Data, Size))
+        if(std::optional<Instruction> Instruction = disasm(Data, Size, Addr))
         {
             Instructions.push_back(*Instruction);
         }
         else
         {
-            InvalidInstructions.push_back(Addr);
+            InvalidInstructions.push_back(gtirb::Addr(Addr));
         }
         ++Addr;
         ++Data;
