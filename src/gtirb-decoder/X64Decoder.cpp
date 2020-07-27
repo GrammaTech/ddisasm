@@ -103,25 +103,36 @@ std::tuple<std::string, std::string> X64Decoder::splitMnemonic(const cs_insn& Cs
 
 std::optional<Operand> X64Decoder::build(const cs_x86_op& CsOp)
 {
-    // switch(op.type)
-    // {
-    //     case X86_OP_REG:
-    //         return getRegisterName(CsHandle, op.reg);
-    //     case X86_OP_IMM:
-    //         return op.imm;
-    //     case X86_OP_MEM:
-    //     {
-    //         IndirectOp I = {getRegisterName(CsHandle, op.mem.segment),
-    //                         getRegisterName(CsHandle, op.mem.base),
-    //                         getRegisterName(CsHandle, op.mem.index),
-    //                         op.mem.scale,
-    //                         op.mem.disp,
-    //                         op.size * 8};
-    //         return I;
-    //     }
-    //     case X86_OP_INVALID:
-    //     default:
-    //         break;
-    // }
+    // FIXME:
+    auto str_toupper = [](std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(),
+                       [](unsigned char c) { return static_cast<unsigned char>(std::toupper(c)); });
+        return s;
+    };
+
+    auto registerName = [str_toupper, this](uint64_t Reg) {
+        return (Reg == X86_REG_INVALID) ? "NONE" : str_toupper(cs_reg_name(CsHandle, Reg));
+    };
+
+    switch(CsOp.type)
+    {
+        case X86_OP_REG:
+            return registerName(CsOp.reg);
+        case X86_OP_IMM:
+            return CsOp.imm;
+        case X86_OP_MEM:
+        {
+            IndirectOp I = {registerName(CsOp.mem.segment),
+                            registerName(CsOp.mem.base),
+                            registerName(CsOp.mem.index),
+                            CsOp.mem.scale,
+                            CsOp.mem.disp,
+                            CsOp.size * 8};
+            return I;
+        }
+        case X86_OP_INVALID:
+        default:
+            break;
+    }
     return std::nullopt;
 }
