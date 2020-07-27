@@ -120,9 +120,9 @@ void FormatDecoder::load(const gtirb::Module& Module)
 
 void FormatDecoder::populate(DatalogProgram& Program)
 {
-    Program.insert<std::vector<std::string>>("binary_type", {BinaryIsa});
-    Program.insert<std::vector<std::string>>("binary_format", {BinaryFormat});
-    Program.insert<std::vector<gtirb::Addr>>("entry_point", {EntryPoint});
+    // Program.insert<std::vector<std::string>>("binary_type", {BinaryIsa});
+    // Program.insert<std::vector<std::string>>("binary_format", {BinaryFormat});
+    // Program.insert<std::vector<gtirb::Addr>>("entry_point", {EntryPoint});
 }
 
 void SymbolDecoder::load(const gtirb::Module& Module)
@@ -293,6 +293,6 @@ void DataDecoder::load(const gtirb::ByteInterval& ByteInterval)
 
 void DataDecoder::populate(DatalogProgram& Program)
 {
-    Program.insert("data_byte", Bytes);
-    Program.insert("address_in_data", Addresses);
+    // Program.insert("data_byte", Bytes);
+    // Program.insert("address_in_data", Addresses);
 }
