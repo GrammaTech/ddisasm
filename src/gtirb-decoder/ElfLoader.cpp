@@ -62,3 +62,16 @@ void ElfSymbolDecoder::populate(DatalogProgram &Program)
 {
     // Program.insert("symbol", Symbols);
 }
+
+void ElfExceptionDecoder::load(const gtirb::Module &Module)
+{
+    Decoder = std::make_unique<ExceptionDecoder>(Module);
+}
+
+void ElfExceptionDecoder::populate(DatalogProgram &Program)
+{
+    if(Decoder)
+    {
+        Decoder->addExceptionInformation(*Program);
+    }
+}

@@ -25,6 +25,7 @@
 
 #include "DatalogLoader.h"
 
+#include "ExceptionDecoder.h"
 #include "X64Decoder.h"
 
 class ElfSymbolDecoder : public SymbolDecoder
@@ -37,6 +38,16 @@ public:
 
 private:
     std::vector<Symbol> Symbols;
+};
+
+class ElfExceptionDecoder : public GtirbDecoder
+{
+public:
+    void load(const gtirb::Module& M) override;
+    void populate(DatalogProgram& P) override;
+
+private:
+    std::unique_ptr<ExceptionDecoder> Decoder;
 };
 
 class ElfX64Loader : public DatalogLoader
