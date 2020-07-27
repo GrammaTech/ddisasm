@@ -50,7 +50,7 @@ std::optional<Instruction> X64Decoder::build(const cs_insn& CsInstruction)
         int OpCount = Details.op_count;
         for(int i = 0; i < OpCount; i++)
         {
-            // Load Capstone operand.
+            // Load capstone operand.
             cs_x86_op& CsOp = Details.operands[i];
 
             // Build operand for datalog fact.

@@ -74,22 +74,20 @@ public:
     };
 
     using ImmOp = int64_t;
-
     using RegOp = std::string;
-
     struct IndirectOp
     {
-        std::string reg1;
-        std::string reg2;
-        std::string reg3;
-        int64_t multiplier;
-        int64_t displacement;
-        int size;
+        std::string Reg1;
+        std::string Reg2;
+        std::string Reg3;
+        int64_t Mult;
+        int64_t Disp;
+        int Size;
 
         constexpr bool operator<(const IndirectOp& Op) const noexcept
         {
-            return std::tie(reg1, reg2, reg3, multiplier, displacement, size)
-                   < std::tie(Op.reg1, Op.reg2, Op.reg3, Op.multiplier, Op.displacement, Op.size);
+            return std::tie(Reg1, Reg2, Reg3, Mult, Disp, Size)
+                   < std::tie(Op.Reg1, Op.Reg2, Op.Reg3, Op.Mult, Op.Disp, Op.Size);
         };
     };
 
