@@ -52,11 +52,16 @@ private:
     std::vector<NextBlock> NextBlocks;
 };
 
-class InstructionLoader : public GtirbDecoder
+class CodeBlockLoader : public GtirbDecoder
 {
 public:
+    CodeBlockLoader(int N) : InstructionLimit{N} {};
+
     void load(const gtirb::Module& M);
     void populate(DatalogProgram& P);
+
+private:
+    int InstructionLimit;
 };
 
 namespace souffle
@@ -65,7 +70,6 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const BlockLoader::NextBlock& N);
 } // namespace souffle
 
-// void populateInstructions(const gtirb::Module &M, int InstructionLimit = 0);
 // void populateCfgEdges(const gtirb::Module &M);
 // void populateSccs(gtirb::Module &M);
 // void populateSymbolicExpressions(const gtirb::Module &M);

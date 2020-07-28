@@ -208,10 +208,10 @@ public:
     void decode(const gtirb::Module& M);
     std::optional<DatalogProgram> program();
 
-    template <typename T>
-    void add()
+    template <typename T, typename... Args>
+    void add(Args... A)
     {
-        Decoders.push_back(std::make_shared<T>());
+        Decoders.push_back(std::make_shared<T>(A...));
     }
 
 private:
@@ -223,7 +223,7 @@ namespace souffle
 {
     souffle::tuple& operator<<(souffle::tuple& T, const gtirb::Addr& A);
 
-    souffle::tuple& operator<<(souffle::tuple& T, const SymbolDecoder::Symbol& D);
+    souffle::tuple& operator<<(souffle::tuple& T, const SymbolDecoder::Symbol& S);
 
     souffle::tuple& operator<<(souffle::tuple& T, const SectionDecoder::Section& S);
 

@@ -42,8 +42,7 @@ public:
     }
 
     using Instruction = InstructionDecoder::Instruction;
-    using Operand = std::variant<InstructionDecoder::ImmOp, InstructionDecoder::RegOp,
-                                 InstructionDecoder::IndirectOp>;
+    using Operand = InstructionDecoder::Operand;
 
     std::optional<Instruction> disasm(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 

@@ -41,8 +41,6 @@ public:
         cs_close(&CsHandle);
     }
 
-    using Instruction = InstructionDecoder::Instruction;
-
     struct BarrierOp
     {
         std::string Value;
@@ -61,8 +59,11 @@ public:
         }
     };
 
-    using Operand = std::variant<InstructionDecoder::ImmOp, InstructionDecoder::RegOp,
-                                 InstructionDecoder::IndirectOp, PrefetchOp, BarrierOp>;
+    using Instruction = InstructionDecoder::Instruction;
+    using ImmOp = InstructionDecoder::ImmOp;
+    using RegOp = InstructionDecoder::RegOp;
+    using IndirectOp = InstructionDecoder::IndirectOp;
+    using Operand = std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp>;
 
     struct OperandTable : public InstructionDecoder::OperandTable
     {

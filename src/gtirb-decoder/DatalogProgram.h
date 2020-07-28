@@ -78,6 +78,7 @@ public:
 
 private:
     std::shared_ptr<souffle::SouffleProgram> Program;
+    // static std::map<std::tuple<gtirb::Format, gtirb::ISA>, std::shared_ptr<GtirbLoader>> Loaders
 };
 
 #endif /* SRC_DATALOG_PROGRAM_H_ */

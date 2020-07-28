@@ -38,7 +38,7 @@ public:
     FunctionInferencePass() : DatalogLoader("souffle_function_inference")
     {
         add<BlockLoader>();
-        // Loader.populateInstructions(M, 1);
+        add<CodeBlockLoader>(1);
         // Loader.populateCfgEdges(M);
         // Loader.populateSymbolicExpressions(M);
         // Loader.populateFdeEntries(Ctx, M);

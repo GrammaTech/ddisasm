@@ -37,16 +37,16 @@ namespace souffle
     }
 } // namespace souffle
 
-void BlockLoader::load(const gtirb::Module& M)
+void BlockLoader::load(const gtirb::Module& Module)
 {
-    if(M.code_blocks().empty())
+    if(Module.code_blocks().empty())
     {
         return;
     }
 
-    std::optional<gtirb::Addr> PrevBlockAddr = M.code_blocks().begin()->getAddress();
+    std::optional<gtirb::Addr> PrevBlockAddr = Module.code_blocks().begin()->getAddress();
 
-    for(auto& Block : M.code_blocks())
+    for(auto& Block : Module.code_blocks())
     {
         uint64_t BlockSize = Block.getSize();
         std::optional<gtirb::Addr> BlockAddr = Block.getAddress();
@@ -67,47 +67,42 @@ void BlockLoader::populate(DatalogProgram& Program)
     Program.insert("next_block", NextBlocks);
 }
 
-// void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int InstructionLimit)
-// {
-//     // Initialize instruction decoder.
-//     MultiArchCapstoneHandle CsHandle(M.getISA());
-//     if(CsHandle.getIsa() == gtirb::ISA::ValidButUnsupported)
-//     {
-//         std::cerr << "Disassembling module with unsupported architecture\n";
-//         exit(1);
-//     }
+void CodeBlockLoader::load(const gtirb::Module& M)
+{
+    // // Decode and transform instructions for all blocks on the module.
+    // std::vector<DlInstruction> Insns;
+    // DlOperandTable OpDict;
+    // for(auto& Block : M.code_blocks())
+    // {
+    //     assert(Block.getAddress() && "Found code block without address.");
 
-//     // Decode and transform instructions for all blocks on the module.
-//     std::vector<DlInstruction> Insns;
-//     DlOperandTable OpDict;
-//     for(auto& Block : M.code_blocks())
-//     {
-//         assert(Block.getAddress() && "Found code block without address.");
+    //     cs_insn* Insn;
+    //     const gtirb::ByteInterval* Bytes = Block.getByteInterval();
+    //     uint64_t InitSize = Bytes->getInitializedSize();
+    //     assert(Bytes->getSize() == InitSize && "Found partially initialized code block.");
+    //     size_t Count =
+    //         cs_disasm(CsHandle.getHandle(), Bytes->rawBytes<uint8_t>(), InitSize,
+    //                   static_cast<uint64_t>(*Block.getAddress()), InstructionLimit, &Insn);
 
-//         cs_insn* Insn;
-//         const gtirb::ByteInterval* Bytes = Block.getByteInterval();
-//         uint64_t InitSize = Bytes->getInitializedSize();
-//         assert(Bytes->getSize() == InitSize && "Found partially initialized code block.");
-//         size_t Count =
-//             cs_disasm(CsHandle.getHandle(), Bytes->rawBytes<uint8_t>(), InitSize,
-//                       static_cast<uint64_t>(*Block.getAddress()), InstructionLimit, &Insn);
+    //     // Exception-safe cleanup of instructions
+    //     std::unique_ptr<cs_insn, std::function<void(cs_insn*)>> freeInsn(
+    //         Insn, [Count](cs_insn* i) { cs_free(i, Count); });
+    //     for(size_t i = 0; i < Count; ++i)
+    //     {
+    //         Insns.push_back(GtirbToDatalog::transformInstruction(CsHandle, OpDict, Insn[i]));
+    //     }
+    // }
+}
 
-//         // Exception-safe cleanup of instructions
-//         std::unique_ptr<cs_insn, std::function<void(cs_insn*)>> freeInsn(
-//             Insn, [Count](cs_insn* i) { cs_free(i, Count); });
-//         for(size_t i = 0; i < Count; ++i)
-//         {
-//             Insns.push_back(GtirbToDatalog::transformInstruction(CsHandle, OpDict, Insn[i]));
-//         }
-//     }
-
-//     GtirbToDatalog::addToRelation(&*Prog, "instruction", Insns);
-//     GtirbToDatalog::addToRelation(&*Prog, "op_regdirect", OpDict.regTable);
-//     GtirbToDatalog::addToRelation(&*Prog, "op_immediate", OpDict.immTable);
-//     GtirbToDatalog::addToRelation(&*Prog, "op_indirect", OpDict.indirectTable);
-//     GtirbToDatalog::addToRelation(&*Prog, "op_prefetch", OpDict.prefetchTable);
-//     GtirbToDatalog::addToRelation(&*Prog, "op_barrier", OpDict.barrierTable);
-// }
+void CodeBlockLoader::populate(DatalogProgram& Program)
+{
+    // Program.insert("instruction", Instructions);
+    // Program.insert("op_regdirect", Operands.RegTable);
+    // Program.insert("op_immediate", Operands.ImmTable);
+    // Program.insert("op_indirect", Operands.IndirectTable);
+    // Program.insert("op_barrier", Operands.BarrierTable);
+    // Program.insert("op_prefetch", Operands.PrefetchTable);
+}
 
 // void populateEdgeProperties(souffle::tuple& T, const gtirb::EdgeLabel& Label)
 // {

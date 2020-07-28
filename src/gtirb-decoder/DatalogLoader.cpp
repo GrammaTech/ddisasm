@@ -34,7 +34,7 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const SymbolDecoder::Symbol& Symbol)
     {
-        T << Symbol.Addr << Symbol.Size << Symbol.Type << Symbol.Binding << Symbol.Visibility
+        T << Symbol.Addr << Symbol.Size << Symbol.Type << Symbol.Binding << Symbol.SectionIndex
           << Symbol.Name;
         return T;
     }
