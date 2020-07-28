@@ -42,10 +42,7 @@
 #include <gtirb_pprinter/PrettyPrinter.hpp>
 
 #include "gtirb-builder/GtirbBuilder.h"
-#include "gtirb-decoder/DatalogLoader.h"
 #include "gtirb-decoder/DatalogProgram.h"
-
-#include "gtirb-decoder/X64Decoder.h"
 
 #include "AuxDataSchema.h"
 #include "Disassembler.h"

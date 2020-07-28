@@ -23,7 +23,7 @@
 //===----------------------------------------------------------------------===//
 #include "ElfLoader.h"
 
-#include "../AuxDataSchema.h"
+#include "../../AuxDataSchema.h"
 
 namespace souffle
 {

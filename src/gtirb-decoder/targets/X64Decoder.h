@@ -25,8 +25,8 @@
 
 #include <capstone/capstone.h>
 
-#include "DatalogLoader.h"
-#include "DatalogProgram.h"
+#include "../DatalogLoader.h"
+#include "../DatalogProgram.h"
 #include "ElfLoader.h"
 
 class X64Decoder : public InstructionDecoder

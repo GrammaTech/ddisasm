@@ -32,6 +32,8 @@
 
 #include "DatalogProgram.h"
 
+class DatalogProgram;
+
 class GtirbDecoder
 {
 public:
@@ -239,7 +241,6 @@ namespace souffle
 } // namespace souffle
 
 const char* binaryFormat(const gtirb::FileFormat Format);
-
 const char* binaryISA(gtirb::ISA Arch);
 
 #endif /* SRC_DATALOG_LOADER_H_ */

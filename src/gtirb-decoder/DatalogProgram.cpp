@@ -27,26 +27,31 @@
 #include "DatalogLoader.h"
 #include "DatalogProgram.h"
 
-#include "Arm64Decoder.h"
-#include "X64Decoder.h"
+#include "targets/Arm64Decoder.h"
+#include "targets/X64Decoder.h"
 
 std::optional<DatalogProgram> DatalogProgram::load(gtirb::Module &Module)
 {
-    // TODO: Target registration
-    switch(Module.getISA())
+    // TODO:
+    switch(Module.getFileFormat())
     {
-        case gtirb::ISA::X64:
-        {
-            ElfX64Loader Loader;
-            Loader.decode(Module);
-            return Loader.program();
-        }
-        case gtirb::ISA::ARM64:
-        {
-            ElfArm64Loader Loader;
-            Loader.decode(Module);
-            return Loader.program();
-        }
+        case gtirb::FileFormat::ELF:
+            switch(Module.getISA())
+            {
+                case gtirb::ISA::X64:
+                {
+                    ElfX64Loader Loader;
+                    Loader.decode(Module);
+                    return Loader.program();
+                }
+                case gtirb::ISA::ARM64:
+                {
+                    ElfArm64Loader Loader;
+                    Loader.decode(Module);
+                    return Loader.program();
+                }
+            }
+            break;
     }
     return std::nullopt;
 }

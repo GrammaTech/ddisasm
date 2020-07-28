@@ -23,7 +23,7 @@
 #ifndef SRC_ELF_LOADER_H_
 #define SRC_ELF_LOADER_H_
 
-#include "DatalogLoader.h"
+#include "../DatalogLoader.h"
 
 #include "ExceptionDecoder.h"
 
