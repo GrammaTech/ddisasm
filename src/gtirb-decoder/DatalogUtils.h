@@ -19,7 +19,7 @@
 //  reflect the position or policy of the Government and no official
 //  endorsement should be inferred.
 //
-
+//===----------------------------------------------------------------------===//
 #ifndef DATALOG_UTILS_H_
 #define DATALOG_UTILS_H_
 
@@ -35,9 +35,21 @@ public:
     void load(const gtirb::Module& M);
     void populate(DatalogProgram& P);
 
+    struct Block
+    {
+        gtirb::Addr Address;
+        uint64_t Size;
+    };
+
+    struct NextBlock
+    {
+        gtirb::Addr Block1;
+        gtirb::Addr Block2;
+    };
+
 private:
-    std::vector<std::tuple<gtirb::Addr, uint64_t>> Blocks;
-    std::vector<std::tuple<gtirb::Addr, gtirb::Addr>> NextBlock;
+    std::vector<Block> Blocks;
+    std::vector<NextBlock> NextBlocks;
 };
 
 class InstructionLoader : public GtirbDecoder
@@ -46,6 +58,12 @@ public:
     void load(const gtirb::Module& M);
     void populate(DatalogProgram& P);
 };
+
+namespace souffle
+{
+    souffle::tuple& operator<<(souffle::tuple& T, const BlockLoader::Block& B);
+    souffle::tuple& operator<<(souffle::tuple& T, const BlockLoader::NextBlock& N);
+} // namespace souffle
 
 // void populateInstructions(const gtirb::Module &M, int InstructionLimit = 0);
 // void populateCfgEdges(const gtirb::Module &M);

@@ -1,4 +1,4 @@
-//===- DatalogUtils.h -------------------------------------------*- C++ -*-===//
+//===- DatalogUtils.cpp -----------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -22,6 +22,21 @@
 //===----------------------------------------------------------------------===//
 #include "DatalogUtils.h"
 
+namespace souffle
+{
+    souffle::tuple& operator<<(souffle::tuple& T, const BlockLoader::Block& Block)
+    {
+        T << Block.Address << Block.Size;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const BlockLoader::NextBlock& NextBlock)
+    {
+        T << NextBlock.Block1 << NextBlock.Block2;
+        return T;
+    }
+} // namespace souffle
+
 void BlockLoader::load(const gtirb::Module& M)
 {
     if(M.code_blocks().empty())
@@ -37,11 +52,10 @@ void BlockLoader::load(const gtirb::Module& M)
         std::optional<gtirb::Addr> BlockAddr = Block.getAddress();
         assert(BlockAddr && PrevBlockAddr && "Found code block without address.");
 
-        Blocks.emplace_back(*BlockAddr, BlockSize);
-
+        Blocks.push_back({*BlockAddr, BlockSize});
         if(*PrevBlockAddr < *BlockAddr)
         {
-            NextBlock.emplace_back(*PrevBlockAddr, *BlockAddr);
+            NextBlocks.push_back({*PrevBlockAddr, *BlockAddr});
         }
         PrevBlockAddr = BlockAddr;
     }
@@ -49,8 +63,8 @@ void BlockLoader::load(const gtirb::Module& M)
 
 void BlockLoader::populate(DatalogProgram& Program)
 {
-    // Program.insert("block", Blocks);
-    // Program.insert("next_block", NextBlock);
+    Program.insert("block", Blocks);
+    Program.insert("next_block", NextBlocks);
 }
 
 // void GtirbToDatalog::populateInstructions(const gtirb::Module& M, int InstructionLimit)
