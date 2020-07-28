@@ -27,7 +27,8 @@
 #include "DatalogLoader.h"
 #include "DatalogProgram.h"
 
-#include "ElfLoader.h"
+#include "Arm64Decoder.h"
+#include "X64Decoder.h"
 
 std::optional<DatalogProgram> DatalogProgram::load(gtirb::Module &Module)
 {

@@ -238,4 +238,8 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const std::pair<U, uint64_t>& Pair);
 } // namespace souffle
 
+const char* binaryFormat(const gtirb::FileFormat Format);
+
+const char* binaryISA(gtirb::ISA Arch);
+
 #endif /* SRC_DATALOG_LOADER_H_ */

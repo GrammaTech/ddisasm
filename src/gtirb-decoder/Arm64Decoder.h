@@ -26,6 +26,8 @@
 #include <capstone/capstone.h>
 
 #include "DatalogLoader.h"
+#include "DatalogProgram.h"
+#include "ElfLoader.h"
 
 class Arm64Decoder : public InstructionDecoder
 {
@@ -120,5 +122,19 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const Arm64Decoder::PrefetchOp& Op);
 
 } // namespace souffle
+
+class ElfArm64Loader : public DatalogLoader
+{
+public:
+    ElfArm64Loader() : DatalogLoader("souffle_disasm_arm64")
+    {
+        add<FormatDecoder>();
+        add<SectionDecoder>();
+        add<Arm64Decoder>();
+        add<DataDecoder>();
+        add<ElfSymbolDecoder>();
+        add<ElfExceptionDecoder>();
+    }
+};
 
 #endif /* SRC_ARM64_DECODER_H_ */

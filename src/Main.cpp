@@ -45,6 +45,8 @@
 #include "gtirb-decoder/DatalogLoader.h"
 #include "gtirb-decoder/DatalogProgram.h"
 
+#include "gtirb-decoder/X64Decoder.h"
+
 #include "AuxDataSchema.h"
 #include "Disassembler.h"
 #include "Version.h"
@@ -249,8 +251,7 @@ int main(int argc, char **argv)
 
     if(Souffle)
     {
-        // FIXME:
-        // Souffle->insert("option", createDisasmOptions(vm));
+        Souffle->insert("option", createDisasmOptions(vm));
 
         if(vm.count("debug-dir") != 0)
         {

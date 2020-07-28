@@ -238,7 +238,6 @@ target_link_libraries(
   gtirb_pprinter
   gtirb_builder
   gtirb_decoder
-  ${CAPSTONE}
   ${Boost_LIBRARIES}
   ${EXPERIMENTAL_LIB}
   ${LIBCPP_ABI})

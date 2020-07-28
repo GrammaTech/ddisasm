@@ -26,6 +26,8 @@
 #include <capstone/capstone.h>
 
 #include "DatalogLoader.h"
+#include "DatalogProgram.h"
+#include "ElfLoader.h"
 
 class X64Decoder : public InstructionDecoder
 {
@@ -52,6 +54,20 @@ private:
     std::tuple<std::string, std::string> splitMnemonic(const cs_insn& CsInstruction);
 
     csh CsHandle = CS_ERR_ARCH;
+};
+
+class ElfX64Loader : public DatalogLoader
+{
+public:
+    ElfX64Loader() : DatalogLoader("souffle_disasm_x64")
+    {
+        add<FormatDecoder>();
+        add<SectionDecoder>();
+        add<X64Decoder>();
+        add<DataDecoder>();
+        add<ElfSymbolDecoder>();
+        add<ElfExceptionDecoder>();
+    }
 };
 
 #endif /* SRC_X64_DECODER_H_ */

@@ -86,45 +86,6 @@ namespace souffle
     }
 } // namespace souffle
 
-const char* binaryFormat(const gtirb::FileFormat Format)
-{
-    switch(Format)
-    {
-        case gtirb::FileFormat::COFF:
-            return "COFF";
-        case gtirb::FileFormat::ELF:
-            return "ELF";
-        case gtirb::FileFormat::PE:
-            return "PE";
-        case gtirb::FileFormat::IdaProDb32:
-            return "IdaProDb32";
-        case gtirb::FileFormat::IdaProDb64:
-            return "IdaProDb64";
-        case gtirb::FileFormat::XCOFF:
-            return "XCOFF";
-        case gtirb::FileFormat::MACHO:
-            return "MACHO";
-        case gtirb::FileFormat::RAW:
-            return "RAW";
-        case gtirb::FileFormat::Undefined:
-        default:
-            return "Undefined";
-    }
-}
-
-const char* binaryISA(gtirb::ISA Arch)
-{
-    switch(Arch)
-    {
-        case gtirb::ISA::X64:
-            return "X64";
-        case gtirb::ISA::ARM64:
-            return "ARM";
-        default:
-            return "Undefined";
-    }
-}
-
 std::optional<DatalogProgram> DatalogLoader::program()
 {
     // Build the Souffle context.
@@ -353,6 +314,45 @@ void DataDecoder::load(const gtirb::ByteInterval& ByteInterval)
 
 void DataDecoder::populate(DatalogProgram& Program)
 {
-    // Program.insert("data_byte", Bytes);
-    // Program.insert("address_in_data", Addresses);
+    Program.insert("data_byte", Bytes);
+    Program.insert("address_in_data", Addresses);
+}
+
+const char* binaryFormat(const gtirb::FileFormat Format)
+{
+    switch(Format)
+    {
+        case gtirb::FileFormat::COFF:
+            return "COFF";
+        case gtirb::FileFormat::ELF:
+            return "ELF";
+        case gtirb::FileFormat::PE:
+            return "PE";
+        case gtirb::FileFormat::IdaProDb32:
+            return "IdaProDb32";
+        case gtirb::FileFormat::IdaProDb64:
+            return "IdaProDb64";
+        case gtirb::FileFormat::XCOFF:
+            return "XCOFF";
+        case gtirb::FileFormat::MACHO:
+            return "MACHO";
+        case gtirb::FileFormat::RAW:
+            return "RAW";
+        case gtirb::FileFormat::Undefined:
+        default:
+            return "Undefined";
+    }
+}
+
+const char* binaryISA(gtirb::ISA Arch)
+{
+    switch(Arch)
+    {
+        case gtirb::ISA::X64:
+            return "X64";
+        case gtirb::ISA::ARM64:
+            return "ARM";
+        default:
+            return "Undefined";
+    }
 }
