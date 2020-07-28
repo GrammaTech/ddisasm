@@ -119,9 +119,6 @@ loop_operation("LOOP").
 loop_operation("LOOPNE").
 loop_operation("LOOPE").
 
-jump_operation(Op):-
-    loop_operation(Op).
-
 .decl loop_prefix(prefix:symbol)
 
 loop_prefix("REP").
