@@ -40,9 +40,21 @@ public:
     static std::optional<DatalogProgram> load(gtirb::Module& Module);
 
     template <typename T>
-    void insert(const std::string& Name, const T& Data);
+    void insert(const std::string& Name, const T& Data)
+    {
+        if(auto* Relation = Program->getRelation(Name))
+        {
+            for(const auto Element : Data)
+            {
+                souffle::tuple Row(Relation);
+                Row << Element;
+                Relation->insert(Row);
+            }
+        }
+    }
 
     void writeFacts(const std::string& Directory);
+
     void writeRelations(const std::string& Directory)
     {
         Program->printAll(Directory);

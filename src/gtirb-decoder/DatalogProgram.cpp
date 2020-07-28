@@ -20,6 +20,7 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include <fstream>
 
 #include <gtirb/gtirb.hpp>
 
@@ -30,31 +31,21 @@
 
 namespace souffle
 {
-    // souffle::tuple &operator<<(souffle::tuple &T, const gtirb::Addr &A);
-
-    // souffle::tuple &operator<<(souffle::tuple &T, const InstructionDecoder::Instruction &I);
-
-    // template <typename U>
-    // souffle::tuple &operator<<(souffle::tuple &T, const DataDecoder::Data<U> &Data)
+    // template <typename Item>
+    // souffle::tuple &operator<<(souffle::tuple &T, const DataDecoder::Data<Item> &Data)
     // {
     //     T << Data.Addr << Data.Item;
     //     return T;
     // }
-} // namespace souffle
 
-template <typename T>
-void DatalogProgram::insert(const std::string &Name, const T &Data)
-{
-    if(auto *Relation = Program->getRelation(Name))
-    {
-        for(const auto Element : Data)
-        {
-            souffle::tuple Row(Relation);
-            Row << Element;
-            Relation->insert(Row);
-        }
-    }
-}
+    // souffle::tuple &operator<<(souffle::tuple &t, const ElfRelocation &ElfRelocation)
+    // {
+    //     auto &[Addr, Type, Name, Addend] = ElfRelocation;
+    //     t << Addr << Type << Name << Addend;
+    //     return t;
+    // }
+
+} // namespace souffle
 
 std::optional<DatalogProgram> DatalogProgram::load(gtirb::Module &Module)
 {

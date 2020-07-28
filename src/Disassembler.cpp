@@ -26,7 +26,10 @@
 #include <boost/uuid/uuid_generators.hpp>
 
 #include "AuxDataSchema.h"
-#include "gtirb-decoder/DlOperandTable.h"
+#include "gtirb-decoder/DatalogLoader.h"
+
+using ImmOp = InstructionDecoder::ImmOp;
+using IndirectOp = InstructionDecoder::IndirectOp;
 
 // souffle uses a signed integer for all numbers (either 32 or 64 bits
 // dependin on compilation flags). Allow conversion to other types.
@@ -80,8 +83,8 @@ std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SoufflePr
     {
         uint64_t operandCode, size;
         IndirectOp indirect;
-        output >> operandCode >> indirect.reg1 >> indirect.reg2 >> indirect.reg3
-            >> indirect.multiplier >> indirect.displacement >> size;
+        output >> operandCode >> indirect.Reg1 >> indirect.Reg2 >> indirect.Reg3 >> indirect.Mult
+            >> indirect.Disp >> size;
         Indirects[operandCode] = indirect;
     };
     std::map<gtirb::Addr, DecodedInstruction> insns;
@@ -669,17 +672,17 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
        != range.second)
     {
         // Special case for RIP-relative references
-        if(indirect.reg2 == std::string{"RIP"} && indirect.multiplier == 1
-           && isNullReg(indirect.reg1) && isNullReg(indirect.reg3))
+        if(indirect.Reg2 == std::string{"RIP"} && indirect.Mult == 1 && isNullReg(indirect.Reg1)
+           && isNullReg(indirect.Reg3))
         {
-            auto address = ea + indirect.displacement + instruction.Size;
+            auto address = ea + indirect.Disp + instruction.Size;
             auto sym = getSymbol(context, module, address);
             addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
                 module, ea, DispSize, instruction.displacementOffset, 0, sym);
         }
         else
         {
-            auto sym = getSymbol(context, module, gtirb::Addr(indirect.displacement));
+            auto sym = getSymbol(context, module, gtirb::Addr(indirect.Disp));
             addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
                 module, ea, DispSize, instruction.displacementOffset, 0, sym);
         }

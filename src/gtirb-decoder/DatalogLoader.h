@@ -31,7 +31,6 @@
 #include <gtirb/gtirb.hpp>
 
 #include "DatalogProgram.h"
-#include "DatalogUtils.h"
 
 class GtirbDecoder
 {
@@ -152,7 +151,7 @@ public:
     {
         std::string Name;
         uint64_t Size;
-        gtirb::Addr Addr;
+        gtirb::Addr Address;
         uint64_t Type;
         uint64_t Flags;
     };
@@ -219,5 +218,19 @@ private:
     std::string Name;
     GtirbDecoders Decoders;
 };
+
+namespace souffle
+{
+    souffle::tuple& operator<<(souffle::tuple& T, const gtirb::Addr& A);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const SymbolDecoder::Symbol& D);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const SectionDecoder::Section& S);
+
+    template <typename Item>
+    souffle::tuple& operator<<(souffle::tuple& T, const DataDecoder::Data<Item>& D);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const InstructionDecoder::Instruction& I);
+} // namespace souffle
 
 #endif /* SRC_DATALOG_LOADER_H_ */

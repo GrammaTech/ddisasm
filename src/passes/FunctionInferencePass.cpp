@@ -24,24 +24,9 @@
 #include <boost/uuid/uuid_generators.hpp>
 
 #include "../AuxDataSchema.h"
-#include "../gtirb-decoder/DatalogUtils.h"
 #include "FunctionInferencePass.h"
 
-void FunctionInferencePass::populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P,
-                                                gtirb::Context& Ctx, gtirb::Module& M)
-{
-    GtirbToDatalog Loader(P);
-    Loader.populateBlocks(M);
-    Loader.populateInstructions(M, 1);
-    Loader.populateCfgEdges(M);
-    Loader.populateSymbolicExpressions(M);
-    Loader.populateFdeEntries(Ctx, M);
-    Loader.populateFunctionEntries(Ctx, M);
-    Loader.populatePadding(Ctx, M);
-}
-
-void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProgram> P,
-                                            gtirb::Module& M)
+void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M)
 {
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
     std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2function;
@@ -83,28 +68,26 @@ void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProg
     M.addAuxData<gtirb::schema::FunctionNames>(std::move(FunctionNames));
 }
 
-void FunctionInferencePass::setDebugDir(std::string Path)
-{
-    DebugDir = Path;
-}
-
 void FunctionInferencePass::computeFunctions(gtirb::Context& Ctx, gtirb::Module& M,
                                              unsigned int NThreads)
 {
-    auto Prog = std::shared_ptr<souffle::SouffleProgram>(
-        souffle::ProgramFactory::newInstance("souffle_function_inference"));
-    if(!Prog)
+    FunctionInferenceLoader Loader;
+    Loader.decode(M);
+
+    std::optional<DatalogProgram> FunctionInference = Loader.program();
+
+    if(!FunctionInference)
     {
         std::cerr << "Could not create souffle_function_inference program" << std::endl;
         exit(1);
     }
-    populateSouffleProg(Prog, Ctx, M);
-    Prog->setNumThreads(NThreads);
-    Prog->run();
+
+    FunctionInference->threads(NThreads);
+    FunctionInference->run();
     if(DebugDir)
     {
-        writeFacts(&*Prog, *DebugDir);
-        Prog->printAll(*DebugDir);
+        FunctionInference->writeFacts(*DebugDir);
+        FunctionInference->writeRelations(*DebugDir);
     }
-    updateFunctions(Prog, M);
+    updateFunctions(**FunctionInference, M);
 }

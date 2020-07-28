@@ -28,18 +28,38 @@
 #include <gtirb/gtirb.hpp>
 #include <optional>
 
-// Refine function boundaries
+#include "../gtirb-decoder/DatalogLoader.h"
+#include "../gtirb-decoder/DatalogUtils.h"
+
+class FunctionInferenceLoader : public DatalogLoader
+{
+public:
+    FunctionInferenceLoader() : DatalogLoader("souffle_function_inference")
+    {
+        add<BlockLoader>();
+        // Loader.populateBlocks(M);
+        // Loader.populateInstructions(M, 1);
+        // Loader.populateCfgEdges(M);
+        // Loader.populateSymbolicExpressions(M);
+        // Loader.populateFdeEntries(Ctx, M);
+        // Loader.populateFunctionEntries(Ctx, M);
+        // Loader.populatePadding(Ctx, M);
+    }
+};
+
+// Refine function boundaries.
 class FunctionInferencePass
 {
+public:
+    void setDebugDir(std::string Path)
+    {
+        DebugDir = Path;
+    };
+
+    void computeFunctions(gtirb::Context& Ctx, gtirb::Module& module, unsigned int NThreads);
+
 private:
     std::optional<std::string> DebugDir;
-
-    void populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Context& Ctx,
-                             gtirb::Module& M);
-    void updateFunctions(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M);
-
-public:
-    void setDebugDir(std::string Path);
-    void computeFunctions(gtirb::Context& Ctx, gtirb::Module& module, unsigned int NThreads);
+    void updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M);
 };
 #endif // FUNCTION_INFERENCE_PASS_H_

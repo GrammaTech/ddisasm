@@ -238,7 +238,6 @@ target_link_libraries(
   gtirb_pprinter
   gtirb_builder
   gtirb_decoder
-  datalog_utils
   ${CAPSTONE}
   ${Boost_LIBRARIES}
   ${EXPERIMENTAL_LIB}

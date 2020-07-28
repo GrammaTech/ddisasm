@@ -24,6 +24,54 @@
 #include "DatalogLoader.h"
 #include "../AuxDataSchema.h"
 
+namespace souffle
+{
+    souffle::tuple& operator<<(souffle::tuple& T, const gtirb::Addr& A)
+    {
+        T << static_cast<uint64_t>(A);
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const SymbolDecoder::Symbol& Symbol)
+    {
+        T << Symbol.Addr << Symbol.Size << Symbol.Type << Symbol.Binding << Symbol.Visibility
+          << Symbol.Name;
+        return T;
+    }
+
+    template <typename Item>
+    souffle::tuple& operator<<(souffle::tuple& T, const DataDecoder::Data<Item>& Data)
+    {
+        T << Data.Addr << Data.Item;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T,
+                               const InstructionDecoder::Instruction& Instruction)
+    {
+        T << Instruction.Address << Instruction.Size << Instruction.Prefix << Instruction.Name;
+        for(size_t i = 0; i < 4; ++i)
+        {
+            if(i < Instruction.OpCodes.size())
+            {
+                T << Instruction.OpCodes[i];
+            }
+            else
+            {
+                T << 0;
+            }
+        }
+        T << Instruction.ImmediateOffset << Instruction.DisplacementOffset;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const SectionDecoder::Section& Section)
+    {
+        T << Section.Name << Section.Size << Section.Address << Section.Type << Section.Flags;
+        return T;
+    }
+} // namespace souffle
+
 const char* binaryFormat(const gtirb::FileFormat Format)
 {
     switch(Format)
@@ -120,9 +168,9 @@ void FormatDecoder::load(const gtirb::Module& Module)
 
 void FormatDecoder::populate(DatalogProgram& Program)
 {
-    // Program.insert<std::vector<std::string>>("binary_type", {BinaryIsa});
-    // Program.insert<std::vector<std::string>>("binary_format", {BinaryFormat});
-    // Program.insert<std::vector<gtirb::Addr>>("entry_point", {EntryPoint});
+    Program.insert<std::vector<std::string>>("binary_type", {BinaryIsa});
+    Program.insert<std::vector<std::string>>("binary_format", {BinaryFormat});
+    Program.insert<std::vector<gtirb::Addr>>("entry_point", {EntryPoint});
 }
 
 void SymbolDecoder::load(const gtirb::Module& Module)
@@ -137,7 +185,7 @@ void SymbolDecoder::load(const gtirb::Module& Module)
 
 void SymbolDecoder::populate(DatalogProgram& Program)
 {
-    // Program.insert("symbol", Symbols);
+    Program.insert("symbol", Symbols);
 }
 
 void SectionDecoder::load(const gtirb::Module& Module)
