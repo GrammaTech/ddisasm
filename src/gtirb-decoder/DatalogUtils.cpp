@@ -134,7 +134,7 @@ void populateEdgeProperties(souffle::tuple& T, const gtirb::EdgeLabel& Label)
         static bool problem_report = false;
         if(!problem_report)
         {
-            std::cout << "\nWARNING: Found edge without a label\n";
+            std::cerr << "\nWARNING: Found edge without a label\n";
             problem_report = true;
         }
     }

@@ -36,14 +36,14 @@ This module infers call structure from the control flow graph passed in a GTIRB
 .output direct_call
 
 direct_call(Src,Dest):-
-    binary_format("GTIRB"),
+    binary_format("TRACE"),
     cfg_edge(Src,Dest,_,"false","call").
 
 .decl indirect_call(src:address, dest:address)
 .output indirect_call
 
 indirect_call(Src,Dest):-
-    binary_format("GTIRB"),
+    binary_format("TRACE"),
     cfg_edge(Src,Dest,_,"true","call").
 
 //// Minimal mock from code_inference_postprocess.dl
@@ -53,7 +53,7 @@ indirect_call(Src,Dest):-
 .output refined_block
 
 refined_block(Block):-
-    binary_format("GTIRB"),
+    binary_format("TRACE"),
     block(Block,_).
 
 //// Imported from basic_function_inference.dl

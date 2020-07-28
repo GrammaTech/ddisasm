@@ -241,8 +241,6 @@ void DlDecoder::storeDataSection(const gtirb::ByteInterval &byteInterval, gtirb:
 
 void DlDecoder::loadInputs(souffle::SouffleProgram *prog, const gtirb::Module &module)
 {
-    // GHN 2020-06-26
-    // Can't figure out how to get this in from GTIRB so I'm adding protection instead.
     gtirb::schema::BinaryType::Type *btype = module.getAuxData<gtirb::schema::BinaryType>();
     if(btype)
     {
@@ -278,10 +276,8 @@ void DlDecoder::loadInputs(souffle::SouffleProgram *prog, const gtirb::Module &m
     GtirbToDatalog::addToRelation(prog, "op_prefetch", op_dict.prefetchTable);
     GtirbToDatalog::addToRelation(prog, "op_barrier", op_dict.barrierTable);
 
-#if 0 // TODO crude bypass - this must be fixed
     addSymbols(prog, module);
     addSections(prog, module);
-#endif
 
     ExceptionDecoder excDecoder(module);
     excDecoder.addExceptionInformation(prog);

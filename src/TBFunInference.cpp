@@ -191,7 +191,7 @@ int main(int argc, char **argv)
 
     gtirb::Module &Module = *(IR->modules().begin());
 
-    std::vector<std::string> BinaryType = {"GTIRB"};
+    std::vector<std::string> BinaryType = {"TRACE"};
     Module.addAuxData<gtirb::schema::BinaryType>(std::move(BinaryType));
 
     // Core of new code - functional analysis only

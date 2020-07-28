@@ -42,12 +42,12 @@ void FunctionInferencePass::populateSouffleProg(std::shared_ptr<souffle::Souffle
     // GHN 2020-06-29 additional populates needed if we're handling a
     // tbdisasm GTIRB input
     gtirb::schema::BinaryType::Type* btype = M.getAuxData<gtirb::schema::BinaryType>();
-    if(btype && btype->at(0) == std::string("GTIRB"))
+    if(btype && btype->at(0) == std::string("TRACE"))
     {
         // Check value, add relations
         std::cout << "We got GTIRB, load extra relations.\n";
         GtirbToDatalog::addToRelation<std::vector<std::string>>(P.get(), "binary_format",
-                                                                {std::string("GTIRB")});
+                                                                {std::string("TRACE")});
         // Placeholder for other things, e.g.
         // Loader.populateTBBlocks(M);
     }
