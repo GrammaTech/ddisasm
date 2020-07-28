@@ -71,10 +71,8 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
 void FunctionInferencePass::computeFunctions(gtirb::Context& Ctx, gtirb::Module& M,
                                              unsigned int NThreads)
 {
-    FunctionInferenceLoader Loader;
-    Loader.decode(M);
-
-    std::optional<DatalogProgram> FunctionInference = Loader.program();
+    decode(M);
+    std::optional<DatalogProgram> FunctionInference = program();
 
     if(!FunctionInference)
     {

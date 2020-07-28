@@ -231,6 +231,11 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const DataDecoder::Data<Item>& D);
 
     souffle::tuple& operator<<(souffle::tuple& T, const InstructionDecoder::Instruction& I);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const InstructionDecoder::IndirectOp& I);
+
+    template <typename U>
+    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<U, uint64_t>& Pair);
 } // namespace souffle
 
 #endif /* SRC_DATALOG_LOADER_H_ */

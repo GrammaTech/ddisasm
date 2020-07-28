@@ -39,6 +39,12 @@ namespace souffle
         return T;
     }
 
+    souffle::tuple& operator<<(souffle::tuple& T, const SectionDecoder::Section& Section)
+    {
+        T << Section.Name << Section.Size << Section.Address << Section.Type << Section.Flags;
+        return T;
+    }
+
     template <typename Item>
     souffle::tuple& operator<<(souffle::tuple& T, const DataDecoder::Data<Item>& Data)
     {
@@ -65,9 +71,17 @@ namespace souffle
         return T;
     }
 
-    souffle::tuple& operator<<(souffle::tuple& T, const SectionDecoder::Section& Section)
+    souffle::tuple& operator<<(souffle::tuple& T, const InstructionDecoder::IndirectOp& Op)
     {
-        T << Section.Name << Section.Size << Section.Address << Section.Type << Section.Flags;
+        T << Op.Reg1 << Op.Reg2 << Op.Reg3 << Op.Mult << Op.Disp << Op.Size;
+        return T;
+    }
+
+    template <class U>
+    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<U, uint64_t>& Pair)
+    {
+        auto& [Element, Id] = Pair;
+        T << Id << Element;
         return T;
     }
 } // namespace souffle
@@ -221,7 +235,7 @@ void SectionDecoder::load(const gtirb::Module& Module)
 
 void SectionDecoder::populate(DatalogProgram& Program)
 {
-    // Program.insert("section_complete", Sections);
+    Program.insert("section_complete", Sections);
 }
 
 void InstructionDecoder::load(const gtirb::Module& Module)
@@ -266,13 +280,11 @@ void InstructionDecoder::load(const gtirb::ByteInterval& ByteInterval)
 
 void InstructionDecoder::populate(DatalogProgram& Program)
 {
-    // Program.insert("instruction_complete", Instructions);
-    // Program.insert("invalid_op_code", InvalidInstructions);
-    // GtirbToDatalog::addToRelation(prog, "op_regdirect", op_dict.regTable);
-    // GtirbToDatalog::addToRelation(prog, "op_immediate", op_dict.immTable);
-    // GtirbToDatalog::addToRelation(prog, "op_indirect", op_dict.indirectTable);
-    // GtirbToDatalog::addToRelation(prog, "op_prefetch", op_dict.prefetchTable);
-    // GtirbToDatalog::addToRelation(prog, "op_barrier", op_dict.barrierTable);
+    Program.insert("instruction_complete", Instructions);
+    Program.insert("invalid_op_code", InvalidInstructions);
+    Program.insert("op_immediate", Operands.ImmTable);
+    Program.insert("op_regdirect", Operands.RegTable);
+    Program.insert("op_indirect", Operands.IndirectTable);
 }
 
 void DataDecoder::load(const gtirb::Module& Module)

@@ -30,10 +30,6 @@
 class X64Decoder : public InstructionDecoder
 {
 public:
-    using Instruction = InstructionDecoder::Instruction;
-    using Operand = std::variant<InstructionDecoder::ImmOp, InstructionDecoder::RegOp,
-                                 InstructionDecoder::IndirectOp>;
-
     X64Decoder()
     {
         [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_X86, CS_MODE_64, &CsHandle);
@@ -44,6 +40,10 @@ public:
     {
         cs_close(&CsHandle);
     }
+
+    using Instruction = InstructionDecoder::Instruction;
+    using Operand = std::variant<InstructionDecoder::ImmOp, InstructionDecoder::RegOp,
+                                 InstructionDecoder::IndirectOp>;
 
     std::optional<Instruction> disasm(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 

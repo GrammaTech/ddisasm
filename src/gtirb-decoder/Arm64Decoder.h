@@ -30,6 +30,17 @@
 class Arm64Decoder : public InstructionDecoder
 {
 public:
+    Arm64Decoder()
+    {
+        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM64, CS_MODE_64, &CsHandle);
+        assert(Err == CS_ERR_OK && "Failed to initialize ARM64 disassembler.");
+        cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
+    }
+    ~Arm64Decoder()
+    {
+        cs_close(&CsHandle);
+    }
+
     using Instruction = InstructionDecoder::Instruction;
 
     struct BarrierOp
@@ -85,18 +96,9 @@ public:
         std::map<PrefetchOp, uint64_t> PrefetchTable;
     };
 
-    Arm64Decoder()
-    {
-        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM64, CS_MODE_64, &CsHandle);
-        assert(Err == CS_ERR_OK && "Failed to initialize ARM64 disassembler.");
-        cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
-    }
-    ~Arm64Decoder()
-    {
-        cs_close(&CsHandle);
-    }
-
     std::optional<Instruction> disasm(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
+
+    void populate(DatalogProgram& P) override;
 
 private:
     OperandTable Operands;
@@ -107,5 +109,15 @@ private:
 
     csh CsHandle = CS_ERR_ARCH;
 };
+
+std::optional<const char*> barrierValue(const arm64_barrier_op Op);
+std::optional<const char*> prefetchValue(const arm64_prefetch_op Op);
+
+namespace souffle
+{
+    souffle::tuple& operator<<(souffle::tuple& T, const Arm64Decoder::BarrierOp& Op);
+    souffle::tuple& operator<<(souffle::tuple& T, const Arm64Decoder::PrefetchOp& Op);
+
+} // namespace souffle
 
 #endif /* SRC_ARM64_DECODER_H_ */

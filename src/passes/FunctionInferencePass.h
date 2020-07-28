@@ -31,13 +31,13 @@
 #include "../gtirb-decoder/DatalogLoader.h"
 #include "../gtirb-decoder/DatalogUtils.h"
 
-class FunctionInferenceLoader : public DatalogLoader
+// Refine function boundaries.
+class FunctionInferencePass : public DatalogLoader
 {
 public:
-    FunctionInferenceLoader() : DatalogLoader("souffle_function_inference")
+    FunctionInferencePass() : DatalogLoader("souffle_function_inference")
     {
         add<BlockLoader>();
-        // Loader.populateBlocks(M);
         // Loader.populateInstructions(M, 1);
         // Loader.populateCfgEdges(M);
         // Loader.populateSymbolicExpressions(M);
@@ -45,12 +45,7 @@ public:
         // Loader.populateFunctionEntries(Ctx, M);
         // Loader.populatePadding(Ctx, M);
     }
-};
 
-// Refine function boundaries.
-class FunctionInferencePass
-{
-public:
     void setDebugDir(std::string Path)
     {
         DebugDir = Path;

@@ -26,87 +26,28 @@
 #include <algorithm>
 #include <string>
 
-const char* prefetchValue(const arm64_prefetch_op prefetch)
+namespace souffle
 {
-    switch(prefetch)
+    souffle::tuple& operator<<(souffle::tuple& T, const Arm64Decoder::BarrierOp& Op)
     {
-        case ARM64_PRFM_PLDL1KEEP:
-            return "pldl1keep";
-        case ARM64_PRFM_PLDL1STRM:
-            return "pldl1strm";
-        case ARM64_PRFM_PLDL2KEEP:
-            return "pldl2keep";
-        case ARM64_PRFM_PLDL2STRM:
-            return "pldl2strm";
-        case ARM64_PRFM_PLDL3KEEP:
-            return "pldl3keep";
-        case ARM64_PRFM_PLDL3STRM:
-            return "pldl3strm";
-        case ARM64_PRFM_PLIL1KEEP:
-            return "plil1keep";
-        case ARM64_PRFM_PLIL1STRM:
-            return "plil1strm";
-        case ARM64_PRFM_PLIL2KEEP:
-            return "plil2keep";
-        case ARM64_PRFM_PLIL2STRM:
-            return "plil2strm";
-        case ARM64_PRFM_PLIL3KEEP:
-            return "plil3keep";
-        case ARM64_PRFM_PLIL3STRM:
-            return "plil3strm";
-        case ARM64_PRFM_PSTL1KEEP:
-            return "pstl1keep";
-        case ARM64_PRFM_PSTL1STRM:
-            return "pstl1strm";
-        case ARM64_PRFM_PSTL2KEEP:
-            return "pstl2keep";
-        case ARM64_PRFM_PSTL2STRM:
-            return "pstl2strm";
-        case ARM64_PRFM_PSTL3KEEP:
-            return "pstl3keep";
-        case ARM64_PRFM_PSTL3STRM:
-            return "pstl3strm";
-        case ARM64_PRFM_INVALID:
-        default:
-            std::cerr << "invalid operand (prefetch)\n";
-            exit(1);
+        T << Op.Value;
+        return T;
     }
-}
 
-const char* barrierOp(const arm64_barrier_op barrier)
-{
-    switch(barrier)
+    souffle::tuple& operator<<(souffle::tuple& T, const Arm64Decoder::PrefetchOp& Op)
     {
-        case ARM64_BARRIER_OSHLD:
-            return "oshld";
-        case ARM64_BARRIER_OSHST:
-            return "oshst";
-        case ARM64_BARRIER_OSH:
-            return "osh";
-        case ARM64_BARRIER_NSHLD:
-            return "nshld";
-        case ARM64_BARRIER_NSHST:
-            return "nshst";
-        case ARM64_BARRIER_NSH:
-            return "nsh";
-        case ARM64_BARRIER_ISHLD:
-            return "ishld";
-        case ARM64_BARRIER_ISHST:
-            return "ishst";
-        case ARM64_BARRIER_ISH:
-            return "ish";
-        case ARM64_BARRIER_LD:
-            return "ld";
-        case ARM64_BARRIER_ST:
-            return "st";
-        case ARM64_BARRIER_SY:
-            return "sy";
-        case ARM64_BARRIER_INVALID:
-        default:
-            std::cerr << "invalid operand (barrier)\n";
-            exit(1);
+        T << Op.Value;
+        return T;
     }
-}
+
+    template <class U>
+    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<U, uint64_t>& Pair)
+    {
+        auto& [Element, Id] = Pair;
+        T << Id << Element;
+        return T;
+    }
+} // namespace souffle
 
 std::optional<Arm64Decoder::Instruction> Arm64Decoder::disasm(const uint8_t* Bytes, uint64_t Size,
                                                               uint64_t Addr)
@@ -232,17 +173,108 @@ std::optional<Arm64Decoder::Operand> Arm64Decoder::build(const cs_arm64_op& CsOp
             break;
         case ARM64_OP_PREFETCH:
         {
-            PrefetchOp I = {prefetchValue(CsOp.prefetch)};
-            return I;
+            if(std::optional<const char*> Label = prefetchValue(CsOp.prefetch))
+            {
+                return PrefetchOp{*Label};
+            }
         }
         case ARM64_OP_BARRIER:
         {
-            BarrierOp I = {barrierOp(CsOp.barrier)};
-            return I;
+            if(std::optional<const char*> Label = barrierValue(CsOp.barrier))
+            {
+                return BarrierOp{*Label};
+            }
         }
         case ARM64_OP_INVALID:
         default:
-            std::cerr << "invalid operand\n";
+            break;
+    }
+    return std::nullopt;
+}
+
+void Arm64Decoder::populate(DatalogProgram& Program)
+{
+    Program.insert("op_barrier", Operands.BarrierTable);
+    Program.insert("op_prefetch", Operands.PrefetchTable);
+}
+
+std::optional<const char*> prefetchValue(const arm64_prefetch_op Op)
+{
+    switch(Op)
+    {
+        case ARM64_PRFM_PLDL1KEEP:
+            return "pldl1keep";
+        case ARM64_PRFM_PLDL1STRM:
+            return "pldl1strm";
+        case ARM64_PRFM_PLDL2KEEP:
+            return "pldl2keep";
+        case ARM64_PRFM_PLDL2STRM:
+            return "pldl2strm";
+        case ARM64_PRFM_PLDL3KEEP:
+            return "pldl3keep";
+        case ARM64_PRFM_PLDL3STRM:
+            return "pldl3strm";
+        case ARM64_PRFM_PLIL1KEEP:
+            return "plil1keep";
+        case ARM64_PRFM_PLIL1STRM:
+            return "plil1strm";
+        case ARM64_PRFM_PLIL2KEEP:
+            return "plil2keep";
+        case ARM64_PRFM_PLIL2STRM:
+            return "plil2strm";
+        case ARM64_PRFM_PLIL3KEEP:
+            return "plil3keep";
+        case ARM64_PRFM_PLIL3STRM:
+            return "plil3strm";
+        case ARM64_PRFM_PSTL1KEEP:
+            return "pstl1keep";
+        case ARM64_PRFM_PSTL1STRM:
+            return "pstl1strm";
+        case ARM64_PRFM_PSTL2KEEP:
+            return "pstl2keep";
+        case ARM64_PRFM_PSTL2STRM:
+            return "pstl2strm";
+        case ARM64_PRFM_PSTL3KEEP:
+            return "pstl3keep";
+        case ARM64_PRFM_PSTL3STRM:
+            return "pstl3strm";
+        case ARM64_PRFM_INVALID:
+        default:
+            break;
+    }
+    return std::nullopt;
+}
+
+std::optional<const char*> barrierValue(const arm64_barrier_op Op)
+{
+    switch(Op)
+    {
+        case ARM64_BARRIER_OSHLD:
+            return "oshld";
+        case ARM64_BARRIER_OSHST:
+            return "oshst";
+        case ARM64_BARRIER_OSH:
+            return "osh";
+        case ARM64_BARRIER_NSHLD:
+            return "nshld";
+        case ARM64_BARRIER_NSHST:
+            return "nshst";
+        case ARM64_BARRIER_NSH:
+            return "nsh";
+        case ARM64_BARRIER_ISHLD:
+            return "ishld";
+        case ARM64_BARRIER_ISHST:
+            return "ishst";
+        case ARM64_BARRIER_ISH:
+            return "ish";
+        case ARM64_BARRIER_LD:
+            return "ld";
+        case ARM64_BARRIER_ST:
+            return "st";
+        case ARM64_BARRIER_SY:
+            return "sy";
+        case ARM64_BARRIER_INVALID:
+        default:
             break;
     }
     return std::nullopt;
