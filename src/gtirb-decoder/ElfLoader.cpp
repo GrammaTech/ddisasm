@@ -21,19 +21,18 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
 #include "ElfLoader.h"
 
 #include "../AuxDataSchema.h"
 
 namespace souffle
 {
-    // souffle::tuple& operator<<(souffle::tuple& T, const ElfRelocation& ElfRelocation)
-    // {
-    //     auto& [Addr, Type, Name, Addend] = ElfRelocation;
-    //     T << Addr << Type << Name << Addend;
-    //     return T;
-    // }
+    souffle::tuple &operator<<(souffle::tuple &T, const ElfSymbolDecoder::Relocation &Rel)
+    {
+        auto &[Addr, Type, Name, Addend] = Rel;
+        T << Addr << Type << Name << Addend;
+        return T;
+    }
 } // namespace souffle
 
 void ElfSymbolDecoder::load(const gtirb::Module &Module)
@@ -66,11 +65,21 @@ void ElfSymbolDecoder::load(const gtirb::Module &Module)
         auto [Size, Type, Binding, Visibility, SectionIndex] = Info;
         Symbols.push_back({Addr, Size, Type, Binding, Visibility, SectionIndex, Name});
     }
+
+    // Load relocation entries from aux data.
+    if(auto *Table = Module.getAuxData<gtirb::schema::Relocations>())
+    {
+        for(auto [Address, Type, Name, Addend] : *Table)
+        {
+            Relocations.push_back({Address, Type, Name, Addend});
+        }
+    }
 }
 
 void ElfSymbolDecoder::populate(DatalogProgram &Program)
 {
-    // Program.insert("symbol", Symbols);
+    Program.insert("symbol", Symbols);
+    Program.insert("relocation", Relocations);
 }
 
 void ElfExceptionDecoder::load(const gtirb::Module &Module)

@@ -21,11 +21,10 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
-#include "X64Decoder.h"
-
 #include <algorithm>
 #include <string>
+
+#include "X64Decoder.h"
 
 std::optional<X64Decoder::Instruction> X64Decoder::disasm(const uint8_t* Bytes, uint64_t Size,
                                                           uint64_t Addr)

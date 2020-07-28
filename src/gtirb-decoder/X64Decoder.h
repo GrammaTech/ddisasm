@@ -23,9 +23,9 @@
 #ifndef SRC_X64_DECODER_H_
 #define SRC_X64_DECODER_H_
 
-#include "DatalogLoader.h"
-
 #include <capstone/capstone.h>
+
+#include "DatalogLoader.h"
 
 class X64Decoder : public InstructionDecoder
 {

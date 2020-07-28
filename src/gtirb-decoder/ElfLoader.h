@@ -36,11 +36,20 @@ class ElfSymbolDecoder : public SymbolDecoder
 public:
     using Symbol = SymbolDecoder::Symbol;
 
+    struct Relocation
+    {
+        uint64_t Address;
+        std::string Type;
+        std::string Name;
+        int64_t Addend;
+    };
+
     void load(const gtirb::Module& M) override;
     void populate(DatalogProgram& P) override;
 
 private:
     std::vector<Symbol> Symbols;
+    std::vector<Relocation> Relocations;
 };
 
 class ElfExceptionDecoder : public GtirbDecoder
@@ -81,4 +90,8 @@ public:
     }
 };
 
+namespace souffle
+{
+    souffle::tuple& operator<<(souffle::tuple& T, const ElfSymbolDecoder::Relocation& R);
+}
 #endif /* SRC_ELF_LOADER_H_ */

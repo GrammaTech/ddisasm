@@ -20,11 +20,10 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
-#include "Arm64Decoder.h"
-
 #include <algorithm>
 #include <string>
+
+#include "Arm64Decoder.h"
 
 namespace souffle
 {

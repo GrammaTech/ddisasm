@@ -29,24 +29,6 @@
 
 #include "ElfLoader.h"
 
-namespace souffle
-{
-    // template <typename Item>
-    // souffle::tuple &operator<<(souffle::tuple &T, const DataDecoder::Data<Item> &Data)
-    // {
-    //     T << Data.Addr << Data.Item;
-    //     return T;
-    // }
-
-    // souffle::tuple &operator<<(souffle::tuple &t, const ElfRelocation &ElfRelocation)
-    // {
-    //     auto &[Addr, Type, Name, Addend] = ElfRelocation;
-    //     t << Addr << Type << Name << Addend;
-    //     return t;
-    // }
-
-} // namespace souffle
-
 std::optional<DatalogProgram> DatalogProgram::load(gtirb::Module &Module)
 {
     // TODO: Target registration
