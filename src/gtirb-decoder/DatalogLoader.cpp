@@ -104,7 +104,7 @@ std::optional<DatalogProgram> DatalogLoader::program()
 
 void DatalogLoader::decode(const gtirb::Module& Module)
 {
-    for(std::shared_ptr<GtirbDecoder> Decoder : Decoders)
+    for(auto& Decoder : Decoders)
     {
         if(Decoder)
         {

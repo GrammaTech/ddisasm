@@ -32,20 +32,9 @@
 #include "../gtirb-decoder/DatalogUtils.h"
 
 // Refine function boundaries.
-class FunctionInferencePass : public DatalogLoader
+class FunctionInferencePass
 {
 public:
-    FunctionInferencePass() : DatalogLoader("souffle_function_inference")
-    {
-        add<BlockLoader>();
-        add<CodeBlockLoader>(1);
-        // Loader.populateCfgEdges(M);
-        // Loader.populateSymbolicExpressions(M);
-        // Loader.populateFdeEntries(Ctx, M);
-        // Loader.populateFunctionEntries(Ctx, M);
-        // Loader.populatePadding(Ctx, M);
-    }
-
     void setDebugDir(std::string Path)
     {
         DebugDir = Path;

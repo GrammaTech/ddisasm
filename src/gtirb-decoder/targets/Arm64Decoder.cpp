@@ -25,29 +25,6 @@
 
 #include "Arm64Decoder.h"
 
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const Arm64Decoder::BarrierOp& Op)
-    {
-        T << Op.Value;
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const Arm64Decoder::PrefetchOp& Op)
-    {
-        T << Op.Value;
-        return T;
-    }
-
-    template <class U>
-    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<U, uint64_t>& Pair)
-    {
-        auto& [Element, Id] = Pair;
-        T << Id << Element;
-        return T;
-    }
-} // namespace souffle
-
 std::optional<Arm64Decoder::Instruction> Arm64Decoder::disasm(const uint8_t* Bytes, uint64_t Size,
                                                               uint64_t Addr)
 {
@@ -278,3 +255,26 @@ std::optional<const char*> barrierValue(const arm64_barrier_op Op)
     }
     return std::nullopt;
 }
+
+namespace souffle
+{
+    souffle::tuple& operator<<(souffle::tuple& T, const Arm64Decoder::BarrierOp& Op)
+    {
+        T << Op.Value;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const Arm64Decoder::PrefetchOp& Op)
+    {
+        T << Op.Value;
+        return T;
+    }
+
+    template <class U>
+    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<U, uint64_t>& Pair)
+    {
+        auto& [Element, Id] = Pair;
+        T << Id << Element;
+        return T;
+    }
+} // namespace souffle

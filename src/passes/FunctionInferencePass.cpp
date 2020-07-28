@@ -71,9 +71,17 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
 void FunctionInferencePass::computeFunctions(gtirb::Context& Ctx, gtirb::Module& M,
                                              unsigned int NThreads)
 {
-    decode(M);
-    std::optional<DatalogProgram> FunctionInference = program();
+    DatalogLoader Loader("souffle_function_inference");
+    Loader.add<BlocksLoader>();
+    // Loader.add(makeInstructionDecoder(M));
+    // Loader.add<CfgEdgesLoader>();
+    // Loader.add<SymbolicExpressionsLoader>();
+    // Loader.add<FdeEntriesLoader>();
+    // Loader.add<FunctionEntriesLoader>();
+    // Loader.add<PaddingLoader>();
+    // Loader.decode(M);
 
+    std::optional<DatalogProgram> FunctionInference = Loader.program();
     if(!FunctionInference)
     {
         std::cerr << "Could not create souffle_function_inference program" << std::endl;
@@ -82,10 +90,12 @@ void FunctionInferencePass::computeFunctions(gtirb::Context& Ctx, gtirb::Module&
 
     FunctionInference->threads(NThreads);
     FunctionInference->run();
+
     if(DebugDir)
     {
         FunctionInference->writeFacts(*DebugDir);
         FunctionInference->writeRelations(*DebugDir);
     }
+
     updateFunctions(**FunctionInference, M);
 }

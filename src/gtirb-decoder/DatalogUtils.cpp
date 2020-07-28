@@ -22,22 +22,7 @@
 //===----------------------------------------------------------------------===//
 #include "DatalogUtils.h"
 
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const BlockLoader::Block& Block)
-    {
-        T << Block.Address << Block.Size;
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const BlockLoader::NextBlock& NextBlock)
-    {
-        T << NextBlock.Block1 << NextBlock.Block2;
-        return T;
-    }
-} // namespace souffle
-
-void BlockLoader::load(const gtirb::Module& Module)
+void BlocksLoader::load(const gtirb::Module& Module)
 {
     if(Module.code_blocks().empty())
     {
@@ -61,13 +46,13 @@ void BlockLoader::load(const gtirb::Module& Module)
     }
 }
 
-void BlockLoader::populate(DatalogProgram& Program)
+void BlocksLoader::populate(DatalogProgram& Program)
 {
     Program.insert("block", Blocks);
     Program.insert("next_block", NextBlocks);
 }
 
-void CodeBlockLoader::load(const gtirb::Module& M)
+void InstructionsLoader::load(const gtirb::Module& M)
 {
     // // Decode and transform instructions for all blocks on the module.
     // std::vector<DlInstruction> Insns;
@@ -79,14 +64,16 @@ void CodeBlockLoader::load(const gtirb::Module& M)
     //     cs_insn* Insn;
     //     const gtirb::ByteInterval* Bytes = Block.getByteInterval();
     //     uint64_t InitSize = Bytes->getInitializedSize();
-    //     assert(Bytes->getSize() == InitSize && "Found partially initialized code block.");
-    //     size_t Count =
+    //     assert(Bytes->getSize() == InitSize && "Found partially initialized code
+    //     block."); size_t Count =
     //         cs_disasm(CsHandle.getHandle(), Bytes->rawBytes<uint8_t>(), InitSize,
-    //                   static_cast<uint64_t>(*Block.getAddress()), InstructionLimit, &Insn);
+    //                   static_cast<uint64_t>(*Block.getAddress()), InstructionLimit,
+    //                   &Insn);
 
     //     // Exception-safe cleanup of instructions
     //     std::unique_ptr<cs_insn, std::function<void(cs_insn*)>> freeInsn(
-    //         Insn, [Count](cs_insn* i) { cs_free(i, Count); });
+    //         Insn, [Count](cs_insn* i) {
+    //         cs_free(i, Count); });
     //     for(size_t i = 0; i < Count; ++i)
     //     {
     //         Insns.push_back(GtirbToDatalog::transformInstruction(CsHandle, OpDict, Insn[i]));
@@ -94,7 +81,7 @@ void CodeBlockLoader::load(const gtirb::Module& M)
     // }
 }
 
-void CodeBlockLoader::populate(DatalogProgram& Program)
+void InstructionsLoader::populate(DatalogProgram& Program)
 {
     // Program.insert("instruction", Instructions);
     // Program.insert("op_regdirect", Operands.RegTable);
@@ -103,6 +90,9 @@ void CodeBlockLoader::populate(DatalogProgram& Program)
     // Program.insert("op_barrier", Operands.BarrierTable);
     // Program.insert("op_prefetch", Operands.PrefetchTable);
 }
+
+void CfgEdges(const gtirb::Module& M);
+void populate(DatalogProgram& P);
 
 // void populateEdgeProperties(souffle::tuple& T, const gtirb::EdgeLabel& Label)
 // {
@@ -138,57 +128,61 @@ void CodeBlockLoader::populate(DatalogProgram& Program)
 //     }
 // }
 
-// void GtirbToDatalog::populateCfgEdges(const gtirb::Module& M)
-// {
-//     std::map<const gtirb::ProxyBlock*, std::string> InvSymbolMap;
-//     for(auto& Symbol : M.symbols())
-//     {
-//         if(const gtirb::ProxyBlock* Proxy = Symbol.getReferent<gtirb::ProxyBlock>())
-//             InvSymbolMap[Proxy] = Symbol.getName();
-//     }
-//     const gtirb::CFG& Cfg = M.getIR()->getCFG();
-//     auto* EdgeRel = Prog->getRelation("cfg_edge");
-//     auto* TopEdgeRel = Prog->getRelation("cfg_edge_to_top");
-//     auto* SymbolEdgeRel = Prog->getRelation("cfg_edge_to_symbol");
-//     for(auto& Edge : Cfg.m_edges)
-//     {
-//         if(const gtirb::CodeBlock* Src = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_source]))
-//         {
-//             std::optional<gtirb::Addr> SrcAddr = Src->getAddress();
-//             assert(SrcAddr && "Found source block without address.");
+void CfgEdgesLoader::load(const gtirb::Module& M)
+{
+    // std::map<const gtirb::ProxyBlock*, std::string> InvSymbolMap;
+    // for(auto& Symbol : M.symbols())
+    // {
+    //     if(const gtirb::ProxyBlock* Proxy = Symbol.getReferent<gtirb::ProxyBlock>())
+    //         InvSymbolMap[Proxy] = Symbol.getName();
+    // }
+    // const gtirb::CFG& Cfg = M.getIR()->getCFG();
+    // auto* EdgeRel = Prog->getRelation("cfg_edge");
+    // auto* TopEdgeRel = Prog->getRelation("cfg_edge_to_top");
+    // auto* SymbolEdgeRel = Prog->getRelation("cfg_edge_to_symbol");
+    // for(auto& Edge : Cfg.m_edges)
+    // {
+    //     if(const gtirb::CodeBlock* Src = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_source]))
+    //     {
+    //         std::optional<gtirb::Addr> SrcAddr = Src->getAddress();
+    //         assert(SrcAddr && "Found source block without address.");
 
-//             if(const gtirb::CodeBlock* Dest = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_target]))
-//             {
-//                 std::optional<gtirb::Addr> DestAddr = Dest->getAddress();
-//                 assert(DestAddr && "Found destination block without address.");
+    //         if(const gtirb::CodeBlock* Dest = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_target]))
+    //         {
+    //             std::optional<gtirb::Addr> DestAddr = Dest->getAddress();
+    //             assert(DestAddr && "Found destination block without address.");
 
-//                 souffle::tuple T(EdgeRel);
-//                 T << *SrcAddr << *DestAddr;
-//                 populateEdgeProperties(T, Edge.get_property());
-//                 EdgeRel->insert(T);
-//             }
+    //             souffle::tuple T(EdgeRel);
+    //             T << *SrcAddr << *DestAddr;
+    //             populateEdgeProperties(T, Edge.get_property());
+    //             EdgeRel->insert(T);
+    //         }
 
-//             if(const gtirb::ProxyBlock* Dest = dyn_cast<gtirb::ProxyBlock>(Cfg[Edge.m_target]))
-//             {
-//                 auto foundSymbol = InvSymbolMap.find(Dest);
-//                 if(foundSymbol != InvSymbolMap.end())
-//                 {
-//                     souffle::tuple T(SymbolEdgeRel);
-//                     T << *SrcAddr << foundSymbol->second;
-//                     populateEdgeProperties(T, Edge.get_property());
-//                     SymbolEdgeRel->insert(T);
-//                 }
-//                 else
-//                 {
-//                     souffle::tuple T(TopEdgeRel);
-//                     T << *SrcAddr;
-//                     populateEdgeProperties(T, Edge.get_property());
-//                     TopEdgeRel->insert(T);
-//                 }
-//             }
-//         }
-//     }
-// }
+    //         if(const gtirb::ProxyBlock* Dest = dyn_cast<gtirb::ProxyBlock>(Cfg[Edge.m_target]))
+    //         {
+    //             auto foundSymbol = InvSymbolMap.find(Dest);
+    //             if(foundSymbol != InvSymbolMap.end())
+    //             {
+    //                 souffle::tuple T(SymbolEdgeRel);
+    //                 T << *SrcAddr << foundSymbol->second;
+    //                 populateEdgeProperties(T, Edge.get_property());
+    //                 SymbolEdgeRel->insert(T);
+    //             }
+    //             else
+    //             {
+    //                 souffle::tuple T(TopEdgeRel);
+    //                 T << *SrcAddr;
+    //                 populateEdgeProperties(T, Edge.get_property());
+    //                 TopEdgeRel->insert(T);
+    //             }
+    //         }
+    //     }
+    // }
+}
+
+void CfgEdgesLoader::populate(DatalogProgram& Program)
+{
+}
 
 // void GtirbToDatalog::populateSccs(gtirb::Module& M)
 // {
@@ -254,7 +248,8 @@ void CodeBlockLoader::populate(DatalogProgram& Program)
 //     for(auto& Pair : *CfiDirectives)
 //     {
 //         auto* Block =
-//             dyn_cast<const gtirb::CodeBlock>(gtirb::Node::getByUUID(Ctx, Pair.first.ElementId));
+//             dyn_cast<const gtirb::CodeBlock>(gtirb::Node::getByUUID(Ctx,
+//             Pair.first.ElementId));
 //         assert(Block && "Found CFI directive that does not belong to a block");
 
 //         std::optional<gtirb::Addr> BlockAddr = Block->getAddress();
@@ -290,7 +285,8 @@ void CodeBlockLoader::populate(DatalogProgram& Program)
 //     {
 //         for(auto& UUID : Pair.second)
 //         {
-//             if(auto* Block = dyn_cast<gtirb::CodeBlock>(gtirb::Node::getByUUID(Ctx, UUID)))
+//             if(auto* Block = dyn_cast<gtirb::CodeBlock>(gtirb::Node::getByUUID(Ctx,
+//             UUID)))
 //             {
 //                 assert(Block->getAddress() && "Found code block without address.");
 //                 souffle::tuple T(FunctionEntryRel);
@@ -311,7 +307,8 @@ void CodeBlockLoader::populate(DatalogProgram& Program)
 //     {
 //         souffle::tuple T(PaddingRel);
 //         auto* ByteInterval =
-//             dyn_cast_or_null<gtirb::ByteInterval>(gtirb::Node::getByUUID(Ctx, Offset.ElementId));
+//             dyn_cast_or_null<gtirb::ByteInterval>(gtirb::Node::getByUUID(Ctx,
+//             Offset.ElementId));
 //         assert(ByteInterval && "Failed to find ByteInterval by UUID.");
 //         if(ByteInterval->getAddress())
 //         {
@@ -321,3 +318,18 @@ void CodeBlockLoader::populate(DatalogProgram& Program)
 //         }
 //     }
 // }
+
+namespace souffle
+{
+    souffle::tuple& operator<<(souffle::tuple& T, const BlocksLoader::Block& Block)
+    {
+        T << Block.Address << Block.Size;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const BlocksLoader::NextBlock& NextBlock)
+    {
+        T << NextBlock.Block1 << NextBlock.Block2;
+        return T;
+    }
+} // namespace souffle

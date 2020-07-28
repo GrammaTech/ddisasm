@@ -29,11 +29,11 @@
 
 #include "../gtirb-decoder/DatalogLoader.h"
 
-class BlockLoader : public GtirbDecoder
+class BlocksLoader : public GtirbDecoder
 {
 public:
-    void load(const gtirb::Module& M);
-    void populate(DatalogProgram& P);
+    void load(const gtirb::Module& M) override;
+    void populate(DatalogProgram& P) override;
 
     struct Block
     {
@@ -52,29 +52,57 @@ private:
     std::vector<NextBlock> NextBlocks;
 };
 
-class CodeBlockLoader : public GtirbDecoder
+class InstructionsLoader : public GtirbDecoder
 {
 public:
-    CodeBlockLoader(int N) : InstructionLimit{N} {};
+    InstructionsLoader(int N) : InstructionLimit{N} {};
 
-    void load(const gtirb::Module& M);
-    void populate(DatalogProgram& P);
+    void load(const gtirb::Module& M) override;
+    void populate(DatalogProgram& P) override;
 
 private:
     int InstructionLimit;
 };
 
+class CfgEdgesLoader : public GtirbDecoder
+{
+public:
+    void load(const gtirb::Module& M) override;
+    void populate(DatalogProgram& P) override;
+};
+
+class SymbolicExpressionsLoader : public GtirbDecoder
+{
+public:
+    void load(const gtirb::Module& M) override;
+    void populate(DatalogProgram& P) override;
+};
+
+class FdeEntriesLoader : public GtirbDecoder
+{
+public:
+    void load(const gtirb::Module& M) override;
+    void populate(DatalogProgram& P) override;
+};
+
+class FunctionEntriesLoader : public GtirbDecoder
+{
+public:
+    void load(const gtirb::Module& M) override;
+    void populate(DatalogProgram& P) override;
+};
+
+class PaddingLoader : public GtirbDecoder
+{
+public:
+    void load(const gtirb::Module& M) override;
+    void populate(DatalogProgram& P) override;
+};
+
 namespace souffle
 {
-    souffle::tuple& operator<<(souffle::tuple& T, const BlockLoader::Block& B);
-    souffle::tuple& operator<<(souffle::tuple& T, const BlockLoader::NextBlock& N);
+    souffle::tuple& operator<<(souffle::tuple& T, const BlocksLoader::Block& B);
+    souffle::tuple& operator<<(souffle::tuple& T, const BlocksLoader::NextBlock& N);
 } // namespace souffle
-
-// void populateCfgEdges(const gtirb::Module &M);
-// void populateSccs(gtirb::Module &M);
-// void populateSymbolicExpressions(const gtirb::Module &M);
-// void populateFdeEntries(const gtirb::Context &Ctx, gtirb::Module &M);
-// void populateFunctionEntries(const gtirb::Context &Ctx, gtirb::Module &M);
-// void populatePadding(const gtirb::Context &Ctx, gtirb::Module &M);
 
 #endif

@@ -202,7 +202,7 @@ private:
 class DatalogLoader
 {
 public:
-    using GtirbDecoders = std::vector<std::shared_ptr<GtirbDecoder>>;
+    using GtirbDecoders = std::vector<std::unique_ptr<GtirbDecoder>>;
 
     DatalogLoader(std::string N) : Name{N}, Decoders{} {};
     ~DatalogLoader() = default;
@@ -213,13 +213,16 @@ public:
     template <typename T, typename... Args>
     void add(Args... A)
     {
-        Decoders.push_back(std::make_shared<T>(A...));
+        Decoders.push_back(std::make_unique<T>(A...));
     }
 
 private:
     std::string Name;
     GtirbDecoders Decoders;
 };
+
+const char* binaryISA(gtirb::ISA Arch);
+const char* binaryFormat(const gtirb::FileFormat Format);
 
 namespace souffle
 {
@@ -239,8 +242,5 @@ namespace souffle
     template <typename U>
     souffle::tuple& operator<<(souffle::tuple& T, const std::pair<U, uint64_t>& Pair);
 } // namespace souffle
-
-const char* binaryFormat(const gtirb::FileFormat Format);
-const char* binaryISA(gtirb::ISA Arch);
 
 #endif /* SRC_DATALOG_LOADER_H_ */
