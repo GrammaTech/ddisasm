@@ -107,8 +107,27 @@ private:
 class SymbolicExpressionsLoader : public GtirbDecoder
 {
 public:
+    struct SymbolicExpression
+    {
+        gtirb::Addr Address;
+        gtirb::Addr Symbol;
+        int64_t Offset;
+    };
+
+    struct SymbolMinusSymbol
+    {
+        gtirb::Addr Address;
+        gtirb::Addr Symbol1;
+        gtirb::Addr Symbol2;
+        int64_t Offset;
+    };
+
     void load(const gtirb::Module& M) override;
     void populate(DatalogProgram& P) override;
+
+private:
+    std::vector<SymbolicExpression> SymbolicExpressions;
+    std::vector<SymbolMinusSymbol> SymbolMinusSymbols;
 };
 
 class FdeEntriesLoader : public GtirbDecoder

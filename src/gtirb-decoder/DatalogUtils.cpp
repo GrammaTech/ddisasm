@@ -186,6 +186,41 @@ void CfgEdgesLoader::populate(DatalogProgram& Program)
     Program.insert("cfg_edge_to_symbol", SymbolEdges);
 }
 
+void SymbolicExpressionsLoader::load(const gtirb::Module& M)
+{
+    for(const auto& SymExprElem : M.symbolic_expressions())
+    {
+        const gtirb::ByteInterval* Bytes = SymExprElem.getByteInterval();
+        const gtirb::SymbolicExpression& SymExpr = SymExprElem.getSymbolicExpression();
+        if(std::optional<gtirb::Addr> Addr = Bytes->getAddress(); Addr)
+        {
+            if(auto* AddrConst = std::get_if<gtirb::SymAddrConst>(&SymExpr))
+            {
+                std::optional<gtirb::Addr> Symbol = AddrConst->Sym->getAddress();
+                if(Symbol)
+                {
+                    SymbolicExpressions.push_back({*Addr, *Symbol, AddrConst->Offset});
+                }
+            }
+            if(auto* AddrAddr = std::get_if<gtirb::SymAddrAddr>(&SymExpr))
+            {
+                std::optional<gtirb::Addr> Symbol1 = AddrAddr->Sym1->getAddress();
+                std::optional<gtirb::Addr> Symbol2 = AddrAddr->Sym2->getAddress();
+                if(Symbol1 && Symbol2)
+                {
+                    SymbolMinusSymbols.push_back({*Addr, *Symbol1, *Symbol2, AddrAddr->Offset});
+                }
+            }
+        }
+    }
+}
+
+void SymbolicExpressionsLoader::populate(DatalogProgram& Program)
+{
+    Program.insert("symbolic_expression", SymbolicExpressions);
+    Program.insert("symbol_minus_symbol", SymbolMinusSymbols);
+}
+
 // void GtirbToDatalog::populateSccs(gtirb::Module& M)
 // {
 //     auto* InSccRel = Prog->getRelation("in_scc");
@@ -203,40 +238,6 @@ void CfgEdgesLoader::populate(DatalogProgram& Program)
 //         souffle::tuple T(InSccRel);
 //         T << SccIndex << SccBlockIndex[SccIndex]++ << *Block.getAddress();
 //         InSccRel->insert(T);
-//     }
-// }
-
-// void GtirbToDatalog::populateSymbolicExpressions(const gtirb::Module& M)
-// {
-//     auto* SymExprRel = Prog->getRelation("symbolic_expression");
-//     auto* SymMinusSymRel = Prog->getRelation("symbol_minus_symbol");
-//     for(const auto& SymExprElem : M.symbolic_expressions())
-//     {
-//         const gtirb::ByteInterval* Bytes = SymExprElem.getByteInterval();
-//         const gtirb::SymbolicExpression& SymExpr = SymExprElem.getSymbolicExpression();
-//         if(std::optional<gtirb::Addr> Addr = Bytes->getAddress(); Addr)
-//         {
-//             if(auto* AddrConst = std::get_if<gtirb::SymAddrConst>(&SymExpr))
-//             {
-//                 if(AddrConst->Sym->getAddress())
-//                 {
-//                     souffle::tuple T(SymExprRel);
-//                     T << *Addr << *(AddrConst->Sym->getAddress()) << AddrConst->Offset;
-//                     SymExprRel->insert(T);
-//                 }
-//             }
-//             if(auto* AddrAddr = std::get_if<gtirb::SymAddrAddr>(&SymExpr))
-//             {
-//                 if(AddrAddr->Sym1->getAddress() && AddrAddr->Sym2->getAddress())
-//                 {
-//                     souffle::tuple T(SymMinusSymRel);
-//                     T << *Addr << *(AddrAddr->Sym1->getAddress()) <<
-//                     *(AddrAddr->Sym2->getAddress())
-//                       << AddrAddr->Offset;
-//                     SymMinusSymRel->insert(T);
-//                 }
-//             }
-//         }
 //     }
 // }
 
@@ -352,4 +353,19 @@ namespace souffle
         T << Edge.Source << Edge.Symbol;
         return T;
     }
+
+    souffle::tuple& operator<<(souffle::tuple& T,
+                               const SymbolicExpressionsLoader::SymbolicExpression& Expr)
+    {
+        T << Expr.Address << Expr.Symbol << Expr.Offset;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T,
+                               const SymbolicExpressionsLoader::SymbolMinusSymbol& Expr)
+    {
+        T << Expr.Address << Expr.Symbol1 << Expr.Symbol2 << Expr.Offset;
+        return T;
+    }
+
 } // namespace souffle
