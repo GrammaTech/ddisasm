@@ -91,97 +91,99 @@ void InstructionsLoader::populate(DatalogProgram& Program)
     // Program.insert("op_prefetch", Operands.PrefetchTable);
 }
 
-void CfgEdges(const gtirb::Module& M);
-void populate(DatalogProgram& P);
+std::tuple<std::string, std::string, std::string> CfgEdgesLoader::properties(
+    const gtirb::EdgeLabel& Label)
+{
+    assert(Label.has_value() && "Found edge without a label");
 
-// void populateEdgeProperties(souffle::tuple& T, const gtirb::EdgeLabel& Label)
-// {
-//     assert(Label.has_value() && "Found edge without a label");
-//     if(std::get<gtirb::ConditionalEdge>(*Label) == gtirb::ConditionalEdge::OnTrue)
-//         T << "true";
-//     else
-//         T << "false";
-//     if(std::get<gtirb::DirectEdge>(*Label) == gtirb::DirectEdge::IsIndirect)
-//         T << "true";
-//     else
-//         T << "false";
-//     switch(std::get<gtirb::EdgeType>(*Label))
-//     {
-//         case gtirb::EdgeType::Branch:
-//             T << "branch";
-//             break;
-//         case gtirb::EdgeType::Call:
-//             T << "call";
-//             break;
-//         case gtirb::EdgeType::Fallthrough:
-//             T << "fallthrough";
-//             break;
-//         case gtirb::EdgeType::Return:
-//             T << "return";
-//             break;
-//         case gtirb::EdgeType::Syscall:
-//             T << "syscall";
-//             break;
-//         case gtirb::EdgeType::Sysret:
-//             T << "sysret";
-//             break;
-//     }
-// }
+    std::string Conditional = "false";
+    if(std::get<gtirb::ConditionalEdge>(*Label) == gtirb::ConditionalEdge::OnTrue)
+    {
+        Conditional = "true";
+    }
+
+    std::string Indirect = "false";
+    if(std::get<gtirb::DirectEdge>(*Label) == gtirb::DirectEdge::IsIndirect)
+    {
+        Indirect = "true";
+    }
+
+    std::string Type;
+    switch(std::get<gtirb::EdgeType>(*Label))
+    {
+        case gtirb::EdgeType::Branch:
+            Type = "branch";
+            break;
+        case gtirb::EdgeType::Call:
+            Type = "call";
+            break;
+        case gtirb::EdgeType::Fallthrough:
+            Type = "fallthrough";
+            break;
+        case gtirb::EdgeType::Return:
+            Type = "return";
+            break;
+        case gtirb::EdgeType::Syscall:
+            Type = "syscall";
+            break;
+        case gtirb::EdgeType::Sysret:
+            Type = "sysret";
+            break;
+    }
+
+    return {Conditional, Indirect, Type};
+}
 
 void CfgEdgesLoader::load(const gtirb::Module& M)
 {
-    // std::map<const gtirb::ProxyBlock*, std::string> InvSymbolMap;
-    // for(auto& Symbol : M.symbols())
-    // {
-    //     if(const gtirb::ProxyBlock* Proxy = Symbol.getReferent<gtirb::ProxyBlock>())
-    //         InvSymbolMap[Proxy] = Symbol.getName();
-    // }
-    // const gtirb::CFG& Cfg = M.getIR()->getCFG();
-    // auto* EdgeRel = Prog->getRelation("cfg_edge");
-    // auto* TopEdgeRel = Prog->getRelation("cfg_edge_to_top");
-    // auto* SymbolEdgeRel = Prog->getRelation("cfg_edge_to_symbol");
-    // for(auto& Edge : Cfg.m_edges)
-    // {
-    //     if(const gtirb::CodeBlock* Src = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_source]))
-    //     {
-    //         std::optional<gtirb::Addr> SrcAddr = Src->getAddress();
-    //         assert(SrcAddr && "Found source block without address.");
+    std::map<const gtirb::ProxyBlock*, std::string> InvSymbolMap;
+    for(auto& Symbol : M.symbols())
+    {
+        if(const gtirb::ProxyBlock* Proxy = Symbol.getReferent<gtirb::ProxyBlock>())
+        {
+            InvSymbolMap[Proxy] = Symbol.getName();
+        }
+    }
 
-    //         if(const gtirb::CodeBlock* Dest = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_target]))
-    //         {
-    //             std::optional<gtirb::Addr> DestAddr = Dest->getAddress();
-    //             assert(DestAddr && "Found destination block without address.");
+    const gtirb::CFG& Cfg = M.getIR()->getCFG();
+    for(auto& Edge : Cfg.m_edges)
+    {
+        if(const gtirb::CodeBlock* Src = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_source]))
+        {
+            std::optional<gtirb::Addr> SrcAddr = Src->getAddress();
+            assert(SrcAddr && "Found source block without address.");
 
-    //             souffle::tuple T(EdgeRel);
-    //             T << *SrcAddr << *DestAddr;
-    //             populateEdgeProperties(T, Edge.get_property());
-    //             EdgeRel->insert(T);
-    //         }
+            auto [Conditional, Indirect, Type] = properties(Edge.get_property());
 
-    //         if(const gtirb::ProxyBlock* Dest = dyn_cast<gtirb::ProxyBlock>(Cfg[Edge.m_target]))
-    //         {
-    //             auto foundSymbol = InvSymbolMap.find(Dest);
-    //             if(foundSymbol != InvSymbolMap.end())
-    //             {
-    //                 souffle::tuple T(SymbolEdgeRel);
-    //                 T << *SrcAddr << foundSymbol->second;
-    //                 populateEdgeProperties(T, Edge.get_property());
-    //                 SymbolEdgeRel->insert(T);
-    //             }
-    //             else
-    //             {
-    //                 souffle::tuple T(TopEdgeRel);
-    //                 T << *SrcAddr;
-    //                 populateEdgeProperties(T, Edge.get_property());
-    //                 TopEdgeRel->insert(T);
-    //             }
-    //         }
-    //     }
-    // }
+            if(const gtirb::CodeBlock* Dest = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_target]))
+            {
+                std::optional<gtirb::Addr> DestAddr = Dest->getAddress();
+                assert(DestAddr && "Found destination block without address.");
+                Edges.push_back({*SrcAddr, *DestAddr, Conditional, Indirect, Type});
+            }
+
+            if(const gtirb::ProxyBlock* Dest = dyn_cast<gtirb::ProxyBlock>(Cfg[Edge.m_target]))
+            {
+                auto It = InvSymbolMap.find(Dest);
+                if(It != InvSymbolMap.end())
+                {
+                    std::string Symbol = It->second;
+                    SymbolEdges.push_back({*SrcAddr, Symbol, Conditional, Indirect, Type});
+                }
+                else
+                {
+                    TopEdges.push_back({*SrcAddr, Conditional, Indirect, Type});
+                }
+            }
+        }
+    }
 }
 
 void CfgEdgesLoader::populate(DatalogProgram& Program)
 {
+    Program.insert("cfg_edge", Edges);
+    Program.insert("cfg_edge_to_top", TopEdges);
+    Program.insert("cfg_edge_to_symbol", SymbolEdges);
 }
 
 // void GtirbToDatalog::populateSccs(gtirb::Module& M)
@@ -330,6 +332,24 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const BlocksLoader::NextBlock& NextBlock)
     {
         T << NextBlock.Block1 << NextBlock.Block2;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const CfgEdgesLoader::Edge& Edge)
+    {
+        T << Edge.Source << Edge.Destination << Edge.Conditional << Edge.Indirect << Edge.Type;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const CfgEdgesLoader::TopEdge& Edge)
+    {
+        T << Edge.Source << Edge.Conditional << Edge.Type;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const CfgEdgesLoader::SymbolEdge& Edge)
+    {
+        T << Edge.Source << Edge.Symbol;
         return T;
     }
 } // namespace souffle

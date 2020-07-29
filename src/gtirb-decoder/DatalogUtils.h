@@ -67,8 +67,41 @@ private:
 class CfgEdgesLoader : public GtirbDecoder
 {
 public:
+    struct Edge
+    {
+        gtirb::Addr Source;
+        gtirb::Addr Destination;
+        std::string Conditional;
+        std::string Indirect;
+        std::string Type;
+    };
+
+    struct TopEdge
+    {
+        gtirb::Addr Source;
+        std::string Conditional;
+        std::string Indirect;
+        std::string Type;
+    };
+
+    struct SymbolEdge
+    {
+        gtirb::Addr Source;
+        std::string Symbol;
+        std::string Conditional;
+        std::string Indirect;
+        std::string Type;
+    };
+
     void load(const gtirb::Module& M) override;
     void populate(DatalogProgram& P) override;
+
+    std::tuple<std::string, std::string, std::string> properties(const gtirb::EdgeLabel& L);
+
+private:
+    std::vector<Edge> Edges;
+    std::vector<TopEdge> TopEdges;
+    std::vector<SymbolEdge> SymbolEdges;
 };
 
 class SymbolicExpressionsLoader : public GtirbDecoder
