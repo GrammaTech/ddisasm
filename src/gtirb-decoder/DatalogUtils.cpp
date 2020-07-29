@@ -271,49 +271,57 @@ void FdeEntriesLoader::populate(DatalogProgram& Program)
     Program.insert("fde_addresses", FdeAddresses);
 }
 
-// void GtirbToDatalog::populateFunctionEntries(const gtirb::Context& Ctx, gtirb::Module& M)
-// {
-//     auto* FunctionEntries = M.getAuxData<gtirb::schema::FunctionEntries>();
-//     if(!FunctionEntries)
-//         return;
-//     auto* FunctionEntryRel = Prog->getRelation("function_entry");
-//     for(auto& Pair : *FunctionEntries)
-//     {
-//         for(auto& UUID : Pair.second)
-//         {
-//             if(auto* Block = dyn_cast<gtirb::CodeBlock>(gtirb::Node::getByUUID(Ctx,
-//             UUID)))
-//             {
-//                 assert(Block->getAddress() && "Found code block without address.");
-//                 souffle::tuple T(FunctionEntryRel);
-//                 T << *Block->getAddress();
-//                 FunctionEntryRel->insert(T);
-//             }
-//         }
-//     }
-// }
+void FunctionEntriesLoader::load(const gtirb::Module& Module)
+{
+    auto* FunctionEntries = Module.getAuxData<gtirb::schema::FunctionEntries>();
+    if(!FunctionEntries)
+    {
+        return;
+    }
 
-// void GtirbToDatalog::populatePadding(const gtirb::Context& Ctx, gtirb::Module& M)
-// {
-//     auto* Padding = M.getAuxData<gtirb::schema::Padding>();
-//     if(!Padding)
-//         return;
-//     auto* PaddingRel = Prog->getRelation("padding");
-//     for(auto& [Offset, Size] : *Padding)
-//     {
-//         souffle::tuple T(PaddingRel);
-//         auto* ByteInterval =
-//             dyn_cast_or_null<gtirb::ByteInterval>(gtirb::Node::getByUUID(Ctx,
-//             Offset.ElementId));
-//         assert(ByteInterval && "Failed to find ByteInterval by UUID.");
-//         if(ByteInterval->getAddress())
-//         {
-//             gtirb::Addr Addr = *ByteInterval->getAddress() + Offset.Displacement;
-//             T << Addr << Size;
-//             PaddingRel->insert(T);
-//         }
-//     }
-// }
+    for(auto& Pair : *FunctionEntries)
+    {
+        for(auto& UUID : Pair.second)
+        {
+            if(auto* Block = dyn_cast<gtirb::CodeBlock>(gtirb::Node::getByUUID(*Context, UUID)))
+            {
+                assert(Block->getAddress() && "Found code block without address.");
+                Functions.push_back(*Block->getAddress());
+            }
+        }
+    }
+}
+
+void FunctionEntriesLoader::populate(DatalogProgram& Program)
+{
+    Program.insert("function_entry", Functions);
+}
+
+void PaddingLoader::load(const gtirb::Module& Module)
+{
+    auto* Padding = Module.getAuxData<gtirb::schema::Padding>();
+    if(!Padding)
+    {
+        return;
+    }
+
+    for(auto& [Offset, Size] : *Padding)
+    {
+        auto* ByteInterval = dyn_cast_or_null<gtirb::ByteInterval>(
+            gtirb::Node::getByUUID(*Context, Offset.ElementId));
+        assert(ByteInterval && "Failed to find ByteInterval by UUID.");
+        if(ByteInterval->getAddress())
+        {
+            gtirb::Addr Addr = *ByteInterval->getAddress() + Offset.Displacement;
+            Paddings.push_back({Addr, Size});
+        }
+    }
+}
+
+void PaddingLoader::populate(DatalogProgram& Program)
+{
+    Program.insert("padding", Paddings);
+}
 
 // void GtirbToDatalog::populateSccs(gtirb::Module& M)
 // {
@@ -382,6 +390,12 @@ namespace souffle
     }
 
     souffle::tuple& operator<<(souffle::tuple& T, const std::pair<gtirb::Addr, gtirb::Addr>& Pair)
+    {
+        T << std::get<0>(Pair) << std::get<1>(Pair);
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<gtirb::Addr, uint64_t>& Pair)
     {
         T << std::get<0>(Pair) << std::get<1>(Pair);
         return T;

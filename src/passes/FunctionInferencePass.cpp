@@ -77,9 +77,9 @@ void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Mod
     Loader.add<CfgEdgesLoader>();
     Loader.add<SymbolicExpressionsLoader>();
     Loader.add<FdeEntriesLoader>(&Context);
-    // Loader.add<FunctionEntriesLoader>();
-    // Loader.add<PaddingLoader>();
-    // Loader.decode(M);
+    Loader.add<FunctionEntriesLoader>(&Context);
+    Loader.add<PaddingLoader>(&Context);
+    Loader.decode(Module);
 
     std::optional<DatalogProgram> FunctionInference = Loader.program();
     if(!FunctionInference)

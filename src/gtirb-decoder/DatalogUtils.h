@@ -133,10 +133,7 @@ private:
 class FdeEntriesLoader : public GtirbDecoder
 {
 public:
-    FdeEntriesLoader(const gtirb::Context* C)
-    {
-        Context = C;
-    };
+    FdeEntriesLoader(const gtirb::Context* C) : Context(C){};
 
     void load(const gtirb::Module& M) override;
     void populate(DatalogProgram& P) override;
@@ -149,15 +146,27 @@ private:
 class FunctionEntriesLoader : public GtirbDecoder
 {
 public:
+    FunctionEntriesLoader(const gtirb::Context* C) : Context(C){};
+
     void load(const gtirb::Module& M) override;
     void populate(DatalogProgram& P) override;
+
+private:
+    const gtirb::Context* Context;
+    std::vector<gtirb::Addr> Functions;
 };
 
 class PaddingLoader : public GtirbDecoder
 {
 public:
+    PaddingLoader(const gtirb::Context* C) : Context(C){};
+
     void load(const gtirb::Module& M) override;
     void populate(DatalogProgram& P) override;
+
+private:
+    const gtirb::Context* Context;
+    std::vector<std::pair<gtirb::Addr, uint64_t>> Paddings;
 };
 
 namespace souffle
