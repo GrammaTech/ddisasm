@@ -332,10 +332,17 @@ if(BUILD_FUNINFER)
   # souffle code won't build with -Wall -Werror).
   add_library(funinfer_main STATIC Disassembler.cpp TBFunInference.cpp)
 
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
+    target_compile_options(funinfer_main PRIVATE -Wno-unused-parameter)
+  endif()
+
   configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Version.h.in"
                  "${CMAKE_BINARY_DIR}/include/Version.h" @ONLY)
   target_include_directories(
     funinfer_main PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
+  if(ehp_INCLUDE_DIR)
+    target_include_directories(funinfer_main PRIVATE ${ehp_INCLUDE_DIR})
+  endif()
 
   target_compile_definitions(funinfer_main PRIVATE __EMBEDDED_SOUFFLE__)
   target_compile_definitions(funinfer_main PRIVATE RAM_DOMAIN_SIZE=64)
@@ -371,7 +378,16 @@ if(BUILD_FUNINFER)
     ${LIBCPP_ABI})
 
   # Now combine the static library and generated code into an executable.
-  add_executable(funinfer ${GENERATED_CPP})
+  add_executable(funinfer ${GENERATED_ARM64_CPP} ${GENERATED_X64_CPP})
+
+  if(DDISASM_STATIC_DRIVERS)
+    if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+      # We do not want to statically link in the STL here, as MSVC is a bit
+      # prickly about STL ABIs.
+    else()
+      target_link_libraries(funinfer PRIVATE -static-libstdc++ -static-libgcc)
+    endif()
+  endif()
 
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
     target_link_libraries(funinfer funinfer_main scc_pass no_return_pass
@@ -382,12 +398,8 @@ if(BUILD_FUNINFER)
   else()
     target_link_libraries(
       funinfer
-      funinfer_main
-      scc_pass
-      -Wl,--whole-archive
-      no_return_pass
-      function_inference_pass
-      -Wl,--no-whole-archive)
+      PRIVATE funinfer_main scc_pass -Wl,--whole-archive no_return_pass
+              function_inference_pass -Wl,--no-whole-archive)
   endif()
 
   target_compile_definitions(funinfer PRIVATE __EMBEDDED_SOUFFLE__)
@@ -402,16 +414,17 @@ if(BUILD_FUNINFER)
     set_souffle_msvc_options(funinfer)
   else()
     target_compile_options(funinfer PRIVATE -O3)
-    target_compile_options(funinfer PRIVATE -Wno-parentheses-equality)
+    target_compile_options(funinfer PRIVATE -Wno-parentheses-equality
+                                            -Wno-unused-parameter)
   endif()
 
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
-    target_link_libraries(funinfer gomp)
+    if(DDISASM_STATIC_DRIVERS)
+      target_link_libraries(funinfer PRIVATE -l:libgomp.a)
+    else()
+      target_link_libraries(funinfer PRIVATE gomp)
+    endif()
   endif()
 
   install(TARGETS funinfer DESTINATION bin)
-
-  if(NOT BUILD_SHARED_LIBS)
-    target_link_libraries(funinfer -static-libstdc++)
-  endif()
 endif()

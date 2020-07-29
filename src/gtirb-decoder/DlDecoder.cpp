@@ -137,7 +137,7 @@ void addSections(souffle::SouffleProgram *prog, const gtirb::Module &module)
             if(found == extraInfoTable->end())
                 throw std::logic_error("Section " + section.getName()
                                        + " missing from elfSectionProperties AuxData table");
-            SectionProperties &extraInfo = found->second;
+            const SectionProperties &extraInfo = found->second;
             t << section.getName() << *section.getSize() << *section.getAddress()
               << std::get<0>(extraInfo) << std::get<1>(extraInfo);
             rel->insert(t);
@@ -241,7 +241,7 @@ void DlDecoder::storeDataSection(const gtirb::ByteInterval &byteInterval, gtirb:
 
 void DlDecoder::loadInputs(souffle::SouffleProgram *prog, const gtirb::Module &module)
 {
-    gtirb::schema::BinaryType::Type *btype = module.getAuxData<gtirb::schema::BinaryType>();
+    const gtirb::schema::BinaryType::Type *btype = module.getAuxData<gtirb::schema::BinaryType>();
     if(btype)
     {
         GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "binary_type", *btype);
