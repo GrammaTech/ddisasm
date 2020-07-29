@@ -20,7 +20,6 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#include <souffle/CompiledSouffle.h>
 #include <boost/uuid/uuid_generators.hpp>
 
 #include "../AuxDataSchema.h"

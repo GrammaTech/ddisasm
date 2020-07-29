@@ -20,13 +20,13 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
 #ifndef FUNCTION_INFERENCE_PASS_H_
 #define FUNCTION_INFERENCE_PASS_H_
 
+#include <optional>
+
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
-#include <optional>
 
 #include "../gtirb-decoder/DatalogLoader.h"
 #include "../gtirb-decoder/DatalogUtils.h"
@@ -40,7 +40,7 @@ public:
         DebugDir = Path;
     };
 
-    void computeFunctions(gtirb::Context& Ctx, gtirb::Module& module, unsigned int NThreads);
+    void computeFunctions(gtirb::Context& C, gtirb::Module& M, unsigned int NThreads);
 
 private:
     std::optional<std::string> DebugDir;

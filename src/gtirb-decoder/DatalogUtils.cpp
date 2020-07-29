@@ -323,25 +323,33 @@ void PaddingLoader::populate(DatalogProgram& Program)
     Program.insert("padding", Paddings);
 }
 
-// void GtirbToDatalog::populateSccs(gtirb::Module& M)
-// {
-//     auto* InSccRel = Prog->getRelation("in_scc");
-//     auto* SccTable = M.getAuxData<gtirb::schema::Sccs>();
-//     assert(SccTable && "SCCs AuxData table missing from GTIRB module");
-//     std::vector<int> SccBlockIndex;
-//     for(auto& Block : M.code_blocks())
-//     {
-//         assert(Block.getAddress() && "Found code block without address.");
-//         auto Found = SccTable->find(Block.getUUID());
-//         assert(Found != SccTable->end() && "Block missing from SCCs table");
-//         uint64_t SccIndex = Found->second;
-//         if(SccBlockIndex.size() <= SccIndex)
-//             SccBlockIndex.resize(SccIndex + 1);
-//         souffle::tuple T(InSccRel);
-//         T << SccIndex << SccBlockIndex[SccIndex]++ << *Block.getAddress();
-//         InSccRel->insert(T);
-//     }
-// }
+void SccLoader::load(const gtirb::Module& Module)
+{
+    auto* SccTable = Module.getAuxData<gtirb::schema::Sccs>();
+    assert(SccTable && "SCCs AuxData table missing from GTIRB module");
+
+    std::vector<int> SccBlockIndex;
+    for(auto& Block : Module.code_blocks())
+    {
+        assert(Block.getAddress() && "Found code block without address.");
+
+        auto Found = SccTable->find(Block.getUUID());
+        assert(Found != SccTable->end() && "Block missing from SCCs table");
+
+        uint64_t SccIndex = Found->second;
+        if(SccBlockIndex.size() <= SccIndex)
+        {
+            SccBlockIndex.resize(SccIndex + 1);
+        }
+
+        InScc.push_back({SccIndex, SccBlockIndex[SccIndex]++, *Block.getAddress()});
+    }
+}
+
+void SccLoader::populate(DatalogProgram& Program)
+{
+    Program.insert("in_scc", InScc);
+}
 
 namespace souffle
 {
@@ -398,6 +406,12 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const std::pair<gtirb::Addr, uint64_t>& Pair)
     {
         T << std::get<0>(Pair) << std::get<1>(Pair);
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const SccLoader::SccIndex& Scc)
+    {
+        T << Scc.Address << Scc.Index << Scc.Block;
         return T;
     }
 

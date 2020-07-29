@@ -20,42 +20,30 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
-#include <souffle/CompiledSouffle.h>
-
-#include "../gtirb-decoder/DatalogUtils.h"
 #include "NoReturnPass.h"
 
-void NoReturnPass::populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M)
-{
-    // GtirbToDatalog Loader(P);
-    // Loader.populateSccs(M);
-    // Loader.populateCfgEdges(M);
-}
-
-std::set<gtirb::CodeBlock*> NoReturnPass::updateCFG(std::shared_ptr<souffle::SouffleProgram> P,
-                                                    gtirb::Module& M)
+std::set<gtirb::CodeBlock*> NoReturnPass::updateCFG(souffle::SouffleProgram* P, gtirb::Module& M)
 {
     std::set<gtirb::CodeBlock*> NoReturn;
-    // for(auto& Output : *P->getRelation("block_call_no_return"))
-    // {
-    //     gtirb::Addr BlockAddr(Output[0]);
-    //     // this should correspond to only one block
-    //     for(auto& Block : M.findCodeBlocksOn(BlockAddr))
-    //     {
-    //         NoReturn.insert(&Block);
-    //     }
-    // }
-    // gtirb::CFG& Cfg = M.getIR()->getCFG();
-    // boost::remove_edge_if(
-    //     [&](auto Edge) {
-    //         gtirb::EdgeLabel Label = *static_cast<const gtirb::EdgeLabel*>(Edge.get_property());
-    //         if(auto* Block = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_source]))
-    //             return NoReturn.count(Block) && Label
-    //                    && std::get<gtirb::EdgeType>(*Label) == gtirb::EdgeType::Fallthrough;
-    //         return false;
-    //     },
-    //     Cfg);
+    for(auto& Output : *P->getRelation("block_call_no_return"))
+    {
+        gtirb::Addr BlockAddr(Output[0]);
+        // this should correspond to only one block
+        for(auto& Block : M.findCodeBlocksOn(BlockAddr))
+        {
+            NoReturn.insert(&Block);
+        }
+    }
+    gtirb::CFG& Cfg = M.getIR()->getCFG();
+    boost::remove_edge_if(
+        [&](auto Edge) {
+            gtirb::EdgeLabel Label = *static_cast<const gtirb::EdgeLabel*>(Edge.get_property());
+            if(auto* Block = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_source]))
+                return NoReturn.count(Block) && Label
+                       && std::get<gtirb::EdgeType>(*Label) == gtirb::EdgeType::Fallthrough;
+            return false;
+        },
+        Cfg);
     return NoReturn;
 }
 
@@ -64,23 +52,29 @@ void NoReturnPass::setDebugDir(std::string Path)
     DebugDir = Path;
 }
 
-std::set<gtirb::CodeBlock*> NoReturnPass::computeNoReturn(gtirb::Module& M, unsigned int NThreads)
+std::set<gtirb::CodeBlock*> NoReturnPass::computeNoReturn(gtirb::Module& Module,
+                                                          unsigned int NThreads)
 {
-    // auto Prog = std::shared_ptr<souffle::SouffleProgram>(
-    //     souffle::ProgramFactory::newInstance("souffle_no_return"));
-    // if(!Prog)
-    // {
-    //     std::cerr << "Could not create souffle_no_return program" << std::endl;
-    //     exit(1);
-    // }
-    // populateSouffleProg(Prog, M);
-    // Prog->setNumThreads(NThreads);
-    // Prog->run();
-    // if(DebugDir)
-    // {
-    //     writeFacts(&*Prog, *DebugDir);
-    //     Prog->printAll(*DebugDir);
-    // }
-    // return updateCFG(Prog, M);
-    return {};
+    DatalogLoader Loader("souffle_no_return");
+    Loader.add<SccLoader>();
+    Loader.add<CfgEdgesLoader>();
+    Loader.decode(Module);
+
+    std::optional<DatalogProgram> NoReturn = Loader.program();
+    if(!NoReturn)
+    {
+        std::cerr << "Could not create souffle_no_return program" << std::endl;
+        exit(1);
+    }
+
+    NoReturn->threads(NThreads);
+    NoReturn->run();
+
+    if(DebugDir)
+    {
+        NoReturn->writeFacts(*DebugDir);
+        NoReturn->writeRelations(*DebugDir);
+    }
+
+    return updateCFG(**NoReturn, Module);
 }

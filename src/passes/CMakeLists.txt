@@ -41,7 +41,7 @@ add_custom_command(
 
 add_library(no_return_pass STATIC NoReturnPass.cpp ${NO_RETURN_CPP})
 
-target_link_libraries(no_return_pass gtirb)
+target_link_libraries(no_return_pass gtirb gtirb_decoder)
 
 target_compile_definitions(no_return_pass PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(no_return_pass PRIVATE RAM_DOMAIN_SIZE=64)
@@ -83,7 +83,7 @@ add_custom_command(
 add_library(function_inference_pass STATIC FunctionInferencePass.cpp
                                            ${FUNCTION_INFERENCE_CPP})
 
-target_link_libraries(function_inference_pass gtirb)
+target_link_libraries(function_inference_pass gtirb gtirb_decoder)
 
 target_compile_definitions(function_inference_pass PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(function_inference_pass PRIVATE RAM_DOMAIN_SIZE=64)

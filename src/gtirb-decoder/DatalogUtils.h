@@ -169,10 +169,21 @@ private:
     std::vector<std::pair<gtirb::Addr, uint64_t>> Paddings;
 };
 
-namespace souffle
+class SccLoader : public GtirbDecoder
 {
-    souffle::tuple& operator<<(souffle::tuple& T, const BlocksLoader::Block& B);
-    souffle::tuple& operator<<(souffle::tuple& T, const BlocksLoader::NextBlock& N);
-} // namespace souffle
+public:
+    struct SccIndex
+    {
+        uint64_t Address;
+        int64_t Index;
+        gtirb::Addr Block;
+    };
+
+    void load(const gtirb::Module& M) override;
+    void populate(DatalogProgram& P) override;
+
+private:
+    std::vector<SccIndex> InScc;
+};
 
 #endif
