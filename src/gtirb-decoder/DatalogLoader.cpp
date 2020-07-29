@@ -24,68 +24,6 @@
 #include "DatalogLoader.h"
 #include "../AuxDataSchema.h"
 
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const gtirb::Addr& A)
-    {
-        T << static_cast<uint64_t>(A);
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const SymbolDecoder::Symbol& Symbol)
-    {
-        T << Symbol.Addr << Symbol.Size << Symbol.Type << Symbol.Binding << Symbol.SectionIndex
-          << Symbol.Name;
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const SectionDecoder::Section& Section)
-    {
-        T << Section.Name << Section.Size << Section.Address << Section.Type << Section.Flags;
-        return T;
-    }
-
-    template <typename Item>
-    souffle::tuple& operator<<(souffle::tuple& T, const DataDecoder::Data<Item>& Data)
-    {
-        T << Data.Addr << Data.Item;
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T,
-                               const InstructionDecoder::Instruction& Instruction)
-    {
-        T << Instruction.Address << Instruction.Size << Instruction.Prefix << Instruction.Name;
-        for(size_t i = 0; i < 4; ++i)
-        {
-            if(i < Instruction.OpCodes.size())
-            {
-                T << Instruction.OpCodes[i];
-            }
-            else
-            {
-                T << 0;
-            }
-        }
-        T << Instruction.ImmediateOffset << Instruction.DisplacementOffset;
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const InstructionDecoder::IndirectOp& Op)
-    {
-        T << Op.Reg1 << Op.Reg2 << Op.Reg3 << Op.Mult << Op.Disp << Op.Size;
-        return T;
-    }
-
-    template <class U>
-    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<U, uint64_t>& Pair)
-    {
-        auto& [Element, Id] = Pair;
-        T << Id << Element;
-        return T;
-    }
-} // namespace souffle
-
 std::optional<DatalogProgram> DatalogLoader::program()
 {
     // Build the Souffle context.
@@ -356,3 +294,65 @@ const char* binaryISA(gtirb::ISA Arch)
             return "Undefined";
     }
 }
+
+namespace souffle
+{
+    souffle::tuple& operator<<(souffle::tuple& T, const gtirb::Addr& A)
+    {
+        T << static_cast<uint64_t>(A);
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const SymbolDecoder::Symbol& Symbol)
+    {
+        T << Symbol.Addr << Symbol.Size << Symbol.Type << Symbol.Binding << Symbol.SectionIndex
+          << Symbol.Name;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const SectionDecoder::Section& Section)
+    {
+        T << Section.Name << Section.Size << Section.Address << Section.Type << Section.Flags;
+        return T;
+    }
+
+    template <typename Item>
+    souffle::tuple& operator<<(souffle::tuple& T, const DataDecoder::Data<Item>& Data)
+    {
+        T << Data.Addr << Data.Item;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T,
+                               const InstructionDecoder::Instruction& Instruction)
+    {
+        T << Instruction.Address << Instruction.Size << Instruction.Prefix << Instruction.Name;
+        for(size_t i = 0; i < 4; ++i)
+        {
+            if(i < Instruction.OpCodes.size())
+            {
+                T << Instruction.OpCodes[i];
+            }
+            else
+            {
+                T << 0;
+            }
+        }
+        T << Instruction.ImmediateOffset << Instruction.DisplacementOffset;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const InstructionDecoder::IndirectOp& Op)
+    {
+        T << Op.Reg1 << Op.Reg2 << Op.Reg3 << Op.Mult << Op.Disp << Op.Size;
+        return T;
+    }
+
+    template <class U>
+    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<U, uint64_t>& Pair)
+    {
+        auto& [Element, Id] = Pair;
+        T << Id << Element;
+        return T;
+    }
+} // namespace souffle

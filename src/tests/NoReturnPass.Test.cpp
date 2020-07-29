@@ -53,6 +53,24 @@ TEST(Unit_NoReturnPass, remove_simple_fallthrough)
     Cfg[*addEdge(B1, ExternalBlock, Cfg)] = simpleCall();
     Cfg[*addEdge(B2, TopBlock, Cfg)] = simpleReturn();
 
+    {
+        // FIXME: Make this its own test case.
+        DatalogLoader Loader("souffle_no_return");
+        Loader.add<CfgEdgesLoader>();
+        Loader.decode(*M);
+        std::optional<DatalogProgram> Program = Loader.program();
+        EXPECT_TRUE(Program);
+        if(Program)
+        {
+            auto* EdgeRel = (**Program)->getRelation("cfg_edge");
+            EXPECT_EQ(EdgeRel->size(), 1);
+            auto* TopEdgeRel = (**Program)->getRelation("cfg_edge_to_top");
+            EXPECT_EQ(TopEdgeRel->size(), 1);
+            auto* SymbolEdgeRel = (**Program)->getRelation("cfg_edge_to_symbol");
+            EXPECT_EQ(SymbolEdgeRel->size(), 1);
+        }
+    }
+
     computeSCCs(*M);
     std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
 

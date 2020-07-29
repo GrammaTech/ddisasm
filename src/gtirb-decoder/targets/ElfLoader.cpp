@@ -25,16 +25,6 @@
 
 #include "../../AuxDataSchema.h"
 
-namespace souffle
-{
-    souffle::tuple &operator<<(souffle::tuple &T, const ElfSymbolDecoder::Relocation &Rel)
-    {
-        auto &[Addr, Type, Name, Addend] = Rel;
-        T << Addr << Type << Name << Addend;
-        return T;
-    }
-} // namespace souffle
-
 void ElfSymbolDecoder::load(const gtirb::Module &Module)
 {
     // Find extra ELF symbol information in aux data.
@@ -94,3 +84,13 @@ void ElfExceptionDecoder::populate(DatalogProgram &Program)
         Decoder->addExceptionInformation(*Program);
     }
 }
+
+namespace souffle
+{
+    souffle::tuple &operator<<(souffle::tuple &T, const ElfSymbolDecoder::Relocation &Rel)
+    {
+        auto &[Addr, Type, Name, Addend] = Rel;
+        T << Addr << Type << Name << Addend;
+        return T;
+    }
+} // namespace souffle

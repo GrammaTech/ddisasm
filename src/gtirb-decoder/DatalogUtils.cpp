@@ -373,13 +373,13 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const CfgEdgesLoader::TopEdge& Edge)
     {
-        T << Edge.Source << Edge.Conditional << Edge.Type;
+        T << Edge.Source << Edge.Conditional << Edge.Indirect << Edge.Type;
         return T;
     }
 
     souffle::tuple& operator<<(souffle::tuple& T, const CfgEdgesLoader::SymbolEdge& Edge)
     {
-        T << Edge.Source << Edge.Symbol;
+        T << Edge.Source << Edge.Symbol << Edge.Conditional << Edge.Indirect << Edge.Type;
         return T;
     }
 
