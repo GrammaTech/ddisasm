@@ -121,27 +121,23 @@ void addSections(souffle::SouffleProgram *prog, const gtirb::Module &module)
     auto *rel = prog->getRelation("section_complete");
     auto *extraInfoTable = module.getAuxData<gtirb::schema::ElfSectionProperties>();
     if(!extraInfoTable)
-#if 0 // GHN
         throw std::logic_error("missing elfSectionProperties AuxData table");
-#else
-        return;
-#endif
 
-        for(auto &section : module.sections())
-        {
-            assert(section.getAddress() && "Section has no address.");
-            assert(section.getSize() && "Section has non-calculable size.");
+    for(auto &section : module.sections())
+    {
+        assert(section.getAddress() && "Section has no address.");
+        assert(section.getSize() && "Section has non-calculable size.");
 
-            souffle::tuple t(rel);
-            auto found = extraInfoTable->find(section.getUUID());
-            if(found == extraInfoTable->end())
-                throw std::logic_error("Section " + section.getName()
-                                       + " missing from elfSectionProperties AuxData table");
-            const SectionProperties &extraInfo = found->second;
-            t << section.getName() << *section.getSize() << *section.getAddress()
-              << std::get<0>(extraInfo) << std::get<1>(extraInfo);
-            rel->insert(t);
-        }
+        souffle::tuple t(rel);
+        auto found = extraInfoTable->find(section.getUUID());
+        if(found == extraInfoTable->end())
+            throw std::logic_error("Section " + section.getName()
+                                   + " missing from elfSectionProperties AuxData table");
+        const SectionProperties &extraInfo = found->second;
+        t << section.getName() << *section.getSize() << *section.getAddress()
+          << std::get<0>(extraInfo) << std::get<1>(extraInfo);
+        rel->insert(t);
+    }
 }
 
 souffle::SouffleProgram *DlDecoder::decode(const gtirb::Module &module,
@@ -241,11 +237,8 @@ void DlDecoder::storeDataSection(const gtirb::ByteInterval &byteInterval, gtirb:
 
 void DlDecoder::loadInputs(souffle::SouffleProgram *prog, const gtirb::Module &module)
 {
-    const gtirb::schema::BinaryType::Type *btype = module.getAuxData<gtirb::schema::BinaryType>();
-    if(btype)
-    {
-        GtirbToDatalog::addToRelation<std::vector<std::string>>(prog, "binary_type", *btype);
-    }
+    GtirbToDatalog::addToRelation<std::vector<std::string>>(
+        prog, "binary_type", *module.getAuxData<gtirb::schema::BinaryType>());
     GtirbToDatalog::addToRelation<std::vector<std::string>>(
         prog, "binary_format", {getFileFormatString(module.getFileFormat())});
 
