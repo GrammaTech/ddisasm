@@ -73,6 +73,7 @@ void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Mod
 {
     DatalogLoader Loader("souffle_function_inference");
     Loader.add<BlocksLoader>();
+    // FIXME:
     // Loader.add(makeInstructionDecoder(M));
     Loader.add<CfgEdgesLoader>();
     Loader.add<SymbolicExpressionsLoader>();
