@@ -133,8 +133,17 @@ private:
 class FdeEntriesLoader : public GtirbDecoder
 {
 public:
+    FdeEntriesLoader(const gtirb::Context* C)
+    {
+        Context = C;
+    };
+
     void load(const gtirb::Module& M) override;
     void populate(DatalogProgram& P) override;
+
+private:
+    const gtirb::Context* Context;
+    std::vector<std::pair<gtirb::Addr, gtirb::Addr>> FdeAddresses;
 };
 
 class FunctionEntriesLoader : public GtirbDecoder

@@ -22,6 +22,8 @@
 //===----------------------------------------------------------------------===//
 #include "DatalogUtils.h"
 
+#include "../AuxDataSchema.h"
+
 void BlocksLoader::load(const gtirb::Module& Module)
 {
     if(Module.code_blocks().empty())
@@ -221,62 +223,53 @@ void SymbolicExpressionsLoader::populate(DatalogProgram& Program)
     Program.insert("symbol_minus_symbol", SymbolMinusSymbols);
 }
 
-// void GtirbToDatalog::populateSccs(gtirb::Module& M)
-// {
-//     auto* InSccRel = Prog->getRelation("in_scc");
-//     auto* SccTable = M.getAuxData<gtirb::schema::Sccs>();
-//     assert(SccTable && "SCCs AuxData table missing from GTIRB module");
-//     std::vector<int> SccBlockIndex;
-//     for(auto& Block : M.code_blocks())
-//     {
-//         assert(Block.getAddress() && "Found code block without address.");
-//         auto Found = SccTable->find(Block.getUUID());
-//         assert(Found != SccTable->end() && "Block missing from SCCs table");
-//         uint64_t SccIndex = Found->second;
-//         if(SccBlockIndex.size() <= SccIndex)
-//             SccBlockIndex.resize(SccIndex + 1);
-//         souffle::tuple T(InSccRel);
-//         T << SccIndex << SccBlockIndex[SccIndex]++ << *Block.getAddress();
-//         InSccRel->insert(T);
-//     }
-// }
+void FdeEntriesLoader::load(const gtirb::Module& Module)
+{
+    std::set<gtirb::Addr> FdeStart;
+    std::set<gtirb::Addr> FdeEnd;
 
-// void GtirbToDatalog::populateFdeEntries(const gtirb::Context& Ctx, gtirb::Module& M)
-// {
-//     std::set<gtirb::Addr> FdeStart;
-//     std::set<gtirb::Addr> FdeEnd;
-//     auto* CfiDirectives = M.getAuxData<gtirb::schema::CfiDirectives>();
-//     if(!CfiDirectives)
-//         return;
-//     for(auto& Pair : *CfiDirectives)
-//     {
-//         auto* Block =
-//             dyn_cast<const gtirb::CodeBlock>(gtirb::Node::getByUUID(Ctx,
-//             Pair.first.ElementId));
-//         assert(Block && "Found CFI directive that does not belong to a block");
+    auto* CfiDirectives = Module.getAuxData<gtirb::schema::CfiDirectives>();
+    if(!CfiDirectives)
+    {
+        return;
+    }
 
-//         std::optional<gtirb::Addr> BlockAddr = Block->getAddress();
-//         assert(BlockAddr && "Found code block without address.");
+    for(auto& Pair : *CfiDirectives)
+    {
+        auto* Block = dyn_cast<const gtirb::CodeBlock>(
+            gtirb::Node::getByUUID(*Context, Pair.first.ElementId));
+        assert(Block && "Found CFI directive that does not belong to a block");
 
-//         for(auto& Directive : Pair.second)
-//         {
-//             if(std::get<0>(Directive) == ".cfi_startproc")
-//                 FdeStart.insert(*BlockAddr + Pair.first.Displacement);
-//             if(std::get<0>(Directive) == ".cfi_endproc")
-//                 FdeEnd.insert(*BlockAddr + Pair.first.Displacement);
-//         }
-//     }
-//     assert(FdeStart.size() == FdeEnd.size() && "Malformed CFI directives");
-//     auto StartIt = FdeStart.begin();
-//     auto EndIt = FdeEnd.begin();
-//     auto* FdeAddresses = Prog->getRelation("fde_addresses");
-//     for(; StartIt != FdeStart.end(); ++StartIt, ++EndIt)
-//     {
-//         souffle::tuple T(FdeAddresses);
-//         T << *StartIt << *EndIt;
-//         FdeAddresses->insert(T);
-//     }
-// }
+        std::optional<gtirb::Addr> BlockAddr = Block->getAddress();
+        assert(BlockAddr && "Found code block without address.");
+
+        for(auto& Directive : Pair.second)
+        {
+            if(std::get<0>(Directive) == ".cfi_startproc")
+            {
+                FdeStart.insert(*BlockAddr + Pair.first.Displacement);
+            }
+            if(std::get<0>(Directive) == ".cfi_endproc")
+            {
+                FdeEnd.insert(*BlockAddr + Pair.first.Displacement);
+            }
+        }
+    }
+
+    assert(FdeStart.size() == FdeEnd.size() && "Malformed CFI directives");
+
+    auto StartIt = FdeStart.begin();
+    auto EndIt = FdeEnd.begin();
+    for(; StartIt != FdeStart.end(); ++StartIt, ++EndIt)
+    {
+        FdeAddresses.push_back({*StartIt, *EndIt});
+    }
+}
+
+void FdeEntriesLoader::populate(DatalogProgram& Program)
+{
+    Program.insert("fde_addresses", FdeAddresses);
+}
 
 // void GtirbToDatalog::populateFunctionEntries(const gtirb::Context& Ctx, gtirb::Module& M)
 // {
@@ -319,6 +312,26 @@ void SymbolicExpressionsLoader::populate(DatalogProgram& Program)
 //             T << Addr << Size;
 //             PaddingRel->insert(T);
 //         }
+//     }
+// }
+
+// void GtirbToDatalog::populateSccs(gtirb::Module& M)
+// {
+//     auto* InSccRel = Prog->getRelation("in_scc");
+//     auto* SccTable = M.getAuxData<gtirb::schema::Sccs>();
+//     assert(SccTable && "SCCs AuxData table missing from GTIRB module");
+//     std::vector<int> SccBlockIndex;
+//     for(auto& Block : M.code_blocks())
+//     {
+//         assert(Block.getAddress() && "Found code block without address.");
+//         auto Found = SccTable->find(Block.getUUID());
+//         assert(Found != SccTable->end() && "Block missing from SCCs table");
+//         uint64_t SccIndex = Found->second;
+//         if(SccBlockIndex.size() <= SccIndex)
+//             SccBlockIndex.resize(SccIndex + 1);
+//         souffle::tuple T(InSccRel);
+//         T << SccIndex << SccBlockIndex[SccIndex]++ << *Block.getAddress();
+//         InSccRel->insert(T);
 //     }
 // }
 
@@ -365,6 +378,12 @@ namespace souffle
                                const SymbolicExpressionsLoader::SymbolMinusSymbol& Expr)
     {
         T << Expr.Address << Expr.Symbol1 << Expr.Symbol2 << Expr.Offset;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<gtirb::Addr, gtirb::Addr>& Pair)
+    {
+        T << std::get<0>(Pair) << std::get<1>(Pair);
         return T;
     }
 

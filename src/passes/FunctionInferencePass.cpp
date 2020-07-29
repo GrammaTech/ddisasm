@@ -68,15 +68,15 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
     M.addAuxData<gtirb::schema::FunctionNames>(std::move(FunctionNames));
 }
 
-void FunctionInferencePass::computeFunctions(gtirb::Context& Ctx, gtirb::Module& M,
+void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Module& Module,
                                              unsigned int NThreads)
 {
     DatalogLoader Loader("souffle_function_inference");
     Loader.add<BlocksLoader>();
     // Loader.add(makeInstructionDecoder(M));
-    // Loader.add<CfgEdgesLoader>();
-    // Loader.add<SymbolicExpressionsLoader>();
-    // Loader.add<FdeEntriesLoader>();
+    Loader.add<CfgEdgesLoader>();
+    Loader.add<SymbolicExpressionsLoader>();
+    Loader.add<FdeEntriesLoader>(&Context);
     // Loader.add<FunctionEntriesLoader>();
     // Loader.add<PaddingLoader>();
     // Loader.decode(M);
@@ -97,5 +97,5 @@ void FunctionInferencePass::computeFunctions(gtirb::Context& Ctx, gtirb::Module&
         FunctionInference->writeRelations(*DebugDir);
     }
 
-    updateFunctions(**FunctionInference, M);
+    updateFunctions(**FunctionInference, Module);
 }
