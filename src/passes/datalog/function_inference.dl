@@ -23,7 +23,7 @@
 /**
 Function inference: Infer additional function entries based on
 identifying function pointers and based on identifying complete functions.
-
+This is designed to be used with tbdisasm trace GTIRB inputs to funifer.
 
 */
 
@@ -32,7 +32,7 @@ identifying function pointers and based on identifying complete functions.
 .number_type operand_code
 .symbol_type register
 
-#include "Ph2_call_inference.dl"
+#include "trace_call_inference.dl"
 
 .decl block(Address:address, Size:number)
 .input block
