@@ -116,13 +116,6 @@ private:
 std::optional<const char*> barrierValue(const arm64_barrier_op Op);
 std::optional<const char*> prefetchValue(const arm64_prefetch_op Op);
 
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const Arm64Decoder::BarrierOp& Op);
-    souffle::tuple& operator<<(souffle::tuple& T, const Arm64Decoder::PrefetchOp& Op);
-
-} // namespace souffle
-
 class ElfArm64Loader : public DatalogLoader
 {
 public:

@@ -58,8 +58,4 @@ private:
     std::unique_ptr<ExceptionDecoder> Decoder;
 };
 
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const ElfSymbolDecoder::Relocation& R);
-}
 #endif /* SRC_ELF_LOADER_H_ */
