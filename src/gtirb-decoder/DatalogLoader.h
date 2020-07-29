@@ -37,6 +37,7 @@ class DatalogProgram;
 class GtirbDecoder
 {
 public:
+    virtual ~GtirbDecoder(){};
     virtual void load(const gtirb::Module& M) = 0;
     virtual void populate(DatalogProgram& P) = 0;
 };
