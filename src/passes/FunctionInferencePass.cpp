@@ -30,9 +30,14 @@
 void FunctionInferencePass::populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P,
                                                 gtirb::Context& Ctx, gtirb::Module& M)
 {
+    bool input_is_trace;
+    gtirb::schema::BinaryType::Type* btype = M.getAuxData<gtirb::schema::BinaryType>();
+    input_is_trace = (btype && btype->at(0) == std::string("TRACE"));
+
     GtirbToDatalog Loader(P);
     Loader.populateBlocks(M);
-    Loader.populateInstructions(M, 1);
+    if(!input_is_trace)
+        Loader.populateInstructions(M, 1);
     Loader.populateCfgEdges(M);
     Loader.populateSymbolicExpressions(M);
     Loader.populateFdeEntries(Ctx, M);
@@ -41,8 +46,7 @@ void FunctionInferencePass::populateSouffleProg(std::shared_ptr<souffle::Souffle
 
     // GHN 2020-06-29 additional populates needed if we're handling a
     // tbdisasm GTIRB input
-    gtirb::schema::BinaryType::Type* btype = M.getAuxData<gtirb::schema::BinaryType>();
-    if(btype && btype->at(0) == std::string("TRACE"))
+    if(input_is_trace)
     {
         // Check value, add relations
         std::cout << "We got GTIRB, load extra relations.\n";
