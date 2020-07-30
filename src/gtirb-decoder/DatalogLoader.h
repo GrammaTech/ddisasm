@@ -145,6 +145,9 @@ public:
         std::map<IndirectOp, uint64_t> IndirectTable;
     };
 
+    InstructionDecoder(){};
+    InstructionDecoder(uint8_t N) : InstructionSize(N){};
+
     void load(const gtirb::Module& M) override;
     void load(const gtirb::ByteInterval& I);
     void populate(DatalogProgram& P) override;
@@ -153,6 +156,7 @@ public:
                                               uint64_t Addr) = 0;
 
 protected:
+    uint8_t InstructionSize = 1;
     OperandTable Operands;
     std::vector<Instruction> Instructions;
     std::vector<gtirb::Addr> InvalidInstructions;

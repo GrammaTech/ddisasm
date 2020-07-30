@@ -175,9 +175,9 @@ void InstructionDecoder::load(const gtirb::ByteInterval& ByteInterval)
         {
             InvalidInstructions.push_back(gtirb::Addr(Addr));
         }
-        ++Addr;
-        ++Data;
-        --Size;
+        Addr += InstructionSize;
+        Data += InstructionSize;
+        Size -= InstructionSize;
     }
 }
 

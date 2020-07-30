@@ -170,6 +170,11 @@ std::optional<Arm64Decoder::Operand> Arm64Decoder::build(const cs_arm64_op& CsOp
 
 void Arm64Decoder::populate(DatalogProgram& Program)
 {
+    Program.insert("instruction_complete", Instructions);
+    Program.insert("invalid_op_code", InvalidInstructions);
+    Program.insert("op_immediate", Operands.ImmTable);
+    Program.insert("op_regdirect", Operands.RegTable);
+    Program.insert("op_indirect", Operands.IndirectTable);
     Program.insert("op_barrier", Operands.BarrierTable);
     Program.insert("op_prefetch", Operands.PrefetchTable);
 }
