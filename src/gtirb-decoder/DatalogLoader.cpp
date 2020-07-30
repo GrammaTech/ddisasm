@@ -74,7 +74,6 @@ void FormatDecoder::load(const gtirb::Module& Module)
     // Binary object type.
     if(auto AuxData = Module.getAuxData<gtirb::schema::BinaryType>())
     {
-        // FIXME: Change AuxData type to a plain string.
         for(auto& Type : *AuxData)
         {
             BinaryType = Type;
@@ -84,7 +83,8 @@ void FormatDecoder::load(const gtirb::Module& Module)
 
 void FormatDecoder::populate(DatalogProgram& Program)
 {
-    Program.insert<std::vector<std::string>>("binary_type", {BinaryIsa});
+    Program.insert<std::vector<std::string>>("binary_isa", {BinaryIsa});
+    Program.insert<std::vector<std::string>>("binary_type", {BinaryType});
     Program.insert<std::vector<std::string>>("binary_format", {BinaryFormat});
     Program.insert<std::vector<gtirb::Addr>>("base_address", {BaseAddress});
     Program.insert<std::vector<gtirb::Addr>>("entry_point", {EntryPoint});
@@ -192,10 +192,16 @@ void InstructionDecoder::populate(DatalogProgram& Program)
 
 void DataDecoder::load(const gtirb::Module& Module)
 {
+    assert(Module.getSize() && "Module has non-calculable size.");
+    Start = *Module.getAddress();
+
+    assert(Module.getAddress() && "Module has non-addressable section data.");
+    End = *Module.getAddress() + *Module.getSize();
+
     for(const auto& Section : Module.sections())
     {
-        bool Initialized = Section.isFlagSet(gtirb::SectionFlag::Initialized);
         bool Executable = Section.isFlagSet(gtirb::SectionFlag::Executable);
+        bool Initialized = Section.isFlagSet(gtirb::SectionFlag::Initialized);
 
         if(Executable || Initialized)
         {
@@ -211,38 +217,30 @@ void DataDecoder::load(const gtirb::ByteInterval& ByteInterval)
 {
     assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
 
-    const gtirb::Section* Section = ByteInterval.getSection();
-    assert(Section && "ByteInterval does not belong to a Section.");
-
-    const gtirb::Module* Module = Section->getModule();
-    assert(Module && "Section does not belong to a Module.");
-
-    assert(Module->getSize() && "Module has non-calculable size.");
-    gtirb::Addr Start = *Module->getAddress();
-
-    assert(Module->getAddress() && "Module has non-addressable section data.");
-    gtirb::Addr End = *Module->getAddress() + *Module->getSize();
-
-    auto PossibleAddress = [Start, End](gtirb::Addr Value) {
-        return ((Value >= Start) && (Value <= Value));
-    };
-
     gtirb::Addr Addr = *ByteInterval.getAddress();
     uint64_t Size = ByteInterval.getInitializedSize();
     auto Data = ByteInterval.rawBytes<const uint8_t>();
 
-    // FIXME: Window size should be respective the architecture.
-    while(Size >= 8)
+    while(Size > 0)
     {
-        // Store single byte.
+        // Single byte.
         uint8_t Byte = *Data;
         Bytes.push_back({Addr, Byte});
 
-        // Store address.
-        if(Size >= 8)
+        // Possible address.
+        if(Size >= PointerSize)
         {
-            gtirb::Addr Value(*((int64_t*)Data));
-            if(PossibleAddress(Value))
+            gtirb::Addr Value;
+            if(PointerSize == 4)
+            {
+                Value = gtirb::Addr(*((int32_t*)Data));
+            }
+            else if(PointerSize == 8)
+            {
+                Value = gtirb::Addr(*((int64_t*)Data));
+            }
+
+            if(address(Value))
             {
                 Addresses.push_back({Addr, Value});
             }

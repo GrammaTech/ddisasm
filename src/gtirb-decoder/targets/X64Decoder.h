@@ -64,7 +64,7 @@ public:
         add<FormatDecoder>();
         add<SectionDecoder>();
         add<X64Decoder>();
-        add<DataDecoder>();
+        add<DataDecoder>(8);
         add<ElfSymbolDecoder>();
         add<ElfExceptionDecoder>();
     }

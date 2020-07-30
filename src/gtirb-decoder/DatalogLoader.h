@@ -52,11 +52,22 @@ public:
         T Item;
     };
 
+    DataDecoder() : PointerSize(1){};
+    DataDecoder(uint8_t N) : PointerSize(N){};
+
     void load(const gtirb::Module& M) override;
-    void load(const gtirb::ByteInterval& I);
     void populate(DatalogProgram& P) override;
 
+    virtual void load(const gtirb::ByteInterval& I);
+    virtual bool address(gtirb::Addr Value)
+    {
+        return ((Value >= Start) && (Value <= End));
+    }
+
 private:
+    uint8_t PointerSize;
+    gtirb::Addr Start;
+    gtirb::Addr End;
     std::vector<Data<uint8_t>> Bytes;
     std::vector<Data<gtirb::Addr>> Addresses;
 };
