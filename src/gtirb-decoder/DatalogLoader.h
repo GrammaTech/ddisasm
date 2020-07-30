@@ -197,6 +197,7 @@ private:
     std::string BinaryIsa;
     std::string BinaryFormat;
     std::string BinaryType;
+    gtirb::Addr BaseAddress;
     gtirb::Addr EntryPoint;
 };
 

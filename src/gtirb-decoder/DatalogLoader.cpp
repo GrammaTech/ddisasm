@@ -59,6 +59,9 @@ void FormatDecoder::load(const gtirb::Module& Module)
     // Binary file format.
     BinaryFormat = binaryFormat(Module.getFileFormat());
 
+    // Base address.
+    BaseAddress = Module.getPreferredAddr();
+
     // Binary entry point.
     if(const gtirb::CodeBlock* Block = Module.getEntryPoint())
     {
@@ -71,7 +74,7 @@ void FormatDecoder::load(const gtirb::Module& Module)
     // Binary object type.
     if(auto AuxData = Module.getAuxData<gtirb::schema::BinaryType>())
     {
-        // FIXME: Change toe AuxData type to a plain string.
+        // FIXME: Change AuxData type to a plain string.
         for(auto& Type : *AuxData)
         {
             BinaryType = Type;
@@ -83,6 +86,7 @@ void FormatDecoder::populate(DatalogProgram& Program)
 {
     Program.insert<std::vector<std::string>>("binary_type", {BinaryIsa});
     Program.insert<std::vector<std::string>>("binary_format", {BinaryFormat});
+    Program.insert<std::vector<gtirb::Addr>>("base_address", {BaseAddress});
     Program.insert<std::vector<gtirb::Addr>>("entry_point", {EntryPoint});
 }
 
