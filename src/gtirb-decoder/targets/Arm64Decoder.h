@@ -34,7 +34,7 @@ class Arm64Decoder : public InstructionDecoder
 public:
     Arm64Decoder()
     {
-        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM64, CS_MODE_64, &CsHandle);
+        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &CsHandle);
         assert(Err == CS_ERR_OK && "Failed to initialize ARM64 disassembler.");
         cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
     }
@@ -124,7 +124,7 @@ public:
         add<FormatDecoder>();
         add<SectionDecoder>();
         add<Arm64Decoder>();
-        add<DataDecoder>();
+        add<DataDecoder>(8);
         add<ElfSymbolDecoder>();
         add<ElfExceptionDecoder>();
     }
