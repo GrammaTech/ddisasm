@@ -60,7 +60,7 @@ class TraceFunctionInference(unittest.TestCase):
         of functions in the test case binary.
         """
         gtirb_out = "ff_" + tbgtirb
-        print("# Function Inference " + tbgtirb + "\n")
+        print(bcolors.okblue("# Function Inference " + tbgtirb + "\n"))
         start = timer()
         completedProcess = subprocess.run(
             [
