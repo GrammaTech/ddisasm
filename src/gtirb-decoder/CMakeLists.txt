@@ -1,15 +1,8 @@
-set(DATALOG_DECODER_TARGETS
-  targets/X64Decoder.cpp
-  targets/Arm64Decoder.cpp
-  targets/ElfLoader.cpp
-  targets/ExceptionDecoder.cpp)
+set(DATALOG_DECODER_TARGETS targets/X64Decoder.cpp targets/Arm64Decoder.cpp
+                            targets/ElfLoader.cpp targets/ExceptionDecoder.cpp)
 
-add_library(
-  gtirb_decoder STATIC
-  DatalogLoader.cpp
-  DatalogProgram.cpp
-  DatalogUtils.cpp
-  ${DATALOG_DECODER_TARGETS})
+add_library(gtirb_decoder STATIC DatalogLoader.cpp DatalogProgram.cpp
+                                 DatalogUtils.cpp ${DATALOG_DECODER_TARGETS})
 
 target_link_libraries(gtirb_decoder gtirb ${CAPSTONE} ${ehp_LIBRARIES})
 
