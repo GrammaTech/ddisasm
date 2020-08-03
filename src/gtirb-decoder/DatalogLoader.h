@@ -241,6 +241,8 @@ private:
 const char* binaryISA(gtirb::ISA Arch);
 const char* binaryFormat(const gtirb::FileFormat Format);
 
+std::string uppercase(std::string S);
+
 namespace souffle
 {
     souffle::tuple& operator<<(souffle::tuple& T, const gtirb::Addr& A);

@@ -78,14 +78,7 @@ std::optional<X64Decoder::Instruction> X64Decoder::build(const cs_insn& CsInstru
 
 std::tuple<std::string, std::string> X64Decoder::splitMnemonic(const cs_insn& CsInstruction)
 {
-    // FIXME:
-    auto str_toupper = [](std::string s) {
-        std::transform(s.begin(), s.end(), s.begin(),
-                       [](unsigned char c) { return static_cast<unsigned char>(std::toupper(c)); });
-        return s;
-    };
-
-    std::string PrefixName = str_toupper(CsInstruction.mnemonic);
+    std::string PrefixName = uppercase(CsInstruction.mnemonic);
     std::string Prefix, Name;
     size_t Pos = PrefixName.find(' ');
     if(Pos != std::string::npos)
@@ -103,15 +96,8 @@ std::tuple<std::string, std::string> X64Decoder::splitMnemonic(const cs_insn& Cs
 
 std::optional<X64Decoder::Operand> X64Decoder::build(const cs_x86_op& CsOp)
 {
-    // FIXME:
-    auto str_toupper = [](std::string s) {
-        std::transform(s.begin(), s.end(), s.begin(),
-                       [](unsigned char c) { return static_cast<unsigned char>(std::toupper(c)); });
-        return s;
-    };
-
-    auto registerName = [str_toupper, this](uint64_t Reg) {
-        return (Reg == X86_REG_INVALID) ? "NONE" : str_toupper(cs_reg_name(CsHandle, Reg));
+    auto registerName = [this](uint64_t Reg) {
+        return (Reg == X86_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(CsHandle, Reg));
     };
 
     switch(CsOp.type)

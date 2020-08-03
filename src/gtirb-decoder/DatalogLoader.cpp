@@ -297,6 +297,13 @@ const char* binaryISA(gtirb::ISA Arch)
     }
 }
 
+std::string uppercase(std::string S)
+{
+    std::transform(S.begin(), S.end(), S.begin(),
+                   [](unsigned char C) { return static_cast<unsigned char>(std::toupper(C)); });
+    return S;
+};
+
 namespace souffle
 {
     souffle::tuple& operator<<(souffle::tuple& T, const gtirb::Addr& A)

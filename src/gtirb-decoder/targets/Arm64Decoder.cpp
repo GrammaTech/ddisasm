@@ -41,8 +41,7 @@ std::optional<Arm64Decoder::Instruction> Arm64Decoder::disasm(const uint8_t* Byt
 std::optional<Arm64Decoder::Instruction> Arm64Decoder::build(const cs_insn& CsInstruction)
 {
     cs_arm64& Details = CsInstruction.detail->arm64;
-    // FIXME: Do we actually need this for ARM?
-    auto [Prefix, Name] = splitMnemonic(CsInstruction);
+    std::string Name = uppercase(CsInstruction.mnemonic);
     std::vector<uint64_t> OpCodes;
 
     if(Name != "NOP")
@@ -72,45 +71,13 @@ std::optional<Arm64Decoder::Instruction> Arm64Decoder::build(const cs_insn& CsIn
     }
 
     uint64_t Addr(CsInstruction.address), Size(CsInstruction.size);
-    return Instruction{Addr, Size, Prefix, Name, OpCodes, 0, 0};
-}
-
-std::tuple<std::string, std::string> Arm64Decoder::splitMnemonic(const cs_insn& CsInstruction)
-{
-    // FIXME:
-    auto str_toupper = [](std::string s) {
-        std::transform(s.begin(), s.end(), s.begin(),
-                       [](unsigned char c) { return static_cast<unsigned char>(std::toupper(c)); });
-        return s;
-    };
-
-    std::string PrefixName = str_toupper(CsInstruction.mnemonic);
-    std::string Prefix, Name;
-    size_t Pos = PrefixName.find(' ');
-    if(Pos != std::string::npos)
-    {
-        Prefix = PrefixName.substr(0, Pos);
-        Name = PrefixName.substr(Pos + 1);
-    }
-    else
-    {
-        Prefix = "";
-        Name = PrefixName;
-    }
-    return {Prefix, Name};
+    return Instruction{Addr, Size, "", Name, OpCodes, 0, 0};
 }
 
 std::optional<Arm64Decoder::Operand> Arm64Decoder::build(const cs_arm64_op& CsOp)
 {
-    // FIXME:
-    auto str_toupper = [](std::string s) {
-        std::transform(s.begin(), s.end(), s.begin(),
-                       [](unsigned char c) { return static_cast<unsigned char>(std::toupper(c)); });
-        return s;
-    };
-
-    auto registerName = [str_toupper, this](uint64_t Reg) {
-        return (Reg == ARM_REG_INVALID) ? "NONE" : str_toupper(cs_reg_name(CsHandle, Reg));
+    auto registerName = [this](uint64_t Reg) {
+        return (Reg == ARM_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(CsHandle, Reg));
     };
 
     switch(CsOp.type)
