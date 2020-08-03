@@ -68,6 +68,11 @@ else()
   set(BUILD_SHARED_LIBS OFF)
 endif()
 
+# Determine whether or not to strip debug symbols and set the build-id. This is
+# only really needed when we are building ubuntu *-dbg packages
+option(DDISASM_STRIP_DEBUG_SYMBOLS
+       "Whether or not to strip debug symbols and set the build-id." OFF)
+
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 if(WIN32)
   set(CMAKE_DEBUG_POSTFIX
