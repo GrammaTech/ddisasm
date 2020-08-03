@@ -23,15 +23,17 @@
 #ifndef SRC_ELF_LOADER_H_
 #define SRC_ELF_LOADER_H_
 
-#include "../DatalogLoader.h"
-
+#include "../Relations.h"
 #include "ExceptionDecoder.h"
 
-class ElfSymbolDecoder : public SymbolDecoder
-{
-public:
-    using Symbol = SymbolDecoder::Symbol;
+#include "../DatalogLoader.h"
 
+void ElfSymbolLoader(const gtirb::Module& Module, DatalogProgram& Program);
+
+void ElfExceptionLoader(const gtirb::Module& Module, DatalogProgram& Program);
+
+namespace relations
+{
     struct Relocation
     {
         uint64_t Address;
@@ -39,23 +41,11 @@ public:
         std::string Name;
         int64_t Addend;
     };
+} // namespace relations
 
-    void load(const gtirb::Module& M) override;
-    void populate(DatalogProgram& P) override;
-
-private:
-    std::vector<Symbol> Symbols;
-    std::vector<Relocation> Relocations;
-};
-
-class ElfExceptionDecoder : public GtirbDecoder
+namespace souffle
 {
-public:
-    void load(const gtirb::Module& M) override;
-    void populate(DatalogProgram& P) override;
-
-private:
-    std::unique_ptr<ExceptionDecoder> Decoder;
-};
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Relocation& Rel);
+}
 
 #endif /* SRC_ELF_LOADER_H_ */

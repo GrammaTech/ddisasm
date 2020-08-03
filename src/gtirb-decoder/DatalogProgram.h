@@ -25,11 +25,9 @@
 
 #include <memory>
 
+#include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
-
-#include "DatalogLoader.h"
-
-class DatalogLoader;
+#include <gtirb/gtirb.hpp>
 
 class DatalogProgram
 {

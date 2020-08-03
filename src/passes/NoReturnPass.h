@@ -30,6 +30,7 @@
 
 #include "../gtirb-decoder/DatalogLoader.h"
 #include "../gtirb-decoder/DatalogUtils.h"
+#include "../gtirb-decoder/Relations.h"
 
 // Refine the CFG by removing fallthrough edges whenever there is a call to a block that never
 // returns.

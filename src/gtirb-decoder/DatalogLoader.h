@@ -27,132 +27,108 @@
 #include <string>
 #include <vector>
 
+#include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 
 #include "DatalogProgram.h"
+#include "Relations.h"
 
-class DatalogProgram;
-
-class GtirbDecoder
+class DatalogLoader
 {
 public:
-    virtual ~GtirbDecoder(){};
-    virtual void load(const gtirb::Module& M) = 0;
-    virtual void populate(DatalogProgram& P) = 0;
-};
+    DatalogLoader(std::string N) : Name{N}, Loaders{} {};
+    ~DatalogLoader() = default;
 
-class DataDecoder : public GtirbDecoder
-{
-public:
-    template <class T>
-    struct Data
+    // Common type definition of functions/functors that populate datalog relations.
+    using Loader = std::function<void(const gtirb::Module&, DatalogProgram&)>;
+
+    // Add function to this composite loader.
+    void add(Loader Fn)
     {
-        gtirb::Addr Addr;
-        T Item;
-    };
-
-    DataDecoder() : PointerSize(1){};
-    DataDecoder(uint8_t N) : PointerSize(N){};
-
-    void load(const gtirb::Module& M) override;
-    void populate(DatalogProgram& P) override;
-
-    virtual void load(const gtirb::ByteInterval& I);
-    virtual bool address(gtirb::Addr Value)
-    {
-        return ((Value >= Start) && (Value <= End));
+        Loaders.push_back(Fn);
     }
 
+    // Add functor to this composite loader.
+    template <typename T, typename... Args>
+    void add(Args&&... A)
+    {
+        Loaders.push_back(T{A...});
+    }
+
+    // Build a DatalogProgram (i.e. SouffleProgram).
+    std::optional<DatalogProgram> load(const gtirb::Module& Module);
+    std::optional<DatalogProgram> operator()(const gtirb::Module& Module)
+    {
+        return load(Module);
+    };
+
 private:
-    uint8_t PointerSize;
-    gtirb::Addr Start;
-    gtirb::Addr End;
+    std::string Name;
+    std::vector<Loader> Loaders;
+};
+
+// Load binary format information: architecture, file format, entry point, etc.
+void FormatLoader(const gtirb::Module& Module, DatalogProgram& Program);
+
+// Load section properties.
+void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program);
+
+// Load symbol information.
+void SymbolLoader(const gtirb::Module& Module, DatalogProgram& Program);
+
+// Load data sections.
+class DataLoader
+{
+public:
+    template <typename T>
+    using Data = relations::Data<T>;
+
+    enum class Pointer
+    {
+        DWORD = 4,
+        QWORD = 8
+    };
+
+    DataLoader(Pointer N) : PointerSize{N} {};
+    virtual ~DataLoader(){};
+
+    virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program);
+
+    virtual void load(const gtirb::Module& Module);
+    virtual void load(const gtirb::ByteInterval& Bytes);
+
+    // Test that a value N is a possible address.
+    virtual bool address(gtirb::Addr N)
+    {
+        return ((N >= Min) && (N <= Max));
+    };
+
+protected:
+    Pointer PointerSize;
+    gtirb::Addr Min, Max;
     std::vector<Data<uint8_t>> Bytes;
     std::vector<Data<gtirb::Addr>> Addresses;
 };
 
-class InstructionDecoder : public GtirbDecoder
+// Load executable sections.
+class InstructionLoader
 {
 public:
-    struct Instruction
-    {
-        uint64_t Address;
-        uint64_t Size;
-        std::string Prefix;
-        std::string Name;
-        std::vector<uint64_t> OpCodes;
-        uint8_t ImmediateOffset;
-        uint8_t DisplacementOffset;
-    };
+    InstructionLoader(uint8_t N) : InstructionSize{N} {};
+    virtual ~InstructionLoader(){};
 
-    using ImmOp = int64_t;
-    using RegOp = std::string;
-    struct IndirectOp
-    {
-        std::string Reg1;
-        std::string Reg2;
-        std::string Reg3;
-        int64_t Mult;
-        int64_t Disp;
-        int Size;
+    using Instruction = relations::Instruction;
+    using Operand = relations::Operand;
+    using OperandTable = relations::OperandTable;
 
-        constexpr bool operator<(const IndirectOp& Op) const noexcept
-        {
-            return std::tie(Reg1, Reg2, Reg3, Mult, Disp, Size)
-                   < std::tie(Op.Reg1, Op.Reg2, Op.Reg3, Op.Mult, Op.Disp, Op.Size);
-        };
-    };
+    virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program);
 
-    using Operand = std::variant<ImmOp, RegOp, IndirectOp>;
+    virtual void load(const gtirb::Module& Module);
+    virtual void load(const gtirb::ByteInterval& Bytes);
 
-    struct OperandTable
-    {
-        template <typename T>
-        uint64_t add(std::map<T, uint64_t>& OpTable, T Op)
-        {
-            if(auto Pair = OpTable.find(Op); Pair != OpTable.end())
-            {
-                return Pair->second;
-            }
-            else
-            {
-                OpTable[Op] = Index;
-                return Index++;
-            }
-        }
-
-        uint64_t operator()(ImmOp Op)
-        {
-            return add(ImmTable, Op);
-        }
-
-        uint64_t operator()(RegOp Op)
-        {
-            return add(RegTable, Op);
-        }
-
-        uint64_t operator()(IndirectOp Op)
-        {
-            return add(IndirectTable, Op);
-        }
-
-        // We reserve 0 for empty operators.
-        uint64_t Index = 1;
-
-        std::map<ImmOp, uint64_t> ImmTable;
-        std::map<RegOp, uint64_t> RegTable;
-        std::map<IndirectOp, uint64_t> IndirectTable;
-    };
-
-    InstructionDecoder(){};
-    InstructionDecoder(uint8_t N) : InstructionSize(N){};
-
-    void load(const gtirb::Module& M) override;
-    void load(const gtirb::ByteInterval& I);
-    void populate(DatalogProgram& P) override;
-
-    virtual std::optional<Instruction> disasm(const uint8_t* Bytes, uint64_t Size,
+    // Disassemble bytes and build Instruction and Operand facts.
+    virtual std::optional<Instruction> decode(const uint8_t* Bytes, uint64_t Size,
                                               uint64_t Addr) = 0;
 
 protected:
@@ -162,104 +138,9 @@ protected:
     std::vector<gtirb::Addr> InvalidInstructions;
 };
 
-class SectionDecoder : public GtirbDecoder
-{
-public:
-    struct Section
-    {
-        std::string Name;
-        uint64_t Size;
-        gtirb::Addr Address;
-        uint64_t Type;
-        uint64_t Flags;
-    };
-
-    void load(const gtirb::Module& M) override;
-    void populate(DatalogProgram& P) override;
-
-private:
-    std::vector<Section> Sections;
-};
-
-class SymbolDecoder : public GtirbDecoder
-{
-public:
-    struct Symbol
-    {
-        gtirb::Addr Addr;
-        uint64_t Size;
-        std::string Type;
-        std::string Binding;
-        std::string Visibility;
-        uint64_t SectionIndex;
-        std::string Name;
-    };
-
-    void load(const gtirb::Module& M) override;
-    void populate(DatalogProgram& P) override;
-
-private:
-    std::vector<Symbol> Symbols;
-};
-
-class FormatDecoder : public GtirbDecoder
-{
-public:
-    void load(const gtirb::Module& M) override;
-    void populate(DatalogProgram& P) override;
-
-private:
-    std::string BinaryIsa;
-    std::string BinaryFormat;
-    std::string BinaryType;
-    gtirb::Addr BaseAddress;
-    gtirb::Addr EntryPoint;
-};
-
-class DatalogLoader
-{
-public:
-    using GtirbDecoders = std::vector<std::unique_ptr<GtirbDecoder>>;
-
-    DatalogLoader(std::string N) : Name{N}, Decoders{} {};
-    ~DatalogLoader() = default;
-
-    void decode(const gtirb::Module& M);
-    std::optional<DatalogProgram> program();
-
-    template <typename T, typename... Args>
-    void add(Args... A)
-    {
-        Decoders.push_back(std::make_unique<T>(A...));
-    }
-
-private:
-    std::string Name;
-    GtirbDecoders Decoders;
-};
+std::string uppercase(std::string S);
 
 const char* binaryISA(gtirb::ISA Arch);
 const char* binaryFormat(const gtirb::FileFormat Format);
-
-std::string uppercase(std::string S);
-
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const gtirb::Addr& A);
-
-    souffle::tuple& operator<<(souffle::tuple& T, const SymbolDecoder::Symbol& S);
-
-    souffle::tuple& operator<<(souffle::tuple& T, const SectionDecoder::Section& S);
-
-    template <typename Item>
-    souffle::tuple& operator<<(souffle::tuple& T, const DataDecoder::Data<Item>& D);
-
-    souffle::tuple& operator<<(souffle::tuple& T, const InstructionDecoder::Instruction& I);
-
-    souffle::tuple& operator<<(souffle::tuple& T, const InstructionDecoder::IndirectOp& I);
-
-    template <typename U>
-    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<U, uint64_t>& Pair);
-} // namespace souffle
 
 #endif /* SRC_DATALOG_LOADER_H_ */

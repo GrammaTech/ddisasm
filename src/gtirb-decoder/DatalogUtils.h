@@ -27,14 +27,43 @@
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 
-#include "../gtirb-decoder/DatalogLoader.h"
+#include "Relations.h"
 
-class BlocksLoader : public GtirbDecoder
+#include "DatalogProgram.h"
+
+// Load CFG edges.
+void CfgLoader(const gtirb::Module& M, DatalogProgram& P);
+
+// Load strongly connected component facts.
+void SccLoader(const gtirb::Module& M, DatalogProgram& P);
+
+// Load code block edges.
+void BlocksLoader(const gtirb::Module& M, DatalogProgram& P);
+
+void SymbolicExpressionsLoader(const gtirb::Module& M, DatalogProgram& P);
+
+struct PaddingLoader
 {
-public:
-    void load(const gtirb::Module& M) override;
-    void populate(DatalogProgram& P) override;
+    void operator()(const gtirb::Module& M, DatalogProgram& P);
+    gtirb::Context* Context;
+};
 
+struct FdeEntriesLoader
+{
+    void operator()(const gtirb::Module& M, DatalogProgram& P);
+    gtirb::Context* Context;
+};
+
+struct FunctionEntriesLoader
+{
+    void operator()(const gtirb::Module& M, DatalogProgram& P);
+    gtirb::Context* Context;
+};
+
+std::tuple<std::string, std::string, std::string> edgeProperties(const gtirb::EdgeLabel& L);
+
+namespace relations
+{
     struct Block
     {
         gtirb::Addr Address;
@@ -47,26 +76,6 @@ public:
         gtirb::Addr Block2;
     };
 
-private:
-    std::vector<Block> Blocks;
-    std::vector<NextBlock> NextBlocks;
-};
-
-class InstructionsLoader : public GtirbDecoder
-{
-public:
-    InstructionsLoader(int N) : InstructionLimit{N} {};
-
-    void load(const gtirb::Module& M) override;
-    void populate(DatalogProgram& P) override;
-
-private:
-    int InstructionLimit;
-};
-
-class CfgEdgesLoader : public GtirbDecoder
-{
-public:
     struct Edge
     {
         gtirb::Addr Source;
@@ -93,20 +102,6 @@ public:
         std::string Type;
     };
 
-    void load(const gtirb::Module& M) override;
-    void populate(DatalogProgram& P) override;
-
-    std::tuple<std::string, std::string, std::string> properties(const gtirb::EdgeLabel& L);
-
-private:
-    std::vector<Edge> Edges;
-    std::vector<TopEdge> TopEdges;
-    std::vector<SymbolEdge> SymbolEdges;
-};
-
-class SymbolicExpressionsLoader : public GtirbDecoder
-{
-public:
     struct SymbolicExpression
     {
         gtirb::Addr Address;
@@ -122,56 +117,6 @@ public:
         int64_t Offset;
     };
 
-    void load(const gtirb::Module& M) override;
-    void populate(DatalogProgram& P) override;
-
-private:
-    std::vector<SymbolicExpression> SymbolicExpressions;
-    std::vector<SymbolMinusSymbol> SymbolMinusSymbols;
-};
-
-class FdeEntriesLoader : public GtirbDecoder
-{
-public:
-    FdeEntriesLoader(const gtirb::Context* C) : Context(C){};
-
-    void load(const gtirb::Module& M) override;
-    void populate(DatalogProgram& P) override;
-
-private:
-    const gtirb::Context* Context;
-    std::vector<std::pair<gtirb::Addr, gtirb::Addr>> FdeAddresses;
-};
-
-class FunctionEntriesLoader : public GtirbDecoder
-{
-public:
-    FunctionEntriesLoader(const gtirb::Context* C) : Context(C){};
-
-    void load(const gtirb::Module& M) override;
-    void populate(DatalogProgram& P) override;
-
-private:
-    const gtirb::Context* Context;
-    std::vector<gtirb::Addr> Functions;
-};
-
-class PaddingLoader : public GtirbDecoder
-{
-public:
-    PaddingLoader(const gtirb::Context* C) : Context(C){};
-
-    void load(const gtirb::Module& M) override;
-    void populate(DatalogProgram& P) override;
-
-private:
-    const gtirb::Context* Context;
-    std::vector<std::pair<gtirb::Addr, uint64_t>> Paddings;
-};
-
-class SccLoader : public GtirbDecoder
-{
-public:
     struct SccIndex
     {
         uint64_t Address;
@@ -179,11 +124,30 @@ public:
         gtirb::Addr Block;
     };
 
-    void load(const gtirb::Module& M) override;
-    void populate(DatalogProgram& P) override;
+} // namespace relations
 
-private:
-    std::vector<SccIndex> InScc;
-};
+namespace souffle
+{
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Block& Block);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::NextBlock& NextBlock);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Edge& Edge);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::TopEdge& Edge);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolEdge& Edge);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolicExpression& Expr);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolMinusSymbol& Expr);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<gtirb::Addr, gtirb::Addr>& Pair);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<gtirb::Addr, uint64_t>& Pair);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SccIndex& Scc);
+
+} // namespace souffle
 
 #endif

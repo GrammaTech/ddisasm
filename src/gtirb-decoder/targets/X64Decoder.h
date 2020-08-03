@@ -25,14 +25,16 @@
 
 #include <capstone/capstone.h>
 
-#include "../DatalogLoader.h"
-#include "../DatalogProgram.h"
+#include "../Relations.h"
 #include "ElfLoader.h"
 
-class X64Decoder : public InstructionDecoder
+#include "../DatalogLoader.h"
+#include "../DatalogProgram.h"
+
+class X64Decoder : public InstructionLoader
 {
 public:
-    X64Decoder()
+    X64Decoder() : InstructionLoader{1}
     {
         [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_X86, CS_MODE_64, &CsHandle);
         assert(Err == CS_ERR_OK && "Failed to initialize X64 disassembler.");
@@ -43,10 +45,10 @@ public:
         cs_close(&CsHandle);
     }
 
-    using Instruction = InstructionDecoder::Instruction;
-    using Operand = InstructionDecoder::Operand;
+    using Instruction = relations::Instruction;
+    using Operand = relations::Operand;
 
-    std::optional<Instruction> disasm(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
+    std::optional<Instruction> decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
 private:
     std::optional<Operand> build(const cs_x86_op& CsOp);
@@ -61,12 +63,12 @@ class ElfX64Loader : public DatalogLoader
 public:
     ElfX64Loader() : DatalogLoader("souffle_disasm_x64")
     {
-        add<FormatDecoder>();
-        add<SectionDecoder>();
+        add(FormatLoader);
+        add(SectionLoader);
         add<X64Decoder>();
-        add<DataDecoder>(8);
-        add<ElfSymbolDecoder>();
-        add<ElfExceptionDecoder>();
+        add<DataLoader>(DataLoader::Pointer::QWORD);
+        add(ElfSymbolLoader);
+        add(ElfExceptionLoader);
     }
 };
 

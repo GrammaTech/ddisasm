@@ -28,8 +28,8 @@
 #include "AuxDataSchema.h"
 #include "gtirb-decoder/DatalogLoader.h"
 
-using ImmOp = InstructionDecoder::ImmOp;
-using IndirectOp = InstructionDecoder::IndirectOp;
+using ImmOp = relations::ImmOp;
+using IndirectOp = relations::IndirectOp;
 
 // souffle uses a signed integer for all numbers (either 32 or 64 bits
 // dependin on compilation flags). Allow conversion to other types.

@@ -1,0 +1,70 @@
+//===- Relations.cpp --------------------------------------------*- C++ -*-===//
+//
+//  Copyright (C) 2020 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+#include "Relations.h"
+
+namespace souffle
+{
+    souffle::tuple& operator<<(souffle::tuple& T, const gtirb::Addr& A)
+    {
+        T << static_cast<uint64_t>(A);
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Symbol& Symbol)
+    {
+        T << Symbol.Addr << Symbol.Size << Symbol.Type << Symbol.Binding << Symbol.SectionIndex
+          << Symbol.Name;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Section& Section)
+    {
+        T << Section.Name << Section.Size << Section.Address << Section.Type << Section.Flags;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Instruction& Instruction)
+    {
+        T << Instruction.Address << Instruction.Size << Instruction.Prefix << Instruction.Name;
+        for(size_t i = 0; i < 4; ++i)
+        {
+            if(i < Instruction.OpCodes.size())
+            {
+                T << Instruction.OpCodes[i];
+            }
+            else
+            {
+                T << 0;
+            }
+        }
+        T << Instruction.ImmediateOffset << Instruction.DisplacementOffset;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::IndirectOp& Op)
+    {
+        T << Op.Reg1 << Op.Reg2 << Op.Reg3 << Op.Mult << Op.Disp << Op.Size;
+        return T;
+    }
+
+} // namespace souffle

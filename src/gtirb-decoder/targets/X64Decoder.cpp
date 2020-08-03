@@ -26,7 +26,7 @@
 
 #include "X64Decoder.h"
 
-std::optional<X64Decoder::Instruction> X64Decoder::disasm(const uint8_t* Bytes, uint64_t Size,
+std::optional<X64Decoder::Instruction> X64Decoder::decode(const uint8_t* Bytes, uint64_t Size,
                                                           uint64_t Addr)
 {
     cs_insn* Instruction;
@@ -108,12 +108,12 @@ std::optional<X64Decoder::Operand> X64Decoder::build(const cs_x86_op& CsOp)
             return CsOp.imm;
         case X86_OP_MEM:
         {
-            IndirectOp I = {registerName(CsOp.mem.segment),
-                            registerName(CsOp.mem.base),
-                            registerName(CsOp.mem.index),
-                            CsOp.mem.scale,
-                            CsOp.mem.disp,
-                            CsOp.size * 8};
+            relations::IndirectOp I = {registerName(CsOp.mem.segment),
+                                       registerName(CsOp.mem.base),
+                                       registerName(CsOp.mem.index),
+                                       CsOp.mem.scale,
+                                       CsOp.mem.disp,
+                                       CsOp.size * 8};
             return I;
         }
         case X86_OP_INVALID:

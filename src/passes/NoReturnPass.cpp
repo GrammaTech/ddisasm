@@ -55,18 +55,20 @@ void NoReturnPass::setDebugDir(std::string Path)
 std::set<gtirb::CodeBlock*> NoReturnPass::computeNoReturn(gtirb::Module& Module,
                                                           unsigned int NThreads)
 {
+    // Build GTIRB loader.
     DatalogLoader Loader("souffle_no_return");
-    Loader.add<SccLoader>();
-    Loader.add<CfgEdgesLoader>();
-    Loader.decode(Module);
+    Loader.add(SccLoader);
+    Loader.add(CfgLoader);
 
-    std::optional<DatalogProgram> NoReturn = Loader.program();
+    // Load GTIRB and build program.
+    std::optional<DatalogProgram> NoReturn = Loader(Module);
     if(!NoReturn)
     {
         std::cerr << "Could not create souffle_no_return program" << std::endl;
         exit(1);
     }
 
+    // Run no-return analysis.
     NoReturn->threads(NThreads);
     NoReturn->run();
 

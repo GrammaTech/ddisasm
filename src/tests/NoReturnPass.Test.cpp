@@ -56,9 +56,8 @@ TEST(Unit_NoReturnPass, remove_simple_fallthrough)
     {
         // FIXME: Make this its own test case.
         DatalogLoader Loader("souffle_no_return");
-        Loader.add<CfgEdgesLoader>();
-        Loader.decode(*M);
-        std::optional<DatalogProgram> Program = Loader.program();
+        Loader.add(CfgLoader);
+        std::optional<DatalogProgram> Program = Loader(*M);
         EXPECT_TRUE(Program);
         if(Program)
         {

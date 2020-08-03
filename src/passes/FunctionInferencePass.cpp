@@ -70,24 +70,26 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
 void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Module& Module,
                                              unsigned int NThreads)
 {
+    // Build GTIRB loader.
     DatalogLoader Loader("souffle_function_inference");
-    Loader.add<BlocksLoader>();
+    Loader.add(BlocksLoader);
     // FIXME:
-    // Loader.add(makeInstructionDecoder(M));
-    Loader.add<CfgEdgesLoader>();
-    Loader.add<SymbolicExpressionsLoader>();
-    Loader.add<FdeEntriesLoader>(&Context);
-    Loader.add<FunctionEntriesLoader>(&Context);
-    Loader.add<PaddingLoader>(&Context);
-    Loader.decode(Module);
+    // Loader.add(CodeBlockLoader);
+    Loader.add(CfgLoader);
+    Loader.add(SymbolicExpressionsLoader);
+    Loader.add(FdeEntriesLoader{&Context});
+    Loader.add(FunctionEntriesLoader{&Context});
+    Loader.add(PaddingLoader{&Context});
 
-    std::optional<DatalogProgram> FunctionInference = Loader.program();
+    // Load GTIRB and build program.
+    std::optional<DatalogProgram> FunctionInference = Loader(Module);
     if(!FunctionInference)
     {
         std::cerr << "Could not create souffle_function_inference program" << std::endl;
         exit(1);
     }
 
+    // Run function inference analysis.
     FunctionInference->threads(NThreads);
     FunctionInference->run();
 

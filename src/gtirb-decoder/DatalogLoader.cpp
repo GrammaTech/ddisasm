@@ -24,45 +24,34 @@
 #include "DatalogLoader.h"
 #include "../AuxDataSchema.h"
 
-std::optional<DatalogProgram> DatalogLoader::program()
+std::optional<DatalogProgram> DatalogLoader::load(const gtirb::Module& Module)
 {
-    // Build the Souffle context.
     if(auto SouffleProgram =
            std::shared_ptr<souffle::SouffleProgram>(souffle::ProgramFactory::newInstance(Name)))
     {
         DatalogProgram Program{SouffleProgram};
-        for(auto& Decoder : Decoders)
+        for(auto& Loader : Loaders)
         {
-            Decoder->populate(Program);
+            Loader(Module, Program);
         }
         return Program;
     }
     return std::nullopt;
 }
 
-void DatalogLoader::decode(const gtirb::Module& Module)
-{
-    for(auto& Decoder : Decoders)
-    {
-        if(Decoder)
-        {
-            Decoder->load(Module);
-        }
-    }
-}
-
-void FormatDecoder::load(const gtirb::Module& Module)
+void FormatLoader(const gtirb::Module& Module, DatalogProgram& Program)
 {
     // Binary architecture.
-    BinaryIsa = binaryISA(Module.getISA());
+    std::string BinaryIsa = binaryISA(Module.getISA());
 
     // Binary file format.
-    BinaryFormat = binaryFormat(Module.getFileFormat());
+    std::string BinaryFormat = binaryFormat(Module.getFileFormat());
 
     // Base address.
-    BaseAddress = Module.getPreferredAddr();
+    gtirb::Addr BaseAddress = Module.getPreferredAddr();
 
     // Binary entry point.
+    gtirb::Addr EntryPoint;
     if(const gtirb::CodeBlock* Block = Module.getEntryPoint())
     {
         if(std::optional<gtirb::Addr> Addr = Block->getAddress())
@@ -72,6 +61,7 @@ void FormatDecoder::load(const gtirb::Module& Module)
     }
 
     // Binary object type.
+    std::string BinaryType;
     if(auto AuxData = Module.getAuxData<gtirb::schema::BinaryType>())
     {
         for(auto& Type : *AuxData)
@@ -79,10 +69,7 @@ void FormatDecoder::load(const gtirb::Module& Module)
             BinaryType = Type;
         }
     }
-}
 
-void FormatDecoder::populate(DatalogProgram& Program)
-{
     Program.insert<std::vector<std::string>>("binary_isa", {BinaryIsa});
     Program.insert<std::vector<std::string>>("binary_type", {BinaryType});
     Program.insert<std::vector<std::string>>("binary_format", {BinaryFormat});
@@ -90,23 +77,24 @@ void FormatDecoder::populate(DatalogProgram& Program)
     Program.insert<std::vector<gtirb::Addr>>("entry_point", {EntryPoint});
 }
 
-void SymbolDecoder::load(const gtirb::Module& Module)
+void SymboLoader(const gtirb::Module& Module, DatalogProgram& Program)
 {
+    std::vector<relations::Symbol> Symbols;
+
     for(auto& Symbol : Module.symbols())
     {
         std::string Name = Symbol.getName();
         gtirb::Addr Addr = Symbol.getAddress().value_or(gtirb::Addr(0));
         Symbols.push_back({Addr, 0, "NOTYPE", "GLOBAL", "DEFAULT", 0, Name});
     }
+
+    Program.insert("symbol", std::move(Symbols));
 }
 
-void SymbolDecoder::populate(DatalogProgram& Program)
+void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
 {
-    Program.insert("symbol", Symbols);
-}
+    std::vector<relations::Section> Sections;
 
-void SectionDecoder::load(const gtirb::Module& Module)
-{
     // FIXME: We should either rename this AuxData table or split it.
     auto* SectionProperties = Module.getAuxData<gtirb::schema::ElfSectionProperties>();
 
@@ -134,40 +122,46 @@ void SectionDecoder::load(const gtirb::Module& Module)
         Sections.push_back(
             {Section.getName(), *Section.getSize(), *Section.getAddress(), Type, Flags});
     }
+
+    Program.insert("section_complete", std::move(Sections));
 }
 
-void SectionDecoder::populate(DatalogProgram& Program)
+void InstructionLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
 {
-    Program.insert("section_complete", Sections);
+    load(Module);
+
+    Program.insert("instruction_complete", Instructions);
+    Program.insert("invalid_op_code", InvalidInstructions);
+    Program.insert("op_immediate", Operands.ImmTable);
+    Program.insert("op_regdirect", Operands.RegTable);
+    Program.insert("op_indirect", Operands.IndirectTable);
 }
 
-void InstructionDecoder::load(const gtirb::Module& Module)
+void InstructionLoader::load(const gtirb::Module& Module)
 {
     for(const auto& Section : Module.sections())
     {
         bool Executable = Section.isFlagSet(gtirb::SectionFlag::Executable);
-
         if(Executable)
         {
             for(const auto& ByteInterval : Section.byte_intervals())
             {
+                assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
                 load(ByteInterval);
             }
         }
     }
 }
 
-void InstructionDecoder::load(const gtirb::ByteInterval& ByteInterval)
+void InstructionLoader::load(const gtirb::ByteInterval& ByteInterval)
 {
-    assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
-
     uint64_t Addr = static_cast<uint64_t>(*ByteInterval.getAddress());
     uint64_t Size = ByteInterval.getInitializedSize();
     auto Data = ByteInterval.rawBytes<const uint8_t>();
 
     while(Size > 0)
     {
-        if(std::optional<Instruction> Instruction = disasm(Data, Size, Addr))
+        if(std::optional<Instruction> Instruction = decode(Data, Size, Addr))
         {
             Instructions.push_back(*Instruction);
         }
@@ -181,22 +175,21 @@ void InstructionDecoder::load(const gtirb::ByteInterval& ByteInterval)
     }
 }
 
-void InstructionDecoder::populate(DatalogProgram& Program)
+void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
 {
-    Program.insert("instruction_complete", Instructions);
-    Program.insert("invalid_op_code", InvalidInstructions);
-    Program.insert("op_immediate", Operands.ImmTable);
-    Program.insert("op_regdirect", Operands.RegTable);
-    Program.insert("op_indirect", Operands.IndirectTable);
+    load(Module);
+
+    Program.insert("data_byte", Bytes);
+    Program.insert("address_in_data", Addresses);
 }
 
-void DataDecoder::load(const gtirb::Module& Module)
+void DataLoader::load(const gtirb::Module& Module)
 {
     assert(Module.getSize() && "Module has non-calculable size.");
-    Start = *Module.getAddress();
+    Min = *Module.getAddress();
 
     assert(Module.getAddress() && "Module has non-addressable section data.");
-    End = *Module.getAddress() + *Module.getSize();
+    Max = *Module.getAddress() + *Module.getSize();
 
     for(const auto& Section : Module.sections())
     {
@@ -207,16 +200,15 @@ void DataDecoder::load(const gtirb::Module& Module)
         {
             for(const auto& ByteInterval : Section.byte_intervals())
             {
+                assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
                 load(ByteInterval);
             }
         }
     }
 }
 
-void DataDecoder::load(const gtirb::ByteInterval& ByteInterval)
+void DataLoader::load(const gtirb::ByteInterval& ByteInterval)
 {
-    assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
-
     gtirb::Addr Addr = *ByteInterval.getAddress();
     uint64_t Size = ByteInterval.getInitializedSize();
     auto Data = ByteInterval.rawBytes<const uint8_t>();
@@ -228,16 +220,18 @@ void DataDecoder::load(const gtirb::ByteInterval& ByteInterval)
         Bytes.push_back({Addr, Byte});
 
         // Possible address.
-        if(Size >= PointerSize)
+        if(Size >= static_cast<uint64_t>(PointerSize))
         {
             gtirb::Addr Value;
-            if(PointerSize == 4)
+
+            switch(PointerSize)
             {
-                Value = gtirb::Addr(*((int32_t*)Data));
-            }
-            else if(PointerSize == 8)
-            {
-                Value = gtirb::Addr(*((int64_t*)Data));
+                case Pointer::DWORD:
+                    Value = gtirb::Addr(*((int32_t*)Data));
+                    break;
+                case Pointer::QWORD:
+                    Value = gtirb::Addr(*((int64_t*)Data));
+                    break;
             }
 
             if(address(Value))
@@ -250,12 +244,6 @@ void DataDecoder::load(const gtirb::ByteInterval& ByteInterval)
         ++Data;
         --Size;
     }
-}
-
-void DataDecoder::populate(DatalogProgram& Program)
-{
-    Program.insert("data_byte", Bytes);
-    Program.insert("address_in_data", Addresses);
 }
 
 const char* binaryFormat(const gtirb::FileFormat Format)
@@ -303,65 +291,3 @@ std::string uppercase(std::string S)
                    [](unsigned char C) { return static_cast<unsigned char>(std::toupper(C)); });
     return S;
 };
-
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const gtirb::Addr& A)
-    {
-        T << static_cast<uint64_t>(A);
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const SymbolDecoder::Symbol& Symbol)
-    {
-        T << Symbol.Addr << Symbol.Size << Symbol.Type << Symbol.Binding << Symbol.SectionIndex
-          << Symbol.Name;
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const SectionDecoder::Section& Section)
-    {
-        T << Section.Name << Section.Size << Section.Address << Section.Type << Section.Flags;
-        return T;
-    }
-
-    template <typename Item>
-    souffle::tuple& operator<<(souffle::tuple& T, const DataDecoder::Data<Item>& Data)
-    {
-        T << Data.Addr << Data.Item;
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T,
-                               const InstructionDecoder::Instruction& Instruction)
-    {
-        T << Instruction.Address << Instruction.Size << Instruction.Prefix << Instruction.Name;
-        for(size_t i = 0; i < 4; ++i)
-        {
-            if(i < Instruction.OpCodes.size())
-            {
-                T << Instruction.OpCodes[i];
-            }
-            else
-            {
-                T << 0;
-            }
-        }
-        T << Instruction.ImmediateOffset << Instruction.DisplacementOffset;
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const InstructionDecoder::IndirectOp& Op)
-    {
-        T << Op.Reg1 << Op.Reg2 << Op.Reg3 << Op.Mult << Op.Disp << Op.Size;
-        return T;
-    }
-
-    template <class U>
-    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<U, uint64_t>& Pair)
-    {
-        auto& [Element, Id] = Pair;
-        T << Id << Element;
-        return T;
-    }
-} // namespace souffle

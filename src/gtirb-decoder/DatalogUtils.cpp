@@ -24,8 +24,11 @@
 
 #include "../AuxDataSchema.h"
 
-void BlocksLoader::load(const gtirb::Module& Module)
+void BlocksLoader(const gtirb::Module& Module, DatalogProgram& Program)
 {
+    std::vector<relations::Block> Blocks;
+    std::vector<relations::NextBlock> NextBlocks;
+
     if(Module.code_blocks().empty())
     {
         return;
@@ -46,55 +49,12 @@ void BlocksLoader::load(const gtirb::Module& Module)
         }
         PrevBlockAddr = BlockAddr;
     }
+
+    Program.insert("block", std::move(Blocks));
+    Program.insert("next_block", std::move(NextBlocks));
 }
 
-void BlocksLoader::populate(DatalogProgram& Program)
-{
-    Program.insert("block", Blocks);
-    Program.insert("next_block", NextBlocks);
-}
-
-void InstructionsLoader::load(const gtirb::Module& M)
-{
-    // // Decode and transform instructions for all blocks on the module.
-    // std::vector<DlInstruction> Insns;
-    // DlOperandTable OpDict;
-    // for(auto& Block : M.code_blocks())
-    // {
-    //     assert(Block.getAddress() && "Found code block without address.");
-
-    //     cs_insn* Insn;
-    //     const gtirb::ByteInterval* Bytes = Block.getByteInterval();
-    //     uint64_t InitSize = Bytes->getInitializedSize();
-    //     assert(Bytes->getSize() == InitSize && "Found partially initialized code
-    //     block."); size_t Count =
-    //         cs_disasm(CsHandle.getHandle(), Bytes->rawBytes<uint8_t>(), InitSize,
-    //                   static_cast<uint64_t>(*Block.getAddress()), InstructionLimit,
-    //                   &Insn);
-
-    //     // Exception-safe cleanup of instructions
-    //     std::unique_ptr<cs_insn, std::function<void(cs_insn*)>> freeInsn(
-    //         Insn, [Count](cs_insn* i) {
-    //         cs_free(i, Count); });
-    //     for(size_t i = 0; i < Count; ++i)
-    //     {
-    //         Insns.push_back(GtirbToDatalog::transformInstruction(CsHandle, OpDict, Insn[i]));
-    //     }
-    // }
-}
-
-void InstructionsLoader::populate(DatalogProgram& Program)
-{
-    // Program.insert("instruction", Instructions);
-    // Program.insert("op_regdirect", Operands.RegTable);
-    // Program.insert("op_immediate", Operands.ImmTable);
-    // Program.insert("op_indirect", Operands.IndirectTable);
-    // Program.insert("op_barrier", Operands.BarrierTable);
-    // Program.insert("op_prefetch", Operands.PrefetchTable);
-}
-
-std::tuple<std::string, std::string, std::string> CfgEdgesLoader::properties(
-    const gtirb::EdgeLabel& Label)
+std::tuple<std::string, std::string, std::string> edgeProperties(const gtirb::EdgeLabel& Label)
 {
     assert(Label.has_value() && "Found edge without a label");
 
@@ -136,10 +96,14 @@ std::tuple<std::string, std::string, std::string> CfgEdgesLoader::properties(
     return {Conditional, Indirect, Type};
 }
 
-void CfgEdgesLoader::load(const gtirb::Module& M)
+void CfgLoader(const gtirb::Module& Module, DatalogProgram& Program)
 {
+    std::vector<relations::Edge> Edges;
+    std::vector<relations::TopEdge> TopEdges;
+    std::vector<relations::SymbolEdge> SymbolEdges;
+
     std::map<const gtirb::ProxyBlock*, std::string> InvSymbolMap;
-    for(auto& Symbol : M.symbols())
+    for(auto& Symbol : Module.symbols())
     {
         if(const gtirb::ProxyBlock* Proxy = Symbol.getReferent<gtirb::ProxyBlock>())
         {
@@ -147,7 +111,7 @@ void CfgEdgesLoader::load(const gtirb::Module& M)
         }
     }
 
-    const gtirb::CFG& Cfg = M.getIR()->getCFG();
+    const gtirb::CFG& Cfg = Module.getIR()->getCFG();
     for(auto& Edge : Cfg.m_edges)
     {
         if(const gtirb::CodeBlock* Src = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_source]))
@@ -155,7 +119,7 @@ void CfgEdgesLoader::load(const gtirb::Module& M)
             std::optional<gtirb::Addr> SrcAddr = Src->getAddress();
             assert(SrcAddr && "Found source block without address.");
 
-            auto [Conditional, Indirect, Type] = properties(Edge.get_property());
+            auto [Conditional, Indirect, Type] = edgeProperties(Edge.get_property());
 
             if(const gtirb::CodeBlock* Dest = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_target]))
             {
@@ -179,18 +143,18 @@ void CfgEdgesLoader::load(const gtirb::Module& M)
             }
         }
     }
+
+    Program.insert("cfg_edge", std::move(Edges));
+    Program.insert("cfg_edge_to_top", std::move(TopEdges));
+    Program.insert("cfg_edge_to_symbol", std::move(SymbolEdges));
 }
 
-void CfgEdgesLoader::populate(DatalogProgram& Program)
+void SymbolicExpressionsLoader(const gtirb::Module& Module, DatalogProgram& Program)
 {
-    Program.insert("cfg_edge", Edges);
-    Program.insert("cfg_edge_to_top", TopEdges);
-    Program.insert("cfg_edge_to_symbol", SymbolEdges);
-}
+    std::vector<relations::SymbolicExpression> SymbolicExpressions;
+    std::vector<relations::SymbolMinusSymbol> SymbolMinusSymbols;
 
-void SymbolicExpressionsLoader::load(const gtirb::Module& M)
-{
-    for(const auto& SymExprElem : M.symbolic_expressions())
+    for(const auto& SymExprElem : Module.symbolic_expressions())
     {
         const gtirb::ByteInterval* Bytes = SymExprElem.getByteInterval();
         const gtirb::SymbolicExpression& SymExpr = SymExprElem.getSymbolicExpression();
@@ -215,15 +179,12 @@ void SymbolicExpressionsLoader::load(const gtirb::Module& M)
             }
         }
     }
-}
 
-void SymbolicExpressionsLoader::populate(DatalogProgram& Program)
-{
     Program.insert("symbolic_expression", SymbolicExpressions);
     Program.insert("symbol_minus_symbol", SymbolMinusSymbols);
 }
 
-void FdeEntriesLoader::load(const gtirb::Module& Module)
+void FdeEntriesLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
 {
     std::set<gtirb::Addr> FdeStart;
     std::set<gtirb::Addr> FdeEnd;
@@ -258,21 +219,22 @@ void FdeEntriesLoader::load(const gtirb::Module& Module)
 
     assert(FdeStart.size() == FdeEnd.size() && "Malformed CFI directives");
 
+    std::vector<std::pair<gtirb::Addr, gtirb::Addr>> FdeAddresses;
+
     auto StartIt = FdeStart.begin();
     auto EndIt = FdeEnd.begin();
     for(; StartIt != FdeStart.end(); ++StartIt, ++EndIt)
     {
         FdeAddresses.push_back({*StartIt, *EndIt});
     }
+
+    Program.insert("fde_addresses", std::move(FdeAddresses));
 }
 
-void FdeEntriesLoader::populate(DatalogProgram& Program)
+void FunctionEntriesLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
 {
-    Program.insert("fde_addresses", FdeAddresses);
-}
+    std::vector<gtirb::Addr> Functions;
 
-void FunctionEntriesLoader::load(const gtirb::Module& Module)
-{
     auto* FunctionEntries = Module.getAuxData<gtirb::schema::FunctionEntries>();
     if(!FunctionEntries)
     {
@@ -290,22 +252,21 @@ void FunctionEntriesLoader::load(const gtirb::Module& Module)
             }
         }
     }
+
+    Program.insert("function_entry", std::move(Functions));
 }
 
-void FunctionEntriesLoader::populate(DatalogProgram& Program)
+void PaddingLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
 {
-    Program.insert("function_entry", Functions);
-}
+    std::vector<std::pair<gtirb::Addr, uint64_t>> Padding;
 
-void PaddingLoader::load(const gtirb::Module& Module)
-{
-    auto* Padding = Module.getAuxData<gtirb::schema::Padding>();
-    if(!Padding)
+    auto* Table = Module.getAuxData<gtirb::schema::Padding>();
+    if(!Table)
     {
         return;
     }
 
-    for(auto& [Offset, Size] : *Padding)
+    for(auto& [Offset, Size] : *Table)
     {
         auto* ByteInterval = dyn_cast_or_null<gtirb::ByteInterval>(
             gtirb::Node::getByUUID(*Context, Offset.ElementId));
@@ -313,21 +274,19 @@ void PaddingLoader::load(const gtirb::Module& Module)
         if(ByteInterval->getAddress())
         {
             gtirb::Addr Addr = *ByteInterval->getAddress() + Offset.Displacement;
-            Paddings.push_back({Addr, Size});
+            Padding.push_back({Addr, Size});
         }
     }
+
+    Program.insert("padding", std::move(Padding));
 }
 
-void PaddingLoader::populate(DatalogProgram& Program)
-{
-    Program.insert("padding", Paddings);
-}
-
-void SccLoader::load(const gtirb::Module& Module)
+void SccLoader(const gtirb::Module& Module, DatalogProgram& Program)
 {
     auto* SccTable = Module.getAuxData<gtirb::schema::Sccs>();
     assert(SccTable && "SCCs AuxData table missing from GTIRB module");
 
+    std::vector<relations::SccIndex> InScc;
     std::vector<int> SccBlockIndex;
     for(auto& Block : Module.code_blocks())
     {
@@ -344,54 +303,49 @@ void SccLoader::load(const gtirb::Module& Module)
 
         InScc.push_back({SccIndex, SccBlockIndex[SccIndex]++, *Block.getAddress()});
     }
-}
 
-void SccLoader::populate(DatalogProgram& Program)
-{
-    Program.insert("in_scc", InScc);
+    Program.insert("in_scc", std::move(InScc));
 }
 
 namespace souffle
 {
-    souffle::tuple& operator<<(souffle::tuple& T, const BlocksLoader::Block& Block)
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Block& Block)
     {
         T << Block.Address << Block.Size;
         return T;
     }
 
-    souffle::tuple& operator<<(souffle::tuple& T, const BlocksLoader::NextBlock& NextBlock)
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::NextBlock& NextBlock)
     {
         T << NextBlock.Block1 << NextBlock.Block2;
         return T;
     }
 
-    souffle::tuple& operator<<(souffle::tuple& T, const CfgEdgesLoader::Edge& Edge)
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Edge& Edge)
     {
         T << Edge.Source << Edge.Destination << Edge.Conditional << Edge.Indirect << Edge.Type;
         return T;
     }
 
-    souffle::tuple& operator<<(souffle::tuple& T, const CfgEdgesLoader::TopEdge& Edge)
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::TopEdge& Edge)
     {
         T << Edge.Source << Edge.Conditional << Edge.Indirect << Edge.Type;
         return T;
     }
 
-    souffle::tuple& operator<<(souffle::tuple& T, const CfgEdgesLoader::SymbolEdge& Edge)
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolEdge& Edge)
     {
         T << Edge.Source << Edge.Symbol << Edge.Conditional << Edge.Indirect << Edge.Type;
         return T;
     }
 
-    souffle::tuple& operator<<(souffle::tuple& T,
-                               const SymbolicExpressionsLoader::SymbolicExpression& Expr)
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolicExpression& Expr)
     {
         T << Expr.Address << Expr.Symbol << Expr.Offset;
         return T;
     }
 
-    souffle::tuple& operator<<(souffle::tuple& T,
-                               const SymbolicExpressionsLoader::SymbolMinusSymbol& Expr)
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolMinusSymbol& Expr)
     {
         T << Expr.Address << Expr.Symbol1 << Expr.Symbol2 << Expr.Offset;
         return T;
@@ -409,7 +363,7 @@ namespace souffle
         return T;
     }
 
-    souffle::tuple& operator<<(souffle::tuple& T, const SccLoader::SccIndex& Scc)
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SccIndex& Scc)
     {
         T << Scc.Address << Scc.Index << Scc.Block;
         return T;

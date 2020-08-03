@@ -25,8 +25,11 @@
 
 #include "../../AuxDataSchema.h"
 
-void ElfSymbolDecoder::load(const gtirb::Module &Module)
+void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
 {
+    std::vector<relations::Symbol> Symbols;
+    std::vector<relations::Relocation> Relocations;
+
     // Find extra ELF symbol information in aux data.
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
 
@@ -64,30 +67,20 @@ void ElfSymbolDecoder::load(const gtirb::Module &Module)
             Relocations.push_back({Address, Type, Name, Addend});
         }
     }
+
+    Program.insert("symbol", std::move(Symbols));
+    Program.insert("relocation", std::move(Relocations));
 }
 
-void ElfSymbolDecoder::populate(DatalogProgram &Program)
+void ElfExceptionLoader(const gtirb::Module &Module, DatalogProgram &Program)
 {
-    Program.insert("symbol", Symbols);
-    Program.insert("relocation", Relocations);
-}
-
-void ElfExceptionDecoder::load(const gtirb::Module &Module)
-{
-    Decoder = std::make_unique<ExceptionDecoder>(Module);
-}
-
-void ElfExceptionDecoder::populate(DatalogProgram &Program)
-{
-    if(Decoder)
-    {
-        Decoder->addExceptionInformation(*Program);
-    }
+    ExceptionDecoder Decoder(Module);
+    Decoder.addExceptionInformation(*Program);
 }
 
 namespace souffle
 {
-    souffle::tuple &operator<<(souffle::tuple &T, const ElfSymbolDecoder::Relocation &Rel)
+    souffle::tuple &operator<<(souffle::tuple &T, const relations::Relocation &Rel)
     {
         auto &[Addr, Type, Name, Addend] = Rel;
         T << Addr << Type << Name << Addend;
