@@ -41,7 +41,7 @@ std::optional<Arm64Decoder::Instruction> Arm64Decoder::decode(const uint8_t* Byt
 
 std::optional<Arm64Decoder::Instruction> Arm64Decoder::build(const cs_insn& CsInstruction)
 {
-    cs_arm64& Details = CsInstruction.detail->arm64;
+    const cs_arm64& Details = CsInstruction.detail->arm64;
     std::string Name = uppercase(CsInstruction.mnemonic);
     std::vector<uint64_t> OpCodes;
 
@@ -51,7 +51,7 @@ std::optional<Arm64Decoder::Instruction> Arm64Decoder::build(const cs_insn& CsIn
         for(int i = 0; i < OpCount; i++)
         {
             // Load capstone operand.
-            cs_arm64_op& CsOp = Details.operands[i];
+            const cs_arm64_op& CsOp = Details.operands[i];
 
             // Build operand for datalog fact.
             std::optional<Arm64Decoder::Operand> Op = build(CsOp);

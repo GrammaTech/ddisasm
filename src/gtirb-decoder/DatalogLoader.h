@@ -37,7 +37,7 @@
 class DatalogLoader
 {
 public:
-    explicit DatalogLoader(std::string N) : Name{N}, Loaders{} {};
+    explicit DatalogLoader(const std::string& N) : Name{N}, Loaders{} {};
     ~DatalogLoader() = default;
 
     // Common type definition of functions/functors that populate datalog relations.
