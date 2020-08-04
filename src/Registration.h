@@ -20,3 +20,10 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#ifndef SRC_REGISTRATION_H_
+#define SRC_REGISTRATION_H_
+
+void registerAuxDataTypes();
+void registerDatalogLoaders();
+
+#endif /* SRC_REGISTRATION_H_ */

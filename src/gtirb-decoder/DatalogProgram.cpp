@@ -32,26 +32,9 @@
 
 std::optional<DatalogProgram> DatalogProgram::load(gtirb::Module &Module)
 {
-    // TODO:
-    switch(Module.getFileFormat())
-    {
-        case gtirb::FileFormat::ELF:
-            switch(Module.getISA())
-            {
-                case gtirb::ISA::X64:
-                {
-                    ElfX64Loader Loader;
-                    return Loader(Module);
-                }
-                case gtirb::ISA::ARM64:
-                {
-                    ElfArm64Loader Loader;
-                    return Loader(Module);
-                }
-            }
-            break;
-    }
-    return std::nullopt;
+    auto Target = std::make_tuple(Module.getFileFormat(), Module.getISA());
+    auto Loader = loaders().at(Target)();
+    return Loader->load(Module);
 }
 
 void DatalogProgram::writeFacts(const std::string &Directory)

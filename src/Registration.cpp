@@ -21,9 +21,45 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "AuxDataSchema.h"
+
+#include "gtirb-decoder/DatalogProgram.h"
 #include "gtirb-decoder/targets/Arm64Decoder.h"
 #include "gtirb-decoder/targets/X64Decoder.h"
 
+void registerAuxDataTypes()
+{
+    using namespace gtirb::schema;
+    gtirb::AuxDataContainer::registerAuxDataType<Comments>();
+    gtirb::AuxDataContainer::registerAuxDataType<FunctionEntries>();
+    gtirb::AuxDataContainer::registerAuxDataType<FunctionBlocks>();
+    gtirb::AuxDataContainer::registerAuxDataType<FunctionNames>();
+    gtirb::AuxDataContainer::registerAuxDataType<Padding>();
+    gtirb::AuxDataContainer::registerAuxDataType<SymbolForwarding>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolInfoAD>();
+    gtirb::AuxDataContainer::registerAuxDataType<BinaryType>();
+    gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
+    gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
+    gtirb::AuxDataContainer::registerAuxDataType<SymbolicOperandInfoAD>();
+    gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfSectionIndex>();
+    gtirb::AuxDataContainer::registerAuxDataType<PeSectionProperties>();
+    gtirb::AuxDataContainer::registerAuxDataType<CfiDirectives>();
+    gtirb::AuxDataContainer::registerAuxDataType<Libraries>();
+    gtirb::AuxDataContainer::registerAuxDataType<LibraryPaths>();
+    gtirb::AuxDataContainer::registerAuxDataType<DataDirectories>();
+    gtirb::AuxDataContainer::registerAuxDataType<SymbolicExpressionSizes>();
+    gtirb::AuxDataContainer::registerAuxDataType<DdisasmVersion>();
+}
+
 void registerDatalogLoaders()
 {
+    // Register ELF-X64 target.
+    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::X64},
+                                   []() { return std::make_unique<ElfX64Loader>(); });
+
+    // Register ELF-ARM64 target.
+    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::ARM64},
+                                   []() { return std::make_unique<ElfArm64Loader>(); });
 }

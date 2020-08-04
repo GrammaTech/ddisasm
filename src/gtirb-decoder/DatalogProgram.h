@@ -29,6 +29,8 @@
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 
+class DatalogLoader;
+
 class DatalogProgram
 {
 public:
@@ -74,7 +76,22 @@ public:
         return Program.get();
     }
 
+    // Loader factory registration.
+    using Factory = std::function<std::unique_ptr<DatalogLoader>()>;
+    using Target = std::tuple<gtirb::FileFormat, gtirb::ISA>;
+
+    static void registerLoader(Target T, Factory F)
+    {
+        loaders()[T] = F;
+    }
+
 private:
+    static std::map<Target, Factory>& loaders()
+    {
+        static std::map<Target, Factory> Loaders;
+        return Loaders;
+    }
+
     std::shared_ptr<souffle::SouffleProgram> Program;
 };
 

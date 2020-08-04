@@ -46,6 +46,7 @@
 
 #include "AuxDataSchema.h"
 #include "Disassembler.h"
+#include "Registration.h"
 #include "Version.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
@@ -66,32 +67,6 @@ namespace std
         return os;
     }
 } // namespace std
-
-void registerAuxDataTypes()
-{
-    using namespace gtirb::schema;
-    gtirb::AuxDataContainer::registerAuxDataType<Comments>();
-    gtirb::AuxDataContainer::registerAuxDataType<FunctionEntries>();
-    gtirb::AuxDataContainer::registerAuxDataType<FunctionBlocks>();
-    gtirb::AuxDataContainer::registerAuxDataType<FunctionNames>();
-    gtirb::AuxDataContainer::registerAuxDataType<Padding>();
-    gtirb::AuxDataContainer::registerAuxDataType<SymbolForwarding>();
-    gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolInfoAD>();
-    gtirb::AuxDataContainer::registerAuxDataType<BinaryType>();
-    gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
-    gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
-    gtirb::AuxDataContainer::registerAuxDataType<SymbolicOperandInfoAD>();
-    gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
-    gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
-    gtirb::AuxDataContainer::registerAuxDataType<ElfSectionIndex>();
-    gtirb::AuxDataContainer::registerAuxDataType<PeSectionProperties>();
-    gtirb::AuxDataContainer::registerAuxDataType<CfiDirectives>();
-    gtirb::AuxDataContainer::registerAuxDataType<Libraries>();
-    gtirb::AuxDataContainer::registerAuxDataType<LibraryPaths>();
-    gtirb::AuxDataContainer::registerAuxDataType<DataDirectories>();
-    gtirb::AuxDataContainer::registerAuxDataType<SymbolicExpressionSizes>();
-    gtirb::AuxDataContainer::registerAuxDataType<DdisasmVersion>();
-}
 
 void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_clock> Start)
 {
@@ -146,6 +121,7 @@ static void setStdoutToBinary()
 int main(int argc, char **argv)
 {
     registerAuxDataTypes();
+    registerDatalogLoaders();
     gtirb_pprint::registerPrettyPrinters();
 
     po::options_description desc("Allowed options");
