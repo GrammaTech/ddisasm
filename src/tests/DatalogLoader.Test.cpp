@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <LIEF/LIEF.hpp>
+#include <gtirb/gtirb.hpp>
+
 #include "../gtirb-builder/GtirbBuilder.h"
 #include "../gtirb-decoder/DatalogLoader.h"
 #include "../gtirb-decoder/DatalogProgram.h"
