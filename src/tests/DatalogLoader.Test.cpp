@@ -1,12 +1,9 @@
 #include <gtest/gtest.h>
 
-#include <souffle/CompiledSouffle.h>
-#include <souffle/SouffleInterface.h>
-
 #include "../gtirb-builder/GtirbBuilder.h"
 #include "../gtirb-decoder/DatalogLoader.h"
 #include "../gtirb-decoder/DatalogProgram.h"
-#include "../gtirb-decoder/targets/X64Decoder.h"
+#include "../gtirb-decoder/DatalogUtils.h"
 
 class DatalogLoaderTest : public ::testing::TestWithParam<const char*>
 {
@@ -23,22 +20,37 @@ protected:
     gtirb::Module* Module;
 };
 
-// class TestDecoder : public GtirbDecoder
-// {
-//     void load(const gtirb::Module& M){};
-//     void populate(DatalogProgram& P){};
-// };
-
-TEST_P(DatalogLoaderTest, add_test_decoder)
+class TestLoader
 {
-    // // Load GTIRB.
-    // DatalogLoader TestLoader = DatalogLoader("souffle_no_return");
-    // TestLoader.add<TestDecoder>();
-    // TestLoader.decode(*Module);
+public:
+    TestLoader(){};
+    void operator()(const gtirb::Module& Module, DatalogProgram& Program)
+    {
+        auto Tuples = {relations::SccIndex{0, 0, gtirb::Addr(0)}};
+        Program.insert("in_scc", Tuples);
+    }
+};
 
-    // // Build Souffle context.
-    // std::optional<DatalogProgram> TestProgram = TestLoader.program();
-    // EXPECT_TRUE(TestProgram);
+void TestLoaderFunction(const gtirb::Module& Module, DatalogProgram& Program)
+{
+    auto Tuples = {relations::SccIndex{1, 1, gtirb::Addr(1)}};
+    Program.insert("in_scc", Tuples);
+}
+
+TEST_P(DatalogLoaderTest, build_test_loader)
+{
+    // Load GTIRB.
+    DatalogLoader Loader = DatalogLoader("souffle_no_return");
+    Loader.add<TestLoader>();
+    Loader.add(TestLoaderFunction);
+
+    // Build Souffle context.
+    std::optional<DatalogProgram> TestProgram = Loader(*Module);
+    EXPECT_TRUE(TestProgram);
+    {
+        auto* Relation = (**TestProgram)->getRelation("in_scc");
+        EXPECT_EQ(Relation->size(), 2);
+    }
 }
 
 INSTANTIATE_TEST_SUITE_P(GtirbDecoderTests, DatalogLoaderTest,
