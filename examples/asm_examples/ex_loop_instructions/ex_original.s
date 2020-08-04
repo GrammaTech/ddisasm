@@ -22,6 +22,7 @@ post_loops:
     mov rsi, rax
     mov al, 0
     call printf@plt
+    mov eax, 0
     ret
 
 .data
