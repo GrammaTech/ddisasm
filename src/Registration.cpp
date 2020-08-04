@@ -20,6 +20,9 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include "Registration.h"
+
+#include <memory>
 
 #include "AuxDataSchema.h"
 

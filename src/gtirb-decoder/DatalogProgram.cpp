@@ -27,10 +27,7 @@
 #include "DatalogLoader.h"
 #include "DatalogProgram.h"
 
-#include "targets/Arm64Decoder.h"
-#include "targets/X64Decoder.h"
-
-std::optional<DatalogProgram> DatalogProgram::load(gtirb::Module &Module)
+std::optional<DatalogProgram> DatalogProgram::load(const gtirb::Module &Module)
 {
     auto Target = std::make_tuple(Module.getFileFormat(), Module.getISA());
     auto Loader = loaders().at(Target)();

@@ -21,8 +21,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "DatalogLoader.h"
+#include <algorithm>
+#include <memory>
+#include <utility>
+
 #include "../AuxDataSchema.h"
+#include "DatalogLoader.h"
 
 std::optional<DatalogProgram> DatalogLoader::load(const gtirb::Module& Module)
 {

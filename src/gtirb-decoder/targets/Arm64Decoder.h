@@ -20,8 +20,11 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_ARM64_DECODER_H_
-#define SRC_ARM64_DECODER_H_
+#ifndef SRC_GTIRB_DECODER_TARGETS_ARM64DECODER_H_
+#define SRC_GTIRB_DECODER_TARGETS_ARM64DECODER_H_
+
+#include <map>
+#include <string>
 
 #include <capstone/capstone.h>
 
@@ -140,4 +143,4 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::PrefetchOp& Op);
 } // namespace souffle
 
-#endif /* SRC_ARM64_DECODER_H_ */
+#endif // SRC_GTIRB_DECODER_TARGETS_ARM64DECODER_H_

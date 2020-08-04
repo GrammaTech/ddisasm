@@ -26,4 +26,4 @@
 void registerAuxDataTypes();
 void registerDatalogLoaders();
 
-#endif /* SRC_REGISTRATION_H_ */
+#endif // SRC_REGISTRATION_H_

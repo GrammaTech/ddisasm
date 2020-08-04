@@ -20,6 +20,10 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include <map>
+#include <set>
+#include <vector>
+
 #include "DatalogUtils.h"
 
 #include "../AuxDataSchema.h"

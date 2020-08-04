@@ -23,6 +23,7 @@
 //===----------------------------------------------------------------------===//
 #include <algorithm>
 #include <string>
+#include <vector>
 
 #include "X64Decoder.h"
 

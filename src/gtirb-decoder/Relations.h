@@ -20,10 +20,13 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef DDISASM_RELATIONS_H
-#define DDISASM_RELATIONS_H
+#ifndef SRC_GTIRB_DECODER_RELATIONS_H_
+#define SRC_GTIRB_DECODER_RELATIONS_H_
 
+#include <map>
+#include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include <souffle/CompiledSouffle.h>
@@ -159,4 +162,4 @@ namespace souffle
     }
 } // namespace souffle
 
-#endif /*  DDISASM_RELATIONS_H */
+#endif // SRC_GTIRB_DECODER_RELATIONS_H_

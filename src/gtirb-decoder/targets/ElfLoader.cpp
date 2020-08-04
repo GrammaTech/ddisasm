@@ -21,6 +21,9 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include <utility>
+#include <vector>
+
 #include "ElfLoader.h"
 
 #include "../../AuxDataSchema.h"

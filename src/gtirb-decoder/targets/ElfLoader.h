@@ -20,13 +20,14 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_ELF_LOADER_H_
-#define SRC_ELF_LOADER_H_
+#ifndef SRC_GTIRB_DECODER_TARGETS_ELFLOADER_H_
+#define SRC_GTIRB_DECODER_TARGETS_ELFLOADER_H_
 
-#include "../Relations.h"
-#include "ExceptionDecoder.h"
+#include <string>
 
 #include "../DatalogLoader.h"
+#include "../Relations.h"
+#include "ExceptionDecoder.h"
 
 void ElfSymbolLoader(const gtirb::Module& Module, DatalogProgram& Program);
 
@@ -48,4 +49,4 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Relocation& Rel);
 }
 
-#endif /* SRC_ELF_LOADER_H_ */
+#endif // SRC_GTIRB_DECODER_TARGETS_ELFLOADER_H_

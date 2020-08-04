@@ -20,10 +20,13 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_DATALOG_PROGRAM_H_
-#define SRC_DATALOG_PROGRAM_H_
+#ifndef SRC_GTIRB_DECODER_DATALOGPROGRAM_H_
+#define SRC_GTIRB_DECODER_DATALOGPROGRAM_H_
 
+#include <map>
 #include <memory>
+#include <string>
+#include <tuple>
 
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
@@ -34,10 +37,10 @@ class DatalogLoader;
 class DatalogProgram
 {
 public:
-    DatalogProgram(std::shared_ptr<souffle::SouffleProgram> P) : Program{P} {};
+    explicit DatalogProgram(std::shared_ptr<souffle::SouffleProgram> P) : Program{P} {};
     ~DatalogProgram() = default;
 
-    static std::optional<DatalogProgram> load(gtirb::Module& Module);
+    static std::optional<DatalogProgram> load(const gtirb::Module& Module);
 
     template <typename T>
     void insert(const std::string& Name, const T& Data)
@@ -95,4 +98,4 @@ private:
     std::shared_ptr<souffle::SouffleProgram> Program;
 };
 
-#endif /* SRC_DATALOG_PROGRAM_H_ */
+#endif // SRC_GTIRB_DECODER_DATALOGPROGRAM_H_

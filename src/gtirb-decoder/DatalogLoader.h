@@ -20,8 +20,8 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_DATALOG_LOADER_H_
-#define SRC_DATALOG_LOADER_H_
+#ifndef SRC_GTIRB_DECODER_DATALOGLOADER_H_
+#define SRC_GTIRB_DECODER_DATALOGLOADER_H_
 
 #include <optional>
 #include <string>
@@ -37,7 +37,7 @@
 class DatalogLoader
 {
 public:
-    DatalogLoader(std::string N) : Name{N}, Loaders{} {};
+    explicit DatalogLoader(std::string N) : Name{N}, Loaders{} {};
     ~DatalogLoader() = default;
 
     // Common type definition of functions/functors that populate datalog relations.
@@ -93,7 +93,7 @@ public:
         QWORD = 8
     };
 
-    DataLoader(Pointer N) : PointerSize{N} {};
+    explicit DataLoader(Pointer N) : PointerSize{N} {};
 
     virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program);
 
@@ -117,7 +117,7 @@ protected:
 class InstructionLoader
 {
 public:
-    InstructionLoader(uint8_t N) : InstructionSize{N} {};
+    explicit InstructionLoader(uint8_t N) : InstructionSize{N} {};
 
     using Instruction = relations::Instruction;
     using Operand = relations::Operand;
@@ -144,4 +144,4 @@ std::string uppercase(std::string S);
 const char* binaryISA(gtirb::ISA Arch);
 const char* binaryFormat(const gtirb::FileFormat Format);
 
-#endif /* SRC_DATALOG_LOADER_H_ */
+#endif // SRC_GTIRB_DECODER_DATALOGLOADER_H_

@@ -20,8 +20,12 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef DATALOG_UTILS_H_
-#define DATALOG_UTILS_H_
+#ifndef SRC_GTIRB_DECODER_DATALOGUTILS_H_
+#define SRC_GTIRB_DECODER_DATALOGUTILS_H_
+
+#include <string>
+#include <tuple>
+#include <utility>
 
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
@@ -150,4 +154,4 @@ namespace souffle
 
 } // namespace souffle
 
-#endif
+#endif // SRC_GTIRB_DECODER_DATALOGUTILS_H_

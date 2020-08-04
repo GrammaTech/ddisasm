@@ -20,8 +20,11 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_X64_DECODER_H_
-#define SRC_X64_DECODER_H_
+#ifndef SRC_GTIRB_DECODER_TARGETS_X64DECODER_H_
+#define SRC_GTIRB_DECODER_TARGETS_X64DECODER_H_
+
+#include <string>
+#include <tuple>
 
 #include <capstone/capstone.h>
 
@@ -71,4 +74,4 @@ public:
     }
 };
 
-#endif /* SRC_X64_DECODER_H_ */
+#endif // SRC_GTIRB_DECODER_TARGETS_X64DECODER_H_

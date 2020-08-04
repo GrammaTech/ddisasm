@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 #include <algorithm>
 #include <string>
+#include <vector>
 
 #include "Arm64Decoder.h"
 
