@@ -12,7 +12,7 @@ target_link_libraries(gtirb_decoder gtirb ${CAPSTONE} ${ehp_LIBRARIES})
 
 target_compile_definitions(gtirb_decoder PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(gtirb_decoder PRIVATE RAM_DOMAIN_SIZE=64)
-target_compile_options(gtirb_decoder PRIVATE ${OPENMP_FLAGS} -g)
+target_compile_options(gtirb_decoder PRIVATE ${OPENMP_FLAGS})
 
 if(ehp_INCLUDE_DIR)
   target_include_directories(gtirb_decoder PRIVATE ${ehp_INCLUDE_DIR})
