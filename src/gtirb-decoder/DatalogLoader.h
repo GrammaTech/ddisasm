@@ -27,8 +27,6 @@
 #include <string>
 #include <vector>
 
-#include <souffle/CompiledSouffle.h>
-#include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 
 #include "DatalogProgram.h"
@@ -40,7 +38,7 @@ public:
     explicit DatalogLoader(const std::string& N) : Name{N}, Loaders{} {};
     ~DatalogLoader() = default;
 
-    // Common type definition of functions/functors that populate datalog relations.
+    // Common type definition for functions/functors that populate datalog relations.
     using Loader = std::function<void(const gtirb::Module&, DatalogProgram&)>;
 
     // Add function to this composite loader.
@@ -54,7 +52,7 @@ public:
     void add(Args&&... A)
     {
         auto Fn = [&, A...](const gtirb::Module& Module, DatalogProgram& Program) {
-            T(A...)(Module, Program);
+            T{A...}(Module, Program);
         };
         Loaders.push_back(Fn);
     }
