@@ -2,7 +2,7 @@
 # targets/ElfLoader.cpp targets/ExceptionDecoder.cpp)
 
 set(DATALOG_DECODER_TARGETS targets/ElfLoader.cpp targets/ExceptionDecoder.cpp
-                            targets/X64Decoder.cpp)
+                            targets/X64Decoder.cpp targets/Arm64Decoder.cpp)
 
 add_library(
   gtirb_decoder STATIC Relations.cpp DatalogLoader.cpp DatalogUtils.cpp

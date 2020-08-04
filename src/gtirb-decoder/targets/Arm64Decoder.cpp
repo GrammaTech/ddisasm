@@ -25,7 +25,7 @@
 
 #include "Arm64Decoder.h"
 
-std::optional<Arm64Decoder::Instruction> Arm64Decoder::disasm(const uint8_t* Bytes, uint64_t Size,
+std::optional<Arm64Decoder::Instruction> Arm64Decoder::decode(const uint8_t* Bytes, uint64_t Size,
                                                               uint64_t Addr)
 {
     cs_insn* Instruction;
@@ -76,6 +76,8 @@ std::optional<Arm64Decoder::Instruction> Arm64Decoder::build(const cs_insn& CsIn
 
 std::optional<Arm64Decoder::Operand> Arm64Decoder::build(const cs_arm64_op& CsOp)
 {
+    using namespace relations;
+
     auto registerName = [this](uint64_t Reg) {
         return (Reg == ARM_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(CsHandle, Reg));
     };
@@ -135,8 +137,10 @@ std::optional<Arm64Decoder::Operand> Arm64Decoder::build(const cs_arm64_op& CsOp
     return std::nullopt;
 }
 
-void Arm64Decoder::populate(DatalogProgram& Program)
+void Arm64Decoder::operator()(const gtirb::Module& Module, DatalogProgram& Program)
 {
+    load(Module);
+
     Program.insert("instruction_complete", Instructions);
     Program.insert("invalid_op_code", InvalidInstructions);
     Program.insert("op_immediate", Operands.ImmTable);
@@ -230,23 +234,15 @@ std::optional<const char*> barrierValue(const arm64_barrier_op Op)
 
 namespace souffle
 {
-    souffle::tuple& operator<<(souffle::tuple& T, const Arm64Decoder::BarrierOp& Op)
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::BarrierOp& Op)
     {
         T << Op.Value;
         return T;
     }
 
-    souffle::tuple& operator<<(souffle::tuple& T, const Arm64Decoder::PrefetchOp& Op)
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::PrefetchOp& Op)
     {
         T << Op.Value;
-        return T;
-    }
-
-    template <class U>
-    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<U, uint64_t>& Pair)
-    {
-        auto& [Element, Id] = Pair;
-        T << Id << Element;
         return T;
     }
 } // namespace souffle

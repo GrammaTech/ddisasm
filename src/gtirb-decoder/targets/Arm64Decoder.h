@@ -27,22 +27,11 @@
 
 #include "../DatalogLoader.h"
 #include "../DatalogProgram.h"
+#include "../Relations.h"
 #include "ElfLoader.h"
 
-class Arm64Decoder : public InstructionDecoder
+namespace relations
 {
-public:
-    Arm64Decoder() : InstructionDecoder(4)
-    {
-        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &CsHandle);
-        assert(Err == CS_ERR_OK && "Failed to initialize ARM64 disassembler.");
-        cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
-    }
-    ~Arm64Decoder()
-    {
-        cs_close(&CsHandle);
-    }
-
     struct BarrierOp
     {
         std::string Value;
@@ -61,13 +50,9 @@ public:
         }
     };
 
-    using Instruction = InstructionDecoder::Instruction;
-    using ImmOp = InstructionDecoder::ImmOp;
-    using RegOp = InstructionDecoder::RegOp;
-    using IndirectOp = InstructionDecoder::IndirectOp;
-    using Operand = std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp>;
+    using Arm64Operand = std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp>;
 
-    struct OperandTable : public InstructionDecoder::OperandTable
+    struct Arm64OperandTable : public OperandTable
     {
         // TODO: Why do we have to redefine these?
         uint64_t operator()(ImmOp Op)
@@ -98,17 +83,35 @@ public:
         std::map<BarrierOp, uint64_t> BarrierTable;
         std::map<PrefetchOp, uint64_t> PrefetchTable;
     };
+} // namespace relations
 
-    std::optional<Instruction> disasm(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
+class Arm64Decoder : public InstructionLoader
+{
+public:
+    using Instruction = relations::Instruction;
+    using Operand = relations::Arm64Operand;
+    using OperandTable = relations::Arm64OperandTable;
 
-    void populate(DatalogProgram& P) override;
+    Arm64Decoder() : InstructionLoader(4)
+    {
+        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &CsHandle);
+        assert(Err == CS_ERR_OK && "Failed to initialize ARM64 disassembler.");
+        cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
+    }
+    ~Arm64Decoder()
+    {
+        cs_close(&CsHandle);
+    }
+
+    void operator()(const gtirb::Module& Module, DatalogProgram& Program) override;
+
+    std::optional<Instruction> decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
 private:
     OperandTable Operands;
 
     std::optional<Operand> build(const cs_arm64_op& CsOp);
     std::optional<Instruction> build(const cs_insn& CsInstruction);
-    std::tuple<std::string, std::string> splitMnemonic(const cs_insn& CsInstruction);
 
     csh CsHandle = CS_ERR_ARCH;
 };
@@ -121,13 +124,20 @@ class ElfArm64Loader : public DatalogLoader
 public:
     ElfArm64Loader() : DatalogLoader("souffle_disasm_arm64")
     {
-        add<FormatDecoder>();
-        add<SectionDecoder>();
+        add(FormatLoader);
+        add(SectionLoader);
         add<Arm64Decoder>();
-        add<DataDecoder>(8);
-        add<ElfSymbolDecoder>();
-        add<ElfExceptionDecoder>();
+        add<DataLoader>(DataLoader::Pointer::QWORD);
+        add(ElfSymbolLoader);
+        add(ElfExceptionLoader);
     }
 };
+
+namespace souffle
+{
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::BarrierOp& Op);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::PrefetchOp& Op);
+} // namespace souffle
 
 #endif /* SRC_ARM64_DECODER_H_ */

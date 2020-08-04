@@ -25,11 +25,10 @@
 
 #include <capstone/capstone.h>
 
-#include "../Relations.h"
-#include "ElfLoader.h"
-
 #include "../DatalogLoader.h"
 #include "../DatalogProgram.h"
+#include "../Relations.h"
+#include "ElfLoader.h"
 
 class X64Decoder : public InstructionLoader
 {
