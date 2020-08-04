@@ -77,7 +77,7 @@ void FormatLoader(const gtirb::Module& Module, DatalogProgram& Program)
     Program.insert<std::vector<gtirb::Addr>>("entry_point", {EntryPoint});
 }
 
-void SymboLoader(const gtirb::Module& Module, DatalogProgram& Program)
+void SymbolLoader(const gtirb::Module& Module, DatalogProgram& Program)
 {
     std::vector<relations::Symbol> Symbols;
 
