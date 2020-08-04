@@ -64,6 +64,44 @@ struct FunctionEntriesLoader
     gtirb::Context* Context;
 };
 
+template <typename T>
+class CodeBlockLoader : public T
+{
+public:
+    using Instruction = typename T::Instruction;
+
+    void load(const gtirb::Module& Module) override
+    {
+        for(auto& Block : Module.code_blocks())
+        {
+            load(Block);
+        }
+    }
+
+    void load(const gtirb::CodeBlock& Block)
+    {
+        assert(Block.getAddress() && "Found code block without address.");
+        gtirb::Addr Addr = *Block.getAddress();
+
+        const gtirb::ByteInterval* ByteInterval = Block.getByteInterval();
+        assert(ByteInterval->getAddress() && "Found byte interval without address.");
+
+        assert(Addr < (*ByteInterval->getAddress() + ByteInterval->getInitializedSize())
+               && "Found uninitialized code block.");
+        auto Data = ByteInterval->rawBytes<const uint8_t>() + Block.getOffset();
+        uint64_t Size = ByteInterval->getInitializedSize() - Block.getOffset();
+
+        if(std::optional<typename T::Instruction> Instruction =
+               T::decode(Data, Size, static_cast<uint64_t>(Addr)))
+        {
+            Instructions.push_back(*Instruction);
+        }
+    }
+
+protected:
+    std::vector<Instruction> Instructions;
+};
+
 std::tuple<std::string, std::string, std::string> edgeProperties(const gtirb::EdgeLabel& L);
 
 namespace relations
