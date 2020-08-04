@@ -146,7 +146,6 @@ void InstructionLoader::load(const gtirb::Module& Module)
         {
             for(const auto& ByteInterval : Section.byte_intervals())
             {
-                assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
                 load(ByteInterval);
             }
         }
@@ -155,6 +154,8 @@ void InstructionLoader::load(const gtirb::Module& Module)
 
 void InstructionLoader::load(const gtirb::ByteInterval& ByteInterval)
 {
+    assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
+
     uint64_t Addr = static_cast<uint64_t>(*ByteInterval.getAddress());
     uint64_t Size = ByteInterval.getInitializedSize();
     auto Data = ByteInterval.rawBytes<const uint8_t>();

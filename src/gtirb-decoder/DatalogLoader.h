@@ -49,11 +49,14 @@ public:
         Loaders.push_back(Fn);
     }
 
-    // Add functor to this composite loader.
+    // Add function object to this composite loader.
     template <typename T, typename... Args>
     void add(Args&&... A)
     {
-        Loaders.push_back(T{A...});
+        auto Fn = [&, A...](const gtirb::Module& Module, DatalogProgram& Program) {
+            T(A...)(Module, Program);
+        };
+        Loaders.push_back(Fn);
     }
 
     // Build a DatalogProgram (i.e. SouffleProgram).
@@ -91,7 +94,6 @@ public:
     };
 
     DataLoader(Pointer N) : PointerSize{N} {};
-    virtual ~DataLoader(){};
 
     virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program);
 
@@ -116,7 +118,6 @@ class InstructionLoader
 {
 public:
     InstructionLoader(uint8_t N) : InstructionSize{N} {};
-    virtual ~InstructionLoader(){};
 
     using Instruction = relations::Instruction;
     using Operand = relations::Operand;
