@@ -1,4 +1,4 @@
-//===- Arm64Decoder.cpp -----------------------------------------*- C++ -*-===//
+//===- Arm64Loader.cpp -----------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -24,10 +24,10 @@
 #include <string>
 #include <vector>
 
-#include "Arm64Decoder.h"
+#include "Arm64Loader.h"
 
-std::optional<Arm64Decoder::Instruction> Arm64Decoder::decode(const uint8_t* Bytes, uint64_t Size,
-                                                              uint64_t Addr)
+std::optional<Arm64Loader::Instruction> Arm64Loader::decode(const uint8_t* Bytes, uint64_t Size,
+                                                            uint64_t Addr)
 {
     cs_insn* Instruction;
     size_t Count = cs_disasm(CsHandle, Bytes, Size, Addr, 1, &Instruction);
@@ -39,7 +39,7 @@ std::optional<Arm64Decoder::Instruction> Arm64Decoder::decode(const uint8_t* Byt
     return std::nullopt;
 }
 
-std::optional<Arm64Decoder::Instruction> Arm64Decoder::build(const cs_insn& CsInstruction)
+std::optional<Arm64Loader::Instruction> Arm64Loader::build(const cs_insn& CsInstruction)
 {
     const cs_arm64& Details = CsInstruction.detail->arm64;
     std::string Name = uppercase(CsInstruction.mnemonic);
@@ -54,7 +54,7 @@ std::optional<Arm64Decoder::Instruction> Arm64Decoder::build(const cs_insn& CsIn
             const cs_arm64_op& CsOp = Details.operands[i];
 
             // Build operand for datalog fact.
-            std::optional<Arm64Decoder::Operand> Op = build(CsOp);
+            std::optional<Arm64Loader::Operand> Op = build(CsOp);
             if(!Op)
             {
                 return std::nullopt;
@@ -75,7 +75,7 @@ std::optional<Arm64Decoder::Instruction> Arm64Decoder::build(const cs_insn& CsIn
     return Instruction{Addr, Size, "", Name, OpCodes, 0, 0};
 }
 
-std::optional<Arm64Decoder::Operand> Arm64Decoder::build(const cs_arm64_op& CsOp)
+std::optional<Arm64Loader::Operand> Arm64Loader::build(const cs_arm64_op& CsOp)
 {
     using namespace relations;
 
@@ -138,7 +138,7 @@ std::optional<Arm64Decoder::Operand> Arm64Decoder::build(const cs_arm64_op& CsOp
     return std::nullopt;
 }
 
-void Arm64Decoder::operator()(const gtirb::Module& Module, DatalogProgram& Program)
+void Arm64Loader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
 {
     load(Module);
 

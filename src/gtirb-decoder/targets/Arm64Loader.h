@@ -1,4 +1,4 @@
-//===- Arm64Decoder.h -------------------------------------------*- C++ -*-===//
+//===- Arm64Loader.h -------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -88,20 +88,20 @@ namespace relations
     };
 } // namespace relations
 
-class Arm64Decoder : public InstructionLoader
+class Arm64Loader : public InstructionLoader
 {
 public:
     using Instruction = relations::Instruction;
     using Operand = relations::Arm64Operand;
     using OperandTable = relations::Arm64OperandTable;
 
-    Arm64Decoder() : InstructionLoader(4)
+    Arm64Loader() : InstructionLoader(4)
     {
         [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &CsHandle);
         assert(Err == CS_ERR_OK && "Failed to initialize ARM64 disassembler.");
         cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
     }
-    ~Arm64Decoder()
+    ~Arm64Loader()
     {
         cs_close(&CsHandle);
     }
@@ -129,7 +129,7 @@ public:
     {
         add(FormatLoader);
         add(SectionLoader);
-        add<Arm64Decoder>();
+        add<Arm64Loader>();
         add<DataLoader>(DataLoader::Pointer::QWORD);
         add(ElfSymbolLoader);
         add(ElfExceptionLoader);
