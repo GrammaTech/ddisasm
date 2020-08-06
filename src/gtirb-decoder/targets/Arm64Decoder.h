@@ -28,7 +28,7 @@
 
 #include <capstone/capstone.h>
 
-#include "../DatalogLoader.h"
+#include "../CompositeLoader.h"
 #include "../DatalogProgram.h"
 #include "../Relations.h"
 #include "ElfLoader.h"
@@ -122,10 +122,10 @@ private:
 std::optional<const char*> barrierValue(const arm64_barrier_op Op);
 std::optional<const char*> prefetchValue(const arm64_prefetch_op Op);
 
-class ElfArm64Loader : public DatalogLoader
+class ElfArm64Loader : public CompositeLoader
 {
 public:
-    ElfArm64Loader() : DatalogLoader("souffle_disasm_arm64")
+    ElfArm64Loader() : CompositeLoader("souffle_disasm_arm64")
     {
         add(FormatLoader);
         add(SectionLoader);

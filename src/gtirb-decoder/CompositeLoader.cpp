@@ -1,4 +1,4 @@
-//===- DatalogLoader.h ------------------------------------------*- C++ -*-===//
+//===- CompositeLoader.h ------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -26,9 +26,9 @@
 #include <utility>
 
 #include "../AuxDataSchema.h"
-#include "DatalogLoader.h"
+#include "CompositeLoader.h"
 
-std::optional<DatalogProgram> DatalogLoader::load(const gtirb::Module& Module)
+std::optional<DatalogProgram> CompositeLoader::load(const gtirb::Module& Module)
 {
     if(auto SouffleProgram =
            std::shared_ptr<souffle::SouffleProgram>(souffle::ProgramFactory::newInstance(Name)))

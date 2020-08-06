@@ -1,4 +1,4 @@
-//===- DatalogLoader.cpp ----------------------------------------*- C++ -*-===//
+//===- CompositeLoader.cpp ----------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -32,11 +32,11 @@
 #include "DatalogProgram.h"
 #include "Relations.h"
 
-class DatalogLoader
+class CompositeLoader
 {
 public:
-    explicit DatalogLoader(const std::string& N) : Name{N}, Loaders{} {};
-    ~DatalogLoader() = default;
+    explicit CompositeLoader(const std::string& N) : Name{N}, Loaders{} {};
+    ~CompositeLoader() = default;
 
     // Common type definition for functions/functors that populate datalog relations.
     using Loader = std::function<void(const gtirb::Module&, DatalogProgram&)>;

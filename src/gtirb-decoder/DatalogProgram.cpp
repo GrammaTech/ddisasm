@@ -24,7 +24,7 @@
 
 #include <gtirb/gtirb.hpp>
 
-#include "DatalogLoader.h"
+#include "CompositeLoader.h"
 #include "DatalogProgram.h"
 
 std::optional<DatalogProgram> DatalogProgram::load(const gtirb::Module &Module)

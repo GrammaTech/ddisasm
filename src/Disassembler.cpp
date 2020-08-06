@@ -26,7 +26,7 @@
 #include <boost/uuid/uuid_generators.hpp>
 
 #include "AuxDataSchema.h"
-#include "gtirb-decoder/DatalogLoader.h"
+#include "gtirb-decoder/CompositeLoader.h"
 
 using ImmOp = relations::ImmOp;
 using IndirectOp = relations::IndirectOp;

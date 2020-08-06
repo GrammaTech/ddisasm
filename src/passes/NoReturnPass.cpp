@@ -56,7 +56,7 @@ std::set<gtirb::CodeBlock*> NoReturnPass::computeNoReturn(gtirb::Module& Module,
                                                           unsigned int NThreads)
 {
     // Build GTIRB loader.
-    DatalogLoader Loader("souffle_no_return");
+    CompositeLoader Loader("souffle_no_return");
     Loader.add(SccLoader);
     Loader.add(CfgLoader);
 

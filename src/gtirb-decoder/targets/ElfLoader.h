@@ -25,7 +25,7 @@
 
 #include <string>
 
-#include "../DatalogLoader.h"
+#include "../CompositeLoader.h"
 #include "../Relations.h"
 #include "ExceptionDecoder.h"
 

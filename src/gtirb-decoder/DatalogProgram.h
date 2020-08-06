@@ -32,7 +32,7 @@
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 
-class DatalogLoader;
+class CompositeLoader;
 
 class DatalogProgram
 {
@@ -80,7 +80,7 @@ public:
     }
 
     // Loader factory registration.
-    using Factory = std::function<std::unique_ptr<DatalogLoader>()>;
+    using Factory = std::function<std::unique_ptr<CompositeLoader>()>;
     using Target = std::tuple<gtirb::FileFormat, gtirb::ISA>;
 
     static void registerLoader(Target T, Factory F)

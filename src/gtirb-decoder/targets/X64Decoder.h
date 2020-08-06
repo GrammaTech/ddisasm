@@ -28,7 +28,7 @@
 
 #include <capstone/capstone.h>
 
-#include "../DatalogLoader.h"
+#include "../CompositeLoader.h"
 #include "../DatalogProgram.h"
 #include "../Relations.h"
 #include "ElfLoader.h"
@@ -60,10 +60,10 @@ private:
     csh CsHandle = CS_ERR_ARCH;
 };
 
-class ElfX64Loader : public DatalogLoader
+class ElfX64Loader : public CompositeLoader
 {
 public:
-    ElfX64Loader() : DatalogLoader("souffle_disasm_x64")
+    ElfX64Loader() : CompositeLoader("souffle_disasm_x64")
     {
         add(FormatLoader);
         add(SectionLoader);

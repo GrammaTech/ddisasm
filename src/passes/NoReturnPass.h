@@ -28,7 +28,7 @@
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 
-#include "../gtirb-decoder/DatalogLoader.h"
+#include "../gtirb-decoder/CompositeLoader.h"
 #include "../gtirb-decoder/DatalogUtils.h"
 #include "../gtirb-decoder/Relations.h"
 

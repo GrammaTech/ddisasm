@@ -4,11 +4,11 @@
 #include <gtirb/gtirb.hpp>
 
 #include "../gtirb-builder/GtirbBuilder.h"
-#include "../gtirb-decoder/DatalogLoader.h"
+#include "../gtirb-decoder/CompositeLoader.h"
 #include "../gtirb-decoder/DatalogProgram.h"
 #include "../gtirb-decoder/DatalogUtils.h"
 
-class DatalogLoaderTest : public ::testing::TestWithParam<const char*>
+class CompositeLoaderTest : public ::testing::TestWithParam<const char*>
 {
 protected:
     void SetUp() override
@@ -40,10 +40,10 @@ void TestLoaderFunction(const gtirb::Module& Module, DatalogProgram& Program)
     Program.insert("in_scc", Tuples);
 }
 
-TEST_P(DatalogLoaderTest, build_test_loader)
+TEST_P(CompositeLoaderTest, build_test_loader)
 {
     // Load GTIRB.
-    DatalogLoader Loader = DatalogLoader("souffle_no_return");
+    CompositeLoader Loader = CompositeLoader("souffle_no_return");
     Loader.add<TestLoader>();
     Loader.add(TestLoaderFunction);
 
@@ -56,5 +56,5 @@ TEST_P(DatalogLoaderTest, build_test_loader)
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(GtirbDecoderTests, DatalogLoaderTest,
+INSTANTIATE_TEST_SUITE_P(GtirbDecoderTests, CompositeLoaderTest,
                          testing::Values("inputs/hello.x64.elf"));

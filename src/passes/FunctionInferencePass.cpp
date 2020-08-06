@@ -72,7 +72,7 @@ void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Mod
                                              unsigned int NThreads)
 {
     // Build GTIRB loader.
-    DatalogLoader Loader("souffle_function_inference");
+    CompositeLoader Loader("souffle_function_inference");
     Loader.add(BlocksLoader);
     // TODO: Add support for ARM64 prologues.
     if(Module.getISA() == gtirb::ISA::X64)
