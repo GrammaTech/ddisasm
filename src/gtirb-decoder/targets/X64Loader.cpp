@@ -1,4 +1,4 @@
-//===- X64Decoder.cpp -------------------------------------------*- C++ -*-===//
+//===- X64Loader.cpp -------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -25,10 +25,10 @@
 #include <string>
 #include <vector>
 
-#include "X64Decoder.h"
+#include "X64Loader.h"
 
-std::optional<X64Decoder::Instruction> X64Decoder::decode(const uint8_t* Bytes, uint64_t Size,
-                                                          uint64_t Addr)
+std::optional<X64Loader::Instruction> X64Loader::decode(const uint8_t* Bytes, uint64_t Size,
+                                                        uint64_t Addr)
 {
     cs_insn* Instruction;
     size_t Count = cs_disasm(CsHandle, Bytes, Size, Addr, 1, &Instruction);
@@ -40,7 +40,7 @@ std::optional<X64Decoder::Instruction> X64Decoder::decode(const uint8_t* Bytes, 
     return std::nullopt;
 }
 
-std::optional<X64Decoder::Instruction> X64Decoder::build(const cs_insn& CsInstruction)
+std::optional<X64Loader::Instruction> X64Loader::build(const cs_insn& CsInstruction)
 {
     cs_x86& Details = CsInstruction.detail->x86;
     auto [Prefix, Name] = splitMnemonic(CsInstruction);
@@ -55,7 +55,7 @@ std::optional<X64Decoder::Instruction> X64Decoder::build(const cs_insn& CsInstru
             cs_x86_op& CsOp = Details.operands[i];
 
             // Build operand for datalog fact.
-            std::optional<X64Decoder::Operand> Op = build(CsOp);
+            std::optional<X64Loader::Operand> Op = build(CsOp);
             if(!Op)
             {
                 return std::nullopt;
@@ -74,10 +74,10 @@ std::optional<X64Decoder::Instruction> X64Decoder::build(const cs_insn& CsInstru
 
     uint64_t Addr(CsInstruction.address), Size(CsInstruction.size);
     uint8_t Imm(Details.encoding.imm_offset), Disp(Details.encoding.disp_offset);
-    return X64Decoder::Instruction{Addr, Size, Prefix, Name, OpCodes, Imm, Disp};
+    return X64Loader::Instruction{Addr, Size, Prefix, Name, OpCodes, Imm, Disp};
 }
 
-std::tuple<std::string, std::string> X64Decoder::splitMnemonic(const cs_insn& CsInstruction)
+std::tuple<std::string, std::string> X64Loader::splitMnemonic(const cs_insn& CsInstruction)
 {
     std::string PrefixName = uppercase(CsInstruction.mnemonic);
     std::string Prefix, Name;
@@ -95,7 +95,7 @@ std::tuple<std::string, std::string> X64Decoder::splitMnemonic(const cs_insn& Cs
     return {Prefix, Name};
 }
 
-std::optional<X64Decoder::Operand> X64Decoder::build(const cs_x86_op& CsOp)
+std::optional<X64Loader::Operand> X64Loader::build(const cs_x86_op& CsOp)
 {
     auto registerName = [this](uint64_t Reg) {
         return (Reg == X86_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(CsHandle, Reg));

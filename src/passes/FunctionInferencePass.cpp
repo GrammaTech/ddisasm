@@ -23,7 +23,7 @@
 #include <boost/uuid/uuid_generators.hpp>
 
 #include "../AuxDataSchema.h"
-#include "../gtirb-decoder/targets/X64Decoder.h"
+#include "../gtirb-decoder/targets/X64Loader.h"
 #include "FunctionInferencePass.h"
 
 void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M)
@@ -77,7 +77,7 @@ void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Mod
     // TODO: Add support for ARM64 prologues.
     if(Module.getISA() == gtirb::ISA::X64)
     {
-        Loader.add<CodeBlockLoader<X64Decoder>>();
+        Loader.add<CodeBlockLoader<X64Loader>>();
     }
     Loader.add(CfgLoader);
     Loader.add(SymbolicExpressionsLoader);

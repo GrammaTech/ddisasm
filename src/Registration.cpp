@@ -28,7 +28,7 @@
 
 #include "gtirb-decoder/DatalogProgram.h"
 #include "gtirb-decoder/targets/Arm64Loader.h"
-#include "gtirb-decoder/targets/X64Decoder.h"
+#include "gtirb-decoder/targets/X64Loader.h"
 
 void registerAuxDataTypes()
 {

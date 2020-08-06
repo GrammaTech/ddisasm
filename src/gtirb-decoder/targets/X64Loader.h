@@ -1,4 +1,4 @@
-//===- X64Decoder.h ---------------------------------------------*- C++ -*-===//
+//===- X64Loader.h ---------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -33,16 +33,16 @@
 #include "../Relations.h"
 #include "ElfLoader.h"
 
-class X64Decoder : public InstructionLoader
+class X64Loader : public InstructionLoader
 {
 public:
-    X64Decoder() : InstructionLoader{1}
+    X64Loader() : InstructionLoader{1}
     {
         [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_X86, CS_MODE_64, &CsHandle);
         assert(Err == CS_ERR_OK && "Failed to initialize X64 disassembler.");
         cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
     }
-    ~X64Decoder()
+    ~X64Loader()
     {
         cs_close(&CsHandle);
     }
@@ -67,7 +67,7 @@ public:
     {
         add(FormatLoader);
         add(SectionLoader);
-        add<X64Decoder>();
+        add<X64Loader>();
         add<DataLoader>(DataLoader::Pointer::QWORD);
         add(ElfSymbolLoader);
         add(ElfExceptionLoader);
