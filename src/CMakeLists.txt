@@ -297,7 +297,8 @@ endif()
 if(UNIX
    AND NOT CYGWIN
    AND ("${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo" OR "${CMAKE_BUILD_TYPE}"
-                                                           STREQUAL "Debug"))
+                                                           STREQUAL "Debug")
+   AND ${DDISASM_STRIP_DEBUG_SYMBOLS})
   string(
     RANDOM
     LENGTH 32
