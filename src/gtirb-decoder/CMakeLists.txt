@@ -1,12 +1,21 @@
 # set(DATALOG_DECODER_TARGETS targets/X64Loader.cpp targets/Arm64Loader.cpp
 # targets/ElfLoader.cpp targets/ExceptionDecoder.cpp)
 
-set(DATALOG_DECODER_TARGETS targets/ElfLoader.cpp targets/ExceptionDecoder.cpp
-                            targets/X64Loader.cpp targets/Arm64Loader.cpp)
+set(DATALOG_DECODER_TARGETS
+    core/AuxDataLoader.cpp
+    core/DataLoader.cpp
+    core/EdgesLoader.cpp
+    core/InstructionLoader.cpp
+    core/ModuleLoader.cpp
+    core/SectionLoader.cpp
+    core/SymbolLoader.cpp
+    core/SymbolicExpressionLoader.cpp
+    arch/X64Loader.cpp
+    arch/Arm64Loader.cpp
+    format/ElfLoader.cpp)
 
-add_library(
-  gtirb_decoder STATIC Relations.cpp CompositeLoader.cpp DatalogUtils.cpp
-                       ${DATALOG_DECODER_TARGETS} DatalogProgram.cpp)
+add_library(gtirb_decoder STATIC Relations.cpp CompositeLoader.cpp
+                                 DatalogProgram.cpp ${DATALOG_DECODER_TARGETS})
 
 target_link_libraries(gtirb_decoder gtirb ${CAPSTONE} ${ehp_LIBRARIES})
 

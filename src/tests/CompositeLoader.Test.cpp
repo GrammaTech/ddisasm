@@ -6,7 +6,7 @@
 #include "../gtirb-builder/GtirbBuilder.h"
 #include "../gtirb-decoder/CompositeLoader.h"
 #include "../gtirb-decoder/DatalogProgram.h"
-#include "../gtirb-decoder/DatalogUtils.h"
+#include "../gtirb-decoder/core/AuxDataLoader.h"
 
 class CompositeLoaderTest : public ::testing::TestWithParam<const char*>
 {

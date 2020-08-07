@@ -1,6 +1,6 @@
-//===- FunctionInferencePass.h ----------------------------------*- C++ -*-===//
+//===- SymbolLoader.cpp -----------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2020 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,27 +20,18 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef FUNCTION_INFERENCE_PASS_H_
-#define FUNCTION_INFERENCE_PASS_H_
+#include "SymbolLoader.h"
 
-#include <optional>
-
-#include <souffle/SouffleInterface.h>
-#include <gtirb/gtirb.hpp>
-
-// Refine function boundaries.
-class FunctionInferencePass
+void SymbolLoader(const gtirb::Module& Module, DatalogProgram& Program)
 {
-public:
-    void setDebugDir(std::string Path)
+    std::vector<relations::Symbol> Symbols;
+
+    for(auto& Symbol : Module.symbols())
     {
-        DebugDir = Path;
-    };
+        std::string Name = Symbol.getName();
+        gtirb::Addr Addr = Symbol.getAddress().value_or(gtirb::Addr(0));
+        Symbols.push_back({Addr, 0, "NOTYPE", "GLOBAL", "DEFAULT", 0, Name});
+    }
 
-    void computeFunctions(gtirb::Context& C, gtirb::Module& M, unsigned int NThreads);
-
-private:
-    std::optional<std::string> DebugDir;
-    void updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M);
-};
-#endif // FUNCTION_INFERENCE_PASS_H_
+    Program.insert("symbol", std::move(Symbols));
+}

@@ -1,4 +1,4 @@
-//===- ElfLoader.h ----------------------------------------------*- C++ -*-===//
+//===- ElfARM64Loader.h -------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -20,33 +20,28 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_GTIRB_DECODER_TARGETS_ELFLOADER_H_
-#define SRC_GTIRB_DECODER_TARGETS_ELFLOADER_H_
-
-#include <string>
+#ifndef SRC_GTIRB_DECODER_TARGET_ELFARM64LOADER_H_
+#define SRC_GTIRB_DECODER_TARGET_ELFARM64LOADER_H_
 
 #include "../CompositeLoader.h"
-#include "../Relations.h"
-#include "ExceptionDecoder.h"
+#include "../arch/Arm64Loader.h"
+#include "../core/DataLoader.h"
+#include "../core/ModuleLoader.h"
+#include "../core/SectionLoader.h"
+#include "../format/ElfLoader.h"
 
-void ElfSymbolLoader(const gtirb::Module& Module, DatalogProgram& Program);
-
-void ElfExceptionLoader(const gtirb::Module& Module, DatalogProgram& Program);
-
-namespace relations
+class ElfArm64Loader : public CompositeLoader
 {
-    struct Relocation
+public:
+    ElfArm64Loader() : CompositeLoader("souffle_disasm_arm64")
     {
-        uint64_t Address;
-        std::string Type;
-        std::string Name;
-        int64_t Addend;
-    };
-} // namespace relations
+        add(ModuleLoader);
+        add(SectionLoader);
+        add<Arm64Loader>();
+        add<DataLoader>(DataLoader::Pointer::QWORD);
+        add(ElfSymbolLoader);
+        add(ElfExceptionLoader);
+    }
+};
 
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::Relocation& Rel);
-}
-
-#endif // SRC_GTIRB_DECODER_TARGETS_ELFLOADER_H_
+#endif // SRC_GTIRB_DECODER_TARGET_ELFARM64LOADER_H_

@@ -23,7 +23,12 @@
 #include <boost/uuid/uuid_generators.hpp>
 
 #include "../AuxDataSchema.h"
-#include "../gtirb-decoder/targets/X64Loader.h"
+#include "../gtirb-decoder/CompositeLoader.h"
+#include "../gtirb-decoder/arch/X64Loader.h"
+#include "../gtirb-decoder/core/AuxDataLoader.h"
+#include "../gtirb-decoder/core/EdgesLoader.h"
+#include "../gtirb-decoder/core/InstructionLoader.h"
+#include "../gtirb-decoder/core/SymbolicExpressionLoader.h"
 #include "FunctionInferencePass.h"
 
 void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M)
@@ -80,7 +85,7 @@ void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Mod
         Loader.add<CodeBlockLoader<X64Loader>>();
     }
     Loader.add(CfgLoader);
-    Loader.add(SymbolicExpressionsLoader);
+    Loader.add(SymbolicExpressionLoader);
     Loader.add(FdeEntriesLoader{&Context});
     Loader.add(FunctionEntriesLoader{&Context});
     Loader.add(PaddingLoader{&Context});

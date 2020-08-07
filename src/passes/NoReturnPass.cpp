@@ -22,6 +22,11 @@
 //===----------------------------------------------------------------------===//
 #include "NoReturnPass.h"
 
+#include "../gtirb-decoder/CompositeLoader.h"
+#include "../gtirb-decoder/Relations.h"
+#include "../gtirb-decoder/core/AuxDataLoader.h"
+#include "../gtirb-decoder/core/EdgesLoader.h"
+
 std::set<gtirb::CodeBlock*> NoReturnPass::updateCFG(souffle::SouffleProgram* P, gtirb::Module& M)
 {
     std::set<gtirb::CodeBlock*> NoReturn;

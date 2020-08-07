@@ -1,4 +1,4 @@
-//===- Arm64Loader.h -------------------------------------------*- C++ -*-===//
+//===- Arm64Loader.h --------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -20,18 +20,16 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_GTIRB_DECODER_TARGETS_ARM64DECODER_H_
-#define SRC_GTIRB_DECODER_TARGETS_ARM64DECODER_H_
+#ifndef SRC_GTIRB_DECODER_ARCH_ARM64DECODER_H_
+#define SRC_GTIRB_DECODER_ARCH_ARM64DECODER_H_
 
 #include <map>
 #include <string>
 
 #include <capstone/capstone.h>
 
-#include "../CompositeLoader.h"
-#include "../DatalogProgram.h"
 #include "../Relations.h"
-#include "ElfLoader.h"
+#include "../core/InstructionLoader.h"
 
 namespace relations
 {
@@ -122,20 +120,6 @@ private:
 std::optional<const char*> barrierValue(const arm64_barrier_op Op);
 std::optional<const char*> prefetchValue(const arm64_prefetch_op Op);
 
-class ElfArm64Loader : public CompositeLoader
-{
-public:
-    ElfArm64Loader() : CompositeLoader("souffle_disasm_arm64")
-    {
-        add(FormatLoader);
-        add(SectionLoader);
-        add<Arm64Loader>();
-        add<DataLoader>(DataLoader::Pointer::QWORD);
-        add(ElfSymbolLoader);
-        add(ElfExceptionLoader);
-    }
-};
-
 namespace souffle
 {
     souffle::tuple& operator<<(souffle::tuple& T, const relations::BarrierOp& Op);
@@ -143,4 +127,4 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::PrefetchOp& Op);
 } // namespace souffle
 
-#endif // SRC_GTIRB_DECODER_TARGETS_ARM64DECODER_H_
+#endif // SRC_GTIRB_DECODER_ARCH_ARM64DECODER_H_

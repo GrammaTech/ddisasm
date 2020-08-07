@@ -27,8 +27,8 @@
 #include "AuxDataSchema.h"
 
 #include "gtirb-decoder/DatalogProgram.h"
-#include "gtirb-decoder/targets/Arm64Loader.h"
-#include "gtirb-decoder/targets/X64Loader.h"
+#include "gtirb-decoder/target/ElfArm64Loader.h"
+#include "gtirb-decoder/target/ElfX64Loader.h"
 
 void registerAuxDataTypes()
 {

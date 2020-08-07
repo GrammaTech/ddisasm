@@ -1,6 +1,6 @@
-//===- ExceptionDecoder.cpp -------------------------------------*- C++ -*-===//
+//===- ElfLoader.cpp --------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2020 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -11,7 +11,8 @@
 //  This program is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-//  GNU Affero General Public License for more details.
+//  GNU Affero General Public
+//  License for more details.
 //
 //  This project is sponsored by the Office of Naval Research, One Liberty
 //  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
@@ -20,10 +21,74 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include "ElfLoader.h"
 
-#include "ExceptionDecoder.h"
+#include "../../AuxDataSchema.h"
 
-ExceptionDecoder::ExceptionDecoder(const gtirb::Module &module)
+void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
+{
+    std::vector<relations::Symbol> Symbols;
+    std::vector<relations::Relocation> Relocations;
+
+    // Find extra ELF symbol information in aux data.
+    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+
+    // Load symbols with extra symbol information, if available.
+    for(auto &Symbol : Module.symbols())
+    {
+        std::string Name = Symbol.getName();
+        gtirb::Addr Addr = Symbol.getAddress().value_or(gtirb::Addr(0));
+
+        ElfSymbolInfo Info = {0, "NOTYPE", "GLOBAL", "DEFAULT", 0};
+
+        if(SymbolInfo)
+        {
+            auto Found = SymbolInfo->find(Symbol.getUUID());
+
+            // FIXME: Error handling
+            if(Found == SymbolInfo->end())
+            {
+                throw std::logic_error("Symbol " + Symbol.getName()
+                                       + " missing from elfSymbolInfo AuxData table");
+            }
+
+            Info = Found->second;
+        }
+
+        auto [Size, Type, Binding, Visibility, SectionIndex] = Info;
+        Symbols.push_back({Addr, Size, Type, Binding, Visibility, SectionIndex, Name});
+    }
+
+    // Load relocation entries from aux data.
+    if(auto *Table = Module.getAuxData<gtirb::schema::Relocations>())
+    {
+        for(auto [Address, Type, Name, Addend] : *Table)
+        {
+            Relocations.push_back({Address, Type, Name, Addend});
+        }
+    }
+
+    Program.insert("symbol", std::move(Symbols));
+    Program.insert("relocation", std::move(Relocations));
+}
+
+namespace souffle
+{
+    souffle::tuple &operator<<(souffle::tuple &T, const relations::Relocation &Rel)
+    {
+        auto &[Addr, Type, Name, Addend] = Rel;
+        T << Addr << Type << Name << Addend;
+        return T;
+    }
+} // namespace souffle
+
+void ElfExceptionLoader(const gtirb::Module &Module, DatalogProgram &Program)
+{
+    ElfExceptionDecoder Decoder(Module);
+    Decoder.addExceptionInformation(*Program);
+}
+
+ElfExceptionDecoder::ElfExceptionDecoder(const gtirb::Module &module)
 {
     uint8_t ptrsize(8);
     std::string ehFrame, ehFrameHeader, gccExcept;
@@ -87,7 +152,7 @@ ExceptionDecoder::ExceptionDecoder(const gtirb::Module &module)
                                              gccExcept, addressGccExcept);
 }
 
-void ExceptionDecoder::addExceptionInformation(souffle::SouffleProgram *prog)
+void ElfExceptionDecoder::addExceptionInformation(souffle::SouffleProgram *prog)
 {
     auto *cieRelation = prog->getRelation("cie_entry");
     auto *cieEncodingRelation = prog->getRelation("cie_encoding");
@@ -145,16 +210,16 @@ void ExceptionDecoder::addExceptionInformation(souffle::SouffleProgram *prog)
     }
 }
 
-souffle::tuple ExceptionDecoder::getCIEEntry(souffle::Relation *relation,
-                                             const EHP::CIEContents_t *cie)
+souffle::tuple ElfExceptionDecoder::getCIEEntry(souffle::Relation *relation,
+                                                const EHP::CIEContents_t *cie)
 {
     souffle::tuple tuple(relation);
     tuple << cie->getPosition() << cie->getLength() << cie->getCAF() << cie->getDAF();
     return tuple;
 }
 
-souffle::tuple ExceptionDecoder::getCIEEncoding(souffle::Relation *relation,
-                                                const EHP::CIEContents_t *cie)
+souffle::tuple ElfExceptionDecoder::getCIEEncoding(souffle::Relation *relation,
+                                                   const EHP::CIEContents_t *cie)
 {
     souffle::tuple tuple(relation);
     uint64_t fdeEnconding = cie->getFDEEncoding();
@@ -163,8 +228,8 @@ souffle::tuple ExceptionDecoder::getCIEEncoding(souffle::Relation *relation,
     return tuple;
 }
 
-souffle::tuple ExceptionDecoder::getCIEPersonality(souffle::Relation *relation,
-                                                   const EHP::CIEContents_t *cie)
+souffle::tuple ElfExceptionDecoder::getCIEPersonality(souffle::Relation *relation,
+                                                      const EHP::CIEContents_t *cie)
 {
     souffle::tuple tuple(relation);
     tuple << cie->getPosition() << cie->getPersonality() << cie->getPersonalityPointerPosition()
@@ -172,7 +237,8 @@ souffle::tuple ExceptionDecoder::getCIEPersonality(souffle::Relation *relation,
     return tuple;
 }
 
-souffle::tuple ExceptionDecoder::getFDE(souffle::Relation *relation, const EHP::FDEContents_t *fde)
+souffle::tuple ElfExceptionDecoder::getFDE(souffle::Relation *relation,
+                                           const EHP::FDEContents_t *fde)
 {
     souffle::tuple tuple(relation);
     tuple << fde->getPosition() << fde->getLength() << fde->getCIE().getPosition()
@@ -180,8 +246,8 @@ souffle::tuple ExceptionDecoder::getFDE(souffle::Relation *relation, const EHP::
     return tuple;
 }
 
-souffle::tuple ExceptionDecoder::getFDEPointerLocations(souffle::Relation *relation,
-                                                        const EHP::FDEContents_t *fde)
+souffle::tuple ElfExceptionDecoder::getFDEPointerLocations(souffle::Relation *relation,
+                                                           const EHP::FDEContents_t *fde)
 {
     souffle::tuple tuple(relation);
     tuple << fde->getPosition() << fde->getStartAddressPosition() << fde->getEndAddressPosition()
@@ -189,10 +255,10 @@ souffle::tuple ExceptionDecoder::getFDEPointerLocations(souffle::Relation *relat
     return tuple;
 }
 
-souffle::tuple ExceptionDecoder::getEHProgramInstruction(souffle::Relation *relation,
-                                                         uint64_t index,
-                                                         const EHP::EHProgramInstruction_t *insn,
-                                                         const EHP::FDEContents_t *fde)
+souffle::tuple ElfExceptionDecoder::getEHProgramInstruction(souffle::Relation *relation,
+                                                            uint64_t index,
+                                                            const EHP::EHProgramInstruction_t *insn,
+                                                            const EHP::FDEContents_t *fde)
 {
     souffle::tuple tuple(relation);
     tuple << fde->getPosition() << index << insn->getSize();
@@ -201,8 +267,8 @@ souffle::tuple ExceptionDecoder::getEHProgramInstruction(souffle::Relation *rela
     return tuple;
 }
 
-souffle::tuple ExceptionDecoder::getLSDA(souffle::Relation *relation, const EHP::LSDA_t *lsda,
-                                         const EHP::FDEContents_t *fde)
+souffle::tuple ElfExceptionDecoder::getLSDA(souffle::Relation *relation, const EHP::LSDA_t *lsda,
+                                            const EHP::FDEContents_t *fde)
 {
     souffle::tuple tuple(relation);
     tuple << fde->getLSDAAddress() << lsda->getCallSiteTableAddress()
@@ -212,9 +278,9 @@ souffle::tuple ExceptionDecoder::getLSDA(souffle::Relation *relation, const EHP:
     return tuple;
 }
 
-souffle::tuple ExceptionDecoder::getLSDAPointerLocations(souffle::Relation *relation,
-                                                         const EHP::LSDA_t *lsda,
-                                                         const EHP::FDEContents_t *fde)
+souffle::tuple ElfExceptionDecoder::getLSDAPointerLocations(souffle::Relation *relation,
+                                                            const EHP::LSDA_t *lsda,
+                                                            const EHP::FDEContents_t *fde)
 {
     souffle::tuple tuple(relation);
     tuple << fde->getLSDAAddress() << lsda->getTypeTableAddressLocation()
@@ -222,9 +288,9 @@ souffle::tuple ExceptionDecoder::getLSDAPointerLocations(souffle::Relation *rela
     return tuple;
 }
 
-souffle::tuple ExceptionDecoder::getLSDACallSite(souffle::Relation *relation,
-                                                 const EHP::LSDACallSite_t *callSite,
-                                                 const EHP::LSDA_t *lsda)
+souffle::tuple ElfExceptionDecoder::getLSDACallSite(souffle::Relation *relation,
+                                                    const EHP::LSDACallSite_t *callSite,
+                                                    const EHP::LSDA_t *lsda)
 {
     souffle::tuple tuple(relation);
     tuple << lsda->getCallSiteTableAddress() << callSite->getCallSiteAddressPosition()
@@ -234,9 +300,9 @@ souffle::tuple ExceptionDecoder::getLSDACallSite(souffle::Relation *relation,
     return tuple;
 }
 
-souffle::tuple ExceptionDecoder::getLSDATypetableEntry(souffle::Relation *relation, uint64_t index,
-                                                       const EHP::LSDATypeTableEntry_t *typeEntry,
-                                                       const EHP::LSDA_t *lsda)
+souffle::tuple ElfExceptionDecoder::getLSDATypetableEntry(
+    souffle::Relation *relation, uint64_t index, const EHP::LSDATypeTableEntry_t *typeEntry,
+    const EHP::LSDA_t *lsda)
 {
     souffle::tuple tuple(relation);
     tuple << lsda->getTypeTableAddress() << index << typeEntry->getTypeInfoPointer();

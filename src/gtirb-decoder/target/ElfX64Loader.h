@@ -1,4 +1,4 @@
-//===- X64Loader.h ---------------------------------------------*- C++ -*-===//
+//===- ElfX64Loader.h -------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -20,52 +20,22 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_GTIRB_DECODER_TARGETS_X64DECODER_H_
-#define SRC_GTIRB_DECODER_TARGETS_X64DECODER_H_
-
-#include <string>
-#include <tuple>
-
-#include <capstone/capstone.h>
+#ifndef SRC_GTIRB_DECODER_TARGET_ELFX64LOADER_H_
+#define SRC_GTIRB_DECODER_TARGET_ELFX64LOADER_H_
 
 #include "../CompositeLoader.h"
-#include "../DatalogProgram.h"
-#include "../Relations.h"
-#include "ElfLoader.h"
-
-class X64Loader : public InstructionLoader
-{
-public:
-    X64Loader() : InstructionLoader{1}
-    {
-        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_X86, CS_MODE_64, &CsHandle);
-        assert(Err == CS_ERR_OK && "Failed to initialize X64 disassembler.");
-        cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
-    }
-    ~X64Loader()
-    {
-        cs_close(&CsHandle);
-    }
-
-    using Instruction = relations::Instruction;
-    using Operand = relations::Operand;
-
-    std::optional<Instruction> decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
-
-private:
-    std::optional<Operand> build(const cs_x86_op& CsOp);
-    std::optional<Instruction> build(const cs_insn& CsInstruction);
-    std::tuple<std::string, std::string> splitMnemonic(const cs_insn& CsInstruction);
-
-    csh CsHandle = CS_ERR_ARCH;
-};
+#include "../arch/X64Loader.h"
+#include "../core/DataLoader.h"
+#include "../core/ModuleLoader.h"
+#include "../core/SectionLoader.h"
+#include "../format/ElfLoader.h"
 
 class ElfX64Loader : public CompositeLoader
 {
 public:
     ElfX64Loader() : CompositeLoader("souffle_disasm_x64")
     {
-        add(FormatLoader);
+        add(ModuleLoader);
         add(SectionLoader);
         add<X64Loader>();
         add<DataLoader>(DataLoader::Pointer::QWORD);
@@ -74,4 +44,4 @@ public:
     }
 };
 
-#endif // SRC_GTIRB_DECODER_TARGETS_X64DECODER_H_
+#endif // SRC_GTIRB_DECODER_TARGET_ELFX64LOADER_H_

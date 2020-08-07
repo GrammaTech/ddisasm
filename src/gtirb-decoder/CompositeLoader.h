@@ -20,8 +20,8 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_GTIRB_DECODER_DATALOGLOADER_H_
-#define SRC_GTIRB_DECODER_DATALOGLOADER_H_
+#ifndef SRC_GTIRB_DECODER_COMPOSITELOADER_H_
+#define SRC_GTIRB_DECODER_COMPOSITELOADER_H_
 
 #include <optional>
 #include <string>
@@ -69,77 +69,4 @@ private:
     std::vector<Loader> Loaders;
 };
 
-// Load binary format information: architecture, file format, entry point, etc.
-void FormatLoader(const gtirb::Module& Module, DatalogProgram& Program);
-
-// Load section properties.
-void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program);
-
-// Load symbol information.
-void SymbolLoader(const gtirb::Module& Module, DatalogProgram& Program);
-
-// Load data sections.
-class DataLoader
-{
-public:
-    template <typename T>
-    using Data = relations::Data<T>;
-
-    enum class Pointer
-    {
-        DWORD = 4,
-        QWORD = 8
-    };
-
-    explicit DataLoader(Pointer N) : PointerSize{N} {};
-
-    virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program);
-
-    virtual void load(const gtirb::Module& Module);
-    virtual void load(const gtirb::ByteInterval& Bytes);
-
-    // Test that a value N is a possible address.
-    virtual bool address(gtirb::Addr N)
-    {
-        return ((N >= Min) && (N <= Max));
-    };
-
-protected:
-    Pointer PointerSize;
-    gtirb::Addr Min, Max;
-    std::vector<Data<uint8_t>> Bytes;
-    std::vector<Data<gtirb::Addr>> Addresses;
-};
-
-// Load executable sections.
-class InstructionLoader
-{
-public:
-    explicit InstructionLoader(uint8_t N) : InstructionSize{N} {};
-
-    using Instruction = relations::Instruction;
-    using Operand = relations::Operand;
-    using OperandTable = relations::OperandTable;
-
-    virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program);
-
-    virtual void load(const gtirb::Module& Module);
-    virtual void load(const gtirb::ByteInterval& Bytes);
-
-    // Disassemble bytes and build Instruction and Operand facts.
-    virtual std::optional<Instruction> decode(const uint8_t* Bytes, uint64_t Size,
-                                              uint64_t Addr) = 0;
-
-protected:
-    uint8_t InstructionSize = 1;
-    OperandTable Operands;
-    std::vector<Instruction> Instructions;
-    std::vector<gtirb::Addr> InvalidInstructions;
-};
-
-std::string uppercase(std::string S);
-
-const char* binaryISA(gtirb::ISA Arch);
-const char* binaryFormat(const gtirb::FileFormat Format);
-
-#endif // SRC_GTIRB_DECODER_DATALOGLOADER_H_
+#endif // SRC_GTIRB_DECODER_COMPOSITELOADER_H_
