@@ -374,11 +374,6 @@ direct_jump(EA,Dest):-
     instruction_get_op(EA,1,Op1),
     op_immediate(Op1,Dest).
 
-direct_jump(EA,Dest):-
-    instruction(EA,_,_,Operation,_,Op2,_,_),
-    arch.loop_operation(Operation),
-    op_immediate(Op2,Dest).
-
 direct_jump(EA,EA):-
     instruction_has_loop_prefix(EA).
 

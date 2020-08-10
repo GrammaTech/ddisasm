@@ -102,8 +102,6 @@ read_only_operation("TST").
 
 pointer_size(8).
 
-.decl loop_operation(operation:symbol)
-
 /* prefixes are not used by arm64 */
 .decl loop_prefix(prefix:symbol)
 
