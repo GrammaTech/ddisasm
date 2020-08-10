@@ -69,7 +69,10 @@ return(EA):-
 
 jump(EA):-
     instruction_get_operation(EA,Operation),
-    jump_operation(Operation).
+    (
+        jump_operation(Operation);
+        loop_operation(Operation)
+    ).
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
@@ -116,11 +119,12 @@ pointer_size(8).
 .decl loop_operation(operation:symbol)
 
 loop_operation("LOOP").
-loop_operation("LOOPNE").
 loop_operation("LOOPE").
+loop_operation("LOOPZ").
+loop_operation("LOOPNE").
+loop_operation("LOOPNZ").
 
-jump_operation(Op):-
-    loop_operation(Op).
+
 
 .decl loop_prefix(prefix:symbol)
 
