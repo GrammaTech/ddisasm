@@ -149,7 +149,7 @@ possible_ea(EA):-
 
 basic_target(Val):-
     (
-        relative_address(_,_,_,Val)
+        relative_address(_,_,_,Val,_)
         ;
         binary_type("DYN"),
         address_in_data(EA,Val),
@@ -361,7 +361,7 @@ block_is_overlapping(Block):-
 block_points(Block,0,-9,"overlap with relative-jump-table"),
 block_is_overlapping(Block):-
     block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
-    relative_address(Beg,Size,_,_),
+    relative_address(Beg,Size,_,_,_),
     (
         BegBlockAddr <= Beg, Beg< EndBlockAddr
         ;
@@ -536,7 +536,7 @@ block_points(Block,0,3,"appears"):-
 
 block_points(Block,0,3,"relative jump table target"):-
     block_is_overlapping(Block),
-    relative_address(_,_,_,Block).
+    relative_address(_,_,_,Block,_).
 
 // give a point if it may fallthrough to another block
 block_points(Block,Block_succ,1,"fallthough_to"):-

@@ -78,12 +78,12 @@ Jump tables with entry sizes of 1 or 2 appear in data and can be detected later.
 In these jump tables, the reference address coincides with the starting address
 of the jump table.
 */
-.decl relative_address(EA:address,Size:number,Reference:address,Dest:address)
+.decl relative_address(EA:address,Size:number,Reference:address,Dest:address,DestIsFirstOrSecond:symbol)
 .output relative_address
 
 .decl relative_address_start(EA:address,Size:number,Reference:address,Dest:address)
 
-relative_address(EA,Size,EA,Dest),
+relative_address(EA,Size,EA,Dest,DestIsFirstOrSecond),
 relative_address_start(EA,Size,EA,Dest):-
     take_address(_,EA),
     data_word(EA,Size,Diff),
@@ -93,23 +93,25 @@ relative_address_start(EA,Size,EA,Dest):-
         ;
         Size = 8
     ),
-    // sometimes the jump table entry is Diff = JumpTarget- Reference
-    // and sometimes it is Diff = Reference-JumpTarget
+    // sometimes the jump table entry is Diff = Reference-JumpTarget
+    // and sometimes it is Diff = JumpTarget-Reference
     (
-        Dest = EA-Diff;
-        Dest = EA+Diff
+        Dest = EA-Diff, DestIsFirstOrSecond = "second"
+        ;
+        Dest = EA+Diff, DestIsFirstOrSecond = "first"
     ),
     possible_ea(Dest).
 
-relative_address(EA+Size,Size,Ref,Dest):-
-    relative_address(EA,Size,Ref,_),
+relative_address(EA+Size,Size,Ref,Dest,DestIsFirstOrSecond):-
+    relative_address(EA,Size,Ref,_,DestIsFirstOrSecond),
     data_word(EA+Size,Size,Diff),
     (
-        Dest = Ref-Diff,Size >= 4;
-        Dest = Ref+Diff
+        DestIsFirstOrSecond = "second", Dest = Ref-Diff,Size >= 4;
+        DestIsFirstOrSecond = "first", Dest = Ref+Diff
     ),
     possible_ea(Dest),
     !relative_address_start(EA+Size,_,_,_).
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // detect jump tables precisely once we have all results of the analyses
 
