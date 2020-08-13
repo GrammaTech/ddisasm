@@ -244,7 +244,7 @@ dos_header_symbolic_operand(EA,Dest):-
 // add R8,R9
 // call R8
 // Detect potential label-relative offset table before data analyses.
-relative_address(Table,8,Ref,Dest),
+relative_address(Table,8,Ref,Dest,"first"),
 relative_address_start(Table,8,Ref,Dest):-
     // loads table address
     take_address(EA1,Table),
@@ -258,13 +258,6 @@ relative_address_start(Table,8,Ref,Dest):-
     Dest = Ref + Diff,
     possible_ea(Dest).
 
-relative_address(EA+Size,Size,Ref,Dest):-
-    binary_format("PE"), Size > 4,
-    relative_address(EA,Size,Ref,_),
-    data_word(EA+Size,Size,Diff),
-    Dest = Ref+Diff,
-    possible_ea(Dest),
-    !relative_address_start(EA+Size,_,_,_).
 
 // the call to main is right after the call to "__p___argc"
 main_function(EA):-
