@@ -9,7 +9,6 @@ RUN git clone -b 1.7.1 https://github.com/souffle-lang/souffle
 RUN cd souffle && sh ./bootstrap
 RUN cd souffle && ./configure --prefix=/usr --enable-64bit-domain --disable-ncurses
 RUN cd souffle && make -j4 install
-RUN cd souffle && cp include/souffle/RamTypes.h /usr/include/souffle/
 
 FROM docker.grammatech.com/rewriting/gtirb/ubuntu20
 
