@@ -435,7 +435,7 @@ discarded_block(Block2):-
 
 block_points(Block,0,-6,"possible relative-jump-table start"):-
     block_is_overlapping(Block),
-    relative_address_start(Block,_,_,_).
+    relative_address_start(Block,_,_,_,_).
 
 block_points(Block,0,0,"basic point"):-
     block_is_overlapping(Block),
