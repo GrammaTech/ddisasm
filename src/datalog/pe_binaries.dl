@@ -190,36 +190,6 @@ base_relative_symbolic_data(EA,4,Val):-
     base_address(ImageBase),
     code(ImageBase+Val).
 
-// TODO: Create use-def component for block candidates.
-//   OR  Treat these as address arrays instead of jump tables?
-//
-// base_relative_operand relies on def_used, which will not stratify with the
-// relative_address/block_points. This follows from the dependence of def_use on
-// having already resolved the block candidates into blocks.
-//
-// Here we sort of "if it looks like a duck" we'll make it quack like one. We
-// should implement a use-def for block candidates instead of this "special"
-// move heuristic.
-
-// mov ECX,DWORD PTR [R9+R8*4+(IMAGEREL N_1a050)]
-relative_address(ImageBase+Offset,Mult,ImageBase+Offset,ImageBase+Val),
-relative_address_start(ImageBase+Offset,Mult,ImageBase+Offset,ImageBase+Val):-
-    base_address(ImageBase),
-    instruction_get_operation(EA,"MOV"),
-    instruction_get_src_op(EA,_,Op),
-    op_indirect(Op,_,_,_,Mult,Offset,Size), Offset > 0,
-    Mult * 8 = Size,
-    (Mult = 4; Mult = 8),
-    data_word(ImageBase+Offset,Mult,Val),
-    possible_ea(ImageBase+Val).
-
-relative_address(EA+Size,Size,Ref,ImageBase+Dest):-
-    base_address(ImageBase),
-    relative_address(EA,Size,Ref,_),
-    data_word(EA+Size,Size,Dest),
-    possible_ea(ImageBase+Dest),
-    !relative_address_start(EA+Size,_,_,_).
-
 labeled_data_candidate(ImageBase+Dest):-
     base_address(ImageBase),
     base_relative_symbolic_operand(_,_,Dest),
@@ -244,8 +214,7 @@ dos_header_symbolic_operand(EA,Dest):-
 // add R8,R9
 // call R8
 // Detect potential label-relative offset table before data analyses.
-relative_address(Table,8,Ref,Dest,"first"),
-relative_address_start(Table,8,Ref,Dest):-
+relative_address_start(Table,8,Ref,Dest, "first"):-
     // loads table address
     take_address(EA1,Table),
     next(EA1,EA2),
@@ -256,6 +225,19 @@ relative_address_start(Table,8,Ref,Dest):-
     take_address(EA3,Ref),
     data_word(Table,8,Diff),
     Dest = Ref + Diff,
+    possible_ea(Dest).
+
+// mov ECX,DWORD PTR [R9+R8*4+(IMAGEREL N_1a050)]
+relative_address_start(ImageBase+Offset,Mult,ImageBase,Dest,"first"):-
+    base_address(ImageBase),
+    instruction_get_operation(EA,"MOV"),
+    instruction_get_src_op(EA,_,Op),
+    op_indirect(Op,_,RegBase,RegIndex,Mult,Offset,Size), Offset > 0,
+    Mult * 8 = Size,
+    RegBase != "NONE", RegIndex != "NONE",
+    (Mult = 4; Mult = 8),
+    data_word(ImageBase+Offset,Mult,Diff),
+    Dest = ImageBase + Diff,
     possible_ea(Dest).
 
 
