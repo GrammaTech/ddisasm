@@ -4,10 +4,7 @@ import unittest
 from disassemble_reassemble_check import (
     disassemble_reassemble_test as dis_reasm_test,
 )
-from disassemble_reassemble_check import (
-    skip_reassemble,
-    reassemble_using_makefile,
-)
+from disassemble_reassemble_check import reassemble_using_makefile
 
 windows_optimization_levels = ["/Od", "/Ot", "/O1", "/Ox", "/O2"]
 
@@ -356,7 +353,6 @@ class TestSmallStripWindows(unittest.TestCase):
             )
         )
 
-    # Windows examples which fail to reassemble
     @unittest.skipUnless(
         platform.system() == "Windows", "This test is windows only."
     )
@@ -371,7 +367,6 @@ class TestSmallStripWindows(unittest.TestCase):
                 ["cl"],
                 ["cl"],
                 ["/O2"],
-                reassemble_function=skip_reassemble,
             )
         )
 
@@ -389,7 +384,6 @@ class TestSmallStripWindows(unittest.TestCase):
                 ["cl"],
                 ["cl"],
                 ["/O2"],
-                reassemble_function=skip_reassemble,
             )
         )
 
