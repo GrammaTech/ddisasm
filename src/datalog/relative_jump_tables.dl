@@ -141,7 +141,7 @@ jump_table_element_access(EA,Size,TableStart):-
     data_access(EA,_,"NONE",RegBase,RegIndex,Size,0,Size),
     RegIndex != "NONE",
     def_used(EA_regdef,RegBase,EA,_),
-    value_reg_edge(EA_regdef,RegBase,_,"NONE",0,TableStart),
+    value_reg(EA_regdef,RegBase,_,"NONE",0,TableStart,_),
     data_segment(Beg,End),
     TableStart >= Beg,
     TableStart <= End.
@@ -192,7 +192,7 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
     def_used(EA_read,RegBase,EA_base,_),
     jump_table_element_access(EA_read,Size,TableStart),
     def_used(EA_def_ref,RegDiff,EA_base,_),
-    value_reg_edge(EA_def_ref,RegDiff,_,"NONE",0,TableReference),
+    value_reg(EA_def_ref,RegDiff,_,"NONE",0,TableReference,_),
     (
         code(TableReference);
         TableStart=TableReference
@@ -212,7 +212,7 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,Operation):-
     ),
     jump_table_element_access(EA_base,Size,TableStart),
     def_used(EA_def_ref,Reg,EA_base,_),
-    value_reg_edge(EA_def_ref,Reg,_,"NONE",0,TableReference),
+    value_reg(EA_def_ref,Reg,_,"NONE",0,TableReference,_),
     (
         code(TableReference);
         TableStart=TableReference

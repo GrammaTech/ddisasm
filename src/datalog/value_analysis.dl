@@ -71,6 +71,39 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
     arch.move_operation(Operation),
     op_immediate_and_reg(EA,Operation,Reg,_,Immediate).
 
+.decl reg_stored_in_stack(EA:address,Reg:register,StackPos:number, StackFrameDefinedAt: address)
+.output reg_stored_in_stack
+
+reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
+    code(EA),
+    arch.mov(EA),
+    instruction_get_src_op(EA,_,SrcOp),
+    instruction_get_dest_op(EA,_,DestOp),
+    op_regdirect_contains_reg(SrcOp,Reg),
+    op_indirect(DestOp,"NONE","RBP","NONE",_,StackPos,_),
+    def_used(StackFrameDefinedAt,"RBP",EA,_).
+
+.decl reg_loaded_from_stack(EA:address,Reg:register,StackPos:number, StackFrameDefinedAt: address)
+.output reg_loaded_from_stack
+
+reg_loaded_from_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
+    code(EA),
+    arch.mov(EA),
+    instruction_get_src_op(EA,_,SrcOp),
+    instruction_get_dest_op(EA,_,DestOp),
+    op_indirect(SrcOp,"NONE","RBP","NONE",_,StackPos,_),
+    op_regdirect_contains_reg(DestOp,Reg),
+    def_used(StackFrameDefinedAt,"RBP",EA,_).
+
+// Register saved and loaded from stack
+// This is flow insensitive but we make sure that the load and store
+// refer to the same stack frame, identified by the address where RBP is defined.
+value_reg_edge(EALoad,Reg,EAPrev,Reg,1,0):-
+    reg_stored_in_stack(EAStore,Reg,StackPos, StackFrameDefinedAt),
+    reg_loaded_from_stack(EALoad,Reg,StackPos, StackFrameDefinedAt),
+    def_used(EAPrev,Reg,EAStore,_).
+
+
 // mov DWORD from memory
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     def_used_for_address(EA,Reg),
@@ -104,8 +137,9 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
     def_used_for_address(EA,Reg),
     flow_def(EA,Reg,_,Immediate).
 
+// pc-relative LEA
 value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
-    def_used_for_address(EA,Reg),
+    code(EA),
     instruction(EA,Size,_,"LEA",Op1,Op2,0,0),
     op_indirect(Op1,_,PcReg,"NONE",_,Offset,_),
     arch.pc_register(PcReg),
@@ -217,6 +251,29 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,Offset):-
     arch.track_register(Reg_origin_non_uniform,Reg_origin),
     op_regdirect_contains_reg(Op2,Reg).
 
+// A register is defined using an unknown value
+// This predicate is used to create trivial leaf edges in
+// the value_reg graph.
+.decl value_reg_unsupported(EA:address, Reg:register)
+
+// Load a register from a non-constant memory address
+value_reg_unsupported(EA,Reg):-
+    def_used_for_address(EA,Reg),
+    arch.mov(EA),
+    instruction(EA,_,_,_,Op1,Op2,0,0),
+    op_regdirect_contains_reg(Op2,Reg),
+    op_indirect(Op1,_,RegBase,RegIndex,_,_,_),
+    (RegBase != "NONE" ; RegIndex != "NONE").
+
+// Load a register from a register that is not tracked
+value_reg_unsupported(EA,Reg):-
+    def_used_for_address(EA,Reg),
+    arch.mov(EA),
+    instruction(EA,_,_,_,Op1,Op2,0,0),
+    op_regdirect_contains_reg(Op2,Reg),
+    op_regdirect(Op1,_),
+    !op_regdirect_contains_reg(Op1,_).
+
 ///////////////////////////////////////////////////////////////////////////////////////
 // once we have the edges that relate the values of registers at different
 // instructions we propagate these values forward
@@ -228,9 +285,10 @@ step_limit(12).
 //base cases
 value_reg(EA,Reg,EA,"NONE",Mult,Immediate,1):-
     value_reg_edge(EA,Reg,EA,"NONE",Mult,Immediate).
+
 value_reg(EA,Reg,EA,Reg,1,0,1):-
     def_used_for_address(EA,Reg),
-    !value_reg_edge(EA,Reg,_,_,_,_).
+    value_reg_unsupported(EA,Reg).
 
 // possible loop
 value_reg(EA,Reg,EA_from,"Unknown",Immediate,Base,Steps+1):-
