@@ -73,8 +73,7 @@ public:
         Program->run();
     }
 
-    // FIXME: Replace all raw pointer access and remove this.
-    souffle::SouffleProgram* operator*()
+    souffle::SouffleProgram* get()
     {
         return Program.get();
     }

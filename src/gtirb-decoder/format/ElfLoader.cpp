@@ -85,7 +85,7 @@ namespace souffle
 void ElfExceptionLoader(const gtirb::Module &Module, DatalogProgram &Program)
 {
     ElfExceptionDecoder Decoder(Module);
-    Decoder.addExceptionInformation(*Program);
+    Decoder.addExceptionInformation(Program.get());
 }
 
 ElfExceptionDecoder::ElfExceptionDecoder(const gtirb::Module &module)

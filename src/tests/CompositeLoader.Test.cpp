@@ -51,7 +51,7 @@ TEST_P(CompositeLoaderTest, build_test_loader)
     std::optional<DatalogProgram> TestProgram = Loader(*Module);
     EXPECT_TRUE(TestProgram);
     {
-        auto* Relation = (**TestProgram)->getRelation("in_scc");
+        auto* Relation = TestProgram->get()->getRelation("in_scc");
         EXPECT_EQ(Relation->size(), 2);
     }
 }

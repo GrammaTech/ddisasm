@@ -108,5 +108,5 @@ void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Mod
         FunctionInference->writeRelations(*DebugDir);
     }
 
-    updateFunctions(**FunctionInference, Module);
+    updateFunctions(FunctionInference->get(), Module);
 }

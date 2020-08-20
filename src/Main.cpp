@@ -248,7 +248,7 @@ int main(int argc, char **argv)
         printElapsedTimeSince(StartDisassembling);
         std::cerr << "Populating gtirb representation " << std::flush;
         auto StartGtirbBuilding = std::chrono::high_resolution_clock::now();
-        disassembleModule(*GTIRB->Context, Module, **Souffle, vm.count("self-diagnose") != 0);
+        disassembleModule(*GTIRB->Context, Module, Souffle->get(), vm.count("self-diagnose") != 0);
         printElapsedTimeSince(StartGtirbBuilding);
 
         if(vm.count("skip-function-analysis") == 0)
@@ -342,7 +342,7 @@ int main(int argc, char **argv)
             auto dir = vm["debug-dir"].as<std::string>() + "/";
             Souffle->writeFacts(dir);
         }
-        performSanityChecks(**Souffle, vm.count("self-diagnose") != 0);
+        performSanityChecks(Souffle->get(), vm.count("self-diagnose") != 0);
     }
     else
     {

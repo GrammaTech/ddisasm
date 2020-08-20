@@ -83,5 +83,5 @@ std::set<gtirb::CodeBlock*> NoReturnPass::computeNoReturn(gtirb::Module& Module,
         NoReturn->writeRelations(*DebugDir);
     }
 
-    return updateCFG(**NoReturn, Module);
+    return updateCFG(NoReturn->get(), Module);
 }
