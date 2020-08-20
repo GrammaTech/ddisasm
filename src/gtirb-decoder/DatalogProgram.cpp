@@ -27,6 +27,12 @@
 #include "CompositeLoader.h"
 #include "DatalogProgram.h"
 
+std::map<DatalogProgram::Target, DatalogProgram::Factory> &DatalogProgram::loaders()
+{
+    static std::map<Target, Factory> Loaders;
+    return Loaders;
+}
+
 std::optional<DatalogProgram> DatalogProgram::load(const gtirb::Module &Module)
 {
     auto Target = std::make_tuple(Module.getFileFormat(), Module.getISA());

@@ -79,8 +79,8 @@ public:
     }
 
     // Loader factory registration.
-    using Factory = std::function<std::unique_ptr<CompositeLoader>()>;
     using Target = std::tuple<gtirb::FileFormat, gtirb::ISA>;
+    using Factory = std::function<std::unique_ptr<CompositeLoader>()>;
 
     static void registerLoader(Target T, Factory F)
     {
@@ -88,11 +88,7 @@ public:
     }
 
 private:
-    static std::map<Target, Factory>& loaders()
-    {
-        static std::map<Target, Factory> Loaders;
-        return Loaders;
-    }
+    static std::map<Target, Factory>& loaders();
 
     std::shared_ptr<souffle::SouffleProgram> Program;
 };
