@@ -91,7 +91,7 @@ void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Mod
     Loader.add(PaddingLoader{&Context});
 
     // Load GTIRB and build program.
-    std::optional<DatalogProgram> FunctionInference = Loader(Module);
+    std::optional<DatalogProgram> FunctionInference = Loader.load(Module);
     if(!FunctionInference)
     {
         std::cerr << "Could not create souffle_function_inference program" << std::endl;

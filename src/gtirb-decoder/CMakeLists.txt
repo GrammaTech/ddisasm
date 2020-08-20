@@ -14,8 +14,8 @@ set(DATALOG_DECODER_TARGETS
     arch/Arm64Loader.cpp
     format/ElfLoader.cpp)
 
-add_library(gtirb_decoder STATIC Relations.cpp CompositeLoader.cpp
-                                 DatalogProgram.cpp ${DATALOG_DECODER_TARGETS})
+add_library(gtirb_decoder STATIC Relations.cpp DatalogProgram.cpp
+                                 ${DATALOG_DECODER_TARGETS})
 
 target_link_libraries(gtirb_decoder gtirb ${CAPSTONE} ${ehp_LIBRARIES})
 

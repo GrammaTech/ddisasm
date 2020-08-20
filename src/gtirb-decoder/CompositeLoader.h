@@ -58,11 +58,30 @@ public:
     }
 
     // Build a DatalogProgram (i.e. SouffleProgram).
-    std::optional<DatalogProgram> load(const gtirb::Module& Module);
-    std::optional<DatalogProgram> operator()(const gtirb::Module& Module)
+    std::optional<DatalogProgram> load(const gtirb::Module& Module)
     {
-        return load(Module);
-    };
+        if(auto SouffleProgram =
+               std::shared_ptr<souffle::SouffleProgram>(souffle::ProgramFactory::newInstance(Name)))
+        {
+            DatalogProgram Program{SouffleProgram};
+            for(auto& Loader : Loaders)
+            {
+                Loader(Module, Program);
+            }
+            return Program;
+        }
+        return std::nullopt;
+    }
+
+    // Implement loader interface for composition of CompositeLoaders.
+    std::optional<DatalogProgram> operator()(const gtirb::Module& Module, DatalogProgram& Program)
+    {
+        for(auto& Loader : Loaders)
+        {
+            Loader(Module, Program);
+        }
+        return Program;
+    }
 
 private:
     std::string Name;

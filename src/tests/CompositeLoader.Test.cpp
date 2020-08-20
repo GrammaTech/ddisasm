@@ -48,7 +48,7 @@ TEST_P(CompositeLoaderTest, build_test_loader)
     Loader.add(TestLoaderFunction);
 
     // Build Souffle context.
-    std::optional<DatalogProgram> TestProgram = Loader(*Module);
+    std::optional<DatalogProgram> TestProgram = Loader.load(*Module);
     EXPECT_TRUE(TestProgram);
     {
         auto* Relation = TestProgram->get()->getRelation("in_scc");

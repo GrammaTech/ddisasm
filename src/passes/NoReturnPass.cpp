@@ -66,7 +66,7 @@ std::set<gtirb::CodeBlock*> NoReturnPass::computeNoReturn(gtirb::Module& Module,
     Loader.add(CfgLoader);
 
     // Load GTIRB and build program.
-    std::optional<DatalogProgram> NoReturn = Loader(Module);
+    std::optional<DatalogProgram> NoReturn = Loader.load(Module);
     if(!NoReturn)
     {
         std::cerr << "Could not create souffle_no_return program" << std::endl;
