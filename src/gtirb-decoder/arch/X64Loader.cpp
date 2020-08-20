@@ -30,14 +30,19 @@
 std::optional<X64Loader::Instruction> X64Loader::decode(const uint8_t* Bytes, uint64_t Size,
                                                         uint64_t Addr)
 {
-    cs_insn* Instruction;
-    size_t Count = cs_disasm(CsHandle, Bytes, Size, Addr, 1, &Instruction);
+    // Decode instruction with Capstone.
+    cs_insn* CsInsn;
+    size_t Count = cs_disasm(CsHandle, Bytes, Size, Addr, 1, &CsInsn);
+
+    // Build datalog instruction facts from Capstone instruction.
+    std::optional<X64Loader::Instruction> Instruction;
     if(Count > 0)
     {
-        return build(*Instruction);
+        Instruction = build(*CsInsn);
     }
-    cs_free(Instruction, Count);
-    return std::nullopt;
+
+    cs_free(CsInsn, Count);
+    return Instruction;
 }
 
 std::optional<X64Loader::Instruction> X64Loader::build(const cs_insn& CsInstruction)
