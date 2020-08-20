@@ -76,30 +76,27 @@ namespace relations
     struct OperandTable
     {
         template <typename T>
-        uint64_t add(std::map<T, uint64_t>& OpTable, T Op)
+        uint64_t add(std::map<T, uint64_t>& OpTable, T& Op)
         {
-            if(auto Pair = OpTable.find(Op); Pair != OpTable.end())
+            auto [Iter, Inserted] = OpTable.try_emplace(std::forward<T>(Op), Index);
+            if(Inserted)
             {
-                return Pair->second;
+                Index++;
             }
-            else
-            {
-                OpTable[Op] = Index;
-                return Index++;
-            }
+            return Iter->second;
         }
 
-        uint64_t operator()(ImmOp Op)
+        uint64_t operator()(ImmOp& Op)
         {
             return add(ImmTable, Op);
         }
 
-        uint64_t operator()(RegOp Op)
+        uint64_t operator()(RegOp& Op)
         {
             return add(RegTable, Op);
         }
 
-        uint64_t operator()(IndirectOp Op)
+        uint64_t operator()(IndirectOp& Op)
         {
             return add(IndirectTable, Op);
         }

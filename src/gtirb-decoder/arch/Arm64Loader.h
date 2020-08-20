@@ -57,12 +57,12 @@ namespace relations
     {
         using OperandTable::operator();
 
-        uint64_t operator()(BarrierOp Op)
+        uint64_t operator()(BarrierOp& Op)
         {
             return add(BarrierTable, Op);
         }
 
-        uint64_t operator()(PrefetchOp Op)
+        uint64_t operator()(PrefetchOp& Op)
         {
             return add(PrefetchTable, Op);
         }
