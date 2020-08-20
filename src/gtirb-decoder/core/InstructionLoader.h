@@ -35,6 +35,7 @@ class InstructionLoader
 {
 public:
     explicit InstructionLoader(uint8_t N) : InstructionSize{N} {};
+    virtual ~InstructionLoader(){};
 
     using Instruction = relations::Instruction;
     using Operand = relations::Operand;
