@@ -123,6 +123,7 @@ std::optional<Arm64Loader::Operand> Arm64Loader::build(const cs_arm64_op& CsOp)
             {
                 return PrefetchOp{*Label};
             }
+            break;
         }
         case ARM64_OP_BARRIER:
         {
@@ -130,6 +131,7 @@ std::optional<Arm64Loader::Operand> Arm64Loader::build(const cs_arm64_op& CsOp)
             {
                 return BarrierOp{*Label};
             }
+            break;
         }
         case ARM64_OP_INVALID:
         default:
