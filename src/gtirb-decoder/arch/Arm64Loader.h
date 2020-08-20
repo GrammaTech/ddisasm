@@ -55,21 +55,7 @@ namespace relations
 
     struct Arm64OperandTable : public OperandTable
     {
-        // TODO: Why do we have to redefine these?
-        uint64_t operator()(ImmOp Op)
-        {
-            return add(ImmTable, Op);
-        }
-
-        uint64_t operator()(RegOp Op)
-        {
-            return add(RegTable, Op);
-        }
-
-        uint64_t operator()(IndirectOp Op)
-        {
-            return add(IndirectTable, Op);
-        }
+        using OperandTable::operator();
 
         uint64_t operator()(BarrierOp Op)
         {
