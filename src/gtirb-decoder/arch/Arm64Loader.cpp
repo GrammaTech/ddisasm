@@ -91,9 +91,9 @@ std::optional<Arm64Loader::Operand> Arm64Loader::build(const cs_arm64_op& CsOp)
     switch(CsOp.type)
     {
         case ARM64_OP_REG:
-            return registerName(CsOp.reg);
+            return RegOp{registerName(CsOp.reg)};
         case ARM64_OP_IMM:
-            return CsOp.imm;
+            return ImmOp{CsOp.imm};
         case ARM64_OP_MEM:
         {
             IndirectOp I = {registerName(ARM64_REG_INVALID),
