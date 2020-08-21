@@ -43,6 +43,7 @@ public:
 
     virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program);
 
+protected:
     virtual void load(const gtirb::Module& Module);
     virtual void load(const gtirb::ByteInterval& Bytes);
 
@@ -50,7 +51,6 @@ public:
     virtual std::optional<Instruction> decode(const uint8_t* Bytes, uint64_t Size,
                                               uint64_t Addr) = 0;
 
-protected:
     uint8_t InstructionSize = 1;
     OperandTable Operands;
     std::vector<Instruction> Instructions;
