@@ -76,7 +76,8 @@ std::optional<Arm64Loader::Instruction> Arm64Loader::build(const cs_insn& CsInst
         }
     }
 
-    uint64_t Addr(CsInstruction.address), Size(CsInstruction.size);
+    gtirb::Addr Addr(CsInstruction.address);
+    uint64_t Size(CsInstruction.size);
     return Instruction{Addr, Size, "", Name, OpCodes, 0, 0};
 }
 

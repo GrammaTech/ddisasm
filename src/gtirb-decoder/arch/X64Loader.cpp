@@ -77,7 +77,8 @@ std::optional<X64Loader::Instruction> X64Loader::build(const cs_insn& CsInstruct
         }
     }
 
-    uint64_t Addr(CsInstruction.address), Size(CsInstruction.size);
+    gtirb::Addr Addr(CsInstruction.address);
+    uint64_t Size(CsInstruction.size);
     uint8_t Imm(Details.encoding.imm_offset), Disp(Details.encoding.disp_offset);
     return X64Loader::Instruction{Addr, Size, Prefix, Name, OpCodes, Imm, Disp};
 }

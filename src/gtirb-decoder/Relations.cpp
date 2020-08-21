@@ -39,13 +39,13 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Section& Section)
     {
-        T << Section.Name << Section.Size << Section.Address << Section.Type << Section.Flags;
+        T << Section.Name << Section.Size << Section.Addr << Section.Type << Section.Flags;
         return T;
     }
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Instruction& Instruction)
     {
-        T << Instruction.Address << Instruction.Size << Instruction.Prefix << Instruction.Name;
+        T << Instruction.Addr << Instruction.Size << Instruction.Prefix << Instruction.Name;
         for(size_t i = 0; i < 4; ++i)
         {
             if(i < Instruction.OpCodes.size())

@@ -44,7 +44,7 @@ namespace relations
 
     struct Instruction
     {
-        uint64_t Address;
+        gtirb::Addr Addr;
         uint64_t Size;
         std::string Prefix;
         std::string Name;
@@ -124,7 +124,7 @@ namespace relations
     {
         std::string Name;
         uint64_t Size;
-        gtirb::Addr Address;
+        gtirb::Addr Addr;
         uint64_t Type;
         uint64_t Flags;
     };
