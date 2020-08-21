@@ -34,10 +34,10 @@ void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program
 
 void DataLoader::load(const gtirb::Module& Module)
 {
-    assert(Module.getSize() && "Module has non-calculable size.");
+    assert(Module.getAddress() && "Module has non-addressable section data.");
     Min = *Module.getAddress();
 
-    assert(Module.getAddress() && "Module has non-addressable section data.");
+    assert(Module.getSize() && "Module has non-calculable size.");
     Max = *Module.getAddress() + *Module.getSize();
 
     for(const auto& Section : Module.sections())
