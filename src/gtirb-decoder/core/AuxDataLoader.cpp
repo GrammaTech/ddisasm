@@ -31,6 +31,7 @@ void PaddingLoader::operator()(const gtirb::Module& Module, DatalogProgram& Prog
     auto* Table = Module.getAuxData<gtirb::schema::Padding>();
     if(!Table)
     {
+        std::cerr << "WARNING: Missing `padding' aux data.\n";
         return;
     }
 

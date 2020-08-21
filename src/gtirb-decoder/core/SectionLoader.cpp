@@ -31,10 +31,9 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
     // FIXME: We should either rename this AuxData table or split it.
     auto* SectionProperties = Module.getAuxData<gtirb::schema::ElfSectionProperties>();
 
-    // FIXME: Error handling.
     if(!SectionProperties)
     {
-        throw std::logic_error("missing elfSectionProperties AuxData table");
+        std::cerr << "WARNING: Missing `elfSectionProperties' AuxData table\n";
     }
 
     for(const auto& Section : Module.sections())
@@ -42,16 +41,23 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
         assert(Section.getAddress() && "Section has no address.");
         assert(Section.getSize() && "Section has non-calculable size.");
 
-        auto It = SectionProperties->find(Section.getUUID());
+        uint64_t Type = 0;
+        uint64_t Flags = 0;
 
-        // FIXME: Error handling.
-        if(It == SectionProperties->end())
+        if(SectionProperties)
         {
-            throw std::logic_error("Section " + Section.getName()
-                                   + " missing from elfSectionProperties AuxData table");
+            if(auto It = SectionProperties->find(Section.getUUID()); It != SectionProperties->end())
+            {
+                Type = std::get<0>(It->second);
+                Flags = std::get<1>(It->second);
+            }
+            else
+            {
+                std::cerr << "WARNING: Section missing from `elfSectionProperties' AuxData table: "
+                          << Section.getName() << '\n';
+            }
         }
 
-        auto [Type, Flags] = It->second;
         Sections.push_back(
             {Section.getName(), *Section.getSize(), *Section.getAddress(), Type, Flags});
     }
