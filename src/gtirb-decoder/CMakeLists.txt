@@ -1,6 +1,3 @@
-# set(DATALOG_DECODER_TARGETS targets/X64Loader.cpp targets/Arm64Loader.cpp
-# targets/ElfLoader.cpp targets/ExceptionDecoder.cpp)
-
 set(DATALOG_DECODER_TARGETS
     core/AuxDataLoader.cpp
     core/DataLoader.cpp
