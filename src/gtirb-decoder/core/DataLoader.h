@@ -44,6 +44,7 @@ public:
     };
 
     explicit DataLoader(Pointer N) : PointerSize{N} {};
+    virtual ~DataLoader(){};
 
     virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program);
 
