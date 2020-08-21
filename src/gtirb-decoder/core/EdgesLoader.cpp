@@ -148,37 +148,3 @@ void CfgLoader(const gtirb::Module& Module, DatalogProgram& Program)
     Program.insert("cfg_edge_to_top", std::move(TopEdges));
     Program.insert("cfg_edge_to_symbol", std::move(SymbolEdges));
 }
-
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::Block& Block)
-    {
-        T << Block.Address << Block.Size;
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::NextBlock& NextBlock)
-    {
-        T << NextBlock.Block1 << NextBlock.Block2;
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::Edge& Edge)
-    {
-        T << Edge.Source << Edge.Destination << Edge.Conditional << Edge.Indirect << Edge.Type;
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::TopEdge& Edge)
-    {
-        T << Edge.Source << Edge.Conditional << Edge.Indirect << Edge.Type;
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolEdge& Edge)
-    {
-        T << Edge.Source << Edge.Symbol << Edge.Conditional << Edge.Indirect << Edge.Type;
-        return T;
-    }
-
-} // namespace souffle

@@ -67,4 +67,64 @@ namespace souffle
         return T;
     }
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Padding& Block)
+    {
+        T << Block.Addr << Block.Size;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<gtirb::Addr, gtirb::Addr>& Pair)
+    {
+        T << std::get<0>(Pair) << std::get<1>(Pair);
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SccIndex& Scc)
+    {
+        T << Scc.Id << Scc.Index << Scc.Block;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Block& Block)
+    {
+        T << Block.Address << Block.Size;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::NextBlock& NextBlock)
+    {
+        T << NextBlock.Block1 << NextBlock.Block2;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Edge& Edge)
+    {
+        T << Edge.Source << Edge.Destination << Edge.Conditional << Edge.Indirect << Edge.Type;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::TopEdge& Edge)
+    {
+        T << Edge.Source << Edge.Conditional << Edge.Indirect << Edge.Type;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolEdge& Edge)
+    {
+        T << Edge.Source << Edge.Symbol << Edge.Conditional << Edge.Indirect << Edge.Type;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolicExpression& Expr)
+    {
+        T << Expr.Address << Expr.Symbol << Expr.Offset;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolMinusSymbol& Expr)
+    {
+        T << Expr.Address << Expr.Symbol1 << Expr.Symbol2 << Expr.Offset;
+        return T;
+    }
+
 } // namespace souffle

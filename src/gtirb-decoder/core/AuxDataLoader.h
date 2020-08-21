@@ -58,31 +58,4 @@ struct FunctionEntriesLoader
     gtirb::Context* Context;
 };
 
-namespace relations
-{
-    struct Padding
-    {
-        gtirb::Addr Address;
-        uint64_t Size;
-    };
-
-    struct SccIndex
-    {
-        uint64_t Address;
-        int64_t Index;
-        gtirb::Addr Block;
-    };
-
-} // namespace relations
-
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::Padding& Block);
-
-    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<gtirb::Addr, gtirb::Addr>& Pair);
-
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::SccIndex& Scc);
-
-} // namespace souffle
-
 #endif // SRC_GTIRB_DECODER_CORE_AUXDATALOADER_H_

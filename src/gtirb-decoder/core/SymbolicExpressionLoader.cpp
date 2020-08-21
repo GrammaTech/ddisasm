@@ -58,18 +58,3 @@ void SymbolicExpressionLoader(const gtirb::Module& Module, DatalogProgram& Progr
     Program.insert("symbolic_expression", std::move(SymbolicExpressions));
     Program.insert("symbol_minus_symbol", std::move(SymbolMinusSymbols));
 }
-
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolicExpression& Expr)
-    {
-        T << Expr.Address << Expr.Symbol << Expr.Offset;
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolMinusSymbol& Expr)
-    {
-        T << Expr.Address << Expr.Symbol1 << Expr.Symbol2 << Expr.Offset;
-        return T;
-    }
-} // namespace souffle

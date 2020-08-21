@@ -30,31 +30,4 @@
 
 void SymbolicExpressionLoader(const gtirb::Module& M, DatalogProgram& P);
 
-namespace relations
-{
-    struct SymbolicExpression
-    {
-        gtirb::Addr Address;
-        gtirb::Addr Symbol;
-        int64_t Offset;
-    };
-
-    struct SymbolMinusSymbol
-    {
-        gtirb::Addr Address;
-        gtirb::Addr Symbol1;
-        gtirb::Addr Symbol2;
-        int64_t Offset;
-    };
-
-} // namespace relations
-
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolicExpression& Expr);
-
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolMinusSymbol& Expr);
-
-} // namespace souffle
-
 #endif // SRC_GTIRB_DECODER_CORE_SYMBOLICEXPRESSIONLOADER_H_

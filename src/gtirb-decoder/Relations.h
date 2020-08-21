@@ -129,6 +129,72 @@ namespace relations
         uint64_t Flags;
     };
 
+    struct Padding
+    {
+        gtirb::Addr Addr;
+        uint64_t Size;
+    };
+
+    struct SccIndex
+    {
+        uint64_t Id;
+        int64_t Index;
+        gtirb::Addr Block;
+    };
+
+    struct Block
+    {
+        gtirb::Addr Address;
+        uint64_t Size;
+    };
+
+    struct NextBlock
+    {
+        gtirb::Addr Block1;
+        gtirb::Addr Block2;
+    };
+
+    struct Edge
+    {
+        gtirb::Addr Source;
+        gtirb::Addr Destination;
+        std::string Conditional;
+        std::string Indirect;
+        std::string Type;
+    };
+
+    struct TopEdge
+    {
+        gtirb::Addr Source;
+        std::string Conditional;
+        std::string Indirect;
+        std::string Type;
+    };
+
+    struct SymbolEdge
+    {
+        gtirb::Addr Source;
+        std::string Symbol;
+        std::string Conditional;
+        std::string Indirect;
+        std::string Type;
+    };
+
+    struct SymbolicExpression
+    {
+        gtirb::Addr Address;
+        gtirb::Addr Symbol;
+        int64_t Offset;
+    };
+
+    struct SymbolMinusSymbol
+    {
+        gtirb::Addr Address;
+        gtirb::Addr Symbol1;
+        gtirb::Addr Symbol2;
+        int64_t Offset;
+    };
+
 } // namespace relations
 
 namespace souffle
@@ -157,6 +223,27 @@ namespace souffle
         T << Id << Element;
         return T;
     }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Padding& Block);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<gtirb::Addr, gtirb::Addr>& Pair);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SccIndex& Scc);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Block& Block);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::NextBlock& NextBlock);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Edge& Edge);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::TopEdge& Edge);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolEdge& Edge);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolicExpression& Expr);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolMinusSymbol& Expr);
+
 } // namespace souffle
 
 #endif // SRC_GTIRB_DECODER_RELATIONS_H_

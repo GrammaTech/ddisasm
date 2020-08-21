@@ -147,25 +147,3 @@ void SccLoader(const gtirb::Module& Module, DatalogProgram& Program)
 
     Program.insert("in_scc", std::move(InScc));
 }
-
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::Padding& Block)
-    {
-        T << Block.Address << Block.Size;
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const std::pair<gtirb::Addr, gtirb::Addr>& Pair)
-    {
-        T << std::get<0>(Pair) << std::get<1>(Pair);
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::SccIndex& Scc)
-    {
-        T << Scc.Address << Scc.Index << Scc.Block;
-        return T;
-    }
-
-} // namespace souffle
