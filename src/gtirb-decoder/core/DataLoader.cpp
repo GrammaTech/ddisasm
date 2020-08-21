@@ -49,7 +49,6 @@ void DataLoader::load(const gtirb::Module& Module)
         {
             for(const auto& ByteInterval : Section.byte_intervals())
             {
-                assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
                 load(ByteInterval);
             }
         }
@@ -58,6 +57,8 @@ void DataLoader::load(const gtirb::Module& Module)
 
 void DataLoader::load(const gtirb::ByteInterval& ByteInterval)
 {
+    assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
+
     gtirb::Addr Addr = *ByteInterval.getAddress();
     uint64_t Size = ByteInterval.getInitializedSize();
     auto Data = ByteInterval.rawBytes<const uint8_t>();
