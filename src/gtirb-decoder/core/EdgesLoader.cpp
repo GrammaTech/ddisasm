@@ -112,23 +112,27 @@ void CfgLoader(const gtirb::Module& Module, DatalogProgram& Program)
     }
 
     const gtirb::CFG& Cfg = Module.getIR()->getCFG();
-    for(auto& Edge : Cfg.m_edges)
+    auto [EdgesBegin, EdgesEnd] = boost::edges(Cfg);
+    for(const auto& Edge : boost::make_iterator_range(EdgesBegin, EdgesEnd))
     {
-        if(const gtirb::CodeBlock* Src = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_source]))
+        auto Source = boost::source(Edge, Cfg);
+        auto Target = boost::target(Edge, Cfg);
+        if(const gtirb::CodeBlock* Src = dyn_cast<gtirb::CodeBlock>(Cfg[Source]))
         {
             std::optional<gtirb::Addr> SrcAddr = Src->getAddress();
             assert(SrcAddr && "Found source block without address.");
 
-            auto [Conditional, Indirect, Type] = edgeProperties(Edge.get_property());
+            const gtirb::EdgeLabel& Label = Cfg[Edge];
+            auto [Conditional, Indirect, Type] = edgeProperties(Label);
 
-            if(const gtirb::CodeBlock* Dest = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_target]))
+            if(const gtirb::CodeBlock* Dest = dyn_cast<gtirb::CodeBlock>(Cfg[Target]))
             {
                 std::optional<gtirb::Addr> DestAddr = Dest->getAddress();
                 assert(DestAddr && "Found destination block without address.");
                 Edges.push_back({*SrcAddr, *DestAddr, Conditional, Indirect, Type});
             }
 
-            if(const gtirb::ProxyBlock* Dest = dyn_cast<gtirb::ProxyBlock>(Cfg[Edge.m_target]))
+            if(const gtirb::ProxyBlock* Dest = dyn_cast<gtirb::ProxyBlock>(Cfg[Target]))
             {
                 auto It = InvSymbolMap.find(Dest);
                 if(It != InvSymbolMap.end())
