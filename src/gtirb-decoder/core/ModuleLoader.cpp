@@ -49,9 +49,9 @@ void ModuleLoader(const gtirb::Module& Module, DatalogProgram& Program)
     std::string BinaryType;
     if(auto AuxData = Module.getAuxData<gtirb::schema::BinaryType>())
     {
-        for(auto& Type : *AuxData)
+        if(!AuxData->empty())
         {
-            BinaryType = Type;
+            BinaryType = AuxData->front();
         }
     }
 
