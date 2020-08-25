@@ -30,30 +30,102 @@
 #include "../DatalogProgram.h"
 #include "../Relations.h"
 
-// Load executable sections.
+struct InstructionFacts
+{
+    template <typename T>
+    uint64_t add(std::map<T, uint64_t>& OpTable, T& Op)
+    {
+        auto [Iter, Inserted] = OpTable.try_emplace(std::forward<T>(Op), Index);
+        if(Inserted)
+        {
+            Index++;
+        }
+        return Iter->second;
+    }
+
+    uint64_t operator()(relations::ImmOp& Op)
+    {
+        return add(Imm, Op);
+    }
+
+    uint64_t operator()(relations::RegOp& Op)
+    {
+        return add(Reg, Op);
+    }
+
+    uint64_t operator()(relations::IndirectOp& Op)
+    {
+        return add(Indirect, Op);
+    }
+
+    // We reserve 0 for empty operators.
+    uint64_t Index = 1;
+
+    // Instruction facts.
+    std::vector<relations::Instruction> Instructions;
+    std::vector<gtirb::Addr> InvalidInstructions;
+
+    // Operand facts.
+    std::map<relations::ImmOp, uint64_t> Imm;
+    std::map<relations::RegOp, uint64_t> Reg;
+    std::map<relations::IndirectOp, uint64_t> Indirect;
+};
+
+template <typename T>
 class InstructionLoader
 {
 public:
-    explicit InstructionLoader(uint8_t N) : InstructionSize{N} {};
     virtual ~InstructionLoader(){};
 
-    using Instruction = relations::Instruction;
-    using Operand = relations::Operand;
-    using OperandTable = relations::OperandTable;
-
-    virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program);
+    virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program)
+    {
+        static_cast<T&> (*this)(Module, Program);
+    }
 
 protected:
-    virtual void load(const gtirb::Module& Module);
-    virtual void load(const gtirb::ByteInterval& Bytes);
+    explicit InstructionLoader(uint8_t N) : InstructionSize{N} {};
+
+    virtual void load(const gtirb::Module& Module)
+    {
+        for(const auto& Section : Module.sections())
+        {
+            bool Executable = Section.isFlagSet(gtirb::SectionFlag::Executable);
+            if(Executable)
+            {
+                for(const auto& ByteInterval : Section.byte_intervals())
+                {
+                    load(ByteInterval);
+                }
+            }
+        }
+    }
+
+    virtual void load(const gtirb::ByteInterval& ByteInterval)
+    {
+        assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
+
+        uint64_t Addr = static_cast<uint64_t>(*ByteInterval.getAddress());
+        uint64_t Size = ByteInterval.getInitializedSize();
+        auto Data = ByteInterval.rawBytes<const uint8_t>();
+
+        while(Size > 0)
+        {
+            decode(Data, Size, Addr);
+            Addr += InstructionSize;
+            Data += InstructionSize;
+            Size -= InstructionSize;
+        }
+    }
 
     // Disassemble bytes and build Instruction and Operand facts.
     virtual void decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) = 0;
 
+    // We default to decoding instructions at every byte offset.
     uint8_t InstructionSize = 1;
-    OperandTable Operands;
-    std::vector<Instruction> Instructions;
-    std::vector<gtirb::Addr> InvalidInstructions;
+
+private:
+    InstructionLoader(){};
+    friend T;
 };
 
 // // Decorator for loading instructions from known code blocks.

@@ -32,7 +32,7 @@
 #include "../Relations.h"
 #include "../core/InstructionLoader.h"
 
-class X64Loader : public InstructionLoader
+class X64Loader : public InstructionLoader<X64Loader>
 {
 public:
     X64Loader() : InstructionLoader{1}
@@ -41,19 +41,22 @@ public:
         assert(Err == CS_ERR_OK && "Failed to initialize X64 disassembler.");
         cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
     }
+
     ~X64Loader()
     {
         cs_close(&CsHandle);
     }
 
-    using Instruction = relations::Instruction;
-    using Operand = relations::Operand;
+    void operator()(const gtirb::Module& Module, DatalogProgram& Program) override;
 
+protected:
     void decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
 private:
-    std::optional<Operand> build(const cs_x86_op& CsOp);
-    std::optional<Instruction> build(const cs_insn& CsInstruction);
+    InstructionFacts Facts;
+
+    std::optional<relations::Operand> build(const cs_x86_op& CsOp);
+    std::optional<relations::Instruction> build(const cs_insn& CsInstruction);
     std::tuple<std::string, std::string> splitMnemonic(const cs_insn& CsInstruction);
 
     csh CsHandle = CS_ERR_ARCH;

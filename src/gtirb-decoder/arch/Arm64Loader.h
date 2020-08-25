@@ -52,39 +52,36 @@ namespace relations
     };
 
     using Arm64Operand = std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp>;
-
-    struct Arm64OperandTable : public OperandTable
-    {
-        using OperandTable::operator();
-
-        uint64_t operator()(BarrierOp& Op)
-        {
-            return add(BarrierTable, Op);
-        }
-
-        uint64_t operator()(PrefetchOp& Op)
-        {
-            return add(PrefetchTable, Op);
-        }
-
-        std::map<BarrierOp, uint64_t> BarrierTable;
-        std::map<PrefetchOp, uint64_t> PrefetchTable;
-    };
 } // namespace relations
 
-class Arm64Loader : public InstructionLoader
+struct Arm64InstructionFacts : public InstructionFacts
+{
+    using InstructionFacts::operator();
+
+    uint64_t operator()(relations::BarrierOp& Op)
+    {
+        return add(Barrier, Op);
+    }
+
+    uint64_t operator()(relations::PrefetchOp& Op)
+    {
+        return add(Prefetch, Op);
+    }
+
+    std::map<relations::BarrierOp, uint64_t> Barrier;
+    std::map<relations::PrefetchOp, uint64_t> Prefetch;
+};
+
+class Arm64Loader : public InstructionLoader<Arm64Loader>
 {
 public:
-    using Instruction = relations::Instruction;
-    using Operand = relations::Arm64Operand;
-    using OperandTable = relations::Arm64OperandTable;
-
     Arm64Loader() : InstructionLoader(4)
     {
         [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &CsHandle);
         assert(Err == CS_ERR_OK && "Failed to initialize ARM64 disassembler.");
         cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
     }
+
     ~Arm64Loader()
     {
         cs_close(&CsHandle);
@@ -92,13 +89,14 @@ public:
 
     void operator()(const gtirb::Module& Module, DatalogProgram& Program) override;
 
+protected:
     void decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
 private:
-    OperandTable Operands;
+    Arm64InstructionFacts Facts;
 
-    std::optional<Operand> build(const cs_arm64_op& CsOp);
-    std::optional<Instruction> build(const cs_insn& CsInstruction);
+    std::optional<relations::Arm64Operand> build(const cs_arm64_op& CsOp);
+    std::optional<relations::Instruction> build(const cs_insn& CsInstruction);
 
     csh CsHandle = CS_ERR_ARCH;
 };

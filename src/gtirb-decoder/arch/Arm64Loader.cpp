@@ -26,6 +26,19 @@
 
 #include "Arm64Loader.h"
 
+void Arm64Loader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
+{
+    load(Module);
+
+    Program.insert("instruction_complete", Facts.Instructions);
+    Program.insert("invalid_op_code", Facts.InvalidInstructions);
+    Program.insert("op_immediate", Facts.Imm);
+    Program.insert("op_regdirect", Facts.Reg);
+    Program.insert("op_indirect", Facts.Indirect);
+    Program.insert("op_barrier", Facts.Barrier);
+    Program.insert("op_prefetch", Facts.Prefetch);
+}
+
 void Arm64Loader::decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
 {
     // Decode instruction with Capstone.
@@ -42,18 +55,18 @@ void Arm64Loader::decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
     if(Instruction)
     {
         // Add the instruction to the facts table.
-        Instructions.push_back(*Instruction);
+        Facts.Instructions.push_back(*Instruction);
     }
     else
     {
         // Add address to list of invalid instruction locations.
-        InvalidInstructions.push_back(gtirb::Addr(Addr));
+        Facts.InvalidInstructions.push_back(gtirb::Addr(Addr));
     }
 
     cs_free(CsInsn, Count);
 }
 
-std::optional<Arm64Loader::Instruction> Arm64Loader::build(const cs_insn& CsInstruction)
+std::optional<relations::Instruction> Arm64Loader::build(const cs_insn& CsInstruction)
 {
     const cs_arm64& Details = CsInstruction.detail->arm64;
     std::string Name = uppercase(CsInstruction.mnemonic);
@@ -68,14 +81,14 @@ std::optional<Arm64Loader::Instruction> Arm64Loader::build(const cs_insn& CsInst
             const cs_arm64_op& CsOp = Details.operands[i];
 
             // Build operand for datalog fact.
-            std::optional<Arm64Loader::Operand> Op = build(CsOp);
+            std::optional<relations::Arm64Operand> Op = build(CsOp);
             if(!Op)
             {
                 return std::nullopt;
             }
 
             // Add operand to the operands table.
-            uint64_t OpIndex = std::visit(Operands, *Op);
+            uint64_t OpIndex = std::visit(Facts, *Op);
             OpCodes.push_back(OpIndex);
         }
         // Put the destination operand at the end of the operand list.
@@ -87,10 +100,10 @@ std::optional<Arm64Loader::Instruction> Arm64Loader::build(const cs_insn& CsInst
 
     gtirb::Addr Addr(CsInstruction.address);
     uint64_t Size(CsInstruction.size);
-    return Instruction{Addr, Size, "", Name, OpCodes, 0, 0};
+    return relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0};
 }
 
-std::optional<Arm64Loader::Operand> Arm64Loader::build(const cs_arm64_op& CsOp)
+std::optional<relations::Arm64Operand> Arm64Loader::build(const cs_arm64_op& CsOp)
 {
     using namespace relations;
 
@@ -153,19 +166,6 @@ std::optional<Arm64Loader::Operand> Arm64Loader::build(const cs_arm64_op& CsOp)
             break;
     }
     return std::nullopt;
-}
-
-void Arm64Loader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
-{
-    load(Module);
-
-    Program.insert("instruction_complete", Instructions);
-    Program.insert("invalid_op_code", InvalidInstructions);
-    Program.insert("op_immediate", Operands.ImmTable);
-    Program.insert("op_regdirect", Operands.RegTable);
-    Program.insert("op_indirect", Operands.IndirectTable);
-    Program.insert("op_barrier", Operands.BarrierTable);
-    Program.insert("op_prefetch", Operands.PrefetchTable);
 }
 
 std::optional<const char*> prefetchValue(const arm64_prefetch_op Op)

@@ -73,42 +73,6 @@ namespace relations
 
     using Operand = std::variant<ImmOp, RegOp, IndirectOp>;
 
-    struct OperandTable
-    {
-        template <typename T>
-        uint64_t add(std::map<T, uint64_t>& OpTable, T& Op)
-        {
-            auto [Iter, Inserted] = OpTable.try_emplace(std::forward<T>(Op), Index);
-            if(Inserted)
-            {
-                Index++;
-            }
-            return Iter->second;
-        }
-
-        uint64_t operator()(ImmOp& Op)
-        {
-            return add(ImmTable, Op);
-        }
-
-        uint64_t operator()(RegOp& Op)
-        {
-            return add(RegTable, Op);
-        }
-
-        uint64_t operator()(IndirectOp& Op)
-        {
-            return add(IndirectTable, Op);
-        }
-
-        // We reserve 0 for empty operators.
-        uint64_t Index = 1;
-
-        std::map<ImmOp, uint64_t> ImmTable;
-        std::map<RegOp, uint64_t> RegTable;
-        std::map<IndirectOp, uint64_t> IndirectTable;
-    };
-
     struct Symbol
     {
         gtirb::Addr Addr;
