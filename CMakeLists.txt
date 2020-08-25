@@ -48,7 +48,6 @@ Implies DDISASM_BUILD_SHARED_LIBS=OFF."
   OFF)
 
 if(DDISASM_STATIC_DRIVERS)
-  set(DDISASM_BUILD_SHARED_LIBS OFF)
   set(Boost_USE_STATIC_LIBS ON)
 
   if(WIN32)
@@ -62,10 +61,10 @@ endif()
 # OFF.
 option(DDISASM_BUILD_SHARED_LIBS "Build shared libraries." ON)
 option(DDISASM_USE_SYSTEM_BOOST "Use system-wide installation of Boost." OFF)
-if(DDISASM_BUILD_SHARED_LIBS)
-  set(BUILD_SHARED_LIBS ON)
-else()
+if(DDISASM_STATIC_DRIVERS OR NOT DDISASM_BUILD_SHARED_LIBS)
   set(BUILD_SHARED_LIBS OFF)
+else()
+  set(BUILD_SHARED_LIBS ON)
 endif()
 
 # Determine whether or not to strip debug symbols and set the build-id. This is

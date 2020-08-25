@@ -1,0 +1,50 @@
+FROM ubuntu:20.04 as souffle
+RUN export DEBIAN_FRONTEND=noninteractive
+RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
+RUN apt-get -y update && apt-get -y install automake bison build-essential \
+    doxygen flex git libffi-dev libtool make mcpp pkg-config \
+    sqlite3 libsqlite3-dev zlib1g-dev
+
+RUN git clone -b 1.7.1 https://github.com/souffle-lang/souffle
+RUN cd souffle && sh ./bootstrap
+RUN cd souffle && ./configure --prefix=/usr --enable-64bit-domain --disable-ncurses
+RUN cd souffle && make -j4 install
+
+FROM docker.grammatech.com/rewriting/gtirb-pprinter/static
+
+COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
+COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
+COPY --from=souffle /usr/bin/souffle /usr/bin/souffle
+COPY --from=souffle /usr/bin/souffle-profile /usr/bin/souffle-profile
+COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
+
+RUN apt-get -y install unzip \
+    make mcpp pkg-config python3 python3-pip \
+    software-properties-common wget zlib1g-dev
+RUN python3 -m pip install distro
+
+# Install cross-platform utils
+RUN apt-get -y update && \
+    apt-get -y install gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu qemu-user
+
+# Install LIEF
+RUN cd /usr/local/src \
+    && git clone -b 0.10.0 https://github.com/lief-project/LIEF.git \
+    && cd LIEF \
+    && mkdir build \
+    && cd build \
+    && cmake -DLIEF_PYTHON_API=off -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=Off .. \
+    && make \
+    && make install
+
+# Install libehp
+RUN git clone https://git.zephyr-software.com/opensrc/libehp.git \
+    && cd libehp \
+    && git reset --hard ddb106c4c1e521bf4b282d17e2a8abf0aa0fe721 \
+    && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release -DEHP_BUILD_SHARED_LIBS=OFF \
+    && cd build \
+    && make && make install
+
+# Install capstone
+COPY libcapstone-dev_*_amd64.deb ./
+RUN dpkg -i libcapstone-dev_*_amd64.deb
