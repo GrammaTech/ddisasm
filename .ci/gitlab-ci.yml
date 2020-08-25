@@ -226,14 +226,14 @@ static-drivers:
     - mkdir build && cd build
     - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DGTIRB_BUILD_SHARED_LIBS=OFF -DGTIRB_PY_API=OFF
     - make -j
-    - cd ..
+    - cd ../..
     # build gtirb-pprinter
     - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b windows-support
     - cd gtirb-pprinter
     - mkdir build && cd build
     - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
     - make -j
-    - cd ..
+    - cd ../..
     # build ddisasm
     - mkdir build && cd build
     - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DDDISASM_STATIC_DRIVERS=ON -DLIEF_ROOT=/usr/local/
