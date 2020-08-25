@@ -186,6 +186,31 @@ build-arch-clang-debug:
     BUILD_TYPE: 'Debug'
   <<: *build
 
+build-static:
+  stage: build
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/static
+  script:
+    # build GTIRB
+    - git clone https://git.grammatech.com/rewriting/gtirb.git
+    - cd gtirb
+    - mkdir build && cd build
+    - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_BUILD_SHARED_LIBS=OFF -DGTIRB_PY_API=OFF
+    - make -j
+    - cd ..
+    # build gtirb-pprinter
+    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b windows-support
+    - cd gtirb-pprinter
+    - mkdir build && cd build
+    - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
+    - make -j
+    - cd ..
+    # build ddisasm
+    - mkdir build && cd build
+    - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDDISASM_BUILD_SHARED_LIBS=OFF -DLIEF_ROOT=/usr/local/
+    - make -j
+    # Run the regression tests.
+    - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
+
 build-windows-msvc-debug:
   stage: build
   tags:
