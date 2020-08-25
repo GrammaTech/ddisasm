@@ -48,8 +48,7 @@ protected:
     virtual void load(const gtirb::ByteInterval& Bytes);
 
     // Disassemble bytes and build Instruction and Operand facts.
-    virtual std::optional<Instruction> decode(const uint8_t* Bytes, uint64_t Size,
-                                              uint64_t Addr) = 0;
+    virtual void decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) = 0;
 
     uint8_t InstructionSize = 1;
     OperandTable Operands;
@@ -57,46 +56,46 @@ protected:
     std::vector<gtirb::Addr> InvalidInstructions;
 };
 
-// Decorator for loading instructions from known code blocks.
-template <typename T>
-class CodeBlockLoader : public T
-{
-public:
-    using Instruction = typename T::Instruction;
+// // Decorator for loading instructions from known code blocks.
+// template <typename T>
+// class CodeBlockLoader : public T
+// {
+// public:
+//     using Instruction = typename T::Instruction;
 
-    void load(const gtirb::Module& Module) override
-    {
-        for(auto& Block : Module.code_blocks())
-        {
-            load(Block);
-        }
-    }
+//     void load(const gtirb::Module& Module) override
+//     {
+//         for(auto& Block : Module.code_blocks())
+//         {
+//             load(Block);
+//         }
+//     }
 
-    void load(const gtirb::CodeBlock& Block)
-    {
-        assert(Block.getAddress() && "Found code block without address.");
-        gtirb::Addr Addr = *Block.getAddress();
+//     void load(const gtirb::CodeBlock& Block)
+//     {
+//         assert(Block.getAddress() && "Found code block without address.");
+//         gtirb::Addr Addr = *Block.getAddress();
 
-        const gtirb::ByteInterval* ByteInterval = Block.getByteInterval();
-        assert(ByteInterval->getAddress() && "Found byte interval without address.");
+//         const gtirb::ByteInterval* ByteInterval = Block.getByteInterval();
+//         assert(ByteInterval->getAddress() && "Found byte interval without address.");
 
-        assert(Addr < (*ByteInterval->getAddress() + ByteInterval->getInitializedSize())
-               && "Found uninitialized code block.");
-        auto Data = ByteInterval->rawBytes<const uint8_t>() + Block.getOffset();
-        uint64_t Size = ByteInterval->getInitializedSize() - Block.getOffset();
+//         assert(Addr < (*ByteInterval->getAddress() + ByteInterval->getInitializedSize())
+//                && "Found uninitialized code block.");
+//         auto Data = ByteInterval->rawBytes<const uint8_t>() + Block.getOffset();
+//         uint64_t Size = ByteInterval->getInitializedSize() - Block.getOffset();
 
-        // TODO: Add `InstructionLimit` parameter for decoding a number of
-        //       instructions from the beginning of the code block.
-        if(std::optional<typename T::Instruction> Instruction =
-               T::decode(Data, Size, static_cast<uint64_t>(Addr)))
-        {
-            Instructions.push_back(*Instruction);
-        }
-    }
+//         // TODO: Add `InstructionLimit` parameter for decoding a number of
+//         //       instructions from the beginning of the code block.
+//         if(std::optional<typename T::Instruction> Instruction =
+//                T::decode(Data, Size, static_cast<uint64_t>(Addr)))
+//         {
+//             Instructions.push_back(*Instruction);
+//         }
+//     }
 
-protected:
-    std::vector<Instruction> Instructions;
-};
+// protected:
+//     std::vector<Instruction> Instructions;
+// };
 
 std::string uppercase(std::string S);
 

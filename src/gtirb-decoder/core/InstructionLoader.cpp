@@ -58,14 +58,7 @@ void InstructionLoader::load(const gtirb::ByteInterval& ByteInterval)
 
     while(Size > 0)
     {
-        if(std::optional<Instruction> Instruction = decode(Data, Size, Addr))
-        {
-            Instructions.push_back(*Instruction);
-        }
-        else
-        {
-            InvalidInstructions.push_back(gtirb::Addr(Addr));
-        }
+        decode(Data, Size, Addr);
         Addr += InstructionSize;
         Data += InstructionSize;
         Size -= InstructionSize;

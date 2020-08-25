@@ -26,22 +26,31 @@
 
 #include "Arm64Loader.h"
 
-std::optional<Arm64Loader::Instruction> Arm64Loader::decode(const uint8_t* Bytes, uint64_t Size,
-                                                            uint64_t Addr)
+void Arm64Loader::decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
 {
     // Decode instruction with Capstone.
     cs_insn* CsInsn;
     size_t Count = cs_disasm(CsHandle, Bytes, Size, Addr, 1, &CsInsn);
 
     // Build datalog instruction facts from Capstone instruction.
-    std::optional<Arm64Loader::Instruction> Instruction;
+    std::optional<relations::Instruction> Instruction;
     if(Count > 0)
     {
         Instruction = build(*CsInsn);
     }
 
+    if(Instruction)
+    {
+        // Add the instruction to the facts table.
+        Instructions.push_back(*Instruction);
+    }
+    else
+    {
+        // Add address to list of invalid instruction locations.
+        InvalidInstructions.push_back(gtirb::Addr(Addr));
+    }
+
     cs_free(CsInsn, Count);
-    return Instruction;
 }
 
 std::optional<Arm64Loader::Instruction> Arm64Loader::build(const cs_insn& CsInstruction)

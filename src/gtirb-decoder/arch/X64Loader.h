@@ -49,7 +49,7 @@ public:
     using Instruction = relations::Instruction;
     using Operand = relations::Operand;
 
-    std::optional<Instruction> decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
+    void decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
 private:
     std::optional<Operand> build(const cs_x86_op& CsOp);

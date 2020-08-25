@@ -80,10 +80,10 @@ void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Mod
     CompositeLoader Loader("souffle_function_inference");
     Loader.add(BlocksLoader);
     // TODO: Add support for ARM64 prologues.
-    if(Module.getISA() == gtirb::ISA::X64)
-    {
-        Loader.add<CodeBlockLoader<X64Loader>>();
-    }
+    // if(Module.getISA() == gtirb::ISA::X64)
+    // {
+    //     Loader.add<CodeBlockLoader<X64Loader>>();
+    // }
     Loader.add(CfgLoader);
     Loader.add(SymbolicExpressionLoader);
     Loader.add(FdeEntriesLoader{&Context});

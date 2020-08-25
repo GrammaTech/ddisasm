@@ -92,7 +92,7 @@ public:
 
     void operator()(const gtirb::Module& Module, DatalogProgram& Program) override;
 
-    std::optional<Instruction> decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
+    void decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
 private:
     OperandTable Operands;
