@@ -117,61 +117,24 @@ private:
     std::vector<gtirb::Addr> InvalidInstructions;
 };
 
-template <typename T>
 class InstructionLoader
 {
 public:
     virtual ~InstructionLoader(){};
 
-    virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program)
-    {
-        static_cast<T&> (*this)(Module, Program);
-    }
+    virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program) = 0;
 
 protected:
     explicit InstructionLoader(uint8_t N) : InstructionSize{N} {};
 
-    virtual void load(const gtirb::Module& Module)
-    {
-        for(const auto& Section : Module.sections())
-        {
-            bool Executable = Section.isFlagSet(gtirb::SectionFlag::Executable);
-            if(Executable)
-            {
-                for(const auto& ByteInterval : Section.byte_intervals())
-                {
-                    load(ByteInterval);
-                }
-            }
-        }
-    }
-
-    virtual void load(const gtirb::ByteInterval& ByteInterval)
-    {
-        assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
-
-        uint64_t Addr = static_cast<uint64_t>(*ByteInterval.getAddress());
-        uint64_t Size = ByteInterval.getInitializedSize();
-        auto Data = ByteInterval.rawBytes<const uint8_t>();
-
-        while(Size > 0)
-        {
-            decode(Data, Size, Addr);
-            Addr += InstructionSize;
-            Data += InstructionSize;
-            Size -= InstructionSize;
-        }
-    }
+    virtual void load(const gtirb::Module& Module);
+    virtual void load(const gtirb::ByteInterval& ByteInterval);
 
     // Disassemble bytes and build Instruction and Operand facts.
     virtual void decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) = 0;
 
     // We default to decoding instructions at every byte offset.
     uint8_t InstructionSize = 1;
-
-private:
-    InstructionLoader(){};
-    friend T;
 };
 
 // Decorator for loading instructions from known code blocks.

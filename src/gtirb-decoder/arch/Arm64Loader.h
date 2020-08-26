@@ -92,7 +92,7 @@ private:
     std::map<relations::PrefetchOp, uint64_t> Prefetch;
 };
 
-class Arm64Loader : public InstructionLoader<Arm64Loader>
+class Arm64Loader : public InstructionLoader
 {
 public:
     Arm64Loader() : InstructionLoader(4)

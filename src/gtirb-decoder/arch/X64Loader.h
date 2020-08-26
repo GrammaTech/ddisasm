@@ -32,7 +32,7 @@
 #include "../Relations.h"
 #include "../core/InstructionLoader.h"
 
-class X64Loader : public InstructionLoader<X64Loader>
+class X64Loader : public InstructionLoader
 {
 public:
     X64Loader() : InstructionLoader{1}
