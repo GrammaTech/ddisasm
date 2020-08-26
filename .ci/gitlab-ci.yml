@@ -206,7 +206,7 @@ build-static:
     - cd ..
     # build ddisasm
     - mkdir build && cd build
-    - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDDISASM_BUILD_SHARED_LIBS=OFF -DLIEF_ROOT=/usr/local/
+    - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDDISASM_BUILD_SHARED_LIBS=OFF -DLIEF_ROOT=/usr/
     - make -j
     # Run the regression tests.
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
@@ -236,7 +236,7 @@ static-drivers:
     - cd ../..
     # build ddisasm
     - mkdir build && cd build
-    - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DDDISASM_STATIC_DRIVERS=ON -DLIEF_ROOT=/usr/local/
+    - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DDDISASM_STATIC_DRIVERS=ON -DLIEF_ROOT=/usr/
     - make -j
     # Run the regression tests.
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
