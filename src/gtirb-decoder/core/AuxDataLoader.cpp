@@ -63,7 +63,7 @@ void FdeEntriesLoader::operator()(const gtirb::Module& Module, DatalogProgram& P
 
     for(auto& Pair : *CfiDirectives)
     {
-        auto* Block = dyn_cast<const gtirb::CodeBlock>(
+        auto* Block = dyn_cast_or_null<const gtirb::CodeBlock>(
             gtirb::Node::getByUUID(*Context, Pair.first.ElementId));
         assert(Block && "Found CFI directive that does not belong to a block");
 
@@ -111,7 +111,8 @@ void FunctionEntriesLoader::operator()(const gtirb::Module& Module, DatalogProgr
     {
         for(auto& UUID : Pair.second)
         {
-            auto* Block = dyn_cast<gtirb::CodeBlock>(gtirb::Node::getByUUID(*Context, UUID));
+            auto* Block =
+                dyn_cast_or_null<gtirb::CodeBlock>(gtirb::Node::getByUUID(*Context, UUID));
             assert(Block && "Found function entry does not belong to a code block");
             assert(Block->getAddress() && "Found code block without address.");
             Functions.push_back(*Block->getAddress());
