@@ -48,6 +48,7 @@ public:
 
     virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program);
 
+protected:
     virtual void load(const gtirb::Module& Module);
     virtual void load(const gtirb::ByteInterval& Bytes);
 
@@ -57,7 +58,6 @@ public:
         return ((N >= Min) && (N <= Max));
     };
 
-protected:
     Pointer PointerSize;
     gtirb::Addr Min, Max;
     std::vector<Data<uint8_t>> Bytes;
