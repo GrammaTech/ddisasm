@@ -54,9 +54,20 @@ namespace relations
     using Arm64Operand = std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp>;
 } // namespace relations
 
-struct Arm64InstructionFacts : public InstructionFacts
+class Arm64OperandFacts : public OperandFacts
 {
-    using InstructionFacts::operator();
+public:
+    virtual const std::map<relations::BarrierOp, uint64_t>& barrier()
+    {
+        return Barrier;
+    }
+
+    virtual const std::map<relations::PrefetchOp, uint64_t>& prefetch()
+    {
+        return Prefetch;
+    }
+
+    using OperandFacts::operator();
 
     uint64_t operator()(relations::BarrierOp& Op)
     {
@@ -68,6 +79,15 @@ struct Arm64InstructionFacts : public InstructionFacts
         return add(Prefetch, Op);
     }
 
+    uint64_t add(relations::Arm64Operand& Op)
+    {
+        return std::visit(*this, Op);
+    }
+
+protected:
+    using OperandFacts::add;
+
+private:
     std::map<relations::BarrierOp, uint64_t> Barrier;
     std::map<relations::PrefetchOp, uint64_t> Prefetch;
 };
@@ -93,7 +113,8 @@ protected:
     void decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
 private:
-    Arm64InstructionFacts Facts;
+    InstructionFacts Instructions;
+    Arm64OperandFacts Operands;
 
     std::optional<relations::Arm64Operand> build(const cs_arm64_op& CsOp);
     std::optional<relations::Instruction> build(const cs_insn& CsInstruction);

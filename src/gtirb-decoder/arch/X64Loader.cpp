@@ -30,11 +30,11 @@
 void X64Loader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
 {
     load(Module);
-    Program.insert("instruction_complete", Facts.Instructions);
-    Program.insert("invalid_op_code", Facts.InvalidInstructions);
-    Program.insert("op_immediate", Facts.Imm);
-    Program.insert("op_regdirect", Facts.Reg);
-    Program.insert("op_indirect", Facts.Indirect);
+    Program.insert("instruction_complete", Instructions.instructions());
+    Program.insert("invalid_op_code", Instructions.invalid());
+    Program.insert("op_immediate", Operands.imm());
+    Program.insert("op_regdirect", Operands.reg());
+    Program.insert("op_indirect", Operands.indirect());
 }
 
 void X64Loader::decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
@@ -53,12 +53,12 @@ void X64Loader::decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
     if(Instruction)
     {
         // Add the instruction to the facts table.
-        Facts.Instructions.push_back(*Instruction);
+        Instructions.add(*Instruction);
     }
     else
     {
         // Add address to list of invalid instruction locations.
-        Facts.InvalidInstructions.push_back(gtirb::Addr(Addr));
+        Instructions.add(gtirb::Addr(Addr));
     }
 
     cs_free(CsInsn, Count);
@@ -86,7 +86,7 @@ std::optional<relations::Instruction> X64Loader::build(const cs_insn& CsInstruct
             }
 
             // Add operand to the operands table.
-            uint64_t OpIndex = std::visit(Facts, *Op);
+            uint64_t OpIndex = Operands.add(*Op);
             OpCodes.push_back(OpIndex);
         }
         // Put the destination operand at the end of the operand list.
