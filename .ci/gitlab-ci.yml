@@ -194,7 +194,7 @@ build-static:
     - git clone https://git.grammatech.com/rewriting/gtirb.git
     - cd gtirb
     - mkdir build && cd build
-    - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_BUILD_SHARED_LIBS=OFF -DGTIRB_PY_API=OFF
+    - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_BUILD_SHARED_LIBS=OFF
     - make -j
     - cd ..
     # build gtirb-pprinter
@@ -224,7 +224,7 @@ static-drivers:
     - git clone https://git.grammatech.com/rewriting/gtirb.git
     - cd gtirb
     - mkdir build && cd build
-    - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DGTIRB_BUILD_SHARED_LIBS=OFF -DGTIRB_PY_API=OFF
+    - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DGTIRB_BUILD_SHARED_LIBS=OFF
     - make -j
     - cd ../..
     # build gtirb-pprinter
