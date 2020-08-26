@@ -108,7 +108,7 @@ namespace relations
 
     struct Block
     {
-        gtirb::Addr Address;
+        gtirb::Addr Addr;
         uint64_t Size;
     };
 
@@ -146,14 +146,14 @@ namespace relations
 
     struct SymbolicExpression
     {
-        gtirb::Addr Address;
+        gtirb::Addr Addr;
         gtirb::Addr Symbol;
         int64_t Offset;
     };
 
     struct SymbolMinusSymbol
     {
-        gtirb::Addr Address;
+        gtirb::Addr Addr;
         gtirb::Addr Symbol1;
         gtirb::Addr Symbol2;
         int64_t Offset;

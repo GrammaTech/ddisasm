@@ -87,7 +87,7 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Block& Block)
     {
-        T << Block.Address << Block.Size;
+        T << Block.Addr << Block.Size;
         return T;
     }
 
@@ -117,13 +117,13 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolicExpression& Expr)
     {
-        T << Expr.Address << Expr.Symbol << Expr.Offset;
+        T << Expr.Addr << Expr.Symbol << Expr.Offset;
         return T;
     }
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolMinusSymbol& Expr)
     {
-        T << Expr.Address << Expr.Symbol1 << Expr.Symbol2 << Expr.Offset;
+        T << Expr.Addr << Expr.Symbol1 << Expr.Symbol2 << Expr.Offset;
         return T;
     }
 
