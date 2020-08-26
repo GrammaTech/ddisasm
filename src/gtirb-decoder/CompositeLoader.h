@@ -64,11 +64,7 @@ public:
                std::shared_ptr<souffle::SouffleProgram>(souffle::ProgramFactory::newInstance(Name)))
         {
             DatalogProgram Program{SouffleProgram};
-            for(auto& Loader : Loaders)
-            {
-                Loader(Module, Program);
-            }
-            return Program;
+            return operator()(Module, Program);
         }
         return std::nullopt;
     }
