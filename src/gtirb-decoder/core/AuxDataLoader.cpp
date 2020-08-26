@@ -29,11 +29,7 @@ void PaddingLoader::operator()(const gtirb::Module& Module, DatalogProgram& Prog
     std::vector<relations::Padding> PaddingBlocks;
 
     auto* Table = Module.getAuxData<gtirb::schema::Padding>();
-    if(!Table)
-    {
-        std::cerr << "WARNING: Missing `padding' aux data.\n";
-        return;
-    }
+    assert(Table && "Padding AuxData table missing from GTIRB module.");
 
     for(auto& [Offset, Size] : *Table)
     {
@@ -56,10 +52,7 @@ void FdeEntriesLoader::operator()(const gtirb::Module& Module, DatalogProgram& P
     std::set<gtirb::Addr> FdeEnd;
 
     auto* CfiDirectives = Module.getAuxData<gtirb::schema::CfiDirectives>();
-    if(!CfiDirectives)
-    {
-        return;
-    }
+    assert(CfiDirectives && "CfiDirectives AuxData table missing from GTIRB module.");
 
     for(auto& Pair : *CfiDirectives)
     {
@@ -102,10 +95,7 @@ void FunctionEntriesLoader::operator()(const gtirb::Module& Module, DatalogProgr
     std::vector<gtirb::Addr> Functions;
 
     auto* FunctionEntries = Module.getAuxData<gtirb::schema::FunctionEntries>();
-    if(!FunctionEntries)
-    {
-        return;
-    }
+    assert(FunctionEntries && "FunctionEntries AuxData table missing from GTIRB module.");
 
     for(auto& Pair : *FunctionEntries)
     {
