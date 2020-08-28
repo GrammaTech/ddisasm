@@ -37,14 +37,13 @@ class X64Loader : public InstructionLoader
 public:
     X64Loader() : InstructionLoader{1}
     {
+        // Setup Capstone engine.
         [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_X86, CS_MODE_64, &CsHandle);
         assert(Err == CS_ERR_OK && "Failed to initialize X64 disassembler.");
         cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
-    }
 
-    ~X64Loader()
-    {
-        cs_close(&CsHandle);
+        // Call cs_close when the last X64Loader is destroyed.
+        CloseHandle.reset(new csh(CsHandle), cs_close);
     }
 
     void operator()(const gtirb::Module& Module, DatalogProgram& Program) override;
@@ -60,7 +59,8 @@ private:
     std::optional<relations::Instruction> build(const cs_insn& CsInstruction);
     std::tuple<std::string, std::string> splitMnemonic(const cs_insn& CsInstruction);
 
-    csh CsHandle = CS_ERR_ARCH;
+    std::shared_ptr<csh> CloseHandle;
+    csh CsHandle;
 };
 
 #endif // SRC_GTIRB_DECODER_ARCH_X64DECODER_H_

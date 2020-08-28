@@ -51,10 +51,7 @@ public:
     template <typename T, typename... Args>
     void add(Args&&... A)
     {
-        auto Fn = [A...](const gtirb::Module& Module, DatalogProgram& Program) {
-            T{A...}(Module, Program);
-        };
-        Loaders.push_back(std::move(Fn));
+        Loaders.push_back(T{A...});
     }
 
     // Build a DatalogProgram (i.e. SouffleProgram).
