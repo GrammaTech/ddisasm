@@ -112,8 +112,8 @@ protected:
     void decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
 private:
-    InstructionFacts Instructions;
-    Arm64OperandFacts Operands;
+    struct Arm64Facts;
+    std::shared_ptr<Arm64Facts> Facts;
 
     std::optional<relations::Arm64Operand> build(const cs_arm64_op& CsOp);
     std::optional<relations::Instruction> build(const cs_insn& CsInstruction);

@@ -52,8 +52,8 @@ protected:
     void decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
 private:
-    InstructionFacts Instructions;
-    OperandFacts Operands;
+    struct X64Facts;
+    std::shared_ptr<X64Facts> Facts;
 
     std::optional<relations::Operand> build(const cs_x86_op& CsOp);
     std::optional<relations::Instruction> build(const cs_insn& CsInstruction);

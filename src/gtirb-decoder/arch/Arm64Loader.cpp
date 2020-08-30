@@ -26,10 +26,18 @@
 
 #include "Arm64Loader.h"
 
+struct Arm64Loader::Arm64Facts
+{
+    InstructionFacts Instructions;
+    Arm64OperandFacts Operands;
+};
+
 void Arm64Loader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
 {
+    Facts = std::make_shared<Arm64Loader::Arm64Facts>();
     load(Module);
 
+    auto& [Instructions, Operands] = *Facts;
     Program.insert("instruction_complete", Instructions.instructions());
     Program.insert("invalid_op_code", Instructions.invalid());
     Program.insert("op_immediate", Operands.imm());
@@ -55,12 +63,12 @@ void Arm64Loader::decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
     if(Instruction)
     {
         // Add the instruction to the facts table.
-        Instructions.add(*Instruction);
+        Facts->Instructions.add(*Instruction);
     }
     else
     {
         // Add address to list of invalid instruction locations.
-        Instructions.add(gtirb::Addr(Addr));
+        Facts->Instructions.add(gtirb::Addr(Addr));
     }
 
     cs_free(CsInsn, Count);
@@ -88,7 +96,7 @@ std::optional<relations::Instruction> Arm64Loader::build(const cs_insn& CsInstru
             }
 
             // Add operand to the operands table.
-            uint64_t OpIndex = Operands.add(*Op);
+            uint64_t OpIndex = Facts->Operands.add(*Op);
             OpCodes.push_back(OpIndex);
         }
         // Put the destination operand at the end of the operand list.

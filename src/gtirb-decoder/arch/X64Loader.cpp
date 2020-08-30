@@ -27,9 +27,18 @@
 
 #include "X64Loader.h"
 
+struct X64Loader::X64Facts
+{
+    InstructionFacts Instructions;
+    OperandFacts Operands;
+};
+
 void X64Loader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
 {
+    Facts = std::make_shared<X64Loader::X64Facts>();
     load(Module);
+
+    auto& [Instructions, Operands] = *Facts;
     Program.insert("instruction_complete", Instructions.instructions());
     Program.insert("invalid_op_code", Instructions.invalid());
     Program.insert("op_immediate", Operands.imm());
@@ -53,12 +62,12 @@ void X64Loader::decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
     if(Instruction)
     {
         // Add the instruction to the facts table.
-        Instructions.add(*Instruction);
+        Facts->Instructions.add(*Instruction);
     }
     else
     {
         // Add address to list of invalid instruction locations.
-        Instructions.add(gtirb::Addr(Addr));
+        Facts->Instructions.add(gtirb::Addr(Addr));
     }
 
     cs_free(CsInsn, Count);
@@ -86,7 +95,7 @@ std::optional<relations::Instruction> X64Loader::build(const cs_insn& CsInstruct
             }
 
             // Add operand to the operands table.
-            uint64_t OpIndex = Operands.add(*Op);
+            uint64_t OpIndex = Facts->Operands.add(*Op);
             OpCodes.push_back(OpIndex);
         }
         // Put the destination operand at the end of the operand list.
