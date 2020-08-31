@@ -186,6 +186,65 @@ build-arch-clang-debug:
     BUILD_TYPE: 'Debug'
   <<: *build
 
+build-static:
+  stage: build
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/static
+  script:
+    # build GTIRB
+    - git clone https://git.grammatech.com/rewriting/gtirb.git
+    - cd gtirb
+    - mkdir build && cd build
+    - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_BUILD_SHARED_LIBS=OFF
+    - make -j
+    - cd python; python3 setup.py develop; cd ..
+    - cd ..
+    # build gtirb-pprinter
+    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b windows-support
+    - cd gtirb-pprinter
+    - mkdir build && cd build
+    - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
+    - make -j
+    - cd ..
+    # build ddisasm
+    - mkdir build && cd build
+    - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDDISASM_BUILD_SHARED_LIBS=OFF -DLIEF_ROOT=/usr/
+    - make -j
+    # Run the regression tests.
+    - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
+
+static-drivers:
+  stage: deploy
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/static
+  needs: []
+  artifacts:
+    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
+    paths:
+      - build/bin
+  script:
+    # build GTIRB
+    - git clone https://git.grammatech.com/rewriting/gtirb.git
+    - cd gtirb
+    - mkdir build && cd build
+    - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DGTIRB_BUILD_SHARED_LIBS=OFF
+    - make -j
+    - cd python; python3 setup.py develop; cd ..
+    - cd ../..
+    # build gtirb-pprinter
+    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b windows-support
+    - cd gtirb-pprinter
+    - mkdir build && cd build
+    - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
+    - make -j
+    - cd ../..
+    # build ddisasm
+    - mkdir build && cd build
+    - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DDDISASM_STATIC_DRIVERS=ON -DLIEF_ROOT=/usr/
+    - make -j
+    # Run the regression tests.
+    - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
+    # For verification purposes, print ldd of the driver here.
+    - ldd bin/ddisasm
+
 build-windows-msvc-debug:
   stage: build
   tags:

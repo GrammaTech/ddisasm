@@ -7,6 +7,7 @@
 # 1.1.0
 
 * Added preliminary ARM64 support.
+  Contributed by the Programming Language Group, University of Sydney.
 
 # 1.0.1
 
