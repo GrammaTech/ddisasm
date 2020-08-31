@@ -53,26 +53,26 @@ public:
         return std::visit(*this, Op);
     }
 
-    uint64_t operator()(relations::ImmOp& Op)
+    uint64_t operator()(const relations::ImmOp& Op)
     {
         return add(Imm, Op);
     }
 
-    uint64_t operator()(relations::RegOp& Op)
+    uint64_t operator()(const relations::RegOp& Op)
     {
         return add(Reg, Op);
     }
 
-    uint64_t operator()(relations::IndirectOp& Op)
+    uint64_t operator()(const relations::IndirectOp& Op)
     {
         return add(Indirect, Op);
     }
 
 protected:
     template <typename T>
-    uint64_t add(std::map<T, uint64_t>& OpTable, T& Op)
+    uint64_t add(std::map<T, uint64_t>& OpTable, const T& Op)
     {
-        auto [Iter, Inserted] = OpTable.try_emplace(std::forward<T>(Op), Index);
+        auto [Iter, Inserted] = OpTable.try_emplace(Op, Index);
         if(Inserted)
         {
             Index++;
