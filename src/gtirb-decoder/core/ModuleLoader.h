@@ -1,4 +1,4 @@
-//===- X86Decoder.h ---------------------------------------------*- C++ -*-===//
+//===- ModuleLoader.h -------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -20,24 +20,18 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#ifndef SRC_GTIRB_DECODER_CORE_MODULELOADER_H_
+#define SRC_GTIRB_DECODER_CORE_MODULELOADER_H_
 
-#ifndef SRC_X86_DECODER_H_
-#define SRC_X86_DECODER_H_
-
-#include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 
-#include "DatalogUtils.h"
-#include "DlDecoder.h"
-#include "DlOperandTable.h"
+#include "../DatalogProgram.h"
+#include "../Relations.h"
 
-class X86Decoder : public DlDecoder
-{
-public:
-    X86Decoder() : DlDecoder(gtirb::ISA::X64){};
-    souffle::SouffleProgram* decode(const gtirb::Module& module,
-                                    const std::vector<std::string>& DisasmOptions) override;
-    void decodeSection(const gtirb::ByteInterval& byteInterval) override;
-};
+// Load binary format information: architecture, file format, entry point, etc.
+void ModuleLoader(const gtirb::Module& Module, DatalogProgram& Program);
 
-#endif /* SRC_X86_DECODER_H_ */
+const char* binaryISA(gtirb::ISA Arch);
+const char* binaryFormat(const gtirb::FileFormat Format);
+
+#endif // SRC_GTIRB_DECODER_CORE_MODULELOADER_H_

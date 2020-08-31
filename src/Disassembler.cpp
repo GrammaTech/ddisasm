@@ -26,7 +26,10 @@
 #include <boost/uuid/uuid_generators.hpp>
 
 #include "AuxDataSchema.h"
-#include "gtirb-decoder/DlOperandTable.h"
+#include "gtirb-decoder/CompositeLoader.h"
+
+using ImmOp = relations::ImmOp;
+using IndirectOp = relations::IndirectOp;
 
 // souffle uses a signed integer for all numbers (either 32 or 64 bits
 // dependin on compilation flags). Allow conversion to other types.
@@ -80,8 +83,8 @@ std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SoufflePr
     {
         uint64_t operandCode, size;
         IndirectOp indirect;
-        output >> operandCode >> indirect.reg1 >> indirect.reg2 >> indirect.reg3
-            >> indirect.multiplier >> indirect.displacement >> size;
+        output >> operandCode >> indirect.Reg1 >> indirect.Reg2 >> indirect.Reg3 >> indirect.Mult
+            >> indirect.Disp >> size;
         Indirects[operandCode] = indirect;
     };
     std::map<gtirb::Addr, DecodedInstruction> insns;

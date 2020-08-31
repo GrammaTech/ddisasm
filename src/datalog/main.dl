@@ -66,8 +66,8 @@ This module:
 
 // architecture specific predicates
 #ifdef ARCH_ARM64
-    .init arch = ARM64
     #include "arm64/arch_arm64.dl"
+    .init arch = ARM64
 #elif defined(ARCH_ARM32)
     .init arch = ARM
     #include "arm/arch_arm.dl"
@@ -292,7 +292,7 @@ next(EA,EA+Size):-
 .output pc_relative_operand
 
 pc_relative_operand(EA,Index,EA_next+Offset):-
-    !binary_isa("ARM"),
+    binary_isa("X64"),
     instruction_get_op(EA, Index, Op),
     op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
     arch.pc_register(Reg),

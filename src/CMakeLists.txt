@@ -220,7 +220,7 @@ add_subdirectory(passes)
 # First build a static library of all the non-generated code.. This is just a
 # hack to get CMake to use different compile flags (because the generated
 # souffle code won't build with -Wall -Werror).
-add_library(disasm_main STATIC Disassembler.cpp Main.cpp)
+add_library(disasm_main STATIC Disassembler.cpp Registration.cpp Main.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_compile_options(disasm_main PRIVATE -Wno-unused-parameter)
@@ -261,8 +261,6 @@ target_link_libraries(
   gtirb_pprinter
   gtirb_builder
   gtirb_decoder
-  datalog_utils
-  ${CAPSTONE}
   ${Boost_LIBRARIES}
   ${EXPERIMENTAL_LIB}
   ${LIBCPP_ABI})
@@ -270,6 +268,15 @@ target_link_libraries(
 # Now combine the static library and generated code into an executable.
 add_executable(ddisasm ${GENERATED_X64_CPP} ${GENERATED_ARM32_CPP}
                        ${GENERATED_ARM64_CPP})
+
+if(DDISASM_STATIC_DRIVERS)
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+    # We do not want to statically link in the STL here, as MSVC is a bit
+    # prickly about STL ABIs.
+  else()
+    target_link_libraries(ddisasm PRIVATE -static-libstdc++ -static-libgcc)
+  endif()
+endif()
 
 if(DDISASM_STATIC_DRIVERS)
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)

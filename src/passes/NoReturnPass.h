@@ -20,13 +20,13 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
 #ifndef NO_RETURN_PASS_H_
 #define NO_RETURN_PASS_H_
 
+#include <optional>
+
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
-#include <optional>
 
 // Refine the CFG by removing fallthrough edges whenever there is a call to a block that never
 // returns.
@@ -34,10 +34,7 @@ class NoReturnPass
 {
 private:
     std::optional<std::string> DebugDir;
-
-    void populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M);
-    std::set<gtirb::CodeBlock*> updateCFG(std::shared_ptr<souffle::SouffleProgram> P,
-                                          gtirb::Module& M);
+    std::set<gtirb::CodeBlock*> updateCFG(souffle::SouffleProgram* P, gtirb::Module& M);
 
 public:
     void setDebugDir(std::string Path);

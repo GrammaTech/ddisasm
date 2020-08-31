@@ -1,6 +1,6 @@
-//===- ExceptionDecoder.h----------------------------------------*- C++ -*-===//
+//===- ElfLoader.h ----------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2020 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,14 +20,21 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#ifndef SRC_GTIRB_DECODER_FORMAT_ELFLOADER_H_
+#define SRC_GTIRB_DECODER_FORMAT_ELFLOADER_H_
 
-#ifndef SRC_EXCEPTION_DECODER_H_
-#define SRC_EXCEPTION_DECODER_H_
-#include <souffle/SouffleInterface.h>
+#include <string>
+
 #include "ehp.hpp"
-#include "gtirb/gtirb.hpp"
 
-class ExceptionDecoder
+#include "../CompositeLoader.h"
+#include "../Relations.h"
+
+void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program);
+
+void ElfExceptionLoader(const gtirb::Module &Module, DatalogProgram &Program);
+
+class ElfExceptionDecoder
 {
 private:
     std::unique_ptr<const EHP::EHFrameParser_t> ehParser;
@@ -52,8 +59,24 @@ private:
                                          const EHP::LSDA_t *lsda);
 
 public:
-    ExceptionDecoder(const gtirb::Module &module);
+    ElfExceptionDecoder(const gtirb::Module &module);
     void addExceptionInformation(souffle::SouffleProgram *prog);
 };
 
-#endif /* SRC_EXCEPTION_DECODER_H_ */
+namespace relations
+{
+    struct Relocation
+    {
+        uint64_t Address;
+        std::string Type;
+        std::string Name;
+        int64_t Addend;
+    };
+} // namespace relations
+
+namespace souffle
+{
+    souffle::tuple &operator<<(souffle::tuple &T, const relations::Relocation &Rel);
+}
+
+#endif // SRC_GTIRB_DECODER_FORMAT_ELFLOADER_H_

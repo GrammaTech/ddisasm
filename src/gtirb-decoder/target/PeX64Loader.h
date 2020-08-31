@@ -1,6 +1,6 @@
-//===- FunctionInferencePass.h ----------------------------------*- C++ -*-===//
+//===- PeX64Loader.h --------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2020 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,27 +20,27 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef FUNCTION_INFERENCE_PASS_H_
-#define FUNCTION_INFERENCE_PASS_H_
+#ifndef SRC_GTIRB_DECODER_TARGET_PEX64LOADER_H_
+#define SRC_GTIRB_DECODER_TARGET_PEX64LOADER_H_
 
-#include <optional>
+#include "../CompositeLoader.h"
+#include "../arch/X64Loader.h"
+#include "../core/DataLoader.h"
+#include "../core/ModuleLoader.h"
+#include "../core/SectionLoader.h"
+#include "../format/PeLoader.h"
 
-#include <souffle/SouffleInterface.h>
-#include <gtirb/gtirb.hpp>
-
-// Refine function boundaries.
-class FunctionInferencePass
+class PeX64Loader : public CompositeLoader
 {
 public:
-    void setDebugDir(std::string Path)
+    PeX64Loader() : CompositeLoader("souffle_disasm_x64")
     {
-        DebugDir = Path;
-    };
-
-    void computeFunctions(gtirb::Context& C, gtirb::Module& M, unsigned int NThreads);
-
-private:
-    std::optional<std::string> DebugDir;
-    void updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M);
+        add(ModuleLoader);
+        add(SectionLoader);
+        add<X64Loader>();
+        add<DataLoader>(DataLoader::Pointer::QWORD);
+        add(PeSymbolLoader);
+    }
 };
-#endif // FUNCTION_INFERENCE_PASS_H_
+
+#endif // SRC_GTIRB_DECODER_TARGET_PEX64LOADER_H_

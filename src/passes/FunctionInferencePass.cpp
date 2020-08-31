@@ -20,28 +20,18 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#include <souffle/CompiledSouffle.h>
 #include <boost/uuid/uuid_generators.hpp>
 
 #include "../AuxDataSchema.h"
-#include "../gtirb-decoder/DatalogUtils.h"
+#include "../gtirb-decoder/CompositeLoader.h"
+#include "../gtirb-decoder/arch/X64Loader.h"
+#include "../gtirb-decoder/core/AuxDataLoader.h"
+#include "../gtirb-decoder/core/EdgesLoader.h"
+#include "../gtirb-decoder/core/InstructionLoader.h"
+#include "../gtirb-decoder/core/SymbolicExpressionLoader.h"
 #include "FunctionInferencePass.h"
 
-void FunctionInferencePass::populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P,
-                                                gtirb::Context& Ctx, gtirb::Module& M)
-{
-    GtirbToDatalog Loader(P);
-    Loader.populateBlocks(M);
-    Loader.populateInstructions(M, 1);
-    Loader.populateCfgEdges(M);
-    Loader.populateSymbolicExpressions(M);
-    Loader.populateFdeEntries(Ctx, M);
-    Loader.populateFunctionEntries(Ctx, M);
-    Loader.populatePadding(Ctx, M);
-}
-
-void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProgram> P,
-                                            gtirb::Module& M)
+void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M)
 {
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
     std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2function;
@@ -83,28 +73,40 @@ void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProg
     M.addAuxData<gtirb::schema::FunctionNames>(std::move(FunctionNames));
 }
 
-void FunctionInferencePass::setDebugDir(std::string Path)
-{
-    DebugDir = Path;
-}
-
-void FunctionInferencePass::computeFunctions(gtirb::Context& Ctx, gtirb::Module& M,
+void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Module& Module,
                                              unsigned int NThreads)
 {
-    auto Prog = std::shared_ptr<souffle::SouffleProgram>(
-        souffle::ProgramFactory::newInstance("souffle_function_inference"));
-    if(!Prog)
+    // Build GTIRB loader.
+    CompositeLoader Loader("souffle_function_inference");
+    Loader.add(BlocksLoader);
+    // TODO: Add support for ARM64 prologues.
+    if(Module.getISA() == gtirb::ISA::X64)
+    {
+        Loader.add<CodeBlockLoader<X64Loader>>();
+    }
+    Loader.add(CfgLoader);
+    Loader.add(SymbolicExpressionLoader);
+    Loader.add(FdeEntriesLoader{&Context});
+    Loader.add(FunctionEntriesLoader{&Context});
+    Loader.add(PaddingLoader{&Context});
+
+    // Load GTIRB and build program.
+    std::optional<DatalogProgram> FunctionInference = Loader.load(Module);
+    if(!FunctionInference)
     {
         std::cerr << "Could not create souffle_function_inference program" << std::endl;
         exit(1);
     }
-    populateSouffleProg(Prog, Ctx, M);
-    Prog->setNumThreads(NThreads);
-    Prog->run();
+
+    // Run function inference analysis.
+    FunctionInference->threads(NThreads);
+    FunctionInference->run();
+
     if(DebugDir)
     {
-        writeFacts(&*Prog, *DebugDir);
-        Prog->printAll(*DebugDir);
+        FunctionInference->writeFacts(*DebugDir);
+        FunctionInference->writeRelations(*DebugDir);
     }
-    updateFunctions(Prog, M);
+
+    updateFunctions(FunctionInference->get(), Module);
 }

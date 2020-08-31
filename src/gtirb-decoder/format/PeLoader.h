@@ -1,6 +1,6 @@
-//===- FunctionInferencePass.h ----------------------------------*- C++ -*-===//
+//===- PeLoader.h -----------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2020 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,27 +20,28 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef FUNCTION_INFERENCE_PASS_H_
-#define FUNCTION_INFERENCE_PASS_H_
+#ifndef SRC_GTIRB_DECODER_FORMAT_PELOADER_H_
+#define SRC_GTIRB_DECODER_FORMAT_PELOADER_H_
 
-#include <optional>
+#include "../CompositeLoader.h"
+#include "../Relations.h"
 
-#include <souffle/SouffleInterface.h>
-#include <gtirb/gtirb.hpp>
+void PeSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program);
 
-// Refine function boundaries.
-class FunctionInferencePass
+// DataDirectory: (type, addr, size).
+using DataDirectory = std::tuple<std::string, uint64_t, uint64_t>;
+
+// ImportEntry: (iat_address, ordinal, function, library).
+using ImportEntry = std::tuple<uint64_t, int64_t, std::string, std::string>;
+
+// ExportEntry: (address, ordinal, name).
+using ExportEntry = std::tuple<uint64_t, int64_t, std::string>;
+
+namespace souffle
 {
-public:
-    void setDebugDir(std::string Path)
-    {
-        DebugDir = Path;
-    };
+    souffle::tuple &operator<<(souffle::tuple &t, const DataDirectory &DataDirectory);
 
-    void computeFunctions(gtirb::Context& C, gtirb::Module& M, unsigned int NThreads);
+    souffle::tuple &operator<<(souffle::tuple &t, const ImportEntry &ImportEntry);
+} // namespace souffle
 
-private:
-    std::optional<std::string> DebugDir;
-    void updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M);
-};
-#endif // FUNCTION_INFERENCE_PASS_H_
+#endif // SRC_GTIRB_DECODER_FORMAT_PELOADER_H_

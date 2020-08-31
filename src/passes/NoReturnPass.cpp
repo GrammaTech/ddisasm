@@ -20,21 +20,14 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
-#include <souffle/CompiledSouffle.h>
-
-#include "../gtirb-decoder/DatalogUtils.h"
 #include "NoReturnPass.h"
 
-void NoReturnPass::populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M)
-{
-    GtirbToDatalog Loader(P);
-    Loader.populateSccs(M);
-    Loader.populateCfgEdges(M);
-}
+#include "../gtirb-decoder/CompositeLoader.h"
+#include "../gtirb-decoder/Relations.h"
+#include "../gtirb-decoder/core/AuxDataLoader.h"
+#include "../gtirb-decoder/core/EdgesLoader.h"
 
-std::set<gtirb::CodeBlock*> NoReturnPass::updateCFG(std::shared_ptr<souffle::SouffleProgram> P,
-                                                    gtirb::Module& M)
+std::set<gtirb::CodeBlock*> NoReturnPass::updateCFG(souffle::SouffleProgram* P, gtirb::Module& M)
 {
     std::set<gtirb::CodeBlock*> NoReturn;
     for(auto& Output : *P->getRelation("block_call_no_return"))
@@ -64,22 +57,31 @@ void NoReturnPass::setDebugDir(std::string Path)
     DebugDir = Path;
 }
 
-std::set<gtirb::CodeBlock*> NoReturnPass::computeNoReturn(gtirb::Module& M, unsigned int NThreads)
+std::set<gtirb::CodeBlock*> NoReturnPass::computeNoReturn(gtirb::Module& Module,
+                                                          unsigned int NThreads)
 {
-    auto Prog = std::shared_ptr<souffle::SouffleProgram>(
-        souffle::ProgramFactory::newInstance("souffle_no_return"));
-    if(!Prog)
+    // Build GTIRB loader.
+    CompositeLoader Loader("souffle_no_return");
+    Loader.add(SccLoader);
+    Loader.add(CfgLoader);
+
+    // Load GTIRB and build program.
+    std::optional<DatalogProgram> NoReturn = Loader.load(Module);
+    if(!NoReturn)
     {
         std::cerr << "Could not create souffle_no_return program" << std::endl;
         exit(1);
     }
-    populateSouffleProg(Prog, M);
-    Prog->setNumThreads(NThreads);
-    Prog->run();
+
+    // Run no-return analysis.
+    NoReturn->threads(NThreads);
+    NoReturn->run();
+
     if(DebugDir)
     {
-        writeFacts(&*Prog, *DebugDir);
-        Prog->printAll(*DebugDir);
+        NoReturn->writeFacts(*DebugDir);
+        NoReturn->writeRelations(*DebugDir);
     }
-    return updateCFG(Prog, M);
+
+    return updateCFG(NoReturn->get(), Module);
 }

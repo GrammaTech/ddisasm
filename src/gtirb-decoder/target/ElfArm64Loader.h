@@ -1,4 +1,4 @@
-//===- Arm64Decoder.h -------------------------------------------*- C++ -*-===//
+//===- ElfARM64Loader.h -------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -20,28 +20,28 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#ifndef SRC_GTIRB_DECODER_TARGET_ELFARM64LOADER_H_
+#define SRC_GTIRB_DECODER_TARGET_ELFARM64LOADER_H_
 
-#ifndef SRC_ARM64_DECODER_H_
-#define SRC_ARM64_DECODER_H_
+#include "../CompositeLoader.h"
+#include "../arch/Arm64Loader.h"
+#include "../core/DataLoader.h"
+#include "../core/ModuleLoader.h"
+#include "../core/SectionLoader.h"
+#include "../format/ElfLoader.h"
 
-#include <souffle/SouffleInterface.h>
-#include <gtirb/gtirb.hpp>
-
-#include "DatalogUtils.h"
-#include "DlDecoder.h"
-#include "DlOperandTable.h"
-
-class Arm64Decoder : public DlDecoder
+class ElfArm64Loader : public CompositeLoader
 {
 public:
-    Arm64Decoder() : DlDecoder(gtirb::ISA::ARM64)
+    ElfArm64Loader() : CompositeLoader("souffle_disasm_arm64")
     {
+        add(ModuleLoader);
+        add(SectionLoader);
+        add<Arm64Loader>();
+        add<DataLoader>(DataLoader::Pointer::QWORD);
+        add(ElfSymbolLoader);
+        add(ElfExceptionLoader);
     }
-    souffle::SouffleProgram* decode(const gtirb::Module& module,
-                                    const std::vector<std::string>& DisasmOptions) override;
-    void decodeSection(const gtirb::ByteInterval& byteInterval) override;
-    void storeDataSection(const gtirb::ByteInterval& byteInterval, gtirb::Addr min_address,
-                          gtirb::Addr max_address) override;
 };
 
-#endif /* SRC_ARM64_DECODER_H_ */
+#endif // SRC_GTIRB_DECODER_TARGET_ELFARM64LOADER_H_

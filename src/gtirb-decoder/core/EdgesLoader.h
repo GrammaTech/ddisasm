@@ -1,6 +1,6 @@
-//===- FunctionInferencePass.h ----------------------------------*- C++ -*-===//
+//===- EdgesLoader.h --------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2020 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,27 +20,26 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef FUNCTION_INFERENCE_PASS_H_
-#define FUNCTION_INFERENCE_PASS_H_
+#ifndef SRC_GTIRB_DECODER_CORE_EDGESLOADER_H_
+#define SRC_GTIRB_DECODER_CORE_EDGESLOADER_H_
 
-#include <optional>
+#include <string>
+#include <tuple>
+#include <utility>
 
+#include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 
-// Refine function boundaries.
-class FunctionInferencePass
-{
-public:
-    void setDebugDir(std::string Path)
-    {
-        DebugDir = Path;
-    };
+#include "../DatalogProgram.h"
+#include "../Relations.h"
 
-    void computeFunctions(gtirb::Context& C, gtirb::Module& M, unsigned int NThreads);
+// Load code block edges.
+void BlocksLoader(const gtirb::Module& M, DatalogProgram& P);
 
-private:
-    std::optional<std::string> DebugDir;
-    void updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M);
-};
-#endif // FUNCTION_INFERENCE_PASS_H_
+// Load CFG edges.
+void CfgLoader(const gtirb::Module& M, DatalogProgram& P);
+
+std::tuple<std::string, std::string, std::string> edgeProperties(const gtirb::EdgeLabel& L);
+
+#endif // SRC_GTIRB_DECODER_CORE_EDGESLOADER_H_

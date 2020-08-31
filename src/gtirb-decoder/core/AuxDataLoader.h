@@ -1,6 +1,6 @@
-//===- FunctionInferencePass.h ----------------------------------*- C++ -*-===//
+//===- AuxDataLoader.h ------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2020 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,27 +20,42 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef FUNCTION_INFERENCE_PASS_H_
-#define FUNCTION_INFERENCE_PASS_H_
+#ifndef SRC_GTIRB_DECODER_CORE_AUXDATALOADER_H_
+#define SRC_GTIRB_DECODER_CORE_AUXDATALOADER_H_
 
-#include <optional>
+#include <string>
+#include <tuple>
+#include <utility>
 
+#include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 
-// Refine function boundaries.
-class FunctionInferencePass
+#include "../DatalogProgram.h"
+#include "../Relations.h"
+
+// Load strongly connected component facts.
+void SccLoader(const gtirb::Module& M, DatalogProgram& P);
+
+// Load code-padding regions.
+struct PaddingLoader
 {
-public:
-    void setDebugDir(std::string Path)
-    {
-        DebugDir = Path;
-    };
-
-    void computeFunctions(gtirb::Context& C, gtirb::Module& M, unsigned int NThreads);
-
-private:
-    std::optional<std::string> DebugDir;
-    void updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M);
+    void operator()(const gtirb::Module& M, DatalogProgram& P);
+    gtirb::Context* Context;
 };
-#endif // FUNCTION_INFERENCE_PASS_H_
+
+// Load CFI information.
+struct FdeEntriesLoader
+{
+    void operator()(const gtirb::Module& M, DatalogProgram& P);
+    gtirb::Context* Context;
+};
+
+// Load function entry addresses.
+struct FunctionEntriesLoader
+{
+    void operator()(const gtirb::Module& M, DatalogProgram& P);
+    gtirb::Context* Context;
+};
+
+#endif // SRC_GTIRB_DECODER_CORE_AUXDATALOADER_H_

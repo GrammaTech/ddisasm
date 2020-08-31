@@ -1,4 +1,4 @@
-//===- ArmDecoder.h -------------------------------------------*- C++ -*-===//
+//===- ElfX64Loader.h -------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -20,24 +20,28 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#ifndef SRC_GTIRB_DECODER_TARGET_ELFX64LOADER_H_
+#define SRC_GTIRB_DECODER_TARGET_ELFX64LOADER_H_
 
-#ifndef SRC_ARM_DECODER_H_
-#define SRC_ARM_DECODER_H_
+#include "../CompositeLoader.h"
+#include "../arch/X64Loader.h"
+#include "../core/DataLoader.h"
+#include "../core/ModuleLoader.h"
+#include "../core/SectionLoader.h"
+#include "../format/ElfLoader.h"
 
-#include <souffle/SouffleInterface.h>
-#include <gtirb/gtirb.hpp>
-
-#include "DatalogUtils.h"
-#include "DlDecoder.h"
-#include "DlOperandTable.h"
-
-class ArmDecoder : public DlDecoder
+class ElfX64Loader : public CompositeLoader
 {
 public:
-    ArmDecoder() : DlDecoder(gtirb::ISA::ARM)
+    ElfX64Loader() : CompositeLoader("souffle_disasm_x64")
     {
+        add(ModuleLoader);
+        add(SectionLoader);
+        add<X64Loader>();
+        add<DataLoader>(DataLoader::Pointer::QWORD);
+        add(ElfSymbolLoader);
+        add(ElfExceptionLoader);
     }
-    void decodeSection(const gtirb::ByteInterval& byteInterval) override;
 };
 
-#endif /* SRC_ARM_DECODER_H_ */
+#endif // SRC_GTIRB_DECODER_TARGET_ELFX64LOADER_H_

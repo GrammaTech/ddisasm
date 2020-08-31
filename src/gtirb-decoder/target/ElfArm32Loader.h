@@ -1,6 +1,6 @@
-//===- FunctionInferencePass.h ----------------------------------*- C++ -*-===//
+//===- ElfARM32Loader.h -------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2020 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,27 +20,28 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef FUNCTION_INFERENCE_PASS_H_
-#define FUNCTION_INFERENCE_PASS_H_
+#ifndef SRC_GTIRB_DECODER_TARGET_ELFARM32LOADER_H_
+#define SRC_GTIRB_DECODER_TARGET_ELFARM32LOADER_H_
 
-#include <optional>
+#include "../CompositeLoader.h"
+#include "../arch/Arm32Loader.h"
+#include "../core/DataLoader.h"
+#include "../core/ModuleLoader.h"
+#include "../core/SectionLoader.h"
+#include "../format/ElfLoader.h"
 
-#include <souffle/SouffleInterface.h>
-#include <gtirb/gtirb.hpp>
-
-// Refine function boundaries.
-class FunctionInferencePass
+class ElfArm32Loader : public CompositeLoader
 {
 public:
-    void setDebugDir(std::string Path)
+    ElfArm32Loader() : CompositeLoader("souffle_disasm_arm32")
     {
-        DebugDir = Path;
-    };
-
-    void computeFunctions(gtirb::Context& C, gtirb::Module& M, unsigned int NThreads);
-
-private:
-    std::optional<std::string> DebugDir;
-    void updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M);
+        add(ModuleLoader);
+        add(SectionLoader);
+        add<Arm32Loader>();
+        add<DataLoader>(DataLoader::Pointer::DWORD);
+        add(ElfSymbolLoader);
+        add(ElfExceptionLoader);
+    }
 };
-#endif // FUNCTION_INFERENCE_PASS_H_
+
+#endif // SRC_GTIRB_DECODER_TARGET_ELFARM32LOADER_H_
