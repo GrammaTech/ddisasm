@@ -127,8 +127,6 @@ public:
 
     virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program) = 0;
 
-    using Facts = T;
-
 protected:
     explicit InstructionLoader(uint8_t N) : InstructionSize{N} {};
 

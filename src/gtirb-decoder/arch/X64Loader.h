@@ -51,12 +51,6 @@ public:
         cs_option(*CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
     }
 
-    ~X64Loader()
-    {
-        // TODO:
-        // cs_close(&CsHandle);
-    }
-
     void operator()(const gtirb::Module& Module, DatalogProgram& Program) override;
 
 protected:
