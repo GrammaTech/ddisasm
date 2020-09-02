@@ -26,35 +26,25 @@
 
 #include "Arm32Loader.h"
 
-struct Arm32Loader::Arm32Facts
+void Arm32Loader::insert(const Arm32Facts& Facts, DatalogProgram& Program)
 {
-    InstructionFacts Instructions;
-    OperandFacts Operands;
-};
-
-void Arm32Loader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
-{
-    Facts = std::make_shared<Arm32Loader::Arm32Facts>();
-    load(Module);
-
-    auto& [Instructions, Operands] = *Facts;
-    Program.insert("instruction_complete", Instructions.instructions());
-    Program.insert("invalid_op_code", Instructions.invalid());
-    Program.insert("op_immediate", Operands.imm());
-    Program.insert("op_regdirect", Operands.reg());
-    Program.insert("op_indirect", Operands.indirect());
+    Program.insert("instruction_complete", Facts.instructions());
+    Program.insert("invalid_op_code", Facts.invalid());
+    Program.insert("op_immediate", Facts.imm());
+    Program.insert("op_regdirect", Facts.reg());
+    Program.insert("op_indirect", Facts.indirect());
 }
 
-void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval)
+void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Facts)
 {
-    cs_option(CsHandle, CS_OPT_MODE, CS_MODE_ARM);
-    load(ByteInterval, false);
+    cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_ARM);
+    load(ByteInterval, Facts, false);
 
-    cs_option(CsHandle, CS_OPT_MODE, CS_MODE_THUMB);
-    load(ByteInterval, true);
+    cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB);
+    load(ByteInterval, Facts, true);
 }
 
-void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, bool Thumb)
+void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Facts, bool Thumb)
 {
     assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
 
@@ -75,42 +65,43 @@ void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, bool Thumb)
     while(Size >= InstructionSize)
     {
         Increment = InstructionSize;
-        decode(Data, Size, Addr);
+        decode(Facts, Data, Size, Addr);
         Addr += Increment;
         Data += Increment;
         Size -= Increment;
     }
 }
 
-void Arm32Loader::decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
+void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
 {
     // Decode instruction with Capstone.
     cs_insn* CsInsn;
-    size_t Count = cs_disasm(CsHandle, Bytes, Size, Addr, 1, &CsInsn);
+    size_t Count = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &CsInsn);
 
     // Build datalog instruction facts from Capstone instruction.
     std::optional<relations::Instruction> Instruction;
     if(Count > 0)
     {
-        Instruction = build(*CsInsn);
+        Instruction = build(Facts, *CsInsn);
         Increment = CsInsn->size;
     }
 
     if(Instruction)
     {
         // Add the instruction to the facts table.
-        Facts->Instructions.add(*Instruction);
+        Facts.add(*Instruction);
     }
     else
     {
         // Add address to list of invalid instruction locations.
-        Facts->Instructions.add(gtirb::Addr(Addr));
+        Facts.invalid(gtirb::Addr(Addr));
     }
 
     cs_free(CsInsn, Count);
 }
 
-std::optional<relations::Instruction> Arm32Loader::build(const cs_insn& CsInstruction)
+std::optional<relations::Instruction> Arm32Loader::build(Arm32Facts& Facts,
+                                                         const cs_insn& CsInstruction)
 {
     const cs_arm& Details = CsInstruction.detail->arm;
     std::string Name = uppercase(CsInstruction.mnemonic);
@@ -132,7 +123,7 @@ std::optional<relations::Instruction> Arm32Loader::build(const cs_insn& CsInstru
             }
 
             // Add operand to the operands table.
-            uint64_t OpIndex = Facts->Operands.add(*Op);
+            uint64_t OpIndex = Facts.add(*Op);
             OpCodes.push_back(OpIndex);
         }
         // Put the destination operand at the end of the operand list.
@@ -152,7 +143,7 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_arm_op& CsOp)
     using namespace relations;
 
     auto registerName = [this](uint64_t Reg) {
-        return (Reg == ARM_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(CsHandle, Reg));
+        return (Reg == ARM_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(*CsHandle, Reg));
     };
 
     switch(CsOp.type)

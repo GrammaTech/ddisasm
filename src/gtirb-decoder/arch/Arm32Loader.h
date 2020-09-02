@@ -31,40 +31,39 @@
 #include "../Relations.h"
 #include "../core/InstructionLoader.h"
 
-class Arm32Loader : public InstructionLoader
+using Arm32Facts = InstructionFacts;
+
+class Arm32Loader : public InstructionLoader<Arm32Facts>
 {
 public:
     Arm32Loader() : InstructionLoader(4)
     {
-        // Setup Capstone engine.
-        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM, CS_MODE_ARM, &CsHandle);
-        assert(Err == CS_ERR_OK && "Failed to initialize ARM disassembler.");
-        cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
+        // Create smart Captone handle.
+        CsHandle.reset(new csh(0), [](csh* Handle) {
+            cs_close(Handle);
+            delete Handle;
+        });
 
-        // Call cs_close when the last Arm32Loader is destroyed.
-        CloseHandle.reset(new csh(CsHandle), cs_close);
+        // Setup Capstone engine.
+        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM, CS_MODE_ARM, CsHandle.get());
+        assert(Err == CS_ERR_OK && "Failed to initialize ARM disassembler.");
+        cs_option(*CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
     }
 
-    void operator()(const gtirb::Module& Module, DatalogProgram& Program) override;
-
 protected:
-    using InstructionLoader::load;
-    void load(const gtirb::ByteInterval& ByteInterval) override;
-    void load(const gtirb::ByteInterval& ByteInterval, bool Thumb);
+    void decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
-    void decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
+    void load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Facts) override;
+    void load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Facts, bool Thumb);
+
+    void insert(const Arm32Facts& Facts, DatalogProgram& Program) override;
 
 private:
-    size_t Increment;
-
-    struct Arm32Facts;
-    std::shared_ptr<Arm32Facts> Facts;
-
     std::optional<relations::Operand> build(const cs_arm_op& CsOp);
-    std::optional<relations::Instruction> build(const cs_insn& CsInstruction);
+    std::optional<relations::Instruction> build(Arm32Facts& Facts, const cs_insn& CsInstruction);
 
-    std::shared_ptr<csh> CloseHandle;
-    csh CsHandle = CS_ERR_ARCH;
+    size_t Increment;
+    std::shared_ptr<csh> CsHandle;
 };
 
 #endif // SRC_GTIRB_DECODER_ARCH_ARM32DECODER_H_
