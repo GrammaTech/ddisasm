@@ -54,9 +54,28 @@ namespace relations
     using Arm64Operand = std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp>;
 } // namespace relations
 
-class Arm64OperandFacts : public OperandFacts
+class Arm64Facts : public InstructionFacts
 {
 public:
+    using InstructionFacts::operator();
+
+    uint64_t operator()(relations::BarrierOp& Op)
+    {
+        return index(Barrier, Op);
+    }
+
+    uint64_t operator()(relations::PrefetchOp& Op)
+    {
+        return index(Prefetch, Op);
+    }
+
+    using InstructionFacts::add;
+
+    uint64_t add(relations::Arm64Operand& Op)
+    {
+        return std::visit(*this, Op);
+    }
+
     virtual const std::map<relations::BarrierOp, uint64_t>& barrier()
     {
         return Barrier;
@@ -67,32 +86,12 @@ public:
         return Prefetch;
     }
 
-    using OperandFacts::operator();
-
-    uint64_t operator()(relations::BarrierOp& Op)
-    {
-        return add(Barrier, Op);
-    }
-
-    uint64_t operator()(relations::PrefetchOp& Op)
-    {
-        return add(Prefetch, Op);
-    }
-
-    uint64_t add(relations::Arm64Operand& Op)
-    {
-        return std::visit(*this, Op);
-    }
-
-protected:
-    using OperandFacts::add;
-
 private:
     std::map<relations::BarrierOp, uint64_t> Barrier;
     std::map<relations::PrefetchOp, uint64_t> Prefetch;
 };
 
-class Arm64Loader : public InstructionLoader
+class Arm64Loader : public InstructionLoader<Arm64Facts>
 {
 public:
     Arm64Loader() : InstructionLoader(4)
@@ -101,24 +100,23 @@ public:
         [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &CsHandle);
         assert(Err == CS_ERR_OK && "Failed to initialize ARM64 disassembler.");
         cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
+    }
 
-        // Call cs_close when the last Arm64Loader is destroyed.
-        CloseHandle.reset(new csh(CsHandle), cs_close);
+    ~Arm64Loader()
+    {
+        // TODO:
+        // cs_close(&CsHandle);
     }
 
     void operator()(const gtirb::Module& Module, DatalogProgram& Program) override;
 
 protected:
-    void decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
+    void decode(Arm64Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
 private:
-    struct Arm64Facts;
-    std::shared_ptr<Arm64Facts> Facts;
-
     std::optional<relations::Arm64Operand> build(const cs_arm64_op& CsOp);
-    std::optional<relations::Instruction> build(const cs_insn& CsInstruction);
+    std::optional<relations::Instruction> build(Arm64Facts& Facts, const cs_insn& CsInstruction);
 
-    std::shared_ptr<csh> CloseHandle;
     csh CsHandle = CS_ERR_ARCH;
 };
 

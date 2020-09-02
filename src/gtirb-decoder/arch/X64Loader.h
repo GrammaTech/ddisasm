@@ -32,7 +32,9 @@
 #include "../Relations.h"
 #include "../core/InstructionLoader.h"
 
-class X64Loader : public InstructionLoader
+using X64Facts = InstructionFacts;
+
+class X64Loader : public InstructionLoader<X64Facts>
 {
 public:
     X64Loader() : InstructionLoader{1}
@@ -41,25 +43,24 @@ public:
         [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_X86, CS_MODE_64, &CsHandle);
         assert(Err == CS_ERR_OK && "Failed to initialize X64 disassembler.");
         cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
+    }
 
-        // Call cs_close when the last X64Loader is destroyed.
-        CloseHandle.reset(new csh(CsHandle), cs_close);
+    ~X64Loader()
+    {
+        // TODO:
+        // cs_close(&CsHandle);
     }
 
     void operator()(const gtirb::Module& Module, DatalogProgram& Program) override;
 
 protected:
-    void decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
+    void decode(X64Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
 private:
-    struct X64Facts;
-    std::shared_ptr<X64Facts> Facts;
-
     std::optional<relations::Operand> build(const cs_x86_op& CsOp);
-    std::optional<relations::Instruction> build(const cs_insn& CsInstruction);
+    std::optional<relations::Instruction> build(X64Facts& Facts, const cs_insn& CsInstruction);
     std::tuple<std::string, std::string> splitMnemonic(const cs_insn& CsInstruction);
 
-    std::shared_ptr<csh> CloseHandle;
     csh CsHandle;
 };
 
