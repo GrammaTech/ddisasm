@@ -44,7 +44,7 @@ void Arm64Loader::decode(Arm64Facts& Facts, const uint8_t* Bytes, uint64_t Size,
 {
     // Decode instruction with Capstone.
     cs_insn* CsInsn;
-    size_t Count = cs_disasm(CsHandle, Bytes, Size, Addr, 1, &CsInsn);
+    size_t Count = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &CsInsn);
 
     // Build datalog instruction facts from Capstone instruction.
     std::optional<relations::Instruction> Instruction;
@@ -110,7 +110,7 @@ std::optional<relations::Arm64Operand> Arm64Loader::build(const cs_arm64_op& CsO
     using namespace relations;
 
     auto registerName = [this](uint64_t Reg) {
-        return (Reg == ARM_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(CsHandle, Reg));
+        return (Reg == ARM_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(*CsHandle, Reg));
     };
 
     switch(CsOp.type)

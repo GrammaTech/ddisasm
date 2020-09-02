@@ -39,10 +39,16 @@ class X64Loader : public InstructionLoader<X64Facts>
 public:
     X64Loader() : InstructionLoader{1}
     {
+        // Create smart Captone handle.
+        CsHandle.reset(new csh(0), [](csh* Handle) {
+            cs_close(Handle);
+            delete Handle;
+        });
+
         // Setup Capstone engine.
-        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_X86, CS_MODE_64, &CsHandle);
+        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_X86, CS_MODE_64, CsHandle.get());
         assert(Err == CS_ERR_OK && "Failed to initialize X64 disassembler.");
-        cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
+        cs_option(*CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
     }
 
     ~X64Loader()
@@ -61,7 +67,7 @@ private:
     std::optional<relations::Instruction> build(X64Facts& Facts, const cs_insn& CsInstruction);
     std::tuple<std::string, std::string> splitMnemonic(const cs_insn& CsInstruction);
 
-    csh CsHandle;
+    std::shared_ptr<csh> CsHandle;
 };
 
 #endif // SRC_GTIRB_DECODER_ARCH_X64DECODER_H_

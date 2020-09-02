@@ -96,16 +96,16 @@ class Arm64Loader : public InstructionLoader<Arm64Facts>
 public:
     Arm64Loader() : InstructionLoader(4)
     {
-        // Setup Capstone engine.
-        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &CsHandle);
-        assert(Err == CS_ERR_OK && "Failed to initialize ARM64 disassembler.");
-        cs_option(CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
-    }
+        // Create smart Captone handle.
+        CsHandle.reset(new csh(0), [](csh* Handle) {
+            cs_close(Handle);
+            delete Handle;
+        });
 
-    ~Arm64Loader()
-    {
-        // TODO:
-        // cs_close(&CsHandle);
+        // Setup Capstone engine.
+        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM64, CS_MODE_ARM, CsHandle.get());
+        assert(Err == CS_ERR_OK && "Failed to initialize ARM64 disassembler.");
+        cs_option(*CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
     }
 
     void operator()(const gtirb::Module& Module, DatalogProgram& Program) override;
@@ -117,7 +117,7 @@ private:
     std::optional<relations::Arm64Operand> build(const cs_arm64_op& CsOp);
     std::optional<relations::Instruction> build(Arm64Facts& Facts, const cs_insn& CsInstruction);
 
-    csh CsHandle = CS_ERR_ARCH;
+    std::shared_ptr<csh> CsHandle;
 };
 
 std::optional<const char*> barrierValue(const arm64_barrier_op Op);

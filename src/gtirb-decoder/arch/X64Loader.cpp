@@ -43,7 +43,7 @@ void X64Loader::decode(X64Facts& Facts, const uint8_t* Bytes, uint64_t Size, uin
 {
     // Decode instruction with Capstone.
     cs_insn* CsInsn;
-    size_t Count = cs_disasm(CsHandle, Bytes, Size, Addr, 1, &CsInsn);
+    size_t Count = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &CsInsn);
 
     // Build datalog instruction facts from Capstone instruction.
     std::optional<relations::Instruction> Instruction;
@@ -126,7 +126,7 @@ std::tuple<std::string, std::string> X64Loader::splitMnemonic(const cs_insn& CsI
 std::optional<relations::Operand> X64Loader::build(const cs_x86_op& CsOp)
 {
     auto registerName = [this](uint64_t Reg) {
-        return (Reg == X86_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(CsHandle, Reg));
+        return (Reg == X86_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(*CsHandle, Reg));
     };
 
     switch(CsOp.type)
