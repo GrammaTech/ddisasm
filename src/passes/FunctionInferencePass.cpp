@@ -82,7 +82,7 @@ void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Mod
     // TODO: Add support for ARM64 prologues.
     if(Module.getISA() == gtirb::ISA::X64)
     {
-        Loader.add<CodeBlockLoader<X64Loader, X64Facts>>();
+        Loader.add<CodeBlockLoader<X64Loader>>();
     }
     Loader.add(CfgLoader);
     Loader.add(SymbolicExpressionLoader);
