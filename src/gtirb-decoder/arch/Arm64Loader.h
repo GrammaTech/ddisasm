@@ -76,12 +76,12 @@ public:
         return std::visit(*this, Op);
     }
 
-    virtual const std::map<relations::BarrierOp, uint64_t>& barrier()
+    const std::map<relations::BarrierOp, uint64_t>& barrier() const
     {
         return Barrier;
     }
 
-    virtual const std::map<relations::PrefetchOp, uint64_t>& prefetch()
+    const std::map<relations::PrefetchOp, uint64_t>& prefetch() const
     {
         return Prefetch;
     }

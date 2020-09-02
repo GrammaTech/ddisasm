@@ -53,17 +53,17 @@ public:
         return index(Indirect, Op);
     }
 
-    virtual const std::map<relations::ImmOp, uint64_t>& imm()
+    const std::map<relations::ImmOp, uint64_t>& imm() const
     {
         return Imm;
     }
 
-    virtual const std::map<relations::RegOp, uint64_t>& reg()
+    const std::map<relations::RegOp, uint64_t>& reg() const
     {
         return Reg;
     }
 
-    virtual const std::map<relations::IndirectOp, uint64_t>& indirect()
+    const std::map<relations::IndirectOp, uint64_t>& indirect() const
     {
         return Indirect;
     }
@@ -104,12 +104,12 @@ public:
         InvalidInstructions.push_back(A);
     }
 
-    virtual const std::vector<relations::Instruction>& instructions()
+    const std::vector<relations::Instruction>& instructions() const
     {
         return Instructions;
     }
 
-    virtual const std::vector<gtirb::Addr>& invalid()
+    const std::vector<gtirb::Addr>& invalid() const
     {
         return InvalidInstructions;
     }
