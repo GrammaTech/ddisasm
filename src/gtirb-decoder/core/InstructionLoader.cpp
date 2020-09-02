@@ -22,38 +22,6 @@
 //===----------------------------------------------------------------------===//
 #include "InstructionLoader.h"
 
-void InstructionLoader::load(const gtirb::Module& Module)
-{
-    for(const auto& Section : Module.sections())
-    {
-        bool Executable = Section.isFlagSet(gtirb::SectionFlag::Executable);
-        if(Executable)
-        {
-            for(const auto& ByteInterval : Section.byte_intervals())
-            {
-                load(ByteInterval);
-            }
-        }
-    }
-}
-
-void InstructionLoader::load(const gtirb::ByteInterval& ByteInterval)
-{
-    assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
-
-    uint64_t Addr = static_cast<uint64_t>(*ByteInterval.getAddress());
-    uint64_t Size = ByteInterval.getInitializedSize();
-    auto Data = ByteInterval.rawBytes<const uint8_t>();
-
-    while(Size > 0)
-    {
-        decode(Data, Size, Addr);
-        Addr += InstructionSize;
-        Data += InstructionSize;
-        Size -= InstructionSize;
-    }
-}
-
 std::string uppercase(std::string S)
 {
     std::transform(S.begin(), S.end(), S.begin(),

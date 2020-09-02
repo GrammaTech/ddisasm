@@ -33,44 +33,44 @@
 class OperandFacts
 {
 public:
-    virtual const std::map<relations::ImmOp, uint64_t>& imm()
-    {
-        return Imm;
-    }
-
-    virtual const std::map<relations::RegOp, uint64_t>& reg()
-    {
-        return Reg;
-    }
-
-    virtual const std::map<relations::IndirectOp, uint64_t>& indirect()
-    {
-        return Indirect;
-    }
-
-    uint64_t add(relations::Operand& Op)
+    uint64_t add(const relations::Operand& Op)
     {
         return std::visit(*this, Op);
     }
 
     uint64_t operator()(const relations::ImmOp& Op)
     {
-        return add(Imm, Op);
+        return index(Imm, Op);
     }
 
     uint64_t operator()(const relations::RegOp& Op)
     {
-        return add(Reg, Op);
+        return index(Reg, Op);
     }
 
     uint64_t operator()(const relations::IndirectOp& Op)
     {
-        return add(Indirect, Op);
+        return index(Indirect, Op);
+    }
+
+    const std::map<relations::ImmOp, uint64_t>& imm() const
+    {
+        return Imm;
+    }
+
+    const std::map<relations::RegOp, uint64_t>& reg() const
+    {
+        return Reg;
+    }
+
+    const std::map<relations::IndirectOp, uint64_t>& indirect() const
+    {
+        return Indirect;
     }
 
 protected:
     template <typename T>
-    uint64_t add(std::map<T, uint64_t>& OpTable, const T& Op)
+    uint64_t index(std::map<T, uint64_t>& OpTable, const T& Op)
     {
         auto [Iter, Inserted] = OpTable.try_emplace(Op, Index);
         if(Inserted)
@@ -89,25 +89,27 @@ private:
     std::map<relations::IndirectOp, uint64_t> Indirect;
 };
 
-class InstructionFacts
+class InstructionFacts : public OperandFacts
 {
 public:
-    void add(relations::Instruction& I)
+    using OperandFacts::add;
+
+    void add(const relations::Instruction& I)
     {
         Instructions.push_back(I);
     }
 
-    void add(gtirb::Addr A)
+    void invalid(gtirb::Addr A)
     {
         InvalidInstructions.push_back(A);
     }
 
-    virtual const std::vector<relations::Instruction>& instructions()
+    const std::vector<relations::Instruction>& instructions() const
     {
         return Instructions;
     }
 
-    virtual const std::vector<gtirb::Addr>& invalid()
+    const std::vector<gtirb::Addr>& invalid() const
     {
         return InvalidInstructions;
     }
@@ -117,40 +119,77 @@ private:
     std::vector<gtirb::Addr> InvalidInstructions;
 };
 
+template <typename T>
 class InstructionLoader
 {
 public:
     virtual ~InstructionLoader(){};
 
-    virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program) = 0;
+    void operator()(const gtirb::Module& Module, DatalogProgram& Program)
+    {
+        T Facts;
+        load(Module, Facts);
+        insert(Facts, Program);
+    }
 
 protected:
     explicit InstructionLoader(uint8_t N) : InstructionSize{N} {};
 
-    virtual void load(const gtirb::Module& Module);
-    virtual void load(const gtirb::ByteInterval& ByteInterval);
+    virtual void insert(const T& Facts, DatalogProgram& Program) = 0;
+
+    virtual void load(const gtirb::Module& Module, T& Facts)
+    {
+        for(const auto& Section : Module.sections())
+        {
+            bool Executable = Section.isFlagSet(gtirb::SectionFlag::Executable);
+            if(Executable)
+            {
+                for(const auto& ByteInterval : Section.byte_intervals())
+                {
+                    load(ByteInterval, Facts);
+                }
+            }
+        }
+    }
+
+    virtual void load(const gtirb::ByteInterval& ByteInterval, T& Facts)
+    {
+        assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
+
+        uint64_t Addr = static_cast<uint64_t>(*ByteInterval.getAddress());
+        uint64_t Size = ByteInterval.getInitializedSize();
+        auto Data = ByteInterval.rawBytes<const uint8_t>();
+
+        while(Size > 0)
+        {
+            decode(Facts, Data, Size, Addr);
+            Addr += InstructionSize;
+            Data += InstructionSize;
+            Size -= InstructionSize;
+        }
+    }
 
     // Disassemble bytes and build Instruction and Operand facts.
-    virtual void decode(const uint8_t* Bytes, uint64_t Size, uint64_t Addr) = 0;
+    virtual void decode(T& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) = 0;
 
     // We default to decoding instructions at every byte offset.
     uint8_t InstructionSize = 1;
 };
 
 // Decorator for loading instructions from known code blocks.
-template <typename T>
+template <typename T, typename U>
 class CodeBlockLoader : public T
 {
 protected:
-    void load(const gtirb::Module& Module) override
+    void load(const gtirb::Module& Module, U& Facts) override
     {
         for(auto& Block : Module.code_blocks())
         {
-            load(Block);
+            load(Block, Facts);
         }
     }
 
-    void load(const gtirb::CodeBlock& Block)
+    void load(const gtirb::CodeBlock& Block, U& Facts)
     {
         assert(Block.getAddress() && "Found code block without address.");
         gtirb::Addr Addr = *Block.getAddress();
@@ -165,7 +204,7 @@ protected:
 
         // TODO: Add `InstructionLimit` parameter for decoding a number of
         //       instructions from the beginning of the code block.
-        T::decode(Data, Size, static_cast<uint64_t>(Addr));
+        T::decode(Facts, Data, Size, static_cast<uint64_t>(Addr));
     }
 };
 

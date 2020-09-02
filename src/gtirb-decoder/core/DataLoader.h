@@ -30,13 +30,17 @@
 #include "../DatalogProgram.h"
 #include "../Relations.h"
 
+struct DataFacts
+{
+    gtirb::Addr Min, Max;
+    std::vector<relations::Data<uint8_t>> Bytes;
+    std::vector<relations::Data<gtirb::Addr>> Addresses;
+};
+
 // Load data sections.
 class DataLoader
 {
 public:
-    template <typename T>
-    using Data = relations::Data<T>;
-
     enum class Pointer
     {
         DWORD = 4,
@@ -49,19 +53,11 @@ public:
     virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program);
 
 protected:
-    virtual void load(const gtirb::Module& Module);
-    virtual void load(const gtirb::ByteInterval& Bytes);
+    virtual void load(const gtirb::Module& Module, DataFacts& Facts);
+    virtual void load(const gtirb::ByteInterval& Bytes, DataFacts& Facts);
 
-    // Test that a value N is a possible address.
-    virtual bool address(gtirb::Addr N)
-    {
-        return ((N >= Min) && (N <= Max));
-    };
-
+private:
     Pointer PointerSize;
-    gtirb::Addr Min, Max;
-    std::vector<Data<uint8_t>> Bytes;
-    std::vector<Data<gtirb::Addr>> Addresses;
 };
 
 #endif // SRC_GTIRB_DECODER_CORE_DATALOADER_H_

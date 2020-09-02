@@ -26,19 +26,20 @@
 
 void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
 {
-    load(Module);
+    DataFacts Facts;
+    load(Module, Facts);
 
-    Program.insert("data_byte", Bytes);
-    Program.insert("address_in_data", Addresses);
+    Program.insert("data_byte", std::move(Facts.Bytes));
+    Program.insert("address_in_data", std::move(Facts.Addresses));
 }
 
-void DataLoader::load(const gtirb::Module& Module)
+void DataLoader::load(const gtirb::Module& Module, DataFacts& Facts)
 {
     assert(Module.getAddress() && "Module has non-addressable section data.");
-    Min = *Module.getAddress();
+    Facts.Min = *Module.getAddress();
 
     assert(Module.getSize() && "Module has non-calculable size.");
-    Max = *Module.getAddress() + *Module.getSize();
+    Facts.Max = *Module.getAddress() + *Module.getSize();
 
     for(const auto& Section : Module.sections())
     {
@@ -49,13 +50,13 @@ void DataLoader::load(const gtirb::Module& Module)
         {
             for(const auto& ByteInterval : Section.byte_intervals())
             {
-                load(ByteInterval);
+                load(ByteInterval, Facts);
             }
         }
     }
 }
 
-void DataLoader::load(const gtirb::ByteInterval& ByteInterval)
+void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
 {
     assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
 
@@ -67,7 +68,7 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval)
     {
         // Single byte.
         uint8_t Byte = *Data;
-        Bytes.push_back({Addr, Byte});
+        Facts.Bytes.push_back({Addr, Byte});
 
         // Possible address.
         if(Size >= static_cast<uint64_t>(PointerSize))
@@ -84,9 +85,9 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval)
                     break;
             }
 
-            if(address(Value))
+            if((Value >= Facts.Min) && (Value <= Facts.Max))
             {
-                Addresses.push_back({Addr, Value});
+                Facts.Addresses.push_back({Addr, Value});
             }
         }
 
