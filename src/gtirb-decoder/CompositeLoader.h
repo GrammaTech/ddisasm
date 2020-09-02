@@ -51,7 +51,7 @@ public:
     template <typename T, typename... Args>
     void add(Args&&... A)
     {
-        Loaders.push_back(T{A...});
+        Loaders.push_back(T{std::forward<Args>(A)...});
     }
 
     // Build a DatalogProgram (i.e. SouffleProgram).
