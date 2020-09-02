@@ -27,11 +27,8 @@
 
 #include "X64Loader.h"
 
-void X64Loader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
+void X64Loader::insert(const X64Facts& Facts, DatalogProgram& Program)
 {
-    X64Facts Facts;
-    load(Module, Facts);
-
     Program.insert("instruction_complete", Facts.instructions());
     Program.insert("invalid_op_code", Facts.invalid());
     Program.insert("op_immediate", Facts.imm());

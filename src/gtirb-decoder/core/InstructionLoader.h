@@ -125,10 +125,17 @@ class InstructionLoader
 public:
     virtual ~InstructionLoader(){};
 
-    virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program) = 0;
+    void operator()(const gtirb::Module& Module, DatalogProgram& Program)
+    {
+        T Facts;
+        load(Module, Facts);
+        insert(Facts, Program);
+    }
 
 protected:
     explicit InstructionLoader(uint8_t N) : InstructionSize{N} {};
+
+    virtual void insert(const T& Facts, DatalogProgram& Program) = 0;
 
     virtual void load(const gtirb::Module& Module, T& Facts)
     {

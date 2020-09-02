@@ -26,11 +26,8 @@
 
 #include "Arm64Loader.h"
 
-void Arm64Loader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
+void Arm64Loader::insert(const Arm64Facts& Facts, DatalogProgram& Program)
 {
-    Arm64Facts Facts;
-    load(Module, Facts);
-
     Program.insert("instruction_complete", Facts.instructions());
     Program.insert("invalid_op_code", Facts.invalid());
     Program.insert("op_immediate", Facts.imm());

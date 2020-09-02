@@ -51,10 +51,9 @@ public:
         cs_option(*CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
     }
 
-    void operator()(const gtirb::Module& Module, DatalogProgram& Program) override;
-
 protected:
     void decode(X64Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
+    void insert(const X64Facts& Facts, DatalogProgram& Program) override;
 
 private:
     std::optional<relations::Operand> build(const cs_x86_op& CsOp);
