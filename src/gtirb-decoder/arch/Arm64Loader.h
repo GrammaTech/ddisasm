@@ -59,19 +59,19 @@ class Arm64Facts : public InstructionFacts
 public:
     using InstructionFacts::operator();
 
-    uint64_t operator()(relations::BarrierOp& Op)
+    uint64_t operator()(const relations::BarrierOp& Op)
     {
         return index(Barrier, Op);
     }
 
-    uint64_t operator()(relations::PrefetchOp& Op)
+    uint64_t operator()(const relations::PrefetchOp& Op)
     {
         return index(Prefetch, Op);
     }
 
     using InstructionFacts::add;
 
-    uint64_t add(relations::Arm64Operand& Op)
+    uint64_t add(const relations::Arm64Operand& Op)
     {
         return std::visit(*this, Op);
     }

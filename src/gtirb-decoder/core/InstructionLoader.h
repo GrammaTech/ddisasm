@@ -33,7 +33,7 @@
 class OperandFacts
 {
 public:
-    virtual uint64_t add(relations::Operand& Op)
+    uint64_t add(const relations::Operand& Op)
     {
         return std::visit(*this, Op);
     }
@@ -94,7 +94,7 @@ class InstructionFacts : public OperandFacts
 public:
     using OperandFacts::add;
 
-    void add(relations::Instruction& I)
+    void add(const relations::Instruction& I)
     {
         Instructions.push_back(I);
     }
