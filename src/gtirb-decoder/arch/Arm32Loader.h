@@ -31,7 +31,11 @@
 #include "../Relations.h"
 #include "../core/InstructionLoader.h"
 
-using Arm32Facts = InstructionFacts;
+struct Arm32Facts
+{
+    InstructionFacts Instructions;
+    OperandFacts Operands;
+};
 
 class Arm32Loader : public InstructionLoader<Arm32Facts>
 {
