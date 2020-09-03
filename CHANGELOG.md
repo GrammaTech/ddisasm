@@ -1,3 +1,6 @@
+# 1.2.0
+* Refactor `gtirb-decoder` for more versatile loading of GTIRB.
+
 # 1.1.1
 
 * Restructure gtirb-to-datalog into `gtirb-decoder` component.
