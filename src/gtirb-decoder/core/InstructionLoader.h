@@ -89,11 +89,9 @@ private:
     std::map<relations::IndirectOp, uint64_t> Indirect;
 };
 
-class InstructionFacts : public OperandFacts
+class InstructionFacts
 {
 public:
-    using OperandFacts::add;
-
     void add(const relations::Instruction& I)
     {
         Instructions.push_back(I);
