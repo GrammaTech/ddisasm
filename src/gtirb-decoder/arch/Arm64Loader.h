@@ -54,10 +54,10 @@ namespace relations
     using Arm64Operand = std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp>;
 } // namespace relations
 
-class Arm64Facts : public InstructionFacts
+class Arm64OperandFacts : public OperandFacts
 {
 public:
-    using InstructionFacts::operator();
+    using OperandFacts::operator();
 
     uint64_t operator()(const relations::BarrierOp& Op)
     {
@@ -69,7 +69,7 @@ public:
         return index(Prefetch, Op);
     }
 
-    using InstructionFacts::add;
+    using OperandFacts::add;
 
     uint64_t add(const relations::Arm64Operand& Op)
     {
@@ -89,6 +89,12 @@ public:
 private:
     std::map<relations::BarrierOp, uint64_t> Barrier;
     std::map<relations::PrefetchOp, uint64_t> Prefetch;
+};
+
+struct Arm64Facts
+{
+    InstructionFacts Instructions;
+    Arm64OperandFacts Operands;
 };
 
 class Arm64Loader : public InstructionLoader<Arm64Facts>

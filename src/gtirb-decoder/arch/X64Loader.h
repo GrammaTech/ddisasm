@@ -32,7 +32,11 @@
 #include "../Relations.h"
 #include "../core/InstructionLoader.h"
 
-using X64Facts = InstructionFacts;
+struct X64Facts
+{
+    InstructionFacts Instructions;
+    OperandFacts Operands;
+};
 
 class X64Loader : public InstructionLoader<X64Facts>
 {
