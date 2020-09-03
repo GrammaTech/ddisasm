@@ -37,7 +37,7 @@ std::optional<DatalogProgram> DatalogProgram::load(const gtirb::Module &Module)
 {
     auto Target = std::make_tuple(Module.getFileFormat(), Module.getISA());
     auto Loader = loaders().at(Target)();
-    return Loader->load(Module);
+    return Loader.load(Module);
 }
 
 void DatalogProgram::writeFacts(const std::string &Directory)

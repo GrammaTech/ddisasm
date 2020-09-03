@@ -30,17 +30,15 @@
 #include "../core/SectionLoader.h"
 #include "../format/PeLoader.h"
 
-class PeX64Loader : public CompositeLoader
+CompositeLoader PeX64Loader()
 {
-public:
-    PeX64Loader() : CompositeLoader("souffle_disasm_x64")
-    {
-        add(ModuleLoader);
-        add(SectionLoader);
-        add<X64Loader>();
-        add<DataLoader>(DataLoader::Pointer::QWORD);
-        add(PeSymbolLoader);
-    }
+    CompositeLoader Loader("souffle_disasm_x64");
+    Loader.add(ModuleLoader);
+    Loader.add(SectionLoader);
+    Loader.add<X64Loader>();
+    Loader.add<DataLoader>(DataLoader::Pointer::QWORD);
+    Loader.add(PeSymbolLoader);
+    return Loader;
 };
 
 #endif // SRC_GTIRB_DECODER_TARGET_PEX64LOADER_H_

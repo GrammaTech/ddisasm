@@ -22,8 +22,6 @@
 //===----------------------------------------------------------------------===//
 #include "Registration.h"
 
-#include <memory>
-
 #include "AuxDataSchema.h"
 
 #include "gtirb-decoder/DatalogProgram.h"
@@ -65,18 +63,14 @@ void registerAuxDataTypes()
 void registerDatalogLoaders()
 {
     // Register ELF-X64 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::X64},
-                                   []() { return std::make_unique<ElfX64Loader>(); });
-
-    // Register ELF-ARM64 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::ARM64},
-                                   []() { return std::make_unique<ElfArm64Loader>(); });
+    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::X64}, ElfX64Loader);
 
     // Register ELF-ARM32 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::ARM},
-                                   []() { return std::make_unique<ElfArm32Loader>(); });
+    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::ARM}, ElfArm32Loader);
 
     // Register PE-X64 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::PE, gtirb::ISA::X64},
-                                   []() { return std::make_unique<PeX64Loader>(); });
+    DatalogProgram::registerLoader({gtirb::FileFormat::PE, gtirb::ISA::X64}, PeX64Loader);
+
+    // Register ELF-ARM64 target.
+    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::ARM64}, ElfArm64Loader);
 }

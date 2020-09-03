@@ -1,4 +1,4 @@
-//===- ElfARM32Loader.h -------------------------------------------*- C++ -*-===//
+//===- ElfARM32Loader.h -----------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -30,18 +30,16 @@
 #include "../core/SectionLoader.h"
 #include "../format/ElfLoader.h"
 
-class ElfArm32Loader : public CompositeLoader
+CompositeLoader ElfArm32Loader()
 {
-public:
-    ElfArm32Loader() : CompositeLoader("souffle_disasm_arm32")
-    {
-        add(ModuleLoader);
-        add(SectionLoader);
-        add<Arm32Loader>();
-        add<DataLoader>(DataLoader::Pointer::DWORD);
-        add(ElfSymbolLoader);
-        add(ElfExceptionLoader);
-    }
-};
+    CompositeLoader Loader("souffle_disasm_arm32");
+    Loader.add(ModuleLoader);
+    Loader.add(SectionLoader);
+    Loader.add<Arm32Loader>();
+    Loader.add<DataLoader>(DataLoader::Pointer::DWORD);
+    Loader.add(ElfSymbolLoader);
+    Loader.add(ElfExceptionLoader);
+    return Loader;
+}
 
 #endif // SRC_GTIRB_DECODER_TARGET_ELFARM32LOADER_H_

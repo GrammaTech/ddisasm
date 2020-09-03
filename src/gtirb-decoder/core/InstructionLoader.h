@@ -123,6 +123,8 @@ template <typename T>
 class InstructionLoader
 {
 public:
+    using FactsType = T;
+
     virtual ~InstructionLoader(){};
 
     void operator()(const gtirb::Module& Module, DatalogProgram& Program)
@@ -177,11 +179,13 @@ protected:
 };
 
 // Decorator for loading instructions from known code blocks.
-template <typename T, typename U>
+template <typename T>
 class CodeBlockLoader : public T
 {
 protected:
-    void load(const gtirb::Module& Module, U& Facts) override
+    using FactsType = typename T::FactsType;
+
+    void load(const gtirb::Module& Module, FactsType& Facts) override
     {
         for(auto& Block : Module.code_blocks())
         {
@@ -189,7 +193,7 @@ protected:
         }
     }
 
-    void load(const gtirb::CodeBlock& Block, U& Facts)
+    void load(const gtirb::CodeBlock& Block, FactsType& Facts)
     {
         assert(Block.getAddress() && "Found code block without address.");
         gtirb::Addr Addr = *Block.getAddress();
