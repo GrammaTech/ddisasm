@@ -80,7 +80,7 @@ public:
 
     // Loader factory registration.
     using Target = std::tuple<gtirb::FileFormat, gtirb::ISA>;
-    using Factory = std::function<std::unique_ptr<CompositeLoader>()>;
+    using Factory = std::function<CompositeLoader()>;
 
     static void registerLoader(Target T, Factory F)
     {

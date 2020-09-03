@@ -30,18 +30,16 @@
 #include "../core/SectionLoader.h"
 #include "../format/ElfLoader.h"
 
-class ElfArm64Loader : public CompositeLoader
+CompositeLoader ElfArm64Loader()
 {
-public:
-    ElfArm64Loader() : CompositeLoader("souffle_disasm_arm64")
-    {
-        add(ModuleLoader);
-        add(SectionLoader);
-        add<Arm64Loader>();
-        add<DataLoader>(DataLoader::Pointer::QWORD);
-        add(ElfSymbolLoader);
-        add(ElfExceptionLoader);
-    }
-};
+    CompositeLoader Loader("souffle_disasm_arm64");
+    Loader.add(ModuleLoader);
+    Loader.add(SectionLoader);
+    Loader.add<Arm64Loader>();
+    Loader.add<DataLoader>(DataLoader::Pointer::QWORD);
+    Loader.add(ElfSymbolLoader);
+    Loader.add(ElfExceptionLoader);
+    return Loader;
+}
 
 #endif // SRC_GTIRB_DECODER_TARGET_ELFARM64LOADER_H_
