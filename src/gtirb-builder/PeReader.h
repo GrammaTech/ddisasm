@@ -25,6 +25,15 @@
 
 #include "./GtirbBuilder.h"
 
+// A DataDirectory is a tuple of the form {Type, Address, Size}.
+using DataDirectory = std::tuple<std::string, uint64_t, uint64_t>;
+
+// An ImportEntry is a tuple of the form {Iat_address, Ordinal, Function, Library}.
+using ImportEntry = std::tuple<uint64_t, int64_t, std::string, std::string>;
+
+// An ExportEntry is a tuple of the form {Address, Ordinal, Name}.
+using ExportEntry = std::tuple<uint64_t, int64_t, std::string>;
+
 class PeReader : public GtirbBuilder
 {
 public:

@@ -23,19 +23,16 @@
 #ifndef SRC_GTIRB_DECODER_FORMAT_PELOADER_H_
 #define SRC_GTIRB_DECODER_FORMAT_PELOADER_H_
 
+#include <string>
+#include <tuple>
+
+#include <gtirb/gtirb.hpp>
+
+#include "../../gtirb-builder/PeReader.h"
 #include "../CompositeLoader.h"
 #include "../Relations.h"
 
 void PeSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program);
-
-// DataDirectory: (type, addr, size).
-using DataDirectory = std::tuple<std::string, uint64_t, uint64_t>;
-
-// ImportEntry: (iat_address, ordinal, function, library).
-using ImportEntry = std::tuple<uint64_t, int64_t, std::string, std::string>;
-
-// ExportEntry: (address, ordinal, name).
-using ExportEntry = std::tuple<uint64_t, int64_t, std::string>;
 
 namespace souffle
 {

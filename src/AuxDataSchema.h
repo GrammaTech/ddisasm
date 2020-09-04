@@ -35,13 +35,6 @@ using ElfRelocation = std::tuple<uint64_t, std::string, std::string, int64_t>;
 using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>;
 using SectionProperties = std::tuple<uint64_t, uint64_t>;
 
-// DataDirectory: (type, addr, size).
-using DataDirectory = std::tuple<std::string, uint64_t, uint64_t>;
-// ImportEntry: (iat_address, ordinal, function, library).
-using ImportEntry = std::tuple<uint64_t, int64_t, std::string, std::string>;
-// ExportEntry: (address, ordinal, name).
-using ExportEntry = std::tuple<uint64_t, int64_t, std::string>;
-
 /// \file AuxDataSchema.h
 /// \ingroup AUXDATA_GROUP
 /// \brief AuxData types used by ddisasm that are not sanctioned.
@@ -146,7 +139,8 @@ namespace gtirb
         struct DataDirectories
         {
             static constexpr const char* Name = "dataDirectories";
-            typedef std::vector<DataDirectory> Type;
+            // Tuples of the form {Type, Address, Size}.
+            typedef std::vector<std::tuple<std::string, uint64_t, uint64_t>> Type;
         };
 
         /// \brief Auxiliary data for the UUIDs of imported symbols in a PE file.
@@ -167,7 +161,8 @@ namespace gtirb
         struct ImportEntries
         {
             static constexpr const char* Name = "importEntries";
-            typedef std::vector<ImportEntry> Type;
+            // Tuples of the form {Iat_address, Ordinal, Function, Library}.
+            typedef std::vector<std::tuple<uint64_t, int64_t, std::string, std::string>> Type;
         };
 
         /// \brief Auxiliary data that stores the size of symbolic expressions.
