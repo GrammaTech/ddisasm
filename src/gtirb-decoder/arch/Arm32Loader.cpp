@@ -55,6 +55,7 @@ void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Fact
     uint64_t Size = ByteInterval.getInitializedSize();
     auto Data = ByteInterval.rawBytes<const uint8_t>();
 
+    // Thumb instruction candidates are distinguished by the least significant bit (1).
     if(Thumb)
     {
         Addr++;
