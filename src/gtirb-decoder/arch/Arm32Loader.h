@@ -67,7 +67,6 @@ private:
     std::optional<relations::Operand> build(const cs_arm_op& CsOp);
     std::optional<relations::Instruction> build(Arm32Facts& Facts, const cs_insn& CsInstruction);
 
-    size_t Increment;
     std::shared_ptr<csh> CsHandle;
 };
 

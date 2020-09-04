@@ -62,11 +62,10 @@ void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Fact
 
     while(Size >= InstructionSize)
     {
-        Increment = InstructionSize;
         decode(Facts, Data, Size, Addr);
-        Addr += Increment;
-        Data += Increment;
-        Size -= Increment;
+        Addr += InstructionSize;
+        Data += InstructionSize;
+        Size -= InstructionSize;
     }
 }
 
@@ -81,7 +80,6 @@ void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size,
     if(Count > 0)
     {
         Instruction = build(Facts, *CsInsn);
-        Increment = CsInsn->size;
     }
 
     if(Instruction)
