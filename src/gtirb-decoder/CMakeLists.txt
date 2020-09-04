@@ -16,8 +16,7 @@ set(DATALOG_DECODER_TARGETS
 add_library(gtirb_decoder STATIC Relations.cpp DatalogProgram.cpp
                                  ${DATALOG_DECODER_TARGETS})
 
-target_link_libraries(gtirb_decoder gtirb ${CAPSTONE} ${ehp_LIBRARIES}
-                      ${LIEF_LIBRARIES})
+target_link_libraries(gtirb_decoder gtirb ${CAPSTONE} ${ehp_LIBRARIES})
 
 target_compile_definitions(gtirb_decoder PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(gtirb_decoder PRIVATE RAM_DOMAIN_SIZE=64)

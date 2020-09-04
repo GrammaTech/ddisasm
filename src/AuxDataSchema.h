@@ -104,13 +104,6 @@ namespace gtirb
             typedef std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> Type;
         };
 
-        /// \brief Auxiliary data covering PE section properties.
-        struct PeSectionProperties
-        {
-            static constexpr const char* Name = "peSectionProperties";
-            typedef std::map<gtirb::UUID, uint64_t> Type;
-        };
-
         /// \brief Auxiliary data covering cfi directives.
         struct CfiDirectives
         {
@@ -133,36 +126,6 @@ namespace gtirb
         {
             static constexpr const char* Name = "libraryPaths";
             typedef std::vector<std::string> Type;
-        };
-
-        /// \brief Auxiliary data that tracks data directories for windows binaries.
-        struct DataDirectories
-        {
-            static constexpr const char* Name = "dataDirectories";
-            // Tuples of the form {Type, Address, Size}.
-            typedef std::vector<std::tuple<std::string, uint64_t, uint64_t>> Type;
-        };
-
-        /// \brief Auxiliary data for the UUIDs of imported symbols in a PE file.
-        struct PeImportedSymbols
-        {
-            static constexpr const char* Name = "peImportedSymbols";
-            typedef std::vector<gtirb::UUID> Type;
-        };
-
-        /// \brief Auxiliary data for the UUIDs of exported symbols in a PE file.
-        struct PeExportedSymbols
-        {
-            static constexpr const char* Name = "peExportedSymbols";
-            typedef std::vector<gtirb::UUID> Type;
-        };
-
-        /// \brief Auxiliary data representing the import table of a PE file.
-        struct ImportEntries
-        {
-            static constexpr const char* Name = "importEntries";
-            // Tuples of the form {Iat_address, Ordinal, Function, Library}.
-            typedef std::vector<std::tuple<uint64_t, int64_t, std::string, std::string>> Type;
         };
 
         /// \brief Auxiliary data that stores the size of symbolic expressions.
