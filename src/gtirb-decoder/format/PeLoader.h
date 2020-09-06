@@ -28,7 +28,6 @@
 
 #include <gtirb/gtirb.hpp>
 
-#include "../../gtirb-builder/PeReader.h"
 #include "../CompositeLoader.h"
 #include "../Relations.h"
 
