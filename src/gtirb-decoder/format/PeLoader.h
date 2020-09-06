@@ -33,11 +33,4 @@
 
 void PeSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program);
 
-namespace souffle
-{
-    souffle::tuple &operator<<(souffle::tuple &t, const DataDirectory &DataDirectory);
-
-    souffle::tuple &operator<<(souffle::tuple &t, const ImportEntry &ImportEntry);
-} // namespace souffle
-
 #endif // SRC_GTIRB_DECODER_FORMAT_PELOADER_H_
