@@ -1,9 +1,9 @@
 # 1.2.0
+* Register value analysis can track values through the stack.
 * Refactor `gtirb-decoder` for more versatile loading of GTIRB.
 
 # 1.1.1
 
-* Register value analysis can track values through the stack.
 * Restructure gtirb-to-datalog into `gtirb-decoder` component.
 * Move `ddisasm_main.cpp` to `Main.cpp`.
 * Move `GtirbModuleDisassembler.cpp` to `Disassembler.cpp`.
