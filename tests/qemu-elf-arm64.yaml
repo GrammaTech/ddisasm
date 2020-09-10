@@ -1,0 +1,30 @@
+default: &default
+  path: examples/arm64
+
+  # Compilation configuration.
+  build:
+    c: ["aarch64-linux-gnu-gcc"]
+    cpp: ["aarch64-linux-gnu-g++"]
+    optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
+    flags: []
+
+  # Reassembly configuration.
+  reassemble:
+    compiler: "aarch64-linux-gnu-gcc"
+    flags: []
+    skip: false
+
+  # Test configuration.
+  test:
+    wrapper: null
+    strip: false
+    skip: false
+
+tests:
+  - name: hello
+    binary: hello
+    <<: *default
+
+  - name: password
+    binary: password
+    <<: *default
