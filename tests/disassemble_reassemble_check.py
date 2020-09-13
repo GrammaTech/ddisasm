@@ -67,7 +67,7 @@ def make(target=""):
         return ["nmake", "/E", "/F", "Makefile.windows"] + target
 
 
-def compile(compiler, cxx_compiler, optimizations, extra_flags, exec_wrapper):
+def compile(compiler, cxx_compiler, optimizations, extra_flags, exec_wrapper=None):
     """
     Clean the project and compile it using the compiler
     'compiler', the cxx compiler 'cxx_compiler' and the flags in

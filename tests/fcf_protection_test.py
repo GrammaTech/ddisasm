@@ -6,7 +6,7 @@ import platform
 from disassemble_reassemble_check import (
     cd,
     compile,
-    disassemble_reassemble_test,
+    disassemble_reassemble_test as dis_reasm_test,
 )
 
 ex_dir = Path("./examples/")
