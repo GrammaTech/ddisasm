@@ -34,6 +34,7 @@ class TestExamples(unittest.TestCase):
             "optimizations": config["build"]["optimizations"],
             "strip": config["test"].get("strip", False),
             "skip_test": config["test"].get("skip", False),
+            "exec_wrapper": config["test"].get("wrapper"),
         }
         if config["reassemble"].get("skip", False):
             args["reassemble_function"] = skip_reassemble
