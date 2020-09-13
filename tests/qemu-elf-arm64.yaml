@@ -1,5 +1,6 @@
 default: &default
-  path: examples/arm64
+  path: examples
+  binary: ex
 
   # Compilation configuration.
   build:
@@ -24,7 +25,14 @@ tests:
   - name: hello
     binary: hello
     <<: *default
+    path: examples/arm64
 
   - name: password
     binary: password
     <<: *default
+    path: examples/arm64
+
+  - name: ex1
+    <<: *default
+    test:
+      wrapper: "qemu-aarch64 -L /usr/aarch64-linux-gnu"
