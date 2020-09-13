@@ -1,3 +1,7 @@
+distro:
+  name: Ubuntu
+  version: ["18.04", "16.04"]
+
 default: &default
   path: examples
   binary: ex

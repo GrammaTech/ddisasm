@@ -1,12 +1,29 @@
+import platform
 import unittest
 from pathlib import Path
 
 import yaml
+import distro
 
 from disassemble_reassemble_check import (
     disassemble_reassemble_test as drt,
     skip_reassemble,
 )
+
+def compatible_test(config, test):
+    # Check the test case is compatible with this platform.
+    if "platform" in config:
+        if platform.system() != config["platform"]:
+            return False
+
+    # Check the test case is compatible with this distro.
+    if "distro" in config:
+        if distro.name() not in config["distro"]["name"]:
+            return False
+        if distro.version() not in config["distro"]["version"]:
+            return False
+
+    return True
 
 class TestExamples(unittest.TestCase):
     def setUp(self):
@@ -17,9 +34,11 @@ class TestExamples(unittest.TestCase):
             # Parse YAML config file.
             with open(path) as f:
                 config = yaml.safe_load(f)
-            # Run all test cases.
+            # Run all test cases for this host.
             for test in config["tests"]:
                 with self.subTest(test=test):
+                    if not compatible_test(config, test):
+                        self.skipTest("skipping incompatible test")
                     self.disassemble_example(test)
 
     def disassemble_example(self, config):
