@@ -10,6 +10,7 @@ from disassemble_reassemble_check import (
     skip_reassemble,
 )
 
+
 def compatible_test(config, test):
     # Check the test case is compatible with this platform.
     if "platform" in config:
@@ -24,6 +25,7 @@ def compatible_test(config, test):
             return False
 
     return True
+
 
 class TestExamples(unittest.TestCase):
     def setUp(self):
@@ -60,5 +62,5 @@ class TestExamples(unittest.TestCase):
         self.assertTrue(drt(path, binary, **args))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

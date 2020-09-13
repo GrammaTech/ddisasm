@@ -188,7 +188,9 @@ def test(exec_wrapper):
     env = dict(os.environ)
     if exec_wrapper:
         env["EXEC"] = exec_wrapper
-    completedProcess = subprocess.run(make("check"), env=env, stderr=subprocess.DEVNULL)
+    completedProcess = subprocess.run(
+        make("check"), env=env, stderr=subprocess.DEVNULL
+    )
     if completedProcess.returncode != 0:
         print(bcolors.fail("# Testing FAILED\n"))
         return False
@@ -235,7 +237,11 @@ def disassemble_reassemble_test(
                     )
                 )
                 if not compile(
-                        compiler, cxx_compiler, optimization, extra_compile_flags, exec_wrapper
+                    compiler,
+                    cxx_compiler,
+                    optimization,
+                    extra_compile_flags,
+                    exec_wrapper,
                 ):
                     compile_errors += 1
                     continue

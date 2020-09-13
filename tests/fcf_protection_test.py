@@ -12,6 +12,7 @@ from disassemble_reassemble_check import (
 ex_dir = Path("./examples/")
 asm_dir = Path("./examples/asm_examples/")
 
+
 class TestSpecialFlags(unittest.TestCase):
     # test binary compiled with -fcf-protection
     @unittest.skipUnless(
