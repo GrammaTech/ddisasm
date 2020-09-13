@@ -13,7 +13,7 @@ from disassemble_reassemble_check import (
 def compatible_test(config, test):
     # Check the test case is compatible with this platform.
     if "platform" in config:
-        if platform.system() != config["platform"]:
+        if platform.system() not in config["platform"]:
             return False
 
     # Check the test case is compatible with this distro.
