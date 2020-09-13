@@ -1,3 +1,5 @@
+platform: Linux
+
 default: &default
   path: examples
   binary: ex
