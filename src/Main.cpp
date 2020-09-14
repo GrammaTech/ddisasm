@@ -340,7 +340,7 @@ int main(int argc, char **argv)
             std::cerr << "Writing results to debug dir " << vm["debug-dir"].as<std::string>()
                       << std::endl;
             auto dir = vm["debug-dir"].as<std::string>() + "/";
-            Souffle->writeFacts(dir);
+            Souffle->writeRelations(dir);
         }
         performSanityChecks(Souffle->get(), vm.count("self-diagnose") != 0);
     }
