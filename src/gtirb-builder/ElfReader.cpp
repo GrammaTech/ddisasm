@@ -41,14 +41,8 @@ void ElfReader::buildSections()
         bool Allocated = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC);
         bool Executable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_EXECINSTR);
         bool Writable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
-        // SHT_NOBITS is not considered here because it is for data sections but
-        // without initial data (zero initialized)
-        bool NonZeroProgramData =
-            Section.type() == LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS
-            || Section.type() == LIEF::ELF::ELF_SECTION_TYPES::SHT_INIT_ARRAY
-            || Section.type() == LIEF::ELF::ELF_SECTION_TYPES::SHT_FINI_ARRAY
-            || Section.type() == LIEF::ELF::ELF_SECTION_TYPES::SHT_PREINIT_ARRAY;
-        bool Initialized = Allocated && NonZeroProgramData;
+        bool Initialized = Allocated && Section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS;
+
         // FIXME: Move .tbss section
         bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
 
