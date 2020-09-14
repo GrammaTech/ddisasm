@@ -146,6 +146,17 @@ jump_table_element_access(EA,Size,TableStart):-
     TableStart >= Beg,
     TableStart <= End.
 
+// sometimes the regBase contains the index (already multiplied)
+// and the regIndex contains the base address
+jump_table_element_access(EA,Size,TableStart):-
+    data_access(EA,_,"NONE",RegBase,RegIndex,1,0,Size),
+    RegBase != "NONE",
+    def_used(EA_regdef,RegIndex,EA,_),
+    value_reg(EA_regdef,RegIndex,_,"NONE",0,TableStart,_),
+    data_segment(Beg,End),
+    TableStart >= Beg,
+    TableStart <= End.
+
 
 .decl jump_table_start(EA_jump:address,Size:number,TableStart:address,TableRef:address,Operation:symbol)
 .output jump_table_start
