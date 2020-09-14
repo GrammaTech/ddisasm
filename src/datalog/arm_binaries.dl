@@ -1,0 +1,82 @@
+//===- arm_binaries.dl --------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2020 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+Define a set predicates to abstract from ARM specific instruction set
+and characteristics
+*/
+
+// Compute an immediate load performed across two consecutive instructions
+.decl split_load(ea:address, nextea:address, dest:number, type:symbol)
+split_load(EA, NextEA, Base + Offset, "ADD") :-
+    // ADRP <Register> <Immediate>
+    // e.g. adrp x0, BaseOp
+    instruction_get_operation(EA, "ADRP"),
+    instruction_get_op(EA, 1, BaseOp),
+    op_immediate(BaseOp, Base),
+
+    next(EA, NextEA),
+
+    // ADD <Register> <Register> <Immediate>
+    // e.g. add x0, x0, <OffsetOp>
+    instruction_get_operation(NextEA, "ADD"),
+    instruction_get_op(NextEA, 2, OffsetOp),
+    op_immediate(OffsetOp, Offset).
+
+split_load(EA, NextEA, Base + Offset, "LDR") :-
+    // ADRP <Register> <Immediate>
+    // e.g. adrp x0, BaseOp
+    instruction_get_operation(EA, "ADRP"),
+    instruction_get_op(EA, 1, BaseOp),
+    op_immediate(BaseOp, Base),
+
+    next(EA, NextEA),
+
+    // LDR <Register> <IndirectOp>
+    // e.g. ldr x0, [x0, <OffsetOp>]
+    instruction_get_operation(NextEA, "LDR"),
+    instruction_get_op(NextEA, 1, OffsetOp),
+    op_indirect(OffsetOp, "NONE", _, "NONE", 1, Offset, _).
+
+pc_relative_operand(EA, 1, Dest) :-
+    split_load(EA, _, Dest, _).
+
+pc_relative_operand(EA, 2, Dest) :-
+    split_load(_, EA, Dest, _).
+
+pc_relative_jump(EA, Dest):-
+    split_load(EA, _, Dest, "LDR").
+
+.decl symbol_prefix(ea:address, index:number, prefix:symbol)
+.output symbol_prefix()
+
+symbol_prefix(ea, 1, ":got:") :-
+    split_load(ea, _, Dest, "LDR"),
+    relocation(Dest, "GLOB_DAT", _, _).
+
+symbol_prefix(ea, 1, ":got_lo12:") :-
+    split_load(_, ea, Dest, "LDR"),
+    relocation(Dest, "GLOB_DAT", _, _).
+
+symbol_prefix(ea, 2, ":lo12:") :-
+    split_load(_, ea, Dest, "ADD"),
+    !relocation(Dest, "GLOB_DAT", _, _).
