@@ -67,7 +67,9 @@ def make(target=""):
         return ["nmake", "/E", "/F", "Makefile.windows"] + target
 
 
-def compile(compiler, cxx_compiler, optimizations, extra_flags, exec_wrapper=None):
+def compile(
+    compiler, cxx_compiler, optimizations, extra_flags, exec_wrapper=None
+):
     """
     Clean the project and compile it using the compiler
     'compiler', the cxx compiler 'cxx_compiler' and the flags in
@@ -180,7 +182,7 @@ def reassemble_using_makefile(assembler, binary, extra_flags):
     return True
 
 
-def test(exec_wrapper):
+def test(exec_wrapper=None):
     """
     Test the project with  'make check'.
     """
