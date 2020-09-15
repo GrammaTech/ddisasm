@@ -24,7 +24,7 @@ RUN apt-get -y install clang-format unzip \
     libboost-program-options-dev libboost-program-options1.71.0 \
     make mcpp pkg-config protobuf-compiler python3 python3-pip \
     software-properties-common wget zlib1g-dev
-RUN python3 -m pip install distro
+RUN python3 -m pip install distro pyyaml
 
 # Install cross-platform utils
 RUN apt-get -y update && \
