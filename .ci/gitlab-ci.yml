@@ -352,7 +352,7 @@ test-make-install:
     # Install gtirb and the pprinter
     - dpkg -i libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb gtirb-pprinter.deb libgtirb-pprinter-dev.deb
     - cd build && make -t && make install
-    - cd .. && PYTHONPATH=$PYTHONPATH:$(pwd)/tests python3 -m unittest end2end_test.TestSmall.test_1
+    - cd .. && PYTHONPATH=$PYTHONPATH:$(pwd)/tests python3 -m unittest function_inference_test.TestFunctionInference.test_functions_ex1
 
 .setup-apt-repo-template: &setup-apt-repo
   stage: setup-package-tests
