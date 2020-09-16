@@ -29,12 +29,12 @@ def compatible_test(config, test):
 
 class TestExamples(unittest.TestCase):
     def setUp(self):
-        self.configs = [p.absolute() for p in Path("./tests/").glob("*.yaml")]
+        self.configs = Path("./tests/").glob("*.yaml")
 
     def test_examples(self):
         for path in self.configs:
             # Parse YAML config file.
-            with open(path) as f:
+            with open(str(path)) as f:
                 config = yaml.safe_load(f)
             # Run all test cases for this host.
             for test in config["tests"]:
