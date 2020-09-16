@@ -1,7 +1,7 @@
 # Restrict these test cases to systems with compatible QEMU packages.
 distro:
   name: Ubuntu
-  version: ["18.04", "16.04"]
+  version: ["18.04"]
 
 default: &default
   path: examples
