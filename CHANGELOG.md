@@ -1,3 +1,7 @@
+# 1.2.0
+* Register value analysis can track values through the stack.
+* Refactor `gtirb-decoder` for more versatile loading of GTIRB.
+
 # 1.1.1
 
 * Restructure gtirb-to-datalog into `gtirb-decoder` component.
@@ -7,6 +11,7 @@
 # 1.1.0
 
 * Added preliminary ARM64 support.
+  Contributed by the Programming Language Group, University of Sydney.
 
 # 1.0.1
 

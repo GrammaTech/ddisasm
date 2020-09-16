@@ -42,12 +42,11 @@
 #include <gtirb_pprinter/PrettyPrinter.hpp>
 
 #include "gtirb-builder/GtirbBuilder.h"
-#include "gtirb-decoder/Arm64Decoder.h"
-#include "gtirb-decoder/DatalogUtils.h"
-#include "gtirb-decoder/X86Decoder.h"
+#include "gtirb-decoder/DatalogProgram.h"
 
 #include "AuxDataSchema.h"
 #include "Disassembler.h"
+#include "Registration.h"
 #include "Version.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
@@ -68,32 +67,6 @@ namespace std
         return os;
     }
 } // namespace std
-
-void registerAuxDataTypes()
-{
-    using namespace gtirb::schema;
-    gtirb::AuxDataContainer::registerAuxDataType<Comments>();
-    gtirb::AuxDataContainer::registerAuxDataType<FunctionEntries>();
-    gtirb::AuxDataContainer::registerAuxDataType<FunctionBlocks>();
-    gtirb::AuxDataContainer::registerAuxDataType<FunctionNames>();
-    gtirb::AuxDataContainer::registerAuxDataType<Padding>();
-    gtirb::AuxDataContainer::registerAuxDataType<SymbolForwarding>();
-    gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolInfoAD>();
-    gtirb::AuxDataContainer::registerAuxDataType<BinaryType>();
-    gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
-    gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
-    gtirb::AuxDataContainer::registerAuxDataType<SymbolicOperandInfoAD>();
-    gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
-    gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
-    gtirb::AuxDataContainer::registerAuxDataType<ElfSectionIndex>();
-    gtirb::AuxDataContainer::registerAuxDataType<PeSectionProperties>();
-    gtirb::AuxDataContainer::registerAuxDataType<CfiDirectives>();
-    gtirb::AuxDataContainer::registerAuxDataType<Libraries>();
-    gtirb::AuxDataContainer::registerAuxDataType<LibraryPaths>();
-    gtirb::AuxDataContainer::registerAuxDataType<DataDirectories>();
-    gtirb::AuxDataContainer::registerAuxDataType<SymbolicExpressionSizes>();
-    gtirb::AuxDataContainer::registerAuxDataType<DdisasmVersion>();
-}
 
 void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_clock> Start)
 {
@@ -148,6 +121,7 @@ static void setStdoutToBinary()
 int main(int argc, char **argv)
 {
     registerAuxDataTypes();
+    registerDatalogLoaders();
     gtirb_pprint::registerPrettyPrinters();
 
     po::options_description desc("Allowed options");
@@ -230,34 +204,13 @@ int main(int argc, char **argv)
     }
 
     // Decode and load GTIRB Module into the SouffleProgram context.
+    std::cerr << "Decoding the binary " << std::flush;
+    auto StartDecode = std::chrono::high_resolution_clock::now();
+
     gtirb::Module &Module = *(GTIRB->IR->modules().begin());
-    souffle::SouffleProgram *prog;
-    {
-        std::cerr << "Decoding the binary " << std::flush;
-        auto StartDecode = std::chrono::high_resolution_clock::now();
-        std::vector<std::string> DisasmOptions = createDisasmOptions(vm);
+    std::optional<DatalogProgram> Souffle = DatalogProgram::load(Module);
 
-        switch(Module.getISA())
-        {
-            case gtirb::ISA::X64:
-            {
-                X86Decoder Decoder;
-                prog = Decoder.decode(Module, DisasmOptions);
-            }
-            break;
-            case gtirb::ISA::ARM64:
-            {
-                Arm64Decoder Decoder;
-                prog = Decoder.decode(Module, DisasmOptions);
-            }
-            break;
-            default:
-                std::cerr << "Unsupported architecture\n";
-                return 1;
-        }
-
-        printElapsedTimeSince(StartDecode);
-    }
+    printElapsedTimeSince(StartDecode);
 
     // Remove initial entry point.
     if(gtirb::CodeBlock *Block = Module.getEntryPoint())
@@ -269,22 +222,24 @@ int main(int argc, char **argv)
     // Remove placeholder relocation data.
     Module.removeAuxData<gtirb::schema::Relocations>();
 
-    if(prog)
+    if(Souffle)
     {
+        Souffle->insert("option", createDisasmOptions(vm));
+
         if(vm.count("debug-dir") != 0)
         {
             std::cerr << "Writing facts to debug dir " << vm["debug-dir"].as<std::string>()
                       << std::endl;
             auto dir = vm["debug-dir"].as<std::string>() + "/";
-            writeFacts(prog, dir);
+            Souffle->writeFacts(dir);
         }
         std::cerr << "Disassembling" << std::flush;
         unsigned int NThreads = vm["threads"].as<unsigned int>();
-        prog->setNumThreads(NThreads);
+        Souffle->threads(NThreads);
         auto StartDisassembling = std::chrono::high_resolution_clock::now();
         try
         {
-            prog->run();
+            Souffle->run();
         }
         catch(std::exception &e)
         {
@@ -293,7 +248,7 @@ int main(int argc, char **argv)
         printElapsedTimeSince(StartDisassembling);
         std::cerr << "Populating gtirb representation " << std::flush;
         auto StartGtirbBuilding = std::chrono::high_resolution_clock::now();
-        disassembleModule(*GTIRB->Context, Module, prog, vm.count("self-diagnose") != 0);
+        disassembleModule(*GTIRB->Context, Module, Souffle->get(), vm.count("self-diagnose") != 0);
         printElapsedTimeSince(StartGtirbBuilding);
 
         if(vm.count("skip-function-analysis") == 0)
@@ -385,10 +340,9 @@ int main(int argc, char **argv)
             std::cerr << "Writing results to debug dir " << vm["debug-dir"].as<std::string>()
                       << std::endl;
             auto dir = vm["debug-dir"].as<std::string>() + "/";
-            prog->printAll(dir);
+            Souffle->writeRelations(dir);
         }
-        performSanityChecks(prog, vm.count("self-diagnose") != 0);
-        delete prog;
+        performSanityChecks(Souffle->get(), vm.count("self-diagnose") != 0);
     }
     else
     {

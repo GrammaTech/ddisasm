@@ -1,4 +1,4 @@
-//===- Arm64Decoder.h -------------------------------------------*- C++ -*-===//
+//===- AuxDataLoader.h ------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -20,26 +20,42 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#ifndef SRC_GTIRB_DECODER_CORE_AUXDATALOADER_H_
+#define SRC_GTIRB_DECODER_CORE_AUXDATALOADER_H_
 
-#ifndef SRC_ARM64_DECODER_H_
-#define SRC_ARM64_DECODER_H_
+#include <string>
+#include <tuple>
+#include <utility>
 
+#include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 #include <gtirb/gtirb.hpp>
 
-#include "DatalogUtils.h"
-#include "DlDecoder.h"
-#include "DlOperandTable.h"
+#include "../DatalogProgram.h"
+#include "../Relations.h"
 
-class Arm64Decoder : public DlDecoder
+// Load strongly connected component facts.
+void SccLoader(const gtirb::Module& M, DatalogProgram& P);
+
+// Load code-padding regions.
+struct PaddingLoader
 {
-public:
-    Arm64Decoder() : DlDecoder(gtirb::ISA::ARM64)
-    {
-    }
-    souffle::SouffleProgram* decode(const gtirb::Module& module,
-                                    const std::vector<std::string>& DisasmOptions) override;
-    void decodeSection(const gtirb::ByteInterval& byteInterval) override;
+    void operator()(const gtirb::Module& M, DatalogProgram& P);
+    gtirb::Context* Context;
 };
 
-#endif /* SRC_ARM64_DECODER_H_ */
+// Load CFI information.
+struct FdeEntriesLoader
+{
+    void operator()(const gtirb::Module& M, DatalogProgram& P);
+    gtirb::Context* Context;
+};
+
+// Load function entry addresses.
+struct FunctionEntriesLoader
+{
+    void operator()(const gtirb::Module& M, DatalogProgram& P);
+    gtirb::Context* Context;
+};
+
+#endif // SRC_GTIRB_DECODER_CORE_AUXDATALOADER_H_

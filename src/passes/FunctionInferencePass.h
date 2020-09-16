@@ -20,26 +20,27 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
 #ifndef FUNCTION_INFERENCE_PASS_H_
 #define FUNCTION_INFERENCE_PASS_H_
 
-#include <souffle/SouffleInterface.h>
-#include <gtirb/gtirb.hpp>
 #include <optional>
 
-// Refine function boundaries
+#include <souffle/SouffleInterface.h>
+#include <gtirb/gtirb.hpp>
+
+// Refine function boundaries.
 class FunctionInferencePass
 {
+public:
+    void setDebugDir(std::string Path)
+    {
+        DebugDir = Path;
+    };
+
+    void computeFunctions(gtirb::Context& C, gtirb::Module& M, unsigned int NThreads);
+
 private:
     std::optional<std::string> DebugDir;
-
-    void populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Context& Ctx,
-                             gtirb::Module& M);
-    void updateFunctions(std::shared_ptr<souffle::SouffleProgram> P, gtirb::Module& M);
-
-public:
-    void setDebugDir(std::string Path);
-    void computeFunctions(gtirb::Context& Ctx, gtirb::Module& module, unsigned int NThreads);
+    void updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M);
 };
 #endif // FUNCTION_INFERENCE_PASS_H_

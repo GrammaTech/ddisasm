@@ -20,45 +20,18 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#include <souffle/CompiledSouffle.h>
 #include <boost/uuid/uuid_generators.hpp>
 
 #include "../AuxDataSchema.h"
-#include "../gtirb-decoder/DatalogUtils.h"
+#include "../gtirb-decoder/CompositeLoader.h"
+#include "../gtirb-decoder/arch/X64Loader.h"
+#include "../gtirb-decoder/core/AuxDataLoader.h"
+#include "../gtirb-decoder/core/EdgesLoader.h"
+#include "../gtirb-decoder/core/InstructionLoader.h"
+#include "../gtirb-decoder/core/SymbolicExpressionLoader.h"
 #include "FunctionInferencePass.h"
 
-void FunctionInferencePass::populateSouffleProg(std::shared_ptr<souffle::SouffleProgram> P,
-                                                gtirb::Context& Ctx, gtirb::Module& M)
-{
-    bool input_is_trace;
-    gtirb::schema::BinaryType::Type* btype = M.getAuxData<gtirb::schema::BinaryType>();
-    input_is_trace = (btype && btype->at(0) == std::string("TRACE"));
-
-    GtirbToDatalog Loader(P);
-    Loader.populateBlocks(M);
-    if(!input_is_trace)
-        Loader.populateInstructions(M, 1);
-    Loader.populateCfgEdges(M);
-    Loader.populateSymbolicExpressions(M);
-    Loader.populateFdeEntries(Ctx, M);
-    Loader.populateFunctionEntries(Ctx, M);
-    Loader.populatePadding(Ctx, M);
-
-    // GHN 2020-06-29 additional populates needed if we're handling a
-    // tbdisasm GTIRB input
-    if(input_is_trace)
-    {
-        // Check value, add relations
-        std::cout << "We got GTIRB, load extra relations.\n";
-        GtirbToDatalog::addToRelation<std::vector<std::string>>(P.get(), "binary_format",
-                                                                {std::string("TRACE")});
-        // Placeholder for other things, e.g.
-        // Loader.populateTBBlocks(M);
-    }
-}
-
-void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProgram> P,
-                                            gtirb::Module& M)
+void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M)
 {
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
     std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2function;
@@ -100,28 +73,58 @@ void FunctionInferencePass::updateFunctions(std::shared_ptr<souffle::SouffleProg
     M.addAuxData<gtirb::schema::FunctionNames>(std::move(FunctionNames));
 }
 
-void FunctionInferencePass::setDebugDir(std::string Path)
+void TraceLoader(const gtirb::Module& Module, DatalogProgram& Program)
 {
-    DebugDir = Path;
+    // GHN 2020-06-29 additional populates needed if we're handling a tbdisasm GTIRB input
+
+    // Check value, add relations
+    std::cout << "We got GTIRB, load extra relations.\n";
+    Program.insert<std::vector<std::string>>("binary_format", {std::string("TRACE")});
+    // Placeholder for other things, e.g.
+    // Loader.populateTBBlocks(M);
 }
 
-void FunctionInferencePass::computeFunctions(gtirb::Context& Ctx, gtirb::Module& M,
+void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Module& Module,
                                              unsigned int NThreads)
 {
-    auto Prog = std::shared_ptr<souffle::SouffleProgram>(
-        souffle::ProgramFactory::newInstance("souffle_function_inference"));
-    if(!Prog)
+    auto BinaryType = Module.getAuxData<gtirb::schema::BinaryType>();
+    bool InputIsTrace = BinaryType && BinaryType->at(0) == "TRACE";
+
+    // Build GTIRB loader.
+    CompositeLoader Loader("souffle_function_inference");
+    Loader.add(BlocksLoader);
+    // TODO: Add support for ARM64 prologues.
+    if(Module.getISA() == gtirb::ISA::X64 && !InputIsTrace)
+    {
+        Loader.add<CodeBlockLoader<X64Loader>>();
+    }
+    Loader.add(CfgLoader);
+    Loader.add(SymbolicExpressionLoader);
+    Loader.add(FdeEntriesLoader{&Context});
+    Loader.add(FunctionEntriesLoader{&Context});
+    Loader.add(PaddingLoader{&Context});
+    if(InputIsTrace)
+    {
+        Loader.add(TraceLoader);
+    }
+
+    // Load GTIRB and build program.
+    std::optional<DatalogProgram> FunctionInference = Loader.load(Module);
+    if(!FunctionInference)
     {
         std::cerr << "Could not create souffle_function_inference program" << std::endl;
         exit(1);
     }
-    populateSouffleProg(Prog, Ctx, M);
-    Prog->setNumThreads(NThreads);
-    Prog->run();
+
+    // Run function inference analysis.
+    FunctionInference->threads(NThreads);
+    FunctionInference->run();
+
     if(DebugDir)
     {
-        writeFacts(&*Prog, *DebugDir);
-        Prog->printAll(*DebugDir);
+        FunctionInference->writeFacts(*DebugDir);
+        FunctionInference->writeRelations(*DebugDir);
     }
-    updateFunctions(Prog, M);
+
+    updateFunctions(FunctionInference->get(), Module);
 }

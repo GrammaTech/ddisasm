@@ -501,6 +501,20 @@ class TestAsmExamples(unittest.TestCase):
             )
         )
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_loop_instructions(self):
+        self.assertTrue(
+            dis_reasm_test(
+                asm_dir / "ex_loop_instructions",
+                "ex",
+                c_compilers=["gcc"],
+                cxx_compilers=["g++"],
+                optimizations=[""],
+            )
+        )
+
 
 class TestAsmExamplesStrip(unittest.TestCase):
     @unittest.skipUnless(
@@ -582,6 +596,21 @@ class TestAsmExamplesStrip(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
+    def test_asm_relative_switch_through_stack(self):
+        self.assertTrue(
+            dis_reasm_test(
+                asm_dir / "ex_relative_switch_through_stack",
+                "ex",
+                c_compilers=["gcc"],
+                cxx_compilers=["g++"],
+                optimizations=[""],
+                strip=True,
+            )
+        )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_asm_relative_switch_sizes(self):
         self.assertTrue(
             dis_reasm_test(
@@ -635,6 +664,20 @@ class TestAsmExamplesStrip(unittest.TestCase):
                 cxx_compilers=["g++"],
                 optimizations=[""],
                 strip=True,
+            )
+        )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_loop_instructions(self):
+        self.assertTrue(
+            dis_reasm_test(
+                asm_dir / "ex_loop_instructions",
+                "ex",
+                c_compilers=["gcc"],
+                cxx_compilers=["g++"],
+                optimizations=[""],
             )
         )
 
