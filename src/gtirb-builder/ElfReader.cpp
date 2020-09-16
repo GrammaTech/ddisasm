@@ -43,10 +43,10 @@ void ElfReader::buildSections()
         bool Writable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
         bool Initialized = Allocated && Section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS;
 
-        bool Null = Section.type() == LIEF::ELF::ELF_SECTION_TYPES::SHT_NULL;
         // FIXME: Move .tbss section
         bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
-        if(Null || Tls)
+        // FIXME: Populate sections that are not loaded (gtirb/#117).
+        if(!Allocated || Tls)
         {
             Index++;
             continue;
@@ -74,27 +74,18 @@ void ElfReader::buildSections()
             S->addFlag(gtirb::SectionFlag::Initialized);
         }
 
-        if(Allocated)
+        gtirb::Addr Addr = gtirb::Addr(Section.virtual_address());
+        if(Initialized)
         {
-            gtirb::Addr Addr = gtirb::Addr(Section.virtual_address());
-            if(Initialized)
-            {
-                // Add allocated section contents to a single, contiguous ByteInterval.
-                std::vector<uint8_t> Bytes = Section.content();
-                S->addByteInterval(*Context, Addr, Bytes.begin(), Bytes.end(), Section.size(),
-                                   Bytes.size());
-            }
-            else
-            {
-                // Add an uninitialized section.
-                S->addByteInterval(*Context, Addr, Section.size(), 0);
-            }
+            // Add allocated section contents to a single, contiguous ByteInterval.
+            std::vector<uint8_t> Bytes = Section.content();
+            S->addByteInterval(*Context, Addr, Bytes.begin(), Bytes.end(), Section.size(),
+                               Bytes.size());
         }
         else
         {
-            std::vector<uint8_t> Bytes = Section.content();
-            S->addByteInterval(*Context, std::nullopt, Bytes.begin(), Bytes.end(), Section.size(),
-                               Bytes.size());
+            // Add an uninitialized section.
+            S->addByteInterval(*Context, Addr, Section.size(), 0);
         }
 
         // Add section index and raw section properties to aux data.
