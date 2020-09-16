@@ -38,6 +38,10 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
 
     for(const auto& Section : Module.sections())
     {
+        if(!Section.isFlagSet(gtirb::SectionFlag::Loaded))
+        {
+            continue;
+        }
         assert(Section.getAddress() && "Section has no address.");
         assert(Section.getSize() && "Section has non-calculable size.");
 

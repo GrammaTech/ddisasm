@@ -43,11 +43,10 @@ void ElfReader::buildSections()
         bool Writable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
         bool Initialized = Allocated && Section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS;
 
+        bool Null = Section.type() == LIEF::ELF::ELF_SECTION_TYPES::SHT_NULL;
         // FIXME: Move .tbss section
         bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
-
-        // Skip sections that are not loaded into memory.
-        if(!Allocated || Tls)
+        if(Null || Tls)
         {
             Index++;
             continue;
@@ -75,18 +74,27 @@ void ElfReader::buildSections()
             S->addFlag(gtirb::SectionFlag::Initialized);
         }
 
-        gtirb::Addr Addr = gtirb::Addr(Section.virtual_address());
-        if(Initialized)
+        if(Allocated)
         {
-            // Add allocated section contents to a single, contiguous ByteInterval.
-            std::vector<uint8_t> Bytes = Section.content();
-            S->addByteInterval(*Context, Addr, Bytes.begin(), Bytes.end(), Section.size(),
-                               Bytes.size());
+            gtirb::Addr Addr = gtirb::Addr(Section.virtual_address());
+            if(Initialized)
+            {
+                // Add allocated section contents to a single, contiguous ByteInterval.
+                std::vector<uint8_t> Bytes = Section.content();
+                S->addByteInterval(*Context, Addr, Bytes.begin(), Bytes.end(), Section.size(),
+                                   Bytes.size());
+            }
+            else
+            {
+                // Add an uninitialized section.
+                S->addByteInterval(*Context, Addr, Section.size(), 0);
+            }
         }
         else
         {
-            // Add an uninitialized section.
-            S->addByteInterval(*Context, Addr, Section.size(), 0);
+            std::vector<uint8_t> Bytes = Section.content();
+            S->addByteInterval(*Context, std::nullopt, Bytes.begin(), Bytes.end(), Section.size(),
+                               Bytes.size());
         }
 
         // Add section index and raw section properties to aux data.

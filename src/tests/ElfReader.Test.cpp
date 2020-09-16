@@ -53,12 +53,9 @@ TEST_P(ElfReaderTest, sections)
 
     for(const auto& Section : ELF->sections())
     {
-        if(Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC))
-        {
-            Names.insert(Section.name());
-            Sizes[Section.name()] = Section.size();
-            Addresses[Section.name()] = Section.virtual_address();
-        }
+        Names.insert(Section.name());
+        Sizes[Section.name()] = Section.size();
+        Addresses[Section.name()] = Section.virtual_address();
     }
 
     gtirb::ErrorOr<GTIRB> GTIRB = GtirbBuilder::read(GetParam());
