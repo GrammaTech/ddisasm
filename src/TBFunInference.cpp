@@ -38,8 +38,6 @@
 #include "Disassembler.h"
 #include "Version.h"
 #include "gtirb-builder/GtirbBuilder.h"
-#include "gtirb-decoder/DatalogUtils.h"
-#include "gtirb-decoder/DlDecoder.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"

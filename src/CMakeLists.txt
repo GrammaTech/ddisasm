@@ -369,7 +369,6 @@ if(BUILD_FUNINFER)
     gtirb_pprinter
     gtirb_builder
     gtirb_decoder
-    datalog_utils
     ${CAPSTONE}
     ${Boost_LIBRARIES}
     ${EXPERIMENTAL_LIB}
