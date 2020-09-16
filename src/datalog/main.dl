@@ -280,6 +280,13 @@ pc_relative_operand(EA,Index,EA_next+Offset):-
     arch.pc_register(Reg),
     next(EA,EA_next).
 
+.decl symbol_prefix(ea:address, index:number, prefix:symbol)
+.output symbol_prefix
+
+// Compute an immediate load performed across two consecutive instructions
+.decl split_load(ea:address, nextea:address, dest:number, type:symbol)
+.output split_load
+
 .decl instruction_has_loop_prefix(EA:address)
 
 instruction_has_loop_prefix(EA):-
