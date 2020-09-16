@@ -29,7 +29,7 @@ def compatible_test(config, test):
 
 class TestExamples(unittest.TestCase):
     def setUp(self):
-        self.configs = Path("./tests/").glob("*.yaml")
+        self.configs = [p.absolute() for p in Path("./tests/").glob("*.yaml")]
 
     def test_examples(self):
         for path in self.configs:
