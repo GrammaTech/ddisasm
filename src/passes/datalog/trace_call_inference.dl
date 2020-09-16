@@ -1,4 +1,4 @@
-//===- Ph2_call_inference.dl --------------------*- datalog -*-===//
+//===- trace_call_inference.dl ------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
