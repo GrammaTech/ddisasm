@@ -57,7 +57,6 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<PeSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<PeImportedSymbols>();
     gtirb::AuxDataContainer::registerAuxDataType<PeExportedSymbols>();
-    gtirb::AuxDataContainer::registerAuxDataType<DataDirectories>();
     gtirb::AuxDataContainer::registerAuxDataType<ImportEntries>();
 }
 

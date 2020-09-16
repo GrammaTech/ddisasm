@@ -51,14 +51,6 @@ namespace gtirb
             typedef std::map<gtirb::UUID, uint64_t> Type;
         };
 
-        /// \brief Auxiliary data that tracks data directories for windows binaries.
-        struct DataDirectories
-        {
-            static constexpr const char* Name = "dataDirectories";
-            // Tuples of the form {Type, Address, Size}.
-            typedef std::vector<std::tuple<std::string, uint64_t, uint64_t>> Type;
-        };
-
         /// \brief Auxiliary data representing the import table of a PE file.
         struct ImportEntries
         {

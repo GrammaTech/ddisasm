@@ -40,7 +40,6 @@ protected:
     void addEntryBlock() override;
     void addAuxData() override;
 
-    std::vector<DataDirectory> dataDirectories();
     std::vector<ImportEntry> importEntries();
     std::vector<ExportEntry> exportEntries();
 };

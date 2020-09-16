@@ -148,21 +148,8 @@ void PeReader::addAuxData()
     // TODO: Add `libraryPaths' aux data table.
     Module->addAuxData<gtirb::schema::LibraryPaths>({});
 
-    // Add `dataDirectories' aux data table.
-    Module->addAuxData<gtirb::schema::DataDirectories>(dataDirectories());
-
     // Add `importEntries' aux data table.
     Module->addAuxData<gtirb::schema::ImportEntries>(importEntries());
-}
-
-std::vector<DataDirectory> PeReader::dataDirectories()
-{
-    std::vector<DataDirectory> DataDirectories;
-    for(auto &D : Pe->data_directories())
-    {
-        DataDirectories.push_back({LIEF::PE::to_string(D.type()), D.RVA(), D.size()});
-    }
-    return DataDirectories;
 }
 
 std::vector<ImportEntry> PeReader::importEntries()
