@@ -1,3 +1,5 @@
+* Populate all allocated ELF sections.
+
 # 1.2.0
 * Register value analysis can track values through the stack.
 * Refactor `gtirb-decoder` for more versatile loading of GTIRB.
