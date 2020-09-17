@@ -31,6 +31,16 @@ class TestExamples(unittest.TestCase):
     def setUp(self):
         self.configs = Path("./tests/").glob("*.yaml")
 
+    def test_1(self):
+        self.assertTrue(
+            drt(
+                "examples/ex1",
+                "ex",
+                skip_test=True,
+                reassemble_function=skip_reassemble,
+            )
+        )
+
     def test_examples(self):
         for path in self.configs:
             # Parse YAML config file.
