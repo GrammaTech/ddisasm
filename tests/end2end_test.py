@@ -31,6 +31,9 @@ class TestExamples(unittest.TestCase):
     def setUp(self):
         self.configs = Path("./tests/").glob("*.yaml")
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_1(self):
         self.assertTrue(
             drt(
