@@ -78,7 +78,7 @@ void TraceLoader(const gtirb::Module& Module, DatalogProgram& Program)
     // GHN 2020-06-29 additional populates needed if we're handling a tbdisasm GTIRB input
 
     // Check value, add relations
-    std::cout << "We got GTIRB, load extra relations.\n";
+    std::cerr << "We got GTIRB, load extra relations.\n";
     Program.insert<std::vector<std::string>>("binary_format", {std::string("TRACE")});
     // Placeholder for other things, e.g.
     // Loader.populateTBBlocks(M);
