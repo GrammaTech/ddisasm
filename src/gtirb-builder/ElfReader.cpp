@@ -45,7 +45,7 @@ void ElfReader::buildSections()
 
         // FIXME: Move .tbss section
         bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
-        // FIXME: Populate sections that are not loaded (gtirb/#117).
+        // FIXME: Populate sections that are not loaded (e.g. .symtab and .strtab)
         if(!Loaded || Tls)
         {
             Index++;
