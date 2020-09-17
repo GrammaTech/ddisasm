@@ -23,11 +23,6 @@
 
 // This module defines predicates specific of PE binaries
 
-.decl data_directory(Address:address,Size:number,Type:symbol)
-.input data_directory
-.output data_directory
-
-
 .decl import_entry(Address:address,Ordinal:number,Function:symbol,Library:symbol)
 .input import_entry
 .output import_entry
