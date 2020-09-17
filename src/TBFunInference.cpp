@@ -228,29 +228,6 @@ int main(int argc, char **argv)
         std::ofstream out(vm["json"].as<std::string>());
         IR->saveJSON(out);
     }
-    // Pretty-print
-    gtirb_pprint::PrettyPrinter pprinter;
-    pprinter.setDebug(vm.count("debug"));
-    if(vm.count("keep-functions") != 0)
-    {
-        for(auto keep : vm["keep-functions"].as<std::vector<std::string>>())
-        {
-            pprinter.symbolPolicy().keep(keep);
-        }
-    }
-    if(vm.count("asm") != 0)
-    {
-        std::cout << "Printing assembler " << std::flush;
-        auto StartPrinting = std::chrono::high_resolution_clock::now();
-        std::ofstream out(vm["asm"].as<std::string>());
-        pprinter.print(out, Context, Module);
-        printElapsedTimeSince(StartPrinting);
-    }
-    else if(vm.count("ir") == 0)
-    {
-        std::cout << "Printing assembler" << std::endl;
-        pprinter.print(std::cout, Context, Module);
-    }
 
     return 0;
 }
