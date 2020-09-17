@@ -38,15 +38,15 @@ void ElfReader::buildSections()
     uint64_t Index = 0;
     for(auto &Section : Elf->sections())
     {
-        bool Allocated = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC);
+        bool Loaded = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC);
         bool Executable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_EXECINSTR);
         bool Writable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
-        bool Initialized = Allocated && Section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS;
+        bool Initialized = Loaded && Section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS;
 
         // FIXME: Move .tbss section
         bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
         // FIXME: Populate sections that are not loaded (gtirb/#117).
-        if(!Allocated || Tls)
+        if(!Loaded || Tls)
         {
             Index++;
             continue;
@@ -56,7 +56,7 @@ void ElfReader::buildSections()
         gtirb::Section *S = Module->addSection(*Context, Section.name());
 
         // Add section flags to GTIRB Section.
-        if(Allocated)
+        if(Loaded)
         {
             S->addFlag(gtirb::SectionFlag::Loaded);
             S->addFlag(gtirb::SectionFlag::Readable);
