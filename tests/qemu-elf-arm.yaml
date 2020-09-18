@@ -1,0 +1,57 @@
+# Restrict these test cases to systems with compatible QEMU packages.
+distro:
+  name: Ubuntu
+  version: ["16.04", "18.04"]
+
+default: &default
+  path: examples
+  binary: ex
+
+  # Compilation configuration.
+  build:
+    c: ["arm-linux-gnueabihf-gcc"]
+    cpp: ["arm-linux-gnueabihf-g++"]
+    optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
+    flags: []
+
+  # Reassembly configuration.
+  reassemble:
+    compiler: "arm-linux-gnueabihf-gcc"
+    flags: []
+    skip: false
+
+  # Test configuration.
+  test:
+    wrapper: "qemu-arm -L /usr/arm-linux-gnueabihf"
+    strip: false
+    skip: false
+
+tests:
+  - name: ex1_pie
+    <<: *default
+    path: examples/arm_asm_examples
+    build:
+      c: ["arm-linux-gnueabihf-gcc"]
+      cpp: ["arm-linux-gnueabihf-g++"]
+      flags: ["-pie"]
+      optimizations: [""]
+
+  - name: ex1_no_pie
+    <<: *default
+    path: examples/arm_asm_examples
+    reassemble:
+      compiler: "arm-linux-gnueabihf-gcc"
+      flags: ["-no-pie"]
+    build:
+      c: ["arm-linux-gnueabihf-gcc"]
+      cpp: ["arm-linux-gnueabihf-g++"]
+      flags: ["-no-pie"]
+      optimizations: [""]
+
+  - name: ex1
+    <<: *default
+    build:
+      c: ["arm-linux-gnueabihf-gcc"]
+      cpp: ["arm-linux-gnueabihf-g++"]
+      optimizations: []
+      flags: []
