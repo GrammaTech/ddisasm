@@ -41,6 +41,7 @@ class TestExamples(unittest.TestCase):
                 "ex",
                 skip_test=True,
                 reassemble_function=skip_reassemble,
+                optimizations=[],
             )
         )
 
