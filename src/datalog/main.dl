@@ -54,11 +54,11 @@ This module:
   explored.
 */
 
-.symbol_type register
+.type register <: symbol
 
-.number_type address
-.number_type operand_code
-.number_type operand_index
+.type address <: number
+.type operand_code <: unsigned
+.type operand_index <: unsigned
 
 // binary format specific predicates
 #include "elf_binaries.dl"
@@ -165,7 +165,7 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
 .decl data_byte(ea:address,value:number)
 .input data_byte
 
-.decl address_in_data(ea:address,value:number)
+.decl address_in_data(ea:address,value:address)
 
 .input address_in_data
 
@@ -178,7 +178,7 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
 // auxiliary definitions
 /////////////////////////////////////////////////////////////
 
-.decl instruction_immediate_offset(EA:address,Index:number,Offset:number)
+.decl instruction_immediate_offset(EA:address,Index:operand_index,Offset:number)
 .output instruction_immediate_offset
 
 instruction_immediate_offset(EA,Index,ImmediateOffset):-
@@ -186,7 +186,7 @@ instruction_immediate_offset(EA,Index,ImmediateOffset):-
     instruction_get_op(EA,Index,Op),
     op_immediate(Op,_).
 
-.decl instruction_displacement_offset(EA:address,Index:number,Offset:number)
+.decl instruction_displacement_offset(EA:address,Index:operand_index,Offset:number)
 .output instruction_displacement_offset
 
 instruction_displacement_offset(EA,Index,DisplacementOffset):-
@@ -199,7 +199,7 @@ instruction_displacement_offset(EA,Index,DisplacementOffset):-
 instruction_get_operation(EA,Operation):-
     instruction(EA,_,_,Operation,_,_,_,_).
 
-.decl instruction_get_op(ea:address, index:number, operator:operand_code)
+.decl instruction_get_op(ea:address, index:operand_index, operator:operand_code)
 
 instruction_get_op(EA,Index,Op):-
     instruction(EA,_,_,_,Op1,Op2,Op3,Op4),
@@ -277,14 +277,14 @@ symbol_prefix(ea, 1, ":got_lo12:") :-
 
 symbol_prefix(ea, 2, ":lo12:") :-
     split_load(_, ea, Dest, "ADD"),
-    !relocation(Dest, "GLOB_DAT", _, _).
+    !relocation(as(Dest,address), "GLOB_DAT", _, _).
 
 .decl next(n:address,m:address)
 
 next(EA,EA+Size):-
     instruction(EA,Size,_,_,_,_,_,_).
 
-.decl pc_relative_operand(src:address,index:number, dest:address)
+.decl pc_relative_operand(src:address,index:operand_index, dest:address)
 .output pc_relative_operand
 
 pc_relative_operand(EA,Index,EA_next+Offset):-
@@ -294,10 +294,10 @@ pc_relative_operand(EA,Index,EA_next+Offset):-
     arch.pc_register(Reg),
     next(EA,EA_next).
 
-pc_relative_operand(EA, 1, Dest) :-
+pc_relative_operand(EA, 1, as(Dest,address)) :-
     split_load(EA, _, Dest, _).
 
-pc_relative_operand(EA, 2, Dest) :-
+pc_relative_operand(EA, 2, as(Dest,address)) :-
     split_load(_, EA, Dest, _).
 
 // Compute an immediate load performed across two consecutive instructions
@@ -358,7 +358,7 @@ conditional_jump(EA):-
 .decl direct_jump(src:address, dest:address)
 .output direct_jump
 
-direct_jump(EA,Dest):-
+direct_jump(EA,as(Dest,address)):-
     arch.jump(EA),
     instruction_get_op(EA,1,Op1),
     op_immediate(Op1,Dest).
@@ -375,7 +375,7 @@ pc_relative_jump(EA,Dest):-
     arch.jump(EA),
     pc_relative_operand(EA,1,Dest).
 
-pc_relative_jump(EA, Dest):-
+pc_relative_jump(EA, as(Dest,address)):-
     split_load(EA, _, Dest, "LDR").
 
 // jump to the address of a register
@@ -400,7 +400,7 @@ indirect_jump(EA):-
 .decl direct_call(src:address, dest:address)
 .output direct_call
 
-direct_call(EA,Dest):-
+direct_call(EA,as(Dest,address)):-
     arch.call_operation(Operation),
     instruction(EA,_,_,Operation,Op1,_,_,_),
     op_immediate(Op1,Dest).
@@ -468,7 +468,7 @@ op_regdirect_contains_reg(Op,Reg_uniform):-
 
 
 // The instruction at EA has operation Operation and two operands: a register Reg and an immediate Immediate
-.decl op_immediate_and_reg(EA:address,Operation:symbol,Reg:register,Imm_index:number,Immediate:number)
+.decl op_immediate_and_reg(EA:address,Operation:symbol,Reg:register,Imm_index:operand_index,Immediate:number)
 
 op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate):-
     instruction_get_operation(EA,Operation),
@@ -478,7 +478,7 @@ op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate):-
     op_regdirect_contains_reg(Op2,Reg).
 
 // The instruction at EA is a comparison between a register Reg and an immediate Immediate
-.decl cmp_immediate_to_reg(EA:address,Reg:register,Imm_index:number,Immediate:number)
+.decl cmp_immediate_to_reg(EA:address,Reg:register,Imm_index:operand_index,Immediate:number)
 
 cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
     op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate),

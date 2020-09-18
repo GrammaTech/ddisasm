@@ -101,10 +101,10 @@ This module also computes and symbol_minus_symbol.
 ////////////////////////////////////////////////////////////////////////////////////
 // candidates of symbolic values in the code
 
-.decl symbolic_operand_candidate(ea:address,operand_index:number,Dest:address,Type:symbol)
-.decl symbolic_operand_point(ea:address,operand_index:number,points:number,why:symbol)
+.decl symbolic_operand_candidate(ea:address,operand_index:operand_index,Dest:address,Type:symbol)
+.decl symbolic_operand_point(ea:address,operand_index:operand_index,points:number,why:symbol)
 .output symbolic_operand_point
-.decl symbolic_operand_total_points(ea:address,operand_index:number,points:number)
+.decl symbolic_operand_total_points(ea:address,operand_index:operand_index,points:number)
 
 symbolic_operand_candidate(EA,Op_index,Dest,Type):-
   binary_type("EXEC"),
@@ -286,7 +286,7 @@ symbol_minus_symbol_candidate(EA+Size,Size,Symbol,Reference,"second",Scale):-
 ////////////////////////////////////////////////////////////////////////
 // address_in_data considers anything that points to the code region
 // this refinement restricts that to the beginning of the final blocks
-.decl address_in_data_refined(EA:address,Val:number)
+.decl address_in_data_refined(EA:address,Val:address)
 
 address_in_data_refined(EA,Val):-
     binary_type("DYN"),
@@ -646,7 +646,7 @@ discarded_data_object(EA_f,Size_f,Type_f):-
 
 // predicates to export
 
-symbolic_data(EA,Size,Val):-
+symbolic_data(EA,Size,as(Val,address)):-
     data_object(EA,Size,"symbol"),
     address_in_data_refined(EA,Val).
 

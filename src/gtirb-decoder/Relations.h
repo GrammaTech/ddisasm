@@ -62,7 +62,7 @@ namespace relations
         std::string Reg3;
         int64_t Mult;
         int64_t Disp;
-        int Size;
+        uint64_t Size;
 
         constexpr bool operator<(const IndirectOp& Op) const noexcept
         {
@@ -176,7 +176,7 @@ namespace souffle
     template <typename Item>
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Data<Item>& Data)
     {
-        T << Data.Addr << Data.Item;
+        T << Data.Addr << static_cast<uint64_t>(Data.Item);
         return T;
     }
 

@@ -31,16 +31,6 @@
 using ImmOp = relations::ImmOp;
 using IndirectOp = relations::IndirectOp;
 
-// souffle uses a signed integer for all numbers (either 32 or 64 bits
-// dependin on compilation flags). Allow conversion to other types.
-souffle::tuple &operator>>(souffle::tuple &t, uint64_t &number)
-{
-    int64_t x;
-    t >> x;
-    number = x;
-    return t;
-}
-
 souffle::tuple &operator>>(souffle::tuple &t, gtirb::Addr &ea)
 {
     uint64_t x;

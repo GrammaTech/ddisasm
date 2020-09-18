@@ -2,7 +2,7 @@
 .decl false_positive(EA:address)
 .output false_negative
 .output false_positive
-.decl relocation_in_operand(EA:address,Index:number,Rel:address,InsnOffset:number)
+.decl relocation_in_operand(EA:address,Index:operand_index,Rel:address,InsnOffset:number)
 
 
 relocation_in_operand(EA,Index,Location,Offset):-

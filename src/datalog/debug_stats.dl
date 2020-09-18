@@ -45,7 +45,7 @@ unaligned_pointer(EA):-
     data_object(EA,Pt_size,"symbol"),
     EA % Pt_size != 0.
 
-.decl immediate_symbol(ea:address,op_index:number,dest:address)
+.decl immediate_symbol(ea:address,op_index:operand_index,dest:address)
 .output immediate_symbol
 
 immediate_symbol(EA,Op_index,Dest):-

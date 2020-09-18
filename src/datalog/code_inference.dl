@@ -93,7 +93,7 @@ must_fallthrough(From,To):-
 
 .decl may_have_symbolic_immediate(src:address,dest:address)
 
-may_have_symbolic_immediate(Src,Dest):-
+may_have_symbolic_immediate(Src,as(Dest,address)):-
     instruction_immediate_offset(Src,Index,Offset),
     instruction_get_op(Src,Index,Op),
     op_immediate(Op,Dest),
@@ -179,7 +179,7 @@ basic_target(Val):-
 
 .decl block_limit(EA:address)
 
-block_limit(EA):-
+block_limit(as(EA,address)):-
     (
         op_immediate(_,EA);
         pc_relative_operand(_,_,EA);
@@ -232,7 +232,7 @@ code_in_block_candidate(EA,Start):-
 // if reached a block limit or an instruction that does not necessarily
 // fallthrough continue exploring but start a new block
 code_in_block_candidate(EA,EA):-
-    code_in_block_candidate(EA2,Start),
+    code_in_block_candidate(EA2,_),
     may_fallthrough(EA2,EA),
     (
         !must_fallthrough(EA2,EA);

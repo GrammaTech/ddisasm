@@ -55,11 +55,11 @@ compute an address but this is also no enough.
 .decl moved_data_label(EA:address,Size:number,Dest:address,New_dest:address)
 .output moved_data_label
 
-.decl moved_label(EA:address,Index:number,Val:address,New_val:address)
+.decl moved_label(EA:address,Index:operand_index,Val:address,New_val:address)
 .output moved_label
 
 // this predicate is just for debugging purposes
-.decl moved_label_class(EA:address,Index:number,Reason:symbol)
+.decl moved_label_class(EA:address,Index:operand_index,Reason:symbol)
 .output moved_label_class
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -86,7 +86,7 @@ moved_data_label(EA,SizePointer,Dest,Address):-
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-.decl moved_pc_relative_candidate(EA:address,Index:number,Val:address,New_val:address,Diff:number)
+.decl moved_pc_relative_candidate(EA:address,Index:operand_index,Val:address,New_val:address,Diff:number)
 
 moved_pc_relative_candidate(EA_def2,Op_index,Dest,New_dest,Diff):-
     binary_format("ELF"),
@@ -183,11 +183,11 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Diff):-
         Mult <= 0
     ).
 
-.decl moved_displacement_candidate(EA:address,Op_index:number,Dest:address,New_dest:address,Priority:number)
+.decl moved_displacement_candidate(EA:address,Op_index:operand_index,Dest:address,New_dest:address,Priority:number)
 .output moved_displacement_candidate
 
 moved_label_class(EA,Op_index,"miss section with access"),
-moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
+moved_displacement_candidate(EA,Op_index,as(Dest,address),Access_dest,1):-
     binary_type("EXEC"),
     data_access(EA,Op_index,_,_,_,_,Dest,_), Dest >= 0,
     !symbolic_operand(EA,Op_index,_,_),
@@ -208,7 +208,7 @@ moved_displacement_candidate(EA,Op_index,Dest,Access_dest,1):-
 // We have an access with a register that is multiplied by something
 // If the register does not contain the base address, then the displacement should contain it.
 moved_label_class(EA,Op_index,"constant + multiplied reg"),
-moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
+moved_displacement_candidate(EA,Op_index,as(Dest,address),New_dest,Distance):-
     binary_type("EXEC"),
     data_access(EA,Op_index,"NONE","NONE",RegMult,Mult,Dest,_),
     !instruction_get_operation(EA,"LEA"),
@@ -229,7 +229,7 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 
 //Same case as before with the other register
 moved_label_class(EA,Op_index,"constant + multiplied reg2"),
-moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
+moved_displacement_candidate(EA,Op_index,as(Dest,address),New_dest,Distance):-
     binary_type("EXEC"),
     data_access(EA,Op_index,"NONE",Reg,"NONE",_,Dest,_),
     !instruction_get_operation(EA,"LEA"),
@@ -247,7 +247,7 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
 
 // Same case as before but with a repeated register
 moved_label_class(EA,Op_index,"constant + repeated reg"),
-moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
+moved_displacement_candidate(EA,Op_index,as(Dest,address),New_dest,Distance):-
     binary_type("EXEC"),
     data_access(EA,Op_index,"NONE",Reg,Reg,_,Dest,_),
     !instruction_get_operation(EA,"LEA"),
@@ -263,7 +263,7 @@ moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance):-
     ).
 
 // references with offset in PIE or REL code
-moved_displacement_candidate(EA,Op_index,Dest,SymbolAddr,0):-
+moved_displacement_candidate(EA,Op_index,as(Dest,address),SymbolAddr,0):-
     !binary_type("EXEC"),
     data_access(EA,Op_index,_,_,_,_,Dest,_),
     instruction_displacement_offset(EA,Op_index,DisplacementOffset),
@@ -272,7 +272,7 @@ moved_displacement_candidate(EA,Op_index,Dest,SymbolAddr,0):-
     SymbolAddr != Dest.
 
 // we take the candidate with the shortest distance/priority
-.decl discarded_moved_displacement_candidate(EA:address,Op_index:number,Dest:address,New_dest:address,Distance:number)
+.decl discarded_moved_displacement_candidate(EA:address,Op_index:operand_index,Dest:address,New_dest:address,Distance:number)
 
 discarded_moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance1):-
     moved_displacement_candidate(EA,Op_index,Dest,New_dest,Distance1),
@@ -287,10 +287,10 @@ moved_label(EA,Op_index,Dest,New_dest):-
 // consider the case where the immediate is a loop bound
 
 
-.decl mov_immediate_to_reg(EA:address,Reg:register,Imm_index:number,Immediate:number)
+.decl mov_immediate_to_reg(EA:address,Reg:register,Imm_index:operand_index,Immediate:number)
 .decl cmp_reg_to_reg(EA:address,Reg1:register,Reg2:register)
 
-.decl moved_immediate_candidate(EA:address,Op_index:number,Immediate:number,New_immmediate:number)
+.decl moved_immediate_candidate(EA:address,Op_index:operand_index,Immediate:address,New_immmediate:address)
 
 mov_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
     code(EA),
@@ -324,7 +324,7 @@ dest_enlarged_data_section(EA_def,Reg,New_dest,Beg-MultAbs,Beg+SizeSect+MultAbs,
 
 // immediate used to access memory
 moved_label_class(EA_from,Imm_index,"immediate used to access memory"),
-moved_immediate_candidate(EA_from,Imm_index,Immediate,New_dest):-
+moved_immediate_candidate(EA_from,Imm_index,as(Immediate,address),New_dest):-
     binary_type("EXEC"),
     data_access(EA_access,Op_index,_,Reg2,Reg3,_,_,Size),
     data_access_pattern_candidate(New_dest,_,Mult,EA_access),
