@@ -30,7 +30,7 @@ This module detects specific kinds of bitmasks and bitmask operations.
 
 low_pass_mask((2^N)-1):-
     arch.pointer_size(Pt_size),
-    N = range(1,8*Pt_size).
+    N = range(1,8*as(Pt_size,number)).
 
 .decl low_pass_filter(EA:address)
 

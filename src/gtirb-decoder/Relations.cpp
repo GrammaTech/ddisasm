@@ -86,6 +86,18 @@ namespace souffle
         return T;
     }
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Data<gtirb::Addr>& Data)
+    {
+        T << Data.Addr << Data.Item;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Data<int8_t>& Data)
+    {
+        T << Data.Addr << static_cast<int64_t>(Data.Item);
+        return T;
+    }
+
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Block& Block)
     {
         T << Block.Addr << Block.Size;

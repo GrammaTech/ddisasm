@@ -2,7 +2,7 @@
 .decl false_positive(EA:address)
 .output false_negative
 .output false_positive
-.decl relocation_in_operand(EA:address,Index:operand_index,Rel:address,InsnOffset:number)
+.decl relocation_in_operand(EA:address,Index:operand_index,Rel:address,InsnOffset:unsigned)
 
 
 relocation_in_operand(EA,Index,Location,Offset):-
@@ -38,7 +38,7 @@ bad_symbol_constant(EA,Cnt):-
     (
         pc_relative_operand(EA,Index,_),
         instruction(EA,InsnSize,_,_,_,_,_,_),
-        Cnt2 = Cnt+ (InsnSize-InsnOffset)
+        Cnt2 = Cnt+ as(InsnSize-InsnOffset,number)
         ;
         !pc_relative_operand(EA,Index,_),
         Cnt2 = Cnt
@@ -51,10 +51,11 @@ bad_symbol_constant(EA,Cnt):-
 
     section(Name2,SectSize2,Base2),
     Name2 != Name,
-    Dest-Cnt2 >= Base2,
-    Dest-Cnt2 < SectSize2+Base2,
+    Dest_minus_cnt2 = as(as(Dest,number)-Cnt2,unsigned),
+    Dest_minus_cnt2 >= Base2,
+    Dest_minus_cnt2 < SectSize2+Base2,
     //not pointing to the section boundary
-    Dest-Cnt2 != SectSize+Base.
+    Dest_minus_cnt2 != SectSize+Base.
 
 bad_symbol_constant(EA,Cnt):-
     relocation_in_operand(EA,Index,Rel,InsnOffset),
@@ -62,7 +63,7 @@ bad_symbol_constant(EA,Cnt):-
     (
         pc_relative_operand(EA,Index,_),
         instruction(EA,InsnSize,_,_,_,_,_,_),
-        Cnt2 = Cnt+ (InsnSize-InsnOffset)
+        Cnt2 = Cnt+ as(InsnSize-InsnOffset,number)
         ;
         !pc_relative_operand(EA,Index,_),
         Cnt2 = Cnt
@@ -74,10 +75,11 @@ bad_symbol_constant(EA,Cnt):-
 
     section(Name2,SectSize2,Base2),
     Name2 != Name,
-    Orig-Cnt2 >= Base2,
-    Orig-Cnt2 < SectSize2+Base2,
+    Orig_minus_cnt2 = as(as(Orig,number)-Cnt2,unsigned),
+    Orig_minus_cnt2 >= Base2,
+    Orig_minus_cnt2 < SectSize2+Base2,
     //not pointing to the section boundary
-    Orig-Cnt2 != SectSize+Base.
+    Orig_minus_cnt2 != SectSize+Base.
 
 
 false_negative(Location):-

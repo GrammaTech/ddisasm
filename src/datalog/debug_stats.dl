@@ -48,10 +48,11 @@ unaligned_pointer(EA):-
 .decl immediate_symbol(ea:address,op_index:operand_index,dest:address)
 .output immediate_symbol
 
-immediate_symbol(EA,Op_index,Dest):-
+immediate_symbol(EA,Op_index,DestAddr):-
     code(EA),
-    may_have_symbolic_immediate(EA,Dest),
+    may_have_symbolic_immediate(EA,DestAddr),
     instruction_get_op(EA,Op_index,Op),
     !direct_jump(EA,_),
     !direct_call(EA,_),
-    op_immediate(Op,Dest).
+    op_immediate(Op,Dest),
+    DestAddr = as(Dest,address).

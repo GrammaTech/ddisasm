@@ -54,8 +54,8 @@ struct DecodedInstruction
     gtirb::Addr EA;
     uint64_t Size;
     std::map<uint64_t, std::variant<ImmOp, IndirectOp>> Operands;
-    int64_t immediateOffset;
-    int64_t displacementOffset;
+    uint64_t immediateOffset;
+    uint64_t displacementOffset;
 };
 
 std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SouffleProgram *prog)
@@ -162,8 +162,8 @@ struct MovedLabel
 
     gtirb::Addr EA{0};
     uint64_t OperandIndex{0};
-    int64_t Address1{0};
-    int64_t Address2{0};
+    gtirb::Addr Address1{0};
+    gtirb::Addr Address2{0};
 };
 
 struct MovedDataLabel
@@ -180,8 +180,8 @@ struct MovedDataLabel
 
     gtirb::Addr EA{0};
     uint64_t Size{0};
-    int64_t Address1{0};
-    int64_t Address2{0};
+    gtirb::Addr Address1{0};
+    gtirb::Addr Address2{0};
 };
 
 struct SymbolicExpressionNoOffset
@@ -194,7 +194,7 @@ struct SymbolicExpressionNoOffset
 
     gtirb::Addr EA{0};
     uint64_t OperandIndex{0};
-    uint64_t Dest{0};
+    gtirb::Addr Dest{0};
 };
 
 struct BlockPoints
@@ -268,7 +268,7 @@ struct SymbolMinusSymbol
     uint64_t Size;
     gtirb::Addr Symbol1{0};
     gtirb::Addr Symbol2{0};
-    int64_t Scale;
+    uint64_t Scale;
 };
 
 struct SplitLoad
@@ -429,7 +429,7 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
     for(auto &output : *prog->getRelation("relocation"))
     {
         gtirb::Addr ea;
-        uint64_t offset;
+        int64_t offset;
         std::string type, name;
         output >> ea >> type >> name >> offset;
         if(type == "COPY")
@@ -593,7 +593,7 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
                         [index](const auto &element) { return element.OperandIndex == index; });
        movedLabel != rangeMovedLabel.second)
     {
-        assert(movedLabel->Address1 == immediate);
+        assert(movedLabel->Address1 == gtirb::Addr(immediate));
         auto diff = movedLabel->Address1 - movedLabel->Address2;
         auto sym = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(

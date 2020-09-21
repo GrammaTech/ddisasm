@@ -56,7 +56,7 @@ This module:
 
 .type register <: symbol
 
-.type address <: number
+.type address <: unsigned
 .type operand_code <: unsigned
 .type operand_index <: unsigned
 
@@ -104,10 +104,10 @@ This module:
 .decl entry_point(ea:address)
 .input entry_point
 
-.decl symbol(ea:address,size:number,type:symbol,scope:symbol,sectionIndex:number,name:symbol)
+.decl symbol(ea:address,size:unsigned,type:symbol,scope:symbol,sectionIndex:unsigned,name:symbol)
 .input symbol
 
-.decl section_complete(name:symbol,size:number,addr:address,type:number,flags:number)
+.decl section_complete(name:symbol,size:unsigned,addr:address,type:unsigned,flags:unsigned)
 .input section_complete
 
 .decl relocation(ea:address,type:symbol,name:symbol,addend:number)
@@ -128,12 +128,12 @@ This module:
 
 // instructions
 
-.decl instruction_complete(ea:address, size:number, prefix:symbol, opcode:symbol,
+.decl instruction_complete(ea:address, size:unsigned, prefix:symbol, opcode:symbol,
           op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code,
-          immOffset:number,displacementOffset:number)
+          immOffset:unsigned,displacementOffset:unsigned)
 .input instruction_complete
 
-.decl instruction(ea:address, size:number, prefix:symbol, opcode:symbol,
+.decl instruction(ea:address, size:unsigned, prefix:symbol, opcode:symbol,
           op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code)
 
 instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
@@ -158,7 +158,7 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
 .output op_barrier
 
 .decl op_indirect(code:operand_code,reg1:register, reg2:register, reg3:register,
-        multiplier:number, offset:number, size_value:number)
+        multiplier:number, offset:number, size_value:unsigned)
 .input op_indirect
 
 // data from sections
@@ -178,7 +178,7 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
 // auxiliary definitions
 /////////////////////////////////////////////////////////////
 
-.decl instruction_immediate_offset(EA:address,Index:operand_index,Offset:number)
+.decl instruction_immediate_offset(EA:address,Index:operand_index,Offset:unsigned)
 .output instruction_immediate_offset
 
 instruction_immediate_offset(EA,Index,ImmediateOffset):-
@@ -186,7 +186,7 @@ instruction_immediate_offset(EA,Index,ImmediateOffset):-
     instruction_get_op(EA,Index,Op),
     op_immediate(Op,_).
 
-.decl instruction_displacement_offset(EA:address,Index:operand_index,Offset:number)
+.decl instruction_displacement_offset(EA:address,Index:operand_index,Offset:unsigned)
 .output instruction_displacement_offset
 
 instruction_displacement_offset(EA,Index,DisplacementOffset):-
@@ -287,12 +287,12 @@ next(EA,EA+Size):-
 .decl pc_relative_operand(src:address,index:operand_index, dest:address)
 .output pc_relative_operand
 
-pc_relative_operand(EA,Index,EA_next+Offset):-
+pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     binary_isa("X64"),
     instruction_get_op(EA, Index, Op),
     op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
     arch.pc_register(Reg),
-    next(EA,EA_next).
+    next(EA,EANext).
 
 pc_relative_operand(EA, 1, as(Dest,address)) :-
     split_load(EA, _, Dest, _).
@@ -301,8 +301,8 @@ pc_relative_operand(EA, 2, as(Dest,address)) :-
     split_load(_, EA, Dest, _).
 
 // Compute an immediate load performed across two consecutive instructions
-.decl split_load(ea:address, nextea:address, dest:number, type:symbol)
-split_load(EA, NextEA, Base + Offset, "ADD") :-
+.decl split_load(ea:address, nextea:address, dest:address, type:symbol)
+split_load(EA, NextEA, as(Base + Offset,address), "ADD") :-
     // ADRP <Register> <Immediate>
     // e.g. adrp x0, BaseOp
     instruction_get_operation(EA, "ADRP"),
@@ -317,7 +317,7 @@ split_load(EA, NextEA, Base + Offset, "ADD") :-
     instruction_get_op(NextEA, 2, OffsetOp),
     op_immediate(OffsetOp, Offset).
 
-split_load(EA, NextEA, Base + Offset, "LDR") :-
+split_load(EA, NextEA, as(Base + Offset,address), "LDR") :-
     // ADRP <Register> <Immediate>
     // e.g. adrp x0, BaseOp
     instruction_get_operation(EA, "ADRP"),
@@ -499,7 +499,7 @@ ambiguous_symbol(Name):-
 function_symbol(EA,Name):-
     symbol(EA,_,"FUNC",_,_,Name).
 
-.decl defined_symbol(ea:address,size:number,type:symbol,scope:symbol,sectionIndex:number,name:symbol)
+.decl defined_symbol(ea:address,size:unsigned,type:symbol,scope:symbol,sectionIndex:unsigned,name:symbol)
 
 defined_symbol(EA,Size,Type,Scope,SectIndex,Name):-
     symbol(EA,Size,Type,Scope,SectIndex,Name),
@@ -511,7 +511,7 @@ defined_symbol(EA,Size,Type,Scope,SectIndex,Name):-
     (SectIndex < SHN_LORESERVE; SectIndex > SHN_HIRESERVE).
 ////////////////////////////////////////////////////////////////////////////////////////
 
-.decl section(name:symbol,size:number,addr:address)
+.decl section(name:symbol,size:unsigned,addr:address)
 .decl data_section(name:symbol)
 .decl exception_section(name:symbol)
 .decl special_data_section(name:symbol)

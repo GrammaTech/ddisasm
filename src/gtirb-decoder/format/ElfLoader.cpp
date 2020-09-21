@@ -222,8 +222,8 @@ souffle::tuple ElfExceptionDecoder::getCIEEncoding(souffle::Relation *relation,
                                                    const EHP::CIEContents_t *cie)
 {
     souffle::tuple tuple(relation);
-    uint64_t fdeEnconding = cie->getFDEEncoding();
-    uint64_t lsdaEncoding = cie->getLSDAEncoding();
+    int64_t fdeEnconding = cie->getFDEEncoding();
+    int64_t lsdaEncoding = cie->getLSDAEncoding();
     tuple << cie->getPosition() << fdeEnconding << lsdaEncoding;
     return tuple;
 }
@@ -234,7 +234,7 @@ souffle::tuple ElfExceptionDecoder::getCIEPersonality(souffle::Relation *relatio
     souffle::tuple tuple(relation);
     tuple << cie->getPosition() << cie->getPersonality() << cie->getPersonalityPointerPosition()
           << cie->getPersonalityPointerSize()
-          << static_cast<uint64_t>(cie->getPersonalityEncoding());
+          << static_cast<int64_t>(cie->getPersonalityEncoding());
     return tuple;
 }
 
