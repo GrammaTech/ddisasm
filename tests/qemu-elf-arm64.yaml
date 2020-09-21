@@ -55,7 +55,7 @@ zero-one-two-three-optimize: &zero-one-two-three-optimize
   build:
     c: ["aarch64-linux-gnu-gcc"]
     cpp: ["aarch64-linux-gnu-g++"]
-    optimizations: ["-O0", "-O1", "-O2"]
+    optimizations: ["-O0", "-O1", "-O2", "-O3"]
     flags: []
 
 tests:
