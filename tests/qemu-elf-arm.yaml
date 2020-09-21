@@ -26,6 +26,15 @@ default: &default
     strip: false
     skip: false
 
+# FIXME: Remove when examples work for all optimization levels.
+zero-optimize: &zero-optimize
+  <<: *default
+  build:
+    c: ["arm-linux-gnueabihf-gcc"]
+    cpp: ["arm-linux-gnueabihf-g++"]
+    optimizations: ["-O0"]
+    flags: []
+
 tests:
   - name: ex1_pie
     <<: *default
@@ -49,9 +58,26 @@ tests:
       optimizations: [""]
 
   - name: ex1
-    <<: *default
-    build:
-      c: ["arm-linux-gnueabihf-gcc"]
-      cpp: ["arm-linux-gnueabihf-g++"]
-      optimizations: []
-      flags: []
+    <<: *zero-optimize
+
+  # FIXME: ex_2modulesPIC
+  # FIXME: ex_confusing_data
+  # FIXME: ex_struct
+  # FIXME: ex_exceptions{1,2,3}
+  # FIXME: ex_false_pointer_array
+  # FIXME: ex_float
+  # FIXME: ex_fprintf
+  # FIXME: ex_getoptlong
+  # FIXME: ex_memberPointer
+
+  - name: ex_noreturn
+    <<: *zero-optimize
+
+  # FIXME: ex_pointerReatribution
+  # FIXME: ex_pointerReatribution2
+  # FIXME: ex_pointerReatribution3
+  # FIXME: ex_stat
+  # FIXME: ex_struct
+  # FIXME: ex_switch
+  # FIXME: ex_uninitialized_data
+  # FIXME: ex_virtualDispatch
