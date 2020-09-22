@@ -246,6 +246,13 @@ int main(int argc, char **argv)
             souffle::SignalHandler::instance()->error(e.what());
         }
         printElapsedTimeSince(StartDisassembling);
+        if(vm.count("debug-dir") != 0)
+        {
+            std::cerr << "Writing results to debug dir " << vm["debug-dir"].as<std::string>()
+                      << std::endl;
+            auto dir = vm["debug-dir"].as<std::string>() + "/";
+            Souffle->writeRelations(dir);
+        }
         std::cerr << "Populating gtirb representation " << std::flush;
         auto StartGtirbBuilding = std::chrono::high_resolution_clock::now();
         disassembleModule(*GTIRB->Context, Module, Souffle->get(), vm.count("self-diagnose") != 0);
@@ -333,14 +340,6 @@ int main(int argc, char **argv)
         {
             std::cerr << "Printing assembler" << std::endl;
             pprinter.print(std::cout, *GTIRB->Context, Module);
-        }
-
-        if(vm.count("debug-dir") != 0)
-        {
-            std::cerr << "Writing results to debug dir " << vm["debug-dir"].as<std::string>()
-                      << std::endl;
-            auto dir = vm["debug-dir"].as<std::string>() + "/";
-            Souffle->writeRelations(dir);
         }
         performSanityChecks(Souffle->get(), vm.count("self-diagnose") != 0);
     }

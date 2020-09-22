@@ -1148,8 +1148,8 @@ void buildCfiDirectives(gtirb::Context &context, gtirb::Module &module,
     {
         gtirb::Addr blockAddr, reference;
         std::string directive;
-        uint64_t disp, localIndex;
-        int64_t nOperands, op1, op2;
+        uint64_t disp, localIndex, nOperands;
+        int64_t op1, op2;
         output >> blockAddr >> disp >> localIndex >> directive >> reference >> nOperands >> op1
             >> op2;
         std::vector<int64_t> operands;
@@ -1263,9 +1263,9 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
 
     for(auto &output : *prog->getRelation("value_reg"))
     {
-        gtirb::Addr ea;
+        gtirb::Addr ea, ea2;
         std::string reg, reg2;
-        int64_t multiplier, offset, ea2;
+        int64_t multiplier, offset;
         output >> ea >> reg >> ea2 >> reg2 >> multiplier >> offset;
         std::ostringstream newComment;
         newComment << reg << "=(" << reg2 << "," << std::hex << ea2 << std::dec << ")*"
@@ -1287,8 +1287,8 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
 
     for(auto &output : *prog->getRelation("def_used"))
     {
-        gtirb::Addr ea_use;
-        int64_t ea_def, index;
+        gtirb::Addr ea_use, ea_def;
+        uint64_t index;
         std::string reg;
         output >> ea_def >> reg >> ea_use >> index;
         std::ostringstream newComment;
@@ -1312,7 +1312,7 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
         for(auto &output : *prog->getRelation("bad_symbol_constant"))
         {
             gtirb::Addr ea;
-            int64_t index;
+            uint64_t index;
             output >> ea >> index;
             std::ostringstream newComment;
             newComment << "bad_symbol_constant(" << index << ")";
