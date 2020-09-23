@@ -98,15 +98,6 @@ void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_
                   << "ms)" << std::endl;
 }
 
-std::vector<std::string> createDisasmOptions(const po::variables_map &vm)
-{
-    std::vector<std::string> Options;
-    if(vm.count("no-cfi-directives"))
-    {
-        Options.push_back("no-cfi-directives");
-    }
-    return Options;
-}
 int main(int argc, char **argv)
 {
     registerAuxDataTypes();
