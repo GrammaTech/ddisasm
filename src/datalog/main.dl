@@ -264,7 +264,7 @@ instruction_get_src_op(EA,Index,Op):-
 // inference of basic facts
 /////////////////////////////////////////////////////////////
 
-.decl symbol_prefix(ea:address, index:number, prefix:symbol)
+.decl symbol_prefix(ea:address, index:unsigned, prefix:symbol)
 .output symbol_prefix()
 
 symbol_prefix(ea, 1, ":got:") :-

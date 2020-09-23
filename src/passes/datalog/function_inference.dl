@@ -30,7 +30,7 @@ identifying function pointers and based on identifying complete functions.
 .type address <: unsigned
 .type scc <:unsigned
 .type operand_code <: unsigned
-.symbol_type register
+.type register <: symbol
 
 .decl block(Address:address, Size:unsigned)
 .input block
