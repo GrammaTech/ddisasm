@@ -268,8 +268,3 @@ tls_reference(EA,Offset,TlsEnd):-
     instruction_get_op(EA,_,Op),
     op_indirect(Op,"FS","NONE","NONE",_,Offset,_), Offset < 0,
     TlsEnd = max EA:{ tls_section(Name), section(Name,Size,Addr), EA=Addr+Size }.
-
-symbol_minus_symbol(EA+Disp,Size/8,Reference+Offset,Reference,1):-
-    tls_reference(EA,Offset,Reference),
-    instruction_complete(EA,_,_,_,_,_,_,_,_,Disp),
-    op_indirect(Op,_,_,_,_,_,Size).

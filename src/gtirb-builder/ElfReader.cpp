@@ -109,6 +109,15 @@ void ElfReader::buildSections()
 
 void ElfReader::buildSymbols()
 {
+    std::optional<uint64_t> Tls;
+    for(auto &Segment : Elf->segments())
+    {
+        if(Segment.type() == LIEF::ELF::SEGMENT_TYPES::PT_TLS)
+        {
+            Tls = Segment.virtual_address();
+        }
+    }
+
     std::set<std::tuple<uint64_t, uint64_t, std::string, std::string, std::string, uint64_t,
                         std::string>>
         Symbols;
@@ -128,8 +137,17 @@ void ElfReader::buildSymbols()
             Name = Name.substr(0, Version);
         }
 
+        uint64_t Value = Symbol.value();
+
+        // STT_TLS symbols are relative to PT_TLS segment base.
+        if(Symbol.type() == LIEF::ELF::ELF_SYMBOL_TYPES::STT_TLS)
+        {
+            assert(Tls && "Found TLS symbol but no TLS segment.");
+            Value = *Tls + Value + 0xFF000000;
+        }
+
         Symbols.insert({
-            Symbol.value(),
+            Value,
             Symbol.size(),
             LIEF::ELF::to_string(Symbol.type()),
             LIEF::ELF::to_string(Symbol.binding()),
