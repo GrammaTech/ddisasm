@@ -5,39 +5,11 @@ from pathlib import Path
 from timeit import default_timer as timer
 import gtirb
 
+from disassemble_reassemble_check import bcolors
+
 ex_dir = Path("./examples/trace_examples/")
 funinfer = Path("./build/bin/funinfer")
 tbgtirb = "tbdisasm_a_20200713.gtirb"
-
-
-# This is duplicated from disassemble_reassemble_check.py
-# TODO: Move to some more general shared utility module, maybe?
-class bcolors:
-    """
-    Define some colors for printing in the terminal
-    """
-
-    OKBLUE = "\033[94m"
-    OKGREEN = "\033[92m"
-    WARNING = "\033[93m"
-    FAIL = "\033[91m"
-    ENDC = "\033[0m"
-
-    @classmethod
-    def okblue(cls, *args):
-        return cls.OKBLUE + " ".join(args) + cls.ENDC
-
-    @classmethod
-    def okgreen(cls, *args):
-        return cls.OKGREEN + " ".join(args) + cls.ENDC
-
-    @classmethod
-    def warning(cls, *args):
-        return cls.WARNING + " ".join(args) + cls.ENDC
-
-    @classmethod
-    def fail(cls, *args):
-        return cls.FAIL + " ".join(args) + cls.ENDC
 
 
 class TraceFunctionInference(unittest.TestCase):
