@@ -67,7 +67,7 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
     while(Size > 0)
     {
         // Single byte.
-        int8_t Byte = *Data;
+        uint8_t Byte = *Data;
         Facts.Bytes.push_back({Addr, Byte});
 
         // Possible address.

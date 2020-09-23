@@ -251,7 +251,7 @@ symbol_minus_symbol_candidate(TableStart,Size,TableReference,Dest,"first",1):-
     jump_table_start(_,Size,TableStart,TableReference,"ADD"),
     (
         Size > 1,data_word(TableStart,Size,Diff);
-        Size = 1,data_byte(TableStart,Diff)
+        Size = 1,data_byte(TableStart,DiffUnsigned), Diff = as(DiffUnsigned,number)
     ),
     TableReference_signed = as(TableReference,number),
     Dest = as(TableReference_signed + Diff,unsigned),
@@ -261,7 +261,7 @@ symbol_minus_symbol_candidate(TableStart,Size,Dest,TableReference,"second",1):-
     jump_table_start(_,Size,TableStart,TableReference,"SUB"),
     (
         Size > 1,data_word(TableStart,Size,Diff);
-        Size = 1,data_byte(TableStart,Diff)
+        Size = 1,data_byte(TableStart,DiffUnsigned), Diff = as(DiffUnsigned,number)
     ),
     TableReference_signed = as(TableReference,number),
     Dest = as(TableReference_signed - Diff,unsigned),
@@ -273,7 +273,7 @@ symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first",Scale):-
     last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA,
     (
         Size>1,data_word(EA+Size,Size,Diff);
-        Size=1,data_byte(EA+Size,Diff)
+        Size=1,data_byte(EA+Size,DiffUnsigned), Diff = as(DiffUnsigned,number)
     ),
     Reference_signed = as(Reference,number),
     Symbol = as(Reference_signed + Diff,unsigned),
@@ -285,7 +285,7 @@ symbol_minus_symbol_candidate(EA+Size,Size,Symbol,Reference,"second",Scale):-
     last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA,
     (
         Size>1,data_word(EA+Size,Size,Diff);
-        Size=1,data_byte(EA+Size,Diff)
+        Size=1,data_byte(EA+Size,DiffUnsigned), Diff = as(DiffUnsigned,number)
     ),
     Reference_signed = as(Reference,number),
     Symbol = as(Reference_signed - Diff,unsigned),

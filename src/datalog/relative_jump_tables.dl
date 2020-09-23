@@ -32,7 +32,7 @@ data_word(EA,2,Val):-
     data_byte(EA,Byte0), EA % 2 = 0,//jump tables are assumed to be aligned
     data_byte(EA+1,Byte1),
     Byte1 < 128,//the number is positive
-    Val = Byte1*2^8 + Byte0.
+    Val = as(Byte1*2^8 + Byte0,number).
 
 data_word(EA,4,Val):-
     data_byte(EA,Byte0),
@@ -42,11 +42,11 @@ data_word(EA,4,Val):-
     data_byte(EA+3,Byte3),
     (
         Byte3 >= 128,//the number is negative
-        Val = -(2^32 -( Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0)),
+        Val = -(2^32 -as( Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0,number)),
         Val != 0
         ;
         Byte3 < 128,//the number is positive
-        Val =  Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0
+        Val =  as(Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0,number)
     ).
 
 data_word(EA,8,Val):-
@@ -60,8 +60,8 @@ data_word(EA,8,Val):-
     data_byte(EA+6,Byte6),
     data_byte(EA+7,Byte7),
 
-    Val =  (Byte7*2^56)  bor (Byte6*2^48)   bor (Byte5*2^40)  bor (Byte4*2^32) +
-           (Byte3*2^24) bor (Byte2*2^16) bor (Byte1*2^8) bor Byte0.
+    Val =  as((Byte7*2^56)  bor (Byte6*2^48)   bor (Byte5*2^40)  bor (Byte4*2^32) +
+           (Byte3*2^24) bor (Byte2*2^16) bor (Byte1*2^8) bor Byte0,number).
 
 
 .decl take_address(Src:address,Address_taken:address)

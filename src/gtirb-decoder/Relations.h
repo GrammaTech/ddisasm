@@ -173,9 +173,12 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::IndirectOp& I);
 
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::Data<gtirb::Addr>& Data);
-
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::Data<int8_t>& Data);
+    template <class Item>
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Data<Item>& Data)
+    {
+        T << Data.Addr << static_cast<uint64_t>(Data.Item);
+        return T;
+    }
 
     template <class U>
     souffle::tuple& operator<<(souffle::tuple& T, const std::pair<U, uint64_t>& Pair)

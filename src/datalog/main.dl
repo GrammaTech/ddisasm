@@ -162,7 +162,7 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
 .input op_indirect
 
 // data from sections
-.decl data_byte(ea:address,value:number)
+.decl data_byte(ea:address,value:unsigned)
 .input data_byte
 
 .decl address_in_data(ea:address,value:address)
