@@ -34,6 +34,7 @@ section(Name,Size,Addr):-
 elf_section_flag("SHF_WRITE",0).
 elf_section_flag("SHF_ALLOC",1).
 elf_section_flag("SHF_EXECINSTR",2).
+elf_section_flag("SHF_TLS",10).
 
 .decl elf_section_type(Name:symbol,Code:unsigned)
 
@@ -100,6 +101,12 @@ function_pointer_section(".got.plt"):-binary_format("ELF").
 plt_section(".plt").
 plt_section(".plt.got").
 plt_section(".plt.sec").
+
+tls_section(Name):-
+    binary_format("ELF"),
+    data_section(Name),
+    section_complete(Name,_,_,_,Flags),
+    elf_section_flag("SHF_TLS", Pos_Tls), Flags band (2^Pos_Tls) > 0.
 
 bss_section(Name):-
     binary_format("ELF"),
@@ -248,3 +255,21 @@ symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
     binary_format("ELF"),
     relocation(EA,"R32S",Symbol,Addend),
     symbol(_,_,_,_,_,Symbol).
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
+.decl tls_reference(EA:address,Offset:number,Reference:address)
+.output tls_reference
+
+// Indirect references to thread-local storage,
+//   e.g.   mov     eax, DWORD PTR fs:i@tpoff
+//     or   mov     eax, DWORD PTR fs:[-4]
+tls_reference(EA,Offset,TlsEnd):-
+    instruction_get_op(EA,_,Op),
+    op_indirect(Op,"FS","NONE","NONE",_,Offset,_), Offset < 0,
+    TlsEnd = max EA:{ tls_section(Name), section(Name,Size,Addr), EA=Addr+Size }.
+
+symbol_minus_symbol(EA+Disp,Size/8,Reference+Offset,Reference,1):-
+    tls_reference(EA,Offset,Reference),
+    instruction_complete(EA,_,_,_,_,_,_,_,_,Disp),
+    op_indirect(Op,_,_,_,_,_,Size).

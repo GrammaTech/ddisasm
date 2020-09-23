@@ -353,3 +353,22 @@ tests:
     <<: *assembly
     test:
       strip: true
+
+  # TODO: These are the WIP test cases:
+  - name: ex_thread_local
+    <<: *default
+    build:
+      c: ["gcc", "clang"]
+      cpp: ["g++", "clang++"]
+      optimizations: ["-O0"]
+      flags: []
+
+  - name: ex_thread_local
+    <<: *default
+    build:
+      c: ["gcc", "clang"]
+      cpp: ["g++", "clang++"]
+      optimizations: ["-O0"]
+      flags: []
+    test:
+      strip: true

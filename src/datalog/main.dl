@@ -464,6 +464,8 @@ defined_symbol(EA,Size,Type,Scope,SectIndex,Name):-
 .decl special_data_section(name:symbol)
 .decl regular_data_section(name:symbol)
 .decl code_section(name:symbol)
+.decl tls_section(name:symbol)
+.output tls_section
 .decl bss_section(name:symbol)
 .output bss_section
 

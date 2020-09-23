@@ -326,6 +326,7 @@ struct SymbolicInfo
     VectorByEA<MovedLabel> MovedLabels;
     VectorByEA<SymbolicExpressionNoOffset> SymbolicExpressionNoOffsets;
     VectorByEA<SymbolicExpr> SymbolicExpressionsFromRelocations;
+    VectorByEA<SymbolMinusSymbol> SymbolicBaseMinusConst;
 };
 
 template <typename T>
@@ -667,6 +668,16 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
                 module, ea, DispSize, instruction.displacementOffset, 0, sym);
         }
     }
+    // Symbol-Symbol for TLS references
+    auto rangeRelSym =
+        symbolicInfo.SymbolicBaseMinusConst.equal_range(ea + instruction.displacementOffset);
+    if(auto relSym = rangeRelSym.first; relSym != rangeRelSym.second)
+    {
+        auto sym1 = getSymbol(context, module, gtirb::Addr(relSym->Symbol1));
+        auto sym2 = getSymbol(context, module, gtirb::Addr(relSym->Symbol2));
+        addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(
+            module, ea, DispSize, instruction.displacementOffset, 1, 0, sym2, sym1);
+    }
 }
 
 void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module,
@@ -676,7 +687,8 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
     SymbolicInfo symbolicInfo{
         convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
         convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog),
-        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog)};
+        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog),
+        convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog)};
     auto splitLoad = convertSortedRelation<VectorByEA<SplitLoad>>("split_load", prog);
     std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
 

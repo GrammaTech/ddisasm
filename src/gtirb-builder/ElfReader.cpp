@@ -43,10 +43,8 @@ void ElfReader::buildSections()
         bool Writable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
         bool Initialized = Loaded && Section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS;
 
-        // FIXME: Move .tbss section
-        bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
         // FIXME: Populate sections that are not loaded (e.g. .symtab and .strtab)
-        if(!Loaded || Tls)
+        if(!Loaded)
         {
             Index++;
             continue;
@@ -75,6 +73,15 @@ void ElfReader::buildSections()
         }
 
         gtirb::Addr Addr = gtirb::Addr(Section.virtual_address());
+
+        bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
+        if(Tls)
+        {
+            // Thread-local data sections may overlap other sections, as they are
+            // only templates for per-thread copies of the data sections.
+            Addr = gtirb::Addr(Section.virtual_address() + 0xFF000000);
+        }
+
         if(Initialized)
         {
             // Add allocated section contents to a single, contiguous ByteInterval.
