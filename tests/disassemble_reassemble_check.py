@@ -67,7 +67,9 @@ def make(target=""):
         return ["nmake", "/E", "/F", "Makefile.windows"] + target
 
 
-def compile(compiler, cxx_compiler, optimizations, extra_flags):
+def compile(
+    compiler, cxx_compiler, optimizations, extra_flags, exec_wrapper=None
+):
     """
     Clean the project and compile it using the compiler
     'compiler', the cxx compiler 'cxx_compiler' and the flags in
@@ -83,6 +85,8 @@ def compile(compiler, cxx_compiler, optimizations, extra_flags):
     env["CXX"] = cxx_compiler
     env["CFLAGS"] = quote_args(optimizations, *extra_flags)
     env["CXXFLAGS"] = quote_args(optimizations, *extra_flags)
+    if exec_wrapper:
+        env["EXEC"] = exec_wrapper
     completedProcess = subprocess.run(
         make("clean"), env=env, stdout=subprocess.DEVNULL
     )
@@ -178,12 +182,17 @@ def reassemble_using_makefile(assembler, binary, extra_flags):
     return True
 
 
-def test():
+def test(exec_wrapper=None):
     """
     Test the project with  'make check'.
     """
     print("# testing\n")
-    completedProcess = subprocess.run(make("check"), stderr=subprocess.DEVNULL)
+    env = dict(os.environ)
+    if exec_wrapper:
+        env["EXEC"] = exec_wrapper
+    completedProcess = subprocess.run(
+        make("check"), env=env, stderr=subprocess.DEVNULL
+    )
     if completedProcess.returncode != 0:
         print(bcolors.fail("# Testing FAILED\n"))
         return False
@@ -204,6 +213,7 @@ def disassemble_reassemble_test(
     strip=False,
     reassemble_function=reassemble,
     skip_test=False,
+    exec_wrapper=None,
 ):
     """
     Disassemble, reassemble and test an example with the given compilers and
@@ -229,7 +239,11 @@ def disassemble_reassemble_test(
                     )
                 )
                 if not compile(
-                    compiler, cxx_compiler, optimization, extra_compile_flags
+                    compiler,
+                    cxx_compiler,
+                    optimization,
+                    extra_compile_flags,
+                    exec_wrapper,
                 ):
                     compile_errors += 1
                     continue
@@ -246,7 +260,7 @@ def disassemble_reassemble_test(
                 if skip_test or reassemble_function == skip_reassemble:
                     print(bcolors.warning(" No testing"))
                     continue
-                if not test():
+                if not test(exec_wrapper):
                     test_errors += 1
     total_errors = (
         compile_errors + disassembly_errors + reassembly_errors + test_errors

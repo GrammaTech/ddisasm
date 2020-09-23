@@ -1,0 +1,121 @@
+# Restrict these test cases to systems with compatible QEMU packages.
+distro:
+  name: Ubuntu
+  version: ["18.04"]
+
+default: &default
+  path: examples
+  binary: ex
+
+  # Compilation configuration.
+  build:
+    c: ["aarch64-linux-gnu-gcc"]
+    cpp: ["aarch64-linux-gnu-g++"]
+    optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
+    flags: []
+
+  # Reassembly configuration.
+  reassemble:
+    compiler: "aarch64-linux-gnu-gcc"
+    flags: []
+    skip: false
+
+  # Test configuration.
+  test:
+    wrapper: "qemu-aarch64 -L /usr/aarch64-linux-gnu"
+    strip: false
+    skip: false
+
+zero-optimize: &zero-optimize
+  <<: *default
+  build:
+    c: ["aarch64-linux-gnu-gcc"]
+    cpp: ["aarch64-linux-gnu-g++"]
+    optimizations: ["-O0"]
+    flags: []
+
+zero-one-optimize: &zero-one-optimize
+  <<: *default
+  build:
+    c: ["aarch64-linux-gnu-gcc"]
+    cpp: ["aarch64-linux-gnu-g++"]
+    optimizations: ["-O0", "-O1"]
+    flags: []
+
+zero-one-two-optimize: &zero-one-two-optimize
+  <<: *default
+  build:
+    c: ["aarch64-linux-gnu-gcc"]
+    cpp: ["aarch64-linux-gnu-g++"]
+    optimizations: ["-O0", "-O1", "-O2"]
+    flags: []
+
+zero-one-two-three-optimize: &zero-one-two-three-optimize
+  <<: *default
+  build:
+    c: ["aarch64-linux-gnu-gcc"]
+    cpp: ["aarch64-linux-gnu-g++"]
+    optimizations: ["-O0", "-O1", "-O2", "-O3"]
+    flags: []
+
+tests:
+  - name: hello
+    binary: hello
+    <<: *default
+    path: examples/arm64
+
+  - name: password
+    binary: password
+    <<: *default
+    path: examples/arm64
+
+  - name: ex1
+    <<: *default
+
+  - name: ex_2modulesPIC
+    <<: *zero-one-two-three-optimize
+
+  - name: ex_confusing_data
+    <<: *zero-one-optimize
+
+  - name: ex_struct
+    <<: *zero-one-optimize
+
+  # FIXME: ex_exceptions{1,2,3}
+
+  - name: ex_false_pointer_array
+    <<: *zero-optimize
+
+  # FIXME: ex_float
+
+  - name: ex_fprintf
+    <<: *zero-one-optimize
+
+  - name: ex_getoptlong
+    <<: *zero-one-optimize
+
+  # FIXME: ex_memberPointer
+
+  - name: ex_noreturn
+    <<: *default
+
+  - name: ex_pointerReatribution
+    <<: *zero-optimize
+
+  - name: ex_pointerReatribution2
+    <<: *zero-optimize
+
+  - name: ex_pointerReatribution3
+    <<: *zero-one-optimize
+
+  # FIXME: ex_stat
+
+  - name: ex_struct
+    <<: *zero-one-optimize
+
+  - name: ex_switch
+    <<: *zero-one-optimize
+
+  # FIXME: ex_uninitialized_data
+
+  # FIXME: ex_virtualDispatch
