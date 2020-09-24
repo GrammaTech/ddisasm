@@ -74,11 +74,14 @@ void ElfReader::buildSections()
 
         gtirb::Addr Addr = gtirb::Addr(Section.virtual_address());
 
+        // Thread-local data sections overlap other sections, as they are
+        // only templates for per-thread copies of the data sections.
         bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
         if(Tls)
         {
-            // Thread-local data sections may overlap other sections, as they are
-            // only templates for per-thread copies of the data sections.
+            // TODO:
+            // Resolve potential address collision, and check that all SHF_TLS
+            // sections are member of a single PT_TLS segment.
             Addr = gtirb::Addr(Section.virtual_address() + 0xFF000000);
         }
 

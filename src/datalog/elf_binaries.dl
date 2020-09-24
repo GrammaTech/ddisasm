@@ -258,19 +258,11 @@ symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-.decl tls_reference(EA:address,Offset:number,Reference:address)
-.output tls_reference
-
-// Indirect references to thread-local storage,
+// Segment-based references to thread-local storage,
 //   e.g.   mov     eax, DWORD PTR fs:i@tpoff
 //     or   mov     eax, DWORD PTR fs:[-4]
-tls_reference(EA,Offset,TlsEnd):-
-    instruction_get_op(EA,_,Op),
-    op_indirect(Op,"FS","NONE","NONE",_,Offset,_), Offset < 0,
-    TlsEnd = max EA:{ tls_section(Name), section(Name,Size,Addr), EA=Addr+Size }.
-
+labeled_data(TlsEnd+Offset),
 symbolic_operand(EA,Index,TlsEnd+Offset,"tls"):-
     instruction_get_op(EA,Index,Op),
     op_indirect(Op,"FS","NONE","NONE",_,Offset,_), Offset < 0,
     TlsEnd = max EA:{ tls_section(Name), section(Name,Size,Addr), EA=Addr+Size }.
-
