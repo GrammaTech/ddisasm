@@ -117,47 +117,48 @@ fun:                                    # @fun
     mov	ebp, esi
     mov	ebx, edi
     cmp	ebx, ebp
-    jge	.LBB5_10
+    jge	LBB5_10
 # %bb.1:
     lea	r14, [rip + .LJTI5_0]
     .p2align	4, 0x90
-.LBB5_2:                                # =>This Inner Loop Header: Depth=1
+LBB5_2:                                # =>This Inner Loop Header: Depth=1
     lea	eax, [rbx - 1]
     cmp	eax, 3
-    ja	.LBB5_8
+    ja	LBB5_8
 # %bb.3:                                #   in Loop: Header=BB5_2 Depth=1
+jumping_block:
     movsxd	rax, dword ptr [r14 + 4*rax]
     add	rax, r14
     jmp	rax
-.LBB5_4:                                #   in Loop: Header=BB5_2 Depth=1
+LBB5_4:                                #   in Loop: Header=BB5_2 Depth=1
     mov	edi, ebx
     call	one
-    jmp	.LBB5_9
+    jmp	LBB5_9
     .p2align	4, 0x90
-.LBB5_8:                                #   in Loop: Header=BB5_2 Depth=1
+LBB5_8:                                #   in Loop: Header=BB5_2 Depth=1
     mov	edi, ebx
     call	def
-    jmp	.LBB5_9
+    jmp	LBB5_9
     .p2align	4, 0x90
-.LBB5_5:                                #   in Loop: Header=BB5_2 Depth=1
+LBB5_5:                                #   in Loop: Header=BB5_2 Depth=1
     mov	edi, ebx
     call	two
-    jmp	.LBB5_9
+    jmp	LBB5_9
     .p2align	4, 0x90
-.LBB5_6:                                #   in Loop: Header=BB5_2 Depth=1
+LBB5_6:                                #   in Loop: Header=BB5_2 Depth=1
     mov	edi, ebx
     call	three
-    jmp	.LBB5_9
+    jmp	LBB5_9
     .p2align	4, 0x90
-.LBB5_7:                                #   in Loop: Header=BB5_2 Depth=1
+LBB5_7:                                #   in Loop: Header=BB5_2 Depth=1
     mov	edi, ebx
     call	four
     .p2align	4, 0x90
-.LBB5_9:                                #   in Loop: Header=BB5_2 Depth=1
+LBB5_9:                                #   in Loop: Header=BB5_2 Depth=1
     add	ebx, 1
     cmp	ebp, ebx
-    jne	.LBB5_2
-.LBB5_10:
+    jne	LBB5_2
+LBB5_10:
     pop	rbx
     pop	r14
     pop	rbp
@@ -170,10 +171,10 @@ fun:                                    # @fun
 
 // here we have a table of relative offsets (symbol minus symbol)
 .LJTI5_0:
-    .long	.LBB5_4-.LJTI5_0
-    .long	.LBB5_5-.LJTI5_0
-    .long	.LBB5_6-.LJTI5_0
-    .long	.LBB5_7-.LJTI5_0
+    .long	LBB5_4-.LJTI5_0
+    .long	LBB5_5-.LJTI5_0
+    .long	LBB5_6-.LJTI5_0
+    .long	LBB5_7-.LJTI5_0
                                         # -- End function
     .text
     .globl	main                    # -- Begin function main
