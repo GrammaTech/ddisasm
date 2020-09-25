@@ -91,6 +91,7 @@ namespace relations
         gtirb::Addr Addr;
         uint64_t Type;
         uint64_t Flags;
+        uint64_t Align;
     };
 
     struct Padding

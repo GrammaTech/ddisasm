@@ -113,16 +113,29 @@ tests:
       flags: ["-no-pie"]
       skip: false
 
+  - name: ex_thread_local
+    <<: *default
+
+  - name: ex_thread_local
+    <<: *default
+    test:
+      strip: true
+
+  - name: ex_threads
+    <<: *default
+    build:
+      c: ["gcc"]
+      # TODO: Fix clang -O0 and clang -O1.
+      cpp: ["g++"]
+      optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
+      flags: []
+    reassemble:
+      compiler: "g++"
+      flags: ["-no-pie", "-lpthread"]
+
   # ----------------------------------------------------------------------------
   # Examples that fail to reassemble.
   # ----------------------------------------------------------------------------
-  - name: ex_threads
-    <<: *default
-    reassemble:
-      skip: true
-      flags: []
-      compiler: ""
-
   - name: ex1
     <<: *default
     build:
@@ -351,14 +364,5 @@ tests:
 
   - name: ex_loop_instructions
     <<: *assembly
-    test:
-      strip: true
-
-  # TODO: These are the WIP test cases:
-  - name: ex_thread_local
-    <<: *default
-
-  - name: ex_thread_local
-    <<: *default
     test:
       strip: true

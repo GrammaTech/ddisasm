@@ -43,6 +43,7 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
     gtirb::AuxDataContainer::registerAuxDataType<SymbolicOperandInfoAD>();
     gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfSectionAlignment>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionIndex>();
     gtirb::AuxDataContainer::registerAuxDataType<CfiDirectives>();

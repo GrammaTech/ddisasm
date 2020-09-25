@@ -39,7 +39,8 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Section& Section)
     {
-        T << Section.Name << Section.Size << Section.Addr << Section.Type << Section.Flags;
+        T << Section.Name << Section.Size << Section.Addr << Section.Type << Section.Flags
+          << Section.Align;
         return T;
     }
 

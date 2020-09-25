@@ -90,6 +90,13 @@ namespace gtirb
             typedef std::map<gtirb::UUID, std::string> Type;
         };
 
+        /// \brief Auxiliary data mapping a section UUID to the sections alignment.
+        struct ElfSectionAlignment
+        {
+            static constexpr const char* Name = "elfSectionAlignment";
+            typedef std::map<gtirb::UUID, uint64_t> Type;
+        };
+
         /// \brief Auxiliary data mapping a section index to a section UUID.
         struct ElfSectionIndex
         {

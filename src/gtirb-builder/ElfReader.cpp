@@ -34,6 +34,7 @@ void ElfReader::buildSections()
 {
     std::map<uint64_t, gtirb::UUID> SectionIndex;
     std::map<gtirb::UUID, SectionProperties> SectionProperties;
+    std::map<gtirb::UUID, uint64_t> SectionAlignment;
 
     uint64_t Index = 0;
     for(auto &Section : Elf->sections())
@@ -100,6 +101,7 @@ void ElfReader::buildSections()
 
         // Add section index and raw section properties to aux data.
         SectionIndex[Index] = S->getUUID();
+        SectionAlignment[S->getUUID()] = Section.alignment();
         SectionProperties[S->getUUID()] = {static_cast<uint64_t>(Section.type()),
                                            static_cast<uint64_t>(Section.flags())};
 
@@ -107,6 +109,7 @@ void ElfReader::buildSections()
     }
 
     Module->addAuxData<gtirb::schema::ElfSectionIndex>(std::move(SectionIndex));
+    Module->addAuxData<gtirb::schema::ElfSectionAlignment>(std::move(SectionAlignment));
     Module->addAuxData<gtirb::schema::ElfSectionProperties>(std::move(SectionProperties));
 }
 
