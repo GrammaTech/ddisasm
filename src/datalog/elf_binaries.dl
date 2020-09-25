@@ -29,13 +29,13 @@ section(Name,Size,Addr):-
     elf_section_flag("SHF_ALLOC",Pos_Alloc),
     Flags band (2^Pos_Alloc)  > 0.
 
-.decl elf_section_flag(Name:symbol,Position:number)
+.decl elf_section_flag(Name:symbol,Position:unsigned)
 
 elf_section_flag("SHF_WRITE",0).
 elf_section_flag("SHF_ALLOC",1).
 elf_section_flag("SHF_EXECINSTR",2).
 
-.decl elf_section_type(Name:symbol,Code:number)
+.decl elf_section_type(Name:symbol,Code:unsigned)
 
 elf_section_type("NULL",0).
 elf_section_type("PROGBITS",1).

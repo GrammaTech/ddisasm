@@ -54,10 +54,11 @@ namespace souffle
             }
             else
             {
-                T << 0;
+                T << size_t(0);
             }
         }
-        T << Instruction.ImmediateOffset << Instruction.DisplacementOffset;
+        T << static_cast<uint64_t>(Instruction.ImmediateOffset)
+          << static_cast<uint64_t>(Instruction.DisplacementOffset);
         return T;
     }
 

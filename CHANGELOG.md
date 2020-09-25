@@ -1,3 +1,4 @@
+* Update to souffle 2.0.2.
 * Populate all allocated ELF sections.
 
 # 1.2.0

@@ -3,7 +3,7 @@ RUN apt-get -y update && apt-get -y install automake bison build-essential \
     doxygen flex git libffi-dev libtool make mcpp pkg-config \
     sqlite3 libsqlite3-dev zlib1g-dev
 
-RUN git clone -b 1.7.1 https://github.com/souffle-lang/souffle
+RUN git clone -b 2.0.2 https://github.com/souffle-lang/souffle
 RUN cd souffle && sh ./bootstrap
 RUN cd souffle && ./configure --prefix=/usr --enable-64bit-domain --disable-ncurses
 RUN cd souffle && make -j4 install

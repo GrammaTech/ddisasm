@@ -64,17 +64,17 @@ This module also computes and symbol_minus_symbol.
 .decl symbolic_operand(ea:address,index:operand_index,value:address,type:symbol)
 .output symbolic_operand
 
-.decl symbolic_data(ea:address,size:number,value:address)
+.decl symbolic_data(ea:address,size:unsigned,value:address)
 .output symbolic_data
 
 // Symbolic expression generated from relocations
-.decl symbolic_expr_from_relocation(ea:address,size:number,symbol:symbol,Addend:number)
+.decl symbolic_expr_from_relocation(ea:address,size:unsigned,symbol:symbol,Addend:number)
 .output symbolic_expr_from_relocation
 
-.decl symbol_minus_symbol_candidate(ea:address,size:number,symbol1:address,symbol2:address,Reference:symbol,Scale:number)
+.decl symbol_minus_symbol_candidate(ea:address,size:unsigned,symbol1:address,symbol2:address,Reference:symbol,Scale:unsigned)
 .output symbol_minus_symbol_candidate
 
-.decl symbol_minus_symbol(ea:address,size:number,symbol1:address,symbol2:address,scale:number)
+.decl symbol_minus_symbol(ea:address,size:unsigned,symbol1:address,symbol2:address,scale:unsigned)
 .output symbol_minus_symbol
 
 // symbolic data that points to code
@@ -101,26 +101,30 @@ This module also computes and symbol_minus_symbol.
 ////////////////////////////////////////////////////////////////////////////////////
 // candidates of symbolic values in the code
 
-.decl symbolic_operand_candidate(ea:address,operand_index:number,Dest:address,Type:symbol)
-.decl symbolic_operand_point(ea:address,operand_index:number,points:number,why:symbol)
+.decl symbolic_operand_candidate(ea:address,operand_index:operand_index,Dest:address,Type:symbol)
+.decl symbolic_operand_point(ea:address,operand_index:operand_index,points:number,why:symbol)
 .output symbolic_operand_point
-.decl symbolic_operand_total_points(ea:address,operand_index:number,points:number)
+.decl symbolic_operand_total_points(ea:address,operand_index:operand_index,points:number)
 
-symbolic_operand_candidate(EA,Op_index,Dest,Type):-
+symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
   binary_type("EXEC"),
     code(EA),
     instruction_get_op(EA,Op_index,Op),
     (
-        op_immediate(Op,Dest);
-        pc_relative_operand(EA,Op_index,Dest);
+        op_immediate(Op,Dest),
+        Dest_addr = as(Dest,address)
+        ;
+        pc_relative_operand(EA,Op_index,Dest_addr)
+        ;
         op_indirect(Op,_,_,_,_,Dest,_),
+        Dest_addr = as(Dest,address),
         !pc_relative_operand(EA,Op_index,_)
     ),
     (
-        code(Dest), Type="code"
+        code(Dest_addr), Type="code"
         ;
         data_segment(Begin,End),
-        Dest >= Begin, Dest <= End,
+        Dest_addr >= Begin, Dest_addr <= End,
         Type = "data"
     ).
 
@@ -132,12 +136,12 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
         instruction_immediate_offset(EA,Op_index,ImmediateOffset),
         relocation(EA+ImmediateOffset,_,Symbol,Addend),
         symbol(SymbolAddr,_,_,_,_,Symbol),
-        Dest = SymbolAddr+Addend
+        Dest = as(as(SymbolAddr,number)+Addend,address)
         ;
         instruction_displacement_offset(EA,Op_index,DisplacementOffset),
         relocation(EA+DisplacementOffset,_,Symbol,Addend),
         symbol(SymbolAddr,_,_,_,_,Symbol),
-        Dest = SymbolAddr+Addend
+        Dest = as(as(SymbolAddr,number)+Addend,address)
         ;
         direct_call(EA,Dest),
         Op_index = 1
@@ -247,18 +251,20 @@ symbol_minus_symbol_candidate(TableStart,Size,TableReference,Dest,"first",1):-
     jump_table_start(_,Size,TableStart,TableReference,"ADD"),
     (
         Size > 1,data_word(TableStart,Size,Diff);
-        Size = 1,data_byte(TableStart,Diff)
+        Size = 1,data_byte(TableStart,DiffUnsigned), Diff = as(DiffUnsigned,number)
     ),
-    Dest = TableReference + Diff,
+    TableReference_signed = as(TableReference,number),
+    Dest = as(TableReference_signed + Diff,unsigned),
     code(Dest).
 
 symbol_minus_symbol_candidate(TableStart,Size,Dest,TableReference,"second",1):-
     jump_table_start(_,Size,TableStart,TableReference,"SUB"),
     (
         Size > 1,data_word(TableStart,Size,Diff);
-        Size = 1,data_byte(TableStart,Diff)
+        Size = 1,data_byte(TableStart,DiffUnsigned), Diff = as(DiffUnsigned,number)
     ),
-    Dest = TableReference - Diff,
+    TableReference_signed = as(TableReference,number),
+    Dest = as(TableReference_signed - Diff,unsigned),
     code(Dest).
 
 symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first",Scale):-
@@ -267,9 +273,10 @@ symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first",Scale):-
     last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA,
     (
         Size>1,data_word(EA+Size,Size,Diff);
-        Size=1,data_byte(EA+Size,Diff)
+        Size=1,data_byte(EA+Size,DiffUnsigned), Diff = as(DiffUnsigned,number)
     ),
-    Symbol = Reference + Diff,
+    Reference_signed = as(Reference,number),
+    Symbol = as(Reference_signed + Diff,unsigned),
     code(Symbol).
 
 symbol_minus_symbol_candidate(EA+Size,Size,Symbol,Reference,"second",Scale):-
@@ -278,15 +285,16 @@ symbol_minus_symbol_candidate(EA+Size,Size,Symbol,Reference,"second",Scale):-
     last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA,
     (
         Size>1,data_word(EA+Size,Size,Diff);
-        Size=1,data_byte(EA+Size,Diff)
+        Size=1,data_byte(EA+Size,DiffUnsigned), Diff = as(DiffUnsigned,number)
     ),
-    Symbol = Reference - Diff,
+    Reference_signed = as(Reference,number),
+    Symbol = as(Reference_signed - Diff,unsigned),
     code(Symbol).
 
 ////////////////////////////////////////////////////////////////////////
 // address_in_data considers anything that points to the code region
 // this refinement restricts that to the beginning of the final blocks
-.decl address_in_data_refined(EA:address,Val:number)
+.decl address_in_data_refined(EA:address,Val:address)
 
 address_in_data_refined(EA,Val):-
     binary_type("DYN"),
@@ -346,17 +354,17 @@ string_part(EA+1,Base):-
     printable_char(Byte).
 
 ///////////////////////////////////////////////////////////////////////////
-.decl data_object_candidate(ea:address,size:number,type:symbol)
+.decl data_object_candidate(ea:address,size:unsigned,type:symbol)
 
-.decl data_object_point(ea:address,size:number,type:symbol,points:number,why:symbol)
+.decl data_object_point(ea:address,size:unsigned,type:symbol,points:number,why:symbol)
 .output data_object_point
 
-.decl data_object_conflict(ea:address,size:number,type:symbol,ea2:address,size2:number,type2:symbol)
+.decl data_object_conflict(ea:address,size:unsigned,type:symbol,ea2:address,size2:unsigned,type2:symbol)
 .output data_object_conflict
 
-.decl discarded_data_object(ea:address,size:number,type:symbol)
+.decl discarded_data_object(ea:address,size:unsigned,type:symbol)
 
-.decl data_object(ea:address,size:number,type:symbol)
+.decl data_object(ea:address,size:unsigned,type:symbol)
 
 data_object_candidate(EA,Size,"symbol-symbol"):-
     symbol_minus_symbol_candidate(EA,Size,_,_,_,_).
@@ -404,7 +412,7 @@ next_address_in_data(EA,EA_next):-
     address_in_data_refined(EA_next,_).
 
 
-.decl address_array_aux(EA:address,Distance:number,type:symbol,InitialEA:address)
+.decl address_array_aux(EA:address,Distance:unsigned,type:symbol,InitialEA:address)
 
 address_array_aux(EA,Diff,"code",EA):-
     address_in_data_refined(EA,Dest1),code(Dest1),
@@ -448,7 +456,7 @@ address_array_aux(EA+Diff,Diff,"data",InitialEA):-
     Begin <= Dest1, Dest1 <= End,
     Begin <= Dest2, Dest2 <= End.
 
-.decl address_array(EA:address,Distance:number,InitialEA:address)
+.decl address_array(EA:address,Distance:unsigned,InitialEA:address)
 
 address_array(EA,Distance,InitialEA):-
     address_array_aux(EA,Distance,_,InitialEA).
@@ -616,7 +624,7 @@ data_object_conflict(EA,Size,Type,EA,Size,Type2):-
     data_object_candidate(EA,Size,Type2),
     Type != Type2.
 
-.decl data_object_total_points(EA:address,Size:number,Type:symbol,Points:number)
+.decl data_object_total_points(EA:address,Size:unsigned,Type:symbol,Points:number)
 .output data_object_total_points
 
 data_object_total_points(EA,Size,Type,Points):-
@@ -646,7 +654,7 @@ discarded_data_object(EA_f,Size_f,Type_f):-
 
 // predicates to export
 
-symbolic_data(EA,Size,Val):-
+symbolic_data(EA,Size,as(Val,address)):-
     data_object(EA,Size,"symbol"),
     address_in_data_refined(EA,Val).
 

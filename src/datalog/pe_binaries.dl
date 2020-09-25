@@ -27,7 +27,7 @@
 .input import_entry
 .output import_entry
 
-.decl pe_section_characteristics(Name:symbol,Mask:number)
+.decl pe_section_characteristics(Name:symbol,Mask:unsigned)
 
 pe_section_characteristics("IMAGE_SCN_TYPE_NO_PAD",0x00000008).
 pe_section_characteristics("IMAGE_SCN_CNT_CODE",0x00000020).
@@ -102,17 +102,17 @@ plt_block(EA,Function):-
     got_reference(Got_entry,Function),
     code_in_refined_block(EA,EA).
 
-.decl base_relative_operand(EA:address,Index:number,Dest:address)
+.decl base_relative_operand(EA:address,Index:unsigned,Dest:address)
 .output base_relative_operand
 
-base_relative_operand(EA_used,Op_index,Value):-
+base_relative_operand(EA_used,Op_index,as(Value,address)):-
     base_address(ImageBase),
     pc_relative_operand(EA_def,_,ImageBase),
     def_used(EA_def,_,EA_used,Op_index),
     instruction_get_op(EA_used,Op_index,Op),
-    op_indirect(Op,_,_,_,_,Value,_).
+    op_indirect(Op,_,_,_,_,Value,_), Value >= 0.
 
-.decl base_relative_symbolic_operand(EA:address,Index:number,Dest:address)
+.decl base_relative_symbolic_operand(EA:address,Index:unsigned,Dest:address)
 
 symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value,1),
 base_relative_symbolic_operand(EA,Op_index,Value):-
@@ -152,7 +152,7 @@ base_relative_jump(EA_relop,EA):-
     reg_jump(EA,_),
     base_relative_operation(EA_relop,EA).
 
-.decl base_relative_jump_table(EA:address,Value:number)
+.decl base_relative_jump_table(EA:address,Value:address)
 .output base_relative_jump_table
 
 base_relative_jump_table(EA_jmp,ImageBase+Value):-
@@ -165,12 +165,13 @@ base_relative_jump_table(EA_jmp,ImageBase+Value):-
 
 .decl base_relative_address_start(EA:address,Reference:address,Value:address)
 
-base_relative_address(EA,EA,Val),
-base_relative_address_start(EA,EA,Val):-
+base_relative_address(EA,EA,as(Val,address)),
+base_relative_address_start(EA,EA,as(Val,address)):-
     base_relative_jump_table(_,EA),
-    data_word(EA,4,Val).
+    data_word(EA,4,Val),
+    Val > 0.
 
-base_relative_address(EA+4,Ref,Val):-
+base_relative_address(EA+4,Ref,as(Val,address)):-
     base_relative_address(EA,Ref,_),
     data_word(EA+4,4,Val),
     propagated_data_access(EA,4,Ref),
@@ -182,7 +183,7 @@ base_relative_address(EA+4,Ref,Val):-
 labeled_data_candidate(EA):-
     base_relative_address_start(EA,_,_).
 
-.decl base_relative_symbolic_data(EA:address,Size:number,Value:address)
+.decl base_relative_symbolic_data(EA:address,Size:unsigned,Value:address)
 
 symbol_minus_symbol_candidate(EA,4,ImageBase,ImageBase+Val,"first",1),
 base_relative_symbolic_data(EA,4,Val):-
@@ -195,10 +196,10 @@ labeled_data_candidate(ImageBase+Dest):-
     base_relative_symbolic_operand(_,_,Dest),
     !base_relative_jump_table(_,ImageBase+Dest).
 
-.decl dos_header_symbolic_operand(EA:address,Dest:number)
+.decl dos_header_symbolic_operand(EA:address,Dest:unsigned)
 .output dos_header_symbolic_operand
 
-symbolic_expr_from_relocation(EA+Disp_offset,Size/8,"__ImageBase",Dest-ImageBase),
+symbolic_expr_from_relocation(EA+Disp_offset,Size/8,"__ImageBase",as(Dest-ImageBase,number)),
 dos_header_symbolic_operand(EA,Dest):-
     base_address(ImageBase),
     pc_relative_operand(EA,_,Dest),
@@ -224,20 +225,24 @@ relative_address_start(Table,8,Ref,Dest, "first"):-
     // loads reference address
     take_address(EA3,Ref),
     data_word(Table,8,Diff),
-    Dest = Ref + Diff,
+    RefSigned = as(Ref,number),
+    Dest = as(RefSigned + Diff,address),
     possible_ea(Dest).
 
 // mov ECX,DWORD PTR [R9+R8*4+(IMAGEREL N_1a050)]
-relative_address_start(ImageBase+Offset,Mult,ImageBase,Dest,"first"):-
+relative_address_start(ImageBase+OffsetUnsigned,MultUnsigned,ImageBase,Dest,"first"):-
     base_address(ImageBase),
     instruction_get_operation(EA,"MOV"),
     instruction_get_src_op(EA,_,Op),
     op_indirect(Op,_,RegBase,RegIndex,Mult,Offset,Size), Offset > 0,
-    Mult * 8 = Size,
+    MultUnsigned = as(Mult, unsigned),
+    OffsetUnsigned = as(Offset,unsigned),
+    MultUnsigned * 8 = Size,
     RegBase != "NONE", RegIndex != "NONE",
-    (Mult = 4; Mult = 8),
-    data_word(ImageBase+Offset,Mult,Diff),
-    Dest = ImageBase + Diff,
+    (MultUnsigned = 4; MultUnsigned = 8),
+    data_word(ImageBase+OffsetUnsigned,MultUnsigned,Diff),
+    ImageBaseSigned = as(ImageBase, number),
+    Dest = as(ImageBaseSigned + Diff,address),
     possible_ea(Dest).
 
 // the call to main is right after the call to "__p___argc"

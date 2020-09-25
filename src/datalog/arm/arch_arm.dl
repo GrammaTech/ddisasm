@@ -122,7 +122,7 @@ read_only_operation("TST").
 // TODO:
 .decl one_op_write(Operation:symbol)
 
-.decl pointer_size(n:number) inline
+.decl pointer_size(n:unsigned) inline
 
 pointer_size(4).
 
@@ -188,7 +188,7 @@ cmp_operation("TEQ").
 cmp_operation("TST").
 
 // TODO:
-.decl operation_size_exception(EA:address,Op_index:number,Size:number)
+.decl operation_size_exception(EA:address,Op_index:operand_index,Size:unsigned)
 
 // TODO:
 // arithmetic operation on two source registers
