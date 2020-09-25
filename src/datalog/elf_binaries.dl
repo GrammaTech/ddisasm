@@ -76,7 +76,6 @@ exception_section(".gcc_except_table").
 special_data_section(Section):-
     exception_section(Section).
 
-special_data_section(".data.rel.ro").
 special_data_section(".dynamic").
 special_data_section(".fini_array").
 special_data_section(".got").
