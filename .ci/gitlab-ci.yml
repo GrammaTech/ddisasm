@@ -83,6 +83,7 @@ check-format:
     - python3 -m pip install pip --upgrade && python3 -m pip install gtirb-*-py*.whl
     # Run tests
     - cd build && PATH=$(pwd)/bin:$PATH ctest -V
+    - ldd build/bin/TestDdisasm.exe
 
 .build-ubuntu-packages-template: &build-ubuntu-packages
   stage: build-packages
