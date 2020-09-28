@@ -88,11 +88,11 @@ endif()
 function(set_common_msvc_options TARGET_NAME)
 
   target_compile_options(
-    ${TARGET_NAME} PRIVATE "-wd4244") # 'conversion' conversion from 'type1' to
+    ${TARGET_NAME} PRIVATE "/wd4244") # 'conversion' conversion from 'type1' to
                                       # 'type2', possible loss of data
 
   target_compile_options(
-    ${TARGET_NAME} PRIVATE "-wd4127") # conditional expression is constant
+    ${TARGET_NAME} PRIVATE "/wd4127") # conditional expression is constant
 
   target_compile_options(${TARGET_NAME} PRIVATE "-WX")
   target_compile_options(${TARGET_NAME} PRIVATE "-permissive-")
