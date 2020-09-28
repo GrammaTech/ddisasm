@@ -846,7 +846,7 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                     {
                         d = gtirb::DataBlock::Create(context, symMinusSym->Size);
                         byteInterval.addSymbolicExpression<gtirb::SymAddrAddr>(
-                            blockOffset, symMinusSym->Scale, 0,
+                            blockOffset, static_cast<int64_t>(symMinusSym->Scale), 0,
                             getSymbol(context, module, symMinusSym->Symbol2),
                             getSymbol(context, module, symMinusSym->Symbol1));
                         SymbolicSizes[Offset] = symMinusSym->Size;

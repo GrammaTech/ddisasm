@@ -158,11 +158,11 @@ function(set_common_msvc_options TARGET_NAME)
   # Warnings in Protobuf
 
   target_compile_options(
-    ${TARGET_NAME} PRIVATE -wd4244) # 'conversion' conversion from 'type1' to
-                                    # 'type2', possible loss of data
+    ${TARGET_NAME} PRIVATE "-wd4244") # 'conversion' conversion from 'type1' to
+  # 'type2', possible loss of data
 
   target_compile_options(
-    ${TARGET_NAME} PRIVATE -wd4127) # conditional expression is constant
+    ${TARGET_NAME} PRIVATE "-wd4127") # conditional expression is constant
 
 endfunction()
 
