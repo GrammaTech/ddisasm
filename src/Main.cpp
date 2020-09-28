@@ -72,7 +72,7 @@ void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_
 {
     auto End = std::chrono::high_resolution_clock::now();
     std::cerr << " (";
-    int secs = std::chrono::duration_cast<std::chrono::seconds>(End - Start).count();
+    int64_t secs = std::chrono::duration_cast<std::chrono::seconds>(End - Start).count();
     if(secs != 0)
         std::cerr << secs << "s)" << std::endl;
     else
