@@ -63,7 +63,7 @@ public:
         Program->printAll(Directory);
     }
 
-    void threads(uint8_t N)
+    void threads(unsigned int N)
     {
         Program->setNumThreads(N);
     }

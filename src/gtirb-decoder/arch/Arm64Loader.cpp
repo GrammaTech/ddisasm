@@ -107,7 +107,7 @@ std::optional<relations::Arm64Operand> Arm64Loader::build(const cs_arm64_op& CsO
 {
     using namespace relations;
 
-    auto registerName = [this](uint64_t Reg) {
+    auto registerName = [this](unsigned int Reg) {
         return (Reg == ARM_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(*CsHandle, Reg));
     };
 

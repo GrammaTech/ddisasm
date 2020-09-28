@@ -109,7 +109,18 @@ endif()
 
 # Common settings for MSVC
 function(set_common_msvc_options TARGET_NAME)
-  target_compile_options(${TARGET_NAME} PRIVATE "-WX")
+
+  target_compile_options(${TARGET_NAME} PRIVATE "-W4") # Sets warning level.
+
+  # FIXME: Visual studio does not deactivate warnings so for now warnings do not
+  # result in errors. target_compile_options(${TARGET_NAME} PRIVATE "-WX")
+
+  # target_compile_options( ${TARGET_NAME} PRIVATE "-wd4127") # conditional
+  # expression is constant
+
+  # target_compile_options( ${TARGET_NAME} PRIVATE "-wd4244") # 'conversion'
+  # conversion from 'type1' to 'type2', possible loss of data
+
   target_compile_options(${TARGET_NAME} PRIVATE "-permissive-")
   target_compile_options(${TARGET_NAME} PRIVATE "-EHsc")
   target_compile_options(${TARGET_NAME} PRIVATE "-bigobj")
@@ -126,8 +137,6 @@ function(set_common_msvc_options TARGET_NAME)
                                                    # us/library/k1ack8f1.aspx
   target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-RTC1>
   )# Enables run-time error checking.
-  target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-W4>
-  )# Sets warning level.
   target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-Zi>
   )# Generates complete debugging information.
 
@@ -153,8 +162,6 @@ function(set_common_msvc_options TARGET_NAME)
   )# Generates intrinsic functions.
   target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:RelWithDebInfo>:-Ot>
   )# Favors fast code.
-  target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:RelWithDebInfo>:-W4>
-  )# Sets warning level.
   target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:RelWithDebInfo>:-Zi>
   )# Generates complete debugging information.
 
@@ -175,8 +182,7 @@ function(set_common_msvc_options TARGET_NAME)
   )# Generates intrinsic functions.
   target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Release>:-Ot>
   )# Favors fast code.
-  target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Release>:-W4>
-  )# Sets warning level.
+
 endfunction()
 
 # Disabled warnings for souffle projects on MSVC
@@ -196,9 +202,7 @@ function(set_souffle_msvc_options TARGET_NAME)
   target_compile_options(
     ${TARGET_NAME} PRIVATE -wd4267) # conversion from 'type1' to 'type2',
                                     # possible loss of data
-  target_compile_options(
-    ${TARGET_NAME} PRIVATE -wd4244) # 'conversion' conversion from 'type1' to
-                                    # 'type2', possible loss of data
+
   target_compile_options(
     ${TARGET_NAME} PRIVATE -wd4456) # declaration of 'decl' hides previous local
                                     # declaration
