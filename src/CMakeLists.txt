@@ -154,6 +154,16 @@ function(set_common_msvc_options TARGET_NAME)
   )# Favors fast code.
   target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Release>:-W4>
   )# Sets warning level.
+
+  # Warnings in Protobuf
+
+  target_compile_options(
+    ${TARGET_NAME} PRIVATE -wd4244) # 'conversion' conversion from 'type1' to
+                                    # 'type2', possible loss of data
+
+  target_compile_options(
+    ${TARGET_NAME} PRIVATE -wd4127) # conditional expression is constant
+
 endfunction()
 
 # Disabled warnings for souffle projects on MSVC
@@ -173,9 +183,7 @@ function(set_souffle_msvc_options TARGET_NAME)
   target_compile_options(
     ${TARGET_NAME} PRIVATE -wd4267) # conversion from 'type1' to 'type2',
                                     # possible loss of data
-  target_compile_options(
-    ${TARGET_NAME} PRIVATE -wd4244) # 'conversion' conversion from 'type1' to
-                                    # 'type2', possible loss of data
+
   target_compile_options(
     ${TARGET_NAME} PRIVATE -wd4456) # declaration of 'decl' hides previous local
                                     # declaration

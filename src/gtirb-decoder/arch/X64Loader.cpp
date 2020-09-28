@@ -123,7 +123,7 @@ std::tuple<std::string, std::string> X64Loader::splitMnemonic(const cs_insn& CsI
 
 std::optional<relations::Operand> X64Loader::build(const cs_x86_op& CsOp)
 {
-    auto registerName = [this](uint64_t Reg) {
+    auto registerName = [this](unsigned int Reg) {
         return (Reg == X86_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(*CsHandle, Reg));
     };
 
