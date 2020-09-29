@@ -59,6 +59,14 @@ namespace gtirb
             typedef std::vector<std::tuple<uint64_t, int64_t, std::string, std::string>> Type;
         };
 
+        /// \brief Auxiliary data representing the export table of a PE file.
+        struct ExportEntries
+        {
+            static constexpr const char* Name = "exportEntries";
+            // Tuples of the form {Address, Ordinal, Name}.
+            typedef std::vector<std::tuple<uint64_t, int64_t, std::string>> Type;
+        };
+
         /// \brief Auxiliary data for the UUIDs of imported symbols in a PE file.
         struct PeImportedSymbols
         {

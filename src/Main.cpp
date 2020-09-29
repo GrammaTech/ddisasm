@@ -225,8 +225,9 @@ int main(int argc, char **argv)
     // Remove placeholder relocation data.
     Module.removeAuxData<gtirb::schema::Relocations>();
 
-    // Remove temporary import entry data.
+    // Remove temporary export/import entry data.
     Module.removeAuxData<gtirb::schema::ImportEntries>();
+    Module.removeAuxData<gtirb::schema::ExportEntries>();
 
     if(Souffle)
     {

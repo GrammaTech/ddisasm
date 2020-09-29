@@ -25,7 +25,9 @@
 
 .decl import_entry(Address:address,Ordinal:number,Function:symbol,Library:symbol)
 .input import_entry
-.output import_entry
+
+.decl export_entry(Address:address,Ordinal:number,Name:symbol)
+.input export_entry
 
 .decl pe_section_characteristics(Name:symbol,Mask:unsigned)
 
@@ -257,3 +259,11 @@ main_function(EA):-
 inferred_symbol_name(EA,"main","PUBLIC"):-
     binary_format("PE"),
     main_function(EA).
+
+// Label addresses in data section that are exported.
+labeled_data(EA):-
+    export_entry(EA,_,_),
+    data_section(Name),
+    section(Name,Size,Addr),
+    EA >= Addr,
+    EA < Addr+Size.

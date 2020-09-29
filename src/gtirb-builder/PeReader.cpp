@@ -150,6 +150,9 @@ void PeReader::addAuxData()
 
     // Add `importEntries' aux data table.
     Module->addAuxData<gtirb::schema::ImportEntries>(importEntries());
+
+    // Add `exportEntries' aux data table.
+    Module->addAuxData<gtirb::schema::ExportEntries>(exportEntries());
 }
 
 std::vector<ImportEntry> PeReader::importEntries()

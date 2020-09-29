@@ -27,6 +27,11 @@
 
 void PeSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
 {
+    if(auto *ExportEntries = Module.getAuxData<gtirb::schema::ExportEntries>())
+    {
+        Program.insert("export_entry", *ExportEntries);
+    }
+
     if(auto *ImportEntries = Module.getAuxData<gtirb::schema::ImportEntries>())
     {
         Program.insert("import_entry", *ImportEntries);
@@ -35,6 +40,13 @@ void PeSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
 
 namespace souffle
 {
+    souffle::tuple &operator<<(souffle::tuple &t, const ExportEntry &ExportEntry)
+    {
+        auto &[Address, Ordinal, Name] = ExportEntry;
+        t << Address << Ordinal << Name;
+        return t;
+    }
+
     souffle::tuple &operator<<(souffle::tuple &t, const ImportEntry &ImportEntry)
     {
         auto &[Address, Ordinal, Function, Library] = ImportEntry;
