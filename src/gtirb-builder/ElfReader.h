@@ -38,6 +38,7 @@ protected:
     void addEntryBlock() override;
     void addAuxData() override;
 
+    uint64_t tlsBaseAddress();
     std::string getRelocationType(const LIEF::ELF::Relocation &Entry);
 };
 

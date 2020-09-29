@@ -15,6 +15,7 @@ void registerTestAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
     gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
     gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfSectionAlignment>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionIndex>();
     gtirb::AuxDataContainer::registerAuxDataType<CfiDirectives>();

@@ -80,10 +80,7 @@ void ElfReader::buildSections()
         bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
         if(Tls)
         {
-            // TODO:
-            // Resolve potential address collision, and check that all SHF_TLS
-            // sections are member of a single PT_TLS segment.
-            Addr = gtirb::Addr(Section.virtual_address() + 0xFF000000);
+            Addr = gtirb::Addr(Section.virtual_address() + tlsBaseAddress());
         }
 
         if(Initialized)
@@ -149,7 +146,7 @@ void ElfReader::buildSymbols()
         if(Symbol.type() == LIEF::ELF::ELF_SYMBOL_TYPES::STT_TLS)
         {
             assert(Tls && "Found TLS symbol but no TLS segment.");
-            Value = *Tls + Value + 0xFF000000;
+            Value = *Tls + Value + tlsBaseAddress();
         }
 
         Symbols.insert({
@@ -274,4 +271,20 @@ std::string ElfReader::getRelocationType(const LIEF::ELF::Relocation &Entry)
         default:
             return std::to_string(Entry.type());
     }
+}
+
+uint64_t ElfReader::tlsBaseAddress()
+{
+    // Find the largest virtual address.
+    uint64_t VirtualEnd;
+    for(auto &Segment : Elf->segments())
+    {
+        uint64_t Addr = Segment.virtual_address() + Segment.virtual_size();
+        if(Addr > VirtualEnd)
+        {
+            VirtualEnd = Addr;
+        }
+    }
+    // Return the next available page.
+    return (VirtualEnd & ~(0x1000 - 1)) + 0x1000;
 }
