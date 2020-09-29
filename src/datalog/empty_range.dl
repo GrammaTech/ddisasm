@@ -30,7 +30,7 @@ and no overapping addresses according to a size of the element.
 .comp empty_range{
 
 .decl in_ea(ea:address)
-.decl overlap(ea:address,size:number,Where:address) inline
+.decl overlap(ea:address,size:unsigned,Where:address) inline
 
 overlap(EA,2,EA-1):-
     data_byte(EA,_),
@@ -78,7 +78,7 @@ overlap(EA,16,Where):-
         in_ea(EA-15),Where=EA-15
     ).
 
-.decl no_overlap(ea:address,size:number) inline
+.decl no_overlap(ea:address,size:unsigned) inline
 
 
 no_overlap(EA,2):-

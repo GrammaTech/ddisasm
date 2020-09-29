@@ -42,7 +42,7 @@ other access.
 */
 
 // auxiliary predicate to  compute the amount of read memory
-.decl instruction_memory_access_size(EA:address,Op_index:operand_index,Size:number)
+.decl instruction_memory_access_size(EA:address,Op_index:operand_index,Size:unsigned)
 
 instruction_memory_access_size(EA,Index,SizeAccess):-
     code(EA),
@@ -57,7 +57,7 @@ instruction_memory_access_size(EA,Index,SizeAccess):-
     ).
 
 //there is a data access at EA in the operand Op_index
-.decl data_access(EA:address,Op_index:operand_index,RegSegment:register,RegBase:register,RegIndex:register,Mult:number,Offset:number,Size:number)
+.decl data_access(EA:address,Op_index:operand_index,RegSegment:register,RegBase:register,RegIndex:register,Mult:number,Offset:number,Size:unsigned)
 
 data_access(EA,Op_index,RegSegment,RegBase,RegIndex,Mult,Offset,Size):-
     code(EA),
@@ -117,10 +117,10 @@ value_reg_at_operand(EA,Op_index,Reg,0,0,0,"complete"):-
     (Reg = Ref2; Reg = Reg3),
     Reg="NONE".
 
-.decl data_access_pattern(Address:address,Size:number,Multiplier:number,FromWhere:address)
+.decl data_access_pattern(Address:address,Size:unsigned,Multiplier:number,FromWhere:address)
 .output data_access_pattern
 
-.decl data_access_pattern_candidate(Address:address,Size:number,Multiplier:number,FromWhere:address)
+.decl data_access_pattern_candidate(Address:address,Size:unsigned,Multiplier:number,FromWhere:address)
 .output data_access_pattern_candidate
 
 .decl preferred_data_access(ea:address,ea_data_access:address)
@@ -131,7 +131,8 @@ value_reg_at_operand(EA,Op_index,Reg,0,0,0,"complete"):-
 
 //single access
 data_access_pattern_candidate(Address,Size,0,EA):-
-    data_access(EA,_,"NONE","NONE","NONE",_,Address,Size),
+    data_access(EA,_,"NONE","NONE","NONE",_,Offset,Size),
+    Address = as(Offset,address),
     data_segment(Beg,End),
     Address >= Beg,
     Address <= End.
@@ -156,11 +157,11 @@ data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
     // the absolute value of the multiplier cannot be
     // smaller that the size (unless we have 0 multiplier)
     (
-        Mult*Mult2 > 0, Size <= Mult*Mult2;
+        Mult*Mult2 > 0, as(Size,number) <= Mult*Mult2;
         Mult*Mult2 = 0;
-        Mult*Mult2 < 0, Size <= -(Mult*Mult2)
+        Mult*Mult2 < 0, as(Size,number) <= -(Mult*Mult2)
     ),
-    Address = Offset1+(Offset2*Mult)+Offset3,
+    Address = as(Offset1+(Offset2*Mult)+Offset3,address),
     data_segment(Beg,End),
     Address >= Beg,
     Address <= End.
@@ -175,11 +176,11 @@ data_access_pattern_candidate(Address,Size,Mult,EA):-
     // the absolute value of the multiplier cannot be
     // smaller that the size (unless we have 0 multiplier)
     (
-        Mult > 0, Size <= Mult;
+        Mult > 0, as(Size,number) <= Mult;
         Mult = 0;
-        Mult < 0, Size <= -Mult
+        Mult < 0, as(Size,number) <= -Mult
     ),
-    Address = Offset1+Offset2*Mult2+Offset3,
+    Address = as(Offset1+Offset2*Mult2+Offset3,address),
     data_segment(Beg,End),
     Address >= Beg,
     Address <= End.
@@ -190,8 +191,8 @@ data_access_pattern_candidate(Address,Size,FinalMult,EA):-
     Reg != "NONE",
     value_reg_at_operand(EA,Op_index,Reg,_,Mult2,Offset2,_),
     FinalMult = Mult*Mult2+Mult2,
-    (Size <= FinalMult; FinalMult = 0),
-    Address = Offset1+(Offset2*Mult)+Offset2,
+    (as(Size,number) <= FinalMult; FinalMult = 0),
+    Address = as(Offset1+(Offset2*Mult)+Offset2, address),
     data_segment(Beg,End),
     Address >= Beg,
     Address <= End.
@@ -208,7 +209,7 @@ data_access_pattern(Address,Size,Multiplier,From):-
         Multiplier >= MaxMult
         ;
         // or if the multiplier is equal to the size of the access
-        Multiplier = Size
+        Multiplier = as(Size,number)
     ),
     (
         // if it is an indirect call or jump, the destination should be a potential address
@@ -263,6 +264,12 @@ propagated_data_access(EA,Mult,EA):-
     // This is just easier and gives us enough information.
     Mult >= 0.
 
+// FIXME: This predicate has been added to avoid exceptions when mult is 0
+// due to https://github.com/souffle-lang/souffle/issues/1513
+.decl data_access_pattern_non_zero(Address:address,Size:unsigned,Multiplier:number,FromWhere:address)
+
+data_access_pattern_non_zero(Address,Size,Mult,FromWhere):-
+    data_access_pattern(Address,Size,Mult,FromWhere), Mult > 0.
 
 // For all the range where the access at EA_access is the last one (using last_data_access),
 // we can propagate the data access at all points, in regular intervals using Mult,
@@ -270,8 +277,8 @@ propagated_data_access(EA,Mult,EA):-
 // This is much more efficient than the recursive rule below.
 propagated_data_access(EA_prop,Mult,EA_access):-
     last_data_access(EA_prop,EA_access),
-    data_access_pattern(EA_access,_,Mult,_), Mult > 0,
-    (EA_prop - EA_access) % Mult = 0,
+    data_access_pattern_non_zero(EA_access,_,Mult,_), Mult > 0,
+    (EA_prop - EA_access) % as(Mult,unsigned) = 0,
     // no collision with data limits
     !possible_data_limit(EA_prop),
     last_data_limit(EA_prop,LastDataLimit), LastDataLimit <= EA_access,
@@ -280,27 +287,28 @@ propagated_data_access(EA_prop,Mult,EA_access):-
         !data_access_pattern(EA_prop,_,_,_);
         // unless accessed from same address
         data_access_pattern(EA_prop,S,0,From),
-        data_access_pattern(EA_access,S,Mult,From)
+        data_access_pattern_non_zero(EA_access,S,Mult,From)
     ).
 
 // If there have been data accesses in between, we still propagate
 // previous data accesses as long as they have the same multiplier
 // and the don't collide directly.
-propagated_data_access(EA+Mult,Mult,EA_ref):-
+propagated_data_access(NextEA,Mult,EA_ref):-
     propagated_data_access(EA,Mult,EA_ref),
+    NextEA = EA+ as(Mult,unsigned),
     // There is a data access in between
-    last_data_access(EA+Mult,LastDataAccess), LastDataAccess > EA,
+    last_data_access(NextEA,LastDataAccess), LastDataAccess > EA,
     //But it is "synchronized": It has the same multiplier and it does not collide
     data_access_pattern(LastDataAccess,Size,Mult,_),
-    LastDataAccess+Size <= EA+Mult,
+    LastDataAccess+Size <= NextEA,
     // no collision with data limits
-    !possible_data_limit(EA+Mult),
-    last_data_limit(EA+Mult,LastDataLimit), LastDataLimit <= EA,
+    !possible_data_limit(NextEA),
+    last_data_limit(NextEA,LastDataLimit), LastDataLimit <= EA,
     // no direct collision with data accesses
     (
-        !data_access_pattern(EA+Mult,_,_,_);
+        !data_access_pattern(NextEA,_,_,_);
         // unless accessed from same address
-        data_access_pattern(EA+Mult,S,0,From),
+        data_access_pattern(NextEA,S,0,From),
         data_access_pattern(EA_ref,S,Mult,From)
     ).
 

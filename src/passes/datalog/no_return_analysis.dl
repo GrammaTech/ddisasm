@@ -34,8 +34,8 @@
  The analysis is conservative in the sense that it does not follow indirect control flow.
  Any block with indirect outgoing edges will not qualify as no returning.
 */
-.number_type address
-.number_type scc
+.type address <: unsigned
+.type scc <: unsigned
 
 .decl cfg_edge(src:address,dest:address,conditional:symbol,indirect:symbol,type:symbol)
 .input cfg_edge

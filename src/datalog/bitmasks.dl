@@ -25,31 +25,12 @@ This module detects specific kinds of bitmasks and bitmask operations.
 
 */
 
-// auxiliary component to generate all the numbers in a range
-.comp counter{
-
-    .decl range(Begin:number,End:number)
-    .decl num(N:number)
-
-    num(N):-
-        range(N,_).
-    num(N+1):-
-        num(N),
-        range(_,End),
-        N+1<End.
-}
-
-
 // a low pass mask is a bitmap mask of the form 0^*1^+
 .decl low_pass_mask(Mask:number)
 
-.init available_bits = counter
-// generate numbers from 1 to 32 or 64 depending on the pointer size
-available_bits.range(1,8*Pt_size):-
-    arch.pointer_size(Pt_size).
-
 low_pass_mask((2^N)-1):-
-    available_bits.num(N).
+    arch.pointer_size(Pt_size),
+    N = range(1,8*as(Pt_size,number)).
 
 .decl low_pass_filter(EA:address)
 

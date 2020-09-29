@@ -233,7 +233,8 @@ souffle::tuple ElfExceptionDecoder::getCIEPersonality(souffle::Relation *relatio
 {
     souffle::tuple tuple(relation);
     tuple << cie->getPosition() << cie->getPersonality() << cie->getPersonalityPointerPosition()
-          << cie->getPersonalityPointerSize() << cie->getPersonalityEncoding();
+          << cie->getPersonalityPointerSize()
+          << static_cast<uint64_t>(cie->getPersonalityEncoding());
     return tuple;
 }
 
@@ -272,8 +273,9 @@ souffle::tuple ElfExceptionDecoder::getLSDA(souffle::Relation *relation, const E
 {
     souffle::tuple tuple(relation);
     tuple << fde->getLSDAAddress() << lsda->getCallSiteTableAddress()
-          << lsda->getCallSiteTableEncoding() << lsda->getCallSiteTableLength()
-          << lsda->getTypeTableAddress() << lsda->getTypeTableEncoding()
+          << static_cast<uint64_t>(lsda->getCallSiteTableEncoding())
+          << lsda->getCallSiteTableLength() << lsda->getTypeTableAddress()
+          << static_cast<uint64_t>(lsda->getTypeTableEncoding())
           << lsda->getLandingPadBaseAddress();
     return tuple;
 }

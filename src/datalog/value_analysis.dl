@@ -111,12 +111,13 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0),
     op_regdirect_contains_reg(Op2,Reg),
     op_indirect(Op1,"NONE","NONE","NONE",_,Offset,32),
-    data_byte(Offset,Byte0),
-    data_byte(Offset+1,Byte1),
-    data_byte(Offset+2,Byte2),
-    data_byte(Offset+3,Byte3),
+    Offset_addr = as(Offset,address),
+    data_byte(Offset_addr,Byte0),
+    data_byte(Offset_addr+1,Byte1),
+    data_byte(Offset_addr+2,Byte2),
+    data_byte(Offset_addr+3,Byte3),
     Byte3 <= 128,
-    Val = (Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0).
+    Val = as(Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0,number).
 
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     def_used_for_address(EA,Reg),
@@ -130,7 +131,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     data_byte(Offset+2,Byte2),
     data_byte(Offset+3,Byte3),
     Byte3 <= 128,
-    Val = (Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0).
+    Val = as(Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0,number).
 
 // register implicitly defined
 value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
@@ -144,7 +145,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
     op_indirect(Op1,_,PcReg,"NONE",_,Offset,_),
     arch.pc_register(PcReg),
     op_regdirect_contains_reg(Op2,Reg),
-    Address = EA+Size+Offset.
+    Address = as(EA+Size,number)+Offset.
 
 //mov reg reg_origin
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-

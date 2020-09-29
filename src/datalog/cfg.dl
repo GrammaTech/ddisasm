@@ -43,7 +43,7 @@ jump_table(EA,Initial_memory):-
     code(EA),
     indirect_jump(EA),
     arch.pointer_size(Pt_size),
-    data_access_pattern(Initial_memory,Pt_size,Pt_size,EA),
+    data_access_pattern(Initial_memory,Pt_size,as(Pt_size,number),EA),
     symbolic_data(Initial_memory,Pt_size,Dest_block),
     refined_block(Dest_block).
 
@@ -70,7 +70,7 @@ jump_table(EA,Memory+Pt_size):-
     symbolic_data(Memory,Pt_size,Content_prev),
     symbolic_data(Memory+Pt_size,Pt_size,Content_next),
     refined_block(Content_next),
-    data_access_pattern(Memory+Pt_size,Pt_size,Pt_size,EA),
+    data_access_pattern(Memory+Pt_size,Pt_size,as(Pt_size,number),EA),
     (
         EA < Content_prev,
         EA < Content_next

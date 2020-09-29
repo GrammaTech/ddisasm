@@ -27,20 +27,20 @@ identifying function pointers and based on identifying complete functions.
 
 */
 
-.number_type address
-.number_type scc
-.number_type operand_code
-.symbol_type register
+.type address <: unsigned
+.type scc <:unsigned
+.type operand_code <: unsigned
+.type register <: symbol
 
-.decl block(Address:address, Size:number)
+.decl block(Address:address, Size:unsigned)
 .input block
 
 .decl next_block(Block1:address,Block2:address)
 .input next_block
 ///////////////////////////////////////////////////
-.decl instruction(ea:address, size:number, prefix:symbol, opcode:symbol,
+.decl instruction(ea:address, size:unsigned, prefix:symbol, opcode:symbol,
           op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code,
-          immOffset:number,displacementOffset:number)
+          immOffset:unsigned,displacementOffset:unsigned)
 .input instruction
 
 // three kinds of operators
@@ -51,7 +51,7 @@ identifying function pointers and based on identifying complete functions.
 .input op_immediate
 
 .decl op_indirect(code:operand_code,reg1:register, reg2:register, reg3:register,
-        multiplier:number, offset:number, size_value:number)
+        multiplier:number, offset:number, size_value:unsigned)
 .input op_indirect
 
 //////////////////////////////////////////////////////////////
@@ -74,7 +74,7 @@ identifying function pointers and based on identifying complete functions.
 .decl fde_addresses(Begin:address,End:address)
 .input fde_addresses
 
-.decl padding(Begin:address,Size:number)
+.decl padding(Begin:address,Size:unsigned)
 .input padding
 
 .decl function_entry(Address:address)

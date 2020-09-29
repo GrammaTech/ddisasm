@@ -21,27 +21,27 @@
 //
 //===----------------------------------------------------------------------===//
 
-.decl cie_entry(addr: address, length:number,codeAlignmentFactor:number,DataAlignmentFactor:number)
+.decl cie_entry(addr: address, length:unsigned,codeAlignmentFactor:unsigned,DataAlignmentFactor:number)
 .input cie_entry
 
-.decl cie_encoding(addr: address, FdeEncoding:number, LsdaEncoding:number)
+.decl cie_encoding(addr: address, FdeEncoding:unsigned, LsdaEncoding:unsigned)
 .input cie_encoding
 
-.decl cie_personality(addr:address,Personality:address,PersonalityPos:address,PersonalitySize:number,Encoding:number)
+.decl cie_personality(addr:address,Personality:address,PersonalityPos:address,PersonalitySize:unsigned,Encoding:unsigned)
 .input cie_personality
 
-.decl fde_entry(addr: address,length:number,cie:address, start:address, end:address,lsda:address)
+.decl fde_entry(addr: address,length:unsigned,cie:address, start:address, end:address,lsda:address)
 .input fde_entry
 
 .decl fde_pointer_locations(addr:address,startLocation:address,endLocation:address,
-                            endSize:number,lsdaLocation:address,lsdaSize:number)
+                            endSize:unsigned,lsdaLocation:address,lsdaSize:unsigned)
 .input fde_pointer_locations
 
-.decl fde_instruction(addr:address,index:number,size:number,insn:symbol,op1:number,op2:number)
+.decl fde_instruction(addr:address,index:unsigned,size:unsigned,insn:symbol,op1:number,op2:number)
 .input fde_instruction
 
-.decl lsda(lsdaAddress:address,callsiteTable:address,callsiteTableEncoding:number,callSiteTableLength:number,
-           typeTable:address, typeTableEncoding:number, landingPadBaseAddress: address)
+.decl lsda(lsdaAddress:address,callsiteTable:address,callsiteTableEncoding:unsigned,callSiteTableLength:unsigned,
+           typeTable:address, typeTableEncoding:unsigned, landingPadBaseAddress: address)
 .input lsda
 
 .decl lsda_pointer_locations(lsdaAddress:address,typeTablePointerLocation:address,callsiteTablePointerLoc:address)
@@ -52,13 +52,13 @@
     EA_landingPad:address,landingPad:address,EA_endLandindPad:address)
 .input lsda_callsite
 
-.decl lsda_type_entry(lsdaTypeTableAddress:address, index:number,address:address)
+.decl lsda_type_entry(lsdaTypeTableAddress:address, index:unsigned,address:address)
 .input lsda_type_entry
 /////////////////////////////////////////////////////////////////////////////////
 // output predicates
 
-.decl cfi_directive(BlockAddress:address,Offset:number,LocalIndex:number,
-                    directive:symbol,Reference:address, Nargs:number,arg1:number,arg2:number)
+.decl cfi_directive(BlockAddress:address,Offset:unsigned,LocalIndex:unsigned,
+                    directive:symbol,Reference:address, Nargs:unsigned,arg1:number,arg2:number)
 .output cfi_directive
 
 // symbol_special_encoding marks symbols that are encoded with uleb128 or sleb128.
@@ -274,9 +274,10 @@ symbol_minus_symbol(LsdaLocation,LsdaSize,LsdaLocation,LsdaAddress,1):-
 
 
 // instructions
-symbol_minus_symbol(InstructionAddr+1,Size-1,Addr+(Advance*CodeAlignmentFactor),Addr,CodeAlignmentFactor):-
+symbol_minus_symbol(InstructionAddr+1,Size-1,Addr+(AdvanceUnsigned*CodeAlignmentFactor),Addr,CodeAlignmentFactor):-
     option("no-cfi-directives"),
     fde_instruction(FdeAddr,Index,Size,"advance_loc",Advance,_),
+    AdvanceUnsigned = as(Advance,unsigned),
     Size > 1,
     fde_instruction_pos(FdeAddr,Index,InstructionAddr),
     fde_instruction_ref(FdeAddr,Index,_,Addr),
@@ -285,12 +286,12 @@ symbol_minus_symbol(InstructionAddr+1,Size-1,Addr+(Advance*CodeAlignmentFactor),
 
 /////////////////////////////////////////////////////////////////
 // Auxiliary predicates for symbols
-.decl special_encoding(Code:number,Name:symbol)
+.decl special_encoding(Code:unsigned,Name:symbol)
 
 special_encoding(1,"uleb128").
 special_encoding(9,"sleb128").
 
-.decl dwarf_encoding_size(Encoding:number,Size:number)
+.decl dwarf_encoding_size(Encoding:unsigned,Size:unsigned)
 
 dwarf_encoding_size(2,2).
 dwarf_encoding_size(3,4).
@@ -310,7 +311,7 @@ last_fde(Addr):-
 //////////////////////////////////////////////////////////////////////////////////
 // position of the instruction in the fde entry
 
-.decl fde_instruction_pos(FdeAddr:address,Index:number,InstructionAddr:address)
+.decl fde_instruction_pos(FdeAddr:address,Index:unsigned,InstructionAddr:address)
 
 fde_instruction_pos(FdeAddr,0,InstructionAddr):-
     fde_pointer_locations(FdeAddr,_,_, _,LsdaLocation,LsdaSize),
@@ -320,14 +321,14 @@ fde_instruction_pos(FdeAddr,Index+1,InstructionAddr+Size):-
     fde_instruction_pos(FdeAddr,Index,InstructionAddr),
     fde_instruction(FdeAddr,Index,Size,_,_,_).
 
-.decl last_fde_instruction(FdeAddr:address,Index:number)
+.decl last_fde_instruction(FdeAddr:address,Index:unsigned)
 
 last_fde_instruction(FdeAddr,Index+1):-
     fde_instruction(FdeAddr,Index,_,_,_,_),
     !fde_instruction(FdeAddr,Index+1,_,_,_,_).
 
 // location to which the instruction refers
-.decl fde_instruction_ref(FdeAddr:address,Index:number,LocalIndex:number,ReferenceAddr:address)
+.decl fde_instruction_ref(FdeAddr:address,Index:unsigned,LocalIndex:unsigned,ReferenceAddr:address)
 
 // LocalIndex is 3 because the instruction comes after startproc, lsda and personality.
 fde_instruction_ref(FdeAddr,0,3,StartFunction):-
@@ -344,7 +345,7 @@ fde_instruction_ref(FdeAddr,Index+1,NextLocalIndex,Addr):-
         Insn != "nop", NextLocalIndex = LocalIndex+1
     ).
 
-fde_instruction_ref(FdeAddr,Index+1,0,Addr+(CodeAlignmentFactor*Advance)):-
+fde_instruction_ref(FdeAddr,Index+1,0,Addr+(CodeAlignmentFactor*as(Advance,unsigned))):-
     fde_instruction_ref(FdeAddr,Index,_,Addr),
     fde_entry(FdeAddr,_,Cie,_,_,_),
     cie_entry(Cie,_,CodeAlignmentFactor,_),
@@ -353,7 +354,7 @@ fde_instruction_ref(FdeAddr,Index+1,0,Addr+(CodeAlignmentFactor*Advance)):-
         fde_instruction(FdeAddr,Index,_,"cf_advance_loc",Advance,_)
     ).
 
-.decl endproc_local_index(FdeAddr:address,LocalIndex:number)
+.decl endproc_local_index(FdeAddr:address,LocalIndex:unsigned)
 
 endproc_local_index(FdeAddr,LocalIndex):-
     fde_entry(FdeAddr,_, _,_,EndAddr,_),
@@ -388,7 +389,7 @@ cfi_directive(StartFunction,0,1,".cfi_lsda",Lsda,1,Encoding,0):-
     fde_block_addresses(FdeAddr,_,_),
     cie_encoding(Cie, _, LsdaEncoding),
     (
-        Lsda != 0, Encoding = LsdaEncoding;
+        Lsda != 0, Encoding = as(LsdaEncoding,number);
         Lsda = 0, Encoding = 255
     ).
 
@@ -398,7 +399,7 @@ cfi_directive(StartFunction,0,2,".cfi_personality",Personality,1,Encoding,0):-
     fde_block_addresses(FdeAddr,_,_),
     cie_personality(Cie,Personality,_,_,PersonalityEnconding),
     (
-        Personality != 0, Encoding = PersonalityEnconding;
+        Personality != 0, Encoding = as(PersonalityEnconding,number);
         Personality = 0, Encoding = 255
     ).
 
@@ -454,7 +455,7 @@ cfi_directive(Block,Offset,LocalIndex,".cfi_escape",InstructionBytesAddr,Size,0,
 /////////////////////////////////////////////////////////////////
 // Auxiliary predicates for cfi directives
 
-.decl cfi_operand_is_register(Insn:symbol,OpNumber:number)
+.decl cfi_operand_is_register(Insn:symbol,OpNumber:unsigned)
 
 cfi_operand_is_register("def_cfa",1).
 cfi_operand_is_register("def_cfa",2). //non-factored
@@ -474,7 +475,7 @@ cfi_operand_is_register("undefined",1).
 cfi_operand_is_register("val_offset",1).
 
 
-.decl dwarf_to_cfi(DwarfInsn:symbol,OpNumber:number,CfiInsn:symbol)
+.decl dwarf_to_cfi(DwarfInsn:symbol,OpNumber:unsigned,CfiInsn:symbol)
 
 
 dwarf_to_cfi("def_cfa",2,".cfi_def_cfa").
