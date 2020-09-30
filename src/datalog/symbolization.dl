@@ -71,8 +71,8 @@ This module also computes and symbol_minus_symbol.
 .decl symbolic_expr_from_relocation(ea:address,size:unsigned,symbol:symbol,Addend:number)
 .output symbolic_expr_from_relocation
 
-.decl symbol_minus_symbol_candidate(ea:address,size:unsigned,symbol1:address,symbol2:address,Reference:symbol,Scale:unsigned)
-.output symbol_minus_symbol_candidate
+.decl symbol_minus_symbol_jump_table(EA:address,TableStart:address,Size:unsigned,Symbol1:address,Symbol2:address,Reference:symbol,Scale:unsigned)
+.output symbol_minus_symbol_jump_table
 
 .decl symbol_minus_symbol(ea:address,size:unsigned,symbol1:address,symbol2:address,scale:unsigned)
 .output symbol_minus_symbol
@@ -247,7 +247,7 @@ labeled_data_candidate(Val):-
 
 // Symbol-Symbol candidate keeps track of which symbol is the reference and which is the target
 
-symbol_minus_symbol_candidate(TableStart,Size,TableReference,Dest,"first",1):-
+symbol_minus_symbol_jump_table(TableStart,TableStart,Size,TableReference,Dest,"first",1):-
     jump_table_start(_,Size,TableStart,TableReference,"ADD"),
     (
         Size > 1,data_word(TableStart,Size,Diff);
@@ -257,7 +257,7 @@ symbol_minus_symbol_candidate(TableStart,Size,TableReference,Dest,"first",1):-
     Dest = as(TableReference_signed + Diff,unsigned),
     code(Dest).
 
-symbol_minus_symbol_candidate(TableStart,Size,Dest,TableReference,"second",1):-
+symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Dest,TableReference,"second",1):-
     jump_table_start(_,Size,TableStart,TableReference,"SUB"),
     (
         Size > 1,data_word(TableStart,Size,Diff);
@@ -267,8 +267,8 @@ symbol_minus_symbol_candidate(TableStart,Size,Dest,TableReference,"second",1):-
     Dest = as(TableReference_signed - Diff,unsigned),
     code(Dest).
 
-symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first",Scale):-
-    symbol_minus_symbol_candidate(EA,Size,Reference,_,"first",Scale),
+symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Reference,Symbol,"first",Scale):-
+    symbol_minus_symbol_jump_table(EA,TableStart,Size,Reference,_,"first",Scale),
     !possible_data_limit(EA+Size),
     last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA,
     (
@@ -279,8 +279,8 @@ symbol_minus_symbol_candidate(EA+Size,Size,Reference,Symbol,"first",Scale):-
     Symbol = as(Reference_signed + Diff,unsigned),
     code(Symbol).
 
-symbol_minus_symbol_candidate(EA+Size,Size,Symbol,Reference,"second",Scale):-
-    symbol_minus_symbol_candidate(EA,Size,_,Reference,"second",Scale),
+symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Symbol,Reference,"second",Scale):-
+    symbol_minus_symbol_jump_table(EA,TableStart,Size,_,Reference,"second",Scale),
     !possible_data_limit(EA+Size),
     last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA,
     (
@@ -367,7 +367,7 @@ string_part(EA+1,Base):-
 .decl data_object(ea:address,size:unsigned,type:symbol)
 
 data_object_candidate(EA,Size,"symbol-symbol"):-
-    symbol_minus_symbol_candidate(EA,Size,_,_,_,_).
+    symbol_minus_symbol_jump_table(EA,_,Size,_,_,_,_).
 
 data_object_candidate(EA,Pt_size,"symbol"):-
     arch.pointer_size(Pt_size),
@@ -383,7 +383,7 @@ data_object_candidate(EA,Size,"other"):-
     Size != Pt_size,
     Size > 0,
     arch.pointer_size(Pt_size),
-    !symbol_minus_symbol_candidate(EA,Size,_,_,_,_).
+    !symbol_minus_symbol_jump_table(EA,_,Size,_,_,_,_).
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Heuristic: If there are at least 3 consecutive addresses
@@ -665,7 +665,7 @@ string(EA,End):-
 
 symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale):-
     data_object(EA,Size,"symbol-symbol"),
-    symbol_minus_symbol_candidate(EA,Size,Symbol1,Symbol2,_,Scale).
+    symbol_minus_symbol_jump_table(EA,_,Size,Symbol1,Symbol2,_,Scale).
 
 code_pointer_in_data(EA,Val):-
     symbolic_data(EA,_,Val),

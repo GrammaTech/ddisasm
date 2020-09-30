@@ -89,6 +89,15 @@ resolved_jump(EA,Dest):-
     symbolic_data(Memory,_,Dest),
     refined_block(Dest).
 
+// Symbol-Symbol jump tables
+resolved_jump(EA,Dest):-
+    jump_table_start(EA,Size,TableStart,_,_),
+    symbol_minus_symbol_jump_table(DataAddress,TableStart,Size,Symbol1,Symbol2,Reference,1),
+    symbol_minus_symbol(DataAddress,Size,Symbol1,Symbol2,1),
+    (
+        Reference = "first", Dest = Symbol2;
+        Reference = "second", Dest = Symbol1
+    ).
 
 //////////////////////////////////////////////////////////////////////////////
 // edge creation
@@ -135,6 +144,7 @@ cfg_edge_to_top(Src,Conditional,"branch"):-
         reg_jump(EA,_);
         indirect_jump(EA)
     ),
+    !resolved_jump(EA,_),
     (
         unconditional_jump(EA), Conditional = "false";
         !unconditional_jump(EA), Conditional = "true"
