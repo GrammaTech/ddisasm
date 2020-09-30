@@ -126,7 +126,7 @@ symbolic_operand_candidate(EA2,Op_index2,Dest,Type):-
         Type = "data"
     ).
 
-symbol_minus_symbol_candidate(Addr,Size,EARef,Dest,"no_table",Scale):-
+symbol_minus_symbol_jump_table(Addr,Addr,Size,EARef,Dest,"no_table",Scale):-
     binary_isa("ARM"),
     data_access_pattern(Addr,Size,0,EABase),
     def_used(EABase,Reg,EAAddPC,_),
