@@ -84,6 +84,7 @@ of the jump table.
 .output relative_address
 
 .decl relative_address_start(EA:address,Size:unsigned,Reference:address,Dest:address, DestIsFirstOrSecond:symbol)
+.output relative_address_start
 
 relative_address_start(EA,Size,EA,Dest, DestIsFirstOrSecond):-
     take_address(_,EA),
