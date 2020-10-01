@@ -280,7 +280,7 @@ relative_address(EA+1,1,Ref,Dest,"first"):-
     possible_ea(ImageBase+as(Word,unsigned)),
     !relative_address_start(EA+1,_,_,_,_).
 
-symbol_minus_symbol_jump_table(EA,1,Ref,Ref,Dest,"first",4):-
+symbol_minus_symbol_jump_table(EA,Ref,1,Ref,Dest,"first",4):-
     relative_address(EA,1,Ref,Dest,"first").
 
 // the call to main is right after the call to "__p___argc"
