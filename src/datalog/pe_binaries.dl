@@ -261,13 +261,13 @@ relative_address_start(Table,1,Ref,Dest,"first"):-
     base_address(ImageBase),
     // base-relative table address load and index
     instruction_get_src_op(EA1,_,Op1),
-    op_indirect(Op1,_,_,_,1,Offset1,8),
+    op_indirect(Op1,_,_,_,1,Offset1,8), Offset1 > 0,
     Table = ImageBase+as(Offset1,unsigned),
     data_byte(Table,Byte),
     // loads base-relative reference address
     next(EA1,EA2),
     instruction_get_src_op(EA2,_,Op2),
-    op_indirect(Op2,_,_,_,4,Offset2,32),
+    op_indirect(Op2,_,_,_,4,Offset2,32), Offset2 > 0,
     Ref = ImageBase+as(Offset2,unsigned),
     Dest = Ref + Byte.
 
@@ -280,7 +280,7 @@ relative_address(EA+1,1,Ref,Dest,"first"):-
     possible_ea(ImageBase+as(Word,unsigned)),
     !relative_address_start(EA+1,_,_,_,_).
 
-symbol_minus_symbol_candidate(EA,1,Ref,Dest,"first",4):-
+symbol_minus_symbol_jump_table(EA,1,Ref,Ref,Dest,"first",4):-
     relative_address(EA,1,Ref,Dest,"first").
 
 // the call to main is right after the call to "__p___argc"
