@@ -211,7 +211,7 @@ moved_displacement_candidate(EA,Op_index,as(Dest,address),AccessDest,1):-
 moved_label_class(EA,Op_index,"constant + multiplied reg"),
 moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
     binary_type("EXEC"),
-    data_access(EA,Op_index,"NONE","NONE",RegMult,Mult,Dest,_),
+    data_access(EA,Op_index,"NONE","NONE",RegMult,Mult,Dest,_), Dest >= 0,
     DestAddr = as(Dest,address),
     !instruction_get_operation(EA,"LEA"),
     !symbolic_operand(EA,Op_index,_,_),
@@ -237,7 +237,7 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
 moved_label_class(EA,Op_index,"constant + multiplied reg2"),
 moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
     binary_type("EXEC"),
-    data_access(EA,Op_index,"NONE",Reg,"NONE",_,Dest,_),
+    data_access(EA,Op_index,"NONE",Reg,"NONE",_,Dest,_), Dest >= 0,
     DestAddr = as(Dest,address),
     !instruction_get_operation(EA,"LEA"),
     !symbolic_operand(EA,Op_index,_,_),
@@ -260,7 +260,7 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
 moved_label_class(EA,Op_index,"constant + repeated reg"),
 moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
     binary_type("EXEC"),
-    data_access(EA,Op_index,"NONE",Reg,Reg,_,Dest,_),
+    data_access(EA,Op_index,"NONE",Reg,Reg,_,Dest,_), Dest >= 0,
     DestAddr = as(Dest,address),
     !instruction_get_operation(EA,"LEA"),
     !symbolic_operand(EA,Op_index,_,_),
@@ -281,7 +281,7 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
 // references with offset in PIE or REL code
 moved_displacement_candidate(EA,Op_index,DestAddr,SymbolAddr,0):-
     !binary_type("EXEC"),
-    data_access(EA,Op_index,_,_,_,_,Dest,_),
+    data_access(EA,Op_index,_,_,_,_,Dest,_), Dest >= 0,
     DestAddr = as(Dest,address),
     instruction_displacement_offset(EA,Op_index,DisplacementOffset),
     relocation(EA+DisplacementOffset,_,Symbol,_),
@@ -331,7 +331,7 @@ cmp_reg_to_reg(EA,Reg1,Reg2):-
 .output dest_enlarged_data_section
 
 dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs,Beg+SizeSect+MultAbs,Beg,Beg+SizeSect):-
-    best_value_reg(EA_def,Reg,_,Mult,NewDest,"loop"),
+    best_value_reg(EA_def,Reg,_,Mult,NewDest,"loop"), NewDest >= 0,
     NewDestAddr = as(NewDest,address),
     MultAbs = as(max(Mult,-Mult),unsigned),
     regular_data_section(Name),
@@ -355,7 +355,7 @@ moved_immediate_candidate(EA_from,Imm_index,ImmediateAddr,NewDest):-
     (Reg = Reg2; Reg = Reg3),
     value_reg_at_operand(EA_access,Op_index,Reg,EA_from,_,_,Type),
     Type != "incomplete",
-    mov_immediate_to_reg(EA_from,Reg,Imm_index,Immediate),
+    mov_immediate_to_reg(EA_from,Reg,Imm_index,Immediate), Immediate >= 0,
     ImmediateAddr = as(Immediate,address),
     as(Beg,number)-Mult <= Immediate,
     Immediate <= as(Beg+SizeSect,number)+Mult,
@@ -365,7 +365,7 @@ moved_immediate_candidate(EA_from,Imm_index,ImmediateAddr,NewDest):-
 moved_label_class(EA,Imm_index,"immediate loop bound"),
 moved_immediate_candidate(EA,Imm_index,ImmediateAddr,NewDest):-
     binary_type("EXEC"),
-    cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate),
+    cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate), Immediate >= 0,
     ImmediateAddr = as(Immediate,address),
     def_used(EA_def,Reg,EA,_),
     dest_enlarged_data_section(EA_def,Reg,NewDest,Beg,End,OldBeg,OldEnd),
@@ -380,7 +380,7 @@ moved_immediate_candidate(EA_def2,Imm_index,ImmediateAddr,NewDest):-
     dest_enlarged_data_section(EA_def1,Reg1,NewDest,Beg,End,OldBeg,OldEnd),
 
     def_used(EA_def2,Reg2,EA,_),
-    mov_immediate_to_reg(EA_def2,Reg2,Imm_index,Immediate),
+    mov_immediate_to_reg(EA_def2,Reg2,Imm_index,Immediate), Immediate >= 0,
     ImmediateAddr = as(Immediate,address),
 
     Beg <= ImmediateAddr,ImmediateAddr <= End,
@@ -392,7 +392,7 @@ moved_immediate_candidate(EA,Op_index,DestAddr,SymbolAddr):-
     code(EA),
     instruction_immediate_offset(EA,Op_index,ImmediateOffset),
     instruction_get_src_op(EA,Op_index,Op),
-    op_immediate(Op,Dest),
+    op_immediate(Op,Dest), Dest >= 0,
     DestAddr = as(Dest,address),
     relocation(EA+ImmediateOffset,_,Symbol,_),
     symbol(SymbolAddr,_,_,_,_,Symbol),
