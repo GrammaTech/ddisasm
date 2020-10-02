@@ -558,3 +558,7 @@ no_return_call(EA):-
     direct_call(EA,Dest),
     plt_entry(Dest,Function),
     no_return_function(Function).
+
+.decl is_nop(EA:address)
+is_nop(EA):-
+    arch.is_nop(EA).

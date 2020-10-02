@@ -154,7 +154,7 @@ padding(EA,Size):-
 padding(EA,Size):-
     after_end(NonNop,End),
     //this condition guarantees that we take the last after_end of a sequence of nops
-    !arch.is_nop(NonNop),
+    !is_nop(NonNop),
     next(End,EA),
     Size = NonNop-EA,
     Size > 0.
@@ -163,7 +163,7 @@ padding(EA,Size):-
 
 block_has_non_nop(Block):-
     code_in_refined_block(EA,Block),
-    !arch.is_nop(EA).
+    !is_nop(EA).
 
 .decl nop_block(Block:address)
 

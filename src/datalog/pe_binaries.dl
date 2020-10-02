@@ -177,7 +177,7 @@ base_relative_address(EA+4,Ref,as(Val,address)):-
     base_relative_address(EA,Ref,_),
     data_word(EA+4,4,Val),
     propagated_data_access(EA,4,Ref),
-    !arch.is_nop(EA+4),
+    !is_nop(EA+4),
     !base_relative_address_start(EA+4,_,_),
     !data_access_pattern(EA+4,1,1,_),
     Val > 0.
@@ -305,3 +305,7 @@ labeled_data(EA):-
     section(Name,Size,Addr),
     EA >= Addr,
     EA < Addr+Size.
+
+is_nop(EA):-
+    binary_format("PE"),
+    instruction_get_operation(EA,"INT3").
