@@ -108,7 +108,7 @@ This module:
 .decl symbol(ea:address,size:unsigned,type:symbol,scope:symbol,sectionIndex:unsigned,name:symbol)
 .input symbol
 
-.decl section_complete(name:symbol,size:unsigned,addr:address,type:unsigned,flags:unsigned,align:number)
+.decl section_complete(name:symbol,size:unsigned,addr:address,type:unsigned,flags:unsigned,align:unsigned)
 .input section_complete
 
 .decl relocation(ea:address,type:symbol,name:symbol,addend:number)
