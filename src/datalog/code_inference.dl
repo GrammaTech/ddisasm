@@ -202,8 +202,8 @@ possible_target_from(Dest,Src):-
         direct_jump(Src,Dest);
         direct_call(Src,Dest);
         pc_relative_jump(Src,Dest);
-        pc_relative_call(Src,Dest)
-
+        pc_relative_call(Src,Dest);
+        pc_relative_operand(Src,_,Dest)
     ).
 
 .decl possible_target(Target:address)
