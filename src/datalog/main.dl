@@ -545,3 +545,7 @@ no_return_call(EA):-
     direct_call(EA,Dest),
     plt_entry(Dest,Function),
     no_return_function(Function).
+
+.decl is_padding(EA:address)
+is_padding(EA):-
+    arch.is_nop(EA).

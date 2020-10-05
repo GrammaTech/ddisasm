@@ -252,7 +252,7 @@ after_end(Next,End):-
 
 after_end(Next,End):-
     after_end(EA,End),
-    arch.is_nop(EA),
+    is_padding(EA),
     !block_limit(EA),
     next(EA,Next).
 
@@ -262,6 +262,7 @@ possible_target(EA):-
         !arch.is_nop(EA);
         block_limit(EA)
     ).
+
 ///////////////////////////////////////////////////////////////////////
 // We are done with the recursive exploration
 // Now we detect and resolve conflics within the different blocks
