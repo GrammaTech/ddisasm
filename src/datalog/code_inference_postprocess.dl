@@ -154,7 +154,7 @@ padding(EA,Size):-
 padding(EA,Size):-
     after_end(NonNop,End),
     //this condition guarantees that we take the last after_end of a sequence of nops
-    !arch.is_nop(NonNop),
+    !is_padding(NonNop),
     next(End,EA),
     Size = NonNop-EA,
     Size > 0.
