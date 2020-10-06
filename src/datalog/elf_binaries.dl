@@ -272,3 +272,14 @@ symbolic_operand(EA,Index,as(Reference+Offset,address),"tls"):-
     op_indirect(Op,"FS","NONE","NONE",_,Offset,_), Offset < 0,
     tls_segment(TlsEnd,Align),
     Reference = as(TlsEnd,number) + as(TlsEnd % max(Align,1),number).
+
+//   e.g.  mov	rax, qword ptr fs:[0]
+//         lea	rax, [rax + threadLocal@TPOFF]
+symbolic_operand(EA_used,Index,as(Reference+Offset,address),"tls"):-
+    instruction_get_op(EA_def,_,Op_def),
+    op_indirect(Op_def,"FS","NONE","NONE",_,0,_),
+    def_used(EA_def,_,EA_used,Index),
+    instruction_get_op(EA_used,Index,Op_used),
+    op_indirect(Op_used,"NONE",_,_,_,Offset,_), Offset < 0,
+    tls_segment(TlsEnd,Align),
+    Reference = as(TlsEnd,number) + as(TlsEnd % max(Align,1),number).
