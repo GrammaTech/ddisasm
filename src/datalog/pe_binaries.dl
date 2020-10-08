@@ -275,6 +275,7 @@ relative_address(EA+1,1,Ref,Dest,"first"):-
     base_address(ImageBase),
     relative_address(EA,1,Ref,_,"first"),
     data_byte(EA+1,Byte),
+    !is_padding(EA+1),
     Dest = Ref+Byte*4,
     data_word(Dest,4,Word),
     possible_ea(ImageBase+as(Word,unsigned)),
@@ -282,9 +283,9 @@ relative_address(EA+1,1,Ref,Dest,"first"):-
 
 symbol_minus_symbol_jump_table(EA,TableStart,1,Ref,Dest,"first",4):-
     relative_address(EA,1,Ref,Dest,"first"),
-    // Byte offsets reference another relative address table.
+    // Byte offsets reference a preceding relative address table.
     relative_address_start(Ref,4,_,_,_),
-    // Note that TableStart references the byte offset table not the RVA table.
+    // Note that TableStart references the RVA table not the byte offset table.
     TableStart = Ref.
 
 // the call to main is right after the call to "__p___argc"
