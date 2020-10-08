@@ -282,6 +282,8 @@ relative_address(EA+1,1,Ref,Dest,"first"):-
 
 symbol_minus_symbol_jump_table(EA,TableStart,1,Ref,Dest,"first",4):-
     relative_address(EA,1,Ref,Dest,"first"),
+    // Byte offsets reference another relative address table.
+    relative_address_start(Ref,4,_,_,_),
     // Note that TableStart references the byte offset table not the RVA table.
     TableStart = Ref.
 
