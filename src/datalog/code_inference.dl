@@ -335,21 +335,12 @@ instruction_range(EA+1,EA2):-
 
 
 block_overlap(Block1,Block2):-
-    binary_isa("ARM"),
     block_candidate_boundaries(Block1,BegAddr1,EndAddr1),
     block_candidate_boundaries(Block2,BegAddr2,_),
     Block1 != Block2,
     BegAddr1 <= BegAddr2,
     BegAddr2 < EndAddr1.
 
-// This uses instruction_range as an optimization
-// TODO: We can remove this once souffle implements range queries.
-// An instruction of one block starts in the middle of another one from a different block
-block_overlap(EA_block,EA_block2):-
-    !binary_isa("ARM"),
-    code_in_block_candidate_refined(EA,EA_block),
-    instruction_range(EA_block2,EA),
-    code_in_block_candidate_refined(_,EA_block2).
 
 .decl block_is_overlapping(block:address)
 
@@ -359,15 +350,17 @@ block_is_overlapping(Block):-
         block_overlap(_,Block)
     ).
 
-block_points(Block,0,-9,"overlap with relative-jump-table"),
-block_is_overlapping(Block):-
+block_is_overlapping(Block),
+block_points(Block,0,-9,"overlap with relative-jump-table"):-
     block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
     relative_address(Beg,Size,_,_,_),
-    (
-        BegBlockAddr <= Beg, Beg< EndBlockAddr
-        ;
-        Beg < BegBlockAddr, BegBlockAddr< Beg+Size
-    ).
+    BegBlockAddr <= Beg, Beg< EndBlockAddr.
+
+block_is_overlapping(Block),
+block_points(Block,0,-9,"overlap with relative-jump-table"):-
+    relative_address(Beg,Size,_,_,_),
+    block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
+    Beg < BegBlockAddr, BegBlockAddr< Beg+Size.
 
 //////////////////////////////////////////////////////////////////////
 // We need to solve the block overlaps
@@ -602,20 +595,20 @@ block_points(Block,BlockPred2,Points,"call-transitive"):-
 
 block_points(Block,0,1,"has well-defined jump"):-
     block_is_overlapping(Block),
-    direct_jump(EA,BlockDest),
     code_in_block_candidate_refined(EA,Block),
+    direct_jump(EA,BlockDest),
     !block_is_overlapping(BlockDest).
 
 block_points(Block,0,1,"has well-defined call"):-
     block_is_overlapping(Block),
-    direct_call(EA,BlockDest),
     code_in_block_candidate_refined(EA,Block),
+    direct_call(EA,BlockDest),
     !block_is_overlapping(BlockDest).
 
 block_points(Block,0,1,"plt call"):-
     block_is_overlapping(Block),
-    direct_call(EA,BlockDest),
     code_in_block_candidate_refined(EA,Block),
+    direct_call(EA,BlockDest),
     plt_entry(BlockDest,_).
 
 block_points(Block,0,10,"fde-entry"):-
@@ -629,7 +622,8 @@ block_points(Block,0,2,"padding nop block"):-
 
 block_points(Block,0,-1,"overlap long nop"):-
     block_is_overlapping(Block),
-    instruction_range(Block,EA_nop),
+    block_overlap(Block,Block2),
+    code_in_block_candidate(EA_nop,Block2),
     arch.is_nop(EA_nop).
 
 block_points(Block,0,3,"exc-region"):-
