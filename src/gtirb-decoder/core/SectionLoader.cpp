@@ -36,11 +36,11 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
         std::cerr << "WARNING: Missing `elfSectionProperties' AuxData table\n";
     }
 
-    auto* SectionAlignment = Module.getAuxData<gtirb::schema::ElfSectionAlignment>();
+    auto* Alignment = Module.getAuxData<gtirb::schema::Alignment>();
 
-    if(!SectionAlignment)
+    if(!Alignment)
     {
-        std::cerr << "WARNING: Missing `elfSectionProperties' AuxData table\n";
+        std::cerr << "WARNING: Missing `alignment' AuxData table\n";
     }
 
     for(const auto& Section : Module.sections())
@@ -69,9 +69,9 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
         }
 
         uint64_t Align = 0;
-        if(SectionAlignment)
+        if(Alignment)
         {
-            if(auto It = SectionAlignment->find(Section.getUUID()); It != SectionAlignment->end())
+            if(auto It = Alignment->find(Section.getUUID()); It != Alignment->end())
             {
                 Align = It->second;
             }
