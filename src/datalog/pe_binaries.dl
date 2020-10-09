@@ -104,7 +104,7 @@ plt_block(EA,Function):-
     got_reference(Got_entry,Function),
     code_in_refined_block(EA,EA).
 
-.decl base_relative_operand(EA:address,Index:unsigned,Dest:address)
+.decl base_relative_operand(EA:address,Index:operand_index,Dest:address)
 .output base_relative_operand
 
 base_relative_operand(EA_used,Op_index,as(Value,address)):-
@@ -114,7 +114,7 @@ base_relative_operand(EA_used,Op_index,as(Value,address)):-
     instruction_get_op(EA_used,Op_index,Op),
     op_indirect(Op,_,_,_,_,Value,_), Value >= 0.
 
-.decl base_relative_symbolic_operand(EA:address,Index:unsigned,Dest:address)
+.decl base_relative_symbolic_operand(EA:address,Index:operand_index,Dest:address)
 
 symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value,1),
 base_relative_symbolic_operand(EA,Op_index,Value):-
@@ -312,3 +312,15 @@ labeled_data(EA):-
 is_padding(EA):-
     binary_format("PE"),
     instruction_get_operation(EA,"INT3").
+
+// Off-cut base-relative reference to symbol:
+//    e.g.  movzx EDX,BYTE PTR [RAX+RCX*1+((IMAGEREL N_180fa2570)+7)]
+//                                                               ^^
+moved_label_class(EA,Op_index,"collides with pointer"),
+moved_label(EA,Op_index,ImageBase+Dest,NewDest):-
+    base_address(ImageBase),
+    base_relative_symbolic_operand(EA,Op_index,Dest),
+    // Reference collides with a pointer.
+    arch.pointer_size(Pt_size),
+    address_in_data_refined_range.overlap(ImageBase+Dest,Pt_size,NewDest),
+    symbolic_data(NewDest,_,_).
