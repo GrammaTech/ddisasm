@@ -125,7 +125,7 @@ invalid(EA):-
         //pc_relative_jump(EA,Not_code);
         //pc_relative_call(EA,Not_code)
     ),
-    !instruction(Not_code,_,_,_,_,_,_,_).
+    !instruction(Not_code,_,_,_,_,_,_,_,_,_).
 
 // propagate the invalid instructions backwards until ret or jmp (encoded in must_fallthrough)
 // propagate through direct jumps and calls
@@ -142,7 +142,7 @@ invalid(From):-
 .decl possible_ea(EA:address)
 
 possible_ea(EA):-
-    instruction(EA,_,_,_,_,_,_,_),
+    instruction(EA,_,_,_,_,_,_,_,_,_),
     !invalid(EA).
 
 .decl basic_target(ea:address)
@@ -410,8 +410,8 @@ discarded_block(Block2):-
     block_total_points(Block,Points),
     block_total_points(Block2,Points),
     // one has an extra prefix with respect to the other
-    instruction(Block,Size,_,OpCode,Op1,Op2,Op3,Op4),
-    instruction(Block2,Size2,_,OpCode,Op1,Op2,Op3,Op4),
+    instruction(Block,Size,_,OpCode,Op1,Op2,Op3,Op4,_,_),
+    instruction(Block2,Size2,_,OpCode,Op1,Op2,Op3,Op4,_,_),
     Block2 - Block = Size - Size2.
 
 

@@ -42,6 +42,6 @@ low_pass_filter(EA):-
 .decl is_xor_reset(EA:address)
 
 is_xor_reset(EA):-
-    instruction(EA,_,_,"XOR",Op1,Op2,0,0),
+    instruction(EA,_,_,"XOR",Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op1,Reg),
     op_regdirect_contains_reg(Op2,Reg).

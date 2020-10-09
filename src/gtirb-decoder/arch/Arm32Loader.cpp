@@ -29,7 +29,7 @@
 void Arm32Loader::insert(const Arm32Facts& Facts, DatalogProgram& Program)
 {
     auto& [Instructions, Operands] = Facts;
-    Program.insert("instruction_complete", Instructions.instructions());
+    Program.insert("instruction", Instructions.instructions());
     Program.insert("invalid_op_code", Instructions.invalid());
     Program.insert("op_immediate", Operands.imm());
     Program.insert("op_regdirect", Operands.reg());

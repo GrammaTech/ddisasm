@@ -123,7 +123,7 @@ refined_block_last_instruction(Block,EA):-
 
 block_information(Block,BlockSize,LastEA+InsnSize):-
     refined_block_last_instruction(Block,LastEA),
-    instruction(LastEA, InsnSize, _, _,_, _, _, _),
+    instruction(LastEA, InsnSize,_,_,_,_,_,_,_,_),
     BlockSize= LastEA+InsnSize - Block.
 
 .decl next_refined_block_in_section(Block:address, NextBlock:address)

@@ -196,17 +196,17 @@ cmp_operation("TST").
 .output reg_reg_arithmetic_operation
 
 reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
-    instruction(EA,_,_,"SUB",Op1,Op2,0,0), Op1 != Op2,
+    instruction(EA,_,_,"SUB",Op1,Op2,0,0,_,_), Op1 != Op2,
     op_regdirect_contains_reg(Op1,Reg1),
     op_regdirect_contains_reg(Op2,Reg2).
 
 reg_reg_arithmetic_operation(EA,Reg2,Reg1,Reg2,1,0):-
-    instruction(EA,_,_,"ADD",Op1,Op2,0,0), Op1 != Op2,
+    instruction(EA,_,_,"ADD",Op1,Op2,0,0,_,_), Op1 != Op2,
     op_regdirect_contains_reg(Op2,Reg2),
     op_regdirect_contains_reg(Op1,Reg1).
 
 reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset):-
-    instruction(EA,_,_,"LEA",Op1,Op2,0,0),
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg_def),
     op_indirect(Op1,_,Reg1_n,Reg2_n,Mult,Offset,_),
     arch.track_register(Reg1_n,Reg1),
