@@ -108,7 +108,7 @@ value_reg_edge(EALoad,Reg,EAPrev,Reg,1,0):-
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     def_used_for_address(EA,Reg),
     arch.move_operation(Operation),
-    instruction(EA,_,_,Operation,Op1,Op2,0,0),
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg),
     op_indirect(Op1,"NONE","NONE","NONE",_,Offset,32),
     Offset_addr = as(Offset,address),
@@ -122,7 +122,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     def_used_for_address(EA,Reg),
     arch.move_operation(Operation),
-    instruction(EA,_,_,Operation,Op1,Op2,0,0),
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg),
     op_indirect(Op1,_,_,_,_,_,32),
     pc_relative_operand(EA,1,Offset),
@@ -141,7 +141,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
 // pc-relative LEA
 value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
     code(EA),
-    instruction(EA,Size,_,"LEA",Op1,Op2,0,0),
+    instruction(EA,Size,_,"LEA",Op1,Op2,0,0,_,_),
     op_indirect(Op1,_,PcReg,"NONE",_,Offset,_),
     arch.pc_register(PcReg),
     op_regdirect_contains_reg(Op2,Reg),
@@ -177,20 +177,20 @@ value_reg_edge(EA,Reg,EA_prev,Reg,1,-Immediate):-
 value_reg_edge(EA,Reg,EA_prev,Reg,1,1):-
     def_used_for_address(EA_prev,Reg),
     def_used(EA_prev,Reg,EA,_),
-    instruction(EA,_,_,"INC",Op1,0,0,0),
+    instruction(EA,_,_,"INC",Op1,0,0,0,_,_),
     op_regdirect_contains_reg(Op1,Reg).
 
 value_reg_edge(EA,Reg,EA_prev,Reg,1,-1):-
     def_used_for_address(EA_prev,Reg),
     def_used(EA_prev,Reg,EA,_),
-    instruction(EA,_,_,"DEC",Op1,0,0,0),
+    instruction(EA,_,_,"DEC",Op1,0,0,0,_,_),
     op_regdirect_contains_reg(Op1,Reg).
 
 // add a register to itself
 value_reg_edge(EA,Reg,EA_prev,Reg,2,0):-
     def_used_for_address(EA_prev,Reg),
     def_used(EA_prev,Reg,EA,_),
-    instruction(EA,_,_,"ADD",Op,Op,0,0),
+    instruction(EA,_,_,"ADD",Op,Op,0,0,_,_),
     op_regdirect_contains_reg(Op,Reg).
 
 //shl reg immediate
@@ -204,7 +204,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg,2^Immediate,0):-
 value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
     def_used_for_address(EA_prev,Reg2),
     def_used(EA_prev,Reg2,EA,_),
-    instruction(EA,_,_,"IMUL",Op1,Op2,Op3,0),
+    instruction(EA,_,_,"IMUL",Op1,Op2,Op3,0,_,_),
     op_immediate(Op2,Immediate),
     op_regdirect_contains_reg(Op3,Reg),
     op_regdirect_contains_reg(Op1,Reg2),
@@ -221,7 +221,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier,Offset):-
     def_used_for_address(EA,Reg),
     def_used(EA_prev,Reg_origin,EA,1),
-    instruction(EA,_,_,"LEA",Op1,Op2,0,0),
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
     op_indirect(Op1,_,"NONE",Reg_origin_non_uniform,Multiplier,Offset,_),
     arch.track_register(Reg_origin_non_uniform,Reg_origin),
     op_regdirect_contains_reg(Op2,Reg).
@@ -230,7 +230,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier,Offset):-
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier+1,Offset):-
     def_used_for_address(EA,Reg),
     def_used(EA_prev,Reg_origin,EA,1),
-    instruction(EA,_,_,"LEA",Op1,Op2,0,0),
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
     op_indirect(Op1,_,Reg_origin_non_uniform,Reg_origin_non_uniform,Multiplier,Offset,_),
     arch.track_register(Reg_origin_non_uniform,Reg_origin),
     op_regdirect_contains_reg(Op2,Reg).
@@ -239,7 +239,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier+1,Offset):-
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,Offset):-
     def_used_for_address(EA,Reg),
     def_used(EA_prev,Reg_origin,EA,1),
-    instruction(EA,_,_,"LEA",Op1,Op2,0,0),
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
     op_indirect(Op1,_,Reg_origin_non_uniform,"NONE",1,Offset,_),
     arch.track_register(Reg_origin_non_uniform,Reg_origin),
     op_regdirect_contains_reg(Op2,Reg).
@@ -253,7 +253,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,Offset):-
 value_reg_unsupported(EA,Reg):-
     def_used_for_address(EA,Reg),
     arch.mov(EA),
-    instruction(EA,_,_,_,Op1,Op2,0,0),
+    instruction(EA,_,_,_,Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg),
     op_indirect(Op1,_,RegBase,RegIndex,_,_,_),
     (RegBase != "NONE" ; RegIndex != "NONE").
@@ -262,7 +262,7 @@ value_reg_unsupported(EA,Reg):-
 value_reg_unsupported(EA,Reg):-
     def_used_for_address(EA,Reg),
     arch.mov(EA),
-    instruction(EA,_,_,_,Op1,Op2,0,0),
+    instruction(EA,_,_,_,Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg),
     op_regdirect(Op1,_),
     !op_regdirect_contains_reg(Op1,_).

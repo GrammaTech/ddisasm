@@ -78,7 +78,7 @@ std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SoufflePr
         Indirects[operandCode] = indirect;
     };
     std::map<gtirb::Addr, DecodedInstruction> insns;
-    for(auto &output : *prog->getRelation("instruction_complete"))
+    for(auto &output : *prog->getRelation("instruction"))
     {
         DecodedInstruction insn;
         gtirb::Addr EA;

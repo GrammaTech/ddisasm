@@ -185,7 +185,7 @@ main_function(Main_location):-
     !function_symbol(Main_location,"main"),
     First_call = min EA:{
         start_function(Entry),
-        instruction_get_operation(EA, CallOp),
+        instruction(EA,_,_,CallOp,_,_,_,_,_,_),
         arch.call_operation(CallOp),
         code(EA),
         EA>=Entry
@@ -210,7 +210,7 @@ inferred_symbol_name(EA,"__do_global_dtors_aux","LOCAL"):-
     FiniArray < Beg+Size,
     // compare a value in bss with 0 in the first block
     code_in_refined_block(EA_cmp,EA),
-    instruction(EA_cmp,_,_,"CMP",Op1,_,0,0),
+    instruction(EA_cmp,_,_,"CMP",Op1,_,0,0,_,_),
     op_immediate(Op1,0),
     pc_relative_operand(EA_cmp,2,DataRef),
     bss_section(SectionName),
