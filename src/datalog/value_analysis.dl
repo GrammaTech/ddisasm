@@ -167,16 +167,12 @@ value_reg_edge(EA,Reg,EA,"NONE",0,0):-
 value_reg_edge(EA,Reg,EA_prev,Reg,1,Immediate):-
     def_used_for_address(EA_prev,Reg),
     def_used(EA_prev,Reg,EA,_),
-    instruction(EA,_,_,"ADD",Op1,Op2,0,0),
-    op_immediate(Op1,Immediate),
-    op_regdirect_contains_reg(Op2,Reg).
+    op_immediate_and_reg(EA,"ADD",Reg,1,Immediate).
 
 value_reg_edge(EA,Reg,EA_prev,Reg,1,-Immediate):-
     def_used_for_address(EA_prev,Reg),
     def_used(EA_prev,Reg,EA,_),
-    instruction(EA,_,_,"SUB",Op1,Op2,0,0),
-    op_immediate(Op1,Immediate),
-    op_regdirect_contains_reg(Op2,Reg).
+    op_immediate_and_reg(EA,"SUB",Reg,1,Immediate).
 
 value_reg_edge(EA,Reg,EA_prev,Reg,1,1):-
     def_used_for_address(EA_prev,Reg),
@@ -201,9 +197,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg,2,0):-
 value_reg_edge(EA,Reg,EA_prev,Reg,2^Immediate,0):-
     def_used_for_address(EA_prev,Reg),
     def_used(EA_prev,Reg,EA,_),
-    instruction(EA,_,_,"SHL",Op1,Op2,0,0),
-    op_immediate(Op1,Immediate),
-    op_regdirect_contains_reg(Op2,Reg),
+    op_immediate_and_reg(EA,"SHL",Reg,1,Immediate),
     EA != EA_prev.
 
 //mul reg reg immediate
@@ -220,9 +214,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
 value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
     def_used_for_address(EA_prev,Reg2),
     def_used(EA_prev,Reg2,EA,_),
-    instruction(EA,_,_,"IMUL",Op1,Op2,0,0),
-    op_immediate(Op1,Immediate),
-    op_regdirect_contains_reg(Op2,Reg),
+    op_immediate_and_reg(EA,"IMUL",Reg,1,Immediate),
     EA != EA_prev.
 
 //lea reg [reg_origin*Multiplier+Offset]
@@ -302,14 +294,14 @@ value_reg(EA,Reg,EA_from,"Unknown",Immediate,Base,Steps+1):-
 // deal with arithmetic operations on two registers when their value ultimately refers to the same register
 value_reg(EA,Reg_def,EA_third,Reg3,Mult1+(Mult*Mult2),Offset+Offset1+Offset2*Mult,Steps3):-
     step_limit(StepLimit),
-    value_reg(EA_def1,Reg1,EA_third,Reg3,Mult1,Offset1,Steps1),
-    Steps1+2 < StepLimit,
-    def_used(EA_def1,Reg1,EA,_),
-    EA != EA_def1,
-
     def_used_for_address(EA,Reg_def),
     arch.reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
     Reg1 != Reg2,
+
+    def_used(EA_def1,Reg1,EA,_),
+    EA != EA_def1,
+    value_reg(EA_def1,Reg1,EA_third,Reg3,Mult1,Offset1,Steps1),
+    Steps1+2 < StepLimit,
 
     def_used(EA_def2,Reg2,EA,_),
     EA != EA_def2,
@@ -322,14 +314,14 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult1+(Mult*Mult2),Offset+Offset1+Offset2*Mul
 // deal with arithmetic operation on two registers when one of the registers contains a constant
 value_reg(EA,Reg_def,EA_third,Reg3,Mult*Mult2,Offset+Offset1+Offset2*Mult,Steps3):-
     step_limit(StepLimit),
-    value_reg(EA_def1,Reg1,_,"NONE",_,Offset1,Steps1),
-    Steps1+2 < StepLimit,
-    def_used(EA_def1,Reg1,EA,_),
-    EA != EA_def1,
-
     def_used_for_address(EA,Reg_def),
     arch.reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
     Reg1 != Reg2,
+
+    def_used(EA_def1,Reg1,EA,_),
+    EA != EA_def1,
+    value_reg(EA_def1,Reg1,_,"NONE",_,Offset1,Steps1),
+    Steps1+2 < StepLimit,
 
     def_used(EA_def2,Reg2,EA,_),
     EA != EA_def2,
@@ -346,14 +338,14 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult*Mult2,Offset+Offset1+Offset2*Mult,Steps3
 // the other register constains a constant.
 value_reg(EA,Reg_def,EA_third,Reg3,Mult1,Offset+Offset1+Offset2*Mult,Steps3):-
     step_limit(StepLimit),
-    value_reg(EA_def2,Reg2,_,"NONE",_,Offset2,Steps2),
-    Steps2+2 < StepLimit,
-    def_used(EA_def2,Reg2,EA,_),
-    EA != EA_def2,
-
     def_used_for_address(EA,Reg_def),
     arch.reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
     Reg1 != Reg2,
+
+    def_used(EA_def2,Reg2,EA,_),
+    EA != EA_def2,
+    value_reg(EA_def2,Reg2,_,"NONE",_,Offset2,Steps2),
+    Steps2+2 < StepLimit,
 
     def_used(EA_def1,Reg1,EA,_),
     EA != EA_def1,
