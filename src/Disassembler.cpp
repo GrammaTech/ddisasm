@@ -665,7 +665,7 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
            movedLabel != rangeMovedLabel.second)
         {
             gtirb::Symbol *sym2 = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
-            uint64_t offset = movedLabel->Address1 - movedLabel->Address2;
+            int64_t offset = movedLabel->Address1 - movedLabel->Address2;
             addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(
                 module, ea, DispSize, instruction.displacementOffset, 1, offset, sym2, sym1);
             return;
