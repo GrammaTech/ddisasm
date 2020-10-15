@@ -25,7 +25,7 @@ Define a set predicates to abstract from ARM specific instruction set
 and characteristics
 */
 
-split_load(EA, NextEA, Base + Offset, "ADD") :-
+split_load(EA, NextEA, as(Base + Offset,address), "ADD") :-
     // ADRP <Register> <Immediate>
     // e.g. adrp x0, BaseOp
     instruction_get_operation(EA, "ADRP"),
@@ -40,7 +40,7 @@ split_load(EA, NextEA, Base + Offset, "ADD") :-
     instruction_get_op(NextEA, 2, OffsetOp),
     op_immediate(OffsetOp, Offset).
 
-split_load(EA, NextEA, Base + Offset, "LDR") :-
+split_load(EA, NextEA, as(Base + Offset,address), "LDR") :-
     // ADRP <Register> <Immediate>
     // e.g. adrp x0, BaseOp
     instruction_get_operation(EA, "ADRP"),
@@ -55,13 +55,13 @@ split_load(EA, NextEA, Base + Offset, "LDR") :-
     instruction_get_op(NextEA, 1, OffsetOp),
     op_indirect(OffsetOp, "NONE", _, "NONE", 1, Offset, _).
 
-pc_relative_operand(EA, 1, Dest) :-
+pc_relative_operand(EA, 1, as(Dest,address)) :-
     split_load(EA, _, Dest, _).
 
-pc_relative_operand(EA, 2, Dest) :-
+pc_relative_operand(EA, 2, as(Dest,address)) :-
     split_load(_, EA, Dest, _).
 
-pc_relative_jump(EA, Dest):-
+pc_relative_jump(EA, as(Dest,address)):-
     split_load(EA, _, Dest, "LDR").
 
 
@@ -75,4 +75,4 @@ symbol_prefix(ea, 1, ":got_lo12:") :-
 
 symbol_prefix(ea, 2, ":lo12:") :-
     split_load(_, ea, Dest, "ADD"),
-    !relocation(Dest, "GLOB_DAT", _, _).
+    !relocation(as(Dest,address), "GLOB_DAT", _, _).

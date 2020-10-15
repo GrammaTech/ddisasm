@@ -174,7 +174,7 @@ option.set keep-going : false ;
     $wsl_script = @"
 apt-get update
 apt-get -y install libffi-dev libsqlite3-dev zlib1g-dev bison flex libncurses5-dev automake m4 libtool build-essential mcpp
-git clone -b 1.7.1-msvc-fixes https://github.com/brianfairservice/souffle.git
+git clone -b 2.0.2 https://github.com/souffle-lang/souffle
 cd souffle
 sh ./bootstrap
 ./configure --enable-64bit-domain

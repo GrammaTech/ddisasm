@@ -29,7 +29,7 @@
 void Arm64Loader::insert(const Arm64Facts& Facts, DatalogProgram& Program)
 {
     auto& [Instructions, Operands] = Facts;
-    Program.insert("instruction_complete", Instructions.instructions());
+    Program.insert("instruction", Instructions.instructions());
     Program.insert("invalid_op_code", Instructions.invalid());
     Program.insert("op_immediate", Operands.imm());
     Program.insert("op_regdirect", Operands.reg());
@@ -107,7 +107,7 @@ std::optional<relations::Arm64Operand> Arm64Loader::build(const cs_arm64_op& CsO
 {
     using namespace relations;
 
-    auto registerName = [this](uint64_t Reg) {
+    auto registerName = [this](unsigned int Reg) {
         return (Reg == ARM_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(*CsHandle, Reg));
     };
 

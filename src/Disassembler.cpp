@@ -31,16 +31,6 @@
 using ImmOp = relations::ImmOp;
 using IndirectOp = relations::IndirectOp;
 
-// souffle uses a signed integer for all numbers (either 32 or 64 bits
-// dependin on compilation flags). Allow conversion to other types.
-souffle::tuple &operator>>(souffle::tuple &t, uint64_t &number)
-{
-    int64_t x;
-    t >> x;
-    number = x;
-    return t;
-}
-
 souffle::tuple &operator>>(souffle::tuple &t, gtirb::Addr &ea)
 {
     uint64_t x;
@@ -64,8 +54,8 @@ struct DecodedInstruction
     gtirb::Addr EA;
     uint64_t Size;
     std::map<uint64_t, std::variant<ImmOp, IndirectOp>> Operands;
-    int64_t immediateOffset;
-    int64_t displacementOffset;
+    uint64_t immediateOffset;
+    uint64_t displacementOffset;
 };
 
 std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SouffleProgram *prog)
@@ -88,7 +78,7 @@ std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SoufflePr
         Indirects[operandCode] = indirect;
     };
     std::map<gtirb::Addr, DecodedInstruction> insns;
-    for(auto &output : *prog->getRelation("instruction_complete"))
+    for(auto &output : *prog->getRelation("instruction"))
     {
         DecodedInstruction insn;
         gtirb::Addr EA;
@@ -172,8 +162,8 @@ struct MovedLabel
 
     gtirb::Addr EA{0};
     uint64_t OperandIndex{0};
-    int64_t Address1{0};
-    int64_t Address2{0};
+    gtirb::Addr Address1{0};
+    gtirb::Addr Address2{0};
 };
 
 struct MovedDataLabel
@@ -190,8 +180,8 @@ struct MovedDataLabel
 
     gtirb::Addr EA{0};
     uint64_t Size{0};
-    int64_t Address1{0};
-    int64_t Address2{0};
+    gtirb::Addr Address1{0};
+    gtirb::Addr Address2{0};
 };
 
 struct SymbolicExpressionNoOffset
@@ -204,7 +194,7 @@ struct SymbolicExpressionNoOffset
 
     gtirb::Addr EA{0};
     uint64_t OperandIndex{0};
-    uint64_t Dest{0};
+    gtirb::Addr Dest{0};
 };
 
 struct BlockPoints
@@ -278,7 +268,7 @@ struct SymbolMinusSymbol
     uint64_t Size;
     gtirb::Addr Symbol1{0};
     gtirb::Addr Symbol2{0};
-    int64_t Scale;
+    uint64_t Scale;
 };
 
 struct SplitLoad
@@ -439,7 +429,7 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
     for(auto &output : *prog->getRelation("relocation"))
     {
         gtirb::Addr ea;
-        uint64_t offset;
+        int64_t offset;
         std::string type, name;
         output >> ea >> type >> name >> offset;
         if(type == "COPY")
@@ -603,7 +593,7 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
                         [index](const auto &element) { return element.OperandIndex == index; });
        movedLabel != rangeMovedLabel.second)
     {
-        assert(movedLabel->Address1 == immediate);
+        assert(movedLabel->Address1 == gtirb::Addr(immediate));
         auto diff = movedLabel->Address1 - movedLabel->Address2;
         auto sym = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
@@ -856,7 +846,7 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                     {
                         d = gtirb::DataBlock::Create(context, symMinusSym->Size);
                         byteInterval.addSymbolicExpression<gtirb::SymAddrAddr>(
-                            blockOffset, symMinusSym->Scale, 0,
+                            blockOffset, static_cast<int64_t>(symMinusSym->Scale), 0,
                             getSymbol(context, module, symMinusSym->Symbol2),
                             getSymbol(context, module, symMinusSym->Symbol1));
                         SymbolicSizes[Offset] = symMinusSym->Size;
@@ -1158,8 +1148,8 @@ void buildCfiDirectives(gtirb::Context &context, gtirb::Module &module,
     {
         gtirb::Addr blockAddr, reference;
         std::string directive;
-        uint64_t disp, localIndex;
-        int64_t nOperands, op1, op2;
+        uint64_t disp, localIndex, nOperands;
+        int64_t op1, op2;
         output >> blockAddr >> disp >> localIndex >> directive >> reference >> nOperands >> op1
             >> op2;
         std::vector<int64_t> operands;
@@ -1273,9 +1263,9 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
 
     for(auto &output : *prog->getRelation("value_reg"))
     {
-        gtirb::Addr ea;
+        gtirb::Addr ea, ea2;
         std::string reg, reg2;
-        int64_t multiplier, offset, ea2;
+        int64_t multiplier, offset;
         output >> ea >> reg >> ea2 >> reg2 >> multiplier >> offset;
         std::ostringstream newComment;
         newComment << reg << "=(" << reg2 << "," << std::hex << ea2 << std::dec << ")*"
@@ -1297,8 +1287,8 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
 
     for(auto &output : *prog->getRelation("def_used"))
     {
-        gtirb::Addr ea_use;
-        int64_t ea_def, index;
+        gtirb::Addr ea_use, ea_def;
+        uint64_t index;
         std::string reg;
         output >> ea_def >> reg >> ea_use >> index;
         std::ostringstream newComment;
@@ -1322,7 +1312,7 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
         for(auto &output : *prog->getRelation("bad_symbol_constant"))
         {
             gtirb::Addr ea;
-            int64_t index;
+            uint64_t index;
             output >> ea >> index;
             std::ostringstream newComment;
             newComment << "bad_symbol_constant(" << index << ")";

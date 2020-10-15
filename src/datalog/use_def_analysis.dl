@@ -191,18 +191,21 @@ def_used(EA_def,Reg,EA_used,Index):-
 
 
 def_used(EA_def,Reg,EA_used,Index):-
-    used(EA_used,Reg,Index),
-    !block_last_def(EA_used,_,Reg),
+    last_def(Block,EA_def,Reg),
     code_in_block(EA_used,Block),
-    last_def(Block,EA_def,Reg).
+    !block_last_def(EA_used,_,Reg),
+    used(EA_used,Reg,Index).
+
+
+
 
 .decl def_used_for_address(EA_def:address,Reg:register)
 
 def_used_for_address(EA_def,Reg):-
-    used(EA,Reg,Index),
+    def_used(EA_def,Reg,EA,Index),
     instruction_get_op(EA,Index,Op),
-    op_indirect_contains_reg(Op,Reg),
-    def_used(EA_def,Reg,EA,Index).
+    op_indirect_contains_reg(Op,Reg).
+
 
 def_used_for_address(EA_def,Reg):-
     reg_jump(EA_used,Reg),
@@ -215,5 +218,4 @@ def_used_for_address(EA_def,Reg):-
 
 def_used_for_address(EA_def,Reg):-
     def_used_for_address(EA_used,_),
-    used(EA_used,Reg,_),
     def_used(EA_def,Reg,EA_used,_).

@@ -35,7 +35,7 @@
 .decl refined_block(block:address)
 .output refined_block
 
-.decl block_information(block:address,size:number,endAddress:address)
+.decl block_information(block:address,size:unsigned,endAddress:address)
 .output block_information
 
 .decl refined_block_last_instruction(block:address,EA:address)
@@ -123,7 +123,7 @@ refined_block_last_instruction(Block,EA):-
 
 block_information(Block,BlockSize,LastEA+InsnSize):-
     refined_block_last_instruction(Block,LastEA),
-    instruction(LastEA, InsnSize, _, _,_, _, _, _),
+    instruction(LastEA, InsnSize,_,_,_,_,_,_,_,_),
     BlockSize= LastEA+InsnSize - Block.
 
 .decl next_refined_block_in_section(Block:address, NextBlock:address)
@@ -142,7 +142,7 @@ next_refined_block_in_section(PrevBlock,Block):-
 ////////////////////////////////////////////////////////
 // Compute padding regions
 
-.decl padding(EA:address,Size:number)
+.decl padding(EA:address,Size:unsigned)
 .output padding
 
 // blocks with only nops are padding
@@ -154,7 +154,7 @@ padding(EA,Size):-
 padding(EA,Size):-
     after_end(NonNop,End),
     //this condition guarantees that we take the last after_end of a sequence of nops
-    !arch.is_nop(NonNop),
+    !is_padding(NonNop),
     next(End,EA),
     Size = NonNop-EA,
     Size > 0.

@@ -54,11 +54,11 @@ This module:
   explored.
 */
 
-.symbol_type register
+.type register <: symbol
 
-.number_type address
-.number_type operand_code
-.number_type operand_index
+.type address <: unsigned
+.type operand_code <: unsigned
+.type operand_index <: unsigned
 
 // binary format specific predicates
 #include "elf_binaries.dl"
@@ -105,10 +105,10 @@ This module:
 .decl entry_point(ea:address)
 .input entry_point
 
-.decl symbol(ea:address,size:number,type:symbol,scope:symbol,sectionIndex:number,name:symbol)
+.decl symbol(ea:address,size:unsigned,type:symbol,scope:symbol,sectionIndex:unsigned,name:symbol)
 .input symbol
 
-.decl section_complete(name:symbol,size:number,addr:address,type:number,flags:number)
+.decl section_complete(name:symbol,size:unsigned,addr:address,type:unsigned,flags:unsigned)
 .input section_complete
 
 .decl relocation(ea:address,type:symbol,name:symbol,addend:number)
@@ -129,16 +129,10 @@ This module:
 
 // instructions
 
-.decl instruction_complete(ea:address, size:number, prefix:symbol, opcode:symbol,
+.decl instruction(ea:address, size:unsigned, prefix:symbol, opcode:symbol,
           op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code,
-          immOffset:number,displacementOffset:number)
-.input instruction_complete
-
-.decl instruction(ea:address, size:number, prefix:symbol, opcode:symbol,
-          op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code)
-
-instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
-    instruction_complete(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4,_,_).
+          immOffset:unsigned,displacementOffset:unsigned)
+.input instruction
 
 .decl invalid_op_code(ea:address)
 .input invalid_op_code
@@ -159,14 +153,14 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
 .output op_barrier
 
 .decl op_indirect(code:operand_code,reg1:register, reg2:register, reg3:register,
-        multiplier:number, offset:number, size_value:number)
+        multiplier:number, offset:number, size_value:unsigned)
 .input op_indirect
 
 // data from sections
-.decl data_byte(ea:address,value:number)
+.decl data_byte(ea:address,value:unsigned)
 .input data_byte
 
-.decl address_in_data(ea:address,value:number)
+.decl address_in_data(ea:address,value:address)
 
 .input address_in_data
 
@@ -179,31 +173,31 @@ instruction(EA,Size,Prefix,OpCode,Op1,Op2,Op3,Op4):-
 // auxiliary definitions
 /////////////////////////////////////////////////////////////
 
-.decl instruction_immediate_offset(EA:address,Index:number,Offset:number)
+.decl instruction_immediate_offset(EA:address,Index:operand_index,Offset:unsigned)
 .output instruction_immediate_offset
 
 instruction_immediate_offset(EA,Index,ImmediateOffset):-
-    instruction_complete(EA,_,_,_,_,_,_,_,ImmediateOffset,_),
+    instruction(EA,_,_,_,_,_,_,_,ImmediateOffset,_),
     instruction_get_op(EA,Index,Op),
     op_immediate(Op,_).
 
-.decl instruction_displacement_offset(EA:address,Index:number,Offset:number)
+.decl instruction_displacement_offset(EA:address,Index:operand_index,Offset:unsigned)
 .output instruction_displacement_offset
 
 instruction_displacement_offset(EA,Index,DisplacementOffset):-
-    instruction_complete(EA,_,_,_,_,_,_,_,_,DisplacementOffset),
+    instruction(EA,_,_,_,_,_,_,_,_,DisplacementOffset),
     instruction_get_op(EA,Index,Op),
     op_indirect(Op,_,_,_,_,_,_).
 
-.decl instruction_get_operation(ea:address,operation:symbol)
+.decl instruction_get_operation(ea:address,operation:symbol) inline
 
 instruction_get_operation(EA,Operation):-
-    instruction(EA,_,_,Operation,_,_,_,_).
+    instruction(EA,_,_,Operation,_,_,_,_,_,_).
 
-.decl instruction_get_op(ea:address, index:number, operator:operand_code)
+.decl instruction_get_op(ea:address, index:operand_index, operator:operand_code)
 
 instruction_get_op(EA,Index,Op):-
-    instruction(EA,_,_,_,Op1,Op2,Op3,Op4),
+    instruction(EA,_,_,_,Op1,Op2,Op3,Op4,_,_),
     (
         Op1 != 0,
         Op = Op1, Index = 1
@@ -221,7 +215,7 @@ instruction_get_op(EA,Index,Op):-
 .decl instruction_get_dest_op(ea:address,index:number,op:operand_code)
 
 instruction_get_dest_op(EA,Index,Op):-
-    instruction(EA,_,_,Operation,_,Op2,Op3,Op4),
+    instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
     !arch.read_only_operation(Operation),
     (
         Op4 = 0,
@@ -240,14 +234,14 @@ instruction_get_dest_op(EA,Index,Op):-
         Index = 4
     ).
 instruction_get_dest_op(EA,1,Op):-
-    instruction(EA,_,_,Operation,Op,0,0,0),
+    instruction(EA,_,_,Operation,Op,0,0,0,_,_),
     arch.one_op_write(Operation).
 
 .decl instruction_get_src_op(ea:address,Index:operand_index,op:operand_code)
 
 //when the dest is used as a source as well
 instruction_get_src_op(EA,Index,Op2):-
-    instruction(EA,_,_,Operation,_,Op2,_,_),Op2 != 0,
+    instruction(EA,_,_,Operation,_,Op2,_,_,_,_),Op2 != 0,
     Index = 2,
     !arch.mov(EA),
     !arch.op_does_not_read_dest_reg(Operation),
@@ -255,9 +249,9 @@ instruction_get_src_op(EA,Index,Op2):-
 
 instruction_get_src_op(EA,Index,Op):-
     (
-        instruction(EA,_,_,Operation,Op,_,_,_), Op != 0, Index = 1;
-        instruction(EA,_,_,Operation,_,Op,Op3,_), Op != 0, Op3 != 0, Index = 2;
-        instruction(EA,_,_,Operation,_,_,Op,Op4), Op != 0, Op4 != 0, Index = 3
+        instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
+        instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
+        instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
     ),
     !arch.write_only_operation(Operation).
 
@@ -268,29 +262,30 @@ instruction_get_src_op(EA,Index,Op):-
 .decl next(n:address,m:address)
 
 next(EA,EA+Size):-
-    instruction(EA,Size,_,_,_,_,_,_).
+    instruction(EA,Size,_,_,_,_,_,_,_,_).
 
-.decl pc_relative_operand(src:address,index:number, dest:address)
+.decl pc_relative_operand(src:address,index:operand_index, dest:address)
 .output pc_relative_operand
 
-pc_relative_operand(EA,Index,EA_next+Offset):-
+pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     binary_isa("X64"),
     instruction_get_op(EA, Index, Op),
     op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
     arch.pc_register(Reg),
-    next(EA,EA_next).
+    next(EA,EANext).
 
-.decl symbol_prefix(ea:address, index:number, prefix:symbol)
+.decl symbol_prefix(ea:address, index:unsigned, prefix:symbol)
 .output symbol_prefix
 
 // Compute an immediate load performed across two consecutive instructions
-.decl split_load(ea:address, nextea:address, dest:number, type:symbol)
+.decl split_load(ea:address, nextea:address, dest:address, type:symbol)
 .output split_load
+
 
 .decl instruction_has_loop_prefix(EA:address)
 
 instruction_has_loop_prefix(EA):-
-    instruction(EA,_,Prefix,_,_,_,_,_),
+    instruction(EA,_,Prefix,_,_,_,_,_,_,_),
     arch.loop_prefix(Prefix).
 
 // JUMPS
@@ -313,7 +308,7 @@ conditional_jump(EA):-
 .decl direct_jump(src:address, dest:address)
 .output direct_jump
 
-direct_jump(EA,Dest):-
+direct_jump(EA,as(Dest,address)):-
     arch.jump(EA),
     instruction_get_op(EA,1,Op1),
     op_immediate(Op1,Dest).
@@ -335,7 +330,7 @@ pc_relative_jump(EA,Dest):-
 
 reg_jump(EA,Reg):-
     arch.jump(EA),
-    instruction(EA,_,_,_,Op1,_,_,_),
+    instruction(EA,_,_,_,Op1,_,_,_,_,_),
     op_regdirect(Op1,Reg).
 
 // indirect jump
@@ -343,7 +338,7 @@ reg_jump(EA,Reg):-
 
 indirect_jump(EA):-
     arch.jump(EA),
-    instruction(EA,_,_,_,Op1,_,_,_),
+    instruction(EA,_,_,_,Op1,_,_,_,_,_),
     op_indirect(Op1,_,_,_, _,_,_),
     !pc_relative_jump(EA,_).
 
@@ -352,9 +347,9 @@ indirect_jump(EA):-
 .decl direct_call(src:address, dest:address)
 .output direct_call
 
-direct_call(EA,Dest):-
+direct_call(EA,as(Dest,address)):-
     arch.call_operation(Operation),
-    instruction(EA,_,_,Operation,Op1,_,_,_),
+    instruction(EA,_,_,Operation,Op1,_,_,_,_,_),
     op_immediate(Op1,Dest).
 
 
@@ -373,7 +368,7 @@ pc_relative_call(Src,Dest):-
 
 reg_call(EA,Reg):-
     arch.call_operation(Operation),
-    instruction(EA,_,_,Operation,Op1,_,_,_),
+    instruction(EA,_,_,Operation,Op1,_,_,_,_,_),
     op_regdirect(Op1,Reg).
 
  .decl indirect_call(src:address)
@@ -381,7 +376,7 @@ reg_call(EA,Reg):-
 
 indirect_call(EA):-
     arch.call_operation(Operation),
-    instruction(EA,_,_,Operation,Op1,_,_,_),
+    instruction(EA,_,_,Operation,Op1,_,_,_,_,_),
     op_indirect(Op1,_,_,_,_,_,_),
     !pc_relative_call(EA,_).
 
@@ -420,7 +415,7 @@ op_regdirect_contains_reg(Op,Reg_uniform):-
 
 
 // The instruction at EA has operation Operation and two operands: a register Reg and an immediate Immediate
-.decl op_immediate_and_reg(EA:address,Operation:symbol,Reg:register,Imm_index:number,Immediate:number)
+.decl op_immediate_and_reg(EA:address,Operation:symbol,Reg:register,Imm_index:operand_index,Immediate:number)
 
 op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate):-
     instruction_get_operation(EA,Operation),
@@ -430,7 +425,7 @@ op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate):-
     op_regdirect_contains_reg(Op2,Reg).
 
 // The instruction at EA is a comparison between a register Reg and an immediate Immediate
-.decl cmp_immediate_to_reg(EA:address,Reg:register,Imm_index:number,Immediate:number)
+.decl cmp_immediate_to_reg(EA:address,Reg:register,Imm_index:operand_index,Immediate:number)
 
 cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
     op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate),
@@ -451,7 +446,7 @@ ambiguous_symbol(Name):-
 function_symbol(EA,Name):-
     symbol(EA,_,"FUNC",_,_,Name).
 
-.decl defined_symbol(ea:address,size:number,type:symbol,scope:symbol,sectionIndex:number,name:symbol)
+.decl defined_symbol(ea:address,size:unsigned,type:symbol,scope:symbol,sectionIndex:unsigned,name:symbol)
 
 defined_symbol(EA,Size,Type,Scope,SectIndex,Name):-
     symbol(EA,Size,Type,Scope,SectIndex,Name),
@@ -463,7 +458,7 @@ defined_symbol(EA,Size,Type,Scope,SectIndex,Name):-
     (SectIndex < SHN_LORESERVE; SectIndex > SHN_HIRESERVE).
 ////////////////////////////////////////////////////////////////////////////////////////
 
-.decl section(name:symbol,size:number,addr:address)
+.decl section(name:symbol,size:unsigned,addr:address)
 .decl data_section(name:symbol)
 .decl exception_section(name:symbol)
 .decl special_data_section(name:symbol)
@@ -544,3 +539,7 @@ no_return_call(EA):-
     direct_call(EA,Dest),
     plt_entry(Dest,Function),
     no_return_function(Function).
+
+.decl is_padding(EA:address)
+is_padding(EA):-
+    arch.is_nop(EA).

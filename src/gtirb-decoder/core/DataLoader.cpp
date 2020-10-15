@@ -62,7 +62,7 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
 
     gtirb::Addr Addr = *ByteInterval.getAddress();
     uint64_t Size = ByteInterval.getInitializedSize();
-    auto Data = ByteInterval.rawBytes<const uint8_t>();
+    auto Data = ByteInterval.rawBytes<const int8_t>();
 
     while(Size > 0)
     {
