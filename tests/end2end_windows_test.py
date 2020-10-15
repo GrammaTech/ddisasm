@@ -404,6 +404,23 @@ class TestSmallStripWindows(unittest.TestCase):
             )
         )
 
+    @unittest.skipUnless(
+        platform.system() == "Windows", "This test is windows only."
+    )
+    def test_ex_code_offset_table(self):
+        self.assertTrue(
+            dis_reasm_test(
+                Path("examples/asm_examples") / "ex_code_offset_table",
+                "ex.exe",
+                [],
+                ["/link", "/subsystem:console", "/entry:__EntryPoint"],
+                "ml64",
+                ["cl"],
+                ["cl"],
+                ["/O2"],
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
