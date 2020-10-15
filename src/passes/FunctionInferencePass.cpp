@@ -73,33 +73,15 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
     M.addAuxData<gtirb::schema::FunctionNames>(std::move(FunctionNames));
 }
 
-void TraceLoader(const gtirb::Module& Module, DatalogProgram& Program)
-{
-    // GHN 2020-06-29 additional populates needed if we're handling a tbdisasm GTIRB input
-
-    // Check value, add relations
-    std::cerr << "We got GTIRB, load extra relations.\n";
-    Program.insert<std::vector<std::string>>("binary_format", {std::string("TRACE")});
-    // Placeholder for other things, e.g.
-    // Loader.populateTBBlocks(M);
-}
-
 void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Module& Module,
                                              unsigned int NThreads)
 {
-    auto BinaryType = Module.getAuxData<gtirb::schema::BinaryType>();
-    bool InputIsTrace = BinaryType && BinaryType->at(0) == "TRACE";
-
     // Build GTIRB loader.
     CompositeLoader Loader("souffle_function_inference");
     Loader.add(BlocksLoader);
     Loader.add(CfgLoader);
     Loader.add(SymbolicExpressionLoader);
-    if(InputIsTrace)
-    {
-        Loader.add(TraceLoader);
-    }
-    else
+    if(Module.getFileFormat() != gtirb::FileFormat::Undefined)
     {
         // TODO: Add support for ARM64 prologues.
         if(Module.getISA() == gtirb::ISA::X64)

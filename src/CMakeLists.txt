@@ -329,57 +329,15 @@ install(
 
 if(BUILD_FUNINFER)
   # ===== souffle_funinfer =====
-  # First build a static library of all the non-generated code.. This is just a
-  # hack to get CMake to use different compile flags (because the generated
-  # souffle code won't build with -Wall -Werror).
-  add_library(funinfer_main STATIC Disassembler.cpp TBFunInference.cpp)
 
-  if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
-    target_compile_options(funinfer_main PRIVATE -Wno-unused-parameter)
-  endif()
+  add_executable(funinfer FunInfer.cpp)
 
-  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Version.h.in"
-                 "${CMAKE_BINARY_DIR}/include/Version.h" @ONLY)
   target_include_directories(
-    funinfer_main PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
-  if(ehp_INCLUDE_DIR)
-    target_include_directories(funinfer_main PRIVATE ${ehp_INCLUDE_DIR})
-  endif()
-
-  target_compile_definitions(funinfer_main PRIVATE __EMBEDDED_SOUFFLE__)
-  target_compile_definitions(funinfer_main PRIVATE RAM_DOMAIN_SIZE=64)
-  target_compile_options(funinfer_main PRIVATE ${OPENMP_FLAGS})
-
-  if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-    target_compile_definitions(funinfer_main PRIVATE _CRT_SECURE_NO_WARNINGS)
-    target_compile_definitions(funinfer_main PRIVATE _CRT_NONSTDC_NO_WARNINGS)
-
-    set_msvc_lief_options(funinfer_main)
-    set_common_msvc_options(funinfer_main)
-  else()
-    target_compile_options(funinfer_main PRIVATE -O3)
-    target_compile_options(funinfer_main PRIVATE -Wall)
-    target_compile_options(funinfer_main PRIVATE -Wextra -Wpointer-arith)
-    target_compile_options(funinfer_main PRIVATE -Werror)
-  endif()
+    funinfer PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
 
   if(${GTIRB_USE_SYSTEM_BOOST} MATCHES "OFF")
-    add_dependencies(funinfer_main Boost)
+    add_dependencies(funinfer Boost)
   endif()
-
-  target_link_libraries(
-    funinfer_main
-    gtirb
-    gtirb_pprinter
-    gtirb_builder
-    gtirb_decoder
-    ${CAPSTONE}
-    ${Boost_LIBRARIES}
-    ${EXPERIMENTAL_LIB}
-    ${LIBCPP_ABI})
-
-  # Now combine the static library and generated code into an executable.
-  add_executable(funinfer ${GENERATED_ARM64_CPP} ${GENERATED_X64_CPP})
 
   if(DDISASM_STATIC_DRIVERS)
     if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
@@ -390,40 +348,46 @@ if(BUILD_FUNINFER)
     endif()
   endif()
 
+  target_link_libraries(
+    funinfer
+    PRIVATE gtirb
+            gtirb_decoder
+            scc_pass
+            ${CAPSTONE}
+            ${Boost_LIBRARIES}
+            ${EXPERIMENTAL_LIB}
+            ${LIBCPP_ABI}
+            scc_pass)
+
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-    target_link_libraries(funinfer funinfer_main scc_pass no_return_pass
-                          function_inference_pass)
+    target_link_libraries(funinfer PRIVATE scc_pass no_return_pass
+                                           function_inference_pass)
     target_link_options(
       funinfer PRIVATE /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>
       /WHOLEARCHIVE:function_inference_pass$<$<CONFIG:Debug>:d>)
   else()
     target_link_libraries(
-      funinfer
-      PRIVATE funinfer_main scc_pass -Wl,--whole-archive no_return_pass
-              function_inference_pass -Wl,--no-whole-archive)
+      funinfer PRIVATE -Wl,--whole-archive no_return_pass
+                       function_inference_pass -Wl,--no-whole-archive)
   endif()
 
-  target_compile_definitions(funinfer PRIVATE __EMBEDDED_SOUFFLE__)
-  target_compile_definitions(funinfer PRIVATE RAM_DOMAIN_SIZE=64)
   target_compile_options(funinfer PRIVATE ${OPENMP_FLAGS})
 
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
     target_link_options(funinfer PRIVATE -NODEFAULTLIB:LIBCMTD)
-
     set_common_msvc_options(funinfer)
-
-    set_souffle_msvc_options(funinfer)
   else()
     target_compile_options(funinfer PRIVATE -O3)
-    target_compile_options(funinfer PRIVATE -Wno-parentheses-equality
-                                            -Wno-unused-parameter)
+    target_compile_options(funinfer PRIVATE -Wall)
+    target_compile_options(funinfer PRIVATE -Wextra -Wpointer-arith)
+    target_compile_options(funinfer PRIVATE -Werror)
   endif()
 
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
     if(DDISASM_STATIC_DRIVERS)
       target_link_libraries(funinfer PRIVATE -l:libgomp.a)
     else()
-      target_link_libraries(funinfer PRIVATE gomp)
+      target_link_libraries(funinfer PRIVATE gomp pthread)
     endif()
   endif()
 

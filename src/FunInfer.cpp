@@ -1,4 +1,4 @@
-//===- TBFunInference.cpp ---------------------------------------*- C++ -*-===//
+//===- FunInfer.cpp ---------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -25,19 +25,14 @@
 #include <thread>
 #include <vector>
 
-#include <souffle/CompiledSouffle.h>
-#include <souffle/SouffleInterface.h>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <chrono>
 #include <gtirb/gtirb.hpp>
-#include <gtirb_pprinter/PrettyPrinter.hpp>
 
 #include "AuxDataSchema.h"
-#include "Disassembler.h"
 #include "Version.h"
-#include "gtirb-builder/GtirbBuilder.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
@@ -112,11 +107,6 @@ int main(int argc, char **argv)
         ("debug-dir", po::value<std::string>(),                         //
          "location to write CSV files for debugging")                   //
         ("input-file", po::value<std::string>(), "gtirb input file")    //
-        ("keep-functions,K", po::value<std::vector<std::string>>()->multitoken(),
-         "Print the given functions even if they are skipped by default (e.g. _start)") //
-        ("self-diagnose",
-         "Use relocation information to emit a self diagnose of the symbolization process. This "
-         "option only works if the target binary contains complete relocation information.") //
         ("threads,j", po::value<unsigned int>()->default_value(std::thread::hardware_concurrency()),
          "Number of cores to use. It is set to the number of cores in the machine by default");
     po::positional_options_description pd;
@@ -179,9 +169,6 @@ int main(int argc, char **argv)
     }
 
     gtirb::Module &Module = *(IR->modules().begin());
-
-    std::vector<std::string> BinaryType = {"TRACE"};
-    Module.addAuxData<gtirb::schema::BinaryType>(std::move(BinaryType));
 
     // Core of new code - functional analysis only
     std::cout << "Computing intra-procedural SCCs " << std::flush;

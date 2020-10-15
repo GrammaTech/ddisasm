@@ -32,8 +32,6 @@ This is designed to be used with tbdisasm trace GTIRB inputs to funifer.
 .type operand_code <: unsigned
 .type register <: symbol
 
-#include "trace_call_inference.dl"
-
 .decl block(Address:address, Size:unsigned)
 .input block
 
@@ -87,6 +85,14 @@ This is designed to be used with tbdisasm trace GTIRB inputs to funifer.
 
 .decl in_function_final(Block:address,Function:address)
 .output in_function_final
+
+/////////////////////////////////////////////////////////////////////
+// Use CFG edges to create initial function entries (if they do not exist yet)
+
+function_entry(Dest):-
+    cfg_edge(_,Dest,_,_,"call"),
+    block(Dest,_).
+
 /////////////////////////////////////////////////////////////////////
 // Component instantiation and chaining
 .init phase1 = FunctionPropagation
