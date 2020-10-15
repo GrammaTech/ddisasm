@@ -81,17 +81,17 @@ void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Mod
     Loader.add(BlocksLoader);
     Loader.add(CfgLoader);
     Loader.add(SymbolicExpressionLoader);
-    if(Module.getFileFormat() != gtirb::FileFormat::Undefined)
-    {
-        // TODO: Add support for ARM64 prologues.
-        if(Module.getISA() == gtirb::ISA::X64)
-        {
-            Loader.add<CodeBlockLoader<X64Loader>>();
-        }
+
+    // TODO: Add support for ARM64 prologues.
+    if(Module.getISA() == gtirb::ISA::X64)
+        Loader.add<CodeBlockLoader<X64Loader>>();
+
+    if(Module.getAuxData<gtirb::schema::Padding>())
         Loader.add(PaddingLoader{&Context});
+    if(Module.getAuxData<gtirb::schema::CfiDirectives>())
         Loader.add(FdeEntriesLoader{&Context});
+    if(Module.getAuxData<gtirb::schema::FunctionEntries>())
         Loader.add(FunctionEntriesLoader{&Context});
-    }
 
     // Load GTIRB and build program.
     std::optional<DatalogProgram> FunctionInference = Loader.load(Module);
