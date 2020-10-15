@@ -142,7 +142,7 @@ jump_table_element_access(EA,1,TableStartAddr):-
     TableStartAddr <= End.
 
 jump_table_element_access(EA,Size,TableStartAddr):-
-    data_access(EA,_,"NONE",RegBase,RegIndex,as(Size,number),0,Size),
+    data_access(EA,_,"NONE",RegBase,RegIndex,as(Size,number),_,Size),
     RegIndex != "NONE",
     def_used(EA_regdef,RegBase,EA,_),
     value_reg(EA_regdef,RegBase,_,"NONE",0,TableStart,_),
