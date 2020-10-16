@@ -1,4 +1,4 @@
-//===- code_inference.dl ----------------------------------------*- datalog -*-===//
+//===- code_inference.dl ------------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -255,6 +255,11 @@ after_end(Next,End):-
     is_padding(EA),
     !block_limit(EA),
     next(EA,Next).
+
+after_end(Next,End):-
+    relative_address(End,Size,_,_,_), Next=End+Size,
+    !relative_address(Next,_,_,_,_),
+    is_padding(Next).
 
 possible_target(EA):-
     after_end(EA,_),
