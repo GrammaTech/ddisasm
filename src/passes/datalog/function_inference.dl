@@ -1,4 +1,4 @@
-//===- function_inference.dl ------------------------------------*- C++ -*-===//
+//===- function_inference.dl --------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -23,7 +23,7 @@
 /**
 Function inference: Infer additional function entries based on
 identifying function pointers and based on identifying complete functions.
-
+This is designed to be used with tbdisasm trace GTIRB inputs to funifer.
 
 */
 
@@ -85,6 +85,14 @@ identifying function pointers and based on identifying complete functions.
 
 .decl in_function_final(Block:address,Function:address)
 .output in_function_final
+
+/////////////////////////////////////////////////////////////////////
+// Use CFG edges to create initial function entries (if they do not exist yet)
+
+function_entry(Dest):-
+    cfg_edge(_,Dest,_,_,"call"),
+    block(Dest,_).
+
 /////////////////////////////////////////////////////////////////////
 // Component instantiation and chaining
 .init phase1 = FunctionPropagation

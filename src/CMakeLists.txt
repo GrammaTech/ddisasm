@@ -359,3 +359,70 @@ install(
   TARGETS ddisasm
   COMPONENT ddisasm
   DESTINATION bin)
+
+if(BUILD_FUNINFER)
+  # ===== souffle_funinfer =====
+
+  add_executable(funinfer FunInfer.cpp)
+
+  target_include_directories(
+    funinfer PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
+
+  if(${GTIRB_USE_SYSTEM_BOOST} MATCHES "OFF")
+    add_dependencies(funinfer Boost)
+  endif()
+
+  if(DDISASM_STATIC_DRIVERS)
+    if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+      # We do not want to statically link in the STL here, as MSVC is a bit
+      # prickly about STL ABIs.
+    else()
+      target_link_libraries(funinfer PRIVATE -static-libstdc++ -static-libgcc)
+    endif()
+  endif()
+
+  target_link_libraries(
+    funinfer
+    PRIVATE gtirb
+            gtirb_decoder
+            scc_pass
+            ${CAPSTONE}
+            ${Boost_LIBRARIES}
+            ${EXPERIMENTAL_LIB}
+            ${LIBCPP_ABI}
+            scc_pass)
+
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+    target_link_libraries(funinfer PRIVATE scc_pass no_return_pass
+                                           function_inference_pass)
+    target_link_options(
+      funinfer PRIVATE /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>
+      /WHOLEARCHIVE:function_inference_pass$<$<CONFIG:Debug>:d>)
+  else()
+    target_link_libraries(
+      funinfer PRIVATE -Wl,--whole-archive no_return_pass
+                       function_inference_pass -Wl,--no-whole-archive)
+  endif()
+
+  target_compile_options(funinfer PRIVATE ${OPENMP_FLAGS})
+
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+    target_link_options(funinfer PRIVATE -NODEFAULTLIB:LIBCMTD)
+    set_common_msvc_options(funinfer)
+  else()
+    target_compile_options(funinfer PRIVATE -O3)
+    target_compile_options(funinfer PRIVATE -Wall)
+    target_compile_options(funinfer PRIVATE -Wextra -Wpointer-arith)
+    target_compile_options(funinfer PRIVATE -Werror)
+  endif()
+
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
+    if(DDISASM_STATIC_DRIVERS)
+      target_link_libraries(funinfer PRIVATE -l:libgomp.a)
+    else()
+      target_link_libraries(funinfer PRIVATE gomp pthread)
+    endif()
+  endif()
+
+  install(TARGETS funinfer DESTINATION bin)
+endif()
