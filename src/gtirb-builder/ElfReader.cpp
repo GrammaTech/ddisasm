@@ -276,7 +276,7 @@ std::string ElfReader::getRelocationType(const LIEF::ELF::Relocation &Entry)
 uint64_t ElfReader::tlsBaseAddress()
 {
     // Find the largest virtual address.
-    uint64_t VirtualEnd;
+    uint64_t VirtualEnd = 0;
     for(auto &Segment : Elf->segments())
     {
         uint64_t Addr = Segment.virtual_address() + Segment.virtual_size();
