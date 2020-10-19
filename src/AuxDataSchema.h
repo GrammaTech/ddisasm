@@ -104,13 +104,6 @@ namespace gtirb
             typedef std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> Type;
         };
 
-        /// \brief Auxiliary data covering PE section properties.
-        struct PeSectionProperties
-        {
-            static constexpr const char* Name = "peSectionProperties";
-            typedef std::map<gtirb::UUID, uint64_t> Type;
-        };
-
         /// \brief Auxiliary data covering cfi directives.
         struct CfiDirectives
         {
@@ -133,13 +126,6 @@ namespace gtirb
         {
             static constexpr const char* Name = "libraryPaths";
             typedef std::vector<std::string> Type;
-        };
-
-        /// \brief Auxiliary data that tracks data directories for windows binaries.
-        struct DataDirectories
-        {
-            static constexpr const char* Name = "dataDirectories";
-            typedef std::vector<std::tuple<std::string, uint64_t, uint64_t>> Type;
         };
 
         /// \brief Auxiliary data that stores the size of symbolic expressions.
