@@ -167,6 +167,26 @@ jump_table_element_access(EA,Size,TableStartAddr):-
 .decl jump_table_start(EA_jump:address,Size:unsigned,TableStart:address,TableRef:address,Operation:symbol)
 .output jump_table_start
 
+.decl missed_jump_table(EA_jump:address)
+.output missed_jump_table
+missed_jump_table(EA):-
+    reg_jump(EA,_),
+    code(EA),
+    def_used(EA_base,Reg,EA,_),
+    arch.reg_reg_arithmetic_operation(EA_base,Reg,Reg,Reg2,Mult,0),
+    !jump_table_start(EA,_,_,_,_),
+    !base_relative_jump_table(EA,_).
+
+missed_jump_table(EA):-
+    reg_call(EA,_),
+    code(EA),
+    def_used(EA_base,Reg,EA,_),
+    arch.reg_reg_arithmetic_operation(EA_base,Reg,Reg,Reg2,Mult,0),
+    !jump_table_start(EA,_,_,_,_),
+    !base_relative_jump_table(EA,_).
+
+
+
 //  mov REG, Size [REG*Size+TableStart] or mov REG, Size [REG*Size+ RegBase] where RegBase = TableStart
 //  add REG, TableReference
 //  jmp REG

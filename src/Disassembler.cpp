@@ -1333,6 +1333,14 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
         newComment << "def(" << reg << ", " << std::hex << ea_def << std::dec << ")";
         updateComment(module, comments, ea_use, newComment.str());
     }
+    for(auto &output : *prog->getRelation("missed_jump_table"))
+    {
+        gtirb::Addr ea;
+        output >> ea;
+        std::ostringstream newComment;
+        newComment << "missed_jump_table";
+        updateComment(module, comments, ea, newComment.str());
+    }
     if(selfDiagnose)
     {
         for(auto &output : *prog->getRelation("false_positive"))
