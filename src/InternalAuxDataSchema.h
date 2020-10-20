@@ -54,7 +54,7 @@ namespace gtirb
         /// \brief Auxiliary data representing the import table of a PE file.
         struct ImportEntries
         {
-            static constexpr const char* Name = "importEntries";
+            static constexpr const char* Name = "peImportEntries";
             // Tuples of the form {Iat_address, Ordinal, Function, Library}.
             typedef std::vector<std::tuple<uint64_t, int64_t, std::string, std::string>> Type;
         };
@@ -62,7 +62,7 @@ namespace gtirb
         /// \brief Auxiliary data representing the export table of a PE file.
         struct ExportEntries
         {
-            static constexpr const char* Name = "exportEntries";
+            static constexpr const char* Name = "peExportEntries";
             // Tuples of the form {Address, Ordinal, Name}.
             typedef std::vector<std::tuple<uint64_t, int64_t, std::string>> Type;
         };
