@@ -275,16 +275,16 @@ std::string ElfReader::getRelocationType(const LIEF::ELF::Relocation &Entry)
 
 uint64_t ElfReader::tlsBaseAddress()
 {
-    // Find the largest virtual address.
-    uint64_t VirtualEnd = 0;
-    for(auto &Segment : Elf->segments())
+    if(!TlsBaseAddress)
     {
-        uint64_t Addr = Segment.virtual_address() + Segment.virtual_size();
-        if(Addr > VirtualEnd)
+        // Find the largest virtual address.
+        uint64_t VirtualEnd = 0;
+        for(auto &Segment : Elf->segments())
         {
-            VirtualEnd = Addr;
+            VirtualEnd = std::max(VirtualEnd, Segment.virtual_address() + Segment.virtual_size());
         }
+        // Use the next available page.
+        TlsBaseAddress = (VirtualEnd & ~(0x1000 - 1)) + 0x1000;
     }
-    // Return the next available page.
-    return (VirtualEnd & ~(0x1000 - 1)) + 0x1000;
+    return TlsBaseAddress;
 }

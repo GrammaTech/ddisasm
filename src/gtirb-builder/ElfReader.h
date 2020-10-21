@@ -40,6 +40,9 @@ protected:
 
     uint64_t tlsBaseAddress();
     std::string getRelocationType(const LIEF::ELF::Relocation &Entry);
+
+private:
+    uint64_t TlsBaseAddress = 0;
 };
 
 #endif // ELF_GTIRB_BUILDER_H_
