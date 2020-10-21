@@ -266,8 +266,7 @@ tls_segment(End,Align):-
 // Segment-based references to thread-local storage,
 //   e.g.   mov     eax, DWORD PTR fs:i@tpoff
 //     or   mov     eax, DWORD PTR fs:[-4]
-labeled_data(as(Reference+Offset,address)),
-symbolic_operand(EA,Index,as(Reference+Offset,address),"tls"):-
+symbolic_operand_candidate(EA,Index,as(Reference+Offset,address),"data"):-
     instruction_get_op(EA,Index,Op),
     op_indirect(Op,"FS","NONE","NONE",_,Offset,_), Offset < 0,
     tls_segment(TlsEnd,Align),
@@ -275,7 +274,7 @@ symbolic_operand(EA,Index,as(Reference+Offset,address),"tls"):-
 
 //   e.g.  mov	rax, qword ptr fs:[0]
 //         lea	rax, [rax + threadLocal@TPOFF]
-symbolic_operand(EA_used,Index,as(Reference+Offset,address),"tls"):-
+symbolic_operand_candidate(EA_used,Index,as(Reference+Offset,address),"data"):-
     instruction_get_op(EA_def,_,Op_def),
     op_indirect(Op_def,"FS","NONE","NONE",_,0,_),
     def_used(EA_def,_,EA_used,Index),
