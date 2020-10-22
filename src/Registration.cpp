@@ -34,6 +34,7 @@
 void registerAuxDataTypes()
 {
     using namespace gtirb::schema;
+    gtirb::AuxDataContainer::registerAuxDataType<Alignment>();
     gtirb::AuxDataContainer::registerAuxDataType<Comments>();
     gtirb::AuxDataContainer::registerAuxDataType<FunctionEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<FunctionBlocks>();
@@ -48,7 +49,6 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionIndex>();
-    gtirb::AuxDataContainer::registerAuxDataType<PeSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<CfiDirectives>();
     gtirb::AuxDataContainer::registerAuxDataType<Libraries>();
     gtirb::AuxDataContainer::registerAuxDataType<LibraryPaths>();

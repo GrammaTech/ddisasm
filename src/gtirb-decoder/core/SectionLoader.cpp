@@ -36,6 +36,13 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
         std::cerr << "WARNING: Missing `elfSectionProperties' AuxData table\n";
     }
 
+    auto* Alignment = Module.getAuxData<gtirb::schema::Alignment>();
+
+    if(!Alignment)
+    {
+        std::cerr << "WARNING: Missing `alignment' AuxData table\n";
+    }
+
     for(const auto& Section : Module.sections())
     {
         if(!Section.isFlagSet(gtirb::SectionFlag::Loaded))
@@ -47,7 +54,6 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
 
         uint64_t Type = 0;
         uint64_t Flags = 0;
-
         if(SectionProperties)
         {
             if(auto It = SectionProperties->find(Section.getUUID()); It != SectionProperties->end())
@@ -62,8 +68,17 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
             }
         }
 
+        uint64_t Align = 0;
+        if(Alignment)
+        {
+            if(auto It = Alignment->find(Section.getUUID()); It != Alignment->end())
+            {
+                Align = It->second;
+            }
+        }
+
         Sections.push_back(
-            {Section.getName(), *Section.getSize(), *Section.getAddress(), Type, Flags});
+            {Section.getName(), *Section.getSize(), *Section.getAddress(), Type, Flags, Align});
     }
 
     Program.insert("section_complete", std::move(Sections));

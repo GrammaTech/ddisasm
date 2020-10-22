@@ -25,7 +25,7 @@
 // This module defines predicates and rules specific of ELF binaries
 section(Name,Size,Addr):-
     binary_format("ELF"),
-    section_complete(Name,Size,Addr,_,Flags),
+    section_complete(Name,Size,Addr,_,Flags,_),
     elf_section_flag("SHF_ALLOC",Pos_Alloc),
     Flags band (2^Pos_Alloc)  > 0.
 
@@ -34,6 +34,7 @@ section(Name,Size,Addr):-
 elf_section_flag("SHF_WRITE",0).
 elf_section_flag("SHF_ALLOC",1).
 elf_section_flag("SHF_EXECINSTR",2).
+elf_section_flag("SHF_TLS",10).
 
 .decl elf_section_type(Name:symbol,Code:unsigned)
 
@@ -58,7 +59,7 @@ elf_section_type("SYMTAB_SHNDX",18).
 elf_section_type("NUM",19).
 
 data_section(Name):-
-    section_complete(Name,_,_,Type,Flags),
+    section_complete(Name,_,_,Type,Flags,_),
     elf_section_flag("SHF_EXECINSTR",Pos_Exec), Flags band (2^Pos_Exec)  = 0,
     elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc)  > 0,
     (   elf_section_type("PROGBITS",Type);
@@ -87,7 +88,7 @@ special_data_section(".tm_clone_table").
 
 code_section(Name):-
     binary_format("ELF"),
-    section_complete(Name,_,_,_,Flags),
+    section_complete(Name,_,_,_,Flags,_),
     elf_section_flag("SHF_EXECINSTR",Pos_Exec), Flags band (2^Pos_Exec)  > 0.
 
 function_pointer_section(".init_array"):-binary_format("ELF").
@@ -101,9 +102,15 @@ plt_section(".plt").
 plt_section(".plt.got").
 plt_section(".plt.sec").
 
+tls_section(Name):-
+    binary_format("ELF"),
+    data_section(Name),
+    section_complete(Name,_,_,_,Flags,_),
+    elf_section_flag("SHF_TLS", Pos_Tls), Flags band (2^Pos_Tls) > 0.
+
 bss_section(Name):-
     binary_format("ELF"),
-    section_complete(Name,_,_,Type,Flags),
+    section_complete(Name,_,_,Type,Flags,_),
     elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc) > 0,
     SHT_NOBITS = 8,
     Type = SHT_NOBITS.
@@ -248,3 +255,30 @@ symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
     binary_format("ELF"),
     relocation(EA,"R32S",Symbol,Addend),
     symbol(_,_,_,_,_,Symbol).
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
+.decl tls_segment(End:address,Align:unsigned)
+tls_segment(End,Align):-
+    End = max EA:{ tls_section(Name), section(Name,Size,Addr), EA=Addr+Size },
+    Align = max X:{ tls_section(Name), section_complete(Name,_,_,_,_,X) }.
+
+// Segment-based references to thread-local storage,
+//   e.g.   mov     eax, DWORD PTR fs:i@tpoff
+//     or   mov     eax, DWORD PTR fs:[-4]
+symbolic_operand_candidate(EA,Index,as(Reference+Offset,address),"data"):-
+    instruction_get_op(EA,Index,Op),
+    op_indirect(Op,"FS","NONE","NONE",_,Offset,_), Offset < 0,
+    tls_segment(TlsEnd,Align),
+    Reference = as(TlsEnd,number) + as(TlsEnd % max(Align,1),number).
+
+//   e.g.  mov	rax, qword ptr fs:[0]
+//         lea	rax, [rax + threadLocal@TPOFF]
+symbolic_operand_candidate(EA_used,Index,as(Reference+Offset,address),"data"):-
+    instruction_get_op(EA_def,_,Op_def),
+    op_indirect(Op_def,"FS","NONE","NONE",_,0,_),
+    def_used(EA_def,_,EA_used,Index),
+    instruction_get_op(EA_used,Index,Op_used),
+    op_indirect(Op_used,"NONE",_,_,_,Offset,_), Offset < 0,
+    tls_segment(TlsEnd,Align),
+    Reference = as(TlsEnd,number) + as(TlsEnd % max(Align,1),number).

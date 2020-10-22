@@ -4,6 +4,7 @@
 void registerTestAuxDataTypes()
 {
     using namespace gtirb::schema;
+    gtirb::AuxDataContainer::registerAuxDataType<Alignment>();
     gtirb::AuxDataContainer::registerAuxDataType<Comments>();
     gtirb::AuxDataContainer::registerAuxDataType<FunctionEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<FunctionBlocks>();

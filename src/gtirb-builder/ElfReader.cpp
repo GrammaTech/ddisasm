@@ -34,6 +34,7 @@ void ElfReader::buildSections()
 {
     std::map<uint64_t, gtirb::UUID> SectionIndex;
     std::map<gtirb::UUID, SectionProperties> SectionProperties;
+    std::map<gtirb::UUID, uint64_t> Alignment;
 
     uint64_t Index = 0;
     for(auto &Section : Elf->sections())
@@ -43,10 +44,8 @@ void ElfReader::buildSections()
         bool Writable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
         bool Initialized = Loaded && Section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS;
 
-        // FIXME: Move .tbss section
-        bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
         // FIXME: Populate sections that are not loaded (e.g. .symtab and .strtab)
-        if(!Loaded || Tls)
+        if(!Loaded)
         {
             Index++;
             continue;
@@ -75,6 +74,15 @@ void ElfReader::buildSections()
         }
 
         gtirb::Addr Addr = gtirb::Addr(Section.virtual_address());
+
+        // Thread-local data sections overlap other sections, as they are
+        // only templates for per-thread copies of the data sections.
+        bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
+        if(Tls)
+        {
+            Addr = gtirb::Addr(Section.virtual_address() + tlsBaseAddress());
+        }
+
         if(Initialized)
         {
             // Add allocated section contents to a single, contiguous ByteInterval.
@@ -89,6 +97,7 @@ void ElfReader::buildSections()
         }
 
         // Add section index and raw section properties to aux data.
+        Alignment[S->getUUID()] = Section.alignment();
         SectionIndex[Index] = S->getUUID();
         SectionProperties[S->getUUID()] = {static_cast<uint64_t>(Section.type()),
                                            static_cast<uint64_t>(Section.flags())};
@@ -96,12 +105,22 @@ void ElfReader::buildSections()
         Index++;
     }
 
+    Module->addAuxData<gtirb::schema::Alignment>(std::move(Alignment));
     Module->addAuxData<gtirb::schema::ElfSectionIndex>(std::move(SectionIndex));
     Module->addAuxData<gtirb::schema::ElfSectionProperties>(std::move(SectionProperties));
 }
 
 void ElfReader::buildSymbols()
 {
+    std::optional<uint64_t> Tls;
+    for(auto &Segment : Elf->segments())
+    {
+        if(Segment.type() == LIEF::ELF::SEGMENT_TYPES::PT_TLS)
+        {
+            Tls = Segment.virtual_address();
+        }
+    }
+
     std::set<std::tuple<uint64_t, uint64_t, std::string, std::string, std::string, uint64_t,
                         std::string>>
         Symbols;
@@ -121,8 +140,17 @@ void ElfReader::buildSymbols()
             Name = Name.substr(0, Version);
         }
 
+        uint64_t Value = Symbol.value();
+
+        // STT_TLS symbols are relative to PT_TLS segment base.
+        if(Symbol.type() == LIEF::ELF::ELF_SYMBOL_TYPES::STT_TLS)
+        {
+            assert(Tls && "Found TLS symbol but no TLS segment.");
+            Value = *Tls + Value + tlsBaseAddress();
+        }
+
         Symbols.insert({
-            Symbol.value(),
+            Value,
             Symbol.size(),
             LIEF::ELF::to_string(Symbol.type()),
             LIEF::ELF::to_string(Symbol.binding()),
@@ -243,4 +271,20 @@ std::string ElfReader::getRelocationType(const LIEF::ELF::Relocation &Entry)
         default:
             return std::to_string(Entry.type());
     }
+}
+
+uint64_t ElfReader::tlsBaseAddress()
+{
+    if(!TlsBaseAddress)
+    {
+        // Find the largest virtual address.
+        uint64_t VirtualEnd = 0;
+        for(auto &Segment : Elf->segments())
+        {
+            VirtualEnd = std::max(VirtualEnd, Segment.virtual_address() + Segment.virtual_size());
+        }
+        // Use the next available page.
+        TlsBaseAddress = (VirtualEnd & ~(0x1000 - 1)) + 0x1000;
+    }
+    return TlsBaseAddress;
 }

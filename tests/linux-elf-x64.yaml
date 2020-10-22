@@ -113,16 +113,18 @@ tests:
       flags: ["-no-pie"]
       skip: false
 
-  # ----------------------------------------------------------------------------
-  # Examples that fail to reassemble.
-  # ----------------------------------------------------------------------------
+  - name: ex_thread_local
+    <<: *default
+
   - name: ex_threads
     <<: *default
     reassemble:
-      skip: true
-      flags: []
-      compiler: ""
+      compiler: "g++"
+      flags: ["-no-pie", "-lpthread"]
 
+  # ----------------------------------------------------------------------------
+  # Examples that fail to reassemble.
+  # ----------------------------------------------------------------------------
   - name: ex1
     <<: *default
     build:
@@ -250,6 +252,11 @@ tests:
     reassemble:
       compiler: "g++"
       flags: ["-no-pie"]
+    test:
+      strip: true
+
+  - name: ex_thread_local
+    <<: *default
     test:
       strip: true
 
