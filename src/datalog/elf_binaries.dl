@@ -21,6 +21,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Additional volatile registers according to the 'System V AMD64 ABI' calling convention.
+arch.function_non_maintained_reg("RDI"),
+arch.function_non_maintained_reg("RSI"):-
+    binary_format("ELF").
 
 // This module defines predicates and rules specific of ELF binaries
 section(Name,Size,Addr):-
