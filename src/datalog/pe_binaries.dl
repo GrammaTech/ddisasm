@@ -217,7 +217,7 @@ dos_header_symbolic_operand(EA,Dest):-
 // add R8,R9
 // call R8
 // Detect potential label-relative offset table before data analyses.
-relative_address_start(Table,8,Ref,Dest, "first"):-
+relative_address_start(Table,8,Ref,Dest,"first"):-
     // loads table address
     take_address(EA1,Table),
     next(EA1,EA2),
@@ -271,9 +271,9 @@ relative_address_start(Table,1,Ref,Dest,"first"):-
     Ref = ImageBase+as(Offset2,unsigned),
     Dest = Ref + Byte.
 
-relative_address(EA+1,1,Ref,Dest,"first"):-
+relative_address(EA+1,1,Table,Ref,Dest,"first"):-
     base_address(ImageBase),
-    relative_address(EA,1,Ref,_,"first"),
+    relative_address(EA,1,Table,Ref,_,"first"),
     data_byte(EA+1,Byte),
     Dest = Ref+Byte*4,
     data_word(Dest,4,Word),
@@ -281,12 +281,9 @@ relative_address(EA+1,1,Ref,Dest,"first"):-
     !relative_address_start(EA+1,_,_,_,_).
 
 symbol_minus_symbol_jump_table(EA,TableStart,1,Ref,Dest,"first",4):-
-    relative_address(EA,1,Ref,Dest,"first"),
     // Byte offsets reference a preceding relative address table.
-    relative_address_start(Ref,4,_,_,_),
-    relative_address_start(ByteOffsetTable,1,Ref,_,_), Dest < ByteOffsetTable,
-    // Note that TableStart references the RVA table not the byte offset table.
-    TableStart = Ref.
+    relative_address(EA,1,TableStart,Ref,Dest,"first"), Dest < TableStart,
+    relative_address_start(Ref,4,_,_,_).
 
 // the call to main is right after the call to "__p___argc"
 main_function(EA):-
@@ -324,3 +321,12 @@ moved_label(EA,Op_index,ImageBase+Dest,NewDest):-
     arch.pointer_size(Pt_size),
     address_in_data_refined_range.overlap(ImageBase+Dest,Pt_size,NewDest),
     symbolic_data(NewDest,_,_).
+
+jump_table_start(EA_jump,4,TableStart,TableReference,Operation):-
+    base_address(ImageBase),
+    base_relative_jump(EA_base,EA_jump),
+    base_relative_operand(EA_base,_,Value),
+    TableStart=ImageBase+Value,
+    TableReference=ImageBase,
+    // TODO:
+    Operation="ADD".

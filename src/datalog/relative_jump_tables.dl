@@ -80,12 +80,12 @@ Jump tables with entry sizes of 1 or 2 appear in data and can be detected later.
 In these jump tables, the reference address coincides with the starting address
 of the jump table.
 */
-.decl relative_address(EA:address,Size:unsigned,Reference:address,Dest:address,DestIsFirstOrSecond:symbol)
+.decl relative_address(EA:address,Size:unsigned,TableStart:address,Reference:address,Dest:address,DestIsFirstOrSecond:symbol)
 .output relative_address
 
 .decl relative_address_start(EA:address,Size:unsigned,Reference:address,Dest:address, DestIsFirstOrSecond:symbol)
 
-relative_address_start(EA,Size,EA,Dest, DestIsFirstOrSecond):-
+relative_address_start(EA,Size,EA,Dest,DestIsFirstOrSecond):-
     take_address(_,EA),
     EASigned = as(EA,number),
     data_word(EA,Size,Diff),
@@ -104,11 +104,11 @@ relative_address_start(EA,Size,EA,Dest, DestIsFirstOrSecond):-
     ),
     possible_ea(Dest).
 
-relative_address(EA,Size,Ref,Dest,DestIsFirstOrSecond):-
+relative_address(EA,Size,EA,Ref,Dest,DestIsFirstOrSecond):-
     relative_address_start(EA,Size,Ref,Dest,DestIsFirstOrSecond).
 
-relative_address(EA+Size,Size,Ref,Dest,DestIsFirstOrSecond):-
-    relative_address(EA,Size,Ref,_,DestIsFirstOrSecond),
+relative_address(EA+Size,Size,TableStart,Ref,Dest,DestIsFirstOrSecond):-
+    relative_address(EA,Size,TableStart,Ref,_,DestIsFirstOrSecond),
     data_word(EA+Size,Size,Diff),
     RefSigned = as(Ref,number),
     (
