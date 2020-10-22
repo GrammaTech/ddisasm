@@ -260,7 +260,7 @@ relative_address_start(ImageBase+OffsetUnsigned,MultUnsigned,ImageBase,Dest,"fir
 relative_address_start(Table,1,Ref,Dest,"first"):-
     base_address(ImageBase),
     // base-relative table address load and index
-    instruction_get_src_op(EA1,_,Op1), arch.mov(EA1),
+    arch.mov(EA1), instruction_get_src_op(EA1,_,Op1),
     op_indirect(Op1,_,_,_,1,Offset1,8), Offset1 > 0,
     Table = ImageBase+as(Offset1,unsigned),
     data_byte(Table,Byte),
