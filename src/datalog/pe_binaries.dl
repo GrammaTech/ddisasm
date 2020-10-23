@@ -137,17 +137,14 @@ base_relative_operand(EA_used,Op_index,as(Value,address)):-
     op_indirect(Op,_,_,_,_,Value,_), Value >= 0.
 
 // Indirect access later added to ImageBase
-base_relative_operand(EA_def2,Op_index,as(Value,address)):-
-    reg_has_base_image(EA,Reg),
-    arch.reg_reg_arithmetic_operation(EA,Reg,Reg1,Reg2,1,0),
-
-    def_used(EA_def1,Reg1,EA,_),
-    reg_has_base_image(EA_def1,Reg1),
-
+base_relative_operand(EA_def1,Op_index,as(Value,address)):-
+    reg_has_base_image(EA_def2,Reg2),
     def_used(EA_def2,Reg2,EA,_),
+    arch.reg_reg_arithmetic_operation(EA,Reg1,Reg1,Reg2,1,0),
+    def_used(EA_def1,Reg1,EA,_),
 
-    instruction_get_op(EA_def2,Op_index,Op),
-    instruction_get_operation(EA_def2,"LEA"),
+    instruction_get_op(EA_def1,Op_index,Op),
+    instruction_get_operation(EA_def1,"LEA"),
     op_indirect(Op,_,_,_,_,Value,_), Value > 0.
 
 
