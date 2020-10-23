@@ -104,21 +104,60 @@ plt_block(EA,Function):-
     got_reference(Got_entry,Function),
     code_in_refined_block(EA,EA).
 
+
+.decl reg_has_base_image(EA:address,Reg:register)
+.output reg_has_base_image
+
+reg_has_base_image(EA,Reg):-
+    base_address(ImageBase),
+    pc_relative_operand(EA,_,ImageBase),
+    def(EA,Reg),
+    instruction_get_operation(EA,"LEA").
+
+reg_has_base_image(EA,Reg):-
+    reg_has_base_image(EA2,Reg2),
+    def_used(EA2,Reg2,EA,Index),
+    def(EA,Reg),
+    (
+        arch.mov(EA),
+        instruction_get_op(EA,Index,Op),
+        op_regdirect(Op,_)
+        ;
+        arch.reg_reg_arithmetic_operation(EA,Reg,Reg2,Reg1,Mult,0), Mult>1
+    ).
+
 .decl base_relative_operand(EA:address,Index:operand_index,Dest:address)
 .output base_relative_operand
 
+// Indirect access using register with ImageBase
 base_relative_operand(EA_used,Op_index,as(Value,address)):-
-    base_address(ImageBase),
-    pc_relative_operand(EA_def,_,ImageBase),
-    def_used(EA_def,_,EA_used,Op_index),
+    reg_has_base_image(EA_def,Reg),
+    def_used(EA_def,Reg,EA_used,Op_index),
     instruction_get_op(EA_used,Op_index,Op),
     op_indirect(Op,_,_,_,_,Value,_), Value >= 0.
+
+// Indirect access later added to ImageBase
+base_relative_operand(EA_def2,Op_index,as(Value,address)):-
+    reg_has_base_image(EA,Reg),
+    arch.reg_reg_arithmetic_operation(EA,Reg,Reg1,Reg2,1,0),
+
+    def_used(EA_def1,Reg1,EA,_),
+    reg_has_base_image(EA_def1,Reg1),
+
+    def_used(EA_def2,Reg2,EA,_),
+
+    instruction_get_op(EA_def2,Op_index,Op),
+    instruction_get_operation(EA_def2,"LEA"),
+    op_indirect(Op,_,_,_,_,Value,_), Value > 0.
+
+
 
 .decl base_relative_symbolic_operand(EA:address,Index:operand_index,Dest:address)
 
 symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value,1),
 base_relative_symbolic_operand(EA,Op_index,Value):-
     base_relative_operand(EA,Op_index,Value),
+    !pc_relative_operand(EA,Op_index,_),
     instruction_displacement_offset(EA,Op_index,Disp_offset),
     instruction_get_op(EA,Op_index,Op),
     op_indirect(Op,_,_,_,_,_,Size),

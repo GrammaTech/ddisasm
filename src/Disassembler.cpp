@@ -1341,6 +1341,15 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
         newComment << "missed_jump_table";
         updateComment(module, comments, ea, newComment.str());
     }
+    for(auto &output : *prog->getRelation("reg_has_base_image"))
+    {
+        gtirb::Addr ea;
+        std::string reg;
+        output >> ea >> reg;
+        std::ostringstream newComment;
+        newComment << "hasImageBase(" << reg << ")";
+        updateComment(module, comments, ea, newComment.str());
+    }
     if(selfDiagnose)
     {
         for(auto &output : *prog->getRelation("false_positive"))
