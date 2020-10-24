@@ -147,6 +147,21 @@ base_relative_operand(EA_def1,Op_index,as(Value,address)):-
     instruction_get_operation(EA_def1,"LEA"),
     op_indirect(Op,_,_,_,_,Value,_), Value > 0.
 
+// Indirect access later added to ImageBase in an indirect operand
+base_relative_operand(EA_def1,Op_index,as(Value,address)):-
+    reg_has_base_image(EA_def2,Reg2),
+    def_used(EA_def2,Reg2,EA,Op_index_access),
+    (
+        data_access(EA,Op_index_access,"NONE",Reg2,Reg1,1,0,_);
+        data_access(EA,Op_index_access,"NONE",Reg1,Reg2,1,0,_)
+    ),
+    !instruction_get_operation(EA,"LEA"),
+    def_used(EA_def1,Reg1,EA,_),
+
+    instruction_get_op(EA_def1,Op_index,Op),
+    instruction_get_operation(EA_def1,"LEA"),
+    op_indirect(Op,_,_,_,_,Value,_), Value > 0.
+
 
 
 .decl base_relative_symbolic_operand(EA:address,Index:operand_index,Dest:address)
