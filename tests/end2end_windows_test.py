@@ -421,6 +421,40 @@ class TestSmallStripWindows(unittest.TestCase):
             )
         )
 
+    @unittest.skipUnless(
+        platform.system() == "Windows", "This test is windows only."
+    )
+    def test_ex_base_relative0(self):
+        self.assertTrue(
+            dis_reasm_test(
+                Path("examples/asm_examples") / "ex_base_relative0",
+                "ex.exe",
+                [],
+                ["/link", "/subsystem:console", "/entry:__EntryPoint"],
+                "ml64",
+                ["cl"],
+                ["cl"],
+                ["/O2"],
+            )
+        )
+
+    @unittest.skipUnless(
+        platform.system() == "Windows", "This test is windows only."
+    )
+    def test_ex_base_relative1(self):
+        self.assertTrue(
+            dis_reasm_test(
+                Path("examples/asm_examples") / "ex_base_relative1",
+                "ex.exe",
+                [],
+                ["/link", "/subsystem:console", "/entry:__EntryPoint"],
+                "ml64",
+                ["cl"],
+                ["cl"],
+                ["/O2"],
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
