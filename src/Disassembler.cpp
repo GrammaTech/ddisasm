@@ -692,15 +692,15 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
         return;
     }
     // Symbol+0 case
-    auto range = symbolicInfo.SymbolicExpressionNoOffsets.equal_range(ea);
-    for(auto it = range.first; it != range.second; it++)
+    auto Range = symbolicInfo.SymbolicExpressionNoOffsets.equal_range(ea);
+    if(auto SymbolicExpr =
+           std::find_if(Range.first, Range.second,
+                        [index](const auto &Element) { return Element.OperandIndex == index; });
+       SymbolicExpr != Range.second)
     {
-        if(it->OperandIndex == index)
-        {
-            auto sym = getSymbol(context, module, gtirb::Addr(it->Dest));
-            addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-                module, ea, DispSize, instruction.displacementOffset, 0, sym);
-        }
+        auto sym = getSymbol(context, module, gtirb::Addr(SymbolicExpr->Dest));
+        addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
+            module, ea, DispSize, instruction.displacementOffset, 0, sym);
         return;
     }
 }
