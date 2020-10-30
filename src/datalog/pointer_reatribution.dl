@@ -339,6 +339,24 @@ dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs,Beg+SizeSect+MultA
     NewDestAddr >= Beg,
     NewDestAddr <= Beg+SizeSect.
 
+// The data access is always done with an offset e.g.:
+// mov EBX,OFFSET state
+// mov RDX,QWORD PTR [RBX+1320]
+// sub RBX,88
+// cmp RBX,OFFSET state-1408
+dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs-OffsetAddr,Beg+SizeSect+MultAbs-OffsetAddr,Beg,Beg+SizeSect):-
+    best_value_reg(EA_def,Reg,_,Mult,NewDest,"loop"), NewDest >= 0,
+    def_used(EA_def,Reg,EA_used,Op_index),
+    data_access(EA_used,Op_index,"NONE",Reg,"NONE",_,Offset,_), Offset > 0,
+    OffsetAddr = as(Offset,address),
+    !data_byte(OffsetAddr,_),
+    NewDestAddr = as(NewDest,address),
+    MultAbs = as(max(Mult,-Mult),unsigned),
+    regular_data_section(Name),
+    section(Name,SizeSect,Beg),
+    NewDestAddr >= Beg,
+    NewDestAddr <= Beg+SizeSect.
+
 
 // immediate used to access memory
 moved_label_class(EA_from,Imm_index,"immediate used to access memory"),
