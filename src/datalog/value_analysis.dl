@@ -284,7 +284,7 @@ value_reg(EA,Reg,EA,Reg,1,0,1):-
     value_reg_unsupported(EA,Reg).
 
 // possible loop
-value_reg(EA,Reg,EA_from,"Unknown",Immediate,Base,Steps+1):-
+value_reg(EA,Reg,EA_from,"Unknown",Immediate,Base - Immediate,Steps+1):-
     step_limit(StepLimit),
     value_reg(EA,Reg,EA_from,"NONE",0,Base,Steps),
     value_reg_edge(EA,Reg,EA,Reg,1,Immediate),
