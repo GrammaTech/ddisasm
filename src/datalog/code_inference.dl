@@ -432,6 +432,9 @@ transitive_points("direct call").
 transitive_points("must-fallthrough").
 transitive_points("may-fallthrough").
 transitive_points("fits").
+transitive_points("fde-entry").
+transitive_points("landing-pad").
+transitive_points("exc-region").
 
 block_is_overlapping(Block),
 block_points(Block,0,-6,"overlap with relative-jump-table"):-
