@@ -358,18 +358,6 @@ block_is_overlapping(Block):-
         block_overlap(_,Block)
     ).
 
-block_is_overlapping(Block),
-block_points(Block,0,-9,"overlap with relative-jump-table"):-
-    block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
-    relative_address(Beg,Size,_,_,_,_),
-    BegBlockAddr <= Beg, Beg< EndBlockAddr.
-
-block_is_overlapping(Block),
-block_points(Block,0,-9,"overlap with relative-jump-table"):-
-    relative_address(Beg,Size,_,_,_,_),
-    block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
-    Beg < BegBlockAddr, BegBlockAddr< Beg+Size.
-
 //////////////////////////////////////////////////////////////////////
 // We need to solve the block overlaps
 // we do it with heuristics
@@ -449,6 +437,34 @@ candidate_block_is_padding(Block):-
 .decl block_points(block:address,predecessor:address,importance:number,why:symbol)
 .output block_points
 
+.decl transitive_points(type:symbol)
+
+.decl overlap_with_jump_table(block:address)
+
+transitive_points("start point").
+transitive_points("code section start").
+transitive_points("function symbol").
+transitive_points("direct jump").
+transitive_points("direct call").
+transitive_points("must-fallthrough").
+transitive_points("may-fallthrough").
+transitive_points("fits").
+transitive_points("fde-entry").
+transitive_points("landing-pad").
+transitive_points("exc-region").
+
+block_is_overlapping(Block),
+block_points(Block,0,-6,"overlap with relative-jump-table"):-
+    block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
+    relative_address(Beg,_,_,_,_,_),
+    BegBlockAddr <= Beg, Beg< EndBlockAddr.
+
+
+block_is_overlapping(Block),
+block_points(Block,0,-6,"overlap with relative-jump-table"):-
+    relative_address(Beg,Size,_,_,_,_),
+    block_candidate_boundaries(Block,BegBlockAddr,_),
+    Beg < BegBlockAddr, BegBlockAddr< Beg+Size.
 
 block_points(Block,0,-6,"possible relative-jump-table start"):-
     block_is_overlapping(Block),
