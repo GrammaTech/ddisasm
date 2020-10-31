@@ -40,7 +40,7 @@ check-format:
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter-${OS}-artifacts.zip"
     - unzip gtirb-pprinter-${OS}-artifacts.zip
     # Install gtirb & pprinter
-    - '[ $OS != "arch" ] || sudo pacman --noconfirm -U gtirb-git*.pkg.tar.xz gtirb-pprinter-git*.pkg.tar.xz'
+    - '[ $OS != "arch" ] || sudo pacman --noconfirm -U gtirb-git*.pkg.tar.* gtirb-pprinter-git*.pkg.tar.*'
     - '[[ ! "$OS" =~ ubuntu[12][680] ]] || dpkg -i libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb'
     # Build ddisasm
     - mkdir build
