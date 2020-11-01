@@ -345,8 +345,9 @@ dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs,Beg+SizeSect+MultA
 // sub RBX,88
 // cmp RBX,OFFSET state-1408
 dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs-OffsetAddr,Beg+SizeSect+MultAbs-OffsetAddr,Beg,Beg+SizeSect):-
-    best_value_reg(EA_def,Reg,_,Mult,NewDest,"loop"), NewDest >= 0,
+    best_value_reg(EA_def,Reg,_,Mult,_,"loop"),
     def_used(EA_def,Reg,EA_used,Op_index),
+    value_reg_at_operand_loop(EA_used,Op_index,Reg,_,Mult,NewDest,"loop"), NewDest >= 0,
     data_access(EA_used,Op_index,"NONE",Reg,"NONE",_,Offset,_), Offset > 0,
     OffsetAddr = as(Offset,address),
     !data_byte(OffsetAddr,_),
