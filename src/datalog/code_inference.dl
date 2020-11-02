@@ -279,6 +279,7 @@ common_tail(EA):-
     !code_in_block_candidate(EA_prev,Block2).
 
 .decl code_in_block_candidate_refined(EA:address,Block:address)
+.output code_in_block_candidate_refined
 
 code_in_block_candidate_refined(Block,Block):-
     code_in_block_candidate(Block,Block).
@@ -289,7 +290,9 @@ code_in_block_candidate_refined(Block,Block):-
 code_in_block_candidate_refined(EA_next,Block):-
     code_in_block_candidate_refined(EA,Block),
     next(EA,EA_next),
-    code_in_block_candidate(EA_next,_),
+    // they used to be in the same block
+    code_in_block_candidate(EA_next,OldBlock),
+    code_in_block_candidate(EA,OldBlock),
     !code_in_block_candidate(EA_next,EA_next),
     !common_tail(EA_next).
 
@@ -415,6 +418,20 @@ discarded_block(Block2):-
     Block2 - Block = Size - Size2.
 
 
+// Auxiliary predicates to detect candidate blocks that are padding
+.decl candidate_block_is_not_padding(Block:address)
+
+candidate_block_is_not_padding(Block):-
+    code_in_block_candidate_refined(EA,Block),
+    !is_padding(EA).
+
+.decl candidate_block_is_padding(Block:address)
+.output candidate_block_is_padding
+
+candidate_block_is_padding(Block):-
+    code_in_block_candidate_refined(_,Block),
+    !candidate_block_is_not_padding(Block).
+
 /**
  The heuristics give a variable number of points for things like number
  of predecessors, how the block is reached (through direct jump, fallthough, etc.)
@@ -422,6 +439,7 @@ discarded_block(Block2):-
  or in a pointer array.
  The points are trasmitted transitively though overlapping blocks.
 */
+
 
 .decl block_points(block:address,predecessor:address,importance:number,why:symbol)
 .output block_points
@@ -503,12 +521,14 @@ block_points(Block,BlockPred,2,"must-fallthrough"):-
     block_is_overlapping(Block),
     must_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
+    !candidate_block_is_padding(BlockPred),
     !block_is_overlapping(BlockPred).
 
 block_points(Block,BlockPred,7,"may-fallthrough"):-
     block_is_overlapping(Block),
     may_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
+    !candidate_block_is_padding(BlockPred),
     !block_is_overlapping(BlockPred).
 
 // it fits but the previous block does not fallthrough
@@ -541,7 +561,8 @@ block_points(Block,Block_succ,1,"fallthough_to"):-
     !block_is_overlapping(Block_succ).
 
 // transitivity for fallthrough and direct jumps and calls
-block_points(Block,BlockPred2,Points,cat("fallthrough-transitive ",Why)):-
+
+block_points(Block,BlockPred,Points,Why):-
     block_is_overlapping(Block),
     may_fallthrough(EA,Block),
     !multiple_fallthrough_to(Block),
@@ -623,7 +644,7 @@ block_points(Block,0,2,"padding nop block"):-
 block_points(Block,0,-1,"overlap long nop"):-
     block_is_overlapping(Block),
     block_overlap(Block,Block2),
-    code_in_block_candidate(EA_nop,Block2),
+    code_in_block_candidate_refined(EA_nop,Block2),
     arch.is_nop(EA_nop).
 
 block_points(Block,0,3,"exc-region"):-
