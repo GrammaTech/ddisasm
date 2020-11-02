@@ -1,4 +1,4 @@
-//===- pe_binaries.dl --------------------------------------------------*- datalog -*-===//
+//===- pe_binaries.dl ---------------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -379,5 +379,4 @@ jump_table_start(EA_jump,4,TableStart,TableReference,Operation):-
     base_relative_operand(EA_base,_,Value),
     TableStart=ImageBase+Value,
     TableReference=ImageBase,
-    // TODO:
     Operation="ADD".
