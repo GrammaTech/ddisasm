@@ -88,6 +88,11 @@ function_non_maintained_reg("R9").
 function_non_maintained_reg("R10").
 function_non_maintained_reg("R11").
 
+// Additional volatile registers according to the 'System V AMD64 ABI' calling convention.
+arch.function_non_maintained_reg("RDI"),
+arch.function_non_maintained_reg("RSI"):-
+    binary_format("ELF").
+
 .decl pc_register(reg:register)
 
 pc_register("RIP").
