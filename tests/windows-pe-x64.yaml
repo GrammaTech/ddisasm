@@ -23,6 +23,10 @@ default: &default
     strip: false
     skip: false
 
+assembly: &assembly
+  <<: *default
+  path: examples/asm_examples
+
 tests:
     - name: ex1
       <<: *default
@@ -86,16 +90,16 @@ tests:
       <<: *default
 
     - name: ex_switch_in_code4
-      <<: *default
+      <<: *assembly
 
     - name: ex_moved_base_relative
-      <<: *default
+      <<: *assembly
 
     - name: ex_code_offset_table
-      <<: *default
+      <<: *assembly
 
     - name: ex_base_relative0
-      <<: *default
+      <<: *assembly
 
     - name: ex_base_relative1
-      <<: *default
+      <<: *assembly
