@@ -74,6 +74,7 @@ tests:
 
     - name: ex_legacy_switch.004
       <<: *default
+      binary: main.exe
 
     - name: ex_memberPointer
       <<: *default
