@@ -76,20 +76,22 @@ track_register("R14D","R14").
 track_register("R15","R15").
 track_register("R15D","R15").
 
-// this specifies the registers whose value is not kept through a function call
-// according to the 'System V AMD64 ABI' calling convention.
+// This specifies the registers whose value are not kept through a function call.
 .decl function_non_maintained_reg(reg:register)
 
 function_non_maintained_reg("RAX").
 function_non_maintained_reg("RCX").
 function_non_maintained_reg("RDX").
-function_non_maintained_reg("RDI").
-function_non_maintained_reg("RSI").
 
 function_non_maintained_reg("R8").
 function_non_maintained_reg("R9").
 function_non_maintained_reg("R10").
 function_non_maintained_reg("R11").
+
+// Additional volatile registers according to the 'System V AMD64 ABI' calling convention.
+arch.function_non_maintained_reg("RDI"),
+arch.function_non_maintained_reg("RSI"):-
+    binary_format("ELF").
 
 .decl pc_register(reg:register)
 
