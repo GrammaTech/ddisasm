@@ -32,7 +32,7 @@ tests:
 
     - name: ex_confusing_data
       <<: *default
-    
+
     - name: ex_false_pointer_array
       <<: *default
 
