@@ -69,12 +69,15 @@ tests:
 
     - name: ex_legacy_switch.001
       <<: *default
+      binary: main.exe
 
     - name: ex_legacy_switch.002
       <<: *default
+      binary: main.exe
 
     - name: ex_legacy_switch.003
       <<: *default
+      binary: main.exe
 
     - name: ex_legacy_switch.004
       <<: *default
