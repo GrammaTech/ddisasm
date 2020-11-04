@@ -90,6 +90,11 @@ arithmetic_operation("DEC").
 arithmetic_operation("IMUL").
 arithmetic_operation("SHL").
 
+.decl multiplication_operation(Operation:symbol)
+
+multiplication_operation("IMUL").
+multiplication_operation("SHL").
+
 .decl logic_operation(Operation:symbol)
 
 logic_operation("AND").
