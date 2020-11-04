@@ -557,7 +557,7 @@ block_points(Block,BlockPred,7,"may-fallthrough"):-
     !block_is_overlapping(BlockPred).
 
 // it fits but the previous block does not fallthrough
-block_points(Block,BlockPred,2,"fits"):-
+block_points(Block,BlockPred,3,"fits"):-
     block_is_overlapping(Block),
     after_end(Block,EA),
     code_in_block_candidate_refined(EA,BlockPred),
