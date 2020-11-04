@@ -111,6 +111,7 @@ write_only_operation("POP").
 one_op_write("INC").
 one_op_write("DEC").
 one_op_write("POP").
+one_op_write("NOT").
 
 .decl pointer_size(n:unsigned) inline
 
