@@ -101,6 +101,13 @@ arithmetic_operation("SBC").
 arithmetic_operation("SHL").
 arithmetic_operation("SUB").
 
+.decl multiplication_operation(Operation:symbol)
+
+multiplication_operation("MUL").
+multiplication_operation("MLA").
+multiplication_operation("MLS").
+multiplication_operation("MULS").
+
 .decl logic_operation(Operation:symbol)
 
 logic_operation("BIC").

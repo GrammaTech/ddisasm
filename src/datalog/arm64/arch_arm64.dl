@@ -80,6 +80,12 @@ arithmetic_operation("LSR").
 arithmetic_operation("ASR").
 arithmetic_operation("ROR").
 
+.decl multiplication_operation(Operation:symbol)
+
+multiplication_operation("MUL").
+multiplication_operation("LSL").
+
+
 .decl logic_operation(Operation:symbol)
 
 logic_operation("AND").

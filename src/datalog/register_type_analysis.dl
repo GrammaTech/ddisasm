@@ -1,0 +1,43 @@
+//===- register_type_analysis.dl ----------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+
+.decl def_register_is_not_base_address(EA:address,Reg:register)
+
+// register compared with non-symbolic
+def_register_is_not_base_address(EA_def,Reg):-
+    def_used(EA_def,Reg,EA,_),
+    cmp_immediate_to_reg(EA,Reg,Imm_index,_),
+    !symbolic_operand_candidate(EA,Imm_index,_,_).
+
+// register defined with multiplication operation
+def_register_is_not_base_address(EA_def,Reg):-
+    def_used(EA_def,Reg,_,_),
+    instruction_get_operation(EA_def,Operation),
+    arch.multiplication_operation(Operation).
+
+
+// register is later multiplied
+def_register_is_not_base_address(EA_def,Reg):-
+    def_used(EA_def,Reg,EA,_),
+    instruction_get_operation(EA,Operation),
+    arch.multiplication_operation(Operation).
