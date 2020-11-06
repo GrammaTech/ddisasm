@@ -262,6 +262,22 @@ dos_header_symbolic_operand(EA,Dest):-
     Dest > ImageBase,
     Dest < ImageBase + 64.
 
+// instructions just before a potential jump table
+.decl jump_table_prelude(EA:address,Steps:unsigned)
+
+jump_table_prelude(EA,0):-
+    reg_jump(EA,_),
+    possible_ea(EA).
+
+jump_table_prelude(EA,0):-
+    reg_call(EA,_),
+    possible_ea(EA).
+
+jump_table_prelude(EA_prev,Steps+1):-
+    jump_table_prelude(EA,Steps), Steps < 6,
+    must_fallthrough(EA_prev,EA).
+
+
 // lea R8,QWORD PTR [$L_180016d58]  ; load offset-table
 // mov R8,QWORD PTR [R8+RDX*8-16]   ; index into offset-table
 // lea R9,QWORD PTR [$L_180015e50]  ; load base address
@@ -270,6 +286,7 @@ dos_header_symbolic_operand(EA,Dest):-
 // Detect potential label-relative offset table before data analyses.
 relative_address_start(Table,8,Ref,Dest,"first"):-
     // loads table address
+    jump_table_prelude(EA1,_),
     take_address(EA1,Table),
     next(EA1,EA2),
     // indexes table
@@ -285,6 +302,7 @@ relative_address_start(Table,8,Ref,Dest,"first"):-
 // mov ECX,DWORD PTR [R9+R8*4+(IMAGEREL N_1a050)]
 relative_address_start(ImageBase+OffsetUnsigned,MultUnsigned,ImageBase,Dest,"first"):-
     base_address(ImageBase),
+    jump_table_prelude(EA,_),
     instruction_get_operation(EA,"MOV"),
     instruction_get_src_op(EA,_,Op),
     op_indirect(Op,_,RegBase,RegIndex,Mult,Offset,Size), Offset > 0,
