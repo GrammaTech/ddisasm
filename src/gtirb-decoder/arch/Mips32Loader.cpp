@@ -106,6 +106,8 @@ std::optional<relations::Instruction> Mips32Loader::build(Mips32Facts& Facts,
 
 std::optional<relations::Operand> Mips32Loader::build(const cs_mips_op& CsOp)
 {
+    using namespace relations;
+
     auto registerName = [this](unsigned int Reg) {
         return (Reg == MIPS_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(*CsHandle, Reg));
     };
@@ -113,9 +115,9 @@ std::optional<relations::Operand> Mips32Loader::build(const cs_mips_op& CsOp)
     switch(CsOp.type)
     {
         case MIPS_OP_REG:
-            return registerName(CsOp.reg);
+            return RegOp{registerName(CsOp.reg)};
         case MIPS_OP_IMM:
-            return CsOp.imm;
+            return ImmOp{CsOp.imm};
         case MIPS_OP_MEM:
         {
             relations::IndirectOp I = {registerName(MIPS_REG_INVALID),
