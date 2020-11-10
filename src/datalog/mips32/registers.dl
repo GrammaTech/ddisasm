@@ -31,32 +31,32 @@ This module establishes basic information about register:
 
 .decl function_non_maintained_reg(reg:register)
 
-function_non_maintained_reg("AT")
+function_non_maintained_reg("AT").
 
-function_non_maintained_reg("V0")
-function_non_maintained_reg("V1")
+function_non_maintained_reg("V0").
+function_non_maintained_reg("V1").
 
-function_non_maintained_reg("A0")
-function_non_maintained_reg("A1")
-function_non_maintained_reg("A2")
-function_non_maintained_reg("A3")
+function_non_maintained_reg("A0").
+function_non_maintained_reg("A1").
+function_non_maintained_reg("A2").
+function_non_maintained_reg("A3").
 
-function_non_maintained_reg("T0")
-function_non_maintained_reg("T1")
-function_non_maintained_reg("T2")
-function_non_maintained_reg("T3")
-function_non_maintained_reg("T4")
-function_non_maintained_reg("T5")
-function_non_maintained_reg("T6")
-function_non_maintained_reg("T7")
+function_non_maintained_reg("T0").
+function_non_maintained_reg("T1").
+function_non_maintained_reg("T2").
+function_non_maintained_reg("T3").
+function_non_maintained_reg("T4").
+function_non_maintained_reg("T5").
+function_non_maintained_reg("T6").
+function_non_maintained_reg("T7").
 
-function_non_maintained_reg("T8")
-function_non_maintained_reg("T9")
+function_non_maintained_reg("T8").
+function_non_maintained_reg("T9").
 
-function_non_maintained_reg("K0")
-function_non_maintained_reg("K1")
+function_non_maintained_reg("K0").
+function_non_maintained_reg("K1").
 
-function_non_maintained_reg("RA")
+function_non_maintained_reg("RA").
 
 .decl pc_register(reg:register)
 // TODO:
