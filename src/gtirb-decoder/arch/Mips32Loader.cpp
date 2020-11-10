@@ -116,7 +116,7 @@ std::optional<relations::Operand> Mips32Loader::build(const cs_mips_op& CsOp)
             return registerName(CsOp.reg);
         case MIPS_OP_IMM:
             return CsOp.imm;
-        case X86_OP_MEM:
+        case MIPS_OP_MEM:
         {
             relations::IndirectOp I = {registerName(MIPS_REG_INVALID),
                                        registerName(CsOp.mem.base),
