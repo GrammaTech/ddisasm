@@ -42,8 +42,7 @@ void Mips32Loader::decode(Mips32Facts& Facts, const uint8_t* Bytes, uint64_t /* 
 {
     // Decode instruction with Capstone.
     cs_insn* CsInsn;
-    const uint8_t BigEndianBytes[] = {Bytes[3], Bytes[2], Bytes[1], Bytes[0]};
-    size_t Count = cs_disasm(*CsHandle, BigEndianBytes, 4, Addr, 1, &CsInsn);
+    size_t Count = cs_disasm(*CsHandle, Bytes, 4, Addr, 1, &CsInsn);
 
     // Build datalog instruction facts from Capstone instruction.
     std::optional<relations::Instruction> Instruction;
