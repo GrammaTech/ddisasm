@@ -69,9 +69,6 @@ void Mips32Loader::decode(Mips32Facts& Facts, const uint8_t* Bytes, uint64_t /* 
 std::optional<relations::Instruction> Mips32Loader::build(Mips32Facts& Facts,
                                                           const cs_insn& CsInstruction)
 {
-    std::cerr << std::hex << CsInstruction.address << " " << CsInstruction.mnemonic << " "
-              << CsInstruction.op_str << "\n";
-
     const cs_mips& Details = CsInstruction.detail->mips;
     std::string Name = uppercase(CsInstruction.mnemonic);
     std::vector<uint64_t> OpCodes;

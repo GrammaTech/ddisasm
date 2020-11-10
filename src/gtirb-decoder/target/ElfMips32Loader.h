@@ -36,6 +36,7 @@ CompositeLoader ElfMips32Loader()
     Loader.add(ModuleLoader);
     Loader.add(SectionLoader);
     Loader.add<Mips32Loader>();
+    // TODO: We need to find potential big-endian addresses.
     Loader.add<DataLoader>(DataLoader::Pointer::QWORD);
     Loader.add(ElfSymbolLoader);
     Loader.add(ElfExceptionLoader);
