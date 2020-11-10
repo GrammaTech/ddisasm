@@ -25,13 +25,30 @@ The set of jump operations in MIPS32
 */
 
 .decl jump_operation(n:symbol)
+
+jump_operation("BEQ").
+jump_operation("BNE").
+
+jump_operation("J").
+jump_operation("JR").
+jump_operation("JAL").
+jump_operation("JALR").
 // TODO:
 
 .decl unconditional_jump_operation(n:symbol)
+
+unconditional_jump_operation("J").
+unconditional_jump_operation("JR").
+unconditional_jump_operation("JAL").
+unconditional_jump_operation("JALR").
 // TODO:
 
 .decl jump_equal_operation(n:symbol)
+
+jump_equal_operation("BEQ").
 // TODO:
 
 .decl jump_unequal_operation(n:symbol)
+
+jump_unequal_operation("BNE").
 // TODO:
