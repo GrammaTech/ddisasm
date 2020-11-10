@@ -1,4 +1,4 @@
-//===- ElfReader.h ----------------------------------------------*- C++ -*-===//
+//===- registers.dl -----------------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -20,30 +20,19 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef ELF_GTIRB_BUILDER_H_
-#define ELF_GTIRB_BUILDER_H_
+/*
+This module establishes basic information about register:
+ - Which registers and tracked/considered in the different analyses
+ - Whether they all callee or caller saved according to the ABI
+*/
 
-#include "./GtirbBuilder.h"
+.decl track_register(Reg32:register,Reg64:register)
+// TODO:
 
-class ElfReader : public GtirbBuilder
-{
-public:
-    ElfReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary);
+// this specifies the registers whose value is not kept through a function call
+// according to the 'System V AMD64 ABI' calling convention.
+.decl function_non_maintained_reg(reg:register)
+// TODO:
 
-protected:
-    std::shared_ptr<LIEF::ELF::Binary> Elf;
-
-    void initModule() override;
-    void buildSections() override;
-    void buildSymbols() override;
-    void addEntryBlock() override;
-    void addAuxData() override;
-
-    uint64_t tlsBaseAddress();
-    std::string getRelocationType(const LIEF::ELF::Relocation &Entry);
-
-private:
-    uint64_t TlsBaseAddress = 0;
-};
-
-#endif // ELF_GTIRB_BUILDER_H_
+.decl pc_register(reg:register)
+// TODO:

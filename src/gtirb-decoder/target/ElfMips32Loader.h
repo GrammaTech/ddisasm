@@ -1,4 +1,4 @@
-//===- ElfReader.h ----------------------------------------------*- C++ -*-===//
+//===- ElfMips32Loader.h ----------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -20,30 +20,26 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef ELF_GTIRB_BUILDER_H_
-#define ELF_GTIRB_BUILDER_H_
+#ifndef SRC_GTIRB_DECODER_TARGET_ELFMIPS32LOADER_H_
+#define SRC_GTIRB_DECODER_TARGET_ELFMIPS32LOADER_H_
 
-#include "./GtirbBuilder.h"
+#include "../CompositeLoader.h"
+#include "../arch/Mips32Loader.h"
+#include "../core/DataLoader.h"
+#include "../core/ModuleLoader.h"
+#include "../core/SectionLoader.h"
+#include "../format/ElfLoader.h"
 
-class ElfReader : public GtirbBuilder
+CompositeLoader ElfMips32Loader()
 {
-public:
-    ElfReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary);
+    CompositeLoader Loader("souffle_disasm_mips32");
+    Loader.add(ModuleLoader);
+    Loader.add(SectionLoader);
+    Loader.add<Mips32Loader>();
+    Loader.add<DataLoader>(DataLoader::Pointer::QWORD);
+    Loader.add(ElfSymbolLoader);
+    Loader.add(ElfExceptionLoader);
+    return Loader;
+}
 
-protected:
-    std::shared_ptr<LIEF::ELF::Binary> Elf;
-
-    void initModule() override;
-    void buildSections() override;
-    void buildSymbols() override;
-    void addEntryBlock() override;
-    void addAuxData() override;
-
-    uint64_t tlsBaseAddress();
-    std::string getRelocationType(const LIEF::ELF::Relocation &Entry);
-
-private:
-    uint64_t TlsBaseAddress = 0;
-};
-
-#endif // ELF_GTIRB_BUILDER_H_
+#endif // SRC_GTIRB_DECODER_TARGET_ELFMIPS32LOADER_H_

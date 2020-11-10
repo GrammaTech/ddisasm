@@ -1,0 +1,123 @@
+//===- arch_mips32.dl ---------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2020 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+
+.comp MIPS32 {
+
+#include "jump_operations.dl"
+#include "interrupt_operations.dl"
+#include "registers.dl"
+
+/* Define all variants of the move operation */
+.decl move_operation(Operation:symbol)
+
+move_operation("LB").
+move_operation("LBU").
+move_operation("LBI").
+
+/* Find all addresses where a move instruction is used */
+.decl mov(EA:address)
+mov(EA):-
+    instruction_get_operation(EA,Operation),
+    move_operation(Operation).
+
+/* Define all variants of a conditional move operation */
+.decl conditional_mov(EA:address)
+
+.decl is_nop(EA:address)
+is_nop(EA):-
+    instruction_get_operation(EA,"NOP").
+
+// Returns
+.decl return(n:address)
+
+return(EA):-
+    return_operation(Operation),
+    instruction_get_operation(EA,Operation).
+
+.decl jump(EA:address)
+
+jump(EA):-
+    instruction_get_operation(EA,Operation),
+    jump_operation(Operation).
+
+.decl op_does_not_read_dest_reg(Operation:symbol)
+
+.decl arithmetic_operation(Operation:symbol)
+arithmetic_operation("ADD").
+// TODO: Add all arithmetic operations.
+
+.decl multiplication_operation(Operation:symbol)
+multiplication_operation("MUL").
+// TODO:
+
+.decl logic_operation(Operation:symbol)
+logic_operation("AND").
+logic_operation("ANDI").
+// TODO:
+
+.decl read_only_operation(Operation:symbol)
+// TODO:
+
+.decl write_only_operation(Operation:symbol)
+// TODO:
+
+.decl one_op_write(Operation:symbol)
+// TODO:
+
+.decl pointer_size(n:unsigned) inline
+pointer_size(4).
+
+.decl loop_prefix(prefix:symbol)
+
+.decl call_operation(operation:symbol)
+call_operation("JAL").
+call_operation("JALR").
+// TODO:
+
+.decl syscall_operation(operation:symbol)
+syscall_operation("SYSCALL").
+
+.decl return_operation(operation:symbol)
+return_operation("JR").
+// TODO:
+
+.decl halt_operation(operation:symbol)
+// TODO:
+
+.decl cmp_operation(Operation:symbol)
+// TODO:
+cmp_operation("SLT").
+cmp_operation("SLTU").
+cmp_operation("SLTI").
+cmp_operation("SLTIU").
+
+// These operations are either special like LEA (does not read memory) or
+// are not decoded corectly from capstone
+// FIXME: review this list when capstone is updated
+.decl operation_size_exception(EA:address,Op_index:operand_index,Size:unsigned)
+
+// arithmetic operation on two source registers
+.decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
+// TODO:
+
+}

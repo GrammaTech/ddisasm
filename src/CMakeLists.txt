@@ -47,6 +47,10 @@ set(DATALOG_ARM64_SOURCES
     datalog/arm64/arch_arm64.dl datalog/arm64/float_operations.dl
     datalog/arm64/jump_operations.dl datalog/arm64/registers.dl)
 
+set(DATALOG_MIPS32_SOURCES
+    datalog/mips32/arch_mips32.dl datalog/mips32/float_operations.dl
+    datalog/mips32/jump_operations.dl datalog/mips32/registers.dl)
+
 set(SOUFFLE_DATALOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/datalog/)
 
 set(GENERATED_X64_CPP souffle_disasm_x64.cpp)
@@ -100,6 +104,25 @@ add_custom_command(
   WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
   COMMAND ${SOUFFLE} main.dl -g ${GENERATED_ARM32_CPP_PATH} -jauto -MARCH_ARM32
   DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_ARM32_SOURCES})
+
+set(GENERATED_MIPS32_CPP souffle_disasm_mips32.cpp)
+if(WIN32)
+  set(GENERATED_MIPS32_CPP_PATH
+      "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_mips32.cpp)")
+else()
+  set(GENERATED_MIPS32_CPP_PATH
+      "${CMAKE_BINARY_DIR}/src/souffle_disasm_mips32.cpp")
+endif()
+
+add_custom_command(
+  OUTPUT ${GENERATED_MIPS32_CPP}
+         # Souffle includes the path of the output file in the generated program
+         # name. Change directory and use a relative path so the name does not
+         # depend on build location.
+  WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
+  COMMAND ${SOUFFLE} main.dl -g ${GENERATED_MIPS32_CPP_PATH} -jauto
+          -MARCH_MIPS32
+  DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_MIPS32_SOURCES})
 
 # determine what flags to use to specify -fopenmp.
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
@@ -272,7 +295,7 @@ target_link_libraries(
 
 # Now combine the static library and generated code into an executable.
 add_executable(ddisasm ${GENERATED_X64_CPP} ${GENERATED_ARM32_CPP}
-                       ${GENERATED_ARM64_CPP})
+                       ${GENERATED_ARM64_CPP} ${GENERATED_MIPS32_CPP})
 
 if(DDISASM_STATIC_DRIVERS)
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)

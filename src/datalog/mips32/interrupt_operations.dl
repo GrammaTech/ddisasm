@@ -1,4 +1,4 @@
-//===- ElfReader.h ----------------------------------------------*- C++ -*-===//
+//===- interrupt_operations.dl ------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -20,30 +20,11 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef ELF_GTIRB_BUILDER_H_
-#define ELF_GTIRB_BUILDER_H_
+/**
+The set of interrupt operations in MIPS
+*/
 
-#include "./GtirbBuilder.h"
+.decl interrupt_operation(n:symbol)
 
-class ElfReader : public GtirbBuilder
-{
-public:
-    ElfReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary);
-
-protected:
-    std::shared_ptr<LIEF::ELF::Binary> Elf;
-
-    void initModule() override;
-    void buildSections() override;
-    void buildSymbols() override;
-    void addEntryBlock() override;
-    void addAuxData() override;
-
-    uint64_t tlsBaseAddress();
-    std::string getRelocationType(const LIEF::ELF::Relocation &Entry);
-
-private:
-    uint64_t TlsBaseAddress = 0;
-};
-
-#endif // ELF_GTIRB_BUILDER_H_
+interrupt_operation("INT").
+// TODO:

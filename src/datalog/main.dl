@@ -76,6 +76,9 @@ This module:
 #elif defined(ARCH_AMD64)
     .init arch = X64
     #include "x64/arch_x64.dl"
+#elif defined(ARCH_MIPS32)
+    .init arch = MIPS32
+    #include "mips32/arch_mips32.dl"
 #else
     #error "Undefined architecture"
 #endif

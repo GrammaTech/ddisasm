@@ -28,6 +28,7 @@
 #include "gtirb-decoder/DatalogProgram.h"
 #include "gtirb-decoder/target/ElfArm32Loader.h"
 #include "gtirb-decoder/target/ElfArm64Loader.h"
+#include "gtirb-decoder/target/ElfMips32Loader.h"
 #include "gtirb-decoder/target/ElfX64Loader.h"
 #include "gtirb-decoder/target/PeX64Loader.h"
 
@@ -74,4 +75,7 @@ void registerDatalogLoaders()
 
     // Register ELF-ARM64 target.
     DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::ARM64}, ElfArm64Loader);
+
+    // Register ELF-MIPS32 target.
+    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::MIPS32}, ElfMips32Loader);
 }

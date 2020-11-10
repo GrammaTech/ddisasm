@@ -30,6 +30,18 @@ ElfReader::ElfReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary)
     assert(Elf && "Expected ELF");
 };
 
+// FIXME: LIEF returns LIEF::ARCHITECTURES::ARCH_NONE for MIPS, which should be
+// reported and fixed. For now, we just fix it up after the
+void ElfReader::initModule()
+{
+    GtirbBuilder::initModule();
+    switch(Elf->header().machine_type())
+    {
+        case LIEF::ELF::ARCH::EM_MIPS:
+            Module->setISA(gtirb::ISA::MIPS32);
+    }
+}
+
 void ElfReader::buildSections()
 {
     std::map<uint64_t, gtirb::UUID> SectionIndex;
