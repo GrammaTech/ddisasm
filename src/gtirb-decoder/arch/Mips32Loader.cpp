@@ -37,12 +37,11 @@ void Mips32Loader::insert(const Mips32Facts& Facts, DatalogProgram& Program)
     Program.insert("op_indirect", Operands.indirect());
 }
 
-void Mips32Loader::decode(Mips32Facts& Facts, const uint8_t* Bytes, uint64_t /* Size */,
-                          uint64_t Addr)
+void Mips32Loader::decode(Mips32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
 {
     // Decode instruction with Capstone.
     cs_insn* CsInsn;
-    size_t Count = cs_disasm(*CsHandle, Bytes, 4, Addr, 1, &CsInsn);
+    size_t Count = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &CsInsn);
 
     // Build datalog instruction facts from Capstone instruction.
     std::optional<relations::Instruction> Instruction;
