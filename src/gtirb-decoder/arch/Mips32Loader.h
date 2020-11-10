@@ -41,7 +41,7 @@ struct Mips32Facts
 class Mips32Loader : public InstructionLoader<Mips32Facts>
 {
 public:
-    Mips32Loader() : InstructionLoader{1}
+    Mips32Loader() : InstructionLoader{4}
     {
         // Create smart Captone handle.
         CsHandle.reset(new csh(0), [](csh* Handle) {

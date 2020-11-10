@@ -37,11 +37,13 @@ void Mips32Loader::insert(const Mips32Facts& Facts, DatalogProgram& Program)
     Program.insert("op_indirect", Operands.indirect());
 }
 
-void Mips32Loader::decode(Mips32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
+void Mips32Loader::decode(Mips32Facts& Facts, const uint8_t* Bytes, uint64_t /* Size */,
+                          uint64_t Addr)
 {
     // Decode instruction with Capstone.
     cs_insn* CsInsn;
-    size_t Count = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &CsInsn);
+    const uint8_t BigEndianBytes[] = {Bytes[3], Bytes[2], Bytes[1], Bytes[0]};
+    size_t Count = cs_disasm(*CsHandle, BigEndianBytes, 4, Addr, 1, &CsInsn);
 
     // Build datalog instruction facts from Capstone instruction.
     std::optional<relations::Instruction> Instruction;
@@ -67,10 +69,69 @@ void Mips32Loader::decode(Mips32Facts& Facts, const uint8_t* Bytes, uint64_t Siz
 std::optional<relations::Instruction> Mips32Loader::build(Mips32Facts& Facts,
                                                           const cs_insn& CsInstruction)
 {
-    return std::nullopt;
+    std::cerr << std::hex << CsInstruction.address << " " << CsInstruction.mnemonic << " "
+              << CsInstruction.op_str << "\n";
+
+    const cs_mips& Details = CsInstruction.detail->mips;
+    std::string Name = uppercase(CsInstruction.mnemonic);
+    std::vector<uint64_t> OpCodes;
+
+    if(Name != "NOP")
+    {
+        int OpCount = Details.op_count;
+        for(int i = 0; i < OpCount; i++)
+        {
+            // Load capstone operand.
+            const cs_mips_op& CsOp = Details.operands[i];
+
+            // Build operand for datalog fact.
+            std::optional<relations::Operand> Op = build(CsOp);
+            if(!Op)
+            {
+                return std::nullopt;
+            }
+
+            // Add operand to the operands table.
+            uint64_t OpIndex = Facts.Operands.add(*Op);
+            OpCodes.push_back(OpIndex);
+        }
+        // Put the destination operand at the end of the operand list.
+        if(OpCount > 0)
+        {
+            std::rotate(OpCodes.begin(), OpCodes.begin() + 1, OpCodes.end());
+        }
+    }
+
+    gtirb::Addr Addr(CsInstruction.address);
+    uint64_t Size(CsInstruction.size);
+    return relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0};
 }
 
 std::optional<relations::Operand> Mips32Loader::build(const cs_mips_op& CsOp)
 {
+    auto registerName = [this](unsigned int Reg) {
+        return (Reg == MIPS_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(*CsHandle, Reg));
+    };
+
+    switch(CsOp.type)
+    {
+        case MIPS_OP_REG:
+            return registerName(CsOp.reg);
+        case MIPS_OP_IMM:
+            return CsOp.imm;
+        case X86_OP_MEM:
+        {
+            relations::IndirectOp I = {registerName(MIPS_REG_INVALID),
+                                       registerName(CsOp.mem.base),
+                                       registerName(MIPS_REG_INVALID),
+                                       1,
+                                       CsOp.mem.disp,
+                                       32};
+            return I;
+        }
+        case MIPS_OP_INVALID:
+        default:
+            break;
+    }
     return std::nullopt;
 }
