@@ -166,7 +166,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    for (auto Module = IR->modules_begin(); Module != IR->modules_end(); ++Module)
+    for(auto Module = IR->modules_begin(); Module != IR->modules_end(); ++Module)
     {
         // Core of new code - functional analysis only
         gtirb::Module &CurrModule = *Module;
