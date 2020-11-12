@@ -68,6 +68,9 @@ This module:
     .init arch = ARM64
     #include "arm_binaries.dl"
     #include "arm64/arch_arm64.dl"
+#elif defined(ARCH_IA32)
+    .init arch = X86
+    #include "x86/arch_x86.dl"
 #elif defined(ARCH_AMD64)
     .init arch = X64
     #include "x64/arch_x64.dl"

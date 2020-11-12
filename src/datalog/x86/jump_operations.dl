@@ -1,0 +1,65 @@
+//===- jump_operations.dl -----------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2020 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+The set of jump operations in x64
+*/
+.decl jump_operation(n:symbol)
+.decl unconditional_jump_operation(n:symbol)
+
+.decl jump_equal_operation(n:symbol)
+.decl jump_unequal_operation(n:symbol)
+
+jump_operation("JCXZ").
+jump_operation("JECXZ").
+jump_operation("JRCXZ").
+jump_operation("JO").
+jump_operation("JNO").
+jump_operation("JB").
+jump_operation("JNB").
+jump_operation("JZ").
+jump_operation("JNZ").
+jump_operation("JNA").
+jump_operation("JA").
+jump_operation("JS").
+jump_operation("JNS").
+jump_operation("JP").
+jump_operation("JNP").
+jump_operation("JL").
+jump_operation("JGE").
+jump_operation("JLE").
+jump_operation("JG").
+jump_operation("JC").
+jump_operation("JAE").
+jump_operation("JE").
+jump_operation("JNE").
+jump_operation("JBE").
+jump_operation("JNBE").
+jump_operation("JMP").
+
+unconditional_jump_operation("JMP").
+
+jump_equal_operation("JE").
+jump_equal_operation("JZ").
+
+jump_unequal_operation("JNE").
+jump_unequal_operation("JNZ").
