@@ -201,4 +201,53 @@ reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset):-
 reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
     reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
 
+
+
+.decl get_pc_thunk(EA:address,Reg:register)
+.output get_pc_thunk
+
+// call	__x86.get_pc_thunk.ax
+// ...
+// __x86.get_pc_thunk.ax:
+// mov	eax, DWORD PTR [esp]
+// ret
+get_pc_thunk(EA,Reg):-
+    direct_call(_,EA),
+    instruction(EA,Size,_,Operation,Op1,Op2,_,_,_,_),
+    arch.move_operation(Operation),
+    op_regdirect(Op2,Reg),
+    op_indirect(Op1,"NONE","ESP","NONE",1,0,_),
+    return(EA+Size).
+
+.decl reg_has_got(EA:address,Reg:register)
+.output reg_has_got
+
+reg_has_got(EA,Reg):-
+    // call _x86.get_pc_thunk.REG
+    direct_call(EA_call,EA_pc_thunk),
+    get_pc_thunk(EA_pc_thunk,Reg),
+    // add REG, _GLOBAL_OFFSET_TABLE_
+    def_used(EA_call,Reg,EA,_),
+    instruction_get_src_op(EA,_,Op),
+    op_immediate(Op,Offset),
+    // where offset is pc-relative .got address
+    section(".got",_,Beg),
+    Beg=EA+as(Offset,address).
+
+.decl got_relative_operand(EA:address,Index:unsigned,Dest:address)
+.output got_relative_operand
+
+// call    __x86.get_pc_thunk.ax
+// add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
+// sub     esp, 12
+// lea     edx, .LC0@GOTOFF[eax]
+//              ^^^^^^^^^^^^^^^^
+got_relative_operand(EA,Index,Dest):-
+    reg_has_got(EA_base,Reg),
+    def_used(EA_base,Reg,EA,Index),
+    instruction_get_op(EA,Index,Op),
+    op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
+    section(".got",_,Beg),
+    Dest=Beg+as(Offset,address).
+
 }
