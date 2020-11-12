@@ -1,12 +1,9 @@
 FROM archlinux/base
 
-ARG CMAKE_VERSION=3.9
-ARG CXX_COMPILER=g++
-
-RUN pacman --noconfirm -Syu archlinux-keyring
-RUN pacman -Syu --noconfirm autoconf automake base-devel boost clang cmake \
-        doxygen fakeroot gcc git libtool make mcpp pkg-config protobuf \
-        python3 python-pip sudo wget unzip
+RUN pacman -Syu --noconfirm autoconf automake boost capstone clang cmake \
+    doxygen fakeroot gcc git libtool make mcpp pkg-config protobuf python3 \
+    python-protobuf unzip wget zlib graphviz
+RUN pacman -Syu --noconfirm  base-devel python-pip sudo
 RUN python3 -m pip install wheel distro pyyaml
 
 RUN pacman --noconfirm -Syu archlinux-keyring
@@ -19,3 +16,6 @@ RUN   useradd ddisasm && echo "ddisasm ALL=NOPASSWD: ALL" > /etc/sudoers.d/ddisa
 RUN mkdir /home/ddisasm && chown ddisasm /home/ddisasm
 USER ddisasm
 RUN yay --noconfirm -Sy pandoc capstone libehp-git souffle lief
+
+ARG CMAKE_VERSION=3.9
+ARG CXX_COMPILER=g++
