@@ -219,6 +219,10 @@ get_pc_thunk(EA,Reg):-
     op_indirect(Op1,"NONE","ESP","NONE",1,0,_),
     return(EA+Size).
 
+def(EA,Reg):-
+    direct_call(EA,EA_pc_thunk),
+    get_pc_thunk(EA_pc_thunk,Reg).
+
 .decl reg_has_got(EA:address,Reg:register)
 .output reg_has_got
 
