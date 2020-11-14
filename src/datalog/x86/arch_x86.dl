@@ -274,4 +274,15 @@ symbol_minus_symbol(EA+Disp_offset,4,Beg,Dest,1):-
       Type = "data"
     ).
 
+plt_entry(EA,Function):-
+    plt_section(SecName),
+    section(SecName,Size,Beg),
+    EA < Beg+Size,
+    EA >= Beg,
+    indirect_jump(EA),
+    instruction_get_op(EA,_,Op),
+    op_indirect(Op,"NONE",_,"NONE",1,Offset,_),
+    section(".got",_,Got),Got_entry=Got+as(Offset,address),
+    relocation(Got_entry,_,Function,_).
+
 }
