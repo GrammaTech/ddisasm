@@ -16,7 +16,7 @@ default: &default
   reassemble:
     compiler: "gcc"
     flags: ["-m32"]
-    skip: false../tests/qemu-elf-arm64.yaml
+    skip: false
 
   # Test configuration.
   test:
