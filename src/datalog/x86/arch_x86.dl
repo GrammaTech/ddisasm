@@ -228,13 +228,25 @@ reg_has_got(EA,Reg):-
     get_pc_thunk(EA_pc_thunk,Reg),
     // add REG, _GLOBAL_OFFSET_TABLE_
     def_used(EA_call,Reg,EA,_),
-    instruction_get_src_op(EA,_,Op),
-    op_immediate(Op,Offset),
+    op_immediate_and_reg(EA,"ADD",Reg,_,Offset),
     // where offset is pc-relative .got address
     section(".got",_,Beg),
     Beg=EA+as(Offset,address).
 
-.decl got_relative_operand(EA:address,Index:unsigned,Dest:address)
+// TODO: Maybe just use the "magic" symbol by name?
+inferred_symbol_name(Beg,"_GLOBAL_OFFSET_TABLE_","DEFAULT"),
+symbolic_operand(EA,Imm_index,Beg,"code"):-
+    reg_has_got(EA,Reg),
+    op_immediate_and_reg(EA,"ADD",Reg,Imm_index,_),
+    section(".got",_,Beg).
+// OR: Maybe use an actual symbol-symbol?
+// symbol_minus_symbol(EA+Imm_offset,4,Beg,EA,1):-
+//     reg_has_got(EA,Reg),
+//     section(".got",_,Beg),
+//     op_immediate_and_reg(EA,"ADD",Reg,Imm_index,Offset),
+//     instruction_immediate_offset(EA,Imm_index,Imm_offset).
+
+.decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
 .output got_relative_operand
 
 // call    __x86.get_pc_thunk.ax
@@ -249,5 +261,17 @@ got_relative_operand(EA,Index,Dest):-
     op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
     section(".got",_,Beg),
     Dest=Beg+as(Offset,address).
+
+symbol_minus_symbol(EA+Disp_offset,4,Beg,Dest,1):-
+    section(".got",_,Beg),
+    got_relative_operand(EA,Index,Dest),
+    instruction_displacement_offset(EA,Index,Disp_offset),
+    (
+      code(Dest), Type="code"
+      ;
+      data_segment(Begin,End),
+      Dest >= Begin, Dest <= End,
+      Type = "data"
+    ).
 
 }

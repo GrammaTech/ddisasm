@@ -325,6 +325,7 @@ struct SymbolicInfo
     VectorByEA<MovedLabel> MovedLabels;
     VectorByEA<SymbolicExpressionNoOffset> SymbolicExpressionNoOffsets;
     VectorByEA<SymbolicExpr> SymbolicExpressionsFromRelocations;
+    VectorByEA<SymbolMinusSymbol> SymbolicBaseMinusConst;
     VectorByEA<SymbolicOperandAttribute> SymbolicOperandAttributes;
 };
 
@@ -606,6 +607,22 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
             return;
         }
     }
+    // TODO: We need this if we are going to make _GLOBAL_OFFSET_TABLE_ a symbol-symbol,
+    //       but it is currently incompatable with gtirb-pprinter, which only accepts
+    //       SymAddrConst.
+    // // Symbol-Symbol case
+    // auto rangeRelSym =
+    //     symbolicInfo.SymbolicBaseMinusConst.equal_range(ea + instruction.immediateOffset);
+    // if(auto relSym = rangeRelSym.first; relSym != rangeRelSym.second)
+    // {
+    //     gtirb::Symbol *sym1 = getSymbol(context, module, gtirb::Addr(relSym->Symbol1));
+    //     gtirb::Symbol *sym2 = getSymbol(context, module, gtirb::Addr(relSym->Symbol2));
+    //
+    //     addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(
+    //         module, ea, instruction.Size - instruction.immediateOffset,
+    //         instruction.immediateOffset, 1, 0, sym2, sym1);
+    //     return;
+    // }
     // Symbol+constant case
     auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
     if(auto movedLabel =
@@ -690,6 +707,18 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
             module, ea, DispSize, instruction.displacementOffset, 0, sym, attrs);
         return;
     }
+    // Symbol-Symbol case
+    auto rangeRelSym =
+        symbolicInfo.SymbolicBaseMinusConst.equal_range(ea + instruction.displacementOffset);
+    if(auto relSym = rangeRelSym.first; relSym != rangeRelSym.second)
+    {
+        gtirb::Symbol *sym1 = getSymbol(context, module, gtirb::Addr(relSym->Symbol1));
+        gtirb::Symbol *sym2 = getSymbol(context, module, gtirb::Addr(relSym->Symbol2));
+
+        addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(
+            module, ea, DispSize, instruction.displacementOffset, 1, 0, sym2, sym1);
+        return;
+    }
 }
 
 void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module,
@@ -700,6 +729,7 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
         convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
         convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog),
         convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog),
+        convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog),
         convertSortedRelation<VectorByEA<SymbolicOperandAttribute>>("symbolic_operand_attribute",
                                                                     prog)};
     std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
