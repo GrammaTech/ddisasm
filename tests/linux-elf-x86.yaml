@@ -118,7 +118,7 @@ tests:
       flags: ["-m32"]
       skip: false
 
-  # TODO: 
+  # TODO:
   # - name: ex_thread_local
   #   <<: *default
 
