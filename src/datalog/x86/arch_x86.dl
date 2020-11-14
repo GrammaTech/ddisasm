@@ -285,8 +285,15 @@ plt_entry(EA,Function):-
     EA >= Beg,
     indirect_jump(EA),
     instruction_get_op(EA,_,Op),
-    op_indirect(Op,"NONE",_,"NONE",1,Offset,_),
-    section(".got",_,Got),Got_entry=Got+as(Offset,address),
+    (
+      //  jmp [EBX+Offset]
+      op_indirect(Op,"NONE",_,"NONE",1,Offset,_),
+      section(".got",_,Got),Got_entry=Got+as(Offset,address)
+      ;
+      // jmp [Offset]
+      op_indirect(Op,"NONE","NONE","NONE",1,Offset,_),
+      Got_entry=as(Offset,address)
+    ),
     relocation(Got_entry,_,Function,_).
 
 }
