@@ -43,8 +43,9 @@ tests:
   - name: ex_2modulesPIC
     <<: *default
 
-  - name: ex_confusing_data
-    <<: *default
+  # TODO:
+  # - name: ex_confusing_data
+  #   <<: *default
 
   # TODO:
   # - name: ex_exceptions1
@@ -70,14 +71,16 @@ tests:
   #     flags: ["-m32"]
   #     skip: false
 
-  - name: ex_false_pointer_array
-    <<: *default
+  #  TODO:
+  # - name: ex_false_pointer_array
+  #   <<: *default
 
   - name: ex_float
     <<: *default
 
-  - name: ex_fprintf
-    <<: *default
+  # TODO:
+  # - name: ex_fprintf
+  #   <<: *default
 
   - name: ex_getoptlong
     <<: *default
@@ -93,14 +96,16 @@ tests:
   - name: ex_noreturn
     <<: *default
 
-  - name: ex_pointerReatribution
-    <<: *default
+  # TODO:
+  # - name: ex_pointerReatribution
+  #   <<: *default
 
-  - name: ex_pointerReatribution3
-    <<: *default
+  # TODO:
+  # - name: ex_pointerReatribution3
+  #   <<: *default
 
-  - name: ex_stat
-    <<: *default
+  # - name: ex_stat
+  #   <<: *default
 
   - name: ex_struct
     <<: *default
@@ -128,233 +133,3 @@ tests:
   #   reassemble:
   #     compiler: "g++"
   #     flags: ["-m32", "-lpthread"]
-
-  # ----------------------------------------------------------------------------
-  # Small C and C++ examples (stripped).
-  # ----------------------------------------------------------------------------
-  - name: ex1
-    <<: *default
-    test:
-      strip: true
-
-  - name: ex_2modulesPIC
-    <<: *default
-    test:
-      strip: true
-
-  - name: ex_confusing_data
-    <<: *default
-    test:
-      strip: true
-
-  # TODO:
-  # - name: ex_exceptions1
-  #   <<: *default
-  #   reassemble:
-  #     compiler: "g++"
-  #     flags: ["-no-pie"]
-  #   test:
-  #     strip: true
-
-  # TODO:
-  # - name: ex_exceptions2
-  #   <<: *default
-  #   reassemble:
-  #     compiler: "g++"
-  #     flags: ["-no-pie"]
-  #   test:
-  #     strip: true
-
-  # TODO:
-  # - name: ex_exceptions3
-  #   <<: *default
-  #   reassemble:
-  #     compiler: "g++"
-  #     flags: ["-no-pie"]
-  #   test:
-  #     strip: true
-
-  - name: ex_false_pointer_array
-    <<: *default
-    test:
-      strip: true
-
-  - name: ex_float
-    <<: *default
-    test:
-      strip: true
-
-  - name: ex_fprintf
-    <<: *default
-    test:
-      strip: true
-
-  - name: ex_getoptlong
-    <<: *default
-    test:
-      strip: true
-
-  # TODO:
-  # - name: ex_memberPointer
-  #   <<: *default
-  #   reassemble:
-  #     compiler: "g++"
-  #     flags: ["-m32"]
-  #   test:
-  #     strip: true
-
-  - name: ex_noreturn
-    <<: *default
-    test:
-      strip: true
-
-  - name: ex_pointerReatribution
-    <<: *default
-    test:
-      strip: true
-
-  - name: ex_pointerReatribution2
-    <<: *default
-    test:
-      strip: true
-
-  - name: ex_pointerReatribution3
-    <<: *default
-    test:
-      strip: true
-
-  - name: ex_stat
-    <<: *default
-    test:
-      strip: true
-
-  - name: ex_struct
-    <<: *default
-    test:
-      strip: true
-
-  - name: ex_switch
-    <<: *default
-    test:
-      strip: true
-
-  - name: ex_uninitialized_data
-    <<: *default
-    test:
-      strip: true
-
-  # TODO:
-  # - name: ex_virtualDispatch
-  #   <<: *default
-  #   reassemble:
-  #     compiler: "g++"
-  #     flags: ["-m32"]
-  #   test:
-  #     strip: true
-
-  # TODO:
-  # - name: ex_thread_local
-  #   <<: *default
-  #   test:
-  #     strip: true
-
-  # ----------------------------------------------------------------------------
-  # Assembly examples.
-  # ----------------------------------------------------------------------------
-  - name: ex_pointerReatribution3
-    <<: *assembly
-
-  - name: ex_pointerReatribution3_clang
-    <<: *assembly
-
-  - name: ex_pointerReatribution3_clang
-    <<: *assembly
-    build:
-      c: ["gcc"]
-      cpp: ["g++"]
-      flags: ["-m32 -pie"]
-      optimizations: [""]
-
-  - name: ex_weird_sections
-    <<: *assembly
-
-  - name: ex_relative_switch
-    <<: *assembly
-
-  - name: ex_relative_switch_sizes
-    <<: *assembly
-
-  - name: ex_switch_in_code
-    <<: *assembly
-
-  - name: ex_switch_in_code2
-    <<: *assembly
-
-  - name: ex_switch_in_code3
-    <<: *assembly
-
-  - name: ex_loop_instructions
-    <<: *assembly
-
-  # ----------------------------------------------------------------------------
-  # Assembly examples. (stripped)
-  # ----------------------------------------------------------------------------
-  - name: ex_pointerReatribution3
-    <<: *assembly
-    test:
-      strip: true
-
-  - name: ex_pointerReatribution3_clang
-    <<: *assembly
-    test:
-      strip: true
-
-  - name: ex_pointerReatribution3_pie
-    <<: *assembly
-    build:
-      c: ["gcc"]
-      cpp: ["g++"]
-      flags: ["-m32 -pie"]
-      optimizations: [""]
-    test:
-      strip: true
-
-  - name: ex_weird_sections
-    <<: *assembly
-    test:
-      strip: true
-
-  - name: ex_relative_switch
-    <<: *assembly
-    test:
-      strip: true
-
-  - name: ex_relative_switch_through_stack
-    <<: *assembly
-    test:
-      strip: true
-
-  - name: ex_relative_switch_sizes
-    <<: *assembly
-    test:
-      strip: true
-
-  - name: ex_switch_in_code
-    <<: *assembly
-    test:
-      strip: true
-
-  - name: ex_switch_in_code2
-    <<: *assembly
-    test:
-      strip: true
-
-  - name: ex_switch_in_code3
-    <<: *assembly
-    test:
-      strip: true
-
-  - name: ex_loop_instructions
-    <<: *assembly
-    test:
-      strip: true
