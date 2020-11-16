@@ -73,16 +73,14 @@ tests:
   #     flags: ["-m32"]
   #     skip: false
 
-  #  TODO:
-  # - name: ex_false_pointer_array
-  #   <<: *default
+  - name: ex_false_pointer_array
+    <<: *default
 
   - name: ex_float
     <<: *default
 
-  # TODO:
-  # - name: ex_fprintf
-  #   <<: *default
+  - name: ex_fprintf
+    <<: *default
 
   - name: ex_getoptlong
     <<: *default
@@ -105,9 +103,8 @@ tests:
   - name: ex_pointerReatribution3
     <<: *default
 
-  # TODO:
-  # - name: ex_stat
-  #   <<: *default
+  - name: ex_stat
+    <<: *default
 
   - name: ex_struct
     <<: *default
@@ -145,3 +142,5 @@ tests:
 
   - name: ex_2modulesPIC
     <<: *position-independent
+
+  # TODO:
