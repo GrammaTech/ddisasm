@@ -269,14 +269,7 @@ got_relative_operand(EA,Index,Dest):-
 symbol_minus_symbol(EA+Disp_offset,4,Beg,Dest,1):-
     section(".got",_,Beg),
     got_relative_operand(EA,Index,Dest),
-    instruction_displacement_offset(EA,Index,Disp_offset),
-    (
-      code(Dest), Type="code"
-      ;
-      data_segment(Begin,End),
-      Dest >= Begin, Dest <= End,
-      Type = "data"
-    ).
+    instruction_displacement_offset(EA,Index,Disp_offset).
 
 plt_entry(EA,Function):-
     plt_section(SecName),
