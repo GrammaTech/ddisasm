@@ -144,3 +144,52 @@ tests:
     <<: *position-independent
 
   # TODO:
+  # - name: ex_confusing_data
+  #   <<: *position-independent
+
+  # TODO:
+  # ex_exceptions1
+  # ex_exceptions2
+  # ex_exceptions3
+
+  # TODO:
+  # - name: ex_false_pointer_array
+  #   <<: *position-independent
+
+  - name: ex_float
+    <<: *position-independent
+
+  # TODO:
+  # - name: ex_fprintf
+  #   <<: *position-independent
+
+  - name: ex_getoptlong
+    <<: *position-independent
+
+  # TODO:
+  # ex_memberPointer
+
+  - name: ex_noreturn
+    <<: *default
+    <<: *position-independent
+
+  # TODO: clang
+  # - name: ex_pointerReatribution
+  #   <<: *position-independent
+
+  # TODO:
+  # - name: ex_pointerReatribution3
+  #   <<: *position-independent
+
+  # TODO:
+  # - name: ex_stat
+  #   <<: *position-independent
+
+  - name: ex_struct
+    <<: *position-independent
+
+  - name: ex_switch
+    <<: *position-independent
+
+  - name: ex_uninitialized_data
+    <<: *position-independent
