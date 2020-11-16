@@ -50,28 +50,9 @@ tests:
     <<: *default
 
   # TODO:
-  # - name: ex_exceptions1
-  #   <<: *default
-  #   reassemble:
-  #     compiler: "g++"
-  #     flags: ["-m32"]
-  #     skip: false
-
-  # TODO:
-  # - name: ex_exceptions2
-  #   <<: *default
-  #   reassemble:
-  #     compiler: "g++"
-  #     flags: ["-m32"]
-  #     skip: false
-
-  # TODO:
-  # - name: ex_exceptions3
-  #   <<: *default
-  #   reassemble:
-  #     compiler: "g++"
-  #     flags: ["-m32"]
-  #     skip: false
+  # ex_exceptions1
+  # ex_exceptions2
+  # ex_exceptions3
 
   - name: ex_false_pointer_array
     <<: *default
@@ -85,13 +66,12 @@ tests:
   - name: ex_getoptlong
     <<: *default
 
-  # TODO:
-  # - name: ex_memberPointer
-  #   <<: *default
-  #   reassemble:
-  #     compiler: "g++"
-  #     flags: ["-m32"]
-  #     skip: false
+  - name: ex_memberPointer
+    <<: *default
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32", "-no-pie"]
+      skip: false
 
   - name: ex_noreturn
     <<: *default
@@ -115,13 +95,12 @@ tests:
   - name: ex_uninitialized_data
     <<: *default
 
-  # TODO:
-  # - name: ex_virtualDispatch
-  #   <<: *default
-  #   reassemble:
-  #     compiler: "g++"
-  #     flags: ["-m32"]
-  #     skip: false
+  - name: ex_virtualDispatch
+    <<: *default
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32", "-no-pie"]
+      skip: false
 
   # TODO:
   # - name: ex_thread_local
@@ -166,8 +145,12 @@ tests:
   - name: ex_getoptlong
     <<: *position-independent
 
-  # TODO:
-  # ex_memberPointer
+  - name: ex_memberPointer
+    <<: *position-independent
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32"]
+      skip: false
 
   - name: ex_noreturn
     <<: *default
@@ -190,6 +173,13 @@ tests:
 
   - name: ex_switch
     <<: *position-independent
+
+  - name: ex_virtualDispatch
+    <<: *position-independent
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32"]
+      skip: false
 
   - name: ex_uninitialized_data
     <<: *position-independent
