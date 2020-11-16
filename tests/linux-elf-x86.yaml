@@ -6,16 +6,15 @@ default: &default
 
   # Compilation configuration.
   build:
-    # TODO: clang, clang++
-    c: ["gcc"]
-    cpp: ["g++"]
+    c: ["gcc", "clang"]
+    cpp: ["g++", "clang++"]
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
-    flags: ["-m32"]
+    flags: ["-m32", "-fno-pie", "-no-pie"]
 
   # Reassembly configuration.
   reassemble:
     compiler: "gcc"
-    flags: ["-m32"]
+    flags: ["-m32", "-no-pie"]
     skip: false
 
   # Test configuration.
@@ -24,14 +23,21 @@ default: &default
     strip: false
     skip: false
 
-assembly: &assembly
+position-independent: &position-independent
   <<: *default
-  path: examples/asm_examples
+
+  # Compilation configuration.
   build:
     c: ["gcc"]
     cpp: ["g++"]
-    flags: ["-m32"]
-    optimizations: [""]
+    optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
+    flags: ["-m32", "-fpie"]
+
+  # Reassembly configuration.
+  reassemble:
+    compiler: "gcc"
+    flags: ["-m32", "-fpie"]
+    skip: false
 
 tests:
   # ----------------------------------------------------------------------------
@@ -40,12 +46,8 @@ tests:
   - name: ex1
     <<: *default
 
-  - name: ex_2modulesPIC
+  - name: ex_confusing_data
     <<: *default
-
-  # TODO:
-  # - name: ex_confusing_data
-  #   <<: *default
 
   # TODO:
   # - name: ex_exceptions1
@@ -96,14 +98,14 @@ tests:
   - name: ex_noreturn
     <<: *default
 
-  # TODO:
+  # TODO: clang
   # - name: ex_pointerReatribution
   #   <<: *default
 
-  # TODO:
-  # - name: ex_pointerReatribution3
-  #   <<: *default
+  - name: ex_pointerReatribution3
+    <<: *default
 
+  # TODO:
   # - name: ex_stat
   #   <<: *default
 
@@ -116,12 +118,13 @@ tests:
   - name: ex_uninitialized_data
     <<: *default
 
-  - name: ex_virtualDispatch
-    <<: *default
-    reassemble:
-      compiler: "g++"
-      flags: ["-m32"]
-      skip: false
+  # TODO:
+  # - name: ex_virtualDispatch
+  #   <<: *default
+  #   reassemble:
+  #     compiler: "g++"
+  #     flags: ["-m32"]
+  #     skip: false
 
   # TODO:
   # - name: ex_thread_local
@@ -133,3 +136,12 @@ tests:
   #   reassemble:
   #     compiler: "g++"
   #     flags: ["-m32", "-lpthread"]
+
+  # ----------------------------------------------------------------------------
+  # Small C and C++ examples.  (position indepdendent code)
+  # ----------------------------------------------------------------------------
+  - name: ex1
+    <<: *position-independent
+
+  - name: ex_2modulesPIC
+    <<: *position-independent
