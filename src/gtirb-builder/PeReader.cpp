@@ -20,6 +20,8 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include <boost/filesystem.hpp>
+namespace fs = boost::filesystem;
 
 #include "PeReader.h"
 
@@ -163,9 +165,10 @@ std::vector<ImportEntry> PeReader::importEntries()
         uint64_t ImageBase = Pe->optional_header().imagebase();
         for(auto &Entry : Import.entries())
         {
+            std::string ImportName = fs::change_extension(Import.name(), "").string();
             int64_t Ordinal = Entry.is_ordinal() ? Entry.ordinal() : -1;
             std::string Function = Entry.is_ordinal()
-                                       ? Import.name() + '@' + std::to_string(Entry.ordinal())
+                                       ? ImportName + '@' + std::to_string(Entry.ordinal())
                                        : Entry.name();
             ImportEntries.push_back(
                 {ImageBase + Entry.iat_address(), Ordinal, Function, Import.name()});
