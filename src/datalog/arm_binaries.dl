@@ -25,6 +25,10 @@ Define a set predicates to abstract from ARM specific instruction set
 and characteristics
 */
 
+// Compute an immediate load performed across two consecutive instructions
+.decl split_load(ea:address, nextea:address, dest:address, type:symbol)
+.output split_load
+
 split_load(EA, NextEA, as(Base + Offset,address), "ADD") :-
     // ADRP <Register> <Immediate>
     // e.g. adrp x0, BaseOp
@@ -64,15 +68,14 @@ pc_relative_operand(EA, 2, as(Dest,address)) :-
 pc_relative_jump(EA, as(Dest,address)):-
     split_load(EA, _, Dest, "LDR").
 
-
-symbol_prefix(ea, 1, ":got:") :-
+symbol_attribute(ea, 1, ":got:") :-
     split_load(ea, _, Dest, "LDR"),
     relocation(Dest, "GLOB_DAT", _, _).
 
-symbol_prefix(ea, 1, ":got_lo12:") :-
+symbol_attribute(ea, 1, ":got_lo12:") :-
     split_load(_, ea, Dest, "LDR"),
     relocation(Dest, "GLOB_DAT", _, _).
 
-symbol_prefix(ea, 2, ":lo12:") :-
+symbol_attribute(ea, 2, ":lo12:") :-
     split_load(_, ea, Dest, "ADD"),
     !relocation(as(Dest,address), "GLOB_DAT", _, _).
