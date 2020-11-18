@@ -45,8 +45,14 @@ public:
         DWORD = 4,
         QWORD = 8
     };
+    enum class Endianness
+    {
+        SMALL,
+        BIG
+    };
 
-    explicit DataLoader(Pointer N) : PointerSize{N} {};
+    explicit DataLoader(Pointer N, Endianness E = Endianness::SMALL)
+        : PointerSize{N}, Endianness{E} {};
     virtual ~DataLoader(){};
 
     virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program);
@@ -57,6 +63,7 @@ protected:
 
 private:
     Pointer PointerSize;
+    Endianness Endianness;
 };
 
 #endif // SRC_GTIRB_DECODER_CORE_DATALOADER_H_
