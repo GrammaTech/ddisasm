@@ -80,4 +80,3 @@ call_for_fallthru_facts(EA):-
 .decl return_for_fallthru_facts(EA:address)
 return_for_fallthru_facts(EA):-
     return(EA).
-

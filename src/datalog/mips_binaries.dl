@@ -128,4 +128,3 @@ split_load(EA, NextEA, as(Base*2^16 + Offset,address), "LUI") :-
     instruction_get_operation(NextEA, "ADDIU"),
     instruction_get_op(NextEA, 2, OffsetOp),
     op_immediate(OffsetOp, Offset).
-

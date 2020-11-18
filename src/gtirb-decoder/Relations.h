@@ -23,15 +23,15 @@
 #ifndef SRC_GTIRB_DECODER_RELATIONS_H_
 #define SRC_GTIRB_DECODER_RELATIONS_H_
 
+#include <souffle/CompiledSouffle.h>
+#include <souffle/SouffleInterface.h>
+
+#include <gtirb/gtirb.hpp>
 #include <map>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
-
-#include <souffle/CompiledSouffle.h>
-#include <souffle/SouffleInterface.h>
-#include <gtirb/gtirb.hpp>
 
 namespace relations
 {

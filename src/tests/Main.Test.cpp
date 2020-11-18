@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+
 #include "../AuxDataSchema.h"
 
 void registerTestAuxDataTypes()

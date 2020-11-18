@@ -23,10 +23,9 @@
 #ifndef SRC_GTIRB_DECODER_FORMAT_PELOADER_H_
 #define SRC_GTIRB_DECODER_FORMAT_PELOADER_H_
 
+#include <gtirb/gtirb.hpp>
 #include <string>
 #include <tuple>
-
-#include <gtirb/gtirb.hpp>
 
 #include "../CompositeLoader.h"
 #include "../Relations.h"

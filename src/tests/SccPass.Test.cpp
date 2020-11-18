@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
+
 #include <gtirb/gtirb.hpp>
+
 #include "../AuxDataSchema.h"
 #include "../passes/SccPass.h"
 

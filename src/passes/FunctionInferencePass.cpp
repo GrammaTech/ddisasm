@@ -20,6 +20,8 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include "FunctionInferencePass.h"
+
 #include <boost/uuid/uuid_generators.hpp>
 
 #include "../AuxDataSchema.h"
@@ -29,7 +31,6 @@
 #include "../gtirb-decoder/core/EdgesLoader.h"
 #include "../gtirb-decoder/core/InstructionLoader.h"
 #include "../gtirb-decoder/core/SymbolicExpressionLoader.h"
-#include "FunctionInferencePass.h"
 
 void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M)
 {

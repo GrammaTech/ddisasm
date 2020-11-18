@@ -20,12 +20,12 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#include <fstream>
+#include "DatalogProgram.h"
 
+#include <fstream>
 #include <gtirb/gtirb.hpp>
 
 #include "CompositeLoader.h"
-#include "DatalogProgram.h"
 
 std::map<DatalogProgram::Target, DatalogProgram::Factory> &DatalogProgram::loaders()
 {

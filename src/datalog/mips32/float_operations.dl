@@ -122,4 +122,3 @@ float_operation("ROUND").
 float_operation("SELEQZ").
 float_operation("SELNEZ").
 float_operation("SEL").
-

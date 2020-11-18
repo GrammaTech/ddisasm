@@ -23,9 +23,8 @@
 #ifndef SRC_GTIRB_DECODER_CORE_INSTRUCTIONLOADER_H_
 #define SRC_GTIRB_DECODER_CORE_INSTRUCTIONLOADER_H_
 
-#include <vector>
-
 #include <gtirb/gtirb.hpp>
+#include <vector>
 
 #include "../DatalogProgram.h"
 #include "../Relations.h"

@@ -24,12 +24,11 @@
 #ifndef DDISASM_INTERNALAUXDATASCHEMA_H
 #define DDISASM_INTERNALAUXDATASCHEMA_H
 
+#include <gtirb/gtirb.hpp>
 #include <map>
 #include <string>
 #include <tuple>
 #include <vector>
-
-#include <gtirb/gtirb.hpp>
 
 // A DataDirectory is a tuple of the form {Type, Address, Size}.
 using DataDirectory = std::tuple<std::string, uint64_t, uint64_t>;

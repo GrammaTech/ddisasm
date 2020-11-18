@@ -159,4 +159,3 @@ compact_branch_operation("BLTUC").
 compact_branch_operation("BOVC").
 compact_branch_operation("BNVC").
 compact_branch_operation("JC").
-

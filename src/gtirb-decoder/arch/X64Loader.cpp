@@ -21,11 +21,11 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include "X64Loader.h"
+
 #include <algorithm>
 #include <string>
 #include <vector>
-
-#include "X64Loader.h"
 
 void X64Loader::insert(const X64Facts& Facts, DatalogProgram& Program)
 {

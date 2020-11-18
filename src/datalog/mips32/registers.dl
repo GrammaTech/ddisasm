@@ -253,4 +253,3 @@ function_non_maintained_reg("RA").
 .decl pc_register(reg:register)
 
 pc_register("PC").
-

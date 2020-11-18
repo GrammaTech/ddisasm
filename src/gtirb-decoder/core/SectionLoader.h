@@ -23,11 +23,10 @@
 #ifndef SRC_GTIRB_DECODER_SECTIONLOADER_H_
 #define SRC_GTIRB_DECODER_SECTIONLOADER_H_
 
+#include <gtirb/gtirb.hpp>
 #include <optional>
 #include <string>
 #include <vector>
-
-#include <gtirb/gtirb.hpp>
 
 #include "../DatalogProgram.h"
 #include "../Relations.h"

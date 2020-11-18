@@ -24,7 +24,6 @@
 
 #include "AuxDataSchema.h"
 #include "InternalAuxDataSchema.h"
-
 #include "gtirb-decoder/DatalogProgram.h"
 #include "gtirb-decoder/target/ElfArm32Loader.h"
 #include "gtirb-decoder/target/ElfArm64Loader.h"

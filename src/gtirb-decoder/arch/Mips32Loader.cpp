@@ -21,11 +21,11 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include "Mips32Loader.h"
+
 #include <algorithm>
 #include <string>
 #include <vector>
-
-#include "Mips32Loader.h"
 
 void Mips32Loader::insert(const Mips32Facts& Facts, DatalogProgram& Program)
 {

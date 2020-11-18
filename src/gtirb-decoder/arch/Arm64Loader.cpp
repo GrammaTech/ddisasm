@@ -20,11 +20,11 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include "Arm64Loader.h"
+
 #include <algorithm>
 #include <string>
 #include <vector>
-
-#include "Arm64Loader.h"
 
 void Arm64Loader::insert(const Arm64Facts& Facts, DatalogProgram& Program)
 {

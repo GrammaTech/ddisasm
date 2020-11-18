@@ -20,11 +20,11 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include "Arm32Loader.h"
+
 #include <algorithm>
 #include <string>
 #include <vector>
-
-#include "Arm32Loader.h"
 
 void Arm32Loader::insert(const Arm32Facts& Facts, DatalogProgram& Program)
 {
