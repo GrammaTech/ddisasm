@@ -787,7 +787,7 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
         convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog);
     auto symbolMinusSymbol =
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
-    // TODO: Use the `symbolic_data_attributes' relation.
+    // TODO: Use the `symbolic_data_attribute' relation.
 
     auto dataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", prog);
     auto symbolSpecialTypes =
