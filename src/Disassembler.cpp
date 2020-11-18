@@ -592,6 +592,7 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
                             const SymbolicInfo &symbolicInfo)
 {
     gtirb::SymAttributeSet attrs = buildSymbolicExpressionAttributes(ea, index, symbolicInfo);
+
     // Symbolic expression from relocation
     if(const auto symbolicExpr =
            symbolicInfo.SymbolicExpressionsFromRelocations.find(ea + instruction.immediateOffset);

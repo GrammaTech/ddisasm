@@ -202,3 +202,17 @@ reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
     reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
 
 }
+
+
+
+symbol_attribute(EA,Index,"PltRef"):-
+    symbolic_operand(EA,Index,Dest,_),
+    plt_block(Dest,_).
+
+symbol_attribute(EA,Index,"GotRelPC"):-
+    symbolic_operand(EA,Index,Dest,_),
+    got_reference(Dest,_).
+
+symbol_attribute(EA,Index,"GotRelPC"):-
+    symbolic_operand(EA,Index,Dest,_),
+    got_local_reference(Dest,_).
