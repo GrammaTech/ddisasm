@@ -46,6 +46,9 @@ mov(EA):-
     instruction_get_operation(EA,Operation),
     move_operation(Operation).
 
+.decl store_operation(Operation:symbol)
+// For now, store_operation is only used for MIPS.
+
 /* Define all variants of a conditional move operation */
 /* CMOV is not used by arm64 */
 .decl conditional_mov(EA:address)

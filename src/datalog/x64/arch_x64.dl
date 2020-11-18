@@ -37,6 +37,9 @@ move_operation(Operation) :-
     instruction_get_operation(_, Operation),
     contains("MOV", Operation).
 
+.decl store_operation(Operation:symbol)
+// For now, store_operation is only used for MIPS.
+
 .decl conditional_mov(EA:address)
 
 conditional_mov(EA):-
