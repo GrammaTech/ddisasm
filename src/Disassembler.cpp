@@ -271,12 +271,12 @@ struct SymbolMinusSymbol
     uint64_t Scale;
 };
 
-struct SymbolicExpressionAttribute
+struct SymbolicOperandAttribute
 {
-    explicit SymbolicExpressionAttribute(gtirb::Addr A) : EA(A)
+    explicit SymbolicOperandAttribute(gtirb::Addr A) : EA(A)
     {
     }
-    explicit SymbolicExpressionAttribute(souffle::tuple &T)
+    explicit SymbolicOperandAttribute(souffle::tuple &T)
     {
         assert(T.size() == 3);
         T >> EA >> Index >> Type;
@@ -325,7 +325,7 @@ struct SymbolicInfo
     VectorByEA<MovedLabel> MovedLabels;
     VectorByEA<SymbolicExpressionNoOffset> SymbolicExpressionNoOffsets;
     VectorByEA<SymbolicExpr> SymbolicExpressionsFromRelocations;
-    VectorByEA<SymbolicExpressionAttribute> SymbolicExpressionAttributes;
+    VectorByEA<SymbolicOperandAttribute> SymbolicOperandAttributes;
 };
 
 template <typename T>
@@ -466,10 +466,9 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_
         {":got_lo12:", gtirb::SymAttribute::Part1},
         {":got:", gtirb::SymAttribute::Part2},
     };
-
     gtirb::SymAttributeSet Attributes;
 
-    auto Range = Info.SymbolicExpressionAttributes.equal_range(EA);
+    auto Range = Info.SymbolicOperandAttributes.equal_range(EA);
     while(Range.first != Range.second)
     {
         if(Range.first->Index == Index)
@@ -702,7 +701,8 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
         convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
         convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog),
         convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog),
-        convertSortedRelation<VectorByEA<SymbolicExpressionAttribute>>("symbol_attribute", prog)};
+        convertSortedRelation<VectorByEA<SymbolicOperandAttribute>>("symbolic_operand_attribute",
+                                                                    prog)};
     std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
 
     for(auto &cib : codeInBlock)
@@ -787,6 +787,7 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
         convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog);
     auto symbolMinusSymbol =
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
+    // TODO: Use the `symbolic_data_attributes' relation.
 
     auto dataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", prog);
     auto symbolSpecialTypes =

@@ -68,14 +68,14 @@ pc_relative_operand(EA, 2, as(Dest,address)) :-
 pc_relative_jump(EA, as(Dest,address)):-
     split_load(EA, _, Dest, "LDR").
 
-symbol_attribute(ea, 1, ":got:") :-
+symbolic_operand_attribute(ea, 1, ":got:") :-
     split_load(ea, _, Dest, "LDR"),
     relocation(Dest, "GLOB_DAT", _, _).
 
-symbol_attribute(ea, 1, ":got_lo12:") :-
+symbolic_operand_attribute(ea, 1, ":got_lo12:") :-
     split_load(_, ea, Dest, "LDR"),
     relocation(Dest, "GLOB_DAT", _, _).
 
-symbol_attribute(ea, 2, ":lo12:") :-
+symbolic_operand_attribute(ea, 2, ":lo12:") :-
     split_load(_, ea, Dest, "ADD"),
     !relocation(as(Dest,address), "GLOB_DAT", _, _).

@@ -274,8 +274,11 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     arch.pc_register(Reg),
     next(EA,EANext).
 
-.decl symbol_attribute(ea:address,index:unsigned,attribute:symbol)
-.output symbol_attribute
+.decl symbolic_operand_attribute(ea:address,index:unsigned,attribute:symbol)
+.output symbolic_operand_attribute
+
+.decl symbolic_data_attribute(ea:address,attribute:symbol)
+.output symbolic_data_attribute
 
 .decl instruction_has_loop_prefix(EA:address)
 
