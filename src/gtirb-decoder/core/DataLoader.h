@@ -47,11 +47,11 @@ public:
     };
     enum class Endianness
     {
-        SMALL,
+        LITTLE,
         BIG
     };
 
-    explicit DataLoader(Pointer N, Endianness E = Endianness::SMALL)
+    explicit DataLoader(Pointer N, Endianness E = Endianness::LITTLE)
         : PointerSize{N}, Endianness{E} {};
     virtual ~DataLoader(){};
 
