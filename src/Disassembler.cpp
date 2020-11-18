@@ -469,13 +469,12 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_
     gtirb::SymAttributeSet Attributes;
 
     auto Range = Info.SymbolicOperandAttributes.equal_range(EA);
-    while(Range.first != Range.second)
+    for(auto It = Range.first; It != Range.second; It++)
     {
-        if(Range.first->Index == Index)
+        if(It->Index == Index)
         {
-            Attributes.addFlag(AttributeMap.at(Range.first->Type));
+            Attributes.addFlag(AttributeMap.at(It->Type));
         }
-        ++Range.first;
     }
 
     return Attributes;
