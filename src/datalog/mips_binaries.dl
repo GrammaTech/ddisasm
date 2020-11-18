@@ -1,0 +1,131 @@
+//===- mips_binaries.dl --------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2020 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+Define a set predicates to abstract from MIPS specific instruction set
+and characteristics
+*/
+
+// e.g., sw gp, 16(sp)
+reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
+    def_used(StackFrameDefinedAt,"SP",EA,_),
+    arch.mov(EA),
+    instruction_get_dest_op(EA,_,DestOp),
+    op_indirect(DestOp,"NONE","SP","NONE",_,StackPos,_),
+    instruction_get_src_op(EA,_,SrcOp),
+    op_regdirect_contains_reg(SrcOp,Reg).
+
+// e.g., lw gp, 16(fp)
+reg_loaded_from_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
+    def_used(StackFrameDefinedAt,"FP",EA,_),
+    arch.mov(EA),
+    instruction_get_src_op(EA,_,SrcOp),
+    op_indirect(SrcOp,"NONE","FP","NONE",_,StackPos,_),
+    instruction_get_dest_op(EA,_,DestOp),
+    op_regdirect_contains_reg(DestOp,Reg).
+
+value_reg_edge(EALoad,"GP",EAPrev,"GP",1,0):-
+    reg_stored_in_stack(EAStore,"GP",StackPos,StackFrameDefinedAt),
+    reg_loaded_from_stack(EALoad,"GP",StackPos,StackFrameDefinedAt2),
+    def_used(EAPrev,"GP",EAStore,_),
+    // StackFrameDefinedAt2: move fp, sp
+    def_used(StackFrameDefinedAt,Reg_origin,StackFrameDefinedAt2,_),
+    arch.mov(StackFrameDefinedAt2),
+    instruction_get_op(StackFrameDefinedAt2,1,Op1),
+    op_regdirect_contains_reg(Op1,Reg_origin),
+    instruction_get_op(StackFrameDefinedAt2,2,Op2),
+    op_regdirect_contains_reg(Op2,Reg),
+    StackFrameDefinedAt2 != StackFrameDefinedAt.
+
+// addiu reg, zero, immediate
+value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
+    instruction(EA,_,_,"ADDIU",Op1,Op2,Op3,0,_,_),
+    op_immediate(Op2,Immediate),
+    op_regdirect_contains_reg(Op3,Reg),
+    op_regdirect_contains_reg(Op1,"ZERO").
+
+// move reg, zero
+value_reg_edge(EA,Reg,EA,"NONE",0,0):-
+    arch.move_operation(Operation),
+    instruction(EA,_,_,Operation,Op1,Op2,_,0,_,_),
+    op_regdirect(Op1,Reg),
+    op_regdirect(Op2,"ZERO").
+
+// lui reg immediate
+value_reg_edge(EA,Reg,EA,"NONE",0,Immediate*(2^16)):-
+    op_immediate_and_reg(EA,"LUI",Reg,_,Immediate).
+
+//addiu reg reg2 immediate
+value_reg_edge(EA,Reg,EA_prev,Reg2,1,Immediate):-
+    def_used(EA_prev,Reg2,EA,_),
+    instruction(EA,_,_,"ADDIU",Op1,Op2,Op3,0,_,_),
+    op_immediate(Op2,Immediate),
+    op_regdirect_contains_reg(Op3,Reg),
+    op_regdirect_contains_reg(Op1,Reg2),
+    EA != EA_prev.
+
+// load word from got table: e.g., lw v0, -32696(gp)
+value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
+    instruction(EA,_,_,"LW",Op1,Op2,0,0,_,_),
+    op_regdirect_contains_reg(Op2,Reg),
+    op_indirect(Op1,"NONE","GP","NONE",_,Offset,_),
+    def_used(EA_gp_def,"GP",EA,_),
+    value_reg(EA_gp_def,"GP",_,"NONE",_,Immediate,_),
+    Offset_addr = as(Immediate + Offset,address),
+    data_word_be(Offset_addr, Val).
+
+// e.g., lw v0, -32696(gp)
+gp_relative_operand(EA,Index,as(GpValue+Offset,address)):-
+    instruction_get_op(EA, Index, Op),
+    op_indirect(Op,"NONE","GP","NONE",1,Offset,_),
+    def_used(EA_gp_def,"GP",EA,_),
+    value_reg(EA_gp_def,"GP",_,"NONE",_,GpValue,_).
+
+gp_relative_operand(EA, 1, as(Dest,address)):-
+    split_load(EA, _, Dest, _).
+
+gp_relative_operand(EA, 2, as(Dest,address)):-
+    split_load(_, EA, Dest, _).
+
+symbol_prefix(ea, 1, "hi"):-
+    split_load(ea, _, Dest, "LUI"),
+    relocation(Dest, "HI16", _, _).
+
+symbol_prefix(ea, 2, "lo"):-
+    split_load(_, ea, Dest, "ADDIU"),
+    relocation(as(Dest,address), "LO16", _, _).
+
+split_load(EA, NextEA, as(Base*2^16 + Offset,address), "LUI") :-
+    // LUI <Register> <Immediate>
+    // e.g. lui gp, BaseOp
+    instruction_get_operation(EA, "LUI"),
+    instruction_get_op(EA, 1, BaseOp),
+    op_immediate(BaseOp, Base),
+
+    next(EA, NextEA),
+
+    // ADDIU <Register> <Register> <Immediate>
+    // e.g. addui gp, gp, <OffsetOp>
+    instruction_get_operation(NextEA, "ADDIU"),
+    instruction_get_op(NextEA, 2, OffsetOp),
+    op_immediate(OffsetOp, Offset).
+

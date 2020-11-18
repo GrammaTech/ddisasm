@@ -62,15 +62,31 @@ more points.
 .decl block_still_overlap(ea:address,ea2:address)
 .output block_still_overlap
 
+
 /////////////////////////////////////////////////////////////
 // Basic facts to define fallthrough
+//
+// NOTE: arch.return_for_fallthru_facts(EA:address)
+//       arch.conditional_jump_for_fallthru_facts(EA:address)
+//       arch.unconditional_jump_for_fallthru_facts(EA:address)
+//       arch.call_for_fallthru_facts(EA:address)
+//       arch.delay_slot(EA:address)
+// The above predicates are for handling ISAs with delay-slot feature, such as MIPS.
+// For ISAs with no delay-slot feature, the above predicates are defined as
+//       arch.return(EA:address)
+//       conditional_jump(EA:address)
+//       unconditional_jump(EA:address)
+//       instruction_get_operation(EA,Operation),call_operation(Operation)
+//       empty rule
+// respectively.
+//
 
 .decl may_fallthrough(o:address,d:address)
 
 may_fallthrough(From,To):-
     next(From,To),
-    !arch.return(From),
-    !unconditional_jump(From),
+    !arch.return_for_fallthru_facts(From),
+    !arch.unconditional_jump_for_fallthru_facts(From),
     !halt(From),
     !no_return_call(From).
 
@@ -79,12 +95,12 @@ may_fallthrough(From,To):-
 must_fallthrough(From,To):-
     may_fallthrough(From,To),
     instruction_get_operation(From,Operation),
-    !arch.call_operation(Operation),
+    !arch.call_for_fallthru_facts(From),
     !arch.syscall_operation(Operation),
     !arch.interrupt_operation(Operation),
     !instruction_has_loop_prefix(From),
-    !conditional_jump(From).
-
+    !arch.conditional_jump_for_fallthru_facts(From),
+    !arch.delay_slot(From).
 
 //////////////////////////////////////////////////////////////
 // This is a small refinement for discarding immediates as targets

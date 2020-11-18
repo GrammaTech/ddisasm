@@ -200,6 +200,7 @@ def_used(EA_def,Reg,EA_used,Index):-
 
 
 .decl def_used_for_address(EA_def:address,Reg:register)
+.output def_used_for_address
 
 def_used_for_address(EA_def,Reg):-
     def_used(EA_def,Reg,EA,Index),

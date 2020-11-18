@@ -49,7 +49,8 @@ set(DATALOG_ARM64_SOURCES
 
 set(DATALOG_MIPS32_SOURCES
     datalog/mips32/arch_mips32.dl datalog/mips32/float_operations.dl
-    datalog/mips32/jump_operations.dl datalog/mips32/registers.dl)
+    datalog/mips32/jump_operations.dl datalog/mips32/registers.dl
+    datalog/mips_binaries.dl)
 
 set(SOUFFLE_DATALOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/datalog/)
 
@@ -294,8 +295,12 @@ target_link_libraries(
   ${LIBCPP_ABI})
 
 # Now combine the static library and generated code into an executable.
-add_executable(ddisasm ${GENERATED_X64_CPP} ${GENERATED_ARM32_CPP}
-                       ${GENERATED_ARM64_CPP} ${GENERATED_MIPS32_CPP})
+add_executable(ddisasm
+               #${GENERATED_X64_CPP}
+               #${GENERATED_ARM32_CPP}
+               #${GENERATED_ARM64_CPP}
+               ${GENERATED_MIPS32_CPP}
+               )
 
 if(DDISASM_STATIC_DRIVERS)
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)

@@ -78,6 +78,7 @@ This module:
     #include "x64/arch_x64.dl"
 #elif defined(ARCH_MIPS32)
     .init arch = MIPS32
+    #include "mips_binaries.dl"
     #include "mips32/arch_mips32.dl"
 #else
     #error "Undefined architecture"
@@ -170,6 +171,24 @@ This module:
 .decl data_byte(ea:address,value:unsigned)
 .input data_byte
 
+.decl data_word_le(ea:address,value:number)
+
+data_word_le(EA, Val):-
+    data_byte(EA,Byte0),
+    data_byte(EA+1,Byte1),
+    data_byte(EA+2,Byte2),
+    data_byte(EA+3,Byte3),
+    Val = as(Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0,number).
+
+.decl data_word_be(ea:address,value:number)
+
+data_word_be(EA, Val):-
+    data_byte(EA,Byte0),
+    data_byte(EA+1,Byte1),
+    data_byte(EA+2,Byte2),
+    data_byte(EA+3,Byte3),
+    Val = as(Byte0*2^24+ Byte1*2^16 + Byte2*2^8 + Byte3,number).
+
 .decl address_in_data(ea:address,value:address)
 
 .input address_in_data
@@ -243,9 +262,20 @@ instruction_get_dest_op(EA,Index,Op):-
         Op = Op4,
         Index = 4
     ).
+
 instruction_get_dest_op(EA,1,Op):-
     instruction(EA,_,_,Operation,Op,0,0,0,_,_),
     arch.one_op_write(Operation).
+
+instruction_get_dest_op(EA,Index,Op):-
+    binary_isa("MIPS"),
+    arch.store_operation(Operation),
+    (
+        instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
+        instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
+        instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
+    ),
+    !arch.write_only_operation(Operation).
 
 .decl instruction_get_src_op(ea:address,Index:operand_index,op:operand_code)
 
@@ -264,6 +294,28 @@ instruction_get_src_op(EA,Index,Op):-
         instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
     ),
     !arch.write_only_operation(Operation).
+
+instruction_get_src_op(EA,Index,Op):-
+    binary_isa("MIPS"),
+    arch.store_operation(Operation),
+    instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
+    !arch.read_only_operation(Operation),
+    (
+        Op4 = 0,
+        Op3 = 0,
+        Op2 != 0,
+        Op = Op2,
+        Index = 2
+        ;
+        Op4 = 0,
+        Op3 != 0,
+        Op = Op3,
+        Index = 3
+        ;
+        Op4 != 0,
+        Op = Op4,
+        Index = 4
+    ).
 
 /////////////////////////////////////////////////////////////
 // inference of basic facts
@@ -290,6 +342,9 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
     arch.pc_register(Reg),
     EANext = EA - (EA band 1) +4.
+
+.decl gp_relative_operand(src:address,index:operand_index, dest:address)
+.output gp_relative_operand
 
 .decl symbol_prefix(ea:address, index:unsigned, prefix:symbol)
 .output symbol_prefix

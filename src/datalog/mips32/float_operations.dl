@@ -1,0 +1,125 @@
+//===- float_operations.dl ----------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+Define a set of floating point operations
+*/
+.decl float_operation(operation:symbol)
+
+float_operation("MOVSS").
+float_operation("CLASS").
+float_operation("CVT").
+float_operation("CEIL").
+float_operation("FLOOR").
+float_operation("MADD").
+float_operation("MADDF").
+float_operation("MADDR_Q").
+float_operation("MADDU").
+float_operation("MADDV").
+float_operation("MADD_Q").
+float_operation("NMADD").
+float_operation("MSUB").
+float_operation("MSUBF").
+float_operation("MSUBR_Q").
+float_operation("MSUBU").
+float_operation("MSUBV").
+float_operation("MSUB_Q").
+float_operation("NMSUB").
+float_operation("MAXA").
+float_operation("MAXI_S").
+float_operation("MAXI_U").
+float_operation("MAX_A").
+float_operation("MAX").
+float_operation("MAX_S").
+float_operation("MAX_U").
+float_operation("MINA").
+float_operation("MINI_S").
+float_operation("MINI_U").
+float_operation("MIN_A").
+float_operation("MIN").
+float_operation("MIN_S").
+float_operation("MIN_U").
+float_operation("MOVF").
+float_operation("MOVN").
+float_operation("MOVT").
+float_operation("MOVZ").
+float_operation("RINT").
+float_operation("ABS").
+float_operation("FADD").
+float_operation("FCAF").
+float_operation("FCEQ").
+float_operation("FCLASS").
+float_operation("FCLE").
+float_operation("FCLT").
+float_operation("FCNE").
+float_operation("FCOR").
+float_operation("FCUEQ").
+float_operation("FCULE").
+float_operation("FCULT").
+float_operation("FCUNE").
+float_operation("FCUN").
+float_operation("FDIV").
+float_operation("FEXDO").
+float_operation("FEXP2").
+float_operation("FEXUPL").
+float_operation("FEXUPR").
+float_operation("FFINT_S").
+float_operation("FFINT_U").
+float_operation("FFQL").
+float_operation("FFQR").
+float_operation("FILL").
+float_operation("FLOG2").
+float_operation("FLOOR").
+float_operation("FMADD").
+float_operation("FMAX_A").
+float_operation("FMAX").
+float_operation("FMIN_A").
+float_operation("FMIN").
+float_operation("FMSUB").
+float_operation("FMUL").
+float_operation("FRCP").
+float_operation("FRINT").
+float_operation("FRSQRT").
+float_operation("FSAF").
+float_operation("FSEQ").
+float_operation("FSLE").
+float_operation("FSLT").
+float_operation("FSNE").
+float_operation("FSOR").
+float_operation("FSQRT").
+float_operation("SQRT").
+float_operation("FSUB").
+float_operation("FSUEQ").
+float_operation("FSULE").
+float_operation("FSULT").
+float_operation("FSUNE").
+float_operation("FSUN").
+float_operation("FTINT_S").
+float_operation("FTINT_U").
+float_operation("FTQ").
+float_operation("FTRUNC_S").
+float_operation("FTRUNC_U").
+float_operation("ROUND").
+float_operation("SELEQZ").
+float_operation("SELNEZ").
+float_operation("SEL").
+

@@ -72,6 +72,9 @@ return(EA):-
     op_regdirect(Op,Reg),
     pc_register(Reg).
 
+.decl delay_slot(EA:address)
+// No rule for delay_slot
+
 .decl jump(EA:address)
 .output jump
 

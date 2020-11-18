@@ -63,3 +63,21 @@ jump_equal_operation("JZ").
 
 jump_unequal_operation("JNE").
 jump_unequal_operation("JNZ").
+
+.decl conditional_jump_for_fallthru_facts(EA:address)
+conditional_jump_for_fallthru_facts(EA):-
+    conditional_jump(EA).
+
+.decl unconditional_jump_for_fallthru_facts(EA:address)
+unconditional_jump_for_fallthru_facts(EA):-
+    unconditional_jump(EA).
+
+.decl call_for_fallthru_facts(EA:address)
+call_for_fallthru_facts(EA):-
+    instruction_get_operation(EA,Operation),
+    call_operation(Operation).
+
+.decl return_for_fallthru_facts(EA:address)
+return_for_fallthru_facts(EA):-
+    return(EA).
+

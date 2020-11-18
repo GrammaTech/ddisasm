@@ -25,14 +25,119 @@
 
 #include "jump_operations.dl"
 #include "interrupt_operations.dl"
+#include "float_operations.dl"
 #include "registers.dl"
 
 /* Define all variants of the move operation */
 .decl move_operation(Operation:symbol)
 
 move_operation("LB").
+move_operation("LBU16").
+move_operation("LBUX").
 move_operation("LBU").
-move_operation("LBI").
+move_operation("LD").
+move_operation("LDC1").
+move_operation("LDC2").
+move_operation("LDC3").
+move_operation("LDI").
+move_operation("LDL").
+move_operation("LDPC").
+move_operation("LDR").
+move_operation("LDXC1").
+move_operation("LH").
+move_operation("LHU16").
+move_operation("LHX").
+move_operation("LHU").
+move_operation("LI16").
+move_operation("LL").
+move_operation("LLD").
+move_operation("LUXC1").
+move_operation("LW").
+move_operation("LW16").
+move_operation("LWC1").
+move_operation("LWC2").
+move_operation("LWC3").
+move_operation("LWL").
+move_operation("LWM16").
+move_operation("LWM32").
+move_operation("LWPC").
+move_operation("LWP").
+move_operation("LWR").
+move_operation("LWUPC").
+move_operation("LWU").
+move_operation("LWX").
+move_operation("LWXC1").
+move_operation("LWXS").
+move_operation("LI").
+move_operation("MOV").
+move_operation("MOVE").
+move_operation("MOVEP").
+move_operation("MOVF").
+move_operation("MOVN").
+move_operation("MOVT").
+move_operation("MOVZ").
+move_operation("ST").
+move_operation("SW").
+move_operation("SW16").
+move_operation("SWC1").
+move_operation("SWC2").
+move_operation("SWC3").
+move_operation("SWL").
+move_operation("SWM16").
+move_operation("SWM32").
+move_operation("SWP").
+move_operation("SWR").
+move_operation("SWXC1").
+move_operation("SB").
+move_operation("SB16").
+move_operation("SC").
+move_operation("SCD").
+move_operation("SD").
+move_operation("SDBBP").
+move_operation("SDBBP16").
+move_operation("SDC1").
+move_operation("SDC2").
+move_operation("SDC3").
+move_operation("SDL").
+move_operation("SDR").
+move_operation("SDXC1").
+
+.decl store_operation(Operation:symbol)
+
+store_operation("ST").
+store_operation("SW").
+store_operation("SW16").
+store_operation("SWC1").
+store_operation("SWC2").
+store_operation("SWC3").
+store_operation("SWL").
+store_operation("SWM16").
+store_operation("SWM32").
+store_operation("SWP").
+store_operation("SWR").
+store_operation("SWXC1").
+store_operation("SB").
+store_operation("SB16").
+store_operation("SC").
+store_operation("SCD").
+store_operation("SD").
+store_operation("SDBBP").
+store_operation("SDBBP16").
+store_operation("SDC1").
+store_operation("SDC2").
+store_operation("SDC3").
+store_operation("SDL").
+store_operation("SDR").
+store_operation("SDXC1").
+
+.decl move_operation_conditional(Operation:symbol)
+
+move_operation_conditional("SC").
+move_operation_conditional("SCD").
+move_operation_conditional("SLT").
+move_operation_conditional("SLTI").
+move_operation_conditional("SLTIU").
+move_operation_conditional("SLTU").
 
 /* Find all addresses where a move instruction is used */
 .decl mov(EA:address)
@@ -42,6 +147,10 @@ mov(EA):-
 
 /* Define all variants of a conditional move operation */
 .decl conditional_mov(EA:address)
+
+conditional_mov(EA):-
+    instruction_get_operation(EA,Operation),
+    move_operation_conditional(Operation).
 
 .decl is_nop(EA:address)
 is_nop(EA):-
@@ -54,26 +163,231 @@ return(EA):-
     return_operation(Operation),
     instruction_get_operation(EA,Operation).
 
+// 'EA' is the EA of delay slot associated to a return_operation.
+.decl return_for_fallthru_facts(EA:address)
+
+return_for_fallthru_facts(EA):-
+    return_operation(Operation),
+    instruction_get_operation(prev_EA,Operation),
+    next(prev_EA,EA),
+    delay_slot(EA).
+
 .decl jump(EA:address)
 
 jump(EA):-
     instruction_get_operation(EA,Operation),
     jump_operation(Operation).
 
+.decl delay_slot(EA:address)
+
+delay_slot(EA):-
+    next(prev_EA, EA),
+    instruction_get_operation(prev_EA,Operation),
+    jump_operation(Operation),
+    !compact_branch_operation(Operation).
+
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
+// 'EA' is the EA of delay slot associated to a unconditional jump operation.
+// If it is a compact branch (no delay slot), EA is a unconditional jump operation.
+.decl unconditional_jump_for_fallthru_facts(EA:address)
+
+unconditional_jump_for_fallthru_facts(EA):-
+    (
+        instruction_get_operation(EA,Operation),
+        unconditional_jump_operation(Operation),
+        compact_branch_operation(Operation)
+    ),
+    (
+        delay_slot(EA),
+        next(prev_EA,EA),
+        instruction_get_operation(EA_prev,Operation),
+        unconditional_jump_operation(Operation),
+        !compact_branch_operation(Operation)
+    ).
+
+// 'EA' is the EA of delay slot associated to a conditional jump operation.
+// If it is a compact branch (no delay slot), EA is a conditional jump operation.
+.decl conditional_jump_for_fallthru_facts(EA:address)
+
+conditional_jump_for_fallthru_facts(EA):-
+    (
+        instruction_get_operation(EA,Operation),
+        !unconditional_jump_operation(Operation),
+        compact_branch_operation(Operation)
+    ),
+    (
+        delay_slot(EA),
+        next(prev_EA,EA),
+        instruction_get_operation(EA_prev,Operation),
+        jump_operation(Operation),
+        !unconditional_jump_operation(Operation),
+        !compact_branch_operation(Operation)
+    ).
+
+// 'EA' is the EA of delay slot associated to a call operation.
+// If it is a compact branch (no delay slot), EA is a call operation.
+.decl call_for_fallthru_facts(EA:address)
+
+call_for_fallthru_facts(EA):-
+    delay_slot(EA),
+    next(prev_EA,EA),
+    instruction_get_operation(EA_prev,Operation),
+    call_operation(Operation).
+
+
+// No operation
+
 .decl arithmetic_operation(Operation:symbol)
+
 arithmetic_operation("ADD").
-// TODO: Add all arithmetic operations.
+arithmetic_operation("ADDIUPC").
+arithmetic_operation("ADDIUR1SP").
+arithmetic_operation("ADDIUR2").
+arithmetic_operation("ADDIUS5").
+arithmetic_operation("ADDIUSP").
+arithmetic_operation("ADDQH").
+arithmetic_operation("ADDQH_R").
+arithmetic_operation("ADDQ").
+arithmetic_operation("ADDQ_S").
+arithmetic_operation("ADDSC").
+arithmetic_operation("ADDS_A").
+arithmetic_operation("ADDS_S").
+arithmetic_operation("ADDS_U").
+arithmetic_operation("ADDU16").
+arithmetic_operation("ADDUH").
+arithmetic_operation("ADDUH_R").
+arithmetic_operation("ADDU").
+arithmetic_operation("ADDU_S").
+arithmetic_operation("ADDVI").
+arithmetic_operation("ADDV").
+arithmetic_operation("ADDWC").
+arithmetic_operation("ADD_A").
+arithmetic_operation("ADDI").
+arithmetic_operation("ADDIU").
+arithmetic_operation("ALUIPC").
+arithmetic_operation("AUI").
+arithmetic_operation("AUIPC").
+
+arithmetic_operation("DADD").
+arithmetic_operation("DADDI").
+arithmetic_operation("DADDIU").
+arithmetic_operation("DADDIU").
+
+arithmetic_operation("LSA").
+arithmetic_operation("LUI").
+arithmetic_operation("DAUI").
+arithmetic_operation("DAHI").
+arithmetic_operation("DATI").
+arithmetic_operation("ALUIPC").
+arithmetic_operation("SUB").
+arithmetic_operation("DSUB").
+arithmetic_operation("SUBU").
+arithmetic_operation("DSUBU").
+
+// shift/rotate
+arithmetic_operation("SLL").
+arithmetic_operation("SLL16").
+arithmetic_operation("SLLI").
+arithmetic_operation("SLLV").
+arithmetic_operation("SRA").
+arithmetic_operation("SRAI").
+arithmetic_operation("SRARI").
+arithmetic_operation("SRAR").
+arithmetic_operation("SRAV").
+arithmetic_operation("SRL").
+arithmetic_operation("SRL16").
+arithmetic_operation("SRLI").
+arithmetic_operation("SRLRI").
+arithmetic_operation("SRLR").
+arithmetic_operation("SRLV").
+arithmetic_operation("ROTR").
+arithmetic_operation("ROTRV").
+arithmetic_operation("DSLL").
+arithmetic_operation("DSLL32").
+arithmetic_operation("DSLLV").
+arithmetic_operation("DSRA").
+arithmetic_operation("DSRA32").
+arithmetic_operation("DSRAv").
+arithmetic_operation("DSRL").
+arithmetic_operation("DSRL32").
+arithmetic_operation("DSRV").
+arithmetic_operation("DROTR").
+arithmetic_operation("DROTR32").
+arithmetic_operation("DROTRV").
 
 .decl multiplication_operation(Operation:symbol)
+
 multiplication_operation("MUL").
-// TODO:
+multiplication_operation("MULEQ_S").
+multiplication_operation("MULEU_S").
+multiplication_operation("MULQ_RS").
+multiplication_operation("MULQ_S").
+multiplication_operation("MULR_Q").
+multiplication_operation("MULSAQ_S").
+multiplication_operation("MULSA").
+multiplication_operation("MULT").
+multiplication_operation("MULTU").
+multiplication_operation("MULU").
+multiplication_operation("MULV").
+multiplication_operation("MUL_Q").
+multiplication_operation("MUL_S").
+multiplication_operation("DMUH").
+multiplication_operation("DMUHU").
+multiplication_operation("DMUL").
+multiplication_operation("DMULT").
+multiplication_operation("DMULTU").
+multiplication_operation("DMULU").
+
+multiplication_operation("MADD").
+multiplication_operation("MADDU").
+multiplication_operation("MSUB").
+multiplication_operation("MSUBU").
+
+arithmetic_operation("DIV").
+arithmetic_operation("DDIV").
+arithmetic_operation("DIVU").
+arithmetic_operation("DDIVU").
+
+arithmetic_operation("MOD").
+arithmetic_operation("DMOD").
+arithmetic_operation("MODU").
+arithmetic_operation("DMODU").
 
 .decl logic_operation(Operation:symbol)
+
 logic_operation("AND").
+logic_operation("AND16").
+logic_operation("ANDI16").
 logic_operation("ANDI").
-// TODO:
+logic_operation("OR").
+logic_operation("OR16").
+logic_operation("ORI").
+logic_operation("NOR").
+logic_operation("NORI").
+logic_operation("NOT16").
+logic_operation("NOT").
+logic_operation("XOR").
+logic_operation("XOR16").
+logic_operation("XORI").
+logic_operation("EXT").
+logic_operation("EXTP").
+logic_operation("EXTPDP").
+logic_operation("EXTPDPV").
+logic_operation("EXTPV").
+logic_operation("EXTRV_RS").
+logic_operation("EXTRV_R").
+logic_operation("EXTRV_S").
+logic_operation("EXTRV").
+logic_operation("EXTR_RS").
+logic_operation("EXTR_R").
+logic_operation("EXTR_S").
+logic_operation("EXTR").
+logic_operation("EXTS").
+logic_operation("EXTS32").
+logic_operation("DEXT").
+logic_operation("DEXTM").
+logic_operation("DEXTU").
 
 .decl read_only_operation(Operation:symbol)
 // TODO:
@@ -84,40 +398,66 @@ logic_operation("ANDI").
 .decl one_op_write(Operation:symbol)
 // TODO:
 
-.decl pointer_size(n:unsigned) inline
+.decl pointer_size(n:unsigned)inline
 pointer_size(4).
 
 .decl loop_prefix(prefix:symbol)
 
+// No look prefix
+
 .decl call_operation(operation:symbol)
+
+call_operation("J").
 call_operation("JAL").
+call_operation("JALS").
+call_operation("JALX").
 call_operation("JALR").
-// TODO:
+call_operation("JALRS16").
+call_operation("JALRS").
+call_operation("JIALC").
+call_operation("BALC").
+call_operation("BEQZALC").
+call_operation("BGEZAL").
+call_operation("BGEZALC").
+call_operation("BGEZALL").
+call_operation("BGEZALS").
+call_operation("BGTZALC").
+call_operation("BLEZALC").
+call_operation("BLTZAL").
+call_operation("BLTZALC").
+call_operation("BLTZALL").
+call_operation("BLTZALS").
+call_operation("BNEZALC").
 
 .decl syscall_operation(operation:symbol)
+
 syscall_operation("SYSCALL").
 
 .decl return_operation(operation:symbol)
+
 return_operation("JR").
-// TODO:
+return_operation("JR16").
+return_operation("JRADDIUSP").
 
 .decl halt_operation(operation:symbol)
-// TODO:
+
+// No halt operation
 
 .decl cmp_operation(Operation:symbol)
-// TODO:
-cmp_operation("SLT").
-cmp_operation("SLTU").
-cmp_operation("SLTI").
-cmp_operation("SLTIU").
 
-// These operations are either special like LEA (does not read memory) or
+// No cmp operation.
+// CHECK: Do we want to put the followings here?
+//cmp_operation("SLT").
+//cmp_operation("SLTU").
+//cmp_operation("SLTI").
+//cmp_operation("SLTIU").
+
+// These operations are either special like LEA (does not read memory)or
 // are not decoded corectly from capstone
 // FIXME: review this list when capstone is updated
 .decl operation_size_exception(EA:address,Op_index:operand_index,Size:unsigned)
 
 // arithmetic operation on two source registers
 .decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
-// TODO:
 
 }

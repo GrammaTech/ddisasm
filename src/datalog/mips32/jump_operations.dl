@@ -26,29 +26,137 @@ The set of jump operations in MIPS32
 
 .decl jump_operation(n:symbol)
 
-jump_operation("BEQ").
-jump_operation("BNE").
-
 jump_operation("J").
-jump_operation("JR").
 jump_operation("JAL").
 jump_operation("JALR").
-// TODO:
+jump_operation("JALRS16").
+jump_operation("JALRS").
+jump_operation("JALS").
+jump_operation("JALX").
+jump_operation("JIALC").
+jump_operation("JIC").
+jump_operation("JR").
+jump_operation("JR16").
+jump_operation("JRADDIUSP").
+jump_operation("JRC").
+jump_operation("JALRC").
+
+jump_operation("B16").
+jump_operation("BAL").
+jump_operation("BALC").
+jump_operation("BC").
+jump_operation("BC0F").
+jump_operation("BC0FL").
+jump_operation("BC0T").
+jump_operation("BC0TL").
+jump_operation("BC1EQZ").
+jump_operation("BC1F").
+jump_operation("BC1FL").
+jump_operation("BC1NEZ").
+jump_operation("BC1T").
+jump_operation("BC1TL").
+jump_operation("BC2EQZ").
+jump_operation("BC2F").
+jump_operation("BC2FL").
+jump_operation("BC2NEZ").
+jump_operation("BC2T").
+jump_operation("BC2TL").
+jump_operation("BC3F").
+jump_operation("BC3FL").
+jump_operation("BC3T").
+jump_operation("BC3TL").
+jump_operation("BEQ").
+jump_operation("BEQC").
+jump_operation("BEQL").
+jump_operation("BEQZ16").
+jump_operation("BEQZALC").
+jump_operation("BEQZC").
+jump_operation("BGEC").
+jump_operation("BGEUC").
+jump_operation("BGEZ").
+jump_operation("BGEZAL").
+jump_operation("BGEZALC").
+jump_operation("BGEZALL").
+jump_operation("BGEZALS").
+jump_operation("BGEZC").
+jump_operation("BGEZL").
+jump_operation("BGTZ").
+jump_operation("BGTZALC").
+jump_operation("BGTZC").
+jump_operation("BGTZL").
+jump_operation("BLEZ").
+jump_operation("BLEZALC").
+jump_operation("BLEZC").
+jump_operation("BLEZL").
+jump_operation("BLTC").
+jump_operation("BLTUC").
+jump_operation("BLTZ").
+jump_operation("BLTZAL").
+jump_operation("BLTZALC").
+jump_operation("BLTZALL").
+jump_operation("BLTZALS").
+jump_operation("BLTZC").
+jump_operation("BLTZL").
+jump_operation("BNE").
+jump_operation("BNEC").
+jump_operation("BNEGI").
+jump_operation("BNEG").
+jump_operation("BNEL").
+jump_operation("BNEZ16").
+jump_operation("BNEZALC").
+jump_operation("BNEZC").
+jump_operation("BNVC").
+jump_operation("BOVC").
+jump_operation("BPOSGE32").
+jump_operation("BZ").
+jump_operation("BEQZ").
+jump_operation("B").
+jump_operation("BNEZ").
+jump_operation("BTEQZ").
+jump_operation("BTNEZ").
 
 .decl unconditional_jump_operation(n:symbol)
 
 unconditional_jump_operation("J").
-unconditional_jump_operation("JR").
-unconditional_jump_operation("JAL").
-unconditional_jump_operation("JALR").
-// TODO:
+unconditional_jump_operation("JIALC").
+unconditional_jump_operation("JIC").
+unconditional_jump_operation("B").
+unconditional_jump_operation("B16").
+unconditional_jump_operation("BC").
 
 .decl jump_equal_operation(n:symbol)
 
 jump_equal_operation("BEQ").
-// TODO:
+jump_equal_operation("BEQC").
+jump_equal_operation("BEQL").
+jump_equal_operation("BEQZ16").
+jump_equal_operation("BEQZALC").
+jump_equal_operation("BEQZC").
 
 .decl jump_unequal_operation(n:symbol)
 
 jump_unequal_operation("BNE").
-// TODO:
+jump_unequal_operation("BNEC").
+jump_unequal_operation("BNEGI").
+jump_unequal_operation("BNEG").
+jump_unequal_operation("BNEL").
+jump_unequal_operation("BNEZ16").
+jump_unequal_operation("BNEZALC").
+jump_unequal_operation("BNEZC").
+
+// Compact branches don't have a delay slot.
+.decl compact_branch_operation(n:symbol)
+
+compact_branch_operation("BC").
+compact_branch_operation("BEQC").
+compact_branch_operation("BNEC").
+compact_branch_operation("BGEC").
+compact_branch_operation("BGEUC").
+compact_branch_operation("BGTC").
+compact_branch_operation("BLEC").
+compact_branch_operation("BLTC").
+compact_branch_operation("BLTUC").
+compact_branch_operation("BOVC").
+compact_branch_operation("BNVC").
+compact_branch_operation("JC").
+
