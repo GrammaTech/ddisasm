@@ -22,7 +22,15 @@
 //===----------------------------------------------------------------------===//
 #include "DataLoader.h"
 
-#include <endian.h>
+#ifdef _WIN32
+#include <windows.h>
+#define be32toh(x) _byteswap_ulong(x)
+#define le32toh(x) (x)
+
+#define be64toh(x) _byteswap_uint64(x)
+#define le64toh(x) (x)
+#endif // _WIN32
+
 #include "../../AuxDataSchema.h"
 
 void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
