@@ -100,6 +100,13 @@ gp_relative_operand(EA,Index,as(GpValue+Offset,address)):-
     def_used(EA_gp_def,"GP",EA,_),
     value_reg(EA_gp_def,"GP",_,"NONE",_,GpValue,_).
 
+got_reference(Got_entry,Symbol):-
+    symbolic_data(Got_entry,4,Dest),
+    section(".got",Size,Beg),
+    Got_entry >= Beg,
+    Got_entry < Beg+Size,
+    symbol(Dest,_,"FUNC","GLOBAL",_,Symbol).
+
 gp_relative_operand(EA, 1, as(Dest,address)):-
     split_load(EA, _, Dest, _).
 
