@@ -178,9 +178,10 @@ void ElfReader::buildSymbols()
         gtirb::Symbol *S;
 
         // Symbols with special section index do not have an address.
-        if(Index == static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)
-           || (Index >= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_LORESERVE)
-               && Index <= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)))
+        if((Index == static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)
+            || (Index >= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_LORESERVE)
+                && Index <= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)))
+           && Value == 0)
         {
             S = Module->addSymbol(*Context, Name);
         }
