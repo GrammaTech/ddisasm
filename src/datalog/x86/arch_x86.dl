@@ -250,9 +250,6 @@ symbolic_operand(EA,Imm_index,Beg,"code"):-
 //     op_immediate_and_reg(EA,"ADD",Reg,Imm_index,Offset),
 //     instruction_immediate_offset(EA,Imm_index,Imm_offset).
 
-.decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
-.output got_relative_operand
-
 // call    __x86.get_pc_thunk.ax
 // add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
 // sub     esp, 12
@@ -270,6 +267,16 @@ symbol_minus_symbol(EA+Disp_offset,4,Beg,Dest,1):-
     section(".got",_,Beg),
     got_relative_operand(EA,Index,Dest),
     instruction_displacement_offset(EA,Index,Disp_offset).
+
+symbolic_operand_attribute(EA,Index,"GotOff"):-
+    got_relative_operand(EA,Index,Dest).
+
+symbolic_operand_attribute(EA,Index,"GotRef"):-
+    got_relative_operand(EA,Index,Dest),
+    (
+      got_reference(Dest,_);
+      got_local_reference(Dest,_)
+    ).
 
 plt_entry(EA,Function):-
     plt_section(SecName),

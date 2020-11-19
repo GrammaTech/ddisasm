@@ -138,9 +138,8 @@ tests:
   - name: ex_float
     <<: *position-independent
 
-  # TODO:
-  # - name: ex_fprintf
-  #   <<: *position-independent
+  - name: ex_fprintf
+    <<: *position-independent
 
   - name: ex_getoptlong
     <<: *position-independent
@@ -164,9 +163,8 @@ tests:
   # - name: ex_pointerReatribution3
   #   <<: *position-independent
 
-  # TODO:
-  # - name: ex_stat
-  #   <<: *position-independent
+  - name: ex_stat
+    <<: *position-independent
 
   - name: ex_struct
     <<: *position-independent

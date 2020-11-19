@@ -144,7 +144,10 @@ plt_data_reference(EA):-
 //////////////////////////////////////////////////////////////////////////
 
 got_reference(Got_entry,Symbol):-
-    pc_relative_operand(_,_,Got_entry),
+    (
+      pc_relative_operand(_,_,Got_entry);
+      got_relative_operand(_,_,Got_entry)
+    ),
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
@@ -153,7 +156,10 @@ got_reference(Got_entry,Symbol):-
     symbol(_,_,_,Scope,_,Symbol), Scope != "WEAK".
 
 got_reference(Got_entry,Symbol):-
-    pc_relative_operand(_,_,Got_entry),
+    (
+      pc_relative_operand(_,_,Got_entry);
+      got_relative_operand(_,_,Got_entry)
+    ),
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
@@ -161,7 +167,10 @@ got_reference(Got_entry,Symbol):-
     symbol(Dest,_,_,_,_,Symbol).
 
 got_local_reference(Got_entry,Dest):-
-    pc_relative_operand(_,_,Got_entry),
+    (
+      pc_relative_operand(_,_,Got_entry);
+      got_relative_operand(_,_,Got_entry)
+    ),
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,

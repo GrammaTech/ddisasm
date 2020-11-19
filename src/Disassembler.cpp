@@ -464,6 +464,7 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_
         {"PltRef", gtirb::SymAttribute::PltRef},
         // FIXME: Replace these with appropriate flags when supported:
         {"TpOff", gtirb::SymAttribute::Part0},
+        {"GotOff", gtirb::SymAttribute::Part1},
         {":lo12:", gtirb::SymAttribute::Part0},
         {":got_lo12:", gtirb::SymAttribute::Part1},
     };
@@ -716,7 +717,7 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
         gtirb::Symbol *sym2 = getSymbol(context, module, gtirb::Addr(relSym->Symbol2));
 
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(
-            module, ea, DispSize, instruction.displacementOffset, 1, 0, sym2, sym1);
+            module, ea, DispSize, instruction.displacementOffset, 1, 0, sym2, sym1, attrs);
         return;
     }
 }
