@@ -183,4 +183,3 @@ split_load(EA, NextEA, as(Base*2^16 + Offset,address), "LUI") :-
     op_regdirect_contains_reg(RegOp2,Reg),
     instruction_get_op(NextEA, 2, OffsetOp),
     op_immediate(OffsetOp, Offset).
-
