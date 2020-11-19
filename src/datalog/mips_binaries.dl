@@ -216,4 +216,3 @@ symbolic_operand_attribute(ea, 2, "Part0"):-
         ;
         symbol(Dest_addr,_,_,_,_,_)
     ).
-
