@@ -167,33 +167,9 @@ got_reference(Got_entry,Symbol):-
     Got_entry < Beg+Size,
     symbol(Dest,_,"FUNC","GLOBAL",_,Symbol).
 
-gp_relative_operand(EA, 1, as(Dest,address)):-
-    split_load(EA, _, Dest, _).
-
-gp_relative_operand(EA, 2, as(Dest,address)):-
-    split_load(_, EA, Dest, _).
-
-// Hi
-symbol_operand_attribute(ea, 1, "Part1"):-
-    split_load(ea, _, Dest_addr, "LUI"),
-    (
-        data_segment(Begin,End),
-        Dest_addr >= Begin,
-        Dest_addr <= End
-        ;
-        symbol(Dest_addr,_,_,_,_,_)
-    ).
-
-// Lo
-symbol_operand_attribute(ea, 2, "Part0"):-
-    split_load(_, ea, Dest_addr, "ADDIU"),
-    (
-        data_segment(Begin,End),
-        Dest_addr >= Begin,
-        Dest_addr <= End
-        ;
-        symbol(Dest_addr,_,_,_,_,_)
-    ).
+// Compute an immediate load performed across two consecutive instructions
+.decl split_load(ea:address, nextea:address, dest:address, type:symbol)
+.output split_load
 
 split_load(EA, NextEA, as(Base*2^16 + Offset,address), "LUI") :-
     // LUI <Register> <Immediate>
@@ -213,3 +189,31 @@ split_load(EA, NextEA, as(Base*2^16 + Offset,address), "LUI") :-
     op_regdirect_contains_reg(RegOp2,Reg),
     instruction_get_op(NextEA, 2, OffsetOp),
     op_immediate(OffsetOp, Offset).
+gp_relative_operand(EA, 1, as(Dest,address)):-
+    split_load(EA, _, Dest, _).
+
+gp_relative_operand(EA, 2, as(Dest,address)):-
+    split_load(_, EA, Dest, _).
+
+// Hi
+symbolic_operand_attribute(ea, 1, "Part1"):-
+    split_load(ea, _, Dest_addr, "LUI"),
+    (
+        data_segment(Begin,End),
+        Dest_addr >= Begin,
+        Dest_addr <= End
+        ;
+        symbol(Dest_addr,_,_,_,_,_)
+    ).
+
+// Lo
+symbolic_operand_attribute(ea, 2, "Part0"):-
+    split_load(_, ea, Dest_addr, "ADDIU"),
+    (
+        data_segment(Begin,End),
+        Dest_addr >= Begin,
+        Dest_addr <= End
+        ;
+        symbol(Dest_addr,_,_,_,_,_)
+    ).
+
