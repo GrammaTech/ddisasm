@@ -1,0 +1,62 @@
+# Restrict these test cases to systems with compatible QEMU packages.
+distro:
+  name: Ubuntu
+  version: ["16.04", "18.04"]
+
+default: &default
+  path: examples
+  binary: ex
+
+  # Compilation configuration.
+  build:
+    c: ["mips-linux-gnu-gcc"]
+    cpp: ["mips-linux-gnu-g++"]
+    optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
+    flags: []
+
+  # Reassembly configuration.
+  reassemble:
+    compiler: "mips-linux-gnu-gcc"
+    flags: []
+    skip: false
+
+  # Test configuration.
+  test:
+    wrapper: "qemu-mips -L /usr/mips-linux-gnu"
+    strip: false
+    skip: false
+
+# FIXME: Remove when examples work for all optimization levels.
+zero-optimize: &zero-optimize
+  <<: *default
+  build:
+    c: ["mips-linux-gnu-gcc"]
+    cpp: ["mips-linux-gnu-g++"]
+    optimizations: ["-O0"]
+    flags: []
+
+tests:
+  - name: ex1
+    <<: *zero-optimize
+
+  # FIXME: ex_2modulesPIC
+  # FIXME: ex_confusing_data
+  # FIXME: ex_struct
+  # FIXME: ex_exceptions{1,2,3}
+  # FIXME: ex_false_pointer_array
+  # FIXME: ex_float
+  # FIXME: ex_fprintf
+  # FIXME: ex_getoptlong
+  # FIXME: ex_memberPointer
+
+  - name: ex_noreturn
+    <<: *zero-optimize
+
+  # FIXME: ex_pointerReatribution
+  # FIXME: ex_pointerReatribution2
+  # FIXME: ex_pointerReatribution3
+  # FIXME: ex_stat
+  # FIXME: ex_struct
+  # FIXME: ex_switch
+  # FIXME: ex_uninitialized_data
+  # FIXME: ex_virtualDispatch
