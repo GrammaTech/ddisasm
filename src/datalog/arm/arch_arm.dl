@@ -46,9 +46,6 @@ move_operation("MVN").
 //     instruction_get_operation(EA,Operation),
 //     contains("CMOV",Operation).
 
-.decl store_operation(Operation:symbol)
-// For now, store_operation is only used for MIPS.
-
 .decl mov(EA:address)
 
 mov(EA):-

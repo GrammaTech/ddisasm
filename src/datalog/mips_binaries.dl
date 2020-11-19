@@ -25,6 +25,36 @@ Define a set predicates to abstract from MIPS specific instruction set
 and characteristics
 */
 
+instruction_get_dest_op(EA,Index,Op):-
+    arch.store_operation(Operation),
+    (
+        instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
+        instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
+        instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
+    ),
+    !arch.write_only_operation(Operation).
+
+instruction_get_src_op(EA,Index,Op):-
+    arch.store_operation(Operation),
+    instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
+    !arch.read_only_operation(Operation),
+    (
+        Op4 = 0,
+        Op3 = 0,
+        Op2 != 0,
+        Op = Op2,
+        Index = 2
+        ;
+        Op4 = 0,
+        Op3 != 0,
+        Op = Op3,
+        Index = 3
+        ;
+        Op4 != 0,
+        Op = Op4,
+        Index = 4
+    ).
+
 // e.g., sw gp, 16(sp)
 reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
     def_used(StackFrameDefinedAt,"SP",EA,_),
@@ -113,25 +143,44 @@ gp_relative_operand(EA, 1, as(Dest,address)):-
 gp_relative_operand(EA, 2, as(Dest,address)):-
     split_load(_, EA, Dest, _).
 
-symbol_prefix(ea, 1, "hi"):-
-    split_load(ea, _, Dest, "LUI"),
-    relocation(Dest, "HI16", _, _).
+// Lo: TODO: symbol_operand_attribute
+symbol_prefix(ea, 1, "Part2"):-
+    split_load(ea, _, Dest_addr, "LUI"),
+    (
+        data_segment(Begin,End),
+        Dest_addr >= Begin,
+        Dest_addr <= End
+        ;
+        symbol(Dest_addr,_,_,_,_,_)
+    ).
 
-symbol_prefix(ea, 2, "lo"):-
-    split_load(_, ea, Dest, "ADDIU"),
-    relocation(as(Dest,address), "LO16", _, _).
+// Hi: TODO: symbol_operand_attribute
+symbol_prefix(ea, 2, "Part0"):-
+    split_load(_, ea, Dest_addr, "ADDIU"),
+    (
+        data_segment(Begin,End),
+        Dest_addr >= Begin,
+        Dest_addr <= End
+        ;
+        symbol(Dest_addr,_,_,_,_,_)
+    ).
 
 split_load(EA, NextEA, as(Base*2^16 + Offset,address), "LUI") :-
     // LUI <Register> <Immediate>
-    // e.g. lui gp, BaseOp
+    // e.g. lui reg, BaseOp
     instruction_get_operation(EA, "LUI"),
     instruction_get_op(EA, 1, BaseOp),
+    instruction_get_op(EA, 2, RegOp),
     op_immediate(BaseOp, Base),
+    op_regdirect_contains_reg(RegOp,Reg),
 
     next(EA, NextEA),
 
     // ADDIU <Register> <Register> <Immediate>
-    // e.g. addui gp, gp, <OffsetOp>
+    // e.g. addui reg2, reg, <OffsetOp>
     instruction_get_operation(NextEA, "ADDIU"),
+    instruction_get_op(NextEA, 1, RegOp2),
+    op_regdirect_contains_reg(RegOp2,Reg),
     instruction_get_op(NextEA, 2, OffsetOp),
     op_immediate(OffsetOp, Offset).
+

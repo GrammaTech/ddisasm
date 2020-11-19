@@ -267,16 +267,6 @@ instruction_get_dest_op(EA,1,Op):-
     instruction(EA,_,_,Operation,Op,0,0,0,_,_),
     arch.one_op_write(Operation).
 
-instruction_get_dest_op(EA,Index,Op):-
-    binary_isa("MIPS"),
-    arch.store_operation(Operation),
-    (
-        instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
-        instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
-        instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
-    ),
-    !arch.write_only_operation(Operation).
-
 .decl instruction_get_src_op(ea:address,Index:operand_index,op:operand_code)
 
 //when the dest is used as a source as well
@@ -295,27 +285,6 @@ instruction_get_src_op(EA,Index,Op):-
     ),
     !arch.write_only_operation(Operation).
 
-instruction_get_src_op(EA,Index,Op):-
-    binary_isa("MIPS"),
-    arch.store_operation(Operation),
-    instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
-    !arch.read_only_operation(Operation),
-    (
-        Op4 = 0,
-        Op3 = 0,
-        Op2 != 0,
-        Op = Op2,
-        Index = 2
-        ;
-        Op4 = 0,
-        Op3 != 0,
-        Op = Op3,
-        Index = 3
-        ;
-        Op4 != 0,
-        Op = Op4,
-        Index = 4
-    ).
 
 /////////////////////////////////////////////////////////////
 // inference of basic facts

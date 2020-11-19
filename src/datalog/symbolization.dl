@@ -130,6 +130,9 @@ symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
         data_segment(Begin,End),
         Dest_addr >= Begin, Dest_addr <= End,
         Type = "data"
+        ;
+        symbol(Dest_addr,_,_,_,_,_),
+        Type = "data"
     ).
 
 // Deal with pie and relocatable code
