@@ -258,8 +258,9 @@ symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-.decl tls_segment(End:address,Align:unsigned)
-tls_segment(End,Align):-
+.decl tls_segment(Start:address,End:address,Align:unsigned)
+tls_segment(Start,End,Align):-
+    Start = min EA:{ tls_section(Name), section(Name,_,Addr), EA=Addr },
     End = max EA:{ tls_section(Name), section(Name,Size,Addr), EA=Addr+Size },
     Align = max X:{ tls_section(Name), section_complete(Name,_,_,_,_,X) }.
 
@@ -269,7 +270,7 @@ tls_segment(End,Align):-
 symbolic_operand_candidate(EA,Index,as(Reference+Offset,address),"data"):-
     instruction_get_op(EA,Index,Op),
     op_indirect(Op,"FS","NONE","NONE",_,Offset,_), Offset < 0,
-    tls_segment(TlsEnd,Align),
+    tls_segment(_,TlsEnd,Align),
     Reference = as(TlsEnd,number) + as(TlsEnd % max(Align,1),number).
 
 //   e.g.  mov	rax, qword ptr fs:[0]
@@ -280,5 +281,5 @@ symbolic_operand_candidate(EA_used,Index,as(Reference+Offset,address),"data"):-
     def_used(EA_def,_,EA_used,Index),
     instruction_get_op(EA_used,Index,Op_used),
     op_indirect(Op_used,"NONE",_,_,_,Offset,_), Offset < 0,
-    tls_segment(TlsEnd,Align),
+    tls_segment(_,TlsEnd,Align),
     Reference = as(TlsEnd,number) + as(TlsEnd % max(Align,1),number).

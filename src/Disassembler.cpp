@@ -462,6 +462,7 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_
         {"GotPageOfst", gtirb::SymAttribute::GotPageOfst},
         {"PltRef", gtirb::SymAttribute::PltRef},
         // FIXME: Replace these with appropriate flags when supported:
+        {"TpOff", gtirb::SymAttribute::Part0},
         {":lo12:", gtirb::SymAttribute::Part0},
         {":got_lo12:", gtirb::SymAttribute::Part1},
     };
