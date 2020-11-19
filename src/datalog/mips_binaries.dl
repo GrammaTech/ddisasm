@@ -32,10 +32,10 @@ instruction_get_dest_op(EA,Index,Op):-
         instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
         instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
     ),
-    !arch.write_only_operation(Operation).
+    !arch.read_only_operation(Operation).
 
-instruction_get_src_op(EA,Index,Op):-
-    arch.store_operation(Operation),
+instruction_get_dest_op(EA,Index,Op):-
+    !arch.store_operation(Operation),
     instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
     !arch.read_only_operation(Operation),
     (
@@ -54,6 +54,36 @@ instruction_get_src_op(EA,Index,Op):-
         Op = Op4,
         Index = 4
     ).
+
+instruction_get_src_op(EA,Index,Op):-
+    arch.store_operation(Operation),
+    instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
+    !arch.write_only_operation(Operation),
+    (
+        Op4 = 0,
+        Op3 = 0,
+        Op2 != 0,
+        Op = Op2,
+        Index = 2
+        ;
+        Op4 = 0,
+        Op3 != 0,
+        Op = Op3,
+        Index = 3
+        ;
+        Op4 != 0,
+        Op = Op4,
+        Index = 4
+    ).
+
+instruction_get_src_op(EA,Index,Op):-
+    !arch.store_operation(Operation),
+    (
+        instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
+        instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
+        instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
+    ),
+    !arch.write_only_operation(Operation).
 
 // e.g., sw gp, 16(sp)
 reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
@@ -144,7 +174,7 @@ gp_relative_operand(EA, 2, as(Dest,address)):-
     split_load(_, EA, Dest, _).
 
 // Lo: TODO: symbol_operand_attribute
-symbol_prefix(ea, 1, "Part2"):-
+symbol_prefix(ea, 1, "Part1"):-
     split_load(ea, _, Dest_addr, "LUI"),
     (
         data_segment(Begin,End),
