@@ -318,13 +318,8 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
 .decl gp_relative_operand(src:address,index:operand_index, dest:address)
 .output gp_relative_operand
 
-.decl symbol_prefix(ea:address, index:unsigned, prefix:symbol)
-.output symbol_prefix
-
-// Compute an immediate load performed across two consecutive instructions
-.decl split_load(ea:address, nextea:address, dest:address, type:symbol)
-.output split_load
-
+.decl symbolic_operand_attribute(ea:address,index:unsigned,attribute:symbol)
+.output symbolic_operand_attribute
 
 .decl instruction_has_loop_prefix(EA:address)
 

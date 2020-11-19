@@ -173,8 +173,8 @@ gp_relative_operand(EA, 1, as(Dest,address)):-
 gp_relative_operand(EA, 2, as(Dest,address)):-
     split_load(_, EA, Dest, _).
 
-// Lo: TODO: symbol_operand_attribute
-symbol_prefix(ea, 1, "Part1"):-
+// Hi
+symbol_operand_attribute(ea, 1, "Part1"):-
     split_load(ea, _, Dest_addr, "LUI"),
     (
         data_segment(Begin,End),
@@ -184,8 +184,8 @@ symbol_prefix(ea, 1, "Part1"):-
         symbol(Dest_addr,_,_,_,_,_)
     ).
 
-// Hi: TODO: symbol_operand_attribute
-symbol_prefix(ea, 2, "Part0"):-
+// Lo
+symbol_operand_attribute(ea, 2, "Part0"):-
     split_load(_, ea, Dest_addr, "ADDIU"),
     (
         data_segment(Begin,End),

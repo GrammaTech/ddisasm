@@ -165,31 +165,36 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    gtirb::Module &Module = *(IR->modules().begin());
-
-    // Core of new code - functional analysis only
-    std::cout << "Computing intra-procedural SCCs " << std::flush;
-    auto StartSCCsComputation = std::chrono::high_resolution_clock::now();
-    computeSCCs(Module);
-    printElapsedTimeSince(StartSCCsComputation);
-
-    unsigned int NThreads = vm["threads"].as<unsigned int>();
-    std::cout << "Computing no return analysis " << std::flush;
-    NoReturnPass NoReturn;
-    FunctionInferencePass FunctionInference;
-    if(vm.count("debug-dir") != 0)
+    for(auto Module = IR->modules_begin(); Module != IR->modules_end(); ++Module)
     {
-        NoReturn.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
-        FunctionInference.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
-    }
-    auto StartNoReturnAnalysis = std::chrono::high_resolution_clock::now();
-    NoReturn.computeNoReturn(Module, NThreads);
-    printElapsedTimeSince(StartNoReturnAnalysis);
+        // Core of new code - functional analysis only
+        gtirb::Module &CurrModule = *Module;
 
-    std::cout << "Detecting additional functions " << std::flush;
-    auto StartFunctionAnalysis = std::chrono::high_resolution_clock::now();
-    FunctionInference.computeFunctions(Context, Module, NThreads);
-    printElapsedTimeSince(StartFunctionAnalysis);
+        std::cout << "Processing module " << CurrModule.getName() << std::endl;
+
+        std::cout << "Computing intra-procedural SCCs " << std::flush;
+        auto StartSCCsComputation = std::chrono::high_resolution_clock::now();
+        computeSCCs(CurrModule);
+        printElapsedTimeSince(StartSCCsComputation);
+
+        unsigned int NThreads = vm["threads"].as<unsigned int>();
+        std::cout << "Computing no return analysis " << std::flush;
+        NoReturnPass NoReturn;
+        FunctionInferencePass FunctionInference;
+        if(vm.count("debug-dir") != 0)
+        {
+            NoReturn.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
+            FunctionInference.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
+        }
+        auto StartNoReturnAnalysis = std::chrono::high_resolution_clock::now();
+        NoReturn.computeNoReturn(CurrModule, NThreads);
+        printElapsedTimeSince(StartNoReturnAnalysis);
+
+        std::cout << "Detecting additional functions " << std::flush;
+        auto StartFunctionAnalysis = std::chrono::high_resolution_clock::now();
+        FunctionInference.computeFunctions(Context, CurrModule, NThreads);
+        printElapsedTimeSince(StartFunctionAnalysis);
+    }
 
     // Output GTIRB
     if(vm.count("ir") != 0)

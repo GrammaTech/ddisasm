@@ -1,7 +1,11 @@
+# 1.3.0
+
+* Populate GTIRB symbolic expression attributes.
 * Update to souffle 2.0.2.
 * Populate all allocated ELF sections.
 
 # 1.2.0
+
 * Register value analysis can track values through the stack.
 * Refactor `gtirb-decoder` for more versatile loading of GTIRB.
 

@@ -272,19 +272,18 @@ struct SymbolMinusSymbol
     uint64_t Scale;
 };
 
-struct SplitLoad
+struct SymbolicOperandAttribute
 {
-    explicit SplitLoad(gtirb::Addr ea) : EA(ea)
+    explicit SymbolicOperandAttribute(gtirb::Addr A) : EA(A)
     {
     }
-    explicit SplitLoad(souffle::tuple &tuple)
+    explicit SymbolicOperandAttribute(souffle::tuple &T)
     {
-        assert(tuple.size() == 4);
-        tuple >> EA >> NextEA >> Dest >> Type;
+        assert(T.size() == 3);
+        T >> EA >> Index >> Type;
     }
     gtirb::Addr EA{0};
-    gtirb::Addr NextEA{0};
-    uint64_t Dest{0};
+    uint64_t Index{0};
     std::string Type{"NONE"};
 };
 
@@ -328,6 +327,7 @@ struct SymbolicInfo
     VectorByEA<SymbolicExpressionNoOffset> SymbolicExpressionNoOffsets;
     VectorByEA<SymbolicExpr> SymbolicExpressionsFromRelocations;
     VectorByEA<SymbolMinusSymbol> SymbolicBaseMinusConst;
+    VectorByEA<SymbolicOperandAttribute> SymbolicOperandAttributes;
 };
 
 template <typename T>
@@ -448,20 +448,38 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
     module.addAuxData<gtirb::schema::SymbolForwarding>(std::move(symbolForwarding));
 }
 
-// Build the AD table for symbolic operand information
-void buildSymbolicOperandInfo(gtirb::Context & /* context */, gtirb::Module &module,
-                              souffle::SouffleProgram *prog)
+gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_t Index,
+                                                         const SymbolicInfo &Info)
 {
-    std::map<gtirb::Addr, std::tuple<uint64_t, std::string>> res;
-    for(auto &output : *prog->getRelation("symbol_prefix"))
+    const static std::map<std::string, gtirb::SymAttribute> AttributeMap = {
+        {"Part0", gtirb::SymAttribute::Part0},
+        {"Part1", gtirb::SymAttribute::Part1},
+        {"Part2", gtirb::SymAttribute::Part2},
+        {"Part3", gtirb::SymAttribute::Part3},
+        {"GotRef", gtirb::SymAttribute::GotRef},
+        {"GotRelPC", gtirb::SymAttribute::GotRelPC},
+        {"GotRelGot", gtirb::SymAttribute::GotRelGot},
+        {"GotRelAddr", gtirb::SymAttribute::GotRelAddr},
+        {"GotPage", gtirb::SymAttribute::GotPage},
+        {"GotPageOfst", gtirb::SymAttribute::GotPageOfst},
+        {"PltRef", gtirb::SymAttribute::PltRef},
+        // FIXME: Replace these with appropriate flags when supported:
+        {"TpOff", gtirb::SymAttribute::Part0},
+        {":lo12:", gtirb::SymAttribute::Part0},
+        {":got_lo12:", gtirb::SymAttribute::Part1},
+    };
+    gtirb::SymAttributeSet Attributes;
+
+    auto Range = Info.SymbolicOperandAttributes.equal_range(EA);
+    for(auto It = Range.first; It != Range.second; It++)
     {
-        gtirb::Addr ea;
-        uint64_t index;
-        std::string prefix;
-        output >> ea >> index >> prefix;
-        res[ea] = std::tuple(index, prefix);
+        if(It->Index == Index)
+        {
+            Attributes.addFlag(AttributeMap.at(It->Type));
+        }
     }
-    module.addAuxData<gtirb::schema::SymbolicOperandInfoAD>(std::move(res));
+
+    return Attributes;
 }
 
 bool isNullReg(const std::string &reg)
@@ -578,6 +596,8 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
                             const DecodedInstruction &instruction, uint64_t index, ImmOp &immediate,
                             const SymbolicInfo &symbolicInfo)
 {
+    gtirb::SymAttributeSet attrs = buildSymbolicExpressionAttributes(ea, index, symbolicInfo);
+
     // Symbolic expression from relocation
     if(const auto symbolicExpr =
            symbolicInfo.SymbolicExpressionsFromRelocations.find(ea + instruction.immediateOffset);
@@ -589,7 +609,7 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
             // FIXME: We need to handle overlapping sections here.
             addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
                 module, ea, symbolicExpr->Size, instruction.immediateOffset, symbolicExpr->Addend,
-                &*foundSymbol.begin());
+                &*foundSymbol.begin(), attrs);
             return;
         }
     }
@@ -605,7 +625,7 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
         auto sym = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
             module, ea, instruction.Size - instruction.immediateOffset, instruction.immediateOffset,
-            diff, sym);
+            diff, sym, attrs);
         return;
     }
     // Symbol+0 case
@@ -618,7 +638,7 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
         auto sym = getSymbol(context, module, gtirb::Addr(symOp->Dest));
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
             module, ea, instruction.Size - instruction.immediateOffset, instruction.immediateOffset,
-            0, sym);
+            0, sym, attrs);
         return;
     }
 }
@@ -636,6 +656,8 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
         DispSize = Imm > Disp ? Imm - Disp : Size - Disp;
     }
 
+    gtirb::SymAttributeSet attrs = buildSymbolicExpressionAttributes(ea, index, symbolicInfo);
+
     // Symbolic expression form relocation
     if(const auto symbolicExpr = symbolicInfo.SymbolicExpressionsFromRelocations.find(
            ea + instruction.displacementOffset);
@@ -646,7 +668,7 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
         {
             addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
                 module, ea, symbolicExpr->Size, instruction.displacementOffset,
-                symbolicExpr->Addend, &*foundSymbol.begin());
+                symbolicExpr->Addend, &*foundSymbol.begin(), attrs);
             return;
         }
     }
@@ -688,7 +710,7 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
         auto diff = movedLabel->Address1 - movedLabel->Address2;
         auto sym = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-            module, ea, DispSize, instruction.displacementOffset, diff, sym);
+            module, ea, DispSize, instruction.displacementOffset, diff, sym, attrs);
         return;
     }
     // Symbol+0 case
@@ -700,7 +722,7 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
     {
         auto sym = getSymbol(context, module, gtirb::Addr(SymbolicExpr->Dest));
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-            module, ea, DispSize, instruction.displacementOffset, 0, sym);
+            module, ea, DispSize, instruction.displacementOffset, 0, sym, attrs);
         return;
     }
 }
@@ -713,8 +735,9 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
         convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
         convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog),
         convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog),
-        convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog)};
-    auto splitLoad = convertSortedRelation<VectorByEA<SplitLoad>>("split_load", prog);
+        convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog),
+        convertSortedRelation<VectorByEA<SymbolicOperandAttribute>>("symbolic_operand_attribute",
+                                                                    prog)};
     std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
 
     for(auto &cib : codeInBlock)
@@ -729,20 +752,6 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
             if(std::get_if<IndirectOp>(&op.second))
                 buildSymbolicIndirect(context, module, inst->first, inst->second, op.first,
                                       symbolicInfo);
-        }
-        for(auto &Load : splitLoad)
-        {
-            ImmOp dest = Load.Dest;
-            if(Load.EA == inst->first)
-            {
-                buildSymbolicImmediate(context, module, inst->first, inst->second, 1, dest,
-                                       symbolicInfo);
-            }
-            if(Load.NextEA == inst->first)
-            {
-                buildSymbolicImmediate(context, module, inst->first, inst->second, 2, dest,
-                                       symbolicInfo);
-            }
         }
     }
 }
@@ -1434,7 +1443,6 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
 {
     buildInferredSymbols(context, module, prog);
     buildSymbolForwarding(context, module, prog);
-    buildSymbolicOperandInfo(context, module, prog);
     buildCodeBlocks(context, module, prog);
     buildDataBlocks(context, module, prog);
     buildCodeSymbolicInformation(context, module, prog);
