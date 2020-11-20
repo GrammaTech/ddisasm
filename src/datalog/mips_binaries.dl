@@ -189,6 +189,7 @@ split_load(EA, NextEA, as(Base*2^16 + Offset,address), "LUI") :-
     op_regdirect_contains_reg(RegOp2,Reg),
     instruction_get_op(NextEA, 2, OffsetOp),
     op_immediate(OffsetOp, Offset).
+
 gp_relative_operand(EA, 1, as(Dest,address)):-
     split_load(EA, _, Dest, _).
 
@@ -208,7 +209,7 @@ symbolic_operand_attribute(ea, 1, "Part1"):-
 
 // Lo
 symbolic_operand_attribute(ea, 2, "Part0"):-
-    split_load(_, ea, Dest_addr, "ADDIU"),
+    split_load(_, ea, Dest_addr, "LUI"),
     (
         data_segment(Begin,End),
         Dest_addr >= Begin,
@@ -216,3 +217,32 @@ symbolic_operand_attribute(ea, 2, "Part0"):-
         ;
         symbol(Dest_addr,_,_,_,_,_)
     ).
+
+// E.g., lw t9, %call16(puts)(gp)
+symbolic_operand_attribute(EA,Index,"AddrRelGot"):-
+    gp_relative_operand(EA,Index,Dest_addr),
+    section(".got",Size,Beg),
+    Dest_addr >= Beg,
+    Dest_addr < Beg+Size.
+
+symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
+  binary_type("EXEC"),
+    code(EA),
+    instruction_get_op(EA,Op_index,Op),
+    gp_relative_operand(EA,Op_index,Dest_addr),
+    (
+        code(Dest_addr), Type="code"
+        ;
+        data_segment(Begin,End),
+        Dest_addr >= Begin, Dest_addr <= End,
+        Type = "data"
+        ;
+        symbol(Dest_addr,_,_,_,_,_),
+        Type = "data"
+    ).
+
+symbolic_operand_point(EA,Op_index,1,"lookup-got"):-
+    symbolic_operand_candidate(EA,Op_index,_,_),
+    instruction_get_op(EA,Op_index,Op),
+    op_indirect(Op,"NONE","GP","NONE",1,Offset,_),
+    def_used_for_address(EA,_).

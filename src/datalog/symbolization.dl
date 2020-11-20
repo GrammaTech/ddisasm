@@ -118,8 +118,6 @@ symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
         ;
         pc_relative_operand(EA,Op_index,Dest_addr)
         ;
-        gp_relative_operand(EA,Op_index,Dest_addr)
-        ;
         op_indirect(Op,_,_,_,_,Dest,_),
         Dest_addr = as(Dest,address),
         !pc_relative_operand(EA,Op_index,_)
@@ -225,13 +223,6 @@ symbolic_operand_point(EA,Op_index,1,"used-for-address"):-
     symbolic_operand_candidate(EA,Op_index,_,_),
     instruction_get_op(EA,Op_index,Op),
     op_immediate(Op,_),
-    def_used_for_address(EA,_).
-
-symbolic_operand_point(EA,Op_index,1,"lookup-got"):-
-    binary_isa("MIPS"),
-    symbolic_operand_candidate(EA,Op_index,_,_),
-    instruction_get_op(EA,Op_index,Op),
-    op_indirect(Op,"NONE","GP","NONE",1,Offset,_),
     def_used_for_address(EA,_).
 
 symbolic_operand_total_points(EA,Operand,Points):-

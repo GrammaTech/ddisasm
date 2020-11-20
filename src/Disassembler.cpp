@@ -456,6 +456,7 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_
         {"Part1", gtirb::SymAttribute::Part1},
         {"Part2", gtirb::SymAttribute::Part2},
         {"Part3", gtirb::SymAttribute::Part3},
+        {"AddrRelGot", gtirb::SymAttribute::AddrRelGot},
         {"GotRef", gtirb::SymAttribute::GotRef},
         {"GotRelPC", gtirb::SymAttribute::GotRelPC},
         {"GotRelGot", gtirb::SymAttribute::GotRelGot},
