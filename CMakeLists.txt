@@ -141,7 +141,7 @@ find_package(gtirb 1.9.1 REQUIRED)
 # pretty-printer
 # ---------------------------------------------------------------------------
 find_package(gtirb_pprinter 1.4.0 REQUIRED)
-check_gtirb_pprinter_branch(windows-support)
+check_gtirb_pprinter_branch(mips)
 
 # ---------------------------------------------------------------------------
 # libehp
