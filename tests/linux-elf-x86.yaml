@@ -114,7 +114,7 @@ tests:
   #     flags: ["-m32", "-lpthread"]
 
   # ----------------------------------------------------------------------------
-  # Small C and C++ examples.  (position indepdendent code)
+  # Small C and C++ examples.  (position independent code)
   # ----------------------------------------------------------------------------
   - name: ex1
     <<: *position-independent
@@ -122,18 +122,16 @@ tests:
   - name: ex_2modulesPIC
     <<: *position-independent
 
-  # TODO:
-  # - name: ex_confusing_data
-  #   <<: *position-independent
+  - name: ex_confusing_data
+    <<: *position-independent
 
   # TODO:
   # ex_exceptions1
   # ex_exceptions2
   # ex_exceptions3
 
-  # TODO:
-  # - name: ex_false_pointer_array
-  #   <<: *position-independent
+  - name: ex_false_pointer_array
+    <<: *position-independent
 
   - name: ex_float
     <<: *position-independent
