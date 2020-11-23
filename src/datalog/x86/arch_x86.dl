@@ -259,7 +259,7 @@ got_relative_operand(EA,Index,Dest):-
     reg_has_got(EA_base,Reg),
     def_used(EA_base,Reg,EA,Index),
     instruction_get_op(EA,Index,Op),
-    op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
+    op_indirect(Op,"NONE",Reg,_,_,Offset,_),
     section(".got",_,Beg),
     Dest=Beg+as(Offset,address).
 
