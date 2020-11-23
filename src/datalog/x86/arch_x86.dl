@@ -250,16 +250,22 @@ symbolic_operand(EA,Imm_index,Beg,"code"):-
 //     op_immediate_and_reg(EA,"ADD",Reg,Imm_index,Offset),
 //     instruction_immediate_offset(EA,Imm_index,Imm_offset).
 
-// call    __x86.get_pc_thunk.ax
-// add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
-// sub     esp, 12
-// lea     edx, .LC0@GOTOFF[eax]
-//              ^^^^^^^^^^^^^^^^
+// GOT-relative references consist of load of the GOT pointer to register:
+//     call    __x86.get_pc_thunk.ax
+//     add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
+//
+// Followed by a use of the register, like these:
+//     lea     edx, .LC0@GOTOFF[eax]
+//     movzx	 eax, WORD PTR array@GOTOFF[ebx+eax*2]
+//     movsx	 eax, BYTE PTR array@GOTOFF[esi+ebx]
 got_relative_operand(EA,Index,Dest):-
     reg_has_got(EA_base,Reg),
     def_used(EA_base,Reg,EA,Index),
     instruction_get_op(EA,Index,Op),
-    op_indirect(Op,"NONE",Reg,_,_,Offset,_),
+    (
+      op_indirect(Op,"NONE",Reg,_,_,Offset,_);
+      op_indirect(Op,"NONE",_,Reg,1,Offset,_)
+    ),
     section(".got",_,Beg),
     Dest=Beg+as(Offset,address).
 
