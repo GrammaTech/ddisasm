@@ -253,7 +253,6 @@ symbolic_operand(EA,Imm_index,Beg,"code"):-
 // GOT-relative references consist of load of the GOT pointer to register:
 //     call    __x86.get_pc_thunk.ax
 //     add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
-//
 // Followed by a use of the register, like these:
 //     lea     edx, .LC0@GOTOFF[eax]
 //     movzx	 eax, WORD PTR array@GOTOFF[ebx+eax*2]
