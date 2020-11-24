@@ -39,6 +39,7 @@ protected:
     void buildSymbols() override;
     void addEntryBlock() override;
     void addAuxData() override;
+    void Resources();
 
     std::vector<ImportEntry> importEntries();
     std::vector<ExportEntry> exportEntries();
