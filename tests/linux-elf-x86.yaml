@@ -76,9 +76,8 @@ tests:
   - name: ex_noreturn
     <<: *default
 
-  # TODO: clang
-  # - name: ex_pointerReatribution
-  #   <<: *default
+  - name: ex_pointerReatribution
+    <<: *default
 
   - name: ex_pointerReatribution3
     <<: *default
@@ -153,9 +152,8 @@ tests:
     <<: *default
     <<: *position-independent
 
-  # TODO: clang
-  # - name: ex_pointerReatribution
-  #   <<: *position-independent
+  - name: ex_pointerReatribution
+    <<: *position-independent
 
   # TODO:
   # - name: ex_pointerReatribution3

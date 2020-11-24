@@ -96,3 +96,7 @@ arch.function_non_maintained_reg("RSI"):-
 .decl pc_register(reg:register)
 
 pc_register("RIP").
+
+.decl stack_base_register(reg:register)
+
+stack_base_register("RBP").

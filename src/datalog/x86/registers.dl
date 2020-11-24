@@ -61,3 +61,7 @@ function_non_maintained_reg("EDX").
 .decl pc_register(reg:register)
 
 pc_register("EIP").
+
+.decl stack_base_register(reg:register)
+
+stack_base_register("EBP").

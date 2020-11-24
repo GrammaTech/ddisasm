@@ -75,10 +75,11 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
 .output reg_stored_in_stack
 
 reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
-    def_used(StackFrameDefinedAt,"RBP",EA,_),
+    arch.stack_base_register(BaseReg),
+    def_used(StackFrameDefinedAt,BaseReg,EA,_),
     arch.mov(EA),
     instruction_get_dest_op(EA,_,DestOp),
-    op_indirect(DestOp,"NONE","RBP","NONE",_,StackPos,_),
+    op_indirect(DestOp,"NONE",BaseReg,"NONE",_,StackPos,_),
     instruction_get_src_op(EA,_,SrcOp),
     op_regdirect_contains_reg(SrcOp,Reg).
 
@@ -87,10 +88,11 @@ reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
 .output reg_loaded_from_stack
 
 reg_loaded_from_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
-    def_used(StackFrameDefinedAt,"RBP",EA,_),
+    arch.stack_base_register(BaseReg),
+    def_used(StackFrameDefinedAt,BaseReg,EA,_),
     arch.mov(EA),
     instruction_get_src_op(EA,_,SrcOp),
-    op_indirect(SrcOp,"NONE","RBP","NONE",_,StackPos,_),
+    op_indirect(SrcOp,"NONE",BaseReg,"NONE",_,StackPos,_),
     instruction_get_dest_op(EA,_,DestOp),
     op_regdirect_contains_reg(DestOp,Reg).
 

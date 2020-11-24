@@ -237,6 +237,14 @@ reg_has_got(EA,Reg):-
     section(".got",_,Beg),
     Beg=EA+as(Offset,address).
 
+reg_has_got(EA_load,Reg_load):-
+  // Store GOT pointer
+  reg_has_got(EA,Reg_store),
+  def_used(EA,Reg_store,EA_store,_),
+  reg_stored_in_stack(EA_store,Reg_store,StackPos,StackFrame),
+  // Load GOT pointer
+  reg_loaded_from_stack(EA_load,Reg_load,StackPos,StackFrame).
+
 // TODO: Maybe just use the "magic" symbol by name?
 inferred_symbol_name(Beg,"_GLOBAL_OFFSET_TABLE_","DEFAULT"),
 symbolic_operand(EA,Imm_index,Beg,"code"):-
@@ -250,10 +258,10 @@ symbolic_operand(EA,Imm_index,Beg,"code"):-
 //     op_immediate_and_reg(EA,"ADD",Reg,Imm_index,Offset),
 //     instruction_immediate_offset(EA,Imm_index,Imm_offset).
 
-// GOT-relative references consist of load of the GOT pointer to register:
+// GOT-relative references consist of a load of the GOT pointer to a register:
 //     call    __x86.get_pc_thunk.ax
 //     add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
-// Followed by a use of the register, like these:
+// Followed by a use of the register, such as:
 //     lea     edx, .LC0@GOTOFF[eax]
 //     movzx	 eax, WORD PTR array@GOTOFF[ebx+eax*2]
 //     movsx	 eax, BYTE PTR array@GOTOFF[esi+ebx]
