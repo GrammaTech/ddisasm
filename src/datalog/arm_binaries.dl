@@ -83,17 +83,17 @@ symbolic_operand_attribute(ea, 2, ":lo12:") :-
 
 basic_target(Val+1):-
     binary_isa("ARM"),
-    defined_symbol(Val,_,_,_,_,"$t").
+    defined_symbol(Val,_,_,_,_,_,_,"$t").
 basic_target(Val):-
     binary_isa("ARM"),
-    defined_symbol(Val,_,_,_,_,"$a").
+    defined_symbol(Val,_,_,_,_,_,_,"$a").
 
 
 block_points(Block,0,-9,"overlap with literal pool"),
 block_is_overlapping(Block):-
     binary_isa("ARM"),
     block_candidate_boundaries(Block,BlockBegAddr,BlockEndAddr),
-    defined_symbol(Val,_,_,_,_,"$d"),
+    defined_symbol(Val,_,_,_,_,_,_,"$d"),
     BlockBegAddr <= Val, Val< BlockEndAddr.
 
 plt_entry(EA,Function):-

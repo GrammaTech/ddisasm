@@ -81,6 +81,8 @@ namespace relations
         std::string Binding;
         std::string Visibility;
         uint64_t SectionIndex;
+        std::string OriginTable;
+        uint64_t TableIndex;
         std::string Name;
     };
 

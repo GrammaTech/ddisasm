@@ -91,7 +91,7 @@ code_section(Section):-
     Flags band Exec >0.
 
 // Entries of external libraries
-symbol(0,0,"NONE","EXTERN",0,Function),
+symbol(0,0,"NONE","EXTERN",0,"none",0,Function),
 got_reference(Address,Function):-
     import_entry(Address,_,Function,_).
 

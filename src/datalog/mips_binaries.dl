@@ -160,12 +160,13 @@ gp_relative_operand(EA,Index,as(GpValue+Offset,address)):-
     def_used(EA_gp_def,"GP",EA,_),
     value_reg(EA_gp_def,"GP",_,"NONE",_,GpValue,_).
 
-got_reference(Got_entry,Symbol):-
-    symbolic_data(Got_entry,4,Dest),
+got_reference(GotEntry,Symbol):-
+    symbol(_,_,_,_,_, ".dynsym",Index,Symbol),
+    dynamic_entry("DT_MIPS_GOTSYM",FirstIndex),
+    dynamic_entry("DT_MIPS_LOCAL_GOTNO",NumLocalEntries),
+    Index >= FirstIndex,
     section(".got",Size,Beg),
-    Got_entry >= Beg,
-    Got_entry < Beg+Size,
-    symbol(Dest,_,"FUNC","GLOBAL",_,Symbol).
+    GotEntry = Beg + NumLocalEntries * 4+ (Index-FirstIndex)*4.
 
 // Compute an immediate load performed across two consecutive instructions
 .decl split_load(ea:address, nextea:address, dest:address, type:symbol)
@@ -204,7 +205,7 @@ symbolic_operand_attribute(ea, 1, "Part1"):-
         Dest_addr >= Begin,
         Dest_addr <= End
         ;
-        symbol(Dest_addr,_,_,_,_,_)
+        symbol(Dest_addr,_,_,_,_,_,_,_)
     ).
 
 // Lo
@@ -215,7 +216,7 @@ symbolic_operand_attribute(ea, 2, "Part0"):-
         Dest_addr >= Begin,
         Dest_addr <= End
         ;
-        symbol(Dest_addr,_,_,_,_,_)
+        symbol(Dest_addr,_,_,_,_,_,_,_)
     ).
 
 // E.g., lw t9, %call16(puts)(gp)
@@ -237,7 +238,7 @@ symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
         Dest_addr >= Begin, Dest_addr <= End,
         Type = "data"
         ;
-        symbol(Dest_addr,_,_,_,_,_),
+        symbol(Dest_addr,_,_,_,_,_,_,_),
         Type = "data"
     ).
 

@@ -134,53 +134,56 @@ void ElfReader::buildSymbols()
     }
 
     std::set<std::tuple<uint64_t, uint64_t, std::string, std::string, std::string, uint64_t,
-                        std::string>>
+                        std::string, std::string, uint64_t>>
         Symbols;
-    for(auto &Symbol : Elf->symbols())
-    {
-        // Skip symbol table sections.
-        if(Symbol.type() == LIEF::ELF::ELF_SYMBOL_TYPES::STT_SECTION)
+    auto accum_symbol_table = [&](LIEF::ELF::it_symbols SymbolIt, std::string TableName) {
+        uint64_t TableIndex = 0;
+        for(auto &Symbol : SymbolIt)
         {
-            continue;
+            // Skip symbol table sections.
+            if(Symbol.type() == LIEF::ELF::ELF_SYMBOL_TYPES::STT_SECTION)
+            {
+                TableIndex++;
+                continue;
+            }
+
+            // Remove version suffix from symbol name.
+            std::string Name = Symbol.name();
+            std::size_t Version = Name.find('@');
+            if(Version != std::string::npos)
+            {
+                Name = Name.substr(0, Version);
+            }
+
+            uint64_t Value = Symbol.value();
+
+            // STT_TLS symbols are relative to PT_TLS segment base.
+            if(Symbol.type() == LIEF::ELF::ELF_SYMBOL_TYPES::STT_TLS)
+            {
+                assert(Tls && "Found TLS symbol but no TLS segment.");
+                Value = *Tls + Value + tlsBaseAddress();
+            }
+
+            Symbols.insert({Value, Symbol.size(), LIEF::ELF::to_string(Symbol.type()),
+                            LIEF::ELF::to_string(Symbol.binding()),
+                            LIEF::ELF::to_string(Symbol.visibility()), Symbol.shndx(), Name,
+                            TableName, TableIndex});
+            TableIndex++;
         }
-
-        // Remove version suffix from symbol name.
-        std::string Name = Symbol.name();
-        std::size_t Version = Name.find('@');
-        if(Version != std::string::npos)
-        {
-            Name = Name.substr(0, Version);
-        }
-
-        uint64_t Value = Symbol.value();
-
-        // STT_TLS symbols are relative to PT_TLS segment base.
-        if(Symbol.type() == LIEF::ELF::ELF_SYMBOL_TYPES::STT_TLS)
-        {
-            assert(Tls && "Found TLS symbol but no TLS segment.");
-            Value = *Tls + Value + tlsBaseAddress();
-        }
-
-        Symbols.insert({
-            Value,
-            Symbol.size(),
-            LIEF::ELF::to_string(Symbol.type()),
-            LIEF::ELF::to_string(Symbol.binding()),
-            LIEF::ELF::to_string(Symbol.visibility()),
-            Symbol.shndx(),
-            Name,
-        });
-    }
+    };
+    accum_symbol_table(Elf->dynamic_symbols(), ".dynsym");
+    accum_symbol_table(Elf->static_symbols(), ".symtab");
 
     std::map<gtirb::UUID, ElfSymbolInfo> SymbolInfo;
-    for(auto &[Value, Size, Type, Scope, Visibility, Index, Name] : Symbols)
+    for(auto &[Value, Size, Type, Scope, Visibility, SecIndex, Name, OriginTable, TableIndex] :
+        Symbols)
     {
         gtirb::Symbol *S;
 
         // Symbols with special section index do not have an address.
-        if((Index == static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)
-            || (Index >= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_LORESERVE)
-                && Index <= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)))
+        if((SecIndex == static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)
+            || (SecIndex >= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_LORESERVE)
+                && SecIndex <= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)))
            && Value == 0)
         {
             S = Module->addSymbol(*Context, Name);
@@ -193,7 +196,8 @@ void ElfReader::buildSymbols()
         assert(S && "Failed to create symbol.");
 
         // Add additional symbol information to aux data.
-        SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, Index};
+        SymbolInfo[S->getUUID()] = {Size,     Type,        Scope,     Visibility,
+                                    SecIndex, OriginTable, TableIndex};
     }
     Module->addAuxData<gtirb::schema::ElfSymbolInfoAD>(std::move(SymbolInfo));
 }

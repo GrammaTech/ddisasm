@@ -22,7 +22,7 @@ relocation_in_operand(EA,Index,Location,Offset):-
 
 trivial_relocation(EA):-
     relocation(EA,_,Symbol,0),
-    symbol(0,_,_,_,0,Symbol),
+    symbol(0,_,_,_,0,_,_,Symbol),
     Symbol != "".
 
 trivial_relocation(EA):-

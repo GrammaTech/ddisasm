@@ -183,7 +183,7 @@ basic_target(Val):-
         code_section(Name),
         section(Name,_,Val)
         ;
-        defined_symbol(Val,_,_,_,_,_)
+        defined_symbol(Val,_,_,_,_,_,_,_)
         ;
         // Exception information
         fde_addresses(Val,_)
