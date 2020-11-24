@@ -473,12 +473,18 @@ cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
     arch.cmp_operation(Operation).
 
 /////////////////////////////////////////////////////////////////////////////////
+
+.decl symbol_set(ea:address,size:unsigned,type:symbol,scope:symbol,sectionIndex:unsigned,name:symbol)
+
+symbol_set(EA,Size,Type,Scope,SectIndex,Name):-
+    symbol(EA,Size,Type,Scope,SectIndex,_,_,Name).
+
 .decl ambiguous_symbol(name:symbol)
 .output ambiguous_symbol
 
 ambiguous_symbol(Name):-
-    symbol(_,_,_,_,_,_,_,Name),
-    1 < count :{symbol(_,_,_,_,_,_,_,Name)}.
+    symbol_set(_,_,_,_,_,Name),
+    1 < count :{symbol_set(_,_,_,_,_,Name)}.
 
 // Function symbols
 .decl function_symbol(ea:address,name:symbol)

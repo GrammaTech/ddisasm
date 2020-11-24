@@ -133,8 +133,9 @@ void ElfReader::buildSymbols()
         }
     }
 
-    std::set<std::tuple<uint64_t, uint64_t, std::string, std::string, std::string, uint64_t,
-                        std::string, std::string, uint64_t>>
+    std::map<std::tuple<uint64_t, uint64_t, std::string, std::string, std::string, uint64_t,
+                        std::string>,
+             std::vector<std::tuple<std::string, uint64_t>>>
         Symbols;
     auto accum_symbol_table = [&](LIEF::ELF::it_symbols SymbolIt, std::string TableName) {
         uint64_t TableIndex = 0;
@@ -164,10 +165,10 @@ void ElfReader::buildSymbols()
                 Value = *Tls + Value + tlsBaseAddress();
             }
 
-            Symbols.insert({Value, Symbol.size(), LIEF::ELF::to_string(Symbol.type()),
-                            LIEF::ELF::to_string(Symbol.binding()),
-                            LIEF::ELF::to_string(Symbol.visibility()), Symbol.shndx(), Name,
-                            TableName, TableIndex});
+            Symbols[std::tuple(Value, Symbol.size(), LIEF::ELF::to_string(Symbol.type()),
+                               LIEF::ELF::to_string(Symbol.binding()),
+                               LIEF::ELF::to_string(Symbol.visibility()), Symbol.shndx(), Name)]
+                .push_back({TableName, TableIndex});
             TableIndex++;
         }
     };
@@ -175,9 +176,10 @@ void ElfReader::buildSymbols()
     accum_symbol_table(Elf->static_symbols(), ".symtab");
 
     std::map<gtirb::UUID, ElfSymbolInfo> SymbolInfo;
-    for(auto &[Value, Size, Type, Scope, Visibility, SecIndex, Name, OriginTable, TableIndex] :
-        Symbols)
+    for(auto &[Key, Indexes] : Symbols)
     {
+        auto &[Value, Size, Type, Scope, Visibility, SecIndex, Name] = Key;
+
         gtirb::Symbol *S;
 
         // Symbols with special section index do not have an address.
@@ -196,8 +198,7 @@ void ElfReader::buildSymbols()
         assert(S && "Failed to create symbol.");
 
         // Add additional symbol information to aux data.
-        SymbolInfo[S->getUUID()] = {Size,     Type,        Scope,     Visibility,
-                                    SecIndex, OriginTable, TableIndex};
+        SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex, Indexes};
     }
     Module->addAuxData<gtirb::schema::ElfSymbolInfoAD>(std::move(SymbolInfo));
 }

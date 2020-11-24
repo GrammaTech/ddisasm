@@ -39,7 +39,8 @@ void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
         std::string Name = Symbol.getName();
         gtirb::Addr Addr = Symbol.getAddress().value_or(gtirb::Addr(0));
 
-        ElfSymbolInfo Info = {0, "NOTYPE", "GLOBAL", "DEFAULT", 0, "none", 0};
+        ElfSymbolInfo Info = {
+            0, "NOTYPE", "GLOBAL", "DEFAULT", 0, std::vector<std::tuple<std::string, uint64_t>>()};
 
         if(SymbolInfo)
         {
@@ -55,9 +56,21 @@ void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
             Info = Found->second;
         }
 
-        auto [Size, Type, Binding, Visibility, SectionIndex, OriginTable, TableIndex] = Info;
-        Symbols.push_back(
-            {Addr, Size, Type, Binding, Visibility, SectionIndex, OriginTable, TableIndex, Name});
+        auto [Size, Type, Binding, Visibility, SectionIndex, TableIndexes] = Info;
+        if(TableIndexes.size() > 0)
+        {
+            for(auto &IndexPair : TableIndexes)
+            {
+                const auto &[OriginTable, TableIndex] = IndexPair;
+                Symbols.push_back({Addr, Size, Type, Binding, Visibility, SectionIndex, OriginTable,
+                                   TableIndex, Name});
+            }
+        }
+        else
+        {
+            Symbols.push_back(
+                {Addr, Size, Type, Binding, Visibility, SectionIndex, "NONE", 0, Name});
+        }
     }
 
     // Load relocation entries from aux data.
