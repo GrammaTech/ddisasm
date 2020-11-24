@@ -132,7 +132,7 @@ std::optional<relations::Operand> X86Loader::build(const cs_x86_op& CsOp)
         case X86_OP_REG:
             return registerName(CsOp.reg);
         case X86_OP_IMM:
-            return (int32_t)CsOp.imm;
+            return static_cast<int32_t>(CsOp.imm);
         case X86_OP_MEM:
         {
             relations::IndirectOp I = {registerName(CsOp.mem.segment),
