@@ -385,7 +385,7 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
             gtirb::Symbol *symbol = module.addSymbol(context, addr, name);
             if(SymbolInfo)
             {
-                ElfSymbolInfo Info = {0, "NONE", scope, "DEFAULT", 0};
+                ElfSymbolInfo Info = {0, "NONE", scope, "DEFAULT", 0, "none", 0};
                 SymbolInfo->insert({symbol->getUUID(), Info});
             }
         }
@@ -506,7 +506,7 @@ gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::
     auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
     if(SymbolInfo)
     {
-        ElfSymbolInfo Info = {0, "NONE", "LOCAL", "DEFAULT", 0};
+        ElfSymbolInfo Info = {0, "NONE", "LOCAL", "DEFAULT", 0, "none", 0};
         SymbolInfo->insert({symbol->getUUID(), Info});
     }
 

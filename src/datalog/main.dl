@@ -105,7 +105,10 @@ This module:
 .decl entry_point(ea:address)
 .input entry_point
 
-.decl symbol(ea:address,size:unsigned,type:symbol,scope:symbol,sectionIndex:unsigned,name:symbol)
+.decl base_address(ea:address)
+.input base_address
+
+.decl symbol(ea:address,size:unsigned,type:symbol,scope:symbol,sectionIndex:unsigned, originTable:symbol,tableIndex:unsigned,name:symbol)
 .input symbol
 
 .decl section_complete(name:symbol,size:unsigned,addr:address,type:unsigned,flags:unsigned,align:unsigned)
@@ -126,6 +129,8 @@ This module:
 .decl option(Option:symbol)
 .input option
 
+.decl dynamic_entry(tag:symbol, value:unsigned)
+.input dynamic_entry
 
 // instructions
 
@@ -431,20 +436,20 @@ cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
 .output ambiguous_symbol
 
 ambiguous_symbol(Name):-
-    symbol(_,_,_,_,_,Name),
-    1 < count :{symbol(_,_,_,_,_,Name)}.
+    symbol(_,_,_,_,_,_,_,Name),
+    1 < count :{symbol(_,_,_,_,_,_,_,Name)}.
 
 // Function symbols
 .decl function_symbol(ea:address,name:symbol)
 .output function_symbol
 
 function_symbol(EA,Name):-
-    symbol(EA,_,"FUNC",_,_,Name).
+    symbol(EA,_,"FUNC",_,_,_,_,Name).
 
-.decl defined_symbol(ea:address,size:unsigned,type:symbol,scope:symbol,sectionIndex:unsigned,name:symbol)
+.decl defined_symbol(ea:address,size:unsigned,type:symbol,scope:symbol,sectionIndex:unsigned,originTable:symbol,tableIndex:unsigned,name:symbol)
 
-defined_symbol(EA,Size,Type,Scope,SectIndex,Name):-
-    symbol(EA,Size,Type,Scope,SectIndex,Name),
+defined_symbol(EA,Size,Type,Scope,SectIndex,OriginTable,TableIndex,Name):-
+    symbol(EA,Size,Type,Scope,SectIndex,OriginTable,TableIndex,Name),
     SHN_UNDEF = 0,
     SHN_LORESERVE = 65280,
     SHN_HIRESERVE = 65535,

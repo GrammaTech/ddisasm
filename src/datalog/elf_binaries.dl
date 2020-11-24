@@ -150,7 +150,7 @@ got_reference(Got_entry,Symbol):-
     Got_entry < Beg+Size,
     relocation(Got_entry,RelType,Symbol,_),
     RelType != "RELATIVE",
-    symbol(_,_,_,Scope,_,Symbol), Scope != "WEAK".
+    symbol(_,_,_,Scope,_,_,_,Symbol), Scope != "WEAK".
 
 got_reference(Got_entry,Symbol):-
     pc_relative_operand(_,_,Got_entry),
@@ -158,7 +158,7 @@ got_reference(Got_entry,Symbol):-
     Got_entry >= Beg,
     Got_entry < Beg+Size,
     symbolic_data(Got_entry,8,Dest),
-    symbol(Dest,_,_,_,_,Symbol).
+    symbol(Dest,_,_,_,_,_,_,Symbol).
 
 got_local_reference(Got_entry,Dest):-
     pc_relative_operand(_,_,Got_entry),
@@ -227,7 +227,7 @@ inferred_symbol_name(EA,"__do_global_dtors_aux","LOCAL"):-
 
 inferred_symbol_name(EA,"_DYNAMIC","LOCAL"):-
     binary_format("ELF"),
-    !symbol(EA,_,_,_,_,"_DYNAMIC"),
+    !symbol(EA,_,_,_,_,_,_,"_DYNAMIC"),
     section(".dynamic",_,EA).
 
 
@@ -244,17 +244,17 @@ no_return_function("longjump"):-binary_format("ELF").
 symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
     binary_format("ELF"),
     relocation(EA,"R64",Symbol,Addend),
-    symbol(_,_,_,_,_,Symbol).
+    symbol(_,_,_,_,_,_,_,Symbol).
 
 symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
     binary_format("ELF"),
     relocation(EA,"R32",Symbol,Addend),
-    symbol(_,_,_,_,_,Symbol).
+    symbol(_,_,_,_,_,_,_,Symbol).
 
 symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
     binary_format("ELF"),
     relocation(EA,"R32S",Symbol,Addend),
-    symbol(_,_,_,_,_,Symbol).
+    symbol(_,_,_,_,_,_,_,Symbol).
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 

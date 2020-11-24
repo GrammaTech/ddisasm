@@ -32,7 +32,8 @@
 #include <gtirb/gtirb.hpp>
 
 using ElfRelocation = std::tuple<uint64_t, std::string, std::string, int64_t>;
-using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>;
+using ElfSymbolInfo =
+    std::tuple<uint64_t, std::string, std::string, std::string, uint64_t, std::string, uint64_t>;
 using SectionProperties = std::tuple<uint64_t, uint64_t>;
 
 /// \file AuxDataSchema.h
