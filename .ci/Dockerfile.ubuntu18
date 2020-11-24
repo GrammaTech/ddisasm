@@ -31,6 +31,10 @@ RUN apt-get -y update && \
       gcc-mips-linux-gnu \
       qemu-user
 
+RUN cd /usr/mips-linux-gnu \
+    mkdir etc \
+    ldconfig -c etc/ld.do.cache -r .
+
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
 COPY --from=souffle /usr/bin/souffle /usr/bin/souffle

@@ -91,3 +91,7 @@ RUN apt-get -y update && \
     gcc-aarch64-linux-gnu \
     gcc-mips-linux-gnu \
     qemu
+
+RUN cd /usr/mips-linux-gnu \
+    mkdir etc \
+    ldconfig -c etc/ld.do.cache -r .

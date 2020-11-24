@@ -31,6 +31,10 @@ RUN apt-get -y update && \
     gcc-mips-linux-gnu \
     qemu-user
 
+RUN cd /usr/mips-linux-gnu \
+    mkdir etc \
+    ldconfig -c etc/ld.do.cache -r .
+
 # Install LIEF
 RUN cd /usr/local/src \
     && git clone -b 0.10.0 https://github.com/lief-project/LIEF.git \
