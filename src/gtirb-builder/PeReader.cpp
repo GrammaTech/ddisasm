@@ -21,6 +21,7 @@
 //
 //===----------------------------------------------------------------------===//
 #include <boost/filesystem.hpp>
+#include <boost/uuid/uuid_io.hpp>
 namespace fs = boost::filesystem;
 #include "LIEF/PE.h"
 
@@ -159,56 +160,38 @@ void PeReader::addAuxData()
     // Add `exportEntries' aux data table.
     Module->addAuxData<gtirb::schema::ExportEntries>(exportEntries());
 
+    // Add `PEResources' aux data table
     Resources();
+    // Module->addAuxData<gtirb::schema::PEResources>(Resources());
 }
 
-class Resource
+/*	typedef struct
 {
-    std::vector<uint8_t> getRESHeader(void);
-    std::vector<uint8_t> getRawData(void);
-
-    uint32_t TypeNameOrId;
-    uint32_t NameOrId;
-    std::u16string TypeString; // only used if TypeNameOrId == 0xffff
-    std::u16string NameString; // only used if NameOrId == 0xffff
+    uint32_t DataSize;
+    uint32_t HeaderSize;
+        // if first word is 0xffff, next word is id, otherwise,
+        // first word is first unicode char of string name, null terminated
+    uint32_t TYPE;
+        // if first word is 0xffff, next word is id, otherwise,
+        // first word is first unicode char of string name, null terminated
+    uint32_t NAME;
     uint32_t DataVersion;
     uint16_t MemoryFlags;
     uint16_t LanguageId;
     uint32_t Version;
     uint32_t Characteristics;
+    // MAY need WORD padding here if name or type was a string,
+    // to have the following data DWORD aligned
+} RESOURCEHEADER;
+*/
 
-    long Offset; // offset into what?
-
-private:
-    // gtirb_bi_and_offset getByteIntervalRef(void);
-    /*	typedef struct
-    {
-        uint32_t DataSize;
-        uint32_t HeaderSize;
-            // if first word is 0xffff, next word is id, otherwise,
-            // first word is first unicode char of string name, null terminated
-        uint32_t TYPE;
-            // if first word is 0xffff, next word is id, otherwise,
-            // first word is first unicode char of string name, null terminated
-        uint32_t NAME;
-        uint32_t DataVersion;
-        uint16_t MemoryFlags;
-        uint16_t LanguageId;
-        uint32_t Version;
-        uint32_t Characteristics;
-        // MAY need WORD padding here if name or type was a string,
-        // to have the following data DWORD aligned
-    } RESOURCEHEADER;
-    */
-};
-
-// std::vector<Resource> PeReader::Resources()
-void PeReader::Resources()
+std::vector<Resource> PeReader::Resources()
 {
 #define WR4(ss, d) ss.write(reinterpret_cast<char *>(&d), 4)
-#define WR2(ss, d) ss.write(reinterpret_cast<char *>(&d), 2)
+#define WR(ss, d, n) ss.write(reinterpret_cast<const char *>(&d), n)
 
     std::cout << "WML: Checking for resources...\n";
+    std::vector<Resource> rsrc_vec;
     if(Pe->has_resources())
     {
         std::cout << "WML: resources found!\n";
@@ -220,10 +203,10 @@ void PeReader::Resources()
         std::ofstream output_res;
         output_res.open("foo.res",
                         std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
-        const char header[] = {0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00,
-                               0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                               0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-        output_res.write(header, 32);
+        const uint8_t header[] = {0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00,
+                                  0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+        WR(output_res, header, 32); //.write(header, 32);
         auto rsrc_dir = dynamic_cast<LIEF::PE::ResourceDirectory *>(&rsrc_dir_node);
         for(auto &type_node : rsrc_dir_node.childs())
         {
@@ -238,7 +221,6 @@ void PeReader::Resources()
                     std::cout << "\t\t\tlang node " << lang_node.id() << " ...\n";
                     std::cout << lang_node << "\n";
 
-                    auto language_id = lang_node.id();
                     if(lang_node.is_data())
                     {
                         auto dn = dynamic_cast<LIEF::PE::ResourceData *>(&lang_node);
@@ -247,7 +229,7 @@ void PeReader::Resources()
                         // 32b data length
                         uint32_t tmp = dn->content().size();
                         uint16_t tmp16 = 0;
-                        WR4(ss, tmp);
+                        WR(ss, tmp, 4);
 
                         // 32b header length
                         uint32_t header_len = 0x18;
@@ -260,7 +242,7 @@ void PeReader::Resources()
                         if(header_len % 4 == 2)
                             padding_len = 2;
                         header_len += padding_len;
-                        WR4(ss, header_len);
+                        WR(ss, header_len, 4);
 
                         // 32b type id, or unicode type name
                         if(type_node.has_name())
@@ -273,9 +255,9 @@ void PeReader::Resources()
                         else
                         {
                             tmp16 = 0xffff;
-                            WR2(ss, tmp16);
+                            WR(ss, tmp16, 2);
                             tmp16 = (uint16_t)type_node.id();
-                            WR2(ss, tmp16);
+                            WR(ss, tmp16, 2);
                         }
 
                         // 32b id, or unicode name
@@ -289,9 +271,9 @@ void PeReader::Resources()
                         else
                         {
                             tmp16 = 0xffff;
-                            WR2(ss, tmp16);
+                            WR(ss, tmp16, 2);
                             tmp16 = (uint16_t)id_node.id();
-                            WR2(ss, tmp16);
+                            WR(ss, tmp16, 2);
                         }
 
                         // padding?
@@ -300,48 +282,74 @@ void PeReader::Resources()
                         {
                             std::cout << "\t\t\t\tLen: adding padding \n";
                             tmp16 = 0x0000;
-                            WR2(ss, tmp16);
+                            WR(ss, tmp16, 2);
                         }
 
                         // uint32_t DataVersion;
                         // TODO : How is this different that the below 'version' field?
                         tmp = rsrc_dir->major_version() << 16 | rsrc_dir->minor_version();
                         // tmp = 0x66778899;
-                        WR4(ss, tmp);
+                        WR(ss, tmp, 4);
 
                         // uint16_t MemoryFlags;
                         // Reserved for backwards compatibility
                         tmp16 = 0x1030;
-                        WR2(ss, tmp16);
+                        WR(ss, tmp16, 2);
 
                         // uint16_t LanguageId;
                         tmp16 = lang_node.id();
-                        WR2(ss, tmp16);
+                        WR(ss, tmp16, 2);
 
                         // uint32_t Version;
                         tmp = rsrc_dir->major_version() << 16 | rsrc_dir->minor_version();
-                        WR4(ss, tmp);
+                        WR(ss, tmp, 4);
 
                         // uint32_t Characteristics;
                         tmp = rsrc_dir->characteristics();
-                        WR4(ss, tmp);
-
-                        // header_len += 4;
-                        // tmp = 0x44444444;
-                        // WR4(ss, tmp);
+                        WR(ss, tmp, 4);
 
                         std::cout << "\t\t\t\tResource: " << dn->id() << " offset " << dn->offset()
                                   << "\n\t";
                         for(char c : ss.str())
                             std::cout << std::hex << std::setfill('0') << std::setw(2)
                                       << (unsigned int)c << " ";
+                        std::cout << "\n";
 
                         output_res.write(ss.str().data(), header_len);
 
                         std::vector<uint8_t> d = dn->content();
+                        // find byte interval at rva dn->offset;
+                        uint64_t data_addr = static_cast<uint64_t>(gtirb::Addr(dn->offset()));
+                        data_addr += static_cast<uint64_t>(Module->getAddress().value());
+                        auto bis = Module->findByteIntervalsOn(gtirb::Addr(data_addr));
+                        uint64_t bi_offset = 0;
+                        if(bis)
+                        {
+							std::cout << "Byte interval found\n";
+							bi_offset =
+								data_addr - static_cast<uint64_t>(bis.front().getAddress().value());
+							std::cout << "Resource bi: "
+									  << boost::uuids::to_string(bis.front().getUUID()) << "\n";
+							std::cout << "Resource offset: " << bi_offset << "\n";
+                            gtirb::Offset gtoff = gtirb::Offset(bis.front().getUUID(), bi_offset);
+                            std::cout << "Resource offset created\n";
+                            std::vector<uint8_t> header_vec;
+                            for(char c : ss.str())
+                                header_vec.push_back(c);
+                            std::cout << "Resource content created\n";
+
+							rsrc_vec.push_back(std::make_tuple(
+								header_vec,
+								gtoff,
+								d.size()));
+                            std::cout << "Resource added.\n";
+                        }
+							else std::cout << "No byte interval\n";
+
+
                         output_res.write(reinterpret_cast<const char *>(d.data()), d.size());
 
-						// final padding on content to ensure the following header is DWORD aligned
+                        // final padding on content to ensure the following header is DWORD aligned
                         if(d.size() % 4 != 0)
                         {
                             std::cout << "\t\t\t\tLen: adding padding \n";
@@ -363,6 +371,8 @@ void PeReader::Resources()
     }
     else
         std::cout << "WML: No resources...\n";
+
+    return rsrc_vec;
 }
 
 std::vector<ImportEntry> PeReader::importEntries()
