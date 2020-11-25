@@ -1,7 +1,7 @@
 # Restrict these test cases to systems with compatible QEMU packages.
 distro:
   name: Ubuntu
-  version: ["18.04", "20.04"]
+  version: ["16.04", "18.04", "20.04"]
 
 default: &default
   path: examples
@@ -39,24 +39,53 @@ tests:
   - name: ex1
     <<: *zero-optimize
 
-  # FIXME: ex_2modulesPIC
-  # FIXME: ex_confusing_data
-  # FIXME: ex_struct
-  # FIXME: ex_exceptions{1,2,3}
-  # FIXME: ex_false_pointer_array
-  # FIXME: ex_float
-  # FIXME: ex_fprintf
-  # FIXME: ex_getoptlong
-  # FIXME: ex_memberPointer
+  - name: ex_confusing_data
+    <<: *zero-optimize
+
+  - name: ex_fprintf
+    <<: *zero-optimize
+
+  - name: ex_getoptlong
+    <<: *zero-optimize
 
   - name: ex_noreturn
     <<: *zero-optimize
 
-  # FIXME: ex_pointerReatribution
-  # FIXME: ex_pointerReatribution2
-  # FIXME: ex_pointerReatribution3
-  # FIXME: ex_stat
-  # FIXME: ex_struct
-  # FIXME: ex_switch
-  # FIXME: ex_uninitialized_data
-  # FIXME: ex_virtualDispatch
+  - name: ex_pointerReatribution
+    <<: *zero-optimize
+
+  - name: ex_pointerReatribution2
+    <<: *zero-optimize
+
+  - name: ex_pointerReatribution3
+    <<: *zero-optimize
+
+  - name: ex_struct
+    <<: *zero-optimize
+
+  - name: ex_switch
+    <<: *zero-optimize
+
+  # FIXME
+  #- name: ex_2modulesPIC
+  #  <<: *zero-optimize
+
+  # FIXME
+  #- name: ex_false_pointer_array
+  #  <<: *zero-optimize
+
+  # FIXME:
+  #- name: ex_float
+  #  <<: *zero-optimize
+
+  # FIXME
+  #- name: ex_stat
+  #  <<: *zero-optimize
+
+  # FIXME
+  #- name: ex_uninitialized_data
+  #  <<: *zero-optimize
+
+  # FIXME: ex_exceptions{1,2,3}: cpp: no mips-linux-gnu-g++
+  # FIXME: ex_memberPointer: cpp: no mips-linux-gnu-g++
+  # FIXME: ex_virtualDispatch: cpp: no mips-linux-gnu-g++
