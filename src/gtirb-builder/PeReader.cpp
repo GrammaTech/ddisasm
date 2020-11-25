@@ -161,8 +161,7 @@ void PeReader::addAuxData()
     Module->addAuxData<gtirb::schema::ExportEntries>(exportEntries());
 
     // Add `PEResources' aux data table
-    Resources();
-    // Module->addAuxData<gtirb::schema::PEResources>(Resources());
+    Module->addAuxData<gtirb::schema::PEResources>(Resources());
 }
 
 /*	typedef struct
