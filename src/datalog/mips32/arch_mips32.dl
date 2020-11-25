@@ -130,6 +130,47 @@ store_operation("SDL").
 store_operation("SDR").
 store_operation("SDXC1").
 
+.decl load_operation(Operation:symbol)
+
+load_operation("LB").
+load_operation("LBU16").
+load_operation("LBUX").
+load_operation("LBU").
+load_operation("LD").
+load_operation("LDC1").
+load_operation("LDC2").
+load_operation("LDC3").
+load_operation("LDI").
+load_operation("LDL").
+load_operation("LDPC").
+load_operation("LDR").
+load_operation("LDXC1").
+load_operation("LH").
+load_operation("LHU16").
+load_operation("LHX").
+load_operation("LHU").
+load_operation("LI16").
+load_operation("LL").
+load_operation("LLD").
+load_operation("LUXC1").
+load_operation("LW").
+load_operation("LW16").
+load_operation("LWC1").
+load_operation("LWC2").
+load_operation("LWC3").
+load_operation("LWL").
+load_operation("LWM16").
+load_operation("LWM32").
+load_operation("LWPC").
+load_operation("LWP").
+load_operation("LWR").
+load_operation("LWUPC").
+load_operation("LWU").
+load_operation("LWX").
+load_operation("LWXC1").
+load_operation("LWXS").
+load_operation("LI").
+
 .decl move_operation_conditional(Operation:symbol)
 
 move_operation_conditional("SC").

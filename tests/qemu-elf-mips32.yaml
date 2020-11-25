@@ -42,6 +42,12 @@ tests:
   - name: ex_confusing_data
     <<: *zero-optimize
 
+  - name: ex_false_pointer_array
+    <<: *zero-optimize
+
+  - name: ex_float
+    <<: *zero-optimize
+
   - name: ex_fprintf
     <<: *zero-optimize
 
@@ -66,24 +72,15 @@ tests:
   - name: ex_switch
     <<: *zero-optimize
 
-  # FIXME
+  - name: ex_uninitialized_data
+    <<: *zero-optimize
+
+  # FIXME: t9
   #- name: ex_2modulesPIC
   #  <<: *zero-optimize
 
-  # FIXME
-  #- name: ex_false_pointer_array
-  #  <<: *zero-optimize
-
-  # FIXME:
-  #- name: ex_float
-  #  <<: *zero-optimize
-
-  # FIXME
+  # FIXME: t9: __lstat
   #- name: ex_stat
-  #  <<: *zero-optimize
-
-  # FIXME
-  #- name: ex_uninitialized_data
   #  <<: *zero-optimize
 
   # FIXME: ex_exceptions{1,2,3}: cpp: no mips-linux-gnu-g++
