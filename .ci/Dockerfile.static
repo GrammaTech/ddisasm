@@ -32,8 +32,8 @@ RUN apt-get -y update && \
     qemu-user
 
 RUN cd /usr/mips-linux-gnu \
-    mkdir etc \
-    ldconfig -c etc/ld.do.cache -r .
+ && mkdir etc \
+ && ldconfig -c etc/ld.do.cache -r .
 
 # Install LIEF
 RUN cd /usr/local/src \
