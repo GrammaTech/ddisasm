@@ -29,6 +29,8 @@
 #include "../Relations.h"
 #include "ehp.hpp"
 
+void ElfDynamicEntryLoader(const gtirb::Module &Module, DatalogProgram &Program);
+
 void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program);
 
 void ElfExceptionLoader(const gtirb::Module &Module, DatalogProgram &Program);

@@ -37,6 +37,7 @@ CompositeLoader ElfArm32Loader()
     Loader.add(SectionLoader);
     Loader.add<Arm32Loader>();
     Loader.add<DataLoader>(DataLoader::Pointer::DWORD);
+    Loader.add(ElfDynamicEntryLoader);
     Loader.add(ElfSymbolLoader);
     Loader.add(ElfExceptionLoader);
     return Loader;

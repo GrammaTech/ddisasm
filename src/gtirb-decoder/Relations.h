@@ -86,6 +86,12 @@ namespace relations
         std::string Name;
     };
 
+    struct DynamicEntry
+    {
+        std::string Name;
+        uint64_t Value;
+    };
+
     struct Section
     {
         std::string Name;
@@ -169,6 +175,8 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const gtirb::Addr& A);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Symbol& S);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::DynamicEntry& D);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Section& S);
 

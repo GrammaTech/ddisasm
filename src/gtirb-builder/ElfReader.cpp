@@ -253,6 +253,7 @@ void ElfReader::addAuxData()
     std::vector<std::string> Libraries = Elf->imported_libraries();
     Module->addAuxData<gtirb::schema::Libraries>(std::move(Libraries));
 
+    std::set<ElfDynamicEntry> DynamicEntryTuples;
     std::vector<std::string> LibraryPaths;
     for(const auto &Entry : Elf->dynamic_entries())
     {
@@ -266,8 +267,10 @@ void ElfReader::addAuxData()
             std::vector<std::string> Paths = Rpath->paths();
             LibraryPaths.insert(LibraryPaths.end(), Paths.begin(), Paths.end());
         }
+        DynamicEntryTuples.insert({LIEF::ELF::to_string(Entry.tag()), Entry.value()});
     }
     Module->addAuxData<gtirb::schema::LibraryPaths>(std::move(LibraryPaths));
+    Module->addAuxData<gtirb::schema::DynamicEntries>(std::move(DynamicEntryTuples));
 }
 
 std::string ElfReader::getRelocationType(const LIEF::ELF::Relocation &Entry)

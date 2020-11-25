@@ -34,6 +34,7 @@ using ElfRelocation = std::tuple<uint64_t, std::string, std::string, int64_t>;
 using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t,
                                  std::vector<std::tuple<std::string, uint64_t>>>;
 using SectionProperties = std::tuple<uint64_t, uint64_t>;
+using ElfDynamicEntry = std::tuple<std::string, uint64_t>;
 
 /// \file AuxDataSchema.h
 /// \ingroup AUXDATA_GROUP
@@ -73,6 +74,13 @@ namespace gtirb
         {
             static constexpr const char* Name = "relocations";
             typedef std::set<ElfRelocation> Type;
+        };
+
+        /// \brief Auxiliary data describing a binary's dynamic entries
+        struct DynamicEntries
+        {
+            static constexpr const char* Name = "dynamicEntries";
+            typedef std::set<ElfDynamicEntry> Type;
         };
 
         /// \brief Auxiliary data covering data object encoding specifiers.

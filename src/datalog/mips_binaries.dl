@@ -162,11 +162,11 @@ gp_relative_operand(EA,Index,as(GpValue+Offset,address)):-
 
 got_reference(GotEntry,Symbol):-
     symbol(_,_,_,_,_, ".dynsym",Index,Symbol),
-    dynamic_entry("DT_MIPS_GOTSYM",FirstIndex),
-    dynamic_entry("DT_MIPS_LOCAL_GOTNO",NumLocalEntries),
+    dynamic_entry("MIPS_GOTSYM",FirstIndex),
+    dynamic_entry("MIPS_LOCAL_GOTNO",NumLocalEntries),
     Index >= FirstIndex,
     section(".got",Size,Beg),
-    GotEntry = Beg + NumLocalEntries * 4+ (Index-FirstIndex)*4.
+    GotEntry = Beg + NumLocalEntries*4 + (Index-FirstIndex)*4.
 
 // Compute an immediate load performed across two consecutive instructions
 .decl split_load(ea:address, nextea:address, dest:address, type:symbol)

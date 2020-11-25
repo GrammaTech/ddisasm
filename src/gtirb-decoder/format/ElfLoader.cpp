@@ -25,6 +25,22 @@
 
 #include "../../AuxDataSchema.h"
 
+void ElfDynamicEntryLoader(const gtirb::Module &Module, DatalogProgram &Program)
+{
+    std::vector<relations::DynamicEntry> DynamicEntries;
+
+    // Load Dynamic entries from aux data.
+    if(auto *Table = Module.getAuxData<gtirb::schema::DynamicEntries>())
+    {
+        for(auto [Name, Value] : *Table)
+        {
+            DynamicEntries.push_back({Name, Value});
+        }
+    }
+
+    Program.insert("dynamic_entry", std::move(DynamicEntries));
+}
+
 void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
 {
     std::vector<relations::Symbol> Symbols;

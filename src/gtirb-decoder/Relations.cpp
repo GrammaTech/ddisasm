@@ -37,6 +37,12 @@ namespace souffle
         return T;
     }
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::DynamicEntry& dynamicEntry)
+    {
+        T << dynamicEntry.Name << dynamicEntry.Value;
+        return T;
+    }
+
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Section& Section)
     {
         T << Section.Name << Section.Size << Section.Addr << Section.Type << Section.Flags
