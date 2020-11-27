@@ -242,6 +242,17 @@ if(NOT CAPSTONE OR "${CSTOOL_VERSION}" VERSION_LESS "4.0.1")
       "   and it is at least version 4.0.1.\n")
 endif()
 
+if(NOT CAPSTONE_INCLUDE_DIR)
+  get_filename_component(CAPSTONE_LIB_DIR ${CAPSTONE} DIRECTORY)
+  get_filename_component(CAPSTONE_INCLUDE_DIR ${CAPSTONE_LIB_DIR}/../include
+                         ABSOLUTE)
+  if(NOT EXISTS ${CAPSTONE_INCLUDE_DIR}/capstone)
+    message(WARNING "CAPSTONE_INCLUDE_DIR not found")
+    unset(CAPSTONE_INCLUDE_DIR)
+  endif()
+  unset(CAPSTONE_LIB_DIR)
+endif()
+
 # Use LIEF with 'find_package()'
 # ==============================
 
