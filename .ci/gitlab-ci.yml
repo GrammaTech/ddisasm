@@ -46,7 +46,7 @@ check-format:
     - mkdir build
     - cd build
     # FIXME: CMake should automatically find LIEF_LIBRARY but fails to on Arch.
-    - 'for FILE in /usr/lib/libLIEF.*; do LIEF_LIBRARY=$FILE; break; done;'
+    - 'LIEF_LIBRARY=/usr/lib/libLIEF.a && [ -f $LIEF_LIBRARY ] || LIEF_LIBRARY=/usr/lib/libLIEF.so'
     - cmake -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_DEBIAN_RELEASE="$(lsb_release -sc)" -DBUILD_FUNINFER=1 -DLIEF_ROOT=/usr/ -DLIEF_LIBRARY=${LIEF_LIBRARY} -DDDISASM_STRIP_DEBUG_SYMBOLS=On ..
     - make
 
