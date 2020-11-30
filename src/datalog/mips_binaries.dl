@@ -184,14 +184,13 @@ got_reference(GotEntry,Symbol):-
     GotEntry = Beg + NumLocalEntries*4 + (Index-FirstIndex)*4.
 
 // Local entries
-got_reference(GotEntry,Symbol):-
-    symbol(_,_,_,_,_,".dynsym",Index,Symbol),
-    dynamic_entry("MIPS_GOTSYM",FirstIndex),
-    Index < FirstIndex,
+got_reference(Got_entry,Symbol):-
+    symbolic_data(Got_entry,4,Dest),
     section(".got",Size,Beg),
-    Offset = Index*4 + 12,
-    Size >= Offset,
-    GotEntry = Beg + Offset.
+    Got_entry >= Beg,
+    dynamic_entry("MIPS_LOCAL_GOTNO",NumLocalEntries),
+    Got_entry < Beg+4*NumLocalEntries,
+    symbol(Dest,_,_,"GLOBAL",_,_,_,Symbol).
 
 // Compute an immediate load performed across two consecutive instructions
 .decl split_load(ea:address, nextea:address, dest:address, type:symbol)
