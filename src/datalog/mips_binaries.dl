@@ -167,6 +167,45 @@ value_reg_edge(EA,Reg,PrevEA1,Reg,1,as(PrevEA0,number)):-
     instruction_get_dest_op(EA,_,DestOp),
     op_regdirect_contains_reg(DestOp,Reg).
 
+.decl base_addr_offset_operand(ea:address, next_ea:address, dest:address)
+.output base_addr_offset_operand
+
+// e.g., lw v0, -32696(gp)  <-- v0: MIPS_BASE_ADDRESS
+//       addiu a0, v0, 2560 <-- 2560: offset from MIPS_BASE_ADDRESS to target L
+// ->
+//       lw v0, %got(L)(gp)
+//       addiu a0, v0, %lo(L)
+base_addr_offset_operand(EA,NextEA,Dest_addr):-
+    value_reg(EA,Reg,_,"NONE",_,Value,_),
+    instruction_get_operation(EA, Operation),
+    arch.load_operation(Operation),
+    dynamic_entry("MIPS_BASE_ADDRESS",Val),
+    Value = as(Val,number),
+
+    def_used(EA,Reg,NextEA,_),
+
+    // ADDIU <Register> <Register> <Offset>
+    // e.g. addiu reg2, reg, <OffsetOp>
+    instruction_get_operation(NextEA, "ADDIU"),
+    instruction_get_op(NextEA, 1, RegOp),
+    op_regdirect_contains_reg(RegOp,Reg),
+    instruction_get_op(NextEA, 2, OffsetOp),
+    op_immediate(OffsetOp, Offset),
+
+    Dest_addr = as(Value+Offset,address).
+
+symbolic_operand_attribute(EA,1,"AddrRelGot"):-
+    base_addr_offset_operand(EA,_,_).
+
+symbolic_operand_attribute(EA,2,"Part0"):-
+    base_addr_offset_operand(_,EA,_).
+
+symbolic_operand(EA,1,Dest_addr,"data"):-
+    base_addr_offset_operand(EA,_,Dest_addr).
+
+symbolic_operand(EA,2,Dest_addr,"data"):-
+    base_addr_offset_operand(_,EA,Dest_addr).
+
 // e.g., lw v0, -32696(gp)
 gp_relative_operand(EA,Index,as(GpValue+Offset,address)):-
     instruction_get_op(EA, Index, Op),
@@ -198,7 +237,7 @@ got_reference(Got_entry,Symbol):-
 
 // E.g., lui reg, hi(xxx)
 //       addiu reg2, reg, lo(xxx)
-split_load(EA, NextEA, as(Base*2^16 + Offset,address), "ADDIU") :-
+split_load(EA, NextEA, Dest_addr, "ADDIU") :-
     // LUI <Register> <Immediate>
     // e.g. lui reg, BaseOp
     instruction_get_operation(EA, "LUI"),
@@ -215,13 +254,15 @@ split_load(EA, NextEA, as(Base*2^16 + Offset,address), "ADDIU") :-
     instruction_get_op(NextEA, 1, RegOp2),
     op_regdirect_contains_reg(RegOp2,Reg),
     instruction_get_op(NextEA, 2, OffsetOp),
-    op_immediate(OffsetOp, Offset).
+    op_immediate(OffsetOp, Offset),
+
+    Dest_addr = as(Base*2^16 + Offset,address).
 
 // PIC
 // E.g., lui reg, hi(xxx)
 //       addiu reg2, reg, lo(xxx)
 //       addu reg3, reg2, t9
-split_load(EA, NextEA, as(Base*2^16 + Offset + T9Value,address), "ADDU") :-
+split_load(EA, NextEA, Dest_addr, "ADDU") :-
     // LUI <Register> <Immediate>
     // e.g. lui reg, BaseOp
     instruction_get_operation(EA, "LUI"),
@@ -255,12 +296,22 @@ split_load(EA, NextEA, as(Base*2^16 + Offset + T9Value,address), "ADDU") :-
     // NOTE: This assumes t9 holds the address of the current function, and
     //       lui is the first instruction of the current function.
     // TODO: Find a way of safely getting the function-entry address for t9.
-    T9Value = as(EA, number).
+    T9Value = as(EA, number),
+
+    Dest_addr = as(Base*2^16 + Offset + T9Value,address).
+
+inferred_symbol_name(Dest_addr,"_gp_disp","LOCAL"),
+symbolic_operand(EA,1,Dest_addr,"data"):-
+    split_load(EA, _, Dest_addr, "ADDU").
+
+inferred_symbol_name(Dest_addr,"_gp_disp","LOCAL"),
+symbolic_operand(EA,2,Dest_addr,"data"):-
+    split_load(_, EA, Dest_addr, "ADDU").
 
 // E.g., lui reg, hi(xxx)
 //       lw reg2, lo(xxx)(reg)
 //       lwc1, ldc1, etc.
-split_load(EA, NextEA, as(Base*2^16 + Offset,address), "LW") :-
+split_load(EA, NextEA, Dest_addr, "LW") :-
     // LUI <Register> <Immediate>
     // e.g. lui reg, BaseOp
     instruction_get_operation(EA, "LUI"),
@@ -276,19 +327,15 @@ split_load(EA, NextEA, as(Base*2^16 + Offset,address), "LW") :-
     instruction_get_operation(NextEA, Operation),
     arch.load_operation(Operation),
     instruction_get_src_op(NextEA,_,SrcOp),
-    op_indirect(SrcOp,"NONE",Reg,"NONE",1,Offset,_).
+    op_indirect(SrcOp,"NONE",Reg,"NONE",1,Offset,_),
+
+    Dest_addr = as(Base*2^16 + Offset,address).
 
 gp_relative_operand(EA, 1, as(Dest,address)):-
     split_load(EA, _, Dest, "ADDIU").
 
 gp_relative_operand(EA, 2, as(Dest,address)):-
     split_load(_, EA, Dest, "ADDIU").
-
-gp_relative_operand(EA, 1, as(Dest,address)):-
-    split_load(EA, _, Dest, "ADDU").
-
-gp_relative_operand(EA, 2, as(Dest,address)):-
-    split_load(_, EA, Dest, "ADDU").
 
 gp_relative_operand(EA, 1, as(Dest,address)):-
     split_load(EA, _, Dest, "LW").
