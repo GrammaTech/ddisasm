@@ -300,12 +300,12 @@ split_load(EA, NextEA, Dest_addr, "ADDU") :-
 
     Dest_addr = as(Base*2^16 + Offset + T9Value,address).
 
-symbol_minus_symbol(Dest_addr,4,EA,EA,1):-
-    split_load(EA, _, Dest_addr, "ADDU"),
+symbol_minus_symbol(EA,4,GP_addr,EA,1):-
+    split_load(EA,_,_,"ADDU"),
     symbol(GP_addr,_,_,_,_,_,_,"_gp").
 
-symbol_minus_symbol(Dest_addr,4,PrevEA,EA,1):-
-    split_load(PrevEA, EA, Dest_addr, "ADDU"),
+symbol_minus_symbol(EA,4,GP_addr,PrevEA,1):-
+    split_load(PrevEA,EA,_,"ADDU"),
     symbol(GP_addr,_,_,_,_,_,_,"_gp").
 
 // E.g., lui reg, hi(xxx)

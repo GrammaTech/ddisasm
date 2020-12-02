@@ -617,6 +617,19 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
             return;
         }
     }
+    // Symbol-Symbol case
+    auto rangeRelSym =
+        symbolicInfo.SymbolicBaseMinusConst.equal_range(ea + instruction.immediateOffset);
+    if(auto relSym = rangeRelSym.first; relSym != rangeRelSym.second)
+    {
+        gtirb::Symbol *sym1 = getSymbol(context, module, gtirb::Addr(relSym->Symbol1));
+        gtirb::Symbol *sym2 = getSymbol(context, module, gtirb::Addr(relSym->Symbol2));
+
+        addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(
+            module, ea, instruction.Size - instruction.immediateOffset, instruction.immediateOffset,
+            1, 0, sym1, sym2);
+        return;
+    }
     // Symbol+constant case
     auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
     if(auto movedLabel =
