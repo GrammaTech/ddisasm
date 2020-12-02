@@ -300,13 +300,13 @@ split_load(EA, NextEA, Dest_addr, "ADDU") :-
 
     Dest_addr = as(Base*2^16 + Offset + T9Value,address).
 
-inferred_symbol_name(Dest_addr,"_gp_disp","LOCAL"),
-symbolic_operand(EA,1,Dest_addr,"data"):-
-    split_load(EA, _, Dest_addr, "ADDU").
+symbol_minus_symbol(Dest_addr,4,EA,EA,1):-
+    split_load(EA, _, Dest_addr, "ADDU"),
+    symbol(GP_addr,_,_,_,_,_,_,"_gp").
 
-inferred_symbol_name(Dest_addr,"_gp_disp","LOCAL"),
-symbolic_operand(EA,2,Dest_addr,"data"):-
-    split_load(_, EA, Dest_addr, "ADDU").
+symbol_minus_symbol(Dest_addr,4,PrevEA,EA,1):-
+    split_load(PrevEA, EA, Dest_addr, "ADDU"),
+    symbol(GP_addr,_,_,_,_,_,_,"_gp").
 
 // E.g., lui reg, hi(xxx)
 //       lw reg2, lo(xxx)(reg)
