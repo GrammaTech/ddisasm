@@ -36,7 +36,11 @@ zero-optimize: &zero-optimize
     flags: []
 
 tests:
+
   - name: ex1
+    <<: *zero-optimize
+
+  - name: ex_2modulesPIC
     <<: *zero-optimize
 
   - name: ex_confusing_data
@@ -75,13 +79,8 @@ tests:
   - name: ex_uninitialized_data
     <<: *zero-optimize
 
-  # FIXME: t9
-  #- name: ex_2modulesPIC
-  #  <<: *zero-optimize
-
-  # FIXME: t9: __lstat
-  #- name: ex_stat
-  #  <<: *zero-optimize
+  - name: ex_stat
+    <<: *zero-optimize
 
   # FIXME: ex_exceptions{1,2,3}: cpp: no mips-linux-gnu-g++
   # FIXME: ex_memberPointer: cpp: no mips-linux-gnu-g++
