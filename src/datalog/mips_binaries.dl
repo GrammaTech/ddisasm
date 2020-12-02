@@ -308,6 +308,12 @@ symbol_minus_symbol(EA,4,GP_addr,PrevEA,1):-
     split_load(PrevEA,EA,_,"ADDU"),
     symbol(GP_addr,_,_,_,_,_,_,"_gp").
 
+symbolic_operand_attribute(EA,1,"Part1"):-
+    split_load(EA,_,_,"ADDU").
+
+symbolic_operand_attribute(EA,2,"Part0"):-
+    split_load(_,EA,_,"ADDU").
+
 // E.g., lui reg, hi(xxx)
 //       lw reg2, lo(xxx)(reg)
 //       lwc1, ldc1, etc.
