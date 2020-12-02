@@ -627,7 +627,7 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
 
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(
             module, ea, instruction.Size - instruction.immediateOffset, instruction.immediateOffset,
-            1, 0, sym1, sym2);
+            1, 0, sym1, sym2, attrs);
         return;
     }
     // Symbol+constant case
