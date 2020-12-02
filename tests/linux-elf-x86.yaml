@@ -178,9 +178,8 @@ tests:
   - name: ex_thread_local
     <<: *position-independent
 
-  # TODO:
-  # - name: ex_threads
-  #   <<: *position-independent
-  #   reassemble:
-  #     compiler: "g++"
-  #     flags: ["-m32", "-lpthread", "-fpie"]
+  - name: ex_threads
+    <<: *position-independent
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32", "-lpthread", "-fpie"]
