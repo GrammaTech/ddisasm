@@ -101,16 +101,14 @@ tests:
       flags: ["-m32", "-no-pie"]
       skip: false
 
-  # TODO:
-  # - name: ex_thread_local
-  #   <<: *default
+  - name: ex_thread_local
+    <<: *default
 
-  # TODO:
-  # - name: ex_threads
-  #   <<: *default
-  #   reassemble:
-  #     compiler: "g++"
-  #     flags: ["-m32", "-lpthread"]
+  - name: ex_threads
+    <<: *default
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32", "-lpthread", "-no-pie", "-fno-pie"]
 
   # ----------------------------------------------------------------------------
   # Small C and C++ examples.  (position independent code)
@@ -149,7 +147,6 @@ tests:
       skip: false
 
   - name: ex_noreturn
-    <<: *default
     <<: *position-independent
 
   - name: ex_pointerReatribution
@@ -168,6 +165,9 @@ tests:
   - name: ex_switch
     <<: *position-independent
 
+  - name: ex_uninitialized_data
+    <<: *position-independent
+
   - name: ex_virtualDispatch
     <<: *position-independent
     reassemble:
@@ -175,5 +175,12 @@ tests:
       flags: ["-m32"]
       skip: false
 
-  - name: ex_uninitialized_data
+  - name: ex_thread_local
     <<: *position-independent
+
+  # TODO:
+  # - name: ex_threads
+  #   <<: *position-independent
+  #   reassemble:
+  #     compiler: "g++"
+  #     flags: ["-m32", "-lpthread", "-fpie"]

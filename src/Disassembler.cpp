@@ -465,6 +465,7 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_
         // FIXME: Replace these with appropriate flags when supported:
         {"TpOff", gtirb::SymAttribute::Part0},
         {"GotOff", gtirb::SymAttribute::Part1},
+        {"NtpOff", gtirb::SymAttribute::Part2},
         {":lo12:", gtirb::SymAttribute::Part0},
         {":got_lo12:", gtirb::SymAttribute::Part1},
     };
