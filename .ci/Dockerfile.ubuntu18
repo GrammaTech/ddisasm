@@ -29,6 +29,7 @@ RUN apt-get -y update && \
       gcc-arm-linux-gnueabihf \
       gcc-aarch64-linux-gnu \
       gcc-mips-linux-gnu \
+      g++-mips-linux-gnu \
       qemu-user
 
 RUN cd /usr/mips-linux-gnu \
