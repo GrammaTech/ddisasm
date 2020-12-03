@@ -90,6 +90,7 @@ RUN apt-get -y update && \
     gcc-5-arm-linux-gnueabihf \
     gcc-aarch64-linux-gnu \
     gcc-mips-linux-gnu \
+    g++-mips-linux-gnu \
     qemu
 
 RUN cd /usr/mips-linux-gnu \
