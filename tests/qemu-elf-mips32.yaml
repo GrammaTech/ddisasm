@@ -16,7 +16,7 @@ default: &default
 
   # Reassembly configuration.
   reassemble:
-    compiler: "mips-linux-gnu-gcc"
+    compiler: "mips-linux-gnu-g++"
     flags: []
     skip: false
 
@@ -44,6 +44,9 @@ tests:
     <<: *zero-optimize
 
   - name: ex_confusing_data
+    <<: *zero-optimize
+
+  - name: ex_memberPointer
     <<: *zero-optimize
 
   - name: ex_false_pointer_array
@@ -82,6 +85,7 @@ tests:
   - name: ex_stat
     <<: *zero-optimize
 
-  # FIXME: ex_exceptions{1,2,3}: cpp: no mips-linux-gnu-g++
-  # FIXME: ex_memberPointer: cpp: no mips-linux-gnu-g++
-  # FIXME: ex_virtualDispatch: cpp: no mips-linux-gnu-g++
+  - name: ex_virtualDispatch
+    <<: *zero-optimize
+
+  # FIXME: ex_exceptions{1,2,3}: .gcc_except_table
