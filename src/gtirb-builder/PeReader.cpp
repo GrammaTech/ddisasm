@@ -142,8 +142,6 @@ void PeReader::addEntryBlock()
 
 void PeReader::addAuxData()
 {
-    std::cout << "WML: addAuxData called\n";
-
     // Add `binaryType' aux data table.
     std::vector<std::string> BinaryType = {"EXEC"};
     Module->addAuxData<gtirb::schema::BinaryType>(std::move(BinaryType));
@@ -164,62 +162,26 @@ void PeReader::addAuxData()
     Module->addAuxData<gtirb::schema::PEResources>(Resources());
 }
 
-/*	typedef struct
-{
-    uint32_t DataSize;
-    uint32_t HeaderSize;
-        // if first word is 0xffff, next word is id, otherwise,
-        // first word is first unicode char of string name, null terminated
-    uint32_t TYPE;
-        // if first word is 0xffff, next word is id, otherwise,
-        // first word is first unicode char of string name, null terminated
-    uint32_t NAME;
-    uint32_t DataVersion;
-    uint16_t MemoryFlags;
-    uint16_t LanguageId;
-    uint32_t Version;
-    uint32_t Characteristics;
-    // MAY need WORD padding here if name or type was a string,
-    // to have the following data DWORD aligned
-} RESOURCEHEADER;
-*/
-
 std::vector<Resource> PeReader::Resources()
 {
-#define WR4(ss, d) ss.write(reinterpret_cast<char *>(&d), 4)
 #define WR(ss, d, n) ss.write(reinterpret_cast<const char *>(&d), n)
 
-    std::cout << "WML: Checking for resources...\n";
     std::vector<Resource> rsrc_vec;
+
     if(Pe->has_resources())
     {
-        std::cout << "WML: resources found!\n";
         auto &rsrc_dir_node = Pe->resources();
-        // Pe->data_directory(LIEF::PE::DATA_DIRECTORY::RESOURCE_TABLE));
-        // auto characteristics = rsrc_dir.characteristics();
-        // auto version = rsrc_dir.major_version() << rsrc_dir.minor_version();
 
-        std::ofstream output_res;
-        output_res.open("foo.res",
-                        std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
         const uint8_t header[] = {0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00,
                                   0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-        WR(output_res, header, 32); //.write(header, 32);
         auto rsrc_dir = dynamic_cast<LIEF::PE::ResourceDirectory *>(&rsrc_dir_node);
         for(auto &type_node : rsrc_dir_node.childs())
         {
-            auto type = type_node.id();
-            std::cout << "\ttype node " << type << " ...\n";
             for(auto &id_node : type_node.childs())
             {
-                std::cout << "\t\tid node " << id_node.id() << " ...\n";
-
                 for(auto &lang_node : id_node.childs())
                 {
-                    std::cout << "\t\t\tlang node " << lang_node.id() << " ...\n";
-                    std::cout << lang_node << "\n";
-
                     if(lang_node.is_data())
                     {
                         auto dn = dynamic_cast<LIEF::PE::ResourceData *>(&lang_node);
@@ -248,8 +210,6 @@ std::vector<Resource> PeReader::Resources()
                         {
                             std::u16string n = type_node.name();
                             ss.write(reinterpret_cast<char *>(n.data()), type_len);
-                            std::cout << "\t\t\\tType len: used " << type_len << ":"
-                                      << type_node.name().length();
                         }
                         else
                         {
@@ -264,8 +224,6 @@ std::vector<Resource> PeReader::Resources()
                         {
                             std::u16string n = id_node.name();
                             ss.write(reinterpret_cast<char *>(n.data()), name_len);
-                            std::cout << "\t\t\\tName len: used " << name_len << ":"
-                                      << id_node.name().length();
                         }
                         else
                         {
@@ -276,10 +234,8 @@ std::vector<Resource> PeReader::Resources()
                         }
 
                         // padding?
-                        std::cout << "\t\t\t\tLen: header_len (" << header_len << ") \n";
                         if(padding_len == 2)
                         {
-                            std::cout << "\t\t\t\tLen: adding padding \n";
                             tmp16 = 0x0000;
                             WR(ss, tmp16, 2);
                         }
@@ -287,11 +243,11 @@ std::vector<Resource> PeReader::Resources()
                         // uint32_t DataVersion;
                         // TODO : How is this different that the below 'version' field?
                         tmp = rsrc_dir->major_version() << 16 | rsrc_dir->minor_version();
-                        // tmp = 0x66778899;
                         WR(ss, tmp, 4);
 
                         // uint16_t MemoryFlags;
-                        // Reserved for backwards compatibility
+                        // Reserved for backwards compatibility.  Determined empirically from some
+                        // examples.
                         tmp16 = 0x1030;
                         WR(ss, tmp16, 2);
 
@@ -307,69 +263,50 @@ std::vector<Resource> PeReader::Resources()
                         tmp = rsrc_dir->characteristics();
                         WR(ss, tmp, 4);
 
-                        std::cout << "\t\t\t\tResource: " << dn->id() << " offset " << dn->offset()
-                                  << "\n\t";
-                        for(char c : ss.str())
-                            std::cout << std::hex << std::setfill('0') << std::setw(2)
-                                      << (unsigned int)c << " ";
-                        std::cout << "\n";
-
-                        output_res.write(ss.str().data(), header_len);
-
                         std::vector<uint8_t> d = dn->content();
-                        // find byte interval at rva dn->offset;
-                        uint64_t data_addr = static_cast<uint64_t>(gtirb::Addr(dn->offset()));
-                        data_addr += static_cast<uint64_t>(Module->getAddress().value());
-                        auto bis = Module->findByteIntervalsOn(gtirb::Addr(data_addr));
-                        uint64_t bi_offset = 0;
+
+                        // LIEF ResourceData node 'offset' member is the offset in the file image of
+                        // the resource data.  We need to identify it in the byte-intervals via EA.
+                        // EA = <data offset> - <section image offset> + <section RVA> + <image
+                        // base>
+                        auto rsrc_section = Pe->section_from_offset(dn->offset());
+                        uint64_t data_ea = dn->offset() - rsrc_section.offset()
+                                           + rsrc_section.virtual_address()
+                                           + Pe->optional_header().imagebase();
+                        auto bis = Module->findByteIntervalsOn(gtirb::Addr(data_ea));
                         if(bis)
                         {
-							std::cout << "Byte interval found\n";
-							bi_offset =
-								data_addr - static_cast<uint64_t>(bis.front().getAddress().value());
-							std::cout << "Resource bi: "
-									  << boost::uuids::to_string(bis.front().getUUID()) << "\n";
-							std::cout << "Resource offset: " << bi_offset << "\n";
+                            uint64_t bi_offset =
+                                data_ea - static_cast<uint64_t>(bis.front().getAddress().value());
                             gtirb::Offset gtoff = gtirb::Offset(bis.front().getUUID(), bi_offset);
-                            std::cout << "Resource offset created\n";
                             std::vector<uint8_t> header_vec;
                             for(char c : ss.str())
                                 header_vec.push_back(c);
-                            std::cout << "Resource content created\n";
 
-							rsrc_vec.push_back(std::make_tuple(
-								header_vec,
-								gtoff,
-								d.size()));
-                            std::cout << "Resource added.\n";
+                            const uint8_t *bi_data = reinterpret_cast<const uint8_t *>(
+                                                         bis.front().rawBytes<const uint8_t *>())
+                                                     + bi_offset;
+
+                            // sanity check
+                            if(memcmp(dn->content().data(), bi_data, dn->content().size()) != 0)
+                            {
+                                std::cout << "[WARNING] PE Resource data in IR does not match data "
+                                             "in original.\n";
+                            }
+
+                            // Add the resource to the vector to be added as the aux data
+                            rsrc_vec.push_back({header_vec, gtoff, d.size()});
                         }
-							else std::cout << "No byte interval\n";
-
-
-                        output_res.write(reinterpret_cast<const char *>(d.data()), d.size());
-
-                        // final padding on content to ensure the following header is DWORD aligned
-                        if(d.size() % 4 != 0)
-                        {
-                            std::cout << "\t\t\t\tLen: adding padding \n";
-                            tmp = 0x0000;
-                            output_res.write(reinterpret_cast<char *>(&tmp), 4 - d.size() % 4);
-                        }
-
-                        // tmp = 0x55555555;
-                        // WR4(output_res, tmp);
-
-                        // how to find the byte interval and offset for the content
-                        // auto offset = dn->offset();
+                        else
+                            std::cout << "[WARNING] No byte interval found for resource, resource "
+                                         "data will be incomplete.\n";
                     }
                 }
             }
         }
-
-        output_res.close();
     }
     else
-        std::cout << "WML: No resources...\n";
+        std::cout << "[INFO] PE: No resources...\n";
 
     return rsrc_vec;
 }
