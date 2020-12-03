@@ -130,10 +130,10 @@ namespace gtirb
             typedef std::map<gtirb::Offset, uint64_t> Type;
         };
 
+        // \brief List on PE Resources in the form <header, data_offset, data_length
         struct PEResources
         {
             static constexpr const char* Name = "peResources";
-			// \brief List on PE Resources in the form <header, data_offset, data_length
             typedef std::vector<std::tuple<std::vector<uint8_t>, gtirb::Offset, uint64_t>> Type;
         };
 
