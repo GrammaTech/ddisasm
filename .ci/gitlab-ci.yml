@@ -18,6 +18,26 @@ check-format:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
   script:
     - pre-commit run --all-files --show-diff-on-failure
+    # helper message for new committers
+    - |+
+      cat <<EOF
+      ================================================================================
+      If this stage fails, the formatting of your changes may be incorrect.
+      To automatically format your files, install pre-commit:
+          pip3 install pre-commit
+          pre-commit install
+      pre-commit will now automatically format any files before commit.
+      To fix any misformatted files, run:
+          pre-commit run --all-files
+      And then commit any changes.
+      More information regarding pre-commit can be found at https://pre-commit.com.
+
+      NOTE FOR PROJECTS WITH C/C++ CODE:
+      pre-commit will by default use the correct version of every formatting tool
+      EXCEPT FOR clang-format. You need to ensure the version of clang-format you
+      use is EXACTLY version 6.0.0. This is available in Ubuntu 18 by default.
+      ================================================================================
+      EOF
 
 .build-template: &build
   artifacts:
