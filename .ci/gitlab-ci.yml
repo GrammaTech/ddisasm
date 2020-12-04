@@ -17,10 +17,8 @@ check-format:
   stage: check-format
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
   script:
-    - pre-commit run --all-files --show-diff-on-failure
-    # helper message for new committers
     - |+
-      cat <<EOF
+      pre-commit run --all-files --show-diff-on-failure || ((cat <<EOF
       ================================================================================
       If this stage fails, the formatting of your changes may be incorrect.
       To automatically format your files, install pre-commit:
@@ -38,6 +36,7 @@ check-format:
       use is EXACTLY version 6.0.0. This is available in Ubuntu 18 by default.
       ================================================================================
       EOF
+      ) && exit 1)
 
 .build-template: &build
   artifacts:
