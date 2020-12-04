@@ -463,7 +463,8 @@ op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate):-
     instruction_get_op(EA,Imm_index,Op),
     op_immediate(Op,Immediate),
     instruction_get_op(EA,_,Op2),
-    op_regdirect_contains_reg(Op2,Reg).
+    op_regdirect_contains_reg(Op2,Reg),
+    !arch.jump(EA).
 
 // The instruction at EA is a comparison between a register Reg and an immediate Immediate
 .decl cmp_immediate_to_reg(EA:address,Reg:register,Imm_index:operand_index,Immediate:number)

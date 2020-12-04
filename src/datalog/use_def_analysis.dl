@@ -63,10 +63,22 @@ local_next(EA,EA_next):-
 .decl inter_procedural_jump(Src:address,Dest:address)
 
 inter_procedural_jump(Src,Dest):-
-    unconditional_jump(Src),
-    direct_jump(Src,Dest),
-    direct_call(OtherSrc,Dest),
-    code(OtherSrc).
+    (
+        !arch.delay_slot(Src),
+        unconditional_jump(Src),
+        direct_jump(Src,Dest),
+        direct_call(OtherSrc,Dest),
+        code(OtherSrc)
+    )
+    ;
+    (
+        arch.delay_slot(Src),
+        next(Call,Src),
+        unconditional_jump(Call),
+        direct_jump(Call,Dest),
+        direct_call(OtherSrc,Dest),
+        code(OtherSrc)
+    ).
 
 .decl block_next(ea:address,ea_next:address)
 
@@ -96,10 +108,23 @@ def(EA,Reg):-
     op_regdirect_contains_reg(Op,Reg).
 
 def(EA,Reg):-
-    code(EA),
-    instruction_get_operation(EA,Operation),
-    arch.call_operation(Operation),
-    arch.function_non_maintained_reg(Reg).
+    (
+        next(EA,NextEA),
+        !arch.delay_slot(NextEA),
+        code(EA),
+        instruction_get_operation(EA,Operation),
+        arch.call_operation(Operation),
+        arch.function_non_maintained_reg(Reg)
+    )
+    ;
+    (
+        arch.delay_slot(EA),
+        code(EA),
+        next(Call,EA),
+        instruction_get_operation(Call,Operation),
+        arch.call_operation(Operation),
+        arch.function_non_maintained_reg(Reg)
+    ).
 
 flow_def(EA_jump,Reg,EA_target,Immediate):-
     code(EA),

@@ -88,6 +88,7 @@ instruction_get_src_op(EA,Index,Op):-
 // e.g., sw gp, 16(sp)
 reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
     def_used(StackFrameDefinedAt,"SP",EA,_),
+    StackFrameDefinedAt != EA,
     arch.mov(EA),
     instruction_get_dest_op(EA,_,DestOp),
     op_indirect(DestOp,"NONE","SP","NONE",_,StackPos,_),
@@ -95,20 +96,42 @@ reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
     op_regdirect_contains_reg(SrcOp,Reg).
 
 // e.g., lw gp, 16(fp)
-reg_loaded_from_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
-    def_used(StackFrameDefinedAt,"FP",EA,_),
+reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
+    (
+        Base = "FP"
+        ;
+        Base = "SP"
+    ),
+    def_used(StackFrameDefinedAt,Base,EA,_),
+    StackFrameDefinedAt != EA,
     arch.mov(EA),
     instruction_get_src_op(EA,_,SrcOp),
-    op_indirect(SrcOp,"NONE","FP","NONE",_,StackPos,_),
+    op_indirect(SrcOp,"NONE",Base,"NONE",_,StackPos,_),
     instruction_get_dest_op(EA,_,DestOp),
     op_regdirect_contains_reg(DestOp,Reg).
 
+// e.g., sw gp, 16(sp)
+//       ...
+//       lw gp, 16(sp)
 value_reg_edge(EALoad,"GP",EAPrev,"GP",1,0):-
     reg_stored_in_stack(EAStore,"GP",StackPos,StackFrameDefinedAt),
-    reg_loaded_from_stack(EALoad,"GP",StackPos,StackFrameDefinedAt2),
+    reg_loaded_from_stack(EALoad,"GP","SP",StackPos,StackFrameDefinedAt),
     def_used(EAPrev,"GP",EAStore,_),
+    EAPrev != EAStore.
+
+// e.g., sw gp, 16(sp)
+//       ...
+//       move fp, sp
+//       ...
+//       lw gp, 16(fp)
+value_reg_edge(EALoad,"GP",EAPrev,"GP",1,0):-
+    reg_stored_in_stack(EAStore,"GP",StackPos,StackFrameDefinedAt),
+    reg_loaded_from_stack(EALoad,"GP","FP",StackPos,StackFrameDefinedAt2),
+    def_used(EAPrev,"GP",EAStore,_),
+    EAPrev != EAStore,
     // StackFrameDefinedAt2: move fp, sp
     def_used(StackFrameDefinedAt,Reg_origin,StackFrameDefinedAt2,_),
+    StackFrameDefinedAt != StackFrameDefinedAt2,
     arch.mov(StackFrameDefinedAt2),
     instruction_get_op(StackFrameDefinedAt2,1,Op1),
     op_regdirect_contains_reg(Op1,Reg_origin),
@@ -137,6 +160,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate*(2^16)):-
 //addiu reg reg2 immediate
 value_reg_edge(EA,Reg,EA_prev,Reg2,1,Immediate):-
     def_used(EA_prev,Reg2,EA,_),
+    EA_prev != EA,
     instruction(EA,_,_,"ADDIU",Op1,Op2,Op3,0,_,_),
     op_immediate(Op2,Immediate),
     op_regdirect_contains_reg(Op3,Reg),
@@ -149,6 +173,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     op_regdirect_contains_reg(Op2,Reg),
     op_indirect(Op1,"NONE","GP","NONE",_,Offset,_),
     def_used(EA_gp_def,"GP",EA,_),
+    EA_gp_def != EA,
     value_reg(EA_gp_def,"GP",_,"NONE",_,Immediate,_),
     Offset_addr = as(Immediate + Offset,address),
     data_word_be(Offset_addr, Val).
@@ -183,6 +208,7 @@ base_addr_offset_operand(EA,NextEA,Dest_addr):-
     Value = as(Val,number),
 
     def_used(EA,Reg,NextEA,_),
+    EA != NextEA,
 
     // ADDIU <Register> <Register> <Offset>
     // e.g. addiu reg2, reg, <OffsetOp>
@@ -211,7 +237,19 @@ gp_relative_operand(EA,Index,as(GpValue+Offset,address)):-
     instruction_get_op(EA, Index, Op),
     op_indirect(Op,"NONE","GP","NONE",1,Offset,_),
     def_used(EA_gp_def,"GP",EA,_),
+    EA_gp_def != EA,
     value_reg(EA_gp_def,"GP",_,"NONE",_,GpValue,_).
+
+// In case when gp def is not found, use _gp value instead.
+// NOTE: This is a hacky trial:
+// Assume that at load instructions with the source with gp as base register,
+// gp holds the address of _gp (global pointer)
+gp_relative_operand(EA,1,Dest_addr):-
+    instruction(EA,_,_,Operation,Op1,_,0,0,_,_),
+    arch.load_operation(Operation),
+    op_indirect(Op1,"NONE","GP","NONE",_,Offset,_),
+    symbol(GpValue,_,_,_,_,_,_,"_gp"),
+    Dest_addr = GpValue + as(Offset,address).
 
 // Global entries
 got_reference(GotEntry,Symbol):-
@@ -229,7 +267,7 @@ got_reference(Got_entry,Symbol):-
     Got_entry >= Beg,
     dynamic_entry("MIPS_LOCAL_GOTNO",NumLocalEntries),
     Got_entry < Beg+4*NumLocalEntries,
-    symbol(Dest,_,_,"GLOBAL",_,_,_,Symbol).
+    symbol(Dest,_,_,_,_,_,_,Symbol).
 
 // Compute an immediate load performed across two consecutive instructions
 .decl split_load(ea:address, nextea:address, dest:address, type:symbol)
@@ -247,6 +285,7 @@ split_load(EA, NextEA, Dest_addr, "ADDIU") :-
     op_regdirect_contains_reg(RegOp,Reg),
 
     def_used(EA,Reg,NextEA,_),
+    EA != NextEA,
 
     // ADDIU <Register> <Register> <Immediate>
     // e.g. addiu reg2, reg, <OffsetOp>
@@ -272,6 +311,7 @@ split_load(EA, NextEA, Dest_addr, "ADDU") :-
     op_regdirect_contains_reg(RegOp,Reg),
 
     def_used(EA,Reg,NextEA,_),
+    EA != NextEA,
 
     // ADDIU <Register> <Register> <Immediate>
     // e.g. addiu reg2, reg, <OffsetOp>
@@ -284,6 +324,7 @@ split_load(EA, NextEA, Dest_addr, "ADDU") :-
     op_regdirect_contains_reg(RegOp__,Reg2),
 
     def_used(NextEA,Reg2,NextEA2,_),
+    NextEA != NextEA2,
 
     // ADDU <Register> <Register> T9
     // e.g. addu reg2, reg, <OffsetOp>
@@ -327,6 +368,7 @@ split_load(EA, NextEA, Dest_addr, "LW") :-
     op_regdirect_contains_reg(RegOp,Reg),
 
     def_used(EA,Reg,NextEA,_),
+    EA != NextEA,
 
     // Load <Register> <Indirect>
     // e.g. lw reg2, SrcOp(reg)
