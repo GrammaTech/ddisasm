@@ -36,7 +36,7 @@ using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string
 using SectionProperties = std::tuple<uint64_t, uint64_t>;
 
 // A Resource is a tuple of the form { RES header, data length, data ptr}.
-using Resource = std::tuple< std::vector<uint8_t>, gtirb::Offset, uint64_t>;
+using Resource = std::tuple<std::vector<uint8_t>, gtirb::Offset, uint64_t>;
 
 /// \file AuxDataSchema.h
 /// \ingroup AUXDATA_GROUP
