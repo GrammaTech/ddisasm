@@ -18,7 +18,7 @@ check-format:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
   script:
     - |+
-      pre-commit run --all-files --show-diff-on-failure || ((cat <<EOF
+      pre-commit run --all-files --show-diff-on-failure || ( (cat <<EOF
       ================================================================================
       If this stage fails, the formatting of your changes may be incorrect.
       To automatically format your files, install pre-commit:
@@ -34,7 +34,7 @@ check-format:
       pre-commit will by default use the correct version of every formatting tool
       EXCEPT FOR clang-format. You need to ensure the version of clang-format you
       use is EXACTLY version 6.0.0. This is available in Ubuntu 18 by default.
-      
+
       See also:
           https://git.grammatech.com/research/meta/-/wikis/infrastructure/infrastructure#running-ci-jobs-locally-for-debugging
           http://otsego.grammatech.com/u4/Videos/2020-09-11-Lunchtime-Seminar/
