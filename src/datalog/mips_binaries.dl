@@ -244,9 +244,15 @@ gp_relative_operand(EA,Index,as(GpValue+Offset,address)):-
 // NOTE: This is a hacky trial:
 // Assume that at load instructions with the source with gp as base register,
 // gp holds the address of _gp (global pointer)
-gp_relative_operand(EA,1,Dest_addr):-
+gp_relative_operand(EA,Index,Dest_addr):-
     instruction(EA,_,_,Operation,Op1,_,0,0,_,_),
-    arch.load_operation(Operation),
+    (
+        arch.load_operation(Operation),
+        Index = 1
+        ;
+        arch.store_operation(Operation),
+        Index = 2
+    ),
     op_indirect(Op1,"NONE","GP","NONE",_,Offset,_),
     symbol(GpValue,_,_,_,_,_,_,"_gp"),
     Dest_addr = GpValue + as(Offset,address).
@@ -357,7 +363,7 @@ symbolic_operand_attribute(EA,2,"Part0"):-
 
 // E.g., lui reg, hi(xxx)
 //       lw reg2, lo(xxx)(reg)
-//       lwc1, ldc1, etc.
+// (lw, lwc1, ldc1, etc.)
 split_load(EA, NextEA, Dest_addr, "LW") :-
     // LUI <Register> <Immediate>
     // e.g. lui reg, BaseOp
@@ -379,6 +385,34 @@ split_load(EA, NextEA, Dest_addr, "LW") :-
 
     Dest_addr = as(Base*2^16 + Offset,address).
 
+// Compute an immediate store performed across two consecutive instructions
+.decl split_store(ea:address, nextea:address, dest:address)
+.output split_store
+
+// E.g., lui reg, hi(xxx)
+//       sw reg2, lo(xxx)(reg)
+// (sw, swc1, sdc1, etc.)
+split_store(EA, NextEA, Dest_addr) :-
+    // LUI <Register> <Immediate>
+    // e.g. lui reg, BaseOp
+    instruction_get_operation(EA, "LUI"),
+    instruction_get_op(EA, 1, BaseOp),
+    instruction_get_op(EA, 2, RegOp),
+    op_immediate(BaseOp, Base),
+    op_regdirect_contains_reg(RegOp,Reg),
+
+    def_used(EA,Reg,NextEA,_),
+    EA != NextEA,
+
+    // Store <Register> <Indirect>
+    // e.g. sw reg2, SrcOp(reg)
+    instruction_get_operation(NextEA, Operation),
+    arch.store_operation(Operation),
+    instruction_get_dest_op(NextEA,_,DestOp),
+    op_indirect(DestOp,"NONE",Reg,"NONE",1,Offset,_),
+
+    Dest_addr = as(Base*2^16 + Offset,address).
+
 gp_relative_operand(EA, 1, as(Dest,address)):-
     split_load(EA, _, Dest, "ADDIU").
 
@@ -391,9 +425,19 @@ gp_relative_operand(EA, 1, as(Dest,address)):-
 gp_relative_operand(EA, 1, as(Dest,address)):-
     split_load(_, EA, Dest, "LW").
 
+gp_relative_operand(EA, 1, as(Dest,address)):-
+    split_store(EA, _, Dest).
+
+gp_relative_operand(EA, 1, as(Dest,address)):-
+    split_store(_, EA, Dest).
+
 // Hi
 symbolic_operand_attribute(EA, 1, "Part1"):-
-    split_load(EA, _, Dest_addr, _),
+    (
+        split_load(EA, _, Dest_addr, _)
+        ;
+        split_store(EA, _, Dest_addr)
+    ),
     (
         data_segment(Begin,End),
         Dest_addr >= Begin,
@@ -414,6 +458,9 @@ symbolic_operand_attribute(EA, Index, "Part0"):-
         Index = 2
         ;
         split_load(PrevEA, EA, Dest_addr, "LW"),
+        Index = 1
+        ;
+        split_store(PrevEA, EA, Dest_addr),
         Index = 1
     ),
     (

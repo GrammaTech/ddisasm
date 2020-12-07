@@ -220,6 +220,7 @@ jump(EA):-
     jump_operation(Operation).
 
 .decl delay_slot(EA:address)
+.output delay_slot
 
 delay_slot(EA):-
     next(prev_EA, EA),
