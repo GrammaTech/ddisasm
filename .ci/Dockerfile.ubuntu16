@@ -1,7 +1,7 @@
 FROM ubuntu:16.04 as souffle
 RUN apt-get -y update && \
     apt-get -y install software-properties-common && \
-    add-apt-repository ppa:jonathonf/gcc-7.1 && \
+    add-apt-repository ppa:jonathonf/gcc && \
     apt-get -y update
 RUN apt-get -y update && apt-get -y install automake bison build-essential \
     doxygen flex g++ g++-7 gcc gcc-7 git libffi-dev libtool  \
@@ -25,7 +25,7 @@ SHELL ["/bin/bash", "-c"]
 # Add repository for GCC 7.1
 RUN apt-get -y update && \
     apt-get -y install software-properties-common && \
-    add-apt-repository ppa:jonathonf/gcc-7.1 && \
+    add-apt-repository ppa:jonathonf/gcc && \
     apt-get -y update
 
 # Install common packages
