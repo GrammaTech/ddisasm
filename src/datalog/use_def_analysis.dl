@@ -90,8 +90,20 @@ block_next(EA,Block2):-
 
 block_next(EA,EA_next):-
     block_last_instruction(_,EA),
-    direct_jump(EA,EA_next),
-    !inter_procedural_jump(EA,EA_next).
+    (
+        (
+            !arch.delay_slot(EA),
+            direct_jump(EA,EA_next),
+            !inter_procedural_jump(EA,EA_next)
+        )
+        ;
+        (
+            arch.delay_slot(EA),
+            next(PrevEA,EA),
+            direct_jump(PrevEA,EA_next),
+            !inter_procedural_jump(PrevEA,EA_next)
+        )
+    ).
 
 block_next(EA,EA_next):-
     block_last_instruction(_,EA),

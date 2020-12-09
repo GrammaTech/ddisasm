@@ -26,6 +26,7 @@ and characteristics
 */
 
 instruction_get_dest_op(EA,Index,Op):-
+    !arch.jump_operation(Operation),
     arch.store_operation(Operation),
     (
         instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
@@ -35,6 +36,7 @@ instruction_get_dest_op(EA,Index,Op):-
     !arch.read_only_operation(Operation).
 
 instruction_get_dest_op(EA,Index,Op):-
+    !arch.jump_operation(Operation),
     !arch.store_operation(Operation),
     instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
     !arch.read_only_operation(Operation),
@@ -84,6 +86,14 @@ instruction_get_src_op(EA,Index,Op):-
         instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
     ),
     !arch.write_only_operation(Operation).
+
+// For jump instructions, treat all ops as src.
+// E.g., bne $v0, $v1, L_xxx
+//       Both v0 and v1 are sources.
+instruction_get_src_op(EA,Index,Op):-
+    instruction_get_operation(EA, Operation),
+    arch.jump_operation(Operation),
+    instruction_get_op(EA,Index,Op).
 
 // e.g., sw gp, 16(sp)
 reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
@@ -303,6 +313,36 @@ split_load(EA, NextEA, Dest_addr, "ADDIU") :-
 
     Dest_addr = as(Base*2^16 + Offset,address).
 
+// E.g., lui reg, hi(xxx)
+//       sw reg, n(sp)
+//       lw reg2, n(sp)
+//       addiu reg3, reg2, lo(xxx)
+// reg is store to stack and restored
+split_load(EA, NextEA, Dest_addr, "ADDIU") :-
+    // e.g. lui reg, BaseOp
+    instruction_get_operation(EA, "LUI"),
+    instruction_get_op(EA, 1, BaseOp),
+    instruction_get_op(EA, 2, RegOp),
+    op_immediate(BaseOp, Base),
+    op_regdirect_contains_reg(RegOp,Reg),
+
+    // e.g., sw reg, n(sp)
+    def_used(EA,Reg,RegStoreEA,_),
+    reg_stored_in_stack(RegStoreEA,Reg,StackPos,StackFrameDefinedAt),
+
+    // e.g., lw reg2, n(sp)
+    reg_loaded_from_stack(RegRestoreEA,Reg2,"SP",StackPos,StackFrameDefinedAt),
+    def_used(RegRestoreEA,Reg2,NextEA,_),
+
+    // e.g. addiu reg3, reg2, <OffsetOp>
+    instruction_get_operation(NextEA, "ADDIU"),
+    instruction_get_op(NextEA, 1, RegOp2),
+    op_regdirect_contains_reg(RegOp2,Reg2),
+    instruction_get_op(NextEA, 2, OffsetOp),
+    op_immediate(OffsetOp, Offset),
+
+    Dest_addr = as(Base*2^16 + Offset,address).
+
 // PIC
 // E.g., lui reg, hi(xxx)
 //       addiu reg2, reg, lo(xxx)
@@ -385,6 +425,35 @@ split_load(EA, NextEA, Dest_addr, "LW") :-
 
     Dest_addr = as(Base*2^16 + Offset,address).
 
+// E.g., lui reg, hi(xxx)
+//       sw reg, n(sp)
+//       lw reg2, n(sp)
+//       lw reg3, lo(xxx)(reg2)
+// reg is store to stack and restored
+split_load(EA, NextEA, Dest_addr, "LW") :-
+    // e.g. lui reg, BaseOp
+    instruction_get_operation(EA, "LUI"),
+    instruction_get_op(EA, 1, BaseOp),
+    instruction_get_op(EA, 2, RegOp),
+    op_immediate(BaseOp, Base),
+    op_regdirect_contains_reg(RegOp,Reg),
+
+    // e.g., sw reg, n(sp)
+    def_used(EA,Reg,RegStoreEA,_),
+    reg_stored_in_stack(RegStoreEA,Reg,StackPos,StackFrameDefinedAt),
+
+    // e.g., lw reg2, n(sp)
+    reg_loaded_from_stack(RegRestoreEA,Reg2,"SP",StackPos,StackFrameDefinedAt),
+    def_used(RegRestoreEA,Reg2,NextEA,_),
+
+    // e.g. lw reg3, SrcOp(reg2)
+    instruction_get_operation(NextEA, Operation),
+    arch.load_operation(Operation),
+    instruction_get_src_op(NextEA,_,SrcOp),
+    op_indirect(SrcOp,"NONE",Reg2,"NONE",1,Offset,_),
+
+    Dest_addr = as(Base*2^16 + Offset,address).
+
 // Compute an immediate store performed across two consecutive instructions
 .decl split_store(ea:address, nextea:address, dest:address)
 .output split_store
@@ -410,6 +479,34 @@ split_store(EA, NextEA, Dest_addr) :-
     arch.store_operation(Operation),
     instruction_get_dest_op(NextEA,_,DestOp),
     op_indirect(DestOp,"NONE",Reg,"NONE",1,Offset,_),
+
+    Dest_addr = as(Base*2^16 + Offset,address).
+
+// E.g., lui reg, hi(xxx)
+//       sw reg, n(sp)
+//       lw reg2, n(sp)
+//       sw reg3, lo(xxx)(reg2)
+split_store(EA, NextEA, Dest_addr) :-
+    // e.g. lui reg, BaseOp
+    instruction_get_operation(EA, "LUI"),
+    instruction_get_op(EA, 1, BaseOp),
+    instruction_get_op(EA, 2, RegOp),
+    op_immediate(BaseOp, Base),
+    op_regdirect_contains_reg(RegOp,Reg),
+
+    // e.g., sw reg, n(sp)
+    def_used(EA,Reg,RegStoreEA,_),
+    reg_stored_in_stack(RegStoreEA,Reg,StackPos,StackFrameDefinedAt),
+
+    // e.g., lw reg2, n(sp)
+    reg_loaded_from_stack(RegRestoreEA,Reg2,"SP",StackPos,StackFrameDefinedAt),
+    def_used(RegRestoreEA,Reg2,NextEA,_),
+
+    // e.g. sw reg3, SrcOp(reg2)
+    instruction_get_operation(NextEA, Operation),
+    arch.store_operation(Operation),
+    instruction_get_dest_op(NextEA,_,DestOp),
+    op_indirect(DestOp,"NONE",Reg2,"NONE",1,Offset,_),
 
     Dest_addr = as(Base*2^16 + Offset,address).
 

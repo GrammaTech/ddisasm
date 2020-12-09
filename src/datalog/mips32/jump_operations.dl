@@ -124,25 +124,58 @@ unconditional_jump_operation("B").
 unconditional_jump_operation("B16").
 unconditional_jump_operation("BC").
 
+.decl jump_comp_operation(n:symbol)
+
+jump_comp_operation("BGEC").
+jump_comp_operation("BGEUC").
+jump_comp_operation("BGEZ").
+jump_comp_operation("BGEZAL").
+jump_comp_operation("BGEZALC").
+jump_comp_operation("BGEZALL").
+jump_comp_operation("BGEZALS").
+jump_comp_operation("BGEZC").
+jump_comp_operation("BGEZL").
+jump_comp_operation("BGTZ").
+jump_comp_operation("BGTZALC").
+jump_comp_operation("BGTZC").
+jump_comp_operation("BGTZL").
+jump_comp_operation("BLEZ").
+jump_comp_operation("BLEZALC").
+jump_comp_operation("BLEZC").
+jump_comp_operation("BLEZL").
+jump_comp_operation("BLTC").
+jump_comp_operation("BLTUC").
+jump_comp_operation("BLTZ").
+jump_comp_operation("BLTZAL").
+jump_comp_operation("BLTZALC").
+jump_comp_operation("BLTZALL").
+jump_comp_operation("BLTZALS").
+jump_comp_operation("BLTZC").
+jump_comp_operation("BLTZL").
+
 .decl jump_equal_operation(n:symbol)
 
 jump_equal_operation("BEQ").
 jump_equal_operation("BEQC").
 jump_equal_operation("BEQL").
+jump_equal_operation("BEQZ").
 jump_equal_operation("BEQZ16").
 jump_equal_operation("BEQZALC").
 jump_equal_operation("BEQZC").
+jump_equal_operation("BC1EQZ").
+jump_equal_operation("BC2EQZ").
 
 .decl jump_unequal_operation(n:symbol)
 
 jump_unequal_operation("BNE").
 jump_unequal_operation("BNEC").
-jump_unequal_operation("BNEGI").
-jump_unequal_operation("BNEG").
 jump_unequal_operation("BNEL").
+jump_unequal_operation("BNEZ").
 jump_unequal_operation("BNEZ16").
 jump_unequal_operation("BNEZALC").
 jump_unequal_operation("BNEZC").
+jump_unequal_operation("BC1NEZ").
+jump_unequal_operation("BC2NEZ").
 
 // Compact branches don't have a delay slot.
 .decl compact_branch_operation(n:symbol)
@@ -159,3 +192,24 @@ compact_branch_operation("BLTUC").
 compact_branch_operation("BOVC").
 compact_branch_operation("BNVC").
 compact_branch_operation("JC").
+
+.decl jump_target_op(EA:address,operator:operand_code)
+
+jump_target_op(EA,Op):-
+    instruction_get_operation(EA,Operation),
+    (
+        (
+            (jump_unequal_operation(Operation);
+             jump_equal_operation(Operation);
+             jump_comp_operation(Operation)
+            ),
+            instruction(EA,_,_,_,Op1,Op2,Op3,_,_,_),
+            Op = Op2
+        )
+        ;
+        (
+            Operation != "BEQ",
+            Operation != "BNE",
+            instruction(EA,_,_,_,Op,_,_,_,_,_)
+        )
+    ).

@@ -80,3 +80,8 @@ call_for_fallthru_facts(EA):-
 .decl return_for_fallthru_facts(EA:address)
 return_for_fallthru_facts(EA):-
     return(EA).
+
+.decl jump_target_op(EA:address,operator:operand_code)
+
+jump_target_op(EA,Op1):-
+    instruction(EA,_,_,_,Op1,_,_,_,_,_).

@@ -16,7 +16,7 @@ default: &default
 
   # Reassembly configuration.
   reassemble:
-    compiler: "mips-linux-gnu-g++"
+    compiler: "mips-linux-gnu-gcc"
     flags: []
     skip: false
 
@@ -26,66 +26,65 @@ default: &default
     strip: false
     skip: false
 
-# FIXME: Remove when examples work for all optimization levels.
-zero-optimize: &zero-optimize
-  <<: *default
-  build:
-    c: ["mips-linux-gnu-gcc"]
-    cpp: ["mips-linux-gnu-g++"]
-    optimizations: ["-O0"]
-    flags: []
-
 tests:
 
   - name: ex1
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_2modulesPIC
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_confusing_data
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_memberPointer
-    <<: *zero-optimize
+    <<: *default
+    reassemble:
+        compiler: "mips-linux-gnu-g++"
+        flags: ["-no-pie"]
+        skip: false
 
   - name: ex_false_pointer_array
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_float
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_fprintf
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_getoptlong
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_noreturn
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_pointerReatribution
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_pointerReatribution2
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_pointerReatribution3
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_struct
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_switch
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_uninitialized_data
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_stat
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_virtualDispatch
-    <<: *zero-optimize
+    <<: *default
+    reassemble:
+        compiler: "mips-linux-gnu-g++"
+        flags: ["-no-pie"]
+        skip: false
 
   # FIXME: ex_exceptions{1,2,3}: .gcc_except_table
