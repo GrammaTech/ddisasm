@@ -637,7 +637,23 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
                         [index](const auto &element) { return element.OperandIndex == index; });
        movedLabel != rangeMovedLabel.second)
     {
-        assert(movedLabel->Address1 == gtirb::Addr(immediate));
+        bool isPart = false;
+        auto rangeOperandAttribute = symbolicInfo.SymbolicOperandAttributes.equal_range(ea);
+        if(auto operandAttribute =
+               std::find_if(rangeOperandAttribute.first, rangeOperandAttribute.second,
+                            [index](const auto &element) { return element.Index == index; });
+           operandAttribute != rangeOperandAttribute.second)
+        {
+            if(operandAttribute->Type == "Part0" || operandAttribute->Type == "Part1"
+               || operandAttribute->Type == "Part2" || operandAttribute->Type == "Part3")
+                isPart = true;
+        }
+
+        // Do not assert-check for Part0~Part3
+        if(!isPart)
+        {
+            assert(movedLabel->Address1 == gtirb::Addr(immediate));
+        }
         auto diff = movedLabel->Address1 - movedLabel->Address2;
         auto sym = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
