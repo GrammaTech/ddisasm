@@ -1,4 +1,4 @@
-//===- arch_x64.dl ------------------------------------------*- datalog -*-===//
+//===- arch_x86.dl ------------------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -276,6 +276,10 @@ symbol_minus_symbol(EA+Disp_offset,4,Beg,Dest,1):-
     section(".got",_,Beg),
     got_relative_operand(EA,Index,Dest),
     instruction_displacement_offset(EA,Index,Disp_offset).
+
+symbolic_operand_attribute(EA,Index,"PltRef"):-
+    symbolic_operand(EA,Index,Dest,_),
+    plt_block(Dest,_).
 
 symbolic_operand_attribute(EA,Index,"GotOff"):-
     got_relative_operand(EA,Index,Dest).
