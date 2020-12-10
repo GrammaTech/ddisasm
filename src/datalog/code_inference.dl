@@ -145,7 +145,8 @@ invalid(EA):-
         //pc_relative_jump(EA,Not_code);
         //pc_relative_call(EA,Not_code)
     ),
-    !instruction(Not_code,_,_,_,_,_,_,_,_,_).
+    !instruction(Not_code,_,_,_,_,_,_,_,_,_),
+    Not_code != 0.
 
 // propagate the invalid instructions backwards until ret or jmp (encoded in must_fallthrough)
 // propagate through direct jumps and calls

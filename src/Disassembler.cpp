@@ -548,6 +548,21 @@ void expandSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
             }
         }
     }
+    for(auto &output : *prog->getRelation("plt_local_entry"))
+    {
+        gtirb::Addr ea, dest;
+        output >> ea >> dest;
+        auto foundSrc = module.findSymbols(ea);
+        auto foundDest = module.findSymbols(dest);
+        for(gtirb::Symbol &src : foundSrc)
+        {
+            for(gtirb::Symbol &dest : foundDest)
+            {
+                (*symbolForwarding)[src.getUUID()] = dest.getUUID();
+                break;
+            }
+        }
+    }
     for(auto &output : *prog->getRelation("got_reference"))
     {
         gtirb::Addr ea;

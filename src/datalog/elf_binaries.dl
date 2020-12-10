@@ -128,11 +128,25 @@ plt_entry(EA,Function):-
     EA < Beg+Size,
     EA >= Beg,
     pc_relative_jump(EA,Got_entry),
-    relocation(Got_entry,_,Function,_).
+    relocation(Got_entry,_,Function,_),
+    Function != "".
 
 plt_block(Block,Function):-
     plt_entry(EA,Function),
     code_in_refined_block(EA,Block).
+
+.decl plt_local_entry(ea:address, dest:address)
+.output plt_local_entry
+
+plt_local_entry(Block,as(Dest,address)):-
+    plt_section(SecName),
+    section(SecName,Size,Beg),
+    EA < Beg+Size,
+    EA >= Beg,
+    pc_relative_jump(EA,Got_entry),
+    relocation(Got_entry,"IRELATIVE","",Dest),
+    code_in_refined_block(EA,Block).
+
 
 .decl plt_data_reference(ea:address)
 
