@@ -172,12 +172,6 @@ tests:
 
   - name: ex_pointerReatribution3
     <<: *position-independent
-    build:
-      c: ["gcc"]
-      cpp: ["g++"]
-      # TODO:
-      optimizations: ["-O0", "-O1", "-Os"]
-      flags: ["-m32", "-fpie"]
 
   - name: ex_stat
     <<: *position-independent
