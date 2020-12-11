@@ -531,6 +531,20 @@ void expandSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
                             souffle::SouffleProgram *prog)
 {
     auto *symbolForwarding = module.getAuxData<gtirb::schema::SymbolForwarding>();
+    auto SpecialSymbols = module.findSymbols("__rela_iplt_start");
+    for(gtirb::Symbol &SpecialSymbol : SpecialSymbols)
+    {
+        gtirb::Symbol *RealSymbol = module.addSymbol(context, "__rela_iplt_start");
+        SpecialSymbol.setName("__rela_iplt_start_copy");
+        (*symbolForwarding)[SpecialSymbol.getUUID()] = RealSymbol->getUUID();
+    }
+    SpecialSymbols = module.findSymbols("__rela_iplt_end");
+    for(gtirb::Symbol &SpecialSymbol : SpecialSymbols)
+    {
+        gtirb::Symbol *RealSymbol = module.addSymbol(context, "__rela_iplt_end");
+        SpecialSymbol.setName("__rela_iplt_end_copy");
+        (*symbolForwarding)[SpecialSymbol.getUUID()] = RealSymbol->getUUID();
+    }
     for(auto &output : *prog->getRelation("plt_block"))
     {
         gtirb::Addr ea;
@@ -545,21 +559,6 @@ void expandSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
             for(gtirb::Symbol &dest : foundDest)
             {
                 (*symbolForwarding)[src.getUUID()] = dest.getUUID();
-            }
-        }
-    }
-    for(auto &output : *prog->getRelation("plt_local_entry"))
-    {
-        gtirb::Addr ea, dest;
-        output >> ea >> dest;
-        auto foundSrc = module.findSymbols(ea);
-        auto foundDest = module.findSymbols(dest);
-        for(gtirb::Symbol &src : foundSrc)
-        {
-            for(gtirb::Symbol &dest : foundDest)
-            {
-                (*symbolForwarding)[src.getUUID()] = dest.getUUID();
-                break;
             }
         }
     }
