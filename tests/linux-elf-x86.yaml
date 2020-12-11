@@ -170,9 +170,14 @@ tests:
   - name: ex_pointerReatribution
     <<: *position-independent
 
-  # TODO:
-  # - name: ex_pointerReatribution3
-  #   <<: *position-independent
+  - name: ex_pointerReatribution3
+    <<: *position-independent
+    build:
+      c: ["gcc"]
+      cpp: ["g++"]
+      # TODO:
+      optimizations: ["-O0"]
+      flags: ["-m32", "-fpie"]
 
   - name: ex_stat
     <<: *position-independent

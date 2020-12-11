@@ -309,8 +309,6 @@ plt_entry(EA,Function):-
     ),
     relocation(Got_entry,_,Function,_).
 
-}
-
 // Segment-based references to thread-local storage,
 //   e.g.   mov	   eax, DWORD PTR gs:i@ntpoff
 //     or   mov    eax, DWORD PTR gs:0xfffffff0
@@ -335,3 +333,5 @@ symbolic_operand_attribute(EA,Index,"NtpOff"):-
     symbolic_operand(EA,Index,Dest,_),
     tls_segment(Start,End,_),
     Dest >= Start, Dest < End.
+
+}

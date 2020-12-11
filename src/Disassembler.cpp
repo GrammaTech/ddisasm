@@ -681,6 +681,34 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
             return;
         }
     }
+    // Symbol-Symbol and (Symbol-Symbol)+Offset
+    auto rangeRelSym =
+        symbolicInfo.SymbolicBaseMinusConst.equal_range(ea + instruction.displacementOffset);
+    if(auto relSym = rangeRelSym.first; relSym != rangeRelSym.second)
+    {
+        int64_t offset = 0;
+        gtirb::Symbol *sym1 = getSymbol(context, module, gtirb::Addr(relSym->Symbol1));
+        gtirb::Symbol *sym2;
+
+        // Use moved label and offset for off-cut base-relative references.
+        auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
+        if(auto movedLabel =
+               std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
+                            [index](const auto &element) { return element.OperandIndex == index; });
+           movedLabel != rangeMovedLabel.second)
+        {
+            sym2 = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
+            offset = movedLabel->Address1 - movedLabel->Address2;
+        }
+        else
+        {
+            sym2 = getSymbol(context, module, gtirb::Addr(relSym->Symbol2));
+        }
+
+        addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(
+            module, ea, DispSize, instruction.displacementOffset, 1, offset, sym2, sym1, attrs);
+        return;
+    }
     // Symbol+constant case
     auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
     if(auto movedLabel =
@@ -704,18 +732,6 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
         auto sym = getSymbol(context, module, gtirb::Addr(SymbolicExpr->Dest));
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
             module, ea, DispSize, instruction.displacementOffset, 0, sym, attrs);
-        return;
-    }
-    // Symbol-Symbol case
-    auto rangeRelSym =
-        symbolicInfo.SymbolicBaseMinusConst.equal_range(ea + instruction.displacementOffset);
-    if(auto relSym = rangeRelSym.first; relSym != rangeRelSym.second)
-    {
-        gtirb::Symbol *sym1 = getSymbol(context, module, gtirb::Addr(relSym->Symbol1));
-        gtirb::Symbol *sym2 = getSymbol(context, module, gtirb::Addr(relSym->Symbol2));
-
-        addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(
-            module, ea, DispSize, instruction.displacementOffset, 1, 0, sym2, sym1, attrs);
         return;
     }
 }
