@@ -459,6 +459,9 @@ ambiguous_symbol(Name):-
 function_symbol(EA,Name):-
     symbol(EA,_,"FUNC",_,_,_,_,Name).
 
+function_symbol(EA,Name):-
+    symbol(EA,_,"GNU_IFUNC",_,_,Name).
+    
 .decl defined_symbol(ea:address,size:unsigned,type:symbol,scope:symbol,sectionIndex:unsigned,originTable:symbol,tableIndex:unsigned,name:symbol)
 
 defined_symbol(EA,Size,Type,Scope,SectIndex,OriginTable,TableIndex,Name):-
@@ -553,6 +556,11 @@ inferred_symbol_name(EA,"main","GLOBAL"):-
 no_return_call(EA):-
     direct_call(EA,Dest),
     plt_entry(Dest,Function),
+    no_return_function(Function).
+
+no_return_call(EA):-
+    direct_call(EA,Dest),
+    defined_symbol(Dest,_,_,_,_,Name),
     no_return_function(Function).
 
 .decl is_padding(EA:address)

@@ -66,7 +66,8 @@ data_section(Name):-
         elf_section_type("INIT_ARRAY",Type);
         elf_section_type("FINI_ARRAY",Type);
         elf_section_type("PREINIT_ARRAY",Type);
-        elf_section_type("DYNAMIC",Type)
+        elf_section_type("DYNAMIC",Type);
+        elf_section_type("RELA",Type)
     ).
 
 exception_section(".eh_frame").
@@ -131,22 +132,18 @@ plt_entry(EA,Function):-
     relocation(Got_entry,_,Function,_),
     Function != "".
 
-plt_block(Block,Function):-
-    plt_entry(EA,Function),
-    code_in_refined_block(EA,Block).
-
-.decl plt_local_entry(ea:address, dest:address)
-.output plt_local_entry
-
-plt_local_entry(Block,as(Dest,address)):-
+plt_entry(EA,Name):-
     plt_section(SecName),
     section(SecName,Size,Beg),
     EA < Beg+Size,
     EA >= Beg,
     pc_relative_jump(EA,Got_entry),
     relocation(Got_entry,"IRELATIVE","",Dest),
-    code_in_refined_block(EA,Block).
+    defined_symbol(as(Dest,address),_,"GNU_IFUNC",_,_,Name).
 
+plt_block(Block,Function):-
+    plt_entry(EA,Function),
+    code_in_refined_block(EA,Block).
 
 .decl plt_data_reference(ea:address)
 
