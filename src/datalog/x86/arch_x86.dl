@@ -275,7 +275,8 @@ got_relative_operand(EA,Index,Dest):-
 symbol_minus_symbol(EA+Disp_offset,4,Beg,Dest,1):-
     section(".got",_,Beg),
     got_relative_operand(EA,Index,Dest),
-    instruction_displacement_offset(EA,Index,Disp_offset).
+    instruction_displacement_offset(EA,Index,Disp_offset),
+    !moved_label(EA,_,_,_).
 
 symbolic_operand_attribute(EA,Index,"PltRef"):-
     symbolic_operand(EA,Index,Dest,_),
@@ -333,5 +334,29 @@ symbolic_operand_attribute(EA,Index,"NtpOff"):-
     symbolic_operand(EA,Index,Dest,_),
     tls_segment(Start,End,_),
     Dest >= Start, Dest < End.
+
+
+// GOT-relative data objects are sometimes used as references in loops.
+//    lea     esi, state@GOTOFF[ebx+1320]
+//    lea     eax, state@GOTOFF[ebx-88]
+moved_label_class(EA,1,"got data-object relative"),
+moved_label(EA,1,Address,Base):-
+    // Primary loop access.
+    moved_label(EA_moved,_,_,Base),
+    // Secondary, data object relative reference.
+    next(EA_moved,EA),
+    instruction_get_operation(EA,"LEA"),
+    got_relative_operand(EA,1,Dest),
+    // Moved-value offset is the offset from the reference data object.
+    Offset=as(Dest-Base,number),
+    // Verifiable by loop counter operation.
+    best_value_reg(_,_,EA_moved,Mult,_,"loop"),Offset=Mult,
+    Address=Base+as(Offset,address).
+
+symbol_minus_symbol(EA+Disp_offset,4,Beg,Dest,1):-
+    section(".got",_,Beg),
+    got_relative_operand(EA,Index,_),
+    moved_label(EA,Index,Dest,NewDest),
+    instruction_displacement_offset(EA,Index,Disp_offset).
 
 }

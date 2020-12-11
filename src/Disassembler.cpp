@@ -690,7 +690,6 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
         gtirb::Symbol *sym1 = getSymbol(context, module, gtirb::Addr(relSym->Symbol1));
         gtirb::Symbol *sym2;
 
-        // Use moved label and offset for off-cut base-relative references.
         auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
         if(auto movedLabel =
                std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
