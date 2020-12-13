@@ -194,21 +194,22 @@ build-static:
   script:
     # build GTIRB
     - git clone https://git.grammatech.com/rewriting/gtirb.git
-    - cd gtirb
-    - mkdir build && cd build
+    - mkdir gtirb/build
+    - cd gtirb/build
     - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_BUILD_SHARED_LIBS=OFF
     - make -j
     - cd python; python3 setup.py develop; cd ..
-    - cd ..
+    - cd ../..
     # build gtirb-pprinter
-    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b windows-support
-    - cd gtirb-pprinter
-    - mkdir build && cd build
+    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git
+    - mkdir gtirb-pprinter/build
+    - cd gtirb-pprinter/build
     - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
     - make -j
-    - cd ..
+    - cd ../..
     # build ddisasm
-    - mkdir build && cd build
+    - mkdir build
+    - cd build
     - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDDISASM_BUILD_SHARED_LIBS=OFF -DLIEF_ROOT=/usr/
     - make -j
     # Run the regression tests.
