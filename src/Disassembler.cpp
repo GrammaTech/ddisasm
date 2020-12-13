@@ -593,8 +593,8 @@ void addSymbolicExpressionToCodeBlock(gtirb::Module &Module, gtirb::Addr Addr, u
 }
 
 void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, const gtirb::Addr &ea,
-                            const DecodedInstruction &instruction, uint64_t index, ImmOp &immediate,
-                            const SymbolicInfo &symbolicInfo)
+                            const DecodedInstruction &instruction, uint64_t index,
+                            [[maybe_unused]] ImmOp &immediate, const SymbolicInfo &symbolicInfo)
 {
     gtirb::SymAttributeSet attrs = buildSymbolicExpressionAttributes(ea, index, symbolicInfo);
 

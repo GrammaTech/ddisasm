@@ -67,7 +67,7 @@ GtirbBuilder::GtirbBuilder(std::string P, std::shared_ptr<LIEF::Binary> B) : Pat
 {
     Context = std::make_unique<gtirb::Context>();
     IR = gtirb::IR::Create(*Context);
-    Module = gtirb::Module::Create(*Context);
+    Module = gtirb::Module::Create(*Context, Binary->name());
     IR->addModule(Module);
 }
 
@@ -84,7 +84,6 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::build()
 void GtirbBuilder::initModule()
 {
     Module->setBinaryPath(Path);
-    Module->setName(Binary->name());
     Module->setFileFormat(format());
     Module->setISA(isa());
 }
