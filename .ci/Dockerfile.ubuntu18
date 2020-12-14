@@ -1,7 +1,7 @@
 FROM ubuntu:18.04 as souffle
 RUN apt-get -y update && apt-get -y install automake bison build-essential \
     doxygen flex git libffi-dev libtool make mcpp pkg-config \
-    sqlite3 libsqlite3-dev zlib1g-dev gcc-multilib g++-multilib
+    sqlite3 libsqlite3-dev zlib1g-dev
 
 RUN git clone -b 2.0.2 https://github.com/souffle-lang/souffle
 RUN cd souffle && sh ./bootstrap
@@ -24,13 +24,21 @@ RUN apt-get -y update && apt-get -y install autoconf automake clang clang-format
 RUN python3 -m pip install distro pyyaml
 
 # Install cross-platform utils
-RUN apt-get -y update && \
-    apt-get -y install \
+RUN apt-get -y update \
+ && apt-get -y install \
       gcc-arm-linux-gnueabihf \
       gcc-aarch64-linux-gnu \
       gcc-mips-linux-gnu \
       g++-mips-linux-gnu \
       qemu-user
+
+RUN dpkg --add-architecture i386 \
+ && apt-get -y update \
+ && apt-get -y install \
+      libc6-dev:i386 \
+      libstdc++-7-dev:i386 \
+      lib32gcc-7-dev \
+      lib32stdc++-7-dev
 
 RUN cd /usr/mips-linux-gnu \
  && mkdir etc \
