@@ -223,18 +223,24 @@ def(EA,Reg):-
     direct_call(EA,EA_pc_thunk),
     get_pc_thunk(EA_pc_thunk,Reg).
 
+// Sometimes we use the `.got' section as reference and sometimes `.got.plt'.
+.decl got_reference_pointer(EA:address)
+.output got_reference_pointer
+
 .decl reg_has_got(EA:address,Reg:register)
 .output reg_has_got
 
+got_reference_pointer(Beg),
 reg_has_got(EA,Reg):-
     // call _x86.get_pc_thunk.REG
     direct_call(EA_call,EA_pc_thunk),
     get_pc_thunk(EA_pc_thunk,Reg),
     // add REG, _GLOBAL_OFFSET_TABLE_
-    def_used(EA_call,Reg,EA,_),
+    next(EA_call,EA),
     op_immediate_and_reg(EA,"ADD",Reg,_,Offset),
     // where offset is pc-relative .got address
-    section(".got",_,Beg),
+    got_section(Name),
+    section(Name,_,Beg),
     Beg=EA+as(Offset,address).
 
 reg_has_got(EA_load,Reg_load):-
@@ -245,14 +251,18 @@ reg_has_got(EA_load,Reg_load):-
     // Load GOT pointer
     reg_loaded_from_stack(EA_load,Reg_load,StackPos,StackFrame).
 
+inferred_symbol_name(EA,"_GLOBAL_OFFSET_TABLE_","DEFAULT"):-
+    !symbol(_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
+    got_reference_pointer(EA).
+
 // Create symbol-minus-symbol for special _GLOBAL_OFFSET_TABLE_, i.e. GOT-PC.
 //     add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
-inferred_symbol_name(Beg,"_GLOBAL_OFFSET_TABLE_","DEFAULT"),
-symbol_minus_symbol(EA+Imm_offset,4,Beg,EA,1):-
+symbol_minus_symbol(EA+Imm_offset,4,Got,EA,1):-
     reg_has_got(EA,Reg),
-    section(".got",_,Beg),
+    got_reference_pointer(Got),
     op_immediate_and_reg(EA,"ADD",Reg,Imm_index,Offset),
-    instruction_immediate_offset(EA,Imm_index,Imm_offset).
+    instruction_immediate_offset(EA,Imm_index,Imm_offset),
+    Got=EA+as(Offset,address).
 
 // GOT-relative references consist of a load of the GOT pointer to a register:
 //     call    __x86.get_pc_thunk.ax
@@ -269,11 +279,11 @@ got_relative_operand(EA,Index,Dest):-
       op_indirect(Op,"NONE",Reg,_,_,Offset,_);
       op_indirect(Op,"NONE",_,Reg,1,Offset,_)
     ),
-    section(".got",_,Beg),
-    Dest=Beg+as(Offset,address).
+    got_reference_pointer(Got),
+    Dest=Got+as(Offset,address).
 
-symbol_minus_symbol(EA+Disp_offset,4,Beg,Dest,1):-
-    section(".got",_,Beg),
+symbol_minus_symbol(EA+Disp_offset,4,Got,Dest,1):-
+    got_reference_pointer(Got),
     got_relative_operand(EA,Index,Dest),
     instruction_displacement_offset(EA,Index,Disp_offset),
     !moved_label(EA,_,_,_).
@@ -302,7 +312,8 @@ plt_entry(EA,Function):-
     (
       //  jmp [EBX+Offset]
       op_indirect(Op,"NONE",_,"NONE",1,Offset,_),
-      section(".got",_,Got),Got_entry=Got+as(Offset,address)
+      got_reference_pointer(Got),
+      Got_entry=Got+as(Offset,address)
       ;
       // jmp [Offset]
       op_indirect(Op,"NONE","NONE","NONE",1,Offset,_),
@@ -367,8 +378,8 @@ moved_label(EA_load,1,Address,Base):-
     Offset=as(Dest-Base,number),
     Address=Base+as(Offset,address).
 
-symbol_minus_symbol(EA+Disp_offset,4,Beg,Dest,1):-
-    section(".got",_,Beg),
+symbol_minus_symbol(EA+Disp_offset,4,Got,Dest,1):-
+    got_reference_pointer(Got),
     got_relative_operand(EA,Index,_),
     moved_label(EA,Index,Dest,NewDest),
     instruction_displacement_offset(EA,Index,Disp_offset).

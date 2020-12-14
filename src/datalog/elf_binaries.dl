@@ -102,6 +102,11 @@ plt_section(".plt").
 plt_section(".plt.got").
 plt_section(".plt.sec").
 
+.decl got_section(name:symbol)
+
+got_section(".got").
+got_section(".got.plt").
+
 tls_section(Name):-
     binary_format("ELF"),
     data_section(Name),
