@@ -110,17 +110,11 @@ tests:
   - name: ex_thread_local
     <<: *default
 
-  - name: ex_threads
-    <<: *default
-    build:
-      c: ["gcc", "clang"]
-      cpp: ["g++", "clang++"]
-      # FIXME: Symbol confusion for "-O2" and "-O3".
-      optimizations: ["-O0", "-O1", "-Os"]
-      flags: ["-m32", "-fno-pie", "-no-pie"]
-    reassemble:
-      compiler: "g++"
-      flags: ["-m32", "-lpthread", "-no-pie", "-fno-pie"]
+  # - name: ex_threads
+  #   <<: *default
+  #   reassemble:
+  #     compiler: "g++"
+  #     flags: ["-m32", "-lpthread", "-no-pie", "-fno-pie"]
 
   # ----------------------------------------------------------------------------
   # Small C and C++ examples.  (position independent code)
@@ -195,8 +189,8 @@ tests:
   - name: ex_thread_local
     <<: *position-independent
 
-  - name: ex_threads
-    <<: *position-independent
-    reassemble:
-      compiler: "g++"
-      flags: ["-m32", "-lpthread", "-fpie"]
+  # - name: ex_threads
+  #   <<: *position-independent
+  #   reassemble:
+  #     compiler: "g++"
+  #     flags: ["-m32", "-lpthread", "-fpie"]
