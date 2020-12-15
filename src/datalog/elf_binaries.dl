@@ -158,7 +158,12 @@ got_reference(Got_entry,Symbol):-
     Got_entry < Beg+Size,
     relocation(Got_entry,RelType,Symbol,_),
     RelType != "RELATIVE",
-    symbol(_,_,_,Scope,_,Symbol), Scope != "WEAK".
+    (
+      symbol(_,_,_,Scope,_,Symbol), Scope != "WEAK"
+      ;
+      // Handle `.weakref' directives that are sometime pseudo-weak references.
+      symbol(0,0,"FUNC","WEAK",0,Symbol)
+    ).
 
 got_reference(Got_entry,Symbol):-
     (
