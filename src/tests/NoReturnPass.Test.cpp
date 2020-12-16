@@ -33,7 +33,7 @@ TEST(Unit_NoReturnPass, remove_simple_fallthrough)
 {
     gtirb::Context Ctx;
     gtirb::IR* IR = gtirb::IR::Create(Ctx);
-    gtirb::Module* M = IR->addModule(Ctx);
+    gtirb::Module* M = IR->addModule(Ctx, "test");
     gtirb::Section* S = M->addSection(Ctx, "");
     gtirb::ByteInterval* I = S->addByteInterval(Ctx, gtirb::Addr(0), 2);
 
@@ -74,7 +74,7 @@ TEST(Unit_NoReturnPass, one_path_returns)
     */
     gtirb::Context Ctx;
     gtirb::IR* IR = gtirb::IR::Create(Ctx);
-    gtirb::Module* M = IR->addModule(Ctx);
+    gtirb::Module* M = IR->addModule(Ctx, "test");
     gtirb::Section* S = M->addSection(Ctx, "");
     gtirb::ByteInterval* I = S->addByteInterval(Ctx, gtirb::Addr(0), 7);
 
@@ -130,7 +130,7 @@ TEST(Unit_NoReturnPass, two_paths_no_return)
     */
     gtirb::Context Ctx;
     gtirb::IR* IR = gtirb::IR::Create(Ctx);
-    gtirb::Module* M = IR->addModule(Ctx);
+    gtirb::Module* M = IR->addModule(Ctx, "test");
     gtirb::Section* S = M->addSection(Ctx, "");
     gtirb::ByteInterval* I = S->addByteInterval(Ctx, gtirb::Addr(0), 8);
 
@@ -191,7 +191,7 @@ TEST(Unit_NoReturnPass, loop_no_return)
     */
     gtirb::Context Ctx;
     gtirb::IR* IR = gtirb::IR::Create(Ctx);
-    gtirb::Module* M = IR->addModule(Ctx);
+    gtirb::Module* M = IR->addModule(Ctx, "test");
     gtirb::Section* S = M->addSection(Ctx, "");
     gtirb::ByteInterval* I = S->addByteInterval(Ctx, gtirb::Addr(0), 7);
 

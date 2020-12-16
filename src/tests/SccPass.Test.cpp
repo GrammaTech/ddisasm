@@ -9,7 +9,7 @@ TEST(Unit_SccPass, loop)
 {
     gtirb::Context Ctx;
     gtirb::IR* IR = gtirb::IR::Create(Ctx);
-    gtirb::Module* M = IR->addModule(Ctx);
+    gtirb::Module* M = IR->addModule(Ctx, "test");
     gtirb::Section* S = M->addSection(Ctx, "");
     gtirb::ByteInterval* I = S->addByteInterval(Ctx, gtirb::Addr(0), 4);
 
@@ -39,7 +39,7 @@ TEST(Unit_SccPass, recursion)
 {
     gtirb::Context Ctx;
     gtirb::IR* IR = gtirb::IR::Create(Ctx);
-    gtirb::Module* M = IR->addModule(Ctx);
+    gtirb::Module* M = IR->addModule(Ctx, "test");
     gtirb::Section* S = M->addSection(Ctx, "");
     gtirb::ByteInterval* I = S->addByteInterval(Ctx, gtirb::Addr(0), 4);
 
@@ -72,7 +72,7 @@ TEST(Unit_SccPass, nested_loop)
 {
     gtirb::Context Ctx;
     gtirb::IR* IR = gtirb::IR::Create(Ctx);
-    gtirb::Module* M = IR->addModule(Ctx);
+    gtirb::Module* M = IR->addModule(Ctx, "test");
     gtirb::Section* S = M->addSection(Ctx, "");
     gtirb::ByteInterval* I = S->addByteInterval(Ctx, gtirb::Addr(0), 4);
 
@@ -101,7 +101,7 @@ TEST(Unit_SccPass, loops_and_call)
 {
     gtirb::Context Ctx;
     gtirb::IR* IR = gtirb::IR::Create(Ctx);
-    gtirb::Module* M = IR->addModule(Ctx);
+    gtirb::Module* M = IR->addModule(Ctx, "test");
     gtirb::Section* S = M->addSection(Ctx, "");
     gtirb::ByteInterval* I = S->addByteInterval(Ctx, gtirb::Addr(0), 4);
 
