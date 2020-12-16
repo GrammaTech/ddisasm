@@ -38,7 +38,10 @@ RUN apt-get -y update && \
 RUN apt-get -y update \
  && apt-get -y install \
       lib32gcc-9-dev \
-      lib32stdc++-9-dev
+      lib32stdc++-9-dev \
+      libc-dev-i386-cross \
+ && ln -s /usr/i686-linux-gnu/lib/ /usr/lib/i386-linux-gnu \
+ && ln -s /usr/i686-linux-gnu/include /usr/include/i386-linux-gnu
 
 RUN cd /usr/mips-linux-gnu \
  && mkdir etc \
