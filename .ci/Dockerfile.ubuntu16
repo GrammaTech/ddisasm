@@ -30,7 +30,7 @@ RUN apt-get -y update && \
 
 # Install common packages
 RUN apt-get -y update && apt-get -y install apt-transport-https autoconf automake build-essential \
-    curl doxygen g++ g++-7 gcc gcc-7 gcc-multilib git g++-multilib \
+    curl doxygen g++ g++-7 gcc gcc-7 git \
     libc++1 libc++abi1 libtool make mcpp \
     pkg-config python3 python3-pip wget unzip zlib1g-dev
 RUN python3 -m pip install distro pyyaml
