@@ -457,6 +457,11 @@ defined_symbol(EA,Size,Type,Scope,SectIndex,Name):-
     //the symbol is not undefined
     SectIndex != SHN_UNDEF,
     (SectIndex < SHN_LORESERVE; SectIndex > SHN_HIRESERVE).
+
+// Labels which are defined "at-end" of a data or code region/referent.
+.decl boundary_label(ea:address,m:address,n:address)
+.output boundary_label
+
 ////////////////////////////////////////////////////////////////////////////////////////
 
 .decl section(name:symbol,size:unsigned,addr:address)

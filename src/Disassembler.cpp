@@ -1047,6 +1047,46 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
     Module.removeAuxData<gtirb::schema::ElfSectionIndex>();
 }
 
+void splitSymbols(gtirb::Context &Context, gtirb::Module &Module, souffle::SouffleProgram *Program)
+{
+    for(auto &T : *Program->getRelation("boundary_label"))
+    {
+        gtirb::Addr EA, Start, End;
+        T >> EA >> Start >> End;
+
+        if(auto It = Module.findDataBlocksOn(EA); !It.empty())
+        {
+            gtirb::DataBlock &Block = It.front();
+            if(gtirb::ByteInterval *BI = Block.getByteInterval(); BI && BI->getAddress())
+            {
+                uint64_t Offset = EA - *(BI->getAddress());
+                if(gtirb::SymbolicExpression *Expr = BI->getSymbolicExpression(Offset))
+                {
+                    if(auto *SAA = std::get_if<gtirb::SymAddrAddr>(Expr))
+                    {
+                        gtirb::Symbol *S = SAA->Sym1;
+                        if(S && !S->getAtEnd() && S->getAddress() == End)
+                        {
+                            std::stringstream Stream;
+                            Stream << "__end_" << std::hex << static_cast<uint64_t>(Start);
+                            std::string Label = Stream.str();
+
+                            gtirb::Symbol *NewSymbol = Module.addSymbol(Context, End, Label);
+                            if(auto BlockIt = Module.findCodeBlocksOn(Start); !BlockIt.empty())
+                            {
+                                gtirb::CodeBlock &CodeBlock = BlockIt.front();
+                                NewSymbol->setReferent(&CodeBlock);
+                            }
+                            NewSymbol->setAtEnd(true);
+                            SAA->Sym1 = NewSymbol;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     std::map<gtirb::UUID, std::set<gtirb::UUID>> functionEntries;
@@ -1403,6 +1443,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     expandSymbolForwarding(context, module, prog);
     // This should be done after creating all the symbols.
     connectSymbolsToBlocks(context, module);
+    splitSymbols(context, module, prog);
     // These functions should not create additional symbols.
     buildFunctions(module, prog);
     buildCFG(context, module, prog);
