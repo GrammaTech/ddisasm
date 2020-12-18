@@ -38,7 +38,6 @@ instruction_get_dest_op(EA,Index,Op):-
     !arch.jump_operation(Operation),
     !arch.store_operation(Operation),
     instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
-    !arch.read_only_operation(Operation),
     (
         Op4 = 0,
         Op3 = 0,
@@ -54,12 +53,12 @@ instruction_get_dest_op(EA,Index,Op):-
         Op4 != 0,
         Op = Op4,
         Index = 4
-    ).
+    ),
+    !arch.read_only_operation(Operation).
 
 instruction_get_src_op(EA,Index,Op):-
     arch.store_operation(Operation),
     instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
-    !arch.write_only_operation(Operation),
     (
         Op4 = 0,
         Op3 = 0,
@@ -83,8 +82,7 @@ instruction_get_src_op(EA,Index,Op):-
         instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
         instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
         instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
-    ),
-    !arch.write_only_operation(Operation).
+    ).
 
 // NOTE: For jump instructions, treat all ops as src.
 // E.g., bne $v0, $v1, L_xxx
@@ -383,12 +381,6 @@ symbolic_operand_attribute(EA,1,"AddrRelGot"):-
 
 symbolic_operand_attribute(EA,2,"Part0"):-
     base_addr_offset_operand(_,EA,_).
-
-symbolic_operand_attribute(EA,1,"Part1"):-
-    split_load(EA,_,_,"ADDU").
-
-symbolic_operand_attribute(EA,2,"Part0"):-
-    split_load(_,EA,_,"ADDU").
 
 // Hi
 symbolic_operand_attribute(EA, 1, "Part1"):-
