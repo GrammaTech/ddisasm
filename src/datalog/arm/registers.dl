@@ -73,3 +73,11 @@ function_non_maintained_reg("R14").
 .decl pc_register(reg:register)
 
 pc_register("PC").
+
+.decl frame_pointer(reg:register)
+
+frame_pointer("FP").
+
+.decl stack_pointer(reg:register)
+
+frame_pointer("SP").
