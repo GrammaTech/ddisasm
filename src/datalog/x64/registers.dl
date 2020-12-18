@@ -104,4 +104,3 @@ frame_pointer("RBP").
 .decl stack_pointer(reg:register)
 
 frame_pointer("RSP").
-
