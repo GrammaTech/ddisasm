@@ -61,7 +61,7 @@ return(EA):-
     return_operation(Operation),
     instruction_get_operation(EA,Operation).
 
-.decl delay_slot(EA:address)
+.decl delay_slot(BranchEA:address,EA:address)
 // No rule for delay_slot
 
 .decl jump(EA:address)

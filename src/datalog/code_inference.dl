@@ -65,42 +65,46 @@ more points.
 
 /////////////////////////////////////////////////////////////
 // Basic facts to define fallthrough
-//
-// NOTE: arch.return_for_fallthru_facts(EA:address)
-//       arch.conditional_jump_for_fallthru_facts(EA:address)
-//       arch.unconditional_jump_for_fallthru_facts(EA:address)
-//       arch.call_for_fallthru_facts(EA:address)
-//       arch.delay_slot(EA:address)
-// The above predicates are for handling ISAs with delay-slot feature, such as MIPS.
-// For ISAs with no delay-slot feature, the above predicates are defined as
-//       arch.return(EA:address)
-//       conditional_jump(EA:address)
-//       unconditional_jump(EA:address)
-//       instruction_get_operation(EA,Operation),call_operation(Operation)
-//       empty rule
-// respectively.
-//
 
 .decl may_fallthrough(o:address,d:address)
 
+// Branch with a delay-slot can always fallthrough
 may_fallthrough(From,To):-
     next(From,To),
-    !arch.return_for_fallthru_facts(From),
-    !arch.unconditional_jump_for_fallthru_facts(From),
+    arch.delay_slot(From,To).
+
+// Delay-slot can fallthrough if the corresponding branch is not unconditional
+// or a return.
+may_fallthrough(From,To):-
+    next(From,To),
+    arch.delay_slot(Prev,From),
+    !arch.return(Prev),
+    !unconditional_jump(Prev).
+
+// Common case
+may_fallthrough(From,To):-
+    next(From,To),
+    !arch.return(From),
+    !unconditional_jump(From),
     !halt(From),
     !no_return_call(From).
 
 .decl must_fallthrough(o:address,d:address)
 
+// Branch with a delay-slot must fallthrough
+must_fallthrough(From,To):-
+    next(From,To),
+    arch.delay_slot(From,To).
+
 must_fallthrough(From,To):-
     may_fallthrough(From,To),
     instruction_get_operation(From,Operation),
-    !arch.call_for_fallthru_facts(From),
+    !arch.call_operation(Operation),
     !arch.syscall_operation(Operation),
     !arch.interrupt_operation(Operation),
     !instruction_has_loop_prefix(From),
-    !arch.conditional_jump_for_fallthru_facts(From),
-    !arch.delay_slot(From).
+    !conditional_jump(From),
+    !arch.delay_slot(_,From).
 
 //////////////////////////////////////////////////////////////
 // This is a small refinement for discarding immediates as targets

@@ -64,7 +64,7 @@ local_next(EA,EA_next):-
 
 inter_procedural_jump(Src,Dest):-
     (
-        !arch.delay_slot(Src),
+        !arch.delay_slot(_,Src),
         unconditional_jump(Src),
         direct_jump(Src,Dest),
         direct_call(OtherSrc,Dest),
@@ -72,7 +72,7 @@ inter_procedural_jump(Src,Dest):-
     )
     ;
     (
-        arch.delay_slot(Src),
+        arch.delay_slot(Call,Src),
         next(Call,Src),
         unconditional_jump(Call),
         direct_jump(Call,Dest),
@@ -92,13 +92,13 @@ block_next(EA,EA_next):-
     block_last_instruction(_,EA),
     (
         (
-            !arch.delay_slot(EA),
+            !arch.delay_slot(_,EA),
             direct_jump(EA,EA_next),
             !inter_procedural_jump(EA,EA_next)
         )
         ;
         (
-            arch.delay_slot(EA),
+            arch.delay_slot(PrevEA,EA),
             next(PrevEA,EA),
             direct_jump(PrevEA,EA_next),
             !inter_procedural_jump(PrevEA,EA_next)
@@ -122,7 +122,7 @@ def(EA,Reg):-
 def(EA,Reg):-
     (
         next(EA,NextEA),
-        !arch.delay_slot(NextEA),
+        !arch.delay_slot(_,NextEA),
         code(EA),
         instruction_get_operation(EA,Operation),
         arch.call_operation(Operation),
@@ -130,7 +130,7 @@ def(EA,Reg):-
     )
     ;
     (
-        arch.delay_slot(EA),
+        arch.delay_slot(Call,EA),
         code(EA),
         next(Call,EA),
         instruction_get_operation(Call,Operation),

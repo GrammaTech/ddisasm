@@ -376,6 +376,7 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
     auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    auto *SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>();
     for(auto &output : *prog->getRelation("inferred_symbol_name"))
     {
         gtirb::Addr addr;
@@ -387,10 +388,13 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
             gtirb::Symbol *symbol = module.addSymbol(context, addr, name);
             if(SymbolInfo)
             {
-                ElfSymbolInfo Info = {0,     "NONE",
-                                      scope, "DEFAULT",
-                                      0,     std::vector<std::tuple<std::string, uint64_t>>()};
+                ElfSymbolInfo Info = {0, "NONE", scope, "DEFAULT", 0};
                 SymbolInfo->insert({symbol->getUUID(), Info});
+            }
+            if(SymbolTabIdxInfo)
+            {
+                ElfSymbolTabIdxInfo TabIdx = std::vector<std::tuple<std::string, uint64_t>>();
+                SymbolTabIdxInfo->insert({symbol->getUUID(), TabIdx});
             }
         }
     }
@@ -511,9 +515,14 @@ gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::
     auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
     if(SymbolInfo)
     {
-        ElfSymbolInfo Info = {0,         "NONE", "LOCAL",
-                              "DEFAULT", 0,      std::vector<std::tuple<std::string, uint64_t>>()};
+        ElfSymbolInfo Info = {0, "NONE", "LOCAL", "DEFAULT", 0};
         SymbolInfo->insert({symbol->getUUID(), Info});
+    }
+    auto *SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>();
+    if(SymbolTabIdxInfo)
+    {
+        ElfSymbolTabIdxInfo TabIdx = std::vector<std::tuple<std::string, uint64_t>>();
+        SymbolTabIdxInfo->insert({symbol->getUUID(), TabIdx});
     }
 
     return symbol;
@@ -637,23 +646,6 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
                         [index](const auto &element) { return element.OperandIndex == index; });
        movedLabel != rangeMovedLabel.second)
     {
-        bool isPart = false;
-        auto rangeOperandAttribute = symbolicInfo.SymbolicOperandAttributes.equal_range(ea);
-        if(auto operandAttribute =
-               std::find_if(rangeOperandAttribute.first, rangeOperandAttribute.second,
-                            [index](const auto &element) { return element.Index == index; });
-           operandAttribute != rangeOperandAttribute.second)
-        {
-            if(operandAttribute->Type == "Part0" || operandAttribute->Type == "Part1"
-               || operandAttribute->Type == "Part2" || operandAttribute->Type == "Part3")
-                isPart = true;
-        }
-
-        // Do not assert-check for Part0~Part3
-        if(!isPart)
-        {
-            assert(movedLabel->Address1 == gtirb::Addr(immediate));
-        }
         auto diff = movedLabel->Address1 - movedLabel->Address2;
         auto sym = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(

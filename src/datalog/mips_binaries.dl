@@ -26,7 +26,6 @@ and characteristics
 */
 
 instruction_get_dest_op(EA,Index,Op):-
-    !arch.jump_operation(Operation),
     arch.store_operation(Operation),
     (
         instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
@@ -87,12 +86,13 @@ instruction_get_src_op(EA,Index,Op):-
     ),
     !arch.write_only_operation(Operation).
 
-// For jump instructions, treat all ops as src.
+// NOTE: For jump instructions, treat all ops as src.
 // E.g., bne $v0, $v1, L_xxx
 //       Both v0 and v1 are sources.
+// See mips' read_only_operation
 instruction_get_src_op(EA,Index,Op):-
     instruction_get_operation(EA, Operation),
-    arch.jump_operation(Operation),
+    arch.read_only_operation(Operation),
     instruction_get_op(EA,Index,Op).
 
 // e.g., sw gp, 16(sp)
@@ -122,15 +122,6 @@ reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
 
 // e.g., sw gp, 16(sp)
 //       ...
-//       lw gp, 16(sp)
-value_reg_edge(EALoad,"GP",EAPrev,"GP",1,0):-
-    reg_stored_in_stack(EAStore,"GP",StackPos,StackFrameDefinedAt),
-    reg_loaded_from_stack(EALoad,"GP","SP",StackPos,StackFrameDefinedAt),
-    def_used(EAPrev,"GP",EAStore,_),
-    EAPrev != EAStore.
-
-// e.g., sw gp, 16(sp)
-//       ...
 //       move fp, sp
 //       ...
 //       lw gp, 16(fp)
@@ -149,12 +140,8 @@ value_reg_edge(EALoad,"GP",EAPrev,"GP",1,0):-
     op_regdirect_contains_reg(Op2,Reg),
     StackFrameDefinedAt2 != StackFrameDefinedAt.
 
-// addiu reg, zero, immediate
 value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
-    instruction(EA,_,_,"ADDIU",Op1,Op2,Op3,0,_,_),
-    op_immediate(Op2,Immediate),
-    op_regdirect_contains_reg(Op3,Reg),
-    op_regdirect_contains_reg(Op1,"ZERO").
+    arch.reg_reg_arithmetic_operation(EA,Reg,"ZERO","NONE",_,Immediate).
 
 // move reg, zero
 value_reg_edge(EA,Reg,EA,"NONE",0,0):-
@@ -167,26 +154,18 @@ value_reg_edge(EA,Reg,EA,"NONE",0,0):-
 value_reg_edge(EA,Reg,EA,"NONE",0,Immediate*(2^16)):-
     op_immediate_and_reg(EA,"LUI",Reg,_,Immediate).
 
-//addiu reg reg2 immediate
+// E.g., addiu reg reg2 immediate
 value_reg_edge(EA,Reg,EA_prev,Reg2,1,Immediate):-
     def_used(EA_prev,Reg2,EA,_),
     EA_prev != EA,
-    instruction(EA,_,_,"ADDIU",Op1,Op2,Op3,0,_,_),
-    op_immediate(Op2,Immediate),
-    op_regdirect_contains_reg(Op3,Reg),
-    op_regdirect_contains_reg(Op1,Reg2),
-    EA != EA_prev.
+    arch.reg_reg_arithmetic_operation(EA,Reg,Reg2,"NONE",_,Immediate).
 
 // load word from got table: e.g., lw v0, -32696(gp)
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     instruction(EA,_,_,"LW",Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg),
-    op_indirect(Op1,"NONE","GP","NONE",_,Offset,_),
-    def_used(EA_gp_def,"GP",EA,_),
-    EA_gp_def != EA,
-    value_reg(EA_gp_def,"GP",_,"NONE",_,Immediate,_),
-    Offset_addr = as(Immediate + Offset,address),
-    data_word_be(Offset_addr, Val).
+    gp_relative_operand(EA,1,Offset_addr),
+    data_word(Offset_addr, 4, Val).
 
 // lui reg3, hi(xxx)
 // addiu reg2, reg3, lo(xxx)
@@ -202,45 +181,8 @@ value_reg_edge(EA,Reg,PrevEA1,Reg,1,as(PrevEA0,number)):-
     instruction_get_dest_op(EA,_,DestOp),
     op_regdirect_contains_reg(DestOp,Reg).
 
-.decl base_addr_offset_operand(ea:address, next_ea:address, dest:address)
-.output base_addr_offset_operand
-
-// e.g., lw v0, -32696(gp)  <-- v0: MIPS_BASE_ADDRESS
-//       addiu a0, v0, 2560 <-- 2560: offset from MIPS_BASE_ADDRESS to target L
-// ->
-//       lw v0, %got(L)(gp)
-//       addiu a0, v0, %lo(L)
-base_addr_offset_operand(EA,NextEA,Dest_addr):-
-    value_reg(EA,Reg,_,"NONE",_,Value,_),
-    instruction_get_operation(EA, Operation),
-    arch.load_operation(Operation),
-    dynamic_entry("MIPS_BASE_ADDRESS",Val),
-    Value = as(Val,number),
-
-    def_used(EA,Reg,NextEA,_),
-    EA != NextEA,
-
-    // ADDIU <Register> <Register> <Offset>
-    // e.g. addiu reg2, reg, <OffsetOp>
-    instruction_get_operation(NextEA, "ADDIU"),
-    instruction_get_op(NextEA, 1, RegOp),
-    op_regdirect_contains_reg(RegOp,Reg),
-    instruction_get_op(NextEA, 2, OffsetOp),
-    op_immediate(OffsetOp, Offset),
-
-    Dest_addr = as(Value+Offset,address).
-
-symbolic_operand_attribute(EA,1,"AddrRelGot"):-
-    base_addr_offset_operand(EA,_,_).
-
-symbolic_operand_attribute(EA,2,"Part0"):-
-    base_addr_offset_operand(_,EA,_).
-
-symbolic_operand(EA,1,Dest_addr,"data"):-
-    base_addr_offset_operand(EA,_,Dest_addr).
-
-symbolic_operand(EA,2,Dest_addr,"data"):-
-    base_addr_offset_operand(_,EA,Dest_addr).
+.decl gp_relative_operand(src:address,index:operand_index, dest:address)
+.output gp_relative_operand
 
 // e.g., lw v0, -32696(gp)
 gp_relative_operand(EA,Index,as(GpValue+Offset,address)):-
@@ -254,7 +196,7 @@ gp_relative_operand(EA,Index,as(GpValue+Offset,address)):-
 // NOTE: This is a hacky trial:
 // Assume that at load instructions with the source with gp as base register,
 // gp holds the address of _gp (global pointer)
-gp_relative_operand(EA,Index,Dest_addr):-
+gp_relative_operand(EA,Index,GpValue+as(Offset,address)):-
     instruction(EA,_,_,Operation,Op1,_,0,0,_,_),
     (
         arch.load_operation(Operation),
@@ -264,8 +206,19 @@ gp_relative_operand(EA,Index,Dest_addr):-
         Index = 2
     ),
     op_indirect(Op1,"NONE","GP","NONE",_,Offset,_),
-    symbol(GpValue,_,_,_,_,_,_,"_gp"),
-    Dest_addr = GpValue + as(Offset,address).
+    symbol(GpValue,_,_,_,_,_,_,"_gp").
+
+gp_relative_operand(EA, 1, as(Dest,address)):-
+    split_load(EA, _, Dest, _).
+
+gp_relative_operand(EA, 2, as(Dest,address)):-
+    split_load(_, EA, Dest, _).
+
+gp_relative_operand(EA, 1, as(Dest,address)):-
+    split_loadstore(EA, _, Dest).
+
+gp_relative_operand(EA, 1, as(Dest,address)):-
+    split_loadstore(_, EA, Dest).
 
 // Global entries
 got_reference(GotEntry,Symbol):-
@@ -285,115 +238,151 @@ got_reference(Got_entry,Symbol):-
     Got_entry < Beg+4*NumLocalEntries,
     symbol(Dest,_,_,_,_,_,_,Symbol).
 
+.decl hi_load(ea:address, reg:register, upper:number)
+
+// LUI <Register> <Immediate>
+hi_load(EA,Reg,Upper):-
+    instruction_get_operation(EA, "LUI"),
+    instruction_get_op(EA, 1, BaseOp),
+    instruction_get_op(EA, 2, RegOp),
+    op_immediate(BaseOp, Upper),
+    op_regdirect_contains_reg(RegOp,Reg).
+
+.decl hi_load_prop(reg_restore_ea:address, ea:address, reg:register, upper:number)
+
+hi_load_prop(EA,EA,Reg,Upper):-
+    hi_load(EA,Reg,Upper).
+
+hi_load_prop(RegRestoreEA,EA,Reg2,Upper):-
+    hi_load(EA,Reg,Upper),
+    def_used(EA,Reg,RegStoreEA,_),
+    reg_stored_in_stack(RegStoreEA,Reg,StackPos,StackFrameDefinedAt),
+    reg_loaded_from_stack(RegRestoreEA,Reg2,"SP",StackPos,StackFrameDefinedAt).
+
 // Compute an immediate load performed across two consecutive instructions
 .decl split_load(ea:address, nextea:address, dest:address, type:symbol)
 .output split_load
 
 // E.g., lui reg, hi(xxx)
 //       addiu reg2, reg, lo(xxx)
-split_load(EA, NextEA, Dest_addr, "ADDIU") :-
-    // LUI <Register> <Immediate>
-    // e.g. lui reg, BaseOp
-    instruction_get_operation(EA, "LUI"),
-    instruction_get_op(EA, 1, BaseOp),
-    instruction_get_op(EA, 2, RegOp),
-    op_immediate(BaseOp, Base),
-    op_regdirect_contains_reg(RegOp,Reg),
+split_load(EA, NextEA, as(Upper*2^16+Offset,address), "ADDIU") :-
+    // lui reg, hi(xxx)
+    hi_load(EA,Reg,Upper),
 
     def_used(EA,Reg,NextEA,_),
     EA != NextEA,
 
-    // ADDIU <Register> <Register> <Immediate>
-    // e.g. addiu reg2, reg, <OffsetOp>
-    instruction_get_operation(NextEA, "ADDIU"),
-    instruction_get_op(NextEA, 1, RegOp2),
-    op_regdirect_contains_reg(RegOp2,Reg),
-    instruction_get_op(NextEA, 2, OffsetOp),
-    op_immediate(OffsetOp, Offset),
-
-    Dest_addr = as(Base*2^16 + Offset,address).
+    // addiu reg2, reg, lo(xxx)
+    arch.reg_reg_arithmetic_operation(NextEA,_,Reg,"NONE",_,Offset).
 
 // E.g., lui reg, hi(xxx)
 //       sw reg, n(sp)
 //       lw reg2, n(sp)
 //       addiu reg3, reg2, lo(xxx)
 // reg is store to stack and restored
-split_load(EA, NextEA, Dest_addr, "ADDIU") :-
-    // e.g. lui reg, BaseOp
-    instruction_get_operation(EA, "LUI"),
-    instruction_get_op(EA, 1, BaseOp),
-    instruction_get_op(EA, 2, RegOp),
-    op_immediate(BaseOp, Base),
-    op_regdirect_contains_reg(RegOp,Reg),
-
-    // e.g., sw reg, n(sp)
-    def_used(EA,Reg,RegStoreEA,_),
-    reg_stored_in_stack(RegStoreEA,Reg,StackPos,StackFrameDefinedAt),
-
-    // e.g., lw reg2, n(sp)
-    reg_loaded_from_stack(RegRestoreEA,Reg2,"SP",StackPos,StackFrameDefinedAt),
+split_load(EA, NextEA, as(Upper*2^16+Offset,address), "ADDIU") :-
+    hi_load_prop(RegRestoreEA,EA,Reg2,Upper),
     def_used(RegRestoreEA,Reg2,NextEA,_),
-
-    // e.g. addiu reg3, reg2, <OffsetOp>
-    instruction_get_operation(NextEA, "ADDIU"),
-    instruction_get_op(NextEA, 1, RegOp2),
-    op_regdirect_contains_reg(RegOp2,Reg2),
-    instruction_get_op(NextEA, 2, OffsetOp),
-    op_immediate(OffsetOp, Offset),
-
-    Dest_addr = as(Base*2^16 + Offset,address).
+    arch.reg_reg_arithmetic_operation(NextEA,_,Reg2,"NONE",_,Offset).
 
 // PIC
 // E.g., lui reg, hi(xxx)
 //       addiu reg2, reg, lo(xxx)
 //       addu reg3, reg2, t9
-split_load(EA, NextEA, Dest_addr, "ADDU") :-
-    // LUI <Register> <Immediate>
-    // e.g. lui reg, BaseOp
-    instruction_get_operation(EA, "LUI"),
-    instruction_get_op(EA, 1, BaseOp),
-    instruction_get_op(EA, 2, RegOp),
-    op_immediate(BaseOp, Base),
-    op_regdirect_contains_reg(RegOp,Reg),
+split_load(EA, NextEA, as(Upper*2^16+Offset+T9Value,address), "ADDU") :-
+    // lui reg, hi(xxx)
+    hi_load(EA,Reg,Upper),
 
     def_used(EA,Reg,NextEA,_),
     EA != NextEA,
 
-    // ADDIU <Register> <Register> <Immediate>
-    // e.g. addiu reg2, reg, <OffsetOp>
-    instruction_get_operation(NextEA, "ADDIU"),
-    instruction_get_op(NextEA, 1, RegOp_),
-    op_regdirect_contains_reg(RegOp_,Reg),
-    instruction_get_op(NextEA, 2, OffsetOp),
-    op_immediate(OffsetOp, Offset),
-    instruction_get_op(NextEA, 3, RegOp__),
-    op_regdirect_contains_reg(RegOp__,Reg2),
+    // addiu reg2, reg, lo(xxx)
+    arch.reg_reg_arithmetic_operation(NextEA,Reg2,Reg,"NONE",_,Offset),
 
     def_used(NextEA,Reg2,NextEA2,_),
     NextEA != NextEA2,
 
-    // ADDU <Register> <Register> T9
-    // e.g. addu reg2, reg, <OffsetOp>
-    instruction_get_operation(NextEA2, "ADDU"),
-    instruction_get_op(NextEA2, 1, Reg2Op),
-    op_regdirect_contains_reg(Reg2Op,Reg2),
-    instruction_get_op(NextEA2, 2, T9Op),
-    op_regdirect_contains_reg(T9Op,"T9"),
+    // addu reg3, reg2, t9
+    arch.reg_reg_arithmetic_operation(NextEA2,_,Reg2,"T9",1,0),
 
     // NOTE: This assumes t9 holds the address of the current function, and
     //       lui is the first instruction of the current function.
     // TODO: Find a way of safely getting the function-entry address for t9.
-    T9Value = as(EA, number),
+    T9Value = as(EA, number).
 
-    Dest_addr = as(Base*2^16 + Offset + T9Value,address).
+// Compute an immediate load/store performed across two separateinstructions
+.decl split_loadstore(ea:address, nextea:address, dest:address)
+.output split_loadstore
 
-symbol_minus_symbol(EA,4,GP_addr,EA,1):-
-    split_load(EA,_,_,"ADDU"),
-    symbol(GP_addr,_,_,_,_,_,_,"_gp").
+// E.g., lui reg, hi(xxx)
+//       lw/sw reg2, lo(xxx)(reg)
+// (lw, lwc1, ldc1, etc.)
+// (sw, swc1, sdc1, etc.)
+split_loadstore(EA, NextEA, as(Upper*2^16+Offset,address)) :-
+    // lui reg, hi(xxx)
+    hi_load(EA,Reg,Upper),
 
-symbol_minus_symbol(EA,4,GP_addr,PrevEA,1):-
-    split_load(PrevEA,EA,_,"ADDU"),
-    symbol(GP_addr,_,_,_,_,_,_,"_gp").
+    def_used(EA,Reg,NextEA,_),
+    EA != NextEA,
+
+    // lw/sw reg2, lo(xxx)(reg)
+    instruction_get_operation(NextEA, Operation),
+    (
+        arch.store_operation(Operation),
+        instruction_get_dest_op(NextEA,_,Op)
+        ;
+        arch.load_operation(Operation),
+        instruction_get_src_op(NextEA,_,Op)
+    ),
+    op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_).
+
+// E.g., lui reg, hi(xxx)
+//       sw reg, n(sp)
+//       lw reg2, n(sp)
+//       lw/sw reg3, lo(xxx)(reg2)
+// reg is store to stack and restored
+split_loadstore(EA, NextEA, as(Upper*2^16+Offset,address)) :-
+    hi_load_prop(RegRestoreEA,EA,Reg2,Upper),
+    def_used(RegRestoreEA,Reg2,NextEA,_),
+
+    // lw/sw reg3, lo(xxx)(reg2)
+    instruction_get_operation(NextEA, Operation),
+    (
+        arch.load_operation(Operation),
+        instruction_get_src_op(NextEA,_,Op)
+        ;
+        arch.store_operation(Operation),
+        instruction_get_dest_op(NextEA,_,Op)
+    ),
+    op_indirect(Op,"NONE",Reg2,"NONE",1,Offset,_).
+
+.decl base_addr_offset_operand(ea:address, next_ea:address, dest:address)
+.output base_addr_offset_operand
+
+// e.g., lw v0, -32696(gp)  <-- v0: MIPS_BASE_ADDRESS
+//       addiu a0, v0, 2560 <-- 2560: offset from MIPS_BASE_ADDRESS to target L
+// ->
+//       lw v0, %got(L)(gp)
+//       addiu a0, v0, %lo(L)
+base_addr_offset_operand(EA,NextEA,as(Value+Offset,address)):-
+    value_reg(EA,Reg,_,"NONE",_,Value,_),
+    instruction_get_operation(EA, Operation),
+    arch.load_operation(Operation),
+    dynamic_entry("MIPS_BASE_ADDRESS",Val),
+    Value = as(Val,number),
+
+    def_used(EA,Reg,NextEA,_),
+    EA != NextEA,
+
+    // ADDIU <Register> <Register> <Offset>
+    // e.g. addiu reg2, reg, Offset
+    arch.reg_reg_arithmetic_operation(NextEA,_,Reg,"NONE",_,Offset).
+
+symbolic_operand_attribute(EA,1,"AddrRelGot"):-
+    base_addr_offset_operand(EA,_,_).
+
+symbolic_operand_attribute(EA,2,"Part0"):-
+    base_addr_offset_operand(_,EA,_).
 
 symbolic_operand_attribute(EA,1,"Part1"):-
     split_load(EA,_,_,"ADDU").
@@ -401,139 +390,12 @@ symbolic_operand_attribute(EA,1,"Part1"):-
 symbolic_operand_attribute(EA,2,"Part0"):-
     split_load(_,EA,_,"ADDU").
 
-// E.g., lui reg, hi(xxx)
-//       lw reg2, lo(xxx)(reg)
-// (lw, lwc1, ldc1, etc.)
-split_load(EA, NextEA, Dest_addr, "LW") :-
-    // LUI <Register> <Immediate>
-    // e.g. lui reg, BaseOp
-    instruction_get_operation(EA, "LUI"),
-    instruction_get_op(EA, 1, BaseOp),
-    instruction_get_op(EA, 2, RegOp),
-    op_immediate(BaseOp, Base),
-    op_regdirect_contains_reg(RegOp,Reg),
-
-    def_used(EA,Reg,NextEA,_),
-    EA != NextEA,
-
-    // Load <Register> <Indirect>
-    // e.g. lw reg2, SrcOp(reg)
-    instruction_get_operation(NextEA, Operation),
-    arch.load_operation(Operation),
-    instruction_get_src_op(NextEA,_,SrcOp),
-    op_indirect(SrcOp,"NONE",Reg,"NONE",1,Offset,_),
-
-    Dest_addr = as(Base*2^16 + Offset,address).
-
-// E.g., lui reg, hi(xxx)
-//       sw reg, n(sp)
-//       lw reg2, n(sp)
-//       lw reg3, lo(xxx)(reg2)
-// reg is store to stack and restored
-split_load(EA, NextEA, Dest_addr, "LW") :-
-    // e.g. lui reg, BaseOp
-    instruction_get_operation(EA, "LUI"),
-    instruction_get_op(EA, 1, BaseOp),
-    instruction_get_op(EA, 2, RegOp),
-    op_immediate(BaseOp, Base),
-    op_regdirect_contains_reg(RegOp,Reg),
-
-    // e.g., sw reg, n(sp)
-    def_used(EA,Reg,RegStoreEA,_),
-    reg_stored_in_stack(RegStoreEA,Reg,StackPos,StackFrameDefinedAt),
-
-    // e.g., lw reg2, n(sp)
-    reg_loaded_from_stack(RegRestoreEA,Reg2,"SP",StackPos,StackFrameDefinedAt),
-    def_used(RegRestoreEA,Reg2,NextEA,_),
-
-    // e.g. lw reg3, SrcOp(reg2)
-    instruction_get_operation(NextEA, Operation),
-    arch.load_operation(Operation),
-    instruction_get_src_op(NextEA,_,SrcOp),
-    op_indirect(SrcOp,"NONE",Reg2,"NONE",1,Offset,_),
-
-    Dest_addr = as(Base*2^16 + Offset,address).
-
-// Compute an immediate store performed across two consecutive instructions
-.decl split_store(ea:address, nextea:address, dest:address)
-.output split_store
-
-// E.g., lui reg, hi(xxx)
-//       sw reg2, lo(xxx)(reg)
-// (sw, swc1, sdc1, etc.)
-split_store(EA, NextEA, Dest_addr) :-
-    // LUI <Register> <Immediate>
-    // e.g. lui reg, BaseOp
-    instruction_get_operation(EA, "LUI"),
-    instruction_get_op(EA, 1, BaseOp),
-    instruction_get_op(EA, 2, RegOp),
-    op_immediate(BaseOp, Base),
-    op_regdirect_contains_reg(RegOp,Reg),
-
-    def_used(EA,Reg,NextEA,_),
-    EA != NextEA,
-
-    // Store <Register> <Indirect>
-    // e.g. sw reg2, SrcOp(reg)
-    instruction_get_operation(NextEA, Operation),
-    arch.store_operation(Operation),
-    instruction_get_dest_op(NextEA,_,DestOp),
-    op_indirect(DestOp,"NONE",Reg,"NONE",1,Offset,_),
-
-    Dest_addr = as(Base*2^16 + Offset,address).
-
-// E.g., lui reg, hi(xxx)
-//       sw reg, n(sp)
-//       lw reg2, n(sp)
-//       sw reg3, lo(xxx)(reg2)
-split_store(EA, NextEA, Dest_addr) :-
-    // e.g. lui reg, BaseOp
-    instruction_get_operation(EA, "LUI"),
-    instruction_get_op(EA, 1, BaseOp),
-    instruction_get_op(EA, 2, RegOp),
-    op_immediate(BaseOp, Base),
-    op_regdirect_contains_reg(RegOp,Reg),
-
-    // e.g., sw reg, n(sp)
-    def_used(EA,Reg,RegStoreEA,_),
-    reg_stored_in_stack(RegStoreEA,Reg,StackPos,StackFrameDefinedAt),
-
-    // e.g., lw reg2, n(sp)
-    reg_loaded_from_stack(RegRestoreEA,Reg2,"SP",StackPos,StackFrameDefinedAt),
-    def_used(RegRestoreEA,Reg2,NextEA,_),
-
-    // e.g. sw reg3, SrcOp(reg2)
-    instruction_get_operation(NextEA, Operation),
-    arch.store_operation(Operation),
-    instruction_get_dest_op(NextEA,_,DestOp),
-    op_indirect(DestOp,"NONE",Reg2,"NONE",1,Offset,_),
-
-    Dest_addr = as(Base*2^16 + Offset,address).
-
-gp_relative_operand(EA, 1, as(Dest,address)):-
-    split_load(EA, _, Dest, "ADDIU").
-
-gp_relative_operand(EA, 2, as(Dest,address)):-
-    split_load(_, EA, Dest, "ADDIU").
-
-gp_relative_operand(EA, 1, as(Dest,address)):-
-    split_load(EA, _, Dest, "LW").
-
-gp_relative_operand(EA, 1, as(Dest,address)):-
-    split_load(_, EA, Dest, "LW").
-
-gp_relative_operand(EA, 1, as(Dest,address)):-
-    split_store(EA, _, Dest).
-
-gp_relative_operand(EA, 1, as(Dest,address)):-
-    split_store(_, EA, Dest).
-
 // Hi
 symbolic_operand_attribute(EA, 1, "Part1"):-
     (
         split_load(EA, _, Dest_addr, _)
         ;
-        split_store(EA, _, Dest_addr)
+        split_loadstore(EA, _, Dest_addr)
     ),
     (
         data_segment(Begin,End),
@@ -548,16 +410,10 @@ symbolic_operand_attribute(EA, 1, "Part1"):-
 // Lo
 symbolic_operand_attribute(EA, Index, "Part0"):-
     (
-        split_load(PrevEA, EA, Dest_addr, "ADDIU"),
+        split_load(PrevEA, EA, Dest_addr, _),
         Index = 2
         ;
-        split_load(PrevEA, EA, Dest_addr, "ADDU"),
-        Index = 2
-        ;
-        split_load(PrevEA, EA, Dest_addr, "LW"),
-        Index = 1
-        ;
-        split_store(PrevEA, EA, Dest_addr),
+        split_loadstore(PrevEA, EA, Dest_addr),
         Index = 1
     ),
     (
@@ -574,6 +430,20 @@ symbolic_operand_attribute(EA, Index, "Part0"):-
 symbolic_operand_attribute(EA,Index,"AddrRelGot"):-
     gp_relative_operand(EA,Index,Dest_addr),
     got_reference(Dest_addr,_).
+
+symbolic_operand(EA,1,Dest_addr,"data"):-
+    base_addr_offset_operand(EA,_,Dest_addr).
+
+symbolic_operand(EA,2,Dest_addr,"data"):-
+    base_addr_offset_operand(_,EA,Dest_addr).
+
+symbol_minus_symbol(EA,4,GP_addr,EA,1):-
+    split_load(EA,_,_,"ADDU"),
+    symbol(GP_addr,_,_,_,_,_,_,"_gp").
+
+symbol_minus_symbol(EA,4,GP_addr,PrevEA,1):-
+    split_load(PrevEA,EA,_,"ADDU"),
+    symbol(GP_addr,_,_,_,_,_,_,"_gp").
 
 symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
   binary_type("EXEC"),

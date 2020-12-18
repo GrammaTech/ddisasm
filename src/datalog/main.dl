@@ -114,6 +114,9 @@ This module:
 .decl entry_point(ea:address)
 .input entry_point
 
+.decl endianness(End:symbol) // Either LE or BE
+.input endianness
+
 .decl base_address(ea:address)
 .input base_address
 
@@ -173,24 +176,6 @@ This module:
 // data from sections
 .decl data_byte(ea:address,value:unsigned)
 .input data_byte
-
-.decl data_word_le(ea:address,value:number)
-
-data_word_le(EA, Val):-
-    data_byte(EA,Byte0),
-    data_byte(EA+1,Byte1),
-    data_byte(EA+2,Byte2),
-    data_byte(EA+3,Byte3),
-    Val = as(Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0,number).
-
-.decl data_word_be(ea:address,value:number)
-
-data_word_be(EA, Val):-
-    data_byte(EA,Byte0),
-    data_byte(EA+1,Byte1),
-    data_byte(EA+2,Byte2),
-    data_byte(EA+3,Byte3),
-    Val = as(Byte0*2^24+ Byte1*2^16 + Byte2*2^8 + Byte3,number).
 
 .decl address_in_data(ea:address,value:address)
 
@@ -317,9 +302,6 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
     arch.pc_register(Reg),
     EANext = EA - (EA band 1) +4.
-
-.decl gp_relative_operand(src:address,index:operand_index, dest:address)
-.output gp_relative_operand
 
 .decl symbolic_operand_attribute(ea:address,index:unsigned,attribute:symbol)
 .output symbolic_operand_attribute

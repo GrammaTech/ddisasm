@@ -31,44 +31,10 @@
 /* Define all variants of the move operation */
 .decl move_operation(Operation:symbol)
 
-move_operation("LB").
-move_operation("LBU16").
-move_operation("LBUX").
-move_operation("LBU").
-move_operation("LD").
-move_operation("LDC1").
-move_operation("LDC2").
-move_operation("LDC3").
-move_operation("LDI").
-move_operation("LDL").
-move_operation("LDPC").
-move_operation("LDR").
-move_operation("LDXC1").
-move_operation("LH").
-move_operation("LHU16").
-move_operation("LHX").
-move_operation("LHU").
-move_operation("LI16").
-move_operation("LL").
-move_operation("LLD").
-move_operation("LUXC1").
-move_operation("LW").
-move_operation("LW16").
-move_operation("LWC1").
-move_operation("LWC2").
-move_operation("LWC3").
-move_operation("LWL").
-move_operation("LWM16").
-move_operation("LWM32").
-move_operation("LWPC").
-move_operation("LWP").
-move_operation("LWR").
-move_operation("LWUPC").
-move_operation("LWU").
-move_operation("LWX").
-move_operation("LWXC1").
-move_operation("LWXS").
-move_operation("LI").
+move_operation(Operation):-
+  store_operation(Operation);
+  load_operation(Operation).
+
 move_operation("MOV").
 move_operation("MOVE").
 move_operation("MOVEP").
@@ -76,31 +42,6 @@ move_operation("MOVF").
 move_operation("MOVN").
 move_operation("MOVT").
 move_operation("MOVZ").
-move_operation("ST").
-move_operation("SW").
-move_operation("SW16").
-move_operation("SWC1").
-move_operation("SWC2").
-move_operation("SWC3").
-move_operation("SWL").
-move_operation("SWM16").
-move_operation("SWM32").
-move_operation("SWP").
-move_operation("SWR").
-move_operation("SWXC1").
-move_operation("SB").
-move_operation("SB16").
-move_operation("SC").
-move_operation("SCD").
-move_operation("SD").
-move_operation("SDBBP").
-move_operation("SDBBP16").
-move_operation("SDC1").
-move_operation("SDC2").
-move_operation("SDC3").
-move_operation("SDL").
-move_operation("SDR").
-move_operation("SDXC1").
 
 .decl store_operation(Operation:symbol)
 
@@ -204,79 +145,22 @@ return(EA):-
     return_operation(Operation),
     instruction_get_operation(EA,Operation).
 
-// 'EA' is the EA of delay slot associated to a return_operation.
-.decl return_for_fallthru_facts(EA:address)
-
-return_for_fallthru_facts(EA):-
-    return_operation(Operation),
-    instruction_get_operation(prev_EA,Operation),
-    next(prev_EA,EA),
-    delay_slot(EA).
-
 .decl jump(EA:address)
 
 jump(EA):-
     instruction_get_operation(EA,Operation),
     jump_operation(Operation).
 
-.decl delay_slot(EA:address)
+.decl delay_slot(BranchEA:address,EA:address)
 .output delay_slot
 
-delay_slot(EA):-
-    next(prev_EA, EA),
-    instruction_get_operation(prev_EA,Operation),
+delay_slot(BranchEA,EA):-
+    next(BranchEA, EA),
+    instruction_get_operation(BranchEA,Operation),
     jump_operation(Operation),
     !compact_branch_operation(Operation).
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
-
-// 'EA' is the EA of delay slot associated to a unconditional jump operation.
-// If it is a compact branch (no delay slot), EA is a unconditional jump operation.
-.decl unconditional_jump_for_fallthru_facts(EA:address)
-
-unconditional_jump_for_fallthru_facts(EA):-
-    (
-        instruction_get_operation(EA,Operation),
-        unconditional_jump_operation(Operation),
-        compact_branch_operation(Operation)
-    ),
-    (
-        delay_slot(EA),
-        next(prev_EA,EA),
-        instruction_get_operation(EA_prev,Operation),
-        unconditional_jump_operation(Operation),
-        !compact_branch_operation(Operation)
-    ).
-
-// 'EA' is the EA of delay slot associated to a conditional jump operation.
-// If it is a compact branch (no delay slot), EA is a conditional jump operation.
-.decl conditional_jump_for_fallthru_facts(EA:address)
-
-conditional_jump_for_fallthru_facts(EA):-
-    (
-        instruction_get_operation(EA,Operation),
-        !unconditional_jump_operation(Operation),
-        compact_branch_operation(Operation)
-    ),
-    (
-        delay_slot(EA),
-        next(prev_EA,EA),
-        instruction_get_operation(EA_prev,Operation),
-        jump_operation(Operation),
-        !unconditional_jump_operation(Operation),
-        !compact_branch_operation(Operation)
-    ).
-
-// 'EA' is the EA of delay slot associated to a call operation.
-// If it is a compact branch (no delay slot), EA is a call operation.
-.decl call_for_fallthru_facts(EA:address)
-
-call_for_fallthru_facts(EA):-
-    delay_slot(EA),
-    next(prev_EA,EA),
-    instruction_get_operation(EA_prev,Operation),
-    call_operation(Operation).
-
 
 // No operation
 
@@ -432,7 +316,9 @@ logic_operation("DEXTM").
 logic_operation("DEXTU").
 
 .decl read_only_operation(Operation:symbol)
-// TODO:
+
+read_only_operation(Operation):-
+    jump_operation(Operation).
 
 .decl write_only_operation(Operation:symbol)
 // TODO:
@@ -445,7 +331,7 @@ pointer_size(4).
 
 .decl loop_prefix(prefix:symbol)
 
-// No look prefix
+// No loop prefix
 
 .decl call_operation(operation:symbol)
 
@@ -501,5 +387,20 @@ return_operation("JRADDIUSP").
 
 // arithmetic operation on two source registers
 .decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
+
+// ADDIU <Register> <Register> <Immediate>
+reg_reg_arithmetic_operation(EA,Reg,Reg2,"NONE",1,Immediate):-
+    instruction(EA,_,_,"ADDIU",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op3,Reg),
+    op_regdirect_contains_reg(Op1,Reg2),
+    op_immediate(Op2,Immediate).
+
+// ADDU <Register> <Register> <Register>
+reg_reg_arithmetic_operation(EA,Reg,Reg1,Reg2,1,0):-
+    instruction(EA,_,_,"ADDU",SrcOp1,SrcOp2,DestOp,0,_,_),
+    instruction_get_operation(EA, "ADDU"),
+    op_regdirect_contains_reg(DestOp,Reg),
+    op_regdirect_contains_reg(SrcOp1,Reg1),
+    op_regdirect_contains_reg(SrcOp2,Reg2).
 
 }

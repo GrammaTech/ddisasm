@@ -40,6 +40,9 @@ RUN dpkg --add-architecture i386 \
       lib32gcc-7-dev \
       lib32stdc++-7-dev
 
+# Create the necessary links and cache to the most recent shared libraries
+# found in the directory /usr/mips-linus-gnu/ so that the run-time linker can
+# use the cache.
 RUN cd /usr/mips-linux-gnu \
  && mkdir etc \
  && ldconfig -c etc/ld.do.cache -r .

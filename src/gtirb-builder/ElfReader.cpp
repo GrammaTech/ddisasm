@@ -176,6 +176,7 @@ void ElfReader::buildSymbols()
     accum_symbol_table(Elf->static_symbols(), ".symtab");
 
     std::map<gtirb::UUID, ElfSymbolInfo> SymbolInfo;
+    std::map<gtirb::UUID, ElfSymbolTabIdxInfo> SymbolTabIdxInfo;
     for(auto &[Key, Indexes] : Symbols)
     {
         auto &[Value, Size, Type, Scope, Visibility, SecIndex, Name] = Key;
@@ -198,9 +199,11 @@ void ElfReader::buildSymbols()
         assert(S && "Failed to create symbol.");
 
         // Add additional symbol information to aux data.
-        SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex, Indexes};
+        SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex};
+        SymbolTabIdxInfo[S->getUUID()] = Indexes;
     }
     Module->addAuxData<gtirb::schema::ElfSymbolInfoAD>(std::move(SymbolInfo));
+    Module->addAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>(std::move(SymbolTabIdxInfo));
 }
 
 void ElfReader::addEntryBlock()

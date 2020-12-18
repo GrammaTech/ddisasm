@@ -43,6 +43,9 @@ RUN apt-get -y update \
  && ln -s /usr/i686-linux-gnu/lib/ /usr/lib/i386-linux-gnu \
  && ln -s /usr/i686-linux-gnu/include /usr/include/i386-linux-gnu
 
+# Create the necessary links and cache to the most recent shared libraries
+# found in the directory /usr/mips-linus-gnu/ so that the run-time linker can
+# use the cache.
 RUN cd /usr/mips-linux-gnu \
  && mkdir etc \
  && ldconfig -c etc/ld.do.cache -r .

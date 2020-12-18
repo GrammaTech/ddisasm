@@ -31,8 +31,8 @@
 #include <vector>
 
 using ElfRelocation = std::tuple<uint64_t, std::string, std::string, int64_t>;
-using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t,
-                                 std::vector<std::tuple<std::string, uint64_t>>>;
+using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>;
+using ElfSymbolTabIdxInfo = std::vector<std::tuple<std::string, uint64_t>>;
 using SectionProperties = std::tuple<uint64_t, uint64_t>;
 using ElfDynamicEntry = std::tuple<std::string, uint64_t>;
 
@@ -50,6 +50,13 @@ namespace gtirb
         {
             static constexpr const char* Name = "elfSymbolInfo";
             typedef std::map<gtirb::UUID, ElfSymbolInfo> Type;
+        };
+
+        /// \brief Auxiliary data for extra symbol info.
+        struct ElfSymbolTabIdxInfoAD
+        {
+            static constexpr const char* Name = "elfSymbolTabIdxInfo";
+            typedef std::map<gtirb::UUID, ElfSymbolTabIdxInfo> Type;
         };
 
         /// \brief Auxiliary data describing a binary's type.
