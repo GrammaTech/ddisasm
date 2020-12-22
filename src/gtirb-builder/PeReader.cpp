@@ -192,7 +192,7 @@ std::vector<PeResource> PeReader::resources()
                         // 32b data length
                         uint32_t Tmp = DataNode->content().size();
                         uint16_t Tmp16 = 0;
-                        writeToStream("ss, Tmp, 4);
+                        writeToStream(ss, Tmp, 4);
 
                         // 32b Header length
                         uint32_t HeaderLen = 0x18;
@@ -205,7 +205,7 @@ std::vector<PeResource> PeReader::resources()
                         if(HeaderLen % 4 == 2)
                             PaddingLen = 2;
                         HeaderLen += PaddingLen;
-                        writeToStream("ss, HeaderLen, 4);
+                        writeToStream(ss, HeaderLen, 4);
 
                         // 32b type id, or unicode type name
                         if(TypeNode.has_name())
@@ -216,9 +216,9 @@ std::vector<PeResource> PeReader::resources()
                         else
                         {
                             Tmp16 = 0xffff;
-                            writeToStream("ss, Tmp16, 2);
+                            writeToStream(ss, Tmp16, 2);
                             Tmp16 = (uint16_t)TypeNode.id();
-                            writeToStream("ss, Tmp16, 2);
+                            writeToStream(ss, Tmp16, 2);
                         }
 
                         // 32b id, or unicode name
@@ -230,40 +230,40 @@ std::vector<PeResource> PeReader::resources()
                         else
                         {
                             Tmp16 = 0xffff;
-                            writeToStream("ss, Tmp16, 2);
+                            writeToStream(ss, Tmp16, 2);
                             Tmp16 = (uint16_t)IdNode.id();
-                            writeToStream("ss, Tmp16, 2);
+                            writeToStream(ss, Tmp16, 2);
                         }
 
                         // padding?
                         if(PaddingLen == 2)
                         {
                             Tmp16 = 0x0000;
-                            writeToStream("ss, Tmp16, 2);
+                            writeToStream(ss, Tmp16, 2);
                         }
 
                         // uint32_t DataVersion;
                         // TODO : How is this different that the below 'version' field?
                         Tmp = ResourceDir->major_version() << 16 | ResourceDir->minor_version();
-                        writeToStream("ss, Tmp, 4);
+                        writeToStream(ss, Tmp, 4);
 
                         // uint16_t MemoryFlags;
                         // Reserved for backwards compatibility.  Determined empirically from some
                         // examples.
                         Tmp16 = 0x1030;
-                        writeToStream("ss, Tmp16, 2);
+                        writeToStream(ss, Tmp16, 2);
 
                         // uint16_t LanguageId;
                         Tmp16 = LanguageNode.id();
-                        writeToStream("ss, Tmp16, 2);
+                        writeToStream(ss, Tmp16, 2);
 
                         // uint32_t Version;
                         Tmp = ResourceDir->major_version() << 16 | ResourceDir->minor_version();
-                        writeToStream("ss, Tmp, 4);
+                        writeToStream(ss, Tmp, 4);
 
                         // uint32_t Characteristics;
                         Tmp = ResourceDir->characteristics();
-                        writeToStream("ss, Tmp, 4);
+                        writeToStream(ss, Tmp, 4);
 
                         std::vector<uint8_t> DataFromLIEF = DataNode->content();
 
