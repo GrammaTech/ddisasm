@@ -297,6 +297,10 @@ symbol_minus_symbol(EA+Disp_offset,4,Got,Dest,1):-
     !moved_label(EA,_,_,_).
 
 symbolic_operand_attribute(EA,Index,"PltRef"):-
+    (
+      direct_jump(EA,_);
+      direct_call(EA,_)
+    ),
     symbolic_operand(EA,Index,Dest,_),
     plt_block(Dest,_).
 
