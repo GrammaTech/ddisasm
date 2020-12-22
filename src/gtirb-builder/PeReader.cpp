@@ -273,14 +273,16 @@ std::vector<PeResource> PeReader::resources()
                         // base>
                         auto ResourceSection = Pe->section_from_offset(DataNode->offset());
                         uint64_t DataEA = DataNode->offset() - ResourceSection.offset()
-                                           + ResourceSection.virtual_address()
-                                           + Pe->optional_header().imagebase();
+                                          + ResourceSection.virtual_address()
+                                          + Pe->optional_header().imagebase();
                         auto DataBIs = Module->findByteIntervalsOn(gtirb::Addr(DataEA));
                         if(DataBIs)
                         {
                             uint64_t BiOffset =
-                                DataEA - static_cast<uint64_t>(DataBIs.front().getAddress().value());
-                            gtirb::Offset GtirbOffset = gtirb::Offset(DataBIs.front().getUUID(), BiOffset);
+                                DataEA
+                                - static_cast<uint64_t>(DataBIs.front().getAddress().value());
+                            gtirb::Offset GtirbOffset =
+                                gtirb::Offset(DataBIs.front().getUUID(), BiOffset);
                             std::vector<uint8_t> HeaderVec;
                             for(char c : ss.str())
                                 HeaderVec.push_back(c);
@@ -291,14 +293,17 @@ std::vector<PeResource> PeReader::resources()
                                 + BiOffset;
 
                             // sanity check
-                            if(memcmp(DataNode->content().data(), DataInBI, DataNode->content().size()) != 0)
+                            if(memcmp(DataNode->content().data(), DataInBI,
+                                      DataNode->content().size())
+                               != 0)
                             {
                                 std::cerr << "WARNING: PE Resource data in IR does not match data "
                                              "in original.\n";
                             }
 
                             // Add the resource to the vector to be added as the aux data
-                            CollectedResources.push_back({HeaderVec, GtirbOffset, DataFromLIEF.size()});
+                            CollectedResources.push_back(
+                                {HeaderVec, GtirbOffset, DataFromLIEF.size()});
                         }
                         else
                             std::cerr << "WARNING: No byte interval found for resource, resource "
