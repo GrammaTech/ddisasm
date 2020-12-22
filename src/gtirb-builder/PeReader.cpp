@@ -164,7 +164,6 @@ void PeReader::addAuxData()
 
 std::vector<PeResource> PeReader::resources()
 {
-//#define WR(ss, d, n) ss.write(reinterpret_cast<const char *>(&d), n)
     auto WR = [](std::stringstream &ss, auto d, int n) {
         ss.write(reinterpret_cast<const char *>(&d), n);
     };
