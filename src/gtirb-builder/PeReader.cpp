@@ -158,147 +158,151 @@ void PeReader::addAuxData()
     // Add `exportEntries' aux data table.
     Module->addAuxData<gtirb::schema::ExportEntries>(exportEntries());
 
-    // Add `PEResources' aux data table
-    Module->addAuxData<gtirb::schema::PEResources>(Resources());
+    // Add `PeResources' aux data table
+    Module->addAuxData<gtirb::schema::PeResources>(resources());
 }
 
-std::vector<Resource> PeReader::Resources()
+std::vector<PeResource> PeReader::resources()
 {
-#define WR(ss, d, n) ss.write(reinterpret_cast<const char *>(&d), n)
+//#define WR(ss, d, n) ss.write(reinterpret_cast<const char *>(&d), n)
+    auto WR = [](std::stringstream &ss, auto d, int n) {
+        ss.write(reinterpret_cast<const char *>(&d), n);
+    };
 
-    std::vector<Resource> rsrc_vec;
+    std::vector<PeResource> CollectedResources;
 
     if(Pe->has_resources())
     {
-        auto &rsrc_dir_node = Pe->resources();
+        auto &ResourceDirNode = Pe->resources();
 
-        const uint8_t header[] = {0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00,
+        const uint8_t Header[] = {0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00,
                                   0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-        auto rsrc_dir = dynamic_cast<LIEF::PE::ResourceDirectory *>(&rsrc_dir_node);
-        for(auto &type_node : rsrc_dir_node.childs())
+        auto ResourceDir = dynamic_cast<LIEF::PE::ResourceDirectory *>(&ResourceDirNode);
+        for(auto &TypeNode : ResourceDirNode.childs())
         {
-            for(auto &id_node : type_node.childs())
+            for(auto &IdNode : TypeNode.childs())
             {
-                for(auto &lang_node : id_node.childs())
+                for(auto &LanguageNode : IdNode.childs())
                 {
-                    if(lang_node.is_data())
+                    if(LanguageNode.is_data())
                     {
-                        auto dn = dynamic_cast<LIEF::PE::ResourceData *>(&lang_node);
+                        auto DataNode = dynamic_cast<LIEF::PE::ResourceData *>(&LanguageNode);
                         std::stringstream ss;
 
                         // 32b data length
-                        uint32_t tmp = dn->content().size();
-                        uint16_t tmp16 = 0;
-                        WR(ss, tmp, 4);
+                        uint32_t Tmp = DataNode->content().size();
+                        uint16_t Tmp16 = 0;
+                        WR(ss, Tmp, 4);
 
-                        // 32b header length
-                        uint32_t header_len = 0x18;
-                        int name_len = 4, type_len = 4, padding_len = 0;
-                        if(type_node.has_name())
-                            type_len = ((type_node.name().size() + 1) * sizeof(uint16_t));
-                        if(id_node.has_name())
-                            name_len = ((id_node.name().size() + 1) * sizeof(uint16_t));
-                        header_len += name_len + type_len;
-                        if(header_len % 4 == 2)
-                            padding_len = 2;
-                        header_len += padding_len;
-                        WR(ss, header_len, 4);
+                        // 32b Header length
+                        uint32_t HeaderLen = 0x18;
+                        int NameLen = 4, TypeLen = 4, PaddingLen = 0;
+                        if(TypeNode.has_name())
+                            TypeLen = ((TypeNode.name().size() + 1) * sizeof(uint16_t));
+                        if(IdNode.has_name())
+                            NameLen = ((IdNode.name().size() + 1) * sizeof(uint16_t));
+                        HeaderLen += NameLen + TypeLen;
+                        if(HeaderLen % 4 == 2)
+                            PaddingLen = 2;
+                        HeaderLen += PaddingLen;
+                        WR(ss, HeaderLen, 4);
 
                         // 32b type id, or unicode type name
-                        if(type_node.has_name())
+                        if(TypeNode.has_name())
                         {
-                            std::u16string n = type_node.name();
-                            ss.write(reinterpret_cast<char *>(n.data()), type_len);
+                            std::u16string n = TypeNode.name();
+                            ss.write(reinterpret_cast<char *>(n.data()), TypeLen);
                         }
                         else
                         {
-                            tmp16 = 0xffff;
-                            WR(ss, tmp16, 2);
-                            tmp16 = (uint16_t)type_node.id();
-                            WR(ss, tmp16, 2);
+                            Tmp16 = 0xffff;
+                            WR(ss, Tmp16, 2);
+                            Tmp16 = (uint16_t)TypeNode.id();
+                            WR(ss, Tmp16, 2);
                         }
 
                         // 32b id, or unicode name
-                        if(id_node.has_name())
+                        if(IdNode.has_name())
                         {
-                            std::u16string n = id_node.name();
-                            ss.write(reinterpret_cast<char *>(n.data()), name_len);
+                            std::u16string n = IdNode.name();
+                            ss.write(reinterpret_cast<char *>(n.data()), NameLen);
                         }
                         else
                         {
-                            tmp16 = 0xffff;
-                            WR(ss, tmp16, 2);
-                            tmp16 = (uint16_t)id_node.id();
-                            WR(ss, tmp16, 2);
+                            Tmp16 = 0xffff;
+                            WR(ss, Tmp16, 2);
+                            Tmp16 = (uint16_t)IdNode.id();
+                            WR(ss, Tmp16, 2);
                         }
 
                         // padding?
-                        if(padding_len == 2)
+                        if(PaddingLen == 2)
                         {
-                            tmp16 = 0x0000;
-                            WR(ss, tmp16, 2);
+                            Tmp16 = 0x0000;
+                            WR(ss, Tmp16, 2);
                         }
 
                         // uint32_t DataVersion;
                         // TODO : How is this different that the below 'version' field?
-                        tmp = rsrc_dir->major_version() << 16 | rsrc_dir->minor_version();
-                        WR(ss, tmp, 4);
+                        Tmp = ResourceDir->major_version() << 16 | ResourceDir->minor_version();
+                        WR(ss, Tmp, 4);
 
                         // uint16_t MemoryFlags;
                         // Reserved for backwards compatibility.  Determined empirically from some
                         // examples.
-                        tmp16 = 0x1030;
-                        WR(ss, tmp16, 2);
+                        Tmp16 = 0x1030;
+                        WR(ss, Tmp16, 2);
 
                         // uint16_t LanguageId;
-                        tmp16 = lang_node.id();
-                        WR(ss, tmp16, 2);
+                        Tmp16 = LanguageNode.id();
+                        WR(ss, Tmp16, 2);
 
                         // uint32_t Version;
-                        tmp = rsrc_dir->major_version() << 16 | rsrc_dir->minor_version();
-                        WR(ss, tmp, 4);
+                        Tmp = ResourceDir->major_version() << 16 | ResourceDir->minor_version();
+                        WR(ss, Tmp, 4);
 
                         // uint32_t Characteristics;
-                        tmp = rsrc_dir->characteristics();
-                        WR(ss, tmp, 4);
+                        Tmp = ResourceDir->characteristics();
+                        WR(ss, Tmp, 4);
 
-                        std::vector<uint8_t> d = dn->content();
+                        std::vector<uint8_t> DataFromLIEF = DataNode->content();
 
                         // LIEF ResourceData node 'offset' member is the offset in the file image of
                         // the resource data.  We need to identify it in the byte-intervals via EA.
                         // EA = <data offset> - <section image offset> + <section RVA> + <image
                         // base>
-                        auto rsrc_section = Pe->section_from_offset(dn->offset());
-                        uint64_t data_ea = dn->offset() - rsrc_section.offset()
-                                           + rsrc_section.virtual_address()
+                        auto ResourceSection = Pe->section_from_offset(DataNode->offset());
+                        uint64_t DataEA = DataNode->offset() - ResourceSection.offset()
+                                           + ResourceSection.virtual_address()
                                            + Pe->optional_header().imagebase();
-                        auto bis = Module->findByteIntervalsOn(gtirb::Addr(data_ea));
-                        if(bis)
+                        auto DataBIs = Module->findByteIntervalsOn(gtirb::Addr(DataEA));
+                        if(DataBIs)
                         {
-                            uint64_t bi_offset =
-                                data_ea - static_cast<uint64_t>(bis.front().getAddress().value());
-                            gtirb::Offset gtoff = gtirb::Offset(bis.front().getUUID(), bi_offset);
-                            std::vector<uint8_t> header_vec;
+                            uint64_t BiOffset =
+                                DataEA - static_cast<uint64_t>(DataBIs.front().getAddress().value());
+                            gtirb::Offset GtirbOffset = gtirb::Offset(DataBIs.front().getUUID(), BiOffset);
+                            std::vector<uint8_t> HeaderVec;
                             for(char c : ss.str())
-                                header_vec.push_back(c);
+                                HeaderVec.push_back(c);
 
-                            const uint8_t *bi_data = reinterpret_cast<const uint8_t *>(
-                                                         bis.front().rawBytes<const uint8_t *>())
-                                                     + bi_offset;
+                            const uint8_t *DataInBI =
+                                reinterpret_cast<const uint8_t *>(
+                                    DataBIs.front().rawBytes<const uint8_t *>())
+                                + BiOffset;
 
                             // sanity check
-                            if(memcmp(dn->content().data(), bi_data, dn->content().size()) != 0)
+                            if(memcmp(DataNode->content().data(), DataInBI, DataNode->content().size()) != 0)
                             {
-                                std::cout << "[WARNING] PE Resource data in IR does not match data "
+                                std::cerr << "WARNING: PE Resource data in IR does not match data "
                                              "in original.\n";
                             }
 
                             // Add the resource to the vector to be added as the aux data
-                            rsrc_vec.push_back({header_vec, gtoff, d.size()});
+                            CollectedResources.push_back({HeaderVec, GtirbOffset, DataFromLIEF.size()});
                         }
                         else
-                            std::cout << "[WARNING] No byte interval found for resource, resource "
+                            std::cerr << "WARNING: No byte interval found for resource, resource "
                                          "data will be incomplete.\n";
                     }
                 }
@@ -308,7 +312,7 @@ std::vector<Resource> PeReader::Resources()
     else
         std::cout << "[INFO] PE: No resources...\n";
 
-    return rsrc_vec;
+    return CollectedResources;
 }
 
 std::vector<ImportEntry> PeReader::importEntries()
