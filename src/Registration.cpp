@@ -42,6 +42,7 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<Padding>();
     gtirb::AuxDataContainer::registerAuxDataType<SymbolForwarding>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolInfoAD>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolTabIdxInfoAD>();
     gtirb::AuxDataContainer::registerAuxDataType<DynamicEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<BinaryType>();
     gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
