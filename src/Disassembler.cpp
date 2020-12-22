@@ -444,6 +444,20 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
             }
         }
     }
+    for(auto &T : *prog->getRelation("abi_intrinsic"))
+    {
+        gtirb::Addr EA;
+        std::string Name;
+        T >> EA >> Name;
+
+        gtirb::Symbol *Symbol = findSymbol(module, EA, Name);
+        if(Symbol)
+        {
+            gtirb::Symbol *NewSymbol = module.addSymbol(context, Name);
+            Symbol->setName(Name + "_copy");
+            symbolForwarding[Symbol->getUUID()] = NewSymbol->getUUID();
+        }
+    }
     module.addAuxData<gtirb::schema::SymbolForwarding>(std::move(symbolForwarding));
 }
 

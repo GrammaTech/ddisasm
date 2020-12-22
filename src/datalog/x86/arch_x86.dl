@@ -223,6 +223,14 @@ def(EA,Reg):-
     direct_call(EA,EA_pc_thunk),
     get_pc_thunk(EA_pc_thunk,Reg).
 
+abi_intrinsic(EA,Name):-
+    get_pc_thunk(EA,_),
+    symbol(EA,_,_,_,_,Name).
+
+abi_intrinsic(EA,"__dso_handle"):-
+    got_relative_operand(_,_,EA),
+    symbol(EA,_,_,_,_,"__dso_handle").
+
 // Sometimes we use the `.got' section as reference and sometimes `.got.plt'.
 .decl got_reference_pointer(EA:address)
 .output got_reference_pointer

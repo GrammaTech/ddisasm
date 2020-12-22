@@ -551,3 +551,8 @@ no_return_call(EA):-
 .decl is_padding(EA:address)
 is_padding(EA):-
     arch.is_nop(EA).
+
+// The functions and data-objects that are intrinsic to the compiler's ABI,
+// which are artifacts of compilation and not explicit features of the source.
+.decl abi_intrinsic(EA:address,Name:symbol)
+.output abi_intrinsic
