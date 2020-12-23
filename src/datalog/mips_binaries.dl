@@ -238,16 +238,7 @@ hi_load_prop(RegRestoreEA,EA,Reg2,Upper):-
 
 // E.g., lui reg, hi(xxx)
 //       addiu reg2, reg, lo(xxx)
-split_load(EA, NextEA, as(Upper*2^16+Offset,address), "ADDIU") :-
-    // lui reg, hi(xxx)
-    hi_load(EA,Reg,Upper),
-
-    def_used(EA,Reg,NextEA,_),
-    EA != NextEA,
-
-    // addiu reg2, reg, lo(xxx)
-    arch.reg_reg_arithmetic_operation(NextEA,_,Reg,"NONE",_,Offset).
-
+// or
 // E.g., lui reg, hi(xxx)
 //       sw reg, n(sp)
 //       lw reg2, n(sp)
@@ -289,26 +280,7 @@ split_load(EA, NextEA, as(Upper*2^16+Offset+T9Value,address), "ADDU") :-
 
 // E.g., lui reg, hi(xxx)
 //       lw/sw reg2, lo(xxx)(reg)
-// (lw, lwc1, ldc1, etc.)
-// (sw, swc1, sdc1, etc.)
-split_loadstore(EA, NextEA, as(Upper*2^16+Offset,address)) :-
-    // lui reg, hi(xxx)
-    hi_load(EA,Reg,Upper),
-
-    def_used(EA,Reg,NextEA,_),
-    EA != NextEA,
-
-    // lw/sw reg2, lo(xxx)(reg)
-    instruction_get_operation(NextEA, Operation),
-    (
-        arch.store_operation(Operation),
-        instruction_get_dest_op(NextEA,_,Op)
-        ;
-        arch.load_operation(Operation),
-        instruction_get_src_op(NextEA,_,Op)
-    ),
-    op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_).
-
+// or
 // E.g., lui reg, hi(xxx)
 //       sw reg, n(sp)
 //       lw reg2, n(sp)
