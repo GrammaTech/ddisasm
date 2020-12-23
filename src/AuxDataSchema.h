@@ -36,6 +36,9 @@ using ElfSymbolTabIdxInfo = std::vector<std::tuple<std::string, uint64_t>>;
 using SectionProperties = std::tuple<uint64_t, uint64_t>;
 using ElfDynamicEntry = std::tuple<std::string, uint64_t>;
 
+// A Resource is a tuple of the form { RES header, data length, data ptr}.
+using PeResource = std::tuple<std::vector<uint8_t>, gtirb::Offset, uint64_t>;
+
 /// \file AuxDataSchema.h
 /// \ingroup AUXDATA_GROUP
 /// \brief AuxData types used by ddisasm that are not sanctioned.
@@ -140,6 +143,13 @@ namespace gtirb
         {
             static constexpr const char* Name = "symbolicExpressionSizes";
             typedef std::map<gtirb::Offset, uint64_t> Type;
+        };
+
+        // \brief List on PE Resources in the form <header, data_offset, data_length
+        struct PeResources
+        {
+            static constexpr const char* Name = "peResources";
+            typedef std::vector<std::tuple<std::vector<uint8_t>, gtirb::Offset, uint64_t>> Type;
         };
 
         /// \brief Auxiliary data that stores the version of ddisasm used to

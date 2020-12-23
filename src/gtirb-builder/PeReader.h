@@ -40,6 +40,7 @@ protected:
     void addEntryBlock() override;
     void addAuxData() override;
 
+    std::vector<PeResource> resources();
     std::vector<ImportEntry> importEntries();
     std::vector<ExportEntry> exportEntries();
 };

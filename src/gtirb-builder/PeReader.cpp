@@ -21,7 +21,9 @@
 //
 //===----------------------------------------------------------------------===//
 #include <boost/filesystem.hpp>
+#include <boost/uuid/uuid_io.hpp>
 namespace fs = boost::filesystem;
+#include "LIEF/PE.h"
 
 #include "PeReader.h"
 
@@ -155,6 +157,166 @@ void PeReader::addAuxData()
 
     // Add `exportEntries' aux data table.
     Module->addAuxData<gtirb::schema::ExportEntries>(exportEntries());
+
+    // Add `PeResources' aux data table
+    Module->addAuxData<gtirb::schema::PeResources>(resources());
+}
+
+std::vector<PeResource> PeReader::resources()
+{
+    auto writeToStream = [](std::stringstream &ss, auto d, int n) {
+        ss.write(reinterpret_cast<const char *>(&d), n);
+    };
+
+    std::vector<PeResource> CollectedResources;
+
+    if(Pe->has_resources())
+    {
+        auto &ResourceDirNode = Pe->resources();
+
+        const uint8_t Header[] = {0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00,
+                                  0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+        auto ResourceDir = dynamic_cast<LIEF::PE::ResourceDirectory *>(&ResourceDirNode);
+        for(auto &TypeNode : ResourceDirNode.childs())
+        {
+            for(auto &IdNode : TypeNode.childs())
+            {
+                for(auto &LanguageNode : IdNode.childs())
+                {
+                    if(LanguageNode.is_data())
+                    {
+                        auto DataNode = dynamic_cast<LIEF::PE::ResourceData *>(&LanguageNode);
+                        std::stringstream ss;
+
+                        // 32b data length
+                        uint32_t Tmp = DataNode->content().size();
+                        uint16_t Tmp16 = 0;
+                        writeToStream(ss, Tmp, 4);
+
+                        // 32b Header length
+                        uint32_t HeaderLen = 0x18;
+                        int NameLen = 4, TypeLen = 4, PaddingLen = 0;
+                        if(TypeNode.has_name())
+                            TypeLen = ((TypeNode.name().size() + 1) * sizeof(uint16_t));
+                        if(IdNode.has_name())
+                            NameLen = ((IdNode.name().size() + 1) * sizeof(uint16_t));
+                        HeaderLen += NameLen + TypeLen;
+                        if(HeaderLen % 4 == 2)
+                            PaddingLen = 2;
+                        HeaderLen += PaddingLen;
+                        writeToStream(ss, HeaderLen, 4);
+
+                        // 32b type id, or unicode type name
+                        if(TypeNode.has_name())
+                        {
+                            std::u16string n = TypeNode.name();
+                            ss.write(reinterpret_cast<char *>(n.data()), TypeLen);
+                        }
+                        else
+                        {
+                            Tmp16 = 0xffff;
+                            writeToStream(ss, Tmp16, 2);
+                            Tmp16 = (uint16_t)TypeNode.id();
+                            writeToStream(ss, Tmp16, 2);
+                        }
+
+                        // 32b id, or unicode name
+                        if(IdNode.has_name())
+                        {
+                            std::u16string n = IdNode.name();
+                            ss.write(reinterpret_cast<char *>(n.data()), NameLen);
+                        }
+                        else
+                        {
+                            Tmp16 = 0xffff;
+                            writeToStream(ss, Tmp16, 2);
+                            Tmp16 = (uint16_t)IdNode.id();
+                            writeToStream(ss, Tmp16, 2);
+                        }
+
+                        // padding?
+                        if(PaddingLen == 2)
+                        {
+                            Tmp16 = 0x0000;
+                            writeToStream(ss, Tmp16, 2);
+                        }
+
+                        // uint32_t DataVersion;
+                        // TODO : How is this different that the below 'version' field?
+                        Tmp = ResourceDir->major_version() << 16 | ResourceDir->minor_version();
+                        writeToStream(ss, Tmp, 4);
+
+                        // uint16_t MemoryFlags;
+                        // Reserved for backwards compatibility.  Determined empirically from some
+                        // examples.
+                        Tmp16 = 0x1030;
+                        writeToStream(ss, Tmp16, 2);
+
+                        // uint16_t LanguageId;
+                        Tmp16 = LanguageNode.id();
+                        writeToStream(ss, Tmp16, 2);
+
+                        // uint32_t Version;
+                        Tmp = ResourceDir->major_version() << 16 | ResourceDir->minor_version();
+                        writeToStream(ss, Tmp, 4);
+
+                        // uint32_t Characteristics;
+                        Tmp = ResourceDir->characteristics();
+                        writeToStream(ss, Tmp, 4);
+
+                        std::vector<uint8_t> DataFromLIEF = DataNode->content();
+
+                        // LIEF ResourceData node 'offset' member is the offset in the file image of
+                        // the resource data.  We need to identify it in the byte-intervals via EA.
+                        // EA = <data offset> - <section image offset> + <section RVA> + <image
+                        // base>
+                        auto ResourceSection = Pe->section_from_offset(DataNode->offset());
+                        uint64_t DataEA = DataNode->offset() - ResourceSection.offset()
+                                          + ResourceSection.virtual_address()
+                                          + Pe->optional_header().imagebase();
+                        auto DataBIs = Module->findByteIntervalsOn(gtirb::Addr(DataEA));
+                        if(DataBIs)
+                        {
+                            uint64_t BiOffset =
+                                DataEA
+                                - static_cast<uint64_t>(DataBIs.front().getAddress().value());
+                            gtirb::Offset GtirbOffset =
+                                gtirb::Offset(DataBIs.front().getUUID(), BiOffset);
+                            std::vector<uint8_t> HeaderVec;
+                            for(char c : ss.str())
+                                HeaderVec.push_back(c);
+
+                            const uint8_t *DataInBI =
+                                reinterpret_cast<const uint8_t *>(
+                                    DataBIs.front().rawBytes<const uint8_t *>())
+                                + BiOffset;
+
+                            // sanity check
+                            if(memcmp(DataNode->content().data(), DataInBI,
+                                      DataNode->content().size())
+                               != 0)
+                            {
+                                std::cerr << "WARNING: PE Resource data in IR does not match data "
+                                             "in original.\n";
+                            }
+
+                            // Add the resource to the vector to be added as the aux data
+                            CollectedResources.push_back(
+                                {HeaderVec, GtirbOffset, DataFromLIEF.size()});
+                        }
+                        else
+                            std::cerr << "WARNING: No byte interval found for resource, resource "
+                                         "data will be incomplete.\n";
+                    }
+                }
+            }
+        }
+    }
+    else
+        std::cout << "[INFO] PE: No resources...\n";
+
+    return CollectedResources;
 }
 
 std::vector<ImportEntry> PeReader::importEntries()
