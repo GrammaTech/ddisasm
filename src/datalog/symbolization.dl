@@ -194,6 +194,7 @@ symbolic_operand_point(EA,Imm_index,-2,"point to exception section"):-
 
  symbolic_operand_point(EA,Imm_index,-1,"operated on logical operation result"):-
     op_immediate_and_reg(EA,_,Reg,Imm_index,_),
+    !arch.jump(EA),
     def_used(EA_def,Reg,EA,_),
     instruction_get_operation(EA_def,Operation),
     arch.logic_operation(Operation),
