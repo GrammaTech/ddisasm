@@ -88,14 +88,14 @@ void ElfReader::resurrectSectionsAndSymbols()
 
     uint64_t Index = 0;
 
-    // Create .fake.ex.segment ---------------------------------------
+    // Create .fake.text.segment -------------------------------------
     {
         auto Segment = LoadedSegmentRX;
         uint64_t addr = Segment.virtual_address();
         uint64_t size = Segment.virtual_size();
 
         // Add named section to GTIRB Module.
-        gtirb::Section *S = Module->addSection(*Context, ".fake.ex.segment");
+        gtirb::Section *S = Module->addSection(*Context, ".fake.text.segment");
         // Add section flags to GTIRB Section.
         S->addFlag(gtirb::SectionFlag::Loaded);
         S->addFlag(gtirb::SectionFlag::Readable);
@@ -119,7 +119,7 @@ void ElfReader::resurrectSectionsAndSymbols()
         ++Index;
     }
 
-    // Create .got ---------------------------------------------------
+    // Create .fake.segment and .got ---------------------------------
     uint64_t got_addr = 0;
     uint64_t got_size = 0;
     uint64_t bss_distance = 0; // offset of bss in LoadedSegmentRW
@@ -128,13 +128,16 @@ void ElfReader::resurrectSectionsAndSymbols()
         uint64_t addr = Segment.virtual_address();
         uint64_t size = Segment.virtual_size();
 
+        // -----------------------------------------------------------
+        // Create .got -----------------------------------------------
+        //
         // Add named section to GTIRB Module.
-        gtirb::Section *S = Module->addSection(*Context, ".got");
+        gtirb::Section *GotS = Module->addSection(*Context, ".got");
         // Add section flags to GTIRB Section.
-        S->addFlag(gtirb::SectionFlag::Loaded);
-        S->addFlag(gtirb::SectionFlag::Readable);
-        S->addFlag(gtirb::SectionFlag::Writable);
-        S->addFlag(gtirb::SectionFlag::Initialized);
+        GotS->addFlag(gtirb::SectionFlag::Loaded);
+        GotS->addFlag(gtirb::SectionFlag::Readable);
+        GotS->addFlag(gtirb::SectionFlag::Writable);
+        GotS->addFlag(gtirb::SectionFlag::Initialized);
 
         uint64_t type = static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS);
         uint64_t flags = static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC
@@ -154,12 +157,33 @@ void ElfReader::resurrectSectionsAndSymbols()
         bss_distance = BytesCopy.size() - bss_rdistance;
 
         gtirb::Addr Addr = gtirb::Addr(got_addr);
-        S->addByteInterval(*Context, Addr, Bytes.begin(), Bytes.end(), bss_distance,
-                           Bytes.size() - bss_rdistance);
+        GotS->addByteInterval(*Context, Addr, Bytes.begin(), Bytes.end(), bss_distance,
+                              Bytes.size() - bss_rdistance);
 
-        Alignment[S->getUUID()] = 16;
-        SectionIndex[Index] = S->getUUID();
-        SectionProperties[S->getUUID()] = {type, flags};
+        Alignment[GotS->getUUID()] = 16;
+        SectionIndex[Index] = GotS->getUUID();
+        SectionProperties[GotS->getUUID()] = {type, flags};
+        ++Index;
+
+        // -----------------------------------------------------------
+        // Create .fake.data.segment
+        // Add named section to GTIRB Module.
+        gtirb::Section *DataS = Module->addSection(*Context, ".fake.data.segment");
+        // Add section flags to GTIRB Section.
+        DataS->addFlag(gtirb::SectionFlag::Loaded);
+        DataS->addFlag(gtirb::SectionFlag::Readable);
+        DataS->addFlag(gtirb::SectionFlag::Writable);
+        DataS->addFlag(gtirb::SectionFlag::Initialized);
+
+        uint64_t data_size = got_addr - addr;
+
+        std::vector<uint8_t> DataBytes = Elf->get_content_from_virtual_address(addr, data_size);
+        DataS->addByteInterval(*Context, gtirb::Addr(addr), DataBytes.begin(), DataBytes.end(),
+                               data_size, data_size);
+
+        Alignment[DataS->getUUID()] = 16;
+        SectionIndex[Index] = DataS->getUUID();
+        SectionProperties[DataS->getUUID()] = {type, flags};
         ++Index;
     }
 
