@@ -25,17 +25,11 @@ Define a set predicates to abstract from MIPS specific instruction set
 and characteristics
 */
 
-instruction_get_dest_op(EA,Index,Op):-
+instruction_get_dest_op(EA,1,Op):-
     arch.store_operation(Operation),
-    (
-        instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
-        instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
-        instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
-    ),
-    !arch.read_only_operation(Operation).
+    instruction(EA,_,_,Operation,Op,_,_,_,_,_).
 
 instruction_get_dest_op(EA,Index,Op):-
-    !arch.jump_operation(Operation),
     !arch.store_operation(Operation),
     instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
     (
@@ -56,25 +50,9 @@ instruction_get_dest_op(EA,Index,Op):-
     ),
     !arch.read_only_operation(Operation).
 
-instruction_get_src_op(EA,Index,Op):-
+instruction_get_src_op(EA,2,Op):-
     arch.store_operation(Operation),
-    instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
-    (
-        Op4 = 0,
-        Op3 = 0,
-        Op2 != 0,
-        Op = Op2,
-        Index = 2
-        ;
-        Op4 = 0,
-        Op3 != 0,
-        Op = Op3,
-        Index = 3
-        ;
-        Op4 != 0,
-        Op = Op4,
-        Index = 4
-    ).
+    instruction(EA,_,_,Operation,_,Op,0,0,_,_).
 
 instruction_get_src_op(EA,Index,Op):-
     !arch.store_operation(Operation),
@@ -120,8 +98,8 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
 value_reg_edge(EA,Reg,EA,"NONE",0,0):-
     arch.move_operation(Operation),
     instruction(EA,_,_,Operation,Op1,Op2,_,0,_,_),
-    op_regdirect(Op1,Reg),
-    op_regdirect(Op2,"ZERO").
+    op_regdirect_contains_reg(Op1,Reg),
+    op_regdirect_contains_reg(Op2,"ZERO").
 
 // lui reg immediate
 value_reg_edge(EA,Reg,EA,"NONE",0,Immediate*(2^16)):-
@@ -276,7 +254,7 @@ split_load(EA, NextEA, as(Upper*2^16+Offset+T9Value,address), "ADDU") :-
     NextEA != NextEA2,
 
     // addu reg3, reg2, t9
-    arch.reg_reg_arithmetic_operation(NextEA2,_,Reg2,"T9",1,0),
+    arch.reg_reg_arithmetic_operation(NextEA2,_,Reg2,"T9",1,0), // RA too?
 
     // NOTE: This assumes t9 holds the address of the current function, and
     //       lui is the first instruction of the current function.
@@ -433,3 +411,46 @@ symbolic_operand_point(EA,Op_index,1,"lookup-got"):-
     instruction_get_op(EA,Op_index,Op),
     op_indirect(Op,"NONE","GP","NONE",1,Offset,_),
     def_used_for_address(EA,_).
+
+// Pattern-matching:
+//   lw $t9, _GLOBAL_OFFSET_TABLE_($gp)
+//   move $t7,$ra
+//   jalr $t9
+//   addiu $t8,$zero,N
+// where N is the index of the target in the _GLOBAL_OFFSET_TABLE_.
+plt_entry(EA,Function):-
+    // lw $t9, _GLOBAL_OFFSET_TABLE_($gp)
+    instruction(PrevEA2,_,_,"LW",Op1,Op2,0,0,_,_),
+    op_regdirect_contains_reg(Op2,"T9"),
+    op_indirect(Op1,"NONE","GP","NONE",_,Offset,_),
+    symbol(GpValue,_,_,_,_,_,_,"_gp"),
+    section(".got",Size,GotBeg),
+    GotBeg = GpValue+as(Offset,address),
+
+    next(PrevEA2, PrevEA),
+
+    // move $t7,$ra
+    instruction(PrevEA,_,_,"MOVE",Op1_2,Op2_2,0,0,_,_),
+    op_regdirect_contains_reg(Op2_2,"T7"),
+    op_regdirect_contains_reg(Op1_2,"RA"),
+
+    next(PrevEA, EA),
+
+    // jalr $t9
+    instruction(EA,_,_,"JALR",Op1_3,0,0,0,_,_),
+    op_regdirect_contains_reg(Op1_3,"T9"),
+
+    next(EA, NextEA),
+
+    // addiu $t8,$zero,N
+    instruction(NextEA,_,_,"ADDIU",Op1_4,Op2_4,Op3_4,0,_,_),
+    op_regdirect_contains_reg(Op3_4,"T8"),
+    op_immediate(Op2_4,Index),
+    symbol(_,_,_,_,_, ".dynsym",Index2,Function),
+    Index = as(Index2,number).
+
+// It is unlikely that EA is a valid instruction if the dest op is zero.
+invalid(EA):-
+    instruction_get_dest_op(EA,Index,Op),
+    !instruction_get_operation(EA, "MOVE"),
+    op_regdirect_contains_reg(Op,"ZERO").

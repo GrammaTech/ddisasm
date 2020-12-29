@@ -44,6 +44,9 @@ protected:
 
 private:
     uint64_t TlsBaseAddress = 0;
+
+    // For sectionless binaries
+    void resurrectSectionsAndSymbols();
 };
 
 #endif // ELF_GTIRB_BUILDER_H_

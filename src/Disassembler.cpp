@@ -972,6 +972,19 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
     std::map<gtirb::Symbol *, std::tuple<gtirb::Node *, bool>> ConnectToBlock;
     for(auto &Symbol : Module.symbols_by_addr())
     {
+        std::string Name = Symbol.getName();
+        // In case of MIPS, add _gp and __RLD_MAP to external block.
+        if((Module.getISA() == gtirb::ISA::MIPS32 || Module.getISA() == gtirb::ISA::MIPS64)
+           && (Name == "_gp" || Name == "__RLD_MAP"))
+        {
+            gtirb::ProxyBlock *externalBlock = Symbol.getReferent<gtirb::ProxyBlock>();
+            if(!externalBlock)
+            {
+                externalBlock = Module.addProxyBlock(Context);
+                Symbol.setReferent(externalBlock);
+            }
+        }
+
         if(Symbol.getAddress())
         {
             gtirb::Addr Addr = *Symbol.getAddress();

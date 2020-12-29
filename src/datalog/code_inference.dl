@@ -131,6 +131,7 @@ may_have_symbolic_immediate(Src,as(Dest,address)):-
 
 
 .decl invalid(EA:address)
+.output invalid
 
 // if the decoder failed to decode any instruction at EA, EA is invalid
 invalid(EA):-

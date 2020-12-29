@@ -57,6 +57,8 @@ store_operation("SWM32").
 store_operation("SWP").
 store_operation("SWR").
 store_operation("SWXC1").
+store_operation("SH").
+store_operation("SH16").
 store_operation("SB").
 store_operation("SB16").
 store_operation("SC").

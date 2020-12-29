@@ -24,7 +24,6 @@
 #include <boost/uuid/uuid_io.hpp>
 namespace fs = boost::filesystem;
 #include "LIEF/PE.h"
-
 #include "PeReader.h"
 
 PeReader::PeReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary)
