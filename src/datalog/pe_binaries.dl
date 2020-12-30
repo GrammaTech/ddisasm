@@ -354,6 +354,10 @@ symbol_minus_symbol_jump_table(EA,TableStart,1,Ref,Dest,"first",4):-
     relative_address(EA,1,TableStart,Ref,Dest,"first"), Dest < TableStart,
     relative_address_start(Ref,4,_,_,_).
 
+start_function(Start_location):-
+    binary_format("PE"),
+    entry_point(Start_location).
+
 // the call to main is right after the call to "__p___argc"
 main_function(EA):-
     code(EA1),
