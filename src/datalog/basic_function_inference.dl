@@ -43,6 +43,7 @@ function_entry(EA):-
     refined_block(EA),
     !fde_addresses(EA,_),
     (
+        entry_point(EA);
         function_symbol(EA,_);
         main_function(EA);
         start_function(EA);
