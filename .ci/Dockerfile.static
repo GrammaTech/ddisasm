@@ -18,14 +18,25 @@ COPY --from=souffle /usr/bin/souffle /usr/bin/souffle
 COPY --from=souffle /usr/bin/souffle-profile /usr/bin/souffle-profile
 COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
 
-RUN apt-get -y install unzip \
+RUN apt-get -y update && apt-get -y install unzip \
     make mcpp pkg-config python3 python3-pip \
     software-properties-common wget zlib1g-dev
 RUN python3 -m pip install distro
 
 # Install cross-platform utils
 RUN apt-get -y update && \
-    apt-get -y install gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu qemu-user
+    apt-get -y install \
+    gcc-arm-linux-gnueabihf \
+    gcc-aarch64-linux-gnu \
+    qemu-user
+
+RUN apt-get -y update \
+ && apt-get -y install \
+      lib32gcc-9-dev \
+      lib32stdc++-9-dev \
+      libc-dev-i386-cross \
+ && ln -s /usr/i686-linux-gnu/lib/ /usr/lib/i386-linux-gnu \
+ && ln -s /usr/i686-linux-gnu/include /usr/include/i386-linux-gnu
 
 # Install LIEF
 RUN cd /usr/local/src \
