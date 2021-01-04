@@ -25,10 +25,11 @@
 
 #include <string>
 
-#include "ehp.hpp"
-
 #include "../CompositeLoader.h"
 #include "../Relations.h"
+#include "ehp.hpp"
+
+void ElfDynamicEntryLoader(const gtirb::Module &Module, DatalogProgram &Program);
 
 void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program);
 

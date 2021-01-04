@@ -25,6 +25,22 @@
 
 #include "../../AuxDataSchema.h"
 
+void ElfDynamicEntryLoader(const gtirb::Module &Module, DatalogProgram &Program)
+{
+    std::vector<relations::DynamicEntry> DynamicEntries;
+
+    // Load Dynamic entries from aux data.
+    if(auto *Table = Module.getAuxData<gtirb::schema::DynamicEntries>())
+    {
+        for(auto [Name, Value] : *Table)
+        {
+            DynamicEntries.push_back({Name, Value});
+        }
+    }
+
+    Program.insert("dynamic_entry", std::move(DynamicEntries));
+}
+
 void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
 {
     std::vector<relations::Symbol> Symbols;
@@ -32,6 +48,7 @@ void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
 
     // Find extra ELF symbol information in aux data.
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    auto *SymbolTabIdxInfo = Module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>();
 
     // Load symbols with extra symbol information, if available.
     for(auto &Symbol : Module.symbols())
@@ -39,8 +56,7 @@ void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
         std::string Name = Symbol.getName();
         gtirb::Addr Addr = Symbol.getAddress().value_or(gtirb::Addr(0));
 
-        ElfSymbolInfo Info = {0, "NOTYPE", "GLOBAL", "DEFAULT", 0, "none", 0};
-
+        ElfSymbolInfo Info = {0, "NOTYPE", "GLOBAL", "DEFAULT", 0};
         if(SymbolInfo)
         {
             auto Found = SymbolInfo->find(Symbol.getUUID());
@@ -55,9 +71,35 @@ void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
             Info = Found->second;
         }
 
-        auto [Size, Type, Binding, Visibility, SectionIndex, OriginTable, TableIndex] = Info;
-        Symbols.push_back(
-            {Addr, Size, Type, Binding, Visibility, SectionIndex, OriginTable, TableIndex, Name});
+        ElfSymbolTabIdxInfo TableIndexes = std::vector<std::tuple<std::string, uint64_t>>();
+        if(SymbolTabIdxInfo)
+        {
+            auto Found = SymbolTabIdxInfo->find(Symbol.getUUID());
+
+            // FIXME: Error handling
+            if(Found == SymbolTabIdxInfo->end())
+            {
+                throw std::logic_error("Symbol " + Symbol.getName()
+                                       + " missing from elfSymbolTabIdxInfo AuxData table");
+            }
+            TableIndexes = Found->second;
+        }
+
+        auto [Size, Type, Binding, Visibility, SectionIndex] = Info;
+        if(TableIndexes.size() > 0)
+        {
+            for(auto &IndexPair : TableIndexes)
+            {
+                const auto &[OriginTable, TableIndex] = IndexPair;
+                Symbols.push_back({Addr, Size, Type, Binding, Visibility, SectionIndex, OriginTable,
+                                   TableIndex, Name});
+            }
+        }
+        else
+        {
+            Symbols.push_back(
+                {Addr, Size, Type, Binding, Visibility, SectionIndex, "NONE", 0, Name});
+        }
     }
 
     // Load relocation entries from aux data.
