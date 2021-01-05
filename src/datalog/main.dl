@@ -310,8 +310,8 @@ conditional_jump(EA):-
 
 direct_jump(EA,as(Dest,address)):-
     arch.jump(EA),
-    instruction_get_op(EA,1,Op1),
-    op_immediate(Op1,Dest).
+    arch.jump_target_op(EA,TargetOp),
+    op_immediate(TargetOp,Dest).
 
 direct_jump(EA,EA):-
     instruction_has_loop_prefix(EA).
@@ -330,16 +330,16 @@ pc_relative_jump(EA,Dest):-
 
 reg_jump(EA,Reg):-
     arch.jump(EA),
-    instruction(EA,_,_,_,Op1,_,_,_,_,_),
-    op_regdirect(Op1,Reg).
+    arch.jump_target_op(EA,TargetOp),
+    op_regdirect(TargetOp,Reg).
 
 // indirect jump
  .decl indirect_jump(src:address)
 
 indirect_jump(EA):-
     arch.jump(EA),
-    instruction(EA,_,_,_,Op1,_,_,_,_,_),
-    op_indirect(Op1,_,_,_, _,_,_),
+    arch.jump_target_op(EA,TargetOp),
+    op_indirect(TargetOp,_,_,_, _,_,_),
     !pc_relative_jump(EA,_).
 
 // CALLS
@@ -349,9 +349,9 @@ indirect_jump(EA):-
 
 direct_call(EA,as(Dest,address)):-
     arch.call_operation(Operation),
-    instruction(EA,_,_,Operation,Op1,_,_,_,_,_),
-    op_immediate(Op1,Dest).
-
+    instruction_get_operation(EA,Operation),
+    arch.jump_target_op(EA,TargetOp),
+    op_immediate(TargetOp,Dest).
 
 .decl pc_relative_call(src:address,dest:address)
 .output pc_relative_call
@@ -368,16 +368,18 @@ pc_relative_call(Src,Dest):-
 
 reg_call(EA,Reg):-
     arch.call_operation(Operation),
-    instruction(EA,_,_,Operation,Op1,_,_,_,_,_),
-    op_regdirect(Op1,Reg).
+    instruction_get_operation(EA,Operation),
+    arch.jump_target_op(EA,TargetOp),
+    op_regdirect(TargetOp,Reg).
 
  .decl indirect_call(src:address)
 // .output indirect_call
 
 indirect_call(EA):-
     arch.call_operation(Operation),
-    instruction(EA,_,_,Operation,Op1,_,_,_,_,_),
-    op_indirect(Op1,_,_,_,_,_,_),
+    instruction_get_operation(EA,Operation),
+    arch.jump_target_op(EA,TargetOp),
+    op_indirect(TargetOp,_,_,_,_,_,_),
     !pc_relative_call(EA,_).
 
 // Returns
@@ -422,7 +424,8 @@ op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate):-
     instruction_get_op(EA,Imm_index,Op),
     op_immediate(Op,Immediate),
     instruction_get_op(EA,_,Op2),
-    op_regdirect_contains_reg(Op2,Reg).
+    op_regdirect_contains_reg(Op2,Reg),
+    !arch.jump(EA).
 
 // The instruction at EA is a comparison between a register Reg and an immediate Immediate
 .decl cmp_immediate_to_reg(EA:address,Reg:register,Imm_index:operand_index,Immediate:number)

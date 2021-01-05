@@ -59,3 +59,8 @@ jump_equal_operation("B.EQ").
 
 .decl jump_unequal_operation(n:symbol)
 jump_equal_operation("B.NE").
+
+.decl jump_target_op(EA:address,operator:operand_code)
+
+jump_target_op(EA,Op1):-
+    instruction(EA,_,_,_,Op1,_,_,_,_,_).
