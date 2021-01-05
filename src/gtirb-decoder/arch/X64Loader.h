@@ -23,11 +23,11 @@
 #ifndef SRC_GTIRB_DECODER_ARCH_X64DECODER_H_
 #define SRC_GTIRB_DECODER_ARCH_X64DECODER_H_
 
+#include <capstone/capstone.h>
+
 #include <optional>
 #include <string>
 #include <tuple>
-
-#include <capstone/capstone.h>
 
 #include "../Relations.h"
 #include "../core/InstructionLoader.h"

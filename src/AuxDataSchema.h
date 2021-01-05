@@ -24,12 +24,11 @@
 #ifndef DDISASM_AUXDATASCHEMA_H
 #define DDISASM_AUXDATASCHEMA_H
 
+#include <gtirb/gtirb.hpp>
 #include <map>
 #include <string>
 #include <tuple>
 #include <vector>
-
-#include <gtirb/gtirb.hpp>
 
 using ElfRelocation = std::tuple<uint64_t, std::string, std::string, int64_t>;
 using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>;

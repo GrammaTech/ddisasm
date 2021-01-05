@@ -238,6 +238,7 @@ instruction_get_dest_op(EA,Index,Op):-
         Op = Op4,
         Index = 4
     ).
+
 instruction_get_dest_op(EA,1,Op):-
     instruction(EA,_,_,Operation,Op,0,0,0,_,_),
     arch.one_op_write(Operation).
@@ -259,6 +260,7 @@ instruction_get_src_op(EA,Index,Op):-
         instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
     ),
     !arch.write_only_operation(Operation).
+
 
 /////////////////////////////////////////////////////////////
 // inference of basic facts

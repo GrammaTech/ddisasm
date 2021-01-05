@@ -23,10 +23,10 @@
 #ifndef FUNCTION_INFERENCE_PASS_H_
 #define FUNCTION_INFERENCE_PASS_H_
 
-#include <optional>
-
 #include <souffle/SouffleInterface.h>
+
 #include <gtirb/gtirb.hpp>
+#include <optional>
 
 // Refine function boundaries.
 class FunctionInferencePass

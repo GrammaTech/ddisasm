@@ -23,13 +23,13 @@
 #ifndef SRC_GTIRB_DECODER_CORE_EDGESLOADER_H_
 #define SRC_GTIRB_DECODER_CORE_EDGESLOADER_H_
 
+#include <souffle/CompiledSouffle.h>
+#include <souffle/SouffleInterface.h>
+
+#include <gtirb/gtirb.hpp>
 #include <string>
 #include <tuple>
 #include <utility>
-
-#include <souffle/CompiledSouffle.h>
-#include <souffle/SouffleInterface.h>
-#include <gtirb/gtirb.hpp>
 
 #include "../DatalogProgram.h"
 #include "../Relations.h"

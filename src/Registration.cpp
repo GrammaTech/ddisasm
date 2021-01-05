@@ -23,7 +23,6 @@
 #include "Registration.h"
 
 #include "AuxDataSchema.h"
-
 #include "gtirb-decoder/DatalogProgram.h"
 #include "gtirb-decoder/target/ElfArm64Loader.h"
 #include "gtirb-decoder/target/ElfX64Loader.h"

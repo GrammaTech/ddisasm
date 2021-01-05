@@ -21,7 +21,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 // This module defines predicates and rules specific of ELF binaries
 section(Name,Size,Addr):-
     binary_format("ELF"),

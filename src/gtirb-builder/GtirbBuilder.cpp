@@ -20,8 +20,8 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
 #include "./GtirbBuilder.h"
+
 #include "./ElfReader.h"
 
 using GTIRB = GtirbBuilder::GTIRB;

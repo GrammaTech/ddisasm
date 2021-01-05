@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 
 #include <souffle/SouffleInterface.h>
+
 #include <gtirb/gtirb.hpp>
 
 #ifndef GTIRB_MODULE_DISASSEMBLER_H_
