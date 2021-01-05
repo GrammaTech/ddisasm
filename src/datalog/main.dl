@@ -105,6 +105,9 @@ This module:
 .decl entry_point(ea:address)
 .input entry_point
 
+.decl endianness(End:symbol) // Either LE or BE
+.input endianness
+
 .decl base_address(ea:address)
 .input base_address
 
