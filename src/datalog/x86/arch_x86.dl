@@ -65,6 +65,9 @@ return(EA):-
     return_operation(Operation),
     instruction_get_operation(EA,Operation).
 
+.decl delay_slot(BranchEA:address,EA:address)
+// No rule for delay_slot
+
 .decl jump(EA:address)
 
 jump(EA):-
@@ -225,11 +228,11 @@ def(EA,Reg):-
 
 abi_intrinsic(EA,Name):-
     get_pc_thunk(EA,_),
-    symbol(EA,_,_,_,_,Name).
+    symbol(EA,_,_,_,_,_,_,Name).
 
 abi_intrinsic(EA,"__dso_handle"):-
     got_relative_operand(_,_,EA),
-    symbol(EA,_,_,_,_,"__dso_handle").
+    symbol(EA,_,_,_,_,_,_,"__dso_handle").
 
 // Sometimes we use the `.got' section as reference and sometimes `.got.plt'.
 .decl got_reference_pointer(EA:address)
@@ -257,10 +260,11 @@ reg_has_got(EA_load,Reg_load):-
     def_used(EA,Reg_store,EA_store,_),
     reg_stored_in_stack(EA_store,Reg_store,StackPos,StackFrame),
     // Load GOT pointer
-    reg_loaded_from_stack(EA_load,Reg_load,StackPos,StackFrame).
+    arch.frame_pointer(Reg_base),
+    reg_loaded_from_stack(EA_load,Reg_load,Reg_base,StackPos,StackFrame).
 
 inferred_symbol_name(EA,"_GLOBAL_OFFSET_TABLE_","DEFAULT"):-
-    !symbol(_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
+    !symbol(_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
     got_reference_pointer(EA).
 
 // Create symbol-minus-symbol for special _GLOBAL_OFFSET_TABLE_, i.e. GOT-PC.
@@ -376,7 +380,7 @@ moved_label(EA_load,1,Address,Base):-
     reg_stored_in_stack(EA_store,Reg,StackPos,StackFrame),
 
     // GOT-relative compared for jump.
-    arch.stack_base_register(BaseReg),
+    arch.frame_pointer(BaseReg),
     def_used(StackFrame,BaseReg,EA_cmp,_),
     arch.cmp_operation(Operation),
     instruction(EA_cmp,Size,_,Operation,Op1,Op2,0,0,_,_),

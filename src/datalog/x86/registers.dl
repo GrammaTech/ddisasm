@@ -62,6 +62,10 @@ function_non_maintained_reg("EDX").
 
 pc_register("EIP").
 
-.decl stack_base_register(reg:register)
+.decl frame_pointer(reg:register)
 
-stack_base_register("EBP").
+frame_pointer("EBP").
+
+.decl stack_pointer(reg:register)
+
+frame_pointer("ESP").
