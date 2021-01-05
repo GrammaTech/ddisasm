@@ -155,3 +155,7 @@ function_non_maintained_reg("X31").
 
 // PC is not a register in aarch64
 .decl pc_register(reg:register)
+
+.decl frame_pointer(reg:register)
+
+.decl stack_pointer(reg:register)

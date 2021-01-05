@@ -96,3 +96,11 @@ arch.function_non_maintained_reg("RSI"):-
 .decl pc_register(reg:register)
 
 pc_register("RIP").
+
+.decl frame_pointer(reg:register)
+
+frame_pointer("RBP").
+
+.decl stack_pointer(reg:register)
+
+frame_pointer("RSP").
