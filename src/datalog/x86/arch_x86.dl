@@ -204,7 +204,7 @@ reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset):-
 reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
     reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
 
-
+}
 
 .decl get_pc_thunk(EA:address,Reg:register)
 .output get_pc_thunk
@@ -399,5 +399,3 @@ symbol_minus_symbol(EA+Disp_offset,4,Got,Dest,1):-
     got_relative_operand(EA,Index,_),
     moved_label(EA,Index,Dest,NewDest),
     instruction_displacement_offset(EA,Index,Disp_offset).
-
-}
