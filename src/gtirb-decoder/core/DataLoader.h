@@ -23,9 +23,8 @@
 #ifndef SRC_GTIRB_DECODER_CORE_DATALOADER_H_
 #define SRC_GTIRB_DECODER_CORE_DATALOADER_H_
 
-#include <vector>
-
 #include <gtirb/gtirb.hpp>
+#include <vector>
 
 #include "../DatalogProgram.h"
 #include "../Relations.h"
@@ -46,8 +45,14 @@ public:
         DWORD = 4,
         QWORD = 8
     };
+    enum class Endianness
+    {
+        LITTLE,
+        BIG
+    };
 
-    explicit DataLoader(Pointer N) : PointerSize{N} {};
+    explicit DataLoader(Pointer N, Endianness E = Endianness::LITTLE)
+        : PointerSize{N}, Endianness{E} {};
     virtual ~DataLoader(){};
 
     virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program);
@@ -58,6 +63,7 @@ protected:
 
 private:
     Pointer PointerSize;
+    Endianness Endianness;
 };
 
 #endif // SRC_GTIRB_DECODER_CORE_DATALOADER_H_

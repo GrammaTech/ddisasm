@@ -37,6 +37,7 @@ CompositeLoader ElfX64Loader()
     Loader.add(SectionLoader);
     Loader.add<X64Loader>();
     Loader.add<DataLoader>(DataLoader::Pointer::QWORD);
+    Loader.add(ElfDynamicEntryLoader);
     Loader.add(ElfSymbolLoader);
     Loader.add(ElfExceptionLoader);
     return Loader;

@@ -23,10 +23,10 @@
 #ifndef NO_RETURN_PASS_H_
 #define NO_RETURN_PASS_H_
 
-#include <optional>
-
 #include <souffle/SouffleInterface.h>
+
 #include <gtirb/gtirb.hpp>
+#include <optional>
 
 // Refine the CFG by removing fallthrough edges whenever there is a call to a block that never
 // returns.

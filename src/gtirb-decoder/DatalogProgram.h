@@ -23,14 +23,14 @@
 #ifndef SRC_GTIRB_DECODER_DATALOGPROGRAM_H_
 #define SRC_GTIRB_DECODER_DATALOGPROGRAM_H_
 
+#include <souffle/CompiledSouffle.h>
+#include <souffle/SouffleInterface.h>
+
+#include <gtirb/gtirb.hpp>
 #include <map>
 #include <memory>
 #include <string>
 #include <tuple>
-
-#include <souffle/CompiledSouffle.h>
-#include <souffle/SouffleInterface.h>
-#include <gtirb/gtirb.hpp>
 
 class CompositeLoader;
 

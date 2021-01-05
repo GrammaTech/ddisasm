@@ -84,5 +84,17 @@ RUN git clone https://git.zephyr-software.com/opensrc/libehp.git \
     && make && make install
 
 # Install cross-platform utils
-RUN apt-get -y update && \
-    apt-get -y install gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu qemu gcc-5-arm-linux-gnueabihf
+RUN apt-get -y update \
+ && apt-get -y install \
+      gcc-arm-linux-gnueabihf \
+      gcc-5-arm-linux-gnueabihf \
+      gcc-aarch64-linux-gnu \
+      qemu
+
+RUN dpkg --add-architecture i386 \
+ && apt-get -y update \
+ && apt-get -y install \
+      libc6-dev:i386 \
+      libstdc++-7-dev:i386 \
+      lib32gcc-5-dev \
+      lib32stdc++-5-dev

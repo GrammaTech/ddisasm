@@ -78,8 +78,15 @@ block_next(EA,Block2):-
 
 block_next(EA,EA_next):-
     block_last_instruction(_,EA),
+    !arch.delay_slot(_,EA),
     direct_jump(EA,EA_next),
     !inter_procedural_jump(EA,EA_next).
+
+block_next(EA,EA_next):-
+    block_last_instruction(_,EA),
+    arch.delay_slot(JumpEA,EA),
+    direct_jump(JumpEA,EA_next),
+    !inter_procedural_jump(JumpEA,EA_next).
 
 block_next(EA,EA_next):-
     block_last_instruction(_,EA),
@@ -99,6 +106,14 @@ def(EA,Reg):-
     code(EA),
     instruction_get_operation(EA,Operation),
     arch.call_operation(Operation),
+    !arch.delay_slot(EA,_),
+    arch.function_non_maintained_reg(Reg).
+
+def(EA,Reg):-
+    code(Call),
+    instruction_get_operation(Call,Operation),
+    arch.call_operation(Operation),
+    arch.delay_slot(Call,EA),
     arch.function_non_maintained_reg(Reg).
 
 flow_def(EA_jump,Reg,EA_target,Immediate):-
@@ -200,6 +215,7 @@ def_used(EA_def,Reg,EA_used,Index):-
 
 
 .decl def_used_for_address(EA_def:address,Reg:register)
+.output def_used_for_address
 
 def_used_for_address(EA_def,Reg):-
     def_used(EA_def,Reg,EA,Index),

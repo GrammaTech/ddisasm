@@ -20,16 +20,15 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#include <iostream>
-#include <string>
-#include <thread>
-#include <vector>
-
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <chrono>
 #include <gtirb/gtirb.hpp>
+#include <iostream>
+#include <string>
+#include <thread>
+#include <vector>
 
 #include "AuxDataSchema.h"
 #include "Version.h"
@@ -69,6 +68,7 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<BinaryType>();
     gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
     gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
+    gtirb::AuxDataContainer::registerAuxDataType<DynamicEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSectionIndex>();

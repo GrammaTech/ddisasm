@@ -375,6 +375,7 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
     auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    auto *SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>();
     for(auto &output : *prog->getRelation("inferred_symbol_name"))
     {
         gtirb::Addr addr;
@@ -388,6 +389,11 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
             {
                 ElfSymbolInfo Info = {0, "NONE", scope, "DEFAULT", 0};
                 SymbolInfo->insert({symbol->getUUID(), Info});
+            }
+            if(SymbolTabIdxInfo)
+            {
+                ElfSymbolTabIdxInfo TabIdx = std::vector<std::tuple<std::string, uint64_t>>();
+                SymbolTabIdxInfo->insert({symbol->getUUID(), TabIdx});
             }
         }
     }
@@ -525,6 +531,12 @@ gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::
     {
         ElfSymbolInfo Info = {0, "NONE", "LOCAL", "DEFAULT", 0};
         SymbolInfo->insert({symbol->getUUID(), Info});
+    }
+    auto *SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>();
+    if(SymbolTabIdxInfo)
+    {
+        ElfSymbolTabIdxInfo TabIdx = std::vector<std::tuple<std::string, uint64_t>>();
+        SymbolTabIdxInfo->insert({symbol->getUUID(), TabIdx});
     }
 
     return symbol;

@@ -21,7 +21,7 @@
 //
 //===----------------------------------------------------------------------===//
 /**
-The set of interrupt operations in x64
+The set of interrupt operations in ARM64
 */
 
 .decl interrupt_operation(n:symbol)

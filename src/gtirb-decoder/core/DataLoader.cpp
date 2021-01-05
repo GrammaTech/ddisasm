@@ -22,6 +22,15 @@
 //===----------------------------------------------------------------------===//
 #include "DataLoader.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#define be32toh(x) _byteswap_ulong(x)
+#define le32toh(x) (x)
+
+#define be64toh(x) _byteswap_uint64(x)
+#define le64toh(x) (x)
+#endif // _WIN32
+
 #include "../../AuxDataSchema.h"
 
 void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
@@ -78,11 +87,19 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
             switch(PointerSize)
             {
                 case Pointer::DWORD:
-                    Value = gtirb::Addr(*((int32_t*)Data));
+                {
+                    uint32_t Bytes = *((int32_t*)Data);
+                    Bytes = (Endianness == Endianness::BIG) ? be32toh(Bytes) : le32toh(Bytes);
+                    Value = gtirb::Addr(Bytes);
                     break;
+                }
                 case Pointer::QWORD:
-                    Value = gtirb::Addr(*((int64_t*)Data));
+                {
+                    uint64_t Bytes = *((int64_t*)Data);
+                    Bytes = (Endianness == Endianness::BIG) ? be64toh(Bytes) : le64toh(Bytes);
+                    Value = gtirb::Addr(Bytes);
                     break;
+                }
             }
 
             if((Value >= Facts.Min) && (Value <= Facts.Max))

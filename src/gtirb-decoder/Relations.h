@@ -23,15 +23,15 @@
 #ifndef SRC_GTIRB_DECODER_RELATIONS_H_
 #define SRC_GTIRB_DECODER_RELATIONS_H_
 
+#include <souffle/CompiledSouffle.h>
+#include <souffle/SouffleInterface.h>
+
+#include <gtirb/gtirb.hpp>
 #include <map>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
-
-#include <souffle/CompiledSouffle.h>
-#include <souffle/SouffleInterface.h>
-#include <gtirb/gtirb.hpp>
 
 namespace relations
 {
@@ -81,7 +81,15 @@ namespace relations
         std::string Binding;
         std::string Visibility;
         uint64_t SectionIndex;
+        std::string OriginTable;
+        uint64_t TableIndex;
         std::string Name;
+    };
+
+    struct DynamicEntry
+    {
+        std::string Name;
+        uint64_t Value;
     };
 
     struct Section
@@ -167,6 +175,8 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const gtirb::Addr& A);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Symbol& S);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::DynamicEntry& D);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Section& S);
 

@@ -33,7 +33,13 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Symbol& Symbol)
     {
         T << Symbol.Addr << Symbol.Size << Symbol.Type << Symbol.Binding << Symbol.SectionIndex
-          << Symbol.Name;
+          << Symbol.OriginTable << Symbol.TableIndex << Symbol.Name;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::DynamicEntry& dynamicEntry)
+    {
+        T << dynamicEntry.Name << dynamicEntry.Value;
         return T;
     }
 

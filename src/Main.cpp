@@ -21,6 +21,7 @@
 //
 //===----------------------------------------------------------------------===//
 #include <fcntl.h>
+
 #include <chrono>
 #include <iostream>
 #include <string>
@@ -35,19 +36,18 @@
 
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
+
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
-
 #include <gtirb/gtirb.hpp>
 #include <gtirb_pprinter/PrettyPrinter.hpp>
-
-#include "gtirb-builder/GtirbBuilder.h"
-#include "gtirb-decoder/DatalogProgram.h"
 
 #include "AuxDataSchema.h"
 #include "Disassembler.h"
 #include "Registration.h"
 #include "Version.h"
+#include "gtirb-builder/GtirbBuilder.h"
+#include "gtirb-decoder/DatalogProgram.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"

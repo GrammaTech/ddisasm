@@ -38,7 +38,14 @@
 .decl block_information(block:address,size:unsigned,endAddress:address)
 .output block_information
 
+// Last instruction of refined block:
+//   In existence of branch with a delay-slot, the delay-slot is the last
+//   instruction.
 .decl refined_block_last_instruction(block:address,EA:address)
+// Last instruction (at runtime) of refined block:
+//   In existence of branch with a delay-slot, the branch is the last
+//   instruction.
+.decl refined_block_control_instruction(block:address,EA:address)
 
 ////////////////////////////////////////////////////////
 // First we split blocks if there is a symbol pointing to the middle
@@ -92,7 +99,7 @@ block_needs_merging(Block):-
     !moved_data_label(_,_,_,Block),
     !moved_label(_,_,_,Block),
     !function_symbol(Block,_),
-    !defined_symbol(Block,_,_,_,_,_),
+    !defined_symbol(Block,_,_,_,_,_,_,_),
     !entry_point(Block),
     !instruction_has_loop_prefix(Block),
     !fde_addresses(Block,_),
@@ -120,6 +127,14 @@ refined_block_last_instruction(Block,EA):-
     code_in_refined_block(EA,Block),
     next(EA,Next),
     !code_in_refined_block(Next,Block).
+
+refined_block_control_instruction(Block,EA):-
+    refined_block_last_instruction(Block,EA),
+    !arch.delay_slot(EA,_).
+
+refined_block_control_instruction(Block,Branch):-
+    refined_block_last_instruction(Block,EA),
+    arch.delay_slot(Branch,EA).
 
 block_information(Block,BlockSize,LastEA+InsnSize):-
     refined_block_last_instruction(Block,LastEA),

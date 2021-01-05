@@ -23,7 +23,6 @@
 #include "Registration.h"
 
 #include "AuxDataSchema.h"
-
 #include "gtirb-decoder/DatalogProgram.h"
 #include "gtirb-decoder/target/ElfArm64Loader.h"
 #include "gtirb-decoder/target/ElfX64Loader.h"
@@ -40,6 +39,8 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<Padding>();
     gtirb::AuxDataContainer::registerAuxDataType<SymbolForwarding>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolInfoAD>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolTabIdxInfoAD>();
+    gtirb::AuxDataContainer::registerAuxDataType<DynamicEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<BinaryType>();
     gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
     gtirb::AuxDataContainer::registerAuxDataType<Relocations>();

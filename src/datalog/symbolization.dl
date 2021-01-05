@@ -136,12 +136,12 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
     (
         instruction_immediate_offset(EA,Op_index,ImmediateOffset),
         relocation(EA+ImmediateOffset,_,Symbol,Addend),
-        symbol(SymbolAddr,_,_,_,_,Symbol),
+        symbol(SymbolAddr,_,_,_,_,_,_,Symbol),
         Dest = as(as(SymbolAddr,number)+Addend,address)
         ;
         instruction_displacement_offset(EA,Op_index,DisplacementOffset),
         relocation(EA+DisplacementOffset,_,Symbol,Addend),
-        symbol(SymbolAddr,_,_,_,_,Symbol),
+        symbol(SymbolAddr,_,_,_,_,_,_,Symbol),
         Dest = as(as(SymbolAddr,number)+Addend,address)
         ;
         direct_call(EA,Dest),
@@ -193,6 +193,7 @@ symbolic_operand_point(EA,Imm_index,-2,"point to exception section"):-
 
  symbolic_operand_point(EA,Imm_index,-1,"operated on logical operation result"):-
     op_immediate_and_reg(EA,_,Reg,Imm_index,_),
+    !arch.jump(EA),
     def_used(EA_def,Reg,EA,_),
     instruction_get_operation(EA_def,Operation),
     arch.logic_operation(Operation),
@@ -237,7 +238,7 @@ symbolic_operand(EA,Op_index,Value,Type):-
 .decl labeled_data_candidate(EA:address)
 
 labeled_data_candidate(EA):-
-    symbol(EA,_,_,_,_,_).
+    symbol(EA,_,_,_,_,_,_,_).
 
 labeled_data_candidate(EA):-
     symbolic_operand(_,_,EA,"data").
@@ -660,7 +661,7 @@ code_pointer_in_data(EA,Val):-
 // Final label decision
 
 labeled_data(EA):-
-    symbol(EA,_,_,_,_,_).
+    symbol(EA,_,_,_,_,_,_,_).
 
 labeled_data(EA):-
     symbolic_operand(Src,_,EA,"data"),
