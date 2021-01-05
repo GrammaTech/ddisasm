@@ -62,11 +62,26 @@ more points.
 .decl block_still_overlap(ea:address,ea2:address)
 .output block_still_overlap
 
+
 /////////////////////////////////////////////////////////////
 // Basic facts to define fallthrough
 
 .decl may_fallthrough(o:address,d:address)
 
+// Branch with a delay-slot can always fallthrough
+may_fallthrough(From,To):-
+    next(From,To),
+    arch.delay_slot(From,To).
+
+// Delay-slot can fallthrough if the corresponding branch is not unconditional
+// or a return.
+may_fallthrough(From,To):-
+    next(From,To),
+    arch.delay_slot(Prev,From),
+    !arch.return(Prev),
+    !unconditional_jump(Prev).
+
+// Common case
 may_fallthrough(From,To):-
     next(From,To),
     !arch.return(From),
@@ -76,6 +91,11 @@ may_fallthrough(From,To):-
 
 .decl must_fallthrough(o:address,d:address)
 
+// Branch with a delay-slot must fallthrough
+must_fallthrough(From,To):-
+    next(From,To),
+    arch.delay_slot(From,To).
+
 must_fallthrough(From,To):-
     may_fallthrough(From,To),
     instruction_get_operation(From,Operation),
@@ -83,8 +103,8 @@ must_fallthrough(From,To):-
     !arch.syscall_operation(Operation),
     !arch.interrupt_operation(Operation),
     !instruction_has_loop_prefix(From),
-    !conditional_jump(From).
-
+    !conditional_jump(From),
+    !arch.delay_slot(_,From).
 
 //////////////////////////////////////////////////////////////
 // This is a small refinement for discarding immediates as targets
