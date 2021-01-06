@@ -44,11 +44,13 @@ set(DATALOG_BASE_SOURCES
     datalog/debug_stats.dl
     datalog/self_diagnose.dl)
 
-set(DATALOG_X86_32_SOURCES datalog/intel/arch_x86-32.dl datalog/intel/float_operations.dl
-                        datalog/intel/jump_operations.dl datalog/intel/registers_x86-32.dl)
+set(DATALOG_X86_32_SOURCES
+    datalog/intel/arch_x86-32.dl datalog/intel/float_operations.dl
+    datalog/intel/jump_operations.dl datalog/intel/registers_x86-32.dl)
 
-set(DATALOG_X86_64_SOURCES datalog/intel/arch_x86-64.dl datalog/intel/float_operations.dl
-                        datalog/intel/jump_operations.dl datalog/intel/registers_x86-64.dl)
+set(DATALOG_X86_64_SOURCES
+    datalog/intel/arch_x86-64.dl datalog/intel/float_operations.dl
+    datalog/intel/jump_operations.dl datalog/intel/registers_x86-64.dl)
 
 set(DATALOG_ARM64_SOURCES
     datalog/arm64/arch_arm64.dl datalog/arm64/float_operations.dl
@@ -61,7 +63,8 @@ if(WIN32)
   set(GENERATED_X86_32_CPP_PATH
       "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_32.cpp)")
 else()
-  set(GENERATED_X86_32_CPP_PATH "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_32.cpp")
+  set(GENERATED_X86_32_CPP_PATH
+      "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_32.cpp")
 endif()
 
 add_custom_command(
@@ -78,7 +81,8 @@ if(WIN32)
   set(GENERATED_X86_64_CPP_PATH
       "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_64.cpp)")
 else()
-  set(GENERATED_X86_64_CPP_PATH "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_64.cpp")
+  set(GENERATED_X86_64_CPP_PATH
+      "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_64.cpp")
 endif()
 
 add_custom_command(
