@@ -224,7 +224,7 @@ build-static:
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
     # build gtirb-pprinter
-    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git
+    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b master
     - mkdir gtirb-pprinter/build
     - cd gtirb-pprinter/build
     - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
@@ -256,7 +256,7 @@ static-drivers:
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
     # build gtirb-pprinter
-    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b windows-support
+    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b master
     - cd gtirb-pprinter
     - mkdir build && cd build
     - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
