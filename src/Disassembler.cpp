@@ -428,7 +428,9 @@ gtirb::Symbol *findSymbol(gtirb::Module &module, gtirb::Addr ea, std::string nam
     return nullptr;
 }
 
-// Build a first version of the SymbolForwarding table with copy relocations
+// Build a first version of the SymbolForwarding table with copy relocations and
+// other ABI-specific artifacts that may be duplicated or reintroduced during
+// reassembly.
 void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
                            souffle::SouffleProgram *prog)
 {
@@ -722,11 +724,13 @@ void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const
                             [index](const auto &element) { return element.OperandIndex == index; });
            movedLabel != rangeMovedLabel.second)
         {
+            // (Symbol-Symbol)+Offset
             sym2 = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
             offset = movedLabel->Address1 - movedLabel->Address2;
         }
         else
         {
+            // Symbol-Symbol
             sym2 = getSymbol(context, module, gtirb::Addr(relSym->Symbol2));
         }
 

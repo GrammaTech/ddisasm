@@ -477,7 +477,9 @@ defined_symbol(EA,Size,Type,Scope,SectIndex,OriginTable,TableIndex,Name):-
     (SectIndex < SHN_LORESERVE; SectIndex > SHN_HIRESERVE).
 
 // Labels which are defined "at-end" of a data or code region/referent.
-.decl boundary_label(ea:address,m:address,n:address)
+// Such labels will usually associate with a symbol at address Dest, but they
+// can be safely aliased to a new symbol at the end of the Block.
+.decl boundary_label(EA:address,Dest:address,Block:address)
 .output boundary_label
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -570,7 +572,8 @@ no_return_call(EA):-
 is_padding(EA):-
     arch.is_nop(EA).
 
-// The functions and data-objects that are intrinsic to the compiler's ABI,
-// which are artifacts of compilation and not explicit features of the source.
+// The functions and data-objects that are intrinsic to the compiler's ABI -
+// artifacts of compilation that are not explicit features of the source and
+// will likely be reintroduced by the compiler toolchain.
 .decl abi_intrinsic(EA:address,Name:symbol)
 .output abi_intrinsic
