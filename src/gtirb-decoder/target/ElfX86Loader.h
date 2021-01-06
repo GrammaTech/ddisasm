@@ -32,7 +32,7 @@
 
 CompositeLoader ElfX86Loader()
 {
-    CompositeLoader Loader("souffle_disasm_x86");
+    CompositeLoader Loader("souffle_disasm_x86_32");
     Loader.add(ModuleLoader);
     Loader.add(SectionLoader);
     Loader.add<X86Loader>();

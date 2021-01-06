@@ -1,6 +1,6 @@
-//===- arch_x64.dl --------------------------------------*- datalog -*-===//
+//===- arch_x86.dl ------------------------------------------*- datalog -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2020 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -21,16 +21,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-/**
- * Define a set of predicates to model x86-64 specific instructions
- * and characteristics
- */
-
-.comp X64 {
+// Define a common set of predicates for x86 instructions and characteristics.
+.comp X86 {
 
 #include "jump_operations.dl"
 #include "interrupt_operations.dl"
-#include "registers.dl"
+#include "float_operations.dl"
 
 .decl move_operation(Operation:symbol)
 move_operation(Operation) :-
@@ -82,8 +78,6 @@ jump(EA):-
 op_does_not_read_dest_reg("LEA").
 op_does_not_read_dest_reg("POP").
 
-
-
 .decl arithmetic_operation(Operation:symbol)
 
 arithmetic_operation("ADD").
@@ -123,8 +117,6 @@ one_op_write("NOT").
 
 .decl pointer_size(n:unsigned) inline
 
-pointer_size(8).
-
 .decl loop_operation(operation:symbol)
 
 loop_operation("LOOP").
@@ -132,8 +124,6 @@ loop_operation("LOOPE").
 loop_operation("LOOPZ").
 loop_operation("LOOPNE").
 loop_operation("LOOPNZ").
-
-
 
 .decl loop_prefix(prefix:symbol)
 
@@ -164,8 +154,8 @@ cmp_operation("CMP").
 cmp_operation("TEST").
 
 // These operations are either special like LEA (does not read memory) or
-// are not decoded correctly from capstone
-// FIXME: review this list when capstone is updated
+// are not decoded correctly from Capstone.
+// FIXME: review this list when Capstone is updated.
 .decl operation_size_exception(EA:address,Op_index:operand_index,Size:unsigned)
 
 operation_size_exception(EA,Index,8):-
@@ -177,8 +167,6 @@ operation_size_exception(EA,Index,0):-
     instruction_get_operation(EA,"LEA"),
     instruction_get_op(EA,Index,Op),
     op_indirect(Op,_,_,_,_,_,_).
-
-
 
 // arithmetic operation on two source registers
 .decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
@@ -205,23 +193,3 @@ reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
     reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
 
 }
-
-
-
-symbolic_operand_attribute(EA,Index,"PltRef"):-
-    symbolic_operand(EA,Index,Dest,_),
-    plt_block(Dest,_).
-
-symbolic_operand_attribute(EA,Index,"GotRelPC"):-
-    symbolic_operand(EA,Index,Dest,_),
-    !moved_label(EA,Index,_,_),
-    got_reference(Dest,_).
-
-symbolic_operand_attribute(EA,Index,"GotRelPC"):-
-    symbolic_operand(EA,Index,Dest,_),
-    got_local_reference(Dest,_).
-
-symbolic_operand_attribute(EA,Index,"TpOff"):-
-    symbolic_operand(EA,Index,Dest,_),
-    tls_segment(Start,End,_),
-    Dest >= Start, Dest < End.
