@@ -1,3 +1,6 @@
+
+ * Support ELF x64 static binaries
+
 # 1.3.0
 
 * Populate GTIRB symbolic expression attributes.
