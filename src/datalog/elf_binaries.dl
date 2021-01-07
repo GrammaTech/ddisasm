@@ -139,7 +139,7 @@ plt_entry(EA,Name):-
     EA >= Beg,
     pc_relative_jump(EA,Got_entry),
     relocation(Got_entry,"IRELATIVE","",Dest),
-    defined_symbol(as(Dest,address),_,"GNU_IFUNC",_,_,Name).
+    defined_symbol(as(Dest,address),_,"GNU_IFUNC",_,_,_,_,Name).
 
 plt_block(Block,Function):-
     plt_entry(EA,Function),

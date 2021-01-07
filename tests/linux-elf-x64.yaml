@@ -123,7 +123,7 @@ tests:
       flags: ["-no-pie", "-lpthread"]
 
   # ----------------------------------------------------------------------------
-  # Examples that fail to reassemble.
+  # Static examples
   # ----------------------------------------------------------------------------
   - name: ex1
     <<: *default
@@ -133,9 +133,8 @@ tests:
       cpp: ["g++"]
       optimizations: ["-O0"]
     reassemble:
-      skip: true
-      flags: []
-      compiler: ""
+      flags: ["-nostdlib", "-no-pie"]
+      compiler: "gcc"
 
   # ----------------------------------------------------------------------------
   # Small C and C++ examples (stripped).
