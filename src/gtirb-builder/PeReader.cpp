@@ -144,7 +144,7 @@ void PeReader::addAuxData()
 {
     // Add `binaryType' aux data table.
     bool DLL = Pe->header().has_characteristic(LIEF::PE::HEADER_CHARACTERISTICS::IMAGE_FILE_DLL);
-    std::vector<std::string> BinaryType = {Pe->is_pie() ? "DYN" : "EXEC", DLL ? "DLL" : "EXE"};
+    std::vector<std::string> BinaryType = {"EXEC", DLL ? "DLL" : "EXE"};
     Module->addAuxData<gtirb::schema::BinaryType>(std::move(BinaryType));
 
     // Add `libraries' aux data table.
