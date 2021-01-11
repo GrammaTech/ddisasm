@@ -89,7 +89,7 @@ void ElfReader::resurrectSections()
     uint64_t Index = 0;
 
     // Create .fake.text.segment -------------------------------------
-    if (LoadedSegmentRX.physical_size() != 0)
+    if(LoadedSegmentRX.physical_size() != 0)
     {
         auto Segment = LoadedSegmentRX;
         uint64_t addr = Segment.virtual_address();
@@ -124,7 +124,7 @@ void ElfReader::resurrectSections()
     uint64_t got_addr = 0;
     uint64_t got_size = 0;
     uint64_t bss_distance = 0; // offset of bss in LoadedSegmentRW
-    if (LoadedSegmentRW.physical_size() != 0)
+    if(LoadedSegmentRW.physical_size() != 0)
     {
         auto Segment = LoadedSegmentRW;
         uint64_t addr = Segment.virtual_address();
@@ -533,7 +533,8 @@ void ElfReader::buildSymbols()
     }
 
     // For sectionless binaries, call resurrectSymbols.
-    if(Elf->sections().size() == 0) {
+    if(Elf->sections().size() == 0)
+    {
         resurrectSymbols();
         return;
     }
