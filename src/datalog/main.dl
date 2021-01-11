@@ -69,10 +69,10 @@ This module:
     #include "arm64/arch_arm64.dl"
     .init arch = ARM64
 #elif defined(ARCH_IA32)
-    #include "intel/arch_x86-32.dl"
+    #include "intel/arch_x86_32.dl"
     .init arch = X86_32
 #elif defined(ARCH_AMD64)
-    #include "intel/arch_x86-64.dl"
+    #include "intel/arch_x86_64.dl"
     .init arch = X86_64
 #else
     #error "Undefined architecture"

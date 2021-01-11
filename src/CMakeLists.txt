@@ -45,12 +45,12 @@ set(DATALOG_BASE_SOURCES
     datalog/self_diagnose.dl)
 
 set(DATALOG_X86_32_SOURCES
-    datalog/intel/arch_x86-32.dl datalog/intel/float_operations.dl
-    datalog/intel/jump_operations.dl datalog/intel/registers_x86-32.dl)
+    datalog/intel/arch_x86_32.dl datalog/intel/float_operations.dl
+    datalog/intel/jump_operations.dl datalog/intel/registers_x86_32.dl)
 
 set(DATALOG_X86_64_SOURCES
-    datalog/intel/arch_x86-64.dl datalog/intel/float_operations.dl
-    datalog/intel/jump_operations.dl datalog/intel/registers_x86-64.dl)
+    datalog/intel/arch_x86_64.dl datalog/intel/float_operations.dl
+    datalog/intel/jump_operations.dl datalog/intel/registers_x86_64.dl)
 
 set(DATALOG_ARM64_SOURCES
     datalog/arm64/arch_arm64.dl datalog/arm64/float_operations.dl

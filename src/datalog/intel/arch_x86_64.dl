@@ -23,7 +23,7 @@
 #include "arch_x86.dl"
 
 .comp X86_64 : X86 {
-  #include "registers_x86-64.dl"
+  #include "registers_x86_64.dl"
   pointer_size(8).
 }
 
