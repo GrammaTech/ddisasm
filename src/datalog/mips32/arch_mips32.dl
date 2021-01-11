@@ -144,8 +144,9 @@ is_nop(EA):-
 .decl return(n:address)
 
 return(EA):-
-    return_operation(Operation),
-    instruction_get_operation(EA,Operation).
+    arch.return_operation(Operation),
+    instruction(EA,_,_,Operation,Op,_,_,_,_,_),
+    op_regdirect_contains_reg(Op,"RA").
 
 .decl jump(EA:address)
 
@@ -345,6 +346,7 @@ call_operation("JALR").
 call_operation("JALRS16").
 call_operation("JALRS").
 call_operation("JIALC").
+call_operation("BAL").
 call_operation("BALC").
 call_operation("BEQZALC").
 call_operation("BGEZAL").

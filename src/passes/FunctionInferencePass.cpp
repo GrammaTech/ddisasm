@@ -34,6 +34,8 @@
 
 void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M)
 {
+    auto *SymbolInfo = M.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
     std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2function;
     std::map<gtirb::UUID, gtirb::UUID> FunctionNames;
@@ -48,8 +50,23 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
             gtirb::UUID FunctionUUID = Generator();
             FunctionEntry2function[FunctionEntry] = FunctionUUID;
             FunctionEntries[FunctionUUID].insert(EntryBlockUUID);
-            for(const auto& Symbol : M.findSymbols(FunctionEntry))
+            for(auto& Symbol : M.findSymbols(FunctionEntry))
             {
+                if (auto found = SymbolInfo->find(Symbol.getUUID());
+                        found != SymbolInfo->end())
+                {
+                    ElfSymbolInfo SInfo = found->second;
+                    // Update SymbolInfo of the inferred function symbols:
+                    // If the type of the existing one in SymbolInfo is not
+                    // FUNC, update it as FUNC.
+                    // NOTE: We update the scope as GLOBAL for now.
+                    // TODO: Check if that is reasonable.
+                    if (std::get<1>(SInfo) != "FUNC") {
+                        std::get<1>(SInfo) = "FUNC";
+                        std::get<2>(SInfo) = "GLOBAL";
+                        (*SymbolInfo)[Symbol.getUUID()] = SInfo;
+                    }
+                }
                 FunctionNames.insert({FunctionUUID, Symbol.getUUID()});
             }
         }

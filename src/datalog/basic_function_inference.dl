@@ -49,8 +49,8 @@ function_entry(EA):-
         start_function(EA);
         section(_,_,EA);
         //called
-        direct_call(EA_caller,EA),
-        code(EA_caller)
+        (direct_call(EA_caller,EA), code(EA_caller));
+        (direct_call_inferred(EA_caller,EA), code(EA_caller))
     ).
 
 // pointer in special sections

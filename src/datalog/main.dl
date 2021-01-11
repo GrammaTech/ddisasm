@@ -377,6 +377,14 @@ direct_call(EA,as(Dest,address)):-
     arch.jump_target_op(EA,TargetOp),
     op_immediate(TargetOp,Dest).
 
+// Semantically inferred direct-call
+// E.g., In MIPS, "jalr t9", where t9 can be inferred by value-analysis, is
+//       also used for direct-call.
+// This needs to be distinguished from direct_call to avoid cyclic dependency
+// in function inference: see basic_function_inference.dl.
+.decl direct_call_inferred(src:address, dest:address)
+.output direct_call_inferred
+
 .decl pc_relative_call(src:address,dest:address)
 .output pc_relative_call
 
@@ -405,13 +413,6 @@ indirect_call(EA):-
     arch.jump_target_op(EA,TargetOp),
     op_indirect(TargetOp,_,_,_,_,_,_),
     !pc_relative_call(EA,_).
-
-// Returns
-.decl return(n:address)
-
-return(EA):-
-    arch.return_operation(Operation),
-    instruction_get_operation(EA,Operation).
 
 .decl halt(EA:address)
 

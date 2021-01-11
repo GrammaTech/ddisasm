@@ -189,6 +189,15 @@ got_reference(Got_entry,Symbol):-
     Got_entry < Beg+4*NumLocalEntries,
     symbol(Dest,_,_,_,_,_,_,Symbol).
 
+// Local entries: no symbol
+got_local_reference(Got_entry,Dest):-
+    section(".got",Size,Beg),
+    Got_entry >= Beg,
+    dynamic_entry("MIPS_LOCAL_GOTNO",NumLocalEntries),
+    Got_entry < Beg+4*NumLocalEntries,
+    symbolic_data(Got_entry,4,Dest),
+    !got_reference(Got_entry,_).
+
 .decl hi_load(ea:address, reg:register, upper:number)
 
 // LUI <Register> <Immediate>
@@ -345,8 +354,13 @@ symbolic_operand_attribute(EA, Index, "Part0"):-
 
 // E.g., lw t9, %got(puts)(gp)
 symbolic_operand_attribute(EA,Index,"AddrRelGot"):-
-    gp_relative_operand(EA,Index,Dest_addr),
-    got_reference(Dest_addr,_).
+    gp_relative_operand(EA,Index,Got_entry),
+    got_reference(Got_entry,_).
+
+// no symbol
+symbolic_operand_attribute(EA,Index,"AddrRelGot"):-
+    gp_relative_operand(EA,Index,Got_entry),
+    got_local_reference(Got_entry,_).
 
 symbolic_operand(EA,1,Dest_addr,"data"):-
     base_addr_offset_operand(EA,_,Dest_addr).
@@ -426,3 +440,11 @@ invalid(EA):-
     instruction_get_dest_op(EA,Index,Op),
     !instruction_get_operation(EA, "MOVE"),
     op_regdirect_contains_reg(Op,"ZERO").
+
+// If "jalr t9", where t9 is a concrete address value, it can be considered as
+// a direct-call.
+direct_call_inferred(EA,as(Dest,address)):-
+    instruction(EA,_,_,"JALR",Op,0,0,0,_,_),
+    op_regdirect_contains_reg(Op,"T9"),
+    def_used(EA_def,"T9",EA,_),
+    value_reg(EA_def,"T9",_,"NONE",_,Dest,_).

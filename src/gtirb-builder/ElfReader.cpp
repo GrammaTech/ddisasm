@@ -46,7 +46,7 @@ void ElfReader::initModule()
 }
 
 // Resurrect sections and symbols from sectionless binary
-void ElfReader::resurrectSectionsAndSymbols()
+void ElfReader::resurrectSections()
 {
     std::map<uint64_t, gtirb::UUID> SectionIndex;
     std::map<gtirb::UUID, SectionProperties> SectionProperties;
@@ -89,6 +89,7 @@ void ElfReader::resurrectSectionsAndSymbols()
     uint64_t Index = 0;
 
     // Create .fake.text.segment -------------------------------------
+    if (LoadedSegmentRX.physical_size() != 0)
     {
         auto Segment = LoadedSegmentRX;
         uint64_t addr = Segment.virtual_address();
@@ -119,10 +120,11 @@ void ElfReader::resurrectSectionsAndSymbols()
         ++Index;
     }
 
-    // Create .fake.segment and .got ---------------------------------
+    // Create .fake.data.segment and .got ----------------------------
     uint64_t got_addr = 0;
     uint64_t got_size = 0;
     uint64_t bss_distance = 0; // offset of bss in LoadedSegmentRW
+    if (LoadedSegmentRW.physical_size() != 0)
     {
         auto Segment = LoadedSegmentRW;
         uint64_t addr = Segment.virtual_address();
@@ -220,6 +222,20 @@ void ElfReader::resurrectSectionsAndSymbols()
     Module->addAuxData<gtirb::schema::Alignment>(std::move(Alignment));
     Module->addAuxData<gtirb::schema::ElfSectionIndex>(std::move(SectionIndex));
     Module->addAuxData<gtirb::schema::ElfSectionProperties>(std::move(SectionProperties));
+    return;
+}
+
+// Resurrect symbols from sectionless binary
+void ElfReader::resurrectSymbols()
+{
+    // Collect dynamic entries
+    std::map<std::string, uint64_t> dynamicEntries;
+    for(const auto &Entry : Elf->dynamic_entries())
+    {
+        std::string entry = LIEF::ELF::to_string(Entry.tag());
+        uint64_t value = Entry.value();
+        dynamicEntries[entry] = value;
+    }
 
     // Extract bytes from STRTAB -------------------------------------
     std::vector<uint8_t> strtabBytes;
@@ -236,7 +252,9 @@ void ElfReader::resurrectSectionsAndSymbols()
     }
 
     // Extract symbols -----------------------------------------------
-    // NOTE: The following code is specific to MIPS32.
+    // NOTE: The following code is specific to MIPS32 because it makes use of
+    // MIPS-specific dynamic entries, such as MIPS_SYMTABNO, MIPS_GOTSYM, etc.
+    // TODO: Generalize it if needed.
     if(Module->getISA() == gtirb::ISA::MIPS32)
     {
         auto it = dynamicEntries.find("SYMTAB");
@@ -336,7 +354,6 @@ void ElfReader::resurrectSectionsAndSymbols()
             // st_size
             uint32_t s = get_4bytes();
             // NOTE: s is 0 here. For now, use 4 for all symbols.
-
             // st_info
             uint8_t i0 = *iter++;
             uint8_t type = i0 & 15;
@@ -414,6 +431,7 @@ void ElfReader::resurrectSectionsAndSymbols()
             Module->addAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>(std::move(SymbolTabIdxInfo));
         }
     }
+    return;
 }
 
 void ElfReader::buildSections()
@@ -422,10 +440,10 @@ void ElfReader::buildSections()
     std::map<gtirb::UUID, SectionProperties> SectionProperties;
     std::map<gtirb::UUID, uint64_t> Alignment;
 
-    // For sectionless binary, call resurrectSectionsAndSymbols.
+    // For sectionless binary, call resurrectSections.
     if(Elf->sections().size() == 0)
     {
-        resurrectSectionsAndSymbols();
+        resurrectSections();
         return;
     }
 
@@ -512,6 +530,12 @@ void ElfReader::buildSymbols()
         {
             Tls = Segment.virtual_address();
         }
+    }
+
+    // For sectionless binaries, call resurrectSymbols.
+    if(Elf->sections().size() == 0) {
+        resurrectSymbols();
+        return;
     }
 
     std::map<std::tuple<uint64_t, uint64_t, std::string, std::string, std::string, uint64_t,

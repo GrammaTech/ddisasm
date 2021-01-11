@@ -65,6 +65,10 @@ block_needs_splitting_at(EA):-
     code_in_block(EA,Block),
     EA != Block.
 
+block_needs_splitting_at(EA):-
+    // When a block consists of some nop paddings followed by code,
+    // the block needs to be split at the first code EA after the nop paddings.
+    nop_padded(EA,_).
 
 split_block(Block):-
     block(Block).
@@ -185,3 +189,27 @@ block_has_non_nop(Block):-
 nop_block(Block):-
     refined_block(Block),
     !block_has_non_nop(Block).
+
+// nops before code in a block
+.decl nop_padding(EA:address,Block:address)
+
+nop_padding(EA,Block):-
+    code_in_block(EA,Block),
+    arch.is_nop(EA),
+    next(PrevEA,EA),
+    nop_padding(PrevEA,Block).
+
+nop_padding(EA,Block):-
+    code_in_block(EA,Block),
+    arch.is_nop(EA),
+    EA = Block.
+
+// the first code EA after nop pads in the given block
+.decl nop_padded(EA:address,Block:address)
+.output nop_padded
+
+nop_padded(EA,Block):-
+    code_in_block(EA,Block),
+    !arch.is_nop(EA),
+    next(PrevEA,EA),
+    nop_padding(PrevEA,Block).

@@ -46,7 +46,8 @@ private:
     uint64_t TlsBaseAddress = 0;
 
     // For sectionless binaries
-    void resurrectSectionsAndSymbols();
+    void resurrectSections();
+    void resurrectSymbols();
 };
 
 #endif // ELF_GTIRB_BUILDER_H_
