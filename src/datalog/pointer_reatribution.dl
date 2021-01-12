@@ -262,6 +262,7 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
 moved_label_class(EA,Op_index,"constant + repeated reg"),
 moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
     binary_type("EXEC"),
+    !binary_isa("X86"),
     data_access(EA,Op_index,"NONE",Reg,Reg,_,Dest,_), Dest >= 0,
     DestAddr = as(Dest,address),
     !instruction_get_operation(EA,"LEA"),

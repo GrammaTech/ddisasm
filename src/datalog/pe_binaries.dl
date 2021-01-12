@@ -263,6 +263,16 @@ dos_header_symbolic_operand(EA,Dest):-
     Dest > ImageBase,
     Dest < ImageBase + 64.
 
+symbolic_expr_from_relocation(EA+Disp_offset,Size/8,"__ImageBase",as(Dest-ImageBase,number)),
+dos_header_symbolic_operand(EA+Disp_offset,Dest):-
+    base_address(ImageBase),
+    op_indirect(Op,_,_,_,1,Offset,Size),
+    instruction_get_op(EA,Op_index,Op),
+    instruction_displacement_offset(EA,Op_index,Disp_offset),
+    Dest = as(Offset,address),
+    Dest >= ImageBase,
+    Dest <= ImageBase+64.
+
 // instructions just before a potential jump table
 .decl jump_table_prelude(EA:address,Steps:unsigned)
 
