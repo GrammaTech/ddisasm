@@ -237,6 +237,7 @@ symbolic_operand(EA,Op_index,Value,Type):-
 ///////////////////////////////
 // label candidates before moving
 .decl labeled_data_candidate(EA:address)
+.output labeled_data_candidate
 
 labeled_data_candidate(EA):-
     symbol(EA,_,_,_,_,_,_,_).
@@ -362,6 +363,7 @@ string_part(EA+1,Base):-
 
 ///////////////////////////////////////////////////////////////////////////
 .decl data_object_candidate(ea:address,size:unsigned,type:symbol)
+.output data_object_candidate
 
 .decl data_object_point(ea:address,size:unsigned,type:symbol,points:number,why:symbol)
 .output data_object_point
@@ -372,6 +374,7 @@ string_part(EA+1,Base):-
 .decl discarded_data_object(ea:address,size:unsigned,type:symbol)
 
 .decl data_object(ea:address,size:unsigned,type:symbol)
+.output data_object
 
 data_object_candidate(EA,Size,"symbol-symbol"):-
     symbol_minus_symbol_jump_table(EA,_,Size,_,_,_,_).
@@ -532,13 +535,14 @@ data_object_point(EA,Pt_size,"symbol",-2,"multiple conflict"):-
 data_object_point(EA,Pt_size,"symbol",1,"no label conflicts"):-
     data_object_candidate(EA,Pt_size,"symbol"),
     labeled_data_candidate(EA),
-    !labeled_data_candidate(EA+1),
-    !labeled_data_candidate(EA+2),
-    !labeled_data_candidate(EA+3),
-    !labeled_data_candidate(EA+4),
-    !labeled_data_candidate(EA+5),
-    !labeled_data_candidate(EA+6),
-    !labeled_data_candidate(EA+7).
+    N = range(1,as(Pt_size,address)),
+    !labeled_data_candidate(EA+N).
+
+data_object_point(EA,Pt_size,"symbol",-1,"label conflicts"):-
+    data_object_candidate(EA,Pt_size,"symbol"),
+    labeled_data_candidate(EA),
+    N = range(1,as(Pt_size,address)),
+    !labeled_data_candidate(EA-Pt_size+N).
 
 data_object_point(EA,Pt_size,"symbol",2,"aligned"):-
     data_object_candidate(EA,Pt_size,"symbol"),
@@ -610,6 +614,16 @@ data_object_conflict(EA,Size,Type,EA,Size,Type2):-
     data_object_candidate(EA,Size,Type),
     data_object_candidate(EA,Size,Type2),
     Type != Type2.
+
+//collision
+data_object_conflict(EA,Size,Type,EA2,Size2,Type2):-
+    // Candidate references another data location,
+    data_object_candidate(EA,Size,Type),
+    address_in_data_refined(EA,Val),
+    // but would collide with another candidate symbol at that location.
+    data_object_candidate(EA2,Size2,Type2),
+    Val > EA2,
+    Val < EA2+Size2.
 
 .decl data_object_total_points(EA:address,Size:unsigned,Type:symbol,Points:number)
 .output data_object_total_points

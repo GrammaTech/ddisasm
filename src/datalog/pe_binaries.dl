@@ -165,6 +165,7 @@ base_relative_operand(EA_def1,Op_index,as(Value,address)):-
 
 
 .decl base_relative_symbolic_operand(EA:address,Index:operand_index,Dest:address)
+.output base_relative_symbolic_operand
 
 symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value,1),
 base_relative_symbolic_operand(EA,Op_index,Value):-
