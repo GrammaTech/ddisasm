@@ -156,6 +156,18 @@ plt_data_reference(EA):-
     plt_block(Dest,_),
     symbolic_data(EA,_,Dest).
 
+inferred_symbol_name(Beg,"__rela_iplt_start","GLOBAL"):-
+    section(".rela.plt",_,Beg),
+    !symbol(_,_,_,_,_,_,_,"__rela_iplt_start").
+
+inferred_symbol_name(Beg+Size,"__rela_iplt_end","GLOBAL"):-
+    section(".rela.plt",Size,Beg),
+    !symbol(_,_,_,_,_,_,_,"__rela_iplt_end").
+
+abi_intrinsic(Beg,"__rela_iplt_start"),
+abi_intrinsic(Beg+Size,"__rela_iplt_end"):-
+    section(".rela.plt",Size,Beg).
+
 //////////////////////////////////////////////////////////////////////////
 
 got_reference(Got_entry,Symbol):-

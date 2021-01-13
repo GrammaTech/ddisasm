@@ -549,20 +549,6 @@ void expandSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
                             souffle::SouffleProgram *prog)
 {
     auto *symbolForwarding = module.getAuxData<gtirb::schema::SymbolForwarding>();
-    auto SpecialSymbols = module.findSymbols("__rela_iplt_start");
-    for(gtirb::Symbol &SpecialSymbol : SpecialSymbols)
-    {
-        gtirb::Symbol *RealSymbol = module.addSymbol(context, "__rela_iplt_start");
-        SpecialSymbol.setName("__rela_iplt_start_copy");
-        (*symbolForwarding)[SpecialSymbol.getUUID()] = RealSymbol->getUUID();
-    }
-    SpecialSymbols = module.findSymbols("__rela_iplt_end");
-    for(gtirb::Symbol &SpecialSymbol : SpecialSymbols)
-    {
-        gtirb::Symbol *RealSymbol = module.addSymbol(context, "__rela_iplt_end");
-        SpecialSymbol.setName("__rela_iplt_end_copy");
-        (*symbolForwarding)[SpecialSymbol.getUUID()] = RealSymbol->getUUID();
-    }
     for(auto &output : *prog->getRelation("plt_block"))
     {
         gtirb::Addr ea;
