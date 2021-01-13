@@ -1,5 +1,6 @@
 
- * Support ELF x64 static binaries
+* Support ELF x64 static binaries
+* Add preliminary x86-32 support.
 
 # 1.3.0
 

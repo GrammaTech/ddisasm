@@ -102,6 +102,11 @@ plt_section(".plt").
 plt_section(".plt.got").
 plt_section(".plt.sec").
 
+.decl got_section(name:symbol)
+
+got_section(".got").
+got_section(".got.plt").
+
 tls_section(Name):-
     binary_format("ELF"),
     data_section(Name),
@@ -154,16 +159,27 @@ plt_data_reference(EA):-
 //////////////////////////////////////////////////////////////////////////
 
 got_reference(Got_entry,Symbol):-
-    pc_relative_operand(_,_,Got_entry),
+    (
+      pc_relative_operand(_,_,Got_entry);
+      got_relative_operand(_,_,Got_entry)
+    ),
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
     relocation(Got_entry,RelType,Symbol,_),
     RelType != "RELATIVE",
-    symbol(_,_,_,Scope,_,_,_,Symbol), Scope != "WEAK".
+    (
+      symbol(_,_,_,Scope,_,_,_,Symbol), Scope != "WEAK"
+      ;
+      // Handle `.weakref' directives that are sometime pseudo-weak references.
+      symbol(0,0,"FUNC","WEAK",0,_,_,Symbol)
+    ).
 
 got_reference(Got_entry,Symbol):-
-    pc_relative_operand(_,_,Got_entry),
+    (
+      pc_relative_operand(_,_,Got_entry);
+      got_relative_operand(_,_,Got_entry)
+    ),
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
@@ -171,7 +187,10 @@ got_reference(Got_entry,Symbol):-
     symbol(Dest,_,_,_,_,_,_,Symbol).
 
 got_local_reference(Got_entry,Dest):-
-    pc_relative_operand(_,_,Got_entry),
+    (
+      pc_relative_operand(_,_,Got_entry);
+      got_relative_operand(_,_,Got_entry)
+    ),
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,

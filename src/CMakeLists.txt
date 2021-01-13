@@ -44,8 +44,13 @@ set(DATALOG_BASE_SOURCES
     datalog/debug_stats.dl
     datalog/self_diagnose.dl)
 
-set(DATALOG_X64_SOURCES datalog/x64/arch_x64.dl datalog/x64/float_operations.dl
-                        datalog/x64/jump_operations.dl datalog/x64/registers.dl)
+set(DATALOG_X86_32_SOURCES
+    datalog/intel/arch_x86_32.dl datalog/intel/float_operations.dl
+    datalog/intel/jump_operations.dl datalog/intel/registers_x86_32.dl)
+
+set(DATALOG_X86_64_SOURCES
+    datalog/intel/arch_x86_64.dl datalog/intel/float_operations.dl
+    datalog/intel/jump_operations.dl datalog/intel/registers_x86_64.dl)
 
 set(DATALOG_ARM64_SOURCES
     datalog/arm64/arch_arm64.dl datalog/arm64/float_operations.dl
@@ -53,22 +58,41 @@ set(DATALOG_ARM64_SOURCES
 
 set(SOUFFLE_DATALOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/datalog/)
 
-set(GENERATED_X64_CPP souffle_disasm_x64.cpp)
+set(GENERATED_X86_32_CPP souffle_disasm_x86_32.cpp)
 if(WIN32)
-  set(GENERATED_X64_CPP_PATH
-      "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_x64.cpp)")
+  set(GENERATED_X86_32_CPP_PATH
+      "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_32.cpp)")
 else()
-  set(GENERATED_X64_CPP_PATH "${CMAKE_BINARY_DIR}/src/souffle_disasm_x64.cpp")
+  set(GENERATED_X86_32_CPP_PATH
+      "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_32.cpp")
 endif()
 
 add_custom_command(
-  OUTPUT ${GENERATED_X64_CPP}
+  OUTPUT ${GENERATED_X86_32_CPP}
          # Souffle includes the path of the output file in the generated program
          # name. Change directory and use a relative path so the name does not
          # depend on build location.
   WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
-  COMMAND ${SOUFFLE} main.dl -g ${GENERATED_X64_CPP_PATH} -jauto -MARCH_AMD64
-  DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_X64_SOURCES})
+  COMMAND ${SOUFFLE} main.dl -g ${GENERATED_X86_32_CPP_PATH} -jauto -MARCH_IA32
+  DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_X86_32_SOURCES})
+
+set(GENERATED_X86_64_CPP souffle_disasm_x86_64.cpp)
+if(WIN32)
+  set(GENERATED_X86_64_CPP_PATH
+      "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_64.cpp)")
+else()
+  set(GENERATED_X86_64_CPP_PATH
+      "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_64.cpp")
+endif()
+
+add_custom_command(
+  OUTPUT ${GENERATED_X86_64_CPP}
+         # Souffle includes the path of the output file in the generated program
+         # name. Change directory and use a relative path so the name does not
+         # depend on build location.
+  WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
+  COMMAND ${SOUFFLE} main.dl -g ${GENERATED_X86_64_CPP_PATH} -jauto -MARCH_AMD64
+  DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_X86_64_SOURCES})
 
 set(GENERATED_ARM64_CPP souffle_disasm_arm64.cpp)
 if(WIN32)
@@ -264,7 +288,8 @@ target_link_libraries(
   ${LIBCPP_ABI})
 
 # Now combine the static library and generated code into an executable.
-add_executable(ddisasm ${GENERATED_ARM64_CPP} ${GENERATED_X64_CPP})
+add_executable(ddisasm ${GENERATED_X86_32_CPP} ${GENERATED_X86_64_CPP}
+                       ${GENERATED_ARM64_CPP})
 
 if(DDISASM_STATIC_DRIVERS)
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
