@@ -24,11 +24,13 @@
 
 #include "AuxDataSchema.h"
 #include "InternalAuxDataSchema.h"
+
 #include "gtirb-decoder/DatalogProgram.h"
 #include "gtirb-decoder/target/ElfArm32Loader.h"
 #include "gtirb-decoder/target/ElfArm64Loader.h"
 #include "gtirb-decoder/target/ElfMips32Loader.h"
 #include "gtirb-decoder/target/ElfX64Loader.h"
+#include "gtirb-decoder/target/ElfX86Loader.h"
 #include "gtirb-decoder/target/PeX64Loader.h"
 
 void registerAuxDataTypes()
@@ -65,6 +67,9 @@ void registerAuxDataTypes()
 
 void registerDatalogLoaders()
 {
+    // Register ELF-X86 target.
+    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::IA32}, ElfX86Loader);
+
     // Register ELF-X64 target.
     DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::X64}, ElfX64Loader);
 

@@ -20,7 +20,6 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
 #include "SccPass.h"
 
 #include <boost/config.hpp>

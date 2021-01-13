@@ -1,4 +1,4 @@
-//===- ElfX64Loader.h -------------------------------------------*- C++ -*-===//
+//===- ElfX86Loader.h -------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2020 GrammaTech, Inc.
 //
@@ -20,27 +20,26 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_GTIRB_DECODER_TARGET_ELFX64LOADER_H_
-#define SRC_GTIRB_DECODER_TARGET_ELFX64LOADER_H_
+#ifndef SRC_GTIRB_DECODER_TARGET_ELFX86LOADER_H_
+#define SRC_GTIRB_DECODER_TARGET_ELFX86LOADER_H_
 
 #include "../CompositeLoader.h"
-#include "../arch/X64Loader.h"
+#include "../arch/X86Loader.h"
 #include "../core/DataLoader.h"
 #include "../core/ModuleLoader.h"
 #include "../core/SectionLoader.h"
 #include "../format/ElfLoader.h"
 
-CompositeLoader ElfX64Loader()
+CompositeLoader ElfX86Loader()
 {
-    CompositeLoader Loader("souffle_disasm_x86_64");
+    CompositeLoader Loader("souffle_disasm_x86_32");
     Loader.add(ModuleLoader);
     Loader.add(SectionLoader);
-    Loader.add<X64Loader>();
-    Loader.add<DataLoader>(DataLoader::Pointer::QWORD);
-    Loader.add(ElfDynamicEntryLoader);
+    Loader.add<X86Loader>();
+    Loader.add<DataLoader>(DataLoader::Pointer::DWORD);
     Loader.add(ElfSymbolLoader);
     Loader.add(ElfExceptionLoader);
     return Loader;
 }
 
-#endif // SRC_GTIRB_DECODER_TARGET_ELFX64LOADER_H_
+#endif // SRC_GTIRB_DECODER_TARGET_ELFX86LOADER_H_

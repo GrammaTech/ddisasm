@@ -48,7 +48,7 @@ void ModuleLoader(const gtirb::Module& Module, DatalogProgram& Program)
     // For now, use ISA info to infer endianness.
     // TODO: Get the endianness info from gtirb.
     std::string Endianness;
-    if(BinaryIsa == "ARM" || BinaryIsa == "X64")
+    if(BinaryIsa == "ARM" || BinaryIsa == "X64" || BinaryIsa == "X86")
     {
         Endianness = "LE";
     }
