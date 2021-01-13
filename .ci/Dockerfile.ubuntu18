@@ -28,6 +28,8 @@ RUN apt-get -y update \
  && apt-get -y install \
       gcc-arm-linux-gnueabihf \
       gcc-aarch64-linux-gnu \
+      gcc-mips-linux-gnu \
+      g++-mips-linux-gnu \
       qemu-user
 
 RUN dpkg --add-architecture i386 \
@@ -37,6 +39,13 @@ RUN dpkg --add-architecture i386 \
       libstdc++-7-dev:i386 \
       lib32gcc-7-dev \
       lib32stdc++-7-dev
+
+# Create the necessary links and cache to the most recent shared libraries
+# found in the directory /usr/mips-linus-gnu/ so that the run-time linker can
+# use the cache.
+RUN cd /usr/mips-linux-gnu \
+ && mkdir etc \
+ && ldconfig -c etc/ld.do.cache -r .
 
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
