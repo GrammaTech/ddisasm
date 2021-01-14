@@ -97,6 +97,8 @@ const char* binaryISA(gtirb::ISA Arch)
 {
     switch(Arch)
     {
+        case gtirb::ISA::IA32:
+            return "X86";
         case gtirb::ISA::X64:
             return "X64";
         case gtirb::ISA::ARM64:

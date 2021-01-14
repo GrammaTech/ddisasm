@@ -89,6 +89,8 @@ RUN apt-get -y update \
       gcc-arm-linux-gnueabihf \
       gcc-5-arm-linux-gnueabihf \
       gcc-aarch64-linux-gnu \
+      gcc-mips-linux-gnu \
+      g++-mips-linux-gnu \
       qemu
 
 RUN dpkg --add-architecture i386 \
@@ -98,3 +100,10 @@ RUN dpkg --add-architecture i386 \
       libstdc++-7-dev:i386 \
       lib32gcc-5-dev \
       lib32stdc++-5-dev
+
+# Create the necessary links and cache to the most recent shared libraries
+# found in the directory /usr/mips-linus-gnu/ so that the run-time linker can
+# use the cache.
+RUN cd /usr/mips-linux-gnu \
+ && mkdir etc \
+ && ldconfig -c etc/ld.do.cache -r .

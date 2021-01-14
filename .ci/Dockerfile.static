@@ -28,6 +28,8 @@ RUN apt-get -y update && \
     apt-get -y install \
     gcc-arm-linux-gnueabihf \
     gcc-aarch64-linux-gnu \
+    gcc-mips-linux-gnu \
+    g++-mips-linux-gnu \
     qemu-user
 
 RUN apt-get -y update \
@@ -37,6 +39,13 @@ RUN apt-get -y update \
       libc-dev-i386-cross \
  && ln -s /usr/i686-linux-gnu/lib/ /usr/lib/i386-linux-gnu \
  && ln -s /usr/i686-linux-gnu/include /usr/include/i386-linux-gnu
+
+# Create the necessary links and cache to the most recent shared libraries
+# found in the directory /usr/mips-linus-gnu/ so that the run-time linker can
+# use the cache.
+RUN cd /usr/mips-linux-gnu \
+ && mkdir etc \
+ && ldconfig -c etc/ld.do.cache -r .
 
 # Install LIEF
 RUN cd /usr/local/src \
