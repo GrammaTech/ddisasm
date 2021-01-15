@@ -427,7 +427,12 @@ next_address_in_data(EA,EA_next):-
 address_array_aux(EA,Diff,"code",EA):-
     address_in_data_refined(EA,Dest1),code(Dest1),
     arch.pointer_size(Pt_size),
-    EA % Pt_size = 0,
+    (
+      binary_format("ELF"),
+      EA % Pt_size = 0
+      ;
+      binary_format("PE")
+    ),
     next_address_in_data(EA,EA_next),
     Diff = EA_next-EA,
     address_in_data_refined(EA+Diff,Dest2),code(Dest2),
