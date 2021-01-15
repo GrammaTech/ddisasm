@@ -409,3 +409,18 @@ jump_table_start(EA_jump,4,TableStart,TableReference,Operation):-
     TableStart=ImageBase+Value,
     TableReference=ImageBase,
     Operation="ADD".
+
+// Find the simplest form of jump table.
+//   i.e.  jmp dword ptr [REG*4 + TableStart]
+relative_address_start(TableStart,Size,0,Dest,"first"):-
+    indirect_jump(EA),
+    instruction_get_op(EA,_,Op),
+    // Table starts at the Offset in operand.
+    op_indirect(Op,"NONE","NONE",_,Mult,Offset,_),
+    Size = as(Mult,unsigned),
+    TableStart = as(Offset,address),
+    // Table entry is the complete Dest address.
+    data_word(TableStart,Size,TableEntry),
+    Dest = as(TableEntry,address),
+    arch.pointer_size(Pt_size), Pt_size = Size,
+    possible_ea(Dest).
