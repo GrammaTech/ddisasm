@@ -543,11 +543,12 @@ data_object_point(EA,Pt_size,"symbol",1,"no label conflicts"):-
     N = range(1,as(Pt_size,address)),
     !labeled_data_candidate(EA+N).
 
-data_object_point(EA,Pt_size,"symbol",-1,"label conflicts"):-
-    data_object_candidate(EA,Pt_size,"symbol"),
-    labeled_data_candidate(EA),
-    N = range(1,as(Pt_size,address)),
-    !labeled_data_candidate(EA-Pt_size+N).
+// TODO: Test this for regressions.
+// data_object_point(EA,Pt_size,"symbol",-1,"label conflicts"):-
+//     data_object_candidate(EA,Pt_size,"symbol"),
+//     labeled_data_candidate(EA),
+//     N = range(1,as(Pt_size,address)),
+//     !labeled_data_candidate(EA-Pt_size+N).
 
 data_object_point(EA,Pt_size,"symbol",2,"aligned"):-
     data_object_candidate(EA,Pt_size,"symbol"),
