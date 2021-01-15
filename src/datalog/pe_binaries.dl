@@ -327,14 +327,41 @@ relative_address_start(ImageBase+OffsetUnsigned,MultUnsigned,ImageBase,Dest,"fir
     Dest = as(ImageBaseSigned + Diff,address),
     possible_ea(Dest).
 
-// Detect potential byte-offset, indirect jump-table index before data analyses.
-// NOTE: This is essentially two levels of indirection, a table of single-byte
-//       offsets for a second table of four-byte, imagebase-relative addresses.
+// Find jump tables with corresponding single-byte index tables.
+//   i.e.  movzx REG,byte ptr [REG+IndexTableStart]
+//         jmp dword ptr [REG*4+AddressTableStart]
+// These reference two tables such as:
+//    TableStart       DWORD AAAA
+//                     DWORD BBBB
+//                            ...
+//    IndexTableStart  BYTE  N
+//                            ...
+//  Where the DWORD values are addresses and BYTE values are offsets into
+//  the DWORD table.
+relative_address_start(IndexTableStart,1,TableStart,Dest,"first"):-
+    arch.pointer_size(Pt_size),
+    Mult = as(Pt_size,number),
+    // Existing address table,
+    relative_address_start(TableStart,Pt_size,_,_,_),
+    instruction_get_op(EA_jmp,_,Op_jmp),
+    op_indirect(Op_jmp,_,_,_,Mult,as(TableStart,number),_),
+    // Offset by an index loaded in the previous instruction.
+    next(EA_mov,EA_jmp),
+    arch.mov(EA_mov),
+    instruction_get_op(EA_mov,_,Op_mov),
+    op_indirect(Op_mov,_,_,_,1,Offset,8),
+    IndexTableStart = as(Offset,address),
+    // Dest = AddressTable[Index]
+    data_byte(IndexTableStart,Byte),
+    Dest = TableStart + Byte*4.
+
+// Detect potential byte-offset, indirect jump-table index tables before data analyses.
+// These are like those above but with the additional __ImageBase base register.
 // lea R14,[__ImageBase]
 // ...
 // movsxd RAX,EDX
-// movzx EAX,BYTE PTR [R14+RAX*1+(IMAGEREL N_)]
-// mov ECX,DWORD PTR [R14+RAX*4+(IMAGEREL N_)]
+// movzx EAX,BYTE PTR [R14+RAX*1+(IMAGEREL IndexTableStart)]
+// mov ECX,DWORD PTR [R14+RAX*4+(IMAGEREL BaseRelativeAddressTableStart)]
 // add RCX,R14
 // jmp RCX
 relative_address_start(Table,1,Ref,Dest,"first"):-
@@ -351,11 +378,17 @@ relative_address_start(Table,1,Ref,Dest,"first"):-
     Ref = ImageBase+as(Offset2,unsigned),
     Dest = Ref + Byte.
 
-relative_address(EA+1,1,Table,Ref,Dest,"first"):-
-    base_address(ImageBase),
-    relative_address(EA,1,Table,Ref,_,"first"),
+relative_address(EA+1,1,IndexTable,AddressTable,Dest,"first"):-
+    (
+      binary_isa("X64"),
+      base_address(ImageBase)
+      ;
+      binary_isa("X86"),
+      ImageBase = 0
+    ),
+    relative_address(EA,1,IndexTable,AddressTable,_,"first"),
     data_byte(EA+1,Byte),
-    Dest = Ref+Byte*4,
+    Dest = AddressTable + Byte*4,
     data_word(Dest,4,Word),
     possible_ea(ImageBase+as(Word,unsigned)),
     !relative_address_start(EA+1,_,_,_,_).
