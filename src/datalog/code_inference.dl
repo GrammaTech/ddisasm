@@ -493,6 +493,13 @@ block_points(Block,0,-3,"possible relative-jump-table start"):-
     relative_address_start(Beg,_,_,_,_),
     BegBlockAddr <= Beg, Beg< EndBlockAddr.
 
+block_points(Block,0,-2,"interloping fallthrough block"):-
+    block_is_overlapping(Block),
+    overlap_with_jump_table(Block),
+    may_fallthrough(EA,Block),
+    !may_fallthrough(_,EA),
+    candidate_block_is_not_padding(EA).
+
 block_points(Block,0,0,"basic point"):-
     block_is_overlapping(Block),
     code_in_block_candidate_refined(_,Block).
