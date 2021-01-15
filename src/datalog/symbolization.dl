@@ -428,10 +428,8 @@ address_array_aux(EA,Diff,"code",EA):-
     address_in_data_refined(EA,Dest1),code(Dest1),
     arch.pointer_size(Pt_size),
     (
-      binary_format("ELF"),
+      binary_format("PE");
       EA % Pt_size = 0
-      ;
-      binary_format("PE")
     ),
     next_address_in_data(EA,EA_next),
     Diff = EA_next-EA,
