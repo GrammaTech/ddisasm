@@ -480,7 +480,6 @@ block_points(Block,0,-6,"overlap with relative-jump-table"):-
     relative_address(Beg,_,_,_,_,_),
     BegBlockAddr <= Beg, Beg< EndBlockAddr.
 
-
 block_is_overlapping(Block),
 block_points(Block,0,-6,"overlap with relative-jump-table"):-
     relative_address(Beg,Size,_,_,_,_),
@@ -514,12 +513,14 @@ block_points(Block,0,20,"function symbol"):-
 block_points(Block,0,1,"address in data"):-
     block_is_overlapping(Block),
     address_in_data(Address,Block),
-    Address % 8 != 0.
+    arch.pointer_size(Pt_size),
+    Address % Pt_size != 0.
 
 block_points(Block,0,2,"aligned address in data"):-
     block_is_overlapping(Block),
     address_in_data(Address,Block),
-    Address % 8 = 0.
+    arch.pointer_size(Pt_size),
+    Address % Pt_size = 0.
 
 block_points(Block,0,-1,"printable address"):-
     block_is_overlapping(Block),
@@ -536,16 +537,20 @@ block_points(Block,0,-1,"printable address"):-
 block_points(Block,0,1,"address in data array"):-
     block_is_overlapping(Block),
     address_in_data(Address,Block),
-    Address % 8 = 0,
+    arch.pointer_size(Pt_size),
     (
-        address_in_data(Address+8,_),
-        address_in_data(Address+16,_)
+      binary_format("PE");
+      Address % Pt_size = 0
+    ),
+    (
+        address_in_data(Address+Pt_size,_),
+        address_in_data(Address+Pt_size*2,_)
         ;
-        address_in_data(Address-8,_),
-        address_in_data(Address-16,_)
+        address_in_data(Address-Pt_size,_),
+        address_in_data(Address-Pt_size*2,_)
         ;
-        address_in_data(Address+8,_),
-        address_in_data(Address-8,_)
+        address_in_data(Address+Pt_size,_),
+        address_in_data(Address-Pt_size,_)
     ).
 
 block_points(Block,BlockPred,6,"direct jump"):-
