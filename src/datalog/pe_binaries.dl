@@ -458,3 +458,125 @@ relative_address_start(TableStart,Size,0,Dest,"first"):-
     Dest = as(TableEntry,address),
     arch.pointer_size(Pt_size), Pt_size = Size,
     possible_ea(Dest).
+
+// Non-destructive multi-byte NOPs used by the MSVC compiler. (See `listing.inc'.)
+.decl npad(EA:address,Size:number)
+.output npad
+
+// lea ecx, [ecx+00]
+// DB 8DH, 49H, 00H
+npad(EA,Size):-
+  data_byte(EA,0x8D),
+  data_byte(EA+1,0x49),
+  data_byte(EA+2,0x00),
+  Size = 3.
+
+// lea esp, [esp+00]
+// DB 8DH, 64H, 24H, 00H
+npad(EA,Size):-
+  data_byte(EA,0x8D),
+  data_byte(EA+1,0x64),
+  data_byte(EA+2,0x24),
+  data_byte(EA+3,0x00),
+  Size = 4.
+
+// jmp .+5; .npad 3
+// DB 0EBH, 03H, 8DH, 49H, 00H
+npad(EA,Size):-
+  data_byte(EA,0xEB),
+  data_byte(EA+1,0x03),
+  npad(EA+2,3),
+  Size = 5.
+
+// lea ebx, [ebx+00000000]
+// DB 8DH, 9BH, 00H, 00H, 00H, 00H
+npad(EA,Size):-
+  data_byte(EA,0x8D),
+  data_byte(EA+1,0x9B),
+  data_word(EA+2,4,0x00),
+  Size = 6.
+
+// lea esp, [esp+00000000]
+// DB 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H
+npad(EA,Size):-
+  data_byte(EA,0x8D),
+  data_byte(EA+1,0xA4),
+  data_byte(EA+2,0x24),
+  data_word(EA+3,4,0x00),
+  Size = 7.
+
+// jmp .+8; .npad 6
+// DB 0EBH, 06H, 8DH, 9BH, 00H, 00H, 00H, 00H
+npad(EA,Size):-
+  data_byte(EA,0xEB),
+  data_byte(EA+1,0x06),
+  npad(EA+2,6),
+  Size = 8.
+
+// jmp .+9; .npad 7
+// DB 0EBH, 07H, 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H
+npad(EA,Size):-
+  data_byte(EA,0xEB),
+  data_byte(EA+1,0x07),
+  npad(EA+2,7),
+  Size = 9.
+
+// jmp .+A; .npad 7; .npad 1
+// DB 0EBH, 08H, 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H, 90H
+npad(EA,Size):-
+  data_byte(EA,0xEB),
+  data_byte(EA+1,0x08),
+  npad(EA+2,7),
+  data_byte(EA+9,0x90),
+  Size = 10.
+
+// jmp .+B; .npad 7; .npad 2
+// DB 0EBH, 09H, 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H, 8BH, 0FFH
+npad(EA,Size):-
+  data_byte(EA,0xEB),
+  data_byte(EA+1,0x09),
+  npad(EA+2,7),
+  npad(EA+9,2),
+  Size = 11.
+
+// jmp .+C; .npad 7; .npad 3
+// DB 0EBH, 0AH, 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H, 8DH, 49H, 00H
+npad(EA,Size):-
+  data_byte(EA,0xEB),
+  data_byte(EA+1,0x0A),
+  npad(EA+2,7),
+  npad(EA+9,3),
+  Size = 12.
+
+// jmp .+D; .npad 7; .npad 4
+// DB 0EBH, 0BH, 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H, 8DH, 64H, 24H, 00H
+npad(EA,Size):-
+  data_byte(EA,0xEB),
+  data_byte(EA+1,0x0B),
+  npad(EA+2,7),
+  npad(EA+9,4),
+  Size = 13.
+
+// jmp .+E; .npad 7; .npad 5
+// DB 0EBH, 0CH, 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H, 0EBH, 03H, 8DH, 49H, 00H
+npad(EA,Size):-
+  data_byte(EA,0xEB),
+  data_byte(EA+1,0x0C),
+  npad(EA+2,7),
+  npad(EA+9,5),
+  Size = 14.
+
+// jmp .+F; .npad 7; .npad 6
+// DB 0EBH, 0DH, 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H, 8DH, 9BH, 00H, 00H, 00H, 00H
+npad(EA,Size):-
+  data_byte(EA,0xEB),
+  data_byte(EA+1,0x0D),
+  npad(EA+2,7),
+  npad(EA+9,6),
+  Size = 15.
+
+// TODO: Add all "multi-byte" npad NOPs from `listing.inc', 3 bytes to 15 bytes.
+// TODO: Move all this to a new `pe_padding.dl' source file, perhaps.
+
+is_padding(EA):-
+  npad(EA,_).
