@@ -531,13 +531,8 @@ data_object_point(EA,Pt_size,"symbol",-2,"multiple conflict"):-
 data_object_point(EA,Pt_size,"symbol",1,"no label conflicts"):-
     data_object_candidate(EA,Pt_size,"symbol"),
     labeled_data_candidate(EA),
-    !labeled_data_candidate(EA+1),
-    !labeled_data_candidate(EA+2),
-    !labeled_data_candidate(EA+3),
-    !labeled_data_candidate(EA+4),
-    !labeled_data_candidate(EA+5),
-    !labeled_data_candidate(EA+6),
-    !labeled_data_candidate(EA+7).
+    N = range(1,as(Pt_size,address)),
+    !labeled_data_candidate(EA+N).
 
 data_object_point(EA,Pt_size,"symbol",2,"aligned"):-
     data_object_candidate(EA,Pt_size,"symbol"),
