@@ -363,7 +363,6 @@ string_part(EA+1,Base):-
 
 ///////////////////////////////////////////////////////////////////////////
 .decl data_object_candidate(ea:address,size:unsigned,type:symbol)
-.output data_object_candidate
 
 .decl data_object_point(ea:address,size:unsigned,type:symbol,points:number,why:symbol)
 .output data_object_point
@@ -374,7 +373,6 @@ string_part(EA+1,Base):-
 .decl discarded_data_object(ea:address,size:unsigned,type:symbol)
 
 .decl data_object(ea:address,size:unsigned,type:symbol)
-.output data_object
 
 data_object_candidate(EA,Size,"symbol-symbol"):-
     symbol_minus_symbol_jump_table(EA,_,Size,_,_,_,_).

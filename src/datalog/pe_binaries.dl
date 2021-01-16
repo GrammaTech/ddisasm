@@ -165,7 +165,6 @@ base_relative_operand(EA_def1,Op_index,as(Value,address)):-
 
 
 .decl base_relative_symbolic_operand(EA:address,Index:operand_index,Dest:address)
-.output base_relative_symbolic_operand
 
 symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value,1),
 base_relative_symbolic_operand(EA,Op_index,Value):-
@@ -255,6 +254,7 @@ labeled_data_candidate(ImageBase+Dest):-
 
 symbolic_expr_from_relocation(EA+Disp_offset,Size/8,"__ImageBase",as(Dest-ImageBase,number)),
 dos_header_symbolic_operand(EA,Dest):-
+    binary_format("PE"),
     base_address(ImageBase),
     pc_relative_operand(EA,_,Dest),
     instruction_displacement_offset(EA,Op_index,Disp_offset),
@@ -265,6 +265,7 @@ dos_header_symbolic_operand(EA,Dest):-
 
 symbolic_expr_from_relocation(EA+Disp_offset,Size/8,"__ImageBase",as(Dest-ImageBase,number)),
 dos_header_symbolic_operand(EA+Disp_offset,Dest):-
+    binary_format("PE"),
     base_address(ImageBase),
     op_indirect(Op,_,_,_,1,Offset,Size),
     instruction_get_op(EA,Op_index,Op),
