@@ -575,8 +575,5 @@ npad(EA,Size):-
   npad(EA+9,6),
   Size = 15.
 
-// TODO: Add all "multi-byte" npad NOPs from `listing.inc', 3 bytes to 15 bytes.
-// TODO: Move all this to a new `pe_padding.dl' source file, perhaps.
-
 is_padding(EA):-
   npad(EA,_).
