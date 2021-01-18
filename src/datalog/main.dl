@@ -562,6 +562,7 @@ inferred_symbol_name(EA,"main","GLOBAL"):-
     main_function(EA).
 
 .decl no_return_call(EA:address)
+
 .decl function_pointer_section(Name:symbol)
 
 .decl no_return_function(Name:symbol)
@@ -574,7 +575,7 @@ no_return_call(EA):-
 no_return_call(EA):-
     direct_call(EA,Dest),
     defined_symbol(Dest,_,_,_,_,_,_,Name),
-    no_return_function(Function).
+    no_return_function(Name).
 
 .decl is_padding(EA:address)
 is_padding(EA):-
