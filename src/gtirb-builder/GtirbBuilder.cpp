@@ -23,6 +23,7 @@
 #include "./GtirbBuilder.h"
 
 #include "./ElfReader.h"
+#include "./PeReader.h"
 
 using GTIRB = GtirbBuilder::GTIRB;
 
@@ -50,6 +51,10 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
             return Elf.build();
         }
         case LIEF::EXE_FORMATS::FORMAT_PE:
+        {
+            PeReader reader(Path, Binary);
+            return reader.build();
+        }
         case LIEF::EXE_FORMATS::FORMAT_MACHO:
         case LIEF::EXE_FORMATS::FORMAT_UNKNOWN:
             break;

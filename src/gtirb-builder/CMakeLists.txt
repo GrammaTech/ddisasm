@@ -1,4 +1,4 @@
-add_library(gtirb_builder STATIC GtirbBuilder.cpp ElfReader.cpp)
+add_library(gtirb_builder STATIC GtirbBuilder.cpp ElfReader.cpp PeReader.cpp)
 
 target_link_libraries(gtirb_builder ${LIEF_LIBRARIES} ${Boost_LIBRARIES} gtirb)
 

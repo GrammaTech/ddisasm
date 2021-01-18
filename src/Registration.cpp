@@ -27,6 +27,7 @@
 #include "gtirb-decoder/target/ElfArm64Loader.h"
 #include "gtirb-decoder/target/ElfX64Loader.h"
 #include "gtirb-decoder/target/ElfX86Loader.h"
+#include "gtirb-decoder/target/PeX86Loader.h"
 
 void registerAuxDataTypes()
 {
@@ -64,4 +65,7 @@ void registerDatalogLoaders()
 
     // Register ELF-ARM64 target.
     DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::ARM64}, ElfArm64Loader);
+
+    DatalogProgram::registerLoader({gtirb::FileFormat::PE, gtirb::ISA::IA32}, PeX86Loader);
+    //DatalogProgram::registerLoader({gtirb::FileFormat::PE, gtirb::ISA::X64}, PeX64Loader);
 }
