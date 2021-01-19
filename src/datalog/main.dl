@@ -554,10 +554,10 @@ data_segment(Begin,End):-
 // find special functions and symbols
 .decl main_function(ea:address)
 
-.decl inferred_symbol_name(ea:address,name:symbol,scope:symbol)
+.decl inferred_symbol_name(ea:address,name:symbol,scope:symbol, type: symbol)
 .output inferred_symbol_name
 
-inferred_symbol_name(EA,"main","GLOBAL"):-
+inferred_symbol_name(EA,"main","GLOBAL","FUNC"):-
     binary_format("ELF"),
     main_function(EA).
 

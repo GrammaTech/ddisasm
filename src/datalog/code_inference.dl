@@ -410,6 +410,7 @@ discarded_block(Block):-
 // propagate discarding blocks through direct jumps or calls
 discarded_block(Block):-
     discarded_block(Block2),
+    !overlapping_instruction(Block2,_),
     (
         direct_jump(EA,Block2);
         direct_call(EA,Block2)
@@ -424,12 +425,10 @@ discarded_block(Block):-
 overlapping_instruction(Block2,Block),
 discarded_block(Block2):-
     block_overlap(Block,Block2),
-    // same number of points
-    block_total_points(Block,Points),
-    block_total_points(Block2,Points),
     // one has an extra prefix with respect to the other
     instruction(Block,Size,_,OpCode,Op1,Op2,Op3,Op4,_,_),
-    instruction(Block2,Size2,_,OpCode,Op1,Op2,Op3,Op4,_,_),
+    Block2 = Block + 1,
+    instruction(Block2,Size2,"",OpCode,Op1,Op2,Op3,Op4,_,_),
     Block2 - Block = Size - Size2.
 
 
