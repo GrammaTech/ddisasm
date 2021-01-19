@@ -413,7 +413,8 @@ inferred_symbol_name(EA,"main","PUBLIC"):-
     main_function(EA).
 
 // Label addresses in data section that are exported.
-labeled_data(EA):-
+labeled_data(EA),
+labeled_data_candidate(EA):-
     export_entry(EA,_,_),
     data_section(Name),
     section(Name,Size,Addr),
