@@ -493,14 +493,7 @@ block_points(Block,0,-3,"possible relative-jump-table start"):-
     relative_address_start(Beg,_,_,_,_),
     BegBlockAddr <= Beg, Beg< EndBlockAddr.
 
-block_points(Block,0,-2,"interloping fallthrough block"):-
-    block_is_overlapping(Block),
-    overlap_with_jump_table(Block),
-    may_fallthrough(EA,Block),
-    !may_fallthrough(_,EA),
-    candidate_block_is_not_padding(EA).
-
-block_points(Block,0,-2,"incremental linking thunks"):-
+block_points(Block,0,-4,"incremental linking thunks"):-
     block_is_overlapping(Block),
     !unconditional_jump(Block),
     unconditional_jump(EA),
@@ -526,12 +519,14 @@ block_points(Block,0,20,"function symbol"):-
     function_symbol(Block,_).
 
 block_points(Block,0,1,"address in data"):-
+    !binary_isa("X86"),
     block_is_overlapping(Block),
     address_in_data(Address,Block),
     arch.pointer_size(Pt_size),
     Address % Pt_size != 0.
 
 block_points(Block,0,2,"aligned address in data"):-
+    !binary_isa("X86"),
     block_is_overlapping(Block),
     address_in_data(Address,Block),
     arch.pointer_size(Pt_size),
