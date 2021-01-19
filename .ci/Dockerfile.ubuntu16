@@ -93,6 +93,9 @@ RUN apt-get -y update \
       g++-mips-linux-gnu \
       qemu
 
+# Install sstrip
+COPY etc/sstrip /usr/bin/sstrip
+
 RUN dpkg --add-architecture i386 \
  && apt-get -y update \
  && apt-get -y install \
