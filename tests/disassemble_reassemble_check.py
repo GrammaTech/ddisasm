@@ -102,7 +102,9 @@ def compile(
     return completedProcess.returncode == 0
 
 
-def disassemble(binary, strip, sstrip, format="--asm", extension="s", extra_args=[]):
+def disassemble(
+    binary, strip, sstrip, format="--asm", extension="s", extra_args=[]
+):
     """
     Disassemble the binary 'binary'
     """
