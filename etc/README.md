@@ -1,3 +1,3 @@
 ## Sstrip
 
-Sstrip is a ELF stripping utility, which was built from a newer version of [superstrip](https://github.com/berney/superstrip).
+Sstrip is a ELF stripping utility, which was built from [Kickers of ELF](http://muppetlabs.com/~breadbox/software/elfkickers.html)
