@@ -36,16 +36,21 @@ class bcolors:
 
 
 @contextlib.contextmanager
-def get_target(binary, strip):
+def get_target(binary, strip, sstrip):
     if strip:
         print("# stripping binary\n")
         subprocess.run(["cp", binary, binary + ".stripped"])
         binary = binary + ".stripped"
         subprocess.run(["strip", "--strip-unneeded", binary])
+    elif sstrip:
+        print("# stripping sections\n")
+        subprocess.run(["cp", binary, binary + ".sstripped"])
+        binary = binary + ".sstripped"
+        subprocess.run(["sstrip", binary])
     try:
         yield binary
     finally:
-        if strip:
+        if strip or sstrip:
             os.remove(binary)
 
 
@@ -97,11 +102,11 @@ def compile(
     return completedProcess.returncode == 0
 
 
-def disassemble(binary, strip, format="--asm", extension="s", extra_args=[]):
+def disassemble(binary, strip, sstrip, format="--asm", extension="s", extra_args=[]):
     """
     Disassemble the binary 'binary'
     """
-    with get_target(binary, strip) as target_binary:
+    with get_target(binary, strip, sstrip) as target_binary:
         print("# Disassembling " + target_binary + "\n")
         start = timer()
         completedProcess = subprocess.run(
@@ -211,6 +216,7 @@ def disassemble_reassemble_test(
     cxx_compilers=["g++", "clang++"],
     optimizations=["-O0", "-O1", "-O2", "-O3", "-Os"],
     strip=False,
+    sstrip=False,
     reassemble_function=reassemble,
     skip_test=False,
     exec_wrapper=None,
@@ -247,7 +253,7 @@ def disassemble_reassemble_test(
                 ):
                     compile_errors += 1
                     continue
-                success, time = disassemble(binary, strip)
+                success, time = disassemble(binary, strip, sstrip)
                 print("Time " + str(time))
                 if not success:
                     disassembly_errors += 1
@@ -283,6 +289,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--strip",
         help="strip binaries before disassembling",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--sstrip",
+        help="strip sections before disassembling",
         action="store_true",
     )
     parser.add_argument(
