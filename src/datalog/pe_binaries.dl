@@ -346,9 +346,19 @@ relative_address_start(IndexTableStart,1,TableStart,Dest,"first"):-
     relative_address_start(TableStart,Pt_size,_,_,_),
     instruction_get_op(EA_jmp,_,Op_jmp),
     op_indirect(Op_jmp,_,_,_,Mult,as(TableStart,number),_),
-    // Offset by an index loaded in the previous instruction.
-    next(EA_mov,EA_jmp),
+    // Offset by an index loaded in a previous instruction.
+    // FIXME: Sometimes arguments are pushed before the JMP.
     arch.mov(EA_mov),
+    (
+        next(EA_mov,EA_jmp)
+        ;
+        next(EA_mov,EA_pop1),
+        next(EA_pop1,EA_jmp)
+        ;
+        next(EA_mov,EA_pop1),
+        next(EA_pop1,EA_pop2),
+        next(EA_pop2,EA_jmp)
+    ),
     instruction_get_op(EA_mov,_,Op_mov),
     op_indirect(Op_mov,_,_,_,1,Offset,8),
     IndexTableStart = as(Offset,address),
