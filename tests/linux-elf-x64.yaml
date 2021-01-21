@@ -123,19 +123,38 @@ tests:
       flags: ["-no-pie", "-lpthread"]
 
   # ----------------------------------------------------------------------------
-  # Examples that fail to reassemble.
+  # Static examples
   # ----------------------------------------------------------------------------
   - name: ex1
     <<: *default
     build:
-      flags: ["-static"]
+      flags: ["-static","-no-pie"]
       c: ["gcc"]
       cpp: ["g++"]
       optimizations: ["-O0"]
     reassemble:
-      skip: true
-      flags: []
-      compiler: ""
+      flags: ["-nostdlib", "-no-pie"]
+      compiler: "gcc"
+    distro:
+      name: Ubuntu
+      version: ["18.04","20.04"]
+
+  # stripped version
+  - name: ex1
+    <<: *default
+    build:
+      flags: ["-static", "-no-pie"]
+      c: ["gcc"]
+      cpp: ["g++"]
+      optimizations: ["-O0"]
+    reassemble:
+      flags: ["-nostdlib", "-no-pie"]
+      compiler: "gcc"
+    test:
+      strip: true
+    distro:
+      name: Ubuntu
+      version: ["18.04","20.04"]
 
   # ----------------------------------------------------------------------------
   # Small C and C++ examples (stripped).
