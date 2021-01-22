@@ -41,7 +41,7 @@ get_pc_thunk(EA,Reg):-
     arch.move_operation(Operation),
     op_regdirect(Op2,Reg),
     op_indirect(Op1,"NONE","ESP","NONE",1,0,_),
-    return(EA+Size).
+    arch.return(EA+Size).
 
 def(EA,Reg):-
     direct_call(EA,EA_pc_thunk),
