@@ -1,0 +1,196 @@
+platform: Linux
+
+default: &default
+  path: examples
+  binary: ex
+
+  # Compilation configuration.
+  build:
+    c: ["gcc", "clang"]
+    cpp: ["g++", "clang++"]
+    optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
+    flags: ["-m32", "-fno-pie", "-no-pie"]
+
+  # Reassembly configuration.
+  reassemble:
+    compiler: "gcc"
+    flags: ["-m32", "-no-pie"]
+    skip: false
+
+  # Test configuration.
+  test:
+    wrapper: null
+    strip: false
+    skip: false
+
+position-independent: &position-independent
+  <<: *default
+
+  # Compilation configuration.
+  build:
+    c: ["gcc"]
+    cpp: ["g++"]
+    optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
+    flags: ["-m32", "-fpie"]
+
+  # Reassembly configuration.
+  reassemble:
+    compiler: "gcc"
+    flags: ["-m32", "-fpie"]
+    skip: false
+
+tests:
+  # ----------------------------------------------------------------------------
+  # Small C and C++ examples.
+  # ----------------------------------------------------------------------------
+  - name: ex1
+    <<: *default
+
+  - name: ex_confusing_data
+    <<: *default
+
+  - name: ex_exceptions1
+    <<: *default
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32", "-fno-pie", "-no-pie"]
+      skip: false
+
+  # TODO:
+  # ex_exceptions2
+  # ex_exceptions3
+
+  - name: ex_false_pointer_array
+    <<: *default
+
+  - name: ex_float
+    <<: *default
+
+  - name: ex_fprintf
+    <<: *default
+
+  - name: ex_getoptlong
+    <<: *default
+
+  - name: ex_memberPointer
+    <<: *default
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32", "-no-pie"]
+      skip: false
+
+  - name: ex_noreturn
+    <<: *default
+
+  - name: ex_pointerReatribution
+    <<: *default
+
+  - name: ex_pointerReatribution3
+    <<: *default
+
+  - name: ex_stat
+    <<: *default
+
+  - name: ex_struct
+    <<: *default
+
+  - name: ex_switch
+    <<: *default
+
+  - name: ex_uninitialized_data
+    <<: *default
+
+  - name: ex_virtualDispatch
+    <<: *default
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32", "-no-pie"]
+      skip: false
+
+  - name: ex_thread_local
+    <<: *default
+
+  - name: ex_threads
+    <<: *default
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32", "-lpthread", "-no-pie", "-fno-pie"]
+
+  # ----------------------------------------------------------------------------
+  # Small C and C++ examples.  (position independent code)
+  # ----------------------------------------------------------------------------
+  - name: ex1
+    <<: *position-independent
+
+  - name: ex_2modulesPIC
+    <<: *position-independent
+
+  - name: ex_confusing_data
+    <<: *position-independent
+
+  - name: ex_exceptions1
+    <<: *position-independent
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32", "-pie"]
+      skip: false
+
+  # TODO:
+  # ex_exceptions2
+  # ex_exceptions3
+
+  - name: ex_false_pointer_array
+    <<: *position-independent
+
+  - name: ex_float
+    <<: *position-independent
+
+  - name: ex_fprintf
+    <<: *position-independent
+
+  - name: ex_getoptlong
+    <<: *position-independent
+
+  - name: ex_memberPointer
+    <<: *position-independent
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32"]
+      skip: false
+
+  - name: ex_noreturn
+    <<: *position-independent
+
+  - name: ex_pointerReatribution
+    <<: *position-independent
+
+  - name: ex_pointerReatribution3
+    <<: *position-independent
+
+  - name: ex_stat
+    <<: *position-independent
+
+  - name: ex_struct
+    <<: *position-independent
+
+  - name: ex_switch
+    <<: *position-independent
+
+  - name: ex_uninitialized_data
+    <<: *position-independent
+
+  - name: ex_virtualDispatch
+    <<: *position-independent
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32"]
+      skip: false
+
+  - name: ex_thread_local
+    <<: *position-independent
+
+  - name: ex_threads
+    <<: *position-independent
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32", "-lpthread", "-fpie"]

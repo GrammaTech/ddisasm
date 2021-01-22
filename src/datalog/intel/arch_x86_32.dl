@@ -1,0 +1,222 @@
+//===- arch_x86_32.dl ---------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+#include "arch_x86.dl"
+
+.comp X86_32 : X86 {
+  #include "registers_x86_32.dl"
+  pointer_size(4).
+}
+
+.decl get_pc_thunk(EA:address,Reg:register)
+.output get_pc_thunk
+
+// call	__x86.get_pc_thunk.ax
+// ...
+// __x86.get_pc_thunk.ax:
+// mov	eax, DWORD PTR [esp]
+// ret
+get_pc_thunk(EA,Reg):-
+    direct_call(_,EA),
+    instruction(EA,Size,_,Operation,Op1,Op2,_,_,_,_),
+    arch.move_operation(Operation),
+    op_regdirect(Op2,Reg),
+    op_indirect(Op1,"NONE","ESP","NONE",1,0,_),
+    return(EA+Size).
+
+def(EA,Reg):-
+    direct_call(EA,EA_pc_thunk),
+    get_pc_thunk(EA_pc_thunk,Reg).
+
+abi_intrinsic(EA,Name):-
+    get_pc_thunk(EA,_),
+    symbol(EA,_,_,_,_,_,_,Name).
+
+abi_intrinsic(EA,"__dso_handle"):-
+    got_relative_operand(_,_,EA),
+    symbol(EA,_,_,_,_,_,_,"__dso_handle").
+
+// Sometimes we use the `.got' section as reference and sometimes `.got.plt'.
+.decl got_reference_pointer(EA:address)
+.output got_reference_pointer
+
+.decl reg_has_got(EA:address,Reg:register)
+.output reg_has_got
+
+got_reference_pointer(Beg),
+reg_has_got(EA,Reg):-
+    // call _x86.get_pc_thunk.REG
+    direct_call(EA_call,EA_pc_thunk),
+    get_pc_thunk(EA_pc_thunk,Reg),
+    // add REG, _GLOBAL_OFFSET_TABLE_
+    next(EA_call,EA),
+    op_immediate_and_reg(EA,"ADD",Reg,_,Offset),
+    // where offset is pc-relative .got address
+    got_section(Name),
+    section(Name,_,Beg),
+    Beg=EA+as(Offset,address).
+
+reg_has_got(EA_load,Reg_load):-
+    // Store GOT pointer
+    reg_has_got(EA,Reg_store),
+    def_used(EA,Reg_store,EA_store,_),
+    reg_stored_in_stack(EA_store,Reg_store,StackPos,StackFrame),
+    // Load GOT pointer
+    arch.frame_pointer(Reg_base),
+    reg_loaded_from_stack(EA_load,Reg_load,Reg_base,StackPos,StackFrame).
+
+inferred_symbol_name(EA,"_GLOBAL_OFFSET_TABLE_","DEFAULT","NONE"):-
+    !symbol(_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
+    got_reference_pointer(EA).
+
+// Create symbol-minus-symbol for special _GLOBAL_OFFSET_TABLE_, i.e. GOT-PC.
+//     add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
+symbol_minus_symbol(EA+Imm_offset,4,Got,EA,1):-
+    reg_has_got(EA,Reg),
+    got_reference_pointer(Got),
+    op_immediate_and_reg(EA,"ADD",Reg,Imm_index,Offset),
+    instruction_immediate_offset(EA,Imm_index,Imm_offset),
+    Got=EA+as(Offset,address).
+
+// GOT-relative references consist of a load of the GOT pointer to a register:
+//     call    __x86.get_pc_thunk.ax
+//     add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
+// Followed by a use of the register, such as:
+//     lea     edx, .LC0@GOTOFF[eax]
+//     movzx	 eax, WORD PTR array@GOTOFF[ebx+eax*2]
+//     movsx	 eax, BYTE PTR array@GOTOFF[esi+ebx]
+got_relative_operand(EA,Index,Dest):-
+    reg_has_got(EA_base,Reg),
+    def_used(EA_base,Reg,EA,Index),
+    instruction_get_op(EA,Index,Op),
+    (
+      op_indirect(Op,"NONE",Reg,_,_,Offset,_);
+      op_indirect(Op,"NONE",_,Reg,1,Offset,_)
+    ),
+    got_reference_pointer(Got),
+    Dest=Got+as(Offset,address).
+
+symbol_minus_symbol(EA+Disp_offset,4,Got,Dest,1):-
+    got_reference_pointer(Got),
+    got_relative_operand(EA,Index,Dest),
+    instruction_displacement_offset(EA,Index,Disp_offset),
+    !moved_label(EA,_,_,_).
+
+symbolic_operand_attribute(EA,Index,"PltRef"):-
+    (
+      direct_jump(EA,_);
+      direct_call(EA,_)
+    ),
+    symbolic_operand(EA,Index,Dest,_),
+    plt_block(Dest,_).
+
+symbolic_operand_attribute(EA,Index,"GotOff"):-
+    got_relative_operand(EA,Index,Dest).
+
+symbolic_operand_attribute(EA,Index,"GotRef"):-
+    got_relative_operand(EA,Index,Dest),
+    (
+      got_reference(Dest,_);
+      got_local_reference(Dest,_)
+    ).
+
+plt_entry(EA,Function):-
+    plt_section(SecName),
+    section(SecName,Size,Beg),
+    EA < Beg+Size,
+    EA >= Beg,
+    indirect_jump(EA),
+    instruction_get_op(EA,_,Op),
+    (
+      //  jmp [EBX+Offset]
+      op_indirect(Op,"NONE",_,"NONE",1,Offset,_),
+      got_reference_pointer(Got),
+      Got_entry=Got+as(Offset,address)
+      ;
+      // jmp [Offset]
+      op_indirect(Op,"NONE","NONE","NONE",1,Offset,_),
+      Got_entry=as(Offset,address)
+    ),
+    relocation(Got_entry,_,Function,_).
+
+// Segment-based references to thread-local storage,
+//   e.g.   mov	   eax, DWORD PTR gs:i@ntpoff
+//     or   mov    eax, DWORD PTR gs:0xfffffff0
+symbolic_operand_candidate(EA,Index,as(Reference+Offset,address),"data"):-
+    instruction_get_op(EA,Index,Op),
+    op_indirect(Op,"GS","NONE","NONE",_,Offset,_), Offset < 0,
+    tls_segment(_,TlsEnd,Align),
+    Reference = as(TlsEnd,number) + as(TlsEnd % max(Align,1),number).
+
+//   e.g.  mov	eax, qword ptr gs:[0]
+//         lea	eax, [eax + threadLocal@NTPOFF]
+symbolic_operand_candidate(EA_used,Index,as(Reference+Offset,address),"data"):-
+    instruction_get_op(EA_def,_,Op_def),
+    op_indirect(Op_def,"GS","NONE","NONE",_,0,_),
+    def_used(EA_def,_,EA_used,Index),
+    instruction_get_op(EA_used,Index,Op_used),
+    op_indirect(Op_used,"NONE",_,_,_,Offset,_), Offset < 0,
+    tls_segment(_,TlsEnd,Align),
+    Reference = as(TlsEnd,number) + as(TlsEnd % max(Align,1),number).
+
+symbolic_operand_attribute(EA,Index,"NtpOff"):-
+    symbolic_operand(EA,Index,Dest,_),
+    tls_segment(Start,End,_),
+    Dest >= Start, Dest < End.
+
+
+// GOT-relative data objects are sometimes used as references in loops.
+// First a moved-label to the middle of a symbol:
+//   e.g.   lea     esi, state@GOTOFF[ebx+1320]
+// Followed by a boundary reference, relative to the data-object:
+//   e.g.   lea     eax, state@GOTOFF[ebx-88]
+// That is stored to the stack and compared in the loop:
+//          mov     DWORD PTR -28[ebp], eax
+//          sub     edi, 88
+//          cmp     edi, DWORD PTR -28[ebp]
+moved_label_class(EA_load,1,"got-data-object relative"),
+moved_label(EA_load,1,Address,Base):-
+    // GOT-relative stored in stack.
+    got_relative_operand(EA_load,_,Dest),
+    def_used(EA_load,Reg,EA_store,_),
+    reg_stored_in_stack(EA_store,Reg,StackPos,StackFrame),
+
+    // GOT-relative compared for jump.
+    arch.frame_pointer(BaseReg),
+    def_used(StackFrame,BaseReg,EA_cmp,_),
+    arch.cmp_operation(Operation),
+    instruction(EA_cmp,Size,_,Operation,Op1,Op2,0,0,_,_),
+    op_indirect(Op1,"NONE",BaseReg,"NONE",_,StackPos,_),
+    arch.jump(EA_cmp+Size),
+
+    // Moved-value offset is the offset from the reference data object.
+    def_used(EA_arith,_,EA_cmp,_),
+    best_value_reg(EA_arith,_,EA_obj,_,_,"loop"),
+    moved_label(EA_obj,1,_,Base),
+    Offset=as(Dest-Base,number),
+    Address=Base+as(Offset,address).
+
+symbol_minus_symbol(EA+Disp_offset,4,Got,Dest,1):-
+    got_reference_pointer(Got),
+    got_relative_operand(EA,Index,_),
+    moved_label(EA,Index,Dest,NewDest),
+    instruction_displacement_offset(EA,Index,Disp_offset).

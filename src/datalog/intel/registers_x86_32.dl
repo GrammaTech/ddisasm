@@ -1,0 +1,71 @@
+//===- registers_x86_32.dl ----------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2020 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+
+/*
+This module stablishes basic information about register:
+ - Which registers and tracked/considered in the different analyses
+ - Whether they all callee or caller saved according to the ABI
+*/
+
+// Limit the registers that are tracked and transform the names to their 32 bits version.
+.decl track_register(Reg32:register,Reg64:register)
+
+track_register("AX","EAX").
+track_register("EAX","EAX").
+
+track_register("BX","EBX").
+track_register("EBX","EBX").
+
+track_register("CX","ECX").
+track_register("ECX","ECX").
+
+track_register("DX","EDX").
+track_register("EDX","EDX").
+
+track_register("DI","EDI").
+track_register("EDI","EDI").
+
+track_register("SI","ESI").
+track_register("ESI","ESI").
+
+track_register("BP","EBP").
+track_register("EBP","EBP").
+
+// This specifies the registers whose value are not kept through a function call.
+.decl function_non_maintained_reg(reg:register)
+
+function_non_maintained_reg("EAX").
+function_non_maintained_reg("ECX").
+function_non_maintained_reg("EDX").
+
+.decl pc_register(reg:register)
+
+pc_register("EIP").
+
+.decl frame_pointer(reg:register)
+
+frame_pointer("EBP").
+
+.decl stack_pointer(reg:register)
+
+frame_pointer("ESP").

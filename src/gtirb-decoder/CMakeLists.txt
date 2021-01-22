@@ -9,6 +9,7 @@ set(DATALOG_DECODER_TARGETS
     core/SymbolicExpressionLoader.cpp
     arch/X64Loader.cpp
     arch/Arm32Loader.cpp
+    arch/X86Loader.cpp
     arch/Arm64Loader.cpp
     arch/Mips32Loader.cpp
     format/ElfLoader.cpp

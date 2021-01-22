@@ -66,20 +66,23 @@ This module:
 
 // architecture specific predicates
 #ifdef ARCH_ARM64
-    .init arch = ARM64
     #include "arm_binaries.dl"
     #include "arm64/arch_arm64.dl"
+    .init arch = ARM64
 #elif defined(ARCH_ARM32)
-    .init arch = ARM
     #include "arm_binaries.dl"
     #include "arm/arch_arm.dl"
+    .init arch = ARM
+#elif defined(ARCH_IA32)
+    #include "intel/arch_x86_32.dl"
+    .init arch = X86_32
 #elif defined(ARCH_AMD64)
-    .init arch = X64
-    #include "x64/arch_x64.dl"
+    #include "intel/arch_x86_64.dl"
+    .init arch = X86_64
 #elif defined(ARCH_MIPS32)
-    .init arch = MIPS32
     #include "mips_binaries.dl"
     #include "mips32/arch_mips32.dl"
+    .init arch = MIPS32
 #else
     #error "Undefined architecture"
 #endif
@@ -303,6 +306,9 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     arch.pc_register(Reg),
     EANext = EA - (EA band 1) +4.
 
+.decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
+.output got_relative_operand
+
 .decl symbolic_operand_attribute(ea:address,index:unsigned,attribute:symbol)
 .output symbolic_operand_attribute
 
@@ -479,6 +485,9 @@ ambiguous_symbol(Name):-
 function_symbol(EA,Name):-
     symbol(EA,_,"FUNC",_,_,_,_,Name).
 
+function_symbol(EA,Name):-
+    symbol(EA,_,"GNU_IFUNC",_,_,_,_,Name).
+
 .decl defined_symbol(ea:address,size:unsigned,type:symbol,scope:symbol,sectionIndex:unsigned,originTable:symbol,tableIndex:unsigned,name:symbol)
 
 defined_symbol(EA,Size,Type,Scope,SectIndex,OriginTable,TableIndex,Name):-
@@ -489,6 +498,13 @@ defined_symbol(EA,Size,Type,Scope,SectIndex,OriginTable,TableIndex,Name):-
     //the symbol is not undefined
     SectIndex != SHN_UNDEF,
     (SectIndex < SHN_LORESERVE; SectIndex > SHN_HIRESERVE).
+
+// Labels which are defined "at-end" of a data or code region/referent.
+// Such labels will usually associate with a symbol at address Dest, but they
+// can be safely aliased to a new symbol at the end of the Block.
+.decl boundary_label(EA:address,Dest:address,Block:address)
+.output boundary_label
+
 ////////////////////////////////////////////////////////////////////////////////////////
 
 .decl section(name:symbol,size:unsigned,addr:address)
@@ -558,14 +574,15 @@ data_segment(Begin,End):-
 // find special functions and symbols
 .decl main_function(ea:address)
 
-.decl inferred_symbol_name(ea:address,name:symbol,scope:symbol)
+.decl inferred_symbol_name(ea:address,name:symbol,scope:symbol, type: symbol)
 .output inferred_symbol_name
 
-inferred_symbol_name(EA,"main","GLOBAL"):-
+inferred_symbol_name(EA,"main","GLOBAL","FUNC"):-
     binary_format("ELF"),
     main_function(EA).
 
 .decl no_return_call(EA:address)
+
 .decl function_pointer_section(Name:symbol)
 
 .decl no_return_function(Name:symbol)
@@ -575,6 +592,17 @@ no_return_call(EA):-
     plt_entry(Dest,Function),
     no_return_function(Function).
 
+no_return_call(EA):-
+    direct_call(EA,Dest),
+    defined_symbol(Dest,_,_,_,_,_,_,Name),
+    no_return_function(Name).
+
 .decl is_padding(EA:address)
 is_padding(EA):-
     arch.is_nop(EA).
+
+// The functions and data-objects that are intrinsic to the compiler's ABI -
+// artifacts of compilation that are not explicit features of the source and
+// will likely be reintroduced by the compiler toolchain.
+.decl abi_intrinsic(EA:address,Name:symbol)
+.output abi_intrinsic

@@ -156,6 +156,13 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
     op_regdirect_contains_reg(Op2,Reg),
     Address = as(EA+Size,number)+Offset.
 
+// GOT-relative LEA. (Note that We drop the GOT Register.)
+value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
+    got_relative_operand(EA,1,Offset),
+    instruction(EA,_,_,"LEA",_,Op2,0,0,_,_),
+    op_regdirect_contains_reg(Op2,Reg),
+    Address = as(Offset,number).
+
 //mov reg reg_origin
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
     def_used_for_address(EA_prev,Reg_origin),
