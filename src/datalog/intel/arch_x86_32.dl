@@ -84,7 +84,7 @@ reg_has_got(EA_load,Reg_load):-
     arch.frame_pointer(Reg_base),
     reg_loaded_from_stack(EA_load,Reg_load,Reg_base,StackPos,StackFrame).
 
-inferred_symbol_name(EA,"_GLOBAL_OFFSET_TABLE_","DEFAULT"):-
+inferred_symbol_name(EA,"_GLOBAL_OFFSET_TABLE_","DEFAULT","NONE"):-
     !symbol(_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
     got_reference_pointer(EA).
 

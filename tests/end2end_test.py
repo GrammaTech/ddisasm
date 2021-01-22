@@ -24,6 +24,20 @@ def compatible_test(config, test):
         if distro.version() not in config["distro"]["version"]:
             return False
 
+    # Individual test can also be deactivated for a distro
+
+    # Check the test case is compatible with this platform.
+    if "platform" in test:
+        if platform.system() not in test["platform"]:
+            return False
+
+    # Check the test case is compatible with this distro.
+    if "distro" in test:
+        if distro.name() not in test["distro"]["name"]:
+            return False
+        if distro.version() not in test["distro"]["version"]:
+            return False
+
     return True
 
 
