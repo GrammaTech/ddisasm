@@ -23,6 +23,16 @@ default: &default
   # Test configuration.
   test:
     wrapper: "qemu-mips -L /usr/mips-linux-gnu"
+    strip_exe: "mips-linux-gnu-strip"
+    sstrip: false
+    strip: false
+    skip: false
+
+test-sstrip-default: &test-sstrip-default
+  test:
+    wrapper: "qemu-mips -L /usr/mips-linux-gnu"
+    strip_exe: "mips-linux-gnu-strip"
+    sstrip: true
     strip: false
     skip: false
 
@@ -103,114 +113,80 @@ tests:
   # ---------------------------------------------------------------------------
   # sectionless (sstripped)
   # ---------------------------------------------------------------------------
-  #- name: ex1
-  #  <<: *default
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  - name: ex1
+    <<: *default
+    <<: *test-sstrip-default
 
-  #- name: ex_2modulesPIC
-  #  <<: *default
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  - name: ex_2modulesPIC
+    <<: *default
+    <<: *test-sstrip-default
 
-  #- name: ex_confusing_data
-  #  <<: *default
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  - name: ex_confusing_data
+    <<: *default
+    <<: *test-sstrip-default
 
-  #- name: ex_memberPointer
-  #  <<: *default
-  #  reassemble:
-  #      compiler: "mips-linux-gnu-g++"
-  #      flags: ["-no-pie"]
-  #      skip: false
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  - name: ex_memberPointer
+    <<: *default
+    <<: *test-sstrip-default
+    reassemble:
+        compiler: "mips-linux-gnu-g++"
+        flags: ["-no-pie"]
+        skip: false
 
-  #- name: ex_false_pointer_array
-  #  <<: *default
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  - name: ex_false_pointer_array
+    <<: *default
+    <<: *test-sstrip-default
 
-  #- name: ex_float
-  #  <<: *default
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  - name: ex_float
+    <<: *default
+    <<: *test-sstrip-default
 
-  #- name: ex_fprintf
-  #  <<: *default
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  - name: ex_fprintf
+    <<: *default
+    <<: *test-sstrip-default
 
-  #- name: ex_getoptlong
-  #  <<: *default
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  - name: ex_getoptlong
+    <<: *default
+    <<: *test-sstrip-default
 
-  #- name: ex_noreturn
-  #  <<: *default
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  - name: ex_noreturn
+    <<: *default
+    <<: *test-sstrip-default
 
-  #- name: ex_pointerReatribution
-  #  <<: *default
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  - name: ex_pointerReatribution
+    <<: *default
+    <<: *test-sstrip-default
 
-  #- name: ex_pointerReatribution2
-  #  <<: *default
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  - name: ex_pointerReatribution2
+    <<: *default
+    <<: *test-sstrip-default
 
-  ## Currently, ddisasm fails to find symbolic operands in split-load
-  ## in the optimized binaries built in ubuntu16 and ubuntu18.
-  #- name: ex_pointerReatribution3
-  #  <<: *zero-optimize
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  # Currently, ddisasm fails to find symbolic operands in split-load
+  # in the optimized binaries built in ubuntu16 and ubuntu18.
+  - name: ex_pointerReatribution3
+    <<: *zero-optimize
+    <<: *test-sstrip-default
 
-  #- name: ex_struct
-  #  <<: *default
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  - name: ex_struct
+    <<: *default
+    <<: *test-sstrip-default
 
-  #- name: ex_switch
-  #  <<: *default
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  - name: ex_switch
+    <<: *default
+    <<: *test-sstrip-default
 
-  #- name: ex_uninitialized_data
-  #  <<: *default
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  - name: ex_uninitialized_data
+    <<: *default
+    <<: *test-sstrip-default
 
-  #- name: ex_stat
-  #  <<: *default
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  - name: ex_stat
+    <<: *default
+    <<: *test-sstrip-default
 
-  #- name: ex_virtualDispatch
-  #  <<: *default
-  #  reassemble:
-  #      compiler: "mips-linux-gnu-g++"
-  #      flags: ["-no-pie"]
-  #      skip: false
-  #  test:
-  #      wrapper: "qemu-mips -L /usr/mips-linux-gnu"
-  #      sstrip: true
+  - name: ex_virtualDispatch
+    <<: *default
+    <<: *test-sstrip-default
+    reassemble:
+        compiler: "mips-linux-gnu-g++"
+        flags: ["-no-pie"]
+        skip: false

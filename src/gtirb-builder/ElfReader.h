@@ -46,6 +46,7 @@ private:
     uint64_t TlsBaseAddress = 0;
 
     // For sectionless binaries
+    std::map<std::string, uint64_t> getDynamicEntries();
     void resurrectSections();
     void resurrectSymbols();
 };

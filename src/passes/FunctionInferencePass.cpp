@@ -50,24 +50,46 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
             gtirb::UUID FunctionUUID = Generator();
             FunctionEntry2function[FunctionEntry] = FunctionUUID;
             FunctionEntries[FunctionUUID].insert(EntryBlockUUID);
-            for(auto& Symbol : M.findSymbols(FunctionEntry))
+            const auto& Symbols = M.findSymbols(FunctionEntry);
+            bool foundGlobalFuncSymbol = false;
+            gtirb::UUID globalFuncSymbol;
+            for(const auto& Symbol : Symbols)
             {
                 if(auto found = SymbolInfo->find(Symbol.getUUID()); found != SymbolInfo->end())
                 {
                     ElfSymbolInfo SInfo = found->second;
-                    // Update SymbolInfo of the inferred function symbols:
-                    // If the type of the existing one in SymbolInfo is not
-                    // FUNC, update it as FUNC.
-                    // NOTE: We update the scope as GLOBAL for now.
-                    // TODO: Check if that is reasonable.
-                    if(std::get<1>(SInfo) != "FUNC")
+                    if(std::get<1>(SInfo) == "FUNC" && std::get<2>(SInfo) == "GLOBAL")
                     {
-                        std::get<1>(SInfo) = "FUNC";
-                        std::get<2>(SInfo) = "GLOBAL";
-                        (*SymbolInfo)[Symbol.getUUID()] = SInfo;
+                        // Developer assert: no multiple symbols with type FUNC.
+                        assert(!foundGlobalFuncSymbol);
+                        globalFuncSymbol = Symbol.getUUID();
+                        foundGlobalFuncSymbol = true;
                     }
                 }
-                FunctionNames.insert({FunctionUUID, Symbol.getUUID()});
+            }
+            // If there is no existing symbol with type FUNC & GLOBAL,
+            // pick one symbol and make it as FUNC.
+            if(!foundGlobalFuncSymbol && !Symbols.empty())
+            {
+                const auto& Symbol = *Symbols.begin();
+                if(auto found = SymbolInfo->find(Symbol.getUUID()); found != SymbolInfo->end())
+                {
+                    ElfSymbolInfo SInfo = found->second;
+                    std::get<1>(SInfo) = "FUNC";
+                    std::get<2>(SInfo) = "GLOBAL";
+                    (*SymbolInfo)[Symbol.getUUID()] = SInfo;
+                }
+                else
+                {
+                    ElfSymbolInfo SInfo = {0, "FUNC", "GLOBAL", "DEFAULT", 0};
+                    (*SymbolInfo)[Symbol.getUUID()] = SInfo;
+                }
+                globalFuncSymbol = Symbol.getUUID();
+                foundGlobalFuncSymbol = true;
+            }
+            if(foundGlobalFuncSymbol)
+            {
+                FunctionNames.insert({FunctionUUID, globalFuncSymbol});
             }
         }
     }

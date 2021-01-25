@@ -45,6 +45,22 @@ void ElfReader::initModule()
     }
 }
 
+// Collect dynamic entries
+std::map<std::string, uint64_t> ElfReader::getDynamicEntries()
+{
+    static std::map<std::string, uint64_t> ans;
+    if(ans.empty())
+    {
+        for(const auto &Entry : Elf->dynamic_entries())
+        {
+            std::string entry = LIEF::ELF::to_string(Entry.tag());
+            uint64_t value = Entry.value();
+            ans[entry] = value;
+        }
+    }
+    return ans;
+}
+
 // Resurrect sections and symbols from sectionless binary
 void ElfReader::resurrectSections()
 {
@@ -52,14 +68,8 @@ void ElfReader::resurrectSections()
     std::map<gtirb::UUID, SectionProperties> SectionProperties;
     std::map<gtirb::UUID, uint64_t> Alignment;
 
-    // Collect dynamic entries
-    std::map<std::string, uint64_t> dynamicEntries;
-    for(const auto &Entry : Elf->dynamic_entries())
-    {
-        std::string entry = LIEF::ELF::to_string(Entry.tag());
-        uint64_t value = Entry.value();
-        dynamicEntries[entry] = value;
-    }
+    // Get dynamic entries
+    std::map<std::string, uint64_t> dynamicEntries = getDynamicEntries();
 
     // Collect loaded segments ---------------------------------------
     // TODO: This assumes there is one segment for RW and one for RX.
@@ -190,6 +200,8 @@ void ElfReader::resurrectSections()
     }
 
     // Create .bss section if there's any in LoadedSegmentRW ---------
+    // Got_addr and got_size are used here, so make sure they are set
+    // beforehand.
     if(got_addr != 0 && got_size != 0)
     {
         // Find the first address starting consecutive zeros,
@@ -228,14 +240,8 @@ void ElfReader::resurrectSections()
 // Resurrect symbols from sectionless binary
 void ElfReader::resurrectSymbols()
 {
-    // Collect dynamic entries
-    std::map<std::string, uint64_t> dynamicEntries;
-    for(const auto &Entry : Elf->dynamic_entries())
-    {
-        std::string entry = LIEF::ELF::to_string(Entry.tag());
-        uint64_t value = Entry.value();
-        dynamicEntries[entry] = value;
-    }
+    // Get dynamic entries
+    std::map<std::string, uint64_t> dynamicEntries = getDynamicEntries();
 
     // Extract bytes from STRTAB -------------------------------------
     std::vector<uint8_t> strtabBytes;
@@ -668,7 +674,6 @@ void ElfReader::addAuxData()
     std::vector<std::string> Libraries = Elf->imported_libraries();
     Module->addAuxData<gtirb::schema::Libraries>(std::move(Libraries));
 
-    std::set<ElfDynamicEntry> DynamicEntryTuples;
     std::vector<std::string> LibraryPaths;
     for(const auto &Entry : Elf->dynamic_entries())
     {
@@ -682,9 +687,16 @@ void ElfReader::addAuxData()
             std::vector<std::string> Paths = Rpath->paths();
             LibraryPaths.insert(LibraryPaths.end(), Paths.begin(), Paths.end());
         }
-        DynamicEntryTuples.insert({LIEF::ELF::to_string(Entry.tag()), Entry.value()});
     }
     Module->addAuxData<gtirb::schema::LibraryPaths>(std::move(LibraryPaths));
+
+    // Get dynamic entries
+    std::map<std::string, uint64_t> dynamicEntries = getDynamicEntries();
+    std::set<ElfDynamicEntry> DynamicEntryTuples;
+    for(auto it = dynamicEntries.begin(); it != dynamicEntries.end(); ++it)
+    {
+        DynamicEntryTuples.insert({it->first, it->second});
+    }
     Module->addAuxData<gtirb::schema::DynamicEntries>(std::move(DynamicEntryTuples));
 }
 

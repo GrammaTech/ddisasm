@@ -81,7 +81,9 @@ class TestExamples(unittest.TestCase):
             "c_compilers": config["build"]["c"],
             "cxx_compilers": config["build"]["cpp"],
             "optimizations": config["build"]["optimizations"],
+            "strip_exe": config["test"]["strip_exe"],
             "strip": config["test"].get("strip", False),
+            "sstrip": config["test"].get("sstrip", False),
             "skip_test": config["test"].get("skip", False),
             "exec_wrapper": config["test"].get("wrapper"),
         }

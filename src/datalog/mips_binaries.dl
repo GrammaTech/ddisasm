@@ -405,6 +405,10 @@ symbolic_operand_point(EA,Op_index,1,"lookup-got"):-
 //   addiu $t8,$zero,N
 // where N is the index of the target in the _GLOBAL_OFFSET_TABLE_.
 plt_entry(EA,Function):-
+    // Make sure that there is no well-delimited plt section.
+    plt_section(SecName),
+    !section(SecName,_,_),
+
     // lw $t9, _GLOBAL_OFFSET_TABLE_($gp)
     instruction(PrevEA2,_,_,"LW",Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,"T9"),
@@ -448,3 +452,11 @@ direct_call_inferred(EA,as(Dest,address)):-
     op_regdirect_contains_reg(Op,"T9"),
     def_used(EA_def,"T9",EA,_),
     value_reg(EA_def,"T9",_,"NONE",_,Dest,_).
+
+abi_intrinsic(Address,Sym):-
+    symbol(Address,_,_,_,_,_,_,Sym),
+    (
+        Sym = "_gp"
+    ;
+        Sym = "__RLD_MAP"
+    ).

@@ -984,26 +984,14 @@ gtirb::Section *findSectionByIndex(gtirb::Context &C, gtirb::Module &M, uint64_t
     return nullptr;
 };
 
-void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
+void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
+                            souffle::SouffleProgram *prog)
 {
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
 
     std::map<gtirb::Symbol *, std::tuple<gtirb::Node *, bool>> ConnectToBlock;
     for(auto &Symbol : Module.symbols_by_addr())
     {
-        std::string Name = Symbol.getName();
-        // In case of MIPS, add _gp and __RLD_MAP to external block.
-        if((Module.getISA() == gtirb::ISA::MIPS32 || Module.getISA() == gtirb::ISA::MIPS64)
-           && (Name == "_gp" || Name == "__RLD_MAP"))
-        {
-            gtirb::ProxyBlock *externalBlock = Symbol.getReferent<gtirb::ProxyBlock>();
-            if(!externalBlock)
-            {
-                externalBlock = Module.addProxyBlock(Context);
-                Symbol.setReferent(externalBlock);
-            }
-        }
-
         if(Symbol.getAddress())
         {
             gtirb::Addr Addr = *Symbol.getAddress();
@@ -1546,7 +1534,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildCfiDirectives(context, module, prog);
     expandSymbolForwarding(context, module, prog);
     // This should be done after creating all the symbols.
-    connectSymbolsToBlocks(context, module);
+    connectSymbolsToBlocks(context, module, prog);
     splitSymbols(context, module, prog);
     // These functions should not create additional symbols.
     buildFunctions(module, prog);
