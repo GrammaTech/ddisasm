@@ -528,11 +528,16 @@ data_object_point(EA,Pt_size,"symbol",-2,"multiple conflict"):-
     data_object_conflict(EA,Pt_size,"symbol",EA3,_,"other"),
     EA2 != EA3.
 
+.decl label_conflict(EA:address,Size:unsigned,Kind:symbol)
+
+label_conflict(EA,Pt_size,"symbol"):-
+    data_object_candidate(EA,Pt_size,"symbol"),
+    labeled_data_candidate(EA2),
+    EA2 > EA, EA2 < EA+Pt_size.
+
 data_object_point(EA,Pt_size,"symbol",1,"no label conflicts"):-
     data_object_candidate(EA,Pt_size,"symbol"),
-    labeled_data_candidate(EA),
-    N = range(1,as(Pt_size,address)),
-    !labeled_data_candidate(EA+N).
+    !label_conflict(EA,Pt_size,"symbol").
 
 data_object_point(EA,Pt_size,"symbol",2,"aligned"):-
     data_object_candidate(EA,Pt_size,"symbol"),
