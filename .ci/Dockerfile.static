@@ -68,3 +68,6 @@ RUN git clone https://git.zephyr-software.com/opensrc/libehp.git \
 # Install capstone
 COPY libcapstone-dev_*_amd64.deb ./
 RUN dpkg -i libcapstone-dev_*_amd64.deb
+
+# Install sstrip
+COPY etc/sstrip /usr/bin/sstrip
