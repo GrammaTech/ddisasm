@@ -28,6 +28,14 @@ default: &default
     strip: false
     skip: false
 
+test-strip-default: &test-strip-default
+  test:
+    wrapper: "qemu-mips -L /usr/mips-linux-gnu"
+    strip_exe: "mips-linux-gnu-strip"
+    sstrip: false
+    strip: true
+    skip: false
+
 test-sstrip-default: &test-sstrip-default
   test:
     wrapper: "qemu-mips -L /usr/mips-linux-gnu"
@@ -46,69 +54,150 @@ zero-optimize: &zero-optimize
     flags: []
 
 tests:
-#
-#  - name: ex1
-#    <<: *default
-#
-#  - name: ex_2modulesPIC
-#    <<: *default
-#
-#  - name: ex_confusing_data
-#    <<: *default
-#
-#  - name: ex_memberPointer
-#    <<: *default
-#    reassemble:
-#        compiler: "mips-linux-gnu-g++"
-#        flags: ["-no-pie"]
-#        skip: false
-#
-#  - name: ex_false_pointer_array
-#    <<: *default
-#
-#  - name: ex_float
-#    <<: *default
-#
-#  - name: ex_fprintf
-#    <<: *default
-#
-#  - name: ex_getoptlong
-#    <<: *default
-#
-#  - name: ex_noreturn
-#    <<: *default
-#
-#  - name: ex_pointerReatribution
-#    <<: *default
-#
-#  - name: ex_pointerReatribution2
-#    <<: *default
-#
-#  # Currently, ddisasm fails to find symbolic operands in split-load
-#  # in the optimized binaries built in ubuntu16 and ubuntu18.
-#  - name: ex_pointerReatribution3
-#    <<: *zero-optimize
-#
-#  - name: ex_struct
-#    <<: *default
-#
-#  - name: ex_switch
-#    <<: *default
-#
-#  - name: ex_uninitialized_data
-#    <<: *default
-#
-#  - name: ex_stat
-#    <<: *default
-#
-#  - name: ex_virtualDispatch
-#    <<: *default
-#    reassemble:
-#        compiler: "mips-linux-gnu-g++"
-#        flags: ["-no-pie"]
-#        skip: false
+
+  - name: ex1
+    <<: *default
+
+  - name: ex_2modulesPIC
+    <<: *default
+
+  - name: ex_confusing_data
+    <<: *default
+
+  - name: ex_memberPointer
+    <<: *default
+    reassemble:
+        compiler: "mips-linux-gnu-g++"
+        flags: ["-no-pie"]
+        skip: false
+
+  - name: ex_false_pointer_array
+    <<: *default
+
+  - name: ex_float
+    <<: *default
+
+  - name: ex_fprintf
+    <<: *default
+
+  - name: ex_getoptlong
+    <<: *default
+
+  - name: ex_noreturn
+    <<: *default
+
+  - name: ex_pointerReatribution
+    <<: *default
+
+  - name: ex_pointerReatribution2
+    <<: *default
+
+  # Currently, ddisasm fails to find symbolic operands in split-load
+  # in the optimized binaries built in ubuntu16 and ubuntu18.
+  - name: ex_pointerReatribution3
+    <<: *zero-optimize
+
+  - name: ex_struct
+    <<: *default
+
+  - name: ex_switch
+    <<: *default
+
+  - name: ex_uninitialized_data
+    <<: *default
+
+  - name: ex_stat
+    <<: *default
+
+  - name: ex_virtualDispatch
+    <<: *default
+    reassemble:
+        compiler: "mips-linux-gnu-g++"
+        flags: ["-no-pie"]
+        skip: false
 
   # FIXME: ex_exceptions{1,2,3}: .gcc_except_table
+
+  # ---------------------------------------------------------------------------
+  # stripped binaries
+  # ---------------------------------------------------------------------------
+  - name: ex1
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_2modulesPIC
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_confusing_data
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_memberPointer
+    <<: *default
+    <<: *test-strip-default
+    reassemble:
+        compiler: "mips-linux-gnu-g++"
+        flags: ["-no-pie"]
+        skip: false
+
+  - name: ex_false_pointer_array
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_float
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_fprintf
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_getoptlong
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_noreturn
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_pointerReatribution
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_pointerReatribution2
+    <<: *default
+    <<: *test-strip-default
+
+  # Currently, ddisasm fails to find symbolic operands in split-load
+  # in the optimized binaries built in ubuntu16 and ubuntu18.
+  - name: ex_pointerReatribution3
+    <<: *zero-optimize
+    <<: *test-strip-default
+
+  - name: ex_struct
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_switch
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_uninitialized_data
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_stat
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_virtualDispatch
+    <<: *default
+    <<: *test-strip-default
+    reassemble:
+        compiler: "mips-linux-gnu-g++"
+        flags: ["-no-pie"]
+        skip: false
 
   # ---------------------------------------------------------------------------
   # sectionless (sstripped)
