@@ -72,6 +72,9 @@ RUN git clone https://git.zephyr-software.com/opensrc/libehp.git \
 COPY libcapstone-dev_*_amd64.deb ./
 RUN dpkg -i libcapstone-dev_*_amd64.deb
 
+# Install sstrip
+COPY etc/sstrip /usr/bin/sstrip
+
 RUN python3 -m pip install pre-commit
 WORKDIR /pre-commit-setup
 RUN git init
