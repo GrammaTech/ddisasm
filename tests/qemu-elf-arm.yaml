@@ -23,6 +23,7 @@ default: &default
   # Test configuration.
   test:
     wrapper: "qemu-arm -L /usr/arm-linux-gnueabihf"
+    strip_exe: "arm-linux-gnueabihf-strip"
     strip: false
     skip: false
 

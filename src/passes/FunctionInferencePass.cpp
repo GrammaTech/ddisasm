@@ -58,7 +58,7 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
                 if(auto found = SymbolInfo->find(Symbol.getUUID()); found != SymbolInfo->end())
                 {
                     ElfSymbolInfo SInfo = found->second;
-                    if(std::get<1>(SInfo) == "FUNC" && std::get<2>(SInfo) == "GLOBAL")
+                    if(std::get<1>(SInfo) == "FUNC")
                     {
                         // Developer assert: no multiple symbols with type FUNC.
                         assert(!foundGlobalFuncSymbol);
@@ -67,8 +67,8 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
                     }
                 }
             }
-            // If there is no existing symbol with type FUNC & GLOBAL,
-            // pick one symbol and make it as FUNC.
+            // If there is no existing symbol with type FUNC,
+            // pick one symbol and make it as FUNC & GLOBAL.
             if(!foundGlobalFuncSymbol && !Symbols.empty())
             {
                 const auto& Symbol = *Symbols.begin();

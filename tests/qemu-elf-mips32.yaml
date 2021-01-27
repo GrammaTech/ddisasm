@@ -46,67 +46,67 @@ zero-optimize: &zero-optimize
     flags: []
 
 tests:
-
-  - name: ex1
-    <<: *default
-
-  - name: ex_2modulesPIC
-    <<: *default
-
-  - name: ex_confusing_data
-    <<: *default
-
-  - name: ex_memberPointer
-    <<: *default
-    reassemble:
-        compiler: "mips-linux-gnu-g++"
-        flags: ["-no-pie"]
-        skip: false
-
-  - name: ex_false_pointer_array
-    <<: *default
-
-  - name: ex_float
-    <<: *default
-
-  - name: ex_fprintf
-    <<: *default
-
-  - name: ex_getoptlong
-    <<: *default
-
-  - name: ex_noreturn
-    <<: *default
-
-  - name: ex_pointerReatribution
-    <<: *default
-
-  - name: ex_pointerReatribution2
-    <<: *default
-
-  # Currently, ddisasm fails to find symbolic operands in split-load
-  # in the optimized binaries built in ubuntu16 and ubuntu18.
-  - name: ex_pointerReatribution3
-    <<: *zero-optimize
-
-  - name: ex_struct
-    <<: *default
-
-  - name: ex_switch
-    <<: *default
-
-  - name: ex_uninitialized_data
-    <<: *default
-
-  - name: ex_stat
-    <<: *default
-
-  - name: ex_virtualDispatch
-    <<: *default
-    reassemble:
-        compiler: "mips-linux-gnu-g++"
-        flags: ["-no-pie"]
-        skip: false
+#
+#  - name: ex1
+#    <<: *default
+#
+#  - name: ex_2modulesPIC
+#    <<: *default
+#
+#  - name: ex_confusing_data
+#    <<: *default
+#
+#  - name: ex_memberPointer
+#    <<: *default
+#    reassemble:
+#        compiler: "mips-linux-gnu-g++"
+#        flags: ["-no-pie"]
+#        skip: false
+#
+#  - name: ex_false_pointer_array
+#    <<: *default
+#
+#  - name: ex_float
+#    <<: *default
+#
+#  - name: ex_fprintf
+#    <<: *default
+#
+#  - name: ex_getoptlong
+#    <<: *default
+#
+#  - name: ex_noreturn
+#    <<: *default
+#
+#  - name: ex_pointerReatribution
+#    <<: *default
+#
+#  - name: ex_pointerReatribution2
+#    <<: *default
+#
+#  # Currently, ddisasm fails to find symbolic operands in split-load
+#  # in the optimized binaries built in ubuntu16 and ubuntu18.
+#  - name: ex_pointerReatribution3
+#    <<: *zero-optimize
+#
+#  - name: ex_struct
+#    <<: *default
+#
+#  - name: ex_switch
+#    <<: *default
+#
+#  - name: ex_uninitialized_data
+#    <<: *default
+#
+#  - name: ex_stat
+#    <<: *default
+#
+#  - name: ex_virtualDispatch
+#    <<: *default
+#    reassemble:
+#        compiler: "mips-linux-gnu-g++"
+#        flags: ["-no-pie"]
+#        skip: false
 
   # FIXME: ex_exceptions{1,2,3}: .gcc_except_table
 

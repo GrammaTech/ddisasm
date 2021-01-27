@@ -237,7 +237,35 @@ void ElfReader::resurrectSections()
     return;
 }
 
-// Resurrect symbols from sectionless binary
+// MIPS: Create a symbol for _gp.
+void ElfReader::createGPforMIPS(uint64_t SecIndex, std::map<gtirb::UUID, ElfSymbolInfo> &SymbolInfo,
+                                std::map<gtirb::UUID, ElfSymbolTabIdxInfo> &SymbolTabIdxInfo)
+{
+    const auto &gp_symbols = Module->findSymbols("_gp");
+    if(gp_symbols.empty())
+    {
+        // Get dynamic entries
+        std::map<std::string, uint64_t> dynamicEntries = getDynamicEntries();
+
+        auto it = dynamicEntries.find("MIPS_RLD_MAP");
+        assert((it != dynamicEntries.end()) && "MIPS_RLD_MAP not found");
+        uint64_t rld_map_addr = it->second;
+        uint64_t gp_addr = rld_map_addr + 0x8000;
+
+        gtirb::Symbol *S = Module->addSymbol(*Context, gtirb::Addr(gp_addr), "_gp");
+        uint64_t Size = 0;
+        std::string Type = LIEF::ELF::to_string(LIEF::ELF::ELF_SYMBOL_TYPES::STT_NOTYPE);
+        std::string Scope = LIEF::ELF::to_string(LIEF::ELF::SYMBOL_BINDINGS::STB_LOCAL);
+        std::string Visibility = LIEF::ELF::to_string((LIEF::ELF::ELF_SYMBOL_VISIBILITY)0);
+        std::vector<std::tuple<std::string, uint64_t>> Indexes;
+        Indexes.push_back({".symtab", 0});
+
+        SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex};
+        SymbolTabIdxInfo[S->getUUID()] = Indexes;
+    }
+    return;
+}
+
 void ElfReader::resurrectSymbols()
 {
     // Get dynamic entries
@@ -290,28 +318,8 @@ void ElfReader::resurrectSymbols()
         uint64_t size = dynsym_num * symtab_entry_size;
 
         std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(addr, size);
-
-        std::map<std::tuple<uint64_t, uint64_t, uint64_t, std::string, std::string, std::string,
-                            uint64_t, std::string>,
-                 std::vector<std::tuple<std::string, uint64_t>>>
-            Symbols;
-        bool found_gp = false;
-        uint64_t TableIndex = 0;
         auto iter = Bytes.begin();
-        // Get the 4-byte value starting from current 'iter'.
-        // NOTE: This is bit-endian data contruction.
-        auto get_4bytes = [&]() {
-            assert(iter != Bytes.end());
-            uint8_t n0 = *iter++;
-            assert(iter != Bytes.end());
-            uint8_t n1 = *iter++;
-            assert(iter != Bytes.end());
-            uint8_t n2 = *iter++;
-            assert(iter != Bytes.end());
-            uint8_t n3 = *iter++;
-            uint32_t n = (n0 << 24) + (n1 << 16) + (n2 << 8) + n3;
-            return n;
-        };
+
         // Extract a string at the given index in STRTAB
         auto get_string_at = [&strtabBytes](uint32_t index) {
             std::stringstream ss;
@@ -326,7 +334,17 @@ void ElfReader::resurrectSymbols()
             return ss.str();
         };
 
-        // Iterate each symbol entry:
+        auto get_4bytes = [](uint8_t arr[], size_t arr_size, size_t index) {
+            assert(index + 4 < arr_size);
+            uint8_t n0 = arr[index];
+            uint8_t n1 = arr[index + 1];
+            uint8_t n2 = arr[index + 2];
+            uint8_t n3 = arr[index + 3];
+            uint32_t n = (n3 << 24) + (n2 << 16) + (n1 << 8) + n0;
+            return n;
+        };
+
+        // Iterate each symbol entry and add_dynamic_symbol to Elf:
         // struct Elf32_Sym {
         //   Elf32_Word    st_name;  /**< Symbol name (index into string table) */
         //   Elf32_Addr    st_value; /**< Value or address associated with the symbol */
@@ -337,104 +355,50 @@ void ElfReader::resurrectSymbols()
         //};
         for(uint64_t i = 0; i < dynsym_num; ++i)
         {
-            uint64_t Address = rld_map_addr + (i + 1) * 4;
+            uint8_t arr[sizeof(LIEF::ELF::Elf32_Sym)];
+            size_t index = 0;
+            // Elf32_Word st_name
+            for(size_t i = 0; i < sizeof(LIEF::ELF::Elf32_Word); ++i)
+            {
+                assert(iter != Bytes.end());
+                arr[index + sizeof(LIEF::ELF::Elf32_Word) - i - 1] = *iter++;
+            }
+            // Elf32_Addr st_value
+            index += sizeof(LIEF::ELF::Elf32_Word);
+            for(size_t i = 0; i < sizeof(LIEF::ELF::Elf32_Addr); ++i)
+            {
+                assert(iter != Bytes.end());
+                arr[index + sizeof(LIEF::ELF::Elf32_Addr) - i - 1] = *iter++;
+            }
+            // Elf32_Word st_size
+            index += sizeof(LIEF::ELF::Elf32_Addr);
+            for(size_t i = 0; i < sizeof(LIEF::ELF::Elf32_Word); ++i)
+            {
+                assert(iter != Bytes.end());
+                arr[index + sizeof(LIEF::ELF::Elf32_Word) - i - 1] = *iter++;
+            }
+            // unsigned char
+            index += sizeof(LIEF::ELF::Elf32_Word);
+            assert(iter != Bytes.end());
+            arr[index++] = *iter++;
+            // unsigned char
+            assert(iter != Bytes.end());
+            arr[index++] = *iter++;
+            // Elf32_Half
+            for(size_t i = 0; i < sizeof(LIEF::ELF::Elf32_Half); ++i)
+            {
+                assert(iter != Bytes.end());
+                arr[index + sizeof(LIEF::ELF::Elf32_Half) - i - 1] = *iter++;
+            }
 
+            LIEF::ELF::Elf32_Sym sym;
+            memcpy(&sym, &arr[0], sizeof(LIEF::ELF::Elf32_Sym));
+            LIEF::ELF::Symbol symbol(&sym);
             // st_name
-            uint32_t n = get_4bytes();
+            uint32_t n = get_4bytes(arr, sizeof(LIEF::ELF::Elf32_Sym), 0);
             std::string Name = get_string_at(n);
-
-            // Remove version suffix from symbol name.
-            std::size_t Version = Name.find('@');
-            if(Version != std::string::npos)
-            {
-                Name = Name.substr(0, Version);
-            }
-            if(Name == "_gp")
-            {
-                found_gp = true;
-            }
-
-            // st_value
-            uint32_t Value = get_4bytes();
-
-            // st_size
-            uint32_t s = get_4bytes();
-            // NOTE: s is 0 here. For now, use 4 for all symbols.
-            // st_info
-            uint8_t i0 = *iter++;
-            uint8_t type = i0 & 15;
-            uint8_t binding = (i0 >> 4) & 15;
-
-            // st_other
-            uint8_t o0 = *iter++;
-
-            // st_shndx
-            uint8_t sh0 = *iter++;
-            uint8_t sh1 = *iter++;
-            uint32_t Shndx = (sh0 << 8) + sh1;
-
-            // Skip symbol table sections.
-            if((LIEF::ELF::ELF_SYMBOL_TYPES)type == LIEF::ELF::ELF_SYMBOL_TYPES::STT_SECTION)
-            {
-                TableIndex++;
-                continue;
-            }
-
-            Symbols[std::tuple(
-                        Address, Value, 4, LIEF::ELF::to_string((LIEF::ELF::ELF_SYMBOL_TYPES)type),
-                        LIEF::ELF::to_string((LIEF::ELF::SYMBOL_BINDINGS)binding),
-                        LIEF::ELF::to_string((LIEF::ELF::ELF_SYMBOL_VISIBILITY)0), Shndx, Name)]
-                .push_back({".dynsym", TableIndex});
-            TableIndex++;
-        }
-
-        // If _gp is not found, create one.
-        if(!found_gp)
-        {
-            Symbols[std::tuple(rld_map_addr + 0x8000, rld_map_addr + 0x8000, 0,
-                               LIEF::ELF::to_string(LIEF::ELF::ELF_SYMBOL_TYPES::STT_NOTYPE),
-                               LIEF::ELF::to_string(LIEF::ELF::SYMBOL_BINDINGS::STB_LOCAL),
-                               LIEF::ELF::to_string((LIEF::ELF::ELF_SYMBOL_VISIBILITY)0), 0, "_gp")]
-                .push_back({".symtab", 0});
-            TableIndex++;
-        }
-
-        // Create gtirb symbols for the collected symbol entries.
-        std::map<gtirb::UUID, ElfSymbolInfo> SymbolInfo;
-        std::map<gtirb::UUID, ElfSymbolTabIdxInfo> SymbolTabIdxInfo;
-        for(auto &[Key, Indexes] : Symbols)
-        {
-            auto &[Address, Value, Size, Type, Scope, Visibility, SecIndex, Name] = Key;
-
-            gtirb::Symbol *S;
-
-            // Symbols with special section index do not have an address.
-            if((SecIndex == static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)
-                || (SecIndex >= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_LORESERVE)
-                    && SecIndex
-                           <= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)))
-               && Value == 0)
-            {
-                S = Module->addSymbol(*Context, Name);
-            }
-            else
-            {
-                S = Module->addSymbol(*Context, gtirb::Addr(Value), Name);
-            }
-
-            assert(S && "Failed to create symbol.");
-
-            // Add additional symbol information to aux data.
-            SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex};
-            SymbolTabIdxInfo[S->getUUID()] = Indexes;
-        }
-        if(!SymbolInfo.empty())
-        {
-            Module->addAuxData<gtirb::schema::ElfSymbolInfoAD>(std::move(SymbolInfo));
-        }
-        if(!SymbolTabIdxInfo.empty())
-        {
-            Module->addAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>(std::move(SymbolTabIdxInfo));
+            symbol.name(Name);
+            Elf->add_dynamic_symbol(symbol);
         }
     }
     return;
@@ -538,11 +502,10 @@ void ElfReader::buildSymbols()
         }
     }
 
-    // For sectionless binaries, call resurrectSymbols.
-    if(Elf->sections().size() == 0)
+    // If there's no existing dynamic symbols, resurrect them.
+    if(Elf->dynamic_symbols().size() == 0)
     {
         resurrectSymbols();
-        return;
     }
 
     std::map<std::tuple<uint64_t, uint64_t, std::string, std::string, std::string, uint64_t,
@@ -614,14 +577,20 @@ void ElfReader::buildSymbols()
         SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex};
         SymbolTabIdxInfo[S->getUUID()] = Indexes;
     }
-    if(!SymbolInfo.empty())
+
+    // In case of MIPS, if _gp does not exist in Module (either sectionless or
+    // stripped binaries), create a symbol for _gp.
+    if(Module->getISA() == gtirb::ISA::MIPS32)
     {
-        Module->addAuxData<gtirb::schema::ElfSymbolInfoAD>(std::move(SymbolInfo));
+        const auto &gp_symbols = Module->findSymbols("_gp");
+        if(gp_symbols.empty())
+        {
+            createGPforMIPS(Symbols.size(), SymbolInfo, SymbolTabIdxInfo);
+        }
     }
-    if(!SymbolTabIdxInfo.empty())
-    {
-        Module->addAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>(std::move(SymbolTabIdxInfo));
-    }
+
+    Module->addAuxData<gtirb::schema::ElfSymbolInfoAD>(std::move(SymbolInfo));
+    Module->addAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>(std::move(SymbolTabIdxInfo));
 }
 
 void ElfReader::addEntryBlock()

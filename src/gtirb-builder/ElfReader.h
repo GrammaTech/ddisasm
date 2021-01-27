@@ -49,6 +49,8 @@ private:
     std::map<std::string, uint64_t> getDynamicEntries();
     void resurrectSections();
     void resurrectSymbols();
+    void createGPforMIPS(uint64_t SecIndex, std::map<gtirb::UUID, ElfSymbolInfo> &SymbolInfo,
+                         std::map<gtirb::UUID, ElfSymbolTabIdxInfo> &SymbolTabIdxInfo);
 };
 
 #endif // ELF_GTIRB_BUILDER_H_

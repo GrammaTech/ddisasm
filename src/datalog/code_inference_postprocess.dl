@@ -66,6 +66,7 @@ block_needs_splitting_at(EA):-
     EA != Block.
 
 block_needs_splitting_at(EA):-
+    binary_isa("MIPS"),
     // When a block consists of some nop paddings followed by code,
     // the block needs to be split at the first code EA after the nop paddings.
     padding_prefix_end(EA,_).
