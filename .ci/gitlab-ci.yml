@@ -230,7 +230,8 @@ build-static:
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
     # build gtirb-pprinter
-    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b windows-support
+    # TODO: switch back to windows-support before merge
+    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b junghee/mips-sectionless
     - mkdir gtirb-pprinter/build
     - cd gtirb-pprinter/build
     - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
@@ -262,7 +263,8 @@ static-drivers:
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
     # build gtirb-pprinter
-    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b windows-support
+    # TODO: switch back to windows-support before merge
+    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b junghee/mips-sectionless
     - cd gtirb-pprinter
     - mkdir build && cd build
     - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
