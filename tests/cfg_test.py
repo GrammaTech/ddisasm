@@ -22,7 +22,7 @@ class CfgTests(unittest.TestCase):
         with cd(ex_asm_dir / "ex_relative_switch"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
             self.assertTrue(
-                disassemble(binary, False, format="--ir", extension="gtirb",)
+                disassemble(binary, "strip", False, False, format="--ir", extension="gtirb",)
             )
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
