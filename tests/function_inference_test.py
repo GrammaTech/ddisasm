@@ -17,7 +17,13 @@ class TestFunctionInference(unittest.TestCase):
         return addresses
 
     def check_function_inference(
-        self, make_dir, binary, strip_exe, c_compiler, cxx_compiler, optimization
+        self,
+        make_dir,
+        binary,
+        strip_exe,
+        c_compiler,
+        cxx_compiler,
+        optimization,
     ):
         """
         Test that the function inference finds all the functions compare the
@@ -48,7 +54,7 @@ class TestFunctionInference(unittest.TestCase):
                     True,
                     False,
                     format="--ir",
-                    extension="gtirb"
+                    extension="gtirb",
                 )
             )
             moduleStripped = gtirb.IR.load_protobuf(binary + ".gtirb").modules[
@@ -112,7 +118,12 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_false_pointer_array(self):
         self.check_function_inference(
-            ex_dir / "ex_false_pointer_array", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_false_pointer_array",
+            "ex",
+            "strip",
+            "gcc",
+            "g++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -160,7 +171,12 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_pointerReatribution(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_pointerReatribution",
+            "ex",
+            "strip",
+            "gcc",
+            "g++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -168,7 +184,12 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_pointerReatribution2(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution2", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_pointerReatribution2",
+            "ex",
+            "strip",
+            "gcc",
+            "g++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -176,7 +197,12 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_pointerReatribution3(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution3", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_pointerReatribution3",
+            "ex",
+            "strip",
+            "gcc",
+            "g++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -208,7 +234,12 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_uninitialized_data(self):
         self.check_function_inference(
-            ex_dir / "ex_uninitialized_data", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_uninitialized_data",
+            "ex",
+            "strip",
+            "gcc",
+            "g++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -272,7 +303,12 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_false_pointer_array_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_false_pointer_array", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_false_pointer_array",
+            "ex",
+            "strip",
+            "clang",
+            "clang++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -304,7 +340,12 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_memberPointer_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_memberPointer", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_memberPointer",
+            "ex",
+            "strip",
+            "clang",
+            "clang++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -320,7 +361,12 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_pointerReatribution_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_pointerReatribution",
+            "ex",
+            "strip",
+            "clang",
+            "clang++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -328,7 +374,12 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_pointerReatribution2_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution2", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_pointerReatribution2",
+            "ex",
+            "strip",
+            "clang",
+            "clang++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -336,7 +387,12 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_pointerReatribution3_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution3", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_pointerReatribution3",
+            "ex",
+            "strip",
+            "clang",
+            "clang++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -368,7 +424,12 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_uninitialized_data_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_uninitialized_data", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_uninitialized_data",
+            "ex",
+            "strip",
+            "clang",
+            "clang++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -376,7 +437,12 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_virtualDispatch_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_virtualDispatch", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_virtualDispatch",
+            "ex",
+            "strip",
+            "clang",
+            "clang++",
+            "-O3",
         )
 
 
