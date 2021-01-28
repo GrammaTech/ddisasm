@@ -141,8 +141,7 @@ find_package(gtirb 1.10.0 REQUIRED)
 # pretty-printer
 # ---------------------------------------------------------------------------
 find_package(gtirb_pprinter 1.5.0 REQUIRED)
-check_gtirb_pprinter_branch(windows-support)
-#check_gtirb_pprinter_branch(junghee/mips-sectionless) # TODO: switch back to windows-support before merge
+check_gtirb_pprinter_branch(junghee/mips-sectionless)
 
 # ---------------------------------------------------------------------------
 # libehp
