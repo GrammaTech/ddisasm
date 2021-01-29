@@ -381,14 +381,14 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
     {
         gtirb::Addr addr;
         std::string name;
-        std::string scope;
-        output >> addr >> name >> scope;
+        std::string scope, type;
+        output >> addr >> name >> scope >> type;
         if(!module.findSymbols(name))
         {
             gtirb::Symbol *symbol = module.addSymbol(context, addr, name);
             if(SymbolInfo)
             {
-                ElfSymbolInfo Info = {0, "NONE", scope, "DEFAULT", 0};
+                ElfSymbolInfo Info = {0, type, scope, "DEFAULT", 0};
                 SymbolInfo->insert({symbol->getUUID(), Info});
             }
             if(SymbolTabIdxInfo)

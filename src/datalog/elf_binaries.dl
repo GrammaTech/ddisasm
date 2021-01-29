@@ -66,7 +66,8 @@ data_section(Name):-
         elf_section_type("INIT_ARRAY",Type);
         elf_section_type("FINI_ARRAY",Type);
         elf_section_type("PREINIT_ARRAY",Type);
-        elf_section_type("DYNAMIC",Type)
+        elf_section_type("DYNAMIC",Type);
+        elf_section_type("RELA",Type)
     ).
 
 exception_section(".eh_frame").
@@ -133,7 +134,21 @@ plt_entry(EA,Function):-
     EA < Beg+Size,
     EA >= Beg,
     pc_relative_jump(EA,Got_entry),
-    relocation(Got_entry,_,Function,_).
+    relocation(Got_entry,_,Function,_),
+    Function != "".
+
+plt_entry(EA,Name):-
+    plt_section(SecName),
+    section(SecName,Size,Beg),
+    EA < Beg+Size,
+    EA >= Beg,
+    pc_relative_jump(EA,Got_entry),
+    relocation(Got_entry,"IRELATIVE","",Dest),
+    (
+        defined_symbol(as(Dest,address),_,"GNU_IFUNC",_,_,_,_,Name);
+        !defined_symbol(as(Dest,address),_,"GNU_IFUNC",_,_,_,_,_),
+        ifunc_symbol(as(Dest,address),Name)
+    ).
 
 plt_block(Block,Function):-
     plt_entry(EA,Function),
@@ -219,13 +234,13 @@ main_function(Main_location):-
     code(Prev),
     symbolic_operand(Prev,1,Main_location,"code").
 
-inferred_symbol_name(EA,"_start","GLOBAL"):-
+inferred_symbol_name(EA,"_start","GLOBAL","FUNC"):-
     start_function(EA).
 
-inferred_symbol_name(EA,"__do_global_dtors_aux","LOCAL"):-
+inferred_symbol_name(EA,"__do_global_dtors_aux","LOCAL","FUNC"):-
     function_symbol(EA,"__do_global_dtors_aux").
 
-inferred_symbol_name(EA,"__do_global_dtors_aux","LOCAL"):-
+inferred_symbol_name(EA,"__do_global_dtors_aux","LOCAL","FUNC"):-
     !function_symbol(EA,"__do_global_dtors_aux"),
     function_inference.function_entry(EA),
     // referenced from .fini_array
@@ -243,7 +258,7 @@ inferred_symbol_name(EA,"__do_global_dtors_aux","LOCAL"):-
     DataRef >= BegData,
     DataRef <= BegData+SizeBss.
 
-inferred_symbol_name(EA,"_DYNAMIC","LOCAL"):-
+inferred_symbol_name(EA,"_DYNAMIC","LOCAL","NONE"):-
     binary_format("ELF"),
     !symbol(EA,_,_,_,_,_,_,"_DYNAMIC"),
     section(".dynamic",_,EA).
@@ -301,3 +316,66 @@ symbolic_operand_candidate(EA_used,Index,as(Reference+Offset,address),"data"):-
     op_indirect(Op_used,"NONE",_,_,_,Offset,_), Offset < 0,
     tls_segment(_,TlsEnd,Align),
     Reference = as(TlsEnd,number) + as(TlsEnd % max(Align,1),number).
+
+
+////////////////////////////////////////////////////////////////////
+// Static binaries
+
+.decl ifunc_symbol(EA:address,Name:symbol)
+
+// We need two symbols, a function symbol and a GNU_IFUNC symbol
+// so we can create a IRELATIVE relocation
+ifunc_symbol(DestAddr,NameFunc),
+inferred_symbol_name(DestAddr,NameFunc,"GLOBAL","GNU_IFUNC"),
+inferred_symbol_name(DestAddr,Name,"LOCAL","FUNC"):-
+    relocation(Got_entry,"IRELATIVE","",Dest),
+    DestAddr = as(Dest,address),
+    !symbol(DestAddr,_,"GNU_IFUNC",_,_,_,_,_),
+    NameFunc = cat("FUN_",to_string(Dest)),
+    Name = cat(NameFunc,"_ifunc").
+
+
+// these symbols point to the begining and end of the iplt section
+// that contaisn the IRELATIVE relocations
+inferred_symbol_name(Beg,"__rela_iplt_start","GLOBAL","NONE"):-
+    section(".rela.plt",_,Beg),
+    !symbol(_,_,_,_,_,_,_,"__rela_iplt_start").
+
+inferred_symbol_name(Beg+Size,"__rela_iplt_end","GLOBAL","NONE"):-
+    section(".rela.plt",Size,Beg),
+    !symbol(_,_,_,_,_,_,_,"__rela_iplt_end").
+
+abi_intrinsic(Beg,"__rela_iplt_start"),
+abi_intrinsic(Beg+Size,"__rela_iplt_end"):-
+    section(".rela.plt",Size,Beg).
+
+
+
+// Special loop pattern seen in `__run_exit_handlers`
+// of libc ubuntu20
+// The alignment for symbols introduced by the pprinter is causing crashes
+//   mov RBX,OFFSET __start___libc_atexit
+//   mov RAX,OFFSET __stop___libc_atexit
+//   ...
+//    sub RAX,1
+//    sub RAX,RBX
+//    shr RAX,3
+//    lea R12,QWORD PTR [RBX+RAX*8+8]
+//    ...
+//    call QWORD PTR [RBX]
+// __stop___libc_atexit has 16 alignment, which introduces a zero address
+// in the list of pointer iterated by this code
+// We rewrite the code above as:
+//   mov RBX,OFFSET __start___libc_atexit
+//   mov RAX,OFFSET __start___libc_atexit+ CONSTANT
+
+
+moved_label_class(EAStop,ImmIndexStop,"libc atexit"),
+moved_immediate_candidate(EAStop,ImmIndexStop,ImmediateStopAddr,ImmediateStartAddr):-
+    mov_immediate_to_reg(EAStart,_,_,ImmediateStart),
+    ImmediateStartAddr = as(ImmediateStart, address),
+    defined_symbol(ImmediateStartAddr,_,_,_,_,_,_,"__start___libc_atexit"),
+    next(EAStart,EAStop),
+    mov_immediate_to_reg(EAStop,_,ImmIndexStop,ImmediateStop),
+    ImmediateStopAddr = as(ImmediateStop, address),
+    defined_symbol(ImmediateStopAddr,_,_,_,_,_,_,"__stop___libc_atexit").

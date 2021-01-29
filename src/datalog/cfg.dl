@@ -166,7 +166,8 @@ cfg_edge_to_top(Src,"false","return"):-
 cfg_edge_to_symbol(Src,Symbol):-
     refined_block_control_instruction(Src,EA),
     plt_entry(EA,Symbol),
-    !defined_symbol(_,_,_,_,_,_,_,Symbol).
+    !defined_symbol(_,_,_,_,_,_,_,Symbol),
+    !inferred_symbol_name(_,Symbol,_,_).
 
 // pc relative jump with undefined destination
 cfg_edge_to_top(Src,Conditional,"branch"):-
