@@ -87,9 +87,11 @@ class GtirbPprinterConan(Properties, ConanFile):
     )
     lief_version = "0.10.1"
     libehp_version = "0.1.1"
+    souffle_version = "2.0.2"
     build_requires = (
         "libehp/%s@rewriting+extra-packages/stable" % (libehp_version),
-        "lief/%s" % (lief_version)
+        "lief/%s" % (lief_version),
+        "souffle/%s@rewriting+extra-packages/stable" % (souffle_version)
     )
     author = "GrammaTech Inc."
     generators = "cmake"

@@ -271,7 +271,7 @@ if(CAPSTONE_INCLUDE_DIR)
   target_include_directories(disasm_main PRIVATE ${CAPSTONE_INCLUDE_DIR})
 endif()
 if(SOUFFLE_INCLUDE_DIR)
-  target_include_directories(disasm_main PRIVATE ${SOUFFLE_INCLUDE_DIR})
+  target_include_directories(disasm_main SYSTEM PRIVATE ${SOUFFLE_INCLUDE_DIR})
 endif()
 
 target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
