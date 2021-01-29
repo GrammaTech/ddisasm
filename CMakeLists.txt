@@ -49,7 +49,7 @@ option(ENABLE_CONAN "Use Conan to inject dependencies" ON)
 
 if(ENABLE_CONAN)
   include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-  conan_basic_setup()
+  conan_basic_setup(TARGETS)
 endif()
 
 # The libraries can be static while the drivers can link in other things in a
@@ -271,7 +271,7 @@ endif()
 # ==============================
 
 if(ENABLE_CONAN)
-  set(LIEF CONAN_PKG::lief)
+  set(LIEF_LIBRARIES CONAN_PKG::lief)
 else()
   # Custom path to the LIEF install directory
   set(LIEF_ROOT CACHE PATH ${CMAKE_INSTALL_PREFIX})
