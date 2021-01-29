@@ -49,6 +49,7 @@ more points.
 .decl block_last_instruction(block:address,EA:address)
 .decl block_boundaries(block:address,BegAddr:address,EndAddr:address)
 .decl overlapping_instruction(EA:address, EA2: address)
+.output overlapping_instruction
 .decl data_in_code(Begin:address,End:address)
  // The postprocess refines the blocks by merging contiguous blocks
  // that are always executed together
@@ -426,7 +427,7 @@ overlapping_instruction(Block2,Block),
 discarded_block(Block2):-
     block_overlap(Block,Block2),
     // one has an extra prefix with respect to the other
-    instruction(Block,Size,_,OpCode,Op1,Op2,Op3,Op4,_,_),
+    instruction(Block,Size,"lock",OpCode,Op1,Op2,Op3,Op4,_,_),
     Block2 = Block + 1,
     instruction(Block2,Size2,"",OpCode,Op1,Op2,Op3,Op4,_,_),
     Block2 - Block = Size - Size2.
