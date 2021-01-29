@@ -37,11 +37,19 @@ string(TIMESTAMP DDISASM_BUILD_DATE "%Y-%m-%d")
 # Global Options (CMake)
 #
 
+
 option(DDISASM_ARM_64 "Whether or not ARM64 support is built." ON)
 option(DDISASM_X86_32 "Whether or not x86_32 support is built." ON)
 option(DDISASM_X86_64 "Whether or not x86_64 support is built." ON)
 
 option(DDISASM_ENABLE_TESTS "Enable building and running unit tests." ON)
+
+option(ENABLE_CONAN "Use Conan to inject dependencies" ON)
+
+if(ENABLE_CONAN)
+  include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+  conan_basic_setup()
+endif()
 
 # The libraries can be static while the drivers can link in other things in a
 # shared manner. This option allows for this possibility.
@@ -260,17 +268,16 @@ endif()
 # Use LIEF with 'find_package()'
 # ==============================
 
-# Custom path to the LIEF install directory
-set(LIEF_ROOT CACHE PATH ${CMAKE_INSTALL_PREFIX})
-
-# Directory to 'FindLIEF.cmake'
-list(APPEND CMAKE_MODULE_PATH ${LIEF_ROOT}/share/LIEF/cmake)
-
-# include 'FindLIEF.cmake'
-include(FindLIEF)
-
-# Find LIEF
-find_package(LIEF 0.10.0 REQUIRED COMPONENTS STATIC)
+if(ENABLE_CONAN)
+  set(LIEF CONAN_PKG::lief)
+else()
+  # Custom path to the LIEF install directory
+  set(LIEF_ROOT CACHE PATH ${CMAKE_INSTALL_PREFIX})
+  # Directory to 'FindLIEF.cmake'
+  list(APPEND CMAKE_MODULE_PATH ${LIEF_ROOT}/share/LIEF/cmake)
+  include(FindLIEF)
+  find_package(LIEF 0.10.0 REQUIRED COMPONENTS STATIC)
+endif()
 
 # ---------------------------------------------------------------------------
 # Google Test Application
