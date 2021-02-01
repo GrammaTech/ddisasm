@@ -53,57 +53,69 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
 
             const auto& Symbols = M.findSymbols(FunctionEntry);
 
-            // Collect FUNC symbols
-            std::set<std::pair<std::string, gtirb::UUID>> funcSymbols;
-            for(const auto& Symbol : Symbols)
+            if(SymbolInfo)
             {
-                if(auto found = SymbolInfo->find(Symbol.getUUID()); found != SymbolInfo->end())
+                // Collect FUNC symbols
+                std::set<std::pair<std::string, gtirb::UUID>> funcSymbols;
+                for(const auto& Symbol : Symbols)
                 {
-                    ElfSymbolInfo SInfo = found->second;
-                    if(std::get<1>(SInfo) == "FUNC")
-                    {
-                        funcSymbols.insert(std::make_pair(Symbol.getName(), Symbol.getUUID()));
-                    }
-                }
-            }
-
-            if(funcSymbols.size() == 1)
-            {
-                FunctionNames.insert({FunctionUUID, (*funcSymbols.begin()).second});
-            }
-            else if(funcSymbols.size() > 1)
-            {
-                // TODO: Choose a right one when there are multiple
-                // FUNC symbols with type FUNC. What's the policy?
-                // For now, pick the first one.
-                std::cerr << "WARNING: Multiple FUNC symbols at address " << FunctionEntry << ": ";
-                for(auto it = funcSymbols.begin(); it != funcSymbols.end(); ++it)
-                {
-                    std::cerr << (*it).first << ", ";
-                }
-                std::cerr << std::endl;
-                // Pick one of them
-                FunctionNames.insert({FunctionUUID, (*funcSymbols.begin()).second});
-            }
-            else
-            {
-                // If there is no existing symbol with type FUNC,
-                // pick one symbol and make it as FUNC & GLOBAL.
-                if(!Symbols.empty())
-                {
-                    const auto& Symbol = *Symbols.begin();
                     if(auto found = SymbolInfo->find(Symbol.getUUID()); found != SymbolInfo->end())
                     {
                         ElfSymbolInfo SInfo = found->second;
-                        std::get<1>(SInfo) = "FUNC";
-                        std::get<2>(SInfo) = "GLOBAL";
-                        (*SymbolInfo)[Symbol.getUUID()] = SInfo;
+                        if(std::get<1>(SInfo) == "FUNC")
+                        {
+                            funcSymbols.insert(std::make_pair(Symbol.getName(), Symbol.getUUID()));
+                        }
                     }
-                    else
+                }
+
+                if(funcSymbols.size() == 1)
+                {
+                    FunctionNames.insert({FunctionUUID, (*funcSymbols.begin()).second});
+                }
+                else if(funcSymbols.size() > 1)
+                {
+                    // TODO: Choose a right one when there are multiple
+                    // FUNC symbols with type FUNC. What's the policy?
+                    // For now, pick the first one.
+                    std::cerr << "WARNING: Multiple FUNC symbols at address " << FunctionEntry
+                              << ": ";
+                    for(auto it = funcSymbols.begin(); it != funcSymbols.end(); ++it)
                     {
-                        ElfSymbolInfo SInfo = {0, "FUNC", "GLOBAL", "DEFAULT", 0};
-                        (*SymbolInfo)[Symbol.getUUID()] = SInfo;
+                        std::cerr << (*it).first << ", ";
                     }
+                    std::cerr << std::endl;
+                    // Pick one of them
+                    FunctionNames.insert({FunctionUUID, (*funcSymbols.begin()).second});
+                }
+                else
+                {
+                    // If there is no existing symbol with type FUNC,
+                    // pick one symbol and make it as FUNC & GLOBAL.
+                    if(!Symbols.empty())
+                    {
+                        const auto& Symbol = *Symbols.begin();
+                        if(auto found = SymbolInfo->find(Symbol.getUUID());
+                           found != SymbolInfo->end())
+                        {
+                            ElfSymbolInfo SInfo = found->second;
+                            std::get<1>(SInfo) = "FUNC";
+                            std::get<2>(SInfo) = "GLOBAL";
+                            (*SymbolInfo)[Symbol.getUUID()] = SInfo;
+                        }
+                        else
+                        {
+                            ElfSymbolInfo SInfo = {0, "FUNC", "GLOBAL", "DEFAULT", 0};
+                            (*SymbolInfo)[Symbol.getUUID()] = SInfo;
+                        }
+                        FunctionNames.insert({FunctionUUID, Symbol.getUUID()});
+                    }
+                }
+            }
+            else
+            {
+                for(const auto& Symbol : Symbols)
+                {
                     FunctionNames.insert({FunctionUUID, Symbol.getUUID()});
                 }
             }
