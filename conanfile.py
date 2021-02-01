@@ -82,7 +82,8 @@ class GtirbPprinterConan(Properties, ConanFile):
     requires = (
         "boost/%s@conan/stable" % (boost_version),
         "gtirb/%s@rewriting+gtirb/stable" % (gtirb_version),
-        "gtirb-pprinter/%s@rewriting+gtirb-pprinter/stable" % (gtirb_pprinter_version),
+        "gtirb-pprinter/%s@rewriting+gtirb-pprinter/stable"
+        % (gtirb_pprinter_version),
         "capstone/%s@rewriting+extra-packages/next" % (capstone_version),
     )
     lief_version = "0.10.1"
@@ -91,7 +92,7 @@ class GtirbPprinterConan(Properties, ConanFile):
     build_requires = (
         "libehp/%s@rewriting+extra-packages/stable" % (libehp_version),
         "lief/%s" % (lief_version),
-        "souffle/%s@rewriting+extra-packages/stable" % (souffle_version)
+        "souffle/%s@rewriting+extra-packages/stable" % (souffle_version),
     )
     author = "GrammaTech Inc."
     generators = "cmake"
