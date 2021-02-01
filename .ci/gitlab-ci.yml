@@ -42,6 +42,30 @@ check-format:
       EOF
       ) && exit 1)
 
+build-conan:
+  image: $DOCKER_REGISTRY/rewriting/gtirb-pprinter/ubuntu18:bfair-conan
+  stage: build
+  needs: [check-format]
+  script:
+    - conan profile new default --detect
+    - conan profile update settings.compiler.libcxx=libstdc++11 default
+    - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
+    - conan user ci_user -r gitlab -p ${CI_JOB_TOKEN}
+    - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/build.py
+
+conan-windows:
+  stage: build
+  tags: [gtirb-pprinter-windows]
+  script:
+    - systeminfo
+    # Set up user and remote
+    - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
+    - conan user ci_user -r gitlab -p ${CI_JOB_TOKEN}
+    # Run build script
+    - export PYTHONPATH="$(cygpath -w $(pwd))"
+    - export PATH="$PATH;C:\\Program Files\\CMake\\bin"
+    - python .ci/build.py
+
 .build-template: &build
   artifacts:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
