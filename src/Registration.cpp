@@ -67,21 +67,31 @@ void registerAuxDataTypes()
 
 void registerDatalogLoaders()
 {
+#if defined(DDISASM_ARM_32)
+    // Register ELF-ARM32 target.
+    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::ARM}, ElfArm32Loader);
+#endif
+
+#if defined(DDISASM_ARM_64)
+    // Register ELF-ARM64 target.
+    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::ARM64}, ElfArm64Loader);
+#endif
+
+#if defined(DDISASM_MIPS_32)
+    // Register ELF-MIPS32 target.
+    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::MIPS32}, ElfMips32Loader);
+#endif
+
+#if defined(DDISASM_X86_32)
     // Register ELF-X86 target.
     DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::IA32}, ElfX86Loader);
+#endif
 
+#if defined(DDISASM_X86_64)
     // Register ELF-X64 target.
     DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::X64}, ElfX64Loader);
 
-    // Register ELF-ARM32 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::ARM}, ElfArm32Loader);
-
     // Register PE-X64 target.
     DatalogProgram::registerLoader({gtirb::FileFormat::PE, gtirb::ISA::X64}, PeX64Loader);
-
-    // Register ELF-ARM64 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::ARM64}, ElfArm64Loader);
-
-    // Register ELF-MIPS32 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::MIPS32}, ElfMips32Loader);
+#endif
 }
