@@ -56,37 +56,37 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
             if(SymbolInfo)
             {
                 // Collect FUNC symbols
-                std::set<std::pair<std::string, gtirb::UUID>> funcSymbols;
+                std::set<std::pair<std::string, gtirb::UUID>> FuncSymbols;
                 for(const auto& Symbol : Symbols)
                 {
-                    if(auto found = SymbolInfo->find(Symbol.getUUID()); found != SymbolInfo->end())
+                    if(auto Found = SymbolInfo->find(Symbol.getUUID()); Found != SymbolInfo->end())
                     {
-                        ElfSymbolInfo SInfo = found->second;
+                        ElfSymbolInfo SInfo = Found->second;
                         if(std::get<1>(SInfo) == "FUNC")
                         {
-                            funcSymbols.insert(std::make_pair(Symbol.getName(), Symbol.getUUID()));
+                            FuncSymbols.insert(std::make_pair(Symbol.getName(), Symbol.getUUID()));
                         }
                     }
                 }
 
-                if(funcSymbols.size() == 1)
+                if(FuncSymbols.size() == 1)
                 {
-                    FunctionNames.insert({FunctionUUID, (*funcSymbols.begin()).second});
+                    FunctionNames.insert({FunctionUUID, (*FuncSymbols.begin()).second});
                 }
-                else if(funcSymbols.size() > 1)
+                else if(FuncSymbols.size() > 1)
                 {
                     // TODO: Choose a right one when there are multiple
                     // FUNC symbols with type FUNC. What's the policy?
                     // For now, pick the first one.
                     std::cerr << "WARNING: Multiple FUNC symbols at address " << FunctionEntry
                               << ": ";
-                    for(auto it = funcSymbols.begin(); it != funcSymbols.end(); ++it)
+                    for(auto It = FuncSymbols.begin(); It != FuncSymbols.end(); ++It)
                     {
-                        std::cerr << (*it).first << ", ";
+                        std::cerr << (*It).first << ", ";
                     }
                     std::cerr << std::endl;
                     // Pick one of them
-                    FunctionNames.insert({FunctionUUID, (*funcSymbols.begin()).second});
+                    FunctionNames.insert({FunctionUUID, (*FuncSymbols.begin()).second});
                 }
                 else
                 {
@@ -95,10 +95,10 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
                     if(!Symbols.empty())
                     {
                         const auto& Symbol = *Symbols.begin();
-                        if(auto found = SymbolInfo->find(Symbol.getUUID());
-                           found != SymbolInfo->end())
+                        if(auto Found = SymbolInfo->find(Symbol.getUUID());
+                           Found != SymbolInfo->end())
                         {
-                            ElfSymbolInfo SInfo = found->second;
+                            ElfSymbolInfo SInfo = Found->second;
                             std::get<1>(SInfo) = "FUNC";
                             std::get<2>(SInfo) = "GLOBAL";
                             (*SymbolInfo)[Symbol.getUUID()] = SInfo;
