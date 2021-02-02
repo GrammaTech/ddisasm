@@ -44,73 +44,91 @@ set(DATALOG_BASE_SOURCES
     datalog/debug_stats.dl
     datalog/self_diagnose.dl)
 
-set(DATALOG_X86_32_SOURCES
-    datalog/intel/arch_x86_32.dl datalog/intel/float_operations.dl
-    datalog/intel/jump_operations.dl datalog/intel/registers_x86_32.dl)
-
-set(DATALOG_X86_64_SOURCES
-    datalog/intel/arch_x86_64.dl datalog/intel/float_operations.dl
-    datalog/intel/jump_operations.dl datalog/intel/registers_x86_64.dl)
-
-set(DATALOG_ARM64_SOURCES
-    datalog/arm64/arch_arm64.dl datalog/arm64/float_operations.dl
-    datalog/arm64/jump_operations.dl datalog/arm64/registers.dl)
-
 set(SOUFFLE_DATALOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/datalog/)
 
-set(GENERATED_X86_32_CPP souffle_disasm_x86_32.cpp)
-if(WIN32)
-  set(GENERATED_X86_32_CPP_PATH
-      "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_32.cpp)")
-else()
-  set(GENERATED_X86_32_CPP_PATH
-      "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_32.cpp")
+if(DDISASM_ARM_64)
+  add_definitions(-DDDISASM_ARM_64)
+
+  set(DATALOG_ARM64_SOURCES
+      datalog/arm64/arch_arm64.dl datalog/arm64/float_operations.dl
+      datalog/arm64/jump_operations.dl datalog/arm64/registers.dl)
+
+  set(GENERATED_ARM64_CPP souffle_disasm_arm64.cpp)
+
+  if(WIN32)
+    set(GENERATED_ARM64_CPP_PATH
+        "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_arm64.cpp)")
+  else()
+    set(GENERATED_ARM64_CPP_PATH
+        "${CMAKE_BINARY_DIR}/src/souffle_disasm_arm64.cpp")
+  endif()
+
+  add_custom_command(
+    OUTPUT ${GENERATED_ARM64_CPP}
+           # Souffle includes the path of the output file in the generated
+           # program name. Change directory and use a relative path so the name
+           # does not depend on build location.
+    WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
+    COMMAND ${SOUFFLE} main.dl -g ${GENERATED_ARM64_CPP_PATH} -jauto
+            -MARCH_ARM64
+    DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_ARM64_SOURCES})
 endif()
 
-add_custom_command(
-  OUTPUT ${GENERATED_X86_32_CPP}
-         # Souffle includes the path of the output file in the generated program
-         # name. Change directory and use a relative path so the name does not
-         # depend on build location.
-  WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
-  COMMAND ${SOUFFLE} main.dl -g ${GENERATED_X86_32_CPP_PATH} -jauto -MARCH_IA32
-  DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_X86_32_SOURCES})
+if(DDISASM_X86_32)
+  add_definitions(-DDDISASM_X86_32)
 
-set(GENERATED_X86_64_CPP souffle_disasm_x86_64.cpp)
-if(WIN32)
-  set(GENERATED_X86_64_CPP_PATH
-      "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_64.cpp)")
-else()
-  set(GENERATED_X86_64_CPP_PATH
-      "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_64.cpp")
+  set(DATALOG_X86_32_SOURCES
+      datalog/intel/arch_x86_32.dl datalog/intel/float_operations.dl
+      datalog/intel/jump_operations.dl datalog/intel/registers_x86_32.dl)
+
+  set(GENERATED_X86_32_CPP souffle_disasm_x86_32.cpp)
+
+  if(WIN32)
+    set(GENERATED_X86_32_CPP_PATH
+        "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_32.cpp)")
+  else()
+    set(GENERATED_X86_32_CPP_PATH
+        "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_32.cpp")
+  endif()
+
+  add_custom_command(
+    OUTPUT ${GENERATED_X86_32_CPP}
+           # Souffle includes the path of the output file in the generated
+           # program name. Change directory and use a relative path so the name
+           # does not depend on build location.
+    WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
+    COMMAND ${SOUFFLE} main.dl -g ${GENERATED_X86_32_CPP_PATH} -jauto
+            -MARCH_IA32
+    DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_X86_32_SOURCES})
 endif()
 
-add_custom_command(
-  OUTPUT ${GENERATED_X86_64_CPP}
-         # Souffle includes the path of the output file in the generated program
-         # name. Change directory and use a relative path so the name does not
-         # depend on build location.
-  WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
-  COMMAND ${SOUFFLE} main.dl -g ${GENERATED_X86_64_CPP_PATH} -jauto -MARCH_AMD64
-  DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_X86_64_SOURCES})
+if(DDISASM_X86_64)
+  add_definitions(-DDDISASM_X86_64)
 
-set(GENERATED_ARM64_CPP souffle_disasm_arm64.cpp)
-if(WIN32)
-  set(GENERATED_ARM64_CPP_PATH
-      "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_arm64.cpp)")
-else()
-  set(GENERATED_ARM64_CPP_PATH
-      "${CMAKE_BINARY_DIR}/src/souffle_disasm_arm64.cpp")
+  set(DATALOG_X86_64_SOURCES
+      datalog/intel/arch_x86_64.dl datalog/intel/float_operations.dl
+      datalog/intel/jump_operations.dl datalog/intel/registers_x86_64.dl)
+
+  set(GENERATED_X86_64_CPP souffle_disasm_x86_64.cpp)
+
+  if(WIN32)
+    set(GENERATED_X86_64_CPP_PATH
+        "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_64.cpp)")
+  else()
+    set(GENERATED_X86_64_CPP_PATH
+        "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_64.cpp")
+  endif()
+
+  add_custom_command(
+    OUTPUT ${GENERATED_X86_64_CPP}
+           # Souffle includes the path of the output file in the generated
+           # program name. Change directory and use a relative path so the name
+           # does not depend on build location.
+    WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
+    COMMAND ${SOUFFLE} main.dl -g ${GENERATED_X86_64_CPP_PATH} -jauto
+            -MARCH_AMD64
+    DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_X86_64_SOURCES})
 endif()
-
-add_custom_command(
-  OUTPUT ${GENERATED_ARM64_CPP}
-         # Souffle includes the path of the output file in the generated program
-         # name. Change directory and use a relative path so the name does not
-         # depend on build location.
-  WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
-  COMMAND ${SOUFFLE} main.dl -g ${GENERATED_ARM64_CPP_PATH} -jauto -MARCH_ARM64
-  DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_ARM64_SOURCES})
 
 # determine what flags to use to specify -fopenmp.
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)

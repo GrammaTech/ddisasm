@@ -56,12 +56,18 @@ void registerAuxDataTypes()
 
 void registerDatalogLoaders()
 {
-    // Register ELF-X86 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::IA32}, ElfX86Loader);
-
-    // Register ELF-X64 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::X64}, ElfX64Loader);
-
+#if defined(DDISASM_ARM_64)
     // Register ELF-ARM64 target.
     DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::ARM64}, ElfArm64Loader);
+#endif
+
+#if defined(DDISASM_X86_32)
+    // Register ELF-X86 target.
+    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::IA32}, ElfX86Loader);
+#endif
+
+#if defined(DDISASM_X86_64)
+    // Register ELF-X64 target.
+    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::X64}, ElfX64Loader);
+#endif
 }
