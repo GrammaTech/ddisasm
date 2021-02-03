@@ -36,8 +36,13 @@ std::map<DatalogProgram::Target, DatalogProgram::Factory> &DatalogProgram::loade
 std::optional<DatalogProgram> DatalogProgram::load(const gtirb::Module &Module)
 {
     auto Target = std::make_tuple(Module.getFileFormat(), Module.getISA());
-    auto Loader = loaders().at(Target)();
-    return Loader.load(Module);
+    auto Factories = loaders();
+    if(auto It = Factories.find(Target); It != Factories.end())
+    {
+        auto Loader = (It->second)();
+        return Loader.load(Module);
+    }
+    return std::nullopt;
 }
 
 void DatalogProgram::writeFacts(const std::string &Directory)

@@ -37,6 +37,12 @@ string(TIMESTAMP DDISASM_BUILD_DATE "%Y-%m-%d")
 # Global Options (CMake)
 #
 
+option(DDISASM_ARM_32 "Whether or not ARM support is built." ON)
+option(DDISASM_ARM_64 "Whether or not ARM64 support is built." ON)
+option(DDISASM_MIPS_32 "Whether or not MIPS support is built." ON)
+option(DDISASM_X86_32 "Whether or not x86_32 support is built." ON)
+option(DDISASM_X86_64 "Whether or not x86_64 support is built." ON)
+
 option(DDISASM_ENABLE_TESTS "Enable building and running unit tests." ON)
 
 # The libraries can be static while the drivers can link in other things in a
@@ -352,3 +358,14 @@ set(CPACK_GTIRB_VERSION "${gtirb_VERSION}")
 set(CPACK_GTIRB_PPRINTER_VERSION "${gtirb_pprinter_VERSION}")
 
 include(CPack)
+
+# ---------------------------------------------------------------------------
+# Report architecture support and features built
+# ---------------------------------------------------------------------------
+
+message("Architecture support to be built:")
+message("    ARM32     ${DDISASM_ARM_32}")
+message("    ARM64     ${DDISASM_ARM_64}")
+message("    MIPS32    ${DDISASM_MIPS_32}")
+message("    X86_32    ${DDISASM_X86_32}")
+message("    X86_64    ${DDISASM_X86_64}")
