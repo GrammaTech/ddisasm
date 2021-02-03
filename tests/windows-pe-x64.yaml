@@ -20,7 +20,7 @@ default: &default
   # Test configuration.
   test:
     wrapper: null
-    strip_exe: "strip" # What is the right strip for windows?
+    strip_exe: "strip-dummy" # We do not apply strip for Windows binaries
     strip: false
     skip: false
 

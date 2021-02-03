@@ -48,17 +48,17 @@ void ElfReader::initModule()
 // Collect dynamic entries
 std::map<std::string, uint64_t> ElfReader::getDynamicEntries()
 {
-    static std::map<std::string, uint64_t> ans;
-    if(ans.empty())
+    static std::map<std::string, uint64_t> Ans;
+    if(Ans.empty())
     {
         for(const auto &Entry : Elf->dynamic_entries())
         {
-            std::string entry = LIEF::ELF::to_string(Entry.tag());
-            uint64_t value = Entry.value();
-            ans[entry] = value;
+            std::string Ent = LIEF::ELF::to_string(Entry.tag());
+            uint64_t Value = Entry.value();
+            Ans[Ent] = Value;
         }
     }
-    return ans;
+    return Ans;
 }
 
 // Resurrect sections and symbols from sectionless binary
@@ -69,7 +69,7 @@ void ElfReader::resurrectSections()
     std::map<gtirb::UUID, uint64_t> Alignment;
 
     // Get dynamic entries
-    std::map<std::string, uint64_t> dynamicEntries = getDynamicEntries();
+    std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
 
     // Collect loaded segments ---------------------------------------
     // TODO: This assumes there is one segment for RW and one for RX.
@@ -102,8 +102,8 @@ void ElfReader::resurrectSections()
     if(LoadedSegmentRX.physical_size() != 0)
     {
         auto Segment = LoadedSegmentRX;
-        uint64_t addr = Segment.virtual_address();
-        uint64_t size = Segment.virtual_size();
+        uint64_t Addr = Segment.virtual_address();
+        uint64_t Size = Segment.virtual_size();
 
         // Add named section to GTIRB Module.
         gtirb::Section *S = Module->addSection(*Context, ".fake.text.segment");
@@ -114,31 +114,31 @@ void ElfReader::resurrectSections()
         S->addFlag(gtirb::SectionFlag::Writable);
         S->addFlag(gtirb::SectionFlag::Initialized);
 
-        gtirb::Addr Addr = gtirb::Addr(addr);
-        std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(addr, size);
-        S->addByteInterval(*Context, Addr, Bytes.begin(), Bytes.end(), size, Bytes.size());
+        std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(Addr, Size);
+        S->addByteInterval(*Context, gtirb::Addr(Addr), Bytes.begin(), Bytes.end(), Size,
+                           Bytes.size());
 
-        uint64_t type = static_cast<uint64_t>(Segment.type())
+        uint64_t Type = static_cast<uint64_t>(Segment.type())
                         | static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS);
-        uint64_t flags = static_cast<uint64_t>(Segment.flags())
+        uint64_t Flags = static_cast<uint64_t>(Segment.flags())
                          | static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC)
                          | static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
 
         Alignment[S->getUUID()] = 16;
         SectionIndex[Index] = S->getUUID();
-        SectionProperties[S->getUUID()] = {type, flags};
+        SectionProperties[S->getUUID()] = {Type, Flags};
         ++Index;
     }
 
     // Create .fake.data.segment and .got ----------------------------
-    uint64_t got_addr = 0;
-    uint64_t got_size = 0;
-    uint64_t bss_distance = 0; // offset of bss in LoadedSegmentRW
+    uint64_t GotAddr = 0;
+    uint64_t GotSize = 0;
+    uint64_t BssDistance = 0; // offset of bss in LoadedSegmentRW
     if(LoadedSegmentRW.physical_size() != 0)
     {
         auto Segment = LoadedSegmentRW;
-        uint64_t addr = Segment.virtual_address();
-        uint64_t size = Segment.virtual_size();
+        uint64_t Addr = Segment.virtual_address();
+        uint64_t Size = Segment.virtual_size();
 
         // -----------------------------------------------------------
         // Create .got -----------------------------------------------
@@ -151,30 +151,29 @@ void ElfReader::resurrectSections()
         GotS->addFlag(gtirb::SectionFlag::Writable);
         GotS->addFlag(gtirb::SectionFlag::Initialized);
 
-        uint64_t type = static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS);
-        uint64_t flags = static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC
+        uint64_t Type = static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS);
+        uint64_t Flags = static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC
                                                | LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
 
-        auto it = dynamicEntries.find("PLTGOT");
-        assert((it != dynamicEntries.end()) && "PLTGOT not found");
-        got_addr = it->second;
-        got_size = size - (got_addr - addr);
+        auto It = DynamicEntries.find("PLTGOT");
+        assert((It != DynamicEntries.end()) && "PLTGOT not found");
+        GotAddr = It->second;
+        GotSize = Size - (GotAddr - Addr);
 
-        std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(got_addr, got_size);
+        std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(GotAddr, GotSize);
         std::vector<uint8_t> BytesCopy = Bytes;
         std::reverse(BytesCopy.begin(), BytesCopy.end());
-        uint64_t bss_rdistance = std::distance(
+        uint64_t BssRdistance = std::distance(
             BytesCopy.begin(),
             find_if(BytesCopy.begin(), BytesCopy.end(), [](auto x) { return x != 0; }));
-        bss_distance = BytesCopy.size() - bss_rdistance;
+        BssDistance = BytesCopy.size() - BssRdistance;
 
-        gtirb::Addr Addr = gtirb::Addr(got_addr);
-        GotS->addByteInterval(*Context, Addr, Bytes.begin(), Bytes.end(), bss_distance,
-                              Bytes.size() - bss_rdistance);
+        GotS->addByteInterval(*Context, gtirb::Addr(GotAddr), Bytes.begin(), Bytes.end(),
+                              BssDistance, Bytes.size() - BssRdistance);
 
         Alignment[GotS->getUUID()] = 16;
         SectionIndex[Index] = GotS->getUUID();
-        SectionProperties[GotS->getUUID()] = {type, flags};
+        SectionProperties[GotS->getUUID()] = {Type, Flags};
         ++Index;
 
         // -----------------------------------------------------------
@@ -187,38 +186,38 @@ void ElfReader::resurrectSections()
         DataS->addFlag(gtirb::SectionFlag::Writable);
         DataS->addFlag(gtirb::SectionFlag::Initialized);
 
-        uint64_t data_size = got_addr - addr;
+        uint64_t DataSize = GotAddr - Addr;
 
-        std::vector<uint8_t> DataBytes = Elf->get_content_from_virtual_address(addr, data_size);
-        DataS->addByteInterval(*Context, gtirb::Addr(addr), DataBytes.begin(), DataBytes.end(),
-                               data_size, data_size);
+        std::vector<uint8_t> DataBytes = Elf->get_content_from_virtual_address(Addr, DataSize);
+        DataS->addByteInterval(*Context, gtirb::Addr(Addr), DataBytes.begin(), DataBytes.end(),
+                               DataSize, DataSize);
 
         Alignment[DataS->getUUID()] = 16;
         SectionIndex[Index] = DataS->getUUID();
-        SectionProperties[DataS->getUUID()] = {type, flags};
+        SectionProperties[DataS->getUUID()] = {Type, Flags};
         ++Index;
     }
 
     // Create .bss section if there's any in LoadedSegmentRW ---------
-    // Got_addr and got_size are used here, so make sure they are set
+    // GotAddr and GotSize are used here, so make sure they are set
     // beforehand.
-    if(got_addr != 0 && got_size != 0)
+    if(GotAddr != 0 && GotSize != 0)
     {
         // Find the first address starting consecutive zeros,
         // which is highly likely .bss
-        std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(got_addr, got_size);
-        if(bss_distance >= 0 && bss_distance < Bytes.size())
+        std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(GotAddr, GotSize);
+        if(BssDistance >= 0 && BssDistance < Bytes.size())
         {
-            uint64_t BssAddr = got_addr + bss_distance;
-            uint64_t BssSize = Bytes.size() - bss_distance;
+            uint64_t BssAddr = GotAddr + BssDistance;
+            uint64_t BssSize = Bytes.size() - BssDistance;
 
             gtirb::Section *Bss = Module->addSection(*Context, ".bss");
             // Add section flags to GTIRB Section.
             Bss->addFlag(gtirb::SectionFlag::Loaded);
             Bss->addFlag(gtirb::SectionFlag::Readable);
             Bss->addFlag(gtirb::SectionFlag::Writable);
-            Bss->addByteInterval(*Context, gtirb::Addr(BssAddr), Bytes.begin() + bss_distance,
-                                 Bytes.end(), got_size - bss_distance, BssSize);
+            Bss->addByteInterval(*Context, gtirb::Addr(BssAddr), Bytes.begin() + BssDistance,
+                                 Bytes.end(), GotSize - BssDistance, BssSize);
 
             Alignment[Bss->getUUID()] = 16;
             SectionIndex[Index] = Bss->getUUID();
@@ -241,18 +240,18 @@ void ElfReader::resurrectSections()
 void ElfReader::createGPforMIPS(uint64_t SecIndex, std::map<gtirb::UUID, ElfSymbolInfo> &SymbolInfo,
                                 std::map<gtirb::UUID, ElfSymbolTabIdxInfo> &SymbolTabIdxInfo)
 {
-    const auto &gp_symbols = Module->findSymbols("_gp");
-    if(gp_symbols.empty())
+    const auto &GpSymbols = Module->findSymbols("_gp");
+    if(GpSymbols.empty())
     {
         // Get dynamic entries
-        std::map<std::string, uint64_t> dynamicEntries = getDynamicEntries();
+        std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
 
-        auto it = dynamicEntries.find("MIPS_RLD_MAP");
-        assert((it != dynamicEntries.end()) && "MIPS_RLD_MAP not found");
-        uint64_t rld_map_addr = it->second;
-        uint64_t gp_addr = rld_map_addr + 0x8000;
+        auto It = DynamicEntries.find("MIPS_RLD_MAP");
+        assert((It != DynamicEntries.end()) && "MIPS_RLD_MAP not found");
+        uint64_t RldMapAddr = It->second;
+        uint64_t GpAddr = RldMapAddr + 0x8000;
 
-        gtirb::Symbol *S = Module->addSymbol(*Context, gtirb::Addr(gp_addr), "_gp");
+        gtirb::Symbol *S = Module->addSymbol(*Context, gtirb::Addr(GpAddr), "_gp");
         uint64_t Size = 0;
         std::string Type = LIEF::ELF::to_string(LIEF::ELF::ELF_SYMBOL_TYPES::STT_NOTYPE);
         std::string Scope = LIEF::ELF::to_string(LIEF::ELF::SYMBOL_BINDINGS::STB_LOCAL);
@@ -269,136 +268,68 @@ void ElfReader::createGPforMIPS(uint64_t SecIndex, std::map<gtirb::UUID, ElfSymb
 void ElfReader::resurrectSymbols()
 {
     // Get dynamic entries
-    std::map<std::string, uint64_t> dynamicEntries = getDynamicEntries();
+    std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
 
     // Extract bytes from STRTAB -------------------------------------
-    std::vector<uint8_t> strtabBytes;
-    auto it = dynamicEntries.find("STRTAB");
-    if(it != dynamicEntries.end())
+    std::vector<uint8_t> StrTabBytes;
+    auto It = DynamicEntries.find("STRTAB");
+    if(It != DynamicEntries.end())
     {
-        uint64_t strtab_addr = it->second;
-        it = dynamicEntries.find("STRSZ");
-        if(it != dynamicEntries.end())
+        uint64_t StrTabAddr = It->second;
+        It = DynamicEntries.find("STRSZ");
+        if(It != DynamicEntries.end())
         {
-            uint64_t strtab_size = it->second;
-            strtabBytes = Elf->get_content_from_virtual_address(strtab_addr, strtab_size);
+            uint64_t StrTabSize = It->second;
+            StrTabBytes = Elf->get_content_from_virtual_address(StrTabAddr, StrTabSize);
         }
     }
 
     // Extract symbols -----------------------------------------------
     // NOTE: The following code is specific to MIPS32 because it makes use of
-    // MIPS-specific dynamic entries, such as MIPS_SYMTABNO, MIPS_GOTSYM, etc.
+    // MIPS-specific dynamic entries, such as MIPS_SYMTABNO, etc.
     // TODO: Generalize it if needed.
     if(Module->getISA() == gtirb::ISA::MIPS32)
     {
-        auto it = dynamicEntries.find("SYMTAB");
-        assert((it != dynamicEntries.end()) && "SYMTAB not found");
-        uint64_t addr = it->second;
+        auto It = DynamicEntries.find("SYMTAB");
+        assert((It != DynamicEntries.end()) && "SYMTAB not found");
+        uint64_t Addr = It->second;
 
-        it = dynamicEntries.find("MIPS_SYMTABNO");
-        assert((it != dynamicEntries.end()) && "MIPS_SYMTABNO not found");
-        uint64_t dynsym_num = it->second;
+        It = DynamicEntries.find("MIPS_SYMTABNO");
+        assert((It != DynamicEntries.end()) && "MIPS_SYMTABNO not found");
+        uint64_t DynSymNum = It->second;
 
-        it = dynamicEntries.find("MIPS_GOTSYM");
-        assert((it != dynamicEntries.end()) && "MIPS_GOTSYM not found");
-        uint64_t gotsym_index = it->second;
+        It = DynamicEntries.find("SYMENT");
+        assert((It != DynamicEntries.end()) && "SYMENT not found");
+        uint64_t SymTabEntrySize = It->second;
 
-        it = dynamicEntries.find("MIPS_RLD_MAP");
-        assert((it != dynamicEntries.end()) && "MIPS_RLD_MAP not found");
-        uint64_t rld_map_addr = it->second;
+        uint64_t Size = DynSymNum * SymTabEntrySize;
 
-        it = dynamicEntries.find("MIPS_LOCAL_GOTNO");
-        assert((it != dynamicEntries.end()) && "MIPS_LOCAL_GOTNO not found");
-        uint64_t localno = it->second;
+        std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(Addr, Size);
+        auto Iter = Bytes.begin();
 
-        it = dynamicEntries.find("SYMENT");
-        assert((it != dynamicEntries.end()) && "SYMENT not found");
-        uint64_t symtab_entry_size = it->second;
-
-        uint64_t size = dynsym_num * symtab_entry_size;
-
-        std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(addr, size);
-        auto iter = Bytes.begin();
-
-        // Extract a string at the given index in STRTAB
-        auto get_string_at = [&strtabBytes](uint32_t index) {
-            std::stringstream ss;
-            auto it = strtabBytes.begin() + index;
-            while(it != strtabBytes.end())
+        // Extract a string at the given Index in STRTAB
+        auto getStringAt = [&StrTabBytes](uint32_t Index) {
+            std::stringstream SS;
+            auto It = StrTabBytes.begin() + Index;
+            while(It != StrTabBytes.end())
             {
-                uint8_t v = *it++;
-                if(v == 0)
+                uint8_t V = *It++;
+                if(V == 0)
                     break;
-                ss << v;
+                SS << V;
             }
-            return ss.str();
+            return SS.str();
         };
 
-        auto get_4bytes = [](uint8_t arr[], size_t arr_size, size_t index) {
-            assert(index + 4 < arr_size);
-            uint8_t n0 = arr[index];
-            uint8_t n1 = arr[index + 1];
-            uint8_t n2 = arr[index + 2];
-            uint8_t n3 = arr[index + 3];
-            uint32_t n = (n3 << 24) + (n2 << 16) + (n1 << 8) + n0;
-            return n;
-        };
-
-        // Iterate each symbol entry and add_dynamic_symbol to Elf:
-        // struct Elf32_Sym {
-        //   Elf32_Word    st_name;  /**< Symbol name (index into string table) */
-        //   Elf32_Addr    st_value; /**< Value or address associated with the symbol */
-        //   Elf32_Word    st_size;  /**< Size of the symbol */
-        //   unsigned char st_info;  /**< Symbol's type and binding attributes */
-        //   unsigned char st_other; /**< Must be zero; reserved */
-        //   Elf32_Half    st_shndx; /**< Which section (header table index) it's defined in */
-        //};
-        for(uint64_t i = 0; i < dynsym_num; ++i)
+        for(uint64_t I = 0; I < DynSymNum; ++I)
         {
-            uint8_t arr[sizeof(LIEF::ELF::Elf32_Sym)];
-            size_t index = 0;
-            // Elf32_Word st_name
-            for(size_t i = 0; i < sizeof(LIEF::ELF::Elf32_Word); ++i)
-            {
-                assert(iter != Bytes.end());
-                arr[index + sizeof(LIEF::ELF::Elf32_Word) - i - 1] = *iter++;
-            }
-            // Elf32_Addr st_value
-            index += sizeof(LIEF::ELF::Elf32_Word);
-            for(size_t i = 0; i < sizeof(LIEF::ELF::Elf32_Addr); ++i)
-            {
-                assert(iter != Bytes.end());
-                arr[index + sizeof(LIEF::ELF::Elf32_Addr) - i - 1] = *iter++;
-            }
-            // Elf32_Word st_size
-            index += sizeof(LIEF::ELF::Elf32_Addr);
-            for(size_t i = 0; i < sizeof(LIEF::ELF::Elf32_Word); ++i)
-            {
-                assert(iter != Bytes.end());
-                arr[index + sizeof(LIEF::ELF::Elf32_Word) - i - 1] = *iter++;
-            }
-            // unsigned char
-            index += sizeof(LIEF::ELF::Elf32_Word);
-            assert(iter != Bytes.end());
-            arr[index++] = *iter++;
-            // unsigned char
-            assert(iter != Bytes.end());
-            arr[index++] = *iter++;
-            // Elf32_Half
-            for(size_t i = 0; i < sizeof(LIEF::ELF::Elf32_Half); ++i)
-            {
-                assert(iter != Bytes.end());
-                arr[index + sizeof(LIEF::ELF::Elf32_Half) - i - 1] = *iter++;
-            }
-
             LIEF::ELF::Elf32_Sym sym;
-            memcpy(&sym, &arr[0], sizeof(LIEF::ELF::Elf32_Sym));
-            LIEF::ELF::Symbol symbol(&sym);
-            // st_name
-            uint32_t n = get_4bytes(arr, sizeof(LIEF::ELF::Elf32_Sym), 0);
-            std::string Name = get_string_at(n);
-            symbol.name(Name);
-            Elf->add_dynamic_symbol(symbol);
+            memcpy(&sym, &Bytes[I * sizeof(LIEF::ELF::Elf32_Sym)], sizeof(LIEF::ELF::Elf32_Sym));
+            LIEF::Convert::swap_endian<LIEF::ELF::Elf32_Sym>(&sym);
+            LIEF::ELF::Symbol Symbol(&sym);
+            std::string Name = getStringAt(sym.st_name);
+            Symbol.name(Name);
+            Elf->add_dynamic_symbol(Symbol);
         }
     }
     return;
@@ -582,8 +513,8 @@ void ElfReader::buildSymbols()
     // stripped binaries), create a symbol for _gp.
     if(Module->getISA() == gtirb::ISA::MIPS32)
     {
-        const auto &gp_symbols = Module->findSymbols("_gp");
-        if(gp_symbols.empty())
+        const auto &GpSymbols = Module->findSymbols("_gp");
+        if(GpSymbols.empty())
         {
             createGPforMIPS(Symbols.size(), SymbolInfo, SymbolTabIdxInfo);
         }
@@ -660,9 +591,9 @@ void ElfReader::addAuxData()
     Module->addAuxData<gtirb::schema::LibraryPaths>(std::move(LibraryPaths));
 
     // Get dynamic entries
-    std::map<std::string, uint64_t> dynamicEntries = getDynamicEntries();
+    std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
     std::set<ElfDynamicEntry> DynamicEntryTuples;
-    for(auto it = dynamicEntries.begin(); it != dynamicEntries.end(); ++it)
+    for(auto it = DynamicEntries.begin(); it != DynamicEntries.end(); ++it)
     {
         DynamicEntryTuples.insert({it->first, it->second});
     }

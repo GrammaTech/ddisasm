@@ -91,23 +91,10 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
                 else
                 {
                     // If there is no existing symbol with type FUNC,
-                    // pick one symbol and make it as FUNC & GLOBAL.
+                    // pick one symbol.
                     if(!Symbols.empty())
                     {
                         const auto& Symbol = *Symbols.begin();
-                        if(auto Found = SymbolInfo->find(Symbol.getUUID());
-                           Found != SymbolInfo->end())
-                        {
-                            ElfSymbolInfo SInfo = Found->second;
-                            std::get<1>(SInfo) = "FUNC";
-                            std::get<2>(SInfo) = "GLOBAL";
-                            (*SymbolInfo)[Symbol.getUUID()] = SInfo;
-                        }
-                        else
-                        {
-                            ElfSymbolInfo SInfo = {0, "FUNC", "GLOBAL", "DEFAULT", 0};
-                            (*SymbolInfo)[Symbol.getUUID()] = SInfo;
-                        }
                         FunctionNames.insert({FunctionUUID, Symbol.getUUID()});
                     }
                 }

@@ -20,10 +20,10 @@ class TestFunctionInference(unittest.TestCase):
         self,
         make_dir,
         binary,
-        strip_exe,
         c_compiler,
         cxx_compiler,
         optimization,
+        strip_exe="strip",
     ):
         """
         Test that the function inference finds all the functions compare the
@@ -70,7 +70,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_ex1(self):
         self.check_function_inference(
-            ex_dir / "ex1", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex1", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -78,7 +78,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_2modulesPIC(self):
         self.check_function_inference(
-            ex_dir / "ex_2modulesPIC", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_2modulesPIC", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -86,7 +86,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_confusing_data(self):
         self.check_function_inference(
-            ex_dir / "ex1", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex1", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -94,7 +94,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_exceptions1(self):
         self.check_function_inference(
-            ex_dir / "ex_exceptions1", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_exceptions1", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -102,7 +102,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_exceptions2(self):
         self.check_function_inference(
-            ex_dir / "ex_exceptions2", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_exceptions2", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -110,7 +110,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_exceptions3(self):
         self.check_function_inference(
-            ex_dir / "ex_exceptions3", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_exceptions3", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -118,12 +118,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_false_pointer_array(self):
         self.check_function_inference(
-            ex_dir / "ex_false_pointer_array",
-            "ex",
-            "strip",
-            "gcc",
-            "g++",
-            "-O3",
+            ex_dir / "ex_false_pointer_array", "ex", "gcc", "g++", "-O3",
         )
 
     @unittest.skipUnless(
@@ -131,7 +126,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_float(self):
         self.check_function_inference(
-            ex_dir / "ex_float", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_float", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -139,7 +134,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_fprintf(self):
         self.check_function_inference(
-            ex_dir / "ex_fprintf", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_fprintf", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -147,7 +142,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_getoptlong(self):
         self.check_function_inference(
-            ex_dir / "ex_getoptlong", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_getoptlong", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -155,7 +150,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_memberPointer(self):
         self.check_function_inference(
-            ex_dir / "ex_memberPointer", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_memberPointer", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -163,7 +158,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_noreturn(self):
         self.check_function_inference(
-            ex_dir / "ex_noreturn", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_noreturn", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -171,12 +166,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_pointerReatribution(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution",
-            "ex",
-            "strip",
-            "gcc",
-            "g++",
-            "-O3",
+            ex_dir / "ex_pointerReatribution", "ex", "gcc", "g++", "-O3",
         )
 
     @unittest.skipUnless(
@@ -184,12 +174,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_pointerReatribution2(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution2",
-            "ex",
-            "strip",
-            "gcc",
-            "g++",
-            "-O3",
+            ex_dir / "ex_pointerReatribution2", "ex", "gcc", "g++", "-O3",
         )
 
     @unittest.skipUnless(
@@ -197,12 +182,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_pointerReatribution3(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution3",
-            "ex",
-            "strip",
-            "gcc",
-            "g++",
-            "-O3",
+            ex_dir / "ex_pointerReatribution3", "ex", "gcc", "g++", "-O3",
         )
 
     @unittest.skipUnless(
@@ -210,7 +190,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_stat(self):
         self.check_function_inference(
-            ex_dir / "ex_stat", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_stat", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -218,7 +198,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_struct(self):
         self.check_function_inference(
-            ex_dir / "ex_struct", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_struct", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -226,7 +206,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_switch(self):
         self.check_function_inference(
-            ex_dir / "ex_switch", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_switch", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -234,12 +214,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_uninitialized_data(self):
         self.check_function_inference(
-            ex_dir / "ex_uninitialized_data",
-            "ex",
-            "strip",
-            "gcc",
-            "g++",
-            "-O3",
+            ex_dir / "ex_uninitialized_data", "ex", "gcc", "g++", "-O3",
         )
 
     @unittest.skipUnless(
@@ -247,7 +222,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_virtualDispatch(self):
         self.check_function_inference(
-            ex_dir / "ex_virtualDispatch", "ex", "strip", "gcc", "g++", "-O3"
+            ex_dir / "ex_virtualDispatch", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -255,7 +230,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_ex1_clang(self):
         self.check_function_inference(
-            ex_dir / "ex1", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex1", "ex", "clang", "clang++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -263,7 +238,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_2modulesPIC_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_2modulesPIC", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_2modulesPIC", "ex", "clang", "clang++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -271,7 +246,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_confusing_data_clang(self):
         self.check_function_inference(
-            ex_dir / "ex1", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex1", "ex", "clang", "clang++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -279,7 +254,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_exceptions1_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_exceptions1", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_exceptions1", "ex", "clang", "clang++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -287,7 +262,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_exceptions2_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_exceptions2", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_exceptions2", "ex", "clang", "clang++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -295,7 +270,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_exceptions3_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_exceptions3", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_exceptions3", "ex", "clang", "clang++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -303,12 +278,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_false_pointer_array_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_false_pointer_array",
-            "ex",
-            "strip",
-            "clang",
-            "clang++",
-            "-O3",
+            ex_dir / "ex_false_pointer_array", "ex", "clang", "clang++", "-O3",
         )
 
     @unittest.skipUnless(
@@ -316,7 +286,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_float_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_float", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_float", "ex", "clang", "clang++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -324,7 +294,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_fprintf_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_fprintf", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_fprintf", "ex", "clang", "clang++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -332,7 +302,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_getoptlong_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_getoptlong", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_getoptlong", "ex", "clang", "clang++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -340,12 +310,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_memberPointer_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_memberPointer",
-            "ex",
-            "strip",
-            "clang",
-            "clang++",
-            "-O3",
+            ex_dir / "ex_memberPointer", "ex", "clang", "clang++", "-O3",
         )
 
     @unittest.skipUnless(
@@ -353,7 +318,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_noreturn_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_noreturn", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_noreturn", "ex", "clang", "clang++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -361,12 +326,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_pointerReatribution_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution",
-            "ex",
-            "strip",
-            "clang",
-            "clang++",
-            "-O3",
+            ex_dir / "ex_pointerReatribution", "ex", "clang", "clang++", "-O3",
         )
 
     @unittest.skipUnless(
@@ -376,7 +336,6 @@ class TestFunctionInference(unittest.TestCase):
         self.check_function_inference(
             ex_dir / "ex_pointerReatribution2",
             "ex",
-            "strip",
             "clang",
             "clang++",
             "-O3",
@@ -389,7 +348,6 @@ class TestFunctionInference(unittest.TestCase):
         self.check_function_inference(
             ex_dir / "ex_pointerReatribution3",
             "ex",
-            "strip",
             "clang",
             "clang++",
             "-O3",
@@ -400,7 +358,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_stat_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_stat", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_stat", "ex", "clang", "clang++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -408,7 +366,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_struct_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_struct", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_struct", "ex", "clang", "clang++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -416,7 +374,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_switch_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_switch", "ex", "strip", "clang", "clang++", "-O3"
+            ex_dir / "ex_switch", "ex", "clang", "clang++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -424,12 +382,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_uninitialized_data_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_uninitialized_data",
-            "ex",
-            "strip",
-            "clang",
-            "clang++",
-            "-O3",
+            ex_dir / "ex_uninitialized_data", "ex", "clang", "clang++", "-O3",
         )
 
     @unittest.skipUnless(
@@ -437,12 +390,7 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_virtualDispatch_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_virtualDispatch",
-            "ex",
-            "strip",
-            "clang",
-            "clang++",
-            "-O3",
+            ex_dir / "ex_virtualDispatch", "ex", "clang", "clang++", "-O3",
         )
 
 

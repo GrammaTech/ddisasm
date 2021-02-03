@@ -984,8 +984,7 @@ gtirb::Section *findSectionByIndex(gtirb::Context &C, gtirb::Module &M, uint64_t
     return nullptr;
 };
 
-void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
-                            souffle::SouffleProgram *prog)
+void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
 {
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
 
@@ -1534,7 +1533,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildCfiDirectives(context, module, prog);
     expandSymbolForwarding(context, module, prog);
     // This should be done after creating all the symbols.
-    connectSymbolsToBlocks(context, module, prog);
+    connectSymbolsToBlocks(context, module);
     splitSymbols(context, module, prog);
     // These functions should not create additional symbols.
     buildFunctions(module, prog);
