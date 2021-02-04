@@ -74,9 +74,13 @@ class Properties:
         return "%s/%s@%s" % (self.name, self.version, self.conan_ref)
 
 
-class GtirbPprinterConan(Properties, ConanFile):
+class DdisasmConan(Properties, ConanFile):
+    author = "GrammaTech Inc."
+    generators = "cmake"
+    settings = ("os", "compiler", "build_type", "arch")
+
     boost_version = "1.69.0"
-    gtirb_version = "1.10.1"
+    gtirb_version = "1.10.2"
     gtirb_pprinter_version = "1.5.1"
     capstone_version = "4.0.1"
     requires = (
@@ -94,9 +98,6 @@ class GtirbPprinterConan(Properties, ConanFile):
         "lief/%s" % (lief_version),
         "souffle/%s@rewriting+extra-packages/stable" % (souffle_version),
     )
-    author = "GrammaTech Inc."
-    generators = "cmake"
-    settings = ("os", "compiler", "build_type", "arch")
 
     def imports(self):
         self.copy("*.dll", "bin", "bin")
@@ -122,6 +123,18 @@ class GtirbPprinterConan(Properties, ConanFile):
         else:
             self.build_cmake()
 
+    # Puts a dependency's bin path on PATH
+    def add_dep_bin_path(self, dep):
+        bin_dirs = self.deps_cpp_info[dep].bin_paths
+        new_path = [os.environ.get("PATH", "")] + bin_dirs
+        os.environ["PATH"] = os.pathsep.join(new_path)
+
+    # Puts a dependency's lib path on LD_LIBRARY_PATH
+    def add_dep_lib_path(self, *deps):
+        lib_dirs = sum([self.deps_cpp_info[dep].lib_paths for dep in deps], [])
+        new_ld_lib_path = [os.environ.get("LD_LIBRARY_PATH", "")] + lib_dirs
+        os.environ["LD_LIBRARY_PATH"] = os.pathsep.join(new_ld_lib_path)
+
     def build_cmake(self):
         defs = {"CMAKE_VERBOSE_MAKEFILE:BOOL": "ON", "ENABLE_CONAN:BOOL": "ON"}
         if self.settings.os == "Windows":
@@ -137,17 +150,16 @@ class GtirbPprinterConan(Properties, ConanFile):
                 }
             )
 
+        self.add_dep_bin_path('mcpp')
+        self.add_dep_bin_path('gtirb-pprinter')
+        self.add_dep_lib_path('gtirb-pprinter', 'gtirb', 'capstone')
+        bin_dir = os.path.join(os.getcwd(), "bin")
+        os.environ["PATH"] = os.pathsep.join([os.environ["PATH"], bin_dir])
+
         cmake.configure(source_folder=".", defs=defs)
         cmake.build()
         cmake.test(output_on_failure=True)
         cmake.install()
-        # The patch_config_paths() function will change absolute paths in the
-        # exported cmake config files to use the appropriate conan variables
-        # instead.
-        # It is an experimental feature of conan, however, so if you're having
-        # trouble with paths in the cmake of the conan package, it could that
-        # this function is no longer doing what we want.
-        cmake.patch_config_paths()
 
     def build_requirements(self):
         if self.settings.os == "Windows":
