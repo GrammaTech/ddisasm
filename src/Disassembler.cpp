@@ -1124,7 +1124,7 @@ void splitSymbols(gtirb::Context &Context, gtirb::Module &Module, souffle::Souff
     }
 }
 
-void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
+void buildFunctions(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     std::map<gtirb::UUID, std::set<gtirb::UUID>> functionEntries;
     std::map<gtirb::Addr, gtirb::UUID> functionEntry2function;
@@ -1143,9 +1143,20 @@ void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
             functionEntry2function[functionEntry] = functionUUID;
             functionEntries[functionUUID].insert(entryBlockUUID);
 
-            for(const auto &symbol : module.findSymbols(functionEntry))
+            auto It = module.findSymbols(functionEntry);
+            if(It.empty())
             {
-                functionNames.insert({functionUUID, symbol.getUUID()});
+                // Create a new label for the function entry.
+                gtirb::Symbol *Symbol = getSymbol(context, module, functionEntry);
+                functionNames.insert({functionUUID, Symbol->getUUID()});
+            }
+            else
+            {
+                // List each existing label as a function entry.
+                for(const auto &symbol : It)
+                {
+                    functionNames.insert({functionUUID, symbol.getUUID()});
+                }
             }
         }
     }
@@ -1536,7 +1547,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     connectSymbolsToBlocks(context, module);
     splitSymbols(context, module, prog);
     // These functions should not create additional symbols.
-    buildFunctions(module, prog);
+    buildFunctions(context, module, prog);
     buildCFG(context, module, prog);
     buildPadding(module, prog);
     buildComments(module, prog, selfDiagnose);
