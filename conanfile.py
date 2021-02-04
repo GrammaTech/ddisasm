@@ -79,6 +79,20 @@ class DdisasmConan(Properties, ConanFile):
     generators = "cmake"
     settings = ("os", "compiler", "build_type", "arch")
 
+    lief_version = "0.10.1"
+    libehp_version = "0.1.1"
+    souffle_version = "2.0.2"
+    build_requires = (
+                "libehp/%s@rewriting+extra-packages/stable" % (libehp_version),
+                "lief/%s" % (lief_version),
+            )
+    def build_requirements(self):
+        if self.settings.os == "Windows":
+            self.build_requires("ninja_installer/1.9.0@bincrafters/stable")
+        else:
+            self.build_requires("souffle/%s@rewriting+extra-packages/stable" %
+                          (self.souffle_version))
+
     boost_version = "1.69.0"
     gtirb_version = "1.10.2"
     gtirb_pprinter_version = "1.5.1"
@@ -86,17 +100,9 @@ class DdisasmConan(Properties, ConanFile):
     requires = (
         "boost/%s@conan/stable" % (boost_version),
         "gtirb/%s@rewriting+gtirb/stable" % (gtirb_version),
-        "gtirb-pprinter/%s@rewriting+gtirb-pprinter/stable"
+        "gtirb-pprinter/%s@rewriting+gtirb-pprinter/bfair-gtirb-version"
         % (gtirb_pprinter_version),
         "capstone/%s@rewriting+extra-packages/next" % (capstone_version),
-    )
-    lief_version = "0.10.1"
-    libehp_version = "0.1.1"
-    souffle_version = "2.0.2"
-    build_requires = (
-        "libehp/%s@rewriting+extra-packages/stable" % (libehp_version),
-        "lief/%s" % (lief_version),
-        "souffle/%s@rewriting+extra-packages/stable" % (souffle_version),
     )
 
     def imports(self):
@@ -149,8 +155,7 @@ class DdisasmConan(Properties, ConanFile):
                     "GTIRB_PPRINTER_STRIP_DEBUG_SYMBOLS:BOOL": "ON",
                 }
             )
-
-        self.add_dep_bin_path('mcpp')
+            self.add_dep_bin_path('mcpp')
         self.add_dep_bin_path('gtirb-pprinter')
         self.add_dep_lib_path('gtirb-pprinter', 'gtirb', 'capstone')
         bin_dir = os.path.join(os.getcwd(), "bin")
@@ -160,10 +165,6 @@ class DdisasmConan(Properties, ConanFile):
         cmake.build()
         cmake.test(output_on_failure=True)
         cmake.install()
-
-    def build_requirements(self):
-        if self.settings.os == "Windows":
-            self.build_requires("ninja_installer/1.9.0@bincrafters/stable")
 
     def package(self):
         self.copy("*.h", dst="include", src=self.name)
