@@ -82,7 +82,7 @@ $ cd build
 $ make
 ```
 
-### Debugging options
+### Debug build options
 
 One can selectively turn off ddisasm's various architecture support modules to speed up compilation time during development.
 For example:
