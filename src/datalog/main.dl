@@ -418,7 +418,9 @@ indirect_call(EA):-
     instruction_get_operation(EA,Operation),
     arch.jump_target_op(EA,TargetOp),
     op_indirect(TargetOp,_,_,_,_,_,_),
-    !pc_relative_call(EA,_).
+    !pc_relative_call(EA,_),
+    !direct_call_inferred(EA,_),
+    !arch.return(EA).
 
 .decl halt(EA:address)
 

@@ -152,7 +152,12 @@ return(EA):-
 
 jump(EA):-
     instruction_get_operation(EA,Operation),
-    jump_operation(Operation).
+    (
+        jump_operation(Operation);
+        // JR and JR16 are returns only if the target register is RA.
+        // Otherwise, it's a jump.
+        (arch.return_operation(Operation), !return(EA))
+    ).
 
 .decl delay_slot(BranchEA:address,EA:address)
 .output delay_slot
@@ -160,7 +165,11 @@ jump(EA):-
 delay_slot(BranchEA,EA):-
     next(BranchEA, EA),
     instruction_get_operation(BranchEA,Operation),
-    jump_operation(Operation),
+    (
+        jump_operation(Operation);
+        call_operation(Operation);
+        return_operation(Operation)
+    ),
     !compact_branch_operation(Operation).
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
@@ -338,13 +347,14 @@ pointer_size(4).
 
 .decl call_operation(operation:symbol)
 
-call_operation("J").
 call_operation("JAL").
-call_operation("JALS").
-call_operation("JALX").
+call_operation("JALC").
+call_operation("JALRC").
 call_operation("JALR").
 call_operation("JALRS16").
 call_operation("JALRS").
+call_operation("JALS").
+call_operation("JALX").
 call_operation("JIALC").
 call_operation("BAL").
 call_operation("BALC").
