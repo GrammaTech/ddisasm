@@ -56,19 +56,28 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
             if(SymbolInfo)
             {
                 // Collect FUNC symbols
-                std::set<std::pair<std::string, gtirb::UUID>> FuncSymbols;
+                std::set<std::pair<std::string, gtirb::UUID>> Locals;
+                std::set<std::pair<std::string, gtirb::UUID>> Globals;
                 for(const auto& Symbol : Symbols)
                 {
                     if(auto Found = SymbolInfo->find(Symbol.getUUID()); Found != SymbolInfo->end())
                     {
-                        ElfSymbolInfo SInfo = Found->second;
-                        if(std::get<1>(SInfo) == "FUNC")
+                        if(std::string& Type = std::get<1>(Found->second); Type == "FUNC")
                         {
-                            FuncSymbols.insert(std::make_pair(Symbol.getName(), Symbol.getUUID()));
+                            std::string& Binding = std::get<2>(Found->second);
+                            if(Binding == "GLOBAL")
+                            {
+                                Globals.insert(std::make_pair(Symbol.getName(), Symbol.getUUID()));
+                            }
+                            else
+                            {
+                                Locals.insert(std::make_pair(Symbol.getName(), Symbol.getUUID()));
+                            }
                         }
                     }
                 }
-
+                // Prefer GLOBAL symbols if there are any.
+                auto& FuncSymbols = Globals.size() > 0 ? Globals : Locals;
                 if(FuncSymbols.size() == 1)
                 {
                     FunctionNames.insert({FunctionUUID, (*FuncSymbols.begin()).second});
