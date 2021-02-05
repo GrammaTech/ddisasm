@@ -51,6 +51,9 @@ class CfgTests(unittest.TestCase):
             dest_blocks = [e.target for e in jumping_block.outgoing_edges]
             self.assertEqual(set(dest_blocks), set(expected_dest_blocks))
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_mips_cfg(self):
         """
         Test MIPS CFG
