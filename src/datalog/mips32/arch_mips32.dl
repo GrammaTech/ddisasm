@@ -136,9 +136,12 @@ conditional_mov(EA):-
     instruction_get_operation(EA,Operation),
     move_operation_conditional(Operation).
 
+// Do not treat nop in delay_slot as padding:
+// see the usage of is_nop in code_inference*.dl
 .decl is_nop(EA:address)
 is_nop(EA):-
-    instruction_get_operation(EA,"NOP").
+    instruction_get_operation(EA,"NOP"),
+    !delay_slot(_,EA).
 
 // Returns
 .decl return(n:address)
@@ -152,12 +155,14 @@ return(EA):-
 
 jump(EA):-
     instruction_get_operation(EA,Operation),
-    (
-        jump_operation(Operation);
-        // JR and JR16 are returns only if the target register is RA.
-        // Otherwise, it's a jump.
-        (arch.return_operation(Operation), !return(EA))
-    ).
+    jump_operation(Operation).
+
+jump(EA):-
+    instruction_get_operation(EA,Operation),
+    // JR and JR16 are returns only if the target register is RA.
+    // Otherwise, it's a jump.
+    return_operation(Operation),
+    !return(EA).
 
 .decl delay_slot(BranchEA:address,EA:address)
 .output delay_slot
@@ -379,6 +384,7 @@ syscall_operation("SYSCALL").
 
 return_operation("JR").
 return_operation("JR16").
+return_operation("JRC").
 return_operation("JRADDIUSP").
 
 .decl halt_operation(operation:symbol)
