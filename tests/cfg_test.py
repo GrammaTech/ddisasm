@@ -51,6 +51,45 @@ class CfgTests(unittest.TestCase):
             dest_blocks = [e.target for e in jumping_block.outgoing_edges]
             self.assertEqual(set(dest_blocks), set(expected_dest_blocks))
 
+    def test_mips_cfg(self):
+        """
+        Test MIPS CFG
+        """
+
+        binary = "ex"
+        adder_dir = ex_dir / "ex_adder"
+        with cd(adder_dir):
+            self.assertTrue(
+                compile(
+                    "mips-linux-gnu-gcc",
+                    "mips-linux-gnu-g++",
+                    "-O0",
+                    [],
+                    "qemu-mips -L /usr/mips-linux-gnu",
+                )
+            )
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    "mips-linux-gnu-strip",
+                    False,
+                    False,
+                    format="--ir",
+                    extension="gtirb",
+                )
+            )
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            # check that the 'add' block has two incoming edges and
+            # two outgoing edges.
+            add_symbol = [s for s in m.symbols if s.name == "add"][0]
+            assert isinstance(add_symbol.referent, gtirb.CodeBlock)
+            add_block = add_symbol.referent
+            self.assertEqual(len(list(add_block.outgoing_edges)), 2)
+            self.assertEqual(len(list(add_block.incoming_edges)), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
