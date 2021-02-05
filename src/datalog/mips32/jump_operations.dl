@@ -28,7 +28,6 @@ The set of jump operations in MIPS32
 
 jump_operation("J").
 jump_operation("JIC").
-jump_operation("JRC").
 jump_operation("B16").
 jump_operation("BC").
 jump_operation("BC0F").
@@ -92,11 +91,16 @@ jump_operation("BTNEZ").
 .decl unconditional_jump_operation(n:symbol)
 
 unconditional_jump_operation("J").
-unconditional_jump_operation("JR").
 unconditional_jump_operation("JIC").
 unconditional_jump_operation("B").
 unconditional_jump_operation("B16").
 unconditional_jump_operation("BC").
+
+// Return operations are returns only if the target register is RA.
+// Otherwise, it can be considered as unconditional jump.
+// The caller is responsible for checking the target register.
+unconditional_jump_operation(N):-
+    return_operation(N).
 
 .decl jump_comp_operation(n:symbol)
 

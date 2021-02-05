@@ -85,6 +85,7 @@ may_fallthrough(From,To):-
 // Common case
 may_fallthrough(From,To):-
     next(From,To),
+    !arch.delay_slot(_,From),
     !arch.return(From),
     !unconditional_jump(From),
     !halt(From),
