@@ -273,16 +273,20 @@ void ElfReader::resurrectSymbols()
     // Extract bytes from STRTAB -------------------------------------
     std::vector<uint8_t> StrTabBytes;
     auto It = DynamicEntries.find("STRTAB");
-    if(It == DynamicEntries.end()) {
+    if(It == DynamicEntries.end())
+    {
         std::cerr << "\nWARNING: resurrectSymbols: STRTAB not found.";
     }
-    else {
+    else
+    {
         uint64_t StrTabAddr = It->second;
         It = DynamicEntries.find("STRSZ");
-        if(It == DynamicEntries.end()) {
+        if(It == DynamicEntries.end())
+        {
             std::cerr << "\nWARNING: resurrectSymbols: STRSZ not found.";
         }
-        else {
+        else
+        {
             uint64_t StrTabSize = It->second;
             StrTabBytes = Elf->get_content_from_virtual_address(StrTabAddr, StrTabSize);
         }
@@ -295,21 +299,24 @@ void ElfReader::resurrectSymbols()
     if(Module->getISA() == gtirb::ISA::MIPS32)
     {
         auto It = DynamicEntries.find("SYMTAB");
-        if(It == DynamicEntries.end()) {
+        if(It == DynamicEntries.end())
+        {
             std::cerr << "\nWARNING: resurrectSymbols: SYMTAB not found.";
             return;
         }
         uint64_t Addr = It->second;
 
         It = DynamicEntries.find("MIPS_SYMTABNO");
-        if(It == DynamicEntries.end()) {
+        if(It == DynamicEntries.end())
+        {
             std::cerr << "\nWARNING: resurrectSymbols: MIPS_SYMTABNO not found.";
             return;
         }
         uint64_t DynSymNum = It->second;
 
         It = DynamicEntries.find("SYMENT");
-        if(It == DynamicEntries.end()) {
+        if(It == DynamicEntries.end())
+        {
             std::cerr << "\nWARNING: resurrectSymbols: SYMENT not found.";
             return;
         }
