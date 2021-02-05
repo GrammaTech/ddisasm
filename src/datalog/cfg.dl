@@ -119,6 +119,7 @@ cfg_edge(Src,Dest,"false","false","call"):-
     refined_block_control_instruction(Src,EA),
     (
         direct_call(EA,Dest);
+        direct_call_inferred(EA,Dest);
         pc_relative_call(EA,Dest)
     ),
     refined_block(Dest).
@@ -127,6 +128,7 @@ cfg_edge(Src,Dest,"false","false","fallthrough"):-
     refined_block_control_instruction(Src,EA),
     may_fallthrough(EA,Dest),
     !no_return_call(EA),
+    !function_inference.function_entry(Dest),
     code_in_refined_block(Dest,Dest),
     next_refined_block_in_section(Src,Dest).
 
