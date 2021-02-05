@@ -180,6 +180,7 @@ inferred_symbol_name(ImageBase,"__ImageBase","LOCAL","NONE"):-
     base_address(ImageBase).
 
 inferred_symbol_name(Start,"__EntryPoint","GLOBAL","FUNC"):-
+    binary_format("PE"),
     entry_point(Start).
 
 symbolic_operand_candidate(EA,Op_index,Dest,"imagebase"):-
