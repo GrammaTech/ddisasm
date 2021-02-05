@@ -447,7 +447,7 @@ invalid(EA):-
 
 // If "jalr t9", where t9 is a concrete address value, it can be considered as
 // a direct-call.
-direct_call_inferred(EA,as(Dest,address)):-
+direct_call_resolved(EA,as(Dest,address)):-
     instruction(EA,_,_,"JALR",Op,0,0,0,_,_),
     op_regdirect_contains_reg(Op,"T9"),
     def_used(EA_def,"T9",EA,_),
