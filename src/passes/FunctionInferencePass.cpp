@@ -78,13 +78,12 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
                     // TODO: Choose a right one when there are multiple
                     // FUNC symbols with type FUNC. What's the policy?
                     // For now, pick the first one.
-                    std::cerr << "WARNING: Multiple FUNC symbols at address " << FunctionEntry
+                    std::cerr << "\nWARNING: Multiple FUNC symbols at address " << FunctionEntry
                               << ": ";
                     for(auto It = FuncSymbols.begin(); It != FuncSymbols.end(); ++It)
                     {
                         std::cerr << (*It).first << ", ";
                     }
-                    std::cerr << std::endl;
                     // Pick one of them
                     FunctionNames.insert({FunctionUUID, (*FuncSymbols.begin()).second});
                 }
