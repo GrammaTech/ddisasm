@@ -1185,28 +1185,15 @@ void buildFunctions(gtirb::Context &Context, gtirb::Module &Module, souffle::Sou
                 }
                 // Prefer GLOBAL symbols if there are any.
                 auto &FuncSymbols = Globals.size() > 0 ? Globals : Locals;
-                if(FuncSymbols.size() == 1)
+                if(FuncSymbols.size() > 0)
                 {
-                    FunctionNames.insert({FunctionUUID, (*FuncSymbols.begin()).second});
-                }
-                else if(FuncSymbols.size() > 1)
-                {
-                    std::cerr << "WARNING: Multiple FUNC symbols at address " << FunctionEntry
-                              << ": ";
-                    for(auto It = FuncSymbols.begin(); It != FuncSymbols.end(); ++It)
-                    {
-                        std::cerr << (*It).first << ", ";
-                    }
-                    std::cerr << std::endl;
-                    // Pick one of them.
+                    // Use the first FUNC symbol.
                     FunctionNames.insert({FunctionUUID, (*FuncSymbols.begin()).second});
                 }
                 else
                 {
-                    // Promote existing symbol to type FUNC.
+                    // Use the first non-FUNC symbol.
                     gtirb::Symbol *Symbol = &*It.begin();
-                    ElfSymbolInfo Info = {0, "FUNC", "LOCAL", "DEFAULT", 0};
-                    SymbolInfo->insert({Symbol->getUUID(), Info});
                     FunctionNames.insert({FunctionUUID, Symbol->getUUID()});
                 }
             }
@@ -1601,11 +1588,11 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildCodeSymbolicInformation(context, module, prog);
     buildCfiDirectives(context, module, prog);
     expandSymbolForwarding(context, module, prog);
+    buildFunctions(context, module, prog);
     // This should be done after creating all the symbols.
     connectSymbolsToBlocks(context, module);
     splitSymbols(context, module, prog);
     // These functions should not create additional symbols.
-    buildFunctions(context, module, prog);
     buildCFG(context, module, prog);
     buildPadding(module, prog);
     buildComments(module, prog, selfDiagnose);
