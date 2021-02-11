@@ -340,7 +340,8 @@ conditional_jump(EA):-
 
 direct_jump(EA,as(Dest,address)):-
     arch.jump(EA),
-    arch.jump_target_op(EA,TargetOp),
+    arch.jump_target_op_index(EA,TargetOpIndex),
+    instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_immediate(TargetOp,Dest).
 
 direct_jump(EA,EA):-
@@ -360,7 +361,8 @@ pc_relative_jump(EA,Dest):-
 
 reg_jump(EA,Reg):-
     arch.jump(EA),
-    arch.jump_target_op(EA,TargetOp),
+    arch.jump_target_op_index(EA,TargetOpIndex),
+    instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_regdirect(TargetOp,Reg).
 
 // indirect jump
@@ -368,7 +370,8 @@ reg_jump(EA,Reg):-
 
 indirect_jump(EA):-
     arch.jump(EA),
-    arch.jump_target_op(EA,TargetOp),
+    arch.jump_target_op_index(EA,TargetOpIndex),
+    instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_indirect(TargetOp,_,_,_, _,_,_),
     !pc_relative_jump(EA,_).
 
@@ -380,7 +383,8 @@ indirect_jump(EA):-
 direct_call(EA,as(Dest,address)):-
     arch.call_operation(Operation),
     instruction_get_operation(EA,Operation),
-    arch.jump_target_op(EA,TargetOp),
+    arch.call_target_op_index(EA,TargetOpIndex),
+    instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_immediate(TargetOp,Dest).
 
 // Syntactically indirect call, but statically resolved direct-call
@@ -407,7 +411,8 @@ pc_relative_call(Src,Dest):-
 reg_call(EA,Reg):-
     arch.call_operation(Operation),
     instruction_get_operation(EA,Operation),
-    arch.jump_target_op(EA,TargetOp),
+    arch.call_target_op_index(EA,TargetOpIndex),
+    instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_regdirect(TargetOp,Reg).
 
  .decl indirect_call(src:address)
@@ -416,7 +421,8 @@ reg_call(EA,Reg):-
 indirect_call(EA):-
     arch.call_operation(Operation),
     instruction_get_operation(EA,Operation),
-    arch.jump_target_op(EA,TargetOp),
+    arch.call_target_op_index(EA,TargetOpIndex),
+    instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_indirect(TargetOp,_,_,_,_,_,_),
     !pc_relative_call(EA,_),
     !direct_call_resolved(EA,_),

@@ -69,7 +69,15 @@ jump_equal_operation("BEQ").
 
 jump_unequal_operation("BNE").
 
-.decl jump_target_op(EA:address,operator:operand_code)
+.decl jump_target_op_index(EA:address,operand_index:operand_index)
 
-jump_target_op(EA,Op1):-
-    instruction(EA,_,_,_,Op1,_,_,_,_,_).
+jump_target_op_index(EA,Op_index):-
+    jump(EA),
+    Op_index = 1.
+
+.decl call_target_op_index(EA:address,operand_index:operand_index)
+
+call_target_op_index(EA,Op_index):-
+    instruction_get_operation(EA,Operation),
+    call_operation(Operation),
+    Op_index = 1.

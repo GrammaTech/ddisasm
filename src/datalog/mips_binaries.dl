@@ -296,19 +296,34 @@ split_loadstore(EA, NextEA, as(Upper*2^16+Offset,address)) :-
 // ->
 //       lw v0, %got(L)(gp)
 //       addiu a0, v0, %lo(L)
-base_addr_offset_operand(EA,NextEA,as(Value+Offset,address)):-
+base_addr_offset_operand(EA,NextEA,Dest_addr):-
+    gp_relative_operand(EA,1,_),
     value_reg(EA,Reg,_,"NONE",_,Value,_),
     instruction_get_operation(EA, Operation),
     arch.load_operation(Operation),
-    dynamic_entry("MIPS_BASE_ADDRESS",Val),
-    Value = as(Val,number),
 
     def_used(EA,Reg,NextEA,_),
     EA != NextEA,
 
     // ADDIU <Register> <Register> <Offset>
     // e.g. addiu reg2, reg, Offset
-    arch.reg_reg_arithmetic_operation(NextEA,_,Reg,"NONE",_,Offset).
+    arch.reg_reg_arithmetic_operation(NextEA,_,Reg,"NONE",_,Offset),
+
+    Dest_addr = as(Value+Offset,address),
+    (
+        code(Dest_addr), Type="code"
+        ;
+        data_segment(Begin,End),
+        Dest_addr >= Begin, Dest_addr <= End,
+        Type = "data"
+        ;
+        symbol(Dest_addr,_,_,_,_,_,_,_),
+        Type = "data"
+        ;
+        bss_section_limits(Begin,End),
+        Dest_addr >= Begin, Dest_addr <= End,
+        Type = "data"
+    ).
 
 symbolic_operand_attribute(EA,1,"AddrRelGot"):-
     base_addr_offset_operand(EA,_,_).
@@ -381,6 +396,7 @@ symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
     code(EA),
     instruction_get_op(EA,Op_index,Op),
     gp_relative_operand(EA,Op_index,Dest_addr),
+    !base_addr_offset_operand(EA,_,_),
     (
         code(Dest_addr), Type="code"
         ;
@@ -389,6 +405,21 @@ symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
         Type = "data"
         ;
         symbol(Dest_addr,_,_,_,_,_,_,_),
+        Type = "data"
+    ).
+
+// Deal with pie and relocatable code
+symbolic_operand_candidate(EA,Op_index,Dest,Type):-
+  !binary_type("EXEC"),
+    code(EA),
+    gp_relative_operand(EA,Op_index,Dest),
+    !base_addr_offset_operand(EA,_,_),
+    (
+        code(Dest), Type = "code"
+        ;
+        data_segment(Begin,End),
+        Dest >= Begin,
+        Dest <= End,
         Type = "data"
     ).
 
