@@ -10,6 +10,7 @@ import platform
 
 EXAMPLES_DIR = (pathlib.Path(__file__).parent / "examples").absolute()
 
+
 class bcolors:
     """
     Define some colors for printing in the terminal
@@ -76,11 +77,21 @@ def make(target=""):
     if platform.system() == "Linux":
         return ["make", "-e"] + target
     elif platform.system() == "Windows":
-        return [EXAMPLES_DIR / "make.bat", "/E", "/F", "Makefile.windows"] + target
+        return [
+            EXAMPLES_DIR / "make.bat",
+            "/E",
+            "/F",
+            "Makefile.windows",
+        ] + target
 
 
 def compile(
-        compiler, cxx_compiler, optimizations, extra_flags, exec_wrapper=None, arch=None,
+    compiler,
+    cxx_compiler,
+    optimizations,
+    extra_flags,
+    exec_wrapper=None,
+    arch=None,
 ):
     """
     Clean the project and compile it using the compiler
