@@ -27,23 +27,8 @@ The set of jump operations in MIPS32
 .decl jump_operation(n:symbol)
 
 jump_operation("J").
-jump_operation("JAL").
-jump_operation("JALR").
-jump_operation("JALRS16").
-jump_operation("JALRS").
-jump_operation("JALS").
-jump_operation("JALX").
-jump_operation("JIALC").
 jump_operation("JIC").
-jump_operation("JR").
-jump_operation("JR16").
-jump_operation("JRADDIUSP").
-jump_operation("JRC").
-jump_operation("JALRC").
-
 jump_operation("B16").
-jump_operation("BAL").
-jump_operation("BALC").
 jump_operation("BC").
 jump_operation("BC0F").
 jump_operation("BC0FL").
@@ -69,32 +54,21 @@ jump_operation("BEQ").
 jump_operation("BEQC").
 jump_operation("BEQL").
 jump_operation("BEQZ16").
-jump_operation("BEQZALC").
 jump_operation("BEQZC").
 jump_operation("BGEC").
 jump_operation("BGEUC").
 jump_operation("BGEZ").
-jump_operation("BGEZAL").
-jump_operation("BGEZALC").
-jump_operation("BGEZALL").
-jump_operation("BGEZALS").
 jump_operation("BGEZC").
 jump_operation("BGEZL").
 jump_operation("BGTZ").
-jump_operation("BGTZALC").
 jump_operation("BGTZC").
 jump_operation("BGTZL").
 jump_operation("BLEZ").
-jump_operation("BLEZALC").
 jump_operation("BLEZC").
 jump_operation("BLEZL").
 jump_operation("BLTC").
 jump_operation("BLTUC").
 jump_operation("BLTZ").
-jump_operation("BLTZAL").
-jump_operation("BLTZALC").
-jump_operation("BLTZALL").
-jump_operation("BLTZALS").
 jump_operation("BLTZC").
 jump_operation("BLTZL").
 jump_operation("BNE").
@@ -103,7 +77,6 @@ jump_operation("BNEGI").
 jump_operation("BNEG").
 jump_operation("BNEL").
 jump_operation("BNEZ16").
-jump_operation("BNEZALC").
 jump_operation("BNEZC").
 jump_operation("BNVC").
 jump_operation("BOVC").
@@ -118,38 +91,33 @@ jump_operation("BTNEZ").
 .decl unconditional_jump_operation(n:symbol)
 
 unconditional_jump_operation("J").
-unconditional_jump_operation("JIALC").
 unconditional_jump_operation("JIC").
 unconditional_jump_operation("B").
 unconditional_jump_operation("B16").
 unconditional_jump_operation("BC").
+
+// Return operations are returns only if the target register is RA.
+// Otherwise, it can be considered as unconditional jump.
+// The caller is responsible for checking the target register.
+unconditional_jump_operation(N):-
+    return_operation(N).
 
 .decl jump_comp_operation(n:symbol)
 
 jump_comp_operation("BGEC").
 jump_comp_operation("BGEUC").
 jump_comp_operation("BGEZ").
-jump_comp_operation("BGEZAL").
-jump_comp_operation("BGEZALC").
-jump_comp_operation("BGEZALL").
-jump_comp_operation("BGEZALS").
 jump_comp_operation("BGEZC").
 jump_comp_operation("BGEZL").
 jump_comp_operation("BGTZ").
-jump_comp_operation("BGTZALC").
 jump_comp_operation("BGTZC").
 jump_comp_operation("BGTZL").
 jump_comp_operation("BLEZ").
-jump_comp_operation("BLEZALC").
 jump_comp_operation("BLEZC").
 jump_comp_operation("BLEZL").
 jump_comp_operation("BLTC").
 jump_comp_operation("BLTUC").
 jump_comp_operation("BLTZ").
-jump_comp_operation("BLTZAL").
-jump_comp_operation("BLTZALC").
-jump_comp_operation("BLTZALL").
-jump_comp_operation("BLTZALS").
 jump_comp_operation("BLTZC").
 jump_comp_operation("BLTZL").
 
@@ -160,7 +128,6 @@ jump_equal_operation("BEQC").
 jump_equal_operation("BEQL").
 jump_equal_operation("BEQZ").
 jump_equal_operation("BEQZ16").
-jump_equal_operation("BEQZALC").
 jump_equal_operation("BEQZC").
 jump_equal_operation("BC1EQZ").
 jump_equal_operation("BC2EQZ").
@@ -172,7 +139,6 @@ jump_unequal_operation("BNEC").
 jump_unequal_operation("BNEL").
 jump_unequal_operation("BNEZ").
 jump_unequal_operation("BNEZ16").
-jump_unequal_operation("BNEZALC").
 jump_unequal_operation("BNEZC").
 jump_unequal_operation("BC1NEZ").
 jump_unequal_operation("BC2NEZ").

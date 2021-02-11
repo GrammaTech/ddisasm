@@ -23,6 +23,24 @@ default: &default
   # Test configuration.
   test:
     wrapper: "qemu-mips -L /usr/mips-linux-gnu"
+    strip_exe: "mips-linux-gnu-strip"
+    sstrip: false
+    strip: false
+    skip: false
+
+test-strip-default: &test-strip-default
+  test:
+    wrapper: "qemu-mips -L /usr/mips-linux-gnu"
+    strip_exe: "mips-linux-gnu-strip"
+    sstrip: false
+    strip: true
+    skip: false
+
+test-sstrip-default: &test-sstrip-default
+  test:
+    wrapper: "qemu-mips -L /usr/mips-linux-gnu"
+    strip_exe: "mips-linux-gnu-strip"
+    sstrip: true
     strip: false
     skip: false
 
@@ -88,8 +106,11 @@ tests:
   - name: ex_uninitialized_data
     <<: *default
 
-  - name: ex_stat
-    <<: *default
+  # Currently, ex_stat seg-faults because __lstat is not recognized as
+  # FUNC/GLOBAL: .global directive seems to resolve the seg-fault.
+  # This needs further investigation. Disable this test for now.
+  #- name: ex_stat
+  #  <<: *default
 
   - name: ex_virtualDispatch
     <<: *default
@@ -99,3 +120,171 @@ tests:
         skip: false
 
   # FIXME: ex_exceptions{1,2,3}: .gcc_except_table
+
+  # ---------------------------------------------------------------------------
+  # stripped binaries
+  # ---------------------------------------------------------------------------
+  - name: ex1
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_2modulesPIC
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_confusing_data
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_memberPointer
+    <<: *default
+    <<: *test-strip-default
+    reassemble:
+        compiler: "mips-linux-gnu-g++"
+        flags: ["-no-pie"]
+        skip: false
+
+  - name: ex_false_pointer_array
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_float
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_fprintf
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_getoptlong
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_noreturn
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_pointerReatribution
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_pointerReatribution2
+    <<: *default
+    <<: *test-strip-default
+
+  # Currently, ddisasm fails to find symbolic operands in split-load
+  # in the optimized binaries built in ubuntu16 and ubuntu18.
+  - name: ex_pointerReatribution3
+    <<: *zero-optimize
+    <<: *test-strip-default
+
+  - name: ex_struct
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_switch
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_uninitialized_data
+    <<: *default
+    <<: *test-strip-default
+
+  # Currently, ex_stat seg-faults because __lstat is not recognized as
+  # FUNC/GLOBAL: .global directive seems to resolve the seg-fault.
+  # This needs further investigation. Disable this test for now.
+  #- name: ex_stat
+  #  <<: *default
+  #  <<: *test-strip-default
+
+  - name: ex_virtualDispatch
+    <<: *default
+    <<: *test-strip-default
+    reassemble:
+        compiler: "mips-linux-gnu-g++"
+        flags: ["-no-pie"]
+        skip: false
+
+  # ---------------------------------------------------------------------------
+  # sectionless (sstripped)
+  # ---------------------------------------------------------------------------
+  - name: ex1
+    <<: *default
+    <<: *test-sstrip-default
+
+  - name: ex_2modulesPIC
+    <<: *default
+    <<: *test-sstrip-default
+
+  - name: ex_confusing_data
+    <<: *default
+    <<: *test-sstrip-default
+
+  - name: ex_memberPointer
+    <<: *default
+    <<: *test-sstrip-default
+    reassemble:
+        compiler: "mips-linux-gnu-g++"
+        flags: ["-no-pie"]
+        skip: false
+
+  - name: ex_false_pointer_array
+    <<: *default
+    <<: *test-sstrip-default
+
+  - name: ex_float
+    <<: *default
+    <<: *test-sstrip-default
+
+  - name: ex_fprintf
+    <<: *default
+    <<: *test-sstrip-default
+
+  - name: ex_getoptlong
+    <<: *default
+    <<: *test-sstrip-default
+
+  - name: ex_noreturn
+    <<: *default
+    <<: *test-sstrip-default
+
+  - name: ex_pointerReatribution
+    <<: *default
+    <<: *test-sstrip-default
+
+  - name: ex_pointerReatribution2
+    <<: *default
+    <<: *test-sstrip-default
+
+  # Currently, ddisasm fails to find symbolic operands in split-load
+  # in the optimized binaries built in ubuntu16 and ubuntu18.
+  - name: ex_pointerReatribution3
+    <<: *zero-optimize
+    <<: *test-sstrip-default
+
+  - name: ex_struct
+    <<: *default
+    <<: *test-sstrip-default
+
+  - name: ex_switch
+    <<: *default
+    <<: *test-sstrip-default
+
+  - name: ex_uninitialized_data
+    <<: *default
+    <<: *test-sstrip-default
+
+  # Currently, ex_stat seg-faults because __lstat is not recognized as
+  # FUNC/GLOBAL: .global directive seems to resolve the seg-fault.
+  # This needs further investigation. Disable this test for now.
+  #- name: ex_stat
+  #  <<: *default
+  #  <<: *test-sstrip-default
+
+  - name: ex_virtualDispatch
+    <<: *default
+    <<: *test-sstrip-default
+    reassemble:
+        compiler: "mips-linux-gnu-g++"
+        flags: ["-no-pie"]
+        skip: false

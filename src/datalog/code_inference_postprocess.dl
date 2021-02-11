@@ -65,6 +65,11 @@ block_needs_splitting_at(EA):-
     code_in_block(EA,Block),
     EA != Block.
 
+block_needs_splitting_at(EA):-
+    binary_isa("MIPS"),
+    // When a block consists of some nop paddings followed by code,
+    // the block needs to be split at the first code EA after the nop paddings.
+    padding_prefix_end(EA,_).
 
 split_block(Block):-
     block(Block).
@@ -185,3 +190,27 @@ block_has_non_nop(Block):-
 nop_block(Block):-
     refined_block(Block),
     !block_has_non_nop(Block).
+
+// nops before code in a block
+.decl padding_prefix(EA:address,Block:address)
+
+padding_prefix(EA,Block):-
+    code_in_block(EA,Block),
+    arch.is_nop(EA),
+    EA = Block.
+
+padding_prefix(EA,Block):-
+    padding_prefix(PrevEA,Block),
+    next(PrevEA,EA),
+    code_in_block(EA,Block),
+    arch.is_nop(EA).
+
+// the first code EA after nop pads in the given block
+.decl padding_prefix_end(EA:address,Block:address)
+.output padding_prefix_end
+
+padding_prefix_end(EA,Block):-
+    code_in_block(EA,Block),
+    !arch.is_nop(EA),
+    next(PrevEA,EA),
+    padding_prefix(PrevEA,Block).

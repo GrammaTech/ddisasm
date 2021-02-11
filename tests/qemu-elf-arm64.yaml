@@ -23,6 +23,7 @@ default: &default
   # Test configuration.
   test:
     wrapper: "qemu-aarch64 -L /usr/aarch64-linux-gnu"
+    strip_exe: "aarch64-linux-gnu-strip"
     strip: false
     skip: false
 

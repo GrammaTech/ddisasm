@@ -24,10 +24,24 @@ class MultModuleTests(unittest.TestCase):
         with cd(ex_dir / "ex_dyn_library"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
             self.assertTrue(
-                disassemble(binary, False, format="--ir", extension="gtirb",)
+                disassemble(
+                    binary,
+                    "strip",
+                    False,
+                    False,
+                    format="--ir",
+                    extension="gtirb",
+                )
             )
             self.assertTrue(
-                disassemble(library, False, format="--ir", extension="gtirb",)
+                disassemble(
+                    library,
+                    "strip",
+                    False,
+                    False,
+                    format="--ir",
+                    extension="gtirb",
+                )
             )
             ir_binary = gtirb.IR.load_protobuf(binary + ".gtirb")
             ir_library = gtirb.IR.load_protobuf(library + ".gtirb")
@@ -63,7 +77,14 @@ class LibrarySymbolsTests(unittest.TestCase):
         with cd(ex_dir / "ex_lib_symbols"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
             self.assertTrue(
-                disassemble(library, False, format="--ir", extension="gtirb",)
+                disassemble(
+                    library,
+                    "strip",
+                    False,
+                    False,
+                    format="--ir",
+                    extension="gtirb",
+                )
             )
 
             ir_library = gtirb.IR.load_protobuf(library + ".gtirb")
@@ -100,7 +121,14 @@ class AuxDataTests(unittest.TestCase):
         with cd(ex_asm_dir / "ex_cfi_directives"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
             self.assertTrue(
-                disassemble(binary, False, format="--ir", extension="gtirb",)
+                disassemble(
+                    binary,
+                    "strip",
+                    False,
+                    False,
+                    format="--ir",
+                    extension="gtirb",
+                )
             )
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")

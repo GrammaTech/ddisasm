@@ -85,6 +85,7 @@ may_fallthrough(From,To):-
 // Common case
 may_fallthrough(From,To):-
     next(From,To),
+    !arch.delay_slot(_,From),
     !arch.return(From),
     !unconditional_jump(From),
     !halt(From),
@@ -132,6 +133,7 @@ may_have_symbolic_immediate(Src,as(Dest,address)):-
 
 
 .decl invalid(EA:address)
+.output invalid
 
 // if the decoder failed to decode any instruction at EA, EA is invalid
 invalid(EA):-
@@ -602,7 +604,7 @@ block_points(Block,BlockPred,3,"fits"):-
 // fits after nops block
 block_points(Block,BlockPred,1,"fits"):-
     block_is_overlapping(Block),
-    must_fallthrough(EA,Block),
+    next(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     candidate_block_is_padding(BlockPred),
     !block_is_overlapping(BlockPred).

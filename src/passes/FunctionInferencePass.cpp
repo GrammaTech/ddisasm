@@ -34,6 +34,8 @@
 
 void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M)
 {
+    auto* SymbolInfo = M.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
     std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2function;
     std::map<gtirb::UUID, gtirb::UUID> FunctionNames;
@@ -48,9 +50,60 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
             gtirb::UUID FunctionUUID = Generator();
             FunctionEntry2function[FunctionEntry] = FunctionUUID;
             FunctionEntries[FunctionUUID].insert(EntryBlockUUID);
-            for(const auto& Symbol : M.findSymbols(FunctionEntry))
+
+            const auto& Symbols = M.findSymbols(FunctionEntry);
+
+            if(SymbolInfo)
             {
-                FunctionNames.insert({FunctionUUID, Symbol.getUUID()});
+                // Collect FUNC symbols
+                std::set<std::pair<std::string, gtirb::UUID>> FuncSymbols;
+                for(const auto& Symbol : Symbols)
+                {
+                    if(auto Found = SymbolInfo->find(Symbol.getUUID()); Found != SymbolInfo->end())
+                    {
+                        ElfSymbolInfo SInfo = Found->second;
+                        if(std::get<1>(SInfo) == "FUNC")
+                        {
+                            FuncSymbols.insert(std::make_pair(Symbol.getName(), Symbol.getUUID()));
+                        }
+                    }
+                }
+
+                if(FuncSymbols.size() == 1)
+                {
+                    FunctionNames.insert({FunctionUUID, (*FuncSymbols.begin()).second});
+                }
+                else if(FuncSymbols.size() > 1)
+                {
+                    // TODO: Choose a right one when there are multiple
+                    // FUNC symbols with type FUNC. What's the policy?
+                    // For now, pick the first one.
+                    std::cerr << "\nWARNING: Multiple FUNC symbols at address " << FunctionEntry
+                              << ": ";
+                    for(auto It = FuncSymbols.begin(); It != FuncSymbols.end(); ++It)
+                    {
+                        std::cerr << (*It).first << ", ";
+                    }
+                    // Pick one of them
+                    FunctionNames.insert({FunctionUUID, (*FuncSymbols.begin()).second});
+                }
+                else
+                {
+                    // If there is no existing symbol with type FUNC,
+                    // pick one symbol.
+                    if(!Symbols.empty())
+                    {
+                        const auto& Symbol = *Symbols.begin();
+                        FunctionNames.insert({FunctionUUID, Symbol.getUUID()});
+                    }
+                }
+            }
+            else
+            {
+                for(const auto& Symbol : Symbols)
+                {
+                    FunctionNames.insert({FunctionUUID, Symbol.getUUID()});
+                }
             }
         }
     }

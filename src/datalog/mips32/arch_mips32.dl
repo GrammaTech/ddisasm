@@ -57,6 +57,8 @@ store_operation("SWM32").
 store_operation("SWP").
 store_operation("SWR").
 store_operation("SWXC1").
+store_operation("SH").
+store_operation("SH16").
 store_operation("SB").
 store_operation("SB16").
 store_operation("SC").
@@ -134,16 +136,20 @@ conditional_mov(EA):-
     instruction_get_operation(EA,Operation),
     move_operation_conditional(Operation).
 
+// Do not treat nop in delay_slot as padding:
+// see the usage of is_nop in code_inference*.dl
 .decl is_nop(EA:address)
 is_nop(EA):-
-    instruction_get_operation(EA,"NOP").
+    instruction_get_operation(EA,"NOP"),
+    !delay_slot(_,EA).
 
 // Returns
 .decl return(n:address)
 
 return(EA):-
-    return_operation(Operation),
-    instruction_get_operation(EA,Operation).
+    arch.return_operation(Operation),
+    instruction(EA,_,_,Operation,Op,_,_,_,_,_),
+    op_regdirect_contains_reg(Op,"RA").
 
 .decl jump(EA:address)
 
@@ -151,13 +157,24 @@ jump(EA):-
     instruction_get_operation(EA,Operation),
     jump_operation(Operation).
 
+jump(EA):-
+    instruction_get_operation(EA,Operation),
+    // JR and JR16 are returns only if the target register is RA.
+    // Otherwise, it's a jump.
+    return_operation(Operation),
+    !return(EA).
+
 .decl delay_slot(BranchEA:address,EA:address)
 .output delay_slot
 
 delay_slot(BranchEA,EA):-
     next(BranchEA, EA),
     instruction_get_operation(BranchEA,Operation),
-    jump_operation(Operation),
+    (
+        jump_operation(Operation);
+        call_operation(Operation);
+        return_operation(Operation)
+    ),
     !compact_branch_operation(Operation).
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
@@ -335,14 +352,16 @@ pointer_size(4).
 
 .decl call_operation(operation:symbol)
 
-call_operation("J").
 call_operation("JAL").
-call_operation("JALS").
-call_operation("JALX").
+call_operation("JALC").
+call_operation("JALRC").
 call_operation("JALR").
 call_operation("JALRS16").
 call_operation("JALRS").
+call_operation("JALS").
+call_operation("JALX").
 call_operation("JIALC").
+call_operation("BAL").
 call_operation("BALC").
 call_operation("BEQZALC").
 call_operation("BGEZAL").
@@ -365,6 +384,7 @@ syscall_operation("SYSCALL").
 
 return_operation("JR").
 return_operation("JR16").
+return_operation("JRC").
 return_operation("JRADDIUSP").
 
 .decl halt_operation(operation:symbol)
