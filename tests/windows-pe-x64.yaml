@@ -3,6 +3,7 @@ platform: Windows
 default: &default
   path: examples
   binary: ex.exe
+  arch: x64
 
   # Compilation configuration.
   build:

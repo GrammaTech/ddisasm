@@ -3,9 +3,12 @@ import contextlib
 import os
 import shlex
 import subprocess
-import platform
+import pathlib
 from timeit import default_timer as timer
 
+import platform
+
+EXAMPLES_DIR = (pathlib.Path(__file__).parent / "examples").absolute()
 
 class bcolors:
     """
@@ -73,11 +76,11 @@ def make(target=""):
     if platform.system() == "Linux":
         return ["make", "-e"] + target
     elif platform.system() == "Windows":
-        return ["nmake", "/E", "/F", "Makefile.windows"] + target
+        return [EXAMPLES_DIR / "make.bat", "/E", "/F", "Makefile.windows"] + target
 
 
 def compile(
-    compiler, cxx_compiler, optimizations, extra_flags, exec_wrapper=None
+        compiler, cxx_compiler, optimizations, extra_flags, exec_wrapper=None, arch=None,
 ):
     """
     Clean the project and compile it using the compiler
@@ -96,6 +99,8 @@ def compile(
     env["CXXFLAGS"] = quote_args(optimizations, *extra_flags)
     if exec_wrapper:
         env["EXEC"] = exec_wrapper
+    if arch:
+        env["ARCH"] = arch
     completedProcess = subprocess.run(
         make("clean"), env=env, stdout=subprocess.DEVNULL
     )
@@ -233,6 +238,7 @@ def disassemble_reassemble_test(
     reassemble_function=reassemble,
     skip_test=False,
     exec_wrapper=None,
+    arch=None,
 ):
     """
     Disassemble, reassemble and test an example with the given compilers and
@@ -263,6 +269,7 @@ def disassemble_reassemble_test(
                     optimization,
                     extra_compile_flags,
                     exec_wrapper,
+                    arch,
                 ):
                     compile_errors += 1
                     continue
