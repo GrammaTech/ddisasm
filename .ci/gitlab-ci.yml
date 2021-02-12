@@ -43,7 +43,7 @@ check-format:
       ) && exit 1)
 
 build-conan:
-  image: $DOCKER_REGISTRY/rewriting/gtirb-pprinter/ubuntu18:bfair-conan
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/conan
   stage: build
   needs: [check-format]
   script:
@@ -55,15 +55,16 @@ build-conan:
 
 conan-windows:
   stage: build
-  tags: [gtirb-pprinter-windows]
+  tags: [ddisasm-windows]
   script:
     - systeminfo
     # Set up user and remote
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
     - conan user ci_user -r gitlab -p ${CI_JOB_TOKEN}
     # Run build script
-    - export PYTHONPATH="$(cygpath -w $(pwd))"
     - export PATH="$PATH;C:\\Program Files\\CMake\\bin"
+    - export SOUFFLE_INCLUDE_DIR="C:\\users\\vagrant\\AppData\\local\\Packages\\CanonicalGroupLimited.Ubuntu18.04onWindows_79rhkp1fndgsc\\localstate\\rootfs\\usr\\local\\include"
+    - export PYTHON="C:\\Python39\\python.exe"
     - python .ci/build.py
 
 .build-template: &build
