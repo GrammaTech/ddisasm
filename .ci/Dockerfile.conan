@@ -29,27 +29,3 @@ RUN cd /usr/mips-linux-gnu \
 COPY etc/sstrip /usr/bin/sstrip
 
 RUN python3 -m pip install conan distro pyyaml
-
-# # Install cross-platform utils
-# RUN sudo apt-get -y update \
-#  && sudo apt-get -y install \
-#       gcc-arm-linux-gnueabihf \
-#       gcc-aarch64-linux-gnu \
-#       gcc-mips-linux-gnu \
-#       g++-mips-linux-gnu \
-#       qemu-user
-# 
-# RUN sudo dpkg --add-architecture i386 \
-#  && sudo apt-get -y update \
-#  && sudo apt-get -y install \
-#       libc6-dev:i386 \
-#       libstdc++-7-dev:i386 \
-#       lib32gcc-7-dev \
-#       lib32stdc++-7-dev
-# 
-# RUN cd /usr/mips-linux-gnu \
-#  && sudo mkdir etc \
-#  && sudo ldconfig -c etc/ld.do.cache -r .
-# 
-# # Install sstrip
-# COPY etc/sstrip /usr/bin/sstrip
