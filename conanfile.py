@@ -83,15 +83,18 @@ class DdisasmConan(Properties, ConanFile):
     libehp_version = "0.1.1"
     souffle_version = "2.0.2"
     build_requires = (
-                "libehp/%s@rewriting+extra-packages/stable" % (libehp_version),
-                "lief/%s" % (lief_version),
-            )
+        "libehp/%s@rewriting+extra-packages/stable" % (libehp_version),
+        "lief/%s" % (lief_version),
+    )
+
     def build_requirements(self):
         if self.settings.os == "Windows":
             self.build_requires("ninja_installer/1.9.0@bincrafters/stable")
         else:
-            self.build_requires("souffle/%s@rewriting+extra-packages/stable" %
-                          (self.souffle_version))
+            self.build_requires(
+                "souffle/%s@rewriting+extra-packages/stable"
+                % (self.souffle_version)
+            )
 
     boost_version = "1.69.0"
     gtirb_version = "1.10.2"
@@ -145,8 +148,20 @@ class DdisasmConan(Properties, ConanFile):
         defs = {"CMAKE_VERBOSE_MAKEFILE:BOOL": "ON", "ENABLE_CONAN:BOOL": "ON"}
         if self.settings.os == "Windows":
             cmake = CMake(self, generator="Ninja")
-            defs.update({k: os.environ.get(k) for k in ["CMAKE_PREFIX_PATH"]})
+            defs.update(
+                {
+                    k: os.environ.get(k)
+                    for k in [
+                        "CMAKE_PREFIX_PATH",
+                        "SOUFFLE_INCLUDE_DIR",
+                        "PYTHON",
+                    ]
+                }
+            )
             defs["Boost_USE_STATIC_LIBS"] = "ON"
+            defs[
+                "CMAKE_CXX_FLAGS"
+            ] = "/DBOOST_ALL_NO_LIB /DBOOST_UUID_FORCE_AUTO_LINK"
         else:
             cmake = CMake(self, generator=None)
             defs.update(
@@ -155,9 +170,10 @@ class DdisasmConan(Properties, ConanFile):
                     "GTIRB_PPRINTER_STRIP_DEBUG_SYMBOLS:BOOL": "ON",
                 }
             )
-            self.add_dep_bin_path('mcpp')
-        self.add_dep_bin_path('gtirb-pprinter')
-        self.add_dep_lib_path('gtirb-pprinter', 'gtirb', 'capstone')
+            self.add_dep_bin_path("mcpp")
+
+        self.add_dep_bin_path("gtirb-pprinter")
+        self.add_dep_lib_path("gtirb-pprinter", "gtirb", "capstone")
         bin_dir = os.path.join(os.getcwd(), "bin")
         os.environ["PATH"] = os.pathsep.join([os.environ["PATH"], bin_dir])
 

@@ -31,7 +31,8 @@ if(ehp_INCLUDE_DIR)
   target_include_directories(gtirb_decoder PRIVATE ${ehp_INCLUDE_DIR})
 endif()
 if(SOUFFLE_INCLUDE_DIR)
-  target_include_directories(gtirb_decoder PRIVATE ${SOUFFLE_INCLUDE_DIR})
+  target_include_directories(gtirb_decoder SYSTEM
+                             PRIVATE ${SOUFFLE_INCLUDE_DIR})
 endif()
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
