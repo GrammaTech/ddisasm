@@ -47,7 +47,8 @@ target_compile_definitions(no_return_pass PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(no_return_pass PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(no_return_pass PRIVATE ${OPENMP_FLAGS})
 if(SOUFFLE_INCLUDE_DIR)
-  target_include_directories(no_return_pass PRIVATE ${SOUFFLE_INCLUDE_DIR})
+  target_include_directories(no_return_pass SYSTEM
+                             PRIVATE ${SOUFFLE_INCLUDE_DIR})
 endif()
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
@@ -96,7 +97,7 @@ if(CAPSTONE_INCLUDE_DIR)
                              PRIVATE ${CAPSTONE_INCLUDE_DIR})
 endif()
 if(SOUFFLE_INCLUDE_DIR)
-  target_include_directories(function_inference_pass
+  target_include_directories(function_inference_pass SYSTEM
                              PRIVATE ${SOUFFLE_INCLUDE_DIR})
 endif()
 

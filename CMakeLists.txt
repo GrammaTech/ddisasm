@@ -37,7 +37,6 @@ string(TIMESTAMP DDISASM_BUILD_DATE "%Y-%m-%d")
 # Global Options (CMake)
 #
 
-
 option(DDISASM_ARM_64 "Whether or not ARM64 support is built." ON)
 option(DDISASM_X86_32 "Whether or not x86_32 support is built." ON)
 option(DDISASM_X86_64 "Whether or not x86_64 support is built." ON)

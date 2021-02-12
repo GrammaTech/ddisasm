@@ -334,7 +334,7 @@ target_compile_definitions(ddisasm PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(ddisasm PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(ddisasm PRIVATE ${OPENMP_FLAGS})
 if(SOUFFLE_INCLUDE_DIR)
-  target_include_directories(ddisasm PRIVATE ${SOUFFLE_INCLUDE_DIR})
+  target_include_directories(ddisasm SYSTEM PRIVATE ${SOUFFLE_INCLUDE_DIR})
 endif()
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
