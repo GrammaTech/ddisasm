@@ -8,7 +8,7 @@ from timeit import default_timer as timer
 
 import platform
 
-EXAMPLES_DIR = (pathlib.Path(__file__).parent / "examples").absolute()
+EXAMPLES_DIR = (pathlib.Path(__file__).parent / ".." / "examples").absolute()
 
 
 class bcolors:
@@ -77,14 +77,12 @@ def make(target=""):
     if platform.system() == "Linux":
         return ["make", "-e"] + target
     elif platform.system() == "Windows":
-        args = [
+        return [
             EXAMPLES_DIR / "make.bat",
             "/E",
             "/F",
             "Makefile.windows",
         ] + target
-        print(args)
-        return args
 
 
 def compile(
