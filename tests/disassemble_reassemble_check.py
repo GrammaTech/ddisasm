@@ -77,12 +77,14 @@ def make(target=""):
     if platform.system() == "Linux":
         return ["make", "-e"] + target
     elif platform.system() == "Windows":
-        return [
+        args = [
             EXAMPLES_DIR / "make.bat",
             "/E",
             "/F",
             "Makefile.windows",
         ] + target
+        print(args)
+        return args
 
 
 def compile(
