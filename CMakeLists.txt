@@ -45,7 +45,7 @@ option(DDISASM_X86_64 "Whether or not x86_64 support is built." ON)
 
 option(DDISASM_ENABLE_TESTS "Enable building and running unit tests." ON)
 
-option(ENABLE_CONAN "Use Conan to inject dependencies" ON)
+option(ENABLE_CONAN "Use Conan to inject dependencies" OFF)
 
 if(ENABLE_CONAN)
   include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
