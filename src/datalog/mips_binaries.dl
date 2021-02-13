@@ -410,7 +410,7 @@ symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
 
 // Deal with pie and relocatable code
 symbolic_operand_candidate(EA,Op_index,Dest,Type):-
-  !binary_type("EXEC"),
+    !binary_type("EXEC"),
     code(EA),
     gp_relative_operand(EA,Op_index,Dest),
     !base_addr_offset_operand(EA,_,_),

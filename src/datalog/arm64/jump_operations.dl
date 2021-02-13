@@ -62,13 +62,11 @@ jump_equal_operation("B.NE").
 
 .decl jump_target_op_index(EA:address,operand_index:operand_index)
 
-jump_target_op_index(EA,Op_index):-
-    jump(EA),
-    Op_index = 1.
+jump_target_op_index(EA,1):-
+    jump(EA).
 
 .decl call_target_op_index(EA:address,operand_index:operand_index)
 
-call_target_op_index(EA,Op_index):-
+call_target_op_index(EA,1):-
     instruction_get_operation(EA,Operation),
-    call_operation(Operation),
-    Op_index = 1.
+    call_operation(Operation).

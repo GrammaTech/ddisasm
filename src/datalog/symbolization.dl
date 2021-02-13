@@ -132,7 +132,7 @@ symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
 
 // Deal with pie and relocatable code
 symbolic_operand_candidate(EA,Op_index,Dest,Type):-
-  !binary_type("EXEC"),
+    !binary_type("EXEC"),
     code(EA),
     (
         instruction_immediate_offset(EA,Op_index,ImmediateOffset),

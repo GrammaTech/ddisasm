@@ -159,28 +159,27 @@ compact_branch_operation("BOVC").
 compact_branch_operation("BNVC").
 compact_branch_operation("JC").
 
+.decl jump_operation_op_index(Operation:symbol,operand_index:operand_index)
+
+jump_operation_op_index(Operation,2):-
+    jump_unequal_operation_3op(Operation);
+    jump_equal_operation_3op(Operation);
+    jump_comp_operation_3op(Operation).
+
+jump_operation_op_index(Operation,1):-
+    jump_operation(Operation),
+    !jump_unequal_operation_3op(Operation),
+    !jump_equal_operation_3op(Operation),
+    !jump_comp_operation_3op(Operation).
+
 .decl jump_target_op_index(EA:address,operand_index:operand_index)
 
 jump_target_op_index(EA,Op_index):-
     instruction_get_operation(EA,Operation),
-    (
-        jump_unequal_operation_3op(Operation);
-        jump_equal_operation_3op(Operation);
-        jump_comp_operation_3op(Operation)
-    ),
-    Op_index = 2.
-
-jump_target_op_index(EA,Op_index):-
-    instruction_get_operation(EA,Operation),
-    jump_operation(Operation),
-    !jump_comp_operation_3op(Operation),
-    !jump_equal_operation_3op(Operation),
-    !jump_comp_operation_3op(Operation),
-    Op_index = 1.
+    jump_operation_op_index(Operation,Op_index).
 
 .decl call_target_op_index(EA:address,operand_index:operand_index)
 
-call_target_op_index(EA,Op_index):-
+call_target_op_index(EA,1):-
     instruction_get_operation(EA,Operation),
-    call_operation(Operation),
-    Op_index = 1.
+    call_operation(Operation).
