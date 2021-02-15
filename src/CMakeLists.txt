@@ -459,6 +459,10 @@ if(BUILD_FUNINFER)
   target_include_directories(
     funinfer PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
 
+  if(SOUFFLE_INCLUDE_DIR)
+    target_include_directories(funinfer PRIVATE ${SOUFFLE_INCLUDE_DIR})
+  endif()
+
   if(${GTIRB_USE_SYSTEM_BOOST} MATCHES "OFF")
     add_dependencies(funinfer Boost)
   endif()
