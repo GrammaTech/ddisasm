@@ -1,6 +1,8 @@
-set ARCH
-set VCINSTALLDIR
+IF NOT DEFINED ARCH (SET ARCH=x64)
 
-@call "%VCINSTALLDIR%\Auxiliary\Build\vcvarsall.bat" %ARCH%
+SET ARCH
+SET CFLAGS
+SET VCINSTALLDIR
 
+@CALL "%VCINSTALLDIR%\Auxiliary\Build\vcvarsall.bat" %ARCH%
 nmake %*
