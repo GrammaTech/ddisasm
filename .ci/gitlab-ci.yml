@@ -69,7 +69,7 @@ conan-windows:
     # Install gtirb python wheel
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=python-wheel --output "gtirb-wheel.zip"
     - unzip gtirb-wheel.zip
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb-*-py*.whl
+    - python -m pip install pip --upgrade && python -m pip install gtirb-*-py*.whl
     # Run build script
     - export PATH="$PATH;C:\\Program Files\\CMake\\bin"
     - export SOUFFLE_INCLUDE_DIR="C:\\users\\vagrant\\AppData\\local\\Packages\\CanonicalGroupLimited.Ubuntu18.04onWindows_79rhkp1fndgsc\\localstate\\rootfs\\usr\\local\\include"
