@@ -111,7 +111,7 @@ def compile(
     if exec_wrapper:
         env["EXEC"] = exec_wrapper
     if arch:
-        env["ARCH"] = arch
+        env["TARGET_ARCH"] = arch
     completedProcess = subprocess.run(
         make("clean"), env=env, stdout=subprocess.DEVNULL
     )
