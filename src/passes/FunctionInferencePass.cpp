@@ -79,40 +79,39 @@ void FunctionInferencePass::updateFunctions(gtirb::Context& Context, gtirb::Modu
             }
             else if(SymbolInfo)
             {
-                // Collect FUNC symbols.
-                std::set<std::pair<std::string, gtirb::UUID>> Locals;
-                std::set<std::pair<std::string, gtirb::UUID>> Globals;
-                for(const auto& Symbol : Symbols)
+                // Aggregate candidate symbols.
+                std::vector<std::tuple<const gtirb::Symbol*, std::string, std::string>> Candidates;
+                for(auto& Symbol : It)
                 {
-                    if(auto Found = SymbolInfo->find(Symbol.getUUID()); Found != SymbolInfo->end())
+                    if(const auto& Found = SymbolInfo->find(Symbol.getUUID());
+                       Found != SymbolInfo->end())
                     {
-                        if(std::string& Type = std::get<1>(Found->second); Type == "FUNC")
-                        {
-                            std::string& Binding = std::get<2>(Found->second);
-                            if(Binding == "GLOBAL")
-                            {
-                                Globals.insert(std::make_pair(Symbol.getName(), Symbol.getUUID()));
-                            }
-                            else
-                            {
-                                Locals.insert(std::make_pair(Symbol.getName(), Symbol.getUUID()));
-                            }
-                        }
+                        std::string& Type = std::get<1>(Found->second);
+                        std::string& Binding = std::get<2>(Found->second);
+                        Candidates.push_back({&Symbol, Type, Binding});
                     }
                 }
-                // Prefer GLOBAL symbols if there are any.
-                auto& FuncSymbols = Globals.size() > 0 ? Globals : Locals;
-                if(FuncSymbols.size() > 0)
-                {
-                    // Use the first FUNC symbol.
-                    FunctionNames.insert({FunctionUUID, (*FuncSymbols.begin()).second});
-                }
-                else
-                {
-                    // Use the first non-FUNC symbol.
-                    gtirb::Symbol* Symbol = &*It.begin();
-                    FunctionNames.insert({FunctionUUID, Symbol->getUUID()});
-                }
+                // Select best candidate symbols.
+                auto Found = std::min_element(
+                    Candidates.begin(), Candidates.end(),
+                    [](const std::tuple<const gtirb::Symbol*, std::string, std::string>& S1,
+                       const std::tuple<const gtirb::Symbol*, std::string, std::string>& S2) {
+                        auto& [Symbol1, Type1, Binding1] = S1;
+                        auto& [Symbol2, Type2, Binding2] = S2;
+                        // Prefer symbols of type FUNC.
+                        if(Type1 == "FUNC" && Type2 != "FUNC")
+                            return true;
+                        // Prefer GLOBAL FUNC symbols to LOCAL FUNC symbols.
+                        if(Binding1 == "GLOBAL" && Binding2 != "GLOBAL")
+                            return true;
+                        // Prefer symbols without underscore prefixes.
+                        const std::string &Name1 = Symbol1->getName(), &Name2 = Symbol2->getName();
+                        if(Name1.substr(0, 1) != "_" && Name2.substr(0, 1) == "_")
+                            return true;
+                        return false;
+                    });
+                assert(Found != Candidates.end() && "Expected candidate function symbols.");
+                FunctionNames.insert({FunctionUUID, std::get<0>(*Found)->getUUID()});
             }
             else
             {
