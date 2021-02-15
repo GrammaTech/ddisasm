@@ -74,6 +74,7 @@ conan-windows:
     - export PATH="$PATH;C:\\Program Files\\CMake\\bin"
     - export SOUFFLE_INCLUDE_DIR="C:\\users\\vagrant\\AppData\\local\\Packages\\CanonicalGroupLimited.Ubuntu18.04onWindows_79rhkp1fndgsc\\localstate\\rootfs\\usr\\local\\include"
     - export PYTHON="C:\\Python39\\python.exe"
+    - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
     - python .ci/build.py
 
 .build-template: &build
