@@ -3,11 +3,11 @@ SEQUENCE = 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 0
 
 all: main.c
 	cl $(CFLAGS) main.c
-        cmd /C "for %A in ($(SEQUENCE)) do @ main.exe %A" > out.txt
+	cmd /C "for %A in ($(SEQUENCE)) do @ main.exe %A" > out.txt
 clean:
-	del /F /Q *.exe *.obj *.asm out.txt check.txt mllink$$.lnk
-        del /F /Q ex.unstripped *.s *.old*
+	del /F /Q *.exe *.obj *.exp *.def *.lib *.asm out.txt check.txt mllink$$.lnk
+	del /F /Q ex.unstripped *.s *.old*
 	if exist dl_files { rmdir /Q /S dl_files }
 check:
-        cmd /C "for %A in ($(SEQUENCE)) do @ main.exe %A" > check.txt
-        @ FC out.txt check.txt && echo TEST OK
+	cmd /C "for %A in ($(SEQUENCE)) do @ main.exe %A" > check.txt
+	@ FC out.txt check.txt && echo TEST OK

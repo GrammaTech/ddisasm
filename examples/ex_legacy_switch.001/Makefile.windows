@@ -2,11 +2,11 @@ CFLAGS = "/Fa"
 
 all: main.c
 	cl $(CFLAGS) main.c
-        cmd /C "for %A in (A,B,C,D,E,F,G,H) do @ main.exe %A" > out.txt
+	cmd /C "for %A in (A,B,C,D,E,F,G,H) do @ main.exe %A" > out.txt
 clean:
-	del /F /Q *.exe *.obj *.asm out.txt check.txt mllink$$.lnk
-        del /F /Q ex.unstripped *.s *.old*
+	del /F /Q *.exe *.obj *.exp *.def *.lib *.asm out.txt check.txt mllink$$.lnk
+	del /F /Q ex.unstripped *.s *.old*
 	if exist dl_files { rmdir /Q /S dl_files }
 check:
-        cmd /C "for %A in (A,B,C,D,E,F,G,H) do @ main.exe %A" > check.txt
-        @ FC out.txt check.txt && echo TEST OK
+	cmd /C "for %A in (A,B,C,D,E,F,G,H) do @ main.exe %A" > check.txt
+	@ FC out.txt check.txt && echo TEST OK

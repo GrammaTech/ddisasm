@@ -1,11 +1,11 @@
 CFLAGS="/Fa"
 
 all: ex.c
-        cl /nologo $(CFLAGS) ex.c fun.c
-        @ ex > out.txt
+	cl /nologo $(CFLAGS) ex.c fun.c
+	@ ex > out.txt
 clean:
-	del /F /Q *.exe *.obj *.asm out.txt check.txt mllink$$.lnk
-        del /F /Q ex.unstripped *.s *.old*
+	del /F /Q *.exe *.obj *.exp *.def *.lib *.asm out.txt check.txt mllink$$.lnk
+	del /F /Q ex.unstripped *.s *.old*
 	if exist dl_files { rmdir /Q /S dl_files }
 check:
 	@ ex >check.txt

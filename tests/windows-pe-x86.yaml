@@ -19,7 +19,7 @@ default: &default
   # Reassembly configuration.
   reassemble:
     compiler: "ml"
-    flags: ["/link", "/subsystem:console", "/entry:__EntryPoint"]
+    flags: ["/link", "/subsystem:console", "/entry:_EntryPoint"]
     skip: false
 
   # Test configuration.
