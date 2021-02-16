@@ -39,7 +39,7 @@ Vagrant.configure("2") do |config|
     choco install -y git
     choco install -y cmake
     choco install -y ninja
-    choco install -y python3
+    choco install -y python3 --version=3.9.1
     choco install -y visualstudio2019community --version=16.8.4.0 --package-parameters "--installPath ""C:\\VS""  --passive --wait --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.VC.CoreBuildTools --add Microsoft.VisualStudio.Component.VC.Redist.14.Latest --add Microsoft.VisualStudio.Component.Windows10SDK --add Microsoft.VisualStudio.Component.Windows10SDK.18362 --includeRecommended"
   SHELL
 
