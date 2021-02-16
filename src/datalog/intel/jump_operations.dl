@@ -67,7 +67,8 @@ jump_unequal_operation("JNZ").
 .decl jump_operation_op_index(Operation:symbol,operand_index:operand_index)
 
 jump_operation_op_index(Operation,1):-
-    jump_operation(Operation).
+    jump_operation(Operation);
+    loop_operation(Operation).
 
 .decl call_operation_op_index(Operation:symbol,operand_index:operand_index)
 
