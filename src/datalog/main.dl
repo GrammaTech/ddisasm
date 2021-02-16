@@ -321,7 +321,8 @@ conditional_jump(EA):-
 
 direct_jump(EA,as(Dest,address)):-
     arch.jump(EA),
-    arch.jump_target_op_index(EA,TargetOpIndex),
+    instruction_get_operation(EA,Operation),
+    arch.jump_operation_op_index(Operation,TargetOpIndex),
     instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_immediate(TargetOp,Dest).
 
@@ -342,7 +343,8 @@ pc_relative_jump(EA,Dest):-
 
 reg_jump(EA,Reg):-
     arch.jump(EA),
-    arch.jump_target_op_index(EA,TargetOpIndex),
+    instruction_get_operation(EA,Operation),
+    arch.jump_operation_op_index(Operation,TargetOpIndex),
     instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_regdirect(TargetOp,Reg).
 
@@ -351,7 +353,8 @@ reg_jump(EA,Reg):-
 
 indirect_jump(EA):-
     arch.jump(EA),
-    arch.jump_target_op_index(EA,TargetOpIndex),
+    instruction_get_operation(EA,Operation),
+    arch.jump_operation_op_index(Operation,TargetOpIndex),
     instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_indirect(TargetOp,_,_,_, _,_,_),
     !pc_relative_jump(EA,_).
@@ -364,7 +367,7 @@ indirect_jump(EA):-
 direct_call(EA,as(Dest,address)):-
     arch.call_operation(Operation),
     instruction_get_operation(EA,Operation),
-    arch.call_target_op_index(EA,TargetOpIndex),
+    arch.call_operation_op_index(Operation,TargetOpIndex),
     instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_immediate(TargetOp,Dest).
 
@@ -384,7 +387,7 @@ pc_relative_call(Src,Dest):-
 reg_call(EA,Reg):-
     arch.call_operation(Operation),
     instruction_get_operation(EA,Operation),
-    arch.call_target_op_index(EA,TargetOpIndex),
+    arch.call_operation_op_index(Operation,TargetOpIndex),
     instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_regdirect(TargetOp,Reg).
 
@@ -394,7 +397,7 @@ reg_call(EA,Reg):-
 indirect_call(EA):-
     arch.call_operation(Operation),
     instruction_get_operation(EA,Operation),
-    arch.call_target_op_index(EA,TargetOpIndex),
+    arch.call_operation_op_index(Operation,TargetOpIndex),
     instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_indirect(TargetOp,_,_,_,_,_,_),
     !pc_relative_call(EA,_).
