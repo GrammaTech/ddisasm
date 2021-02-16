@@ -52,8 +52,6 @@ void FunctionInferencePass::updateFunctions(gtirb::Context& Context, gtirb::Modu
             FunctionEntry2function[FunctionEntry] = FunctionUUID;
             FunctionEntries[FunctionUUID].insert(EntryBlockUUID);
 
-            const auto& Symbols = Module.findSymbols(FunctionEntry);
-
             auto It = Module.findSymbols(FunctionEntry);
             if(It.empty())
             {
