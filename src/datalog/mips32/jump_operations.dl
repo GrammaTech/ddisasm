@@ -172,14 +172,7 @@ jump_operation_op_index(Operation,1):-
     !jump_equal_operation_3op(Operation),
     !jump_comp_operation_3op(Operation).
 
-.decl jump_target_op_index(EA:address,operand_index:operand_index)
+.decl call_operation_op_index(Operation:symbol,operand_index:operand_index)
 
-jump_target_op_index(EA,Op_index):-
-    instruction_get_operation(EA,Operation),
-    jump_operation_op_index(Operation,Op_index).
-
-.decl call_target_op_index(EA:address,operand_index:operand_index)
-
-call_target_op_index(EA,1):-
-    instruction_get_operation(EA,Operation),
+call_operation_op_index(Operation,1):-
     call_operation(Operation).
