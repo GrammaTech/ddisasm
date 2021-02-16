@@ -41,9 +41,8 @@ class Properties:
     @property
     def description(self):
         return (
-            "A pretty printer from the GTIRB intermediate representation "
-            "for binary analysis and reverse engineering to gas-syntax "
-            "assembly code."
+            "DDisasm is a *fast* disassembler which is accurate enough for the"
+            " resulting assembly code to be reassembled."
         )
 
     @property
