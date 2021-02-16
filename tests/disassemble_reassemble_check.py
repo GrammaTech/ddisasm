@@ -250,6 +250,7 @@ def disassemble_reassemble_test(
     skip_test=False,
     exec_wrapper=None,
     arch=None,
+    extra_ddisasm_args=[],
 ):
     """
     Disassemble, reassemble and test an example with the given compilers and
@@ -284,7 +285,13 @@ def disassemble_reassemble_test(
                 ):
                     compile_errors += 1
                     continue
-                success, time = disassemble(binary, strip_exe, strip, sstrip)
+                success, time = disassemble(
+                    binary,
+                    strip_exe,
+                    strip,
+                    sstrip,
+                    extra_args=extra_ddisasm_args,
+                )
                 print("Time " + str(time))
                 if not success:
                     disassembly_errors += 1

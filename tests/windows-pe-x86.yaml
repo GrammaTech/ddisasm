@@ -12,6 +12,10 @@ default: &default
     optimizations: ["/Od", "/Ot", "/O1", "/Ox", "/O2"]
     flags: []
 
+  # Disassembly arguments.
+  ddisasm:
+    args: ["--generate-import-libs"]
+
   # Reassembly configuration.
   reassemble:
     compiler: "ml"

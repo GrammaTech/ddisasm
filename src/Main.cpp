@@ -40,6 +40,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <gtirb/gtirb.hpp>
+#include <gtirb_pprinter/PeBinaryPrinter.hpp>
 #include <gtirb_pprinter/PrettyPrinter.hpp>
 
 #include "AuxDataSchema.h"
@@ -146,7 +147,8 @@ int main(int argc, char **argv)
         "no-cfi-directives",
         "Do not produce cfi directives. Instead it produces symbolic expressions in .eh_frame.")(
         "threads,j", po::value<unsigned int>()->default_value(std::thread::hardware_concurrency()),
-        "Number of cores to use. It is set to the number of cores in the machine by default");
+        "Number of cores to use. It is set to the number of cores in the machine by default")(
+        "generate-import-libs", "Generated .DEF and .LIB files for imported libraries (PE).");
     po::positional_options_description pd;
     pd.add("input-file", -1);
 
@@ -334,6 +336,16 @@ int main(int argc, char **argv)
             {
                 std::ofstream out(name);
                 pprinter.print(out, *GTIRB->Context, Module);
+
+                if(vm.count("generate-import-libs")
+                   && Module.getFileFormat() == gtirb::FileFormat::PE)
+                {
+                    std::vector<std::string> LibraryPaths;
+                    std::vector<std::string> CompilerArgs;
+                    gtirb_bprint::PeBinaryPrinter BP(pprinter, CompilerArgs, LibraryPaths);
+                    std::vector<std::string> ImportLibs;
+                    BP.prepareImportLibs(*GTIRB->IR, ImportLibs);
+                }
             }
             printElapsedTimeSince(StartPrinting);
         }

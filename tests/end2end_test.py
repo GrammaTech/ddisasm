@@ -87,6 +87,7 @@ class TestExamples(unittest.TestCase):
             "skip_test": config["test"].get("skip", False),
             "exec_wrapper": config["test"].get("wrapper"),
             "arch": config.get("arch"),
+            "extra_ddisasm_args": config.get("ddisasm", {}).get("args", []),
         }
         if config["reassemble"].get("skip", False):
             args["reassemble_function"] = skip_reassemble
