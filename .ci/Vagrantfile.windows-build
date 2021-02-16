@@ -165,6 +165,9 @@ option.set keep-going : false ;
     Wait-Job -Job $jobs
   SHELL
 
+  # Below, we are using souffle's master branch, because microsoft has removed
+  # some compiler builtins that souffle on MSVC relies upon.  A fix for this
+  # is on the master branch, but there is no release with the fix yet.
   config.vm.provision "generate-souffle-setup-script", type: "shell", inline: <<-SHELL
     cd $HOME
     $wsl_script = @"
