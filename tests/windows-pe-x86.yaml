@@ -12,9 +12,9 @@ default: &default
     optimizations: ["/Od", "/Ot", "/O1", "/Ox", "/O2"]
     flags: []
 
-  # Disassembly arguments.
-  ddisasm:
-    args: ["--generate-import-libs"]
+  # Disassembly configuration.
+  disassemble:
+    args: ["-F", "--generate-import-libs"]
 
   # Reassembly configuration.
   reassemble:
