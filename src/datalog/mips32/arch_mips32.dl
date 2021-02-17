@@ -194,20 +194,20 @@ delay_slot(BranchEA,EA):-
     !direct_call(BranchEA,_).
 
 delay_slot(BranchEA,EA):-
-    next(BranchEA, EA),
-    instruction_get_operation(BranchEA,Operation),
-    !compact_branch_operation(Operation),
     // direct jump or direct call
     (
         direct_jump(BranchEA,Dest);
         direct_call(BranchEA,Dest)
     ),
+    instruction_get_operation(BranchEA,Operation),
+    !compact_branch_operation(Operation),
     // Filter invalid BranchEA ----------------------------
     (
         instruction(Dest,_,_,_,_,_,_,_,_,_)
         ;
         Dest = 0, !binary_type("EXEC")
     ),
+    next(BranchEA, EA),
     Dest != EA.
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
