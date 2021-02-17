@@ -45,7 +45,7 @@ RUN apt-get -y update && \
           /usr/lib/python3/dist-packages/apt_pkg.so
 
 RUN python3 -m pip install pip --upgrade && \
-    python3 -m pip install distro pyyaml
+    python3 -m pip install distro pyyaml psycopg2-binary
 
 # Copy souffle
 COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
