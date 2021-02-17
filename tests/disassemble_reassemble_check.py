@@ -7,6 +7,8 @@ from timeit import default_timer as timer
 
 import platform
 
+import asm_db
+
 
 class bcolors:
     """
@@ -284,6 +286,7 @@ def disassemble_reassemble_test(
                     sstrip,
                     extra_args=extra_ddisasm_args,
                 )
+                asm_db.upload(os.path.basename(make_dir), binary + ".s")
                 print("Time " + str(time))
                 if not success:
                     disassembly_errors += 1
