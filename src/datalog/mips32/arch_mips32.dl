@@ -46,6 +46,10 @@ move_operation("MOVZ").
 .decl store_operation(Operation:symbol)
 
 store_operation("ST").
+store_operation("ST.B").
+store_operation("ST.H").
+store_operation("ST.W").
+store_operation("ST.D").
 store_operation("SW").
 store_operation("SW16").
 store_operation("SWC1").
@@ -80,6 +84,10 @@ load_operation("LBU16").
 load_operation("LBUX").
 load_operation("LBU").
 load_operation("LD").
+load_operation("LD.B").
+load_operation("LD.H").
+load_operation("LD.W").
+load_operation("LD.D").
 load_operation("LDC1").
 load_operation("LDC2").
 load_operation("LDC3").
@@ -170,12 +178,36 @@ jump(EA):-
 delay_slot(BranchEA,EA):-
     next(BranchEA, EA),
     instruction_get_operation(BranchEA,Operation),
+    return_operation(Operation),
+    !compact_branch_operation(Operation).
+
+delay_slot(BranchEA,EA):-
+    next(BranchEA, EA),
+    instruction_get_operation(BranchEA,Operation),
     (
         jump_operation(Operation);
-        call_operation(Operation);
-        return_operation(Operation)
+        call_operation(Operation)
     ),
-    !compact_branch_operation(Operation).
+    !compact_branch_operation(Operation),
+    // Filter invalid BranchEA ----------------------------
+    (
+        jump_operation_op_index(Operation,TargetOpIndex);
+        call_operation_op_index(Operation,TargetOpIndex)
+    ),
+    instruction_get_op(BranchEA,TargetOpIndex,TargetOp),
+    (
+        // indirect
+        !op_immediate(TargetOp,_)
+        ;
+        // direct: make sure the target is valid
+        op_immediate(TargetOp,Dest),
+        (
+            instruction(as(Dest,address),_,_,_,_,_,_,_,_,_)
+            ;
+            Dest = 0, !binary_type("EXEC")
+        ),
+        as(Dest,address) != EA
+    ).
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
@@ -283,9 +315,12 @@ multiplication_operation("DMULTU").
 multiplication_operation("DMULU").
 
 multiplication_operation("MADD").
+multiplication_operation("MADD.S").
 multiplication_operation("MADDU").
 multiplication_operation("MSUB").
 multiplication_operation("MSUBU").
+multiplication_operation("MSUBV").
+multiplication_operation("MSUBV.H").
 
 arithmetic_operation("DIV").
 arithmetic_operation("DDIV").
@@ -303,11 +338,16 @@ logic_operation("AND").
 logic_operation("AND16").
 logic_operation("ANDI16").
 logic_operation("ANDI").
+logic_operation("ANDI.B").
 logic_operation("OR").
+logic_operation("OR.V").
 logic_operation("OR16").
 logic_operation("ORI").
+logic_operation("ORI.B").
 logic_operation("NOR").
+logic_operation("NOR.V").
 logic_operation("NORI").
+logic_operation("NORI.B").
 logic_operation("NOT16").
 logic_operation("NOT").
 logic_operation("XOR").
