@@ -3,7 +3,7 @@ CFLAGS = "/Fa"
 all: dll
 	$(CC) ex.c test.lib
 	@ ex > out.txt
-	dll: test.h test.c
+dll: test.h test.c
 	@ $(CC) $(CFLAGS) /LD test.c
 clean:
 	del /F /Q *.exe *.obj *.asm out.txt check.txt mllink$$.lnk
