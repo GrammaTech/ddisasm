@@ -20,7 +20,7 @@ def db():
     global __db_state
 
     if __db_state == State.NEW:
-        connect_uri = os.environ.get("POSTGRES_URI")
+        connect_uri = os.environ.get("DATABASE_URL")
 
         if not connect_uri:
             __db_state = State.ERROR
