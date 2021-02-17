@@ -41,6 +41,6 @@ public:
 
 private:
     std::optional<std::string> DebugDir;
-    void updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M);
+    void updateFunctions(gtirb::Context& C, gtirb::Module& M, souffle::SouffleProgram* P);
 };
 #endif // FUNCTION_INFERENCE_PASS_H_

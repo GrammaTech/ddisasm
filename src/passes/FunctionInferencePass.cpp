@@ -32,18 +32,19 @@
 #include "../gtirb-decoder/core/InstructionLoader.h"
 #include "../gtirb-decoder/core/SymbolicExpressionLoader.h"
 
-void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::Module& M)
+void FunctionInferencePass::updateFunctions(gtirb::Context& Context, gtirb::Module& Module,
+                                            souffle::SouffleProgram* Program)
 {
-    auto* SymbolInfo = M.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    auto* SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
 
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
     std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2function;
     std::map<gtirb::UUID, gtirb::UUID> FunctionNames;
     boost::uuids::random_generator Generator;
-    for(auto& Output : *P->getRelation("function_entry_final"))
+    for(auto& Output : *Program->getRelation("function_entry_final"))
     {
         gtirb::Addr FunctionEntry(Output[0]);
-        auto BlockRange = M.findCodeBlocksAt(FunctionEntry);
+        auto BlockRange = Module.findCodeBlocksAt(FunctionEntry);
         if(!BlockRange.empty())
         {
             const gtirb::UUID& EntryBlockUUID = BlockRange.begin()->getUUID();
@@ -51,67 +52,78 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
             FunctionEntry2function[FunctionEntry] = FunctionUUID;
             FunctionEntries[FunctionUUID].insert(EntryBlockUUID);
 
-            const auto& Symbols = M.findSymbols(FunctionEntry);
-
-            if(SymbolInfo)
+            auto It = Module.findSymbols(FunctionEntry);
+            if(It.empty())
             {
-                // Collect FUNC symbols
-                std::set<std::pair<std::string, gtirb::UUID>> FuncSymbols;
-                for(const auto& Symbol : Symbols)
+                // Create a new label for the function entry.
+                std::stringstream Label;
+                Label << ".L_" << std::hex << static_cast<uint64_t>(FunctionEntry);
+                gtirb::Symbol* Symbol = Module.addSymbol(Context, FunctionEntry, Label.str());
+
+                // Map function to symbol and create new symbol information.
+                FunctionNames.insert({FunctionUUID, Symbol->getUUID()});
+                if(SymbolInfo)
                 {
-                    if(auto Found = SymbolInfo->find(Symbol.getUUID()); Found != SymbolInfo->end())
-                    {
-                        ElfSymbolInfo SInfo = Found->second;
-                        if(std::get<1>(SInfo) == "FUNC")
-                        {
-                            FuncSymbols.insert(std::make_pair(Symbol.getName(), Symbol.getUUID()));
-                        }
-                    }
+                    ElfSymbolInfo Info = {0, "FUNC", "LOCAL", "DEFAULT", 0};
+                    SymbolInfo->insert({Symbol->getUUID(), Info});
                 }
 
-                if(FuncSymbols.size() == 1)
+                // Connect new symbol to the code-block.
+                if(auto Found = Module.findCodeBlocksAt(FunctionEntry); !Found.empty())
                 {
-                    FunctionNames.insert({FunctionUUID, (*FuncSymbols.begin()).second});
+                    gtirb::CodeBlock& CodeBlock = Found.front();
+                    Symbol->setReferent(&CodeBlock);
                 }
-                else if(FuncSymbols.size() > 1)
+            }
+            else if(SymbolInfo)
+            {
+                // Aggregate candidate symbols.
+                std::vector<std::tuple<const gtirb::Symbol*, std::string, std::string>> Candidates;
+                for(auto& Symbol : It)
                 {
-                    // TODO: Choose a right one when there are multiple
-                    // FUNC symbols with type FUNC. What's the policy?
-                    // For now, pick the first one.
-                    std::cerr << "\nWARNING: Multiple FUNC symbols at address " << FunctionEntry
-                              << ": ";
-                    for(auto It = FuncSymbols.begin(); It != FuncSymbols.end(); ++It)
+                    if(const auto& Found = SymbolInfo->find(Symbol.getUUID());
+                       Found != SymbolInfo->end())
                     {
-                        std::cerr << (*It).first << ", ";
-                    }
-                    // Pick one of them
-                    FunctionNames.insert({FunctionUUID, (*FuncSymbols.begin()).second});
-                }
-                else
-                {
-                    // If there is no existing symbol with type FUNC,
-                    // pick one symbol.
-                    if(!Symbols.empty())
-                    {
-                        const auto& Symbol = *Symbols.begin();
-                        FunctionNames.insert({FunctionUUID, Symbol.getUUID()});
+                        std::string& Type = std::get<1>(Found->second);
+                        std::string& Binding = std::get<2>(Found->second);
+                        Candidates.push_back({&Symbol, Type, Binding});
                     }
                 }
+                // Select best candidate symbols.
+                auto Found = std::min_element(
+                    Candidates.begin(), Candidates.end(),
+                    [](const std::tuple<const gtirb::Symbol*, std::string, std::string>& S1,
+                       const std::tuple<const gtirb::Symbol*, std::string, std::string>& S2) {
+                        auto& [Symbol1, Type1, Binding1] = S1;
+                        auto& [Symbol2, Type2, Binding2] = S2;
+                        // Prefer symbols of type FUNC.
+                        if(Type1 == "FUNC" && Type2 != "FUNC")
+                            return true;
+                        // Prefer GLOBAL FUNC symbols to LOCAL FUNC symbols.
+                        if(Binding1 == "GLOBAL" && Binding2 != "GLOBAL")
+                            return true;
+                        // Prefer symbols without underscore prefixes.
+                        const std::string &Name1 = Symbol1->getName(), &Name2 = Symbol2->getName();
+                        if(Name1.substr(0, 1) != "_" && Name2.substr(0, 1) == "_")
+                            return true;
+                        return false;
+                    });
+                assert(Found != Candidates.end() && "Expected candidate function symbols.");
+                FunctionNames.insert({FunctionUUID, std::get<0>(*Found)->getUUID()});
             }
             else
             {
-                for(const auto& Symbol : Symbols)
-                {
-                    FunctionNames.insert({FunctionUUID, Symbol.getUUID()});
-                }
+                // Use an arbitrary symbol at this address as the function label.
+                gtirb::Symbol* Symbol = &*It.begin();
+                FunctionNames.insert({FunctionUUID, Symbol->getUUID()});
             }
         }
     }
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionBlocks;
-    for(auto& Output : *P->getRelation("in_function_final"))
+    for(auto& Output : *Program->getRelation("in_function_final"))
     {
         gtirb::Addr BlockAddr(Output[0]), FunctionEntryAddr(Output[1]);
-        auto BlockRange = M.findCodeBlocksOn(BlockAddr);
+        auto BlockRange = Module.findCodeBlocksOn(BlockAddr);
         if(!BlockRange.empty())
         {
             gtirb::CodeBlock* Block = &*BlockRange.begin();
@@ -119,12 +131,12 @@ void FunctionInferencePass::updateFunctions(souffle::SouffleProgram* P, gtirb::M
             FunctionBlocks[FunctionEntryUUID].insert(Block->getUUID());
         }
     }
-    M.removeAuxData<gtirb::schema::FunctionEntries>();
-    M.removeAuxData<gtirb::schema::FunctionBlocks>();
-    M.removeAuxData<gtirb::schema::FunctionNames>();
-    M.addAuxData<gtirb::schema::FunctionEntries>(std::move(FunctionEntries));
-    M.addAuxData<gtirb::schema::FunctionBlocks>(std::move(FunctionBlocks));
-    M.addAuxData<gtirb::schema::FunctionNames>(std::move(FunctionNames));
+    Module.removeAuxData<gtirb::schema::FunctionEntries>();
+    Module.removeAuxData<gtirb::schema::FunctionBlocks>();
+    Module.removeAuxData<gtirb::schema::FunctionNames>();
+    Module.addAuxData<gtirb::schema::FunctionEntries>(std::move(FunctionEntries));
+    Module.addAuxData<gtirb::schema::FunctionBlocks>(std::move(FunctionBlocks));
+    Module.addAuxData<gtirb::schema::FunctionNames>(std::move(FunctionNames));
 }
 
 void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Module& Module,
@@ -165,5 +177,5 @@ void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Mod
         FunctionInference->writeRelations(*DebugDir);
     }
 
-    updateFunctions(FunctionInference->get(), Module);
+    updateFunctions(Context, Module, FunctionInference->get());
 }
