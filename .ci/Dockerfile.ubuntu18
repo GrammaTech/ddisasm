@@ -21,7 +21,7 @@ RUN apt-get -y update && apt-get -y install autoconf automake clang clang-format
     curl doxygen git libprotobuf-dev libtool libstdc++-7-dev \
     make mcpp pkg-config protobuf-compiler python3 python3-pip \
     software-properties-common unzip wget zlib1g-dev
-RUN python3 -m pip install distro pyyaml
+RUN python3 -m pip install distro pyyaml psycopg2-binary
 
 # Install cross-platform utils
 RUN apt-get -y update \
