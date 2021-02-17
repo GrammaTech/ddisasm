@@ -1,7 +1,6 @@
 import os
 import hashlib
 from enum import Enum
-from pathlib import Path
 
 import psycopg2
 
@@ -37,7 +36,7 @@ def db():
     return __db
 
 
-def upload(name: str, asm: Path):
+def upload(name, asm, compilers, compiler_args):
     conn = db()
     if conn:
         cursor = conn.cursor()
@@ -48,7 +47,7 @@ def upload(name: str, asm: Path):
             checksum = hashlib.md5(contents).hexdigest()
             cursor.execute(
                 """
-                INSERT INTO asm (checksum, content)
+                INSERT INTO assembly (checksum, content)
                 VALUES (%s, %s)
                 ON CONFLICT (checksum)
                 DO UPDATE SET updated_at = NOW()
@@ -60,14 +59,28 @@ def upload(name: str, asm: Path):
 
         cursor.execute(
             """
-            INSERT INTO disassembled (name, assembly_id)
-            VALUES (%s, %s)
+            INSERT INTO disassembled (
+                name,
+                assembly_id,
+                compiler,
+                compiler_args,
+                ci_pipeline_id,
+                ci_commit_sha,
+                ci_commit_branch,
+                ci_commit_ref_slug
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """,
-            (name, assembly_id),
+            (
+                name,
+                assembly_id,
+                " ".join(compilers),
+                " ".join(compiler_args),
+                os.environ.get("CI_PIPELINE_ID"),
+                os.environ.get("CI_COMMIT_SHA"),
+                os.environ.get("CI_COMMIT_BRANCH"),
+                os.environ.get("CI_COMMIT_REF_SLUG"),
+            ),
         )
 
         conn.commit()
-
-
-# if __name__ == '__main__':
-#     upload("ex1", "ex.asm")
