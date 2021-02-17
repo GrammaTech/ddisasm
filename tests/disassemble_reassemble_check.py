@@ -286,7 +286,12 @@ def disassemble_reassemble_test(
                     sstrip,
                     extra_args=extra_ddisasm_args,
                 )
-                asm_db.upload(os.path.basename(make_dir), binary + ".s")
+                asm_db.upload(
+                    os.path.basename(make_dir),
+                    binary + ".s",
+                    [compiler, cxx_compiler],
+                    [optimization] + extra_compile_flags,
+                )
                 print("Time " + str(time))
                 if not success:
                     disassembly_errors += 1
