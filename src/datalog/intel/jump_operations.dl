@@ -64,7 +64,13 @@ jump_equal_operation("JZ").
 jump_unequal_operation("JNE").
 jump_unequal_operation("JNZ").
 
-.decl jump_target_op(EA:address,operator:operand_code)
+.decl jump_operation_op_index(Operation:symbol,operand_index:operand_index)
 
-jump_target_op(EA,Op1):-
-    instruction(EA,_,_,_,Op1,_,_,_,_,_).
+jump_operation_op_index(Operation,1):-
+    jump_operation(Operation);
+    loop_operation(Operation).
+
+.decl call_operation_op_index(Operation:symbol,operand_index:operand_index)
+
+call_operation_op_index(Operation,1):-
+    call_operation(Operation).

@@ -352,29 +352,38 @@ pointer_size(4).
 
 .decl call_operation(operation:symbol)
 
-call_operation("JAL").
-call_operation("JALC").
-call_operation("JALRC").
-call_operation("JALR").
-call_operation("JALRS16").
-call_operation("JALRS").
-call_operation("JALS").
-call_operation("JALX").
-call_operation("JIALC").
-call_operation("BAL").
-call_operation("BALC").
-call_operation("BEQZALC").
-call_operation("BGEZAL").
-call_operation("BGEZALC").
-call_operation("BGEZALL").
-call_operation("BGEZALS").
-call_operation("BGTZALC").
-call_operation("BLEZALC").
-call_operation("BLTZAL").
-call_operation("BLTZALC").
-call_operation("BLTZALL").
-call_operation("BLTZALS").
-call_operation("BNEZALC").
+call_operation(Symbol):-
+    call_operation_1op(Symbol);
+    call_operation_2op(Symbol).
+
+.decl call_operation_1op(operation:symbol)
+
+call_operation_1op("JAL").
+call_operation_1op("JALC").
+call_operation_1op("JALRC").
+call_operation_1op("JALR").
+call_operation_1op("JALRS16").
+call_operation_1op("JALRS").
+call_operation_1op("JALS").
+call_operation_1op("JALX").
+call_operation_1op("JIALC").
+call_operation_1op("BAL").
+call_operation_1op("BALC").
+
+.decl call_operation_2op(operation:symbol)
+
+call_operation_2op("BEQZALC").
+call_operation_2op("BGEZAL").
+call_operation_2op("BGEZALC").
+call_operation_2op("BGEZALL").
+call_operation_2op("BGEZALS").
+call_operation_2op("BGTZALC").
+call_operation_2op("BLEZALC").
+call_operation_2op("BLTZAL").
+call_operation_2op("BLTZALC").
+call_operation_2op("BLTZALL").
+call_operation_2op("BLTZALS").
+call_operation_2op("BNEZALC").
 
 .decl syscall_operation(operation:symbol)
 

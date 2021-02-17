@@ -1124,49 +1124,103 @@ void splitSymbols(gtirb::Context &Context, gtirb::Module &Module, souffle::Souff
     }
 }
 
-void buildFunctions(gtirb::Module &module, souffle::SouffleProgram *prog)
+void buildFunctions(gtirb::Context &Context, gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
-    std::map<gtirb::UUID, std::set<gtirb::UUID>> functionEntries;
-    std::map<gtirb::Addr, gtirb::UUID> functionEntry2function;
-    std::map<gtirb::UUID, gtirb::UUID> functionNames;
-    boost::uuids::random_generator generator;
-    for(auto &output : *prog->getRelation("function_inference.function_entry"))
+    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+
+    std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
+    std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2Function;
+    std::map<gtirb::UUID, gtirb::UUID> FunctionNames;
+    boost::uuids::random_generator Generator;
+
+    for(auto &T : *Prog->getRelation("function_inference.function_entry"))
     {
-        gtirb::Addr functionEntry;
-        output >> functionEntry;
-        auto blockRange = module.findCodeBlocksAt(functionEntry);
-        if(!blockRange.empty())
+        gtirb::Addr FunctionEntry;
+        T >> FunctionEntry;
+
+        auto BlockRange = Module.findCodeBlocksAt(FunctionEntry);
+        if(!BlockRange.empty())
         {
-            const gtirb::UUID &entryBlockUUID = blockRange.begin()->getUUID();
-            gtirb::UUID functionUUID = generator();
+            const gtirb::UUID &EntryBlockUUID = BlockRange.begin()->getUUID();
+            gtirb::UUID FunctionUUID = Generator();
 
-            functionEntry2function[functionEntry] = functionUUID;
-            functionEntries[functionUUID].insert(entryBlockUUID);
+            FunctionEntry2Function[FunctionEntry] = FunctionUUID;
+            FunctionEntries[FunctionUUID].insert(EntryBlockUUID);
 
-            for(const auto &symbol : module.findSymbols(functionEntry))
+            auto It = Module.findSymbols(FunctionEntry);
+            if(It.empty())
             {
-                functionNames.insert({functionUUID, symbol.getUUID()});
+                // Create a new label for the function entry.
+                gtirb::Symbol *Symbol = getSymbol(Context, Module, FunctionEntry);
+                FunctionNames.insert({FunctionUUID, Symbol->getUUID()});
+                if(SymbolInfo)
+                {
+                    ElfSymbolInfo Info = {0, "FUNC", "LOCAL", "DEFAULT", 0};
+                    SymbolInfo->insert({Symbol->getUUID(), Info});
+                }
+            }
+            else if(SymbolInfo)
+            {
+                // Aggregate candidate symbols.
+                std::vector<std::tuple<const gtirb::Symbol *, std::string, std::string>> Candidates;
+                for(auto &Symbol : It)
+                {
+                    if(const auto &Found = SymbolInfo->find(Symbol.getUUID());
+                       Found != SymbolInfo->end())
+                    {
+                        std::string &Type = std::get<1>(Found->second);
+                        std::string &Binding = std::get<2>(Found->second);
+                        Candidates.push_back({&Symbol, Type, Binding});
+                    }
+                }
+                // Select best candidate symbols.
+                auto Found = std::min_element(
+                    Candidates.begin(), Candidates.end(),
+                    [](const std::tuple<const gtirb::Symbol *, std::string, std::string> &S1,
+                       const std::tuple<const gtirb::Symbol *, std::string, std::string> &S2) {
+                        auto &[Symbol1, Type1, Binding1] = S1;
+                        auto &[Symbol2, Type2, Binding2] = S2;
+                        // Prefer symbols of type FUNC.
+                        if(Type1 == "FUNC" && Type2 != "FUNC")
+                            return true;
+                        // Prefer GLOBAL FUNC symbols to LOCAL FUNC symbols.
+                        if(Binding1 == "GLOBAL" && Binding2 != "GLOBAL")
+                            return true;
+                        // Prefer symbols without underscore prefixes.
+                        const std::string &Name1 = Symbol1->getName(), &Name2 = Symbol2->getName();
+                        if(Name1.substr(0, 1) != "_" && Name2.substr(0, 1) == "_")
+                            return true;
+                        return false;
+                    });
+                assert(Found != Candidates.end() && "Expected candidate function symbols.");
+                FunctionNames.insert({FunctionUUID, std::get<0>(*Found)->getUUID()});
+            }
+            else
+            {
+                // Use an arbitrary symbol at this address as the function label.
+                gtirb::Symbol *Symbol = &*It.begin();
+                FunctionNames.insert({FunctionUUID, Symbol->getUUID()});
             }
         }
     }
 
-    std::map<gtirb::UUID, std::set<gtirb::UUID>> functionBlocks;
-    for(auto &output : *prog->getRelation("function_inference.in_function"))
+    std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionBlocks;
+    for(auto &T : *Prog->getRelation("function_inference.in_function"))
     {
-        gtirb::Addr blockAddr, functionEntryAddr;
-        output >> blockAddr >> functionEntryAddr;
-        auto blockRange = module.findCodeBlocksOn(blockAddr);
-        if(!blockRange.empty())
+        gtirb::Addr BlockAddr, FunctionEntryAddr;
+        T >> BlockAddr >> FunctionEntryAddr;
+        auto BlockRange = Module.findCodeBlocksOn(BlockAddr);
+        if(!BlockRange.empty())
         {
-            gtirb::CodeBlock *block = &*blockRange.begin();
-            gtirb::UUID functionEntryUUID = functionEntry2function[functionEntryAddr];
-            functionBlocks[functionEntryUUID].insert(block->getUUID());
+            gtirb::CodeBlock *Block = &*BlockRange.begin();
+            gtirb::UUID FunctionEntryUUID = FunctionEntry2Function[FunctionEntryAddr];
+            FunctionBlocks[FunctionEntryUUID].insert(Block->getUUID());
         }
     }
 
-    module.addAuxData<gtirb::schema::FunctionEntries>(std::move(functionEntries));
-    module.addAuxData<gtirb::schema::FunctionBlocks>(std::move(functionBlocks));
-    module.addAuxData<gtirb::schema::FunctionNames>(std::move(functionNames));
+    Module.addAuxData<gtirb::schema::FunctionEntries>(std::move(FunctionEntries));
+    Module.addAuxData<gtirb::schema::FunctionBlocks>(std::move(FunctionBlocks));
+    Module.addAuxData<gtirb::schema::FunctionNames>(std::move(FunctionNames));
 }
 
 gtirb::EdgeType getEdgeType(const std::string &type)
@@ -1532,11 +1586,11 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildCodeSymbolicInformation(context, module, prog);
     buildCfiDirectives(context, module, prog);
     expandSymbolForwarding(context, module, prog);
+    buildFunctions(context, module, prog);
     // This should be done after creating all the symbols.
     connectSymbolsToBlocks(context, module);
     splitSymbols(context, module, prog);
     // These functions should not create additional symbols.
-    buildFunctions(module, prog);
     buildCFG(context, module, prog);
     buildPadding(module, prog);
     buildComments(module, prog, selfDiagnose);
