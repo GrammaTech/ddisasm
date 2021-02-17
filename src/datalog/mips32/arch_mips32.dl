@@ -189,25 +189,26 @@ delay_slot(BranchEA,EA):-
         call_operation(Operation)
     ),
     !compact_branch_operation(Operation),
+    // indirect jump or indirect call
+    !direct_jump(BranchEA,_),
+    !direct_call(BranchEA,_).
+
+delay_slot(BranchEA,EA):-
+    next(BranchEA, EA),
+    instruction_get_operation(BranchEA,Operation),
+    !compact_branch_operation(Operation),
+    // direct jump or direct call
+    (
+        direct_jump(BranchEA,Dest);
+        direct_call(BranchEA,Dest)
+    ),
     // Filter invalid BranchEA ----------------------------
     (
-        jump_operation_op_index(Operation,TargetOpIndex);
-        call_operation_op_index(Operation,TargetOpIndex)
-    ),
-    instruction_get_op(BranchEA,TargetOpIndex,TargetOp),
-    (
-        // indirect
-        !op_immediate(TargetOp,_)
+        instruction(Dest,_,_,_,_,_,_,_,_,_)
         ;
-        // direct: make sure the target is valid
-        op_immediate(TargetOp,Dest),
-        (
-            instruction(as(Dest,address),_,_,_,_,_,_,_,_,_)
-            ;
-            Dest = 0, !binary_type("EXEC")
-        ),
-        as(Dest,address) != EA
-    ).
+        Dest = 0, !binary_type("EXEC")
+    ),
+    Dest != EA.
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
