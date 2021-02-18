@@ -41,7 +41,7 @@ def upload(name, asm, compilers, compiler_args):
     if conn:
         cursor = conn.cursor()
 
-        # Upsert assembly contents to `asm' table.
+        # Upsert assembly contents to the `assembly' table.
         with open(asm, "rb") as f:
             contents = f.read()
             checksum = hashlib.md5(contents).hexdigest()
@@ -57,6 +57,7 @@ def upload(name, asm, compilers, compiler_args):
             )
             assembly_id = cursor.fetchone()[0]
 
+        # Insert disassembly details into the `disassembled' table.
         cursor.execute(
             """
             INSERT INTO disassembled (
