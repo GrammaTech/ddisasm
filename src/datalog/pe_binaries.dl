@@ -502,20 +502,19 @@ npad(EA,Size):-
 
 // lea ecx, [ecx+00]
 // DB 8DH, 49H, 00H
-npad(EA,Size):-
-    data_byte(EA,0x8D),
-    data_byte(EA+1,0x49),
-    data_byte(EA+2,0x00),
-    Size = 3.
-
+//
 // lea esp, [esp+00]
 // DB 8DH, 64H, 24H, 00H
+//
+// lea ebx, [ebx+00000000]
+// DB 8DH, 9BH, 00H, 00H, 00H, 00H
+//
+// lea esp, [esp+00000000]
+// DB 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H
 npad(EA,Size):-
-    data_byte(EA,0x8D),
-    data_byte(EA+1,0x64),
-    data_byte(EA+2,0x24),
-    data_byte(EA+3,0x00),
-    Size = 4.
+    instruction(EA,Size,_,"LEA",Op1,Op2,_,_,_,_),
+    op_indirect(Op1,"NONE",Reg,"NONE",_,0,_),
+    op_regdirect(Op2,Reg).
 
 // jmp .+5; .npad 3
 // DB 0EBH, 03H, 8DH, 49H, 00H
@@ -524,23 +523,6 @@ npad(EA,Size):-
     data_byte(EA+1,0x03),
     npad(EA+2,3),
     Size = 5.
-
-// lea ebx, [ebx+00000000]
-// DB 8DH, 9BH, 00H, 00H, 00H, 00H
-npad(EA,Size):-
-    data_byte(EA,0x8D),
-    data_byte(EA+1,0x9B),
-    data_word(EA+2,4,0x00),
-    Size = 6.
-
-// lea esp, [esp+00000000]
-// DB 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H
-npad(EA,Size):-
-    data_byte(EA,0x8D),
-    data_byte(EA+1,0xA4),
-    data_byte(EA+2,0x24),
-    data_word(EA+3,4,0x00),
-    Size = 7.
 
 // jmp .+8; .npad 6
 // DB 0EBH, 06H, 8DH, 9BH, 00H, 00H, 00H, 00H
