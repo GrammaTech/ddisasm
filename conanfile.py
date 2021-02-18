@@ -102,7 +102,7 @@ class DdisasmConan(Properties, ConanFile):
     requires = (
         "boost/%s@conan/stable" % (boost_version),
         "gtirb/%s@rewriting+gtirb/stable" % (gtirb_version),
-        "gtirb-pprinter/%s@rewriting+gtirb-pprinter/bfair-gtirb-version"
+        "gtirb-pprinter/%s@rewriting+gtirb-pprinter/stable"
         % (gtirb_pprinter_version),
         "capstone/%s@rewriting+extra-packages/next" % (capstone_version),
     )
