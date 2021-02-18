@@ -38,4 +38,4 @@ RUN cd /usr/mips-linux-gnu \
 
 COPY etc/sstrip /usr/bin/sstrip
 
-RUN python3 -m pip install conan distro pyyaml psycopg2
+RUN python3 -m pip install conan distro pyyaml psycopg2-binary
