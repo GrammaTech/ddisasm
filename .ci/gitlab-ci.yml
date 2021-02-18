@@ -59,6 +59,7 @@ check-format:
     - unzip gtirb-${OS}-artifacts.zip
     # Acquire gtirb pprinter artifacts
     - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
+    - GTIRB_PPRINTER_BRANCH=aflores-print-undef-sym-intern
     - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter-${OS}-artifacts.zip"
     - unzip gtirb-pprinter-${OS}-artifacts.zip
@@ -97,6 +98,7 @@ check-format:
     - unzip -o gtirb-${OS}-artifacts.zip
     # Acquire gtirb pprinter artifacts
     - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
+    - GTIRB_PPRINTER_BRANCH=aflores-print-undef-sym-intern
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter-${OS}-artifacts.zip"
     - unzip -o gtirb-pprinter-${OS}-artifacts.zip
     # Install gtirb and the pprinter
@@ -121,6 +123,7 @@ check-format:
     - unzip gtirb-${OS}-artifacts.zip
     # Acquire gtirb pprinter artifacts
     - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
+    - GTIRB_PPRINTER_BRANCH=aflores-print-undef-sym-intern
     - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-$OS --output "gtirb-pprinter-${OS}-artifacts.zip"
     - unzip gtirb-pprinter-${OS}-artifacts.zip
@@ -177,6 +180,7 @@ build-arch-gcc:
     - unzip -o gtirb-arch-artifacts.zip
     # Acquire gtirb pprinter artifacts
     - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
+    - GTIRB_PPRINTER_BRANCH=aflores-print-undef-sym-intern
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=package-arch --output "gtirb-pprinter-arch-artifacts.zip"
     - unzip -o gtirb-pprinter-arch-artifacts.zip
     # Install gtirb and the pprinter
@@ -381,6 +385,7 @@ test-make-install:
     - unzip -o gtirb-${OS}-artifacts.zip
     # Acquire gtirb pprinter artifacts
     - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
+    - GTIRB_PPRINTER_BRANCH=aflores-print-undef-sym-intern
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter-${OS}-artifacts.zip"
     - unzip -o gtirb-pprinter-${OS}-artifacts.zip
     # Install gtirb and the pprinter
@@ -400,6 +405,7 @@ test-make-install:
     - unzip gtirb-${OS}-artifacts.zip
     # Acquire gtirb pprinter artifacts
     - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
+    - GTIRB_PPRINTER_BRANCH=aflores-print-undef-sym-intern
     - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-$OS --output "gtirb-pprinter-${OS}-artifacts.zip"
     - unzip gtirb-pprinter-${OS}-artifacts.zip

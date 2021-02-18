@@ -23,6 +23,7 @@ python -m pip install pip --upgrade && python -m pip install gtirb-*-py*.whl
 
 # Install the pretty printer
 GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
+GTIRB_PPRINTER_BRANCH=aflores-print-undef-sym-intern
 curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=build-windows-msvc-${BUILD_TYPE,,} --output "gtirb-pprinter-artifacts.zip"
 unzip gtirb-pprinter-artifacts.zip
 
