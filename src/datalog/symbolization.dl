@@ -617,7 +617,7 @@ data_object_conflict(EA,Size,Type,EA,Size,Type2):-
     data_object_candidate(EA,Size,Type2),
     Type != Type2.
 
-//collision
+// Destination collides with another candidate.
 data_object_conflict(EA,Size,Type,EA2,Size2,Type2):-
     // Candidate references another data location,
     data_object_candidate(EA,Size,Type),
