@@ -348,6 +348,7 @@ relative_address_start(IndexTableStart,1,TableStart,Dest,"first"):-
     Mult = as(Pt_size,number),
     // Existing address table,
     relative_address_start(TableStart,Pt_size,_,_,_),
+    arch.jump(EA_jmp),
     instruction_get_op(EA_jmp,_,Op_jmp),
     op_indirect(Op_jmp,_,_,_,Mult,as(TableStart,number),_),
     // Offset by an index loaded in a previous instruction.
