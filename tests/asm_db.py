@@ -2,8 +2,6 @@ import os
 import hashlib
 from enum import Enum
 
-import psycopg2
-
 
 class State(Enum):
     NEW = 1
@@ -13,6 +11,12 @@ class State(Enum):
 
 __db = None
 __db_state = State.NEW
+
+# FIXME:
+try:
+    import psycopg2
+except ImportError:
+    __db_state = State.ERROR
 
 
 def db():
