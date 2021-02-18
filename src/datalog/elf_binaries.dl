@@ -172,10 +172,7 @@ got_reference(Got_entry,Symbol):-
     Got_entry < Beg+Size,
     relocation(Got_entry,RelType,Symbol,_),
     RelType != "RELATIVE",
-    (
-        defined_symbol(_,_,_,_,_,_,_,Symbol);
-        symbol(_,_,_,Scope,_,_,_,Symbol), Scope != "WEAK"
-    ).
+    symbol(_,_,_,_,_,_,_,Symbol).
 
 got_reference(Got_entry,Symbol):-
     (
@@ -280,10 +277,7 @@ symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
 symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
     binary_format("ELF"),
     relocation(EA,"GLOB_DAT",Symbol,Addend),
-    (
-        defined_symbol(_,_,_,_,_,_,_,Symbol);
-        symbol(_,_,_,Scope,_,_,_,Symbol), Scope != "WEAK"
-    ).
+    symbol(_,_,_,_,_,_,_,Symbol).
 
 symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
     binary_format("ELF"),
