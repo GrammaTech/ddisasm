@@ -394,13 +394,20 @@ relative_address_start(Table,1,Ref,Dest,"first"):-
     Dest = Ref + Byte.
 
 relative_address(EA+1,1,IndexTable,AddressTable,Dest,"first"):-
-    (
-      binary_isa("X64"),
-      base_address(ImageBase)
-      ;
-      binary_isa("X86"),
-      ImageBase = 0
-    ),
+    binary_isa("X64"),
+    base_address(ImageBase),
+    relative_address(EA,1,IndexTable,AddressTable,_,"first"),
+    data_byte(EA+1,Byte),
+    Dest = AddressTable + Byte*4,
+    data_word(Dest,4,Word),
+    possible_ea(ImageBase+as(Word,unsigned)),
+    !relative_address_start(EA+1,_,_,_,_).
+
+// TODO: We use relative_address as a convenience. The address in data is not a
+// true symbol-symbol, it is a complete 4-byte address in x86.
+relative_address(EA+1,1,IndexTable,AddressTable,Dest,"first"):-
+    binary_isa("X86"),
+    ImageBase = 0,
     relative_address(EA,1,IndexTable,AddressTable,_,"first"),
     data_byte(EA+1,Byte),
     Dest = AddressTable + Byte*4,
