@@ -41,7 +41,13 @@ struct Mips32Facts
 class Mips32Loader : public InstructionLoader<Mips32Facts>
 {
 public:
-    Mips32Loader() : InstructionLoader{4}
+    enum class Endianness
+    {
+        LITTLE,
+        BIG
+    };
+
+    Mips32Loader(Endianness E = Endianness::BIG) : InstructionLoader{4}
     {
         // Create smart Captone handle.
         CsHandle.reset(new csh(0), [](csh* Handle) {
@@ -50,7 +56,11 @@ public:
         });
 
         // Setup Capstone engine.
-        cs_mode Mode = (cs_mode)(CS_MODE_MIPS32 | CS_MODE_BIG_ENDIAN);
+        unsigned int Mode0 = CS_MODE_MIPS32;
+        if (E == Endianness::BIG)
+            Mode0 |= CS_MODE_BIG_ENDIAN;
+
+        cs_mode Mode = (cs_mode)Mode0;
         [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_MIPS, Mode, CsHandle.get());
         assert(Err == CS_ERR_OK && "Failed to initialize MIPS32 disassembler.");
         cs_option(*CsHandle, CS_OPT_DETAIL, CS_OPT_ON);

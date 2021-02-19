@@ -33,5 +33,6 @@ void ModuleLoader(const gtirb::Module& Module, DatalogProgram& Program);
 
 const char* binaryISA(gtirb::ISA Arch);
 const char* binaryFormat(const gtirb::FileFormat Format);
+const char* binaryEndianness(const gtirb::ByteOrder ByteOrder);
 
 #endif // SRC_GTIRB_DECODER_CORE_MODULELOADER_H_
