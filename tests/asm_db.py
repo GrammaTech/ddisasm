@@ -43,7 +43,7 @@ def db():
     return __db
 
 
-def upload(name, asm, compilers, compiler_args):
+def upload(name, asm, compilers, compiler_args, strip):
     conn = db()
     if conn:
         cursor = conn.cursor()
@@ -79,9 +79,10 @@ def upload(name, asm, compilers, compiler_args):
                 ci_commit_sha,
                 ci_commit_before_sha,
                 ci_commit_branch,
-                ci_commit_ref_slug
+                ci_commit_ref_slug,
+                strip
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
             (
                 name,
@@ -96,6 +97,7 @@ def upload(name, asm, compilers, compiler_args):
                 os.environ.get("CI_COMMIT_BEFORE_SHA"),
                 os.environ.get("CI_COMMIT_BRANCH"),
                 os.environ.get("CI_COMMIT_REF_SLUG"),
+                strip,
             ),
         )
 
