@@ -49,9 +49,9 @@ def upload(name, asm, compilers, compiler_args):
         cursor = conn.cursor()
 
         # Upsert assembly contents to the `assembly' table.
-        with open(asm, "rb") as f:
+        with open(asm, "r") as f:
             contents = f.read()
-            checksum = hashlib.md5(contents).hexdigest()
+            checksum = hashlib.md5(contents.encode("utf-8")).hexdigest()
             cursor.execute(
                 """
                 INSERT INTO assembly (checksum, content)
