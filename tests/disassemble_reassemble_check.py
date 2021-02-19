@@ -291,6 +291,7 @@ def disassemble_reassemble_test(
                     binary + ".s",
                     [compiler, cxx_compiler],
                     [optimization] + extra_compile_flags,
+                    strip,
                 )
                 print("Time " + str(time))
                 if not success:
