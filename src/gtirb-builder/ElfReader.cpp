@@ -268,29 +268,34 @@ void ElfReader::resurrectSections()
 void ElfReader::createGPforMIPS(uint64_t SecIndex, std::map<gtirb::UUID, ElfSymbolInfo> &SymbolInfo,
                                 std::map<gtirb::UUID, ElfSymbolTabIdxInfo> &SymbolTabIdxInfo)
 {
-    const auto &GpSymbols = Module->findSymbols("_gp");
-    if(GpSymbols.empty())
+    if(!Module->findSymbols("_gp").empty()) // _gp already exists
+        return;
+    // Get dynamic entries
+    std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
+    if(getDynamicEntries().empty())
+        return; // No dynamic section, so no need for _gp symbol
+
+    uint64_t GpAddr = 0;
+    if(auto It = DynamicEntries.find("MIPS_RLD_MAP"); It != DynamicEntries.end())
     {
-        // Get dynamic entries
-        std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
-
-        auto It = DynamicEntries.find("MIPS_RLD_MAP");
-        assert((It != DynamicEntries.end()) && "MIPS_RLD_MAP not found");
-        uint64_t RldMapAddr = It->second;
-        uint64_t GpAddr = RldMapAddr + 0x8000;
-
-        gtirb::Symbol *S = Module->addSymbol(*Context, gtirb::Addr(GpAddr), "_gp");
-        uint64_t Size = 0;
-        std::string Type = LIEF::ELF::to_string(LIEF::ELF::ELF_SYMBOL_TYPES::STT_NOTYPE);
-        std::string Scope = LIEF::ELF::to_string(LIEF::ELF::SYMBOL_BINDINGS::STB_LOCAL);
-        std::string Visibility = LIEF::ELF::to_string((LIEF::ELF::ELF_SYMBOL_VISIBILITY)0);
-        std::vector<std::tuple<std::string, uint64_t>> Indexes;
-        Indexes.push_back({".symtab", 0});
-
-        SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex};
-        SymbolTabIdxInfo[S->getUUID()] = Indexes;
+        const uint64_t RldMapAddr = It->second;
+        GpAddr = RldMapAddr + 0x8000;
     }
-    return;
+    else
+    {
+        assert(false); // TODO: MIPS_RLD_MAP_REL? Skip _gp creation?
+    }
+
+    gtirb::Symbol *S = Module->addSymbol(*Context, gtirb::Addr(GpAddr), "_gp");
+    uint64_t Size = 0;
+    std::string Type = LIEF::ELF::to_string(LIEF::ELF::ELF_SYMBOL_TYPES::STT_NOTYPE);
+    std::string Scope = LIEF::ELF::to_string(LIEF::ELF::SYMBOL_BINDINGS::STB_LOCAL);
+    std::string Visibility = LIEF::ELF::to_string((LIEF::ELF::ELF_SYMBOL_VISIBILITY)0);
+    std::vector<std::tuple<std::string, uint64_t>> Indexes;
+    Indexes.push_back({".symtab", 0});
+
+    SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex};
+    SymbolTabIdxInfo[S->getUUID()] = Indexes;
 }
 
 void ElfReader::resurrectSymbols()
