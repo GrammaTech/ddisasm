@@ -69,31 +69,38 @@ void registerDatalogLoaders()
 {
 #if defined(DDISASM_ARM_32)
     // Register ELF-ARM32 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::ARM, gtirb::ByteOrder::Little}, ElfArm32Loader);
+    DatalogProgram::registerLoader(
+        {gtirb::FileFormat::ELF, gtirb::ISA::ARM, gtirb::ByteOrder::Little}, ElfArm32Loader);
 #endif
 
 #if defined(DDISASM_ARM_64)
     // Register ELF-ARM64 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::ARM64, gtirb::ByteOrder::Little}, ElfArm64Loader);
+    DatalogProgram::registerLoader(
+        {gtirb::FileFormat::ELF, gtirb::ISA::ARM64, gtirb::ByteOrder::Little}, ElfArm64Loader);
 #endif
 
 #if defined(DDISASM_MIPS_32)
     // Register ELF-MIPS32 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::MIPS32, gtirb::ByteOrder::Big}, ElfMips32BELoader);
+    DatalogProgram::registerLoader(
+        {gtirb::FileFormat::ELF, gtirb::ISA::MIPS32, gtirb::ByteOrder::Big}, ElfMips32BELoader);
 
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::MIPS32, gtirb::ByteOrder::Little}, ElfMips32LELoader);
+    DatalogProgram::registerLoader(
+        {gtirb::FileFormat::ELF, gtirb::ISA::MIPS32, gtirb::ByteOrder::Little}, ElfMips32LELoader);
 #endif
 
 #if defined(DDISASM_X86_32)
     // Register ELF-X86 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::IA32, gtirb::ByteOrder::Little}, ElfX86Loader);
+    DatalogProgram::registerLoader(
+        {gtirb::FileFormat::ELF, gtirb::ISA::IA32, gtirb::ByteOrder::Little}, ElfX86Loader);
 #endif
 
 #if defined(DDISASM_X86_64)
     // Register ELF-X64 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::X64, gtirb::ByteOrder::Little}, ElfX64Loader);
+    DatalogProgram::registerLoader(
+        {gtirb::FileFormat::ELF, gtirb::ISA::X64, gtirb::ByteOrder::Little}, ElfX64Loader);
 
     // Register PE-X64 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::PE, gtirb::ISA::X64, gtirb::ByteOrder::Little}, PeX64Loader);
+    DatalogProgram::registerLoader(
+        {gtirb::FileFormat::PE, gtirb::ISA::X64, gtirb::ByteOrder::Little}, PeX64Loader);
 #endif
 }

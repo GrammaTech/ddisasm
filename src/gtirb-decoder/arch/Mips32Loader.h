@@ -57,7 +57,7 @@ public:
 
         // Setup Capstone engine.
         unsigned int Mode0 = CS_MODE_MIPS32;
-        if (E == Endianness::BIG)
+        if(E == Endianness::BIG)
             Mode0 |= CS_MODE_BIG_ENDIAN;
 
         cs_mode Mode = (cs_mode)Mode0;
