@@ -1,6 +1,9 @@
 import os
 import hashlib
+import platform
 from enum import Enum
+
+import distro
 
 
 class State(Enum):
@@ -69,6 +72,8 @@ def upload(name, asm, compilers, compiler_args):
                 assembly_id,
                 compiler,
                 compiler_args,
+                platform,
+                distro,
                 ci_job_image,
                 ci_pipeline_id,
                 ci_commit_sha,
@@ -76,13 +81,15 @@ def upload(name, asm, compilers, compiler_args):
                 ci_commit_branch,
                 ci_commit_ref_slug
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
             (
                 name,
                 assembly_id,
                 " ".join(compilers),
                 " ".join(compiler_args),
+                platform.system(),
+                " ".join([distro.name(), distro.version()]),
                 os.environ.get("CI_JOB_IMAGE"),
                 os.environ.get("CI_PIPELINE_ID"),
                 os.environ.get("CI_COMMIT_SHA"),
