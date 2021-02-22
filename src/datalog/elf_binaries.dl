@@ -172,12 +172,7 @@ got_reference(Got_entry,Symbol):-
     Got_entry < Beg+Size,
     relocation(Got_entry,RelType,Symbol,_),
     RelType != "RELATIVE",
-    (
-      symbol(_,_,_,Scope,_,_,_,Symbol), Scope != "WEAK"
-      ;
-      // Handle `.weakref' directives that are sometime pseudo-weak references.
-      symbol(0,0,"FUNC","WEAK",0,_,_,Symbol)
-    ).
+    symbol(_,_,_,_,_,_,_,Symbol).
 
 got_reference(Got_entry,Symbol):-
     (
@@ -277,6 +272,11 @@ no_return_function("longjump"):-binary_format("ELF").
 symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
     binary_format("ELF"),
     relocation(EA,"R64",Symbol,Addend),
+    symbol(_,_,_,_,_,_,_,Symbol).
+
+symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
+    binary_format("ELF"),
+    relocation(EA,"GLOB_DAT",Symbol,Addend),
     symbol(_,_,_,_,_,_,_,Symbol).
 
 symbolic_expr_from_relocation(EA,4,Symbol,Addend):-

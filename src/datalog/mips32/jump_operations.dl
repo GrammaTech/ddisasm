@@ -49,7 +49,6 @@ jump_operation("BC3TL").
 jump_operation("BNVC").
 jump_operation("BOVC").
 jump_operation("BPOSGE32").
-jump_operation("BZ").
 jump_operation("B").
 
 jump_operation(Symbol):-
@@ -98,6 +97,18 @@ jump_comp_operation_2op("BLEZL").
 jump_comp_operation_2op("BLTZ").
 jump_comp_operation_2op("BLTZC").
 jump_comp_operation_2op("BLTZL").
+jump_comp_operation_2op("BNZ").
+jump_comp_operation_2op("BNZ.B").
+jump_comp_operation_2op("BNZ.H").
+jump_comp_operation_2op("BNZ.W").
+jump_comp_operation_2op("BNZ.D").
+jump_comp_operation_2op("BNZ.V").
+jump_comp_operation_2op("BZ").
+jump_comp_operation_2op("BZ.B").
+jump_comp_operation_2op("BZ.H").
+jump_comp_operation_2op("BZ.W").
+jump_comp_operation_2op("BZ.D").
+jump_comp_operation_2op("BZ.V").
 
 .decl jump_equal_operation(n:symbol)
 

@@ -42,6 +42,41 @@ check-format:
       EOF
       ) && exit 1)
 
+build-conan:
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/conan
+  stage: build
+  needs: [check-format]
+  script:
+    - conan profile new default --detect
+    - conan profile update settings.compiler.libcxx=libstdc++11 default
+    - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
+    - conan user ci_user -r gitlab -p ${CI_JOB_TOKEN}
+    # Install gtirb python wheel
+    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=python-wheel --output "gtirb-wheel.zip"
+    - unzip gtirb-wheel.zip
+    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb-*-py*.whl
+    # Run build script
+    - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/build.py
+
+conan-windows:
+  stage: build
+  tags: [ddisasm-windows]
+  script:
+    - systeminfo
+    # Set up user and remote
+    - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
+    - conan user ci_user -r gitlab -p ${CI_JOB_TOKEN}
+    # Install gtirb python wheel
+    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=python-wheel --output "gtirb-wheel.zip"
+    - unzip gtirb-wheel.zip
+    - python -m pip install pip --upgrade && python -m pip install gtirb-*-py*.whl
+    # Run build script
+    - export PATH="$PATH;C:\\Program Files\\CMake\\bin"
+    - export SOUFFLE_INCLUDE_DIR="C:\\users\\vagrant\\AppData\\local\\Packages\\CanonicalGroupLimited.Ubuntu18.04onWindows_79rhkp1fndgsc\\localstate\\rootfs\\usr\\local\\include"
+    - export PYTHON="C:\\Python39\\python.exe"
+    - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
+    - python .ci/build.py
+
 .build-template: &build
   artifacts:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"

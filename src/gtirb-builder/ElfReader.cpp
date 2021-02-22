@@ -73,7 +73,7 @@ void ElfReader::resurrectSections()
 
     // Collect loaded segments ---------------------------------------
     // TODO: This assumes there is one segment for RW and one for RX.
-    LIEF::ELF::Segment LoadedSegmentRW; // for .got and .bss
+    LIEF::ELF::Segment LoadedSegmentRW; // for .got, .data, and .bss
     LIEF::ELF::Segment LoadedSegmentRX; // for fake executable section
     for(auto &Segment : Elf->segments())
     {
@@ -177,9 +177,9 @@ void ElfReader::resurrectSections()
         ++Index;
 
         // -----------------------------------------------------------
-        // Create .fake.data.segment
+        // Create .fake.data
         // Add named section to GTIRB Module.
-        gtirb::Section *DataS = Module->addSection(*Context, ".fake.data.segment");
+        gtirb::Section *DataS = Module->addSection(*Context, ".fake.data");
         // Add section flags to GTIRB Section.
         DataS->addFlag(gtirb::SectionFlag::Loaded);
         DataS->addFlag(gtirb::SectionFlag::Readable);
@@ -196,6 +196,34 @@ void ElfReader::resurrectSections()
         SectionIndex[Index] = DataS->getUUID();
         SectionProperties[DataS->getUUID()] = {Type, Flags};
         ++Index;
+
+        // -----------------------------------------------------------
+        // Create .fake.data2 section if any at the end of the segment
+        if(Segment.physical_size() < Segment.virtual_size())
+        {
+            uint64_t DataAddr = Segment.virtual_address() + Segment.physical_size();
+            uint64_t DataSize = Segment.virtual_size() - Segment.physical_size();
+
+            gtirb::Section *DataS = Module->addSection(*Context, ".fake.data2");
+            // Add section flags to GTIRB Section.
+            DataS->addFlag(gtirb::SectionFlag::Loaded);
+            DataS->addFlag(gtirb::SectionFlag::Readable);
+            DataS->addFlag(gtirb::SectionFlag::Writable);
+
+            std::vector<uint8_t> DataBytes =
+                Elf->get_content_from_virtual_address(DataAddr, DataSize);
+            DataS->addByteInterval(*Context, gtirb::Addr(DataAddr), Bytes.begin(), Bytes.end(),
+                                   DataSize, Bytes.size());
+
+            Alignment[DataS->getUUID()] = 16;
+            SectionIndex[Index] = DataS->getUUID();
+            SectionProperties[DataS->getUUID()] = {
+                static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS),
+                static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC
+                                      | LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE)};
+
+            ++Index;
+        }
     }
 
     // Create .bss section if there's any in LoadedSegmentRW ---------

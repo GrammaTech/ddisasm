@@ -39,18 +39,14 @@ Vagrant.configure("2") do |config|
     choco install -y git
     choco install -y cmake
     choco install -y ninja
-    choco install -y python3
-    cd $HOME
-    Invoke-WebRequest "https://download.visualstudio.microsoft.com/download/pr/449a624c-a30d-4cc3-b971-fcf6a375a8c5/788ee02bb853726c9c2aed2c291cdbf23389a75d8e61ed98bb3bdd2410087f7e/vs_Community.exe" -OutFile vs_community.exe
-    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-    $startInfo.FileName = "C:\\Users\\vagrant\\vs_community.exe"
-    $startInfo.Arguments = "--installPath ""C:\\VS"" --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.VC.CoreBuildTools --add Microsoft.VisualStudio.Component.VC.Redist.14.Latest --add Microsoft.VisualStudio.Component.Windows10SDK --add Microsoft.VisualStudio.Component.Windows10SDK.18362 --includeRecommended --passive --wait"
-    $startInfo.UseShellExecute = $true
-    $startInfo.CreateNoWindow = $false
-    $process = New-Object System.Diagnostics.Process
-    $process.StartInfo = $startInfo
-    $process.Start()
-    $process.WaitForExit()
+    choco install -y python3 --version=3.9.1
+    choco install -y visualstudio2019community --version=16.8.4.0 --package-parameters "--installPath ""C:\\VS""  --passive --wait --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.VC.CoreBuildTools --add Microsoft.VisualStudio.Component.VC.Redist.14.Latest --add Microsoft.VisualStudio.Component.Windows10SDK --add Microsoft.VisualStudio.Component.Windows10SDK.18362 --includeRecommended"
+  SHELL
+
+  config.vm.provision :reload
+
+  config.vm.provision "setup-conan", type: "shell", inline: <<-SHELL
+    python -m pip install conan
   SHELL
 
   # The provisioner belows uses the installer from sourceforge, because it is
@@ -61,7 +57,7 @@ Vagrant.configure("2") do |config|
   # installer.
   config.vm.provision "install-boost", type: "shell", inline: <<-SHELL
     cd $HOME
-    Invoke-WebRequest "https://ayera.dl.sourceforge.net/project/boost/boost-binaries/1.67.0/boost_1_67_0-msvc-14.1-64.exe" -OutFile "boost_1_67_0-msvc-14.1-64.exe"
+    curl.exe -L "https://sourceforge.net/projects/boost/files/boost-binaries/1.67.0/boost_1_67_0-msvc-14.1-64.exe/download?use_mirror=newcontinuum&r=https%3A%2F%2Fsourceforge.net%2F&use_mirror=newcontinuum" --output "boost_1_67_0-msvc-14.1-64.exe"
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = "C:\\Users\\vagrant\\boost_1_67_0-msvc-14.1-64.exe"
     $startInfo.Arguments = "/NORESTART /DIR=""C:\\Boost-stage"" /SILENT"
@@ -114,14 +110,14 @@ option.set keep-going : false ;
     cd capstone
     mkdir build-debug
     cd build-debug
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja""  -DCMAKE_INSTALL_PREFIX=C:\\capstone-debug .."
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja""  -DCMAKE_INSTALL_PREFIX=C:\\capstone-debug -DCAPSTONE_INSTALL=ON .."
     cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
     cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja install"
 
     cd ..
     mkdir build-release
     cd build-release
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja"" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=C:\\capstone-release .."
+    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja"" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=C:\\capstone-release -DCAPSTONE_INSTALL=ON .."
     cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
     cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja install"
   SHELL
@@ -169,13 +165,17 @@ option.set keep-going : false ;
     Wait-Job -Job $jobs
   SHELL
 
+  # Below, we are using souffle's master branch, because microsoft has removed
+  # some compiler builtins that souffle on MSVC relies upon.  A fix for this
+  # is on the master branch, but there is no release with the fix yet.
   config.vm.provision "generate-souffle-setup-script", type: "shell", inline: <<-SHELL
     cd $HOME
     $wsl_script = @"
 apt-get update
 apt-get -y install libffi-dev libsqlite3-dev zlib1g-dev bison flex libncurses5-dev automake m4 libtool build-essential mcpp
-git clone -b 2.0.2 https://github.com/souffle-lang/souffle
+git clone -b master https://github.com/souffle-lang/souffle
 cd souffle
+git checkout 68d4dcdbbd6a285169d06dfec461e652cf7ec8ae
 sh ./bootstrap
 ./configure --enable-64bit-domain
 make -j8 install

@@ -1,0 +1,41 @@
+FROM ubuntu:18.04
+
+# Use bash for more convenient variable substitution syntax
+SHELL ["/bin/bash", "-c"]
+
+RUN apt-get update -y \
+ && apt-get install -y \
+      clang \
+      cmake \
+      curl \
+      git \
+      libstdc++-7-dev \
+      make \
+      python3 \
+      python3-pip \
+      unzip
+
+# Install cross-platform utils
+RUN apt-get -y update \
+ && apt-get -y install \
+      gcc-arm-linux-gnueabihf \
+      gcc-aarch64-linux-gnu \
+      gcc-mips-linux-gnu \
+      g++-mips-linux-gnu \
+      qemu-user
+
+RUN dpkg --add-architecture i386 \
+ && apt-get -y update \
+ && apt-get -y install \
+      libc6-dev:i386 \
+      libstdc++-7-dev:i386 \
+      lib32gcc-7-dev \
+      lib32stdc++-7-dev
+
+RUN cd /usr/mips-linux-gnu \
+ && mkdir etc \
+ && ldconfig -c etc/ld.do.cache -r .
+
+COPY etc/sstrip /usr/bin/sstrip
+
+RUN python3 -m pip install conan distro pyyaml
