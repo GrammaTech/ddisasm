@@ -508,99 +508,19 @@ npad(EA,Size):-
     op_regdirect(Op,"EDI"),
     Size = 2.
 
-// lea ecx, [ecx+00]
-// DB 8DH, 49H, 00H
-//
-// lea esp, [esp+00]
-// DB 8DH, 64H, 24H, 00H
-//
-// lea ebx, [ebx+00000000]
-// DB 8DH, 9BH, 00H, 00H, 00H, 00H
-//
-// lea esp, [esp+00000000]
-// DB 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H
+// lea REG, [REG+00]
 npad(EA,Size):-
     instruction(EA,Size,_,"LEA",Op1,Op2,_,_,_,_),
     op_indirect(Op1,"NONE",Reg,"NONE",_,0,_),
     op_regdirect(Op2,Reg).
 
-// jmp .+5; .npad 3
-// DB 0EBH, 03H, 8DH, 49H, 00H
+// jmp .+N; .npad N
 npad(EA,Size):-
-    data_byte(EA,0xEB),
-    data_byte(EA+1,0x03),
-    npad(EA+2,3),
-    Size = 5.
-
-// jmp .+8; .npad 6
-// DB 0EBH, 06H, 8DH, 9BH, 00H, 00H, 00H, 00H
-npad(EA,Size):-
-    data_byte(EA,0xEB),
-    data_byte(EA+1,0x06),
-    npad(EA+2,6),
-    Size = 8.
-
-// jmp .+9; .npad 7
-// DB 0EBH, 07H, 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H
-npad(EA,Size):-
-    data_byte(EA,0xEB),
-    data_byte(EA+1,0x07),
-    npad(EA+2,7),
-    Size = 9.
-
-// jmp .+A; .npad 7; .npad 1
-// DB 0EBH, 08H, 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H, 90H
-npad(EA,Size):-
-    data_byte(EA,0xEB),
-    data_byte(EA+1,0x08),
-    npad(EA+2,7),
-    data_byte(EA+9,0x90),
-    Size = 10.
-
-// jmp .+B; .npad 7; .npad 2
-// DB 0EBH, 09H, 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H, 8BH, 0FFH
-npad(EA,Size):-
-    data_byte(EA,0xEB),
-    data_byte(EA+1,0x09),
-    npad(EA+2,7),
-    npad(EA+9,2),
-    Size = 11.
-
-// jmp .+C; .npad 7; .npad 3
-// DB 0EBH, 0AH, 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H, 8DH, 49H, 00H
-npad(EA,Size):-
-    data_byte(EA,0xEB),
-    data_byte(EA+1,0x0A),
-    npad(EA+2,7),
-    npad(EA+9,3),
-    Size = 12.
-
-// jmp .+D; .npad 7; .npad 4
-// DB 0EBH, 0BH, 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H, 8DH, 64H, 24H, 00H
-npad(EA,Size):-
-    data_byte(EA,0xEB),
-    data_byte(EA+1,0x0B),
-    npad(EA+2,7),
-    npad(EA+9,4),
-    Size = 13.
-
-// jmp .+E; .npad 7; .npad 5
-// DB 0EBH, 0CH, 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H, 0EBH, 03H, 8DH, 49H, 00H
-npad(EA,Size):-
-    data_byte(EA,0xEB),
-    data_byte(EA+1,0x0C),
-    npad(EA+2,7),
-    npad(EA+9,5),
-    Size = 14.
-
-// jmp .+F; .npad 7; .npad 6
-// DB 0EBH, 0DH, 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H, 8DH, 9BH, 00H, 00H, 00H, 00H
-npad(EA,Size):-
-    data_byte(EA,0xEB),
-    data_byte(EA+1,0x0D),
-    npad(EA+2,7),
-    npad(EA+9,6),
-    Size = 15.
+    unconditional_jump(EA),
+    direct_jump(EA,Dest),
+    Size = Dest - EA,
+    Size <= 15,
+    npad(EA+2,_).
 
 is_padding(EA):-
     binary_format("PE"),
