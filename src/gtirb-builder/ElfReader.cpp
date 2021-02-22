@@ -212,8 +212,8 @@ void ElfReader::resurrectSections()
 
             std::vector<uint8_t> DataBytes =
                 Elf->get_content_from_virtual_address(DataAddr, DataSize);
-            DataS->addByteInterval(*Context, gtirb::Addr(DataAddr), DataBytes.begin(), DataBytes.end(),
-                                   DataSize, DataBytes.size());
+            DataS->addByteInterval(*Context, gtirb::Addr(DataAddr), DataBytes.begin(),
+                                   DataBytes.end(), DataSize, DataBytes.size());
 
             Alignment[DataS->getUUID()] = 16;
             SectionIndex[Index] = DataS->getUUID();
