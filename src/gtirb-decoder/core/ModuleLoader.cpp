@@ -45,21 +45,8 @@ void ModuleLoader(const gtirb::Module& Module, DatalogProgram& Program)
         }
     }
 
-    // For now, use ISA info to infer endianness.
-    // TODO: Get the endianness info from gtirb.
-    std::string Endianness;
-    if(BinaryIsa == "ARM" || BinaryIsa == "X64" || BinaryIsa == "X86")
-    {
-        Endianness = "LE";
-    }
-    else if(BinaryIsa == "MIPS")
-    {
-        Endianness = "BE";
-    }
-    else
-    {
-        Endianness = BinaryIsa;
-    }
+    // Binary endianness.
+    std::string Endianness = binaryEndianness(Module.getByteOrder());
 
     // Binary object type.
     std::string BinaryType;
@@ -119,6 +106,20 @@ const char* binaryISA(gtirb::ISA Arch)
         case gtirb::ISA::MIPS32:
         case gtirb::ISA::MIPS64:
             return "MIPS";
+        default:
+            return "Undefined";
+    }
+}
+
+const char* binaryEndianness(const gtirb::ByteOrder ByteOrder)
+{
+    switch(ByteOrder)
+    {
+        case gtirb::ByteOrder::Big:
+            return "BE";
+        case gtirb::ByteOrder::Little:
+            return "LE";
+        case gtirb::ByteOrder::Undefined:
         default:
             return "Undefined";
     }

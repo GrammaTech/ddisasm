@@ -30,14 +30,26 @@
 #include "../core/SectionLoader.h"
 #include "../format/ElfLoader.h"
 
-CompositeLoader ElfMips32Loader()
+CompositeLoader ElfMips32BELoader()
 {
     CompositeLoader Loader("souffle_disasm_mips32");
     Loader.add(ModuleLoader);
     Loader.add(SectionLoader);
-    Loader.add<Mips32Loader>();
-    // TODO: We need to find potential big-endian addresses.
+    Loader.add<Mips32Loader>(Mips32Loader::Endianness::BIG);
     Loader.add<DataLoader>(DataLoader::Pointer::DWORD, DataLoader::Endianness::BIG);
+    Loader.add(ElfDynamicEntryLoader);
+    Loader.add(ElfSymbolLoader);
+    Loader.add(ElfExceptionLoader);
+    return Loader;
+}
+
+CompositeLoader ElfMips32LELoader()
+{
+    CompositeLoader Loader("souffle_disasm_mips32");
+    Loader.add(ModuleLoader);
+    Loader.add(SectionLoader);
+    Loader.add<Mips32Loader>(Mips32Loader::Endianness::LITTLE);
+    Loader.add<DataLoader>(DataLoader::Pointer::DWORD, DataLoader::Endianness::LITTLE);
     Loader.add(ElfDynamicEntryLoader);
     Loader.add(ElfSymbolLoader);
     Loader.add(ElfExceptionLoader);

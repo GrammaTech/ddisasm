@@ -373,7 +373,10 @@ void ElfReader::resurrectSymbols()
         {
             LIEF::ELF::Elf32_Sym sym;
             memcpy(&sym, &Bytes[I * sizeof(LIEF::ELF::Elf32_Sym)], sizeof(LIEF::ELF::Elf32_Sym));
-            LIEF::Convert::swap_endian<LIEF::ELF::Elf32_Sym>(&sym);
+            if(Module->getByteOrder() == gtirb::ByteOrder::Big)
+            {
+                LIEF::Convert::swap_endian<LIEF::ELF::Elf32_Sym>(&sym);
+            }
             LIEF::ELF::Symbol Symbol(&sym);
             std::string Name = getStringAt(sym.st_name);
             Symbol.name(Name);

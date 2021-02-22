@@ -86,6 +86,21 @@ void GtirbBuilder::initModule()
     Module->setBinaryPath(Path);
     Module->setFileFormat(format());
     Module->setISA(isa());
+    Module->setByteOrder(endianness());
+}
+
+gtirb::ByteOrder GtirbBuilder::endianness()
+{
+    switch(Binary->header().endianness())
+    {
+        case LIEF::ENDIANNESS::ENDIAN_BIG:
+            return gtirb::ByteOrder::Big;
+        case LIEF::ENDIANNESS::ENDIAN_LITTLE:
+            return gtirb::ByteOrder::Little;
+        default:
+            break;
+    }
+    return gtirb::ByteOrder::Undefined;
 }
 
 gtirb::FileFormat GtirbBuilder::format()
