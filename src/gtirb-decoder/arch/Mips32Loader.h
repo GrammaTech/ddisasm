@@ -59,6 +59,8 @@ public:
         unsigned int Mode0 = CS_MODE_MIPS32;
         if(E == Endianness::BIG)
             Mode0 |= CS_MODE_BIG_ENDIAN;
+        else if(E == Endianness::LITTLE)
+            Mode0 |= CS_MODE_LITTLE_ENDIAN;
 
         cs_mode Mode = (cs_mode)Mode0;
         [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_MIPS, Mode, CsHandle.get());
