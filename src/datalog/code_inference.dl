@@ -496,14 +496,6 @@ block_points(Block,0,-3,"possible relative-jump-table start"):-
     relative_address_start(Beg,_,_,_,_),
     BegBlockAddr <= Beg, Beg< EndBlockAddr.
 
-block_points(Block,0,-4,"incremental linking thunks"):-
-    block_is_overlapping(Block),
-    !unconditional_jump(Block),
-    unconditional_jump(EA),
-    next(EA,EA2), unconditional_jump(EA2),
-    next(EA2,EA3), unconditional_jump(EA3),
-    Block > EA, Block < EA3.
-
 block_points(Block,0,0,"basic point"):-
     block_is_overlapping(Block),
     code_in_block_candidate_refined(_,Block).
