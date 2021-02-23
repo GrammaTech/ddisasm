@@ -5,6 +5,8 @@ import re
 
 
 def get_version():
+    if os.getenv("CI_COMMIT_BRANCH", "") == "windows-support":
+        return "dev"
     try:
         with open("version.txt") as f:
             s = f.read()
@@ -26,7 +28,7 @@ def get_version():
 
 
 def branch_to_channel(branch):
-    if branch == "master":
+    if re.match(r"v[\d]+\.[\d]+\.[\d]+", branch):
         return "stable"
     else:
         return branch.replace("/", "+")
@@ -57,12 +59,17 @@ class Properties:
             channel = branch_to_channel(branch)
         return channel
 
-    # Add to this list branch names to have conan packages for
-    # branches archived in gitlab.
     @property
     def archived_channels(self):
+        # Add to this list branch names to have conan packages for
+        # branches archived in gitlab.
         archived_branches = ["master", "windows-support"]
-        return list(map(branch_to_channel, archived_branches))
+        # Also, archive the 'stable' channel, where all stable versions
+        # will be uploaded
+        archived_channels = ["stable"]
+        return archived_channels + list(
+            map(branch_to_channel, archived_branches)
+        )
 
     @property
     def conan_ref(self):
@@ -96,12 +103,12 @@ class DdisasmConan(Properties, ConanFile):
             )
 
     boost_version = "1.69.0"
-    gtirb_version = "1.10.2"
-    gtirb_pprinter_version = "1.5.1"
+    gtirb_version = "dev"
+    gtirb_pprinter_version = "dev"
     capstone_version = "4.0.1"
     requires = (
         "boost/%s@conan/stable" % (boost_version),
-        "gtirb/%s@rewriting+gtirb/stable" % (gtirb_version),
+        "gtirb/%s@rewriting+gtirb/master" % (gtirb_version),
         "gtirb-pprinter/%s@rewriting+gtirb-pprinter/windows-support"
         % (gtirb_pprinter_version),
         "capstone/%s@rewriting+extra-packages/next" % (capstone_version),
