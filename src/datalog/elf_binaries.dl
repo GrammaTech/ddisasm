@@ -261,6 +261,7 @@ inferred_symbol_name(EA,"_DYNAMIC","LOCAL","NONE"):-
 inferred_symbol_name(EA,Name,"GLOBAL","FUNC"):-
     function_inference.function_entry(EA),
     !function_symbol(EA,_),
+    !ifunc_symbol(EA,_),
     Name = cat("FUN_",to_string(EA)).
 
 
