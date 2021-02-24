@@ -258,6 +258,11 @@ inferred_symbol_name(EA,"_DYNAMIC","LOCAL","NONE"):-
     !symbol(EA,_,_,_,_,_,_,"_DYNAMIC"),
     section(".dynamic",_,EA).
 
+inferred_symbol_name(EA,Name,"GLOBAL","FUNC"):-
+    function_inference.function_entry(EA),
+    !function_symbol(EA,_),
+    Name = cat("FUN_",to_string(EA)).
+
 
 no_return_function("exit"):-binary_format("ELF").
 no_return_function("_exit"):-binary_format("ELF").
