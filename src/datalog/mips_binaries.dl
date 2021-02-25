@@ -301,6 +301,7 @@ base_addr_offset_operand(EA,NextEA,Dest_addr):-
     value_reg(EA,Reg,_,"NONE",_,Value,_),
     instruction_get_operation(EA, Operation),
     arch.load_operation(Operation),
+    !split_loadstore(_,EA,_),
 
     def_used(EA,Reg,NextEA,_),
     EA != NextEA,
