@@ -185,7 +185,10 @@ class DdisasmConan(Properties, ConanFile):
 
         cmake.configure(source_folder=".", defs=defs)
         cmake.build()
-        cmake.test(output_on_failure=True)
+        with tools.vcvars(self.settings, arch="x86"):
+            cmake.test(output_on_failure=True)
+        with tools.vcvars(self.settings, arch="x86_64"):
+            cmake.test(output_on_failure=True)
         cmake.install()
 
     def package(self):

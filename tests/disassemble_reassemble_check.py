@@ -3,12 +3,9 @@ import contextlib
 import os
 import shlex
 import subprocess
-import pathlib
 from timeit import default_timer as timer
 
 import platform
-
-EXAMPLES_DIR = (pathlib.Path(__file__).parent / ".." / "examples").absolute()
 
 
 class bcolors:
@@ -77,12 +74,7 @@ def make(target=""):
     if platform.system() == "Linux":
         return ["make", "-e"] + target
     elif platform.system() == "Windows":
-        return [
-            EXAMPLES_DIR / "make.bat",
-            "/E",
-            "/F",
-            "Makefile.windows",
-        ] + target
+        return ["nmake", "/E", "/F", "Makefile.windows"] + target
 
 
 def compile(

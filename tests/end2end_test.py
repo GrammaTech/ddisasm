@@ -1,3 +1,4 @@
+import os
 import platform
 import unittest
 from pathlib import Path
@@ -38,6 +39,11 @@ def compatible_test(config, test):
         if distro.version() not in test["distro"]["version"]:
             return False
 
+    # TODO: Can we have a hybrid x86_32 and x86_64 vcvar environment?
+    if "platform" in config and "arch" in test:
+        if "Windows" in config["platform"]:
+            if os.environ["VSCMD_ARG_TGT_ARCH"] != test["arch"]:
+                return False
     return True
 
 
