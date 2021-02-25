@@ -187,12 +187,9 @@ tests:
     <<: *default
     <<: *test-strip-default
 
-  # Currently, ex_stat seg-faults because __lstat is not recognized as
-  # FUNC/GLOBAL: .global directive seems to resolve the seg-fault.
-  # This needs further investigation. Disable this test for now.
-  #- name: ex_stat
-  #  <<: *default
-  #  <<: *test-strip-default
+  - name: ex_stat
+    <<: *default
+    <<: *test-strip-default
 
   - name: ex_virtualDispatch
     <<: *default
@@ -271,12 +268,9 @@ tests:
     <<: *default
     <<: *test-sstrip-default
 
-  # Currently, ex_stat seg-faults because __lstat is not recognized as
-  # FUNC/GLOBAL: .global directive seems to resolve the seg-fault.
-  # This needs further investigation. Disable this test for now.
-  #- name: ex_stat
-  #  <<: *default
-  #  <<: *test-sstrip-default
+  - name: ex_stat
+    <<: *default
+    <<: *test-sstrip-default
 
   - name: ex_virtualDispatch
     <<: *default
