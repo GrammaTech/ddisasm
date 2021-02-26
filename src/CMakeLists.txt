@@ -34,6 +34,7 @@ set(DATALOG_BASE_SOURCES
     datalog/exceptions.dl
     datalog/basic_function_inference.dl
     datalog/main.dl
+    datalog/pe_binaries.dl
     datalog/pointer_reatribution.dl
     datalog/printable_chars.dl
     datalog/register_type_analysis.dl
@@ -397,6 +398,10 @@ if(BUILD_FUNINFER)
 
   target_include_directories(
     funinfer PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
+
+  if(SOUFFLE_INCLUDE_DIR)
+    target_include_directories(funinfer PRIVATE ${SOUFFLE_INCLUDE_DIR})
+  endif()
 
   if(${GTIRB_USE_SYSTEM_BOOST} MATCHES "OFF")
     add_dependencies(funinfer Boost)

@@ -36,6 +36,18 @@ using ElfSymbolTabIdxInfo = std::vector<std::tuple<std::string, uint64_t>>;
 using SectionProperties = std::tuple<uint64_t, uint64_t>;
 using ElfDynamicEntry = std::tuple<std::string, uint64_t>;
 
+// A DataDirectory is a tuple of the form {Type, Address, Size}.
+using DataDirectory = std::tuple<std::string, uint64_t, uint64_t>;
+
+// An ImportEntry is a tuple of the form {Iat_address, Ordinal, Function, Library}.
+using ImportEntry = std::tuple<uint64_t, int64_t, std::string, std::string>;
+
+// An ExportEntry is a tuple of the form {Address, Ordinal, Name}.
+using ExportEntry = std::tuple<uint64_t, int64_t, std::string>;
+
+// A Resource is a tuple of the form { RES header, data length, data ptr}.
+using PeResource = std::tuple<std::vector<uint8_t>, gtirb::Offset, uint64_t>;
+
 /// \file AuxDataSchema.h
 /// \ingroup AUXDATA_GROUP
 /// \brief AuxData types used by ddisasm that are not sanctioned.
@@ -142,12 +154,56 @@ namespace gtirb
             typedef std::map<gtirb::Offset, uint64_t> Type;
         };
 
+        // \brief List on PE Resources in the form <header, data_offset, data_length
+        struct PeResources
+        {
+            static constexpr const char* Name = "peResources";
+            typedef std::vector<std::tuple<std::vector<uint8_t>, gtirb::Offset, uint64_t>> Type;
+        };
+
         /// \brief Auxiliary data that stores the version of ddisasm used to
         // produce the GTIRB.
         struct DdisasmVersion
         {
             static constexpr const char* Name = "ddisasmVersion";
             typedef std::string Type;
+        };
+
+        /// \brief Auxiliary data covering PE section properties.
+        struct PeSectionProperties
+        {
+            static constexpr const char* Name = "peSectionProperties";
+            typedef std::map<gtirb::UUID, uint64_t> Type;
+        };
+
+        /// \brief Auxiliary data representing the import table of a PE file.
+        struct ImportEntries
+        {
+            static constexpr const char* Name = "peImportEntries";
+            // Tuples of the form {Iat_address, Ordinal, Function, Library}.
+            typedef std::vector<std::tuple<uint64_t, int64_t, std::string, std::string>> Type;
+        };
+
+        /// \brief Auxiliary data representing the export table of a PE file.
+        struct ExportEntries
+        {
+            static constexpr const char* Name = "peExportEntries";
+            // Tuples of the form {Address, Ordinal, Name}.
+            typedef std::vector<std::tuple<uint64_t, int64_t, std::string>> Type;
+        };
+
+        /// \brief Auxiliary data for the UUIDs of imported symbols in a PE file.
+        struct PeImportedSymbols
+        {
+            static constexpr const char* Name = "peImportedSymbols";
+            typedef std::vector<gtirb::UUID> Type;
+        };
+
+        /// \brief Auxiliary data for the UUIDs of exported symbols in a PE file.
+        struct PeExportedSymbols
+        {
+            static constexpr const char* Name = "peExportedSymbols";
+            typedef std::vector<gtirb::UUID> Type;
         };
     } // namespace schema
 } // namespace gtirb

@@ -20,8 +20,14 @@ default: &default
   # Test configuration.
   test:
     wrapper: null
+    strip_exe: "strip"
     strip: false
     skip: false
+
+test-strip-default: &test-strip-default
+  test:
+    strip_exe: "strip"
+    strip: true
 
 assembly: &assembly
   <<: *default
@@ -33,6 +39,7 @@ assembly: &assembly
     optimizations: [""]
 
 tests:
+
   # ----------------------------------------------------------------------------
   # Small C and C++ examples.
   # ----------------------------------------------------------------------------
@@ -142,6 +149,7 @@ tests:
   # stripped version
   - name: ex1
     <<: *default
+    <<: *test-strip-default
     build:
       flags: ["-static", "-no-pie"]
       c: ["gcc"]
@@ -150,8 +158,6 @@ tests:
     reassemble:
       flags: ["-nostdlib", "-no-pie"]
       compiler: "gcc"
-    test:
-      strip: true
     distro:
       name: Ubuntu
       version: ["18.04","20.04"]
@@ -161,123 +167,102 @@ tests:
   # ----------------------------------------------------------------------------
   - name: ex1
     <<: *default
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_2modulesPIC
     <<: *default
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_confusing_data
     <<: *default
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_exceptions1
     <<: *default
+    <<: *test-strip-default
     reassemble:
       compiler: "g++"
       flags: ["-no-pie"]
-    test:
-      strip: true
 
   - name: ex_exceptions2
     <<: *default
+    <<: *test-strip-default
     reassemble:
       compiler: "g++"
       flags: ["-no-pie"]
-    test:
-      strip: true
 
   - name: ex_exceptions3
     <<: *default
+    <<: *test-strip-default
     reassemble:
       compiler: "g++"
       flags: ["-no-pie"]
-    test:
-      strip: true
 
   - name: ex_false_pointer_array
     <<: *default
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_float
     <<: *default
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_fprintf
     <<: *default
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_getoptlong
     <<: *default
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_memberPointer
     <<: *default
+    <<: *test-strip-default
     reassemble:
       compiler: "g++"
       flags: ["-no-pie"]
-    test:
-      strip: true
 
   - name: ex_noreturn
     <<: *default
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_pointerReatribution
     <<: *default
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_pointerReatribution2
     <<: *default
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_pointerReatribution3
     <<: *default
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_stat
     <<: *default
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_struct
     <<: *default
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_switch
     <<: *default
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_uninitialized_data
     <<: *default
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_virtualDispatch
     <<: *default
+    <<: *test-strip-default
     reassemble:
       compiler: "g++"
       flags: ["-no-pie"]
-    test:
-      strip: true
 
   - name: ex_thread_local
     <<: *default
-    test:
-      strip: true
+    <<: *test-strip-default
 
   # ----------------------------------------------------------------------------
   # Assembly examples.
@@ -322,60 +307,49 @@ tests:
   # ----------------------------------------------------------------------------
   - name: ex_pointerReatribution3
     <<: *assembly
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_pointerReatribution3_clang
     <<: *assembly
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_pointerReatribution3_pie
     <<: *assembly
+    <<: *test-strip-default
     build:
       c: ["gcc"]
       cpp: ["g++"]
       flags: ["-pie"]
       optimizations: [""]
-    test:
-      strip: true
 
   - name: ex_weird_sections
     <<: *assembly
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_relative_switch
     <<: *assembly
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_relative_switch_through_stack
     <<: *assembly
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_relative_switch_sizes
     <<: *assembly
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_switch_in_code
     <<: *assembly
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_switch_in_code2
     <<: *assembly
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_switch_in_code3
     <<: *assembly
-    test:
-      strip: true
+    <<: *test-strip-default
 
   - name: ex_loop_instructions
     <<: *assembly
-    test:
-      strip: true
+    <<: *test-strip-default

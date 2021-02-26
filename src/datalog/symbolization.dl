@@ -103,6 +103,7 @@ This module also computes and symbol_minus_symbol.
 // candidates of symbolic values in the code
 
 .decl symbolic_operand_candidate(ea:address,operand_index:operand_index,Dest:address,Type:symbol)
+.output symbolic_operand_candidate
 .decl symbolic_operand_point(ea:address,operand_index:operand_index,points:number,why:symbol)
 .output symbolic_operand_point
 .decl symbolic_operand_total_points(ea:address,operand_index:operand_index,points:number)
@@ -238,6 +239,7 @@ symbolic_operand(EA,Op_index,Value,Type):-
 ///////////////////////////////
 // label candidates before moving
 .decl labeled_data_candidate(EA:address)
+.output labeled_data_candidate
 
 labeled_data_candidate(EA):-
     symbol(EA,_,_,_,_,_,_,_).
@@ -425,7 +427,10 @@ next_address_in_data(EA,EA_next):-
 address_array_aux(EA,Diff,"code",EA):-
     address_in_data_refined(EA,Dest1),code(Dest1),
     arch.pointer_size(Pt_size),
-    EA % Pt_size = 0,
+    (
+      binary_format("PE");
+      EA % Pt_size = 0
+    ),
     next_address_in_data(EA,EA_next),
     Diff = EA_next-EA,
     address_in_data_refined(EA+Diff,Dest2),code(Dest2),
@@ -611,6 +616,16 @@ data_object_conflict(EA,Size,Type,EA,Size,Type2):-
     data_object_candidate(EA,Size,Type),
     data_object_candidate(EA,Size,Type2),
     Type != Type2.
+
+// Destination collides with another candidate.
+data_object_conflict(EA,Size,Type,EA2,Size2,Type2):-
+    // Candidate references another data location,
+    data_object_candidate(EA,Size,Type),
+    address_in_data_refined(EA,Val),
+    // but would collide with another candidate symbol at that location.
+    data_object_candidate(EA2,Size2,Type2),
+    Val > EA2,
+    Val < EA2+Size2.
 
 .decl data_object_total_points(EA:address,Size:unsigned,Type:symbol,Points:number)
 .output data_object_total_points

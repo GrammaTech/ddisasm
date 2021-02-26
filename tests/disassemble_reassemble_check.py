@@ -3,8 +3,9 @@ import contextlib
 import os
 import shlex
 import subprocess
-import platform
 from timeit import default_timer as timer
+
+import platform
 
 
 class bcolors:
@@ -36,17 +37,26 @@ class bcolors:
 
 
 @contextlib.contextmanager
-def get_target(binary, strip):
+def get_target(binary, strip_exe, strip, sstrip):
     if strip:
         print("# stripping binary\n")
         subprocess.run(["cp", binary, binary + ".stripped"])
         binary = binary + ".stripped"
-        subprocess.run(["strip", "--strip-unneeded", binary])
+        subprocess.run([strip_exe, "--strip-unneeded", binary])
+        stripped_binary = binary
+    if sstrip:
+        print("# stripping sections\n")
+        subprocess.run(["cp", binary, binary + ".sstripped"])
+        binary = binary + ".sstripped"
+        subprocess.run(["sstrip", binary])
+        sstripped_binary = binary
     try:
         yield binary
     finally:
         if strip:
-            os.remove(binary)
+            os.remove(stripped_binary)
+        if sstrip:
+            os.remove(sstripped_binary)
 
 
 @contextlib.contextmanager
@@ -68,7 +78,12 @@ def make(target=""):
 
 
 def compile(
-    compiler, cxx_compiler, optimizations, extra_flags, exec_wrapper=None
+    compiler,
+    cxx_compiler,
+    optimizations,
+    extra_flags,
+    exec_wrapper=None,
+    arch=None,
 ):
     """
     Clean the project and compile it using the compiler
@@ -87,6 +102,8 @@ def compile(
     env["CXXFLAGS"] = quote_args(optimizations, *extra_flags)
     if exec_wrapper:
         env["EXEC"] = exec_wrapper
+    if arch:
+        env["TARGET_ARCH"] = arch
     completedProcess = subprocess.run(
         make("clean"), env=env, stdout=subprocess.DEVNULL
     )
@@ -97,11 +114,19 @@ def compile(
     return completedProcess.returncode == 0
 
 
-def disassemble(binary, strip, format="--asm", extension="s", extra_args=[]):
+def disassemble(
+    binary,
+    strip_exe,
+    strip,
+    sstrip,
+    format="--asm",
+    extension="s",
+    extra_args=[],
+):
     """
     Disassemble the binary 'binary'
     """
-    with get_target(binary, strip) as target_binary:
+    with get_target(binary, strip_exe, strip, sstrip) as target_binary:
         print("# Disassembling " + target_binary + "\n")
         start = timer()
         completedProcess = subprocess.run(
@@ -210,10 +235,14 @@ def disassemble_reassemble_test(
     c_compilers=["gcc", "clang"],
     cxx_compilers=["g++", "clang++"],
     optimizations=["-O0", "-O1", "-O2", "-O3", "-Os"],
+    strip_exe="strip",
     strip=False,
+    sstrip=False,
     reassemble_function=reassemble,
     skip_test=False,
     exec_wrapper=None,
+    arch=None,
+    extra_ddisasm_args=[],
 ):
     """
     Disassemble, reassemble and test an example with the given compilers and
@@ -244,10 +273,17 @@ def disassemble_reassemble_test(
                     optimization,
                     extra_compile_flags,
                     exec_wrapper,
+                    arch,
                 ):
                     compile_errors += 1
                     continue
-                success, time = disassemble(binary, strip)
+                success, time = disassemble(
+                    binary,
+                    strip_exe,
+                    strip,
+                    sstrip,
+                    extra_args=extra_ddisasm_args,
+                )
                 print("Time " + str(time))
                 if not success:
                     disassembly_errors += 1
@@ -280,9 +316,15 @@ if __name__ == "__main__":
     parser.add_argument("--c_compilers", nargs="*", type=str)
     parser.add_argument("--cxx_compilers", nargs="*", type=str)
     parser.add_argument("--optimizations", nargs="*", type=str)
+    parser.add_argument("--strip_exe", type=str, default="strip")
     parser.add_argument(
         "--strip",
         help="strip binaries before disassembling",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--sstrip",
+        help="strip sections before disassembling",
         action="store_true",
     )
     parser.add_argument(

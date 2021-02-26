@@ -23,6 +23,7 @@
 #include "./GtirbBuilder.h"
 
 #include "./ElfReader.h"
+#include "./PeReader.h"
 
 using GTIRB = GtirbBuilder::GTIRB;
 
@@ -50,6 +51,10 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
             return Elf.build();
         }
         case LIEF::EXE_FORMATS::FORMAT_PE:
+        {
+            PeReader Pe(Path, Binary);
+            return Pe.build();
+        }
         case LIEF::EXE_FORMATS::FORMAT_MACHO:
         case LIEF::EXE_FORMATS::FORMAT_UNKNOWN:
             break;
@@ -81,6 +86,21 @@ void GtirbBuilder::initModule()
     Module->setBinaryPath(Path);
     Module->setFileFormat(format());
     Module->setISA(isa());
+    Module->setByteOrder(endianness());
+}
+
+gtirb::ByteOrder GtirbBuilder::endianness()
+{
+    switch(Binary->header().endianness())
+    {
+        case LIEF::ENDIANNESS::ENDIAN_BIG:
+            return gtirb::ByteOrder::Big;
+        case LIEF::ENDIANNESS::ENDIAN_LITTLE:
+            return gtirb::ByteOrder::Little;
+        default:
+            break;
+    }
+    return gtirb::ByteOrder::Undefined;
 }
 
 gtirb::FileFormat GtirbBuilder::format()

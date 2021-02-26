@@ -23,6 +23,9 @@
 
 #include "ElfReader.h"
 
+#include <algorithm>
+#include <sstream>
+
 ElfReader::ElfReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary)
     : GtirbBuilder(Path, Binary)
 {
@@ -190,6 +193,7 @@ void ElfReader::buildSymbols()
         SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex};
         SymbolTabIdxInfo[S->getUUID()] = Indexes;
     }
+
     Module->addAuxData<gtirb::schema::ElfSymbolInfoAD>(std::move(SymbolInfo));
     Module->addAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>(std::move(SymbolTabIdxInfo));
 }

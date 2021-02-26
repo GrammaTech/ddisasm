@@ -477,6 +477,7 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_
         {"Part1", gtirb::SymAttribute::Part1},
         {"Part2", gtirb::SymAttribute::Part2},
         {"Part3", gtirb::SymAttribute::Part3},
+        {"AddrRelGot", gtirb::SymAttribute::AddrRelGot},
         {"GotRef", gtirb::SymAttribute::GotRef},
         {"GotRelPC", gtirb::SymAttribute::GotRelPC},
         {"GotRelGot", gtirb::SymAttribute::GotRelGot},
@@ -657,7 +658,6 @@ void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, cons
                         [index](const auto &element) { return element.OperandIndex == index; });
        movedLabel != rangeMovedLabel.second)
     {
-        assert(movedLabel->Address1 == gtirb::Addr(immediate));
         auto diff = movedLabel->Address1 - movedLabel->Address2;
         auto sym = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
@@ -1472,6 +1472,23 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
         std::ostringstream newComment;
         newComment << "def(" << reg << ", " << std::hex << ea_def << std::dec << ")";
         updateComment(module, comments, ea_use, newComment.str());
+    }
+    for(auto &output : *prog->getRelation("missed_jump_table"))
+    {
+        gtirb::Addr ea;
+        output >> ea;
+        std::ostringstream newComment;
+        newComment << "missed_jump_table";
+        updateComment(module, comments, ea, newComment.str());
+    }
+    for(auto &output : *prog->getRelation("reg_has_base_image"))
+    {
+        gtirb::Addr ea;
+        std::string reg;
+        output >> ea >> reg;
+        std::ostringstream newComment;
+        newComment << "hasImageBase(" << reg << ")";
+        updateComment(module, comments, ea, newComment.str());
     }
     if(selfDiagnose)
     {

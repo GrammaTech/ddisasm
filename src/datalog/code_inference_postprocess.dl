@@ -65,7 +65,6 @@ block_needs_splitting_at(EA):-
     code_in_block(EA,Block),
     EA != Block.
 
-
 split_block(Block):-
     block(Block).
 split_block(EA):-

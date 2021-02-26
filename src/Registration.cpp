@@ -23,10 +23,13 @@
 #include "Registration.h"
 
 #include "AuxDataSchema.h"
+
 #include "gtirb-decoder/DatalogProgram.h"
 #include "gtirb-decoder/target/ElfArm64Loader.h"
 #include "gtirb-decoder/target/ElfX64Loader.h"
 #include "gtirb-decoder/target/ElfX86Loader.h"
+#include "gtirb-decoder/target/PeX64Loader.h"
+#include "gtirb-decoder/target/PeX86Loader.h"
 
 void registerAuxDataTypes()
 {
@@ -52,22 +55,39 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<LibraryPaths>();
     gtirb::AuxDataContainer::registerAuxDataType<SymbolicExpressionSizes>();
     gtirb::AuxDataContainer::registerAuxDataType<DdisasmVersion>();
+    gtirb::AuxDataContainer::registerAuxDataType<PeSectionProperties>();
+    gtirb::AuxDataContainer::registerAuxDataType<PeImportedSymbols>();
+    gtirb::AuxDataContainer::registerAuxDataType<PeExportedSymbols>();
+    gtirb::AuxDataContainer::registerAuxDataType<ExportEntries>();
+    gtirb::AuxDataContainer::registerAuxDataType<ImportEntries>();
+    gtirb::AuxDataContainer::registerAuxDataType<PeResources>();
 }
 
 void registerDatalogLoaders()
 {
 #if defined(DDISASM_ARM_64)
     // Register ELF-ARM64 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::ARM64}, ElfArm64Loader);
+    DatalogProgram::registerLoader(
+        {gtirb::FileFormat::ELF, gtirb::ISA::ARM64, gtirb::ByteOrder::Little}, ElfArm64Loader);
 #endif
 
 #if defined(DDISASM_X86_32)
     // Register ELF-X86 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::IA32}, ElfX86Loader);
+    DatalogProgram::registerLoader(
+        {gtirb::FileFormat::ELF, gtirb::ISA::IA32, gtirb::ByteOrder::Little}, ElfX86Loader);
+
+    // Register PE-X86 target.
+    DatalogProgram::registerLoader(
+        {gtirb::FileFormat::PE, gtirb::ISA::IA32, gtirb::ByteOrder::Little}, PeX86Loader);
 #endif
 
 #if defined(DDISASM_X86_64)
     // Register ELF-X64 target.
-    DatalogProgram::registerLoader({gtirb::FileFormat::ELF, gtirb::ISA::X64}, ElfX64Loader);
+    DatalogProgram::registerLoader(
+        {gtirb::FileFormat::ELF, gtirb::ISA::X64, gtirb::ByteOrder::Little}, ElfX64Loader);
+
+    // Register PE-X64 target.
+    DatalogProgram::registerLoader(
+        {gtirb::FileFormat::PE, gtirb::ISA::X64, gtirb::ByteOrder::Little}, PeX64Loader);
 #endif
 }

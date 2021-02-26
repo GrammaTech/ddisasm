@@ -1,0 +1,110 @@
+platform: Windows
+
+default: &default
+  path: examples
+  binary: ex.exe
+  arch: x64
+
+  # Compilation configuration.
+  build:
+    c: ["cl"]
+    cpp: ["cl"]
+    optimizations: ["/Od", "/Ot", "/O1", "/Ox", "/O2"]
+    flags: []
+
+  # Reassembly configuration.
+  reassemble:
+    compiler: "ml64"
+    flags: ["/link", "/subsystem:console", "/entry:__EntryPoint"]
+    skip: false
+
+  # Test configuration.
+  test:
+    wrapper: null
+    strip_exe: "strip-dummy" # We do not apply strip for Windows binaries
+    strip: false
+    skip: false
+
+assembly: &assembly
+  <<: *default
+  path: examples/asm_examples
+
+tests:
+    - name: ex1
+      <<: *default
+
+    - name: ex_2modulesPIC
+      <<: *default
+
+    - name: ex_confusing_data
+      <<: *default
+
+    - name: ex_false_pointer_array
+      <<: *default
+
+    - name: ex_float
+      <<: *default
+
+    - name: ex_fprintf
+      <<: *default
+
+    - name: ex_noreturn
+      <<: *default
+
+    - name: ex_pointerReatribution
+      <<: *default
+
+    - name: ex_pointerReatribution2
+      <<: *default
+
+    - name: ex_pointerReatribution3
+      <<: *default
+
+    - name: ex_struct
+      <<: *default
+
+    - name: ex_switch
+      <<: *default
+
+    - name: ex_uninitialized_data
+      <<: *default
+
+    - name: ex_legacy_switch.001
+      <<: *default
+      binary: main.exe
+
+    - name: ex_legacy_switch.002
+      <<: *default
+      binary: main.exe
+
+    - name: ex_legacy_switch.003
+      <<: *default
+      binary: main.exe
+
+    - name: ex_legacy_switch.004
+      <<: *default
+      binary: main.exe
+
+    - name: ex_memberPointer
+      <<: *default
+
+    - name: ex_virtualDispatch
+      <<: *default
+
+    - name: ex_simple_dll
+      <<: *default
+
+    - name: ex_switch_in_code4
+      <<: *assembly
+
+    - name: ex_moved_base_relative
+      <<: *assembly
+
+    - name: ex_code_offset_table
+      <<: *assembly
+
+    - name: ex_base_relative0
+      <<: *assembly
+
+    - name: ex_base_relative1
+      <<: *assembly

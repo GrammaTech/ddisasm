@@ -20,6 +20,7 @@ default: &default
   # Test configuration.
   test:
     wrapper: null
+    strip_exe: "strip"
     strip: false
     skip: false
 

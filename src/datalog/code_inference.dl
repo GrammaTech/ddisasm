@@ -85,6 +85,7 @@ may_fallthrough(From,To):-
 // Common case
 may_fallthrough(From,To):-
     next(From,To),
+    !arch.delay_slot(_,From),
     !arch.return(From),
     !unconditional_jump(From),
     !halt(From),
@@ -132,6 +133,7 @@ may_have_symbolic_immediate(Src,as(Dest,address)):-
 
 
 .decl invalid(EA:address)
+.output invalid
 
 // if the decoder failed to decode any instruction at EA, EA is invalid
 invalid(EA):-
@@ -481,7 +483,6 @@ block_points(Block,0,-6,"overlap with relative-jump-table"):-
     relative_address(Beg,_,_,_,_,_),
     BegBlockAddr <= Beg, Beg< EndBlockAddr.
 
-
 block_is_overlapping(Block),
 block_points(Block,0,-6,"overlap with relative-jump-table"):-
     relative_address(Beg,Size,_,_,_,_),
@@ -513,12 +514,14 @@ block_points(Block,0,20,"function symbol"):-
     function_symbol(Block,_).
 
 block_points(Block,0,1,"address in data"):-
+    !binary_isa("X86"),
     block_is_overlapping(Block),
     address_in_data(Address,Block),
     arch.pointer_size(Pt_size),
     Address % Pt_size != 0.
 
 block_points(Block,0,2,"aligned address in data"):-
+    !binary_isa("X86"),
     block_is_overlapping(Block),
     address_in_data(Address,Block),
     arch.pointer_size(Pt_size),
@@ -540,7 +543,10 @@ block_points(Block,0,1,"address in data array"):-
     block_is_overlapping(Block),
     address_in_data(Address,Block),
     arch.pointer_size(Pt_size),
-    Address % Pt_size = 0,
+    (
+      binary_format("PE");
+      Address % Pt_size = 0
+    ),
     (
         address_in_data(Address+Pt_size,_),
         address_in_data(Address+Pt_size*2,_)

@@ -10,7 +10,8 @@ set(DATALOG_DECODER_TARGETS
     arch/X64Loader.cpp
     arch/X86Loader.cpp
     arch/Arm64Loader.cpp
-    format/ElfLoader.cpp)
+    format/ElfLoader.cpp
+    format/PeLoader.cpp)
 
 add_library(gtirb_decoder STATIC Relations.cpp DatalogProgram.cpp
                                  ${DATALOG_DECODER_TARGETS})

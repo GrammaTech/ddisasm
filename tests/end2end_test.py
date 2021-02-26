@@ -1,3 +1,4 @@
+import os
 import platform
 import unittest
 from pathlib import Path
@@ -38,6 +39,11 @@ def compatible_test(config, test):
         if distro.version() not in test["distro"]["version"]:
             return False
 
+    # TODO: Can we have a hybrid x86_32 and x86_64 vcvar environment?
+    if "platform" in config and "arch" in test:
+        if "Windows" in config["platform"]:
+            if os.environ["VSCMD_ARG_TGT_ARCH"] != test["arch"]:
+                return False
     return True
 
 
@@ -81,9 +87,15 @@ class TestExamples(unittest.TestCase):
             "c_compilers": config["build"]["c"],
             "cxx_compilers": config["build"]["cpp"],
             "optimizations": config["build"]["optimizations"],
+            "strip_exe": config["test"]["strip_exe"],
             "strip": config["test"].get("strip", False),
+            "sstrip": config["test"].get("sstrip", False),
             "skip_test": config["test"].get("skip", False),
             "exec_wrapper": config["test"].get("wrapper"),
+            "arch": config.get("arch"),
+            "extra_ddisasm_args": config.get("disassemble", {}).get(
+                "args", []
+            ),
         }
         if config["reassemble"].get("skip", False):
             args["reassemble_function"] = skip_reassemble

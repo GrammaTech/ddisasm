@@ -62,6 +62,7 @@ protected:
     virtual void addEntryBlock() = 0;
     virtual void addAuxData() = 0;
 
+    gtirb::ByteOrder endianness();
     gtirb::FileFormat format();
     gtirb::ISA isa();
 

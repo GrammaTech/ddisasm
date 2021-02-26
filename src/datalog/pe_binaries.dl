@@ -1,0 +1,527 @@
+//===- pe_binaries.dl ---------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+
+// This module defines predicates specific of PE binaries
+
+.decl import_entry(Address:address,Ordinal:number,Function:symbol,Library:symbol)
+.input import_entry
+
+.decl export_entry(Address:address,Ordinal:number,Name:symbol)
+.input export_entry
+
+.decl pe_section_characteristics(Name:symbol,Mask:unsigned)
+
+pe_section_characteristics("IMAGE_SCN_TYPE_NO_PAD",0x00000008).
+pe_section_characteristics("IMAGE_SCN_CNT_CODE",0x00000020).
+pe_section_characteristics("IMAGE_SCN_CNT_INITIALIZED_DATA",0x00000040).
+pe_section_characteristics("IMAGE_SCN_CNT_UNINITIALIZED_DATA",0x00000080).
+pe_section_characteristics("IMAGE_SCN_LNK_OTHER",0x00000100).
+pe_section_characteristics("IMAGE_SCN_LNK_INFO",0x00000200).
+pe_section_characteristics("IMAGE_SCN_LNK_REMOVE",0x00000800).
+pe_section_characteristics("IMAGE_SCN_LNK_COMDAT",0x00001000).
+pe_section_characteristics("IMAGE_SCN_GPREL",0x00008000).
+pe_section_characteristics("IMAGE_SCN_MEM_PURGEABLE",0x00020000).
+pe_section_characteristics("IMAGE_SCN_MEM_16BIT",0x00020000).
+pe_section_characteristics("IMAGE_SCN_MEM_LOCKED",0x00040000).
+pe_section_characteristics("IMAGE_SCN_MEM_PRELOAD",0x00080000).
+pe_section_characteristics("IMAGE_SCN_ALIGN_1BYTES",0x00100000).
+pe_section_characteristics("IMAGE_SCN_ALIGN_2BYTES",0x00200000).
+pe_section_characteristics("IMAGE_SCN_ALIGN_4BYTES",0x00300000).
+pe_section_characteristics("IMAGE_SCN_ALIGN_8BYTES",0x00400000).
+pe_section_characteristics("IMAGE_SCN_ALIGN_16BYTES",0x00500000).
+pe_section_characteristics("IMAGE_SCN_ALIGN_32BYTES",0x00600000).
+pe_section_characteristics("IMAGE_SCN_ALIGN_64BYTES",0x00700000).
+pe_section_characteristics("IMAGE_SCN_ALIGN_128BYTES",0x00800000).
+pe_section_characteristics("IMAGE_SCN_ALIGN_256BYTES",0x00900000).
+pe_section_characteristics("IMAGE_SCN_ALIGN_512BYTES",0x00A00000).
+pe_section_characteristics("IMAGE_SCN_ALIGN_1024BYTES",0x00B00000).
+pe_section_characteristics("IMAGE_SCN_ALIGN_2048BYTES",0x00C00000).
+pe_section_characteristics("IMAGE_SCN_ALIGN_4096BYTES",0x00D00000).
+pe_section_characteristics("IMAGE_SCN_ALIGN_8192BYTES",0x00E00000).
+pe_section_characteristics("IMAGE_SCN_LNK_NRELOC_OVFL",0x01000000).
+pe_section_characteristics("IMAGE_SCN_MEM_DISCARDABLE",0x02000000).
+pe_section_characteristics("IMAGE_SCN_MEM_NOT_CACHED",0x04000000).
+pe_section_characteristics("IMAGE_SCN_MEM_NOT_PAGED",0x08000000).
+pe_section_characteristics("IMAGE_SCN_MEM_SHARED",0x10000000).
+pe_section_characteristics("IMAGE_SCN_MEM_EXECUTE",0x20000000).
+pe_section_characteristics("IMAGE_SCN_MEM_READ",0x40000000).
+pe_section_characteristics("IMAGE_SCN_MEM_WRITE",0x80000000).
+
+section(Name,Size,Addr):-
+    binary_format("PE"),
+    section_complete(Name,Size,Addr,_,_,_).
+
+data_section(Section):-
+    binary_format("PE"),
+    section_complete(Section,_,_,_,Flags,_),
+    pe_section_characteristics("IMAGE_SCN_CNT_INITIALIZED_DATA",Data),
+    Flags band Data >0.
+
+bss_section(Section),
+data_section(Section):-
+    binary_format("PE"),
+    section_complete(Section,_,_,_,Flags,_),
+    pe_section_characteristics("IMAGE_SCN_CNT_UNINITIALIZED_DATA",Data),
+    Flags band Data >0.
+
+code_section(Section):-
+    binary_format("PE"),
+    section_complete(Section,_,_,_,Flags,_),
+    pe_section_characteristics("IMAGE_SCN_CNT_CODE",Exec),
+    Flags band Exec >0.
+
+// Entries of external libraries
+symbol(0,0,"NONE","EXTERN",0,"none",0,Function),
+got_reference(Address,Function):-
+    import_entry(Address,_,Function,_).
+
+//PE binaries have plt-like entries
+// These are no delimited to their own section
+plt_block(EA,Function):-
+    binary_format("PE"),
+    pc_relative_jump(EA,Got_entry),
+    unconditional_jump(EA),
+    got_reference(Got_entry,Function),
+    code_in_refined_block(EA,EA).
+
+
+.decl reg_has_base_image(EA:address,Reg:register)
+.output reg_has_base_image
+
+reg_has_base_image(EA,Reg):-
+    base_address(ImageBase),
+    pc_relative_operand(EA,_,ImageBase),
+    def(EA,Reg),
+    instruction_get_operation(EA,"LEA").
+
+reg_has_base_image(EA,Reg):-
+    reg_has_base_image(EA2,Reg2),
+    def_used(EA2,Reg2,EA,Index),
+    def(EA,Reg),
+    (
+        arch.mov(EA),
+        instruction_get_op(EA,Index,Op),
+        op_regdirect(Op,_)
+        ;
+        arch.reg_reg_arithmetic_operation(EA,Reg,Reg2,Reg1,Mult,0), Mult>1
+    ).
+
+.decl base_relative_operand(EA:address,Index:operand_index,Dest:address)
+.output base_relative_operand
+
+// Indirect access using register with ImageBase
+base_relative_operand(EA_used,Op_index,as(Value,address)):-
+    reg_has_base_image(EA_def,Reg),
+    def_used(EA_def,Reg,EA_used,Op_index),
+    instruction_get_op(EA_used,Op_index,Op),
+    op_indirect(Op,_,_,_,_,Value,_), Value >= 0.
+
+// Indirect access later added to ImageBase
+base_relative_operand(EA_def1,Op_index,as(Value,address)):-
+    reg_has_base_image(EA_def2,Reg2),
+    def_used(EA_def2,Reg2,EA,_),
+    arch.reg_reg_arithmetic_operation(EA,Reg1,Reg1,Reg2,1,0),
+    def_used(EA_def1,Reg1,EA,_),
+
+    instruction_get_op(EA_def1,Op_index,Op),
+    instruction_get_operation(EA_def1,"LEA"),
+    op_indirect(Op,_,_,_,_,Value,_), Value > 0.
+
+// Indirect access later added to ImageBase in an indirect operand
+base_relative_operand(EA_def1,Op_index,as(Value,address)):-
+    reg_has_base_image(EA_def2,Reg2),
+    def_used(EA_def2,Reg2,EA,Op_index_access),
+    (
+        data_access(EA,Op_index_access,"NONE",Reg2,Reg1,1,0,_);
+        data_access(EA,Op_index_access,"NONE",Reg1,Reg2,1,0,_)
+    ),
+    !instruction_get_operation(EA,"LEA"),
+    def_used(EA_def1,Reg1,EA,_),
+
+    instruction_get_op(EA_def1,Op_index,Op),
+    instruction_get_operation(EA_def1,"LEA"),
+    op_indirect(Op,_,_,_,_,Value,_), Value > 0.
+
+
+
+.decl base_relative_symbolic_operand(EA:address,Index:operand_index,Dest:address)
+
+symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value,1),
+base_relative_symbolic_operand(EA,Op_index,Value):-
+    base_relative_operand(EA,Op_index,Value),
+    !pc_relative_operand(EA,Op_index,_),
+    instruction_displacement_offset(EA,Op_index,Disp_offset),
+    instruction_get_op(EA,Op_index,Op),
+    op_indirect(Op,_,_,_,_,_,Size),
+    base_address(ImageBase).
+
+inferred_symbol_name(ImageBase,"__ImageBase","LOCAL","NONE"):-
+    binary_format("PE"),
+    base_address(ImageBase).
+
+inferred_symbol_name(Start,"__EntryPoint","GLOBAL","FUNC"):-
+    binary_format("PE"),
+    entry_point(Start).
+
+symbolic_operand_candidate(EA,Op_index,Dest,"imagebase"):-
+    base_address(ImageBase),
+    pc_relative_operand(EA,Op_index,Dest),
+    Dest = ImageBase.
+
+.decl base_relative_operation(EA_relop:address,EA:address)
+.output base_relative_operation
+
+base_relative_operation(EA_relop,EA_inst):-
+    base_relative_operand(EA_relop,_,_),
+    def_used(EA_relop,_,EA_inst,_).
+
+base_relative_operation(EA_relop,EA_next):-
+    base_relative_operand(EA_relop,_,_),
+    def_used(EA_relop,_,EA_inst,_),
+    def_used(EA_inst,_,EA_next,_).
+
+.decl base_relative_jump(EA_relop:address,EA:address)
+.output base_relative_jump
+
+// TODO: narrow by restricting base_relative_operation chain to operations a
+//       jump table address calculation would actually use.
+base_relative_jump(EA_relop,EA):-
+    reg_jump(EA,_),
+    base_relative_operation(EA_relop,EA).
+
+.decl base_relative_jump_table(EA:address,Value:address)
+.output base_relative_jump_table
+
+base_relative_jump_table(EA_jmp,ImageBase+Value):-
+    base_address(ImageBase),
+    base_relative_jump(EA_relop,EA_jmp),
+    base_relative_operand(EA_relop,_,Value).
+
+.decl base_relative_address(EA:address,Reference:address,Value:address)
+.output base_relative_address
+
+.decl base_relative_address_start(EA:address,Reference:address,Value:address)
+
+base_relative_address(EA,EA,as(Val,address)),
+base_relative_address_start(EA,EA,as(Val,address)):-
+    base_relative_jump_table(_,EA),
+    data_word(EA,4,Val),
+    Val > 0.
+
+base_relative_address(EA+4,Ref,as(Val,address)):-
+    base_relative_address(EA,Ref,_),
+    data_word(EA+4,4,Val),
+    propagated_data_access(EA,4,Ref),
+    !arch.is_nop(EA+4),
+    !base_relative_address_start(EA+4,_,_),
+    !data_access_pattern(EA+4,1,1,_),
+    Val > 0.
+
+labeled_data_candidate(EA):-
+    base_relative_address_start(EA,_,_).
+
+.decl base_relative_symbolic_data(EA:address,Size:unsigned,Value:address)
+
+symbol_minus_symbol_jump_table(EA,TableStart,4,ImageBase,ImageBase+Val,"first",1),
+base_relative_symbolic_data(EA,4,Val):-
+    base_relative_address(EA,TableStart,Val),
+    base_address(ImageBase),
+    code(ImageBase+Val).
+
+labeled_data_candidate(ImageBase+Dest):-
+    base_address(ImageBase),
+    base_relative_symbolic_operand(_,_,Dest),
+    !base_relative_jump_table(_,ImageBase+Dest).
+
+.decl dos_header_symbolic_operand(EA:address,Dest:unsigned)
+.output dos_header_symbolic_operand
+
+symbolic_expr_from_relocation(EA+Disp_offset,Size/8,"__ImageBase",as(Dest-ImageBase,number)),
+dos_header_symbolic_operand(EA,Dest):-
+    binary_format("PE"),
+    base_address(ImageBase),
+    pc_relative_operand(EA,_,Dest),
+    instruction_displacement_offset(EA,Op_index,Disp_offset),
+    instruction_get_op(EA,Op_index,Op),
+    op_indirect(Op,_,_,_,_,_,Size),
+    Dest > ImageBase,
+    Dest < ImageBase + 64.
+
+symbolic_expr_from_relocation(EA+Disp_offset,Size/8,"__ImageBase",as(Dest-ImageBase,number)),
+dos_header_symbolic_operand(EA+Disp_offset,Dest):-
+    binary_format("PE"),
+    base_address(ImageBase),
+    op_indirect(Op,_,_,_,1,Offset,Size),
+    instruction_get_op(EA,Op_index,Op),
+    instruction_displacement_offset(EA,Op_index,Disp_offset),
+    Dest = as(Offset,address),
+    Dest >= ImageBase,
+    Dest <= ImageBase+64.
+
+// instructions just before a potential jump table
+.decl jump_table_prelude(EA:address,Steps:unsigned)
+
+jump_table_prelude(EA,0):-
+    reg_jump(EA,_),
+    possible_ea(EA).
+
+jump_table_prelude(EA,0):-
+    reg_call(EA,_),
+    possible_ea(EA).
+
+jump_table_prelude(EA_prev,Steps+1):-
+    jump_table_prelude(EA,Steps), Steps < 6,
+    must_fallthrough(EA_prev,EA).
+
+
+// lea R8,QWORD PTR [$L_180016d58]  ; load offset-table
+// mov R8,QWORD PTR [R8+RDX*8-16]   ; index into offset-table
+// lea R9,QWORD PTR [$L_180015e50]  ; load base address
+// add R8,R9
+// call R8
+// Detect potential label-relative offset table before data analyses.
+relative_address_start(Table,8,Ref,Dest,"first"):-
+    // loads table address
+    jump_table_prelude(EA1,_),
+    take_address(EA1,Table),
+    next(EA1,EA2),
+    // indexes table
+    arch.mov(EA2),
+    next(EA2,EA3),
+    // loads reference address
+    take_address(EA3,Ref),
+    data_word(Table,8,Diff),
+    RefSigned = as(Ref,number),
+    Dest = as(RefSigned + Diff,address),
+    possible_ea(Dest).
+
+// mov ECX,DWORD PTR [R9+R8*4+(IMAGEREL N_1a050)]
+relative_address_start(ImageBase+OffsetUnsigned,MultUnsigned,ImageBase,Dest,"first"):-
+    base_address(ImageBase),
+    jump_table_prelude(EA,_),
+    instruction_get_operation(EA,"MOV"),
+    instruction_get_src_op(EA,_,Op),
+    op_indirect(Op,_,RegBase,RegIndex,Mult,Offset,Size), Offset > 0,
+    MultUnsigned = as(Mult, unsigned),
+    OffsetUnsigned = as(Offset,unsigned),
+    MultUnsigned * 8 = Size,
+    RegBase != "NONE", RegIndex != "NONE",
+    (MultUnsigned = 4; MultUnsigned = 8),
+    data_word(ImageBase+OffsetUnsigned,MultUnsigned,Diff),
+    ImageBaseSigned = as(ImageBase, number),
+    Dest = as(ImageBaseSigned + Diff,address),
+    possible_ea(Dest).
+
+// Find jump tables with corresponding single-byte index tables.
+//   i.e.  movzx REG,byte ptr [REG+IndexTableStart]
+//         jmp dword ptr [REG*4+AddressTableStart]
+// These reference two tables such as:
+//    TableStart       DWORD AAAA
+//                     DWORD BBBB
+//                            ...
+//    IndexTableStart  BYTE  N
+//                            ...
+//  Where the DWORD values are addresses and BYTE values are offsets into
+//  the DWORD table.
+relative_address_start(IndexTableStart,1,TableStart,Dest,"first"):-
+    arch.pointer_size(Pt_size),
+    Mult = as(Pt_size,number),
+    // Existing address table,
+    relative_address_start(TableStart,Pt_size,_,_,_),
+    arch.jump(EA_jmp),
+    instruction_get_op(EA_jmp,_,Op_jmp),
+    op_indirect(Op_jmp,_,_,_,Mult,as(TableStart,number),_),
+    // Offset by an index loaded in a previous instruction.
+    // TODO: Sometimes arguments are pushed before the JMP.
+    (
+        next(EA_mov,EA_jmp)
+        ;
+        next(EA_pop1,EA_jmp), !arch.mov(EA_pop1),
+        next(EA_mov,EA_pop1)
+        ;
+        next(EA_pop2,EA_jmp), !arch.mov(EA_pop2),
+        next(EA_pop1,EA_pop2), !arch.mov(EA_pop1),
+        next(EA_mov,EA_pop1)
+    ),
+    arch.mov(EA_mov),
+    instruction_get_op(EA_mov,_,Op_mov),
+    op_indirect(Op_mov,_,_,_,1,Offset,8),
+    IndexTableStart = as(Offset,address),
+    // Dest = AddressTable[Index]
+    data_byte(IndexTableStart,Byte),
+    Dest = TableStart + Byte*4.
+
+// Detect potential byte-offset, indirect jump-table index tables before data analyses.
+// These are like those above but with the additional __ImageBase base register.
+// lea R14,[__ImageBase]
+// ...
+// movsxd RAX,EDX
+// movzx EAX,BYTE PTR [R14+RAX*1+(IMAGEREL IndexTableStart)]
+// mov ECX,DWORD PTR [R14+RAX*4+(IMAGEREL BaseRelativeAddressTableStart)]
+// add RCX,R14
+// jmp RCX
+relative_address_start(Table,1,Ref,Dest,"first"):-
+    base_address(ImageBase),
+    // base-relative table address load and index
+    arch.mov(EA1), instruction_get_src_op(EA1,_,Op1),
+    op_indirect(Op1,_,_,_,1,Offset1,8), Offset1 > 0,
+    Table = ImageBase+as(Offset1,unsigned),
+    data_byte(Table,Byte),
+    // loads base-relative reference address
+    next(EA1,EA2),
+    instruction_get_src_op(EA2,_,Op2),
+    op_indirect(Op2,_,_,_,4,Offset2,32), Offset2 > 0,
+    Ref = ImageBase+as(Offset2,unsigned),
+    Dest = Ref + Byte.
+
+relative_address(EA+1,1,IndexTable,AddressTable,Dest,"first"):-
+    binary_isa("X64"),
+    base_address(ImageBase),
+    relative_address(EA,1,IndexTable,AddressTable,_,"first"),
+    data_byte(EA+1,Byte),
+    Dest = AddressTable + Byte*4,
+    data_word(Dest,4,Word),
+    possible_ea(ImageBase+as(Word,unsigned)),
+    !relative_address_start(EA+1,_,_,_,_).
+
+// TODO: We use relative_address as a convenience. The address in data is not a
+// true symbol-symbol, it is a complete 4-byte address in x86.
+relative_address(EA+1,1,IndexTable,AddressTable,Dest,"first"):-
+    binary_isa("X86"),
+    ImageBase = 0,
+    relative_address(EA,1,IndexTable,AddressTable,_,"first"),
+    data_byte(EA+1,Byte),
+    Dest = AddressTable + Byte*4,
+    data_word(Dest,4,Word),
+    possible_ea(ImageBase+as(Word,unsigned)),
+    !relative_address_start(EA+1,_,_,_,_).
+
+symbol_minus_symbol_jump_table(EA,TableStart,1,Ref,Dest,"first",4):-
+    // Byte offsets reference a preceding relative address table.
+    relative_address(EA,1,TableStart,Ref,Dest,"first"), Dest < TableStart,
+    relative_address_start(Ref,4,_,_,_).
+
+// the call to main is right after the call to "__p___argc"
+main_function(EA):-
+    code(EA1),
+    direct_call(EA1,PLT_ARGC),
+    plt_block(PLT_ARGC,"__p___argc"),
+    next(EA1,Block),
+    code_in_refined_block(EA_call_main,Block),
+    direct_call(EA_call_main,EA).
+
+inferred_symbol_name(EA,"main","PUBLIC","NONE"):-
+    binary_format("PE"),
+    main_function(EA).
+
+// Label addresses in data section that are exported.
+labeled_data(EA),
+labeled_data_candidate(EA):-
+    export_entry(EA,_,_),
+    data_section(Name),
+    section(Name,Size,Addr),
+    EA >= Addr,
+    EA < Addr+Size.
+
+is_padding(EA):-
+    binary_format("PE"),
+    instruction_get_operation(EA,"INT3").
+
+// Off-cut base-relative reference to symbol:
+//    e.g.  movzx EDX,BYTE PTR [RAX+RCX*1+((IMAGEREL N_180fa2570)+7)]
+//                                                               ^^
+moved_label_class(EA,Op_index,"base-relative collides with pointer"),
+moved_label(EA,Op_index,ImageBase+Dest,NewDest):-
+    base_address(ImageBase),
+    base_relative_symbolic_operand(EA,Op_index,Dest),
+    // Reference collides with a pointer.
+    arch.pointer_size(Pt_size),
+    address_in_data_refined_range.overlap(ImageBase+Dest,Pt_size,NewDest),
+    symbolic_data(NewDest,_,_).
+
+jump_table_start(EA_jump,4,TableStart,TableReference,Operation):-
+    base_address(ImageBase),
+    base_relative_jump(EA_base,EA_jump),
+    base_relative_operand(EA_base,_,Value),
+    TableStart=ImageBase+Value,
+    TableReference=ImageBase,
+    Operation="ADD".
+
+// Find the simplest form of jump table.
+//   i.e.  jmp dword ptr [REG*4 + TableStart]
+relative_address_start(TableStart,Size,0,Dest,"first"):-
+    indirect_jump(EA),
+    instruction_get_op(EA,_,Op),
+    // Table starts at the Offset in operand.
+    op_indirect(Op,"NONE","NONE",_,Mult,Offset,_),
+    Size = as(Mult,unsigned),
+    TableStart = as(Offset,address),
+    // Table entry is the complete Dest address.
+    data_word(TableStart,Size,TableEntry),
+    Dest = as(TableEntry,address),
+    arch.pointer_size(Pt_size), Pt_size = Size,
+    possible_ea(Dest).
+
+// lea REG, TableStart
+// mov REG, dword ptr [REG + REG2*4 - 8]
+// call REG
+relative_address_start(TableStart,4,0,Dest,"first"):-
+    instruction(EA_load,_,_,"LEA",Op,_,_,_,_,_),
+    op_indirect(Op,"NONE","NONE","NONE",_,Offset,_),
+    TableStart = as(Offset,address),
+    data_word(TableStart,4,TableEntry),
+    Dest = as(TableEntry,address),
+    possible_ea(Dest),
+
+    next(EA_load,EA_mov),
+    arch.mov(EA_mov),
+    next(EA_mov,EA_call),
+    reg_call(EA_call,Reg).
+
+// Non-destructive multi-byte NOPs used by the MSVC compiler. (See `listing.inc'.)
+.decl npad(EA:address,Size:unsigned)
+.output npad
+
+// mov edi, edi
+npad(EA,Size):-
+    instruction(EA,Size,_,"MOV",Op,Op,_,_,_,_),
+    op_regdirect(Op,"EDI"),
+    Size = 2.
+
+// lea REG, [REG+00]
+npad(EA,Size):-
+    instruction(EA,Size,_,"LEA",Op1,Op2,_,_,_,_),
+    op_indirect(Op1,"NONE",Reg,"NONE",_,0,_),
+    op_regdirect(Op2,Reg).
+
+// jmp .+N; .npad N
+npad(EA,Size):-
+    unconditional_jump(EA),
+    direct_jump(EA,Dest),
+    Size = Dest - EA,
+    Size <= 15,
+    npad(EA+2,_).
+
+is_padding(EA):-
+    binary_format("PE"),
+    npad(EA,_).
