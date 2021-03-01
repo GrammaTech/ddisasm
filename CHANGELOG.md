@@ -1,4 +1,6 @@
+# 1.4.0
 
+* Add PE support.
 * Support ELF x64 static binaries
 * Add preliminary x86-32 support.
 
