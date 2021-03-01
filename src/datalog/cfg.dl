@@ -135,9 +135,6 @@ cfg_edge(Src,Dest,"false","false","fallthrough"):-
 cfg_edge(Src,Dest,"false","false","fallthrough"):-
      nop_block(Src),
      cfg_edge(_,Src,_,_,_),
-     refined_block_control_instruction(Src,EA),
-     next(EA,Dest),
-     code_in_refined_block(Dest,Dest),
      next_refined_block_in_section(Src,Dest).
 
 cfg_edge(ReturnBlock,NextBlock,"false","false","return"):-
