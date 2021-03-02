@@ -22,7 +22,6 @@
 //===----------------------------------------------------------------------===//
 #include <boost/filesystem.hpp>
 #include <boost/uuid/uuid_io.hpp>
-#include <regex>
 namespace fs = boost::filesystem;
 #include "LIEF/PE.h"
 #include "PeReader.h"
@@ -52,16 +51,11 @@ void PeReader::buildSections()
         bool Readable = Section.has_characteristic(Flags::IMAGE_SCN_MEM_READ);
         bool Writable = Section.has_characteristic(Flags::IMAGE_SCN_MEM_WRITE);
         bool Initialized = !Section.has_characteristic(Flags::IMAGE_SCN_CNT_UNINITIALIZED_DATA);
+        bool Discardable = Section.has_characteristic(Flags::IMAGE_SCN_MEM_DISCARDABLE);
         bool Allocated = Readable;
 
         // Skip sections that are not loaded into memory.
-        if(!Allocated)
-        {
-            continue;
-        }
-
-        // Skip MinGW sections, e.g. `/4'.
-        if(std::regex_match(Section.name(), std::regex("/[0-9]+")))
+        if(!Allocated || Discardable)
         {
             continue;
         }
