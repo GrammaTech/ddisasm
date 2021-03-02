@@ -51,10 +51,11 @@ void PeReader::buildSections()
         bool Readable = Section.has_characteristic(Flags::IMAGE_SCN_MEM_READ);
         bool Writable = Section.has_characteristic(Flags::IMAGE_SCN_MEM_WRITE);
         bool Initialized = !Section.has_characteristic(Flags::IMAGE_SCN_CNT_UNINITIALIZED_DATA);
+        bool Discardable = Section.has_characteristic(Flags::IMAGE_SCN_MEM_DISCARDABLE);
         bool Allocated = Readable;
 
         // Skip sections that are not loaded into memory.
-        if(!Allocated)
+        if(!Allocated || Discardable)
         {
             continue;
         }
