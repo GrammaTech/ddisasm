@@ -101,19 +101,16 @@ block_next(EA,EA_next):-
 // Main definitions
 
 def(EA,Reg):-
-    code(EA),
     instruction_get_dest_op(EA,_,Op),
     op_regdirect_contains_reg(Op,Reg).
 
 def(EA,Reg):-
-    code(EA),
     instruction_get_operation(EA,Operation),
     arch.call_operation(Operation),
     !arch.delay_slot(EA,_),
     arch.function_non_maintained_reg(Reg).
 
 def(EA,Reg):-
-    code(Call),
     instruction_get_operation(Call,Operation),
     arch.call_operation(Operation),
     arch.delay_slot(Call,EA),
@@ -149,12 +146,10 @@ defined_in_block(Block,Reg):-
     code_in_block(EA,Block).
 
 used(EA,Reg,Index):-
-    code(EA),
     instruction_get_src_op(EA,Index,Op),
     op_regdirect_contains_reg(Op,Reg).
 
 used(EA,Reg,Index):-
-    code(EA),
     instruction_get_op(EA,Index,Op),
     op_indirect_contains_reg(Op,Reg).
 
@@ -265,3 +260,27 @@ def_used_for_address(EA_def,Reg):-
 def_used_for_address(EA_def,Reg):-
     def_used_for_address(EA_used,_),
     def_used(EA_def,Reg,EA_used,_).
+
+
+
+// the last address where a register whas defined within the block
+.decl straight_line_last_def(EA:address,EA_def:address,Reg:register)
+
+straight_line_last_def(EA_next,EA,Reg):-
+    def(EA,Reg),
+    possible_ea(EA),
+    must_fallthrough(EA,EA_next),
+    possible_ea(EA_next).
+
+straight_line_last_def(EA_next,EA_def,Reg):-
+    straight_line_last_def(EA,EA_def,Reg),
+    !must_def(EA,Reg),
+    must_fallthrough(EA,EA_next),
+    possible_ea(EA_next).
+
+.decl straight_line_def_used(EA_def:address,Reg:register,EA_used:address,Index:unsigned)
+.output straight_line_def_used
+
+straight_line_def_used(EA_def,Reg,EA_used,Index):-
+    used(EA_used,Reg,Index),
+    straight_line_last_def(EA_used,EA_def,Reg).
