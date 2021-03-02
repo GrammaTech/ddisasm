@@ -159,3 +159,7 @@ function_non_maintained_reg("X31").
 .decl frame_pointer(reg:register)
 
 .decl stack_pointer(reg:register)
+
+.decl return_val_reg(reg:register)
+
+return_val_reg("X0").
