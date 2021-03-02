@@ -619,6 +619,7 @@ data_object_conflict(EA,Size,Type,EA,Size,Type2):-
 
 // Destination collides with another candidate.
 data_object_conflict(EA,Size,Type,EA2,Size2,Type2):-
+    binary_format("PE"), binary_isa("X86"),
     // Candidate references another data location,
     data_object_candidate(EA,Size,Type),
     address_in_data_refined(EA,Val),
