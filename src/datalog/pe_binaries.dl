@@ -73,6 +73,7 @@ section(Name,Size,Addr):-
 
 data_section(Section):-
     binary_format("PE"),
+    !code_section(Section),
     section_complete(Section,_,_,_,Flags,_),
     pe_section_characteristics("IMAGE_SCN_CNT_INITIALIZED_DATA",Data),
     Flags band Data >0.
