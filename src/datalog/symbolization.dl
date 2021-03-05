@@ -155,7 +155,16 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
         instruction_get_operation(EA,Operation),
         arch.jump_operation_op_index(Operation,Op_index)
         ;
-        pc_relative_operand(EA,Op_index,Dest)
+        pc_relative_operand(EA,Op_index,Dest),
+        (
+            !relocation(Dest,_,_,_)
+            ;
+            relocation(Dest,RelType,_,_),
+            RelType != "DTPMOD64"
+            ;
+            relocation(Dest,"DTPMOD64",Symbol,_),
+            symbol(_,_,_,_,_,_,_,Symbol)
+        )
     ),
     (
         code(Dest), Type = "code"

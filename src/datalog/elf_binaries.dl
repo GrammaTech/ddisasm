@@ -272,6 +272,7 @@ no_return_function("__stack_chk_fail"):-binary_format("ELF").
 no_return_function("__assert_fail"):-binary_format("ELF").
 no_return_function("longjump"):-binary_format("ELF").
 
+.decl tbss_dtpmod_symbol(Dest:address)
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -284,6 +285,19 @@ symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
     binary_format("ELF"),
     relocation(EA,"GLOB_DAT",Symbol,Addend),
     symbol(_,_,_,_,_,_,_,Symbol).
+
+tbss_dtpmod_symbol(Dest),
+symbolic_operand_candidate(RefEA,Op_index,Dest,Type),
+inferred_symbol_name(Dest,NewLabel,"GLOBAL","NONE"),
+symbolic_expr_from_relocation(EA,8,NewLabel,Addend):-
+    binary_format("ELF"),
+    relocation(EA,"DTPMOD64","",Addend),
+    pc_relative_operand(RefEA,Op_index,EA),
+    section(".tbss",_,Beg),
+    Dest = as(as(Beg,number)+Addend,address),
+    !symbol(Dest,_,_,_,_,_,_,_),
+    NewLabel = "tbss_dtpmod",
+    Type = "data".
 
 symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
     binary_format("ELF"),
