@@ -208,16 +208,26 @@ hi_load(EA,Reg,Upper):-
     op_immediate(BaseOp, Upper),
     op_regdirect_contains_reg(RegOp,Reg).
 
-.decl hi_load_prop(reg_restore_ea:address, ea:address, reg:register, upper:number)
+.decl hi_load_prop(reg_restore_ea:address, ea:address, reg:register, upper:number, type:symbol)
 
-hi_load_prop(EA,EA,Reg,Upper):-
+hi_load_prop(EA,EA,Reg,Upper,"direct"):-
     hi_load(EA,Reg,Upper).
 
-hi_load_prop(RegRestoreEA,EA,Reg2,Upper):-
+hi_load_prop(RegRestoreEA,EA,Reg2,Upper,"stack-restore"):-
     hi_load(EA,Reg,Upper),
     def_used(EA,Reg,RegStoreEA,_),
     reg_stored_in_stack(RegStoreEA,Reg,StackPos,StackFrameDefinedAt),
     reg_loaded_from_stack(RegRestoreEA,Reg2,"SP",StackPos,StackFrameDefinedAt).
+
+hi_load_prop(MoveEA,EA,Reg2,Upper,"move"):-
+    hi_load(EA,Reg,Upper),
+    def_used(EA,Reg,MoveEA,_),
+    arch.move_operation(Operation),
+    instruction_get_operation(MoveEA, Operation),
+    instruction_get_src_op(MoveEA,_,SrcOp),
+    instruction_get_dest_op(MoveEA,_,DestOp),
+    op_regdirect_contains_reg(SrcOp,Reg),
+    op_regdirect_contains_reg(DestOp,Reg2).
 
 // Compute an immediate load performed across two consecutive instructions
 .decl split_load(ea:address, nextea:address, dest:address, type:symbol)
@@ -231,8 +241,12 @@ hi_load_prop(RegRestoreEA,EA,Reg2,Upper):-
 //       lw reg2, n(sp)
 //       addiu reg3, reg2, lo(xxx)
 // reg is store to stack and restored
+// or
+// E.g., lui reg, hi(xxx)
+//       move reg2, reg
+//       addiu reg3, reg2, lo(xxx)
 split_load(EA, NextEA, as(Upper*2^16+Offset,address), "ADDIU") :-
-    hi_load_prop(RegRestoreEA,EA,Reg2,Upper),
+    hi_load_prop(RegRestoreEA,EA,Reg2,Upper,_),
     def_used(RegRestoreEA,Reg2,NextEA,_),
     arch.reg_reg_arithmetic_operation(NextEA,_,Reg2,"NONE",_,Offset).
 
@@ -273,8 +287,12 @@ split_load(EA, NextEA, as(Upper*2^16+Offset+T9Value,address), "ADDU") :-
 //       lw reg2, n(sp)
 //       lw/sw reg3, lo(xxx)(reg2)
 // reg is store to stack and restored
+// or
+// E.g., lui reg, hi(xxx)
+//       move reg2, reg
+//       lw/sw reg3, lo(xxx)(reg2)
 split_loadstore(EA, NextEA, as(Upper*2^16+Offset,address)) :-
-    hi_load_prop(RegRestoreEA,EA,Reg2,Upper),
+    hi_load_prop(RegRestoreEA,EA,Reg2,Upper,_),
     def_used(RegRestoreEA,Reg2,NextEA,_),
 
     // lw/sw reg3, lo(xxx)(reg2)
@@ -287,6 +305,28 @@ split_loadstore(EA, NextEA, as(Upper*2^16+Offset,address)) :-
         instruction_get_dest_op(NextEA,_,Op)
     ),
     op_indirect(Op,"NONE",Reg2,"NONE",1,Offset,_).
+
+.decl split_load_conflict(ea:address, nextea:address, dest:address, type:symbol, ea2:address, nextea2:address, dest2:address, type2:symbol)
+.output split_load_conflict
+
+split_load_conflict(EA,NextEA,Dest_addr,Type,EA2,NextEA2,Dest_addr2,Type2):-
+    (
+        split_load(EA,NextEA,Dest_addr,Type)
+        ;
+        split_loadstore(EA,NextEA,Dest_addr), Type = "LoadStore"
+    ),
+    (
+        split_load(EA2,NextEA2,Dest_addr2,Type2)
+        ;
+        split_loadstore(EA2,NextEA2,Dest_addr2), Type2 = "LoadStore"
+    ),
+    (
+        EA != EA2, NextEA = NextEA2
+        ;
+        EA = EA2, NextEA != NextEA2
+    ),
+    Dest_addr != Dest_addr2.
+
 
 .decl base_addr_offset_operand(ea:address, next_ea:address, dest:address)
 .output base_addr_offset_operand
