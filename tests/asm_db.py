@@ -29,8 +29,11 @@ class DB:
                 psycopg2 = __import__("psycopg2")
                 cls.conn = psycopg2.connect(connect_uri)
                 cls.state = DB.State.CONNECTED
-            except (ImportError, psycopg2.Error) as ex:
-                print(ex)
+            except ImportError as ex:
+                print("ERROR:", ex)
+                cls.state = DB.State.ERROR
+            except psycopg2.Error as ex:
+                print("ERROR:", ex)
                 cls.state = DB.State.ERROR
 
         return cls.conn
