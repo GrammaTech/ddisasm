@@ -236,7 +236,13 @@ def_used_return_val_reg(EA_def,EA_call,Reg,EA_used,Index_used):-
     Callee <= CalleeReturn,
     CalleeReturn < End,
     code_in_block(CalleeReturn,CalleeReturnBlock),
-    block_last_def(CalleeReturnBlock,EA_def,Reg).
+    block_last_instruction(CalleeReturnBlock,CalleeReturnBlock_end),
+    (
+        block_last_def(CalleeReturnBlock_end,EA_def,Reg)
+        ;
+        !block_last_def(CalleeReturnBlock_end,_,Reg),
+        last_def(CalleeReturnBlock,EA_def,Reg)
+    ).
 
 .decl def_used_for_address(EA_def:address,Reg:register)
 .output def_used_for_address
