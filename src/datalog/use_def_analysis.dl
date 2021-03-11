@@ -211,8 +211,26 @@ def_used(EA_def,Reg,EA_used,Index):-
     !block_last_def(EA_used,_,Reg),
     used(EA_used,Reg,Index).
 
+def_used(EA_def,Reg,EA_used,Index_used):-
+    def_used_return_val_reg(EA_def,EA_call,Reg,EA_used,Index_used).
 
+// reg: return-value register
+// ea_used: use of the return-value register after a call
+// ea_call: the corresponding call
+// ea_def: def of the return-value register in the callee
+.decl def_used_return_val_reg(ea_def:address,ea_call:address,reg:register,ea_used:address,index_used:operand_index)
+.output def_used_return_val_reg
 
+def_used_return_val_reg(EA_def,EA_call,Reg,EA_used,Index_used):-
+    arch.return_val_reg(Reg),
+    def_used(EA_call,Reg,EA_used,Index_used),
+    direct_call(EA_call,Callee),
+    fde_addresses(Callee,End),
+    arch.return(CalleeReturn),
+    Callee <= CalleeReturn,
+    CalleeReturn < End,
+    code_in_block(CalleeReturn,CalleeReturnBlock),
+    last_def(CalleeReturnBlock,EA_def,Reg).
 
 .decl def_used_for_address(EA_def:address,Reg:register)
 .output def_used_for_address
