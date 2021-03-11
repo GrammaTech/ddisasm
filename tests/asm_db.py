@@ -6,45 +6,38 @@ from enum import Enum
 import distro
 
 
-class State(Enum):
-    NEW = 1
-    CONNECTED = 2
-    ERROR = 3
+class DB:
+    """Singleton database connection wrapper."""
 
+    class State(Enum):
+        NEW = 1
+        CONNECTED = 2
+        ERROR = 3
 
-__db = None
-__db_state = State.NEW
+    conn = None
+    state = State.NEW
 
-# FIXME:
-try:
-    import psycopg2
-except ImportError:
-    __db_state = State.ERROR
+    def __new__(cls):
+        if cls.state == DB.State.NEW:
+            connect_uri = os.environ.get("DATABASE_URL")
 
+            if not connect_uri:
+                cls.state = DB.State.ERROR
+                return None
 
-def db():
-    global __db
-    global __db_state
+            try:
+                psycopg2 = __import__("psycopg2")
+                cls.conn = psycopg2.connect(connect_uri)
+                cls.state = DB.State.CONNECTED
+            except (ImportError, psycopg2.Error) as ex:
+                print(ex)
+                cls.state = DB.State.ERROR
 
-    if __db_state == State.NEW:
-        connect_uri = os.environ.get("DATABASE_URL")
-
-        if not connect_uri:
-            __db_state = State.ERROR
-            return None
-
-        try:
-            __db = psycopg2.connect(connect_uri)
-            __db_state = State.CONNECTED
-        except psycopg2.Error as ex:
-            print(ex)
-            __db_state = State.ERROR
-
-    return __db
+        return cls.conn
 
 
 def upload(name, asm, compilers, compiler_args, strip):
-    conn = db()
+    conn = DB()
     if conn:
         cursor = conn.cursor()
 
