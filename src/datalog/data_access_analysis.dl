@@ -95,11 +95,7 @@ value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,Offset_final,Type):-
     (Reg = Ref2; Reg = Reg3),
     Reg!="NONE",
     !value_reg_at_operand_loop(EA,Op_index,Reg,_,_,_,_),
-    (
-        def_used(EA_def,Reg,EA,Op_index)
-        ;
-        def_used_return_val_reg(EA_def,_,Reg,EA,Op_index)
-    ),
+    def_used(EA_def,Reg,EA,Op_index),
     best_value_reg(EA_def,Reg,EA_from,Mult,Offset,Type),
     (
         Offset_final = max(Offset,0)
