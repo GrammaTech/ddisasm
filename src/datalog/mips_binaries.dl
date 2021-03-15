@@ -380,6 +380,8 @@ symbolic_operand_attribute(EA, 1, "Part1"):-
         split_loadstore(EA, _, Dest_addr)
     ),
     (
+        function_inference.function_entry(Dest_addr)
+        ;
         data_segment(Begin,End),
         Dest_addr >= Begin,
         Dest_addr <= End
@@ -399,6 +401,8 @@ symbolic_operand_attribute(EA, Index, "Part0"):-
         Index = 1
     ),
     (
+        function_inference.function_entry(Dest_addr)
+        ;
         data_segment(Begin,End),
         Dest_addr >= Begin,
         Dest_addr <= End
