@@ -543,6 +543,30 @@ void ElfReader::buildSymbols()
     {
         auto &[Value, Size, Type, Scope, Visibility, SecIndex, Name] = Key;
 
+        // When there are both PLT and GOT references to the same function
+        // symbol, linker will create a GOTPLT slot for PLT entry and a GOT
+        // slot for GOT reference.  A run-time JUMP_SLOT relocation is created
+        // to update the GOTPLT slot and a run-time GLOB_DAT relocation is
+        // created to update the GOT slot.  Both JUMP_SLOT and GLOB_DAT
+        // relocations will apply the same symbol value to GOTPLT and GOT
+        // slots, respectively, at run-time.
+        //
+        // In such cases, discard the symbol with (EA:0,Size:0,SectIndex:0)
+        if(Value == 0 && Type == "FUNC" && Scope == "GLOBAL") {
+            // See if there is other symbol with the same name and non-zero
+            // address. If so, discard this symbol.
+            auto fIt = std::find_if(Symbols.begin(), Symbols.end(),
+                    [Name](const auto & Element) {
+                    return (std::get<6>(Element.first) == Name
+                            && std::get<0>(Element.first) != 0
+                            && std::get<2>(Element.first) == "FUNC"
+                            && std::get<3>(Element.first) == "GLOBAL");
+                });
+            if(fIt != Symbols.end()) {
+                continue;
+            }
+        }
+
         gtirb::Symbol *S;
 
         // Symbols with special section index do not have an address.
