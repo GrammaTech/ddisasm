@@ -552,17 +552,17 @@ void ElfReader::buildSymbols()
         // slots, respectively, at run-time.
         //
         // In such cases, discard the symbol with (EA:0,Size:0,SectIndex:0)
-        if(Value == 0 && Type == "FUNC" && Scope == "GLOBAL") {
+        if(Value == 0 && Type == "FUNC" && Scope == "GLOBAL")
+        {
             // See if there is other symbol with the same name and non-zero
             // address. If so, discard this symbol.
-            auto Found = std::find_if(Symbols.begin(), Symbols.end(),
-                    [Name](const auto & Element) {
-                    return (std::get<6>(Element.first) == Name
-                            && std::get<0>(Element.first) != 0
-                            && std::get<2>(Element.first) == "FUNC"
-                            && std::get<3>(Element.first) == "GLOBAL");
-                });
-            if(Found != Symbols.end()) {
+            auto Found = std::find_if(Symbols.begin(), Symbols.end(), [Name](const auto &Element) {
+                return (std::get<6>(Element.first) == Name && std::get<0>(Element.first) != 0
+                        && std::get<2>(Element.first) == "FUNC"
+                        && std::get<3>(Element.first) == "GLOBAL");
+            });
+            if(Found != Symbols.end())
+            {
                 continue;
             }
         }
