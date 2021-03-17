@@ -555,14 +555,14 @@ void ElfReader::buildSymbols()
         if(Value == 0 && Type == "FUNC" && Scope == "GLOBAL") {
             // See if there is other symbol with the same name and non-zero
             // address. If so, discard this symbol.
-            auto fIt = std::find_if(Symbols.begin(), Symbols.end(),
+            auto Found = std::find_if(Symbols.begin(), Symbols.end(),
                     [Name](const auto & Element) {
                     return (std::get<6>(Element.first) == Name
                             && std::get<0>(Element.first) != 0
                             && std::get<2>(Element.first) == "FUNC"
                             && std::get<3>(Element.first) == "GLOBAL");
                 });
-            if(fIt != Symbols.end()) {
+            if(Found != Symbols.end()) {
                 continue;
             }
         }
