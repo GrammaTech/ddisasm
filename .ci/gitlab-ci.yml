@@ -1,5 +1,8 @@
 variables:
   GTIRB_BRANCH: "master"
+  EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@git.grammatech.com/api/v4/projects/1587/packages/pypi/simple
+
+
 
 stages:
   - check-format
@@ -52,9 +55,7 @@ build-conan:
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
     - conan user ci_user -r gitlab -p ${CI_JOB_TOKEN}
     # Install gtirb python wheel
-    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=python-wheel --output "gtirb-wheel.zip"
-    - unzip gtirb-wheel.zip
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb-*-py*.whl
+    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=--extra-index-url=$EXTRA_INDEX_URL
     # Run build script
     - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/build.py
 
@@ -67,9 +68,7 @@ conan-windows:
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
     - conan user ci_user -r gitlab -p ${CI_JOB_TOKEN}
     # Install gtirb python wheel
-    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=python-wheel --output "gtirb-wheel.zip"
-    - unzip gtirb-wheel.zip
-    - python -m pip install pip --upgrade && python -m pip install gtirb-*-py*.whl
+    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=--extra-index-url=$EXTRA_INDEX_URL
     # Run build script
     - export PATH="$PATH;C:\\Program Files\\CMake\\bin"
     - export SOUFFLE_INCLUDE_DIR="C:\\users\\vagrant\\AppData\\local\\Packages\\CanonicalGroupLimited.Ubuntu18.04onWindows_79rhkp1fndgsc\\localstate\\rootfs\\usr\\local\\include"
@@ -137,10 +136,8 @@ conan-windows:
     # Install gtirb and the pprinter
     - '[ $OS != "arch" ] || sudo pacman --noconfirm -U gtirb-git*.pkg.tar.* gtirb-pprinter-git*.pkg.tar.*'
     - '[[ ! "$OS" =~ ubuntu[12][680] ]] || dpkg -i libgtirb.deb libgtirb-pprinter.deb gtirb-pprinter.deb'
-    # Install gtirb python wheel
-    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=python-wheel --output "gtirb-wheel.zip"
-    - unzip gtirb-wheel.zip
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb-*-py*.whl
+    # Install gtirb python API
+    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=--extra-index-url=$EXTRA_INDEX_URL
     # Run tests
     - cd build && PATH=$(pwd)/bin:$PATH ctest -V
 
@@ -217,9 +214,7 @@ build-arch-gcc:
     # Install gtirb and the pprinter
     - sudo pacman --noconfirm -U gtirb-git*.pkg.tar.* gtirb-pprinter-git*.pkg.tar.*
     # Install gtirb python wheel
-    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=python-wheel --output "gtirb-wheel.zip"
-    - unzip gtirb-wheel.zip
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb-*-py*.whl
+    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=--extra-index-url=$EXTRA_INDEX_URL
     # Build package and run tests
     - mkdir /home/ddisasm/ddisasm-aur
     - cp .ci/PKGBUILD /home/ddisasm/ddisasm-aur/PKGBUILD
