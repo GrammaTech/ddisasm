@@ -528,6 +528,7 @@ block_points(Block,0,2,"aligned address in data"):-
     Address % Pt_size = 0.
 
 block_points(Block,0,-1,"printable address"):-
+    arch.pointer_size(8),
     block_is_overlapping(Block),
     address_in_data(Address,Block),
     data_byte(EA,Byte),(printable_char(Byte); Byte = 0),
@@ -700,6 +701,7 @@ block_points(Block,0,2,"padding nop block"):-
     arch.is_nop(Block).
 
 block_points(Block,0,-1,"overlap long nop"):-
+    !binary_format("PE"),
     block_is_overlapping(Block),
     block_overlap(Block,Block2),
     code_in_block_candidate_refined(EA_nop,Block2),
