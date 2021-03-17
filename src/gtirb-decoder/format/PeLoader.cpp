@@ -23,7 +23,6 @@
 #include "PeLoader.h"
 
 #include "../../AuxDataSchema.h"
-#include "../../InternalAuxDataSchema.h"
 
 void PeSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
 {

@@ -23,7 +23,6 @@
 #ifndef PE_GTIRB_BUILDER_H_
 #define PE_GTIRB_BUILDER_H_
 
-#include "../InternalAuxDataSchema.h"
 #include "./GtirbBuilder.h"
 
 class PeReader : public GtirbBuilder
