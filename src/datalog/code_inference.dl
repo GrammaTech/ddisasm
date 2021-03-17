@@ -623,7 +623,8 @@ block_points(Block,Block_succ,1,"fallthrough_to"):-
     code_in_block_candidate_refined(EA,Block),
     may_fallthrough(EA,Block_succ),
     code_in_block_candidate_refined(_,Block_succ),
-    !block_is_overlapping(Block_succ).
+    !block_is_overlapping(Block_succ),
+    !is_padding(Block_succ).
 
 // transitivity for fallthrough and direct jumps and calls
 
@@ -701,7 +702,6 @@ block_points(Block,0,2,"padding nop block"):-
     arch.is_nop(Block).
 
 block_points(Block,0,-1,"overlap long nop"):-
-    !binary_format("PE"),
     block_is_overlapping(Block),
     block_overlap(Block,Block2),
     code_in_block_candidate_refined(EA_nop,Block2),
