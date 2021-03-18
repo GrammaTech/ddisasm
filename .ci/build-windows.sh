@@ -17,9 +17,7 @@ curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRAN
 unzip gtirb-artifacts.zip
 
 # Install GTIRB python API
-curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=python-wheel --output "gtirb-wheel.zip"
-unzip gtirb-wheel.zip
-python -m pip install pip --upgrade && python -m pip install gtirb-*-py*.whl
+python -m pip install pip --upgrade && python -m pip install gtirb --extra-index-url=--extra-index-url=$EXTRA_INDEX_URL
 
 # Install the pretty printer
 GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
