@@ -48,6 +48,9 @@ The traversal of used_for_address is kept intra-procedural (not following call e
 .decl def_used(ea_def:address,reg:register,ea_used:address,index_used:operand_index)
 .output def_used
 
+.decl def_used_intra(ea_def:address,reg:register,ea_used:address,index_used:operand_index)
+.output def_used_intra
+
 // a register is implicitly defined by being compared to a constant and then jumping
 // this definition only takes place in between the jump and the target that implies equality
 .decl flow_def(EA:address,Reg:register,EA_next:address,Value:number)
@@ -161,7 +164,7 @@ used_in_block(Block,Reg):-
     used(EA,Reg,_),
     code_in_block(EA,Block).
 
-// the last address where a register whas defined within the block
+// the last address where a register was defined within the block
 .decl block_last_def(EA:address,EA_def:address,Reg:register)
 
 
@@ -200,19 +203,46 @@ last_def(Block_next,Block_end,Reg):-
     flow_def(Block_end,Reg,Block_next,_).
 
 
-def_used(EA_def,Reg,EA_used,Index):-
+def_used_intra(EA_def,Reg,EA_used,Index):-
     used(EA_used,Reg,Index),
     block_last_def(EA_used,EA_def,Reg).
 
 
-def_used(EA_def,Reg,EA_used,Index):-
+def_used_intra(EA_def,Reg,EA_used,Index):-
     last_def(Block,EA_def,Reg),
     code_in_block(EA_used,Block),
     !block_last_def(EA_used,_,Reg),
     used(EA_used,Reg,Index).
 
+def_used(EA_def,Reg,EA_used,Index):-
+    def_used_intra(EA_def,Reg,EA_used,Index).
 
+def_used(EA_def,Reg,EA_used,Index_used):-
+    def_used_return_val_reg(EA_def,EA_call,Reg,EA_used,Index_used).
 
+// reg: return-value register
+// ea_used: use of the return-value register after a call
+// ea_call: the corresponding call
+// ea_def: def of the return-value register in the callee
+.decl def_used_return_val_reg(ea_def:address,ea_call:address,reg:register,ea_used:address,index_used:operand_index)
+.output def_used_return_val_reg
+
+def_used_return_val_reg(EA_def,EA_call,Reg,EA_used,Index_used):-
+    arch.return_val_reg(Reg),
+    def_used_intra(EA_call,Reg,EA_used,Index_used),
+    direct_call(EA_call,Callee),
+    fde_addresses(Callee,End),
+    arch.return(CalleeReturn),
+    Callee <= CalleeReturn,
+    CalleeReturn < End,
+    code_in_block(CalleeReturn,CalleeReturnBlock),
+    block_last_instruction(CalleeReturnBlock,CalleeReturnBlock_end),
+    (
+        block_last_def(CalleeReturnBlock_end,EA_def,Reg)
+        ;
+        !block_last_def(CalleeReturnBlock_end,_,Reg),
+        last_def(CalleeReturnBlock,EA_def,Reg)
+    ).
 
 .decl def_used_for_address(EA_def:address,Reg:register)
 .output def_used_for_address
