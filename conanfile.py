@@ -86,7 +86,7 @@ class DdisasmConan(Properties, ConanFile):
     settings = ("os", "compiler", "build_type", "arch")
 
     lief_version = "0.10.1"
-    libehp_version = "dev"
+    libehp_version = "0.1.1-gt1"
     souffle_version = "2.0.2"
     build_requires = (
         "libehp/%s@rewriting+extra-packages/stable" % (libehp_version),
@@ -103,13 +103,13 @@ class DdisasmConan(Properties, ConanFile):
             )
 
     boost_version = "1.69.0"
-    gtirb_version = "dev"
-    gtirb_pprinter_version = "dev"
-    capstone_version = "dev"
+    gtirb_version = "1.10.3"
+    gtirb_pprinter_version = "1.6.0"
+    capstone_version = "4.0.1-gt3"
     requires = (
         "boost/%s@conan/stable" % (boost_version),
-        "gtirb/%s@rewriting+gtirb/master" % (gtirb_version),
-        "gtirb-pprinter/%s@rewriting+gtirb-pprinter/master"
+        "gtirb/%s@rewriting+gtirb/stable" % (gtirb_version),
+        "gtirb-pprinter/%s@rewriting+gtirb-pprinter/stable"
         % (gtirb_pprinter_version),
         "capstone/%s@rewriting+extra-packages/next" % (capstone_version),
     )
