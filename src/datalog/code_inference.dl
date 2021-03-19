@@ -294,7 +294,7 @@ possible_target(EA):-
 
 ///////////////////////////////////////////////////////////////////////
 // We are done with the recursive exploration
-// Now we detect and resolve conflics within the different blocks
+// Now we detect and resolve conflicts within the different blocks
 
 //First remove common tails
 .decl common_tail(EA:address)
@@ -714,6 +714,15 @@ block_points(Block,0,3,"exc-region"):-
 block_points(Block,0,10,"landing-pad"):-
     block_is_overlapping(Block),
     lsda_callsite_addresses( _, _, Block).
+
+// Prefer blocks that have a well-defined boundary with their predecessor.
+block_points(Block,0,1,"better fit"):-
+    block_is_overlapping(Block),
+    block_overlap(Block,Block2),
+    block_candidate_boundaries(_,_,Block),
+    !block_candidate_boundaries(_,_,Block2).
+
+
 ////////////////////////////////////////////////////////////////////////////
 
 
