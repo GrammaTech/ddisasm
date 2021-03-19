@@ -602,6 +602,11 @@ block_points(Block,BlockPred,1,"fits"):-
     candidate_block_is_padding(BlockPred),
     !block_is_overlapping(BlockPred).
 
+// Prefer blocks that have a well-defined boundary with a prior block.
+block_points(Block,0,1,"better fit"):-
+    block_is_overlapping(Block),
+    block_candidate_boundaries(_,_,Block).
+
 // its address appears somewhere
 block_points(Block,0,3,"appears"):-
     block_is_overlapping(Block),
@@ -714,13 +719,6 @@ block_points(Block,0,3,"exc-region"):-
 block_points(Block,0,10,"landing-pad"):-
     block_is_overlapping(Block),
     lsda_callsite_addresses( _, _, Block).
-
-// Prefer blocks that have a well-defined boundary with a prior block.
-block_points(Block,0,1,"better fit"):-
-    block_is_overlapping(Block),
-    block_overlap(Block,Block2),
-    block_candidate_boundaries(_,_,Block),
-    !block_candidate_boundaries(_,_,Block2).
 
 
 ////////////////////////////////////////////////////////////////////////////
