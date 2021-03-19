@@ -715,7 +715,7 @@ block_points(Block,0,10,"landing-pad"):-
     block_is_overlapping(Block),
     lsda_callsite_addresses( _, _, Block).
 
-// Prefer blocks that have a well-defined boundary with their predecessor.
+// Prefer blocks that have a well-defined boundary with a prior block.
 block_points(Block,0,1,"better fit"):-
     block_is_overlapping(Block),
     block_overlap(Block,Block2),
