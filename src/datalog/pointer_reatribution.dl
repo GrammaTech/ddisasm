@@ -99,7 +99,10 @@ moved_pc_relative_candidate(EA_def2,Op_index,Dest,NewDest,Diff):-
     instruction_get_operation(EA_def2,"LEA"),
 
     Beg <= Dest, Dest <= End,
-    (OldBeg > Dest ; Dest > OldEnd),
+    (
+        OldBeg > Dest, OldEnd = OldEnd;
+        Dest > OldEnd, OldBeg = OldBeg
+    ),
     Diff = max(NewDest-Dest,Dest-NewDest).
 
 // a RIP relative reference is always symbolic. If we have no better
@@ -114,7 +117,8 @@ moved_pc_relative_candidate(EA,Op_index,Dest,NewDest,Diff):-
     section(Name,SizeSect,Base),
     (
         Base > Dest,
-        NewDest = Base
+        NewDest = Base,
+        SizeSect = SizeSect
         ;
         Dest > Base+SizeSect,
         NewDest = Base+SizeSect
@@ -127,13 +131,14 @@ moved_pc_relative_candidate(EA,Op_index,Dest,NewDest,Diff):-
     pc_relative_operand(EA,Op_index,Dest),
     !symbolic_operand(EA,Op_index,_,_),
     exception_section(Name),
-    section(Name,SizeSect,Base),
+    section(Name,_,Base),
     (
         cie_entry(Dest, _,_,_);
         fde_entry(Dest,_,_,_,_,_)
     ),
     NewDest = Base,
     Diff = max(NewDest,Dest) - min(NewDest,Dest).
+
 ////////////////////////////////////////////////////////////////////////////////
 // indirect operand (type O)
 
@@ -206,7 +211,11 @@ moved_displacement_candidate(EA,Op_index,as(Dest,address),AccessDest,1):-
     // the remaining component does not fall on any data or code section
     !data_byte(Diff,_),
     // does not fall in bss sections
-    bss_section_limits(BssBeg,BssEnd),(Diff < BssBeg; Diff > BssEnd).
+    bss_section_limits(BssBeg,BssEnd),
+    (
+        Diff < BssBeg, BssEnd = BssEnd;
+        Diff > BssEnd, BssBeg = BssBeg
+    ).
 
 // We have an access with a register that is multiplied by something
 // If the register does not contain the base address, then the displacement should contain it.
@@ -220,8 +229,12 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
     !symbolic_operand(EA,Op_index,_,_),
     !pc_relative_operand(EA,Op_index,_),
     (
-        Mult>1;
-        value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,0,_), Mult2>1
+        Mult > 1,
+        RegMult = RegMult
+        ;
+        value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,0,_),
+        Mult2 > 1,
+        Mult = Mult
     ),
     regular_data_section(Name),
     section(Name,SectSize,Base),
@@ -229,7 +242,8 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
         DestAddr < Base,
         Distance = Base-DestAddr,
         NewDest = Base,
-        10*DestAddr > Base
+        10*DestAddr > Base,
+        SectSize = SectSize
         ;
         DestAddr > Base+SectSize,
         Distance = DestAddr-(Base+SectSize),
@@ -252,7 +266,8 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
         DestAddr < Base,
         Distance = Base-DestAddr,
         NewDest = Base,
-        10*DestAddr > Base
+        10*DestAddr > Base,
+        SectSize = SectSize
         ;
         DestAddr>Base+SectSize,
         Distance = DestAddr-(Base+SectSize),
@@ -275,7 +290,8 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
         DestAddr < Base,
         Distance = Base-DestAddr,
         NewDest = Base,
-        10*DestAddr > Base
+        10*DestAddr > Base,
+        SectSize = SectSize
     ;
         DestAddr > Base+SectSize,
         Distance = DestAddr-(Base+SectSize),
@@ -367,15 +383,17 @@ dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs-OffsetAddr,Beg+Siz
 moved_label_class(EA_from,Imm_index,"immediate used to access memory"),
 moved_immediate_candidate(EA_from,Imm_index,ImmediateAddr,NewDest):-
     binary_type("EXEC"),
-    data_access(EA_access,Op_index,_,Reg2,Reg3,_,_,Size),
+    data_access(EA_access,Op_index,_,Reg2,Reg3,_,_,_),
     data_access_pattern_candidate(NewDest,_,Mult,EA_access),
 
     regular_data_section(Name),
     section(Name,SizeSect,Beg),
     NewDest >= Beg,
     NewDest < Beg+SizeSect,
-
-    (Reg = Reg2; Reg = Reg3),
+    (
+        Reg = Reg2, Reg3 = Reg3;
+        Reg = Reg3, Reg2 = Reg2
+    ),
     value_reg_at_operand(EA_access,Op_index,Reg,EA_from,_,_,Type),
     Type != "incomplete",
     mov_immediate_to_reg(EA_from,Reg,Imm_index,Immediate), Immediate >= 0,
@@ -393,7 +411,10 @@ moved_immediate_candidate(EA,Imm_index,ImmediateAddr,NewDest):-
     def_used(EA_def,Reg,EA,_),
     dest_enlarged_data_section(EA_def,Reg,NewDest,Beg,End,OldBeg,OldEnd),
     Beg <= ImmediateAddr, ImmediateAddr <= End,
-    (OldBeg > ImmediateAddr ; ImmediateAddr >= OldEnd).
+    (
+        OldBeg > ImmediateAddr, OldEnd = OldEnd;
+        ImmediateAddr >= OldEnd, OldBeg = OldBeg
+    ).
 
 moved_label_class(EA_def2,Imm_index,"loaded immediate loop bound"),
 moved_immediate_candidate(EA_def2,Imm_index,ImmediateAddr,NewDest):-
@@ -407,7 +428,10 @@ moved_immediate_candidate(EA_def2,Imm_index,ImmediateAddr,NewDest):-
     ImmediateAddr = as(Immediate,address),
 
     Beg <= ImmediateAddr,ImmediateAddr <= End,
-    (OldBeg > ImmediateAddr ; ImmediateAddr >= OldEnd).
+    (
+        OldBeg > ImmediateAddr, OldEnd = OldEnd;
+        ImmediateAddr >= OldEnd, OldBeg = OldBeg
+    ).
 
 moved_label_class(EA,Op_index,"pie relocation"),
 moved_immediate_candidate(EA,Op_index,DestAddr,SymbolAddr):-
