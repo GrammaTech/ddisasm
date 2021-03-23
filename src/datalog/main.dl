@@ -208,24 +208,25 @@ instruction_get_operation(EA,Operation):-
 .decl instruction_get_op(ea:address, index:operand_index, operator:operand_code)
 
 instruction_get_op(EA,Index,Op):-
-    instruction(EA,_,_,_,Op,_,_,_,_,_),
-    Op != 0,
-    Index = 1.
+    instruction(EA,_,_,_,Op1,Op2,Op3,Op4,_,_),
+    (
+        Op1 != 0,
+        Op = Op1, Index = 1,
+        Op2 = Op2, Op3 = Op3, Op4 = Op4
+        ;
+        Op2 != 0,
+        Op = Op2, Index = 2,
+        Op1 = Op1, Op3 = Op3, Op4 = Op4
+        ;
+        Op3 != 0,
+        Op = Op3, Index = 3,
+        Op1 = Op1, Op2 = Op2, Op4 = Op4
+        ;
+        Op4 != 0,
+        Op = Op4, Index = 4,
+        Op1 = Op1, Op2 = Op2, Op3 = Op3
+    ).
 
-instruction_get_op(EA,Index,Op):-
-    instruction(EA,_,_,_,_,Op,_,_,_,_),
-    Op != 0,
-    Index = 2.
-
-instruction_get_op(EA,Index,Op):-
-    instruction(EA,_,_,_,_,_,Op,_,_,_),
-    Op != 0,
-    Index = 3.
-
-instruction_get_op(EA,Index,Op):-
-    instruction(EA,_,_,_,_,_,_,Op,_,_),
-    Op != 0,
-    Index = 4.
 
 .decl instruction_get_dest_op(ea:address,index:number,op:operand_code)
 
@@ -242,11 +243,13 @@ instruction_get_dest_op(EA,Index,Op):-
         Op4 = 0,
         Op3 != 0,
         Op = Op3,
-        Index = 3
+        Index = 3,
+        Op2 = Op2
         ;
         Op4 != 0,
         Op = Op4,
-        Index = 4
+        Index = 4,
+        Op2 = Op2
     ).
 
 instruction_get_dest_op(EA,1,Op):-
