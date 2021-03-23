@@ -530,7 +530,7 @@ block_points(Block,0,2,"aligned address in data"):-
 block_points(Block,0,-1,"printable address"):-
     arch.pointer_size(8),
     block_is_overlapping(Block),
-    address_in_data(Address,Block),
+    address_in_data(_,Block),
     data_byte(EA,Byte),(printable_char(Byte); Byte = 0),
     data_byte(EA+1,Byte1),(printable_char(Byte1); Byte1 = 0),
     data_byte(EA+2,Byte2),(printable_char(Byte2); Byte2 = 0),
