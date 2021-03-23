@@ -598,3 +598,12 @@ is_padding(EA):-
 // will likely be reintroduced by the compiler toolchain.
 .decl abi_intrinsic(EA:address,Name:symbol)
 .output abi_intrinsic
+
+// Special "nullary" rule that acts as a boolean sentinel for nullable
+// relations, which are unimplemented for some architectures.
+.decl not_applicable()
+not_applicable().
+
+// TODO: Abstract relation for target platforms.
+got_relative_operand(0,0,0):-
+    not_applicable().
