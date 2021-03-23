@@ -272,6 +272,7 @@ value_reg_unsupported(EA,Reg):-
     instruction(EA,_,_,_,Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg),
     op_indirect(Op1,_,RegBase,RegIndex,_,_,_),
+    RegBase = RegBase, RegIndex = RegIndex,
     (RegBase != "NONE" ; RegIndex != "NONE").
 
 // Load a register from a register that is not tracked
