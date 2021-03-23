@@ -390,7 +390,7 @@ data_object_candidate(EA,Size,"string"):-
 data_object_candidate(EA,Size,"other"):-
     preferred_data_access(EA,Label),
     data_access_pattern(Label,Size,_,_),
-    arch.pointer_size(Size),
+    Size > 0,
     !address_in_data_refined(EA,_),
     !symbol_minus_symbol_jump_table(EA,_,Size,_,_,_,_).
 
