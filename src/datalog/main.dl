@@ -404,6 +404,9 @@ direct_call(EA,as(Dest,address)):-
 .decl direct_call_resolved(src:address, dest:address)
 .output direct_call_resolved
 
+direct_call_resolved(0,0):-
+    false.
+
 .decl pc_relative_call(src:address,dest:address)
 .output pc_relative_call
 

@@ -42,9 +42,9 @@ move_operation("MVN").
 
 // TODO:
 .decl conditional_mov(EA:address)
-// conditional_mov(EA):-
-//     instruction_get_operation(EA,Operation),
-//     contains("CMOV",Operation).
+
+conditional_mov(0):-
+    false.
 
 .decl mov(EA:address)
 
@@ -73,7 +73,10 @@ return(EA):-
     pc_register(Reg).
 
 .decl delay_slot(BranchEA:address,EA:address)
+
 // No rule for delay_slot
+delay_slot(0,0):-
+    false.
 
 .decl jump(EA:address)
 .output jump
@@ -89,6 +92,9 @@ jump(EA):-
 
 // TODO:
 .decl op_does_not_read_dest_reg(Operation:symbol)
+
+op_does_not_read_dest_reg(""):-
+    false.
 
 .decl arithmetic_operation(Operation:symbol)
 
@@ -129,8 +135,14 @@ read_only_operation("TST").
 
 .decl write_only_operation(Operation:symbol)
 
+write_only_operation(""):-
+    false.
+
 // TODO:
 .decl one_op_write(Operation:symbol)
+
+one_op_write(""):-
+    false.
 
 .decl pointer_size(n:unsigned) inline
 
@@ -139,8 +151,14 @@ pointer_size(4).
 // TODO:
 .decl loop_operation(operation:symbol)
 
+loop_operation(""):-
+    false.
+
 // TODO:
 .decl loop_prefix(prefix:symbol)
+
+loop_prefix(""):-
+    false.
 
 .decl call_operation(operation:symbol)
 
@@ -190,6 +208,9 @@ return_operation("BX").
 // TODO:
 .decl halt_operation(operation:symbol)
 
+halt_operation(""):-
+    false.
+
 .decl cmp_operation(Operation:symbol)
 
 cmp_operation("CMP").
@@ -199,6 +220,9 @@ cmp_operation("TST").
 
 // TODO:
 .decl operation_size_exception(EA:address,Op_index:operand_index,Size:unsigned)
+
+operation_size_exception(0,0,0):-
+    false.
 
 // TODO:
 // arithmetic operation on two source registers

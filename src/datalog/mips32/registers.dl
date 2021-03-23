@@ -260,7 +260,7 @@ frame_pointer("FP").
 
 .decl stack_pointer(reg:register)
 
-frame_pointer("SP").
+stack_pointer("SP").
 
 .decl return_val_reg(reg:register)
 
