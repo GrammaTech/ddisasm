@@ -198,7 +198,7 @@ symbolic_data(PersonalityPos,Size,Personality):-
 // fde size
 symbol_minus_symbol(Addr,4,Addr+4,Addr+Length+4,1):-
     option("no-cfi-directives"),
-    fde_entry(Addr,Length,_, _, _,_),
+    fde_entry(Addr,Length,_,_,_,_),
     !last_fde(Addr).
 
 symbol_minus_symbol(Addr,4,Addr+4,StartSection+Size,1):-
@@ -207,17 +207,17 @@ symbol_minus_symbol(Addr,4,Addr+4,StartSection+Size,1):-
     last_fde(Addr),
     section(".eh_frame",Size,StartSection).
 
-//cie offset
+// CIE offset
 symbol_minus_symbol(Addr+4,4,Cie,Addr+4,1):-
     option("no-cfi-directives"),
     fde_entry(Addr,_,Cie, _, _,_).
 
-// begin pointer
+// Begin pointer
 symbol_special_encoding(StartLocation,EncodingName),
 symbol_special_encoding(EndLocation,EncodingName):-
     option("no-cfi-directives"),
-    fde_pointer_locations(Addr,StartLocation,EndLocation, _,_,_),
-    fde_entry(Addr,_,Cie, StartFunction, _,_),
+    fde_pointer_locations(Addr,StartLocation,EndLocation,_,_,_),
+    fde_entry(Addr,_,Cie,_,_,_),
     cie_encoding(Cie,FdeEncoding,_),
     special_encoding(Encoding,EncodingName),
     FdeEncoding band 0xF = Encoding.
@@ -362,10 +362,11 @@ fde_instruction_ref(FdeAddr,Index+1,0,Addr+(CodeAlignmentFactor*as(Advance,unsig
 endproc_local_index(FdeAddr,LocalIndex):-
     fde_entry(FdeAddr,_, _,_,EndAddr,_),
     last_fde_instruction(FdeAddr,Index),
-    fde_instruction_ref(FdeAddr,Index,LastLocalIndex,Addr),
     (
+        fde_instruction_ref(FdeAddr,Index,LastLocalIndex,Addr),
         Addr = EndAddr, LocalIndex = LastLocalIndex
         ;
+        fde_instruction_ref(FdeAddr,Index,_,Addr),
         Addr != EndAddr, LocalIndex = 0
     ).
 
@@ -390,7 +391,7 @@ cfi_directive(StartFunction,0,1,".cfi_lsda",Lsda,1,Encoding,0):-
     !option("no-cfi-directives"),
     fde_entry(FdeAddr,_,Cie,StartFunction,_,Lsda),
     fde_block_addresses(FdeAddr,_,_),
-    cie_encoding(Cie, _, LsdaEncoding),
+    cie_encoding(Cie,_,LsdaEncoding), LsdaEncoding = LsdaEncoding,
     (
         Lsda != 0, Encoding = as(LsdaEncoding,number);
         Lsda = 0, Encoding = 255
@@ -400,9 +401,11 @@ cfi_directive(StartFunction,0,2,".cfi_personality",Personality,1,Encoding,0):-
     !option("no-cfi-directives"),
     fde_entry(FdeAddr,_,Cie,StartFunction,_,_),
     fde_block_addresses(FdeAddr,_,_),
-    cie_personality(Cie,Personality,_,_,PersonalityEnconding),
     (
-        Personality != 0, Encoding = as(PersonalityEnconding,number);
+        cie_personality(Cie,Personality,_,_,PersonalityEncoding),
+        Personality != 0, Encoding = as(PersonalityEncoding,number)
+        ;
+        cie_personality(Cie,Personality,_,_,_),
         Personality = 0, Encoding = 255
     ).
 
