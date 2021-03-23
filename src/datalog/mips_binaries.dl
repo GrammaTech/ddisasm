@@ -394,9 +394,8 @@ symbol_minus_symbol(EA,4,GP_addr,PrevEA,1):-
     symbol(GP_addr,_,_,_,_,_,_,"_gp").
 
 symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
-  binary_type("EXEC"),
+    binary_type("EXEC"),
     code(EA),
-    instruction_get_op(EA,Op_index,_),
     gp_relative_operand(EA,Op_index,Dest_addr),
     !base_addr_offset_operand(EA,_,_),
     (
