@@ -497,7 +497,7 @@ relative_address_start(TableStart,4,0,Dest,"first"):-
     next(EA_load,EA_mov),
     arch.mov(EA_mov),
     next(EA_mov,EA_call),
-    reg_call(EA_call,Reg).
+    reg_call(EA_call,_).
 
 // Non-destructive multi-byte NOPs used by the MSVC compiler. (See `listing.inc'.)
 .decl npad(EA:address,Size:unsigned)
