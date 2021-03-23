@@ -47,7 +47,6 @@ other access.
 instruction_memory_access_size(EA,Index,SizeAccess):-
     code(EA),
     instruction_get_op(EA,Index,Op),
-    instruction_get_operation(EA,Operation),
     (
         arch.operation_size_exception(EA,Index,SizeAccess)
         ;
@@ -75,9 +74,11 @@ data_access(EA,Op_index,RegSegment,RegBase,RegIndex,Mult,Offset,Size):-
 
 value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,BaseAddress,"loop"),
 value_reg_at_operand_loop(EA,Op_index,Reg,EA_from,Mult,BaseAddress,"loop"):-
-    data_access(EA,Op_index,_,Reg2,Reg3,_,_,Size),
-    (Reg = Ref2; Reg = Reg3),
-    Reg!="NONE",
+    (
+      data_access(EA,Op_index,_,Reg,_,_,_,_);
+      data_access(EA,Op_index,_,_,Reg,_,_,_)
+    ),
+    Reg != "NONE",
     def_used(EA_def,Reg,EA,Op_index),
     best_value_reg(EA_def,Reg,EA_from,Mult,Offset,"loop"),
     (
@@ -91,12 +92,15 @@ value_reg_at_operand_loop(EA,Op_index,Reg,EA_from,Mult,BaseAddress,"loop"):-
     ).
 
 value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,Offset_final,Type):-
-    data_access(EA,Op_index,_,Reg2,Reg3,_,_,Size),
-    (Reg = Ref2; Reg = Reg3),
-    Reg!="NONE",
+    (
+      data_access(EA,Op_index,_,Reg,_,_,_,_);
+      data_access(EA,Op_index,_,_,Reg,_,_,_)
+    ),
+    Reg != "NONE",
     !value_reg_at_operand_loop(EA,Op_index,Reg,_,_,_,_),
     def_used(EA_def,Reg,EA,Op_index),
     best_value_reg(EA_def,Reg,EA_from,Mult,Offset,Type),
+    Offset = Offset,
     (
         Offset_final = max(Offset,0)
         ;
@@ -106,16 +110,20 @@ value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,Offset_final,Type):-
 
 // case where there is not apparent definition
 value_reg_at_operand(EA,Op_index,Reg,0,1,0,"incomplete"):-
-    data_access(EA,Op_index,_,Reg2,Reg3,_,_,Size),
-    (Reg = Reg2; Reg = Reg3),
-    Reg!="NONE",
+    (
+      data_access(EA,Op_index,_,Reg,_,_,_,_);
+      data_access(EA,Op_index,_,_,Reg,_,_,_)
+    ),
+    Reg != "NONE",
     !def_used(_,Reg,EA,Op_index).
 
 // NONE registers have 0 value
 value_reg_at_operand(EA,Op_index,Reg,0,0,0,"complete"):-
-    data_access(EA,Op_index,_,Reg2,Reg3,Mult,Offset,Size),
-    (Reg = Ref2; Reg = Reg3),
-    Reg="NONE".
+    (
+      data_access(EA,Op_index,_,Reg,_,_,_,_);
+      data_access(EA,Op_index,_,_,Reg,_,_,_)
+    ),
+    Reg != "NONE".
 
 .decl data_access_pattern(Address:address,Size:unsigned,Multiplier:number,FromWhere:address)
 .output data_access_pattern
