@@ -212,19 +212,19 @@ instruction_get_op(EA,Index,Op):-
     (
         Op1 != 0,
         Op = Op1, Index = 1,
-        Op2 = Op2, Op3 = Op3, Op4 = Op4
+        Op2 = Op2, Op3 = Op3, Op4 = Op4 // avoid warning
         ;
         Op2 != 0,
         Op = Op2, Index = 2,
-        Op1 = Op1, Op3 = Op3, Op4 = Op4
+        Op1 = Op1, Op3 = Op3, Op4 = Op4 // avoid warning
         ;
         Op3 != 0,
         Op = Op3, Index = 3,
-        Op1 = Op1, Op2 = Op2, Op4 = Op4
+        Op1 = Op1, Op2 = Op2, Op4 = Op4 // avoid warning
         ;
         Op4 != 0,
         Op = Op4, Index = 4,
-        Op1 = Op1, Op2 = Op2, Op3 = Op3
+        Op1 = Op1, Op2 = Op2, Op3 = Op3 // avoid warning
     ).
 
 
@@ -244,12 +244,12 @@ instruction_get_dest_op(EA,Index,Op):-
         Op3 != 0,
         Op = Op3,
         Index = 3,
-        Op2 = Op2
+        Op2 = Op2 // avoid warning
         ;
         Op4 != 0,
         Op = Op4,
         Index = 4,
-        Op2 = Op2
+        Op2 = Op2 // avoid warning
     ).
 
 instruction_get_dest_op(EA,1,Op):-
@@ -602,11 +602,6 @@ is_padding(EA):-
 .decl abi_intrinsic(EA:address,Name:symbol)
 .output abi_intrinsic
 
-// Special "nullary" rule that acts as a boolean sentinel for nullable
-// relations, which are unimplemented for some architectures.
-.decl not_applicable()
-not_applicable().
-
 // TODO: Abstract relation for target platforms.
 got_relative_operand(0,0,0):-
-    not_applicable().
+    false.

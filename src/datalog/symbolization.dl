@@ -109,14 +109,15 @@ This module also computes and symbol_minus_symbol.
 .decl symbolic_operand_total_points(ea:address,operand_index:operand_index,points:number)
 
 symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
-  binary_type("EXEC"),
+    binary_type("EXEC"),
     code(EA),
     instruction_get_op(EA,Op_index,Op),
     (
         op_immediate(Op,Dest),
         Dest_addr = as(Dest,address)
         ;
-        pc_relative_operand(EA,Op_index,Dest_addr)
+        pc_relative_operand(EA,Op_index,Dest_addr),
+        Op = Op // avoid warning
         ;
         op_indirect(Op,_,_,_,_,Dest,_),
         Dest_addr = as(Dest,address),

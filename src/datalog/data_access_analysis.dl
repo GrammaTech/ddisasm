@@ -76,8 +76,11 @@ value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,BaseAddress,"loop"),
 value_reg_at_operand_loop(EA,Op_index,Reg,EA_from,Mult,BaseAddress,"loop"):-
     data_access(EA,Op_index,_,Reg2,Reg3,_,_,_),
     (
-        Reg = Reg2, Reg3 = Reg3;
-        Reg = Reg3, Reg2 = Reg2
+        Reg = Reg2,
+        Reg3 = Reg3 // avoid warning
+        ;
+        Reg = Reg3,
+        Reg2 = Reg2 // avoid warning
     ),
     Reg != "NONE",
     def_used(EA_def,Reg,EA,Op_index),
@@ -95,27 +98,33 @@ value_reg_at_operand_loop(EA,Op_index,Reg,EA_from,Mult,BaseAddress,"loop"):-
 value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,Offset_final,Type):-
     data_access(EA,Op_index,_,Reg2,Reg3,_,_,_),
     (
-        Reg = Reg2, Reg3 = Reg3;
-        Reg = Reg3, Reg2 = Reg2
+        Reg = Reg2,
+        Reg3 = Reg3 // avoid warning
+        ;
+        Reg = Reg3,
+        Reg2 = Reg2 // avoid warning
     ),
     Reg != "NONE",
     !value_reg_at_operand_loop(EA,Op_index,Reg,_,_,_,_),
     def_used(EA_def,Reg,EA,Op_index),
     best_value_reg(EA_def,Reg,EA_from,Mult,Offset,Type),
-    Offset = Offset,
     (
         Offset_final = max(Offset,0)
         ;
         Type = "incomplete",
-        Offset_final = 0
+        Offset_final = 0,
+        Offset = Offset // avoid warning
     ).
 
 // case where there is not apparent definition
 value_reg_at_operand(EA,Op_index,Reg,0,1,0,"incomplete"):-
     data_access(EA,Op_index,_,Reg2,Reg3,_,_,_),
     (
-        Reg = Reg2, Reg3 = Reg3;
-        Reg = Reg3, Reg2 = Reg2
+        Reg = Reg2,
+        Reg3 = Reg3 // avoid warning
+        ;
+        Reg = Reg3,
+        Reg2 = Reg2 // avoid warning
     ),
     Reg != "NONE",
     !def_used(_,Reg,EA,Op_index).
@@ -124,8 +133,11 @@ value_reg_at_operand(EA,Op_index,Reg,0,1,0,"incomplete"):-
 value_reg_at_operand(EA,Op_index,Reg,0,0,0,"complete"):-
     data_access(EA,Op_index,_,Reg2,Reg3,_,_,_),
     (
-        Reg = Reg2, Reg3 = Reg3;
-        Reg = Reg3, Reg2 = Reg2
+        Reg = Reg2,
+        Reg3 = Reg3 // avoid warning
+        ;
+        Reg = Reg3,
+        Reg2 = Reg2 // avoid warning
     ),
     Reg != "NONE".
 

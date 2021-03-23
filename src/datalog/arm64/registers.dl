@@ -158,19 +158,19 @@ function_non_maintained_reg("X31").
 
 // TODO:
 pc_register("NONE"):-
-    not_applicable().
+    false.
 
 .decl frame_pointer(reg:register)
 
 // TODO:
 frame_pointer("NONE"):-
-    not_applicable().
+    false.
 
 .decl stack_pointer(reg:register)
 
 // TODO:
 stack_pointer("NONE"):-
-    not_applicable().
+    false.
 
 .decl return_val_reg(reg:register)
 

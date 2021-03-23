@@ -51,7 +51,7 @@ mov(EA):-
 .decl conditional_mov(EA:address)
 
 conditional_mov(0):-
-    not_applicable().
+    false.
 
 .decl is_nop(EA:address)
 is_nop(EA):-
@@ -68,7 +68,7 @@ return(EA):-
 
 // No rule for delay_slot
 delay_slot(0,0):-
-    not_applicable().
+    false.
 
 .decl jump(EA:address)
 
@@ -79,7 +79,7 @@ jump(EA):-
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
 op_does_not_read_dest_reg(""):-
-    not_applicable().
+    false.
 
 .decl arithmetic_operation(Operation:symbol)
 
@@ -116,13 +116,13 @@ read_only_operation("TST").
 
 // TODO:
 write_only_operation(""):-
-    not_applicable().
+    false.
 
 .decl one_op_write(Operation:symbol)
 
 // TODO:
 one_op_write(""):-
-    not_applicable().
+    false.
 
 .decl pointer_size(n:unsigned) inline
 
@@ -132,7 +132,7 @@ pointer_size(8).
 .decl loop_prefix(prefix:symbol)
 
 loop_prefix(""):-
-    not_applicable().
+    false.
 
 .decl call_operation(operation:symbol)
 call_operation("BL").
@@ -161,7 +161,7 @@ cmp_operation("CMP").
 
 // TODO: Remove after review above.
 operation_size_exception(0,0,0):-
-    not_applicable().
+    false.
 
 // arithmetic operation on two source registers
 .decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)

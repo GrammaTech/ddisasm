@@ -65,7 +65,7 @@ return(EA):-
 
 // No rule for delay_slot
 delay_slot(0,0):-
-    not_applicable().
+    false.
 
 .decl jump(EA:address)
 

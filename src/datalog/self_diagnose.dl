@@ -42,7 +42,7 @@ bad_symbol_constant(EA,Cnt):-
         ;
         !pc_relative_operand(EA,Index,_),
         Cnt2 = Cnt,
-        InsnOffset = InsnOffset
+        InsnOffset = InsnOffset // avoid warning
     ),
     symbolic_operand(EA,Index,Dest,_),
     !moved_label(EA,Index,_,_),

@@ -118,7 +118,7 @@ moved_pc_relative_candidate(EA,Op_index,Dest,NewDest,Diff):-
     (
         Base > Dest,
         NewDest = Base,
-        SizeSect = SizeSect
+        SizeSect = SizeSect // avoid warning
         ;
         Dest > Base+SizeSect,
         NewDest = Base+SizeSect
@@ -213,8 +213,11 @@ moved_displacement_candidate(EA,Op_index,as(Dest,address),AccessDest,1):-
     // does not fall in bss sections
     bss_section_limits(BssBeg,BssEnd),
     (
-        Diff < BssBeg, BssEnd = BssEnd;
-        Diff > BssEnd, BssBeg = BssBeg
+        Diff < BssBeg,
+        BssEnd = BssEnd // avoid warning
+        ;
+        Diff > BssEnd,
+        BssBeg = BssBeg // avoid warning
     ).
 
 // We have an access with a register that is multiplied by something
@@ -230,11 +233,11 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
     !pc_relative_operand(EA,Op_index,_),
     (
         Mult > 1,
-        RegMult = RegMult
+        RegMult = RegMult // avoid warning
         ;
         value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,0,_),
         Mult2 > 1,
-        Mult = Mult
+        Mult = Mult // avoid warning
     ),
     regular_data_section(Name),
     section(Name,SectSize,Base),
@@ -243,7 +246,7 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
         Distance = Base-DestAddr,
         NewDest = Base,
         10*DestAddr > Base,
-        SectSize = SectSize
+        SectSize = SectSize // avoid warning
         ;
         DestAddr > Base+SectSize,
         Distance = DestAddr-(Base+SectSize),
@@ -267,7 +270,7 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
         Distance = Base-DestAddr,
         NewDest = Base,
         10*DestAddr > Base,
-        SectSize = SectSize
+        SectSize = SectSize // avoid warning
         ;
         DestAddr>Base+SectSize,
         Distance = DestAddr-(Base+SectSize),
@@ -291,7 +294,7 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
         Distance = Base-DestAddr,
         NewDest = Base,
         10*DestAddr > Base,
-        SectSize = SectSize
+        SectSize = SectSize // avoid warning
     ;
         DestAddr > Base+SectSize,
         Distance = DestAddr-(Base+SectSize),
@@ -391,8 +394,11 @@ moved_immediate_candidate(EA_from,Imm_index,ImmediateAddr,NewDest):-
     NewDest >= Beg,
     NewDest < Beg+SizeSect,
     (
-        Reg = Reg2, Reg3 = Reg3;
-        Reg = Reg3, Reg2 = Reg2
+        Reg = Reg2,
+        Reg3 = Reg3 // avoid warning
+        ;
+        Reg = Reg3,
+        Reg2 = Reg2 // avoid warning
     ),
     value_reg_at_operand(EA_access,Op_index,Reg,EA_from,_,_,Type),
     Type != "incomplete",
@@ -412,8 +418,11 @@ moved_immediate_candidate(EA,Imm_index,ImmediateAddr,NewDest):-
     dest_enlarged_data_section(EA_def,Reg,NewDest,Beg,End,OldBeg,OldEnd),
     Beg <= ImmediateAddr, ImmediateAddr <= End,
     (
-        OldBeg > ImmediateAddr, OldEnd = OldEnd;
-        ImmediateAddr >= OldEnd, OldBeg = OldBeg
+        OldBeg > ImmediateAddr,
+        OldEnd = OldEnd // avoid warning
+        ;
+        ImmediateAddr >= OldEnd,
+        OldBeg = OldBeg // avoid warning
     ).
 
 moved_label_class(EA_def2,Imm_index,"loaded immediate loop bound"),
@@ -429,8 +438,11 @@ moved_immediate_candidate(EA_def2,Imm_index,ImmediateAddr,NewDest):-
 
     Beg <= ImmediateAddr,ImmediateAddr <= End,
     (
-        OldBeg > ImmediateAddr, OldEnd = OldEnd;
-        ImmediateAddr >= OldEnd, OldBeg = OldBeg
+        OldBeg > ImmediateAddr,
+        OldEnd = OldEnd // avoid warning
+        ;
+        ImmediateAddr >= OldEnd,
+        OldBeg = OldBeg // avoid warning
     ).
 
 moved_label_class(EA,Op_index,"pie relocation"),
