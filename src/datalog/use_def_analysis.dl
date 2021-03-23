@@ -218,7 +218,7 @@ def_used(EA_def,Reg,EA_used,Index):-
     def_used_intra(EA_def,Reg,EA_used,Index).
 
 def_used(EA_def,Reg,EA_used,Index_used):-
-    def_used_return_val_reg(EA_def,EA_call,Reg,EA_used,Index_used).
+    def_used_return_val_reg(EA_def,_,Reg,EA_used,Index_used).
 
 // reg: return-value register
 // ea_used: use of the return-value register after a call
