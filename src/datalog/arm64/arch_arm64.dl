@@ -50,6 +50,9 @@ mov(EA):-
 /* CMOV is not used by arm64 */
 .decl conditional_mov(EA:address)
 
+conditional_mov(0):-
+    not_applicable().
+
 .decl is_nop(EA:address)
 is_nop(EA):-
     instruction_get_operation(EA,"NOP").
@@ -62,7 +65,10 @@ return(EA):-
     instruction_get_operation(EA,Operation).
 
 .decl delay_slot(BranchEA:address,EA:address)
+
 // No rule for delay_slot
+delay_slot(0,0):-
+    not_applicable().
 
 .decl jump(EA:address)
 
@@ -71,6 +77,9 @@ jump(EA):-
     jump_operation(Operation).
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
+
+op_does_not_read_dest_reg(""):-
+    not_applicable().
 
 .decl arithmetic_operation(Operation:symbol)
 
@@ -105,7 +114,15 @@ read_only_operation("TST").
 
 .decl write_only_operation(Operation:symbol)
 
+// TODO:
+write_only_operation(""):-
+    not_applicable().
+
 .decl one_op_write(Operation:symbol)
+
+// TODO:
+one_op_write(""):-
+    not_applicable().
 
 .decl pointer_size(n:unsigned) inline
 
@@ -113,6 +130,9 @@ pointer_size(8).
 
 /* prefixes are not used by arm64 */
 .decl loop_prefix(prefix:symbol)
+
+loop_prefix(""):-
+    not_applicable().
 
 .decl call_operation(operation:symbol)
 call_operation("BL").
@@ -138,6 +158,10 @@ cmp_operation("CMP").
 // are not decoded corectly from capstone
 // FIXME: review this list when capstone is updated
 .decl operation_size_exception(EA:address,Op_index:operand_index,Size:unsigned)
+
+// TODO: Remove after review above.
+operation_size_exception(0,0,0):-
+    not_applicable().
 
 // arithmetic operation on two source registers
 .decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)

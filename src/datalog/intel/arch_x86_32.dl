@@ -130,7 +130,7 @@ symbolic_operand_attribute(EA,Index,"PltRef"):-
     plt_block(Dest,_).
 
 symbolic_operand_attribute(EA,Index,"GotOff"):-
-    got_relative_operand(EA,Index,Dest).
+    got_relative_operand(EA,Index,_).
 
 symbolic_operand_attribute(EA,Index,"GotRef"):-
     got_relative_operand(EA,Index,Dest),
@@ -204,7 +204,7 @@ moved_label(EA_load,1,Address,Base):-
     arch.frame_pointer(BaseReg),
     def_used(StackFrame,BaseReg,EA_cmp,_),
     arch.cmp_operation(Operation),
-    instruction(EA_cmp,Size,_,Operation,Op1,Op2,0,0,_,_),
+    instruction(EA_cmp,Size,_,Operation,Op1,_,0,0,_,_),
     op_indirect(Op1,"NONE",BaseReg,"NONE",_,StackPos,_),
     arch.jump(EA_cmp+Size),
 
@@ -218,5 +218,5 @@ moved_label(EA_load,1,Address,Base):-
 symbol_minus_symbol(EA+Disp_offset,4,Got,Dest,1):-
     got_reference_pointer(Got),
     got_relative_operand(EA,Index,_),
-    moved_label(EA,Index,Dest,NewDest),
+    moved_label(EA,Index,Dest,_),
     instruction_displacement_offset(EA,Index,Disp_offset).
