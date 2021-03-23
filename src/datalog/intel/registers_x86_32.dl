@@ -68,7 +68,7 @@ frame_pointer("EBP").
 
 .decl stack_pointer(reg:register)
 
-frame_pointer("ESP").
+stack_pointer("ESP").
 
 .decl return_val_reg(reg:register)
 

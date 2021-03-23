@@ -41,7 +41,8 @@ bad_symbol_constant(EA,Cnt):-
         Cnt2 = Cnt+ as(InsnSize-InsnOffset,number)
         ;
         !pc_relative_operand(EA,Index,_),
-        Cnt2 = Cnt
+        Cnt2 = Cnt,
+        InsnOffset = InsnOffset // avoid warning
     ),
     symbolic_operand(EA,Index,Dest,_),
     !moved_label(EA,Index,_,_),
@@ -66,7 +67,8 @@ bad_symbol_constant(EA,Cnt):-
         Cnt2 = Cnt+ as(InsnSize-InsnOffset,number)
         ;
         !pc_relative_operand(EA,Index,_),
-        Cnt2 = Cnt
+        Cnt2 = Cnt,
+        InsnOffset = InsnOffset // avoid warning
     ),
     moved_label(EA,Index,Orig,Dest),
     section(Name,SectSize,Base),

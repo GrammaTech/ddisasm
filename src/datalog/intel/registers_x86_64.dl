@@ -103,7 +103,7 @@ frame_pointer("RBP").
 
 .decl stack_pointer(reg:register)
 
-frame_pointer("RSP").
+stack_pointer("RSP").
 
 .decl return_val_reg(reg:register)
 

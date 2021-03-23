@@ -109,14 +109,15 @@ This module also computes and symbol_minus_symbol.
 .decl symbolic_operand_total_points(ea:address,operand_index:operand_index,points:number)
 
 symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
-  binary_type("EXEC"),
+    binary_type("EXEC"),
     code(EA),
     instruction_get_op(EA,Op_index,Op),
     (
         op_immediate(Op,Dest),
         Dest_addr = as(Dest,address)
         ;
-        pc_relative_operand(EA,Op_index,Dest_addr)
+        pc_relative_operand(EA,Op_index,Dest_addr),
+        Op = Op // avoid warning
         ;
         op_indirect(Op,_,_,_,_,Dest,_),
         Dest_addr = as(Dest,address),
@@ -391,7 +392,6 @@ data_object_candidate(EA,Size,"other"):-
     preferred_data_access(EA,Label),
     data_access_pattern(Label,Size,_,_),
     Size > 0,
-    arch.pointer_size(Pt_size),
     !address_in_data_refined(EA,_),
     !symbol_minus_symbol_jump_table(EA,_,Size,_,_,_,_).
 
@@ -426,9 +426,9 @@ next_address_in_data(EA,EA_next):-
 
 address_array_aux(EA,Diff,"code",EA):-
     address_in_data_refined(EA,Dest1),code(Dest1),
-    arch.pointer_size(Pt_size),
     (
       binary_format("PE");
+      arch.pointer_size(Pt_size),
       EA % Pt_size = 0
     ),
     next_address_in_data(EA,EA_next),

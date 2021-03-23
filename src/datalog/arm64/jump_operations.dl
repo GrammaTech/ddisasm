@@ -58,7 +58,7 @@ unconditional_jump_operation("BX").
 jump_equal_operation("B.EQ").
 
 .decl jump_unequal_operation(n:symbol)
-jump_equal_operation("B.NE").
+jump_unequal_operation("B.NE").
 
 .decl jump_operation_op_index(Operation:symbol,operand_index:operand_index)
 
