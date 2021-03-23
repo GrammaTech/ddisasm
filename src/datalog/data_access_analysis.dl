@@ -139,7 +139,7 @@ value_reg_at_operand(EA,Op_index,Reg,0,0,0,"complete"):-
         Reg = Reg3,
         Reg2 = Reg2 // avoid warning
     ),
-    Reg != "NONE".
+    Reg = "NONE".
 
 .decl data_access_pattern(Address:address,Size:unsigned,Multiplier:number,FromWhere:address)
 .output data_access_pattern
