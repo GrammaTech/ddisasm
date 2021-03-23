@@ -262,11 +262,8 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,"ADD"):-
     code(EA_jump),
     def_used(EA_base,Reg,EA_jump,_),
     instruction_get_operation(EA_base,"ADD"),
-    (
-        RegBase = Reg, RegDiff = Reg2;
-        RegBase = Reg2, RegDiff = Reg
-    ),
-    def_used(EA_def_diff,RegDiff,EA_base,_),
+    RegBase = Reg,
+    def_used(EA_def_diff,_,EA_base,_),
     instruction_get_operation(EA_def_diff,"MOVSXD"),
     def_used(EA_def_ref,RegBase,EA_base,_),
     take_address(EA_def_ref,TableStart),
