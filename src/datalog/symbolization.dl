@@ -426,9 +426,9 @@ next_address_in_data(EA,EA_next):-
 
 address_array_aux(EA,Diff,"code",EA):-
     address_in_data_refined(EA,Dest1),code(Dest1),
-    arch.pointer_size(Pt_size),
     (
       binary_format("PE");
+      arch.pointer_size(Pt_size),
       EA % Pt_size = 0
     ),
     next_address_in_data(EA,EA_next),

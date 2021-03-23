@@ -249,7 +249,7 @@ instruction_get_dest_op(EA,Index,Op):-
         Op4 != 0,
         Op = Op4,
         Index = 4,
-        Op2 = Op2 // avoid warning
+        Op2 = Op2, Op3 = Op3 // avoid warning
     ).
 
 instruction_get_dest_op(EA,1,Op):-

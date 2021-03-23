@@ -48,7 +48,8 @@ instruction_memory_access_size(EA,Index,SizeAccess):-
     code(EA),
     instruction_get_op(EA,Index,Op),
     (
-        arch.operation_size_exception(EA,Index,SizeAccess)
+        arch.operation_size_exception(EA,Index,SizeAccess),
+        Op = Op // avoid warning
         ;
         !arch.operation_size_exception(EA,Index,_),
         op_indirect(Op,_,_,_,_,_,Size),
