@@ -100,8 +100,11 @@ moved_pc_relative_candidate(EA_def2,Op_index,Dest,NewDest,Diff):-
 
     Beg <= Dest, Dest <= End,
     (
-        OldBeg > Dest, OldEnd = OldEnd;
-        Dest > OldEnd, OldBeg = OldBeg
+        OldBeg > Dest,
+        OldEnd = OldEnd // avoid warning
+        ;
+        Dest > OldEnd,
+        OldBeg = OldBeg // avoid warning
     ),
     Diff = max(NewDest-Dest,Dest-NewDest).
 
