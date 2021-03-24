@@ -53,7 +53,7 @@ build-conan:
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
     - conan user ci_user -r gitlab -p ${CI_JOB_TOKEN}
     # Install gtirb python wheel
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=--extra-index-url=$EXTRA_INDEX_URL
+    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
     # Run build script
     - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/build.py
 
@@ -66,7 +66,7 @@ conan-windows:
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
     - conan user ci_user -r gitlab -p ${CI_JOB_TOKEN}
     # Install gtirb python wheel
-    - python -m pip install pip --upgrade && python -m pip install gtirb --extra-index-url=--extra-index-url=$EXTRA_INDEX_URL
+    - python -m pip install pip --upgrade && python -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
     # Run build script
     - export PATH="$PATH;C:\\Program Files\\CMake\\bin"
     - export SOUFFLE_INCLUDE_DIR="C:\\users\\vagrant\\AppData\\local\\Packages\\CanonicalGroupLimited.Ubuntu18.04onWindows_79rhkp1fndgsc\\localstate\\rootfs\\usr\\local\\include"
@@ -135,7 +135,7 @@ conan-windows:
     - '[ $OS != "arch" ] || sudo pacman --noconfirm -U gtirb-git*.pkg.tar.* gtirb-pprinter-git*.pkg.tar.*'
     - '[[ ! "$OS" =~ ubuntu[12][680] ]] || dpkg -i libgtirb.deb libgtirb-pprinter.deb gtirb-pprinter.deb'
     # Install gtirb python API
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=--extra-index-url=$EXTRA_INDEX_URL
+    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
     # Run tests
     - cd build && PATH=$(pwd)/bin:$PATH ctest -V
 
@@ -212,7 +212,7 @@ build-arch-gcc:
     # Install gtirb and the pprinter
     - sudo pacman --noconfirm -U gtirb-git*.pkg.tar.* gtirb-pprinter-git*.pkg.tar.*
     # Install gtirb python wheel
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=--extra-index-url=$EXTRA_INDEX_URL
+    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
     # Build package and run tests
     - mkdir /home/ddisasm/ddisasm-aur
     - cp .ci/PKGBUILD /home/ddisasm/ddisasm-aur/PKGBUILD
