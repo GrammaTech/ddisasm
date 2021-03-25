@@ -315,8 +315,6 @@ std::vector<PeResource> PeReader::resources()
             }
         }
     }
-    else
-        std::cout << "[INFO] PE: No resources...\n";
 
     return CollectedResources;
 }
