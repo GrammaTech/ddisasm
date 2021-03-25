@@ -649,6 +649,7 @@ block_points(Block,BlockPred,Points2,Why):-
     code_in_block_candidate_refined(EA,BlockPred),
     block_is_overlapping(BlockPred),
     !overlap_with_jump_table(BlockPred),
+    !overlap_with_jump_table(Block),
     block_points(BlockPred,_,Points,Why),
     transitive_points(Why),
     (
