@@ -107,7 +107,7 @@ class DdisasmConan(Properties, ConanFile):
     gtirb_pprinter_version = "dev"
     capstone_version = "dev"
     requires = (
-        "boost/%s@conan/stable" % (boost_version),
+        "boost/%s" % (boost_version),
         "gtirb/%s@rewriting+gtirb/master" % (gtirb_version),
         "gtirb-pprinter/%s@rewriting+gtirb-pprinter/windows-support"
         % (gtirb_pprinter_version),
