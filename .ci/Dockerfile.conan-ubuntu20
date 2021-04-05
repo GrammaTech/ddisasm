@@ -1,0 +1,45 @@
+FROM ubuntu:20.04
+
+# Use bash for more convenient variable substitution syntax
+SHELL ["/bin/bash", "-c"]
+
+RUN export DEBIAN_FRONTEND=noninteractive
+RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
+
+RUN apt-get update -y \
+ && apt-get install -y \
+      clang \
+      cmake \
+      curl \
+      git \
+      libffi-dev \
+      libstdc++-7-dev \
+      make \
+      python3 \
+      python3-pip \
+      unzip
+
+# Install cross-platform utils
+RUN apt-get -y update && \
+    apt-get -y install \
+    gcc-arm-linux-gnueabihf \
+    gcc-aarch64-linux-gnu \
+    gcc-mips-linux-gnu \
+    g++-mips-linux-gnu \
+    qemu-user
+
+RUN apt-get -y update \
+ && apt-get -y install \
+      lib32gcc-9-dev \
+      lib32stdc++-9-dev \
+      libc-dev-i386-cross \
+ && ln -s /usr/i686-linux-gnu/lib/ /usr/lib/i386-linux-gnu \
+ && ln -s /usr/i686-linux-gnu/include /usr/include/i386-linux-gnu
+
+RUN cd /usr/mips-linux-gnu \
+ && mkdir etc \
+ && ldconfig -c etc/ld.do.cache -r .
+
+COPY etc/sstrip /usr/bin/sstrip
+
+RUN python3 -m pip install conan distro pyyaml psycopg2-binary
