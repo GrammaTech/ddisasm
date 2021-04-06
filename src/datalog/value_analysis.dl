@@ -403,6 +403,7 @@ value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,S
 
 
 best_value_reg(EA,Reg,EA_from,Multiplier,Offset,"loop"):-
+    !def_used_return_val_reg(EA,_,Reg,_,_),
     value_reg(EA,Reg,EA_from,"Unknown",Multiplier,Offset,_).
 
 best_value_reg(EA,Reg,EA_from,Multiplier,Offset,"complete"):-
