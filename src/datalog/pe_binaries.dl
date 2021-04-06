@@ -127,6 +127,18 @@ reg_has_base_image(EA,Reg):-
         arch.reg_reg_arithmetic_operation(EA,Reg,Reg2,Reg1,Mult,0), Mult>1
     ).
 
+.decl possible_rva_operand(EA:address,Index:operand_index,Dest:address)
+.output possible_rva_operand
+
+possible_rva_operand(EA,Op_index,RVA):-
+    instruction_get_op(EA,Op_index,Op),
+    op_indirect(Op,_,_,_,_,Value,_), Value >= 0,
+    RVA = as(Value,address),
+    base_address(ImageBase),
+    section(_,Size,Begin),
+    (ImageBase + RVA) >= Begin,
+    (ImageBase + RVA) < (Begin + Size).
+
 .decl base_relative_operand(EA:address,Index:operand_index,Dest:address)
 .output base_relative_operand
 
@@ -134,13 +146,7 @@ reg_has_base_image(EA,Reg):-
 base_relative_operand(EA_used,Op_index,RVA):-
     reg_has_base_image(EA_def,Reg),
     def_used(EA_def,Reg,EA_used,Op_index),
-    instruction_get_op(EA_used,Op_index,Op),
-    op_indirect(Op,_,_,_,_,Value,_), Value >= 0,
-    RVA = as(Value,address),
-    base_address(ImageBase),
-    section(_,Size,Begin),
-    (ImageBase + RVA) >= Begin,
-    (ImageBase + RVA) < (Begin + Size).
+    possible_rva_operand(EA_used,Op_index,RVA).
 
 // Indirect access later added to ImageBase
 base_relative_operand(EA_def1,Op_index,as(Value,address)):-
@@ -174,12 +180,13 @@ base_relative_operand(EA_def1,Op_index,as(Value,address)):-
 // lea         rbp,[rdx*4+00000000003FFA7Ch]
 //    ...
 // movzx       ecx,byte ptr [rbp+r15+3]
-base_relative_operand(EA_def2,Op_index_access,as(Offset,address)):-
+base_relative_operand(EA_def2,Op_index_access,RVA):-
     reg_has_base_image(EA_def1,Reg1),
     def_used(EA_def1,Reg1,EA,_),
 
     data_access(EA_def2,Op_index_access,"NONE","NONE",_,4,Offset,_), Offset > 0,
     def_used(EA_def2,Reg2,EA,_),
+    possible_rva_operand(EA_def2,Op_index_access,RVA),
 
     (
         data_access(EA,_,"NONE",Reg1,Reg2,1,_,_);
