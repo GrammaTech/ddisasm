@@ -14,7 +14,7 @@ RUN cd souffle && make -j4 install
 
 FROM ubuntu:16.04
 
-ARG CMAKE_VERSION=3.10
+ARG CMAKE_VERSION=3.12.1
 ARG BOOST_VERSION=1.67
 ARG PROTOBUF_VERSION=3.1.0-0ubuntu1~maarten0
 ARG CXX_COMPILER=g++-7
@@ -63,7 +63,7 @@ RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|apt-key add - && \
 RUN ln -s /usr/bin/clang++-8 /usr/bin/clang++ && ln -s /usr/bin/clang-8 /usr/bin/clang
 
 # Install CMake
-RUN curl -SL https://cmake.org/files/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.0-Linux-x86_64.tar.gz \
+RUN curl -SL https://cmake.org/files/v$(echo $CMAKE_VERSION | sed -r 's/\.[0-9]+$//;')/cmake-$CMAKE_VERSION-Linux-x86_64.tar.gz \
     |tar -xz --strip-components=1 -C /usr/local
 
 # Install boost and protobuf
