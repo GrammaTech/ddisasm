@@ -181,7 +181,6 @@ This module:
 .input data_byte
 
 .decl address_in_data(ea:address,value:address)
-
 .input address_in_data
 
 ///////////////////////////////////////////////////////////////
@@ -220,17 +219,22 @@ instruction_get_op(EA,Index,Op):-
     instruction(EA,_,_,_,Op1,Op2,Op3,Op4,_,_),
     (
         Op1 != 0,
-        Op = Op1, Index = 1
+        Op = Op1, Index = 1,
+        Op2 = Op2, Op3 = Op3, Op4 = Op4 // avoid warning
         ;
         Op2 != 0,
-        Op = Op2, Index = 2
+        Op = Op2, Index = 2,
+        Op1 = Op1, Op3 = Op3, Op4 = Op4 // avoid warning
         ;
         Op3 != 0,
-        Op = Op3, Index = 3
+        Op = Op3, Index = 3,
+        Op1 = Op1, Op2 = Op2, Op4 = Op4 // avoid warning
         ;
         Op4 != 0,
-        Op = Op4, Index = 4
+        Op = Op4, Index = 4,
+        Op1 = Op1, Op2 = Op2, Op3 = Op3 // avoid warning
     ).
+
 
 .decl instruction_get_dest_op(ea:address,index:number,op:operand_code)
 
@@ -248,11 +252,13 @@ instruction_get_dest_op(EA,Index,Op):-
         Op4 = 0,
         Op3 != 0,
         Op = Op3,
-        Index = 3
+        Index = 3,
+        Op2 = Op2 // avoid warning
         ;
         Op4 != 0,
         Op = Op4,
-        Index = 4
+        Index = 4,
+        Op2 = Op2, Op3 = Op3 // avoid warning
     ).
 
 instruction_get_dest_op(EA,1,Op):-
@@ -398,6 +404,9 @@ direct_call(EA,as(Dest,address)):-
 .decl direct_call_resolved(src:address, dest:address)
 .output direct_call_resolved
 
+direct_call_resolved(0,0):-
+    false.
+
 .decl pc_relative_call(src:address,dest:address)
 .output pc_relative_call
 
@@ -503,12 +512,11 @@ function_symbol(EA,Name):-
 
 defined_symbol(EA,Size,Type,Scope,SectIndex,OriginTable,TableIndex,Name):-
     symbol(EA,Size,Type,Scope,SectIndex,OriginTable,TableIndex,Name),
-    SHN_UNDEF = 0,
-    SHN_LORESERVE = 65280,
-    SHN_HIRESERVE = 65535,
-    //the symbol is not undefined
-    SectIndex != SHN_UNDEF,
-    (SectIndex < SHN_LORESERVE; SectIndex > SHN_HIRESERVE).
+    SectIndex != 0, // SHN_UNDEF
+    (
+        SectIndex < 65280; // SHN_LORESERVE
+        SectIndex > 65535  // SHN_HIRESERVE
+    ).
 
 // Labels which are defined "at-end" of a data or code region/referent.
 // Such labels will usually associate with a symbol at address Dest, but they
@@ -609,6 +617,7 @@ no_return_call(EA):-
     no_return_function(Name).
 
 .decl is_padding(EA:address)
+
 is_padding(EA):-
     arch.is_nop(EA).
 
@@ -617,3 +626,7 @@ is_padding(EA):-
 // will likely be reintroduced by the compiler toolchain.
 .decl abi_intrinsic(EA:address,Name:symbol)
 .output abi_intrinsic
+
+// TODO: Abstract relation for target platforms.
+got_relative_operand(0,0,0):-
+    false.

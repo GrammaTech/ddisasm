@@ -26,7 +26,6 @@
 #include <boost/uuid/uuid_generators.hpp>
 
 #include "AuxDataSchema.h"
-#include "InternalAuxDataSchema.h"
 #include "gtirb-decoder/CompositeLoader.h"
 
 using ImmOp = relations::ImmOp;
@@ -488,6 +487,7 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_
         {"PltRef", gtirb::SymAttribute::PltRef},
         // FIXME: Replace these with appropriate flags when supported:
         {"TpOff", gtirb::SymAttribute::Part0},
+        {"TlsGD", gtirb::SymAttribute::Part3},
         {"GotOff", gtirb::SymAttribute::Part1},
         {"NtpOff", gtirb::SymAttribute::Part2},
         {":lo12:", gtirb::SymAttribute::Part0},

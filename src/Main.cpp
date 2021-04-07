@@ -45,7 +45,6 @@
 
 #include "AuxDataSchema.h"
 #include "Disassembler.h"
-#include "InternalAuxDataSchema.h"
 #include "Registration.h"
 #include "Version.h"
 #include "gtirb-builder/GtirbBuilder.h"

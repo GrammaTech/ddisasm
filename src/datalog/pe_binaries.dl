@@ -131,11 +131,16 @@ reg_has_base_image(EA,Reg):-
 .output base_relative_operand
 
 // Indirect access using register with ImageBase
-base_relative_operand(EA_used,Op_index,as(Value,address)):-
+base_relative_operand(EA_used,Op_index,RVA):-
     reg_has_base_image(EA_def,Reg),
     def_used(EA_def,Reg,EA_used,Op_index),
     instruction_get_op(EA_used,Op_index,Op),
-    op_indirect(Op,_,_,_,_,Value,_), Value >= 0.
+    op_indirect(Op,_,_,_,_,Value,_), Value >= 0,
+    RVA = as(Value,address),
+    base_address(ImageBase),
+    section(_,Size,Begin),
+    (ImageBase + RVA) >= Begin,
+    (ImageBase + RVA) < (Begin + Size).
 
 // Indirect access later added to ImageBase
 base_relative_operand(EA_def1,Op_index,as(Value,address)):-
@@ -163,7 +168,23 @@ base_relative_operand(EA_def1,Op_index,as(Value,address)):-
     instruction_get_operation(EA_def1,"LEA"),
     op_indirect(Op,_,_,_,_,Value,_), Value > 0.
 
+// Chained indirect access:
+// lea         r15,[0000000180000000h]
+//    ... Some logic that uses r15 to calculate an offset.
+// lea         rbp,[rdx*4+00000000003FFA7Ch]
+//    ...
+// movzx       ecx,byte ptr [rbp+r15+3]
+base_relative_operand(EA_def2,Op_index_access,as(Offset,address)):-
+    reg_has_base_image(EA_def1,Reg1),
+    def_used(EA_def1,Reg1,EA,_),
 
+    data_access(EA_def2,Op_index_access,"NONE","NONE",_,4,Offset,_), Offset > 0,
+    def_used(EA_def2,Reg2,EA,_),
+
+    (
+        data_access(EA,_,"NONE",Reg1,Reg2,1,_,_);
+        data_access(EA,_,"NONE",Reg2,Reg1,1,_,_)
+    ).
 
 .decl base_relative_symbolic_operand(EA:address,Index:operand_index,Dest:address)
 
@@ -497,7 +518,7 @@ relative_address_start(TableStart,4,0,Dest,"first"):-
     next(EA_load,EA_mov),
     arch.mov(EA_mov),
     next(EA_mov,EA_call),
-    reg_call(EA_call,Reg).
+    reg_call(EA_call,_).
 
 // Non-destructive multi-byte NOPs used by the MSVC compiler. (See `listing.inc'.)
 .decl npad(EA:address,Size:unsigned)

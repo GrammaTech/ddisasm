@@ -212,6 +212,9 @@ delay_slot(BranchEA,EA):-
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
+op_does_not_read_dest_reg(""):-
+    false.
+
 // No operation
 
 .decl arithmetic_operation(Operation:symbol)
@@ -379,15 +382,24 @@ read_only_operation(Operation):-
     jump_operation(Operation).
 
 .decl write_only_operation(Operation:symbol)
+
 // TODO:
+write_only_operation(""):-
+    false.
 
 .decl one_op_write(Operation:symbol)
+
 // TODO:
+one_op_write(""):-
+    false.
 
 .decl pointer_size(n:unsigned)inline
 pointer_size(4).
 
 .decl loop_prefix(prefix:symbol)
+
+loop_prefix(""):-
+    false.
 
 // No loop prefix
 
@@ -440,10 +452,15 @@ return_operation("JRADDIUSP").
 .decl halt_operation(operation:symbol)
 
 // No halt operation
+halt_operation(""):-
+    false.
 
 .decl cmp_operation(Operation:symbol)
 
 // No cmp operation.
+cmp_operation(""):-
+    false.
+
 // CHECK: Do we want to put the followings here?
 //cmp_operation("SLT").
 //cmp_operation("SLTU").
@@ -454,6 +471,10 @@ return_operation("JRADDIUSP").
 // are not decoded corectly from capstone
 // FIXME: review this list when capstone is updated
 .decl operation_size_exception(EA:address,Op_index:operand_index,Size:unsigned)
+
+// TODO: Remove after review above.
+operation_size_exception(0,0,0):-
+    false.
 
 // arithmetic operation on two source registers
 .decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)

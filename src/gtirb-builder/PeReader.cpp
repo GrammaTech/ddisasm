@@ -144,7 +144,8 @@ void PeReader::addAuxData()
 {
     // Add `binaryType' aux data table.
     bool DLL = Pe->header().has_characteristic(LIEF::PE::HEADER_CHARACTERISTICS::IMAGE_FILE_DLL);
-    std::vector<std::string> BinaryType = {"EXEC", DLL ? "DLL" : "EXE"};
+    std::string Subsystem = LIEF::PE::to_string(Pe->optional_header().subsystem());
+    std::vector<std::string> BinaryType = {"EXEC", DLL ? "DLL" : "EXE", Subsystem};
     Module->addAuxData<gtirb::schema::BinaryType>(std::move(BinaryType));
 
     // Add `libraries' aux data table.
@@ -314,8 +315,6 @@ std::vector<PeResource> PeReader::resources()
             }
         }
     }
-    else
-        std::cout << "[INFO] PE: No resources...\n";
 
     return CollectedResources;
 }
