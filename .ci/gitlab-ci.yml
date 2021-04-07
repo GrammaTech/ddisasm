@@ -43,11 +43,11 @@ check-format:
       EOF
       ) && exit 1)
 
-build-conan:
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/conan
+build-conan-gcc7:
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu18
   stage: build
   needs: [check-format]
-  script:
+  script: &build-conan
     - conan profile new default --detect
     - conan profile update settings.compiler.libcxx=libstdc++11 default
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
@@ -56,6 +56,13 @@ build-conan:
     - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
     # Run build script
     - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/build.py
+
+build-conan-gcc9:
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu20
+  stage: build
+  needs: [check-format]
+  script:
+    *build-conan
 
 conan-windows:
   stage: build
