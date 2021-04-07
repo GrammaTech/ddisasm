@@ -602,6 +602,17 @@ direct_call_resolved(EA,as(Dest,address)):-
     def_used(EA_def,"T9",EA,_),
     value_reg(EA_def,"T9",_,"NONE",_,Dest,_).
 
+// lui reg1, hi(XXX)
+// lw reg2, lo(XXX)(reg1)
+// jr reg2
+resolved_jump(EA,as(Dest,address)):-
+    instruction(EA,_,_,"JR",Op,0,0,0,_,_),
+    op_regdirect_contains_reg(Op,Reg),
+    def_used(EA_def,Reg,EA,_),
+    instruction_get_operation(EA_def, "LW"),
+    split_load_candidate(_,EA_def,Addr,_),
+    symbolic_data(Addr,4,Dest).
+
 abi_intrinsic(Address,Sym):-
     symbol(Address,_,_,_,_,_,_,Sym),
     (
