@@ -171,10 +171,7 @@ class DdisasmConan(Properties, ConanFile):
         else:
             cmake = CMake(self, generator=None)
             defs.update(
-                {
-                    "CMAKE_CXX_COMPILER": "g++-7",
-                    "GTIRB_PPRINTER_STRIP_DEBUG_SYMBOLS:BOOL": "ON",
-                }
+                {"GTIRB_PPRINTER_STRIP_DEBUG_SYMBOLS:BOOL": "ON"}
             )
             self.add_dep_bin_path("mcpp")
 
