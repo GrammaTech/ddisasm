@@ -2,8 +2,8 @@
 # Cmake Configuration
 #
 
-# Need 3.9 to support CXX_STANDARD=17 and protobuf
-cmake_minimum_required(VERSION 3.9.0)
+# We use 3.12.1 to ease compatability with gtirb-pprinter.
+cmake_minimum_required(VERSION 3.12.1)
 
 # Get version
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/version.txt" ver)
