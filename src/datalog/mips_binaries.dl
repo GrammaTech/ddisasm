@@ -257,7 +257,7 @@ hi_load_prop(MoveEA,EA,Reg2,Upper,"move"):-
 split_load_candidate(EA, NextEA, as(Upper*2^16+Offset,address), "ADDIU") :-
     hi_load_prop(RegRestoreEA,EA,Reg2,Upper,_),
     def_used(RegRestoreEA,Reg2,NextEA,_),
-    instruction_get_operation(MoveEA, "ADDIU"),
+    instruction_get_operation(NextEA, "ADDIU"),
     arch.reg_reg_arithmetic_operation(NextEA,_,Reg2,"NONE",_,Offset).
 
 // PIC
@@ -272,14 +272,14 @@ split_load_candidate(EA, NextEA, as(Upper*2^16+Offset+T9Value,address), "ADDU") 
     EA != NextEA,
 
     // addiu reg2, reg, lo(xxx)
-    instruction_get_operation(MoveEA, "ADDIU"),
+    instruction_get_operation(NextEA, "ADDIU"),
     arch.reg_reg_arithmetic_operation(NextEA,Reg2,Reg,"NONE",_,Offset),
 
     def_used(NextEA,Reg2,NextEA2,_),
     NextEA != NextEA2,
 
     // addu reg3, reg2, t9
-    instruction_get_operation(MoveEA2, "ADDU"),
+    instruction_get_operation(NextEA2, "ADDU"),
     arch.reg_reg_arithmetic_operation(NextEA2,_,Reg2,"T9",1,0), // RA too?
 
     // NOTE: This assumes t9 holds the address of the current function, and
