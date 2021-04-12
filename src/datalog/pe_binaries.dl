@@ -193,6 +193,35 @@ base_relative_operand(EA_def2,Op_index_access,RVA):-
         data_access(EA,_,"NONE",Reg2,Reg1,1,_,_)
     ).
 
+// Not all compilers respect register-volatility conventions, and it is
+// sometimes the case that a register is still expected to contain the image base
+// address in a volatile register after intervening functions are called.
+.decl call_shadows_reg(EA:address,EA_call:address,Reg:register)
+.output call_shadows_reg
+
+call_shadows_reg(EA,EA_def,Reg):-
+    // Possible RVA operand.
+    base_address(ImageBase),
+    possible_rva_operand(EA,_,RVA),
+    relative_address_start(ImageBase+RVA,_,_,_,_),
+    // Where a register was previously shadowed by a call.
+    def_used(EA_def,Reg,EA,_),
+    direct_call(EA_def,_).
+
+call_shadows_reg(EA,EA_def,Reg):-
+    call_shadows_reg(EA,EA_call,Reg),
+    code_in_block_candidate(EA_call,Block),
+    last_def(Block,EA_def,Reg),
+    direct_call(EA_def,_).
+
+base_relative_operand(EA,Op_index,RVA):-
+    possible_rva_operand(EA,Op_index,RVA),
+    // Register contains ImageBase before shadowing calls.
+    call_shadows_reg(EA,EA_call,Reg),
+    code_in_block_candidate(EA_call,Block),
+    last_def(Block,EA_def,Reg),
+    reg_has_base_image(EA_def,Reg).
+
 .decl base_relative_symbolic_operand(EA:address,Index:operand_index,Dest:address)
 
 symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value,1),
