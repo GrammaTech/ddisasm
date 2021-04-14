@@ -219,7 +219,7 @@ hi_load_prop(MoveEA,EA,Reg2,Upper,"move"):-
     op_regdirect_contains_reg(DestOp,Reg2).
 
 // Split-loads -------------------------------------------------------
-.decl split_load_candidate(ea:address, nextea:address, dest:address, type:symbol)
+.decl split_load_candidate(ea_hi:address, ea_lo:address, dest:address, type:symbol)
 .output split_load_candidate
 
 .decl split_load_point(ea:address, nextea:address, dest:address, type:symbol, point:number, why:symbol)
@@ -254,33 +254,33 @@ hi_load_prop(MoveEA,EA,Reg2,Upper,"move"):-
 // E.g., lui reg, hi(xxx)
 //       move reg2, reg
 //       addiu reg3, reg2, lo(xxx)
-split_load_candidate(EA, NextEA, as(Upper*2^16+Offset,address), "ADDIU") :-
-    hi_load_prop(RegRestoreEA,EA,Reg2,Upper,_),
-    def_used(RegRestoreEA,Reg2,NextEA,_),
-    instruction_get_operation(NextEA, "ADDIU"),
-    arch.reg_reg_arithmetic_operation(NextEA,_,Reg2,"NONE",_,Offset).
+split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset,address), "ADDIU") :-
+    hi_load_prop(RegRestoreEA,EA_hi,Reg2,Upper,_),
+    def_used(RegRestoreEA,Reg2,EA_lo,_),
+    instruction_get_operation(EA_lo, "ADDIU"),
+    arch.reg_reg_arithmetic_operation(EA_lo,_,Reg2,"NONE",_,Offset).
 
 // PIC
 // E.g., lui reg, hi(xxx)
 //       addiu reg2, reg, lo(xxx)
 //       addu reg3, reg2, t9
-split_load_candidate(EA, NextEA, as(Upper*2^16+Offset+T9Value,address), "ADDU") :-
+split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset+T9Value,address), "ADDU") :-
     // lui reg, hi(xxx)
-    hi_load(EA,Reg,Upper),
+    hi_load(EA_hi,Reg,Upper),
 
-    def_used(EA,Reg,NextEA,_),
-    EA != NextEA,
+    def_used(EA_hi,Reg,EA_lo,_),
+    EA_hi != EA_lo,
 
     // addiu reg2, reg, lo(xxx)
-    instruction_get_operation(NextEA, "ADDIU"),
-    arch.reg_reg_arithmetic_operation(NextEA,Reg2,Reg,"NONE",_,Offset),
+    instruction_get_operation(EA_lo, "ADDIU"),
+    arch.reg_reg_arithmetic_operation(EA_lo,Reg2,Reg,"NONE",_,Offset),
 
-    def_used(NextEA,Reg2,NextEA2,_),
-    NextEA != NextEA2,
+    def_used(EA_lo,Reg2,EA_addu,_),
+    EA_lo != EA_addu,
 
     // addu reg3, reg2, t9
-    instruction_get_operation(NextEA2, "ADDU"),
-    arch.reg_reg_arithmetic_operation(NextEA2,_,Reg2,"T9",1,0), // RA too?
+    instruction_get_operation(EA_addu, "ADDU"),
+    arch.reg_reg_arithmetic_operation(EA_addu,_,Reg2,"T9",1,0), // RA too?
 
     // NOTE: This assumes t9 holds the address of the current function, and
     //       lui is the first instruction of the current function.
@@ -299,88 +299,88 @@ split_load_candidate(EA, NextEA, as(Upper*2^16+Offset+T9Value,address), "ADDU") 
 // E.g., lui reg, hi(xxx)
 //       move reg2, reg
 //       lw/sw reg3, lo(xxx)(reg2)
-split_load_candidate(EA, NextEA, as(Upper*2^16+Offset,address), "LoadStore") :-
-    hi_load_prop(RegRestoreEA,EA,Reg2,Upper,_),
-    def_used(RegRestoreEA,Reg2,NextEA,_),
+split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset,address), "LoadStore") :-
+    hi_load_prop(RegRestoreEA,EA_hi,Reg2,Upper,_),
+    def_used(RegRestoreEA,Reg2,EA_lo,_),
 
     // lw/sw reg3, lo(xxx)(reg2)
-    instruction_get_operation(NextEA, Operation),
+    instruction_get_operation(EA_lo, Operation),
     (
         arch.load_operation(Operation),
-        instruction_get_src_op(NextEA,_,Op)
+        instruction_get_src_op(EA_lo,_,Op)
         ;
         arch.store_operation(Operation),
-        instruction_get_dest_op(NextEA,_,Op)
+        instruction_get_dest_op(EA_lo,_,Op)
     ),
     op_indirect(Op,"NONE",Reg2,"NONE",1,Offset,_).
 
-split_load_point(EA,NextEA,Dest_addr,Type,0,"base"):-
-    split_load_candidate(EA,NextEA,Dest_addr,Type).
+split_load_point(EA_hi,EA_lo,Dest_addr,Type,0,"base"):-
+    split_load_candidate(EA_hi,EA_lo,Dest_addr,Type).
 
 // Heuristic 1: If the order of hi and lo is backward, it may be
 // false-positive.
-split_load_point(EA,NextEA,Dest_addr,Type,-1,"hi-lo-backward"):-
-    split_load_candidate(EA,NextEA,Dest_addr,Type),
-    EA > NextEA.
+split_load_point(EA_hi,EA_lo,Dest_addr,Type,-1,"hi-lo-backward"):-
+    split_load_candidate(EA_hi,EA_lo,Dest_addr,Type),
+    EA_hi > EA_lo.
 
 // Heuristic 2: If the hi and lo are in different functions, it may be
 // false-positive. Note that function_entry cannot be used here due to cyclic
 // negation. For now, fde_addresses is used instead.
-split_load_point(EA,NextEA,Dest_addr,Type,-5,"maybe-in-different-function"):-
-    split_load_candidate(EA,NextEA,Dest_addr,Type),
+split_load_point(EA_hi,EA_lo,Dest_addr,Type,-5,"maybe-in-different-function"):-
+    split_load_candidate(EA_hi,EA_lo,Dest_addr,Type),
     fde_addresses(Begin,_),
-    EA < Begin,
-    Begin < NextEA.
+    EA_hi < Begin,
+    Begin < EA_lo.
 
 // TODO: Add more heuristics if needed.
 
-split_load_conflict(EA,NextEA,Dest_addr,Type,EA2,NextEA2,Dest_addr2,Type2):-
-    split_load_candidate(EA,NextEA,Dest_addr,Type),
-    split_load_candidate(EA2,NextEA2,Dest_addr2,Type2),
+split_load_conflict(EA_hi,EA_lo,Dest_addr,Type,EA_hi2,EA_lo2,Dest_addr2,Type2):-
+    split_load_candidate(EA_hi,EA_lo,Dest_addr,Type),
+    split_load_candidate(EA_hi2,EA_lo2,Dest_addr2,Type2),
     // Ordering to avoid duplicates
     (
-        EA < EA2
+        EA_hi < EA_hi2
         ;
-        EA = EA2, NextEA < NextEA2
+        EA_hi = EA_hi2, EA_lo < EA_lo2
     ),
     // If two split_loads share either lo or hi split, and the dest addresses
     // are different, then they conflict.
     (
-        EA != EA2, NextEA = NextEA2
+        EA_hi != EA_hi2, EA_lo = EA_lo2
         ;
-        EA = EA2, NextEA != NextEA2
+        EA_hi = EA_hi2, EA_lo != EA_lo2
     ),
     Dest_addr != Dest_addr2.
 
 
-split_load_total_points(EA,NextEA,Dest_addr,Type,Points):-
-    split_load_candidate(EA,NextEA,Dest_addr,Type),
-    Points = sum X:{split_load_point(EA,NextEA,Dest_addr,Type,X,_)}.
+split_load_total_points(EA_hi,EA_lo,Dest_addr,Type,Points):-
+    split_load_candidate(EA_hi,EA_lo,Dest_addr,Type),
+    Points = sum X:{split_load_point(EA_hi,EA_lo,Dest_addr,Type,X,_)}.
 
-split_load(EA, NextEA, Dest_addr, Type) :-
-    split_load_candidate(EA,NextEA,Dest_addr,Type),
+split_load(EA_hi, EA_lo, Dest_addr, Type) :-
+    split_load_candidate(EA_hi,EA_lo,Dest_addr,Type),
     Type != "LoadStore",
-    !discarded_split_load(EA,NextEA,Dest_addr,Type,_).
+    !discarded_split_load(EA_hi,EA_lo,Dest_addr,Type,_).
 
-split_loadstore(EA, NextEA, Dest_addr):-
-    split_load_candidate(EA,NextEA,Dest_addr,"LoadStore"),
-    !discarded_split_load(EA,NextEA,Dest_addr,"LoadStore",_).
+split_loadstore(EA_hi, EA_lo, Dest_addr):-
+    split_load_candidate(EA_hi,EA_lo,Dest_addr,"LoadStore"),
+    !discarded_split_load(EA_hi,EA_lo,Dest_addr,"LoadStore",_).
 
-discarded_split_load(EA,NextEA,Dest_addr,Type,Points):-
-    split_load_conflict(EA1,NextEA1,Dest_addr1,Type1,EA2,NextEA2,Dest_addr2,Type2),
-    split_load_total_points(EA1,NextEA1,Dest_addr1,Type1,Points1),
-    split_load_total_points(EA2,NextEA2,Dest_addr2,Type2,Points2),
+discarded_split_load(EA_hi,EA_lo,Dest_addr,Type,Points):-
+    split_load_conflict(EA_hi1,EA_lo1,Dest_addr1,Type1,EA_hi2,EA_lo2,Dest_addr2,Type2),
+    split_load_total_points(EA_hi1,EA_lo1,Dest_addr1,Type1,Points1),
+    split_load_total_points(EA_hi2,EA_lo2,Dest_addr2,Type2,Points2),
     (
         Points1 < Points2,
-        EA = EA1,
-        NextEA = NextEA1,
+        EA_hi = EA_hi1,
+        EA_lo = EA_lo1,
         Dest_addr = Dest_addr1,
         Type = Type1,
         Points = Points1
         ;
         Points1 > Points2,
-        EA = EA2,
-        NextEA = NextEA2,
+        EA_hi = EA_hi2,
+        EA_lo = EA_lo2,
         Dest_addr = Dest_addr2,
         Type = Type2,
         Points = Points2
