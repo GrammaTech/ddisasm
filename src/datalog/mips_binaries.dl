@@ -285,7 +285,7 @@ split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset+T9Value,address), "ADDU"
     // NOTE: This assumes t9 holds the address of the current function, and
     //       lui is the first instruction of the current function.
     // TODO: Find a way of safely getting the function-entry address for t9.
-    T9Value = as(EA, number).
+    T9Value = as(EA_hi, number).
 
 // E.g., lui reg, hi(xxx)
 //       lw/sw reg2, lo(xxx)(reg)
