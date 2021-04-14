@@ -237,7 +237,7 @@ hi_load_prop(MoveEA,EA,Reg2,Upper,"move"):-
 .decl split_load(ea:address, nextea:address, dest:address, type:symbol)
 .output split_load
 
-// Compute an immediate load/store performed across two separateinstructions
+// Compute an immediate load/store performed across two separate instructions
 .decl split_loadstore(ea:address, nextea:address, dest:address)
 .output split_loadstore
 
