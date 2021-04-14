@@ -164,8 +164,8 @@ conan-windows:
     - unzip gtirb-pprinter-${OS}-artifacts.zip
     - dpkg -i libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
     - cd build
-    - cpack -G "DEB" -D CPACK_DDISASM_DEBIAN_PACKAGE=ddisasm
-    - cpack -G "DEB" -D CPACK_DDISASM_DEBIAN_PACKAGE=debug
+    - cpack -G "DEB" -D CPACK_DDISASM_PACKAGE=deb-ddisasm
+    - cpack -G "DEB" -D CPACK_DDISASM_PACKAGE=deb-debug
 
 build-ubuntu16-gcc:
   stage: build

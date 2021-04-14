@@ -1,7 +1,7 @@
 set(CPACK_DEB_COMPONENT_INSTALL ON)
 set(CPACK_COMPONENTS_GROUPING ALL_COMPONENTS_IN_ONE)
 
-if("${CPACK_DDISASM_DEBIAN_PACKAGE}" STREQUAL "ddisasm")
+if("${CPACK_DDISASM_PACKAGE}" STREQUAL "deb-ddisasm")
   set(CPACK_DEBIAN_PACKAGE_NAME "ddisasm")
   set(CPACK_PACKAGE_FILE_NAME "ddisasm")
   set(CPACK_COMPONENTS_ALL ddisasm)
@@ -14,7 +14,7 @@ if("${CPACK_DDISASM_DEBIAN_PACKAGE}" STREQUAL "ddisasm")
         "libstdc++6, libc6, libgcc1, libgomp1, libgtirb (=${CPACK_GTIRB_VERSION}-${CPACK_DEBIAN_PACKAGE_RELEASE}), libgtirb-pprinter (=${CPACK_GTIRB_PPRINTER_VERSION}-${CPACK_DEBIAN_PACKAGE_RELEASE}), libboost (>=1.67) | libboost1.67, libcapstone-dev (=1:4.0.1-gt3)"
     )
   endif()
-elseif("${CPACK_DDISASM_DEBIAN_PACKAGE}" STREQUAL "debug")
+elseif("${CPACK_DDISASM_PACKAGE}" STREQUAL "deb-debug")
   set(CPACK_DEBIAN_PACKAGE_NAME "ddisasm-dbg")
   set(CPACK_PACKAGE_FILE_NAME "ddisasm-dbg")
   set(CPACK_COMPONENTS_ALL debug-file)
