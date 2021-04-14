@@ -547,7 +547,7 @@ symbolic_operand_point(EA,Op_index,1,"lookup-got"):-
     op_indirect(Op,"NONE","GP","NONE",1,_,_),
     def_used_for_address(EA,_).
 
-// Pattern-matching:
+// Pattern-matching.1:
 //   lw $t9, _GLOBAL_OFFSET_TABLE_($gp)
 //   move $t7,$ra
 //   jalr $t9
@@ -587,6 +587,41 @@ plt_entry(EA,Function):-
     op_immediate(Op2_4,Index),
     symbol(_,_,_,_,_, ".dynsym",Index2,Function),
     Index = as(Index2,number).
+
+// Pattern-matching.2:
+// E.g.,
+//   EA:      lui $t7,%hi(.L_XXXX)
+//   NextEA:  lw $t9,%lo(.L_XXXX)($t7)
+//   NextEA2: jr $t9
+//   NextEA3: addiu $t8,$t7,%lo(.L_XXXX)
+plt_entry(EA,Function):-
+    plt_section(SecName),
+    section(SecName,Beg,Size),
+    EA >= Beg,
+    EA < Beg+Size,
+
+    next(EA,NextEA),
+
+    // NOTE: We can't use split_load_candidate here due to cyclic negation
+    hi_load(EA,Reg,Upper),
+    instruction_get_operation(NextEA, Operation),
+    arch.load_operation(Operation),
+    instruction_get_src_op(NextEA,_,Op),
+    op_indirect(Op,"NONE",Reg,"NONE",_,Offset,_),
+    Dest_addr = as(Upper*2^16+Offset,address),
+
+    next(NextEA,NextEA2),
+
+    // jalr $t9
+    instruction(NextEA2,_,_,"JR",TargetOp,0,0,0,_,_),
+    op_regdirect_contains_reg(TargetOp,"T9"),
+
+    next(NextEA2,NextEA3),
+
+    instruction_get_operation(NextEA3, "ADDIU"),
+    arch.reg_reg_arithmetic_operation(NextEA3,_,Reg,"NONE",_,Offset),
+
+    relocation(Dest_addr,_,Function,_).
 
 // It is unlikely that EA is a valid instruction if the dest op is zero.
 invalid(EA):-
