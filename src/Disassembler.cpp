@@ -434,6 +434,8 @@ gtirb::Symbol *findSymbol(gtirb::Module &module, gtirb::Addr ea, std::string nam
 void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
                            souffle::SouffleProgram *prog)
 {
+    std::set<std::string> Names;
+    std::set<gtirb::Addr> Relocations;
     std::map<gtirb::UUID, gtirb::UUID> symbolForwarding;
     for(auto &output : *prog->getRelation("relocation"))
     {
@@ -449,6 +451,34 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
                 gtirb::Symbol *realSymbol = module.addSymbol(context, name);
                 copySymbol->setName(name + "_copy");
                 symbolForwarding[copySymbol->getUUID()] = realSymbol->getUUID();
+                Relocations.insert(ea);
+                Names.insert(name + "_copy");
+            }
+        }
+    }
+    // Weak references to copy-relocations should also be forwarded.
+    if(const auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>())
+    {
+        for(const auto &It : *SymbolInfo)
+        {
+            const std::string &Binding = std::get<2>(It.second);
+            const std::string &Visibility = std::get<3>(It.second);
+            if(Binding == "WEAK" && Visibility != "LOCAL")
+            {
+                gtirb::Node *N = gtirb::Node::getByUUID(context, It.first);
+                if(auto *Symbol = dyn_cast_or_null<gtirb::Symbol>(N))
+                {
+                    const std::string &Name = Symbol->getName();
+                    std::optional<gtirb::Addr> Addr = Symbol->getAddress();
+                    if(Addr && Relocations.count(*Addr) && Names.count(Name) == 0)
+                    {
+                        gtirb::Symbol *NewSymbol = module.addSymbol(context, Name);
+                        NewSymbol->setName(Name + "_copy");
+                        NewSymbol->setAddress(*Addr);
+                        Symbol->setReferent(module.addProxyBlock(context));
+                        symbolForwarding[Symbol->getUUID()] = NewSymbol->getUUID();
+                    }
+                }
             }
         }
     }
