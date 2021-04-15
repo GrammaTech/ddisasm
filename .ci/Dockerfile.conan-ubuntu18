@@ -25,6 +25,7 @@ RUN curl -SL https://cmake.org/files/v$(echo $CMAKE_VERSION | sed -r 's/\.[0-9]+
 RUN apt-get -y update \
  && apt-get -y install \
       gcc-arm-linux-gnueabihf \
+      g++-arm-linux-gnueabihf \
       gcc-aarch64-linux-gnu \
       gcc-mips-linux-gnu \
       g++-mips-linux-gnu \

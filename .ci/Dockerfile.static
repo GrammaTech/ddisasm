@@ -27,6 +27,7 @@ RUN python3 -m pip install distro pyyaml psycopg2-binary
 RUN apt-get -y update && \
     apt-get -y install \
     gcc-arm-linux-gnueabihf \
+    g++-arm-linux-gnueabihf \
     gcc-aarch64-linux-gnu \
     gcc-mips-linux-gnu \
     g++-mips-linux-gnu \
