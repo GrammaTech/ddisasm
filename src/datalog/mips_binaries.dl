@@ -590,10 +590,17 @@ plt_entry(EA,Function):-
 
 // Pattern-matching.2:
 // E.g.,
-//   EA:      lui $t7,%hi(.L_XXXX)
-//   NextEA:  lw $t9,%lo(.L_XXXX)($t7)
-//   NextEA2: jr $t9
-//   NextEA3: addiu $t8,$t7,%lo(.L_XXXX)
+//   EA:       lui $t7,%hi(.L_XXXX)
+//   NextEA:   lw $t9,%lo(.L_XXXX)($t7)
+//   EA_JR:    jr $t9
+//   EA_ADDIU: addiu $t8,$t7,%lo(.L_XXXX) // delay-slot
+// or
+//   EA:       lui $t7,%hi(.L_XXXX)
+//   NextEA:   lw $t9,%lo(.L_XXXX)($t7)
+//   EA_ADDIU: addiu $t8,$t7,%lo(.L_XXXX)
+//   EA_JR:    jr $t9                     // no delay-slot
+//
+// NOTE: Cases of no delay-slot were observed
 plt_entry(EA,Function):-
     plt_section(SecName),
     section(SecName,Beg,Size),
@@ -611,15 +618,20 @@ plt_entry(EA,Function):-
     Dest_addr = as(Upper*2^16+Offset,address),
 
     next(NextEA,NextEA2),
-
-    // jalr $t9
-    instruction(NextEA2,_,_,"JR",TargetOp,0,0,0,_,_),
-    op_regdirect_contains_reg(TargetOp,"T9"),
-
     next(NextEA2,NextEA3),
 
-    instruction_get_operation(NextEA3, "ADDIU"),
-    arch.reg_reg_arithmetic_operation(NextEA3,_,Reg,"NONE",_,Offset),
+    (
+        EA_JR = NextEA2, EA_ADDIU = NextEA3 // delay-slot
+        ;
+        EA_JR = NextEA3, EA_ADDIU = NextEA2 // no delay-slot
+    ),
+
+    // jr $t9
+    instruction(EA_JR,_,_,"JR",TargetOp,0,0,0,_,_),
+    op_regdirect_contains_reg(TargetOp,"T9"),
+
+    instruction_get_operation(EA_ADDIU, "ADDIU"),
+    arch.reg_reg_arithmetic_operation(EA_ADDIU,_,Reg,"NONE",_,Offset),
 
     relocation(Dest_addr,_,Function,_).
 
