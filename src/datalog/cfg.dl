@@ -125,13 +125,15 @@ cfg_edge(Src,Dest,"false","false","call"):-
     refined_block(Dest).
 
 cfg_edge(Src,Dest,"false","false","fallthrough"):-
-    block_last_instruction(Src,LastEA),
+    refined_block_last_instruction(Src,LastEA),
     may_fallthrough(LastEA,Dest),
     refined_block_control_instruction(Src,EA),
     !no_return_call(EA),
     !nop_block(Src),
     code_in_refined_block(Dest,Dest),
-    next_refined_block_in_section(Src,Dest).
+    next_refined_block_in_section(Src,Dest),
+    // Assume no fallthrough edge from one plt block to another.
+    !plt_block(Src,_).
 
 cfg_edge(Src,Dest,"false","false","fallthrough"):-
     cfg_edge(_,Src,_,_,_),

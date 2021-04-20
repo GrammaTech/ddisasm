@@ -547,17 +547,34 @@ symbolic_operand_point(EA,Op_index,1,"lookup-got"):-
     op_indirect(Op,"NONE","GP","NONE",1,_,_),
     def_used_for_address(EA,_).
 
+.decl mips_stubs_section(name:symbol)
+
+mips_stubs_section(".MIPS.stubs").
+
+.decl mips_stubs_entry(Block:address,Function:symbol)
+.output mips_stubs_entry
+
+mips_stubs_entry(Block,Function):-
+    mips_stubs_section(SecName),
+    section(SecName,Beg,Size),
+    EA >= Beg,
+    EA < Beg+Size,
+    // Reuse the definition of plt_entry_candidate since the pattern
+    // is the same.
+    plt_entry_candidate(EA,GotIndex),
+    symbol(_,_,_,_,_, ".dynsym",GotIndex,Function),
+    code_in_refined_block(EA,Block).
+
+.decl plt_entry_candidate(EA:address,GotIndex:unsigned)
+.output plt_entry_candidate
+
 // Pattern-matching.1:
 //   lw $t9, _GLOBAL_OFFSET_TABLE_($gp)
 //   move $t7,$ra
 //   jalr $t9
 //   addiu $t8,$zero,N
 // where N is the index of the target in the _GLOBAL_OFFSET_TABLE_.
-plt_entry(EA,Function):-
-    // Make sure that there is no well-delimited plt section.
-    plt_section(SecName),
-    !section(SecName,_,_),
-
+plt_entry_candidate(EA,as(GotIndex,unsigned)):-
     // lw $t9, _GLOBAL_OFFSET_TABLE_($gp)
     instruction(PrevEA2,_,_,"LW",Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,"T9"),
@@ -582,11 +599,14 @@ plt_entry(EA,Function):-
     next(EA, NextEA),
 
     // addiu $t8,$zero,N
-    instruction(NextEA,_,_,"ADDIU",_,Op2_4,Op3_4,0,_,_),
+    instruction(NextEA,_,_,"ADDIU",Op1_4,Op2_4,Op3_4,0,_,_),
     op_regdirect_contains_reg(Op3_4,"T8"),
-    op_immediate(Op2_4,Index),
-    symbol(_,_,_,_,_, ".dynsym",Index2,Function),
-    Index = as(Index2,number).
+    op_regdirect_contains_reg(Op1_4,"ZERO"),
+    op_immediate(Op2_4,GotIndex).
+
+plt_entry(EA,Function):-
+    plt_entry_candidate(EA,GotIndex),
+    symbol(_,_,_,_,_, ".dynsym",GotIndex,Function).
 
 // Pattern-matching.2:
 // E.g.,
