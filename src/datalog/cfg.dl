@@ -136,10 +136,7 @@ cfg_edge(Src,Dest,"false","false","fallthrough"):-
 cfg_edge(Src,Dest,"false","false","fallthrough"):-
     cfg_edge(_,Src,_,_,_),
     nop_block(Src),
-    next_refined_block_in_section(Src,Dest),
-    // The following is to exclude the case where the Src nop-block
-    // is merged to a non-nop block before Dest.
-    !non_nop_block_in_between(_,Src,Dest).
+    next_refined_block_in_section(Src,Dest).
 
 cfg_edge(ReturnBlock,NextBlock,"false","false","return"):-
     cfg_edge(Caller,Block,_,_,"call"),
@@ -148,15 +145,6 @@ cfg_edge(ReturnBlock,NextBlock,"false","false","return"):-
     function_inference.in_function(ReturnBlock,FunctionEntry),
     refined_block_control_instruction(ReturnBlock,Insn),
     arch.return(Insn).
-
-.decl non_nop_block_in_between(EA:address,Block1:address,Block2:address)
-
-non_nop_block_in_between(EA,Block1,Block2):-
-    next_block_in_section(Block1,Block2),
-    EA >= Block1,
-    EA < Block2,
-    refined_block(EA),
-    !nop_block(EA).
 
 cfg_edge_to_top(Src,Conditional,"branch"):-
     refined_block_control_instruction(Src,EA),
