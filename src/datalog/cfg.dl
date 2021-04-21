@@ -125,9 +125,8 @@ cfg_edge(Src,Dest,"false","false","call"):-
     refined_block(Dest).
 
 cfg_edge(Src,Dest,"false","false","fallthrough"):-
-    refined_block_last_instruction(Src,LastEA),
-    may_fallthrough(LastEA,Dest),
     refined_block_control_instruction(Src,EA),
+    may_fallthrough(EA,Dest),
     !no_return_call(EA),
     !nop_block(Src),
     code_in_refined_block(Dest,Dest),
