@@ -1,5 +1,6 @@
 variables:
   GTIRB_BRANCH: "master"
+  CAPSTONE_BRANCH: "master"
   EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_API_V4_URL}/projects/1587/packages/pypi/simple
 
 stages:
@@ -349,6 +350,41 @@ build-ubuntu20-packages:
   variables:
     OS: ubuntu20
   <<: *build-ubuntu-packages
+
+build-centos8-gcc-relwithdebuginfo:
+  stage: build
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/centos8
+  artifacts:
+    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
+    paths:
+      - build
+  script:
+    # What's the deal with PADDED_DIR? See:
+    # https://cmake.org/cmake/help/latest/cpack_gen/rpm.html#variable:CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX
+    # From the above link: "...Limitation is that replaced path part must
+    # be shorter or of equal length than the length of its replacement.  If
+    # that is not the case either CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX variable
+    # has to be set to a shorter path or source directories must be placed on
+    # a longer path."
+    - PADDED_DIR=long-dir-name-padding-for-CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX
+    - mkdir $PADDED_DIR && cd $PADDED_DIR
+    - git clone .. .
+    - mkdir build && cd build
+    # download capstone & gtirb
+    - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-rpm --output "capstone.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=package-centos8 --output "gtirb.zip"
+    # Acquire gtirb pprinter artifacts
+    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
+    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=package-arch --output "gtirb-pprinter.zip"
+    - unzip -o gtirb-pprinter-arch-artifacts.zip
+    - for pkg in gtirb capstone gtirb-pprinter; do unzip $pkg.zip; done
+    - dnf --nogpgcheck localinstall -y capstone-devel-*.rpm gtirb.rpm gtirb-devel.rpm libgtirb-ppritner.rpm libgtirb-pprinter-devel.rpm
+    - CAPSTONE_PKG_VERSION=$(ls capstone-devel-**.rpm | sed -n 's/capstone-devel-\(.*\).x86_64.rpm/\1/p')
+    # Build
+    - cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH='/usr/lib64/boost169' -DBOOST_INCLUDEDIR='/usr/include/boost169' -DDDISASM_STRIP_DEBUG_SYMBOLS=Off ..
+    - make
+    - cpack -G "RPM" -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=rpm-driver
+    - cd ../ && mv build ../build
 
 run-ubuntu16-gcc:
   stage: test-and-tag
