@@ -498,7 +498,11 @@ relative_address(EA+1,1,IndexTable,AddressTable,Dest,"first"):-
 symbol_minus_symbol_jump_table(EA,TableStart,1,Ref,Dest,"first",4):-
     // Byte offsets reference a preceding relative address table.
     relative_address(EA,1,TableStart,Ref,Dest,"first"), Dest < TableStart,
-    relative_address_start(Ref,4,_,_,_).
+    relative_address_start(Ref,4,_,_,_),
+    // Addresses belong to the same segment.
+    section_complete(_,Size,Start,_,_,_),
+    Ref > Start, Ref < (Start + Size),
+    Dest > Start, Dest < (Start + Size).
 
 // the call to main is right after the call to "__p___argc"
 main_function(EA):-

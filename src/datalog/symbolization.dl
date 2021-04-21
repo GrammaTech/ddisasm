@@ -266,7 +266,14 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,TableReference,Dest,"f
     ),
     TableReference_signed = as(TableReference,number),
     Dest = as(TableReference_signed + Diff,unsigned),
-    code(Dest).
+    code(Dest),
+    (
+      !binary_format("PE");
+      // Addresses belong to the same segment.
+      section_complete(_,Size,Start,_,_,_),
+      TableStart > Start, TableStart < (Start + Size),
+      TableReference > Start, TableReference < (Start + Size)
+    ).
 
 symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Dest,TableReference,"second",1):-
     jump_table_start(_,Size,TableStart,TableReference,"SUB"),
