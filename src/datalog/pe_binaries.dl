@@ -119,10 +119,10 @@ symbolic_expr_from_relocation(EA_data,Size,"__ImageBase",0),
 reg_has_base_image(EA_code,Reg):-
     base_address(ImageBase),
     arch.pointer_size(Size),
+    arch.mov(EA_code),
     pc_relative_operand(EA_code,_,EA_data),
     data_word(EA_data,Size,Value), ImageBase = as(Value,address),
-    def(EA_code,Reg),
-    arch.mov(EA_code).
+    def(EA_code,Reg).
 
 reg_has_base_image(EA,Reg):-
     reg_has_base_image(EA2,Reg2),
