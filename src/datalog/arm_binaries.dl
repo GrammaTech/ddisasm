@@ -289,7 +289,9 @@ arm_jump_table(EA_jump,Size,TableStart):-
     instruction_get_dest_op(EA_jump,_,RegOp),
     op_regdirect(RegOp,PC),
     instruction_get_src_op(EA_jump,_,IndOp),
-    op_indirect(IndOp,"NONE",PC,Reg,Mult,Offset,NBits), // TODO: Mult=4, Offset=0
+    op_indirect(IndOp,"NONE",PC,Reg,Mult,Offset,NBits),
+    // TODO: Do we need contraints? Mult=4, Offset=0
+    Reg = Reg, Mult = Mult, Offset = Offset, // to avoid warnings
     Size = NBits / 8,
     (
         Operation != substr(Operation,0,3), // Conditional
