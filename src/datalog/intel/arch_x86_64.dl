@@ -41,11 +41,11 @@ symbolic_operand_attribute(EA,Index,"GotRelPC"):-
     !relocation(Dest,"DTPMOD64",_,_),
     got_local_reference(Dest,_).
 
-symbolic_operand_attribute(EA,Index,"TpOff"):-
+symbolic_operand_attribute(EA,Index,"TPOFF"):-
     symbolic_operand(EA,Index,Dest,_),
     tls_segment(Start,End,_),
     Dest >= Start, Dest < End.
 
-symbolic_operand_attribute(EA,Index,"TlsGD"):-
+symbolic_operand_attribute(EA,Index,"TLSGD"):-
     symbolic_operand(EA,Index,Dest,_),
     relocation(Dest,"DTPMOD64",_,_).
