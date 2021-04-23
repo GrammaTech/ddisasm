@@ -1,7 +1,7 @@
 # Restrict these test cases to systems with compatible QEMU packages.
 distro:
   name: Ubuntu
-  version: ["16.04", "18.04"]
+  version: ["16.04", "18.04", "20.04"]
 
 default: &default
   path: examples
@@ -27,15 +27,6 @@ default: &default
     strip: false
     skip: false
 
-# FIXME: Remove when examples work for all optimization levels.
-zero-optimize: &zero-optimize
-  <<: *default
-  build:
-    c: ["arm-linux-gnueabihf-gcc"]
-    cpp: ["arm-linux-gnueabihf-g++"]
-    optimizations: ["-O0"]
-    flags: []
-
 tests:
   - name: ex1_pie
     <<: *default
@@ -59,26 +50,63 @@ tests:
       optimizations: [""]
 
   - name: ex1
-    <<: *zero-optimize
+    <<: *default
 
-  # FIXME: ex_2modulesPIC
-  # FIXME: ex_confusing_data
-  # FIXME: ex_struct
-  # FIXME: ex_exceptions{1,2,3}
-  # FIXME: ex_false_pointer_array
-  # FIXME: ex_float
-  # FIXME: ex_fprintf
-  # FIXME: ex_getoptlong
-  # FIXME: ex_memberPointer
+  - name: ex_2modulesPIC
+    <<: *default
+
+  - name: ex_confusing_data
+    <<: *default
+
+#  - name: ex_exceptions1 # cpp {1,2,3}: libehp currently doesn't support arm32
+#    <<: *default
+
+  - name: ex_false_pointer_array
+    <<: *default
+
+#  - name: ex_float # capstone decoder error: vmov.f32 and vmov.f64
+#    <<: *default
+
+  - name: ex_fprintf
+    <<: *default
+
+  - name: ex_getoptlong
+    <<: *default
+
+  - name: ex_memberPointer
+    <<: *default
+    reassemble:
+      compiler: "arm-linux-gnueabihf-g++"
+      flags: []
+      skip: false
 
   - name: ex_noreturn
-    <<: *zero-optimize
+    <<: *default
 
-  # FIXME: ex_pointerReatribution
-  # FIXME: ex_pointerReatribution2
-  # FIXME: ex_pointerReatribution3
-  # FIXME: ex_stat
-  # FIXME: ex_struct
-  # FIXME: ex_switch
-  # FIXME: ex_uninitialized_data
-  # FIXME: ex_virtualDispatch
+  - name: ex_pointerReatribution
+    <<: *default
+
+  - name: ex_pointerReatribution2
+    <<: *default
+
+  - name: ex_pointerReatribution3
+    <<: *default
+
+  - name: ex_stat
+    <<: *default
+
+  - name: ex_struct
+    <<: *default
+
+  - name: ex_switch
+    <<: *default
+
+  - name: ex_virtualDispatch
+    <<: *default
+    reassemble:
+      compiler: "arm-linux-gnueabihf-g++"
+      flags: []
+      skip: false
+
+  - name: ex_uninitialized_data
+    <<: *default

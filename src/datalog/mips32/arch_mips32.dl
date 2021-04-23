@@ -156,7 +156,7 @@ is_nop(EA):-
 
 return(EA):-
     arch.return_operation(Operation),
-    instruction(EA,_,_,Operation,Op,_,_,_,_,_),
+    instruction(EA,_,_,Operation,Op,_,_,_,_,_,_,_,_,_,_),
     op_regdirect_contains_reg(Op,"RA").
 
 .decl jump(EA:address)
@@ -203,7 +203,7 @@ delay_slot(BranchEA,EA):-
     !compact_branch_operation(Operation),
     // Filter invalid BranchEA ----------------------------
     (
-        instruction(Dest,_,_,_,_,_,_,_,_,_)
+        instruction(Dest,_,_,_,_,_,_,_,_,_,_,_,_,_,_)
         ;
         Dest = 0, !binary_type("EXEC")
     ),
@@ -481,14 +481,14 @@ operation_size_exception(0,0,0):-
 
 // ADDIU <Register> <Register> <Immediate>
 reg_reg_arithmetic_operation(EA,Reg,Reg2,"NONE",1,Immediate):-
-    instruction(EA,_,_,"ADDIU",Op1,Op2,Op3,0,_,_),
+    instruction(EA,_,_,"ADDIU",Op1,Op2,Op3,0,0,0,0,0,0,_,_),
     op_regdirect_contains_reg(Op3,Reg),
     op_regdirect_contains_reg(Op1,Reg2),
     op_immediate(Op2,Immediate).
 
 // ADDU <Register> <Register> <Register>
 reg_reg_arithmetic_operation(EA,Reg,Reg1,Reg2,1,0):-
-    instruction(EA,_,_,"ADDU",SrcOp1,SrcOp2,DestOp,0,_,_),
+    instruction(EA,_,_,"ADDU",SrcOp1,SrcOp2,DestOp,0,0,0,0,0,0,_,_),
     instruction_get_operation(EA, "ADDU"),
     op_regdirect_contains_reg(DestOp,Reg),
     op_regdirect_contains_reg(SrcOp1,Reg1),

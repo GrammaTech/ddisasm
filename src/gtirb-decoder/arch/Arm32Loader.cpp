@@ -38,11 +38,11 @@ void Arm32Loader::insert(const Arm32Facts& Facts, DatalogProgram& Program)
 
 void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Facts)
 {
-    cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_ARM);
+    cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_ARM | CS_MODE_V8);
     InstructionSize = 4;
     load(ByteInterval, Facts, false);
 
-    cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB);
+    cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB | CS_MODE_V8);
     InstructionSize = 2;
     load(ByteInterval, Facts, true);
 }

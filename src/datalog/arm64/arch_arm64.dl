@@ -40,6 +40,10 @@ move_operation(Operation) :-
 
 move_operation("MVN").
 
+.decl ldr_operation(Operation:symbol)
+ldr_operation("LDR").
+ldr_operation("LDR.W").
+
 /* Find all addresses where a move instruction is used */
 .decl mov(EA:address)
 mov(EA):-
@@ -167,12 +171,12 @@ operation_size_exception(0,0,0):-
 .decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
 
 reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
-    instruction(EA,_,_,"SUB",Op1,Op2,0,0,_,_), Op1 != Op2,
+    instruction(EA,_,_,"SUB",Op1,Op2,0,0,0,0,0,0,0,_,_), Op1 != Op2,
     op_regdirect_contains_reg(Op1,Reg1),
     op_regdirect_contains_reg(Op2,Reg2).
 
 reg_reg_arithmetic_operation(EA,Reg2,Reg1,Reg2,1,0):-
-    instruction(EA,_,_,"ADD",Op1,Op2,0,0,_,_), Op1 != Op2,
+    instruction(EA,_,_,"ADD",Op1,Op2,0,0,0,0,0,0,0,_,_), Op1 != Op2,
     op_regdirect_contains_reg(Op2,Reg2),
     op_regdirect_contains_reg(Op1,Reg1).
 

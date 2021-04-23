@@ -49,7 +49,8 @@ public:
         });
 
         // Setup Capstone engine.
-        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM, CS_MODE_ARM, CsHandle.get());
+        [[maybe_unused]] cs_err Err =
+            cs_open(CS_ARCH_ARM, (cs_mode)(CS_MODE_ARM | CS_MODE_V8), CsHandle.get());
         assert(Err == CS_ERR_OK && "Failed to initialize ARM disassembler.");
         cs_option(*CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
     }

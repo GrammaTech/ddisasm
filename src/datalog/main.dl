@@ -150,7 +150,9 @@ This module:
 // instructions
 
 .decl instruction(ea:address, size:unsigned, prefix:symbol, opcode:symbol,
-          op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code,
+          op1:operand_code, op2:operand_code, op3:operand_code,
+          op4:operand_code, op5:operand_code, op6:operand_code,
+          op7:operand_code, op8:operand_code, op9:operand_code,
           immOffset:unsigned,displacementOffset:unsigned)
 .input instruction
 
@@ -196,7 +198,7 @@ This module:
 .output instruction_immediate_offset
 
 instruction_immediate_offset(EA,Index,ImmediateOffset):-
-    instruction(EA,_,_,_,_,_,_,_,ImmediateOffset,_),
+    instruction(EA,_,_,_,_,_,_,_,_,_,_,_,_,ImmediateOffset,_),
     instruction_get_op(EA,Index,Op),
     op_immediate(Op,_).
 
@@ -204,35 +206,55 @@ instruction_immediate_offset(EA,Index,ImmediateOffset):-
 .output instruction_displacement_offset
 
 instruction_displacement_offset(EA,Index,DisplacementOffset):-
-    instruction(EA,_,_,_,_,_,_,_,_,DisplacementOffset),
+    instruction(EA,_,_,_,_,_,_,_,_,_,_,_,_,_,DisplacementOffset),
     instruction_get_op(EA,Index,Op),
     op_indirect(Op,_,_,_,_,_,_).
 
 .decl instruction_get_operation(ea:address,operation:symbol) inline
 
 instruction_get_operation(EA,Operation):-
-    instruction(EA,_,_,Operation,_,_,_,_,_,_).
+    instruction(EA,_,_,Operation,_,_,_,_,_,_,_,_,_,_,_).
 
 .decl instruction_get_op(ea:address, index:operand_index, operator:operand_code)
 
 instruction_get_op(EA,Index,Op):-
-    instruction(EA,_,_,_,Op1,Op2,Op3,Op4,_,_),
+    instruction(EA,_,_,_,Op1,Op2,Op3,Op4,Op5,Op6,Op7,Op8,Op9,_,_),
     (
         Op1 != 0,
         Op = Op1, Index = 1,
-        Op2 = Op2, Op3 = Op3, Op4 = Op4 // avoid warning
+        Op2 = Op2, Op3 = Op3, Op4 = Op4, Op5 = Op5, Op6 = Op6, Op7 = Op7, Op8 = Op8, Op9 = Op9 // avoid warning
         ;
         Op2 != 0,
         Op = Op2, Index = 2,
-        Op1 = Op1, Op3 = Op3, Op4 = Op4 // avoid warning
+        Op1 = Op1, Op3 = Op3, Op4 = Op4, Op5 = Op5, Op6 = Op6, Op7 = Op7, Op8 = Op8, Op9 = Op9 // avoid warning
         ;
         Op3 != 0,
         Op = Op3, Index = 3,
-        Op1 = Op1, Op2 = Op2, Op4 = Op4 // avoid warning
+        Op1 = Op1, Op2 = Op2, Op4 = Op4, Op5 = Op5, Op6 = Op6, Op7 = Op7, Op8 = Op8, Op9 = Op9 // avoid warning
         ;
         Op4 != 0,
         Op = Op4, Index = 4,
-        Op1 = Op1, Op2 = Op2, Op3 = Op3 // avoid warning
+        Op1 = Op1, Op2 = Op2, Op3 = Op3, Op5 = Op5, Op6 = Op6, Op7 = Op7, Op8 = Op8, Op9 = Op9 // avoid warning
+        ;
+        Op5 != 0,
+        Op = Op5, Index = 5,
+        Op1 = Op1, Op2 = Op2, Op3 = Op3, Op4 = Op4, Op6 = Op6, Op7 = Op7, Op8 = Op8, Op9 = Op9 // avoid warning
+        ;
+        Op6 != 0,
+        Op = Op6, Index = 6,
+        Op1 = Op1, Op2 = Op2, Op3 = Op3, Op4 = Op4, Op5 = Op5, Op7 = Op7, Op8 = Op8, Op9 = Op9 // avoid warning
+        ;
+        Op7 != 0,
+        Op = Op7, Index = 7,
+        Op1 = Op1, Op2 = Op2, Op3 = Op3, Op4 = Op4, Op5 = Op5, Op6 = Op6, Op8 = Op8, Op9 = Op9 // avoid warning
+        ;
+        Op8 != 0,
+        Op = Op8, Index = 8,
+        Op1 = Op1, Op2 = Op2, Op3 = Op3, Op4 = Op4, Op5 = Op5, Op6 = Op6, Op7 = Op7, Op9 = Op9 // avoid warning
+        ;
+        Op9 != 0,
+        Op = Op9, Index = 9,
+        Op1 = Op1, Op2 = Op2, Op3 = Op3, Op4 = Op4, Op5 = Op5, Op6 = Op6, Op7 = Op7, Op8 = Op8 // avoid warning
     ).
 
 
@@ -240,29 +262,60 @@ instruction_get_op(EA,Index,Op):-
 
 instruction_get_dest_op(EA,Index,Op):-
     !binary_isa("MIPS"),
-    instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
+    instruction(EA,_,_,Operation,_,Op2,Op3,Op4,Op5,Op6,Op7,Op8,Op9,_,_),
     !arch.read_only_operation(Operation),
     (
         Op4 = 0,
         Op3 = 0,
         Op2 != 0,
         Op = Op2,
-        Index = 2
+        Index = 2,
+        Op5 = Op5, Op6 = Op6, Op7 = Op7, Op8 = Op8, Op9 = Op9 // avoid warning
         ;
         Op4 = 0,
         Op3 != 0,
         Op = Op3,
         Index = 3,
-        Op2 = Op2 // avoid warning
+        Op2 = Op2, Op5 = Op5, Op6 = Op6, Op7 = Op7, Op8 = Op8, Op9 = Op9 // avoid warning
         ;
+        Op5 = 0,
         Op4 != 0,
         Op = Op4,
         Index = 4,
-        Op2 = Op2, Op3 = Op3 // avoid warning
+        Op2 = Op2, Op3 = Op3, Op6 = Op6, Op7 = Op7, Op8 = Op8, Op9 = Op9 // avoid warning
+        ;
+        Op6 = 0,
+        Op5 != 0,
+        Op = Op5,
+        Index = 5,
+        Op2 = Op2, Op3 = Op3, Op4 = Op4, Op7 = Op7, Op8 = Op8, Op9 = Op9 // avoid warning
+        ;
+        Op7 = 0,
+        Op6 != 0,
+        Op = Op6,
+        Index = 6,
+        Op2 = Op2, Op3 = Op3, Op4 = Op4, Op5 = Op5, Op8 = Op8, Op9 = Op9 // avoid warning
+        ;
+        Op8 = 0,
+        Op7 != 0,
+        Op = Op7,
+        Index = 7,
+        Op2 = Op2, Op3 = Op3, Op4 = Op4, Op5 = Op5, Op6 = Op6, Op9 = Op9 // avoid warning
+        ;
+        Op9 = 0,
+        Op8 != 0,
+        Op = Op8,
+        Index = 8,
+        Op2 = Op2, Op3 = Op3, Op4 = Op4, Op5 = Op5, Op6 = Op6, Op7 = Op7 // avoid warning
+        ;
+        Op9 != 0,
+        Op = Op9,
+        Index = 9,
+        Op2 = Op2, Op3 = Op3, Op4 = Op4, Op5 = Op5, Op6 = Op6, Op7 = Op7, Op8 = Op8 // avoid warning
     ).
 
 instruction_get_dest_op(EA,1,Op):-
-    instruction(EA,_,_,Operation,Op,0,0,0,_,_),
+    instruction(EA,_,_,Operation,Op,0,0,0,0,0,0,0,0,_,_),
     arch.one_op_write(Operation).
 
 .decl instruction_get_src_op(ea:address,Index:operand_index,op:operand_code)
@@ -270,7 +323,7 @@ instruction_get_dest_op(EA,1,Op):-
 //when the dest is used as a source as well
 instruction_get_src_op(EA,Index,Op2):-
     !binary_isa("MIPS"),
-    instruction(EA,_,_,Operation,_,Op2,_,_,_,_),Op2 != 0,
+    instruction(EA,_,_,Operation,_,Op2,_,_,_,_,_,_,_,_,_),Op2 != 0,
     Index = 2,
     !arch.mov(EA),
     !arch.op_does_not_read_dest_reg(Operation),
@@ -279,9 +332,14 @@ instruction_get_src_op(EA,Index,Op2):-
 instruction_get_src_op(EA,Index,Op):-
     !binary_isa("MIPS"),
     (
-        instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
-        instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
-        instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
+        instruction(EA,_,_,Operation,Op,_,_,_,_,_,_,_,_,_,_), Op != 0, Index = 1;
+        instruction(EA,_,_,Operation,_,Op,Op3,_,_,_,_,_,_,_,_), Op != 0, Op3 != 0, Index = 2;
+        instruction(EA,_,_,Operation,_,_,Op,Op4,_,_,_,_,_,_,_), Op != 0, Op4 != 0, Index = 3;
+        instruction(EA,_,_,Operation,_,_,_,Op,Op5,_,_,_,_,_,_), Op != 0, Op5 != 0, Index = 4;
+        instruction(EA,_,_,Operation,_,_,_,_,Op,Op6,_,_,_,_,_), Op != 0, Op6 != 0, Index = 5;
+        instruction(EA,_,_,Operation,_,_,_,_,_,Op,Op7,_,_,_,_), Op != 0, Op7 != 0, Index = 6;
+        instruction(EA,_,_,Operation,_,_,_,_,_,_,Op,Op8,_,_,_), Op != 0, Op8 != 0, Index = 7;
+        instruction(EA,_,_,Operation,_,_,_,_,_,_,_,Op,Op9,_,_), Op != 0, Op9 != 0, Index = 8
     ),
     !arch.write_only_operation(Operation).
 
@@ -293,7 +351,7 @@ instruction_get_src_op(EA,Index,Op):-
 .decl next(n:address,m:address)
 
 next(EA,EA+Size):-
-    instruction(EA,Size,_,_,_,_,_,_,_,_).
+    instruction(EA,Size,_,_,_,_,_,_,_,_,_,_,_,_,_).
 
 .decl pc_relative_operand(src:address,index:operand_index, dest:address)
 .output pc_relative_operand
@@ -310,7 +368,12 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     instruction_get_op(EA, Index, Op),
     op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
     arch.pc_register(Reg),
-    EANext = EA - (EA band 1) +4.
+    (
+        (EA band 3) = 0, Disp = 8   // ARM
+        ;
+        (EA band 3) != 0, Disp = 4  // Thumb
+    ),
+    EANext = EA-(EA band 3)+Disp.
 
 .decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
 .output got_relative_operand
@@ -318,10 +381,13 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
 .decl symbolic_operand_attribute(ea:address,index:unsigned,attribute:symbol)
 .output symbolic_operand_attribute
 
+.decl symbolic_data_attribute(ea:address,attribute:symbol)
+.output symbolic_data_attribute
+
 .decl instruction_has_loop_prefix(EA:address)
 
 instruction_has_loop_prefix(EA):-
-    instruction(EA,_,Prefix,_,_,_,_,_,_,_),
+    instruction(EA,_,Prefix,_,_,_,_,_,_,_,_,_,_,_,_),
     arch.loop_prefix(Prefix).
 
 // JUMPS
@@ -374,7 +440,7 @@ reg_jump(EA,Reg):-
     op_regdirect(TargetOp,Reg).
 
 // indirect jump
- .decl indirect_jump(src:address)
+.decl indirect_jump(src:address)
 
 indirect_jump(EA):-
     arch.jump(EA),

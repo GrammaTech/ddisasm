@@ -134,7 +134,8 @@ void ElfExceptionLoader(const gtirb::Module &Module, DatalogProgram &Program)
 ElfExceptionDecoder::ElfExceptionDecoder(const gtirb::Module &module)
 {
     uint8_t ptrsize = 8;
-    if(module.getISA() == gtirb::ISA::IA32 || module.getISA() == gtirb::ISA::MIPS32)
+    if(module.getISA() == gtirb::ISA::IA32 || module.getISA() == gtirb::ISA::MIPS32
+       || module.getISA() == gtirb::ISA::ARM)
     {
         ptrsize = 4;
     }

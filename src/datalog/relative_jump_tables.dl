@@ -31,10 +31,19 @@ This module deals exclusively with detecting jump tables with relative addresses
 data_word(EA,2,Val):-
     data_byte(EA,Byte0), EA % 2 = 0,//jump tables are assumed to be aligned
     data_byte(EA+1,Byte1),
-    Byte1 < 128,//the number is positive
     (
-        (endianness("LE"), Val = as(Byte1*2^8 + Byte0,number));
-        (endianness("BE"), Val = as(Byte0*2^8 + Byte1,number))
+        Byte1 >= 128,//the number is negative
+        (
+            (endianness("LE"), Val = -(2^16 -as(Byte1*2^8 + Byte0,number)));
+            (endianness("BE"), Val = -(2^16 -as(Byte0*2^8 + Byte1,number)))
+        ),
+        Val != 0
+        ;
+        Byte1 < 128,//the number is positive
+        (
+            (endianness("LE"), Val = as(Byte1*2^8 + Byte0,number));
+            (endianness("BE"), Val = as(Byte0*2^8 + Byte1,number))
+        )
     ).
 
 data_word(EA,4,Val):-

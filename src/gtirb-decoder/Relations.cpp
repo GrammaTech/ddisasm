@@ -53,7 +53,7 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Instruction& Instruction)
     {
         T << Instruction.Addr << Instruction.Size << Instruction.Prefix << Instruction.Name;
-        for(size_t i = 0; i < 4; ++i)
+        for(size_t i = 0; i < 9; ++i)
         {
             if(i < Instruction.OpCodes.size())
             {

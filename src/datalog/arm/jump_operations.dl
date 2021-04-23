@@ -30,6 +30,7 @@ The set of jump operations in x64
 .decl jump_unequal_operation(n:symbol)
 
 jump_operation("B").
+jump_operation("B.W").
 jump_operation("BEQ").
 jump_operation("BNE").
 jump_operation("BCS").
@@ -45,6 +46,8 @@ jump_operation("BLT").
 jump_operation("BGT").
 jump_operation("BLE").
 jump_operation("BAL").
+jump_operation("BHS"). // equivalent to BCS
+jump_operation("BLO"). // equivalent to BCC
 
 jump_operation("BX").
 jump_operation("BXEQ").
@@ -62,6 +65,12 @@ jump_operation("BXLT").
 jump_operation("BXGT").
 jump_operation("BXLE").
 jump_operation("BXAL").
+
+jump_operation("TBB").
+jump_operation("TBH").
+
+jump_operation("CBZ").
+jump_operation("CBNZ").
 
 unconditional_jump_operation("B").
 
