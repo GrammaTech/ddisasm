@@ -270,9 +270,9 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,TableReference,Dest,"f
     (
       !binary_format("PE");
       // Addresses belong to the same segment.
-      section_complete(_,Size,Start,_,_,_),
-      TableStart > Start, TableStart < (Start + Size),
-      TableReference > Start, TableReference < (Start + Size)
+      section(_,SectionSize,SectionStart),
+      TableStart >= SectionStart, TableStart < (SectionStart + SectionSize),
+      TableReference >= SectionStart, TableReference < (SectionStart + SectionSize)
     ).
 
 symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Dest,TableReference,"second",1):-
