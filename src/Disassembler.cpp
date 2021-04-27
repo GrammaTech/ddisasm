@@ -531,11 +531,11 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_
         {"GotPage", gtirb::SymAttribute::GotPage},
         {"GotPageOfst", gtirb::SymAttribute::GotPageOfst},
         {"PltRef", gtirb::SymAttribute::PltRef},
+        {"TpOff", gtirb::SymAttribute::TpOff},
+        {"TlsGd", gtirb::SymAttribute::TlsGd},
+        {"GotOff", gtirb::SymAttribute::GotOff},
+        {"NtpOff", gtirb::SymAttribute::NtpOff},
         // FIXME: Replace these with appropriate flags when supported:
-        {"TPOFF", gtirb::SymAttribute::TPOFF},
-        {"TLSGD", gtirb::SymAttribute::TLSGD},
-        {"GOTOFF", gtirb::SymAttribute::GOTOFF},
-        {"NTPOFF", gtirb::SymAttribute::NTPOFF},
         {":lo12:", gtirb::SymAttribute::Part0},
         {":got_lo12:", gtirb::SymAttribute::Part1},
     };

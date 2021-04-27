@@ -129,7 +129,7 @@ symbolic_operand_attribute(EA,Index,"PltRef"):-
     symbolic_operand(EA,Index,Dest,_),
     plt_block(Dest,_).
 
-symbolic_operand_attribute(EA,Index,"GOTOFF"):-
+symbolic_operand_attribute(EA,Index,"GotOff"):-
     got_relative_operand(EA,Index,_).
 
 symbolic_operand_attribute(EA,Index,"GotRef"):-
@@ -178,7 +178,7 @@ symbolic_operand_candidate(EA_used,Index,as(Reference+Offset,address),"data"):-
     tls_segment(_,TlsEnd,Align),
     Reference = as(TlsEnd,number) + as(TlsEnd % max(Align,1),number).
 
-symbolic_operand_attribute(EA,Index,"NTPOFF"):-
+symbolic_operand_attribute(EA,Index,"NtpOff"):-
     symbolic_operand(EA,Index,Dest,_),
     tls_segment(Start,End,_),
     Dest >= Start, Dest < End.
