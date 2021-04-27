@@ -274,7 +274,11 @@ else()
   set(LIEF_ROOT CACHE PATH ${CMAKE_INSTALL_PREFIX})
   # Directory to 'FindLIEF.cmake'
   list(APPEND CMAKE_MODULE_PATH ${LIEF_ROOT}/share/LIEF/cmake)
-  include(FindLIEF)
+  if(APPLE)
+    include(${CMAKE_INSTALL_PREFIX}/share/LIEF/cmake/FindLIEF.cmake)
+  else()
+    include(FindLIEF)
+  endif()
   find_package(LIEF 0.10.0 REQUIRED COMPONENTS STATIC)
 endif()
 
