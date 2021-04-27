@@ -26,19 +26,35 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_link_options(${PROJECT_NAME} PRIVATE
                       /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>)
 else()
-  target_link_libraries(
-    ${PROJECT_NAME}
-    ${SYSLIBS}
-    ${Boost_LIBRARIES}
-    gtest
-    gtest_main
-    gtirb
-    gtirb_builder
-    gtirb_decoder
-    scc_pass
-    -Wl,--whole-archive
-    no_return_pass
-    -Wl,--no-whole-archive)
+  if(APPLE)
+    target_link_libraries(
+      ${PROJECT_NAME}
+      ${SYSLIBS}
+      ${Boost_LIBRARIES}
+      gtest
+      gtest_main
+      gtirb
+      gtirb_builder
+      gtirb_decoder
+      scc_pass
+      -Wl,-all_load
+      no_return_pass
+      -Wl,-noall_load)
+  else()
+    target_link_libraries(
+      ${PROJECT_NAME}
+      ${SYSLIBS}
+      ${Boost_LIBRARIES}
+      gtest
+      gtest_main
+      gtirb
+      gtirb_builder
+      gtirb_decoder
+      scc_pass
+      -Wl,--whole-archive
+      no_return_pass
+      -Wl,--no-whole-archive)
+  endif()
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE __EMBEDDED_SOUFFLE__)
