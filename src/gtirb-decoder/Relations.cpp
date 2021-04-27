@@ -61,7 +61,7 @@ namespace souffle
             }
             else
             {
-                T << size_t(0);
+                T << static_cast<uint64_t>(0);
             }
         }
         T << static_cast<uint64_t>(Instruction.ImmediateOffset)
