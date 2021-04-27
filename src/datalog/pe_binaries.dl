@@ -117,6 +117,7 @@ reg_has_base_image(EA,Reg):-
 
 symbolic_expr_from_relocation(EA_data,Size,"__ImageBase",0),
 reg_has_base_image(EA_code,Reg):-
+    binary_format("PE"),
     base_address(ImageBase),
     arch.pointer_size(Size),
     arch.mov(EA_code),
