@@ -59,8 +59,11 @@ RUN cd /usr/local/src \
 # Install Capstone
 # ------------------------------------------------------------------------------
 RUN apt-get -y update \
- && apt-get -y install git
-COPY libcapstone-dev_*_amd64.deb ./
+ && apt-get -y install \
+      git \
+      wget
+
+RUN wget https://grammatech.github.io/gtirb/pkgs/xenial/libcapstone-dev_4.0.1-gt3_amd64.deb
 RUN dpkg -i libcapstone-dev_*_amd64.deb
 
 # ------------------------------------------------------------------------------
