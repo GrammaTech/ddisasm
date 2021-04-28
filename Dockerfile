@@ -1,5 +1,7 @@
 FROM ubuntu:20.04
 
+RUN export DEBIAN_FRONTEND=noninteractive
+RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 RUN apt-get -y update \
  && apt-get -y install \
       automake \
