@@ -1,8 +1,5 @@
 FROM ubuntu:20.04
 
-RUN export DEBIAN_FRONTEND=noninteractive
-RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
-
 # ------------------------------------------------------------------------------
 # Install Souffle
 # ------------------------------------------------------------------------------
@@ -15,12 +12,10 @@ RUN apt-get -y update \
       flex \
       git \
       libffi-dev \
-      libtool \
-      make \
-      mcpp \
-      pkg-config \
-      sqlite3 \
       libsqlite3-dev \
+      libtool \
+      mcpp \
+      sqlite3 \
       zlib1g-dev
 
 RUN cd /usr/local/src \
@@ -35,26 +30,23 @@ RUN cd /usr/local/src \
 # ------------------------------------------------------------------------------
 RUN apt-get -y update \
  && apt-get -y install \
-      unzip \
       libboost-filesystem-dev \
       libboost-filesystem1.71.0 \
       libboost-system-dev \
       libboost-system1.71.0 \
       libboost-program-options-dev \
-      libboost-program-options1.71.0 \
-      make \
-      mcpp \
-      pkg-config \
-      protobuf-compiler \
-      python3 \
-      python3-pip \
-      software-properties-common \
-      wget \
-      zlib1g-dev
+      libboost-program-options1.71.0
 
 # ------------------------------------------------------------------------------
 # Install LIEF
 # ------------------------------------------------------------------------------
+RUN apt-get -y update \
+ && apt-get -y install \
+      build-essential \
+      cmake \
+      git \
+      python3
+
 RUN cd /usr/local/src \
  && git clone -b 0.10.0 --depth 1 https://github.com/lief-project/LIEF.git \
  && mkdir LIEF/build \
@@ -66,12 +58,20 @@ RUN cd /usr/local/src \
 # ------------------------------------------------------------------------------
 # Install Capstone
 # ------------------------------------------------------------------------------
+RUN apt-get -y update \
+ && apt-get -y install git
 COPY libcapstone-dev_*_amd64.deb ./
 RUN dpkg -i libcapstone-dev_*_amd64.deb
 
 # ------------------------------------------------------------------------------
 # Install libehp
 # ------------------------------------------------------------------------------
+RUN apt-get -y update \
+ && apt-get -y install \
+      build-essential \
+      cmake \
+      git
+
 RUN cd /usr/local/src \
  && git clone https://git.zephyr-software.com/opensrc/libehp.git \
  && cd libehp \
@@ -84,8 +84,15 @@ RUN cd /usr/local/src \
 # ------------------------------------------------------------------------------
 # Install GTIRB
 # ------------------------------------------------------------------------------
+# Dependencies                                                             boost
+RUN apt-get -y update \
+ && apt-get -y install \
+      cmake \
+      build-essential \
+      protobuf-compiler
+
 RUN cd /usr/local/src \
- && git clone https://github.com/GrammaTech/gtirb \
+ && git clone --depth 1 https://github.com/GrammaTech/gtirb \
  && mkdir gtirb/build \
  && cd gtirb/build \
  && cmake -DGTIRB_JAVA_API=OFF -DGTIRB_CL_API=OFF .. \
@@ -95,10 +102,17 @@ RUN cd /usr/local/src \
 # ------------------------------------------------------------------------------
 # Install gtirb-pprinter
 # ------------------------------------------------------------------------------
+# Dependencies:                                            boost, capstone, gtirb
+RUN apt-get -y update \
+ && apt-get -y install \
+      cmake \
+      build-essential \
+      protobuf-compiler
+
 RUN cd /usr/local/src \
- && git clone https://github.com/GrammaTech/gtirb-printer \
- && mkdir gtirb-printer/build \
- && cd gtirb-printer/build \
+ && git clone --depth 1 https://github.com/GrammaTech/gtirb-pprinter \
+ && mkdir gtirb-pprinter/build \
+ && cd gtirb-pprinter/build \
  && cmake .. \
  && make -j \
  && make install
@@ -106,8 +120,15 @@ RUN cd /usr/local/src \
 # ------------------------------------------------------------------------------
 # Install Ddisasm
 # ------------------------------------------------------------------------------
+# Dependencies:          souffle, boost, libehp, capstone, gtirb, gtirb-pprinter
+RUN apt-get -y update \
+ && apt-get -y install \
+      cmake \
+      build-essential \
+      protobuf-compiler
+
 RUN cd /usr/local/src \
- && git clone https://github.com/GrammaTech/ddisasm \
+ && git clone --depth 1 https://github.com/GrammaTech/ddisasm \
  && mkdir ddisasm/build \
  && cd ddisasm/build \
  && cmake -DLIEF_ROOT=/usr .. \
