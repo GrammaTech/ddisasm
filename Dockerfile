@@ -84,7 +84,7 @@ RUN cd /usr/local/src \
 # ------------------------------------------------------------------------------
 # Install GTIRB
 # ------------------------------------------------------------------------------
-# Dependencies                                                             boost
+# Dependencies:                                                            boost
 RUN apt-get -y update \
  && apt-get -y install \
       cmake \
