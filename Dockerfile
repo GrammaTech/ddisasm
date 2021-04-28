@@ -44,7 +44,7 @@ RUN cd libehp && \
 ###
 RUN git clone --depth 1 https://github.com/GrammaTech/ddisasm
 
-RUN wget https://github.com/lief-project/LIEF/releases/download/0.11.4/LIEF-0.11.4-Linux-x86_64.tar.gz -O lief.tar.gz
+RUN wget https://github.com/lief-project/LIEF/releases/download/0.10.0/LIEF-0.10.0-Linux.tar.gz -O lief.tar.gz
 RUN tar zxvf lief.tar.gz
 
 RUN git clone --depth 1 -b 2.0.2 https://github.com/souffle-lang/souffle
@@ -57,7 +57,7 @@ RUN cd souffle && \
 
 RUN cd ddisasm && \
   mkdir build && \
-  cmake -Dgtirb_pprinter_DIR=/app/gtirb-pprinter/build -DLIEF_ROOT=/app/LIEF-0.11.4-Linux-x86_64 ./ -Bbuild && \
+  cmake -Dgtirb_pprinter_DIR=/app/gtirb-pprinter/build -DLIEF_ROOT=/app/LIEF-0.10.0-Linux ./ -Bbuild && \
   cd build && \
   make -j${CMAKE_BUILD_PARALLEL_LEVEL} && \
   make install
@@ -68,13 +68,16 @@ RUN gtirb-pprinter --version
 
 FROM ubuntu:21.04
 
+RUN apt-get update && \
+  apt-get install --no-install-recommends -y gcc && \
+  rm -rf /var/cache/apt/*
+
 WORKDIR /usr/lib/x86_64-linux-gnu/
 COPY --from=builder /app/gtirb/build/java/gtirb_api-*.jar /libs/
-COPY --from=builder /usr/local/bin/ddisasm /usr/local/bin/
+COPY --from=builder /usr/local/bin/gtirb-* /usr/local/bin/ddisasm /usr/local/bin/
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libgomp.* /usr/lib/x86_64-linux-gnu/libprotobuf.* \
   /usr/local/lib/libehp.so* \
-  /usr/local/lib/libgtirb_pprinter.so* \
-  /usr/local/lib/libgtirb.so* \
+  /usr/local/lib/libgtirb*.so* \
   /usr/lib/libcapstone.* \
   /usr/lib/x86_64-linux-gnu/libboost_filesystem.* \
   /usr/lib/x86_64-linux-gnu/libboost_program_options.* \
