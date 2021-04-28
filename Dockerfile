@@ -1,23 +1,36 @@
 FROM ubuntu:20.04
 
-# ------------------------------------------------------------------------------
-# Install Souffle
-# ------------------------------------------------------------------------------
 RUN apt-get -y update \
  && apt-get -y install \
       automake \
       bison \
       build-essential \
+      cmake \
       doxygen \
       flex \
       git \
+      lib32gcc-9-dev \
+      lib32stdc++-9-dev \
+      libboost-filesystem-dev \
+      libboost-filesystem1.71.0 \
+      libboost-program-options-dev \
+      libboost-program-options1.71.0 \
+      libboost-system-dev \
+      libboost-system1.71.0 \
+      libc-dev-i386-cross \
       libffi-dev \
       libsqlite3-dev \
       libtool \
       mcpp \
+      protobuf-compiler \
+      python3 \
       sqlite3 \
+      wget \
       zlib1g-dev
 
+# ------------------------------------------------------------------------------
+# Install Souffle
+# ------------------------------------------------------------------------------
 RUN cd /usr/local/src \
  && git clone -b 2.0.2 --depth 1 https://github.com/souffle-lang/souffle \
  && cd souffle \
@@ -26,27 +39,8 @@ RUN cd /usr/local/src \
  && make -j install
 
 # ------------------------------------------------------------------------------
-# Install Boost
-# ------------------------------------------------------------------------------
-RUN apt-get -y update \
- && apt-get -y install \
-      libboost-filesystem-dev \
-      libboost-filesystem1.71.0 \
-      libboost-system-dev \
-      libboost-system1.71.0 \
-      libboost-program-options-dev \
-      libboost-program-options1.71.0
-
-# ------------------------------------------------------------------------------
 # Install LIEF
 # ------------------------------------------------------------------------------
-RUN apt-get -y update \
- && apt-get -y install \
-      build-essential \
-      cmake \
-      git \
-      python3
-
 RUN cd /usr/local/src \
  && git clone -b 0.10.0 --depth 1 https://github.com/lief-project/LIEF.git \
  && mkdir LIEF/build \
@@ -58,23 +52,12 @@ RUN cd /usr/local/src \
 # ------------------------------------------------------------------------------
 # Install Capstone
 # ------------------------------------------------------------------------------
-RUN apt-get -y update \
- && apt-get -y install \
-      git \
-      wget
-
 RUN wget https://grammatech.github.io/gtirb/pkgs/xenial/libcapstone-dev_4.0.1-gt3_amd64.deb
 RUN dpkg -i libcapstone-dev_*_amd64.deb
 
 # ------------------------------------------------------------------------------
 # Install libehp
 # ------------------------------------------------------------------------------
-RUN apt-get -y update \
- && apt-get -y install \
-      build-essential \
-      cmake \
-      git
-
 RUN cd /usr/local/src \
  && git clone https://git.zephyr-software.com/opensrc/libehp.git \
  && cd libehp \
@@ -87,13 +70,6 @@ RUN cd /usr/local/src \
 # ------------------------------------------------------------------------------
 # Install GTIRB
 # ------------------------------------------------------------------------------
-# Dependencies:                                                            boost
-RUN apt-get -y update \
- && apt-get -y install \
-      cmake \
-      build-essential \
-      protobuf-compiler
-
 RUN cd /usr/local/src \
  && git clone --depth 1 https://github.com/GrammaTech/gtirb \
  && mkdir gtirb/build \
@@ -105,13 +81,7 @@ RUN cd /usr/local/src \
 # ------------------------------------------------------------------------------
 # Install gtirb-pprinter
 # ------------------------------------------------------------------------------
-# Dependencies:                                            boost, capstone, gtirb
-RUN apt-get -y update \
- && apt-get -y install \
-      cmake \
-      build-essential \
-      protobuf-compiler
-
+# Dependencies:                                                  capstone, gtirb
 RUN cd /usr/local/src \
  && git clone --depth 1 https://github.com/GrammaTech/gtirb-pprinter \
  && mkdir gtirb-pprinter/build \
@@ -123,13 +93,7 @@ RUN cd /usr/local/src \
 # ------------------------------------------------------------------------------
 # Install Ddisasm
 # ------------------------------------------------------------------------------
-# Dependencies:          souffle, boost, libehp, capstone, gtirb, gtirb-pprinter
-RUN apt-get -y update \
- && apt-get -y install \
-      cmake \
-      build-essential \
-      protobuf-compiler
-
+# Dependencies:                 souffle, libehp, capstone, gtirb, gtirb-pprinter
 RUN cd /usr/local/src \
  && git clone --depth 1 https://github.com/GrammaTech/ddisasm \
  && mkdir ddisasm/build \
@@ -137,14 +101,3 @@ RUN cd /usr/local/src \
  && cmake -DLIEF_ROOT=/usr .. \
  && make -j \
  && make install
-
-# ------------------------------------------------------------------------------
-# Install x86_32 runtime
-# ------------------------------------------------------------------------------
-RUN apt-get -y update \
- && apt-get -y install \
-      lib32gcc-9-dev \
-      lib32stdc++-9-dev \
-      libc-dev-i386-cross \
- && ln -s /usr/i686-linux-gnu/lib/ /usr/lib/i386-linux-gnu \
- && ln -s /usr/i686-linux-gnu/include /usr/include/i386-linux-gnu
