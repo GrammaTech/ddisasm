@@ -60,7 +60,6 @@ RUN cmake --build /usr/local/src/libehp/build -j --target all install
 # ------------------------------------------------------------------------------
 # Install GTIRB
 # ------------------------------------------------------------------------------
-# Dependencies:                                                            boost
 FROM ubuntu:20.04 AS gtirb
 RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
@@ -81,7 +80,6 @@ RUN cmake --build /usr/local/src/gtirb/build -j --target all install
 # ------------------------------------------------------------------------------
 # Install gtirb-pprinter
 # ------------------------------------------------------------------------------
-# Dependencies:                                            boost, capstone, gtirb
 FROM ubuntu:20.04 AS gtirb-pprinter
 RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
@@ -112,9 +110,8 @@ RUN cmake /usr/local/src/gtirb-pprinter -B/usr/local/src/gtirb-pprinter/build
 RUN cmake --build /usr/local/src/gtirb-pprinter/build -j --target all install
 
 # ------------------------------------------------------------------------------
-# Install Ddisasm w/x86_32 runtime
+# Install Ddisasm
 # ------------------------------------------------------------------------------
-# Dependencies:          souffle, boost, libehp, capstone, gtirb, gtirb-pprinter
 FROM ubuntu:20.04
 RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
