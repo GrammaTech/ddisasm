@@ -207,6 +207,7 @@ ddisasm generates the following AuxData tables:
 | peImportedSymbols       | `std::vector<gtirb::UUID>`                                                                         | UUIDs of the imported symbols for PE.                                                                                                                                                                                  |
 | peExportedSymbols       | `std::vector<gtirb::UUID>`                                                                         | UUIDs of the exported symbols for PE.                                                                                                                                                                                  |
 | peResource              | `std::vector<std::tuple<std::vector<uint8_t>, gtirb::Offset, uint64_t>>`                           | List of PE resources. A resource header, data length, and data pointer.                                                                                                                                                |
+| DDisasmDatabase         | `std::map<std::string, std::string>`                                                               | Compressed Datalog relation databases.                                                                                                                                                                                 |
 
 ## Some References
 

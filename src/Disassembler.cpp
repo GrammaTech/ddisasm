@@ -1620,6 +1620,57 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
     assert(module.getEntryPoint() && "Failed to set module entry point.");
 }
 
+void writeFactDatabase(gtirb::Module &module, souffle::SouffleProgram *prog)
+{
+  std::map<std::string, std::string> dict;
+  // std::ios_base::openmode FileMask = std::ios::out;
+  for(souffle::Relation *Relation : prog->getInputRelations())
+    {
+      std::string key = Relation->getName();
+      souffle::SymbolTable SymbolTable = Relation->getSymbolTable();
+      
+      for(souffle::tuple Tuple : *Relation)
+        {
+          for(size_t I = 0; I < Tuple.size(); I++)
+            {
+              if(I > 0)
+                {
+                  File << "\t";
+                }
+              if(Relation->getAttrType(I)[0] == 's')
+                {
+                  File << SymbolTable.resolve(Tuple[I]);
+                }
+              else
+                {
+                  File << Tuple[I];
+                }
+            }
+          File << std::endl;
+        }
+      File.close();
+    }
+}
+
+/*
+{
+  const std::map<std::string, std::string> directive = {{"IO", "file"},
+                                                        {"compress", "gzip"}};
+  // TODO: Build a buffer to collect the compressed database.
+  for(auto relation : prog->getOutputRelations())
+    {
+      souffle::IOSystem::getInstance()
+        .getWriter(directive,
+                   Relation->getSymbolTable(),
+                   Relation->getRecordTable())
+        ->writeAll(relation);
+    }
+  // TODO: Save the buffer to the AuxData table.
+  assert(module.getAuxData<gtirb::schema::DDisasmDatabase>()
+         && "Failed to write fact database.");
+}
+*/
+
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
                        souffle::SouffleProgram *prog, bool selfDiagnose)
 {

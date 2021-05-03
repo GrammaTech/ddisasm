@@ -205,6 +205,13 @@ namespace gtirb
             static constexpr const char* Name = "peExportedSymbols";
             typedef std::vector<gtirb::UUID> Type;
         };
+
+        /// \brief Auxiliary data for ddisasm fact database.
+        struct DDisasmDatabase
+        {
+            static constexpr const char* Name = "DDisasmDatabase";
+            typedef std::map<std::string, std::string> Type;
+        };
     } // namespace schema
 } // namespace gtirb
 
