@@ -161,21 +161,18 @@ RUN cmake -DLIEF_ROOT=/usr/ -DCMAKE_BUILD_TYPE=Release /usr/local/src/ddisasm -B
 RUN cmake --build /usr/local/src/ddisasm/build -j --target all install
 
 # ------------------------------------------------------------------------------
-# Final build
+# Final image
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04
-RUN export DEBIAN_FRONTEND=noninteractive
-RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
-RUN apt-get -y update \
- && apt-get -y install \
-      libboost-filesystem1.71.0 \
-      libboost-program-options1.71.0 \
-      protobuf-compiler
 
-COPY --from=ddisasm /usr/include/LIEF /usr/include/LIEF
-COPY --from=ddisasm /usr/local/lib /usr/local/lib
-COPY --from=ddisasm /usr/lib/libcapstone* /usr/lib/
+COPY --from=ddisasm /lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0 /lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0
+COPY --from=ddisasm /lib/x86_64-linux-gnu/libboost_program_options.so.1.71.0 /lib/x86_64-linux-gnu/libboost_program_options.so.1.71.0
+COPY --from=ddisasm /lib/libcapstone.so.5 /lib/libcapstone.so.5
 COPY --from=ddisasm /lib/x86_64-linux-gnu/libgomp.so.1 /lib/x86_64-linux-gnu/libgomp.so.1
+COPY --from=ddisasm /usr/local/lib/libgtirb.so.1.10.4 /usr/local/lib/libgtirb.so.1.10.4
+COPY --from=ddisasm /usr/local/lib/libgtirb_layout.so.1 /usr/local/lib/libgtirb_layout.so.1
+COPY --from=ddisasm /usr/local/lib/libgtirb_pprinter.so.1 /usr/local/lib/libgtirb_pprinter.so.1
+COPY --from=ddisasm /lib/x86_64-linux-gnu/libprotobuf.so.17 /lib/x86_64-linux-gnu/libprotobuf.so.17
 COPY --from=ddisasm /usr/local/bin/ddisasm /usr/local/bin/
 COPY --from=ddisasm /usr/local/bin/gtirb* /usr/local/bin/
 
