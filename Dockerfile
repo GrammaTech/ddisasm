@@ -112,7 +112,7 @@ RUN cmake --build /usr/local/src/gtirb-pprinter/build -j --target all install
 # ------------------------------------------------------------------------------
 # Install Ddisasm
 # ------------------------------------------------------------------------------
-FROM ubuntu:20.04
+FROM ubuntu:20.04 AS ddisasm
 RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 RUN apt-get -y update \
@@ -159,6 +159,25 @@ COPY --from=gtirb-pprinter /usr/local/include /usr/local/include
 RUN git clone --depth 1 https://github.com/GrammaTech/ddisasm /usr/local/src/ddisasm
 RUN cmake -DLIEF_ROOT=/usr/ -DCMAKE_BUILD_TYPE=Release /usr/local/src/ddisasm -B/usr/local/src/ddisasm/build
 RUN cmake --build /usr/local/src/ddisasm/build -j --target all install
+
+# ------------------------------------------------------------------------------
+# Final build
+# ------------------------------------------------------------------------------
+FROM ubuntu:20.04
+RUN export DEBIAN_FRONTEND=noninteractive
+RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
+RUN apt-get -y update \
+ && apt-get -y install \
+      libboost-filesystem1.71.0 \
+      libboost-program-options1.71.0 \
+      protobuf-compiler
+
+COPY --from=ddisasm /usr/include/LIEF /usr/include/LIEF
+COPY --from=ddisasm /usr/local/lib /usr/local/lib
+COPY --from=ddisasm /usr/lib/libcapstone* /usr/lib/
+COPY --from=ddisasm /lib/x86_64-linux-gnu/libgomp.so.1 /lib/x86_64-linux-gnu/libgomp.so.1
+COPY --from=ddisasm /usr/local/bin/ddisasm /usr/local/bin/
+COPY --from=ddisasm /usr/local/bin/gtirb* /usr/local/bin/
 
 ENV LD_LIBRARY_PATH=/usr/local/lib
 
