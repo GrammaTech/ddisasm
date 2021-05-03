@@ -369,14 +369,13 @@ build-centos8-gcc-relwithdebuginfo:
     - PADDED_DIR=long-dir-name-padding-for-CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX
     - mkdir $PADDED_DIR && cd $PADDED_DIR
     - git clone .. .
+    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
     - mkdir build && cd build
     # download capstone & gtirb
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-rpm --output "capstone.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=package-centos8 --output "gtirb.zip"
     # Acquire gtirb pprinter artifacts
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
-    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=package-arch --output "gtirb-pprinter.zip"
-    - unzip -o gtirb-pprinter-arch-artifacts.zip
+    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=package-rpm --output "gtirb-pprinter.zip"
     - for pkg in gtirb capstone gtirb-pprinter; do unzip $pkg.zip; done
     - dnf --nogpgcheck localinstall -y capstone-devel-*.rpm gtirb.rpm gtirb-devel.rpm libgtirb-ppritner.rpm libgtirb-pprinter-devel.rpm
     - CAPSTONE_PKG_VERSION=$(ls capstone-devel-**.rpm | sed -n 's/capstone-devel-\(.*\).x86_64.rpm/\1/p')
