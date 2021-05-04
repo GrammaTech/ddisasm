@@ -375,9 +375,9 @@ build-centos8-gcc-relwithdebuginfo:
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-rpm --output "capstone.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=package-centos8 --output "gtirb.zip"
     # Acquire gtirb pprinter artifacts
-    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=package-rpm --output "gtirb-pprinter.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=package-centos8 --output "gtirb-pprinter.zip"
     - for pkg in gtirb capstone gtirb-pprinter; do unzip $pkg.zip; done
-    - dnf --nogpgcheck localinstall -y capstone-devel-*.rpm libgtirb.rpm libgtirb-devel.rpm libgtirb-ppritner.rpm libgtirb-pprinter-devel.rpm
+    - dnf --nogpgcheck localinstall -y capstone-devel-*.rpm libgtirb.rpm libgtirb-devel.rpm libgtirb-pprinter.rpm libgtirb-pprinter-devel.rpm
     - CAPSTONE_PKG_VERSION=$(ls capstone-devel-**.rpm | sed -n 's/capstone-devel-\(.*\).x86_64.rpm/\1/p')
     # Build
     - cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH='/usr/lib64/boost169' -DBOOST_INCLUDEDIR='/usr/include/boost169' -DLIEF_ROOT=/usr/ -DDDISASM_STRIP_DEBUG_SYMBOLS=Off ..
