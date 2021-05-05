@@ -40,15 +40,11 @@ move_operation(Operation) :-
 
 move_operation("MVN").
 
-.decl ldr_operation(Operation:symbol)
+.decl load_operation(Operation:symbol)
 
-ldr_operation("LDR").
-ldr_operation("LDR.W").
-ldr_operation("LDRLS").
-// TODO: Ideally, we want to use substr instead of the above,
-//       but it doesn't seem to work for some reason.
-//ldr_operation(Operation):-
-//    substr(Operation,0,3) = "LDR".
+load_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    contains("LDR", Operation).
 
 // TODO:
 .decl conditional_mov(EA:address)
@@ -61,7 +57,8 @@ conditional_mov(0):-
 mov(EA):-
     instruction_get_operation(EA,Operation),
     (
-        Operation = "MOV"; ldr_operation(Operation)
+        move_operation(Operation);
+        load_operation(Operation)
     ).
 
 .decl is_nop(EA:address)
@@ -102,7 +99,7 @@ jump(EA):-
 
 jump(EA):-
     instruction_get_operation(EA,Operation),
-    ldr_operation(Operation),
+    load_operation(Operation),
     instruction_get_dest_op(EA,_,Op),
     op_regdirect(Op,"PC").
 
@@ -246,25 +243,25 @@ operation_size_exception(0,0,0):-
 .output reg_reg_arithmetic_operation
 
 reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
-    instruction(EA,_,_,"SUB",Op1,Op2,0,0,0,0,0,0,0,_,_), Op1 != Op2,
+    instruction(EA,_,_,"SUB",Op1,Op2,0,0,_,_), Op1 != Op2,
     op_regdirect_contains_reg(Op1,Reg1),
     op_regdirect_contains_reg(Op2,Reg2).
 
 reg_reg_arithmetic_operation(EA,Reg2,Reg1,Reg2,1,0):-
-    instruction(EA,_,_,"ADD",Op1,Op2,0,0,0,0,0,0,0,_,_), Op1 != Op2,
+    instruction(EA,_,_,"ADD",Op1,Op2,0,0,_,_), Op1 != Op2,
     op_regdirect_contains_reg(Op2,Reg2),
     op_regdirect_contains_reg(Op1,Reg1).
 
 // ADD Reg1, Reg2, N
 reg_reg_arithmetic_operation(EA,DstReg,Reg,"NONE",1,N):-
-    instruction(EA,_,_,"ADD",Op1,Op2,DstOp,0,0,0,0,0,0,_,_),
+    instruction(EA,_,_,"ADD",Op1,Op2,DstOp,0,_,_),
     op_regdirect_contains_reg(Op1,Reg),
     op_immediate(Op2,N),
     op_regdirect_contains_reg(DstOp,DstReg).
 
 // ADD Reg1, Reg2, N, M
 reg_reg_arithmetic_operation(EA,DstReg,Reg,"NONE",1,Val):-
-    instruction(EA,_,_,"ADD",Op1,Op2,Op3,DstOp,0,0,0,0,0,_,_),
+    instruction(EA,_,_,"ADD",Op1,Op2,Op3,DstOp,_,_),
     op_regdirect_contains_reg(Op1,Reg),
     op_immediate(Op2,N),
     op_immediate(Op3,M),
@@ -274,7 +271,7 @@ reg_reg_arithmetic_operation(EA,DstReg,Reg,"NONE",1,Val):-
     Val = (N bshr M) bor (N bshl (32-M)).
 
 reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset):-
-    instruction(EA,_,_,"LEA",Op1,Op2,0,0,0,0,0,0,0,_,_),
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg_def),
     op_indirect(Op1,_,Reg1_n,Reg2_n,Mult,Offset,_),
     arch.track_register(Reg1_n,Reg1),

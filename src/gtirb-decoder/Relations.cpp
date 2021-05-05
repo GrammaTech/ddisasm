@@ -53,7 +53,7 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Instruction& Instruction)
     {
         T << Instruction.Addr << Instruction.Size << Instruction.Prefix << Instruction.Name;
-        for(size_t i = 0; i < 9; ++i)
+        for(size_t i = 0; i < 4; ++i)
         {
             if(i < Instruction.OpCodes.size())
             {
@@ -72,6 +72,23 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::IndirectOp& Op)
     {
         T << Op.Reg1 << Op.Reg2 << Op.Reg3 << Op.Mult << Op.Disp << Op.Size;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::OperandList& OL)
+    {
+        T << OL.Addr;
+        for(size_t i = 0; i < 5; ++i)
+        {
+            if(i < OL.OpCodes.size())
+            {
+                T << OL.OpCodes[i];
+            }
+            else
+            {
+                T << size_t(0);
+            }
+        }
         return T;
     }
 

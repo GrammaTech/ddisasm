@@ -37,7 +37,7 @@ bad_symbol_constant(EA,Cnt):-
     relocation(Rel,_,_,Cnt),
     (
         pc_relative_operand(EA,Index,_),
-        instruction(EA,InsnSize,_,_,_,_,_,_,_,_,_,_,_,_,_),
+        instruction(EA,InsnSize,_,_,_,_,_,_,_,_),
         Cnt2 = Cnt+ as(InsnSize-InsnOffset,number)
         ;
         !pc_relative_operand(EA,Index,_),
@@ -63,7 +63,7 @@ bad_symbol_constant(EA,Cnt):-
     relocation(Rel,_,_,Cnt),
     (
         pc_relative_operand(EA,Index,_),
-        instruction(EA,InsnSize,_,_,_,_,_,_,_,_,_,_,_,_,_),
+        instruction(EA,InsnSize,_,_,_,_,_,_,_,_),
         Cnt2 = Cnt+ as(InsnSize-InsnOffset,number)
         ;
         !pc_relative_operand(EA,Index,_),

@@ -27,11 +27,11 @@ and characteristics
 
 instruction_get_dest_op(EA,1,Op):-
     arch.store_operation(Operation),
-    instruction(EA,_,_,Operation,Op,_,_,_,_,_,_,_,_,_,_).
+    instruction(EA,_,_,Operation,Op,_,_,_,_,_).
 
 instruction_get_dest_op(EA,Index,Op):-
     !arch.store_operation(Operation),
-    instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_,_,_,_,_,_),
+    instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
     (
         Op4 = 0,
         Op3 = 0,
@@ -52,14 +52,14 @@ instruction_get_dest_op(EA,Index,Op):-
 
 instruction_get_src_op(EA,2,Op):-
     arch.store_operation(Operation),
-    instruction(EA,_,_,Operation,_,Op,0,0,0,0,0,0,0,_,_).
+    instruction(EA,_,_,Operation,_,Op,0,0,_,_).
 
 instruction_get_src_op(EA,Index,Op):-
     !arch.store_operation(Operation),
     (
-        instruction(EA,_,_,Operation,Op,_,_,_,_,_,_,_,_,_,_), Op != 0, Index = 1;
-        instruction(EA,_,_,Operation,_,Op,Op3,_,_,_,_,_,_,_,_), Op != 0, Op3 != 0, Index = 2;
-        instruction(EA,_,_,Operation,_,_,Op,Op4,_,_,_,_,_,_,_), Op != 0, Op4 != 0, Index = 3
+        instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
+        instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
+        instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
     ).
 
 // NOTE: For jump instructions, treat all ops as src.
@@ -97,7 +97,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
 // move reg, zero
 value_reg_edge(EA,Reg,EA,"NONE",0,0):-
     arch.move_operation(Operation),
-    instruction(EA,_,_,Operation,Op1,Op2,_,0,0,0,0,0,0,_,_),
+    instruction(EA,_,_,Operation,Op1,Op2,_,0,_,_),
     op_regdirect_contains_reg(Op1,Reg),
     op_regdirect_contains_reg(Op2,"ZERO").
 
@@ -113,7 +113,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg2,1,Immediate):-
 
 // load word from got table: e.g., lw v0, -32696(gp)
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
-    instruction(EA,_,_,"LW",_,Op2,0,0,0,0,0,0,0,_,_),
+    instruction(EA,_,_,"LW",_,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg),
     gp_relative_operand(EA,1,Offset_addr),
     data_word(Offset_addr, 4, Val).
@@ -148,7 +148,7 @@ gp_relative_operand(EA,Index,as(GpValue+Offset,address)):-
 // Assume that at load instructions with the source with gp as base register,
 // gp holds the address of _gp (global pointer)
 gp_relative_operand(EA,Index,GpValue+as(Offset,address)):-
-    instruction(EA,_,_,Operation,Op1,_,0,0,0,0,0,0,0,_,_),
+    instruction(EA,_,_,Operation,Op1,_,0,0,_,_),
     (
         arch.load_operation(Operation),
         Index = 1
@@ -576,7 +576,7 @@ mips_stubs_entry(Block,Function):-
 // where N is the index of the target in the _GLOBAL_OFFSET_TABLE_.
 plt_entry_candidate(EA,as(GotIndex,unsigned)):-
     // lw $t9, _GLOBAL_OFFSET_TABLE_($gp)
-    instruction(PrevEA2,_,_,"LW",Op1,Op2,0,0,0,0,0,0,0,_,_),
+    instruction(PrevEA2,_,_,"LW",Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,"T9"),
     op_indirect(Op1,"NONE","GP","NONE",_,Offset,_),
     symbol(GpValue,_,_,_,_,_,_,"_gp"),
@@ -586,20 +586,20 @@ plt_entry_candidate(EA,as(GotIndex,unsigned)):-
     next(PrevEA2, PrevEA),
 
     // move $t7,$ra
-    instruction(PrevEA,_,_,"MOVE",Op1_2,Op2_2,0,0,0,0,0,0,0,_,_),
+    instruction(PrevEA,_,_,"MOVE",Op1_2,Op2_2,0,0,_,_),
     op_regdirect_contains_reg(Op2_2,"T7"),
     op_regdirect_contains_reg(Op1_2,"RA"),
 
     next(PrevEA, EA),
 
     // jalr $t9
-    instruction(EA,_,_,"JALR",Op1_3,0,0,0,0,0,0,0,0,_,_),
+    instruction(EA,_,_,"JALR",Op1_3,0,0,0,_,_),
     op_regdirect_contains_reg(Op1_3,"T9"),
 
     next(EA, NextEA),
 
     // addiu $t8,$zero,N
-    instruction(NextEA,_,_,"ADDIU",Op1_4,Op2_4,Op3_4,0,0,0,0,0,0,_,_),
+    instruction(NextEA,_,_,"ADDIU",Op1_4,Op2_4,Op3_4,0,_,_),
     op_regdirect_contains_reg(Op3_4,"T8"),
     op_regdirect_contains_reg(Op1_4,"ZERO"),
     op_immediate(Op2_4,GotIndex).
@@ -647,7 +647,7 @@ plt_entry(EA,Function):-
     ),
 
     // jr $t9
-    instruction(EA_JR,_,_,"JR",TargetOp,0,0,0,0,0,0,0,0,_,_),
+    instruction(EA_JR,_,_,"JR",TargetOp,0,0,0,_,_),
     op_regdirect_contains_reg(TargetOp,"T9"),
 
     instruction_get_operation(EA_ADDIU, "ADDIU"),
@@ -664,7 +664,7 @@ invalid(EA):-
 // If "jalr t9", where t9 is a concrete address value, it can be considered as
 // a direct-call.
 direct_call_resolved(EA,as(Dest,address)):-
-    instruction(EA,_,_,"JALR",Op,0,0,0,0,0,0,0,0,_,_),
+    instruction(EA,_,_,"JALR",Op,0,0,0,_,_),
     op_regdirect_contains_reg(Op,"T9"),
     def_used(EA_def,"T9",EA,_),
     value_reg(EA_def,"T9",_,"NONE",_,Dest,_).
@@ -673,7 +673,7 @@ direct_call_resolved(EA,as(Dest,address)):-
 // lw reg2, lo(XXX)(reg1)
 // jr reg2
 resolved_jump(EA,as(Dest,address)):-
-    instruction(EA,_,_,"JR",Op,0,0,0,0,0,0,0,0,_,_),
+    instruction(EA,_,_,"JR",Op,0,0,0,_,_),
     op_regdirect_contains_reg(Op,Reg),
     def_used(EA_def,Reg,EA,_),
     instruction_get_operation(EA_def, "LW"),

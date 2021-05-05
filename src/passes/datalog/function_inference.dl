@@ -40,8 +40,7 @@ This is designed to be used with tbdisasm trace GTIRB inputs to funifer.
 ///////////////////////////////////////////////////
 .decl instruction(ea:address, size:unsigned, prefix:symbol, opcode:symbol,
           op1:operand_code, op2:operand_code, op3:operand_code,
-          op4:operand_code, op5:operand_code, op6:operand_code,
-          op7:operand_code, op8:operand_code, op9:operand_code,
+          op4:operand_code,
           immOffset:unsigned,displacementOffset:unsigned)
 .input instruction
 
@@ -176,13 +175,13 @@ candidate_block(Block):-
 
 typical_function_start(Block):-
     block(Block,_),
-    instruction(Block,_,_,"SUB",Op1,Op2,_,_,_,_,_,_,_,_,_),
+    instruction(Block,_,_,"SUB",Op1,Op2,_,_,_,_),
     op_immediate(Op1,_),
     op_regdirect(Op2,"RSP").
 
 typical_function_start(Block):-
     block(Block,_),
-    instruction(Block,_,_,"PUSH",Op1,_,_,_,_,_,_,_,_,_,_),
+    instruction(Block,_,_,"PUSH",Op1,_,_,_,_,_),
     op_regdirect(Op1,"RBP").
 
 .decl symbolic_expression_in_code(Address:address,Symbol:address,Offset:number)

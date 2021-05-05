@@ -207,7 +207,7 @@ symbolic_operand_point(EA,Imm_index,-2,"point to exception section"):-
  symbolic_operand_point(EA,1,-1,"result of LEA not base address"):-
     binary_format("ELF"),
     symbolic_operand_candidate(EA,1,_,_),
-    instruction(EA,_,_,"LEA",Op1,Op2,0,0,0,0,0,0,0,_,_),
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg_def),
     op_indirect(Op1,_,_,_,_,_,_),
     def_register_is_not_base_address(EA,Reg_def).

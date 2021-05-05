@@ -96,6 +96,11 @@ public:
         Instructions.push_back(I);
     }
 
+    void add(const relations::OperandList& OL)
+    {
+        OperandLists.push_back(OL);
+    }
+
     void invalid(gtirb::Addr A)
     {
         InvalidInstructions.push_back(A);
@@ -111,9 +116,15 @@ public:
         return InvalidInstructions;
     }
 
+    const std::vector<relations::OperandList>& operand_lists() const
+    {
+        return OperandLists;
+    }
+
 private:
     std::vector<relations::Instruction> Instructions;
     std::vector<gtirb::Addr> InvalidInstructions;
+    std::vector<relations::OperandList> OperandLists;
 };
 
 template <typename T>

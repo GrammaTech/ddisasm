@@ -56,7 +56,7 @@ split_load(EA, NextEA, as(Base + Offset,address), "LDR") :-
     // LDR <Register> <IndirectOp>
     // e.g. ldr x0, [x0, <OffsetOp>]
     instruction_get_operation(NextEA, Operation),
-    arch.ldr_operation(Operation),
+    arch.load_operation(Operation),
     instruction_get_op(NextEA, 1, OffsetOp),
     op_indirect(OffsetOp, "NONE", _, "NONE", 1, Offset, _).
 
@@ -157,7 +157,7 @@ plt_entry_arm_candidate(EA,Function,as(Dest,address)):-
     next(NextEA, NextEA2),
 
     instruction_get_operation(NextEA2,Operation),
-    arch.ldr_operation(Operation),
+    arch.load_operation(Operation),
     instruction_get_src_op(NextEA2,_,OffsetOp),
     op_indirect(OffsetOp,"NONE",Reg,"NONE",_,Offset,_),
     instruction_get_dest_op(NextEA2,_,RegOp),
@@ -226,7 +226,7 @@ symbol_minus_symbol_jump_table(Addr,Addr,Size,EARef,Dest,"no_table",Scale):-
 
 block_needs_splitting_at(Symbol2_adjusted),
 symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2_adjusted,Reference,Scale):-
-    instruction(EA,InstrSize,_,Operation,_,0,0,0,0,0,0,0,0,_,_),
+    instruction(EA,InstrSize,_,Operation,_,0,0,0,_,_),
     TableStart = as((EA-(EA band 3))+InstrSize,address),
     Symbol1 = TableStart,
     (
@@ -284,7 +284,7 @@ data_object_point(TableStart,Size,"symbol",2,"arm jump-table"),
 data_object_candidate(TableStart,Size,"symbol"),
 arm_jump_table(EA_jump,Size,TableStart):-
     instruction_get_operation(EA_jump,Operation),
-    arch.ldr_operation(Operation),
+    arch.load_operation(Operation),
     arch.pc_register(PC),
     instruction_get_dest_op(EA_jump,_,RegOp),
     op_regdirect(RegOp,PC),
@@ -323,7 +323,7 @@ litpool_ref(EA,Reg,LitPoolAddr,NBits):-
     // LDR <Register> <IndirectOp>
     // e.g., ldr r3, [pc, Offset]
     instruction_get_operation(EA,Operation),
-    arch.ldr_operation(Operation),
+    arch.load_operation(Operation),
     instruction_get_src_op(EA,_,OffsetOp),
     op_indirect(OffsetOp,"NONE",PC,"NONE",_,Offset,NBits),
     arch.pc_register(PC),
@@ -389,7 +389,7 @@ litpool_symbolic_operand(LitPoolAddr2,Size,Symbol1,Symbol2):-
 
     // (D) ldr reg3, [reg1, reg2]
     instruction_get_operation(EA_D,Operation),
-    arch.ldr_operation(Operation),
+    arch.load_operation(Operation),
     instruction_get_src_op(EA_D,_,IndOp),
     op_indirect(IndOp,"NONE",Reg1,Reg2,_,0,_),
 

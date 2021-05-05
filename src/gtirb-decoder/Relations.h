@@ -48,9 +48,16 @@ namespace relations
         uint64_t Size;
         std::string Prefix;
         std::string Name;
-        std::vector<uint64_t> OpCodes;
+        std::vector<uint64_t> OpCodes; // The first 4 operands
         uint8_t ImmediateOffset;
         uint8_t DisplacementOffset;
+    };
+
+    // This is an additional element to represent 5th to Nth operands.
+    struct OperandList
+    {
+        gtirb::Addr Addr;
+        std::vector<uint64_t> OpCodes;
     };
 
     using ImmOp = int64_t;
@@ -183,6 +190,8 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Instruction& I);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::IndirectOp& I);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::OperandList& O);
 
     template <class Item>
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Data<Item>& Data)

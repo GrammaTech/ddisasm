@@ -66,7 +66,8 @@ protected:
 
 private:
     std::optional<relations::Operand> build(const cs_arm_op& CsOp);
-    std::optional<relations::Instruction> build(Arm32Facts& Facts, const cs_insn& CsInstruction);
+    std::pair<std::optional<relations::Instruction>, std::optional<relations::OperandList>> build(
+        Arm32Facts& Facts, const cs_insn& CsInstruction);
 
     std::shared_ptr<csh> CsHandle;
 };

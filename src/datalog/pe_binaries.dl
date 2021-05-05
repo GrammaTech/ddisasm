@@ -570,7 +570,7 @@ relative_address_start(TableStart,Size,0,Dest,"first"):-
 // mov REG, dword ptr [REG + REG2*4 - 8]
 // call REG
 relative_address_start(TableStart,4,0,Dest,"first"):-
-    instruction(EA_load,_,_,"LEA",Op,_,_,_,_,_,_,_,_,_,_),
+    instruction(EA_load,_,_,"LEA",Op,_,_,_,_,_),
     op_indirect(Op,"NONE","NONE","NONE",_,Offset,_),
     TableStart = as(Offset,address),
     data_word(TableStart,4,TableEntry),
@@ -588,13 +588,13 @@ relative_address_start(TableStart,4,0,Dest,"first"):-
 
 // mov edi, edi
 npad(EA,Size):-
-    instruction(EA,Size,_,"MOV",Op,Op,_,_,_,_,_,_,_,_,_),
+    instruction(EA,Size,_,"MOV",Op,Op,_,_,_,_),
     op_regdirect(Op,"EDI"),
     Size = 2.
 
 // lea REG, [REG+00]
 npad(EA,Size):-
-    instruction(EA,Size,_,"LEA",Op1,Op2,_,_,_,_,_,_,_,_,_),
+    instruction(EA,Size,_,"LEA",Op1,Op2,_,_,_,_),
     op_indirect(Op1,"NONE",Reg,"NONE",_,0,_),
     op_regdirect(Op2,Reg).
 
