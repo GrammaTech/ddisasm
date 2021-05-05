@@ -1,0 +1,66 @@
+FROM centos:8
+
+ARG CMAKE_VERSION=3.12.1
+
+# Use bash for more convenient variable substitution syntax
+SHELL ["/bin/bash", "-c"]
+
+# CentOS is configured with the locale set to en_US.UTF-8 by default, but the
+# language pack needs to be installed.
+RUN dnf install -y \
+    autoconf \
+    automake \
+    bison \
+    bzip2 \
+    flex \
+    gcc \
+    gcc-c++ \
+    git \
+    glibc-langpack-en.x86_64 \
+    java \
+    libffi-devel \
+    libtool \
+    make \
+    mcpp \
+    python3 \
+    python3-protobuf \
+    python3-networkx \
+    rpm-build \
+    sqlite-devel \
+    unzip \
+    zlib-devel
+
+RUN curl -SL https://cmake.org/files/v$(echo $CMAKE_VERSION | sed -r 's/\.[0-9]+$//;')/cmake-$CMAKE_VERSION-Linux-x86_64.tar.gz \
+    | tar -xz --strip-components=1 -C /usr/local
+
+# Install dependencies.  We need to use EPEL to get a new enough version of boost.
+RUN dnf install -y 'dnf-command(config-manager)'
+RUN dnf config-manager --set-enabled powertools
+RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+RUN dnf install -y boost169-devel protobuf-devel
+
+# souffle
+RUN git clone -b 2.0.2 https://github.com/souffle-lang/souffle && \
+    cd souffle && \
+    ./bootstrap && \
+    ./configure --prefix=/usr --enable-64bit-domain --disable-ncurses && \
+    make install
+
+# lief
+RUN git clone -b 0.10.0 https://github.com/lief-project/LIEF.git && \
+    mkdir LIEF/build && \
+    cd LIEF/build && \
+    cmake .. -DLIEF_PYTHON_API=off -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=Off && \
+    make -j$BUILD_JOBS && \
+    make install
+
+# libehp
+RUN git clone https://git.zephyr-software.com/opensrc/libehp.git && \
+    cd libehp && \
+    git reset --hard ddb106c4c1e521bf4b282d17e2a8abf0aa0fe721 && \
+    mkdir build && \
+    cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DEHP_BUILD_SHARED_LIBS=Off && \
+    make -j$BUILD_JOBS && \
+    make install
+
