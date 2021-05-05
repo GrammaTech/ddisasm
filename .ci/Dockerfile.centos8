@@ -63,4 +63,3 @@ RUN git clone https://git.zephyr-software.com/opensrc/libehp.git && \
     cmake .. -DCMAKE_BUILD_TYPE=Release -DEHP_BUILD_SHARED_LIBS=Off && \
     make -j$BUILD_JOBS && \
     make install
-
