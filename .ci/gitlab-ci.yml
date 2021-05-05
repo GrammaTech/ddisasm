@@ -548,6 +548,17 @@ test-ubuntu20-ddisasm-dbg-package:
   needs: ['setup-ubuntu20-package-tests']
   <<: *test-ubuntu-ddisasm-dbg
 
+test-centos8-ddisasm-package:
+  stage: package-tests
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/centos8
+  needs: ['build-centos8-gcc-relwithdebuginfo']
+  script:
+    - pushd build
+    - dnf --nogpgcheck localinstall -y capstone-devel-*.rpm libgtirb.rpm libgtirb-pprinter
+    - popd
+    - rm -rf build
+    - ddisasm --version
+
 .debian-installer-ubuntu-template: &debian-installer-ubuntu-template
   stage: deploy
   artifacts:
@@ -638,3 +649,15 @@ internal-focal-stable:
     APT_REPO: internal
     APT_REPO_CODENAME: focal
     APT_REPO_COMPONENT: stable
+
+package-centos8:
+  stage: deploy
+  image: $DOCKER_REGISTRY/rewriting/gtirb/centos8
+  needs: ['build-centos8-gcc-relwithdebuginfo', 'test-centos8-ddisasm']
+  artifacts:
+    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
+    paths:
+      - '*ddisasm*.rpm'
+  script:
+    - cp build/*.rpm ./
+
