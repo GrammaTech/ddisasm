@@ -100,6 +100,23 @@ tests:
 
   - name: ex_switch
     <<: *default
+    distro:
+      name: Ubuntu
+      # NOTE: The assembler in ubuntu16 seems to behave differently from other
+      # versions.
+      # ```
+      #    ldr pc, [r2, r3, lsl #2]
+      #    .p2align 2
+      #.L15:
+      #    .word   .L14+1
+      #    .word   .L16+1
+      #    .word   .L17+1
+      #    .word   .L18+1
+      # ```
+      # The target .L14 and the others are Thumb instructions, and so
+      # the labels in the jump-table are adjusted as shown above.
+      # For now, disable this test for ubuntu16.
+      version: ["18.04","20.04"]
 
   - name: ex_virtualDispatch
     <<: *default

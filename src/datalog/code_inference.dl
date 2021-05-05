@@ -132,19 +132,20 @@ may_have_symbolic_immediate(Src,as(Dest,address)):-
     ).
 
 
-.decl invalid(EA:address)
+.decl invalid(EA:address,Type:symbol)
 .output invalid
 
 // if the decoder failed to decode any instruction at EA, EA is invalid
-invalid(EA):-
-    invalid_op_code(EA).
+invalid(EA,Type):-
+    invalid_op_code(EA),
+    Type = "invalid_op_code".
 
 // if EA contains a direct call or jump to something that cannot be code, it is invalid
-invalid(EA):-
+invalid(EA,Type):-
     (
-        must_fallthrough(EA,Not_code);
-        direct_jump(EA,Not_code);
-        direct_call(EA,Not_code)
+        must_fallthrough(EA,Not_code), Type = "must_fallthrough to not_code";
+        direct_jump(EA,Not_code), Type = "direct_jump to not_code";
+        direct_call(EA,Not_code), Type = "direct_call to not_code"
         //pc_relative_jump(EA,Not_code);
         //pc_relative_call(EA,Not_code)
     ),
@@ -153,8 +154,8 @@ invalid(EA):-
 
 // propagate the invalid instructions backwards until ret or jmp (encoded in must_fallthrough)
 // propagate through direct jumps and calls
-invalid(From):-
-    invalid(To),
+invalid(From,"propagate from invalid"):-
+    invalid(To,_),
     (
         must_fallthrough(From,To);
         direct_jump(From,To);
@@ -167,7 +168,7 @@ invalid(From):-
 
 possible_ea(EA):-
     instruction(EA,_,_,_,_,_,_,_,_,_),
-    !invalid(EA).
+    !invalid(EA,_).
 
 .decl basic_target(ea:address)
 

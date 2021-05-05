@@ -656,10 +656,11 @@ plt_entry(EA,Function):-
     relocation(Dest_addr,_,Function,_).
 
 // It is unlikely that EA is a valid instruction if the dest op is zero.
-invalid(EA):-
+invalid(EA,Type):-
     instruction_get_dest_op(EA,_,Op),
     !instruction_get_operation(EA, "MOVE"),
-    op_regdirect_contains_reg(Op,"ZERO").
+    op_regdirect_contains_reg(Op,"ZERO"),
+    Type = "mips-zero_dest_op".
 
 // If "jalr t9", where t9 is a concrete address value, it can be considered as
 // a direct-call.

@@ -97,7 +97,7 @@ block_is_overlapping(Block):-
     defined_symbol(Val,_,_,_,_,_,_,"$d"),
     BlockBegAddr <= Val, Val< BlockEndAddr.
 
-plt_entry(EA,Function):-
+plt_block(EA,Function):-
     binary_isa("ARM"),
     plt_section(SecName),
     section(SecName,Size,Beg),
@@ -113,23 +113,23 @@ plt_entry(EA,Function):-
 //   add ip, pc, #0, #12
 //   add ip, ip, #16, #20
 //   ldr pc, [ip, #2640]
-plt_entry(EA,Function):-
+plt_block(EA,Function):-
     plt_entry_arm_candidate(EA,Function,_).
 
 // E.g.,
 //   bx pc // thumb
-//   b.n XXX // thumb
+//   b.n XXX or nop // thumb
 //   add ip, pc, #0, #12
 //   add ip, ip, #16, #20
 //   ldr pc, [ip, #2640]
-plt_entry(EA0,Function):-
+block_points(EA-3,0,7,"arm plt-block"),
+plt_block(EA-3,Function):-
     plt_entry_arm_candidate(EA,Function,_),
     instruction_get_operation(EA-3,Operation2), // thumb
     arch.jump_operation_op_index(Operation2,TargetOpIndex),
     instruction_get_op(EA-3,TargetOpIndex,TargetOp),
     op_regdirect_contains_reg(TargetOp,PC),
-    arch.pc_register(PC),
-    EA0 = EA-3.
+    arch.pc_register(PC).
 
 .decl plt_entry_arm_candidate(ea:address, function:symbol, reloc_ea:address)
 .output plt_entry_arm_candidate
@@ -166,17 +166,52 @@ plt_entry_arm_candidate(EA,Function,as(Dest,address)):-
     Dest = as(EA,number) + N1 + N2 + Offset + 8,
     relocation(as(Dest,address),_,Function,_).
 
-symbolic_operand_candidate(EA,Op_index,Dest,Type),
-symbolic_operand_candidate(EA2,Op_index2,Dest,Type):-
-    binary_isa("ARM"),
-    code(EA),
-    next(EA,EA2),
-    code(EA2),
-    instruction_get_operation(EA,"MOVW"),
-    instruction_get_operation(EA2,"MOVT"),
-    instruction_get_op(EA,Op_index,Op),
+.decl movw_movt_pair_candidate(EA_movw:address,EA_prev:address,EA_movt:address,Distance:unsigned)
+.output movw_movt_pair_candidate
+
+movw_movt_pair_candidate(EA_movw,EA_prev,EA_movt,Distance):-
+    instruction_get_operation(EA_movt,"MOVT"),
+    instruction_get_op(EA_movt,2,RegOp2),
+    op_regdirect_contains_reg(RegOp2,Reg),
+    instruction_get_operation(EA_movw,"MOVW"),
+    instruction_get_op(EA_movw,2,RegOp),
+    op_regdirect_contains_reg(RegOp,Reg),
+    EA_movw = EA_prev,
+    Distance = as(EA_movt-EA_movw,unsigned).
+
+movw_movt_pair_candidate(EA_movw,EA_prev,EA_movt,Distance):-
+    instruction_get_operation(EA_movt,"MOVT"),
+    next(EA_prev,EA_movt),
+    !instruction_get_operation(EA_prev,"MOVW"),
+    EA_prev != EA_movw,
+    next(EA_prev0,EA_prev),
+    movw_movt_pair_candidate(EA_movw,EA_prev0,EA_movt,Distance).
+
+.decl discarded_movw_movt_pair_candidate(EA_movw:address,EA_prev:address,EA_movt:address,Distance:unsigned)
+.output discarded_movw_movt_pair_candidate
+
+discarded_movw_movt_pair_candidate(EA_movw,EA_prev,EA_movt,Distance):-
+    movw_movt_pair_candidate(EA_movw,EA_prev,EA_movt,Distance),
+    movw_movt_pair_candidate(_,_,EA_movt,Distance2),
+    Distance > Distance2.
+
+.decl movw_movt_pair(EA_movw:address,EA_prev:address,EA_movt:address)
+.output movw_movt_pair
+
+movw_movt_pair(EA_movw,EA_prev,EA_movt):-
+    movw_movt_pair_candidate(EA_movw,EA_prev,EA_movt,_),
+    !discarded_movw_movt_pair_candidate(EA_movw,_,EA_movt,_).
+
+symbolic_operand_attribute(EA_lo,1,"Part0"),
+symbolic_operand_candidate(EA_lo,1,Dest,Type),
+symbolic_operand_attribute(EA_hi,1,"Part1"),
+symbolic_operand_candidate(EA_hi,1,Dest,Type):-
+    instruction_get_operation(EA_lo,"MOVW"),
+    instruction_get_op(EA_lo,1,Op),
     op_immediate(Op,DestLow),
-    instruction_get_op(EA2,Op_index2,Op2),
+    movw_movt_pair(EA_lo,EA_lo,EA_hi),
+    instruction_get_operation(EA_hi,"MOVT"),
+    instruction_get_op(EA_hi,1,Op2),
     op_immediate(Op2,DestHigh),
     Dest = as((DestHigh*2^16) bor DestLow, address),
     (
@@ -286,8 +321,9 @@ arm_jump_table(EA_jump,Size,TableStart):-
     instruction_get_operation(EA_jump,Operation),
     arch.load_operation(Operation),
     arch.pc_register(PC),
+    // ldr pc, [r1,r2, lsl N]
     instruction_get_dest_op(EA_jump,_,RegOp),
-    op_regdirect(RegOp,PC),
+    op_regdirect_contains_reg(RegOp,PC),
     instruction_get_src_op(EA_jump,_,IndOp),
     op_indirect(IndOp,"NONE",PC,Reg,Mult,Offset,NBits),
     // TODO: Do we need contraints? Mult=4, Offset=0
@@ -300,20 +336,20 @@ arm_jump_table(EA_jump,Size,TableStart):-
         Operation = substr(Operation,0,3),
         TableStart = EA_jump + 4
     ),
-    //!code(TableStart),
     data_word(TableStart,Size,TargetAddr).
 
 block_needs_splitting_at(as(TargetAddr,address)),
 data_object_point(EA+Size,Size,"symbol",2,"arm jump-table2"),
 data_object_candidate(EA+Size,Size,"symbol"),
 arm_jump_table(EA_jump,Size,EA+Size):-
+    // recursive
     arm_jump_table(EA_jump,Size,EA),
     !possible_data_limit(EA+Size),
     last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA,
-    //!code(EA+Size),
     data_word(EA+Size,Size,TargetAddr).
 
 .decl litpool_ref(ea:address, register_name:register, ea_litpool:address, nbits:unsigned)
+.output litpool_ref
 
 block_points(LitPoolAddr,0,-9,"arm literal pool"), // ARM
 block_is_overlapping(LitPoolAddr),
@@ -328,7 +364,7 @@ litpool_ref(EA,Reg,LitPoolAddr,NBits):-
     op_indirect(OffsetOp,"NONE",PC,"NONE",_,Offset,NBits),
     arch.pc_register(PC),
     instruction_get_dest_op(EA,_,RegOp),
-    op_regdirect(RegOp,Reg),
+    op_regdirect_contains_reg(RegOp,Reg),
     (
         // ARM
         (EA band 3) = 0, Disp = 8
@@ -362,10 +398,10 @@ symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add_pc,Re
     // e.g., add r3, pc
     instruction_get_operation(EA_add_pc,"ADD"),
     instruction_get_op(EA_add_pc,1,PcOp),
-    op_regdirect(PcOp,PC),
+    op_regdirect_contains_reg(PcOp,PC),
     arch.pc_register(PC),
     instruction_get_dest_op(EA_add_pc,_,DestOp),
-    op_regdirect(DestOp,Reg),
+    op_regdirect_contains_reg(DestOp,Reg),
 
     data_word(LitPoolAddr,Size,Diff),
     Symbol1 = EA_add_pc+4,
@@ -376,6 +412,7 @@ symbol_minus_symbol(LitPoolAddr,Size,Symbol1,Symbol2,1):-
     symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,_,_,_).
 
 .decl litpool_symbolic_operand(ea_litpool:address,size:unsigned,symbol1:address,symbol2:address)
+.output litpool_symbolic_operand
 
 //  (A) ldr  reg1, LitPoolAddr1
 //  (B) ldr  reg2, LitPoolAddr2

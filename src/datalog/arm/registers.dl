@@ -39,7 +39,10 @@ track_register("R5","R5").
 track_register("R6","R6").
 track_register("R7","R7").
 track_register("R8","R8").
-track_register("R9","R9").
+
+track_register("R9","SB").
+track_register("SB","SB").
+
 track_register("R10","R10").
 
 track_register("R11","FP").
