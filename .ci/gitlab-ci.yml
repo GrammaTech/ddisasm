@@ -10,6 +10,7 @@ stages:
   - setup-package-tests
   - package-tests
   - deploy
+  - deploy-to-apt
 
 default:
   tags: [cluster]
