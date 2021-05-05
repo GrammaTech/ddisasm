@@ -23,7 +23,7 @@ elseif("${CPACK_DDISASM_PACKAGE}" STREQUAL "deb-debug")
       "ddisasm (=${CPACK_DDISASM_VERSION}-${CPACK_DEBIAN_PACKAGE_RELEASE})")
 
   # RPM packages
-elseif("${CPACK_GTIRB_PACKAGE}" STREQUAL "rpm-driver")
+elseif("${CPACK_DDISASM_PACKAGE}" STREQUAL "rpm-driver")
   set(CPACK_RPM_PACKAGE_NAME "ddisasm")
   set(CPACK_PACKAGE_FILE_NAME "ddisasm")
   set(CPACK_RPM_DEBUGINFO_PACKAGE ON)

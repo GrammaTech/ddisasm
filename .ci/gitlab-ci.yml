@@ -554,7 +554,7 @@ test-centos8-ddisasm-package:
   needs: ['build-centos8-gcc-relwithdebuginfo']
   script:
     - pushd build
-    - dnf --nogpgcheck localinstall -y capstone-devel-*.rpm libgtirb.rpm libgtirb-pprinter
+    - dnf --nogpgcheck localinstall -y capstone-devel-*.rpm libgtirb.rpm libgtirb-pprinter.rpm ddisasm.rpm
     - popd
     - rm -rf build
     - ddisasm --version
