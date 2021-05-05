@@ -284,7 +284,7 @@ value_reg_unsupported(EA,Reg):-
 value_reg_unsupported(EA,Reg):-
     def_used_for_address(EA,Reg),
     arch.mov(EA),
-    instruction(EA,_,_,_,Op1,Op2,0,0,0,_),
+    instruction(EA,_,_,_,Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg),
     op_regdirect(Op1,_),
     !op_regdirect_contains_reg(Op1,_).

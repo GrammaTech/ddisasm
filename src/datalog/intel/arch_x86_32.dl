@@ -37,7 +37,7 @@
 // ret
 get_pc_thunk(EA,Reg):-
     direct_call(_,EA),
-    instruction(EA,Size,_,Operation,Op1,Op2,0,0,_,_),
+    instruction(EA,Size,_,Operation,Op1,Op2,_,_,_,_),
     arch.move_operation(Operation),
     op_regdirect(Op2,Reg),
     op_indirect(Op1,"NONE","ESP","NONE",1,0,_),

@@ -39,6 +39,7 @@ void Arm32Loader::insert(const Arm32Facts& Facts, DatalogProgram& Program)
 
 void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Facts)
 {
+    // NOTE: AArch32 (ARMv8-A) is backward compatible to ARMv7-A.
     cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_ARM | CS_MODE_V8);
     InstructionSize = 4;
     load(ByteInterval, Facts, false);

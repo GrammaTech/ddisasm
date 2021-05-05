@@ -133,11 +133,19 @@ void ElfExceptionLoader(const gtirb::Module &Module, DatalogProgram &Program)
 
 ElfExceptionDecoder::ElfExceptionDecoder(const gtirb::Module &module)
 {
-    uint8_t ptrsize = 8;
-    if(module.getISA() == gtirb::ISA::IA32 || module.getISA() == gtirb::ISA::MIPS32
-       || module.getISA() == gtirb::ISA::ARM)
+    uint8_t ptrsize;
+    switch(module.getISA())
     {
-        ptrsize = 4;
+        case gtirb::ISA::ARM:
+        case gtirb::ISA::IA32:
+        case gtirb::ISA::MIPS32:
+        {
+            ptrsize = 4;
+        }
+        default:
+        {
+            ptrsize = 8;
+        }
     }
 
     std::string ehFrame, ehFrameHeader, gccExcept;
