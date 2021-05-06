@@ -36,6 +36,7 @@ void Arm64Loader::insert(const Arm64Facts& Facts, DatalogProgram& Program)
     Program.insert("op_indirect", Operands.indirect());
     Program.insert("op_barrier", Operands.barrier());
     Program.insert("op_prefetch", Operands.prefetch());
+    Program.insert("operand_list", Instructions.operand_lists());
 }
 
 void Arm64Loader::decode(Arm64Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
