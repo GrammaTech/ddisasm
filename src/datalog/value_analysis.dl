@@ -206,7 +206,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg,1,-1):-
 value_reg_edge(EA,Reg,EA_prev,Reg,2,0):-
     def_used_for_address(EA_prev,Reg),
     def_used(EA_prev,Reg,EA,_),
-    instruction(EA,_,_,"ADD",Op,0,0,0,_,_),
+    instruction(EA,_,_,"ADD",Op,Op,0,0,_,_),
     op_regdirect_contains_reg(Op,Reg).
 
 //shl reg immediate
