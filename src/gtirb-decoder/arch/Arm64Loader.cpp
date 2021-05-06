@@ -100,7 +100,7 @@ Arm64Loader::build(Arm64Facts& Facts, const cs_insn& CsInstruction)
 
             // Add operand to the operands table.
             uint64_t OpIndex = Facts.Operands.add(*Op);
-            if(OpCount < 4)
+            if(i < 4)
                 OpCodes4.push_back(OpIndex);
             else
                 OpCodesRest.push_back(OpIndex);
