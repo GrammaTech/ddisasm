@@ -141,10 +141,12 @@ ElfExceptionDecoder::ElfExceptionDecoder(const gtirb::Module &module)
         case gtirb::ISA::MIPS32:
         {
             ptrsize = 4;
+            break;
         }
         default:
         {
             ptrsize = 8;
+            break;
         }
     }
 
