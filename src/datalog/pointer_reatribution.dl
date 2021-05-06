@@ -314,40 +314,6 @@ moved_displacement_candidate(EA,Op_index,DestAddr,SymbolAddr,0):-
     symbol(SymbolAddr,_,_,_,_,_,_,Symbol),
     SymbolAddr != DestAddr.
 
-// This is for a corner case as follows:
-// E.g.,
-//     lea r1, [.L_XXXX] // where XXXX points to a data object
-// (A) lea r2, [.L_YYYY] // where YYYY points to the limit of the data object
-//     // reg is computed with r1
-//     cmp reg, r2
-//     ...
-//     .L_XXXX: ...
-//     ...
-//     .L_YYYY: // indicate the last address of the object at .L_XXXX
-// It is fine if .L_YYYY remains. However, if .L_YYYY is a label that is
-// eventually removed during rewriting, such as .eh_frame, .eh_frame_hdr, etc.,
-// we want to adjust (A) instruction as follows:
-// (A')lea r2, [.L_XXXX + size_of_object]
-moved_label_class(EA,Op_index,"last address of an object"),
-moved_displacement_candidate(EA,Op_index,Dest,NewDest,Distance):-
-    pc_relative_operand(EA,Op_index,Dest),
-    section(SecName,_,StartSection),
-    (
-        SecName = ".eh_frame";
-        SecName = ".eh_frame_hdr"
-        // TODO: Add more if needed
-    ),
-    Dest = StartSection,
-    section(Name,SectSize,Base),
-    regular_data_section(Name),
-    Dest-1 >= Base,
-    Dest-1 < Base+SectSize,
-    data_object(NewDest,_,_),
-    NewDest >= Base,
-    NewDest < Base+SectSize,
-    Distance = Dest - NewDest.
-
-
 // we take the candidate with the shortest distance/priority
 .decl discarded_moved_displacement_candidate(EA:address,Op_index:operand_index,Dest:address,NewDest:address,Distance:unsigned)
 
