@@ -30,5 +30,6 @@ elseif("${CPACK_DDISASM_PACKAGE}" STREQUAL "rpm-driver")
   set(CPACK_RPM_DEBUGINFO_FILE_NAME "ddisasm-debuginfo.rpm")
   set(CPACK_COMPONENTS_ALL ${DRIVER_COMPONENTS})
   set(CPACK_RPM_PACKAGE_DEPENDS
-      "libgtirb-pprinter = ${CPACK_GTIRB_PPRINTER_VERSION}")
+      "libgtirb-pprinter = ${CPACK_GTIRB_PPRINTER_VERSION}, libgtirb = ${CPACK_GTIRB_VERSION}, capstone-devel = ${CPACK_CAPSTONE_PKG_VERSION}, boost169 = 1.69.0"
+  )
 endif()
