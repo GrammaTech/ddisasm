@@ -16,12 +16,8 @@ RUN dnf install -y \
     gcc \
     gcc-c++ \
     git \
-    glibc-devel.i686 \
     glibc-langpack-en.x86_64 \
-    libgcc.i686 \
-    java \
     libffi-devel \
-    libstdc++-devel.i686 \
     libtool \
     make \
     mcpp \
