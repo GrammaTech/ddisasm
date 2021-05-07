@@ -131,7 +131,6 @@ conan-windows:
        ubuntu16) JOB_NAME='debian-installer-ubuntu16' ;;
        ubuntu18) JOB_NAME='debian-installer-ubuntu18' ;;
        ubuntu20) JOB_NAME='debian-installer-ubuntu20' ;;
-       arch) JOB_NAME='package-arch' ;;
        esac
     # Acquire gtirb artifacts
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=${JOB_NAME} --output "gtirb-${OS}-artifacts.zip"
@@ -141,8 +140,7 @@ conan-windows:
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter-${OS}-artifacts.zip"
     - unzip -o gtirb-pprinter-${OS}-artifacts.zip
     # Install gtirb and the pprinter
-    - '[ $OS != "arch" ] || sudo pacman --noconfirm -U gtirb-git*.pkg.tar.* gtirb-pprinter-git*.pkg.tar.*'
-    - '[[ ! "$OS" =~ ubuntu[12][680] ]] || dpkg -i libgtirb.deb libgtirb-pprinter.deb gtirb-pprinter.deb'
+    - dpkg -i libgtirb.deb libgtirb-pprinter.deb gtirb-pprinter.deb
     # Install gtirb python API
     - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
     # Run tests
@@ -195,61 +193,20 @@ build-ubuntu20-gcc:
     BUILD_TYPE: 'RelWithDebInfo'
   <<: *build
 
-build-arch-gcc:
-  # TODO: The most recent versions of protobuf on arch break our build.
-  # at some point, we'll need to figure this out, but in the meantime,
-  # we allow_failure so our pipelines will go through.
-  allow_failure: true
+build-ubuntu20-gcc-debug:
   stage: build
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/arch
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   variables:
-    OS: 'arch'
-    CXX_COMPILER: 'g++'
-    BUILD_TYPE: 'RelWithDebInfo'
-  artifacts:
-    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
-    paths:
-      - build
-  script:
-    # Acquire gtirb artifacts
-    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=package-arch --output "gtirb-arch-artifacts.zip"
-    - unzip -o gtirb-arch-artifacts.zip
-    # Acquire gtirb pprinter artifacts
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
-    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=package-arch --output "gtirb-pprinter-arch-artifacts.zip"
-    - unzip -o gtirb-pprinter-arch-artifacts.zip
-    # Install gtirb and the pprinter
-    - sudo pacman --noconfirm -U gtirb-git*.pkg.tar.* gtirb-pprinter-git*.pkg.tar.*
-    # Install gtirb python wheel
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
-    # Build package and run tests
-    - mkdir /home/ddisasm/ddisasm-aur
-    - cp .ci/PKGBUILD /home/ddisasm/ddisasm-aur/PKGBUILD
-    - cd /home/ddisasm/ddisasm-aur/
-    - sed -i "s|git://github.com/grammatech/ddisasm.git|git+file://$CI_PROJECT_DIR|" PKGBUILD
-    - makepkg
-    - cd /home/ddisasm/ddisasm-aur/src/ddisasm/build && PATH=$(pwd)/bin:$PATH ctest -V
-    - cd /home/ddisasm/ddisasm-aur/
-    - sudo pacman --noconfirm -U *.pkg.tar.zst
-    - cp -r /home/ddisasm/ddisasm-aur/src/ddisasm/build $CI_PROJECT_DIR/build/
-    - cp *.pkg.tar.zst $CI_PROJECT_DIR/build/
-
-build-arch-gcc-debug:
-  allow_failure: true
-  stage: build
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/arch
-  variables:
-    OS: 'arch'
+    OS: 'ubuntu20'
     CXX_COMPILER: 'g++'
     BUILD_TYPE: 'Debug'
   <<: *build
 
-build-arch-clang-debug:
-  allow_failure: true
+build-ubuntu20-clang-debug:
   stage: build
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/arch
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   variables:
-    OS: 'arch'
+    OS: 'ubuntu20'
     CXX_COMPILER: 'clang++'
     BUILD_TYPE: 'Debug'
   <<: *build
@@ -411,23 +368,23 @@ run-ubuntu20-gcc:
     BUILD_TYPE: 'RelWithDebInfo'
   <<: *test-and-tag
 
-run-arch-gcc-debug:
+run-ubuntu20-gcc-debug:
   allow_failure: true
   stage: test-and-tag
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/arch
-  needs: ['build-arch-gcc-debug']
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
+  needs: ['build-ubuntu20-gcc-debug']
   variables:
-    OS: 'arch'
+    OS: 'ubuntu20'
     BUILD_TYPE: 'Debug'
   <<: *test-and-tag
 
-run-arch-clang-debug:
+run-ubuntu20-clang-debug:
   allow_failure: true
   stage: test-and-tag
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/arch
-  needs: ['build-arch-clang-debug']
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
+  needs: ['build-ubuntu20-clang-debug']
   variables:
-    OS: 'arch'
+    OS: 'ubuntu20'
     BUILD_TYPE: 'Debug'
   script:
   <<: *test-and-tag
@@ -444,7 +401,6 @@ test-make-install:
     - case $OS in
        ubuntu16) JOB_NAME='debian-installer-ubuntu16' ;;
        ubuntu18) JOB_NAME='debian-installer-ubuntu18' ;;
-       arch) JOB_NAME='package-arch' ;;
        esac
     # Acquire gtirb artifacts
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=${JOB_NAME} --output "gtirb-${OS}-artifacts.zip"
@@ -590,18 +546,6 @@ debian-installer-ubuntu20:
     - 'test-ubuntu20-ddisasm-dbg-package'
     - 'build-ubuntu20-packages'
   <<: *debian-installer-ubuntu-template
-
-package-arch:
-  allow_failure: true
-  stage: deploy
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/arch
-  needs: ['build-arch-gcc']
-  artifacts:
-    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
-    paths:
-      - '*ddisasm*.pkg.tar.zst'
-  script:
-    - cp build/*ddisasm*.pkg.tar.zst ./
 
 .apt-upload: &apt-upload
   stage: deploy-to-apt
