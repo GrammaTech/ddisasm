@@ -93,7 +93,6 @@ conan-windows:
        ubuntu16) JOB_NAME='debian-installer-ubuntu16' ;;
        ubuntu18) JOB_NAME='debian-installer-ubuntu18' ;;
        ubuntu20) JOB_NAME='debian-installer-ubuntu20' ;;
-       arch) JOB_NAME='package-arch' ;;
        esac
     # Acquire gtirb artifacts
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=${JOB_NAME} --output "gtirb-${OS}-artifacts.zip"
@@ -104,8 +103,7 @@ conan-windows:
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter-${OS}-artifacts.zip"
     - unzip gtirb-pprinter-${OS}-artifacts.zip
     # Install gtirb & pprinter
-    - '[ $OS != "arch" ] || sudo pacman --noconfirm -U gtirb-git*.pkg.tar.* gtirb-pprinter-git*.pkg.tar.*'
-    - '[[ ! "$OS" =~ ubuntu[12][680] ]] || dpkg -i libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb'
+    - dpkg -i libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
     # Build ddisasm
     - mkdir build
     - cd build
@@ -391,23 +389,19 @@ run-ubuntu20-clang-debug:
 
 test-make-install:
   stage: test-and-tag
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
-  needs: ['build-ubuntu18-gcc']
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
+  needs: ['build-ubuntu20-gcc']
   variables:
-    OS: 'ubuntu18'
+    OS: 'ubuntu20'
     COMPILER: 'gcc'
     BUILD_TYPE: 'RelWithDebInfo'
   script:
-    - case $OS in
-       ubuntu16) JOB_NAME='debian-installer-ubuntu16' ;;
-       ubuntu18) JOB_NAME='debian-installer-ubuntu18' ;;
-       esac
     # Acquire gtirb artifacts
-    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=${JOB_NAME} --output "gtirb-${OS}-artifacts.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-${OS} --output "gtirb-${OS}-artifacts.zip"
     - unzip -o gtirb-${OS}-artifacts.zip
     # Acquire gtirb pprinter artifacts
     - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
-    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter-${OS}-artifacts.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-${OS} --output "gtirb-pprinter-${OS}-artifacts.zip"
     - unzip -o gtirb-pprinter-${OS}-artifacts.zip
     # Install gtirb and the pprinter
     - dpkg -i libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb gtirb-pprinter.deb libgtirb-pprinter-dev.deb
