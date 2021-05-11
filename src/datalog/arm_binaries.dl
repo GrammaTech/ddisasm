@@ -69,6 +69,20 @@ pc_relative_operand(EA, 2, as(Dest,address)) :-
 pc_relative_jump(EA, as(Dest,address)):-
     split_load(EA, _, Dest, "LDR").
 
+pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
+    binary_isa("ARM"),
+    instruction_get_op(EA, Index, Op),
+    op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
+    arch.pc_register(Reg),
+    (
+        (EA band 1) = 0,  Disp = 8 // ARM mode
+        ;
+        (EA band 1) != 0, Disp = 4 // Thumb mode
+    ),
+    EANext0 = as(EA,number)+as(Disp,number),
+    // Align the address
+    EANext = EANext0-(EANext0 band 3).
+
 symbolic_operand_attribute(ea, 1, "GotRef") :-
     split_load(ea, _, Dest, "LDR"),
     relocation(Dest, "GLOB_DAT", _, _).
@@ -229,20 +243,27 @@ symbolic_operand_candidate(EA,1,Dest,Type):-
     instruction_get_op(EA, 1, OffsetOp),
     op_immediate(OffsetOp, Offset),
     (
-        // ARM
-        (EA band 3) = 0, Disp = 8
+        (EA band 1) = 0,  Disp = 8 // ARM mode
         ;
-        // Thumb
-        (EA band 3) != 0, Disp = 4
+        (EA band 1) != 0, Disp = 4 // Thumb mode
     ),
-    Dest = as(as(EA-(EA band 3),number)+Offset+Disp,address),
+    Dest0 = as(EA,number)+Offset+as(Disp,number),
+    // Align the address
+    Dest1 = as(Dest0-(Dest0 band 3),address),
     (
-        code(Dest), Type="code"
+        code(Dest1), Dest = Dest1, Type="code" // ARM
         ;
+        code(Dest1+1), Dest = Dest1+1, Type="code" // Thumb
+        ;
+        Dest = Dest1,
         data_segment(Begin,End),
         Dest >= Begin, Dest <= End,
         Type = "data"
     ).
+
+block_needs_splitting_at(Dest):-
+    symbolic_operand(_,_,Dest,"code"),
+    code(Dest).
 
 symbol_minus_symbol_jump_table(Addr,Addr,Size,EARef,Dest,"no_table",Scale):-
     binary_isa("ARM"),
@@ -262,6 +283,7 @@ symbol_minus_symbol_jump_table(Addr,Addr,Size,EARef,Dest,"no_table",Scale):-
 block_needs_splitting_at(Symbol2_adjusted),
 symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2_adjusted,Reference,Scale):-
     instruction(EA,InstrSize,_,Operation,_,0,0,0,_,_),
+    // Align the address
     TableStart = as((EA-(EA band 3))+InstrSize,address),
     Symbol1 = TableStart,
     (
@@ -367,13 +389,13 @@ litpool_ref(EA,Reg,LitPoolAddr,NBits):-
     instruction_get_dest_op(EA,_,RegOp),
     op_regdirect_contains_reg(RegOp,Reg),
     (
-        // ARM
-        (EA band 3) = 0, Disp = 8
+        (EA band 1) = 0,  Disp = 8 // ARM mode
         ;
-        // Thumb
-        (EA band 3) != 0, Disp = 4
+        (EA band 1) != 0, Disp = 4 // Thumb mode
     ),
-    LitPoolAddr = as(as(EA-(EA band 3),number)+Offset+Disp,address).
+    Addr = as(EA,number)+Offset+as(Disp,number),
+    // Align the address
+    LitPoolAddr = as(Addr-(Addr band 3),address).
 
 symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
     litpool_ref(EA,_,LitPoolAddr,_).

@@ -387,18 +387,6 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     arch.pc_register(Reg),
     next(EA,EANext).
 
-pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
-    binary_isa("ARM"),
-    instruction_get_op(EA, Index, Op),
-    op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
-    arch.pc_register(Reg),
-    (
-        (EA band 3) = 0, Disp = 8   // ARM
-        ;
-        (EA band 3) != 0, Disp = 4  // Thumb
-    ),
-    EANext = EA-(EA band 3)+Disp.
-
 .decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
 .output got_relative_operand
 
