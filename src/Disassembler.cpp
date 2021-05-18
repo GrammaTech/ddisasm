@@ -461,9 +461,24 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
         gtirb::Symbol *Symbol = findSymbol(module, EA, Alias);
         if(Symbol)
         {
+            // Create orphaned symbol for OBJECT copy relocation aliases.
             gtirb::Symbol *NewSymbol = module.addSymbol(context, EA, Alias + "_copy");
             Symbol->setReferent(module.addProxyBlock(context));
             symbolForwarding[Symbol->getUUID()] = NewSymbol->getUUID();
+        }
+        else
+        {
+            // Remove null FUNC relocation aliases.
+            auto const &It = module.findSymbols(Alias);
+            if(auto Found = std::find_if(It.begin(), It.end(),
+                                         [](const auto &S) { return !S.getAddress(); });
+               Found != It.end())
+            {
+                Symbol = &*It.begin();
+                auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+                SymbolInfo->erase(Symbol->getUUID());
+                module.removeSymbol(Symbol);
+            }
         }
     }
     for(auto &T : *prog->getRelation("abi_intrinsic"))
