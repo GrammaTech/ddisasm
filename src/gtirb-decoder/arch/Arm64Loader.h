@@ -51,7 +51,7 @@ namespace relations
         }
     };
 
-    using Arm64Operand = std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp>;
+    using Arm64Operand = std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp, FPImmOp>;
 } // namespace relations
 
 class Arm64OperandFacts : public OperandFacts

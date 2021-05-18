@@ -47,6 +47,11 @@ public:
         return index(Reg, Op);
     }
 
+    uint64_t operator()(const relations::FPImmOp& Op)
+    {
+        return index(FPImm, Op);
+    }
+
     uint64_t operator()(const relations::IndirectOp& Op)
     {
         return index(Indirect, Op);
@@ -60,6 +65,11 @@ public:
     const std::map<relations::RegOp, uint64_t>& reg() const
     {
         return Reg;
+    }
+
+    const std::map<relations::FPImmOp, uint64_t>& fp_imm() const
+    {
+        return FPImm;
     }
 
     const std::map<relations::IndirectOp, uint64_t>& indirect() const
@@ -85,6 +95,7 @@ private:
 
     std::map<relations::ImmOp, uint64_t> Imm;
     std::map<relations::RegOp, uint64_t> Reg;
+    std::map<relations::FPImmOp, uint64_t> FPImm;
     std::map<relations::IndirectOp, uint64_t> Indirect;
 };
 

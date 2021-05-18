@@ -99,6 +99,10 @@ This module also computes and symbol_minus_symbol.
 .decl string(ea:address,end:address)
 .output string
 
+.decl cant_have_symbolic_immediate(Operation:symbol)
+
+cant_have_symbolic_immediate(""). // default
+
 ////////////////////////////////////////////////////////////////////////////////////
 // candidates of symbolic values in the code
 
@@ -113,15 +117,21 @@ symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
     code(EA),
     instruction_get_op(EA,Op_index,Op),
     (
+        instruction_get_operation(EA,Operation),
+        !cant_have_symbolic_immediate(Operation),
         op_immediate(Op,Dest),
         Dest_addr = as(Dest,address)
         ;
         pc_relative_operand(EA,Op_index,Dest_addr),
         Op = Op // avoid warning
         ;
+        operand_to_symbolize(EA,Op_index,Dest_addr),
+        Op = Op // avoid warning
+        ;
         op_indirect(Op,_,_,_,_,Dest,_),
         Dest_addr = as(Dest,address),
-        !pc_relative_operand(EA,Op_index,_)
+        !pc_relative_operand(EA,Op_index,_),
+        !operand_to_symbolize(EA,Op_index,_)
     ),
     (
         code(Dest_addr), Type="code"
@@ -157,6 +167,8 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
         arch.jump_operation_op_index(Operation,Op_index)
         ;
         pc_relative_operand(EA,Op_index,Dest)
+        ;
+        operand_to_symbolize(EA,Op_index,Dest)
     ),
     (
         code(Dest), Type = "code"

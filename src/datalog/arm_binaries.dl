@@ -35,14 +35,29 @@ split_load(EA, NextEA, as(Base + Offset,address), "ADD") :-
     instruction_get_operation(EA, "ADRP"),
     instruction_get_op(EA, 1, BaseOp),
     op_immediate(BaseOp, Base),
+    instruction_get_op(EA, 2, RegOp),
+    op_regdirect_contains_reg(RegOp,Reg),
 
-    next(EA, NextEA),
+    // NOTE: Can't use def_used due to cyclic negation issue.
+    //       This is a heuristic to look at next one or two instruction(s)
+    //       to find ADD instruction.
+    (
+        next(EA, NextEA)
+        ;
+        next(EA, NextEA0), next(NextEA0, NextEA),
+        instruction_get_dest_op(NextEA0,_,TmpOp),
+        !op_regdirect_contains_reg(TmpOp,Reg)
+    ),
 
     // ADD <Register> <Register> <Immediate>
     // e.g. add x0, x0, <OffsetOp>
     instruction_get_operation(NextEA, "ADD"),
     instruction_get_op(NextEA, 2, OffsetOp),
-    op_immediate(OffsetOp, Offset).
+    op_immediate(OffsetOp, Offset),
+    instruction_get_op(NextEA, 1, RegOp2),
+    op_regdirect_contains_reg(RegOp2,Reg2),
+    // Make sure the registers match
+    Reg = Reg2.
 
 split_load(EA, NextEA, as(Base + Offset,address), "LDR") :-
     // ADRP <Register> <Immediate>
@@ -50,21 +65,38 @@ split_load(EA, NextEA, as(Base + Offset,address), "LDR") :-
     instruction_get_operation(EA, "ADRP"),
     instruction_get_op(EA, 1, BaseOp),
     op_immediate(BaseOp, Base),
+    instruction_get_op(EA, 2, RegOp),
+    op_regdirect_contains_reg(RegOp,Reg),
 
-    next(EA, NextEA),
+    // NOTE: Can't use def_used due to cyclic negation issue.
+    //       This is a heuristic to look at next one or two instruction(s)
+    //       to find LDR instruction.
+    (
+        next(EA,NextEA)
+        ;
+        next(EA,NextEA0), next(NextEA0,NextEA),
+        NextEA0 != NextEA,
+        instruction_get_dest_op(NextEA0,_,TmpOp),
+        !op_regdirect_contains_reg(TmpOp,Reg)
+    ),
 
     // LDR <Register> <IndirectOp>
     // e.g. ldr x0, [x0, <OffsetOp>]
     instruction_get_operation(NextEA, Operation),
     arch.load_operation(Operation),
     instruction_get_op(NextEA, 1, OffsetOp),
-    op_indirect(OffsetOp, "NONE", _, "NONE", 1, Offset, _).
+    op_indirect(OffsetOp,"NONE",Reg2,"NONE",_,Offset,_),
+    // Make sure the registers match
+    Reg = Reg2.
 
 pc_relative_operand(EA, 1, as(Dest,address)) :-
     split_load(EA, _, Dest, _).
 
+pc_relative_operand(EA, 1, as(Dest,address)) :-
+    split_load(_, EA, Dest, "LDR").
+
 pc_relative_operand(EA, 2, as(Dest,address)) :-
-    split_load(_, EA, Dest, _).
+    split_load(_, EA, Dest, "ADD").
 
 pc_relative_jump(EA, as(Dest,address)):-
     split_load(EA, _, Dest, "LDR").
@@ -83,16 +115,66 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     // Align the address
     EANext = EANext0-(EANext0 band 3).
 
+// This version of split_load uses def_used, so this should not be used for
+// the code inference step due to cyclic negation issue.
+// Instead, this is for the symbolization step.
+.decl split_load_for_symbolization(ea:address, nextea:address, dest:address, type:symbol)
+.output split_load_for_symbolization
+
+split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "ADD") :-
+    // ADRP <Register> <Immediate>
+    // e.g. adrp x0, BaseOp
+    instruction_get_operation(EA, "ADRP"),
+    instruction_get_op(EA, 1, BaseOp),
+    op_immediate(BaseOp, Base),
+
+    def_used(EA,_,NextEA,_),
+
+    // ADD <Register> <Register> <Immediate>
+    // e.g. add x0, x0, <OffsetOp>
+    instruction_get_operation(NextEA, "ADD"),
+    instruction_get_op(NextEA, 2, OffsetOp),
+    op_immediate(OffsetOp, Offset).
+
+split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "LDR") :-
+    // ADRP <Register> <Immediate>
+    // e.g. adrp x0, BaseOp
+    instruction_get_operation(EA, "ADRP"),
+    instruction_get_op(EA, 1, BaseOp),
+    op_immediate(BaseOp, Base),
+
+    def_used(EA,_,NextEA,_),
+
+    // LDR <Register> <IndirectOp>
+    // e.g. ldr x0, [x0, <OffsetOp>]
+    instruction_get_operation(NextEA, Operation),
+    arch.load_operation(Operation),
+    instruction_get_op(NextEA, 1, OffsetOp),
+    op_indirect(OffsetOp,"NONE",_,"NONE",_,Offset,_).
+
+operand_to_symbolize(EA, 1, as(Dest,address)) :-
+    split_load_for_symbolization(EA, _, Dest, _).
+
+operand_to_symbolize(EA, 1, as(Dest,address)) :-
+    split_load_for_symbolization(_, EA, Dest, "LDR").
+
+operand_to_symbolize(EA, 2, as(Dest,address)) :-
+    split_load_for_symbolization(_, EA, Dest, "ADD").
+
 symbolic_operand_attribute(ea, 1, "GotRef") :-
-    split_load(ea, _, Dest, "LDR"),
-    relocation(Dest, "GLOB_DAT", _, _).
+    split_load_for_symbolization(ea, _, Dest, "LDR"),
+    relocation(Dest, _, _, _).
 
 symbolic_operand_attribute(ea, 1, ":got_lo12:") :-
-    split_load(_, ea, Dest, "LDR"),
-    relocation(Dest, "GLOB_DAT", _, _).
+    split_load_for_symbolization(_, ea, Dest, "LDR"),
+    relocation(Dest, _, _, _).
+
+symbolic_operand_attribute(ea, 1, ":lo12:") :-
+    split_load_for_symbolization(_, ea, Dest, "LDR"),
+    !relocation(Dest, _, _, _).
 
 symbolic_operand_attribute(ea, 2, ":lo12:") :-
-    split_load(_, ea, Dest, "ADD"),
+    split_load_for_symbolization(_, ea, Dest, "ADD"),
     !relocation(as(Dest,address), "GLOB_DAT", _, _).
 
 
@@ -237,7 +319,7 @@ symbolic_operand_candidate(EA_hi,1,Dest,Type):-
     ).
 
 symbolic_operand_candidate(EA,1,Dest,Type):-
-    // ADRP <Register> <Immediate>
+    // ADR <Register> <Immediate>
     // e.g. adr r1, BaseOp
     instruction_get_operation(EA, "ADR"),
     instruction_get_op(EA, 1, OffsetOp),
@@ -485,4 +567,24 @@ symbolic_data(LitPoolAddr,Size,Got_entry):-
         ;
         symbolic_data(Got_entry,Size,Dest),
         symbol(Dest,_,_,_,_,_,_,Symbol)
+    ).
+
+cant_have_symbolic_immediate(Operation):-
+    instruction_get_operation(_, Operation),
+    (
+        contains("SUB", Operation)
+    ).
+
+instruction_get_dest_op(EA,Index,Op):-
+    instruction(EA,_,_,"LDP",Op1,Op2,_,_,_,_),
+    (
+        Index = 1, Op = Op1, Op2 = Op2;
+        Index = 2, Op = Op2, Op1 = Op1
+    ).
+
+instruction_get_src_op(EA,Index,Op):-
+    instruction(EA,_,_,"STP",Op1,Op2,_,_,_,_),
+    (
+        Index = 1, Op = Op1, Op2 = Op2;
+        Index = 2, Op = Op2, Op1 = Op1
     ).

@@ -75,6 +75,12 @@ namespace souffle
         return T;
     }
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::FPImmOp& Op)
+    {
+        T << Op.Value;
+        return T;
+    }
+
     souffle::tuple& operator<<(souffle::tuple& T, const relations::OperandList& OL)
     {
         T << OL.Addr;

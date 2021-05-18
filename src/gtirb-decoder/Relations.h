@@ -60,6 +60,15 @@ namespace relations
         std::vector<uint64_t> OpCodes;
     };
 
+    struct FPImmOp
+    {
+        double Value;
+        bool operator<(const FPImmOp& Op) const noexcept
+        {
+            return Value < Op.Value;
+        };
+    };
+
     using ImmOp = int64_t;
     using RegOp = std::string;
     struct IndirectOp
@@ -78,7 +87,7 @@ namespace relations
         };
     };
 
-    using Operand = std::variant<ImmOp, RegOp, IndirectOp>;
+    using Operand = std::variant<ImmOp, RegOp, IndirectOp, FPImmOp>;
 
     struct Symbol
     {
@@ -190,6 +199,8 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Instruction& I);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::IndirectOp& I);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::FPImmOp& Op);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::OperandList& O);
 

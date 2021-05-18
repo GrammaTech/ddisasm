@@ -118,6 +118,8 @@ must_fallthrough(From,To):-
 may_have_symbolic_immediate(Src,as(Dest,address)):-
     instruction_immediate_offset(Src,Index,Offset),
     instruction_get_op(Src,Index,Op),
+    instruction_get_operation(Src,Operation),
+    !cant_have_symbolic_immediate(Operation),
     op_immediate(Op,Dest),
     (
         binary_type("DYN"),
@@ -127,7 +129,6 @@ may_have_symbolic_immediate(Src,as(Dest,address)):-
         relocation(Src+Offset,_,_,_)
         ;
         binary_type("EXEC"),
-        instruction_get_operation(Src,Operation),
         !arch.logic_operation(Operation)
     ).
 

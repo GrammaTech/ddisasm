@@ -166,6 +166,9 @@ This module:
 .decl op_regdirect(code:operand_code,register_name:register)
 .input op_regdirect
 
+.decl op_fp_immediate(code:operand_code,imm:float)
+.input op_fp_immediate
+
 .decl op_immediate(code:operand_code,offset:number)
 .input op_immediate
 
@@ -267,8 +270,12 @@ instruction_get_op(EA,Index,Op):-
 
 .decl instruction_get_dest_op(ea:address,index:number,op:operand_code)
 
+instruction_get_dest_op(EA,1,Op):-
+    arch.store_operation(Operation),
+    instruction(EA,_,_,Operation,Op,_,_,_,_,_).
+
 instruction_get_dest_op(EA,Index,Op):-
-    !binary_isa("MIPS"),
+    !arch.store_operation(Operation),
     instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
     !arch.read_only_operation(Operation),
     (
@@ -284,7 +291,10 @@ instruction_get_dest_op(EA,Index,Op):-
         Index = 3,
         Op2 = Op2 // avoid warning
         ;
-        !operand_list(EA,_,_,_,_,_),
+        (
+            !operand_list(EA,_,_,_,_,_);
+            operand_list(EA,0,0,0,0,0)
+        ),
         Op4 != 0,
         Op = Op4,
         Index = 4,
@@ -292,7 +302,6 @@ instruction_get_dest_op(EA,Index,Op):-
     ).
 
 instruction_get_dest_op(EA,Index,Op):-
-    !binary_isa("MIPS"),
     instruction(EA,_,_,Operation,_,_,_,Op4,_,_),
     !arch.read_only_operation(Operation),
     operand_list(EA,Op5,Op6,Op7,Op8,Op9),
@@ -339,9 +348,12 @@ instruction_get_dest_op(EA,1,Op):-
 
 .decl instruction_get_src_op(ea:address,Index:operand_index,op:operand_code)
 
+instruction_get_src_op(EA,2,Op):-
+    arch.store_operation(Operation),
+    instruction(EA,_,_,Operation,_,Op,0,0,_,_).
+
 //when the dest is used as a source as well
 instruction_get_src_op(EA,Index,Op2):-
-    !binary_isa("MIPS"),
     instruction(EA,_,_,Operation,_,Op2,_,_,_,_),Op2 != 0,
     Index = 2,
     !arch.mov(EA),
@@ -349,7 +361,7 @@ instruction_get_src_op(EA,Index,Op2):-
     !arch.write_only_operation(Operation).
 
 instruction_get_src_op(EA,Index,Op):-
-    !binary_isa("MIPS"),
+    !arch.store_operation(Operation),
     (
         instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
         instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
@@ -387,6 +399,11 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     arch.pc_register(Reg),
     next(EA,EANext).
 
+.decl operand_to_symbolize(src:address,index:operand_index, dest:address)
+.output operand_to_symbolize
+
+operand_to_symbolize(0,0,0). // default
+
 .decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
 .output got_relative_operand
 
@@ -395,6 +412,8 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
 
 .decl symbolic_data_attribute(ea:address,attribute:symbol)
 .output symbolic_data_attribute
+
+symbolic_data_attribute(0,""). // default
 
 .decl instruction_has_loop_prefix(EA:address)
 

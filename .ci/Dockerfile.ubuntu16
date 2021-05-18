@@ -102,6 +102,7 @@ RUN apt-get -y update \
       g++-arm-linux-gnueabihf \
       gcc-5-arm-linux-gnueabihf \
       gcc-aarch64-linux-gnu \
+      g++-aarch64-linux-gnu \
       gcc-mips-linux-gnu \
       g++-mips-linux-gnu \
       qemu

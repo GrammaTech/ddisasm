@@ -33,6 +33,7 @@ void Arm64Loader::insert(const Arm64Facts& Facts, DatalogProgram& Program)
     Program.insert("invalid_op_code", Instructions.invalid());
     Program.insert("op_immediate", Operands.imm());
     Program.insert("op_regdirect", Operands.reg());
+    Program.insert("op_fp_immediate", Operands.fp_imm());
     Program.insert("op_indirect", Operands.indirect());
     Program.insert("op_barrier", Operands.barrier());
     Program.insert("op_prefetch", Operands.prefetch());
@@ -158,8 +159,7 @@ std::optional<relations::Arm64Operand> Arm64Loader::build(const cs_arm64_op& CsO
             return I;
         }
         case ARM64_OP_FP:
-            std::cerr << "unsupported: FP\n";
-            break;
+            return FPImmOp{CsOp.fp};
         case ARM64_OP_CIMM:
             std::cerr << "unsupported: CIMM\n";
             break;

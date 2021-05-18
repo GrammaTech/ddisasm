@@ -212,8 +212,9 @@ delay_slot(BranchEA,EA):-
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
-op_does_not_read_dest_reg(""):-
-    false.
+op_does_not_read_dest_reg(Operation):-
+    instruction_get_operation(_, Operation),
+    true.
 
 // No operation
 
