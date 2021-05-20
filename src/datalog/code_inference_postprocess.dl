@@ -60,7 +60,8 @@ block_needs_splitting_at(EA):-
     // code inference.
     (
         symbol_minus_symbol(_,_,_,EA,_);
-        symbol_minus_symbol(_,_,EA,_,_), !binary_isa("ARM")
+        symbol_minus_symbol(_,_,EA,_,_),
+        !binary_isa("ARM"), !binary_isa("ARM64")
     ),
     code_in_block(EA,Block),
     EA != Block.

@@ -272,6 +272,7 @@ labeled_data_candidate(Val):-
 
 symbol_minus_symbol_jump_table(TableStart,TableStart,Size,TableReference,Dest,"first",1):-
     !binary_isa("ARM"),
+    !binary_isa("ARM64"),
     jump_table_start(_,Size,TableStart,TableReference,"ADD"),
     (
         Size > 1,data_word(TableStart,Size,Diff);
@@ -290,6 +291,7 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,TableReference,Dest,"f
 
 symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Dest,TableReference,"second",1):-
     !binary_isa("ARM"),
+    !binary_isa("ARM64"),
     jump_table_start(_,Size,TableStart,TableReference,"SUB"),
     (
         Size > 1,data_word(TableStart,Size,Diff);

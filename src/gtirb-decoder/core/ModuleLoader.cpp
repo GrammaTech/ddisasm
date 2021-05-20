@@ -101,8 +101,9 @@ const char* binaryISA(gtirb::ISA Arch)
         case gtirb::ISA::X64:
             return "X64";
         case gtirb::ISA::ARM:
-        case gtirb::ISA::ARM64:
             return "ARM";
+        case gtirb::ISA::ARM64:
+            return "ARM64";
         case gtirb::ISA::MIPS32:
         case gtirb::ISA::MIPS64:
             return "MIPS";
