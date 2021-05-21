@@ -145,7 +145,7 @@ int main(int argc, char **argv)
         "Skip additional analyses to compute more precise function boundaries.")(
         "no-cfi-directives",
         "Do not produce cfi directives. Instead it produces symbolic expressions in .eh_frame.")(
-        "threads,j", po::value<unsigned int>()->default_value(std::thread::hardware_concurrency()),
+        "threads,j", po::value<unsigned int>()->default_value(1),
         "Number of cores to use. It is set to the number of cores in the machine by default")(
         "generate-import-libs", "Generated .DEF and .LIB files for imported libraries (PE).");
     po::positional_options_description pd;
