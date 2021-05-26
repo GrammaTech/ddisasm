@@ -31,6 +31,9 @@ and only if those chains are related eventually to an access to memory.
 
 -'def_used' intersects the two previous facts to obtain def-use chains.
 
+-'straight_line_def_used` is a weaker version of 'def_used' that can be used before
+code inference.
+
 The traversal of used_for_address is kept intra-procedural (not following call edges).
 */
 
@@ -262,8 +265,11 @@ def_used_for_address(EA_def,Reg):-
     def_used(EA_def,Reg,EA_used,_).
 
 
+// straight_line_def_used is a weaker version than def_used
+// that can be used BEFORE code inference.
 
-// the last address where a register whas defined within the block
+
+// the last address where a register was defined within the block
 .decl straight_line_last_def(EA:address,EA_def:address,Reg:register)
 
 straight_line_last_def(EA_next,EA,Reg):-
