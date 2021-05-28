@@ -691,6 +691,10 @@ cant_have_symbolic_immediate(Operation):-
         contains("SUB", Operation)
     ).
 
+instruction_get_dest_op(EA,1,Op):-
+    instruction(EA,_,_,Operation,Op,_,_,_,_,_),
+    contains("POP", Operation).
+
 instruction_get_dest_op(EA,Index,Op):-
     instruction(EA,_,_,"LDP",Op1,Op2,_,_,_,_),
     (

@@ -120,8 +120,7 @@ protected:
 
 private:
     std::optional<relations::Arm64Operand> build(const cs_arm64_op& CsOp);
-    std::pair<std::optional<relations::Instruction>, std::optional<relations::OperandList>> build(
-        Arm64Facts& Facts, const cs_insn& CsInstruction);
+    std::optional<relations::Instruction> build(Arm64Facts& Facts, const cs_insn& CsInstruction);
 
     std::shared_ptr<csh> CsHandle;
 };

@@ -155,9 +155,8 @@ This module:
           immOffset:unsigned,displacementOffset:unsigned)
 .input instruction
 
-.decl operand_list(ea:address, op5:operand_code, op6:operand_code,
-          op7:operand_code, op8:operand_code, op9:operand_code)
-.input operand_list
+.decl op_register_bitfield(code:operand_code,register_name:register)
+.input op_register_bitfield
 
 .decl invalid_op_code(ea:address)
 .input invalid_op_code
@@ -165,6 +164,7 @@ This module:
 // three kinds of operators
 .decl op_regdirect(code:operand_code,register_name:register)
 .input op_regdirect
+.output op_regdirect
 
 .decl op_fp_immediate(code:operand_code,imm:float)
 .input op_fp_immediate
@@ -243,31 +243,6 @@ instruction_get_op(EA,Index,Op):-
         Op1 = Op1, Op2 = Op2, Op3 = Op3 // avoid warning
     ).
 
-instruction_get_op(EA,Index,Op):-
-    operand_list(EA,Op5,Op6,Op7,Op8,Op9),
-    (
-        Op5 != 0,
-        Op = Op5, Index = 5,
-        Op6 = Op6, Op7 = Op7, Op8 = Op8, Op9 = Op9 // avoid warning
-        ;
-        Op6 != 0,
-        Op = Op6, Index = 6,
-        Op5 = Op5, Op7 = Op7, Op8 = Op8, Op9 = Op9 // avoid warning
-        ;
-        Op7 != 0,
-        Op = Op7, Index = 7,
-        Op5 = Op5, Op6 = Op6, Op8 = Op8, Op9 = Op9 // avoid warning
-        ;
-        Op8 != 0,
-        Op = Op8, Index = 8,
-        Op5 = Op5, Op6 = Op6, Op7 = Op7, Op9 = Op9 // avoid warning
-        ;
-        Op9 != 0,
-        Op = Op9, Index = 9,
-        Op5 = Op5, Op6 = Op6, Op7 = Op7, Op8 = Op8 // avoid warning
-    ).
-
-
 .decl instruction_get_dest_op(ea:address,index:number,op:operand_code)
 
 instruction_get_dest_op(EA,1,Op):-
@@ -291,55 +266,10 @@ instruction_get_dest_op(EA,Index,Op):-
         Index = 3,
         Op2 = Op2 // avoid warning
         ;
-        (
-            !operand_list(EA,_,_,_,_,_);
-            operand_list(EA,0,0,0,0,0)
-        ),
         Op4 != 0,
         Op = Op4,
         Index = 4,
         Op2 = Op2, Op3 = Op3 // avoid warning
-    ).
-
-instruction_get_dest_op(EA,Index,Op):-
-    instruction(EA,_,_,Operation,_,_,_,Op4,_,_),
-    !arch.read_only_operation(Operation),
-    operand_list(EA,Op5,Op6,Op7,Op8,Op9),
-    (
-        Op5 = 0,
-        Op4 != 0,
-        Op = Op4,
-        Index = 4,
-        Op6 = Op6, Op7 = Op7, Op8 = Op8, Op9 = Op9 // avoid warning
-        ;
-        Op6 = 0,
-        Op5 != 0,
-        Op = Op5,
-        Index = 5,
-        Op4 = Op4, Op7 = Op7, Op8 = Op8, Op9 = Op9 // avoid warning
-        ;
-        Op7 = 0,
-        Op6 != 0,
-        Op = Op6,
-        Index = 6,
-        Op4 = Op4, Op5 = Op5, Op8 = Op8, Op9 = Op9 // avoid warning
-        ;
-        Op8 = 0,
-        Op7 != 0,
-        Op = Op7,
-        Index = 7,
-        Op4 = Op4, Op5 = Op5, Op6 = Op6, Op9 = Op9 // avoid warning
-        ;
-        Op9 = 0,
-        Op8 != 0,
-        Op = Op8,
-        Index = 8,
-        Op4 = Op4, Op5 = Op5, Op6 = Op6, Op7 = Op7 // avoid warning
-        ;
-        Op9 != 0,
-        Op = Op9,
-        Index = 9,
-        Op4 = Op4, Op5 = Op5, Op6 = Op6, Op7 = Op7, Op8 = Op8 // avoid warning
     ).
 
 instruction_get_dest_op(EA,1,Op):-
@@ -365,17 +295,7 @@ instruction_get_src_op(EA,Index,Op):-
     (
         instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
         instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
-        instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3;
-        instruction(EA,_,_,Operation,_,_,_,Op,_,_),
-        operand_list(EA,Op5,_,_,_,_), Op != 0, Op5 != 0, Index = 4;
-        instruction(EA,_,_,Operation,_,_,_,_,_,_),
-        operand_list(EA,Op,Op6,_,_,_), Op != 0, Op6 != 0, Index = 5;
-        instruction(EA,_,_,Operation,_,_,_,_,_,_),
-        operand_list(EA,_,Op,Op7,_,_), Op != 0, Op7 != 0, Index = 6;
-        instruction(EA,_,_,Operation,_,_,_,_,_,_),
-        operand_list(EA,_,_,Op,Op8,_), Op != 0, Op8 != 0, Index = 7;
-        instruction(EA,_,_,Operation,_,_,_,_,_,_),
-        operand_list(EA,_,_,_,Op,Op9), Op != 0, Op9 != 0, Index = 8
+        instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
     ),
     !arch.write_only_operation(Operation).
 
@@ -402,7 +322,7 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
 .decl operand_to_symbolize(src:address,index:operand_index, dest:address)
 .output operand_to_symbolize
 
-operand_to_symbolize(0,0,0). // default
+operand_to_symbolize(0,0,0):-false.
 
 .decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
 .output got_relative_operand
@@ -413,7 +333,7 @@ operand_to_symbolize(0,0,0). // default
 .decl symbolic_data_attribute(ea:address,attribute:symbol)
 .output symbolic_data_attribute
 
-symbolic_data_attribute(0,""). // default
+symbolic_data_attribute(0,""):-false.
 
 .decl instruction_has_loop_prefix(EA:address)
 
@@ -560,7 +480,11 @@ op_indirect_contains_reg(Op,Reg_uniform):-
 .decl op_regdirect_contains_reg(op:operand_code,reg:register)
 
 op_regdirect_contains_reg(Op,Reg_uniform):-
-    op_regdirect(Op,Reg),
+    (
+        op_regdirect(Op,Reg)
+        ;
+        op_register_bitfield(Op,Reg)
+    ),
     arch.track_register(Reg,Reg_uniform).
 
 

@@ -44,13 +44,21 @@ move_operation("MVN").
 
 load_operation(Operation):-
     instruction_get_operation(_,Operation),
-    contains("LDR", Operation).
+    (
+        contains("LDR", Operation)
+        ;
+        contains("LDM", Operation)
+    ).
 
 .decl store_operation(Operation:symbol)
 
 store_operation(Operation):-
     instruction_get_operation(_,Operation),
-    contains("STR", Operation).
+    (
+        contains("STR", Operation)
+        ;
+        contains("STM", Operation)
+    ).
 
 // TODO:
 .decl conditional_mov(EA:address)
@@ -87,7 +95,7 @@ return(EA):-
         Operation = "POP.W"
     ),
     instruction_get_op(EA,_,Op),
-    op_regdirect(Op,Reg),
+    op_regdirect_contains_reg(Op,Reg),
     pc_register(Reg).
 
 .decl delay_slot(BranchEA:address,EA:address)
@@ -107,7 +115,8 @@ jump(EA):-
     instruction_get_operation(EA,Operation),
     load_operation(Operation),
     instruction_get_dest_op(EA,_,Op),
-    op_regdirect(Op,"PC").
+    op_regdirect(Op,Reg),
+    pc_register(Reg).
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
 

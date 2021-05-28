@@ -77,17 +77,6 @@ std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SoufflePr
             >> indirect.Disp >> size;
         Indirects[operandCode] = indirect;
     };
-    std::map<gtirb::Addr, std::vector<uint64_t>> OperandLists;
-    for(auto &output : *prog->getRelation("operand_list"))
-    {
-        gtirb::Addr EA;
-        uint64_t op[5];
-        output >> EA >> op[0] >> op[1] >> op[2] >> op[3] >> op[4];
-        std::vector<uint64_t> v;
-        for(auto i = 0; i < 5; i++)
-            v.push_back(op[i]);
-        OperandLists[EA] = v;
-    };
 
     std::map<gtirb::Addr, DecodedInstruction> insns;
     for(auto &output : *prog->getRelation("instruction"))
@@ -108,24 +97,6 @@ std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SoufflePr
                 auto foundIndirect = Indirects.find(operandIndex);
                 if(foundIndirect != Indirects.end())
                     insn.Operands[i] = foundIndirect->second;
-            }
-        }
-        auto foundOperandList = OperandLists.find(EA);
-        if(foundOperandList != OperandLists.end())
-        {
-            std::vector<uint64_t> v = foundOperandList->second;
-            for(auto i = 0; i < 5; i++)
-            {
-                uint64_t operandIndex = v[i];
-                auto foundImmediate = Immediates.find(operandIndex);
-                if(foundImmediate != Immediates.end())
-                    insn.Operands[i + 5] = foundImmediate->second;
-                else
-                {
-                    auto foundIndirect = Indirects.find(operandIndex);
-                    if(foundIndirect != Indirects.end())
-                        insn.Operands[i + 5] = foundIndirect->second;
-                }
             }
         }
         output >> insn.immediateOffset >> insn.displacementOffset;

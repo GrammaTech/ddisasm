@@ -75,26 +75,15 @@ namespace souffle
         return T;
     }
 
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::FPImmOp& Op)
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::RegBitFieldOp& R)
     {
-        T << Op.Value;
+        T << R.Reg;
         return T;
     }
 
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::OperandList& OL)
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::FPImmOp& Op)
     {
-        T << OL.Addr;
-        for(size_t i = 0; i < 5; ++i)
-        {
-            if(i < OL.OpCodes.size())
-            {
-                T << OL.OpCodes[i];
-            }
-            else
-            {
-                T << size_t(0);
-            }
-        }
+        T << Op.Value;
         return T;
     }
 

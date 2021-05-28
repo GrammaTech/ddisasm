@@ -48,16 +48,9 @@ namespace relations
         uint64_t Size;
         std::string Prefix;
         std::string Name;
-        std::vector<uint64_t> OpCodes; // The first 4 operands
+        std::vector<uint64_t> OpCodes;
         uint8_t ImmediateOffset;
         uint8_t DisplacementOffset;
-    };
-
-    // This is an additional element to represent 5th to Nth operands.
-    struct OperandList
-    {
-        gtirb::Addr Addr;
-        std::vector<uint64_t> OpCodes;
     };
 
     struct FPImmOp
@@ -87,7 +80,19 @@ namespace relations
         };
     };
 
-    using Operand = std::variant<ImmOp, RegOp, IndirectOp, FPImmOp>;
+    struct RegBitFieldOp
+    {
+        uint64_t Op;
+        std::string Reg;
+
+        constexpr bool operator<(const RegBitFieldOp& A) const noexcept
+        {
+            return std::tie(Op, Reg) < std::tie(A.Op, A.Reg);
+        }
+    };
+    using RegBitFieldOpVector = std::vector<std::string>;
+
+    using Operand = std::variant<ImmOp, RegOp, RegBitFieldOpVector, IndirectOp, FPImmOp>;
 
     struct Symbol
     {
@@ -200,9 +205,9 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::IndirectOp& I);
 
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::FPImmOp& Op);
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::RegBitFieldOp& R);
 
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::OperandList& O);
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::FPImmOp& Op);
 
     template <class Item>
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Data<Item>& Data)

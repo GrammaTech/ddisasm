@@ -37,7 +37,6 @@ void Arm64Loader::insert(const Arm64Facts& Facts, DatalogProgram& Program)
     Program.insert("op_indirect", Operands.indirect());
     Program.insert("op_barrier", Operands.barrier());
     Program.insert("op_prefetch", Operands.prefetch());
-    Program.insert("operand_list", Instructions.operand_lists());
 }
 
 void Arm64Loader::decode(Arm64Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
@@ -48,12 +47,9 @@ void Arm64Loader::decode(Arm64Facts& Facts, const uint8_t* Bytes, uint64_t Size,
 
     // Build datalog instruction facts from Capstone instruction.
     std::optional<relations::Instruction> Instruction;
-    std::optional<relations::OperandList> OperandList;
     if(Count > 0)
     {
-        auto p = build(Facts, *CsInsn);
-        Instruction = p.first;
-        OperandList = p.second;
+        Instruction = build(Facts, *CsInsn);
     }
 
     if(Instruction)
@@ -67,22 +63,15 @@ void Arm64Loader::decode(Arm64Facts& Facts, const uint8_t* Bytes, uint64_t Size,
         Facts.Instructions.invalid(gtirb::Addr(Addr));
     }
 
-    if(OperandList)
-    {
-        // Add the operand list to the facts table.
-        Facts.Instructions.add(*OperandList);
-    }
-
     cs_free(CsInsn, Count);
 }
 
-std::pair<std::optional<relations::Instruction>, std::optional<relations::OperandList>>
-Arm64Loader::build(Arm64Facts& Facts, const cs_insn& CsInstruction)
+std::optional<relations::Instruction> Arm64Loader::build(Arm64Facts& Facts,
+                                                         const cs_insn& CsInstruction)
 {
     const cs_arm64& Details = CsInstruction.detail->arm64;
     std::string Name = uppercase(CsInstruction.mnemonic);
-    std::vector<uint64_t> OpCodes4;    // The first 4 operands
-    std::vector<uint64_t> OpCodesRest; // The rest operands
+    std::vector<uint64_t> OpCodes;
 
     if(Name != "NOP")
     {
@@ -96,42 +85,24 @@ Arm64Loader::build(Arm64Facts& Facts, const cs_insn& CsInstruction)
             std::optional<relations::Arm64Operand> Op = build(CsOp);
             if(!Op)
             {
-                return std::make_pair(std::nullopt, std::nullopt);
+                return std::nullopt;
             }
 
             // Add operand to the operands table.
             uint64_t OpIndex = Facts.Operands.add(*Op);
             if(i < 4)
-                OpCodes4.push_back(OpIndex);
-            else
-                OpCodesRest.push_back(OpIndex);
+                OpCodes.push_back(OpIndex);
         }
         // Put the destination operand at the end of the operand list.
         if(OpCount > 0)
         {
-            if(OpCount <= 4)
-            {
-                std::rotate(OpCodes4.begin(), OpCodes4.begin() + 1, OpCodes4.end());
-            }
-            else
-            {
-                // Left-rotate by 1 the concatenation of the two vectors
-                uint64_t first1 = *OpCodes4.begin();
-                uint64_t first2 = *OpCodesRest.begin();
-
-                OpCodes4.erase(OpCodes4.begin());
-                OpCodes4.push_back(first2);
-
-                OpCodesRest.erase(OpCodesRest.begin());
-                OpCodesRest.push_back(first1);
-            }
+            std::rotate(OpCodes.begin(), OpCodes.begin() + 1, OpCodes.end());
         }
     }
 
     gtirb::Addr Addr(CsInstruction.address);
     uint64_t Size(CsInstruction.size);
-    return std::make_pair(relations::Instruction{Addr, Size, "", Name, OpCodes4, 0, 0},
-                          relations::OperandList{Addr, OpCodesRest});
+    return relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0};
 }
 
 std::optional<relations::Arm64Operand> Arm64Loader::build(const cs_arm64_op& CsOp)

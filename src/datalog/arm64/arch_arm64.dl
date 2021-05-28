@@ -44,13 +44,21 @@ move_operation("MVN").
 
 load_operation(Operation):-
     instruction_get_operation(_,Operation),
-    contains("LDR", Operation).
+    (
+        contains("LDR", Operation)
+        ;
+        contains("LDP", Operation)
+    ).
 
 .decl store_operation(Operation:symbol)
 
 store_operation(Operation):-
     instruction_get_operation(_,Operation),
-    contains("STR", Operation).
+    (
+        contains("STR", Operation)
+        ;
+        contains("STP", Operation)
+    ).
 
 /* Find all addresses where a move instruction is used */
 .decl mov(EA:address)

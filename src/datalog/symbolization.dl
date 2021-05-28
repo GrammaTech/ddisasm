@@ -101,7 +101,7 @@ This module also computes and symbol_minus_symbol.
 
 .decl cant_have_symbolic_immediate(Operation:symbol)
 
-cant_have_symbolic_immediate(""). // default
+cant_have_symbolic_immediate(""):-false.
 
 ////////////////////////////////////////////////////////////////////////////////////
 // candidates of symbolic values in the code
@@ -207,7 +207,7 @@ symbolic_operand_point(EA,Imm_index,-2,"point to exception section"):-
     section(Name,SectSize,Base),
     Base <= Dest, Dest < Base+SectSize.
 
- symbolic_operand_point(EA,Imm_index,-1,"operated on logical operation result"):-
+symbolic_operand_point(EA,Imm_index,-1,"operated on logical operation result"):-
     op_immediate_and_reg(EA,_,Reg,Imm_index,_),
     !arch.jump(EA),
     def_used(EA_def,Reg,EA,_),
@@ -216,7 +216,7 @@ symbolic_operand_point(EA,Imm_index,-2,"point to exception section"):-
     !low_pass_filter(EA_def),
     !is_xor_reset(EA_def).
 
- symbolic_operand_point(EA,1,-1,"result of LEA not base address"):-
+symbolic_operand_point(EA,1,-1,"result of LEA not base address"):-
     binary_format("ELF"),
     symbolic_operand_candidate(EA,1,_,_),
     instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),

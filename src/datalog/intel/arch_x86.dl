@@ -48,7 +48,7 @@ mov(EA):-
 .decl load_operation(Operation:symbol)
 
 // No rule for load_operation
-load_operation("").
+load_operation(""):-false.
 
 .decl store_operation(Operation:symbol)
 

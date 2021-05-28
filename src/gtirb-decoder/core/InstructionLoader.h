@@ -47,6 +47,11 @@ public:
         return index(Reg, Op);
     }
 
+    uint64_t operator()(const std::vector<std::string>& Op)
+    {
+        return index(RegBitFields, Op);
+    }
+
     uint64_t operator()(const relations::FPImmOp& Op)
     {
         return index(FPImm, Op);
@@ -65,6 +70,22 @@ public:
     const std::map<relations::RegOp, uint64_t>& reg() const
     {
         return Reg;
+    }
+
+    const std::map<relations::RegBitFieldOp, uint64_t> reg_bitfields() const
+    {
+        std::map<relations::RegBitFieldOp, uint64_t> RegBitFieldsForSouffle;
+        for(auto It = RegBitFields.begin(); It != RegBitFields.end(); ++It)
+        {
+            auto Regs = It->first;
+            auto Index = It->second;
+            for(auto It2 = Regs.begin(); It2 != Regs.end(); ++It2)
+            {
+                auto K = relations::RegBitFieldOp{Index, *It2};
+                RegBitFieldsForSouffle[K] = Index;
+            }
+        }
+        return RegBitFieldsForSouffle;
     }
 
     const std::map<relations::FPImmOp, uint64_t>& fp_imm() const
@@ -95,6 +116,7 @@ private:
 
     std::map<relations::ImmOp, uint64_t> Imm;
     std::map<relations::RegOp, uint64_t> Reg;
+    std::map<std::vector<std::string>, uint64_t> RegBitFields;
     std::map<relations::FPImmOp, uint64_t> FPImm;
     std::map<relations::IndirectOp, uint64_t> Indirect;
 };
@@ -105,11 +127,6 @@ public:
     void add(const relations::Instruction& I)
     {
         Instructions.push_back(I);
-    }
-
-    void add(const relations::OperandList& OL)
-    {
-        OperandLists.push_back(OL);
     }
 
     void invalid(gtirb::Addr A)
@@ -127,15 +144,9 @@ public:
         return InvalidInstructions;
     }
 
-    const std::vector<relations::OperandList>& operand_lists() const
-    {
-        return OperandLists;
-    }
-
 private:
     std::vector<relations::Instruction> Instructions;
     std::vector<gtirb::Addr> InvalidInstructions;
-    std::vector<relations::OperandList> OperandLists;
 };
 
 template <typename T>
