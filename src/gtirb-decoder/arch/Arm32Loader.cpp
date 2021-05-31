@@ -137,7 +137,6 @@ std::optional<relations::Instruction> Arm32Loader::build(Arm32Facts& Facts,
 
             if(i == 0 && (OpCode == "LDM" or OpCode == "STM"))
             {
-                assert(OpCount > 2);
                 std::optional<relations::Operand> Op = build(CsOp);
                 // Build operand for datalog fact.
                 if(!Op)
@@ -150,7 +149,6 @@ std::optional<relations::Instruction> Arm32Loader::build(Arm32Facts& Facts,
             }
             else
             {
-                assert(CsOp.type == ARM_OP_REG);
                 RegBitFields.push_back(registerName(CsOp.reg));
             }
         }
@@ -160,10 +158,6 @@ std::optional<relations::Instruction> Arm32Loader::build(Arm32Facts& Facts,
     }
     else if(Name != "NOP")
     {
-        if(OpCount > 4)
-        {
-            assert(!"Developer's assert: too many operands");
-        }
         for(int i = 0; i < OpCount; i++)
         {
             // Load capstone operand.
