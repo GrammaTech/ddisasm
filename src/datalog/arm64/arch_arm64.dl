@@ -99,8 +99,7 @@ jump(EA):-
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
 op_does_not_read_dest_reg(Operation):-
-    instruction_get_operation(_, Operation),
-    true.
+    instruction_get_operation(_, Operation).
 
 .decl arithmetic_operation(Operation:symbol)
 
