@@ -39,8 +39,7 @@ This is designed to be used with tbdisasm trace GTIRB inputs to funifer.
 .input next_block
 ///////////////////////////////////////////////////
 .decl instruction(ea:address, size:unsigned, prefix:symbol, opcode:symbol,
-          op1:operand_code, op2:operand_code, op3:operand_code,
-          op4:operand_code,
+          op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code,
           immOffset:unsigned,displacementOffset:unsigned)
 .input instruction
 

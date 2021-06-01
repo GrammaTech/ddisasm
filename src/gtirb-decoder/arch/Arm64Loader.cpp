@@ -90,8 +90,7 @@ std::optional<relations::Instruction> Arm64Loader::build(Arm64Facts& Facts,
 
             // Add operand to the operands table.
             uint64_t OpIndex = Facts.Operands.add(*Op);
-            if(i < 4)
-                OpCodes.push_back(OpIndex);
+            OpCodes.push_back(OpIndex);
         }
         // Put the destination operand at the end of the operand list.
         if(OpCount > 0)
