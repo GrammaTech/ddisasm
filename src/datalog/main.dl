@@ -150,8 +150,7 @@ This module:
 // instructions
 
 .decl instruction(ea:address, size:unsigned, prefix:symbol, opcode:symbol,
-          op1:operand_code, op2:operand_code, op3:operand_code,
-          op4:operand_code,
+          op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code,
           immOffset:unsigned,displacementOffset:unsigned)
 .input instruction
 
@@ -164,7 +163,6 @@ This module:
 // three kinds of operators
 .decl op_regdirect(code:operand_code,register_name:register)
 .input op_regdirect
-.output op_regdirect
 
 .decl op_fp_immediate(code:operand_code,imm:float)
 .input op_fp_immediate
