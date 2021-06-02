@@ -112,6 +112,7 @@ plt_block(EA,Function):-
 reg_has_base_image(EA,Reg):-
     base_address(ImageBase),
     pc_relative_operand(EA,_,ImageBase),
+    code(EA),
     def(EA,Reg),
     instruction_get_operation(EA,"LEA").
 
@@ -120,6 +121,7 @@ reg_has_base_image(EA_code,Reg):-
     binary_format("PE"),
     base_address(ImageBase),
     arch.pointer_size(Size),
+    code(EA_code),
     arch.mov(EA_code),
     pc_relative_operand(EA_code,_,EA_data),
     data_word(EA_data,Size,Value), ImageBase = as(Value,address),
