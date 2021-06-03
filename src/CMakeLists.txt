@@ -52,7 +52,8 @@ if(DDISASM_ARM_64)
 
   set(DATALOG_ARM64_SOURCES
       datalog/arm64/arch_arm64.dl datalog/arm64/float_operations.dl
-      datalog/arm64/jump_operations.dl datalog/arm64/registers.dl)
+      datalog/arm64/jump_operations.dl datalog/arm64/registers.dl
+      datalog/arm_binaries.dl)
 
   set(GENERATED_ARM64_CPP souffle_disasm_arm64.cpp)
 

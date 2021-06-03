@@ -118,6 +118,8 @@ must_fallthrough(From,To):-
 may_have_symbolic_immediate(Src,as(Dest,address)):-
     instruction_immediate_offset(Src,Index,Offset),
     instruction_get_op(Src,Index,Op),
+    instruction_get_operation(Src,Operation),
+    !cant_have_symbolic_immediate(Operation),
     op_immediate(Op,Dest),
     (
         binary_type("DYN"),
@@ -127,24 +129,24 @@ may_have_symbolic_immediate(Src,as(Dest,address)):-
         relocation(Src+Offset,_,_,_)
         ;
         binary_type("EXEC"),
-        instruction_get_operation(Src,Operation),
         !arch.logic_operation(Operation)
     ).
 
 
-.decl invalid(EA:address)
+.decl invalid(EA:address,Type:symbol)
 .output invalid
 
 // if the decoder failed to decode any instruction at EA, EA is invalid
-invalid(EA):-
-    invalid_op_code(EA).
+invalid(EA,Type):-
+    invalid_op_code(EA),
+    Type = "invalid_op_code".
 
 // if EA contains a direct call or jump to something that cannot be code, it is invalid
-invalid(EA):-
+invalid(EA,Type):-
     (
-        must_fallthrough(EA,Not_code);
-        direct_jump(EA,Not_code);
-        direct_call(EA,Not_code)
+        must_fallthrough(EA,Not_code), Type = "must_fallthrough to not_cod     e";
+        direct_jump(EA,Not_code), Type = "direct_jump to not_code";
+        direct_call(EA,Not_code), Type = "direct_call to not_code"
         //pc_relative_jump(EA,Not_code);
         //pc_relative_call(EA,Not_code)
     ),
@@ -153,8 +155,8 @@ invalid(EA):-
 
 // propagate the invalid instructions backwards until ret or jmp (encoded in must_fallthrough)
 // propagate through direct jumps and calls
-invalid(From):-
-    invalid(To),
+invalid(From,"propagate from invalid"):-
+    invalid(To,_),
     (
         must_fallthrough(From,To);
         direct_jump(From,To);
@@ -167,7 +169,7 @@ invalid(From):-
 
 possible_ea(EA):-
     instruction(EA,_,_,_,_,_,_,_,_,_),
-    !invalid(EA).
+    !invalid(EA,_).
 
 .decl basic_target(ea:address)
 
@@ -433,7 +435,6 @@ discarded_block(Block2):-
     Block2 = Block + 1,
     instruction(Block2,Size2,"",OpCode,Op1,Op2,Op3,Op4,_,_),
     Block2 - Block = Size - Size2.
-
 
 // Auxiliary predicates to detect candidate blocks that are padding
 .decl candidate_block_is_not_padding(Block:address)

@@ -45,6 +45,16 @@ mov(EA):-
     instruction_get_operation(EA,Operation),
     move_operation(Operation).
 
+.decl load_operation(Operation:symbol)
+
+// No rule for load_operation
+load_operation(""):-false.
+
+.decl store_operation(Operation:symbol)
+
+// No rule for store_operation
+store_operation("").
+
 .decl is_nop(EA:address)
 
 is_nop(EA):-

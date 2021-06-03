@@ -166,6 +166,7 @@ plt_data_reference(EA):-
 got_reference(Got_entry,Symbol):-
     (
       pc_relative_operand(_,_,Got_entry);
+      split_load_operand(_,_,Got_entry);
       got_relative_operand(_,_,Got_entry)
     ),
     section(".got",Size,Beg),
@@ -179,6 +180,7 @@ got_reference(Got_entry,Symbol):-
 got_reference(Got_entry,Symbol):-
     (
       pc_relative_operand(_,_,Got_entry);
+      split_load_operand(_,_,Got_entry);
       got_relative_operand(_,_,Got_entry)
     ),
     section(".got",Size,Beg),
@@ -190,6 +192,7 @@ got_reference(Got_entry,Symbol):-
 got_local_reference(Got_entry,Dest):-
     (
       pc_relative_operand(_,_,Got_entry);
+      split_load_operand(_,_,Got_entry);
       got_relative_operand(_,_,Got_entry)
     ),
     section(".got",Size,Beg),
@@ -200,12 +203,18 @@ got_local_reference(Got_entry,Dest):-
 
 got_local_reference(Got_entry,Dest):-
     relocation(Got_entry,"DTPMOD64",Symbol,_),
-    pc_relative_operand(_,_,Got_entry),
+    (
+      pc_relative_operand(_,_,Got_entry);
+      split_load_operand(_,_,Got_entry)
+    ),
     symbol(Dest,_,_,_,_,_,_,Symbol).
 
 got_local_reference(Got_entry,Dest):-
     relocation(Got_entry,"DTPMOD64","",Addend),
-    pc_relative_operand(_,_,Got_entry),
+    (
+      pc_relative_operand(_,_,Got_entry);
+      split_load_operand(_,_,Got_entry)
+    ),
     section(".tbss",_,Beg),
     Dest = as(as(Beg,number)+Addend,address),
     !symbol(Dest,_,_,_,_,_,_,_).

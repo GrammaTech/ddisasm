@@ -100,8 +100,10 @@ const char* binaryISA(gtirb::ISA Arch)
             return "X86";
         case gtirb::ISA::X64:
             return "X64";
-        case gtirb::ISA::ARM64:
+        case gtirb::ISA::ARM:
             return "ARM";
+        case gtirb::ISA::ARM64:
+            return "ARM64";
         default:
             return "Undefined";
     }

@@ -146,12 +146,18 @@ This module:
           immOffset:unsigned,displacementOffset:unsigned)
 .input instruction
 
+.decl op_register_bitfield(code:operand_code,register_name:register)
+.input op_register_bitfield
+
 .decl invalid_op_code(ea:address)
 .input invalid_op_code
 
 // three kinds of operators
 .decl op_regdirect(code:operand_code,register_name:register)
 .input op_regdirect
+
+.decl op_fp_immediate(code:operand_code,imm:float)
+.input op_fp_immediate
 
 .decl op_immediate(code:operand_code,offset:number)
 .input op_immediate
@@ -230,7 +236,12 @@ instruction_get_op(EA,Index,Op):-
 
 .decl instruction_get_dest_op(ea:address,index:number,op:operand_code)
 
+instruction_get_dest_op(EA,1,Op):-
+    arch.store_operation(Operation),
+    instruction(EA,_,_,Operation,Op,_,_,_,_,_).
+
 instruction_get_dest_op(EA,Index,Op):-
+    !arch.store_operation(Operation),
     instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
     !arch.read_only_operation(Operation),
     (
@@ -258,6 +269,10 @@ instruction_get_dest_op(EA,1,Op):-
 
 .decl instruction_get_src_op(ea:address,Index:operand_index,op:operand_code)
 
+instruction_get_src_op(EA,2,Op):-
+    arch.store_operation(Operation),
+    instruction(EA,_,_,Operation,_,Op,0,0,_,_).
+
 //when the dest is used as a source as well
 instruction_get_src_op(EA,Index,Op2):-
     instruction(EA,_,_,Operation,_,Op2,_,_,_,_),Op2 != 0,
@@ -267,6 +282,7 @@ instruction_get_src_op(EA,Index,Op2):-
     !arch.write_only_operation(Operation).
 
 instruction_get_src_op(EA,Index,Op):-
+    !arch.store_operation(Operation),
     (
         instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
         instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
@@ -294,11 +310,21 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     arch.pc_register(Reg),
     next(EA,EANext).
 
+.decl split_load_operand(src:address,index:operand_index, dest:address)
+.output split_load_operand
+
+split_load_operand(0,0,0):-false.
+
 .decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
 .output got_relative_operand
 
 .decl symbolic_operand_attribute(ea:address,index:unsigned,attribute:symbol)
 .output symbolic_operand_attribute
+
+.decl symbolic_data_attribute(ea:address,attribute:symbol)
+.output symbolic_data_attribute
+
+symbolic_data_attribute(0,""):-false.
 
 .decl instruction_has_loop_prefix(EA:address)
 
@@ -356,7 +382,7 @@ reg_jump(EA,Reg):-
     op_regdirect(TargetOp,Reg).
 
 // indirect jump
- .decl indirect_jump(src:address)
+.decl indirect_jump(src:address)
 
 indirect_jump(EA):-
     arch.jump(EA),
@@ -439,7 +465,11 @@ op_indirect_contains_reg(Op,Reg_uniform):-
 .decl op_regdirect_contains_reg(op:operand_code,reg:register)
 
 op_regdirect_contains_reg(Op,Reg_uniform):-
-    op_regdirect(Op,Reg),
+    (
+        op_regdirect(Op,Reg)
+        ;
+        op_register_bitfield(Op,Reg)
+    ),
     arch.track_register(Reg,Reg_uniform).
 
 

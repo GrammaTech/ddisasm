@@ -40,6 +40,26 @@ move_operation(Operation) :-
 
 move_operation("MVN").
 
+.decl load_operation(Operation:symbol)
+
+load_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    (
+        contains("LDR", Operation)
+        ;
+        contains("LDP", Operation)
+    ).
+
+.decl store_operation(Operation:symbol)
+
+store_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    (
+        contains("STR", Operation)
+        ;
+        contains("STP", Operation)
+    ).
+
 /* Find all addresses where a move instruction is used */
 .decl mov(EA:address)
 mov(EA):-
@@ -78,8 +98,8 @@ jump(EA):-
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
-op_does_not_read_dest_reg(""):-
-    false.
+op_does_not_read_dest_reg(Operation):-
+    instruction_get_operation(_, Operation).
 
 .decl arithmetic_operation(Operation:symbol)
 

@@ -53,6 +53,15 @@ namespace relations
         uint8_t DisplacementOffset;
     };
 
+    struct FPImmOp
+    {
+        double Value;
+        bool operator<(const FPImmOp& Op) const noexcept
+        {
+            return Value < Op.Value;
+        };
+    };
+
     using ImmOp = int64_t;
     using RegOp = std::string;
     struct IndirectOp
@@ -71,7 +80,19 @@ namespace relations
         };
     };
 
-    using Operand = std::variant<ImmOp, RegOp, IndirectOp>;
+    struct RegBitFieldOp
+    {
+        uint64_t Op;
+        std::string Reg;
+
+        constexpr bool operator<(const RegBitFieldOp& A) const noexcept
+        {
+            return std::tie(Op, Reg) < std::tie(A.Op, A.Reg);
+        }
+    };
+    using RegBitFieldOpVector = std::vector<std::string>;
+
+    using Operand = std::variant<ImmOp, RegOp, RegBitFieldOpVector, IndirectOp, FPImmOp>;
 
     struct Symbol
     {
@@ -183,6 +204,10 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Instruction& I);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::IndirectOp& I);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::RegBitFieldOp& R);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::FPImmOp& Op);
 
     template <class Item>
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Data<Item>& Data)

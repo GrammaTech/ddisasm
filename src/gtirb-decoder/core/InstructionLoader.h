@@ -47,6 +47,16 @@ public:
         return index(Reg, Op);
     }
 
+    uint64_t operator()(const std::vector<std::string>& Op)
+    {
+        return index(RegBitFields, Op);
+    }
+
+    uint64_t operator()(const relations::FPImmOp& Op)
+    {
+        return index(FPImm, Op);
+    }
+
     uint64_t operator()(const relations::IndirectOp& Op)
     {
         return index(Indirect, Op);
@@ -60,6 +70,27 @@ public:
     const std::map<relations::RegOp, uint64_t>& reg() const
     {
         return Reg;
+    }
+
+    const std::vector<relations::RegBitFieldOp> reg_bitfields() const
+    {
+        std::vector<relations::RegBitFieldOp> RegBitFieldsForSouffle;
+        for(auto It = RegBitFields.begin(); It != RegBitFields.end(); ++It)
+        {
+            auto Regs = It->first;
+            auto Index = It->second;
+            for(auto It2 = Regs.begin(); It2 != Regs.end(); ++It2)
+            {
+                auto K = relations::RegBitFieldOp{Index, *It2};
+                RegBitFieldsForSouffle.push_back(K);
+            }
+        }
+        return RegBitFieldsForSouffle;
+    }
+
+    const std::map<relations::FPImmOp, uint64_t>& fp_imm() const
+    {
+        return FPImm;
     }
 
     const std::map<relations::IndirectOp, uint64_t>& indirect() const
@@ -85,6 +116,8 @@ private:
 
     std::map<relations::ImmOp, uint64_t> Imm;
     std::map<relations::RegOp, uint64_t> Reg;
+    std::map<std::vector<std::string>, uint64_t> RegBitFields;
+    std::map<relations::FPImmOp, uint64_t> FPImm;
     std::map<relations::IndirectOp, uint64_t> Indirect;
 };
 
