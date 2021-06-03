@@ -163,13 +163,13 @@ split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "LDR/STR") :
     instruction_get_op(NextEA, 1, OffsetOp),
     op_indirect(OffsetOp,"NONE",_,"NONE",_,Offset,_).
 
-operand_to_symbolize(EA, 1, as(Dest,address)) :-
+split_load_operand(EA, 1, as(Dest,address)) :-
     split_load_for_symbolization(EA, _, Dest, _).
 
-operand_to_symbolize(EA, 1, as(Dest,address)) :-
+split_load_operand(EA, 1, as(Dest,address)) :-
     split_load_for_symbolization(_, EA, Dest, "LDR/STR").
 
-operand_to_symbolize(EA, 2, as(Dest,address)) :-
+split_load_operand(EA, 2, as(Dest,address)) :-
     split_load_for_symbolization(_, EA, Dest, "ADD").
 
 
@@ -415,9 +415,9 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2,Refere
     instruction(EA,_,_,Operation,Op1,_,_,_,_,_),
     arch.load_operation(Operation),
     (
-        Operation = "LDRD", Size = 8;
-        Operation = "LDR", Size = 4;
-        Operation = "LDRB", Size = 1
+        Operation = "LDRD", Size = 8, Reference = "8";
+        Operation = "LDR", Size = 4, Reference = "4";
+        Operation = "LDRB", Size = 1, Reference = "1"
     ),
     instruction_get_operation(EA+4, "ADR"),
     instruction_get_op(EA+4, 1, ImmOp),
@@ -443,13 +443,11 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2,Refere
     ),
     Diff = as(DiffUnsigned,number),
     Symbol1 = as(Base,address),
-    Symbol2 = as(Diff*4+as(Symbol1,number),address),
-    Reference = "arm64".
+    Symbol2 = as(Diff*4+as(Symbol1,number),address).
 
 block_needs_splitting_at(Symbol2),
 symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Symbol1,Symbol2,Reference,Scale):-
     symbol_minus_symbol_jump_table(EA,TableStart,Size,Symbol1,_,Reference,Scale),
-    Reference = "arm64",
     !possible_data_limit(EA+Size),
     last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA,
     (
@@ -488,12 +486,12 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2_adjust
         Size = 2,
         data_word(TableStart,Size,DiffUnsigned),
         Operation="TBH",
-        Reference="tbh"
+        Reference = "2"
         ;
         Size = 1,
         data_byte(TableStart,DiffUnsigned),
         Operation="TBB",
-        Reference="tbb"
+        Reference = "1"
     ),
     !code(TableStart),
     Diff = as(DiffUnsigned,number),
@@ -512,12 +510,10 @@ symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Symbol1,Symbol2_adjusted,
     last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA,
     (
         Size = 2,
-        data_word(EA+Size,Size,DiffUnsigned),
-        Reference="tbh"
+        data_word(EA+Size,Size,DiffUnsigned)
         ;
         Size = 1,
-        data_byte(EA+Size,DiffUnsigned),
-        Reference="tbb"
+        data_byte(EA+Size,DiffUnsigned)
     ),
     !code(EA+Size),
     Diff = as(DiffUnsigned,number),

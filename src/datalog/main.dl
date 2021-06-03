@@ -317,10 +317,10 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     arch.pc_register(Reg),
     next(EA,EANext).
 
-.decl operand_to_symbolize(src:address,index:operand_index, dest:address)
-.output operand_to_symbolize
+.decl split_load_operand(src:address,index:operand_index, dest:address)
+.output split_load_operand
 
-operand_to_symbolize(0,0,0):-false.
+split_load_operand(0,0,0):-false.
 
 .decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
 .output got_relative_operand

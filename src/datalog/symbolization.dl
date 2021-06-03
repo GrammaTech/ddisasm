@@ -125,13 +125,13 @@ symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
         pc_relative_operand(EA,Op_index,Dest_addr),
         Op = Op // avoid warning
         ;
-        operand_to_symbolize(EA,Op_index,Dest_addr),
+        split_load_operand(EA,Op_index,Dest_addr),
         Op = Op // avoid warning
         ;
         op_indirect(Op,_,_,_,_,Dest,_),
         Dest_addr = as(Dest,address),
         !pc_relative_operand(EA,Op_index,_),
-        !operand_to_symbolize(EA,Op_index,_)
+        !split_load_operand(EA,Op_index,_)
     ),
     (
         code(Dest_addr), Type="code"
@@ -168,7 +168,7 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
         ;
         pc_relative_operand(EA,Op_index,Dest)
         ;
-        operand_to_symbolize(EA,Op_index,Dest)
+        split_load_operand(EA,Op_index,Dest)
     ),
     (
         code(Dest), Type = "code"

@@ -72,9 +72,9 @@ public:
         return Reg;
     }
 
-    const std::map<relations::RegBitFieldOp, uint64_t> reg_bitfields() const
+    const std::vector<relations::RegBitFieldOp> reg_bitfields() const
     {
-        std::map<relations::RegBitFieldOp, uint64_t> RegBitFieldsForSouffle;
+        std::vector<relations::RegBitFieldOp> RegBitFieldsForSouffle;
         for(auto It = RegBitFields.begin(); It != RegBitFields.end(); ++It)
         {
             auto Regs = It->first;
@@ -82,7 +82,7 @@ public:
             for(auto It2 = Regs.begin(); It2 != Regs.end(); ++It2)
             {
                 auto K = relations::RegBitFieldOp{Index, *It2};
-                RegBitFieldsForSouffle[K] = Index;
+                RegBitFieldsForSouffle.push_back(K);
             }
         }
         return RegBitFieldsForSouffle;

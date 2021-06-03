@@ -53,7 +53,7 @@ load_operation(""):-false.
 .decl store_operation(Operation:symbol)
 
 // No rule for store_operation
-store_operation("").
+store_operation(""):-false.
 
 .decl is_nop(EA:address)
 
