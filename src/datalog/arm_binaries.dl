@@ -410,14 +410,14 @@ value_reg_edge(EA,Reg,EA,"NONE",0,as(Val,number)):-
 //     (L2 - L) / 4
 //     ...
 block_needs_splitting_at(Symbol2),
-symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2,Reference,Scale):-
+symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2,"first",Scale):-
     binary_isa("ARM64"),
     instruction(EA,_,_,Operation,Op1,_,_,_,_,_),
     arch.load_operation(Operation),
     (
-        Operation = "LDRD", Size = 8, Reference = "8";
-        Operation = "LDR", Size = 4, Reference = "4";
-        Operation = "LDRB", Size = 1, Reference = "1"
+        Operation = "LDRD", Size = 8;
+        Operation = "LDR", Size = 4;
+        Operation = "LDRB", Size = 1
     ),
     instruction_get_operation(EA+4, "ADR"),
     instruction_get_op(EA+4, 1, ImmOp),
@@ -443,24 +443,7 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2,Refere
     ),
     Diff = as(DiffUnsigned,number),
     Symbol1 = as(Base,address),
-    Symbol2 = as(Diff*4+as(Symbol1,number),address).
-
-block_needs_splitting_at(Symbol2),
-symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Symbol1,Symbol2,Reference,Scale):-
-    symbol_minus_symbol_jump_table(EA,TableStart,Size,Symbol1,_,Reference,Scale),
-    !possible_data_limit(EA+Size),
-    last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA,
-    (
-        Size != 1,
-        data_word(EA+Size,Size,DiffUnsigned)
-        ;
-        Size = 1,
-        data_byte(EA+Size,DiffUnsigned)
-    ),
-    !code(EA+Size),
-    Diff = as(DiffUnsigned,number),
-    Symbol2 = as(Diff*4+as(Symbol1,number),address),
-    code(Symbol2).
+    Symbol2 = as(Diff*as(Scale,number)+as(Symbol1,number),address).
 
 symbol_minus_symbol_jump_table(Addr,Addr,Size,EARef,Dest,"no_table",Scale):-
     data_access_pattern(Addr,Size,0,EABase),
@@ -477,7 +460,7 @@ symbol_minus_symbol_jump_table(Addr,Addr,Size,EARef,Dest,"no_table",Scale):-
     Scale = 1.
 
 block_needs_splitting_at(Symbol2_adjusted),
-symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2_adjusted,Reference,Scale):-
+symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2_adjusted,"first",Scale):-
     instruction(EA,InstrSize,_,Operation,_,0,0,0,_,_),
     // Align the address
     TableStart = as((EA-(EA band 3))+InstrSize,address),
@@ -485,17 +468,15 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2_adjust
     (
         Size = 2,
         data_word(TableStart,Size,DiffUnsigned),
-        Operation="TBH",
-        Reference = "2"
+        Operation="TBH"
         ;
         Size = 1,
         data_byte(TableStart,DiffUnsigned),
-        Operation="TBB",
-        Reference = "1"
+        Operation="TBB"
     ),
     !code(TableStart),
     Diff = as(DiffUnsigned,number),
-    Symbol2 = as(Diff*2+as(Symbol1,number),address),
+    Symbol2 = as(Diff*as(Scale,number)+as(Symbol1,number),address),
     Scale = 2,
     (
         code(Symbol2), Symbol2_adjusted = Symbol2 // ARM
@@ -504,12 +485,12 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2_adjust
     ).
 
 block_needs_splitting_at(Symbol2_adjusted),
-symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Symbol1,Symbol2_adjusted,Reference,Scale):-
-    symbol_minus_symbol_jump_table(EA,TableStart,Size,Symbol1,_,Reference,Scale),
+symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Symbol1,Symbol2_adjusted,"first",Scale):-
+    symbol_minus_symbol_jump_table(EA,TableStart,Size,Symbol1,_,"first",Scale),
     !possible_data_limit(EA+Size),
     last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA,
     (
-        Size = 2,
+        Size != 1,
         data_word(EA+Size,Size,DiffUnsigned)
         ;
         Size = 1,
@@ -517,8 +498,7 @@ symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Symbol1,Symbol2_adjusted,
     ),
     !code(EA+Size),
     Diff = as(DiffUnsigned,number),
-    Symbol2 = as(Diff*2+as(Symbol1,number),address),
-    Scale = 2,
+    Symbol2 = as(Diff*as(Scale,number)+as(Symbol1,number),address),
     (
         code(Symbol2), Symbol2_adjusted = Symbol2 // ARM
         ;
