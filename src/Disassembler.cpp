@@ -452,23 +452,6 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
                            souffle::SouffleProgram *prog)
 {
     std::map<gtirb::UUID, gtirb::UUID> symbolForwarding;
-    for(auto &output : *prog->getRelation("relocation"))
-    {
-        gtirb::Addr ea;
-        int64_t offset;
-        std::string type, name;
-        output >> ea >> type >> name >> offset;
-        if(type == "COPY")
-        {
-            gtirb::Symbol *copySymbol = findSymbol(module, ea, name);
-            if(copySymbol)
-            {
-                gtirb::Symbol *realSymbol = module.addSymbol(context, name);
-                copySymbol->setName(name + "_copy");
-                symbolForwarding[copySymbol->getUUID()] = realSymbol->getUUID();
-            }
-        }
-    }
     for(auto &T : *prog->getRelation("relocation_alias"))
     {
         gtirb::Addr EA;
@@ -481,7 +464,7 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
             // Create orphaned symbol for OBJECT copy relocation aliases.
             gtirb::Symbol *NewSymbol = module.addSymbol(context, EA, Alias + "_copy");
             Symbol->setReferent(module.addProxyBlock(context));
-            symbolForwarding[Symbol->getUUID()] = NewSymbol->getUUID();
+            symbolForwarding[NewSymbol->getUUID()] = Symbol->getUUID();
         }
         else
         {
@@ -495,6 +478,24 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
                 auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
                 SymbolInfo->erase(Symbol->getUUID());
                 module.removeSymbol(Symbol);
+            }
+        }
+    }
+    for(auto &output : *prog->getRelation("relocation"))
+    {
+        gtirb::Addr ea;
+        int64_t offset;
+        std::string type, name;
+        output >> ea >> type >> name >> offset;
+        if(type == "COPY")
+        {
+            gtirb::Symbol *copySymbol = findSymbol(module, ea, name);
+            if(copySymbol)
+            {
+                gtirb::Symbol *realSymbol = module.addSymbol(context, name);
+                realSymbol->setReferent(module.addProxyBlock(context));
+                copySymbol->setName(name + "_copy");
+                symbolForwarding[copySymbol->getUUID()] = realSymbol->getUUID();
             }
         }
     }
