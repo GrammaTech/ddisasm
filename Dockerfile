@@ -98,7 +98,7 @@ RUN apt-get -y update \
       git \
       wget
 
-RUN wget https://download.grammatech.com/gtirb/files/apt-repo/pool/stable/libc/libcapstone-dev/libcapstone-dev_4.0.1-gt4_amd64.deb
+RUN wget https://download.grammatech.com/gtirb/files/apt-repo/pool/unstable/libc/libcapstone-dev/libcapstone-dev_4.0.1-gt4_amd64.deb \
   && dpkg -i libcapstone-dev_*_amd64.deb \
   && rm libcapstone-dev_*_amd64.deb
 
