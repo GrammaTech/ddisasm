@@ -286,6 +286,11 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
     binary_type("EXEC"),
     !binary_isa("X86"), // TODO: PE32: False positives in ex1.
     data_access(EA,Op_index,"NONE",Reg,Reg,_,Dest,_), Dest >= 0,
+    (
+        !binary_format("PE"),
+        // Ignore data accesses to special KUSER_SHARED_DATA structure.
+        binary_format("PE"), Dest band 0x7FFE0000 != 0x7FE00000
+    ),
     DestAddr = as(Dest,address),
     !instruction_get_operation(EA,"LEA"),
     !symbolic_operand(EA,Op_index,_,_),
