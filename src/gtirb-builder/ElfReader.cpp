@@ -90,8 +90,9 @@ void ElfReader::buildSections()
 
         // Pydata section does not have an address.
         // To populate the section in the final IR, give it an address.
-        if(Section.name() == "pydata") {
-            Addr = gtirb::Addr(Elf->imagebase()+Elf->virtual_size());
+        if(Section.name() == "pydata")
+        {
+            Addr = gtirb::Addr(Elf->imagebase() + Elf->virtual_size());
             S->addFlag(gtirb::SectionFlag::Initialized);
             S->addFlag(gtirb::SectionFlag::Readable);
             Initialized = true;
