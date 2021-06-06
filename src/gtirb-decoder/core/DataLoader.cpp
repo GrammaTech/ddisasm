@@ -70,7 +70,8 @@ void DataLoader::load(const gtirb::Module& Module, DataFacts& Facts)
         bool Executable = Section.isFlagSet(gtirb::SectionFlag::Executable);
         bool Initialized = Section.isFlagSet(gtirb::SectionFlag::Initialized);
 
-        if(Executable || Initialized)
+        if(Section.isFlagSet(gtirb::SectionFlag::Loaded)
+                && (Executable || Initialized))
         {
             for(const auto& ByteInterval : Section.byte_intervals())
             {
