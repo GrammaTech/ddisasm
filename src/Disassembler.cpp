@@ -877,9 +877,12 @@ void buildCodeBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
             {
                 if(gtirb::ByteInterval &byteInterval = *it.begin(); byteInterval.getAddress())
                 {
-                    uint64_t blockOffset = blockAddress - *byteInterval.getAddress();
-                    uint64_t isThumb = static_cast<uint64_t>(blockAddress) & 1;
-                    byteInterval.addBlock<gtirb::CodeBlock>(context, blockOffset, size, isThumb);
+                    if(section.getName() != "pydata")
+                    {
+                        uint64_t blockOffset = blockAddress - *byteInterval.getAddress();
+                        uint64_t isThumb = static_cast<uint64_t>(blockAddress) & 1;
+                        byteInterval.addBlock<gtirb::CodeBlock>(context, blockOffset, size, isThumb);
+                    }
                 }
             }
         }
@@ -914,6 +917,36 @@ void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
                 uint64_t blockOffset = *i - byteInterval.getAddress().value();
                 byteInterval.addBlock<gtirb::DataBlock>(context, blockOffset,
                                                         static_cast<uint64_t>(*next - *i));
+            }
+        }
+    }
+}
+
+void buildUnloadableDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
+{
+    for(const auto& Section : module.sections())
+    {
+        if(!Section.isFlagSet(gtirb::SectionFlag::Loaded))
+        {
+            gtirb::DataBlock *d;
+            auto SecSize0 = Section.getSize();
+            auto SecAddress0 = Section.getAddress();
+            if(SecSize0.has_value() && SecAddress0.has_value())
+            {
+                auto SecSize = SecSize0.value();
+                auto SecAddress = SecAddress0.value();
+                d = gtirb::DataBlock::Create(context, SecSize);
+                if(auto it = module.findByteIntervalsOn(SecAddress); !it.empty())
+                {
+                    if(gtirb::ByteInterval &byteInterval = *it.begin(); byteInterval.getAddress())
+                    {
+                        byteInterval.addBlock(0, d);
+                    }
+                }
+            }
+            else
+            {
+                std::cerr << "WARNING: no size or address\n";
             }
         }
     }
@@ -1627,6 +1660,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildSymbolForwarding(context, module, prog);
     buildCodeBlocks(context, module, prog);
     buildDataBlocks(context, module, prog);
+    buildUnloadableDataBlocks(context, module, prog);
     buildCodeSymbolicInformation(context, module, prog);
     buildCfiDirectives(context, module, prog);
     expandSymbolForwarding(context, module, prog);

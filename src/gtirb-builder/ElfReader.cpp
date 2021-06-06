@@ -33,6 +33,12 @@ ElfReader::ElfReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary)
     assert(Elf && "Expected ELF");
 };
 
+// NOTE: 'pydata' section is specially handled in this function.
+// It is an unloadable section that is inserted by pyinstaller.
+// Pydata section is where python script's pyc is placed in the ELF
+// binary. We want to create a data-block for the section, but do not
+// process through ddisasm, and propagate it to gtirb IR as it is.
+//
 void ElfReader::buildSections()
 {
     std::map<uint64_t, gtirb::UUID> SectionIndex;
@@ -50,8 +56,12 @@ void ElfReader::buildSections()
         // FIXME: Populate sections that are not loaded (e.g. .symtab and .strtab)
         if(!Loaded)
         {
-            Index++;
-            continue;
+            // Do not skip pydata section because it needs to be in the IR.
+            if(Section.name() != "pydata")
+            {
+                Index++;
+                continue;
+            }
         }
 
         // Add named section to GTIRB Module.
@@ -77,6 +87,15 @@ void ElfReader::buildSections()
         }
 
         gtirb::Addr Addr = gtirb::Addr(Section.virtual_address());
+
+        // Pydata section does not have an address.
+        // To populate the section in the final IR, give it an address.
+        if(Section.name() == "pydata") {
+            Addr = gtirb::Addr(Elf->imagebase()+Elf->virtual_size());
+            S->addFlag(gtirb::SectionFlag::Initialized);
+            S->addFlag(gtirb::SectionFlag::Readable);
+            Initialized = true;
+        }
 
         // Thread-local data sections overlap other sections, as they are
         // only templates for per-thread copies of the data sections.
