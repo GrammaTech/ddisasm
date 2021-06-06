@@ -887,7 +887,8 @@ void buildCodeBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                     {
                         uint64_t blockOffset = blockAddress - *byteInterval.getAddress();
                         uint64_t isThumb = static_cast<uint64_t>(blockAddress) & 1;
-                        byteInterval.addBlock<gtirb::CodeBlock>(context, blockOffset, size, isThumb);
+                        byteInterval.addBlock<gtirb::CodeBlock>(context, blockOffset, size,
+                                                                isThumb);
                     }
                 }
             }
@@ -928,9 +929,10 @@ void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
     }
 }
 
-void buildUnloadableDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
+void buildUnloadableDataBlocks(gtirb::Context &context, gtirb::Module &module,
+                               souffle::SouffleProgram *prog)
 {
-    for(const auto& Section : module.sections())
+    for(const auto &Section : module.sections())
     {
         if(!Section.isFlagSet(gtirb::SectionFlag::Loaded))
         {
