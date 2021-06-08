@@ -568,6 +568,37 @@ relative_address_start(TableStart,Size,0,Dest,"first"):-
     arch.pointer_size(Pt_size), Pt_size = Size,
     possible_ea(Dest).
 
+// Find the simplest form of jump table with moved label.
+//   i.e.  jmp dword ptr [REG*4 + TableStart - Mult]
+symbolic_operand_candidate(EA,Op_index,as(Offset,address),"jump-table"),
+moved_label_class(EA,Op_index,"relax basic jump-table-start"),
+moved_label(EA,Op_index,as(Offset,address),TableStart),
+relative_address_start(TableStart,Size,0,Dest,"first"):-
+    indirect_jump(EA),
+    instruction_get_op(EA,Op_index,Op),
+    // Table starts at Offset+Mult.
+    op_indirect(Op,"NONE","NONE",_,Mult,Offset,_),
+    Size = as(Mult,unsigned),
+    (
+        // If the first entry seems dummy, move TableStart forward by Mult.
+        // E.g., windirstat
+        // 437c71:   jmp DWORD PTR [EAX*4+4422780]
+        // 437c78:   ...
+        // 437c7f: BYTE 090H
+        // 437c80: DWORD $L_437c8c
+        // 437c84: DWORD $L_437cb0
+        // 437c88: DWORD $L_437cd8
+        data_word(as(Offset,address),Size0,TableEntry0),
+        arch.pointer_size(Size0),
+        !possible_ea(as(TableEntry0,address)),
+        TableStart = as(Offset+Mult,address)
+    ),
+    // Table entry is the complete Dest address.
+    data_word(TableStart,Size,TableEntry),
+    Dest = as(TableEntry,address),
+    arch.pointer_size(Pt_size), Pt_size = Size,
+    possible_ea(Dest).
+
 // lea REG, TableStart
 // mov REG, dword ptr [REG + REG2*4 - 8]
 // call REG
