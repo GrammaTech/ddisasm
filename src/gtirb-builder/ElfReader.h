@@ -51,6 +51,9 @@ private:
     void resurrectSymbols();
     void createGPforMIPS(uint64_t SecIndex, std::map<gtirb::UUID, ElfSymbolInfo> &SymbolInfo,
                          std::map<gtirb::UUID, ElfSymbolTabIdxInfo> &SymbolTabIdxInfo);
+
+    // Unloaded, literal section whitelist.
+    const std::unordered_set<std::string> Literals = {"pydata"};
 };
 
 #endif // ELF_GTIRB_BUILDER_H_

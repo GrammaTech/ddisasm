@@ -418,15 +418,13 @@ void ElfReader::buildSections()
         bool Writable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
         bool Initialized = Loaded && Section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS;
 
+        bool Literal = Literals.count(Section.name()) > 0;
+
         // FIXME: Populate sections that are not loaded (e.g. .symtab and .strtab)
-        if(!Loaded)
+        if(!Loaded && !Literal)
         {
-            // Do not skip pydata section because it needs to be in the IR.
-            if(Section.name() != "pydata")
-            {
-                Index++;
-                continue;
-            }
+            Index++;
+            continue;
         }
 
         // Add named section to GTIRB Module.
@@ -451,37 +449,40 @@ void ElfReader::buildSections()
             S->addFlag(gtirb::SectionFlag::Initialized);
         }
 
-        gtirb::Addr Addr = gtirb::Addr(Section.virtual_address());
-
-        // Pydata section does not have an address.
-        // To populate the section in the final IR, give it an address.
-        if(Section.name() == "pydata")
+        if(Loaded)
         {
-            Addr = gtirb::Addr(Elf->imagebase() + Elf->virtual_size());
-            S->addFlag(gtirb::SectionFlag::Initialized);
-            S->addFlag(gtirb::SectionFlag::Readable);
-            Initialized = true;
+            gtirb::Addr Addr = gtirb::Addr(Section.virtual_address());
+
+            // Thread-local data sections overlap other sections, as they are
+            // only templates for per-thread copies of the data sections.
+            bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
+            if(Tls)
+            {
+                Addr = gtirb::Addr(Section.virtual_address() + tlsBaseAddress());
+            }
+
+            if(Initialized)
+            {
+                // Add allocated section contents to a single, contiguous ByteInterval.
+                std::vector<uint8_t> Bytes = Section.content();
+                S->addByteInterval(*Context, Addr, Bytes.begin(), Bytes.end(), Section.size(),
+                                   Bytes.size());
+            }
+            else
+            {
+                // Add an uninitialized section.
+                S->addByteInterval(*Context, Addr, Section.size(), 0);
+            }
         }
 
-        // Thread-local data sections overlap other sections, as they are
-        // only templates for per-thread copies of the data sections.
-        bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
-        if(Tls)
+        if(Literal)
         {
-            Addr = gtirb::Addr(Section.virtual_address() + tlsBaseAddress());
-        }
-
-        if(Initialized)
-        {
-            // Add allocated section contents to a single, contiguous ByteInterval.
+            // Transcribe unloaded, literal data to an address-less section with a single DataBlock.
+            gtirb::Section *S = Module->addSection(*Context, Section.name());
             std::vector<uint8_t> Bytes = Section.content();
-            S->addByteInterval(*Context, Addr, Bytes.begin(), Bytes.end(), Section.size(),
-                               Bytes.size());
-        }
-        else
-        {
-            // Add an uninitialized section.
-            S->addByteInterval(*Context, Addr, Section.size(), 0);
+            gtirb::ByteInterval *I = S->addByteInterval(*Context, Bytes.begin(), Bytes.end(),
+                                                        Section.size(), Bytes.size());
+            I->addBlock<gtirb::DataBlock>(*Context, 0, Section.size());
         }
 
         // Add section index and raw section properties to aux data.

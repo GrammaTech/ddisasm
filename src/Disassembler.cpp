@@ -929,37 +929,6 @@ void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
     }
 }
 
-void buildUnloadableDataBlocks(gtirb::Context &context, gtirb::Module &module,
-                               souffle::SouffleProgram *prog)
-{
-    for(const auto &Section : module.sections())
-    {
-        if(!Section.isFlagSet(gtirb::SectionFlag::Loaded))
-        {
-            gtirb::DataBlock *d;
-            auto SecSize0 = Section.getSize();
-            auto SecAddress0 = Section.getAddress();
-            if(SecSize0.has_value() && SecAddress0.has_value())
-            {
-                auto SecSize = SecSize0.value();
-                auto SecAddress = SecAddress0.value();
-                d = gtirb::DataBlock::Create(context, SecSize);
-                if(auto it = module.findByteIntervalsOn(SecAddress); !it.empty())
-                {
-                    if(gtirb::ByteInterval &byteInterval = *it.begin(); byteInterval.getAddress())
-                    {
-                        byteInterval.addBlock(0, d);
-                    }
-                }
-            }
-            else
-            {
-                std::cerr << "WARNING: no size or address\n";
-            }
-        }
-    }
-}
-
 void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     auto symbolicData = convertSortedRelation<VectorByEA<SymbolicData>>("symbolic_data", prog);
@@ -1705,7 +1674,6 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildSymbolForwarding(context, module, prog);
     buildCodeBlocks(context, module, prog);
     buildDataBlocks(context, module, prog);
-    buildUnloadableDataBlocks(context, module, prog);
     buildCodeSymbolicInformation(context, module, prog);
     buildCfiDirectives(context, module, prog);
     expandSymbolForwarding(context, module, prog);
