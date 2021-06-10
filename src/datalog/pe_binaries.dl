@@ -579,20 +579,16 @@ relative_address_start(TableStart,Size,0,Dest,"first"):-
     // Table starts at Offset+Mult.
     op_indirect(Op,"NONE","NONE",_,Mult,Offset,_),
     Size = as(Mult,unsigned),
-    (
-        // If the first entry seems dummy, move TableStart forward by Mult.
-        // E.g., windirstat
-        // 437c71:   jmp DWORD PTR [EAX*4+4422780]
-        // 437c78:   ...
-        // 437c7f: BYTE 090H
-        // 437c80: DWORD $L_437c8c
-        // 437c84: DWORD $L_437cb0
-        // 437c88: DWORD $L_437cd8
-        data_word(as(Offset,address),Size0,TableEntry0),
-        arch.pointer_size(Size0),
-        !possible_ea(as(TableEntry0,address)),
-        TableStart = as(Offset+Mult,address)
-    ),
+    // If the first entry seems dummy, move TableStart forward by Mult.
+    // E.g., windirstat
+    // 437c71:   jmp DWORD PTR [EAX*4+4422780]
+    // 437c78:   ...
+    // 437c7f: BYTE 090H
+    // 437c80: DWORD $L_437c8c
+    // 437c84: DWORD $L_437cb0
+    // 437c88: DWORD $L_437cd8
+    !address_in_data(as(Offset,address),_),
+    TableStart = as(Offset+Mult,address),
     // Table entry is the complete Dest address.
     data_word(TableStart,Size,TableEntry),
     Dest = as(TableEntry,address),
