@@ -391,12 +391,6 @@ void ElfReader::resurrectSymbols()
     return;
 }
 
-// NOTE: 'pydata' section is specially handled in this function.
-// It is an unloadable section that is inserted by pyinstaller.
-// Pydata section is where python script's pyc is placed in the ELF
-// binary. We want to create a data-block for the section, but do not
-// process through ddisasm, and propagate it to gtirb IR as it is.
-//
 void ElfReader::buildSections()
 {
     std::map<uint64_t, gtirb::UUID> SectionIndex;
@@ -478,7 +472,6 @@ void ElfReader::buildSections()
         if(Literal)
         {
             // Transcribe unloaded, literal data to an address-less section with a single DataBlock.
-            gtirb::Section *S = Module->addSection(*Context, Section.name());
             std::vector<uint8_t> Bytes = Section.content();
             gtirb::ByteInterval *I = S->addByteInterval(*Context, Bytes.begin(), Bytes.end(),
                                                         Section.size(), Bytes.size());
