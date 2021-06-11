@@ -59,18 +59,36 @@ void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program
 
 void DataLoader::load(const gtirb::Module& Module, DataFacts& Facts)
 {
-    assert(Module.getAddress() && "Module has non-addressable section data.");
-    Facts.Min = *Module.getAddress();
+    // Set the lowest virtual address.
+    for(const auto& Section : Module.sections())
+    {
+        if(Section.getAddress())
+        {
+            Facts.Min = *Section.getAddress();
+            break;
+        }
+    }
 
-    assert(Module.getSize() && "Module has non-calculable size.");
-    Facts.Max = *Module.getAddress() + *Module.getSize();
+    // Set the maximum virtual address.
+    for(const auto& Section : Module.sections())
+    {
+        if(Section.getAddress() && Section.getSize())
+        {
+            gtirb::Addr End = *Section.getAddress() + *Section.getSize();
+            if(End > Facts.Max)
+            {
+                Facts.Max = End;
+            }
+        }
+    }
 
     for(const auto& Section : Module.sections())
     {
         bool Executable = Section.isFlagSet(gtirb::SectionFlag::Executable);
         bool Initialized = Section.isFlagSet(gtirb::SectionFlag::Initialized);
+        bool Loaded = Section.isFlagSet(gtirb::SectionFlag::Loaded);
 
-        if(Section.isFlagSet(gtirb::SectionFlag::Loaded) && (Executable || Initialized))
+        if(Loaded && (Executable || Initialized))
         {
             for(const auto& ByteInterval : Section.byte_intervals())
             {

@@ -113,7 +113,6 @@ void ElfReader::buildSections()
         if(Literal)
         {
             // Transcribe unloaded, literal data to an address-less section with a single DataBlock.
-            gtirb::Section *S = Module->addSection(*Context, Section.name());
             std::vector<uint8_t> Bytes = Section.content();
             gtirb::ByteInterval *I = S->addByteInterval(*Context, Bytes.begin(), Bytes.end(),
                                                         Section.size(), Bytes.size());

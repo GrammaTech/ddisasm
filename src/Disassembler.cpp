@@ -877,7 +877,7 @@ void buildCodeBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
             {
                 if(gtirb::ByteInterval &byteInterval = *it.begin(); byteInterval.getAddress())
                 {
-                    if(section.getName() != "pydata")
+                    if(section.isFlagSet(gtirb::SectionFlag::Loaded))
                     {
                         uint64_t blockOffset = blockAddress - *byteInterval.getAddress();
                         uint64_t isThumb = static_cast<uint64_t>(blockAddress) & 1;
