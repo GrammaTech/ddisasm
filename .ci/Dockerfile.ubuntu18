@@ -76,10 +76,6 @@ RUN cd /usr/local/src \
     && make \
     && make install
 
-# Install capstone
-COPY libcapstone-dev_*_amd64.deb /ddisasm/
-RUN dpkg -i /ddisasm/libcapstone-dev_*_amd64.deb
-
 # Install libehp
 RUN git clone https://git.zephyr-software.com/opensrc/libehp.git \
     && cd libehp \
