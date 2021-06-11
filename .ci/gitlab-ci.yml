@@ -194,7 +194,9 @@ build-static:
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
     # build gtirb-pprinter
-    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b master
+    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
+    - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
+    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b $GTIRB_PPRINTER_BRANCH
     - mkdir gtirb-pprinter/build
     - cd gtirb-pprinter/build
     - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
@@ -230,7 +232,9 @@ static-drivers:
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
     # build gtirb-pprinter
-    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b master
+    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
+    - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
+    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b $GTIRB_PPRINTER_BRANCH
     - cd gtirb-pprinter
     - mkdir build && cd build
     - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
