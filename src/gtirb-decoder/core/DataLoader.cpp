@@ -65,11 +65,11 @@ void DataLoader::load(const gtirb::Module& Module, DataFacts& Facts)
         std::optional<gtirb::Addr> Addr = Section.getAddress();
         std::optional<uint64_t> Size = Section.getSize();
 
-        if(!Min || Addr && *Addr < *Min)
+        if(!Min || (Addr && *Addr < *Min))
         {
             Min = Addr;
         }
-        if(!Max || Addr && Size && (*Addr + *Size) > *Max)
+        if(!Max || (Addr && Size && (*Addr + *Size) > *Max))
         {
             Max = *Addr + *Size;
         }

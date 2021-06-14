@@ -33,12 +33,6 @@ ElfReader::ElfReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary)
     assert(Elf && "Expected ELF");
 };
 
-// NOTE: 'pydata' section is specially handled in this function.
-// It is an unloadable section that is inserted by pyinstaller.
-// Pydata section is where python script's pyc is placed in the ELF
-// binary. We want to create a data-block for the section, but do not
-// process through ddisasm, and propagate it to gtirb IR as it is.
-//
 void ElfReader::buildSections()
 {
     std::map<uint64_t, gtirb::UUID> SectionIndex;
