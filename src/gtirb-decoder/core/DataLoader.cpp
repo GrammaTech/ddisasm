@@ -59,28 +59,24 @@ void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program
 
 void DataLoader::load(const gtirb::Module& Module, DataFacts& Facts)
 {
-    // Set the lowest virtual address.
+    std::optional<gtirb::Addr> Min, Max;
     for(const auto& Section : Module.sections())
     {
-        if(Section.getAddress())
-        {
-            Facts.Min = *Section.getAddress();
-            break;
-        }
-    }
+        std::optional<gtirb::Addr> Addr = Section.getAddress();
+        std::optional<uint64_t> Size = Section.getSize();
 
-    // Set the maximum virtual address.
-    for(const auto& Section : Module.sections())
-    {
-        if(Section.getAddress() && Section.getSize())
+        if(!Min || Addr && *Addr < *Min)
         {
-            gtirb::Addr End = *Section.getAddress() + *Section.getSize();
-            if(End > Facts.Max)
-            {
-                Facts.Max = End;
-            }
+            Min = Addr;
+        }
+        if(!Max || Addr && Size && (*Addr + *Size) > *Max)
+        {
+            Max = *Addr + *Size;
         }
     }
+    assert(Min && Max && "Module has empty memory image.");
+    Facts.Min = *Min;
+    Facts.Max = *Max;
 
     for(const auto& Section : Module.sections())
     {
