@@ -100,6 +100,17 @@ Jump tables with entry sizes of 1 or 2 appear in data and can be detected later.
 In these jump tables, the reference address coincides with the starting address
 of the jump table.
 */
+.decl relative_address_jt(EA:address,Size:unsigned,TableStart:address,Reference:address,Dest:address,DestIsFirstOrSecond:symbol)
+.output relative_address_jt
+
+relative_address_jt(EA,Size,TableStart,Reference,Dest,DestIsFirstOrSecond):-
+    relative_address(EA,Size,TableStart,Reference,Dest,DestIsFirstOrSecond),
+    // Jump-table should consist of multiple entries.
+    (
+        relative_address(EA-Size,Size,TableStart,Reference,_,DestIsFirstOrSecond);
+        relative_address(EA+Size,Size,TableStart,Reference,_,DestIsFirstOrSecond)
+    ).
+
 .decl relative_address(EA:address,Size:unsigned,TableStart:address,Reference:address,Dest:address,DestIsFirstOrSecond:symbol)
 .output relative_address
 
