@@ -361,5 +361,10 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    if(GTIRB)
+    {
+        GTIRB->Context->ForgetAllocations();
+    }
+
     return 0;
 }
