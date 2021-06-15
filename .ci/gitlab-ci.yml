@@ -372,15 +372,13 @@ package-centos8:
     paths:
       - build
   script:
-    # Acquire gtirb artifacts
-    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-$OS --output "gtirb-${OS}-artifacts.zip"
-    - unzip gtirb-${OS}-artifacts.zip
-    # Acquire gtirb pprinter artifacts
     - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
     - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
-    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-$OS --output "gtirb-pprinter-${OS}-artifacts.zip"
-    - unzip gtirb-pprinter-${OS}-artifacts.zip
-    - dpkg -i libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
+    - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-$OS --output "gtirb.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-$OS --output "gtirb-pprinter.zip"
+    - for pkg in gtirb gtirb-pprinter capstone; do unzip $pkg.zip; done
+    - dpkg -i libcapstone-dev.deb libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
     - cd build
     - cpack -G "DEB" -D CPACK_DDISASM_PACKAGE=deb-ddisasm
     - cpack -G "DEB" -D CPACK_DDISASM_PACKAGE=deb-debug
