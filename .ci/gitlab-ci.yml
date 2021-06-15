@@ -66,7 +66,7 @@ build-conan-gcc9:
   script:
     *build-conan
 
-conan-windows:
+.conan-windows-template: &conan-windows-template
   stage: build
   tags: [ddisasm-windows]
   script:
@@ -81,7 +81,17 @@ conan-windows:
     - export SOUFFLE_INCLUDE_DIR="C:\\users\\vagrant\\AppData\\local\\Packages\\CanonicalGroupLimited.Ubuntu18.04onWindows_79rhkp1fndgsc\\localstate\\rootfs\\usr\\local\\include"
     - export PYTHON="C:\\Python39\\python.exe"
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
-    - python .ci/build.py
+    - python .ci/build.py -s build_type=$BUILD_TYPE
+
+conan-windows-debug:
+  variables:
+    BUILD_TYPE: Debug
+  <<: *conan-windows-template
+
+conan-windows-debug:
+  variables:
+    BUILD_TYPE: Release
+  <<: *conan-windows-template
 
 .build-template: &build
   artifacts:
@@ -109,17 +119,6 @@ conan-windows:
     - 'LIEF_LIBRARY=/usr/lib/libLIEF.a && [ -f $LIEF_LIBRARY ] || LIEF_LIBRARY=/usr/lib/libLIEF.so'
     - cmake -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_DEBIAN_PACKAGE_RELEASE="$(lsb_release -sc)" -DBUILD_FUNINFER=1 -DLIEF_ROOT=/usr/ -DLIEF_LIBRARY=${LIEF_LIBRARY} -DDDISASM_STRIP_DEBUG_SYMBOLS=On ..
     - make
-
-.build-windows-template: &build-windows
-  artifacts:
-    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
-    paths:
-      - ./DDISASM-*-win64
-  script:
-    - systeminfo
-    - git clone https://git.zephyr-software.com/opensrc/libehp.git
-    - cd libehp && git reset --hard 953f45ba9fb4b1afe38b7c5ecd9b9fa55f17ff49 && cd ..
-    - .ci/build-windows.sh ${BUILD_TYPE}
 
 .test-and-tag-template: &test-and-tag
   script:
@@ -248,22 +247,6 @@ static-drivers:
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
     # For verification purposes, print ldd of the driver here.
     - ldd bin/ddisasm
-
-build-windows-msvc-debug:
-  stage: build
-  tags:
-    - ddisasm-windows
-  variables:
-    BUILD_TYPE: 'Debug'
-  <<: *build-windows
-
-build-windows-msvc-relwithdebinfo:
-  stage: build
-  tags:
-    - ddisasm-windows
-  variables:
-    BUILD_TYPE: 'RelWithDebInfo'
-  <<: *build-windows
 
 build-centos8-gcc-relwithdebuginfo:
   stage: build
