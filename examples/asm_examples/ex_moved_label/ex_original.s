@@ -29,7 +29,7 @@
     .globl	main
     .type	main, @function
 main:
-.cfi_startproc 
+.cfi_startproc
 .cfi_lsda 255
 .cfi_personality 255
 .cfi_def_cfa 7, 8
@@ -49,8 +49,8 @@ main:
             xor EAX,EAX
             pop RDX
 .cfi_def_cfa_offset 8
-            ret 
-.cfi_endproc 
+            ret
+.cfi_endproc
 
             nop
             nop
@@ -99,7 +99,7 @@ main:
 #-----------------------------------
 print:
 
-.cfi_startproc 
+.cfi_startproc
 .cfi_lsda 255
 .cfi_personality 255
 .cfi_def_cfa 7, 8
@@ -141,8 +141,8 @@ point.3:
 .cfi_def_cfa_offset 16
             pop RBP
 .cfi_def_cfa_offset 8
-            ret 
-.cfi_endproc 
+            ret
+.cfi_endproc
 
             nop
             nop
@@ -190,7 +190,6 @@ point.3:
 data_start:
           .zero 8
           .quad 0
-#           : WARNING:0: no symbol for address 0x4008 
 #-----------------------------------
 .globl array
 .type array, @object

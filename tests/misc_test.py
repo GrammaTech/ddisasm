@@ -127,14 +127,18 @@ class MovedLabelTests(unittest.TestCase):
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
 
-            symbol_of_interest = [
-                s for s in m.symbols if s.name == "point.1"
-            ][0]
+            symbol_of_interest = [s for s in m.symbols if s.name == "point.1"][
+                0
+            ]
             assert isinstance(symbol_of_interest.referent, gtirb.CodeBlock)
 
             block = symbol_of_interest.referent
             bi = block.byte_interval
-            sexpr = set(bi.symbolic_expressions_at(range(block.address,block.address+block.size)))
+            sexpr = set(
+                bi.symbolic_expressions_at(
+                    range(block.address, block.address + block.size)
+                )
+            )
             self.assertEqual(len(sexpr), 1)
             se1 = next(iter(sexpr))[2]
             assert isinstance(se1, gtirb.SymAddrConst)
