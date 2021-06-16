@@ -59,18 +59,32 @@ void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program
 
 void DataLoader::load(const gtirb::Module& Module, DataFacts& Facts)
 {
-    assert(Module.getAddress() && "Module has non-addressable section data.");
-    Facts.Min = *Module.getAddress();
+    std::optional<gtirb::Addr> Min, Max;
+    for(const auto& Section : Module.sections())
+    {
+        std::optional<gtirb::Addr> Addr = Section.getAddress();
+        std::optional<uint64_t> Size = Section.getSize();
 
-    assert(Module.getSize() && "Module has non-calculable size.");
-    Facts.Max = *Module.getAddress() + *Module.getSize();
+        if(!Min || (Addr && *Addr < *Min))
+        {
+            Min = Addr;
+        }
+        if(!Max || (Addr && Size && (*Addr + *Size) > *Max))
+        {
+            Max = *Addr + *Size;
+        }
+    }
+    assert(Min && Max && "Module has empty memory image.");
+    Facts.Min = *Min;
+    Facts.Max = *Max;
 
     for(const auto& Section : Module.sections())
     {
         bool Executable = Section.isFlagSet(gtirb::SectionFlag::Executable);
         bool Initialized = Section.isFlagSet(gtirb::SectionFlag::Initialized);
+        bool Loaded = Section.isFlagSet(gtirb::SectionFlag::Loaded);
 
-        if(Executable || Initialized)
+        if(Loaded && (Executable || Initialized))
         {
             for(const auto& ByteInterval : Section.byte_intervals())
             {
