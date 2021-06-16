@@ -1,6 +1,4 @@
 import platform
-import os
-import subprocess
 import unittest
 from disassemble_reassemble_check import compile, cd, disassemble
 from pathlib import Path
