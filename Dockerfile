@@ -137,7 +137,7 @@ RUN apt-get -y update \
       python3 \
       wget
 
-RUN wget https://grammatech.github.io/gtirb/pkgs/xenial/libcapstone-dev_4.0.1-gt3_amd64.deb \
+RUN wget https://download.grammatech.com/gtirb/files/apt-repo/pool/unstable/libc/libcapstone-dev/libcapstone-dev_4.0.1-gt4_amd64.deb \
   && dpkg -i libcapstone-dev_*_amd64.deb \
   && rm libcapstone-dev_*_amd64.deb
 
