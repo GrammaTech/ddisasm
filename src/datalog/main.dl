@@ -565,6 +565,7 @@ bss_section_limits(Begin,LastSect+SizeLast):-
 data segments can be data sections or fragments of the code section that
 contain data instead of code.
 */
+
 .decl initialized_data_segment(Begin:address,End:address)
 .output initialized_data_segment
 

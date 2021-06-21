@@ -48,6 +48,9 @@ using ExportEntry = std::tuple<uint64_t, int64_t, std::string>;
 // A Resource is a tuple of the form { RES header, data length, data ptr}.
 using PeResource = std::tuple<std::vector<uint8_t>, gtirb::Offset, uint64_t>;
 
+// A Resource is a tuple of the form { RES header, data length, data ptr}.
+using DebugData = std::tuple<std::string, uint64_t, uint64_t>;
+
 /// \file AuxDataSchema.h
 /// \ingroup AUXDATA_GROUP
 /// \brief AuxData types used by ddisasm that are not sanctioned.
@@ -154,13 +157,6 @@ namespace gtirb
             typedef std::map<gtirb::Offset, uint64_t> Type;
         };
 
-        // \brief List on PE Resources in the form <header, data_offset, data_length
-        struct PeResources
-        {
-            static constexpr const char* Name = "peResources";
-            typedef std::vector<std::tuple<std::vector<uint8_t>, gtirb::Offset, uint64_t>> Type;
-        };
-
         /// \brief Auxiliary data that stores the version of ddisasm used to
         // produce the GTIRB.
         struct DdisasmVersion
@@ -204,6 +200,30 @@ namespace gtirb
         {
             static constexpr const char* Name = "peExportedSymbols";
             typedef std::vector<gtirb::UUID> Type;
+        };
+
+        // \brief Auxiliary data for PE resources.
+        struct PeResources
+        {
+            static constexpr const char* Name = "peResources";
+            // Tuples of the form {header, data_offset, data_length}.
+            typedef std::vector<std::tuple<std::vector<uint8_t>, gtirb::Offset, uint64_t>> Type;
+        };
+
+        /// \brief Auxiliary data representing the data directory entries of a PE file.
+        struct PeDataDirectories
+        {
+            static constexpr const char* Name = "peDataDirectories";
+            // Tuples of the form {Type, Address, Size}.
+            typedef std::vector<std::tuple<std::string, uint64_t, uint64_t>> Type;
+        };
+
+        /// \brief Auxiliary data listing of debug data boundaries in a PE image.
+        struct PeDebugData
+        {
+            static constexpr const char* Name = "peDebugData";
+            // Tuples of the form {Type, Address, Size}.
+            typedef std::vector<std::tuple<std::string, uint64_t, uint64_t>> Type;
         };
 
         /// \brief Auxiliary data for Souffle fact files.

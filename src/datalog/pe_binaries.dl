@@ -23,11 +23,17 @@
 
 // This module defines predicates specific of PE binaries
 
+.decl data_directory(Type:symbol,Address:address,Size:unsigned)
+.input data_directory
+
 .decl import_entry(Address:address,Ordinal:number,Function:symbol,Library:symbol)
 .input import_entry
 
 .decl export_entry(Address:address,Ordinal:number,Name:symbol)
 .input export_entry
+
+.decl pe_debug_data(Type:symbol,Address:address,Size:unsigned)
+.input pe_debug_data
 
 .decl pe_section_characteristics(Name:symbol,Mask:unsigned)
 
@@ -94,6 +100,16 @@ code_section(Section):-
 // Implicit page for KUSER_SHARED_DATA
 data_segment(0x7FFE0000,0x7FFE1000):-
     binary_format("PE").
+
+.decl pe_data(EA:address)
+
+pe_data(EA):-
+    possible_ea(EA),
+    (
+        data_directory(_,Begin,Size);
+        pe_debug_data(_,Begin,Size)
+    ),
+    Size > 0, EA >= Begin, EA < (Begin + Size).
 
 inferred_symbol_name(0x7FFE0000,"KUSER_SHARED_DATA","LOCAL","NONE"),
 moved_label_class(EA,Op_index,"KUSER_SHARED_DATA"),

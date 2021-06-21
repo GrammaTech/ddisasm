@@ -245,7 +245,8 @@ possible_target(EA):-
 // start a new block given a possible target
 code_in_block_candidate(EA,EA):-
     possible_target(EA),
-    possible_ea(EA).
+    possible_ea(EA),
+    !pe_data(EA).
 
 // extend the block as long as we are sure to fallthrough and we have not
 // reached a block limit
