@@ -111,6 +111,16 @@ pe_data(EA):-
     ),
     Size > 0, EA >= Begin, EA < (Begin + Size).
 
+initialized_data_segment(Begin,Begin+Size):-
+    (
+        data_directory(_,Begin,Size);
+        pe_debug_data(_,Begin,Size)
+    ),
+    Size > 0,
+    code_section(Section),
+    section(Section,SectionSize,SectionAddress),
+    Begin >= SectionAddress, Begin < (SectionAddress + SectionSize).
+
 inferred_symbol_name(0x7FFE0000,"KUSER_SHARED_DATA","LOCAL","NONE"),
 moved_label_class(EA,Op_index,"KUSER_SHARED_DATA"),
 moved_displacement_candidate(EA,Op_index,Dest,0x7FFE0000,Dest-0x7FFE0000):-
