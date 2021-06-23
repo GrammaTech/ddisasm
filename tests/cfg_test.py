@@ -94,6 +94,9 @@ class CfgTests(unittest.TestCase):
             self.assertEqual(len(list(add_block.outgoing_edges)), 2)
             self.assertEqual(len(list(add_block.incoming_edges)), 2)
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_arm_cfg(self):
         """
         Test ARM32 CFG
