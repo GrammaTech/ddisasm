@@ -128,9 +128,7 @@ class CfgTests(unittest.TestCase):
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
 
-            sym = [
-                s for s in m.symbols if s.name == "main"
-            ][0]
+            sym = [s for s in m.symbols if s.name == "main"][0]
             block = sym.referent
             self.assertEqual(len(list(block.outgoing_edges)), 2)
 
