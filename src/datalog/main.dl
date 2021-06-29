@@ -241,6 +241,7 @@ instruction_get_op(EA,Index,Op):-
         Op1 = Op1, Op2 = Op2, Op3 = Op3 // avoid warning
     ).
 
+
 .decl instruction_get_dest_op(ea:address,index:number,op:operand_code)
 
 instruction_get_dest_op(EA,1,Op):-
