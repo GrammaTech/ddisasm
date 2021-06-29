@@ -347,12 +347,11 @@ mov_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
 
 mov_pc_relative_immediate_to_reg(EA,Reg,1,Immediate):-
     code(EA),
-    (binary_isa("X86"); binary_isa("X64")),
-    instruction(EA,Size,_,"LEA",Op,Op2,0,0,_,_),
-    op_indirect(Op,"NONE",PC,"NONE",1,Offset,_),
-    arch.pc_register(PC),
-    Immediate = as(EA+Size,number) + Offset,
-    op_regdirect_contains_reg(Op2,Reg).
+    instruction_get_operation(EA,"LEA"),
+    pc_relative_operand(EA,1,Dest),
+    Immediate = as(Dest,number),
+    instruction_get_dest_op(EA,_,Op),
+    op_regdirect_contains_reg(Op,Reg).
 
 cmp_reg_to_reg(EA,Reg1,Reg2):-
     code(EA),
