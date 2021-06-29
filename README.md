@@ -80,24 +80,8 @@ $ cd build
 $ make
 ```
 
-## Installing ddisasm on ubuntu16 and 18
-Packages for Ubuntu 16 and 18 are available in the GTIRB apt repository.
-Ddisasm has some dependencies which are not available in the official
-repositories, and so certain PPAs must be added to the system in order for
-Ddisasm to be installed.
-
-Instructions for adding the appropriate PPAS are listed above, and can be used
-to install ddisasm as described below.
-
-### Ubuntu16
-```sh
-sudo apt-get install --allow-unauthenticated ddisasm
-```
-
-### Ubuntu18
-```sh
-sudo apt-get install ddisasm
-```
+## Installing
+See the [GTIRB readme](https://github.com/GrammaTech/gtirb/#installing).
 
 ## Running the analysis
 

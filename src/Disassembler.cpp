@@ -1647,14 +1647,7 @@ void shiftThumbBlocks(gtirb::Module &Module)
         gtirb::ChangeStatus Status;
         gtirb::ByteInterval *BI = CodeBlock->getByteInterval();
 
-        // Remove the CodeBlock from the ByteInterval.
-        Status = BI->removeBlock(CodeBlock);
-        if(Status != gtirb::ChangeStatus::Accepted)
-        {
-            std::cerr << "Failed to remove thumb block: " << BI->getAddress() << "\n";
-        }
-
-        // Add the CodeBlock back at the original offset less one.
+        // Relocate the CodeBlock at the original offset less one.
         Status = BI->addBlock(Offset - 1, CodeBlock);
         if(Status != gtirb::ChangeStatus::Accepted)
         {

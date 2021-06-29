@@ -7,6 +7,7 @@ import gtirb
 
 ex_dir = Path("./examples/")
 ex_asm_dir = ex_dir / "asm_examples"
+ex_arm_asm_dir = ex_dir / "arm_asm_examples"
 
 
 class CfgTests(unittest.TestCase):
@@ -92,6 +93,44 @@ class CfgTests(unittest.TestCase):
             add_block = add_symbol.referent
             self.assertEqual(len(list(add_block.outgoing_edges)), 2)
             self.assertEqual(len(list(add_block.incoming_edges)), 2)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_arm_cfg(self):
+        """
+        Test ARM32 CFG
+        """
+
+        binary = "ex"
+        adder_dir = ex_arm_asm_dir / "ex1_no_pie"
+        with cd(adder_dir):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "-O0",
+                    [],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    "arm-linux-gnueabihf-strip",
+                    False,
+                    False,
+                    format="--ir",
+                    extension="gtirb",
+                )
+            )
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            sym = [s for s in m.symbols if s.name == "main"][0]
+            block = sym.referent
+            self.assertEqual(len(list(block.outgoing_edges)), 2)
 
 
 if __name__ == "__main__":
