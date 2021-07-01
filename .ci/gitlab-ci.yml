@@ -88,7 +88,7 @@ conan-windows-debug:
     BUILD_TYPE: Debug
   <<: *conan-windows-template
 
-conan-windows-debug:
+conan-windows-release:
   variables:
     BUILD_TYPE: Release
   <<: *conan-windows-template
