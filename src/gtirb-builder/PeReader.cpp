@@ -40,14 +40,15 @@ gtirb::ErrorOr<GTIRB> PeReader::build()
     // TODO: Add support for Control Flow Guard.
     if(Pe->optional_header().has(LIEF::PE::DLL_CHARACTERISTICS::IMAGE_DLL_CHARACTERISTICS_GUARD_CF))
     {
-        std::cerr << "WARNING: Input binary has Control Flow Guard enabled.\n";
+        std::cerr << "WARNING: Input binary has Control Flow Guard enabled. (unsupported)\n";
     }
     // TODO: Add support for Profile Guided Optimization (POGO).
     for(const auto &Debug : Pe->debug())
     {
         if(Debug.has_pogo())
         {
-            std::cerr << "WARNING: Input binary compiled with Profile Guided Optimization.\n";
+            std::cerr << "WARNING: Input binary compiled with Profile Guided Optimization. "
+                         "(unsupported)\n";
         }
     }
     return GtirbBuilder::build();
