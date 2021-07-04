@@ -143,8 +143,7 @@ int main(int argc, char **argv)
         "option only works if the target binary contains complete relocation information.")(
         "skip-function-analysis,F",
         "Skip additional analyses to compute more precise function boundaries.")(
-        "keep-fact-database,f",
-        "Package the fact database into a an AuxData table.")(
+        "keep-fact-database,f", "Package the fact database into a an AuxData table.")(
         "no-cfi-directives",
         "Do not produce cfi directives. Instead it produces symbolic expressions in .eh_frame.")(
         "threads,j", po::value<unsigned int>()->default_value(1),

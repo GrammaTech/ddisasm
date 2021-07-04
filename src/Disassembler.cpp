@@ -1622,33 +1622,33 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
 
 void writeFactDatabase(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
-  std::map<std::string, std::string> dict;
-  // std::ios_base::openmode FileMask = std::ios::out;
-  for(souffle::Relation *Relation : prog->getInputRelations())
+    std::map<std::string, std::string> dict;
+    // std::ios_base::openmode FileMask = std::ios::out;
+    for(souffle::Relation *Relation : prog->getInputRelations())
     {
-      std::string key = Relation->getName();
-      souffle::SymbolTable SymbolTable = Relation->getSymbolTable();
-      
-      for(souffle::tuple Tuple : *Relation)
+        std::string key = Relation->getName();
+        souffle::SymbolTable SymbolTable = Relation->getSymbolTable();
+
+        for(souffle::tuple Tuple : *Relation)
         {
-          for(size_t I = 0; I < Tuple.size(); I++)
+            for(size_t I = 0; I < Tuple.size(); I++)
             {
-              if(I > 0)
+                if(I > 0)
                 {
-                  File << "\t";
+                    File << "\t";
                 }
-              if(Relation->getAttrType(I)[0] == 's')
+                if(Relation->getAttrType(I)[0] == 's')
                 {
-                  File << SymbolTable.resolve(Tuple[I]);
+                    File << SymbolTable.resolve(Tuple[I]);
                 }
-              else
+                else
                 {
-                  File << Tuple[I];
+                    File << Tuple[I];
                 }
             }
-          File << std::endl;
+            File << std::endl;
         }
-      File.close();
+        File.close();
     }
 }
 
