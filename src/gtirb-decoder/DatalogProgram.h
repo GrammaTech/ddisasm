@@ -26,11 +26,13 @@
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 
-#include <gtirb/gtirb.hpp>
 #include <map>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <tuple>
+
+#include <gtirb/gtirb.hpp>
 
 class CompositeLoader;
 
@@ -56,12 +58,16 @@ public:
         }
     }
 
+    void writeRelation(std::ostream& Stream, const souffle::Relation* Relation);
+
     void writeFacts(const std::string& Directory);
 
     void writeRelations(const std::string& Directory)
     {
         Program->printAll(Directory);
     }
+
+    void writeRelations(gtirb::Module& Module);
 
     void threads(unsigned int N)
     {

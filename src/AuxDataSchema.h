@@ -206,11 +206,11 @@ namespace gtirb
             typedef std::vector<gtirb::UUID> Type;
         };
 
-        /// \brief Auxiliary data for ddisasm fact database.
-        struct DDisasmDatabase
+        /// \brief Auxiliary data for Souffle output relations.
+        struct SouffleRelations
         {
-            static constexpr const char* Name = "DDisasmDatabase";
-            typedef std::map<std::string, std::string> Type;
+            static constexpr const char* Name = "souffleRelations";
+            typedef std::map<std::string, std::tuple<std::string, std::string>> Type;
         };
     } // namespace schema
 } // namespace gtirb
