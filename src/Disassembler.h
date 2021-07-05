@@ -22,14 +22,12 @@
 //===----------------------------------------------------------------------===//
 
 #include <souffle/SouffleInterface.h>
-#include <souffle/io/IOSystem.h>
 
 #include <gtirb/gtirb.hpp>
 
 #ifndef GTIRB_MODULE_DISASSEMBLER_H_
 #define GTIRB_MODULE_DISASSEMBLER_H_
 
-void writeFactDatabase(gtirb::Module &module, souffle::SouffleProgram *prog);
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
                        souffle::SouffleProgram *prog, bool selfDiagnose);
 void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose);

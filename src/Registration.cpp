@@ -61,6 +61,7 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<ExportEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<ImportEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<PeResources>();
+    gtirb::AuxDataContainer::registerAuxDataType<SouffleRelations>();
 }
 
 void registerDatalogLoaders()

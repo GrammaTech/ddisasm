@@ -143,7 +143,7 @@ int main(int argc, char **argv)
         "option only works if the target binary contains complete relocation information.")(
         "skip-function-analysis,F",
         "Skip additional analyses to compute more precise function boundaries.")(
-        "keep-fact-database,f", "Package the fact database into a an AuxData table.")(
+        "with-souffle-relations", "Package the souffle output relations into an AuxData table.")(
         "no-cfi-directives",
         "Do not produce cfi directives. Instead it produces symbolic expressions in .eh_frame.")(
         "threads,j", po::value<unsigned int>()->default_value(1),
@@ -284,12 +284,9 @@ int main(int argc, char **argv)
             printElapsedTimeSince(StartFunctionAnalysis);
         }
 
-        if(vm.count("keep-fact-database") != 0)
+        if(vm.count("with-souffle-relations") != 0)
         {
-            std::cerr << "Writing fact database " << std::flush;
-            auto StartFactDatabaseDump = std::chrono::high_resolution_clock::now();
-            writeFactDatabase(Module, Souffle->get());
-            printElapsedTimeSince(StartSCCsComputation);
+            Souffle->writeRelations(Module);
         }
 
         // Output GTIRB
