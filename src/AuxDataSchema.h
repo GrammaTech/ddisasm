@@ -206,12 +206,22 @@ namespace gtirb
             typedef std::vector<gtirb::UUID> Type;
         };
 
-        /// \brief Auxiliary data for Souffle output relations.
-        struct SouffleRelations
+        /// \brief Auxiliary data for Souffle fact files.
+        struct SouffleFacts
         {
-            static constexpr const char* Name = "souffleRelations";
+            static constexpr const char* Name = "souffleFacts";
+            // Entries of the form {Name, {TypeSignature, CSV}}.
             typedef std::map<std::string, std::tuple<std::string, std::string>> Type;
         };
+
+        /// \brief Auxiliary data for Souffle output files.
+        struct SouffleOutputs
+        {
+            static constexpr const char* Name = "souffleOutputs";
+            // Entries of the form {Name, {TypeSignature, CSV}}.
+            typedef std::map<std::string, std::tuple<std::string, std::string>> Type;
+        };
+
     } // namespace schema
 } // namespace gtirb
 

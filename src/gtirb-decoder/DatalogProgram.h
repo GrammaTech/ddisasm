@@ -62,6 +62,8 @@ public:
 
     void writeFacts(const std::string& Directory);
 
+    void writeFacts(gtirb::Module& Module);
+
     void writeRelations(const std::string& Directory)
     {
         Program->printAll(Directory);
