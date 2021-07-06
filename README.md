@@ -16,6 +16,8 @@ representation for binary analysis and reverse engineering.  The
 may then be used to pretty print the GTIRB to reassemblable assembly
 code.
 
+Use the [grammatech/ddisasm](https://hub.docker.com/r/grammatech/ddisasm)
+Docker image to try out `ddisasm` quickly.
 
 ## Dependencies
 
