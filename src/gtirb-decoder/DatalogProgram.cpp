@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 #include "DatalogProgram.h"
 
+#include <souffle/RamTypes.h>
 #include <fstream>
 #include <gtirb/gtirb.hpp>
 
@@ -58,13 +59,16 @@ void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation
             {
                 Stream << "\t";
             }
-            if(Relation->getAttrType(I)[0] == 's')
+            switch(Relation->getAttrType(I)[0])
             {
-                Stream << SymbolTable.resolve(Tuple[I]);
-            }
-            else
-            {
-                Stream << Tuple[I];
+                case 's':
+                    Stream << SymbolTable.resolve(Tuple[I]);
+                    break;
+                case 'u':
+                    Stream << souffle::ramBitCast<souffle::RamUnsigned>(Tuple[I]);
+                    break;
+                default:
+                    Stream << Tuple[I];
             }
         }
         Stream << "\n";
@@ -80,6 +84,38 @@ void DatalogProgram::writeFacts(const std::string &Directory)
         writeRelation(File, Relation);
         File.close();
     }
+}
+
+void DatalogProgram::writeFacts(gtirb::Module &Module)
+{
+    std::map<std::string, std::tuple<std::string, std::string>> Relations;
+
+    for(souffle::Relation *Relation : Program->getInputRelations())
+    {
+        if(Relation->getArity() == 0)
+        {
+            continue;
+        }
+
+        // Construct type signature string.
+        std::stringstream Type;
+        Type << "<" << std::string(Relation->getAttrType(0));
+        for(size_t I = 1; I < Relation->getArity(); I++)
+        {
+            Type << "," << Relation->getAttrType(I);
+        }
+        Type << ">";
+
+        // Write CSV to buffer.
+        std::stringstream Csv;
+        writeRelation(Csv, Relation);
+
+        // TODO: Compress CSV.
+
+        Relations[Relation->getName()] = {Type.str(), Csv.str()};
+    }
+
+    Module.addAuxData<gtirb::schema::SouffleFacts>(std::move(Relations));
 }
 
 void DatalogProgram::writeRelations(gtirb::Module &Module)
@@ -111,5 +147,5 @@ void DatalogProgram::writeRelations(gtirb::Module &Module)
         Relations[Relation->getName()] = {Type.str(), Csv.str()};
     }
 
-    Module.addAuxData<gtirb::schema::SouffleRelations>(std::move(Relations));
+    Module.addAuxData<gtirb::schema::SouffleOutputs>(std::move(Relations));
 }

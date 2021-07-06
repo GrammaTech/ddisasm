@@ -143,7 +143,7 @@ int main(int argc, char **argv)
         "option only works if the target binary contains complete relocation information.")(
         "skip-function-analysis,F",
         "Skip additional analyses to compute more precise function boundaries.")(
-        "with-souffle-relations", "Package the souffle output relations into an AuxData table.")(
+        "with-souffle-relations", "Package facts/output relations into an AuxData table.")(
         "no-cfi-directives",
         "Do not produce cfi directives. Instead it produces symbolic expressions in .eh_frame.")(
         "threads,j", po::value<unsigned int>()->default_value(1),
@@ -236,6 +236,11 @@ int main(int argc, char **argv)
             auto dir = vm["debug-dir"].as<std::string>() + "/";
             Souffle->writeFacts(dir);
         }
+        if(vm.count("with-souffle-relations"))
+        {
+            Souffle->writeFacts(Module);
+        }
+
         std::cerr << "Disassembling" << std::flush;
         unsigned int NThreads = vm["threads"].as<unsigned int>();
         Souffle->threads(NThreads);
@@ -255,6 +260,10 @@ int main(int argc, char **argv)
                       << std::endl;
             auto dir = vm["debug-dir"].as<std::string>() + "/";
             Souffle->writeRelations(dir);
+        }
+        if(vm.count("with-souffle-relations"))
+        {
+            Souffle->writeRelations(Module);
         }
         std::cerr << "Populating gtirb representation " << std::flush;
         auto StartGtirbBuilding = std::chrono::high_resolution_clock::now();
@@ -282,11 +291,6 @@ int main(int argc, char **argv)
             auto StartFunctionAnalysis = std::chrono::high_resolution_clock::now();
             FunctionInference.computeFunctions(*GTIRB->Context, Module, NThreads);
             printElapsedTimeSince(StartFunctionAnalysis);
-        }
-
-        if(vm.count("with-souffle-relations") != 0)
-        {
-            Souffle->writeRelations(Module);
         }
 
         // Output GTIRB
