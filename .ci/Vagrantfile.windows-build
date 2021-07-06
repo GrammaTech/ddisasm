@@ -37,7 +37,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.provision "setup-dev-tools", type: "shell", inline: <<-SHELL
     choco install -y git
-    choco install -y cmake
+    choco install -y cmake --version=3.14.1
     choco install -y msys2
     choco install -y ninja
     choco install -y python3 --version=3.9.1
