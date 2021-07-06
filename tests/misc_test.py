@@ -1,5 +1,7 @@
+import os
 import platform
 import unittest
+import subprocess
 from disassemble_reassemble_check import compile, cd, disassemble
 from pathlib import Path
 import gtirb
@@ -97,6 +99,52 @@ class AuxDataTests(unittest.TestCase):
                     ]
                     break
             assert found
+
+    def test_souffle_relations(self):
+        """Test `--with-souffle-relations' equivalence to `--debug-dir'."""
+
+        with cd(ex_dir / "ex1"):
+            # build
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+
+            # disassemble
+            if not os.path.exists("dbg"):
+                os.mkdir("dbg")
+            self.assertTrue(
+                disassemble(
+                    "ex",
+                    False,
+                    False,
+                    False,
+                    format="--ir",
+                    extension="gtirb",
+                    extra_args=[
+                        "-F",
+                        "--with-souffle-relations",
+                        "--debug-dir",
+                        "dbg",
+                    ],
+                )
+            )
+
+            # load the gtirb
+            ir = gtirb.IR.load_protobuf("ex.gtirb")
+            m = ir.modules[0]
+
+            # dump relations to directory
+            if not os.path.exists("aux"):
+                os.mkdir("aux")
+            for table, ext in [
+                ("souffleFacts", "facts"),
+                ("souffleOutputs", "csv"),
+            ]:
+                for name, relation in m.aux_data[table].data.items():
+                    _, csv = relation
+                    with open(f"aux/{name}.{ext}", "w") as out:
+                        out.write(csv)
+
+            # compare the relations directories
+            subprocess.check_call(["diff", "dbg", "aux"])
 
 
 class MovedLabelTests(unittest.TestCase):
