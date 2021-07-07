@@ -1,7 +1,7 @@
 # Restrict these test cases to systems with compatible QEMU packages.
 distro:
   name: Ubuntu
-  version: ["18.04"]
+  version: ["18.04", "20.04"]
 
 default: &default
   path: examples
@@ -27,30 +27,6 @@ default: &default
     strip: false
     skip: false
 
-zero-optimize: &zero-optimize
-  <<: *default
-  build:
-    c: ["aarch64-linux-gnu-gcc"]
-    cpp: ["aarch64-linux-gnu-g++"]
-    optimizations: ["-O0"]
-    flags: []
-
-zero-one-optimize: &zero-one-optimize
-  <<: *default
-  build:
-    c: ["aarch64-linux-gnu-gcc"]
-    cpp: ["aarch64-linux-gnu-g++"]
-    optimizations: ["-O0", "-O1"]
-    flags: []
-
-zero-one-two-optimize: &zero-one-two-optimize
-  <<: *default
-  build:
-    c: ["aarch64-linux-gnu-gcc"]
-    cpp: ["aarch64-linux-gnu-g++"]
-    optimizations: ["-O0", "-O1", "-O2"]
-    flags: []
-
 zero-one-two-three-optimize: &zero-one-two-three-optimize
   <<: *default
   build:
@@ -74,49 +50,60 @@ tests:
     <<: *default
 
   - name: ex_2modulesPIC
-    <<: *zero-one-two-three-optimize
+    <<: *default
 
   - name: ex_confusing_data
-    <<: *zero-one-optimize
-
-  - name: ex_struct
-    <<: *zero-one-optimize
+    <<: *default
 
   # FIXME: ex_exceptions{1,2,3}
 
   - name: ex_false_pointer_array
-    <<: *zero-optimize
+    <<: *default
 
-  # FIXME: ex_float
+  - name: ex_float
+    <<: *default
 
   - name: ex_fprintf
-    <<: *zero-one-optimize
+    <<: *default
 
   - name: ex_getoptlong
-    <<: *zero-one-optimize
+    <<: *default
 
-  # FIXME: ex_memberPointer
+  - name: ex_memberPointer
+    <<: *default
+    reassemble:
+      compiler: "aarch64-linux-gnu-g++"
+      flags: []
+      skip: false
 
   - name: ex_noreturn
     <<: *default
 
   - name: ex_pointerReatribution
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_pointerReatribution2
-    <<: *zero-optimize
+    <<: *default
 
   - name: ex_pointerReatribution3
-    <<: *zero-one-optimize
+    <<: *default
 
-  # FIXME: ex_stat
+  - name: ex_stat
+    <<: *default
 
   - name: ex_struct
-    <<: *zero-one-optimize
+    <<: *default
 
+  # FIXME: -Os: a new jump-table pattern: split_load after cfg changed
   - name: ex_switch
-    <<: *zero-one-optimize
+    <<: *zero-one-two-three-optimize
 
-  # FIXME: ex_uninitialized_data
+  - name: ex_uninitialized_data
+    <<: *default
 
-  # FIXME: ex_virtualDispatch
+  - name: ex_virtualDispatch
+    <<: *default
+    reassemble:
+      compiler: "aarch64-linux-gnu-g++"
+      flags: []
+      skip: false
