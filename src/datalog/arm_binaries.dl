@@ -395,6 +395,12 @@ block_needs_splitting_at(Dest):-
     symbolic_operand(_,_,Dest,"code"),
     code(Dest).
 
+block_needs_splitting_at(Dest+1):- // Thumb mode
+    binary_isa("ARM"),
+    symbolic_data(_,_,Dest),
+    (Dest band 1) = 0,
+    code(Dest+1).
+
 value_reg_edge(EA,Reg,EA,"NONE",0,as(Val,number)):-
     split_load_for_symbolization(_,EA,Val,_),
     instruction_get_dest_op(EA,_,DestRegOp),
@@ -516,17 +522,23 @@ arm_jump_table(EA_jump,Size,TableStart):-
     instruction_get_operation(EA_jump,Operation),
     arch.load_operation(Operation),
     arch.pc_register(PC),
-    // ldr pc, [r1,r2, lsl N]
+    // ldr pc, [pc,reg, lsl N]
     instruction_get_dest_op(EA_jump,_,RegOp),
     op_regdirect_contains_reg(RegOp,PC),
     instruction_get_src_op(EA_jump,_,IndOp),
     op_indirect(IndOp,"NONE",PC,Reg,Mult,Offset,NBits),
-    // TODO: Do we need contraints? Mult=4, Offset=0
-    Reg = Reg, Mult = Mult, Offset = Offset, // to avoid warnings
     Size = NBits / 8,
+    // Note that currently, the information of 'lsl N' is not propagated
+    // to ddisasm. We might want to.
+    !arch.pc_register(Reg),
+    Mult = as(Size,number),
+    Offset = 0,
     (
         Operation != substr(Operation,0,3), // Conditional
+        // 8: Assumes that there is a fall-through successor consisting
+        // of one instruction (typically a jump instruction)
         TableStart = EA_jump + 8
+        // TODO: check if the fall-through instruction is a jump
         ;
         Operation = substr(Operation,0,3),
         TableStart = EA_jump + 4
@@ -548,10 +560,6 @@ block_needs_splitting_at(as(TargetAddr,address)):-
 .decl litpool_ref(ea:address, register_name:register, ea_litpool:address, nbits:unsigned)
 .output litpool_ref
 
-block_points(LitPoolAddr,0,-9,"arm literal pool"), // ARM
-block_is_overlapping(LitPoolAddr),
-block_points(LitPoolAddr+1,0,-9,"arm literal pool"), // Thumb
-block_is_overlapping(LitPoolAddr+1),
 litpool_ref(EA,Reg,LitPoolAddr,NBits):-
     // LDR <Register> <IndirectOp>
     // e.g., ldr r3, [pc, Offset]
@@ -562,6 +570,7 @@ litpool_ref(EA,Reg,LitPoolAddr,NBits):-
     arch.pc_register(PC),
     instruction_get_dest_op(EA,_,RegOp),
     op_regdirect_contains_reg(RegOp,Reg),
+    !arch.pc_register(Reg),
     (
         (EA band 1) = 0,  Disp = 8 // ARM mode
         ;
@@ -570,6 +579,71 @@ litpool_ref(EA,Reg,LitPoolAddr,NBits):-
     Addr = as(EA,number)+Offset+as(Disp,number),
     // Align the address
     LitPoolAddr = as(Addr-(Addr band 3),address).
+
+.decl litpool_ref_double(ea:address, reg1:register, reg2:register, ea_litpool:address)
+.output litpool_ref_double
+
+// E.g., adr r, L
+//       ldrd r1, r2, [r]
+litpool_ref_double(EA,Reg1,Reg2,LitPoolAddr):-
+    // ADR Reg, Label
+    instruction_get_operation(EA0,"ADR"),
+    instruction_get_op(EA0,2,RegOp),
+    op_regdirect_contains_reg(RegOp,Reg),
+    instruction_get_op(EA0,1,OffsetOp),
+    op_immediate(OffsetOp, Offset),
+
+    next(EA0,EA),
+
+    // LDRD Reg1, Reg2, [Reg]
+    instruction_get_operation(EA,"LDRD"),
+    instruction_get_op(EA,3,Reg1Op),
+    op_regdirect_contains_reg(Reg1Op,Reg1),
+    instruction_get_op(EA,1,Reg2Op),
+    op_regdirect_contains_reg(Reg2Op,Reg2),
+    instruction_get_op(EA,2,IndOp),
+    op_indirect(IndOp,"NONE",Reg,"NONE",_,0,_),
+    (
+        (EA band 1) = 0,  Disp = 8 // ARM mode
+        ;
+        (EA band 1) != 0, Disp = 4 // Thumb mode
+    ),
+    Addr = as(EA,number)+Offset+as(Disp,number),
+    // Align the address
+    LitPoolAddr = as(Addr-(Addr band 3),address).
+
+block_points(Addr,0,-9,"arm literal pool"), // Thumb
+block_is_overlapping(Addr):-
+    litpool_ref(_,_,LitPoolAddr,_),
+    (
+        Addr = LitPoolAddr;
+        Addr = LitPoolAddr+1;
+        Addr = LitPoolAddr+2;
+        Addr = LitPoolAddr+3
+    ).
+
+block_points(Addr,0,-9,"arm literal pool"), // Thumb
+block_is_overlapping(Addr):-
+    litpool_ref_double(_,_,_,LitPoolAddr),
+    (
+        Addr = LitPoolAddr;
+        Addr = LitPoolAddr+1;
+        Addr = LitPoolAddr+2;
+        Addr = LitPoolAddr+3;
+        Addr = LitPoolAddr+4;
+        Addr = LitPoolAddr+5;
+        Addr = LitPoolAddr+6;
+        Addr = LitPoolAddr+7
+    ).
+
+block_points(Block,0,-3,"jump from arm literal pool"):-
+    block_is_overlapping(Block),
+    direct_jump(EA,Block),
+    (
+        litpool_ref(_,_,EA,_) // EA in ARM mode
+        ;
+        litpool_ref(_,_,EA-1,_) // EA in Thumb mode
+    ).
 
 symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
     litpool_ref(EA,_,LitPoolAddr,_).

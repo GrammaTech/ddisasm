@@ -104,6 +104,9 @@ std::optional<relations::Instruction> Arm32Loader::build(Arm32Facts& Facts,
 {
     const cs_arm& Details = CsInstruction.detail->arm;
     std::string Name = uppercase(CsInstruction.mnemonic);
+    if(auto index = Name.rfind(".W"); index != std::string::npos)
+        Name = Name.substr(0, index);
+
     std::vector<uint64_t> OpCodes;
 
     auto registerName = [this](uint64_t Reg) {

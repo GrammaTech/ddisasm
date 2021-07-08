@@ -620,6 +620,11 @@ inferred_symbol_name(EA,"main","GLOBAL","FUNC"):-
     binary_format("ELF"),
     main_function(EA).
 
+.decl return_conditional(EA:address)
+.output return_conditional
+
+return_conditional(0):- false.
+
 .decl no_return_call(EA:address)
 
 .decl function_pointer_section(Name:symbol)

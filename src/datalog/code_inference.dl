@@ -91,6 +91,11 @@ may_fallthrough(From,To):-
     !halt(From),
     !no_return_call(From).
 
+may_fallthrough(From,To):-
+    binary_isa("ARM"),
+    next(From,To),
+    return_conditional(From).
+
 .decl must_fallthrough(o:address,d:address)
 
 // Branch with a delay-slot must fallthrough
@@ -523,6 +528,7 @@ block_points(Block,0,1,"address in data"):-
 
 block_points(Block,0,2,"aligned address in data"):-
     !binary_isa("X86"),
+    !binary_isa("ARM"),
     block_is_overlapping(Block),
     address_in_data(Address,Block),
     arch.pointer_size(Pt_size),
