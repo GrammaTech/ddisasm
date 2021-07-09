@@ -100,6 +100,9 @@ class AuxDataTests(unittest.TestCase):
                     break
             assert found
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_souffle_relations(self):
         """Test `--with-souffle-relations' equivalence to `--debug-dir'."""
 
