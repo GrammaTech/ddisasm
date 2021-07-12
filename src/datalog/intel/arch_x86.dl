@@ -48,12 +48,12 @@ mov(EA):-
 .decl load_operation(Operation:symbol)
 
 // No rule for load_operation
-load_operation(""):-false.
+load_operation(""):- false.
 
 .decl store_operation(Operation:symbol)
 
 // No rule for store_operation
-store_operation(""):-false.
+store_operation(""):- false.
 
 .decl is_nop(EA:address)
 
