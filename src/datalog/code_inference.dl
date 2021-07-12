@@ -478,23 +478,27 @@ transitive_points("fde-entry").
 transitive_points("landing-pad").
 transitive_points("exc-region").
 
+// B  |-----|
+// R    |--|
+// or
+// B  |----|
+// R     |---|
 block_is_overlapping(Block),
 block_points(Block,0,-6,"overlap with relative-jump-table"):-
     block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
     relative_address_jt(Beg,_,_,_,_,_),
-    BegBlockAddr <= Beg, Beg< EndBlockAddr.
+    BegBlockAddr <= Beg, Beg < EndBlockAddr.
 
-block_is_overlapping(Block),
-block_points(Block,0,-6,"overlap with relative-jump-table"):-
-    block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
-    relative_address_jt(Beg,Size,_,_,_,_),
-    BegBlockAddr < Beg+Size, Beg+Size < EndBlockAddr.
-
+// B    |----|
+// R  |---|
+// or
+// B    |--|
+// R  |------|
 block_is_overlapping(Block),
 block_points(Block,0,-6,"overlap with relative-jump-table"):-
     relative_address_jt(Beg,Size,_,_,_,_),
     block_candidate_boundaries(Block,BegBlockAddr,_),
-    Beg < BegBlockAddr, BegBlockAddr< Beg+Size.
+    Beg <= BegBlockAddr, BegBlockAddr < Beg+Size.
 
 overlap_with_jump_table(Block),
 block_points(Block,0,-3,"possible relative-jump-table start"):-
@@ -594,6 +598,15 @@ block_points(Block,BlockPred,7,"may-fallthrough"):-
     !candidate_block_is_padding(BlockPred),
     !block_is_overlapping(BlockPred).
 
+block_points(Block,BlockPred,1,"may-fallthrough (weak)"):-
+    block_is_overlapping(Block),
+    may_fallthrough(EA,Block),
+    code_in_block_candidate_refined(EA,BlockPred),
+    !candidate_block_is_padding(BlockPred),
+    block_is_overlapping(BlockPred),
+    block_points(BlockPred,_,Points,_),
+    Points > 2.
+
 // it fits but the previous block does not fallthrough
 block_points(Block,BlockPred,3,"fits"):-
     block_is_overlapping(Block),
@@ -637,14 +650,6 @@ block_points(Block,Block_succ,1,"fallthrough_to"):-
     code_in_block_candidate_refined(_,Block_succ),
     !block_is_overlapping(Block_succ),
     !is_padding(Block_succ).
-
-// give a point if it may fallthrough to a jump-table target
-block_points(Block,Block_succ,3,"fallthrough_to jump-table target"):-
-    block_is_overlapping(Block),
-    code_in_block_candidate_refined(EA,Block),
-    may_fallthrough(EA,Block_succ),
-    code_in_block_candidate_refined(_,Block_succ),
-    relative_address_jt(_,_,_,_,Block_succ,_).
 
 // transitivity for fallthrough and direct jumps and calls
 

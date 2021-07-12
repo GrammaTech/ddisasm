@@ -469,8 +469,7 @@ relative_address_start(IndexTableStart,1,TableStart,Dest,"first"):-
     IndexTableStart = as(Offset,address),
     // Dest = AddressTable[Index]
     data_byte(IndexTableStart,Byte),
-    Dest = TableStart + Byte*4,
-    possible_ea(Dest).
+    Dest = TableStart + Byte*4.
 
 // Detect potential byte-offset, indirect jump-table index tables before data analyses.
 // These are like those above but with the additional __ImageBase base register.
