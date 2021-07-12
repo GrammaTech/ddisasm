@@ -2,6 +2,7 @@ variables:
   GTIRB_BRANCH: "master"
   CAPSTONE_BRANCH: "master"
   EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_API_V4_URL}/projects/1587/packages/pypi/simple
+  CONAN_PASSWORD: $CI_JOB_TOKEN
 
 stages:
   - check-format
@@ -53,7 +54,6 @@ build-conan-gcc7:
     - conan profile new default --detect
     - conan profile update settings.compiler.libcxx=libstdc++11 default
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
-    - export CONAN_PASSWORD="$CI_JOB_TOKEN"
     - conan user ci_user -r gitlab -p
     # Install gtirb python wheel
     - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
@@ -74,7 +74,6 @@ build-conan-gcc9:
     - systeminfo
     # Set up user and remote
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
-    - export CONAN_PASSWORD="$CI_JOB_TOKEN"
     - conan user ci_user -r gitlab -p
     # Install gtirb python wheel
     - python -m pip install pip --upgrade && python -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
