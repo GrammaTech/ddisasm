@@ -486,7 +486,7 @@ transitive_points("exc-region").
 block_is_overlapping(Block),
 block_points(Block,0,-6,"overlap with relative-jump-table"):-
     block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
-    relative_address_jt(Beg,_,_,_,_,_),
+    relative_address(Beg,_,_,_,_,_),
     BegBlockAddr <= Beg, Beg < EndBlockAddr.
 
 // B    |----|
@@ -496,7 +496,7 @@ block_points(Block,0,-6,"overlap with relative-jump-table"):-
 // R  |------|
 block_is_overlapping(Block),
 block_points(Block,0,-6,"overlap with relative-jump-table"):-
-    relative_address_jt(Beg,Size,_,_,_,_),
+    relative_address(Beg,Size,_,_,_,_),
     block_candidate_boundaries(Block,BegBlockAddr,_),
     Beg <= BegBlockAddr, BegBlockAddr < Beg+Size.
 
@@ -639,7 +639,7 @@ block_points(Block,0,3,"appears"):-
 
 block_points(Block,0,3,"relative jump table target"):-
     block_is_overlapping(Block),
-    relative_address_jt(_,_,_,_,Block,_),
+    relative_address(_,_,_,_,Block,_),
     !relative_address(Block,_,_,_,_,_).
 
 // give a point if it may fallthrough to another block
