@@ -584,7 +584,13 @@ relative_address_start(TableStart,Size,0,Dest,"first"):-
     data_word(TableStart,Size,TableEntry),
     Dest = as(TableEntry,address),
     arch.pointer_size(Pt_size), Pt_size = Size,
-    possible_ea(Dest).
+    possible_ea(Dest),
+    // Check on the second entry as well.
+    // This is based on the assumption that a jump-table consists of
+    // multiple entries.
+    data_word(TableStart+Size,Size,TableEntry2),
+    Dest2 = as(TableEntry2,address),
+    possible_ea(Dest2).
 
 // Find the simplest form of jump table with moved label.
 //   i.e.  jmp dword ptr [REG*4 + TableStart - Mult]
@@ -611,7 +617,13 @@ relative_address_start(TableStart,Size,0,Dest,"first"):-
     data_word(TableStart,Size,TableEntry),
     Dest = as(TableEntry,address),
     arch.pointer_size(Pt_size), Pt_size = Size,
-    possible_ea(Dest).
+    possible_ea(Dest),
+    // Check on the second entry as well.
+    // This is based on the assumption that a jump-table consists of
+    // multiple entries.
+    data_word(TableStart+Size,Size,TableEntry2),
+    Dest2 = as(TableEntry2,address),
+    possible_ea(Dest2).
 
 // lea REG, TableStart
 // mov REG, dword ptr [REG + REG2*4 - 8]
@@ -623,6 +635,12 @@ relative_address_start(TableStart,4,0,Dest,"first"):-
     data_word(TableStart,4,TableEntry),
     Dest = as(TableEntry,address),
     possible_ea(Dest),
+    // Check on the second entry as well.
+    // This is based on the assumption that a jump-table consists of
+    // multiple entries.
+    data_word(TableStart+4,4,TableEntry2),
+    Dest2 = as(TableEntry2,address),
+    possible_ea(Dest2),
 
     next(EA_load,EA_mov),
     arch.mov(EA_mov),
