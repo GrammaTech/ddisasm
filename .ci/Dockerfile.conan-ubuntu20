@@ -23,6 +23,7 @@ RUN apt-get update -y \
 RUN apt-get -y update && \
     apt-get -y install \
     gcc-arm-linux-gnueabihf \
+    g++-arm-linux-gnueabihf \
     gcc-aarch64-linux-gnu \
     g++-aarch64-linux-gnu \
     gcc-mips-linux-gnu \
