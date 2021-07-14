@@ -34,6 +34,7 @@
 #include "gtirb-decoder/target/PeX86Loader.h"
 #include "gtirb-decoder/target/RawArm32Loader.h"
 #include "gtirb-decoder/target/RawArm64Loader.h"
+#include "gtirb-decoder/target/RawMips32Loader.h"
 #include "gtirb-decoder/target/RawX64Loader.h"
 #include "gtirb-decoder/target/RawX86Loader.h"
 
@@ -102,6 +103,14 @@ void registerDatalogLoaders()
     // Register ELF-MIPS32-LE target.
     DatalogProgram::registerLoader(
         {gtirb::FileFormat::ELF, gtirb::ISA::MIPS32, gtirb::ByteOrder::Little}, ElfMips32LELoader);
+
+    // Register RAW-MIPS32-BE target.
+    DatalogProgram::registerLoader(
+        {gtirb::FileFormat::RAW, gtirb::ISA::MIPS32, gtirb::ByteOrder::Big}, RawMips32BELoader);
+
+    // Register RAW-MIPS32-LE target.
+    DatalogProgram::registerLoader(
+        {gtirb::FileFormat::RAW, gtirb::ISA::MIPS32, gtirb::ByteOrder::Little}, RawMips32LELoader);
 #endif
 
 #if defined(DDISASM_X86_32)
