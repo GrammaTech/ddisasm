@@ -222,6 +222,12 @@ namespace gtirb
             typedef std::map<std::string, std::tuple<std::string, std::string>> Type;
         };
 
+        /// \brief Auxiliary data for the list of possible entry points in a raw binary.
+        struct RawEntries
+        {
+            static constexpr const char* Name = "rawEntries";
+            typedef std::vector<uint64_t> Type;
+        };
     } // namespace schema
 } // namespace gtirb
 
