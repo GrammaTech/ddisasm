@@ -1617,7 +1617,11 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
             module.setEntryPoint(&*it.begin());
         }
     }
-    assert(module.getEntryPoint() && "Failed to set module entry point.");
+
+    if(module.getFileFormat() != gtirb::FileFormat::RAW && !module.getEntryPoint())
+    {
+        std::cerr << "WARNING: Failed to set module entry point.\n";
+    }
 }
 
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,

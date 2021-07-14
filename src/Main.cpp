@@ -148,7 +148,9 @@ int main(int argc, char **argv)
         "Do not produce cfi directives. Instead it produces symbolic expressions in .eh_frame.")(
         "threads,j", po::value<unsigned int>()->default_value(1),
         "Number of cores to use. It is set to the number of cores in the machine by default")(
-        "generate-import-libs", "Generated .DEF and .LIB files for imported libraries (PE).");
+        "generate-import-libs", "Generated .DEF and .LIB files for imported libraries (PE).")(
+        "no-analysis,n",
+        "Do not perform disassembly. This option only parses/loads the binary object into GTIRB.");
     po::positional_options_description pd;
     pd.add("input-file", -1);
 
@@ -204,6 +206,23 @@ int main(int argc, char **argv)
     {
         std::cerr << "There was a problem loading the binary file " << filename << "\n";
         return 1;
+    }
+
+    // Output raw GTIRB file.
+    if(vm.count("no-analysis") && vm.count("ir"))
+    {
+        std::string name = vm["ir"].as<std::string>();
+        if(name == "-")
+        {
+            setStdoutToBinary();
+            GTIRB->IR->save(std::cout);
+        }
+        else
+        {
+            std::ofstream out(name, std::ios::out | std::ios::binary);
+            GTIRB->IR->save(out);
+        }
+        return 0;
     }
 
     // Decode and load GTIRB Module into the SouffleProgram context.
