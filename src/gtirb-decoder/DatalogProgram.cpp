@@ -67,6 +67,9 @@ void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation
                 case 'u':
                     Stream << souffle::ramBitCast<souffle::RamUnsigned>(Tuple[I]);
                     break;
+                case 'f':
+                    Stream << souffle::ramBitCast<souffle::RamFloat>(Tuple[I]);
+                    break;
                 default:
                     Stream << Tuple[I];
             }
