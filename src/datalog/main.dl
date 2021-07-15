@@ -181,6 +181,10 @@ This module:
 .decl address_in_data(ea:address,value:address)
 .input address_in_data
 
+// known data regions
+.decl data_region(Begin:address,Size:unsigned)
+.input data_region
+
 ///////////////////////////////////////////////////////////////
 // Initialize components
 

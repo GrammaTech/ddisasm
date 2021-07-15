@@ -97,29 +97,13 @@ code_section(Section):-
     pe_section_characteristics("IMAGE_SCN_CNT_CODE",Exec),
     Flags band Exec >0.
 
+data_region(Begin,Size):-
+    data_directory(_,Begin,Size), Size > 0;
+    pe_debug_data(_,Begin,Size), Size > 0.
+
 // Implicit page for KUSER_SHARED_DATA
 data_segment(0x7FFE0000,0x7FFE1000):-
     binary_format("PE").
-
-.decl pe_data(EA:address)
-
-pe_data(EA):-
-    possible_ea(EA),
-    (
-        data_directory(_,Begin,Size);
-        pe_debug_data(_,Begin,Size)
-    ),
-    Size > 0, EA >= Begin, EA < (Begin + Size).
-
-initialized_data_segment(Begin,Begin+Size):-
-    (
-        data_directory(_,Begin,Size);
-        pe_debug_data(_,Begin,Size)
-    ),
-    Size > 0,
-    code_section(Section),
-    section(Section,SectionSize,SectionAddress),
-    Begin >= SectionAddress, Begin < (SectionAddress + SectionSize).
 
 inferred_symbol_name(0x7FFE0000,"KUSER_SHARED_DATA","LOCAL","NONE"),
 moved_label_class(EA,Op_index,"KUSER_SHARED_DATA"),

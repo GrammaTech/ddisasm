@@ -165,6 +165,11 @@ invalid(From,"propagate from invalid"):-
         pc_relative_call(From,To)
     ).
 
+invalid(EA,"known data region"):-
+    data_region(Begin,Size),
+    instruction(EA,_,_,_,_,_,_,_,_,_),
+    Size > 0, EA >= Begin, EA < (Begin + Size).
+
 .decl possible_ea(EA:address)
 
 possible_ea(EA):-
@@ -245,8 +250,7 @@ possible_target(EA):-
 // start a new block given a possible target
 code_in_block_candidate(EA,EA):-
     possible_target(EA),
-    possible_ea(EA),
-    !pe_data(EA).
+    possible_ea(EA).
 
 // extend the block as long as we are sure to fallthrough and we have not
 // reached a block limit
