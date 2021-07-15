@@ -45,6 +45,7 @@
 
 #include "AuxDataSchema.h"
 #include "Disassembler.h"
+#include "Interpreter.h"
 #include "Registration.h"
 #include "Version.h"
 #include "gtirb-builder/GtirbBuilder.h"
@@ -150,7 +151,10 @@ int main(int argc, char **argv)
         "Number of cores to use. It is set to the number of cores in the machine by default")(
         "generate-import-libs", "Generated .DEF and .LIB files for imported libraries (PE).")(
         "no-analysis,n",
-        "Do not perform disassembly. This option only parses/loads the binary object into GTIRB.");
+        "Do not perform disassembly. This option only parses/loads the binary object into GTIRB.")(
+        "interpreter,I", po::value<std::string>(),
+        "Execute the souffle interpreter with the specified source file.");
+
     po::positional_options_description pd;
     pd.add("input-file", -1);
 
@@ -184,6 +188,13 @@ int main(int argc, char **argv)
     {
         std::cerr << "Error: missing input file\nTry '" << argv[0]
                   << " --help' for more information.\n";
+        return 1;
+    }
+
+    // TODO: Use a temporary directory if `--debug-dir' isn't specified.
+    if(vm.count("interpreter") && !vm.count("debug-dir"))
+    {
+        std::cerr << "Error: missing `--debug-dir' argument required by `--interpreter'\n";
         return 1;
     }
 
@@ -261,18 +272,32 @@ int main(int argc, char **argv)
         }
 
         std::cerr << "Disassembling" << std::flush;
-        unsigned int NThreads = vm["threads"].as<unsigned int>();
-        Souffle->threads(NThreads);
+        unsigned int Threads = vm["threads"].as<unsigned int>();
+
         auto StartDisassembling = std::chrono::high_resolution_clock::now();
-        try
+        if(vm.count("interpreter"))
         {
-            Souffle->run();
+            // Disassemble with the interpeter engine.
+            std::cerr << " (interpreter)";
+            const std::string &DebugDir = vm["debug-dir"].as<std::string>();
+            const std::string &DatalogFile = vm["interpreter"].as<std::string>();
+            runInterpreter(Module, Souffle->get(), DatalogFile, DebugDir, Threads);
         }
-        catch(std::exception &e)
+        else
         {
-            souffle::SignalHandler::instance()->error(e.what());
+            // Disassemble with the compiled, synthesized program.
+            Souffle->threads(Threads);
+            try
+            {
+                Souffle->run();
+            }
+            catch(std::exception &e)
+            {
+                souffle::SignalHandler::instance()->error(e.what());
+            }
         }
         printElapsedTimeSince(StartDisassembling);
+
         if(vm.count("debug-dir") != 0)
         {
             std::cerr << "Writing results to debug dir " << vm["debug-dir"].as<std::string>()
@@ -304,11 +329,11 @@ int main(int argc, char **argv)
                 FunctionInference.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
             }
             auto StartNoReturnAnalysis = std::chrono::high_resolution_clock::now();
-            NoReturn.computeNoReturn(Module, NThreads);
+            NoReturn.computeNoReturn(Module, Threads);
             printElapsedTimeSince(StartNoReturnAnalysis);
             std::cerr << "Detecting additional functions " << std::flush;
             auto StartFunctionAnalysis = std::chrono::high_resolution_clock::now();
-            FunctionInference.computeFunctions(*GTIRB->Context, Module, NThreads);
+            FunctionInference.computeFunctions(*GTIRB->Context, Module, Threads);
             printElapsedTimeSince(StartFunctionAnalysis);
         }
 

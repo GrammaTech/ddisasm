@@ -314,7 +314,8 @@ add_subdirectory(passes)
 # First build a static library of all the non-generated code.. This is just a
 # hack to get CMake to use different compile flags (because the generated
 # souffle code won't build with -Wall -Werror).
-add_library(disasm_main STATIC Disassembler.cpp Registration.cpp Main.cpp)
+add_library(disasm_main STATIC Disassembler.cpp Interpreter.cpp
+                               Registration.cpp Main.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_compile_options(disasm_main PRIVATE -Wno-unused-parameter)

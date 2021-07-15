@@ -82,6 +82,30 @@ $ cd build
 $ make
 ```
 
+### Debug build options
+
+One can selectively turn off ddisasm's various architecture support modules to speed up compilation time during development.
+For example:
+```
+$ cmake ./ -Bbuild -DDDISASM_ARM_64=OFF -DDDISASM_X86_32=OFF
+```
+will deactivate ARM_64 and X86_32 support.
+
+### Souffle interpreter
+
+For accelerated development of datalog logic, ddisasm can also execute the
+souffle interpreter. To invoke the interpreter, specify a `--debug-dir`
+directory path and the `--intepreter` parameter with the path of ddisasm's
+datalog entry.
+
+For example:
+```
+$ cd ddisasm/examples/ex1
+$ make
+$ mkdir dbg
+$ ddisasm --debug-dir dbg --interpreter ../../src/datalog/main.dl --asm ex.s ex
+```
+
 ## Installing
 See the [GTIRB readme](https://github.com/GrammaTech/gtirb/#installing).
 
@@ -129,6 +153,9 @@ Ddisasm accepts the following parameters:
 
 `-j [ --threads ]`
 :   Number of cores to use. It is set to the number of cores in the machine by default.
+
+`-I [ --interpreter ] arg`
+:   Execute the souffle interpreter with the specified source file.
 
 ## Rewriting a project
 
