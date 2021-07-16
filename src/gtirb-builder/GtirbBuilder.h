@@ -36,6 +36,7 @@ class GtirbBuilder
 {
 public:
     GtirbBuilder(std::string Path, std::shared_ptr<LIEF::Binary> Binary);
+    virtual ~GtirbBuilder() = default;
 
     struct GTIRB
     {
