@@ -493,7 +493,9 @@ public-bionic-unstable:
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
   variables:
-    ARTIFACT_URL: ${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_REF_NAME}/download?job=debian-installer-ubuntu18
+    PROJECT_ID: $CI_PROJECT_ID
+    PIPELINE_ID: $CI_PIPELINE_ID
+    JOB_NAME: debian-installer-ubuntu18
     APT_REPO: public
     APT_REPO_CODENAME: bionic
     APT_REPO_COMPONENT: unstable
@@ -503,7 +505,9 @@ public-focal-unstable:
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
   variables:
-    ARTIFACT_URL: ${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_REF_NAME}/download?job=debian-installer-ubuntu20
+    PROJECT_ID: $CI_PROJECT_ID
+    PIPELINE_ID: $CI_PIPELINE_ID
+    JOB_NAME: debian-installer-ubuntu20
     APT_REPO: public
     APT_REPO_CODENAME: focal
     APT_REPO_COMPONENT: unstable
@@ -513,7 +517,9 @@ public-bionic-stable:
   rules:
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
   variables:
-    ARTIFACT_URL: ${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_REF_NAME}/download?job=debian-installer-ubuntu18
+    PROJECT_ID: $CI_PROJECT_ID
+    PIPELINE_ID: $CI_PIPELINE_ID
+    JOB_NAME: debian-installer-ubuntu18
     APT_REPO: public
     APT_REPO_CODENAME: bionic
     APT_REPO_COMPONENT: stable
@@ -523,7 +529,9 @@ public-focal-stable:
   rules:
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
   variables:
-    ARTIFACT_URL: ${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_REF_NAME}/download?job=debian-installer-ubuntu20
+    PROJECT_ID: $CI_PROJECT_ID
+    PIPELINE_ID: $CI_PIPELINE_ID
+    JOB_NAME: debian-installer-ubuntu20
     APT_REPO: public
     APT_REPO_CODENAME: focal
     APT_REPO_COMPONENT: stable
