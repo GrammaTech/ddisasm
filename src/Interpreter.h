@@ -1,6 +1,7 @@
-//===- PeReader.h       -----------------------------------------*- C++ -*-===//
+
+//===- Interpreter.cpp ------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2020 GrammaTech, Inc.
+//  Copyright (C) 2021 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,30 +21,15 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef PE_GTIRB_BUILDER_H_
-#define PE_GTIRB_BUILDER_H_
 
-#include "./GtirbBuilder.h"
+#include <souffle/SouffleInterface.h>
 
-class PeReader : public GtirbBuilder
-{
-public:
-    PeReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary);
+#include <gtirb/gtirb.hpp>
 
-    gtirb::ErrorOr<GTIRB> build() override;
+#ifndef GTIRB_SRC_INTERPRETER_H_
+#define GTIRB_SRC_INTERPRETER_H_
 
-protected:
-    std::shared_ptr<LIEF::PE::Binary> Pe;
+void runInterpreter(gtirb::Module& Module, souffle::SouffleProgram* Program,
+                    const std::string& DatalogFile, const std::string& Directory, uint8_t Threads);
 
-    void initModule() override;
-    void buildSections() override;
-    void buildSymbols() override;
-    void addEntryBlock() override;
-    void addAuxData() override;
-
-    std::vector<PeResource> resources();
-    std::vector<ImportEntry> importEntries();
-    std::vector<ExportEntry> exportEntries();
-};
-
-#endif // PE_GTIRB_BUILDER_H_
+#endif // GTIRB_SRC_INTERPRETER_H_

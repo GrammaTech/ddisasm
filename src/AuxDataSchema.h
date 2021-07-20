@@ -205,6 +205,29 @@ namespace gtirb
             static constexpr const char* Name = "peExportedSymbols";
             typedef std::vector<gtirb::UUID> Type;
         };
+
+        /// \brief Auxiliary data for Souffle fact files.
+        struct SouffleFacts
+        {
+            static constexpr const char* Name = "souffleFacts";
+            // Entries of the form {Name, {TypeSignature, CSV}}.
+            typedef std::map<std::string, std::tuple<std::string, std::string>> Type;
+        };
+
+        /// \brief Auxiliary data for Souffle output files.
+        struct SouffleOutputs
+        {
+            static constexpr const char* Name = "souffleOutputs";
+            // Entries of the form {Name, {TypeSignature, CSV}}.
+            typedef std::map<std::string, std::tuple<std::string, std::string>> Type;
+        };
+
+        /// \brief Auxiliary data for the list of possible entry points in a raw binary.
+        struct RawEntries
+        {
+            static constexpr const char* Name = "rawEntries";
+            typedef std::vector<uint64_t> Type;
+        };
     } // namespace schema
 } // namespace gtirb
 

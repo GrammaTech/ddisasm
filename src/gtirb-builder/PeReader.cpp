@@ -26,12 +26,33 @@ namespace fs = boost::filesystem;
 #include "LIEF/PE.h"
 #include "PeReader.h"
 
+using GTIRB = GtirbBuilder::GTIRB;
+
 PeReader::PeReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary)
     : GtirbBuilder(Path, Binary)
 {
     Pe = std::dynamic_pointer_cast<LIEF::PE::Binary>(Binary);
     assert(Pe && "Expected PE");
 };
+
+gtirb::ErrorOr<GTIRB> PeReader::build()
+{
+    // TODO: Add support for Control Flow Guard.
+    if(Pe->optional_header().has(LIEF::PE::DLL_CHARACTERISTICS::IMAGE_DLL_CHARACTERISTICS_GUARD_CF))
+    {
+        std::cerr << "WARNING: Input binary has Control Flow Guard enabled. (unsupported)\n";
+    }
+    // TODO: Add support for Profile Guided Optimization (POGO).
+    for(const auto &Debug : Pe->debug())
+    {
+        if(Debug.has_pogo())
+        {
+            std::cerr << "WARNING: Input binary compiled with Profile Guided Optimization. "
+                         "(unsupported)\n";
+        }
+    }
+    return GtirbBuilder::build();
+}
 
 void PeReader::initModule()
 {

@@ -1,6 +1,6 @@
-//===- PeReader.h       -----------------------------------------*- C++ -*-===//
+//===- RawLoader.cpp --------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2020 GrammaTech, Inc.
+//  Copyright (C) 2021 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -11,7 +11,8 @@
 //  This program is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-//  GNU Affero General Public License for more details.
+//  GNU Affero General Public
+//  License for more details.
 //
 //  This project is sponsored by the Office of Naval Research, One Liberty
 //  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
@@ -20,30 +21,19 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef PE_GTIRB_BUILDER_H_
-#define PE_GTIRB_BUILDER_H_
 
-#include "./GtirbBuilder.h"
+#include "RawLoader.h"
+#include "../../AuxDataSchema.h"
 
-class PeReader : public GtirbBuilder
+void RawEntryLoader(const gtirb::Module &Module, DatalogProgram &Program)
 {
-public:
-    PeReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary);
-
-    gtirb::ErrorOr<GTIRB> build() override;
-
-protected:
-    std::shared_ptr<LIEF::PE::Binary> Pe;
-
-    void initModule() override;
-    void buildSections() override;
-    void buildSymbols() override;
-    void addEntryBlock() override;
-    void addAuxData() override;
-
-    std::vector<PeResource> resources();
-    std::vector<ImportEntry> importEntries();
-    std::vector<ExportEntry> exportEntries();
-};
-
-#endif // PE_GTIRB_BUILDER_H_
+    std::vector<gtirb::Addr> Entries;
+    if(auto *RawEntries = Module.getAuxData<gtirb::schema::RawEntries>())
+    {
+        for(const auto &EA : *RawEntries)
+        {
+            Entries.push_back(gtirb::Addr(EA));
+        }
+    }
+    Program.insert("entry_point", std::move(Entries));
+}

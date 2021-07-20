@@ -1,7 +1,9 @@
 variables:
   GTIRB_BRANCH: "master"
+  GTIRB_PPRINTER_BRANCH: "master"
   CAPSTONE_BRANCH: "master"
   EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_API_V4_URL}/projects/1587/packages/pypi/simple
+  CONAN_PASSWORD: $CI_JOB_TOKEN
 
 stages:
   - check-format
@@ -53,7 +55,7 @@ build-conan-gcc7:
     - conan profile new default --detect
     - conan profile update settings.compiler.libcxx=libstdc++11 default
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
-    - conan user ci_user -r gitlab -p ${CI_JOB_TOKEN}
+    - conan user ci_user -r gitlab -p
     # Install gtirb python wheel
     - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
     # Run build script
@@ -73,7 +75,7 @@ build-conan-gcc9:
     - systeminfo
     # Set up user and remote
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
-    - conan user ci_user -r gitlab -p ${CI_JOB_TOKEN}
+    - conan user ci_user -r gitlab -p
     # Install gtirb python wheel
     - python -m pip install pip --upgrade && python -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
     # Run build script
@@ -104,8 +106,6 @@ conan-windows-release:
        ubuntu20) JOB_NAME='debian-installer-ubuntu20' ;;
        esac
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=${JOB_NAME} --output "gtirb.zip"
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
-    - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter.zip"
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
     - for pkg in gtirb gtirb-pprinter capstone; do unzip $pkg.zip; done
@@ -127,8 +127,6 @@ conan-windows-release:
        esac
     # Acquire gtirb artifacts
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=${JOB_NAME} --output "gtirb.zip"
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
-    - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter.zip"
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
     - for pkg in gtirb gtirb-pprinter capstone; do unzip $pkg.zip; done
@@ -192,8 +190,6 @@ build-static:
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
     # build gtirb-pprinter
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "windows-support")
-    - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
     - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b $GTIRB_PPRINTER_BRANCH
     - mkdir gtirb-pprinter/build
     - cd gtirb-pprinter/build
@@ -230,8 +226,6 @@ static-drivers:
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
     # build gtirb-pprinter
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "windows-support")
-    - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
     - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b $GTIRB_PPRINTER_BRANCH
     - cd gtirb-pprinter
     - mkdir build && cd build
@@ -265,7 +259,6 @@ build-centos8-gcc-relwithdebuginfo:
     - PADDED_DIR=long-dir-name-padding-for-CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX
     - mkdir $PADDED_DIR && cd $PADDED_DIR
     - git clone .. .
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
     - mkdir build && cd build
     # Download and install packages from artifacts
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-rpm --output "capstone.zip"
@@ -329,8 +322,6 @@ test-make-install:
     BUILD_TYPE: 'RelWithDebInfo'
   script:
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-ubuntu20 --output "gtirb.zip"
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
-    - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-ubuntu20 --output "gtirb-pprinter.zip"
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
     - for pkg in gtirb gtirb-pprinter capstone; do unzip $pkg.zip; done
@@ -370,8 +361,6 @@ package-centos8:
     paths:
       - build
   script:
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
-    - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-$OS --output "gtirb.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-$OS --output "gtirb-pprinter.zip"
@@ -403,8 +392,6 @@ build-ubuntu20-packages:
     paths:
       - apt-repo
   script:
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
-    - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-$OS --output "gtirb.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-$OS --output "gtirb-pprinter.zip"

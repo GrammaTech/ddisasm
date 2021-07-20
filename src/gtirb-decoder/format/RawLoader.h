@@ -1,6 +1,6 @@
-//===- PeReader.h       -----------------------------------------*- C++ -*-===//
+//===- RawLoader.h ----------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2020 GrammaTech, Inc.
+//  Copyright (C) 2021 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,30 +20,11 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef PE_GTIRB_BUILDER_H_
-#define PE_GTIRB_BUILDER_H_
+#ifndef SRC_GTIRB_DECODER_FORMAT_RAWLOADER_H_
+#define SRC_GTIRB_DECODER_FORMAT_RAWLOADER_H_
 
-#include "./GtirbBuilder.h"
+#include "../CompositeLoader.h"
 
-class PeReader : public GtirbBuilder
-{
-public:
-    PeReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary);
+void RawEntryLoader(const gtirb::Module &Module, DatalogProgram &Program);
 
-    gtirb::ErrorOr<GTIRB> build() override;
-
-protected:
-    std::shared_ptr<LIEF::PE::Binary> Pe;
-
-    void initModule() override;
-    void buildSections() override;
-    void buildSymbols() override;
-    void addEntryBlock() override;
-    void addAuxData() override;
-
-    std::vector<PeResource> resources();
-    std::vector<ImportEntry> importEntries();
-    std::vector<ExportEntry> exportEntries();
-};
-
-#endif // PE_GTIRB_BUILDER_H_
+#endif // SRC_GTIRB_DECODER_FORMAT_RAWLOADER_H_

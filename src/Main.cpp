@@ -45,6 +45,7 @@
 
 #include "AuxDataSchema.h"
 #include "Disassembler.h"
+#include "Interpreter.h"
 #include "Registration.h"
 #include "Version.h"
 #include "gtirb-builder/GtirbBuilder.h"
@@ -143,11 +144,17 @@ int main(int argc, char **argv)
         "option only works if the target binary contains complete relocation information.")(
         "skip-function-analysis,F",
         "Skip additional analyses to compute more precise function boundaries.")(
+        "with-souffle-relations", "Package facts/output relations into an AuxData table.")(
         "no-cfi-directives",
         "Do not produce cfi directives. Instead it produces symbolic expressions in .eh_frame.")(
         "threads,j", po::value<unsigned int>()->default_value(1),
         "Number of cores to use. It is set to the number of cores in the machine by default")(
-        "generate-import-libs", "Generated .DEF and .LIB files for imported libraries (PE).");
+        "generate-import-libs", "Generated .DEF and .LIB files for imported libraries (PE).")(
+        "no-analysis,n",
+        "Do not perform disassembly. This option only parses/loads the binary object into GTIRB.")(
+        "interpreter,I", po::value<std::string>(),
+        "Execute the souffle interpreter with the specified source file.");
+
     po::positional_options_description pd;
     pd.add("input-file", -1);
 
@@ -184,6 +191,13 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    // TODO: Use a temporary directory if `--debug-dir' isn't specified.
+    if(vm.count("interpreter") && !vm.count("debug-dir"))
+    {
+        std::cerr << "Error: missing `--debug-dir' argument required by `--interpreter'\n";
+        return 1;
+    }
+
     // Parse and build a GTIRB module from a supported binary object file.
     std::cerr << "Building the initial gtirb representation " << std::flush;
     auto StartBuildZeroIR = std::chrono::high_resolution_clock::now();
@@ -203,6 +217,23 @@ int main(int argc, char **argv)
     {
         std::cerr << "There was a problem loading the binary file " << filename << "\n";
         return 1;
+    }
+
+    // Output raw GTIRB file.
+    if(vm.count("no-analysis") && vm.count("ir"))
+    {
+        std::string name = vm["ir"].as<std::string>();
+        if(name == "-")
+        {
+            setStdoutToBinary();
+            GTIRB->IR->save(std::cout);
+        }
+        else
+        {
+            std::ofstream out(name, std::ios::out | std::ios::binary);
+            GTIRB->IR->save(out);
+        }
+        return 0;
     }
 
     // Decode and load GTIRB Module into the SouffleProgram context.
@@ -235,25 +266,48 @@ int main(int argc, char **argv)
             auto dir = vm["debug-dir"].as<std::string>() + "/";
             Souffle->writeFacts(dir);
         }
-        std::cerr << "Disassembling" << std::flush;
-        unsigned int NThreads = vm["threads"].as<unsigned int>();
-        Souffle->threads(NThreads);
-        auto StartDisassembling = std::chrono::high_resolution_clock::now();
-        try
+        if(vm.count("with-souffle-relations"))
         {
-            Souffle->run();
+            Souffle->writeFacts(Module);
         }
-        catch(std::exception &e)
+
+        std::cerr << "Disassembling" << std::flush;
+        unsigned int Threads = vm["threads"].as<unsigned int>();
+
+        auto StartDisassembling = std::chrono::high_resolution_clock::now();
+        if(vm.count("interpreter"))
         {
-            souffle::SignalHandler::instance()->error(e.what());
+            // Disassemble with the interpeter engine.
+            std::cerr << " (interpreter)";
+            const std::string &DebugDir = vm["debug-dir"].as<std::string>();
+            const std::string &DatalogFile = vm["interpreter"].as<std::string>();
+            runInterpreter(Module, Souffle->get(), DatalogFile, DebugDir, Threads);
+        }
+        else
+        {
+            // Disassemble with the compiled, synthesized program.
+            Souffle->threads(Threads);
+            try
+            {
+                Souffle->run();
+            }
+            catch(std::exception &e)
+            {
+                souffle::SignalHandler::instance()->error(e.what());
+            }
         }
         printElapsedTimeSince(StartDisassembling);
+
         if(vm.count("debug-dir") != 0)
         {
             std::cerr << "Writing results to debug dir " << vm["debug-dir"].as<std::string>()
                       << std::endl;
             auto dir = vm["debug-dir"].as<std::string>() + "/";
             Souffle->writeRelations(dir);
+        }
+        if(vm.count("with-souffle-relations"))
+        {
+            Souffle->writeRelations(Module);
         }
         std::cerr << "Populating gtirb representation " << std::flush;
         auto StartGtirbBuilding = std::chrono::high_resolution_clock::now();
@@ -275,13 +329,14 @@ int main(int argc, char **argv)
                 FunctionInference.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
             }
             auto StartNoReturnAnalysis = std::chrono::high_resolution_clock::now();
-            NoReturn.computeNoReturn(Module, NThreads);
+            NoReturn.computeNoReturn(Module, Threads);
             printElapsedTimeSince(StartNoReturnAnalysis);
             std::cerr << "Detecting additional functions " << std::flush;
             auto StartFunctionAnalysis = std::chrono::high_resolution_clock::now();
-            FunctionInference.computeFunctions(*GTIRB->Context, Module, NThreads);
+            FunctionInference.computeFunctions(*GTIRB->Context, Module, Threads);
             printElapsedTimeSince(StartFunctionAnalysis);
         }
+
         // Output GTIRB
         if(vm.count("ir") != 0)
         {
