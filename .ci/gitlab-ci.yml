@@ -368,8 +368,10 @@ package-centos8:
     - dpkg -i libcapstone-dev.deb libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
     - cd build
     - 'CAPSTONE_PKG_VERSION=$(apt-cache policy libcapstone-dev | sed -n "s/  Installed:[[:space:]]*\(.*\)/\1/p")'
-    - cpack -G "DEB" -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-ddisasm
-    - cpack -G "DEB" -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-debug
+    - CPACK_DDISASM_STABLE_PKG_NAME=OFF
+    - '[[ ! $CI_COMMIT_REF_NAME =~ ^release-.* ]] || CPACK_DDISASM_STABLE_PKG_NAME=ON'
+    - cpack -G "DEB" -D CPACK_DDISASM_STABLE_PKG_NAME=$CPACK_DDISASM_STABLE_PKG_NAME -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-ddisasm
+    - cpack -G "DEB" -D CPACK_DDISASM_STABLE_PKG_NAME=$CPACK_DDISASM_STABLE_PKG_NAME -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-debug
 
 build-ubuntu18-packages:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
