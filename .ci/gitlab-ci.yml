@@ -366,8 +366,8 @@ package-centos8:
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-$OS --output "gtirb-pprinter.zip"
     - for pkg in gtirb gtirb-pprinter capstone; do unzip $pkg.zip; done
     - dpkg -i libcapstone-dev.deb libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
+    - 'CAPSTONE_PKG_VERSION=$(dpkg --info libcapstone-dev.deb | sed -n "s/Version: //p" | tr -d "[[:space:]]")'
     - cd build
-    - 'CAPSTONE_PKG_VERSION=$(apt-cache policy libcapstone-dev | sed -n "s/  Installed:[[:space:]]*\(.*\)/\1/p")'
     - CPACK_DDISASM_STABLE_PKG_NAME=OFF
     - '[[ ! $CI_COMMIT_REF_NAME =~ ^release-.* ]] || CPACK_DDISASM_STABLE_PKG_NAME=ON'
     - cpack -G "DEB" -D CPACK_DDISASM_STABLE_PKG_NAME=$CPACK_DDISASM_STABLE_PKG_NAME -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-ddisasm
