@@ -175,14 +175,20 @@ void PeReader::addAuxData()
     // TODO: Add `libraryPaths' aux data table.
     Module->addAuxData<gtirb::schema::LibraryPaths>({});
 
-    // Add `importEntries' aux data table.
+    // Add `peImportEntries' aux data table.
     Module->addAuxData<gtirb::schema::ImportEntries>(importEntries());
 
-    // Add `exportEntries' aux data table.
+    // Add `peExportEntries' aux data table.
     Module->addAuxData<gtirb::schema::ExportEntries>(exportEntries());
 
-    // Add `PeResources' aux data table
+    // Add `peResources' aux data table
     Module->addAuxData<gtirb::schema::PeResources>(resources());
+
+    // Add `peDataDirectories` aux data table.
+    Module->addAuxData<gtirb::schema::PeDataDirectories>(dataDirectories());
+
+    // Add `peDebugData` aux data table.
+    Module->addAuxData<gtirb::schema::PeDebugData>(debugData());
 }
 
 std::vector<PeResource> PeReader::resources()
@@ -372,4 +378,32 @@ std::vector<ExportEntry> PeReader::exportEntries()
         }
     }
     return ExportEntries;
+}
+
+std::vector<DataDirectory> PeReader::dataDirectories()
+{
+    std::vector<DataDirectory> DataDirectories;
+
+    uint64_t ImageBase = Pe->optional_header().imagebase();
+    for(auto &Entry : Pe->data_directories())
+    {
+        std::string Type = LIEF::PE::to_string(Entry.type());
+        DataDirectories.push_back({Type, ImageBase + Entry.RVA(), Entry.size()});
+    }
+
+    return DataDirectories;
+}
+
+std::vector<DebugData> PeReader::debugData()
+{
+    std::vector<DebugData> DebugData;
+
+    uint64_t ImageBase = Pe->optional_header().imagebase();
+    for(auto &Debug : Pe->debug())
+    {
+        std::string Type = LIEF::PE::to_string(Debug.type());
+        DebugData.push_back({Type, ImageBase + Debug.addressof_rawdata(), Debug.sizeof_data()});
+    }
+
+    return DebugData;
 }

@@ -44,6 +44,8 @@ protected:
     std::vector<PeResource> resources();
     std::vector<ImportEntry> importEntries();
     std::vector<ExportEntry> exportEntries();
+    std::vector<DataDirectory> dataDirectories();
+    std::vector<DebugData> debugData();
 };
 
 #endif // PE_GTIRB_BUILDER_H_
