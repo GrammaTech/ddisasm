@@ -215,7 +215,10 @@ got_local_reference(Got_entry,Dest):-
       pc_relative_operand(_,_,Got_entry);
       split_load_operand(_,_,Got_entry)
     ),
-    section(".tbss",_,Beg),
+    (
+        section(".tbss",_,Beg);
+        section(".tdata",_,Beg)
+    ),
     Dest = as(as(Beg,number)+Addend,address),
     !symbol(Dest,_,_,_,_,_,_,_).
 
