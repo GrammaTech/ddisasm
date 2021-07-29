@@ -1257,7 +1257,8 @@ void buildFunctions(gtirb::Context &Context, gtirb::Module &Module, souffle::Sou
                 auto Found = std::min_element(
                     Candidates.begin(), Candidates.end(),
                     [](const std::tuple<const gtirb::Symbol *, std::string, std::string> &S1,
-                       const std::tuple<const gtirb::Symbol *, std::string, std::string> &S2) {
+                       const std::tuple<const gtirb::Symbol *, std::string, std::string> &S2)
+                    {
                         auto &[Symbol1, Type1, Binding1] = S1;
                         auto &[Symbol2, Type2, Binding2] = S2;
                         // Prefer symbols of type FUNC.
