@@ -1,3 +1,4 @@
+* Use dedicated symbolic expression attributes.
 * Support Souffle interpreter for development.
 * Add support for loading existing GTIRB files.
 
