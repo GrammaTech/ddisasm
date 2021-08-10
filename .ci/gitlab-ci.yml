@@ -4,6 +4,10 @@ variables:
   CAPSTONE_BRANCH: "master"
   EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_API_V4_URL}/projects/1587/packages/pypi/simple
   CONAN_PASSWORD: $CI_JOB_TOKEN
+  # The following two variables are used by the package-uploader
+  PROJECT_ID: $CI_PROJECT_ID
+  PIPELINE_ID: $CI_PIPELINE_ID
+
 
 stages:
   - check-format
@@ -493,8 +497,6 @@ public-bionic-unstable:
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
   variables:
-    PROJECT_ID: $CI_PROJECT_ID
-    PIPELINE_ID: $CI_PIPELINE_ID
     JOB_NAME: debian-installer-ubuntu18
     APT_REPO: public
     APT_REPO_CODENAME: bionic
@@ -505,8 +507,6 @@ public-focal-unstable:
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
   variables:
-    PROJECT_ID: $CI_PROJECT_ID
-    PIPELINE_ID: $CI_PIPELINE_ID
     JOB_NAME: debian-installer-ubuntu20
     APT_REPO: public
     APT_REPO_CODENAME: focal
@@ -517,8 +517,6 @@ public-bionic-stable:
   rules:
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
   variables:
-    PROJECT_ID: $CI_PROJECT_ID
-    PIPELINE_ID: $CI_PIPELINE_ID
     JOB_NAME: debian-installer-ubuntu18
     APT_REPO: public
     APT_REPO_CODENAME: bionic
@@ -529,8 +527,6 @@ public-focal-stable:
   rules:
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
   variables:
-    PROJECT_ID: $CI_PROJECT_ID
-    PIPELINE_ID: $CI_PIPELINE_ID
     JOB_NAME: debian-installer-ubuntu20
     APT_REPO: public
     APT_REPO_CODENAME: focal
