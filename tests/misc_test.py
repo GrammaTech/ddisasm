@@ -240,5 +240,55 @@ class RawGtirbTests(unittest.TestCase):
             self.assertTrue(test())
 
 
+class DataDirectoryTests(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Windows", "This test is Windows only."
+    )
+    def test_data_directories_in_code(self):
+        with cd(ex_dir / "ex1"):
+
+            # Compile with `.rdata' section merged to `.text'.
+            proc = subprocess.run(
+                ["cl", "/Od", "ex.c", "/link", "/merge:.rdata=.text"],
+                stdout=subprocess.DEVNULL,
+            )
+            self.assertEqual(proc.returncode, 0)
+
+            # Disassemble to GTIRB file.
+            self.assertTrue(
+                disassemble(
+                    "ex.exe",
+                    False,
+                    False,
+                    False,
+                    format="--ir",
+                    extension="gtirb",
+                    extra_args=[],
+                )
+            )
+
+            # Load the GTIRB file.
+            ir = gtirb.IR.load_protobuf("ex.exe.gtirb")
+            module = ir.modules[0]
+
+            def is_code(section):
+                return gtirb.ir.Section.Flag.Executable in section.flags
+
+            pe_data_directories = module.aux_data["peDataDirectories"].data
+            code_blocks = [
+                (b.address, b.address + b.size) for b in module.code_blocks
+            ]
+            for _, addr, size in pe_data_directories:
+                # Check data directories in code sections are data blocks.
+                if size > 0:
+                    if any(s for s in module.sections_on(addr) if is_code(s)):
+                        data_block = next(module.data_blocks_on(addr), None)
+                        self.assertIsNotNone(data_block)
+
+                # Check no code blocks were created within data directories.
+                for start, end in code_blocks:
+                    self.assertFalse(start <= addr <= end)
+
+
 if __name__ == "__main__":
     unittest.main()

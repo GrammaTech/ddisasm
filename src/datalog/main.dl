@@ -189,6 +189,10 @@ This module:
 .decl address_in_data(ea:address,value:address)
 .input address_in_data
 
+// known data regions
+.decl data_region(Begin:address,Size:unsigned)
+.input data_region
+
 ///////////////////////////////////////////////////////////////
 // Initialize components
 
@@ -579,6 +583,7 @@ bss_section_limits(Begin,LastSect+SizeLast):-
 data segments can be data sections or fragments of the code section that
 contain data instead of code.
 */
+
 .decl initialized_data_segment(Begin:address,End:address)
 .output initialized_data_segment
 

@@ -38,6 +38,7 @@ CompositeLoader PeX64Loader()
     Loader.add<X64Loader>();
     Loader.add<DataLoader>(DataLoader::Pointer::QWORD);
     Loader.add(PeSymbolLoader);
+    Loader.add(PeDataDirectoryLoader);
     return Loader;
 };
 

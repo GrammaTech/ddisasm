@@ -38,6 +38,7 @@ CompositeLoader PeX86Loader()
     Loader.add<X86Loader>();
     Loader.add<DataLoader>(DataLoader::Pointer::DWORD);
     Loader.add(PeSymbolLoader);
+    Loader.add(PeDataDirectoryLoader);
     return Loader;
 };
 

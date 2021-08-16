@@ -68,6 +68,8 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<ExportEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<ImportEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<PeResources>();
+    gtirb::AuxDataContainer::registerAuxDataType<PeDataDirectories>();
+    gtirb::AuxDataContainer::registerAuxDataType<PeDebugData>();
     gtirb::AuxDataContainer::registerAuxDataType<SouffleFacts>();
     gtirb::AuxDataContainer::registerAuxDataType<SouffleOutputs>();
     gtirb::AuxDataContainer::registerAuxDataType<RawEntries>();
