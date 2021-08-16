@@ -392,7 +392,19 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
     auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    if(!SymbolInfo)
+    {
+        std::map<gtirb::UUID, ElfSymbolInfo> Empty;
+        module.addAuxData<gtirb::schema::ElfSymbolInfoAD>(std::move(Empty));
+        SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    }
     auto *SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>();
+    if(!SymbolTabIdxInfo)
+    {
+        std::map<gtirb::UUID, ElfSymbolTabIdxInfo> Empty;
+        module.addAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>(std::move(Empty));
+        SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>();
+    }
     for(auto &output : *prog->getRelation("inferred_symbol_name"))
     {
         gtirb::Addr addr;
@@ -596,17 +608,24 @@ gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::
     gtirb::Symbol *symbol = module.addSymbol(context, ea, getLabel(uint64_t(ea)));
 
     auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
-    if(SymbolInfo)
+    if(!SymbolInfo)
     {
-        ElfSymbolInfo Info = {0, "NONE", "LOCAL", "DEFAULT", 0};
-        SymbolInfo->insert({symbol->getUUID(), Info});
+        std::map<gtirb::UUID, ElfSymbolInfo> Empty;
+        module.addAuxData<gtirb::schema::ElfSymbolInfoAD>(std::move(Empty));
+        SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
     }
+    ElfSymbolInfo Info = {0, "NONE", "LOCAL", "DEFAULT", 0};
+    SymbolInfo->insert({symbol->getUUID(), Info});
+
     auto *SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>();
-    if(SymbolTabIdxInfo)
+    if(!SymbolTabIdxInfo)
     {
-        ElfSymbolTabIdxInfo TabIdx = std::vector<std::tuple<std::string, uint64_t>>();
-        SymbolTabIdxInfo->insert({symbol->getUUID(), TabIdx});
+        std::map<gtirb::UUID, ElfSymbolTabIdxInfo> Empty;
+        module.addAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>(std::move(Empty));
+        SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>();
     }
+    ElfSymbolTabIdxInfo TabIdx = std::vector<std::tuple<std::string, uint64_t>>();
+    SymbolTabIdxInfo->insert({symbol->getUUID(), TabIdx});
 
     return symbol;
 }
@@ -667,6 +686,7 @@ template <class ExprType, typename... Args>
 void addSymbolicExpressionToCodeBlock(gtirb::Module &Module, gtirb::Addr Addr, uint64_t Size,
                                       uint64_t Offset, Args... A)
 {
+    assert(Size != 0 && "Found symbolic-expression with size 0");
     if(auto it = Module.findCodeBlocksOn(Addr); !it.empty())
     {
         gtirb::CodeBlock &Block = *it.begin();
@@ -1061,6 +1081,12 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
 gtirb::Section *findSectionByIndex(gtirb::Context &C, gtirb::Module &M, uint64_t Index)
 {
     auto *SectionIndex = M.getAuxData<gtirb::schema::ElfSectionIndex>();
+    if(!SectionIndex)
+    {
+        std::map<uint64_t, gtirb::UUID> Empty;
+        M.addAuxData<gtirb::schema::ElfSectionIndex>(std::move(Empty));
+        SectionIndex = M.getAuxData<gtirb::schema::ElfSectionIndex>();
+    }
     if(auto It = SectionIndex->find(Index); It != SectionIndex->end())
     {
         gtirb::Node *N = gtirb::Node::getByUUID(C, It->second);
@@ -1075,6 +1101,12 @@ gtirb::Section *findSectionByIndex(gtirb::Context &C, gtirb::Module &M, uint64_t
 void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
 {
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    if(!SymbolInfo)
+    {
+        std::map<gtirb::UUID, ElfSymbolInfo> Empty;
+        Module.addAuxData<gtirb::schema::ElfSymbolInfoAD>(std::move(Empty));
+        SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    }
 
     std::map<gtirb::Symbol *, std::tuple<gtirb::Node *, bool>> ConnectToBlock;
     for(auto &Symbol : Module.symbols_by_addr())
@@ -1215,6 +1247,12 @@ void splitSymbols(gtirb::Context &Context, gtirb::Module &Module, souffle::Souff
 void buildFunctions(gtirb::Context &Context, gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    if(!SymbolInfo)
+    {
+        std::map<gtirb::UUID, ElfSymbolInfo> Empty;
+        Module.addAuxData<gtirb::schema::ElfSymbolInfoAD>(std::move(Empty));
+        SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    }
 
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
     std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2Function;

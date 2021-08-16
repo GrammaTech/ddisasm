@@ -113,6 +113,17 @@ must_fallthrough(From,To):-
     !conditional_jump(From),
     !arch.delay_slot(_,From).
 
+.decl must_fallthrough_instr(o:address)
+
+must_fallthrough_instr(From):-
+    instruction_get_operation(From,Operation),
+    !arch.call_operation(Operation),
+    !arch.syscall_operation(Operation),
+    !arch.interrupt_operation(Operation),
+    !instruction_has_loop_prefix(From),
+    !conditional_jump(From),
+    !arch.delay_slot(_,From).
+
 //////////////////////////////////////////////////////////////
 // This is a small refinement for discarding immediates as targets
 // in some obvious cases. This is specially useful for PIE code where
@@ -174,6 +185,10 @@ invalid(EA,"known data region"):-
     data_region(Begin,Size),
     instruction(EA,_,_,_,_,_,_,_,_,_),
     Size > 0, EA >= Begin, EA < (Begin + Size).
+
+invalid(EA,"must_fallthrough_instr to not_code"):-
+    must_fallthrough_instr(EA),
+    !next(EA,_).
 
 .decl possible_ea(EA:address)
 

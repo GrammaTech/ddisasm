@@ -219,7 +219,7 @@ basic_target(Val):-
     defined_symbol(Val,_,_,_,_,_,_,"$a").
 
 
-block_points(Block,0,-9,"overlap with literal pool"),
+block_points(Block,0,-11,"overlap with literal pool"),
 block_is_overlapping(Block):-
     block_candidate_boundaries(Block,BlockBegAddr,BlockEndAddr),
     defined_symbol(Val,_,_,_,_,_,_,"$d"),
@@ -520,19 +520,23 @@ data_object_point(TableStart,Size,"symbol",2,"arm jump-table"),
 data_object_candidate(TableStart,Size,"symbol"),
 arm_jump_table(EA_jump,Size,TableStart):-
     instruction_get_operation(EA_jump,Operation),
-    arch.load_operation(Operation),
+    substr(Operation,0,3) = "LDR",
+    (
+        strlen(Operation) = 3; // unconditional
+        strlen(Operation) = 5  // conditional ldr
+    ),
     arch.pc_register(PC),
-    // ldr pc, [pc,reg, lsl N]
+    // ldr pc, [pc,r2, lsl N]
+    // TODO: Currently, 'lsl N' is not propagated from the decoder.
     instruction_get_dest_op(EA_jump,_,RegOp),
     op_regdirect_contains_reg(RegOp,PC),
     instruction_get_src_op(EA_jump,_,IndOp),
     op_indirect(IndOp,"NONE",PC,Reg,Mult,Offset,NBits),
-    Size = NBits / 8,
-    // Note that currently, the information of 'lsl N' is not propagated
-    // to ddisasm. We might want to.
-    !arch.pc_register(Reg),
-    Mult = as(Size,number),
+    // TODO: Do we need contraints? Mult=4, Offset=0
+    Reg = Reg, Mult = Mult, // to avoid warnings
     Offset = 0,
+    Size = NBits / 8,
+    arch.pointer_size(Size),
     (
         Operation != substr(Operation,0,3), // Conditional
         // 8: Assumes that there is a fall-through successor consisting
@@ -544,23 +548,39 @@ arm_jump_table(EA_jump,Size,TableStart):-
         TableStart = EA_jump + 4
     ).
 
-data_object_point(EA+Size,Size,"symbol",2,"arm jump-table2"),
+data_in_code(EA+Size,EA+Size+Size),
+data_object_point(EA+Size,Size,"symbol",2,"arm jump-table3"),
 data_object_candidate(EA+Size,Size,"symbol"),
 arm_jump_table(EA_jump,Size,EA+Size):-
     // recursive
     arm_jump_table(EA_jump,Size,EA),
-    !possible_data_limit(EA+Size),
-    last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA.
+    address_in_data(EA+Size,TargetAddr),
+    code(TargetAddr).
 
 block_needs_splitting_at(as(TargetAddr,address)):-
     arm_jump_table(_,Size,TableEntry),
     data_word(TableEntry,Size,TargetAddr),
     code(as(TargetAddr,address)).
 
+block_needs_splitting_at(as(TableEntry,address)):-
+    arm_jump_table(_,_,TableEntry),
+    code(as(TableEntry,address)).
+
+block_needs_splitting_at(as(TableEntry+1,address)):-
+    arm_jump_table(_,_,TableEntry),
+    code(as(TableEntry+1,address)).
+
+// Thumb
+block_needs_splitting_at(as(TargetAddr+1,address)):-
+    arm_jump_table(_,Size,TableEntry),
+    data_word(TableEntry,Size,TargetAddr),
+    code(as(TargetAddr+1,address)).
+
 .decl litpool_ref(ea:address, register_name:register, ea_litpool:address, nbits:unsigned)
 .output litpool_ref
 
 litpool_ref(EA,Reg,LitPoolAddr,NBits):-
+    !invalid(EA,_),
     // LDR <Register> <IndirectOp>
     // e.g., ldr r3, [pc, Offset]
     instruction_get_operation(EA,Operation),
@@ -586,6 +606,7 @@ litpool_ref(EA,Reg,LitPoolAddr,NBits):-
 // E.g., adr r, L
 //       ldrd r1, r2, [r]
 litpool_ref_double(EA,Reg1,Reg2,LitPoolAddr):-
+    !invalid(EA,_),
     // ADR Reg, Label
     instruction_get_operation(EA0,"ADR"),
     instruction_get_op(EA0,2,RegOp),
@@ -612,7 +633,7 @@ litpool_ref_double(EA,Reg1,Reg2,LitPoolAddr):-
     // Align the address
     LitPoolAddr = as(Addr-(Addr band 3),address).
 
-block_points(Addr,0,-9,"arm literal pool"), // Thumb
+block_points(Addr,0,-11,"arm literal pool"), // Thumb
 block_is_overlapping(Addr):-
     litpool_ref(_,_,LitPoolAddr,_),
     (
@@ -622,7 +643,7 @@ block_is_overlapping(Addr):-
         Addr = LitPoolAddr+3
     ).
 
-block_points(Addr,0,-9,"arm literal pool"), // Thumb
+block_points(Addr,0,-11,"arm literal pool"), // Thumb
 block_is_overlapping(Addr):-
     litpool_ref_double(_,_,_,LitPoolAddr),
     (
@@ -738,7 +759,8 @@ symbolic_data(LitPoolAddr,Size,Got_entry):-
 cant_have_symbolic_immediate(Operation):-
     instruction_get_operation(_, Operation),
     (
-        contains("SUB", Operation)
+        contains("SUB", Operation);
+        contains("MOV", Operation)
     ).
 
 instruction_get_dest_op(EA,1,Op):-
@@ -758,3 +780,71 @@ instruction_get_src_op(EA,Index,Op):-
         Index = 1, Op = Op1, Op2 = Op2;
         Index = 2, Op = Op2, Op1 = Op1
     ).
+
+// It is unlikely that EA is a valid instruction if the PC is used in cmp.
+invalid(EA,"arm: cmp invalid operands"):-
+    (
+        instruction_get_op(EA,1,Op);
+        instruction_get_op(EA,2,Op)
+    ),
+    instruction_get_operation(EA,Operation),
+    contains("CMP",Operation),
+    op_regdirect_contains_reg(Op,PC),
+    arch.pc_register(PC).
+
+invalid(EA,"arm: pc is not allowed"):-
+    instruction_get_operation(EA,Operation),
+    (
+        contains("AND",Operation);
+        contains("BIC",Operation);
+        contains("LDM",Operation)
+    ),
+    instruction_get_dest_op(EA,_,Op),
+    op_regdirect_contains_reg(Op,PC),
+    arch.pc_register(PC).
+
+invalid(EA,"arm: invalid mul operand (pc)"):-
+    instruction_get_operation(EA,Operation),
+    contains("MUL",Operation),
+    instruction_get_op(EA,_,Op),
+    op_regdirect_contains_reg(Op,Reg),
+    arch.pc_register(Reg).
+
+invalid(EA,"arm: deprecated bx"):-
+    instruction_get_operation(EA,"BX"),
+    instruction_get_op(EA,1,Op),
+    op_regdirect_contains_reg(Op,Reg),
+    arch.stack_pointer(Reg).
+
+invalid(EA,"arm: invalid pc"):-
+    instruction_get_operation(EA,Operation),
+    (
+        Operation = "MLAHS";
+        Operation = "MLASHS";
+        Operation = "LDRSHEQ";
+        Operation = "LDRSHTEQ";
+        Operation = "LDRSHTLO";
+        Operation = "LDRSHTVC";
+        Operation = "LDRBEQ";
+        Operation = "LDRSBEQ";
+        Operation = "LDRHHS";
+        Operation = "LDRHTHS";
+        Operation = "LDRSBHS";
+        Operation = "LDRSHHS";
+        Operation = "LDRSBTHS";
+        Operation = "LDRSHTHS"
+    ),
+    //instruction_get_op(EA,_,Op),
+    instruction_get_dest_op(EA,_,Op),
+    op_regdirect_contains_reg(Op,PC),
+    arch.pc_register(PC).
+
+// 0x00000000: andeq r0, r0, r0
+invalid(EA,"arm: meaningless instr"):-
+    instruction_get_operation(EA,"ANDEQ"),
+    instruction_get_op(EA,1,Op1),
+    op_regdirect_contains_reg(Op1,"R0"),
+    instruction_get_op(EA,2,Op2),
+    op_regdirect_contains_reg(Op2,"R0"),
+    instruction_get_op(EA,3,Op3),
+    op_regdirect_contains_reg(Op3,"R0").
