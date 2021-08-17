@@ -474,7 +474,7 @@ test-make-install:
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-$OS --output "gtirb-pprinter.zip"
     - for pkg in gtirb gtirb-pprinter capstone; do unzip $pkg.zip; done
     - dpkg -i libcapstone-dev.deb libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
-    - 'CAPSTONE_PKG_VERSION=$(dpkg --info libcapstone-dev.deb | sed -n "s/ Version: //p")'
+    - 'CAPSTONE_PKG_VERSION=$(dpkg -f libcapstone-dev.deb version | sed -E "s/[[:digit:]]+://g")'
     - cd build
     # Use make to update timestamps on all build targets. The artifacts we
     # pulled in from the dependent job should already be up-to-date, but since
