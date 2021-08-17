@@ -138,8 +138,8 @@ std::optional<relations::Instruction> Arm32Loader::build(Arm32Facts& Facts,
             // Load capstone operand.
             const cs_arm_op& CsOp = Details.operands[i];
 
-            if(i == 0 && (OpCode == "LDM" or OpCode == "STM"
-                            or OpCode == "VLDM" or OpCode == "VSTM"))
+            if(i == 0
+               && (OpCode == "LDM" or OpCode == "STM" or OpCode == "VLDM" or OpCode == "VSTM"))
             {
                 std::optional<relations::Operand> Op = build(CsOp);
                 // Build operand for datalog fact.
