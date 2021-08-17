@@ -1,3 +1,5 @@
+# 1.5.0
+
 * Support Souffle interpreter for development.
 * Add support for loading existing GTIRB files.
 
