@@ -686,7 +686,6 @@ template <class ExprType, typename... Args>
 void addSymbolicExpressionToCodeBlock(gtirb::Module &Module, gtirb::Addr Addr, uint64_t Size,
                                       uint64_t Offset, Args... A)
 {
-    assert(Size != 0 && "Found symbolic-expression with size 0");
     if(auto it = Module.findCodeBlocksOn(Addr); !it.empty())
     {
         gtirb::CodeBlock &Block = *it.begin();
