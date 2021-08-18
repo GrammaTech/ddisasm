@@ -388,11 +388,11 @@ base_addr_offset_operand(EA,NextEA,Dest_addr):-
 symbolic_operand_attribute(EA,1,"AddrRelGot"):-
     base_addr_offset_operand(EA,_,_).
 
-symbolic_operand_attribute(EA,2,"Part0"):-
+symbolic_operand_attribute(EA,2,"Lo"):-
     base_addr_offset_operand(_,EA,_).
 
 // Hi
-symbolic_operand_attribute(EA, 1, "Part1"):-
+symbolic_operand_attribute(EA, 1, "Hi"):-
     (
         split_load(EA, _, Dest_addr, _)
         ;
@@ -411,7 +411,7 @@ symbolic_operand_attribute(EA, 1, "Part1"):-
     ).
 
 // Lo
-symbolic_operand_attribute(EA, Index, "Part0"):-
+symbolic_operand_attribute(EA, Index, "Lo"):-
     (
         split_load(_,EA,Dest_addr,_),
         Index = 2

@@ -532,13 +532,13 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_
         {"GotPage", gtirb::SymAttribute::GotPage},
         {"GotPageOfst", gtirb::SymAttribute::GotPageOfst},
         {"PltRef", gtirb::SymAttribute::PltRef},
-        // FIXME: Replace these with appropriate flags when supported:
-        {"TpOff", gtirb::SymAttribute::Part0},
-        {"TlsGD", gtirb::SymAttribute::Part3},
-        {"GotOff", gtirb::SymAttribute::Part1},
-        {"NtpOff", gtirb::SymAttribute::Part2},
-        {":lo12:", gtirb::SymAttribute::Part0},
-        {":got_lo12:", gtirb::SymAttribute::Part1},
+        {"TpOff", gtirb::SymAttribute::TpOff},
+        {"TlsGd", gtirb::SymAttribute::TlsGd},
+        {"GotOff", gtirb::SymAttribute::GotOff},
+        {"NtpOff", gtirb::SymAttribute::NtpOff},
+        {"Lo12", gtirb::SymAttribute::Lo12},
+        {"Hi", gtirb::SymAttribute::Hi},
+        {"Lo", gtirb::SymAttribute::Lo},
     };
     gtirb::SymAttributeSet Attributes;
 
@@ -1265,7 +1265,8 @@ void buildFunctions(gtirb::Context &Context, gtirb::Module &Module, souffle::Sou
                 auto Found = std::min_element(
                     Candidates.begin(), Candidates.end(),
                     [](const std::tuple<const gtirb::Symbol *, std::string, std::string> &S1,
-                       const std::tuple<const gtirb::Symbol *, std::string, std::string> &S2) {
+                       const std::tuple<const gtirb::Symbol *, std::string, std::string> &S2)
+                    {
                         auto &[Symbol1, Type1, Binding1] = S1;
                         auto &[Symbol2, Type2, Binding2] = S2;
                         // Prefer symbols of type FUNC.
