@@ -2,7 +2,7 @@ variables:
   GTIRB_BRANCH: "master"
   GTIRB_PPRINTER_BRANCH: "master"
   CAPSTONE_BRANCH: "master"
-  EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_API_V4_URL}/projects/1587/packages/pypi/simple
+  EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_SERVER_HOST}/projects/1587/packages/pypi/simple
   CONAN_PASSWORD: $CI_JOB_TOKEN
   # The following two variables are used by the package-uploader
   PROJECT_ID: $CI_PROJECT_ID
