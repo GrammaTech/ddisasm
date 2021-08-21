@@ -195,12 +195,13 @@ symbolic_operand_attribute(ea, 1, "GotRef") :-
     !split_load_for_symbolization(ea, _, Dest, "ADD"),
     relocation(Dest, _, _, _).
 
-symbolic_operand_attribute(ea, 1, ":got_lo12:") :-
+symbolic_operand_attribute(ea, 1, "GotRef"),
+symbolic_operand_attribute(ea, 1, "Lo12") :-
     split_load_for_symbolization(ea0, ea, Dest, "LDR/STR"),
     !split_load_for_symbolization(ea0, _, Dest, "ADD"),
     relocation(Dest, _, _, _).
 
-symbolic_operand_attribute(ea, 1, ":lo12:") :-
+symbolic_operand_attribute(ea, 1, "Lo12") :-
     split_load_for_symbolization(ea0, ea, Dest, "LDR/STR"),
     (
         !relocation(Dest, _, _, _), ea0 = ea0
@@ -208,7 +209,7 @@ symbolic_operand_attribute(ea, 1, ":lo12:") :-
         split_load_for_symbolization(ea0, _, Dest, "ADD")
     ).
 
-symbolic_operand_attribute(ea, 2, ":lo12:") :-
+symbolic_operand_attribute(ea, 2, "Lo12") :-
     split_load_for_symbolization(_, ea, Dest, "ADD"),
     !relocation(as(Dest,address), "GLOB_DAT", _, _).
 

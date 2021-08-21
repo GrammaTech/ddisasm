@@ -2,7 +2,7 @@ variables:
   GTIRB_BRANCH: "master"
   GTIRB_PPRINTER_BRANCH: "master"
   CAPSTONE_BRANCH: "master"
-  EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_API_V4_URL}/projects/1587/packages/pypi/simple
+  EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_SERVER_HOST}/api/v4/projects/1587/packages/pypi/simple
   CONAN_PASSWORD: $CI_JOB_TOKEN
   # The following two variables are used by the package-uploader
   PROJECT_ID: $CI_PROJECT_ID
@@ -61,7 +61,7 @@ build-conan-gcc7:
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
     - conan user ci_user -r gitlab -p
     # Install gtirb python wheel
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
+    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
     - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/build.py
 
@@ -81,7 +81,7 @@ build-conan-gcc9:
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
     - conan user ci_user -r gitlab -p
     # Install gtirb python wheel
-    - python -m pip install pip --upgrade && python -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
+    - python -m pip install pip --upgrade && python -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
     - export PATH="$PATH;C:\\Program Files\\CMake\\bin"
     - export SOUFFLE_INCLUDE_DIR="C:\\users\\vagrant\\AppData\\local\\Packages\\CanonicalGroupLimited.Ubuntu18.04onWindows_79rhkp1fndgsc\\localstate\\rootfs\\usr\\local\\include"
@@ -137,7 +137,7 @@ conan-windows-release:
     # Install gtirb, pprinter and capstone
     - dpkg -i libcapstone-dev.deb libgtirb.deb libgtirb-pprinter.deb gtirb-pprinter.deb
     # Install gtirb python API
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
+    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run tests
     - cd build && PATH=$(pwd)/bin:$PATH ctest -V
 
