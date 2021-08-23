@@ -46,7 +46,7 @@ symbolic_operand_attribute(EA,Index,"TpOff"):-
     tls_segment(Start,End,_),
     Dest >= Start, Dest < End.
 
-symbolic_operand_attribute(EA,Index,"TlsLD"):-
+symbolic_operand_attribute(EA,Index,"TlsLd"):-
     symbolic_operand(EA,Index,Dest,_),
     relocation(Dest,"DTPMOD64",_,_).
 
@@ -58,7 +58,7 @@ symbolic_operand_attribute(EA,Index,"TlsLD"):-
 symbolic_operand(EA,Index,Dest,"data"),
 symbolic_operand_attribute(EA,Index,"DtpOff"):-
     symbolic_operand(EA0,_,Dest0,_),
-    relocation(Dest0,"DTPMOD64","",0), // TlsLD
+    relocation(Dest0,"DTPMOD64","",0), // TlsLd
     next(EA0,CallEA),
     instruction_get_operation(CallEA,Operation),
     // TODO: check if the call target is __tls_get_addr?
