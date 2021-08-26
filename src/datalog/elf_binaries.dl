@@ -203,6 +203,7 @@ got_local_reference(Got_entry,Dest):-
 
 got_local_reference(Got_entry,Dest):-
     relocation(Got_entry,"DTPMOD64",Symbol,_),
+    Symbol != "",
     (
       pc_relative_operand(_,_,Got_entry);
       split_load_operand(_,_,Got_entry)
@@ -219,8 +220,7 @@ got_local_reference(Got_entry,Dest):-
         section(".tbss",_,Beg);
         section(".tdata",_,Beg)
     ),
-    Dest = as(as(Beg,number)+Addend,address),
-    !symbol(Dest,_,_,_,_,_,_,_).
+    Dest = as(as(Beg,number)+Addend,address).
 
 
 //////////////////////////////////////////////////////////////////////////
