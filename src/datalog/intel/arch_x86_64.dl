@@ -46,29 +46,35 @@ symbolic_operand_attribute(EA,Index,"TpOff"):-
     tls_segment(Start,End,_),
     Dest >= Start, Dest < End.
 
+// Find special-case TLSD code sequence of the form:
+// .byte 0x66
+// lea rdi, X@tlsgd[rip]
+// .value 0x6666
+// rex64
+// call __tls_get_addr@PLT
+//
+// Explanation:
+// GCC uses explict directives to inline 0x66 bytes (which are actually `data16'
+// instruction prefixes) as padding that have no "negative impact on the code".
+// Likewise, the accompanying `rex64' prefix on the call instruction inserts a 0x48
+// byte to extend the code sequence to the requisite 16-byte length, and again has
+// "no impact the code".
+.decl tlsgd_code_sequence(EA:address)
+tlsgd_code_sequence(EA):-
+    relocation(Got_entry,"DTPMOD64","",_),
+    pc_relative_operand(EA,_,Got_entry),
+    data_byte(EA,0x66),                           // .byte 0x66
+    instruction(EA+1,Size,_,"LEA",_,_,_,_,_,_),   // lea X@tlsgd[rip]
+    data_byte(EA+Size+1,0x66),                    // .value 0x6666
+    data_byte(EA+Size+2,0x66),
+    data_byte(EA+Size+3,0x48).                    // rex64
+
+symbolic_operand_attribute(EA,Index,"TlsGd"):-
+    symbolic_operand(EA,Index,Dest,_),
+    relocation(Dest,"DTPMOD64",_,_),
+    tlsgd_code_sequence(EA).
+
 symbolic_operand_attribute(EA,Index,"TlsLd"):-
     symbolic_operand(EA,Index,Dest,_),
-    relocation(Dest,"DTPMOD64",_,_).
-
-// E.g.,
-// lea RDI,QWORD PTR [RIP+.L_XXXX@TLSLD]
-// call __tls_get_addr@PLT
-// mov DWORD PTR [RAX+.L_YYYY@DTPOFF],N
-//
-symbolic_operand(EA,Index,Dest,"data"),
-symbolic_operand_attribute(EA,Index,"DtpOff"):-
-    symbolic_operand(EA0,_,Dest0,_),
-    relocation(Dest0,"DTPMOD64","",0), // TlsLd
-    next(EA0,CallEA),
-    instruction_get_operation(CallEA,Operation),
-    // TODO: check if the call target is __tls_get_addr?
-    arch.call_operation(Operation),
-    arch.return_val_reg(Reg),
-    def_used(CallEA,Reg,EA,_),
-    instruction_get_op(EA,Index,Op),
-    op_indirect(Op,"NONE",Reg,"NONE",_,Offset,_),
-    (
-        section(".tbss",_,Beg);
-        section(".tdata",_,Beg)
-    ),
-    Dest = as(as(Beg,number)+Offset,address).
+    relocation(Dest,"DTPMOD64",_,_),
+    !tlsgd_code_sequence(EA).
