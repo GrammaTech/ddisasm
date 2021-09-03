@@ -106,9 +106,6 @@ pc_relative_operand(EA, 1, as(Dest,address)) :-
 pc_relative_operand(EA, 2, as(Dest,address)) :-
     split_load(_, EA, Dest, "ADD").
 
-pc_relative_jump(EA, as(Dest,address)):-
-    split_load(EA, _, Dest, "LDR/STR").
-
 pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     instruction_get_op(EA, Index, Op),
     op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
@@ -121,6 +118,9 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     EANext0 = as(EA,number)+as(Disp,number),
     // Align the address
     EANext = EANext0-(EANext0 band 3).
+
+pc_relative_jump(EA, as(Dest,address)):-
+    split_load(EA, _, Dest, "LDR/STR").
 
 // This version of split_load uses def_used, so this should not be used for
 // the code inference step due to cyclic negation issue.
@@ -220,7 +220,7 @@ basic_target(Val):-
     defined_symbol(Val,_,_,_,_,_,_,"$a").
 
 
-block_points(Block,0,-11,"overlap with literal pool"),
+block_points(Block,0,-10,"overlap with literal pool"),
 block_is_overlapping(Block):-
     block_candidate_boundaries(Block,BlockBegAddr,BlockEndAddr),
     defined_symbol(Val,_,_,_,_,_,_,"$d"),
@@ -368,6 +368,7 @@ symbolic_operand_candidate(EA,1,Dest,Type):-
 
 symbolic_operand_candidate(EA,1,Dest,Type):-
     binary_isa("ARM"),
+    !litpool_ref_double(EA,_,_,_),
     // ADR <Register> <Immediate>
     // e.g. adr r1, BaseOp
     instruction_get_operation(EA, "ADR"),
@@ -396,9 +397,11 @@ block_needs_splitting_at(Dest):-
     symbolic_operand(_,_,Dest,"code"),
     code(Dest).
 
-block_needs_splitting_at(Dest+1):- // Thumb mode
-    binary_isa("ARM"),
-    symbolic_data(_,_,Dest),
+block_needs_splitting_at(Dest+1):- //  Thumb
+    (
+        symbolic_operand(_,_,Dest,_); // either code or data
+        symbolic_data(_,_,Dest)
+    ),
     (Dest band 1) = 0,
     code(Dest+1).
 
@@ -470,7 +473,7 @@ block_needs_splitting_at(Symbol2_adjusted),
 symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2_adjusted,"first",Scale):-
     instruction(EA,InstrSize,_,Operation,_,0,0,0,_,_),
     // Align the address
-    TableStart = as((EA-(EA band 3))+InstrSize,address),
+    TableStart = as((EA-(EA band 1))+InstrSize,address),
     Symbol1 = TableStart,
     (
         Size = 2,
@@ -515,8 +518,7 @@ symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Symbol1,Symbol2_adjusted,
 .decl arm_jump_table(EA_jump:address,Size:unsigned,TableStart:address)
 .output arm_jump_table
 
-discarded_block(TableStart),
-data_in_code(TableStart,TableStart+Size),
+block_points(TableStart,0,-9,"arm jump table"),
 data_object_point(TableStart,Size,"symbol",2,"arm jump-table"),
 data_object_candidate(TableStart,Size,"symbol"),
 arm_jump_table(EA_jump,Size,TableStart):-
@@ -549,7 +551,6 @@ arm_jump_table(EA_jump,Size,TableStart):-
         TableStart = EA_jump + 4
     ).
 
-data_in_code(EA+Size,EA+Size+Size),
 data_object_point(EA+Size,Size,"symbol",2,"arm jump-table3"),
 data_object_candidate(EA+Size,Size,"symbol"),
 arm_jump_table(EA_jump,Size,EA+Size):-
@@ -558,30 +559,30 @@ arm_jump_table(EA_jump,Size,EA+Size):-
     address_in_data(EA+Size,TargetAddr),
     code(TargetAddr).
 
+// For table entries: to discard blocks properly
+block_needs_splitting_at(as(TableEntry,address)):-
+    arm_jump_table(_,_,TableEntry),
+    code(as(TableEntry,address)).
+
+block_needs_splitting_at(as(TableEntry+1,address)):- // Thumb
+    arm_jump_table(_,_,TableEntry),
+    code(as(TableEntry+1,address)).
+
+// For table entry targets: to split the target blocks
 block_needs_splitting_at(as(TargetAddr,address)):-
     arm_jump_table(_,Size,TableEntry),
     data_word(TableEntry,Size,TargetAddr),
     code(as(TargetAddr,address)).
 
-block_needs_splitting_at(as(TableEntry,address)):-
-    arm_jump_table(_,_,TableEntry),
-    code(as(TableEntry,address)).
-
-block_needs_splitting_at(as(TableEntry+1,address)):-
-    arm_jump_table(_,_,TableEntry),
-    code(as(TableEntry+1,address)).
-
-// Thumb
-block_needs_splitting_at(as(TargetAddr+1,address)):-
+block_needs_splitting_at(as(TargetAddr+1,address)):- // Thumb
     arm_jump_table(_,Size,TableEntry),
     data_word(TableEntry,Size,TargetAddr),
     code(as(TargetAddr+1,address)).
 
-.decl litpool_ref(ea:address, register_name:register, ea_litpool:address, nbits:unsigned)
-.output litpool_ref
+.decl litpool_ref_candidate(ea:address, register_name:register, ea_litpool:address, nbits:unsigned)
+.output litpool_ref_candidate
 
-litpool_ref(EA,Reg,LitPoolAddr,NBits):-
-    !invalid(EA,_),
+litpool_ref_candidate(EA,Reg,LitPoolAddr,NBits):-
     // LDR <Register> <IndirectOp>
     // e.g., ldr r3, [pc, Offset]
     instruction_get_operation(EA,Operation),
@@ -597,65 +598,67 @@ litpool_ref(EA,Reg,LitPoolAddr,NBits):-
         ;
         (EA band 1) != 0, Disp = 4 // Thumb mode
     ),
-    Addr = as(EA,number)+Offset+as(Disp,number),
     // Align the address
-    LitPoolAddr = as(Addr-(Addr band 3),address).
+    EA_aligned = as(EA-(EA band 3),address),
+    Addr = as(EA_aligned,number)+Offset+as(Disp,number),
+    LitPoolAddr = as(Addr,address).
+
+.decl litpool_ref(ea:address, register_name:register, ea_litpool:address, nbits:unsigned)
+.output litpool_ref
+
+litpool_ref(EA,Reg,LitPoolAddr,NBits):-
+    !invalid(EA,_),
+    litpool_ref_candidate(EA,Reg,LitPoolAddr,NBits).
 
 .decl litpool_ref_double(ea:address, reg1:register, reg2:register, ea_litpool:address)
 .output litpool_ref_double
 
 // E.g., adr r, L
 //       ldrd r1, r2, [r]
+data_in_code(LitPoolAddr,LitPoolAddr+8),
 litpool_ref_double(EA,Reg1,Reg2,LitPoolAddr):-
     !invalid(EA,_),
     // ADR Reg, Label
-    instruction_get_operation(EA0,"ADR"),
-    instruction_get_op(EA0,2,RegOp),
+    instruction_get_operation(EA,"ADR"),
+    instruction_get_op(EA,2,RegOp),
     op_regdirect_contains_reg(RegOp,Reg),
-    instruction_get_op(EA0,1,OffsetOp),
+    instruction_get_op(EA,1,OffsetOp),
     op_immediate(OffsetOp, Offset),
 
-    next(EA0,EA),
+    next(EA,EA_next),
 
     // LDRD Reg1, Reg2, [Reg]
-    instruction_get_operation(EA,"LDRD"),
-    instruction_get_op(EA,3,Reg1Op),
+    instruction_get_operation(EA_next,"LDRD"),
+    instruction_get_op(EA_next,3,Reg1Op),
     op_regdirect_contains_reg(Reg1Op,Reg1),
-    instruction_get_op(EA,1,Reg2Op),
+    instruction_get_op(EA_next,1,Reg2Op),
     op_regdirect_contains_reg(Reg2Op,Reg2),
-    instruction_get_op(EA,2,IndOp),
+    instruction_get_op(EA_next,2,IndOp),
     op_indirect(IndOp,"NONE",Reg,"NONE",_,0,_),
     (
         (EA band 1) = 0,  Disp = 8 // ARM mode
         ;
         (EA band 1) != 0, Disp = 4 // Thumb mode
     ),
-    Addr = as(EA,number)+Offset+as(Disp,number),
     // Align the address
-    LitPoolAddr = as(Addr-(Addr band 3),address).
+    EA_aligned = as(EA-(EA band 3), address),
+    Addr = as(EA_aligned,number)+Offset+as(Disp,number),
+    LitPoolAddr = as(Addr,address).
 
-block_points(Addr,0,-11,"arm literal pool"), // Thumb
+block_points(Addr,0,-10,"arm literal pool"),
 block_is_overlapping(Addr):-
     litpool_ref(_,_,LitPoolAddr,_),
     (
         Addr = LitPoolAddr;
-        Addr = LitPoolAddr+1;
-        Addr = LitPoolAddr+2;
-        Addr = LitPoolAddr+3
+        Addr = LitPoolAddr+1 // For Thumb blocks
     ).
 
-block_points(Addr,0,-11,"arm literal pool"), // Thumb
+block_points(Addr,0,-11,"arm literal pool"),
 block_is_overlapping(Addr):-
     litpool_ref_double(_,_,_,LitPoolAddr),
     (
         Addr = LitPoolAddr;
-        Addr = LitPoolAddr+1;
-        Addr = LitPoolAddr+2;
-        Addr = LitPoolAddr+3;
-        Addr = LitPoolAddr+4;
-        Addr = LitPoolAddr+5;
-        Addr = LitPoolAddr+6;
-        Addr = LitPoolAddr+7
+        Addr = LitPoolAddr+1 // For Thumb blocks
     ).
 
 block_points(Block,0,-3,"jump from arm literal pool"):-
@@ -669,6 +672,9 @@ block_points(Block,0,-3,"jump from arm literal pool"):-
 
 symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
     litpool_ref(EA,_,LitPoolAddr,_).
+
+symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
+    litpool_ref_double(EA,_,_,LitPoolAddr).
 
 .decl symbol_minus_symbol_candidate(ea:address,size:unsigned,symbol1:address,symbol2:address,scale:unsigned,ea_litpool_ref:address,ea_add_pc:address,reg:register)
 .output symbol_minus_symbol_candidate
@@ -764,6 +770,16 @@ cant_have_symbolic_immediate(Operation):-
         contains("MOV", Operation)
     ).
 
+possible_target_from(Dest,Src):-
+    (
+        binary_isa("ARM");
+        binary_isa("ARM64")
+    ),
+    code_in_block_candidate(Src,_),
+    !litpool_ref(Src,_,Dest,_),
+    !litpool_ref_double(Src,_,_,Dest),
+    may_have_symbolic_immediate(Src,Dest).
+
 instruction_get_dest_op(EA,1,Op):-
     instruction(EA,_,_,Operation,Op,_,_,_,_,_),
     contains("POP", Operation).
@@ -800,8 +816,15 @@ invalid(EA,"arm: pc is not allowed"):-
         contains("BIC",Operation);
         contains("LDM",Operation)
     ),
-    instruction_get_dest_op(EA,_,Op),
-    op_regdirect_contains_reg(Op,PC),
+    (
+        instruction_get_dest_op(EA,_,Op),
+        op_regdirect_contains_reg(Op,PC),
+        arch.pc_register(PC)
+    ).
+
+invalid(EA,"arm: pc cannot be used as index register"):-
+    instruction_get_op(EA,_,Op),
+    op_indirect(Op,_,_,PC,_,_,_),
     arch.pc_register(PC).
 
 invalid(EA,"arm: invalid mul operand (pc)"):-
@@ -833,9 +856,11 @@ invalid(EA,"arm: invalid pc"):-
         Operation = "LDRSBHS";
         Operation = "LDRSHHS";
         Operation = "LDRSBTHS";
-        Operation = "LDRSHTHS"
+        Operation = "LDRSHTHS";
+        contains("LDRSB",Operation);
+        contains("LDRBVC",Operation);
+        contains("LDRBLO",Operation)
     ),
-    //instruction_get_op(EA,_,Op),
     instruction_get_dest_op(EA,_,Op),
     op_regdirect_contains_reg(Op,PC),
     arch.pc_register(PC).

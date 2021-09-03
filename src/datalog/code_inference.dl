@@ -248,12 +248,18 @@ block_limit(as(EA,address)):-
 possible_target_from(Dest,Src):-
     code_in_block_candidate(Src,_),
     (
-        may_have_symbolic_immediate(Src,Dest)
-        ;
         direct_jump(Src,Dest);
         direct_call(Src,Dest);
         pc_relative_jump(Src,Dest);
-        pc_relative_call(Src,Dest);
+        pc_relative_call(Src,Dest)
+    ).
+
+possible_target_from(Dest,Src):-
+    !binary_isa("ARM"),
+    !binary_isa("ARM64"),
+    code_in_block_candidate(Src,_),
+    (
+        may_have_symbolic_immediate(Src,Dest);
         pc_relative_operand(Src,_,Dest)
     ).
 
