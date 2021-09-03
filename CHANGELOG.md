@@ -1,4 +1,4 @@
-# 1.4.1
+# 1.5.1
 
 * Use dedicated symbolic expression attributes.
 * Support Souffle interpreter for development.
