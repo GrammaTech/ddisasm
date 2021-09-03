@@ -220,7 +220,7 @@ basic_target(Val):-
     defined_symbol(Val,_,_,_,_,_,_,"$a").
 
 
-block_points(Block,0,-10,"overlap with literal pool"),
+block_points(Block,0,-9,"overlap with literal pool"),
 block_is_overlapping(Block):-
     block_candidate_boundaries(Block,BlockBegAddr,BlockEndAddr),
     defined_symbol(Val,_,_,_,_,_,_,"$d"),
@@ -393,18 +393,6 @@ symbolic_operand_candidate(EA,1,Dest,Type):-
         Type = "data"
     ).
 
-block_needs_splitting_at(Dest):-
-    symbolic_operand(_,_,Dest,"code"),
-    code(Dest).
-
-block_needs_splitting_at(Dest+1):- //  Thumb
-    (
-        symbolic_operand(_,_,Dest,_); // either code or data
-        symbolic_data(_,_,Dest)
-    ),
-    (Dest band 1) = 0,
-    code(Dest+1).
-
 value_reg_edge(EA,Reg,EA,"NONE",0,as(Val,number)):-
     split_load_for_symbolization(_,EA,Val,_),
     instruction_get_dest_op(EA,_,DestRegOp),
@@ -559,15 +547,6 @@ arm_jump_table(EA_jump,Size,EA+Size):-
     address_in_data(EA+Size,TargetAddr),
     code(TargetAddr).
 
-// For table entries: to discard blocks properly
-block_needs_splitting_at(as(TableEntry,address)):-
-    arm_jump_table(_,_,TableEntry),
-    code(as(TableEntry,address)).
-
-block_needs_splitting_at(as(TableEntry+1,address)):- // Thumb
-    arm_jump_table(_,_,TableEntry),
-    code(as(TableEntry+1,address)).
-
 // For table entry targets: to split the target blocks
 block_needs_splitting_at(as(TargetAddr,address)):-
     arm_jump_table(_,Size,TableEntry),
@@ -645,7 +624,7 @@ litpool_ref_double(EA,Reg1,Reg2,LitPoolAddr):-
     Addr = as(EA_aligned,number)+Offset+as(Disp,number),
     LitPoolAddr = as(Addr,address).
 
-block_points(Addr,0,-10,"arm literal pool"),
+block_points(Addr,0,-9,"arm literal pool"),
 block_is_overlapping(Addr):-
     litpool_ref(_,_,LitPoolAddr,_),
     (
@@ -658,7 +637,13 @@ block_is_overlapping(Addr):-
     litpool_ref_double(_,_,_,LitPoolAddr),
     (
         Addr = LitPoolAddr;
-        Addr = LitPoolAddr+1 // For Thumb blocks
+        Addr = LitPoolAddr+1; // For Thumb blocks
+        Addr = LitPoolAddr+2;
+        Addr = LitPoolAddr+3; // For Thumb blocks
+        Addr = LitPoolAddr+4;
+        Addr = LitPoolAddr+5; // For Thumb blocks
+        Addr = LitPoolAddr+6;
+        Addr = LitPoolAddr+7  // For Thumb blocks
     ).
 
 block_points(Block,0,-3,"jump from arm literal pool"):-
