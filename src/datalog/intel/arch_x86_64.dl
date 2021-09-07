@@ -46,6 +46,6 @@ symbolic_operand_attribute(EA,Index,"TpOff"):-
     tls_segment(Start,End,_),
     Dest >= Start, Dest < End.
 
-symbolic_operand_attribute(EA,Index,"TlsGD"):-
+symbolic_operand_attribute(EA,Index,"TlsGd"):-
     symbolic_operand(EA,Index,Dest,_),
     relocation(Dest,"DTPMOD64",_,_).

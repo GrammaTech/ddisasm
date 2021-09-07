@@ -1,6 +1,6 @@
-//===- PeX64Loader.h --------------------------------------------*- C++ -*-===//
+//===- RawLoader.cpp --------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2020 GrammaTech, Inc.
+//  Copyright (C) 2021 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -11,7 +11,8 @@
 //  This program is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-//  GNU Affero General Public License for more details.
+//  GNU Affero General Public
+//  License for more details.
 //
 //  This project is sponsored by the Office of Naval Research, One Liberty
 //  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
@@ -20,26 +21,19 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_GTIRB_DECODER_TARGET_PEX64LOADER_H_
-#define SRC_GTIRB_DECODER_TARGET_PEX64LOADER_H_
 
-#include "../CompositeLoader.h"
-#include "../arch/X64Loader.h"
-#include "../core/DataLoader.h"
-#include "../core/ModuleLoader.h"
-#include "../core/SectionLoader.h"
-#include "../format/PeLoader.h"
+#include "RawLoader.h"
+#include "../../AuxDataSchema.h"
 
-CompositeLoader PeX64Loader()
+void RawEntryLoader(const gtirb::Module &Module, DatalogProgram &Program)
 {
-    CompositeLoader Loader("souffle_disasm_x86_64");
-    Loader.add(ModuleLoader);
-    Loader.add(SectionLoader);
-    Loader.add<X64Loader>();
-    Loader.add<DataLoader>(DataLoader::Pointer::QWORD);
-    Loader.add(PeSymbolLoader);
-    Loader.add(PeDataDirectoryLoader);
-    return Loader;
-};
-
-#endif // SRC_GTIRB_DECODER_TARGET_PEX64LOADER_H_
+    std::vector<gtirb::Addr> Entries;
+    if(auto *RawEntries = Module.getAuxData<gtirb::schema::RawEntries>())
+    {
+        for(const auto &EA : *RawEntries)
+        {
+            Entries.push_back(gtirb::Addr(EA));
+        }
+    }
+    Program.insert("entry_point", std::move(Entries));
+}

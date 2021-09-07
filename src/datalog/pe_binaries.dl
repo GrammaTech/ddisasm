@@ -23,11 +23,17 @@
 
 // This module defines predicates specific of PE binaries
 
+.decl data_directory(Type:symbol,Address:address,Size:unsigned)
+.input data_directory
+
 .decl import_entry(Address:address,Ordinal:number,Function:symbol,Library:symbol)
 .input import_entry
 
 .decl export_entry(Address:address,Ordinal:number,Name:symbol)
 .input export_entry
+
+.decl pe_debug_data(Type:symbol,Address:address,Size:unsigned)
+.input pe_debug_data
 
 .decl pe_section_characteristics(Name:symbol,Mask:unsigned)
 
@@ -90,6 +96,10 @@ code_section(Section):-
     section_complete(Section,_,_,_,Flags,_),
     pe_section_characteristics("IMAGE_SCN_CNT_CODE",Exec),
     Flags band Exec >0.
+
+data_region(Begin,Size):-
+    data_directory(_,Begin,Size), Size > 0;
+    pe_debug_data(_,Begin,Size), Size > 0.
 
 // Implicit page for KUSER_SHARED_DATA
 data_segment(0x7FFE0000,0x7FFE1000):-

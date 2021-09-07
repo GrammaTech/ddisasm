@@ -32,4 +32,6 @@
 
 void PeSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program);
 
+void PeDataDirectoryLoader(const gtirb::Module &Module, DatalogProgram &Program);
+
 #endif // SRC_GTIRB_DECODER_FORMAT_PELOADER_H_

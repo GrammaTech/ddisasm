@@ -165,6 +165,11 @@ invalid(From,"propagate from invalid"):-
         pc_relative_call(From,To)
     ).
 
+invalid(EA,"known data region"):-
+    data_region(Begin,Size),
+    instruction(EA,_,_,_,_,_,_,_,_,_),
+    Size > 0, EA >= Begin, EA < (Begin + Size).
+
 .decl possible_ea(EA:address)
 
 possible_ea(EA):-

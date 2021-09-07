@@ -30,6 +30,8 @@ class PeReader : public GtirbBuilder
 public:
     PeReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary);
 
+    gtirb::ErrorOr<GTIRB> build() override;
+
 protected:
     std::shared_ptr<LIEF::PE::Binary> Pe;
 
@@ -42,6 +44,8 @@ protected:
     std::vector<PeResource> resources();
     std::vector<ImportEntry> importEntries();
     std::vector<ExportEntry> exportEntries();
+    std::vector<DataDirectory> dataDirectories();
+    std::vector<DebugData> debugData();
 };
 
 #endif // PE_GTIRB_BUILDER_H_

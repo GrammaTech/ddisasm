@@ -532,13 +532,13 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_
         {"GotPage", gtirb::SymAttribute::GotPage},
         {"GotPageOfst", gtirb::SymAttribute::GotPageOfst},
         {"PltRef", gtirb::SymAttribute::PltRef},
-        // FIXME: Replace these with appropriate flags when supported:
-        {"TpOff", gtirb::SymAttribute::Part0},
-        {"TlsGD", gtirb::SymAttribute::Part3},
-        {"GotOff", gtirb::SymAttribute::Part1},
-        {"NtpOff", gtirb::SymAttribute::Part2},
-        {":lo12:", gtirb::SymAttribute::Part0},
-        {":got_lo12:", gtirb::SymAttribute::Part1},
+        {"TpOff", gtirb::SymAttribute::TpOff},
+        {"TlsGd", gtirb::SymAttribute::TlsGd},
+        {"GotOff", gtirb::SymAttribute::GotOff},
+        {"NtpOff", gtirb::SymAttribute::NtpOff},
+        {"Lo12", gtirb::SymAttribute::Lo12},
+        {"Hi", gtirb::SymAttribute::Hi},
+        {"Lo", gtirb::SymAttribute::Lo},
     };
     gtirb::SymAttributeSet Attributes;
 
@@ -902,24 +902,25 @@ void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
     {
         std::string sectionName;
         output >> sectionName;
-        const auto bss_section = module.findSections(sectionName);
-        if(bss_section == module.sections_by_name_end())
-            continue;
-        // for each bss section we divide in data objects according to the bss_data markers that
-        // fall within the range of the section
-        auto beginning = bssData.lower_bound(bss_section->getAddress().value());
-        // end points to the address at the end of the bss section
-        auto end = bssData.lower_bound(*addressLimit(*bss_section));
-        for(auto i = beginning; i != end; ++i)
+        const auto bss_sections = module.findSections(sectionName);
+        for(const auto &bss_section : bss_sections)
         {
-            auto next = i;
-            next++;
-            if(auto it = module.findByteIntervalsOn(*i); !it.empty())
+            // for each bss section we divide in data objects according to the bss_data markers that
+            // fall within the range of the section
+            auto beginning = bssData.lower_bound(bss_section.getAddress().value());
+            // end points to the address at the end of the bss section
+            auto end = bssData.lower_bound(*addressLimit(bss_section));
+            for(auto i = beginning; i != end; ++i)
             {
-                gtirb::ByteInterval &byteInterval = *it.begin();
-                uint64_t blockOffset = *i - byteInterval.getAddress().value();
-                byteInterval.addBlock<gtirb::DataBlock>(context, blockOffset,
-                                                        static_cast<uint64_t>(*next - *i));
+                auto next = i;
+                next++;
+                if(auto it = module.findByteIntervalsOn(*i); !it.empty())
+                {
+                    gtirb::ByteInterval &byteInterval = *it.begin();
+                    uint64_t blockOffset = *i - byteInterval.getAddress().value();
+                    byteInterval.addBlock<gtirb::DataBlock>(context, blockOffset,
+                                                            static_cast<uint64_t>(*next - *i));
+                }
             }
         }
     }
@@ -1623,7 +1624,11 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
             module.setEntryPoint(&*it.begin());
         }
     }
-    assert(module.getEntryPoint() && "Failed to set module entry point.");
+
+    if(module.getFileFormat() != gtirb::FileFormat::RAW && !module.getEntryPoint())
+    {
+        std::cerr << "WARNING: Failed to set module entry point.\n";
+    }
 }
 
 void shiftThumbBlocks(gtirb::Module &Module)

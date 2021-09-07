@@ -1,6 +1,7 @@
-//===- PeX64Loader.h --------------------------------------------*- C++ -*-===//
+
+//===- Interpreter.cpp ------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2020 GrammaTech, Inc.
+//  Copyright (C) 2021 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,26 +21,15 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_GTIRB_DECODER_TARGET_PEX64LOADER_H_
-#define SRC_GTIRB_DECODER_TARGET_PEX64LOADER_H_
 
-#include "../CompositeLoader.h"
-#include "../arch/X64Loader.h"
-#include "../core/DataLoader.h"
-#include "../core/ModuleLoader.h"
-#include "../core/SectionLoader.h"
-#include "../format/PeLoader.h"
+#include <souffle/SouffleInterface.h>
 
-CompositeLoader PeX64Loader()
-{
-    CompositeLoader Loader("souffle_disasm_x86_64");
-    Loader.add(ModuleLoader);
-    Loader.add(SectionLoader);
-    Loader.add<X64Loader>();
-    Loader.add<DataLoader>(DataLoader::Pointer::QWORD);
-    Loader.add(PeSymbolLoader);
-    Loader.add(PeDataDirectoryLoader);
-    return Loader;
-};
+#include <gtirb/gtirb.hpp>
 
-#endif // SRC_GTIRB_DECODER_TARGET_PEX64LOADER_H_
+#ifndef GTIRB_SRC_INTERPRETER_H_
+#define GTIRB_SRC_INTERPRETER_H_
+
+void runInterpreter(gtirb::Module& Module, souffle::SouffleProgram* Program,
+                    const std::string& DatalogFile, const std::string& Directory, uint8_t Threads);
+
+#endif // GTIRB_SRC_INTERPRETER_H_

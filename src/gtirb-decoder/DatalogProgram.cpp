@@ -22,9 +22,11 @@
 //===----------------------------------------------------------------------===//
 #include "DatalogProgram.h"
 
+#include <souffle/RamTypes.h>
 #include <fstream>
 #include <gtirb/gtirb.hpp>
 
+#include "../AuxDataSchema.h"
 #include "CompositeLoader.h"
 
 std::map<DatalogProgram::Target, DatalogProgram::Factory> &DatalogProgram::loaders()
@@ -46,32 +48,107 @@ std::optional<DatalogProgram> DatalogProgram::load(const gtirb::Module &Module)
     return std::nullopt;
 }
 
+void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation *Relation)
+{
+    souffle::SymbolTable SymbolTable = Relation->getSymbolTable();
+    for(souffle::tuple Tuple : *Relation)
+    {
+        for(size_t I = 0; I < Tuple.size(); I++)
+        {
+            if(I > 0)
+            {
+                Stream << "\t";
+            }
+            switch(Relation->getAttrType(I)[0])
+            {
+                case 's':
+                    Stream << SymbolTable.resolve(Tuple[I]);
+                    break;
+                case 'u':
+                    Stream << souffle::ramBitCast<souffle::RamUnsigned>(Tuple[I]);
+                    break;
+                case 'f':
+                    Stream << souffle::ramBitCast<souffle::RamFloat>(Tuple[I]);
+                    break;
+                default:
+                    Stream << Tuple[I];
+            }
+        }
+        Stream << "\n";
+    }
+}
+
 void DatalogProgram::writeFacts(const std::string &Directory)
 {
     std::ios_base::openmode FileMask = std::ios::out;
     for(souffle::Relation *Relation : Program->getInputRelations())
     {
         std::ofstream File(Directory + Relation->getName() + ".facts", FileMask);
-        souffle::SymbolTable SymbolTable = Relation->getSymbolTable();
-        for(souffle::tuple Tuple : *Relation)
-        {
-            for(size_t I = 0; I < Tuple.size(); I++)
-            {
-                if(I > 0)
-                {
-                    File << "\t";
-                }
-                if(Relation->getAttrType(I)[0] == 's')
-                {
-                    File << SymbolTable.resolve(Tuple[I]);
-                }
-                else
-                {
-                    File << Tuple[I];
-                }
-            }
-            File << std::endl;
-        }
+        writeRelation(File, Relation);
         File.close();
     }
+}
+
+void DatalogProgram::writeFacts(gtirb::Module &Module)
+{
+    std::map<std::string, std::tuple<std::string, std::string>> Relations;
+
+    for(souffle::Relation *Relation : Program->getInputRelations())
+    {
+        if(Relation->getArity() == 0)
+        {
+            continue;
+        }
+
+        // Construct type signature string.
+        std::stringstream Type;
+        Type << "<" << std::string(Relation->getAttrType(0));
+        for(size_t I = 1; I < Relation->getArity(); I++)
+        {
+            Type << "," << Relation->getAttrType(I);
+        }
+        Type << ">";
+
+        // Write CSV to buffer.
+        std::stringstream Csv;
+        writeRelation(Csv, Relation);
+
+        // TODO: Compress CSV.
+
+        Relations[Relation->getName()] = {Type.str(), Csv.str()};
+    }
+
+    Module.addAuxData<gtirb::schema::SouffleFacts>(std::move(Relations));
+}
+
+void DatalogProgram::writeRelations(gtirb::Module &Module)
+{
+    std::map<std::string, std::tuple<std::string, std::string>> Relations;
+
+    for(souffle::Relation *Relation : Program->getOutputRelations())
+    {
+        if(Relation->getArity() == 0)
+        {
+            continue;
+        }
+
+        // Construct type signature string.
+        std::stringstream Type;
+        Type << "<" << std::string(Relation->getAttrType(0));
+        for(size_t I = 1; I < Relation->getArity(); I++)
+        {
+            Type << "," << Relation->getAttrType(I);
+        }
+        Type << ">";
+
+        // Write CSV to buffer.
+        std::stringstream Csv;
+        writeRelation(Csv, Relation);
+
+        // TODO: Compress CSV.
+
+        Relations[Relation->getName()] = {Type.str(), Csv.str()};
+    }
+
+    Module.addAuxData<gtirb::schema::SouffleOutputs>(std::move(Relations));
 }
