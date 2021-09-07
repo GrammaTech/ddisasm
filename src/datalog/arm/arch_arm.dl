@@ -50,6 +50,16 @@ load_operation(Operation):-
         contains("LDM", Operation)
     ).
 
+.decl load_word_operation(Operation:symbol)
+
+load_word_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    substr(Operation,0,3) = "LDR",
+    (
+        strlen(Operation) = 3; // unconditional
+        strlen(Operation) = 5  // conditional ldr
+    ).
+
 .decl store_operation(Operation:symbol)
 
 store_operation(Operation):-

@@ -515,11 +515,7 @@ data_object_point(TableStart,Size,"symbol",2,"arm jump-table"),
 data_object_candidate(TableStart,Size,"symbol"),
 arm_jump_table(EA_jump,Size,TableStart):-
     instruction_get_operation(EA_jump,Operation),
-    substr(Operation,0,3) = "LDR",
-    (
-        strlen(Operation) = 3; // unconditional
-        strlen(Operation) = 5  // conditional ldr
-    ),
+    arch.load_word_operation(Operation),
     arch.pc_register(PC),
     // ldr pc, [pc,r2, lsl N]
     // TODO: Currently, 'lsl N' is not propagated from the decoder.
