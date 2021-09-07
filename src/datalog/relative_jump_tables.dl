@@ -123,10 +123,10 @@ relative_address_start(EA,Size,EA,Dest,DestIsFirstOrSecond):-
     // and sometimes it is Diff = JumpTarget-Reference
     (
         Dest = as(EASigned-Diff,address), DestIsFirstOrSecond = "second",
-        Dest2 = as(EASigned+as(Size,number)-Diff2,address)
+        Dest2 = as(EASigned-Diff2,address)
         ;
         Dest = as(EASigned+Diff,address), DestIsFirstOrSecond = "first",
-        Dest2 = as(EASigned+as(Size,number)+Diff2,address)
+        Dest2 = as(EASigned+Diff2,address)
     ),
     possible_ea(Dest),
     possible_ea(Dest2).
