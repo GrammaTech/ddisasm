@@ -79,14 +79,14 @@ may_fallthrough(From,To):-
 may_fallthrough(From,To):-
     next(From,To),
     arch.delay_slot(Prev,From),
-    !arch.return(Prev),
+    !unconditional_return(Prev),
     !unconditional_jump(Prev).
 
 // Common case
 may_fallthrough(From,To):-
     next(From,To),
     !arch.delay_slot(_,From),
-    !arch.return(From),
+    !unconditional_return(From),
     !unconditional_jump(From),
     !halt(From),
     !no_return_call(From).
@@ -94,7 +94,7 @@ may_fallthrough(From,To):-
 may_fallthrough(From,To):-
     binary_isa("ARM"),
     next(From,To),
-    return_conditional(From).
+    conditional_return(From).
 
 .decl must_fallthrough(o:address,d:address)
 

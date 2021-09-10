@@ -84,13 +84,13 @@ is_nop(EA):-
 .decl return(n:address)
 
 return(EA):-
-    return_operation(Operation),
-    instruction_get_operation(EA,Operation),
+    instruction_get_operation(EA,"BX"),
     instruction_get_op(EA,_,Op),
     op_regdirect_contains_reg(Op,"LR").
 
 return(EA):-
-    instruction_get_operation(EA,"POP"),
+    instruction_get_operation(EA,Operation),
+    contains("POP", Operation),
     instruction_get_op(EA,_,Op),
     op_regdirect_contains_reg(Op,Reg),
     pc_register(Reg).
@@ -103,13 +103,24 @@ return(EA):-
     instruction_get_src_op(EA,_,SrcOp),
     op_regdirect_contains_reg(SrcOp,"LR").
 
-return_conditional(EA):-
-    instruction_get_operation(EA,Operation),
+.decl unconditional_return_operation(operation:symbol)
+
+// NOTE: unconditional_return_operation must be used with 'return' rule.
+unconditional_return_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    (
+        Operation = "BX";
+        Operation = "MOV";
+        Operation = "POP"
+    ),
+    !conditional_return_operation(Operation).
+
+.decl conditional_return_operation(operation:symbol)
+
+conditional_return_operation(Operation):-
+    instruction_get_operation(_,Operation),
     contains("POP", Operation),
-    strlen(Operation) != 3,
-    instruction_get_op(EA,_,Op),
-    op_regdirect_contains_reg(Op,Reg),
-    pc_register(Reg).
+    strlen(Operation) != 3.
 
 .decl delay_slot(BranchEA:address,EA:address)
 
@@ -240,11 +251,6 @@ call_operation("BLXAL").
 .decl syscall_operation(operation:symbol)
 
 syscall_operation("SWI").
-
-.decl return_operation(operation:symbol)
-
-// NOTE: make sure to check if the register operand is LR.
-return_operation("BX").
 
 // TODO:
 .decl halt_operation(operation:symbol)
