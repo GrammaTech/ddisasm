@@ -476,6 +476,8 @@ package-centos8:
 build-ubuntu18-packages:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
   needs: ['build-ubuntu18-gcc']
+  variables:
+    OS: ubuntu18
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_BRANCH == "master"
@@ -484,13 +486,13 @@ build-ubuntu18-packages:
     - if: $CI_COMMIT_BRANCH
       when: manual
       allow_failure: true
-  variables:
-    OS: ubuntu18
   <<: *build-ubuntu-packages
 
 build-ubuntu20-packages:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   needs: ['build-ubuntu20-gcc']
+  variables:
+    OS: ubuntu20
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_BRANCH == "master"
@@ -499,8 +501,6 @@ build-ubuntu20-packages:
     - if: $CI_COMMIT_BRANCH
       when: manual
       allow_failure: true
-  variables:
-    OS: ubuntu20
   <<: *build-ubuntu-packages
 
 .setup-apt-repo-template: &setup-apt-repo
@@ -522,6 +522,8 @@ build-ubuntu20-packages:
 setup-ubuntu18-package-tests:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
   needs: ['build-ubuntu18-packages']
+  variables:
+    OS: ubuntu18
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_BRANCH == "master"
@@ -530,13 +532,13 @@ setup-ubuntu18-package-tests:
     - if: $CI_COMMIT_BRANCH
       when: manual
       allow_failure: true
-  variables:
-    OS: ubuntu18
   <<: *setup-apt-repo
 
 setup-ubuntu20-package-tests:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   needs: ['build-ubuntu20-packages']
+  variables:
+    OS: ubuntu20
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_BRANCH == "master"
@@ -545,8 +547,6 @@ setup-ubuntu20-package-tests:
     - if: $CI_COMMIT_BRANCH
       when: manual
       allow_failure: true
-  variables:
-    OS: ubuntu20
   <<: *setup-apt-repo
 
 .test-ubuntu-ddisasm: &test-ubuntu-ddisasm
@@ -632,22 +632,10 @@ test-ubuntu20-ddisasm-dbg-package:
 
 debian-installer-ubuntu18:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
   needs:
     - 'test-ubuntu18-ddisasm-package'
     - 'test-ubuntu18-ddisasm-dbg-package'
     - 'build-ubuntu18-packages'
-  <<: *debian-installer-ubuntu-template
-
-debian-installer-ubuntu20:
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_BRANCH == "master"
@@ -656,10 +644,22 @@ debian-installer-ubuntu20:
     - if: $CI_COMMIT_BRANCH
       when: manual
       allow_failure: true
+  <<: *debian-installer-ubuntu-template
+
+debian-installer-ubuntu20:
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   needs:
     - 'test-ubuntu20-ddisasm-package'
     - 'test-ubuntu20-ddisasm-dbg-package'
     - 'build-ubuntu20-packages'
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
+    # regular build is manual and optional
+    - if: $CI_COMMIT_BRANCH
+      when: manual
+      allow_failure: true
   <<: *debian-installer-ubuntu-template
 
 .apt-upload: &apt-upload
