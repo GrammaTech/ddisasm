@@ -145,7 +145,7 @@ conan-windows-release:
     # FIXME: CMake should automatically find LIEF_LIBRARY but fails to on Arch.
     - 'LIEF_LIBRARY=/usr/lib/libLIEF.a && [ -f $LIEF_LIBRARY ] || LIEF_LIBRARY=/usr/lib/libLIEF.so'
     - cmake -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_DEBIAN_PACKAGE_RELEASE="$(lsb_release -sc)" -DBUILD_FUNINFER=1 -DLIEF_ROOT=/usr/ -DLIEF_LIBRARY=${LIEF_LIBRARY} -DDDISASM_STRIP_DEBUG_SYMBOLS=On ..
-    - make
+    - make -j
 
 .test-and-tag-template: &test-and-tag
   script:
