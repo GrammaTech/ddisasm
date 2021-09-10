@@ -108,6 +108,14 @@ build-conan-gcc9:
 conan-windows-debug:
   variables:
     BUILD_TYPE: Debug
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
+    # regular build is manual and optional
+    - if: $CI_COMMIT_BRANCH
+      when: manual
+      allow_failure: true
   <<: *conan-windows-template
 
 conan-windows-release:
