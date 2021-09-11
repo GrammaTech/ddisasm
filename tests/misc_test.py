@@ -8,6 +8,7 @@ from disassemble_reassemble_check import (
     disassemble,
     reassemble,
     test,
+    make,
 )
 from pathlib import Path
 import gtirb
@@ -288,6 +289,53 @@ class DataDirectoryTests(unittest.TestCase):
                 # Check no code blocks were created within data directories.
                 for start, end in code_blocks:
                     self.assertFalse(start <= addr <= end)
+
+
+class PeResourcesTests(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Windows", "This test is Windows only."
+    )
+    def test_generate_resources(self):
+        with cd(ex_dir / "ex_rsrc"):
+            # Build example with PE resource file.
+            proc = subprocess.run(make("clean"), stdout=subprocess.DEVNULL)
+            self.assertEqual(proc.returncode, 0)
+
+            proc = subprocess.run(make("all"), stdout=subprocess.DEVNULL)
+            self.assertEqual(proc.returncode, 0)
+
+            # Disassemble to GTIRB file.
+            self.assertTrue(
+                disassemble(
+                    "ex.exe",
+                    False,
+                    False,
+                    False,
+                    format="--asm",
+                    extension="s",
+                    extra_args=[
+                        "--generate-import-libs",
+                        "--generate-resources",
+                    ],
+                )
+            )
+
+            # Reassemble with regenerated RES file.
+            self.assertTrue(
+                reassemble(
+                    "ml64",
+                    "ex.exe",
+                    extra_flags=[
+                        "/link",
+                        "ex.res",
+                        "/entry:__EntryPoint",
+                        "/subsystem:console",
+                    ],
+                )
+            )
+
+            proc = subprocess.run(make("check"), stdout=subprocess.DEVNULL)
+            self.assertEqual(proc.returncode, 0)
 
 
 if __name__ == "__main__":

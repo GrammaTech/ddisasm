@@ -404,6 +404,16 @@ void ElfReader::buildSections()
         return;
     }
 
+    std::optional<uint64_t> TlsBegin, TlsEnd;
+    for(auto &Segment : Elf->segments())
+    {
+        if(Segment.type() == LIEF::ELF::SEGMENT_TYPES::PT_TLS)
+        {
+            TlsBegin = Segment.virtual_address();
+            TlsEnd = Segment.virtual_address() + Segment.virtual_size();
+        }
+    }
+
     uint64_t Index = 0;
     for(auto &Section : Elf->sections())
     {
@@ -447,12 +457,22 @@ void ElfReader::buildSections()
         {
             gtirb::Addr Addr = gtirb::Addr(Section.virtual_address());
 
-            // Thread-local data sections overlap other sections, as they are
-            // only templates for per-thread copies of the data sections.
+            // Thread-local data section addresses overlap other sections,
+            // as they are only templates for per-thread copies of the data
+            // sections.
             bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
-            if(Tls)
+            if(Tls && TlsBegin && TlsEnd)
             {
-                Addr = gtirb::Addr(Section.virtual_address() + tlsBaseAddress());
+                if(Section.virtual_address() >= *TlsBegin && Section.virtual_address() < *TlsEnd)
+                {
+                    uint64_t Offset = Section.virtual_address() - *TlsBegin;
+                    Addr = gtirb::Addr(tlsBaseAddress() + Offset);
+                }
+                else
+                {
+                    std::cerr << "WARNING: Failed to rebase TLS section: " << Section.name()
+                              << "\n";
+                }
             }
 
             if(Initialized)
@@ -494,15 +514,6 @@ void ElfReader::buildSections()
 
 void ElfReader::buildSymbols()
 {
-    std::optional<uint64_t> Tls;
-    for(auto &Segment : Elf->segments())
-    {
-        if(Segment.type() == LIEF::ELF::SEGMENT_TYPES::PT_TLS)
-        {
-            Tls = Segment.virtual_address();
-        }
-    }
-
     // If there's no existing dynamic symbols, resurrect them.
     if(Elf->dynamic_symbols().size() == 0)
     {
@@ -537,8 +548,7 @@ void ElfReader::buildSymbols()
             // STT_TLS symbols are relative to PT_TLS segment base.
             if(Symbol.type() == LIEF::ELF::ELF_SYMBOL_TYPES::STT_TLS)
             {
-                assert(Tls && "Found TLS symbol but no TLS segment.");
-                Value = *Tls + Value + tlsBaseAddress();
+                Value = tlsBaseAddress() + Value;
             }
 
             Symbols[std::tuple(Value, Symbol.size(), LIEF::ELF::to_string(Symbol.type()),
