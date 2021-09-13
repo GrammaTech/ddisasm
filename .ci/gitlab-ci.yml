@@ -56,10 +56,12 @@ check-format:
   - if: $CI_COMMIT_BRANCH == "master"
   - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
   # regular build is manual and optional
-  # uncomment when gitlab is updated to 13.12
-  - if: $CI_COMMIT_BRANCH
-    when: manual
-    allow_failure: true
+  # This only works with gitlab 13.12 or higher
+  # See https://about.gitlab.com/blog/2021/05/20/dag-manual-fix/
+  # Uncomment once gitlab is updated
+  #- if: $CI_COMMIT_BRANCH
+  #  when: manual
+  #  allow_failure: true
 
 build-conan-gcc7:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu18
