@@ -146,7 +146,7 @@ std::optional<relations::Instruction> Arm32Loader::build(Arm32Facts& Facts,
 
     int OpCount = Details.op_count;
     std::string OpCode = regBitFieldOpCode(Name);
-    if(!OpCode.empty())
+    if(regBitFieldInitialIndex(Name) != -1)
     {
         std::vector<std::string> RegBitFields;
         for(int i = 0; i < OpCount; i++)
