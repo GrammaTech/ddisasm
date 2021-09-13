@@ -422,8 +422,6 @@ build-ubuntu18-packages:
   needs: ['build-ubuntu18-gcc']
   variables:
     OS: ubuntu18
-  rules:
-    *run-only-main
   <<: *build-ubuntu-packages
 
 build-ubuntu20-packages:
@@ -431,8 +429,6 @@ build-ubuntu20-packages:
   needs: ['build-ubuntu20-gcc']
   variables:
     OS: ubuntu20
-  rules:
-    *run-only-main
   <<: *build-ubuntu-packages
 
 .setup-apt-repo-template: &setup-apt-repo
@@ -458,8 +454,6 @@ setup-ubuntu18-package-tests:
   needs: ['build-ubuntu18-packages']
   variables:
     OS: ubuntu18
-  rules:
-    *run-only-main
   <<: *setup-apt-repo
 
 setup-ubuntu20-package-tests:
@@ -467,8 +461,6 @@ setup-ubuntu20-package-tests:
   needs: ['build-ubuntu20-packages']
   variables:
     OS: ubuntu20
-  rules:
-    *run-only-main
   <<: *setup-apt-repo
 
 .test-ubuntu-ddisasm: &test-ubuntu-ddisasm
