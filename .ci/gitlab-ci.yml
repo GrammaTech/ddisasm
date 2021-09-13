@@ -343,8 +343,6 @@ run-ubuntu20-clang-debug:
   variables:
     OS: 'ubuntu20'
     BUILD_TYPE: 'Debug'
-  rules:
-    *run-only-main
   script:
   <<: *test-and-tag
 
