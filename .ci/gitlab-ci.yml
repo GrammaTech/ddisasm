@@ -356,6 +356,8 @@ test-make-install:
     OS: 'ubuntu20'
     COMPILER: 'gcc'
     BUILD_TYPE: 'RelWithDebInfo'
+  rules:
+    *run-only-main
   script:
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-ubuntu20 --output "gtirb.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-ubuntu20 --output "gtirb-pprinter.zip"
