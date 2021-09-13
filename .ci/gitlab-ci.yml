@@ -51,10 +51,23 @@ check-format:
       EOF
       ) && exit 1)
 
+.run_only_main: &run-only-main
+  - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  - if: $CI_COMMIT_BRANCH == "master"
+  - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
+  # regular build is manual and optional
+  # uncomment when gitlab is updated to 13.12
+  #- if: $CI_COMMIT_BRANCH
+  #  when: manual
+  #  allow_failure: true
+
 build-conan-gcc7:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu18
   stage: build
   needs: [check-format]
+  rules:
+    *run-only-main
+
   script: &build-conan
     - conan profile new default --detect
     - conan profile update settings.compiler.libcxx=libstdc++11 default
@@ -69,6 +82,8 @@ build-conan-gcc9:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu20
   stage: build
   needs: [check-format]
+  rules:
+    *run-only-main
   script:
     *build-conan
 
@@ -92,6 +107,8 @@ build-conan-gcc9:
 conan-windows-debug:
   variables:
     BUILD_TYPE: Debug
+  rules:
+    *run-only-main
   <<: *conan-windows-template
 
 conan-windows-release:
@@ -121,7 +138,7 @@ conan-windows-release:
     # FIXME: CMake should automatically find LIEF_LIBRARY but fails to on Arch.
     - 'LIEF_LIBRARY=/usr/lib/libLIEF.a && [ -f $LIEF_LIBRARY ] || LIEF_LIBRARY=/usr/lib/libLIEF.so'
     - cmake -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_DEBIAN_PACKAGE_RELEASE="$(lsb_release -sc)" -DBUILD_FUNINFER=1 -DLIEF_ROOT=/usr/ -DLIEF_LIBRARY=${LIEF_LIBRARY} -DDDISASM_STRIP_DEBUG_SYMBOLS=On ..
-    - make
+    - make -j
 
 .test-and-tag-template: &test-and-tag
   script:
@@ -166,6 +183,8 @@ build-ubuntu20-gcc-debug:
     OS: 'ubuntu20'
     CXX_COMPILER: 'g++'
     BUILD_TYPE: 'Debug'
+  rules:
+    *run-only-main
   <<: *build
 
 build-ubuntu20-clang-debug:
@@ -175,11 +194,15 @@ build-ubuntu20-clang-debug:
     OS: 'ubuntu20'
     CXX_COMPILER: 'clang++'
     BUILD_TYPE: 'Debug'
+  rules:
+    *run-only-main
   <<: *build
 
 build-static:
   stage: build
   image: $DOCKER_REGISTRY/rewriting/ddisasm/static
+  rules:
+    *run-only-main
   script:
     # install capstone
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
@@ -216,6 +239,8 @@ static-drivers:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - build/bin
+  rules:
+    *run-only-main
   script:
     # install capstone
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
@@ -252,6 +277,8 @@ build-centos8-gcc-relwithdebuginfo:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - build
+  rules:
+    *run-only-main
   script:
     # What's the deal with PADDED_DIR? See:
     # https://cmake.org/cmake/help/latest/cpack_gen/rpm.html#variable:CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX
@@ -303,6 +330,8 @@ run-ubuntu20-gcc-debug:
   variables:
     OS: 'ubuntu20'
     BUILD_TYPE: 'Debug'
+  rules:
+    *run-only-main
   <<: *test-and-tag
 
 run-ubuntu20-clang-debug:
@@ -313,6 +342,8 @@ run-ubuntu20-clang-debug:
   variables:
     OS: 'ubuntu20'
     BUILD_TYPE: 'Debug'
+  rules:
+    *run-only-main
   script:
   <<: *test-and-tag
 
@@ -338,6 +369,8 @@ test-centos8-ddisasm-package:
   stage: package-tests
   image: $DOCKER_REGISTRY/rewriting/ddisasm/centos8
   needs: ['build-centos8-gcc-relwithdebuginfo']
+  rules:
+    *run-only-main
   script:
     - pushd build
     - dnf --nogpgcheck localinstall -y capstone-devel-*.rpm libgtirb.rpm libgtirb-pprinter.rpm ddisasm.rpm
@@ -353,6 +386,8 @@ package-centos8:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - '*ddisasm*.rpm'
+  rules:
+    *run-only-main
   script:
     - cp build/*.rpm ./
 
@@ -382,6 +417,8 @@ build-ubuntu18-packages:
   needs: ['build-ubuntu18-gcc']
   variables:
     OS: ubuntu18
+  rules:
+    *run-only-main
   <<: *build-ubuntu-packages
 
 build-ubuntu20-packages:
@@ -389,6 +426,8 @@ build-ubuntu20-packages:
   needs: ['build-ubuntu20-gcc']
   variables:
     OS: ubuntu20
+  rules:
+    *run-only-main
   <<: *build-ubuntu-packages
 
 .setup-apt-repo-template: &setup-apt-repo
@@ -412,6 +451,8 @@ setup-ubuntu18-package-tests:
   needs: ['build-ubuntu18-packages']
   variables:
     OS: ubuntu18
+  rules:
+    *run-only-main
   <<: *setup-apt-repo
 
 setup-ubuntu20-package-tests:
@@ -419,6 +460,8 @@ setup-ubuntu20-package-tests:
   needs: ['build-ubuntu20-packages']
   variables:
     OS: ubuntu20
+  rules:
+    *run-only-main
   <<: *setup-apt-repo
 
 .test-ubuntu-ddisasm: &test-ubuntu-ddisasm
@@ -444,21 +487,29 @@ setup-ubuntu20-package-tests:
 test-ubuntu18-ddisasm-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
   needs: ['setup-ubuntu18-package-tests']
+  rules:
+    *run-only-main
   <<: *test-ubuntu-ddisasm
 
 test-ubuntu20-ddisasm-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   needs: ['setup-ubuntu20-package-tests']
+  rules:
+    *run-only-main
   <<: *test-ubuntu-ddisasm
 
 test-ubuntu18-ddisasm-dbg-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
   needs: ['setup-ubuntu18-package-tests']
+  rules:
+    *run-only-main
   <<: *test-ubuntu-ddisasm-dbg
 
 test-ubuntu20-ddisasm-dbg-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   needs: ['setup-ubuntu20-package-tests']
+  rules:
+    *run-only-main
   <<: *test-ubuntu-ddisasm-dbg
 
 .debian-installer-ubuntu-template: &debian-installer-ubuntu-template
@@ -476,6 +527,8 @@ debian-installer-ubuntu18:
     - 'test-ubuntu18-ddisasm-package'
     - 'test-ubuntu18-ddisasm-dbg-package'
     - 'build-ubuntu18-packages'
+  rules:
+    *run-only-main
   <<: *debian-installer-ubuntu-template
 
 debian-installer-ubuntu20:
@@ -484,6 +537,8 @@ debian-installer-ubuntu20:
     - 'test-ubuntu20-ddisasm-package'
     - 'test-ubuntu20-ddisasm-dbg-package'
     - 'build-ubuntu20-packages'
+  rules:
+    *run-only-main
   <<: *debian-installer-ubuntu-template
 
 .apt-upload: &apt-upload
