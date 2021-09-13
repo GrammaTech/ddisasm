@@ -20,7 +20,7 @@ def get_version():
                 major = match.group(2)
                 minor = match.group(5)
                 patch = match.group(8)
-                return major + "." + minor + "." + patch
+                return major + "." + minor + "." + patch + "-internal"
             else:
                 return "<ERROR: no version found>"
     except Exception:
@@ -95,7 +95,7 @@ class DdisasmConan(Properties, ConanFile):
 
     def build_requirements(self):
         if self.settings.os == "Windows":
-            self.build_requires("ninja_installer/1.9.0@bincrafters/stable")
+            self.build_requires("ninja/1.10.2")
         else:
             self.build_requires(
                 "souffle/%s@rewriting+extra-packages/stable"

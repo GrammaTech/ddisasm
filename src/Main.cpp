@@ -150,6 +150,7 @@ int main(int argc, char **argv)
         "threads,j", po::value<unsigned int>()->default_value(1),
         "Number of cores to use. It is set to the number of cores in the machine by default")(
         "generate-import-libs", "Generated .DEF and .LIB files for imported libraries (PE).")(
+        "generate-resources", "Generated .RES files for embedded resources (PE).")(
         "no-analysis,n",
         "Do not perform disassembly. This option only parses/loads the binary object into GTIRB.")(
         "interpreter,I", po::value<std::string>(),
@@ -390,16 +391,6 @@ int main(int argc, char **argv)
             {
                 std::ofstream out(name);
                 pprinter.print(out, *GTIRB->Context, Module);
-
-                if(vm.count("generate-import-libs")
-                   && Module.getFileFormat() == gtirb::FileFormat::PE)
-                {
-                    std::vector<std::string> LibraryPaths;
-                    std::vector<std::string> CompilerArgs;
-                    gtirb_bprint::PeBinaryPrinter BP(pprinter, CompilerArgs, LibraryPaths);
-                    std::vector<std::string> ImportLibs;
-                    BP.prepareImportLibs(*GTIRB->IR, ImportLibs);
-                }
             }
             printElapsedTimeSince(StartPrinting);
         }
@@ -407,6 +398,20 @@ int main(int argc, char **argv)
         {
             std::cerr << "Printing assembler" << std::endl;
             pprinter.print(std::cout, *GTIRB->Context, Module);
+        }
+        // Output PE-specific build artifacts.
+        if(Module.getFileFormat() == gtirb::FileFormat::PE)
+        {
+            if(vm.count("generate-import-libs"))
+            {
+                gtirb_bprint::PeBinaryPrinter BP(pprinter, {}, {});
+                BP.libs(*GTIRB->IR);
+            }
+            if(vm.count("generate-resources"))
+            {
+                gtirb_bprint::PeBinaryPrinter BP(pprinter, {}, {});
+                BP.resources(*GTIRB->IR, *GTIRB->Context);
+            }
         }
         performSanityChecks(Souffle->get(), vm.count("self-diagnose") != 0);
     }
