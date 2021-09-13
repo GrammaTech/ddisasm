@@ -57,9 +57,9 @@ check-format:
   - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
   # regular build is manual and optional
   # uncomment when gitlab is updated to 13.12
-  #- if: $CI_COMMIT_BRANCH
-  #  when: manual
-  #  allow_failure: true
+  - if: $CI_COMMIT_BRANCH
+    when: manual
+    allow_failure: true
 
 build-conan-gcc7:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu18
@@ -67,7 +67,6 @@ build-conan-gcc7:
   needs: [check-format]
   rules:
     *run-only-main
-
   script: &build-conan
     - conan profile new default --detect
     - conan profile update settings.compiler.libcxx=libstdc++11 default
@@ -174,6 +173,8 @@ build-ubuntu20-gcc:
     OS: 'ubuntu20'
     CXX_COMPILER: 'g++'
     BUILD_TYPE: 'RelWithDebInfo'
+  rules:
+    *run-only-main
   <<: *build
 
 build-ubuntu20-gcc-debug:
@@ -194,8 +195,6 @@ build-ubuntu20-clang-debug:
     OS: 'ubuntu20'
     CXX_COMPILER: 'clang++'
     BUILD_TYPE: 'Debug'
-  rules:
-    *run-only-main
   <<: *build
 
 build-static:
@@ -320,6 +319,8 @@ run-ubuntu20-gcc:
   variables:
     OS: 'ubuntu20'
     BUILD_TYPE: 'RelWithDebInfo'
+  rules:
+    *run-only-main
   <<: *test-and-tag
 
 run-ubuntu20-gcc-debug:
@@ -330,8 +331,6 @@ run-ubuntu20-gcc-debug:
   variables:
     OS: 'ubuntu20'
     BUILD_TYPE: 'Debug'
-  rules:
-    *run-only-main
   <<: *test-and-tag
 
 run-ubuntu20-clang-debug:
@@ -342,8 +341,6 @@ run-ubuntu20-clang-debug:
   variables:
     OS: 'ubuntu20'
     BUILD_TYPE: 'Debug'
-  rules:
-    *run-only-main
   script:
   <<: *test-and-tag
 
@@ -411,14 +408,14 @@ package-centos8:
     - '[[ ! $CI_COMMIT_REF_NAME =~ ^release-.* ]] || CPACK_DDISASM_STABLE_PKG_NAME=ON'
     - cpack -G "DEB" -D CPACK_DDISASM_STABLE_PKG_NAME=$CPACK_DDISASM_STABLE_PKG_NAME -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-ddisasm
     - cpack -G "DEB" -D CPACK_DDISASM_STABLE_PKG_NAME=$CPACK_DDISASM_STABLE_PKG_NAME -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-debug
+  rules:
+    *run-only-main
 
 build-ubuntu18-packages:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
   needs: ['build-ubuntu18-gcc']
   variables:
     OS: ubuntu18
-  rules:
-    *run-only-main
   <<: *build-ubuntu-packages
 
 build-ubuntu20-packages:
@@ -426,8 +423,6 @@ build-ubuntu20-packages:
   needs: ['build-ubuntu20-gcc']
   variables:
     OS: ubuntu20
-  rules:
-    *run-only-main
   <<: *build-ubuntu-packages
 
 .setup-apt-repo-template: &setup-apt-repo
@@ -445,14 +440,14 @@ build-ubuntu20-packages:
     - cp build/*.deb apt-repo
     - cp *.deb apt-repo
     - cd apt-repo && dpkg-scanpackages . /dev/null > Packages
+  rules:
+    *run-only-main
 
 setup-ubuntu18-package-tests:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
   needs: ['build-ubuntu18-packages']
   variables:
     OS: ubuntu18
-  rules:
-    *run-only-main
   <<: *setup-apt-repo
 
 setup-ubuntu20-package-tests:
@@ -460,12 +455,12 @@ setup-ubuntu20-package-tests:
   needs: ['build-ubuntu20-packages']
   variables:
     OS: ubuntu20
-  rules:
-    *run-only-main
   <<: *setup-apt-repo
 
 .test-ubuntu-ddisasm: &test-ubuntu-ddisasm
   stage: package-tests
+  rules:
+    *run-only-main
   script:
     - if [ $(lsb_release -sc) == "bionic" ]; then TRUSTED="[trusted=yes]"; fi
     - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
@@ -474,8 +469,11 @@ setup-ubuntu20-package-tests:
     - apt-get update -y && apt-get install -y --allow-unauthenticated $TEST_PKG_NAME
     - ddisasm --version
 
+
 .test-ubuntu-ddisasm-dbg: &test-ubuntu-ddisasm-dbg
   stage: package-tests
+  rules:
+    *run-only-main
   script:
     - if [ $(lsb_release -sc) == "bionic" ]; then TRUSTED="[trusted=yes]"; fi
     - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
@@ -487,29 +485,21 @@ setup-ubuntu20-package-tests:
 test-ubuntu18-ddisasm-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
   needs: ['setup-ubuntu18-package-tests']
-  rules:
-    *run-only-main
   <<: *test-ubuntu-ddisasm
 
 test-ubuntu20-ddisasm-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   needs: ['setup-ubuntu20-package-tests']
-  rules:
-    *run-only-main
   <<: *test-ubuntu-ddisasm
 
 test-ubuntu18-ddisasm-dbg-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
   needs: ['setup-ubuntu18-package-tests']
-  rules:
-    *run-only-main
   <<: *test-ubuntu-ddisasm-dbg
 
 test-ubuntu20-ddisasm-dbg-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   needs: ['setup-ubuntu20-package-tests']
-  rules:
-    *run-only-main
   <<: *test-ubuntu-ddisasm-dbg
 
 .debian-installer-ubuntu-template: &debian-installer-ubuntu-template
@@ -518,6 +508,8 @@ test-ubuntu20-ddisasm-dbg-package:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - '*ddisasm*.deb'
+  rules:
+    *run-only-main
   script:
     - cp build/*ddisasm*.deb ./
 
@@ -527,8 +519,6 @@ debian-installer-ubuntu18:
     - 'test-ubuntu18-ddisasm-package'
     - 'test-ubuntu18-ddisasm-dbg-package'
     - 'build-ubuntu18-packages'
-  rules:
-    *run-only-main
   <<: *debian-installer-ubuntu-template
 
 debian-installer-ubuntu20:
@@ -537,8 +527,6 @@ debian-installer-ubuntu20:
     - 'test-ubuntu20-ddisasm-package'
     - 'test-ubuntu20-ddisasm-dbg-package'
     - 'build-ubuntu20-packages'
-  rules:
-    *run-only-main
   <<: *debian-installer-ubuntu-template
 
 .apt-upload: &apt-upload
