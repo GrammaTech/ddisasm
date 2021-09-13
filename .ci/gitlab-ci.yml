@@ -51,18 +51,23 @@ check-format:
       EOF
       ) && exit 1)
 
+.run_only_main: &run-only-main
+  - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  - if: $CI_COMMIT_BRANCH == "master"
+  - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
+  # regular build is manual and optional
+  # uncomment when gitlab is updated to 13.12
+  #- if: $CI_COMMIT_BRANCH
+  #  when: manual
+  #  allow_failure: true
+
 build-conan-gcc7:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu18
   stage: build
   needs: [check-format]
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
+
   script: &build-conan
     - conan profile new default --detect
     - conan profile update settings.compiler.libcxx=libstdc++11 default
@@ -78,13 +83,7 @@ build-conan-gcc9:
   stage: build
   needs: [check-format]
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   script:
     *build-conan
 
@@ -109,13 +108,7 @@ conan-windows-debug:
   variables:
     BUILD_TYPE: Debug
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   <<: *conan-windows-template
 
 conan-windows-release:
@@ -191,13 +184,7 @@ build-ubuntu20-gcc-debug:
     CXX_COMPILER: 'g++'
     BUILD_TYPE: 'Debug'
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   <<: *build
 
 build-ubuntu20-clang-debug:
@@ -208,26 +195,14 @@ build-ubuntu20-clang-debug:
     CXX_COMPILER: 'clang++'
     BUILD_TYPE: 'Debug'
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   <<: *build
 
 build-static:
   stage: build
   image: $DOCKER_REGISTRY/rewriting/ddisasm/static
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   script:
     # install capstone
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
@@ -265,13 +240,7 @@ static-drivers:
     paths:
       - build/bin
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   script:
     # install capstone
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
@@ -309,13 +278,7 @@ build-centos8-gcc-relwithdebuginfo:
     paths:
       - build
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   script:
     # What's the deal with PADDED_DIR? See:
     # https://cmake.org/cmake/help/latest/cpack_gen/rpm.html#variable:CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX
@@ -368,13 +331,7 @@ run-ubuntu20-gcc-debug:
     OS: 'ubuntu20'
     BUILD_TYPE: 'Debug'
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   <<: *test-and-tag
 
 run-ubuntu20-clang-debug:
@@ -386,13 +343,7 @@ run-ubuntu20-clang-debug:
     OS: 'ubuntu20'
     BUILD_TYPE: 'Debug'
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   script:
   <<: *test-and-tag
 
@@ -419,13 +370,7 @@ test-centos8-ddisasm-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/centos8
   needs: ['build-centos8-gcc-relwithdebuginfo']
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   script:
     - pushd build
     - dnf --nogpgcheck localinstall -y capstone-devel-*.rpm libgtirb.rpm libgtirb-pprinter.rpm ddisasm.rpm
@@ -442,13 +387,7 @@ package-centos8:
     paths:
       - '*ddisasm*.rpm'
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   script:
     - cp build/*.rpm ./
 
@@ -479,13 +418,7 @@ build-ubuntu18-packages:
   variables:
     OS: ubuntu18
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   <<: *build-ubuntu-packages
 
 build-ubuntu20-packages:
@@ -494,13 +427,7 @@ build-ubuntu20-packages:
   variables:
     OS: ubuntu20
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   <<: *build-ubuntu-packages
 
 .setup-apt-repo-template: &setup-apt-repo
@@ -525,13 +452,7 @@ setup-ubuntu18-package-tests:
   variables:
     OS: ubuntu18
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   <<: *setup-apt-repo
 
 setup-ubuntu20-package-tests:
@@ -540,13 +461,7 @@ setup-ubuntu20-package-tests:
   variables:
     OS: ubuntu20
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   <<: *setup-apt-repo
 
 .test-ubuntu-ddisasm: &test-ubuntu-ddisasm
@@ -573,52 +488,28 @@ test-ubuntu18-ddisasm-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
   needs: ['setup-ubuntu18-package-tests']
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   <<: *test-ubuntu-ddisasm
 
 test-ubuntu20-ddisasm-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   needs: ['setup-ubuntu20-package-tests']
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   <<: *test-ubuntu-ddisasm
 
 test-ubuntu18-ddisasm-dbg-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
   needs: ['setup-ubuntu18-package-tests']
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   <<: *test-ubuntu-ddisasm-dbg
 
 test-ubuntu20-ddisasm-dbg-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   needs: ['setup-ubuntu20-package-tests']
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   <<: *test-ubuntu-ddisasm-dbg
 
 .debian-installer-ubuntu-template: &debian-installer-ubuntu-template
@@ -637,13 +528,7 @@ debian-installer-ubuntu18:
     - 'test-ubuntu18-ddisasm-dbg-package'
     - 'build-ubuntu18-packages'
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   <<: *debian-installer-ubuntu-template
 
 debian-installer-ubuntu20:
@@ -653,13 +538,7 @@ debian-installer-ubuntu20:
     - 'test-ubuntu20-ddisasm-dbg-package'
     - 'build-ubuntu20-packages'
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-    # regular build is manual and optional
-    - if: $CI_COMMIT_BRANCH
-      when: manual
-      allow_failure: true
+    *run-only-main
   <<: *debian-installer-ubuntu-template
 
 .apt-upload: &apt-upload
