@@ -195,8 +195,6 @@ build-ubuntu20-clang-debug:
     OS: 'ubuntu20'
     CXX_COMPILER: 'clang++'
     BUILD_TYPE: 'Debug'
-  rules:
-    *run-only-main
   <<: *build
 
 build-static:
