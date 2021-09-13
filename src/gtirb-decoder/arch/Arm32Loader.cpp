@@ -128,6 +128,22 @@ std::optional<relations::Instruction> Arm32Loader::build(Arm32Facts& Facts,
         return std::string("");
     };
 
+    auto regBitFieldInitialIndex = [](const std::string& Str) {
+        std::string OpCode = Str.substr(0, 3);
+        if(OpCode == "LDM" or OpCode == "STM")
+            return 1;
+        if(OpCode == "POP")
+            return 0;
+
+        OpCode = Str.substr(0, 4);
+        if(OpCode == "PUSH")
+            return 0;
+        if(OpCode == "VSTM" or OpCode == "VLDM")
+            return 1;
+
+        return -1;
+    };
+
     int OpCount = Details.op_count;
     std::string OpCode = regBitFieldOpCode(Name);
     if(!OpCode.empty())
@@ -138,8 +154,7 @@ std::optional<relations::Instruction> Arm32Loader::build(Arm32Facts& Facts,
             // Load capstone operand.
             const cs_arm_op& CsOp = Details.operands[i];
 
-            if(i == 0
-               && (OpCode == "LDM" or OpCode == "STM" or OpCode == "VLDM" or OpCode == "VSTM"))
+            if(i < regBitFieldInitialIndex(Name))
             {
                 std::optional<relations::Operand> Op = build(CsOp);
                 // Build operand for datalog fact.
