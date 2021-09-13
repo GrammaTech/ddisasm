@@ -437,6 +437,8 @@ build-ubuntu20-packages:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - apt-repo
+  rules:
+    *run-only-main
   script:
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-$OS --output "gtirb.zip"
@@ -446,8 +448,6 @@ build-ubuntu20-packages:
     - cp build/*.deb apt-repo
     - cp *.deb apt-repo
     - cd apt-repo && dpkg-scanpackages . /dev/null > Packages
-  rules:
-    *run-only-main
 
 setup-ubuntu18-package-tests:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
@@ -491,29 +491,21 @@ setup-ubuntu20-package-tests:
 test-ubuntu18-ddisasm-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
   needs: ['setup-ubuntu18-package-tests']
-  rules:
-    *run-only-main
   <<: *test-ubuntu-ddisasm
 
 test-ubuntu20-ddisasm-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   needs: ['setup-ubuntu20-package-tests']
-  rules:
-    *run-only-main
   <<: *test-ubuntu-ddisasm
 
 test-ubuntu18-ddisasm-dbg-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
   needs: ['setup-ubuntu18-package-tests']
-  rules:
-    *run-only-main
   <<: *test-ubuntu-ddisasm-dbg
 
 test-ubuntu20-ddisasm-dbg-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   needs: ['setup-ubuntu20-package-tests']
-  rules:
-    *run-only-main
   <<: *test-ubuntu-ddisasm-dbg
 
 .debian-installer-ubuntu-template: &debian-installer-ubuntu-template
@@ -533,8 +525,6 @@ debian-installer-ubuntu18:
     - 'test-ubuntu18-ddisasm-package'
     - 'test-ubuntu18-ddisasm-dbg-package'
     - 'build-ubuntu18-packages'
-  rules:
-    *run-only-main
   <<: *debian-installer-ubuntu-template
 
 debian-installer-ubuntu20:
@@ -543,8 +533,6 @@ debian-installer-ubuntu20:
     - 'test-ubuntu20-ddisasm-package'
     - 'test-ubuntu20-ddisasm-dbg-package'
     - 'build-ubuntu20-packages'
-  rules:
-    *run-only-main
   <<: *debian-installer-ubuntu-template
 
 .apt-upload: &apt-upload
