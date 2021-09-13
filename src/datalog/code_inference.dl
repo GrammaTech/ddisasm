@@ -91,11 +91,6 @@ may_fallthrough(From,To):-
     !halt(From),
     !no_return_call(From).
 
-may_fallthrough(From,To):-
-    binary_isa("ARM"),
-    next(From,To),
-    conditional_return(From).
-
 .decl must_fallthrough(o:address,d:address)
 
 // Branch with a delay-slot must fallthrough
@@ -240,6 +235,10 @@ block_limit(as(EA,address)):-
         lsda_callsite_addresses(_,EA, _)
     ).
 
+.decl must_data_access(EA:address, Dest:address)
+
+must_data_access(0,0):- false.
+
 // The targets are computed incrementally now as we traverse the code
 // likely_ea and possible_target_from are mutually recursive
 
@@ -248,19 +247,15 @@ block_limit(as(EA,address)):-
 possible_target_from(Dest,Src):-
     code_in_block_candidate(Src,_),
     (
+        may_have_symbolic_immediate(Src,Dest),
+        !must_data_access(Src,Dest)
+        ;
         direct_jump(Src,Dest);
         direct_call(Src,Dest);
         pc_relative_jump(Src,Dest);
-        pc_relative_call(Src,Dest)
-    ).
-
-possible_target_from(Dest,Src):-
-    !binary_isa("ARM"),
-    !binary_isa("ARM64"),
-    code_in_block_candidate(Src,_),
-    (
-        may_have_symbolic_immediate(Src,Dest);
-        pc_relative_operand(Src,_,Dest)
+        pc_relative_call(Src,Dest);
+        pc_relative_operand(Src,_,Dest),
+        !must_data_access(Src,Dest)
     ).
 
 .decl possible_target(Target:address)

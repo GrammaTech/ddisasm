@@ -97,15 +97,6 @@ split_load(EA, NextEA, as(Base + Offset,address), "LDR/STR") :-
     // Make sure the registers match
     Reg = Reg2.
 
-pc_relative_operand(EA, 1, as(Dest,address)) :-
-    split_load(EA, _, Dest, _).
-
-pc_relative_operand(EA, 1, as(Dest,address)) :-
-    split_load(_, EA, Dest, "LDR/STR").
-
-pc_relative_operand(EA, 2, as(Dest,address)) :-
-    split_load(_, EA, Dest, "ADD").
-
 pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     instruction_get_op(EA, Index, Op),
     op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
@@ -513,8 +504,8 @@ arm_jump_table(EA_jump,Size,TableStart):-
     instruction_get_operation(EA_jump,Operation),
     substr(Operation,0,3) = "LDR",
     (
-        strlen(Operation) = 3; // unconditional
-        strlen(Operation) = 5  // conditional ldr
+        strlen(Operation) = 3, Conditional = "false"; // unconditional
+        strlen(Operation) = 5, Conditional = "true"  // conditional ldr
     ),
     arch.pc_register(PC),
     // ldr pc, [pc,r2, lsl N]
@@ -529,13 +520,13 @@ arm_jump_table(EA_jump,Size,TableStart):-
     Size = NBits / 8,
     arch.pointer_size(Size),
     (
-        Operation != substr(Operation,0,3), // Conditional
+        Conditional = "true",
         // 8: Assumes that there is a fall-through successor consisting
         // of one instruction (typically a jump instruction)
         TableStart = EA_jump + 8
         // TODO: check if the fall-through instruction is a jump
         ;
-        Operation = substr(Operation,0,3),
+        Conditional = "false",
         TableStart = EA_jump + 4
     ).
 
@@ -558,10 +549,11 @@ block_needs_splitting_at(as(TargetAddr+1,address)):- // Thumb
     data_word(TableEntry,Size,TargetAddr),
     code(as(TargetAddr+1,address)).
 
-.decl litpool_ref_candidate(ea:address, register_name:register, ea_litpool:address, nbits:unsigned)
-.output litpool_ref_candidate
+.decl litpool_ref(ea:address, register_name:register, ea_litpool:address, nbits:unsigned)
+.output litpool_ref
 
-litpool_ref_candidate(EA,Reg,LitPoolAddr,NBits):-
+litpool_ref(EA,Reg,LitPoolAddr,NBits):-
+    possible_ea(EA),
     // LDR <Register> <IndirectOp>
     // e.g., ldr r3, [pc, Offset]
     instruction_get_operation(EA,Operation),
@@ -582,37 +574,24 @@ litpool_ref_candidate(EA,Reg,LitPoolAddr,NBits):-
     Addr = as(EA_aligned,number)+Offset+as(Disp,number),
     LitPoolAddr = as(Addr,address).
 
-.decl litpool_ref(ea:address, register_name:register, ea_litpool:address, nbits:unsigned)
-.output litpool_ref
-
-litpool_ref(EA,Reg,LitPoolAddr,NBits):-
-    !invalid(EA,_),
-    litpool_ref_candidate(EA,Reg,LitPoolAddr,NBits).
-
 .decl litpool_ref_double(ea:address, reg1:register, reg2:register, ea_litpool:address)
 .output litpool_ref_double
 
 // E.g., adr r, L
 //       ldrd r1, r2, [r]
-data_in_code(LitPoolAddr,LitPoolAddr+8),
 litpool_ref_double(EA,Reg1,Reg2,LitPoolAddr):-
-    !invalid(EA,_),
+    possible_ea(EA),
     // ADR Reg, Label
-    instruction_get_operation(EA,"ADR"),
-    instruction_get_op(EA,2,RegOp),
+    instruction(EA,_,_,"ADR",OffsetOp,RegOp,_,_,_,_),
     op_regdirect_contains_reg(RegOp,Reg),
-    instruction_get_op(EA,1,OffsetOp),
     op_immediate(OffsetOp, Offset),
 
     next(EA,EA_next),
 
     // LDRD Reg1, Reg2, [Reg]
-    instruction_get_operation(EA_next,"LDRD"),
-    instruction_get_op(EA_next,3,Reg1Op),
-    op_regdirect_contains_reg(Reg1Op,Reg1),
-    instruction_get_op(EA_next,1,Reg2Op),
-    op_regdirect_contains_reg(Reg2Op,Reg2),
-    instruction_get_op(EA_next,2,IndOp),
+    instruction(EA_next,_,_,"LDRD",Op1,IndOp,Op3,_,_,_),
+    op_regdirect_contains_reg(Op3,Reg1),
+    op_regdirect_contains_reg(Op1,Reg2),
     op_indirect(IndOp,"NONE",Reg,"NONE",_,0,_),
     (
         (EA band 1) = 0,  Disp = 8 // ARM mode
@@ -624,26 +603,49 @@ litpool_ref_double(EA,Reg1,Reg2,LitPoolAddr):-
     Addr = as(EA_aligned,number)+Offset+as(Disp,number),
     LitPoolAddr = as(Addr,address).
 
-block_points(Addr,0,-9,"arm literal pool"),
-block_is_overlapping(Addr):-
-    litpool_ref(_,_,LitPoolAddr,_),
+.decl litpool_ref_for_ldrd(ea:address)
+
+litpool_ref_for_ldrd(EA):-
+    litpool_ref(EA,Reg,_,_),
+    next(EA,EA_next),
+    // LDRD Reg1, Reg2, [Reg]
+    instruction(EA_next,_,_,"LDRD",_,IndOp,_,_,_,_),
+    op_indirect(IndOp,"NONE",Reg,"NONE",_,0,_).
+
+block_points(Block,0,Points,"arm literal pool"),
+block_is_overlapping(Block):-
+    litpool_ref(EA,_,LitPoolAddr,_),
     (
-        Addr = LitPoolAddr;
-        Addr = LitPoolAddr+1 // For Thumb blocks
+        // Give less points in case of ldr/ldrd sequence
+        litpool_ref_for_ldrd(EA), Points = -12;
+        !litpool_ref_for_ldrd(EA), Points = -9
+    ),
+    block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
+    (
+        // Block:       ----------   or  --------
+        // LitPoolAddr:   -------           -------
+        BegBlockAddr <= LitPoolAddr, LitPoolAddr < EndBlockAddr;
+        // Block:          --------  or     --------
+        // LitPoolAddr: -------           -------------
+        LitPoolAddr <= BegBlockAddr, BegBlockAddr < LitPoolAddr+4,
+        EndBlockAddr = EndBlockAddr // To avoid warning
     ).
 
-block_points(Addr,0,-11,"arm literal pool"),
-block_is_overlapping(Addr):-
+// Assign lower point than regular ldr literal-pool load
+// since adr/ldr instrunction-sequence has higher
+// probability of ldrd literal-pool load.
+block_points(Block,0,-11,"arm literal pool"),
+block_is_overlapping(Block):-
     litpool_ref_double(_,_,_,LitPoolAddr),
+    block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
     (
-        Addr = LitPoolAddr;
-        Addr = LitPoolAddr+1; // For Thumb blocks
-        Addr = LitPoolAddr+2;
-        Addr = LitPoolAddr+3; // For Thumb blocks
-        Addr = LitPoolAddr+4;
-        Addr = LitPoolAddr+5; // For Thumb blocks
-        Addr = LitPoolAddr+6;
-        Addr = LitPoolAddr+7  // For Thumb blocks
+        // Block:       ----------   or  --------
+        // LitPoolAddr:   -------           -------
+        BegBlockAddr <= LitPoolAddr, LitPoolAddr < EndBlockAddr;
+        // Block:          --------  or     --------
+        // LitPoolAddr: -------           -------------
+        LitPoolAddr <= BegBlockAddr, BegBlockAddr < LitPoolAddr+8,
+        EndBlockAddr = EndBlockAddr // To avoid warning
     ).
 
 block_points(Block,0,-3,"jump from arm literal pool"):-
@@ -755,15 +757,9 @@ cant_have_symbolic_immediate(Operation):-
         contains("MOV", Operation)
     ).
 
-possible_target_from(Dest,Src):-
-    (
-        binary_isa("ARM");
-        binary_isa("ARM64")
-    ),
-    code_in_block_candidate(Src,_),
-    !litpool_ref(Src,_,Dest,_),
-    !litpool_ref_double(Src,_,_,Dest),
-    may_have_symbolic_immediate(Src,Dest).
+must_data_access(EA,Dest):-
+    litpool_ref(EA,_,Dest,_);
+    litpool_ref_double(EA,_,_,Dest).
 
 instruction_get_dest_op(EA,1,Op):-
     instruction(EA,_,_,Operation,Op,_,_,_,_,_),
@@ -783,17 +779,6 @@ instruction_get_src_op(EA,Index,Op):-
         Index = 2, Op = Op2, Op1 = Op1
     ).
 
-// It is unlikely that EA is a valid instruction if the PC is used in cmp.
-invalid(EA,"arm: cmp invalid operands"):-
-    (
-        instruction_get_op(EA,1,Op);
-        instruction_get_op(EA,2,Op)
-    ),
-    instruction_get_operation(EA,Operation),
-    contains("CMP",Operation),
-    op_regdirect_contains_reg(Op,PC),
-    arch.pc_register(PC).
-
 invalid(EA,"arm: pc is not allowed"):-
     instruction_get_operation(EA,Operation),
     (
@@ -801,11 +786,9 @@ invalid(EA,"arm: pc is not allowed"):-
         contains("BIC",Operation);
         contains("LDM",Operation)
     ),
-    (
-        instruction_get_dest_op(EA,_,Op),
-        op_regdirect_contains_reg(Op,PC),
-        arch.pc_register(PC)
-    ).
+    instruction_get_dest_op(EA,_,Op),
+    op_regdirect_contains_reg(Op,PC),
+    arch.pc_register(PC).
 
 invalid(EA,"arm: pc cannot be used as index register"):-
     instruction_get_op(EA,_,Op),
@@ -825,6 +808,7 @@ invalid(EA,"arm: deprecated bx"):-
     op_regdirect_contains_reg(Op,Reg),
     arch.stack_pointer(Reg).
 
+// The following instructions do not allow PC as the destination register.
 invalid(EA,"arm: invalid pc"):-
     instruction_get_operation(EA,Operation),
     (
@@ -849,13 +833,3 @@ invalid(EA,"arm: invalid pc"):-
     instruction_get_dest_op(EA,_,Op),
     op_regdirect_contains_reg(Op,PC),
     arch.pc_register(PC).
-
-// 0x00000000: andeq r0, r0, r0
-invalid(EA,"arm: meaningless instr"):-
-    instruction_get_operation(EA,"ANDEQ"),
-    instruction_get_op(EA,1,Op1),
-    op_regdirect_contains_reg(Op1,"R0"),
-    instruction_get_op(EA,2,Op2),
-    op_regdirect_contains_reg(Op2,"R0"),
-    instruction_get_op(EA,3,Op3),
-    op_regdirect_contains_reg(Op3,"R0").
