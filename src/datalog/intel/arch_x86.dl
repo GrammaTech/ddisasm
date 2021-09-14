@@ -159,6 +159,8 @@ return_operation("RET").
 .decl halt_operation(operation:symbol)
 
 halt_operation("HLT").
+halt_operation("UD0").
+halt_operation("UD1").
 halt_operation("UD2").
 
 .decl cmp_operation(Operation:symbol)
