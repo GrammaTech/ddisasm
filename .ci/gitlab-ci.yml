@@ -54,6 +54,7 @@ check-format:
 .run_only_main: &run-only-main
   - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   - if: $CI_COMMIT_BRANCH == "master"
+  - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
   - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
   # regular build is manual and optional
   # This only works with gitlab 13.12 or higher
