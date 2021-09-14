@@ -32,15 +32,18 @@ RUN git clone -b 2.1 https://github.com/souffle-lang/souffle && \
 FROM ubuntu:18.04
 
 ARG BOOST_VERSION=1.67
-ARG CXX_COMPILER=clang++
 ARG CMAKE_VERSION=3.12.1
 
 # Use bash for more convenient variable substitution syntax
 SHELL ["/bin/bash", "-c"]
 
+# This is required to run souffle compiled with gcc-9
+RUN apt-get -y update && apt-get -y install software-properties-common \
+    && add-apt-repository ppa:ubuntu-toolchain-r/test
+
 # Install common packages
 RUN apt-get -y update && apt-get -y install autoconf automake clang clang-format \
-    curl doxygen git libprotobuf-dev libpq-dev libtool libstdc++-7-dev \
+    curl doxygen gcc-8 git libprotobuf-dev libpq-dev libtool libstdc++6 libstdc++-7-dev \
     make mcpp pkg-config protobuf-compiler python3 python3-pip \
     software-properties-common unzip wget zlib1g-dev
 RUN apt-get remove -y python3-keyrings.alt
@@ -100,7 +103,7 @@ RUN cd /usr/local/src \
 RUN git clone https://git.zephyr-software.com/opensrc/libehp.git \
     && cd libehp \
     && git reset --hard ddb106c4c1e521bf4b282d17e2a8abf0aa0fe721 \
-    && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DEHP_BUILD_SHARED_LIBS=OFF \
+    && cmake ./ -Bbuild -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DEHP_BUILD_SHARED_LIBS=OFF \
     && cd build \
     && make && make install
 
