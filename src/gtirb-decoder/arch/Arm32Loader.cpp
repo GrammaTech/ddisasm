@@ -113,21 +113,6 @@ std::optional<relations::Instruction> Arm32Loader::build(Arm32Facts& Facts,
         return (Reg == ARM_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(*CsHandle, Reg));
     };
 
-    // If the instruction has register bitfield operand,
-    // return the opcode without condition code: {LDM, STM, POP, PUSH}.
-    // Otherwise, return empty string.
-    auto regBitFieldOpCode = [](const std::string& Str) {
-        std::string OpCode = Str.substr(0, 3);
-        if(OpCode == "LDM" or OpCode == "STM" or OpCode == "POP")
-            return OpCode;
-
-        OpCode = Str.substr(0, 4);
-        if(OpCode == "PUSH" or OpCode == "VSTM" or OpCode == "VLDM")
-            return OpCode;
-
-        return std::string("");
-    };
-
     auto regBitFieldInitialIndex = [](const std::string& Str) {
         std::string OpCode = Str.substr(0, 3);
         if(OpCode == "LDM" or OpCode == "STM")
