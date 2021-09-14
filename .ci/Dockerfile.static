@@ -1,22 +1,23 @@
 FROM ubuntu:20.04 as souffle
 RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
-RUN apt-get -y update && apt-get -y install automake bison build-essential \
-    doxygen flex git libffi-dev libtool make mcpp pkg-config \
+RUN apt-get -y update && apt-get -y install bison build-essential cmake \
+    doxygen flex git libffi-dev libtool lsb-release make mcpp pkg-config \
     sqlite3 libsqlite3-dev zlib1g-dev
 
-RUN git clone -b 2.0.2 https://github.com/souffle-lang/souffle
-RUN cd souffle && sh ./bootstrap
-RUN cd souffle && ./configure --prefix=/usr --enable-64bit-domain --disable-ncurses
-RUN cd souffle && make -j4 install
+# souffle
+RUN git clone -b 2.1 https://github.com/souffle-lang/souffle && \
+    cd souffle && \
+    cmake . -Bbuild -DCMAKE_BUILD_TYPE=Release -DSOUFFLE_USE_CURSES=0 -DSOUFFLE_USE_SQLITE=0 -DSOUFFLE_DOMAIN_64BIT=1 && \
+    cd build && \
+    make install -j4
 
 FROM docker.grammatech.com/rewriting/gtirb-pprinter/static
 
-COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
-COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
-COPY --from=souffle /usr/bin/souffle /usr/bin/souffle
-COPY --from=souffle /usr/bin/souffle-profile /usr/bin/souffle-profile
-COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
+COPY --from=souffle /usr/local/bin/souffle-compile /usr/bin/souffle-compile
+COPY --from=souffle /usr/local/bin/souffle /usr/bin/souffle
+COPY --from=souffle /usr/local/bin/souffleprof /usr/bin/souffleprof
+COPY --from=souffle /usr/local/include/souffle/ /usr/include/souffle
 
 RUN apt-get -y update && apt-get -y install unzip \
     make mcpp pkg-config python3 python3-pip \
@@ -51,7 +52,7 @@ RUN cd /usr/mips-linux-gnu \
 
 # Install LIEF
 RUN cd /usr/local/src \
-    && git clone -b 0.10.0 https://github.com/lief-project/LIEF.git \
+    && git clone -b 0.11.5 https://github.com/lief-project/LIEF.git \
     && cd LIEF \
     && mkdir build \
     && cd build \
