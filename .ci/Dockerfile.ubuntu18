@@ -1,12 +1,33 @@
 FROM ubuntu:18.04 as souffle
-RUN apt-get -y update && apt-get -y install automake bison build-essential \
-    doxygen flex git libffi-dev libtool make mcpp pkg-config \
-    sqlite3 libsqlite3-dev zlib1g-dev
+ARG CMAKE_VERSION=3.15.0
 
-RUN git clone -b 2.0.2 https://github.com/souffle-lang/souffle
-RUN cd souffle && sh ./bootstrap
-RUN cd souffle && ./configure --prefix=/usr --enable-64bit-domain --disable-ncurses
-RUN cd souffle && make -j4 install
+RUN export DEBIAN_FRONTEND=noninteractive
+RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
+RUN apt-get -y update && apt-get -y install autoconf build-essential cmake curl \
+    doxygen flex git libffi-dev libtool lsb-release make mcpp pkg-config \
+    sqlite3 libsqlite3-dev software-properties-common zlib1g-dev
+
+RUN add-apt-repository ppa:ubuntu-toolchain-r/test \
+    && apt-get -y update && apt-get -y install g++-9
+
+# bison
+RUN curl https://ftp.gnu.org/gnu/bison/bison-3.5.1.tar.xz --output bison-3.5.1.tar.xz \
+    && tar -xf bison-3.5.1.tar.xz \
+    && cd bison-3.5.1 \
+    && ./configure \
+    && make install
+
+# Install CMake
+RUN curl -SL https://cmake.org/files/v$(echo $CMAKE_VERSION | sed -r 's/\.[0-9]+$//;')/cmake-$CMAKE_VERSION-Linux-x86_64.tar.gz \
+    |tar -xz --strip-components=1 -C /usr/local
+
+# souffle
+RUN git clone -b 2.1 https://github.com/souffle-lang/souffle && \
+    cd souffle && \
+    cmake . -Bbuild -DCMAKE_BUILD_TYPE=Release -DSOUFFLE_USE_CURSES=0 \
+    -DCMAKE_CXX_COMPILER=g++-9 -DSOUFFLE_USE_SQLITE=0 -DSOUFFLE_DOMAIN_64BIT=1 && \
+    cd build && \
+    make install -j4
 
 FROM ubuntu:18.04
 
@@ -19,7 +40,7 @@ SHELL ["/bin/bash", "-c"]
 
 # Install common packages
 RUN apt-get -y update && apt-get -y install autoconf automake clang clang-format \
-    curl doxygen git libprotobuf-dev libtool libstdc++-7-dev \
+    curl doxygen git libprotobuf-dev libpq-dev libtool libstdc++-7-dev \
     make mcpp pkg-config protobuf-compiler python3 python3-pip \
     software-properties-common unzip wget zlib1g-dev
 RUN apt-get remove -y python3-keyrings.alt
@@ -55,11 +76,10 @@ RUN cd /usr/mips-linux-gnu \
  && mkdir etc \
  && ldconfig -c etc/ld.do.cache -r .
 
-COPY --from=souffle /usr/bin/souffle-compile /usr/bin/souffle-compile
-COPY --from=souffle /usr/bin/souffle-config /usr/bin/souffle-config
-COPY --from=souffle /usr/bin/souffle /usr/bin/souffle
-COPY --from=souffle /usr/bin/souffle-profile /usr/bin/souffle-profile
-COPY --from=souffle /usr/include/souffle/ /usr/include/souffle
+COPY --from=souffle /usr/local/bin/souffle-compile /usr/bin/souffle-compile
+COPY --from=souffle /usr/local/bin/souffle /usr/bin/souffle
+COPY --from=souffle /usr/local/bin/souffleprof /usr/bin/souffleprof
+COPY --from=souffle /usr/local/include/souffle/ /usr/include/souffle
 
 # Install Boost
 RUN add-apt-repository ppa:mhier/libboost-latest && \
@@ -68,7 +88,7 @@ RUN add-apt-repository ppa:mhier/libboost-latest && \
 
 # Install LIEF
 RUN cd /usr/local/src \
-    && git clone -b 0.10.0 https://github.com/lief-project/LIEF.git \
+    && git clone -b 0.11.5 https://github.com/lief-project/LIEF.git \
     && cd LIEF \
     && mkdir build \
     && cd build \

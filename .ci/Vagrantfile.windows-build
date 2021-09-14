@@ -134,7 +134,7 @@ option.set keep-going : false ;
 
   config.vm.provision "build-lief", type: "shell", inline: <<-SHELL
     cd $HOME
-    git clone -b 0.10.0 https://github.com/lief-project/LIEF.git
+    git clone -b 0.11.5 https://github.com/lief-project/LIEF.git
     mkdir /cygdrive/C/lief-debug
     mkdir /cygdrive/C/lief-release
 
@@ -170,20 +170,16 @@ option.set keep-going : false ;
     Wait-Job -Job $jobs
   SHELL
 
-  # Below, we are using souffle's master branch, because microsoft has removed
-  # some compiler builtins that souffle on MSVC relies upon.  A fix for this
-  # is on the master branch, but there is no release with the fix yet.
   config.vm.provision "generate-souffle-setup-script", type: "shell", inline: <<-SHELL
     cd $HOME
     $wsl_script = @"
 apt-get update
-apt-get -y install libffi-dev libsqlite3-dev zlib1g-dev bison flex libncurses5-dev automake m4 libtool build-essential mcpp
-git clone -b master https://github.com/souffle-lang/souffle
+apt-get -y install bison build-essential cmake flex libffi-dev libsqlite3-dev libtool m4 mcpp zlib1g-dev
+git clone -b 2.1 https://github.com/souffle-lang/souffle
 cd souffle
-git checkout 68d4dcdbbd6a285169d06dfec461e652cf7ec8ae
-sh ./bootstrap
-./configure --enable-64bit-domain
-make -j8 install
+cmake . -Bbuild -DCMAKE_BUILD_TYPE=Release -DSOUFFLE_USE_CURSES=0 -DSOUFFLE_USE_SQLITE=0 -DSOUFFLE_DOMAIN_64BIT=1 && \
+cd build && \
+make install -j8
 "@
     Set-Content -Path setup-souffle.sh -Value $wsl_script
 
