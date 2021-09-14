@@ -503,10 +503,6 @@ data_object_candidate(TableStart,Size,"symbol"),
 arm_jump_table(EA_jump,Size,TableStart):-
     instruction_get_operation(EA_jump,Operation),
     substr(Operation,0,3) = "LDR",
-    (
-        strlen(Operation) = 3, Conditional = "false"; // unconditional
-        strlen(Operation) = 5, Conditional = "true"  // conditional ldr
-    ),
     arch.pc_register(PC),
     // ldr pc, [pc,r2, lsl N]
     // TODO: Currently, 'lsl N' is not propagated from the decoder.
@@ -520,13 +516,13 @@ arm_jump_table(EA_jump,Size,TableStart):-
     Size = NBits / 8,
     arch.pointer_size(Size),
     (
-        Conditional = "true",
+        arch.is_conditional_operation(Operation),
         // 8: Assumes that there is a fall-through successor consisting
         // of one instruction (typically a jump instruction)
         TableStart = EA_jump + 8
         // TODO: check if the fall-through instruction is a jump
         ;
-        Conditional = "false",
+        !arch.is_conditional_operation(Operation),
         TableStart = EA_jump + 4
     ).
 
@@ -757,7 +753,7 @@ cant_have_symbolic_immediate(Operation):-
         contains("MOV", Operation)
     ).
 
-must_data_access(EA,Dest):-
+must_access_data(EA,Dest):-
     litpool_ref(EA,_,Dest,_);
     litpool_ref_double(EA,_,_,Dest).
 

@@ -94,6 +94,10 @@ unconditional_return_operation(Operation):-
 conditional_return_operation(""):-
     false.
 
+.decl is_conditional_operation(Operation:symbol)
+
+is_conditional_operation(""):-
+    false.
 
 .decl delay_slot(BranchEA:address,EA:address)
 

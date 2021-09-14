@@ -108,17 +108,6 @@ must_fallthrough(From,To):-
     !conditional_jump(From),
     !arch.delay_slot(_,From).
 
-.decl must_fallthrough_instr(o:address)
-
-must_fallthrough_instr(From):-
-    instruction_get_operation(From,Operation),
-    !arch.call_operation(Operation),
-    !arch.syscall_operation(Operation),
-    !arch.interrupt_operation(Operation),
-    !instruction_has_loop_prefix(From),
-    !conditional_jump(From),
-    !arch.delay_slot(_,From).
-
 //////////////////////////////////////////////////////////////
 // This is a small refinement for discarding immediates as targets
 // in some obvious cases. This is specially useful for PIE code where
@@ -181,10 +170,6 @@ invalid(EA,"known data region"):-
     instruction(EA,_,_,_,_,_,_,_,_,_),
     Size > 0, EA >= Begin, EA < (Begin + Size).
 
-invalid(EA,"must_fallthrough_instr to not_code"):-
-    must_fallthrough_instr(EA),
-    !next(EA,_).
-
 .decl possible_ea(EA:address)
 
 possible_ea(EA):-
@@ -235,9 +220,9 @@ block_limit(as(EA,address)):-
         lsda_callsite_addresses(_,EA, _)
     ).
 
-.decl must_data_access(EA:address, Dest:address)
+.decl must_access_data(EA:address, Dest:address)
 
-must_data_access(0,0):- false.
+must_access_data(0,0):- false.
 
 // The targets are computed incrementally now as we traverse the code
 // likely_ea and possible_target_from are mutually recursive
@@ -248,14 +233,14 @@ possible_target_from(Dest,Src):-
     code_in_block_candidate(Src,_),
     (
         may_have_symbolic_immediate(Src,Dest),
-        !must_data_access(Src,Dest)
+        !must_access_data(Src,Dest)
         ;
         direct_jump(Src,Dest);
         direct_call(Src,Dest);
         pc_relative_jump(Src,Dest);
         pc_relative_call(Src,Dest);
         pc_relative_operand(Src,_,Dest),
-        !must_data_access(Src,Dest)
+        !must_access_data(Src,Dest)
     ).
 
 .decl possible_target(Target:address)

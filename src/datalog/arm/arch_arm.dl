@@ -122,6 +122,28 @@ conditional_return_operation(Operation):-
     contains("POP", Operation),
     strlen(Operation) != 3.
 
+.decl long_operation(operation:symbol)
+
+long_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    strlen(Operation) > 2.
+
+.decl is_conditional_operation(Operation:symbol)
+
+is_conditional_operation(Operation):-
+    long_operation(Operation),
+    instruction_get_operation(_,Operation),
+    Size = strlen(Operation),
+    Operation != "TEQ", Operation != "SMMLS",
+    Operation != "MLS", Operation != "HVC",
+    CC = substr(Operation,Size-2,2),
+    (
+        CC = "EQ"; CC = "NE"; CC = "CS"; CC = "HS";
+        CC = "CC"; CC = "LO"; CC = "MI"; CC = "PL";
+        CC = "VS"; CC = "VC"; CC = "HI"; CC = "LS";
+        CC = "GE"; CC = "LT"; CC = "GT"; CC = "LE"
+    ).
+
 .decl delay_slot(BranchEA:address,EA:address)
 
 // No rule for delay_slot
