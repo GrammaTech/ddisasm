@@ -201,23 +201,25 @@ got_local_reference(Got_entry,Dest):-
     symbolic_data(Got_entry,8,Dest),
     !got_reference(Got_entry,_).
 
+// TLS relocations @TLSGD and @TLSLD allocate two contiguous entries in GOT:
+// typedef struct
+// {
+//   unsigned long int ti_module;
+//   unsigned long int ti_offset;
+// } tls_index;
 got_local_reference(Got_entry,Dest):-
-    relocation(Got_entry,"DTPMOD64",Symbol,_),
+    relocation(Got_entry,"DTPMOD64","",_),
     (
       pc_relative_operand(_,_,Got_entry);
       split_load_operand(_,_,Got_entry)
     ),
-    symbol(Dest,_,_,_,_,_,_,Symbol).
-
-got_local_reference(Got_entry,Dest):-
-    relocation(Got_entry,"DTPMOD64","",Addend),
     (
-      pc_relative_operand(_,_,Got_entry);
-      split_load_operand(_,_,Got_entry)
+        section(".tbss",_,Beg);
+        section(".tdata",_,Beg)
     ),
-    section(".tbss",_,Beg),
-    Dest = as(as(Beg,number)+Addend,address),
-    !symbol(Dest,_,_,_,_,_,_,_).
+    // ti_offset is initialized for @TLSGD and zero for @TLSLD
+    data_word(Got_entry+8,8,Offset),
+    Dest = as(as(Beg,number)+Offset,address).
 
 
 //////////////////////////////////////////////////////////////////////////
