@@ -37,15 +37,17 @@ ARG CMAKE_VERSION=3.12.1
 # Use bash for more convenient variable substitution syntax
 SHELL ["/bin/bash", "-c"]
 
-# This is required to run souffle compiled with gcc-9
-RUN apt-get -y update && apt-get -y install software-properties-common \
-    && add-apt-repository ppa:ubuntu-toolchain-r/test
 
 # Install common packages
 RUN apt-get -y update && apt-get -y install autoconf automake clang clang-format \
-    curl doxygen gcc-9 git libprotobuf-dev libpq-dev libtool libstdc++-7-dev \
+    curl doxygen git libpq-dev libprotobuf-dev libtool libstdc++-7-dev \
     make mcpp pkg-config protobuf-compiler python3 python3-pip \
     software-properties-common unzip wget zlib1g-dev
+
+# This is required to run souffle compiled with g++-9
+RUN add-apt-repository ppa:ubuntu-toolchain-r/test \
+    && apt-get -y update && apt-get -y install g++-9
+
 RUN apt-get remove -y python3-keyrings.alt
 RUN python3 -m pip install distro pyyaml psycopg2-binary
 
