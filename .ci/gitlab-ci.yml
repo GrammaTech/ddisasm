@@ -8,6 +8,15 @@ variables:
   PROJECT_ID: $CI_PROJECT_ID
   PIPELINE_ID: $CI_PIPELINE_ID
 
+workflow:
+  rules:
+    # merge_train CI happens once per branch, right before merging
+    # they must pass in order for the merge to go through
+    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
+    # If no 'rules' are explicitly set for jobs below, they will automatically
+    # run each time this pipeline runs (merge, commits, or schedules)
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "schedule"
 
 stages:
   - check-format
