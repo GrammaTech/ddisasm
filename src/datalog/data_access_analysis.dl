@@ -165,7 +165,10 @@ data_access_pattern_candidate(Address,Size,0,EA):-
 // pc relative
 data_access_pattern_candidate(Address,Size,0,EA):-
     code(EA),
-    pc_relative_operand(EA,Op_index,Address),
+    (
+        pc_relative_operand(EA,Op_index,Address);
+        split_load_operand(EA,Op_index,Address)
+    ),
     instruction_memory_access_size(EA,Op_index,Size),
     data_segment(Beg,End),
     Address >= Beg,
@@ -175,6 +178,7 @@ data_access_pattern_candidate(Address,Size,0,EA):-
 data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
     data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult,Offset1,Size),
     !pc_relative_operand(EA,Op_index,_),
+    !split_load_operand(EA,Op_index,_),
     RegMult != "NONE",
     RegMult != RegBase,
     value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,Offset2,_),
@@ -195,6 +199,7 @@ data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
 data_access_pattern_candidate(Address,Size,Mult,EA):-
     data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult2,Offset1,Size),
     !pc_relative_operand(EA,Op_index,_),
+    !split_load_operand(EA,Op_index,_),
     RegMult != RegBase,
     value_reg_at_operand(EA,Op_index,RegMult,_,0,Offset2,"complete"),
     value_reg_at_operand(EA,Op_index,RegBase,_,Mult,Offset3,_),
