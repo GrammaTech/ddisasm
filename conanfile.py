@@ -90,7 +90,7 @@ class DdisasmConan(Properties, ConanFile):
     souffle_version = "2.1"
     build_requires = (
         "libehp/%s@rewriting+extra-packages/stable" % (libehp_version),
-        "lief/%s" % (lief_version),
+        "lief/%s@rewriting+extra-packages/stable" % (lief_version),
     )
 
     def build_requirements(self):
