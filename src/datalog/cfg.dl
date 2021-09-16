@@ -136,13 +136,16 @@ cfg_edge(Src,Dest,"false","false","fallthrough"):-
      cfg_edge(_,Src,_,_,_),
      next_refined_block_in_section(Src,Dest).
 
-cfg_edge(ReturnBlock,NextBlock,"false","false","return"):-
+cfg_edge(ReturnBlock,NextBlock,Conditional,"false","return"):-
     cfg_edge(Caller,Block,_,_,"call"),
     cfg_edge(Caller,NextBlock,_,_,"fallthrough"),
     function_inference.in_function(Block,FunctionEntry),
     function_inference.in_function(ReturnBlock,FunctionEntry),
     refined_block_control_instruction(ReturnBlock,Insn),
-    arch.return(Insn).
+    (
+        unconditional_return(Insn), Conditional = "false";
+        conditional_return(Insn), Conditional = "true"
+    ).
 
 cfg_edge_to_top(Src,Conditional,"branch"):-
     refined_block_control_instruction(Src,EA),
@@ -153,7 +156,7 @@ cfg_edge_to_top(Src,Conditional,"branch"):-
     !resolved_jump(EA,_),
     (
         unconditional_jump(EA), Conditional = "false";
-        !unconditional_jump(EA), Conditional = "true"
+        conditional_jump(EA), Conditional = "true"
     ).
 
 cfg_edge_to_top(Src,"false","call"):-
@@ -164,9 +167,12 @@ cfg_edge_to_top(Src,"false","call"):-
     ).
 
 // a return to top if no other return exists
-cfg_edge_to_top(Src,"false","return"):-
+cfg_edge_to_top(Src,Conditional,"return"):-
     refined_block_control_instruction(Src,Insn),
-    arch.return(Insn),
+    (
+        unconditional_return(Insn), Conditional = "false";
+        conditional_return(Insn), Conditional = "true"
+    ),
     !cfg_edge(Src,_,_,_,"return").
 
 cfg_edge_to_symbol(Src,Symbol):-
