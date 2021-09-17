@@ -54,104 +54,9 @@ SHELL
     python -m pip install conan
   SHELL
 
-  # The provisioner belows uses the installer from sourceforge, because it is
-  # MUCH faster than downloading the zip archive and using powershell's
-  # Expand-Archive cmdlet.  The b2 invocation is not actually building any of
-  # the libraries, it's just installing them from a staging folder provided by
-  # the installer.  It is still necessary to bootstrap b2 even when using the
-  # installer.
-  config.vm.provision "install-boost", type: "shell", inline: <<-SHELL
-    cd $HOME
-    curl.exe -L "https://sourceforge.net/projects/boost/files/boost-binaries/1.67.0/boost_1_67_0-msvc-14.1-64.exe/download?use_mirror=newcontinuum&r=https%3A%2F%2Fsourceforge.net%2F&use_mirror=newcontinuum" --output "boost_1_67_0-msvc-14.1-64.exe"
-    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-    $startInfo.FileName = "C:\\Users\\vagrant\\boost_1_67_0-msvc-14.1-64.exe"
-    $startInfo.Arguments = "/NORESTART /DIR=""C:\\Boost-stage"" /SILENT"
-    $startInfo.UseShellExecute = $true
-    $startInfo.CreateNoWindow = $false
-    $process = New-Object System.Diagnostics.Process
-    $process.StartInfo = $startInfo
-    $process.Start()
-    $process.WaitForExit()
-    cd C:\\Boost-stage
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && .\\bootstrap.bat"
-    $msvc_path = & C:\\cygwin64\\bin\\bash.exe --login -c 'find /cygdrive/c/VS/VC/Tools/MSVC/ -maxdepth 1 | tail -n +2 | xargs -i basename {}'
-    Set-Content -Path "C:\\Boost-stage\\project-config.jam" -Value @"
-import option ;
-
-using msvc : 14.1 : "C:\\\\VS\\\\VC\\\\Tools\\\\MSVC\\\\$msvc_path\\\\bin\\\\Hostx64\\\\x64\\\\cl.exe" ;
-
-option.set keep-going : false ;
-
-"@
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && .\\b2.exe install address-model=64 variant=debug,release link=shared runtime-link=shared --with-program_options --with-filesystem --with-system"
-  SHELL
-
-  config.vm.provision "build-protobuf", type: "shell", inline: <<-SHELL
-    cd $HOME
-    git clone https://github.com/protocolbuffers/protobuf.git
-    cd protobuf
-    git checkout tags/v3.7.0
-
-    mkdir cmake-build-debug
-    cd cmake-build-debug
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja"" -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=OFF -Dprotobuf_MSVC_STATIC_RUNTIME=OFF ../cmake"
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja install"
-
-    cd ..
-    mkdir cmake-build-release
-    cd cmake-build-release
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja"" -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=OFF -Dprotobuf_MSVC_STATIC_RUNTIME=OFF -DCMAKE_BUILD_TYPE=Release ../cmake"
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja install"
-  SHELL
-
-  config.vm.provision "build-capstone", type: "shell", inline: <<-SHELL
-    cd $HOME
-    git clone -b next https://github.com/GrammaTech/capstone.git
-    mkdir /cygdrive/C/capstone-debug
-    mkdir /cygdrive/C/capstone-release
-
-    cd capstone
-    mkdir build-debug
-    cd build-debug
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja""  -DCMAKE_INSTALL_PREFIX=C:\\capstone-debug -DCAPSTONE_INSTALL=ON .."
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja install"
-
-    cd ..
-    mkdir build-release
-    cd build-release
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja"" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=C:\\capstone-release -DCAPSTONE_INSTALL=ON .."
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja install"
-  SHELL
-
   config.vm.provision "get-elf.h", type: "shell", inline: <<-SHELL
     $include_path= & C:\\cygwin64\\bin\\bash.exe --login -c 'find /cygdrive/c/VS/VC/Tools/MSVC/ -maxdepth 1 | tail -n +2 | cygpath -wf -'
      C:\\Windows\\System32\\curl.exe https://git.musl-libc.org/cgit/musl/plain/include/elf.h > "$include_path\\include\\elf.h"
-  SHELL
-
-  config.vm.provision "build-lief", type: "shell", inline: <<-SHELL
-    cd $HOME
-    git clone -b 0.11.5 https://github.com/lief-project/LIEF.git
-    mkdir /cygdrive/C/lief-debug
-    mkdir /cygdrive/C/lief-release
-
-    cd LIEF
-    mkdir build-debug
-    cd build-debug
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja"" -DLIEF_EXAMPLES=OFF -DLIEF_USE_CRT_DEBUG=MDd -DLIEF_PYTHON_API=OFF -DCMAKE_INSTALL_PREFIX=C:\\lief-debug .."
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja"" -DLIEF_EXAMPLES=OFF -DLIEF_USE_CRT_DEBUG=MDd -DLIEF_PYTHON_API=OFF -DCMAKE_INSTALL_PREFIX=C:\\lief-debug .."
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja install"
-
-    cd ..
-    mkdir build-release
-    cd build-release
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ""C:\\Program Files\\CMake\\bin\\cmake.exe"" -G ""Ninja"" -DLIEF_EXAMPLES=OFF -DLIEF_USE_CRT_RELEASE=MD -DCMAKE_BUILD_TYPE=Release -DLIEF_PYTHON_API=OFF -DCMAKE_INSTALL_PREFIX=C:\\lief-release .."
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja"
-    cmd.exe /C "C:\\VS\\VC\\Auxiliary\\Build\\vcvars64.bat && ninja install"
   SHELL
 
   config.vm.provision "setup-wsl-1", type: "shell", inline: <<-SHELL
@@ -163,7 +68,7 @@ option.set keep-going : false ;
   config.vm.provision "setup-wsl-2", type: "shell", inline: <<-SHELL
     $jobs = @()
     $jobs += Start-Job -Name AddUbuntuJob -ScriptBlock {
-        Invoke-WebRequest -Uri https://aka.ms/wsl-ubuntu-1804 -OutFile Ubuntu.appx -UseBasicParsing
+        Invoke-WebRequest -Uri https://aka.ms/wslubuntu2004 -OutFile Ubuntu.appx -UseBasicParsing
         Add-AppxPackage Ubuntu.appx
     }
 
@@ -177,14 +82,14 @@ apt-get update
 apt-get -y install bison build-essential cmake flex libffi-dev libsqlite3-dev libtool m4 mcpp zlib1g-dev
 git clone -b 2.1 https://github.com/souffle-lang/souffle
 cd souffle
-cmake . -Bbuild -DCMAKE_BUILD_TYPE=Release -DSOUFFLE_USE_CURSES=0 -DSOUFFLE_USE_SQLITE=0 -DSOUFFLE_DOMAIN_64BIT=1 && \
-cd build && \
+cmake . -Bbuild -DCMAKE_BUILD_TYPE=Release -DSOUFFLE_USE_CURSES=0 -DSOUFFLE_USE_SQLITE=0 -DSOUFFLE_DOMAIN_64BIT=1
+cd build
 make install -j8
 "@
     Set-Content -Path setup-souffle.sh -Value $wsl_script
 
     $script = @"
-ubuntu1804 install --root
+ubuntu2004 install --root
 wsl -- bash /mnt/c/Users/vagrant/setup-souffle.sh
 "@
     Set-Content -Path setup-script.ps1 -Value $script

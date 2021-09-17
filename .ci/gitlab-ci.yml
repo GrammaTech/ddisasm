@@ -74,7 +74,7 @@ check-format:
   #  allow_failure: true
 
 build-conan-gcc7:
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu18
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu18-souffle-2.1
   stage: build
   needs: [check-format]
   rules:
