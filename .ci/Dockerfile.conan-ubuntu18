@@ -11,11 +11,13 @@ RUN apt-get update -y \
       cmake \
       curl \
       git \
+      libpq-dev \
       libstdc++-7-dev \
       make \
       python3 \
       python3-pip \
-      unzip
+      unzip \
+      software-properties-common
 
 # Install CMake
 RUN curl -SL https://cmake.org/files/v$(echo $CMAKE_VERSION | sed -r 's/\.[0-9]+$//;')/cmake-$CMAKE_VERSION-Linux-x86_64.tar.gz \
@@ -39,6 +41,10 @@ RUN dpkg --add-architecture i386 \
       libstdc++-7-dev:i386 \
       lib32gcc-7-dev \
       lib32stdc++-7-dev
+
+# This is required to run souffle compiled with g++-9
+RUN add-apt-repository ppa:ubuntu-toolchain-r/test \
+    && apt-get -y update && apt-get -y install g++-9
 
 RUN cd /usr/mips-linux-gnu \
  && mkdir etc \
