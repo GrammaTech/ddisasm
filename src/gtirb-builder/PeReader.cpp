@@ -23,7 +23,6 @@
 #include <boost/filesystem.hpp>
 #include <boost/uuid/uuid_io.hpp>
 namespace fs = boost::filesystem;
-#include "LIEF/PE.h"
 #include "PeReader.h"
 
 using GTIRB = GtirbBuilder::GTIRB;
