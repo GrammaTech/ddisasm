@@ -80,8 +80,9 @@ SHELL
     $wsl_script = @"
 apt-get update
 apt-get -y install bison build-essential cmake flex libffi-dev libtool m4 mcpp zlib1g-dev
-git clone -b 2.1 https://github.com/souffle-lang/souffle
+git clone  https://github.com/souffle-lang/souffle
 cd souffle
+git checkout e4184ab103bf4878d8fd85cb5373d690691bfe32
 cmake . -Bbuild -DCMAKE_BUILD_TYPE=Release -DSOUFFLE_USE_CURSES=0 -DSOUFFLE_USE_SQLITE=0 -DSOUFFLE_DOMAIN_64BIT=1
 cd build
 make install -j8
