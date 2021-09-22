@@ -159,6 +159,17 @@ return(EA):-
     instruction(EA,_,_,Operation,Op,_,_,_,_,_),
     op_regdirect_contains_reg(Op,"RA").
 
+.decl unconditional_return_operation(n:symbol)
+
+unconditional_return_operation(Operation):-
+    return_operation(Operation).
+
+.decl conditional_return_operation(n:symbol)
+
+conditional_return_operation(""):-
+    false.
+
+
 .decl jump(EA:address)
 
 jump(EA):-

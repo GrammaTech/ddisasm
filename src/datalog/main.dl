@@ -1,4 +1,4 @@
-//===- main.dl --------------------------------------------------*- datalog -*-===//
+//===- main.dl ----------------------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -624,6 +624,20 @@ data_segment(Begin,End):-
 inferred_symbol_name(EA,"main","GLOBAL","FUNC"):-
     binary_format("ELF"),
     main_function(EA).
+
+.decl conditional_return(EA:address)
+
+conditional_return(EA):-
+    arch.return(EA),
+    instruction_get_operation(EA,Operation),
+    arch.conditional_return_operation(Operation).
+
+.decl unconditional_return(EA:address)
+
+unconditional_return(EA):-
+    arch.return(EA),
+    instruction_get_operation(EA,Operation),
+    arch.unconditional_return_operation(Operation).
 
 .decl no_return_call(EA:address)
 

@@ -104,30 +104,33 @@ std::optional<relations::Instruction> Arm32Loader::build(Arm32Facts& Facts,
 {
     const cs_arm& Details = CsInstruction.detail->arm;
     std::string Name = uppercase(CsInstruction.mnemonic);
+    if(auto index = Name.rfind(".W"); index != std::string::npos)
+        Name = Name.substr(0, index);
+
     std::vector<uint64_t> OpCodes;
 
     auto registerName = [this](uint64_t Reg) {
         return (Reg == ARM_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(*CsHandle, Reg));
     };
 
-    // If the instruction has register bitfield operand,
-    // return the opcode without condition code: {LDM, STM, POP, PUSH}.
-    // Otherwise, return empty string.
-    auto regBitFieldOpCode = [](const std::string& Str) {
+    auto regBitFieldInitialIndex = [](const std::string& Str) {
         std::string OpCode = Str.substr(0, 3);
-        if(OpCode == "LDM" or OpCode == "STM" or OpCode == "POP")
-            return OpCode;
+        if(OpCode == "LDM" or OpCode == "STM")
+            return 1;
+        if(OpCode == "POP")
+            return 0;
 
         OpCode = Str.substr(0, 4);
         if(OpCode == "PUSH")
-            return OpCode;
+            return 0;
+        if(OpCode == "VSTM" or OpCode == "VLDM")
+            return 1;
 
-        return std::string("");
+        return -1;
     };
 
     int OpCount = Details.op_count;
-    std::string OpCode = regBitFieldOpCode(Name);
-    if(!OpCode.empty())
+    if(regBitFieldInitialIndex(Name) != -1)
     {
         std::vector<std::string> RegBitFields;
         for(int i = 0; i < OpCount; i++)
@@ -135,7 +138,7 @@ std::optional<relations::Instruction> Arm32Loader::build(Arm32Facts& Facts,
             // Load capstone operand.
             const cs_arm_op& CsOp = Details.operands[i];
 
-            if(i == 0 && (OpCode == "LDM" or OpCode == "STM"))
+            if(i < regBitFieldInitialIndex(Name))
             {
                 std::optional<relations::Operand> Op = build(CsOp);
                 // Build operand for datalog fact.
