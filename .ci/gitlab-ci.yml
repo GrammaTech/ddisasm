@@ -393,7 +393,7 @@ test-centos8-ddisasm-package:
 
 package-centos8:
   stage: deploy
-  image: $DOCKER_REGISTRY/rewriting/gtirb/centos8-souffle-2.1
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/centos8-souffle-2.1
   needs: ['build-centos8-gcc-relwithdebuginfo', 'test-centos8-ddisasm-package']
   artifacts:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
