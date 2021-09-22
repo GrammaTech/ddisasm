@@ -144,7 +144,6 @@ gtirb::ISA GtirbBuilder::isa()
         case LIEF::ARCHITECTURES::ARCH_ARM64:
             return gtirb::ISA::ARM64;
         case LIEF::ARCHITECTURES::ARCH_MIPS:
-            // FIXME: This is not working. See ElfReader::initModule.
             return gtirb::ISA::MIPS32;
         case LIEF::ARCHITECTURES::ARCH_NONE:
             return gtirb::ISA::Undefined;

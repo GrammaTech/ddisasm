@@ -50,7 +50,7 @@ std::optional<DatalogProgram> DatalogProgram::load(const gtirb::Module &Module)
 
 void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation *Relation)
 {
-    souffle::SymbolTable SymbolTable = Relation->getSymbolTable();
+    souffle::SymbolTable &SymbolTable = Relation->getSymbolTable();
     for(souffle::tuple Tuple : *Relation)
     {
         for(size_t I = 0; I < Tuple.size(); I++)
@@ -62,7 +62,7 @@ void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation
             switch(Relation->getAttrType(I)[0])
             {
                 case 's':
-                    Stream << SymbolTable.resolve(Tuple[I]);
+                    Stream << SymbolTable.unsafeDecode(Tuple[I]);
                     break;
                 case 'u':
                     Stream << souffle::ramBitCast<souffle::RamUnsigned>(Tuple[I]);
