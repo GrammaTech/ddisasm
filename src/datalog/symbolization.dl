@@ -717,6 +717,14 @@ data_object_point(EA,Size,"string",-2,"string in jump table"):-
     preferred_data_access(EA,EA_ref),
     jump_table_start(_,_,EA_ref,_,_).
 
+data_object_point(EA,Pt_size,"symbol",-2,"overlaps long string"):-
+    data_object_candidate(EA,Pt_size,"symbol"),
+    (
+      data_object_conflict(_,Size,"string",EA,Pt_size,"symbol");
+      data_object_conflict(EA,Pt_size,"symbol",_,Size,"string")
+    ),
+    Size > 5.
+
 // data access negative heuristic
 data_object_point(EA,Size,"other",4,"data access"):-
     data_object_candidate(EA,Size,"other"),
