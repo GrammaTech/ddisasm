@@ -190,22 +190,22 @@ void ElfReader::resurrectSections()
         if(Segment.physical_size() < Segment.virtual_size())
         {
             uint64_t DataAddr = Segment.virtual_address() + Segment.physical_size();
-            uint64_t DataSize = Segment.virtual_size() - Segment.physical_size();
+            uint64_t DataSize2 = Segment.virtual_size() - Segment.physical_size();
 
-            gtirb::Section *DataS = Module->addSection(*Context, ".fake.data2");
+            gtirb::Section *DataS2 = Module->addSection(*Context, ".fake.data2");
             // Add section flags to GTIRB Section.
-            DataS->addFlag(gtirb::SectionFlag::Loaded);
-            DataS->addFlag(gtirb::SectionFlag::Readable);
-            DataS->addFlag(gtirb::SectionFlag::Writable);
+            DataS2->addFlag(gtirb::SectionFlag::Loaded);
+            DataS2->addFlag(gtirb::SectionFlag::Readable);
+            DataS2->addFlag(gtirb::SectionFlag::Writable);
 
-            std::vector<uint8_t> DataBytes =
-                Elf->get_content_from_virtual_address(DataAddr, DataSize);
-            DataS->addByteInterval(*Context, gtirb::Addr(DataAddr), DataBytes.begin(),
-                                   DataBytes.end(), DataSize, DataBytes.size());
+            std::vector<uint8_t> DataBytes2 =
+                Elf->get_content_from_virtual_address(DataAddr, DataSize2);
+            DataS2->addByteInterval(*Context, gtirb::Addr(DataAddr), DataBytes2.begin(),
+                                    DataBytes2.end(), DataSize2, DataBytes2.size());
 
-            Alignment[DataS->getUUID()] = 16;
-            SectionIndex[Index] = DataS->getUUID();
-            SectionProperties[DataS->getUUID()] = {
+            Alignment[DataS2->getUUID()] = 16;
+            SectionIndex[Index] = DataS2->getUUID();
+            SectionProperties[DataS2->getUUID()] = {
                 static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS),
                 static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC
                                       | LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE)};
@@ -319,29 +319,29 @@ void ElfReader::resurrectSymbols()
     // TODO: Generalize it if needed.
     if(Module->getISA() == gtirb::ISA::MIPS32)
     {
-        auto It = DynamicEntries.find("SYMTAB");
-        if(It == DynamicEntries.end())
+        auto SymTabIt = DynamicEntries.find("SYMTAB");
+        if(SymTabIt == DynamicEntries.end())
         {
             std::cerr << "\nWARNING: resurrectSymbols: SYMTAB not found.";
             return;
         }
-        uint64_t Addr = It->second;
+        uint64_t Addr = SymTabIt->second;
 
-        It = DynamicEntries.find("MIPS_SYMTABNO");
-        if(It == DynamicEntries.end())
+        SymTabIt = DynamicEntries.find("MIPS_SYMTABNO");
+        if(SymTabIt == DynamicEntries.end())
         {
             std::cerr << "\nWARNING: resurrectSymbols: MIPS_SYMTABNO not found.";
             return;
         }
-        uint64_t DynSymNum = It->second;
+        uint64_t DynSymNum = SymTabIt->second;
 
-        It = DynamicEntries.find("SYMENT");
-        if(It == DynamicEntries.end())
+        SymTabIt = DynamicEntries.find("SYMENT");
+        if(SymTabIt == DynamicEntries.end())
         {
             std::cerr << "\nWARNING: resurrectSymbols: SYMENT not found.";
             return;
         }
-        uint64_t SymTabEntrySize = It->second;
+        uint64_t SymTabEntrySize = SymTabIt->second;
 
         uint64_t Size = DynSymNum * SymTabEntrySize;
 

@@ -489,17 +489,27 @@ transitive_points("fde-entry").
 transitive_points("landing-pad").
 transitive_points("exc-region").
 
+// B  |-----|
+// R    |--|
+// or
+// B  |----|
+// R     |---|
 block_is_overlapping(Block),
 block_points(Block,0,-6,"overlap with relative-jump-table"):-
     block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
     relative_address(Beg,_,_,_,_,_),
-    BegBlockAddr <= Beg, Beg< EndBlockAddr.
+    BegBlockAddr <= Beg, Beg < EndBlockAddr.
 
+// B    |----|
+// R  |---|
+// or
+// B    |--|
+// R  |------|
 block_is_overlapping(Block),
 block_points(Block,0,-6,"overlap with relative-jump-table"):-
     relative_address(Beg,Size,_,_,_,_),
     block_candidate_boundaries(Block,BegBlockAddr,_),
-    Beg < BegBlockAddr, BegBlockAddr< Beg+Size.
+    Beg <= BegBlockAddr, BegBlockAddr < Beg+Size.
 
 overlap_with_jump_table(Block),
 block_points(Block,0,-3,"possible relative-jump-table start"):-

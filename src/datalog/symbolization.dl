@@ -352,12 +352,18 @@ address_in_data_refined(EA,Val):-
     address_in_data(EA,Val),
     data_segment(Beg,End),
     Val >= Beg,
-    Val <= End.
+    Val <= End,
+    data_segment(Beg0,End0),
+    EA >= Beg0,
+    EA < End0.
 
 address_in_data_refined(EA,Val):-
     binary_type("EXEC"),
     address_in_data(EA,Val),
-    block(Val).
+    block(Val),
+    data_segment(Beg0,End0),
+    EA >= Beg0,
+    EA < End0.
 
 
 .init address_in_data_refined_range=empty_range
