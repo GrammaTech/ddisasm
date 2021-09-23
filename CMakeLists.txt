@@ -281,7 +281,7 @@ else()
   else()
     include(FindLIEF)
   endif()
-  find_package(LIEF 0.10.0 REQUIRED COMPONENTS STATIC)
+  find_package(LIEF 0.11.5 REQUIRED COMPONENTS STATIC)
 endif()
 
 # ---------------------------------------------------------------------------
