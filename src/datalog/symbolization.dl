@@ -421,6 +421,37 @@ string_part(EA+1,Base):-
     !preferred_data_access(EA+1,_),
     printable_char(Byte).
 
+.decl utf16_le_ascii_char(EA:address,Base:address)
+.output utf16_le_ascii_char
+
+utf16_le_ascii_char(EA,EA):-
+    data_byte(EA,Byte),
+    data_byte(EA+1,0),
+    printable_char(Byte),
+    arch.pointer_size(Pt_size),
+    EA % Pt_size = 0,
+    data_byte(EA-1,Prev),
+    !printable_char(Prev).
+
+utf16_le_ascii_char(EA+2,Base):-
+    utf16_le_ascii_char(EA,Base),
+    data_byte(EA+2,Byte),
+    data_byte(EA+3,0),
+    printable_char(Byte).
+
+.decl null_terminated_utf16(EA:address,End:address)
+.output null_terminated_utf16
+
+null_terminated_utf16(Start,EA+2):-
+    utf16_le_ascii_char(Start,Start),
+    !utf16_le_ascii_char(Start-2,_),
+    utf16_le_ascii_char(EA,Start),
+    data_byte(EA+1,0),
+    data_byte(EA+2,0).
+
+string_candidate(Begin,End):-
+    null_terminated_utf16(Begin,End).
+
 ///////////////////////////////////////////////////////////////////////////
 .decl data_object_candidate(ea:address,size:unsigned,type:symbol)
 
