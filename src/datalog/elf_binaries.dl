@@ -186,7 +186,8 @@ got_reference(Got_entry,Symbol):-
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
-    symbolic_data(Got_entry,8,Dest),
+    arch.pointer_size(Ptr),
+    symbolic_data(Got_entry,Ptr,Dest),
     symbol(Dest,_,_,_,_,_,_,Symbol).
 
 got_local_reference(Got_entry,Dest):-
@@ -198,7 +199,8 @@ got_local_reference(Got_entry,Dest):-
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
-    symbolic_data(Got_entry,8,Dest),
+    arch.pointer_size(Ptr),
+    symbolic_data(Got_entry,Ptr,Dest),
     !got_reference(Got_entry,_).
 
 // TLS relocations @TLSGD and @TLSLD allocate two contiguous entries in GOT:
@@ -304,8 +306,9 @@ symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
     relocation(EA,"R64",Symbol,Addend),
     symbol(_,_,_,_,_,_,_,Symbol).
 
-symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
+symbolic_expr_from_relocation(EA,Size,Symbol,Addend):-
     binary_format("ELF"),
+    arch.pointer_size(Size),
     relocation(EA,"GLOB_DAT",Symbol,Addend),
     symbol(_,_,_,_,_,_,_,Symbol).
 

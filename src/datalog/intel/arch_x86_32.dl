@@ -115,11 +115,8 @@ got_relative_operand(EA,Index,Dest):-
     got_reference_pointer(Got),
     Dest=Got+as(Offset,address).
 
-symbol_minus_symbol(EA+Disp_offset,4,Got,Dest,1):-
-    got_reference_pointer(Got),
-    got_relative_operand(EA,Index,Dest),
-    instruction_displacement_offset(EA,Index,Disp_offset),
-    !moved_label(EA,_,_,_).
+symbolic_operand_candidate(EA,Index,Got_entry,"data"):-
+    got_relative_operand(EA,Index,Got_entry).
 
 symbolic_operand_attribute(EA,Index,"PltRef"):-
     (
@@ -214,9 +211,3 @@ moved_label(EA_load,1,Address,Base):-
     moved_label(EA_obj,1,_,Base),
     Offset=as(Dest-Base,number),
     Address=Base+as(Offset,address).
-
-symbol_minus_symbol(EA+Disp_offset,4,Got,Dest,1):-
-    got_reference_pointer(Got),
-    got_relative_operand(EA,Index,_),
-    moved_label(EA,Index,Dest,_),
-    instruction_displacement_offset(EA,Index,Disp_offset).
