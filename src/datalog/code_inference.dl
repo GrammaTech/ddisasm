@@ -22,15 +22,15 @@
 //===----------------------------------------------------------------------===//
 /**
 This module computes the valid instructions organized in blocks of
-code.  It infers the facts 'code_in_block', 'block', and 'code'. In
-addition it computes 'block_still_overlap' for debugging purposes.
+code.  It infers the facts `code_in_block`, `block`, and `code`. In
+addition it computes `block_still_overlap` for debugging purposes.
 
 The disassembly is done in two traversals:
 
   - A "must" backward traversal that propagates invalid instructions
   - A "may" forward traversal that tries to generate a
-    superset of all possible code blocks (with the predicates possible_target
-    and code_in_block_candidate). This traversal has a recursive component
+    superset of all possible code blocks (with the predicates `possible_target`
+    and `code_in_block_candidate`). This traversal has a recursive component
     and a linear-sweep component.
 
 Finally, we detect candidate blocks of code that overlap with each other (and
@@ -43,8 +43,19 @@ more points.
 // These are final addresses where the code is located
 // They are organized in blocks of sequential code
 // The block identifier is the address of the first instruction in the block
+
+/**
+There instruction at address 'ea' belong to the block 'block'.
+The block address is the address of the first instruction in the block.
+*/
 .decl code_in_block(ea:address,block:address)
+/**
+There is a block starting at 'block'
+*/
 .decl block(block:address)
+/**
+There instruction at address 'ea' is code.
+*/
 .decl code(ea:address)
 .decl block_last_instruction(block:address,EA:address)
 .decl block_boundaries(block:address,BegAddr:address,EndAddr:address)
