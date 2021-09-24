@@ -262,7 +262,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,Offset):-
 
 // A register is defined using an unknown value
 // This predicate is used to create trivial leaf edges in
-// the value_reg graph.
+// the value_reg graph  any:`step_limit` .
 .decl value_reg_unsupported(EA:address, Reg:register)
 
 // Load a register from a non-constant memory address
