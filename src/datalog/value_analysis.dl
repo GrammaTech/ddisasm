@@ -31,23 +31,25 @@ at another point (EA_reg1)  multiplied by a multiplier plus an offset:
 In some cases we can obtain a term of the form:
 
 - val(Reg,EA) =  Offset
+
 If we can obtain that the register is assigned a constant
 
 - val(Reg,EA) = Unknown * Multiplier+ Offset
+
 If we detect a loop where the register gets incremented 'Multiplier' in each iteration
 
-The analysis first computes value_reg_edge which are facts of the form
+The analysis first computes `value_reg_edge` which are facts of the form
 above defined for different instruction and using the def-use chains.
 
-Then, we have a propagation phase where value_reg is computed. This
-phase chains individual value_reg_edge together.  In addition to
+Then, we have a propagation phase where `value_reg` is computed. This
+phase chains individual `value_reg_edge` together.  In addition to
 chaining edges together it takes care of cases such as two registers
 added together or substracted if it turns out that they can be
 expressed in terms of the same register.  It also detects possible
 loops.
 
-This propagation is limited in the number of steps to ensure
-termination and efficiency.
+This propagation is limited in the number of steps using `step_limit`
+to ensure termination and efficiency.
 
 As a result, we might obtain more than one 'value' for a certain
 register at a certain location. best_value_reg selects only one of
@@ -55,6 +57,7 @@ these values prioritizing the two special cases from above (constant
 or loop) and considering the value with most steps.
 
 */
+
 .decl value_reg_edge(EA:address,Reg:register,
                 EA_reg1:address,Reg1:register,Multiplier:number,Offset:number)
 .output value_reg_edge
@@ -261,9 +264,9 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,Offset):-
     arch.track_register(Reg_origin_non_uniform,Reg_origin),
     op_regdirect_contains_reg(Op2,Reg).
 
-// A register is defined using an unknown value
-// This predicate is used to create trivial leaf edges in
-// the value_reg graph  any:`step_limit` .
+/** A register is defined using an unknown value
+ This predicate is used to create trivial leaf edges in
+ the value_reg graph `step_limit` .*/
 .decl value_reg_unsupported(EA:address, Reg:register)
 
 // Load a register from a non-constant memory address
