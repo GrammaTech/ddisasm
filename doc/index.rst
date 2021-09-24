@@ -1,7 +1,9 @@
-=====================
-Example Documentation
-=====================
+=============================
+Ddisasm Datalog Documentation
+=============================
 
-Here's a file's worth of relations.
+.. toctree::
+    :maxdepth: 2
 
-.. dl:autofile:: ddisasm/src/datalog/value_analysis.dl
+    dl_docs/value_analysis
+    dl_docs/code_inference
