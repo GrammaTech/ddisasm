@@ -11,6 +11,7 @@ bin/souffle_disasm.*
 *.snm
 *.toc
 doc/*.1.gz
+doc/src_docs/*
 
 standalone_compilation/
 standalone_compilation.tar.bz2
