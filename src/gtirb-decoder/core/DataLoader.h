@@ -34,6 +34,8 @@ struct DataFacts
     gtirb::Addr Min, Max;
     std::vector<relations::Data<uint8_t>> Bytes;
     std::vector<relations::Data<gtirb::Addr>> Addresses;
+    std::vector<relations::Data<size_t>> Ascii;
+    std::vector<relations::String> Utf8;
 };
 
 // Load data sections.
@@ -58,12 +60,21 @@ public:
     virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program);
 
 protected:
+    struct Unicode
+    {
+        gtirb::Addr Addr;
+        size_t Length;
+        uint32_t State;
+        uint32_t Codepoint;
+    };
+
     virtual void load(const gtirb::Module& Module, DataFacts& Facts);
     virtual void load(const gtirb::ByteInterval& Bytes, DataFacts& Facts);
 
 private:
     Pointer PointerSize;
     Endianness Endianness;
+    size_t StringLimit = 3;
 };
 
 #endif // SRC_GTIRB_DECODER_CORE_DATALOADER_H_

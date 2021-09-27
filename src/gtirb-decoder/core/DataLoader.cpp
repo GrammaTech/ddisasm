@@ -47,6 +47,7 @@
 #endif // defined(_WIN32) || defined(__APPLE__)
 
 #include "../../AuxDataSchema.h"
+#include "../UTF8.h"
 
 void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
 {
@@ -55,6 +56,8 @@ void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program
 
     Program.insert("data_byte", std::move(Facts.Bytes));
     Program.insert("address_in_data", std::move(Facts.Addresses));
+    Program.insert("ascii_string", std::move(Facts.Ascii));
+    Program.insert("utf8_string", std::move(Facts.Utf8));
 }
 
 void DataLoader::load(const gtirb::Module& Module, DataFacts& Facts)
@@ -102,6 +105,9 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
     uint64_t Size = ByteInterval.getInitializedSize();
     auto Data = ByteInterval.rawBytes<const int8_t>();
 
+    size_t Ascii = 0;
+    Unicode Utf8 = {gtirb::Addr(0), 0, UTF8_ACCEPT, 0};
+
     while(Size > 0)
     {
         // Single byte.
@@ -135,6 +141,58 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
             {
                 Facts.Addresses.push_back({Addr, Value});
             }
+        }
+
+        // Possible ASCII character.
+        if(std::isprint(Byte))
+        {
+            Ascii++;
+        }
+        else if(Byte == 0 && Ascii > StringLimit)
+        {
+            Facts.Ascii.push_back({Addr - Ascii, Ascii});
+            Ascii = 0;
+        }
+        else
+        {
+            Ascii = 0;
+        }
+
+        // Possible UTF-8 byte.
+        if(Byte == 0 && Utf8.State == UTF8_ACCEPT && Utf8.Length > StringLimit)
+        {
+            uint64_t Size = static_cast<uint64_t>(Addr - Utf8.Addr);
+            Facts.Utf8.push_back({Utf8.Addr, Size, Utf8.Length});
+            Utf8 = {gtirb::Addr(0), 0, UTF8_ACCEPT, 0};
+        }
+        else if(Byte != 0)
+        {
+            switch(utf8::decode(&Utf8.State, &Utf8.Codepoint, Byte))
+            {
+                case UTF8_ACCEPT:
+                    // Complete character.
+                    if(Utf8.Addr == gtirb::Addr(0))
+                    {
+                        Utf8.Addr = Addr;
+                    }
+                    Utf8.Length++;
+                    break;
+                case UTF8_REJECT:
+                    // Invalid sequence.
+                    Utf8 = {gtirb::Addr(0), 0, UTF8_ACCEPT, 0};
+                    break;
+                default:
+                    // Incomplete character.
+                    if(Utf8.Addr == gtirb::Addr(0))
+                    {
+                        Utf8.Addr = Addr;
+                    }
+                    break;
+            }
+        }
+        else
+        {
+            Utf8 = {gtirb::Addr(0), 0, UTF8_ACCEPT, 0};
         }
 
         ++Addr;

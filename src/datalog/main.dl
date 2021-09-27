@@ -187,6 +187,12 @@ This module:
 .decl data_region(Begin:address,Size:unsigned)
 .input data_region
 
+.decl ascii_string(Begin:address,Size:unsigned)
+.input ascii_string
+
+.decl utf8_string(Begin:address,Size:unsigned,Codepoints:unsigned)
+.input utf8_string
+
 ///////////////////////////////////////////////////////////////
 // Initialize components
 

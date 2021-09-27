@@ -394,8 +394,16 @@ address_in_data_refined(EA,Val):-
 
 address_in_data_refined_range.in_ea(EA):-
     address_in_data_refined(EA,_).
+
 /////////////////////////////////////////////////////////////////////////////////
 // Detect strings
+
+string_candidate(Beg,Beg+Size):-
+    ascii_string(Beg,Size).
+
+string_candidate(Beg,Beg+Size):-
+    utf8_string(Beg,Size,_).
+
 string_candidate(Beg,End+1):-
     data_byte(End,0),
     string_part(End-1,Beg),
