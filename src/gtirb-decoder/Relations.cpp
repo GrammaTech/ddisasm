@@ -154,4 +154,10 @@ namespace souffle
         return T;
     }
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::String& S)
+    {
+        T << S.Addr << S.Size << S.Characters;
+        return T;
+    }
+
 } // namespace souffle
