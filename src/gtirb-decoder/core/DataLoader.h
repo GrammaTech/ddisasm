@@ -36,6 +36,7 @@ struct DataFacts
     std::vector<relations::Data<gtirb::Addr>> Addresses;
     std::vector<relations::Data<size_t>> Ascii;
     std::vector<relations::String> Utf8;
+    std::vector<relations::String> Utf16;
 };
 
 // Load data sections.
