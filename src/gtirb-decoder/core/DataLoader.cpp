@@ -47,6 +47,7 @@
 #endif // defined(_WIN32) || defined(__APPLE__)
 
 #include "../../AuxDataSchema.h"
+#include "../UTF16.h"
 #include "../UTF8.h"
 
 void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
@@ -58,6 +59,7 @@ void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program
     Program.insert("address_in_data", std::move(Facts.Addresses));
     Program.insert("ascii_string", std::move(Facts.Ascii));
     Program.insert("utf8_string", std::move(Facts.Utf8));
+    Program.insert("utf16_le_string", std::move(Facts.Utf16));
 }
 
 void DataLoader::load(const gtirb::Module& Module, DataFacts& Facts)
@@ -107,6 +109,7 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
 
     size_t Ascii = 0;
     Unicode Utf8 = {gtirb::Addr(0), 0, UTF8_ACCEPT, 0};
+    Unicode Utf16 = {gtirb::Addr(0), 0, UTF16_ACCEPT, 0};
 
     while(Size > 0)
     {
@@ -192,7 +195,47 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
         }
         else
         {
+            // String was invalid or too small.
             Utf8 = {gtirb::Addr(0), 0, UTF8_ACCEPT, 0};
+        }
+
+        // Possible UTF-16 LE byte.
+        bool Null = Utf16.State == UTF16_ACCEPT && Utf16.Codepoint == 0 && Utf16.Length > 0;
+        if(Null && Utf16.Length > StringLimit)
+        {
+            uint64_t Size = static_cast<uint64_t>(Addr - Utf16.Addr);
+            Facts.Utf16.push_back({Utf16.Addr, Size, Utf16.Length});
+            Utf16 = {gtirb::Addr(0), 0, UTF16_ACCEPT, 0};
+        }
+        else if(!Null)
+        {
+            switch(utf16::le::decode(&Utf16.State, &Utf16.Codepoint, Byte))
+            {
+                case UTF16_ACCEPT:
+                    // Complete character.
+                    if(Utf16.Addr == gtirb::Addr(0))
+                    {
+                        Utf16.Addr = Addr;
+                    }
+                    Utf16.Length++;
+                    break;
+                case UTF16_REJECT:
+                    // Invalid sequence.
+                    Utf16 = {gtirb::Addr(0), 0, UTF16_ACCEPT, 0};
+                    break;
+                default:
+                    // Incomplete character.
+                    if(Utf16.Addr == gtirb::Addr(0))
+                    {
+                        Utf16.Addr = Addr;
+                    }
+                    break;
+            }
+        }
+        else
+        {
+            // String was invalid or too small.
+            Utf16 = {gtirb::Addr(0), 0, UTF16_ACCEPT, 0};
         }
 
         ++Addr;
