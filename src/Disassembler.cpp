@@ -461,6 +461,10 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
         if(Symbol)
         {
             // Create orphaned symbol for OBJECT copy relocation aliases.
+            if(size_t I = Alias.find('@'); I != std::string::npos)
+            {
+                Alias = Alias.substr(0, I);
+            }
             gtirb::Symbol *NewSymbol = module.addSymbol(context, EA, Alias + "_copy");
             Symbol->setReferent(module.addProxyBlock(context));
             symbolForwarding[NewSymbol->getUUID()] = Symbol->getUUID();
@@ -479,6 +483,10 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
             {
                 gtirb::Symbol *realSymbol = module.addSymbol(context, name);
                 realSymbol->setReferent(module.addProxyBlock(context));
+                if(size_t I = name.find('@'); I != std::string::npos)
+                {
+                    name = name.substr(0, I);
+                }
                 copySymbol->setName(name + "_copy");
                 symbolForwarding[copySymbol->getUUID()] = realSymbol->getUUID();
             }
@@ -494,6 +502,11 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
         if(Symbol)
         {
             gtirb::Symbol *NewSymbol = module.addSymbol(context, Name);
+            // Create orphaned symbol for OBJECT copy relocation aliases.
+            if(size_t I = Name.find('@'); I != std::string::npos)
+            {
+                Name = Name.substr(0, I);
+            }
             Symbol->setName(Name + "_copy");
             symbolForwarding[Symbol->getUUID()] = NewSymbol->getUUID();
         }
