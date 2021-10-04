@@ -50,6 +50,16 @@ load_operation(Operation):-
         contains("LDM", Operation)
     ).
 
+.decl load_word_operation(Operation:symbol)
+
+load_word_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    substr(Operation,0,3) = "LDR",
+    (
+        strlen(Operation) = 3; // unconditional
+        strlen(Operation) = 5  // conditional ldr
+    ).
+
 .decl store_operation(Operation:symbol)
 
 store_operation(Operation):-
@@ -84,19 +94,65 @@ is_nop(EA):-
 .decl return(n:address)
 
 return(EA):-
-    return_operation(Operation),
-    instruction_get_operation(EA,Operation).
+    instruction_get_operation(EA,"BX"),
+    instruction_get_op(EA,_,Op),
+    op_regdirect_contains_reg(Op,"LR").
 
 return(EA):-
     instruction_get_operation(EA,Operation),
-    (
-        Operation = "POP"
-        ;
-        Operation = "POP.W"
-    ),
+    contains("POP", Operation),
     instruction_get_op(EA,_,Op),
     op_regdirect_contains_reg(Op,Reg),
     pc_register(Reg).
+
+return(EA):-
+    instruction_get_operation(EA,"MOV"),
+    instruction_get_dest_op(EA,_,DestOp),
+    op_regdirect_contains_reg(DestOp,PC),
+    pc_register(PC),
+    instruction_get_src_op(EA,_,SrcOp),
+    op_regdirect_contains_reg(SrcOp,"LR").
+
+.decl unconditional_return_operation(operation:symbol)
+
+// NOTE: unconditional_return_operation must be used with 'return' rule.
+unconditional_return_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    (
+        Operation = "BX";
+        Operation = "MOV";
+        Operation = "POP"
+    ),
+    !conditional_return_operation(Operation).
+
+.decl conditional_return_operation(operation:symbol)
+
+conditional_return_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    contains("POP", Operation),
+    strlen(Operation) != 3.
+
+.decl long_operation(operation:symbol)
+
+long_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    strlen(Operation) > 2.
+
+.decl is_conditional_operation(Operation:symbol)
+
+is_conditional_operation(Operation):-
+    long_operation(Operation),
+    instruction_get_operation(_,Operation),
+    Size = strlen(Operation),
+    Operation != "TEQ", Operation != "SMMLS",
+    Operation != "MLS", Operation != "HVC",
+    CC = substr(Operation,Size-2,2),
+    (
+        CC = "EQ"; CC = "NE"; CC = "CS"; CC = "HS";
+        CC = "CC"; CC = "LO"; CC = "MI"; CC = "PL";
+        CC = "VS"; CC = "VC"; CC = "HI"; CC = "LS";
+        CC = "GE"; CC = "LT"; CC = "GT"; CC = "LE"
+    ).
 
 .decl delay_slot(BranchEA:address,EA:address)
 
@@ -227,11 +283,6 @@ call_operation("BLXAL").
 .decl syscall_operation(operation:symbol)
 
 syscall_operation("SWI").
-
-.decl return_operation(operation:symbol)
-
-// FIXME: maybe we need to check the register
-return_operation("BX").
 
 // TODO:
 .decl halt_operation(operation:symbol)

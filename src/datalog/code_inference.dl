@@ -79,14 +79,14 @@ may_fallthrough(From,To):-
 may_fallthrough(From,To):-
     next(From,To),
     arch.delay_slot(Prev,From),
-    !arch.return(Prev),
+    !unconditional_return(Prev),
     !unconditional_jump(Prev).
 
 // Common case
 may_fallthrough(From,To):-
     next(From,To),
     !arch.delay_slot(_,From),
-    !arch.return(From),
+    !unconditional_return(From),
     !unconditional_jump(From),
     !halt(From),
     !no_return_call(From).
@@ -220,6 +220,10 @@ block_limit(as(EA,address)):-
         lsda_callsite_addresses(_,EA, _)
     ).
 
+.decl must_access_data(EA:address, Dest:address)
+
+must_access_data(0,0):- false.
+
 // The targets are computed incrementally now as we traverse the code
 // likely_ea and possible_target_from are mutually recursive
 
@@ -228,13 +232,15 @@ block_limit(as(EA,address)):-
 possible_target_from(Dest,Src):-
     code_in_block_candidate(Src,_),
     (
-        may_have_symbolic_immediate(Src,Dest)
+        may_have_symbolic_immediate(Src,Dest),
+        !must_access_data(Src,Dest)
         ;
         direct_jump(Src,Dest);
         direct_call(Src,Dest);
         pc_relative_jump(Src,Dest);
         pc_relative_call(Src,Dest);
-        pc_relative_operand(Src,_,Dest)
+        pc_relative_operand(Src,_,Dest),
+        !must_access_data(Src,Dest)
     ).
 
 .decl possible_target(Target:address)
@@ -483,17 +489,27 @@ transitive_points("fde-entry").
 transitive_points("landing-pad").
 transitive_points("exc-region").
 
+// B  |-----|
+// R    |--|
+// or
+// B  |----|
+// R     |---|
 block_is_overlapping(Block),
 block_points(Block,0,-6,"overlap with relative-jump-table"):-
     block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
     relative_address(Beg,_,_,_,_,_),
-    BegBlockAddr <= Beg, Beg< EndBlockAddr.
+    BegBlockAddr <= Beg, Beg < EndBlockAddr.
 
+// B    |----|
+// R  |---|
+// or
+// B    |--|
+// R  |------|
 block_is_overlapping(Block),
 block_points(Block,0,-6,"overlap with relative-jump-table"):-
     relative_address(Beg,Size,_,_,_,_),
     block_candidate_boundaries(Block,BegBlockAddr,_),
-    Beg < BegBlockAddr, BegBlockAddr< Beg+Size.
+    Beg <= BegBlockAddr, BegBlockAddr < Beg+Size.
 
 overlap_with_jump_table(Block),
 block_points(Block,0,-3,"possible relative-jump-table start"):-
@@ -528,6 +544,7 @@ block_points(Block,0,1,"address in data"):-
 
 block_points(Block,0,2,"aligned address in data"):-
     !binary_isa("X86"),
+    !binary_isa("ARM"),
     block_is_overlapping(Block),
     address_in_data(Address,Block),
     arch.pointer_size(Pt_size),
