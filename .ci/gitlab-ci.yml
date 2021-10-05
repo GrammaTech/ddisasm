@@ -1,6 +1,6 @@
 variables:
   GTIRB_BRANCH: "master"
-  GTIRB_PPRINTER_BRANCH: "kwarrick/elf-symbol-version"
+  GTIRB_PPRINTER_BRANCH: "master"
   CAPSTONE_BRANCH: "master"
   LIBEHP_REF: "master"
   EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_SERVER_HOST}/api/v4/projects/1587/packages/pypi/simple
