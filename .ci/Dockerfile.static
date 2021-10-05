@@ -62,3 +62,6 @@ RUN cd /usr/local/src \
 
 # Install sstrip
 COPY etc/sstrip /usr/bin/sstrip
+
+# Disable git ssl so we can clone libehp
+RUN git config --global http.sslverify false
