@@ -387,6 +387,15 @@ static std::string getLabel(uint64_t ea)
     return ss.str();
 }
 
+std::string stripSymbolVersion(const std::string Name)
+{
+    if(size_t I = Name.find('@'); I != std::string::npos)
+    {
+        return Name.substr(0, I);
+    }
+    return Name;
+}
+
 void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
@@ -447,71 +456,62 @@ gtirb::Symbol *findSymbol(gtirb::Module &module, gtirb::Addr ea, std::string nam
 // Build a first version of the SymbolForwarding table with copy relocations and
 // other ABI-specific artifacts that may be duplicated or reintroduced during
 // reassembly.
-void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
-                           souffle::SouffleProgram *prog)
+void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
+                           souffle::SouffleProgram *Prog)
 {
-    std::map<gtirb::UUID, gtirb::UUID> symbolForwarding;
-    for(auto &T : *prog->getRelation("relocation_alias"))
+    std::map<gtirb::UUID, gtirb::UUID> SymbolForwarding;
+    for(auto &T : *Prog->getRelation("relocation_alias"))
     {
         gtirb::Addr EA;
         std::string Name;
         std::string Alias;
         T >> EA >> Alias >> Name;
-        gtirb::Symbol *Symbol = findSymbol(module, EA, Alias);
+        gtirb::Symbol *Symbol = findSymbol(Module, EA, Alias);
         if(Symbol)
         {
             // Create orphaned symbol for OBJECT copy relocation aliases.
-            if(size_t I = Alias.find('@'); I != std::string::npos)
-            {
-                Alias = Alias.substr(0, I);
-            }
-            gtirb::Symbol *NewSymbol = module.addSymbol(context, EA, Alias + "_copy");
-            Symbol->setReferent(module.addProxyBlock(context));
-            symbolForwarding[NewSymbol->getUUID()] = Symbol->getUUID();
+            Alias = stripSymbolVersion(Alias);
+            gtirb::Symbol *NewSymbol = Module.addSymbol(Context, EA, Alias + "_copy");
+            Symbol->setReferent(Module.addProxyBlock(Context));
+            SymbolForwarding[NewSymbol->getUUID()] = Symbol->getUUID();
         }
     }
-    for(auto &output : *prog->getRelation("relocation"))
+    for(auto &T : *Prog->getRelation("relocation"))
     {
-        gtirb::Addr ea;
-        int64_t offset;
-        std::string type, name;
-        output >> ea >> type >> name >> offset;
-        if(type == "COPY")
+        gtirb::Addr EA;
+        int64_t Offset;
+        std::string Type, Name;
+        T >> EA >> Type >> Name >> Offset;
+        if(Type == "COPY")
         {
-            gtirb::Symbol *copySymbol = findSymbol(module, ea, name);
-            if(copySymbol)
+            gtirb::Symbol *CopySymbol = findSymbol(Module, EA, Name);
+            if(CopySymbol)
             {
-                gtirb::Symbol *realSymbol = module.addSymbol(context, name);
-                realSymbol->setReferent(module.addProxyBlock(context));
-                if(size_t I = name.find('@'); I != std::string::npos)
-                {
-                    name = name.substr(0, I);
-                }
-                copySymbol->setName(name + "_copy");
-                symbolForwarding[copySymbol->getUUID()] = realSymbol->getUUID();
+                gtirb::Symbol *RealSymbol = Module.addSymbol(Context, Name);
+                RealSymbol->setReferent(Module.addProxyBlock(Context));
+                Name = stripSymbolVersion(Name);
+                CopySymbol->setName(Name + "_copy");
+                SymbolForwarding[CopySymbol->getUUID()] = RealSymbol->getUUID();
             }
         }
     }
-    for(auto &T : *prog->getRelation("abi_intrinsic"))
+    for(auto &T : *Prog->getRelation("abi_intrinsic"))
     {
         gtirb::Addr EA;
         std::string Name;
         T >> EA >> Name;
 
-        gtirb::Symbol *Symbol = findSymbol(module, EA, Name);
+        gtirb::Symbol *Symbol = findSymbol(Module, EA, Name);
         if(Symbol)
         {
-            gtirb::Symbol *NewSymbol = module.addSymbol(context, Name);
+            gtirb::Symbol *NewSymbol = Module.addSymbol(Context, Name);
             // Create orphaned symbol for OBJECT copy relocation aliases.
-            if(size_t I = Name.find('@'); I != std::string::npos)
-            {
-                Name = Name.substr(0, I);
-            }
+            Name = stripSymbolVersion(Name);
             Symbol->setName(Name + "_copy");
-            symbolForwarding[Symbol->getUUID()] = NewSymbol->getUUID();
+            SymbolForwarding[Symbol->getUUID()] = NewSymbol->getUUID();
         }
     }
-    module.addAuxData<gtirb::schema::SymbolForwarding>(std::move(symbolForwarding));
+    Module.addAuxData<gtirb::schema::SymbolForwarding>(std::move(SymbolForwarding));
 }
 
 gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_t Index,
