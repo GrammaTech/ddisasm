@@ -64,14 +64,6 @@ RUN cd /usr/local/src \
     && make \
     && make install
 
-# Install libehp
-RUN git clone https://git.zephyr-software.com/opensrc/libehp.git \
-    && cd libehp \
-    && git reset --hard ddb106c4c1e521bf4b282d17e2a8abf0aa0fe721 \
-    && cmake ./ -Bbuild -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release -DEHP_BUILD_SHARED_LIBS=OFF \
-    && cd build \
-    && make && make install
-
 # Install sstrip
 COPY etc/sstrip /usr/bin/sstrip
 
@@ -80,3 +72,6 @@ WORKDIR /pre-commit-setup
 RUN git init
 COPY .pre-commit-config.yaml .
 RUN pre-commit install-hooks
+
+# Disable git ssl so we can clone libehp
+RUN git config --global http.sslverify false
