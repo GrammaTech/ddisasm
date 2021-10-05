@@ -58,3 +58,6 @@ RUN git clone -b 0.11.5 https://github.com/lief-project/LIEF.git && \
     cmake .. -DLIEF_PYTHON_API=off -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=Off && \
     make && \
     make install
+
+# Disable git ssl so we can clone libehp
+RUN git config --global http.sslverify false

@@ -112,3 +112,6 @@ WORKDIR /pre-commit-setup
 RUN git init
 COPY .pre-commit-config.yaml .
 RUN pre-commit install-hooks
+
+# Disable git ssl so we can clone libehp
+RUN git config --global http.sslverify false
