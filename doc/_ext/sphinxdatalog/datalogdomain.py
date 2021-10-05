@@ -1,3 +1,5 @@
+from collections import defaultdict
+from typing import Tuple
 import re
 import sphinx.addnodes
 from docutils import nodes
@@ -11,6 +13,25 @@ from sphinx import addnodes
 from docutils.statemachine import ViewList
 from sphinx.domains.std import StandardDomain
 from pathlib import Path
+
+THIS_DIRECTORY = Path(__file__).resolve().parent
+
+# Dictionaries with dependencies between
+# predicates computed by souffle
+DEPENDENCE_GRAPH = defaultdict(list)
+DEPENDENCE_GRAPH_INV = defaultdict(list)
+
+
+def split_component(node: str) -> Tuple[str, str]:
+    """
+    Split the component name from a predicate
+    name. If the predicate is not in a component
+    the component part will be empty.
+    """
+    comp_index = node.rfind(".")
+    if comp_index != -1:
+        return node[0 : comp_index + 1], node[comp_index + 1 :]
+    return "", node
 
 
 class PredicateNode(ObjectDescription):
@@ -115,6 +136,10 @@ class DatalogDomain(Domain):
 
 
 class AutoFileDirective(Directive):
+    """
+    Directive to process a datalog source file.
+    """
+
     has_content = True
     required_arguments = 1
     optional_arguments = 0
@@ -123,6 +148,10 @@ class AutoFileDirective(Directive):
     def _parse_predicate_fields(
         self, fields: str
     ) -> sphinx.addnodes.desc_parameterlist:
+        """
+        Parse the fileds of the predicate and add them
+        to the description.
+        """
         params = sphinx.addnodes.desc_parameterlist("", "")
         for field in re.split(",", fields):
             params += sphinx.addnodes.desc_parameter("", field.strip())
@@ -131,7 +160,9 @@ class AutoFileDirective(Directive):
     def _create_signature(
         self, name: str, fields: str
     ) -> sphinx.addnodes.desc_signature:
-
+        """
+        Create a predicate signature.
+        """
         sig = sphinx.addnodes.desc_signature("", "")
         sig += sphinx.addnodes.desc_name("", name)
         sig["ids"].append("pred" + "-" + name)
@@ -191,6 +222,42 @@ class AutoFileDirective(Directive):
             break
         return content
 
+    def _add_uses(self, name: str) -> nodes.paragraph:
+        """
+        Add predicate dependency information to
+        predicate description.
+        """
+
+        def get_link_text(dep: str):
+            comp, pred = split_component(dep)
+            color = ""
+            # if pred == name:
+            #    color = ":blue:"
+            return f"{comp} {color}`{pred}`"
+
+        paragraph = nodes.paragraph()
+        # synthesize the text and let it be parsed
+        # so the parser takes care of creating references
+        view = ViewList()
+        line = 1
+        if (
+            name in DEPENDENCE_GRAPH_INV
+            and len(DEPENDENCE_GRAPH_INV[name]) > 0
+        ):
+            uses = " - Uses: " + ", ".join(
+                [get_link_text(dep) for dep in DEPENDENCE_GRAPH_INV[name]]
+            )
+            view.append(uses, "dependency_graph", line)
+            line += 1
+        if name in DEPENDENCE_GRAPH and len(DEPENDENCE_GRAPH[name]) > 0:
+            used = " - Used by: " + ", ".join(
+                [get_link_text(dep) for dep in DEPENDENCE_GRAPH[name]]
+            )
+            view.append(used, "dependency_graph", line)
+
+        self.state.nested_parse(view, 0, paragraph)
+        return paragraph
+
     def _parsefile(self):
         if not self.sourcepath.exists():
             raise ValueError("Can't find file: " + str(self.sourcepath))
@@ -207,6 +274,7 @@ class AutoFileDirective(Directive):
             main = sphinx.addnodes.desc()
             main += self._create_signature(name, fields)
             main += self._parse_preceding_comment(preceding_text, line_number)
+            main += self._add_uses(name)
             node_list.append(main)
             line_number += (
                 preceding_text.count("\n")
@@ -224,8 +292,28 @@ class AutoFileDirective(Directive):
         return file_nodes
 
 
+def load_dependence_graph():
+    """
+    Load the dependency graph
+    into the DEPENDENCE_GRAPH and DEPENDENCE_GRAPH_INV dictionaries.
+    The keys are stripped of component information.
+    """
+    dependencies = (
+        (THIS_DIRECTORY.parent.parent / "src_docs/dependencies.csv")
+        .read_text()
+        .splitlines()
+    )
+    for line in dependencies:
+        src, dest = line.split(" ")
+        _, src_pred = split_component(src)
+        _, dest_pred = split_component(dest)
+        DEPENDENCE_GRAPH[src_pred].append(dest)
+        DEPENDENCE_GRAPH_INV[dest_pred].append(src)
+
+
 def setup(app):
     app.add_domain(DatalogDomain)
+    load_dependence_graph()
     # Config values
     StandardDomain.initial_data["labels"]["predicateindex"] = (
         "dl-pred_idx",
