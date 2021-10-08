@@ -264,9 +264,9 @@ datalog-docs:
   #rules:
   #  *run-only-main
   artifacts:
-  name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
-  paths:
-    - doc/datalog-docs/
+    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
+    paths:
+      - doc/datalog-docs/
   script:
     - cd doc
     - make datalog-docs
