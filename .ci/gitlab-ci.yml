@@ -266,10 +266,10 @@ datalog-docs:
   artifacts:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
-      - doc/datalog-docs/
+      - public
   script:
-    - cd doc
-    - make datalog-docs
+    - python3  doc/uild_index.py
+	  - python3 -m sphinx  doc public
 
 static-drivers:
   stage: deploy
