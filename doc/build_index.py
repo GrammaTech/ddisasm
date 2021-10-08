@@ -25,7 +25,7 @@ def build_main_index() -> None:
         print(f"creating {dl_file} in /doc/src_docs/")
         source_doc_page = (DL_DOCS / dl_file).with_suffix(".rst")
         if not source_doc_page.parent.exists():
-            source_doc_page.parent.mkdir()
+            source_doc_page.parent.mkdir(parents=True, exist_ok=True)
         source_doc_page.write_text(
             f"{dl_file}\n"
             "==========================================\n\n"
