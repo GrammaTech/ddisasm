@@ -10,7 +10,13 @@ DDISASM_ROOT = Path(__file__).resolve().parent.parent
 DL_DOCS = DDISASM_ROOT / "doc" / "src_docs"
 
 
-ARCHITECTURES = ["ARCH_ARM64", "ARCH_IA32", "ARCH_AMD64"]
+ARCHITECTURES = [
+    "ARCH_ARM64",
+    "ARCH_IA32",
+    "ARCH_AMD64",
+    "ARCH_ARM32",
+    "ARCH_MIPS32",
+]
 
 
 def build_main_index() -> None:
