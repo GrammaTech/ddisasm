@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Tuple
+from typing import Tuple, Optional, List
 import re
 import sphinx.addnodes
 from docutils import nodes
@@ -8,6 +8,7 @@ from sphinx.domains import Domain, Index
 from docutils.parsers.rst import directives
 from sphinx.roles import XRefRole
 from sphinx.directives import ObjectDescription
+from sphinx.util import logging
 from sphinx.util.nodes import make_refnode
 from sphinx import addnodes
 from docutils.statemachine import ViewList
@@ -23,6 +24,8 @@ DEPENDENCE_GRAPH = defaultdict(list)
 DEPENDENCE_GRAPH_INV = defaultdict(list)
 
 SCC_GRAPH: nx.Graph = None
+
+logger = logging.getLogger(__name__)
 
 
 def split_component(node: str) -> Tuple[str, str]:
@@ -234,37 +237,73 @@ class AutoFileDirective(Directive):
         predicate description.
         """
 
-        def get_link_text(dep: str):
-            comp, pred = split_component(dep)
-            rec = ""
-            if dep in SCC_GRAPH.graph["mapping"]:
-                scc = SCC_GRAPH.graph["mapping"][dep]
-                recs = SCC_GRAPH.nodes[scc]["members"]
-                if name in [split_component(c)[1] for c in recs]:
-                    rec = ":recpred:"
-            if pred == name:
-                rec = ":recpred:"
-            return f"{rec}`{dep}<{pred}>`"
+        def get_scc(pred: str) -> Optional[List[str]]:
+            """
+            Get the list of predicates in the
+            same SCC of `pred`.
+            """
+            if pred in SCC_GRAPH.graph["mapping"]:
+                scc = SCC_GRAPH.graph["mapping"][pred]
+                return SCC_GRAPH.nodes[scc]["members"]
+            else:
+                for full_name in SCC_GRAPH.graph["mapping"]:
+                    if split_component(full_name)[1] == pred:
+                        scc = SCC_GRAPH.graph["mapping"][full_name]
+                        return SCC_GRAPH.nodes[scc]["members"]
+            # if a predicate is simplified by souffle
+            # it could be absent from the SCC_GRAPH
+            return None
+
+        def get_link_text(dep: str) -> str:
+            _, pred = split_component(dep)
+            return f"`{dep}<{pred}>`"
 
         paragraph = nodes.paragraph()
         # synthesize the text and let it be parsed
         # so the parser takes care of creating references
         view = ViewList()
         line = 1
-        if (
-            name in DEPENDENCE_GRAPH_INV
-            and len(DEPENDENCE_GRAPH_INV[name]) > 0
-        ):
-            uses = " - Uses: " + ", ".join(
-                [get_link_text(dep) for dep in DEPENDENCE_GRAPH_INV[name]]
+
+        scc_members = get_scc(name)
+        if scc_members is None:
+            logger.warning(
+                f"Predicate {name} is not in final dependency graph"
             )
-            view.append(uses, "dependency_graph", line)
-            line += 1
-        if name in DEPENDENCE_GRAPH and len(DEPENDENCE_GRAPH[name]) > 0:
-            used = " - Used by: " + ", ".join(
-                [get_link_text(dep) for dep in DEPENDENCE_GRAPH[name]]
+            view.append(
+                "WARNING: Predicate not present in compiled "
+                "Datalog program (Dead Code)",
+                "dependency_graph",
+                line,
             )
-            view.append(used, "dependency_graph", line)
+            self.state.nested_parse(view, 0, paragraph)
+            return paragraph
+
+        if name in DEPENDENCE_GRAPH_INV:
+            uses_list = [
+                get_link_text(dep)
+                for dep in DEPENDENCE_GRAPH_INV[name]
+                if dep not in scc_members
+            ]
+            if len(uses_list) > 0:
+                uses_text = " - Uses: " + ", ".join(uses_list)
+                view.append(uses_text, "dependency_graph", line)
+                line += 1
+        if name in DEPENDENCE_GRAPH:
+            used_list = [
+                get_link_text(dep)
+                for dep in DEPENDENCE_GRAPH[name]
+                if dep not in scc_members
+            ]
+            if len(used_list) > 0:
+                used_text = " - Used by: " + ", ".join(used_list)
+                view.append(used_text, "dependency_graph", line)
+                line += 1
+
+        if len(set(DEPENDENCE_GRAPH[name]) & set(scc_members)) > 0:
+            scc_text = " - Recursive: " + ", ".join(
+                [get_link_text(dep) for dep in scc_members]
+            )
+            view.append(scc_text, "dependency_graph", line)
 
         self.state.nested_parse(view, 0, paragraph)
         return paragraph

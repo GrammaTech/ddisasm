@@ -64,3 +64,7 @@ def build_dependecy_graph() -> None:
 def build_all() -> None:
     build_main_index()
     build_dependecy_graph()
+
+
+if __name__ == "__main__":
+    build_all()
