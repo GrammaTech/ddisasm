@@ -30,10 +30,10 @@ should be installed:
 - [gtirb](https://github.com/grammatech/gtirb)
 - [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
 - [Capstone](http://www.capstone-engine.org/), version 4.0.1 or later
-- [Souffle](https://souffle-lang.github.io), version 2.0.2
-  - Must be configured with support for 64 bit numbers (via `--enable-64bit-domain` during configuration)
+- [Souffle](https://souffle-lang.github.io), version 2.1
+  - Must be configured with support for 64 bit numbers (via `-DSOUFFLE_DOMAIN_64BIT=1` during configuration)
 - [libehp](https://git.zephyr-software.com/opensrc/libehp), version 1.0.0 or higher
-- [LIEF](https://lief.quarkslab.com/), version 0.10.0 or higher
+- [LIEF](https://lief.quarkslab.com/), version 0.11.5 or higher
 
 Note that these versions are newer than what your package manager may provide
 by default: This is true on Ubuntu 18, Debian 10, and others. Prefer building
@@ -82,24 +82,33 @@ $ cd build
 $ make
 ```
 
-## Installing ddisasm on ubuntu16 and 18
-Packages for Ubuntu 16 and 18 are available in the GTIRB apt repository.
-Ddisasm has some dependencies which are not available in the official
-repositories, and so certain PPAs must be added to the system in order for
-Ddisasm to be installed.
+### Debug build options
 
-Instructions for adding the appropriate PPAS are listed above, and can be used
-to install ddisasm as described below.
+One can selectively turn off ddisasm's various architecture support modules to speed up compilation time during development.
+For example:
+```
+$ cmake ./ -Bbuild -DDDISASM_ARM_64=OFF -DDDISASM_X86_32=OFF
+```
+will deactivate ARM_64 and X86_32 support.
 
-### Ubuntu16
-```sh
-sudo apt-get install --allow-unauthenticated ddisasm
+### Souffle interpreter
+
+For accelerated development of datalog logic, ddisasm can also execute the
+souffle interpreter. To invoke the interpreter, specify a `--debug-dir`
+directory path and the `--intepreter` parameter with the path of ddisasm's
+datalog entry.
+
+For example:
+```
+$ cd ddisasm/examples/ex1
+$ make
+$ mkdir dbg
+$ ddisasm --debug-dir dbg --interpreter ../../src/datalog/main.dl --asm ex.s ex
 ```
 
-### Ubuntu18
-```sh
-sudo apt-get install ddisasm
-```
+## Installing
+See the [GTIRB readme](https://github.com/GrammaTech/gtirb/#installing).
+
 
 ## Running the analysis
 
@@ -145,6 +154,9 @@ Ddisasm accepts the following parameters:
 
 `-j [ --threads ]`
 :   Number of cores to use. It is set to the number of cores in the machine by default.
+
+`-I [ --interpreter ] arg`
+:   Execute the souffle interpreter with the specified source file.
 
 ## Rewriting a project
 
@@ -213,6 +225,8 @@ ddisasm generates the following AuxData tables:
 | peImportedSymbols       | `std::vector<gtirb::UUID>`                                                                         | UUIDs of the imported symbols for PE.                                                                                                                                                                                  |
 | peExportedSymbols       | `std::vector<gtirb::UUID>`                                                                         | UUIDs of the exported symbols for PE.                                                                                                                                                                                  |
 | peResource              | `std::vector<std::tuple<std::vector<uint8_t>, gtirb::Offset, uint64_t>>`                           | List of PE resources. A resource header, data length, and data pointer.                                                                                                                                                |
+| souffleFacts            | `std::map<std::string, std::tuple<std::string, std::string>>`                                      | Map of Souffle facts by relation name to their associated type signatures and CSV.                                                                                                                                     |
+| souffleOutputs          | `std::map<std::string, std::tuple<std::string, std::string>>`                                      | Map of Souffle outputs by relation name to their associated type signatures and CSV.                                                                                                                                   |
 
 ## Some References
 

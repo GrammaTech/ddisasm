@@ -23,8 +23,9 @@
 #include <boost/filesystem.hpp>
 #include <boost/uuid/uuid_io.hpp>
 namespace fs = boost::filesystem;
-#include "LIEF/PE.h"
 #include "PeReader.h"
+
+using GTIRB = GtirbBuilder::GTIRB;
 
 PeReader::PeReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary)
     : GtirbBuilder(Path, Binary)
@@ -32,6 +33,25 @@ PeReader::PeReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary)
     Pe = std::dynamic_pointer_cast<LIEF::PE::Binary>(Binary);
     assert(Pe && "Expected PE");
 };
+
+gtirb::ErrorOr<GTIRB> PeReader::build()
+{
+    // TODO: Add support for Control Flow Guard.
+    if(Pe->optional_header().has(LIEF::PE::DLL_CHARACTERISTICS::IMAGE_DLL_CHARACTERISTICS_GUARD_CF))
+    {
+        std::cerr << "WARNING: Input binary has Control Flow Guard enabled. (unsupported)\n";
+    }
+    // TODO: Add support for Profile Guided Optimization (POGO).
+    for(const auto &Debug : Pe->debug())
+    {
+        if(Debug.has_pogo())
+        {
+            std::cerr << "WARNING: Input binary compiled with Profile Guided Optimization. "
+                         "(unsupported)\n";
+        }
+    }
+    return GtirbBuilder::build();
+}
 
 void PeReader::initModule()
 {
@@ -154,14 +174,20 @@ void PeReader::addAuxData()
     // TODO: Add `libraryPaths' aux data table.
     Module->addAuxData<gtirb::schema::LibraryPaths>({});
 
-    // Add `importEntries' aux data table.
+    // Add `peImportEntries' aux data table.
     Module->addAuxData<gtirb::schema::ImportEntries>(importEntries());
 
-    // Add `exportEntries' aux data table.
+    // Add `peExportEntries' aux data table.
     Module->addAuxData<gtirb::schema::ExportEntries>(exportEntries());
 
-    // Add `PeResources' aux data table
+    // Add `peResources' aux data table
     Module->addAuxData<gtirb::schema::PeResources>(resources());
+
+    // Add `peDataDirectories` aux data table.
+    Module->addAuxData<gtirb::schema::PeDataDirectories>(dataDirectories());
+
+    // Add `peDebugData` aux data table.
+    Module->addAuxData<gtirb::schema::PeDebugData>(debugData());
 }
 
 std::vector<PeResource> PeReader::resources()
@@ -351,4 +377,32 @@ std::vector<ExportEntry> PeReader::exportEntries()
         }
     }
     return ExportEntries;
+}
+
+std::vector<DataDirectory> PeReader::dataDirectories()
+{
+    std::vector<DataDirectory> DataDirectories;
+
+    uint64_t ImageBase = Pe->optional_header().imagebase();
+    for(auto &Entry : Pe->data_directories())
+    {
+        std::string Type = LIEF::PE::to_string(Entry.type());
+        DataDirectories.push_back({Type, ImageBase + Entry.RVA(), Entry.size()});
+    }
+
+    return DataDirectories;
+}
+
+std::vector<DebugData> PeReader::debugData()
+{
+    std::vector<DebugData> DebugData;
+
+    uint64_t ImageBase = Pe->optional_header().imagebase();
+    for(auto &Debug : Pe->debug())
+    {
+        std::string Type = LIEF::PE::to_string(Debug.type());
+        DebugData.push_back({Type, ImageBase + Debug.addressof_rawdata(), Debug.sizeof_data()});
+    }
+
+    return DebugData;
 }

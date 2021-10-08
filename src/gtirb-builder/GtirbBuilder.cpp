@@ -35,29 +35,40 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
         return GtirbBuilder::build_error::FileNotFound;
     }
 
-    // Parse the input binary with LIEF.
-    std::shared_ptr<LIEF::Binary> Binary{LIEF::Parser::parse(Path)};
-    if(!Binary)
+    // Parse an input binary with LIEF.
+    if(LIEF::ELF::is_elf(Path) || LIEF::PE::is_pe(Path))
     {
-        return GtirbBuilder::build_error::ParseError;
+        std::shared_ptr<LIEF::Binary> Binary{LIEF::Parser::parse(Path)};
+        if(!Binary)
+        {
+            return GtirbBuilder::build_error::ParseError;
+        }
+
+        // Build GTIRB from supported binary object formats.
+        switch(Binary->format())
+        {
+            case LIEF::EXE_FORMATS::FORMAT_ELF:
+            {
+                ElfReader Elf(Path, Binary);
+                return Elf.build();
+            }
+            case LIEF::EXE_FORMATS::FORMAT_PE:
+            {
+                PeReader Pe(Path, Binary);
+                return Pe.build();
+            }
+            case LIEF::EXE_FORMATS::FORMAT_MACHO:
+            case LIEF::EXE_FORMATS::FORMAT_UNKNOWN:
+                break;
+        }
     }
 
-    // Build GTIRB from supported binary object formats.
-    switch(Binary->format())
+    // Load an existing GTIRB file.
+    auto Context = std::make_unique<gtirb::Context>();
+    std::ifstream Stream(Path, std::ios::in | std::ios::binary);
+    if(gtirb::ErrorOr<gtirb::IR*> Result = gtirb::IR::load(*Context, Stream))
     {
-        case LIEF::EXE_FORMATS::FORMAT_ELF:
-        {
-            ElfReader Elf(Path, Binary);
-            return Elf.build();
-        }
-        case LIEF::EXE_FORMATS::FORMAT_PE:
-        {
-            PeReader Pe(Path, Binary);
-            return Pe.build();
-        }
-        case LIEF::EXE_FORMATS::FORMAT_MACHO:
-        case LIEF::EXE_FORMATS::FORMAT_UNKNOWN:
-            break;
+        return GTIRB{std::move(Context), *Result};
     }
 
     return GtirbBuilder::build_error::NotSupported;
@@ -132,6 +143,8 @@ gtirb::ISA GtirbBuilder::isa()
             return gtirb::ISA::ARM;
         case LIEF::ARCHITECTURES::ARCH_ARM64:
             return gtirb::ISA::ARM64;
+        case LIEF::ARCHITECTURES::ARCH_MIPS:
+            return gtirb::ISA::MIPS32;
         case LIEF::ARCHITECTURES::ARCH_NONE:
             return gtirb::ISA::Undefined;
         default:

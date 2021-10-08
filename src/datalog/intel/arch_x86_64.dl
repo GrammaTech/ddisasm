@@ -46,6 +46,37 @@ symbolic_operand_attribute(EA,Index,"TpOff"):-
     tls_segment(Start,End,_),
     Dest >= Start, Dest < End.
 
-symbolic_operand_attribute(EA,Index,"TlsGD"):-
+// Find special-case TLSD code sequence of the form:
+// .byte 0x66
+// lea rdi, X@tlsgd[rip]
+// .value 0x6666
+// rex64
+// call __tls_get_addr@PLT
+//
+// Explanation:
+// GCC uses explict directives to inline 0x66 bytes (which are actually `data16'
+// instruction prefixes) as padding that have no "negative impact on the code".
+// Likewise, the accompanying `rex64' prefix on the call instruction inserts a 0x48
+// byte to extend the code sequence to the requisite 16-byte length, and again has
+// "no impact the code".
+// Reference:
+// https://docs.oracle.com/cd/E19120-01/open.solaris/819-0690/chapter8-60/index.html
+.decl tlsgd_code_sequence(EA:address)
+tlsgd_code_sequence(EA):-
+    relocation(Got_entry,"DTPMOD64","",_),
+    pc_relative_operand(EA,_,Got_entry),
+    data_byte(EA,0x66),                           // .byte 0x66
+    instruction(EA+1,Size,_,"LEA",_,_,_,_,_,_),   // lea X@tlsgd[rip]
+    data_byte(EA+Size+1,0x66),                    // .value 0x6666
+    data_byte(EA+Size+2,0x66),
+    data_byte(EA+Size+3,0x48).                    // rex64
+
+symbolic_operand_attribute(EA,Index,"TlsGd"):-
     symbolic_operand(EA,Index,Dest,_),
-    relocation(Dest,"DTPMOD64",_,_).
+    relocation(Dest,"DTPMOD64",_,_),
+    tlsgd_code_sequence(EA).
+
+symbolic_operand_attribute(EA,Index,"TlsLd"):-
+    symbolic_operand(EA,Index,Dest,_),
+    relocation(Dest,"DTPMOD64",_,_),
+    !tlsgd_code_sequence(EA).

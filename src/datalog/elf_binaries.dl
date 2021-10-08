@@ -166,6 +166,7 @@ plt_data_reference(EA):-
 got_reference(Got_entry,Symbol):-
     (
       pc_relative_operand(_,_,Got_entry);
+      split_load_operand(_,_,Got_entry);
       got_relative_operand(_,_,Got_entry)
     ),
     section(".got",Size,Beg),
@@ -179,36 +180,48 @@ got_reference(Got_entry,Symbol):-
 got_reference(Got_entry,Symbol):-
     (
       pc_relative_operand(_,_,Got_entry);
+      split_load_operand(_,_,Got_entry);
       got_relative_operand(_,_,Got_entry)
     ),
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
-    symbolic_data(Got_entry,8,Dest),
+    arch.pointer_size(Ptr),
+    symbolic_data(Got_entry,Ptr,Dest),
     symbol(Dest,_,_,_,_,_,_,Symbol).
 
 got_local_reference(Got_entry,Dest):-
     (
       pc_relative_operand(_,_,Got_entry);
+      split_load_operand(_,_,Got_entry);
       got_relative_operand(_,_,Got_entry)
     ),
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
-    symbolic_data(Got_entry,8,Dest),
+    arch.pointer_size(Ptr),
+    symbolic_data(Got_entry,Ptr,Dest),
     !got_reference(Got_entry,_).
 
+// TLS relocations @TLSGD and @TLSLD allocate two contiguous entries in GOT:
+// typedef struct
+// {
+//   unsigned long int ti_module;
+//   unsigned long int ti_offset;
+// } tls_index;
 got_local_reference(Got_entry,Dest):-
-    relocation(Got_entry,"DTPMOD64",Symbol,_),
-    pc_relative_operand(_,_,Got_entry),
-    symbol(Dest,_,_,_,_,_,_,Symbol).
-
-got_local_reference(Got_entry,Dest):-
-    relocation(Got_entry,"DTPMOD64","",Addend),
-    pc_relative_operand(_,_,Got_entry),
-    section(".tbss",_,Beg),
-    Dest = as(as(Beg,number)+Addend,address),
-    !symbol(Dest,_,_,_,_,_,_,_).
+    relocation(Got_entry,"DTPMOD64","",_),
+    (
+      pc_relative_operand(_,_,Got_entry);
+      split_load_operand(_,_,Got_entry)
+    ),
+    (
+        section(".tbss",_,Beg);
+        section(".tdata",_,Beg)
+    ),
+    // ti_offset is initialized for @TLSGD and zero for @TLSLD
+    data_word(Got_entry+8,8,Offset),
+    Dest = as(as(Beg,number)+Offset,address).
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -244,6 +257,7 @@ main_function(Main_location):-
     symbolic_operand(Prev,1,Main_location,"code").
 
 inferred_symbol_name(EA,"_start","GLOBAL","FUNC"):-
+    !symbol(EA,_,_,_,_,_,_,"__cxx_global_var_init"),
     start_function(EA).
 
 inferred_symbol_name(EA,"__do_global_dtors_aux","LOCAL","FUNC"):-
@@ -293,8 +307,9 @@ symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
     relocation(EA,"R64",Symbol,Addend),
     symbol(_,_,_,_,_,_,_,Symbol).
 
-symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
+symbolic_expr_from_relocation(EA,Size,Symbol,Addend):-
     binary_format("ELF"),
+    arch.pointer_size(Size),
     relocation(EA,"GLOB_DAT",Symbol,Addend),
     symbol(_,_,_,_,_,_,_,Symbol).
 
@@ -403,3 +418,20 @@ moved_immediate_candidate(EAStop,ImmIndexStop,ImmediateStopAddr,ImmediateStartAd
 relocation_alias(EA,Alias,Name):-
     symbol(EA,_,"OBJECT","WEAK",_,_,_,Alias),
     relocation(EA,"COPY",Name,_).
+
+
+// When there are both PLT and GOT references to the same function
+// symbol, linker will create a GOTPLT slot for PLT entry and a GOT
+// slot for GOT reference.  A run-time JUMP_SLOT relocation is created
+// to update the GOTPLT slot and a run-time GLOB_DAT relocation is
+// created to update the GOT slot.  Both JUMP_SLOT and GLOB_DAT
+// relocations will apply the same symbol value to GOTPLT and GOT
+// slots, respectively, at run-time.
+//
+// In such cases, discard the symbol with (EA:0,Size:0,SectIndex:0)
+relocation_alias(EA,Alias,Name):-
+    relocation(_,"GLOB_DAT",Name,_),
+    relocation(_,"JUMP_SLOT",Name,_),
+    symbol(EA,0,"FUNC","GLOBAL",0,_,_,Name),
+    !plt_block(_,Name),
+    EA = 0, Alias = Name.

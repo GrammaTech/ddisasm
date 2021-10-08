@@ -40,6 +40,36 @@ move_operation(Operation) :-
 
 move_operation("MVN").
 
+.decl load_operation(Operation:symbol)
+
+load_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    (
+        contains("LDR", Operation)
+        ;
+        contains("LDP", Operation)
+    ).
+
+.decl load_word_operation(Operation:symbol)
+
+load_word_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    substr(Operation,0,3) = "LDR",
+    (
+        strlen(Operation) = 3; // unconditional
+        strlen(Operation) = 5  // conditional ldr
+    ).
+
+.decl store_operation(Operation:symbol)
+
+store_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    (
+        contains("STR", Operation)
+        ;
+        contains("STP", Operation)
+    ).
+
 /* Find all addresses where a move instruction is used */
 .decl mov(EA:address)
 mov(EA):-
@@ -64,6 +94,21 @@ return(EA):-
     return_operation(Operation),
     instruction_get_operation(EA,Operation).
 
+.decl unconditional_return_operation(n:symbol)
+
+unconditional_return_operation(Operation):-
+    return_operation(Operation).
+
+.decl conditional_return_operation(n:symbol)
+
+conditional_return_operation(""):-
+    false.
+
+.decl is_conditional_operation(Operation:symbol)
+
+is_conditional_operation(""):-
+    false.
+
 .decl delay_slot(BranchEA:address,EA:address)
 
 // No rule for delay_slot
@@ -78,8 +123,8 @@ jump(EA):-
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
-op_does_not_read_dest_reg(""):-
-    false.
+op_does_not_read_dest_reg(Operation):-
+    instruction_get_operation(_, Operation).
 
 .decl arithmetic_operation(Operation:symbol)
 

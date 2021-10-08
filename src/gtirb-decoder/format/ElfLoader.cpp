@@ -134,24 +134,34 @@ void ElfExceptionLoader(const gtirb::Module &Module, DatalogProgram &Program)
 ElfExceptionDecoder::ElfExceptionDecoder(const gtirb::Module &module)
 {
     uint8_t ptrsize = 8;
-    if(module.getISA() == gtirb::ISA::IA32)
+    switch(module.getISA())
     {
-        ptrsize = 4;
+        case gtirb::ISA::ARM:
+        case gtirb::ISA::IA32:
+        case gtirb::ISA::MIPS32:
+        {
+            ptrsize = 4;
+            break;
+        }
+        default:
+        {
+            ptrsize = 8;
+            break;
+        }
     }
 
     std::string ehFrame, ehFrameHeader, gccExcept;
     uint64_t addressEhFrame(0), addressEhFrameHeader(0), addressGccExcept(0);
 
-    auto ehFrameSection = module.findSections(".eh_frame");
-    if(ehFrameSection != module.sections_by_name_end())
+    auto ehFrameSections = module.findSections(".eh_frame");
+    for(auto &ehFrameSection : ehFrameSections)
     {
-        assert(ehFrameSection->getAddress() && "Found .eh_frame section without an address.");
-        addressEhFrame = static_cast<uint64_t>(*ehFrameSection->getAddress());
-        if(auto it = ehFrameSection->findByteIntervalsAt(*ehFrameSection->getAddress());
-           !it.empty())
+        assert(ehFrameSection.getAddress() && "Found .eh_frame section without an address.");
+        addressEhFrame = static_cast<uint64_t>(*ehFrameSection.getAddress());
+        if(auto it = ehFrameSection.findByteIntervalsAt(*ehFrameSection.getAddress()); !it.empty())
         {
             const gtirb::ByteInterval &interval = *it.begin();
-            assert(ehFrameSection->getSize() == interval.getSize()
+            assert(ehFrameSection.getSize() == interval.getSize()
                    && "Expected single .eh_frame byte interval.");
 
             const char *bytes = interval.rawBytes<const char>();
@@ -159,17 +169,17 @@ ElfExceptionDecoder::ElfExceptionDecoder(const gtirb::Module &module)
             ehFrame.assign(bytes, end);
         }
     }
-    auto ehFrameHeaderSection = module.findSections(".eh_frame_hdr");
-    if(ehFrameHeaderSection != module.sections_by_name_end())
+    auto ehFrameHeaderSections = module.findSections(".eh_frame_hdr");
+    for(auto &ehFrameHeaderSection : ehFrameHeaderSections)
     {
-        assert(ehFrameHeaderSection->getAddress()
+        assert(ehFrameHeaderSection.getAddress()
                && "Found .eh_frame_hdr section without an address.");
-        addressEhFrameHeader = static_cast<uint64_t>(*ehFrameHeaderSection->getAddress());
-        if(auto it = ehFrameHeaderSection->findByteIntervalsAt(*ehFrameHeaderSection->getAddress());
+        addressEhFrameHeader = static_cast<uint64_t>(*ehFrameHeaderSection.getAddress());
+        if(auto it = ehFrameHeaderSection.findByteIntervalsAt(*ehFrameHeaderSection.getAddress());
            !it.empty())
         {
             const gtirb::ByteInterval &interval = *it.begin();
-            assert(ehFrameHeaderSection->getSize() == interval.getSize()
+            assert(ehFrameHeaderSection.getSize() == interval.getSize()
                    && "Expected single .eh_frame_hdr byte interval.");
 
             const char *bytes = interval.rawBytes<const char>();
@@ -177,17 +187,17 @@ ElfExceptionDecoder::ElfExceptionDecoder(const gtirb::Module &module)
             ehFrameHeader.assign(bytes, end);
         }
     }
-    auto gccExceptSection = module.findSections(".gcc_except_table");
-    if(gccExceptSection != module.sections_by_name_end())
+    auto gccExceptSections = module.findSections(".gcc_except_table");
+    for(auto &gccExceptSection : gccExceptSections)
     {
-        assert(gccExceptSection->getAddress()
+        assert(gccExceptSection.getAddress()
                && "Found .gcc_except_table section without an address.");
-        addressGccExcept = static_cast<uint64_t>(*gccExceptSection->getAddress());
-        if(auto it = gccExceptSection->findByteIntervalsAt(*gccExceptSection->getAddress());
+        addressGccExcept = static_cast<uint64_t>(*gccExceptSection.getAddress());
+        if(auto it = gccExceptSection.findByteIntervalsAt(*gccExceptSection.getAddress());
            !it.empty())
         {
             const gtirb::ByteInterval &interval = *it.begin();
-            assert(gccExceptSection->getSize() == interval.getSize()
+            assert(gccExceptSection.getSize() == interval.getSize()
                    && "Expected single .gcc_except_table byte interval.");
 
             const char *bytes = interval.rawBytes<char>();

@@ -16,6 +16,8 @@ doc/src_docs/*
 standalone_compilation/
 standalone_compilation.tar.bz2
 
+src/tests/inputs/hello.gtirb
+
 examples/**/dl_files
 examples/**/ex.old
 examples/**/ex.s

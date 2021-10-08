@@ -28,7 +28,7 @@ TEST_P(ElfReaderTest, read)
     }
     {
         gtirb::ErrorOr<GTIRB> GTIRB = GtirbBuilder::read("ElfReader.Test.cpp");
-        EXPECT_EQ(GTIRB, GtirbBuilder::build_error::ParseError);
+        EXPECT_EQ(GTIRB, GtirbBuilder::build_error::NotSupported);
         EXPECT_FALSE(GTIRB);
     }
     {

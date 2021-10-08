@@ -85,17 +85,17 @@ class DdisasmConan(Properties, ConanFile):
     generators = "cmake"
     settings = ("os", "compiler", "build_type", "arch")
 
-    lief_version = "0.10.1"
+    lief_version = "0.11.5"
     libehp_version = "dev"
-    souffle_version = "2.0.2"
+    souffle_version = "2.1"
     build_requires = (
         "libehp/%s@rewriting+extra-packages/stable" % (libehp_version),
-        "lief/%s" % (lief_version),
+        "lief/%s@rewriting+extra-packages/stable" % (lief_version),
     )
 
     def build_requirements(self):
         if self.settings.os == "Windows":
-            self.build_requires("ninja_installer/1.9.0@bincrafters/stable")
+            self.build_requires("ninja/1.10.2")
         else:
             self.build_requires(
                 "souffle/%s@rewriting+extra-packages/stable"
@@ -173,6 +173,8 @@ class DdisasmConan(Properties, ConanFile):
             defs.update({"GTIRB_PPRINTER_STRIP_DEBUG_SYMBOLS:BOOL": "ON"})
             self.add_dep_bin_path("mcpp")
 
+        if self.settings.build_type == "Release":
+            cmake.build_type = "RelWithDebInfo"
         self.add_dep_bin_path("gtirb-pprinter")
         self.add_dep_lib_path("gtirb-pprinter", "gtirb", "capstone")
         bin_dir = os.path.join(os.getcwd(), "bin")
@@ -180,10 +182,11 @@ class DdisasmConan(Properties, ConanFile):
 
         cmake.configure(source_folder=".", defs=defs)
         cmake.build()
-        with tools.vcvars(self.settings, arch="x86"):
-            cmake.test(output_on_failure=True)
-        with tools.vcvars(self.settings, arch="x86_64"):
-            cmake.test(output_on_failure=True)
+        if self.settings.build_type == "Release":
+            with tools.vcvars(self.settings, arch="x86"):
+                cmake.test(output_on_failure=True)
+            with tools.vcvars(self.settings, arch="x86_64"):
+                cmake.test(output_on_failure=True)
         cmake.install()
 
     def package(self):

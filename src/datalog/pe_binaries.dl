@@ -23,11 +23,17 @@
 
 // This module defines predicates specific of PE binaries
 
+.decl data_directory(Type:symbol,Address:address,Size:unsigned)
+.input data_directory
+
 .decl import_entry(Address:address,Ordinal:number,Function:symbol,Library:symbol)
 .input import_entry
 
 .decl export_entry(Address:address,Ordinal:number,Name:symbol)
 .input export_entry
+
+.decl pe_debug_data(Type:symbol,Address:address,Size:unsigned)
+.input pe_debug_data
 
 .decl pe_section_characteristics(Name:symbol,Mask:unsigned)
 
@@ -91,6 +97,21 @@ code_section(Section):-
     pe_section_characteristics("IMAGE_SCN_CNT_CODE",Exec),
     Flags band Exec >0.
 
+data_region(Begin,Size):-
+    data_directory(_,Begin,Size), Size > 0;
+    pe_debug_data(_,Begin,Size), Size > 0.
+
+// Implicit page for KUSER_SHARED_DATA
+data_segment(0x7FFE0000,0x7FFE1000):-
+    binary_format("PE").
+
+inferred_symbol_name(0x7FFE0000,"KUSER_SHARED_DATA","LOCAL","NONE"),
+moved_label_class(EA,Op_index,"KUSER_SHARED_DATA"),
+moved_displacement_candidate(EA,Op_index,Dest,0x7FFE0000,Dest-0x7FFE0000):-
+  binary_format("PE"),
+  symbolic_operand(EA,Op_index,Dest,"data"),
+  Dest > 0x7FFE0000, Dest < 0x7FFE1000.
+
 // Entries of external libraries
 symbol(0,0,"NONE","EXTERN",0,"none",0,Function),
 got_reference(Address,Function):-
@@ -112,6 +133,7 @@ plt_block(EA,Function):-
 reg_has_base_image(EA,Reg):-
     base_address(ImageBase),
     pc_relative_operand(EA,_,ImageBase),
+    code(EA),
     def(EA,Reg),
     instruction_get_operation(EA,"LEA").
 
@@ -120,6 +142,7 @@ reg_has_base_image(EA_code,Reg):-
     binary_format("PE"),
     base_address(ImageBase),
     arch.pointer_size(Size),
+    code(EA_code),
     arch.mov(EA_code),
     pc_relative_operand(EA_code,_,EA_data),
     data_word(EA_data,Size,Value), ImageBase = as(Value,address),
@@ -433,7 +456,14 @@ relative_address_start(IndexTableStart,1,TableStart,Dest,"first"):-
     ),
     arch.mov(EA_mov),
     instruction_get_op(EA_mov,_,Op_mov),
-    op_indirect(Op_mov,_,_,_,1,Offset,8),
+    op_indirect(Op_mov,_,_,_,1,Offset0,8),
+    // Sometimes, the offset value is off-by-4 from the actual index table.
+    // This is a heuristic to handle such case.
+    (
+        Offset = Offset0
+        ;
+        Offset = Offset0+4
+    ),
     IndexTableStart = as(Offset,address),
     // Dest = AddressTable[Index]
     data_byte(IndexTableStart,Byte),
@@ -552,7 +582,46 @@ relative_address_start(TableStart,Size,0,Dest,"first"):-
     data_word(TableStart,Size,TableEntry),
     Dest = as(TableEntry,address),
     arch.pointer_size(Pt_size), Pt_size = Size,
-    possible_ea(Dest).
+    possible_ea(Dest),
+    // Check on the second entry as well.
+    // This is based on the assumption that a jump-table consists of
+    // multiple entries.
+    data_word(TableStart+Size,Size,TableEntry2),
+    Dest2 = as(TableEntry2,address),
+    possible_ea(Dest2).
+
+// Find the simplest form of jump table with moved label.
+//   i.e.  jmp dword ptr [REG*4 + TableStart - Mult]
+symbolic_operand_candidate(EA,Op_index,as(Offset,address),"jump-table"),
+moved_label_class(EA,Op_index,"relax basic jump-table-start"),
+moved_label(EA,Op_index,as(Offset,address),TableStart),
+relative_address_start(TableStart,Size,0,Dest,"first"):-
+    indirect_jump(EA),
+    instruction_get_op(EA,Op_index,Op),
+    // Table starts at Offset+Mult.
+    op_indirect(Op,"NONE","NONE",_,Mult,Offset,_),
+    Size = as(Mult,unsigned),
+    // If the first entry seems dummy, move TableStart forward by Mult.
+    // E.g., windirstat
+    // 437c71:   jmp DWORD PTR [EAX*4+4422780]
+    // 437c78:   ...
+    // 437c7f: BYTE 090H
+    // 437c80: DWORD $L_437c8c
+    // 437c84: DWORD $L_437cb0
+    // 437c88: DWORD $L_437cd8
+    !address_in_data(as(Offset,address),_),
+    TableStart = as(Offset+Mult,address),
+    // Table entry is the complete Dest address.
+    data_word(TableStart,Size,TableEntry),
+    Dest = as(TableEntry,address),
+    arch.pointer_size(Pt_size), Pt_size = Size,
+    possible_ea(Dest),
+    // Check on the second entry as well.
+    // This is based on the assumption that a jump-table consists of
+    // multiple entries.
+    data_word(TableStart+Size,Size,TableEntry2),
+    Dest2 = as(TableEntry2,address),
+    possible_ea(Dest2).
 
 // lea REG, TableStart
 // mov REG, dword ptr [REG + REG2*4 - 8]
@@ -564,6 +633,12 @@ relative_address_start(TableStart,4,0,Dest,"first"):-
     data_word(TableStart,4,TableEntry),
     Dest = as(TableEntry,address),
     possible_ea(Dest),
+    // Check on the second entry as well.
+    // This is based on the assumption that a jump-table consists of
+    // multiple entries.
+    data_word(TableStart+4,4,TableEntry2),
+    Dest2 = as(TableEntry2,address),
+    possible_ea(Dest2),
 
     next(EA_load,EA_mov),
     arch.mov(EA_mov),

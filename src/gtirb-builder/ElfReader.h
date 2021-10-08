@@ -43,6 +43,8 @@ protected:
 
 private:
     uint64_t TlsBaseAddress = 0;
+
+    const std::unordered_set<std::string> Literals = {"pydata"};
 };
 
 #endif // ELF_GTIRB_BUILDER_H_

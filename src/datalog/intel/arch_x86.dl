@@ -45,6 +45,16 @@ mov(EA):-
     instruction_get_operation(EA,Operation),
     move_operation(Operation).
 
+.decl load_operation(Operation:symbol)
+
+// No rule for load_operation
+load_operation(""):-false.
+
+.decl store_operation(Operation:symbol)
+
+// No rule for store_operation
+store_operation("").
+
 .decl is_nop(EA:address)
 
 is_nop(EA):-
@@ -60,6 +70,17 @@ is_nop(EA):-
 return(EA):-
     return_operation(Operation),
     instruction_get_operation(EA,Operation).
+
+.decl unconditional_return_operation(n:symbol)
+
+unconditional_return_operation(Operation):-
+    return_operation(Operation).
+
+.decl conditional_return_operation(n:symbol)
+
+conditional_return_operation(""):-
+    false.
+
 
 .decl delay_slot(BranchEA:address,EA:address)
 

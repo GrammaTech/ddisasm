@@ -37,6 +37,18 @@ void PeSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
     }
 }
 
+void PeDataDirectoryLoader(const gtirb::Module &Module, DatalogProgram &Program)
+{
+    if(auto *DataDirectories = Module.getAuxData<gtirb::schema::PeDataDirectories>())
+    {
+        Program.insert("data_directory", *DataDirectories);
+    }
+    if(auto *DebugData = Module.getAuxData<gtirb::schema::PeDebugData>())
+    {
+        Program.insert("pe_debug_data", *DebugData);
+    }
+}
+
 namespace souffle
 {
     souffle::tuple &operator<<(souffle::tuple &t, const ExportEntry &ExportEntry)
@@ -50,6 +62,13 @@ namespace souffle
     {
         auto &[Address, Ordinal, Function, Library] = ImportEntry;
         t << Address << Ordinal << Function << Library;
+        return t;
+    }
+
+    souffle::tuple &operator<<(souffle::tuple &t, const DataDirectory &DataDirectory)
+    {
+        auto &[Type, Address, Size] = DataDirectory;
+        t << Type << Address << Size;
         return t;
     }
 } // namespace souffle

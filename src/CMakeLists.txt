@@ -52,7 +52,8 @@ if(DDISASM_ARM_64)
 
   set(DATALOG_ARM64_SOURCES
       datalog/arm64/arch_arm64.dl datalog/arm64/float_operations.dl
-      datalog/arm64/jump_operations.dl datalog/arm64/registers.dl)
+      datalog/arm64/jump_operations.dl datalog/arm64/registers.dl
+      datalog/arm_binaries.dl)
 
   set(GENERATED_ARM64_CPP souffle_disasm_arm64.cpp)
 
@@ -255,7 +256,8 @@ add_subdirectory(passes)
 # First build a static library of all the non-generated code.. This is just a
 # hack to get CMake to use different compile flags (because the generated
 # souffle code won't build with -Wall -Werror).
-add_library(disasm_main STATIC Disassembler.cpp Registration.cpp Main.cpp)
+add_library(disasm_main STATIC Disassembler.cpp Interpreter.cpp
+                               Registration.cpp Main.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_compile_options(disasm_main PRIVATE -Wno-unused-parameter)

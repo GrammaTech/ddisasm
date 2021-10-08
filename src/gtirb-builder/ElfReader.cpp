@@ -39,6 +39,16 @@ void ElfReader::buildSections()
     std::map<gtirb::UUID, SectionProperties> SectionProperties;
     std::map<gtirb::UUID, uint64_t> Alignment;
 
+    std::optional<uint64_t> TlsBegin, TlsEnd;
+    for(auto &Segment : Elf->segments())
+    {
+        if(Segment.type() == LIEF::ELF::SEGMENT_TYPES::PT_TLS)
+        {
+            TlsBegin = Segment.virtual_address();
+            TlsEnd = Segment.virtual_address() + Segment.virtual_size();
+        }
+    }
+
     uint64_t Index = 0;
     for(auto &Section : Elf->sections())
     {
@@ -47,8 +57,10 @@ void ElfReader::buildSections()
         bool Writable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
         bool Initialized = Loaded && Section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS;
 
+        bool Literal = Literals.count(Section.name()) > 0;
+
         // FIXME: Populate sections that are not loaded (e.g. .symtab and .strtab)
-        if(!Loaded)
+        if(!Loaded && !Literal)
         {
             Index++;
             continue;
@@ -76,27 +88,49 @@ void ElfReader::buildSections()
             S->addFlag(gtirb::SectionFlag::Initialized);
         }
 
-        gtirb::Addr Addr = gtirb::Addr(Section.virtual_address());
-
-        // Thread-local data sections overlap other sections, as they are
-        // only templates for per-thread copies of the data sections.
-        bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
-        if(Tls)
+        if(Loaded)
         {
-            Addr = gtirb::Addr(Section.virtual_address() + tlsBaseAddress());
+            gtirb::Addr Addr = gtirb::Addr(Section.virtual_address());
+
+            // Thread-local data section addresses overlap other sections,
+            // as they are only templates for per-thread copies of the data
+            // sections.
+            bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
+            if(Tls && TlsBegin && TlsEnd)
+            {
+                if(Section.virtual_address() >= *TlsBegin && Section.virtual_address() < *TlsEnd)
+                {
+                    uint64_t Offset = Section.virtual_address() - *TlsBegin;
+                    Addr = gtirb::Addr(tlsBaseAddress() + Offset);
+                }
+                else
+                {
+                    std::cerr << "WARNING: Failed to rebase TLS section: " << Section.name()
+                              << "\n";
+                }
+            }
+
+            if(Initialized)
+            {
+                // Add allocated section contents to a single, contiguous ByteInterval.
+                std::vector<uint8_t> Bytes = Section.content();
+                S->addByteInterval(*Context, Addr, Bytes.begin(), Bytes.end(), Section.size(),
+                                   Bytes.size());
+            }
+            else
+            {
+                // Add an uninitialized section.
+                S->addByteInterval(*Context, Addr, Section.size(), 0);
+            }
         }
 
-        if(Initialized)
+        if(Literal)
         {
-            // Add allocated section contents to a single, contiguous ByteInterval.
+            // Transcribe unloaded, literal data to an address-less section with a single DataBlock.
             std::vector<uint8_t> Bytes = Section.content();
-            S->addByteInterval(*Context, Addr, Bytes.begin(), Bytes.end(), Section.size(),
-                               Bytes.size());
-        }
-        else
-        {
-            // Add an uninitialized section.
-            S->addByteInterval(*Context, Addr, Section.size(), 0);
+            gtirb::ByteInterval *I = S->addByteInterval(*Context, Bytes.begin(), Bytes.end(),
+                                                        Section.size(), Bytes.size());
+            I->addBlock<gtirb::DataBlock>(*Context, 0, Section.size());
         }
 
         // Add section index and raw section properties to aux data.
@@ -115,15 +149,6 @@ void ElfReader::buildSections()
 
 void ElfReader::buildSymbols()
 {
-    std::optional<uint64_t> Tls;
-    for(auto &Segment : Elf->segments())
-    {
-        if(Segment.type() == LIEF::ELF::SEGMENT_TYPES::PT_TLS)
-        {
-            Tls = Segment.virtual_address();
-        }
-    }
-
     std::map<std::tuple<uint64_t, uint64_t, std::string, std::string, std::string, uint64_t,
                         std::string>,
              std::vector<std::tuple<std::string, uint64_t>>>
@@ -152,8 +177,7 @@ void ElfReader::buildSymbols()
             // STT_TLS symbols are relative to PT_TLS segment base.
             if(Symbol.type() == LIEF::ELF::ELF_SYMBOL_TYPES::STT_TLS)
             {
-                assert(Tls && "Found TLS symbol but no TLS segment.");
-                Value = *Tls + Value + tlsBaseAddress();
+                Value = tlsBaseAddress() + Value;
             }
 
             Symbols[std::tuple(Value, Symbol.size(), LIEF::ELF::to_string(Symbol.type()),

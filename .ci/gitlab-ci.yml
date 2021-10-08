@@ -1,6 +1,23 @@
 variables:
   GTIRB_BRANCH: "master"
-  EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_API_V4_URL}/projects/1587/packages/pypi/simple
+  GTIRB_PPRINTER_BRANCH: "master"
+  CAPSTONE_BRANCH: "master"
+  LIBEHP_REF: "master"
+  EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_SERVER_HOST}/api/v4/projects/1587/packages/pypi/simple
+  CONAN_PASSWORD: $CI_JOB_TOKEN
+  # The following two variables are used by the package-uploader
+  PROJECT_ID: $CI_PROJECT_ID
+  PIPELINE_ID: $CI_PIPELINE_ID
+
+workflow:
+  rules:
+    # merge_train CI happens once per branch, right before merging
+    # they must pass in order for the merge to go through
+    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
+    # If no 'rules' are explicitly set for jobs below, they will automatically
+    # run each time this pipeline runs (merge, commits, or schedules)
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "schedule"
 
 stages:
   - check-format
@@ -44,17 +61,32 @@ check-format:
       EOF
       ) && exit 1)
 
+.run_only_main: &run-only-main
+  - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  - if: $CI_COMMIT_BRANCH == "master"
+  - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+  - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
+  # regular build is manual and optional
+  # This only works with gitlab 13.12 or higher
+  # See https://about.gitlab.com/blog/2021/05/20/dag-manual-fix/
+  # Uncomment once gitlab is updated
+  #- if: $CI_COMMIT_BRANCH
+  #  when: manual
+  #  allow_failure: true
+
 build-conan-gcc7:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu18
   stage: build
   needs: [check-format]
+  rules:
+    *run-only-main
   script: &build-conan
     - conan profile new default --detect
     - conan profile update settings.compiler.libcxx=libstdc++11 default
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
-    - conan user ci_user -r gitlab -p ${CI_JOB_TOKEN}
+    - conan user ci_user -r gitlab -p
     # Install gtirb python wheel
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
+    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
     - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/build.py
 
@@ -62,25 +94,49 @@ build-conan-gcc9:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu20
   stage: build
   needs: [check-format]
+  rules:
+    *run-only-main
   script:
     *build-conan
 
-conan-windows:
+.conan-windows-template: &conan-windows-template
   stage: build
   tags: [ddisasm-windows]
   script:
     - systeminfo
     # Set up user and remote
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
-    - conan user ci_user -r gitlab -p ${CI_JOB_TOKEN}
+    - conan user ci_user -r gitlab -p
     # Install gtirb python wheel
-    - python -m pip install pip --upgrade && python -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
+    - python -m pip install pip --upgrade && python -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
     - export PATH="$PATH;C:\\Program Files\\CMake\\bin"
-    - export SOUFFLE_INCLUDE_DIR="C:\\users\\vagrant\\AppData\\local\\Packages\\CanonicalGroupLimited.Ubuntu18.04onWindows_79rhkp1fndgsc\\localstate\\rootfs\\usr\\local\\include"
+    - export SOUFFLE_INCLUDE_DIR="C:\\users\\vagrant\\AppData\\local\\Packages\\CanonicalGroupLimited.Ubuntu20.04onWindows_79rhkp1fndgsc\\localstate\\rootfs\\usr\\local\\include"
     - export PYTHON="C:\\Python39\\python.exe"
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
-    - python .ci/build.py
+    - python .ci/build.py -s build_type=$BUILD_TYPE
+
+conan-windows-debug:
+  variables:
+    BUILD_TYPE: Debug
+  rules:
+    *run-only-main
+  <<: *conan-windows-template
+
+conan-windows-release:
+  variables:
+    BUILD_TYPE: Release
+  <<: *conan-windows-template
+
+.build-libehp: &build-libehp
+  - git clone https://git.zephyr-software.com/opensrc/libehp.git
+  - pushd libehp
+  - git reset --hard $LIBEHP_REF
+  - cmake ./ -Bbuild -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DEHP_BUILD_SHARED_LIBS=OFF
+  - cd build
+  - make
+  - make install
+  - popd
 
 .build-template: &build
   artifacts:
@@ -89,92 +145,41 @@ conan-windows:
       - build
   script:
     - case $OS in
-       ubuntu16) JOB_NAME='debian-installer-ubuntu16' ;;
        ubuntu18) JOB_NAME='debian-installer-ubuntu18' ;;
        ubuntu20) JOB_NAME='debian-installer-ubuntu20' ;;
-       arch) JOB_NAME='package-arch' ;;
        esac
-    # Acquire gtirb artifacts
-    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=${JOB_NAME} --output "gtirb-${OS}-artifacts.zip"
-    - unzip gtirb-${OS}-artifacts.zip
-    # Acquire gtirb pprinter artifacts
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
-    - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
-    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter-${OS}-artifacts.zip"
-    - unzip gtirb-pprinter-${OS}-artifacts.zip
-    # Install gtirb & pprinter
-    - '[ $OS != "arch" ] || sudo pacman --noconfirm -U gtirb-git*.pkg.tar.* gtirb-pprinter-git*.pkg.tar.*'
-    - '[[ ! "$OS" =~ ubuntu[12][680] ]] || dpkg -i libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb'
+    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=${JOB_NAME} --output "gtirb.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter.zip"
+    - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
+    - for pkg in gtirb gtirb-pprinter capstone; do unzip $pkg.zip; done
+    # Install gtirb, pprinter, and capstone
+    - dpkg -i libcapstone-dev.deb libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
+    - *build-libehp
     # Build ddisasm
     - mkdir build
     - cd build
     # FIXME: CMake should automatically find LIEF_LIBRARY but fails to on Arch.
     - 'LIEF_LIBRARY=/usr/lib/libLIEF.a && [ -f $LIEF_LIBRARY ] || LIEF_LIBRARY=/usr/lib/libLIEF.so'
     - cmake -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_DEBIAN_PACKAGE_RELEASE="$(lsb_release -sc)" -DBUILD_FUNINFER=1 -DLIEF_ROOT=/usr/ -DLIEF_LIBRARY=${LIEF_LIBRARY} -DDDISASM_STRIP_DEBUG_SYMBOLS=On ..
-    - make
-
-.build-windows-template: &build-windows
-  artifacts:
-    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
-    paths:
-      - ./DDISASM-*-win64
-  script:
-    - systeminfo
-    - git clone https://git.zephyr-software.com/opensrc/libehp.git
-    - cd libehp && git reset --hard 953f45ba9fb4b1afe38b7c5ecd9b9fa55f17ff49 && cd ..
-    - .ci/build-windows.sh ${BUILD_TYPE}
+    - make -j4
 
 .test-and-tag-template: &test-and-tag
   script:
     - case $OS in
-       ubuntu16) JOB_NAME='debian-installer-ubuntu16' ;;
        ubuntu18) JOB_NAME='debian-installer-ubuntu18' ;;
        ubuntu20) JOB_NAME='debian-installer-ubuntu20' ;;
-       arch) JOB_NAME='package-arch' ;;
        esac
     # Acquire gtirb artifacts
-    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=${JOB_NAME} --output "gtirb-${OS}-artifacts.zip"
-    - unzip -o gtirb-${OS}-artifacts.zip
-    # Acquire gtirb pprinter artifacts
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
-    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter-${OS}-artifacts.zip"
-    - unzip -o gtirb-pprinter-${OS}-artifacts.zip
-    # Install gtirb and the pprinter
-    - '[ $OS != "arch" ] || sudo pacman --noconfirm -U gtirb-git*.pkg.tar.* gtirb-pprinter-git*.pkg.tar.*'
-    - '[[ ! "$OS" =~ ubuntu[12][680] ]] || dpkg -i libgtirb.deb libgtirb-pprinter.deb gtirb-pprinter.deb'
+    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=${JOB_NAME} --output "gtirb.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter.zip"
+    - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
+    - for pkg in gtirb gtirb-pprinter capstone; do unzip $pkg.zip; done
+    # Install gtirb, pprinter and capstone
+    - dpkg -i libcapstone-dev.deb libgtirb.deb libgtirb-pprinter.deb gtirb-pprinter.deb
     # Install gtirb python API
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
+    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run tests
     - cd build && PATH=$(pwd)/bin:$PATH ctest -V
-
-.build-ubuntu-packages-template: &build-ubuntu-packages
-  stage: build-packages
-  artifacts:
-    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
-    paths:
-      - build
-  script:
-    # Acquire gtirb artifacts
-    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-$OS --output "gtirb-${OS}-artifacts.zip"
-    - unzip gtirb-${OS}-artifacts.zip
-    # Acquire gtirb pprinter artifacts
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
-    - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
-    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-$OS --output "gtirb-pprinter-${OS}-artifacts.zip"
-    - unzip gtirb-pprinter-${OS}-artifacts.zip
-    - dpkg -i libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
-    - cd build
-    - cpack -G "DEB" -D CPACK_DDISASM_DEBIAN_PACKAGE=ddisasm
-    - cpack -G "DEB" -D CPACK_DDISASM_DEBIAN_PACKAGE=debug
-
-build-ubuntu16-gcc:
-  stage: build
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu16
-  variables:
-    OS: 'ubuntu16'
-    CXX_COMPILER: 'g++-7'
-    BUILD_TYPE: 'RelWithDebInfo'
-  <<: *build
 
 build-ubuntu18-gcc:
   stage: build
@@ -192,63 +197,26 @@ build-ubuntu20-gcc:
     OS: 'ubuntu20'
     CXX_COMPILER: 'g++'
     BUILD_TYPE: 'RelWithDebInfo'
+  rules:
+    *run-only-main
   <<: *build
 
-build-arch-gcc:
-  # TODO: The most recent versions of protobuf on arch break our build.
-  # at some point, we'll need to figure this out, but in the meantime,
-  # we allow_failure so our pipelines will go through.
-  allow_failure: true
+build-ubuntu20-gcc-debug:
   stage: build
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/arch
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   variables:
-    OS: 'arch'
-    CXX_COMPILER: 'g++'
-    BUILD_TYPE: 'RelWithDebInfo'
-  artifacts:
-    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
-    paths:
-      - build
-  script:
-    # Acquire gtirb artifacts
-    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=package-arch --output "gtirb-arch-artifacts.zip"
-    - unzip -o gtirb-arch-artifacts.zip
-    # Acquire gtirb pprinter artifacts
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
-    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=package-arch --output "gtirb-pprinter-arch-artifacts.zip"
-    - unzip -o gtirb-pprinter-arch-artifacts.zip
-    # Install gtirb and the pprinter
-    - sudo pacman --noconfirm -U gtirb-git*.pkg.tar.* gtirb-pprinter-git*.pkg.tar.*
-    # Install gtirb python wheel
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL
-    # Build package and run tests
-    - mkdir /home/ddisasm/ddisasm-aur
-    - cp .ci/PKGBUILD /home/ddisasm/ddisasm-aur/PKGBUILD
-    - cd /home/ddisasm/ddisasm-aur/
-    - sed -i "s|git://github.com/grammatech/ddisasm.git|git+file://$CI_PROJECT_DIR|" PKGBUILD
-    - makepkg
-    - cd /home/ddisasm/ddisasm-aur/src/ddisasm/build && PATH=$(pwd)/bin:$PATH ctest -V
-    - cd /home/ddisasm/ddisasm-aur/
-    - sudo pacman --noconfirm -U *.pkg.tar.zst
-    - cp -r /home/ddisasm/ddisasm-aur/src/ddisasm/build $CI_PROJECT_DIR/build/
-    - cp *.pkg.tar.zst $CI_PROJECT_DIR/build/
-
-build-arch-gcc-debug:
-  allow_failure: true
-  stage: build
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/arch
-  variables:
-    OS: 'arch'
+    OS: 'ubuntu20'
     CXX_COMPILER: 'g++'
     BUILD_TYPE: 'Debug'
+  rules:
+    *run-only-main
   <<: *build
 
-build-arch-clang-debug:
-  allow_failure: true
+build-ubuntu20-clang-debug:
   stage: build
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/arch
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   variables:
-    OS: 'arch'
+    OS: 'ubuntu20'
     CXX_COMPILER: 'clang++'
     BUILD_TYPE: 'Debug'
   <<: *build
@@ -256,7 +224,14 @@ build-arch-clang-debug:
 build-static:
   stage: build
   image: $DOCKER_REGISTRY/rewriting/ddisasm/static
+  rules:
+    *run-only-main
   script:
+    - *build-libehp
+    # install capstone
+    - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
+    - unzip capstone.zip
+    - dpkg -i libcapstone-dev.deb
     # build GTIRB
     - git clone https://git.grammatech.com/rewriting/gtirb.git
     - mkdir gtirb/build
@@ -266,7 +241,7 @@ build-static:
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
     # build gtirb-pprinter
-    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b master
+    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b $GTIRB_PPRINTER_BRANCH
     - mkdir gtirb-pprinter/build
     - cd gtirb-pprinter/build
     - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
@@ -288,7 +263,14 @@ static-drivers:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - build/bin
+  rules:
+    *run-only-main
   script:
+    - *build-libehp
+    # install capstone
+    - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
+    - unzip capstone.zip
+    - dpkg -i libcapstone-dev.deb
     # build GTIRB
     - git clone https://git.grammatech.com/rewriting/gtirb.git
     - cd gtirb
@@ -298,7 +280,7 @@ static-drivers:
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
     # build gtirb-pprinter
-    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b master
+    - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b $GTIRB_PPRINTER_BRANCH
     - cd gtirb-pprinter
     - mkdir build && cd build
     - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
@@ -313,51 +295,40 @@ static-drivers:
     # For verification purposes, print ldd of the driver here.
     - ldd bin/ddisasm
 
-build-windows-msvc-debug:
+build-centos8-gcc-relwithdebuginfo:
   stage: build
-  tags:
-    - ddisasm-windows
-  variables:
-    BUILD_TYPE: 'Debug'
-  <<: *build-windows
-
-build-windows-msvc-relwithdebinfo:
-  stage: build
-  tags:
-    - ddisasm-windows
-  variables:
-    BUILD_TYPE: 'RelWithDebInfo'
-  <<: *build-windows
-
-build-ubuntu16-packages:
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu16
-  needs: ['build-ubuntu16-gcc']
-  variables:
-    OS: ubuntu16
-  <<: *build-ubuntu-packages
-
-build-ubuntu18-packages:
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
-  needs: ['build-ubuntu18-gcc']
-  variables:
-    OS: ubuntu18
-  <<: *build-ubuntu-packages
-
-build-ubuntu20-packages:
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
-  needs: ['build-ubuntu20-gcc']
-  variables:
-    OS: ubuntu20
-  <<: *build-ubuntu-packages
-
-run-ubuntu16-gcc:
-  stage: test-and-tag
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu16
-  needs: ['build-ubuntu16-gcc']
-  variables:
-    OS: 'ubuntu16'
-    BUILD_TYPE: 'RelWithDebInfo'
-  <<: *test-and-tag
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/centos8
+  artifacts:
+    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
+    paths:
+      - build
+  rules:
+    *run-only-main
+  script:
+    - *build-libehp
+    # What's the deal with PADDED_DIR? See:
+    # https://cmake.org/cmake/help/latest/cpack_gen/rpm.html#variable:CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX
+    # From the above link: "...Limitation is that replaced path part must
+    # be shorter or of equal length than the length of its replacement.  If
+    # that is not the case either CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX variable
+    # has to be set to a shorter path or source directories must be placed on
+    # a longer path."
+    - PADDED_DIR=long-dir-name-padding-for-CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX
+    - mkdir $PADDED_DIR && cd $PADDED_DIR
+    - git clone .. .
+    - mkdir build && cd build
+    # Download and install packages from artifacts
+    - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-rpm --output "capstone.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=package-centos8 --output "gtirb.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=package-centos8 --output "gtirb-pprinter.zip"
+    - for pkg in gtirb capstone gtirb-pprinter; do unzip $pkg.zip; done
+    - dnf --nogpgcheck localinstall -y capstone-devel-*.rpm libgtirb.rpm libgtirb-devel.rpm libgtirb-pprinter.rpm libgtirb-pprinter-devel.rpm
+    - CAPSTONE_PKG_VERSION=$(ls capstone-devel-**.rpm | sed -n 's/capstone-devel-\(.*\).x86_64.rpm/\1/p')
+    # Build
+    - cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH='/usr/lib64/boost169' -DBOOST_INCLUDEDIR='/usr/include/boost169' -DLIEF_ROOT=/usr/ -DDDISASM_STRIP_DEBUG_SYMBOLS=Off ..
+    - make
+    - cpack -G "RPM" -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=rpm-driver
+    - cd ../ && mv build ../build
 
 run-ubuntu18-gcc:
   stage: test-and-tag
@@ -375,54 +346,117 @@ run-ubuntu20-gcc:
   variables:
     OS: 'ubuntu20'
     BUILD_TYPE: 'RelWithDebInfo'
+  rules:
+    *run-only-main
   <<: *test-and-tag
 
-run-arch-gcc-debug:
+run-ubuntu20-gcc-debug:
   allow_failure: true
   stage: test-and-tag
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/arch
-  needs: ['build-arch-gcc-debug']
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
+  needs: ['build-ubuntu20-gcc-debug']
   variables:
-    OS: 'arch'
+    OS: 'ubuntu20'
     BUILD_TYPE: 'Debug'
+  rules:
+    *run-only-main
   <<: *test-and-tag
 
-run-arch-clang-debug:
+run-ubuntu20-clang-debug:
   allow_failure: true
   stage: test-and-tag
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/arch
-  needs: ['build-arch-clang-debug']
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
+  needs: ['build-ubuntu20-clang-debug']
   variables:
-    OS: 'arch'
+    OS: 'ubuntu20'
     BUILD_TYPE: 'Debug'
   script:
   <<: *test-and-tag
 
 test-make-install:
   stage: test-and-tag
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
+  needs: ['build-ubuntu20-gcc']
+  variables:
+    OS: 'ubuntu20'
+    COMPILER: 'gcc'
+    BUILD_TYPE: 'RelWithDebInfo'
+  rules:
+    *run-only-main
+  script:
+    - *build-libehp
+    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-ubuntu20 --output "gtirb.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-ubuntu20 --output "gtirb-pprinter.zip"
+    - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
+    - for pkg in gtirb gtirb-pprinter capstone; do unzip $pkg.zip; done
+    # Install gtirb, pprinter, and capstone
+    - dpkg -i libcapstone-dev.deb libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
+    - cd build && make -t && make install
+    - cd .. && PYTHONPATH=$PYTHONPATH:$(pwd)/tests python3 -m unittest end2end_test.TestExamples.test_1
+
+test-centos8-ddisasm-package:
+  stage: package-tests
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/centos8
+  needs: ['build-centos8-gcc-relwithdebuginfo']
+  rules:
+    *run-only-main
+  script:
+    - pushd build
+    - dnf --nogpgcheck localinstall -y capstone-devel-*.rpm libgtirb.rpm libgtirb-pprinter.rpm ddisasm.rpm
+    - popd
+    - rm -rf build
+    - ddisasm --version
+
+package-centos8:
+  stage: deploy
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/centos8
+  needs: ['build-centos8-gcc-relwithdebuginfo', 'test-centos8-ddisasm-package']
+  artifacts:
+    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
+    paths:
+      - '*ddisasm*.rpm'
+  rules:
+    *run-only-main
+  script:
+    - cp build/*.rpm ./
+
+
+# APT packaging related jobs
+.build-ubuntu-packages-template: &build-ubuntu-packages
+  stage: build-packages
+  artifacts:
+    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
+    paths:
+      - build
+  script:
+    - *build-libehp
+    - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-$OS --output "gtirb.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-$OS --output "gtirb-pprinter.zip"
+    - for pkg in gtirb gtirb-pprinter capstone; do unzip $pkg.zip; done
+    - dpkg -i libcapstone-dev.deb libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
+    - 'CAPSTONE_PKG_VERSION=$(dpkg --info libcapstone-dev.deb | sed -n "s/ Version: //p")'
+    - cd build
+    - CPACK_DDISASM_STABLE_PKG_NAME=OFF
+    - '[[ ! $CI_COMMIT_REF_NAME =~ ^release-.* ]] || CPACK_DDISASM_STABLE_PKG_NAME=ON'
+    - cpack -G "DEB" -D CPACK_DDISASM_STABLE_PKG_NAME=$CPACK_DDISASM_STABLE_PKG_NAME -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-ddisasm
+    - cpack -G "DEB" -D CPACK_DDISASM_STABLE_PKG_NAME=$CPACK_DDISASM_STABLE_PKG_NAME -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-debug
+  rules:
+    *run-only-main
+
+build-ubuntu18-packages:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
   needs: ['build-ubuntu18-gcc']
   variables:
-    OS: 'ubuntu18'
-    COMPILER: 'gcc'
-    BUILD_TYPE: 'RelWithDebInfo'
-  script:
-    - case $OS in
-       ubuntu16) JOB_NAME='debian-installer-ubuntu16' ;;
-       ubuntu18) JOB_NAME='debian-installer-ubuntu18' ;;
-       arch) JOB_NAME='package-arch' ;;
-       esac
-    # Acquire gtirb artifacts
-    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=${JOB_NAME} --output "gtirb-${OS}-artifacts.zip"
-    - unzip -o gtirb-${OS}-artifacts.zip
-    # Acquire gtirb pprinter artifacts
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
-    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter-${OS}-artifacts.zip"
-    - unzip -o gtirb-pprinter-${OS}-artifacts.zip
-    # Install gtirb and the pprinter
-    - dpkg -i libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb gtirb-pprinter.deb libgtirb-pprinter-dev.deb
-    - cd build && make -t && make install
-    - cd .. && PYTHONPATH=$PYTHONPATH:$(pwd)/tests python3 -m unittest end2end_test.TestExamples.test_1
+    OS: ubuntu18
+  <<: *build-ubuntu-packages
+
+build-ubuntu20-packages:
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
+  needs: ['build-ubuntu20-gcc']
+  variables:
+    OS: ubuntu20
+  <<: *build-ubuntu-packages
 
 .setup-apt-repo-template: &setup-apt-repo
   stage: setup-package-tests
@@ -430,44 +464,17 @@ test-make-install:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - apt-repo
+  rules:
+    *run-only-main
   script:
-    # Acquire gtirb artifacts
-    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-$OS --output "gtirb-${OS}-artifacts.zip"
-    - unzip gtirb-${OS}-artifacts.zip
-    # Acquire gtirb pprinter artifacts
-    - GTIRB_PPRINTER_BRANCH=$((grep -Eo "check_gtirb_pprinter_branch\([^)]+" CMakeLists.txt | sed 's/check_gtirb_pprinter_branch(//') || echo "master")
-    - "echo \"GTIRB_PPRINTER_BRANCH is: $GTIRB_PPRINTER_BRANCH\""
-    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-$OS --output "gtirb-pprinter-${OS}-artifacts.zip"
-    - unzip gtirb-pprinter-${OS}-artifacts.zip
+    - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-$OS --output "gtirb.zip"
+    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-$OS --output "gtirb-pprinter.zip"
+    - for pkg in gtirb gtirb-pprinter capstone; do unzip $pkg.zip; done
     - mkdir apt-repo
     - cp build/*.deb apt-repo
     - cp *.deb apt-repo
     - cd apt-repo && dpkg-scanpackages . /dev/null > Packages
-
-.test-ubuntu-ddisasm: &test-ubuntu-ddisasm
-  stage: package-tests
-  script:
-    - if [ $(lsb_release -sc) == "bionic" ]; then TRUSTED="[trusted=yes]"; fi
-    - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
-    - echo -e "\ndeb $TRUSTED file:$(pwd)/apt-repo ./\n" >> /etc/apt/sources.list
-    - apt-get update -y && apt-get install -y --allow-unauthenticated ddisasm
-    - ddisasm --version
-
-.test-ubuntu-ddisasm-dbg: &test-ubuntu-ddisasm-dbg
-  stage: package-tests
-  script:
-    - if [ $(lsb_release -sc) == "bionic" ]; then TRUSTED="[trusted=yes]"; fi
-    - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
-    - echo -e "\ndeb $TRUSTED file:$(pwd)/apt-repo ./\n" >> /etc/apt/sources.list
-    - apt-get update -y && apt-get install -y --allow-unauthenticated ddisasm-dbg
-    - '[ -f /usr/lib/debug/.build-id/$(readelf -n /usr/bin/ddisasm | grep ''Build ID: '' | cut -d'':'' -f2 | sed -E ''s/ ([a-f0-9]{2,})([a-f0-9]{30,})/\1\/\2/g'').debug ]'
-
-setup-ubuntu16-package-tests:
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu16
-  needs: ['build-ubuntu16-packages']
-  variables:
-    OS: ubuntu16
-  <<: *setup-apt-repo
 
 setup-ubuntu18-package-tests:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
@@ -483,10 +490,30 @@ setup-ubuntu20-package-tests:
     OS: ubuntu20
   <<: *setup-apt-repo
 
-test-ubuntu16-ddisasm-package:
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu16
-  needs: ['setup-ubuntu16-package-tests']
-  <<: *test-ubuntu-ddisasm
+.test-ubuntu-ddisasm: &test-ubuntu-ddisasm
+  stage: package-tests
+  rules:
+    *run-only-main
+  script:
+    - if [ $(lsb_release -sc) == "bionic" ]; then TRUSTED="[trusted=yes]"; fi
+    - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
+    - echo -e "\ndeb $TRUSTED file:$(pwd)/apt-repo ./\n" >> /etc/apt/sources.list
+    - 'TEST_PKG_NAME=$(dpkg --info apt-repo/ddisasm.deb | sed -n "s/ Package: //p")'
+    - apt-get update -y && apt-get install -y --allow-unauthenticated $TEST_PKG_NAME
+    - ddisasm --version
+
+
+.test-ubuntu-ddisasm-dbg: &test-ubuntu-ddisasm-dbg
+  stage: package-tests
+  rules:
+    *run-only-main
+  script:
+    - if [ $(lsb_release -sc) == "bionic" ]; then TRUSTED="[trusted=yes]"; fi
+    - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
+    - echo -e "\ndeb $TRUSTED file:$(pwd)/apt-repo ./\n" >> /etc/apt/sources.list
+    - 'TEST_PKG_NAME=$(dpkg --info apt-repo/ddisasm-dbg.deb | sed -n "s/ Package: //p")'
+    - apt-get update -y && apt-get install -y --allow-unauthenticated $TEST_PKG_NAME
+    - '[ -f /usr/lib/debug/.build-id/$(readelf -n /usr/bin/ddisasm | grep ''Build ID: '' | cut -d'':'' -f2 | sed -E ''s/ ([a-f0-9]{2,})([a-f0-9]{30,})/\1\/\2/g'').debug ]'
 
 test-ubuntu18-ddisasm-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
@@ -497,11 +524,6 @@ test-ubuntu20-ddisasm-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   needs: ['setup-ubuntu20-package-tests']
   <<: *test-ubuntu-ddisasm
-
-test-ubuntu16-ddisasm-dbg-package:
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu16
-  needs: ['setup-ubuntu16-package-tests']
-  <<: *test-ubuntu-ddisasm-dbg
 
 test-ubuntu18-ddisasm-dbg-package:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
@@ -519,16 +541,10 @@ test-ubuntu20-ddisasm-dbg-package:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - '*ddisasm*.deb'
+  rules:
+    *run-only-main
   script:
     - cp build/*ddisasm*.deb ./
-
-debian-installer-ubuntu16:
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu16
-  needs:
-    - 'test-ubuntu16-ddisasm-package'
-    - 'test-ubuntu16-ddisasm-dbg-package'
-    - 'build-ubuntu16-packages'
-  <<: *debian-installer-ubuntu-template
 
 debian-installer-ubuntu18:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
@@ -546,18 +562,6 @@ debian-installer-ubuntu20:
     - 'build-ubuntu20-packages'
   <<: *debian-installer-ubuntu-template
 
-package-arch:
-  allow_failure: true
-  stage: deploy
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/arch
-  needs: ['build-arch-gcc']
-  artifacts:
-    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
-    paths:
-      - '*ddisasm*.pkg.tar.zst'
-  script:
-    - cp build/*ddisasm*.pkg.tar.zst ./
-
 .apt-upload: &apt-upload
   stage: deploy-to-apt
   trigger:
@@ -569,7 +573,7 @@ public-bionic-unstable:
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
   variables:
-    ARTIFACT_URL: ${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_REF_NAME}/download?job=debian-installer-ubuntu18
+    JOB_NAME: debian-installer-ubuntu18
     APT_REPO: public
     APT_REPO_CODENAME: bionic
     APT_REPO_COMPONENT: unstable
@@ -579,7 +583,7 @@ public-focal-unstable:
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
   variables:
-    ARTIFACT_URL: ${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_REF_NAME}/download?job=debian-installer-ubuntu20
+    JOB_NAME: debian-installer-ubuntu20
     APT_REPO: public
     APT_REPO_CODENAME: focal
     APT_REPO_COMPONENT: unstable
@@ -589,7 +593,7 @@ public-bionic-stable:
   rules:
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
   variables:
-    ARTIFACT_URL: ${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_REF_NAME}/download?job=debian-installer-ubuntu18
+    JOB_NAME: debian-installer-ubuntu18
     APT_REPO: public
     APT_REPO_CODENAME: bionic
     APT_REPO_COMPONENT: stable
@@ -599,7 +603,7 @@ public-focal-stable:
   rules:
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
   variables:
-    ARTIFACT_URL: ${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_REF_NAME}/download?job=debian-installer-ubuntu20
+    JOB_NAME: debian-installer-ubuntu20
     APT_REPO: public
     APT_REPO_CODENAME: focal
     APT_REPO_COMPONENT: stable
