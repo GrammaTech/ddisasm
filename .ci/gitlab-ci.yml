@@ -256,7 +256,7 @@ build-static:
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
 
 
-datalog-docs:
+pages:
   #FIXME: once we update souffle to higher than 2.1
   # we can use one of the other images
   image: $DOCKER_REGISTRY/rewriting/ddisasm/datalog-docs
