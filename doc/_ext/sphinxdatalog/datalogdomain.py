@@ -13,6 +13,7 @@ from sphinx import addnodes
 from docutils.statemachine import ViewList
 from sphinx.domains.std import StandardDomain
 from pathlib import Path
+import networkx as nx
 
 THIS_DIRECTORY = Path(__file__).resolve().parent
 
@@ -20,6 +21,8 @@ THIS_DIRECTORY = Path(__file__).resolve().parent
 # predicates computed by souffle
 DEPENDENCE_GRAPH = defaultdict(list)
 DEPENDENCE_GRAPH_INV = defaultdict(list)
+
+SCC_GRAPH: nx.Graph = None
 
 
 def split_component(node: str) -> Tuple[str, str]:
@@ -95,7 +98,10 @@ class DatalogDomain(Domain):
     name = "dl"
     label = "Datalog"
 
-    roles = {"pred": XRefRole()}
+    roles = {
+        "pred": XRefRole(),
+        "recpred": XRefRole(innernodeclass=nodes.emphasis),
+    }
 
     directives = {
         "pred": PredicateNode,
@@ -230,10 +236,15 @@ class AutoFileDirective(Directive):
 
         def get_link_text(dep: str):
             comp, pred = split_component(dep)
-            color = ""
-            # if pred == name:
-            #    color = ":blue:"
-            return f"{comp} {color}`{pred}`"
+            rec = ""
+            if dep in SCC_GRAPH.graph["mapping"]:
+                scc = SCC_GRAPH.graph["mapping"][dep]
+                recs = SCC_GRAPH.nodes[scc]["members"]
+                if name in [split_component(c)[1] for c in recs]:
+                    rec = ":recpred:"
+            if pred == name:
+                rec = ":recpred:"
+            return f"{rec}`{dep}<{pred}>`"
 
         paragraph = nodes.paragraph()
         # synthesize the text and let it be parsed
@@ -298,17 +309,21 @@ def load_dependence_graph():
     into the DEPENDENCE_GRAPH and DEPENDENCE_GRAPH_INV dictionaries.
     The keys are stripped of component information.
     """
+    global SCC_GRAPH
     dependencies = (
         (THIS_DIRECTORY.parent.parent / "src_docs/dependencies.csv")
         .read_text()
         .splitlines()
     )
+    g = nx.DiGraph()
     for line in dependencies:
         src, dest = line.split(" ")
+        g.add_edge(src, dest)
         _, src_pred = split_component(src)
         _, dest_pred = split_component(dest)
         DEPENDENCE_GRAPH[src_pred].append(dest)
         DEPENDENCE_GRAPH_INV[dest_pred].append(src)
+    SCC_GRAPH = nx.algorithms.components.condensation(g)
 
 
 def setup(app):
