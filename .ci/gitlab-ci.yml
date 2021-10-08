@@ -269,7 +269,7 @@ datalog-docs:
       - public
   script:
     - python3  doc/uild_index.py
-	  - python3 -m sphinx  doc public
+    - python3 -m sphinx  doc public
 
 static-drivers:
   stage: deploy
