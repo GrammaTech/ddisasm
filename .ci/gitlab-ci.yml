@@ -255,6 +255,22 @@ build-static:
     # Run the regression tests.
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
 
+
+datalog-docs:
+  #FIXME: once we update souffle to higher than 2.1
+  # we can use one of the other images
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/datalog-docs
+  stage: build
+  #rules:
+  #  *run-only-main
+  artifacts:
+  name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
+  paths:
+    - doc/datalog-docs/
+  script:
+    - cd doc
+    - make datalog-docs
+
 static-drivers:
   stage: deploy
   image: $DOCKER_REGISTRY/rewriting/ddisasm/static

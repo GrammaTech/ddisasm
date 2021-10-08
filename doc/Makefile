@@ -1,5 +1,8 @@
 all: ddisasm.html ddisasm.1.gz
 
+datalog-docs:
+	python3  build_index.py
+	python3 -m sphinx  . datalog-docs
 clean:
 	rm -f *.html *.gz
 
