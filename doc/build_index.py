@@ -61,6 +61,6 @@ def build_dependecy_graph() -> None:
                 print(src, dest, file=f)
 
 
-if __name__ == "__main__":
+def build_all() -> None:
     build_main_index()
     build_dependecy_graph()

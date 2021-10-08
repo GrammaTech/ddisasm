@@ -2,6 +2,9 @@ import os
 import sys
 
 sys.path.append(os.path.abspath("./_ext"))
+sys.path.append(os.path.abspath("./"))
+from build_index import build_all  # noqa: E402
+
 
 extensions = ["sphinxdatalog.datalogdomain"]
 
@@ -13,3 +16,7 @@ html_title = "Ddisasm datalog documentation"
 html_short_title = "Ddisasm docs"
 html_theme = "alabaster"
 html_theme_options = {"description": "Ddisasm's datalog internal API"}
+
+
+def setup(self):
+    build_all()
