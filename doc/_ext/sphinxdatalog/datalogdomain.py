@@ -18,6 +18,8 @@ import networkx as nx
 
 THIS_DIRECTORY = Path(__file__).resolve().parent
 
+MAIN_DIRECTORY = THIS_DIRECTORY.parent.parent.parent
+
 # Dictionaries with dependencies between
 # predicates computed by souffle
 DEPENDENCE_GRAPH = defaultdict(list)
@@ -375,7 +377,7 @@ def setup(app):
         "Predicate Index",
     )
     app.add_config_value(
-        "datalogautodoc_basedir", "../ddisasm/src/datalog/", "html"
+        "datalogautodoc_basedir", str(MAIN_DIRECTORY / "src/datalog/"), "html"
     )
 
     # Directives
