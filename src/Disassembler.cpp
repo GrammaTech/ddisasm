@@ -396,6 +396,28 @@ std::string stripSymbolVersion(const std::string Name)
     return Name;
 }
 
+void buildSymbolVersions(gtirb::Module &Module)
+{
+    std::map<gtirb::UUID, std::string> SymbolVersions;
+
+    std::vector<std::tuple<gtirb::Symbol *, std::string, std::string>> Versioned;
+    for(auto &Symbol : Module.symbols())
+    {
+        const std::string &Name = Symbol.getName();
+        if(size_t I = Name.find('@'); I != std::string::npos)
+        {
+            Versioned.push_back({&Symbol, Name.substr(0, I), Name.substr(I)});
+        }
+    }
+    for(auto [Symbol, Name, Version] : Versioned)
+    {
+        Symbol->setName(Name);
+        SymbolVersions.insert({Symbol->getUUID(), Version});
+    }
+
+    Module.addAuxData<gtirb::schema::ElfSymbolVersions>(std::move(SymbolVersions));
+}
+
 void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
@@ -1643,6 +1665,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildPadding(module, prog);
     buildComments(module, prog, selfDiagnose);
     updateEntryPoint(module, prog);
+    buildSymbolVersions(module);
 }
 
 void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
