@@ -147,7 +147,7 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
         }
 
         // Possible ASCII character.
-        if(std::isprint(Byte))
+        if(std::isprint(Byte) || std::isspace(Byte))
         {
             Ascii++;
         }
