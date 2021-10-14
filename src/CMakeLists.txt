@@ -36,7 +36,6 @@ set(DATALOG_BASE_SOURCES
     datalog/main.dl
     datalog/pe_binaries.dl
     datalog/pointer_reatribution.dl
-    datalog/printable_chars.dl
     datalog/register_type_analysis.dl
     datalog/relative_jump_tables.dl
     datalog/symbolization.dl

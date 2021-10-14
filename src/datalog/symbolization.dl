@@ -101,7 +101,7 @@ This module also computes and symbol_minus_symbol.
 
 .decl cant_have_symbolic_immediate(Operation:symbol)
 
-cant_have_symbolic_immediate(""):-false.
+cant_have_symbolic_immediate(""):- false.
 
 ////////////////////////////////////////////////////////////////////////////////////
 // candidates of symbolic values in the code
@@ -398,64 +398,13 @@ address_in_data_refined_range.in_ea(EA):-
 /////////////////////////////////////////////////////////////////////////////////
 // Detect strings
 
-string_candidate(Beg,Beg+Size):-
-    binary_format("PE"),
-    utf16_le_string(Beg,Size,_).
-
-string_candidate(Beg,End+1):-
-    data_byte(End,0),
-    string_part(End-1,Beg),
-    !labeled_data_candidate(End).
-
-.decl string_part(ea:address,base:address)
-
-string_part(EA,EA):-
-    preferred_data_access(EA,_),
-    data_byte(EA,Byte),
-    printable_char(Byte).
-
-string_part(EA,EA):-
-    labeled_data_candidate(EA),
-    data_byte(EA,Byte),
-    printable_char(Byte).
-
-string_part(EA+1,Base):-
-    string_part(EA,Base),
-    data_byte(EA+1,Byte),
-    !labeled_data_candidate(EA+1),
-    !preferred_data_access(EA+1,_),
-    printable_char(Byte).
-
-.decl utf16_le_ascii_char(EA:address,Base:address)
-.output utf16_le_ascii_char
-
-utf16_le_ascii_char(EA,EA):-
-    data_byte(EA,Byte),
-    data_byte(EA+1,0),
-    printable_char(Byte),
-    arch.pointer_size(Pt_size),
-    EA % Pt_size = 0,
-    data_byte(EA-1,Prev),
-    !printable_char(Prev).
-
-utf16_le_ascii_char(EA+2,Base):-
-    utf16_le_ascii_char(EA,Base),
-    data_byte(EA+2,Byte),
-    data_byte(EA+3,0),
-    printable_char(Byte).
-
-.decl null_terminated_utf16(EA:address,End:address)
-.output null_terminated_utf16
-
-null_terminated_utf16(Start,EA+2):-
-    utf16_le_ascii_char(Start,Start),
-    !utf16_le_ascii_char(Start-2,_),
-    utf16_le_ascii_char(EA,Start),
-    data_byte(EA+1,0),
-    data_byte(EA+2,0).
-
-string_candidate(Begin,End):-
-    null_terminated_utf16(Begin,End).
+string_candidate(EA,Beg+Size+1):-
+    ascii_string(Beg,Size),
+    (
+      labeled_data_candidate(EA);
+      preferred_data_access(EA,_)
+    ),
+    EA >= Beg, EA < Beg+Size.
 
 ///////////////////////////////////////////////////////////////////////////
 .decl data_object_candidate(ea:address,size:unsigned,type:symbol)
@@ -709,7 +658,7 @@ data_object_point(EA,Pt_size,"symbol",-10,"has no relocation"):-
     data_object_candidate(EA,Pt_size,"symbol"),
     !relocation(EA,_,_,_).
 
-//extra point if the string is long
+// Points for well-defined strings:
 data_object_point(EA,Size,"string",2,"string basic point"):-
     data_object_candidate(EA,Size,"string").
 
@@ -729,6 +678,16 @@ data_object_point(EA,Pt_size,"symbol",-2,"overlaps long string"):-
       data_object_conflict(EA,Pt_size,"symbol",_,Size,"string")
     ),
     Size > 5.
+
+// Split strings if a named substring exists, as we cannot use a moved-label.
+data_object_point(EA,Size,"string",-5,"labeled substring"):-
+    data_object_candidate(EA,Size,"string"),
+    (
+      data_object_conflict(EA,_,"string",EA2,_,"string");
+      data_object_conflict(EA2,_,"string",EA,_,"string")
+    ),
+    symbol(EA2,_,_,_,_,_,_,_),
+    EA2 > EA, EA2 < EA+Size.
 
 // data access negative heuristic
 data_object_point(EA,Size,"other",4,"data access"):-
