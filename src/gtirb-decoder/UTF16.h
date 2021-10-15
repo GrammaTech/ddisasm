@@ -20,33 +20,10 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include "Endian.h"
 
 namespace utf16
 {
-#ifdef _WIN32
-#include <windows.h>
-#endif // _WIN32
-
-#if defined(_WIN32) || defined(__APPLE__)
-#if defined(_MSC_VER)
-
-#define be16toh(x) _byteswap_uint16(x)
-#define le16toh(x) (x)
-
-#define be32toh(x) _byteswap_uint32(x)
-#define le32toh(x) (x)
-
-#elif defined(__GNUC__) || defined(__clang__)
-
-#define be16toh(x) __builtin_bswap16(x)
-#define le16toh(x) (x)
-
-#define be32toh(x) __builtin_bswap32(x)
-#define le32toh(x) (x)
-
-#endif // _MSC_VER
-#endif // defined(_WIN32) || defined(__APPLE__)
-
     namespace le
     {
 #define UTF16_ACCEPT 0
