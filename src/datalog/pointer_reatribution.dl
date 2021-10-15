@@ -87,7 +87,7 @@ moved_data_label(EA,SizePointer,Dest,Address):-
 // Pointer to substring.
 moved_data_label(EA,SizePointer,Dest,Beg):-
     symbolic_data(EA,SizePointer,Dest),
-    string(Beg,End),
+    string(Beg,End,_),
     Dest > Beg, Dest < End.
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -522,11 +522,11 @@ moved_label(EA,Op_index,Dest,ImageBase):-
 moved_label_class(EA,Op_index,"last character in string"),
 moved_label(EA,Op_index,Dest,Beg):-
     symbolic_operand(EA,Op_index,Dest,"data"),
-    string(Beg,Dest+2).
+    string(Beg,Dest+2,_).
 
 // Reference to a substring.
 moved_label_class(EA,Op_index,"substring"),
 moved_label(EA,Op_index,Dest,Beg):-
     symbolic_operand(EA,Op_index,Dest,"data"),
-    string(Beg,End),
+    string(Beg,End,_),
     Dest > Beg, Dest < End.

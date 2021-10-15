@@ -93,10 +93,11 @@ This module also computes and symbol_minus_symbol.
 .decl bss_data(ea:address)
 .output bss_data
 
-// string
-.decl string_candidate(ea:address,end:address)
+// Strings:
+.decl string_candidate(EA:address,End:address,Encoding:symbol)
+.output string_candidate
 
-.decl string(ea:address,end:address)
+.decl string(Ea:address,End:address,Encoding:symbol)
 .output string
 
 .decl cant_have_symbolic_immediate(Operation:symbol)
@@ -398,7 +399,8 @@ address_in_data_refined_range.in_ea(EA):-
 /////////////////////////////////////////////////////////////////////////////////
 // Detect strings
 
-string_candidate(EA,Beg+Size+1):-
+string_candidate(EA,Beg+Size+1,Encoding):-
+    Encoding = "ASCII",
     ascii_string(Beg,Size),
     (
       labeled_data_candidate(EA);
@@ -408,6 +410,7 @@ string_candidate(EA,Beg+Size+1):-
 
 ///////////////////////////////////////////////////////////////////////////
 .decl data_object_candidate(ea:address,size:unsigned,type:symbol)
+.output data_object_candidate
 
 .decl data_object_point(ea:address,size:unsigned,type:symbol,points:number,why:symbol)
 .output data_object_point
@@ -427,7 +430,7 @@ data_object_candidate(EA,Pt_size,"symbol"):-
     address_in_data_refined(EA,_).
 
 data_object_candidate(EA,Size,"string"):-
-    string_candidate(EA,End),
+    string_candidate(EA,End,_),
     Size = End-EA.
 
 data_object_candidate(EA,Size,"other"):-
@@ -755,9 +758,9 @@ symbolic_data(EA,Size,as(Val,address)):-
     data_object(EA,Size,"symbol"),
     address_in_data_refined(EA,Val).
 
-string(EA,End):-
+string(EA,End,Encoding):-
     data_object(EA,Size,"string"),
-    string_candidate(EA,End),
+    string_candidate(EA,End,Encoding),
     Size = End-EA.
 
 symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale):-
@@ -798,7 +801,7 @@ labeled_data(EA):-
 data_object_boundary(EA):-
     labeled_data(EA);
     symbolic_data(EA,_,_);
-    string(EA,_);
+    string(EA,_,_);
     symbol_minus_symbol(EA,_,_,_,_);
     symbolic_expr_from_relocation(EA,_,_,_);
     moved_data_label(EA,_,_,_).
