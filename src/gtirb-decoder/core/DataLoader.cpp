@@ -103,14 +103,14 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
                 case Pointer::DWORD:
                 {
                     uint32_t Bytes = *((int32_t*)Data);
-                    Bytes = (Endianness == Endianness::BIG) ? be32toh(Bytes) : le32toh(Bytes);
+                    Bytes = (Endianness == Endian::BIG) ? be32toh(Bytes) : le32toh(Bytes);
                     Value = gtirb::Addr(Bytes);
                     break;
                 }
                 case Pointer::QWORD:
                 {
                     uint64_t Bytes = *((int64_t*)Data);
-                    Bytes = (Endianness == Endianness::BIG) ? be64toh(Bytes) : le64toh(Bytes);
+                    Bytes = (Endianness == Endian::BIG) ? be64toh(Bytes) : le64toh(Bytes);
                     Value = gtirb::Addr(Bytes);
                     break;
                 }
@@ -177,7 +177,7 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
 
         // Possible UTF-16 LE byte.
         bool Null = Utf16.State == UTF16_ACCEPT && Utf16.Codepoint == 0 && Utf16.Length > 0;
-        if(Null && Utf16.Length > 0)
+        if(Null && Utf16.Length > StringLimit)
         {
             uint64_t Size = static_cast<uint64_t>(Addr - Utf16.Addr);
             Facts.Utf16.push_back({Utf16.Addr, Size, Utf16.Length});
