@@ -75,7 +75,6 @@ protected:
 private:
     Pointer PointerSize;
     Endianness Endianness;
-    size_t StringLimit = 3;
 };
 
 #endif // SRC_GTIRB_DECODER_CORE_DATALOADER_H_
