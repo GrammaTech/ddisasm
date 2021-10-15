@@ -151,7 +151,7 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
         {
             Ascii++;
         }
-        else if(Byte == 0 && Ascii > StringLimit)
+        else if(Byte == 0 && Ascii > 0)
         {
             Facts.Ascii.push_back({Addr - Ascii, Ascii});
             Ascii = 0;
@@ -162,7 +162,7 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
         }
 
         // Possible UTF-8 byte.
-        if(Byte == 0 && Utf8.State == UTF8_ACCEPT && Utf8.Length > StringLimit)
+        if(Byte == 0 && Utf8.State == UTF8_ACCEPT && Utf8.Length > 0)
         {
             uint64_t Size = static_cast<uint64_t>(Addr - Utf8.Addr);
             Facts.Utf8.push_back({Utf8.Addr, Size, Utf8.Length});
@@ -201,7 +201,7 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
 
         // Possible UTF-16 LE byte.
         bool Null = Utf16.State == UTF16_ACCEPT && Utf16.Codepoint == 0 && Utf16.Length > 0;
-        if(Null && Utf16.Length > StringLimit)
+        if(Null && Utf16.Length > 0)
         {
             uint64_t Size = static_cast<uint64_t>(Addr - Utf16.Addr);
             Facts.Utf16.push_back({Utf16.Addr, Size, Utf16.Length});
