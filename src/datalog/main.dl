@@ -193,12 +193,6 @@ This module:
 .decl ascii_string(Begin:address,Size:unsigned)
 .input ascii_string
 
-.decl utf8_string(Begin:address,Size:unsigned,Codepoints:unsigned)
-.input utf8_string
-
-.decl utf16_le_string(Begin:address,Size:unsigned,Codepoints:unsigned)
-.input utf16_le_string
-
 ///////////////////////////////////////////////////////////////
 // Initialize components
 

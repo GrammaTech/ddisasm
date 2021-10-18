@@ -23,8 +23,6 @@
 #include "DataLoader.h"
 #include "../../AuxDataSchema.h"
 #include "../Endian.h"
-#include "../UTF16.h"
-#include "../UTF8.h"
 
 void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
 {
@@ -34,8 +32,6 @@ void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program
     Program.insert("data_byte", std::move(Facts.Bytes));
     Program.insert("address_in_data", std::move(Facts.Addresses));
     Program.insert("ascii_string", std::move(Facts.Ascii));
-    Program.insert("utf8_string", std::move(Facts.Utf8));
-    Program.insert("utf16_le_string", std::move(Facts.Utf16));
 }
 
 void DataLoader::load(const gtirb::Module& Module, DataFacts& Facts)
@@ -84,8 +80,6 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
     auto Data = ByteInterval.rawBytes<const int8_t>();
 
     size_t Ascii = 0;
-    Unicode Utf8 = {gtirb::Addr(0), 0, UTF8_ACCEPT, 0};
-    Unicode Utf16 = {gtirb::Addr(0), 0, UTF16_ACCEPT, 0};
 
     while(Size > 0)
     {
@@ -135,83 +129,6 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
         else
         {
             Ascii = 0;
-        }
-
-        // Possible UTF-8 byte.
-        if(Byte == 0 && Utf8.State == UTF8_ACCEPT && Utf8.Length > 0)
-        {
-            uint64_t Size = static_cast<uint64_t>(Addr - Utf8.Addr);
-            Facts.Utf8.push_back({Utf8.Addr, Size, Utf8.Length});
-            Utf8 = {gtirb::Addr(0), 0, UTF8_ACCEPT, 0};
-        }
-        else if(Byte != 0)
-        {
-            switch(utf8::decode(&Utf8.State, &Utf8.Codepoint, Byte))
-            {
-                case UTF8_ACCEPT:
-                    // Complete character.
-                    if(Utf8.Addr == gtirb::Addr(0))
-                    {
-                        Utf8.Addr = Addr;
-                    }
-                    Utf8.Length++;
-                    break;
-                case UTF8_REJECT:
-                    // Invalid sequence.
-                    Utf8 = {gtirb::Addr(0), 0, UTF8_ACCEPT, 0};
-                    break;
-                default:
-                    // Incomplete character.
-                    if(Utf8.Addr == gtirb::Addr(0))
-                    {
-                        Utf8.Addr = Addr;
-                    }
-                    break;
-            }
-        }
-        else
-        {
-            // String was invalid or too small.
-            Utf8 = {gtirb::Addr(0), 0, UTF8_ACCEPT, 0};
-        }
-
-        // Possible UTF-16 LE byte.
-        bool Terminated = Utf16.State == 1 && Utf16.Codepoint == 0 && Byte == 0;
-        if(Terminated && Utf16.Length > StringLimit)
-        {
-            uint64_t Size = static_cast<uint64_t>(Addr - Utf16.Addr + 1);
-            Facts.Utf16.push_back({Utf16.Addr, Size, Utf16.Length});
-            Utf16 = {gtirb::Addr(0), 0, UTF16_ACCEPT, 0};
-        }
-        else if(!Terminated)
-        {
-            switch(utf16::le::decode(&Utf16.State, &Utf16.Codepoint, Byte))
-            {
-                case UTF16_ACCEPT:
-                    // Complete character.
-                    if(Utf16.Addr == gtirb::Addr(0))
-                    {
-                        Utf16.Addr = Addr;
-                    }
-                    Utf16.Length++;
-                    break;
-                case UTF16_REJECT:
-                    // Invalid sequence.
-                    Utf16 = {gtirb::Addr(0), 0, UTF16_ACCEPT, 0};
-                    break;
-                default:
-                    // Incomplete character.
-                    if(Utf16.Addr == gtirb::Addr(0))
-                    {
-                        Utf16.Addr = Addr;
-                    }
-                    break;
-            }
-        }
-        else
-        {
-            // String was invalid or too small.
-            Utf16 = {gtirb::Addr(0), 0, UTF16_ACCEPT, 0};
         }
 
         ++Addr;

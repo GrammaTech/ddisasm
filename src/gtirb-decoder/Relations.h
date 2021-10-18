@@ -44,13 +44,6 @@ namespace relations
         T Item;
     };
 
-    struct String
-    {
-        gtirb::Addr Addr;
-        uint64_t Size;
-        uint64_t Characters;
-    };
-
     struct Instruction
     {
         gtirb::Addr Addr;
@@ -256,8 +249,6 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolicExpression& Expr);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolMinusSymbol& Expr);
-
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::String& S);
 
 } // namespace souffle
 

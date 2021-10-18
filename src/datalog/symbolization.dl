@@ -95,7 +95,6 @@ This module also computes and symbol_minus_symbol.
 
 // Strings:
 .decl string_candidate(EA:address,End:address,Encoding:symbol)
-.output string_candidate
 
 .decl string(Ea:address,End:address,Encoding:symbol)
 .output string
