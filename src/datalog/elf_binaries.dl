@@ -257,6 +257,7 @@ main_function(Main_location):-
     symbolic_operand(Prev,1,Main_location,"code").
 
 inferred_symbol_name(EA,"_start","GLOBAL","FUNC"):-
+    !symbol(EA,_,"FUNC",_,_,_,_,_),
     start_function(EA).
 
 inferred_symbol_name(EA,"__do_global_dtors_aux","LOCAL","FUNC"):-
@@ -417,18 +418,3 @@ moved_immediate_candidate(EAStop,ImmIndexStop,ImmediateStopAddr,ImmediateStartAd
 relocation_alias(EA,Alias,Name):-
     symbol(EA,_,"OBJECT","WEAK",_,_,_,Alias),
     relocation(EA,"COPY",Name,_).
-
-// When there are both PLT and GOT references to the same function
-// symbol, linker will create a GOTPLT slot for PLT entry and a GOT
-// slot for GOT reference.  A run-time JUMP_SLOT relocation is created
-// to update the GOTPLT slot and a run-time GLOB_DAT relocation is
-// created to update the GOT slot.  Both JUMP_SLOT and GLOB_DAT
-// relocations will apply the same symbol value to GOTPLT and GOT
-// slots, respectively, at run-time.
-//
-// In such cases, discard the symbol with (EA:0,Size:0,SectIndex:0)
-relocation_alias(EA,Alias,Name):-
-    relocation(_,"GLOB_DAT",Name,_),
-    relocation(_,"JUMP_SLOT",Name,_),
-    symbol(EA,0,"FUNC","GLOBAL",0,_,_,Name),
-    EA = 0, Alias = Name.
