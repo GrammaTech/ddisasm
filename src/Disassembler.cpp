@@ -1061,10 +1061,9 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                     }
                     else
                         // string
-                        if(const auto S = DataStrings.find(currentAddr);
-                           S != DataStrings.end() && S->Encoding == "ASCII")
+                        if(const auto S = DataStrings.find(currentAddr); S != DataStrings.end())
                     {
-                        if(S->Encoding == "ASCII")
+                        if(S->Encoding == "ascii")
                         {
                             d = gtirb::DataBlock::Create(context, S->End - currentAddr);
                             typesTable[d->getUUID()] = std::string{"string"};
