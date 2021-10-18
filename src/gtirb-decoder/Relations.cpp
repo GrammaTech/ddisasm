@@ -153,11 +153,4 @@ namespace souffle
         T << Expr.Addr << Expr.Symbol1 << Expr.Symbol2 << Expr.Offset;
         return T;
     }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::String& S)
-    {
-        T << S.Addr << S.Size << S.Characters;
-        return T;
-    }
-
 } // namespace souffle
