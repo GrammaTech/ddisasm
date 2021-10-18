@@ -399,14 +399,14 @@ address_in_data_refined_range.in_ea(EA):-
 /////////////////////////////////////////////////////////////////////////////////
 // Detect strings
 
-string_candidate(EA,Beg+Size+1,Encoding):-
-    Encoding = "ASCII",
+string_candidate(EA,Beg+Size,"ascii"):-
     ascii_string(Beg,Size),
     (
       labeled_data_candidate(EA);
       preferred_data_access(EA,_)
     ),
     EA >= Beg, EA < Beg+Size.
+
 
 ///////////////////////////////////////////////////////////////////////////
 .decl data_object_candidate(ea:address,size:unsigned,type:symbol)

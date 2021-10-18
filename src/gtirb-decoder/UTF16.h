@@ -59,19 +59,29 @@ namespace utf16
                 case 2:
                 {
                     uint16_t value = be16toh(static_cast<uint16_t>(*codep));
-                    if(value >= 0x0000 && value <= 0x007F || value >= 0x0080 && value <= 0x07FF
-                       || value >= 0x0800 && value <= 0x0FFF || value >= 0x1000 && value <= 0xCFFF
-                       || value >= 0xD000 && value <= 0xD7FF || value >= 0xF900 && value <= 0xFFFF
-                       || value >= 0xE000 && value <= 0xEFFF || value >= 0xF000 && value <= 0xF8FF)
+                    std::cerr << "value: " << std::hex << value << "\n";
+                    if((value >= 0x0000 && value <= 0x007F) //
+                       || (value >= 0x0080 && value <= 0x07FF)
+                       || (value >= 0x0800 && value <= 0x0FFF)
+                       || (value >= 0x1000 && value <= 0xCFFF)
+                       || (value >= 0xD000 && value <= 0xD7FF)
+                       || (value >= 0xF900 && value <= 0xFFFF)
+                       || (value >= 0xE000 && value <= 0xEFFF)
+                       || (value >= 0xF000 && value <= 0xF8FF))
                     {
                         *state = 0;
                     }
-                    else if(value >= 0xD800 && value <= 0xD8BF || value >= 0xD8C0 && value <= 0xDABF
-                            || value >= 0xDAC0 && value <= 0xDB7F
-                            || value >= 0xDB80 && value <= 0xDBBF
-                            || value >= 0xDBC0 && value <= 0xDBFF)
+                    else if((value >= 0xD800 && value <= 0xD8BF)
+                            || (value >= 0xD8C0 && value <= 0xDABF)
+                            || (value >= 0xDAC0 && value <= 0xDB7F)
+                            || (value >= 0xDB80 && value <= 0xDBBF)
+                            || (value >= 0xDBC0 && value <= 0xDBFF))
                     {
                         *state = 3;
+                    }
+                    else
+                    {
+                        *state = UTF16_REJECT;
                     }
                 }
                 break;
