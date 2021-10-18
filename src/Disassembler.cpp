@@ -465,20 +465,6 @@ void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
             Symbol->setReferent(module.addProxyBlock(context));
             symbolForwarding[NewSymbol->getUUID()] = Symbol->getUUID();
         }
-        else
-        {
-            // Remove null FUNC relocation aliases.
-            auto const &It = module.findSymbols(Alias);
-            if(auto Found = std::find_if(It.begin(), It.end(),
-                                         [](const auto &S) { return !S.getAddress(); });
-               Found != It.end())
-            {
-                Symbol = &*It.begin();
-                auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
-                SymbolInfo->erase(Symbol->getUUID());
-                module.removeSymbol(Symbol);
-            }
-        }
     }
     for(auto &output : *prog->getRelation("relocation"))
     {
