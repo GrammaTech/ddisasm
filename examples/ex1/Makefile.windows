@@ -1,7 +1,7 @@
 CFLAGS="/Fa"
 
 all: ex.c
-	cl /nologo $(CFLAGS) ex.c
+	cl /nologo ex.c $(CFLAGS)
 	@ ex > out.txt
 clean:
 	del /F /Q *.exe *.obj *.exp *.def *.lib *.asm out.txt check.txt mllink$$.lnk

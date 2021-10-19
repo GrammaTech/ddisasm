@@ -684,3 +684,24 @@ npad(EA,Size):-
 is_padding(EA):-
     binary_format("PE"),
     npad(EA,_).
+
+.decl merged_data_region(Start:address,End:address)
+.output merged_data_region
+
+merged_data_region(DataStart,DataStart+DataSize):-
+  binary_format("PE"),
+  !section(".rdata",_,_),
+  (
+    data_directory(_,DataStart,DataSize), DataSize > 0;
+    pe_debug_data(_,DataStart,DataSize), DataSize > 0
+  ),
+  entry_point(Entry),
+  DataStart < Entry,
+  section(".text",SectionSize,SectionStart),
+  DataStart > SectionStart,
+  DataStart < SectionStart + SectionSize.
+
+data_region(Start,Size):-
+  Last = max End:{merged_data_region(_,End)},
+  section(".text",_,Start),
+  Size = Last - Start.
