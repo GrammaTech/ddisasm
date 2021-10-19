@@ -97,3 +97,11 @@ tests:
 
     - name: ex_simple_dll
       <<: *default
+
+    - name: ex1
+      <<: *default
+      build:
+        c: ["cl"]
+        cpp: ["cl"]
+        optimizations: ["/Od", "/Ot", "/O1", "/Ox", "/O2"]
+        flags: ["/link", "/merge:.rdata=.text"]

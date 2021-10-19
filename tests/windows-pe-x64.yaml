@@ -108,3 +108,11 @@ tests:
 
     - name: ex_base_relative1
       <<: *assembly
+
+    - name: ex1
+      <<: *default
+      build:
+        c: ["cl"]
+        cpp: ["cl"]
+        optimizations: ["/Od", "/Ot", "/O1", "/Ox", "/O2"]
+        flags: ["/link", "/merge:.rdata=.text"]
