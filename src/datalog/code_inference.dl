@@ -804,6 +804,11 @@ data_in_code(Begin,End+1):-
     data_in_code_propagate(End,Begin,_),
     !data_in_code_propagate(End+1,Begin,_).
 
+// Data before the first code-block in the code section.
+data_in_code(Begin,Block-1):-
+    section(".text",Size,Begin),
+    Block = min EA:{ block_boundaries(_,EA,_), EA >= Begin, EA < Begin + Size },
+    Block > Begin.
 
 .decl next_block_in_section(Block:address,NextBlock:address)
 // Blocks are either contiguous or separated by data segments
