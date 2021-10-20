@@ -39,21 +39,8 @@ Note that these versions are newer than what your package manager may provide
 by default: This is true on Ubuntu 18, Debian 10, and others. Prefer building
 these dependencies from sources to avoid versioning problems. Alternatively,
 you can use the GrammaTech PPA to get the correct versions of the dependencies.
-
-### Ubuntu16
-```sh
-sudo add-apt-repository ppa:maarten-fonville/protobuf
-sudo add-apt-repository ppa:mhier/libboost-latest
-echo "deb https://grammatech.github.io/gtirb/pkgs/xenial ./" | sudo tee -a /etc/apt/sources.list.d/gtirb.list
-sudo apt-get update
-```
-
-### Ubuntu18
-```sh
-sudo add-apt-repository ppa:mhier/libboost-latest
-echo "deb [trusted=yes] https://grammatech.github.io/gtirb/pkgs/bionic ./" | sudo tee -a /etc/apt/sources.list.d/gtirb.list
-sudo apt-get update
-```
+See the [GTIRB readme](https://github.com/GrammaTech/gtirb/#installing) for
+instructions on using the GrammaTech PPA.
 
 ## Building ddisasm
 Use the following options to configure cmake:
