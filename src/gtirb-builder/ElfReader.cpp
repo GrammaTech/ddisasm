@@ -523,12 +523,26 @@ void ElfReader::buildSymbols()
                 continue;
             }
 
-            // Remove version suffix from symbol name.
             std::string Name = Symbol.name();
-            std::size_t Version = Name.find('@');
-            if(Version != std::string::npos)
+            std::optional<std::string> Version;
+            if(std::size_t I = Name.find('@'); I != std::string::npos)
             {
-                Name = Name.substr(0, Version);
+                // TODO: Keep track of "default" versions as denoted by double `at'.
+                Version = Name.substr(I, 2) == "@@" ? Name.substr(I + 2) : Name.substr(I + 1);
+                Name = Name.substr(0, I);
+            }
+            else if(Symbol.has_version())
+            {
+                LIEF::ELF::SymbolVersion SymbolVersion = Symbol.symbol_version();
+                if(SymbolVersion.has_auxiliary_version())
+                {
+                    Version = SymbolVersion.symbol_version_auxiliary().name();
+                }
+            }
+            if(Version)
+            {
+                // Construct a normalized symbol name and a version.
+                Name = Name.append("@" + *Version);
             }
 
             uint64_t Value = Symbol.value();
@@ -633,6 +647,15 @@ void ElfReader::addAuxData()
         if(Relocation.has_symbol())
         {
             SymbolName = Relocation.symbol().name();
+
+            if(Relocation.symbol().has_version())
+            {
+                LIEF::ELF::SymbolVersion SymbolVersion = Relocation.symbol().symbol_version();
+                if(SymbolVersion.has_auxiliary_version())
+                {
+                    SymbolName.append("@" + SymbolVersion.symbol_version_auxiliary().name());
+                }
+            }
         }
         RelocationTuples.insert(
             {Relocation.address(), getRelocationType(Relocation), SymbolName, Relocation.addend()});
