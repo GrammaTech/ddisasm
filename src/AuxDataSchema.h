@@ -74,6 +74,13 @@ namespace gtirb
             typedef std::map<gtirb::UUID, ElfSymbolTabIdxInfo> Type;
         };
 
+        /// \brief Auxiliary data for ELF symbol versions.
+        struct ElfSymbolVersions
+        {
+            static constexpr const char* Name = "elfSymbolVersions";
+            typedef std::map<gtirb::UUID, std::string> Type;
+        };
+
         /// \brief Auxiliary data describing a binary's type.
         struct BinaryType
         {
