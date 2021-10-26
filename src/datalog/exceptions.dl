@@ -296,6 +296,11 @@ special_encoding(9,"sleb128").
 
 .decl dwarf_encoding_size(Encoding:unsigned,Size:unsigned)
 
+// the encoding 0 is officially not defined but it happens
+// in x86 32 bits programs. In that case, the encoding
+// seems to be a regular 4 byte pointer.
+dwarf_encoding_size(0,4).
+
 dwarf_encoding_size(2,2).
 dwarf_encoding_size(3,4).
 dwarf_encoding_size(4,8).
