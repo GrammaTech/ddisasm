@@ -117,7 +117,9 @@ relative_address_start(EA,Size,EA,Dest,DestIsFirstOrSecond):-
     (
         Size = 4, Diff <= 0, Diff2 <= 0
         ;
-        Size = 8
+        Size = 8,
+        // The read addresses are not regular pointers already
+        !relocation(EA,_,_,_)
     ),
     // sometimes the jump table entry is Diff = Reference-JumpTarget
     // and sometimes it is Diff = JumpTarget-Reference
