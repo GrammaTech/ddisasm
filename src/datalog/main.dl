@@ -648,12 +648,14 @@ unconditional_return(EA):-
 no_return_call(EA):-
     direct_call(EA,Dest),
     plt_entry(Dest,Function),
-    no_return_function(Function).
+    no_return_function(Pattern),
+    match(Pattern,Function).
 
 no_return_call(EA):-
     direct_call(EA,Dest),
     defined_symbol(Dest,_,_,_,_,_,_,Name),
-    no_return_function(Name).
+    no_return_function(Pattern),
+    match(Pattern,Name).
 
 .decl is_padding(EA:address)
 
