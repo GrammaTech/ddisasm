@@ -292,13 +292,12 @@ inferred_symbol_name(EA,Name,"GLOBAL","FUNC"):-
     !ifunc_symbol(EA,_),
     Name = cat("FUN_",to_string(EA)).
 
-
-no_return_function("exit"):-binary_format("ELF").
-no_return_function("_exit"):-binary_format("ELF").
-no_return_function("abort"):-binary_format("ELF").
-no_return_function("__stack_chk_fail"):-binary_format("ELF").
-no_return_function("__assert_fail"):-binary_format("ELF").
-no_return_function("longjump"):-binary_format("ELF").
+no_return_function("abort(@.*)?"):- binary_format("ELF").
+no_return_function("_?exit(@.*)?"):- binary_format("ELF").
+no_return_function("__chk_fail(@.*)?"):- binary_format("ELF").
+no_return_function("__stack_chk_fail(@.*)?"):- binary_format("ELF").
+no_return_function("__assert_fail(@.*)?"):- binary_format("ELF").
+no_return_function("longjmp(@.*)?"):- binary_format("ELF").
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
