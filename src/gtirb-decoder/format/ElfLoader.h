@@ -47,6 +47,7 @@ private:
     souffle::tuple getFDEPointerLocations(souffle::Relation *relation,
                                           const EHP::FDEContents_t *fde);
     souffle::tuple getEHProgramInstruction(souffle::Relation *relation, uint64_t index,
+                                           uint64_t insnAddr,
                                            const EHP::EHProgramInstruction_t *insn,
                                            const EHP::FDEContents_t *fde);
     souffle::tuple getLSDA(souffle::Relation *relation, const EHP::LSDA_t *lsda,

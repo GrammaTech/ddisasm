@@ -20,48 +20,119 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+/**
+This module takes care of symbolization in the exception sections and
+it generates CFI directives based on the unwind and exception information.
+*/
 
-.decl cie_entry(addr: address, length:unsigned,codeAlignmentFactor:unsigned,DataAlignmentFactor:number)
+/**
+A CIE can be associated to multiple FDEs and it contains information common to all
+of them. 'CieAddr' uniquely identifies the CIE.
+*/
+.decl cie_entry(CieAddr: address, Length:unsigned,CodeAlignmentFactor:unsigned,DataAlignmentFactor:number)
 .input cie_entry
 
-.decl cie_encoding(addr: address, FdeEncoding:unsigned, LsdaEncoding:unsigned)
+/**
+`cie_encoding` complements `cie_entry` and defines the encodings of the pointers in the FDEs and in the
+LSDAs associated to this CIE.
+*/
+.decl cie_encoding(CieAddr: address, FdeEncoding:unsigned, LsdaEncoding:unsigned)
 .input cie_encoding
 
-.decl cie_personality(addr:address,Personality:address,PersonalityPos:address,PersonalitySize:unsigned,Encoding:unsigned)
+/**
+The personality routine associated to a CIE entry. This is the procedure that takes care of unwinding
+the stack and exceptions. For C++ it is typically: '__gxx_personality_v0'.
+*/
+.decl cie_personality(CieAddr:address,Personality:address,PersonalityPos:address,PersonalitySize:unsigned,Encoding:unsigned)
 .input cie_personality
 
-.decl fde_entry(addr: address,length:unsigned,cie:address, start:address, end:address,lsda:address)
+/**
+A FDE entry defines how stack unwinding is done in a region of code from 'start' to 'end'.
+Each FDE points to a parent CIE that contains properties common to multiple FDEs.
+'FdeAddr' and 'Length' determine the location of the FDE entry in the eh_frame section.
+A FDE entry can have 'Lsda' associated that contains exception handling information.
+*/
+.decl fde_entry(FdeAddr: address,Length:unsigned,Cie:address, Start:address, End:address,Lsda:address)
 .input fde_entry
 
+/**
+Complementary predicate that specifies the actual locations of the symbolic expressions
+in the FDE entry.
+*/
 .decl fde_pointer_locations(addr:address,startLocation:address,endLocation:address,
                             endSize:unsigned,lsdaLocation:address,lsdaSize:unsigned)
 .input fde_pointer_locations
 
-.decl fde_instruction(addr:address,index:unsigned,size:unsigned,insn:symbol,op1:number,op2:number)
+/**
+The instructions for stack unwinding are encoded into a dwarf program
+formed by a list of  instructions. Each FDE corresponds to a region
+in the code and it has its own program. This predicate captures
+one instruction in that program.
+
+- FdeAddr is the address of the FDE and indentifies it uniquely.
+- Index identifies the instruction within the FDE uniquely.
+- Size is the size of the instruction in bytes.
+- InsnAddr is the address where the instruction is located
+- Insn is the actual opcode of the instruction
+- Op1 and Op2 are the operands of the instruction.
+
+*/
+.decl fde_instruction(FdeAddr:address,Index:unsigned,Size:unsigned,InsnAddr:address,Insn:symbol,Op1:number,Op2:number)
 .input fde_instruction
 
+/**
+A LSDA defines the exception information of a region of code (typically a procedure).
+This is located in section '.gcc_except_table'. A LSDA entry contains two main elements
+a callsite table (see `lsda_callsite`) and a type table (see `lsda_type_entry`).
+*/
 .decl lsda(lsdaAddress:address,callsiteTable:address,callsiteTableEncoding:unsigned,callSiteTableLength:unsigned,
            typeTable:address, typeTableEncoding:unsigned, landingPadBaseAddress: address)
 .input lsda
 
+/**
+Complementary predicate with the locations of the various pointers in a LSDA for used for symbolization.
+*/
 .decl lsda_pointer_locations(lsdaAddress:address,typeTablePointerLocation:address,callsiteTablePointerLoc:address)
 .input lsda_pointer_locations
 
-.decl lsda_callsite(CallSiteTable_address:address,EA_start:address, start:address,
-    EA_end:address,end:address,
-    EA_landingPad:address,landingPad:address,EA_endLandindPad:address)
+/**
+The range [Start,End) corresponds to the try block
+and 'LandingPad' to the location where the catch block is located.
+'EA_start', 'EA_end' and 'EA_landingPad' a the locations of the symbolic expressions
+in the .gcc_except_table that point to 'Start', 'End' and 'LandingPad' respectively.
+*/
+.decl lsda_callsite(CallSiteTable_address:address,EA_start:address, Start:address,
+    EA_end:address,End:address,
+    EA_landingPad:address,LandingPad:address,EA_endLandindPad:address)
 .input lsda_callsite
 
+/**
+The exception handling mechanism chooses which catch block catches an given exception
+based on the type of the exception. This is done by having references to the types
+which are encoded in the type table.
+A `lsda_type_entry` is an entry in the type table. The "type" is represented as a
+symbolic expression pointing to 'address'.
+*/
 .decl lsda_type_entry(lsdaTypeTableAddress:address, index:unsigned,address:address)
 .input lsda_type_entry
 /////////////////////////////////////////////////////////////////////////////////
 // output predicates
 
+/**
+A CFI directive specifies unwind information directly inlined into the assembly code.
+This representation is slightly higher level than a raw eh_frame section but mostly equivalent.
+Most CFI directives are generated 1-to-1 from a `fde_instruction`.
+Other CFI directives mark the beginning and end of the FDE (.starproc and .endproc)
+or contain a pointer to the corresponding LSDA (exception handling information) or to the
+personality (.cfi_lsda and .cfi_personality respectively).
+*/
 .decl cfi_directive(BlockAddress:address,Offset:unsigned,LocalIndex:unsigned,
                     directive:symbol,Reference:address, Nargs:unsigned,arg1:number,arg2:number)
 .output cfi_directive
 
-// symbol_special_encoding marks symbols that are encoded with uleb128 or sleb128.
+/**
+`symbol_special_encoding` marks symbols that are encoded with uleb128 or sleb128.
+*/
 .decl symbol_special_encoding(EA:address,encoding:symbol)
 .output symbol_special_encoding
 
@@ -279,10 +350,9 @@ symbol_minus_symbol(LsdaLocation,LsdaSize,LsdaLocation,LsdaAddress,1):-
 // instructions
 symbol_minus_symbol(InstructionAddr+1,Size-1,Addr+(AdvanceUnsigned*CodeAlignmentFactor),Addr,CodeAlignmentFactor):-
     option("no-cfi-directives"),
-    fde_instruction(FdeAddr,Index,Size,"advance_loc",Advance,_),
+    fde_instruction(FdeAddr,Index,Size,InstructionAddr,"advance_loc",Advance,_),
     AdvanceUnsigned = as(Advance,unsigned),
     Size > 1,
-    fde_instruction_pos(FdeAddr,Index,InstructionAddr),
     fde_instruction_ref(FdeAddr,Index,_,Addr),
     fde_entry(FdeAddr,_,Cie,_,_,_),
     cie_entry(Cie,_,CodeAlignmentFactor,_).
@@ -316,24 +386,11 @@ last_fde(Addr):-
     !fde_entry(Addr+Length+4,_,_, _, _,_),
     !cie_entry(Addr+Length+4,_,_,_).
 
-//////////////////////////////////////////////////////////////////////////////////
-// position of the instruction in the fde entry
-
-.decl fde_instruction_pos(FdeAddr:address,Index:unsigned,InstructionAddr:address)
-
-fde_instruction_pos(FdeAddr,0,InstructionAddr):-
-    fde_pointer_locations(FdeAddr,_,_, _,LsdaLocation,LsdaSize),
-    InstructionAddr=LsdaLocation+LsdaSize.
-
-fde_instruction_pos(FdeAddr,Index+1,InstructionAddr+Size):-
-    fde_instruction_pos(FdeAddr,Index,InstructionAddr),
-    fde_instruction(FdeAddr,Index,Size,_,_,_).
-
 .decl last_fde_instruction(FdeAddr:address,Index:unsigned)
 
 last_fde_instruction(FdeAddr,Index+1):-
-    fde_instruction(FdeAddr,Index,_,_,_,_),
-    !fde_instruction(FdeAddr,Index+1,_,_,_,_).
+    fde_instruction(FdeAddr,Index,_,_,_,_,_),
+    !fde_instruction(FdeAddr,Index+1,_,_,_,_,_).
 
 // location to which the instruction refers
 .decl fde_instruction_ref(FdeAddr:address,Index:unsigned,LocalIndex:unsigned,ReferenceAddr:address)
@@ -344,7 +401,7 @@ fde_instruction_ref(FdeAddr,0,3,StartFunction):-
 
 fde_instruction_ref(FdeAddr,Index+1,NextLocalIndex,Addr):-
     fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
-    fde_instruction(FdeAddr,Index,_,Insn,_,_),
+    fde_instruction(FdeAddr,Index,_,_,Insn,_,_),
     Insn != "advance_loc",
     Insn != "cf_advance_loc",
     (
@@ -358,8 +415,8 @@ fde_instruction_ref(FdeAddr,Index+1,0,Addr+(CodeAlignmentFactor*as(Advance,unsig
     fde_entry(FdeAddr,_,Cie,_,_,_),
     cie_entry(Cie,_,CodeAlignmentFactor,_),
     (
-        fde_instruction(FdeAddr,Index,_,"advance_loc",Advance,_);
-        fde_instruction(FdeAddr,Index,_,"cf_advance_loc",Advance,_)
+        fde_instruction(FdeAddr,Index,_,_,"advance_loc",Advance,_);
+        fde_instruction(FdeAddr,Index,_,_,"cf_advance_loc",Advance,_)
     ).
 
 .decl endproc_local_index(FdeAddr:address,LocalIndex:unsigned)
@@ -418,7 +475,7 @@ cfi_directive(StartFunction,0,2,".cfi_personality",Personality,1,Encoding,0):-
 // directives that correspond to an instruction
 cfi_directive(Block,Offset,LocalIndex,CfiInsn,0,NOperands,ScaledOp1,ScaledOp2):-
     !option("no-cfi-directives"),
-    fde_instruction(FdeAddr,Index,_,Insn,Op1,Op2),
+    fde_instruction(FdeAddr,Index,_,_,Insn,Op1,Op2),
     fde_entry(FdeAddr,_,Cie,_,_,_),
     fde_block_addresses(FdeAddr,_,EndBlockAddr),
     dwarf_to_cfi(Insn,NOperands,CfiInsn),
@@ -451,9 +508,8 @@ cfi_directive(Block,Offset,LocalIndex,CfiInsn,0,NOperands,ScaledOp1,ScaledOp2):-
 // instructions that are encoded as a block of bytes (because they don't have their own cfi directive)
 cfi_directive(Block,Offset,LocalIndex,".cfi_escape",InstructionBytesAddr,Size,0,0):-
     !option("no-cfi-directives"),
-    fde_instruction(FdeAddr,Index,Size,"unhandled_instruction",_,_),
+    fde_instruction(FdeAddr,Index,Size,InstructionBytesAddr,"unhandled_instruction",_,_),
     fde_block_addresses(FdeAddr,_,EndBlockAddr),
-    fde_instruction_pos(FdeAddr,Index,InstructionBytesAddr),
     fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
     (
         Addr >= EndBlockAddr,
