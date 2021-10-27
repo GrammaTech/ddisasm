@@ -48,8 +48,8 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<FunctionNames>();
     gtirb::AuxDataContainer::registerAuxDataType<Padding>();
     gtirb::AuxDataContainer::registerAuxDataType<SymbolForwarding>();
-    gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolInfoAD>();
-    gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolTabIdxInfoAD>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolInfo>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolTabIdxInfo>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolVersions>();
     gtirb::AuxDataContainer::registerAuxDataType<DynamicEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<BinaryType>();

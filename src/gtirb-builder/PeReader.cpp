@@ -62,7 +62,7 @@ void PeReader::initModule()
 
 void PeReader::buildSections()
 {
-    std::map<gtirb::UUID, SectionProperties> SectionProperties;
+    std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> SectionProperties;
 
     for(auto &Section : Pe->sections())
     {
