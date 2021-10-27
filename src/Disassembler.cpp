@@ -398,6 +398,11 @@ std::string stripSymbolVersion(const std::string Name)
 
 void buildSymbolVersions(gtirb::Module &Module)
 {
+    if(Module.getFileFormat() != gtirb::FileFormat::ELF)
+    {
+        return;
+    }
+
     std::map<gtirb::UUID, std::string> SymbolVersions;
 
     std::vector<std::tuple<gtirb::Symbol *, std::string, std::string>> Versioned;
