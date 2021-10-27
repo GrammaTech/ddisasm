@@ -35,6 +35,7 @@
 .decl pe_debug_data(Type:symbol,Address:address,Size:unsigned)
 .input pe_debug_data
 
+/** Table maps PE section attribute names to a bitflag. */
 .decl pe_section_characteristics(Name:symbol,Mask:unsigned)
 
 pe_section_characteristics("IMAGE_SCN_TYPE_NO_PAD",0x00000008).
@@ -72,6 +73,18 @@ pe_section_characteristics("IMAGE_SCN_MEM_SHARED",0x10000000).
 pe_section_characteristics("IMAGE_SCN_MEM_EXECUTE",0x20000000).
 pe_section_characteristics("IMAGE_SCN_MEM_READ",0x40000000).
 pe_section_characteristics("IMAGE_SCN_MEM_WRITE",0x80000000).
+
+
+/** Table maps PE base relocation types to a size in bytes. */
+.decl pe_relocation_size(Type:symbol,Size:unsigned)
+
+pe_relocation_size("LOW",2).
+pe_relocation_size("HIGH",2).
+pe_relocation_size("HIGHADJ",2).
+pe_relocation_size("HIGHLOW",4).
+pe_relocation_size("DIR64",8).
+pe_relocation_size("ABSOLUTE",0).
+
 
 section(Name,Size,Addr):-
     binary_format("PE"),
@@ -125,7 +138,6 @@ plt_block(EA,Function):-
     unconditional_jump(EA),
     got_reference(Got_entry,Function),
     code_in_refined_block(EA,EA).
-
 
 .decl reg_has_base_image(EA:address,Reg:register)
 .output reg_has_base_image
@@ -645,7 +657,7 @@ relative_address_start(TableStart,4,0,Dest,"first"):-
     next(EA_mov,EA_call),
     reg_call(EA_call,_).
 
-// Non-destructive multi-byte NOPs used by the MSVC compiler. (See `listing.inc'.)
+/** Non-destructive multi-byte NOPs used by the MSVC compiler. (See `listing.inc'.) */
 .decl npad(EA:address,Size:unsigned)
 .output npad
 
