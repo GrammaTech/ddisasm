@@ -100,7 +100,7 @@ block_next(EA,EA_next):-
     //FIXME: Do better propagation of the jump table.
     relative_address(_,Size,TableStart,TableReference,EA_next,_).
 
-// Path created by exception handling
+// Path created by exception handling.
 block_next(EA,Block2):-
     lsda_callsite_addresses(Beg,End, Block2),
     block_last_instruction(_,EA),
