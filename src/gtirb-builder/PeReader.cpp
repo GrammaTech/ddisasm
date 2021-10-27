@@ -174,6 +174,19 @@ void PeReader::addAuxData()
     // TODO: Add `libraryPaths' aux data table.
     Module->addAuxData<gtirb::schema::LibraryPaths>({});
 
+    // Add `relocations' aux data table.
+    std::set<auxdata::Relocation> Relocations;
+    uint64_t ImageBase = Pe->optional_header().imagebase();
+    for(auto &Relocation : Pe->relocations())
+    {
+        for(auto &Entry : Relocation.entries())
+        {
+            std::string Type = LIEF::PE::to_string(Entry.type());
+            Relocations.insert({ImageBase + Entry.address(), Type, "", 0});
+        }
+    }
+    Module->addAuxData<gtirb::schema::Relocations>(std::move(Relocations));
+
     // Add `peImportEntries' aux data table.
     Module->addAuxData<gtirb::schema::ImportEntries>(importEntries());
 
