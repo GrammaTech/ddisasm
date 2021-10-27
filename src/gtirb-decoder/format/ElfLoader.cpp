@@ -234,17 +234,29 @@ void ElfExceptionDecoder::addExceptionInformation(souffle::SouffleProgram *prog)
     {
         fdeRelation->insert(getFDE(fdeRelation, fde));
         fdePtrLocationsRelation->insert(getFDEPointerLocations(fdePtrLocationsRelation, fde));
-        uint64_t insnIndex = 0;
-        for(const EHP::EHProgramInstruction_t *insn :
-            *(fde->getCIE().getProgram().getInstructions()))
+
+        // First iterate over instructions in the CIE in reverse order
+        // to obtain their addresses from the end of the CIE.
+        const EHP::EHProgramInstructionVector_t *CieInstructions =
+            fde->getCIE().getProgram().getInstructions();
+        uint64_t InsnAddr = fde->getCIE().getPosition() + fde->getCIE().getLength();
+        uint64_t InsnIndex = CieInstructions->size();
+        for(auto it = CieInstructions->rbegin(); it != CieInstructions->rend(); ++it)
         {
-            fdeInsnRelation->insert(getEHProgramInstruction(fdeInsnRelation, insnIndex, insn, fde));
-            ++insnIndex;
+            InsnIndex--;
+            InsnAddr -= (*it)->getSize();
+            fdeInsnRelation->insert(
+                getEHProgramInstruction(fdeInsnRelation, InsnIndex, InsnAddr, *it, fde));
         }
+        // Then interate over instructions in the FDE in regular order.
+        InsnIndex = CieInstructions->size();
+        InsnAddr = fde->getLSDAAddressPosition() + fde->getLSDAAddressSize();
         for(const EHP::EHProgramInstruction_t *insn : *(fde->getProgram().getInstructions()))
         {
-            fdeInsnRelation->insert(getEHProgramInstruction(fdeInsnRelation, insnIndex, insn, fde));
-            ++insnIndex;
+            fdeInsnRelation->insert(
+                getEHProgramInstruction(fdeInsnRelation, InsnIndex, InsnAddr, insn, fde));
+            InsnAddr += insn->getSize();
+            ++InsnIndex;
         }
 
         auto *lsda = fde->getLSDA();
@@ -315,12 +327,12 @@ souffle::tuple ElfExceptionDecoder::getFDEPointerLocations(souffle::Relation *re
 }
 
 souffle::tuple ElfExceptionDecoder::getEHProgramInstruction(souffle::Relation *relation,
-                                                            uint64_t index,
+                                                            uint64_t index, uint64_t insnAddr,
                                                             const EHP::EHProgramInstruction_t *insn,
                                                             const EHP::FDEContents_t *fde)
 {
     souffle::tuple tuple(relation);
-    tuple << fde->getPosition() << index << insn->getSize();
+    tuple << fde->getPosition() << index << insn->getSize() << insnAddr;
     auto insnTuple = insn->decode();
     tuple << std::get<0>(insnTuple) << std::get<1>(insnTuple) << std::get<2>(insnTuple);
     return tuple;
