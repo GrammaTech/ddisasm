@@ -41,7 +41,7 @@ namespace auxdata
     /// ElfSymbolInfo is a tuple of the form {Size, Type, Binding, Visibility, SectionIndex}.
     using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>;
 
-    /// ElfSymbolTabIdxInfo is a vector of tuples off the form {Name, Index}.
+    /// ElfSymbolTabIdxInfo is a vector of tuples of the form {Name, Index}.
     using ElfSymbolTabIdxInfo = std::vector<std::tuple<std::string, uint64_t>>;
 
     /// PeDataDirectory is a tuple of the form {Type, Address, Size}.
@@ -220,7 +220,6 @@ namespace gtirb
         struct PeResources
         {
             static constexpr const char* Name = "peResources";
-            // Tuples of the form {header, data_offset, data_length}.
             typedef std::vector<auxdata::PeResource> Type;
         };
 
