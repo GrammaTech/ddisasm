@@ -22,18 +22,16 @@
 //===----------------------------------------------------------------------===//
 #include "PeLoader.h"
 
-#include "../../AuxDataSchema.h"
-
 void PeSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
 {
     if(auto *ExportEntries = Module.getAuxData<gtirb::schema::ExportEntries>())
     {
-        Program.insert("export_entry", *ExportEntries);
+        Program.insert("pe_export_entry", *ExportEntries);
     }
 
     if(auto *ImportEntries = Module.getAuxData<gtirb::schema::ImportEntries>())
     {
-        Program.insert("import_entry", *ImportEntries);
+        Program.insert("pe_import_entry", *ImportEntries);
     }
 }
 
@@ -41,8 +39,9 @@ void PeDataDirectoryLoader(const gtirb::Module &Module, DatalogProgram &Program)
 {
     if(auto *DataDirectories = Module.getAuxData<gtirb::schema::PeDataDirectories>())
     {
-        Program.insert("data_directory", *DataDirectories);
+        Program.insert("pe_data_directory", *DataDirectories);
     }
+
     if(auto *DebugData = Module.getAuxData<gtirb::schema::PeDebugData>())
     {
         Program.insert("pe_debug_data", *DebugData);
@@ -51,24 +50,24 @@ void PeDataDirectoryLoader(const gtirb::Module &Module, DatalogProgram &Program)
 
 namespace souffle
 {
-    souffle::tuple &operator<<(souffle::tuple &t, const auxdata::PeExportEntry &ExportEntry)
+    souffle::tuple &operator<<(souffle::tuple &T, const relations::PeExportEntry &ExportEntry)
     {
         auto &[Address, Ordinal, Name] = ExportEntry;
-        t << Address << Ordinal << Name;
-        return t;
+        T << Address << Ordinal << Name;
+        return T;
     }
 
-    souffle::tuple &operator<<(souffle::tuple &t, const auxdata::PeImportEntry &ImportEntry)
+    souffle::tuple &operator<<(souffle::tuple &T, const relations::PeImportEntry &ImportEntry)
     {
         auto &[Address, Ordinal, Function, Library] = ImportEntry;
-        t << Address << Ordinal << Function << Library;
-        return t;
+        T << Address << Ordinal << Function << Library;
+        return T;
     }
 
-    souffle::tuple &operator<<(souffle::tuple &t, const auxdata::PeDataDirectory &DataDirectory)
+    souffle::tuple &operator<<(souffle::tuple &T, const relations::PeDataDirectory &DataDirectory)
     {
         auto &[Type, Address, Size] = DataDirectory;
-        t << Type << Address << Size;
-        return t;
+        T << Type << Address << Size;
+        return T;
     }
 } // namespace souffle
