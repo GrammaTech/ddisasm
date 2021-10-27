@@ -51,21 +51,21 @@ void PeDataDirectoryLoader(const gtirb::Module &Module, DatalogProgram &Program)
 
 namespace souffle
 {
-    souffle::tuple &operator<<(souffle::tuple &t, const ExportEntry &ExportEntry)
+    souffle::tuple &operator<<(souffle::tuple &t, const auxdata::PeExportEntry &ExportEntry)
     {
         auto &[Address, Ordinal, Name] = ExportEntry;
         t << Address << Ordinal << Name;
         return t;
     }
 
-    souffle::tuple &operator<<(souffle::tuple &t, const ImportEntry &ImportEntry)
+    souffle::tuple &operator<<(souffle::tuple &t, const auxdata::PeImportEntry &ImportEntry)
     {
         auto &[Address, Ordinal, Function, Library] = ImportEntry;
         t << Address << Ordinal << Function << Library;
         return t;
     }
 
-    souffle::tuple &operator<<(souffle::tuple &t, const DataDirectory &DataDirectory)
+    souffle::tuple &operator<<(souffle::tuple &t, const auxdata::PeDataDirectory &DataDirectory)
     {
         auto &[Type, Address, Size] = DataDirectory;
         t << Type << Address << Size;
