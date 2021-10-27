@@ -190,7 +190,8 @@ This module:
 .decl data_region(Begin:address,Size:unsigned)
 .input data_region
 
-.decl ascii_string(Begin:address,Size:unsigned)
+/** Possible null-terminated ASCII string of 'Size' bytes begins at address 'EA'. **/
+.decl ascii_string(EA:address,Size:unsigned)
 .input ascii_string
 
 ///////////////////////////////////////////////////////////////
@@ -672,7 +673,7 @@ is_padding(EA):-
 got_relative_operand(0,0,0):-
     false.
 
-// The set of printable ASCII characters.
+/** The set of printable ASCII characters. **/
 .decl printable_char(N:unsigned)
 
 printable_char(0x9).
