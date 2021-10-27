@@ -57,9 +57,19 @@ tests:
       flags: ["-m32", "-fno-pie", "-no-pie"]
       skip: false
 
-  # TODO:
-  # ex_exceptions2
-  # ex_exceptions3
+  - name: ex_exceptions2
+    <<: *default
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32", "-fno-pie", "-no-pie"]
+      skip: false
+
+  - name: ex_exceptions3
+    <<: *default
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32", "-fno-pie", "-no-pie"]
+      skip: false
 
   - name: ex_false_pointer_array
     <<: *default
@@ -136,8 +146,14 @@ tests:
       flags: ["-m32", "-pie"]
       skip: false
 
+  - name: ex_exceptions2
+    <<: *position-independent
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32", "-pie"]
+      skip: false
+
   # TODO:
-  # ex_exceptions2
   # ex_exceptions3
 
   - name: ex_false_pointer_array
