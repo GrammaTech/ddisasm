@@ -56,7 +56,7 @@ A FDE entry can have 'Lsda' associated that contains exception handling informat
 .input fde_entry
 
 /**
-Complementary predicate that specifies the actual locations of the symbolic expressions
+Ancillary predicate that specifies the actual locations of the symbolic expressions
 in the FDE entry.
 */
 .decl fde_pointer_locations(addr:address,startLocation:address,endLocation:address,
@@ -65,7 +65,7 @@ in the FDE entry.
 
 /**
 The instructions for stack unwinding are encoded into a dwarf program
-formed by a list of  instructions. Each FDE corresponds to a region
+formed by a list of instructions. Each FDE corresponds to a region
 in the code and it has its own program. This predicate captures
 one instruction in that program.
 
@@ -90,7 +90,7 @@ a callsite table (see `lsda_callsite`) and a type table (see `lsda_type_entry`).
 .input lsda
 
 /**
-Complementary predicate with the locations of the various pointers in a LSDA for used for symbolization.
+Complementary predicate with the locations of the various pointers in a LSDA used for symbolization.
 */
 .decl lsda_pointer_locations(lsdaAddress:address,typeTablePointerLocation:address,callsiteTablePointerLoc:address)
 .input lsda_pointer_locations
@@ -366,7 +366,7 @@ special_encoding(9,"sleb128").
 
 .decl dwarf_encoding_size(Encoding:unsigned,Size:unsigned)
 
-// the encoding 0 is officially not defined but it happens
+// The encoding 0 is officially not defined but it happens
 // in x86 32 bits programs. In that case, the encoding
 // seems to be a regular 4 byte pointer.
 dwarf_encoding_size(0,4).
