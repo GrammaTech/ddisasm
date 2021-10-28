@@ -108,14 +108,3 @@ discarded_relocation(EA):-
     relocation(EA,Type,_,_),
     !used_relocation(EA),
     Type != "ABSOLUTE".
-
-.decl symbol_without_relocation(EA:address)
-.output symbol_without_relocation
-
-symbol_without_relocation(EA):-
-    binary_format("PE"),
-    section(".reloc",_,_),
-    arch.pointer_size(Size),
-    data_object(EA,Size,"symbol"),
-    pe_relocation_size(Type,Size),
-    !relocation(EA,Type,_,_).
