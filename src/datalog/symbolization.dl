@@ -179,6 +179,30 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
         Type = "data"
     ).
 
+// Handle PE base-relative relocations.
+symbolic_operand_candidate(EA,Index,Dest,Type):-
+    binary_format("PE"),
+    code(EA),
+    (
+        instruction_immediate_offset(EA,Index,Offset),
+        instruction_get_op(EA,Index,Op),
+        op_immediate(Op,Value)
+        ;
+        instruction(EA,_,_,_,_,_,_,_,_,Offset),
+        instruction_get_op(EA,Index,Op),
+        op_indirect(Op,_,_,_,1,Value,_)
+    ),
+    relocation(EA+Offset,_,_,_),
+    Dest = as(Value,address),
+    (
+        code(Dest),
+        Type = "code"
+        ;
+        data_segment(Begin,End),
+        Dest >= Begin, Dest <= End,
+        Type = "data"
+    ).
+
 /////////////////////////////////////////////////////////////////
 /// Final decision on symbolization of operands
 symbolic_operand_point(EA,Index,0,"operand bias"):-

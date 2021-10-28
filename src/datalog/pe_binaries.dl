@@ -286,7 +286,7 @@ inferred_symbol_name(Start,"__EntryPoint","GLOBAL","FUNC"):-
     binary_format("PE"),
     entry_point(Start).
 
-symbolic_operand_candidate(EA,Op_index,Dest,"imagebase"):-
+symbolic_operand_candidate(EA,Op_index,Dest,"code"):-
     base_address(ImageBase),
     pc_relative_operand(EA,Op_index,Dest),
     Dest = ImageBase.
