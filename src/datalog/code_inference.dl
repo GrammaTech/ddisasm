@@ -487,6 +487,10 @@ candidate_block_is_padding(Block):-
 .decl transitive_points(type:symbol)
 
 .decl overlap_with_jump_table(block:address)
+.output overlap_with_jump_table
+
+.decl overlap_with_relocation(Block:address)
+.output overlap_with_relocation
 
 transitive_points("start point").
 transitive_points("code section start").
@@ -528,6 +532,22 @@ block_points(Block,0,-3,"possible relative-jump-table start"):-
     block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
     relative_address_start(Beg,_,_,_,_),
     BegBlockAddr <= Beg, Beg< EndBlockAddr.
+
+block_is_overlapping(Block),
+overlap_with_relocation(Block),
+block_points(Block,0,-3,"overlaps with relocation"):-
+    binary_format("PE"),
+    code_in_block_candidate_refined(EA,Block),
+    (
+        // Relocation and instruction at same address.
+        relocation(EA,_,_,_)
+        ;
+        // Relocation target does not align with instruction offsets.
+        instruction(EA,Size,_,_,_,_,_,_,_,_),
+        relocation(Target,_,_,_), Target > EA, Target < EA+Size,
+        !instruction(EA,_,_,_,_,_,_,_,Target-EA,_),
+        !instruction(EA,_,_,_,_,_,_,_,_,Target-EA)
+    ).
 
 block_points(Block,0,0,"basic point"):-
     block_is_overlapping(Block),
