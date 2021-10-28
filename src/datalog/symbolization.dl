@@ -668,12 +668,15 @@ data_object_point(EA,Pt_size,"symbol",-1,"point-to-special-section"):-
     Dest >= Base, Dest < Base+SectSize.
 
 data_object_point(EA,Pt_size,"symbol",10,"has relocation"):-
-    (
-      binary_format("PE");
-      !binary_type("EXEC")
-    ),
     data_object_candidate(EA,Pt_size,"symbol"),
-    relocation(EA,_,_,_).
+    (
+        !binary_type("EXEC"),
+        relocation(EA,_,_,_)
+        ;
+        binary_format("PE"),
+        relocation(EA,Type,_,_),
+        Type != "ABSOLUTE"
+    ).
 
 data_object_point(EA,Pt_size,"symbol",-10,"has no relocation"):-
     !binary_type("EXEC"),
