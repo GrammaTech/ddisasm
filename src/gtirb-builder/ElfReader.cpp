@@ -52,9 +52,9 @@ std::map<std::string, uint64_t> ElfReader::getDynamicEntries()
 // Resurrect sections and symbols from sectionless binary
 void ElfReader::resurrectSections()
 {
-    std::map<uint64_t, gtirb::UUID> SectionIndex;
-    std::map<gtirb::UUID, SectionProperties> SectionProperties;
     std::map<gtirb::UUID, uint64_t> Alignment;
+    std::map<uint64_t, gtirb::UUID> SectionIndex;
+    std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> SectionProperties;
 
     // Get dynamic entries
     std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
@@ -253,8 +253,9 @@ void ElfReader::resurrectSections()
 }
 
 // MIPS: Create a symbol for _gp.
-void ElfReader::createGPforMIPS(uint64_t SecIndex, std::map<gtirb::UUID, ElfSymbolInfo> &SymbolInfo,
-                                std::map<gtirb::UUID, ElfSymbolTabIdxInfo> &SymbolTabIdxInfo)
+void ElfReader::createGPforMIPS(
+    uint64_t SecIndex, std::map<gtirb::UUID, auxdata::ElfSymbolInfo> &SymbolInfo,
+    std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo> &SymbolTabIdxInfo)
 {
     if(!Module->findSymbols("_gp").empty()) // _gp already exists
         return;
@@ -665,7 +666,6 @@ void ElfReader::addAuxData()
     std::vector<std::string> Libraries = Elf->imported_libraries();
     Module->addAuxData<gtirb::schema::Libraries>(std::move(Libraries));
 
-    std::set<auxdata::ElfDynamicEntry> DynamicEntryTuples;
     std::vector<std::string> LibraryPaths;
     for(const auto &Entry : Elf->dynamic_entries())
     {
@@ -684,7 +684,7 @@ void ElfReader::addAuxData()
 
     // Get dynamic entries
     std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
-    std::set<ElfDynamicEntry> DynamicEntryTuples;
+    std::set<auxdata::ElfDynamicEntry> DynamicEntryTuples;
     for(auto it = DynamicEntries.begin(); it != DynamicEntries.end(); ++it)
     {
         DynamicEntryTuples.insert({it->first, it->second});
