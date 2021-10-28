@@ -539,10 +539,11 @@ block_points(Block,0,-3,"overlaps with relocation"):-
     binary_format("PE"),
     code_in_block_candidate_refined(EA,Block),
     (
-        // Relocation and instruction at same address.
-        relocation(EA,_,_,_)
+        // Block beginning intersects relocation bytes:
+        pe_relocation_size(Type,Size),
+        relocation(Target,Type,_,_), EA >= Target, EA < Target + Size
         ;
-        // Relocation target does not align with instruction offsets.
+        // Relocation target is in block but not aligned with operand offsets.
         instruction(EA,Size,_,_,_,_,_,_,_,_),
         relocation(Target,_,_,_), Target > EA, Target < EA+Size,
         !instruction(EA,_,_,_,_,_,_,_,Target-EA,_),
@@ -581,6 +582,7 @@ block_points(Block,0,2,"aligned address in data"):-
     arch.pointer_size(Pt_size),
     Address % Pt_size = 0.
 
+// TODO:
 block_points(Block,0,-1,"printable address"):-
     arch.pointer_size(8),
     block_is_overlapping(Block),
