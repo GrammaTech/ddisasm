@@ -81,28 +81,33 @@ missed_jump_table(EA):-
 .output used_relocation
 
 used_relocation(EA):-
-  binary_format("PE"),
-  pe_relocation_size(Type,Size), Size > 0,
-  relocation(EA,Type,_,_),
-  data_object(EA,Size,"symbol").
+    binary_format("PE"),
+    pe_relocation_size(Type,Size), Size > 0,
+    relocation(EA,Type,_,_),
+    data_object(EA,Size,"symbol").
 
 used_relocation(EA+Offset):-
-  binary_format("PE"),
-  symbolic_operand(EA,_,_,_),
-  (
-    instruction(EA,_,_,_,_,_,_,_,Offset,_);
-    instruction(EA,_,_,_,_,_,_,_,_,Offset)
-  ),
-  relocation(EA+Offset,_,_,_).
+    binary_format("PE"),
+    symbolic_operand(EA,_,_,_),
+    (
+      instruction(EA,_,_,_,_,_,_,_,Offset,_);
+      instruction(EA,_,_,_,_,_,_,_,_,Offset)
+    ),
+    relocation(EA+Offset,_,_,_).
 
+used_relocation(EA):-
+    binary_format("PE"),
+    symbolic_expr_from_relocation(EA,_,_,_),
+    relocation(EA,_,_,_).
 
 .decl discarded_relocation(EA:address)
 .output discarded_relocation
 
 discarded_relocation(EA):-
     binary_format("PE"),
-    relocation(EA,_,_,_),
-    !used_relocation(EA).
+    relocation(EA,Type,_,_),
+    !used_relocation(EA),
+    Type != "ABSOLUTE".
 
 .decl symbol_without_relocation(EA:address)
 .output symbol_without_relocation
