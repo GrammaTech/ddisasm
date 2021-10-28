@@ -201,6 +201,10 @@ symbolic_operand_candidate(EA,Index,Dest,Type):-
         data_segment(Begin,End),
         Dest >= Begin, Dest <= End,
         Type = "data"
+        ;
+        base_address(ImageBase),
+        Dest >= ImageBase, Dest <= ImageBase + 1024,
+        Type = "data"
     ).
 
 /////////////////////////////////////////////////////////////////
@@ -626,6 +630,7 @@ data_object_point(EA,Pt_size,"symbol",5,"data access"):-
         data_access_pattern(Label,Pt_size,_,_);
         data_access_pattern(Label,0,_,_)
     ).
+
 // if we conflict with several other candidates we reduce the points
 data_object_point(EA,Pt_size,"symbol",-2,"multiple conflict"):-
     data_object_candidate(EA,Pt_size,"symbol"),
@@ -662,9 +667,11 @@ data_object_point(EA,Pt_size,"symbol",-1,"point-to-special-section"):-
     section(Name,SectSize,Base),
     Dest >= Base, Dest < Base+SectSize.
 
-
 data_object_point(EA,Pt_size,"symbol",10,"has relocation"):-
-    !binary_type("EXEC"),
+    (
+      binary_format("PE");
+      !binary_type("EXEC")
+    ),
     data_object_candidate(EA,Pt_size,"symbol"),
     relocation(EA,_,_,_).
 
@@ -693,7 +700,7 @@ data_object_point(EA,Size,"other",4,"data access"):-
 
 //sometimes we load pointers into xmm
 data_object_point(EA,Size,"other",1,"data access xmm"):-
-  data_object_candidate(EA,Size,"other"),
+    data_object_candidate(EA,Size,"other"),
     Size >= 16.
 
 //range mismatch
