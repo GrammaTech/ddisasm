@@ -93,7 +93,9 @@ This module also computes and symbol_minus_symbol.
 .decl bss_data(ea:address)
 .output bss_data
 
-/** Data object candidate for string encodings. **/
+/**
+Data object candidate for string encodings.
+*/
 .decl string_candidate(EA:address,End:address,Encoding:symbol)
 
 .decl string(Ea:address,End:address,Encoding:symbol)
