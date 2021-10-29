@@ -157,7 +157,8 @@ defined_in_block(Block,Reg):-
 
 used(EA,Reg,Index):-
     instruction_get_src_op(EA,Index,Op),
-    op_regdirect_contains_reg(Op,Reg).
+    op_regdirect_contains_reg(Op,Reg),
+    !is_xor_reset(EA).
 
 used(EA,Reg,Index):-
     instruction_get_op(EA,Index,Op),
