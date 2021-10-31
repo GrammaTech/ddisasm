@@ -369,7 +369,10 @@ int main(int argc, char **argv)
         }
         // Pretty-print
         gtirb_pprint::PrettyPrinter pprinter;
-        pprinter.setDebug(vm.count("debug"));
+        if(vm.count("debug") != 0)
+        {
+            pprinter.setListingMode("debug");
+        }
 
         if(vm.count("keep-functions") != 0)
         {
