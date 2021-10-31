@@ -531,7 +531,7 @@ address_array_aux(EA+Diff,Diff,"data",InitialEA):-
 This predicate is used for the symbolization heuristics. The
 pointer candidate at address 'EA' belongs to a sequence of
 evenly spaced pointer candidates starting at address 'InitialEA'.
-The space between pointer is 'Distance'. This sequence
+The space between pointers is 'Distance'. This sequence
 has at least three pointers. All the pointers in a sequence
 either point to code or to the same `data_segment`.
 */
