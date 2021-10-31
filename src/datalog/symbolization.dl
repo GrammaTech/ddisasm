@@ -94,11 +94,14 @@ This module also computes and symbol_minus_symbol.
 .output bss_data
 
 /**
-Data object candidate for string encodings.
+Data object candidates for string encodings.
+
+A string with 'Encoding' begins at the virtual address 'EA',
+and is terminated at address 'End'.
 */
 .decl string_candidate(EA:address,End:address,Encoding:symbol)
 
-.decl string(Ea:address,End:address,Encoding:symbol)
+.decl string(EA:address,End:address,Encoding:symbol)
 .output string
 
 .decl cant_have_symbolic_immediate(Operation:symbol)
