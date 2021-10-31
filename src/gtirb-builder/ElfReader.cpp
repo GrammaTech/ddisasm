@@ -52,9 +52,9 @@ std::map<std::string, uint64_t> ElfReader::getDynamicEntries()
 // Resurrect sections and symbols from sectionless binary
 void ElfReader::resurrectSections()
 {
-    std::map<uint64_t, gtirb::UUID> SectionIndex;
-    std::map<gtirb::UUID, SectionProperties> SectionProperties;
     std::map<gtirb::UUID, uint64_t> Alignment;
+    std::map<uint64_t, gtirb::UUID> SectionIndex;
+    std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> SectionProperties;
 
     // Get dynamic entries
     std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
@@ -253,8 +253,9 @@ void ElfReader::resurrectSections()
 }
 
 // MIPS: Create a symbol for _gp.
-void ElfReader::createGPforMIPS(uint64_t SecIndex, std::map<gtirb::UUID, ElfSymbolInfo> &SymbolInfo,
-                                std::map<gtirb::UUID, ElfSymbolTabIdxInfo> &SymbolTabIdxInfo)
+void ElfReader::createGPforMIPS(
+    uint64_t SecIndex, std::map<gtirb::UUID, auxdata::ElfSymbolInfo> &SymbolInfo,
+    std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo> &SymbolTabIdxInfo)
 {
     if(!Module->findSymbols("_gp").empty()) // _gp already exists
         return;
@@ -382,7 +383,7 @@ void ElfReader::resurrectSymbols()
 void ElfReader::buildSections()
 {
     std::map<uint64_t, gtirb::UUID> SectionIndex;
-    std::map<gtirb::UUID, SectionProperties> SectionProperties;
+    std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> SectionProperties;
     std::map<gtirb::UUID, uint64_t> Alignment;
 
     // For sectionless binary, call resurrectSections.
@@ -563,8 +564,8 @@ void ElfReader::buildSymbols()
     accum_symbol_table(Elf->dynamic_symbols(), ".dynsym");
     accum_symbol_table(Elf->static_symbols(), ".symtab");
 
-    std::map<gtirb::UUID, ElfSymbolInfo> SymbolInfo;
-    std::map<gtirb::UUID, ElfSymbolTabIdxInfo> SymbolTabIdxInfo;
+    std::map<gtirb::UUID, auxdata::ElfSymbolInfo> SymbolInfo;
+    std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo> SymbolTabIdxInfo;
     for(auto &[Key, Indexes] : Symbols)
     {
         auto &[Value, Size, Type, Scope, Visibility, SecIndex, Name] = Key;
@@ -602,8 +603,8 @@ void ElfReader::buildSymbols()
         }
     }
 
-    Module->addAuxData<gtirb::schema::ElfSymbolInfoAD>(std::move(SymbolInfo));
-    Module->addAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>(std::move(SymbolTabIdxInfo));
+    Module->addAuxData<gtirb::schema::ElfSymbolInfo>(std::move(SymbolInfo));
+    Module->addAuxData<gtirb::schema::ElfSymbolTabIdxInfo>(std::move(SymbolTabIdxInfo));
 }
 
 void ElfReader::addEntryBlock()
@@ -640,7 +641,7 @@ void ElfReader::addAuxData()
     Module->addAuxData<gtirb::schema::BinaryType>(std::move(BinaryType));
 
     // Add `relocations' aux data table.
-    std::set<ElfRelocation> RelocationTuples;
+    std::set<auxdata::ElfRelocation> RelocationTuples;
     for(auto &Relocation : Elf->relocations())
     {
         std::string SymbolName;
@@ -683,7 +684,7 @@ void ElfReader::addAuxData()
 
     // Get dynamic entries
     std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
-    std::set<ElfDynamicEntry> DynamicEntryTuples;
+    std::set<auxdata::ElfDynamicEntry> DynamicEntryTuples;
     for(auto it = DynamicEntries.begin(); it != DynamicEntries.end(); ++it)
     {
         DynamicEntryTuples.insert({it->first, it->second});

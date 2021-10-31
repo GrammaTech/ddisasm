@@ -427,8 +427,8 @@ void buildSymbolVersions(gtirb::Module &Module)
 void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
-    auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
-    auto *SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>();
+    auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfo>();
+    auto *SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfo>();
     for(auto &output : *prog->getRelation("inferred_symbol_name"))
     {
         gtirb::Addr addr;
@@ -440,12 +440,13 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
             gtirb::Symbol *symbol = module.addSymbol(context, addr, name);
             if(SymbolInfo)
             {
-                ElfSymbolInfo Info = {0, type, scope, "DEFAULT", 0};
+                auxdata::ElfSymbolInfo Info = {0, type, scope, "DEFAULT", 0};
                 SymbolInfo->insert({symbol->getUUID(), Info});
             }
             if(SymbolTabIdxInfo)
             {
-                ElfSymbolTabIdxInfo TabIdx = std::vector<std::tuple<std::string, uint64_t>>();
+                auxdata::ElfSymbolTabIdxInfo TabIdx =
+                    std::vector<std::tuple<std::string, uint64_t>>();
                 SymbolTabIdxInfo->insert({symbol->getUUID(), TabIdx});
             }
         }
@@ -623,16 +624,16 @@ gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::
 
     gtirb::Symbol *symbol = module.addSymbol(context, ea, getLabel(uint64_t(ea)));
 
-    auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfo>();
     if(SymbolInfo)
     {
-        ElfSymbolInfo Info = {0, "NONE", "LOCAL", "DEFAULT", 0};
+        auxdata::ElfSymbolInfo Info = {0, "NONE", "LOCAL", "DEFAULT", 0};
         SymbolInfo->insert({symbol->getUUID(), Info});
     }
-    auto *SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>();
+    auto *SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfo>();
     if(SymbolTabIdxInfo)
     {
-        ElfSymbolTabIdxInfo TabIdx = std::vector<std::tuple<std::string, uint64_t>>();
+        auxdata::ElfSymbolTabIdxInfo TabIdx = std::vector<std::tuple<std::string, uint64_t>>();
         SymbolTabIdxInfo->insert({symbol->getUUID(), TabIdx});
     }
 
@@ -1102,7 +1103,7 @@ gtirb::Section *findSectionByIndex(gtirb::Context &C, gtirb::Module &M, uint64_t
 
 void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
 {
-    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
 
     std::map<gtirb::Symbol *, std::tuple<gtirb::Node *, bool>> ConnectToBlock;
     for(auto &Symbol : Module.symbols_by_addr())
@@ -1162,7 +1163,7 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
             }
             if(SymbolInfo && SymbolInfo->count(Symbol.getUUID()) > 0)
             {
-                ElfSymbolInfo Info = (*SymbolInfo)[Symbol.getUUID()];
+                auxdata::ElfSymbolInfo Info = (*SymbolInfo)[Symbol.getUUID()];
                 uint64_t SectionIndex = std::get<4>(Info);
                 if(gtirb::Section *Section = findSectionByIndex(Context, Module, SectionIndex);
                    Section && Section->getAddress() && Section->getSize())
@@ -1242,7 +1243,7 @@ void splitSymbols(gtirb::Context &Context, gtirb::Module &Module, souffle::Souff
 
 void buildFunctions(gtirb::Context &Context, gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
-    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
 
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
     std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2Function;
@@ -1271,7 +1272,7 @@ void buildFunctions(gtirb::Context &Context, gtirb::Module &Module, souffle::Sou
                 FunctionNames.insert({FunctionUUID, Symbol->getUUID()});
                 if(SymbolInfo)
                 {
-                    ElfSymbolInfo Info = {0, "FUNC", "LOCAL", "DEFAULT", 0};
+                    auxdata::ElfSymbolInfo Info = {0, "FUNC", "LOCAL", "DEFAULT", 0};
                     SymbolInfo->insert({Symbol->getUUID(), Info});
                 }
             }

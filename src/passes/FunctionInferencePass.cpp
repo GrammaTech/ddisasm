@@ -35,7 +35,7 @@
 void FunctionInferencePass::updateFunctions(gtirb::Context& Context, gtirb::Module& Module,
                                             souffle::SouffleProgram* Program)
 {
-    auto* SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    auto* SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
 
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
     std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2function;
@@ -64,7 +64,7 @@ void FunctionInferencePass::updateFunctions(gtirb::Context& Context, gtirb::Modu
                 FunctionNames.insert({FunctionUUID, Symbol->getUUID()});
                 if(SymbolInfo)
                 {
-                    ElfSymbolInfo Info = {0, "FUNC", "LOCAL", "DEFAULT", 0};
+                    auxdata::ElfSymbolInfo Info = {0, "FUNC", "LOCAL", "DEFAULT", 0};
                     SymbolInfo->insert({Symbol->getUUID(), Info});
                 }
 

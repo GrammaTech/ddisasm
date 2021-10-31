@@ -47,8 +47,8 @@ void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
     std::vector<relations::Relocation> Relocations;
 
     // Find extra ELF symbol information in aux data.
-    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
-    auto *SymbolTabIdxInfo = Module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>();
+    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
+    auto *SymbolTabIdxInfo = Module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfo>();
 
     // Load symbols with extra symbol information, if available.
     for(auto &Symbol : Module.symbols())
@@ -56,7 +56,7 @@ void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
         std::string Name = Symbol.getName();
         gtirb::Addr Addr = Symbol.getAddress().value_or(gtirb::Addr(0));
 
-        ElfSymbolInfo Info = {0, "NOTYPE", "GLOBAL", "DEFAULT", 0};
+        auxdata::ElfSymbolInfo Info = {0, "NOTYPE", "GLOBAL", "DEFAULT", 0};
         if(SymbolInfo)
         {
             auto Found = SymbolInfo->find(Symbol.getUUID());
@@ -71,7 +71,8 @@ void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
             Info = Found->second;
         }
 
-        ElfSymbolTabIdxInfo TableIndexes = std::vector<std::tuple<std::string, uint64_t>>();
+        auxdata::ElfSymbolTabIdxInfo TableIndexes =
+            std::vector<std::tuple<std::string, uint64_t>>();
         if(SymbolTabIdxInfo)
         {
             auto Found = SymbolTabIdxInfo->find(Symbol.getUUID());
