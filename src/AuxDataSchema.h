@@ -30,26 +30,35 @@
 #include <tuple>
 #include <vector>
 
-using ElfRelocation = std::tuple<uint64_t, std::string, std::string, int64_t>;
-using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>;
-using ElfSymbolTabIdxInfo = std::vector<std::tuple<std::string, uint64_t>>;
-using SectionProperties = std::tuple<uint64_t, uint64_t>;
-using ElfDynamicEntry = std::tuple<std::string, uint64_t>;
+namespace auxdata
+{
+    /// ElfDynamicEntry is a tuple of the form {Tag, Value}.
+    using ElfDynamicEntry = std::tuple<std::string, uint64_t>;
 
-// A DataDirectory is a tuple of the form {Type, Address, Size}.
-using DataDirectory = std::tuple<std::string, uint64_t, uint64_t>;
+    /// ElfRelocation is a tuple of the form {Address, Type, Name, Addend}.
+    using ElfRelocation = std::tuple<uint64_t, std::string, std::string, int64_t>;
 
-// An ImportEntry is a tuple of the form {Iat_address, Ordinal, Function, Library}.
-using ImportEntry = std::tuple<uint64_t, int64_t, std::string, std::string>;
+    /// ElfSymbolInfo is a tuple of the form {Size, Type, Binding, Visibility, SectionIndex}.
+    using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>;
 
-// An ExportEntry is a tuple of the form {Address, Ordinal, Name}.
-using ExportEntry = std::tuple<uint64_t, int64_t, std::string>;
+    /// ElfSymbolTabIdxInfo is a vector of tuples of the form {Name, Index}.
+    using ElfSymbolTabIdxInfo = std::vector<std::tuple<std::string, uint64_t>>;
 
-// A Resource is a tuple of the form { RES header, data length, data ptr}.
-using PeResource = std::tuple<std::vector<uint8_t>, gtirb::Offset, uint64_t>;
+    /// PeDataDirectory is a tuple of the form {Type, Address, Size}.
+    using PeDataDirectory = std::tuple<std::string, uint64_t, uint64_t>;
 
-// A Resource is a tuple of the form { RES header, data length, data ptr}.
-using DebugData = std::tuple<std::string, uint64_t, uint64_t>;
+    /// PeDebugData is a tuple of the form {Type, Address, Size}.
+    using PeDebugData = std::tuple<std::string, uint64_t, uint64_t>;
+
+    /// PeExportEntry is a tuple of the form {Address, Ordinal, Name}.
+    using PeExportEntry = std::tuple<uint64_t, int64_t, std::string>;
+
+    /// PeImportEntry is a tuple of the form {Iat_address, Ordinal, Function, Library}.
+    using PeImportEntry = std::tuple<uint64_t, int64_t, std::string, std::string>;
+
+    /// PeResource is a tuple of the form {Header, Data Length, Data Pointer}.
+    using PeResource = std::tuple<std::vector<uint8_t>, gtirb::Offset, uint64_t>;
+} // namespace auxdata
 
 /// \file AuxDataSchema.h
 /// \ingroup AUXDATA_GROUP
@@ -61,17 +70,17 @@ namespace gtirb
     namespace schema
     {
         /// \brief Auxiliary data for extra symbol info.
-        struct ElfSymbolInfoAD
+        struct ElfSymbolInfo
         {
             static constexpr const char* Name = "elfSymbolInfo";
-            typedef std::map<gtirb::UUID, ElfSymbolInfo> Type;
+            typedef std::map<gtirb::UUID, auxdata::ElfSymbolInfo> Type;
         };
 
         /// \brief Auxiliary data for extra symbol info.
-        struct ElfSymbolTabIdxInfoAD
+        struct ElfSymbolTabIdxInfo
         {
             static constexpr const char* Name = "elfSymbolTabIdxInfo";
-            typedef std::map<gtirb::UUID, ElfSymbolTabIdxInfo> Type;
+            typedef std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo> Type;
         };
 
         /// \brief Auxiliary data for ELF symbol versions.
@@ -98,18 +107,18 @@ namespace gtirb
             typedef std::map<gtirb::UUID, int64_t> Type;
         };
 
-        /// \brief Auxiliary data describing a binary's relocation records
+        /// \brief Auxiliary data describing a binary's relocation records.
         struct Relocations
         {
             static constexpr const char* Name = "relocations";
-            typedef std::set<ElfRelocation> Type;
+            typedef std::set<auxdata::ElfRelocation> Type;
         };
 
-        /// \brief Auxiliary data describing a binary's dynamic entries
+        /// \brief Auxiliary data describing a binary's dynamic entries.
         struct DynamicEntries
         {
             static constexpr const char* Name = "dynamicEntries";
-            typedef std::set<ElfDynamicEntry> Type;
+            typedef std::set<auxdata::ElfDynamicEntry> Type;
         };
 
         /// \brief Auxiliary data covering data object encoding specifiers.
@@ -183,16 +192,14 @@ namespace gtirb
         struct ImportEntries
         {
             static constexpr const char* Name = "peImportEntries";
-            // Tuples of the form {Iat_address, Ordinal, Function, Library}.
-            typedef std::vector<std::tuple<uint64_t, int64_t, std::string, std::string>> Type;
+            typedef std::vector<auxdata::PeImportEntry> Type;
         };
 
         /// \brief Auxiliary data representing the export table of a PE file.
         struct ExportEntries
         {
             static constexpr const char* Name = "peExportEntries";
-            // Tuples of the form {Address, Ordinal, Name}.
-            typedef std::vector<std::tuple<uint64_t, int64_t, std::string>> Type;
+            typedef std::vector<auxdata::PeExportEntry> Type;
         };
 
         /// \brief Auxiliary data for the UUIDs of imported symbols in a PE file.
@@ -213,24 +220,21 @@ namespace gtirb
         struct PeResources
         {
             static constexpr const char* Name = "peResources";
-            // Tuples of the form {header, data_offset, data_length}.
-            typedef std::vector<std::tuple<std::vector<uint8_t>, gtirb::Offset, uint64_t>> Type;
+            typedef std::vector<auxdata::PeResource> Type;
         };
 
         /// \brief Auxiliary data representing the data directory entries of a PE file.
         struct PeDataDirectories
         {
             static constexpr const char* Name = "peDataDirectories";
-            // Tuples of the form {Type, Address, Size}.
-            typedef std::vector<std::tuple<std::string, uint64_t, uint64_t>> Type;
+            typedef std::vector<auxdata::PeDataDirectory> Type;
         };
 
         /// \brief Auxiliary data listing of debug data boundaries in a PE image.
         struct PeDebugData
         {
             static constexpr const char* Name = "peDebugData";
-            // Tuples of the form {Type, Address, Size}.
-            typedef std::vector<std::tuple<std::string, uint64_t, uint64_t>> Type;
+            typedef std::vector<auxdata::PeDebugData> Type;
         };
 
         /// \brief Auxiliary data for Souffle fact files.

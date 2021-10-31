@@ -23,14 +23,14 @@
 
 // This module defines predicates specific of PE binaries
 
-.decl data_directory(Type:symbol,Address:address,Size:unsigned)
-.input data_directory
+.decl pe_data_directory(Type:symbol,Address:address,Size:unsigned)
+.input pe_data_directory
 
-.decl import_entry(Address:address,Ordinal:number,Function:symbol,Library:symbol)
-.input import_entry
+.decl pe_import_entry(Address:address,Ordinal:number,Function:symbol,Library:symbol)
+.input pe_import_entry
 
-.decl export_entry(Address:address,Ordinal:number,Name:symbol)
-.input export_entry
+.decl pe_export_entry(Address:address,Ordinal:number,Name:symbol)
+.input pe_export_entry
 
 .decl pe_debug_data(Type:symbol,Address:address,Size:unsigned)
 .input pe_debug_data
@@ -98,7 +98,7 @@ code_section(Section):-
     Flags band Exec >0.
 
 data_region(Begin,Size):-
-    data_directory(_,Begin,Size), Size > 0;
+    pe_data_directory(_,Begin,Size), Size > 0;
     pe_debug_data(_,Begin,Size), Size > 0.
 
 // Implicit page for KUSER_SHARED_DATA
@@ -115,7 +115,7 @@ moved_displacement_candidate(EA,Op_index,Dest,0x7FFE0000,Dest-0x7FFE0000):-
 // Entries of external libraries
 symbol(0,0,"NONE","EXTERN",0,"none",0,Function),
 got_reference(Address,Function):-
-    import_entry(Address,_,Function,_).
+    pe_import_entry(Address,_,Function,_).
 
 //PE binaries have plt-like entries
 // These are no delimited to their own section
@@ -539,7 +539,7 @@ inferred_symbol_name(EA,"main","PUBLIC","NONE"):-
 // Label addresses in data section that are exported.
 labeled_data(EA),
 labeled_data_candidate(EA):-
-    export_entry(EA,_,_),
+    pe_export_entry(EA,_,_),
     data_section(Name),
     section(Name,Size,Addr),
     EA >= Addr,
@@ -680,7 +680,7 @@ merged_data_region(DataStart,DataStart+DataSize):-
   binary_format("PE"),
   !section(".rdata",_,_),
   (
-    data_directory(_,DataStart,DataSize), DataSize > 0;
+    pe_data_directory(_,DataStart,DataSize), DataSize > 0;
     pe_debug_data(_,DataStart,DataSize), DataSize > 0
   ),
   entry_point(Entry),

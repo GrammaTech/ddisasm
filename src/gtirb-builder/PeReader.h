@@ -41,11 +41,11 @@ protected:
     void addEntryBlock() override;
     void addAuxData() override;
 
-    std::vector<PeResource> resources();
-    std::vector<ImportEntry> importEntries();
-    std::vector<ExportEntry> exportEntries();
-    std::vector<DataDirectory> dataDirectories();
-    std::vector<DebugData> debugData();
+    std::vector<auxdata::PeResource> resources();
+    std::vector<auxdata::PeImportEntry> importEntries();
+    std::vector<auxdata::PeExportEntry> exportEntries();
+    std::vector<auxdata::PeDataDirectory> dataDirectories();
+    std::vector<auxdata::PeDebugData> debugData();
 };
 
 #endif // PE_GTIRB_BUILDER_H_

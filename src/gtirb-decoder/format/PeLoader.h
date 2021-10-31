@@ -27,11 +27,19 @@
 #include <string>
 #include <tuple>
 
+#include "../../AuxDataSchema.h"
 #include "../CompositeLoader.h"
 #include "../Relations.h"
 
 void PeSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program);
 
 void PeDataDirectoryLoader(const gtirb::Module &Module, DatalogProgram &Program);
+
+namespace relations
+{
+    using PeDataDirectory = auxdata::PeDataDirectory;
+    using PeExportEntry = auxdata::PeExportEntry;
+    using PeImportEntry = auxdata::PeImportEntry;
+} // namespace relations
 
 #endif // SRC_GTIRB_DECODER_FORMAT_PELOADER_H_
