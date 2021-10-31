@@ -93,21 +93,6 @@ This module also computes and symbol_minus_symbol.
 .decl bss_data(ea:address)
 .output bss_data
 
-/**
-Data object candidates for string encodings.
-
-A string with 'Encoding' begins at the virtual address 'EA',
-and is terminated at address 'End'.
-*/
-.decl string_candidate(EA:address,End:address,Encoding:symbol)
-
-.decl string(EA:address,End:address,Encoding:symbol)
-.output string
-
-.decl cant_have_symbolic_immediate(Operation:symbol)
-
-cant_have_symbolic_immediate(""):- false.
-
 ////////////////////////////////////////////////////////////////////////////////////
 // candidates of symbolic values in the code
 
@@ -116,6 +101,10 @@ cant_have_symbolic_immediate(""):- false.
 .decl symbolic_operand_point(ea:address,operand_index:operand_index,points:number,why:symbol)
 .output symbolic_operand_point
 .decl symbolic_operand_total_points(ea:address,operand_index:operand_index,points:number)
+
+.decl cant_have_symbolic_immediate(Operation:symbol)
+cant_have_symbolic_immediate(""):- false.
+
 
 symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
     binary_type("EXEC"),
@@ -400,8 +389,16 @@ address_in_data_refined(EA,Val):-
 address_in_data_refined_range.in_ea(EA):-
     address_in_data_refined(EA,_).
 
-/////////////////////////////////////////////////////////////////////////////////
-// Detect strings
+/**
+Data-object analysis for string encodings.
+
+A string with 'Encoding' begins at the virtual address 'EA',
+and is terminated at address 'End'.
+*/
+.decl string(EA:address,End:address,Encoding:symbol)
+.output string
+
+.decl string_candidate(EA:address,End:address,Encoding:symbol)
 
 string_candidate(EA,Beg+Size,"ascii"):-
     ascii_string(Beg,Size),
@@ -411,6 +408,10 @@ string_candidate(EA,Beg+Size,"ascii"):-
     ),
     EA >= Beg, EA < Beg+Size.
 
+string(EA,End,Encoding):-
+    data_object(EA,Size,"string"),
+    string_candidate(EA,End,Encoding),
+    Size = End-EA.
 
 ///////////////////////////////////////////////////////////////////////////
 .decl data_object_candidate(ea:address,size:unsigned,type:symbol)
@@ -761,11 +762,6 @@ discarded_data_object(EA_f,Size_f,Type_f):-
 symbolic_data(EA,Size,as(Val,address)):-
     data_object(EA,Size,"symbol"),
     address_in_data_refined(EA,Val).
-
-string(EA,End,Encoding):-
-    data_object(EA,Size,"string"),
-    string_candidate(EA,End,Encoding),
-    Size = End-EA.
 
 symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale):-
     data_object(EA,Size,"symbol-symbol"),
