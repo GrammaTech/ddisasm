@@ -519,6 +519,14 @@ address_array_range.in_ea(EA):-
 data_object_point(EA,Pt_size,Type,-2,"data object bias"):-
     data_object_candidate(EA,Pt_size,Type).
 
+// Exception sections are symbolized directly without heuristics.
+// Any candidates detected here are considered spurious.
+data_object_point(EA,Size,Type,-100,"in-exception-section"):-
+    data_object_candidate(EA,Size,Type),
+    exception_section(Name),
+    section(Name,SectSize,Base),
+    EA >= Base, EA < Base+SectSize.
+
 data_object_point(EA,8,"symbol-symbol",5,"quad symbol-symbol"):-
     data_object_candidate(EA,8,"symbol-symbol").
 
