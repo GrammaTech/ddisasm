@@ -679,7 +679,10 @@ data_object_point(EA,Pt_size,"symbol",10,"has relocation"):-
     ).
 
 data_object_point(EA,Pt_size,"symbol",-10,"has no relocation"):-
-    !binary_type("EXEC"),
+    (
+        !binary_type("EXEC");
+        binary_format("PE")
+    ),
     data_object_candidate(EA,Pt_size,"symbol"),
     !relocation(EA,_,_,_).
 
