@@ -454,9 +454,12 @@ next_address_in_data(EA,EA_next):-
     after_address_in_data(EA,EA_next),
     address_in_data_refined(EA_next,_).
 
-
+/**
+Auxiliary predicate to compute `address_array`.
+*/
 .decl address_array_aux(EA:address,Distance:unsigned,type:symbol,InitialEA:address)
 
+// The base cases check for three consecutive pointers.
 address_array_aux(EA,Diff,"code",EA):-
     address_in_data_refined(EA,Dest1),code(Dest1),
     (
@@ -466,6 +469,18 @@ address_array_aux(EA,Diff,"code",EA):-
     ),
     next_address_in_data(EA,EA_next),
     Diff = EA_next-EA,
+    // Make sure EA contains the FIRST evenly spaced pointer
+    // of the sequence. Either there is no previous
+    // pointer at the right distance or it does not point
+    // to code.
+    (
+        !next_address_in_data(EA-Diff,EA)
+        ;
+        next_address_in_data(EA-Diff,EA),
+        address_in_data_refined(EA-Diff,Dest_prev),
+        !code(Dest_prev)
+
+    ),
     address_in_data_refined(EA+Diff,Dest2),code(Dest2),
     next_address_in_data(EA+Diff,EA+(2*Diff)),
     address_in_data_refined(EA+(2*Diff),Dest3),code(Dest3).
@@ -477,12 +492,22 @@ address_array_aux(EA,Diff,"data",EA):-
     EA % Pt_size = 0,
     next_address_in_data(EA,EA_next),
     Diff = EA_next-EA,
+    data_segment(Begin,End),
+    Begin <= Dest1, Dest1 <= End,
+    // Make sure EA contains the FIRST evenly spaced pointer
+    // of the sequence. Either there is no previous
+    // pointer or it points ouside the data segment.
+    (
+        !next_address_in_data(EA-Diff,EA)
+        ;
+        next_address_in_data(EA-Diff,EA),
+        address_in_data_refined(EA-Diff,Dest_prev),
+        (Dest_prev < Begin ; Dest_prev > End)
+    ),
+    // A pointer array pointing to data, should point to the same section
     address_in_data_refined(EA+Diff,Dest2),data_byte(Dest2,_),
     next_address_in_data(EA+Diff,EA+(2*Diff)),
     address_in_data_refined(EA+(2*Diff),Dest3),data_byte(Dest3,_),
-    data_segment(Begin,End),
-    // a pointer array pointing to data, should point to the same section
-    Begin <= Dest1, Dest1 <= End,
     Begin <= Dest2, Dest2 <= End,
     Begin <= Dest3, Dest3 <= End.
 
@@ -502,6 +527,14 @@ address_array_aux(EA+Diff,Diff,"data",InitialEA):-
     Begin <= Dest1, Dest1 <= End,
     Begin <= Dest2, Dest2 <= End.
 
+/**
+This predicate is used for the symbolization heuristics. The
+pointer candidate at address 'EA' belongs to a sequence of
+evenly spaced pointer candidates starting at address 'InitialEA'.
+The space between pointers is 'Distance'. This sequence
+has at least three pointers. All the pointers in a sequence
+either point to code or to the same `data_segment`.
+*/
 .decl address_array(EA:address,Distance:unsigned,InitialEA:address)
 
 address_array(EA,Distance,InitialEA):-
