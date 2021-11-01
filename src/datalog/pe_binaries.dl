@@ -695,19 +695,19 @@ is_padding(EA):-
 .output merged_data_region
 
 merged_data_region(DataStart,DataStart+DataSize):-
-  binary_format("PE"),
-  !section(".rdata",_,_),
-  (
-    pe_data_directory(_,DataStart,DataSize), DataSize > 0;
-    pe_debug_data(_,DataStart,DataSize), DataSize > 0
-  ),
-  entry_point(Entry),
-  DataStart < Entry,
-  section(".text",SectionSize,SectionStart),
-  DataStart > SectionStart,
-  DataStart < SectionStart + SectionSize.
+    binary_format("PE"),
+    !section(".rdata",_,_),
+    (
+        pe_data_directory(_,DataStart,DataSize), DataSize > 0;
+        pe_debug_data(_,DataStart,DataSize), DataSize > 0
+    ),
+    entry_point(Entry),
+    DataStart < Entry,
+    section(".text",SectionSize,SectionStart),
+    DataStart > SectionStart,
+    DataStart < SectionStart + SectionSize.
 
 data_region(Start,Size):-
-  Last = max End:{merged_data_region(_,End)},
-  section(".text",_,Start),
-  Size = Last - Start.
+    Last = max End:{merged_data_region(_,End)},
+    section(".text",_,Start),
+    Size = Last - Start.
