@@ -392,13 +392,16 @@ address_in_data_refined_range.in_ea(EA):-
 /**
 Data-object analysis for string encodings.
 
-A string with 'Encoding' begins at the virtual address 'EA',
-and is terminated at address 'End'.
+A string of some 'Encoding' at interval ['EA','End').
 */
 .decl string(EA:address,End:address,Encoding:symbol)
 .output string
 
 .decl string_candidate(EA:address,End:address,Encoding:symbol)
+.output string_candidate
+
+.decl string_candidate_refined(EA:address,End:address,Encoding:symbol)
+.output string_candidate_refined
 
 string_candidate(EA,Beg+Size,"ascii"):-
     ascii_string(Beg,Size),
@@ -408,9 +411,34 @@ string_candidate(EA,Beg+Size,"ascii"):-
     ),
     EA >= Beg, EA < Beg+Size.
 
+/**
+String candidate refinement projects candidate string references onto a compound
+domain of "ascii" or "string" typed data objects, where "string" typed objects
+are null-terminated.
+
+Consider the compiler optimization of referencing a common substring:
+
+    .L01:
+            .ascii "xeon_ph"
+    .L02:
+            .string "i"
+
+Referenced from `.L01' is the string "xeon_phi\0" referenced from `.L02' "i\0".
+*/
+
+string_candidate_refined(EA,End,"string"):-
+    data_byte(End-1,0),
+    string_candidate(_,End,"ascii"),
+    EA = max EA : { string_candidate(EA,End,"ascii") }.
+
+string_candidate_refined(EA,End,"ascii"):-
+    string_candidate_refined(Tail,TailEnd,"string"),
+    string_candidate(EA,TailEnd,"ascii"), EA < Tail,
+    End = min Next : { string_candidate(Next,TailEnd,"ascii"), Next > EA }.
+
 string(EA,End,Encoding):-
     data_object(EA,Size,"string"),
-    string_candidate(EA,End,Encoding),
+    string_candidate_refined(EA,End,Encoding),
     Size = End-EA.
 
 ///////////////////////////////////////////////////////////////////////////
@@ -435,7 +463,7 @@ data_object_candidate(EA,Pt_size,"symbol"):-
     address_in_data_refined(EA,_).
 
 data_object_candidate(EA,Size,"string"):-
-    string_candidate(EA,End,_),
+    string_candidate_refined(EA,End,_),
     Size = End-EA.
 
 data_object_candidate(EA,Size,"other"):-
