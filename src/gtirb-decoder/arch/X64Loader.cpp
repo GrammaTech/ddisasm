@@ -100,25 +100,6 @@ std::optional<relations::Instruction> X64Loader::build(X64Facts& Facts,
     gtirb::Addr Addr(CsInstruction.address);
     uint64_t Size(CsInstruction.size);
     uint8_t Imm(Details.encoding.imm_offset), Disp(Details.encoding.disp_offset);
-    // NOTE: Capstone provides wrong information about UD1: e.g,
-    // op_count=0 and size=2 or 3.
-    //
-    // ud1 EAX,DWORD PTR [EAX]  (4 bytes)
-    // or
-    // ud1 EAX,DWORD PTR [EAX+disp]  (5 bytes)
-    //
-    // In fact, op_count should be 2 and the size is either 4 or 5.
-    // (It seems off-by-2)
-    //
-    // For ddisasm, we correct the size 2 to 4 and 3 to 5 here.
-    // TODO: We might want to create OpCodes for the operands.
-    if(Name == "UD1")
-    {
-        if(Size == 2)
-            Size = 4;
-        else if(Size == 3)
-            Size = 5;
-    }
     return relations::Instruction{Addr, Size, Prefix, Name, OpCodes, Imm, Disp};
 }
 
