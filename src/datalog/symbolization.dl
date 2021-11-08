@@ -407,7 +407,7 @@ string_candidate(EA,Beg+Size,"ascii"):-
     ascii_string(Beg,Size),
     (
       labeled_data_candidate(EA);
-      preferred_data_access(EA,_)
+      preferred_data_access(_,EA)
     ),
     EA >= Beg, EA < Beg+Size.
 
