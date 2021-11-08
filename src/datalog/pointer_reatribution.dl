@@ -84,12 +84,6 @@ moved_data_label(EA,SizePointer,Dest,Address):-
     symbolic_data(EA,SizePointer,Dest),
     overlapping_instruction(Dest,Address).
 
-// Pointer to substring.
-moved_data_label(EA,SizePointer,Dest,Beg):-
-    symbolic_data(EA,SizePointer,Dest),
-    string(Beg,End,_),
-    Dest > Beg, Dest < End.
-
 ////////////////////////////////////////////////////////////////////////////////////
 
 .decl moved_pc_relative_candidate(EA:address,Index:operand_index,Val:address,NewVal:address,Diff:unsigned)
@@ -517,16 +511,3 @@ moved_label(EA,Op_index,Dest,ImageBase):-
     base_address(ImageBase),
     symbolic_operand(EA,Op_index,Dest,"data"),
     Dest >= ImageBase, Dest <= ImageBase + 1024.
-
-// Reference to the last character in string.
-moved_label_class(EA,Op_index,"last character in string"),
-moved_label(EA,Op_index,Dest,Beg):-
-    symbolic_operand(EA,Op_index,Dest,"data"),
-    string(Beg,Dest+2,_).
-
-// Reference to a substring.
-moved_label_class(EA,Op_index,"substring"),
-moved_label(EA,Op_index,Dest,Beg):-
-    symbolic_operand(EA,Op_index,Dest,"data"),
-    string(Beg,End,_),
-    Dest > Beg, Dest < End.
