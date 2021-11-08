@@ -100,6 +100,13 @@ block_next(EA,EA_next):-
     //FIXME: Do better propagation of the jump table.
     relative_address(_,Size,TableStart,TableReference,EA_next,_).
 
+// Path created by exception handling.
+block_next(EA,Block2):-
+    lsda_callsite_addresses(Beg,End, Block2),
+    block_last_instruction(_,EA),
+    EA >= Beg, EA < End,
+    block(Block2).
+
 //////////////////////////////////////////////////////////////////////////////
 // Main definitions
 
@@ -150,7 +157,8 @@ defined_in_block(Block,Reg):-
 
 used(EA,Reg,Index):-
     instruction_get_src_op(EA,Index,Op),
-    op_regdirect_contains_reg(Op,Reg).
+    op_regdirect_contains_reg(Op,Reg),
+    !is_xor_reset(EA).
 
 used(EA,Reg,Index):-
     instruction_get_op(EA,Index,Op),

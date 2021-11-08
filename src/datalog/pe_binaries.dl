@@ -23,14 +23,14 @@
 
 // This module defines predicates specific of PE binaries
 
-.decl data_directory(Type:symbol,Address:address,Size:unsigned)
-.input data_directory
+.decl pe_data_directory(Type:symbol,Address:address,Size:unsigned)
+.input pe_data_directory
 
-.decl import_entry(Address:address,Ordinal:number,Function:symbol,Library:symbol)
-.input import_entry
+.decl pe_import_entry(Address:address,Ordinal:number,Function:symbol,Library:symbol)
+.input pe_import_entry
 
-.decl export_entry(Address:address,Ordinal:number,Name:symbol)
-.input export_entry
+.decl pe_export_entry(Address:address,Ordinal:number,Name:symbol)
+.input pe_export_entry
 
 .decl pe_debug_data(Type:symbol,Address:address,Size:unsigned)
 .input pe_debug_data
@@ -98,7 +98,7 @@ code_section(Section):-
     Flags band Exec >0.
 
 data_region(Begin,Size):-
-    data_directory(_,Begin,Size), Size > 0;
+    pe_data_directory(_,Begin,Size), Size > 0;
     pe_debug_data(_,Begin,Size), Size > 0.
 
 // Implicit page for KUSER_SHARED_DATA
@@ -115,7 +115,7 @@ moved_displacement_candidate(EA,Op_index,Dest,0x7FFE0000,Dest-0x7FFE0000):-
 // Entries of external libraries
 symbol(0,0,"NONE","EXTERN",0,"none",0,Function),
 got_reference(Address,Function):-
-    import_entry(Address,_,Function,_).
+    pe_import_entry(Address,_,Function,_).
 
 //PE binaries have plt-like entries
 // These are no delimited to their own section
@@ -468,7 +468,14 @@ relative_address_start(IndexTableStart,1,TableStart,Dest,"first"):-
     ),
     arch.mov(EA_mov),
     instruction_get_op(EA_mov,_,Op_mov),
-    op_indirect(Op_mov,_,_,_,1,Offset,8),
+    op_indirect(Op_mov,_,_,_,1,Offset0,8),
+    // Sometimes, the offset value is off-by-4 from the actual index table.
+    // This is a heuristic to handle such case.
+    (
+        Offset = Offset0
+        ;
+        Offset = Offset0+4
+    ),
     IndexTableStart = as(Offset,address),
     // Dest = AddressTable[Index]
     data_byte(IndexTableStart,Byte),
@@ -544,7 +551,7 @@ inferred_symbol_name(EA,"main","PUBLIC","NONE"):-
 // Label addresses in data section that are exported.
 labeled_data(EA),
 labeled_data_candidate(EA):-
-    export_entry(EA,_,_),
+    pe_export_entry(EA,_,_),
     data_section(Name),
     section(Name,Size,Addr),
     EA >= Addr,
@@ -587,7 +594,13 @@ relative_address_start(TableStart,Size,0,Dest,"first"):-
     data_word(TableStart,Size,TableEntry),
     Dest = as(TableEntry,address),
     arch.pointer_size(Pt_size), Pt_size = Size,
-    possible_ea(Dest).
+    possible_ea(Dest),
+    // Check on the second entry as well.
+    // This is based on the assumption that a jump-table consists of
+    // multiple entries.
+    data_word(TableStart+Size,Size,TableEntry2),
+    Dest2 = as(TableEntry2,address),
+    possible_ea(Dest2).
 
 // Find the simplest form of jump table with moved label.
 //   i.e.  jmp dword ptr [REG*4 + TableStart - Mult]
@@ -614,7 +627,13 @@ relative_address_start(TableStart,Size,0,Dest,"first"):-
     data_word(TableStart,Size,TableEntry),
     Dest = as(TableEntry,address),
     arch.pointer_size(Pt_size), Pt_size = Size,
-    possible_ea(Dest).
+    possible_ea(Dest),
+    // Check on the second entry as well.
+    // This is based on the assumption that a jump-table consists of
+    // multiple entries.
+    data_word(TableStart+Size,Size,TableEntry2),
+    Dest2 = as(TableEntry2,address),
+    possible_ea(Dest2).
 
 // lea REG, TableStart
 // mov REG, dword ptr [REG + REG2*4 - 8]
@@ -626,6 +645,12 @@ relative_address_start(TableStart,4,0,Dest,"first"):-
     data_word(TableStart,4,TableEntry),
     Dest = as(TableEntry,address),
     possible_ea(Dest),
+    // Check on the second entry as well.
+    // This is based on the assumption that a jump-table consists of
+    // multiple entries.
+    data_word(TableStart+4,4,TableEntry2),
+    Dest2 = as(TableEntry2,address),
+    possible_ea(Dest2),
 
     next(EA_load,EA_mov),
     arch.mov(EA_mov),
@@ -659,3 +684,24 @@ npad(EA,Size):-
 is_padding(EA):-
     binary_format("PE"),
     npad(EA,_).
+
+.decl merged_data_region(Start:address,End:address)
+.output merged_data_region
+
+merged_data_region(DataStart,DataStart+DataSize):-
+  binary_format("PE"),
+  !section(".rdata",_,_),
+  (
+    pe_data_directory(_,DataStart,DataSize), DataSize > 0;
+    pe_debug_data(_,DataStart,DataSize), DataSize > 0
+  ),
+  entry_point(Entry),
+  DataStart < Entry,
+  section(".text",SectionSize,SectionStart),
+  DataStart > SectionStart,
+  DataStart < SectionStart + SectionSize.
+
+data_region(Start,Size):-
+  Last = max End:{merged_data_region(_,End)},
+  section(".text",_,Start),
+  Size = Last - Start.

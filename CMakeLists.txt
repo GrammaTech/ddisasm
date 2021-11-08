@@ -153,7 +153,7 @@ find_package(gtirb 1.10.5 REQUIRED)
 # ---------------------------------------------------------------------------
 # pretty-printer
 # ---------------------------------------------------------------------------
-find_package(gtirb_pprinter 1.8.0 REQUIRED)
+find_package(gtirb_pprinter 1.8.1 REQUIRED)
 
 # ---------------------------------------------------------------------------
 # libehp
@@ -281,7 +281,7 @@ else()
   else()
     include(FindLIEF)
   endif()
-  find_package(LIEF 0.10.0 REQUIRED COMPONENTS STATIC)
+  find_package(LIEF 0.11.5 REQUIRED COMPONENTS STATIC)
 endif()
 
 # ---------------------------------------------------------------------------

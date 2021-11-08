@@ -388,11 +388,47 @@ static std::string getLabel(uint64_t ea)
     return ss.str();
 }
 
+std::string stripSymbolVersion(const std::string Name)
+{
+    if(size_t I = Name.find('@'); I != std::string::npos)
+    {
+        return Name.substr(0, I);
+    }
+    return Name;
+}
+
+void buildSymbolVersions(gtirb::Module &Module)
+{
+    if(Module.getFileFormat() != gtirb::FileFormat::ELF)
+    {
+        return;
+    }
+
+    std::map<gtirb::UUID, std::string> SymbolVersions;
+
+    std::vector<std::tuple<gtirb::Symbol *, std::string, std::string>> Versioned;
+    for(auto &Symbol : Module.symbols())
+    {
+        const std::string &Name = Symbol.getName();
+        if(size_t I = Name.find('@'); I != std::string::npos)
+        {
+            Versioned.push_back({&Symbol, Name.substr(0, I), Name.substr(I)});
+        }
+    }
+    for(auto [Symbol, Name, Version] : Versioned)
+    {
+        Symbol->setName(Name);
+        SymbolVersions.insert({Symbol->getUUID(), Version});
+    }
+
+    Module.addAuxData<gtirb::schema::ElfSymbolVersions>(std::move(SymbolVersions));
+}
+
 void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
                           souffle::SouffleProgram *prog)
 {
-    auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
-    auto *SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>();
+    auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfo>();
+    auto *SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfo>();
     for(auto &output : *prog->getRelation("inferred_symbol_name"))
     {
         gtirb::Addr addr;
@@ -404,12 +440,13 @@ void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
             gtirb::Symbol *symbol = module.addSymbol(context, addr, name);
             if(SymbolInfo)
             {
-                ElfSymbolInfo Info = {0, type, scope, "DEFAULT", 0};
+                auxdata::ElfSymbolInfo Info = {0, type, scope, "DEFAULT", 0};
                 SymbolInfo->insert({symbol->getUUID(), Info});
             }
             if(SymbolTabIdxInfo)
             {
-                ElfSymbolTabIdxInfo TabIdx = std::vector<std::tuple<std::string, uint64_t>>();
+                auxdata::ElfSymbolTabIdxInfo TabIdx =
+                    std::vector<std::tuple<std::string, uint64_t>>();
                 SymbolTabIdxInfo->insert({symbol->getUUID(), TabIdx});
             }
         }
@@ -448,72 +485,62 @@ gtirb::Symbol *findSymbol(gtirb::Module &module, gtirb::Addr ea, std::string nam
 // Build a first version of the SymbolForwarding table with copy relocations and
 // other ABI-specific artifacts that may be duplicated or reintroduced during
 // reassembly.
-void buildSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
-                           souffle::SouffleProgram *prog)
+void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
+                           souffle::SouffleProgram *Prog)
 {
-    std::map<gtirb::UUID, gtirb::UUID> symbolForwarding;
-    for(auto &T : *prog->getRelation("relocation_alias"))
+    std::map<gtirb::UUID, gtirb::UUID> SymbolForwarding;
+    for(auto &T : *Prog->getRelation("relocation_alias"))
     {
         gtirb::Addr EA;
         std::string Name;
         std::string Alias;
         T >> EA >> Alias >> Name;
-        gtirb::Symbol *Symbol = findSymbol(module, EA, Alias);
+        gtirb::Symbol *Symbol = findSymbol(Module, EA, Alias);
         if(Symbol)
         {
             // Create orphaned symbol for OBJECT copy relocation aliases.
-            gtirb::Symbol *NewSymbol = module.addSymbol(context, EA, Alias + "_copy");
-            Symbol->setReferent(module.addProxyBlock(context));
-            symbolForwarding[NewSymbol->getUUID()] = Symbol->getUUID();
-        }
-        else
-        {
-            // Remove null FUNC relocation aliases.
-            auto const &It = module.findSymbols(Alias);
-            if(auto Found = std::find_if(It.begin(), It.end(),
-                                         [](const auto &S) { return !S.getAddress(); });
-               Found != It.end())
-            {
-                Symbol = &*It.begin();
-                auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
-                SymbolInfo->erase(Symbol->getUUID());
-                module.removeSymbol(Symbol);
-            }
+            Alias = stripSymbolVersion(Alias);
+            gtirb::Symbol *NewSymbol = Module.addSymbol(Context, EA, Alias + "_copy");
+            Symbol->setReferent(Module.addProxyBlock(Context));
+            SymbolForwarding[NewSymbol->getUUID()] = Symbol->getUUID();
         }
     }
-    for(auto &output : *prog->getRelation("relocation"))
+    for(auto &T : *Prog->getRelation("relocation"))
     {
-        gtirb::Addr ea;
-        int64_t offset;
-        std::string type, name;
-        output >> ea >> type >> name >> offset;
-        if(type == "COPY")
+        gtirb::Addr EA;
+        int64_t Offset;
+        std::string Type, Name;
+        T >> EA >> Type >> Name >> Offset;
+        if(Type == "COPY")
         {
-            gtirb::Symbol *copySymbol = findSymbol(module, ea, name);
-            if(copySymbol)
+            gtirb::Symbol *CopySymbol = findSymbol(Module, EA, Name);
+            if(CopySymbol)
             {
-                gtirb::Symbol *realSymbol = module.addSymbol(context, name);
-                realSymbol->setReferent(module.addProxyBlock(context));
-                copySymbol->setName(name + "_copy");
-                symbolForwarding[copySymbol->getUUID()] = realSymbol->getUUID();
+                gtirb::Symbol *RealSymbol = Module.addSymbol(Context, Name);
+                RealSymbol->setReferent(Module.addProxyBlock(Context));
+                Name = stripSymbolVersion(Name);
+                CopySymbol->setName(Name + "_copy");
+                SymbolForwarding[CopySymbol->getUUID()] = RealSymbol->getUUID();
             }
         }
     }
-    for(auto &T : *prog->getRelation("abi_intrinsic"))
+    for(auto &T : *Prog->getRelation("abi_intrinsic"))
     {
         gtirb::Addr EA;
         std::string Name;
         T >> EA >> Name;
 
-        gtirb::Symbol *Symbol = findSymbol(module, EA, Name);
+        gtirb::Symbol *Symbol = findSymbol(Module, EA, Name);
         if(Symbol)
         {
-            gtirb::Symbol *NewSymbol = module.addSymbol(context, Name);
+            gtirb::Symbol *NewSymbol = Module.addSymbol(Context, Name);
+            // Create orphaned symbol for OBJECT copy relocation aliases.
+            Name = stripSymbolVersion(Name);
             Symbol->setName(Name + "_copy");
-            symbolForwarding[Symbol->getUUID()] = NewSymbol->getUUID();
+            SymbolForwarding[Symbol->getUUID()] = NewSymbol->getUUID();
         }
     }
-    module.addAuxData<gtirb::schema::SymbolForwarding>(std::move(symbolForwarding));
+    Module.addAuxData<gtirb::schema::SymbolForwarding>(std::move(SymbolForwarding));
 }
 
 gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_t Index,
@@ -533,9 +560,11 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_
         {"GotPageOfst", gtirb::SymAttribute::GotPageOfst},
         {"PltRef", gtirb::SymAttribute::PltRef},
         {"TpOff", gtirb::SymAttribute::TpOff},
+        {"TlsLd", gtirb::SymAttribute::TlsLd},
         {"TlsGd", gtirb::SymAttribute::TlsGd},
         {"GotOff", gtirb::SymAttribute::GotOff},
         {"NtpOff", gtirb::SymAttribute::NtpOff},
+        {"DtpOff", gtirb::SymAttribute::DtpOff},
         {"Lo12", gtirb::SymAttribute::Lo12},
         {"Hi", gtirb::SymAttribute::Hi},
         {"Lo", gtirb::SymAttribute::Lo},
@@ -595,16 +624,16 @@ gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::
 
     gtirb::Symbol *symbol = module.addSymbol(context, ea, getLabel(uint64_t(ea)));
 
-    auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfo>();
     if(SymbolInfo)
     {
-        ElfSymbolInfo Info = {0, "NONE", "LOCAL", "DEFAULT", 0};
+        auxdata::ElfSymbolInfo Info = {0, "NONE", "LOCAL", "DEFAULT", 0};
         SymbolInfo->insert({symbol->getUUID(), Info});
     }
-    auto *SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>();
+    auto *SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfo>();
     if(SymbolTabIdxInfo)
     {
-        ElfSymbolTabIdxInfo TabIdx = std::vector<std::tuple<std::string, uint64_t>>();
+        auxdata::ElfSymbolTabIdxInfo TabIdx = std::vector<std::tuple<std::string, uint64_t>>();
         SymbolTabIdxInfo->insert({symbol->getUUID(), TabIdx});
     }
 
@@ -1074,7 +1103,7 @@ gtirb::Section *findSectionByIndex(gtirb::Context &C, gtirb::Module &M, uint64_t
 
 void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
 {
-    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
 
     std::map<gtirb::Symbol *, std::tuple<gtirb::Node *, bool>> ConnectToBlock;
     for(auto &Symbol : Module.symbols_by_addr())
@@ -1134,7 +1163,7 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
             }
             if(SymbolInfo && SymbolInfo->count(Symbol.getUUID()) > 0)
             {
-                ElfSymbolInfo Info = (*SymbolInfo)[Symbol.getUUID()];
+                auxdata::ElfSymbolInfo Info = (*SymbolInfo)[Symbol.getUUID()];
                 uint64_t SectionIndex = std::get<4>(Info);
                 if(gtirb::Section *Section = findSectionByIndex(Context, Module, SectionIndex);
                    Section && Section->getAddress() && Section->getSize())
@@ -1214,7 +1243,7 @@ void splitSymbols(gtirb::Context &Context, gtirb::Module &Module, souffle::Souff
 
 void buildFunctions(gtirb::Context &Context, gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
-    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfoAD>();
+    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
 
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
     std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2Function;
@@ -1243,7 +1272,7 @@ void buildFunctions(gtirb::Context &Context, gtirb::Module &Module, souffle::Sou
                 FunctionNames.insert({FunctionUUID, Symbol->getUUID()});
                 if(SymbolInfo)
                 {
-                    ElfSymbolInfo Info = {0, "FUNC", "LOCAL", "DEFAULT", 0};
+                    auxdata::ElfSymbolInfo Info = {0, "FUNC", "LOCAL", "DEFAULT", 0};
                     SymbolInfo->insert({Symbol->getUUID(), Info});
                 }
             }
@@ -1680,6 +1709,7 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildPadding(module, prog);
     buildComments(module, prog, selfDiagnose);
     updateEntryPoint(module, prog);
+    buildSymbolVersions(module);
     if(module.getISA() == gtirb::ISA::ARM)
     {
         shiftThumbBlocks(module);

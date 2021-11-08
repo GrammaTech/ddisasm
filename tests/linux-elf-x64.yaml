@@ -129,6 +129,14 @@ tests:
       compiler: "g++"
       flags: ["-no-pie", "-lpthread"]
 
+  - name: ex_dynamic_tls
+    <<: *default
+    binary: fun.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-shared"]
+      skip: false
+
   # ----------------------------------------------------------------------------
   # Static examples
   # ----------------------------------------------------------------------------

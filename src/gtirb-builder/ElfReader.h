@@ -33,7 +33,6 @@ public:
 protected:
     std::shared_ptr<LIEF::ELF::Binary> Elf;
 
-    void initModule() override;
     void buildSections() override;
     void buildSymbols() override;
     void addEntryBlock() override;
@@ -49,8 +48,9 @@ private:
     std::map<std::string, uint64_t> getDynamicEntries();
     void resurrectSections();
     void resurrectSymbols();
-    void createGPforMIPS(uint64_t SecIndex, std::map<gtirb::UUID, ElfSymbolInfo> &SymbolInfo,
-                         std::map<gtirb::UUID, ElfSymbolTabIdxInfo> &SymbolTabIdxInfo);
+    void createGPforMIPS(uint64_t SecIndex,
+                         std::map<gtirb::UUID, auxdata::ElfSymbolInfo> &SymbolInfo,
+                         std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo> &SymbolTabIdxInfo);
 
     // Unloaded, literal section whitelist.
     const std::unordered_set<std::string> Literals = {"pydata"};

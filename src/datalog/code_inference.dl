@@ -22,15 +22,15 @@
 //===----------------------------------------------------------------------===//
 /**
 This module computes the valid instructions organized in blocks of
-code.  It infers the facts 'code_in_block', 'block', and 'code'. In
-addition it computes 'block_still_overlap' for debugging purposes.
+code.  It infers the facts `code_in_block`, `block`, and `code`. In
+addition it computes `block_still_overlap` for debugging purposes.
 
 The disassembly is done in two traversals:
 
   - A "must" backward traversal that propagates invalid instructions
   - A "may" forward traversal that tries to generate a
-    superset of all possible code blocks (with the predicates possible_target
-    and code_in_block_candidate). This traversal has a recursive component
+    superset of all possible code blocks (with the predicates `possible_target`
+    and `code_in_block_candidate`). This traversal has a recursive component
     and a linear-sweep component.
 
 Finally, we detect candidate blocks of code that overlap with each other (and
@@ -43,8 +43,19 @@ more points.
 // These are final addresses where the code is located
 // They are organized in blocks of sequential code
 // The block identifier is the address of the first instruction in the block
+
+/**
+The instruction at address 'ea' belong to the block 'block'.
+The block address is the address of the first instruction in the block.
+*/
 .decl code_in_block(ea:address,block:address)
+/**
+There is a block starting at 'block'
+*/
 .decl block(block:address)
+/**
+The instruction at address 'ea' is code.
+*/
 .decl code(ea:address)
 .decl block_last_instruction(block:address,EA:address)
 .decl block_boundaries(block:address,BegAddr:address,EndAddr:address)
@@ -79,14 +90,14 @@ may_fallthrough(From,To):-
 may_fallthrough(From,To):-
     next(From,To),
     arch.delay_slot(Prev,From),
-    !arch.return(Prev),
+    !unconditional_return(Prev),
     !unconditional_jump(Prev).
 
 // Common case
 may_fallthrough(From,To):-
     next(From,To),
     !arch.delay_slot(_,From),
-    !arch.return(From),
+    !unconditional_return(From),
     !unconditional_jump(From),
     !halt(From),
     !no_return_call(From).
@@ -220,6 +231,10 @@ block_limit(as(EA,address)):-
         lsda_callsite_addresses(_,EA, _)
     ).
 
+.decl must_access_data(EA:address, Dest:address)
+
+must_access_data(0,0):- false.
+
 // The targets are computed incrementally now as we traverse the code
 // likely_ea and possible_target_from are mutually recursive
 
@@ -228,13 +243,15 @@ block_limit(as(EA,address)):-
 possible_target_from(Dest,Src):-
     code_in_block_candidate(Src,_),
     (
-        may_have_symbolic_immediate(Src,Dest)
+        may_have_symbolic_immediate(Src,Dest),
+        !must_access_data(Src,Dest)
         ;
         direct_jump(Src,Dest);
         direct_call(Src,Dest);
         pc_relative_jump(Src,Dest);
         pc_relative_call(Src,Dest);
-        pc_relative_operand(Src,_,Dest)
+        pc_relative_operand(Src,_,Dest),
+        !must_access_data(Src,Dest)
     ).
 
 .decl possible_target(Target:address)
@@ -483,17 +500,27 @@ transitive_points("fde-entry").
 transitive_points("landing-pad").
 transitive_points("exc-region").
 
+// B  |-----|
+// R    |--|
+// or
+// B  |----|
+// R     |---|
 block_is_overlapping(Block),
 block_points(Block,0,-6,"overlap with relative-jump-table"):-
     block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
     relative_address(Beg,_,_,_,_,_),
-    BegBlockAddr <= Beg, Beg< EndBlockAddr.
+    BegBlockAddr <= Beg, Beg < EndBlockAddr.
 
+// B    |----|
+// R  |---|
+// or
+// B    |--|
+// R  |------|
 block_is_overlapping(Block),
 block_points(Block,0,-6,"overlap with relative-jump-table"):-
     relative_address(Beg,Size,_,_,_,_),
     block_candidate_boundaries(Block,BegBlockAddr,_),
-    Beg < BegBlockAddr, BegBlockAddr< Beg+Size.
+    Beg <= BegBlockAddr, BegBlockAddr < Beg+Size.
 
 overlap_with_jump_table(Block),
 block_points(Block,0,-3,"possible relative-jump-table start"):-
@@ -528,6 +555,7 @@ block_points(Block,0,1,"address in data"):-
 
 block_points(Block,0,2,"aligned address in data"):-
     !binary_isa("X86"),
+    !binary_isa("ARM"),
     block_is_overlapping(Block),
     address_in_data(Address,Block),
     arch.pointer_size(Pt_size),
@@ -776,6 +804,12 @@ data_in_code(Begin,End+1):-
     data_in_code_propagate(End,Begin,_),
     !data_in_code_propagate(End+1,Begin,_).
 
+// Data before the first code-block in the code section.
+data_in_code(Begin,Block-1):-
+    // TODO: Skip ELF headers when resurrecting sections and use `code_section'.
+    section(".text",Size,Begin),
+    Block = min EA:{ block_boundaries(_,EA,_), EA >= Begin, EA < Begin + Size },
+    Block > Begin.
 
 .decl next_block_in_section(Block:address,NextBlock:address)
 // Blocks are either contiguous or separated by data segments

@@ -30,30 +30,17 @@ should be installed:
 - [gtirb](https://github.com/grammatech/gtirb)
 - [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
 - [Capstone](http://www.capstone-engine.org/), version 4.0.1 or later
-- [Souffle](https://souffle-lang.github.io), version 2.0.2
-  - Must be configured with support for 64 bit numbers (via `--enable-64bit-domain` during configuration)
+- [Souffle](https://souffle-lang.github.io), version 2.1
+  - Must be configured with support for 64 bit numbers (via `-DSOUFFLE_DOMAIN_64BIT=1` during configuration)
 - [libehp](https://git.zephyr-software.com/opensrc/libehp), version 1.0.0 or higher
-- [LIEF](https://lief.quarkslab.com/), version 0.10.0 or higher
+- [LIEF](https://lief.quarkslab.com/), version 0.11.5 or higher
 
 Note that these versions are newer than what your package manager may provide
 by default: This is true on Ubuntu 18, Debian 10, and others. Prefer building
 these dependencies from sources to avoid versioning problems. Alternatively,
 you can use the GrammaTech PPA to get the correct versions of the dependencies.
-
-### Ubuntu16
-```sh
-sudo add-apt-repository ppa:maarten-fonville/protobuf
-sudo add-apt-repository ppa:mhier/libboost-latest
-echo "deb https://grammatech.github.io/gtirb/pkgs/xenial ./" | sudo tee -a /etc/apt/sources.list.d/gtirb.list
-sudo apt-get update
-```
-
-### Ubuntu18
-```sh
-sudo add-apt-repository ppa:mhier/libboost-latest
-echo "deb [trusted=yes] https://grammatech.github.io/gtirb/pkgs/bionic ./" | sudo tee -a /etc/apt/sources.list.d/gtirb.list
-sudo apt-get update
-```
+See the [GTIRB readme](https://github.com/GrammaTech/gtirb/#installing) for
+instructions on using the GrammaTech PPA.
 
 ## Building ddisasm
 Use the following options to configure cmake:
@@ -210,6 +197,7 @@ ddisasm generates the following AuxData tables:
 | comments                | `std::map<gtirb::Offset, std::string>`                                                             | Per-instruction comments.                                                                                                                                                                                              |
 | functionEntries         | `std::map<gtirb::UUID, std::set<gtirb::UUID>>`                                                     | UUIDs of the blocks that are entry points of functions.                                                                                                                                                                |
 | functionBlocks          | `std::map<gtirb::UUID, std::set<gtirb::UUID>>`                                                     | UUIDs of the blocks that belong to each function.                                                                                                                                                                      |
+| functionNames           | `std::map<gtirb::UUID, std::string>`                                                                | The name of each function.                                                                                                                                                                                            |
 | symbolForwarding        | `std::map<gtirb::UUID, gtirb::UUID>`                                                               | Map from symbols to other symbols. This table is used to forward symbols due to relocations or due to the use of plt and got tables.                                                                                   |
 | encodings               | `std::map<gtirb::UUID, std::string>`                                                               | Map from (typed) data objects to the encoding of the data, expressed as a `std::string` containing an assembler encoding specifier: "string", "uleb128" or "sleb128".                                                  |
 | elfSectionProperties    | `std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>>`                                            | Map from section UUIDs to tuples with the ELF section types and flags.                                                                                                                                                 |

@@ -33,18 +33,6 @@ ElfReader::ElfReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary)
     assert(Elf && "Expected ELF");
 };
 
-// FIXME: LIEF returns LIEF::ARCHITECTURES::ARCH_NONE for MIPS, which should be
-// reported and fixed. For now, we just fix it up after the
-void ElfReader::initModule()
-{
-    GtirbBuilder::initModule();
-    switch(Elf->header().machine_type())
-    {
-        case LIEF::ELF::ARCH::EM_MIPS:
-            Module->setISA(gtirb::ISA::MIPS32);
-    }
-}
-
 // Collect dynamic entries
 std::map<std::string, uint64_t> ElfReader::getDynamicEntries()
 {
@@ -64,9 +52,9 @@ std::map<std::string, uint64_t> ElfReader::getDynamicEntries()
 // Resurrect sections and symbols from sectionless binary
 void ElfReader::resurrectSections()
 {
-    std::map<uint64_t, gtirb::UUID> SectionIndex;
-    std::map<gtirb::UUID, SectionProperties> SectionProperties;
     std::map<gtirb::UUID, uint64_t> Alignment;
+    std::map<uint64_t, gtirb::UUID> SectionIndex;
+    std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> SectionProperties;
 
     // Get dynamic entries
     std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
@@ -202,22 +190,22 @@ void ElfReader::resurrectSections()
         if(Segment.physical_size() < Segment.virtual_size())
         {
             uint64_t DataAddr = Segment.virtual_address() + Segment.physical_size();
-            uint64_t DataSize = Segment.virtual_size() - Segment.physical_size();
+            uint64_t DataSize2 = Segment.virtual_size() - Segment.physical_size();
 
-            gtirb::Section *DataS = Module->addSection(*Context, ".fake.data2");
+            gtirb::Section *DataS2 = Module->addSection(*Context, ".fake.data2");
             // Add section flags to GTIRB Section.
-            DataS->addFlag(gtirb::SectionFlag::Loaded);
-            DataS->addFlag(gtirb::SectionFlag::Readable);
-            DataS->addFlag(gtirb::SectionFlag::Writable);
+            DataS2->addFlag(gtirb::SectionFlag::Loaded);
+            DataS2->addFlag(gtirb::SectionFlag::Readable);
+            DataS2->addFlag(gtirb::SectionFlag::Writable);
 
-            std::vector<uint8_t> DataBytes =
-                Elf->get_content_from_virtual_address(DataAddr, DataSize);
-            DataS->addByteInterval(*Context, gtirb::Addr(DataAddr), DataBytes.begin(),
-                                   DataBytes.end(), DataSize, DataBytes.size());
+            std::vector<uint8_t> DataBytes2 =
+                Elf->get_content_from_virtual_address(DataAddr, DataSize2);
+            DataS2->addByteInterval(*Context, gtirb::Addr(DataAddr), DataBytes2.begin(),
+                                    DataBytes2.end(), DataSize2, DataBytes2.size());
 
-            Alignment[DataS->getUUID()] = 16;
-            SectionIndex[Index] = DataS->getUUID();
-            SectionProperties[DataS->getUUID()] = {
+            Alignment[DataS2->getUUID()] = 16;
+            SectionIndex[Index] = DataS2->getUUID();
+            SectionProperties[DataS2->getUUID()] = {
                 static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS),
                 static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC
                                       | LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE)};
@@ -265,8 +253,9 @@ void ElfReader::resurrectSections()
 }
 
 // MIPS: Create a symbol for _gp.
-void ElfReader::createGPforMIPS(uint64_t SecIndex, std::map<gtirb::UUID, ElfSymbolInfo> &SymbolInfo,
-                                std::map<gtirb::UUID, ElfSymbolTabIdxInfo> &SymbolTabIdxInfo)
+void ElfReader::createGPforMIPS(
+    uint64_t SecIndex, std::map<gtirb::UUID, auxdata::ElfSymbolInfo> &SymbolInfo,
+    std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo> &SymbolTabIdxInfo)
 {
     if(!Module->findSymbols("_gp").empty()) // _gp already exists
         return;
@@ -331,29 +320,29 @@ void ElfReader::resurrectSymbols()
     // TODO: Generalize it if needed.
     if(Module->getISA() == gtirb::ISA::MIPS32)
     {
-        auto It = DynamicEntries.find("SYMTAB");
-        if(It == DynamicEntries.end())
+        auto SymTabIt = DynamicEntries.find("SYMTAB");
+        if(SymTabIt == DynamicEntries.end())
         {
             std::cerr << "\nWARNING: resurrectSymbols: SYMTAB not found.";
             return;
         }
-        uint64_t Addr = It->second;
+        uint64_t Addr = SymTabIt->second;
 
-        It = DynamicEntries.find("MIPS_SYMTABNO");
-        if(It == DynamicEntries.end())
+        SymTabIt = DynamicEntries.find("MIPS_SYMTABNO");
+        if(SymTabIt == DynamicEntries.end())
         {
             std::cerr << "\nWARNING: resurrectSymbols: MIPS_SYMTABNO not found.";
             return;
         }
-        uint64_t DynSymNum = It->second;
+        uint64_t DynSymNum = SymTabIt->second;
 
-        It = DynamicEntries.find("SYMENT");
-        if(It == DynamicEntries.end())
+        SymTabIt = DynamicEntries.find("SYMENT");
+        if(SymTabIt == DynamicEntries.end())
         {
             std::cerr << "\nWARNING: resurrectSymbols: SYMENT not found.";
             return;
         }
-        uint64_t SymTabEntrySize = It->second;
+        uint64_t SymTabEntrySize = SymTabIt->second;
 
         uint64_t Size = DynSymNum * SymTabEntrySize;
 
@@ -394,7 +383,7 @@ void ElfReader::resurrectSymbols()
 void ElfReader::buildSections()
 {
     std::map<uint64_t, gtirb::UUID> SectionIndex;
-    std::map<gtirb::UUID, SectionProperties> SectionProperties;
+    std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> SectionProperties;
     std::map<gtirb::UUID, uint64_t> Alignment;
 
     // For sectionless binary, call resurrectSections.
@@ -535,12 +524,26 @@ void ElfReader::buildSymbols()
                 continue;
             }
 
-            // Remove version suffix from symbol name.
             std::string Name = Symbol.name();
-            std::size_t Version = Name.find('@');
-            if(Version != std::string::npos)
+            std::optional<std::string> Version;
+            if(std::size_t I = Name.find('@'); I != std::string::npos)
             {
-                Name = Name.substr(0, Version);
+                // TODO: Keep track of "default" versions as denoted by double `at'.
+                Version = Name.substr(I, 2) == "@@" ? Name.substr(I + 2) : Name.substr(I + 1);
+                Name = Name.substr(0, I);
+            }
+            else if(Symbol.has_version())
+            {
+                LIEF::ELF::SymbolVersion SymbolVersion = Symbol.symbol_version();
+                if(SymbolVersion.has_auxiliary_version())
+                {
+                    Version = SymbolVersion.symbol_version_auxiliary().name();
+                }
+            }
+            if(Version)
+            {
+                // Construct a normalized symbol name and a version.
+                Name = Name.append("@" + *Version);
             }
 
             uint64_t Value = Symbol.value();
@@ -561,8 +564,8 @@ void ElfReader::buildSymbols()
     accum_symbol_table(Elf->dynamic_symbols(), ".dynsym");
     accum_symbol_table(Elf->static_symbols(), ".symtab");
 
-    std::map<gtirb::UUID, ElfSymbolInfo> SymbolInfo;
-    std::map<gtirb::UUID, ElfSymbolTabIdxInfo> SymbolTabIdxInfo;
+    std::map<gtirb::UUID, auxdata::ElfSymbolInfo> SymbolInfo;
+    std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo> SymbolTabIdxInfo;
     for(auto &[Key, Indexes] : Symbols)
     {
         auto &[Value, Size, Type, Scope, Visibility, SecIndex, Name] = Key;
@@ -600,8 +603,8 @@ void ElfReader::buildSymbols()
         }
     }
 
-    Module->addAuxData<gtirb::schema::ElfSymbolInfoAD>(std::move(SymbolInfo));
-    Module->addAuxData<gtirb::schema::ElfSymbolTabIdxInfoAD>(std::move(SymbolTabIdxInfo));
+    Module->addAuxData<gtirb::schema::ElfSymbolInfo>(std::move(SymbolInfo));
+    Module->addAuxData<gtirb::schema::ElfSymbolTabIdxInfo>(std::move(SymbolTabIdxInfo));
 }
 
 void ElfReader::addEntryBlock()
@@ -638,13 +641,22 @@ void ElfReader::addAuxData()
     Module->addAuxData<gtirb::schema::BinaryType>(std::move(BinaryType));
 
     // Add `relocations' aux data table.
-    std::set<ElfRelocation> RelocationTuples;
+    std::set<auxdata::ElfRelocation> RelocationTuples;
     for(auto &Relocation : Elf->relocations())
     {
         std::string SymbolName;
         if(Relocation.has_symbol())
         {
             SymbolName = Relocation.symbol().name();
+
+            if(Relocation.symbol().has_version())
+            {
+                LIEF::ELF::SymbolVersion SymbolVersion = Relocation.symbol().symbol_version();
+                if(SymbolVersion.has_auxiliary_version())
+                {
+                    SymbolName.append("@" + SymbolVersion.symbol_version_auxiliary().name());
+                }
+            }
         }
         RelocationTuples.insert(
             {Relocation.address(), getRelocationType(Relocation), SymbolName, Relocation.addend()});
@@ -672,7 +684,7 @@ void ElfReader::addAuxData()
 
     // Get dynamic entries
     std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
-    std::set<ElfDynamicEntry> DynamicEntryTuples;
+    std::set<auxdata::ElfDynamicEntry> DynamicEntryTuples;
     for(auto it = DynamicEntries.begin(); it != DynamicEntries.end(); ++it)
     {
         DynamicEntryTuples.insert({it->first, it->second});

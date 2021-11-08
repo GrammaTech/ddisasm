@@ -2,12 +2,22 @@ variables:
   GTIRB_BRANCH: "master"
   GTIRB_PPRINTER_BRANCH: "master"
   CAPSTONE_BRANCH: "master"
+  LIBEHP_REF: "master"
   EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_SERVER_HOST}/api/v4/projects/1587/packages/pypi/simple
   CONAN_PASSWORD: $CI_JOB_TOKEN
   # The following two variables are used by the package-uploader
   PROJECT_ID: $CI_PROJECT_ID
   PIPELINE_ID: $CI_PIPELINE_ID
 
+workflow:
+  rules:
+    # merge_train CI happens once per branch, right before merging
+    # they must pass in order for the merge to go through
+    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
+    # If no 'rules' are explicitly set for jobs below, they will automatically
+    # run each time this pipeline runs (merge, commits, or schedules)
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "schedule"
 
 stages:
   - check-format
@@ -51,10 +61,25 @@ check-format:
       EOF
       ) && exit 1)
 
+.run_only_main: &run-only-main
+  - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  - if: $CI_COMMIT_BRANCH == "master"
+  - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+  - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
+  # regular build is manual and optional
+  # This only works with gitlab 13.12 or higher
+  # See https://about.gitlab.com/blog/2021/05/20/dag-manual-fix/
+  # Uncomment once gitlab is updated
+  #- if: $CI_COMMIT_BRANCH
+  #  when: manual
+  #  allow_failure: true
+
 build-conan-gcc7:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu18
   stage: build
   needs: [check-format]
+  rules:
+    *run-only-main
   script: &build-conan
     - conan profile new default --detect
     - conan profile update settings.compiler.libcxx=libstdc++11 default
@@ -69,6 +94,8 @@ build-conan-gcc9:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu20
   stage: build
   needs: [check-format]
+  rules:
+    *run-only-main
   script:
     *build-conan
 
@@ -84,7 +111,7 @@ build-conan-gcc9:
     - python -m pip install pip --upgrade && python -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
     - export PATH="$PATH;C:\\Program Files\\CMake\\bin"
-    - export SOUFFLE_INCLUDE_DIR="C:\\users\\vagrant\\AppData\\local\\Packages\\CanonicalGroupLimited.Ubuntu18.04onWindows_79rhkp1fndgsc\\localstate\\rootfs\\usr\\local\\include"
+    - export SOUFFLE_INCLUDE_DIR="C:\\users\\vagrant\\AppData\\local\\Packages\\CanonicalGroupLimited.Ubuntu20.04onWindows_79rhkp1fndgsc\\localstate\\rootfs\\usr\\local\\include"
     - export PYTHON="C:\\Python39\\python.exe"
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
     - python .ci/build.py -s build_type=$BUILD_TYPE
@@ -92,12 +119,24 @@ build-conan-gcc9:
 conan-windows-debug:
   variables:
     BUILD_TYPE: Debug
+  rules:
+    *run-only-main
   <<: *conan-windows-template
 
 conan-windows-release:
   variables:
     BUILD_TYPE: Release
   <<: *conan-windows-template
+
+.build-libehp: &build-libehp
+  - git clone https://git.zephyr-software.com/opensrc/libehp.git
+  - pushd libehp
+  - git reset --hard $LIBEHP_REF
+  - cmake ./ -Bbuild -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DEHP_BUILD_SHARED_LIBS=OFF
+  - cd build
+  - make
+  - make install
+  - popd
 
 .build-template: &build
   artifacts:
@@ -115,13 +154,14 @@ conan-windows-release:
     - for pkg in gtirb gtirb-pprinter capstone; do unzip $pkg.zip; done
     # Install gtirb, pprinter, and capstone
     - dpkg -i libcapstone-dev.deb libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
+    - *build-libehp
     # Build ddisasm
     - mkdir build
     - cd build
     # FIXME: CMake should automatically find LIEF_LIBRARY but fails to on Arch.
     - 'LIEF_LIBRARY=/usr/lib/libLIEF.a && [ -f $LIEF_LIBRARY ] || LIEF_LIBRARY=/usr/lib/libLIEF.so'
     - cmake -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_DEBIAN_PACKAGE_RELEASE="$(lsb_release -sc)" -DBUILD_FUNINFER=1 -DLIEF_ROOT=/usr/ -DLIEF_LIBRARY=${LIEF_LIBRARY} -DDDISASM_STRIP_DEBUG_SYMBOLS=On ..
-    - make
+    - make -j4
 
 .test-and-tag-template: &test-and-tag
   script:
@@ -157,6 +197,8 @@ build-ubuntu20-gcc:
     OS: 'ubuntu20'
     CXX_COMPILER: 'g++'
     BUILD_TYPE: 'RelWithDebInfo'
+  rules:
+    *run-only-main
   <<: *build
 
 build-ubuntu20-gcc-debug:
@@ -166,6 +208,8 @@ build-ubuntu20-gcc-debug:
     OS: 'ubuntu20'
     CXX_COMPILER: 'g++'
     BUILD_TYPE: 'Debug'
+  rules:
+    *run-only-main
   <<: *build
 
 build-ubuntu20-clang-debug:
@@ -180,7 +224,10 @@ build-ubuntu20-clang-debug:
 build-static:
   stage: build
   image: $DOCKER_REGISTRY/rewriting/ddisasm/static
+  rules:
+    *run-only-main
   script:
+    - *build-libehp
     # install capstone
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
     - unzip capstone.zip
@@ -208,6 +255,43 @@ build-static:
     # Run the regression tests.
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
 
+
+# The jobs with name "pages" gets uploaded to gitlab pages.
+# We only run this job in the default branch.
+pages:
+  #FIXME: once we update souffle to higher than 2.1
+  # we can use one of the other images
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/datalog-docs
+  stage: build
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  artifacts:
+    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
+    paths:
+      - public
+  script:
+    - python3  doc/build_index.py
+    - python3 -m sphinx  doc public
+
+# We want to generate documentation for master
+# and releases but not publish it in gitlab directly.
+pages-no-publish:
+  #FIXME: once we update souffle to higher than 2.1
+  # we can use one of the other images
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/datalog-docs
+  stage: build
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+    - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
+  artifacts:
+    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
+    paths:
+      - public
+  script:
+    - python3  doc/build_index.py
+    - python3 -m sphinx  doc public
+
 static-drivers:
   stage: deploy
   image: $DOCKER_REGISTRY/rewriting/ddisasm/static
@@ -216,7 +300,10 @@ static-drivers:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - build/bin
+  rules:
+    *run-only-main
   script:
+    - *build-libehp
     # install capstone
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
     - unzip capstone.zip
@@ -252,7 +339,10 @@ build-centos8-gcc-relwithdebuginfo:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - build
+  rules:
+    *run-only-main
   script:
+    - *build-libehp
     # What's the deal with PADDED_DIR? See:
     # https://cmake.org/cmake/help/latest/cpack_gen/rpm.html#variable:CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX
     # From the above link: "...Limitation is that replaced path part must
@@ -293,6 +383,8 @@ run-ubuntu20-gcc:
   variables:
     OS: 'ubuntu20'
     BUILD_TYPE: 'RelWithDebInfo'
+  rules:
+    *run-only-main
   <<: *test-and-tag
 
 run-ubuntu20-gcc-debug:
@@ -303,6 +395,8 @@ run-ubuntu20-gcc-debug:
   variables:
     OS: 'ubuntu20'
     BUILD_TYPE: 'Debug'
+  rules:
+    *run-only-main
   <<: *test-and-tag
 
 run-ubuntu20-clang-debug:
@@ -324,7 +418,10 @@ test-make-install:
     OS: 'ubuntu20'
     COMPILER: 'gcc'
     BUILD_TYPE: 'RelWithDebInfo'
+  rules:
+    *run-only-main
   script:
+    - *build-libehp
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-ubuntu20 --output "gtirb.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-ubuntu20 --output "gtirb-pprinter.zip"
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
@@ -338,6 +435,8 @@ test-centos8-ddisasm-package:
   stage: package-tests
   image: $DOCKER_REGISTRY/rewriting/ddisasm/centos8
   needs: ['build-centos8-gcc-relwithdebuginfo']
+  rules:
+    *run-only-main
   script:
     - pushd build
     - dnf --nogpgcheck localinstall -y capstone-devel-*.rpm libgtirb.rpm libgtirb-pprinter.rpm ddisasm.rpm
@@ -347,12 +446,14 @@ test-centos8-ddisasm-package:
 
 package-centos8:
   stage: deploy
-  image: $DOCKER_REGISTRY/rewriting/gtirb/centos8
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/centos8
   needs: ['build-centos8-gcc-relwithdebuginfo', 'test-centos8-ddisasm-package']
   artifacts:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - '*ddisasm*.rpm'
+  rules:
+    *run-only-main
   script:
     - cp build/*.rpm ./
 
@@ -365,6 +466,7 @@ package-centos8:
     paths:
       - build
   script:
+    - *build-libehp
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-$OS --output "gtirb.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-$OS --output "gtirb-pprinter.zip"
@@ -376,6 +478,8 @@ package-centos8:
     - '[[ ! $CI_COMMIT_REF_NAME =~ ^release-.* ]] || CPACK_DDISASM_STABLE_PKG_NAME=ON'
     - cpack -G "DEB" -D CPACK_DDISASM_STABLE_PKG_NAME=$CPACK_DDISASM_STABLE_PKG_NAME -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-ddisasm
     - cpack -G "DEB" -D CPACK_DDISASM_STABLE_PKG_NAME=$CPACK_DDISASM_STABLE_PKG_NAME -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-debug
+  rules:
+    *run-only-main
 
 build-ubuntu18-packages:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
@@ -397,6 +501,8 @@ build-ubuntu20-packages:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - apt-repo
+  rules:
+    *run-only-main
   script:
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-$OS --output "gtirb.zip"
@@ -423,6 +529,8 @@ setup-ubuntu20-package-tests:
 
 .test-ubuntu-ddisasm: &test-ubuntu-ddisasm
   stage: package-tests
+  rules:
+    *run-only-main
   script:
     - if [ $(lsb_release -sc) == "bionic" ]; then TRUSTED="[trusted=yes]"; fi
     - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
@@ -431,8 +539,11 @@ setup-ubuntu20-package-tests:
     - apt-get update -y && apt-get install -y --allow-unauthenticated $TEST_PKG_NAME
     - ddisasm --version
 
+
 .test-ubuntu-ddisasm-dbg: &test-ubuntu-ddisasm-dbg
   stage: package-tests
+  rules:
+    *run-only-main
   script:
     - if [ $(lsb_release -sc) == "bionic" ]; then TRUSTED="[trusted=yes]"; fi
     - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
@@ -467,6 +578,8 @@ test-ubuntu20-ddisasm-dbg-package:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - '*ddisasm*.deb'
+  rules:
+    *run-only-main
   script:
     - cp build/*ddisasm*.deb ./
 

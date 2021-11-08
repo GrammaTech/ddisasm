@@ -23,7 +23,6 @@
 #include <boost/filesystem.hpp>
 #include <boost/uuid/uuid_io.hpp>
 namespace fs = boost::filesystem;
-#include "LIEF/PE.h"
 #include "PeReader.h"
 
 using GTIRB = GtirbBuilder::GTIRB;
@@ -63,7 +62,7 @@ void PeReader::initModule()
 
 void PeReader::buildSections()
 {
-    std::map<gtirb::UUID, SectionProperties> SectionProperties;
+    std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> SectionProperties;
 
     for(auto &Section : Pe->sections())
     {
@@ -191,13 +190,13 @@ void PeReader::addAuxData()
     Module->addAuxData<gtirb::schema::PeDebugData>(debugData());
 }
 
-std::vector<PeResource> PeReader::resources()
+std::vector<auxdata::PeResource> PeReader::resources()
 {
     auto writeToStream = [](std::stringstream &ss, auto d, int n) {
         ss.write(reinterpret_cast<const char *>(&d), n);
     };
 
-    std::vector<PeResource> CollectedResources;
+    std::vector<auxdata::PeResource> CollectedResources;
 
     if(Pe->has_resources())
     {
@@ -346,9 +345,9 @@ std::vector<PeResource> PeReader::resources()
     return CollectedResources;
 }
 
-std::vector<ImportEntry> PeReader::importEntries()
+std::vector<auxdata::PeImportEntry> PeReader::importEntries()
 {
-    std::vector<ImportEntry> ImportEntries;
+    std::vector<auxdata::PeImportEntry> ImportEntries;
     for(auto &Import : Pe->imports())
     {
         uint64_t ImageBase = Pe->optional_header().imagebase();
@@ -366,9 +365,9 @@ std::vector<ImportEntry> PeReader::importEntries()
     return ImportEntries;
 }
 
-std::vector<ExportEntry> PeReader::exportEntries()
+std::vector<auxdata::PeExportEntry> PeReader::exportEntries()
 {
-    std::vector<ExportEntry> ExportEntries;
+    std::vector<auxdata::PeExportEntry> ExportEntries;
     if(Pe->has_exports())
     {
         uint64_t ImageBase = Pe->optional_header().imagebase();
@@ -380,9 +379,9 @@ std::vector<ExportEntry> PeReader::exportEntries()
     return ExportEntries;
 }
 
-std::vector<DataDirectory> PeReader::dataDirectories()
+std::vector<auxdata::PeDataDirectory> PeReader::dataDirectories()
 {
-    std::vector<DataDirectory> DataDirectories;
+    std::vector<auxdata::PeDataDirectory> DataDirectories;
 
     uint64_t ImageBase = Pe->optional_header().imagebase();
     for(auto &Entry : Pe->data_directories())
@@ -394,9 +393,9 @@ std::vector<DataDirectory> PeReader::dataDirectories()
     return DataDirectories;
 }
 
-std::vector<DebugData> PeReader::debugData()
+std::vector<auxdata::PeDebugData> PeReader::debugData()
 {
-    std::vector<DebugData> DebugData;
+    std::vector<auxdata::PeDebugData> DebugData;
 
     uint64_t ImageBase = Pe->optional_header().imagebase();
     for(auto &Debug : Pe->debug())

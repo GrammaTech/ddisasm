@@ -1,6 +1,6 @@
 FROM centos:8
 
-ARG CMAKE_VERSION=3.12.1
+ARG CMAKE_VERSION=3.15.0
 
 # Use bash for more convenient variable substitution syntax
 SHELL ["/bin/bash", "-c"]
@@ -10,7 +10,6 @@ SHELL ["/bin/bash", "-c"]
 RUN dnf install -y \
     autoconf \
     automake \
-    bison \
     bzip2 \
     flex \
     gcc \
@@ -24,8 +23,8 @@ RUN dnf install -y \
     python3 \
     python3-protobuf \
     python3-networkx \
+    redhat-lsb \
     rpm-build \
-    sqlite-devel \
     unzip \
     zlib-devel
 
@@ -38,27 +37,27 @@ RUN dnf config-manager --set-enabled powertools
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 RUN dnf install -y boost169-devel protobuf-devel
 
+# bison 3.5.1 is needed for souffle
+RUN curl https://ftp.gnu.org/gnu/bison/bison-3.5.1.tar.xz --output bison-3.5.1.tar.xz \
+    && tar -xf bison-3.5.1.tar.xz \
+    && cd bison-3.5.1 \
+    && ./configure \
+    && make install
+
 # souffle
-RUN git clone -b 2.0.2 https://github.com/souffle-lang/souffle && \
+RUN git clone -b 2.1 https://github.com/souffle-lang/souffle && \
     cd souffle && \
-    ./bootstrap && \
-    ./configure --prefix=/usr --enable-64bit-domain --disable-ncurses && \
-    make install
+    cmake . -Bbuild -DCMAKE_BUILD_TYPE=Release -DSOUFFLE_USE_CURSES=0 -DSOUFFLE_USE_SQLITE=0 -DSOUFFLE_DOMAIN_64BIT=1 && \
+    cd build && \
+    make install -j4
 
 # lief
-RUN git clone -b 0.10.0 https://github.com/lief-project/LIEF.git && \
+RUN git clone -b 0.11.5 https://github.com/lief-project/LIEF.git && \
     mkdir LIEF/build && \
     cd LIEF/build && \
     cmake .. -DLIEF_PYTHON_API=off -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=Off && \
     make && \
     make install
 
-# libehp
-RUN git clone https://git.zephyr-software.com/opensrc/libehp.git && \
-    cd libehp && \
-    git reset --hard ddb106c4c1e521bf4b282d17e2a8abf0aa0fe721 && \
-    mkdir build && \
-    cd build && \
-    cmake .. -DCMAKE_BUILD_TYPE=Release -DEHP_BUILD_SHARED_LIBS=Off && \
-    make && \
-    make install
+# Disable git ssl so we can clone libehp
+RUN git config --global http.sslverify false
