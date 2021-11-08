@@ -392,7 +392,7 @@ address_in_data_refined_range.in_ea(EA):-
 /**
 Data-object analysis for string encodings.
 
-A string of some 'Encoding' at interval ['EA','End').
+Possible string of some 'Encoding' at interval ['EA','End').
 */
 .decl string(EA:address,End:address,Encoding:symbol)
 .output string
@@ -410,6 +410,10 @@ string_candidate(EA,Beg+Size,"ascii"):-
       preferred_data_access(EA,_)
     ),
     EA >= Beg, EA < Beg+Size.
+
+string_candidate(EA,EA+Size,"ascii"):-
+    string_candidate(_,EA,"ascii"),
+    ascii_string(EA,Size).
 
 /**
 String candidate refinement projects candidate string references onto a compound
@@ -700,22 +704,13 @@ data_object_point(EA,Size,"string",2,"string basic point"):-
 
 data_object_point(EA,Size,"string",3,"long string"):-
     data_object_candidate(EA,Size,"string"),
-    Size > 5.
+    string_candidate(EA,End,_),
+    string_candidate(Beg,End,_), End-Beg > 5.
 
 data_object_point(EA,Size,"string",-2,"string in jump table"):-
     data_object_candidate(EA,Size,"string"),
     preferred_data_access(EA,EA_ref),
     jump_table_start(_,_,EA_ref,_,_).
-
-// Split strings if a named substring exists, as we cannot use a moved-label.
-data_object_point(EA,Size,"string",-5,"labeled substring"):-
-    data_object_candidate(EA,Size,"string"),
-    (
-      data_object_conflict(EA,_,"string",EA2,_,"string");
-      data_object_conflict(EA2,_,"string",EA,_,"string")
-    ),
-    symbol(EA2,_,_,_,_,_,_,_),
-    EA2 > EA, EA2 < EA+Size.
 
 // data access negative heuristic
 data_object_point(EA,Size,"other",4,"data access"):-
