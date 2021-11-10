@@ -50,6 +50,7 @@
 #include "Version.h"
 #include "gtirb-builder/GtirbBuilder.h"
 #include "gtirb-decoder/DatalogProgram.h"
+#include "gtirb-decoder/core/ModuleLoader.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
@@ -202,11 +203,11 @@ int main(int argc, char **argv)
     // Parse and build a GTIRB module from a supported binary object file.
     std::cerr << "Building the initial gtirb representation " << std::flush;
     auto StartBuildZeroIR = std::chrono::high_resolution_clock::now();
-    std::string filename = vm["input-file"].as<std::string>();
-    auto GTIRB = GtirbBuilder::read(filename);
+    std::string Filename = vm["input-file"].as<std::string>();
+    auto GTIRB = GtirbBuilder::read(Filename);
     if(!GTIRB)
     {
-        std::cerr << "\nERROR: " << filename << ": " << GTIRB.getError().message() << "\n";
+        std::cerr << "\nERROR: " << Filename << ": " << GTIRB.getError().message() << "\n";
         return 1;
     }
 
@@ -216,7 +217,7 @@ int main(int argc, char **argv)
 
     if(!GTIRB->IR)
     {
-        std::cerr << "There was a problem loading the binary file " << filename << "\n";
+        std::cerr << "There was a problem loading the binary file " << Filename << "\n";
         return 1;
     }
 
@@ -243,6 +244,21 @@ int main(int argc, char **argv)
 
     gtirb::Module &Module = *(GTIRB->IR->modules().begin());
     std::optional<DatalogProgram> Souffle = DatalogProgram::load(Module);
+    if(!Souffle)
+    {
+        std::cerr << "\nERROR: " << Filename << ": "
+                  << "Unsupported binary target: " << binaryFormat(Module.getFileFormat()) << "-"
+                  << binaryISA(Module.getISA()) << "-" << binaryEndianness(Module.getByteOrder())
+                  << "\n\n";
+
+        std::cerr << "Available targets:\n";
+        for(auto [FileFormat, Arch, ByteOrder] : DatalogProgram::triples())
+        {
+            std::cerr << "\t" << binaryFormat(FileFormat) << "-" << binaryISA(Arch) << "-"
+                      << binaryEndianness(ByteOrder) << "\n";
+        }
+        return EXIT_FAILURE;
+    }
 
     printElapsedTimeSince(StartDecode);
 
@@ -256,173 +272,165 @@ int main(int argc, char **argv)
     // Remove placeholder relocation data.
     Module.removeAuxData<gtirb::schema::Relocations>();
 
-    if(Souffle)
+    Souffle->insert("option", createDisasmOptions(vm));
+
+    if(vm.count("debug-dir") != 0)
     {
-        Souffle->insert("option", createDisasmOptions(vm));
+        std::cerr << "Writing facts to debug dir " << vm["debug-dir"].as<std::string>()
+                  << std::endl;
+        auto dir = vm["debug-dir"].as<std::string>() + "/";
+        Souffle->writeFacts(dir);
+    }
+    if(vm.count("with-souffle-relations"))
+    {
+        Souffle->writeFacts(Module);
+    }
 
-        if(vm.count("debug-dir") != 0)
-        {
-            std::cerr << "Writing facts to debug dir " << vm["debug-dir"].as<std::string>()
-                      << std::endl;
-            auto dir = vm["debug-dir"].as<std::string>() + "/";
-            Souffle->writeFacts(dir);
-        }
-        if(vm.count("with-souffle-relations"))
-        {
-            Souffle->writeFacts(Module);
-        }
+    std::cerr << "Disassembling" << std::flush;
+    unsigned int Threads = vm["threads"].as<unsigned int>();
 
-        std::cerr << "Disassembling" << std::flush;
-        unsigned int Threads = vm["threads"].as<unsigned int>();
-
-        auto StartDisassembling = std::chrono::high_resolution_clock::now();
-        if(vm.count("interpreter"))
-        {
-            // Disassemble with the interpeter engine.
-            std::cerr << " (interpreter)";
-            const std::string &DebugDir = vm["debug-dir"].as<std::string>();
-            const std::string &DatalogFile = vm["interpreter"].as<std::string>();
-            runInterpreter(Module, Souffle->get(), DatalogFile, DebugDir, Threads);
-        }
-        else
-        {
-            // Disassemble with the compiled, synthesized program.
-            Souffle->threads(Threads);
-            try
-            {
-                Souffle->run();
-            }
-            catch(std::exception &e)
-            {
-                souffle::SignalHandler::instance()->error(e.what());
-            }
-        }
-        printElapsedTimeSince(StartDisassembling);
-
-        if(vm.count("debug-dir") != 0)
-        {
-            std::cerr << "Writing results to debug dir " << vm["debug-dir"].as<std::string>()
-                      << std::endl;
-            auto dir = vm["debug-dir"].as<std::string>() + "/";
-            Souffle->writeRelations(dir);
-        }
-        if(vm.count("with-souffle-relations"))
-        {
-            Souffle->writeRelations(Module);
-        }
-        std::cerr << "Populating gtirb representation " << std::flush;
-        auto StartGtirbBuilding = std::chrono::high_resolution_clock::now();
-        disassembleModule(*GTIRB->Context, Module, Souffle->get(), vm.count("self-diagnose") != 0);
-        printElapsedTimeSince(StartGtirbBuilding);
-
-        if(vm.count("skip-function-analysis") == 0)
-        {
-            std::cerr << "Computing intra-procedural SCCs " << std::flush;
-            auto StartSCCsComputation = std::chrono::high_resolution_clock::now();
-            computeSCCs(Module);
-            printElapsedTimeSince(StartSCCsComputation);
-            std::cerr << "Computing no return analysis " << std::flush;
-            NoReturnPass NoReturn;
-            FunctionInferencePass FunctionInference;
-            if(vm.count("debug-dir") != 0)
-            {
-                NoReturn.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
-                FunctionInference.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
-            }
-            auto StartNoReturnAnalysis = std::chrono::high_resolution_clock::now();
-            NoReturn.computeNoReturn(Module, Threads);
-            printElapsedTimeSince(StartNoReturnAnalysis);
-            std::cerr << "Detecting additional functions " << std::flush;
-            auto StartFunctionAnalysis = std::chrono::high_resolution_clock::now();
-            FunctionInference.computeFunctions(*GTIRB->Context, Module, Threads);
-            printElapsedTimeSince(StartFunctionAnalysis);
-        }
-
-        // Output GTIRB
-        if(vm.count("ir") != 0)
-        {
-            std::string name = vm["ir"].as<std::string>();
-            if(name == "-")
-            {
-                setStdoutToBinary();
-                GTIRB->IR->save(std::cout);
-            }
-            else
-            {
-                std::ofstream out(name, std::ios::out | std::ios::binary);
-                GTIRB->IR->save(out);
-            }
-        }
-        // Output json GTIRB
-        if(vm.count("json") != 0)
-        {
-            std::string name = vm["json"].as<std::string>();
-            if(name == "-")
-            {
-                GTIRB->IR->saveJSON(std::cout);
-            }
-            else
-            {
-                std::ofstream out(vm["json"].as<std::string>());
-                GTIRB->IR->saveJSON(out);
-            }
-        }
-        // Pretty-print
-        gtirb_pprint::PrettyPrinter pprinter;
-        if(vm.count("debug") != 0)
-        {
-            pprinter.setListingMode("debug");
-        }
-
-        if(vm.count("keep-functions") != 0)
-        {
-            for(auto keep : vm["keep-functions"].as<std::vector<std::string>>())
-            {
-                pprinter.symbolPolicy().keep(keep);
-            }
-        }
-        if(vm.count("asm") != 0)
-        {
-            std::cerr << "Printing assembler " << std::flush;
-            auto StartPrinting = std::chrono::high_resolution_clock::now();
-            std::string name = vm["asm"].as<std::string>();
-            if(name == "-")
-            {
-                pprinter.print(std::cout, *GTIRB->Context, Module);
-            }
-            else
-            {
-                std::ofstream out(name);
-                pprinter.print(out, *GTIRB->Context, Module);
-            }
-            printElapsedTimeSince(StartPrinting);
-        }
-        else if(vm.count("ir") == 0 && vm.count("json") == 0)
-        {
-            std::cerr << "Printing assembler" << std::endl;
-            pprinter.print(std::cout, *GTIRB->Context, Module);
-        }
-        // Output PE-specific build artifacts.
-        if(Module.getFileFormat() == gtirb::FileFormat::PE)
-        {
-            if(vm.count("generate-import-libs"))
-            {
-                gtirb_bprint::PeBinaryPrinter BP(pprinter, {}, {});
-                BP.libs(*GTIRB->IR);
-            }
-            if(vm.count("generate-resources"))
-            {
-                gtirb_bprint::PeBinaryPrinter BP(pprinter, {}, {});
-                BP.resources(*GTIRB->IR, *GTIRB->Context);
-            }
-        }
-        performSanityChecks(Souffle->get(), vm.count("self-diagnose") != 0);
+    auto StartDisassembling = std::chrono::high_resolution_clock::now();
+    if(vm.count("interpreter"))
+    {
+        // Disassemble with the interpeter engine.
+        std::cerr << " (interpreter)";
+        const std::string &DebugDir = vm["debug-dir"].as<std::string>();
+        const std::string &DatalogFile = vm["interpreter"].as<std::string>();
+        runInterpreter(Module, Souffle->get(), DatalogFile, DebugDir, Threads);
     }
     else
     {
-        std::cerr << "Failed to create instance for program <name>\n";
-        return 1;
+        // Disassemble with the compiled, synthesized program.
+        Souffle->threads(Threads);
+        try
+        {
+            Souffle->run();
+        }
+        catch(std::exception &e)
+        {
+            souffle::SignalHandler::instance()->error(e.what());
+        }
     }
+    printElapsedTimeSince(StartDisassembling);
+
+    if(vm.count("debug-dir") != 0)
+    {
+        std::cerr << "Writing results to debug dir " << vm["debug-dir"].as<std::string>()
+                  << std::endl;
+        auto dir = vm["debug-dir"].as<std::string>() + "/";
+        Souffle->writeRelations(dir);
+    }
+    if(vm.count("with-souffle-relations"))
+    {
+        Souffle->writeRelations(Module);
+    }
+    std::cerr << "Populating gtirb representation " << std::flush;
+    auto StartGtirbBuilding = std::chrono::high_resolution_clock::now();
+    disassembleModule(*GTIRB->Context, Module, Souffle->get(), vm.count("self-diagnose") != 0);
+    printElapsedTimeSince(StartGtirbBuilding);
+
+    if(vm.count("skip-function-analysis") == 0)
+    {
+        std::cerr << "Computing intra-procedural SCCs " << std::flush;
+        auto StartSCCsComputation = std::chrono::high_resolution_clock::now();
+        computeSCCs(Module);
+        printElapsedTimeSince(StartSCCsComputation);
+        std::cerr << "Computing no return analysis " << std::flush;
+        NoReturnPass NoReturn;
+        FunctionInferencePass FunctionInference;
+        if(vm.count("debug-dir") != 0)
+        {
+            NoReturn.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
+            FunctionInference.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
+        }
+        auto StartNoReturnAnalysis = std::chrono::high_resolution_clock::now();
+        NoReturn.computeNoReturn(Module, Threads);
+        printElapsedTimeSince(StartNoReturnAnalysis);
+        std::cerr << "Detecting additional functions " << std::flush;
+        auto StartFunctionAnalysis = std::chrono::high_resolution_clock::now();
+        FunctionInference.computeFunctions(*GTIRB->Context, Module, Threads);
+        printElapsedTimeSince(StartFunctionAnalysis);
+    }
+
+    // Output GTIRB
+    if(vm.count("ir") != 0)
+    {
+        std::string name = vm["ir"].as<std::string>();
+        if(name == "-")
+        {
+            setStdoutToBinary();
+            GTIRB->IR->save(std::cout);
+        }
+        else
+        {
+            std::ofstream out(name, std::ios::out | std::ios::binary);
+            GTIRB->IR->save(out);
+        }
+    }
+    // Output json GTIRB
+    if(vm.count("json") != 0)
+    {
+        std::string name = vm["json"].as<std::string>();
+        if(name == "-")
+        {
+            GTIRB->IR->saveJSON(std::cout);
+        }
+        else
+        {
+            std::ofstream out(vm["json"].as<std::string>());
+            GTIRB->IR->saveJSON(out);
+        }
+    }
+    // Pretty-print
+    gtirb_pprint::PrettyPrinter pprinter;
+    if(vm.count("debug") != 0)
+    {
+        pprinter.setListingMode("debug");
+    }
+
+    if(vm.count("keep-functions") != 0)
+    {
+        for(auto keep : vm["keep-functions"].as<std::vector<std::string>>())
+        {
+            pprinter.symbolPolicy().keep(keep);
+        }
+    }
+    if(vm.count("asm") != 0)
+    {
+        std::cerr << "Printing assembler " << std::flush;
+        auto StartPrinting = std::chrono::high_resolution_clock::now();
+        std::string name = vm["asm"].as<std::string>();
+        if(name == "-")
+        {
+            pprinter.print(std::cout, *GTIRB->Context, Module);
+        }
+        else
+        {
+            std::ofstream out(name);
+            pprinter.print(out, *GTIRB->Context, Module);
+        }
+        printElapsedTimeSince(StartPrinting);
+    }
+    else if(vm.count("ir") == 0 && vm.count("json") == 0)
+    {
+        std::cerr << "Printing assembler" << std::endl;
+        pprinter.print(std::cout, *GTIRB->Context, Module);
+    }
+    // Output PE-specific build artifacts.
+    if(Module.getFileFormat() == gtirb::FileFormat::PE)
+    {
+        if(vm.count("generate-import-libs"))
+        {
+            gtirb_bprint::PeBinaryPrinter BP(pprinter, {}, {});
+            BP.libs(*GTIRB->IR);
+        }
+        if(vm.count("generate-resources"))
+        {
+            gtirb_bprint::PeBinaryPrinter BP(pprinter, {}, {});
+            BP.resources(*GTIRB->IR, *GTIRB->Context);
+        }
+    }
+    performSanityChecks(Souffle->get(), vm.count("self-diagnose") != 0);
 
     if(GTIRB)
     {

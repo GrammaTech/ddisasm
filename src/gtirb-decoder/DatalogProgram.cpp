@@ -28,6 +28,7 @@
 
 #include "../AuxDataSchema.h"
 #include "CompositeLoader.h"
+#include "core/ModuleLoader.h"
 
 std::map<DatalogProgram::Target, DatalogProgram::Factory> &DatalogProgram::loaders()
 {
@@ -46,6 +47,18 @@ std::optional<DatalogProgram> DatalogProgram::load(const gtirb::Module &Module)
         return Loader.load(Module);
     }
     return std::nullopt;
+}
+
+std::vector<DatalogProgram::Target> DatalogProgram::triples()
+{
+    static std::vector<DatalogProgram::Target> Triples;
+
+    for(auto Factory : DatalogProgram::loaders())
+    {
+        Triples.push_back(Factory.first);
+    }
+
+    return Triples;
 }
 
 void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation *Relation)
