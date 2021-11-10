@@ -532,7 +532,6 @@ block_points(Block,0,-3,"possible relative-jump-table start"):-
 
 block_is_overlapping(Block),
 block_points(Block,0,-3,"overlaps with relocation"):-
-    binary_format("PE"),
     (
         binary_isa("X86");
         binary_isa("X64")
@@ -546,8 +545,8 @@ block_points(Block,0,-3,"overlaps with relocation"):-
         // Relocation target is in block but not aligned with operand offsets.
         instruction(EA,Size,_,_,_,_,_,_,_,_),
         relocation(Target,_,_,_), Target > EA, Target < EA+Size,
-        !instruction(EA,_,_,_,_,_,_,_,Target-EA,_),
-        !instruction(EA,_,_,_,_,_,_,_,_,Target-EA)
+        !instruction_immediate_offset(EA,_,Target-EA),
+        !instruction_displacement_offset(EA,_,Target-EA)
     ).
 
 block_points(Block,0,0,"basic point"):-
