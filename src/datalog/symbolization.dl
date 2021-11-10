@@ -1,4 +1,4 @@
-//===- symbolization.dl -----------------------------------------*- datalog -*-===//
+//===- symbolization.dl -------------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -188,7 +188,7 @@ symbolic_operand_candidate(EA,Index,Dest,Type):-
         instruction_get_op(EA,Index,Op),
         op_immediate(Op,Value)
         ;
-        instruction(EA,_,_,_,_,_,_,_,_,Offset),
+        instruction_displacement_offset(EA,Index,Offset),
         instruction_get_op(EA,Index,Op),
         op_indirect(Op,_,_,_,1,Value,_)
     ),
@@ -200,10 +200,6 @@ symbolic_operand_candidate(EA,Index,Dest,Type):-
         ;
         data_segment(Begin,End),
         Dest >= Begin, Dest <= End,
-        Type = "data"
-        ;
-        base_address(ImageBase),
-        Dest >= ImageBase, Dest <= ImageBase + 1024,
         Type = "data"
     ).
 
