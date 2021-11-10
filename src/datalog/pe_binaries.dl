@@ -89,6 +89,9 @@ pe_relocation_size("HIGHLOW",4).
 pe_relocation_size("DIR64",8).
 pe_relocation_size("ABSOLUTE",0).
 
+relocation_size(Type,Size):-
+    binary_format("PE"),
+    pe_relocation_size(Type,Size).
 
 section(Name,Size,Addr):-
     binary_format("PE"),
@@ -121,6 +124,11 @@ data_region(Begin,Size):-
 // Implicit page for KUSER_SHARED_DATA
 data_segment(0x7FFE0000,0x7FFE1000):-
     binary_format("PE").
+
+// Implicit data region for the PE header and optional header.
+data_segment(ImageBase,ImageBase+1024):-
+    binary_format("PE"),
+    base_address(ImageBase).
 
 inferred_symbol_name(0x7FFE0000,"KUSER_SHARED_DATA","LOCAL","NONE"),
 moved_label_class(EA,Op_index,"KUSER_SHARED_DATA"),

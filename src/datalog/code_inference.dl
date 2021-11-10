@@ -539,7 +539,7 @@ block_points(Block,0,-3,"overlaps with relocation"):-
     code_in_block_candidate_refined(EA,Block),
     (
         // Block beginning intersects relocation bytes:
-        pe_relocation_size(Type,Size),
+        relocation_size(Type,Size),
         relocation(Target,Type,_,_), EA >= Target, EA < Target + Size
         ;
         // Relocation target is in block but not aligned with operand offsets.
