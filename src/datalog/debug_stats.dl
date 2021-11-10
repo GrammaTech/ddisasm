@@ -77,6 +77,12 @@ missed_jump_table(EA):-
     !base_relative_jump_table(EA,_).
 
 
+/**
+Identify all relocations that were resolved to symbolic operands or data.
+
+This relation is used by negation in `discarded_relocations` to find any
+relocations that did not materialize as symbols after analysis.
+*/
 .decl used_relocation(EA:address)
 .output used_relocation
 
@@ -100,6 +106,9 @@ used_relocation(EA):-
     symbolic_expr_from_relocation(EA,_,_,_),
     relocation(EA,_,_,_).
 
+/**
+Select relocations that were not symbolized, i.e. possible false negatives.
+*/
 .decl discarded_relocation(EA:address)
 .output discarded_relocation
 
