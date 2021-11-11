@@ -670,6 +670,12 @@ void expandSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
         {
             for(gtirb::Symbol &dest : foundDest)
             {
+                gtirb::ProxyBlock *ExternalBlock = dest.getReferent<gtirb::ProxyBlock>();
+                if(!ExternalBlock)
+                {
+                    ExternalBlock = module.addProxyBlock(context);
+                    dest.setReferent(ExternalBlock);
+                }
                 (*symbolForwarding)[src.getUUID()] = dest.getUUID();
             }
         }

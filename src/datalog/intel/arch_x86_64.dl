@@ -46,6 +46,11 @@ symbolic_operand_attribute(EA,Index,"TpOff"):-
     tls_segment(Start,End,_),
     Dest >= Start, Dest < End.
 
+symbolic_operand_attribute(EA,Index,"TpOff"):-
+    symbolic_operand(EA,Index,Dest,_),
+    got_reference(Dest,_),
+    relocation(Dest,"TPOFF64",_,_).
+
 // Find special-case TLSD code sequence of the form:
 // .byte 0x66
 // lea rdi, X@tlsgd[rip]
