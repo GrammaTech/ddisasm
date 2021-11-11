@@ -136,6 +136,11 @@ symbolic_operand_attribute(EA,Index,"GotRef"):-
       got_local_reference(Dest,_)
     ).
 
+symbolic_operand_attribute(EA,Index,"NtpOff"):-
+    got_relative_operand(EA,Index,Dest),
+    got_reference(Dest,_),
+    relocation(Dest,"TLS_TPOFF",_,_).
+
 plt_entry(EA,Function):-
     plt_section(SecName),
     section(SecName,Size,Beg),
