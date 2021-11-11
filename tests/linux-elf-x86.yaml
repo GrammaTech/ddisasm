@@ -211,3 +211,9 @@ tests:
     reassemble:
       compiler: "g++"
       flags: ["-m32", "-lpthread", "-fpie"]
+
+  - name: ex_call_once
+    <<: *default
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32", "-lpthread", "-fpie"]
