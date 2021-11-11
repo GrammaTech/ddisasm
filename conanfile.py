@@ -173,6 +173,10 @@ class DdisasmConan(Properties, ConanFile):
             defs.update({"GTIRB_PPRINTER_STRIP_DEBUG_SYMBOLS:BOOL": "ON"})
             self.add_dep_bin_path("mcpp")
 
+        revision = os.environ.get("CI_COMMIT_SHORT_SHA")
+        if revision:
+            defs["DDISASM_BUILD_REVISION"] = revision
+
         if self.settings.build_type == "Release":
             cmake.build_type = "RelWithDebInfo"
         self.add_dep_bin_path("gtirb-pprinter")
