@@ -199,7 +199,7 @@ namespace souffle
 {
     souffle::tuple& operator<<(souffle::tuple& T, const gtirb::Addr& A);
 
-    souffle::tuple& operator<<(souffle::tuple& T, const auxdata::Relocation& Rel);
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Relocation& Rel);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Symbol& S);
 
