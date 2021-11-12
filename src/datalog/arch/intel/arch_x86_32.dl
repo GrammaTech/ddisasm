@@ -106,10 +106,7 @@ reg_has_got(EA,Reg):-
     Beg=EA+as(Offset,address).
 
 reg_has_got(EA,Reg):-
-    // call $PC
-    direct_call(Call,Pop),
-    next(Call,Pop),
-    // pop REG
+    pc_load_call(_,Pop),
     instruction_get_operation(Pop,"POP"),
     instruction_get_dest_op(Pop,_,Op),
     op_regdirect(Op,Reg),

@@ -492,7 +492,7 @@ reg_call(EA,Reg):-
     instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_regdirect(TargetOp,Reg).
 
-.decl indirect_call(src:address)
+ .decl indirect_call(src:address)
 .output indirect_call
 
 indirect_call(EA):-
@@ -504,6 +504,24 @@ indirect_call(EA):-
     !pc_relative_call(EA,_),
     !direct_call_resolved(EA,_),
     !arch.return(EA).
+
+/**
+Identify edge case direct calls that are used to load the program counter and
+not as control-flow (e.g. call-to-pop sequences).
+*/
+.decl pc_load_call(Src:address,Dest:address)
+.output pc_load_call
+
+pc_load_call(Src,Dest):-
+    (
+        binary_isa("X86");
+        binary_isa("X64")
+    ),
+    // CALL pushes program counter to stack,
+    direct_call(Src,Dest),
+    // POP loads program counter from the stack.
+    next(Src,Dest),
+    instruction_get_operation(Dest,"POP").
 
 .decl halt(EA:address)
 
