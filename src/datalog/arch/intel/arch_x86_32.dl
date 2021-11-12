@@ -105,6 +105,21 @@ reg_has_got(EA,Reg):-
     section(Name,_,Beg),
     Beg=EA+as(Offset,address).
 
+reg_has_got(EA,Reg):-
+    // call $PC
+    direct_call(Call,Pop),
+    next(Call,Pop),
+    // pop REG
+    instruction_get_operation(Pop,"POP"),
+    instruction_get_dest_op(Pop,_,Op),
+    op_regdirect(Op,Reg),
+    // used with a pc-relative .got address
+    straight_line_def_used(Pop,Reg,EA,_),
+    op_immediate_and_reg(EA,"ADD",Reg,_,Offset),
+    got_section(Name),
+    section(Name,_,Beg),
+    Beg=EA+as(Offset,address)-(EA-Pop).
+
 reg_has_got(EA_load,Reg_load):-
     // Store GOT pointer
     reg_has_got(EA,Reg_store),
