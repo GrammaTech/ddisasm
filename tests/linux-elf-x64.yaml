@@ -141,7 +141,7 @@ tests:
     <<: *default
     reassemble:
       compiler: "g++"
-      flags: ["-lpthread"]
+      flags: ["-no-pie", "-lpthread"]
 
   # ----------------------------------------------------------------------------
   # Static examples
