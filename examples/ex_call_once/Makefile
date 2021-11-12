@@ -1,6 +1,6 @@
 CXX="g++"
 all: ex.cpp
-	$(CXX) ex.cpp $(CXXFLAGS) -std=c++11 -lpthread -o ex
+	$(CXX) ex.cpp $(CXXFLAGS) -lpthread -o ex
 	./ex > out.txt
 clean:
 	rm -f ex out.txt
