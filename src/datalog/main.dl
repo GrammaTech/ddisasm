@@ -688,6 +688,10 @@ data_segment(Begin,End):-
 .output got_reference
 
 
+// Sometimes we use the `.got' section as reference and sometimes `.got.plt'.
+.decl got_reference_pointer(EA:address)
+.output got_reference_pointer
+
 .decl main_function(ea:address)
 
 .decl conditional_return(EA:address)
@@ -741,6 +745,9 @@ is_padding(EA):-
 
 // TODO: Abstract relation for target platforms.
 got_relative_operand(0,0,0):-
+    false.
+
+got_reference_pointer(0):-
     false.
 
 /**

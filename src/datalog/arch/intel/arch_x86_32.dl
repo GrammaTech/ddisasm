@@ -85,10 +85,6 @@ abi_intrinsic(EA,"__dso_handle"):-
     got_relative_operand(_,_,EA),
     symbol(EA,_,_,_,_,_,_,_,"__dso_handle").
 
-// Sometimes we use the `.got' section as reference and sometimes `.got.plt'.
-.decl got_reference_pointer(EA:address)
-.output got_reference_pointer
-
 .decl reg_has_got(EA:address,Reg:register)
 .output reg_has_got
 
