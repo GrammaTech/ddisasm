@@ -72,6 +72,7 @@ jump_operation("CBZ").
 jump_operation("CBNZ").
 
 unconditional_jump_operation("B").
+unconditional_jump_operation("BX").
 
 jump_equal_operation("BEQ").
 
