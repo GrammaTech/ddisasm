@@ -252,7 +252,7 @@ int main(int argc, char **argv)
                   << "\n\n";
 
         std::cerr << "Available targets:\n";
-        for(auto [FileFormat, Arch, ByteOrder] : DatalogProgram::triples())
+        for(auto [FileFormat, Arch, ByteOrder] : DatalogProgram::supportedTargets())
         {
             std::cerr << "\t" << binaryFormat(FileFormat) << "-" << binaryISA(Arch) << "-"
                       << binaryEndianness(ByteOrder) << "\n";
