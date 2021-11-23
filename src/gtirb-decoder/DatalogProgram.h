@@ -95,7 +95,7 @@ public:
         loaders()[T] = F;
     }
 
-    static std::vector<Target> triples();
+    static std::vector<Target> supportedTargets();
 
 private:
     static std::map<Target, Factory>& loaders();

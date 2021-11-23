@@ -49,16 +49,16 @@ std::optional<DatalogProgram> DatalogProgram::load(const gtirb::Module &Module)
     return std::nullopt;
 }
 
-std::vector<DatalogProgram::Target> DatalogProgram::triples()
+std::vector<DatalogProgram::Target> DatalogProgram::supportedTargets()
 {
-    static std::vector<DatalogProgram::Target> Triples;
+    static std::vector<DatalogProgram::Target> Targets;
 
     for(auto Factory : DatalogProgram::loaders())
     {
-        Triples.push_back(Factory.first);
+        Targets.push_back(Factory.first);
     }
 
-    return Triples;
+    return Targets;
 }
 
 void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation *Relation)
