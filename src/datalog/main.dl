@@ -737,6 +737,18 @@ no_return_call(EA):-
 is_padding(EA):-
     arch.is_nop(EA).
 
+/**
+The set of printable ASCII characters.
+*/
+.decl printable_char(N:unsigned)
+
+printable_char(0x9).
+printable_char(0xA).
+printable_char(0xC).
+printable_char(0xD).
+printable_char(N):-
+    N = range(0x20,0x7E+1,1).
+
 // The functions and data-objects that are intrinsic to the compiler's ABI -
 // artifacts of compilation that are not explicit features of the source and
 // will likely be reintroduced by the compiler toolchain.
@@ -750,14 +762,8 @@ got_relative_operand(0,0,0):-
 got_reference_pointer(0):-
     false.
 
-/**
-The set of printable ASCII characters.
-*/
-.decl printable_char(N:unsigned)
+.decl reg_has_got(EA:address,Reg:register)
+.output reg_has_got
 
-printable_char(0x9).
-printable_char(0xA).
-printable_char(0xC).
-printable_char(0xD).
-printable_char(N):-
-    N = range(0x20,0x7E+1,1).
+reg_has_got(0,""):-
+    false.

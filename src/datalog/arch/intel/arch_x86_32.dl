@@ -85,9 +85,6 @@ abi_intrinsic(EA,"__dso_handle"):-
     got_relative_operand(_,_,EA),
     symbol(EA,_,_,_,_,_,_,_,"__dso_handle").
 
-.decl reg_has_got(EA:address,Reg:register)
-.output reg_has_got
-
 got_reference_pointer(Beg),
 reg_has_got(EA,Reg):-
     // call _x86.get_pc_thunk.REG
