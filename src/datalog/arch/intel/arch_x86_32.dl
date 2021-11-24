@@ -60,10 +60,10 @@ inferred_main_dispatch(CallEA):-
 .decl get_pc_thunk(EA:address,Reg:register)
 .output get_pc_thunk
 
-// call	__x86.get_pc_thunk.ax
+// call    __x86.get_pc_thunk.ax
 // ...
 // __x86.get_pc_thunk.ax:
-// mov	eax, DWORD PTR [esp]
+// mov     eax, DWORD PTR [esp]
 // ret
 get_pc_thunk(EA,Reg):-
     direct_call(_,EA),
@@ -102,11 +102,12 @@ reg_has_got(EA,Reg):-
     Beg=EA+as(Offset,address).
 
 reg_has_got(EA,Reg):-
+    // A call-pop sequences acquires PC.
     pc_load_call(_,Pop),
     instruction_get_operation(Pop,"POP"),
     instruction_get_dest_op(Pop,_,Op),
     op_regdirect(Op,Reg),
-    // used with a pc-relative .got address
+    // Used with a pc-relative .got offset.
     straight_line_def_used(Pop,Reg,EA,_),
     op_immediate_and_reg(EA,"ADD",Reg,_,Offset),
     got_section(Name),
@@ -140,8 +141,8 @@ symbol_minus_symbol(EA+Imm_offset,4,EA,Got,1,0):-
 //     add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
 // Followed by a use of the register, such as:
 //     lea     edx, .LC0@GOTOFF[eax]
-//     movzx	 eax, WORD PTR array@GOTOFF[ebx+eax*2]
-//     movsx	 eax, BYTE PTR array@GOTOFF[esi+ebx]
+//     movzx   eax, WORD PTR array@GOTOFF[ebx+eax*2]
+//     movsx   eax, BYTE PTR array@GOTOFF[esi+ebx]
 got_relative_operand(EA,Index,Dest):-
     reg_has_got(EA_base,Reg),
     def_used(EA_base,Reg,EA,Index),
