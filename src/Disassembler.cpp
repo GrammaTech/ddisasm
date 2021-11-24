@@ -1198,6 +1198,31 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
         }
     }
 
+    // Connect remaining undefined external symbols to `ProxyBlocks'.
+    auto *SymbolForwarding = Module.getAuxData<gtirb::schema::SymbolForwarding>();
+    if(SymbolForwarding && SymbolInfo)
+    {
+        for(auto Forward : *SymbolForwarding)
+        {
+            gtirb::Node *Node = gtirb::Node::getByUUID(Context, std::get<1>(Forward));
+            if(auto *Symbol = dyn_cast_or_null<gtirb::Symbol>(Node))
+            {
+                if(Symbol->hasReferent())
+                {
+                    continue;
+                }
+                if(auto It = SymbolInfo->find(Symbol->getUUID()); It != SymbolInfo->end())
+                {
+                    if(uint64_t SectionIndex = std::get<4>(It->second); SectionIndex == 0)
+                    {
+                        gtirb::ProxyBlock *ExternalBlock = Module.addProxyBlock(Context);
+                        Symbol->setReferent(ExternalBlock);
+                    }
+                }
+            }
+        }
+    }
+
     Module.removeAuxData<gtirb::schema::ElfSectionIndex>();
 }
 
