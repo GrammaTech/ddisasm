@@ -127,6 +127,17 @@ tests:
       compiler: "g++"
       flags: ["-m32", "-lpthread", "-no-pie", "-fno-pie"]
 
+  - name: ex_call_once
+    <<: *default
+    build:
+        c: ["gcc"]
+        cpp: ["g++"]
+        optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
+        flags: ["-m32"]
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32", "-lpthread"]
+
   # ----------------------------------------------------------------------------
   # Small C and C++ examples.  (position independent code)
   # ----------------------------------------------------------------------------

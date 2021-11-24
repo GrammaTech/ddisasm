@@ -137,6 +137,12 @@ tests:
       flags: ["-shared"]
       skip: false
 
+  - name: ex_call_once
+    <<: *default
+    reassemble:
+      compiler: "g++"
+      flags: ["-no-pie", "-lpthread"]
+
   # ----------------------------------------------------------------------------
   # Static examples
   # ----------------------------------------------------------------------------
