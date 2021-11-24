@@ -29,8 +29,8 @@ position-independent: &position-independent
 
   # Compilation configuration.
   build:
-    c: ["gcc"]
-    cpp: ["g++"]
+    c: ["gcc", "clang"]
+    cpp: ["g++", "clang++"]
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
     flags: ["-m32", "-fpie"]
 

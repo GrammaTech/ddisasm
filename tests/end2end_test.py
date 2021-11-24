@@ -51,7 +51,7 @@ def compatible_test(config, test):
 class TestExamples(unittest.TestCase):
     def setUp(self):
         self.configs = Path("./tests/").glob("*.yaml")
-        if __name__ == "__main__":
+        if __name__ == "__main__" and sys.argv[1:]:
             self.configs = [
                 arg for arg in sys.argv[1:] if arg.endswith(".yaml")
             ]
