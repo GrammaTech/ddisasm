@@ -41,13 +41,13 @@ struct Mips32Facts
 class Mips32Loader : public InstructionLoader<Mips32Facts>
 {
 public:
-    enum class Endianness
+    enum class Endian
     {
         LITTLE,
         BIG
     };
 
-    Mips32Loader(Endianness E = Endianness::BIG) : InstructionLoader{4}
+    Mips32Loader(Endian E = Endian::BIG) : InstructionLoader{4}
     {
         // Create smart Captone handle.
         CsHandle.reset(new csh(0), [](csh* Handle) {
@@ -57,9 +57,9 @@ public:
 
         // Setup Capstone engine.
         unsigned int Mode0 = CS_MODE_MIPS32;
-        if(E == Endianness::BIG)
+        if(E == Endian::BIG)
             Mode0 |= CS_MODE_BIG_ENDIAN;
-        else if(E == Endianness::LITTLE)
+        else if(E == Endian::LITTLE)
             Mode0 |= CS_MODE_LITTLE_ENDIAN;
 
         cs_mode Mode = (cs_mode)Mode0;
