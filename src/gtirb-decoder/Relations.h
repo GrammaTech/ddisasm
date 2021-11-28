@@ -33,6 +33,8 @@
 #include <utility>
 #include <vector>
 
+#include "../AuxDataSchema.h"
+
 namespace relations
 {
     template <class T>
@@ -93,6 +95,8 @@ namespace relations
     using RegBitFieldOpVector = std::vector<std::string>;
 
     using Operand = std::variant<ImmOp, RegOp, RegBitFieldOpVector, IndirectOp, FPImmOp>;
+
+    using Relocation = auxdata::Relocation;
 
     struct Symbol
     {
@@ -194,6 +198,8 @@ namespace relations
 namespace souffle
 {
     souffle::tuple& operator<<(souffle::tuple& T, const gtirb::Addr& A);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Relocation& Rel);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Symbol& S);
 

@@ -124,6 +124,8 @@ This module:
 .decl relocation(ea:address,type:symbol,name:symbol,addend:number)
 .input relocation
 
+.decl relocation_size(Type:symbol,Size:unsigned)
+
 .decl binary_type(Type:symbol)
 .input binary_type
 

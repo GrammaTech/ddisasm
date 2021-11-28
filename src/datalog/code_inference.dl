@@ -155,7 +155,7 @@ invalid(EA,Type):-
 // if EA contains a direct call or jump to something that cannot be code, it is invalid
 invalid(EA,Type):-
     (
-        must_fallthrough(EA,Not_code), Type = "must_fallthrough to not_cod     e";
+        must_fallthrough(EA,Not_code), Type = "must_fallthrough to not_code";
         direct_jump(EA,Not_code), Type = "direct_jump to not_code";
         direct_call(EA,Not_code), Type = "direct_call to not_code"
         //pc_relative_jump(EA,Not_code);
@@ -487,6 +487,7 @@ candidate_block_is_padding(Block):-
 .decl transitive_points(type:symbol)
 
 .decl overlap_with_jump_table(block:address)
+.output overlap_with_jump_table
 
 transitive_points("start point").
 transitive_points("code section start").
@@ -529,6 +530,25 @@ block_points(Block,0,-3,"possible relative-jump-table start"):-
     relative_address_start(Beg,_,_,_,_),
     BegBlockAddr <= Beg, Beg< EndBlockAddr.
 
+block_is_overlapping(Block),
+block_points(Block,0,-3,"overlaps with relocation"):-
+    (
+        binary_isa("X86");
+        binary_isa("X64")
+    ),
+    code_in_block_candidate_refined(EA,Block),
+    (
+        // Block beginning intersects relocation bytes:
+        relocation_size(Type,Size),
+        relocation(Target,Type,_,_), EA >= Target, EA < Target + Size
+        ;
+        // Relocation target is in block but not aligned with operand offsets.
+        instruction(EA,Size,_,_,_,_,_,_,_,_),
+        relocation(Target,_,_,_), Target > EA, Target < EA+Size,
+        !instruction_immediate_offset(EA,_,Target-EA),
+        !instruction_displacement_offset(EA,_,Target-EA)
+    ).
+
 block_points(Block,0,0,"basic point"):-
     block_is_overlapping(Block),
     code_in_block_candidate_refined(_,Block).
@@ -562,17 +582,21 @@ block_points(Block,0,2,"aligned address in data"):-
     Address % Pt_size = 0.
 
 block_points(Block,0,-1,"printable address"):-
-    arch.pointer_size(8),
     block_is_overlapping(Block),
     address_in_data(EA,Block),
     data_byte(EA,Byte),(printable_char(Byte); Byte = 0),
     data_byte(EA+1,Byte1),(printable_char(Byte1); Byte1 = 0),
     data_byte(EA+2,Byte2),(printable_char(Byte2); Byte2 = 0),
     data_byte(EA+3,Byte3),(printable_char(Byte3); Byte3 = 0),
-    data_byte(EA+4,Byte4),(printable_char(Byte4); Byte4 = 0),
-    data_byte(EA+5,Byte5),(printable_char(Byte5); Byte5 = 0),
-    data_byte(EA+6,Byte6),(printable_char(Byte6); Byte6 = 0),
-    data_byte(EA+7,Byte7),(printable_char(Byte7); Byte7 = 0).
+    (
+        arch.pointer_size(4)
+        ;
+        arch.pointer_size(8),
+        data_byte(EA+4,Byte4),(printable_char(Byte4); Byte4 = 0),
+        data_byte(EA+5,Byte5),(printable_char(Byte5); Byte5 = 0),
+        data_byte(EA+6,Byte6),(printable_char(Byte6); Byte6 = 0),
+        data_byte(EA+7,Byte7),(printable_char(Byte7); Byte7 = 0)
+    ).
 
 block_points(Block,0,1,"address in data array"):-
     block_is_overlapping(Block),

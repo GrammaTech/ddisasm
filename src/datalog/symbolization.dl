@@ -1,4 +1,4 @@
-//===- symbolization.dl -----------------------------------------*- datalog -*-===//
+//===- symbolization.dl -------------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -176,6 +176,30 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
         data_segment(Begin,End),
         Dest >= Begin,
         Dest <= End,
+        Type = "data"
+    ).
+
+// Handle PE base-relative relocations.
+symbolic_operand_candidate(EA,Index,Dest,Type):-
+    binary_format("PE"),
+    code(EA),
+    (
+        instruction_immediate_offset(EA,Index,Offset),
+        instruction_get_op(EA,Index,Op),
+        op_immediate(Op,Value)
+        ;
+        instruction_displacement_offset(EA,Index,Offset),
+        instruction_get_op(EA,Index,Op),
+        op_indirect(Op,_,_,_,1,Value,_)
+    ),
+    relocation(EA+Offset,_,_,_),
+    Dest = as(Value,address),
+    (
+        code(Dest),
+        Type = "code"
+        ;
+        data_segment(Begin,End),
+        Dest >= Begin, Dest <= End,
         Type = "data"
     ).
 
@@ -602,6 +626,7 @@ data_object_point(EA,Pt_size,"symbol",5,"data access"):-
         data_access_pattern(Label,Pt_size,_,_);
         data_access_pattern(Label,0,_,_)
     ).
+
 // if we conflict with several other candidates we reduce the points
 data_object_point(EA,Pt_size,"symbol",-2,"multiple conflict"):-
     data_object_candidate(EA,Pt_size,"symbol"),
@@ -638,11 +663,10 @@ data_object_point(EA,Pt_size,"symbol",-1,"point-to-special-section"):-
     section(Name,SectSize,Base),
     Dest >= Base, Dest < Base+SectSize.
 
-
 data_object_point(EA,Pt_size,"symbol",10,"has relocation"):-
-    !binary_type("EXEC"),
     data_object_candidate(EA,Pt_size,"symbol"),
-    relocation(EA,_,_,_).
+    relocation(EA,Type,_,_),
+    Type != "ABSOLUTE".
 
 data_object_point(EA,Pt_size,"symbol",-10,"has no relocation"):-
     !binary_type("EXEC"),
@@ -669,7 +693,7 @@ data_object_point(EA,Size,"other",4,"data access"):-
 
 //sometimes we load pointers into xmm
 data_object_point(EA,Size,"other",1,"data access xmm"):-
-  data_object_candidate(EA,Size,"other"),
+    data_object_candidate(EA,Size,"other"),
     Size >= 16.
 
 //range mismatch

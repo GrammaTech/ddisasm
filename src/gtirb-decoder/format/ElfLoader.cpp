@@ -44,7 +44,6 @@ void ElfDynamicEntryLoader(const gtirb::Module &Module, DatalogProgram &Program)
 void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
 {
     std::vector<relations::Symbol> Symbols;
-    std::vector<relations::Relocation> Relocations;
 
     // Find extra ELF symbol information in aux data.
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
@@ -103,28 +102,13 @@ void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
         }
     }
 
-    // Load relocation entries from aux data.
-    if(auto *Table = Module.getAuxData<gtirb::schema::Relocations>())
-    {
-        for(auto [Address, Type, Name, Addend] : *Table)
-        {
-            Relocations.push_back({Address, Type, Name, Addend});
-        }
-    }
-
     Program.insert("symbol", std::move(Symbols));
-    Program.insert("relocation", std::move(Relocations));
-}
 
-namespace souffle
-{
-    souffle::tuple &operator<<(souffle::tuple &T, const relations::Relocation &Rel)
+    if(auto *Relocations = Module.getAuxData<gtirb::schema::Relocations>())
     {
-        auto &[Addr, Type, Name, Addend] = Rel;
-        T << Addr << Type << Name << Addend;
-        return T;
+        Program.insert("relocation", *Relocations);
     }
-} // namespace souffle
+}
 
 void ElfExceptionLoader(const gtirb::Module &Module, DatalogProgram &Program)
 {

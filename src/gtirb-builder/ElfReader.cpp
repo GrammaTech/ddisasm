@@ -270,7 +270,7 @@ void ElfReader::addAuxData()
     Module->addAuxData<gtirb::schema::BinaryType>(std::move(BinaryType));
 
     // Add `relocations' aux data table.
-    std::set<auxdata::ElfRelocation> RelocationTuples;
+    std::set<auxdata::Relocation> RelocationTuples;
     for(auto &Relocation : Elf->relocations())
     {
         std::string SymbolName;
