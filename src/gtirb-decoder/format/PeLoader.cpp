@@ -33,6 +33,11 @@ void PeSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
     {
         Program.insert("pe_import_entry", *ImportEntries);
     }
+
+    if(auto *Relocations = Module.getAuxData<gtirb::schema::Relocations>())
+    {
+        Program.insert("relocation", *Relocations);
+    }
 }
 
 void PeDataDirectoryLoader(const gtirb::Module &Module, DatalogProgram &Program)

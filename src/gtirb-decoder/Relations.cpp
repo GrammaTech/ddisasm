@@ -30,6 +30,13 @@ namespace souffle
         return T;
     }
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::Relocation& Relocation)
+    {
+        auto& [Addr, Type, Name, Addend] = Relocation;
+        T << Addr << Type << Name << Addend;
+        return T;
+    }
+
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Symbol& Symbol)
     {
         T << Symbol.Addr << Symbol.Size << Symbol.Type << Symbol.Binding << Symbol.SectionIndex
@@ -37,9 +44,9 @@ namespace souffle
         return T;
     }
 
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::DynamicEntry& dynamicEntry)
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::DynamicEntry& DynamicEntry)
     {
-        T << dynamicEntry.Name << dynamicEntry.Value;
+        T << DynamicEntry.Name << DynamicEntry.Value;
         return T;
     }
 

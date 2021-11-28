@@ -35,9 +35,6 @@ namespace auxdata
     /// ElfDynamicEntry is a tuple of the form {Tag, Value}.
     using ElfDynamicEntry = std::tuple<std::string, uint64_t>;
 
-    /// ElfRelocation is a tuple of the form {Address, Type, Name, Addend}.
-    using ElfRelocation = std::tuple<uint64_t, std::string, std::string, int64_t>;
-
     /// ElfSymbolInfo is a tuple of the form {Size, Type, Binding, Visibility, SectionIndex}.
     using ElfSymbolInfo = std::tuple<uint64_t, std::string, std::string, std::string, uint64_t>;
 
@@ -58,6 +55,9 @@ namespace auxdata
 
     /// PeResource is a tuple of the form {Header, Data Length, Data Pointer}.
     using PeResource = std::tuple<std::vector<uint8_t>, gtirb::Offset, uint64_t>;
+
+    /// Relocation is a tuple of the form {Address, Type, Name, Addend}.
+    using Relocation = std::tuple<uint64_t, std::string, std::string, int64_t>;
 } // namespace auxdata
 
 /// \file AuxDataSchema.h
@@ -111,7 +111,7 @@ namespace gtirb
         struct Relocations
         {
             static constexpr const char* Name = "relocations";
-            typedef std::set<auxdata::ElfRelocation> Type;
+            typedef std::set<auxdata::Relocation> Type;
         };
 
         /// \brief Auxiliary data describing a binary's dynamic entries.

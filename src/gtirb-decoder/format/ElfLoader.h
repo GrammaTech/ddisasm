@@ -65,20 +65,4 @@ public:
     void addExceptionInformation(souffle::SouffleProgram *prog);
 };
 
-namespace relations
-{
-    struct Relocation
-    {
-        uint64_t Address;
-        std::string Type;
-        std::string Name;
-        int64_t Addend;
-    };
-} // namespace relations
-
-namespace souffle
-{
-    souffle::tuple &operator<<(souffle::tuple &T, const relations::Relocation &Rel);
-}
-
 #endif // SRC_GTIRB_DECODER_FORMAT_ELFLOADER_H_
