@@ -35,8 +35,8 @@ CompositeLoader ElfMips32BELoader()
     CompositeLoader Loader("souffle_disasm_mips32");
     Loader.add(ModuleLoader);
     Loader.add(SectionLoader);
-    Loader.add<Mips32Loader>(Mips32Loader::Endianness::BIG);
-    Loader.add<DataLoader>(DataLoader::Pointer::DWORD, DataLoader::Endianness::BIG);
+    Loader.add<Mips32Loader>(Mips32Loader::Endian::BIG);
+    Loader.add<DataLoader>(DataLoader::Pointer::DWORD, DataLoader::Endian::BIG);
     Loader.add(ElfDynamicEntryLoader);
     Loader.add(ElfSymbolLoader);
     Loader.add(ElfExceptionLoader);
@@ -48,8 +48,8 @@ CompositeLoader ElfMips32LELoader()
     CompositeLoader Loader("souffle_disasm_mips32");
     Loader.add(ModuleLoader);
     Loader.add(SectionLoader);
-    Loader.add<Mips32Loader>(Mips32Loader::Endianness::LITTLE);
-    Loader.add<DataLoader>(DataLoader::Pointer::DWORD, DataLoader::Endianness::LITTLE);
+    Loader.add<Mips32Loader>(Mips32Loader::Endian::LITTLE);
+    Loader.add<DataLoader>(DataLoader::Pointer::DWORD, DataLoader::Endian::LITTLE);
     Loader.add(ElfDynamicEntryLoader);
     Loader.add(ElfSymbolLoader);
     Loader.add(ElfExceptionLoader);

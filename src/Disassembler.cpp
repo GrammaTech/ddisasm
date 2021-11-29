@@ -303,19 +303,19 @@ struct SymbolicDataAttribute
 
 struct StringDataObject
 {
-    StringDataObject(gtirb::Addr ea) : EA(ea)
+    StringDataObject(gtirb::Addr A) : EA(A)
     {
     }
 
-    StringDataObject(souffle::tuple &tuple)
+    StringDataObject(souffle::tuple &T)
     {
-        assert(tuple.size() == 2);
-
-        tuple >> EA >> End;
+        assert(T.size() == 3);
+        T >> EA >> End >> Encoding;
     };
 
     gtirb::Addr EA{0};
     gtirb::Addr End{0};
+    std::string Encoding{"NONE"};
 };
 
 struct SymbolSpecialType
@@ -965,7 +965,7 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
     auto symbolMinusSymbol =
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
 
-    auto dataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", prog);
+    auto DataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", prog);
     auto symbolSpecialTypes =
         convertSortedRelation<VectorByEA<SymbolSpecialType>>("symbol_special_encoding", prog);
     auto DataBoundary = convertSortedRelation<std::set<gtirb::Addr>>("data_object_boundary", prog);
@@ -1061,10 +1061,10 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                     }
                     else
                         // string
-                        if(const auto str = dataStrings.find(currentAddr); str != dataStrings.end())
+                        if(const auto S = DataStrings.find(currentAddr); S != DataStrings.end())
                     {
-                        d = gtirb::DataBlock::Create(context, str->End - currentAddr);
-                        typesTable[d->getUUID()] = std::string{"string"};
+                        d = gtirb::DataBlock::Create(context, S->End - currentAddr);
+                        typesTable[d->getUUID()] = S->Encoding;
                     }
                     else
                     {

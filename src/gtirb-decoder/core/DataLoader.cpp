@@ -21,32 +21,8 @@
 //
 //===----------------------------------------------------------------------===//
 #include "DataLoader.h"
-
-#ifdef _WIN32
-#include <windows.h>
-#endif // _WIN32
-
-#if defined(_WIN32) || defined(__APPLE__)
-#if defined(_MSC_VER)
-
-#define be32toh(x) _byteswap_ulong(x)
-#define le32toh(x) (x)
-
-#define be64toh(x) _byteswap_uint64(x)
-#define le64toh(x) (x)
-
-#elif defined(__GNUC__) || defined(__clang__)
-
-#define be32toh(x) __builtin_bswap32(x)
-#define le32toh(x) (x)
-
-#define be64toh(x) __builtin_bswap64(x)
-#define le64toh(x) (x)
-
-#endif // _MSC_VER
-#endif // defined(_WIN32) || defined(__APPLE__)
-
 #include "../../AuxDataSchema.h"
+#include "../Endian.h"
 
 void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
 {
@@ -55,6 +31,7 @@ void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program
 
     Program.insert("data_byte", std::move(Facts.Bytes));
     Program.insert("address_in_data", std::move(Facts.Addresses));
+    Program.insert("ascii_string", std::move(Facts.Ascii));
 }
 
 void DataLoader::load(const gtirb::Module& Module, DataFacts& Facts)
@@ -102,6 +79,8 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
     uint64_t Size = ByteInterval.getInitializedSize();
     auto Data = ByteInterval.rawBytes<const int8_t>();
 
+    size_t Ascii = 0;
+
     while(Size > 0)
     {
         // Single byte.
@@ -118,14 +97,14 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
                 case Pointer::DWORD:
                 {
                     uint32_t Bytes = *((int32_t*)Data);
-                    Bytes = (Endianness == Endianness::BIG) ? be32toh(Bytes) : le32toh(Bytes);
+                    Bytes = (Endianness == Endian::BIG) ? be32toh(Bytes) : le32toh(Bytes);
                     Value = gtirb::Addr(Bytes);
                     break;
                 }
                 case Pointer::QWORD:
                 {
                     uint64_t Bytes = *((int64_t*)Data);
-                    Bytes = (Endianness == Endianness::BIG) ? be64toh(Bytes) : le64toh(Bytes);
+                    Bytes = (Endianness == Endian::BIG) ? be64toh(Bytes) : le64toh(Bytes);
                     Value = gtirb::Addr(Bytes);
                     break;
                 }
@@ -135,6 +114,21 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
             {
                 Facts.Addresses.push_back({Addr, Value});
             }
+        }
+
+        // Possible ASCII character.
+        if(std::isprint(Byte) || std::isspace(Byte))
+        {
+            Ascii++;
+        }
+        else if(Byte == 0 && Ascii > 0)
+        {
+            Facts.Ascii.push_back({Addr - Ascii, Ascii + 1});
+            Ascii = 0;
+        }
+        else
+        {
+            Ascii = 0;
         }
 
         ++Addr;

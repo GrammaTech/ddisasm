@@ -434,6 +434,7 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2,"first
     Symbol1 = as(Base,address),
     Symbol2 = as(Diff*as(Scale,number)+as(Symbol1,number),address).
 
+labeled_data_candidate(Dest),
 symbol_minus_symbol_jump_table(Addr,Addr,Size,EARef,Dest,"no_table",Scale):-
     data_access_pattern(Addr,Size,0,EABase),
     def_used(EABase,Reg,EAAddPC,_),
