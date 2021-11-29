@@ -588,15 +588,10 @@ block_points(Block,0,-1,"printable address"):-
     data_byte(EA+1,Byte1),(printable_char(Byte1); Byte1 = 0),
     data_byte(EA+2,Byte2),(printable_char(Byte2); Byte2 = 0),
     data_byte(EA+3,Byte3),(printable_char(Byte3); Byte3 = 0),
-    (
-        arch.pointer_size(4)
-        ;
-        arch.pointer_size(8),
-        data_byte(EA+4,Byte4),(printable_char(Byte4); Byte4 = 0),
-        data_byte(EA+5,Byte5),(printable_char(Byte5); Byte5 = 0),
-        data_byte(EA+6,Byte6),(printable_char(Byte6); Byte6 = 0),
-        data_byte(EA+7,Byte7),(printable_char(Byte7); Byte7 = 0)
-    ).
+    data_byte(EA+4,Byte4),(printable_char(Byte4); Byte4 = 0),
+    data_byte(EA+5,Byte5),(printable_char(Byte5); Byte5 = 0),
+    data_byte(EA+6,Byte6),(printable_char(Byte6); Byte6 = 0),
+    data_byte(EA+7,Byte7),(printable_char(Byte7); Byte7 = 0).
 
 block_points(Block,0,1,"address in data array"):-
     block_is_overlapping(Block),

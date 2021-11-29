@@ -153,5 +153,4 @@ namespace souffle
         T << Expr.Addr << Expr.Symbol1 << Expr.Symbol2 << Expr.Offset;
         return T;
     }
-
 } // namespace souffle
