@@ -2,6 +2,7 @@
 # Install Souffle
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04 AS souffle
+RUN apt-get update -y && apt-get install -y cmake lsb-release
 RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 RUN apt-get -y update \
@@ -19,9 +20,11 @@ RUN apt-get -y update \
       sqlite3 \
       zlib1g-dev
 
-RUN git clone -b 2.0.2 --depth 1 https://github.com/souffle-lang/souffle /usr/local/src/souffle
-RUN cd /usr/local/src/souffle && sh ./bootstrap && ./configure --prefix=/usr/local --enable-64bit-domain --disable-ncurses
-RUN make -C /usr/local/src/souffle -j install
+RUN git clone -b 2.1 https://github.com/souffle-lang/souffle && \
+    cd souffle && \
+    cmake . -Bbuild -DCMAKE_BUILD_TYPE=Release -DSOUFFLE_USE_CURSES=0 -DSOUFFLE_USE_SQLITE=0 -DSOUFFLE_DOMAIN_64BIT=1 && \
+    cd build && \
+    make install -j4
 
 # ------------------------------------------------------------------------------
 # Install LIEF
@@ -36,7 +39,7 @@ RUN apt-get -y update \
       git \
       python3
 
-RUN git clone -b 0.10.0 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF
+RUN git clone -b 0.11.5 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF
 RUN cmake -DLIEF_PYTHON_API=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF /usr/local/src/LIEF -B/usr/local/src/LIEF/build
 RUN cmake --build /usr/local/src/LIEF/build -j --target all install
 
@@ -142,10 +145,8 @@ RUN wget https://download.grammatech.com/gtirb/files/apt-repo/pool/unstable/libc
   && rm libcapstone-dev_*_amd64.deb
 
 COPY --from=souffle /usr/local/bin/souffle* /usr/local/bin/
-COPY --from=souffle /usr/local/lib /usr/local/lib
 COPY --from=souffle /usr/local/include /usr/local/include
 COPY --from=LIEF /usr/lib/libLIEF.a /usr/lib/libLIEF.a
-COPY --from=LIEF /usr/include/json.hpp /usr/include/json.hpp
 COPY --from=LIEF /usr/include/LIEF /usr/include/LIEF
 COPY --from=LIEF /usr/share/LIEF /usr/share/LIEF
 COPY --from=libehp /usr/local/lib /usr/local/lib
@@ -156,7 +157,9 @@ COPY --from=gtirb-pprinter /usr/local/bin/gtirb* /usr/local/bin/
 COPY --from=gtirb-pprinter /usr/local/lib /usr/local/lib
 COPY --from=gtirb-pprinter /usr/local/include /usr/local/include
 
-RUN git clone --depth 1 https://github.com/GrammaTech/ddisasm /usr/local/src/ddisasm
+ARG DDISASM_URL=https://github.com/GrammaTech/ddisasm
+ARG DDISASM_BRANCH=master
+RUN git clone --depth 1 -b $DDISASM_BRANCH $DDISASM_URL /usr/local/src/ddisasm
 RUN cmake -DLIEF_ROOT=/usr/ -DCMAKE_BUILD_TYPE=Release /usr/local/src/ddisasm -B/usr/local/src/ddisasm/build
 RUN cmake --build /usr/local/src/ddisasm/build -j --target all install
 
@@ -169,9 +172,9 @@ COPY --from=ddisasm /lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0 /lib/x86
 COPY --from=ddisasm /lib/x86_64-linux-gnu/libboost_program_options.so.1.71.0 /lib/x86_64-linux-gnu/libboost_program_options.so.1.71.0
 COPY --from=ddisasm /lib/libcapstone.so.5 /lib/libcapstone.so.5
 COPY --from=ddisasm /lib/x86_64-linux-gnu/libgomp.so.1 /lib/x86_64-linux-gnu/libgomp.so.1
-COPY --from=ddisasm /usr/local/lib/libgtirb.so.1.10.4 /usr/local/lib/libgtirb.so.1.10.4
-COPY --from=ddisasm /usr/local/lib/libgtirb_layout.so.1 /usr/local/lib/libgtirb_layout.so.1
-COPY --from=ddisasm /usr/local/lib/libgtirb_pprinter.so.1 /usr/local/lib/libgtirb_pprinter.so.1
+COPY --from=ddisasm /usr/local/lib/libgtirb.so.* /usr/local/lib/
+COPY --from=ddisasm /usr/local/lib/libgtirb_layout.so.* /usr/local/lib/
+COPY --from=ddisasm /usr/local/lib/libgtirb_pprinter.so.* /usr/local/lib/
 COPY --from=ddisasm /lib/x86_64-linux-gnu/libprotobuf.so.17 /lib/x86_64-linux-gnu/libprotobuf.so.17
 COPY --from=ddisasm /usr/local/bin/ddisasm /usr/local/bin/
 COPY --from=ddisasm /usr/local/bin/gtirb* /usr/local/bin/
