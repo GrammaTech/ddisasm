@@ -599,6 +599,32 @@ debian-installer-ubuntu20:
     - 'build-ubuntu20-packages'
   <<: *debian-installer-ubuntu-template
 
+.get-image-name: &get-image-name
+  - VERSION=$(echo $(cat version.txt) | python3 -c "import sys; l=sys.stdin.read().split(); print('.'.join([l[1],l[3],l[5]]))")
+  - IMAGE_SUFFIX=""
+  - '[[ $CI_COMMIT_REF_NAME != windows-support && ! $CI_COMMIT_REF_NAME =~ ^release-.*-internal ]] || IMAGE_SUFFIX="-internal"'
+  - 'IMAGE_NAME=grammatech/ddisasm${IMAGE_SUFFIX}'
+
+docker-image:
+  stage: deploy
+  needs: []
+  tags: []
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == "master"'
+    - if: '$CI_COMMIT_REF_NAME == "windows-supprt"'
+    - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+  script:
+    - *get-image-name
+    - docker build -t $IMAGE_NAME:latest --build-arg DDISASM_URL=$CI_PROJECT_URL --build-arg DDISASM_BRANCH=$CI_COMMIT_REF_NAME .
+    - docker tag $IMAGE_NAME:latest $IMAGE_NAME:$VERSION
+    - docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
+    - docker push $IMAGE_NAME:latest
+    - docker push $IMAGE_NAME:$VERSION
+  after_script:
+    - *get-image-name
+    - docker rmi $IMAGE_NAME:latest
+    - docker rmi $IMAGE_NAME:$VERSION
+
 .apt-upload: &apt-upload
   stage: deploy-to-apt
   trigger:
