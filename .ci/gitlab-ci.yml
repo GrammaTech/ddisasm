@@ -611,7 +611,7 @@ docker-image:
   tags: []
   rules:
     - if: '$CI_COMMIT_REF_NAME == "master"'
-    - if: '$CI_COMMIT_REF_NAME == "windows-supprt"'
+    - if: '$CI_COMMIT_REF_NAME == "windows-support"'
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
   script:
     - *get-image-name
