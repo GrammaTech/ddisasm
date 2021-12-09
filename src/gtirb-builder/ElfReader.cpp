@@ -532,10 +532,16 @@ void ElfReader::buildSymbols()
              std::vector<std::tuple<std::string, uint64_t>>>
         Symbols;
 
-    auto LoadSymbols = [&](LIEF::ELF::it_symbols SymbolIt, std::string TableName) {
+    auto LoadSymbols = [&](LIEF::ELF::it_symbols SymbolIt, std::string TableName, bool UseLimit,
+                           uint64_t MaxSyms) {
         uint64_t TableIndex = 0;
         for(auto &Symbol : SymbolIt)
         {
+            if(UseLimit && MaxSyms == TableIndex)
+            {
+                break;
+            }
+
             std::string Name = Symbol.name();
             uint64_t Value = Symbol.value();
 
@@ -593,8 +599,33 @@ void ElfReader::buildSymbols()
         }
     };
 
-    LoadSymbols(Elf->dynamic_symbols(), ".dynsym");
-    LoadSymbols(Elf->static_symbols(), ".symtab");
+    // Determine the maximum number of dynamic symbols to walk.
+    // This is a workaround for https://github.com/lief-project/LIEF/issues/632 and should be
+    // removed when fixes are available. See also:
+    // https://git.grammatech.com/rewriting/ddisasm/-/issues/254
+    bool DynSymUseLimit = false;
+    uint64_t DynSymLimit = 0;
+
+    auto SectionsIT = Elf->sections();
+    auto FoundSectionIT = std::find_if(
+        std::begin(SectionsIT), std::end(SectionsIT), [](const LIEF::ELF::Section &Section) {
+            return LIEF::ELF::ELF_SECTION_TYPES::SHT_DYNSYM == Section.type();
+        });
+
+    if(FoundSectionIT != std::end(SectionsIT))
+    {
+        // If things look sane, derive max number of dynamic symbols from the section size.
+        uint64_t EntrySize = (*FoundSectionIT).entry_size();
+        uint64_t SectionSize = (*FoundSectionIT).size();
+        if(EntrySize != 0 && SectionSize % EntrySize == 0)
+        {
+            DynSymUseLimit = true;
+            DynSymLimit = SectionSize / EntrySize;
+        }
+    }
+
+    LoadSymbols(Elf->dynamic_symbols(), ".dynsym", DynSymUseLimit, DynSymLimit);
+    LoadSymbols(Elf->static_symbols(), ".symtab", false, 0);
 
     std::map<gtirb::UUID, auxdata::ElfSymbolInfo> SymbolInfo;
     std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo> SymbolTabIdxInfo;
