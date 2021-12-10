@@ -249,16 +249,7 @@ main_function(EA):-
 main_function(Main_location):-
     binary_format("ELF"),
     !function_symbol(Main_location,"main"),
-    First_call = min EA:{
-        start_function(Entry),
-        instruction(EA,_,_,CallOp,_,_,_,_,_,_),
-        arch.call_operation(CallOp),
-        code(EA),
-        EA>=Entry
-    },
-    next(Prev,First_call),
-    code(Prev),
-    symbolic_operand(Prev,1,Main_location,"code").
+    arch.main_function(Main_location).
 
 inferred_symbol_name(EA,"_start","GLOBAL","FUNC"):-
     !binary_type("REL"),
