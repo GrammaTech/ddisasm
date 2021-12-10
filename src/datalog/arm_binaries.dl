@@ -184,25 +184,25 @@ split_load_operand(EA, 2, as(Dest,address)) :-
 symbolic_operand_attribute(ea, 1, "GotRef") :-
     split_load_for_symbolization(ea, _, Dest, "LDR/STR"),
     !split_load_for_symbolization(ea, _, Dest, "ADD"),
-    relocation(Dest, _, _, _).
+    relocation(Dest,_,_,_,_,_,_).
 
 symbolic_operand_attribute(ea, 1, "GotRef"),
 symbolic_operand_attribute(ea, 1, "Lo12") :-
     split_load_for_symbolization(ea0, ea, Dest, "LDR/STR"),
     !split_load_for_symbolization(ea0, _, Dest, "ADD"),
-    relocation(Dest, _, _, _).
+    relocation(Dest,_,_,_,_,_,_).
 
 symbolic_operand_attribute(ea, 1, "Lo12") :-
     split_load_for_symbolization(ea0, ea, Dest, "LDR/STR"),
     (
-        !relocation(Dest, _, _, _), ea0 = ea0
+        !relocation(Dest,_,_,_,_,_,_), ea0 = ea0
         ;
         split_load_for_symbolization(ea0, _, Dest, "ADD")
     ).
 
 symbolic_operand_attribute(ea, 2, "Lo12") :-
     split_load_for_symbolization(_, ea, Dest, "ADD"),
-    !relocation(as(Dest,address), "GLOB_DAT", _, _).
+    !relocation(as(Dest,address),"GLOB_DAT",_,_,_,_,_).
 
 
 basic_target(Val+1):-
@@ -226,7 +226,7 @@ plt_block(EA,Function):-
     instruction_get_op(EA,_,Op),
     op_indirect(Op,_, _, _,_, Offset, _),
     Got_entry = as(as(65536+ EA,number) + Offset, address),
-    relocation(Got_entry,_,Function,_).
+    relocation(Got_entry,_,Function,_,_,_,_).
 
 // E.g.,
 //   add ip, pc, #0, #12
@@ -283,7 +283,7 @@ plt_entry_arm_candidate(EA,Function,as(Dest,address)):-
     op_regdirect_contains_reg(RegOp,PC),
 
     Dest = as(EA,number) + N1 + N2 + Offset + 8,
-    relocation(as(Dest,address),_,Function,_).
+    relocation(as(Dest,address),_,Function,_,_,_,_).
 
 .decl movw_movt_pair_candidate(EA_movw:address,EA_prev:address,EA_movt:address,Distance:unsigned)
 .output movw_movt_pair_candidate
@@ -739,7 +739,7 @@ symbolic_data(LitPoolAddr,Size,Got_entry):-
     Got_entry >= GotBeg,
     Got_entry < GotBeg+GotSize,
     (
-        relocation(Got_entry,RelType,Symbol,_),
+        relocation(Got_entry,RelType,Symbol,_,_,_,_),
         RelType != "RELATIVE",
         symbol(_,_,_,_,_,_,_,Symbol)
         ;

@@ -38,6 +38,35 @@ assembly: &assembly
     flags: []
     optimizations: [""]
 
+c-object: &c-object
+  <<: *default
+  binary: ex.o
+
+  # TODO: clang and clang++
+  build:
+    c: ["gcc"]
+    cpp: ["g++"]
+    flags: ["--save-temps"]
+    optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
+
+  reassemble:
+    compiler: "gcc"
+    flags: ["-c", "-no-pie"]
+
+  link:
+    linker: "gcc"
+    flags: []
+
+cpp-object: &cpp-object
+  <<: *c-object
+
+  reassemble:
+    compiler: "g++"
+    flags: ["-c", "-no-pie"]
+
+  link:
+    linker: "g++"
+
 tests:
 
   # ----------------------------------------------------------------------------
@@ -367,3 +396,78 @@ tests:
   - name: ex_loop_instructions
     <<: *assembly
     <<: *test-strip-default
+
+  # ----------------------------------------------------------------------------
+  # Relocatable ELF objects (.o).
+  # ----------------------------------------------------------------------------
+  - name: ex1
+    <<: *c-object
+
+  - name: ex_confusing_data
+    <<: *c-object
+
+  # TODO:
+  # - name: ex_exceptions1
+  #   <<: *cpp-object
+
+  # TODO:
+  # - name: ex_exceptions2
+  #   <<: *cpp-object
+
+  # TODO:
+  # - name: ex_exceptions3
+  #   <<: *cpp-object
+
+  - name: ex_false_pointer_array
+    <<: *c-object
+
+  - name: ex_float
+    <<: *c-object
+
+  - name: ex_fprintf
+    <<: *c-object
+
+  - name: ex_getoptlong
+    <<: *c-object
+
+  - name: ex_memberPointer
+    <<: *cpp-object
+
+  - name: ex_noreturn
+    <<: *c-object
+
+  - name: ex_pointerReatribution
+    <<: *c-object
+
+  - name: ex_pointerReatribution2
+    <<: *c-object
+
+  - name: ex_pointerReatribution3
+    <<: *c-object
+
+  - name: ex_stat
+    <<: *c-object
+
+  - name: ex_struct
+    <<: *c-object
+
+  - name: ex_switch
+    <<: *c-object
+
+  - name: ex_uninitialized_data
+    <<: *c-object
+
+  - name: ex_virtualDispatch
+    <<: *cpp-object
+
+  - name: ex_thread_local
+    <<: *c-object
+
+  - name: ex_threads
+    <<: *cpp-object
+    reassemble:
+      compiler: "g++"
+      flags: ["-c", "-no-pie", "-lpthread"]
+    link:
+      compiler: "g++"
+      flags: ["-lpthread"]

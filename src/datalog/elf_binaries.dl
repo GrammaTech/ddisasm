@@ -1,4 +1,4 @@
-//===- elf_binaries.dl --------------------------------------------------*- datalog -*-===//
+//===- elf_binaries.dl --------------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -24,7 +24,7 @@
 // This module defines predicates and rules specific of ELF binaries
 section(Name,Size,Addr):-
     binary_format("ELF"),
-    section_complete(Name,Size,Addr,_,Flags,_),
+    section_complete(Name,Size,Addr,_,Flags,_,_),
     elf_section_flag("SHF_ALLOC",Pos_Alloc),
     Flags band (2^Pos_Alloc)  > 0.
 
@@ -58,7 +58,7 @@ elf_section_type("SYMTAB_SHNDX",18).
 elf_section_type("NUM",19).
 
 data_section(Name):-
-    section_complete(Name,_,_,Type,Flags,_),
+    section_complete(Name,_,_,Type,Flags,_,_),
     elf_section_flag("SHF_EXECINSTR",Pos_Exec), Flags band (2^Pos_Exec)  = 0,
     elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc)  > 0,
     (   elf_section_type("PROGBITS",Type);
@@ -88,7 +88,7 @@ special_data_section(".tm_clone_table").
 
 code_section(Name):-
     binary_format("ELF"),
-    section_complete(Name,_,_,_,Flags,_),
+    section_complete(Name,_,_,_,Flags,_,_),
     elf_section_flag("SHF_EXECINSTR",Pos_Exec), Flags band (2^Pos_Exec)  > 0.
 
 function_pointer_section(".init_array"):-binary_format("ELF").
@@ -102,7 +102,7 @@ Table maps ELF relocation types to a size in bytes.
 
 // ELF x86_64 relocation sizes:
 elf_relocation_size("X64", "NONE",             0).
-elf_relocation_size("X64", "64",              64).
+elf_relocation_size("X64", "R64",             64).
 elf_relocation_size("X64", "PC32",            32).
 elf_relocation_size("X64", "GOT32",           32).
 elf_relocation_size("X64", "PLT32",           32).
@@ -111,11 +111,11 @@ elf_relocation_size("X64", "GLOB_DAT",        64).
 elf_relocation_size("X64", "JUMP_SLOT",       64).
 elf_relocation_size("X64", "RELATIVE",        64).
 elf_relocation_size("X64", "GOTPCREL",        32).
-elf_relocation_size("X64", "32",              32).
-elf_relocation_size("X64", "32S",             32).
-elf_relocation_size("X64", "16",              16).
+elf_relocation_size("X64", "R32",             32).
+elf_relocation_size("X64", "R32S",            32).
+elf_relocation_size("X64", "R16",             16).
 elf_relocation_size("X64", "PC16",            16).
-elf_relocation_size("X64", "8",                8).
+elf_relocation_size("X64", "R8",               8).
 elf_relocation_size("X64", "PC8",              8).
 elf_relocation_size("X64", "DTPMOD64",        64).
 elf_relocation_size("X64", "DTPOFF64",        64).
@@ -147,7 +147,7 @@ elf_relocation_size("X64", "REX_GOTPCRELX",   32).
 
 // ELF x86_32 relocation sizes:
 elf_relocation_size("X86", "NONE",            0).
-elf_relocation_size("X86", "32",             32).
+elf_relocation_size("X86", "R32",            32).
 elf_relocation_size("X86", "PC32",           32).
 elf_relocation_size("X86", "GOT32",          32).
 elf_relocation_size("X86", "PLT32",          32).
@@ -157,16 +157,16 @@ elf_relocation_size("X86", "JUMP_SLOT",      32).
 elf_relocation_size("X86", "RELATIVE",       32).
 elf_relocation_size("X86", "GOTOFF",         32).
 elf_relocation_size("X86", "GOTPC",          32).
-elf_relocation_size("X86", "32PLT",          32).
+elf_relocation_size("X86", "R32PLT",         32).
 elf_relocation_size("X86", "TLS_TPOFF",      32).
 elf_relocation_size("X86", "TLS_IE",         32).
 elf_relocation_size("X86", "TLS_GOTIE",      32).
 elf_relocation_size("X86", "TLS_LE",         32).
 elf_relocation_size("X86", "TLS_GD",         32).
 elf_relocation_size("X86", "TLS_LDM",        32).
-elf_relocation_size("X86", "16",             16).
+elf_relocation_size("X86", "R16",            16).
 elf_relocation_size("X86", "PC16",           16).
-elf_relocation_size("X86", "8",               8).
+elf_relocation_size("X86", "R8",              8).
 elf_relocation_size("X86", "PC8",             8).
 elf_relocation_size("X86", "TLS_GD_32",      32).
 elf_relocation_size("X86", "TLS_GD_PUSH",    32).
@@ -333,12 +333,12 @@ got_section(".got.plt").
 tls_section(Name):-
     binary_format("ELF"),
     data_section(Name),
-    section_complete(Name,_,_,_,Flags,_),
+    section_complete(Name,_,_,_,Flags,_,_),
     elf_section_flag("SHF_TLS", Pos_Tls), Flags band (2^Pos_Tls) > 0.
 
 bss_section(Name):-
     binary_format("ELF"),
-    section_complete(Name,_,_,Type,Flags,_),
+    section_complete(Name,_,_,Type,Flags,_,_),
     elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc) > 0,
     SHT_NOBITS = 8,
     Type = SHT_NOBITS.
@@ -358,7 +358,7 @@ plt_entry(EA,Function):-
     EA < Beg+Size,
     EA >= Beg,
     pc_relative_jump(EA,Got_entry),
-    relocation(Got_entry,_,Function,_),
+    relocation(Got_entry,_,Function,_,_,_,_),
     Function != "".
 
 plt_entry(EA,Name):-
@@ -367,7 +367,7 @@ plt_entry(EA,Name):-
     EA < Beg+Size,
     EA >= Beg,
     pc_relative_jump(EA,Got_entry),
-    relocation(Got_entry,"IRELATIVE","",Dest),
+    relocation(Got_entry,"IRELATIVE","",Dest,_,_,_),
     (
         defined_symbol(as(Dest,address),_,"GNU_IFUNC",_,_,_,_,Name);
         !defined_symbol(as(Dest,address),_,"GNU_IFUNC",_,_,_,_,_),
@@ -395,7 +395,7 @@ got_reference(Got_entry,Symbol):-
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
-    relocation(Got_entry,RelType,Symbol,_),
+    relocation(Got_entry,RelType,Symbol,_,_,_,_),
     RelType != "RELATIVE",
     RelType != "DTPMOD64",
     symbol(_,_,_,_,_,_,_,Symbol).
@@ -433,7 +433,7 @@ got_local_reference(Got_entry,Dest):-
 //   unsigned long int ti_offset;
 // } tls_index;
 got_local_reference(Got_entry,Dest):-
-    relocation(Got_entry,"DTPMOD64","",_),
+    relocation(Got_entry,"DTPMOD64","",_,_,_,_),
     (
       pc_relative_operand(_,_,Got_entry);
       split_load_operand(_,_,Got_entry)
@@ -480,6 +480,7 @@ main_function(Main_location):-
     symbolic_operand(Prev,1,Main_location,"code").
 
 inferred_symbol_name(EA,"_start","GLOBAL","FUNC"):-
+    !binary_type("REL"),
     !symbol(EA,_,"FUNC",_,_,_,_,_),
     start_function(EA).
 
@@ -510,6 +511,7 @@ inferred_symbol_name(EA,"_DYNAMIC","LOCAL","NONE"):-
     section(".dynamic",_,EA).
 
 inferred_symbol_name(EA,Name,"GLOBAL","FUNC"):-
+    binary_format("ELF"),
     function_inference.function_entry(EA),
     !function_symbol(EA,_),
     !ifunc_symbol(EA,_),
@@ -526,32 +528,74 @@ no_return_function("longjmp(@.*)?"):- binary_format("ELF").
 
 symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
     binary_format("ELF"),
-    relocation(EA,"R64",Symbol,Addend),
-    symbol(_,_,_,_,_,_,_,Symbol).
+    relocation(EA,"R64",Symbol,Addend,_,_,_),
+    symbol(_,_,_,_,_,_,_,Symbol), Symbol != "".
+
+// Relocation indirectly references a named symbol with an offset from a SECTION symbol.
+symbolic_expr_from_relocation(EA,Size/8,Symbol,0):-
+    binary_type("REL"),
+    // Nameless relocation referencing a SECTION symbol.
+    relocation(EA,Type,"",Addend,SymbolIndex,_,_),
+    relocation_size(Type,Size),
+    (
+        Type = "R32";
+        Type = "R64"
+    ),
+    symbol(_,_,"SECTION",_,SectionIndex,_,SymbolIndex,_),
+    section_complete(_,_,Begin,_,_,_,SectionIndex),
+    // Addend is the offset of a symbol within the Section.
+    symbol(Begin+as(Addend,unsigned),_,_,_,_,_,_,Symbol).
 
 symbolic_expr_from_relocation(EA,Size,Symbol,Addend):-
     binary_format("ELF"),
     arch.pointer_size(Size),
-    relocation(EA,"GLOB_DAT",Symbol,Addend),
+    relocation(EA,"GLOB_DAT",Symbol,Addend,_,_,_),
     symbol(_,_,_,_,_,_,_,Symbol).
 
 symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
     binary_format("ELF"),
-    relocation(EA,"R32",Symbol,Addend),
+    relocation(EA,"R32",Symbol,Addend,_,_,_),
     symbol(_,_,_,_,_,_,_,Symbol).
 
 symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
     binary_format("ELF"),
-    relocation(EA,"R32S",Symbol,Addend),
+    relocation(EA,"R32S",Symbol,Addend,_,_,_),
     symbol(_,_,_,_,_,_,_,Symbol).
+
+symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
+    binary_type("REL"),
+    relocation(EA,"TPOFF32",Symbol,Addend,_,_,_).
+
+symbolic_expr_from_relocation(EA+Offset,4,Symbol,Addend+N):-
+    binary_isa("X64"),
+    binary_type("REL"),
+    code(EA),
+    (
+        instruction(EA,Size,_,_,_,_,_,_,_,Offset);
+        instruction(EA,Size,_,_,_,_,_,_,Offset,_)
+    ),
+    (
+        relocation(EA+Offset,"PC32",Symbol,Addend,_,_,_);
+        relocation(EA+Offset,"PLT32",Symbol,Addend,_,_,_)
+    ),
+    Symbol != "",
+    // Adjust addend for trailing instruction bytes.
+    N = as(Size-Offset,number), N > 0.
+
+symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
+    binary_type("REL"),
+    relocation(EA,"PC32",Symbol,Addend,_,Section,"RELA"),
+    section(Section,Size,Begin),
+    data_section(Section), EA >= Begin, EA < Begin+Size.
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 .decl tls_segment(Start:address,End:address,Align:unsigned)
+
 tls_segment(Start,End,Align):-
     Start = min EA:{ tls_section(Name), section(Name,_,Addr), EA=Addr },
     End = max EA:{ tls_section(Name), section(Name,Size,Addr), EA=Addr+Size },
-    Align = max X:{ tls_section(Name), section_complete(Name,_,_,_,_,X) }.
+    Align = max X:{ tls_section(Name), section_complete(Name,_,_,_,_,X,_) }.
 
 // Segment-based references to thread-local storage,
 //   e.g.   mov     eax, DWORD PTR fs:i@tpoff
@@ -583,11 +627,11 @@ symbolic_operand_candidate(EA_used,Index,as(Reference+Offset,address),"data"):-
 ifunc_symbol(DestAddr,NameFunc),
 inferred_symbol_name(DestAddr,NameFunc,"GLOBAL","GNU_IFUNC"),
 inferred_symbol_name(DestAddr,Name,"LOCAL","FUNC"):-
-    relocation(_,"IRELATIVE","",Dest),
+    relocation(_,"IRELATIVE","",Dest,_,_,_),
     DestAddr = as(Dest,address),
     !symbol(DestAddr,_,"GNU_IFUNC",_,_,_,_,_),
     NameFunc = cat("FUN_",to_string(Dest)),
-    Name = cat(NameFunc,"_ifunc").
+    Name = cat(NameFunc,"_IFUNC").
 
 
 // these symbols point to the begining and end of the iplt section
@@ -633,10 +677,9 @@ moved_immediate_candidate(EAStop,ImmIndexStop,ImmediateStopAddr,ImmediateStartAd
     ImmediateStopAddr = as(ImmediateStop, address),
     defined_symbol(ImmediateStopAddr,_,_,_,_,_,_,"__stop___libc_atexit").
 
-
 .decl relocation_alias(EA:address,Alias:symbol,Name:symbol)
 .output relocation_alias
 
 relocation_alias(EA,Alias,Name):-
     symbol(EA,_,"OBJECT","WEAK",_,_,_,Alias),
-    relocation(EA,"COPY",Name,_).
+    relocation(EA,"COPY",Name,_,_,_,_).

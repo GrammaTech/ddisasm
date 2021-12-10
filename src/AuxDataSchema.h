@@ -56,8 +56,10 @@ namespace auxdata
     /// PeResource is a tuple of the form {Header, Data Length, Data Pointer}.
     using PeResource = std::tuple<std::vector<uint8_t>, gtirb::Offset, uint64_t>;
 
-    /// Relocation is a tuple of the form {Address, Type, Name, Addend}.
-    using Relocation = std::tuple<uint64_t, std::string, std::string, int64_t>;
+    /// Relocation is a tuple of the form
+    /// {Address, Type, Name, Addend, SymbolIndex, SectionName, RelType}.
+    using Relocation =
+        std::tuple<uint64_t, std::string, std::string, int64_t, uint64_t, std::string, std::string>;
 } // namespace auxdata
 
 /// \file AuxDataSchema.h

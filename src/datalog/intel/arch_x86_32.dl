@@ -139,7 +139,7 @@ symbolic_operand_attribute(EA,Index,"GotRef"):-
 symbolic_operand_attribute(EA,Index,"NtpOff"):-
     got_relative_operand(EA,Index,Dest),
     got_reference(Dest,_),
-    relocation(Dest,"TLS_TPOFF",_,_).
+    relocation(Dest,"TLS_TPOFF",_,_,_,_,_).
 
 plt_entry(EA,Function):-
     plt_section(SecName),
@@ -158,7 +158,7 @@ plt_entry(EA,Function):-
       op_indirect(Op,"NONE","NONE","NONE",1,Offset,_),
       Got_entry=as(Offset,address)
     ),
-    relocation(Got_entry,_,Function,_).
+    relocation(Got_entry,_,Function,_,_,_,_).
 
 // Segment-based references to thread-local storage,
 //   e.g.   mov	   eax, DWORD PTR gs:i@ntpoff
