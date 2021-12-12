@@ -74,15 +74,61 @@ void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Fact
 
 void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
 {
+    size_t Count0 = 1;
+
+    // NOTE: The IT (If-Then) instruction makes up to four following
+    // instructions (the IT block) conditional.
+    // Check if one of the previous instructions up to 4 is 'IT'.
+    // If so, read the current instruciton bytes along with instruction
+    // bytes up to the 'IT' instruction so that the condition code can be
+    // correctly decoded.
+    const std::vector<relations::Instruction>& Instrs = Facts.Instructions.instructions();
+    if(!Instrs.empty())
+    {
+        std::vector<relations::Instruction>::const_reverse_iterator It = Instrs.rbegin();
+        if(Instrs.size() >= 1 && (*It).Name == "IT")
+        {
+            Count0 = 2;
+        }
+        else if(Instrs.size() >= 2 && (*++It).Name == "IT")
+        {
+            Count0 = 3;
+        }
+        else if(Instrs.size() >= 3 && (*++It).Name == "IT")
+        {
+            Count0 = 4;
+        }
+        else if(Instrs.size() >= 4 && (*++It).Name == "IT")
+        {
+            Count0 = 5;
+        }
+
+        if(Count0 != 1)
+        {
+            Addr -= InstructionSize * (Count0 - 1);
+            Bytes -= InstructionSize * (Count0 - 1);
+            Size += InstructionSize * (Count0 - 1);
+        }
+    }
+
     // Decode instruction with Capstone.
     cs_insn* CsInsn;
-    size_t Count = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &CsInsn);
+    size_t Count = cs_disasm(*CsHandle, Bytes, Size, Addr, Count0, &CsInsn);
 
     // Build datalog instruction facts from Capstone instruction.
     std::optional<relations::Instruction> Instruction;
     if(Count > 0)
     {
-        Instruction = build(Facts, *CsInsn);
+        if(Count == 1)
+        {
+            Instruction = build(Facts, CsInsn[0]);
+        }
+        else
+        {
+            Instruction = build(Facts, CsInsn[Count - 1]);
+            Addr += InstructionSize * (Count0 - 1);
+            Size -= InstructionSize * (Count0 - 1);
+        }
     }
 
     if(Instruction)
