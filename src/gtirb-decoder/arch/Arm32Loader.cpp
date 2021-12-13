@@ -267,7 +267,7 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_arm_op& CsOp)
         case ARM_OP_SYSREG: ///< MSR/MRS special register operand
             return RegOp{"MSR"};
         case ARM_OP_FP:
-            std::cerr << "unhandled ARM operand: fp (ARM_OP_FP)\n";
+            return FPImmOp{CsOp.fp};
         case ARM_OP_SETEND: ///< operand for SETEND instruction
             std::cerr << "unhandled ARM operand: setend (ARM_OP_SETEND)\n";
         case ARM_OP_INVALID:
