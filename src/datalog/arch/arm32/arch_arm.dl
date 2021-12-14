@@ -336,29 +336,19 @@ reg_reg_arithmetic_operation(EA,DstReg,Reg,"NONE",1,Val):-
     // N right-rotate M
     Val = (N bshr M) bor (N bshl (32-M)).
 
-reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset):-
-    instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
-    op_regdirect_contains_reg(Op2,Reg_def),
-    op_indirect(Op1,_,Reg1_n,Reg2_n,Mult,Offset,_),
-    arch.track_register(Reg1_n,Reg1),
-    arch.track_register(Reg2_n,Reg2),
-    Reg1 != Reg2.
-
 reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
     reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
 
-.decl main_function(Main_location:address)
-main_function(Main_location):-
-    First_call = min EA:{
-        start_function(Entry),
-        instruction(EA,_,_,CallOp,_,_,_,_,_,_),
-        arch.call_operation(CallOp),
-        code(EA),
-        EA>=Entry
-    },
-    block_last_def(First_call,EA_def,"R0"),
-    symbolic_operand(EA_def,1,LiteralPoolData,"data"),
-    symbolic_data(LiteralPoolData,4,Main_location),
+.decl main_function(Main_location:address,Main_dispatch:address)
+main_function(Main_location,Main_dispatch):-
+    def_used(EA_def,"R0",Main_dispatch,_),
+    value_reg(EA_def,"R0",_,"NONE",_,Offset,_),
+    Main_location = as(Offset, address),
     code(Main_location).
+
+// Inform the use_def analysis that R0 is used here as an address.
+used(Main_dispatch,Reg,0),used_for_address(Main_dispatch,Reg):-
+    Reg = "R0",
+    main_function_dispatch(Main_dispatch).
 
 }

@@ -505,16 +505,16 @@ reg_reg_arithmetic_operation(EA,Reg,Reg1,Reg2,1,0):-
     op_regdirect_contains_reg(SrcOp1,Reg1),
     op_regdirect_contains_reg(SrcOp2,Reg2).
 
-.decl main_function(Main_location:address)
-main_function(Main_location):-
-    First_call = min EA:{
-        start_function(Entry),
-        instruction(EA,_,_,CallOp,_,_,_,_,_,_),
-        arch.call_operation(CallOp),
-        code(EA),
-        EA>=Entry
-    },
-    block_last_def(First_call,EA_def,"A0"),
-    symbolic_operand(EA_def,1,Main_location,"code"),
+.decl main_function(Main_location:address,Main_dispatch:address)
+main_function(Main_location,Main_dispatch):-
+    def_used(EA_def,"A0",Main_dispatch,_),
+    value_reg(EA_def,"A0",_,"NONE",_,Offset,_),
+    Main_location = as(Offset, address),
     code(Main_location).
+
+// Inform the use_def analysis that A0 is used here as an address.
+used(Main_dispatch,Reg,0),used_for_address(Main_dispatch,Reg):-
+    Reg = "A0",
+    main_function_dispatch(Main_dispatch).
+
 }

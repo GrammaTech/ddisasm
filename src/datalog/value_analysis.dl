@@ -115,7 +115,6 @@ value_reg_edge(EALoad,Reg,EAPrev,Reg,1,0):-
     reg_loaded_from_stack(EALoad,Reg,_,StackPos, StackFrameDefinedAt),
     def_used(EAPrev,Reg,EAStore,_).
 
-
 // mov DWORD from memory
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     def_used_for_address(EA,Reg),
@@ -385,6 +384,41 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult1,Offset+Offset1+Offset2*Mult,Steps3):-
 
     Steps3 = max(Steps1,Steps2)+2.
 
+// arithmetic operations where both registers are known to contain constants
+value_reg(EA,Reg_def,EA,"NONE",0,Offset+Offset1+Offset2*Mult,Steps3):-
+    step_limit(StepLimit),
+    reg_reg_arithmetic_operation_defs(EA,Reg_def,EA_def1,Reg1,EA_def2,Reg2,Mult,Offset),
+    def_used_for_address(EA,Reg_def),
+    value_reg(EA_def2,Reg2,_,"NONE",0,Offset2,Steps2),
+    Steps2+2 < StepLimit,
+    value_reg(EA_def1,Reg1,_,"NONE",0,Offset1,Steps1),
+    Steps1+2 < StepLimit,
+    Steps3 = max(Steps1,Steps2)+2.
+
+// detect loads from a constant address
+value_reg(EA,Reg_def,EA,"NONE",0,Val,Steps3):-
+    arch.load_operation(Operation),
+    instruction(EA,_,_,Operation,Op1,Op2,_,_,_,_),
+    op_regdirect_contains_reg(Op2,Reg_def),
+    op_indirect(Op1,_,BaseReg,OffReg,Mult,ImmOffset,DataSize),
+
+    def_used(EA_def_base,BaseReg,EA,_),
+    value_reg(EA_def_base,BaseReg,_,"NONE",0,BaseRegVal,Steps1),
+    (
+        def_used(EA_def_offset,OffReg,EA,_),
+        value_reg(EA_def_offset,OffReg,_,"NONE",0,OffsetRegVal,Steps2)
+        ;
+        OffReg = "NONE",
+        OffsetRegVal = 0,
+        Steps2 = 0
+    ),
+
+    Data_addr = as(BaseRegVal + OffsetRegVal * Mult + ImmOffset,address),
+    data_word(Data_addr,DataSize / 8,Val),
+
+    step_limit(StepLimit),
+    Steps3 = max(Steps1,Steps2)+2,
+    Steps3 < StepLimit.
 
 // normal propagation
 value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,Steps2):-

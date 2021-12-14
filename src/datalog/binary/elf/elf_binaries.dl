@@ -246,10 +246,24 @@ main_function(EA):-
     binary_format("ELF"),
     function_symbol(EA,"main").
 
+// Locate where main() is dispatched (i.e., where __libc_start_main is called.)
+.decl main_function_dispatch(EA:address)
+
+main_function_dispatch(First_call):-
+    binary_format("ELF"),
+    First_call = min EA:{
+        start_function(Entry),
+        instruction(EA,_,_,CallOp,_,_,_,_,_,_),
+        arch.call_operation(CallOp),
+        code(EA),
+        EA>=Entry
+    }.
+
 main_function(Main_location):-
     binary_format("ELF"),
-    !function_symbol(Main_location,"main"),
-    arch.main_function(Main_location).
+    !function_symbol(_,"main"),
+    main_function_dispatch(Main_dispatch),
+    arch.main_function(Main_location,Main_dispatch).
 
 inferred_symbol_name(EA,"_start","GLOBAL","FUNC"):-
     !binary_type("REL"),
