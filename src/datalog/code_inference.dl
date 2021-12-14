@@ -498,6 +498,7 @@ transitive_points("fits").
 transitive_points("fde-entry").
 transitive_points("landing-pad").
 transitive_points("exc-region").
+transitive_points("relative jump table target").
 
 // B  |-----|
 // R    |--|
