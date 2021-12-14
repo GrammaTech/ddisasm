@@ -37,6 +37,9 @@ Finally, we detect candidate blocks of code that overlap with each other (and
 therefore are in conflict) and give them points according to several
 heuristics. Then for each two conflicting blocks we keep the one with
 more points.
+
+For deciding code vs data, we consider code block
+candidates and data block candidates.
 */
 
 
@@ -90,12 +93,15 @@ There is a segment of data in a code section that spans from 'Begin' to 'End'.
 */
 .decl data_in_code(Begin:address,End:address)
 
-
+/**
+A block candidate can be a "code" or "data" block candidate.
+*/
+.type block_kind <: symbol
 /**
 This predicate if there are still overlapping blocks after the
 code inference. In that case the analysis has failed to resolve all conflicts.
 */
-.decl block_still_overlap(Block1:address,BlockKind1:symbol,Block2:address,BlockKind2:symbol)
+.decl block_still_overlap(Block1:address,BlockKind1:block_kind,Block2:address,BlockKind2:block_kind)
 .output block_still_overlap
 
 
@@ -387,7 +393,7 @@ ARM 32 Thumb code blocks.
 
 These block candidates can be code blocks or data blocks.
 */
-.decl block_candidate_boundaries(BlockEA:address,BlockKind:symbol,StartAddr:address,EndAddr:address)
+.decl block_candidate_boundaries(BlockEA:address,BlockKind:block_kind,StartAddr:address,EndAddr:address)
 .output block_candidate_boundaries
 
 block_candidate_boundaries(Block,"code",Block,Next):-
@@ -418,7 +424,7 @@ multiple_fallthrough_to(Block):-
     BlockPred != BlockPred2.
 
 
-.decl block_overlap(BlockEA1:address,BlockKind1:symbol,BlockEA2:address,BlockKind2:symbol)
+.decl block_overlap(BlockEA1:address,BlockKind1:block_kind,BlockEA2:address,BlockKind2:block_kind)
 .output block_overlap
 
 
@@ -434,7 +440,7 @@ block_overlap(Block1,Kind1,Block2,Kind2):-
     BegAddr2 < EndAddr1.
 
 
-.decl block_is_overlapping(Block:address,BlockKind:symbol)
+.decl block_is_overlapping(Block:address,BlockKind:block_kind)
 
 block_is_overlapping(Block,Kind):-
     (
@@ -446,13 +452,13 @@ block_is_overlapping(Block,Kind):-
 // We need to solve the block overlaps
 // we do it with heuristics
 ///
-.decl block_total_points(Block:address,BlockKind:symbol, points:number)
+.decl block_total_points(Block:address,BlockKind:block_kind, points:number)
 
 block_total_points(Block,BlockKind,Points):-
     block_is_overlapping(Block,BlockKind),
     Points = sum X:{block_points(Block,BlockKind,_,X,_)}.
 
-.decl discarded_block(Block:address,BlockKind:symbol)
+.decl discarded_block(Block:address,BlockKind:block_kind)
 .output discarded_block
 
 discarded_block(Block1,BlockKind1):-
@@ -514,7 +520,7 @@ candidate_block_is_padding(Block):-
  or in a pointer array.
  The points are trasmitted transitively though overlapping blocks.
 */
-.decl block_points(Block:address,BlockKind:symbol,Predecessor:address,Importance:number,HeuristicName:symbol)
+.decl block_points(Block:address,BlockKind:block_kind,Predecessor:address,Importance:number,HeuristicName:symbol)
 .output block_points
 
 .decl transitive_points(HeuristicName:symbol)
