@@ -8,25 +8,25 @@
 relocation_in_operand(EA,Index,Location,Offset):-
     code(EA),
     instruction_immediate_offset(EA,Index,Offset),
-    relocation(Location,_,_,_),
+    relocation(Location,_,_,_,_,_,_),
     Location = EA+Offset.
 
 relocation_in_operand(EA,Index,Location,Offset):-
     code(EA),
     instruction_displacement_offset(EA,Index,Offset),
-    relocation(Location,_,_,_),
+    relocation(Location,_,_,_,_,_,_),
     Location = EA+Offset.
 
 
 .decl trivial_relocation(EA:address)
 
 trivial_relocation(EA):-
-    relocation(EA,_,Symbol,0),
+    relocation(EA,_,Symbol,0,_,_,_),
     symbol(0,_,_,_,0,_,_,Symbol),
     Symbol != "".
 
 trivial_relocation(EA):-
-    relocation(EA,_,"__TMC_END__",7).
+    relocation(EA,_,"__TMC_END__",7,_,_,_).
 
 
 .decl bad_symbol_constant(EA:address,cnt:number)
@@ -34,7 +34,7 @@ trivial_relocation(EA):-
 
 bad_symbol_constant(EA,Cnt):-
     relocation_in_operand(EA,Index,Rel,InsnOffset),
-    relocation(Rel,_,_,Cnt),
+    relocation(Rel,_,_,Cnt,_,_,_),
     (
         pc_relative_operand(EA,Index,_),
         instruction(EA,InsnSize,_,_,_,_,_,_,_,_),
@@ -60,7 +60,7 @@ bad_symbol_constant(EA,Cnt):-
 
 bad_symbol_constant(EA,Cnt):-
     relocation_in_operand(EA,Index,Rel,InsnOffset),
-    relocation(Rel,_,_,Cnt),
+    relocation(Rel,_,_,Cnt,_,_,_),
     (
         pc_relative_operand(EA,Index,_),
         instruction(EA,InsnSize,_,_,_,_,_,_,_,_),
@@ -114,7 +114,7 @@ false_positive(Location):-
 .decl zero_relocation(EA:address)
 
 zero_relocation(EA):-
-    relocation(EA,_,_,_),
+    relocation(EA,_,_,_,_,_,_),
     data_byte(EA,0),
     data_byte(EA+1,0),
     data_byte(EA+2,0),
@@ -127,7 +127,7 @@ zero_relocation(EA):-
 
 false_negative(EA):-
     data_byte(EA,_),
-    relocation(EA,_,_,_),
+    relocation(EA,_,_,_,_,_,_),
     !zero_relocation(EA),
     !symbolic_data(EA,_,_),
     !symbol_minus_symbol(EA,_,_,_,_),
@@ -143,7 +143,7 @@ false_positive(EA):-
         // relocations associated to them.
         symbol_minus_symbol(EA,Size,_,_,_), Size>4
     ),
-    !relocation(EA,_,_,_),
+    !relocation(EA,_,_,_,_,_,_),
 
     regular_data_section(Sect),
     section(Sect,SizeSect,BegSect),

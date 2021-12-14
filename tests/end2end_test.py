@@ -1,4 +1,5 @@
 import os
+import sys
 import platform
 import unittest
 from pathlib import Path
@@ -50,6 +51,10 @@ def compatible_test(config, test):
 class TestExamples(unittest.TestCase):
     def setUp(self):
         self.configs = Path("./tests/").glob("*.yaml")
+        if __name__ == "__main__":
+            self.configs = [
+                arg for arg in sys.argv[1:] if arg.endswith(".yaml")
+            ]
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
@@ -83,6 +88,8 @@ class TestExamples(unittest.TestCase):
         args = {
             "extra_compile_flags": config["build"]["flags"],
             "extra_reassemble_flags": config["reassemble"]["flags"],
+            "extra_link_flags": config.get("link", {}).get("flags", []),
+            "linker": config.get("link", {}).get("linker"),
             "reassembly_compiler": config["reassemble"]["compiler"],
             "c_compilers": config["build"]["c"],
             "cxx_compilers": config["build"]["cpp"],
@@ -103,4 +110,4 @@ class TestExamples(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(argv=sys.argv[:1])

@@ -35,9 +35,9 @@ ElfReader::ElfReader(std::string Path, std::shared_ptr<LIEF::Binary> Binary)
 
 void ElfReader::buildSections()
 {
+    std::map<gtirb::UUID, uint64_t> Alignment;
     std::map<uint64_t, gtirb::UUID> SectionIndex;
     std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> SectionProperties;
-    std::map<gtirb::UUID, uint64_t> Alignment;
 
     std::optional<uint64_t> TlsBegin, TlsEnd;
     for(auto &Segment : Elf->segments())
@@ -49,6 +49,12 @@ void ElfReader::buildSections()
         }
     }
 
+    // ELF object files do not have allocated address spaces.
+    if(Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL)
+    {
+        relocateSections();
+    }
+
     uint64_t Index = 0;
     for(auto &Section : Elf->sections())
     {
@@ -56,11 +62,20 @@ void ElfReader::buildSections()
         bool Executable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_EXECINSTR);
         bool Writable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
         bool Initialized = Loaded && Section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS;
-
+        bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
         bool Literal = Literals.count(Section.name()) > 0;
+        bool Relocatable = Loaded && Section.virtual_address() == 0
+                           && Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL;
 
         // FIXME: Populate sections that are not loaded (e.g. .symtab and .strtab)
         if(!Loaded && !Literal)
+        {
+            Index++;
+            continue;
+        }
+
+        // Skip empty sections in relocatable ELFs (object files).
+        if(Relocatable && Section.size() == 0)
         {
             Index++;
             continue;
@@ -92,11 +107,14 @@ void ElfReader::buildSections()
         {
             gtirb::Addr Addr = gtirb::Addr(Section.virtual_address());
 
-            // Thread-local data section addresses overlap other sections,
-            // as they are only templates for per-thread copies of the data
-            // sections.
-            bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
-            if(Tls && TlsBegin && TlsEnd)
+            if(Relocatable)
+            {
+                Addr = gtirb::Addr(SectionRelocations[Section.name()]);
+            }
+
+            // Rebase TLS section. Thread-local data section addresses overlap other sections, as
+            // they are only templates for per-thread copies of the data sections.
+            if(Tls && TlsBegin && TlsEnd && !Relocatable)
             {
                 if(Section.virtual_address() >= *TlsBegin && Section.virtual_address() < *TlsEnd)
                 {
@@ -153,18 +171,15 @@ void ElfReader::buildSymbols()
                         std::string>,
              std::vector<std::tuple<std::string, uint64_t>>>
         Symbols;
-    auto accum_symbol_table = [&](LIEF::ELF::it_symbols SymbolIt, std::string TableName) {
+
+    auto LoadSymbols = [&](LIEF::ELF::it_symbols SymbolIt, std::string TableName) {
         uint64_t TableIndex = 0;
         for(auto &Symbol : SymbolIt)
         {
-            // Skip symbol table sections.
-            if(Symbol.type() == LIEF::ELF::ELF_SYMBOL_TYPES::STT_SECTION)
-            {
-                TableIndex++;
-                continue;
-            }
-
             std::string Name = Symbol.name();
+            uint64_t Value = Symbol.value();
+
+            // Append the GNU symbol version to the symbol name.
             std::optional<std::string> Version;
             if(std::size_t I = Name.find('@'); I != std::string::npos)
             {
@@ -186,23 +201,40 @@ void ElfReader::buildSymbols()
                 Name = Name.append("@" + *Version);
             }
 
-            uint64_t Value = Symbol.value();
-
-            // STT_TLS symbols are relative to PT_TLS segment base.
-            if(Symbol.type() == LIEF::ELF::ELF_SYMBOL_TYPES::STT_TLS)
+            // Rebase symbols onto their respective relocated section address.
+            bool Relocatable = Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL;
+            if(Relocatable)
             {
+                if(Symbol.shndx() > 0 && Symbol.shndx() < Elf->sections().size())
+                {
+                    const LIEF::ELF::Section &Section = Elf->sections()[Symbol.shndx()];
+                    Value = SectionRelocations[Section.name()] + Value;
+                }
+            }
+
+            // Rebase a TLS symbol onto the relocated TLS segment.
+            bool Tls = Symbol.type() == LIEF::ELF::ELF_SYMBOL_TYPES::STT_TLS;
+            if(Tls && !Relocatable)
+            {
+                // STT_TLS symbols are relative to PT_TLS segment base.
                 Value = tlsBaseAddress() + Value;
             }
 
-            Symbols[std::tuple(Value, Symbol.size(), LIEF::ELF::to_string(Symbol.type()),
-                               LIEF::ELF::to_string(Symbol.binding()),
-                               LIEF::ELF::to_string(Symbol.visibility()), Symbol.shndx(), Name)]
+            Symbols[std::tuple(Value,                                     // Value
+                               Symbol.size(),                             // Size
+                               LIEF::ELF::to_string(Symbol.type()),       // Type
+                               LIEF::ELF::to_string(Symbol.binding()),    // Binding
+                               LIEF::ELF::to_string(Symbol.visibility()), // Scope
+                               Symbol.shndx(),                            // Section Index
+                               Name                                       // Name(@Version)
+                               )]
                 .push_back({TableName, TableIndex});
             TableIndex++;
         }
     };
-    accum_symbol_table(Elf->dynamic_symbols(), ".dynsym");
-    accum_symbol_table(Elf->static_symbols(), ".symtab");
+
+    LoadSymbols(Elf->dynamic_symbols(), ".dynsym");
+    LoadSymbols(Elf->static_symbols(), ".symtab");
 
     std::map<gtirb::UUID, auxdata::ElfSymbolInfo> SymbolInfo;
     std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo> SymbolTabIdxInfo;
@@ -248,7 +280,6 @@ void ElfReader::addEntryBlock()
             Module->setEntryPoint(Block);
         }
     }
-    assert(Module->getEntryPoint() && "Failed to set module entry point.");
 }
 
 void ElfReader::addAuxData()
@@ -263,9 +294,13 @@ void ElfReader::addAuxData()
         case LIEF::ELF::E_TYPE::ET_EXEC:
             BinaryType.emplace_back("EXEC");
             break;
+        case LIEF::ELF::E_TYPE::ET_REL:
+            BinaryType.emplace_back("REL");
+            break;
         default:
-            // FIXME: Return an error code here (and wherever else we assert).
-            assert(!"Unknown value for ELF file's e_type!");
+            std::cerr << "ERROR: Unsupported ELF file type (e_type): "
+                      << LIEF::ELF::to_string(Elf->header().file_type()) << "\n";
+            std::exit(EXIT_FAILURE);
     }
     Module->addAuxData<gtirb::schema::BinaryType>(std::move(BinaryType));
 
@@ -274,6 +309,7 @@ void ElfReader::addAuxData()
     for(auto &Relocation : Elf->relocations())
     {
         std::string SymbolName;
+        std::string SectionName;
         if(Relocation.has_symbol())
         {
             SymbolName = Relocation.symbol().name();
@@ -286,9 +322,31 @@ void ElfReader::addAuxData()
                     SymbolName.append("@" + SymbolVersion.symbol_version_auxiliary().name());
                 }
             }
+
+            if(Relocation.has_section())
+            {
+                LIEF::ELF::Section &Section = Relocation.section();
+                SectionName = Section.name();
+            }
         }
-        RelocationTuples.insert(
-            {Relocation.address(), getRelocationType(Relocation), SymbolName, Relocation.addend()});
+
+        uint64_t Address = Relocation.address();
+        if(Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL
+           && Relocation.purpose() == LIEF::ELF::RELOCATION_PURPOSES::RELOC_PURPOSE_OBJECT)
+        {
+            // Rebase relocation offset for object-file relocations.
+            if(Relocation.has_section())
+            {
+                Address = SectionRelocations[Relocation.section().name()] + Address;
+            }
+        }
+
+        // RELA relocations have an explicit addend field, and REL relocations store an
+        // implicit addend in the location to be modified.
+        std::string RelType = Relocation.is_rela() ? "RELA" : "REL";
+
+        RelocationTuples.insert({Address, getRelocationType(Relocation), SymbolName,
+                                 Relocation.addend(), Relocation.info(), SectionName, RelType});
     }
     Module->addAuxData<gtirb::schema::Relocations>(std::move(RelocationTuples));
 
@@ -350,4 +408,96 @@ uint64_t ElfReader::tlsBaseAddress()
         TlsBaseAddress = (VirtualEnd & ~(0x1000 - 1)) + 0x1000;
     }
     return TlsBaseAddress;
+}
+
+void ElfReader::relocateSections()
+{
+    struct AddressRange
+    {
+        std::string Name;
+        uint64_t Align;
+        std::pair<uint64_t, uint64_t> Range;
+
+        bool operator<(const AddressRange &Other) const
+        {
+            return Range < Other.Range;
+        }
+    };
+
+    struct Disjunct
+    {
+        bool operator()(AddressRange Lhs, AddressRange Rhs) const
+        {
+            return std::get<1>(Lhs.Range) <= std::get<0>(Rhs.Range);
+        };
+    };
+
+    // Begin with a sorted set of offset intervals.
+    std::multiset<AddressRange> Offsets;
+    for(const auto &S : Elf->sections())
+    {
+        if(S.virtual_address() == 0 && S.size() > 0
+           && S.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC))
+        {
+            uint64_t Start = S.offset() - Elf->header().header_size();
+            uint64_t End = Start + S.size();
+            Offsets.insert({S.name(), S.alignment(), {Start, End}});
+        }
+    }
+
+    // Compose a set of disjunct address ranges from the sorted offset intervals.
+    std::multiset<AddressRange, Disjunct> Addresses;
+
+    // Place non-overlapping sections.
+    uint64_t NextOffset = 0;
+    for(auto It = Offsets.begin(); It != Offsets.end();)
+    {
+        auto [Start, End] = It->Range;
+        if(NextOffset <= Start)
+        {
+            // Allocate non-overlapping address range.
+            Addresses.insert(*It);
+            It = Offsets.erase(It);
+            NextOffset = End;
+        }
+        else
+        {
+            // Skip overlapping section.
+            It++;
+        }
+    }
+
+    // Place remaining overlapping sections in allocation gaps.
+    for(auto [Name, Align, Range] : Offsets)
+    {
+        auto [Start, End] = Range;
+        uint64_t Size = End - Start;
+        Align = std::max(uint64_t(8), Align);
+
+        AddressRange Relocated = {Name, Align, Range};
+
+        for(auto Prev = Addresses.begin(); Prev != Addresses.end(); Prev++)
+        {
+            // Align with previous section.
+            Start = (std::get<1>(Prev->Range) + (Align - 1)) & ~(Align - 1);
+            End = Start + Size;
+            Relocated.Range = {Start, End};
+
+            // Peek next element.
+            auto Next = Prev;
+            Next++;
+
+            if(Next == Addresses.end() || End <= std::get<0>(Next->Range))
+            {
+                // Fits between previous and next section.
+                Addresses.insert(Relocated);
+                break;
+            }
+        }
+    }
+
+    for(const AddressRange &Range : Addresses)
+    {
+        SectionRelocations[Range.Name] = std::get<0>(Range.Range);
+    }
 }

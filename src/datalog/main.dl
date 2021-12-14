@@ -113,10 +113,10 @@ This module:
 .decl symbol(ea:address,size:unsigned,type:symbol,scope:symbol,sectionIndex:unsigned, originTable:symbol,tableIndex:unsigned,name:symbol)
 .input symbol
 
-.decl section_complete(name:symbol,size:unsigned,addr:address,type:unsigned,flags:unsigned,align:unsigned)
+.decl section_complete(Name:symbol,Size:unsigned,EA:address,Type:unsigned,Flags:unsigned,Align:unsigned,Index:unsigned)
 .input section_complete
 
-.decl relocation(ea:address,type:symbol,name:symbol,addend:number)
+.decl relocation(EA:address,Type:symbol,Name:symbol,Addend:number,SymbolIndex:unsigned,Section:symbol,RelType:symbol)
 .input relocation
 
 .decl relocation_size(Type:symbol,Size:unsigned)
@@ -310,12 +310,22 @@ next(EA,EA+Size):-
 .decl pc_relative_operand(src:address,index:operand_index, dest:address)
 .output pc_relative_operand
 
-pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
+pc_relative_operand(EA,Index,Dest):-
     binary_isa("X64"),
-    instruction_get_op(EA, Index, Op),
+    instruction_get_op(EA,Index,Op),
     op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
     arch.pc_register(Reg),
-    next(EA,EANext).
+    next(EA,EANext),
+    Dest = as(as(EANext,number)+Offset,address),
+    !instruction_has_relocation(EA).
+
+pc_relative_operand(EA,Index,Dest):-
+    binary_isa("X64"),
+    instruction_displacement_offset(EA,Index,Offset),
+    relocation(EA+Offset,"PC32",_,Addend,SymbolIndex,_,_),
+    symbol(Base,_,"SECTION",_,_,_,SymbolIndex,_),
+    instruction(EA,Size,_,_,_,_,_,_,_,_),
+    Dest = Base + as(as(Size-Offset,number)+Addend,unsigned).
 
 .decl split_load_operand(src:address,index:operand_index, dest:address)
 .output split_load_operand
@@ -338,6 +348,23 @@ symbolic_data_attribute(0,""):-false.
 instruction_has_loop_prefix(EA):-
     instruction(EA,_,Prefix,_,_,_,_,_,_,_),
     arch.loop_prefix(Prefix).
+
+/**
+Instruction at address "EA" has a relocation for either the immediate or
+indirect operand (x86_32 and x86_64).
+*/
+.decl instruction_has_relocation(EA:address)
+
+instruction_has_relocation(EA):-
+    (
+        binary_isa("X86");
+        binary_isa("X64")
+    ),
+    (
+        instruction_immediate_offset(EA,_,Offset);
+        instruction_displacement_offset(EA,_,Offset)
+    ),
+    relocation(EA+Offset,_,_,_,_,_,_).
 
 // JUMPS
 .decl unconditional_jump(n:address)
@@ -362,9 +389,20 @@ conditional_jump(EA):-
 direct_jump(EA,as(Dest,address)):-
     arch.jump(EA),
     instruction_get_operation(EA,Operation),
-    arch.jump_operation_op_index(Operation,TargetOpIndex),
-    instruction_get_op(EA,TargetOpIndex,TargetOp),
-    op_immediate(TargetOp,Dest).
+    arch.jump_operation_op_index(Operation,Index),
+    instruction_get_op(EA,Index,Op),
+    op_immediate(Op,Dest),
+    !instruction_has_relocation(EA).
+
+direct_jump(EA,as(Dest,address)):-
+    (
+        binary_isa("X86");
+        binary_isa("X64")
+    ),
+    instruction_has_relocation(EA),
+    instruction_immediate_offset(EA,_,Offset),
+    relocation(EA+Offset,_,_,_,SymbolIndex,_,_),
+    defined_symbol(Dest,_,_,_,_,_,SymbolIndex,_).
 
 direct_jump(EA,EA):-
     instruction_has_loop_prefix(EA).
@@ -401,15 +439,22 @@ indirect_jump(EA):-
 
 // CALLS
 // direct calls
-.decl direct_call(src:address, dest:address)
+.decl direct_call(EA:address,Dest:address)
 .output direct_call
 
 direct_call(EA,as(Dest,address)):-
     arch.call_operation(Operation),
     instruction_get_operation(EA,Operation),
-    arch.call_operation_op_index(Operation,TargetOpIndex),
-    instruction_get_op(EA,TargetOpIndex,TargetOp),
-    op_immediate(TargetOp,Dest).
+    arch.call_operation_op_index(Operation,Index),
+    instruction_get_op(EA,Index,Op),
+    op_immediate(Op,Dest),
+    !instruction_has_relocation(EA).
+
+direct_call(EA,Dest):-
+    instruction_has_relocation(EA),
+    instruction_immediate_offset(EA,_,Offset),
+    relocation(EA+Offset,_,_,_,SymbolIndex,_,_),
+    defined_symbol(Dest,_,_,_,_,_,SymbolIndex,_).
 
 .decl pc_relative_call(src:address,dest:address)
 .output pc_relative_call
@@ -418,7 +463,6 @@ pc_relative_call(Src,Dest):-
     instruction_get_operation(Src,Operation),
     arch.call_operation(Operation),
     pc_relative_operand(Src,1,Dest).
-
 
 // for now we do not compute anything about these
 .decl reg_call(src:address,reg:register)
@@ -431,8 +475,8 @@ reg_call(EA,Reg):-
     instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_regdirect(TargetOp,Reg).
 
- .decl indirect_call(src:address)
-// .output indirect_call
+.decl indirect_call(src:address)
+.output indirect_call
 
 indirect_call(EA):-
     arch.call_operation(Operation),
@@ -525,7 +569,7 @@ function_symbol(EA,Name):-
 
 defined_symbol(EA,Size,Type,Scope,SectIndex,OriginTable,TableIndex,Name):-
     symbol(EA,Size,Type,Scope,SectIndex,OriginTable,TableIndex,Name),
-    SectIndex != 0, // SHN_UNDEF
+    SectIndex != 0,        // SHN_UNDEF
     (
         SectIndex < 65280; // SHN_LORESERVE
         SectIndex > 65535  // SHN_HIRESERVE
@@ -643,6 +687,14 @@ no_return_call(EA):-
 no_return_call(EA):-
     direct_call(EA,Dest),
     defined_symbol(Dest,_,_,_,_,_,_,Name),
+    no_return_function(Pattern),
+    match(Pattern,Name).
+
+no_return_call(EA):-
+    direct_call(EA,_),
+    instruction_immediate_offset(EA,_,Offset),
+    relocation(EA+Offset,_,_,_,SymbolIndex,_,_),
+    symbol(_,_,_,_,_,_,SymbolIndex,Name),
     no_return_function(Pattern),
     match(Pattern,Name).
 

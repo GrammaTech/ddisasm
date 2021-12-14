@@ -182,7 +182,7 @@ void PeReader::addAuxData()
         for(auto &Entry : Relocation.entries())
         {
             std::string Type = LIEF::PE::to_string(Entry.type());
-            Relocations.insert({ImageBase + Entry.address(), Type, "", 0});
+            Relocations.insert({ImageBase + Entry.address(), Type, "", 0, 0, "", ""});
         }
     }
     Module->addAuxData<gtirb::schema::Relocations>(std::move(Relocations));

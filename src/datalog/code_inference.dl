@@ -102,7 +102,7 @@ may_fallthrough(From,To):-
     !halt(From),
     !no_return_call(From).
 
-.decl must_fallthrough(o:address,d:address)
+.decl must_fallthrough(From:address,To:address)
 
 // Branch with a delay-slot must fallthrough
 must_fallthrough(From,To):-
@@ -134,10 +134,10 @@ may_have_symbolic_immediate(Src,as(Dest,address)):-
     op_immediate(Op,Dest),
     (
         binary_type("DYN"),
-        relocation(Src+Offset,_,_,_)
+        relocation(Src+Offset,_,_,_,_,_,_)
         ;
         binary_type("REL"),
-        relocation(Src+Offset,_,_,_)
+        relocation(Src+Offset,_,_,_,_,_,_)
         ;
         binary_type("EXEC"),
         !arch.logic_operation(Operation)
@@ -152,17 +152,15 @@ invalid(EA,Type):-
     invalid_op_code(EA),
     Type = "invalid_op_code".
 
-// if EA contains a direct call or jump to something that cannot be code, it is invalid
 invalid(EA,Type):-
     (
-        must_fallthrough(EA,Not_code), Type = "must_fallthrough to not_code";
-        direct_jump(EA,Not_code), Type = "direct_jump to not_code";
-        direct_call(EA,Not_code), Type = "direct_call to not_code"
-        //pc_relative_jump(EA,Not_code);
-        //pc_relative_call(EA,Not_code)
+        // EA is a direct call or jump to something that cannot be code, it is invalid.
+        direct_call(EA,Dest),       Type = "direct_call to invalid";
+        direct_jump(EA,Dest),       Type = "direct_jump to invalid";
+        // EA is followed by something that cannot be code.
+        must_fallthrough(EA,Dest),  Type = "must_fallthrough to invalid"
     ),
-    !instruction(Not_code,_,_,_,_,_,_,_,_,_),
-    Not_code != 0.
+    !instruction(Dest,_,_,_,_,_,_,_,_,_), Dest != 0.
 
 // propagate the invalid instructions backwards until ret or jmp (encoded in must_fallthrough)
 // propagate through direct jumps and calls
@@ -195,11 +193,11 @@ basic_target(Val):-
         ;
         binary_type("DYN"),
         address_in_data(EA,Val),
-        relocation(EA,_,_,_)
+        relocation(EA,_,_,_,_,_,_)
         ;
         binary_type("REL"),
         address_in_data(EA,Val),
-        relocation(EA,_,_,_)
+        relocation(EA,_,_,_,_,_,_)
         ;
         binary_type("EXEC"),
         address_in_data(_,Val)
@@ -540,11 +538,11 @@ block_points(Block,0,-3,"overlaps with relocation"):-
     (
         // Block beginning intersects relocation bytes:
         relocation_size(Type,Size),
-        relocation(Target,Type,_,_), EA >= Target, EA < Target + Size
+        relocation(Target,Type,_,_,_,_,_), EA >= Target, EA < Target + Size
         ;
         // Relocation target is in block but not aligned with operand offsets.
         instruction(EA,Size,_,_,_,_,_,_,_,_),
-        relocation(Target,_,_,_), Target > EA, Target < EA+Size,
+        relocation(Target,_,_,_,_,_,_), Target > EA, Target < EA+Size,
         !instruction_immediate_offset(EA,_,Target-EA),
         !instruction_displacement_offset(EA,_,Target-EA)
     ).
