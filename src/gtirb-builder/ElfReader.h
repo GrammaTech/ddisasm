@@ -38,8 +38,10 @@ protected:
     void addEntryBlock() override;
     void addAuxData() override;
 
+    void relocateSections();
     uint64_t tlsBaseAddress();
-    std::string getRelocationType(const LIEF::ELF::Relocation &Entry);
+
+    std::string getRelocationType(const LIEF::ELF::Relocation& Entry);
 
 private:
     uint64_t TlsBaseAddress = 0;
@@ -49,8 +51,11 @@ private:
     void resurrectSections();
     void resurrectSymbols();
     void createGPforMIPS(uint64_t SecIndex,
-                         std::map<gtirb::UUID, auxdata::ElfSymbolInfo> &SymbolInfo,
-                         std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo> &SymbolTabIdxInfo);
+                         std::map<gtirb::UUID, auxdata::ElfSymbolInfo>& SymbolInfo,
+                         std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo>& SymbolTabIdxInfo);
+
+    // TODO: Handle duplicate section names?
+    std::map<std::string, uint64_t> SectionRelocations;
 
     // Unloaded, literal section whitelist.
     const std::unordered_set<std::string> Literals = {"pydata"};

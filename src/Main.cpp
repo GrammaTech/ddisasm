@@ -269,9 +269,6 @@ int main(int argc, char **argv)
     }
     Module.setEntryPoint(nullptr);
 
-    // Remove placeholder relocation data.
-    Module.removeAuxData<gtirb::schema::Relocations>();
-
     Souffle->insert("option", createDisasmOptions(vm));
 
     if(vm.count("debug-dir") != 0)
@@ -351,6 +348,10 @@ int main(int argc, char **argv)
         FunctionInference.computeFunctions(*GTIRB->Context, Module, Threads);
         printElapsedTimeSince(StartFunctionAnalysis);
     }
+
+    // Remove provisional AuxData tables.
+    Module.removeAuxData<gtirb::schema::Relocations>();
+    Module.removeAuxData<gtirb::schema::ElfSectionIndex>();
 
     // Output GTIRB
     if(vm.count("ir") != 0)

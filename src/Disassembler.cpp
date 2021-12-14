@@ -23,6 +23,7 @@
 
 #include "Disassembler.h"
 
+#include <LIEF/LIEF.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 
 #include "AuxDataSchema.h"
@@ -397,6 +398,32 @@ std::string stripSymbolVersion(const std::string Name)
     return Name;
 }
 
+void removeSectionSymbols(gtirb::Context &Context, gtirb::Module &Module)
+{
+    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
+    if(!SymbolInfo)
+    {
+        return;
+    }
+    std::vector<gtirb::UUID> Remove;
+    for(const auto &[Uuid, Info] : *SymbolInfo)
+    {
+        if(std::get<1>(Info) == "SECTION")
+        {
+            Remove.push_back(Uuid);
+        }
+    }
+    for(const auto Uuid : Remove)
+    {
+        gtirb::Node *N = gtirb::Node::getByUUID(Context, Uuid);
+        if(auto *Symbol = dyn_cast_or_null<gtirb::Symbol>(N))
+        {
+            Module.removeSymbol(Symbol);
+            SymbolInfo->erase(Uuid);
+        }
+    }
+}
+
 void buildSymbolVersions(gtirb::Module &Module)
 {
     if(Module.getFileFormat() != gtirb::FileFormat::ELF)
@@ -424,36 +451,49 @@ void buildSymbolVersions(gtirb::Module &Module)
     Module.addAuxData<gtirb::schema::ElfSymbolVersions>(std::move(SymbolVersions));
 }
 
-void buildInferredSymbols(gtirb::Context &context, gtirb::Module &module,
-                          souffle::SouffleProgram *prog)
+void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
+                          souffle::SouffleProgram *Prog)
 {
-    auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfo>();
-    auto *SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfo>();
-    for(auto &output : *prog->getRelation("inferred_symbol_name"))
+    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
+    auto *SymbolTabIdxInfo = Module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfo>();
+    for(auto &T : *Prog->getRelation("inferred_symbol_name"))
     {
-        gtirb::Addr addr;
-        std::string name;
-        std::string scope, type;
-        output >> addr >> name >> scope >> type;
-        if(!module.findSymbols(name))
+        gtirb::Addr Addr;
+        std::string Name;
+        std::string Scope, Type;
+        T >> Addr >> Name >> Scope >> Type;
+
+        // Replace decimal address with hex.
+        if(Name.find("FUN_") == 0)
         {
-            gtirb::Symbol *symbol = module.addSymbol(context, addr, name);
+            std::stringstream S;
+            S << "FUN_" << static_cast<uint64_t>(Addr);
+            if(Name.rfind("_IFUNC") != std::string::npos)
+            {
+                S << "_IFUNC";
+            }
+            Name = S.str();
+        }
+
+        if(!Module.findSymbols(Name))
+        {
+            gtirb::Symbol *Symbol = Module.addSymbol(Context, Addr, Name);
             if(SymbolInfo)
             {
-                auxdata::ElfSymbolInfo Info = {0, type, scope, "DEFAULT", 0};
-                SymbolInfo->insert({symbol->getUUID(), Info});
+                auxdata::ElfSymbolInfo Info = {0, Type, Scope, "DEFAULT", 0};
+                SymbolInfo->insert({Symbol->getUUID(), Info});
             }
             if(SymbolTabIdxInfo)
             {
                 auxdata::ElfSymbolTabIdxInfo TabIdx =
                     std::vector<std::tuple<std::string, uint64_t>>();
-                SymbolTabIdxInfo->insert({symbol->getUUID(), TabIdx});
+                SymbolTabIdxInfo->insert({Symbol->getUUID(), TabIdx});
             }
         }
     }
     // Rename ARM mapping symbols.
     std::vector<gtirb::Symbol *> MappingSymbols;
-    for(auto &Symbol : module.symbols())
+    for(auto &Symbol : Module.symbols())
     {
         std::string Name = Symbol.getName();
         if(Name == "$a" || Name == "$d" || Name.substr(0, 2) == "$t" || Name == "$x")
@@ -1090,6 +1130,11 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
 gtirb::Section *findSectionByIndex(gtirb::Context &C, gtirb::Module &M, uint64_t Index)
 {
     auto *SectionIndex = M.getAuxData<gtirb::schema::ElfSectionIndex>();
+    if(!SectionIndex)
+    {
+        std::cerr << "ERROR: Missing `elfSectionIndex' AuxData table\n";
+        return nullptr;
+    }
     if(auto It = SectionIndex->find(Index); It != SectionIndex->end())
     {
         gtirb::Node *N = gtirb::Node::getByUUID(C, It->second);
@@ -1099,11 +1144,36 @@ gtirb::Section *findSectionByIndex(gtirb::Context &C, gtirb::Module &M, uint64_t
         }
     }
     return nullptr;
-};
+}
 
 void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
 {
+    auto *Alignment = Module.getAuxData<gtirb::schema::Alignment>();
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
+
+    // Assign communal symbols (.comm) to ProxyBlocks; communal variables are
+    // allocated by the linker and are not initialized.
+    if(SymbolInfo)
+    {
+        for(auto [Uuid, Info] : *SymbolInfo)
+        {
+            uint64_t SectionIndex = std::get<4>(Info);
+            if(SectionIndex == static_cast<uint64_t>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_COMMON))
+            {
+                gtirb::Node *Node = gtirb::Node::getByUUID(Context, Uuid);
+                if(auto *Symbol = dyn_cast_or_null<gtirb::Symbol>(Node);
+                   Symbol && Symbol->getAddress())
+                {
+                    // Alignment is stored in the symbol's value field.
+                    if(Alignment)
+                    {
+                        (*Alignment)[Uuid] = static_cast<uint64_t>(*Symbol->getAddress());
+                    }
+                    Symbol->setReferent(Module.addProxyBlock(Context));
+                }
+            }
+        }
+    }
 
     std::map<gtirb::Symbol *, std::tuple<gtirb::Node *, bool>> ConnectToBlock;
     for(auto &Symbol : Module.symbols_by_addr())
@@ -1222,8 +1292,6 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
             }
         }
     }
-
-    Module.removeAuxData<gtirb::schema::ElfSectionIndex>();
 }
 
 void splitSymbols(gtirb::Context &Context, gtirb::Module &Module, souffle::SouffleProgram *Program)
@@ -1718,6 +1786,7 @@ void shiftThumbBlocks(gtirb::Module &Module)
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
                        souffle::SouffleProgram *prog, bool selfDiagnose)
 {
+    removeSectionSymbols(context, module);
     buildInferredSymbols(context, module, prog);
     buildSymbolForwarding(context, module, prog);
     buildCodeBlocks(context, module, prog);
