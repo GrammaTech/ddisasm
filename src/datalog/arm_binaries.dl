@@ -212,8 +212,8 @@ basic_target(Val):-
 
 
 block_points(Block,"data",0,9,"literal pool"),
-data_block_candidate(Block,4):-
-    defined_symbol(Block,_,_,_,_,_,_,"$d").
+data_block_candidate(Block,Size):-
+    defined_symbol(Block,Size,_,_,_,_,_,"$d").
 
 plt_block(EA,Function):-
     plt_section(SecName),
