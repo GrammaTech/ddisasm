@@ -50,13 +50,21 @@ def get_target(binary, strip_exe, strip, sstrip, extra_strip_flags=None):
         if extra_strip_flags:
             cmd.extend(extra_strip_flags)
 
-        subprocess.run(cmd)
+        completed_process = subprocess.run(cmd)
+        if completed_process.returncode != 0:
+            print(bcolors.fail("# strip failed\n"))
+            binary = None
+
         stripped_binary = binary
     if sstrip:
         print("# stripping sections\n")
         subprocess.run(["cp", binary, binary + ".sstripped"])
         binary = binary + ".sstripped"
-        subprocess.run(["sstrip", binary])
+        completed_process = subprocess.run(["sstrip", binary])
+        if completed_process.returncode != 0:
+            print(bcolors.fail("# sstrip failed\n"))
+            binary = None
+
         sstripped_binary = binary
     try:
         yield binary
