@@ -31,6 +31,11 @@ symbolic_operand_attribute(EA,Index,"PltRef"):-
     symbolic_operand(EA,Index,Dest,_),
     plt_block(Dest,_).
 
+symbolic_operand_attribute(EA,Index,"PltRef"):-
+    instruction_has_relocation(EA),
+    instruction_immediate_offset(EA,Index,Offset),
+    relocation(EA+Offset,"PLT32",_,_,_,_,_).
+
 symbolic_operand_attribute(EA,Index,"GotRelPC"):-
     symbolic_operand(EA,Index,Dest,_),
     !moved_label(EA,Index,_,_),
@@ -38,18 +43,32 @@ symbolic_operand_attribute(EA,Index,"GotRelPC"):-
 
 symbolic_operand_attribute(EA,Index,"GotRelPC"):-
     symbolic_operand(EA,Index,Dest,_),
-    !relocation(Dest,"DTPMOD64",_,_),
+    !relocation(Dest,"DTPMOD64",_,_,_,_,_),
     got_local_reference(Dest,_).
 
+symbolic_operand_attribute(EA,Index,"GotRelPC"):-
+    instruction_displacement_offset(EA,Index,Offset),
+    symbolic_expr_from_relocation(EA+Offset,_,_,_),
+    (
+        relocation(EA+Offset,"GOTPCRELX",_,_,_,_,_);
+        relocation(EA+Offset,"REX_GOTPCRELX",_,_,_,_,_)
+    ).
+
 symbolic_operand_attribute(EA,Index,"TpOff"):-
-    symbolic_operand(EA,Index,Dest,_),
-    tls_segment(Start,End,_),
-    Dest >= Start, Dest < End.
+    (
+        instruction_displacement_offset(EA,Index,Offset),
+        symbolic_expr_from_relocation(EA+Offset,_,_,_),
+        relocation(EA+Offset,"TPOFF32",_,_,_,_,_)
+        ;
+        symbolic_operand(EA,Index,Dest,_),
+        tls_segment(Start,End,_),
+        Dest >= Start, Dest < End
+    ).
 
 symbolic_operand_attribute(EA,Index,"TpOff"):-
     symbolic_operand(EA,Index,Dest,_),
     got_reference(Dest,_),
-    relocation(Dest,"TPOFF64",_,_).
+    relocation(Dest,"TPOFF64",_,_,_,_,_).
 
 // Find special-case TLSD code sequence of the form:
 // .byte 0x66
@@ -68,7 +87,7 @@ symbolic_operand_attribute(EA,Index,"TpOff"):-
 // https://docs.oracle.com/cd/E19120-01/open.solaris/819-0690/chapter8-60/index.html
 .decl tlsgd_code_sequence(EA:address)
 tlsgd_code_sequence(EA):-
-    relocation(Got_entry,"DTPMOD64","",_),
+    relocation(Got_entry,"DTPMOD64","",_,_,_,_),
     pc_relative_operand(EA,_,Got_entry),
     data_byte(EA,0x66),                           // .byte 0x66
     instruction(EA+1,Size,_,"LEA",_,_,_,_,_,_),   // lea X@tlsgd[rip]
@@ -78,10 +97,10 @@ tlsgd_code_sequence(EA):-
 
 symbolic_operand_attribute(EA,Index,"TlsGd"):-
     symbolic_operand(EA,Index,Dest,_),
-    relocation(Dest,"DTPMOD64",_,_),
+    relocation(Dest,"DTPMOD64",_,_,_,_,_),
     tlsgd_code_sequence(EA).
 
 symbolic_operand_attribute(EA,Index,"TlsLd"):-
     symbolic_operand(EA,Index,Dest,_),
-    relocation(Dest,"DTPMOD64",_,_),
+    relocation(Dest,"DTPMOD64",_,_,_,_,_),
     !tlsgd_code_sequence(EA).

@@ -89,7 +89,7 @@ relocations that did not materialize as symbols after analysis.
 used_relocation(EA):-
     binary_format("PE"),
     pe_relocation_size(Type,Size), Size > 0,
-    relocation(EA,Type,_,_),
+    relocation(EA,Type,_,_,_,_,_),
     data_object(EA,Size,"symbol").
 
 used_relocation(EA+Offset):-
@@ -99,12 +99,12 @@ used_relocation(EA+Offset):-
       instruction(EA,_,_,_,_,_,_,_,Offset,_);
       instruction(EA,_,_,_,_,_,_,_,_,Offset)
     ),
-    relocation(EA+Offset,_,_,_).
+    relocation(EA+Offset,_,_,_,_,_,_).
 
 used_relocation(EA):-
     binary_format("PE"),
     symbolic_expr_from_relocation(EA,_,_,_),
-    relocation(EA,_,_,_).
+    relocation(EA,_,_,_,_,_,_).
 
 /**
 Select relocations that were not symbolized, i.e. possible false negatives.
@@ -114,6 +114,6 @@ Select relocations that were not symbolized, i.e. possible false negatives.
 
 discarded_relocation(EA):-
     binary_format("PE"),
-    relocation(EA,Type,_,_),
+    relocation(EA,Type,_,_,_,_,_),
     !used_relocation(EA),
     Type != "ABSOLUTE".

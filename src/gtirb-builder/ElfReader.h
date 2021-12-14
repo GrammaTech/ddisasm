@@ -38,11 +38,16 @@ protected:
     void addEntryBlock() override;
     void addAuxData() override;
 
+    void relocateSections();
     uint64_t tlsBaseAddress();
-    std::string getRelocationType(const LIEF::ELF::Relocation &Entry);
+
+    std::string getRelocationType(const LIEF::ELF::Relocation& Entry);
 
 private:
     uint64_t TlsBaseAddress = 0;
+
+    // TODO: Handle duplicate section names?
+    std::map<std::string, uint64_t> SectionRelocations;
 
     const std::unordered_set<std::string> Literals = {"pydata"};
 };

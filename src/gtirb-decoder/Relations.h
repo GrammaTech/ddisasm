@@ -125,6 +125,7 @@ namespace relations
         uint64_t Type;
         uint64_t Flags;
         uint64_t Align;
+        uint64_t Index;
     };
 
     struct Padding

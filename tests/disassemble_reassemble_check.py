@@ -4,6 +4,7 @@ import os
 import shlex
 import subprocess
 from timeit import default_timer as timer
+from typing import List
 
 import platform
 
@@ -209,6 +210,23 @@ def reassemble_using_makefile(assembler, binary, extra_flags):
     return True
 
 
+def link(linker: str, obj: str, extra_flags: List[str]) -> bool:
+    """Link a reassembled object file into a new binary."""
+    binary = obj
+    if binary.endswith(".o"):
+        binary = binary[:-2]
+    print("# Linking", obj, "into", binary)
+    print("link command:", linker, obj, "-o", binary, *extra_flags)
+    completedProcess = subprocess.run(
+        [linker, obj, "-o", binary] + extra_flags
+    )
+    if completedProcess.returncode != 0:
+        print(bcolors.fail("# Linking failed\n"))
+        return False
+    print(bcolors.okgreen("# Linking succeed"))
+    return True
+
+
 def test(exec_wrapper=None):
     """
     Test the project with  'make check'.
@@ -233,6 +251,8 @@ def disassemble_reassemble_test(
     binary,
     extra_compile_flags=[],
     extra_reassemble_flags=["-no-pie"],
+    extra_link_flags=[],
+    linker=None,
     reassembly_compiler="gcc",
     c_compilers=["gcc", "clang"],
     cxx_compilers=["g++", "clang++"],
@@ -254,6 +274,7 @@ def disassemble_reassemble_test(
     compile_errors = 0
     disassembly_errors = 0
     reassembly_errors = 0
+    link_errors = 0
     test_errors = 0
     with cd(make_dir):
         for compiler, cxx_compiler in zip(c_compilers, cxx_compilers):
@@ -302,13 +323,20 @@ def disassemble_reassemble_test(
                 ):
                     reassembly_errors += 1
                     continue
+                if linker and not link(linker, binary, extra_link_flags):
+                    link_errors += 1
+                    continue
                 if skip_test or reassemble_function == skip_reassemble:
                     print(bcolors.warning(" No testing"))
                     continue
                 if not test(exec_wrapper):
                     test_errors += 1
     total_errors = (
-        compile_errors + disassembly_errors + reassembly_errors + test_errors
+        compile_errors
+        + disassembly_errors
+        + reassembly_errors
+        + link_errors
+        + test_errors
     )
     return total_errors == 0
 
@@ -321,6 +349,7 @@ if __name__ == "__main__":
     parser.add_argument("binary", help="binary within the project")
     parser.add_argument("--extra_compile_flags", nargs="*", type=str)
     parser.add_argument("--extra_reassemble_flags", nargs="*", type=str)
+    parser.add_argument("--extra_link_flags", nargs="*", type=str)
     parser.add_argument("--reassembly_compiler", type=str, default="gcc")
     parser.add_argument("--c_compilers", nargs="*", type=str)
     parser.add_argument("--cxx_compilers", nargs="*", type=str)

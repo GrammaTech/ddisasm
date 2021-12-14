@@ -313,8 +313,9 @@ moved_displacement_candidate(EA,Op_index,DestAddr,SymbolAddr,0):-
     data_access(EA,Op_index,_,_,_,_,Dest,_), Dest >= 0,
     DestAddr = as(Dest,address),
     instruction_displacement_offset(EA,Op_index,DisplacementOffset),
-    relocation(EA+DisplacementOffset,_,Symbol,_),
-    symbol(SymbolAddr,_,_,_,_,_,_,Symbol),
+    relocation(EA+DisplacementOffset,_,Symbol,_,_,_,_),
+    symbol(SymbolAddr,_,Type,_,_,_,_,Symbol),
+    Type != "SECTION",
     SymbolAddr != DestAddr.
 
 // we take the candidate with the shortest distance/priority
@@ -472,12 +473,13 @@ moved_immediate_candidate(EA_def2,Imm_index,ImmediateAddr,NewDest):-
 moved_label_class(EA,Op_index,"pie relocation"),
 moved_immediate_candidate(EA,Op_index,DestAddr,SymbolAddr):-
     !binary_type("EXEC"),
+    !binary_type("REL"),
     code(EA),
     instruction_immediate_offset(EA,Op_index,ImmediateOffset),
     instruction_get_src_op(EA,Op_index,Op),
     op_immediate(Op,Dest), Dest >= 0,
     DestAddr = as(Dest,address),
-    relocation(EA+ImmediateOffset,_,Symbol,_),
+    relocation(EA+ImmediateOffset,_,Symbol,_,_,_,_),
     symbol(SymbolAddr,_,_,_,_,_,_,Symbol),
     SymbolAddr != DestAddr.
 
@@ -493,7 +495,7 @@ moved_label(EA,Op_index,Dest,Address):-
     ),
     !moved_displacement_candidate(EA,Op_index,_,_,_),
     !moved_immediate_candidate(EA,Op_index,_,_),
-    symbol(Address,Size,_,_,_,_,_,Name),
+    defined_symbol(Address,Size,_,_,_,_,_,Name),
     !function_symbol(Address,Name),
     Address < Dest,
     Dest < Address+Size.
