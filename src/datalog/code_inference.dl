@@ -469,7 +469,14 @@ discarded_block(Block1,BlockKind1):-
     // keep the block that has more points
     block_total_points(Block1,BlockKind1,Points1),
     block_total_points(Block2,BlockKind2,Points2),
-    Points1 < Points2.
+    (
+        Points1 < Points2
+    ;
+        // for equal number of points, prefer code
+        Points1 = Points2,
+        BlockKind1 = "data",
+        BlockKind2 = "code"
+    ).
 
 discarded_block(Block,BlockKind):-
     block_total_points(Block,BlockKind,Points),
@@ -829,7 +836,10 @@ code(EA):-
 block_still_overlap(Block1,BlockKind1,Block2,BlockKind2):-
     block_overlap(Block1,BlockKind1,Block2,BlockKind2),
     !discarded_block(Block1,BlockKind1),
-    !discarded_block(Block2,BlockKind2).
+    !discarded_block(Block2,BlockKind2),
+    // We only care about code-code or code-data conflicts
+    // but not about data-data conflicts.
+    (BlockKind1 = "code"; BlockKind2 = "code").
 
 
 .decl data_in_code_propagate(Current:address,Initial:address,SectionLimit:address)
