@@ -486,6 +486,11 @@ void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
             SymbolForwarding[Symbol->getUUID()] = NewSymbol->getUUID();
         }
     }
+    if(const auto &It = Module.findSymbols("_GLOBAL_OFFSET_TABLE_"); !It.empty())
+    {
+        gtirb::Symbol *Symbol = &*It.begin();
+        SymbolForwarding[Symbol->getUUID()] = Symbol->getUUID();
+    }
     Module.addAuxData<gtirb::schema::SymbolForwarding>(std::move(SymbolForwarding));
 }
 
