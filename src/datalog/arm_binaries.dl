@@ -608,7 +608,7 @@ litpool_ref_for_ldrd(EA):-
     op_indirect(IndOp,"NONE",Reg,"NONE",_,0,_).
 
 block_points(LitPoolAddr,"data",0,Points,"arm literal pool"),
-data_block_candidate(LitPoolAddr,4):-
+data_block_candidate(LitPoolAddr,8):-
     litpool_ref(EA,_,LitPoolAddr,_),
     (
         // Give less points in case of ldr/ldrd sequence
@@ -620,7 +620,7 @@ data_block_candidate(LitPoolAddr,4):-
 // since adr/ldr instrunction-sequence has higher
 // probability of ldrd literal-pool load.
 block_points(LitPoolAddr,"data",0,11,"arm literal pool"),
-data_block_candidate(LitPoolAddr,4):-
+data_block_candidate(LitPoolAddr,8):-
     litpool_ref_double(_,_,_,LitPoolAddr).
 
 

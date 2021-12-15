@@ -60,7 +60,7 @@ and the block identifier is the address of the first instruction in the block.
 */
 .decl code_in_block(EA:address,Block:address)
 /**
-There is a code block starting at 'block'.
+There is a code block starting at 'Block'.
 */
 .decl block(Block:address)
 /**
@@ -393,7 +393,7 @@ ARM 32 Thumb code blocks.
 
 These block candidates can be code blocks or data blocks.
 */
-.decl block_candidate_boundaries(BlockEA:address,BlockKind:block_kind,StartAddr:address,EndAddr:address)
+.decl block_candidate_boundaries(BlockEA:address,BlockKind:block_kind,BegAddr:address,EndAddr:address)
 .output block_candidate_boundaries
 
 block_candidate_boundaries(Block,"code",Block,Next):-
@@ -600,28 +600,15 @@ block_points(Block,"code",0,1,"address in data"):-
     !binary_isa("X86"),
     block_is_overlapping(Block,"code"),
     address_in_data(Address,Block),
-    arch.pointer_size(Pt_size),
-    Address % Pt_size != 0.
+    !address_in_data_is_printable(Address).
 
-block_points(Block,"code",0,2,"aligned address in data"):-
+block_points(Block,"code",0,1,"aligned address in data"):-
     !binary_isa("X86"),
     !binary_isa("ARM"),
     block_is_overlapping(Block,"code"),
     address_in_data(Address,Block),
     arch.pointer_size(Pt_size),
     Address % Pt_size = 0.
-
-block_points(Block,"code",0,-1,"printable address"):-
-    block_is_overlapping(Block,"code"),
-    address_in_data(EA,Block),
-    data_byte(EA,Byte),(printable_char(Byte); Byte = 0),
-    data_byte(EA+1,Byte1),(printable_char(Byte1); Byte1 = 0),
-    data_byte(EA+2,Byte2),(printable_char(Byte2); Byte2 = 0),
-    data_byte(EA+3,Byte3),(printable_char(Byte3); Byte3 = 0),
-    data_byte(EA+4,Byte4),(printable_char(Byte4); Byte4 = 0),
-    data_byte(EA+5,Byte5),(printable_char(Byte5); Byte5 = 0),
-    data_byte(EA+6,Byte6),(printable_char(Byte6); Byte6 = 0),
-    data_byte(EA+7,Byte7),(printable_char(Byte7); Byte7 = 0).
 
 block_points(Block,"code",0,1,"address in data array"):-
     block_is_overlapping(Block,"code"),
