@@ -82,6 +82,12 @@ namespace souffle
         return T;
     }
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SpecialOp& Op)
+    {
+        T << Op.Type << Op.Value;
+        return T;
+    }
+
     souffle::tuple& operator<<(souffle::tuple& T, const relations::RegBitFieldOp& R)
     {
         T << R.Op << R.Reg;

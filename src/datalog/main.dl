@@ -167,6 +167,10 @@ This module:
 .input op_barrier
 .output op_barrier
 
+.decl op_special(code:operand_code,type:symbol,value:symbol)
+.input op_special
+.output op_special
+
 .decl op_indirect(code:operand_code,reg1:register, reg2:register, reg3:register,
         multiplier:number, offset:number, size_value:unsigned)
 .input op_indirect
