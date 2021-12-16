@@ -49,6 +49,15 @@ tests:
       flags: ["-no-pie"]
       optimizations: [""]
 
+  - name: ex_setend
+    <<: *default
+    path: examples/arm_asm_examples
+    build:
+      c: ["arm-linux-gnueabihf-gcc"]
+      cpp: ["arm-linux-gnueabihf-g++"]
+      flags: []
+      optimizations: [""]
+
   - name: ex1
     <<: *default
 
