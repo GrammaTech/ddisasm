@@ -216,14 +216,4 @@ reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset):-
 reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
     reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
 
-/**
- * Infer the location of the main function.
- */
-.decl inferred_main_function(Main_location:address)
-inferred_main_function(Main_location):-
-    main_function_dispatch(Main_dispatch),
-    next(Prev,Main_dispatch),
-    code(Prev),
-    symbolic_operand(Prev,1,Main_location,"code").
-
 }
