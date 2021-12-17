@@ -270,7 +270,8 @@ used_for_address(EA,Reg):-
     used(EA,Reg,_).
 
 /**
- * The register 'Reg' as defined at address 'EA_def' is later used as an address.
+ * The register 'Reg' as defined at address 'EA_def' is later used either as an address
+ * or to compute an address.
  */
 .decl def_used_for_address(EA_def:address,Reg:register)
 .output def_used_for_address
