@@ -62,23 +62,59 @@ This module also computes and symbol_minus_symbol.
 #include "pointer_reatribution.dl"
 #include "register_type_analysis.dl"
 
-.decl symbolic_operand(ea:address,index:operand_index,value:address,type:symbol)
+/**
+Instruction at address 'EA' has a symbolic operand with value 'Value'.
+'Value' is given as an address.
+The field `Index` identifies which operand is symbolic and `Type` specifies
+if the target is "data" or "code".
+This predicate only supports symbolic expressions with one symbol and no
+offset. For symbolic operands with offset see `moved_label`.
+*/
+.decl symbolic_operand(EA:address,Index:operand_index,Value:address,Type:symbol)
 .output symbolic_operand
 
-.decl symbolic_data(ea:address,size:unsigned,value:address)
+/**
+There is a symbolic expression in the data at address 'EA' of size 'Size'
+pointing to 'Value'. 'Value' is given as an address.
+This predicate only supports symbolic expressions with one symbol
+and no offset. For symbolic expressions in data with offset see `moved_data_label`
+and for symbol-symbol exprssions see `symbol_minus_symbol`.
+*/
+.decl symbolic_data(EA:address,Size:unsigned,Value:address)
 .output symbolic_data
 
-// Symbolic expression generated from relocations
-.decl symbolic_expr_from_relocation(ea:address,size:unsigned,symbol:symbol,Addend:number)
-.output symbolic_expr_from_relocation
-
-.decl symbol_minus_symbol_jump_table(EA:address,TableStart:address,Size:unsigned,Symbol1:address,Symbol2:address,Reference:symbol,Scale:unsigned)
-.output symbol_minus_symbol_jump_table
-
-.decl symbol_minus_symbol(ea:address,size:unsigned,symbol1:address,symbol2:address,scale:unsigned)
+/**
+There is a symbolic expression in data at address 'EA' of size 'Size' of the form:
+ '(Symbol2-Symbol1)*Scale'
+Both symbols are given as addresses.
+*/
+.decl symbol_minus_symbol(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned)
 .output symbol_minus_symbol
 
-// symbolic data that points to code
+
+/**
+There is a symbolic expression at address 'EA' of size 'Size' of the form:
+  'Symbol+Offset'
+In contrast to `symbolic_operand` and `symbolic_data`, the symbol in this
+predicate is referred by name. This allows us to include symbolic expressions
+from relocations and to choose between multiple symbols at the same location.
+*/
+.decl symbolic_expr(EA:address,Size:unsigned,Symbol:symbol,Offset:number)
+.output symbolic_expr
+
+/**
+ There is a symbolic expression at address 'EA' of size 'Size' of the form:
+  Symbol+Offset
+ This symbolic expression corresponds to a relocation and the symbol is referenced by name.
+ */
+.decl symbolic_expr_from_relocation(EA:address,Size:unsigned,Symbol:symbol,Offset:number)
+.output symbolic_expr_from_relocation
+
+
+/**
+There is a symbolic expression in data at address 'EA' pointing to
+a code block at address 'Val'.
+*/
 .decl code_pointer_in_data(EA:address,Val:address)
 
 // data that is dereferenced somewhere in the code
@@ -263,6 +299,34 @@ symbolic_operand(EA,Op_index,Value,Type):-
     Points >= 0.
 
 
+///////////////////////////////////////////////////////////////////////
+
+symbolic_expr(EA,Size,Symbol,Offset):-
+    symbolic_expr_from_relocation(EA,Size,Symbol,Offset).
+
+// assign symbolic operands to symbols with a preference
+symbolic_expr(EA+InstrOffset,EANext-(EA+InstrOffset),SymbolName,0):-
+    symbolic_operand(EA,Index,Dest,_),
+    (
+        instruction_immediate_offset(EA,Index,InstrOffset);
+        instruction_displacement_offset(EA,Index,InstrOffset)
+    ),
+    !symbolic_expr_from_relocation(EA+InstrOffset,_,_,_),
+    next(EA,EANext),
+    // global functions symbols > function symbols > global symbols > rest
+    (
+        defined_symbol(Dest,_,"FUNC","GLOBAL",_,_,_,SymbolName)
+        ;
+        !defined_symbol(Dest,_,"FUNC","GLOBAL",_,_,_,_),
+        defined_symbol(Dest,_,"FUNC",_,_,_,_,SymbolName)
+        ;
+        !defined_symbol(Dest,_,"FUNC",_,_,_,_,_),
+        defined_symbol(Dest,_,_,"GLOBAL",_,_,_,SymbolName)
+        ;
+        !defined_symbol(Dest,_,_,"GLOBAL",_,_,_,_),
+        defined_symbol(Dest,_,_,_,_,_,_,SymbolName)
+    ).
+
 ///////////////////////////////
 // label candidates before moving
 .decl labeled_data_candidate(EA:address)
@@ -283,6 +347,8 @@ labeled_data_candidate(Val):-
 ////////////////////////////////////////////////////////////////////////
 
 // Symbol-Symbol candidate keeps track of which symbol is the reference and which is the target
+.decl symbol_minus_symbol_jump_table(EA:address,TableStart:address,Size:unsigned,Symbol1:address,Symbol2:address,Reference:symbol,Scale:unsigned)
+.output symbol_minus_symbol_jump_table
 
 symbol_minus_symbol_jump_table(TableStart,TableStart,Size,TableReference,Dest,"first",1):-
     !binary_isa("ARM"),

@@ -905,7 +905,7 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
         convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
         convertSortedRelation<VectorByEA<MovedDataLabel>>("moved_data_label", prog),
         convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog),
-        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog),
+        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr", prog),
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog),
         convertSortedRelation<VectorByEA<SymbolicOperandAttribute>>("symbolic_operand_attribute",
                                                                     prog),
@@ -992,8 +992,7 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
     auto symbolicData = convertSortedRelation<VectorByEA<SymbolicData>>("symbolic_data", prog);
     auto movedDataLabels =
         convertSortedRelation<VectorByEA<MovedDataLabel>>("moved_data_label", prog);
-    auto symbolicExprs =
-        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr_from_relocation", prog);
+    auto symbolicExprs = convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr", prog);
     auto symbolMinusSymbol =
         convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
 
