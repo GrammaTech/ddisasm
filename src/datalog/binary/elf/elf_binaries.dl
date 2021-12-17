@@ -246,12 +246,23 @@ main_function(EA):-
     binary_format("ELF"),
     function_symbol(EA,"main").
 
-// Locate where main() is dispatched (i.e., where __libc_start_main is called.)
+/**
+ * Decide whether the main function should be inferred.
+ */
+.decl do_infer_main_function()
+
+do_infer_main_function():-
+    binary_format("ELF"),
+    !function_symbol(_,"main").
+
+/**
+ * Locate where main() is dispatched (i.e., where __libc_start_main is called.)
+ */
 .decl main_function_dispatch(EA:address)
 
-main_function_dispatch(First_call):-
-    binary_format("ELF"),
-    First_call = min EA:{
+main_function_dispatch(CallEA):-
+    do_infer_main_function(),
+    CallEA = min EA:{
         start_function(Entry),
         instruction(EA,_,_,CallOp,_,_,_,_,_,_),
         arch.call_operation(CallOp),
@@ -260,10 +271,7 @@ main_function_dispatch(First_call):-
     }.
 
 main_function(Main_location):-
-    binary_format("ELF"),
-    !function_symbol(_,"main"),
-    main_function_dispatch(Main_dispatch),
-    arch.main_function(Main_location,Main_dispatch).
+    arch.inferred_main_function(Main_location).
 
 inferred_symbol_name(EA,"_start","GLOBAL","FUNC"):-
     !binary_type("REL"),

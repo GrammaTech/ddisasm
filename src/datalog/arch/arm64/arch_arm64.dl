@@ -224,15 +224,20 @@ reg_reg_arithmetic_operation(EA,Reg2,Reg1,Reg2,1,0):-
 reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
     reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
 
-.decl main_function(Main_location:address,Main_dispatch:address)
-main_function(Main_location,Main_dispatch):-
+/**
+ * Infer the location of the main function.
+ */
+.decl inferred_main_function(Main_location:address)
+inferred_main_function(Main_location):-
+    main_function_dispatch(Main_dispatch),
     def_used(EA_def,"X0",Main_dispatch,_),
     value_reg(EA_def,"X0",_,"NONE",_,Offset,_),
     Main_location = as(Offset, address),
     code(Main_location).
 
 // Inform the use_def analysis that X0 is used here as an address.
-used(Main_dispatch,Reg,0),used_for_address(Main_dispatch,Reg):-
+used(Main_dispatch,Reg,0),
+used_for_address(Main_dispatch,Reg):-
     Reg = "X0",
     main_function_dispatch(Main_dispatch).
 
