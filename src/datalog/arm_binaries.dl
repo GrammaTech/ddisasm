@@ -382,6 +382,15 @@ symbolic_operand_candidate(EA,1,Dest,Type):-
         Type = "data"
     ).
 
+value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
+    split_load_for_symbolization(_,EA,RefAddr,_),
+    instruction(EA,_,_,Operation,Op1,_,_,_,_,_),
+    arch.load_operation(Operation),
+    instruction_get_dest_op(EA,_,DestRegOp),
+    op_regdirect_contains_reg(DestRegOp,Reg),
+    op_indirect(Op1,_,_,_,_,_,DataSize),
+    data_word(RefAddr,DataSize/8,Val).
+
 // ARM64 jump-table reference idiom:
 // EA: ldr/ldrb/ldrd w0,[x2,w0,uxtw N] --> x2=TableStart
 //     adr x1,L
@@ -661,7 +670,7 @@ symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
 symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
     litpool_ref_double(EA,_,_,LitPoolAddr).
 
-.decl symbol_minus_symbol_candidate(ea:address,size:unsigned,symbol1:address,symbol2:address,scale:unsigned,ea_litpool_ref:address,ea_add_pc:address,reg:register)
+.decl symbol_minus_symbol_candidate(ea:address,size:unsigned,symbol1:address,symbol2:address,scale:unsigned,ea_litpool_ref:address,ea_def:address,reg:register)
 .output symbol_minus_symbol_candidate
 
 //     ldr reg, LitPool
@@ -692,7 +701,50 @@ symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add_pc,Re
     Addr2 = as(Diff,address) + Symbol1,
     Symbol2= Addr2-(Addr2 band 1).
 
-.decl litpool_symbolic_operand(ea_litpool:address,size:unsigned,symbol1:address,symbol2:address)
+//     ldr reg1, LitPool
+// ...
+//     adr reg2, Base
+//     add reg1, reg2
+// ...
+// LitPool: .word TARGET - Base
+//
+// (in observed cases, LitPool == Base)
+symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add,Reg):-
+    litpool_ref(EA,Reg,LitPoolAddr,NBits),
+    Size = NBits/8,
+
+    def_used(EA,Reg,EA_add,_),
+
+    instruction_get_operation(EA_add,"ADD"),
+    instruction_get_op(EA_add,1,PCRelOp),
+    op_regdirect_contains_reg(PCRelOp,PCRelReg),
+
+    def_used(EA_adr,PCRelReg,EA_add,_),
+    instruction_get_operation(EA_adr,"ADR"),
+    instruction_get_op(EA_adr,1,ImmOp),
+
+    op_immediate(ImmOp,Offset),
+    (
+        (EA_adr band 1) = 0, Disp = 8 // ARM mode
+        ;
+        (EA_adr band 1) != 0, Disp = 4 // Thumb mode
+    ),
+    Base = as(EA_adr,number)+Offset+Disp,
+    BaseAligned = Base-(Base band 3),
+
+    data_word(LitPoolAddr,Size,Diff),
+
+    Symbol1 = as(BaseAligned,address),
+    Addr2 = as(Diff,address) + Symbol1,
+    Symbol2 = Addr2-(Addr2 band 1).
+
+symbol_minus_symbol(LitPoolAddr,Size,Symbol1,Symbol2,1):-
+    symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,_,_,_).
+
+value_reg_edge(EA,Reg,EA,"NONE",0,as(Symbol2,number)):-
+    symbol_minus_symbol_candidate(_,_,_,Symbol2,_,_,EA,Reg).
+
+.decl litpool_symbolic_operand(ea_litpool:address,size:unsigned,symbol1:address,symbol2:address,ea_def:address,reg_def:register,sym2_size:unsigned)
 .output litpool_symbolic_operand
 
 //  (A) ldr  reg1, LitPoolAddr1
@@ -700,7 +752,7 @@ symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add_pc,Re
 //  (C) add  reg1, pc, reg1 // reg1 is the address of symbol foo
 //  (D) ldr  reg3, [reg1, reg2] // the referenced address is the address of symbol bar.
 block_needs_splitting_at(EA_C),
-litpool_symbolic_operand(LitPoolAddr2,Size,Symbol1,Symbol2):-
+litpool_symbolic_operand(LitPoolAddr2,Size,Symbol1,Symbol2,EA_D,Reg3,Size2):-
     symbol_minus_symbol_candidate(_,_,_,Symbol1,1,_,EA_C,Reg1),
 
     def_used(EA_C,Reg1,EA_D,_),
@@ -709,7 +761,10 @@ litpool_symbolic_operand(LitPoolAddr2,Size,Symbol1,Symbol2):-
     instruction_get_operation(EA_D,Operation),
     arch.load_operation(Operation),
     instruction_get_src_op(EA_D,_,IndOp),
-    op_indirect(IndOp,"NONE",Reg1,Reg2,_,0,_),
+    instruction_get_dest_op(EA_D,_,RegOp),
+    op_indirect(IndOp,"NONE",Reg1,Reg2,_,0,Bits),
+    op_regdirect_contains_reg(RegOp,Reg3),
+    Size2 = Bits / 8,
 
     def_used(EA_B,Reg2,EA_D,_),
 
@@ -719,11 +774,15 @@ litpool_symbolic_operand(LitPoolAddr2,Size,Symbol1,Symbol2):-
     data_word(LitPoolAddr2,Size,Diff),
     Symbol2 = as(Diff,address) + Symbol1.
 
+value_reg_edge(EA,Reg,EA,"NONE",0,as(Val,number)):-
+    litpool_symbolic_operand(_,_,_,Symbol2,EA,Reg,Size),
+    data_word(Symbol2,Size,Val).
+
 //  => equations: [LitPoolAddr1] = foo - (C)
 //                [LitPoolAddr2] = bar - foo
 //
 symbol_minus_symbol(LitPoolAddr2,Size,Symbol1,Symbol2,1):-
-    litpool_symbolic_operand(LitPoolAddr2,Size,Symbol1,Symbol2),
+    litpool_symbolic_operand(LitPoolAddr2,Size,Symbol1,Symbol2,_,_,_),
     !got_reference(Symbol2,_),
     !relocation(LitPoolAddr2,_,_,_,_,_,_).
 
@@ -733,7 +792,7 @@ symbol_minus_symbol(LitPoolAddr2,Size,Symbol1,Symbol2,1):-
 symbolic_data_attribute(LitPoolAddr,"GotRelPC"),
 got_reference(Got_entry,Symbol),
 symbolic_data(LitPoolAddr,Size,Got_entry):-
-    litpool_symbolic_operand(LitPoolAddr,Size,_,Got_entry),
+    litpool_symbolic_operand(LitPoolAddr,Size,_,Got_entry,_,_,_),
     section(".got",GotSize,GotBeg),
     Got_entry >= GotBeg,
     Got_entry < GotBeg+GotSize,
