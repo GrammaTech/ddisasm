@@ -671,7 +671,8 @@ block_points(Block,0,3,"appears"):-
 
 block_points(Block,0,3,"relative jump table target"):-
     block_is_overlapping(Block),
-    relative_address(_,_,_,_,Block,_),
+    relative_address(EA,_,_,_,Block,_),
+    count :{ relative_address(EA,_,_,_,_,_) } = 1,
     !relative_address(Block,_,_,_,_,_).
 
 // give a point if it may fallthrough to another block
