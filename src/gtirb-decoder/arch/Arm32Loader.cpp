@@ -75,6 +75,7 @@ void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Fact
 void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
 {
     size_t Count0 = 1;
+    uint64_t DecodeAddr = Addr;
 
     // NOTE: The IT (If-Then) instruction makes up to four following
     // instructions (the IT block) conditional.
@@ -86,49 +87,28 @@ void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size,
     if(!Instrs.empty())
     {
         std::vector<relations::Instruction>::const_reverse_iterator It = Instrs.rbegin();
-        if(Instrs.size() >= 1 && (*It).Name == "IT")
+        for(unsigned int i = 1; i < 4 && It != Instrs.rend(); It++, i++)
         {
-            Count0 = 2;
-        }
-        else if(Instrs.size() >= 2 && (*++It).Name == "IT")
-        {
-            Count0 = 3;
-        }
-        else if(Instrs.size() >= 3 && (*++It).Name == "IT")
-        {
-            Count0 = 4;
-        }
-        else if(Instrs.size() >= 4 && (*++It).Name == "IT")
-        {
-            Count0 = 5;
-        }
-
-        if(Count0 != 1)
-        {
-            Addr -= InstructionSize * (Count0 - 1);
-            Bytes -= InstructionSize * (Count0 - 1);
-            Size += InstructionSize * (Count0 - 1);
+            if((*It).Name == "IT")
+            {
+                Count0 = i + 1;
+                DecodeAddr -= InstructionSize * i;
+                Bytes -= InstructionSize * i;
+                Size += InstructionSize * i;
+                break;
+            }
         }
     }
 
     // Decode instruction with Capstone.
     cs_insn* CsInsn;
-    size_t Count = cs_disasm(*CsHandle, Bytes, Size, Addr, Count0, &CsInsn);
+    size_t Count = cs_disasm(*CsHandle, Bytes, Size, DecodeAddr, Count0, &CsInsn);
 
     // Build datalog instruction facts from Capstone instruction.
     std::optional<relations::Instruction> Instruction;
     if(Count > 0)
     {
-        if(Count == 1)
-        {
-            Instruction = build(Facts, CsInsn[0]);
-        }
-        else
-        {
-            Instruction = build(Facts, CsInsn[Count - 1]);
-            Addr += InstructionSize * (Count0 - 1);
-            Size -= InstructionSize * (Count0 - 1);
-        }
+        Instruction = build(Facts, CsInsn[Count - 1]);
     }
 
     if(Instruction)
