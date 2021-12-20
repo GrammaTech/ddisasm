@@ -492,7 +492,7 @@ reg_call(EA,Reg):-
     instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_regdirect(TargetOp,Reg).
 
- .decl indirect_call(src:address)
+.decl indirect_call(src:address)
 .output indirect_call
 
 indirect_call(EA):-
