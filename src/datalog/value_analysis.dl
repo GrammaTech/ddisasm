@@ -79,8 +79,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
 
 reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
     (
-        arch.frame_pointer(Base)
-        ;
+        arch.frame_pointer(Base);
         arch.stack_pointer(Base)
     ),
     def_used(StackFrameDefinedAt,Base,EA,_),
@@ -95,8 +94,7 @@ reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
 
 reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
     (
-        arch.frame_pointer(Base)
-        ;
+        arch.frame_pointer(Base);
         arch.stack_pointer(Base)
     ),
     def_used(StackFrameDefinedAt,Base,EA,_),
@@ -106,6 +104,17 @@ reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
     instruction_get_dest_op(EA,_,DestOp),
     op_regdirect_contains_reg(DestOp,Reg).
 
+reg_loaded_from_stack(EA,Reg,Base,StackPos,PrevStackFrame):-
+    reg_stored_in_stack(_,_,StackPos,PrevStackFrame),
+    arch.stack_pointer(Base),
+    last_def(NextStackFrame,PrevStackFrame,Base),
+    (
+        op_immediate_and_reg(NextStackFrame,"SUB",Base,_,Immediate),
+        reg_loaded_from_stack(EA,Reg,Base,StackPos+Immediate,NextStackFrame)
+        ;
+        op_immediate_and_reg(NextStackFrame,"ADD",Base,_,Immediate),
+        reg_loaded_from_stack(EA,Reg,Base,StackPos-Immediate,NextStackFrame)
+    ).
 
 // Register saved and loaded from stack
 // This is flow insensitive but we make sure that the load and store
