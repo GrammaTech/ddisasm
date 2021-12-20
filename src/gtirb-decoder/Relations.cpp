@@ -32,8 +32,8 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Relocation& Relocation)
     {
-        auto& [Addr, Type, Name, Addend] = Relocation;
-        T << Addr << Type << Name << Addend;
+        auto& [Addr, Type, Name, Addend, SymbolIndex, SectionName, RelType] = Relocation;
+        T << Addr << Type << Name << Addend << SymbolIndex << SectionName << RelType;
         return T;
     }
 
@@ -53,7 +53,7 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Section& Section)
     {
         T << Section.Name << Section.Size << Section.Addr << Section.Type << Section.Flags
-          << Section.Align;
+          << Section.Align << Section.Index;
         return T;
     }
 
@@ -79,6 +79,12 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::IndirectOp& Op)
     {
         T << Op.Reg1 << Op.Reg2 << Op.Reg3 << Op.Mult << Op.Disp << Op.Size;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SpecialOp& Op)
+    {
+        T << Op.Type << Op.Value;
         return T;
     }
 

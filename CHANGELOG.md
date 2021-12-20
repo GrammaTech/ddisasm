@@ -1,5 +1,5 @@
 # 1.5.2 (Unreleased)
-* TBD
+* Add ELF x86_64 .o support.
 
 # 1.5.1
 * Use dedicated symbolic expression attributes.

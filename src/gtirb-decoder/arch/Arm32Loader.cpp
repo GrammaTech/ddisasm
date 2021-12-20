@@ -34,6 +34,7 @@ void Arm32Loader::insert(const Arm32Facts& Facts, DatalogProgram& Program)
     Program.insert("op_immediate", Operands.imm());
     Program.insert("op_regdirect", Operands.reg());
     Program.insert("op_indirect", Operands.indirect());
+    Program.insert("op_special", Operands.special());
     Program.insert("op_register_bitfield", Operands.reg_bitfields());
 }
 
@@ -240,7 +241,6 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_arm_op& CsOp)
                             32};
             return I;
         }
-        // TODO:
         case ARM_OP_CIMM: ///< C-Immediate (coprocessor registers)
         case ARM_OP_PIMM: ///< P-Immediate (coprocessor registers)
             return ImmOp{CsOp.imm};
@@ -249,7 +249,16 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_arm_op& CsOp)
         case ARM_OP_FP:
             return FPImmOp{CsOp.fp};
         case ARM_OP_SETEND: ///< operand for SETEND instruction
-            std::cerr << "unhandled ARM operand: setend (ARM_OP_SETEND)\n";
+            switch(CsOp.setend)
+            {
+                case ARM_SETEND_BE:
+                    return SpecialOp{"setend", "be"};
+                case ARM_SETEND_LE:
+                    return SpecialOp{"setend", "le"};
+                default:
+                    break;
+            }
+            break;
         case ARM_OP_INVALID:
         default:
             break;

@@ -58,19 +58,6 @@
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
-namespace std
-{
-    // program_options default values need to be printable.
-    std::ostream &operator<<(std::ostream &os, const std::vector<std::string> &vec)
-    {
-        for(auto item : vec)
-        {
-            os << item << ",";
-        }
-        return os;
-    }
-} // namespace std
-
 void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_clock> Start)
 {
     auto End = std::chrono::high_resolution_clock::now();
@@ -269,9 +256,6 @@ int main(int argc, char **argv)
     }
     Module.setEntryPoint(nullptr);
 
-    // Remove placeholder relocation data.
-    Module.removeAuxData<gtirb::schema::Relocations>();
-
     Souffle->insert("option", createDisasmOptions(vm));
 
     if(vm.count("debug-dir") != 0)
@@ -351,6 +335,10 @@ int main(int argc, char **argv)
         FunctionInference.computeFunctions(*GTIRB->Context, Module, Threads);
         printElapsedTimeSince(StartFunctionAnalysis);
     }
+
+    // Remove provisional AuxData tables.
+    Module.removeAuxData<gtirb::schema::Relocations>();
+    Module.removeAuxData<gtirb::schema::ElfSectionIndex>();
 
     // Output GTIRB
     if(vm.count("ir") != 0)

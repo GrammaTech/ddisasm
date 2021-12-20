@@ -616,7 +616,7 @@ plt_entry(EA,Function):-
     instruction_get_operation(EA_ADDIU, "ADDIU"),
     arch.reg_reg_arithmetic_operation(EA_ADDIU,_,Reg,"NONE",_,Offset),
 
-    relocation(Dest_addr,_,Function,_).
+    relocation(Dest_addr,_,Function,_,_,_,_).
 
 // It is unlikely that EA is a valid instruction if the dest op is zero.
 invalid(EA,Type):-

@@ -140,13 +140,15 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
     !binary_type("EXEC"),
     code(EA),
     (
+        !binary_type("REL"),
         instruction_immediate_offset(EA,Op_index,ImmediateOffset),
-        relocation(EA+ImmediateOffset,_,Symbol,Addend),
+        relocation(EA+ImmediateOffset,_,Symbol,Addend,_,_,_),
         symbol(SymbolAddr,_,_,_,_,_,_,Symbol),
         Dest = as(as(SymbolAddr,number)+Addend,address)
         ;
+        !binary_type("REL"),
         instruction_displacement_offset(EA,Op_index,DisplacementOffset),
-        relocation(EA+DisplacementOffset,_,Symbol,Addend),
+        relocation(EA+DisplacementOffset,_,Symbol,Addend,_,_,_),
         symbol(SymbolAddr,_,_,_,_,_,_,Symbol),
         Dest = as(as(SymbolAddr,number)+Addend,address)
         ;
@@ -186,7 +188,7 @@ symbolic_operand_candidate(EA,Index,Dest,Type):-
         instruction_get_op(EA,Index,Op),
         op_indirect(Op,_,_,_,1,Value,_)
     ),
-    relocation(EA+Offset,_,_,_),
+    relocation(EA+Offset,_,_,_,_,_,_),
     Dest = as(Value,address),
     (
         code(Dest),
@@ -355,14 +357,14 @@ symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Symbol,Reference,"second"
 address_in_data_refined(EA,Val):-
     binary_type("DYN"),
     address_in_data(EA,Val),
-    relocation(EA,_,_,_),
+    relocation(EA,_,_,_,_,_,_),
     data_segment(Beg,End),
     Val >= Beg, Val <= End.
 
 address_in_data_refined(EA,Val):-
     binary_type("DYN"),
     address_in_data(EA,Val),
-    relocation(EA,_,_,_),
+    relocation(EA,_,_,_,_,_,_),
     block(Val).
 
 address_in_data_refined(EA,Val):-
@@ -690,13 +692,13 @@ data_object_point(EA,Pt_size,"symbol",-1,"point-to-special-section"):-
 
 data_object_point(EA,Pt_size,"symbol",10,"has relocation"):-
     data_object_candidate(EA,Pt_size,"symbol"),
-    relocation(EA,Type,_,_),
+    relocation(EA,Type,_,_,_,_,_),
     Type != "ABSOLUTE".
 
 data_object_point(EA,Pt_size,"symbol",-10,"has no relocation"):-
     !binary_type("EXEC"),
     data_object_candidate(EA,Pt_size,"symbol"),
-    !relocation(EA,_,_,_).
+    !relocation(EA,_,_,_,_,_,_).
 
 // Points for well-defined strings:
 data_object_point(EA,Size,"string",2,"string basic point"):-

@@ -82,6 +82,17 @@ namespace relations
         };
     };
 
+    struct SpecialOp
+    {
+        std::string Type;
+        std::string Value;
+
+        bool operator<(const SpecialOp& Op) const noexcept
+        {
+            return std::tie(Type, Value) < std::tie(Op.Type, Op.Value);
+        };
+    };
+
     struct RegBitFieldOp
     {
         uint64_t Op;
@@ -94,7 +105,7 @@ namespace relations
     };
     using RegBitFieldOpVector = std::vector<std::string>;
 
-    using Operand = std::variant<ImmOp, RegOp, RegBitFieldOpVector, IndirectOp, FPImmOp>;
+    using Operand = std::variant<ImmOp, RegOp, RegBitFieldOpVector, IndirectOp, FPImmOp, SpecialOp>;
 
     using Relocation = auxdata::Relocation;
 
@@ -125,6 +136,7 @@ namespace relations
         uint64_t Type;
         uint64_t Flags;
         uint64_t Align;
+        uint64_t Index;
     };
 
     struct Padding
@@ -210,6 +222,8 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Instruction& I);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::IndirectOp& I);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SpecialOp& I);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::RegBitFieldOp& R);
 
