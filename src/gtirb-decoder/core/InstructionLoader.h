@@ -62,6 +62,11 @@ public:
         return index(Indirect, Op);
     }
 
+    uint64_t operator()(const relations::SpecialOp& Op)
+    {
+        return index(Special, Op);
+    }
+
     const std::map<relations::ImmOp, uint64_t>& imm() const
     {
         return Imm;
@@ -98,6 +103,11 @@ public:
         return Indirect;
     }
 
+    const std::map<relations::SpecialOp, uint64_t>& special() const
+    {
+        return Special;
+    }
+
 protected:
     template <typename T>
     uint64_t index(std::map<T, uint64_t>& OpTable, const T& Op)
@@ -119,6 +129,7 @@ private:
     std::map<std::vector<std::string>, uint64_t> RegBitFields;
     std::map<relations::FPImmOp, uint64_t> FPImm;
     std::map<relations::IndirectOp, uint64_t> Indirect;
+    std::map<relations::SpecialOp, uint64_t> Special;
 };
 
 class InstructionFacts
