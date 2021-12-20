@@ -31,70 +31,10 @@
 #include "../Relations.h"
 #include "../core/InstructionLoader.h"
 
-namespace relations
-{
-    struct BarrierOp
-    {
-        std::string Value;
-        bool operator<(const BarrierOp& Op) const noexcept
-        {
-            return Value < Op.Value;
-        }
-    };
-
-    struct PrefetchOp
-    {
-        std::string Value;
-        bool operator<(const PrefetchOp& Op) const noexcept
-        {
-            return Value < Op.Value;
-        }
-    };
-
-    using Arm64Operand = std::variant<ImmOp, RegOp, IndirectOp, PrefetchOp, BarrierOp, FPImmOp>;
-} // namespace relations
-
-class Arm64OperandFacts : public OperandFacts
-{
-public:
-    using OperandFacts::operator();
-
-    uint64_t operator()(const relations::BarrierOp& Op)
-    {
-        return index(Barrier, Op);
-    }
-
-    uint64_t operator()(const relations::PrefetchOp& Op)
-    {
-        return index(Prefetch, Op);
-    }
-
-    using OperandFacts::add;
-
-    uint64_t add(const relations::Arm64Operand& Op)
-    {
-        return std::visit(*this, Op);
-    }
-
-    const std::map<relations::BarrierOp, uint64_t>& barrier() const
-    {
-        return Barrier;
-    }
-
-    const std::map<relations::PrefetchOp, uint64_t>& prefetch() const
-    {
-        return Prefetch;
-    }
-
-private:
-    std::map<relations::BarrierOp, uint64_t> Barrier;
-    std::map<relations::PrefetchOp, uint64_t> Prefetch;
-};
-
 struct Arm64Facts
 {
     InstructionFacts Instructions;
-    Arm64OperandFacts Operands;
+    OperandFacts Operands;
 };
 
 class Arm64Loader : public InstructionLoader<Arm64Facts>
@@ -119,7 +59,7 @@ protected:
     void insert(const Arm64Facts& Facts, DatalogProgram& Program) override;
 
 private:
-    std::optional<relations::Arm64Operand> build(const cs_arm64_op& CsOp);
+    std::optional<relations::Operand> build(const cs_arm64_op& CsOp);
     std::optional<relations::Instruction> build(Arm64Facts& Facts, const cs_insn& CsInstruction);
 
     std::shared_ptr<csh> CsHandle;
@@ -127,12 +67,5 @@ private:
 
 std::optional<const char*> barrierValue(const arm64_barrier_op Op);
 std::optional<const char*> prefetchValue(const arm64_prefetch_op Op);
-
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::BarrierOp& Op);
-
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::PrefetchOp& Op);
-} // namespace souffle
 
 #endif // SRC_GTIRB_DECODER_ARCH_ARM64DECODER_H_
