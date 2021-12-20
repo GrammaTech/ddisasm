@@ -80,7 +80,7 @@ void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size,
     // NOTE: The IT (If-Then) instruction makes up to four following
     // instructions (the IT block) conditional.
     // Check if one of the previous instructions up to 4 is 'IT'.
-    // If so, read the current instruciton bytes along with instruction
+    // If so, read the current instruction bytes along with instruction
     // bytes up to the 'IT' instruction so that the condition code can be
     // correctly decoded.
     const std::vector<relations::Instruction>& Instrs = Facts.Instructions.instructions();
