@@ -194,14 +194,8 @@ tests:
   - name: ex_noreturn
     <<: *position-independent
 
-  # TODO: clang: Track GOT register across stack.
   - name: ex_pointerReatribution
     <<: *position-independent
-    build:
-      c: ["gcc"]
-      cpp: ["g++"]
-      optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
-      flags: ["-m32", "-fpie"]
 
   - name: ex_pointerReatribution3
     <<: *position-independent
