@@ -539,11 +539,13 @@ block_points(Block,0,-3,"overlaps with relocation"):-
     (
         // Block beginning intersects relocation bytes:
         relocation_size(Type,Size),
-        relocation(Target,Type,_,_,_,_,_), EA >= Target, EA < Target + Size
+        relocation(Target,Type,_,_,_,_,_),
+        EA >= Target, EA < Target + (Size/8)
         ;
         // Relocation target is in block but not aligned with operand offsets.
         instruction(EA,Size,_,_,_,_,_,_,_,_),
-        relocation(Target,_,_,_,_,_,_), Target > EA, Target < EA+Size,
+        relocation(Target,_,_,_,_,_,_),
+        Target > EA, Target < EA + (Size/8),
         !instruction_immediate_offset(EA,_,Target-EA),
         !instruction_displacement_offset(EA,_,Target-EA)
     ).
