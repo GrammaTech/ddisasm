@@ -36,6 +36,8 @@ std::string getInterpreterArch(const gtirb::Module &Module)
             return "-MARCH_IA32";
         case gtirb::ISA::X64:
             return "-MARCH_AMD64";
+        case gtirb::ISA::ARM:
+            return "-MARCH_ARM32";
         case gtirb::ISA::ARM64:
             return "-MARCH_ARM64";
         default:

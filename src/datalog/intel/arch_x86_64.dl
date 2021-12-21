@@ -32,8 +32,8 @@ symbolic_operand_attribute(EA,Index,"PltRef"):-
     plt_block(Dest,_).
 
 symbolic_operand_attribute(EA,Index,"PltRef"):-
-    instruction_has_relocation(EA),
     instruction_immediate_offset(EA,Index,Offset),
+    instruction_has_relocation(EA,EA+Offset),
     relocation(EA+Offset,"PLT32",_,_,_,_,_).
 
 symbolic_operand_attribute(EA,Index,"GotRelPC"):-

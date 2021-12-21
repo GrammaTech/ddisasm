@@ -522,7 +522,8 @@ void ElfReader::buildSections()
 void ElfReader::buildSymbols()
 {
     // If there's no existing dynamic symbols, resurrect them.
-    if(Elf->dynamic_symbols().size() == 0)
+    bool Relocatable = Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL;
+    if(!Relocatable && Elf->dynamic_symbols().size() == 0)
     {
         resurrectSymbols();
     }
