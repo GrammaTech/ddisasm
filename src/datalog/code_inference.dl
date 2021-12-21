@@ -117,6 +117,7 @@ must_fallthrough(From,To):-
     !arch.interrupt_operation(Operation),
     !instruction_has_loop_prefix(From),
     !conditional_jump(From),
+    !conditional_return(From),
     !arch.delay_slot(_,From).
 
 //////////////////////////////////////////////////////////////
@@ -697,6 +698,9 @@ block_points(Block,BlockPred,Points,Why):-
     Points != 0.
 
 block_points(Block,BlockPred,Points2,Why):-
+    // Because for ARM, any bytes that cannot fall through are highly likely
+    // literal pool, we skip this predicate for ARM.
+    !binary_isa("ARM"),
     block_is_overlapping(Block),
     after_end(Block,EA),
     code_in_block_candidate_refined(EA,BlockPred),
