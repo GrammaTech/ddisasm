@@ -152,23 +152,20 @@ invalid(EA,"thumb: doubleword op registers invalid"):-
         Rt2 = "PC", Rt = Rt
     ).
 
-invalid(EA,"arm: post-index disallows Rt[2] eq Rn"):-
+invalid(EA,"arm: pre/post-index disallows Rt[2] eq Rn"):-
     mem_operands(EA,RtOp,Rt2Op,RmOp,IndirectOp,ImmOp),
     (
-        RmOp != 0, ImmOp = ImmOp;
-        ImmOp != 0, RmOp = RmOp
+        RmOp != 0, ImmOp = 0;                           // post-index (register offset)
+        ImmOp != 0, RmOp = 0;                           // post-index (immediate offset)
+        instruction_metadata(EA,1), RmOp = 0, ImmOp = 0 // pre-index
     ),
     (
-        NotRnOp = RtOp, Rt2Op = 0;   // in single word instruction Rt != Rn
-        NotRnOp = Rt2Op, Rt2Op != 0 // in doubleword instructions, Rt2 != Rn
+        NotRnOp = RtOp, Rt2Op = 0;               // in single word instruction Rt != Rn
+        NotRnOp = Rt2Op, Rt2Op != 0, RtOp = RtOp // in doubleword instructions, Rt2 != Rn
     ),
     op_indirect(IndirectOp,"NONE",Rn,"NONE",_,_,_),
     op_regdirect_contains_reg(NotRnOp,NotRn),
     Rn = NotRn.
-
-// TODO: pre-index operations (Rt != Rn or doubleword Rt2 != Rn)
-// Does not seem possible to identify pre-index instructions with current
-// information in the datalog.
 
 // Rm must be different from Rt and Rt2 in LDRD instructions.
 invalid(EA,"arm: doubleword rm/rt conflict"):-
@@ -178,3 +175,12 @@ invalid(EA,"arm: doubleword rm/rt conflict"):-
     op_regdirect_contains_reg(Rt2Op,Rt2),
     op_regdirect_contains_reg(RmOp,Rm),
     (Rm = Rt, Rt2 = Rt2; Rm = Rt2, Rt = Rt).
+
+/*
+ * Architecture-specific instruction
+ *
+ * EA: Instruction effective address
+ * Writeback: 0 or 1; populated from capstone's cs_arm.writeback.
+ */
+.decl instruction_metadata(EA:address,Writeback:unsigned)
+.input instruction_metadata
