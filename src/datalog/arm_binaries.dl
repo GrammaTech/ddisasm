@@ -754,7 +754,15 @@ cant_have_symbolic_immediate(Operation):-
     instruction_get_operation(_, Operation),
     (
         contains("SUB", Operation);
-        contains("MOV", Operation)
+        contains("MOV", Operation);
+        contains("AND", Operation);
+        contains("OR", Operation);
+        contains("TST", Operation);
+        contains("CMP", Operation);
+        contains("CMN", Operation);
+        contains("RSB", Operation);
+        contains("BIC", Operation);
+        contains("ORR", Operation)
     ).
 
 must_access_data(EA,Dest):-
@@ -833,3 +841,49 @@ invalid(EA,"arm: invalid pc"):-
     instruction_get_dest_op(EA,_,Op),
     op_regdirect_contains_reg(Op,PC),
     arch.pc_register(PC).
+
+invalid(EA,"arm: first transfer register must ben even"):-
+    // ldrd Dst1, Dst2, ...
+    instruction(EA,_,_,Operation,Dst2,_,_,_,_,_),
+    instruction_get_operation(EA,Operation),
+    (
+        contains("LDRD", Operation);
+        contains("STRD", Operation)
+    ),
+    op_regdirect_contains_reg(Dst2,Reg2),
+    (
+        arch.pc_register(Reg2)
+        ;
+        arch.reg_index(Reg2,Index),
+        // Check if the second dest register is even.
+        (Index band 1) = 0
+    ).
+
+invalid(EA,"arm: source register same as write-back base"):-
+    // LDRD Reg1, Reg2, [Reg]
+    instruction(EA,_,_,Operation,Op1,IndOp,Op3,Op4,_,_),
+    (
+        contains("LDRD", Operation);
+        contains("STRD", Operation)
+    ),
+    (
+        Op4 = 0, op_regdirect_contains_reg(Op3,Reg1)
+        ;
+        Op4 != 0, op_regdirect_contains_reg(Op4,Reg1)
+    ),
+    op_regdirect_contains_reg(Op1,Reg2),
+    op_indirect(IndOp,"NONE",Reg,"NONE",_,0,_),
+    (
+        Reg1 = Reg, Reg2 = Reg2;
+        Reg2 = Reg, Reg1 = Reg1
+    ).
+
+invalid(EA,"arm: source register same as write-back base"):-
+    // STRH Reg1, [Base], Reg2
+    instruction(EA,_,_,Operation,IndOp,Reg2Op,Reg1Op,_,_,_),
+    (
+        contains("STRH", Operation)
+    ),
+    op_regdirect_contains_reg(Reg1Op,Reg1),
+    op_indirect(IndOp,"NONE",Base,"NONE",_,0,_),
+    Base = Reg1.
