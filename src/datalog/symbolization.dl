@@ -102,8 +102,8 @@ This module also computes and symbol_minus_symbol.
 .output symbolic_operand_point
 .decl symbolic_operand_total_points(ea:address,operand_index:operand_index,points:number)
 
-.decl cant_have_symbolic_immediate(Operation:symbol)
-cant_have_symbolic_immediate(""):- false.
+.decl cant_have_symbolic_immediate(EA:address)
+cant_have_symbolic_immediate(0):- false.
 
 
 symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
@@ -111,8 +111,7 @@ symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
     code(EA),
     instruction_get_op(EA,Op_index,Op),
     (
-        instruction_get_operation(EA,Operation),
-        !cant_have_symbolic_immediate(Operation),
+        !cant_have_symbolic_immediate(EA),
         op_immediate(Op,Dest),
         Dest_addr = as(Dest,address)
         ;
