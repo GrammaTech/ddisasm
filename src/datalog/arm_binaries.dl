@@ -868,7 +868,6 @@ invalid(EA,"arm: invalid pc"):-
 invalid(EA,"arm: first transfer register must ben even"):-
     // ldrd Dst1, Dst2, ...
     instruction(EA,_,_,Operation,Dst2,_,_,_,_,_),
-    instruction_get_operation(EA,Operation),
     (
         contains("LDRD", Operation);
         contains("STRD", Operation)
