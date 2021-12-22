@@ -321,7 +321,7 @@ pc_relative_operand(EA,Index,Dest):-
     arch.pc_register(Reg),
     next(EA,EANext),
     Dest = as(as(EANext,number)+Offset,address),
-    !instruction_has_relocation(EA).
+    !instruction_has_relocation(EA,_).
 
 pc_relative_operand(EA,Index,Dest):-
     binary_isa("X64"),
@@ -354,12 +354,12 @@ instruction_has_loop_prefix(EA):-
     arch.loop_prefix(Prefix).
 
 /**
-Instruction at address "EA" has a relocation for either the immediate or
-indirect operand (x86_32 and x86_64).
+Instruction at address "EA" has a relocation for address "Relocation".
 */
-.decl instruction_has_relocation(EA:address)
+.decl instruction_has_relocation(EA:address,Rel:address)
+.output instruction_has_relocation
 
-instruction_has_relocation(EA):-
+instruction_has_relocation(EA,EA+Offset):-
     (
         binary_isa("X86");
         binary_isa("X64")
@@ -385,7 +385,6 @@ conditional_jump(EA):-
     instruction_get_operation(EA,Operation),
     !arch.unconditional_jump_operation(Operation).
 
-
 // direct jumps
 .decl direct_jump(src:address, dest:address)
 .output direct_jump
@@ -396,16 +395,13 @@ direct_jump(EA,as(Dest,address)):-
     arch.jump_operation_op_index(Operation,Index),
     instruction_get_op(EA,Index,Op),
     op_immediate(Op,Dest),
-    !instruction_has_relocation(EA).
+    !instruction_has_relocation(EA,_).
 
 direct_jump(EA,as(Dest,address)):-
-    (
-        binary_isa("X86");
-        binary_isa("X64")
-    ),
-    instruction_has_relocation(EA),
-    instruction_immediate_offset(EA,_,Offset),
-    relocation(EA+Offset,_,_,_,SymbolIndex,_,_),
+    arch.jump(EA),
+    instruction_immediate_offset(EA,_,_),
+    instruction_has_relocation(EA,Rel),
+    relocation(Rel,_,_,_,SymbolIndex,_,_),
     defined_symbol(Dest,_,_,_,_,_,SymbolIndex,_).
 
 direct_jump(EA,EA):-
@@ -452,12 +448,14 @@ direct_call(EA,as(Dest,address)):-
     arch.call_operation_op_index(Operation,Index),
     instruction_get_op(EA,Index,Op),
     op_immediate(Op,Dest),
-    !instruction_has_relocation(EA).
+    !instruction_has_relocation(EA,_).
 
 direct_call(EA,Dest):-
-    instruction_has_relocation(EA),
-    instruction_immediate_offset(EA,_,Offset),
-    relocation(EA+Offset,_,_,_,SymbolIndex,_,_),
+    arch.call_operation(Operation),
+    instruction_get_operation(EA,Operation),
+    instruction_immediate_offset(EA,_,_),
+    instruction_has_relocation(EA,Rel),
+    relocation(Rel,_,_,_,SymbolIndex,_,_),
     defined_symbol(Dest,_,_,_,_,_,SymbolIndex,_).
 
 // Syntactically indirect call, but statically resolved direct-call
