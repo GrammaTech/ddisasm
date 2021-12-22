@@ -126,6 +126,14 @@ track_register("X30", "X30").
 track_register("W31", "X31").
 track_register("X31", "X31").
 
+
+.decl reg_index(RegName:register,Index:unsigned)
+
+// TODO: Implement it if needed.
+reg_index("NONE",0):-
+    false.
+
+
 // this specifies the registers whose value is not kept through a function call
 // according to the 'System V AMD64 ABI' calling convention.
 .decl function_non_maintained_reg(reg:register)
