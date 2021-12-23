@@ -22,18 +22,6 @@
 //===----------------------------------------------------------------------===//
 
 /*
- * Valid registers for Rt in doubleword memory (load/store) operations.
- */
-.decl doubleword_register(Rt:register)
-doubleword_register("R0").
-doubleword_register("R2").
-doubleword_register("R4").
-doubleword_register("R6").
-doubleword_register("R8").
-doubleword_register("SL").
-doubleword_register("IP").
-
-/*
  * LDR and STR instructions can have their operands encoded several different
  * ways, depending on which form of the instruction it is:
  *
@@ -134,7 +122,10 @@ invalid(EA,"arm: doubleword op Rt is odd"):-
     (EA band 1) = 0, // ARM mode only
     Rt2Op != 0,
     op_regdirect_contains_reg(RtOp,Rt),
-    !doubleword_register(Rt).
+    (
+        arch.reg_index(Rt,Index), (Index band 1) = 1;  // If Rt is odd, the instruction is invalid.
+        Rt = "LR"                                      // If Rt is LR, the instruction is invalid.
+    ).
 
 // LDRD Rt, Rt2, [Rn]
 // LDRD Rt, Rt2, [Rn], +/-Rm
