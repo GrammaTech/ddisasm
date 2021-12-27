@@ -36,9 +36,7 @@ The disassembly is done in two traversals:
 Finally, we detect candidate blocks of code that overlap with each other (and
 therefore are in conflict) and give them points according to several
 heuristics. Then for each two conflicting blocks we keep the one with
-more points.
-
-For deciding code vs data, we consider code block
+more points. For deciding code vs data, we consider code block
 candidates and data block candidates.
 */
 
@@ -53,7 +51,6 @@ candidates and data block candidates.
 /**
 The instruction at address 'EA' belong to the block 'Block'.
 The block address is the address of the first instruction in the block.
-
 These are final addresses where the code is located.
 They are organized in blocks of sequential code
 and the block identifier is the address of the first instruction in the block.
@@ -389,9 +386,7 @@ data_block_candidate(Block,Size):-
 /**
 The block candidate defined by address 'Block' extends from 'BegAddr' to 'EndAddr'.
 In most cases 'BegAddr' and 'Block' coincide, but there are exceptions such as
-ARM 32 Thumb code blocks.
-
-These block candidates can be code blocks or data blocks.
+ARM 32 Thumb code blocks. These block candidates can be code blocks or data blocks.
 */
 .decl block_candidate_boundaries(BlockEA:address,BlockKind:block_kind,BegAddr:address,EndAddr:address)
 .output block_candidate_boundaries
@@ -524,8 +519,8 @@ candidate_block_is_padding(Block):-
  The heuristics give a variable number of points for things like number
  of predecessors, how the block is reached (through direct jump, fallthough, etc.)
  and if the block's address appears in the data section, whether it appears aligned
- or in a pointer array.
- The points are trasmitted transitively though overlapping blocks.
+ or in a pointer array. The points are trasmitted transitively though
+ overlapping blocks.
 */
 .decl block_points(Block:address,BlockKind:block_kind,Predecessor:address,Importance:number,HeuristicName:symbol)
 .output block_points
