@@ -524,14 +524,21 @@ symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Symbol1,Symbol2_adjusted,
         code(Symbol2+1), Symbol2_adjusted = Symbol2+1 // Thumb
     ).
 
-.decl arm_jump_table(EA_jump:address,Size:unsigned,TableStart:address)
+/*
+ * Reprensents an entry in an ARM jump table.
+ *
+ * EA_jump: address of jump instruction
+ * EntryAddr: address of table entry
+ * TableLimit: first address that cannot be part of the jump table
+ */
+.decl arm_jump_table(EA_jump:address,EntryAddr:address,TableLimit:address)
 .output arm_jump_table
 
 block_points(TableStart,"data",0,9,"arm jump table"),
 data_block_candidate(TableStart,Size),
 data_object_point(TableStart,Size,"symbol",2,"arm jump-table"),
 data_object_candidate(TableStart,Size,"symbol"),
-arm_jump_table(EA_jump,Size,TableStart):-
+arm_jump_table(EA_jump,TableStart,TableLimit):-
     instruction_get_operation(EA_jump,Operation),
     arch.load_word_operation(Operation),
     arch.pc_register(PC),
@@ -555,24 +562,46 @@ arm_jump_table(EA_jump,Size,TableStart):-
         ;
         !arch.is_conditional_operation(Operation),
         TableStart = EA_jump + 4
+    ),
+    address_in_data(TableStart,TargetAddr),
+    (
+        // Jump to after the jumptable - sets a hard limit on the jumptable size.
+        TargetAddr > TableStart, TableLimit = TargetAddr;
+        // Jump to before the jumptable - does not restrict jumptable size.
+        TargetAddr <= TableStart, TableLimit = (2 ^ NBits) - 1
     ).
 
+block_points(EA+Size,"data",0,4,"arm jump table (recursive)"),
+data_block_candidate(EA+Size,Size),
 data_object_point(EA+Size,Size,"symbol",2,"arm jump-table3"),
 data_object_candidate(EA+Size,Size,"symbol"),
-arm_jump_table(EA_jump,Size,EA+Size):-
+arm_jump_table(EA_jump,EA+Size,NewTableLimit):-
     // recursive
-    arm_jump_table(EA_jump,Size,EA),
+    arm_jump_table(EA_jump,EA,TableLimit),
     address_in_data(EA+Size,TargetAddr),
-    code(TargetAddr).
+    code_in_block_candidate_refined(TargetAddr,_),
+    arch.pointer_size(Size),
+    (
+        // The target address is less than the limit, but at some address beyond
+        // the current entry. Limit the table size to that target.
+        TargetAddr < TableLimit, TargetAddr > EA+Size, NewTableLimit = TargetAddr;
+        // The target address points at or before the current jump table entry.
+        // Gives us no info about the table size - keep propagating.
+        TargetAddr < TableLimit, TargetAddr <= EA+Size, NewTableLimit = TableLimit;
+        // The target address points beyond our current limit - keep propagating.
+        TargetAddr >= TableLimit, NewTableLimit = TableLimit
+    ).
 
 // For table entry targets: to split the target blocks
 block_needs_splitting_at(as(TargetAddr,address)):-
-    arm_jump_table(_,Size,TableEntry),
+    arm_jump_table(_,TableEntry,_),
+    arch.pointer_size(Size),
     data_word(TableEntry,Size,TargetAddr),
     code(as(TargetAddr,address)).
 
 block_needs_splitting_at(as(TargetAddr+1,address)):- // Thumb
-    arm_jump_table(_,Size,TableEntry),
+    arm_jump_table(_,TableEntry,_),
+    arch.pointer_size(Size),
     data_word(TableEntry,Size,TargetAddr),
     code(as(TargetAddr+1,address)).
 
