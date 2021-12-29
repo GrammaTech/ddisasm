@@ -35,8 +35,7 @@ void Arm64Loader::insert(const Arm64Facts& Facts, DatalogProgram& Program)
     Program.insert("op_regdirect", Operands.reg());
     Program.insert("op_fp_immediate", Operands.fp_imm());
     Program.insert("op_indirect", Operands.indirect());
-    Program.insert("op_barrier", Operands.barrier());
-    Program.insert("op_prefetch", Operands.prefetch());
+    Program.insert("op_special", Operands.special());
 }
 
 void Arm64Loader::decode(Arm64Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
@@ -82,7 +81,7 @@ std::optional<relations::Instruction> Arm64Loader::build(Arm64Facts& Facts,
             const cs_arm64_op& CsOp = Details.operands[i];
 
             // Build operand for datalog fact.
-            std::optional<relations::Arm64Operand> Op = build(CsOp);
+            std::optional<relations::Operand> Op = build(CsOp);
             if(!Op)
             {
                 return std::nullopt;
@@ -104,7 +103,7 @@ std::optional<relations::Instruction> Arm64Loader::build(Arm64Facts& Facts,
     return relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0};
 }
 
-std::optional<relations::Arm64Operand> Arm64Loader::build(const cs_arm64_op& CsOp)
+std::optional<relations::Operand> Arm64Loader::build(const cs_arm64_op& CsOp)
 {
     using namespace relations;
 
@@ -149,7 +148,7 @@ std::optional<relations::Arm64Operand> Arm64Loader::build(const cs_arm64_op& CsO
         {
             if(std::optional<const char*> Label = prefetchValue(CsOp.prefetch))
             {
-                return PrefetchOp{*Label};
+                return SpecialOp{"prefetch", *Label};
             }
             break;
         }
@@ -157,7 +156,7 @@ std::optional<relations::Arm64Operand> Arm64Loader::build(const cs_arm64_op& CsO
         {
             if(std::optional<const char*> Label = barrierValue(CsOp.barrier))
             {
-                return BarrierOp{*Label};
+                return SpecialOp{"barrier", *Label};
             }
             break;
         }
@@ -249,18 +248,3 @@ std::optional<const char*> barrierValue(const arm64_barrier_op Op)
     }
     return std::nullopt;
 }
-
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::BarrierOp& Op)
-    {
-        T << Op.Value;
-        return T;
-    }
-
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::PrefetchOp& Op)
-    {
-        T << Op.Value;
-        return T;
-    }
-} // namespace souffle
