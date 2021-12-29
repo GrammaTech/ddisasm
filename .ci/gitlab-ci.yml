@@ -30,7 +30,7 @@ stages:
   - deploy-to-apt
 
 default:
-  tags: [ddisasm-docker-executor]
+  tags: [cluster]
 
 check-format:
   stage: check-format
