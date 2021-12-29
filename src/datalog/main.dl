@@ -171,7 +171,10 @@ This module:
 .decl data_byte(ea:address,value:unsigned)
 .input data_byte
 
-.decl address_in_data(ea:address,value:address)
+/**
+There is a potential address at 'EA' pointing to 'Value'.
+*/
+.decl address_in_data(EA:address,Value:address)
 .input address_in_data
 
 // known data regions
