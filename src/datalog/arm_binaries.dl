@@ -434,6 +434,18 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2,"first
     Symbol1 = as(Base,address),
     Symbol2 = as(Diff*as(Scale,number)+as(Symbol1,number),address).
 
+// PIC code uses inlined pc-relative offsets,
+//
+//     ldr REG, .L0
+//     .LPIC0:
+//        add REG, pc
+//        ...
+//     .L0:
+//        .word foo-(.LPIC0+4)
+//
+// where the symbol foo is the target symbol, and .L0 will contain the offset
+// from PC at .LPIC0 to the symbol foo.
+labeled_data_candidate(Dest),
 symbol_minus_symbol_jump_table(Addr,Addr,Size,EARef,Dest,"no_table",Scale):-
     data_access_pattern(Addr,Size,0,EABase),
     def_used(EABase,Reg,EAAddPC,_),
@@ -442,7 +454,21 @@ symbol_minus_symbol_jump_table(Addr,Addr,Size,EARef,Dest,"no_table",Scale):-
 
     EARef = EAAddPC + 4,
     data_word(Addr,Size,Diff),
-    Dest = as(as(EARef,number) + Diff, address) - (EAAddPC band 1),
+    Mode = EAAddPC band 1,
+    (
+        Dest = as(as(EARef,number) + Diff,address) - Mode,
+        !relocation(Addr,_,_,_,_,_,_)
+        ;
+        relocation(Addr,"REL32",Symbol,_,SymbolIndex,_,"REL"),
+        symbol(Base,_,_,_,_,_,SymbolIndex,_),
+        // ((S + A) | T) - P
+        S = as(Base,unsigned),
+        A = as(Diff,unsigned),
+        P = as(Addr,unsigned),
+        T = as(Base band 1,unsigned),
+        Value = ((S + A) bor T) - P,
+        Dest = (EARef - Mode) + as(Value,address)
+    ),
 
     data_segment(Begin,End),
     Dest >= Begin, Dest <= End,
@@ -616,6 +642,7 @@ block_is_overlapping(Block):-
         litpool_ref_for_ldrd(EA), Points = -12;
         !litpool_ref_for_ldrd(EA), Points = -9
     ),
+    code_in_block_candidate_refined(EA,_),
     block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
     (
         // Block:       ----------   or  --------
@@ -632,7 +659,8 @@ block_is_overlapping(Block):-
 // probability of ldrd literal-pool load.
 block_points(Block,0,-11,"arm literal pool"),
 block_is_overlapping(Block):-
-    litpool_ref_double(_,_,_,LitPoolAddr),
+    litpool_ref_double(EA,_,_,LitPoolAddr),
+    code_in_block_candidate_refined(EA,_),
     block_candidate_boundaries(Block,BegBlockAddr,EndBlockAddr),
     (
         // Block:       ----------   or  --------
@@ -647,10 +675,11 @@ block_is_overlapping(Block):-
 block_points(Block,0,-3,"jump from arm literal pool"):-
     block_is_overlapping(Block),
     direct_jump(EA,Block),
+    code_in_block_candidate_refined(EA0,_),
     (
-        litpool_ref(_,_,EA,_) // EA in ARM mode
+        litpool_ref(EA0,_,EA,_) // EA in ARM mode
         ;
-        litpool_ref(_,_,EA-1,_) // EA in Thumb mode
+        litpool_ref(EA0,_,EA-1,_) // EA in Thumb mode
     ).
 
 symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
@@ -690,9 +719,6 @@ symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add_pc,Re
     Addr2 = as(Diff,address) + Symbol1,
     Symbol2= Addr2-(Addr2 band 1).
 
-symbol_minus_symbol(LitPoolAddr,Size,Symbol1,Symbol2,1):-
-    symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,_,_,_).
-
 .decl litpool_symbolic_operand(ea_litpool:address,size:unsigned,symbol1:address,symbol2:address)
 .output litpool_symbolic_operand
 
@@ -725,7 +751,8 @@ litpool_symbolic_operand(LitPoolAddr2,Size,Symbol1,Symbol2):-
 //
 symbol_minus_symbol(LitPoolAddr2,Size,Symbol1,Symbol2,1):-
     litpool_symbolic_operand(LitPoolAddr2,Size,Symbol1,Symbol2),
-    !got_reference(Symbol2,_).
+    !got_reference(Symbol2,_),
+    !relocation(LitPoolAddr2,_,_,_,_,_,_).
 
 //  => equations: [LitPoolAddr1] = foo - (C)
 //                [LitPoolAddr2] = bar(GOT) - foo => bar(GOT)
@@ -829,3 +856,83 @@ invalid(EA,"arm: invalid pc"):-
     instruction_get_dest_op(EA,_,Op),
     op_regdirect_contains_reg(Op,PC),
     arch.pc_register(PC).
+
+instruction_has_relocation(EA,EA-Mode):-
+    binary_type("REL"),
+    instruction(EA,_,_,_,_,_,_,_,_,_),
+    Mode = EA band 1,
+    relocation(EA-Mode,_,_,_,_,_,_).
+
+symbolic_expr_from_relocation(EA+1,4,Symbol,Addend):-
+    binary_type("REL"),
+    (
+        relocation(EA,"THM_CALL",Symbol,_,_,_,"REL");
+        relocation(EA,"THM_JUMP24",Symbol,_,_,_,"REL")
+    ),
+    Symbol != "",
+    thumb_branch_offset(EA,Offset),
+    Addend = Offset + 4.
+
+symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
+    binary_type("REL"),
+    relocation(EA,"ABS32",Symbol,_,SymbolIndex,_,"REL"),
+    symbol(Base,_,_,_,_,_,SymbolIndex,Symbol),
+    data_word(EA,4,Value),
+    // (S + A) | T
+    S = as(Base,unsigned),
+    A = as(Value,unsigned),
+    T = as(Base band 1,unsigned),
+    Dest = ((S + A) bor T),
+    Addend = as(Base - Dest,number).
+
+symbolic_data_attribute(EA,"GotRelPC"),
+symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
+    binary_type("REL"),
+    relocation(EA,"GOT_BREL",Symbol,_,_,_,_),
+    data_word(EA,4,Addend).
+
+// TODO:
+// Remove pseudo data attribute.
+// Implement symbol-minus-symbol expression from relocation for:
+//      .word _GLOBAL_OFFSET_TABLE_-(.LPIC0+4)
+// NOTE:
+// See special case in `buildDataBlocks'.
+symbolic_data_attribute(EA,"_GLOBAL_OFFSET_TABLE_"),
+symbol_minus_symbol(EA,4,0,Symbol2,0):-
+    binary_type("REL"),
+    relocation(EA,"BASE_PREL","_GLOBAL_OFFSET_TABLE_",_,_,_,_),
+    symbol_minus_symbol_candidate(_,4,_,EA,1,_,Symbol2,_).
+
+/**
+Decode Thumb-2 encoded branch offset. Used to find REL relocation addends.
+
+Note that this is backwards compatible with Thumb-1.
+*/
+.decl thumb_branch_offset(EA:address,Offset:number)
+.output thumb_branch_offset
+
+thumb_branch_offset(EA,Offset):-
+    (
+        relocation(EA,"THM_CALL",_,_,_,_,_);
+        relocation(EA,"THM_JUMP24",_,_,_,_,_)
+    ),
+    data_word(EA,2,Half0),
+    data_word(EA+2,2,Half1),
+    UpperHalf = as(Half0,unsigned),
+    LowerHalf = as(Half1,unsigned),
+    Sign = (UpperHalf band (1 bshl 10)) bshr 10,
+    Upper = UpperHalf band 0x3FF,
+    Lower = LowerHalf band 0x7FF,
+    J1 = (LowerHalf band (1 bshl 13)) bshr 13,
+    J2 = (LowerHalf band (1 bshl 11)) bshr 11,
+    (J1 bxor Sign = 0, I1 = 1; J1 bxor Sign != 0, I1 = 0),
+    (J2 bxor Sign = 0, I2 = 1; J2 bxor Sign != 0, I2 = 0),
+    Bits = (Sign bshl 24) bor (I1 bshl 23) bor (I2 bshl 22) bor (Upper bshl 12) bor (Lower bshl 1),
+    // Sign-extend unsigned 25-bit value to 32 bits.
+    Masked = Bits band ((bnot 1) bshr (32 - 25)),
+    TopBit = as(1 bshl (25 - 1),number),
+    Signed = as(Masked,number),
+    (
+        Signed band TopBit = 0,  Offset = Signed;
+        Signed band TopBit != 0, Offset = Signed - (TopBit * 2)
+    ).
