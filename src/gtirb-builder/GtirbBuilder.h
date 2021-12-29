@@ -35,8 +35,8 @@ namespace fs = boost::filesystem;
 class GtirbBuilder
 {
 public:
-    GtirbBuilder(std::string P, std::shared_ptr<gtirb::Context> Context, gtirb::IR* IR,
-                 std::shared_ptr<LIEF::Binary> Binary);
+    GtirbBuilder(std::string P, std::string Name, std::shared_ptr<gtirb::Context> Context,
+                 gtirb::IR* IR, std::shared_ptr<LIEF::Binary> Binary);
 
     struct GTIRB
     {

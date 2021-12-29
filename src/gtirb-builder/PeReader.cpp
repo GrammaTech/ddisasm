@@ -27,9 +27,9 @@ namespace fs = boost::filesystem;
 
 using GTIRB = GtirbBuilder::GTIRB;
 
-PeReader::PeReader(std::string Path, std::shared_ptr<gtirb::Context> Context, gtirb::IR *IR,
-                   std::shared_ptr<LIEF::Binary> Binary)
-    : GtirbBuilder(Path, Context, IR, Binary)
+PeReader::PeReader(std::string Path, std::string Name, std::shared_ptr<gtirb::Context> Context,
+                   gtirb::IR *IR, std::shared_ptr<LIEF::Binary> Binary)
+    : GtirbBuilder(Path, Name, Context, IR, Binary)
 {
     Pe = std::dynamic_pointer_cast<LIEF::PE::Binary>(Binary);
     assert(Pe && "Expected PE");
