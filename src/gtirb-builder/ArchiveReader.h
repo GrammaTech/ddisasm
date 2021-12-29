@@ -1,6 +1,6 @@
-//===- ElfReader.h ----------------------------------------------*- C++ -*-===//
+//===- ElfReader.cpp --------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2020 GrammaTech, Inc.
+//  Copyright (C) 2019-2022 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,37 +20,16 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef ELF_GTIRB_BUILDER_H_
-#define ELF_GTIRB_BUILDER_H_
 
-#include "./GtirbBuilder.h"
+#ifndef ARCHIVE_READER_H_
+#define ARCHIVE_READER_H_
 
-class ElfReader : public GtirbBuilder
+class ArchiveReader
 {
 public:
-    ElfReader(std::string Path, std::shared_ptr<gtirb::Context> Context, gtirb::IR* IR,
-              std::shared_ptr<LIEF::Binary> Binary);
+    ArchiveReader(std::string Path);
 
-protected:
-    std::shared_ptr<LIEF::ELF::Binary> Elf;
+    static bool is_ar(const std::string &Path);
+}
 
-    void buildSections() override;
-    void buildSymbols() override;
-    void addEntryBlock() override;
-    void addAuxData() override;
-
-    void relocateSections();
-    uint64_t tlsBaseAddress();
-
-    std::string getRelocationType(const LIEF::ELF::Relocation& Entry);
-
-private:
-    uint64_t TlsBaseAddress = 0;
-
-    // TODO: Handle duplicate section names?
-    std::map<std::string, uint64_t> SectionRelocations;
-
-    const std::unordered_set<std::string> Literals = {"pydata"};
-};
-
-#endif // ELF_GTIRB_BUILDER_H_
+#endif // ARCHIVE_READER_H_
