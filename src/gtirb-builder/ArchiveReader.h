@@ -1,6 +1,6 @@
-//===- PeReader.h       -----------------------------------------*- C++ -*-===//
+//===- ElfReader.cpp --------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2020 GrammaTech, Inc.
+//  Copyright (C) 2019-2022 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,33 +20,16 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef PE_GTIRB_BUILDER_H_
-#define PE_GTIRB_BUILDER_H_
 
-#include "./GtirbBuilder.h"
+#ifndef ARCHIVE_READER_H_
+#define ARCHIVE_READER_H_
 
-class PeReader : public GtirbBuilder
+class ArchiveReader
 {
 public:
-    PeReader(std::string Path, std::shared_ptr<gtirb::Context> Context, gtirb::IR* IR,
-             std::shared_ptr<LIEF::Binary> Binary);
+    ArchiveReader(std::string Path);
 
-    void build() override;
+    static bool is_ar(const std::string &Path);
+}
 
-protected:
-    std::shared_ptr<LIEF::PE::Binary> Pe;
-
-    void initModule() override;
-    void buildSections() override;
-    void buildSymbols() override;
-    void addEntryBlock() override;
-    void addAuxData() override;
-
-    std::vector<auxdata::PeResource> resources();
-    std::vector<auxdata::PeImportEntry> importEntries();
-    std::vector<auxdata::PeExportEntry> exportEntries();
-    std::vector<auxdata::PeDataDirectory> dataDirectories();
-    std::vector<auxdata::PeDebugData> debugData();
-};
-
-#endif // PE_GTIRB_BUILDER_H_
+#endif // ARCHIVE_READER_H_
