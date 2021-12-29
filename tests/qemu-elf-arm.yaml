@@ -1,7 +1,7 @@
 # Restrict these test cases to systems with compatible QEMU packages.
 distro:
   name: Ubuntu
-  version: ["16.04", "18.04", "20.04"]
+  version: ["18.04", "20.04"]
 
 default: &default
   path: examples
@@ -27,6 +27,34 @@ default: &default
     strip: false
     skip: false
 
+c-object: &c-object
+  <<: *default
+  binary: ex.o
+
+  build:
+    c: ["arm-linux-gnueabihf-gcc"]
+    cpp: ["arm-linux-gnueabihf-g++"]
+    flags: ["--save-temps"]
+    optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
+
+  reassemble:
+    compiler: "arm-linux-gnueabihf-gcc"
+    flags: ["-c", "-no-pie"]
+
+  link:
+    linker: "arm-linux-gnueabihf-gcc"
+    flags: []
+
+cpp-object: &cpp-object
+  <<: *c-object
+
+  reassemble:
+    compiler: "arm-linux-gnueabihf-g++"
+    flags: ["-c", "-no-pie"]
+
+  link:
+    linker: "arm-linux-gnueabihf-g++"
+
 tests:
   - name: ex1_pie
     <<: *default
@@ -49,6 +77,15 @@ tests:
       flags: ["-no-pie"]
       optimizations: [""]
 
+  - name: ex_setend
+    <<: *default
+    path: examples/arm_asm_examples
+    build:
+      c: ["arm-linux-gnueabihf-gcc"]
+      cpp: ["arm-linux-gnueabihf-g++"]
+      flags: []
+      optimizations: [""]
+
   - name: ex1
     <<: *default
 
@@ -58,14 +95,16 @@ tests:
   - name: ex_confusing_data
     <<: *default
 
-#  - name: ex_exceptions1 # cpp {1,2,3}: libehp currently doesn't support arm32
-#    <<: *default
+  # TODO:
+  #  - name: ex_exceptions1 # cpp {1,2,3}: libehp currently doesn't support arm32
+  #    <<: *default
 
   - name: ex_false_pointer_array
     <<: *default
 
-#  - name: ex_float # capstone decoder error: vmov.f32 and vmov.f64
-#    <<: *default
+  # TODO:
+  #  - name: ex_float # capstone decoder error: vmov.f32 and vmov.f64
+  #    <<: *default
 
   - name: ex_fprintf
     <<: *default
@@ -84,9 +123,6 @@ tests:
     <<: *default
 
   - name: ex_pointerReatribution
-    <<: *default
-
-  - name: ex_pointerReatribution2
     <<: *default
 
   - name: ex_pointerReatribution3
@@ -127,3 +163,108 @@ tests:
 
   - name: ex_uninitialized_data
     <<: *default
+
+  # TODO:
+  # - name: ex_thread_local
+  #   <<: *default
+
+  # TODO:
+  # - name: ex_threads
+  #   <<: *default
+  #   reassemble:
+  #     compiler: "arm-linux-gnueabihf-g++"
+  #     flags: ["-no-pie", "-lpthread"]
+
+  # TODO:
+  # - name: ex_dynamic_tls
+  #   <<: *default
+  #   binary: fun.so
+  #   reassemble:
+  #     compiler: "arm-linux-gnueabihf-gcc"
+  #     flags: ["-shared"]
+
+  # TODO:
+  # - name: ex_call_once
+  #   <<: *default
+  #   reassemble:
+  #     compiler: "g++"
+  #     flags: ["-no-pie", "-lpthread"]
+
+  # ----------------------------------------------------------------------------
+  # Relocatable ELF objects (.o).
+  # ----------------------------------------------------------------------------
+
+  - name: ex1
+    <<: *c-object
+
+  - name: ex_confusing_data
+    <<: *c-object
+
+  # TODO:
+  # - name: ex_exceptions1
+  #   <<: *cpp-object
+
+  # TODO:
+  # - name: ex_exceptions2
+  #   <<: *cpp-object
+
+  # TODO:
+  # - name: ex_exceptions3
+  #   <<: *cpp-object
+
+  - name: ex_false_pointer_array
+    <<: *c-object
+
+  # TODO:
+  # - name: ex_float
+  #   <<: *c-object
+
+  - name: ex_fprintf
+    <<: *c-object
+
+  - name: ex_getoptlong
+    <<: *c-object
+
+  - name: ex_memberPointer
+    <<: *cpp-object
+
+  - name: ex_noreturn
+    <<: *c-object
+
+  - name: ex_pointerReatribution
+    <<: *c-object
+
+  - name: ex_pointerReatribution2
+    <<: *c-object
+
+  - name: ex_pointerReatribution3
+    <<: *c-object
+
+  - name: ex_stat
+    <<: *c-object
+
+  - name: ex_struct
+    <<: *c-object
+
+  - name: ex_switch
+    <<: *c-object
+
+  - name: ex_uninitialized_data
+    <<: *c-object
+
+  - name: ex_virtualDispatch
+    <<: *cpp-object
+
+  # TODO:
+  # - name: ex_thread_local
+  #   <<: *c-object
+
+  # TODO:
+  # - name: ex_threads
+  #   <<: *cpp-object
+  #   reassemble:
+  #     compiler: "g++"
+  #     flags: ["-c", "-no-pie", "-lpthread"]
+  #   link:
+  #     compiler: "g++"
+  #     flags: ["-lpthread"]

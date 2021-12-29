@@ -1039,11 +1039,16 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                     if(const auto symbolicExpr = symbolicExprs.find(currentAddr);
                        symbolicExpr != symbolicExprs.end())
                     {
+                        gtirb::SymAttributeSet Attributes =
+                            buildSymbolicExpressionAttributes(currentAddr, symbolicDataAttributes);
                         d = gtirb::DataBlock::Create(context, symbolicExpr->Size);
                         auto foundSymbol = module.findSymbols(symbolicExpr->Symbol);
                         if(foundSymbol.begin() != foundSymbol.end())
+                        {
                             byteInterval.addSymbolicExpression<gtirb::SymAddrConst>(
-                                blockOffset, symbolicExpr->Addend, &*foundSymbol.begin());
+                                blockOffset, symbolicExpr->Addend, &*foundSymbol.begin(),
+                                Attributes);
+                        }
                         SymbolicSizes[Offset] = symbolicExpr->Size;
                     }
                     else if(const auto movedDataLabel = movedDataLabels.find(currentAddr);
@@ -1058,6 +1063,24 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                                 getSymbol(context, module, gtirb::Addr(movedDataLabel->Address2));
                             auto Sym2 =
                                 getSymbol(context, module, gtirb::Addr(symMinusSym->Symbol2));
+                            // TODO:
+                            // Remove this special case when symbol-minus-symbol expressions
+                            // from relocation are implemented.
+                            // NOTE:
+                            // See special case in `arm_binaries.dl'
+                            if(symMinusSym->Symbol1 == gtirb::Addr(0))
+                            {
+                                if(const auto Attr = symbolicDataAttributes.find(currentAddr);
+                                   Attr != symbolicDataAttributes.end()
+                                   && Attr->Type == "_GLOBAL_OFFSET_TABLE_")
+                                {
+                                    if(const auto It = module.findSymbols("_GLOBAL_OFFSET_TABLE_");
+                                       !It.empty())
+                                    {
+                                        Sym2 = &*It.begin();
+                                    }
+                                }
+                            }
                             auto Offset = movedDataLabel->Address2 - movedDataLabel->Address1;
                             byteInterval.addSymbolicExpression<gtirb::SymAddrAddr>(
                                 blockOffset, static_cast<int64_t>(symMinusSym->Scale), Offset, Sym2,

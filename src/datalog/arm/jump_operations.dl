@@ -74,6 +74,11 @@ jump_operation("CBNZ").
 unconditional_jump_operation("B").
 unconditional_jump_operation("BX").
 
+// NOTE: LDR pc, [...]
+// This needs to be used along with arch.jump(EA):
+// See unconditional_jump(EA) in main.dl
+unconditional_jump_operation("LDR").
+
 jump_equal_operation("BEQ").
 
 jump_unequal_operation("BNE").

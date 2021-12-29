@@ -565,11 +565,13 @@ block_points(Block,"code",0,-3,"overlaps with relocation"):-
     (
         // Block beginning intersects relocation bytes:
         relocation_size(Type,Size),
-        relocation(Target,Type,_,_,_,_,_), EA >= Target, EA < Target + Size
+        relocation(Target,Type,_,_,_,_,_),
+        EA >= Target, EA < Target + (Size/8)
         ;
         // Relocation target is in block but not aligned with operand offsets.
         instruction(EA,Size,_,_,_,_,_,_,_,_),
-        relocation(Target,_,_,_,_,_,_), Target > EA, Target < EA+Size,
+        relocation(Target,_,_,_,_,_,_),
+        Target > EA, Target < EA + (Size/8),
         !instruction_immediate_offset(EA,_,Target-EA),
         !instruction_displacement_offset(EA,_,Target-EA)
     ).
@@ -684,7 +686,8 @@ block_points(Block,"code",0,3,"appears"):-
 
 block_points(Block,"code",0,3,"relative jump table target"):-
     block_is_overlapping(Block,"code"),
-    relative_address(_,_,_,_,Block,_),
+    relative_address(EA,_,_,_,Block,_),
+    count :{ relative_address(EA,_,_,_,_,_) } = 1,
     !relative_address(Block,_,_,_,_,_).
 
 // give a point if it may fallthrough to another block
