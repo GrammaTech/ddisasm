@@ -28,8 +28,8 @@
 class ElfReader : public GtirbBuilder
 {
 public:
-    ElfReader(std::string Path, std::shared_ptr<gtirb::Context> Context, gtirb::IR* IR,
-              std::shared_ptr<LIEF::Binary> Binary);
+    ElfReader(std::string Path, std::string Name, std::shared_ptr<gtirb::Context> Context,
+              gtirb::IR* IR, std::shared_ptr<LIEF::Binary> Binary);
 
 protected:
     std::shared_ptr<LIEF::ELF::Binary> Elf;

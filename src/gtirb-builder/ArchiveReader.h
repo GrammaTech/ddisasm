@@ -1,4 +1,4 @@
-//===- ElfReader.cpp --------------------------------------------*- C++ -*-===//
+//===- ArchiveReader.h ------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2019-2022 GrammaTech, Inc.
 //
@@ -24,12 +24,52 @@
 #ifndef ARCHIVE_READER_H_
 #define ARCHIVE_READER_H_
 
+#include <fstream>
+#include <list>
+#include <memory>
+#include <string>
+#include <vector>
+
+struct FileHeader
+{
+    char ident[16]; // file identifier (ascii)
+    char ts[12];    // modificiation timestamp (decimal)
+    char oid[6];    // owner id (decimal)
+    char gid[6];    // group id (decimal)
+    char mode[8];   // file mode (octal)
+    char size[10];  // file size in bytes (decimal)
+    char end[2];    // terminator "`\n"
+};
+
+class ArchiveReader;
+class ArchiveReaderFile
+{
+public:
+    ArchiveReaderFile(ArchiveReader &R, const FileHeader &Header, uint64_t O);
+    void Extract(const std::string &Path);
+
+    ArchiveReader &Reader;
+    std::string Ident;
+    std::string FileName;
+    uint64_t Size;
+    uint64_t Offset;
+};
+
 class ArchiveReader
 {
 public:
-    ArchiveReader(std::string Path);
+    ArchiveReader(const std::string &Path);
+    const std::list<std::shared_ptr<ArchiveReaderFile>> &Files();
 
     static bool is_ar(const std::string &Path);
-}
+    static bool is_ar(std::ifstream &Stream);
+
+protected:
+    std::list<std::shared_ptr<ArchiveReaderFile>> _Files;
+    std::string Path;
+    std::ifstream Stream;
+
+    friend class ArchiveReaderFile;
+};
 
 #endif // ARCHIVE_READER_H_

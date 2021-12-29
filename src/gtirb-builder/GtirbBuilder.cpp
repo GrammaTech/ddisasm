@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 #include "./GtirbBuilder.h"
 
+#include "./ArchiveReader.h"
 #include "./ElfReader.h"
 #include "./PeReader.h"
 
@@ -53,13 +54,13 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
         {
             case LIEF::EXE_FORMATS::FORMAT_ELF:
             {
-                ElfReader Elf(Path, Context, IR, Binary);
+                ElfReader Elf(Path, Binary->name(), Context, IR, Binary);
                 Elf.build();
                 break;
             }
             case LIEF::EXE_FORMATS::FORMAT_PE:
             {
-                PeReader Pe(Path, Context, IR, Binary);
+                PeReader Pe(Path, Binary->name(), Context, IR, Binary);
                 Pe.build();
                 break;
             }
@@ -67,6 +68,35 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
             case LIEF::EXE_FORMATS::FORMAT_UNKNOWN:
             default:
                 return GtirbBuilder::build_error::NotSupported;
+        }
+
+        return GTIRB{Context, IR};
+    }
+
+    if(ArchiveReader::is_ar(Path))
+    {
+        gtirb::IR* IR = gtirb::IR::Create(*Context);
+        auto TmpDir = fs::temp_directory_path();
+        ArchiveReader Archive(Path);
+
+        for(auto& Object : Archive.Files())
+        {
+            std::string ObjectPath = (TmpDir / fs::unique_path()).string();
+            Object->Extract(ObjectPath);
+
+            std::shared_ptr<LIEF::Binary> Binary{LIEF::Parser::parse(ObjectPath)};
+            if(!Binary)
+            {
+                return GtirbBuilder::build_error::ParseError;
+            }
+
+            if(Binary->format() != LIEF::EXE_FORMATS::FORMAT_ELF)
+            {
+                return GtirbBuilder::build_error::NotSupported;
+            }
+
+            ElfReader Elf(Path, Object->FileName, Context, IR, Binary);
+            Elf.build();
         }
 
         return GTIRB{Context, IR};
@@ -82,11 +112,11 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
     return GtirbBuilder::build_error::NotSupported;
 }
 
-GtirbBuilder::GtirbBuilder(std::string P, std::shared_ptr<gtirb::Context> Context, gtirb::IR* IR,
-                           std::shared_ptr<LIEF::Binary> B)
+GtirbBuilder::GtirbBuilder(std::string P, std::string Name, std::shared_ptr<gtirb::Context> Context,
+                           gtirb::IR* IR, std::shared_ptr<LIEF::Binary> B)
     : Path(P), Context(Context), IR(IR), Binary(B)
 {
-    Module = gtirb::Module::Create(*Context, Binary->name());
+    Module = gtirb::Module::Create(*Context, Name);
     IR->addModule(Module);
 }
 

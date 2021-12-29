@@ -26,9 +26,9 @@
 #include <algorithm>
 #include <sstream>
 
-ElfReader::ElfReader(std::string Path, std::shared_ptr<gtirb::Context> Context, gtirb::IR *IR,
-                     std::shared_ptr<LIEF::Binary> Binary)
-    : GtirbBuilder(Path, Context, IR, Binary)
+ElfReader::ElfReader(std::string Path, std::string Name, std::shared_ptr<gtirb::Context> Context,
+                     gtirb::IR *IR, std::shared_ptr<LIEF::Binary> Binary)
+    : GtirbBuilder(Path, Name, Context, IR, Binary)
 {
     Elf = std::dynamic_pointer_cast<LIEF::ELF::Binary>(Binary);
     assert(Elf && "Expected ELF");
