@@ -162,10 +162,8 @@ invalid(EA,"arm: pre/post-index disallows Rt[2] eq Rn"):-
 invalid(EA,"arm: doubleword rm/rt conflict"):-
     mem_operands(EA,RtOp,Rt2Op,RmOp,_,_),
     (EA band 1) = 0, // ARM mode only
-    op_regdirect_contains_reg(RtOp,Rt),
-    op_regdirect_contains_reg(Rt2Op,Rt2),
-    op_regdirect_contains_reg(RmOp,Rm),
-    (Rm = Rt, Rt2 = Rt2; Rm = Rt2, Rt = Rt).
+    RtOp != 0, Rt2Op != 0, RmOp !=0,
+    (RmOp = RtOp; RmOp = Rt2Op).
 
 /*
  * Architecture-specific instruction
