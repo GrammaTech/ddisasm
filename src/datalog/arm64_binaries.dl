@@ -20,3 +20,10 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+
+value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
+    def_used_for_address(EA,Reg),
+    instruction(EA,_,_,"ADRP",Op1,Op2,_,_,_,_),
+    op_regdirect_contains_reg(Op2,Reg),
+    op_immediate(Op1,Offset),
+    Val = Offset.
