@@ -903,30 +903,3 @@ thumb_branch_offset(EA,Offset):-
         Signed band TopBit = 0,  Offset = Signed;
         Signed band TopBit != 0, Offset = Signed - (TopBit * 2)
     ).
-
-// PC-relative LDR
-value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
-    litpool_ref(EA,Reg,LitPoolAddr,NBits),
-    data_word(LitPoolAddr,NBits/8,Val).
-
-// ADR (arm/aarch64)
-value_reg_edge(EA,Reg,EA,"NONE",0,ValAligned):-
-    def_used_for_address(EA,Reg),
-    instruction(EA,_,_,"ADR",Op1,Op2,_,_,_,_),
-    op_regdirect_contains_reg(Op2,Reg),
-    op_immediate(Op1,Offset),
-    (
-        (EA band 1) = 0, Disp = 8 // ARM mode
-        ;
-        (EA band 1) != 0, Disp = 4 // Thumb mode
-    ),
-    Val = as(EA,number)+Offset+Disp,
-    ValAligned = Val-(Val band 3).
-
-// ADRP (aarch64)
-value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
-    def_used_for_address(EA,Reg),
-    instruction(EA,_,_,"ADRP",Op1,Op2,_,_,_,_),
-    op_regdirect_contains_reg(Op2,Reg),
-    op_immediate(Op1,Offset),
-    Val = Offset.
