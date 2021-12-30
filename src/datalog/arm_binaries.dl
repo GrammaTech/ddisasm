@@ -697,7 +697,12 @@ symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add_pc,Re
     op_regdirect_contains_reg(DestOp,Reg),
 
     data_word(LitPoolAddr,Size,Diff),
-    Symbol1 = EA_add_pc+4,
+    (
+        (EA_add_pc band 1) = 0, Disp = 8 // ARM mode
+        ;
+        (EA_add_pc band 1) != 0, Disp = 4 // Thumb mode
+    ),
+    Symbol1 = EA_add_pc+Disp,
     Addr2 = as(Diff,address) + Symbol1,
     Symbol2= Addr2-(Addr2 band 1).
 
@@ -730,16 +735,13 @@ symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add,Reg):
         (EA_adr band 1) != 0, Disp = 4 // Thumb mode
     ),
     Base = as(EA_adr,number)+Offset+Disp,
-    BaseAligned = Base-(Base band 3),
+    BaseAligned = Base-(Base band 1),
 
     data_word(LitPoolAddr,Size,Diff),
 
     Symbol1 = as(BaseAligned,address),
     Addr2 = as(Diff,address) + Symbol1,
     Symbol2 = Addr2-(Addr2 band 1).
-
-symbol_minus_symbol(LitPoolAddr,Size,Symbol1,Symbol2,1):-
-    symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,_,_,_).
 
 value_reg_edge(EA,Reg,EA,"NONE",0,as(Symbol2,number)):-
     symbol_minus_symbol_candidate(_,_,_,Symbol2,_,_,EA,Reg).
