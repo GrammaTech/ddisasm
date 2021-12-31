@@ -31,27 +31,26 @@
 #include "../Relations.h"
 #include "../core/InstructionLoader.h"
 
-struct InstructionMetadata
+struct InstructionWriteback
 {
     gtirb::Addr Addr;
-    bool Writeback;
 };
 
 class Arm32InstructionFacts : public InstructionFacts
 {
 public:
-    void metadata(const InstructionMetadata& metadata)
+    void writeback(const InstructionWriteback& writeback)
     {
-        InstructionMetadataList.push_back(metadata);
+        InstructionWritebackList.push_back(writeback);
     }
 
-    const std::vector<InstructionMetadata>& metadata() const
+    const std::vector<InstructionWriteback>& writeback() const
     {
-        return InstructionMetadataList;
+        return InstructionWritebackList;
     }
 
 private:
-    std::vector<InstructionMetadata> InstructionMetadataList;
+    std::vector<InstructionWriteback> InstructionWritebackList;
 };
 
 struct Arm32Facts
@@ -96,7 +95,7 @@ private:
 
 namespace souffle
 {
-    souffle::tuple& operator<<(souffle::tuple& T, const InstructionMetadata& metadata);
+    souffle::tuple& operator<<(souffle::tuple& T, const InstructionWriteback& writeback);
 } // namespace souffle
 
 #endif // SRC_GTIRB_DECODER_ARCH_ARM32DECODER_H_

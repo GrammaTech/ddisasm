@@ -148,7 +148,7 @@ invalid(EA,"arm: pre/post-index disallows Rt[2] eq Rn"):-
     (
         RmOp != 0, ImmOp = 0;                           // post-index (register offset)
         ImmOp != 0, RmOp = 0;                           // post-index (immediate offset)
-        instruction_metadata(EA,1), RmOp = 0, ImmOp = 0 // pre-index
+        instruction_writeback(EA), RmOp = 0, ImmOp = 0  // pre-index
     ),
     (
         NotRnOp = RtOp, Rt2Op = 0;               // in single word instruction Rt != Rn
@@ -166,10 +166,7 @@ invalid(EA,"arm: doubleword rm/rt conflict"):-
     (RmOp = RtOp; RmOp = Rt2Op).
 
 /*
- * Architecture-specific instruction
- *
- * EA: Instruction effective address
- * Writeback: 0 or 1; populated from capstone's cs_arm.writeback.
+ * The instruction at EA has capstone's cs_arm.writeback set.
  */
-.decl instruction_metadata(EA:address,Writeback:unsigned)
-.input instruction_metadata
+.decl instruction_writeback(EA:address)
+.input instruction_writeback

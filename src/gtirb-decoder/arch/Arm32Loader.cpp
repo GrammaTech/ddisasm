@@ -30,7 +30,7 @@ void Arm32Loader::insert(const Arm32Facts& Facts, DatalogProgram& Program)
 {
     auto& [Instructions, Operands] = Facts;
     Program.insert("instruction", Instructions.instructions());
-    Program.insert("instruction_metadata", Instructions.metadata());
+    Program.insert("instruction_writeback", Instructions.writeback());
     Program.insert("invalid_op_code", Instructions.invalid());
     Program.insert("op_immediate", Operands.imm());
     Program.insert("op_regdirect", Operands.reg());
@@ -213,7 +213,7 @@ bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction)
     Facts.Instructions.add(relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0});
     if(Details.writeback)
     {
-        Facts.Instructions.metadata(InstructionMetadata{Addr, Details.writeback});
+        Facts.Instructions.writeback(InstructionWriteback{Addr});
     }
     return true;
 }
@@ -270,9 +270,9 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_arm_op& CsOp)
 
 namespace souffle
 {
-    souffle::tuple& operator<<(souffle::tuple& T, const InstructionMetadata& Metadata)
+    souffle::tuple& operator<<(souffle::tuple& T, const InstructionWriteback& Writeback)
     {
-        T << Metadata.Addr << static_cast<uint64_t>(Metadata.Writeback);
+        T << Writeback.Addr;
         return T;
     }
 } // namespace souffle
