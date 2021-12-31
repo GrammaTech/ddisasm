@@ -227,8 +227,6 @@ int main(int argc, char **argv)
 
     auto Modules = GTIRB->IR->modules();
     unsigned int ModuleCount = std::distance(std::begin(Modules), std::end(Modules));
-    std::cerr << "Module count: " << ModuleCount << std::endl;
-
     for(auto &Module : Modules)
     {
         // Decode and load GTIRB Module into the SouffleProgram context.
@@ -263,14 +261,20 @@ int main(int argc, char **argv)
 
         Souffle->insert("option", createDisasmOptions(vm));
 
+        fs::path DebugDir;
         if(vm.count("debug-dir") != 0)
         {
-            // TODO: create multiple subdirectories for each module?
+            // Create multiple subdirectories for each module, if there are multiple.
+            DebugDir = vm["debug-dir"].as<std::string>();
+            if(ModuleCount > 1)
+            {
+                DebugDir /= Module.getName();
+            }
 
             std::cerr << "Writing facts to debug dir " << vm["debug-dir"].as<std::string>()
                       << std::endl;
-            auto dir = vm["debug-dir"].as<std::string>() + "/";
-            Souffle->writeFacts(dir);
+            fs::create_directories(DebugDir);
+            Souffle->writeFacts(DebugDir.string() + "/");
         }
         if(vm.count("with-souffle-relations"))
         {
@@ -285,9 +289,8 @@ int main(int argc, char **argv)
         {
             // Disassemble with the interpeter engine.
             std::cerr << " (interpreter)";
-            const std::string &DebugDir = vm["debug-dir"].as<std::string>();
             const std::string &DatalogFile = vm["interpreter"].as<std::string>();
-            runInterpreter(Module, Souffle->get(), DatalogFile, DebugDir, Threads);
+            runInterpreter(Module, Souffle->get(), DatalogFile, DebugDir.string(), Threads);
         }
         else
         {
@@ -304,14 +307,10 @@ int main(int argc, char **argv)
         }
         printElapsedTimeSince(StartDisassembling);
 
-        if(vm.count("debug-dir") != 0)
+        if(!DebugDir.empty())
         {
-            // TODO: create multiple subdirectories for each module?
-
-            std::cerr << "Writing results to debug dir " << vm["debug-dir"].as<std::string>()
-                      << std::endl;
-            auto dir = vm["debug-dir"].as<std::string>() + "/";
-            Souffle->writeRelations(dir);
+            std::cerr << "Writing results to debug dir " << DebugDir << std::endl;
+            Souffle->writeRelations(DebugDir.string() + "/");
         }
         if(vm.count("with-souffle-relations"))
         {
@@ -331,10 +330,17 @@ int main(int argc, char **argv)
             std::cerr << "Computing no return analysis " << std::flush;
             NoReturnPass NoReturn;
             FunctionInferencePass FunctionInference;
-            if(vm.count("debug-dir") != 0)
+
+            if(!DebugDir.empty())
             {
-                NoReturn.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
-                FunctionInference.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
+                fs::path PassDir;
+                PassDir = DebugDir / "pass-noreturn";
+                fs::create_directories(PassDir);
+                NoReturn.setDebugDir(PassDir.string() + "/");
+
+                PassDir = DebugDir / "pass-function-inference";
+                fs::create_directories(PassDir);
+                FunctionInference.setDebugDir(PassDir.string() + "/");
             }
             auto StartNoReturnAnalysis = std::chrono::high_resolution_clock::now();
             NoReturn.computeNoReturn(Module, Threads);
