@@ -132,6 +132,63 @@ class CfgTests(unittest.TestCase):
             block = sym.referent
             self.assertEqual(len(list(block.outgoing_edges)), 2)
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_arm_tbb_cfg(self):
+        """
+        Test ARM32 CFG from a TBB jumptable
+        """
+        binary = "ex"
+        with cd(ex_arm_asm_dir / "ex_tbb"):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "-O0",
+                    [],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    "arm-linux-gnueabihf-strip",
+                    False,
+                    False,
+                    format="--ir",
+                    extension="gtirb",
+                )
+            )
+
+            # test_relative_jump_tables relies on symbols to find the expected
+            # source and target blocks. However, ARM doesn't seem to match the
+            # symbols with CodeBlocks correctly, so we work around it.
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            # Locate the tbb instruction
+            jumping_block = None
+            expected_dest_blocks = []
+
+            for block in m.code_blocks:
+                # search for tbb [pc, r3]
+                if block.contents[:4] == b"\xdf\xe8\x03\xf0":
+                    jumping_block = block
+
+                # search for mov r1, ?
+                elif (
+                    block.contents[:2] == b"\x4f\xf0"
+                    and block.contents[3:4] == b"\x01"
+                ):
+                    expected_dest_blocks.append(block)
+
+            # check that the tbb block has edges to all the jump table entries
+            self.assertEqual(len(list(jumping_block.outgoing_edges)), 4)
+            dest_blocks = [e.target for e in jumping_block.outgoing_edges]
+            self.assertEqual(set(dest_blocks), set(expected_dest_blocks))
+
 
 if __name__ == "__main__":
     unittest.main()
