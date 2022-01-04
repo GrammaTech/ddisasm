@@ -93,7 +93,7 @@ mem_operands(EA,RtOp,Op1,RmOp,Op2,ImmOp):-
     ),
     op_regdirect(RtOp,_).
 
-// Relative
+// Relative: (7)
 mem_operands(EA,Op2,0,0,0,Op1):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     (
@@ -103,7 +103,7 @@ mem_operands(EA,Op2,0,0,0,Op1):-
     op_immediate(Op1,_),
     op_regdirect(Op2,_).
 
-// Doubleword Relative
+// Doubleword Relative: (8)
 mem_operands(EA,Op3,Op1,0,0,Op2):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     (
