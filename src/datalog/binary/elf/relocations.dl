@@ -1,0 +1,383 @@
+//===- relocations.dl ---------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019-2022 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+
+/**
+Table maps ELF relocation types to a size in bytes.
+*/
+.decl elf_relocation_size(ISA:symbol,Type:symbol,Size:unsigned)
+
+// ELF x86_64 relocation sizes:
+elf_relocation_size("X64", "NONE",             0).
+elf_relocation_size("X64", "R64",             64).
+elf_relocation_size("X64", "PC32",            32).
+elf_relocation_size("X64", "GOT32",           32).
+elf_relocation_size("X64", "PLT32",           32).
+elf_relocation_size("X64", "COPY",            32).
+elf_relocation_size("X64", "GLOB_DAT",        64).
+elf_relocation_size("X64", "JUMP_SLOT",       64).
+elf_relocation_size("X64", "RELATIVE",        64).
+elf_relocation_size("X64", "GOTPCREL",        32).
+elf_relocation_size("X64", "R32",             32).
+elf_relocation_size("X64", "R32S",            32).
+elf_relocation_size("X64", "R16",             16).
+elf_relocation_size("X64", "PC16",            16).
+elf_relocation_size("X64", "R8",               8).
+elf_relocation_size("X64", "PC8",              8).
+elf_relocation_size("X64", "DTPMOD64",        64).
+elf_relocation_size("X64", "DTPOFF64",        64).
+elf_relocation_size("X64", "TPOFF64",         64).
+elf_relocation_size("X64", "TLSGD",           32).
+elf_relocation_size("X64", "TLSLD",           32).
+elf_relocation_size("X64", "DTPOFF32",        32).
+elf_relocation_size("X64", "GOTTPOFF",        32).
+elf_relocation_size("X64", "TPOFF32",         32).
+elf_relocation_size("X64", "PC64",            64).
+elf_relocation_size("X64", "GOTOFF64",        64).
+elf_relocation_size("X64", "GOTPC32",         32).
+elf_relocation_size("X64", "GOT64",           64).
+elf_relocation_size("X64", "GOTPCREL64",      64).
+elf_relocation_size("X64", "GOTPC64",         64).
+elf_relocation_size("X64", "GOTPLT64",        64).
+elf_relocation_size("X64", "PLTOFF64",        64).
+elf_relocation_size("X64", "SIZE32",          32).
+elf_relocation_size("X64", "SIZE64",          64).
+elf_relocation_size("X64", "GOTPC32_TLSDESC", 32).
+elf_relocation_size("X64", "TLSDESC_CALL",     0).
+elf_relocation_size("X64", "TLSDESC",         64).
+elf_relocation_size("X64", "IRELATIVE",       64).
+elf_relocation_size("X64", "RELATIVE64",      64).
+elf_relocation_size("X64", "PC32_BND",        32).
+elf_relocation_size("X64", "PLT32_BND",       32).
+elf_relocation_size("X64", "GOTPCRELX",       32).
+elf_relocation_size("X64", "REX_GOTPCRELX",   32).
+
+// ELF x86_32 relocation sizes:
+elf_relocation_size("X86", "NONE",            0).
+elf_relocation_size("X86", "R32",            32).
+elf_relocation_size("X86", "PC32",           32).
+elf_relocation_size("X86", "GOT32",          32).
+elf_relocation_size("X86", "PLT32",          32).
+elf_relocation_size("X86", "COPY",           32).
+elf_relocation_size("X86", "GLOB_DAT",       32).
+elf_relocation_size("X86", "JUMP_SLOT",      32).
+elf_relocation_size("X86", "RELATIVE",       32).
+elf_relocation_size("X86", "GOTOFF",         32).
+elf_relocation_size("X86", "GOTPC",          32).
+elf_relocation_size("X86", "R32PLT",         32).
+elf_relocation_size("X86", "TLS_TPOFF",      32).
+elf_relocation_size("X86", "TLS_IE",         32).
+elf_relocation_size("X86", "TLS_GOTIE",      32).
+elf_relocation_size("X86", "TLS_LE",         32).
+elf_relocation_size("X86", "TLS_GD",         32).
+elf_relocation_size("X86", "TLS_LDM",        32).
+elf_relocation_size("X86", "R16",            16).
+elf_relocation_size("X86", "PC16",           16).
+elf_relocation_size("X86", "R8",              8).
+elf_relocation_size("X86", "PC8",             8).
+elf_relocation_size("X86", "TLS_GD_32",      32).
+elf_relocation_size("X86", "TLS_GD_PUSH",    32).
+elf_relocation_size("X86", "TLS_GD_CALL",    32).
+elf_relocation_size("X86", "TLS_GD_POP",     32).
+elf_relocation_size("X86", "TLS_LDM_32",     32).
+elf_relocation_size("X86", "TLS_LDM_PUSH",   32).
+elf_relocation_size("X86", "TLS_LDM_CALL",    0).
+elf_relocation_size("X86", "TLS_LDM_POP",    32).
+elf_relocation_size("X86", "TLS_LDO_32",     32).
+elf_relocation_size("X86", "TLS_IE_32",      32).
+elf_relocation_size("X86", "TLS_LE_32",      32).
+elf_relocation_size("X86", "TLS_DTPMOD32",   32).
+elf_relocation_size("X86", "TLS_DTPOFF32",   32).
+elf_relocation_size("X86", "TLS_TPOFF32",    32).
+elf_relocation_size("X86", "TLS_GOTDESC",    32).
+elf_relocation_size("X86", "TLS_DESC_CALL",  32).
+elf_relocation_size("X86", "TLS_DESC",       32).
+elf_relocation_size("X86", "IRELATIVE",      32).
+
+// ELF ARM64 relocation sizes:
+elf_relocation_size("ARM64", "NONE",                          0).
+elf_relocation_size("ARM64", "ABS64",                        64).
+elf_relocation_size("ARM64", "ABS32",                        32).
+elf_relocation_size("ARM64", "ABS16",                        16).
+elf_relocation_size("ARM64", "PREL64",                       64).
+elf_relocation_size("ARM64", "PREL32",                       32).
+elf_relocation_size("ARM64", "PREL16",                       16).
+elf_relocation_size("ARM64", "MOVW_UABS_G0",                 16).
+elf_relocation_size("ARM64", "MOVW_UABS_G0_NC",              16).
+elf_relocation_size("ARM64", "MOVW_UABS_G1",                 16).
+elf_relocation_size("ARM64", "MOVW_UABS_G1_NC",              16).
+elf_relocation_size("ARM64", "MOVW_UABS_G2",                 16).
+elf_relocation_size("ARM64", "MOVW_UABS_G2_NC",              16).
+elf_relocation_size("ARM64", "MOVW_UABS_G3",                 16).
+elf_relocation_size("ARM64", "MOVW_SABS_G0",                 16).
+elf_relocation_size("ARM64", "MOVW_SABS_G1",                 16).
+elf_relocation_size("ARM64", "MOVW_SABS_G2",                 16).
+elf_relocation_size("ARM64", "LD_PREL_LO19",                 19).
+elf_relocation_size("ARM64", "ADR_PREL_LO21",                21).
+elf_relocation_size("ARM64", "ADR_PREL_PG_HI21",             21).
+elf_relocation_size("ARM64", "ADR_PREL_PG_HI21_NC",          21).
+elf_relocation_size("ARM64", "ADD_ABS_LO12_NC",              12).
+elf_relocation_size("ARM64", "LDST8_ABS_LO12_NC",            12).
+elf_relocation_size("ARM64", "TSTBR14",                      14).
+elf_relocation_size("ARM64", "CONDBR19",                     19).
+elf_relocation_size("ARM64", "JUMP26",                       26).
+elf_relocation_size("ARM64", "CALL26",                       26).
+elf_relocation_size("ARM64", "LDST16_ABS_LO12_NC",           12).
+elf_relocation_size("ARM64", "LDST32_ABS_LO12_NC",           12).
+elf_relocation_size("ARM64", "LDST64_ABS_LO12_NC",           12).
+elf_relocation_size("ARM64", "MOVW_PREL_G0",                 16).
+elf_relocation_size("ARM64", "MOVW_PREL_G0_NC",              16).
+elf_relocation_size("ARM64", "MOVW_PREL_G1",                 16).
+elf_relocation_size("ARM64", "MOVW_PREL_G1_NC",              16).
+elf_relocation_size("ARM64", "MOVW_PREL_G2",                 16).
+elf_relocation_size("ARM64", "MOVW_PREL_G2_NC",              16).
+elf_relocation_size("ARM64", "MOVW_PREL_G3",                 16).
+elf_relocation_size("ARM64", "LDST128_ABS_LO12_NC",          12).
+elf_relocation_size("ARM64", "MOVW_GOTOFF_G0",               16).
+elf_relocation_size("ARM64", "MOVW_GOTOFF_G0_NC",            16).
+elf_relocation_size("ARM64", "MOVW_GOTOFF_G1",               16).
+elf_relocation_size("ARM64", "MOVW_GOTOFF_G1_NC",            16).
+elf_relocation_size("ARM64", "MOVW_GOTOFF_G2",               16).
+elf_relocation_size("ARM64", "MOVW_GOTOFF_G2_NC",            16).
+elf_relocation_size("ARM64", "MOVW_GOTOFF_G3",               16).
+elf_relocation_size("ARM64", "GOTREL64",                     64).
+elf_relocation_size("ARM64", "GOTREL32",                     64).
+elf_relocation_size("ARM64", "GOT_LD_PREL19",                19).
+elf_relocation_size("ARM64", "LD64_GOTOFF_LO15",             15).
+elf_relocation_size("ARM64", "ADR_GOT_PAGE",                 21).
+elf_relocation_size("ARM64", "LD64_GOT_LO12_NC",             12).
+elf_relocation_size("ARM64", "LD64_GOTPAGE_LO15",            15).
+elf_relocation_size("ARM64", "TLSGD_ADR_PREL21",             21).
+elf_relocation_size("ARM64", "TLSGD_ADR_PAGE21",             21).
+elf_relocation_size("ARM64", "TLSGD_ADD_LO12_NC",            12).
+elf_relocation_size("ARM64", "TLSGD_MOVW_G1",                16).
+elf_relocation_size("ARM64", "TLSGD_MOVW_G0_NC",             16).
+elf_relocation_size("ARM64", "TLSLD_ADR_PREL21",             21).
+elf_relocation_size("ARM64", "TLSLD_ADR_PAGE21",             21).
+elf_relocation_size("ARM64", "TLSLD_ADD_LO12_NC",             0).
+elf_relocation_size("ARM64", "TLSLD_MOVW_G1",                 0).
+elf_relocation_size("ARM64", "TLSLD_MOVW_G0_NC",              0).
+elf_relocation_size("ARM64", "TLSLD_LD_PREL19",              19).
+elf_relocation_size("ARM64", "TLSLD_MOVW_DTPREL_G2",         16).
+elf_relocation_size("ARM64", "TLSLD_MOVW_DTPREL_G1",         16).
+elf_relocation_size("ARM64", "TLSLD_MOVW_DTPREL_G1_NC",      16).
+elf_relocation_size("ARM64", "TLSLD_MOVW_DTPREL_G0",         16).
+elf_relocation_size("ARM64", "TLSLD_MOVW_DTPREL_G0_NC",      16).
+elf_relocation_size("ARM64", "TLSLD_ADD_DTPREL_HI12",        12).
+elf_relocation_size("ARM64", "TLSLD_ADD_DTPREL_LO12",        12).
+elf_relocation_size("ARM64", "TLSLD_ADD_DTPREL_LO12_NC",     12).
+elf_relocation_size("ARM64", "TLSLD_LDST8_DTPREL_LO12",      12).
+elf_relocation_size("ARM64", "TLSLD_LDST8_DTPREL_LO12_NC",   12).
+elf_relocation_size("ARM64", "TLSLD_LDST16_DTPREL_LO12",     12).
+elf_relocation_size("ARM64", "TLSLD_LDST16_DTPREL_LO12_NC",  12).
+elf_relocation_size("ARM64", "TLSLD_LDST32_DTPREL_LO12",     12).
+elf_relocation_size("ARM64", "TLSLD_LDST32_DTPREL_LO12_NC",  12).
+elf_relocation_size("ARM64", "TLSLD_LDST64_DTPREL_LO12",     12).
+elf_relocation_size("ARM64", "TLSLD_LDST64_DTPREL_LO12_NC",  12).
+elf_relocation_size("ARM64", "TLSIE_MOVW_GOTTPREL_G1",       16).
+elf_relocation_size("ARM64", "TLSIE_MOVW_GOTTPREL_G0_NC",    16).
+elf_relocation_size("ARM64", "TLSIE_ADR_GOTTPREL_PAGE21",    21).
+elf_relocation_size("ARM64", "TLSIE_LD64_GOTTPREL_LO12_NC",  12).
+elf_relocation_size("ARM64", "TLSIE_LD_GOTTPREL_PREL19",     19).
+elf_relocation_size("ARM64", "TLSLE_MOVW_TPREL_G2",          16).
+elf_relocation_size("ARM64", "TLSLE_MOVW_TPREL_G1",          16).
+elf_relocation_size("ARM64", "TLSLE_MOVW_TPREL_G1_NC",       16).
+elf_relocation_size("ARM64", "TLSLE_MOVW_TPREL_G0",          16).
+elf_relocation_size("ARM64", "TLSLE_MOVW_TPREL_G0_NC",       16).
+elf_relocation_size("ARM64", "TLSLE_ADD_TPREL_HI12",         12).
+elf_relocation_size("ARM64", "TLSLE_ADD_TPREL_LO12",         12).
+elf_relocation_size("ARM64", "TLSLE_ADD_TPREL_LO12_NC",      12).
+elf_relocation_size("ARM64", "TLSLE_LDST8_TPREL_LO12",       12).
+elf_relocation_size("ARM64", "TLSLE_LDST8_TPREL_LO12_NC",    12).
+elf_relocation_size("ARM64", "TLSLE_LDST16_TPREL_LO12",      12).
+elf_relocation_size("ARM64", "TLSLE_LDST16_TPREL_LO12_NC",   12).
+elf_relocation_size("ARM64", "TLSLE_LDST32_TPREL_LO12",      12).
+elf_relocation_size("ARM64", "TLSLE_LDST32_TPREL_LO12_NC",   12).
+elf_relocation_size("ARM64", "TLSLE_LDST64_TPREL_LO12",      12).
+elf_relocation_size("ARM64", "TLSLE_LDST64_TPREL_LO12_NC",   12).
+elf_relocation_size("ARM64", "TLSDESC_LD_PREL19",            19).
+elf_relocation_size("ARM64", "TLSDESC_ADR_PREL21",           21).
+elf_relocation_size("ARM64", "TLSDESC_ADR_PAGE21",           21).
+elf_relocation_size("ARM64", "TLSDESC_LD64_LO12_NC",         12).
+elf_relocation_size("ARM64", "TLSDESC_ADD_LO12_NC",          12).
+elf_relocation_size("ARM64", "TLSDESC_OFF_G1",               12).
+elf_relocation_size("ARM64", "TLSDESC_OFF_G0_NC",            12).
+elf_relocation_size("ARM64", "TLSDESC_LDR",                  12).
+elf_relocation_size("ARM64", "TLSDESC_ADD",                  12).
+elf_relocation_size("ARM64", "TLSDESC_CALL",                 12).
+elf_relocation_size("ARM64", "TLSLE_LDST128_TPREL_LO12",     12).
+elf_relocation_size("ARM64", "TLSLE_LDST128_TPREL_LO12_NC",  12).
+elf_relocation_size("ARM64", "TLSLD_LDST128_DTPREL_LO12",    12).
+elf_relocation_size("ARM64", "TLSLD_LDST128_DTPREL_LO12_NC", 12).
+elf_relocation_size("ARM64", "COPY",                         64).
+elf_relocation_size("ARM64", "GLOB_DAT",                     64).
+elf_relocation_size("ARM64", "JUMP_SLOT",                    64).
+elf_relocation_size("ARM64", "RELATIVE",                     64).
+elf_relocation_size("ARM64", "TLS_DTPREL64",                 64).
+elf_relocation_size("ARM64", "TLS_DTPMOD64",                 64).
+elf_relocation_size("ARM64", "TLS_TPREL64",                  64).
+elf_relocation_size("ARM64", "TLSDESC",                      64).
+elf_relocation_size("ARM64", "IRELATIVE",                    64).
+
+elf_relocation_size("ARM", "NONE",                    0).
+elf_relocation_size("ARM", "PC24",                   24).
+elf_relocation_size("ARM", "ABS32",                  32).
+elf_relocation_size("ARM", "REL32",                  32).
+elf_relocation_size("ARM", "LDR_PC_G0",              32).
+elf_relocation_size("ARM", "ABS16",                  16).
+elf_relocation_size("ARM", "ABS12",                  12).
+elf_relocation_size("ARM", "THM_ABS5",                5).
+elf_relocation_size("ARM", "ABS8",                    8).
+elf_relocation_size("ARM", "SBREL32",                32).
+elf_relocation_size("ARM", "THM_CALL",               25).
+elf_relocation_size("ARM", "THM_PC8",                 8).
+elf_relocation_size("ARM", "BREL_ADJ",               32).
+elf_relocation_size("ARM", "TLS_DESC",                0).
+elf_relocation_size("ARM", "THM_SWI8",                0).
+elf_relocation_size("ARM", "XPC25",                  25).
+elf_relocation_size("ARM", "THM_XPC22",              22).
+elf_relocation_size("ARM", "TLS_DTPMOD32",           32).
+elf_relocation_size("ARM", "TLS_DTPOFF32",           32).
+elf_relocation_size("ARM", "TLS_TPOFF32",            32).
+elf_relocation_size("ARM", "COPY",                   32).
+elf_relocation_size("ARM", "GLOB_DAT",               32).
+elf_relocation_size("ARM", "JUMP_SLOT",              32).
+elf_relocation_size("ARM", "RELATIVE",               32).
+elf_relocation_size("ARM", "GOTOFF32",               32).
+elf_relocation_size("ARM", "BASE_PREL",              32).
+elf_relocation_size("ARM", "GOT_BREL",               32).
+elf_relocation_size("ARM", "PLT32",                  24).
+elf_relocation_size("ARM", "CALL",                   24).
+elf_relocation_size("ARM", "JUMP24",                 24).
+elf_relocation_size("ARM", "THM_JUMP24",             24).
+elf_relocation_size("ARM", "BASE_ABS",               21).
+elf_relocation_size("ARM", "ALU_PCREL_7_0",          12).
+elf_relocation_size("ARM", "ALU_PCREL_15_8",         12).
+elf_relocation_size("ARM", "ALU_PCREL_23_15",        12).
+elf_relocation_size("ARM", "LDR_SBREL_11_0_NC",      12).
+elf_relocation_size("ARM", "ALU_SBREL_19_12_NC",      8).
+elf_relocation_size("ARM", "ALU_SBREL_27_20_CK",      8).
+elf_relocation_size("ARM", "TARGET1",                32).
+elf_relocation_size("ARM", "SBREL31",                32).
+elf_relocation_size("ARM", "V4BX",                   32).
+elf_relocation_size("ARM", "TARGET2",                32).
+elf_relocation_size("ARM", "PREL31",                 31).
+elf_relocation_size("ARM", "MOVW_ABS_NC",            16).
+elf_relocation_size("ARM", "MOVT_ABS",               16).
+elf_relocation_size("ARM", "MOVW_PREL_NC",           16).
+elf_relocation_size("ARM", "MOVT_PREL",              16).
+elf_relocation_size("ARM", "THM_MOVW_ABS_NC",        16).
+elf_relocation_size("ARM", "THM_MOVT_ABS",           16).
+elf_relocation_size("ARM", "THM_MOVW_PREL_NC",       16).
+elf_relocation_size("ARM", "THM_MOVT_PREL",          16).
+elf_relocation_size("ARM", "THM_JUMP19",             19).
+elf_relocation_size("ARM", "THM_JUMP6",               6).
+elf_relocation_size("ARM", "THM_ALU_PREL_11_0",      13).
+elf_relocation_size("ARM", "THM_PC12",               13).
+elf_relocation_size("ARM", "ABS32_NOI",              32).
+elf_relocation_size("ARM", "REL32_NOI",              32).
+elf_relocation_size("ARM", "ALU_PC_G0_NC",           32).
+elf_relocation_size("ARM", "ALU_PC_G0",              32).
+elf_relocation_size("ARM", "ALU_PC_G1_NC",           32).
+elf_relocation_size("ARM", "ALU_PC_G1",              32).
+elf_relocation_size("ARM", "ALU_PC_G2",              32).
+elf_relocation_size("ARM", "LDR_PC_G1",              32).
+elf_relocation_size("ARM", "LDR_PC_G2",              32).
+elf_relocation_size("ARM", "LDRS_PC_G0",             32).
+elf_relocation_size("ARM", "LDRS_PC_G1",             32).
+elf_relocation_size("ARM", "LDRS_PC_G2",             32).
+elf_relocation_size("ARM", "LDC_PC_G0",              32).
+elf_relocation_size("ARM", "LDC_PC_G1",              32).
+elf_relocation_size("ARM", "LDC_PC_G2",              32).
+elf_relocation_size("ARM", "ALU_SB_G0_NC",           32).
+elf_relocation_size("ARM", "ALU_SB_G0",              32).
+elf_relocation_size("ARM", "ALU_SB_G1_NC",           32).
+elf_relocation_size("ARM", "ALU_SB_G1",              32).
+elf_relocation_size("ARM", "ALU_SB_G2",              32).
+elf_relocation_size("ARM", "LDR_SB_G0",              32).
+elf_relocation_size("ARM", "LDR_SB_G1",              32).
+elf_relocation_size("ARM", "LDR_SB_G2",              32).
+elf_relocation_size("ARM", "LDRS_SB_G0",             32).
+elf_relocation_size("ARM", "LDRS_SB_G1",             32).
+elf_relocation_size("ARM", "LDRS_SB_G2",             32).
+elf_relocation_size("ARM", "LDC_SB_G0",              32).
+elf_relocation_size("ARM", "LDC_SB_G1",              32).
+elf_relocation_size("ARM", "LDC_SB_G2",              32).
+elf_relocation_size("ARM", "MOVW_BREL_NC",           16).
+elf_relocation_size("ARM", "MOVT_BREL",              16).
+elf_relocation_size("ARM", "MOVW_BREL",              16).
+elf_relocation_size("ARM", "THM_MOVW_BREL_NC",       16).
+elf_relocation_size("ARM", "THM_MOVT_BREL",          16).
+elf_relocation_size("ARM", "THM_MOVW_BREL",          16).
+elf_relocation_size("ARM", "TLS_GOTDESC",             0).
+elf_relocation_size("ARM", "TLS_CALL",                0).
+elf_relocation_size("ARM", "TLS_DESCSEQ",             0).
+elf_relocation_size("ARM", "THM_TLS_CALL",            0).
+elf_relocation_size("ARM", "PLT32_ABS",              32).
+elf_relocation_size("ARM", "GOT_ABS",                32).
+elf_relocation_size("ARM", "GOT_PREL",               32).
+elf_relocation_size("ARM", "GOT_BREL12",             12).
+elf_relocation_size("ARM", "GOTOFF12",               12).
+elf_relocation_size("ARM", "GOTRELAX",               12).
+elf_relocation_size("ARM", "GNU_VTENTRY",             0).
+elf_relocation_size("ARM", "GNU_VTINHERIT",           0).
+elf_relocation_size("ARM", "THM_JUMP11",             11).
+elf_relocation_size("ARM", "THM_JUMP8",               8).
+elf_relocation_size("ARM", "TLS_GD32",               32).
+elf_relocation_size("ARM", "TLS_LDM32",              32).
+elf_relocation_size("ARM", "TLS_LDO32",              32).
+elf_relocation_size("ARM", "TLS_IE32",               32).
+elf_relocation_size("ARM", "TLS_LE32",               32).
+elf_relocation_size("ARM", "TLS_LDO12",              12).
+elf_relocation_size("ARM", "TLS_LE12",               12).
+elf_relocation_size("ARM", "TLS_IE12GP",             12).
+elf_relocation_size("ARM", "PRIVATE_0",               0).
+elf_relocation_size("ARM", "PRIVATE_1",               0).
+elf_relocation_size("ARM", "PRIVATE_2",               0).
+elf_relocation_size("ARM", "PRIVATE_3",               0).
+elf_relocation_size("ARM", "PRIVATE_4",               0).
+elf_relocation_size("ARM", "PRIVATE_5",               0).
+elf_relocation_size("ARM", "PRIVATE_6",               0).
+elf_relocation_size("ARM", "PRIVATE_7",               0).
+elf_relocation_size("ARM", "PRIVATE_8",               0).
+elf_relocation_size("ARM", "PRIVATE_9",               0).
+elf_relocation_size("ARM", "PRIVATE_10",              0).
+elf_relocation_size("ARM", "PRIVATE_11",              0).
+elf_relocation_size("ARM", "PRIVATE_12",              0).
+elf_relocation_size("ARM", "PRIVATE_13",              0).
+elf_relocation_size("ARM", "PRIVATE_14",              0).
+elf_relocation_size("ARM", "PRIVATE_15",              0).
+elf_relocation_size("ARM", "ME_TOO",                  0).
+elf_relocation_size("ARM", "THM_TLS_DESCSEQ16",       0).
+elf_relocation_size("ARM", "THM_TLS_DESCSEQ32",       0).
+elf_relocation_size("ARM", "IRELATIVE",               0).
+elf_relocation_size("ARM", "RXPC25",                 25).
+elf_relocation_size("ARM", "RSBREL32",               32).
+elf_relocation_size("ARM", "THM_RPC22",              22).
+elf_relocation_size("ARM", "RREL32",                 32).
+elf_relocation_size("ARM", "RPC24",                  24).
+elf_relocation_size("ARM", "RBASE",                   0).
+
+relocation_size(Type,Size):-
+    binary_isa(ISA),
+    binary_format("ELF"),
+    elf_relocation_size(ISA,Type,Size).

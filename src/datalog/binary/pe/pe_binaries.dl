@@ -21,6 +21,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "relocations.dl"
+
 // This module defines predicates specific of PE binaries
 
 .decl pe_data_directory(Type:symbol,Address:address,Size:unsigned)
@@ -75,23 +77,6 @@ pe_section_characteristics("IMAGE_SCN_MEM_SHARED",0x10000000).
 pe_section_characteristics("IMAGE_SCN_MEM_EXECUTE",0x20000000).
 pe_section_characteristics("IMAGE_SCN_MEM_READ",0x40000000).
 pe_section_characteristics("IMAGE_SCN_MEM_WRITE",0x80000000).
-
-
-/**
-Table maps PE base relocation types to a size in bits.
-*/
-.decl pe_relocation_size(Type:symbol,Size:unsigned)
-
-pe_relocation_size("LOW",       16).
-pe_relocation_size("HIGH",      16).
-pe_relocation_size("HIGHADJ",   16).
-pe_relocation_size("HIGHLOW",   32).
-pe_relocation_size("DIR64",     64).
-pe_relocation_size("ABSOLUTE",   0).
-
-relocation_size(Type,Size):-
-    binary_format("PE"),
-    pe_relocation_size(Type,Size).
 
 section(Name,Size,Addr):-
     binary_format("PE"),

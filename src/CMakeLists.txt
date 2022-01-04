@@ -24,17 +24,19 @@ else()
 endif()
 
 set(DATALOG_BASE_SOURCES
+    datalog/binary/elf/elf_binaries.dl
+    datalog/binary/elf/exceptions.dl
+    datalog/binary/elf/relocations.dl
+    datalog/binary/pe/pe_binaries.dl
+    datalog/binary/pe/relocations.dl
     datalog/bitmasks.dl
     datalog/code_inference.dl
     datalog/code_inference_postprocess.dl
     datalog/cfg.dl
     datalog/data_access_analysis.dl
     datalog/empty_range.dl
-    datalog/elf_binaries.dl
-    datalog/exceptions.dl
     datalog/basic_function_inference.dl
     datalog/main.dl
-    datalog/pe_binaries.dl
     datalog/pointer_reatribution.dl
     datalog/register_type_analysis.dl
     datalog/relative_jump_tables.dl
@@ -50,9 +52,9 @@ if(DDISASM_ARM_64)
   add_definitions(-DDDISASM_ARM_64)
 
   set(DATALOG_ARM64_SOURCES
-      datalog/arm64/arch_arm64.dl datalog/arm64/float_operations.dl
-      datalog/arm64/jump_operations.dl datalog/arm64/registers.dl
-      datalog/arm_binaries.dl)
+      datalog/arch/arm64/arch_arm64.dl datalog/arch/arm64/float_operations.dl
+      datalog/arch/arm64/jump_operations.dl datalog/arch/arm64/registers.dl
+      datalog/arm_binaries.dl datalog/arm64_binaries.dl)
 
   set(GENERATED_ARM64_CPP souffle_disasm_arm64.cpp)
 
@@ -79,8 +81,9 @@ if(DDISASM_X86_32)
   add_definitions(-DDDISASM_X86_32)
 
   set(DATALOG_X86_32_SOURCES
-      datalog/intel/arch_x86_32.dl datalog/intel/float_operations.dl
-      datalog/intel/jump_operations.dl datalog/intel/registers_x86_32.dl)
+      datalog/arch/intel/arch_x86_32.dl datalog/arch/intel/float_operations.dl
+      datalog/arch/intel/jump_operations.dl
+      datalog/arch/intel/registers_x86_32.dl)
 
   set(GENERATED_X86_32_CPP souffle_disasm_x86_32.cpp)
 
@@ -107,8 +110,9 @@ if(DDISASM_X86_64)
   add_definitions(-DDDISASM_X86_64)
 
   set(DATALOG_X86_64_SOURCES
-      datalog/intel/arch_x86_64.dl datalog/intel/float_operations.dl
-      datalog/intel/jump_operations.dl datalog/intel/registers_x86_64.dl)
+      datalog/arch/intel/arch_x86_64.dl datalog/arch/intel/float_operations.dl
+      datalog/arch/intel/jump_operations.dl
+      datalog/arch/intel/registers_x86_64.dl)
 
   set(GENERATED_X86_64_CPP souffle_disasm_x86_64.cpp)
 
