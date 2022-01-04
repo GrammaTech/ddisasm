@@ -225,6 +225,7 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    gtirb_pprint::PrettyPrinter pprinter;
     auto Modules = GTIRB->IR->modules();
     unsigned int ModuleCount = std::distance(std::begin(Modules), std::end(Modules));
     for(auto &Module : Modules)
@@ -356,7 +357,6 @@ int main(int argc, char **argv)
         Module.removeAuxData<gtirb::schema::ElfSectionIndex>();
 
         // Pretty-print
-        gtirb_pprint::PrettyPrinter pprinter;
         if(vm.count("debug") != 0)
         {
             pprinter.setListingMode("debug");
@@ -370,29 +370,44 @@ int main(int argc, char **argv)
             }
         }
 
-        // TODO: combine asm code and no args code.
+        fs::path AsmPath;
+        std::ofstream AsmFileStream;
+        bool UseStdout = true;
         if(vm.count("asm") != 0)
         {
-            // TODO: print all modules? can we create separate .s files for each module?
-
-            std::cerr << "Printing assembler " << std::flush;
-            auto StartPrinting = std::chrono::high_resolution_clock::now();
             std::string name = vm["asm"].as<std::string>();
-            if(name == "-")
+            if(name != "-")
             {
-                pprinter.print(std::cout, *GTIRB->Context, Module);
+                AsmPath = name;
             }
-            else
-            {
-                std::ofstream out(name);
-                pprinter.print(out, *GTIRB->Context, Module);
-            }
-            printElapsedTimeSince(StartPrinting);
         }
-        else if(vm.count("ir") == 0 && vm.count("json") == 0)
+
+        if(!AsmPath.empty())
         {
-            std::cerr << "Printing assembler" << std::endl;
-            pprinter.print(std::cout, *GTIRB->Context, Module);
+            // If there are multiple modules, use the asm argument as a directory.
+            // Each module will get its own .s file.
+            if(ModuleCount > 1)
+            {
+                fs::create_directories(AsmPath);
+                std::string name = Module.getName();
+
+                // Strip ".o" extension if it exists.
+                if(name.compare(name.size() - 2, 2, ".o") == 0)
+                {
+                    name.erase(name.size() - 2);
+                }
+                AsmPath /= name + ".s";
+            }
+            AsmFileStream.open(AsmPath.string());
+            UseStdout = false;
+        }
+
+        if(vm.count("asm") != 0 || (vm.count("ir") == 0 && vm.count("json") == 0))
+        {
+            std::cerr << "Printing assembler" << std::flush;
+            auto StartPrinting = std::chrono::high_resolution_clock::now();
+            pprinter.print(UseStdout ? std::cout : AsmFileStream, *GTIRB->Context, Module);
+            printElapsedTimeSince(StartPrinting);
         }
 
         performSanityChecks(Souffle->get(), vm.count("self-diagnose") != 0);
