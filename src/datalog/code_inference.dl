@@ -167,7 +167,8 @@ may_have_symbolic_immediate(Src,as(Dest,address)):-
         relocation(Src+Offset,_,_,_,_,_,_)
         ;
         binary_type("EXEC"),
-        !arch.logic_operation(Operation)
+        !arch.logic_operation(Operation),
+        Offset = Offset // avoid warning
     ).
 
 
