@@ -59,10 +59,10 @@
  * (8)
  *      LDRD Rt, Rt2, label
  */
-.decl mem_operands(EA:address, RtOp:operand_code, Rt2Op:operand_code, RmOp:operand_code, IndirectOp:operand_code, ImmOp:operand_code)
+.decl load_store_operands(EA:address, RtOp:operand_code, Rt2Op:operand_code, RmOp:operand_code, IndirectOp:operand_code, ImmOp:operand_code)
 
 // Basic mem operations: (1), (2), (3)
-mem_operands(EA,RtOp,0,RmOp,Op1,ImmOp):-
+load_store_operands(EA,RtOp,0,RmOp,Op1,ImmOp):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     (
         contains("LDR", Operation);
@@ -77,7 +77,7 @@ mem_operands(EA,RtOp,0,RmOp,Op1,ImmOp):-
     op_regdirect(RtOp,_).
 
 // Doubleword mem operations: (4), (5), (6)
-mem_operands(EA,RtOp,Op1,RmOp,Op2,ImmOp):-
+load_store_operands(EA,RtOp,Op1,RmOp,Op2,ImmOp):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,Op4,_,_),
     (
         contains("LDRD", Operation);
@@ -94,7 +94,7 @@ mem_operands(EA,RtOp,Op1,RmOp,Op2,ImmOp):-
     op_regdirect(RtOp,_).
 
 // Relative: (7)
-mem_operands(EA,Op2,0,0,0,Op1):-
+load_store_operands(EA,Op2,0,0,0,Op1):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     (
         contains("LDR", Operation);
@@ -104,7 +104,7 @@ mem_operands(EA,Op2,0,0,0,Op1):-
     op_regdirect(Op2,_).
 
 // Doubleword Relative: (8)
-mem_operands(EA,Op3,Op1,0,0,Op2):-
+load_store_operands(EA,Op3,Op1,0,0,Op2):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     (
         contains("LDR", Operation);
@@ -118,7 +118,7 @@ mem_operands(EA,Op3,Op1,0,0,Op2):-
 // Rt2 isn't really encoded in the instruction, it's derived from Rt, so we
 // just need to ensure Rt is even.
 invalid(EA,"arm: doubleword op Rt is odd"):-
-    mem_operands(EA,RtOp,Rt2Op,_,_,_),
+    load_store_operands(EA,RtOp,Rt2Op,_,_,_),
     (EA band 1) = 0, // ARM mode only
     Rt2Op != 0,
     op_regdirect_contains_reg(RtOp,Rt),
@@ -131,7 +131,7 @@ invalid(EA,"arm: doubleword op Rt is odd"):-
 // LDRD Rt, Rt2, [Rn], +/-Rm
 // LDRD Rt, Rt2, [Rn], #offset
 invalid(EA,"thumb: doubleword op registers invalid"):-
-    mem_operands(EA,RtOp,Rt2Op,_,_,_),
+    load_store_operands(EA,RtOp,Rt2Op,_,_,_),
     (EA band 1) = 1, // Thumb mode only
     Rt2Op != 0,
     op_regdirect_contains_reg(RtOp,Rt),
@@ -144,7 +144,7 @@ invalid(EA,"thumb: doubleword op registers invalid"):-
     ).
 
 invalid(EA,"arm: pre/post-index disallows Rt[2] eq Rn"):-
-    mem_operands(EA,RtOp,Rt2Op,RmOp,IndirectOp,ImmOp),
+    load_store_operands(EA,RtOp,Rt2Op,RmOp,IndirectOp,ImmOp),
     (
         RmOp != 0, ImmOp = 0;                           // post-index (register offset)
         ImmOp != 0, RmOp = 0;                           // post-index (immediate offset)
@@ -160,7 +160,7 @@ invalid(EA,"arm: pre/post-index disallows Rt[2] eq Rn"):-
 
 // Rm must be different from Rt and Rt2 in LDRD instructions.
 invalid(EA,"arm: doubleword rm/rt conflict"):-
-    mem_operands(EA,RtOp,Rt2Op,RmOp,_,_),
+    load_store_operands(EA,RtOp,Rt2Op,RmOp,_,_),
     (EA band 1) = 0, // ARM mode only
     RtOp != 0, Rt2Op != 0, RmOp !=0,
     (RmOp = RtOp; RmOp = Rt2Op).
