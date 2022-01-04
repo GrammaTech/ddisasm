@@ -129,7 +129,6 @@ invalid(EA,"arm: doubleword op Rt is odd"):-
     ).
 
 // LDRD Rt, Rt2, [Rn]
-// LDRD Rt, Rt2, [Rn], +/-Rm
 // LDRD Rt, Rt2, [Rn], #offset
 invalid(EA,"thumb: doubleword op registers invalid"):-
     load_store_operands(EA,RtOp,Rt2Op,_,_,_),
@@ -160,11 +159,25 @@ invalid(EA,"arm: pre/post-index disallows Rt[2] eq Rn"):-
     Rn = NotRn.
 
 // Rm must be different from Rt and Rt2 in LDRD instructions.
+// LDRD{cond} Rt, Rt2, [Rn], ±Rm
 invalid(EA,"arm: doubleword rm/rt conflict"):-
     load_store_operands(EA,RtOp,Rt2Op,RmOp,_,_),
     (EA band 1) = 0, // ARM mode only
     RtOp != 0, Rt2Op != 0, RmOp !=0,
     (RmOp = RtOp; RmOp = Rt2Op).
+
+// Rm must be different from Rt and Rt2 in LDRD instructions.
+// LDRD{cond} Rt, Rt2, [Rn, ±Rm]
+// LDRD{cond} Rt, Rt2, [Rn, ±Rm]!
+invalid(EA,"arm: doubleword rm/rt conflict"):-
+    load_store_operands(EA,RtOp,Rt2Op,0,IndirectOp,_),
+    (EA band 1) = 0, // ARM mode only
+    RtOp != 0, Rt2Op != 0,
+    op_indirect(IndirectOp,"NONE",_,Rm,_,_,_),
+    (
+        op_regdirect_contains_reg(RtOp, Rm);
+        op_regdirect_contains_reg(Rt2Op, Rm)
+    ).
 
 /*
  * The instruction at EA has capstone's cs_arm.writeback set.
