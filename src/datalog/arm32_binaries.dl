@@ -60,6 +60,7 @@
  *      LDRD Rt, Rt2, label
  */
 .decl load_store_operands(EA:address, RtOp:operand_code, Rt2Op:operand_code, RmOp:operand_code, IndirectOp:operand_code, ImmOp:operand_code)
+.output load_store_operands
 
 // Basic mem operations: (1), (2), (3)
 load_store_operands(EA,RtOp,0,RmOp,Op1,ImmOp):-
@@ -154,7 +155,7 @@ invalid(EA,"arm: pre/post-index disallows Rt[2] eq Rn"):-
         NotRnOp = RtOp, Rt2Op = 0;               // in single word instruction Rt != Rn
         NotRnOp = Rt2Op, Rt2Op != 0, RtOp = RtOp // in doubleword instructions, Rt2 != Rn
     ),
-    op_indirect(IndirectOp,"NONE",Rn,"NONE",_,_,_),
+    op_indirect(IndirectOp,"NONE",Rn,_,_,_,_),
     op_regdirect_contains_reg(NotRnOp,NotRn),
     Rn = NotRn.
 
