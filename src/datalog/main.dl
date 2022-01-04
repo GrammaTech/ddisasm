@@ -59,49 +59,48 @@ This module:
 .type operand_code <: unsigned
 .type operand_index <: unsigned
 
-// binary format specific predicates
-#include "elf_binaries.dl"
-#include "pe_binaries.dl"
+// Binary format specific predicates.
+#include "binary/elf/elf_binaries.dl"
+#include "binary/pe/pe_binaries.dl"
 
-// architecture specific predicates
+// Architecture specific predicates.
 #ifdef ARCH_ARM64
     #include "arm_binaries.dl"
-    #include "arm64/arch_arm64.dl"
+    #include "arm64_binaries.dl"
+    #include "arch/arm64/arch_arm64.dl"
     .init arch = ARM64
 #elif defined(ARCH_ARM32)
     #include "arm_binaries.dl"
-    #include "arm/arch_arm.dl"
+    #include "arm32_binaries.dl"
+    #include "arch/arm32/arch_arm.dl"
     .init arch = ARM
 #elif defined(ARCH_IA32)
-    #include "intel/arch_x86_32.dl"
+    #include "arch/intel/arch_x86_32.dl"
     .init arch = X86_32
 #elif defined(ARCH_AMD64)
-    #include "intel/arch_x86_64.dl"
+    #include "arch/intel/arch_x86_64.dl"
     .init arch = X86_64
 #elif defined(ARCH_MIPS32)
     #include "mips_binaries.dl"
-    #include "mips32/arch_mips32.dl"
+    #include "arch/mips32/arch_mips32.dl"
     .init arch = MIPS32
 #else
     #error "Undefined architecture"
 #endif
 
-// Detection of relative jump tables
+// Detection of relative jump tables.
 #include "relative_jump_tables.dl"
 
-#include "exceptions.dl"
-
-// Inference of instruction boundaries
+// Inference of instruction boundaries.
 #include "code_inference.dl"
 
-// Performs literal-reference desambiguation
-// and strings
+// Performs literal-reference disambiguation and string inference.
 #include "symbolization.dl"
 
-// Inferece of function boundaries
+// Inference of function boundaries.
 #include "basic_function_inference.dl"
 
-// predicates for debugging and statistics
+// Predicates for debugging and statistics.
 #include "debug_stats.dl"
 #include "self_diagnose.dl"
 /////////////////////////////////////////////////////////////
@@ -337,7 +336,7 @@ pc_relative_operand(EA,Index,Dest):-
 .decl split_load_operand(src:address,index:operand_index, dest:address)
 .output split_load_operand
 
-split_load_operand(0,0,0):-false.
+split_load_operand(0,0,0):- false.
 
 .decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
 .output got_relative_operand
@@ -345,10 +344,12 @@ split_load_operand(0,0,0):-false.
 .decl symbolic_operand_attribute(ea:address,index:unsigned,attribute:symbol)
 .output symbolic_operand_attribute
 
+symbolic_operand_attribute(0,0,""):- false.
+
 .decl symbolic_data_attribute(ea:address,attribute:symbol)
 .output symbolic_data_attribute
 
-symbolic_data_attribute(0,""):-false.
+symbolic_data_attribute(0,""):- false.
 
 .decl instruction_has_loop_prefix(EA:address)
 
