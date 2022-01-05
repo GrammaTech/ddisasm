@@ -31,7 +31,7 @@ This module generates the control flow graph of the disassembled code
 .decl cfg_edge_to_top(src:address,conditional:symbol,type:symbol)
 .output cfg_edge_to_top
 
-.decl cfg_edge_to_symbol(src:address,symbol:symbol)
+.decl cfg_edge_to_symbol(Src:address,Symbol:symbol,Type:symbol)
 .output cfg_edge_to_symbol
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -175,11 +175,19 @@ cfg_edge_to_top(Src,Conditional,"return"):-
     ),
     !cfg_edge(Src,_,_,_,"return").
 
-cfg_edge_to_symbol(Src,Symbol):-
+cfg_edge_to_symbol(Src,Symbol,"branch"):-
     refined_block_control_instruction(Src,EA),
     plt_entry(EA,Symbol),
     !defined_symbol(_,_,_,_,_,_,_,Symbol),
     !inferred_symbol_name(_,Symbol,_,_).
+
+cfg_edge_to_symbol(Src,Symbol,"call"):-
+    refined_block_control_instruction(Src,EA),
+    arch.call_operation(Operation),
+    instruction_get_operation(EA,Operation),
+    instruction_has_relocation(EA,Rel),
+    relocation(Rel,_,Symbol,_,_,_,_),
+    !defined_symbol(_,_,_,_,_,_,_,Symbol).
 
 // pc relative jump with undefined destination
 cfg_edge_to_top(Src,Conditional,"branch"):-
