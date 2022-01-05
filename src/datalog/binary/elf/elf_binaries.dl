@@ -270,8 +270,24 @@ main_function_dispatch(CallEA):-
         EA>=Entry
     }.
 
+/**
+* Infer the location of the main function.
+*/
+.decl inferred_main_function(Main_location:address)
+inferred_main_function(Main_location):-
+    arch.main_load_reg(Main_load, Reg),
+    def_used(EA_def,Reg,Main_load,_),
+    value_reg(EA_def,Reg,_,"NONE",_,Offset,_),
+    Main_location = as(Offset, address),
+    code(Main_location).
+
+// Inform the use_def analysis that the register is used here as an address.
+used(Main_load,Reg,0),
+used_for_address(Main_load,Reg):-
+    arch.main_load_reg(Main_load, Reg).
+
 main_function(Main_location):-
-    arch.inferred_main_function(Main_location).
+    inferred_main_function(Main_location).
 
 inferred_symbol_name(EA,"_start","GLOBAL","FUNC"):-
     !binary_type("REL"),
