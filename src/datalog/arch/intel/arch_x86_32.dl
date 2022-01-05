@@ -23,20 +23,40 @@
 #include "arch_x86.dl"
 
 .comp X86_32 : X86 {
-  #include "registers_x86_32.dl"
-  pointer_size(4).
+#include "registers_x86_32.dl"
+pointer_size(4).
 
-    /**
-    * Infer the location of the main function.
-    */
-    .decl inferred_main_function(Main_location:address)
-    inferred_main_function(Main_location):-
-        inferred_main_pushed(PushEA,Reg),
-        def_used(EA_def,Reg,PushEA,_),
-        value_reg(EA_def,Reg,_,"NONE",_,Offset,_),
-        Main_location = as(Offset,address),
-        code(Main_location).
-    }
+/**
+ * The location and register where the address of main is loaded.
+ */
+.decl main_load_reg(EA:address,Reg:register)
+main_load_reg(PushEA,Reg):-
+    // x86 uses a unique pattern for finding candidates for
+    // main_function_dispatch, implemented inline here. On 32-bit x86, an
+    // additional function has been observed in _start, so we add an additional
+    // heuristic that checks for a consecutive HLT instruction.
+    Main_dispatch = min EA:{
+        start_function(Entry),
+        instruction(HltEA,_,_,"HLT",_,_,_,_,_,_),
+        code(HltEA),
+        instruction(EA,_,_,CallOp,_,_,_,_,_,_),
+        arch.call_operation(CallOp),
+        code(EA),
+        next(EA,HltEA),
+        EA>=Entry
+    },
+
+    // Since we don't use main_function_dispatch(), we must explicitly check
+    //  do_infer_main_function.
+    do_infer_main_function(),
+
+    // Assume cdecl calling convention.
+    // Get the value pushed onto the stack as an argument.
+    next(PushEA,Main_dispatch),
+    code(PushEA),
+    instruction(PushEA,_,_,"PUSH",PushOp,_,_,_,_,_),
+    op_regdirect_contains_reg(PushOp,Reg).
+}
 
 .decl get_pc_thunk(EA:address,Reg:register)
 .output get_pc_thunk
@@ -227,39 +247,3 @@ moved_label(EA_load,1,Address,Base):-
     moved_label(EA_obj,1,_,Base),
     Offset=as(Dest-Base,number),
     Address=Base+as(Offset,address).
-
-/**
- * The address of main is pushed onto the stack as an argument at address
- * 'PushEA' from the register 'Reg'.
- */
-.decl inferred_main_pushed(PushEA:address,Reg:register)
-inferred_main_pushed(PushEA,Reg):-
-    // x86 uses a unique pattern for finding candidates for
-    // main_function_dispatch, implemented inline here. On 32-bit x86, an
-    // additional function has been observed in _start, so we add an additional
-    // heuristic that checks for a consecutive HLT instruction.
-    Main_dispatch = min EA:{
-        start_function(Entry),
-        instruction(HltEA,_,_,"HLT",_,_,_,_,_,_),
-        code(HltEA),
-        instruction(EA,_,_,CallOp,_,_,_,_,_,_),
-        arch.call_operation(CallOp),
-        code(EA),
-        next(EA,HltEA),
-        EA>=Entry
-    },
-
-    // Since we don't use main_function_dispatch(), we must explicitly check
-    //  do_infer_main_function.
-    do_infer_main_function(),
-
-    // Assume cdecl calling convention.
-    // Get the value pushed onto the stack as an argument.
-    next(PushEA,Main_dispatch),
-    code(PushEA),
-    instruction(PushEA,_,_,"PUSH",PushOp,_,_,_,_,_),
-    op_regdirect_contains_reg(PushOp,Reg).
-
-// Ensure full value analysis is performed on the pushed register.
-used_for_address(PushEA,Reg):-
-    inferred_main_pushed(PushEA,Reg).

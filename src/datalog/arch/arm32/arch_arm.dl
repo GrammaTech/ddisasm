@@ -340,20 +340,10 @@ reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
     reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
 
 /**
- * Infer the location of the main function.
+ * The location and register where the address of main is loaded.
  */
-.decl inferred_main_function(Main_location:address)
-inferred_main_function(Main_location):-
-    main_function_dispatch(Main_dispatch),
-    def_used(EA_def,"R0",Main_dispatch,_),
-    value_reg(EA_def,"R0",_,"NONE",_,Offset,_),
-    Main_location = as(Offset, address),
-    code(Main_location).
-
-// Inform the use_def analysis that R0 is used here as an address.
-used(Main_dispatch,Reg,0),
-used_for_address(Main_dispatch,Reg):-
-    Reg = "R0",
+.decl main_load_reg(EA:address,Reg:register)
+main_load_reg(Main_dispatch,"R0"):-
     main_function_dispatch(Main_dispatch).
 
 }
