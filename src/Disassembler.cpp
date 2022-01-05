@@ -1503,23 +1503,26 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
         auto E = addEdge(src, topBlock, cfg);
         cfg[*E] = std::make_tuple(isConditional, gtirb::DirectEdge::IsIndirect, edgeType);
     }
-    for(auto &output : *prog->getRelation("cfg_edge_to_symbol"))
+    for(auto &T : *prog->getRelation("cfg_edge_to_symbol"))
     {
-        gtirb::Addr srcAddr;
-        std::string symbolName;
-        output >> srcAddr >> symbolName;
-        const gtirb::CodeBlock *src = &*module.findCodeBlocksOn(srcAddr).begin();
-        gtirb::Symbol &symbol = *module.findSymbols(symbolName).begin();
-        gtirb::ProxyBlock *externalBlock = symbol.getReferent<gtirb::ProxyBlock>();
-        // if the symbol does not point to a ProxyBlock yet, we create it
-        if(!externalBlock)
+        gtirb::Addr EA;
+        std::string Name;
+        std::string Type;
+        T >> EA >> Name >> Type;
+
+        const gtirb::CodeBlock *CodeBlock = &*module.findCodeBlocksOn(EA).begin();
+        gtirb::Symbol &Symbol = *module.findSymbols(Name).begin();
+        gtirb::ProxyBlock *ExternalBlock = Symbol.getReferent<gtirb::ProxyBlock>();
+        if(!ExternalBlock)
         {
-            externalBlock = module.addProxyBlock(context);
-            symbol.setReferent(externalBlock);
+            // Create a ProxyBlock if the symbol does not already reference one.
+            ExternalBlock = module.addProxyBlock(context);
+            Symbol.setReferent(ExternalBlock);
         }
-        auto E = addEdge(src, externalBlock, cfg);
-        cfg[*E] = std::make_tuple(gtirb::ConditionalEdge::OnFalse, gtirb::DirectEdge::IsIndirect,
-                                  gtirb::EdgeType::Branch);
+
+        gtirb::EdgeType EdgeType = getEdgeType(Type);
+        auto E = addEdge(CodeBlock, ExternalBlock, cfg);
+        cfg[*E] = {gtirb::ConditionalEdge::OnFalse, gtirb::DirectEdge::IsIndirect, EdgeType};
     }
 }
 

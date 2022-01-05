@@ -189,6 +189,36 @@ class CfgTests(unittest.TestCase):
             dest_blocks = [e.target for e in jumping_block.outgoing_edges]
             self.assertEqual(set(dest_blocks), set(expected_dest_blocks))
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_x86_64_object_cfg(self):
+        """
+        Test X86_64 object file relocation edges.
+        """
+        binary = "ex.o"
+        with cd(ex_dir / "ex1"):
+            self.assertTrue(compile("gcc", "g++", "-O0", ["--save-temps"]))
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    "strip",
+                    False,
+                    False,
+                    format="--ir",
+                    extension="gtirb",
+                )
+            )
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            call = b"\xe8\x00\x00\x00\x00"
+            blocks = [b for b in m.code_blocks if b.contents.endswith(call)]
+            self.assertTrue(
+                all(len(list(b.outgoing_edges)) == 2 for b in blocks)
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
