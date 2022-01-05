@@ -458,7 +458,7 @@ symbol_minus_symbol_jump_table(Addr,Addr,Size,EARef,Dest,"no_table",Scale):-
         !relocation(Addr,_,_,_,_,_,_)
         ;
         relocation(Addr,"REL32",Symbol,_,SymbolIndex,_,"REL"),
-        symbol(Base,_,_,_,_,_,SymbolIndex,_),
+        symbol(Base,_,_,_,_,_,SymbolIndex,Symbol),
         // ((S + A) | T) - P
         S = as(Base,unsigned),
         A = as(Diff,unsigned),
@@ -473,7 +473,9 @@ symbol_minus_symbol_jump_table(Addr,Addr,Size,EARef,Dest,"no_table",Scale):-
     Scale = 1.
 
 block_needs_splitting_at(Symbol2_adjusted),
+jump_table_start(EA,Size,TableStart,TableStart,Operation),
 symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2_adjusted,"first",Scale):-
+    code(EA),
     instruction(EA,InstrSize,_,Operation,_,0,0,0,_,_),
     // Align the address
     TableStart = as((EA-(EA band 1))+InstrSize,address),
@@ -509,7 +511,11 @@ symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Symbol1,Symbol2_adjusted,
         Size = 1,
         data_byte(EA+Size,DiffUnsigned)
     ),
-    !code(EA+Size),
+    // All the jump table is inside the same
+    // data segment.
+    data_segment(DataBeg,DataEnd),
+    TableStart >= DataBeg, EA+(2*Size) <= DataEnd,
+
     Diff = as(DiffUnsigned,number),
     Symbol2 = as(Diff*as(Scale,number)+as(Symbol1,number),address),
     (
