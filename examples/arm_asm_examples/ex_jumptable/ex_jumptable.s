@@ -22,6 +22,8 @@ main:
     .long .case5
     .long .case6
 
+    @ Using nops for each case ensures that the jump table targets must drive
+    @ code block boundaries.
 .case1:
     nop
 .case2:

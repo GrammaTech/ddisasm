@@ -174,14 +174,11 @@ class CfgTests(unittest.TestCase):
 
             for block in m.code_blocks:
                 # search for tbb [pc, r3]
-                if block.contents[:4] == b"\xdf\xe8\x03\xf0":
+                if block.contents[:4] == b"\xdf\xe8\x00\xf0":
                     jumping_block = block
 
-                # search for mov r1, ?
-                elif (
-                    block.contents[:2] == b"\x4f\xf0"
-                    and block.contents[3:4] == b"\x01"
-                ):
+                # search for nop
+                elif block.contents[:2] == b"\x00\xbf":
                     expected_dest_blocks.append(block)
 
             # check that the tbb block has edges to all the jump table entries

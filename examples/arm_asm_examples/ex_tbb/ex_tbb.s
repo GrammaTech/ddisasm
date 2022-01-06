@@ -7,40 +7,34 @@
 .align 4
 main:
     push { lr }
-
-    ldr r0, =print_format
-    mov r3, 2
-
-    cmp r3, #3
+    mov r0, 2
+    cmp r0, #3
     bhi .exit
-
-    tbb [pc, r3]
+    tbb [pc, r0]
 
 .jt:
     .byte (.case0 - .jt) / 2
     .byte (.case1 - .jt) / 2
+.split:
     .byte (.case2 - .jt) / 2
     .byte (.case3 - .jt) / 2
 
+    @ Using nops for each case ensures that the jump table targets must drive
+    @ code block boundaries.
 .case0:
-    mov r1, 4
-    b .print
+    nop
 .case1:
-    mov r1, 3
-    b .print
+    nop
 .case2:
-    mov r1, 2
-    b .print
+    nop
 .case3:
-    mov r1, 1
-    b .print
+    nop
 
-.print:
-    bl printf
 .exit:
     mov r0, 0
     pop { pc }
 
 .section .rodata
-print_format:
-    .ascii "%x\n\0"
+    @ Ensure the jumptable is split into multiple code block candidates with
+    @ address_in_data()
+    .long .split

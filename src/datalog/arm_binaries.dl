@@ -472,72 +472,25 @@ symbol_minus_symbol_jump_table(Addr,Addr,Size,EARef,Dest,"no_table",Scale):-
     Dest >= Begin, Dest <= End,
     Scale = 1.
 
-block_needs_splitting_at(Symbol2_adjusted),
-jump_table_start(EA,Size,TableStart,TableStart,Operation),
-symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2_adjusted,"first",Scale):-
-    code(EA),
-    instruction(EA,InstrSize,_,Operation,_,0,0,0,_,_),
-    // Align the address
-    TableStart = as((EA-(EA band 1))+InstrSize,address),
-    Symbol1 = TableStart,
-    (
-        Size = 2,
-        data_word(TableStart,Size,DiffUnsigned),
-        Operation="TBH"
-        ;
-        Size = 1,
-        data_byte(TableStart,DiffUnsigned),
-        Operation="TBB"
-    ),
-    !code(TableStart),
-    Diff = as(DiffUnsigned,number),
-    Symbol2 = as(Diff*as(Scale,number)+as(Symbol1,number),address),
-    Scale = 2,
-    (
-        code(Symbol2), Symbol2_adjusted = Symbol2 // ARM
-        ;
-        code(Symbol2+1), Symbol2_adjusted = Symbol2+1 // Thumb
-    ).
+/**
+Represents an entry in an ARM jump table.
 
-block_needs_splitting_at(Symbol2_adjusted),
-symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Symbol1,Symbol2_adjusted,"first",Scale):-
-    symbol_minus_symbol_jump_table(EA,TableStart,Size,Symbol1,_,"first",Scale),
-    !possible_data_limit(EA+Size),
-    last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA,
-    (
-        Size != 1,
-        data_word(EA+Size,Size,DiffUnsigned)
-        ;
-        Size = 1,
-        data_byte(EA+Size,DiffUnsigned)
-    ),
-    // All the jump table is inside the same
-    // data segment.
-    data_segment(DataBeg,DataEnd),
-    TableStart >= DataBeg, EA+(2*Size) <= DataEnd,
+Attributes:
 
-    Diff = as(DiffUnsigned,number),
-    Symbol2 = as(Diff*as(Scale,number)+as(Symbol1,number),address),
-    (
-        code(Symbol2), Symbol2_adjusted = Symbol2 // ARM
-        ;
-        code(Symbol2+1), Symbol2_adjusted = Symbol2+1 // Thumb
-    ).
-
-/*
- * Reprensents an entry in an ARM jump table.
- *
- * EA_jump: address of jump instruction
- * EntryAddr: address of table entry
- * TargetAddr: resolved target of the jump
- * TableLimit: first address that cannot be part of the jump table
- */
-.decl arm_jump_table_candidate(EA_jump:address,EntryAddr:address,TargetAddr:address,TableLimit:address)
+* EA_jump: address of jump instruction
+* TableStart: address of first table entry
+* EntryAddr: address of table entry
+* EntrySize: size of entries
+* TargetAddr: resolved target of the jump
+* TableLimit: first address that cannot be part of the jump table
+* Type: absolute or TBx
+*/
+.decl arm_jump_table_candidate(EA_jump:address,TableStart:address,EntryAddr:address,EntrySize:unsigned,TargetAddr:address,TableLimit:address,Type:symbol)
 .output arm_jump_table_candidate
 
 block_points(TableStart,"data",0,9,"arm jump table"),
 data_block_candidate(TableStart,Size),
-arm_jump_table_candidate(EA_jump,TableStart,TargetAddr,TableLimit):-
+arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"absolute"):-
     EA_jump band 1 = 0,
     instruction_get_operation(EA_jump,Operation),
     arch.load_word_operation(Operation),
@@ -571,30 +524,80 @@ arm_jump_table_candidate(EA_jump,TableStart,TargetAddr,TableLimit):-
         TargetAddr <= TableStart, TableLimit = (2 ^ NBits) - 1
     ).
 
+.decl tbx_target(EA:address,TableStart:address,Size:unsigned,AlignedTargetAddr:address) inline
+tbx_target(EA,TableStart,Size,AlignedTargetAddr):-
+    (
+        Size != 1, data_word(EA,Size,DiffUnsigned);
+        Size = 1, data_byte(EA,DiffUnsigned)
+    ),
+    Diff = as(DiffUnsigned,number),
+    Scale = 2,
+    AlignedTargetAddr = as(Diff*as(Scale,number)+as(TableStart,number),address).
+
+block_points(TableStart,"data",0,9,"arm jump table"),
+data_block_candidate(TableStart,Size),
+arm_jump_table_candidate(EA,TableStart,TableStart,Size,TargetAddr,TableLimit,"TBx"):-
+    EA band 1 = 1, // assert: tbb/tbh instruction only exist in Thumb.
+    instruction(EA,InstrSize,_,Operation,Operand,0,0,0,_,_),
+    op_indirect(Operand,"NONE","PC", _,_,_,_),
+    TableStart = as(EA+InstrSize-1,address),
+    (
+        Size = 2, Operation="TBH";
+        Size = 1, Operation="TBB"
+    ),
+    // tbb/tbh can't perform a mode switch and just uses aligned addresses of
+    // Thumb targets.
+    tbx_target(TableStart,TableStart,Size,AlignedTargetAddr),
+    TargetAddr = AlignedTargetAddr + 1,
+    (
+        // Jump to after the jumptable - sets a hard limit on the jumptable size.
+        AlignedTargetAddr > TableStart, TableLimit = AlignedTargetAddr;
+        // Jump to before the jumptable - does not restrict jumptable size.
+        AlignedTargetAddr <= TableStart, arch.pointer_size(PtrSize), TableLimit = (2 ^ ((8*PtrSize)-1)) - 1
+    ).
+
 block_points(EA+Size,"data",0,4,"arm jump table (recursive)"),
 data_block_candidate(EA+Size,Size),
-arm_jump_table_candidate(EA_jump,EA+Size,TargetAddr,NewTableLimit):-
+arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimit,Type):-
     // recursive
-    arm_jump_table_candidate(EA_jump,EA,_,TableLimit),
-    address_in_data(EA+Size,TargetAddr),
-    code_in_block_candidate_refined(TargetAddr,_),
-    arch.pointer_size(Size),
+    arm_jump_table_candidate(EA_jump,TableStart,EA,Size,_,TableLimit,_),
+    (
+        Type = "absolute",
+        address_in_data(EA+Size,TargetAddr),
+        AlignedTargetAddr=TargetAddr
+        ;
+        Type = "TBx",
+        tbx_target(EA+Size,TableStart,Size,AlignedTargetAddr),
+        TargetAddr=AlignedTargetAddr + 1
+    ),
+    EA+Size < TableLimit,
     (
         // The target address is less than the limit, but at some address beyond
         // the current entry. Limit the table size to that target.
-        TargetAddr < TableLimit, TargetAddr > EA+Size, NewTableLimit = TargetAddr;
+        AlignedTargetAddr < TableLimit, AlignedTargetAddr > EA+Size, NewTableLimit = AlignedTargetAddr;
         // The target address points at or before the current jump table entry.
         // Gives us no info about the table size - keep propagating.
-        TargetAddr < TableLimit, TargetAddr <= EA+Size, NewTableLimit = TableLimit;
+        AlignedTargetAddr < TableLimit, AlignedTargetAddr <= EA+Size, NewTableLimit = TableLimit;
         // The target address points beyond our current limit - keep propagating.
-        TargetAddr >= TableLimit, NewTableLimit = TableLimit
+        AlignedTargetAddr >= TableLimit, NewTableLimit = TableLimit
     ).
 
-jump_table_candidate(EA,DataEA,TargetEA),
+jump_table_candidate(EA,DataEA,TargetEA):-
+    arm_jump_table_candidate(EA,_,DataEA,_,TargetEA,_,_).
+
 data_object_point(DataEA,Size,"symbol",2,"arm jump-table3"),
 data_object_candidate(DataEA,Size,"symbol"):-
-    arch.pointer_size(Size),
-    arm_jump_table_candidate(EA,DataEA,TargetEA,_).
+    arm_jump_table_candidate(_,_,DataEA,Size,_,_,"absolute").
+
+jump_table_start(EA,Size,TableStart,TableStart,Operation):-
+    Operation="TBx",
+    arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,Operation),
+    jump_table_candidate_refined(EA,DataEA,_).
+
+symbol_minus_symbol_jump_table(DataEA,TableStart,Size,TableStart,TargetAddr,"first",Scale):-
+    Scale = 2,
+    arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,"TBx"),
+    jump_table_candidate_refined(EA,DataEA,TargetAddr).
 
 .decl litpool_ref(ea:address, register_name:register, ea_litpool:address, nbits:unsigned)
 .output litpool_ref
