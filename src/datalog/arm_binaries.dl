@@ -529,16 +529,16 @@ symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Symbol1,Symbol2_adjusted,
  *
  * EA_jump: address of jump instruction
  * EntryAddr: address of table entry
+ * TargetAddr: resolved target of the jump
  * TableLimit: first address that cannot be part of the jump table
  */
-.decl arm_jump_table(EA_jump:address,EntryAddr:address,TableLimit:address)
-.output arm_jump_table
+.decl arm_jump_table_candidate(EA_jump:address,EntryAddr:address,TargetAddr:address,TableLimit:address)
+.output arm_jump_table_candidate
 
 block_points(TableStart,"data",0,9,"arm jump table"),
 data_block_candidate(TableStart,Size),
-data_object_point(TableStart,Size,"symbol",2,"arm jump-table"),
-data_object_candidate(TableStart,Size,"symbol"),
-arm_jump_table(EA_jump,TableStart,TableLimit):-
+arm_jump_table_candidate(EA_jump,TableStart,TargetAddr,TableLimit):-
+    EA_jump band 1 = 0,
     instruction_get_operation(EA_jump,Operation),
     arch.load_word_operation(Operation),
     arch.pc_register(PC),
@@ -573,11 +573,9 @@ arm_jump_table(EA_jump,TableStart,TableLimit):-
 
 block_points(EA+Size,"data",0,4,"arm jump table (recursive)"),
 data_block_candidate(EA+Size,Size),
-data_object_point(EA+Size,Size,"symbol",2,"arm jump-table3"),
-data_object_candidate(EA+Size,Size,"symbol"),
-arm_jump_table(EA_jump,EA+Size,NewTableLimit):-
+arm_jump_table_candidate(EA_jump,EA+Size,TargetAddr,NewTableLimit):-
     // recursive
-    arm_jump_table(EA_jump,EA,TableLimit),
+    arm_jump_table_candidate(EA_jump,EA,_,TableLimit),
     address_in_data(EA+Size,TargetAddr),
     code_in_block_candidate_refined(TargetAddr,_),
     arch.pointer_size(Size),
@@ -592,18 +590,11 @@ arm_jump_table(EA_jump,EA+Size,NewTableLimit):-
         TargetAddr >= TableLimit, NewTableLimit = TableLimit
     ).
 
-// For table entry targets: to split the target blocks
-block_needs_splitting_at(as(TargetAddr,address)):-
-    arm_jump_table(_,TableEntry,_),
+jump_table_candidate(EA,DataEA,TargetEA),
+data_object_point(DataEA,Size,"symbol",2,"arm jump-table3"),
+data_object_candidate(DataEA,Size,"symbol"):-
     arch.pointer_size(Size),
-    data_word(TableEntry,Size,TargetAddr),
-    code(as(TargetAddr,address)).
-
-block_needs_splitting_at(as(TargetAddr+1,address)):- // Thumb
-    arm_jump_table(_,TableEntry,_),
-    arch.pointer_size(Size),
-    data_word(TableEntry,Size,TargetAddr),
-    code(as(TargetAddr+1,address)).
+    arm_jump_table_candidate(EA,DataEA,TargetEA,_).
 
 .decl litpool_ref(ea:address, register_name:register, ea_litpool:address, nbits:unsigned)
 .output litpool_ref

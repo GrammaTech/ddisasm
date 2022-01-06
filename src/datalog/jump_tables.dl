@@ -1,0 +1,61 @@
+//===- jump_tables.dl ---------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019-2022 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+This module defines common relations for jump tables.
+*/
+
+/**
+A candidate entry in a jump table (may contain absolute or relative addresses)
+
+Calculated prior to code inference.
+
+Attributes:
+
+* EA: The address of the instruction from which the jump occurs.
+* DataEA: The address at which the actual data entry of the jump table resides.
+* TargetEA: The target of the jump.
+*/
+.decl jump_table_candidate(EA:address,DataEA:address,TargetEA:address)
+.output jump_table_candidate
+
+// Fallback rule for architectures where this is unused.
+jump_table_candidate(0,0,0):-
+    false.
+
+/**
+Subset of jump_table_candidate that appears to be valid after code inference.
+
+Attributes:
+
+* EA: The address of the instruction from which the jump occurs.
+* DataEA: The address at which the actual data entry of the jump table resides.
+* TargetEA: The target of the jump.
+*/
+.decl jump_table_candidate_refined(EA:address,DataEA:address,TargetEA:address)
+.output jump_table_candidate_refined
+
+jump_table_candidate_refined(EA,EntryAddr,TargetAddr):-
+    jump_table_candidate(EA,EntryAddr,TargetAddr),
+    code(EA),
+    code(TargetAddr),
+    !code(EntryAddr).
