@@ -219,6 +219,69 @@ class CfgTests(unittest.TestCase):
                 all(len(list(b.outgoing_edges)) == 2 for b in blocks)
             )
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_arm_jumptable_cfg(self):
+        """
+        Test ARM32 CFG on a ldrls pc, [pc, r0, LSL2]-style jumptable.
+        """
+        binary = "ex"
+        adder_dir = ex_arm_asm_dir / "ex_jumptable"
+        with cd(adder_dir):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "-O0",
+                    [],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    "arm-linux-gnueabihf-strip",
+                    False,
+                    True,
+                    format="--ir",
+                    extension="gtirb",
+                )
+            )
+
+            # ldrls pc, [pc, r0, LSL2]
+            insn = b"\x00\xf1\x9f\x97"
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            jumping_block = None
+            for block in m.code_blocks:
+                if block.contents.endswith(insn):
+                    jumping_block = block
+
+            self.assertIsNotNone(jumping_block)
+
+            edges_by_type = {
+                gtirb.Edge.Type.Branch: [],
+                gtirb.Edge.Type.Fallthrough: [],
+            }
+
+            for edge in jumping_block.outgoing_edges:
+                if edge.label.type not in edges_by_type:
+                    self.fail(
+                        "Unexpected edge type: {}".format(edge.label.type)
+                    )
+                edges_by_type[edge.label.type].append(edge)
+
+            self.assertEqual(6, len(edges_by_type[gtirb.Edge.Type.Branch]))
+            self.assertEqual(
+                1, len(edges_by_type[gtirb.Edge.Type.Fallthrough])
+            )
+
+            for edges in edges_by_type[gtirb.Edge.Type.Branch]:
+                self.assertIsInstance(edge.target, gtirb.CodeBlock)
+
 
 if __name__ == "__main__":
     unittest.main()
