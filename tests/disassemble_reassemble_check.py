@@ -226,16 +226,17 @@ def reassemble_using_makefile(assembler, binary, extra_flags):
     return True
 
 
-def link(linker: str, obj: str, extra_flags: List[str]) -> bool:
+def link(
+    linker: str, binary: str, obj: List[str], extra_flags: List[str]
+) -> bool:
     """Link a reassembled object file into a new binary."""
-    binary = obj
-    if binary.endswith(".o"):
-        binary = binary[:-2]
-    print("# Linking", obj, "into", binary)
-    print("link command:", linker, obj, "-o", binary, *extra_flags)
-    completedProcess = subprocess.run(
-        [linker, obj, "-o", binary] + extra_flags
-    )
+    # binary = obj
+    # if binary.endswith(".o"):
+    #    binary = binary[:-2]
+    print("# Linking", ", ".join(obj), "into", binary)
+    cmd = [linker] + obj + ["-o", binary] + extra_flags
+    print("link command:", " ".join(cmd))
+    completedProcess = subprocess.run(cmd)
     if completedProcess.returncode != 0:
         print(bcolors.fail("# Linking failed\n"))
         return False
@@ -339,7 +340,12 @@ def disassemble_reassemble_test(
                 ):
                     reassembly_errors += 1
                     continue
-                if linker and not link(linker, binary, extra_link_flags):
+                if linker and not link(
+                    linker,
+                    os.path.splitext(binary)[0],
+                    [binary],
+                    extra_link_flags,
+                ):
                     link_errors += 1
                     continue
                 if skip_test or reassemble_function == skip_reassemble:
