@@ -20,7 +20,7 @@ libmsg.a: $(LIBMSG_OBJ)
 	$(AR) -rcs $@ $^
 
 %.o: %.c
-	$(CC) -c -o $@ $^
+	$(CC) $(CFLAGS) -c -o $@ $^
 
 clean:
 	rm -f ex out.txt libmsg.a ex.o $(LIBMSG_OBJ)
