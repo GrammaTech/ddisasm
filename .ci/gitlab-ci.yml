@@ -81,6 +81,7 @@ build-conan-gcc7:
   rules:
     *run-only-main
   script: &build-conan
+    - pip3 install --upgrade conan
     - conan profile new default --detect
     - conan profile update settings.compiler.libcxx=libstdc++11 default
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
@@ -104,6 +105,7 @@ build-conan-gcc9:
   tags: [ddisasm-windows]
   script:
     - systeminfo
+    - pip3 install --upgrade conan
     # Set up user and remote
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
     - conan user ci_user -r gitlab -p
