@@ -30,6 +30,7 @@ void Arm32Loader::insert(const Arm32Facts& Facts, DatalogProgram& Program)
 {
     auto& [Instructions, Operands] = Facts;
     Program.insert("instruction", Instructions.instructions());
+    Program.insert("instruction_writeback", Instructions.writeback());
     Program.insert("invalid_op_code", Instructions.invalid());
     Program.insert("op_immediate", Operands.imm());
     Program.insert("op_regdirect", Operands.reg());
@@ -106,18 +107,13 @@ void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size,
     size_t Count = cs_disasm(*CsHandle, Bytes, Size, DecodeAddr, Count0, &CsInsn);
 
     // Build datalog instruction facts from Capstone instruction.
-    std::optional<relations::Instruction> Instruction;
+    bool InstAdded = false;
     if(Count > 0)
     {
-        Instruction = build(Facts, CsInsn[Count - 1]);
+        InstAdded = build(Facts, CsInsn[Count - 1]);
     }
 
-    if(Instruction)
-    {
-        // Add the instruction to the facts table.
-        Facts.Instructions.add(*Instruction);
-    }
-    else
+    if(!InstAdded)
     {
         // Add address to list of invalid instruction locations.
         Facts.Instructions.invalid(gtirb::Addr(Addr));
@@ -126,8 +122,7 @@ void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size,
     cs_free(CsInsn, Count);
 }
 
-std::optional<relations::Instruction> Arm32Loader::build(Arm32Facts& Facts,
-                                                         const cs_insn& CsInstruction)
+bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction)
 {
     const cs_arm& Details = CsInstruction.detail->arm;
     std::string Name = uppercase(CsInstruction.mnemonic);
@@ -171,7 +166,7 @@ std::optional<relations::Instruction> Arm32Loader::build(Arm32Facts& Facts,
                 // Build operand for datalog fact.
                 if(!Op)
                 {
-                    return std::nullopt;
+                    return false;
                 }
                 // Add operand to the operands table.
                 uint64_t OpIndex = Facts.Operands.add(*Op);
@@ -197,7 +192,7 @@ std::optional<relations::Instruction> Arm32Loader::build(Arm32Facts& Facts,
             std::optional<relations::Operand> Op = build(CsOp);
             if(!Op)
             {
-                return std::nullopt;
+                return false;
             }
 
             // Add operand to the operands table.
@@ -214,7 +209,13 @@ std::optional<relations::Instruction> Arm32Loader::build(Arm32Facts& Facts,
 
     gtirb::Addr Addr(CsInstruction.address);
     uint64_t Size(CsInstruction.size);
-    return relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0};
+
+    Facts.Instructions.add(relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0});
+    if(Details.writeback)
+    {
+        Facts.Instructions.writeback(InstructionWriteback{Addr});
+    }
+    return true;
 }
 
 std::optional<relations::Operand> Arm32Loader::build(const cs_arm_op& CsOp)
@@ -266,3 +267,12 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_arm_op& CsOp)
 
     return std::nullopt;
 }
+
+namespace souffle
+{
+    souffle::tuple& operator<<(souffle::tuple& T, const InstructionWriteback& Writeback)
+    {
+        T << Writeback.Addr;
+        return T;
+    }
+} // namespace souffle
