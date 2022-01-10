@@ -24,11 +24,27 @@
 #ifndef ARCHIVE_READER_H_
 #define ARCHIVE_READER_H_
 
+#include <exception>
 #include <fstream>
 #include <list>
 #include <memory>
 #include <string>
 #include <vector>
+
+class ArchiveReaderException : public std::exception
+{
+    std::string error_message;
+
+public:
+    ArchiveReaderException(const std::string &msg) : error_message(msg)
+    {
+    }
+
+    virtual const char *what() const throw()
+    {
+        return error_message.c_str();
+    }
+};
 
 struct FileHeader
 {

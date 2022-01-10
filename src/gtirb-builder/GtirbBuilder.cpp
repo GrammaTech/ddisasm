@@ -77,26 +77,34 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
     {
         gtirb::IR* IR = gtirb::IR::Create(*Context);
         auto TmpDir = fs::temp_directory_path();
-        ArchiveReader Archive(Path);
 
-        for(auto& Object : Archive.Files())
+        try
         {
-            std::string ObjectPath = (TmpDir / fs::unique_path()).string();
-            Object->Extract(ObjectPath);
+            ArchiveReader Archive(Path);
 
-            std::shared_ptr<LIEF::Binary> Binary{LIEF::Parser::parse(ObjectPath)};
-            if(!Binary)
+            for(auto& Object : Archive.Files())
             {
-                return GtirbBuilder::build_error::ParseError;
-            }
+                std::string ObjectPath = (TmpDir / fs::unique_path()).string();
+                Object->Extract(ObjectPath);
 
-            if(Binary->format() != LIEF::EXE_FORMATS::FORMAT_ELF)
-            {
-                return GtirbBuilder::build_error::NotSupported;
-            }
+                std::shared_ptr<LIEF::Binary> Binary{LIEF::Parser::parse(ObjectPath)};
+                if(!Binary)
+                {
+                    return GtirbBuilder::build_error::ParseError;
+                }
 
-            ElfReader Elf(Path, Object->FileName, Context, IR, Binary);
-            Elf.build();
+                if(Binary->format() != LIEF::EXE_FORMATS::FORMAT_ELF)
+                {
+                    return GtirbBuilder::build_error::NotSupported;
+                }
+
+                ElfReader Elf(Path, Object->FileName, Context, IR, Binary);
+                Elf.build();
+            }
+        }
+        catch(ArchiveReaderException& e)
+        {
+            return GtirbBuilder::build_error::ParseError;
         }
 
         return GTIRB{Context, IR};
