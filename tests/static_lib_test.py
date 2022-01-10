@@ -53,20 +53,20 @@ class TestStaticLib(unittest.TestCase):
                 binary = "libmsg.a"
                 modules = ["msg_one", "msg_two", "msg_three", "msg_four"]
 
+                gtirb_file = "libmsg.gtirb"
                 self.assertTrue(
-                    disassemble(binary, format="--ir", extension="gtirb")[0]
+                    disassemble(binary, gtirb_file, format="--ir")[0]
                 )
                 self.assertEqual(
                     len(modules),
-                    len(
-                        list(gtirb.IR.load_protobuf(binary + ".gtirb").modules)
-                    ),
+                    len(gtirb.IR.load_protobuf(gtirb_file).modules),
                 )
 
+                asm_dir = Path("libmsg-tmp")
                 self.assertTrue(
-                    disassemble(binary, format="--asm", extension="lib")[0]
+                    disassemble(binary, str(asm_dir), format="--asm")[0]
                 )
-                asm_dir = Path(binary + ".lib")
+
                 self.assertTrue(asm_dir.exists())
                 self.assertTrue(asm_dir.is_dir())
 

@@ -32,16 +32,7 @@ class LibrarySymbolsTests(unittest.TestCase):
         library = "ex.so"
         with cd(ex_dir / "ex_lib_symbols"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(
-                disassemble(
-                    library,
-                    "strip",
-                    False,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
-                )
-            )
+            self.assertTrue(disassemble(library, format="--ir")[0])
 
             ir_library = gtirb.IR.load_protobuf(library + ".gtirb")
             m = ir_library.modules[0]
@@ -76,16 +67,7 @@ class AuxDataTests(unittest.TestCase):
         binary = "ex"
         with cd(ex_asm_dir / "ex_cfi_directives"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    "strip",
-                    False,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
-                )
-            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
@@ -123,18 +105,14 @@ class AuxDataTests(unittest.TestCase):
             self.assertTrue(
                 disassemble(
                     "ex",
-                    False,
-                    False,
-                    False,
                     format="--ir",
-                    extension="gtirb",
                     extra_args=[
                         "-F",
                         "--with-souffle-relations",
                         "--debug-dir",
                         "dbg",
                     ],
-                )
+                )[0]
             )
 
             # load the gtirb
@@ -169,16 +147,7 @@ class MovedLabelTests(unittest.TestCase):
         binary = "ex"
         with cd(ex_asm_dir / "ex_moved_label"):
             self.assertTrue(compile("gcc", "g++", "-Os", []))
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    "strip",
-                    False,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
-                )
-            )
+            self.assertTrue(disassemble(binary, format="--ir",)[0])
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
@@ -215,27 +184,12 @@ class RawGtirbTests(unittest.TestCase):
             # Output GTIRB file without disassembling.
             self.assertTrue(
                 disassemble(
-                    binary,
-                    False,
-                    False,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
-                    extra_args=["--no-analysis"],
-                )
+                    binary, format="--ir", extra_args=["--no-analysis"],
+                )[0]
             )
 
             # Disassemble GTIRB input file.
-            self.assertTrue(
-                disassemble(
-                    "ex.gtirb",
-                    False,
-                    False,
-                    False,
-                    format="--asm",
-                    extension="s",
-                )
-            )
+            self.assertTrue(disassemble("ex.gtirb", format="--asm")[0])
 
             self.assertTrue(reassemble("gcc", "ex.gtirb", extra_flags=[]))
             self.assertTrue(test())
@@ -256,17 +210,7 @@ class DataDirectoryTests(unittest.TestCase):
             self.assertEqual(proc.returncode, 0)
 
             # Disassemble to GTIRB file.
-            self.assertTrue(
-                disassemble(
-                    "ex.exe",
-                    False,
-                    False,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
-                    extra_args=[],
-                )
-            )
+            self.assertTrue(disassemble("ex.exe", format="--ir")[0])
 
             # Load the GTIRB file.
             ir = gtirb.IR.load_protobuf("ex.exe.gtirb")
@@ -308,11 +252,7 @@ class PeResourcesTests(unittest.TestCase):
             self.assertTrue(
                 disassemble(
                     "ex.exe",
-                    False,
-                    False,
-                    False,
                     format="--asm",
-                    extension="s",
                     extra_args=[
                         "--generate-import-libs",
                         "--generate-resources",

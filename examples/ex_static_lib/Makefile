@@ -24,7 +24,7 @@ libmsg.a: $(LIBMSG_OBJ)
 
 clean:
 	rm -f ex out.txt libmsg.a ex.o $(LIBMSG_OBJ)
-	rm -fr ex.unstripped *.s *.old*  dl_files
+	rm -fr ex.unstripped *.s libmsg-tmp
 
 check:
 	@ $(EXEC) ./ex >/tmp/res.txt

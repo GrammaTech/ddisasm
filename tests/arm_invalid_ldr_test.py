@@ -29,16 +29,7 @@ class ArmInvalidLdrTests(unittest.TestCase):
             )
 
             # collect the invalid symbols
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    "arm-linux-gnueabihf-strip",
-                    False,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
-                )
-            )
+            self.assertTrue(disassemble(binary, format="--ir",))
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
             invalid_syms = [
@@ -53,11 +44,9 @@ class ArmInvalidLdrTests(unittest.TestCase):
             self.assertTrue(
                 disassemble(
                     binary,
-                    "arm-linux-gnueabihf-strip",
-                    True,
-                    False,
+                    strip_exe="arm-linux-gnueabihf-strip",
+                    strip=True,
                     format="--ir",
-                    extension="gtirb",
                     extra_strip_flags=extra_strip_flags,
                 )
             )
