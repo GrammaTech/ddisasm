@@ -54,14 +54,7 @@ class TestStaticLib(unittest.TestCase):
                 modules = ["msg_one", "msg_two", "msg_three", "msg_four"]
 
                 self.assertTrue(
-                    disassemble(
-                        binary,
-                        "strip",
-                        False,
-                        False,
-                        format="--ir",
-                        extension="gtirb",
-                    )[0]
+                    disassemble(binary, format="--ir", extension="gtirb")[0]
                 )
                 self.assertEqual(
                     len(modules),
@@ -71,14 +64,7 @@ class TestStaticLib(unittest.TestCase):
                 )
 
                 self.assertTrue(
-                    disassemble(
-                        binary,
-                        "strip",
-                        False,
-                        False,
-                        format="--asm",
-                        extension="lib",
-                    )[0]
+                    disassemble(binary, format="--asm", extension="lib")[0]
                 )
                 asm_dir = Path(binary + ".lib")
                 self.assertTrue(asm_dir.exists())

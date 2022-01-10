@@ -132,9 +132,9 @@ def compile(
 
 def disassemble(
     binary,
-    strip_exe,
-    strip,
-    sstrip,
+    strip_exe="strip",
+    strip=False,
+    sstrip=False,
     format="--asm",
     extension="s",
     extra_args=[],
