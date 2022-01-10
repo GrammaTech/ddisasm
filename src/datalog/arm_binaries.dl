@@ -754,6 +754,7 @@ symbolic_data(LitPoolAddr,Size,Got_entry):-
 cant_have_symbolic_immediate(EA):-
     instruction_get_operation(EA, Operation),
     (
+        // NOTE: This is not exhaustive.
         contains("SUB", Operation);
         contains("MOV", Operation);
         contains("AND", Operation);
@@ -843,7 +844,6 @@ invalid(EA,"arm: invalid pc"):-
     instruction_get_dest_op(EA,_,Op),
     op_regdirect_contains_reg(Op,PC),
     arch.pc_register(PC).
-
 
 instruction_has_relocation(EA,EA-Mode):-
     binary_type("REL"),
