@@ -55,7 +55,7 @@ ArchiveReader::ArchiveReader(const std::string &P) : Path(P)
 
     if(!ArchiveReader::is_ar(Stream))
     {
-        // TODO: error
+        throw ArchiveReaderException("Invalid ar format: unexpected magic");
     }
 
     uint64_t Offset = Stream.tellg();
@@ -67,7 +67,7 @@ ArchiveReader::ArchiveReader(const std::string &P) : Path(P)
 
         if(std::memcmp(Header.end, "`\n", sizeof(Header.end)) != 0)
         {
-            // TODO: this is an error!
+            throw ArchiveReaderException("Invalid ar format: unexpected terminator");
         }
 
         auto File = std::make_shared<ArchiveReaderFile>(*this, Header, Offset);
