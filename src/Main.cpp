@@ -226,6 +226,7 @@ int main(int argc, char **argv)
     }
 
     gtirb_pprint::PrettyPrinter pprinter;
+    bool HasPE = false;
     auto Modules = GTIRB->IR->modules();
     unsigned int ModuleCount = std::distance(std::begin(Modules), std::end(Modules));
     for(auto &Module : Modules)
@@ -412,20 +413,9 @@ int main(int argc, char **argv)
 
         performSanityChecks(Souffle->get(), vm.count("self-diagnose") != 0);
 
-        // TODO: is this something that should really be done per-module?
-        // Output PE-specific build artifacts.
         if(Module.getFileFormat() == gtirb::FileFormat::PE)
         {
-            if(vm.count("generate-import-libs"))
-            {
-                gtirb_bprint::PeBinaryPrinter BP(pprinter, {}, {});
-                BP.libs(*GTIRB->IR);
-            }
-            if(vm.count("generate-resources"))
-            {
-                gtirb_bprint::PeBinaryPrinter BP(pprinter, {}, {});
-                BP.resources(*GTIRB->IR, *GTIRB->Context);
-            }
+            HasPE = true;
         }
     }
 
@@ -456,6 +446,21 @@ int main(int argc, char **argv)
         {
             std::ofstream out(vm["json"].as<std::string>());
             GTIRB->IR->saveJSON(out);
+        }
+    }
+
+    // Output PE-specific build artifacts.
+    if(HasPE)
+    {
+        if(vm.count("generate-import-libs"))
+        {
+            gtirb_bprint::PeBinaryPrinter BP(pprinter, {}, {});
+            BP.libs(*GTIRB->IR);
+        }
+        if(vm.count("generate-resources"))
+        {
+            gtirb_bprint::PeBinaryPrinter BP(pprinter, {}, {});
+            BP.resources(*GTIRB->IR, *GTIRB->Context);
         }
     }
 
