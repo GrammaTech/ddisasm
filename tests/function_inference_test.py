@@ -38,23 +38,15 @@ class TestFunctionInference(unittest.TestCase):
             self.assertTrue(
                 disassemble(
                     binary,
-                    strip_exe,
-                    False,
-                    False,
                     format="--ir",
-                    extension="gtirb",
                     extra_args=["--skip-function-analysis"],
                 )[0]
             )
             module = gtirb.IR.load_protobuf(binary + ".gtirb").modules[0]
+
             self.assertTrue(
                 disassemble(
-                    binary,
-                    strip_exe,
-                    True,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
+                    binary, strip_exe=strip_exe, strip=True, format="--ir"
                 )[0]
             )
             moduleStripped = gtirb.IR.load_protobuf(binary + ".gtirb").modules[

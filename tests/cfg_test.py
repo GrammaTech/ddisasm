@@ -21,16 +21,7 @@ class CfgTests(unittest.TestCase):
         binary = "ex"
         with cd(ex_asm_dir / "ex_relative_switch"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    "strip",
-                    False,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
-                )
-            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
@@ -61,16 +52,7 @@ class CfgTests(unittest.TestCase):
         binary = "ex.o"
         with cd(ex_dir / "ex1"):
             self.assertTrue(compile("gcc", "g++", "-O0", ["--save-temps"]))
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    "strip",
-                    False,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
-                )
-            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]

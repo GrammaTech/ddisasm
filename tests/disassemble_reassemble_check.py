@@ -129,29 +129,27 @@ def compile(
 
 def disassemble(
     binary,
+    output=None,
     strip_exe="strip",
     strip=False,
     sstrip=False,
     format="--asm",
-    extension="s",
     extra_args=[],
 ):
     """
-    Disassemble the binary 'binary'
+    Disassemble the binary 'binary' and generate ddisasm output 'output'
     """
+    if output is None:
+        if format == "--asm":
+            output = binary + ".s"
+        elif format == "--ir":
+            output = binary + ".gtirb"
+
     with get_target(binary, strip_exe, strip, sstrip) as target_binary:
         print("# Disassembling " + target_binary + "\n")
         start = timer()
         completedProcess = subprocess.run(
-            [
-                "ddisasm",
-                target_binary,
-                format,
-                binary + "." + extension,
-                "-j",
-                "1",
-            ]
-            + extra_args
+            ["ddisasm", target_binary, format, output, "-j", "1"] + extra_args
         )
         time_spent = timer() - start
     if completedProcess.returncode == 0:
@@ -313,6 +311,7 @@ def disassemble_reassemble_test(
                     continue
                 success, time = disassemble(
                     binary,
+                    None,
                     strip_exe,
                     strip,
                     sstrip,
