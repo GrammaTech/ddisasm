@@ -40,12 +40,17 @@ class bcolors:
 
 
 @contextlib.contextmanager
-def get_target(binary, strip_exe, strip, sstrip):
+def get_target(binary, strip_exe, strip, sstrip, extra_strip_flags=None):
     if strip:
         print("# stripping binary\n")
         subprocess.run(["cp", binary, binary + ".stripped"])
         binary = binary + ".stripped"
-        subprocess.run([strip_exe, "--strip-unneeded", binary])
+
+        cmd = [strip_exe, "--strip-unneeded", binary]
+        if extra_strip_flags:
+            cmd.extend(extra_strip_flags)
+
+        subprocess.run(cmd)
         stripped_binary = binary
     if sstrip:
         print("# stripping sections\n")
@@ -125,11 +130,14 @@ def disassemble(
     format="--asm",
     extension="s",
     extra_args=[],
+    extra_strip_flags=None,
 ):
     """
     Disassemble the binary 'binary'
     """
-    with get_target(binary, strip_exe, strip, sstrip) as target_binary:
+    with get_target(
+        binary, strip_exe, strip, sstrip, extra_strip_flags=extra_strip_flags
+    ) as target_binary:
         print("# Disassembling " + target_binary + "\n")
         start = timer()
         completedProcess = subprocess.run(
