@@ -131,7 +131,6 @@ ArchiveReader::ArchiveReader(const std::string &P) : Path(P)
         }
         else
         {
-            std::cerr << "found entry: " << File->FileName << std::endl;
             _Files.push_back(File);
         }
 
@@ -161,7 +160,6 @@ ArchiveReaderFile::ArchiveReaderFile(ArchiveReader &R, const FileHeader &Header,
 {
     // We support file name formats supported by binutils, see:
     // https://sourceware.org/git/?p=binutils-gdb.git;a=blob;f=bfd/archive.c;h=9ad61adc6159a2731a0443353f393baeea48bf5d#l85
-    std::cerr << "ident: \'" << Ident << "\"" << std::endl;
     size_t Index = Ident.find_last_of("/");
     if(Index == std::string::npos)
     {

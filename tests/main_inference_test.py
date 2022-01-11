@@ -34,11 +34,9 @@ class TestMainInference(unittest.TestCase):
             self.assertTrue(
                 disassemble(
                     binary,
-                    strip_exe,
-                    strip,
-                    False,
+                    strip_exe=strip_exe,
+                    strip=strip,
                     format="--ir",
-                    extension="gtirb",
                     extra_args=["--skip-function-analysis"],
                 )[0],
                 msg="Disassembly failed",
@@ -46,12 +44,7 @@ class TestMainInference(unittest.TestCase):
             module = gtirb.IR.load_protobuf(binary + ".gtirb").modules[0]
             self.assertTrue(
                 disassemble(
-                    binary,
-                    strip_exe,
-                    True,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
+                    binary, strip_exe=strip_exe, strip=True, format="--ir",
                 )[0],
                 msg="Disassembly failed (stripped)",
             )

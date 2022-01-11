@@ -49,7 +49,12 @@ class TestStaticLib(unittest.TestCase):
                 )
 
                 binary = "libmsg.a"
-                modules = ["msg_one", "msg_two", "msg_three", "msg_four"]
+                modules = [
+                    "msg_one",
+                    "msg_two",
+                    "msg_three",
+                    "msg_four_with_a_long_name",
+                ]
 
                 gtirb_file = "libmsg.gtirb"
                 self.assertTrue(
