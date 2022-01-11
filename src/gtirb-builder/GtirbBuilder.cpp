@@ -104,6 +104,7 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
         }
         catch(ArchiveReaderException& e)
         {
+            std::cerr << std::endl << "ERROR: " << e.what();
             return GtirbBuilder::build_error::ParseError;
         }
 
