@@ -228,9 +228,6 @@ def link(
     linker: str, binary: str, obj: List[str], extra_flags: List[str]
 ) -> bool:
     """Link a reassembled object file into a new binary."""
-    # binary = obj
-    # if binary.endswith(".o"):
-    #    binary = binary[:-2]
     print("# Linking", ", ".join(obj), "into", binary)
     cmd = [linker] + obj + ["-o", binary] + extra_flags
     print("link command:", " ".join(cmd))

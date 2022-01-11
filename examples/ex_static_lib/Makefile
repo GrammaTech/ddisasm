@@ -3,7 +3,7 @@ AR=ar
 CFLAGS=
 EXEC=
 
-LIBMSG_SRC=msg_one.c msg_two.c msg_three.c msg_four.c
+LIBMSG_SRC=msg_one.c msg_two.c msg_three.c msg_four_with_a_long_name.c
 LIBMSG_OBJ=$(patsubst %.c, %.o, $(LIBMSG_SRC))
 
 .PHONY: all check clean

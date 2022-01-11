@@ -124,16 +124,7 @@ class CfgTests(unittest.TestCase):
                     "qemu-arm -L /usr/arm-linux-gnueabihf",
                 )
             )
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    "arm-linux-gnueabihf-strip",
-                    False,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
-                )
-            )
+            self.assertTrue(disassemble(binary, format="--ir",)[0])
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
@@ -234,11 +225,9 @@ class CfgTests(unittest.TestCase):
             self.assertTrue(
                 disassemble(
                     binary,
-                    "arm-linux-gnueabihf-strip",
-                    False,
-                    True,
+                    strip_exe="arm-linux-gnueabihf-strip",
+                    strip=True,
                     format="--ir",
-                    extension="gtirb",
                 )
             )
 
