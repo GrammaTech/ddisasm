@@ -26,8 +26,10 @@
 #include <algorithm>
 #include <cstring>
 #include <iostream>
+#include <unordered_map>
 
 const std::vector<uint8_t> ar_magic = {'!', '<', 'a', 'r', 'c', 'h', '>', '\n'};
+const std::string symdef_prefix = "__.SYMDEF";
 
 bool ArchiveReader::is_ar(const std::string &Path)
 {
@@ -53,6 +55,8 @@ ArchiveReader::ArchiveReader(const std::string &P) : Path(P)
     uint64_t Length = Stream.tellg();
     Stream.seekg(0, Stream.beg);
 
+    std::unordered_map<uint64_t, std::string> GnuExtendedFilenames;
+
     if(!ArchiveReader::is_ar(Stream))
     {
         throw ArchiveReaderException("Invalid ar format: unexpected magic");
@@ -71,22 +75,74 @@ ArchiveReader::ArchiveReader(const std::string &P) : Path(P)
         }
 
         auto File = std::make_shared<ArchiveReaderFile>(*this, Header, Offset);
-
-        if(File->Ident.at(0) != '/')
+        if(File->FileNameFormat == GNUExtended)
         {
+            auto FileNameIt = GnuExtendedFilenames.find(File->ExtendedFileNameNumber);
+
+            if(FileNameIt == GnuExtendedFilenames.end())
+            {
+                throw ArchiveReaderException("Invalid ar format: extended filename not found");
+            }
+            File->FileName = FileNameIt->second;
+        }
+        else if(File->FileNameFormat == BSDExtended)
+        {
+            File->FileName.resize(File->ExtendedFileNameNumber);
+            Stream.read(File->FileName.data(), File->ExtendedFileNameNumber);
+            Offset += File->ExtendedFileNameNumber;
+
+            if(File->ExtendedFileNameNumber > File->Size)
+            {
+                throw ArchiveReaderException("Invalid ar format: extended file name too long");
+            }
+            File->Offset += File->ExtendedFileNameNumber;
+            File->Size -= File->ExtendedFileNameNumber;
+        }
+
+        if(File->FileName == "/" || File->FileName == "ARFILENAMES/")
+        {
+            // GNU extended filenames entry
+            size_t LineOffset = 0;
+            while(LineOffset < File->Size)
+            {
+                std::string Line(File->Size - LineOffset + 1, '\0');
+                Stream.getline(Line.data(), Line.size() - 1, '\n');
+                size_t LineSize = Line.find_first_of('\0');
+                Line.resize(LineSize);
+
+                // Remove trailing "/" from the filename
+                if(Line[LineSize - 1] == '/')
+                {
+                    Line.erase(LineSize - 1);
+                }
+
+                if(Line != "")
+                {
+                    GnuExtendedFilenames.insert({LineOffset, Line});
+                }
+
+                LineOffset += LineSize + 1;
+            }
+        }
+        else if(File->FileName == ""
+                || File->FileName.compare(0, symdef_prefix.size(), symdef_prefix) == 0)
+        {
+            // symtable entry: ignore.
+        }
+        else
+        {
+            std::cerr << "found entry: " << File->FileName << std::endl;
             _Files.push_back(File);
         }
 
-        uint64_t SeekSize = File->Size;
-        if(SeekSize % 2 != 0)
+        Offset += File->Size;
+        if(Offset % 2 != 0)
         {
             // File headers are aligned to even bytes
             // (i.e., the content is padded with "\n") if it has an odd size.
-            SeekSize += 1;
+            Offset += 1;
         }
-
-        Stream.seekg(SeekSize, Stream.cur);
-        Offset += SeekSize;
+        Stream.seekg(Offset, Stream.beg);
     }
 }
 
@@ -99,18 +155,62 @@ ArchiveReaderFile::ArchiveReaderFile(ArchiveReader &R, const FileHeader &Header,
     : Reader(R),
       Ident(Header.ident, sizeof(Header.ident)),
       Size(std::stoull(std::string(Header.size, sizeof(Header.size)).c_str())),
-      Offset(O)
+      Offset(O),
+      FileNameFormat(Unextended),
+      ExtendedFileNameNumber(0)
 {
-    unsigned int index = Ident.find("/"); // sysv / GNU
-    if(index == std::string::npos)
+    // We support file name formats supported by binutils, see:
+    // https://sourceware.org/git/?p=binutils-gdb.git;a=blob;f=bfd/archive.c;h=9ad61adc6159a2731a0443353f393baeea48bf5d#l85
+    std::cerr << "ident: \'" << Ident << "\"" << std::endl;
+    size_t Index = Ident.find_last_of("/");
+    if(Index == std::string::npos)
     {
-        index = Ident.find(" "); // BSD
+        // There are no "/". BSD variant uses space as the delimiter, and
+        // forbids spaces in names.
+        Index = Ident.find_first_of(" ");
     }
 
-    // TODO: support sysv / GNU extended filenames "/<offset>"
-    // TODO: support 4.4BSD with #1/<length> Ident strings.
+    if(Index != std::string::npos)
+    {
+        if(Ident[Index] == '/' && Ident.compare(0, Index, "#1") == 0)
+        {
+            // BSD 4.4 extended filename format: "#1/<length>", filename at start of data.
+            FileNameFormat = BSDExtended;
+        }
+        else if(Index == 0)
+        {
+            // SysV/GNU extended format: "/<offset>", offset into ar entry with Ident "//".
+            // "pseudo-BSD" format (as binutils calls it): " <offset>"
+            FileNameFormat = GNUExtended;
+        }
 
-    FileName = Ident.substr(0, index);
+        if(FileNameFormat != Unextended)
+        {
+            size_t FirstNonNumChar = Ident.find_last_of("0123456789") + 1;
+
+            if(FirstNonNumChar > Index)
+            {
+                ExtendedFileNameNumber = std::stoull(Ident.substr(Index + 1, FirstNonNumChar));
+
+                // Verify: all trailing characters should be spaces.
+                if(Ident.find_first_not_of(" ", FirstNonNumChar) != std::string::npos)
+                {
+                    throw ArchiveReaderException("Invalid ar format: unexpected file name format");
+                }
+            }
+            else
+            {
+                // No trailing number. It must be a unextended FileName after all.
+                FileNameFormat = Unextended;
+            }
+        }
+    }
+
+    // Fallthrough: nothing else worked, it's just a normal filename.
+    if(FileNameFormat == Unextended)
+    {
+        FileName = Ident.substr(0, Index);
+    }
 }
 
 void ArchiveReaderFile::Extract(const std::string &Path)

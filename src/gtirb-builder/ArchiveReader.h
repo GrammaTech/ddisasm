@@ -57,6 +57,13 @@ struct FileHeader
     char end[2];    // terminator "`\n"
 };
 
+enum ArchiveReaderFilenameFormat
+{
+    Unextended,
+    GNUExtended,
+    BSDExtended
+};
+
 class ArchiveReader;
 class ArchiveReaderFile
 {
@@ -65,6 +72,8 @@ public:
     void Extract(const std::string &Path);
 
     ArchiveReader &Reader;
+    ArchiveReaderFilenameFormat FileNameFormat;
+    uint64_t ExtendedFileNameNumber;
     std::string Ident;
     std::string FileName;
     uint64_t Size;
