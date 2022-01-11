@@ -40,6 +40,8 @@ std::string getInterpreterArch(const gtirb::Module &Module)
             return "-MARCH_ARM32";
         case gtirb::ISA::ARM64:
             return "-MARCH_ARM64";
+        case gtirb::ISA::MIPS32:
+            return "-MARCH_MIPS32";
         default:
             assert(!"Unsupported GTIRB ISA");
     }

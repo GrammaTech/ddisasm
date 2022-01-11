@@ -505,4 +505,11 @@ reg_reg_arithmetic_operation(EA,Reg,Reg1,Reg2,1,0):-
     op_regdirect_contains_reg(SrcOp1,Reg1),
     op_regdirect_contains_reg(SrcOp2,Reg2).
 
+/**
+ * The location and register where the address of main is loaded.
+ */
+.decl main_load_reg(EA:address,Reg:register)
+main_load_reg(Main_dispatch,"A0"):-
+    main_function_dispatch(Main_dispatch).
+
 }
