@@ -45,13 +45,23 @@ def get_target(binary, strip_exe, strip, sstrip):
         print("# stripping binary\n")
         subprocess.run(["cp", binary, binary + ".stripped"])
         binary = binary + ".stripped"
-        subprocess.run([strip_exe, "--strip-unneeded", binary])
+        completed_process = subprocess.run(
+            [strip_exe, "--strip-unneeded", binary]
+        )
+        if completed_process.returncode != 0:
+            print(bcolors.fail("# strip failed\n"))
+            binary = None
+
         stripped_binary = binary
     if sstrip:
         print("# stripping sections\n")
         subprocess.run(["cp", binary, binary + ".sstripped"])
         binary = binary + ".sstripped"
-        subprocess.run(["sstrip", binary])
+        completed_process = subprocess.run(["sstrip", binary])
+        if completed_process.returncode != 0:
+            print(bcolors.fail("# sstrip failed\n"))
+            binary = None
+
         sstripped_binary = binary
     try:
         yield binary

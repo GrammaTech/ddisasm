@@ -23,8 +23,15 @@
 #include "arch_x86.dl"
 
 .comp X86_64 : X86 {
-  #include "registers_x86_64.dl"
-  pointer_size(8).
+#include "registers_x86_64.dl"
+pointer_size(8).
+
+/**
+ * The location and register where the address of main is loaded.
+ */
+.decl main_load_reg(EA:address,Reg:register)
+main_load_reg(Main_dispatch,"RDI"):-
+    main_function_dispatch(Main_dispatch).
 }
 
 symbolic_operand_attribute(EA,Index,"PltRef"):-

@@ -246,19 +246,48 @@ main_function(EA):-
     binary_format("ELF"),
     function_symbol(EA,"main").
 
-main_function(Main_location):-
+/**
+ * Decide whether the main function should be inferred.
+ */
+.decl do_infer_main_function()
+
+do_infer_main_function():-
     binary_format("ELF"),
-    !function_symbol(Main_location,"main"),
-    First_call = min EA:{
+    !function_symbol(_,"main").
+
+/**
+ * Locate where main() is dispatched (i.e., where __libc_start_main is called.)
+ */
+.decl main_function_dispatch(EA:address)
+
+main_function_dispatch(CallEA):-
+    do_infer_main_function(),
+    CallEA = min EA:{
         start_function(Entry),
         instruction(EA,_,_,CallOp,_,_,_,_,_,_),
         arch.call_operation(CallOp),
         code(EA),
         EA>=Entry
-    },
-    next(Prev,First_call),
-    code(Prev),
-    symbolic_operand(Prev,1,Main_location,"code").
+    }.
+
+/**
+* Infer the location of the main function.
+*/
+.decl inferred_main_function(Main_location:address)
+inferred_main_function(Main_location):-
+    arch.main_load_reg(Main_load, Reg),
+    def_used(EA_def,Reg,Main_load,_),
+    value_reg(EA_def,Reg,_,"NONE",_,Offset,_),
+    Main_location = as(Offset, address),
+    code(Main_location).
+
+// Inform the use_def analysis that the register is used here as an address.
+used(Main_load,Reg,0),
+used_for_address(Main_load,Reg):-
+    arch.main_load_reg(Main_load, Reg).
+
+main_function(Main_location):-
+    inferred_main_function(Main_location).
 
 inferred_symbol_name(EA,"_start","GLOBAL","FUNC"):-
     !binary_type("REL"),

@@ -26,7 +26,7 @@ and only if those chains are related eventually to an access to memory.
 
 -'def' computes definitions of registers at each of the locations.
 
--'used_for_address' compute the set of live uses backwards at each of the locations.
+-'def_used_for_address' compute the set of live uses backwards at each of the locations.
  However, it only computes uses starting at accesses to memory.
 
 -'def_used' intersects the two previous facts to obtain def-use chains.
@@ -34,7 +34,7 @@ and only if those chains are related eventually to an access to memory.
 -'straight_line_def_used` is a weaker version of 'def_used' that can be used before
 code inference.
 
-The traversal of used_for_address is kept intra-procedural (not following call edges).
+The traversal of def_used_for_address is kept intra-procedural (not following call edges).
 */
 
 
@@ -250,23 +250,35 @@ def_used_return_val_reg(EA_def,EA_call,Reg,EA_used,Index_used):-
         last_def(CalleeReturnBlock,EA_def,Reg)
     ).
 
+/**
+ * The register 'Reg' used as an address at address 'EA'.
+ */
+.decl used_for_address(EA:address,Reg:register)
+.output used_for_address
+
+used_for_address(EA,Reg):-
+    used(EA,Reg,Index),
+    instruction_get_op(EA,Index,Op),
+    op_indirect_contains_reg(Op,Reg).
+
+used_for_address(EA,Reg):-
+    reg_jump(EA,Reg),
+    used(EA,Reg,_).
+
+used_for_address(EA,Reg):-
+    reg_call(EA,Reg),
+    used(EA,Reg,_).
+
+/**
+ * The register 'Reg' as defined at address 'EA_def' is later used either as an address
+ * or to compute an address.
+ */
 .decl def_used_for_address(EA_def:address,Reg:register)
 .output def_used_for_address
 
 def_used_for_address(EA_def,Reg):-
-    def_used(EA_def,Reg,EA,Index),
-    instruction_get_op(EA,Index,Op),
-    op_indirect_contains_reg(Op,Reg).
-
-
-def_used_for_address(EA_def,Reg):-
-    reg_jump(EA_used,Reg),
-    def_used(EA_def,Reg,EA_used,_).
-
-def_used_for_address(EA_def,Reg):-
-    reg_call(EA_used,Reg),
-    def_used(EA_def,Reg,EA_used,_).
-
+    def_used(EA_def,Reg,EA,_),
+    used_for_address(EA,Reg).
 
 def_used_for_address(EA_def,Reg):-
     def_used_for_address(EA_used,_),
