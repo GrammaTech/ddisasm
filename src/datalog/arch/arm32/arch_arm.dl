@@ -100,7 +100,7 @@ return(EA):-
 
 return(EA):-
     instruction_get_operation(EA,Operation),
-    contains("POP", Operation),
+    substr(Operation,0,3) = "POP",
     instruction_get_op(EA,_,Op),
     op_regdirect_contains_reg(Op,Reg),
     pc_register(Reg).
@@ -129,7 +129,7 @@ unconditional_return_operation(Operation):-
 
 conditional_return_operation(Operation):-
     instruction_get_operation(_,Operation),
-    contains("POP", Operation),
+    substr(Operation,0,3) = "POP",
     strlen(Operation) != 3.
 
 .decl long_operation(operation:symbol)
@@ -182,40 +182,60 @@ op_does_not_read_dest_reg(Operation):-
 
 .decl arithmetic_operation(Operation:symbol)
 
-arithmetic_operation("ADD").
-arithmetic_operation("ADC").
-arithmetic_operation("DEC").
-arithmetic_operation("MUL").
-arithmetic_operation("MLA").
-arithmetic_operation("MVN").
-arithmetic_operation("RSB").
-arithmetic_operation("RSC").
-arithmetic_operation("SBC").
-arithmetic_operation("SHL").
-arithmetic_operation("SUB").
+arithmetic_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    Op = substr(Operation,0,3),
+    (
+        Op = "ADD";
+        Op = "ADC";
+        Op = "DEC";
+        Op = "MUL";
+        Op = "MLA";
+        Op = "MVN";
+        Op = "RSB";
+        Op = "RSC";
+        Op = "SBC";
+        Op = "SHL";
+        Op = "SUB"
+    ).
 
 .decl multiplication_operation(Operation:symbol)
 
-multiplication_operation("MUL").
-multiplication_operation("MLA").
-multiplication_operation("MLS").
-multiplication_operation("MULS").
+multiplication_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    Op = substr(Operation,0,3),
+    (
+        Op = "MUL";
+        Op = "MLA";
+        Op = "MLS"
+    ).
 
 .decl logic_operation(Operation:symbol)
 
-logic_operation("BIC").
-logic_operation("EOR").
-logic_operation("AND").
-logic_operation("XOR").
-logic_operation("OR").
-logic_operation("TEST").
+logic_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    Op = substr(Operation,0,3),
+    (
+        Op = "BIC";
+        Op = "EOR";
+        Op = "AND";
+        Op = "XOR";
+        Op = "ORR";
+        Op = "TST";
+        Op = "MVN"
+    ).
 
 .decl read_only_operation(Operation:symbol)
 
-read_only_operation("CMN").
-read_only_operation("CMP").
-read_only_operation("TEQ").
-read_only_operation("TST").
+read_only_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    Op = substr(Operation,0,3),
+    (
+        Op = "CMN";
+        Op = "CMP";
+        Op = "TEQ";
+        Op = "TST"
+    ).
 
 .decl write_only_operation(Operation:symbol)
 
@@ -292,10 +312,15 @@ halt_operation(""):-
 
 .decl cmp_operation(Operation:symbol)
 
-cmp_operation("CMP").
-cmp_operation("CMN").
-cmp_operation("TEQ").
-cmp_operation("TST").
+cmp_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    Op = substr(Operation,0,3),
+    (
+        Op = "CMP";
+        Op = "CMN";
+        Op = "TEQ";
+        Op = "TST"
+    ).
 
 // TODO:
 .decl operation_size_exception(EA:address,Op_index:operand_index,Size:unsigned)
