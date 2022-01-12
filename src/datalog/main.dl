@@ -429,7 +429,8 @@ reg_jump(EA,Reg):-
     instruction_get_operation(EA,Operation),
     arch.jump_operation_op_index(Operation,TargetOpIndex),
     instruction_get_op(EA,TargetOpIndex,TargetOp),
-    op_regdirect(TargetOp,Reg).
+    op_regdirect(TargetOp,Reg),
+    !arch.pc_register(Reg).
 
 // indirect jump
 .decl indirect_jump(src:address)

@@ -202,3 +202,19 @@ value_reg_edge(EA,Reg,EA,"NONE",0,ValAligned):-
     ),
     Val = as(EA,number)+Offset+Disp,
     ValAligned = Val-(Val band 3).
+/*
+ * Jump to the PC register: "bx pc"
+ */
+direct_jump(EA,Dest):-
+    arch.jump(EA),
+    instruction_get_operation(EA,Operation),
+    arch.jump_operation_op_index(Operation,TargetOpIndex),
+    instruction_get_op(EA,TargetOpIndex,TargetOp),
+    op_regdirect(TargetOp,Reg),
+    arch.pc_register(Reg),
+    (
+        (EA band 1) = 0,  Disp = 8 // ARM mode
+        ;
+        (EA band 1) != 0, Disp = 4 - 1 // Thumb mode
+    ),
+    Dest = as(as(EA,number) + Disp,address).
