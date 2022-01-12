@@ -100,6 +100,8 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
 
                 ElfReader Elf(Path, Object->FileName, Context, IR, Binary);
                 Elf.build();
+
+                fs::remove(ObjectPath);
             }
         }
         catch(ArchiveReaderException& e)
