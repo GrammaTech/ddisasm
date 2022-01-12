@@ -79,7 +79,8 @@ This module:
     #error "Undefined architecture"
 #endif
 
-// Detection of relative jump tables.
+// Detection of jump tables.
+#include "jump_tables.dl"
 #include "relative_jump_tables.dl"
 
 // Inference of instruction boundaries.

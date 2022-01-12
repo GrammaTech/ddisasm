@@ -99,6 +99,9 @@ resolved_jump(EA,Dest):-
         Reference = "second", Dest = Symbol1
     ).
 
+resolved_jump(Src,Dest):-
+    jump_table_candidate_refined(Src,_,Dest).
+
 //////////////////////////////////////////////////////////////////////////////
 // edge creation
 
