@@ -188,7 +188,9 @@ invalid(EA,Type):-
         direct_call(EA,Dest),       Type = "direct_call to invalid";
         direct_jump(EA,Dest),       Type = "direct_jump to invalid";
         // EA is followed by something that cannot be code.
-        must_fallthrough(EA,Dest),  Type = "must_fallthrough to invalid"
+        must_fallthrough(EA,Dest),  Type = "must_fallthrough to invalid";
+        conditional_jump(EA), next(EA,Dest), Type = "conditional_jump: fallthrough to invalid";
+        conditional_return(EA), next(EA,Dest), Type = "conditional_return: fallthrough to invalid"
     ),
     !instruction(Dest,_,_,_,_,_,_,_,_,_), Dest != 0.
 
@@ -198,6 +200,8 @@ invalid(From,"propagate from invalid"):-
     invalid(To,_),
     (
         must_fallthrough(From,To);
+        conditional_jump(From), next(From,To);
+        conditional_return(From), next(From,To);
         direct_jump(From,To);
         direct_call(From,To);
         pc_relative_jump(From,To);
