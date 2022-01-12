@@ -23,8 +23,6 @@
 /**
 Define a set of floating point operations
 */
-.decl float_operation(operation:symbol)
-
 
 float_operation("MOVSS").
 float_operation("MOVSD").

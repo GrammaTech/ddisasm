@@ -24,7 +24,5 @@
 The set of interrupt operations in MIPS
 */
 
-.decl interrupt_operation(n:symbol)
-
 interrupt_operation("INT").
 // TODO:

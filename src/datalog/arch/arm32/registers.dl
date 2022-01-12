@@ -26,10 +26,6 @@ This module stablishes basic information about register:
  - Whether they all callee or caller saved according to the ABI
 */
 
-// Limit the registers that are tracked and transform the names to their 64-bit
-// versions.
-.decl track_register(RegName:register,RegGenericName:register)
-
 track_register("R0","R0").
 track_register("R1","R1").
 track_register("R2","R2").
@@ -84,10 +80,7 @@ reg_index(Reg,Index):-
     track_register(Reg0,Reg),
     reg_index(Reg0,Index).
 
-// This specifies the registers whose value is not kept through a function call
-// according to the ARM calling convention.
-.decl function_non_maintained_reg(reg:register)
-
+// Use the ARM calling convention.
 function_non_maintained_reg("R0").
 function_non_maintained_reg("R1").
 function_non_maintained_reg("R2").
@@ -97,18 +90,10 @@ function_non_maintained_reg("R12").
 function_non_maintained_reg("R13").
 function_non_maintained_reg("R14").
 
-.decl pc_register(reg:register)
-
 pc_register("PC").
-
-.decl frame_pointer(reg:register)
 
 frame_pointer("FP").
 
-.decl stack_pointer(reg:register)
-
 stack_pointer("SP").
-
-.decl return_val_reg(reg:register)
 
 return_val_reg("R0").

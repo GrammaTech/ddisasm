@@ -23,12 +23,6 @@
 /**
 The set of jump operations in ARM
 */
-.decl jump_operation(n:symbol)
-.decl unconditional_jump_operation(n:symbol)
-
-.decl jump_equal_operation(n:symbol)
-.decl jump_unequal_operation(n:symbol)
-
 jump_operation("B").
 jump_operation("BEQ").
 jump_operation("BNE").
@@ -83,12 +77,8 @@ jump_equal_operation("BEQ").
 
 jump_unequal_operation("BNE").
 
-.decl jump_operation_op_index(Operation:symbol,operand_index:operand_index)
-
 jump_operation_op_index(Operation,1):-
     jump_operation(Operation).
-
-.decl call_operation_op_index(Operation:symbol,operand_index:operand_index)
 
 call_operation_op_index(Operation,1):-
     call_operation(Operation).
