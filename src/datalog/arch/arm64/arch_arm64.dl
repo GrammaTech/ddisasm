@@ -47,6 +47,7 @@ load_operation(Operation):-
         contains("LDP", Operation)
     ).
 
+.override load_word_operation
 load_word_operation(Operation):-
     instruction_get_operation(_,Operation),
     substr(Operation,0,3) = "LDR",
@@ -67,33 +68,11 @@ mov(EA):-
     instruction_get_operation(EA,Operation),
     move_operation(Operation).
 
-/* CMOV is not used by arm64 */
-conditional_mov(0):-
-    false.
-
 is_nop(EA):-
     instruction_get_operation(EA,"NOP").
 
-return(EA):-
-    return_operation(Operation),
-    instruction_get_operation(EA,Operation).
-
 unconditional_return_operation(Operation):-
     return_operation(Operation).
-
-conditional_return_operation(""):-
-    false.
-
-is_conditional_operation(""):-
-    false.
-
-// No rule for delay_slot
-delay_slot(0,0):-
-    false.
-
-jump(EA):-
-    instruction_get_operation(EA,Operation),
-    jump_operation(Operation).
 
 op_does_not_read_dest_reg(Operation):-
     instruction_get_operation(_, Operation).
@@ -130,13 +109,6 @@ one_op_write(""):-
 
 pointer_size(8).
 
-loop_operation(""):-
-    false.
-
-/* prefixes are not used by arm64 */
-loop_prefix(""):-
-    false.
-
 call_operation("BL").
 
 syscall_operation("SVC").
@@ -146,10 +118,6 @@ return_operation("RET").
 halt_operation("HLT").
 
 cmp_operation("CMP").
-
-// TODO: Remove after review above.
-operation_size_exception(0,0,0):-
-    false.
 
 reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
     instruction(EA,_,_,"SUB",Op1,Op2,0,0,_,_), Op1 != Op2,
