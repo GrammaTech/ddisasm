@@ -72,6 +72,10 @@ block_needs_splitting_at(EA):-
     // the block needs to be split at the first code EA after the nop paddings.
     padding_prefix_end(EA,_).
 
+// For jump table entry targets: to split the target blocks
+block_needs_splitting_at(TargetAddr):-
+    jump_table_candidate_refined(_,_,TargetAddr).
+
 split_block(Block):-
     block(Block).
 split_block(EA):-
