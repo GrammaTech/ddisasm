@@ -361,15 +361,14 @@ reg_reg_arithmetic_operation(EA,DstReg,Reg,"NONE",1,Val):-
     // N right-rotate M
     Val = (N bshr M) bor (N bshl (32-M)).
 
-reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset):-
-    instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
-    op_regdirect_contains_reg(Op2,Reg_def),
-    op_indirect(Op1,_,Reg1_n,Reg2_n,Mult,Offset,_),
-    arch.track_register(Reg1_n,Reg1),
-    arch.track_register(Reg2_n,Reg2),
-    Reg1 != Reg2.
-
 reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
     reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
+
+/**
+ * The location and register where the address of main is loaded.
+ */
+.decl main_load_reg(EA:address,Reg:register)
+main_load_reg(Main_dispatch,"R0"):-
+    main_function_dispatch(Main_dispatch).
 
 }

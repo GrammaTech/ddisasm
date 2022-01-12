@@ -44,7 +44,7 @@ class TestFunctionInference(unittest.TestCase):
                     format="--ir",
                     extension="gtirb",
                     extra_args=["--skip-function-analysis"],
-                )
+                )[0]
             )
             module = gtirb.IR.load_protobuf(binary + ".gtirb").modules[0]
             self.assertTrue(
@@ -55,7 +55,7 @@ class TestFunctionInference(unittest.TestCase):
                     False,
                     format="--ir",
                     extension="gtirb",
-                )
+                )[0]
             )
             moduleStripped = gtirb.IR.load_protobuf(binary + ".gtirb").modules[
                 0

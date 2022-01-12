@@ -21,7 +21,7 @@
 //
 //===----------------------------------------------------------------------===//
 /**
-The set of jump operations in x64
+The set of jump operations in ARM
 */
 .decl jump_operation(n:symbol)
 .decl unconditional_jump_operation(n:symbol)
