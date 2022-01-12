@@ -80,7 +80,9 @@ Define all variants of the move operation.
 
 .decl load_operation(Operation:symbol)
 
-.decl load_word_operation(Operation:symbol)
+.decl load_word_operation(Operation:symbol) overridable
+load_word_operation(""):-
+    false.
 
 .decl store_operation(Operation:symbol)
 
@@ -91,9 +93,13 @@ NOTE: unconditional_return_operation must be used with 'return' rule.
 */
 .decl unconditional_return_operation(Operation:symbol)
 
-.decl conditional_return_operation(Operation:symbol)
+.decl conditional_return_operation(Operation:symbol) overridable
+conditional_return_operation(""):-
+    false.
 
-.decl is_conditional_operation(Operation:symbol)
+.decl is_conditional_operation(Operation:symbol) overridable
+is_conditional_operation(""):-
+    false.
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
@@ -109,15 +115,15 @@ NOTE: unconditional_return_operation must be used with 'return' rule.
 
 .decl one_op_write(Operation:symbol)
 
-.decl loop_operation(Operation:symbol)
-
 .decl call_operation(Operation:symbol)
 
 .decl syscall_operation(Operation:symbol)
 
 .decl return_operation(Operation:symbol)
 
-.decl halt_operation(Operation:symbol)
+.decl halt_operation(Operation:symbol) overridable
+halt_operation(""):-
+    false.
 
 .decl cmp_operation(Operation:symbol)
 
@@ -136,7 +142,9 @@ NOTE: unconditional_return_operation must be used with 'return' rule.
 /**
 Define all variants of a conditional move operation
 */
-.decl conditional_mov(EA:address)
+.decl conditional_mov(EA:address) overridable
+conditional_mov(0):-
+    false.
 
 /**
 Find all addresses where a move instruction is used
@@ -148,17 +156,30 @@ Find all addresses where a move instruction is used
 /**
 Returns
 */
-.decl return(EA:address)
+.decl return(EA:address) overridable
+return(EA):-
+    instruction_get_operation(EA,Operation),
+    return_operation(Operation).
 
-.decl delay_slot(BranchEA:address,EA:address)
+.decl jump(EA:address) overridable
 
-.decl jump(EA:address)
+jump(EA):-
+    instruction_get_operation(EA,Operation),
+    jump_operation(Operation).
+
+
+.decl delay_slot(BranchEA:address,EA:address) overridable
+
+delay_slot(0,0):-
+    false.
 
 /**
 These operations are either special like LEA (does not read memory) or
 are not decoded corectly from capstone
 */
-.decl operation_size_exception(EA:address,Op_index:operand_index,Size:unsigned)
+.decl operation_size_exception(EA:address,Op_index:operand_index,Size:unsigned) overridable
+operation_size_exception(0,0,0):-
+    false.
 
 /**
 Arithmetic operation on two source registers
@@ -198,7 +219,9 @@ according to the architecture's calling convention.
 // Other architectural attributes
 // ===========================================================================
 
-.decl loop_prefix(Prefix:symbol)
+.decl loop_prefix(Prefix:symbol) overridable
+loop_prefix(""):-
+    false.
 
 .decl pointer_size(N:unsigned) inline
 

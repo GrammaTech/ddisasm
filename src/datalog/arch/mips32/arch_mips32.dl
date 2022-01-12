@@ -146,20 +146,15 @@ return(EA):-
 unconditional_return_operation(Operation):-
     return_operation(Operation).
 
-conditional_return_operation(""):-
-    false.
-
-
-jump(EA):-
-    instruction_get_operation(EA,Operation),
-    jump_operation(Operation).
-
+// Extend jump - don't override.
 jump(EA):-
     instruction_get_operation(EA,Operation),
     // JR and JR16 are returns only if the target register is RA.
     // Otherwise, it's a jump.
     return_operation(Operation),
     !return(EA).
+
+.override delay_slot
 
 delay_slot(BranchEA,EA):-
     next(BranchEA, EA),
@@ -369,10 +364,6 @@ one_op_write(""):-
 
 pointer_size(4).
 
-// No loop prefix
-loop_prefix(""):-
-    false.
-
 call_operation(Symbol):-
     call_operation_1op(Symbol);
     call_operation_2op(Symbol).
@@ -413,10 +404,6 @@ return_operation("JR16").
 return_operation("JRC").
 return_operation("JRADDIUSP").
 
-// No halt operation
-halt_operation(""):-
-    false.
-
 // No cmp operation.
 cmp_operation(""):-
     false.
@@ -426,9 +413,6 @@ cmp_operation(""):-
 //cmp_operation("SLTU").
 //cmp_operation("SLTI").
 //cmp_operation("SLTIU").
-
-operation_size_exception(0,0,0):-
-    false.
 
 // ADDIU <Register> <Register> <Immediate>
 reg_reg_arithmetic_operation(EA,Reg,Reg2,"NONE",1,Immediate):-

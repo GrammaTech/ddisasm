@@ -53,27 +53,13 @@ is_nop(EA):-
     instruction(EA,_,_,"XCHG",Op,Op,0,0,_,_),
     op_regdirect(Op,"AX").
 
-return(EA):-
-    return_operation(Operation),
-    instruction_get_operation(EA,Operation).
-
 unconditional_return_operation(Operation):-
     return_operation(Operation).
 
-conditional_return_operation(""):-
-    false.
-
-
-// No rule for delay_slot
-delay_slot(0,0):-
-    false.
-
+// Extend the generic case with loop operations.
 jump(EA):-
     instruction_get_operation(EA,Operation),
-    (
-        jump_operation(Operation);
-        loop_operation(Operation)
-    ).
+    loop_operation(Operation).
 
 op_does_not_read_dest_reg("LEA").
 op_does_not_read_dest_reg("POP").
@@ -110,6 +96,7 @@ loop_operation("LOOPZ").
 loop_operation("LOOPNE").
 loop_operation("LOOPNZ").
 
+.override loop_prefix
 loop_prefix("REP").
 loop_prefix("REPE").
 loop_prefix("REPNE").
@@ -129,6 +116,7 @@ cmp_operation("CMP").
 cmp_operation("TEST").
 
 // FIXME: review this list when Capstone is updated.
+.override operation_size_exception
 operation_size_exception(EA,Index,8):-
     instruction_get_operation(EA,"MOVSD"),
     instruction_get_op(EA,Index,Op),

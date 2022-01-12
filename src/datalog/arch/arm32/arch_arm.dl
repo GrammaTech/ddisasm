@@ -47,6 +47,7 @@ load_operation(Operation):-
         contains("LDM", Operation)
     ).
 
+.override load_word_operation
 load_word_operation(Operation):-
     instruction_get_operation(_,Operation),
     substr(Operation,0,3) = "LDR",
@@ -63,10 +64,6 @@ store_operation(Operation):-
         contains("STM", Operation)
     ).
 
-// TODO:
-conditional_mov(0):-
-    false.
-
 mov(EA):-
     instruction_get_operation(EA,Operation),
     (
@@ -77,7 +74,8 @@ mov(EA):-
 is_nop(EA):-
     instruction_get_operation(EA,"NOP").
 
-
+// We have no return_operation, so we override.
+.override return
 return(EA):-
     instruction_get_operation(EA,"BX"),
     instruction_get_op(EA,_,Op),
@@ -108,6 +106,7 @@ unconditional_return_operation(Operation):-
     ),
     !conditional_return_operation(Operation).
 
+.override conditional_return_operation
 conditional_return_operation(Operation):-
     instruction_get_operation(_,Operation),
     substr(Operation,0,3) = "POP",
@@ -119,6 +118,7 @@ long_operation(Operation):-
     instruction_get_operation(_,Operation),
     strlen(Operation) > 2.
 
+.override is_conditional_operation
 is_conditional_operation(Operation):-
     long_operation(Operation),
     instruction_get_operation(_,Operation),
@@ -133,14 +133,7 @@ is_conditional_operation(Operation):-
         CC = "GE"; CC = "LT"; CC = "GT"; CC = "LE"
     ).
 
-// No rule for delay_slot
-delay_slot(0,0):-
-    false.
-
-jump(EA):-
-    instruction_get_operation(EA,Operation),
-    jump_operation(Operation).
-
+// Does not override - extends with `ldr pc, [...]`
 jump(EA):-
     instruction_get_operation(EA,Operation),
     load_operation(Operation),
@@ -201,6 +194,7 @@ read_only_operation(Operation):-
         Op = "TST"
     ).
 
+// TODO:
 write_only_operation(""):-
     false.
 
@@ -209,14 +203,6 @@ one_op_write(""):-
     false.
 
 pointer_size(4).
-
-// TODO:
-loop_operation(""):-
-    false.
-
-// TODO:
-loop_prefix(""):-
-    false.
 
 call_operation("BL").
 call_operation("BLEQ").
@@ -258,10 +244,6 @@ syscall_operation("SWI").
 return_operation(""):-
     false.
 
-// TODO:
-halt_operation(""):-
-    false.
-
 cmp_operation(Operation):-
     instruction_get_operation(_,Operation),
     Op = substr(Operation,0,3),
@@ -271,10 +253,6 @@ cmp_operation(Operation):-
         Op = "TEQ";
         Op = "TST"
     ).
-
-// TODO:
-operation_size_exception(0,0,0):-
-    false.
 
 reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
     instruction(EA,_,_,"SUB",Op1,Op2,0,0,_,_), Op1 != Op2,
