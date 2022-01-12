@@ -683,14 +683,10 @@ block_points(Block,"code",0,1,"better fit"):-
     block_candidate_boundaries(_,"code",_,Block).
 
 // its address appears somewhere
-block_points(Block,"code",0,Points,"appears"):-
+block_points(Block,"code",0,3,"appears"):-
     block_is_overlapping(Block,"code"),
     possible_target_from(Block,EA),
-    (
-        unlikely_have_symbolic_immediate(EA), Points = 0
-        ;
-        !unlikely_have_symbolic_immediate(EA), Points = 3
-    ),
+    !unlikely_have_symbolic_immediate(EA),
     !direct_jump(EA,Block),
     !direct_call(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
