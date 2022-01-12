@@ -26,6 +26,7 @@ declaring all relations of the interface, and defining default rules for some
 of them.
 */
 
+// Include architecture-specific code.
 #ifdef ARCH_ARM64
     #include "../arm_binaries.dl"
     #include "../arm64_binaries.dl"
@@ -50,26 +51,31 @@ of them.
     #error "Undefined architecture"
 #endif
 
+/**
+Define a standard interface for architecture components.
+*/
 .comp Arch {
+
+// ===========================================================================
+// Operation Types
+// ===========================================================================
 
 /**
 Define a set of floating point operations
 */
-.decl float_operation(operation:symbol)
+.decl float_operation(Operation:symbol)
 
-.decl interrupt_operation(n:symbol)
+.decl interrupt_operation(Operation:symbol)
 
-.decl jump_operation(n:symbol)
-.decl unconditional_jump_operation(n:symbol)
+.decl jump_operation(Operation:symbol)
+.decl unconditional_jump_operation(Operation:symbol)
 
-.decl jump_equal_operation(n:symbol)
-.decl jump_unequal_operation(n:symbol)
+.decl jump_equal_operation(Operation:symbol)
+.decl jump_unequal_operation(Operation:symbol)
 
-.decl jump_operation_op_index(Operation:symbol,operand_index:operand_index)
-
-.decl call_operation_op_index(Operation:symbol,operand_index:operand_index)
-
-// Define all variants of the move operation.
+/**
+Define all variants of the move operation.
+*/
 .decl move_operation(Operation:symbol)
 
 .decl load_operation(Operation:symbol)
@@ -78,31 +84,16 @@ Define a set of floating point operations
 
 .decl store_operation(Operation:symbol)
 
-/* Define all variants of a conditional move operation */
-.decl conditional_mov(EA:address)
-
-/* Find all addresses where a move instruction is used */
-.decl mov(EA:address)
-
-.decl is_nop(EA:address)
-
-// Returns
-.decl return(n:address)
-
-/*
+/**
 Unconditional return
 
 NOTE: unconditional_return_operation must be used with 'return' rule.
 */
-.decl unconditional_return_operation(operation:symbol)
+.decl unconditional_return_operation(Operation:symbol)
 
-.decl conditional_return_operation(operation:symbol)
+.decl conditional_return_operation(Operation:symbol)
 
 .decl is_conditional_operation(Operation:symbol)
-
-.decl delay_slot(BranchEA:address,EA:address)
-
-.decl jump(EA:address)
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
@@ -118,49 +109,97 @@ NOTE: unconditional_return_operation must be used with 'return' rule.
 
 .decl one_op_write(Operation:symbol)
 
-.decl pointer_size(n:unsigned) inline
+.decl loop_operation(Operation:symbol)
 
-.decl loop_operation(operation:symbol)
+.decl call_operation(Operation:symbol)
 
-.decl loop_prefix(prefix:symbol)
+.decl syscall_operation(Operation:symbol)
 
-.decl call_operation(operation:symbol)
+.decl return_operation(Operation:symbol)
 
-.decl syscall_operation(operation:symbol)
-
-.decl return_operation(operation:symbol)
-
-.decl halt_operation(operation:symbol)
+.decl halt_operation(Operation:symbol)
 
 .decl cmp_operation(Operation:symbol)
 
-// These operations are either special like LEA (does not read memory) or
-// are not decoded corectly from capstone
-.decl operation_size_exception(EA:address,Op_index:operand_index,Size:unsigned)
+// ===========================================================================
+// Operation Operand Indices
+// ===========================================================================
 
-// arithmetic operation on two source registers
-.decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
-.output reg_reg_arithmetic_operation
+.decl jump_operation_op_index(Operation:symbol,operand_index:operand_index)
+
+.decl call_operation_op_index(Operation:symbol,operand_index:operand_index)
+
+// ===========================================================================
+// Address-targeted instruction properties
+// ===========================================================================
 
 /**
- * The location and register where the address of main is loaded.
+Define all variants of a conditional move operation
+*/
+.decl conditional_mov(EA:address)
+
+/**
+Find all addresses where a move instruction is used
+*/
+.decl mov(EA:address)
+
+.decl is_nop(EA:address)
+
+/**
+Returns
+*/
+.decl return(EA:address)
+
+.decl delay_slot(BranchEA:address,EA:address)
+
+.decl jump(EA:address)
+
+/**
+These operations are either special like LEA (does not read memory) or
+are not decoded corectly from capstone
+*/
+.decl operation_size_exception(EA:address,Op_index:operand_index,Size:unsigned)
+
+/**
+Arithmetic operation on two source registers
+*/
+.decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
+
+/**
+The location and register where the address of main is loaded.
  */
 .decl main_load_reg(EA:address,Reg:register)
 
-// Limit the registers that are tracked and transform the names to their 64-bit
-// versions.
+// ===========================================================================
+// Registers
+// ===========================================================================
+
+/**
+Limit the registers that are tracked and transform the names to their 64-bit
+versions.
+*/
 .decl track_register(RegName:register,RegGenericName:register)
 
-// This specifies the registers whose value is not kept through a function call.
-.decl function_non_maintained_reg(reg:register)
+/**
+This specifies the registers whose value is not kept through a function call
+according to the architecture's calling convention.
+*/
+.decl function_non_maintained_reg(Reg:register)
 
-.decl pc_register(reg:register)
+.decl pc_register(Reg:register)
 
-.decl frame_pointer(reg:register)
+.decl frame_pointer(Reg:register)
 
-.decl stack_pointer(reg:register)
+.decl stack_pointer(Reg:register)
 
-.decl return_val_reg(reg:register)
+.decl return_val_reg(Reg:register)
 
+// ===========================================================================
+// Other architectural attributes
+// ===========================================================================
+
+.decl loop_prefix(Prefix:symbol)
+
+.decl pointer_size(N:unsigned) inline
 
 }
