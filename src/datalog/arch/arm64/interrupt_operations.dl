@@ -24,8 +24,6 @@
 The set of interrupt operations in ARM64
 */
 
-.decl interrupt_operation(n:symbol)
-
 interrupt_operation("INT").
 interrupt_operation("INTO").
 interrupt_operation("INT1").

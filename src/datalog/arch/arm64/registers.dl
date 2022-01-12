@@ -26,10 +26,6 @@ This module establishes basic information about register:
  - Whether they all callee or caller saved according to the ABI
 */
 
-// limit the registers that are tracked
-// and transform the names to their 64 bits version
-.decl track_register(Reg32:register,Reg64:register)
-
 track_register("W0", "X0").
 track_register("X0", "X0").
 
@@ -126,10 +122,7 @@ track_register("X30", "X30").
 track_register("W31", "X31").
 track_register("X31", "X31").
 
-// this specifies the registers whose value is not kept through a function call
-// according to the 'System V AMD64 ABI' calling convention.
-.decl function_non_maintained_reg(reg:register)
-
+// Use the 'System V AMD64 ABI' calling convention.
 function_non_maintained_reg("X0").
 function_non_maintained_reg("X1").
 function_non_maintained_reg("X2").
@@ -154,24 +147,15 @@ function_non_maintained_reg("X30").
 function_non_maintained_reg("X31").
 
 // PC is not a register in aarch64
-.decl pc_register(reg:register)
-
-// TODO:
 pc_register("NONE"):-
     false.
-
-.decl frame_pointer(reg:register)
 
 // TODO:
 frame_pointer("NONE"):-
     false.
 
-.decl stack_pointer(reg:register)
-
 // TODO:
 stack_pointer("NONE"):-
     false.
-
-.decl return_val_reg(reg:register)
 
 return_val_reg("X0").
