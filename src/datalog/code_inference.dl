@@ -188,9 +188,7 @@ invalid(EA,Type):-
         direct_call(EA,Dest),       Type = "direct_call to invalid";
         direct_jump(EA,Dest),       Type = "direct_jump to invalid";
         // EA is followed by something that cannot be code.
-        must_fallthrough(EA,Dest),  Type = "must_fallthrough to invalid";
-        conditional_jump(EA), next(EA,Dest), Type = "conditional_jump: fallthrough to invalid";
-        conditional_return(EA), next(EA,Dest), Type = "conditional_return: fallthrough to invalid"
+        must_fallthrough(EA,Dest),  Type = "must_fallthrough to invalid"
     ),
     !instruction(Dest,_,_,_,_,_,_,_,_,_), Dest != 0.
 
@@ -200,8 +198,6 @@ invalid(From,"propagate from invalid"):-
     invalid(To,_),
     (
         must_fallthrough(From,To);
-        conditional_jump(From), next(From,To);
-        conditional_return(From), next(From,To);
         direct_jump(From,To);
         direct_call(From,To);
         pc_relative_jump(From,To);
@@ -804,6 +800,15 @@ block_points(Block,"code",0,3,"exc-region"):-
 block_points(Block,"code",0,10,"landing-pad"):-
     block_is_overlapping(Block,"code"),
     lsda_callsite_addresses( _, _, Block).
+
+block_points(Block,"code",0,-2,"conditional jump/return: fallthrough to invalid"):-
+    code_in_block_candidate(EA,Block),
+    (
+        conditional_jump(EA);
+        conditional_return(EA)
+    ),
+    next(EA,Invalid),
+    invalid(Invalid,_).
 
 
 ////////////////////////////////////////////////////////////////////////////
