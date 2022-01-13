@@ -32,13 +32,11 @@ move_operation(Operation) :-
     instruction_get_operation(_, Operation),
     contains("MOV", Operation).
 
-conditional_mov(EA):-
-    instruction_get_operation(EA,Operation),
-    contains("CMOV",Operation).
-
 mov(EA):-
     instruction_get_operation(EA,Operation),
     move_operation(Operation).
+
+conditional_operation("CMOV").
 
 // No rule for load_operation
 load_operation(""):-false.
@@ -52,9 +50,6 @@ is_nop(EA):-
 is_nop(EA):-
     instruction(EA,_,_,"XCHG",Op,Op,0,0,_,_),
     op_regdirect(Op,"AX").
-
-unconditional_return_operation(Operation):-
-    return_operation(Operation).
 
 // Extend the generic case with loop operations.
 jump(EA):-

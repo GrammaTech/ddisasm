@@ -24,35 +24,49 @@
 The set of jump operations in aarch64
 */
 
-/* Condition codes - apply to all branch operations */
-.decl condition_code(c:symbol)
-condition_code("EQ").
-condition_code("NE").
-condition_code("GT").
-condition_code("LT").
-condition_code("GE").
-condition_code("LE").
-condition_code("CS").
-condition_code("HS").
-condition_code("CC").
-condition_code("LO").
-condition_code("MI").
-condition_code("PL").
-condition_code("AL").
-condition_code("NV").
-condition_code("VS").
-condition_code("VC").
-condition_code("HI").
-condition_code("LS").
+// Basic jump operations
+jump_operation("B").
+jump_operation("BR").
 
-jump_operation(Op) :- unconditional_jump_operation(Op).
-jump_operation(cat("B.", Condition)) :- condition_code(Condition).
+/**
+Conditional branches
+*/
+.decl conditional_branch(c:symbol)
+conditional_branch("B.EQ").
+conditional_branch("B.NE").
+conditional_branch("B.GT").
+conditional_branch("B.LT").
+conditional_branch("B.GE").
+conditional_branch("B.LE").
+conditional_branch("B.CS").
+conditional_branch("B.HS").
+conditional_branch("B.CC").
+conditional_branch("B.LO").
+conditional_branch("B.MI").
+conditional_branch("B.PL").
+conditional_branch("B.AL").
+conditional_branch("B.NV").
+conditional_branch("B.VS").
+conditional_branch("B.VC").
+conditional_branch("B.HI").
+conditional_branch("B.LS").
 
-jump_operation("CBZ").
-jump_operation("CBNZ").
+jump_operation(Operation),
+conditional_operation(Operation):-
+    conditional_branch(Operation).
 
-unconditional_jump_operation("B").
-unconditional_jump_operation("BR").
+/**
+ARM64 conditional test and jump operations
+*/
+.decl test_jump_operation(Operation:symbol)
+test_jump_operation("CBZ").
+test_jump_operation("CBNZ").
+test_jump_operation("TBZ").
+test_jump_operation("TBNZ").
+
+jump_operation(Operation),
+conditional_operation(Operation):-
+    test_jump_operation(Operation).
 
 jump_equal_operation("B.EQ").
 
