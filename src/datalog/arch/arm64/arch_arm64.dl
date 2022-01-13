@@ -70,9 +70,6 @@ mov(EA):-
 is_nop(EA):-
     instruction_get_operation(EA,"NOP").
 
-unconditional_return_operation(Operation):-
-    return_operation(Operation).
-
 op_does_not_read_dest_reg(Operation):-
     instruction_get_operation(_, Operation).
 

@@ -95,28 +95,13 @@ return(EA):-
     instruction_get_src_op(EA,_,SrcOp),
     op_regdirect_contains_reg(SrcOp,"LR").
 
-// NOTE: unconditional_return_operation must be used with 'return' rule.
-unconditional_return_operation(Operation):-
-    instruction_get_operation(_,Operation),
-    (
-        Operation = "BX";
-        Operation = "MOV";
-        Operation = "POP"
-    ),
-    !conditional_return_operation(Operation).
-
-conditional_return_operation(Operation):-
-    instruction_get_operation(_,Operation),
-    substr(Operation,0,3) = "POP",
-    strlen(Operation) != 3.
-
 .decl long_operation(operation:symbol)
 
 long_operation(Operation):-
     instruction_get_operation(_,Operation),
     strlen(Operation) > 2.
 
-is_conditional_operation(Operation):-
+conditional_operation(Operation):-
     long_operation(Operation),
     instruction_get_operation(_,Operation),
     Size = strlen(Operation),

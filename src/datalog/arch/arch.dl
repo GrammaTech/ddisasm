@@ -67,9 +67,11 @@ Define a set of floating point operations
 
 .decl interrupt_operation(Operation:symbol)
 
+/**
+An operation that may be a jump, depending on context. Use arch.jump(EA) for a
+defintive list of jumps.
+*/
 .decl jump_operation(Operation:symbol)
-.decl unconditional_jump_operation(Operation:symbol)
-
 .decl jump_equal_operation(Operation:symbol)
 .decl jump_unequal_operation(Operation:symbol)
 
@@ -86,20 +88,7 @@ load_word_operation(""):-
 
 .decl store_operation(Operation:symbol)
 
-/**
-Unconditional return
-
-NOTE: unconditional_return_operation must be used with 'return' rule.
-*/
-.decl unconditional_return_operation(Operation:symbol)
-
-.decl conditional_return_operation(Operation:symbol)
-conditional_return_operation(""):-
-    false.
-
-.decl is_conditional_operation(Operation:symbol)
-is_conditional_operation(""):-
-    false.
+.decl conditional_operation(Operation:symbol)
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
@@ -138,13 +127,6 @@ halt_operation(""):-
 // ===========================================================================
 // Address-targeted instruction properties
 // ===========================================================================
-
-/**
-Define all variants of a conditional move operation
-*/
-.decl conditional_mov(EA:address)
-conditional_mov(0):-
-    false.
 
 /**
 Find all addresses where a move instruction is used
