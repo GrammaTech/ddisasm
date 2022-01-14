@@ -171,6 +171,8 @@ may_have_symbolic_immediate(Src,as(Dest,address)):-
         Offset = Offset // avoid warning
     ).
 
+.decl unlikely_have_symbolic_immediate(EA:address)
+unlikely_have_symbolic_immediate(0):- false.
 
 .decl invalid(EA:address,Type:symbol)
 .output invalid
