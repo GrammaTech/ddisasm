@@ -78,7 +78,7 @@ There is a symbolic expression in the data at address 'EA' of size 'Size'
 pointing to 'Value'. 'Value' is given as an address.
 This predicate only supports symbolic expressions with one symbol
 and no offset. For symbolic expressions in data with offset see `moved_data_label`
-and for symbol-symbol exprssions see `symbol_minus_symbol`.
+and for symbol-symbol expressions see `symbol_minus_symbol`.
 */
 .decl symbolic_data(EA:address,Size:unsigned,Value:address)
 .output symbolic_data
@@ -325,7 +325,8 @@ symbolic_expr(EA+InstrOffset,EANext-(EA+InstrOffset),SymbolName,0):-
         ;
         !defined_symbol(Dest,_,_,"GLOBAL",_,_,_,_),
         defined_symbol(Dest,_,_,_,_,_,_,SymbolName)
-    ).
+    ),
+    !ambiguous_symbol(SymbolName).
 
 ///////////////////////////////
 // label candidates before moving
