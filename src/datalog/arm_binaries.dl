@@ -355,7 +355,7 @@ symbolic_operand_point(EA,Imm_index,-1,"unlikely to have symbolic operand"):-
         ;
         arch.logic_operation(Operation)
         ;
-        contains("ADD",Operation), !split_load(_,EA,_,"ADD")
+        contains("ADD",Operation), !split_load_for_symbolization(_,EA,_,"ADD")
     ).
 
 symbolic_operand_candidate(EA,1,Dest,Type):-
