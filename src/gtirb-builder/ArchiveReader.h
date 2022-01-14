@@ -64,14 +64,11 @@ enum ArchiveReaderFilenameFormat
     BSDExtended
 };
 
-class ArchiveReader;
 class ArchiveReaderFile
 {
 public:
-    ArchiveReaderFile(ArchiveReader &R, const FileHeader &Header, uint64_t O);
-    void Extract(const std::string &Path);
+    ArchiveReaderFile(const FileHeader &Header, uint64_t O);
 
-    ArchiveReader &Reader;
     ArchiveReaderFilenameFormat FileNameFormat;
     uint64_t ExtendedFileNameNumber;
     std::string Ident;
@@ -84,7 +81,8 @@ class ArchiveReader
 {
 public:
     ArchiveReader(const std::string &Path);
-    std::list<std::shared_ptr<ArchiveReaderFile>> Files;
+    void ReadFile(ArchiveReaderFile &File, std::vector<uint8_t> &Data);
+    std::list<ArchiveReaderFile> Files;
 
     static bool isAr(const std::string &Path);
     static bool isAr(std::ifstream &Stream);
@@ -92,8 +90,6 @@ public:
 protected:
     std::string Path;
     std::ifstream Stream;
-
-    friend class ArchiveReaderFile;
 };
 
 #endif // ARCHIVE_READER_H_
