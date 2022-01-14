@@ -73,31 +73,12 @@ ArchiveReader::ArchiveReader(const std::string &P)
         }
 
         ArchiveReaderFile File = ArchiveReaderFile(Header, Offset);
-        if(File.FileNameFormat == GNUExtended)
-        {
-            auto FileNameIt = GnuExtendedFilenames.find(File.ExtendedFileNameNumber);
 
-            if(FileNameIt == GnuExtendedFilenames.end())
-            {
-                throw ArchiveReaderException("Invalid ar format: extended filename not found");
-            }
-            File.FileName = FileNameIt->second;
-        }
-        else if(File.FileNameFormat == BSDExtended)
-        {
-            File.FileName.resize(File.ExtendedFileNameNumber);
-            Stream.read(File.FileName.data(), File.ExtendedFileNameNumber);
-            Offset += File.ExtendedFileNameNumber;
-
-            if(File.ExtendedFileNameNumber > File.Size)
-            {
-                throw ArchiveReaderException("Invalid ar format: extended file name too long");
-            }
-            File.Offset += File.ExtendedFileNameNumber;
-            File.Size -= File.ExtendedFileNameNumber;
-        }
-
-        if(File.FileName == "/" || File.FileName == "ARFILENAMES/")
+        // Handle special files: extended filename table and symbol table.
+        // These are expected to be the first entries in the archive, before
+        // any regular files are seen.
+        if(File.FileNameFormat == Unextended
+           && (File.FileName == "/" || File.FileName == "ARFILENAMES/"))
         {
             // GNU extended filenames entry
             size_t LineOffset = 0;
@@ -122,13 +103,39 @@ ArchiveReader::ArchiveReader(const std::string &P)
                 LineOffset += LineSize + 1;
             }
         }
-        else if(File.FileName == ""
-                || File.FileName.compare(0, SymdefPrefix.size(), SymdefPrefix) == 0)
+        else if(File.FileNameFormat == Unextended
+                && (File.FileName == ""
+                    || File.FileName.compare(0, SymdefPrefix.size(), SymdefPrefix) == 0))
         {
             // symtable entry: ignore.
         }
         else
         {
+            // Expand extended file names, if needed.
+            if(File.FileNameFormat == GNUExtended)
+            {
+                auto FileNameIt = GnuExtendedFilenames.find(File.ExtendedFileNameNumber);
+
+                if(FileNameIt == GnuExtendedFilenames.end())
+                {
+                    throw ArchiveReaderException("Invalid ar format: extended filename not found");
+                }
+                File.FileName = FileNameIt->second;
+            }
+            else if(File.FileNameFormat == BSDExtended)
+            {
+                File.FileName.resize(File.ExtendedFileNameNumber);
+                Stream.read(File.FileName.data(), File.ExtendedFileNameNumber);
+                Offset += File.ExtendedFileNameNumber;
+
+                if(File.ExtendedFileNameNumber > File.Size)
+                {
+                    throw ArchiveReaderException("Invalid ar format: extended file name too long");
+                }
+                File.Offset += File.ExtendedFileNameNumber;
+                File.Size -= File.ExtendedFileNameNumber;
+            }
+
             Files.push_back(File);
         }
 
