@@ -1,8 +1,8 @@
 variables:
-  GTIRB_BRANCH: "master"
-  GTIRB_PPRINTER_BRANCH: "master"
-  CAPSTONE_BRANCH: "master"
-  LIBEHP_REF: "master"
+  GTIRB_BRANCH: "release-1.10.6"
+  GTIRB_PPRINTER_BRANCH: "release-1.8.2"
+  CAPSTONE_BRANCH: "capstone-4.0.2-gt1"
+  LIBEHP_REF: "55a52357bc62e82b235891aebc5add1900c12511"
   EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_SERVER_HOST}/api/v4/projects/1587/packages/pypi/simple
   CONAN_PASSWORD: $CI_JOB_TOKEN
   # The following two variables are used by the package-uploader
