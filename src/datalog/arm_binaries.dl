@@ -339,6 +339,26 @@ symbolic_operand_candidate(EA_hi,1,Dest,Type):-
         Type = "data"
     ).
 
+symbolic_operand_point(EA,Imm_index,-2,"invalid symbolic operand for mov"):-
+    symbolic_operand_candidate(EA,Imm_index,_,_),
+    // If no attribute is found, the immediate is not likely symbolic.
+    // Note that lower16 or upper16 is not allowed for mov.
+    // However, upper8_15 seems valid: e.g., MOVS r0, #:upper8_15:#foo
+    !symbolic_operand_attribute(EA,_,_),
+    instruction_get_operation(EA,Operation),
+    Operation != "MOVT", Operation != "MOVW", contains("MOV",Operation).
+
+symbolic_operand_point(EA,Imm_index,-1,"unlikely to have symbolic operand"):-
+    symbolic_operand_candidate(EA,Imm_index,_,_),
+    instruction_get_operation(EA,Operation),
+    (
+        arch.cmp_operation(Operation)
+        ;
+        arch.logic_operation(Operation)
+        ;
+        contains("ADD",Operation), !split_load(_,EA,_,"ADD")
+    ).
+
 symbolic_operand_candidate(EA,1,Dest,Type):-
     binary_isa("ARM64"),
     // ADR <Register> <Immediate>
@@ -801,12 +821,19 @@ symbolic_data(LitPoolAddr,Size,Got_entry):-
         symbol(Dest,_,_,_,_,_,_,Symbol)
     ).
 
-cant_have_symbolic_immediate(Operation):-
-    instruction_get_operation(_, Operation),
+unlikely_have_symbolic_immediate(EA):-
+    instruction_get_operation(EA, Operation),
     (
+        // NOTE: This is not exhaustive.
+        arch.logic_operation(Operation);
+        Operation != "MOVT", Operation != "MOVW", contains("MOV",Operation);
+        contains("ADD", Operation), !split_load(_, EA, _, "ADD");
+        contains("CMP", Operation);
+        contains("CMN", Operation);
         contains("SUB", Operation);
-        contains("MOV", Operation)
+        contains("RSB", Operation)
     ).
+
 
 must_access_data(EA,Dest):-
     litpool_ref(EA,_,Dest,_);
