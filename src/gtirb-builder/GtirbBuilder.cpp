@@ -73,7 +73,7 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
         return GTIRB{Context, IR};
     }
 
-    if(ArchiveReader::is_ar(Path))
+    if(ArchiveReader::isAr(Path))
     {
         gtirb::IR* IR = gtirb::IR::Create(*Context);
         auto TmpDir = fs::temp_directory_path();
@@ -82,7 +82,7 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
         {
             ArchiveReader Archive(Path);
 
-            for(auto& Object : Archive.Files())
+            for(auto& Object : Archive.Files)
             {
                 std::string ObjectPath = (TmpDir / fs::unique_path()).string();
                 Object->Extract(ObjectPath);

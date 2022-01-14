@@ -49,7 +49,7 @@ public:
 struct FileHeader
 {
     char ident[16]; // file identifier (ascii)
-    char ts[12];    // modificiation timestamp (decimal)
+    char ts[12];    // modification timestamp (decimal)
     char oid[6];    // owner id (decimal)
     char gid[6];    // group id (decimal)
     char mode[8];   // file mode (octal)
@@ -84,13 +84,12 @@ class ArchiveReader
 {
 public:
     ArchiveReader(const std::string &Path);
-    const std::list<std::shared_ptr<ArchiveReaderFile>> &Files();
+    std::list<std::shared_ptr<ArchiveReaderFile>> Files;
 
-    static bool is_ar(const std::string &Path);
-    static bool is_ar(std::ifstream &Stream);
+    static bool isAr(const std::string &Path);
+    static bool isAr(std::ifstream &Stream);
 
 protected:
-    std::list<std::shared_ptr<ArchiveReaderFile>> _Files;
     std::string Path;
     std::ifstream Stream;
 
