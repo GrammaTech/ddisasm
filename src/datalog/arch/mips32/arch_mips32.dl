@@ -154,8 +154,6 @@ jump(EA):-
     return_operation(Operation),
     !return(EA).
 
-.override delay_slot
-
 delay_slot(BranchEA,EA):-
     next(BranchEA, EA),
     instruction_get_operation(BranchEA,Operation),

@@ -47,7 +47,6 @@ load_operation(Operation):-
         contains("LDM", Operation)
     ).
 
-.override load_word_operation
 load_word_operation(Operation):-
     instruction_get_operation(_,Operation),
     substr(Operation,0,3) = "LDR",
@@ -106,7 +105,6 @@ unconditional_return_operation(Operation):-
     ),
     !conditional_return_operation(Operation).
 
-.override conditional_return_operation
 conditional_return_operation(Operation):-
     instruction_get_operation(_,Operation),
     substr(Operation,0,3) = "POP",
@@ -118,7 +116,6 @@ long_operation(Operation):-
     instruction_get_operation(_,Operation),
     strlen(Operation) > 2.
 
-.override is_conditional_operation
 is_conditional_operation(Operation):-
     long_operation(Operation),
     instruction_get_operation(_,Operation),
