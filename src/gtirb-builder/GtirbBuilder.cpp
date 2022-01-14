@@ -76,7 +76,6 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
     if(ArchiveReader::isAr(Path))
     {
         gtirb::IR* IR = gtirb::IR::Create(*Context);
-        auto TmpDir = fs::temp_directory_path();
 
         try
         {
@@ -84,10 +83,11 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
 
             for(auto& Object : Archive.Files)
             {
-                std::string ObjectPath = (TmpDir / fs::unique_path()).string();
-                Object->Extract(ObjectPath);
+                std::vector<uint8_t> ObjectData;
+                Archive.ReadFile(Object, ObjectData);
 
-                std::shared_ptr<LIEF::Binary> Binary{LIEF::Parser::parse(ObjectPath)};
+                std::shared_ptr<LIEF::Binary> Binary{
+                    LIEF::Parser::parse(ObjectData, Object.FileName)};
                 if(!Binary)
                 {
                     return GtirbBuilder::build_error::ParseError;
@@ -98,10 +98,8 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
                     return GtirbBuilder::build_error::NotSupported;
                 }
 
-                ElfReader Elf(Path, Object->FileName, Context, IR, Binary);
+                ElfReader Elf(Path, Object.FileName, Context, IR, Binary);
                 Elf.build();
-
-                fs::remove(ObjectPath);
             }
         }
         catch(ArchiveReaderException& e)

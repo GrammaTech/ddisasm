@@ -72,38 +72,38 @@ ArchiveReader::ArchiveReader(const std::string &P)
             throw ArchiveReaderException("Invalid ar format: unexpected terminator");
         }
 
-        auto File = std::make_shared<ArchiveReaderFile>(*this, Header, Offset);
-        if(File->FileNameFormat == GNUExtended)
+        ArchiveReaderFile File = ArchiveReaderFile(Header, Offset);
+        if(File.FileNameFormat == GNUExtended)
         {
-            auto FileNameIt = GnuExtendedFilenames.find(File->ExtendedFileNameNumber);
+            auto FileNameIt = GnuExtendedFilenames.find(File.ExtendedFileNameNumber);
 
             if(FileNameIt == GnuExtendedFilenames.end())
             {
                 throw ArchiveReaderException("Invalid ar format: extended filename not found");
             }
-            File->FileName = FileNameIt->second;
+            File.FileName = FileNameIt->second;
         }
-        else if(File->FileNameFormat == BSDExtended)
+        else if(File.FileNameFormat == BSDExtended)
         {
-            File->FileName.resize(File->ExtendedFileNameNumber);
-            Stream.read(File->FileName.data(), File->ExtendedFileNameNumber);
-            Offset += File->ExtendedFileNameNumber;
+            File.FileName.resize(File.ExtendedFileNameNumber);
+            Stream.read(File.FileName.data(), File.ExtendedFileNameNumber);
+            Offset += File.ExtendedFileNameNumber;
 
-            if(File->ExtendedFileNameNumber > File->Size)
+            if(File.ExtendedFileNameNumber > File.Size)
             {
                 throw ArchiveReaderException("Invalid ar format: extended file name too long");
             }
-            File->Offset += File->ExtendedFileNameNumber;
-            File->Size -= File->ExtendedFileNameNumber;
+            File.Offset += File.ExtendedFileNameNumber;
+            File.Size -= File.ExtendedFileNameNumber;
         }
 
-        if(File->FileName == "/" || File->FileName == "ARFILENAMES/")
+        if(File.FileName == "/" || File.FileName == "ARFILENAMES/")
         {
             // GNU extended filenames entry
             size_t LineOffset = 0;
-            while(LineOffset < File->Size)
+            while(LineOffset < File.Size)
             {
-                std::string Line(File->Size - LineOffset + 1, '\0');
+                std::string Line(File.Size - LineOffset + 1, '\0');
                 Stream.getline(Line.data(), Line.size() - 1, '\n');
                 size_t LineSize = Line.find_first_of('\0');
                 Line.resize(LineSize);
@@ -122,8 +122,8 @@ ArchiveReader::ArchiveReader(const std::string &P)
                 LineOffset += LineSize + 1;
             }
         }
-        else if(File->FileName == ""
-                || File->FileName.compare(0, SymdefPrefix.size(), SymdefPrefix) == 0)
+        else if(File.FileName == ""
+                || File.FileName.compare(0, SymdefPrefix.size(), SymdefPrefix) == 0)
         {
             // symtable entry: ignore.
         }
@@ -132,7 +132,7 @@ ArchiveReader::ArchiveReader(const std::string &P)
             Files.push_back(File);
         }
 
-        Offset += File->Size;
+        Offset += File.Size;
         if(Offset % 2 != 0)
         {
             // File headers are aligned to even bytes
@@ -143,9 +143,15 @@ ArchiveReader::ArchiveReader(const std::string &P)
     }
 }
 
-ArchiveReaderFile::ArchiveReaderFile(ArchiveReader &R, const FileHeader &Header, uint64_t O)
-    : Reader(R),
-      Ident(Header.ident, sizeof(Header.ident)),
+void ArchiveReader::ReadFile(ArchiveReaderFile &File, std::vector<uint8_t> &Data)
+{
+    Stream.seekg(File.Offset, Stream.beg);
+    Data.resize(File.Size);
+    std::copy_n(std::istreambuf_iterator<char>(Stream), File.Size, Data.begin());
+}
+
+ArchiveReaderFile::ArchiveReaderFile(const FileHeader &Header, uint64_t O)
+    : Ident(Header.ident, sizeof(Header.ident)),
       Size(std::stoull(std::string(Header.size, sizeof(Header.size)).c_str())),
       Offset(O),
       FileNameFormat(Unextended),
@@ -202,13 +208,4 @@ ArchiveReaderFile::ArchiveReaderFile(ArchiveReader &R, const FileHeader &Header,
     {
         FileName = Ident.substr(0, Index);
     }
-}
-
-void ArchiveReaderFile::Extract(const std::string &Path)
-{
-    Reader.Stream.seekg(Offset, Reader.Stream.beg);
-    std::ofstream OStream(Path, std::ios::out | std::ios::binary);
-
-    std::copy_n(std::istreambuf_iterator<char>(Reader.Stream), Size,
-                std::ostreambuf_iterator<char>(OStream));
 }
