@@ -47,7 +47,6 @@ load_operation(Operation):-
         contains("LDP", Operation)
     ).
 
-.override load_word_operation
 load_word_operation(Operation):-
     instruction_get_operation(_,Operation),
     substr(Operation,0,3) = "LDR",

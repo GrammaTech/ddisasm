@@ -96,7 +96,6 @@ loop_operation("LOOPZ").
 loop_operation("LOOPNE").
 loop_operation("LOOPNZ").
 
-.override loop_prefix
 loop_prefix("REP").
 loop_prefix("REPE").
 loop_prefix("REPNE").
@@ -114,7 +113,6 @@ cmp_operation("CMP").
 cmp_operation("TEST").
 
 // FIXME: review this list when Capstone is updated.
-.override operation_size_exception
 operation_size_exception(EA,Index,8):-
     instruction_get_operation(EA,"MOVSD"),
     instruction_get_op(EA,Index,Op),
