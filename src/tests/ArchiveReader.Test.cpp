@@ -15,10 +15,10 @@ TEST(ArchiveReaderTest, Basic)
 
     std::vector<std::string> FileNames = {"file1", "file2"};
     std::vector<std::string> Contents = {"contents1", "contents2"};
-    EXPECT_EQ(Reader.Files().size(), FileNames.size());
+    EXPECT_EQ(Reader.Files.size(), FileNames.size());
 
     unsigned int Index = 0;
-    for(auto& Object : Reader.Files())
+    for(auto& Object : Reader.Files)
     {
         EXPECT_EQ(Object->FileName, FileNames[Index]);
 
@@ -41,7 +41,7 @@ TEST(ArchiveReaderTest, Basic)
 TEST(ArchiveReaderTest, Empty)
 {
     ArchiveReader Reader("inputs/ar/empty.a");
-    EXPECT_EQ(Reader.Files().size(), 0);
+    EXPECT_EQ(Reader.Files.size(), 0);
 }
 
 TEST(ArchiveReaderTest, BSD)
@@ -52,10 +52,10 @@ TEST(ArchiveReaderTest, BSD)
         "long_archive_member_name",
         "file",
     };
-    EXPECT_EQ(Reader.Files().size(), FileNames.size());
+    EXPECT_EQ(Reader.Files.size(), FileNames.size());
 
     unsigned int Index = 0;
-    for(auto& Object : Reader.Files())
+    for(auto& Object : Reader.Files)
     {
         EXPECT_EQ(Object->FileName, FileNames[Index++]);
     }
@@ -70,10 +70,10 @@ TEST(ArchiveReaderTest, GNU)
         "file",
         "other_archive_member_name",
     };
-    EXPECT_EQ(Reader.Files().size(), FileNames.size());
+    EXPECT_EQ(Reader.Files.size(), FileNames.size());
 
     unsigned int Index = 0;
-    for(auto& Object : Reader.Files())
+    for(auto& Object : Reader.Files)
     {
         EXPECT_EQ(Object->FileName, FileNames[Index++]);
     }

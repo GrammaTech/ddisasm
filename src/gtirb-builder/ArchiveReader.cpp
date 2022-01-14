@@ -28,36 +28,34 @@
 #include <iostream>
 #include <unordered_map>
 
-const std::vector<uint8_t> ar_magic = {'!', '<', 'a', 'r', 'c', 'h', '>', '\n'};
-const std::string symdef_prefix = "__.SYMDEF";
+const std::vector<uint8_t> ArMagic = {'!', '<', 'a', 'r', 'c', 'h', '>', '\n'};
+const std::string SymdefPrefix = "__.SYMDEF";
 
-bool ArchiveReader::is_ar(const std::string &Path)
+bool ArchiveReader::isAr(const std::string &Path)
 {
-    std::ifstream Stream;
-    Stream.open(Path, std::ios::in | std::ios::binary);
-
-    return ArchiveReader::is_ar(Stream);
+    std::ifstream Stream(Path, std::ios::in | std::ios::binary);
+    return ArchiveReader::isAr(Stream);
 }
 
-bool ArchiveReader::is_ar(std::ifstream &Stream)
+bool ArchiveReader::isAr(std::ifstream &Stream)
 {
     std::vector<uint8_t> buf;
-    buf.resize(ar_magic.size());
+    buf.resize(ArMagic.size());
 
     Stream.read(reinterpret_cast<char *>(buf.data()), buf.size());
-    return buf == ar_magic;
+    return buf == ArMagic;
 }
 
-ArchiveReader::ArchiveReader(const std::string &P) : Path(P)
+ArchiveReader::ArchiveReader(const std::string &P)
+    : Path(P), Stream(Path, std::ios::in | std::ios::binary)
 {
-    Stream.open(Path, std::ios::in | std::ios::binary);
     Stream.seekg(0, Stream.end);
     uint64_t Length = Stream.tellg();
     Stream.seekg(0, Stream.beg);
 
     std::unordered_map<uint64_t, std::string> GnuExtendedFilenames;
 
-    if(!ArchiveReader::is_ar(Stream))
+    if(!ArchiveReader::isAr(Stream))
     {
         throw ArchiveReaderException("Invalid ar format: unexpected magic");
     }
@@ -125,13 +123,13 @@ ArchiveReader::ArchiveReader(const std::string &P) : Path(P)
             }
         }
         else if(File->FileName == ""
-                || File->FileName.compare(0, symdef_prefix.size(), symdef_prefix) == 0)
+                || File->FileName.compare(0, SymdefPrefix.size(), SymdefPrefix) == 0)
         {
             // symtable entry: ignore.
         }
         else
         {
-            _Files.push_back(File);
+            Files.push_back(File);
         }
 
         Offset += File->Size;
@@ -143,11 +141,6 @@ ArchiveReader::ArchiveReader(const std::string &P) : Path(P)
         }
         Stream.seekg(Offset, Stream.beg);
     }
-}
-
-const std::list<std::shared_ptr<ArchiveReaderFile>> &ArchiveReader::Files()
-{
-    return _Files;
 }
 
 ArchiveReaderFile::ArchiveReaderFile(ArchiveReader &R, const FileHeader &Header, uint64_t O)
@@ -214,9 +207,7 @@ ArchiveReaderFile::ArchiveReaderFile(ArchiveReader &R, const FileHeader &Header,
 void ArchiveReaderFile::Extract(const std::string &Path)
 {
     Reader.Stream.seekg(Offset, Reader.Stream.beg);
-
-    std::ofstream OStream;
-    OStream.open(Path, std::ios::out | std::ios::binary);
+    std::ofstream OStream(Path, std::ios::out | std::ios::binary);
 
     std::copy_n(std::istreambuf_iterator<char>(Reader.Stream), Size,
                 std::ostreambuf_iterator<char>(OStream));
