@@ -1,4 +1,4 @@
-# 1.5.2 (Unreleased)
+# 1.5.2
 * Add ELF x86_64 .o support.
 
 # 1.5.1
