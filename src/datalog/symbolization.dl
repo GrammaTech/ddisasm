@@ -313,20 +313,44 @@ symbolic_expr(EA+InstrOffset,EANext-(EA+InstrOffset),SymbolName,0):-
     ),
     !symbolic_expr_from_relocation(EA+InstrOffset,_,_,_),
     next(EA,EANext),
-    // global functions symbols > function symbols > global symbols > rest
+    best_symexpr_symbol(Dest,SymbolName).
+
+.decl best_symexpr_symbol(EA:address,SymbolName:symbol)
+
+best_symexpr_symbol(EA,SymbolName):-
+    // - has copy relocation
+    // - global func or object
+    // - local func or object
+    // - weak func or object
+    // - global notype
+    defined_symbol(EA,_,Type,Scope,_,_,_,SymbolName),
+    !ambiguous_symbol(SymbolName),
     (
-        defined_symbol(Dest,_,"FUNC","GLOBAL",_,_,_,SymbolName)
+        relocation(EA,"COPY",SymbolName,_,_,_,_),
+        // Avoid souffle warnings
+        Type = Type, Scope = Scope
         ;
-        !defined_symbol(Dest,_,"FUNC","GLOBAL",_,_,_,_),
-        defined_symbol(Dest,_,"FUNC",_,_,_,_,SymbolName)
+        !relocation(EA,"COPY",_,_,_,_,_),
+        Scope= "GLOBAL",
+        (Type="FUNC"; Type="OBJECT")
         ;
-        !defined_symbol(Dest,_,"FUNC",_,_,_,_,_),
-        defined_symbol(Dest,_,_,"GLOBAL",_,_,_,SymbolName)
+        !relocation(EA,"COPY",_,_,_,_,_),
+        !defined_symbol(EA,_,_,"GLOBAL",_,_,_,_),
+        Scope= "LOCAL",
+        (Type="FUNC"; Type="OBJECT")
         ;
-        !defined_symbol(Dest,_,_,"GLOBAL",_,_,_,_),
-        defined_symbol(Dest,_,_,_,_,_,_,SymbolName)
-    ),
-    !ambiguous_symbol(SymbolName).
+        !relocation(EA,"COPY",_,_,_,_,_),
+        !defined_symbol(EA,_,_,"GLOBAL",_,_,_,_),
+        !defined_symbol(EA,_,_,"LOCAL",_,_,_,_),
+        Scope= "WEAK",
+        (Type="FUNC"; Type="OBJECT")
+        ;
+        !relocation(EA,"COPY",_,_,_,_,_),
+        !defined_symbol(EA,_,"FUNC",_,_,_,_,_),
+        !defined_symbol(EA,_,"OBJECT",_,_,_,_,_),
+        Scope= "GLOBAL",
+        Type="NOTYPE"
+    ).
 
 ///////////////////////////////
 // label candidates before moving
