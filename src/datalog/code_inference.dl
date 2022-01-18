@@ -144,6 +144,7 @@ must_fallthrough(From,To):-
     !arch.interrupt_operation(Operation),
     !instruction_has_loop_prefix(From),
     !conditional_jump(From),
+    !conditional_return(From),
     !arch.delay_slot(_,From).
 
 //////////////////////////////////////////////////////////////
@@ -156,8 +157,6 @@ must_fallthrough(From,To):-
 may_have_symbolic_immediate(Src,as(Dest,address)):-
     instruction_immediate_offset(Src,Index,Offset),
     instruction_get_op(Src,Index,Op),
-    instruction_get_operation(Src,Operation),
-    !cant_have_symbolic_immediate(Operation),
     op_immediate(Op,Dest),
     (
         binary_type("DYN"),
@@ -167,10 +166,13 @@ may_have_symbolic_immediate(Src,as(Dest,address)):-
         relocation(Src+Offset,_,_,_,_,_,_)
         ;
         binary_type("EXEC"),
+        instruction_get_operation(Src,Operation),
         !arch.logic_operation(Operation),
         Offset = Offset // avoid warning
     ).
 
+.decl unlikely_have_symbolic_immediate(EA:address)
+unlikely_have_symbolic_immediate(0):- false.
 
 .decl invalid(EA:address,Type:symbol)
 .output invalid
@@ -455,10 +457,10 @@ block_total_points(Block,Type,Points):-
     block_is_overlapping(Block,Type),
     Points = sum X:{block_points(Block,Type,_,X,_)}.
 
-.decl discarded_block(Block:address,Type:block_type)
+.decl discarded_block(Block:address,Type:block_type,Reason:symbol)
 .output discarded_block
 
-discarded_block(Block1,Type1):-
+discarded_block(Block1,Type1,"less points"):-
     (
         block_overlap(Block1,Type1,Block2,Type2);
         block_overlap(Block2,Type2,Block1,Type1)
@@ -475,13 +477,13 @@ discarded_block(Block1,Type1):-
         Type2 = "code"
     ).
 
-discarded_block(Block,Type):-
+discarded_block(Block,Type,"negative points"):-
     block_total_points(Block,Type,Points),
     Points < 0.
 
 // propagate discarding blocks through direct jumps or calls
-discarded_block(Block,"code"):-
-    discarded_block(Block2,"code"),
+discarded_block(Block,"code","propagated"):-
+    discarded_block(Block2,"code",_),
     !overlapping_instruction(Block2,_),
     (
         direct_jump(EA,Block2);
@@ -495,7 +497,7 @@ discarded_block(Block,"code"):-
 // two blocks where the first instruction is overlapping and only different because of a prefix
 // we discard the second block but register the instruction without prefix as code
 overlapping_instruction(Block2,Block),
-discarded_block(Block2,"code"):-
+discarded_block(Block2,"code","first instruction overlap"):-
     block_overlap(Block,"code",Block2,"code"),
     // one has an extra prefix with respect to the other
     instruction(Block,Size,"LOCK",OpCode,Op1,Op2,Op3,Op4,_,_),
@@ -680,6 +682,7 @@ block_points(Block,"code",0,1,"better fit"):-
 block_points(Block,"code",0,3,"appears"):-
     block_is_overlapping(Block,"code"),
     possible_target_from(Block,EA),
+    !unlikely_have_symbolic_immediate(EA),
     !direct_jump(EA,Block),
     !direct_call(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
@@ -714,6 +717,9 @@ block_points(Block,"code",BlockPred,Points,Why):-
     Points != 0.
 
 block_points(Block,"code",BlockPred,Points2,Why):-
+    // Because for ARM, any bytes that cannot fall through are highly likely
+    // literal pool, we skip this predicate for ARM.
+    !binary_isa("ARM"),
     block_is_overlapping(Block,"code"),
     after_end(Block,EA),
     code_in_block_candidate_refined(EA,BlockPred),
@@ -795,13 +801,22 @@ block_points(Block,"code",0,10,"landing-pad"):-
     block_is_overlapping(Block,"code"),
     lsda_callsite_addresses( _, _, Block).
 
+block_points(Block,"code",0,-2,"conditional jump/return: fallthrough to invalid"):-
+    code_in_block_candidate(EA,Block),
+    (
+        conditional_jump(EA);
+        conditional_return(EA)
+    ),
+    next(EA,Invalid),
+    invalid(Invalid,_).
+
 
 ////////////////////////////////////////////////////////////////////////////
 
 
 code_in_block(EA,Block):-
     code_in_block_candidate_refined(EA,Block),
-    !discarded_block(Block,"code").
+    !discarded_block(Block,"code",_).
 
 code_in_block(EA,Block):-
     overlapping_instruction(EA,Block),
@@ -822,8 +837,8 @@ code(EA):-
 
 block_still_overlap(Block1,Type1,Block2,Type2):-
     block_overlap(Block1,Type1,Block2,Type2),
-    !discarded_block(Block1,Type1),
-    !discarded_block(Block2,Type2),
+    !discarded_block(Block1,Type1,_),
+    !discarded_block(Block2,Type2,_),
     // We only care about code-code or code-data conflicts
     // but not about data-data conflicts.
     (Type1 = "code"; Type2 = "code").
