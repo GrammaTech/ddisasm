@@ -26,10 +26,6 @@
 #include "registers_x86_32.dl"
 pointer_size(4).
 
-/**
- * The location and register where the address of main is loaded.
- */
-.decl main_load_reg(EA:address,Reg:register)
 main_load_reg(PushEA,Reg):-
     // x86 uses a unique pattern for finding candidates for
     // main_function_dispatch, implemented inline here. On 32-bit x86, an

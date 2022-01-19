@@ -64,20 +64,7 @@ This module:
 #include "binary/pe/pe_binaries.dl"
 
 // Architecture specific predicates.
-#ifdef ARCH_ARM64
-    #include "arm_binaries.dl"
-    #include "arm64_binaries.dl"
-    #include "arch/arm64/arch_arm64.dl"
-    .init arch = ARM64
-#elif defined(ARCH_IA32)
-    #include "arch/intel/arch_x86_32.dl"
-    .init arch = X86_32
-#elif defined(ARCH_AMD64)
-    #include "arch/intel/arch_x86_64.dl"
-    .init arch = X86_64
-#else
-    #error "Undefined architecture"
-#endif
+#include "arch/arch.dl"
 
 // Detection of jump tables.
 #include "jump_tables.dl"
