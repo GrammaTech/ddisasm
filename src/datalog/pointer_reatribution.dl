@@ -74,7 +74,7 @@ moved_data_label(EA,Size,Dest,NewDest):-
 moved_data_label(EA,SizePointer,Dest,Address):-
     symbolic_data(EA,SizePointer,Dest),
     !code(Dest),
-    symbol(Address,Size,_,_,_,_,_,Name),
+    symbol(Address,Size,_,_,_,_,_,_,Name),
     !function_symbol(Address,Name),
     Address < Dest,
     Dest < Address+Size.
@@ -314,7 +314,7 @@ moved_displacement_candidate(EA,Op_index,DestAddr,SymbolAddr,0):-
     DestAddr = as(Dest,address),
     instruction_displacement_offset(EA,Op_index,DisplacementOffset,_),
     relocation(EA+DisplacementOffset,_,Symbol,_,_,_,_),
-    symbol(SymbolAddr,_,Type,_,_,_,_,Symbol),
+    symbol(SymbolAddr,_,Type,_,_,_,_,_,Symbol),
     Type != "SECTION",
     SymbolAddr != DestAddr.
 
@@ -480,7 +480,7 @@ moved_immediate_candidate(EA,Op_index,DestAddr,SymbolAddr):-
     op_immediate(Op,Dest), Dest >= 0,
     DestAddr = as(Dest,address),
     relocation(EA+ImmediateOffset,_,Symbol,_,_,_,_),
-    symbol(SymbolAddr,_,_,_,_,_,_,Symbol),
+    symbol(SymbolAddr,_,_,_,_,_,_,_,Symbol),
     SymbolAddr != DestAddr.
 
 moved_label(EA,Op_index,Dest,NewDest):-
@@ -495,7 +495,7 @@ moved_label(EA,Op_index,Dest,Address):-
     ),
     !moved_displacement_candidate(EA,Op_index,_,_,_),
     !moved_immediate_candidate(EA,Op_index,_,_),
-    defined_symbol(Address,Size,_,_,_,_,_,Name),
+    defined_symbol(Address,Size,_,_,_,_,_,_,Name),
     !function_symbol(Address,Name),
     Address < Dest,
     Dest < Address+Size.

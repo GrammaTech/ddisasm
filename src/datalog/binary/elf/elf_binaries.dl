@@ -150,8 +150,8 @@ plt_entry(EA,Name):-
     pc_relative_jump(EA,Got_entry),
     relocation(Got_entry,"IRELATIVE","",Dest,_,_,_),
     (
-        defined_symbol(as(Dest,address),_,"GNU_IFUNC",_,_,_,_,Name);
-        !defined_symbol(as(Dest,address),_,"GNU_IFUNC",_,_,_,_,_),
+        defined_symbol(as(Dest,address),_,"GNU_IFUNC",_,_,_,_,_,Name);
+        !defined_symbol(as(Dest,address),_,"GNU_IFUNC",_,_,_,_,_,_),
         ifunc_symbol(as(Dest,address),Name)
     ).
 
@@ -168,25 +168,15 @@ plt_data_reference(EA):-
 //////////////////////////////////////////////////////////////////////////
 
 got_reference(Got_entry,Symbol):-
-    (
-      pc_relative_operand(_,_,Got_entry);
-      split_load_operand(_,_,Got_entry);
-      got_relative_operand(_,_,Got_entry)
-    ),
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
     relocation(Got_entry,RelType,Symbol,_,_,_,_),
     RelType != "RELATIVE",
     RelType != "DTPMOD64",
-    symbol(_,_,_,_,_,_,_,Symbol).
+    symbol(_,_,_,_,_,_,_,_,Symbol).
 
 got_reference(Got_entry,Symbol):-
-    (
-      pc_relative_operand(_,_,Got_entry);
-      split_load_operand(_,_,Got_entry);
-      got_relative_operand(_,_,Got_entry)
-    ),
     section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
@@ -202,10 +192,6 @@ got_reference(Got_entry,Symbol):-
 inferred_symbol_name(Dest,DestName,"LOCAL","NONE"),
 got_reference(Got_entry,DestName):-
     relocation(Got_entry,"DTPMOD64","",_,_,_,_),
-    (
-      pc_relative_operand(_,_,Got_entry);
-      split_load_operand(_,_,Got_entry)
-    ),
     (
         section(".tbss",_,Beg);
         section(".tdata",_,Beg)
@@ -279,7 +265,7 @@ main_function(Main_location):-
 
 inferred_symbol_name(EA,"_start","GLOBAL","FUNC"):-
     !binary_type("REL"),
-    !symbol(EA,_,"FUNC",_,_,_,_,_),
+    !symbol(EA,_,"FUNC",_,_,_,_,_,_),
     start_function(EA).
 
 inferred_symbol_name(EA,"__do_global_dtors_aux","LOCAL","FUNC"):-
@@ -305,15 +291,8 @@ inferred_symbol_name(EA,"__do_global_dtors_aux","LOCAL","FUNC"):-
 
 inferred_symbol_name(EA,"_DYNAMIC","LOCAL","NONE"):-
     binary_format("ELF"),
-    !symbol(EA,_,_,_,_,_,_,"_DYNAMIC"),
+    !symbol(EA,_,_,_,_,_,_,_,"_DYNAMIC"),
     section(".dynamic",_,EA).
-
-inferred_symbol_name(EA,Name,"GLOBAL","FUNC"):-
-    binary_format("ELF"),
-    function_inference.function_entry(EA),
-    !function_symbol(EA,_),
-    !ifunc_symbol(EA,_),
-    Name = cat("FUN_",to_string(EA)).
 
 no_return_function("abort(@.*)?"):- binary_format("ELF").
 no_return_function("_?exit(@.*)?"):- binary_format("ELF").
@@ -327,7 +306,7 @@ no_return_function("longjmp(@.*)?"):- binary_format("ELF").
 symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
     binary_format("ELF"),
     relocation(EA,"R64",Symbol,Addend,_,_,_),
-    symbol(_,_,_,_,_,_,_,Symbol), Symbol != "".
+    symbol(_,_,_,_,_,_,_,_,Symbol), Symbol != "".
 
 // Relocation indirectly references a named symbol with an offset from a SECTION symbol.
 symbolic_expr_from_relocation(EA,Size/8,Symbol,0):-
@@ -339,26 +318,26 @@ symbolic_expr_from_relocation(EA,Size/8,Symbol,0):-
         Type = "R32";
         Type = "R64"
     ),
-    symbol(_,_,"SECTION",_,SectionIndex,_,SymbolIndex,_),
+    symbol(_,_,"SECTION",_,_,SectionIndex,_,SymbolIndex,_),
     section_complete(_,_,Begin,_,_,_,SectionIndex),
     // Addend is the offset of a symbol within the Section.
-    symbol(Begin+as(Addend,unsigned),_,_,_,_,_,_,Symbol).
+    symbol(Begin+as(Addend,unsigned),_,_,_,_,_,_,_,Symbol).
 
 symbolic_expr_from_relocation(EA,Size,Symbol,Addend):-
     binary_format("ELF"),
     arch.pointer_size(Size),
     relocation(EA,"GLOB_DAT",Symbol,Addend,_,_,_),
-    symbol(_,_,_,_,_,_,_,Symbol).
+    symbol(_,_,_,_,_,_,_,_,Symbol).
 
 symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
     binary_format("ELF"),
     relocation(EA,"R32",Symbol,Addend,_,_,_),
-    symbol(_,_,_,_,_,_,_,Symbol).
+    symbol(_,_,_,_,_,_,_,_,Symbol).
 
 symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
     binary_format("ELF"),
     relocation(EA,"R32S",Symbol,Addend,_,_,_),
-    symbol(_,_,_,_,_,_,_,Symbol).
+    symbol(_,_,_,_,_,_,_,_,Symbol).
 
 symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
     binary_type("REL"),
@@ -427,7 +406,7 @@ inferred_symbol_name(DestAddr,NameFunc,"GLOBAL","GNU_IFUNC"),
 inferred_symbol_name(DestAddr,Name,"LOCAL","FUNC"):-
     relocation(_,"IRELATIVE","",Dest,_,_,_),
     DestAddr = as(Dest,address),
-    !symbol(DestAddr,_,"GNU_IFUNC",_,_,_,_,_),
+    !symbol(DestAddr,_,"GNU_IFUNC",_,_,_,_,_,_),
     NameFunc = cat("FUN_",to_string(Dest)),
     Name = cat(NameFunc,"_IFUNC").
 
@@ -436,11 +415,11 @@ inferred_symbol_name(DestAddr,Name,"LOCAL","FUNC"):-
 // that contaisn the IRELATIVE relocations
 inferred_symbol_name(Beg,"__rela_iplt_start","GLOBAL","NONE"):-
     section(".rela.plt",_,Beg),
-    !symbol(_,_,_,_,_,_,_,"__rela_iplt_start").
+    !symbol(_,_,_,_,_,_,_,_,"__rela_iplt_start").
 
 inferred_symbol_name(Beg+Size,"__rela_iplt_end","GLOBAL","NONE"):-
     section(".rela.plt",Size,Beg),
-    !symbol(_,_,_,_,_,_,_,"__rela_iplt_end").
+    !symbol(_,_,_,_,_,_,_,_,"__rela_iplt_end").
 
 abi_intrinsic(Beg,"__rela_iplt_start"),
 abi_intrinsic(Beg+Size,"__rela_iplt_end"):-
@@ -469,15 +448,15 @@ moved_label_class(EAStop,ImmIndexStop,"libc atexit"),
 moved_immediate_candidate(EAStop,ImmIndexStop,ImmediateStopAddr,ImmediateStartAddr):-
     mov_immediate_to_reg(EAStart,_,_,ImmediateStart),
     ImmediateStartAddr = as(ImmediateStart, address),
-    defined_symbol(ImmediateStartAddr,_,_,_,_,_,_,"__start___libc_atexit"),
+    defined_symbol(ImmediateStartAddr,_,_,_,_,_,_,_,"__start___libc_atexit"),
     next(EAStart,EAStop),
     mov_immediate_to_reg(EAStop,_,ImmIndexStop,ImmediateStop),
     ImmediateStopAddr = as(ImmediateStop, address),
-    defined_symbol(ImmediateStopAddr,_,_,_,_,_,_,"__stop___libc_atexit").
+    defined_symbol(ImmediateStopAddr,_,_,_,_,_,_,_,"__stop___libc_atexit").
 
 .decl relocation_alias(EA:address,Alias:symbol,Name:symbol)
 .output relocation_alias
 
 relocation_alias(EA,Alias,Name):-
-    symbol(EA,_,"OBJECT","WEAK",_,_,_,Alias),
+    symbol(EA,_,"OBJECT","WEAK",_,_,_,_,Alias),
     relocation(EA,"COPY",Name,_,_,_,_).

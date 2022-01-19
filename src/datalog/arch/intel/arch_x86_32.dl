@@ -76,11 +76,11 @@ def(EA,Reg):-
 
 abi_intrinsic(EA,Name):-
     get_pc_thunk(EA,_),
-    symbol(EA,_,_,_,_,_,_,Name).
+    symbol(EA,_,_,_,_,_,_,_,Name).
 
 abi_intrinsic(EA,"__dso_handle"):-
     got_relative_operand(_,_,EA),
-    symbol(EA,_,_,_,_,_,_,"__dso_handle").
+    symbol(EA,_,_,_,_,_,_,_,"__dso_handle").
 
 // Sometimes we use the `.got' section as reference and sometimes `.got.plt'.
 .decl got_reference_pointer(EA:address)
@@ -112,7 +112,7 @@ reg_has_got(EA_load,Reg_load):-
     reg_loaded_from_stack(EA_load,Reg_load,Reg_base,StackPos,StackFrame).
 
 inferred_symbol_name(EA,"_GLOBAL_OFFSET_TABLE_","DEFAULT","NONE"):-
-    !symbol(_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
+    !symbol(_,_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
     got_reference_pointer(EA).
 
 // Create symbol-minus-symbol for special _GLOBAL_OFFSET_TABLE_, i.e. GOT-PC.

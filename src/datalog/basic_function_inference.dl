@@ -38,14 +38,10 @@ Function inference based on call frames.
 .output function_without_callframe
 
 
+
 function_entry_name(EA,SymbolName):-
     function_entry(EA),
-    (
-        best_symexpr_symbol(EA,SymbolName,"FUNC")
-        ;
-        !best_symexpr_symbol(EA,_,"FUNC"),
-        inferred_symbol_name(EA,SymbolName,_,"FUNC")
-    ).
+    best_func_symbol(EA,SymbolName).
 
 function_entry(Begin):-
     fde_addresses(Begin,_),

@@ -123,9 +123,8 @@ moved_displacement_candidate(EA,Op_index,Dest,0x7FFE0000,Dest-0x7FFE0000):-
   Dest > 0x7FFE0000, Dest < 0x7FFE1000.
 
 // Entries of external libraries
-symbol(0,0,"NONE","EXTERN",0,"none",0,Function),
-got_reference(Address,Function):-
-    pe_import_entry(Address,_,Function,_).
+inferred_symbol_name(0,Function,"EXTERN","NONE"):-
+    pe_import_entry(_,_,Function,_).
 
 //PE binaries have plt-like entries
 // These are no delimited to their own section
@@ -133,7 +132,7 @@ plt_block(EA,Function):-
     binary_format("PE"),
     pc_relative_jump(EA,Got_entry),
     unconditional_jump(EA),
-    got_reference(Got_entry,Function),
+    pe_import_entry(Got_entry,_,Function,_),
     code_in_refined_block(EA,EA).
 
 .decl reg_has_base_image(EA:address,Reg:register)

@@ -191,13 +191,13 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
         !binary_type("REL"),
         instruction_immediate_offset(EA,Op_index,ImmediateOffset,_),
         relocation(EA+ImmediateOffset,_,Symbol,Addend,_,_,_),
-        symbol(SymbolAddr,_,_,_,_,_,_,Symbol),
+        symbol(SymbolAddr,_,_,_,_,_,_,_,Symbol),
         Dest = as(as(SymbolAddr,number)+Addend,address)
         ;
         !binary_type("REL"),
         instruction_displacement_offset(EA,Op_index,DisplacementOffset,_),
         relocation(EA+DisplacementOffset,_,Symbol,Addend,_,_,_),
-        symbol(SymbolAddr,_,_,_,_,_,_,Symbol),
+        symbol(SymbolAddr,_,_,_,_,_,_,_,Symbol),
         Dest = as(as(SymbolAddr,number)+Addend,address)
         ;
         direct_call(EA,Dest),
@@ -322,7 +322,7 @@ symbolic_operand(EA,Op_index,Value,Type):-
 .output labeled_data_candidate
 
 labeled_data_candidate(EA):-
-    symbol(EA,_,_,_,_,_,_,_).
+    symbol(EA,_,_,_,_,_,_,_,_).
 
 labeled_data_candidate(EA):-
     symbolic_operand(_,_,EA,"data").
@@ -859,51 +859,15 @@ code_pointer_in_data(EA,Val):-
     block(Val).
 
 
-///////////////////////////////////////////////////////////////////////
-.decl best_symexpr_symbol(EA:address,SymbolName:symbol, Type:symbol)
-
-best_symexpr_symbol(EA,SymbolName,Type):-
-    // - has copy relocation
-    // - global func or object
-    // - local func or object
-    // - weak func or object
-    // - global notype
-    defined_symbol(EA,_,Type,Scope,_,_,_,SymbolName),
-    !ambiguous_symbol(SymbolName),
-    (
-        relocation(EA,"COPY",SymbolName,_,_,_,_),
-        // Avoid souffle warnings
-        Type = Type, Scope = Scope
-        ;
-        !relocation(EA,"COPY",_,_,_,_,_),
-        Scope = "GLOBAL",
-        (Type ="FUNC"; Type = "OBJECT")
-        ;
-        !relocation(EA,"COPY",_,_,_,_,_),
-        !defined_symbol(EA,_,_,"GLOBAL",_,_,_,_),
-        Scope = "LOCAL",
-        (Type ="FUNC"; Type = "OBJECT")
-        ;
-        !relocation(EA,"COPY",_,_,_,_,_),
-        !defined_symbol(EA,_,_,"GLOBAL",_,_,_,_),
-        !defined_symbol(EA,_,_,"LOCAL",_,_,_,_),
-        Scope = "WEAK",
-        (Type = "FUNC"; Type = "OBJECT")
-        ;
-        !relocation(EA,"COPY",_,_,_,_,_),
-        !defined_symbol(EA,_,"FUNC",_,_,_,_,_),
-        !defined_symbol(EA,_,"OBJECT",_,_,_,_,_),
-        Scope = "GLOBAL",
-        Type = "NOTYPE"
-    ).
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Final label decision
 
 labeled_data(EA):-
-    defined_symbol(EA,_,Type,_,_,_,_,_),
+    defined_symbol(EA,_,Type,_,_,_,_,_,_),
     Type != "SECTION",
-    Type != "FILE".
+    Type != "FILE",
+    EA != 0.
 
 labeled_data(EA):-
     symbolic_operand(Src,_,EA,_),
@@ -934,10 +898,85 @@ data_object_boundary(EA):-
     symbolic_expr_from_relocation(EA,_,_,_);
     moved_data_label(EA,_,_,_).
 
+///////////////////////////////////////////////////////////////////////
+.decl best_symexpr_symbol(EA:address,SymbolName:symbol)
+.decl best_func_symbol(EA:address,SymbolName:symbol)
 
-inferred_symbol_name(EA,cat(".L_DEC_",to_string(EA)),"LOCAL","NONE"):-
+
+.decl symbol_score(EA:address, SymbolName:symbol, Type:symbol, Score:unsigned)
+
+
+// FiXME: These are symbols skiped by the pprinter.
+.decl avoid_symbols(SymbolName:symbol)
+
+avoid_symbols("__bss_start").
+avoid_symbols("__data_start").
+avoid_symbols("__dso_handle").
+avoid_symbols("_fp_hw").
+avoid_symbols("_IO_stdin_used").
+avoid_symbols("__TMC_END__").
+
+symbol_score(EA,SymbolName,Type,Score):-
+    symbol(EA,_,Type,Scope,Visibility,_,_,TableIndex,SymbolName),
+    !ambiguous_symbol(SymbolName),
+    (
+        relocation(EA,"COPY",SymbolName,_,_,_,_), RelocScore = 1;
+        !relocation(EA,"COPY",SymbolName,_,_,_,_), RelocScore = 0
+    ),
+    (
+        Type != "NOTYPE", TypeScore = 1;
+        Type = "NOTYPE", TypeScore = 0
+    ),
+    (
+        Scope = "GLOBAL", ScopeScore = 1;
+        Scope != "GLOBAL", ScopeScore = 0
+    ),
+    (
+        Visibility != "HIDDEN", VisibilityScore = 1;
+        Visibility = "HIDDEN", VisibilityScore = 0
+    ),
+    (
+        avoid_symbols(SymbolName), AvoidScore = 0;
+        !avoid_symbols(SymbolName), AvoidScore = 1
+    ),
+    // Encode lexicographic ordering into a single score.
+    Score = (RelocScore bshl 36)
+            bor (TypeScore bshl 35)
+            bor (VisibilityScore bshl 34)
+            bor (ScopeScore bshl 33)
+            bor (AvoidScore bshl 32)
+            bor as(TableIndex,unsigned).
+
+
+
+best_func_symbol(EA,SymbolName):-
+    symbol_score(EA,SymbolName,"FUNC",Score),
+    Score = max S: {symbol_score(EA,_,"FUNC",S)}.
+
+inferred_symbol_name(EA,SymbolName,"GLOBAL","FUNC"),
+best_func_symbol(EA,SymbolName):-
+    function_inference.function_entry(EA),
+    !symbol_score(EA,_,"FUNC",_),
+    SymbolName = cat("FUN_",to_string(EA)).
+
+
+best_symexpr_symbol(EA,SymbolName):-
+    symbol_score(EA,SymbolName,_,Score),
+    Score = max S: {symbol_score(EA,_,_,S)}.
+
+best_symexpr_symbol(EA,SymbolName):-
     labeled_data(EA),
-    !best_symexpr_symbol(EA,_,_).
+    !symbol_score(EA,_,_,_),
+    best_func_symbol(EA,SymbolName).
+
+inferred_symbol_name(EA,SymbolName,"LOCAL","NONE"),
+best_symexpr_symbol(EA,SymbolName):-
+    labeled_data(EA),
+    !symbol_score(EA,_,_,_),
+    !best_func_symbol(EA,_),
+    SymbolName = cat(".L_DEC_",to_string(EA)).
+
+
 
 /////////////////////////////////////////////////////////////////////////////////
 symbolic_expr(EA,Size,Symbol,Offset):-
@@ -957,14 +996,9 @@ symbolic_expr(EA+InstrOffset,Size,SymbolName,Offset):-
         Offset = 0
         ;
         moved_label(EA,Index,Dest,FinalDest),
-        Offset = as(FinalDest,number) - as(Dest,number)
+        Offset = as(Dest,number) - as(FinalDest,number)
     ),
-    (
-        best_symexpr_symbol(FinalDest,SymbolName,_)
-        ;
-        !best_symexpr_symbol(FinalDest,_,_),
-        inferred_symbol_name(FinalDest,SymbolName,"LOCAL","NONE")
-    ).
+    best_symexpr_symbol(FinalDest,SymbolName).
 
 // Symbolic data
 symbolic_expr(EA,Size,SymbolName,Offset):-
@@ -976,30 +1010,15 @@ symbolic_expr(EA,Size,SymbolName,Offset):-
         Offset = 0
         ;
         moved_data_label(EA,Size,Dest,FinalDest),
-        Offset = as(FinalDest,number) - as(Dest,number)
+        Offset = as(Dest,number) - as(FinalDest,number)
     ),
-    (
-        best_symexpr_symbol(FinalDest,SymbolName,_)
-        ;
-        !best_symexpr_symbol(FinalDest,_,_),
-        inferred_symbol_name(FinalDest,SymbolName,"LOCAL","NONE")
-    ).
+    best_symexpr_symbol(FinalDest,SymbolName).
 
 // Symbol-Symbol
 symbolic_expr_symbol_minus_symbol(EA,Size,SymbolName1,SymbolName2,Scale,Offset):-
     symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale,Offset),
-    (
-        best_symexpr_symbol(Symbol1,SymbolName1,_)
-        ;
-        !best_symexpr_symbol(Symbol1,_,_),
-        inferred_symbol_name(Symbol1,SymbolName1,"LOCAL","NONE")
-    ),
-    (
-        best_symexpr_symbol(Symbol2,SymbolName2,_)
-        ;
-        !best_symexpr_symbol(Symbol2,_,_),
-        inferred_symbol_name(Symbol2,SymbolName2,"LOCAL","NONE")
-    ).
+    best_symexpr_symbol(Symbol1,SymbolName1),
+    best_symexpr_symbol(Symbol2,SymbolName2).
 
 symbolic_expr_attribute(EA+InstrOffset,Attr):-
     symbolic_operand_attribute(EA,Index,Attr),
