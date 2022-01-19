@@ -266,11 +266,11 @@ base_relative_operand(EA,Op_index,RVA):-
 
 .decl base_relative_symbolic_operand(EA:address,Index:operand_index,Dest:address)
 
-symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value,1),
+symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value,1,0),
 base_relative_symbolic_operand(EA,Op_index,Value):-
     base_relative_operand(EA,Op_index,Value),
     !pc_relative_operand(EA,Op_index,_),
-    instruction_displacement_offset(EA,Op_index,Disp_offset),
+    instruction_displacement_offset(EA,Op_index,Disp_offset,_),
     instruction_get_op(EA,Op_index,Op),
     op_indirect(Op,_,_,_,_,_,Size),
     base_address(ImageBase).
@@ -361,7 +361,7 @@ dos_header_symbolic_operand(EA,Dest):-
     binary_format("PE"),
     base_address(ImageBase),
     pc_relative_operand(EA,_,Dest),
-    instruction_displacement_offset(EA,Op_index,Disp_offset),
+    instruction_displacement_offset(EA,Op_index,Disp_offset,_),
     instruction_get_op(EA,Op_index,Op),
     op_indirect(Op,_,_,_,_,_,Size),
     Dest > ImageBase,
@@ -373,7 +373,7 @@ dos_header_symbolic_operand(EA+Disp_offset,Dest):-
     base_address(ImageBase),
     op_indirect(Op,_,_,_,1,Offset,Size),
     instruction_get_op(EA,Op_index,Op),
-    instruction_displacement_offset(EA,Op_index,Disp_offset),
+    instruction_displacement_offset(EA,Op_index,Disp_offset,_),
     Dest = as(Offset,address),
     Dest >= ImageBase,
     Dest <= ImageBase+64.

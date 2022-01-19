@@ -182,21 +182,30 @@ Possible null-terminated ASCII string of 'Size' bytes begins at address 'EA'.
 // auxiliary definitions
 /////////////////////////////////////////////////////////////
 
-.decl instruction_immediate_offset(EA:address,Index:operand_index,Offset:unsigned)
+.decl instruction_immediate_offset(EA:address,Index:operand_index,Offset:unsigned, Size:unsigned)
 .output instruction_immediate_offset
 
-instruction_immediate_offset(EA,Index,ImmediateOffset):-
-    instruction(EA,_,_,_,_,_,_,_,ImmediateOffset,_),
+instruction_immediate_offset(EA,Index,ImmediateOffset,Size-ImmediateOffset):-
+    instruction(EA,Size,_,_,_,_,_,_,ImmediateOffset,_),
     instruction_get_op(EA,Index,Op),
     op_immediate(Op,_).
 
-.decl instruction_displacement_offset(EA:address,Index:operand_index,Offset:unsigned)
+.decl instruction_displacement_offset(EA:address,Index:operand_index,Offset:unsigned, Size:unsigned)
 .output instruction_displacement_offset
 
-instruction_displacement_offset(EA,Index,DisplacementOffset):-
-    instruction(EA,_,_,_,_,_,_,_,_,DisplacementOffset),
+instruction_displacement_offset(EA,Index,DisplacementOffset,DispSize):-
+    instruction(EA,Size,_,_,_,_,_,_,ImmediateOffset,DisplacementOffset),
     instruction_get_op(EA,Index,Op),
-    op_indirect(Op,_,_,_,_,_,_).
+    op_indirect(Op,_,_,_,_,_,_),
+    (
+        ImmediateOffset > DisplacementOffset,
+        DispSize = ImmediateOffset - DisplacementOffset,
+        // avoid warning
+        Size = Size
+        ;
+        ImmediateOffset <= DisplacementOffset,
+        DispSize = Size - DisplacementOffset
+    ).
 
 .decl instruction_get_operation(ea:address,operation:symbol) inline
 
@@ -306,7 +315,7 @@ pc_relative_operand(EA,Index,Dest):-
 
 pc_relative_operand(EA,Index,Dest):-
     binary_isa("X64"),
-    instruction_displacement_offset(EA,Index,Offset),
+    instruction_displacement_offset(EA,Index,Offset,_),
     relocation(EA+Offset,"PC32",_,Addend,SymbolIndex,_,_),
     symbol(Base,_,"SECTION",_,_,_,SymbolIndex,_),
     instruction(EA,Size,_,_,_,_,_,_,_,_),
@@ -319,16 +328,6 @@ split_load_operand(0,0,0):- false.
 
 .decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
 .output got_relative_operand
-
-.decl symbolic_operand_attribute(ea:address,index:unsigned,attribute:symbol)
-.output symbolic_operand_attribute
-
-symbolic_operand_attribute(0,0,""):- false.
-
-.decl symbolic_data_attribute(ea:address,attribute:symbol)
-.output symbolic_data_attribute
-
-symbolic_data_attribute(0,""):- false.
 
 .decl instruction_has_loop_prefix(EA:address)
 
@@ -348,8 +347,8 @@ instruction_has_relocation(EA,EA+Offset):-
         binary_isa("X64")
     ),
     (
-        instruction_immediate_offset(EA,_,Offset);
-        instruction_displacement_offset(EA,_,Offset)
+        instruction_immediate_offset(EA,_,Offset,_);
+        instruction_displacement_offset(EA,_,Offset,_)
     ),
     relocation(EA+Offset,_,_,_,_,_,_).
 
@@ -382,7 +381,7 @@ direct_jump(EA,as(Dest,address)):-
 
 direct_jump(EA,as(Dest,address)):-
     arch.jump(EA),
-    instruction_immediate_offset(EA,_,_),
+    instruction_immediate_offset(EA,_,_,_),
     instruction_has_relocation(EA,Rel),
     relocation(Rel,_,_,_,SymbolIndex,_,_),
     defined_symbol(Dest,_,_,_,_,_,SymbolIndex,_).
@@ -437,7 +436,7 @@ direct_call(EA,as(Dest,address)):-
 direct_call(EA,Dest):-
     arch.call_operation(Operation),
     instruction_get_operation(EA,Operation),
-    instruction_immediate_offset(EA,_,_),
+    instruction_immediate_offset(EA,_,_,_),
     instruction_has_relocation(EA,Rel),
     relocation(Rel,_,_,_,SymbolIndex,_,_),
     defined_symbol(Dest,_,_,_,_,_,SymbolIndex,_).
@@ -630,9 +629,6 @@ data_segment(Begin,End):-
 .decl got_reference(Got_entry:address,Symbol:symbol)
 .output got_reference
 
-.decl got_local_reference(Got_entry:address,Dest:address)
-.output got_local_reference
-
 //////////////////////////////////////////////////////////////////////////
 // find special functions and symbols
 .decl main_function(ea:address)
@@ -678,7 +674,7 @@ no_return_call(EA):-
 
 no_return_call(EA):-
     direct_call(EA,_),
-    instruction_immediate_offset(EA,_,Offset),
+    instruction_immediate_offset(EA,_,Offset,_),
     relocation(EA+Offset,_,_,_,SymbolIndex,_,_),
     symbol(_,_,_,_,_,_,SymbolIndex,Name),
     no_return_function(Pattern),

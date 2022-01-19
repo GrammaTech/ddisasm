@@ -149,55 +149,6 @@ struct PLTReference
     gtirb::Addr EA{0};
 };
 
-struct MovedLabel
-{
-    MovedLabel(gtirb::Addr ea) : EA(ea)
-    {
-    }
-
-    MovedLabel(souffle::tuple &tuple)
-    {
-        assert(tuple.size() == 4);
-        tuple >> EA >> OperandIndex >> Address1 >> Address2;
-    };
-
-    gtirb::Addr EA{0};
-    uint64_t OperandIndex{0};
-    gtirb::Addr Address1{0};
-    gtirb::Addr Address2{0};
-};
-
-struct MovedDataLabel
-{
-    MovedDataLabel(gtirb::Addr ea) : EA(ea)
-    {
-    }
-
-    MovedDataLabel(souffle::tuple &tuple)
-    {
-        assert(tuple.size() == 4);
-        tuple >> EA >> Size >> Address1 >> Address2;
-    };
-
-    gtirb::Addr EA{0};
-    uint64_t Size{0};
-    gtirb::Addr Address1{0};
-    gtirb::Addr Address2{0};
-};
-
-struct SymbolicExpressionNoOffset
-{
-    SymbolicExpressionNoOffset(souffle::tuple &tuple)
-    {
-        assert(tuple.size() == 4);
-        tuple >> EA >> OperandIndex >> Dest;
-    };
-
-    gtirb::Addr EA{0};
-    uint64_t OperandIndex{0};
-    gtirb::Addr Dest{0};
-};
-
 struct BlockPoints
 {
     BlockPoints(souffle::tuple &tuple)
@@ -217,23 +168,6 @@ using VectorByEA = boost::multi_index_container<
     T, boost::multi_index::indexed_by<boost::multi_index::ordered_non_unique<
            boost::multi_index::member<T, decltype(T::EA), &T::EA>>>>;
 
-struct SymbolicData
-{
-    SymbolicData(gtirb::Addr ea) : EA(ea)
-    {
-    }
-
-    SymbolicData(souffle::tuple &tuple)
-    {
-        assert(tuple.size() == 3);
-        tuple >> EA >> Size >> GroupContent;
-    };
-
-    gtirb::Addr EA{0};
-    uint64_t Size{0};
-    gtirb::Addr GroupContent{0};
-};
-
 struct SymbolicExpr
 {
     SymbolicExpr(gtirb::Addr ea) : EA(ea)
@@ -252,47 +186,33 @@ struct SymbolicExpr
     int64_t Addend{0};
 };
 
-struct SymbolMinusSymbol
+struct SymExprSymbolMinusSymbol
 {
-    SymbolMinusSymbol(gtirb::Addr ea) : EA(ea)
+    SymExprSymbolMinusSymbol(gtirb::Addr ea) : EA(ea)
     {
     }
 
-    SymbolMinusSymbol(souffle::tuple &tuple)
+    SymExprSymbolMinusSymbol(souffle::tuple &tuple)
     {
-        assert(tuple.size() == 5);
+        assert(tuple.size() == 6);
 
-        tuple >> EA >> Size >> Symbol1 >> Symbol2 >> Scale;
+        tuple >> EA >> Size >> Symbol1 >> Symbol2 >> Scale >> Offset;
     };
 
     gtirb::Addr EA{0};
     uint64_t Size;
-    gtirb::Addr Symbol1{0};
-    gtirb::Addr Symbol2{0};
+    std::string Symbol1;
+    std::string Symbol2;
     uint64_t Scale;
+    int64_t Offset;
 };
 
-struct SymbolicOperandAttribute
+struct SymbolicExprAttribute
 {
-    explicit SymbolicOperandAttribute(gtirb::Addr A) : EA(A)
+    explicit SymbolicExprAttribute(gtirb::Addr A) : EA(A)
     {
     }
-    explicit SymbolicOperandAttribute(souffle::tuple &T)
-    {
-        assert(T.size() == 3);
-        T >> EA >> Index >> Type;
-    }
-    gtirb::Addr EA{0};
-    uint64_t Index{0};
-    std::string Type{"NONE"};
-};
-
-struct SymbolicDataAttribute
-{
-    explicit SymbolicDataAttribute(gtirb::Addr A) : EA(A)
-    {
-    }
-    explicit SymbolicDataAttribute(souffle::tuple &T)
+    explicit SymbolicExprAttribute(souffle::tuple &T)
     {
         assert(T.size() == 2);
         T >> EA >> Type;
@@ -337,13 +257,9 @@ struct SymbolSpecialType
 
 struct SymbolicInfo
 {
-    VectorByEA<MovedLabel> MovedLabels;
-    VectorByEA<MovedDataLabel> MovedDataLabels;
-    VectorByEA<SymbolicExpressionNoOffset> SymbolicExpressionNoOffsets;
-    VectorByEA<SymbolicExpr> SymbolicExpressionsFromRelocations;
-    VectorByEA<SymbolMinusSymbol> SymbolicBaseMinusConst;
-    VectorByEA<SymbolicOperandAttribute> SymbolicOperandAttributes;
-    VectorByEA<SymbolicDataAttribute> SymbolicDataAttributes;
+    VectorByEA<SymbolicExpr> SymbolicExprs;
+    VectorByEA<SymExprSymbolMinusSymbol> SymbolMinusSymbolSymbolicExprs;
+    VectorByEA<SymbolicExprAttribute> SymbolicExprAttributes;
 };
 
 template <typename T>
@@ -466,11 +382,17 @@ void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
         if(Name.find("FUN_") == 0)
         {
             std::stringstream S;
-            S << "FUN_" << static_cast<uint64_t>(Addr);
+            S << "FUN_" << std::hex << static_cast<uint64_t>(Addr);
             if(Name.rfind("_IFUNC") != std::string::npos)
             {
                 S << "_IFUNC";
             }
+            Name = S.str();
+        }
+        if(Name.find(".L_DEC_") == 0)
+        {
+            std::stringstream S;
+            S << ".L_" << std::hex << static_cast<uint64_t>(Addr);
             Name = S.str();
         }
 
@@ -519,6 +441,32 @@ gtirb::Symbol *findSymbol(gtirb::Module &module, gtirb::Addr ea, std::string nam
             return &symbol;
     }
     return nullptr;
+}
+
+// auxiliary function to get a symbol with an address and name
+gtirb::Symbol *findFirstSymbol(gtirb::Module &module, std::string Name)
+{
+    static std::string inferred_prefix(".L_DEC_");
+    static std::string fun_prefix("FUN_");
+    if(Name.find(inferred_prefix) == 0)
+    {
+        std::stringstream S;
+        S << ".L_" << std::hex << std::stoul(Name.substr(inferred_prefix.size()));
+        Name = S.str();
+    }
+    else if(Name.find(fun_prefix) == 0)
+    {
+        std::stringstream S;
+        S << "FUN_" << std::hex << std::stoul(Name.substr(fun_prefix.size()));
+        Name = S.str();
+    }
+    auto found = module.findSymbols(Name);
+    if(found.begin() == found.end())
+    {
+        std::cerr << "Missing symbol: " << Name << std::endl;
+        exit(1);
+    }
+    return &*found.begin();
 }
 
 // Build a first version of the SymbolForwarding table with copy relocations and
@@ -582,8 +530,8 @@ void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
     Module.addAuxData<gtirb::schema::SymbolForwarding>(std::move(SymbolForwarding));
 }
 
-gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_t Index,
-                                                         const SymbolicInfo &Info)
+gtirb::SymAttributeSet buildSymbolicExpressionAttributes(
+    gtirb::Addr EA, const VectorByEA<SymbolicExprAttribute> &SymbolicDataAttributes)
 {
     const static std::map<std::string, gtirb::SymAttribute> AttributeMap = {
         {"Part0", gtirb::SymAttribute::Part0},
@@ -608,27 +556,6 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(gtirb::Addr EA, uint64_
     };
     gtirb::SymAttributeSet Attributes;
 
-    auto Range = Info.SymbolicOperandAttributes.equal_range(EA);
-    for(auto It = Range.first; It != Range.second; It++)
-    {
-        if(It->Index == Index)
-        {
-            Attributes.addFlag(AttributeMap.at(It->Type));
-        }
-    }
-
-    return Attributes;
-}
-
-gtirb::SymAttributeSet buildSymbolicExpressionAttributes(
-    gtirb::Addr EA, const VectorByEA<SymbolicDataAttribute> &SymbolicDataAttributes)
-{
-    const static std::map<std::string, gtirb::SymAttribute> AttributeMap = {
-        {"GotRelPC", gtirb::SymAttribute::GotRelPC},
-        // TODO: Add more if needed.
-    };
-    gtirb::SymAttributeSet Attributes;
-
     auto Range = SymbolicDataAttributes.equal_range(EA);
     for(auto It = Range.first; It != Range.second; It++)
     {
@@ -641,40 +568,6 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(
 bool isNullReg(const std::string &reg)
 {
     return reg == "NONE";
-}
-
-gtirb::Symbol *getSymbol(gtirb::Context &context, gtirb::Module &module, gtirb::Addr ea)
-{
-    const auto *symbolForwarding = module.getAuxData<gtirb::schema::SymbolForwarding>();
-    auto found = module.findSymbols(ea);
-    if(!found.empty())
-    {
-        gtirb::Symbol *bestSymbol = &*found.begin();
-        for(auto it = found.begin(); it != found.end(); it++)
-        {
-            auto forwardSymbol = symbolForwarding->find(it->getUUID());
-            if(forwardSymbol != symbolForwarding->end())
-                bestSymbol = &*it;
-        }
-        return bestSymbol;
-    }
-
-    gtirb::Symbol *symbol = module.addSymbol(context, ea, getLabel(uint64_t(ea)));
-
-    auto *SymbolInfo = module.getAuxData<gtirb::schema::ElfSymbolInfo>();
-    if(SymbolInfo)
-    {
-        auxdata::ElfSymbolInfo Info = {0, "NONE", "LOCAL", "DEFAULT", 0};
-        SymbolInfo->insert({symbol->getUUID(), Info});
-    }
-    auto *SymbolTabIdxInfo = module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfo>();
-    if(SymbolTabIdxInfo)
-    {
-        auxdata::ElfSymbolTabIdxInfo TabIdx = std::vector<std::tuple<std::string, uint64_t>>();
-        SymbolTabIdxInfo->insert({symbol->getUUID(), TabIdx});
-    }
-
-    return symbol;
 }
 
 // Expand the SymbolForwarding table with plt references
@@ -714,24 +607,11 @@ void expandSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
             }
         }
     }
-    // GOT reference that does not point to an external symbol but to a location in the code.
-    for(auto &output : *prog->getRelation("got_local_reference"))
-    {
-        gtirb::Addr ea, dest;
-
-        output >> ea >> dest;
-        auto foundSrc = module.findSymbols(ea);
-        gtirb::Symbol *destSymbol = getSymbol(context, module, dest);
-        for(gtirb::Symbol &src : foundSrc)
-        {
-            (*symbolForwarding)[src.getUUID()] = destSymbol->getUUID();
-        }
-    }
 }
 
 template <class ExprType, typename... Args>
 void addSymbolicExpressionToCodeBlock(gtirb::Module &Module, gtirb::Addr Addr, uint64_t Size,
-                                      uint64_t Offset, Args... A)
+                                      Args... A)
 {
     if(auto it = Module.findCodeBlocksOn(Addr); !it.empty())
     {
@@ -739,7 +619,7 @@ void addSymbolicExpressionToCodeBlock(gtirb::Module &Module, gtirb::Addr Addr, u
         gtirb::ByteInterval *ByteInterval = Block.getByteInterval();
         std::optional<gtirb::Addr> BaseAddr = ByteInterval->getAddress();
         assert(BaseAddr && "Found byte interval without address.");
-        uint64_t BlockOffset = static_cast<uint64_t>(Addr - *BaseAddr + Offset);
+        uint64_t BlockOffset = static_cast<uint64_t>(Addr - *BaseAddr);
         ByteInterval->addSymbolicExpression<ExprType>(BlockOffset, A...);
         if(auto *Sizes = Module.getAuxData<gtirb::schema::SymbolicExpressionSizes>())
         {
@@ -749,150 +629,30 @@ void addSymbolicExpressionToCodeBlock(gtirb::Module &Module, gtirb::Addr Addr, u
     }
 }
 
-void buildSymbolicImmediate(gtirb::Context &context, gtirb::Module &module, const gtirb::Addr &ea,
-                            const DecodedInstruction &instruction, uint64_t index,
-                            [[maybe_unused]] ImmOp &immediate, const SymbolicInfo &symbolicInfo)
+void buildSymbolicExpr(gtirb::Module &Module, const gtirb::Addr &Ea,
+                       const SymbolicInfo &SymbolicInfo)
 {
-    gtirb::SymAttributeSet attrs = buildSymbolicExpressionAttributes(ea, index, symbolicInfo);
-
+    gtirb::SymAttributeSet attrs =
+        buildSymbolicExpressionAttributes(Ea, SymbolicInfo.SymbolicExprAttributes);
     // Symbolic expression from relocation
-    if(const auto symbolicExpr =
-           symbolicInfo.SymbolicExpressionsFromRelocations.find(ea + instruction.immediateOffset);
-       symbolicExpr != symbolicInfo.SymbolicExpressionsFromRelocations.end())
+    if(const auto SymExpr = SymbolicInfo.SymbolicExprs.find(Ea);
+       SymExpr != SymbolicInfo.SymbolicExprs.end())
     {
-        auto foundSymbol = module.findSymbols(symbolicExpr->Symbol);
-        if(foundSymbol.begin() != foundSymbol.end())
-        {
-            // FIXME: We need to handle overlapping sections here.
-            addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-                module, ea, symbolicExpr->Size, instruction.immediateOffset, symbolicExpr->Addend,
-                &*foundSymbol.begin(), attrs);
-            return;
-        }
+        gtirb::Symbol *FoundSymbol = findFirstSymbol(Module, SymExpr->Symbol);
+        // FIXME: We need to handle overlapping sections here.
+        addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(Module, Ea, SymExpr->Size,
+                                                              SymExpr->Addend, FoundSymbol, attrs);
+        return;
     }
     // Symbol-Symbol case
-    auto rangeRelSym =
-        symbolicInfo.SymbolicBaseMinusConst.equal_range(ea + instruction.immediateOffset);
-    if(auto relSym = rangeRelSym.first; relSym != rangeRelSym.second)
+    if(const auto SymExpr = SymbolicInfo.SymbolMinusSymbolSymbolicExprs.find(Ea);
+       SymExpr != SymbolicInfo.SymbolMinusSymbolSymbolicExprs.end())
     {
-        gtirb::Symbol *sym1 = getSymbol(context, module, gtirb::Addr(relSym->Symbol1));
-        gtirb::Symbol *sym2 = getSymbol(context, module, gtirb::Addr(relSym->Symbol2));
-
-        addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(
-            module, ea, instruction.Size - instruction.immediateOffset, instruction.immediateOffset,
-            1, 0, sym1, sym2, attrs);
-        return;
-    }
-    // Symbol+constant case
-    auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
-    if(auto movedLabel =
-           std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
-                        [index](const auto &element) { return element.OperandIndex == index; });
-       movedLabel != rangeMovedLabel.second)
-    {
-        auto diff = movedLabel->Address1 - movedLabel->Address2;
-        auto sym = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
-        addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-            module, ea, instruction.Size - instruction.immediateOffset, instruction.immediateOffset,
-            diff, sym, attrs);
-        return;
-    }
-    // Symbol+0 case
-    auto range = symbolicInfo.SymbolicExpressionNoOffsets.equal_range(ea);
-    if(auto symOp =
-           std::find_if(range.first, range.second,
-                        [index](const auto &element) { return element.OperandIndex == index; });
-       symOp != range.second)
-    {
-        auto sym = getSymbol(context, module, gtirb::Addr(symOp->Dest));
-        addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-            module, ea, instruction.Size - instruction.immediateOffset, instruction.immediateOffset,
-            0, sym, attrs);
-        return;
-    }
-}
-
-void buildSymbolicIndirect(gtirb::Context &context, gtirb::Module &module, const gtirb::Addr &ea,
-                           const DecodedInstruction &instruction, uint64_t index,
-                           const SymbolicInfo &symbolicInfo)
-{
-    uint64_t DispSize = 0;
-    if(instruction.displacementOffset > 0)
-    {
-        uint64_t Size = instruction.Size;
-        uint64_t Imm = instruction.immediateOffset;
-        uint64_t Disp = instruction.displacementOffset;
-        DispSize = Imm > Disp ? Imm - Disp : Size - Disp;
-    }
-
-    gtirb::SymAttributeSet attrs = buildSymbolicExpressionAttributes(ea, index, symbolicInfo);
-
-    // Symbolic expression form relocation
-    if(const auto symbolicExpr = symbolicInfo.SymbolicExpressionsFromRelocations.find(
-           ea + instruction.displacementOffset);
-       symbolicExpr != symbolicInfo.SymbolicExpressionsFromRelocations.end())
-    {
-        auto foundSymbol = module.findSymbols(symbolicExpr->Symbol);
-        if(foundSymbol.begin() != foundSymbol.end())
-        {
-            addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-                module, ea, symbolicExpr->Size, instruction.displacementOffset,
-                symbolicExpr->Addend, &*foundSymbol.begin(), attrs);
-            return;
-        }
-    }
-    // Symbol-Symbol and (Symbol-Symbol)+Offset
-    auto rangeRelSym =
-        symbolicInfo.SymbolicBaseMinusConst.equal_range(ea + instruction.displacementOffset);
-    if(auto relSym = rangeRelSym.first; relSym != rangeRelSym.second)
-    {
-        int64_t offset = 0;
-        gtirb::Symbol *sym1 = getSymbol(context, module, gtirb::Addr(relSym->Symbol1));
-        gtirb::Symbol *sym2;
-
-        auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
-        if(auto movedLabel =
-               std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
-                            [index](const auto &element) { return element.OperandIndex == index; });
-           movedLabel != rangeMovedLabel.second)
-        {
-            // (Symbol-Symbol)+Offset
-            sym2 = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
-            offset = movedLabel->Address1 - movedLabel->Address2;
-        }
-        else
-        {
-            // Symbol-Symbol
-            sym2 = getSymbol(context, module, gtirb::Addr(relSym->Symbol2));
-        }
-
-        addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(
-            module, ea, DispSize, instruction.displacementOffset, 1, offset, sym2, sym1, attrs);
-        return;
-    }
-    // Symbol+constant case
-    auto rangeMovedLabel = symbolicInfo.MovedLabels.equal_range(ea);
-    if(auto movedLabel =
-           std::find_if(rangeMovedLabel.first, rangeMovedLabel.second,
-                        [index](const auto &element) { return element.OperandIndex == index; });
-       movedLabel != rangeMovedLabel.second)
-    {
-        auto diff = movedLabel->Address1 - movedLabel->Address2;
-        auto sym = getSymbol(context, module, gtirb::Addr(movedLabel->Address2));
-        addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-            module, ea, DispSize, instruction.displacementOffset, diff, sym, attrs);
-        return;
-    }
-    // Symbol+0 case
-    auto Range = symbolicInfo.SymbolicExpressionNoOffsets.equal_range(ea);
-    if(auto SymbolicExpr =
-           std::find_if(Range.first, Range.second,
-                        [index](const auto &Element) { return Element.OperandIndex == index; });
-       SymbolicExpr != Range.second)
-    {
-        auto sym = getSymbol(context, module, gtirb::Addr(SymbolicExpr->Dest));
-        addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(
-            module, ea, DispSize, instruction.displacementOffset, 0, sym, attrs);
+        gtirb::Symbol *FoundSymbol1 = findFirstSymbol(Module, SymExpr->Symbol1);
+        gtirb::Symbol *FoundSymbol2 = findFirstSymbol(Module, SymExpr->Symbol2);
+        addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(Module, Ea, SymExpr->Size,
+                                                             SymExpr->Scale, SymExpr->Offset,
+                                                             FoundSymbol1, FoundSymbol2, attrs);
         return;
     }
 }
@@ -902,14 +662,10 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
 {
     auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", prog);
     SymbolicInfo symbolicInfo{
-        convertSortedRelation<VectorByEA<MovedLabel>>("moved_label", prog),
-        convertSortedRelation<VectorByEA<MovedDataLabel>>("moved_data_label", prog),
-        convertSortedRelation<VectorByEA<SymbolicExpressionNoOffset>>("symbolic_operand", prog),
         convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr", prog),
-        convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog),
-        convertSortedRelation<VectorByEA<SymbolicOperandAttribute>>("symbolic_operand_attribute",
-                                                                    prog),
-        convertSortedRelation<VectorByEA<SymbolicDataAttribute>>("symbolic_data_attribute", prog)};
+        convertSortedRelation<VectorByEA<SymExprSymbolMinusSymbol>>(
+            "symbolic_expr_symbol_minus_symbol", prog),
+        convertSortedRelation<VectorByEA<SymbolicExprAttribute>>("symbolic_expr_attribute", prog)};
     std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
 
     for(auto &cib : codeInBlock)
@@ -918,12 +674,13 @@ void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module
         assert(inst != decodedInstructions.end());
         for(auto &op : inst->second.Operands)
         {
-            if(auto *immediate = std::get_if<ImmOp>(&op.second))
-                buildSymbolicImmediate(context, module, inst->first, inst->second, op.first,
-                                       *immediate, symbolicInfo);
+            if(std::get_if<ImmOp>(&op.second))
+                buildSymbolicExpr(module, gtirb::Addr(inst->first + inst->second.immediateOffset),
+                                  symbolicInfo);
             if(std::get_if<IndirectOp>(&op.second))
-                buildSymbolicIndirect(context, module, inst->first, inst->second, op.first,
-                                      symbolicInfo);
+                buildSymbolicExpr(module,
+                                  gtirb::Addr(inst->first + inst->second.displacementOffset),
+                                  symbolicInfo);
         }
     }
 }
@@ -989,19 +746,16 @@ void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
 
 void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
 {
-    auto symbolicData = convertSortedRelation<VectorByEA<SymbolicData>>("symbolic_data", prog);
-    auto movedDataLabels =
-        convertSortedRelation<VectorByEA<MovedDataLabel>>("moved_data_label", prog);
     auto symbolicExprs = convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr", prog);
-    auto symbolMinusSymbol =
-        convertSortedRelation<VectorByEA<SymbolMinusSymbol>>("symbol_minus_symbol", prog);
+    auto symbolMinusSymbol = convertSortedRelation<VectorByEA<SymExprSymbolMinusSymbol>>(
+        "symbolic_expr_symbol_minus_symbol", prog);
 
     auto DataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", prog);
     auto symbolSpecialTypes =
         convertSortedRelation<VectorByEA<SymbolSpecialType>>("symbol_special_encoding", prog);
     auto DataBoundary = convertSortedRelation<std::set<gtirb::Addr>>("data_object_boundary", prog);
     auto symbolicDataAttributes =
-        convertSortedRelation<VectorByEA<SymbolicDataAttribute>>("symbolic_data_attribute", prog);
+        convertSortedRelation<VectorByEA<SymbolicExprAttribute>>("symbolic_expr_attribute", prog);
 
     std::map<gtirb::UUID, std::string> typesTable;
 
@@ -1027,68 +781,25 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                     gtirb::Offset Offset = gtirb::Offset(byteInterval.getUUID(), blockOffset);
 
                     // symbolic expression created from relocation
-                    if(const auto symbolicExpr = symbolicExprs.find(currentAddr);
-                       symbolicExpr != symbolicExprs.end())
+                    if(const auto symExpr = symbolicExprs.find(currentAddr);
+                       symExpr != symbolicExprs.end())
                     {
-                        d = gtirb::DataBlock::Create(context, symbolicExpr->Size);
-                        auto foundSymbol = module.findSymbols(symbolicExpr->Symbol);
-                        if(foundSymbol.begin() != foundSymbol.end())
-                            byteInterval.addSymbolicExpression<gtirb::SymAddrConst>(
-                                blockOffset, symbolicExpr->Addend, &*foundSymbol.begin());
-                        SymbolicSizes[Offset] = symbolicExpr->Size;
+                        d = gtirb::DataBlock::Create(context, symExpr->Size);
+                        gtirb::Symbol *foundSymbol = findFirstSymbol(module, symExpr->Symbol);
+
+                        byteInterval.addSymbolicExpression<gtirb::SymAddrConst>(
+                            blockOffset, symExpr->Addend, foundSymbol);
+                        SymbolicSizes[Offset] = symExpr->Size;
                     }
-                    else if(const auto movedDataLabel = movedDataLabels.find(currentAddr);
-                            movedDataLabel != movedDataLabels.end())
+                    else if(const auto SymExprSymMinusSym = symbolMinusSymbol.find(currentAddr);
+                            SymExprSymMinusSym != symbolMinusSymbol.end())
                     {
-                        d = gtirb::DataBlock::Create(context, movedDataLabel->Size);
-                        if(const auto symMinusSym = symbolMinusSymbol.find(currentAddr);
-                           symMinusSym != symbolMinusSymbol.end())
-                        {
-                            // (Symbol-Symbol)+Offset
-                            auto Sym1 =
-                                getSymbol(context, module, gtirb::Addr(movedDataLabel->Address2));
-                            auto Sym2 =
-                                getSymbol(context, module, gtirb::Addr(symMinusSym->Symbol2));
-                            auto Offset = movedDataLabel->Address2 - movedDataLabel->Address1;
-                            byteInterval.addSymbolicExpression<gtirb::SymAddrAddr>(
-                                blockOffset, static_cast<int64_t>(symMinusSym->Scale), Offset, Sym2,
-                                Sym1);
-                        }
-                        else
-                        {
-                            // symbol+constant
-                            auto diff = movedDataLabel->Address1 - movedDataLabel->Address2;
-                            auto sym =
-                                getSymbol(context, module, gtirb::Addr(movedDataLabel->Address2));
-                            byteInterval.addSymbolicExpression<gtirb::SymAddrConst>(blockOffset,
-                                                                                    diff, sym);
-                        }
-                        SymbolicSizes[Offset] = movedDataLabel->Size;
-                    }
-                    else
-                        // symbol+0
-                        if(const auto symbolic = symbolicData.find(currentAddr);
-                           symbolic != symbolicData.end())
-                    {
-                        gtirb::SymAttributeSet attrs =
-                            buildSymbolicExpressionAttributes(currentAddr, symbolicDataAttributes);
-                        d = gtirb::DataBlock::Create(context, symbolic->Size);
-                        auto sym = getSymbol(context, module, symbolic->GroupContent);
-                        byteInterval.addSymbolicExpression<gtirb::SymAddrConst>(blockOffset, 0, sym,
-                                                                                attrs);
-                        SymbolicSizes[Offset] = symbolic->Size;
-                    }
-                    else
-                        // symbol-symbol
-                        if(const auto symMinusSym = symbolMinusSymbol.find(currentAddr);
-                           symMinusSym != symbolMinusSymbol.end())
-                    {
-                        d = gtirb::DataBlock::Create(context, symMinusSym->Size);
+                        d = gtirb::DataBlock::Create(context, SymExprSymMinusSym->Size);
+                        gtirb::Symbol *Sym1 = findFirstSymbol(module, SymExprSymMinusSym->Symbol1);
+                        gtirb::Symbol *Sym2 = findFirstSymbol(module, SymExprSymMinusSym->Symbol2);
                         byteInterval.addSymbolicExpression<gtirb::SymAddrAddr>(
-                            blockOffset, static_cast<int64_t>(symMinusSym->Scale), 0,
-                            getSymbol(context, module, symMinusSym->Symbol2),
-                            getSymbol(context, module, symMinusSym->Symbol1));
-                        SymbolicSizes[Offset] = symMinusSym->Size;
+                            blockOffset, static_cast<int64_t>(SymExprSymMinusSym->Scale),
+                            SymExprSymMinusSym->Offset, Sym2, Sym1);
                     }
                     else
                         // string
@@ -1327,17 +1038,16 @@ void splitSymbols(gtirb::Context &Context, gtirb::Module &Module, souffle::Souff
 
 void buildFunctions(gtirb::Context &Context, gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
-    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
-
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
     std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2Function;
     std::map<gtirb::UUID, gtirb::UUID> FunctionNames;
     boost::uuids::random_generator Generator;
 
-    for(auto &T : *Prog->getRelation("function_inference.function_entry"))
+    for(auto &T : *Prog->getRelation("function_inference.function_entry_name"))
     {
         gtirb::Addr FunctionEntry;
-        T >> FunctionEntry;
+        std::string FunctionName;
+        T >> FunctionEntry >> FunctionName;
 
         auto BlockRange = Module.findCodeBlocksAt(FunctionEntry);
         if(!BlockRange.empty())
@@ -1348,60 +1058,9 @@ void buildFunctions(gtirb::Context &Context, gtirb::Module &Module, souffle::Sou
             FunctionEntry2Function[FunctionEntry] = FunctionUUID;
             FunctionEntries[FunctionUUID].insert(EntryBlockUUID);
 
-            auto It = Module.findSymbols(FunctionEntry);
-            if(It.empty())
-            {
-                // Create a new label for the function entry.
-                gtirb::Symbol *Symbol = getSymbol(Context, Module, FunctionEntry);
-                FunctionNames.insert({FunctionUUID, Symbol->getUUID()});
-                if(SymbolInfo)
-                {
-                    auxdata::ElfSymbolInfo Info = {0, "FUNC", "LOCAL", "DEFAULT", 0};
-                    SymbolInfo->insert({Symbol->getUUID(), Info});
-                }
-            }
-            else if(SymbolInfo)
-            {
-                // Aggregate candidate symbols.
-                std::vector<std::tuple<const gtirb::Symbol *, std::string, std::string>> Candidates;
-                for(auto &Symbol : It)
-                {
-                    if(const auto &Found = SymbolInfo->find(Symbol.getUUID());
-                       Found != SymbolInfo->end())
-                    {
-                        std::string &Type = std::get<1>(Found->second);
-                        std::string &Binding = std::get<2>(Found->second);
-                        Candidates.push_back({&Symbol, Type, Binding});
-                    }
-                }
-                // Select best candidate symbols.
-                auto Found = std::min_element(
-                    Candidates.begin(), Candidates.end(),
-                    [](const std::tuple<const gtirb::Symbol *, std::string, std::string> &S1,
-                       const std::tuple<const gtirb::Symbol *, std::string, std::string> &S2) {
-                        auto &[Symbol1, Type1, Binding1] = S1;
-                        auto &[Symbol2, Type2, Binding2] = S2;
-                        // Prefer symbols of type FUNC.
-                        if(Type1 == "FUNC" && Type2 != "FUNC")
-                            return true;
-                        // Prefer GLOBAL FUNC symbols to LOCAL FUNC symbols.
-                        if(Binding1 == "GLOBAL" && Binding2 != "GLOBAL")
-                            return true;
-                        // Prefer symbols without underscore prefixes.
-                        const std::string &Name1 = Symbol1->getName(), &Name2 = Symbol2->getName();
-                        if(Name1.substr(0, 1) != "_" && Name2.substr(0, 1) == "_")
-                            return true;
-                        return false;
-                    });
-                assert(Found != Candidates.end() && "Expected candidate function symbols.");
-                FunctionNames.insert({FunctionUUID, std::get<0>(*Found)->getUUID()});
-            }
-            else
-            {
-                // Use an arbitrary symbol at this address as the function label.
-                gtirb::Symbol *Symbol = &*It.begin();
-                FunctionNames.insert({FunctionUUID, Symbol->getUUID()});
-            }
+            gtirb::Symbol *FunctionNameSymbol = findFirstSymbol(Module, FunctionName);
+
+            FunctionNames.insert({FunctionUUID, FunctionNameSymbol->getUUID()});
         }
     }
 
@@ -1535,8 +1194,8 @@ void buildCfiDirectives(gtirb::Context &context, gtirb::Module &module,
         cfiDirectives;
     for(auto &output : *prog->getRelation("cfi_directive"))
     {
-        gtirb::Addr blockAddr, reference;
-        std::string directive;
+        gtirb::Addr blockAddr;
+        std::string directive, reference;
         uint64_t disp, localIndex, nOperands;
         int64_t op1, op2;
         output >> blockAddr >> disp >> localIndex >> directive >> reference >> nOperands >> op1
@@ -1546,12 +1205,13 @@ void buildCfiDirectives(gtirb::Context &context, gtirb::Module &module,
         // dwarf instruction). The address 'reference' points to these bytes.
         if(directive == ".cfi_escape")
         {
-            if(const auto it = module.findByteIntervalsOn(reference); !it.empty())
+            gtirb::Addr BytesLocation = gtirb::Addr(op1);
+            if(const auto it = module.findByteIntervalsOn(BytesLocation); !it.empty())
             {
                 if(const gtirb::ByteInterval &interval = *it.begin(); interval.getAddress())
                 {
                     auto begin =
-                        interval.bytes_begin<uint8_t>() + (reference - *interval.getAddress());
+                        interval.bytes_begin<uint8_t>() + (BytesLocation - *interval.getAddress());
                     auto end = begin + nOperands;
                     for(uint8_t byte : boost::make_iterator_range(begin, end))
                     {
@@ -1575,10 +1235,10 @@ void buildCfiDirectives(gtirb::Context &context, gtirb::Module &module,
             if(cfiDirectives[offset].size() < localIndex + 1)
                 cfiDirectives[offset].resize(localIndex + 1);
 
-            if(directive != ".cfi_escape" && reference != gtirb::Addr(0))
+            if(directive != ".cfi_escape" && reference != "")
             {
                 // for normal directives (not cfi_escape) the reference points to a symbol.
-                gtirb::Symbol *symbol = getSymbol(context, module, reference);
+                gtirb::Symbol *symbol = findFirstSymbol(module, reference);
                 cfiDirectives[offset][localIndex] =
                     std::make_tuple(directive, operands, symbol->getUUID());
             }

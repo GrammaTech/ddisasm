@@ -85,10 +85,10 @@ and for symbol-symbol expressions see `symbol_minus_symbol`.
 
 /**
 There is a symbolic expression in data at address 'EA' of size 'Size' of the form:
- '(Symbol2-Symbol1)*Scale'
+ '(Symbol2-Symbol1)*Scale+Offset'
 Both symbols are given as addresses.
 */
-.decl symbol_minus_symbol(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned)
+.decl symbol_minus_symbol(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned, Offset:number)
 .output symbol_minus_symbol
 
 
@@ -103,12 +103,30 @@ from relocations and to choose between multiple symbols at the same location.
 .output symbolic_expr
 
 /**
+There is a symbolic expression at address 'EA' of size 'Size' of the form:
+  '(Symbol-Symbol)*Scale+Offset'
+The symbols in this
+predicate are referred by name.
+*/
+.decl symbolic_expr_symbol_minus_symbol(EA:address,Size:unsigned,Symbol:symbol, Symbol2:symbol,Scale:unsigned,Offset:number)
+.output symbolic_expr_symbol_minus_symbol
+
+/**
  There is a symbolic expression at address 'EA' of size 'Size' of the form:
   Symbol+Offset
  This symbolic expression corresponds to a relocation and the symbol is referenced by name.
  */
 .decl symbolic_expr_from_relocation(EA:address,Size:unsigned,Symbol:symbol,Offset:number)
 .output symbolic_expr_from_relocation
+
+
+.decl symbolic_operand_attribute(ea:address,index:unsigned,attribute:symbol)
+.output symbolic_operand_attribute
+
+symbolic_operand_attribute(0,0,""):- false.
+
+.decl symbolic_expr_attribute(ea:address,attribute:symbol)
+.output symbolic_expr_attribute
 
 
 /**
@@ -171,13 +189,13 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
     code(EA),
     (
         !binary_type("REL"),
-        instruction_immediate_offset(EA,Op_index,ImmediateOffset),
+        instruction_immediate_offset(EA,Op_index,ImmediateOffset,_),
         relocation(EA+ImmediateOffset,_,Symbol,Addend,_,_,_),
         symbol(SymbolAddr,_,_,_,_,_,_,Symbol),
         Dest = as(as(SymbolAddr,number)+Addend,address)
         ;
         !binary_type("REL"),
-        instruction_displacement_offset(EA,Op_index,DisplacementOffset),
+        instruction_displacement_offset(EA,Op_index,DisplacementOffset,_),
         relocation(EA+DisplacementOffset,_,Symbol,Addend,_,_,_),
         symbol(SymbolAddr,_,_,_,_,_,_,Symbol),
         Dest = as(as(SymbolAddr,number)+Addend,address)
@@ -210,11 +228,11 @@ symbolic_operand_candidate(EA,Index,Dest,Type):-
     binary_format("PE"),
     code(EA),
     (
-        instruction_immediate_offset(EA,Index,Offset),
+        instruction_immediate_offset(EA,Index,Offset,_),
         instruction_get_op(EA,Index,Op),
         op_immediate(Op,Value)
         ;
-        instruction_displacement_offset(EA,Index,Offset),
+        instruction_displacement_offset(EA,Index,Offset,_),
         instruction_get_op(EA,Index,Op),
         op_indirect(Op,_,_,_,1,Value,_)
     ),
@@ -297,60 +315,6 @@ symbolic_operand(EA,Op_index,Value,Type):-
     symbolic_operand_candidate(EA,Op_index,Value,Type),
     symbolic_operand_total_points(EA,Op_index,Points),
     Points >= 0.
-
-
-///////////////////////////////////////////////////////////////////////
-
-symbolic_expr(EA,Size,Symbol,Offset):-
-    symbolic_expr_from_relocation(EA,Size,Symbol,Offset).
-
-// assign symbolic operands to symbols with a preference
-symbolic_expr(EA+InstrOffset,EANext-(EA+InstrOffset),SymbolName,0):-
-    symbolic_operand(EA,Index,Dest,_),
-    (
-        instruction_immediate_offset(EA,Index,InstrOffset);
-        instruction_displacement_offset(EA,Index,InstrOffset)
-    ),
-    !symbolic_expr_from_relocation(EA+InstrOffset,_,_,_),
-    next(EA,EANext),
-    best_symexpr_symbol(Dest,SymbolName).
-
-.decl best_symexpr_symbol(EA:address,SymbolName:symbol)
-
-best_symexpr_symbol(EA,SymbolName):-
-    // - has copy relocation
-    // - global func or object
-    // - local func or object
-    // - weak func or object
-    // - global notype
-    defined_symbol(EA,_,Type,Scope,_,_,_,SymbolName),
-    !ambiguous_symbol(SymbolName),
-    (
-        relocation(EA,"COPY",SymbolName,_,_,_,_),
-        // Avoid souffle warnings
-        Type = Type, Scope = Scope
-        ;
-        !relocation(EA,"COPY",_,_,_,_,_),
-        Scope= "GLOBAL",
-        (Type="FUNC"; Type="OBJECT")
-        ;
-        !relocation(EA,"COPY",_,_,_,_,_),
-        !defined_symbol(EA,_,_,"GLOBAL",_,_,_,_),
-        Scope= "LOCAL",
-        (Type="FUNC"; Type="OBJECT")
-        ;
-        !relocation(EA,"COPY",_,_,_,_,_),
-        !defined_symbol(EA,_,_,"GLOBAL",_,_,_,_),
-        !defined_symbol(EA,_,_,"LOCAL",_,_,_,_),
-        Scope= "WEAK",
-        (Type="FUNC"; Type="OBJECT")
-        ;
-        !relocation(EA,"COPY",_,_,_,_,_),
-        !defined_symbol(EA,_,"FUNC",_,_,_,_,_),
-        !defined_symbol(EA,_,"OBJECT",_,_,_,_,_),
-        Scope= "GLOBAL",
-        Type="NOTYPE"
-    ).
 
 ///////////////////////////////
 // label candidates before moving
@@ -886,7 +850,7 @@ symbolic_data(EA,Size,as(Val,address)):-
     data_object(EA,Size,"symbol"),
     address_in_data_refined(EA,Val).
 
-symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale):-
+symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale,0):-
     data_object(EA,Size,"symbol-symbol"),
     symbol_minus_symbol_jump_table(EA,_,Size,Symbol1,Symbol2,_,Scale).
 
@@ -894,14 +858,55 @@ code_pointer_in_data(EA,Val):-
     symbolic_data(EA,_,Val),
     block(Val).
 
+
+///////////////////////////////////////////////////////////////////////
+.decl best_symexpr_symbol(EA:address,SymbolName:symbol, Type:symbol)
+
+best_symexpr_symbol(EA,SymbolName,Type):-
+    // - has copy relocation
+    // - global func or object
+    // - local func or object
+    // - weak func or object
+    // - global notype
+    defined_symbol(EA,_,Type,Scope,_,_,_,SymbolName),
+    !ambiguous_symbol(SymbolName),
+    (
+        relocation(EA,"COPY",SymbolName,_,_,_,_),
+        // Avoid souffle warnings
+        Type = Type, Scope = Scope
+        ;
+        !relocation(EA,"COPY",_,_,_,_,_),
+        Scope = "GLOBAL",
+        (Type ="FUNC"; Type = "OBJECT")
+        ;
+        !relocation(EA,"COPY",_,_,_,_,_),
+        !defined_symbol(EA,_,_,"GLOBAL",_,_,_,_),
+        Scope = "LOCAL",
+        (Type ="FUNC"; Type = "OBJECT")
+        ;
+        !relocation(EA,"COPY",_,_,_,_,_),
+        !defined_symbol(EA,_,_,"GLOBAL",_,_,_,_),
+        !defined_symbol(EA,_,_,"LOCAL",_,_,_,_),
+        Scope = "WEAK",
+        (Type = "FUNC"; Type = "OBJECT")
+        ;
+        !relocation(EA,"COPY",_,_,_,_,_),
+        !defined_symbol(EA,_,"FUNC",_,_,_,_,_),
+        !defined_symbol(EA,_,"OBJECT",_,_,_,_,_),
+        Scope = "GLOBAL",
+        Type = "NOTYPE"
+    ).
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Final label decision
 
 labeled_data(EA):-
-    symbol(EA,_,_,_,_,_,_,_).
+    defined_symbol(EA,_,Type,_,_,_,_,_),
+    Type != "SECTION",
+    Type != "FILE".
 
 labeled_data(EA):-
-    symbolic_operand(Src,_,EA,"data"),
+    symbolic_operand(Src,_,EA,_),
     !moved_label(Src,_,EA,_).
 
 labeled_data(EA):-
@@ -915,8 +920,8 @@ labeled_data(New_dest):-
     moved_data_label(_,_,_,New_dest).
 
 labeled_data(EA):-
-    symbol_minus_symbol(_,_,EA,_,_);
-    symbol_minus_symbol(_,_,_,EA,_).
+    symbol_minus_symbol(_,_,EA,_,_,_);
+    symbol_minus_symbol(_,_,_,EA,_,_).
 
 labeled_data(EA):-
     fde_entry(_,_,_,_,_,EA).
@@ -925,9 +930,83 @@ data_object_boundary(EA):-
     labeled_data(EA);
     symbolic_data(EA,_,_);
     string(EA,_,_);
-    symbol_minus_symbol(EA,_,_,_,_);
+    symbol_minus_symbol(EA,_,_,_,_,_);
     symbolic_expr_from_relocation(EA,_,_,_);
     moved_data_label(EA,_,_,_).
+
+
+inferred_symbol_name(EA,cat(".L_DEC_",to_string(EA)),"LOCAL","NONE"):-
+    labeled_data(EA),
+    !best_symexpr_symbol(EA,_,_).
+
+/////////////////////////////////////////////////////////////////////////////////
+symbolic_expr(EA,Size,Symbol,Offset):-
+    symbolic_expr_from_relocation(EA,Size,Symbol,Offset).
+
+// Symbolic operands
+symbolic_expr(EA+InstrOffset,Size,SymbolName,Offset):-
+    symbolic_operand(EA,Index,Dest,_),
+    (
+        instruction_immediate_offset(EA,Index,InstrOffset,Size);
+        instruction_displacement_offset(EA,Index,InstrOffset,Size)
+    ),
+    !symbolic_expr_from_relocation(EA+InstrOffset,_,_,_),
+    (
+        !moved_label(EA,Index,_,_),
+        FinalDest = Dest,
+        Offset = 0
+        ;
+        moved_label(EA,Index,Dest,FinalDest),
+        Offset = as(FinalDest,number) - as(Dest,number)
+    ),
+    (
+        best_symexpr_symbol(FinalDest,SymbolName,_)
+        ;
+        !best_symexpr_symbol(FinalDest,_,_),
+        inferred_symbol_name(FinalDest,SymbolName,"LOCAL","NONE")
+    ).
+
+// Symbolic data
+symbolic_expr(EA,Size,SymbolName,Offset):-
+    symbolic_data(EA,Size,Dest),
+    !symbolic_expr_from_relocation(EA,_,_,_),
+    (
+        !moved_data_label(EA,Size,Dest,_),
+        FinalDest = Dest,
+        Offset = 0
+        ;
+        moved_data_label(EA,Size,Dest,FinalDest),
+        Offset = as(FinalDest,number) - as(Dest,number)
+    ),
+    (
+        best_symexpr_symbol(FinalDest,SymbolName,_)
+        ;
+        !best_symexpr_symbol(FinalDest,_,_),
+        inferred_symbol_name(FinalDest,SymbolName,"LOCAL","NONE")
+    ).
+
+// Symbol-Symbol
+symbolic_expr_symbol_minus_symbol(EA,Size,SymbolName1,SymbolName2,Scale,Offset):-
+    symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale,Offset),
+    (
+        best_symexpr_symbol(Symbol1,SymbolName1,_)
+        ;
+        !best_symexpr_symbol(Symbol1,_,_),
+        inferred_symbol_name(Symbol1,SymbolName1,"LOCAL","NONE")
+    ),
+    (
+        best_symexpr_symbol(Symbol2,SymbolName2,_)
+        ;
+        !best_symexpr_symbol(Symbol2,_,_),
+        inferred_symbol_name(Symbol2,SymbolName2,"LOCAL","NONE")
+    ).
+
+symbolic_expr_attribute(EA+InstrOffset,Attr):-
+    symbolic_operand_attribute(EA,Index,Attr),
+    (
+        instruction_immediate_offset(EA,Index,InstrOffset,_);
+        instruction_displacement_offset(EA,Index,InstrOffset,_)
+    ).
 
 /////////////////////////////////////////////////////////////////////////////////
 // This facts specifies that a label should be printed in the .bss section for
