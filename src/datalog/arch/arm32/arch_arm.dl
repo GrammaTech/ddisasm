@@ -26,21 +26,18 @@ and characteristics
 */
 
 
-.comp ARM {
+.comp ARM : Arch {
 
+#include "float_operations.dl"
 #include "jump_operations.dl"
 #include "interrupt_operations.dl"
 #include "registers.dl"
 
-// Define all variants of the move operation.
-.decl move_operation(Operation:symbol)
 move_operation(Operation) :-
     instruction_get_operation(_, Operation),
     contains("MOV", Operation).
 
 move_operation("MVN").
-
-.decl load_operation(Operation:symbol)
 
 load_operation(Operation):-
     instruction_get_operation(_,Operation),
@@ -50,8 +47,6 @@ load_operation(Operation):-
         contains("LDM", Operation)
     ).
 
-.decl load_word_operation(Operation:symbol)
-
 load_word_operation(Operation):-
     instruction_get_operation(_,Operation),
     substr(Operation,0,3) = "LDR",
@@ -59,8 +54,6 @@ load_word_operation(Operation):-
         strlen(Operation) = 3; // unconditional
         strlen(Operation) = 5  // conditional ldr
     ).
-
-.decl store_operation(Operation:symbol)
 
 store_operation(Operation):-
     instruction_get_operation(_,Operation),
@@ -70,14 +63,6 @@ store_operation(Operation):-
         contains("STM", Operation)
     ).
 
-// TODO:
-.decl conditional_mov(EA:address)
-
-conditional_mov(0):-
-    false.
-
-.decl mov(EA:address)
-
 mov(EA):-
     instruction_get_operation(EA,Operation),
     (
@@ -85,14 +70,11 @@ mov(EA):-
         load_operation(Operation)
     ).
 
-.decl is_nop(EA:address)
-
 is_nop(EA):-
     instruction_get_operation(EA,"NOP").
 
-// Returns
-.decl return(n:address)
-
+// We have no return_operation, so we override.
+.override return
 return(EA):-
     instruction_get_operation(EA,"BX"),
     instruction_get_op(EA,_,Op),
@@ -113,8 +95,6 @@ return(EA):-
     instruction_get_src_op(EA,_,SrcOp),
     op_regdirect_contains_reg(SrcOp,"LR").
 
-.decl unconditional_return_operation(operation:symbol)
-
 // NOTE: unconditional_return_operation must be used with 'return' rule.
 unconditional_return_operation(Operation):-
     instruction_get_operation(_,Operation),
@@ -124,8 +104,6 @@ unconditional_return_operation(Operation):-
         Operation = "POP"
     ),
     !conditional_return_operation(Operation).
-
-.decl conditional_return_operation(operation:symbol)
 
 conditional_return_operation(Operation):-
     instruction_get_operation(_,Operation),
@@ -137,8 +115,6 @@ conditional_return_operation(Operation):-
 long_operation(Operation):-
     instruction_get_operation(_,Operation),
     strlen(Operation) > 2.
-
-.decl is_conditional_operation(Operation:symbol)
 
 is_conditional_operation(Operation):-
     long_operation(Operation),
@@ -154,19 +130,7 @@ is_conditional_operation(Operation):-
         CC = "GE"; CC = "LT"; CC = "GT"; CC = "LE"
     ).
 
-.decl delay_slot(BranchEA:address,EA:address)
-
-// No rule for delay_slot
-delay_slot(0,0):-
-    false.
-
-.decl jump(EA:address)
-.output jump
-
-jump(EA):-
-    instruction_get_operation(EA,Operation),
-    jump_operation(Operation).
-
+// Does not override - extends with `ldr pc, [...]`
 jump(EA):-
     instruction_get_operation(EA,Operation),
     load_operation(Operation),
@@ -174,13 +138,9 @@ jump(EA):-
     op_regdirect(Op,Reg),
     pc_register(Reg).
 
-.decl op_does_not_read_dest_reg(Operation:symbol)
-
 op_does_not_read_dest_reg(Operation):-
     // TODO: There could be more.
     load_operation(Operation).
-
-.decl arithmetic_operation(Operation:symbol)
 
 arithmetic_operation(Operation):-
     instruction_get_operation(_,Operation),
@@ -199,8 +159,6 @@ arithmetic_operation(Operation):-
         Op = "SUB"
     ).
 
-.decl multiplication_operation(Operation:symbol)
-
 multiplication_operation(Operation):-
     instruction_get_operation(_,Operation),
     Op = substr(Operation,0,3),
@@ -209,8 +167,6 @@ multiplication_operation(Operation):-
         Op = "MLA";
         Op = "MLS"
     ).
-
-.decl logic_operation(Operation:symbol)
 
 logic_operation(Operation):-
     instruction_get_operation(_,Operation),
@@ -225,8 +181,6 @@ logic_operation(Operation):-
         Op = "MVN"
     ).
 
-.decl read_only_operation(Operation:symbol)
-
 read_only_operation(Operation):-
     instruction_get_operation(_,Operation),
     Op = substr(Operation,0,3),
@@ -237,34 +191,15 @@ read_only_operation(Operation):-
         Op = "TST"
     ).
 
-.decl write_only_operation(Operation:symbol)
-
+// TODO:
 write_only_operation(""):-
     false.
 
 // TODO:
-.decl one_op_write(Operation:symbol)
-
 one_op_write(""):-
     false.
 
-.decl pointer_size(n:unsigned) inline
-
 pointer_size(4).
-
-// TODO:
-.decl loop_operation(operation:symbol)
-
-loop_operation(""):-
-    false.
-
-// TODO:
-.decl loop_prefix(prefix:symbol)
-
-loop_prefix(""):-
-    false.
-
-.decl call_operation(operation:symbol)
 
 call_operation("BL").
 call_operation("BLEQ").
@@ -300,17 +235,11 @@ call_operation("BLXGT").
 call_operation("BLXLE").
 call_operation("BLXAL").
 
-.decl syscall_operation(operation:symbol)
-
 syscall_operation("SWI").
 
 // TODO:
-.decl halt_operation(operation:symbol)
-
-halt_operation(""):-
+return_operation(""):-
     false.
-
-.decl cmp_operation(Operation:symbol)
 
 cmp_operation(Operation):-
     instruction_get_operation(_,Operation),
@@ -321,17 +250,6 @@ cmp_operation(Operation):-
         Op = "TEQ";
         Op = "TST"
     ).
-
-// TODO:
-.decl operation_size_exception(EA:address,Op_index:operand_index,Size:unsigned)
-
-operation_size_exception(0,0,0):-
-    false.
-
-// TODO:
-// arithmetic operation on two source registers
-.decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
-.output reg_reg_arithmetic_operation
 
 reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
     instruction(EA,_,_,"SUB",Op1,Op2,0,0,_,_), Op1 != Op2,
@@ -364,10 +282,6 @@ reg_reg_arithmetic_operation(EA,DstReg,Reg,"NONE",1,Val):-
 reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
     reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
 
-/**
- * The location and register where the address of main is loaded.
- */
-.decl main_load_reg(EA:address,Reg:register)
 main_load_reg(Main_dispatch,"R0"):-
     main_function_dispatch(Main_dispatch).
 

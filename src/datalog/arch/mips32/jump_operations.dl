@@ -24,8 +24,6 @@
 The set of jump operations in MIPS32
 */
 
-.decl jump_operation(n:symbol)
-
 jump_operation("J").
 jump_operation("JIC").
 jump_operation("B16").
@@ -55,8 +53,6 @@ jump_operation(Symbol):-
     jump_comp_operation(Symbol);
     jump_equal_operation(Symbol);
     jump_unequal_operation(Symbol).
-
-.decl unconditional_jump_operation(n:symbol)
 
 unconditional_jump_operation("J").
 unconditional_jump_operation("JIC").
@@ -110,8 +106,6 @@ jump_comp_operation_2op("BZ.W").
 jump_comp_operation_2op("BZ.D").
 jump_comp_operation_2op("BZ.V").
 
-.decl jump_equal_operation(n:symbol)
-
 jump_equal_operation("BTEQZ").
 
 jump_equal_operation(Symbol):-
@@ -131,8 +125,6 @@ jump_equal_operation_2op("BEQZ16").
 jump_equal_operation_2op("BEQZC").
 jump_equal_operation_2op("BC1EQZ").
 jump_equal_operation_2op("BC2EQZ").
-
-.decl jump_unequal_operation(n:symbol)
 
 jump_unequal_operation("BTNEZ").
 
@@ -170,8 +162,6 @@ compact_branch_operation("BOVC").
 compact_branch_operation("BNVC").
 compact_branch_operation("JC").
 
-.decl jump_operation_op_index(Operation:symbol,operand_index:operand_index)
-
 jump_operation_op_index(Operation,2):-
     jump_unequal_operation_3op(Operation);
     jump_equal_operation_3op(Operation);
@@ -182,8 +172,6 @@ jump_operation_op_index(Operation,1):-
     !jump_unequal_operation_3op(Operation),
     !jump_equal_operation_3op(Operation),
     !jump_comp_operation_3op(Operation).
-
-.decl call_operation_op_index(Operation:symbol,operand_index:operand_index)
 
 call_operation_op_index(Operation,1):-
     call_operation(Operation).

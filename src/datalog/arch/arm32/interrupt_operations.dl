@@ -24,6 +24,4 @@
 The set of interrupt operations in x64
 */
 
-.decl interrupt_operation(n:symbol)
-
 interrupt_operation("SWI").

@@ -21,15 +21,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-.comp MIPS32 {
+.comp MIPS32 : Arch {
 
 #include "jump_operations.dl"
 #include "interrupt_operations.dl"
 #include "float_operations.dl"
 #include "registers.dl"
-
-/* Define all variants of the move operation */
-.decl move_operation(Operation:symbol)
 
 move_operation(Operation):-
   store_operation(Operation);
@@ -42,8 +39,6 @@ move_operation("MOVF").
 move_operation("MOVN").
 move_operation("MOVT").
 move_operation("MOVZ").
-
-.decl store_operation(Operation:symbol)
 
 store_operation("ST").
 store_operation("ST.B").
@@ -76,8 +71,6 @@ store_operation("SDC3").
 store_operation("SDL").
 store_operation("SDR").
 store_operation("SDXC1").
-
-.decl load_operation(Operation:symbol)
 
 load_operation("LB").
 load_operation("LBU16").
@@ -131,14 +124,9 @@ move_operation_conditional("SLTI").
 move_operation_conditional("SLTIU").
 move_operation_conditional("SLTU").
 
-/* Find all addresses where a move instruction is used */
-.decl mov(EA:address)
 mov(EA):-
     instruction_get_operation(EA,Operation),
     move_operation(Operation).
-
-/* Define all variants of a conditional move operation */
-.decl conditional_mov(EA:address)
 
 conditional_mov(EA):-
     instruction_get_operation(EA,Operation),
@@ -146,45 +134,25 @@ conditional_mov(EA):-
 
 // Do not treat nop in delay_slot as padding:
 // see the usage of is_nop in code_inference*.dl
-.decl is_nop(EA:address)
 is_nop(EA):-
     instruction_get_operation(EA,"NOP"),
     !delay_slot(_,EA).
-
-// Returns
-.decl return(n:address)
 
 return(EA):-
     arch.return_operation(Operation),
     instruction(EA,_,_,Operation,Op,_,_,_,_,_),
     op_regdirect_contains_reg(Op,"RA").
 
-.decl unconditional_return_operation(n:symbol)
-
 unconditional_return_operation(Operation):-
     return_operation(Operation).
 
-.decl conditional_return_operation(n:symbol)
-
-conditional_return_operation(""):-
-    false.
-
-
-.decl jump(EA:address)
-
-jump(EA):-
-    instruction_get_operation(EA,Operation),
-    jump_operation(Operation).
-
+// Extend jump - don't override.
 jump(EA):-
     instruction_get_operation(EA,Operation),
     // JR and JR16 are returns only if the target register is RA.
     // Otherwise, it's a jump.
     return_operation(Operation),
     !return(EA).
-
-.decl delay_slot(BranchEA:address,EA:address)
-.output delay_slot
 
 delay_slot(BranchEA,EA):-
     next(BranchEA, EA),
@@ -221,14 +189,9 @@ delay_slot(BranchEA,EA):-
     next(BranchEA, EA),
     Dest != EA.
 
-.decl op_does_not_read_dest_reg(Operation:symbol)
-
 op_does_not_read_dest_reg(Operation):-
     instruction_get_operation(_, Operation).
 
-// No operation
-
-.decl arithmetic_operation(Operation:symbol)
 
 arithmetic_operation("ADD").
 arithmetic_operation("ADDIUPC").
@@ -306,7 +269,6 @@ arithmetic_operation("DROTR").
 arithmetic_operation("DROTR32").
 arithmetic_operation("DROTRV").
 
-.decl multiplication_operation(Operation:symbol)
 
 multiplication_operation("MUL").
 multiplication_operation("MULEQ_S").
@@ -347,7 +309,6 @@ arithmetic_operation("DMOD").
 arithmetic_operation("MODU").
 arithmetic_operation("DMODU").
 
-.decl logic_operation(Operation:symbol)
 
 logic_operation("AND").
 logic_operation("AND16").
@@ -387,34 +348,19 @@ logic_operation("DEXT").
 logic_operation("DEXTM").
 logic_operation("DEXTU").
 
-.decl read_only_operation(Operation:symbol)
 
 read_only_operation(Operation):-
     jump_operation(Operation).
-
-.decl write_only_operation(Operation:symbol)
 
 // TODO:
 write_only_operation(""):-
     false.
 
-.decl one_op_write(Operation:symbol)
-
 // TODO:
 one_op_write(""):-
     false.
 
-.decl pointer_size(n:unsigned)inline
 pointer_size(4).
-
-.decl loop_prefix(prefix:symbol)
-
-loop_prefix(""):-
-    false.
-
-// No loop prefix
-
-.decl call_operation(operation:symbol)
 
 call_operation(Symbol):-
     call_operation_1op(Symbol);
@@ -449,24 +395,12 @@ call_operation_2op("BLTZALL").
 call_operation_2op("BLTZALS").
 call_operation_2op("BNEZALC").
 
-.decl syscall_operation(operation:symbol)
-
 syscall_operation("SYSCALL").
-
-.decl return_operation(operation:symbol)
 
 return_operation("JR").
 return_operation("JR16").
 return_operation("JRC").
 return_operation("JRADDIUSP").
-
-.decl halt_operation(operation:symbol)
-
-// No halt operation
-halt_operation(""):-
-    false.
-
-.decl cmp_operation(Operation:symbol)
 
 // No cmp operation.
 cmp_operation(""):-
@@ -477,18 +411,6 @@ cmp_operation(""):-
 //cmp_operation("SLTU").
 //cmp_operation("SLTI").
 //cmp_operation("SLTIU").
-
-// These operations are either special like LEA (does not read memory)or
-// are not decoded corectly from capstone
-// FIXME: review this list when capstone is updated
-.decl operation_size_exception(EA:address,Op_index:operand_index,Size:unsigned)
-
-// TODO: Remove after review above.
-operation_size_exception(0,0,0):-
-    false.
-
-// arithmetic operation on two source registers
-.decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
 
 // ADDIU <Register> <Register> <Immediate>
 reg_reg_arithmetic_operation(EA,Reg,Reg2,"NONE",1,Immediate):-
@@ -505,10 +427,6 @@ reg_reg_arithmetic_operation(EA,Reg,Reg1,Reg2,1,0):-
     op_regdirect_contains_reg(SrcOp1,Reg1),
     op_regdirect_contains_reg(SrcOp2,Reg2).
 
-/**
- * The location and register where the address of main is loaded.
- */
-.decl main_load_reg(EA:address,Reg:register)
 main_load_reg(Main_dispatch,"A0"):-
     main_function_dispatch(Main_dispatch).
 

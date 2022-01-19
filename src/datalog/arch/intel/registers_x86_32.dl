@@ -27,9 +27,6 @@ This module stablishes basic information about register:
  - Whether they all callee or caller saved according to the ABI
 */
 
-// Limit the registers that are tracked and transform the names to their 32 bits version.
-.decl track_register(Reg32:register,Reg64:register)
-
 track_register("AX","EAX").
 track_register("EAX","EAX").
 
@@ -51,25 +48,14 @@ track_register("ESI","ESI").
 track_register("BP","EBP").
 track_register("EBP","EBP").
 
-// This specifies the registers whose value are not kept through a function call.
-.decl function_non_maintained_reg(reg:register)
-
 function_non_maintained_reg("EAX").
 function_non_maintained_reg("ECX").
 function_non_maintained_reg("EDX").
 
-.decl pc_register(reg:register)
-
 pc_register("EIP").
-
-.decl frame_pointer(reg:register)
 
 frame_pointer("EBP").
 
-.decl stack_pointer(reg:register)
-
 stack_pointer("ESP").
-
-.decl return_val_reg(reg:register)
 
 return_val_reg("EAX").

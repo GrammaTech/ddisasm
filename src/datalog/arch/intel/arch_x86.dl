@@ -22,40 +22,29 @@
 //===----------------------------------------------------------------------===//
 
 // Define a common set of predicates for x86 instructions and characteristics.
-.comp X86 {
+.comp X86 : Arch {
 
 #include "jump_operations.dl"
 #include "interrupt_operations.dl"
 #include "float_operations.dl"
 
-.decl move_operation(Operation:symbol)
 move_operation(Operation) :-
     instruction_get_operation(_, Operation),
     contains("MOV", Operation).
-
-.decl conditional_mov(EA:address)
 
 conditional_mov(EA):-
     instruction_get_operation(EA,Operation),
     contains("CMOV",Operation).
 
-.decl mov(EA:address)
-
 mov(EA):-
     instruction_get_operation(EA,Operation),
     move_operation(Operation).
 
-.decl load_operation(Operation:symbol)
-
 // No rule for load_operation
 load_operation(""):- false.
 
-.decl store_operation(Operation:symbol)
-
 // No rule for store_operation
 store_operation(""):- false.
-
-.decl is_nop(EA:address)
 
 is_nop(EA):-
     instruction_get_operation(EA,"NOP").
@@ -64,45 +53,16 @@ is_nop(EA):-
     instruction(EA,_,_,"XCHG",Op,Op,0,0,_,_),
     op_regdirect(Op,"AX").
 
-// Returns
-.decl return(n:address)
-
-return(EA):-
-    return_operation(Operation),
-    instruction_get_operation(EA,Operation).
-
-.decl unconditional_return_operation(n:symbol)
-
 unconditional_return_operation(Operation):-
     return_operation(Operation).
 
-.decl conditional_return_operation(n:symbol)
-
-conditional_return_operation(""):-
-    false.
-
-
-.decl delay_slot(BranchEA:address,EA:address)
-
-// No rule for delay_slot
-delay_slot(0,0):-
-    false.
-
-.decl jump(EA:address)
-
+// Extend the generic case with loop operations.
 jump(EA):-
     instruction_get_operation(EA,Operation),
-    (
-        jump_operation(Operation);
-        loop_operation(Operation)
-    ).
-
-.decl op_does_not_read_dest_reg(Operation:symbol)
+    loop_operation(Operation).
 
 op_does_not_read_dest_reg("LEA").
 op_does_not_read_dest_reg("POP").
-
-.decl arithmetic_operation(Operation:symbol)
 
 arithmetic_operation("ADD").
 arithmetic_operation("SUB").
@@ -111,79 +71,50 @@ arithmetic_operation("DEC").
 arithmetic_operation("IMUL").
 arithmetic_operation("SHL").
 
-.decl multiplication_operation(Operation:symbol)
-
 multiplication_operation("IMUL").
 multiplication_operation("SHL").
-
-.decl logic_operation(Operation:symbol)
 
 logic_operation("AND").
 logic_operation("XOR").
 logic_operation("OR").
 logic_operation("TEST").
 
-.decl read_only_operation(Operation:symbol)
-
 read_only_operation("TEST").
 read_only_operation("CMP").
 
-.decl write_only_operation(Operation:symbol)
-
 write_only_operation("POP").
-
-.decl one_op_write(Operation:symbol)
 
 one_op_write("INC").
 one_op_write("DEC").
 one_op_write("POP").
 one_op_write("NOT").
 
-.decl pointer_size(n:unsigned) inline
-
-.decl loop_operation(operation:symbol)
-
+.decl loop_operation(Operation:symbol)
 loop_operation("LOOP").
 loop_operation("LOOPE").
 loop_operation("LOOPZ").
 loop_operation("LOOPNE").
 loop_operation("LOOPNZ").
 
-.decl loop_prefix(prefix:symbol)
-
 loop_prefix("REP").
 loop_prefix("REPE").
 loop_prefix("REPNE").
 
-.decl call_operation(operation:symbol)
-
 call_operation("CALL").
-
-.decl syscall_operation(operation:symbol)
 
 syscall_operation("SYSCALL").
 
-.decl return_operation(operation:symbol)
-
 return_operation("RET").
-
-.decl halt_operation(operation:symbol)
 
 halt_operation("HLT").
 halt_operation("UD0").
 halt_operation("UD1").
 halt_operation("UD2").
 
-.decl cmp_operation(Operation:symbol)
-
 cmp_operation("CMP").
 cmp_operation("TEST").
 
-// These operations are either special like LEA (does not read memory) or
-// are not decoded correctly from Capstone.
 // FIXME: review this list when Capstone is updated.
-.decl operation_size_exception(EA:address,Op_index:operand_index,Size:unsigned)
-
 operation_size_exception(EA,Index,8):-
     instruction_get_operation(EA,"MOVSD"),
     instruction_get_op(EA,Index,Op),
@@ -193,9 +124,6 @@ operation_size_exception(EA,Index,0):-
     instruction_get_operation(EA,"LEA"),
     instruction_get_op(EA,Index,Op),
     op_indirect(Op,_,_,_,_,_,_).
-
-// arithmetic operation on two source registers
-.decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
 
 reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
     instruction(EA,_,_,"SUB",Op1,Op2,0,0,_,_), Op1 != Op2,
