@@ -189,8 +189,7 @@ got_reference(Got_entry,Symbol):-
 //   unsigned long int ti_module;
 //   unsigned long int ti_offset;
 // } tls_index;
-inferred_symbol_name(Dest,DestName,"LOCAL","NONE"),
-got_reference(Got_entry,DestName):-
+symbol_minus_symbol(Got_entry+8,8,Dest,Beg,1,0):-
     relocation(Got_entry,"DTPMOD64","",_,_,_,_),
     (
         section(".tbss",_,Beg);
@@ -198,8 +197,12 @@ got_reference(Got_entry,DestName):-
     ),
     // ti_offset is initialized for @TLSGD and zero for @TLSLD
     data_word(Got_entry+8,8,Offset),
-    Dest = as(as(Beg,number)+Offset,address),
-    DestName = cat(".L_DEC_",to_string(Dest)).
+    Dest = as(as(Beg,number)+Offset,address).
+
+got_reference(Got_entry,DestName):-
+    relocation(Got_entry,"DTPMOD64","",_,_,_,_),
+    symbolic_expr_symbol_minus_symbol(Got_entry+8,8,DestName,_,_,_).
+
 
 
 //////////////////////////////////////////////////////////////////////////

@@ -598,13 +598,10 @@ void expandSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
         std::string name;
         output >> ea >> name;
         auto foundSrc = module.findSymbols(ea);
-        auto foundDest = module.findSymbols(name);
+        gtirb::Symbol *Dest = findFirstSymbol(module, name);
         for(gtirb::Symbol &src : foundSrc)
         {
-            for(gtirb::Symbol &dest : foundDest)
-            {
-                (*symbolForwarding)[src.getUUID()] = dest.getUUID();
-            }
+            (*symbolForwarding)[src.getUUID()] = Dest->getUUID();
         }
     }
 }

@@ -42,7 +42,8 @@ symbolic_operand_attribute(EA,Index,"PltRef"):-
 symbolic_operand_attribute(EA,Index,"GotRelPC"):-
     symbolic_operand(EA,Index,Dest,_),
     !moved_label(EA,Index,_,_),
-    got_reference(Dest,_).
+    got_reference(Dest,_),
+    !relocation(Dest,"DTPMOD64",_,_,_,_,_).
 
 symbolic_operand_attribute(EA,Index,"GotRelPC"):-
     instruction_displacement_offset(EA,Index,Offset,_),
