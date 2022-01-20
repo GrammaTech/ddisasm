@@ -166,6 +166,14 @@ lsda_callsite_addresses(Start,End,LandingPad):-
     lsda_callsite(_,_,Start,_,End,_,LandingPad,_).
 
 
+labeled_data(Lsda):-
+    fde_entry(_,_,_,_,_,Lsda),
+    Lsda != 0.
+
+labeled_data(Personality):-
+    cie_personality(_,Personality,_,_,_),
+    Personality != 0.
+
 /////////////////////////////////////////////////////////////////////////////////
 // Symbols in lsda
 
@@ -456,12 +464,7 @@ cfi_directive(StartFunction,0,1,".cfi_lsda",LsdaSymbol,1,Encoding,0):-
     cie_encoding(Cie,_,LsdaEncoding),
     (
         Lsda != 0, Encoding = as(LsdaEncoding,number),
-        (
-            best_symexpr_symbol(Lsda,LsdaSymbol)
-            ;
-            !best_symexpr_symbol(Lsda,_),
-            inferred_symbol_name(Lsda,LsdaSymbol,"LOCAL","NONE")
-        )
+        best_symexpr_symbol(Lsda,LsdaSymbol)
         ;
         Lsda = 0, Encoding = 255,
         LsdaSymbol = "",
@@ -475,12 +478,7 @@ cfi_directive(StartFunction,0,2,".cfi_personality",PersonalitySymbol,1,Encoding,
     (
         cie_personality(Cie,Personality,_,_,PersonalityEncoding),
         Personality != 0, Encoding = as(PersonalityEncoding,number),
-        (
-            best_func_symbol(Personality,PersonalitySymbol)
-            ;
-            !best_func_symbol(Personality,_),
-            inferred_symbol_name(Personality,PersonalitySymbol,_,"FUNC")
-        )
+        best_symexpr_symbol(Personality,PersonalitySymbol)
         ;
         cie_personality(Cie,Personality,_,_,_),
         Personality = 0,

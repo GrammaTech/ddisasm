@@ -901,10 +901,11 @@ data_object_boundary(EA):-
 ///////////////////////////////////////////////////////////////////////
 .decl best_symexpr_symbol(EA:address,SymbolName:symbol)
 .decl best_func_symbol(EA:address,SymbolName:symbol)
-
+.output best_func_symbol
+.output best_symexpr_symbol
 
 .decl symbol_score(EA:address, SymbolName:symbol, Type:symbol, Score:unsigned)
-
+.output symbol_score
 
 // FiXME: These are symbols skiped by the pprinter.
 .decl avoid_symbols(SymbolName:symbol)
@@ -950,7 +951,7 @@ symbol_score(EA,SymbolName,Type,Score):-
 
 
 best_func_symbol(EA,SymbolName):-
-    symbol_score(EA,SymbolName,"FUNC",Score),
+   symbol_score(EA,SymbolName,"FUNC",Score),
     Score = max S: {symbol_score(EA,_,"FUNC",S)}.
 
 inferred_symbol_name(EA,SymbolName,"GLOBAL","FUNC"),
@@ -984,35 +985,37 @@ symbolic_expr(EA,Size,Symbol,Offset):-
 
 // Symbolic operands
 symbolic_expr(EA+InstrOffset,Size,SymbolName,Offset):-
-    symbolic_operand(EA,Index,Dest,_),
+    moved_label(EA,Index,Dest,FinalDest),
     (
         instruction_immediate_offset(EA,Index,InstrOffset,Size);
         instruction_displacement_offset(EA,Index,InstrOffset,Size)
     ),
     !symbolic_expr_from_relocation(EA+InstrOffset,_,_,_),
-    (
-        !moved_label(EA,Index,_,_),
-        FinalDest = Dest,
-        Offset = 0
-        ;
-        moved_label(EA,Index,Dest,FinalDest),
-        Offset = as(Dest,number) - as(FinalDest,number)
-    ),
+    Offset = as(Dest,number) - as(FinalDest,number),
     best_symexpr_symbol(FinalDest,SymbolName).
+
+symbolic_expr(EA+InstrOffset,Size,SymbolName,0):-
+    symbolic_operand(EA,Index,Dest,_),
+    !moved_label(EA,Index,_,_),
+    (
+        instruction_immediate_offset(EA,Index,InstrOffset,Size);
+        instruction_displacement_offset(EA,Index,InstrOffset,Size)
+    ),
+    !symbolic_expr_from_relocation(EA+InstrOffset,_,_,_),
+    best_symexpr_symbol(Dest,SymbolName).
 
 // Symbolic data
 symbolic_expr(EA,Size,SymbolName,Offset):-
+    moved_data_label(EA,Size,Dest,FinalDest),
+    !symbolic_expr_from_relocation(EA,_,_,_),
+    Offset = as(Dest,number) - as(FinalDest,number),
+    best_symexpr_symbol(FinalDest,SymbolName).
+
+symbolic_expr(EA,Size,SymbolName,0):-
     symbolic_data(EA,Size,Dest),
     !symbolic_expr_from_relocation(EA,_,_,_),
-    (
-        !moved_data_label(EA,Size,Dest,_),
-        FinalDest = Dest,
-        Offset = 0
-        ;
-        moved_data_label(EA,Size,Dest,FinalDest),
-        Offset = as(Dest,number) - as(FinalDest,number)
-    ),
-    best_symexpr_symbol(FinalDest,SymbolName).
+    !moved_data_label(EA,_,_,_),
+    best_symexpr_symbol(Dest,SymbolName).
 
 // Symbol-Symbol
 symbolic_expr_symbol_minus_symbol(EA,Size,SymbolName1,SymbolName2,Scale,Offset):-
