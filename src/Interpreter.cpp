@@ -62,37 +62,40 @@ void loadAll(souffle::SouffleProgram *Program, const std::string &Directory)
             std::stringstream Row(Line);
             souffle::tuple T(Relation);
 
-            std::string Symbol;
-            int64_t Signed;
-            uint64_t Unsigned;
-            double Float;
+            std::string Field;
 
             for(size_t I = 0; I < Relation->getArity(); I++)
             {
+                if(Relation->getArity() == 1)
+                {
+                    Field = Line;
+                }
+                else if(!std::getline(Row, Field, '\t'))
+                {
+                    assert(!"CSV file has less fields than expected");
+                }
                 switch(Relation->getAttrType(I)[0])
                 {
                     case 's':
                     {
-                        Row >> Symbol;
-                        T << Symbol;
+                        T << Field;
                         break;
                     }
                     case 'i':
                     {
-                        Row >> Signed;
-                        T << Signed;
+                        int64_t Number = std::stoll(Field);
+                        T << Number;
                         break;
                     }
                     case 'u':
                     {
-                        Row >> Unsigned;
-                        T << Unsigned;
+                        uint64_t Number = std::stoull(Field);
+                        T << Number;
                         break;
                     }
                     case 'f':
                     {
-                        Row >> Float;
-                        T << Float;
+                        T << std::stod(Field);
                         break;
                     }
                     default:
