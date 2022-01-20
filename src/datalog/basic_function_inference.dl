@@ -58,6 +58,7 @@ function_entry(EA):-
         start_function(EA);
         section(_,_,EA);
         //called
+        // TODO: Fold pc_load_call into generic arch component.
         (direct_call(EA_caller,EA), code(EA_caller), !pc_load_call(EA_caller,EA));
         (direct_call_resolved(EA_caller,EA), code(EA_caller))
     ).
