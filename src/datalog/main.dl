@@ -512,6 +512,7 @@ not as control-flow (e.g. call-to-pop sequences).
 .decl pc_load_call(Src:address,Dest:address)
 .output pc_load_call
 
+// TODO: Replace with platform-specific definition of direct_call.
 pc_load_call(Src,Dest):-
     (
         binary_isa("X86");
