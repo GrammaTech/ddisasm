@@ -377,25 +377,6 @@ void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
         std::string Name;
         std::string Scope, Type;
         T >> Addr >> Name >> Scope >> Type;
-
-        // Replace decimal address with hex.
-        if(Name.find("FUN_") == 0)
-        {
-            std::stringstream S;
-            S << "FUN_" << std::hex << static_cast<uint64_t>(Addr);
-            if(Name.rfind("_IFUNC") != std::string::npos)
-            {
-                S << "_IFUNC";
-            }
-            Name = S.str();
-        }
-        if(Name.find(".L_DEC_") == 0)
-        {
-            std::stringstream S;
-            S << ".L_" << std::hex << static_cast<uint64_t>(Addr);
-            Name = S.str();
-        }
-
         if(!Module.findSymbols(Name))
         {
             gtirb::Symbol *Symbol = Module.addSymbol(Context, Addr, Name);
@@ -446,20 +427,6 @@ gtirb::Symbol *findSymbol(gtirb::Module &module, gtirb::Addr ea, std::string nam
 // auxiliary function to get a symbol with an address and name
 gtirb::Symbol *findFirstSymbol(gtirb::Module &module, std::string Name)
 {
-    static std::string inferred_prefix(".L_DEC_");
-    static std::string fun_prefix("FUN_");
-    if(Name.find(inferred_prefix) == 0)
-    {
-        std::stringstream S;
-        S << ".L_" << std::hex << std::stoul(Name.substr(inferred_prefix.size()));
-        Name = S.str();
-    }
-    else if(Name.find(fun_prefix) == 0)
-    {
-        std::stringstream S;
-        S << "FUN_" << std::hex << std::stoul(Name.substr(fun_prefix.size()));
-        Name = S.str();
-    }
     auto found = module.findSymbols(Name);
     if(found.begin() == found.end())
     {
@@ -827,26 +794,8 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
     module.addAuxData<gtirb::schema::SymbolicExpressionSizes>(std::move(SymbolicSizes));
 }
 
-gtirb::Section *findSectionByIndex(gtirb::Context &C, gtirb::Module &M, uint64_t Index)
-{
-    auto *SectionIndex = M.getAuxData<gtirb::schema::ElfSectionIndex>();
-    if(!SectionIndex)
-    {
-        std::cerr << "ERROR: Missing `elfSectionIndex' AuxData table\n";
-        return nullptr;
-    }
-    if(auto It = SectionIndex->find(Index); It != SectionIndex->end())
-    {
-        gtirb::Node *N = gtirb::Node::getByUUID(C, It->second);
-        if(auto *Section = dyn_cast_or_null<gtirb::Section>(N))
-        {
-            return Section;
-        }
-    }
-    return nullptr;
-}
-
-void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
+void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
+                            souffle::SouffleProgram *Prog)
 {
     auto *Alignment = Module.getAuxData<gtirb::schema::Alignment>();
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
@@ -874,6 +823,28 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
             }
         }
     }
+    for(auto &T : *Prog->getRelation("symbol_at_end"))
+    {
+        gtirb::Addr EA;
+        std::string SymbolName;
+        T >> EA >> SymbolName;
+        if(gtirb::Symbol *Sym = findSymbol(Module, EA, SymbolName))
+        {
+            Sym->setAtEnd(true);
+        }
+    }
+    for(auto &T : *Prog->getRelation("symbol_before_section_beg"))
+    {
+        gtirb::Addr EA, NewEA;
+        std::string SymbolName;
+        T >> EA >> SymbolName >> NewEA;
+        if(gtirb::Symbol *Sym = findSymbol(Module, EA, SymbolName))
+        {
+            Sym->setAddress(NewEA);
+            std::cerr << "WARNING: Moving symbol to first block of section: " << Sym->getName()
+                      << std::endl;
+        }
+    }
 
     std::map<gtirb::Symbol *, std::tuple<gtirb::Node *, bool>> ConnectToBlock;
     for(auto &Symbol : Module.symbols_by_addr())
@@ -881,19 +852,23 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
         if(Symbol.getAddress())
         {
             gtirb::Addr Addr = *Symbol.getAddress();
-            if(auto It = Module.findCodeBlocksAt(Addr); !It.empty())
+            if(Symbol.getAtEnd())
             {
-                gtirb::CodeBlock &Block = It.front();
-                assert(Addr == *Block.getAddress());
-                ConnectToBlock[&Symbol] = {&Block, false};
-                continue;
+                if(auto BlockIt = Module.findBlocksOn(Addr - 1); !BlockIt.empty())
+                {
+                    gtirb::Node &Block = BlockIt.front();
+                    ConnectToBlock[&Symbol] = {&Block, true};
+                    continue;
+                }
             }
-            if(auto It = Module.findDataBlocksAt(Addr); !It.empty())
+            else
             {
-                gtirb::DataBlock &Block = It.front();
-                assert(Addr == *Block.getAddress());
-                ConnectToBlock[&Symbol] = {&Block, false};
-                continue;
+                if(auto BlockIt = Module.findBlocksAt(Addr); !BlockIt.empty())
+                {
+                    gtirb::Node &Block = BlockIt.front();
+                    ConnectToBlock[&Symbol] = {&Block, false};
+                    continue;
+                }
             }
             if(auto It = Module.findCodeBlocksOn(Addr); !It.empty())
             {
@@ -931,28 +906,8 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
                     }
                 }
             }
-            if(SymbolInfo && SymbolInfo->count(Symbol.getUUID()) > 0)
-            {
-                auxdata::ElfSymbolInfo Info = (*SymbolInfo)[Symbol.getUUID()];
-                uint64_t SectionIndex = std::get<4>(Info);
-                if(gtirb::Section *Section = findSectionByIndex(Context, Module, SectionIndex);
-                   Section && Section->getAddress() && Section->getSize())
-                {
-                    if(Addr < Section->getAddress())
-                    {
-                        if(auto It = Section->blocks(); !It.empty())
-                        {
-                            std::cerr << "WARNING: Moving symbol to first block of section: "
-                                      << Symbol.getName() << std::endl;
-                            ConnectToBlock[&Symbol] = {&*It.begin(), false};
-                            continue;
-                        }
-                    }
-                }
-            }
         }
     }
-
     for(auto [Symbol, T] : ConnectToBlock)
     {
         auto [Node, AtEnd] = T;
@@ -967,7 +922,6 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
             Symbol->setAtEnd(AtEnd);
         }
     }
-
     // Connect remaining undefined external symbols to `ProxyBlocks'.
     auto *SymbolForwarding = Module.getAuxData<gtirb::schema::SymbolForwarding>();
     if(SymbolForwarding && SymbolInfo)
@@ -987,46 +941,6 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module)
                     {
                         gtirb::ProxyBlock *ExternalBlock = Module.addProxyBlock(Context);
                         Symbol->setReferent(ExternalBlock);
-                    }
-                }
-            }
-        }
-    }
-}
-
-void splitSymbols(gtirb::Context &Context, gtirb::Module &Module, souffle::SouffleProgram *Program)
-{
-    for(auto &T : *Program->getRelation("boundary_label"))
-    {
-        gtirb::Addr EA, Start, End;
-        T >> EA >> Start >> End;
-
-        if(auto It = Module.findDataBlocksOn(EA); !It.empty())
-        {
-            gtirb::DataBlock &Block = It.front();
-            if(gtirb::ByteInterval *BI = Block.getByteInterval(); BI && BI->getAddress())
-            {
-                uint64_t Offset = EA - *(BI->getAddress());
-                if(gtirb::SymbolicExpression *Expr = BI->getSymbolicExpression(Offset))
-                {
-                    if(auto *SAA = std::get_if<gtirb::SymAddrAddr>(Expr))
-                    {
-                        gtirb::Symbol *S = SAA->Sym1;
-                        if(S && !S->getAtEnd() && S->getAddress() == End)
-                        {
-                            std::stringstream Stream;
-                            Stream << "__end_" << std::hex << static_cast<uint64_t>(Start);
-                            std::string Label = Stream.str();
-
-                            gtirb::Symbol *NewSymbol = Module.addSymbol(Context, End, Label);
-                            if(auto BlockIt = Module.findCodeBlocksOn(Start); !BlockIt.empty())
-                            {
-                                gtirb::CodeBlock &CodeBlock = BlockIt.front();
-                                NewSymbol->setReferent(&CodeBlock);
-                            }
-                            NewSymbol->setAtEnd(true);
-                            SAA->Sym1 = NewSymbol;
-                        }
                     }
                 }
             }
@@ -1405,6 +1319,48 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
     }
 }
 
+void renameInferredSymbols(gtirb::Module &Module)
+{
+    static std::string InferredPrefix(".L_");
+    static std::string FunPrefix("FUN_");
+    static std::string InferredSuffix("_END");
+    static std::string IfunSuffix("_IFUNC");
+
+    std::map<gtirb::Symbol *, std::string> NewNames;
+    for(gtirb::Symbol &Sym : Module.symbols())
+    {
+        std::string Prefix(""), Suffix("");
+        const std::string &Name = Sym.getName();
+        if(Name.find(InferredPrefix) == 0)
+        {
+            Prefix = InferredPrefix;
+        }
+        // else if(Name.find(FunPrefix) ==0){
+        //    Prefix = FunPrefix;
+        //}
+        if(!Prefix.empty())
+        {
+            if(Name.rfind(InferredSuffix) != Name.npos)
+            {
+                Suffix = InferredSuffix;
+            }
+            else if(Name.rfind(IfunSuffix) != Name.npos)
+            {
+                Suffix = IfunSuffix;
+            }
+            std::stringstream S;
+            S << Prefix << std::hex
+              << std::stoul(Name.substr(Prefix.size(), Name.size() - Prefix.size() - Suffix.size()))
+              << Suffix;
+            NewNames[&Sym] = S.str();
+        }
+    }
+    for(auto [Sym, NewName] : NewNames)
+    {
+        Sym->setName(NewName);
+    }
+}
+
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
                        souffle::SouffleProgram *prog, bool selfDiagnose)
 {
@@ -1418,8 +1374,8 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     expandSymbolForwarding(context, module, prog);
     buildFunctions(context, module, prog);
     // This should be done after creating all the symbols.
-    connectSymbolsToBlocks(context, module);
-    splitSymbols(context, module, prog);
+    connectSymbolsToBlocks(context, module, prog);
+    renameInferredSymbols(module);
     // These functions should not create additional symbols.
     buildCFG(context, module, prog);
     buildPadding(module, prog);

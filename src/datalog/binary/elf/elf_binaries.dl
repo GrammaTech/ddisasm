@@ -189,7 +189,7 @@ got_reference(Got_entry,Symbol):-
 //   unsigned long int ti_module;
 //   unsigned long int ti_offset;
 // } tls_index;
-symbol_minus_symbol(Got_entry+8,8,Dest,Beg,1,0):-
+symbol_minus_symbol(Got_entry+8,8,Beg,Dest,1,0):-
     relocation(Got_entry,"DTPMOD64","",_,_,_,_),
     (
         section(".tbss",_,Beg);
@@ -201,7 +201,7 @@ symbol_minus_symbol(Got_entry+8,8,Dest,Beg,1,0):-
 
 got_reference(Got_entry,DestName):-
     relocation(Got_entry,"DTPMOD64","",_,_,_,_),
-    symbolic_expr_symbol_minus_symbol(Got_entry+8,8,DestName,_,_,_).
+    symbolic_expr_symbol_minus_symbol(Got_entry+8,8,_,DestName,_,_).
 
 
 

@@ -899,13 +899,32 @@ data_object_boundary(EA):-
     moved_data_label(EA,_,_,_).
 
 ///////////////////////////////////////////////////////////////////////
-.decl best_symexpr_symbol(EA:address,SymbolName:symbol)
+.decl best_symexpr_symbol(EA:address,SymbolName:symbol, AtEnd:number)
 .decl best_func_symbol(EA:address,SymbolName:symbol)
 .output best_func_symbol
 .output best_symexpr_symbol
 
-.decl symbol_score(EA:address, SymbolName:symbol, Type:symbol, Score:unsigned)
+.decl symbol_score(EA:address, SymbolName:symbol, Type:symbol, AtEnd:number, Score:unsigned)
 .output symbol_score
+
+.decl symbol_at_section_end(EA:address,SymbolName:symbol)
+.output symbol_at_section_end
+
+.decl symbol_at_end(EA:address,SymbolName:symbol)
+.output symbol_at_end
+
+symbol_at_end(EA,SymbolName),
+symbol_at_section_end(EA,SymbolName):-
+    symbol(EA,_,_,_,_,SectionIndex,_,_,SymbolName),
+    section_complete(_,Size,Beg,_,_,_,SectionIndex),
+    EA = Beg + Size.
+
+.decl symbol_before_section_beg(EA:address,SymbolName:symbol,NewEA:address)
+.output symbol_before_section_beg
+symbol_before_section_beg(EA,SymbolName,Beg):-
+    symbol(EA,_,_,_,_,SectionIndex,_,_,SymbolName),
+    section_complete(_,_,Beg,_,_,_,SectionIndex),
+    EA < Beg.
 
 // FiXME: These are symbols skiped by the pprinter.
 .decl avoid_symbols(SymbolName:symbol)
@@ -917,9 +936,13 @@ avoid_symbols("_fp_hw").
 avoid_symbols("_IO_stdin_used").
 avoid_symbols("__TMC_END__").
 
-symbol_score(EA,SymbolName,Type,Score):-
+symbol_score(EA,SymbolName,Type,AtEnd,Score):-
     symbol(EA,_,Type,Scope,Visibility,_,_,TableIndex,SymbolName),
     !ambiguous_symbol(SymbolName),
+    (
+        symbol_at_section_end(EA,SymbolName), AtEnd = 1;
+        !symbol_at_section_end(EA,SymbolName), AtEnd = 0
+    ),
     (
         relocation(EA,"COPY",SymbolName,_,_,_,_), RelocScore = 1;
         !relocation(EA,"COPY",SymbolName,_,_,_,_), RelocScore = 0
@@ -951,32 +974,39 @@ symbol_score(EA,SymbolName,Type,Score):-
 
 
 best_func_symbol(EA,SymbolName):-
-   symbol_score(EA,SymbolName,"FUNC",Score),
-    Score = max S: {symbol_score(EA,_,"FUNC",S)}.
+   symbol_score(EA,SymbolName,"FUNC",0,Score),
+   Score = max S: {symbol_score(EA,_,"FUNC",0,S)}.
 
 inferred_symbol_name(EA,SymbolName,"GLOBAL","FUNC"),
 best_func_symbol(EA,SymbolName):-
     function_inference.function_entry(EA),
-    !symbol_score(EA,_,"FUNC",_),
+    !symbol_score(EA,_,"FUNC",0,_),
     SymbolName = cat("FUN_",to_string(EA)).
 
 
-best_symexpr_symbol(EA,SymbolName):-
-    symbol_score(EA,SymbolName,_,Score),
-    Score = max S: {symbol_score(EA,_,_,S)}.
+best_symexpr_symbol(EA,SymbolName,AtEnd):-
+    symbol_score(EA,SymbolName,_,AtEnd,Score),
+    Score = max S: {symbol_score(EA,_,_,AtEnd,S)}.
 
-best_symexpr_symbol(EA,SymbolName):-
+best_symexpr_symbol(EA,SymbolName,0):-
     labeled_data(EA),
-    !symbol_score(EA,_,_,_),
+    !symbol_score(EA,_,_,0,_),
     best_func_symbol(EA,SymbolName).
 
 inferred_symbol_name(EA,SymbolName,"LOCAL","NONE"),
-best_symexpr_symbol(EA,SymbolName):-
+best_symexpr_symbol(EA,SymbolName,0):-
     labeled_data(EA),
-    !symbol_score(EA,_,_,_),
+    !symbol_score(EA,_,_,0,_),
     !best_func_symbol(EA,_),
-    SymbolName = cat(".L_DEC_",to_string(EA)).
+    SymbolName = cat(".L_",to_string(EA)).
 
+symbol_at_end(EA,SymbolName),
+inferred_symbol_name(EA,SymbolName,"LOCAL","NONE"),
+best_symexpr_symbol(EA,SymbolName,1):-
+    labeled_data(EA),
+    boundary_label(_,_,EA),
+    !symbol_score(EA,_,_,1,_),
+    SymbolName = cat(cat(".L_",to_string(EA)),"_END").
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -992,7 +1022,7 @@ symbolic_expr(EA+InstrOffset,Size,SymbolName,Offset):-
     ),
     !symbolic_expr_from_relocation(EA+InstrOffset,_,_,_),
     Offset = as(Dest,number) - as(FinalDest,number),
-    best_symexpr_symbol(FinalDest,SymbolName).
+    best_symexpr_symbol(FinalDest,SymbolName,0).
 
 symbolic_expr(EA+InstrOffset,Size,SymbolName,0):-
     symbolic_operand(EA,Index,Dest,_),
@@ -1002,26 +1032,33 @@ symbolic_expr(EA+InstrOffset,Size,SymbolName,0):-
         instruction_displacement_offset(EA,Index,InstrOffset,Size)
     ),
     !symbolic_expr_from_relocation(EA+InstrOffset,_,_,_),
-    best_symexpr_symbol(Dest,SymbolName).
+    best_symexpr_symbol(Dest,SymbolName,0).
 
 // Symbolic data
 symbolic_expr(EA,Size,SymbolName,Offset):-
     moved_data_label(EA,Size,Dest,FinalDest),
     !symbolic_expr_from_relocation(EA,_,_,_),
     Offset = as(Dest,number) - as(FinalDest,number),
-    best_symexpr_symbol(FinalDest,SymbolName).
+    best_symexpr_symbol(FinalDest,SymbolName,0).
 
 symbolic_expr(EA,Size,SymbolName,0):-
     symbolic_data(EA,Size,Dest),
     !symbolic_expr_from_relocation(EA,_,_,_),
     !moved_data_label(EA,_,_,_),
-    best_symexpr_symbol(Dest,SymbolName).
+    best_symexpr_symbol(Dest,SymbolName,0).
 
 // Symbol-Symbol
 symbolic_expr_symbol_minus_symbol(EA,Size,SymbolName1,SymbolName2,Scale,Offset):-
     symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale,Offset),
-    best_symexpr_symbol(Symbol1,SymbolName1),
-    best_symexpr_symbol(Symbol2,SymbolName2).
+    best_symexpr_symbol(Symbol1,SymbolName1,0),
+    (
+        boundary_label(EA,_,_),
+        best_symexpr_symbol(Symbol2,SymbolName2,1)
+        ;
+        !boundary_label(EA,_,_),
+        best_symexpr_symbol(Symbol2,SymbolName2,0)
+    ).
+
 
 symbolic_expr_attribute(EA+InstrOffset,Attr):-
     symbolic_operand_attribute(EA,Index,Attr),
