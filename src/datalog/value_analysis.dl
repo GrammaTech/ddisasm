@@ -159,6 +159,16 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
     def_used_for_address(EA,Reg),
     flow_def(EA,Reg,_,Immediate).
 
+// call __x86.get_pc_thunk.REG
+value_reg_edge(EA,Reg,EA,"NONE",0,as(EA,number)):-
+    get_pc_thunk(EA,Reg).
+
+// pop PC
+value_reg_edge(EA,Reg,EA,"NONE",0,as(EA,number)):-
+    pc_load_call(_,EA),
+    instruction_get_op(EA,_,Op),
+    op_regdirect(Op,Reg).
+
 // pc-relative LEA
 value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
     code(EA),
