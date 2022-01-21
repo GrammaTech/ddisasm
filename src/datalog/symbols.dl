@@ -33,8 +33,9 @@ A new symbol 'SymbolName' at address 'EA' should be created.
 .output inferred_symbol
 
 /**
-A special symbol 'SymbolName' at address 'EA' has been inferred. Special inferred symbols
-have higher priority than regular inferred symbols.
+A special symbol 'SymbolName' at address 'EA' has been inferred.
+Special inferred symbols have higher priority than regular
+inferred symbols.
 */
 .decl inferred_special_symbol(EA:address,SymbolName:symbol,Scope:symbol, Type: symbol,AtEnd:number)
 
@@ -61,8 +62,8 @@ Best function symbol at address 'EA'.
 .output best_func_symbol
 
 /**
-This predicate is computed to decide which is the best symbol for symbolic expressions
-or the best function symbol at each address.
+This predicate is computed to decide which is the best symbol for
+symbolic expressions or the best function symbol at each address.
 Each symbol receives a score based on its properties.
 */
 .decl symbol_score(EA:address, SymbolName:symbol, Type:symbol, AtEnd:number, Score:unsigned)
