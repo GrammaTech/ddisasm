@@ -57,26 +57,6 @@ inferred_main_dispatch(CallEA):-
 
 }
 
-.decl get_pc_thunk(EA:address,Reg:register)
-.output get_pc_thunk
-
-// call    __x86.get_pc_thunk.ax
-// ...
-// __x86.get_pc_thunk.ax:
-// mov     eax, DWORD PTR [esp]
-// ret
-get_pc_thunk(EA,Reg):-
-    direct_call(_,EA),
-    instruction(EA,Size,_,Operation,Op1,Op2,_,_,_,_),
-    arch.move_operation(Operation),
-    op_regdirect(Op2,Reg),
-    op_indirect(Op1,"NONE","ESP","NONE",1,0,_),
-    arch.return(EA+Size).
-
-def(EA,Reg):-
-    direct_call(EA,EA_pc_thunk),
-    get_pc_thunk(EA_pc_thunk,Reg).
-
 abi_intrinsic(EA,Name):-
     get_pc_thunk(EA,_),
     symbol(EA,_,_,_,_,_,_,_,Name).

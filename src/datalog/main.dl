@@ -344,9 +344,6 @@ pc_relative_operand(EA,Index,Dest):-
 
 split_load_operand(0,0,0):- false.
 
-.decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
-.output got_relative_operand
-
 .decl instruction_has_loop_prefix(EA:address)
 
 instruction_has_loop_prefix(EA):-
@@ -758,16 +755,3 @@ printable_char(N):-
 // will likely be reintroduced by the compiler toolchain.
 .decl abi_intrinsic(EA:address,Name:symbol)
 .output abi_intrinsic
-
-// TODO: Abstract relation for target platforms.
-got_relative_operand(0,0,0):-
-    false.
-
-got_reference_pointer(0):-
-    false.
-
-.decl reg_has_got(EA:address,Reg:register)
-.output reg_has_got
-
-reg_has_got(0,""):-
-    false.

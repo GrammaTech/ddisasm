@@ -166,6 +166,27 @@ plt_data_reference(EA):-
     symbolic_data(EA,_,Dest).
 
 //////////////////////////////////////////////////////////////////////////
+.decl reg_has_got(EA:address,Reg:register)
+.output reg_has_got
+
+.decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
+.output got_relative_operand
+
+.decl get_pc_thunk(EA:address,Reg:register)
+.output get_pc_thunk
+
+// call    __x86.get_pc_thunk.ax
+// ...
+// __x86.get_pc_thunk.ax:
+// mov     eax, DWORD PTR [esp]
+// ret
+get_pc_thunk(EA,Reg):-
+    direct_call(_,EA),
+    instruction(EA,Size,_,Operation,Op1,Op2,_,_,_,_),
+    arch.move_operation(Operation),
+    op_regdirect(Op2,Reg),
+    op_indirect(Op1,"NONE","ESP","NONE",1,0,_),
+    arch.return(EA+Size).
 
 got_reference(Got_entry,Symbol):-
     section(".got",Size,Beg),

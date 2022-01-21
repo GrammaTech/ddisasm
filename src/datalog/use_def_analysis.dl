@@ -129,6 +129,10 @@ def(EA,Reg):-
     arch.delay_slot(Call,EA),
     arch.function_non_maintained_reg(Reg).
 
+def(EA,Reg):-
+    direct_call(EA,EA_pc_thunk),
+    get_pc_thunk(EA_pc_thunk,Reg).
+
 flow_def(EA_jump,Reg,EA_target,Immediate):-
     code(EA),
     cmp_immediate_to_reg(EA,Reg,_,Immediate),
