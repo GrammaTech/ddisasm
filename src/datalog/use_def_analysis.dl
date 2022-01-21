@@ -42,9 +42,9 @@ The traversal of def_used_for_address is kept intra-procedural (not following ca
 .decl def(EA:address,Reg:register)
 
 
-// the register 'reg' at address 'ea' is later used in a memory address in 'where'
-// in the operand 'index'
-
+/**
+Instruction at address 'EA' uses register 'Reg' at operand index `Index`.
+*/
 .decl used(EA:address,Reg:register,Index:operand_index)
 
 //The 'reg' is defined in 'ea_def' and used in 'ea_used' in the operand with index 'index_used'
