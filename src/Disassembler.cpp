@@ -538,8 +538,7 @@ bool isNullReg(const std::string &reg)
 }
 
 // Expand the SymbolForwarding table with plt references
-void expandSymbolForwarding(gtirb::Context &context, gtirb::Module &module,
-                            souffle::SouffleProgram *prog)
+void expandSymbolForwarding(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     auto *symbolForwarding = module.getAuxData<gtirb::schema::SymbolForwarding>();
     for(auto &output : *prog->getRelation("plt_block"))
@@ -596,7 +595,7 @@ void addSymbolicExpressionToCodeBlock(gtirb::Module &Module, gtirb::Addr Addr, u
 void buildSymbolicExpr(gtirb::Module &Module, const gtirb::Addr &Ea,
                        const SymbolicInfo &SymbolicInfo)
 {
-    gtirb::SymAttributeSet attrs =
+    gtirb::SymAttributeSet Attrs =
         buildSymbolicExpressionAttributes(Ea, SymbolicInfo.SymbolicExprAttributes);
     // Symbolic expression from relocation
     if(const auto SymExpr = SymbolicInfo.SymbolicExprs.find(Ea);
@@ -605,7 +604,7 @@ void buildSymbolicExpr(gtirb::Module &Module, const gtirb::Addr &Ea,
         gtirb::Symbol *FoundSymbol = findFirstSymbol(Module, SymExpr->Symbol);
         // FIXME: We need to handle overlapping sections here.
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(Module, Ea, SymExpr->Size,
-                                                              SymExpr->Addend, FoundSymbol, attrs);
+                                                              SymExpr->Addend, FoundSymbol, Attrs);
         return;
     }
     // Symbol-Symbol case
@@ -614,15 +613,14 @@ void buildSymbolicExpr(gtirb::Module &Module, const gtirb::Addr &Ea,
     {
         gtirb::Symbol *FoundSymbol1 = findFirstSymbol(Module, SymExpr->Symbol1);
         gtirb::Symbol *FoundSymbol2 = findFirstSymbol(Module, SymExpr->Symbol2);
-        addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(Module, Ea, SymExpr->Size,
-                                                             SymExpr->Scale, SymExpr->Offset,
-                                                             FoundSymbol1, FoundSymbol2, attrs);
+        addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(
+            Module, Ea, SymExpr->Size, static_cast<int64_t>(SymExpr->Scale), SymExpr->Offset,
+            FoundSymbol1, FoundSymbol2, Attrs);
         return;
     }
 }
 
-void buildCodeSymbolicInformation(gtirb::Context &context, gtirb::Module &module,
-                                  souffle::SouffleProgram *prog)
+void buildCodeSymbolicInformation(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", prog);
     SymbolicInfo symbolicInfo{
@@ -948,7 +946,7 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
     }
 }
 
-void buildFunctions(gtirb::Context &Context, gtirb::Module &Module, souffle::SouffleProgram *Prog)
+void buildFunctions(gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
     std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2Function;
@@ -1099,8 +1097,7 @@ void updateComment(gtirb::Module &module, std::map<gtirb::Offset, std::string> &
     }
 }
 
-void buildCfiDirectives(gtirb::Context &context, gtirb::Module &module,
-                        souffle::SouffleProgram *prog)
+void buildCfiDirectives(gtirb::Module &module, souffle::SouffleProgram *prog)
 {
     std::map<gtirb::Offset, std::vector<std::tuple<std::string, std::vector<int64_t>, gtirb::UUID>>>
         cfiDirectives;
@@ -1370,10 +1367,10 @@ void disassembleModule(gtirb::Context &context, gtirb::Module &module,
     buildSymbolForwarding(context, module, prog);
     buildCodeBlocks(context, module, prog);
     buildDataBlocks(context, module, prog);
-    buildCodeSymbolicInformation(context, module, prog);
-    buildCfiDirectives(context, module, prog);
-    expandSymbolForwarding(context, module, prog);
-    buildFunctions(context, module, prog);
+    buildCodeSymbolicInformation(module, prog);
+    buildCfiDirectives(module, prog);
+    expandSymbolForwarding(module, prog);
+    buildFunctions(module, prog);
     // This should be done after creating all the symbols.
     connectSymbolsToBlocks(context, module, prog);
     renameInferredSymbols(module);
