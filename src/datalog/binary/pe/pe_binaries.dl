@@ -383,7 +383,7 @@ dos_header_symbolic_operand(EA+Disp_offset,Dest):-
     base_address(ImageBase),
     op_immediate(Op,Offset),
     instruction_get_op(EA,Op_index,Op),
-    instruction_immediate_offset(EA,Op_index,Disp_offset),
+    instruction_immediate_offset(EA,Op_index,Disp_offset,_),
     Size = 8,
     Dest = as(Offset,address),
     Dest >= ImageBase,
