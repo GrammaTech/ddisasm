@@ -277,6 +277,14 @@ used_for_address(EA,Reg):-
     reg_call(EA,Reg),
     used(EA,Reg,_).
 
+used_for_address(EA,Reg1):-
+    used(EA,Reg1,_),
+    def_used(EA,Reg1,EA_store,_),
+    reg_stored_in_stack(EA_store,Reg1,StackPos,StackFrameDefinedAt),
+    reg_loaded_from_stack(EA_load,Reg2,_,StackPos,StackFrameDefinedAt),
+    def_used(EA_load,Reg2,EA_used,_),
+    used_for_address(EA_used,Reg2).
+
 /**
  * The register 'Reg' as defined at address 'EA_def' is later used either as an address
  * or to compute an address.
