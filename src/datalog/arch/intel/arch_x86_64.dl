@@ -35,22 +35,18 @@ symbolic_operand_attribute(EA,Index,"PltRef"):-
     plt_block(Dest,_).
 
 symbolic_operand_attribute(EA,Index,"PltRef"):-
-    instruction_immediate_offset(EA,Index,Offset),
+    instruction_immediate_offset(EA,Index,Offset,_),
     instruction_has_relocation(EA,EA+Offset),
     relocation(EA+Offset,"PLT32",_,_,_,_,_).
 
 symbolic_operand_attribute(EA,Index,"GotRelPC"):-
     symbolic_operand(EA,Index,Dest,_),
     !moved_label(EA,Index,_,_),
-    got_reference(Dest,_).
+    got_reference(Dest,_),
+    !relocation(Dest,"DTPMOD64",_,_,_,_,_).
 
 symbolic_operand_attribute(EA,Index,"GotRelPC"):-
-    symbolic_operand(EA,Index,Dest,_),
-    !relocation(Dest,"DTPMOD64",_,_,_,_,_),
-    got_local_reference(Dest,_).
-
-symbolic_operand_attribute(EA,Index,"GotRelPC"):-
-    instruction_displacement_offset(EA,Index,Offset),
+    instruction_displacement_offset(EA,Index,Offset,_),
     symbolic_expr_from_relocation(EA+Offset,_,_,_),
     (
         relocation(EA+Offset,"GOTPCRELX",_,_,_,_,_);
@@ -59,7 +55,7 @@ symbolic_operand_attribute(EA,Index,"GotRelPC"):-
 
 symbolic_operand_attribute(EA,Index,"TpOff"):-
     (
-        instruction_displacement_offset(EA,Index,Offset),
+        instruction_displacement_offset(EA,Index,Offset,_),
         symbolic_expr_from_relocation(EA+Offset,_,_,_),
         relocation(EA+Offset,"TPOFF32",_,_,_,_,_)
         ;

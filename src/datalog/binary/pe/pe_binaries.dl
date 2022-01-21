@@ -115,7 +115,7 @@ data_segment(ImageBase,ImageBase+1024):-
     binary_format("PE"),
     base_address(ImageBase).
 
-inferred_symbol_name(0x7FFE0000,"KUSER_SHARED_DATA","LOCAL","NONE"),
+inferred_special_symbol(0x7FFE0000,"KUSER_SHARED_DATA","LOCAL","NONE",0),
 moved_label_class(EA,Op_index,"KUSER_SHARED_DATA"),
 moved_displacement_candidate(EA,Op_index,Dest,0x7FFE0000,Dest-0x7FFE0000):-
   binary_format("PE"),
@@ -123,9 +123,8 @@ moved_displacement_candidate(EA,Op_index,Dest,0x7FFE0000,Dest-0x7FFE0000):-
   Dest > 0x7FFE0000, Dest < 0x7FFE1000.
 
 // Entries of external libraries
-symbol(0,0,"NONE","EXTERN",0,"none",0,Function),
-got_reference(Address,Function):-
-    pe_import_entry(Address,_,Function,_).
+inferred_special_symbol(0,Function,"EXTERN","NONE",0):-
+    pe_import_entry(_,_,Function,_).
 
 //PE binaries have plt-like entries
 // These are no delimited to their own section
@@ -133,7 +132,7 @@ plt_block(EA,Function):-
     binary_format("PE"),
     pc_relative_jump(EA,Got_entry),
     unconditional_jump(EA),
-    got_reference(Got_entry,Function),
+    pe_import_entry(Got_entry,_,Function,_),
     code_in_refined_block(EA,EA).
 
 .decl reg_has_base_image(EA:address,Reg:register)
@@ -266,20 +265,20 @@ base_relative_operand(EA,Op_index,RVA):-
 
 .decl base_relative_symbolic_operand(EA:address,Index:operand_index,Dest:address)
 
-symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value,1),
+symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value,1,0),
 base_relative_symbolic_operand(EA,Op_index,Value):-
     base_relative_operand(EA,Op_index,Value),
     !pc_relative_operand(EA,Op_index,_),
-    instruction_displacement_offset(EA,Op_index,Disp_offset),
+    instruction_displacement_offset(EA,Op_index,Disp_offset,_),
     instruction_get_op(EA,Op_index,Op),
     op_indirect(Op,_,_,_,_,_,Size),
     base_address(ImageBase).
 
-inferred_symbol_name(ImageBase,"__ImageBase","LOCAL","NONE"):-
+inferred_special_symbol(ImageBase,"__ImageBase","LOCAL","NONE",0):-
     binary_format("PE"),
     base_address(ImageBase).
 
-inferred_symbol_name(Start,"__EntryPoint","GLOBAL","FUNC"):-
+inferred_special_symbol(Start,"__EntryPoint","GLOBAL","FUNC",0):-
     binary_format("PE"),
     entry_point(Start).
 
@@ -361,7 +360,7 @@ dos_header_symbolic_operand(EA,Dest):-
     binary_format("PE"),
     base_address(ImageBase),
     pc_relative_operand(EA,_,Dest),
-    instruction_displacement_offset(EA,Op_index,Disp_offset),
+    instruction_displacement_offset(EA,Op_index,Disp_offset,_),
     instruction_get_op(EA,Op_index,Op),
     op_indirect(Op,_,_,_,_,_,Size),
     Dest > ImageBase,
@@ -373,7 +372,7 @@ dos_header_symbolic_operand(EA+Disp_offset,Dest):-
     base_address(ImageBase),
     op_indirect(Op,_,_,_,1,Offset,Size),
     instruction_get_op(EA,Op_index,Op),
-    instruction_displacement_offset(EA,Op_index,Disp_offset),
+    instruction_displacement_offset(EA,Op_index,Disp_offset,_),
     Dest = as(Offset,address),
     Dest >= ImageBase,
     Dest <= ImageBase+64.
@@ -553,7 +552,7 @@ main_function(EA):-
     code_in_refined_block(EA_call_main,Block),
     direct_call(EA_call_main,EA).
 
-inferred_symbol_name(EA,"main","PUBLIC","NONE"):-
+inferred_special_symbol(EA,"main","PUBLIC","NONE",0):-
     binary_format("PE"),
     main_function(EA).
 

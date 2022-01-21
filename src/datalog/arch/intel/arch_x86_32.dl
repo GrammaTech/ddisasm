@@ -76,11 +76,11 @@ def(EA,Reg):-
 
 abi_intrinsic(EA,Name):-
     get_pc_thunk(EA,_),
-    symbol(EA,_,_,_,_,_,_,Name).
+    symbol(EA,_,_,_,_,_,_,_,Name).
 
 abi_intrinsic(EA,"__dso_handle"):-
     got_relative_operand(_,_,EA),
-    symbol(EA,_,_,_,_,_,_,"__dso_handle").
+    symbol(EA,_,_,_,_,_,_,_,"__dso_handle").
 
 // Sometimes we use the `.got' section as reference and sometimes `.got.plt'.
 .decl got_reference_pointer(EA:address)
@@ -111,17 +111,17 @@ reg_has_got(EA_load,Reg_load):-
     arch.frame_pointer(Reg_base),
     reg_loaded_from_stack(EA_load,Reg_load,Reg_base,StackPos,StackFrame).
 
-inferred_symbol_name(EA,"_GLOBAL_OFFSET_TABLE_","DEFAULT","NONE"):-
-    !symbol(_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
+inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_","DEFAULT","NONE",0):-
+    !symbol(_,_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
     got_reference_pointer(EA).
 
 // Create symbol-minus-symbol for special _GLOBAL_OFFSET_TABLE_, i.e. GOT-PC.
 //     add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
-symbol_minus_symbol(EA+Imm_offset,4,Got,EA,1):-
+symbol_minus_symbol(EA+Imm_offset,4,Got,EA,1,0):-
     reg_has_got(EA,Reg),
     got_reference_pointer(Got),
     op_immediate_and_reg(EA,"ADD",Reg,Imm_index,Offset),
-    instruction_immediate_offset(EA,Imm_index,Imm_offset),
+    instruction_immediate_offset(EA,Imm_index,Imm_offset,_),
     Got=EA+as(Offset,address).
 
 // GOT-relative references consist of a load of the GOT pointer to a register:
@@ -158,10 +158,12 @@ symbolic_operand_attribute(EA,Index,"GotOff"):-
 
 symbolic_operand_attribute(EA,Index,"GotRef"):-
     got_relative_operand(EA,Index,Dest),
-    (
-      got_reference(Dest,_);
-      got_local_reference(Dest,_)
-    ).
+    got_reference(Dest,_).
+
+symbolic_operand_attribute(EA,Index,"NtpOff"):-
+    got_relative_operand(EA,Index,Dest),
+    got_reference(Dest,_),
+    relocation(Dest,"TLS_TPOFF",_,_,_,_,_).
 
 symbolic_operand_attribute(EA,Index,"NtpOff"):-
     got_relative_operand(EA,Index,Dest),

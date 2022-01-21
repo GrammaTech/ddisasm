@@ -59,8 +59,8 @@ block_needs_splitting_at(EA):-
     // other kinds of symbols we considered as potential block limits during
     // code inference.
     (
-        symbol_minus_symbol(_,_,_,EA,_);
-        symbol_minus_symbol(_,_,EA,_,_),
+        symbol_minus_symbol(_,_,_,EA,_,_);
+        symbol_minus_symbol(_,_,EA,_,_,_),
         !binary_isa("ARM"), !binary_isa("ARM64")
     ),
     code_in_block(EA,Block),
@@ -104,12 +104,12 @@ block_needs_merging(Block):-
     //not referenced anywhere
     !symbolic_operand(_,_,Block,_),
     !code_pointer_in_data(_,Block),
-    !symbol_minus_symbol(_,_,_,Block,_),
-    !symbol_minus_symbol(_,_,Block,_,_),
+    !symbol_minus_symbol(_,_,_,Block,_,_),
+    !symbol_minus_symbol(_,_,Block,_,_,_),
     !moved_data_label(_,_,_,Block),
     !moved_label(_,_,_,Block),
     !function_symbol(Block,_),
-    !defined_symbol(Block,_,_,_,_,_,_,_),
+    !defined_symbol(Block,_,_,_,_,_,_,_,_),
     !entry_point(Block),
     !instruction_has_loop_prefix(Block),
     !fde_addresses(Block,_),

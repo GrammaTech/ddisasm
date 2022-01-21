@@ -41,10 +41,10 @@ mov(EA):-
     move_operation(Operation).
 
 // No rule for load_operation
-load_operation(""):- false.
+load_operation(""):-false.
 
 // No rule for store_operation
-store_operation(""):- false.
+store_operation("").
 
 is_nop(EA):-
     instruction_get_operation(EA,"NOP").

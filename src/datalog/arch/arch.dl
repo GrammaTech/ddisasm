@@ -115,7 +115,7 @@ is_conditional_operation(""):-
 
 .decl one_op_write(Operation:symbol)
 
-.decl call_operation(Operation:symbol)
+.decl call_operation(operation:symbol)
 
 .decl syscall_operation(Operation:symbol)
 
