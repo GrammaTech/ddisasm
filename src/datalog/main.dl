@@ -73,6 +73,8 @@ This module:
 // Inference of instruction boundaries.
 #include "code_inference.dl"
 
+// Infer special symbols and select symbols for symbolic expressions.
+#include "symbols.dl"
 // Performs literal-reference disambiguation and string inference.
 #include "symbolization.dl"
 
@@ -629,16 +631,8 @@ data_segment(Begin,End):-
 .decl got_reference(Got_entry:address,Symbol:symbol)
 .output got_reference
 
-//////////////////////////////////////////////////////////////////////////
-// find special functions and symbols
+
 .decl main_function(ea:address)
-
-.decl inferred_symbol_name(ea:address,name:symbol,scope:symbol, type: symbol)
-.output inferred_symbol_name
-
-inferred_symbol_name(EA,"main","GLOBAL","FUNC"):-
-    binary_format("ELF"),
-    main_function(EA).
 
 .decl conditional_return(EA:address)
 

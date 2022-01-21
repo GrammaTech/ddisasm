@@ -371,7 +371,7 @@ void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
 {
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
     auto *SymbolTabIdxInfo = Module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfo>();
-    for(auto &T : *Prog->getRelation("inferred_symbol_name"))
+    for(auto &T : *Prog->getRelation("inferred_symbol"))
     {
         gtirb::Addr Addr;
         std::string Name;

@@ -115,7 +115,7 @@ data_segment(ImageBase,ImageBase+1024):-
     binary_format("PE"),
     base_address(ImageBase).
 
-inferred_symbol_name(0x7FFE0000,"KUSER_SHARED_DATA","LOCAL","NONE"),
+inferred_special_symbol(0x7FFE0000,"KUSER_SHARED_DATA","LOCAL","NONE",0),
 moved_label_class(EA,Op_index,"KUSER_SHARED_DATA"),
 moved_displacement_candidate(EA,Op_index,Dest,0x7FFE0000,Dest-0x7FFE0000):-
   binary_format("PE"),
@@ -123,7 +123,7 @@ moved_displacement_candidate(EA,Op_index,Dest,0x7FFE0000,Dest-0x7FFE0000):-
   Dest > 0x7FFE0000, Dest < 0x7FFE1000.
 
 // Entries of external libraries
-inferred_symbol_name(0,Function,"EXTERN","NONE"):-
+inferred_special_symbol(0,Function,"EXTERN","NONE",0):-
     pe_import_entry(_,_,Function,_).
 
 //PE binaries have plt-like entries
@@ -274,11 +274,11 @@ base_relative_symbolic_operand(EA,Op_index,Value):-
     op_indirect(Op,_,_,_,_,_,Size),
     base_address(ImageBase).
 
-inferred_symbol_name(ImageBase,"__ImageBase","LOCAL","NONE"):-
+inferred_special_symbol(ImageBase,"__ImageBase","LOCAL","NONE",0):-
     binary_format("PE"),
     base_address(ImageBase).
 
-inferred_symbol_name(Start,"__EntryPoint","GLOBAL","FUNC"):-
+inferred_special_symbol(Start,"__EntryPoint","GLOBAL","FUNC",0):-
     binary_format("PE"),
     entry_point(Start).
 
@@ -540,7 +540,7 @@ main_function(EA):-
     code_in_refined_block(EA_call_main,Block),
     direct_call(EA_call_main,EA).
 
-inferred_symbol_name(EA,"main","PUBLIC","NONE"):-
+inferred_special_symbol(EA,"main","PUBLIC","NONE",0):-
     binary_format("PE"),
     main_function(EA).
 

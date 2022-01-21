@@ -898,118 +898,26 @@ data_object_boundary(EA):-
     symbolic_expr_from_relocation(EA,_,_,_);
     moved_data_label(EA,_,_,_).
 
-///////////////////////////////////////////////////////////////////////
-.decl best_symexpr_symbol(EA:address,SymbolName:symbol, AtEnd:number)
-.decl best_func_symbol(EA:address,SymbolName:symbol)
-.output best_func_symbol
-.output best_symexpr_symbol
-
-.decl symbol_score(EA:address, SymbolName:symbol, Type:symbol, AtEnd:number, Score:unsigned)
-.output symbol_score
-
-.decl symbol_at_section_end(EA:address,SymbolName:symbol)
-.output symbol_at_section_end
-
-.decl symbol_at_end(EA:address,SymbolName:symbol)
-.output symbol_at_end
-
-symbol_at_end(EA,SymbolName),
-symbol_at_section_end(EA,SymbolName):-
-    symbol(EA,_,_,_,_,SectionIndex,_,_,SymbolName),
-    section_complete(_,Size,Beg,_,_,_,SectionIndex),
-    EA = Beg + Size.
-
-.decl symbol_before_section_beg(EA:address,SymbolName:symbol,NewEA:address)
-.output symbol_before_section_beg
-symbol_before_section_beg(EA,SymbolName,Beg):-
-    symbol(EA,_,_,_,_,SectionIndex,_,_,SymbolName),
-    section_complete(_,_,Beg,_,_,_,SectionIndex),
-    EA < Beg.
-
-// FiXME: These are symbols skiped by the pprinter.
-.decl avoid_symbols(SymbolName:symbol)
-
-avoid_symbols("__bss_start").
-avoid_symbols("__data_start").
-avoid_symbols("__dso_handle").
-avoid_symbols("_fp_hw").
-avoid_symbols("_IO_stdin_used").
-avoid_symbols("__TMC_END__").
-
-symbol_score(EA,SymbolName,Type,AtEnd,Score):-
-    symbol(EA,_,Type,Scope,Visibility,_,_,TableIndex,SymbolName),
-    !ambiguous_symbol(SymbolName),
-    (
-        symbol_at_section_end(EA,SymbolName), AtEnd = 1;
-        !symbol_at_section_end(EA,SymbolName), AtEnd = 0
-    ),
-    (
-        relocation(EA,"COPY",SymbolName,_,_,_,_), RelocScore = 1;
-        !relocation(EA,"COPY",SymbolName,_,_,_,_), RelocScore = 0
-    ),
-    (
-        Type != "NOTYPE", TypeScore = 1;
-        Type = "NOTYPE", TypeScore = 0
-    ),
-    (
-        Scope = "GLOBAL", ScopeScore = 1;
-        Scope != "GLOBAL", ScopeScore = 0
-    ),
-    (
-        Visibility != "HIDDEN", VisibilityScore = 1;
-        Visibility = "HIDDEN", VisibilityScore = 0
-    ),
-    (
-        avoid_symbols(SymbolName), AvoidScore = 0;
-        !avoid_symbols(SymbolName), AvoidScore = 1
-    ),
-    // Encode lexicographic ordering into a single score.
-    Score = (RelocScore bshl 36)
-            bor (TypeScore bshl 35)
-            bor (VisibilityScore bshl 34)
-            bor (ScopeScore bshl 33)
-            bor (AvoidScore bshl 32)
-            bor as(TableIndex,unsigned).
-
-
-
-best_func_symbol(EA,SymbolName):-
-   symbol_score(EA,SymbolName,"FUNC",0,Score),
-   Score = max S: {symbol_score(EA,_,"FUNC",0,S)}.
-
-inferred_symbol_name(EA,SymbolName,"GLOBAL","FUNC"),
-best_func_symbol(EA,SymbolName):-
-    function_inference.function_entry(EA),
-    !symbol_score(EA,_,"FUNC",0,_),
-    SymbolName = cat("FUN_",to_string(EA)).
-
-
-best_symexpr_symbol(EA,SymbolName,AtEnd):-
-    symbol_score(EA,SymbolName,_,AtEnd,Score),
-    Score = max S: {symbol_score(EA,_,_,AtEnd,S)}.
-
-best_symexpr_symbol(EA,SymbolName,0):-
-    labeled_data(EA),
-    !symbol_score(EA,_,_,0,_),
-    best_func_symbol(EA,SymbolName).
-
-inferred_symbol_name(EA,SymbolName,"LOCAL","NONE"),
-best_symexpr_symbol(EA,SymbolName,0):-
-    labeled_data(EA),
-    !symbol_score(EA,_,_,0,_),
-    !best_func_symbol(EA,_),
-    SymbolName = cat(".L_",to_string(EA)).
-
-symbol_at_end(EA,SymbolName),
-inferred_symbol_name(EA,SymbolName,"LOCAL","NONE"),
-best_symexpr_symbol(EA,SymbolName,1):-
-    labeled_data(EA),
-    boundary_label(_,_,EA),
-    !symbol_score(EA,_,_,1,_),
-    SymbolName = cat(cat(".L_",to_string(EA)),"_END").
-
-
 /////////////////////////////////////////////////////////////////////////////////
+// This facts specifies that a label should be printed in the .bss section for
+// the given address (because it is referenced somewhere)
+
+bss_data(Base),
+bss_data(Base+SizeSect):-
+    bss_section(SectionName),
+    section(SectionName,SizeSect,Base).
+
+bss_data(EA):-
+    labeled_data(EA),
+    bss_section(SectionName),
+    section(SectionName,SizeSect,Base),
+    EA >= Base,
+    EA < Base+SizeSect.
+
+///////////////////////////////////////////////////////////////////////
+// Final symbolic expressions in terms of symbols
+
+
 symbolic_expr(EA,Size,Symbol,Offset):-
     symbolic_expr_from_relocation(EA,Size,Symbol,Offset).
 
@@ -1066,19 +974,3 @@ symbolic_expr_attribute(EA+InstrOffset,Attr):-
         instruction_immediate_offset(EA,Index,InstrOffset,_);
         instruction_displacement_offset(EA,Index,InstrOffset,_)
     ).
-
-/////////////////////////////////////////////////////////////////////////////////
-// This facts specifies that a label should be printed in the .bss section for
-// the given address (because it is referenced somewhere)
-
-bss_data(Base),
-bss_data(Base+SizeSect):-
-    bss_section(SectionName),
-    section(SectionName,SizeSect,Base).
-
-bss_data(EA):-
-    labeled_data(EA),
-    bss_section(SectionName),
-    section(SectionName,SizeSect,Base),
-    EA >= Base,
-    EA < Base+SizeSect.

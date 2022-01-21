@@ -182,7 +182,7 @@ cfg_edge_to_symbol(Src,Symbol,"branch"):-
     refined_block_control_instruction(Src,EA),
     plt_entry(EA,Symbol),
     !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
-    !inferred_symbol_name(_,Symbol,_,_).
+    !inferred_special_symbol(_,Symbol,_,_,_).
 
 cfg_edge_to_symbol(Src,Symbol,"call"):-
     refined_block_control_instruction(Src,EA),
