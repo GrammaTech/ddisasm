@@ -412,6 +412,10 @@ cmp_operation(""):-
 //cmp_operation("SLTI").
 //cmp_operation("SLTIU").
 
+// TODO: implement reg_arithmetic_operation
+reg_arithmetic_operation(0,"NONE","NONE",0,0):-
+    false.
+
 // ADDIU <Register> <Register> <Immediate>
 reg_reg_arithmetic_operation(EA,Reg,Reg2,"NONE",1,Immediate):-
     instruction(EA,_,_,"ADDIU",Op1,Op2,Op3,0,_,_),

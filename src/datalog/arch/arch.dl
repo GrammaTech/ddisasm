@@ -182,9 +182,18 @@ operation_size_exception(0,0,0):-
     false.
 
 /**
-Arithmetic operation on two source registers
+Arithmetic operation on one source register of the form Dst = Src * Mult + Offset
 */
-.decl reg_reg_arithmetic_operation(EA:address,Reg_dest:register,Reg1:register,Reg2:register,Mult:number,Offset:number)
+.decl reg_arithmetic_operation(EA:address,Dst:register,Src:register,Mult:number,Offset:number)
+
+/**
+Arithmetic operation on two source registers of the form Dst = Src1 + Src2 * Mult + Offset
+*/
+.decl reg_reg_arithmetic_operation(EA:address,Dst:register,Src1:register,Src2:register,Mult:number,Offset:number)
+
+// Commutative property
+reg_reg_arithmetic_operation(EA,Dst,Reg2,Reg1,1,0):-
+    reg_reg_arithmetic_operation(EA,Dst,Reg1,Reg2,1,0).
 
 /**
 The location and register where the address of main is loaded.

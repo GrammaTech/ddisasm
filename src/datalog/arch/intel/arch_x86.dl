@@ -125,6 +125,73 @@ operation_size_exception(EA,Index,0):-
     instruction_get_op(EA,Index,Op),
     op_indirect(Op,_,_,_,_,_,_).
 
+// ADD reg, imm
+reg_arithmetic_operation(EA,Reg,Reg,1,Immediate):-
+    instruction(EA,_,_,"ADD",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Immediate),
+    op_regdirect_contains_reg(Op2,Reg).
+
+// SUB reg, imm
+reg_arithmetic_operation(EA,Reg,Reg,1,-Immediate):-
+    instruction(EA,_,_,"SUB",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Immediate),
+    op_regdirect_contains_reg(Op2,Reg).
+
+// INC reg
+reg_arithmetic_operation(EA,Reg,Reg,1,1):-
+    instruction(EA,_,_,"INC",Op1,0,0,0,_,_),
+    op_regdirect_contains_reg(Op1,Reg).
+
+// DEC reg
+reg_arithmetic_operation(EA,Reg,Reg,1,-1):-
+    instruction(EA,_,_,"DEC",Op1,0,0,0,_,_),
+    op_regdirect_contains_reg(Op1,Reg).
+
+// Add register to itself
+reg_arithmetic_operation(EA,Reg,Reg,2,0):-
+    instruction(EA,_,_,"ADD",Op,Op,0,0,_,_),
+    op_regdirect_contains_reg(Op,Reg).
+
+//shl reg immediate
+reg_arithmetic_operation(EA,Reg,Reg,2^Shift,0):-
+    instruction(EA,_,_,"SHL",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Shift),
+    op_regdirect_contains_reg(Op2,Reg).
+
+//mul reg immediate
+reg_arithmetic_operation(EA,Reg,Reg,Mult,0):-
+    instruction(EA,_,_,"IMUL",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Mult),
+    op_regdirect_contains_reg(Op2,Reg).
+
+//mul reg reg immediate
+reg_arithmetic_operation(EA,Dst,Src,Mult,0):-
+    instruction(EA,_,_,"IMUL",Op1,Op2,Op3,0,_,_),
+    op_immediate(Op2,Mult),
+    op_regdirect_contains_reg(Op3,Dst),
+    op_regdirect_contains_reg(Op1,Src).
+
+//lea reg [reg_origin*Multiplier+Offset]
+reg_arithmetic_operation(EA,Reg,Reg_origin,Mult,Offset):-
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
+    op_indirect(Op1,_,"NONE",Reg_origin_non_uniform,Mult,Offset,_),
+    arch.track_register(Reg_origin_non_uniform,Reg_origin),
+    op_regdirect_contains_reg(Op2,Reg).
+
+//lea reg [reg_origin+reg_origin*Multiplier+Offset]
+reg_arithmetic_operation(EA,Reg,Reg_origin,Mult+1,Offset):-
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
+    op_indirect(Op1,_,Reg_origin_non_uniform,Reg_origin_non_uniform,Mult,Offset,_),
+    arch.track_register(Reg_origin_non_uniform,Reg_origin),
+    op_regdirect_contains_reg(Op2,Reg).
+
+//lea reg [reg_origin+Offset]
+reg_arithmetic_operation(EA,Reg,Reg_origin,1,Offset):-
+    instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
+    op_indirect(Op1,_,Reg_origin_non_uniform,"NONE",1,Offset,_),
+    arch.track_register(Reg_origin_non_uniform,Reg_origin),
+    op_regdirect_contains_reg(Op2,Reg).
+
 reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
     instruction(EA,_,_,"SUB",Op1,Op2,0,0,_,_), Op1 != Op2,
     op_regdirect_contains_reg(Op1,Reg1),
@@ -135,6 +202,7 @@ reg_reg_arithmetic_operation(EA,Reg2,Reg1,Reg2,1,0):-
     op_regdirect_contains_reg(Op2,Reg2),
     op_regdirect_contains_reg(Op1,Reg1).
 
+//lea reg [reg1 + reg2*Multiplier+Offset]
 reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset):-
     instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg_def),
@@ -142,8 +210,5 @@ reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset):-
     arch.track_register(Reg1_n,Reg1),
     arch.track_register(Reg2_n,Reg2),
     Reg1 != Reg2.
-
-reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
-    reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
 
 }
