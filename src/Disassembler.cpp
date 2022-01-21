@@ -300,7 +300,7 @@ std::set<gtirb::Addr> convertSortedRelation<std::set<gtirb::Addr>>(const std::st
 static std::string getLabel(uint64_t ea)
 {
     std::stringstream ss;
-    ss << ".L_" << std::hex << ea;
+    ss << ".L_" << ea;
     return ss.str();
 }
 
@@ -1335,9 +1335,10 @@ void renameInferredSymbols(gtirb::Module &Module)
         {
             Prefix = InferredPrefix;
         }
-        // else if(Name.find(FunPrefix) ==0){
-        //    Prefix = FunPrefix;
-        //}
+        else if(Name.find(FunPrefix) == 0)
+        {
+            Prefix = FunPrefix;
+        }
         if(!Prefix.empty())
         {
             if(Name.rfind(InferredSuffix) != Name.npos)
