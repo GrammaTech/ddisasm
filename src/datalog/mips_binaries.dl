@@ -55,7 +55,7 @@ value_reg_edge(EALoad,"GP",EAPrev,"GP",1,0):-
     StackFrameDefinedAt2 != StackFrameDefinedAt.
 
 value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
-    arch.reg_reg_arithmetic_operation(EA,Reg,"ZERO","NONE",_,Immediate).
+    arch.reg_arithmetic_operation(EA,Reg,"ZERO",_,Immediate).
 
 // move reg, zero
 value_reg_edge(EA,Reg,EA,"NONE",0,0):-
@@ -67,12 +67,6 @@ value_reg_edge(EA,Reg,EA,"NONE",0,0):-
 // lui reg immediate
 value_reg_edge(EA,Reg,EA,"NONE",0,Immediate*(2^16)):-
     op_immediate_and_reg(EA,"LUI",Reg,_,Immediate).
-
-// E.g., addiu reg reg2 immediate
-value_reg_edge(EA,Reg,EA_prev,Reg2,1,Immediate):-
-    def_used(EA_prev,Reg2,EA,_),
-    EA_prev != EA,
-    arch.reg_reg_arithmetic_operation(EA,Reg,Reg2,"NONE",_,Immediate).
 
 // load word from got table: e.g., lw v0, -32696(gp)
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
@@ -221,7 +215,7 @@ split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset,address), "ADDIU") :-
     hi_load_prop(RegRestoreEA,EA_hi,Reg2,Upper,_),
     def_used(RegRestoreEA,Reg2,EA_lo,_),
     instruction_get_operation(EA_lo, "ADDIU"),
-    arch.reg_reg_arithmetic_operation(EA_lo,_,Reg2,"NONE",_,Offset).
+    arch.reg_arithmetic_operation(EA_lo,_,Reg2,_,Offset).
 
 // PIC
 // E.g., lui reg, hi(xxx)
@@ -236,7 +230,7 @@ split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset+T9Value,address), "ADDU"
 
     // addiu reg2, reg, lo(xxx)
     instruction_get_operation(EA_lo, "ADDIU"),
-    arch.reg_reg_arithmetic_operation(EA_lo,Reg2,Reg,"NONE",_,Offset),
+    arch.reg_arithmetic_operation(EA_lo,Reg2,Reg,_,Offset),
 
     def_used(EA_lo,Reg2,EA_addu,_),
     EA_lo != EA_addu,
@@ -370,7 +364,7 @@ base_addr_offset_operand(EA,NextEA,Dest_addr):-
 
     // ADDIU <Register> <Register> <Offset>
     // e.g. addiu reg2, reg, Offset
-    arch.reg_reg_arithmetic_operation(NextEA,_,Reg,"NONE",_,Offset),
+    arch.reg_arithmetic_operation(NextEA,_,Reg,_,Offset),
 
     Dest_addr = as(Value+Offset,address),
     (
@@ -614,7 +608,7 @@ plt_entry(EA,Function):-
     op_regdirect_contains_reg(TargetOp,"T9"),
 
     instruction_get_operation(EA_ADDIU, "ADDIU"),
-    arch.reg_reg_arithmetic_operation(EA_ADDIU,_,Reg,"NONE",_,Offset),
+    arch.reg_arithmetic_operation(EA_ADDIU,_,Reg,_,Offset),
 
     relocation(Dest_addr,_,Function,_,_,_,_).
 
