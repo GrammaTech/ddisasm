@@ -272,20 +272,9 @@ reg_arithmetic_operation(EA,Dst,Src,1,Sign*Immediate):-
     op_immediate(Op2,Immediate),
     op_regdirect_contains_reg(Op3,Dst).
 
-// Add a register to itself (two operands: Thumb)
-reg_arithmetic_operation(EA,Reg,Reg,2,0):-
-    instruction(EA,_,_,"ADD",Op,Op,0,0,_,_),
-    op_regdirect_contains_reg(Op,Reg).
-
-// Add a register to itself
-reg_arithmetic_operation(EA,Dst,Src,2,0):-
-    instruction(EA,_,_,"ADD",Op,Op,Op3,0,_,_),
-    op_regdirect_contains_reg(Op,Src),
-    op_regdirect_contains_reg(Op3,Dst).
-
 // ADD/SUB reg, reg (two operands: Thumb)
 reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,Sign,0):-
-    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_), Op1 != Op2,
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     (
         Operation = "ADD", Sign = 1;
         Operation = "SUB", Sign = -1
@@ -295,7 +284,7 @@ reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,Sign,0):-
 
 // ADD/SUB reg, reg, reg
 reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,Sign,0):-
-    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_), Op1 != Op2,
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     (
         Operation = "ADD", Sign = 1;
         Operation = "SUB", Sign = -1
