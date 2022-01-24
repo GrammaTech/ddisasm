@@ -739,9 +739,11 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                     {
                         d = gtirb::DataBlock::Create(context, symExpr->Size);
                         gtirb::Symbol *foundSymbol = findFirstSymbol(module, symExpr->Symbol);
+                        gtirb::SymAttributeSet Attributes =
+                            buildSymbolicExpressionAttributes(currentAddr, symbolicDataAttributes);
 
                         byteInterval.addSymbolicExpression<gtirb::SymAddrConst>(
-                            blockOffset, symExpr->Addend, foundSymbol);
+                            blockOffset, symExpr->Addend, foundSymbol, Attributes);
                         SymbolicSizes[Offset] = symExpr->Size;
                     }
                     else if(const auto SymExprSymMinusSym = symbolMinusSymbol.find(currentAddr);
@@ -750,9 +752,12 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                         d = gtirb::DataBlock::Create(context, SymExprSymMinusSym->Size);
                         gtirb::Symbol *Sym1 = findFirstSymbol(module, SymExprSymMinusSym->Symbol1);
                         gtirb::Symbol *Sym2 = findFirstSymbol(module, SymExprSymMinusSym->Symbol2);
+                        gtirb::SymAttributeSet Attributes =
+                            buildSymbolicExpressionAttributes(currentAddr, symbolicDataAttributes);
+
                         byteInterval.addSymbolicExpression<gtirb::SymAddrAddr>(
                             blockOffset, static_cast<int64_t>(SymExprSymMinusSym->Scale),
-                            SymExprSymMinusSym->Offset, Sym2, Sym1);
+                            SymExprSymMinusSym->Offset, Sym2, Sym1, Attributes);
                         SymbolicSizes[Offset] = SymExprSymMinusSym->Size;
                     }
                     else
