@@ -613,7 +613,7 @@ void buildSymbolicExpr(gtirb::Module &Module, const gtirb::Addr &Ea,
         gtirb::Symbol *FoundSymbol2 = findFirstSymbol(Module, SymExpr->Symbol2);
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(
             Module, Ea, SymExpr->Size, static_cast<int64_t>(SymExpr->Scale), SymExpr->Offset,
-            FoundSymbol1, FoundSymbol2, Attrs);
+            FoundSymbol2, FoundSymbol1, Attrs);
         return;
     }
 }
