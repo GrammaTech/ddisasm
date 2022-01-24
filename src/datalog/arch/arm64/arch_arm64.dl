@@ -120,28 +120,21 @@ cmp_operation("CMP").
 
 // ADD reg, reg, #imm
 reg_arithmetic_operation(EA,Dst,Src,1,Immediate):-
-    instruction(EA,_,_,"ADD",Op1,Op2,Op3,0,_,_), Op2 != Op3,
+    instruction(EA,_,_,"ADD",Op1,Op2,Op3,0,_,_),
     op_regdirect_contains_reg(Op1,Src),
     op_immediate(Op2,Immediate),
     op_regdirect_contains_reg(Op3,Dst).
 
-// Add a register to itself
-// ADD reg, reg, reg
-reg_arithmetic_operation(EA,Dst,Src,2,0):-
-    instruction(EA,_,_,"ADD",Op,Op,Op3,0,_,_),
-    op_regdirect_contains_reg(Op,Src),
-    op_regdirect_contains_reg(Op3,Dst).
-
 // ADD reg, reg, reg
 reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,1,0):-
-    instruction(EA,_,_,"ADD",Op1,Op2,Op3,0,_,_), Op1 != Op2,
+    instruction(EA,_,_,"ADD",Op1,Op2,Op3,0,_,_),
     op_regdirect_contains_reg(Op1,Src1),
     op_regdirect_contains_reg(Op2,Src2),
     op_regdirect_contains_reg(Op3,Dst).
 
 // SUB reg, reg, reg
 reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,-1,0):-
-    instruction(EA,_,_,"SUB",Op1,Op2,Op3,0,_,_), Op1 != Op2,
+    instruction(EA,_,_,"SUB",Op1,Op2,Op3,0,_,_),
     op_regdirect_contains_reg(Op1,Src1),
     op_regdirect_contains_reg(Op2,Src2),
     op_regdirect_contains_reg(Op3,Dst).
