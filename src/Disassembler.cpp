@@ -298,13 +298,6 @@ std::set<gtirb::Addr> convertSortedRelation<std::set<gtirb::Addr>>(const std::st
     return result;
 }
 
-static std::string getLabel(uint64_t ea)
-{
-    std::stringstream ss;
-    ss << ".L_" << ea;
-    return ss.str();
-}
-
 std::string stripSymbolVersion(const std::string Name)
 {
     if(size_t I = Name.find('@'); I != std::string::npos)
@@ -406,10 +399,8 @@ void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
     }
     for(auto *Symbol : MappingSymbols)
     {
-        if(std::optional<gtirb::Addr> A = Symbol->getAddress())
-        {
-            Symbol->setName(getLabel(static_cast<uint64_t>(*A)));
-        }
+        Module.removeSymbol(Symbol);
+        SymbolInfo->erase(Symbol->getUUID());
     }
 }
 
