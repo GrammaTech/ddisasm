@@ -900,7 +900,10 @@ labeled_data(New_dest):-
     moved_data_label(_,_,_,New_dest).
 
 labeled_data(EA):-
-    symbol_minus_symbol(_,_,EA,_,_,_);
+    symbol_minus_symbol(Src,_,EA,_,_,_),
+    !moved_data_label(Src,_,EA,_).
+
+labeled_data(EA):-
     symbol_minus_symbol(_,_,_,EA,_,_).
 
 labeled_data(EA):-
@@ -962,6 +965,7 @@ symbolic_expr(EA+InstrOffset,Size,SymbolName,0):-
 symbolic_expr(EA,Size,SymbolName,Offset):-
     moved_data_label(EA,Size,Dest,FinalDest),
     !symbolic_expr_from_relocation(EA,_,_,_),
+    !symbol_minus_symbol(EA,_,_,_,_,_),
     Offset = as(Dest,number) - as(FinalDest,number),
     best_symexpr_symbol(FinalDest,SymbolName,0).
 
@@ -972,9 +976,17 @@ symbolic_expr(EA,Size,SymbolName,0):-
     best_symexpr_symbol(Dest,SymbolName,0).
 
 // Symbol-Symbol
-symbolic_expr_symbol_minus_symbol(EA,Size,SymbolName1,SymbolName2,Scale,Offset):-
+symbolic_expr_symbol_minus_symbol(EA,Size,SymbolName1,SymbolName2,Scale,FinalOffset):-
     symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale,Offset),
-    best_symexpr_symbol(Symbol1,SymbolName1,0),
+    (
+        moved_data_label(EA,Size,Symbol1,NewSymbol1),
+        FinalOffset = Offset + as(NewSymbol1,number)- as(Symbol1,number)
+        ;
+        !moved_data_label(EA,_,_,_),
+        NewSymbol1 = Symbol1,
+        FinalOffset= Offset
+    ),
+    best_symexpr_symbol(NewSymbol1,SymbolName1,0),
     (
         boundary_label(EA,_,_),
         best_symexpr_symbol(Symbol2,SymbolName2,1)
