@@ -501,17 +501,11 @@ symbol_minus_symbol_jump_table(Addr,Addr,Size,EARef,Dest,"no_table",Scale):-
     Dest >= Begin, Dest <= End,
     Scale = 1.
 
-// TODO:
-// Remove pseudo data attribute.
-// Implement symbol-minus-symbol expression from relocation for:
-//      .word _GLOBAL_OFFSET_TABLE_-(.LPIC0+4)
-// NOTE:
-// See special case in `buildDataBlocks'.
-symbolic_expr_attribute(EA,"_GLOBAL_OFFSET_TABLE_"),
-symbol_minus_symbol(EA,4,0,Symbol2,0,0):-
+symbol_minus_symbol_from_relocation(EA,4,SymbolName2,"_GLOBAL_OFFSET_TABLE_",1,-4):-
     binary_type("REL"),
     relocation(EA,"BASE_PREL","_GLOBAL_OFFSET_TABLE_",_,_,_,_),
-    symbol_minus_symbol_candidate(_,4,_,EA,1,_,Symbol2,_).
+    symbol_minus_symbol_candidate(_,4,_,EA,1,_,Symbol2,_),
+    best_symexpr_symbol(Symbol2,SymbolName2,0).
 
 /**
 Represents an entry in an ARM jump table.
