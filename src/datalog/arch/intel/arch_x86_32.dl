@@ -117,7 +117,7 @@ inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_","DEFAULT","NONE",0):-
 
 // Create symbol-minus-symbol for special _GLOBAL_OFFSET_TABLE_, i.e. GOT-PC.
 //     add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
-symbol_minus_symbol(EA+Imm_offset,4,Got,EA,1,0):-
+symbol_minus_symbol(EA+Imm_offset,4,EA,Got,1,0):-
     reg_has_got(EA,Reg),
     got_reference_pointer(Got),
     op_immediate_and_reg(EA,"ADD",Reg,Imm_index,Offset),
