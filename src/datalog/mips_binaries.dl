@@ -450,11 +450,11 @@ symbolic_operand(EA,1,Dest_addr,"data"):-
 symbolic_operand(EA,2,Dest_addr,"data"):-
     base_addr_offset_operand(_,EA,Dest_addr).
 
-symbol_minus_symbol(EA,4,GP_addr,EA,1,0):-
+symbol_minus_symbol(EA,4,EA,GP_addr,1,0):-
     split_load(EA,_,_,"ADDU"),
     symbol(GP_addr,_,_,_,_,_,_,_,"_gp").
 
-symbol_minus_symbol(EA,4,GP_addr,PrevEA,1,0):-
+symbol_minus_symbol(EA,4,PrevEA,GP_addr,1,0):-
     split_load(PrevEA,EA,_,"ADDU"),
     symbol(GP_addr,_,_,_,_,_,_,_,"_gp").
 
@@ -631,8 +631,4 @@ resolved_jump(EA,as(Dest,address)):-
 
 abi_intrinsic(Address,Sym):-
     symbol(Address,_,_,_,_,_,_,_,Sym),
-    (
-        Sym = "_gp"
-    ;
-        Sym = "__RLD_MAP"
-    ).
+    Sym = "__RLD_MAP".
