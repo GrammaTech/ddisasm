@@ -100,8 +100,8 @@ symbol_score(EA,SymbolName,Type,AtEnd,Score):-
     // Encode lexicographic ordering into a single score.
     Score = (RelocScore bshl 36)
             bor (TypeScore bshl 35)
-            bor (VisibilityScore bshl 34)
-            bor (ScopeScore bshl 33)
+            bor (ScopeScore bshl 34)
+            bor (VisibilityScore bshl 33)
             bor (AvoidScore bshl 32)
             bor as(TableIndex,unsigned).
 
