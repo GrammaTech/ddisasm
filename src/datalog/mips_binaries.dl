@@ -631,4 +631,8 @@ resolved_jump(EA,as(Dest,address)):-
 
 abi_intrinsic(Address,Sym):-
     symbol(Address,_,_,_,_,_,_,_,Sym),
-    Sym = "__RLD_MAP".
+    (
+        Sym = "_gp"
+    ;
+        Sym = "__RLD_MAP"
+    ).
