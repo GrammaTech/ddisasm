@@ -417,9 +417,9 @@ gtirb::Symbol *findSymbol(gtirb::Module &module, gtirb::Addr ea, std::string nam
 }
 
 // auxiliary function to get a symbol with an address and name
-gtirb::Symbol *findFirstSymbol(gtirb::Module &module, std::string Name)
+gtirb::Symbol *findFirstSymbol(gtirb::Module &Module, std::string Name)
 {
-    auto found = module.findSymbols(Name);
+    auto found = Module.findSymbols(Name);
     if(found.begin() == found.end())
     {
         std::cerr << "Missing symbol: " << Name << std::endl;
@@ -530,18 +530,18 @@ bool isNullReg(const std::string &reg)
 }
 
 // Expand the SymbolForwarding table with plt references
-void expandSymbolForwarding(gtirb::Module &module, souffle::SouffleProgram *prog)
+void expandSymbolForwarding(gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
-    auto *symbolForwarding = module.getAuxData<gtirb::schema::SymbolForwarding>();
-    for(auto &output : *prog->getRelation("plt_block"))
+    auto *symbolForwarding = Module.getAuxData<gtirb::schema::SymbolForwarding>();
+    for(auto &output : *Prog->getRelation("plt_block"))
     {
-        gtirb::Addr ea;
-        std::string name;
-        output >> ea >> name;
+        gtirb::Addr Ea;
+        std::string Name;
+        output >> Ea >> Name;
         // the inference of plt_block guarantees that there is at most one
         // destination symbol for each source
-        auto foundSrc = module.findSymbols(ea);
-        auto foundDest = module.findSymbols(name);
+        auto foundSrc = Module.findSymbols(Ea);
+        auto foundDest = Module.findSymbols(Name);
         for(gtirb::Symbol &src : foundSrc)
         {
             for(gtirb::Symbol &dest : foundDest)
@@ -550,13 +550,13 @@ void expandSymbolForwarding(gtirb::Module &module, souffle::SouffleProgram *prog
             }
         }
     }
-    for(auto &output : *prog->getRelation("got_reference"))
+    for(auto &output : *Prog->getRelation("got_reference"))
     {
         gtirb::Addr ea;
-        std::string name;
-        output >> ea >> name;
-        auto foundSrc = module.findSymbols(ea);
-        gtirb::Symbol *Dest = findFirstSymbol(module, name);
+        std::string Name;
+        output >> ea >> Name;
+        auto foundSrc = Module.findSymbols(ea);
+        gtirb::Symbol *Dest = findFirstSymbol(Module, Name);
         for(gtirb::Symbol &src : foundSrc)
         {
             (*symbolForwarding)[src.getUUID()] = Dest->getUUID();
@@ -612,28 +612,28 @@ void buildSymbolicExpr(gtirb::Module &Module, const gtirb::Addr &Ea,
     }
 }
 
-void buildCodeSymbolicInformation(gtirb::Module &module, souffle::SouffleProgram *prog)
+void buildCodeSymbolicInformation(gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
-    auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", prog);
+    auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", Prog);
     SymbolicInfo symbolicInfo{
-        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr", prog),
+        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr", Prog),
         convertSortedRelation<VectorByEA<SymExprSymbolMinusSymbol>>(
-            "symbolic_expr_symbol_minus_symbol", prog),
-        convertSortedRelation<VectorByEA<SymbolicExprAttribute>>("symbolic_expr_attribute", prog)};
-    std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(prog);
+            "symbolic_expr_symbol_minus_symbol", Prog),
+        convertSortedRelation<VectorByEA<SymbolicExprAttribute>>("symbolic_expr_attribute", Prog)};
+    std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(Prog);
 
-    for(auto &cib : codeInBlock)
+    for(auto &Cib : codeInBlock)
     {
-        const auto inst = decodedInstructions.find(cib.EA);
-        assert(inst != decodedInstructions.end());
-        for(auto &op : inst->second.Operands)
+        const auto Inst = decodedInstructions.find(Cib.EA);
+        assert(Inst != decodedInstructions.end());
+        for(auto &Op : Inst->second.Operands)
         {
-            if(std::get_if<ImmOp>(&op.second))
-                buildSymbolicExpr(module, gtirb::Addr(inst->first + inst->second.immediateOffset),
+            if(std::get_if<ImmOp>(&Op.second))
+                buildSymbolicExpr(Module, gtirb::Addr(Inst->first + Inst->second.immediateOffset),
                                   symbolicInfo);
-            if(std::get_if<IndirectOp>(&op.second))
-                buildSymbolicExpr(module,
-                                  gtirb::Addr(inst->first + inst->second.displacementOffset),
+            if(std::get_if<IndirectOp>(&Op.second))
+                buildSymbolicExpr(Module,
+                                  gtirb::Addr(Inst->first + Inst->second.displacementOffset),
                                   symbolicInfo);
         }
     }
@@ -698,95 +698,96 @@ void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
     }
 }
 
-void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
+void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
-    auto symbolicExprs = convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr", prog);
-    auto symbolMinusSymbol = convertSortedRelation<VectorByEA<SymExprSymbolMinusSymbol>>(
-        "symbolic_expr_symbol_minus_symbol", prog);
+    auto SymbolicExprs = convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr", Prog);
+    auto SymbolMinusSymbol = convertSortedRelation<VectorByEA<SymExprSymbolMinusSymbol>>(
+        "symbolic_expr_symbol_minus_symbol", Prog);
 
-    auto DataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", prog);
-    auto symbolSpecialTypes =
-        convertSortedRelation<VectorByEA<SymbolSpecialType>>("symbol_special_encoding", prog);
-    auto DataBoundary = convertSortedRelation<std::set<gtirb::Addr>>("data_object_boundary", prog);
-    auto symbolicDataAttributes =
-        convertSortedRelation<VectorByEA<SymbolicExprAttribute>>("symbolic_expr_attribute", prog);
+    auto DataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", Prog);
+    auto SymbolSpecialTypes =
+        convertSortedRelation<VectorByEA<SymbolSpecialType>>("symbol_special_encoding", Prog);
+    auto DataBoundary = convertSortedRelation<std::set<gtirb::Addr>>("data_object_boundary", Prog);
+    auto SymbolicExprAttributes =
+        convertSortedRelation<VectorByEA<SymbolicExprAttribute>>("symbolic_expr_attribute", Prog);
 
-    std::map<gtirb::UUID, std::string> typesTable;
+    std::map<gtirb::UUID, std::string> TypesTable;
 
     std::map<gtirb::Offset, uint64_t> SymbolicSizes;
 
-    for(auto &output : *prog->getRelation("initialized_data_segment"))
+    for(auto &Output : *Prog->getRelation("initialized_data_segment"))
     {
-        gtirb::Addr begin, end;
-        output >> begin >> end;
+        gtirb::Addr Begin, End;
+        Output >> Begin >> End;
         // we don't create data blocks that exceed the data segment
-        DataBoundary.insert(end);
-        for(auto currentAddr = begin; currentAddr < end;
+        DataBoundary.insert(End);
+        for(auto CurrentAddr = Begin; CurrentAddr < End;
             /*incremented in each case*/)
         {
-            gtirb::DataBlock *d;
-            if(auto it = module.findByteIntervalsOn(currentAddr); !it.empty())
+            gtirb::DataBlock *DataBlock;
+            if(auto It = Module.findByteIntervalsOn(CurrentAddr); !It.empty())
             {
-                if(gtirb::ByteInterval &byteInterval = *it.begin(); byteInterval.getAddress())
+                if(gtirb::ByteInterval &ByteInterval = *It.begin(); ByteInterval.getAddress())
                 {
                     // do not cross byte intervals.
-                    DataBoundary.insert(*byteInterval.getAddress() + byteInterval.getSize());
-                    uint64_t blockOffset = currentAddr - *byteInterval.getAddress();
-                    gtirb::Offset Offset = gtirb::Offset(byteInterval.getUUID(), blockOffset);
+                    DataBoundary.insert(*ByteInterval.getAddress() + ByteInterval.getSize());
+                    uint64_t blockOffset = CurrentAddr - *ByteInterval.getAddress();
+                    gtirb::Offset Offset = gtirb::Offset(ByteInterval.getUUID(), blockOffset);
 
                     // symbolic expression created from relocation
-                    if(const auto symExpr = symbolicExprs.find(currentAddr);
-                       symExpr != symbolicExprs.end())
+                    if(const auto SymExpr = SymbolicExprs.find(CurrentAddr);
+                       SymExpr != SymbolicExprs.end())
                     {
-                        d = gtirb::DataBlock::Create(context, symExpr->Size);
-                        gtirb::Symbol *foundSymbol = findFirstSymbol(module, symExpr->Symbol);
+                        DataBlock = gtirb::DataBlock::Create(Context, SymExpr->Size);
+                        gtirb::Symbol *foundSymbol = findFirstSymbol(Module, SymExpr->Symbol);
                         gtirb::SymAttributeSet Attributes =
-                            buildSymbolicExpressionAttributes(currentAddr, symbolicDataAttributes);
+                            buildSymbolicExpressionAttributes(CurrentAddr, SymbolicExprAttributes);
 
-                        byteInterval.addSymbolicExpression<gtirb::SymAddrConst>(
-                            blockOffset, symExpr->Addend, foundSymbol, Attributes);
-                        SymbolicSizes[Offset] = symExpr->Size;
+                        ByteInterval.addSymbolicExpression<gtirb::SymAddrConst>(
+                            blockOffset, SymExpr->Addend, foundSymbol, Attributes);
+                        SymbolicSizes[Offset] = SymExpr->Size;
                     }
-                    else if(const auto SymExprSymMinusSym = symbolMinusSymbol.find(currentAddr);
-                            SymExprSymMinusSym != symbolMinusSymbol.end())
+                    else if(const auto SymExprSymMinusSym = SymbolMinusSymbol.find(CurrentAddr);
+                            SymExprSymMinusSym != SymbolMinusSymbol.end())
                     {
-                        d = gtirb::DataBlock::Create(context, SymExprSymMinusSym->Size);
-                        gtirb::Symbol *Sym1 = findFirstSymbol(module, SymExprSymMinusSym->Symbol1);
-                        gtirb::Symbol *Sym2 = findFirstSymbol(module, SymExprSymMinusSym->Symbol2);
+                        DataBlock = gtirb::DataBlock::Create(Context, SymExprSymMinusSym->Size);
+                        gtirb::Symbol *Sym1 = findFirstSymbol(Module, SymExprSymMinusSym->Symbol1);
+                        gtirb::Symbol *Sym2 = findFirstSymbol(Module, SymExprSymMinusSym->Symbol2);
                         gtirb::SymAttributeSet Attributes =
-                            buildSymbolicExpressionAttributes(currentAddr, symbolicDataAttributes);
+                            buildSymbolicExpressionAttributes(CurrentAddr, SymbolicExprAttributes);
 
-                        byteInterval.addSymbolicExpression<gtirb::SymAddrAddr>(
+                        ByteInterval.addSymbolicExpression<gtirb::SymAddrAddr>(
                             blockOffset, static_cast<int64_t>(SymExprSymMinusSym->Scale),
                             SymExprSymMinusSym->Offset, Sym2, Sym1, Attributes);
                         SymbolicSizes[Offset] = SymExprSymMinusSym->Size;
                     }
                     else
                         // string
-                        if(const auto S = DataStrings.find(currentAddr); S != DataStrings.end())
+                        if(const auto S = DataStrings.find(CurrentAddr); S != DataStrings.end())
                     {
-                        d = gtirb::DataBlock::Create(context, S->End - currentAddr);
-                        typesTable[d->getUUID()] = S->Encoding;
+                        DataBlock = gtirb::DataBlock::Create(Context, S->End - CurrentAddr);
+                        TypesTable[DataBlock->getUUID()] = S->Encoding;
                     }
                     else
                     {
                         // Accumulate region with no symbols into a single DataBlock.
-                        auto NextDataObject = DataBoundary.lower_bound(currentAddr + 1);
-                        d = gtirb::DataBlock::Create(context, *NextDataObject - currentAddr);
+                        auto NextDataObject = DataBoundary.lower_bound(CurrentAddr + 1);
+                        DataBlock =
+                            gtirb::DataBlock::Create(Context, *NextDataObject - CurrentAddr);
                     }
                     // symbol special types
-                    const auto specialType = symbolSpecialTypes.find(currentAddr);
-                    if(specialType != symbolSpecialTypes.end())
-                        typesTable[d->getUUID()] = specialType->Type;
-                    byteInterval.addBlock(blockOffset, d);
-                    currentAddr += d->getSize();
+                    const auto specialType = SymbolSpecialTypes.find(CurrentAddr);
+                    if(specialType != SymbolSpecialTypes.end())
+                        TypesTable[DataBlock->getUUID()] = specialType->Type;
+                    ByteInterval.addBlock(blockOffset, DataBlock);
+                    CurrentAddr += DataBlock->getSize();
                 }
             }
         }
     }
-    buildBSS(context, module, prog);
-    module.addAuxData<gtirb::schema::Encodings>(std::move(typesTable));
-    module.addAuxData<gtirb::schema::SymbolicExpressionSizes>(std::move(SymbolicSizes));
+    buildBSS(Context, Module, Prog);
+    Module.addAuxData<gtirb::schema::Encodings>(std::move(TypesTable));
+    Module.addAuxData<gtirb::schema::SymbolicExpressionSizes>(std::move(SymbolicSizes));
 }
 
 void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
@@ -1094,68 +1095,68 @@ void updateComment(gtirb::Module &module, std::map<gtirb::Offset, std::string> &
     }
 }
 
-void buildCfiDirectives(gtirb::Module &module, souffle::SouffleProgram *prog)
+void buildCfiDirectives(gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
     std::map<gtirb::Offset, std::vector<std::tuple<std::string, std::vector<int64_t>, gtirb::UUID>>>
-        cfiDirectives;
-    for(auto &output : *prog->getRelation("cfi_directive"))
+        CfiDirectives;
+    for(auto &output : *Prog->getRelation("cfi_directive"))
     {
-        gtirb::Addr blockAddr;
-        std::string directive, reference;
-        uint64_t disp, localIndex, nOperands;
-        int64_t op1, op2;
-        output >> blockAddr >> disp >> localIndex >> directive >> reference >> nOperands >> op1
-            >> op2;
-        std::vector<int64_t> operands;
+        gtirb::Addr BlockAddr;
+        std::string Directive, Reference;
+        uint64_t Disp, LocalIndex, NumOperands;
+        int64_t Op1, Op2;
+        output >> BlockAddr >> Disp >> LocalIndex >> Directive >> Reference >> NumOperands >> Op1
+            >> Op2;
+        std::vector<int64_t> Operands;
         // cfi_escape directives have a sequence of bytes as operands (the raw bytes of the
-        // dwarf instruction). The address 'reference' points to these bytes.
-        if(directive == ".cfi_escape")
+        // dwarf instruction). The address 'Reference' points to these bytes.
+        if(Directive == ".cfi_escape")
         {
-            gtirb::Addr BytesLocation = gtirb::Addr(op1);
-            if(const auto it = module.findByteIntervalsOn(BytesLocation); !it.empty())
+            gtirb::Addr BytesLocation = gtirb::Addr(Op1);
+            if(const auto It = Module.findByteIntervalsOn(BytesLocation); !It.empty())
             {
-                if(const gtirb::ByteInterval &interval = *it.begin(); interval.getAddress())
+                if(const gtirb::ByteInterval &Interval = *It.begin(); Interval.getAddress())
                 {
-                    auto begin =
-                        interval.bytes_begin<uint8_t>() + (BytesLocation - *interval.getAddress());
-                    auto end = begin + nOperands;
-                    for(uint8_t byte : boost::make_iterator_range(begin, end))
+                    auto Begin =
+                        Interval.bytes_begin<uint8_t>() + (BytesLocation - *Interval.getAddress());
+                    auto End = Begin + NumOperands;
+                    for(uint8_t Byte : boost::make_iterator_range(Begin, End))
                     {
-                        operands.push_back(static_cast<int64_t>(byte));
+                        Operands.push_back(static_cast<int64_t>(Byte));
                     }
                 }
             }
         }
         else
         {
-            if(nOperands > 0)
-                operands.push_back(op1);
-            if(nOperands > 1)
-                operands.push_back(op2);
+            if(NumOperands > 0)
+                Operands.push_back(Op1);
+            if(NumOperands > 1)
+                Operands.push_back(Op2);
         }
 
-        auto blockRange = module.findCodeBlocksOn(blockAddr);
-        if(blockRange.begin() != blockRange.end() && blockAddr == blockRange.begin()->getAddress())
+        auto BlockRange = Module.findCodeBlocksOn(BlockAddr);
+        if(BlockRange.begin() != BlockRange.end() && BlockAddr == BlockRange.begin()->getAddress())
         {
-            gtirb::Offset offset(blockRange.begin()->getUUID(), disp);
-            if(cfiDirectives[offset].size() < localIndex + 1)
-                cfiDirectives[offset].resize(localIndex + 1);
+            gtirb::Offset Offset(BlockRange.begin()->getUUID(), Disp);
+            if(CfiDirectives[Offset].size() < LocalIndex + 1)
+                CfiDirectives[Offset].resize(LocalIndex + 1);
 
-            if(directive != ".cfi_escape" && reference != "")
+            if(Directive != ".cfi_escape" && Reference != "")
             {
-                // for normal directives (not cfi_escape) the reference points to a symbol.
-                gtirb::Symbol *symbol = findFirstSymbol(module, reference);
-                cfiDirectives[offset][localIndex] =
-                    std::make_tuple(directive, operands, symbol->getUUID());
+                // for normal directives (not cfi_escape) the Reference points to a symbol.
+                gtirb::Symbol *Symbol = findFirstSymbol(Module, Reference);
+                CfiDirectives[Offset][LocalIndex] =
+                    std::make_tuple(Directive, Operands, Symbol->getUUID());
             }
             else
             {
-                gtirb::UUID uuid;
-                cfiDirectives[offset][localIndex] = std::make_tuple(directive, operands, uuid);
+                gtirb::UUID Uuid;
+                CfiDirectives[Offset][LocalIndex] = std::make_tuple(Directive, Operands, Uuid);
             }
         }
     }
-    module.addAuxData<gtirb::schema::CfiDirectives>(std::move(cfiDirectives));
+    Module.addAuxData<gtirb::schema::CfiDirectives>(std::move(CfiDirectives));
 }
 
 void buildPadding(gtirb::Module &Module, souffle::SouffleProgram *Prog)
@@ -1347,27 +1348,27 @@ void renameInferredSymbols(gtirb::Module &Module)
     }
 }
 
-void disassembleModule(gtirb::Context &context, gtirb::Module &module,
-                       souffle::SouffleProgram *prog, bool selfDiagnose)
+void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
+                       souffle::SouffleProgram *Prog, bool SelfDiagnose)
 {
-    removeSectionSymbols(context, module);
-    buildInferredSymbols(context, module, prog);
-    buildSymbolForwarding(context, module, prog);
-    buildCodeBlocks(context, module, prog);
-    buildDataBlocks(context, module, prog);
-    buildCodeSymbolicInformation(module, prog);
-    buildCfiDirectives(module, prog);
-    expandSymbolForwarding(module, prog);
-    buildFunctions(module, prog);
+    removeSectionSymbols(Context, Module);
+    buildInferredSymbols(Context, Module, Prog);
+    buildSymbolForwarding(Context, Module, Prog);
+    buildCodeBlocks(Context, Module, Prog);
+    buildDataBlocks(Context, Module, Prog);
+    buildCodeSymbolicInformation(Module, Prog);
+    buildCfiDirectives(Module, Prog);
+    expandSymbolForwarding(Module, Prog);
+    buildFunctions(Module, Prog);
     // This should be done after creating all the symbols.
-    connectSymbolsToBlocks(context, module, prog);
-    renameInferredSymbols(module);
+    connectSymbolsToBlocks(Context, Module, Prog);
+    renameInferredSymbols(Module);
     // These functions should not create additional symbols.
-    buildCFG(context, module, prog);
-    buildPadding(module, prog);
-    buildComments(module, prog, selfDiagnose);
-    updateEntryPoint(module, prog);
-    buildSymbolVersions(module);
+    buildCFG(Context, Module, Prog);
+    buildPadding(Module, Prog);
+    buildComments(Module, Prog, SelfDiagnose);
+    updateEntryPoint(Module, Prog);
+    buildSymbolVersions(Module);
 }
 
 void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
