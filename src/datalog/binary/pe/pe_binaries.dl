@@ -574,9 +574,11 @@ is_padding(EA):-
 //    e.g.  movzx EDX,BYTE PTR [RAX+RCX*1+((IMAGEREL N_180fa2570)+7)]
 //                                                               ^^
 moved_label_class(EA,Op_index,"base-relative collides with pointer"),
-moved_label(EA,Op_index,ImageBase+Dest,NewDest):-
+moved_data_label(EA+Disp_offset,Size,ImageBase+Dest,NewDest):-
     base_address(ImageBase),
     base_relative_symbolic_operand(EA,Op_index,Dest),
+    instruction_displacement_offset(EA,Op_index,Disp_offset,_),
+    symbol_minus_symbol(EA+Disp_offset,Size,_,_,_,_),
     // Reference collides with a pointer.
     arch.pointer_size(Pt_size),
     address_in_data_refined_range.overlap(ImageBase+Dest,Pt_size,NewDest),
