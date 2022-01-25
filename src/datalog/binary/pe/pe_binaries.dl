@@ -123,8 +123,9 @@ moved_displacement_candidate(EA,Op_index,Dest,0x7FFE0000,Dest-0x7FFE0000):-
   Dest > 0x7FFE0000, Dest < 0x7FFE1000.
 
 // Entries of external libraries
-inferred_special_symbol(0,Function,"EXTERN","NONE",0):-
-    pe_import_entry(_,_,Function,_).
+symbol(0,0,"NONE","EXTERN","DEFAULT",0,"none",0,Function),
+got_reference(Address,Function):-
+    pe_import_entry(Address,_,Function,_).
 
 //PE binaries have plt-like entries
 // These are no delimited to their own section
