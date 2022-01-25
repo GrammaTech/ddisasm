@@ -338,5 +338,76 @@ class PeResourcesTests(unittest.TestCase):
             self.assertEqual(proc.returncode, 0)
 
 
+class SymbolSelectionTests(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_symbol_selection(self):
+        """
+        Test that the right symbols are chosen for relocations
+        and for functions.
+        """
+
+        binary = "ex"
+        with cd(ex_asm_dir / "ex_symbol_selection"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    "strip",
+                    False,
+                    False,
+                    format="--ir",
+                    extension="gtirb",
+                )
+            )
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            # check chosen symbols for sym exprs
+            def check_first_sym_expr(
+                block_name: str, target_name: str
+            ) -> None:
+                """
+                Check that the first Symexpr in a block identified
+                with symbol 'block_name' points to a symbol with
+                name 'target_name'
+                """
+                sym = [s for s in m.symbols if s.name == block_name][0]
+                assert isinstance(sym.referent, gtirb.CodeBlock)
+
+                block = sym.referent
+                sexpr = sorted(
+                    [
+                        t[1:]
+                        for t in block.byte_interval.symbolic_expressions_at(
+                            range(block.address, block.address + block.size)
+                        )
+                    ]
+                )[0]
+                self.assertEqual(sexpr[1].symbol.name, target_name)
+
+            check_first_sym_expr("Block_hello", "hello_not_hidden")
+            check_first_sym_expr("Block_how", "how_global")
+            check_first_sym_expr("Block_bye", "bye_obj")
+
+            # check symbols at the end of sections
+            syms = [
+                s
+                for s in m.symbols
+                if s.name
+                in ["__init_array_end", "end_of_data_section", "edata", "_end"]
+            ]
+            self.assertTrue(all(s.at_end for s in syms))
+
+            # check chosen function names
+            fun_names = {
+                sym.name for sym in m.aux_data["functionNames"].data.values()
+            }
+            self.assertIn("fun", fun_names)
+            self.assertNotIn("_fun", fun_names)
+
+
 if __name__ == "__main__":
     unittest.main()
