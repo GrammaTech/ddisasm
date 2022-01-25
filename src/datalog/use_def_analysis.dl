@@ -66,9 +66,6 @@ local_next(EA,EA_next):-
     may_fallthrough(EA,EA_next),
     code_in_block(EA_next,Block).
 
-local_next(From,To):-
-    pc_load_call(From,To).
-
 .decl inter_procedural_jump(Src:address,Dest:address)
 
 inter_procedural_jump(Src,Dest):-
