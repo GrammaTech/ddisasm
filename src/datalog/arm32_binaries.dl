@@ -299,6 +299,8 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     // Align the address
     EANext = EANext0-(EANext0 band 3).
 
+avoid_symbols("$t").
+avoid_symbols("$a").
 
 basic_target(Val+1):-
     defined_symbol(Val,_,_,_,_,_,_,_,"$t").
