@@ -65,28 +65,21 @@ abi_intrinsic(EA,"__dso_handle"):-
     got_relative_operand(_,_,EA),
     symbol(EA,_,_,_,_,_,_,_,"__dso_handle").
 
-got_reference_pointer(Beg),
+// Identify load PC operations:
+// e.g. (clang)
+// 	 call	.L1$pb
+// .L1$pb:
+// 	 pop	REG
+// .Ltmp0:
+// 	 add	REG, offset _GLOBAL_OFFSET_TAB LE_+(.Ltmp0-.L1$pb)
+//e.g. (gcc)
+//   call _x86.get_pc_thunk.REG
+//   add REG, _GLOBAL_OFFSET_TABLE_
+got_reference_pointer(as(Offset,address)),
 reg_has_got(EA,Reg):-
-    // call _x86.get_pc_thunk.REG
-    direct_call(EA_call,EA_pc_thunk),
-    get_pc_thunk(EA_pc_thunk,Reg),
-    // add REG, _GLOBAL_OFFSET_TABLE_
-    next(EA_call,EA),
-    op_immediate_and_reg(EA,"ADD",Reg,_,Offset),
-    // where offset is pc-relative .got address
+    value_reg(EA,Reg,_,"NONE",_,Offset,_),
     got_section(Name),
-    section(Name,_,Beg),
-    Beg=EA+as(Offset,address).
-
-reg_has_got(EA,Reg):-
-    // A call-pop sequences acquires PC.
-    pc_load_call(_,Pop),
-    // Used with a pc-relative .got offset.
-    straight_line_def_used(Pop,Reg,EA,_),
-    op_immediate_and_reg(EA,"ADD",Reg,_,Offset),
-    got_section(Name),
-    section(Name,_,Beg),
-    Beg=EA+as(Offset,address)-(EA-Pop).
+    section(Name,_,as(Offset,address)).
 
 reg_has_got(EA_load,Reg_load):-
     // Store GOT pointer
@@ -197,7 +190,8 @@ plt_entry(EA,Function):-
     (
       //  jmp [EBX+Offset]
       op_indirect(Op,"NONE",_,"NONE",1,Offset,_),
-      got_reference_pointer(Got),
+      got_section(Name),
+      section(Name,_,Got),
       Got_entry=Got+as(Offset,address)
       ;
       // jmp [Offset]

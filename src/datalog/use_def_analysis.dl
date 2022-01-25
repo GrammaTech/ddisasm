@@ -277,13 +277,18 @@ used_for_address(EA,Reg):-
     reg_call(EA,Reg),
     used(EA,Reg,_).
 
-used_for_address(EA,Reg1):-
-    used(EA,Reg1,_),
-    def_used(EA,Reg1,EA_store,_),
-    reg_stored_in_stack(EA_store,Reg1,StackPos,StackFrameDefinedAt),
-    reg_loaded_from_stack(EA_load,Reg2,_,StackPos,StackFrameDefinedAt),
-    def_used(EA_load,Reg2,EA_used,_),
-    used_for_address(EA_used,Reg2).
+used_for_address(EA,Reg):-
+    get_pc_thunk(EA_thunk,Reg),
+    direct_call(EA_load,EA_thunk),
+    def_used(EA_load,Reg,EA,Index),
+    instruction_get_op(EA,Index,Op),
+    op_regdirect(Op,Reg).
+
+used_for_address(EA,Reg):-
+    pc_load_call(_,EA_load),
+    def_used(EA_load,Reg,EA,Index),
+    instruction_get_op(EA,Index,Op),
+    op_regdirect(Op,Reg).
 
 /**
  * The register 'Reg' as defined at address 'EA_def' is later used either as an address
