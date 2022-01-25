@@ -76,35 +76,9 @@ void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Fact
 
 void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
 {
-    size_t Count0 = 1;
-    uint64_t DecodeAddr = Addr;
-
-    // NOTE: The IT (If-Then) instruction makes up to four following
-    // instructions (the IT block) conditional.
-    // Check if one of the previous instructions up to 4 is 'IT'.
-    // If so, read the current instruction bytes along with instruction
-    // bytes up to the 'IT' instruction so that the condition code can be
-    // correctly decoded.
-    const std::vector<relations::Instruction>& Instrs = Facts.Instructions.instructions();
-    if(!Instrs.empty())
-    {
-        std::vector<relations::Instruction>::const_reverse_iterator It = Instrs.rbegin();
-        for(unsigned int i = 1; i < 4 && It != Instrs.rend(); It++, i++)
-        {
-            if((*It).Name == "IT")
-            {
-                Count0 = i + 1;
-                DecodeAddr -= InstructionSize * i;
-                Bytes -= InstructionSize * i;
-                Size += InstructionSize * i;
-                break;
-            }
-        }
-    }
-
     // Decode instruction with Capstone.
     cs_insn* CsInsn;
-    size_t Count = cs_disasm(*CsHandle, Bytes, Size, DecodeAddr, Count0, &CsInsn);
+    size_t Count = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &CsInsn);
 
     // Build datalog instruction facts from Capstone instruction.
     bool InstAdded = false;

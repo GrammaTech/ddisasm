@@ -505,6 +505,10 @@ op_indirect_contains_reg(Op,Reg_uniform):-
     op_indirect(Op,_,_,Reg3,_,_,_),
     arch.track_register(Reg3,Reg_uniform).
 
+op_regdirect_contains_reg(Op,Reg):-
+    op_regdirect(Op,Reg),
+    !arch.track_register(Reg,_).
+
 .decl op_regdirect_contains_reg(op:operand_code,reg:register)
 
 op_regdirect_contains_reg(Op,Reg_uniform):-

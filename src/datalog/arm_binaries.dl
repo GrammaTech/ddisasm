@@ -25,9 +25,41 @@ Define a set predicates to abstract from ARM specific instruction set
 and characteristics
 */
 
+.decl within_funcsym(EA:address)
+
+within_funcsym(EA):-
+    possible_ea(EA),
+    symbol(SymEA,FuncSize,"FUNC",_,_,_,_,_),
+    EA >= SymEA,
+    EA < SymEA + FuncSize.
+
+block_points(Block,"data",0,Points,"arm string"),
+data_block_candidate(Block,Size):-
+    ascii_string(Block,Size),
+    (
+        symbol(Block,_,_,_,_,_,_,_)
+        ;
+        address_in_data(EA,Block),
+        arch.pointer_size(Pt_size),
+        EA % Pt_size = 0
+    ),
+    (
+        !within_funcsym(Block), Points = 7
+        ;
+        within_funcsym(Block), Points = 2
+    ).
+
 block_points(Block,"data",0,9,"literal pool"),
 data_block_candidate(Block,Size):-
     defined_symbol(Block,Size,_,_,_,_,_,"$d").
+
+block_points(Block,"code",0,1,"plausible instruction sequence: cmp/branch"    ):-
+    arch.jump(Jump),
+    code_in_block_candidate(Jump,Block),
+    code_in_block_candidate(PrevEA,Block),
+    next(PrevEA,Jump),
+    instruction_get_operation(PrevEA,Operation),
+    arch.cmp_operation(Operation).
 
 plt_block(EA,Function):-
     plt_section(SecName),
