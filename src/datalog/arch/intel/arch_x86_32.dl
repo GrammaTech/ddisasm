@@ -114,7 +114,7 @@ symbol_minus_symbol(EA+ImmediateOffset,4,EA,Ref,1,0):-
     got_reference_pointer(Got),
     op_immediate_and_reg(EA,"ADD",Reg,Index,Value),
     instruction_immediate_offset(EA,Index,ImmediateOffset,_),
-    straight_line_def_used(Ref,_,EA,_),
+    def_used(Ref,_,EA,_),
     Got = Ref+as(Value,address).
 
 // add EBX,OFFSET _GLOBAL_OFFSET_TABLE_+(.L_804925f-.L_804925e)
