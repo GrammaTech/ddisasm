@@ -25,6 +25,8 @@ Define a set predicates to abstract from ARM64 specific instruction set
 and characteristics
 */
 
+avoid_symbols("$x").
+
 basic_target(Val):-
     defined_symbol(Val,_,_,_,_,_,_,_,"$x").
 

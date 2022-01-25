@@ -73,6 +73,7 @@ Each symbol receives a score based on its properties.
 symbol_score(EA,SymbolName,Type,AtEnd,Score):-
     symbol(EA,_,Type,Scope,Visibility,_,_,TableIndex,SymbolName),
     !ambiguous_symbol(SymbolName),
+    !avoid_symbols(SymbolName),
     (
         symbol_at_section_end(EA,SymbolName), AtEnd = 1;
         !symbol_at_section_end(EA,SymbolName), AtEnd = 0
@@ -93,16 +94,11 @@ symbol_score(EA,SymbolName,Type,AtEnd,Score):-
         Visibility != "HIDDEN", VisibilityScore = 1;
         Visibility = "HIDDEN", VisibilityScore = 0
     ),
-    (
-        avoid_symbols(SymbolName), AvoidScore = 0;
-        !avoid_symbols(SymbolName), AvoidScore = 1
-    ),
     // Encode lexicographic ordering into a single score.
-    Score = (RelocScore bshl 36)
-            bor (TypeScore bshl 35)
-            bor (ScopeScore bshl 34)
-            bor (VisibilityScore bshl 33)
-            bor (AvoidScore bshl 32)
+    Score = (RelocScore bshl 35)
+            bor (TypeScore bshl 34)
+            bor (ScopeScore bshl 33)
+            bor (VisibilityScore bshl 32)
             bor as(TableIndex,unsigned).
 
 

@@ -25,6 +25,8 @@ Define a set predicates to abstract from ARM specific instruction set
 and characteristics
 */
 
+avoid_symbols("$d").
+
 block_points(Block,"data",0,9,"literal pool"),
 data_block_candidate(Block,Size):-
     defined_symbol(Block,Size,_,_,_,_,_,_,"$d").
