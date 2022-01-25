@@ -506,7 +506,8 @@ where the symbol foo is the target symbol, and .L0 will contain the offset
 from PC at .LPIC0 to the symbol foo.
 */
 labeled_data_candidate(Dest),
-symbol_minus_symbol_jump_table(Addr,Addr,Size,EARef,Dest,"no_table",Scale):-
+data_object_candidate(Addr,Size,"symbol-symbol"),
+symbol_minus_symbol(Addr,Size,EARef,Dest,as(Scale,unsigned),0):-
     data_access_pattern(Addr,Size,0,EABase),
     def_used(EABase,Reg,EAAddPC,_),
     arch.reg_reg_arithmetic_operation(EAAddPC,Reg,Reg,PC,1,0),
@@ -670,12 +671,11 @@ data_object_point(DataEA,Size,"symbol",2,"arm jump-table3"),
 data_object_candidate(DataEA,Size,"symbol"):-
     arm_jump_table_candidate(_,_,DataEA,Size,_,_,"absolute").
 
-jump_table_start(EA,Size,TableStart,TableStart,Operation):-
-    Operation="TBx",
-    arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,Operation),
+jump_table_start(EA,Size,TableStart,TableStart,1):-
+    arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,"TBx"),
     jump_table_candidate_refined(EA,DataEA,_).
 
-symbol_minus_symbol_jump_table(DataEA,TableStart,Size,TableStart,TargetAddr,"first",Scale):-
+symbol_minus_symbol_jump_table(DataEA,TableStart,Size,TableStart,TargetAddr,Scale):-
     Scale = 2,
     arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,"TBx"),
     jump_table_candidate_refined(EA,DataEA,TargetAddr).

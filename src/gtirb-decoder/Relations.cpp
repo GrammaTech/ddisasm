@@ -159,4 +159,11 @@ namespace souffle
         T << Expr.Addr << Expr.Symbol1 << Expr.Symbol2 << Expr.Offset;
         return T;
     }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::ShiftedOp& Op)
+    {
+        T << Op.Addr << static_cast<uint64_t>(Op.Index) << static_cast<uint64_t>(Op.Shift)
+          << Op.Type;
+        return T;
+    }
 } // namespace souffle

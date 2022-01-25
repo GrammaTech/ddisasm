@@ -155,6 +155,14 @@ This module:
         multiplier:number,offset:number,size_value:unsigned)
 .input op_indirect
 
+/**
+The operand identified by Index should be shifted.
+
+Used on ARM/ARM64, but not x86 or MIPS. Type is architecure-dependent.
+*/
+.decl op_shifted(EA:address,Index:unsigned,Shift:unsigned,Type:symbol)
+.input op_shifted
+
 // data from sections
 .decl data_byte(ea:address,value:unsigned)
 .input data_byte
