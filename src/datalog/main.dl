@@ -686,13 +686,6 @@ data_segment(Begin,End):-
 .output got_reference
 
 
-/**
-Address EA' is used as GOT-relative base reference. 'EA' is either the beginning
-of either the .got or .got.plt section, for gcc and clang respectively.
-*/
-.decl got_reference_pointer(EA:address)
-.output got_reference_pointer
-
 .decl main_function(ea:address)
 
 .decl conditional_return(EA:address)

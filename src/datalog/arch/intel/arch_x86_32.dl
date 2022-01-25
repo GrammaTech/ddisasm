@@ -117,25 +117,6 @@ symbol_minus_symbol(EA+ImmediateOffset,4,EA,Ref,1,0):-
     straight_line_def_used(Ref,_,EA,_),
     Got = Ref+as(Value,address).
 
-// GOT-relative references consist of a load of the GOT pointer to a register:
-//     call    __x86.get_pc_thunk.ax
-//     add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
-// Followed by a use of the register, such as:
-//     lea     edx, .LC0@GOTOFF[eax]
-//     movzx   eax, WORD PTR array@GOTOFF[ebx+eax*2]
-//     movsx   eax, BYTE PTR array@GOTOFF[esi+ebx]
-got_relative_operand(EA,Index,Dest):-
-    reg_has_got(EA_base,Reg),
-    def_used(EA_base,Reg,EA,Index),
-    instruction_get_op(EA,Index,Op),
-    (
-      op_indirect(Op,"NONE",Reg,_,_,Offset,_);
-      op_indirect(Op,"NONE",_,Reg,1,Offset,_)
-    ),
-    Offset != 0,
-    got_reference_pointer(Got),
-    Dest=Got+as(Offset,address).
-
 // add EBX,OFFSET _GLOBAL_OFFSET_TABLE_+(.L_804925f-.L_804925e)
 // ...
 // lea EBP,DWORD PTR [EBX+EDI*4]
