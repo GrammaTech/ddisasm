@@ -168,14 +168,14 @@ plt_data_reference(EA):-
 //////////////////////////////////////////////////////////////////////////
 
 /**
-Value of register 'Reg' at address 'EA' is a reference to GOT.
+Value of register 'Reg' at address 'EA' is GOT-relative base reference.
 */
 .decl reg_has_got(EA:address,Reg:register)
 .output reg_has_got
 
 /**
 Address EA' is used as GOT-relative base reference. 'EA' is either the beginning
-of either the .got or .got.plt section, for gcc and clang respectively.
+of either the .got or .got.plt section.
 */
 .decl got_reference_pointer(EA:address)
 .output got_reference_pointer
@@ -195,18 +195,6 @@ reg_has_got(EA,Reg):-
     value_reg(EA,Reg,_,"NONE",_,Offset,_),
     got_section(Name),
     section(Name,_,as(Offset,address)).
-
-reg_has_got(EA_load,Reg_load):-
-    // Store GOT pointer
-    reg_has_got(EA,Reg_store),
-    def_used(EA,Reg_store,EA_store,_),
-    reg_stored_in_stack(EA_store,Reg_store,StackPos,StackFrame),
-    // Load GOT pointer
-    (
-        arch.frame_pointer(Reg_base);
-        arch.stack_pointer(Reg_base)
-    ),
-    reg_loaded_from_stack(EA_load,Reg_load,Reg_base,StackPos,StackFrame).
 
 /**
 Operand instruction at 'EA' at index 'Index' is a GOT-relative reference to an

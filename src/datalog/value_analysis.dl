@@ -107,10 +107,10 @@ reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
 // Register saved and loaded from stack
 // This is flow insensitive but we make sure that the load and store
 // refer to the same stack frame, identified by the address where RBP is defined.
-value_reg_edge(EALoad,Reg,EAPrev,Reg,1,0):-
-    reg_stored_in_stack(EAStore,Reg,StackPos, StackFrameDefinedAt),
-    reg_loaded_from_stack(EALoad,Reg,_,StackPos, StackFrameDefinedAt),
-    def_used(EAPrev,Reg,EAStore,_).
+value_reg_edge(EALoad,Reg2,EAPrev,Reg1,1,0):-
+    reg_stored_in_stack(EAStore,Reg1,StackPos, StackFrameDefinedAt),
+    reg_loaded_from_stack(EALoad,Reg2,_,StackPos, StackFrameDefinedAt),
+    def_used(EAPrev,Reg1,EAStore,_).
 
 // Register saved in previous frame and loaded from the next.
 // e.g.:
