@@ -25,6 +25,7 @@
 
 #include <LIEF/LIEF.hpp>
 #include <boost/uuid/uuid_generators.hpp>
+#include <regex>
 
 #include "AuxDataSchema.h"
 #include "gtirb-decoder/CompositeLoader.h"
@@ -1348,41 +1349,33 @@ void shiftThumbBlocks(gtirb::Module &Module)
         }
     }
 }
+
 void renameInferredSymbols(gtirb::Module &Module)
 {
-    static std::string InferredPrefix(".L_");
-    static std::string FunPrefix("FUN_");
-    static std::string InferredSuffix("_END");
-    static std::string IfunSuffix("_IFUNC");
-
     std::map<gtirb::Symbol *, std::string> NewNames;
     for(gtirb::Symbol &Sym : Module.symbols())
     {
-        std::string Prefix(""), Suffix("");
+        std::regex Pattern("(?:.L_|FUN_)(\\d+)(?:_END|_IFUNC|)");
+        std::smatch Matches;
         const std::string &Name = Sym.getName();
-        if(Name.find(InferredPrefix) == 0)
+        if(std::regex_match(Name, Matches, Pattern))
         {
-            Prefix = InferredPrefix;
-        }
-        else if(Name.find(FunPrefix) == 0)
-        {
-            Prefix = FunPrefix;
-        }
-        if(!Prefix.empty())
-        {
-            if(Name.rfind(InferredSuffix) != Name.npos)
+            try
             {
-                Suffix = InferredSuffix;
+                std::stringstream S;
+                S << Name.substr(0, Matches.position(1)) << std::hex << std::stoull(Matches.str(1))
+                  << Name.substr(Matches.position(1) + Matches.length(1));
+                NewNames[&Sym] = S.str();
             }
-            else if(Name.rfind(IfunSuffix) != Name.npos)
+            catch(std::invalid_argument const &Ex)
             {
-                Suffix = IfunSuffix;
+                std::cerr << "ERROR: could not rename symbol '" << Name << "' to hex" << std::endl;
             }
-            std::stringstream S;
-            S << Prefix << std::hex
-              << std::stoul(Name.substr(Prefix.size(), Name.size() - Prefix.size() - Suffix.size()))
-              << Suffix;
-            NewNames[&Sym] = S.str();
+            catch(std::out_of_range const &Ex)
+            {
+                std::cerr << "ERROR: could not rename symbol '" << Name
+                          << "' to hex (invalid range)" << std::endl;
+            }
         }
     }
     for(auto [Sym, NewName] : NewNames)
