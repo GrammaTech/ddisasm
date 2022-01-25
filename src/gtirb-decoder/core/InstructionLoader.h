@@ -145,6 +145,11 @@ public:
         InvalidInstructions.push_back(A);
     }
 
+    void shiftedOp(const relations::ShiftedOp& Op)
+    {
+        ShiftedOps.push_back(Op);
+    }
+
     const std::vector<relations::Instruction>& instructions() const
     {
         return Instructions;
@@ -155,9 +160,15 @@ public:
         return InvalidInstructions;
     }
 
+    const std::vector<relations::ShiftedOp>& shiftedOps() const
+    {
+        return ShiftedOps;
+    }
+
 private:
     std::vector<relations::Instruction> Instructions;
     std::vector<gtirb::Addr> InvalidInstructions;
+    std::vector<relations::ShiftedOp> ShiftedOps;
 };
 
 template <typename T>

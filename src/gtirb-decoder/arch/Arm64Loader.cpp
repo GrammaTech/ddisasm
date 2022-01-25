@@ -31,6 +31,7 @@ void Arm64Loader::insert(const Arm64Facts& Facts, DatalogProgram& Program)
     auto& [Instructions, Operands] = Facts;
     Program.insert("instruction", Instructions.instructions());
     Program.insert("invalid_op_code", Instructions.invalid());
+    Program.insert("op_shifted", Instructions.shiftedOps());
     Program.insert("op_immediate", Operands.imm());
     Program.insert("op_regdirect", Operands.reg());
     Program.insert("op_fp_immediate", Operands.fp_imm());
@@ -70,6 +71,7 @@ std::optional<relations::Instruction> Arm64Loader::build(Arm64Facts& Facts,
 {
     const cs_arm64& Details = CsInstruction.detail->arm64;
     std::string Name = uppercase(CsInstruction.mnemonic);
+    gtirb::Addr Addr(CsInstruction.address);
     std::vector<uint64_t> OpCodes;
 
     if(Name != "NOP")
@@ -90,6 +92,33 @@ std::optional<relations::Instruction> Arm64Loader::build(Arm64Facts& Facts,
             // Add operand to the operands table.
             uint64_t OpIndex = Facts.Operands.add(*Op);
             OpCodes.push_back(OpIndex);
+
+            // Populate shift metadata if present.
+            if(CsOp.type == ARM64_OP_REG && CsOp.shift.value != 0)
+            {
+                std::string ShiftType;
+                switch(CsOp.shift.type)
+                {
+                    case ARM64_SFT_LSL:
+                        ShiftType = "LSL";
+                        break;
+                    case ARM64_SFT_MSL:
+                        ShiftType = "MSL";
+                        break;
+                    case ARM64_SFT_LSR:
+                        ShiftType = "LSR";
+                        break;
+                    case ARM64_SFT_ASR:
+                        ShiftType = "ASR";
+                        break;
+                    case ARM64_SFT_ROR:
+                        ShiftType = "ROR";
+                        break;
+                }
+                Facts.Instructions.shiftedOp(
+                    relations::ShiftedOp{Addr, static_cast<uint8_t>(i + 1),
+                                         static_cast<uint8_t>(CsOp.shift.value), ShiftType});
+            }
         }
         // Put the destination operand at the end of the operand list.
         if(OpCount > 0)
@@ -98,7 +127,6 @@ std::optional<relations::Instruction> Arm64Loader::build(Arm64Facts& Facts,
         }
     }
 
-    gtirb::Addr Addr(CsInstruction.address);
     uint64_t Size(CsInstruction.size);
     return relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0};
 }
