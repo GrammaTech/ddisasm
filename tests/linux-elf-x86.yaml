@@ -40,6 +40,11 @@ position-independent: &position-independent
     flags: ["-m32", "-fpie"]
     skip: false
 
+strip: &strip
+  test:
+    strip_exe: "strip"
+    strip: true
+
 tests:
   # ----------------------------------------------------------------------------
   # Small C and C++ examples.
@@ -222,3 +227,14 @@ tests:
     reassemble:
       compiler: "g++"
       flags: ["-m32", "-lpthread", "-fpie"]
+
+  # ----------------------------------------------------------------------------
+  # Small C and C++ examples. (stripped)
+  # ----------------------------------------------------------------------------
+  - name: ex1
+    <<: *default
+    <<: *strip
+
+  - name: ex1
+    <<: *position-independent
+    <<: *strip
