@@ -117,30 +117,6 @@ symbol_minus_symbol(EA+ImmediateOffset,4,EA,Ref,1,0):-
     def_used(Ref,_,EA,_),
     Got = Ref+as(Value,address).
 
-// add EBX,OFFSET _GLOBAL_OFFSET_TABLE_+(.L_804925f-.L_804925e)
-// ...
-// lea EBP,DWORD PTR [EBX+EDI*4]
-// add EBP,OFFSET .L_804bf04@GOTOFF
-// TODO: Offcut label for unknown reason. Possible optimization for known minimum value.
-// NOTE: ex_switch: clang -Os -m32 -fpie
-moved_label_class(EA,Index,"unknown"),
-moved_label(EA,Index,Dest,Dest+4),
-got_relative_operand(EA,Index,Dest):-
-    reg_has_got(Base,Reg1),
-    // load
-    def_used(Base,Reg1,Load,_),
-    instruction_get_operation(Load,"LEA"),
-    instruction_get_op(Load,_,Op),
-    op_indirect(Op,"NONE",Reg1,_,_,Offset,_), Offset = 0,
-    // add
-    def_used(Load,Reg2,EA,_),
-    op_immediate_and_reg(EA,"ADD",Reg2,Index,Value),
-    got_reference_pointer(Got),
-    Dest=Got+as(Value,address).
-
-symbolic_operand_candidate(EA,Index,Dest,"data"):-
-    got_relative_operand(EA,Index,Dest).
-
 symbolic_operand_attribute(EA,Index,"PltRef"):-
     (
       direct_jump(EA,_);
