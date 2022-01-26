@@ -258,33 +258,59 @@ do_infer_main_function():-
 /**
  * Locate where main() is dispatched (i.e., where __libc_start_main is called.)
  */
-.decl main_function_dispatch(EA:address)
+.decl inferred_main_dispatch(EA:address)
+.output inferred_main_dispatch
 
-main_function_dispatch(CallEA):-
+// Most runtimes dispatch main with the first "call" from the binary entry point.
+inferred_main_dispatch(EA):-
+    !binary_isa("X86"),
     do_infer_main_function(),
-    CallEA = min EA:{
+    EA = min EA:{
         start_function(Entry),
         instruction(EA,_,_,CallOp,_,_,_,_,_,_),
         arch.call_operation(CallOp),
         code(EA),
-        EA>=Entry
+        EA >= Entry
     }.
+
+// ELF X86-32 may have an additional function call in _start, so we add an
+// additional heuristic that checks for a consecutive HLT instruction.
+inferred_main_dispatch(EA):-
+    binary_isa("X86"),
+    do_infer_main_function(),
+    EA = min EA:{
+        start_function(Entry),
+        instruction(EA,_,_,CallOp,_,_,_,_,_,_),
+        arch.call_operation(CallOp),
+        code(EA),
+        next(EA,HltEA),
+        instruction(HltEA,_,_,"HLT",_,_,_,_,_,_),
+        EA >= Entry
+     }.
 
 /**
 * Infer the location of the main function.
 */
 .decl inferred_main_function(Main_location:address)
+
 inferred_main_function(Main_location):-
-    arch.main_load_reg(Main_load, Reg),
+    arch.inferred_main_reg(Main_load,Reg),
     def_used(EA_def,Reg,Main_load,_),
     value_reg(EA_def,Reg,_,"NONE",_,Offset,_),
     Main_location = as(Offset, address),
     code(Main_location).
 
+inferred_main_function(Main):-
+    arch.inferred_main_reg(EA,Reg),
+    instruction_get_op(EA,_,Op),
+    op_indirect_contains_reg(Op,Reg),
+    symbolic_operand(EA,_,Dest,"data"),
+    address_in_data(Dest,Main).
+
 // Inform the use_def analysis that the register is used here as an address.
 used(Main_load,Reg,0),
 used_for_address(Main_load,Reg):-
-    arch.main_load_reg(Main_load, Reg).
+    arch.inferred_main_reg(Main_load, Reg).
 
 main_function(Main_location):-
     inferred_main_function(Main_location).
