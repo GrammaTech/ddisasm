@@ -1046,7 +1046,7 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
         for(auto currentAddr = begin; currentAddr < end;
             /*incremented in each case*/)
         {
-            gtirb::DataBlock *d;
+            gtirb::DataBlock *d = nullptr;
             if(auto it = module.findByteIntervalsOn(currentAddr); !it.empty())
             {
                 if(gtirb::ByteInterval &byteInterval = *it.begin(); byteInterval.getAddress())
