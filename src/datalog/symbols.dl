@@ -129,6 +129,8 @@ inferred_symbol(EA,SymbolName,"GLOBAL","FUNC",0),
 best_func_symbol(EA,SymbolName):-
     function_inference.function_entry(EA),
     !symbol_score(EA,_,"FUNC",0,_),
+    // TODO: Function symbols are converted to hex in the C++.
+    // A better solution would be to define a user-defined functor.
     SymbolName = cat("FUN_",to_string(EA)).
 
 // Choose:
@@ -150,6 +152,8 @@ best_symexpr_symbol(EA,SymbolName,0):-
     labeled_data(EA),
     !symbol_score(EA,_,_,0,_),
     !best_func_symbol(EA,_),
+    // TODO: Inferred symbols are converted to hex in the C++.
+    // A better solution would be to define a user-defined functor.
     SymbolName = cat(".L_",to_string(EA)).
 
 inferred_symbol(EA,SymbolName,"LOCAL","NONE",1),
@@ -157,6 +161,8 @@ best_symexpr_symbol(EA,SymbolName,1):-
     labeled_data(EA),
     boundary_label(_,_,EA),
     !symbol_score(EA,_,_,1,_),
+    // TODO: Inferred symbols are converted to hex in the C++.
+    // A better solution would be to define a user-defined functor.
     SymbolName = cat(cat(".L_",to_string(EA)),"_END").
 
 
