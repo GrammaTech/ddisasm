@@ -141,8 +141,8 @@ best_func_symbol(EA,SymbolName):-
 
 // Choose:
 // 1. the symbol with maximum score
-// 2. the inferred function symbol (only for Pos=0)
-// 3. or generate a new symbol if have a labeled location without symbols.
+// 2. the inferred function symbol (only for Pos=$Beginning())
+// 3. or generate a new symbol if we have a labeled location without symbols.
 
 best_symexpr_symbol(EA,SymbolName,Pos):-
     symbol_score(EA,SymbolName,_,Pos,Score),
