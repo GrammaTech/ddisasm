@@ -229,9 +229,9 @@ basic_target(Val):-
         address_in_data(EA,Val),
         relocation(EA,_,_,_,_,_,_)
         ;
-        !binary_isa("ARM"),
         binary_type("EXEC"),
-        address_in_data(_,Val)
+        address_in_data(_,Val),
+        !impossible_jump_target(Val)
         ;
         entry_point(Val)
         ;
@@ -387,6 +387,30 @@ The candidate is located at address 'Block' and has 'Size' bytes.
 
 data_block_candidate(Block,Size):-
     relative_address(Block,Size,_,_,_,_).
+
+.decl within_funcsym(EA:address)
+
+within_funcsym(EA):-
+    possible_ea(EA),
+    symbol(SymEA,FuncSize,"FUNC",_,_,_,_,_),
+    EA >= SymEA,
+    EA < SymEA + FuncSize.
+
+block_points(Block,"data",0,Points,"arm string"),
+data_block_candidate(Block,Size):-
+    ascii_string(Block,Size),
+    (
+        symbol(Block,_,_,_,_,_,_,_)
+        ;
+        address_in_data(EA,Block),
+        arch.pointer_size(Pt_size),
+        EA % Pt_size = 0
+    ),
+    (
+        !within_funcsym(Block), Points = 7
+        ;
+        within_funcsym(Block), Points = 2
+    ).
 
 /**
 The block candidate defined by address 'Block' extends from 'BegAddr' to 'EndAddr'.

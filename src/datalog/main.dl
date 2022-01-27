@@ -390,6 +390,11 @@ direct_jump(EA,as(Dest,address)):-
 direct_jump(EA,EA):-
     instruction_has_loop_prefix(EA).
 
+.decl impossible_jump_target(EA:address)
+
+impossible_jump_target(0):-
+    false.
+
 // Special kinds of indirect jumps
 // PC relative jumps
 .decl pc_relative_jump(src:address, dest:address)

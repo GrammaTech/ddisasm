@@ -196,7 +196,7 @@ invalid(EA,"arm: pc is not allowed"):-
 
 invalid(EA,"arm: sp is not allowed"):-
     instruction_get_operation(EA,Operation),
-    contains("AND",Operation),
+    substr(Operation,0,3) = "AND",
     instruction_get_src_op(EA,_,Op),
     op_regdirect_contains_reg(Op,SP),
     arch.stack_pointer(SP).
@@ -603,8 +603,6 @@ arm_jump_table_candidate(EA,TableStart,TableStart,Size,TargetAddr,TableLimit,"TB
     ),
     code_in_block_candidate(TargetAddr,_).
 
-block_points(EA+Size,"data",0,4,"arm jump table (recursive)"),
-data_block_candidate(EA+Size,Size),
 arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimit,Type,Depth+1):-
     // recursive
     arm_jump_table_candidate(EA_jump,TableStart,EA,Size,_,TableLimit,Type,Depth),
@@ -755,7 +753,7 @@ block_points(LitPoolAddr,"data",0,11,"arm literal pool"):-
 //   0:   strb r3, [r0, #53]
 //   4:   ldrb r3, [r5, #1]
 // The strb instruction is 4 bytes, and the higher 2 bytes happens
-// to be subs insruction, so the blocks are overlapping.
+// to be subs instruction, so the blocks are overlapping.
 // The block with strb at 0 is real and the must-through predecessor
 // of the block at 4.
 // Whereas, the subs block do not have any successor.
@@ -1006,7 +1004,10 @@ conditional_return(EA):-
     arch.return(EA),
     it_conditional(EA).
 
-basic_target(Val):-
-    binary_type("EXEC"),
-    address_in_data(_,Val),
-    !it_conditional(Val).
+impossible_jump_target(Val):-
+    possible_ea(Val),
+    it_conditional(Val).
+
+block_points(Block,"code",0,-5,"in the middle of IT block"):-
+    code_in_block_candidate(_,Block),
+    it_conditional(Block).
