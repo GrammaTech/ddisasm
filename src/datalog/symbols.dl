@@ -29,7 +29,7 @@ the predicates needed to infer new symbols.
 /**
 A new symbol 'SymbolName' at address 'EA' should be created.
 */
-.decl inferred_symbol(EA:address,SymbolName:symbol,Scope:symbol, Type: symbol, AtEnd:number)
+.decl inferred_symbol(EA:address,SymbolName:symbol,Scope:symbol,Type:symbol,AtEnd:number)
 .output inferred_symbol
 
 /**
@@ -37,7 +37,7 @@ A special symbol 'SymbolName' at address 'EA' has been inferred.
 Special inferred symbols have higher priority than regular
 inferred symbols.
 */
-.decl inferred_special_symbol(EA:address,SymbolName:symbol,Scope:symbol, Type: symbol,AtEnd:number)
+.decl inferred_special_symbol(EA:address,SymbolName:symbol,Scope:symbol,Type:symbol,AtEnd:number)
 
 inferred_special_symbol(EA,"main","GLOBAL","FUNC",0):-
     binary_format("ELF"),
@@ -52,7 +52,7 @@ Best symbol at address 'EA' to be used for symbolic expressions. There
 can be two variants: If 'AtEnd' is 0, the symbol points to the beginning
 of a block. If 'AtEnd' is 1, the symbol points at the end of a block.
 */
-.decl best_symexpr_symbol(EA:address,SymbolName:symbol, AtEnd:number)
+.decl best_symexpr_symbol(EA:address,SymbolName:symbol,AtEnd:number)
 .output best_symexpr_symbol
 
 /**
@@ -66,7 +66,7 @@ This predicate is computed to decide which is the best symbol for
 symbolic expressions or the best function symbol at each address.
 Each symbol receives a score based on its properties.
 */
-.decl symbol_score(EA:address, SymbolName:symbol, Type:symbol, AtEnd:number, Score:unsigned)
+.decl symbol_score(EA:address,SymbolName:symbol,Type:symbol,AtEnd:number,Score:unsigned)
 .output symbol_score
 
 
