@@ -496,6 +496,11 @@ halt(EA):-
     arch.halt_operation(Operation),
     instruction_get_operation(EA,Operation).
 
+.decl alignment(EA:address,AlignInBits:unsigned)
+.output alignment
+
+alignment(0,0):- false.
+
 //////////////////////////////////////////////////////////////////////////////////
 // Operations to abstract features of instructions
 

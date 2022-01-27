@@ -626,7 +626,13 @@ arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimi
         // The target address points beyond our current limit - keep propagating.
         AlignedTargetAddr >= TableLimit, NewTableLimit = TableLimit
     ),
-    code_in_block_candidate(TargetAddr,_).
+    code_in_block_candidate(TargetAddr,_),
+    // Target address cannot be within the table itself
+    (
+        TargetAddr < TableStart
+        ;
+        TargetAddr > NewTableLimit
+    ).
 
 // Aggregate arm_jump_table_candidate in one data block
 block_points(TableStart,"data",0,Points,"arm jump table"),
@@ -678,6 +684,33 @@ litpool_ref(EA,Reg,LitPoolAddr,NBits):-
     EA_aligned = as(EA-(EA band 3),address),
     Addr = as(EA_aligned,number)+Offset+as(Disp,number),
     LitPoolAddr = as(Addr,address).
+
+// VLDR: label must be aligned on a word boundary within -/+1KB of the
+// current instruction.
+alignment(LitPoolAddr,4):-
+    litpool_ref(EA,_,LitPoolAddr,_),
+    instruction_get_operation(EA,"VLDR"),
+    instruction_get_dest_op(EA,_,DestReg),
+    op_regdirect_contains_reg(DestReg,Reg),
+    // Only align the first literal pool for consecutive pools.
+    // If Dest reg is S, one word; two words otherwise.
+    (
+        substr(Reg,0,1) = "S",
+        (
+            !litpool_ref(_,_,LitPoolAddr-4,_)
+            ;
+            litpool_ref(EA0,_,LitPoolAddr-4,_),
+            !instruction_get_operation(EA0,"VLDR")
+        )
+        ;
+        substr(Reg,0,1) != "S",
+        (
+            !litpool_ref(_,_,LitPoolAddr-8,_)
+            ;
+            litpool_ref(EA0,_,LitPoolAddr-8,_),
+            !instruction_get_operation(EA0,"VLDR")
+        )
+    ).
 
 .decl litpool_ref_double(ea:address, reg1:register, reg2:register, ea_litpool:address)
 .output litpool_ref_double

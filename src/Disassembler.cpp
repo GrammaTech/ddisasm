@@ -336,6 +336,20 @@ struct SymbolSpecialType
     std::string Type;
 };
 
+struct Alignment
+{
+    explicit Alignment(gtirb::Addr A) : EA(A)
+    {
+    }
+    explicit Alignment(souffle::tuple &T)
+    {
+        assert(T.size() == 2);
+        T >> EA >> Num;
+    }
+    gtirb::Addr EA{0};
+    uint64_t Num{0};
+};
+
 struct SymbolicInfo
 {
     VectorByEA<MovedLabel> MovedLabels;
@@ -1011,6 +1025,13 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
     auto DataBoundary = convertSortedRelation<std::set<gtirb::Addr>>("data_object_boundary", prog);
     auto symbolicDataAttributes =
         convertSortedRelation<VectorByEA<SymbolicDataAttribute>>("symbolic_data_attribute", prog);
+    auto Alignments = convertSortedRelation<VectorByEA<Alignment>>("alignment", prog);
+
+    auto *Alignment = module.getAuxData<gtirb::schema::Alignment>();
+    if(!Alignment)
+    {
+        std::cerr << "ERROR: Missing `Alignment' AuxData table\n";
+    }
 
     std::map<gtirb::UUID, std::string> typesTable;
 
@@ -1141,6 +1162,13 @@ void buildDataBlocks(gtirb::Context &context, gtirb::Module &module, souffle::So
                         typesTable[d->getUUID()] = specialType->Type;
                     byteInterval.addBlock(blockOffset, d);
                     currentAddr += d->getSize();
+                }
+            }
+            if(d && Alignment)
+            {
+                const auto AlignInfo = Alignments.find(*d->getAddress());
+                if(AlignInfo != Alignments.end()) {
+                    (*Alignment)[d->getUUID()] = AlignInfo->Num;
                 }
             }
         }
