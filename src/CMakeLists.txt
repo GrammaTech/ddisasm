@@ -24,6 +24,7 @@ else()
 endif()
 
 set(DATALOG_BASE_SOURCES
+    datalog/arch/arch.dl
     datalog/binary/elf/elf_binaries.dl
     datalog/binary/elf/exceptions.dl
     datalog/binary/elf/relocations.dl
@@ -36,6 +37,7 @@ set(DATALOG_BASE_SOURCES
     datalog/data_access_analysis.dl
     datalog/empty_range.dl
     datalog/basic_function_inference.dl
+    datalog/jump_tables.dl
     datalog/main.dl
     datalog/pointer_reatribution.dl
     datalog/register_type_analysis.dl
