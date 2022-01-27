@@ -507,7 +507,7 @@ symbol_minus_symbol_from_relocation(EA,4,SymbolName2,"_GLOBAL_OFFSET_TABLE_",1,-
     binary_type("REL"),
     relocation(EA,"BASE_PREL","_GLOBAL_OFFSET_TABLE_",_,_,_,_),
     symbol_minus_symbol_candidate(_,4,_,EA,1,_,Symbol2,_),
-    best_symexpr_symbol(Symbol2,SymbolName2,0).
+    best_symexpr_symbol(Symbol2,SymbolName2,$Beginning()).
 
 /**
 Represents an entry in an ARM jump table.
