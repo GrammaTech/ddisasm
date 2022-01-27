@@ -189,7 +189,7 @@ Arithmetic operation on two source registers
 /**
 The location and register where the address of main is loaded.
  */
-.decl inferred_main_reg(EA:address,Reg:register)
+.decl inferred_main_in_reg(EA:address,Reg:register)
 
 // ===========================================================================
 // Registers

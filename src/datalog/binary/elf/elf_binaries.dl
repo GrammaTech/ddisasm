@@ -293,14 +293,14 @@ inferred_main_dispatch(CallEA):-
 .decl inferred_main_function(Main_location:address)
 
 inferred_main_function(Main_location):-
-    arch.inferred_main_reg(Main_load,Reg),
+    arch.inferred_main_in_reg(Main_load,Reg),
     def_used(EA_def,Reg,Main_load,_),
     value_reg(EA_def,Reg,_,"NONE",_,Offset,_),
     Main_location = as(Offset, address),
     code(Main_location).
 
 inferred_main_function(Main):-
-    arch.inferred_main_reg(EA,Reg),
+    arch.inferred_main_in_reg(EA,Reg),
     instruction_get_op(EA,_,Op),
     op_indirect_contains_reg(Op,Reg),
     symbolic_operand(EA,_,Dest,"data"),
@@ -309,7 +309,7 @@ inferred_main_function(Main):-
 // Inform the use_def analysis that the register is used here as an address.
 used(EA,Reg,0),
 used_for_address(EA,Reg):-
-    arch.inferred_main_reg(EA,Reg).
+    arch.inferred_main_in_reg(EA,Reg).
 
 main_function(Main_location):-
     inferred_main_function(Main_location).
