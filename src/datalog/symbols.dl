@@ -25,11 +25,17 @@ This module select the symbols to be used in symbolic expressions and declares
 the predicates needed to infer new symbols.
 */
 
+/**
+Type to determine whether a symbol is pointing to the
+beginning or the end of a block.
+*/
+.type symbolPosition = Beginning {}
+                     | End {}
 
 /**
 A new symbol 'SymbolName' at address 'EA' should be created.
 */
-.decl inferred_symbol(EA:address,SymbolName:symbol,Scope:symbol,Type:symbol,AtEnd:number)
+.decl inferred_symbol(EA:address,SymbolName:symbol,Scope:symbol,Type:symbol,Pos:symbolPosition)
 .output inferred_symbol
 
 /**
@@ -37,22 +43,22 @@ A special symbol 'SymbolName' at address 'EA' has been inferred.
 Special inferred symbols have higher priority than regular
 inferred symbols.
 */
-.decl inferred_special_symbol(EA:address,SymbolName:symbol,Scope:symbol,Type:symbol,AtEnd:number)
+.decl inferred_special_symbol(EA:address,SymbolName:symbol,Scope:symbol,Type:symbol,Pos:symbolPosition)
 
-inferred_special_symbol(EA,"main","GLOBAL","FUNC",0):-
+inferred_special_symbol(EA,"main","GLOBAL","FUNC",$Beginning()):-
     binary_format("ELF"),
     main_function(EA).
 
-inferred_symbol(EA,SymbolName,Scope,Type,AtEnd),
-symbol_score(EA,SymbolName,Type,AtEnd,1):-
-    inferred_special_symbol(EA,SymbolName,Scope,Type,AtEnd).
+inferred_symbol(EA,SymbolName,Scope,Type,Pos),
+symbol_score(EA,SymbolName,Type,Pos,1):-
+    inferred_special_symbol(EA,SymbolName,Scope,Type,Pos).
 
 /**
 Best symbol at address 'EA' to be used for symbolic expressions. There
-can be two variants: If 'AtEnd' is 0, the symbol points to the beginning
-of a block. If 'AtEnd' is 1, the symbol points at the end of a block.
+can be two variants: If 'Pos' is 0, the symbol points to the beginning
+of a block. If 'Pos' is 1, the symbol points at the end of a block.
 */
-.decl best_symexpr_symbol(EA:address,SymbolName:symbol,AtEnd:number)
+.decl best_symexpr_symbol(EA:address,SymbolName:symbol,Pos:symbolPosition)
 .output best_symexpr_symbol
 
 /**
@@ -66,17 +72,17 @@ This predicate is computed to decide which is the best symbol for
 symbolic expressions or the best function symbol at each address.
 Each symbol receives a score based on its properties.
 */
-.decl symbol_score(EA:address,SymbolName:symbol,Type:symbol,AtEnd:number,Score:unsigned)
+.decl symbol_score(EA:address,SymbolName:symbol,Type:symbol,Pos:symbolPosition,Score:unsigned)
 .output symbol_score
 
 
-symbol_score(EA,SymbolName,Type,AtEnd,Score):-
+symbol_score(EA,SymbolName,Type,Pos,Score):-
     symbol(EA,_,Type,Scope,Visibility,_,_,TableIndex,SymbolName),
     !ambiguous_symbol(SymbolName),
     !avoid_symbols(SymbolName),
     (
-        symbol_at_section_end(EA,SymbolName), AtEnd = 1;
-        !symbol_at_section_end(EA,SymbolName), AtEnd = 0
+        symbol_at_section_end(EA,SymbolName), Pos = $End();
+        !symbol_at_section_end(EA,SymbolName), Pos = $Beginning()
     ),
     (
         relocation(EA,"COPY",SymbolName,_,_,_,_), RelocScore = 1;
@@ -122,45 +128,45 @@ avoid_symbols("__TMC_END__").
 // and no pre-existing function symbols.
 
 best_func_symbol(EA,SymbolName):-
-   symbol_score(EA,SymbolName,"FUNC",0,Score),
-   Score = max S: {symbol_score(EA,_,"FUNC",0,S)}.
+   symbol_score(EA,SymbolName,"FUNC",$Beginning(),Score),
+   Score = max S: {symbol_score(EA,_,"FUNC",$Beginning(),S)}.
 
-inferred_symbol(EA,SymbolName,"GLOBAL","FUNC",0),
+inferred_symbol(EA,SymbolName,"GLOBAL","FUNC",$Beginning()),
 best_func_symbol(EA,SymbolName):-
     function_inference.function_entry(EA),
-    !symbol_score(EA,_,"FUNC",0,_),
+    !symbol_score(EA,_,"FUNC",$Beginning(),_),
     // TODO: Function symbols are converted to hex in the C++.
     // A better solution would be to define a user-defined functor.
     SymbolName = cat("FUN_",to_string(EA)).
 
 // Choose:
 // 1. the symbol with maximum score
-// 2. the inferred function symbol (only for AtEnd=0)
+// 2. the inferred function symbol (only for Pos=0)
 // 3. or generate a new symbol if have a labeled location without symbols.
 
-best_symexpr_symbol(EA,SymbolName,AtEnd):-
-    symbol_score(EA,SymbolName,_,AtEnd,Score),
-    Score = max S: {symbol_score(EA,_,_,AtEnd,S)}.
+best_symexpr_symbol(EA,SymbolName,Pos):-
+    symbol_score(EA,SymbolName,_,Pos,Score),
+    Score = max S: {symbol_score(EA,_,_,Pos,S)}.
 
-best_symexpr_symbol(EA,SymbolName,0):-
+best_symexpr_symbol(EA,SymbolName,$Beginning()):-
     labeled_data(EA),
-    !symbol_score(EA,_,_,0,_),
+    !symbol_score(EA,_,_,$Beginning(),_),
     best_func_symbol(EA,SymbolName).
 
-inferred_symbol(EA,SymbolName,"LOCAL","NONE",0),
-best_symexpr_symbol(EA,SymbolName,0):-
+inferred_symbol(EA,SymbolName,"LOCAL","NONE",$Beginning()),
+best_symexpr_symbol(EA,SymbolName,$Beginning()):-
     labeled_data(EA),
-    !symbol_score(EA,_,_,0,_),
+    !symbol_score(EA,_,_,$Beginning(),_),
     !best_func_symbol(EA,_),
     // TODO: Inferred symbols are converted to hex in the C++.
     // A better solution would be to define a user-defined functor.
     SymbolName = cat(".L_",to_string(EA)).
 
-inferred_symbol(EA,SymbolName,"LOCAL","NONE",1),
-best_symexpr_symbol(EA,SymbolName,1):-
+inferred_symbol(EA,SymbolName,"LOCAL","NONE",$End()),
+best_symexpr_symbol(EA,SymbolName,$End()):-
     labeled_data(EA),
     boundary_label(_,_,EA),
-    !symbol_score(EA,_,_,1,_),
+    !symbol_score(EA,_,_,$End(),_),
     // TODO: Inferred symbols are converted to hex in the C++.
     // A better solution would be to define a user-defined functor.
     SymbolName = cat(cat(".L_",to_string(EA)),"_END").
@@ -187,7 +193,7 @@ symbol_at_section_end(EA,SymbolName):-
     EA = Beg + Size.
 
 symbol_at_end(EA,SymbolName):-
-    inferred_symbol(EA,SymbolName,_,_,1).
+    inferred_symbol(EA,SymbolName,_,_,$End()).
 
 /**
 The symbol at address 'EA' with name 'SymbolName' is pointing
