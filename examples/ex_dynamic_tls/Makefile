@@ -7,7 +7,7 @@ all: ex.c fun.c
 	@LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. ./ex > out.txt
 clean:
 	rm -f ex out.txt
-	rm -fr ex.unstripped *.so *.s *.old*  dl_files
+	rm -fr ex.unstripped *.so *.s *.old*  dl_files *.gtirb
 check:
 	@LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. ./ex >/tmp/res.txt
 	@ diff out.txt /tmp/res.txt && echo TEST OK

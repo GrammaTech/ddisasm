@@ -21,11 +21,12 @@ default: &default
     skip: false
 
   # Test configuration.
-  test:
+  test: &default-test
     wrapper: "qemu-aarch64 -L /usr/aarch64-linux-gnu"
     strip_exe: "aarch64-linux-gnu-strip"
     strip: false
     skip: false
+    check_cfg: true
 
 zero-one-two-three-optimize: &zero-one-two-three-optimize
   <<: *default
@@ -83,6 +84,11 @@ tests:
       flags: []
       skip: false
 
+    test:
+      <<: *default-test
+      # Don't check CFG on C++ binaries
+      check_cfg: false
+
   - name: ex_noreturn
     <<: *default
 
@@ -114,6 +120,11 @@ tests:
       compiler: "aarch64-linux-gnu-g++"
       flags: []
       skip: false
+
+    test:
+      <<: *default-test
+      # Don't check CFG on C++ binaries
+      check_cfg: false
 
   - name: ex_cond_branch
     <<: *assembly

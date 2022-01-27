@@ -18,10 +18,22 @@ default: &default
     skip: false
 
   # Test configuration.
-  test:
+  test: &default-test
     wrapper: null
     strip_exe: "strip"
     strip: false
+    skip: false
+    check_cfg: true
+
+cpp: &default-cpp
+  <<: *default
+  test:
+    <<: *default-test
+    # Don't run CFG checks on CPP binaries
+    check_cfg: false
+  reassemble:
+    compiler: "g++"
+    flags: ["-m32", "-fno-pie", "-no-pie"]
     skip: false
 
 position-independent: &position-independent
@@ -45,6 +57,17 @@ strip: &strip
     strip_exe: "strip"
     strip: true
 
+position-independent-cpp: &position-independent-cpp
+  <<: *position-independent
+  test:
+    <<: *default-test
+    # Don't run CFG checks on CPP binaries
+    check_cfg: false
+  reassemble:
+    compiler: "g++"
+    flags: ["-m32", "-pie"]
+    skip: false
+
 tests:
   # ----------------------------------------------------------------------------
   # Small C and C++ examples.
@@ -56,28 +79,20 @@ tests:
     <<: *default
 
   - name: ex_exceptions1
-    <<: *default
-    reassemble:
-      compiler: "g++"
-      flags: ["-m32", "-fno-pie", "-no-pie"]
-      skip: false
+    <<: *default-cpp
 
   - name: ex_exceptions2
-    <<: *default
-    reassemble:
-      compiler: "g++"
-      flags: ["-m32", "-fno-pie", "-no-pie"]
-      skip: false
+    <<: *default-cpp
 
   - name: ex_exceptions3
-    <<: *default
-    reassemble:
-      compiler: "g++"
-      flags: ["-m32", "-fno-pie", "-no-pie"]
-      skip: false
+    <<: *default-cpp
 
   - name: ex_false_pointer_array
     <<: *default
+    test:
+      <<: *default-test
+      # TODO: this example fails because function pointers are not resolved in the CFG
+      check_cfg: false
 
   - name: ex_float
     <<: *default
@@ -89,11 +104,7 @@ tests:
     <<: *default
 
   - name: ex_memberPointer
-    <<: *default
-    reassemble:
-      compiler: "g++"
-      flags: ["-m32", "-no-pie"]
-      skip: false
+    <<: *default-cpp
 
   - name: ex_noreturn
     <<: *default
@@ -117,23 +128,19 @@ tests:
     <<: *default
 
   - name: ex_virtualDispatch
-    <<: *default
-    reassemble:
-      compiler: "g++"
-      flags: ["-m32", "-no-pie"]
-      skip: false
+    <<: *default-cpp
 
   - name: ex_thread_local
     <<: *default
 
   - name: ex_threads
-    <<: *default
+    <<: *default-cpp
     reassemble:
       compiler: "g++"
       flags: ["-m32", "-lpthread", "-no-pie", "-fno-pie"]
 
   - name: ex_call_once
-    <<: *default
+    <<: *default-cpp
     build:
         c: ["gcc"]
         cpp: ["g++"]
@@ -156,24 +163,19 @@ tests:
     <<: *position-independent
 
   - name: ex_exceptions1
-    <<: *position-independent
-    reassemble:
-      compiler: "g++"
-      flags: ["-m32", "-pie"]
-      skip: false
+    <<: *position-independent-cpp
 
   - name: ex_exceptions2
-    <<: *position-independent
-    reassemble:
-      compiler: "g++"
-      flags: ["-m32", "-pie"]
-      skip: false
-
+    <<: *position-independent-cpp
   # TODO:
   # ex_exceptions3
 
   - name: ex_false_pointer_array
     <<: *position-independent
+    test:
+      <<: *default-test
+      # TODO: this example fails because function pointers are not resolved in the CFG
+      check_cfg: false
 
   - name: ex_float
     <<: *position-independent
@@ -185,11 +187,7 @@ tests:
     <<: *position-independent
 
   - name: ex_memberPointer
-    <<: *position-independent
-    reassemble:
-      compiler: "g++"
-      flags: ["-m32"]
-      skip: false
+    <<: *position-independent-cpp
 
   - name: ex_noreturn
     <<: *position-independent
@@ -214,17 +212,13 @@ tests:
     <<: *position-independent
 
   - name: ex_virtualDispatch
-    <<: *position-independent
-    reassemble:
-      compiler: "g++"
-      flags: ["-m32"]
-      skip: false
+    <<: *position-independent-cpp
 
   - name: ex_thread_local
     <<: *position-independent
 
   - name: ex_threads
-    <<: *position-independent
+    <<: *position-independent-cpp
     reassemble:
       compiler: "g++"
       flags: ["-m32", "-lpthread", "-fpie"]
