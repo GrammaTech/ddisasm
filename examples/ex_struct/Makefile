@@ -7,7 +7,7 @@ all: ex.c
 	@ $(EXEC) ./ex > out.txt
 clean:
 	rm -f ex out.txt
-	rm -fr ex.unstripped *.s *.old*  dl_files
+	rm -fr ex.unstripped *.s *.old*  dl_files *.gtirb
 check:
 	@ $(EXEC) ./ex >/tmp/res.txt
 	@ diff out.txt /tmp/res.txt && echo TEST OK

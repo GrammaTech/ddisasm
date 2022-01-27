@@ -18,16 +18,31 @@ default: &default
     skip: false
 
   # Test configuration.
-  test:
+  test: &default-test
     wrapper: null
     strip_exe: "strip"
     strip: false
     skip: false
+    check_cfg: true
+
+cpp: &default-cpp
+  <<: *default
+  reassemble:
+    compiler: "g++"
+    flags: ["-no-pie"]
+    skip: false
+
+  test:
+    <<: *default-test
+    check_cfg: false
 
 test-strip-default: &test-strip-default
   test:
     strip_exe: "strip"
     strip: true
+    # We don't check the CFG for stripped binaries, as there are some false
+    # positives in startup code that are hard to filter out.
+    check_cfg: false
 
 assembly: &assembly
   <<: *default
@@ -57,6 +72,10 @@ c-object: &c-object
     linker: "gcc"
     flags: []
 
+  test:
+    <<: *default-test
+    check_cfg: false
+
 cpp-object: &cpp-object
   <<: *c-object
 
@@ -82,28 +101,21 @@ tests:
     <<: *default
 
   - name: ex_exceptions1
-    <<: *default
-    reassemble:
-      compiler: "g++"
-      flags: ["-no-pie"]
-      skip: false
+    <<: *default-cpp
 
   - name: ex_exceptions2
-    <<: *default
-    reassemble:
-      compiler: "g++"
-      flags: ["-no-pie"]
-      skip: false
+    <<: *default-cpp
 
   - name: ex_exceptions3
-    <<: *default
-    reassemble:
-      compiler: "g++"
-      flags: ["-no-pie"]
-      skip: false
+    <<: *default-cpp
 
   - name: ex_false_pointer_array
     <<: *default
+    test:
+      <<: *default-test
+      # TODO: this example fails because function pointers are not resolved in the CFG
+      check_cfg: false
+
 
   - name: ex_float
     <<: *default
@@ -115,11 +127,7 @@ tests:
     <<: *default
 
   - name: ex_memberPointer
-    <<: *default
-    reassemble:
-      compiler: "g++"
-      flags: ["-no-pie"]
-      skip: false
+    <<: *default-cpp
 
   - name: ex_noreturn
     <<: *default
@@ -143,17 +151,13 @@ tests:
     <<: *default
 
   - name: ex_virtualDispatch
-    <<: *default
-    reassemble:
-      compiler: "g++"
-      flags: ["-no-pie"]
-      skip: false
+    <<: *default-cpp
 
   - name: ex_thread_local
     <<: *default
 
   - name: ex_threads
-    <<: *default
+    <<: *default-cpp
     reassemble:
       compiler: "g++"
       flags: ["-no-pie", "-lpthread"]
@@ -167,7 +171,7 @@ tests:
       skip: false
 
   - name: ex_call_once
-    <<: *default
+    <<: *default-cpp
     reassemble:
       compiler: "g++"
       flags: ["-no-pie", "-lpthread"]
@@ -188,6 +192,11 @@ tests:
     distro:
       name: Ubuntu
       version: ["18.04","20.04"]
+    test:
+      strip_exe: "strip"
+      strip: false
+      # CFG checks on static binaries is pretty slow, and a lot of failures (false positives?) in library code.
+      check_cfg: false
 
   # stripped version
   - name: ex1
@@ -204,6 +213,11 @@ tests:
     distro:
       name: Ubuntu
       version: ["18.04","20.04"]
+    test:
+      strip_exe: "strip"
+      strip: true
+      # CFG checks on static binaries is pretty slow, and a lot of failures (false positives?) in library code.
+      check_cfg: false
 
   # ----------------------------------------------------------------------------
   # Small C and C++ examples (stripped).
@@ -221,25 +235,16 @@ tests:
     <<: *test-strip-default
 
   - name: ex_exceptions1
-    <<: *default
+    <<: *default-cpp
     <<: *test-strip-default
-    reassemble:
-      compiler: "g++"
-      flags: ["-no-pie"]
 
   - name: ex_exceptions2
-    <<: *default
+    <<: *default-cpp
     <<: *test-strip-default
-    reassemble:
-      compiler: "g++"
-      flags: ["-no-pie"]
 
   - name: ex_exceptions3
-    <<: *default
+    <<: *default-cpp
     <<: *test-strip-default
-    reassemble:
-      compiler: "g++"
-      flags: ["-no-pie"]
 
   - name: ex_false_pointer_array
     <<: *default
@@ -258,11 +263,8 @@ tests:
     <<: *test-strip-default
 
   - name: ex_memberPointer
-    <<: *default
+    <<: *default-cpp
     <<: *test-strip-default
-    reassemble:
-      compiler: "g++"
-      flags: ["-no-pie"]
 
   - name: ex_noreturn
     <<: *default
@@ -297,11 +299,8 @@ tests:
     <<: *test-strip-default
 
   - name: ex_virtualDispatch
-    <<: *default
+    <<: *default-cpp
     <<: *test-strip-default
-    reassemble:
-      compiler: "g++"
-      flags: ["-no-pie"]
 
   - name: ex_thread_local
     <<: *default
