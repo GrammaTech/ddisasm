@@ -184,6 +184,12 @@ Possible null-terminated ASCII string of 'Size' bytes begins at address 'EA'.
 // auxiliary definitions
 /////////////////////////////////////////////////////////////
 
+/**
+This predicate determines the `Offset` and `Size` of an immediate operand of index `Index`.
+This is used to place symbolic expressions at the right address.
+The `Offset` is non-zero only for the x86 ISA, for other ISAs the symbolic
+expressions point to the beginning of the instruction.
+*/
 .decl instruction_immediate_offset(EA:address,Index:operand_index,Offset:unsigned,Size:unsigned)
 .output instruction_immediate_offset
 
@@ -192,6 +198,13 @@ instruction_immediate_offset(EA,Index,ImmediateOffset,Size-ImmediateOffset):-
     instruction_get_op(EA,Index,Op),
     op_immediate(Op,_).
 
+/**
+This predicate determines the `Offset` and `Size` of a displacement
+in an indirect operand of index `Index`.
+This is used to place symbolic expressions at the right address.
+The `Offset` is non-zero only for the x86 ISA, for other ISAs the symbolic
+expressions point to the beginning of the instruction.
+*/
 .decl instruction_displacement_offset(EA:address,Index:operand_index,Offset:unsigned,Size:unsigned)
 .output instruction_displacement_offset
 
@@ -200,6 +213,9 @@ instruction_displacement_offset(EA,Index,DisplacementOffset,DispSize):-
     instruction_get_op(EA,Index,Op),
     op_indirect(Op,_,_,_,_,_,_),
     (
+        // x86 can have 'mov [Disp], Imm' (move immediate value to memory)
+        // x86 encoding puts the immediate after the displacement so we need to
+        // check the immediate offset to compute the size of the displacement
         ImmediateOffset > DisplacementOffset,
         DispSize = ImmediateOffset - DisplacementOffset,
         // avoid warning
