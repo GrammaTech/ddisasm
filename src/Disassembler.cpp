@@ -781,6 +781,11 @@ void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module, souffle::So
                     CurrentAddr += DataBlock->getSize();
                 }
             }
+            else
+            {
+                std::cerr << "ByteInterval at address " << CurrentAddr << " not found" << std::endl;
+                exit(1);
+            }
         }
     }
     buildBSS(Context, Module, Prog);
