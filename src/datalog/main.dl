@@ -126,8 +126,8 @@ This module:
 
 // instructions
 
-.decl instruction(ea:address, size:unsigned, prefix:symbol, opcode:symbol,
-          op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code,
+.decl instruction(ea:address,size:unsigned,prefix:symbol,opcode:symbol,
+          op1:operand_code,op2:operand_code,op3:operand_code,op4:operand_code,
           immOffset:unsigned,displacementOffset:unsigned)
 .input instruction
 
@@ -151,8 +151,8 @@ This module:
 .input op_special
 .output op_special
 
-.decl op_indirect(code:operand_code,reg1:register, reg2:register, reg3:register,
-        multiplier:number, offset:number, size_value:unsigned)
+.decl op_indirect(code:operand_code,reg1:register,reg2:register,reg3:register,
+        multiplier:number,offset:number,size_value:unsigned)
 .input op_indirect
 
 // data from sections
@@ -184,7 +184,7 @@ Possible null-terminated ASCII string of 'Size' bytes begins at address 'EA'.
 // auxiliary definitions
 /////////////////////////////////////////////////////////////
 
-.decl instruction_immediate_offset(EA:address,Index:operand_index,Offset:unsigned, Size:unsigned)
+.decl instruction_immediate_offset(EA:address,Index:operand_index,Offset:unsigned,Size:unsigned)
 .output instruction_immediate_offset
 
 instruction_immediate_offset(EA,Index,ImmediateOffset,Size-ImmediateOffset):-
@@ -192,7 +192,7 @@ instruction_immediate_offset(EA,Index,ImmediateOffset,Size-ImmediateOffset):-
     instruction_get_op(EA,Index,Op),
     op_immediate(Op,_).
 
-.decl instruction_displacement_offset(EA:address,Index:operand_index,Offset:unsigned, Size:unsigned)
+.decl instruction_displacement_offset(EA:address,Index:operand_index,Offset:unsigned,Size:unsigned)
 .output instruction_displacement_offset
 
 instruction_displacement_offset(EA,Index,DisplacementOffset,DispSize):-
@@ -214,7 +214,7 @@ instruction_displacement_offset(EA,Index,DisplacementOffset,DispSize):-
 instruction_get_operation(EA,Operation):-
     instruction(EA,_,_,Operation,_,_,_,_,_,_).
 
-.decl instruction_get_op(ea:address, index:operand_index, operator:operand_code)
+.decl instruction_get_op(ea:address,index:operand_index,operator:operand_code)
 
 instruction_get_op(EA,Index,Op):-
     instruction(EA,_,_,_,Op1,Op2,Op3,Op4,_,_),

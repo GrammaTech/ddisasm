@@ -91,7 +91,7 @@ There is a symbolic expression in data at address 'EA' of size 'Size' of the for
 
 Both symbols are given as addresses.
 */
-.decl symbol_minus_symbol(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned, Offset:number)
+.decl symbol_minus_symbol(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,Offset:number)
 .output symbol_minus_symbol
 
 /**
@@ -113,7 +113,7 @@ is referenced by name.
 This symbolic expression corresponds to a relocation and the symbol
 is referenced by name.
  */
-.decl symbol_minus_symbol_from_relocation(EA:address,Size:unsigned,Symbol1:symbol,Symbol2:symbol,Scale:unsigned, Offset:number)
+.decl symbol_minus_symbol_from_relocation(EA:address,Size:unsigned,Symbol1:symbol,Symbol2:symbol,Scale:unsigned,Offset:number)
 .output symbol_minus_symbol_from_relocation
 
 // Not all ISAs have these
@@ -139,7 +139,7 @@ There is a symbolic expression at address 'EA' of size 'Size' of the form:
   '(Symbol2-Symbol1)*Scale+Offset'
 The symbols in this predicate are referred by name.
 */
-.decl symbolic_expr_symbol_minus_symbol(EA:address,Size:unsigned,Symbol:symbol, Symbol2:symbol,Scale:unsigned,Offset:number)
+.decl symbolic_expr_symbol_minus_symbol(EA:address,Size:unsigned,Symbol:symbol,Symbol2:symbol,Scale:unsigned,Offset:number)
 .output symbolic_expr_symbol_minus_symbol
 
 /**

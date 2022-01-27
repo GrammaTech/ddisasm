@@ -29,14 +29,14 @@ it generates CFI directives based on the unwind and exception information.
 A CIE can be associated to multiple FDEs and it contains information common to all
 of them. 'CieAddr' uniquely identifies the CIE.
 */
-.decl cie_entry(CieAddr: address, Length:unsigned,CodeAlignmentFactor:unsigned,DataAlignmentFactor:number)
+.decl cie_entry(CieAddr: address,Length:unsigned,CodeAlignmentFactor:unsigned,DataAlignmentFactor:number)
 .input cie_entry
 
 /**
 `cie_encoding` complements `cie_entry` and defines the encodings of the pointers in the FDEs and in the
 LSDAs associated to this CIE.
 */
-.decl cie_encoding(CieAddr: address, FdeEncoding:unsigned, LsdaEncoding:unsigned)
+.decl cie_encoding(CieAddr: address,FdeEncoding:unsigned,LsdaEncoding:unsigned)
 .input cie_encoding
 
 /**
@@ -52,7 +52,7 @@ Each FDE points to a parent CIE that contains properties common to multiple FDEs
 'FdeAddr' and 'Length' determine the location of the FDE entry in the eh_frame section.
 A FDE entry can have 'Lsda' associated that contains exception handling information.
 */
-.decl fde_entry(FdeAddr: address,Length:unsigned,Cie:address, Start:address, End:address,Lsda:address)
+.decl fde_entry(FdeAddr: address,Length:unsigned,Cie:address,Start:address,End:address,Lsda:address)
 .input fde_entry
 
 /**
@@ -86,7 +86,7 @@ This is located in section '.gcc_except_table'. A LSDA entry contains two main e
 a callsite table (see `lsda_callsite`) and a type table (see `lsda_type_entry`).
 */
 .decl lsda(lsdaAddress:address,callsiteTable:address,callsiteTableEncoding:unsigned,callSiteTableLength:unsigned,
-           typeTable:address, typeTableEncoding:unsigned, landingPadBaseAddress: address)
+           typeTable:address,typeTableEncoding:unsigned,landingPadBaseAddress: address)
 .input lsda
 
 /**
@@ -101,7 +101,7 @@ and 'LandingPad' to the location where the catch block is located.
 'EA_start', 'EA_end' and 'EA_landingPad' a the locations of the symbolic expressions
 in the .gcc_except_table that point to 'Start', 'End' and 'LandingPad' respectively.
 */
-.decl lsda_callsite(CallSiteTable_address:address,EA_start:address, Start:address,
+.decl lsda_callsite(CallSiteTable_address:address,EA_start:address,Start:address,
     EA_end:address,End:address,
     EA_landingPad:address,LandingPad:address,EA_endLandindPad:address)
 .input lsda_callsite
@@ -113,7 +113,7 @@ which are encoded in the type table.
 A `lsda_type_entry` is an entry in the type table. The "type" is represented as a
 symbolic expression pointing to 'address'.
 */
-.decl lsda_type_entry(lsdaTypeTableAddress:address, index:unsigned,address:address)
+.decl lsda_type_entry(lsdaTypeTableAddress:address,index:unsigned,address:address)
 .input lsda_type_entry
 /////////////////////////////////////////////////////////////////////////////////
 // output predicates
@@ -127,7 +127,7 @@ or contain a pointer to the corresponding LSDA (exception handling information) 
 personality (.cfi_lsda and .cfi_personality respectively).
 */
 .decl cfi_directive(BlockAddress:address,Offset:unsigned,LocalIndex:unsigned,
-                    directive:symbol,ReferenceSym:symbol, Nargs:unsigned,arg1:number,arg2:number)
+                    directive:symbol,ReferenceSym:symbol,Nargs:unsigned,arg1:number,arg2:number)
 .output cfi_directive
 
 /**
@@ -138,7 +138,7 @@ personality (.cfi_lsda and .cfi_personality respectively).
 
 /////////////////////////////////////////////////////////////////////////////////
 // Extract information important for disassembly
-.decl fde_addresses(start:address, end:address)
+.decl fde_addresses(start:address,end:address)
 
 fde_addresses(Start,End):-
     fde_entry(_,_,_,Start,End,_).
