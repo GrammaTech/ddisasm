@@ -23,7 +23,9 @@
 #include "arch_x86.dl"
 
 .comp X86_32 : X86 {
+
 #include "registers_x86_32.dl"
+
 pointer_size(4).
 
 inferred_main_in_reg(Push,Reg):-
@@ -36,6 +38,23 @@ inferred_main_in_reg(Push,Reg):-
         op_indirect_contains_reg(Op,Reg);
         op_regdirect_contains_reg(Op,Reg)
     ).
+
+.override inferred_main_dispatch
+
+// ELF X86-32 may have an additional function call in _start, so we add an
+// additional heuristic that checks for a consecutive HLT instruction.
+inferred_main_dispatch(CallEA):-
+    do_infer_main_function(),
+    CallEA = min EA:{
+        start_function(Entry),
+        instruction(EA,_,_,CallOp,_,_,_,_,_,_),
+        arch.call_operation(CallOp),
+        code(EA),
+        next(EA,HltEA),
+        instruction(HltEA,_,_,"HLT",_,_,_,_,_,_),
+        EA >= Entry
+     }.
+
 }
 
 .decl get_pc_thunk(EA:address,Reg:register)
