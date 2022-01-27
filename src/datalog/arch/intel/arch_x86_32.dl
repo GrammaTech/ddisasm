@@ -26,7 +26,7 @@
 #include "registers_x86_32.dl"
 pointer_size(4).
 
-inferred_main_reg(Push,Reg):-
+inferred_main_in_reg(Push,Reg):-
     inferred_main_dispatch(Call),
     // Get the value pushed onto the stack as an argument (assumes cdecl).
     next(Push,Call),

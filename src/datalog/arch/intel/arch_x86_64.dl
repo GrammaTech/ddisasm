@@ -28,7 +28,7 @@
 
 pointer_size(8).
 
-inferred_main_reg(EA,"RDI"):-
+inferred_main_in_reg(EA,"RDI"):-
     inferred_main_dispatch(EA).
 
 }
