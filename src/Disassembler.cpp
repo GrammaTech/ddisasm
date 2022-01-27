@@ -589,7 +589,7 @@ void buildSymbolicExpr(gtirb::Module &Module, const gtirb::Addr &Ea,
 {
     gtirb::SymAttributeSet Attrs =
         buildSymbolicExpressionAttributes(Ea, SymbolicInfo.SymbolicExprAttributes);
-    // Symbolic expression from relocation
+    // SymAddr case
     if(const auto SymExpr = SymbolicInfo.SymbolicExprs.find(Ea);
        SymExpr != SymbolicInfo.SymbolicExprs.end())
     {
@@ -597,18 +597,16 @@ void buildSymbolicExpr(gtirb::Module &Module, const gtirb::Addr &Ea,
         // FIXME: We need to handle overlapping sections here.
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrConst>(Module, Ea, SymExpr->Size,
                                                               SymExpr->Addend, FoundSymbol, Attrs);
-        return;
+        // Symbol-Symbol case
     }
-    // Symbol-Symbol case
-    if(const auto SymExpr = SymbolicInfo.SymbolMinusSymbolSymbolicExprs.find(Ea);
-       SymExpr != SymbolicInfo.SymbolMinusSymbolSymbolicExprs.end())
+    else if(const auto SymExpr = SymbolicInfo.SymbolMinusSymbolSymbolicExprs.find(Ea);
+            SymExpr != SymbolicInfo.SymbolMinusSymbolSymbolicExprs.end())
     {
         gtirb::Symbol *FoundSymbol1 = findFirstSymbol(Module, SymExpr->Symbol1);
         gtirb::Symbol *FoundSymbol2 = findFirstSymbol(Module, SymExpr->Symbol2);
         addSymbolicExpressionToCodeBlock<gtirb::SymAddrAddr>(
             Module, Ea, SymExpr->Size, static_cast<int64_t>(SymExpr->Scale), SymExpr->Offset,
             FoundSymbol2, FoundSymbol1, Attrs);
-        return;
     }
 }
 
