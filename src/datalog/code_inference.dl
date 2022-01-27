@@ -835,12 +835,6 @@ block_points(Block,"code",0,-2,"conditional jump/return: fallthrough to invalid"
     next(EA,Invalid),
     invalid(Invalid,_).
 
-block_points(Block,"code",0,-7,"overlap with object symbol"):-
-    code_in_block_candidate(_,Block),
-    defined_symbol(EA,Size,"OBJECT",_,_,_,_,_),
-    Block >= EA,
-    Block < EA + Size.
-
 data_block_candidate(Block,Size),
 block_points(Block,"data",0,7,"object symbol"):-
     defined_symbol(Block,Size,"OBJECT",_,_,_,_,_).
