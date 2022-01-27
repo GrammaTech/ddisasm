@@ -53,6 +53,15 @@ is_nop(EA):-
     instruction(EA,_,_,"XCHG",Op,Op,0,0,_,_),
     op_regdirect(Op,"AX").
 
+// TODO: I think we could utilize reg_arithmetic_operation
+// to recognize effective nops of the form Reg = Reg more generically.
+is_nop(EA):-
+    instruction_get_operation(EA,"LEA"),
+    instruction_get_dest_op(EA,2,DestOp),
+    instruction_get_src_op(EA,1,SrcOp),
+    op_regdirect(DestOp,Reg),
+    op_indirect(SrcOp,"NONE",Reg,"NONE",_,0,_).
+
 // Extend the generic case with loop operations.
 jump(EA):-
     instruction_get_operation(EA,Operation),

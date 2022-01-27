@@ -146,7 +146,7 @@ if(DDISASM_X86_32)
   set(DATALOG_X86_32_SOURCES
       datalog/arch/intel/arch_x86_32.dl datalog/arch/intel/float_operations.dl
       datalog/arch/intel/jump_operations.dl
-      datalog/arch/intel/registers_x86_32.dl)
+      datalog/arch/intel/registers_x86_32.dl datalog/arch/intel/arch_x86.dl)
 
   set(GENERATED_X86_32_CPP souffle_disasm_x86_32.cpp)
 
@@ -175,7 +175,7 @@ if(DDISASM_X86_64)
   set(DATALOG_X86_64_SOURCES
       datalog/arch/intel/arch_x86_64.dl datalog/arch/intel/float_operations.dl
       datalog/arch/intel/jump_operations.dl
-      datalog/arch/intel/registers_x86_64.dl)
+      datalog/arch/intel/registers_x86_64.dl datalog/arch/intel/arch_x86.dl)
 
   set(GENERATED_X86_64_CPP souffle_disasm_x86_64.cpp)
 
