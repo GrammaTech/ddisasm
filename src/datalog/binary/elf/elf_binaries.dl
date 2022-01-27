@@ -256,38 +256,6 @@ do_infer_main_function():-
     !function_symbol(_,"main").
 
 /**
- * Locate where main() is dispatched (i.e., where __libc_start_main is called.)
- */
-.decl inferred_main_dispatch(EA:address)
-
-// Most runtimes dispatch main with the first "call" from the binary entry point.
-inferred_main_dispatch(CallEA):-
-    !binary_isa("X86"),
-    do_infer_main_function(),
-    CallEA = min EA:{
-        start_function(Entry),
-        instruction(EA,_,_,CallOp,_,_,_,_,_,_),
-        arch.call_operation(CallOp),
-        code(EA),
-        EA >= Entry
-    }.
-
-// ELF X86-32 may have an additional function call in _start, so we add an
-// additional heuristic that checks for a consecutive HLT instruction.
-inferred_main_dispatch(CallEA):-
-    binary_isa("X86"),
-    do_infer_main_function(),
-    CallEA = min EA:{
-        start_function(Entry),
-        instruction(EA,_,_,CallOp,_,_,_,_,_,_),
-        arch.call_operation(CallOp),
-        code(EA),
-        next(EA,HltEA),
-        instruction(HltEA,_,_,"HLT",_,_,_,_,_,_),
-        EA >= Entry
-     }.
-
-/**
 * Infer the location of the main function.
 */
 .decl inferred_main_function(Main_location:address)

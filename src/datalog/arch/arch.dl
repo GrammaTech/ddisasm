@@ -191,6 +191,22 @@ The location and register where the address of main is loaded.
  */
 .decl inferred_main_in_reg(EA:address,Reg:register)
 
+/**
+ * Locate where main() is dispatched (i.e., where __libc_start_main is called.)
+ */
+.decl inferred_main_dispatch(EA:address) overridable
+
+// Most runtimes dispatch main with the first "call" from the binary entry point.
+inferred_main_dispatch(CallEA):-
+    do_infer_main_function(),
+    CallEA = min EA:{
+        start_function(Entry),
+        instruction(EA,_,_,CallOp,_,_,_,_,_,_),
+        arch.call_operation(CallOp),
+        code(EA),
+        EA >= Entry
+    }.
+
 // ===========================================================================
 // Registers
 // ===========================================================================

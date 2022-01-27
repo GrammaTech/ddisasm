@@ -24,6 +24,7 @@ else()
 endif()
 
 set(DATALOG_BASE_SOURCES
+    datalog/arch/arch.dl
     datalog/binary/elf/elf_binaries.dl
     datalog/binary/elf/exceptions.dl
     datalog/binary/elf/relocations.dl
