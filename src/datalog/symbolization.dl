@@ -65,7 +65,7 @@ This module also computes and symbol_minus_symbol.
 /**
 Instruction at address 'EA' has a symbolic operand with value 'Value'.
 'Value' is given as an address.
-The field `Index` identifies which operand is symbolic and `Type` specifies
+The field 'Index' identifies which operand is symbolic and 'Type' specifies
 if the target is "data" or "code".
 This predicate only supports symbolic expressions with one symbol and no
 offset. For symbolic operands with offset see `moved_label`.
