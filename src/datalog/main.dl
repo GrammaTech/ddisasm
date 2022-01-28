@@ -98,7 +98,7 @@ This module:
 .decl base_address(ea:address)
 .input base_address
 
-.decl symbol(ea:address,size:unsigned,type:symbol,scope:symbol,visibility:symbol,sectionIndex:unsigned, originTable:symbol,tableIndex:unsigned,name:symbol)
+.decl symbol(ea:address,size:unsigned,type:symbol,scope:symbol,visibility:symbol,sectionIndex:unsigned,originTable:symbol,tableIndex:unsigned,name:symbol)
 .input symbol
 
 .decl section_complete(Name:symbol,Size:unsigned,EA:address,Type:unsigned,Flags:unsigned,Align:unsigned,Index:unsigned)

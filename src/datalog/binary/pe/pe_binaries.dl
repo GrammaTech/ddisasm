@@ -115,7 +115,7 @@ data_segment(ImageBase,ImageBase+1024):-
     binary_format("PE"),
     base_address(ImageBase).
 
-inferred_special_symbol(0x7FFE0000,"KUSER_SHARED_DATA","LOCAL","NONE",$Beginning()),
+inferred_special_symbol(0x7FFE0000,"KUSER_SHARED_DATA","LOCAL","NONE",$Beg()),
 moved_label_class(EA,Op_index,"KUSER_SHARED_DATA"),
 moved_displacement_candidate(EA,Op_index,Dest,0x7FFE0000,Dest-0x7FFE0000):-
   binary_format("PE"),
@@ -275,11 +275,11 @@ base_relative_symbolic_operand(EA,Op_index,Value):-
     op_indirect(Op,_,_,_,_,_,Size),
     base_address(ImageBase).
 
-inferred_special_symbol(ImageBase,"__ImageBase","LOCAL","NONE",$Beginning()):-
+inferred_special_symbol(ImageBase,"__ImageBase","LOCAL","NONE",$Beg()):-
     binary_format("PE"),
     base_address(ImageBase).
 
-inferred_special_symbol(Start,"__EntryPoint","GLOBAL","FUNC",$Beginning()):-
+inferred_special_symbol(Start,"__EntryPoint","GLOBAL","FUNC",$Beg()):-
     binary_format("PE"),
     entry_point(Start).
 
@@ -553,7 +553,7 @@ main_function(EA):-
     code_in_refined_block(EA_call_main,Block),
     direct_call(EA_call_main,EA).
 
-inferred_special_symbol(EA,"main","PUBLIC","NONE",$Beginning()):-
+inferred_special_symbol(EA,"main","PUBLIC","NONE",$Beg()):-
     binary_format("PE"),
     main_function(EA).
 
