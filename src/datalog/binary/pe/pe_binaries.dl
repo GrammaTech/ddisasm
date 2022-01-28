@@ -558,7 +558,7 @@ inferred_special_symbol(EA,"main","PUBLIC","NONE",$Beg()):-
     main_function(EA).
 
 // Label addresses in data section that are exported.
-labeled_data(EA),
+labeled_ea(EA),
 labeled_data_candidate(EA):-
     pe_export_entry(EA,_,_),
     data_section(Name),

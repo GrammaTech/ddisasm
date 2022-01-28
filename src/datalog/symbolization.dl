@@ -164,9 +164,12 @@ a code block at address 'Val'.
 */
 .decl code_pointer_in_data(EA:address,Val:address)
 
-// data that is dereferenced somewhere in the code
-.decl labeled_data(ea:address)
-.output labeled_data
+/**
+The address 'Ea' needs to be labeled so it can be referred
+in symbolic expressions.
+*/
+.decl labeled_ea(Ea:address)
+.output labeled_ea
 
 // How data sections are divided into elements by labels or data objects
 .decl data_object_boundary(EA:address)
@@ -892,39 +895,39 @@ code_pointer_in_data(EA,Val):-
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Final label decision
 
-labeled_data(EA):-
+labeled_ea(EA):-
     defined_symbol(EA,_,Type,_,_,_,_,_,_),
     Type != "SECTION",
     Type != "FILE",
     EA != 0.
 
-labeled_data(EA):-
+labeled_ea(EA):-
     symbolic_operand(Src,_,EA,_),
     !moved_label(Src,_,EA,_).
 
-labeled_data(EA):-
+labeled_ea(EA):-
     symbolic_data(Src,_,EA),
     !moved_data_label(Src,_,EA,_).
 
-labeled_data(EA_moved):-
+labeled_ea(EA_moved):-
     moved_label(_,_,_,EA_moved).
 
-labeled_data(New_dest):-
+labeled_ea(New_dest):-
     moved_data_label(_,_,_,New_dest).
 
-labeled_data(EA):-
+labeled_ea(EA):-
     symbol_minus_symbol(Src,_,EA,_,_,_),
     !moved_data_label(Src,_,EA,_).
 
-labeled_data(EA):-
+labeled_ea(EA):-
     symbol_minus_symbol(Src,_,_,EA,_,_),
     !moved_data_label(Src,_,EA,_).
 
-labeled_data(EA):-
+labeled_ea(EA):-
     fde_entry(_,_,_,_,_,EA).
 
 data_object_boundary(EA):-
-    labeled_data(EA);
+    labeled_ea(EA);
     symbolic_data(EA,_,_);
     string(EA,_,_);
     symbol_minus_symbol(EA,_,_,_,_,_);
@@ -941,7 +944,7 @@ bss_data(Base+SizeSect):-
     section(SectionName,SizeSect,Base).
 
 bss_data(EA):-
-    labeled_data(EA),
+    labeled_ea(EA),
     bss_section(SectionName),
     section(SectionName,SizeSect,Base),
     EA >= Base,

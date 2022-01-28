@@ -166,11 +166,11 @@ lsda_callsite_addresses(Start,End,LandingPad):-
     lsda_callsite(_,_,Start,_,End,_,LandingPad,_).
 
 
-labeled_data(Lsda):-
+labeled_ea(Lsda):-
     fde_entry(_,_,_,_,_,Lsda),
     Lsda != 0.
 
-labeled_data(Personality):-
+labeled_ea(Personality):-
     cie_personality(_,Personality,_,_,_),
     Personality != 0.
 
