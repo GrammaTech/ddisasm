@@ -159,13 +159,13 @@ best_symexpr_symbol(EA,SymbolName,Pos):-
     Score = max S: {symbol_score(EA,_,_,Pos,S)}.
 
 best_symexpr_symbol(EA,SymbolName,$Beg()):-
-    labeled_data(EA),
+    labeled_ea(EA),
     !symbol_score(EA,_,_,$Beg(),_),
     best_func_symbol(EA,SymbolName).
 
 inferred_symbol(EA,SymbolName,"LOCAL","NONE",$Beg()),
 best_symexpr_symbol(EA,SymbolName,$Beg()):-
-    labeled_data(EA),
+    labeled_ea(EA),
     !symbol_score(EA,_,_,$Beg(),_),
     !best_func_symbol(EA,_),
     // TODO: Inferred symbols are converted to hex in the C++.
@@ -174,7 +174,7 @@ best_symexpr_symbol(EA,SymbolName,$Beg()):-
 
 inferred_symbol(EA,SymbolName,"LOCAL","NONE",$End()),
 best_symexpr_symbol(EA,SymbolName,$End()):-
-    labeled_data(EA),
+    labeled_ea(EA),
     boundary_label(_,_,EA),
     !symbol_score(EA,_,_,$End(),_),
     // TODO: Inferred symbols are converted to hex in the C++.
