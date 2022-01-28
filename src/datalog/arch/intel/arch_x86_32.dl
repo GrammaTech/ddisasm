@@ -23,35 +23,38 @@
 #include "arch_x86.dl"
 
 .comp X86_32 : X86 {
+
 #include "registers_x86_32.dl"
+
 pointer_size(4).
 
-main_load_reg(PushEA,Reg):-
-    // x86 uses a unique pattern for finding candidates for
-    // main_function_dispatch, implemented inline here. On 32-bit x86, an
-    // additional function has been observed in _start, so we add an additional
-    // heuristic that checks for a consecutive HLT instruction.
-    Main_dispatch = min EA:{
+inferred_main_in_reg(Push,Reg):-
+    inferred_main_dispatch(Call),
+    // Get the value pushed onto the stack as an argument (assumes cdecl).
+    next(Push,Call),
+    instruction_get_operation(Push,"PUSH"),
+    instruction_get_src_op(Push,_,Op),
+    (
+        op_indirect_contains_reg(Op,Reg);
+        op_regdirect_contains_reg(Op,Reg)
+    ).
+
+.override inferred_main_dispatch
+
+// ELF X86-32 may have an additional function call in _start, so we add an
+// additional heuristic that checks for a consecutive HLT instruction.
+inferred_main_dispatch(CallEA):-
+    do_infer_main_function(),
+    CallEA = min EA:{
         start_function(Entry),
-        instruction(HltEA,_,_,"HLT",_,_,_,_,_,_),
-        code(HltEA),
         instruction(EA,_,_,CallOp,_,_,_,_,_,_),
         arch.call_operation(CallOp),
         code(EA),
         next(EA,HltEA),
-        EA>=Entry
-    },
+        instruction(HltEA,_,_,"HLT",_,_,_,_,_,_),
+        EA >= Entry
+     }.
 
-    // Since we don't use main_function_dispatch(), we must explicitly check
-    //  do_infer_main_function.
-    do_infer_main_function(),
-
-    // Assume cdecl calling convention.
-    // Get the value pushed onto the stack as an argument.
-    next(PushEA,Main_dispatch),
-    code(PushEA),
-    instruction(PushEA,_,_,"PUSH",PushOp,_,_,_,_,_),
-    op_regdirect_contains_reg(PushOp,Reg).
 }
 
 .decl get_pc_thunk(EA:address,Reg:register)
@@ -111,7 +114,7 @@ reg_has_got(EA_load,Reg_load):-
     arch.frame_pointer(Reg_base),
     reg_loaded_from_stack(EA_load,Reg_load,Reg_base,StackPos,StackFrame).
 
-inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_","DEFAULT","NONE",$Beg()):-
+inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_","LOCAL","NONE",$Beg()):-
     !symbol(_,_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
     got_reference_pointer(EA).
 

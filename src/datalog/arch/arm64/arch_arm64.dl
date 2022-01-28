@@ -131,7 +131,7 @@ reg_reg_arithmetic_operation(EA,Reg2,Reg1,Reg2,1,0):-
 reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
     reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
 
-main_load_reg(Main_dispatch,"X0"):-
-    main_function_dispatch(Main_dispatch).
+inferred_main_in_reg(EA,"X0"):-
+    inferred_main_dispatch(EA).
 
 }
