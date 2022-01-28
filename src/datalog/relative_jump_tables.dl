@@ -171,11 +171,11 @@ jump_table_element_access(EA,1,TableStartAddr):-
     TableStartAddr <= End.
 
 jump_table_element_access(EA,Size,TableStartAddr):-
-    data_access(EA,_,"NONE",RegBase,RegIndex,as(Size,number),_,Size),
+    data_access(EA,_,"NONE",RegBase,RegIndex,as(Size,number),Offset,Size),
     RegIndex != "NONE",
     def_used(EA_regdef,RegBase,EA,_),
-    value_reg(EA_regdef,RegBase,_,"NONE",0,TableStart,_),
-    TableStartAddr = as(TableStart,address),
+    value_reg(EA_regdef,RegBase,_,"NONE",0,Base,_),
+    TableStartAddr = as(Base+Offset,address),
     data_segment(Beg,End),
     TableStartAddr >= Beg,
     TableStartAddr <= End.
