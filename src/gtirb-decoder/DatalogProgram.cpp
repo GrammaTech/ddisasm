@@ -88,7 +88,7 @@ void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation
                     // programmatically for now https://github.com/souffle-lang/souffle/issues/2181
                     if(std::string(Relation->getAttrType(I)) == "+:symbol_position")
                     {
-                        Stream << Tuple[I] ? "$End" : "$Beg";
+                        Stream << (Tuple[I] ? "$End" : "$Beg");
                     }
                     else
                     {
