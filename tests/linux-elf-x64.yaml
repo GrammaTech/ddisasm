@@ -131,6 +131,10 @@ tests:
 
   - name: ex_noreturn
     <<: *default
+    test:
+      <<: *default-test
+      # noreturn may result in unreachable code.
+      check_cfg: false
 
   - name: ex_pointerReatribution
     <<: *default
