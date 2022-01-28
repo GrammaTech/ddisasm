@@ -404,28 +404,29 @@ void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
     }
 }
 
-// auxiliary function to get a symbol with an address and name
-gtirb::Symbol *findSymbol(gtirb::Module &module, gtirb::Addr ea, std::string name)
+// Auxiliary function to get a symbol with an address and name.
+gtirb::Symbol *findSymbol(gtirb::Module &module, gtirb::Addr Ea, std::string Name)
 {
-    auto found = module.findSymbols(ea);
-    for(gtirb::Symbol &symbol : found)
+    auto Found = module.findSymbols(Ea);
+    for(gtirb::Symbol &Symbol : Found)
     {
-        if(symbol.getName() == name)
-            return &symbol;
+        if(Symbol.getName() == Name)
+            return &Symbol;
     }
     return nullptr;
 }
 
-// auxiliary function to get a symbol with an address and name
+// Auxiliary function to get the first symbol with a given name.
+// The function will exit with an error if no such symbol exists.
 gtirb::Symbol *findFirstSymbol(gtirb::Module &Module, std::string Name)
 {
-    auto found = Module.findSymbols(Name);
-    if(found.begin() == found.end())
+    auto Found = Module.findSymbols(Name);
+    if(Found.begin() == Found.end())
     {
         std::cerr << "Missing symbol: " << Name << std::endl;
         exit(1);
     }
-    return &*found.begin();
+    return &*Found.begin();
 }
 
 // Build a first version of the SymbolForwarding table with copy relocations and
@@ -532,34 +533,34 @@ bool isNullReg(const std::string &reg)
 // Expand the SymbolForwarding table with plt references
 void expandSymbolForwarding(gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
-    auto *symbolForwarding = Module.getAuxData<gtirb::schema::SymbolForwarding>();
-    for(auto &output : *Prog->getRelation("plt_block"))
+    auto *SymbolForwarding = Module.getAuxData<gtirb::schema::SymbolForwarding>();
+    for(auto &Output : *Prog->getRelation("plt_block"))
     {
         gtirb::Addr Ea;
         std::string Name;
-        output >> Ea >> Name;
+        Output >> Ea >> Name;
         // the inference of plt_block guarantees that there is at most one
         // destination symbol for each source
-        auto foundSrc = Module.findSymbols(Ea);
-        auto foundDest = Module.findSymbols(Name);
-        for(gtirb::Symbol &src : foundSrc)
+        auto FoundSrc = Module.findSymbols(Ea);
+        auto FoundDest = Module.findSymbols(Name);
+        for(gtirb::Symbol &Src : FoundSrc)
         {
-            for(gtirb::Symbol &dest : foundDest)
+            for(gtirb::Symbol &Dest : FoundDest)
             {
-                (*symbolForwarding)[src.getUUID()] = dest.getUUID();
+                (*SymbolForwarding)[Src.getUUID()] = Dest.getUUID();
             }
         }
     }
-    for(auto &output : *Prog->getRelation("got_reference"))
+    for(auto &Output : *Prog->getRelation("got_reference"))
     {
-        gtirb::Addr ea;
+        gtirb::Addr Ea;
         std::string Name;
-        output >> ea >> Name;
-        auto foundSrc = Module.findSymbols(ea);
+        Output >> Ea >> Name;
+        auto FoundSrc = Module.findSymbols(Ea);
         gtirb::Symbol *Dest = findFirstSymbol(Module, Name);
-        for(gtirb::Symbol &src : foundSrc)
+        for(gtirb::Symbol &Src : FoundSrc)
         {
-            (*symbolForwarding)[src.getUUID()] = Dest->getUUID();
+            (*SymbolForwarding)[Src.getUUID()] = Dest->getUUID();
         }
     }
 }
