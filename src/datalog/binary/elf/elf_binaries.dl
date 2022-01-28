@@ -266,15 +266,15 @@ used_for_address(Main_load,Reg):-
 main_function(Main_location):-
     inferred_main_function(Main_location).
 
-inferred_special_symbol(EA,"_start","GLOBAL","FUNC",$Beginning()):-
+inferred_special_symbol(EA,"_start","GLOBAL","FUNC",$Beg()):-
     !binary_type("REL"),
     !symbol(EA,_,"FUNC",_,_,_,_,_,_),
     start_function(EA).
 
-inferred_special_symbol(EA,"__do_global_dtors_aux","LOCAL","FUNC",$Beginning()):-
+inferred_special_symbol(EA,"__do_global_dtors_aux","LOCAL","FUNC",$Beg()):-
     function_symbol(EA,"__do_global_dtors_aux").
 
-inferred_special_symbol(EA,"__do_global_dtors_aux","LOCAL","FUNC",$Beginning()):-
+inferred_special_symbol(EA,"__do_global_dtors_aux","LOCAL","FUNC",$Beg()):-
     !function_symbol(EA,"__do_global_dtors_aux"),
     function_inference.function_entry(EA),
     // referenced from .fini_array
@@ -292,7 +292,7 @@ inferred_special_symbol(EA,"__do_global_dtors_aux","LOCAL","FUNC",$Beginning()):
     DataRef >= BegData,
     DataRef <= BegData+SizeBss.
 
-inferred_special_symbol(EA,"_DYNAMIC","LOCAL","NONE",$Beginning()):-
+inferred_special_symbol(EA,"_DYNAMIC","LOCAL","NONE",$Beg()):-
     binary_format("ELF"),
     !symbol(EA,_,_,_,_,_,_,_,"_DYNAMIC"),
     section(".dynamic",_,EA).
@@ -405,8 +405,8 @@ symbolic_operand_candidate(EA_used,Index,as(Reference+Offset,address),"data"):-
 // We need two symbols, a function symbol and a GNU_IFUNC symbol
 // so we can create a IRELATIVE relocation
 ifunc_symbol(DestAddr,NameFunc),
-inferred_special_symbol(DestAddr,NameFunc,"GLOBAL","GNU_IFUNC",$Beginning()),
-inferred_special_symbol(DestAddr,Name,"LOCAL","FUNC",$Beginning()):-
+inferred_special_symbol(DestAddr,NameFunc,"GLOBAL","GNU_IFUNC",$Beg()),
+inferred_special_symbol(DestAddr,Name,"LOCAL","FUNC",$Beg()):-
     relocation(_,"IRELATIVE","",Dest,_,_,_),
     DestAddr = as(Dest,address),
     !symbol(DestAddr,_,"GNU_IFUNC",_,_,_,_,_,_),
@@ -417,7 +417,7 @@ inferred_special_symbol(DestAddr,Name,"LOCAL","FUNC",$Beginning()):-
 // these symbols point to the begining and end of the iplt section
 // that contaisn the IRELATIVE relocations
 
-inferred_special_symbol(Beg,"__rela_iplt_start","GLOBAL","NONE",$Beginning()):-
+inferred_special_symbol(Beg,"__rela_iplt_start","GLOBAL","NONE",$Beg()):-
     section(".rela.plt",_,Beg),
     !symbol(_,_,_,_,_,_,_,_,"__rela_iplt_start").
 

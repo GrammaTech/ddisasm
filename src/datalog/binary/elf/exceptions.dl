@@ -464,7 +464,7 @@ cfi_directive(StartFunction,0,1,".cfi_lsda",LsdaSymbol,1,Encoding,0):-
     cie_encoding(Cie,_,LsdaEncoding),
     (
         Lsda != 0, Encoding = as(LsdaEncoding,number),
-        best_symexpr_symbol(Lsda,LsdaSymbol,$Beginning())
+        best_symexpr_symbol(Lsda,LsdaSymbol,$Beg())
         ;
         Lsda = 0, Encoding = 255,
         LsdaSymbol = "",
@@ -478,7 +478,7 @@ cfi_directive(StartFunction,0,2,".cfi_personality",PersonalitySymbol,1,Encoding,
     (
         cie_personality(Cie,Personality,_,_,PersonalityEncoding),
         Personality != 0, Encoding = as(PersonalityEncoding,number),
-        best_symexpr_symbol(Personality,PersonalitySymbol,$Beginning())
+        best_symexpr_symbol(Personality,PersonalitySymbol,$Beg())
         ;
         cie_personality(Cie,Personality,_,_,_),
         Personality = 0,
