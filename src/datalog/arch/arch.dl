@@ -132,6 +132,10 @@ Find all addresses where a move instruction is used
 
 .decl is_nop(EA:address)
 
+// Reg = Reg is effectively a nop, and may be used as padding.
+is_nop(EA):-
+    reg_arithmetic_operation(EA,Reg,Reg,1,0).
+
 /**
 Returns
 */
