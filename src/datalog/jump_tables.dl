@@ -59,3 +59,20 @@ jump_table_candidate_refined(EA,EntryAddr,TargetAddr):-
     code(EA),
     code(TargetAddr),
     !code(EntryAddr).
+
+/**
+The set of all CFG edges formed by jump tables.
+
+Attributes:
+
+* EA: address where the jump occurs
+* Dest: a potential destintation address
+*/
+.decl jump_table_target(EA:address,Dest:address)
+
+jump_table_target(EA,Dest):-
+    jump_table_candidate_refined(EA,_,Dest).
+
+jump_table_target(EA,Dest):-
+    jump_table_start(EA,Size,TableStart,_,_),
+    symbol_minus_symbol_jump_table(_,TableStart,Size,_,Dest,_,_).
