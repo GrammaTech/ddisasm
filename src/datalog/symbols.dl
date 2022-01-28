@@ -116,12 +116,22 @@ could remove them from here.
 */
 .decl avoid_symbols(SymbolName:symbol)
 
-avoid_symbols("__bss_start").
-avoid_symbols("__data_start").
-avoid_symbols("__dso_handle").
-avoid_symbols("_fp_hw").
-avoid_symbols("_IO_stdin_used").
-avoid_symbols("__TMC_END__").
+avoid_symbols(Name):-
+    binary_format("ELF"),
+    elf_avoid_symbols(Name).
+
+/**
+This predicate records the set of symbols that should not be used
+in symbolic expressions for ELF binaries
+*/
+.decl elf_avoid_symbols(SymbolName:symbol)
+
+elf_avoid_symbols("__bss_start").
+elf_avoid_symbols("__data_start").
+elf_avoid_symbols("__dso_handle").
+elf_avoid_symbols("_fp_hw").
+elf_avoid_symbols("_IO_stdin_used").
+elf_avoid_symbols("__TMC_END__").
 
 // Choose the function symbol with maximum score
 // or create a new function symbol if we have a function
