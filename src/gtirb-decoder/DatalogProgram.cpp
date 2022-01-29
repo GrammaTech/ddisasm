@@ -83,21 +83,7 @@ void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation
                 case 'f':
                     Stream << souffle::ramBitCast<souffle::RamFloat>(Tuple[I]);
                     break;
-                case '+':
-                    // FIXME: souffle does not seem to allow us accessing these definitions
-                    // programmatically for now https://github.com/souffle-lang/souffle/issues/2181
-                    if(std::string(Relation->getAttrType(I)) == "+:symbol_position")
-                    {
-                        Stream << (Tuple[I] ? "$End" : "$Beg");
-                    }
-                    else
-                    {
-                        std::cerr << "Unknown type: " << Relation->getAttrType(I) << std::endl;
-                        exit(1);
-                    }
-                    break;
                 default:
-
                     Stream << Tuple[I];
             }
         }
