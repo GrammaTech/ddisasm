@@ -28,9 +28,16 @@ the predicates needed to infer new symbols.
 /**
 Type to determine whether a symbol is pointing to the
 beginning or the end of a block.
-*/
+The symbol position can be "Beg" or "End".
+
+FIXME: souffle does not yet provide a complete programatic interface for ADT
+https://github.com/souffle-lang/souffle/issues/2181. Once it does
+we can use a ADT
+
 .type symbol_position = Beg {}
                      | End {}
+*/
+.type symbol_position <: symbol
 
 /**
 A new symbol 'SymbolName' at address 'EA' should be created.
@@ -45,7 +52,7 @@ inferred symbols.
 */
 .decl inferred_special_symbol(EA:address,SymbolName:symbol,Scope:symbol,Type:symbol,Pos:symbol_position)
 
-inferred_special_symbol(EA,"main","GLOBAL","FUNC",$Beg()):-
+inferred_special_symbol(EA,"main","GLOBAL","FUNC","Beg"):-
     binary_format("ELF"),
     main_function(EA).
 
@@ -55,8 +62,8 @@ symbol_score(EA,SymbolName,Type,Pos,1):-
 
 /**
 Best symbol at address 'EA' to be used for symbolic expressions. There
-can be two variants: If 'Pos' is $Beg(), the symbol points to the beginning
-of a block. If 'Pos' is $End(), the symbol points at the end of a block.
+can be two variants: If 'Pos' is "Beg", the symbol points to the beginning
+of a block. If 'Pos' is "End", the symbol points at the end of a block.
 */
 .decl best_symexpr_symbol(EA:address,SymbolName:symbol,Pos:symbol_position)
 .output best_symexpr_symbol
@@ -81,8 +88,8 @@ symbol_score(EA,SymbolName,Type,Pos,Score):-
     !ambiguous_symbol(SymbolName),
     !avoid_symbols(SymbolName),
     (
-        symbol_at_section_end(EA,SymbolName), Pos = $End();
-        !symbol_at_section_end(EA,SymbolName), Pos = $Beg()
+        symbol_at_section_end(EA,SymbolName), Pos = "End";
+        !symbol_at_section_end(EA,SymbolName), Pos = "Beg"
     ),
     (
         relocation(EA,"COPY",SymbolName,_,_,_,_), RelocScore = 1;
@@ -138,45 +145,45 @@ elf_avoid_symbols("__TMC_END__").
 // and no pre-existing function symbols.
 
 best_func_symbol(EA,SymbolName):-
-   symbol_score(EA,SymbolName,"FUNC",$Beg(),Score),
-   Score = max S: {symbol_score(EA,_,"FUNC",$Beg(),S)}.
+   symbol_score(EA,SymbolName,"FUNC","Beg",Score),
+   Score = max S: {symbol_score(EA,_,"FUNC","Beg",S)}.
 
-inferred_symbol(EA,SymbolName,"GLOBAL","FUNC",$Beg()),
+inferred_symbol(EA,SymbolName,"GLOBAL","FUNC","Beg"),
 best_func_symbol(EA,SymbolName):-
     function_inference.function_entry(EA),
-    !symbol_score(EA,_,"FUNC",$Beg(),_),
+    !symbol_score(EA,_,"FUNC","Beg",_),
     // TODO: Function symbols are converted to hex in the C++.
     // A better solution would be to define a user-defined functor.
     SymbolName = cat("FUN_",to_string(EA)).
 
 // Choose:
 // 1. the symbol with maximum score
-// 2. the inferred function symbol (only for Pos=$Beg())
+// 2. the inferred function symbol (only for Pos="Beg")
 // 3. or generate a new symbol if we have a labeled location without symbols.
 
 best_symexpr_symbol(EA,SymbolName,Pos):-
     symbol_score(EA,SymbolName,_,Pos,Score),
     Score = max S: {symbol_score(EA,_,_,Pos,S)}.
 
-best_symexpr_symbol(EA,SymbolName,$Beg()):-
+best_symexpr_symbol(EA,SymbolName,"Beg"):-
     labeled_ea(EA),
-    !symbol_score(EA,_,_,$Beg(),_),
+    !symbol_score(EA,_,_,"Beg",_),
     best_func_symbol(EA,SymbolName).
 
-inferred_symbol(EA,SymbolName,"LOCAL","NONE",$Beg()),
-best_symexpr_symbol(EA,SymbolName,$Beg()):-
+inferred_symbol(EA,SymbolName,"LOCAL","NONE","Beg"),
+best_symexpr_symbol(EA,SymbolName,"Beg"):-
     labeled_ea(EA),
-    !symbol_score(EA,_,_,$Beg(),_),
+    !symbol_score(EA,_,_,"Beg",_),
     !best_func_symbol(EA,_),
     // TODO: Inferred symbols are converted to hex in the C++.
     // A better solution would be to define a user-defined functor.
     SymbolName = cat(".L_",to_string(EA)).
 
-inferred_symbol(EA,SymbolName,"LOCAL","NONE",$End()),
-best_symexpr_symbol(EA,SymbolName,$End()):-
+inferred_symbol(EA,SymbolName,"LOCAL","NONE","End"),
+best_symexpr_symbol(EA,SymbolName,"End"):-
     labeled_ea(EA),
     boundary_label(_,_,EA),
-    !symbol_score(EA,_,_,$End(),_),
+    !symbol_score(EA,_,_,"End",_),
     // TODO: Inferred symbols are converted to hex in the C++.
     // A better solution would be to define a user-defined functor.
     SymbolName = cat(cat(".L_",to_string(EA)),"_END").
@@ -203,7 +210,7 @@ symbol_at_section_end(EA,SymbolName):-
     EA = Beg + Size.
 
 symbol_at_end(EA,SymbolName):-
-    inferred_symbol(EA,SymbolName,_,_,$End()).
+    inferred_symbol(EA,SymbolName,_,_,"End").
 
 /**
 The symbol at address 'EA' with name 'SymbolName' is pointing
