@@ -36,7 +36,9 @@ mov(EA):-
     instruction_get_operation(EA,Operation),
     move_operation(Operation).
 
-conditional_operation("CMOV").
+conditional_operation(Operation):-
+    instruction_get_operation(_, Operation),
+    substr(Operation,0,4) = "CMOV".
 
 // No rule for load_operation
 load_operation(""):-false.
