@@ -274,19 +274,6 @@ used_for_address(EA,Reg):-
     reg_call(EA,Reg),
     used(EA,Reg,_).
 
-used_for_address(EA,Reg):-
-    get_pc_thunk(EA_thunk,Reg),
-    direct_call(EA_load,EA_thunk),
-    def_used(EA_load,Reg,EA,Index),
-    instruction_get_op(EA,Index,Op),
-    op_regdirect(Op,Reg).
-
-used_for_address(EA,Reg):-
-    pc_load_call(_,EA_load),
-    def_used(EA_load,Reg,EA,Index),
-    instruction_get_op(EA,Index,Op),
-    op_regdirect(Op,Reg).
-
 /**
  * The register 'Reg' as defined at address 'EA_def' is later used either as an address
  * or to compute an address.
@@ -302,6 +289,8 @@ def_used_for_address(EA_def,Reg):-
     def_used_for_address(EA_used,_),
     def_used(EA_def,Reg,EA_used,_).
 
+def_used_for_address(EA,Reg):-
+    arch.pc_relative_addr(EA,Reg,_).
 
 // straight_line_def_used is a weaker version than def_used
 // that can be used BEFORE code inference.

@@ -236,6 +236,14 @@ according to the architecture's calling convention.
 
 .decl return_val_reg(Reg:register)
 
+/**
+A pc-relative address 'Val' is loaded into 'Reg' at address 'EA'.
+*/
+.decl pc_relative_addr(EA:address,Reg:register,Val:number)
+
+pc_relative_addr(0,"",0):- false.
+
+
 // ===========================================================================
 // Other architectural attributes
 // ===========================================================================

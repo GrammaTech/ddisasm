@@ -55,6 +55,19 @@ inferred_main_dispatch(CallEA):-
         EA >= Entry
      }.
 
+// call __x86.get_pc_thunk.REG
+pc_relative_addr(EA,Reg,PC):-
+    get_pc_thunk(EA_thunk,Reg),
+    direct_call(EA,EA_thunk),
+    instruction(EA,Size,_,_,_,_,_,_,_,_),
+    PC = as(EA+Size,number).
+
+// pop PC
+pc_relative_addr(EA,Reg,PC):-
+    pc_load_call(_,EA),
+    instruction_get_op(EA,_,Op),
+    op_regdirect(Op,Reg),
+    PC = as(EA,number).
 }
 
 abi_intrinsic(EA,Name):-
