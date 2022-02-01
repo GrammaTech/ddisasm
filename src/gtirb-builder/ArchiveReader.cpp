@@ -28,9 +28,6 @@
 #include <iostream>
 #include <unordered_map>
 
-const std::vector<uint8_t> ArMagic = {'!', '<', 'a', 'r', 'c', 'h', '>', '\n'};
-const std::string SymdefPrefix = "__.SYMDEF";
-
 bool ArchiveReader::isAr(const std::string &Path)
 {
     std::ifstream Stream(Path, std::ios::in | std::ios::binary);
@@ -39,16 +36,14 @@ bool ArchiveReader::isAr(const std::string &Path)
 
 bool ArchiveReader::isAr(std::ifstream &Stream)
 {
-    std::vector<uint8_t> buf;
-    buf.resize(ArMagic.size());
-
-    Stream.read(reinterpret_cast<char *>(buf.data()), buf.size());
-    return buf == ArMagic;
+    static const std::string ArMagic = "!<arch>\n";
+    return std::equal(ArMagic.begin(), ArMagic.end(), std::istreambuf_iterator<char>(Stream));
 }
 
 ArchiveReader::ArchiveReader(const std::string &P)
     : Path(P), Stream(Path, std::ios::in | std::ios::binary)
 {
+    static const std::string SymdefPrefix = "__.SYMDEF";
     Stream.seekg(0, Stream.end);
     uint64_t Length = Stream.tellg();
     Stream.seekg(0, Stream.beg);
@@ -63,7 +58,7 @@ ArchiveReader::ArchiveReader(const std::string &P)
     uint64_t Offset = Stream.tellg();
     while(Offset < Length)
     {
-        FileHeader Header;
+        ArchiveReaderFile::EntryHeader Header;
         Stream.read(reinterpret_cast<char *>(&Header), sizeof(Header));
         Offset += sizeof(Header);
 
@@ -77,7 +72,7 @@ ArchiveReader::ArchiveReader(const std::string &P)
         // Handle special files: extended filename table and symbol table.
         // These are expected to be the first entries in the archive, before
         // any regular files are seen.
-        if(File.FileNameFormat == Unextended
+        if(File.FileNameFormat == ArchiveReaderFile::EntryFileNameFormat::Unextended
            && (File.FileName == "/" || File.FileName == "ARFILENAMES/"))
         {
             // GNU extended filenames entry
@@ -103,7 +98,7 @@ ArchiveReader::ArchiveReader(const std::string &P)
                 LineOffset += LineSize + 1;
             }
         }
-        else if(File.FileNameFormat == Unextended
+        else if(File.FileNameFormat == ArchiveReaderFile::EntryFileNameFormat::Unextended
                 && (File.FileName == ""
                     || File.FileName.compare(0, SymdefPrefix.size(), SymdefPrefix) == 0))
         {
@@ -112,7 +107,7 @@ ArchiveReader::ArchiveReader(const std::string &P)
         else
         {
             // Expand extended file names, if needed.
-            if(File.FileNameFormat == GNUExtended)
+            if(File.FileNameFormat == ArchiveReaderFile::EntryFileNameFormat::GNUExtended)
             {
                 auto FileNameIt = GnuExtendedFilenames.find(File.ExtendedFileNameNumber);
 
@@ -122,7 +117,7 @@ ArchiveReader::ArchiveReader(const std::string &P)
                 }
                 File.FileName = FileNameIt->second;
             }
-            else if(File.FileNameFormat == BSDExtended)
+            else if(File.FileNameFormat == ArchiveReaderFile::EntryFileNameFormat::BSDExtended)
             {
                 File.FileName.resize(File.ExtendedFileNameNumber);
                 Stream.read(File.FileName.data(), File.ExtendedFileNameNumber);
@@ -150,14 +145,14 @@ ArchiveReader::ArchiveReader(const std::string &P)
     }
 }
 
-void ArchiveReader::ReadFile(ArchiveReaderFile &File, std::vector<uint8_t> &Data)
+void ArchiveReader::readFile(ArchiveReaderFile &File, std::vector<uint8_t> &Data)
 {
     Stream.seekg(File.Offset, Stream.beg);
     Data.resize(File.Size);
     std::copy_n(std::istreambuf_iterator<char>(Stream), File.Size, Data.begin());
 }
 
-ArchiveReaderFile::ArchiveReaderFile(const FileHeader &Header, uint64_t O)
+ArchiveReaderFile::ArchiveReaderFile(const EntryHeader &Header, uint64_t O)
     : Ident(Header.ident, sizeof(Header.ident)),
       Size(std::stoull(std::string(Header.size, sizeof(Header.size)).c_str())),
       Offset(O),
