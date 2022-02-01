@@ -39,8 +39,6 @@ jump_operation(Operation):-
     condition_code(CC),
     Operation = cat(Base, CC).
 
-jump_operation("B").
-
 jump_operation("TBB").
 jump_operation("TBH").
 
