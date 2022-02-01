@@ -67,7 +67,7 @@ public:
         BSDExtended
     };
 
-    ArchiveReaderFile(const EntryHeader &Header, uint64_t O);
+    static ArchiveReaderFile build(const EntryHeader &Header, uint64_t O);
 
     EntryFileNameFormat FileNameFormat;
     uint64_t ExtendedFileNameNumber;
@@ -75,12 +75,16 @@ public:
     std::string FileName;
     uint64_t Size;
     uint64_t Offset;
+
+private:
+    ArchiveReaderFile(const EntryHeader &Header, uint64_t O);
+    void build(void);
 };
 
 class ArchiveReader
 {
 public:
-    ArchiveReader(const std::string &Path);
+    static ArchiveReader read(const std::string &Path);
     void readFile(ArchiveReaderFile &File, std::vector<uint8_t> &Data);
     std::list<ArchiveReaderFile> Files;
 
@@ -96,6 +100,11 @@ public:
     static bool isAr(std::ifstream &Stream);
 
 protected:
+    ArchiveReader(const std::string &Path)
+        : Path(Path), Stream(Path, std::ios::in | std::ios::binary)
+    {
+    }
+    void read(void);
     std::string Path;
     std::ifstream Stream;
 };
