@@ -1095,7 +1095,7 @@ instruction_get_dest_op(EA,1,Op):-
     contains("POP", Operation).
 
 
-symbolic_expr_from_relocation(EA+1,4,Symbol,Addend):-
+symbolic_expr_from_relocation(EA+1,4,Symbol,Addend,as(Dest,address)):-
     binary_type("REL"),
     (
         relocation(EA,"THM_CALL",Symbol,_,_,_,"REL");
@@ -1103,7 +1103,8 @@ symbolic_expr_from_relocation(EA+1,4,Symbol,Addend):-
     ),
     Symbol != "",
     thumb_branch_offset(EA,Offset),
-    Addend = Offset + 4.
+    Addend = Offset + 4,
+    Dest = as(EA,number)+Addend.
 
 /**
 Decode Thumb-2 encoded branch offset. Used to find REL relocation addends.
