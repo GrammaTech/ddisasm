@@ -40,8 +40,14 @@ bool ArchiveReader::isAr(std::ifstream &Stream)
     return std::equal(ArMagic.begin(), ArMagic.end(), std::istreambuf_iterator<char>(Stream));
 }
 
-ArchiveReader::ArchiveReader(const std::string &P)
-    : Path(P), Stream(Path, std::ios::in | std::ios::binary)
+ArchiveReader ArchiveReader::read(const std::string &P)
+{
+    ArchiveReader Reader = ArchiveReader(P);
+    Reader.read();
+    return Reader;
+}
+
+void ArchiveReader::read(void)
 {
     static const std::string SymdefPrefix = "__.SYMDEF";
     Stream.seekg(0, Stream.end);
@@ -67,7 +73,7 @@ ArchiveReader::ArchiveReader(const std::string &P)
             throw ArchiveReaderException("Invalid ar format: unexpected terminator");
         }
 
-        ArchiveReaderFile File = ArchiveReaderFile(Header, Offset);
+        ArchiveReaderFile File = ArchiveReaderFile::build(Header, Offset);
 
         // Handle special files: extended filename table and symbol table.
         // These are expected to be the first entries in the archive, before
@@ -158,6 +164,17 @@ ArchiveReaderFile::ArchiveReaderFile(const EntryHeader &Header, uint64_t O)
       Offset(O),
       FileNameFormat(Unextended),
       ExtendedFileNameNumber(0)
+{
+}
+
+ArchiveReaderFile ArchiveReaderFile::build(const EntryHeader &Header, uint64_t O)
+{
+    ArchiveReaderFile File = ArchiveReaderFile(Header, O);
+    File.build();
+    return File;
+}
+
+void ArchiveReaderFile::build(void)
 {
     // We support file name formats supported by binutils, see:
     // https://sourceware.org/git/?p=binutils-gdb.git;a=blob;f=bfd/archive.c;h=9ad61adc6159a2731a0443353f393baeea48bf5d#l85

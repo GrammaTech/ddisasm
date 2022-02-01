@@ -8,7 +8,7 @@
 
 TEST(ArchiveReaderTest, Basic)
 {
-    ArchiveReader Reader("inputs/ar/basic.a");
+    ArchiveReader Reader = ArchiveReader::read("inputs/ar/basic.a");
 
     std::vector<std::string> FileNames = {"file1", "file2"};
     std::vector<std::string> Contents = {"contents1", "contents2"};
@@ -30,13 +30,13 @@ TEST(ArchiveReaderTest, Basic)
 
 TEST(ArchiveReaderTest, Empty)
 {
-    ArchiveReader Reader("inputs/ar/empty.a");
+    ArchiveReader Reader = ArchiveReader::read("inputs/ar/empty.a");
     EXPECT_EQ(Reader.Files.size(), 0);
 }
 
 TEST(ArchiveReaderTest, BSD)
 {
-    ArchiveReader Reader("inputs/ar/bsd.a");
+    ArchiveReader Reader = ArchiveReader::read("inputs/ar/bsd.a");
 
     std::vector<std::string> FileNames = {
         "long_archive_member_name",
@@ -53,7 +53,7 @@ TEST(ArchiveReaderTest, BSD)
 
 TEST(ArchiveReaderTest, GNU)
 {
-    ArchiveReader Reader("inputs/ar/gnu.a");
+    ArchiveReader Reader = ArchiveReader::read("inputs/ar/gnu.a");
 
     std::vector<std::string> FileNames = {
         "long_archive_member_name",

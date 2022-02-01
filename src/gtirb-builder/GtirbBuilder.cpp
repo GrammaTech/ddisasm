@@ -79,7 +79,7 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
 
         try
         {
-            ArchiveReader Archive(Path);
+            ArchiveReader Archive = ArchiveReader::read(Path);
 
             for(auto& Object : Archive.Files)
             {
