@@ -375,6 +375,20 @@ plt_entry_arm_candidate(EA,Function,as(Dest,address)):-
     Dest = as(EA,number) + N1 + N2 + Offset + 8,
     relocation(as(Dest,address),_,Function,_,_,_,_).
 
+block_points(Block,"code",0,10,"call with relocation"):-
+    binary_type("REL"),
+    block_is_overlapping(Block,"code"),
+    code_in_block_candidate_refined(EA,Block),
+    arch.call_operation(Operation),
+    instruction_get_operation(EA,Operation),
+    AlignedEA = EA - (EA band 1),
+    relocation(AlignedEA,"THM_CALL",_,_,_,_,"REL").
+
+cfg_edge_to_symbol(Src,Symbol,"branch"):-
+    plt_entry_arm_candidate(Src,Symbol,_),
+    !defined_symbol(_,_,_,_,_,_,_,Symbol),
+    !inferred_symbol_name(_,Symbol,_,_).
+
 .decl movw_movt_pair_candidate(EA_movw:address,EA_prev:address,EA_movt:address,Distance:unsigned)
 .output movw_movt_pair_candidate
 
@@ -411,18 +425,28 @@ movw_movt_pair(EA_movw,EA_prev,EA_movt):-
     movw_movt_pair_candidate(EA_movw,EA_prev,EA_movt,_),
     !discarded_movw_movt_pair_candidate(EA_movw,_,EA_movt,_).
 
+/**
+E.g., movw reg, N
+      movt reg, M
+   => reg Value = N | (M << 16)
+*/
+.decl movw_movt_pair_value(EA_movw:address,EA_movt:address,Value:number)
+.output movw_movt_pair_value
+
+movw_movt_pair_value(EA_movw,EA_movt,Value):-
+    movw_movt_pair(EA_movw,EA_movw,EA_movt),
+    instruction_get_op(EA_movw,1,Op),
+    op_immediate(Op,Low),
+    instruction_get_op(EA_movt,1,Op2),
+    op_immediate(Op2,High),
+    Value = (High*2^16) bor Low.
+
 symbolic_operand_attribute(EA_lo,1,"Part0"),
 symbolic_operand_candidate(EA_lo,1,Dest,Type),
 symbolic_operand_attribute(EA_hi,1,"Part1"),
 symbolic_operand_candidate(EA_hi,1,Dest,Type):-
-    instruction_get_operation(EA_lo,"MOVW"),
-    instruction_get_op(EA_lo,1,Op),
-    op_immediate(Op,DestLow),
-    movw_movt_pair(EA_lo,EA_lo,EA_hi),
-    instruction_get_operation(EA_hi,"MOVT"),
-    instruction_get_op(EA_hi,1,Op2),
-    op_immediate(Op2,DestHigh),
-    Dest = as((DestHigh*2^16) bor DestLow, address),
+    movw_movt_pair_value(EA_lo,EA_hi,Value),
+    Dest = as(Value,address),
     (
         code(Dest), Type="code"
         ;
@@ -763,7 +787,7 @@ data_block_candidate(LitPoolAddr,Size):-
         !litpool_ref_for_ldrd(EA), Size = Pt_size
     ).
 
-block_points(LitPoolAddr,"data",0,Points,"arm literal pool"):-
+block_points(LitPoolAddr,"data",EA,Points,"arm literal pool"):-
     litpool_ref(EA,_,LitPoolAddr,_),
     (
         // Give more points in case of ldr/ldrd sequence
@@ -775,10 +799,11 @@ block_points(LitPoolAddr,"data",0,Points,"arm literal pool"):-
         ;
         code_in_block_candidate_refined(EA,Block),
         block_is_overlapping(Block,_),
+        !arm_jump_table_candidate(_,_,EA,_,_,_,_,_),
         !litpool_ref_for_ldrd(EA), Points = 5
     ).
 
-block_points(LitPoolAddr,"data",0,11,"arm literal pool"):-
+block_points(LitPoolAddr,"data",EA,11,"arm literal pool"):-
     litpool_ref_double(EA,_,_,LitPoolAddr),
     code_in_block_candidate_refined(EA,_).
 
