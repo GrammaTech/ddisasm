@@ -366,9 +366,9 @@ one_op_write(""):-
 
 pointer_size(4).
 
-call_operation(Symbol):-
-    call_operation_1op(Symbol);
-    call_operation_2op(Symbol).
+call_operation(Operation):-
+    call_operation_1op(Operation);
+    call_operation_2op(Operation).
 
 .decl call_operation_1op(operation:symbol)
 

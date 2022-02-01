@@ -58,17 +58,17 @@ jump_operation(Operation),
 conditional_operation(Operation):-
     conditional_branch(Operation).
 
-jump_operation(Symbol),
-conditional_operation(Symbol):-
-    jump_comp_operation(Symbol);
-    jump_equal_operation(Symbol);
-    jump_unequal_operation(Symbol).
+jump_operation(Operation),
+conditional_operation(Operation):-
+    jump_comp_operation(Operation);
+    jump_equal_operation(Operation);
+    jump_unequal_operation(Operation).
 
 .decl jump_comp_operation(n:symbol)
 
-jump_comp_operation(Symbol):-
-    jump_comp_operation_2op(Symbol);
-    jump_comp_operation_3op(Symbol).
+jump_comp_operation(Operation):-
+    jump_comp_operation_2op(Operation);
+    jump_comp_operation_3op(Operation).
 
 .decl jump_comp_operation_3op(n:symbol)
 
@@ -106,9 +106,9 @@ jump_comp_operation_2op("BZ.V").
 
 jump_equal_operation("BTEQZ").
 
-jump_equal_operation(Symbol):-
-    jump_equal_operation_2op(Symbol);
-    jump_equal_operation_3op(Symbol).
+jump_equal_operation(Operation):-
+    jump_equal_operation_2op(Operation);
+    jump_equal_operation_3op(Operation).
 
 .decl jump_equal_operation_3op(n:symbol)
 
@@ -126,9 +126,9 @@ jump_equal_operation_2op("BC2EQZ").
 
 jump_unequal_operation("BTNEZ").
 
-jump_unequal_operation(Symbol):-
-    jump_unequal_operation_2op(Symbol);
-    jump_unequal_operation_3op(Symbol).
+jump_unequal_operation(Operation):-
+    jump_unequal_operation_2op(Operation);
+    jump_unequal_operation_3op(Operation).
 
 .decl jump_unequal_operation_3op(n:symbol)
 
