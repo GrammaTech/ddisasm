@@ -32,8 +32,8 @@ data_block_candidate(Block,Size):-
 block_points(Block,"code",0,1,"plausible instruction sequence: cmp/branch"):-
     conditional_jump(Jump),
     code_in_block_candidate(Jump,Block),
-    code_in_block_candidate(PrevEA,Block),
     next(PrevEA,Jump),
+    code_in_block_candidate(PrevEA,Block),
     instruction_get_operation(PrevEA,Operation),
     arch.cmp_operation(Operation).
 

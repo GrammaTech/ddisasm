@@ -382,7 +382,7 @@ block_points(Block,"code",0,10,"call with relocation"):-
     arch.call_operation(Operation),
     instruction_get_operation(EA,Operation),
     AlignedEA = EA - (EA band 1),
-    relocation(AlignedEA,"THM_CALL",_,_,_,_,"REL").
+    relocation(AlignedEA,"THM_CALL",_,_,_,_,_).
 
 cfg_edge_to_symbol(Src,Symbol,"branch"):-
     plt_entry_arm_candidate(Src,Symbol,_),
@@ -557,10 +557,10 @@ Attributes:
 * TableLimit: first address that cannot be part of the jump table
 * Type: absolute or TBx
 */
-.decl arm_jump_table_candidate(EA_jump:address,TableStart:address,EntryAddr:address,EntrySize:unsigned,TargetAddr:address,TableLimit:address,Type:symbol,Depth:unsigned)
+.decl arm_jump_table_candidate(EA_jump:address,TableStart:address,EntryAddr:address,EntrySize:unsigned,TargetAddr:address,TableLimit:address,Type:symbol)
 .output arm_jump_table_candidate
 
-arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"absolute",1):-
+arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"absolute"):-
     EA_jump band 1 = 0,
     instruction_get_operation(EA_jump,Operation),
     arch.load_word_operation(Operation),
@@ -606,7 +606,7 @@ tbx_target(EA,TableStart,Size,AlignedTargetAddr):-
     Scale = 2,
     AlignedTargetAddr = as(Diff*as(Scale,number)+as(TableStart,number),address).
 
-arm_jump_table_candidate(EA,TableStart,TableStart,Size,TargetAddr,TableLimit,"TBx",1):-
+arm_jump_table_candidate(EA,TableStart,TableStart,Size,TargetAddr,TableLimit,"TBx"):-
     EA band 1 = 1, // assert: tbb/tbh instruction only exist in Thumb.
     instruction(EA,InstrSize,_,Operation,Operand,0,0,0,_,_),
     op_indirect(Operand,"NONE","PC", _,_,_,_),
@@ -627,9 +627,9 @@ arm_jump_table_candidate(EA,TableStart,TableStart,Size,TargetAddr,TableLimit,"TB
     ),
     code_in_block_candidate(TargetAddr,_).
 
-arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimit,Type,Depth+1):-
+arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimit,Type):-
     // recursive
-    arm_jump_table_candidate(EA_jump,TableStart,EA,Size,_,TableLimit,Type,Depth),
+    arm_jump_table_candidate(EA_jump,TableStart,EA,Size,_,TableLimit,Type),
     (
         Type = "absolute",
         address_in_data(EA+Size,TargetAddr),
@@ -661,27 +661,27 @@ arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimi
 // Aggregate arm_jump_table_candidate in one data block
 block_points(TableStart,"data",0,Points,"arm jump table"),
 data_block_candidate(TableStart,BlockSize):-
-    arm_jump_table_candidate(EA_jump,TableStart,EA_last,Size,_,_,_,Depth),
-    !arm_jump_table_candidate(EA_jump,TableStart,EA_last+Size,Size,_,_,_,_),
-    BlockSize = Size*Depth,
-    TableStart = EA_last-BlockSize+Size,
+    arm_jump_table_candidate(EA_jump,TableStart,EA_last,Size,_,_,_),
+    !arm_jump_table_candidate(EA_jump,TableStart,EA_last+Size,Size,_,_,_),
+    BlockSize = EA_last - TableStart,
+    Depth = BlockSize / Size,
     Points = 7+as(Depth,number).
 
 jump_table_candidate(EA,DataEA,TargetEA):-
-    arm_jump_table_candidate(EA,_,DataEA,_,TargetEA,_,_,_).
+    arm_jump_table_candidate(EA,_,DataEA,_,TargetEA,_,_).
 
 data_object_point(DataEA,Size,"symbol",2,"arm jump-table3"),
 data_object_candidate(DataEA,Size,"symbol"):-
-    arm_jump_table_candidate(_,_,DataEA,Size,_,_,"absolute",_).
+    arm_jump_table_candidate(_,_,DataEA,Size,_,_,"absolute").
 
 jump_table_start(EA,Size,TableStart,TableStart,Operation):-
     Operation="TBx",
-    arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,Operation,_),
+    arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,Operation),
     jump_table_candidate_refined(EA,DataEA,_).
 
 symbol_minus_symbol_jump_table(DataEA,TableStart,Size,TableStart,TargetAddr,"first",Scale):-
     Scale = 2,
-    arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,"TBx",_),
+    arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,"TBx"),
     jump_table_candidate_refined(EA,DataEA,TargetAddr).
 
 .decl litpool_ref(ea:address, register_name:register, ea_litpool:address, nbits:unsigned)
@@ -697,7 +697,11 @@ litpool_ref(EA,Reg,LitPoolAddr,NBits):-
     op_indirect(OffsetOp,"NONE",PC,"NONE",_,Offset,NBits),
     arch.pc_register(PC),
     instruction_get_dest_op(EA,_,RegOp),
-    op_regdirect_contains_reg(RegOp,Reg),
+    (
+        op_regdirect_contains_reg(RegOp,Reg)
+        ;
+        op_regdirect(RegOp,Reg)
+    ),
     !arch.pc_register(Reg),
     (
         (EA band 1) = 0,  Disp = 8 // ARM mode
@@ -715,7 +719,7 @@ alignment(LitPoolAddr,4):-
     litpool_ref(EA,_,LitPoolAddr,_),
     instruction_get_operation(EA,"VLDR"),
     instruction_get_dest_op(EA,_,DestReg),
-    op_regdirect_contains_reg(DestReg,Reg),
+    op_regdirect(DestReg,Reg),
     // Only align the first literal pool for consecutive pools.
     // If Dest reg is S, one word; two words otherwise.
     (
@@ -787,7 +791,7 @@ data_block_candidate(LitPoolAddr,Size):-
         !litpool_ref_for_ldrd(EA), Size = Pt_size
     ).
 
-block_points(LitPoolAddr,"data",EA,Points,"arm literal pool"):-
+block_points(LitPoolAddr,"data",0,Points,"arm literal pool"):-
     litpool_ref(EA,_,LitPoolAddr,_),
     (
         // Give more points in case of ldr/ldrd sequence
@@ -799,11 +803,11 @@ block_points(LitPoolAddr,"data",EA,Points,"arm literal pool"):-
         ;
         code_in_block_candidate_refined(EA,Block),
         block_is_overlapping(Block,_),
-        !arm_jump_table_candidate(_,_,EA,_,_,_,_,_),
+        !arm_jump_table_candidate(_,_,EA,_,_,_,_),
         !litpool_ref_for_ldrd(EA), Points = 5
     ).
 
-block_points(LitPoolAddr,"data",EA,11,"arm literal pool"):-
+block_points(LitPoolAddr,"data",0,11,"arm literal pool"):-
     litpool_ref_double(EA,_,_,LitPoolAddr),
     code_in_block_candidate_refined(EA,_).
 
@@ -1022,37 +1026,49 @@ thumb_branch_offset(EA,Offset):-
         Signed band TopBit != 0, Offset = Signed - (TopBit * 2)
     ).
 
+/**
+IT: The IT (If-Then) instruction makes up to four following instructions
+(the IT block) conditional.
+
+ITxyz
+x,y,z: specifies the condition switch for the second, third, and fourth
+instruction in the IT block, respectively.
+
+The condition switch in the IT block can be either: T (Then) or E (Else).
+
+This predicate determines if EA is a IT block instruction.
+*/
 .decl it_conditional(EA:address)
 .output it_conditional
 
 it_conditional(EA):-
-    next(Prev1,EA),
     instruction_get_operation(Prev1,Operation),
-    substr(Operation,0,2) = "IT".
+    substr(Operation,0,2) = "IT",
+    next(Prev1,EA).
 
 it_conditional(EA):-
-    next(Prev1,EA),
-    next(Prev2,Prev1),
     instruction_get_operation(Prev2,Operation),
     substr(Operation,0,2) = "IT",
-    strlen(Operation) >= 3.
+    strlen(Operation) >= 3,
+    next(Prev2,Prev1),
+    next(Prev1,EA).
 
 it_conditional(EA):-
-    next(Prev1,EA),
-    next(Prev2,Prev1),
-    next(Prev3,Prev2),
     instruction_get_operation(Prev3,Operation),
     substr(Operation,0,2) = "IT",
-    strlen(Operation) >= 4.
+    strlen(Operation) >= 4,
+    next(Prev3,Prev2),
+    next(Prev2,Prev1),
+    next(Prev1,EA).
 
 it_conditional(EA):-
-    next(Prev1,EA),
-    next(Prev2,Prev1),
-    next(Prev3,Prev2),
-    next(Prev4,Prev3),
     instruction_get_operation(Prev4,Operation),
     substr(Operation,0,2) = "IT",
-    strlen(Operation) = 5.
+    strlen(Operation) = 5,
+    next(Prev4,Prev3),
+    next(Prev3,Prev2),
+    next(Prev2,Prev1),
+    next(Prev1,EA).
 
 conditional_jump(EA):-
     arch.jump(EA),

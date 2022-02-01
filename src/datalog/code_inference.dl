@@ -391,12 +391,12 @@ data_block_candidate(Block,Size):-
 .decl within_funcsym(EA:address)
 
 within_funcsym(EA):-
-    possible_ea(EA),
     symbol(SymEA,FuncSize,"FUNC",_,_,_,_,_),
+    possible_ea(EA),
     EA >= SymEA,
     EA < SymEA + FuncSize.
 
-block_points(Block,"data",0,Points,"arm string"),
+block_points(Block,"data",0,Points,"possible string"),
 data_block_candidate(Block,Size):-
     ascii_string(Block,Size),
     (
@@ -704,7 +704,7 @@ block_points(Block,"code",0,1,"better fit"):-
     block_candidate_boundaries(_,"code",_,Block).
 
 // its address appears somewhere
-block_points(Block,"code",BlockPred,3,"appears"):-
+block_points(Block,"code",0,3,"appears"):-
     block_is_overlapping(Block,"code"),
     possible_target_from(Block,EA),
     !unlikely_have_symbolic_immediate(EA),
