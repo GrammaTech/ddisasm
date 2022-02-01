@@ -174,7 +174,7 @@ Value of register 'Reg' at address 'EA' is GOT-relative base reference.
 .output reg_has_got
 
 /**
-Address EA' is used as GOT-relative base reference. 'EA' is either the beginning
+Address 'EA' is used as GOT-relative base reference. 'EA' is either the beginning
 of either the .got or .got.plt section.
 */
 .decl got_reference_pointer(EA:address)
@@ -186,7 +186,7 @@ of either the .got or .got.plt section.
 // .L1$pb:
 //    pop  REG
 // .Ltmp0:
-//    add  REG, offset _GLOBAL_OFFSET_TAB LE_+(.Ltmp0-.L1$pb)
+//    add  REG, offset _GLOBAL_OFFSET_TABLE_+(.Ltmp0-.L1$pb)
 // e.g. (gcc)
 //    call _x86.get_pc_thunk.REG
 //    add REG, _GLOBAL_OFFSET_TABLE_
