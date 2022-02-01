@@ -67,12 +67,12 @@ abi_intrinsic(EA,"__dso_handle"):-
 
 // Identify load PC operations:
 // e.g. (clang)
-// 	 call	.L1$pb
+//       call   .L1$pb
 // .L1$pb:
-// 	 pop	REG
+//        pop    REG
 // .Ltmp0:
-// 	 add	REG, offset _GLOBAL_OFFSET_TAB LE_+(.Ltmp0-.L1$pb)
-//e.g. (gcc)
+//        add    REG, offset _GLOBAL_OFFSET_TAB LE_+(.Ltmp0-.L1$pb)
+// e.g. (gcc)
 //   call _x86.get_pc_thunk.REG
 //   add REG, _GLOBAL_OFFSET_TABLE_
 got_reference_pointer(as(Offset,address)),
