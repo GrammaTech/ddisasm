@@ -393,47 +393,48 @@ no_return_function("longjmp(@.*)?"):- binary_format("ELF").
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-symbolic_expr_from_relocation(EA,8,Symbol,Addend):-
+symbolic_expr_from_relocation(EA,Size/8,Symbol,Addend,TargetEA):-
     binary_format("ELF"),
-    relocation(EA,"R64",Symbol,Addend,_,_,_),
-    symbol(_,_,_,_,_,_,_,_,Symbol), Symbol != "".
-
-// Relocation indirectly references a named symbol with an offset from a SECTION symbol.
-symbolic_expr_from_relocation(EA,Size/8,Symbol,0):-
-    binary_type("REL"),
-    // Nameless relocation referencing a SECTION symbol.
-    relocation(EA,Type,"",Addend,SymbolIndex,_,_),
+    relocation(EA,Type,Symbol,Addend,SymbolIndex,_,_),
     relocation_size(Type,Size),
     (
         Type = "R32";
-        Type = "R64"
+        Type = "R64";
+        Type = "R32S"
+    ),
+    symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol),
+    Symbol != "".
+
+// Relocation indirectly references a named symbol with an offset from a SECTION symbol.
+symbolic_expr_from_relocation(EA,Size/8,Symbol,0,TargetEA):-
+    binary_type("REL"),
+    // Nameless relocation referencing a SECTION symbol.
+    relocation(EA,Type,"",Addend,SymbolIndex,SrcSection,_),
+    section(SrcSection,_,_), // Only loaded sections
+    relocation_size(Type,Size),
+    (
+        Type = "R32";
+        Type = "R64";
+        Type = "R32S"
     ),
     symbol(_,_,"SECTION",_,_,SectionIndex,_,SymbolIndex,_),
     section_complete(_,_,Begin,_,_,_,SectionIndex),
     // Addend is the offset of a symbol within the Section.
-    symbol(Begin+as(Addend,unsigned),_,_,_,_,_,_,_,Symbol).
+    TargetEA = Begin+as(Addend,unsigned),
+    symbol(TargetEA,_,_,_,_,_,_,_,Symbol).
 
-symbolic_expr_from_relocation(EA,Size,Symbol,Addend):-
+symbolic_expr_from_relocation(EA,Size,Symbol,Addend,TargetEA):-
     binary_format("ELF"),
     arch.pointer_size(Size),
-    relocation(EA,"GLOB_DAT",Symbol,Addend,_,_,_),
-    symbol(_,_,_,_,_,_,_,_,Symbol).
+    relocation(EA,"GLOB_DAT",Symbol,Addend,SymbolIndex,_,_),
+    symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol).
 
-symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
-    binary_format("ELF"),
-    relocation(EA,"R32",Symbol,Addend,_,_,_),
-    symbol(_,_,_,_,_,_,_,_,Symbol).
-
-symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
-    binary_format("ELF"),
-    relocation(EA,"R32S",Symbol,Addend,_,_,_),
-    symbol(_,_,_,_,_,_,_,_,Symbol).
-
-symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
+symbolic_expr_from_relocation(EA,4,Symbol,Addend,TargetEA):-
     binary_type("REL"),
-    relocation(EA,"TPOFF32",Symbol,Addend,_,_,_).
+    relocation(EA,"TPOFF32",Symbol,Addend,_,_,_),
+    symbol(TargetEA,_,_,_,_,_,_,_,Symbol).
 
-symbolic_expr_from_relocation(EA+Offset,4,Symbol,Addend+N):-
+symbolic_expr_from_relocation(EA+Offset,4,Symbol,Addend+N,TargetEA):-
     binary_isa("X64"),
     binary_type("REL"),
     code(EA),
@@ -441,17 +442,20 @@ symbolic_expr_from_relocation(EA+Offset,4,Symbol,Addend+N):-
         instruction(EA,Size,_,_,_,_,_,_,_,Offset);
         instruction(EA,Size,_,_,_,_,_,_,Offset,_)
     ),
+    relocation(EA+Offset,Type,Symbol,Addend,SymbolIndex,_,_),
     (
-        relocation(EA+Offset,"PC32",Symbol,Addend,_,_,_);
-        relocation(EA+Offset,"PLT32",Symbol,Addend,_,_,_)
+        Type = "PC32";
+        Type = "PLT32"
     ),
+    symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol),
     Symbol != "",
     // Adjust addend for trailing instruction bytes.
     N = as(Size-Offset,number), N > 0.
 
-symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
+symbolic_expr_from_relocation(EA,4,Symbol,Addend,TargetEA):-
     binary_type("REL"),
-    relocation(EA,"PC32",Symbol,Addend,_,Section,"RELA"),
+    relocation(EA,"PC32",Symbol,Addend,SymbolIndex,Section,"RELA"),
+    symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol),
     section(Section,Size,Begin),
     data_section(Section), EA >= Begin, EA < Begin+Size.
 

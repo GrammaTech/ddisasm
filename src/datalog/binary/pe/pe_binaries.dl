@@ -149,7 +149,7 @@ reg_has_base_image(EA,Reg):-
     def(EA,Reg),
     instruction_get_operation(EA,"LEA").
 
-symbolic_expr_from_relocation(EA_data,Size,"__ImageBase",0),
+symbolic_expr_from_relocation(EA_data,Size,"__ImageBase",0,ImageBase),
 reg_has_base_image(EA_code,Reg):-
     binary_format("PE"),
     base_address(ImageBase),
@@ -359,7 +359,7 @@ labeled_data_candidate(ImageBase+Dest):-
 .decl dos_header_symbolic_operand(EA:address,Dest:unsigned)
 .output dos_header_symbolic_operand
 
-symbolic_expr_from_relocation(EA+Disp_offset,Size/8,"__ImageBase",as(Dest-ImageBase,number)),
+symbolic_expr_from_relocation(EA+Disp_offset,Size/8,"__ImageBase",as(Dest-ImageBase,number),Dest),
 dos_header_symbolic_operand(EA,Dest):-
     binary_format("PE"),
     base_address(ImageBase),
@@ -370,7 +370,7 @@ dos_header_symbolic_operand(EA,Dest):-
     Dest > ImageBase,
     Dest < ImageBase + 64.
 
-symbolic_expr_from_relocation(EA+Disp_offset,Size/8,"__ImageBase",as(Dest-ImageBase,number)),
+symbolic_expr_from_relocation(EA+Disp_offset,Size/8,"__ImageBase",as(Dest-ImageBase,number),Dest),
 dos_header_symbolic_operand(EA+Disp_offset,Dest):-
     binary_format("PE"),
     base_address(ImageBase),

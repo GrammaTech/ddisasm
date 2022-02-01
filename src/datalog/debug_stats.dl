@@ -101,7 +101,7 @@ used_relocation(EA+Offset):-
 
 used_relocation(EA):-
     binary_format("PE"),
-    symbolic_expr_from_relocation(EA,_,_,_),
+    symbolic_expr_from_relocation(EA,_,_,_,_),
     relocation(EA,_,_,_,_,_,_).
 
 /**
