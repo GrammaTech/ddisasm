@@ -84,7 +84,7 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
             for(auto& Object : Archive.Files)
             {
                 std::vector<uint8_t> ObjectData;
-                Archive.ReadFile(Object, ObjectData);
+                Archive.readFile(Object, ObjectData);
 
                 std::shared_ptr<LIEF::Binary> Binary{
                     LIEF::Parser::parse(ObjectData, Object.FileName)};

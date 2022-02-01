@@ -46,30 +46,30 @@ public:
     }
 };
 
-struct FileHeader
-{
-    char ident[16]; // file identifier (ascii)
-    char ts[12];    // modification timestamp (decimal)
-    char oid[6];    // owner id (decimal)
-    char gid[6];    // group id (decimal)
-    char mode[8];   // file mode (octal)
-    char size[10];  // file size in bytes (decimal)
-    char end[2];    // terminator "`\n"
-};
-
-enum ArchiveReaderFilenameFormat
-{
-    Unextended,
-    GNUExtended,
-    BSDExtended
-};
-
 class ArchiveReaderFile
 {
 public:
-    ArchiveReaderFile(const FileHeader &Header, uint64_t O);
+    struct EntryHeader
+    {
+        char ident[16]; // file identifier (ascii)
+        char ts[12];    // modification timestamp (decimal)
+        char oid[6];    // owner id (decimal)
+        char gid[6];    // group id (decimal)
+        char mode[8];   // file mode (octal)
+        char size[10];  // file size in bytes (decimal)
+        char end[2];    // terminator "`\n"
+    };
 
-    ArchiveReaderFilenameFormat FileNameFormat;
+    enum EntryFileNameFormat
+    {
+        Unextended,
+        GNUExtended,
+        BSDExtended
+    };
+
+    ArchiveReaderFile(const EntryHeader &Header, uint64_t O);
+
+    EntryFileNameFormat FileNameFormat;
     uint64_t ExtendedFileNameNumber;
     std::string Ident;
     std::string FileName;
@@ -81,10 +81,18 @@ class ArchiveReader
 {
 public:
     ArchiveReader(const std::string &Path);
-    void ReadFile(ArchiveReaderFile &File, std::vector<uint8_t> &Data);
+    void readFile(ArchiveReaderFile &File, std::vector<uint8_t> &Data);
     std::list<ArchiveReaderFile> Files;
 
     static bool isAr(const std::string &Path);
+
+    /**
+     * Determine if a stream is positioned at the start of an archive file.
+     *
+     * This function is NOT idempotent and may advance the stream position.
+     * If the stream does contain an archive file, the stream is positioned
+     * after the archive magic ("!<arch>\n").
+     */
     static bool isAr(std::ifstream &Stream);
 
 protected:

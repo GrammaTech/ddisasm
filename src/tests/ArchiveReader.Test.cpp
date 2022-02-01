@@ -20,7 +20,7 @@ TEST(ArchiveReaderTest, Basic)
         EXPECT_EQ(Object.FileName, FileNames[Index]);
 
         std::vector<uint8_t> FileData;
-        Reader.ReadFile(Object, FileData);
+        Reader.readFile(Object, FileData);
 
         std::string FileDataStr(FileData.begin(), FileData.end());
         EXPECT_EQ(FileDataStr, Contents[Index]);
