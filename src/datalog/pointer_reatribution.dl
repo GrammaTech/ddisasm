@@ -74,7 +74,7 @@ moved_data_label(EA,Size,Dest,NewDest):-
 moved_data_label(EA,SizePointer,Dest,Address):-
     symbolic_data(EA,SizePointer,Dest),
     !code(Dest),
-    symbol(Address,Size,_,_,_,_,_,Name),
+    symbol(Address,Size,_,_,_,_,_,_,Name),
     !function_symbol(Address,Name),
     Address < Dest,
     Dest < Address+Size.
@@ -312,9 +312,9 @@ moved_displacement_candidate(EA,Op_index,DestAddr,SymbolAddr,0):-
     !binary_type("EXEC"),
     data_access(EA,Op_index,_,_,_,_,Dest,_), Dest >= 0,
     DestAddr = as(Dest,address),
-    instruction_displacement_offset(EA,Op_index,DisplacementOffset),
+    instruction_displacement_offset(EA,Op_index,DisplacementOffset,_),
     relocation(EA+DisplacementOffset,_,Symbol,_,_,_,_),
-    symbol(SymbolAddr,_,Type,_,_,_,_,Symbol),
+    symbol(SymbolAddr,_,Type,_,_,_,_,_,Symbol),
     Type != "SECTION",
     SymbolAddr != DestAddr.
 
@@ -419,10 +419,10 @@ moved_immediate_candidate(EA_from,Imm_index,ImmediateAddr,NewDest):-
     value_reg_at_operand(EA_access,Op_index,Reg,EA_from,_,_,Type),
     Type != "incomplete",
     (
-       binary_type("EXEC"),
-       mov_immediate_to_reg(EA_from,Reg,Imm_index,Immediate), Immediate >= 0
-       ;
-       mov_pc_relative_immediate_to_reg(EA_from,Reg,Imm_index,Immediate), Immediate >= 0
+        binary_type("EXEC"),
+        mov_immediate_to_reg(EA_from,Reg,Imm_index,Immediate), Immediate >= 0
+        ;
+        mov_pc_relative_immediate_to_reg(EA_from,Reg,Imm_index,Immediate), Immediate >= 0
     ),
     ImmediateAddr = as(Immediate,address),
     as(Beg,number)-Mult <= Immediate,
@@ -475,12 +475,12 @@ moved_immediate_candidate(EA,Op_index,DestAddr,SymbolAddr):-
     !binary_type("EXEC"),
     !binary_type("REL"),
     code(EA),
-    instruction_immediate_offset(EA,Op_index,ImmediateOffset),
+    instruction_immediate_offset(EA,Op_index,ImmediateOffset,_),
     instruction_get_src_op(EA,Op_index,Op),
     op_immediate(Op,Dest), Dest >= 0,
     DestAddr = as(Dest,address),
     relocation(EA+ImmediateOffset,_,Symbol,_,_,_,_),
-    symbol(SymbolAddr,_,_,_,_,_,_,Symbol),
+    symbol(SymbolAddr,_,_,_,_,_,_,_,Symbol),
     SymbolAddr != DestAddr.
 
 moved_label(EA,Op_index,Dest,NewDest):-
@@ -495,7 +495,7 @@ moved_label(EA,Op_index,Dest,Address):-
     ),
     !moved_displacement_candidate(EA,Op_index,_,_,_),
     !moved_immediate_candidate(EA,Op_index,_,_),
-    defined_symbol(Address,Size,_,_,_,_,_,Name),
+    defined_symbol(Address,Size,_,_,_,_,_,_,Name),
     !function_symbol(Address,Name),
     Address < Dest,
     Dest < Address+Size.

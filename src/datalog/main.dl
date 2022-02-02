@@ -73,6 +73,8 @@ This module:
 // Inference of instruction boundaries.
 #include "code_inference.dl"
 
+// Infer special symbols and select symbols for symbolic expressions.
+#include "symbols.dl"
 // Performs literal-reference disambiguation and string inference.
 #include "symbolization.dl"
 
@@ -96,7 +98,7 @@ This module:
 .decl base_address(ea:address)
 .input base_address
 
-.decl symbol(ea:address,size:unsigned,type:symbol,scope:symbol,sectionIndex:unsigned, originTable:symbol,tableIndex:unsigned,name:symbol)
+.decl symbol(ea:address,size:unsigned,type:symbol,scope:symbol,visibility:symbol,sectionIndex:unsigned,originTable:symbol,tableIndex:unsigned,name:symbol)
 .input symbol
 
 .decl section_complete(Name:symbol,Size:unsigned,EA:address,Type:unsigned,Flags:unsigned,Align:unsigned,Index:unsigned)
@@ -124,8 +126,8 @@ This module:
 
 // instructions
 
-.decl instruction(ea:address, size:unsigned, prefix:symbol, opcode:symbol,
-          op1:operand_code, op2:operand_code, op3:operand_code, op4:operand_code,
+.decl instruction(ea:address,size:unsigned,prefix:symbol,opcode:symbol,
+          op1:operand_code,op2:operand_code,op3:operand_code,op4:operand_code,
           immOffset:unsigned,displacementOffset:unsigned)
 .input instruction
 
@@ -149,8 +151,8 @@ This module:
 .input op_special
 .output op_special
 
-.decl op_indirect(code:operand_code,reg1:register, reg2:register, reg3:register,
-        multiplier:number, offset:number, size_value:unsigned)
+.decl op_indirect(code:operand_code,reg1:register,reg2:register,reg3:register,
+        multiplier:number,offset:number,size_value:unsigned)
 .input op_indirect
 
 // data from sections
@@ -182,28 +184,53 @@ Possible null-terminated ASCII string of 'Size' bytes begins at address 'EA'.
 // auxiliary definitions
 /////////////////////////////////////////////////////////////
 
-.decl instruction_immediate_offset(EA:address,Index:operand_index,Offset:unsigned)
+/**
+This predicate determines the `Offset` and `Size` of an immediate operand of index `Index`.
+This is used to place symbolic expressions at the right address.
+The `Offset` is non-zero only for the x86 ISA, for other ISAs the symbolic
+expressions point to the beginning of the instruction.
+*/
+.decl instruction_immediate_offset(EA:address,Index:operand_index,Offset:unsigned,Size:unsigned)
 .output instruction_immediate_offset
 
-instruction_immediate_offset(EA,Index,ImmediateOffset):-
-    instruction(EA,_,_,_,_,_,_,_,ImmediateOffset,_),
+instruction_immediate_offset(EA,Index,ImmediateOffset,Size-ImmediateOffset):-
+    instruction(EA,Size,_,_,_,_,_,_,ImmediateOffset,_),
     instruction_get_op(EA,Index,Op),
     op_immediate(Op,_).
 
-.decl instruction_displacement_offset(EA:address,Index:operand_index,Offset:unsigned)
+/**
+This predicate determines the `Offset` and `Size` of a displacement
+in an indirect operand of index `Index`.
+This is used to place symbolic expressions at the right address.
+The `Offset` is non-zero only for the x86 ISA, for other ISAs the symbolic
+expressions point to the beginning of the instruction.
+*/
+.decl instruction_displacement_offset(EA:address,Index:operand_index,Offset:unsigned,Size:unsigned)
 .output instruction_displacement_offset
 
-instruction_displacement_offset(EA,Index,DisplacementOffset):-
-    instruction(EA,_,_,_,_,_,_,_,_,DisplacementOffset),
+instruction_displacement_offset(EA,Index,DisplacementOffset,DispSize):-
+    instruction(EA,Size,_,_,_,_,_,_,ImmediateOffset,DisplacementOffset),
     instruction_get_op(EA,Index,Op),
-    op_indirect(Op,_,_,_,_,_,_).
+    op_indirect(Op,_,_,_,_,_,_),
+    (
+        // x86 can have 'mov [Disp], Imm' (move immediate value to memory)
+        // x86 encoding puts the immediate after the displacement so we need to
+        // check the immediate offset to compute the size of the displacement
+        ImmediateOffset > DisplacementOffset,
+        DispSize = ImmediateOffset - DisplacementOffset,
+        // avoid warning
+        Size = Size
+        ;
+        ImmediateOffset <= DisplacementOffset,
+        DispSize = Size - DisplacementOffset
+    ).
 
 .decl instruction_get_operation(ea:address,operation:symbol) inline
 
 instruction_get_operation(EA,Operation):-
     instruction(EA,_,_,Operation,_,_,_,_,_,_).
 
-.decl instruction_get_op(ea:address, index:operand_index, operator:operand_code)
+.decl instruction_get_op(ea:address,index:operand_index,operator:operand_code)
 
 instruction_get_op(EA,Index,Op):-
     instruction(EA,_,_,_,Op1,Op2,Op3,Op4,_,_),
@@ -306,9 +333,9 @@ pc_relative_operand(EA,Index,Dest):-
 
 pc_relative_operand(EA,Index,Dest):-
     binary_isa("X64"),
-    instruction_displacement_offset(EA,Index,Offset),
+    instruction_displacement_offset(EA,Index,Offset,_),
     relocation(EA+Offset,"PC32",_,Addend,SymbolIndex,_,_),
-    symbol(Base,_,"SECTION",_,_,_,SymbolIndex,_),
+    symbol(Base,_,"SECTION",_,_,_,_,SymbolIndex,_),
     instruction(EA,Size,_,_,_,_,_,_,_,_),
     Dest = Base + as(as(Size-Offset,number)+Addend,unsigned).
 
@@ -319,16 +346,6 @@ split_load_operand(0,0,0):- false.
 
 .decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
 .output got_relative_operand
-
-.decl symbolic_operand_attribute(ea:address,index:unsigned,attribute:symbol)
-.output symbolic_operand_attribute
-
-symbolic_operand_attribute(0,0,""):- false.
-
-.decl symbolic_data_attribute(ea:address,attribute:symbol)
-.output symbolic_data_attribute
-
-symbolic_data_attribute(0,""):- false.
 
 .decl instruction_has_loop_prefix(EA:address)
 
@@ -348,8 +365,8 @@ instruction_has_relocation(EA,EA+Offset):-
         binary_isa("X64")
     ),
     (
-        instruction_immediate_offset(EA,_,Offset);
-        instruction_displacement_offset(EA,_,Offset)
+        instruction_immediate_offset(EA,_,Offset,_);
+        instruction_displacement_offset(EA,_,Offset,_)
     ),
     relocation(EA+Offset,_,_,_,_,_,_).
 
@@ -382,10 +399,10 @@ direct_jump(EA,as(Dest,address)):-
 
 direct_jump(EA,as(Dest,address)):-
     arch.jump(EA),
-    instruction_immediate_offset(EA,_,_),
+    instruction_immediate_offset(EA,_,_,_),
     instruction_has_relocation(EA,Rel),
     relocation(Rel,_,_,_,SymbolIndex,_,_),
-    defined_symbol(Dest,_,_,_,_,_,SymbolIndex,_).
+    defined_symbol(Dest,_,_,_,_,_,_,SymbolIndex,_).
 
 direct_jump(EA,EA):-
     instruction_has_loop_prefix(EA).
@@ -437,10 +454,10 @@ direct_call(EA,as(Dest,address)):-
 direct_call(EA,Dest):-
     arch.call_operation(Operation),
     instruction_get_operation(EA,Operation),
-    instruction_immediate_offset(EA,_,_),
+    instruction_immediate_offset(EA,_,_,_),
     instruction_has_relocation(EA,Rel),
     relocation(Rel,_,_,_,SymbolIndex,_,_),
-    defined_symbol(Dest,_,_,_,_,_,SymbolIndex,_).
+    defined_symbol(Dest,_,_,_,_,_,_,SymbolIndex,_).
 
 // Syntactically indirect call, but statically resolved direct-call
 // E.g., In MIPS, "jalr t9", where t9 can be statically resolved by
@@ -535,32 +552,32 @@ cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
 
 /////////////////////////////////////////////////////////////////////////////////
 
-.decl symbol_set(ea:address,size:unsigned,type:symbol,scope:symbol,sectionIndex:unsigned,name:symbol)
+.decl symbol_set(ea:address,size:unsigned,type:symbol,scope:symbol,visibility:symbol,sectionIndex:unsigned,name:symbol)
 
-symbol_set(EA,Size,Type,Scope,SectIndex,Name):-
-    symbol(EA,Size,Type,Scope,SectIndex,_,_,Name).
+symbol_set(EA,Size,Type,Scope,Visibility,SectIndex,Name):-
+    symbol(EA,Size,Type,Scope,Visibility,SectIndex,_,_,Name).
 
 .decl ambiguous_symbol(name:symbol)
 .output ambiguous_symbol
 
 ambiguous_symbol(Name):-
-    symbol_set(_,_,_,_,_,Name),
-    1 < count :{symbol_set(_,_,_,_,_,Name)}.
+    symbol_set(_,_,_,_,_,_,Name),
+    1 < count :{symbol_set(_,_,_,_,_,_,Name)}.
 
 // Function symbols
 .decl function_symbol(ea:address,name:symbol)
 .output function_symbol
 
 function_symbol(EA,Name):-
-    symbol(EA,_,"FUNC",_,_,_,_,Name).
+    symbol(EA,_,"FUNC",_,_,_,_,_,Name).
 
 function_symbol(EA,Name):-
-    symbol(EA,_,"GNU_IFUNC",_,_,_,_,Name).
+    symbol(EA,_,"GNU_IFUNC",_,_,_,_,_,Name).
 
-.decl defined_symbol(ea:address,size:unsigned,type:symbol,scope:symbol,sectionIndex:unsigned,originTable:symbol,tableIndex:unsigned,name:symbol)
+.decl defined_symbol(ea:address,size:unsigned,type:symbol,scope:symbol,visibility:symbol,sectionIndex:unsigned,originTable:symbol,tableIndex:unsigned,name:symbol)
 
-defined_symbol(EA,Size,Type,Scope,SectIndex,OriginTable,TableIndex,Name):-
-    symbol(EA,Size,Type,Scope,SectIndex,OriginTable,TableIndex,Name),
+defined_symbol(EA,Size,Type,Scope,Visibility,SectIndex,OriginTable,TableIndex,Name):-
+    symbol(EA,Size,Type,Scope,Visibility,SectIndex,OriginTable,TableIndex,Name),
     SectIndex != 0,        // SHN_UNDEF
     (
         SectIndex < 65280; // SHN_LORESERVE
@@ -636,19 +653,8 @@ data_segment(Begin,End):-
 .decl got_reference(Got_entry:address,Symbol:symbol)
 .output got_reference
 
-.decl got_local_reference(Got_entry:address,Dest:address)
-.output got_local_reference
 
-//////////////////////////////////////////////////////////////////////////
-// find special functions and symbols
 .decl main_function(ea:address)
-
-.decl inferred_symbol_name(ea:address,name:symbol,scope:symbol, type: symbol)
-.output inferred_symbol_name
-
-inferred_symbol_name(EA,"main","GLOBAL","FUNC"):-
-    binary_format("ELF"),
-    main_function(EA).
 
 .decl conditional_return(EA:address)
 
@@ -664,6 +670,7 @@ unconditional_return(EA):-
     instruction_get_operation(EA,Operation),
     arch.unconditional_return_operation(Operation).
 
+
 .decl no_return_call(EA:address)
 
 .decl function_pointer_section(Name:symbol)
@@ -678,15 +685,15 @@ no_return_call(EA):-
 
 no_return_call(EA):-
     direct_call(EA,Dest),
-    defined_symbol(Dest,_,_,_,_,_,_,Name),
+    defined_symbol(Dest,_,_,_,_,_,_,_,Name),
     no_return_function(Pattern),
     match(Pattern,Name).
 
 no_return_call(EA):-
     direct_call(EA,_),
-    instruction_immediate_offset(EA,_,Offset),
+    instruction_immediate_offset(EA,_,Offset,_),
     relocation(EA+Offset,_,_,_,SymbolIndex,_,_),
-    symbol(_,_,_,_,_,_,SymbolIndex,Name),
+    symbol(_,_,_,_,_,_,_,SymbolIndex,Name),
     no_return_function(Pattern),
     match(Pattern,Name).
 

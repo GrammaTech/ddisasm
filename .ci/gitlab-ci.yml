@@ -355,7 +355,6 @@ run-ubuntu20-gcc:
   <<: *test-and-tag
 
 run-ubuntu20-gcc-debug:
-  allow_failure: true
   stage: test-and-tag
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   needs: ['build-ubuntu20-gcc-debug']
@@ -367,7 +366,6 @@ run-ubuntu20-gcc-debug:
   <<: *test-and-tag
 
 run-ubuntu20-clang-debug:
-  allow_failure: true
   stage: test-and-tag
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   needs: ['build-ubuntu20-clang-debug']

@@ -7,13 +7,13 @@
 
 relocation_in_operand(EA,Index,Location,Offset):-
     code(EA),
-    instruction_immediate_offset(EA,Index,Offset),
+    instruction_immediate_offset(EA,Index,Offset,_),
     relocation(Location,_,_,_,_,_,_),
     Location = EA+Offset.
 
 relocation_in_operand(EA,Index,Location,Offset):-
     code(EA),
-    instruction_displacement_offset(EA,Index,Offset),
+    instruction_displacement_offset(EA,Index,Offset,_),
     relocation(Location,_,_,_,_,_,_),
     Location = EA+Offset.
 
@@ -22,7 +22,7 @@ relocation_in_operand(EA,Index,Location,Offset):-
 
 trivial_relocation(EA):-
     relocation(EA,_,Symbol,0,_,_,_),
-    symbol(0,_,_,_,0,_,_,Symbol),
+    symbol(0,_,_,_,_,0,_,_,Symbol),
     Symbol != "".
 
 trivial_relocation(EA):-
@@ -90,8 +90,8 @@ false_negative(Location):-
     !symbolic_operand(EA,Index,_,_),
     !moved_label(EA,Index,_,_),
     (
-        instruction_immediate_offset(EA,Index,Offset);
-        instruction_displacement_offset(EA,Index,Offset)
+        instruction_immediate_offset(EA,Index,Offset,_);
+        instruction_displacement_offset(EA,Index,Offset,_)
     ),
     Location = EA+Offset.
 
@@ -106,8 +106,8 @@ false_positive(Location):-
     !direct_call(EA,_),
     !relocation_in_operand(EA,Index,_,_),
     (
-        instruction_immediate_offset(EA,Index,Offset);
-        instruction_displacement_offset(EA,Index,Offset)
+        instruction_immediate_offset(EA,Index,Offset,_);
+        instruction_displacement_offset(EA,Index,Offset,_)
     ),
     Location=EA+Offset.
 
@@ -130,7 +130,7 @@ false_negative(EA):-
     relocation(EA,_,_,_,_,_,_),
     !zero_relocation(EA),
     !symbolic_data(EA,_,_),
-    !symbol_minus_symbol(EA,_,_,_,_),
+    !symbol_minus_symbol(EA,_,_,_,_,_),
     regular_data_section(Sect),
     section(Sect,SizeSect,BegSect),
     EA >= BegSect,
@@ -141,7 +141,7 @@ false_positive(EA):-
         symbolic_data(EA,_,_);
         // it looks like jump tables where each entry 4 or less bytes do not have
         // relocations associated to them.
-        symbol_minus_symbol(EA,Size,_,_,_), Size>4
+        symbol_minus_symbol(EA,Size,_,_,_,_), Size>4
     ),
     !relocation(EA,_,_,_,_,_,_),
 

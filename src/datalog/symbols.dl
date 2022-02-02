@@ -1,0 +1,229 @@
+//===- symbols.dl -------------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+This module select the symbols to be used in symbolic expressions and declares
+the predicates needed to infer new symbols.
+*/
+
+/**
+Type to determine whether a symbol is pointing to the
+beginning or the end of a block.
+The symbol position can be "Beg" or "End".
+
+FIXME: souffle does not yet provide a complete programatic interface for ADT
+https://github.com/souffle-lang/souffle/issues/2181. Once it does
+we can use a ADT
+
+.type symbol_position = Beg {}
+                     | End {}
+*/
+.type symbol_position <: symbol
+
+/**
+A new symbol 'SymbolName' at address 'EA' should be created.
+*/
+.decl inferred_symbol(EA:address,SymbolName:symbol,Scope:symbol,Type:symbol,Pos:symbol_position)
+.output inferred_symbol
+
+/**
+A special symbol 'SymbolName' at address 'EA' has been inferred.
+Special inferred symbols have higher priority than regular
+inferred symbols.
+*/
+.decl inferred_special_symbol(EA:address,SymbolName:symbol,Scope:symbol,Type:symbol,Pos:symbol_position)
+
+inferred_special_symbol(EA,"main","GLOBAL","FUNC","Beg"):-
+    binary_format("ELF"),
+    main_function(EA).
+
+inferred_symbol(EA,SymbolName,Scope,Type,Pos),
+symbol_score(EA,SymbolName,Type,Pos,1):-
+    inferred_special_symbol(EA,SymbolName,Scope,Type,Pos).
+
+/**
+Best symbol at address 'EA' to be used for symbolic expressions. There
+can be two variants: If 'Pos' is "Beg", the symbol points to the beginning
+of a block. If 'Pos' is "End", the symbol points at the end of a block.
+*/
+.decl best_symexpr_symbol(EA:address,SymbolName:symbol,Pos:symbol_position)
+.output best_symexpr_symbol
+
+/**
+Best function symbol at address 'EA'.
+*/
+.decl best_func_symbol(EA:address,SymbolName:symbol)
+.output best_func_symbol
+
+/**
+This predicate is computed to decide which is the best symbol for
+symbolic expressions or the best function symbol at each address.
+Each symbol receives a score based on its properties.
+*/
+.decl symbol_score(EA:address,SymbolName:symbol,Type:symbol,Pos:symbol_position,Score:unsigned)
+.output symbol_score
+
+
+symbol_score(EA,SymbolName,Type,Pos,Score):-
+    symbol(EA,_,Type,Scope,Visibility,SectIndex,_,TableIndex,SymbolName),
+    !ambiguous_symbol(SymbolName),
+    !avoid_symbols(SymbolName),
+    Type !="SECTION", Type != "FILE",
+    // Consider defined symbols or undefined symbols
+    // that have a non-zero address.
+    (SectIndex != 0; EA != 0),
+    (
+        symbol_at_section_end(EA,SymbolName), Pos = "End";
+        !symbol_at_section_end(EA,SymbolName), Pos = "Beg"
+    ),
+    (
+        relocation(EA,"COPY",SymbolName,_,_,_,_), RelocScore = 1;
+        !relocation(EA,"COPY",SymbolName,_,_,_,_), RelocScore = 0
+    ),
+    (
+        Type != "NOTYPE", TypeScore = 1;
+        Type = "NOTYPE", TypeScore = 0
+    ),
+    (
+        Scope = "GLOBAL", ScopeScore = 1;
+        Scope != "GLOBAL", ScopeScore = 0
+    ),
+    (
+        Visibility != "HIDDEN", VisibilityScore = 1;
+        Visibility = "HIDDEN", VisibilityScore = 0
+    ),
+    // Encode lexicographic ordering into a single score.
+    Score = (RelocScore bshl 35)
+            bor (TypeScore bshl 34)
+            bor (ScopeScore bshl 33)
+            bor (VisibilityScore bshl 32)
+            bor as(TableIndex,unsigned).
+
+
+/**
+This predicate records a set of symbols that should not be used in symbolic
+expressions. These symbols are skipped by the pprinter.
+TODO: maybe the pprinter could stop skipping these symbols and we
+could remove them from here.
+*/
+.decl avoid_symbols(SymbolName:symbol)
+
+avoid_symbols(Name):-
+    binary_format("ELF"),
+    elf_avoid_symbols(Name).
+
+/**
+This predicate records the set of symbols that should not be used
+in symbolic expressions for ELF binaries
+*/
+.decl elf_avoid_symbols(SymbolName:symbol)
+
+elf_avoid_symbols("__bss_start").
+elf_avoid_symbols("__data_start").
+elf_avoid_symbols("__dso_handle").
+elf_avoid_symbols("_fp_hw").
+elf_avoid_symbols("_IO_stdin_used").
+elf_avoid_symbols("__TMC_END__").
+
+// Choose the function symbol with maximum score
+// or create a new function symbol if we have a function
+// and no pre-existing function symbols.
+
+best_func_symbol(EA,SymbolName):-
+   symbol_score(EA,SymbolName,"FUNC","Beg",Score),
+   Score = max S: {symbol_score(EA,_,"FUNC","Beg",S)}.
+
+inferred_symbol(EA,SymbolName,"GLOBAL","FUNC","Beg"),
+best_func_symbol(EA,SymbolName):-
+    function_inference.function_entry(EA),
+    !symbol_score(EA,_,"FUNC","Beg",_),
+    // TODO: Function symbols are converted to hex in the C++.
+    // A better solution would be to define a user-defined functor.
+    SymbolName = cat("FUN_",to_string(EA)).
+
+// Choose:
+// 1. the symbol with maximum score
+// 2. the inferred function symbol (only for Pos="Beg")
+// 3. or generate a new symbol if we have a labeled location without symbols.
+
+best_symexpr_symbol(EA,SymbolName,Pos):-
+    symbol_score(EA,SymbolName,_,Pos,Score),
+    Score = max S: {symbol_score(EA,_,_,Pos,S)}.
+
+best_symexpr_symbol(EA,SymbolName,"Beg"):-
+    labeled_ea(EA),
+    !symbol_score(EA,_,_,"Beg",_),
+    best_func_symbol(EA,SymbolName).
+
+inferred_symbol(EA,SymbolName,"LOCAL","NONE","Beg"),
+best_symexpr_symbol(EA,SymbolName,"Beg"):-
+    labeled_ea(EA),
+    !symbol_score(EA,_,_,"Beg",_),
+    !best_func_symbol(EA,_),
+    // TODO: Inferred symbols are converted to hex in the C++.
+    // A better solution would be to define a user-defined functor.
+    SymbolName = cat(".L_",to_string(EA)).
+
+inferred_symbol(EA,SymbolName,"LOCAL","NONE","End"),
+best_symexpr_symbol(EA,SymbolName,"End"):-
+    labeled_ea(EA),
+    boundary_label(_,_,EA),
+    !symbol_score(EA,_,_,"End",_),
+    // TODO: Inferred symbols are converted to hex in the C++.
+    // A better solution would be to define a user-defined functor.
+    SymbolName = cat(cat(".L_",to_string(EA)),"_END").
+
+
+/**
+An existing symbol is pointing to the end of a section rather
+than the beginning of the next section.
+*/
+.decl symbol_at_section_end(EA:address,SymbolName:symbol)
+.output symbol_at_section_end
+
+/**
+The symbol at address 'EA' with name 'SymbolName' should point
+at the end of a block.
+*/
+.decl symbol_at_end(EA:address,SymbolName:symbol)
+.output symbol_at_end
+
+symbol_at_end(EA,SymbolName),
+symbol_at_section_end(EA,SymbolName):-
+    symbol(EA,_,_,_,_,SectionIndex,_,_,SymbolName),
+    section_complete(_,Size,Beg,_,_,_,SectionIndex),
+    EA = Beg + Size.
+
+symbol_at_end(EA,SymbolName):-
+    inferred_symbol(EA,SymbolName,_,_,"End").
+
+/**
+The symbol at address 'EA' with name 'SymbolName' is pointing
+outside its own section and should be moved to 'NewEA'.
+*/
+.decl symbol_before_section_beg(EA:address,SymbolName:symbol,NewEA:address)
+.output symbol_before_section_beg
+
+symbol_before_section_beg(EA,SymbolName,Beg):-
+    symbol(EA,_,_,_,_,SectionIndex,_,_,SymbolName),
+    section_complete(_,_,Beg,_,_,_,SectionIndex),
+    EA < Beg.
