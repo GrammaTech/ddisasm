@@ -1,0 +1,17 @@
+// Temporary file to enable building without PE support.
+
+.decl base_relative_jump_table(EA:address,Value:address)
+
+base_relative_jump_table(0,0):-
+    false.
+
+.decl pe_relocation_size(Type:symbol,Size:unsigned)
+
+pe_relocation_size("",0):-
+    false.
+
+.decl reg_has_base_image(EA:address,Reg:register)
+.output reg_has_base_image
+
+reg_has_base_image(0,""):-
+    false.

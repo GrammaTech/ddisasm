@@ -391,11 +391,19 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,TableReference,Dest,Sc
         TableReference >= SectionStart, TableReference < (SectionStart + SectionSize)
     ).
 
+// propagate until finding:
+// * something that doesn't resolve to a code pointer.
+// * a symbol
+// * the end of a data section
+
+// we can't do much better without negating something or adding an entirely
+// new boundary value analysis to analyze comparisons on the jump table index
+// register.
 symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Reference,Dest,Scale,Offset):-
     !binary_isa("ARM"),
     symbol_minus_symbol_jump_table(EA,TableStart,Size,Reference,_,Scale,Offset),
-    !possible_data_limit(EA+Size),
-    last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA,
+    !symbol(EA+Size,_,_,_,_,_,_,_,_),
+    !data_segment(_,EA+Size),
     (
         Size>1,data_word(EA+Size,Size,Diff);
         Size=1,data_byte(EA+Size,DiffUnsigned), Diff = as(DiffUnsigned,number)

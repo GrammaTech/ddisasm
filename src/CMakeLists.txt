@@ -29,6 +29,7 @@ set(DATALOG_BASE_SOURCES
     datalog/binary/elf/exceptions.dl
     datalog/binary/elf/relocations.dl
     datalog/binary/pe/pe_binaries.dl
+    datalog/binary/pe/pe_binaries_none.dl
     datalog/binary/pe/relocations.dl
     datalog/bitmasks.dl
     datalog/code_inference.dl
