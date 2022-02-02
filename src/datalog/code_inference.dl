@@ -155,7 +155,7 @@ must_fallthrough(From,To):-
 .decl may_have_symbolic_immediate(src:address,dest:address)
 
 may_have_symbolic_immediate(Src,as(Dest,address)):-
-    instruction_immediate_offset(Src,Index,Offset),
+    instruction_immediate_offset(Src,Index,Offset,_),
     instruction_get_op(Src,Index,Op),
     op_immediate(Op,Dest),
     (
@@ -237,7 +237,7 @@ basic_target(Val):-
         code_section(Name),
         section(Name,_,Val)
         ;
-        defined_symbol(Val,_,_,_,_,_,_,_)
+        defined_symbol(Val,_,_,_,_,_,_,_,_)
         ;
         // Exception information
         fde_addresses(Val,_)
@@ -576,8 +576,8 @@ block_points(Block,"code",0,-3,"overlaps with relocation"):-
         instruction(EA,Size,_,_,_,_,_,_,_,_),
         relocation(Target,_,_,_,_,_,_),
         Target > EA, Target < EA + (Size/8),
-        !instruction_immediate_offset(EA,_,Target-EA),
-        !instruction_displacement_offset(EA,_,Target-EA)
+        !instruction_immediate_offset(EA,_,Target-EA,_),
+        !instruction_displacement_offset(EA,_,Target-EA,_)
     ).
 
 block_points(Block,"code",0,0,"basic point"):-

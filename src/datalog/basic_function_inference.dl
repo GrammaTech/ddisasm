@@ -28,11 +28,20 @@ Function inference based on call frames.
 
 .decl function_entry(Block:address)
 .output function_entry
+.decl function_entry_name(Block:address,Name:symbol)
+.output function_entry_name
+
 .decl in_function(Block:address,Function:address)
 .output in_function
 
 .decl function_without_callframe(Block:address)
 .output function_without_callframe
+
+
+
+function_entry_name(EA,SymbolName):-
+    function_entry(EA),
+    best_func_symbol(EA,SymbolName).
 
 function_entry(Begin):-
     fde_addresses(Begin,_),

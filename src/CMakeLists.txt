@@ -42,6 +42,7 @@ set(DATALOG_BASE_SOURCES
     datalog/pointer_reatribution.dl
     datalog/register_type_analysis.dl
     datalog/relative_jump_tables.dl
+    datalog/symbols.dl
     datalog/symbolization.dl
     datalog/use_def_analysis.dl
     datalog/value_analysis.dl
