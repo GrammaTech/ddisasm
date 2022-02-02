@@ -236,12 +236,13 @@ symbolic_operand_candidate(EA,Index,Dest,"data"):-
 .decl get_pc_thunk(EA:address,Reg:register)
 .output get_pc_thunk
 
-// call    __x86.get_pc_thunk.ax
+// call    __x86.get_pc_thunk.REG
 // ...
-// __x86.get_pc_thunk.ax:
-// mov     eax, DWORD PTR [esp]
+// __x86.get_pc_thunk.REG:
+// mov     REG, DWORD PTR [esp]
 // ret
 get_pc_thunk(EA,Reg):-
+    binary_format("ELF"),
     direct_call(_,EA),
     instruction(EA,Size,_,Operation,Op1,Op2,_,_,_,_),
     arch.move_operation(Operation),
