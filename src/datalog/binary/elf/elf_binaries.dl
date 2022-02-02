@@ -168,14 +168,14 @@ plt_data_reference(EA):-
 //////////////////////////////////////////////////////////////////////////
 
 /**
-Value of register 'Reg' at address 'EA' is GOT-relative base reference.
+Value of register 'Reg' at address 'EA' is a GOT-relative base reference.
 */
 .decl reg_has_got(EA:address,Reg:register)
 .output reg_has_got
 
 /**
 Address 'EA' is used as GOT-relative base reference. 'EA' is either the beginning
-of either the .got or .got.plt section.
+the .got or .got.plt section.
 */
 .decl got_reference_pointer(EA:address)
 .output got_reference_pointer
