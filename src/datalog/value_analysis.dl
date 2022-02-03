@@ -182,86 +182,11 @@ value_reg_edge(EA,Reg,EA,"NONE",0,0):-
     def_used_for_address(EA,Reg),
     is_xor_reset(EA).
 
-//add reg immediate
-value_reg_edge(EA,Reg,EA_prev,Reg,1,Immediate):-
-    def_used_for_address(EA_prev,Reg),
-    def_used(EA_prev,Reg,EA,_),
-    op_immediate_and_reg(EA,"ADD",Reg,1,Immediate).
-
-value_reg_edge(EA,Reg,EA_prev,Reg,1,-Immediate):-
-    def_used_for_address(EA_prev,Reg),
-    def_used(EA_prev,Reg,EA,_),
-    op_immediate_and_reg(EA,"SUB",Reg,1,Immediate).
-
-value_reg_edge(EA,Reg,EA_prev,Reg,1,1):-
-    def_used_for_address(EA_prev,Reg),
-    def_used(EA_prev,Reg,EA,_),
-    instruction(EA,_,_,"INC",Op1,0,0,0,_,_),
-    op_regdirect_contains_reg(Op1,Reg).
-
-value_reg_edge(EA,Reg,EA_prev,Reg,1,-1):-
-    def_used_for_address(EA_prev,Reg),
-    def_used(EA_prev,Reg,EA,_),
-    instruction(EA,_,_,"DEC",Op1,0,0,0,_,_),
-    op_regdirect_contains_reg(Op1,Reg).
-
-// add a register to itself
-value_reg_edge(EA,Reg,EA_prev,Reg,2,0):-
-    def_used_for_address(EA_prev,Reg),
-    def_used(EA_prev,Reg,EA,_),
-    instruction(EA,_,_,"ADD",Op,Op,0,0,_,_),
-    op_regdirect_contains_reg(Op,Reg).
-
-//shl reg immediate
-value_reg_edge(EA,Reg,EA_prev,Reg,2^Immediate,0):-
-    def_used_for_address(EA_prev,Reg),
-    def_used(EA_prev,Reg,EA,_),
-    op_immediate_and_reg(EA,"SHL",Reg,1,Immediate),
-    EA != EA_prev.
-
-//mul reg reg immediate
-value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
-    def_used_for_address(EA_prev,Reg2),
-    def_used(EA_prev,Reg2,EA,_),
-    instruction(EA,_,_,"IMUL",Op1,Op2,Op3,0,_,_),
-    op_immediate(Op2,Immediate),
-    op_regdirect_contains_reg(Op3,Reg),
-    op_regdirect_contains_reg(Op1,Reg2),
-    EA != EA_prev.
-
-//mul reg immediate
-value_reg_edge(EA,Reg,EA_prev,Reg2,Immediate,0):-
-    def_used_for_address(EA_prev,Reg2),
-    def_used(EA_prev,Reg2,EA,_),
-    op_immediate_and_reg(EA,"IMUL",Reg,1,Immediate),
-    EA != EA_prev.
-
-//lea reg [reg_origin*Multiplier+Offset]
-value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier,Offset):-
-    def_used_for_address(EA,Reg),
-    def_used(EA_prev,Reg_origin,EA,1),
-    instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
-    op_indirect(Op1,_,"NONE",Reg_origin_non_uniform,Multiplier,Offset,_),
-    arch.track_register(Reg_origin_non_uniform,Reg_origin),
-    op_regdirect_contains_reg(Op2,Reg).
-
-//lea reg [reg_origin+reg_origin*Multiplier+Offset]
-value_reg_edge(EA,Reg,EA_prev,Reg_origin,Multiplier+1,Offset):-
-    def_used_for_address(EA,Reg),
-    def_used(EA_prev,Reg_origin,EA,1),
-    instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
-    op_indirect(Op1,_,Reg_origin_non_uniform,Reg_origin_non_uniform,Multiplier,Offset,_),
-    arch.track_register(Reg_origin_non_uniform,Reg_origin),
-    op_regdirect_contains_reg(Op2,Reg).
-
-//lea reg [reg_origin+Offset]
-value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,Offset):-
-    def_used_for_address(EA,Reg),
-    def_used(EA_prev,Reg_origin,EA,1),
-    instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
-    op_indirect(Op1,_,Reg_origin_non_uniform,"NONE",1,Offset,_),
-    arch.track_register(Reg_origin_non_uniform,Reg_origin),
-    op_regdirect_contains_reg(Op2,Reg).
+// basic arithmetic operations
+value_reg_edge(EA,Dst,EA_prev,Src,Mult,Immediate):-
+    def_used_for_address(EA_prev,Src),
+    def_used(EA_prev,Src,EA,_),
+    arch.reg_arithmetic_operation(EA,Dst,Src,Mult,Immediate).
 
 /** A register is defined using an unknown value
  This predicate is used to create trivial leaf edges in
