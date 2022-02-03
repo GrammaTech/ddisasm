@@ -153,7 +153,7 @@ class DdisasmConan(Properties, ConanFile):
     def build_cmake(self):
         defs = {"CMAKE_VERBOSE_MAKEFILE:BOOL": "ON", "ENABLE_CONAN:BOOL": "ON"}
         if self.settings.os == "Windows":
-            cmake = CMake(self, generator="Ninja")
+            cmake = CMake(self, generator="Ninja", parallel=False)
             defs.update(
                 {
                     k: os.environ.get(k)
@@ -191,7 +191,6 @@ class DdisasmConan(Properties, ConanFile):
                 cmake.test(output_on_failure=True)
             with tools.vcvars(self.settings, arch="x86_64"):
                 cmake.test(output_on_failure=True)
-        cmake.install()
 
     def package(self):
         self.copy("*.h", dst="include", src=self.name)
