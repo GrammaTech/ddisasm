@@ -313,33 +313,13 @@ base_relative_jump(EA_relop,EA):-
     reg_jump(EA,_),
     base_relative_operation(EA_relop,EA).
 
-.decl base_relative_jump_table(EA:address,Value:address)
-.output base_relative_jump_table
-
-base_relative_jump_table(EA_jmp,ImageBase+Value):-
-    base_address(ImageBase),
-    base_relative_jump(EA_relop,EA_jmp),
-    base_relative_operand(EA_relop,_,Value).
-
-labeled_data_candidate(EA):-
-    base_relative_jump_table(_,EA),
-    data_word(EA,4,Val),
-    Val > 0.
-
-// Generate the first entry of a symbol_minus_symbol_jump table
-// and rely on the generic propagation rule in symbolization.dl
-symbol_minus_symbol_jump_table(EA,EA,4,ImageBase,Dest,1,0):-
-    base_relative_jump_table(_,EA),
-    data_word(EA,4,Val),
-    Val > 0,
-    base_address(ImageBase),
-    Dest=as(ImageBase+as(Val,unsigned),address),
-    code(Dest).
-
+/*
+// it seems like this should be handled by generic symbolization rules
 labeled_data_candidate(ImageBase+Dest):-
     base_address(ImageBase),
     base_relative_symbolic_operand(_,_,Dest),
     !base_relative_jump_table(_,ImageBase+Dest).
+*/
 
 .decl dos_header_symbolic_operand(EA:address,Dest:unsigned)
 .output dos_header_symbolic_operand
