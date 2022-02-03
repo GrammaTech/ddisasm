@@ -412,17 +412,24 @@ cmp_operation(""):-
 //cmp_operation("SLTI").
 //cmp_operation("SLTIU").
 
-// ADDIU <Register> <Register> <Immediate>
-reg_reg_arithmetic_operation(EA,Reg,Reg2,"NONE",1,Immediate):-
-    instruction(EA,_,_,"ADDIU",Op1,Op2,Op3,0,_,_),
-    op_regdirect_contains_reg(Op3,Reg),
-    op_regdirect_contains_reg(Op1,Reg2),
+// ADDI/ADDIU <Register> <Register> <Immediate>
+reg_arithmetic_operation(EA,Dst,Src,1,Immediate):-
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
+    (
+        Operation = "ADDI";
+        Operation = "ADDIU"
+    ),
+    op_regdirect_contains_reg(Op3,Dst),
+    op_regdirect_contains_reg(Op1,Src),
     op_immediate(Op2,Immediate).
 
-// ADDU <Register> <Register> <Register>
+// ADD/ADDU <Register> <Register> <Register>
 reg_reg_arithmetic_operation(EA,Reg,Reg1,Reg2,1,0):-
-    instruction(EA,_,_,"ADDU",SrcOp1,SrcOp2,DestOp,0,_,_),
-    instruction_get_operation(EA, "ADDU"),
+    instruction(EA,_,_,Operation,SrcOp1,SrcOp2,DestOp,0,_,_),
+    (
+        Operation = "ADD";
+        Operation = "ADDU"
+    ),
     op_regdirect_contains_reg(DestOp,Reg),
     op_regdirect_contains_reg(SrcOp1,Reg1),
     op_regdirect_contains_reg(SrcOp2,Reg2).

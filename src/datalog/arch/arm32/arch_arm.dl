@@ -251,22 +251,47 @@ cmp_operation(Operation):-
         Op = "TST"
     ).
 
-reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
-    instruction(EA,_,_,"SUB",Op1,Op2,0,0,_,_), Op1 != Op2,
-    op_regdirect_contains_reg(Op1,Reg1),
-    op_regdirect_contains_reg(Op2,Reg2).
+// ADD/SUB reg, #imm (two operands: Thumb)
+reg_arithmetic_operation(EA,Reg,Reg,1,Sign*Immediate):-
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
+    (
+        Operation = "ADD", Sign = 1;
+        Operation = "SUB", Sign = -1
+    ),
+    op_immediate(Op1,Immediate),
+    op_regdirect_contains_reg(Op2,Reg).
 
-reg_reg_arithmetic_operation(EA,Reg2,Reg1,Reg2,1,0):-
-    instruction(EA,_,_,"ADD",Op1,Op2,0,0,_,_), Op1 != Op2,
+// ADD/SUB reg, reg, #imm
+reg_arithmetic_operation(EA,Dst,Src,1,Sign*Immediate):-
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
+    (
+        Operation = "ADD", Sign = 1;
+        Operation = "SUB", Sign = -1
+    ),
+    op_regdirect_contains_reg(Op1,Src),
+    op_immediate(Op2,Immediate),
+    op_regdirect_contains_reg(Op3,Dst).
+
+// ADD/SUB reg, reg (two operands: Thumb)
+reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,Sign,0):-
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
+    (
+        Operation = "ADD", Sign = 1;
+        Operation = "SUB", Sign = -1
+    ),
     op_regdirect_contains_reg(Op2,Reg2),
     op_regdirect_contains_reg(Op1,Reg1).
 
-// ADD Reg1, Reg2, N
-reg_reg_arithmetic_operation(EA,DstReg,Reg,"NONE",1,N):-
-    instruction(EA,_,_,"ADD",Op1,Op2,DstOp,0,_,_),
-    op_regdirect_contains_reg(Op1,Reg),
-    op_immediate(Op2,N),
-    op_regdirect_contains_reg(DstOp,DstReg).
+// ADD/SUB reg, reg, reg
+reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,Sign,0):-
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
+    (
+        Operation = "ADD", Sign = 1;
+        Operation = "SUB", Sign = -1
+    ),
+    op_regdirect_contains_reg(Op1,Src1),
+    op_regdirect_contains_reg(Op2,Src2),
+    op_regdirect_contains_reg(Op3,Dst).
 
 // ADD Reg1, Reg2, N, M
 reg_reg_arithmetic_operation(EA,DstReg,Reg,"NONE",1,Val):-
@@ -278,9 +303,6 @@ reg_reg_arithmetic_operation(EA,DstReg,Reg,"NONE",1,Val):-
     N >= 0,
     // N right-rotate M
     Val = (N bshr M) bor (N bshl (32-M)).
-
-reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
-    reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
 
 inferred_main_in_reg(EA,"R0"):-
     inferred_main_dispatch(EA).

@@ -118,18 +118,26 @@ halt_operation("HLT").
 
 cmp_operation("CMP").
 
-reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
-    instruction(EA,_,_,"SUB",Op1,Op2,0,0,_,_), Op1 != Op2,
-    op_regdirect_contains_reg(Op1,Reg1),
-    op_regdirect_contains_reg(Op2,Reg2).
+// ADD reg, reg, #imm
+reg_arithmetic_operation(EA,Dst,Src,1,Immediate):-
+    instruction(EA,_,_,"ADD",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src),
+    op_immediate(Op2,Immediate),
+    op_regdirect_contains_reg(Op3,Dst).
 
-reg_reg_arithmetic_operation(EA,Reg2,Reg1,Reg2,1,0):-
-    instruction(EA,_,_,"ADD",Op1,Op2,0,0,_,_), Op1 != Op2,
-    op_regdirect_contains_reg(Op2,Reg2),
-    op_regdirect_contains_reg(Op1,Reg1).
+// ADD reg, reg, reg
+reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,1,0):-
+    instruction(EA,_,_,"ADD",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1),
+    op_regdirect_contains_reg(Op2,Src2),
+    op_regdirect_contains_reg(Op3,Dst).
 
-reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
-    reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
+// SUB reg, reg, reg
+reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,-1,0):-
+    instruction(EA,_,_,"SUB",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1),
+    op_regdirect_contains_reg(Op2,Src2),
+    op_regdirect_contains_reg(Op3,Dst).
 
 inferred_main_in_reg(EA,"X0"):-
     inferred_main_dispatch(EA).
