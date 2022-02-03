@@ -334,41 +334,6 @@ static-drivers:
     # For verification purposes, print ldd of the driver here.
     - ldd bin/ddisasm
 
-build-centos8-gcc-relwithdebuginfo:
-  stage: build
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/centos8
-  artifacts:
-    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
-    paths:
-      - build
-  rules:
-    *run-only-main
-  script:
-    - *build-libehp
-    # What's the deal with PADDED_DIR? See:
-    # https://cmake.org/cmake/help/latest/cpack_gen/rpm.html#variable:CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX
-    # From the above link: "...Limitation is that replaced path part must
-    # be shorter or of equal length than the length of its replacement.  If
-    # that is not the case either CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX variable
-    # has to be set to a shorter path or source directories must be placed on
-    # a longer path."
-    - PADDED_DIR=long-dir-name-padding-for-CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX
-    - mkdir $PADDED_DIR && cd $PADDED_DIR
-    - git clone .. .
-    - mkdir build && cd build
-    # Download and install packages from artifacts
-    - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-rpm --output "capstone.zip"
-    - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=package-centos8 --output "gtirb.zip"
-    - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=package-centos8 --output "gtirb-pprinter.zip"
-    - for pkg in gtirb capstone gtirb-pprinter; do unzip $pkg.zip; done
-    - dnf --nogpgcheck localinstall -y capstone-devel-*.rpm libgtirb.rpm libgtirb-devel.rpm libgtirb-pprinter.rpm libgtirb-pprinter-devel.rpm
-    - CAPSTONE_PKG_VERSION=$(ls capstone-devel-**.rpm | sed -n 's/capstone-devel-\(.*\).x86_64.rpm/\1/p')
-    # Build
-    - cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH='/usr/lib64/boost169' -DBOOST_INCLUDEDIR='/usr/include/boost169' -DLIEF_ROOT=/usr/ -DDDISASM_STRIP_DEBUG_SYMBOLS=Off ..
-    - make
-    - cpack -G "RPM" -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=rpm-driver
-    - cd ../ && mv build ../build
-
 run-ubuntu18-gcc:
   stage: test-and-tag
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
@@ -390,7 +355,6 @@ run-ubuntu20-gcc:
   <<: *test-and-tag
 
 run-ubuntu20-gcc-debug:
-  allow_failure: true
   stage: test-and-tag
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   needs: ['build-ubuntu20-gcc-debug']
@@ -402,7 +366,6 @@ run-ubuntu20-gcc-debug:
   <<: *test-and-tag
 
 run-ubuntu20-clang-debug:
-  allow_failure: true
   stage: test-and-tag
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20
   needs: ['build-ubuntu20-clang-debug']
@@ -432,33 +395,6 @@ test-make-install:
     - dpkg -i libcapstone-dev.deb libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
     - cd build && make -t && make install
     - cd .. && PYTHONPATH=$PYTHONPATH:$(pwd)/tests python3 -m unittest end2end_test.TestExamples.test_1
-
-test-centos8-ddisasm-package:
-  stage: package-tests
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/centos8
-  needs: ['build-centos8-gcc-relwithdebuginfo']
-  rules:
-    *run-only-main
-  script:
-    - pushd build
-    - dnf --nogpgcheck localinstall -y capstone-devel-*.rpm libgtirb.rpm libgtirb-pprinter.rpm ddisasm.rpm
-    - popd
-    - rm -rf build
-    - ddisasm --version
-
-package-centos8:
-  stage: deploy
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/centos8
-  needs: ['build-centos8-gcc-relwithdebuginfo', 'test-centos8-ddisasm-package']
-  artifacts:
-    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
-    paths:
-      - '*ddisasm*.rpm'
-  rules:
-    *run-only-main
-  script:
-    - cp build/*.rpm ./
-
 
 # APT packaging related jobs
 .build-ubuntu-packages-template: &build-ubuntu-packages

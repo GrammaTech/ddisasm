@@ -306,11 +306,13 @@ pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     // Align the address
     EANext = EANext0-(EANext0 band 3).
 
+avoid_symbols("$t").
+avoid_symbols("$a").
 
 basic_target(Val+1):-
-    defined_symbol(Val,_,_,_,_,_,_,"$t").
+    defined_symbol(Val,_,_,_,_,_,_,_,"$t").
 basic_target(Val):-
-    defined_symbol(Val,_,_,_,_,_,_,"$a").
+    defined_symbol(Val,_,_,_,_,_,_,_,"$a").
 
 /**
 E.g.,
@@ -518,7 +520,7 @@ symbol_minus_symbol_jump_table(Addr,Addr,Size,EARef,Dest,"no_table",Scale):-
         !relocation(Addr,_,_,_,_,_,_)
         ;
         relocation(Addr,"REL32",Symbol,_,SymbolIndex,_,"REL"),
-        symbol(Base,_,_,_,_,_,SymbolIndex,Symbol),
+        symbol(Base,_,_,_,_,_,_,SymbolIndex,Symbol),
         // ((S + A) | T) - P
         S = as(Base,unsigned),
         A = as(Diff,unsigned),
@@ -532,17 +534,11 @@ symbol_minus_symbol_jump_table(Addr,Addr,Size,EARef,Dest,"no_table",Scale):-
     Dest >= Begin, Dest <= End,
     Scale = 1.
 
-// TODO:
-// Remove pseudo data attribute.
-// Implement symbol-minus-symbol expression from relocation for:
-//      .word _GLOBAL_OFFSET_TABLE_-(.LPIC0+4)
-// NOTE:
-// See special case in `buildDataBlocks'.
-symbolic_data_attribute(EA,"_GLOBAL_OFFSET_TABLE_"),
-symbol_minus_symbol(EA,4,0,Symbol2,0):-
+symbol_minus_symbol_from_relocation(EA,4,SymbolName2,"_GLOBAL_OFFSET_TABLE_",1,-4):-
     binary_type("REL"),
     relocation(EA,"BASE_PREL","_GLOBAL_OFFSET_TABLE_",_,_,_,_),
-    symbol_minus_symbol_candidate(_,4,_,EA,1,_,Symbol2,_).
+    symbol_minus_symbol_candidate(_,4,_,EA,1,_,Symbol2,_),
+    best_symexpr_symbol(Symbol2,SymbolName2,"Beg").
 
 /**
 Represents an entry in an ARM jump table.
@@ -949,16 +945,20 @@ value_reg_edge(EA,Reg,EA,"NONE",0,as(Val,number)):-
 //  => equations: [LitPoolAddr1] = foo - (C)
 //                [LitPoolAddr2] = bar - foo
 //
-symbol_minus_symbol(LitPoolAddr2,Size,Symbol1,Symbol2,1):-
+symbol_minus_symbol(LitPoolAddr2,Size,Symbol1,Symbol2,1,0):-
     litpool_symbolic_operand(LitPoolAddr2,Size,Symbol1,Symbol2,_,_,_),
-    !got_reference(Symbol2,_),
+    section(".got",Size,Beg),
+    (
+        Symbol2 < Beg
+        ;
+        Symbol2 >= Beg+Size
+    ),
     !relocation(LitPoolAddr2,_,_,_,_,_,_).
 
 //  => equations: [LitPoolAddr1] = foo - (C)
 //                [LitPoolAddr2] = bar(GOT) - foo => bar(GOT)
 //
-symbolic_data_attribute(LitPoolAddr,"GotRelPC"),
-got_reference(Got_entry,Symbol),
+symbolic_expr_attribute(LitPoolAddr,"GotRelPC"),
 symbolic_data(LitPoolAddr,Size,Got_entry):-
     litpool_symbolic_operand(LitPoolAddr,Size,_,Got_entry,_,_,_),
     section(".got",GotSize,GotBeg),
@@ -967,10 +967,10 @@ symbolic_data(LitPoolAddr,Size,Got_entry):-
     (
         relocation(Got_entry,RelType,Symbol,_,_,_,_),
         RelType != "RELATIVE",
-        symbol(_,_,_,_,_,_,_,Symbol)
+        symbol(_,_,_,_,_,_,_,_,Symbol)
         ;
         symbolic_data(Got_entry,Size,Dest),
-        symbol(Dest,_,_,_,_,_,_,Symbol)
+        symbol(Dest,_,_,_,_,_,_,_,Symbol)
     ).
 
 must_access_data(EA,Dest):-

@@ -120,11 +120,11 @@ gp_relative_operand(EA,Index,GpValue+as(Offset,address)):-
         Index = 2
     ),
     op_indirect(Op1,"NONE","GP","NONE",_,Offset,_),
-    symbol(GpValue,_,_,_,_,_,_,"_gp").
+    symbol(GpValue,_,_,_,_,_,_,_,"_gp").
 
 // Global entries
 got_reference(GotEntry,Symbol):-
-    symbol(_,_,_,_,_, ".dynsym",Index,Symbol),
+    symbol(_,_,_,_,_,_, ".dynsym",Index,Symbol),
     dynamic_entry("MIPS_GOTSYM",FirstIndex),
     dynamic_entry("MIPS_LOCAL_GOTNO",NumLocalEntries),
     Index >= FirstIndex,
@@ -132,22 +132,12 @@ got_reference(GotEntry,Symbol):-
     GotEntry = Beg + NumLocalEntries*4 + (Index-FirstIndex)*4.
 
 // Local entries
-got_reference(Got_entry,Symbol):-
-    symbolic_data(Got_entry,4,Dest),
+got_reference(Got_entry,SymbolName):-
+    symbolic_expr(Got_entry,4,SymbolName,0),
     section(".got",_,Beg),
     Got_entry >= Beg,
     dynamic_entry("MIPS_LOCAL_GOTNO",NumLocalEntries),
-    Got_entry < Beg+4*NumLocalEntries,
-    symbol(Dest,_,_,_,_,_,_,Symbol).
-
-// Local entries: no symbol
-got_local_reference(Got_entry,Dest):-
-    section(".got",_,Beg),
-    Got_entry >= Beg,
-    dynamic_entry("MIPS_LOCAL_GOTNO",NumLocalEntries),
-    Got_entry < Beg+4*NumLocalEntries,
-    symbolic_data(Got_entry,4,Dest),
-    !got_reference(Got_entry,_).
+    Got_entry < Beg+4*NumLocalEntries.
 
 .decl hi_load(ea:address, reg:register, upper:number)
 
@@ -379,7 +369,7 @@ base_addr_offset_operand(EA,NextEA,Dest_addr):-
         data_segment(Begin,End),
         Dest_addr >= Begin, Dest_addr <= End
         ;
-        symbol(Dest_addr,_,_,_,_,_,_,_)
+        symbol(Dest_addr,_,_,_,_,_,_,_,_)
         ;
         bss_section_limits(Begin,End),
         Dest_addr >= Begin, Dest_addr <= End
@@ -405,7 +395,7 @@ symbolic_operand_attribute(EA, 1, "Hi"):-
         Dest_addr >= Begin,
         Dest_addr <= End
         ;
-        symbol(Dest_addr,_,_,_,_,_,_,_)
+        symbol(Dest_addr,_,_,_,_,_,_,_,_)
         ;
         got_reference(Dest_addr,_)
     ).
@@ -426,7 +416,7 @@ symbolic_operand_attribute(EA, Index, "Lo"):-
         Dest_addr >= Begin,
         Dest_addr <= End
         ;
-        symbol(Dest_addr,_,_,_,_,_,_,_)
+        symbol(Dest_addr,_,_,_,_,_,_,_,_)
         ;
         got_reference(Dest_addr,_)
     ).
@@ -454,24 +444,19 @@ symbolic_operand_attribute(EA,Index,"AddrRelGot"):-
     symbolic_operand_mips_candidate(EA,Index,Got_entry),
     got_reference(Got_entry,_).
 
-// no symbol
-symbolic_operand_attribute(EA,Index,"AddrRelGot"):-
-    symbolic_operand_mips_candidate(EA,Index,Got_entry),
-    got_local_reference(Got_entry,_).
-
 symbolic_operand(EA,1,Dest_addr,"data"):-
     base_addr_offset_operand(EA,_,Dest_addr).
 
 symbolic_operand(EA,2,Dest_addr,"data"):-
     base_addr_offset_operand(_,EA,Dest_addr).
 
-symbol_minus_symbol(EA,4,GP_addr,EA,1):-
+symbol_minus_symbol(EA,4,EA,GP_addr,1,0):-
     split_load(EA,_,_,"ADDU"),
-    symbol(GP_addr,_,_,_,_,_,_,"_gp").
+    symbol(GP_addr,_,_,_,_,_,_,_,"_gp").
 
-symbol_minus_symbol(EA,4,GP_addr,PrevEA,1):-
+symbol_minus_symbol(EA,4,PrevEA,GP_addr,1,0):-
     split_load(PrevEA,EA,_,"ADDU"),
-    symbol(GP_addr,_,_,_,_,_,_,"_gp").
+    symbol(GP_addr,_,_,_,_,_,_,_,"_gp").
 
 symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
     binary_type("EXEC"),
@@ -485,7 +470,7 @@ symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
         Dest_addr >= Begin, Dest_addr <= End,
         Type = "data"
         ;
-        symbol(Dest_addr,_,_,_,_,_,_,_),
+        symbol(Dest_addr,_,_,_,_,_,_,_,_),
         Type = "data"
     ).
 
@@ -525,7 +510,7 @@ mips_stubs_entry(Block,Function):-
     // Reuse the definition of plt_entry_candidate since the pattern
     // is the same.
     plt_entry_candidate(EA,GotIndex),
-    symbol(_,_,_,_,_, ".dynsym",GotIndex,Function),
+    symbol(_,_,_,_,_,_, ".dynsym",GotIndex,Function),
     code_in_refined_block(EA,Block).
 
 .decl plt_entry_candidate(EA:address,GotIndex:unsigned)
@@ -542,7 +527,7 @@ plt_entry_candidate(EA,as(GotIndex,unsigned)):-
     instruction(PrevEA2,_,_,"LW",Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,"T9"),
     op_indirect(Op1,"NONE","GP","NONE",_,Offset,_),
-    symbol(GpValue,_,_,_,_,_,_,"_gp"),
+    symbol(GpValue,_,_,_,_,_,_,_,"_gp"),
     section(".got",_,GotBeg),
     GotBeg = GpValue+as(Offset,address),
 
@@ -569,7 +554,7 @@ plt_entry_candidate(EA,as(GotIndex,unsigned)):-
 
 plt_entry(EA,Function):-
     plt_entry_candidate(EA,GotIndex),
-    symbol(_,_,_,_,_, ".dynsym",GotIndex,Function).
+    symbol(_,_,_,_,_,_, ".dynsym",GotIndex,Function).
 
 // Pattern-matching.2:
 // E.g.,
@@ -645,7 +630,7 @@ resolved_jump(EA,as(Dest,address)):-
     symbolic_data(Addr,4,Dest).
 
 abi_intrinsic(Address,Sym):-
-    symbol(Address,_,_,_,_,_,_,Sym),
+    symbol(Address,_,_,_,_,_,_,_,Sym),
     (
         Sym = "_gp"
     ;
