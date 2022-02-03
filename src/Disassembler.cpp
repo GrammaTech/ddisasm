@@ -821,7 +821,7 @@ void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module, souffle::So
                 const auto AlignInfo = Alignments.find(*DataBlock->getAddress());
                 if(AlignInfo != Alignments.end())
                 {
-                    (*Alignment)[d->getUUID()] = AlignInfo->Num;
+                    (*Alignment)[DataBlock->getUUID()] = AlignInfo->Num;
                 }
             }
         }

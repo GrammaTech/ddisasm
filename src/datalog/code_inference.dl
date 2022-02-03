@@ -392,7 +392,7 @@ block_points(Block,"data",0,7,"possible string"),
 data_block_candidate(Block,Size):-
     ascii_string(Block,Size),
     (
-        symbol(Block,_,_,_,_,_,_,_)
+        symbol(Block,_,_,_,_,_,_,_,_)
         ;
         address_in_data(EA,Block),
         arch.pointer_size(Pt_size),
@@ -824,7 +824,7 @@ block_points(Block,"code",0,-2,"conditional jump/return: fallthrough to invalid"
 
 data_block_candidate(Block,Size),
 block_points(Block,"data",0,7,"object symbol"):-
-    defined_symbol(Block,Size,"OBJECT",_,_,_,_,_).
+    defined_symbol(Block,Size,"OBJECT",_,_,_,_,_,_).
 
 block_is_overlapping(Block,"code"),
 block_points(Block,"code",0,-1,"jump to string"):-

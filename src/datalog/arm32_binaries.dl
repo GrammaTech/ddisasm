@@ -388,8 +388,8 @@ block_points(Block,"code",0,10,"call with relocation"):-
 
 cfg_edge_to_symbol(Src,Symbol,"branch"):-
     plt_entry_arm_candidate(Src,Symbol,_),
-    !defined_symbol(_,_,_,_,_,_,_,Symbol),
-    !inferred_symbol_name(_,Symbol,_,_).
+    !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
+    !inferred_special_symbol(_,Symbol,_,_,_).
 
 .decl movw_movt_pair_candidate(EA_movw:address,EA_prev:address,EA_movt:address,Distance:unsigned)
 .output movw_movt_pair_candidate
