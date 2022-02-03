@@ -242,6 +242,7 @@ symbolic_operand_candidate(EA,Index,Dest,"data"):-
 // mov     REG, DWORD PTR [esp]
 // ret
 get_pc_thunk(EA,Reg):-
+    binary_isa("X86"),
     binary_format("ELF"),
     direct_call(_,EA),
     instruction(EA,Size,_,Operation,Op1,Op2,_,_,_,_),
