@@ -375,14 +375,12 @@ instruction_has_relocation(EA,EA+Offset):-
 
 unconditional_jump(EA):-
     arch.jump(EA),
-    !arch.return(EA),
     !arch.conditional(EA).
 
 .decl conditional_jump(src:address)
 
 conditional_jump(EA):-
     arch.jump(EA),
-    !arch.return(EA),
     arch.conditional(EA).
 
 // direct jumps
