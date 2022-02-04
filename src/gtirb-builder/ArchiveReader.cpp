@@ -37,7 +37,9 @@ bool ArchiveReader::isAr(const std::string &Path)
 bool ArchiveReader::isAr(std::ifstream &Stream)
 {
     static const std::string ArMagic = "!<arch>\n";
-    return std::equal(ArMagic.begin(), ArMagic.end(), std::istreambuf_iterator<char>(Stream));
+    std::string Buf(ArMagic.size(), '\0');
+    Stream.read(Buf.data(), Buf.size());
+    return ArMagic == Buf;
 }
 
 ArchiveReader ArchiveReader::read(const std::string &P)
