@@ -147,7 +147,8 @@ flow_def(EA_jump,Reg,EA_target,Immediate):-
 
 must_def(EA,Reg):-
     def(EA,Reg),
-    !arch.conditional_mov(EA).
+    instruction_get_operation(EA,Op),
+    !arch.conditional_operation(Op).
 
 .decl defined_in_block(EA:address,Reg:register)
 
