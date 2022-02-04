@@ -450,10 +450,3 @@ moved_immediate_candidate(EAStop,ImmIndexStop,ImmediateStopAddr,ImmediateStartAd
     mov_immediate_to_reg(EAStop,_,ImmIndexStop,ImmediateStop),
     ImmediateStopAddr = as(ImmediateStop, address),
     defined_symbol(ImmediateStopAddr,_,_,_,_,_,_,_,"__stop___libc_atexit").
-
-.decl relocation_alias(EA:address,Alias:symbol,Name:symbol)
-.output relocation_alias
-
-relocation_alias(EA,Alias,Name):-
-    symbol(EA,_,"OBJECT","WEAK",_,_,_,_,Alias),
-    relocation(EA,"COPY",Name,_,_,_,_).
