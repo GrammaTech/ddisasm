@@ -35,6 +35,17 @@ assembly: &assembly
     <<: *default-build
     optimizations: [""]
 
+default-cpp: &default-cpp
+  <<: *default
+  reassemble:
+    compiler: "aarch64-linux-gnu-g++"
+    flags: ["-no-pie"]
+    skip: false
+
+  test:
+    <<: *default-test
+    check_cfg: false
+
 tests:
   - name: hello
     binary: hello
@@ -55,7 +66,14 @@ tests:
   - name: ex_confusing_data
     <<: *default
 
-  # FIXME: ex_exceptions{1,2,3}
+  - name: ex_exceptions1
+    <<: *default-cpp
+
+  - name: ex_exceptions2
+    <<: *default-cpp
+
+  - name: ex_exceptions3
+    <<: *default-cpp
 
   - name: ex_false_pointer_array
     <<: *default
