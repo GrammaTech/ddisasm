@@ -1026,62 +1026,10 @@ thumb_branch_offset(EA,Offset):-
         Signed band TopBit != 0, Offset = Signed - (TopBit * 2)
     ).
 
-/**
-IT: The IT (If-Then) instruction makes up to four following instructions
-(the IT block) conditional.
-
-ITxyz
-x,y,z: specifies the condition switch for the second, third, and fourth
-instruction in the IT block, respectively.
-
-The condition switch in the IT block can be either: T (Then) or E (Else).
-
-This predicate determines if EA is a IT block instruction.
-*/
-.decl it_conditional(EA:address)
-.output it_conditional
-
-it_conditional(EA):-
-    instruction_get_operation(Prev1,Operation),
-    substr(Operation,0,2) = "IT",
-    next(Prev1,EA).
-
-it_conditional(EA):-
-    instruction_get_operation(Prev2,Operation),
-    substr(Operation,0,2) = "IT",
-    strlen(Operation) >= 3,
-    next(Prev2,Prev1),
-    next(Prev1,EA).
-
-it_conditional(EA):-
-    instruction_get_operation(Prev3,Operation),
-    substr(Operation,0,2) = "IT",
-    strlen(Operation) >= 4,
-    next(Prev3,Prev2),
-    next(Prev2,Prev1),
-    next(Prev1,EA).
-
-it_conditional(EA):-
-    instruction_get_operation(Prev4,Operation),
-    substr(Operation,0,2) = "IT",
-    strlen(Operation) = 5,
-    next(Prev4,Prev3),
-    next(Prev3,Prev2),
-    next(Prev2,Prev1),
-    next(Prev1,EA).
-
-conditional_jump(EA):-
-    arch.jump(EA),
-    it_conditional(EA).
-
-conditional_return(EA):-
-    arch.return(EA),
-    it_conditional(EA).
-
 impossible_jump_target(Val):-
     possible_ea(Val),
-    it_conditional(Val).
+    arch.it_conditional(Val).
 
 block_points(Block,"code",0,-5,"in the middle of IT block"):-
     code_in_block_candidate(_,Block),
-    it_conditional(Block).
+    arch.it_conditional(Block).
