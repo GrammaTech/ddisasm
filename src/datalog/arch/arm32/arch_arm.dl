@@ -95,40 +95,41 @@ return(EA):-
     instruction_get_src_op(EA,_,SrcOp),
     op_regdirect_contains_reg(SrcOp,"LR").
 
-// NOTE: unconditional_return_operation must be used with 'return' rule.
-unconditional_return_operation(Operation):-
-    instruction_get_operation(_,Operation),
-    (
-        Operation = "BX";
-        Operation = "MOV";
-        Operation = "POP"
-    ),
-    !conditional_return_operation(Operation).
-
-conditional_return_operation(Operation):-
-    instruction_get_operation(_,Operation),
-    substr(Operation,0,3) = "POP",
-    strlen(Operation) != 3.
-
 .decl long_operation(operation:symbol)
 
 long_operation(Operation):-
     instruction_get_operation(_,Operation),
     strlen(Operation) > 2.
 
-is_conditional_operation(Operation):-
+/**
+ARM Condition codes
+*/
+.decl condition_code(CC:symbol)
+condition_code("EQ").
+condition_code("NE").
+condition_code("GT").
+condition_code("LT").
+condition_code("GE").
+condition_code("LE").
+condition_code("CS").
+condition_code("HS").
+condition_code("CC").
+condition_code("LO").
+condition_code("MI").
+condition_code("PL").
+condition_code("VS").
+condition_code("VC").
+condition_code("HI").
+condition_code("LS").
+
+conditional_operation(Operation):-
     long_operation(Operation),
     instruction_get_operation(_,Operation),
     Size = strlen(Operation),
     Operation != "TEQ", Operation != "SMMLS",
     Operation != "MLS", Operation != "HVC",
     CC = substr(Operation,Size-2,2),
-    (
-        CC = "EQ"; CC = "NE"; CC = "CS"; CC = "HS";
-        CC = "CC"; CC = "LO"; CC = "MI"; CC = "PL";
-        CC = "VS"; CC = "VC"; CC = "HI"; CC = "LS";
-        CC = "GE"; CC = "LT"; CC = "GT"; CC = "LE"
-    ).
+    condition_code(CC).
 
 // Does not override - extends with `ldr pc, [...]`
 jump(EA):-
@@ -251,22 +252,47 @@ cmp_operation(Operation):-
         Op = "TST"
     ).
 
-reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
-    instruction(EA,_,_,"SUB",Op1,Op2,0,0,_,_), Op1 != Op2,
-    op_regdirect_contains_reg(Op1,Reg1),
-    op_regdirect_contains_reg(Op2,Reg2).
+// ADD/SUB reg, #imm (two operands: Thumb)
+reg_arithmetic_operation(EA,Reg,Reg,1,Sign*Immediate):-
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
+    (
+        Operation = "ADD", Sign = 1;
+        Operation = "SUB", Sign = -1
+    ),
+    op_immediate(Op1,Immediate),
+    op_regdirect_contains_reg(Op2,Reg).
 
-reg_reg_arithmetic_operation(EA,Reg2,Reg1,Reg2,1,0):-
-    instruction(EA,_,_,"ADD",Op1,Op2,0,0,_,_), Op1 != Op2,
+// ADD/SUB reg, reg, #imm
+reg_arithmetic_operation(EA,Dst,Src,1,Sign*Immediate):-
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
+    (
+        Operation = "ADD", Sign = 1;
+        Operation = "SUB", Sign = -1
+    ),
+    op_regdirect_contains_reg(Op1,Src),
+    op_immediate(Op2,Immediate),
+    op_regdirect_contains_reg(Op3,Dst).
+
+// ADD/SUB reg, reg (two operands: Thumb)
+reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,Sign,0):-
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
+    (
+        Operation = "ADD", Sign = 1;
+        Operation = "SUB", Sign = -1
+    ),
     op_regdirect_contains_reg(Op2,Reg2),
     op_regdirect_contains_reg(Op1,Reg1).
 
-// ADD Reg1, Reg2, N
-reg_reg_arithmetic_operation(EA,DstReg,Reg,"NONE",1,N):-
-    instruction(EA,_,_,"ADD",Op1,Op2,DstOp,0,_,_),
-    op_regdirect_contains_reg(Op1,Reg),
-    op_immediate(Op2,N),
-    op_regdirect_contains_reg(DstOp,DstReg).
+// ADD/SUB reg, reg, reg
+reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,Sign,0):-
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
+    (
+        Operation = "ADD", Sign = 1;
+        Operation = "SUB", Sign = -1
+    ),
+    op_regdirect_contains_reg(Op1,Src1),
+    op_regdirect_contains_reg(Op2,Src2),
+    op_regdirect_contains_reg(Op3,Dst).
 
 // ADD Reg1, Reg2, N, M
 reg_reg_arithmetic_operation(EA,DstReg,Reg,"NONE",1,Val):-
@@ -278,9 +304,6 @@ reg_reg_arithmetic_operation(EA,DstReg,Reg,"NONE",1,Val):-
     N >= 0,
     // N right-rotate M
     Val = (N bshr M) bor (N bshl (32-M)).
-
-reg_reg_arithmetic_operation(EA,Reg_def,Reg2,Reg1,1,0):-
-    reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,1,0).
 
 inferred_main_in_reg(EA,"R0"):-
     inferred_main_dispatch(EA).

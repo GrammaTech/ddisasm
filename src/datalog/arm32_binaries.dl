@@ -573,13 +573,13 @@ arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimi
     Size = NBits / 8,
     arch.pointer_size(Size),
     (
-        arch.is_conditional_operation(Operation),
+        arch.conditional_operation(Operation),
         // 8: Assumes that there is a fall-through successor consisting
         // of one instruction (typically a jump instruction)
         TableStart = EA_jump + 8
         // TODO: check if the fall-through instruction is a jump
         ;
-        !arch.is_conditional_operation(Operation),
+        !arch.conditional_operation(Operation),
         TableStart = EA_jump + 4
     ),
     address_in_data(TableStart,TargetAddr),
