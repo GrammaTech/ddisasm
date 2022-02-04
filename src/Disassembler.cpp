@@ -437,22 +437,6 @@ void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
                            souffle::SouffleProgram *Prog)
 {
     std::map<gtirb::UUID, gtirb::UUID> SymbolForwarding;
-    for(auto &T : *Prog->getRelation("relocation_alias"))
-    {
-        gtirb::Addr EA;
-        std::string Name;
-        std::string Alias;
-        T >> EA >> Alias >> Name;
-        gtirb::Symbol *Symbol = findSymbol(Module, EA, Alias);
-        if(Symbol)
-        {
-            // Create orphaned symbol for OBJECT copy relocation aliases.
-            Alias = stripSymbolVersion(Alias);
-            gtirb::Symbol *NewSymbol = Module.addSymbol(Context, EA, Alias + "_copy");
-            Symbol->setReferent(Module.addProxyBlock(Context));
-            SymbolForwarding[NewSymbol->getUUID()] = Symbol->getUUID();
-        }
-    }
     for(auto &T : *Prog->getRelation("relocation"))
     {
         gtirb::Addr EA;
