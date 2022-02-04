@@ -95,40 +95,41 @@ return(EA):-
     instruction_get_src_op(EA,_,SrcOp),
     op_regdirect_contains_reg(SrcOp,"LR").
 
-// NOTE: unconditional_return_operation must be used with 'return' rule.
-unconditional_return_operation(Operation):-
-    instruction_get_operation(_,Operation),
-    (
-        Operation = "BX";
-        Operation = "MOV";
-        Operation = "POP"
-    ),
-    !conditional_return_operation(Operation).
-
-conditional_return_operation(Operation):-
-    instruction_get_operation(_,Operation),
-    substr(Operation,0,3) = "POP",
-    strlen(Operation) != 3.
-
 .decl long_operation(operation:symbol)
 
 long_operation(Operation):-
     instruction_get_operation(_,Operation),
     strlen(Operation) > 2.
 
-is_conditional_operation(Operation):-
+/**
+ARM Condition codes
+*/
+.decl condition_code(CC:symbol)
+condition_code("EQ").
+condition_code("NE").
+condition_code("GT").
+condition_code("LT").
+condition_code("GE").
+condition_code("LE").
+condition_code("CS").
+condition_code("HS").
+condition_code("CC").
+condition_code("LO").
+condition_code("MI").
+condition_code("PL").
+condition_code("VS").
+condition_code("VC").
+condition_code("HI").
+condition_code("LS").
+
+conditional_operation(Operation):-
     long_operation(Operation),
     instruction_get_operation(_,Operation),
     Size = strlen(Operation),
     Operation != "TEQ", Operation != "SMMLS",
     Operation != "MLS", Operation != "HVC",
     CC = substr(Operation,Size-2,2),
-    (
-        CC = "EQ"; CC = "NE"; CC = "CS"; CC = "HS";
-        CC = "CC"; CC = "LO"; CC = "MI"; CC = "PL";
-        CC = "VS"; CC = "VC"; CC = "HI"; CC = "LS";
-        CC = "GE"; CC = "LT"; CC = "GT"; CC = "LE"
-    ).
+    condition_code(CC).
 
 // Does not override - extends with `ldr pc, [...]`
 jump(EA):-

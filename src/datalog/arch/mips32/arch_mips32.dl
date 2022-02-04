@@ -115,22 +115,9 @@ load_operation("LWXC1").
 load_operation("LWXS").
 load_operation("LI").
 
-.decl move_operation_conditional(Operation:symbol)
-
-move_operation_conditional("SC").
-move_operation_conditional("SCD").
-move_operation_conditional("SLT").
-move_operation_conditional("SLTI").
-move_operation_conditional("SLTIU").
-move_operation_conditional("SLTU").
-
 mov(EA):-
     instruction_get_operation(EA,Operation),
     move_operation(Operation).
-
-conditional_mov(EA):-
-    instruction_get_operation(EA,Operation),
-    move_operation_conditional(Operation).
 
 // Do not treat nop in delay_slot as padding:
 // see the usage of is_nop in code_inference*.dl
@@ -143,8 +130,25 @@ return(EA):-
     instruction(EA,_,_,Operation,Op,_,_,_,_,_),
     op_regdirect_contains_reg(Op,"RA").
 
-unconditional_return_operation(Operation):-
-    return_operation(Operation).
+// Conditional moves
+conditional_operation("MOVZ").
+conditional_operation("MOVN").
+// Conditional stores
+conditional_operation("SC").
+conditional_operation("SCD").
+// Conditional traps
+conditional_operation("TGE").
+conditional_operation("TGEU").
+conditional_operation("TLT").
+conditional_operation("TLTU").
+conditional_operation("TEQ").
+conditional_operation("TNE").
+conditional_operation("TGEI").
+conditional_operation("TGEIU").
+conditional_operation("TLTI").
+conditional_operation("TLTIU").
+conditional_operation("TEQI").
+conditional_operation("TNEI").
 
 // Extend jump - don't override.
 jump(EA):-
@@ -362,9 +366,9 @@ one_op_write(""):-
 
 pointer_size(4).
 
-call_operation(Symbol):-
-    call_operation_1op(Symbol);
-    call_operation_2op(Symbol).
+call_operation(Operation):-
+    call_operation_1op(Operation);
+    call_operation_2op(Operation).
 
 .decl call_operation_1op(operation:symbol)
 

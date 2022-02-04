@@ -24,53 +24,51 @@
 The set of jump operations in MIPS32
 */
 
+/**
+Conditional branches
+*/
+.decl conditional_branch(c:symbol)
+conditional_branch("BC0F").
+conditional_branch("BC0FL").
+conditional_branch("BC0T").
+conditional_branch("BC0TL").
+conditional_branch("BC1F").
+conditional_branch("BC1FL").
+conditional_branch("BC1T").
+conditional_branch("BC1TL").
+conditional_branch("BC2F").
+conditional_branch("BC2FL").
+conditional_branch("BC2T").
+conditional_branch("BC2TL").
+conditional_branch("BC3F").
+conditional_branch("BC3FL").
+conditional_branch("BC3T").
+conditional_branch("BC3TL").
+conditional_branch("BNVC").
+conditional_branch("BOVC").
+conditional_branch("BPOSGE32").
+
 jump_operation("J").
 jump_operation("JIC").
+jump_operation("B").
 jump_operation("B16").
 jump_operation("BC").
-jump_operation("BC0F").
-jump_operation("BC0FL").
-jump_operation("BC0T").
-jump_operation("BC0TL").
-jump_operation("BC1F").
-jump_operation("BC1FL").
-jump_operation("BC1T").
-jump_operation("BC1TL").
-jump_operation("BC2F").
-jump_operation("BC2FL").
-jump_operation("BC2T").
-jump_operation("BC2TL").
-jump_operation("BC3F").
-jump_operation("BC3FL").
-jump_operation("BC3T").
-jump_operation("BC3TL").
-jump_operation("BNVC").
-jump_operation("BOVC").
-jump_operation("BPOSGE32").
-jump_operation("B").
 
-jump_operation(Symbol):-
-    jump_comp_operation(Symbol);
-    jump_equal_operation(Symbol);
-    jump_unequal_operation(Symbol).
+jump_operation(Operation),
+conditional_operation(Operation):-
+    conditional_branch(Operation).
 
-unconditional_jump_operation("J").
-unconditional_jump_operation("JIC").
-unconditional_jump_operation("B").
-unconditional_jump_operation("B16").
-unconditional_jump_operation("BC").
-
-// Return operations are returns only if the target register is RA.
-// Otherwise, it can be considered as unconditional jump.
-// The caller is responsible for checking the target register.
-unconditional_jump_operation(N):-
-    return_operation(N).
+jump_operation(Operation),
+conditional_operation(Operation):-
+    jump_comp_operation(Operation);
+    jump_equal_operation(Operation);
+    jump_unequal_operation(Operation).
 
 .decl jump_comp_operation(n:symbol)
 
-jump_comp_operation(Symbol):-
-    jump_comp_operation_2op(Symbol);
-    jump_comp_operation_3op(Symbol).
+jump_comp_operation(Operation):-
+    jump_comp_operation_2op(Operation);
+    jump_comp_operation_3op(Operation).
 
 .decl jump_comp_operation_3op(n:symbol)
 
@@ -108,9 +106,9 @@ jump_comp_operation_2op("BZ.V").
 
 jump_equal_operation("BTEQZ").
 
-jump_equal_operation(Symbol):-
-    jump_equal_operation_2op(Symbol);
-    jump_equal_operation_3op(Symbol).
+jump_equal_operation(Operation):-
+    jump_equal_operation_2op(Operation);
+    jump_equal_operation_3op(Operation).
 
 .decl jump_equal_operation_3op(n:symbol)
 
@@ -128,9 +126,9 @@ jump_equal_operation_2op("BC2EQZ").
 
 jump_unequal_operation("BTNEZ").
 
-jump_unequal_operation(Symbol):-
-    jump_unequal_operation_2op(Symbol);
-    jump_unequal_operation_3op(Symbol).
+jump_unequal_operation(Operation):-
+    jump_unequal_operation_2op(Operation);
+    jump_unequal_operation_3op(Operation).
 
 .decl jump_unequal_operation_3op(n:symbol)
 

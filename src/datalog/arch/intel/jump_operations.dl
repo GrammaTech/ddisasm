@@ -24,34 +24,41 @@
 The set of jump operations in x86
 */
 
-jump_operation("JCXZ").
-jump_operation("JECXZ").
-jump_operation("JRCXZ").
-jump_operation("JO").
-jump_operation("JNO").
-jump_operation("JB").
-jump_operation("JNB").
-jump_operation("JZ").
-jump_operation("JNZ").
-jump_operation("JNA").
-jump_operation("JA").
-jump_operation("JS").
-jump_operation("JNS").
-jump_operation("JP").
-jump_operation("JNP").
-jump_operation("JL").
-jump_operation("JGE").
-jump_operation("JLE").
-jump_operation("JG").
-jump_operation("JC").
-jump_operation("JAE").
-jump_operation("JE").
-jump_operation("JNE").
-jump_operation("JBE").
-jump_operation("JNBE").
-jump_operation("JMP").
+/**
+Conditional jumps
+*/
+.decl conditional_jump(c:symbol)
+conditional_jump("JCXZ").
+conditional_jump("JECXZ").
+conditional_jump("JRCXZ").
+conditional_jump("JO").
+conditional_jump("JNO").
+conditional_jump("JB").
+conditional_jump("JNB").
+conditional_jump("JZ").
+conditional_jump("JNZ").
+conditional_jump("JNA").
+conditional_jump("JA").
+conditional_jump("JS").
+conditional_jump("JNS").
+conditional_jump("JP").
+conditional_jump("JNP").
+conditional_jump("JL").
+conditional_jump("JGE").
+conditional_jump("JLE").
+conditional_jump("JG").
+conditional_jump("JC").
+conditional_jump("JAE").
+conditional_jump("JE").
+conditional_jump("JNE").
+conditional_jump("JBE").
+conditional_jump("JNBE").
 
-unconditional_jump_operation("JMP").
+jump_operation(Operation),
+conditional_operation(Operation):-
+    conditional_jump(Operation).
+
+jump_operation("JMP").
 
 jump_equal_operation("JE").
 jump_equal_operation("JZ").

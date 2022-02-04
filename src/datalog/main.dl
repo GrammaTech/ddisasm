@@ -376,14 +376,14 @@ instruction_has_relocation(EA,EA+Offset):-
 unconditional_jump(EA):-
     arch.jump(EA),
     instruction_get_operation(EA,Operation),
-    arch.unconditional_jump_operation(Operation).
+    !arch.conditional_operation(Operation).
 
 .decl conditional_jump(src:address)
 
 conditional_jump(EA):-
     arch.jump(EA),
     instruction_get_operation(EA,Operation),
-    !arch.unconditional_jump_operation(Operation).
+    arch.conditional_operation(Operation).
 
 // direct jumps
 .decl direct_jump(src:address, dest:address)
@@ -661,14 +661,14 @@ data_segment(Begin,End):-
 conditional_return(EA):-
     arch.return(EA),
     instruction_get_operation(EA,Operation),
-    arch.conditional_return_operation(Operation).
+    arch.conditional_operation(Operation).
 
 .decl unconditional_return(EA:address)
 
 unconditional_return(EA):-
     arch.return(EA),
     instruction_get_operation(EA,Operation),
-    arch.unconditional_return_operation(Operation).
+    !arch.conditional_operation(Operation).
 
 
 .decl no_return_call(EA:address)
