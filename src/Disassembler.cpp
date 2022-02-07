@@ -735,7 +735,10 @@ void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module, souffle::So
     auto *Alignment = Module.getAuxData<gtirb::schema::Alignment>();
     if(!Alignment)
     {
-        std::cerr << "ERROR: Missing `Alignment' AuxData table\n";
+        // Create one if none exists.
+        std::map<gtirb::UUID, uint64_t> Tmp;
+        Module.addAuxData<gtirb::schema::Alignment>(std::move(Tmp));
+        Alignment = Module.getAuxData<gtirb::schema::Alignment>();
     }
 
     std::map<gtirb::UUID, std::string> TypesTable;
