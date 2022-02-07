@@ -135,3 +135,12 @@ tests:
 
   - name: ex_registers
     <<: *assembly
+
+  - name: ex_op_types
+    <<: *assembly
+    test:
+      # To include some of the operand types, we have to use instructions that
+      # we can't actually execute in userspace.
+      # Just make sure it disassembles and re-assembles without errors
+      <<: *default-test
+      skip: true
