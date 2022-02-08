@@ -131,13 +131,61 @@ conditional_operation(Operation):-
     CC = substr(Operation,Size-2,2),
     condition_code(CC).
 
+/**
+IT: The IT (If-Then) instruction makes up to four following instructions
+(the IT block) conditional.
+
+ITxyz
+x,y,z: specifies the condition switch for the second, third, and fourth
+instruction in the IT block, respectively.
+
+The condition switch in the IT block can be either: T (Then) or E (Else).
+
+This predicate determines if EA is a IT block instruction.
+*/
+.decl it_conditional(EA:address)
+.output it_conditional
+
+it_conditional(EA):-
+    instruction_get_operation(Prev1,Operation),
+    substr(Operation,0,2) = "IT",
+    next(Prev1,EA).
+
+it_conditional(EA):-
+    instruction_get_operation(Prev2,Operation),
+    substr(Operation,0,2) = "IT",
+    strlen(Operation) >= 3,
+    next(Prev2,Prev1),
+    next(Prev1,EA).
+
+it_conditional(EA):-
+    instruction_get_operation(Prev3,Operation),
+    substr(Operation,0,2) = "IT",
+    strlen(Operation) >= 4,
+    next(Prev3,Prev2),
+    next(Prev2,Prev1),
+    next(Prev1,EA).
+
+it_conditional(EA):-
+    instruction_get_operation(Prev4,Operation),
+    substr(Operation,0,2) = "IT",
+    strlen(Operation) = 5,
+    next(Prev4,Prev3),
+    next(Prev3,Prev2),
+    next(Prev2,Prev1),
+    next(Prev1,EA).
+
+conditional(EA):-
+    it_conditional(EA).
+
 // Does not override - extends with `ldr pc, [...]`
 jump(EA):-
     instruction_get_operation(EA,Operation),
     load_operation(Operation),
     instruction_get_dest_op(EA,_,Op),
     op_regdirect(Op,Reg),
-    pc_register(Reg).
+    pc_register(Reg),
+    !arch.return(EA).
 
 op_does_not_read_dest_reg(Operation):-
     // TODO: There could be more.
