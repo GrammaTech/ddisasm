@@ -81,6 +81,12 @@ load_word_operation(""):-
 
 .decl conditional_operation(Operation:symbol)
 
+.decl conditional(EA:address)
+
+conditional(EA):-
+    instruction_get_operation(EA,Operation),
+    arch.conditional_operation(Operation).
+
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
 .decl arithmetic_operation(Operation:symbol)

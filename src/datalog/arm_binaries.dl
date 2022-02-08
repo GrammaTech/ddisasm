@@ -31,6 +31,14 @@ block_points(Block,"data",0,9,"literal pool"),
 data_block_candidate(Block,Size):-
     defined_symbol(Block,Size,_,_,_,_,_,_,"$d").
 
+block_points(Block,"code",0,1,"plausible instruction sequence: cmp/branch"):-
+    conditional_jump(Jump),
+    code_in_block_candidate(Jump,Block),
+    next(PrevEA,Jump),
+    code_in_block_candidate(PrevEA,Block),
+    instruction_get_operation(PrevEA,Operation),
+    arch.cmp_operation(Operation).
+
 plt_block(EA,Function):-
     plt_section(SecName),
     section(SecName,Size,Beg),

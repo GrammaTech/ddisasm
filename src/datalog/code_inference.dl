@@ -230,7 +230,8 @@ basic_target(Val):-
         relocation(EA,_,_,_,_,_,_)
         ;
         binary_type("EXEC"),
-        address_in_data(_,Val)
+        address_in_data(_,Val),
+        !impossible_jump_target(Val)
         ;
         entry_point(Val)
         ;
@@ -386,6 +387,17 @@ The candidate is located at address 'Block' and has 'Size' bytes.
 
 data_block_candidate(Block,Size):-
     relative_address(Block,Size,_,_,_,_).
+
+block_points(Block,"data",0,7,"possible string"),
+data_block_candidate(Block,Size):-
+    ascii_string(Block,Size),
+    (
+        symbol(Block,_,_,_,_,_,_,_,_)
+        ;
+        address_in_data(EA,Block),
+        arch.pointer_size(Pt_size),
+        EA % Pt_size = 0
+    ).
 
 /**
 The block candidate defined by address 'Block' extends from 'BegAddr' to 'EndAddr'.
@@ -809,6 +821,18 @@ block_points(Block,"code",0,-2,"conditional jump/return: fallthrough to invalid"
     ),
     next(EA,Invalid),
     invalid(Invalid,_).
+
+data_block_candidate(Block,Size),
+block_points(Block,"data",0,7,"object symbol"):-
+    defined_symbol(Block,Size,"OBJECT",_,_,_,_,_,_).
+
+block_is_overlapping(Block,"code"),
+block_points(Block,"code",0,-1,"jump to string"):-
+    code_in_block_candidate(EA,Block),
+    direct_jump(EA,Dest),
+    ascii_string(Beg,Size),
+    Dest >= Beg,
+    Dest < Beg+Size.
 
 
 ////////////////////////////////////////////////////////////////////////////

@@ -256,6 +256,20 @@ struct SymbolSpecialType
     std::string Type;
 };
 
+struct Alignment
+{
+    explicit Alignment(gtirb::Addr A) : EA(A)
+    {
+    }
+    explicit Alignment(souffle::tuple &T)
+    {
+        assert(T.size() == 2);
+        T >> EA >> Num;
+    }
+    gtirb::Addr EA{0};
+    uint64_t Num{0};
+};
+
 struct SymbolicInfo
 {
     VectorByEA<SymbolicExpr> SymbolicExprs;
@@ -693,6 +707,16 @@ void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module, souffle::So
     auto DataBoundary = convertSortedRelation<std::set<gtirb::Addr>>("data_object_boundary", Prog);
     auto SymbolicExprAttributes =
         convertSortedRelation<VectorByEA<SymbolicExprAttribute>>("symbolic_expr_attribute", Prog);
+    auto Alignments = convertSortedRelation<VectorByEA<Alignment>>("alignment", Prog);
+
+    auto *Alignment = Module.getAuxData<gtirb::schema::Alignment>();
+    if(!Alignment)
+    {
+        // Create one if none exists.
+        std::map<gtirb::UUID, uint64_t> Tmp;
+        Module.addAuxData<gtirb::schema::Alignment>(std::move(Tmp));
+        Alignment = Module.getAuxData<gtirb::schema::Alignment>();
+    }
 
     std::map<gtirb::UUID, std::string> TypesTable;
 
@@ -707,7 +731,7 @@ void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module, souffle::So
         for(auto CurrentAddr = Begin; CurrentAddr < End;
             /*incremented in each case*/)
         {
-            gtirb::DataBlock *DataBlock;
+            gtirb::DataBlock *DataBlock = nullptr;
             if(auto It = Module.findByteIntervalsOn(CurrentAddr); !It.empty())
             {
                 if(gtirb::ByteInterval &ByteInterval = *It.begin(); ByteInterval.getAddress())
@@ -770,6 +794,15 @@ void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module, souffle::So
             {
                 std::cerr << "ByteInterval at address " << CurrentAddr << " not found" << std::endl;
                 exit(1);
+            }
+
+            if(DataBlock && Alignment)
+            {
+                const auto AlignInfo = Alignments.find(*DataBlock->getAddress());
+                if(AlignInfo != Alignments.end())
+                {
+                    (*Alignment)[DataBlock->getUUID()] = AlignInfo->Num;
+                }
             }
         }
     }
