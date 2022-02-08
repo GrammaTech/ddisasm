@@ -136,6 +136,9 @@ plt_block(EA,Function):-
     pe_import_entry(Got_entry,_,Function,_),
     code_in_refined_block(EA,EA).
 
+symbol(EA,0,"NOTYPE","GLOBAL","DEFAULT",0,"export",as(Ordinal,unsigned),Function):-
+    pe_export_entry(EA,Ordinal,Function).
+
 .decl reg_has_base_image(EA:address,Reg:register)
 .output reg_has_base_image
 
@@ -545,14 +548,6 @@ inferred_special_symbol(EA,"main","PUBLIC","NONE","Beg"):-
     binary_format("PE"),
     main_function(EA).
 
-// Label addresses in data section that are exported.
-labeled_ea(EA),
-labeled_data_candidate(EA):-
-    pe_export_entry(EA,_,_),
-    data_section(Name),
-    section(Name,Size,Addr),
-    EA >= Addr,
-    EA < Addr+Size.
 
 is_padding(EA):-
     binary_format("PE"),
