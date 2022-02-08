@@ -546,7 +546,7 @@ debian-installer-ubuntu20:
 docker-image:
   stage: deploy
   needs: []
-  tags: []
+  tags: ['research-shell']
   rules:
     - if: '$CI_COMMIT_REF_NAME == "master"'
     - if: '$CI_COMMIT_REF_NAME == "windows-support"'
