@@ -511,6 +511,9 @@ halt(EA):-
     arch.halt_operation(Operation),
     instruction_get_operation(EA,Operation).
 
+/**
+Information about alignment in bits for a given address
+*/
 .decl alignment(EA:address,AlignInBits:unsigned)
 .output alignment
 
