@@ -375,15 +375,13 @@ instruction_has_relocation(EA,EA+Offset):-
 
 unconditional_jump(EA):-
     arch.jump(EA),
-    instruction_get_operation(EA,Operation),
-    !arch.conditional_operation(Operation).
+    !arch.conditional(EA).
 
 .decl conditional_jump(src:address)
 
 conditional_jump(EA):-
     arch.jump(EA),
-    instruction_get_operation(EA,Operation),
-    arch.conditional_operation(Operation).
+    arch.conditional(EA).
 
 // direct jumps
 .decl direct_jump(src:address, dest:address)
@@ -406,6 +404,11 @@ direct_jump(EA,as(Dest,address)):-
 
 direct_jump(EA,EA):-
     instruction_has_loop_prefix(EA).
+
+.decl impossible_jump_target(EA:address)
+
+impossible_jump_target(0):-
+    false.
 
 // Special kinds of indirect jumps
 // PC relative jumps
@@ -501,6 +504,14 @@ return(EA):-
 halt(EA):-
     arch.halt_operation(Operation),
     instruction_get_operation(EA,Operation).
+
+/**
+Information about alignment in bits for a given address
+*/
+.decl alignment(EA:address,AlignInBits:unsigned)
+.output alignment
+
+alignment(0,0):- false.
 
 //////////////////////////////////////////////////////////////////////////////////
 // Operations to abstract features of instructions
@@ -654,15 +665,13 @@ data_segment(Begin,End):-
 
 conditional_return(EA):-
     arch.return(EA),
-    instruction_get_operation(EA,Operation),
-    arch.conditional_operation(Operation).
+    arch.conditional(EA).
 
 .decl unconditional_return(EA:address)
 
 unconditional_return(EA):-
     arch.return(EA),
-    instruction_get_operation(EA,Operation),
-    !arch.conditional_operation(Operation).
+    !arch.conditional(EA).
 
 .decl no_return_call(EA:address)
 
