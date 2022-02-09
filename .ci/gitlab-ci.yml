@@ -402,7 +402,10 @@ test-make-install:
   artifacts:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
-      - build
+      - build/_CPack_Packages/
+      - build/bin/*.debug
+      - build/*.deb
+      - build/install_manifest*.txt
   script:
     - *build-libehp
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
@@ -412,12 +415,14 @@ test-make-install:
     - dpkg -i libcapstone-dev.deb libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
     - 'CAPSTONE_PKG_VERSION=$(dpkg --info libcapstone-dev.deb | sed -n "s/ Version: //p")'
     - cd build
+    # Use make to update timestamps on all build targets. The artifacts we
+    # pulled in from the dependent job should already be up-to-date, but since
+    # this job checked out a new copy of the source, its timestamps are newer.
+    - make -t
     - CPACK_DDISASM_STABLE_PKG_NAME=OFF
     - '[[ ! $CI_COMMIT_REF_NAME =~ ^release-.* ]] || CPACK_DDISASM_STABLE_PKG_NAME=ON'
     - cpack -G "DEB" -D CPACK_DDISASM_STABLE_PKG_NAME=$CPACK_DDISASM_STABLE_PKG_NAME -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-ddisasm
     - cpack -G "DEB" -D CPACK_DDISASM_STABLE_PKG_NAME=$CPACK_DDISASM_STABLE_PKG_NAME -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-debug
-  rules:
-    *run-only-main
 
 build-ubuntu18-packages:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu18
@@ -431,6 +436,8 @@ build-ubuntu20-packages:
   needs: ['build-ubuntu20-gcc']
   variables:
     OS: ubuntu20
+  rules:
+    *run-only-main
   <<: *build-ubuntu-packages
 
 .setup-apt-repo-template: &setup-apt-repo
