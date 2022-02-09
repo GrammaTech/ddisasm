@@ -22,16 +22,7 @@ class CfgTests(unittest.TestCase):
         binary = "ex"
         with cd(ex_asm_dir / "ex_relative_switch"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    "strip",
-                    False,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
-                )
-            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
@@ -72,16 +63,7 @@ class CfgTests(unittest.TestCase):
                     "qemu-mips -L /usr/mips-linux-gnu",
                 )
             )
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    "mips-linux-gnu-strip",
-                    False,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
-                )
-            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
@@ -114,16 +96,7 @@ class CfgTests(unittest.TestCase):
                     "qemu-arm -L /usr/arm-linux-gnueabihf",
                 )
             )
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    "arm-linux-gnueabihf-strip",
-                    False,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
-                )
-            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
@@ -151,16 +124,7 @@ class CfgTests(unittest.TestCase):
                     "qemu-arm -L /usr/arm-linux-gnueabihf",
                 )
             )
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    "arm-linux-gnueabihf-strip",
-                    False,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
-                )
-            )
+            self.assertTrue(disassemble(binary, format="--ir",)[0])
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
@@ -191,16 +155,7 @@ class CfgTests(unittest.TestCase):
                     "qemu-arm -L /usr/arm-linux-gnueabihf",
                 )
             )
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    "arm-linux-gnueabihf-strip",
-                    False,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
-                )
-            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
 
             # test_relative_jump_tables relies on symbols to find the expected
             # source and target blocks. However, ARM doesn't seem to match the
@@ -237,16 +192,7 @@ class CfgTests(unittest.TestCase):
         binary = "ex.o"
         with cd(ex_dir / "ex1"):
             self.assertTrue(compile("gcc", "g++", "-O0", ["--save-temps"]))
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    "strip",
-                    False,
-                    False,
-                    format="--ir",
-                    extension="gtirb",
-                )
-            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
@@ -279,11 +225,9 @@ class CfgTests(unittest.TestCase):
             self.assertTrue(
                 disassemble(
                     binary,
-                    "arm-linux-gnueabihf-strip",
-                    False,
-                    True,
+                    strip_exe="arm-linux-gnueabihf-strip",
+                    strip=True,
                     format="--ir",
-                    extension="gtirb",
                 )
             )
 

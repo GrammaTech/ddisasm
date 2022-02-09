@@ -14,11 +14,11 @@ protected:
     void SetUp() override
     {
         auto GTIRB = GtirbBuilder::read(GetParam());
-        Context = std::move(GTIRB->Context);
+        Context = GTIRB->Context;
         IR = GTIRB->IR;
         Module = &*(GTIRB->IR->modules().begin());
     }
-    std::unique_ptr<gtirb::Context> Context;
+    std::shared_ptr<gtirb::Context> Context;
     gtirb::IR* IR;
     gtirb::Module* Module;
 };

@@ -15,7 +15,9 @@ repos:
     rev: v2.4.0
     hooks:
       - id: end-of-file-fixer
+        exclude: 'src/tests/inputs/ar/.+\.a'
       - id: trailing-whitespace
+        exclude: 'src/tests/inputs/ar/.+\.a'
       - id: check-merge-conflict
   - repo: https://github.com/iconmaster5326/cmake-format-pre-commit-hook
     rev: v0.6.2
