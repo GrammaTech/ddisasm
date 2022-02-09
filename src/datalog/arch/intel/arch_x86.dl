@@ -54,8 +54,7 @@ is_nop(EA):-
     op_regdirect(Op,"AX").
 
 // Extend the generic case with loop operations.
-jump(EA):-
-    instruction_get_operation(EA,Operation),
+jump_operation(Operation):-
     loop_operation(Operation).
 
 op_does_not_read_dest_reg("LEA").
@@ -92,6 +91,10 @@ loop_operation("LOOPE").
 loop_operation("LOOPZ").
 loop_operation("LOOPNE").
 loop_operation("LOOPNZ").
+
+conditional_operation(Operation):-
+    instruction_get_operation(_, Operation),
+    loop_operation(Operation).
 
 loop_prefix("REP").
 loop_prefix("REPE").
