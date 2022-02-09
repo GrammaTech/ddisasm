@@ -15,11 +15,11 @@ ex_dir = Path("./examples/")
 class TestStaticLib(unittest.TestCase):
     def setUp(self):
         test_dir = Path("./tests/")
-        # TODO: x86 and arm64 architectures, disabled below, have issues with
+        # TODO: the arm64 architectures, disabled below, has issues with
         # object file support that cause this test to fail, as ddisasm can't
         # properly disassemble and rebuild it.
         self.configs = [
-            # test_dir / 'linux-elf-x86.yaml',
+            test_dir / "linux-elf-x86.yaml",
             test_dir / "linux-elf-x64.yaml",
             # test_dir / 'qemu-elf-arm64.yaml',
         ]
@@ -37,7 +37,7 @@ class TestStaticLib(unittest.TestCase):
             wrapper = default.get("test").get("wrapper")
 
             test_dir = ex_dir / "ex_static_lib"
-            with cd(test_dir):
+            with cd(test_dir), self.subTest(platform=path.stem):
                 self.assertTrue(
                     compile(
                         default.get("build").get("c")[0],
