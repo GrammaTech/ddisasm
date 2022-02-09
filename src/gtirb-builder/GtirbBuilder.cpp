@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 #include "./GtirbBuilder.h"
 
+#include "./ArchiveReader.h"
 #include "./ElfReader.h"
 #include "./PeReader.h"
 
@@ -35,9 +36,13 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
         return GtirbBuilder::build_error::FileNotFound;
     }
 
+    auto Context = std::make_shared<gtirb::Context>();
+
     // Parse an input binary with LIEF.
     if(LIEF::ELF::is_elf(Path) || LIEF::PE::is_pe(Path))
     {
+        gtirb::IR* IR = gtirb::IR::Create(*Context);
+
         std::shared_ptr<LIEF::Binary> Binary{LIEF::Parser::parse(Path)};
         if(!Binary)
         {
@@ -49,47 +54,88 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
         {
             case LIEF::EXE_FORMATS::FORMAT_ELF:
             {
-                ElfReader Elf(Path, Binary);
-                return Elf.build();
+                ElfReader Elf(Path, Binary->name(), Context, IR, Binary);
+                Elf.build();
+                break;
             }
             case LIEF::EXE_FORMATS::FORMAT_PE:
             {
-                PeReader Pe(Path, Binary);
-                return Pe.build();
+                PeReader Pe(Path, Binary->name(), Context, IR, Binary);
+                Pe.build();
+                break;
             }
             case LIEF::EXE_FORMATS::FORMAT_MACHO:
             case LIEF::EXE_FORMATS::FORMAT_UNKNOWN:
-                break;
+            default:
+                return GtirbBuilder::build_error::NotSupported;
         }
+
+        return GTIRB{Context, IR};
+    }
+
+    if(ArchiveReader::isAr(Path))
+    {
+        gtirb::IR* IR = gtirb::IR::Create(*Context);
+
+        try
+        {
+            ArchiveReader Archive = ArchiveReader::read(Path);
+
+            for(auto& Object : Archive.Files)
+            {
+                std::vector<uint8_t> ObjectData;
+                Archive.readFile(Object, ObjectData);
+
+                std::shared_ptr<LIEF::Binary> Binary{
+                    LIEF::Parser::parse(ObjectData, Object.FileName)};
+                if(!Binary)
+                {
+                    return GtirbBuilder::build_error::ParseError;
+                }
+
+                if(Binary->format() != LIEF::EXE_FORMATS::FORMAT_ELF)
+                {
+                    return GtirbBuilder::build_error::NotSupported;
+                }
+
+                ElfReader Elf(Path, Object.FileName, Context, IR, Binary);
+                Elf.build();
+            }
+        }
+        catch(ArchiveReaderException& e)
+        {
+            std::cerr << std::endl << "ERROR: " << e.what();
+            return GtirbBuilder::build_error::ParseError;
+        }
+
+        return GTIRB{Context, IR};
     }
 
     // Load an existing GTIRB file.
-    auto Context = std::make_unique<gtirb::Context>();
     std::ifstream Stream(Path, std::ios::in | std::ios::binary);
     if(gtirb::ErrorOr<gtirb::IR*> Result = gtirb::IR::load(*Context, Stream))
     {
-        return GTIRB{std::move(Context), *Result};
+        return GTIRB{Context, *Result};
     }
 
     return GtirbBuilder::build_error::NotSupported;
 }
 
-GtirbBuilder::GtirbBuilder(std::string P, std::shared_ptr<LIEF::Binary> B) : Path(P), Binary(B)
+GtirbBuilder::GtirbBuilder(std::string P, std::string Name, std::shared_ptr<gtirb::Context> Context,
+                           gtirb::IR* IR, std::shared_ptr<LIEF::Binary> B)
+    : Path(P), Context(Context), IR(IR), Binary(B)
 {
-    Context = std::make_unique<gtirb::Context>();
-    IR = gtirb::IR::Create(*Context);
-    Module = gtirb::Module::Create(*Context, Binary->name());
+    Module = gtirb::Module::Create(*Context, Name);
     IR->addModule(Module);
 }
 
-gtirb::ErrorOr<GTIRB> GtirbBuilder::build()
+void GtirbBuilder::build()
 {
     initModule();
     buildSections();
     buildSymbols();
     addEntryBlock();
     addAuxData();
-    return GTIRB{std::move(Context), IR};
 }
 
 void GtirbBuilder::initModule()

@@ -35,16 +35,17 @@ namespace fs = boost::filesystem;
 class GtirbBuilder
 {
 public:
-    GtirbBuilder(std::string Path, std::shared_ptr<LIEF::Binary> Binary);
+    GtirbBuilder(std::string P, std::string Name, std::shared_ptr<gtirb::Context> Context,
+                 gtirb::IR* IR, std::shared_ptr<LIEF::Binary> Binary);
 
     struct GTIRB
     {
-        std::unique_ptr<gtirb::Context> Context;
+        std::shared_ptr<gtirb::Context> Context;
         gtirb::IR* IR;
     };
 
     static gtirb::ErrorOr<GTIRB> read(std::string Path);
-    virtual gtirb::ErrorOr<GTIRB> build();
+    virtual void build();
 
     /// \enum build_error
     /// \brief Specifies various failure modes when loading a binary.
@@ -68,7 +69,7 @@ protected:
 
     std::string Path;
     std::shared_ptr<LIEF::Binary> Binary;
-    std::unique_ptr<gtirb::Context> Context;
+    std::shared_ptr<gtirb::Context> Context;
     gtirb::IR* IR;
     gtirb::Module* Module;
 };

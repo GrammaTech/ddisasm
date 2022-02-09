@@ -129,29 +129,27 @@ def compile(
 
 def disassemble(
     binary,
-    strip_exe,
-    strip,
-    sstrip,
+    output=None,
+    strip_exe="strip",
+    strip=False,
+    sstrip=False,
     format="--asm",
-    extension="s",
     extra_args=[],
 ):
     """
-    Disassemble the binary 'binary'
+    Disassemble the binary 'binary' and generate ddisasm output 'output'
     """
+    if output is None:
+        if format == "--asm":
+            output = binary + ".s"
+        elif format == "--ir":
+            output = binary + ".gtirb"
+
     with get_target(binary, strip_exe, strip, sstrip) as target_binary:
         print("# Disassembling " + target_binary + "\n")
         start = timer()
         completedProcess = subprocess.run(
-            [
-                "ddisasm",
-                target_binary,
-                format,
-                binary + "." + extension,
-                "-j",
-                "1",
-            ]
-            + extra_args
+            ["ddisasm", target_binary, format, output, "-j", "1"] + extra_args
         )
         time_spent = timer() - start
     if completedProcess.returncode == 0:
@@ -220,16 +218,14 @@ def reassemble_using_makefile(assembler, binary, extra_flags):
     return True
 
 
-def link(linker: str, obj: str, extra_flags: List[str]) -> bool:
+def link(
+    linker: str, binary: str, obj: List[str], extra_flags: List[str]
+) -> bool:
     """Link a reassembled object file into a new binary."""
-    binary = obj
-    if binary.endswith(".o"):
-        binary = binary[:-2]
-    print("# Linking", obj, "into", binary)
-    print("link command:", linker, obj, "-o", binary, *extra_flags)
-    completedProcess = subprocess.run(
-        [linker, obj, "-o", binary] + extra_flags
-    )
+    print("# Linking", ", ".join(obj), "into", binary)
+    cmd = [linker] + obj + ["-o", binary] + extra_flags
+    print("link command:", " ".join(cmd))
+    completedProcess = subprocess.run(cmd)
     if completedProcess.returncode != 0:
         print(bcolors.fail("# Linking failed\n"))
         return False
@@ -312,6 +308,7 @@ def disassemble_reassemble_test(
                     continue
                 success, time = disassemble(
                     binary,
+                    None,
                     strip_exe,
                     strip,
                     sstrip,
@@ -333,7 +330,12 @@ def disassemble_reassemble_test(
                 ):
                     reassembly_errors += 1
                     continue
-                if linker and not link(linker, binary, extra_link_flags):
+                if linker and not link(
+                    linker,
+                    os.path.splitext(binary)[0],
+                    [binary],
+                    extra_link_flags,
+                ):
                     link_errors += 1
                     continue
                 if skip_test or reassemble_function == skip_reassemble:
