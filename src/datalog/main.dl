@@ -743,8 +743,10 @@ printable_char(0xD).
 printable_char(N):-
     N = range(0x20,0x7E+1,1).
 
-// The functions and data-objects that are intrinsic to the compiler's ABI -
-// artifacts of compilation that are not explicit features of the source and
-// will likely be reintroduced by the compiler toolchain.
+/*
+The functions and data-objects that are intrinsic to the compiler's ABI -
+artifacts of compilation that are not explicit features of the source and
+will likely be reintroduced by the compiler toolchain.
+*/
 .decl abi_intrinsic(EA:address,Name:symbol)
 .output abi_intrinsic

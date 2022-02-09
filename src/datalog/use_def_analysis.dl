@@ -43,7 +43,7 @@ The traversal of def_used_for_address is kept intra-procedural (not following ca
 
 
 /**
-Instruction at address 'EA' uses register 'Reg' at operand index `Index`.
+Instruction at address 'EA' uses register 'Reg' at operand index 'Index'.
 */
 .decl used(EA:address,Reg:register,Index:operand_index)
 
