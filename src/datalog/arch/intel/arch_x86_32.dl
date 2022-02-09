@@ -112,7 +112,7 @@ inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_","LOCAL","NONE","Beg"):-
 
 // GCC GOT-relative offset variant:
 //     add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
-symbol_minus_symbol(EA+ImmediateOffset,4,EA,Got,1,0):-
+symbolic_expr(EA+ImmediateOffset,4,"_GLOBAL_OFFSET_TABLE_",0):-
     reg_has_got(EA,Reg),
     got_reference_pointer(Got),
     op_immediate_and_reg(EA,"ADD",Reg,Index,Value),
@@ -122,7 +122,7 @@ symbol_minus_symbol(EA+ImmediateOffset,4,EA,Got,1,0):-
 // CLANG GOT-relative offset variant:
 //     add     ebx, offset _GLOBAL_OFFSET_TABLE_+(.Ltmp0-.L1$pb)
 symbolic_operand_attribute(EA,Index,"GotOff"),
-symbol_minus_symbol(EA+ImmediateOffset,4,EA,Ref,1,0):-
+symbol_minus_symbol(EA+ImmediateOffset,4,Ref,EA,1,0):-
     reg_has_got(EA,Reg),
     got_reference_pointer(Got),
     op_immediate_and_reg(EA,"ADD",Reg,Index,Value),
