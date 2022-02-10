@@ -506,8 +506,7 @@ where the symbol foo is the target symbol, and .L0 will contain the offset
 from PC at .LPIC0 to the symbol foo.
 */
 labeled_data_candidate(Dest),
-data_object_candidate(Addr,Size,"symbol-symbol"),
-symbol_minus_symbol(Addr,Size,EARef,Dest,as(Scale,unsigned),0):-
+symbol_minus_symbol_candidate(Addr,Size,EARef,Dest,as(Scale,unsigned),0):-
     data_access_pattern(Addr,Size,0,EABase),
     def_used(EABase,Reg,EAAddPC,_),
     arch.reg_reg_arithmetic_operation(EAAddPC,Reg,Reg,PC,1,0),
@@ -538,7 +537,7 @@ symbol_minus_symbol(Addr,Size,EARef,Dest,as(Scale,unsigned),0):-
 symbol_minus_symbol_from_relocation(EA,4,SymbolName2,"_GLOBAL_OFFSET_TABLE_",1,-4):-
     binary_type("REL"),
     relocation(EA,"BASE_PREL","_GLOBAL_OFFSET_TABLE_",_,_,_,_),
-    symbol_minus_symbol_candidate(_,4,_,EA,1,_,Symbol2,_),
+    symbol_minus_symbol_litpool_access_pattern(_,4,_,EA,1,_,Symbol2,_),
     best_symexpr_symbol(Symbol2,SymbolName2,"Beg").
 
 /**
@@ -841,8 +840,11 @@ symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
 symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
     litpool_ref_double(EA,_,_,LitPoolAddr).
 
-.decl symbol_minus_symbol_candidate(ea:address,size:unsigned,symbol1:address,symbol2:address,scale:unsigned,ea_litpool_ref:address,ea_def:address,reg:register)
-.output symbol_minus_symbol_candidate
+/**
+ * Matches instruction patterns that access a symbol-symbol from the literal pool.
+ */
+.decl symbol_minus_symbol_litpool_access_pattern(ea:address,size:unsigned,symbol1:address,symbol2:address,scale:unsigned,ea_litpool_ref:address,ea_def:address,reg:register)
+.output symbol_minus_symbol_litpool_access_pattern
 
 //     ldr reg, LitPool
 // ...
@@ -852,7 +854,7 @@ symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
 //
 block_needs_splitting_at(EA_add_pc),
 moved_data_label(LitPoolAddr,Size,Symbol1,EA_add_pc),
-symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add_pc,Reg):-
+symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add_pc,Reg):-
     litpool_ref(EA,Reg,LitPoolAddr,NBits),
     Size = NBits/8,
 
@@ -885,7 +887,7 @@ symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add_pc,Re
 // LitPool: .word TARGET - Base
 //
 // (in observed cases, LitPool == Base)
-symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add,Reg):-
+symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add,Reg):-
     litpool_ref(EA,Reg,LitPoolAddr,NBits),
     Size = NBits/8,
 
@@ -915,7 +917,7 @@ symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add,Reg):
     Symbol2 = Addr2-(Addr2 band 1).
 
 value_reg_edge(EA,Reg,EA,"NONE",0,as(Symbol2,number)):-
-    symbol_minus_symbol_candidate(_,_,_,Symbol2,_,_,EA,Reg).
+    symbol_minus_symbol_litpool_access_pattern(_,_,_,Symbol2,_,_,EA,Reg).
 
 .decl litpool_symbolic_operand(ea_litpool:address,size:unsigned,symbol1:address,symbol2:address,ea_def:address,reg_def:register,sym2_size:unsigned)
 .output litpool_symbolic_operand
@@ -926,7 +928,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,as(Symbol2,number)):-
 //  (D) ldr  reg3, [reg1, reg2] // the referenced address is the address of symbol bar.
 block_needs_splitting_at(EA_C),
 litpool_symbolic_operand(LitPoolAddr2,Size,Symbol1,Symbol2,EA_D,Reg3,Size2):-
-    symbol_minus_symbol_candidate(_,_,_,Symbol1,1,_,EA_C,Reg1),
+    symbol_minus_symbol_litpool_access_pattern(_,_,_,Symbol1,1,_,EA_C,Reg1),
 
     def_used(EA_C,Reg1,EA_D,_),
 
