@@ -58,22 +58,27 @@ conditional_operation(Operation):-
 /**
 ARM64 conditional test and jump operations
 */
-.decl test_jump_operation(Operation:symbol)
-test_jump_operation("CBZ").
-test_jump_operation("CBNZ").
-test_jump_operation("TBZ").
-test_jump_operation("TBNZ").
+.decl test_jump_operation(Operation:symbol, JumpTargetIndex:operand_index)
+test_jump_operation("CBZ", 1).
+test_jump_operation("CBNZ", 1).
+test_jump_operation("TBZ", 2).
+test_jump_operation("TBNZ", 2).
 
 jump_operation(Operation),
 conditional_operation(Operation):-
-    test_jump_operation(Operation).
+    test_jump_operation(Operation,_).
 
 jump_equal_operation("B.EQ").
 
 jump_unequal_operation("B.NE").
 
 jump_operation_op_index(Operation,1):-
-    jump_operation(Operation).
+    jump_operation(Operation),
+    !test_jump_operation(Operation,_).
+
+jump_operation_op_index(Operation,Index):-
+    jump_operation(Operation),
+    test_jump_operation(Operation,Index).
 
 call_operation_op_index(Operation,1):-
     call_operation(Operation).
