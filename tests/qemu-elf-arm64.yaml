@@ -8,7 +8,7 @@ default: &default
   binary: ex
 
   # Compilation configuration.
-  build:
+  build: &default-build
     c: ["aarch64-linux-gnu-gcc"]
     cpp: ["aarch64-linux-gnu-g++"]
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
@@ -34,6 +34,13 @@ zero-one-two-three-optimize: &zero-one-two-three-optimize
     cpp: ["aarch64-linux-gnu-g++"]
     optimizations: ["-O0", "-O1", "-O2", "-O3"]
     flags: []
+
+assembly: &assembly
+  <<: *default
+  path: examples/arm64_asm_examples
+  build:
+    <<: *default-build
+    optimizations: [""]
 
 tests:
   - name: hello
@@ -107,3 +114,6 @@ tests:
       compiler: "aarch64-linux-gnu-g++"
       flags: []
       skip: false
+
+  - name: ex_cond_branch
+    <<: *assembly
