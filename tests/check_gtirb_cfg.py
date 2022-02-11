@@ -1,23 +1,33 @@
 #!/usr/bin/env python3
 import argparse
 import gtirb
+from typing import List, Union
 import sys
 
 
-def lookup_sym(node):
+def lookup_sym(node: gtirb.Block) -> Union[str, None]:
+    """
+    Find a symbol name that describes the node.
+    """
     for sym in node.module.symbols:
         if sym._payload == node:
             return sym.name
 
 
-def node_str(node):
+def node_str(node: gtirb.Block) -> str:
+    """
+    Generate a string that uniquely identifies the node
+    """
     if isinstance(node, gtirb.ProxyBlock):
         return lookup_sym(node) or node.uuid
     else:
         return hex(node.address)
 
 
-def has_undefined_branch(branches):
+def has_undefined_branch(branches: List[gtirb.Edge]) -> bool:
+    """
+    Determine if any of the branches are not resolved to a target.
+    """
     for branch in branches:
         if isinstance(branch.target, gtirb.ProxyBlock) and not lookup_sym(
             branch.target
@@ -26,14 +36,20 @@ def has_undefined_branch(branches):
     return False
 
 
-def has_symbolic_branch(branches):
+def has_symbolic_branch(branches: List[gtirb.Edge]) -> bool:
+    """
+    Determine if any of the branches are to a defined symbol.
+    """
     for branch in branches:
         if lookup_sym(branch.target):
             return True
     return False
 
 
-def is_skipped_section(node):
+def is_skipped_section(node: gtirb.CodeBlock) -> bool:
+    """
+    Determine if the node is part of an uninteresting section.
+    """
     skipped_sections = [
         ".plt",
         ".init",
@@ -54,7 +70,7 @@ def is_skipped_section(node):
     return False
 
 
-def get_func_entry_name(node):
+def get_func_entry_name(node: gtirb.CodeBlock) -> Union[str, None]:
     """
     If the node is the entry point to a function, return the function name.
 
@@ -65,7 +81,10 @@ def get_func_entry_name(node):
             return value.name
 
 
-def belongs_to_skipped_func(node):
+def belongs_to_skipped_func(node: gtirb.CodeBlock) -> bool:
+    """
+    Determine if a CFG node is
+    """
     skipped_funcs = [
         "__do_global_ctors_aux",
         "__do_global_dtors_aux",
@@ -87,7 +106,10 @@ def belongs_to_skipped_func(node):
     return is_skipped_section(node)
 
 
-def is_padding(node):
+def is_padding(node: gtirb.CodeBlock) -> bool:
+    """
+    Determine if a CFG node is padding
+    """
     for key, padding_size in node.module.aux_data["padding"].data.items():
         padding_addr = key.element_id.address + key.displacement
 
@@ -97,12 +119,14 @@ def is_padding(node):
     return False
 
 
-def check_gtirb_cfg(path):
+def check_gtirb_cfg(path: str) -> int:
     """
     Determine if a GTIRB file has a CFG with:
 
     * Unreachable code
     * Unresolved jumps
+
+    Returns the number of errors found.
     """
     error_count = 0
     checked_node_count = 0
