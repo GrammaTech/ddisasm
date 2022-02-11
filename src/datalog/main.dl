@@ -589,7 +589,9 @@ function_symbol(EA,Name):-
 
 defined_symbol(EA,Size,Type,Scope,Visibility,SectIndex,OriginTable,TableIndex,Name):-
     symbol(EA,Size,Type,Scope,Visibility,SectIndex,OriginTable,TableIndex,Name),
-    SectIndex != 0,        // SHN_UNDEF
+    // In executables, the section index can be irrelevant
+    // so we check whether the symbol has non-zero address too.
+    (SectIndex != 0; EA != 0),
     (
         SectIndex < 65280; // SHN_LORESERVE
         SectIndex > 65535  // SHN_HIRESERVE
