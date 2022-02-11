@@ -26,10 +26,9 @@ This module deals exclusively with detecting jump tables with relative addresses
 
 
 .decl data_word(EA:address,Size:unsigned,Val:number)
-.output data_word
 
 data_word(EA,2,Val):-
-    data_byte(EA,Byte0), EA % 2 = 0,//jump tables are assumed to be aligned
+    data_byte(EA,Byte0),
     data_byte(EA+1,Byte1),
     Byte1 < 128,//the number is positive
     (
@@ -49,7 +48,6 @@ data_word(EA,2,Val):-
 
 data_word(EA,4,Val):-
     data_byte(EA,Byte0),
-    (binary_format("PE"); EA % 4 = 0),//jump tables are assumed to be aligned
     data_byte(EA+1,Byte1),
     data_byte(EA+2,Byte2),
     data_byte(EA+3,Byte3),
@@ -70,7 +68,6 @@ data_word(EA,4,Val):-
 
 data_word(EA,8,Val):-
     data_byte(EA,Byte0),
-    (binary_format("PE"); EA % 8 = 0),//jump tables are assumed to be aligned
     data_byte(EA+1,Byte1),
     data_byte(EA+2,Byte2),
     data_byte(EA+3,Byte3),
