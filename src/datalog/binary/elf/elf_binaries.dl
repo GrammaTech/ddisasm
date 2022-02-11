@@ -409,7 +409,7 @@ symbolic_expr_from_relocation(EA,Size/8,Symbol,Addend,TargetEA):-
 symbolic_expr_from_relocation(EA,Size/8,Symbol,0,TargetEA):-
     binary_type("REL"),
     // Nameless relocation referencing a SECTION symbol.
-    relocation(EA,Type,"",Addend,SymbolIndex,SrcSection,_),
+    relocation(EA,Type,"",Addend,SymbolIndex,SrcSection,RelType),
     section(SrcSection,_,_), // Only loaded sections
     relocation_size(Type,Size),
     (
@@ -417,11 +417,19 @@ symbolic_expr_from_relocation(EA,Size/8,Symbol,0,TargetEA):-
         Type = "R64";
         Type = "R32S"
     ),
+    (
+        RelType = "RELA", ImplicitAddend = 0;
+        RelType = "REL", Size = 8, data_byte(EA,ImplicitAddend);
+        RelType = "REL", Size != 8, data_word(EA,Size/8,ImplicitAddend)
+    ),
     symbol(_,_,"SECTION",_,_,SectionIndex,_,SymbolIndex,_),
     section_complete(_,_,Begin,_,_,_,SectionIndex),
     // Addend is the offset of a symbol within the Section.
-    TargetEA = Begin+as(Addend,unsigned),
-    symbol(TargetEA,_,_,_,_,_,_,_,Symbol).
+    TargetEA = Begin+as(Addend,unsigned)+as(ImplicitAddend,unsigned),
+    (
+        symbol(TargetEA,_,_,_,_,_,_,_,Symbol);
+        !symbol(TargetEA,_,_,_,_,_,_,_,_), Symbol = ""
+    ).
 
 symbolic_expr_from_relocation(EA,Size,Symbol,Addend,TargetEA):-
     binary_format("ELF"),

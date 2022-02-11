@@ -169,7 +169,7 @@ reg_has_base_image(EA,Reg):-
         instruction_get_op(EA,Index,Op),
         op_regdirect(Op,_)
         ;
-        arch.reg_reg_arithmetic_operation(EA,Reg,Reg2,Reg1,Mult,0), Mult>1
+        arch.reg_reg_arithmetic_operation(EA,Reg,Reg2,_,Mult,0), Mult>1, Index=Index
     ).
 
 // Not all compilers respect register-volatility conventions, and it is
