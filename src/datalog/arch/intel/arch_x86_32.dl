@@ -78,34 +78,6 @@ abi_intrinsic(EA,"__dso_handle"):-
     got_relative_operand(_,_,EA),
     symbol(EA,_,_,_,_,_,_,_,"__dso_handle").
 
-// Identify load PC operations:
-// e.g. (clang)
-//       call   .L1$pb
-// .L1$pb:
-//        pop    REG
-// .Ltmp0:
-//        add    REG, offset _GLOBAL_OFFSET_TAB LE_+(.Ltmp0-.L1$pb)
-// e.g. (gcc)
-//   call _x86.get_pc_thunk.REG
-//   add REG, _GLOBAL_OFFSET_TABLE_
-got_reference_pointer(as(Offset,address)),
-reg_has_got(EA,Reg):-
-    value_reg(EA,Reg,_,"NONE",_,Offset,_),
-    got_section(Name),
-    section(Name,_,as(Offset,address)).
-
-reg_has_got(EA_load,Reg_load):-
-    // Store GOT pointer
-    reg_has_got(EA,Reg_store),
-    def_used(EA,Reg_store,EA_store,_),
-    reg_stored_in_stack(EA_store,Reg_store,StackPos,StackFrame),
-    // Load GOT pointer
-    (
-        arch.frame_pointer(Reg_base);
-        arch.stack_pointer(Reg_base)
-    ),
-    reg_loaded_from_stack(EA_load,Reg_load,Reg_base,StackPos,StackFrame).
-
 inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_","LOCAL","NONE","Beg"):-
     !symbol(_,_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
     got_reference_pointer(EA).
