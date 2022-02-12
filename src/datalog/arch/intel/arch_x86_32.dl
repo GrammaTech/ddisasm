@@ -78,6 +78,12 @@ abi_intrinsic(EA,"__dso_handle"):-
     got_relative_operand(_,_,EA),
     symbol(EA,_,_,_,_,_,_,_,"__dso_handle").
 
+abi_intrinsic(EA,"_GLOBAL_OFFSET_TABLE_"):-
+    (
+        symbol(EA,_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_");
+        inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_",_,_,_)
+    ).
+
 inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_","LOCAL","NONE","Beg"):-
     !symbol(_,_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
     got_reference_pointer(EA).
