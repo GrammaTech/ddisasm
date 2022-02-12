@@ -132,8 +132,7 @@ plt_entry(EA,Function):-
     (
       //  jmp [EBX+Offset]
       op_indirect(Op,"NONE",_,"NONE",1,Offset,_),
-      got_section(Name),
-      section(Name,_,Got),
+      got_reference_pointer(Got),
       Got_entry=Got+as(Offset,address)
       ;
       // jmp [Offset]
