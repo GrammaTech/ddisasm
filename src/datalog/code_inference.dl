@@ -388,17 +388,6 @@ The candidate is located at address 'Block' and has 'Size' bytes.
 data_block_candidate(Block,Size):-
     relative_address(Block,Size,_,_,_,_).
 
-block_points(Block,"data",0,7,"possible string"),
-data_block_candidate(Block,Size):-
-    ascii_string(Block,Size),
-    (
-        symbol(Block,_,_,_,_,_,_,_,_)
-        ;
-        address_in_data(EA,Block),
-        arch.pointer_size(Pt_size),
-        EA % Pt_size = 0
-    ).
-
 /**
 The block candidate defined by address 'Block' extends from 'BegAddr' to 'EndAddr'.
 In most cases 'BegAddr' and 'Block' coincide, but there are exceptions such as
