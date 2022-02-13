@@ -821,7 +821,14 @@ block_points(Block,"code",0,-1,"jump to string"):-
     direct_jump(EA,Dest),
     ascii_string(Beg,Size),
     Dest >= Beg,
-    Dest < Beg+Size.
+    Dest < Beg+Size,
+    (
+        symbol(Beg,_,_,_,_,_,_,_,_)
+        ;
+        address_in_data(EA0,Beg),
+        arch.pointer_size(Pt_size),
+        EA0 % Pt_size = 0
+    ).
 
 ////////////////////////////////////////////////////////////////////////////
 
