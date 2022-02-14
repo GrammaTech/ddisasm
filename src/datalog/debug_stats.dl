@@ -32,10 +32,8 @@
 .output unaligned_pointer
 
 discarded_aligned_pointer_to_text(EA):-
-    address_in_data(EA,_),
-    !address_in_data_refined(EA,_),
-    arch.pointer_size(Pt_size),
-    EA % Pt_size = 0.
+    aligned_address_in_data(EA,_),
+    !address_in_data_refined(EA,_).
 
 discarded_aligned_pointer(EA):-
     discarded_data_object(EA,Pt_size,"symbol"),

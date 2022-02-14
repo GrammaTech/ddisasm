@@ -807,6 +807,15 @@ block_points(LitPoolAddr,"data",0,11,"arm literal pool"):-
     litpool_ref_double(EA,_,_,LitPoolAddr),
     code_in_block_candidate_refined(EA,_).
 
+block_points(Block,"data",0,7,"possible string"),
+data_block_candidate(Block,Size):-
+    ascii_string(Block,Size),
+    (
+        symbol(Block,_,_,_,_,_,_,_,_)
+        ;
+        aligned_address_in_data(EA,Block)
+    ).
+
 // E.g.,
 //   0:   strb r3, [r0, #53]
 //   4:   ldrb r3, [r5, #1]
