@@ -813,9 +813,7 @@ data_block_candidate(Block,Size):-
     (
         symbol(Block,_,_,_,_,_,_,_,_)
         ;
-        address_in_data(EA,Block),
-        arch.pointer_size(Pt_size),
-        EA % Pt_size = 0
+        aligned_address_in_data(EA,Block)
     ).
 
 // E.g.,

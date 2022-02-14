@@ -294,6 +294,16 @@ possible_target(EA):-
 possible_target(EA):-
     possible_target_from(EA,_).
 
+
+/**
+Aligned address shown in data
+*/
+.decl aligned_address_in_data(EA:address,Value:address)
+aligned_address_in_data(EA,Value):-
+    address_in_data(EA,Value),
+    arch.pointer_size(Pt_size),
+    EA % Pt_size = 0.
+
 // start a new block given a possible target
 code_in_block_candidate(EA,EA):-
     possible_target(EA),
@@ -608,9 +618,7 @@ block_points(Block,"code",0,1,"aligned address in data"):-
     !binary_isa("X86"),
     !binary_isa("ARM"),
     block_is_overlapping(Block,"code"),
-    address_in_data(Address,Block),
-    arch.pointer_size(Pt_size),
-    Address % Pt_size = 0.
+    aligned_address_in_data(Address,Block).
 
 block_points(Block,"code",0,1,"address in data array"):-
     block_is_overlapping(Block,"code"),
@@ -825,9 +833,7 @@ block_points(Block,"code",0,-1,"jump to string"):-
     (
         symbol(Beg,_,_,_,_,_,_,_,_)
         ;
-        address_in_data(EA0,Beg),
-        arch.pointer_size(Pt_size),
-        EA0 % Pt_size = 0
+        aligned_address_in_data(EA0,Beg)
     ).
 
 ////////////////////////////////////////////////////////////////////////////
