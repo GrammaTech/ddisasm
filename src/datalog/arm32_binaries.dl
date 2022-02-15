@@ -754,7 +754,7 @@ arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimi
         ;
         Type = "relative",
         arm_relative_jump_table_target(EA+Size,TableStart,Size,Scale,AlignedTargetAddr),
-        TargetAddr=AlignedTargetAddr + 1
+        TargetAddr = AlignedTargetAddr + (EA_jump band 1)
     ),
     EA+Size < TableLimit,
     (
