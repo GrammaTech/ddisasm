@@ -368,10 +368,10 @@ labeled_data_candidate(Val):-
 ////////////////////////////////////////////////////////////////////////
 
 // Symbol-Symbol candidate keeps track of which symbol is the reference and which is the target
-.decl symbol_minus_symbol_jump_table(EA:address,TableStart:address,Size:unsigned,Symbol1:address,Symbol2:address,Reference:symbol,Scale:unsigned)
+.decl symbol_minus_symbol_jump_table(EA:address,TableStart:address,Size:unsigned,Symbol1:address,Symbol2:address,Reference:symbol,Scale:unsigned,Offset:number)
 .output symbol_minus_symbol_jump_table
 
-symbol_minus_symbol_jump_table(TableStart,TableStart,Size,TableReference,Dest,"first",1):-
+symbol_minus_symbol_jump_table(TableStart,TableStart,Size,TableReference,Dest,"first",1,0):-
     !binary_isa("ARM"),
     !binary_isa("ARM64"),
     jump_table_start(_,Size,TableStart,TableReference,"ADD"),
@@ -390,7 +390,7 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,TableReference,Dest,"f
       TableReference >= SectionStart, TableReference < (SectionStart + SectionSize)
     ).
 
-symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Dest,TableReference,"second",1):-
+symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Dest,TableReference,"second",1,0):-
     !binary_isa("ARM"),
     !binary_isa("ARM64"),
     jump_table_start(_,Size,TableStart,TableReference,"SUB"),
@@ -402,10 +402,10 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Dest,TableReference,"s
     Dest = as(TableReference_signed - Diff,unsigned),
     code(Dest).
 
-symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Reference,Symbol,"first",Scale):-
+symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Reference,Symbol,"first",Scale,0):-
     !binary_isa("ARM"),
     !binary_isa("ARM64"),
-    symbol_minus_symbol_jump_table(EA,TableStart,Size,Reference,_,"first",Scale),
+    symbol_minus_symbol_jump_table(EA,TableStart,Size,Reference,_,"first",Scale,0),
     !possible_data_limit(EA+Size),
     last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA,
     (
@@ -416,10 +416,10 @@ symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Reference,Symbol,"first",
     Symbol = as(Reference_signed + Diff,unsigned),
     code(Symbol).
 
-symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Symbol,Reference,"second",Scale):-
+symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Symbol,Reference,"second",Scale,0):-
     !binary_isa("ARM"),
     !binary_isa("ARM64"),
-    symbol_minus_symbol_jump_table(EA,TableStart,Size,_,Reference,"second",Scale),
+    symbol_minus_symbol_jump_table(EA,TableStart,Size,_,Reference,"second",Scale,0),
     !possible_data_limit(EA+Size),
     last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA,
     (
@@ -556,7 +556,7 @@ string(EA,End,Encoding):-
 .decl data_object(ea:address,size:unsigned,type:symbol)
 
 data_object_candidate(EA,Size,"symbol-symbol"):-
-    symbol_minus_symbol_jump_table(EA,_,Size,_,_,_,_).
+    symbol_minus_symbol_jump_table(EA,_,Size,_,_,_,_,_).
 
 data_object_candidate(EA,Pt_size,"symbol"):-
     arch.pointer_size(Pt_size),
@@ -571,7 +571,7 @@ data_object_candidate(EA,Size,"other"):-
     data_access_pattern(Label,Size,_,_),
     Size > 0,
     !address_in_data_refined(EA,_),
-    !symbol_minus_symbol_jump_table(EA,_,Size,_,_,_,_).
+    !symbol_minus_symbol_jump_table(EA,_,Size,_,_,_,_,_).
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Heuristic: If there are at least 3 consecutive addresses
@@ -882,9 +882,9 @@ symbolic_data(EA,Size,as(Val,address)):-
     data_object(EA,Size,"symbol"),
     address_in_data_refined(EA,Val).
 
-symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale,0):-
+symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale,Offset):-
     data_object(EA,Size,"symbol-symbol"),
-    symbol_minus_symbol_jump_table(EA,_,Size,Symbol1,Symbol2,_,Scale).
+    symbol_minus_symbol_jump_table(EA,_,Size,Symbol1,Symbol2,_,Scale,Offset).
 
 code_pointer_in_data(EA,Val):-
     symbolic_data(EA,_,Val),

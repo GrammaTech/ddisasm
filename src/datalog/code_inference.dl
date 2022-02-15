@@ -618,7 +618,7 @@ block_points(Block,"code",0,1,"aligned address in data"):-
     !binary_isa("X86"),
     !binary_isa("ARM"),
     block_is_overlapping(Block,"code"),
-    aligned_address_in_data(Address,Block).
+    aligned_address_in_data(_,Block).
 
 block_points(Block,"code",0,1,"address in data array"):-
     block_is_overlapping(Block,"code"),

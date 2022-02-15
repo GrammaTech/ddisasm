@@ -76,7 +76,8 @@ is_nop(EA):-
 // We have no return_operation, so we override.
 .override return
 return(EA):-
-    instruction_get_operation(EA,"BX"),
+    instruction_get_operation(EA,Operation),
+    substr(Operation,0,2) = "BX",
     instruction_get_op(EA,_,Op),
     op_regdirect_contains_reg(Op,"LR").
 
@@ -88,7 +89,8 @@ return(EA):-
     pc_register(Reg).
 
 return(EA):-
-    instruction_get_operation(EA,"MOV"),
+    instruction_get_operation(EA,Operation),
+    substr(Operation,0,3) = "MOV",
     instruction_get_dest_op(EA,_,DestOp),
     op_regdirect_contains_reg(DestOp,PC),
     pc_register(PC),
@@ -214,7 +216,19 @@ multiplication_operation(Operation):-
     (
         Op = "MUL";
         Op = "MLA";
-        Op = "MLS"
+        Op = "MLS";
+        Op = "LSL"
+    ).
+
+shift_rotate_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    Op = substr(Operation,0,3),
+    (
+        Op = "ASR";
+        Op = "LSL";
+        Op = "LSR";
+        Op = "ROR";
+        Op = "RRX"
     ).
 
 logic_operation(Operation):-
@@ -241,8 +255,9 @@ read_only_operation(Operation):-
     ).
 
 // TODO:
-write_only_operation(""):-
-    false.
+write_only_operation(Operation):-
+    instruction_get_operation(_,Operation),
+    substr(Operation,0,3) = "POP".
 
 // TODO:
 one_op_write(""):-
@@ -321,6 +336,17 @@ reg_arithmetic_operation(EA,Dst,Src,1,Sign*Immediate):-
     op_immediate(Op2,Immediate),
     op_regdirect_contains_reg(Op3,Dst).
 
+// ADD Reg1, Reg2, N, M
+reg_arithmetic_operation(EA,DstReg,Reg,1,Val):-
+    instruction(EA,_,_,"ADD",Op1,Op2,Op3,DstOp,_,_),
+    op_regdirect_contains_reg(Op1,Reg),
+    op_immediate(Op2,N),
+    op_immediate(Op3,M),
+    op_regdirect_contains_reg(DstOp,DstReg),
+    N >= 0,
+    // N right-rotate M
+    Val = (N bshr M) bor (N bshl (32-M)).
+
 // ADD/SUB reg, reg (two operands: Thumb)
 reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,Sign,0):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
@@ -341,17 +367,6 @@ reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,Sign,0):-
     op_regdirect_contains_reg(Op1,Src1),
     op_regdirect_contains_reg(Op2,Src2),
     op_regdirect_contains_reg(Op3,Dst).
-
-// ADD Reg1, Reg2, N, M
-reg_reg_arithmetic_operation(EA,DstReg,Reg,"NONE",1,Val):-
-    instruction(EA,_,_,"ADD",Op1,Op2,Op3,DstOp,_,_),
-    op_regdirect_contains_reg(Op1,Reg),
-    op_immediate(Op2,N),
-    op_immediate(Op3,M),
-    op_regdirect_contains_reg(DstOp,DstReg),
-    N >= 0,
-    // N right-rotate M
-    Val = (N bshr M) bor (N bshl (32-M)).
 
 inferred_main_in_reg(EA,"R0"):-
     inferred_main_dispatch(EA).

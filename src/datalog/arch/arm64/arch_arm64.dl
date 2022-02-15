@@ -85,6 +85,11 @@ arithmetic_operation("ROR").
 multiplication_operation("MUL").
 multiplication_operation("LSL").
 
+shift_rotate_operation("ASR").
+shift_rotate_operation("LSL").
+shift_rotate_operation("LSR").
+shift_rotate_operation("ROR").
+
 logic_operation("AND").
 logic_operation("XOR").
 logic_operation("ORR").

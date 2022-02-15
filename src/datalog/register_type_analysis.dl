@@ -29,12 +29,15 @@ def_register_is_not_base_address(EA_def,Reg):-
     cmp_immediate_to_reg(EA,Reg,Imm_index,_),
     !symbolic_operand_candidate(EA,Imm_index,_,_).
 
-// register defined with multiplication operation
+// register defined with multiplication or shift/rotate operation
 def_register_is_not_base_address(EA_def,Reg):-
     def_used(EA_def,Reg,_,_),
     instruction_get_operation(EA_def,Operation),
-    arch.multiplication_operation(Operation).
-
+    (
+        arch.multiplication_operation(Operation)
+        ;
+        arch.shift_rotate_operation(Operation)
+    ).
 
 // register is later multiplied
 def_register_is_not_base_address(EA_def,Reg):-
