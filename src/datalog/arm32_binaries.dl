@@ -735,12 +735,12 @@ arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimi
     TableStart = TableStart0 - (TableStart0 band 1),
 
     arm_relative_jump_table_target(TableStart,TableStart,Size,1,AlignedTargetAddr),
-    TargetAddr = AlignedTargetAddr + 1,
+    TargetAddr = AlignedTargetAddr + (EA_jump band 1),
     (
         // Jump to after the jumptable - sets a hard limit on the jumptable size.
         AlignedTargetAddr > TableStart, TableLimit = AlignedTargetAddr;
         // Jump to before the jumptable - does not restrict jumptable size.
-        AlignedTargetAddr <= TableStart, arch.pointer_size(PtrSize), TableLimit = (2 ^ ((8*PtrSize)-1)) - 1
+        AlignedTargetAddr <= TableStart, arch.pointer_size(PtrSize), TableLimit = (2 ^ ((8*PtrSize)-1)) - (EA_jump band 1)
     ),
     code_in_block_candidate(TargetAddr,_).
 
