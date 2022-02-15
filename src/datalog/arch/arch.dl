@@ -98,12 +98,26 @@ conditional(EA):-
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
-.decl arithmetic_operation(Operation:symbol)
-
+/**
+This can include any multiplication operations, including shift-left operation.
+*/
 .decl multiplication_operation(Operation:symbol)
 
+/**
+This can include shift and rotation (right/left, arithmetic/logical)
+operations.
+*/
 .decl shift_rotate_operation(Operation:symbol)
 
+/**
+This can include any kinds of arithmetic operations including arithmetic shifts
+and multiplications.
+*/
+.decl arithmetic_operation(Operation:symbol)
+
+/**
+This can include logical operations including bitwise operations.
+*/
 .decl logic_operation(Operation:symbol)
 
 .decl read_only_operation(Operation:symbol)

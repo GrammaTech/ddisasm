@@ -734,7 +734,6 @@ arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimi
     ),
     TableStart = TableStart0 - (TableStart0 band 1),
 
-    // Reuse arm_relative_jump_table_target
     arm_relative_jump_table_target(TableStart,TableStart,Size,1,AlignedTargetAddr),
     TargetAddr = AlignedTargetAddr + 1,
     (
