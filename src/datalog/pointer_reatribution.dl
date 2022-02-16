@@ -164,10 +164,16 @@ moved_label(EA,Op_index,Dest,NewDest):-
 // the pointer is likely to point to the wrong section
 moved_label_class(EA,Op_index,"indirect wrong section"),
 moved_displacement_candidate(EA,Op_index,Dest,NewDest,Diff):-
-    binary_type("EXEC"),
-    symbolic_operand(EA,Op_index,Dest,_),
-    data_access(EA,Op_index,_,_,_,_,_,_),
-    data_access_pattern_candidate(Access_dest,_,Mult,EA),
+    symbolic_operand(EA,Op_index,Dest,"data"),
+    (
+        binary_type("EXEC"),
+        data_access(EA,Op_index,_,_,_,_,_,_),
+        data_access_pattern_candidate(Access_dest,_,Mult,EA)
+        ;
+        binary_isa("X86"),
+        def_used(EA,_,Used,_),
+        data_access_pattern_candidate(Access_dest,_,Mult,Used)
+    ),
     Access_dest != Dest,
     NewDest = Access_dest,
     Diff = max(Access_dest-Dest, Dest-Access_dest),
@@ -503,15 +509,3 @@ moved_label(EA,Op_index,Dest,ImageBase):-
     base_address(ImageBase),
     symbolic_operand(EA,Op_index,Dest,"data"),
     Dest >= ImageBase, Dest <= ImageBase + 1024.
-
-// @GOTOFF operand at a section boundary.
-moved_label_class(EA,Index,"section boundary"),
-moved_label(EA,Index,Dest,Dest+4):-
-    binary_isa("X86"),
-    got_relative_operand(EA,Index,Dest),
-    def_used(Load,Base,EA,_),
-    arch.reg_reg_arithmetic_operation(Load,Base,_,_,4,_),
-    section(_,_,Dest+4),
-    special_data_section(Name),
-    section(Name,Size,Beg),
-    Dest >= Beg, Dest <= Beg+Size.
