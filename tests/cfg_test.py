@@ -140,7 +140,7 @@ class CfgTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
-    def test_arm_cfg(self):
+    def test_arm_cfg2(self):
         """
         Test ARM32 CFG
         """
