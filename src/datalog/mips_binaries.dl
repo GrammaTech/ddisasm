@@ -117,8 +117,11 @@ gp_relative_operand(EA,Index,GpValue+as(Offset,address)):-
     symbol(GpValue,_,_,_,_,_,_,_,"_gp").
 
 // Global entries
+// These symbols point to stubs into the .MIPS.stubs section.
+// we use `abi_intrinsic` to rename them and let the compiler add new stubs.
+abi_intrinsic(SymbolEA,Symbol),
 got_reference(GotEntry,Symbol):-
-    symbol(_,_,_,_,_,_, ".dynsym",Index,Symbol),
+    symbol(SymbolEA,_,_,_,_,_, ".dynsym",Index,Symbol),
     dynamic_entry("MIPS_GOTSYM",FirstIndex),
     dynamic_entry("MIPS_LOCAL_GOTNO",NumLocalEntries),
     Index >= FirstIndex,

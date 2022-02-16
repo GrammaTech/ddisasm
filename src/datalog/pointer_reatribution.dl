@@ -307,16 +307,6 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
         NewDest = Base+SectSize
     ).
 
-// references with offset in PIE or REL code
-moved_displacement_candidate(EA,Op_index,DestAddr,SymbolAddr,0):-
-    !binary_type("EXEC"),
-    data_access(EA,Op_index,_,_,_,_,Dest,_), Dest >= 0,
-    DestAddr = as(Dest,address),
-    instruction_displacement_offset(EA,Op_index,DisplacementOffset,_),
-    relocation(EA+DisplacementOffset,_,Symbol,_,_,_,_),
-    symbol(SymbolAddr,_,Type,_,_,_,_,_,Symbol),
-    Type != "SECTION",
-    SymbolAddr != DestAddr.
 
 // we take the candidate with the shortest distance/priority
 .decl discarded_moved_displacement_candidate(EA:address,Op_index:operand_index,Dest:address,NewDest:address,Distance:unsigned)
