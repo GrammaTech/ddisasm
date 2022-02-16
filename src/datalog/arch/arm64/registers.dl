@@ -113,14 +113,16 @@ track_register("X27", "X27").
 track_register("W28", "X28").
 track_register("X28", "X28").
 
-track_register("W29", "X29").
-track_register("X29", "X29").
+track_register("W29", "FP").
+track_register("FP", "FP").
 
-track_register("W30", "X30").
-track_register("X30", "X30").
+track_register("W30", "LR").
+track_register("LR", "LR").
 
-track_register("W31", "X31").
-track_register("X31", "X31").
+track_register("WZR", "SP").
+track_register("XZR", "SP").
+track_register("WSP", "SP").
+track_register("SP", "SP").
 
 // Use the 'System V AMD64 ABI' calling convention.
 function_non_maintained_reg("X0").
@@ -142,9 +144,9 @@ function_non_maintained_reg("X15").
 function_non_maintained_reg("X16").
 function_non_maintained_reg("X17").
 function_non_maintained_reg("X18").
-function_non_maintained_reg("X29").
-function_non_maintained_reg("X30").
-function_non_maintained_reg("X31").
+function_non_maintained_reg("FP").
+function_non_maintained_reg("LR").
+function_non_maintained_reg("SP").
 
 // PC is not a register in aarch64
 pc_register("NONE"):-
