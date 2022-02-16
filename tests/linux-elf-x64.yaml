@@ -345,6 +345,9 @@ tests:
   - name: ex_switch_in_code3
     <<: *assembly
 
+  - name: ex_switch_in_code5
+    <<: *assembly
+
   - name: ex_loop_instructions
     <<: *assembly
 
