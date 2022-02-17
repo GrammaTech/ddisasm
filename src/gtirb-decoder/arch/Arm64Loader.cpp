@@ -215,8 +215,10 @@ std::optional<relations::Operand> Arm64Loader::build(const cs_insn& CsInsn, uint
 
 std::optional<std::string> Arm64Loader::operandString(const cs_insn& CsInsn, uint8_t Index)
 {
-    // NOTE: assumes all operands are separated by spaces, which is not true of all operand types.
-    // Only use for instructions where this assumption holds.
+    // NOTE: assumes commas occur between operands, and neither commas
+    // nor spaces occur within them. This is not true of all operand types
+    // (e.g., indirect operands). This method should only be used for
+    // instructions where this assumption will hold for all its operands.
 
     uint8_t CurIndex = 0;
     const char* Start = nullptr;
@@ -228,15 +230,11 @@ std::optional<std::string> Arm64Loader::operandString(const cs_insn& CsInsn, uin
         {
             ++CurIndex;
         }
-        else if(CurIndex == Index)
+        else if(CurIndex == Index && !isspace(*Pos))
         {
             if(Start == nullptr)
-            {
-                if(!isspace(*Pos))
-                {
-                    Start = Pos;
-                }
-            }
+                Start = Pos;
+
             ++Size;
         }
     }
