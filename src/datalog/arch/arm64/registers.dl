@@ -119,8 +119,6 @@ track_register("FP", "FP").
 track_register("W30", "LR").
 track_register("LR", "LR").
 
-track_register("WZR", "SP").
-track_register("XZR", "SP").
 track_register("WSP", "SP").
 track_register("SP", "SP").
 
