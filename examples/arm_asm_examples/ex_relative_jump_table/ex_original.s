@@ -1,4 +1,4 @@
-# ARM 
+# ARM
 .syntax unified
 .arch_extension idiv
 .arch_extension sec

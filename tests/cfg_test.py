@@ -198,7 +198,10 @@ class CfgTests(unittest.TestCase):
             insn_blx = b"\x00\xf0"
 
             for block in m.code_blocks:
-                if block.address >= main_block.address and block.contents[:2] == insn_blx:
+                if (
+                    block.address >= main_block.address
+                    and block.contents[:2] == insn_blx
+                ):
                     blx_block = block
 
             self.assertEqual(len(list(blx_block.outgoing_edges)), 2)
