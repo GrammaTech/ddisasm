@@ -84,13 +84,10 @@ Each symbol receives a score based on its properties.
 
 
 symbol_score(EA,SymbolName,Type,Pos,Score):-
-    symbol(EA,_,Type,Scope,Visibility,SectIndex,_,TableIndex,SymbolName),
+    defined_symbol(EA,_,Type,Scope,Visibility,_,_,TableIndex,SymbolName),
     !ambiguous_symbol(SymbolName),
     !avoid_symbols(SymbolName),
     Type !="SECTION", Type != "FILE",
-    // Consider defined symbols or undefined symbols
-    // that have a non-zero address.
-    (SectIndex != 0; EA != 0),
     (
         symbol_at_section_end(EA,SymbolName), Pos = "End";
         !symbol_at_section_end(EA,SymbolName), Pos = "Beg"

@@ -589,10 +589,15 @@ function_symbol(EA,Name):-
 
 defined_symbol(EA,Size,Type,Scope,Visibility,SectIndex,OriginTable,TableIndex,Name):-
     symbol(EA,Size,Type,Scope,Visibility,SectIndex,OriginTable,TableIndex,Name),
-    SectIndex != 0,        // SHN_UNDEF
+    // In executables, the section index can be irrelevant
+    // so we check whether the symbol has non-zero address too.
+    (SectIndex != 0; EA != 0),
+    // Avoid most special section indexes
+    // See https://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-94076.html#chapter6-tbl-16
     (
-        SectIndex < 65280; // SHN_LORESERVE
-        SectIndex > 65535  // SHN_HIRESERVE
+        SectIndex < 0xff00; // SHN_LORESERVE
+        SectIndex = 0xfff1; // SHN_ABS
+        SectIndex > 0xffff  // SHN_HIRESERVE
     ).
 
 // Labels which are defined "at-end" of a data or code region/referent.
