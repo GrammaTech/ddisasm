@@ -172,6 +172,19 @@ class CfgTests(unittest.TestCase):
             edge = list(block.outgoing_edges)[1]
             self.assertEqual(edge.label.type, gtirb.Edge.Type.Return)
 
+            main = [s for s in m.symbols if s.name == "main"][0]
+            main_block = main.referent
+
+            # check on bxeq lr
+
+            self.assertEqual(len(list(main_block.outgoing_edges)), 2)
+
+            edge = list(main_block.outgoing_edges)[0]
+            self.assertEqual(edge.label.type, gtirb.Edge.Type.Fallthrough)
+
+            edge = list(main_block.outgoing_edges)[1]
+            self.assertEqual(edge.label.type, gtirb.Edge.Type.Return)
+
             # check on bx lr
             sym = [s for s in m.symbols if s.name == "foo"][0]
             bx_block = sym.referent
@@ -182,10 +195,10 @@ class CfgTests(unittest.TestCase):
             self.assertEqual(edge.label.type, gtirb.Edge.Type.Return)
 
             # check on blx foo
-            insn_blx = b"\xff\xf7"
+            insn_blx = b"\x00\xf0"
 
             for block in m.code_blocks:
-                if block.contents[:2] == insn_blx:
+                if block.address >= main_block.address and block.contents[:2] == insn_blx:
                     blx_block = block
 
             self.assertEqual(len(list(blx_block.outgoing_edges)), 2)
