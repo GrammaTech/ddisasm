@@ -107,6 +107,7 @@ relative_address_start(EA,Size,EA,Dest,DestIsFirstOrSecond):-
     take_address(_,EA),
     EASigned = as(EA,number),
     data_word(EA,Size,Diff),
+    (binary_format("PE"); EA % Size = 0), // jump tables are assumed to be aligned
     // Check if the second entry is reasonable, too.
     // This is based on the assumption that a jump-table consists of multiple
     // entries.
