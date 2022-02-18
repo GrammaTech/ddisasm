@@ -170,9 +170,15 @@ moved_displacement_candidate(EA,Op_index,Dest,NewDest,Diff):-
         data_access(EA,Op_index,_,_,_,_,_,_),
         data_access_pattern_candidate(Access_dest,_,Mult,EA)
         ;
+        // TODO: Add loop value analysis for GOT-relative LEA/ADD.
         binary_isa("X86"),
         def_used(EA,_,Used,_),
         data_access_pattern_candidate(Access_dest,_,Mult,Used)
+        ;
+        binary_isa("X86"),
+        value_reg_at_operand_loop(_,_,Reg,EA,Mult,as(Dest,number),"loop"),
+        value_reg(_,Reg,EA,"Unknown",Mult,Offset,_),
+        Access_dest = as(Offset,address)
     ),
     Access_dest != Dest,
     NewDest = Access_dest,
