@@ -161,17 +161,6 @@ class CfgTests(unittest.TestCase):
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
 
-            # check on bxeq lr
-            sym = [s for s in m.symbols if s.name == "main"][0]
-            block = sym.referent
-            self.assertEqual(len(list(block.outgoing_edges)), 2)
-
-            edge = list(block.outgoing_edges)[0]
-            self.assertEqual(edge.label.type, gtirb.Edge.Type.Fallthrough)
-
-            edge = list(block.outgoing_edges)[1]
-            self.assertEqual(edge.label.type, gtirb.Edge.Type.Return)
-
             main = [s for s in m.symbols if s.name == "main"][0]
             main_block = main.referent
 
@@ -179,11 +168,22 @@ class CfgTests(unittest.TestCase):
 
             self.assertEqual(len(list(main_block.outgoing_edges)), 2)
 
-            edge = list(main_block.outgoing_edges)[0]
-            self.assertEqual(edge.label.type, gtirb.Edge.Type.Fallthrough)
-
-            edge = list(main_block.outgoing_edges)[1]
-            self.assertEqual(edge.label.type, gtirb.Edge.Type.Return)
+            edge1 = list(main_block.outgoing_edges)[0]
+            edge2 = list(main_block.outgoing_edges)[1]
+            self.assertTrue(
+                (
+                    (edge1.label.type == gtirb.Edge.Type.Fallthrough)
+                    and (edge2.label.type == gtirb.Edge.Type.Return)
+                )
+                or (
+                    (edge2.label.type == gtirb.Edge.Type.Fallthrough)
+                    and (edge1.label.type == gtirb.Edge.Type.Return)
+                )
+            )
+            if edge1.label.type == gtirb.Edge.Type.Return:
+                self.assertTrue(edge1.label.conditional)
+            if edge2.label.type == gtirb.Edge.Type.Return:
+                self.assertTrue(edge2.label.conditional)
 
             # check on bx lr
             sym = [s for s in m.symbols if s.name == "foo"][0]
@@ -206,11 +206,18 @@ class CfgTests(unittest.TestCase):
 
             self.assertEqual(len(list(blx_block.outgoing_edges)), 2)
 
-            edge = list(blx_block.outgoing_edges)[0]
-            self.assertEqual(edge.label.type, gtirb.Edge.Type.Call)
-
-            edge = list(blx_block.outgoing_edges)[1]
-            self.assertEqual(edge.label.type, gtirb.Edge.Type.Fallthrough)
+            edge1 = list(blx_block.outgoing_edges)[0]
+            edge2 = list(blx_block.outgoing_edges)[1]
+            self.assertTrue(
+                (
+                    (edge1.label.type == gtirb.Edge.Type.Fallthrough)
+                    and (edge2.label.type == gtirb.Edge.Type.Call)
+                )
+                or (
+                    (edge2.label.type == gtirb.Edge.Type.Fallthrough)
+                    and (edge1.label.type == gtirb.Edge.Type.Call)
+                )
+            )
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
