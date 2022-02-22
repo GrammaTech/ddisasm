@@ -187,7 +187,7 @@ bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction)
     Facts.Instructions.add(relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0});
     if(Details.writeback)
     {
-        Facts.Instructions.writeback(InstructionWriteback{Addr});
+        Facts.Instructions.writeback(relations::InstructionWriteback{Addr});
     }
     return true;
 }
@@ -241,12 +241,3 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_arm_op& CsOp)
 
     return std::nullopt;
 }
-
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const InstructionWriteback& Writeback)
-    {
-        T << Writeback.Addr;
-        return T;
-    }
-} // namespace souffle

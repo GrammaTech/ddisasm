@@ -250,13 +250,6 @@ invalid(EA,"arm: invalid pc"):-
     op_regdirect_contains_reg(Op,PC),
     arch.pc_register(PC).
 
-
-/*
- * The instruction at EA has capstone's cs_arm.writeback set.
- */
-.decl instruction_writeback(EA:address)
-.input instruction_writeback
-
 // PC-relative LDR
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     litpool_ref(EA,Reg,LitPoolAddr,Size,"LDR"),
