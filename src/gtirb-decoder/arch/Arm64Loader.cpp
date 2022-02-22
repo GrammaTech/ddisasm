@@ -30,6 +30,7 @@ void Arm64Loader::insert(const Arm64Facts& Facts, DatalogProgram& Program)
 {
     auto& [Instructions, Operands] = Facts;
     Program.insert("instruction", Instructions.instructions());
+    Program.insert("instruction_writeback", Instructions.writeback());
     Program.insert("invalid_op_code", Instructions.invalid());
     Program.insert("op_shifted", Instructions.shiftedOps());
     Program.insert("op_immediate", Operands.imm());
@@ -46,18 +47,13 @@ void Arm64Loader::decode(Arm64Facts& Facts, const uint8_t* Bytes, uint64_t Size,
     size_t Count = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &CsInsn);
 
     // Build datalog instruction facts from Capstone instruction.
-    std::optional<relations::Instruction> Instruction;
+    bool InstAdded = false;
     if(Count > 0)
     {
-        Instruction = build(Facts, *CsInsn);
+        InstAdded = build(Facts, *CsInsn);
     }
 
-    if(Instruction)
-    {
-        // Add the instruction to the facts table.
-        Facts.Instructions.add(*Instruction);
-    }
-    else
+    if(!InstAdded)
     {
         // Add address to list of invalid instruction locations.
         Facts.Instructions.invalid(gtirb::Addr(Addr));
@@ -66,8 +62,7 @@ void Arm64Loader::decode(Arm64Facts& Facts, const uint8_t* Bytes, uint64_t Size,
     cs_free(CsInsn, Count);
 }
 
-std::optional<relations::Instruction> Arm64Loader::build(Arm64Facts& Facts,
-                                                         const cs_insn& CsInstruction)
+bool Arm64Loader::build(Arm64Facts& Facts, const cs_insn& CsInstruction)
 {
     const cs_arm64& Details = CsInstruction.detail->arm64;
     std::string Name = uppercase(CsInstruction.mnemonic);
@@ -86,7 +81,7 @@ std::optional<relations::Instruction> Arm64Loader::build(Arm64Facts& Facts,
             std::optional<relations::Operand> Op = build(CsInstruction, i, CsOp);
             if(!Op)
             {
-                return std::nullopt;
+                return false;
             }
 
             // Add operand to the operands table.
@@ -117,7 +112,7 @@ std::optional<relations::Instruction> Arm64Loader::build(Arm64Facts& Facts,
                     case ARM64_SFT_INVALID:
                         std::cerr << "WARNING: instruction has a non-zero invalid shift at " << Addr
                                   << "\n";
-                        return std::nullopt;
+                        return false;
                 }
                 Facts.Instructions.shiftedOp(
                     relations::ShiftedOp{Addr, static_cast<uint8_t>(i + 1),
@@ -132,7 +127,13 @@ std::optional<relations::Instruction> Arm64Loader::build(Arm64Facts& Facts,
     }
 
     uint64_t Size(CsInstruction.size);
-    return relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0};
+
+    Facts.Instructions.add(relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0});
+    if(Details.writeback)
+    {
+        Facts.Instructions.writeback(relations::InstructionWriteback{Addr});
+    }
+    return true;
 }
 
 std::optional<relations::Operand> Arm64Loader::build(const cs_insn& CsInsn, uint8_t OpIndex,

@@ -213,6 +213,11 @@ namespace relations
         std::string Type;
     };
 
+    struct InstructionWriteback
+    {
+        gtirb::Addr Addr;
+    };
+
 } // namespace relations
 
 namespace souffle
@@ -273,6 +278,8 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolMinusSymbol& Expr);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::ShiftedOp& Op);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::InstructionWriteback& writeback);
 
 } // namespace souffle
 

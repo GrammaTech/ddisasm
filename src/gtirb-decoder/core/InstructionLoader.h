@@ -165,10 +165,21 @@ public:
         return ShiftedOps;
     }
 
+    void writeback(const relations::InstructionWriteback& writeback)
+    {
+        InstructionWritebackList.push_back(writeback);
+    }
+
+    const std::vector<relations::InstructionWriteback>& writeback() const
+    {
+        return InstructionWritebackList;
+    }
+
 private:
     std::vector<relations::Instruction> Instructions;
     std::vector<gtirb::Addr> InvalidInstructions;
     std::vector<relations::ShiftedOp> ShiftedOps;
+    std::vector<relations::InstructionWriteback> InstructionWritebackList;
 };
 
 template <typename T>

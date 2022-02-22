@@ -150,6 +150,12 @@ relocation_adjustment_total(EA,Adjustment):-
           immOffset:unsigned,displacementOffset:unsigned)
 .input instruction
 
+/*
+ * The instruction at EA has capstone's cs_arm.writeback set.
+ */
+.decl instruction_writeback(EA:address)
+.input instruction_writeback
+
 .decl op_register_bitfield(code:operand_code,register_name:register)
 .input op_register_bitfield
 

@@ -166,4 +166,11 @@ namespace souffle
           << Op.Type;
         return T;
     }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::InstructionWriteback& Writeback)
+    {
+        T << Writeback.Addr;
+        return T;
+    }
+
 } // namespace souffle
