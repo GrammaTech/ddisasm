@@ -465,23 +465,17 @@ symbolic_expr_from_relocation(EA,4,Symbol,Addend,TargetEA):-
     relocation(EA,"TPOFF32",Symbol,Addend,_,_,_),
     symbol(TargetEA,_,_,_,_,_,_,_,Symbol).
 
-symbolic_expr_from_relocation(EA+Offset,4,Symbol,Addend+N,TargetEA):-
+symbolic_expr_from_relocation(EA,4,Symbol,Addend+Adjustment,TargetEA):-
     binary_isa("X64"),
     binary_type("REL"),
-    code(EA),
-    (
-        instruction(EA,Size,_,_,_,_,_,_,_,Offset);
-        instruction(EA,Size,_,_,_,_,_,_,Offset,_)
-    ),
-    relocation(EA+Offset,Type,Symbol,Addend,SymbolIndex,_,_),
+    relocation(EA,Type,Symbol,Addend,SymbolIndex,_,_),
     (
         Type = "PC32";
         Type = "PLT32"
     ),
+    relocation_adjustment_total(EA,Adjustment),
     symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol),
-    Symbol != "",
-    // Adjust addend for trailing instruction bytes.
-    N = as(Size-Offset,number), N > 0.
+    Symbol != "".
 
 symbolic_expr_from_relocation(EA,4,Symbol,Addend,TargetEA):-
     binary_type("REL"),
