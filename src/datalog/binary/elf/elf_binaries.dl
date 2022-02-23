@@ -167,6 +167,96 @@ plt_data_reference(EA):-
 
 //////////////////////////////////////////////////////////////////////////
 
+/**
+Value of register 'Reg' at address 'EA' is a GOT-relative base reference.
+*/
+.decl reg_has_got(EA:address,Reg:register)
+.output reg_has_got
+
+/**
+Address 'EA' is used as a GOT-relative base reference. 'EA' is the beginning of
+either the .got or .got.plt section.
+*/
+.decl got_reference_pointer(EA:address)
+.output got_reference_pointer
+
+got_reference_pointer(EA):-
+    section(".got.plt",_,EA).
+
+got_reference_pointer(EA):-
+    section(".got",_,EA),
+    !section(".got.plt",_,_).
+
+// Identify load PC operations:
+// e.g. (clang)
+//    call  .L1$pb
+// .L1$pb:
+//    pop  REG
+// .Ltmp0:
+//    add  REG, offset _GLOBAL_OFFSET_TABLE_+(.Ltmp0-.L1$pb)
+// e.g. (gcc)
+//    call _x86.get_pc_thunk.REG
+//    add REG, _GLOBAL_OFFSET_TABLE_
+reg_has_got(EA,Reg):-
+    value_reg(EA,Reg,_,"NONE",_,Offset,_),
+    got_section(Name),
+    section(Name,_,as(Offset,address)).
+
+/**
+Operand instruction at 'EA' at index 'Index' is a GOT-relative reference to an
+address 'Dest'.
+*/
+.decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
+.output got_relative_operand
+
+// GOT-relative references consist of a load of the GOT pointer to a register:
+//     call    __x86.get_pc_thunk.ax
+//     add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
+// Followed by a use of the register, such as:
+//     lea     edx, .LC0@GOTOFF[eax]
+//     movzx   eax, WORD PTR array@GOTOFF[ebx+eax*2]
+//     movsx   eax, BYTE PTR array@GOTOFF[esi+ebx]
+got_relative_operand(EA,Index,Dest):-
+    reg_has_got(EA_base,Reg),
+    def_used(EA_base,Reg,EA,Index),
+    instruction_get_op(EA,Index,Op),
+    (
+      op_indirect(Op,"NONE",Reg,_,_,Offset,_);
+      op_indirect(Op,"NONE",_,Reg,1,Offset,_)
+    ),
+    Offset != 0,
+    got_reference_pointer(Got),
+    Dest=Got+as(Offset,address).
+
+got_relative_operand(EA3,Index,as(Dest,address)):-
+    reg_has_got(EA1,Reg1),
+    def_used(EA1,Reg1,EA2,_),
+    arch.reg_reg_arithmetic_operation(EA2,Reg3,Reg1,Reg2,Mult,0),
+    def_used(EA2,Reg3,EA3,_),
+    op_immediate_and_reg(EA3,_,Reg3,Index,_),
+    value_reg(EA3,Reg3,_,Reg2,Mult,Dest,_).
+
+symbolic_operand_candidate(EA,Index,Dest,"data"):-
+    got_relative_operand(EA,Index,Dest).
+
+.decl get_pc_thunk(EA:address,Reg:register)
+.output get_pc_thunk
+
+// call    __x86.get_pc_thunk.REG
+// ...
+// __x86.get_pc_thunk.REG:
+// mov     REG, DWORD PTR [esp]
+// ret
+get_pc_thunk(EA,Reg):-
+    binary_isa("X86"),
+    binary_format("ELF"),
+    direct_call(_,EA),
+    instruction(EA,Size,_,Operation,Op1,Op2,_,_,_,_),
+    arch.move_operation(Operation),
+    op_regdirect(Op2,Reg),
+    op_indirect(Op1,"NONE","ESP","NONE",1,0,_),
+    return(EA+Size).
+
 got_reference(Got_entry,Symbol):-
     section(".got",Size,Beg),
     Got_entry >= Beg,
@@ -372,15 +462,15 @@ tls_segment(Start,End,Align):-
 
 // Segment-based references to thread-local storage,
 //   e.g.   mov     eax, DWORD PTR fs:i@tpoff
-//     or   mov     eax, DWORD PTR fs:[-4]
+//    or    mov     eax, DWORD PTR fs:[-4]
 symbolic_operand_candidate(EA,Index,as(Reference+Offset,address),"data"):-
     instruction_get_op(EA,Index,Op),
     op_indirect(Op,"FS","NONE","NONE",_,Offset,_), Offset < 0,
     tls_segment(_,TlsEnd,Align),
     Reference = as(TlsEnd,number) + as(TlsEnd % max(Align,1),number).
 
-//   e.g.  mov	rax, qword ptr fs:[0]
-//         lea	rax, [rax + threadLocal@TPOFF]
+//   e.g.   mov      rax, qword ptr fs:[0]
+//          lea      rax, [rax + threadLocal@TPOFF]
 symbolic_operand_candidate(EA_used,Index,as(Reference+Offset,address),"data"):-
     instruction_get_op(EA_def,_,Op_def),
     op_indirect(Op_def,"FS","NONE","NONE",_,0,_),

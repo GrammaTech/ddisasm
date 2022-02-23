@@ -289,3 +289,18 @@ jump_table_start(EA_jump,Size,TableStart,TableReference,"ADD"):-
     def_used(EA_def_diff2,_,EA_def_diff,_),
     data_access(EA_def_diff2,_,"NONE",_,_,_,_,Size),
     TableReference = TableStart.
+
+// mov EAX,DWORD PTR [ECX+EAX*4+.L_804a008@GOTOFF]   load
+// add EAX,ECX                                       base
+// jmp EAX                                           jump
+jump_table_start(EA_jump,4,TableStart,TableReference,"ADD"):-
+    binary_isa("X86"),
+    got_reference_pointer(TableReference),
+    // Load offset.
+    got_relative_operand(EA_load,1,TableStart),
+    def_used(EA_load,Reg_got,EA_base,_),
+    // Base is GOT.
+    arch.reg_reg_arithmetic_operation(EA_base,Reg_jump,Reg_got,_,1,0),
+    // Jump to register.
+    def_used(EA_base,_,EA_jump,_),
+    reg_jump(EA_jump,Reg_jump).
