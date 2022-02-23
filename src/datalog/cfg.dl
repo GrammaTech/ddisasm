@@ -125,6 +125,7 @@ cfg_edge(Src,Dest,"false","false","call"):-
         direct_call_resolved(EA,Dest);
         pc_relative_call(EA,Dest)
     ),
+    !pc_load_call(EA,_),
     refined_block(Dest).
 
 cfg_edge(Src,Dest,"false","false","fallthrough"):-

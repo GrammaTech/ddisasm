@@ -42,9 +42,9 @@ The traversal of def_used_for_address is kept intra-procedural (not following ca
 .decl def(EA:address,Reg:register)
 
 
-// the register 'reg' at address 'ea' is later used in a memory address in 'where'
-// in the operand 'index'
-
+/**
+Instruction at address 'EA' uses register 'Reg' at operand index 'Index'.
+*/
 .decl used(EA:address,Reg:register,Index:operand_index)
 
 //The 'reg' is defined in 'ea_def' and used in 'ea_used' in the operand with index 'index_used'
@@ -125,6 +125,10 @@ def(EA,Reg):-
     arch.call_operation(Operation),
     arch.delay_slot(Call,EA),
     arch.function_non_maintained_reg(Reg).
+
+def(EA,Reg):-
+    direct_call(EA,EA_pc_thunk),
+    get_pc_thunk(EA_pc_thunk,Reg).
 
 flow_def(EA_jump,Reg,EA_target,Immediate):-
     code(EA),
@@ -285,6 +289,8 @@ def_used_for_address(EA_def,Reg):-
     def_used_for_address(EA_used,_),
     def_used(EA_def,Reg,EA_used,_).
 
+def_used_for_address(EA,Reg):-
+    arch.pc_relative_addr(EA,Reg,_).
 
 // straight_line_def_used is a weaker version than def_used
 // that can be used BEFORE code inference.
