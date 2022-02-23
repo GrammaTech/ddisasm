@@ -234,7 +234,7 @@ jump_table_start(EA_jump,Size,TableStart,TableReferenceAddr,Scale):-
 // mov EAX,DWORD PTR [ECX+EAX*4+.L_804a008@GOTOFF]   load
 // add EAX,ECX                                       base
 // jmp EAX                                           jump
-jump_table_start(EA_jump,4,TableStart,TableReference,"ADD"):-
+jump_table_start(EA_jump,4,TableStart,TableReference,1):-
     binary_isa("X86"),
     got_reference_pointer(TableReference),
     // Load offset.
