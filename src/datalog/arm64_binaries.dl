@@ -217,11 +217,14 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
 
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     def_used_for_address(EA,Reg),
-    instruction(EA,_,_,"ADRP",Op1,Op2,_,_,_,_),
+    instruction(EA,_,_,Operation,Op1,Op2,_,_,_,_),
+    (
+        Operation = "ADRP";
+        Operation = "ADR"
+    ),
     op_regdirect_contains_reg(Op2,Reg),
     op_immediate(Op1,Offset),
     Val = Offset.
-
 
 symbolic_operand_candidate(EA,1,Dest,Type):-
     // ADR <Register> <Immediate>
@@ -237,52 +240,6 @@ symbolic_operand_candidate(EA,1,Dest,Type):-
         Dest >= Begin, Dest <= End,
         Type = "data"
     ).
-
-/**
-ARM64 jump-table reference idiom:
-
-EA: ldr/ldrb w0,[x2,w0,uxtw N] --> x2=TableStart
-    adr x1,L
-    add x0,x1,w0, sxtb #M
-    br x0
-TableStart:
-    (L1 - L) / 4
-    (L2 - L) / 4
-    ...
-*/
-block_needs_splitting_at(Symbol2),
-symbol_minus_symbol_jump_table(TableStart,TableStart,Size,Symbol1,Symbol2,"first",Scale):-
-    instruction(EA,_,_,Operation,Op1,_,_,_,_,_),
-    arch.load_operation(Operation),
-    (
-        Operation = "LDR", Size = 4;
-        Operation = "LDRB", Size = 1
-    ),
-    instruction_get_operation(EA+4, "ADR"),
-    instruction_get_op(EA+4, 1, ImmOp),
-    op_immediate(ImmOp, Base),
-    instruction_get_operation(EA+8, "ADD"),
-    instruction_get_dest_op(EA+8,_,TargetOp),
-    arch.jump(EA+12),
-    instruction_get_operation(EA+12,JumpOperation),
-    arch.jump_operation_op_index(JumpOperation,TargetOpIndex),
-    instruction_get_op(EA+12,TargetOpIndex,TargetOp),
-    Scale = 4, // TODO: Currently, we don't take extenders from the decoder.
-               // Use the extender for the add: check if M is 2.
-    op_indirect(Op1,"NONE",Reg,_,_,_,_),
-    def_used(EA_def,Reg,EA,_),
-    best_value_reg(EA_def,Reg,_,_,Val,"complete"),
-    TableStart = as(Val,address),
-    (
-        Size != 1,
-        data_word(TableStart,Size,DiffUnsigned)
-        ;
-        Size = 1,
-        data_byte(TableStart,DiffUnsigned)
-    ),
-    Diff = as(DiffUnsigned,number),
-    Symbol1 = as(Base,address),
-    Symbol2 = as(Diff*as(Scale,number)+as(Symbol1,number),address).
 
 symbolic_operand_point(EA,Imm_index,-1,"add: unlikely to have symbolic operand"):-
     symbolic_operand_candidate(EA,Imm_index,_,_),

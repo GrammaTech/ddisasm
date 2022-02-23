@@ -210,7 +210,10 @@ value_reg_edge(EA,Dst,EA_prev,Src,Mult,Immediate):-
 // Load a register from a non-constant memory address
 value_reg_unsupported(EA,Reg):-
     def_used_for_address(EA,Reg),
-    arch.mov(EA),
+    (
+        arch.mov(EA);
+        instruction_get_operation(EA,Operation), arch.load_operation(Operation)
+    ),
     instruction(EA,_,_,_,Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg),
     op_indirect(Op1,_,RegBase,RegIndex,_,_,_),
@@ -307,10 +310,6 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult*Mult2,Offset+Offset1+Offset2*Mult,Steps3
     EA != EA_third,
     Reg3 != "NONE",
     Steps2+2 < StepLimit,
-    // this is an empirical restriction. There is no logical problem
-    // with having a negative multiplier but it appears in cases
-    // where it leads to false positives.
-    Mult >= 0,
     Steps3 = max(Steps1,Steps2)+2.
 
 // the other register constains a constant.

@@ -9,6 +9,7 @@ from typing import List
 import platform
 
 import asm_db
+from check_gtirb_cfg import check_gtirb_cfg
 
 
 class bcolors:
@@ -277,6 +278,7 @@ def disassemble_reassemble_test(
     exec_wrapper=None,
     arch=None,
     extra_ddisasm_args=[],
+    check_cfg=False,
 ):
     """
     Disassemble, reassemble and test an example with the given compilers and
@@ -288,6 +290,7 @@ def disassemble_reassemble_test(
     reassembly_errors = 0
     link_errors = 0
     test_errors = 0
+    cfg_errors = 0
     with cd(make_dir):
         for compiler, cxx_compiler in zip(c_compilers, cxx_compilers):
             for optimization in optimizations:
@@ -318,8 +321,14 @@ def disassemble_reassemble_test(
                     strip_exe,
                     strip,
                     sstrip,
-                    extra_args=extra_ddisasm_args,
+                    extra_args=["--ir", binary + ".gtirb"]
+                    + extra_ddisasm_args,
                 )
+
+                # Do some CFG checks
+                if check_cfg:
+                    cfg_errors += check_gtirb_cfg(binary + ".gtirb")
+
                 asm_db.upload(
                     os.path.basename(make_dir),
                     binary + ".s",
@@ -351,6 +360,7 @@ def disassemble_reassemble_test(
                     test_errors += 1
     total_errors = (
         compile_errors
+        + cfg_errors
         + disassembly_errors
         + reassembly_errors
         + link_errors

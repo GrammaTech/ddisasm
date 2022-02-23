@@ -98,6 +98,7 @@ class TestExamples(unittest.TestCase):
             "strip": config["test"].get("strip", False),
             "sstrip": config["test"].get("sstrip", False),
             "skip_test": config["test"].get("skip", False),
+            "check_cfg": config["test"].get("check_cfg", False),
             "exec_wrapper": config["test"].get("wrapper"),
             "arch": config.get("arch"),
             "extra_ddisasm_args": config.get("disassemble", {}).get(

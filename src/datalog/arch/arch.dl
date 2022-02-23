@@ -141,6 +141,10 @@ Find all addresses where a move instruction is used
 
 .decl is_nop(EA:address)
 
+// Reg = Reg is effectively a nop, and may be used as padding.
+is_nop(EA):-
+    reg_arithmetic_operation(EA,Reg,Reg,1,0).
+
 /**
 Returns
 */
@@ -164,8 +168,12 @@ delay_slot(0,0):-
 /**
 These operations are either special like LEA (does not read memory) or
 are not decoded corectly from capstone
+
+* EA: Instruction address
+* OpIndex: Operand index
+* Size: Operand size in bytes
 */
-.decl operation_size_exception(EA:address,Op_index:operand_index,Size:unsigned)
+.decl operation_size_exception(EA:address,OpIndex:operand_index,Size:unsigned)
 operation_size_exception(0,0,0):-
     false.
 
@@ -173,7 +181,6 @@ operation_size_exception(0,0,0):-
 Arithmetic operation on one source register of the form Dst = Src * Mult + Offset
 */
 .decl reg_arithmetic_operation(EA:address,Dst:register,Src:register,Mult:number,Offset:number)
-.output reg_arithmetic_operation
 
 // Simplify operations with two source registers where both registers are the same.
 reg_arithmetic_operation(EA,Dst,Src,Mult+1,Offset):-
