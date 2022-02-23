@@ -172,11 +172,11 @@ jump_table_element_access(EA,1,TableStartAddr):-
     TableStartAddr <= End.
 
 jump_table_element_access(EA,Size,TableStartAddr):-
-    data_access(EA,_,"NONE",RegBase,RegIndex,as(Size,number),_,Size),
+    data_access(EA,_,"NONE",RegBase,RegIndex,as(Size,number),Offset,Size),
     RegIndex != "NONE",
     def_used(EA_regdef,RegBase,EA,_),
-    value_reg(EA_regdef,RegBase,_,"NONE",0,TableStart,_),
-    TableStartAddr = as(TableStart,address),
+    value_reg(EA_regdef,RegBase,_,"NONE",0,Base,_),
+    TableStartAddr = as(Base+Offset,address),
     data_segment(Beg,End),
     TableStartAddr >= Beg,
     TableStartAddr <= End.
@@ -194,70 +194,34 @@ jump_table_element_access(EA,Size,TableStartAddr):-
     TableStartAddr <= End.
 
 
-.decl jump_table_start(EA_jump:address,Size:unsigned,TableStart:address,TableRef:address,Operation:symbol)
+.decl jump_table_start(EA_jump:address,Size:unsigned,TableStart:address,TableRef:address,Scale:number)
 .output jump_table_start
 
-//  mov REG, Size [REG*Size+TableStart] or mov REG, Size [REG*Size+ RegBase] where RegBase = TableStart
-//  add REG, TableReference
-//  jmp REG
-jump_table_start(EA_jump,Size,TableStart,TableReferenceAddr,Operation):-
-    reg_jump(EA_jump,_),
-    code(EA_jump),
-    def_used(EA_base,Reg,EA_jump,_),
-    op_immediate_and_reg(EA_base,Operation,Reg,_,TableReference),
-    TableReferenceAddr = as(TableReference,address),
-    (
-        Operation= "ADD";
-        Operation= "SUB"
-    ),
-    def_used(EA_read,Reg,EA_base,_),
-    jump_table_element_access(EA_read,Size,TableStart),
-    (
-        code(TableReferenceAddr);
-        TableStart=TableReferenceAddr
-    ).
-
-//  mov REG2, TableReference
-//  mov REG, Size PTR [_*Size+TableStart] or mov REG, Size [_*Size+ RegBase] where RegBase = TableStart
-//  add REG, REG2 (or add REG2,REG)
-//  jmp REG
-jump_table_start(EA_jump,Size,TableStart,TableReferenceAddr,Operation):-
+jump_table_start(EA_jump,Size,TableStart,as(Base,address),Scale):-
+    // Looks like a jump table access occurs at EA...
+    jump_table_element_access(EA,Size,TableStart),
+    // ...and the register defined at EA (Reg) is used as RegJump = Base + Reg * Scale
+    value_reg(EA_add,RegJump,EA,Reg,Scale,Base,_),
+    Reg != "NONE",
+    // ...and something jumps to that register.
+    def_used(EA_add,RegJump,EA_jump,_),
     (
         reg_call(EA_jump,_);
         reg_jump(EA_jump,_)
     ),
-    code(EA_jump),
-    def_used(EA_base,Reg,EA_jump,_),
-    arch.reg_reg_arithmetic_operation(EA_base,Reg,Reg,Reg2,Mult,0),
-    (
-        Mult = 1,Operation= "ADD";
-        Mult = -1,Operation= "SUB"
-    ),
-    (
-        RegBase = Reg, RegDiff = Reg2;
-        RegBase = Reg2, RegDiff = Reg
-    ),
-    def_used(EA_read,RegBase,EA_base,_),
-    jump_table_element_access(EA_read,Size,TableStart),
-    def_used(EA_def_ref,RegDiff,EA_base,_),
-    value_reg(EA_def_ref,RegDiff,_,"NONE",0,TableReference,_),
-    TableReferenceAddr = as(TableReference,address),
-    (
-        code(TableReferenceAddr);
-        TableStart=TableReferenceAddr
-    ).
+    code(EA_jump).
 
 //  mov REG, TableReference
-//  add REG, SIZE PTR [_*Size+TableStart] or mov REG, Size [REG*Size+ RegBase] where RegBase = TableStart
+//  add REG, SIZE PTR [_*Size+TableStart] OR sub REG, SIZE PTR [_*Size+TableStart]
 //  jmp REG
-jump_table_start(EA_jump,Size,TableStart,TableReferenceAddr,Operation):-
+jump_table_start(EA_jump,Size,TableStart,TableReferenceAddr,Scale):-
     reg_jump(EA_jump,_),
     code(EA_jump),
     def_used(EA_base,Reg,EA_jump,_),
     instruction_get_operation(EA_base,Operation),
     (
-        Operation = "ADD";
-        Operation = "SUB"
+        Operation = "ADD", Scale=1;
+        Operation = "SUB", Scale=-1
     ),
     jump_table_element_access(EA_base,Size,TableStart),
     def_used(EA_def_ref,Reg,EA_base,_),
@@ -268,32 +232,10 @@ jump_table_start(EA_jump,Size,TableStart,TableReferenceAddr,Operation):-
         TableStart=TableReferenceAddr
     ).
 
-// mov EAX,EAX
-// lea RDX,QWORD PTR [RAX*4]
-// lea RAX,QWORD PTR [RIP+.L_f74b4]
-// mov EAX,DWORD PTR [RDX+RAX*1]
-// movsxd RDX,EAX
-// lea RAX,QWORD PTR [RIP+.L_f74b4]
-// add RAX,RDX
-// jmp RAX
-jump_table_start(EA_jump,Size,TableStart,TableReference,"ADD"):-
-    reg_jump(EA_jump,_),
-    code(EA_jump),
-    def_used(EA_base,Reg,EA_jump,_),
-    instruction_get_operation(EA_base,"ADD"),
-    RegBase = Reg,
-    def_used(EA_def_diff,_,EA_base,_),
-    instruction_get_operation(EA_def_diff,"MOVSXD"),
-    def_used(EA_def_ref,RegBase,EA_base,_),
-    take_address(EA_def_ref,TableStart),
-    def_used(EA_def_diff2,_,EA_def_diff,_),
-    data_access(EA_def_diff2,_,"NONE",_,_,_,_,Size),
-    TableReference = TableStart.
-
 // mov EAX,DWORD PTR [ECX+EAX*4+.L_804a008@GOTOFF]   load
 // add EAX,ECX                                       base
 // jmp EAX                                           jump
-jump_table_start(EA_jump,4,TableStart,TableReference,"ADD"):-
+jump_table_start(EA_jump,4,TableStart,TableReference,1):-
     binary_isa("X86"),
     got_reference_pointer(TableReference),
     // Load offset.

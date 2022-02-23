@@ -205,6 +205,14 @@ namespace relations
         int64_t Offset;
     };
 
+    struct ShiftedOp
+    {
+        gtirb::Addr Addr;
+        uint8_t Index;
+        uint8_t Shift;
+        std::string Type;
+    };
+
 } // namespace relations
 
 namespace souffle
@@ -263,6 +271,8 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolicExpression& Expr);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolMinusSymbol& Expr);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::ShiftedOp& Op);
 
 } // namespace souffle
 
