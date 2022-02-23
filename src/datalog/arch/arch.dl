@@ -177,6 +177,60 @@ call(EA,DestOperandIndex):-
     call_operation(Operation),
     call_operation_op_index(Operation,DestOperandIndex).
 
+/**
+Represents a load or store; see arch.load() or arch.store().
+
+AccessType is either "LOAD" or "STORE"
+*/
+.decl memory_access(AccessType:symbol,EA:address,ValReg:register,BaseReg:register,IndexReg:register,Mult:number,Offset:number)
+.output memory_access
+
+/**
+Represents a load from memory to a register.
+
+The address of the accessed memory is of the form:
+
+    BaseReg + IndexReg * Mult + Offset
+
+Complex loads may be represented with multiple members of this relation at the
+same address. For example, the arm64 instruction:
+
+    0x1000: ldp x7, x8, [x0, #10]
+
+would generate two arch.load members:
+
+    load(0x1000,"X7","X0","NONE",0,10)
+    load(0x1000,"X8","X0","NONE",0,18)
+
+*/
+.decl load(EA:address,DstReg:register,BaseReg:register,IndexReg:register,Mult:number,Offset:number) inline
+
+load(EA,DstReg,BaseReg,IndexReg,Mult,Offset):-
+    memory_access("LOAD",EA,DstReg,BaseReg,IndexReg,Mult,Offset).
+
+/**
+Represents a store from a register to memory.
+
+The address of the accessed memory is of the form:
+
+    BaseReg + IndexReg * Mult + Offset
+
+Complex loads may be represented with multiple members of this relation at the
+same address. For example, the arm64 instruction:
+
+    0x1000: sdp x7, x8, [x0, #10]
+
+would generate two arch.load members:
+
+    store(0x1000,"X7","X0","NONE",0,10)
+    store(0x1000,"X8","X0","NONE",0,18)
+
+*/
+.decl store(EA:address,DstReg:register,BaseReg:register,IndexReg:register,Mult:number,Offset:number) inline
+
+store(EA,DstReg,BaseReg,IndexReg,Mult,Offset):-
+    memory_access("STORE",EA,DstReg,BaseReg,IndexReg,Mult,Offset).
+
 .decl delay_slot(BranchEA:address,EA:address)
 
 delay_slot(0,0):-
@@ -214,6 +268,37 @@ Note: Src1 and Src2 *may* be the same register.
 // Commutative property
 reg_reg_arithmetic_operation(EA,Dst,Reg2,Reg1,1,0):-
     reg_reg_arithmetic_operation(EA,Dst,Reg1,Reg2,1,0).
+
+/**
+An instruction at EA defines the register Reg
+*/
+.decl defines_reg(EA:address,Reg:register)
+
+defines_reg(EA,Reg):-
+    (
+        load(EA,Reg,_,_,_,_);
+        reg_arithmetic_operation(EA,Reg,_,_,_);
+        reg_reg_arithmetic_operation(EA,Reg,_,_,_,_)
+    ).
+
+/**
+An instruction at EA uses the register Reg
+*/
+.decl uses_reg(EA:address,Reg:register)
+.output uses_reg
+
+uses_reg(EA,Reg):-
+    (
+        reg_arithmetic_operation(EA,_,Reg,_,_);
+        reg_reg_arithmetic_operation(EA,_,Reg,_,_,_);
+        reg_reg_arithmetic_operation(EA,_,_,Reg,_,_);
+        load(EA,_,Reg,_,_,_);
+        load(EA,_,_,Reg,_,_);
+        store(EA,Reg,_,_,_,_);
+        store(EA,_,Reg,_,_,_);
+        store(EA,_,_,Reg,_,_)
+    ),
+    Reg != "NONE".
 
 /**
 The location and register where the address of main is loaded.
