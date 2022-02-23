@@ -125,14 +125,20 @@ split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "ADD") :-
     instruction_get_operation(EA, "ADRP"),
     instruction_get_op(EA, 1, BaseOp),
     op_immediate(BaseOp, Base),
+    instruction_get_op(EA, 2, RegOp),
+    op_regdirect_contains_reg(RegOp, Reg1),
 
-    def_used(EA,_,NextEA,_),
+    (
+        Reg1 = Reg2,
+        def_used(EA,Reg1,NextEA,_);
+
+        value_reg_edge(StackLoadEA,Reg2,EA,Reg1,1,0),
+        def_used(StackLoadEA,Reg2,NextEA,_)
+    ),
 
     // ADD <Register> <Register> <Immediate>
-    // e.g. add x0, x0, <OffsetOp>
-    instruction_get_operation(NextEA, "ADD"),
-    instruction_get_op(NextEA, 2, OffsetOp),
-    op_immediate(OffsetOp, Offset).
+    // e.g. add x0, x0, <Offset>
+    arch.reg_arithmetic_operation(NextEA,_,Reg2,1,Offset).
 
 split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "LDR/STR") :-
     // ADRP <Register> <Immediate>
@@ -140,19 +146,20 @@ split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "LDR/STR") :
     instruction_get_operation(EA, "ADRP"),
     instruction_get_op(EA, 1, BaseOp),
     op_immediate(BaseOp, Base),
+    instruction_get_op(EA, 2, RegOp),
+    op_regdirect_contains_reg(RegOp, Reg1),
 
-    def_used(EA,_,NextEA,_),
+    (
+        Reg1 = Reg2,
+        def_used(EA,Reg1,NextEA,_);
+
+        value_reg_edge(StackLoadEA,Reg2,EA,Reg1,1,0),
+        def_used(StackLoadEA,Reg2,NextEA,_)
+    ),
 
     // LDR/STR <Register> <IndirectOp>
     // e.g. ldr x0, [x0, <OffsetOp>]
-    instruction_get_operation(NextEA, Operation),
-    (
-        arch.load_operation(Operation)
-        ;
-        arch.store_operation(Operation)
-    ),
-    instruction_get_op(NextEA, 1, OffsetOp),
-    op_indirect(OffsetOp,"NONE",_,"NONE",_,Offset,_).
+    arch.memory_access(_,NextEA,_,Reg2,"NONE",_,Offset).
 
 split_load_operand(EA, 1, as(Dest,address)) :-
     split_load_for_symbolization(EA, _, Dest, _).
