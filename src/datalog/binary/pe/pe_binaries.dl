@@ -313,6 +313,10 @@ base_relative_jump(EA_relop,EA):-
     reg_jump(EA,_),
     base_relative_operation(EA_relop,EA).
 
+labeled_data_candidate(ImageBase+Dest):-
+    base_address(ImageBase),
+    base_relative_symbolic_operand(_,_,Dest).
+
 .decl dos_header_symbolic_operand(EA:address,Dest:unsigned)
 .output dos_header_symbolic_operand
 
