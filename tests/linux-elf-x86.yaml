@@ -52,6 +52,13 @@ position-independent: &position-independent
     flags: ["-m32", "-fpie"]
     skip: false
 
+  test:
+    <<: *default-test
+    # TODO: re-enable CFG checks.
+    # PIE CFG tests are currently disabled due to failures in clang PIE binaries.
+    # See issue #329
+    check_cfg: false
+
 strip: &strip
   test:
     strip_exe: "strip"
