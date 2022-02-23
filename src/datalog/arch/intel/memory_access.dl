@@ -1,0 +1,40 @@
+//===- memory_access.dl -------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019-2022 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+This module provides implements architecture-independent load and store
+relations for x86.
+*/
+
+memory_access("LOAD",EA,DstReg,BaseReg,IndexReg,Mult,Offset):-
+    mov(EA),
+    instruction_get_src_op(EA,_,SrcOp),
+    op_indirect(SrcOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
+    instruction_get_dest_op(EA,_,DestOp),
+    op_regdirect_contains_reg(DestOp,DstReg).
+
+memory_access("STORE",EA,SrcReg,BaseReg,IndexReg,Mult,Offset):-
+    mov(EA),
+    instruction_get_dest_op(EA,_,DestOp),
+    op_indirect(DestOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
+    instruction_get_src_op(EA,_,SrcOp),
+    op_regdirect_contains_reg(SrcOp,SrcReg).

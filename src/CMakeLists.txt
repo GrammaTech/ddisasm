@@ -84,9 +84,13 @@ if(DDISASM_ARM_64)
   add_definitions(-DDDISASM_ARM_64)
 
   set(DATALOG_ARM64_SOURCES
-      datalog/arch/arm64/arch_arm64.dl datalog/arch/arm64/float_operations.dl
-      datalog/arch/arm64/jump_operations.dl datalog/arch/arm64/registers.dl
-      datalog/arm_binaries.dl datalog/arm64_binaries.dl)
+      datalog/arch/arm64/arch_arm64.dl
+      datalog/arch/arm64/float_operations.dl
+      datalog/arch/arm64/jump_operations.dl
+      datalog/arch/arm64/registers.dl
+      datalog/arm_binaries.dl
+      datalog/arm64_binaries.dl
+      datalog/arch/arm64/memory_access.dl)
 
   set(GENERATED_ARM64_CPP souffle_disasm_arm64.cpp)
 
@@ -144,9 +148,12 @@ if(DDISASM_X86_32)
   add_definitions(-DDDISASM_X86_32)
 
   set(DATALOG_X86_32_SOURCES
-      datalog/arch/intel/arch_x86_32.dl datalog/arch/intel/float_operations.dl
+      datalog/arch/intel/arch_x86_32.dl
+      datalog/arch/intel/float_operations.dl
       datalog/arch/intel/jump_operations.dl
-      datalog/arch/intel/registers_x86_32.dl datalog/arch/intel/arch_x86.dl)
+      datalog/arch/intel/registers_x86_32.dl
+      datalog/arch/intel/arch_x86.dl
+      datalog/arch/intel/memory_access.dl)
 
   set(GENERATED_X86_32_CPP souffle_disasm_x86_32.cpp)
 
@@ -173,9 +180,12 @@ if(DDISASM_X86_64)
   add_definitions(-DDDISASM_X86_64)
 
   set(DATALOG_X86_64_SOURCES
-      datalog/arch/intel/arch_x86_64.dl datalog/arch/intel/float_operations.dl
+      datalog/arch/intel/arch_x86_64.dl
+      datalog/arch/intel/float_operations.dl
       datalog/arch/intel/jump_operations.dl
-      datalog/arch/intel/registers_x86_64.dl datalog/arch/intel/arch_x86.dl)
+      datalog/arch/intel/registers_x86_64.dl
+      datalog/arch/intel/arch_x86.dl
+      datalog/arch/intel/memory_access.dl)
 
   set(GENERATED_X86_64_CPP souffle_disasm_x86_64.cpp)
 

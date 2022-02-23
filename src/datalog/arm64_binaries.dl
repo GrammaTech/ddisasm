@@ -215,8 +215,8 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     op_indirect(Op1,_,_,_,_,_,DataSize),
     data_word(RefAddr,DataSize/8,Val).
 
+// Not restricted with def_used_for_address since ADRP and ADR are always addresses.
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
-    def_used_for_address(EA,Reg),
     instruction(EA,_,_,Operation,Op1,Op2,_,_,_,_),
     (
         Operation = "ADRP";
@@ -230,7 +230,11 @@ symbolic_operand_candidate(EA,1,Dest,Type):-
     // ADR <Register> <Immediate>
     // e.g. adr r1, BaseOp
     code(EA),
-    instruction_get_operation(EA, "ADR"),
+    instruction_get_operation(EA, Operation),
+    (
+        Operation = "ADR";
+        Operation = "ADRP"
+    ),
     instruction_get_op(EA, 1, OffsetOp),
     op_immediate(OffsetOp, Offset),
     Dest = as(Offset,address),
