@@ -206,8 +206,9 @@ tests:
   - name: ex_struct
     <<: *position-independent
 
-  - name: ex_switch
-    <<: *position-independent
+  # TODO:
+  # - name: ex_switch
+  #   <<: *position-independent
 
   - name: ex_uninitialized_data
     <<: *position-independent

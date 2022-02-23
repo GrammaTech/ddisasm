@@ -164,22 +164,10 @@ moved_label(EA,Op_index,Dest,NewDest):-
 // the pointer is likely to point to the wrong section
 moved_label_class(EA,Op_index,"indirect wrong section"),
 moved_displacement_candidate(EA,Op_index,Dest,NewDest,Diff):-
-    symbolic_operand(EA,Op_index,Dest,"data"),
-    (
-        binary_type("EXEC"),
-        data_access(EA,Op_index,_,_,_,_,_,_),
-        data_access_pattern_candidate(Access_dest,_,Mult,EA)
-        ;
-        // TODO: Add loop value analysis for GOT-relative LEA/ADD.
-        binary_isa("X86"),
-        def_used(EA,_,Used,_),
-        data_access_pattern_candidate(Access_dest,_,Mult,Used)
-        ;
-        binary_isa("X86"),
-        value_reg_at_operand_loop(_,_,Reg,EA,Mult,as(Dest,number),"loop"),
-        value_reg(_,Reg,EA,"Unknown",Mult,Offset,_),
-        Access_dest = as(Offset,address)
-    ),
+    binary_type("EXEC"),
+    symbolic_operand(EA,Op_index,Dest,_),
+    data_access(EA,Op_index,_,_,_,_,_,_),
+    data_access_pattern_candidate(Access_dest,_,Mult,EA),
     Access_dest != Dest,
     NewDest = Access_dest,
     Diff = max(Access_dest-Dest, Dest-Access_dest),
