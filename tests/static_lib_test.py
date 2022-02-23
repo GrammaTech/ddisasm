@@ -76,6 +76,14 @@ class TestStaticLib(unittest.TestCase):
             for exec_type in ExecType:
                 flags = get_flags(base_flags, exec_type)
 
+                if (path.stem, exec_type) in (
+                    ("linux-elf-x86", ExecType.PIE),
+                    ("qemu-elf-arm", ExecType.NO_PIE),
+                ):
+                    # TODO: fix and re-enable this.
+                    # See issue #330, #331
+                    continue
+
                 with cd(test_dir), self.subTest(
                     platform=path.stem, flags=flags
                 ):
