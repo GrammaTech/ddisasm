@@ -59,7 +59,9 @@ function_entry(EA):-
         section(_,_,EA);
         //called
         direct_call(EA_caller,EA),
-        code(EA_caller)
+        code(EA_caller),
+        // TODO: Fold into generic arch component.
+        !pc_load_call(EA_caller,EA)
     ).
 
 // pointer in special sections
