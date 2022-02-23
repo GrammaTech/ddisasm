@@ -117,3 +117,6 @@ tests:
 
   - name: ex_cond_branch
     <<: *assembly
+
+  - name: ex_registers
+    <<: *assembly
