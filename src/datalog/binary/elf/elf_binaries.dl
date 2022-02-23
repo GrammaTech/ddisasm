@@ -393,7 +393,33 @@ no_return_function("longjmp(@.*)?"):- binary_format("ELF").
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-symbolic_expr_from_relocation(EA,Size/8,Symbol,Addend,TargetEA):-
+relocation_adjustment(EA,as(Addend,number),"implicit-addend"):-
+    binary_format("ELF"),
+    relocation(EA,Type,_,_,_,_,RelType),
+    relocation_size(Type,Size),
+    (
+        RelType = "REL", Size = 8, data_byte(EA,Addend);
+        RelType = "REL", Size != 8, data_word(EA,Size/8,Addend)
+    ).
+
+relocation_adjustment(EA+Offset,N,"immediate-offset"):-
+    binary_isa("X64"),
+    binary_type("REL"),
+    code(EA),
+    (
+        instruction(EA,Size,_,_,_,_,_,_,_,Offset);
+        instruction(EA,Size,_,_,_,_,_,_,Offset,_)
+    ),
+    relocation(EA+Offset,Type,Symbol,_,SymbolIndex,_,_),
+    (
+        Type = "PC32";
+        Type = "PLT32"
+    ),
+    symbol(_,_,_,_,_,_,_,SymbolIndex,Symbol),
+    // Adjust addend for trailing instruction bytes.
+    N = as(Size-Offset,number), N > 0.
+
+symbolic_expr_from_relocation(EA,Size/8,Symbol,Addend+Adjustment,TargetEA):-
     binary_format("ELF"),
     relocation(EA,Type,Symbol,Addend,SymbolIndex,_,_),
     relocation_size(Type,Size),
@@ -402,6 +428,7 @@ symbolic_expr_from_relocation(EA,Size/8,Symbol,Addend,TargetEA):-
         Type = "R64";
         Type = "R32S"
     ),
+    relocation_adjustment_total(EA,Adjustment),
     symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol),
     Symbol != "".
 
@@ -409,7 +436,7 @@ symbolic_expr_from_relocation(EA,Size/8,Symbol,Addend,TargetEA):-
 symbolic_expr_from_relocation(EA,Size/8,Symbol,0,TargetEA):-
     binary_type("REL"),
     // Nameless relocation referencing a SECTION symbol.
-    relocation(EA,Type,"",Addend,SymbolIndex,SrcSection,RelType),
+    relocation(EA,Type,"",Addend,SymbolIndex,SrcSection,_),
     section(SrcSection,_,_), // Only loaded sections
     relocation_size(Type,Size),
     (
@@ -417,15 +444,11 @@ symbolic_expr_from_relocation(EA,Size/8,Symbol,0,TargetEA):-
         Type = "R64";
         Type = "R32S"
     ),
-    (
-        RelType = "RELA", ImplicitAddend = 0;
-        RelType = "REL", Size = 8, data_byte(EA,ImplicitAddend);
-        RelType = "REL", Size != 8, data_word(EA,Size/8,ImplicitAddend)
-    ),
+    relocation_adjustment_total(EA,Adjustment),
     symbol(_,_,"SECTION",_,_,SectionIndex,_,SymbolIndex,_),
     section_complete(_,_,Begin,_,_,_,SectionIndex),
     // Addend is the offset of a symbol within the Section.
-    TargetEA = Begin+as(Addend,unsigned)+as(ImplicitAddend,unsigned),
+    TargetEA = Begin+as(Addend,unsigned)+as(Adjustment,unsigned),
     (
         symbol(TargetEA,_,_,_,_,_,_,_,Symbol);
         !symbol(TargetEA,_,_,_,_,_,_,_,_), Symbol = ""
