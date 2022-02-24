@@ -112,12 +112,11 @@ block_next(EA,Block2):-
 
 def(EA,Reg):-
     instruction_get_dest_op(EA,_,Op),
-    op_regdirect_contains_reg(Op,Reg),
-    // if the arch has defines_reg for the address, it should be more accurate
-    // than instruction_get_dest_op.
-    !arch.defines_reg(EA,_).
+    op_regdirect_contains_reg(Op,Reg).
 
 // Define any registers defined by the instruction
+// These might be implicitly defined, rather than as an explicit operand, so
+// the above rule wouldn't capture such implicit definitions.
 def(EA,Reg):-
     arch.defines_reg(EA,Reg).
 
@@ -171,12 +170,6 @@ used(EA,Reg,Index):-
     instruction_get_src_op(EA,Index,Op),
     op_regdirect_contains_reg(Op,Reg),
     !is_xor_reset(EA).
-
-// Note: this is only needed because instruction_get_src_op is not always accurate.
-used(EA,Reg,5):-
-    // TODO: uses a dummy index for now.
-    // Only a few consumers rely on it
-    arch.uses_reg(EA,Reg).
 
 used(EA,Reg,Index):-
     instruction_get_op(EA,Index,Op),

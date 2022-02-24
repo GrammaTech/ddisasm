@@ -159,7 +159,7 @@ split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "LDR/STR") :
 
     // LDR/STR <Register> <IndirectOp>
     // e.g. ldr x0, [x0, <OffsetOp>]
-    arch.memory_access(_,NextEA,_,Reg2,"NONE",_,Offset).
+    arch.memory_access(_,NextEA,_,_,_,Reg2,"NONE",_,Offset).
 
 split_load_operand(EA, 1, as(Dest,address)) :-
     split_load_for_symbolization(EA, _, Dest, _).

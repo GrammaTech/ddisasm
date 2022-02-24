@@ -290,11 +290,17 @@ instruction_get_op(EA,Index,Op):-
 
 instruction_get_dest_op(EA,1,Op):-
     arch.store_operation(Operation),
-    instruction(EA,_,_,Operation,Op,_,_,_,_,_).
+    instruction(EA,_,_,Operation,Op,_,_,_,_,_),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,_).
+
+instruction_get_dest_op(EA,DstIndex,Op):-
+    arch.memory_access(_,EA,_,DstIndex,_,_,_,_,_),
+    instruction_get_op(EA,DstIndex,Op).
 
 instruction_get_dest_op(EA,Index,Op):-
-    !arch.store_operation(Operation),
     instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
+    !arch.store_operation(Operation),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,_),
     !arch.read_only_operation(Operation),
     (
         Op4 = 0,
@@ -323,23 +329,30 @@ instruction_get_dest_op(EA,1,Op):-
 
 instruction_get_src_op(EA,2,Op):-
     arch.store_operation(Operation),
-    instruction(EA,_,_,Operation,_,Op,0,0,_,_).
+    instruction(EA,_,_,Operation,_,Op,0,0,_,_),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,_).
+
+instruction_get_src_op(EA,SrcIndex,Op):-
+    arch.memory_access(_,EA,SrcIndex,_,_,_,_,_,_),
+    instruction_get_op(EA,SrcIndex,Op).
 
 //when the dest is used as a source as well
 instruction_get_src_op(EA,Index,Op2):-
     instruction(EA,_,_,Operation,_,Op2,_,_,_,_),Op2 != 0,
     Index = 2,
     !arch.mov(EA),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,_),
     !arch.op_does_not_read_dest_reg(Operation),
     !arch.write_only_operation(Operation).
 
 instruction_get_src_op(EA,Index,Op):-
-    !arch.store_operation(Operation),
     (
         instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
         instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
         instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
     ),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,_),
+    !arch.store_operation(Operation),  // Currently not all archs fully implement arch.memory_access.
     !arch.write_only_operation(Operation).
 
 

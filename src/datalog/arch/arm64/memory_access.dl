@@ -43,13 +43,13 @@ op_regdirect_standardize_tracked(Op,Reg):-
 // STR <Wt>, [<Xn|SP>], #<simm>
 // The post indexing operation does not affect the load, but we do generate a
 // reg_arithmetic_operation to track modification of the index.
-memory_access(AccessType,EA,ValReg,BaseReg,"NONE",0,0),
+memory_access(AccessType,EA,SrcIndex,DstIndex,ValReg,BaseReg,"NONE",0,0),
 reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     instruction_writeback(EA),
     (
-        substr(Operation,0,3) = "LDR", AccessType = "LOAD";
-        substr(Operation,0,3) = "STR", AccessType = "STORE"
+        substr(Operation,0,3) = "LDR", AccessType = "LOAD", SrcIndex = 1, DstIndex = 3;
+        substr(Operation,0,3) = "STR", AccessType = "STORE", SrcIndex = 3, DstIndex = 1
     ),
     op_indirect(Op1,"NONE",BaseReg,"NONE",_,0,_),
     op_immediate(Op2,Offset),
@@ -58,13 +58,13 @@ reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
 // immediate - pre-index / writeback
 // LDR <Wt>, [<Xn|SP>, #<pimm>]
 // STR <Wt>, [<Xn|SP>, #<simm>]!
-memory_access(AccessType,EA,ValReg,BaseReg,"NONE",0,Offset),
+memory_access(AccessType,EA,SrcIndex,DstIndex,ValReg,BaseReg,"NONE",0,Offset),
 reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     instruction_writeback(EA),
     (
-        substr(Operation,0,3) = "LDR", AccessType = "LOAD";
-        substr(Operation,0,3) = "STR", AccessType = "STORE"
+        substr(Operation,0,3) = "LDR", AccessType = "LOAD", SrcIndex = 1, DstIndex = 2;
+        substr(Operation,0,3) = "STR", AccessType = "STORE", SrcIndex = 2, DstIndex = 1
     ),
     op_indirect(Op1,"NONE",BaseReg,"NONE",_,Offset,_),
     op_regdirect_standardize_tracked(Op2,ValReg).
@@ -72,20 +72,20 @@ reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
 // immediate
 // LDR <Wt>, [<Xn|SP>, #<pimm>]
 // STR <Wt>, [<Xn|SP>{, #<pimm>}]
-memory_access(AccessType,EA,DstReg,BaseReg,"NONE",0,Offset):-
+memory_access(AccessType,EA,SrcIndex,DstIndex,ValReg,BaseReg,"NONE",0,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     !instruction_writeback(EA),
     (
-        substr(Operation,0,3) = "LDR", AccessType = "LOAD";
-        substr(Operation,0,3) = "STR", AccessType = "STORE"
+        substr(Operation,0,3) = "LDR", AccessType = "LOAD", SrcIndex = 1, DstIndex = 2;
+        substr(Operation,0,3) = "STR", AccessType = "STORE", SrcIndex = 2, DstIndex = 1
     ),
     op_indirect(Op1,"NONE",BaseReg,"NONE",_,Offset,_),
-    op_regdirect_standardize_tracked(Op2,DstReg).
+    op_regdirect_standardize_tracked(Op2,ValReg).
 
 // LDR (literal)
 // LDR <Xt>, <label>
 // No corresponding STR instruction.
-memory_access("LOAD",EA,DstReg,"NONE","NONE",0,Immediate):-
+memory_access("LOAD",EA,1,2,DstReg,"NONE","NONE",0,Immediate):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     substr(Operation,0,3) = "LDR",
     op_immediate(Op1,Immediate),
@@ -94,45 +94,49 @@ memory_access("LOAD",EA,DstReg,"NONE","NONE",0,Immediate):-
 // LDR (register)
 // LDR <Wt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
 // STR <Wt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
-memory_access(AccessType,EA,DstReg,BaseReg,IndexReg,Mult,0):-
+memory_access(AccessType,EA,SrcIndex,DstIndex,ValReg,BaseReg,IndexReg,Mult,0):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     (
-        substr(Operation,0,3) = "LDR", AccessType = "LOAD";
-        substr(Operation,0,3) = "STR", AccessType = "STORE"
+        substr(Operation,0,3) = "LDR", AccessType = "LOAD", SrcIndex = 1, DstIndex = 2;
+        substr(Operation,0,3) = "STR", AccessType = "STORE", SrcIndex = 2, DstIndex = 1
     ),
     op_indirect(Op1,"NONE",BaseReg,IndexReg,Mult,0,_),
-    op_regdirect_standardize_tracked(Op2,DstReg).
+    op_regdirect_standardize_tracked(Op2,ValReg).
 
 // pair post-index
 // LDP <Wt1>, <Wt2>, [<Xn|SP>], #<imm>
 // STP <Wt1>, <Wt2>, [<Xn|SP>], #<imm>
-memory_access(AccessType,EA,DstReg1,BaseReg,"NONE",0,0),
-memory_access(AccessType,EA,DstReg2,BaseReg,"NONE",0,as(SizeBits/8,number)),
+memory_access(AccessType,EA,SrcIndex1,DstIndex1,ValReg1,BaseReg,"NONE",0,0),
+memory_access(AccessType,EA,SrcIndex2,DstIndex2,ValReg2,BaseReg,"NONE",0,as(SizeBits/8,number)),
 reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,Op4,_,_),
     instruction_writeback(EA),
     (
-        substr(Operation,0,3) = "LDP", AccessType = "LOAD";
-        substr(Operation,0,3) = "STP", AccessType = "STORE"
+        substr(Operation,0,3) = "LDP", AccessType = "LOAD",
+            SrcIndex1 = 2, SrcIndex2 = 2, DstIndex1 = 1, DstIndex2 = 4;
+        substr(Operation,0,3) = "STP", AccessType = "STORE",
+            SrcIndex1 = 1, SrcIndex2 = 4, DstIndex1 = 2, DstIndex2 = 2
     ),
-    op_regdirect_contains_reg(Op1,DstReg2),
+    op_regdirect_contains_reg(Op1,ValReg2),
     op_indirect(Op2,"NONE",BaseReg,"NONE",_,0,_),
     op_immediate(Op3,Offset),
-    op_regdirect_contains_reg(Op4,DstReg1),
-    op_regdirect(Op1,DstReg),
-    register_size_bits(DstReg,SizeBits).
+    op_regdirect_contains_reg(Op4,ValReg1),
+    op_regdirect(Op1,ValReg),
+    register_size_bits(ValReg,SizeBits).
 
 // pair pre-index
 // LDP <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]! (pre-index)
 // STP <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]!
-memory_access(AccessType,EA,DstReg1,BaseReg,"NONE",0,Offset),
-memory_access(AccessType,EA,DstReg2,BaseReg,"NONE",0,Offset+as(SizeBits/8,number)),
+memory_access(AccessType,EA,SrcIndex1,DstIndex1,DstReg1,BaseReg,"NONE",0,Offset),
+memory_access(AccessType,EA,SrcIndex2,DstIndex2,DstReg2,BaseReg,"NONE",0,Offset+as(SizeBits/8,number)),
 reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     instruction_writeback(EA),
     (
-        substr(Operation,0,3) = "LDP", AccessType = "LOAD";
-        substr(Operation,0,3) = "STP", AccessType = "STORE"
+        substr(Operation,0,3) = "LDP", AccessType = "LOAD",
+            SrcIndex1 = 2, SrcIndex2 = 2, DstIndex1 = 1, DstIndex2 = 3;
+        substr(Operation,0,3) = "STP", AccessType = "STORE",
+            SrcIndex1 = 1, SrcIndex2 = 3, DstIndex1 = 2, DstIndex2 = 2
     ),
     op_regdirect_contains_reg(Op1,DstReg2),
     op_indirect(Op2,"NONE",BaseReg,"NONE",_,Offset,_),
@@ -143,13 +147,15 @@ reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
 // pair (no writeback)
 // LDP <Wt1>, <Wt2>, [<Xn|SP>{, #<imm>}]
 // STP <Wt1>, <Wt2>, [<Xn|SP>{, #<imm>}]
-memory_access(AccessType,EA,DstReg1,BaseReg,"NONE",0,Offset),
-memory_access(AccessType,EA,DstReg2,BaseReg,"NONE",0,Offset+as(SizeBits/8,number)):-
+memory_access(AccessType,EA,SrcIndex1,DstIndex1,DstReg1,BaseReg,"NONE",0,Offset),
+memory_access(AccessType,EA,SrcIndex2,DstIndex2,DstReg2,BaseReg,"NONE",0,Offset+as(SizeBits/8,number)):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     !instruction_writeback(EA),
     (
-        substr(Operation,0,3) = "LDP", AccessType = "LOAD";
-        substr(Operation,0,3) = "STP", AccessType = "STORE"
+        substr(Operation,0,3) = "LDP", AccessType = "LOAD",
+            SrcIndex1 = 2, SrcIndex2 = 2, DstIndex1 = 1, DstIndex2 = 3;
+        substr(Operation,0,3) = "STP", AccessType = "STORE",
+            SrcIndex1 = 1, SrcIndex2 = 3, DstIndex1 = 2, DstIndex2 = 2
     ),
     op_regdirect_contains_reg(Op1,DstReg2),
     op_indirect(Op2,"NONE",BaseReg,"NONE",_,Offset,_),
