@@ -119,9 +119,9 @@ def is_padding(node: gtirb.CodeBlock) -> bool:
     return False
 
 
-def check_gtirb_cfg(path: str) -> int:
+def check_cfg(module: gtirb.Module) -> int:
     """
-    Determine if a GTIRB file has a CFG with:
+    Determine if a GTIRB module has a CFG with:
 
     * Unreachable code
     * Unresolved jumps
@@ -130,7 +130,6 @@ def check_gtirb_cfg(path: str) -> int:
     """
     error_count = 0
     checked_node_count = 0
-    module = gtirb.IR.load_protobuf(path).modules[0]
 
     for node in module.cfg_nodes:
         if (
@@ -186,8 +185,54 @@ def check_gtirb_cfg(path: str) -> int:
     return error_count
 
 
-if __name__ == "__main__":
+def check_main_is_code(module: gtirb.Module) -> int:
+    """
+    Check a GTIRB module for a `main` symbol that is not a CodeBlock.
+
+    Returns the number of errors found.
+    """
+    error_count = 0
+
+    for sym in module.symbols:
+        if sym.name == "main":
+            if not isinstance(sym.referent, gtirb.CodeBlock):
+                print("ERROR: main is not code")
+                error_count += 1
+
+    return error_count
+
+
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("path")
+
+    checks = {
+        "cfg": check_cfg,
+        "main_is_code": check_main_is_code,
+    }
+
+    check_names = list(checks.keys())
+    check_names.append("all")
+
+    parser.add_argument(
+        "--check",
+        choices=check_names,
+        default="all",
+        help="The name of the check to run",
+    )
     args = parser.parse_args()
-    sys.exit(check_gtirb_cfg(args.path))
+
+    module = gtirb.IR.load_protobuf(args.path).modules[0]
+
+    if args.check == "all":
+        error_count = 0
+        for check_func in checks.values():
+            error_count += check_func(module)
+    else:
+        error_count = checks[args.check](module)
+
+    sys.exit(error_count)
+
+
+if __name__ == "__main__":
+    main()

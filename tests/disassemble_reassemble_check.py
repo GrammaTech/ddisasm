@@ -1,5 +1,6 @@
 import argparse
 import contextlib
+import gtirb
 import os
 import shlex
 import subprocess
@@ -9,7 +10,7 @@ from typing import List
 import platform
 
 import asm_db
-from check_gtirb_cfg import check_gtirb_cfg
+import check_gtirb
 
 
 class bcolors:
@@ -290,7 +291,7 @@ def disassemble_reassemble_test(
     reassembly_errors = 0
     link_errors = 0
     test_errors = 0
-    cfg_errors = 0
+    gtirb_errors = 0
     with cd(make_dir):
         for compiler, cxx_compiler in zip(c_compilers, cxx_compilers):
             for optimization in optimizations:
@@ -315,19 +316,23 @@ def disassemble_reassemble_test(
                 ):
                     compile_errors += 1
                     continue
+
+                gtirb_filename = binary + ".gtirb"
                 success, time = disassemble(
                     binary,
                     None,
                     strip_exe,
                     strip,
                     sstrip,
-                    extra_args=["--ir", binary + ".gtirb"]
-                    + extra_ddisasm_args,
+                    extra_args=["--ir", gtirb_filename] + extra_ddisasm_args,
                 )
 
-                # Do some CFG checks
+                # Do some GTIRB checks
+                module = gtirb.IR.load_protobuf(gtirb_filename).modules[0]
                 if check_cfg:
-                    cfg_errors += check_gtirb_cfg(binary + ".gtirb")
+                    gtirb_errors += check_gtirb.check_cfg(module)
+
+                gtirb_errors += check_gtirb.check_main_is_code(module)
 
                 asm_db.upload(
                     os.path.basename(make_dir),
@@ -360,7 +365,7 @@ def disassemble_reassemble_test(
                     test_errors += 1
     total_errors = (
         compile_errors
-        + cfg_errors
+        + gtirb_errors
         + disassembly_errors
         + reassembly_errors
         + link_errors

@@ -76,14 +76,14 @@ std::optional<relations::Instruction> Arm64Loader::build(Arm64Facts& Facts,
 
     if(Name != "NOP")
     {
-        int OpCount = Details.op_count;
-        for(int i = 0; i < OpCount; i++)
+        uint8_t OpCount = Details.op_count;
+        for(uint8_t i = 0; i < OpCount; i++)
         {
             // Load capstone operand.
             const cs_arm64_op& CsOp = Details.operands[i];
 
             // Build operand for datalog fact.
-            std::optional<relations::Operand> Op = build(CsOp);
+            std::optional<relations::Operand> Op = build(CsInstruction, i, CsOp);
             if(!Op)
             {
                 return std::nullopt;
@@ -131,7 +131,8 @@ std::optional<relations::Instruction> Arm64Loader::build(Arm64Facts& Facts,
     return relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0};
 }
 
-std::optional<relations::Operand> Arm64Loader::build(const cs_arm64_op& CsOp)
+std::optional<relations::Operand> Arm64Loader::build(const cs_insn& CsInsn, uint8_t OpIndex,
+                                                     const cs_arm64_op& CsOp)
 {
     using namespace relations;
 
@@ -158,20 +159,35 @@ std::optional<relations::Operand> Arm64Loader::build(const cs_arm64_op& CsOp)
         case ARM64_OP_FP:
             return FPImmOp{CsOp.fp};
         case ARM64_OP_CIMM:
-            std::cerr << "unsupported: CIMM\n";
-            break;
-        case ARM64_OP_REG_MRS:
-            std::cerr << "unsupported: MRS\n";
-            break;
-        case ARM64_OP_REG_MSR:
-            std::cerr << "unsupported: MSR\n";
+            std::cerr << "WARNING: unsupported CIMM operand\n";
             break;
         case ARM64_OP_PSTATE:
-            std::cerr << "unsupported: PSTATE\n";
+        {
+            std::optional<std::string> OpString = operandString(CsInsn, OpIndex);
+            if(OpString)
+            {
+                return SpecialOp{"pstate", *OpString};
+            }
             break;
+        }
+        case ARM64_OP_REG_MRS:
+        case ARM64_OP_REG_MSR:
+            // Using capstone 4.x, MRS / MSR instructions produce operand
+            // types of the same name, but with capstone 5.x (next / GrammaTech
+            // fork), they appear as SYS operands.
+            // Fallthrough to SYS so that they are handled the same.
         case ARM64_OP_SYS:
-            std::cerr << "unsupported: SYS\n";
+        {
+            // It seems like capstone only has a subset of system registers
+            // implemented for printing with cs_reg_name, so we have to parse
+            // it from the instruction string.
+            std::optional<std::string> Reg = operandString(CsInsn, OpIndex);
+            if(Reg)
+            {
+                return RegOp{*Reg};
+            }
             break;
+        }
         case ARM64_OP_PREFETCH:
         {
             if(std::optional<const char*> Label = prefetchValue(CsOp.prefetch))
@@ -192,7 +208,41 @@ std::optional<relations::Operand> Arm64Loader::build(const cs_arm64_op& CsOp)
         default:
             break;
     }
+    std::cerr << "WARNING: unhandled operand at " << CsInsn.address << ", op type:" << CsOp.type
+              << "\n";
     return std::nullopt;
+}
+
+std::optional<std::string> Arm64Loader::operandString(const cs_insn& CsInsn, uint8_t Index)
+{
+    // NOTE: assumes commas occur between operands, and neither commas
+    // nor spaces occur within them. This is not true of all operand types
+    // (e.g., indirect operands). This method should only be used for
+    // instructions where this assumption will hold for all its operands.
+
+    uint8_t CurIndex = 0;
+    const char* Start = nullptr;
+    size_t Size = 0;
+
+    for(const char* Pos = CsInsn.op_str; *Pos != '\0'; Pos++)
+    {
+        if(*Pos == ',')
+        {
+            ++CurIndex;
+        }
+        else if(CurIndex == Index && !isspace(*Pos))
+        {
+            if(Start == nullptr)
+                Start = Pos;
+
+            ++Size;
+        }
+    }
+
+    if(!Start)
+        throw std::logic_error("Operand not found");
+
+    return uppercase(std::string(Start, Size));
 }
 
 std::optional<const char*> prefetchValue(const arm64_prefetch_op Op)
