@@ -114,6 +114,10 @@ std::optional<relations::Instruction> Arm64Loader::build(Arm64Facts& Facts,
                     case ARM64_SFT_ROR:
                         ShiftType = "ROR";
                         break;
+                    case ARM64_SFT_INVALID:
+                        std::cerr << "WARNING: instruction has a non-zero invalid shift at " << Addr
+                                  << "\n";
+                        return std::nullopt;
                 }
                 Facts.Instructions.shiftedOp(
                     relations::ShiftedOp{Addr, static_cast<uint8_t>(i + 1),
