@@ -151,7 +151,8 @@ def disassemble(
         print("# Disassembling " + target_binary + "\n")
         start = timer()
         completedProcess = subprocess.run(
-            ["ddisasm", target_binary, format, output, "-j", "1"] + extra_args
+            ["ddisasm", target_binary, format, output, "-j", "1"] + extra_args,
+            timeout=90,
         )
         time_spent = timer() - start
     if completedProcess.returncode == 0:
@@ -244,7 +245,7 @@ def test(exec_wrapper=None):
     if exec_wrapper:
         env["EXEC"] = exec_wrapper
     completedProcess = subprocess.run(
-        make("check"), env=env, stderr=subprocess.DEVNULL
+        make("check"), env=env, stderr=subprocess.DEVNULL, timeout=60,
     )
     if completedProcess.returncode != 0:
         print(bcolors.fail("# Testing FAILED\n"))
