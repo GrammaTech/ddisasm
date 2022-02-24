@@ -25,16 +25,14 @@ This module provides implements architecture-independent load and store
 relations for x86.
 */
 
-memory_access("LOAD",EA,DstReg,BaseReg,IndexReg,Mult,Offset):-
+memory_access("LOAD",EA,1,2,DstReg,BaseReg,IndexReg,Mult,Offset):-
     mov(EA),
-    instruction_get_src_op(EA,_,SrcOp),
+    instruction(EA,_,_,_,SrcOp,DestOp,0,0,_,_),
     op_indirect(SrcOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
-    instruction_get_dest_op(EA,_,DestOp),
     op_regdirect_contains_reg(DestOp,DstReg).
 
-memory_access("STORE",EA,SrcReg,BaseReg,IndexReg,Mult,Offset):-
+memory_access("STORE",EA,1,2,SrcReg,BaseReg,IndexReg,Mult,Offset):-
     mov(EA),
-    instruction_get_dest_op(EA,_,DestOp),
+    instruction(EA,_,_,_,SrcOp,DestOp,0,0,_,_),
     op_indirect(DestOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
-    instruction_get_src_op(EA,_,SrcOp),
     op_regdirect_contains_reg(SrcOp,SrcReg).

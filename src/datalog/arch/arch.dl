@@ -187,58 +187,50 @@ call(EA,DestOperandIndex):-
     call_operation_op_index(Operation,DestOperandIndex).
 
 /**
-Represents a load or store; see arch.load() or arch.store().
+Represents a load or store.
+
+The address of the accessed memory is of the form:
+
+    BaseReg + IndexReg * Mult + Offset
+
+Complex memory accesses may be represented with multiple members of this
+relation at the same address. For example, the arm64 instruction:
+
+    0x1000: ldp x7, x8, [x0, #10]
+
+generates two arch.memory_access members:
+
+    memory_access("LOAD",0x1000,2,3,"X7","X0","NONE",0,10)
+    memory_access("LOAD",0x1000,2,1,"X8","X0","NONE",0,18)
 
 AccessType is either "LOAD" or "STORE"
+DirectReg, BaseReg, and IndexReg may be untracked registers or unstandardized names.
 */
-.decl memory_access(AccessType:symbol,EA:address,ValReg:register,BaseReg:register,IndexReg:register,Mult:number,Offset:number)
+.decl memory_access(AccessType:symbol,EA:address,SrcOp:operand_index,DstOp:operand_index,
+    DirectReg:register,BaseReg:register,IndexReg:register,Mult:number,Offset:number)
 .output memory_access
 
 /**
 Represents a load from memory to a register.
 
-The address of the accessed memory is of the form:
-
-    BaseReg + IndexReg * Mult + Offset
-
-Complex loads may be represented with multiple members of this relation at the
-same address. For example, the arm64 instruction:
-
-    0x1000: ldp x7, x8, [x0, #10]
-
-would generate two arch.load members:
-
-    load(0x1000,"X7","X0","NONE",0,10)
-    load(0x1000,"X8","X0","NONE",0,18)
-
+See arch.memory_access().
 */
-.decl load(EA:address,DstReg:register,BaseReg:register,IndexReg:register,Mult:number,Offset:number) inline
+.decl load(EA:address,SrcOp:operand_index,DstOp:operand_index,DstReg:register,
+    BaseReg:register,IndexReg:register,Mult:number,Offset:number) inline
 
-load(EA,DstReg,BaseReg,IndexReg,Mult,Offset):-
-    memory_access("LOAD",EA,DstReg,BaseReg,IndexReg,Mult,Offset).
+load(EA,SrcOp,DstOp,DstReg,BaseReg,IndexReg,Mult,Offset):-
+    memory_access("LOAD",EA,SrcOp,DstOp,DstReg,BaseReg,IndexReg,Mult,Offset).
 
 /**
 Represents a store from a register to memory.
 
-The address of the accessed memory is of the form:
-
-    BaseReg + IndexReg * Mult + Offset
-
-Complex loads may be represented with multiple members of this relation at the
-same address. For example, the arm64 instruction:
-
-    0x1000: sdp x7, x8, [x0, #10]
-
-would generate two arch.load members:
-
-    store(0x1000,"X7","X0","NONE",0,10)
-    store(0x1000,"X8","X0","NONE",0,18)
-
+See arch.memory_access().
 */
-.decl store(EA:address,DstReg:register,BaseReg:register,IndexReg:register,Mult:number,Offset:number) inline
+.decl store(EA:address,SrcOp:operand_index,DstOp:operand_index,SrcReg:register,
+    BaseReg:register,IndexReg:register,Mult:number,Offset:number) inline
 
-store(EA,DstReg,BaseReg,IndexReg,Mult,Offset):-
-    memory_access("STORE",EA,DstReg,BaseReg,IndexReg,Mult,Offset).
+store(EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset):-
+    memory_access("STORE",EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset).
 
 .decl delay_slot(BranchEA:address,EA:address)
 
@@ -285,29 +277,10 @@ An instruction at EA defines the register Reg
 
 defines_reg(EA,Reg):-
     (
-        load(EA,Reg,_,_,_,_);
+        load(EA,_,_,Reg,_,_,_,_);
         reg_arithmetic_operation(EA,Reg,_,_,_);
         reg_reg_arithmetic_operation(EA,Reg,_,_,_,_)
     ).
-
-/**
-An instruction at EA uses the register Reg
-*/
-.decl uses_reg(EA:address,Reg:register)
-.output uses_reg
-
-uses_reg(EA,Reg):-
-    (
-        reg_arithmetic_operation(EA,_,Reg,_,_);
-        reg_reg_arithmetic_operation(EA,_,Reg,_,_,_);
-        reg_reg_arithmetic_operation(EA,_,_,Reg,_,_);
-        load(EA,_,Reg,_,_,_);
-        load(EA,_,_,Reg,_,_);
-        store(EA,Reg,_,_,_,_);
-        store(EA,_,Reg,_,_,_);
-        store(EA,_,_,Reg,_,_)
-    ),
-    Reg != "NONE".
 
 /**
 The location and register where the address of main is loaded.
