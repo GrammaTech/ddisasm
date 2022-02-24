@@ -573,7 +573,7 @@ where foo is a symbol relocated by GOT.
 */
 block_needs_splitting_at(EA_add_pc),
 labeled_data_candidate(Dest),
-symbol_minus_symbol_jump_table(Addr,Addr,Size,EA_add_pc,Dest,"no_table",Scale,Offset):-
+symbol_minus_symbol_candidate(Addr,Size,EA_add_pc,Dest,as(Scale,unsigned),Offset):-
     data_access_pattern(Addr,Size,0,EABase),
     def_used(EABase,Reg,EA_add_pc,_),
     arch.reg_reg_arithmetic_operation(EA_add_pc,Reg,Reg,PC,1,0),
@@ -609,7 +609,7 @@ inferred_special_symbol(GotBeg,"_GLOBAL_OFFSET_TABLE_","LOCAL","NONE","Beg"):-
 symbol_minus_symbol_from_relocation(EA,4,SymbolName2,"_GLOBAL_OFFSET_TABLE_",1,Offset):-
     binary_type("REL"),
     relocation(EA,"BASE_PREL","_GLOBAL_OFFSET_TABLE_",_,_,_,_),
-    symbol_minus_symbol_candidate(_,4,_,EA,1,_,Symbol2,_,Type),
+    symbol_minus_symbol_litpool_access_pattern(_,4,_,EA,1,_,Symbol2,_,Type),
     (
         Type = "LDR", Offset = -4
         ;
@@ -804,12 +804,11 @@ data_object_point(DataEA,Size,"symbol",2,"arm jump-table3"),
 data_object_candidate(DataEA,Size,"symbol"):-
     arm_jump_table_candidate(_,_,DataEA,Size,_,_,"absolute",_,_).
 
-jump_table_start(EA,Size,TableStart,TableStart,Type):-
-    Type = "relative",
-    arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,Type,_,_),
+jump_table_start(EA,Size,TableStart,TableStart,1):-
+    arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,_,_,_),
     jump_table_candidate_refined(EA,DataEA,_).
 
-symbol_minus_symbol_jump_table(DataEA,TableStart,Size,TableStart,TargetAddr,"first",Scale,Offset):-
+symbol_minus_symbol_jump_table(DataEA,TableStart,Size,TableStart,TargetAddr,as(Scale,number),Offset):-
     arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,_,Scale,Offset),
     jump_table_candidate_refined(EA,DataEA,TargetAddr).
 
@@ -950,8 +949,11 @@ symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
 symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
     litpool_ref_double(EA,_,_,LitPoolAddr,_).
 
-.decl symbol_minus_symbol_candidate(ea:address,size:unsigned,symbol1:address,symbol2:address,scale:unsigned,ea_litpool_ref:address,ea_def:address,reg:register,type:symbol)
-.output symbol_minus_symbol_candidate
+/**
+ * Matches instruction patterns that access a symbol-symbol from the literal pool.
+ */
+.decl symbol_minus_symbol_litpool_access_pattern(ea:address,size:unsigned,symbol1:address,symbol2:address,scale:unsigned,ea_litpool_ref:address,ea_def:address,reg:register,type:symbol)
+.output symbol_minus_symbol_litpool_access_pattern
 
 /**
     ldr reg, LitPool
@@ -964,7 +966,7 @@ where Disp = 4 for Thumb mode, and 8 for ARM mode.
 */
 block_needs_splitting_at(EA_add_pc),
 moved_data_label(LitPoolAddr,Size,Symbol1,EA_add_pc),
-symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add_pc,Reg,"LDR"):-
+symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add_pc,Reg,"LDR"):-
     litpool_ref(EA,Reg,LitPoolAddr,Size,"LDR"),
 
     def_used(EA,Reg,EA_add_pc,_),
@@ -992,9 +994,9 @@ symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add_pc,Re
 // LitPool: .word TARGET - Base
 //
 // (in observed cases, LitPool == Base)
-symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,EA_ldr,EA_add,Reg1,"ADR"):-
+symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA_ldr,EA_add,Reg,"ADR"):-
     // e.g., ldr reg1, LitPool
-    litpool_ref(EA_ldr,Reg1,LitPoolAddr,Size,"LDR"),
+    litpool_ref(EA_ldr,Reg,LitPoolAddr,Size,"LDR"),
 
     // e.g., add reg1, reg2
     def_used(EA_ldr,Reg1,EA_add,_),
@@ -1011,11 +1013,11 @@ symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,EA_ldr,EA_add,R
     Symbol2 = Addr2-(Addr2 band 1).
 
 value_reg_edge(EA,Reg,EA,"NONE",0,as(Symbol2,number)):-
-    symbol_minus_symbol_candidate(_,_,_,Symbol2,_,_,EA,Reg,_).
+    symbol_minus_symbol_litpool_access_pattern(_,_,_,Symbol2,_,_,EA,Reg,_).
 
 labeled_data_candidate(Symbol2),
-symbol_minus_symbol_jump_table(LitPoolAddr,LitPoolAddr,Size,Symbol1,Symbol2,"no_table",1,0):-
-    symbol_minus_symbol_candidate(LitPoolAddr,Size,Symbol1,Symbol2,1,_,_,_,"ADR").
+symbol_minus_symbol_jump_table(LitPoolAddr,LitPoolAddr,Size,Symbol1,Symbol2,1,0):-
+    symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,_,_,_,"ADR").
 
 /**
 litpool_symbolic_operand
@@ -1031,7 +1033,7 @@ PC-relative symbolic operand
 //  (D) ldr  reg3, [reg1, reg2] // the referenced address is the address of symbol bar.
 block_needs_splitting_at(EA_C),
 litpool_symbolic_operand(LitPoolAddr2,DataAccessSize,Symbol1,Symbol2,EA_D,Reg3,SymSize):-
-    symbol_minus_symbol_candidate(_,_,_,Symbol1,1,_,EA_C,Reg1,_),
+    symbol_minus_symbol_litpool_access_pattern(_,_,_,Symbol1,1,_,EA_C,Reg1,_),
 
     def_used(EA_C,Reg1,EA_D,_),
 
@@ -1087,7 +1089,7 @@ symbolic_data(LitPoolAddr,SymSize,Got_entry):-
     ).
 
 data_object_candidate(LitPoolAddr,Size,"symbol-symbol"):-
-    symbol_minus_symbol_candidate(LitPoolAddr,Size,_,_,_,_,_,_,_).
+    symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,_,_,_,_,_,_,_).
 
 must_access_data(EA,Dest):-
     litpool_ref(EA,_,Dest,_,"LDR");

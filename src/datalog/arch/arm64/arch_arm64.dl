@@ -120,6 +120,18 @@ halt_operation("HLT").
 
 cmp_operation("CMP").
 
+// On ARM64, capstone doesn't provide the operand size. The ddisasm decoder
+// assumes all operands are 32-bit. Anything else must be defined here.
+operation_size_exception(EA,1,Size):-
+    instruction(EA,_,_,Operation,Op,_,_,_,_,_),
+    op_indirect(Op,_,_,_,_,_,_),
+    (
+        substr(Operation,0,4) = "LDRB", Size = 1;
+        substr(Operation,0,5) = "LDRSB", Size = 1;
+        substr(Operation,0,4) = "LDRH", Size = 2;
+        substr(Operation,0,5) = "LDRSH", Size = 2
+    ).
+
 // ADD reg, reg, #imm
 reg_arithmetic_operation(EA,Dst,Src,1,Immediate):-
     instruction(EA,_,_,"ADD",Op1,Op2,Op3,0,_,_),
@@ -128,18 +140,19 @@ reg_arithmetic_operation(EA,Dst,Src,1,Immediate):-
     op_regdirect_contains_reg(Op3,Dst).
 
 // ADD reg, reg, reg
-reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,1,0):-
-    instruction(EA,_,_,"ADD",Op1,Op2,Op3,0,_,_),
+reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,Sign*Mult,0):-
+    instruction(EA,_,_,Operand,Op1,Op2,Op3,0,_,_),
+    (
+        Operand = "ADD", Sign = 1;
+        Operand = "SUB", Sign = -1
+    ),
     op_regdirect_contains_reg(Op1,Src1),
     op_regdirect_contains_reg(Op2,Src2),
-    op_regdirect_contains_reg(Op3,Dst).
-
-// SUB reg, reg, reg
-reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,-1,0):-
-    instruction(EA,_,_,"SUB",Op1,Op2,Op3,0,_,_),
-    op_regdirect_contains_reg(Op1,Src1),
-    op_regdirect_contains_reg(Op2,Src2),
-    op_regdirect_contains_reg(Op3,Dst).
+    op_regdirect_contains_reg(Op3,Dst),
+    (
+        op_shifted(EA,3,Shift,"LSL"), Mult=2^as(Shift,number);
+        !op_shifted(EA,3,_,_), Mult = 1
+    ).
 
 inferred_main_in_reg(EA,"X0"):-
     inferred_main_dispatch(EA).

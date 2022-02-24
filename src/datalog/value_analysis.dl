@@ -79,8 +79,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
 
 reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
     (
-        arch.frame_pointer(Base)
-        ;
+        arch.frame_pointer(Base);
         arch.stack_pointer(Base)
     ),
     def_used(StackFrameDefinedAt,Base,EA,_),
@@ -95,8 +94,7 @@ reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
 
 reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
     (
-        arch.frame_pointer(Base)
-        ;
+        arch.frame_pointer(Base);
         arch.stack_pointer(Base)
     ),
     def_used(StackFrameDefinedAt,Base,EA,_),
@@ -106,14 +104,27 @@ reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
     instruction_get_dest_op(EA,_,DestOp),
     op_regdirect_contains_reg(DestOp,Reg).
 
-
 // Register saved and loaded from stack
 // This is flow insensitive but we make sure that the load and store
 // refer to the same stack frame, identified by the address where RBP is defined.
-value_reg_edge(EALoad,Reg,EAPrev,Reg,1,0):-
-    reg_stored_in_stack(EAStore,Reg,StackPos, StackFrameDefinedAt),
-    reg_loaded_from_stack(EALoad,Reg,_,StackPos, StackFrameDefinedAt),
-    def_used(EAPrev,Reg,EAStore,_).
+value_reg_edge(EALoad,Reg2,EAPrev,Reg1,1,0):-
+    reg_stored_in_stack(EAStore,Reg1,StackPos, StackFrameDefinedAt),
+    reg_loaded_from_stack(EALoad,Reg2,_,StackPos, StackFrameDefinedAt),
+    def_used(EAPrev,Reg1,EAStore,_).
+
+// Register saved in previous frame and loaded from the next.
+// e.g.:
+//   sub ESP,12                   PrevStackFrame
+//   ...
+//   mov DWORD PTR [ESP+8],EAX    Store
+//   ...
+//   sub ESP,8                    NextStackFrame
+//   mov EBX,DWORD PTR [ESP+16]   Load
+value_reg_edge(EA,Reg2,From,Reg1,1,0):-
+    reg_loaded_from_stack(EA,Reg2,Base,StackPos,NextStackFrame),
+    value_reg(NextStackFrame,Base,PrevStackFrame,Base,1,Immediate,_),
+    reg_stored_in_stack(Store,Reg1,StackPos+Immediate,PrevStackFrame),
+    def_used(From,Reg1,Store,_).
 
 // mov DWORD from memory
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
@@ -166,6 +177,9 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
     op_regdirect_contains_reg(Op2,Reg),
     Address = as(Offset,number).
 
+value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
+    arch.pc_relative_addr(EA,Reg,Val).
+
 //mov reg reg_origin
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
     def_used_for_address(EA_prev,Reg_origin),
@@ -196,7 +210,10 @@ value_reg_edge(EA,Dst,EA_prev,Src,Mult,Immediate):-
 // Load a register from a non-constant memory address
 value_reg_unsupported(EA,Reg):-
     def_used_for_address(EA,Reg),
-    arch.mov(EA),
+    (
+        arch.mov(EA);
+        instruction_get_operation(EA,Operation), arch.load_operation(Operation)
+    ),
     instruction(EA,_,_,_,Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg),
     op_indirect(Op1,_,RegBase,RegIndex,_,_,_),
@@ -238,6 +255,10 @@ value_reg(EA,Reg,EA,"NONE",Mult,Immediate,1):-
 value_reg(EA,Reg,EA,Reg,1,0,1):-
     def_used_for_address(EA,Reg),
     value_reg_unsupported(EA,Reg).
+
+value_reg(EA,Reg,EA,Reg,1,0,1):-
+    arch.stack_pointer(Reg),
+    value_reg_edge(_,Reg,EA,Reg,1,_).
 
 // possible loop
 value_reg(EA,Reg,EA_from,"Unknown",Immediate,Base,Steps+1):-
@@ -289,10 +310,6 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult*Mult2,Offset+Offset1+Offset2*Mult,Steps3
     EA != EA_third,
     Reg3 != "NONE",
     Steps2+2 < StepLimit,
-    // this is an empirical restriction. There is no logical problem
-    // with having a negative multiplier but it appears in cases
-    // where it leads to false positives.
-    Mult >= 0,
     Steps3 = max(Steps1,Steps2)+2.
 
 // the other register constains a constant.

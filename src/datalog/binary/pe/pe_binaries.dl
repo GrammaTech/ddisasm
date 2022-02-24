@@ -345,7 +345,7 @@ labeled_data_candidate(EA):-
 
 .decl base_relative_symbolic_data(EA:address,Size:unsigned,Value:address)
 
-symbol_minus_symbol_jump_table(EA,TableStart,4,ImageBase,ImageBase+Val,"first",1,0),
+symbol_minus_symbol_jump_table(EA,TableStart,4,ImageBase,ImageBase+Val,1,0),
 base_relative_symbolic_data(EA,4,Val):-
     base_relative_address(EA,TableStart,Val),
     base_address(ImageBase),
@@ -538,7 +538,7 @@ relative_address(EA+1,1,IndexTable,AddressTable,Dest,"first"):-
     possible_ea(ImageBase+as(Word,unsigned)),
     !relative_address_start(EA+1,_,_,_,_).
 
-symbol_minus_symbol_jump_table(EA,TableStart,1,Ref,Dest,"first",4,0):-
+symbol_minus_symbol_jump_table(EA,TableStart,1,Ref,Dest,4,0):-
     // Byte offsets reference a preceding relative address table.
     relative_address(EA,1,TableStart,Ref,Dest,"first"), Dest < TableStart,
     relative_address_start(Ref,4,_,_,_),
@@ -579,13 +579,12 @@ moved_data_label(EA+Disp_offset,Size,ImageBase+Dest,NewDest):-
     address_in_data_refined_range.overlap(ImageBase+Dest,Pt_size,NewDest),
     symbolic_data(NewDest,_,_).
 
-jump_table_start(EA_jump,4,TableStart,TableReference,Operation):-
+jump_table_start(EA_jump,4,TableStart,TableReference,1):-
     base_address(ImageBase),
     base_relative_jump(EA_base,EA_jump),
     base_relative_operand(EA_base,_,Value),
     TableStart=ImageBase+Value,
-    TableReference=ImageBase,
-    Operation="ADD".
+    TableReference=ImageBase.
 
 // Find the simplest form of jump table.
 //   i.e.  jmp dword ptr [REG*4 + TableStart]

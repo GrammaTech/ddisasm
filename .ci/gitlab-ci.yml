@@ -393,6 +393,8 @@ test-make-install:
     - for pkg in gtirb gtirb-pprinter capstone; do unzip $pkg.zip; done
     # Install gtirb, pprinter, and capstone
     - dpkg -i libcapstone-dev.deb libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
+    # Install gtirb python API
+    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
     - cd build && make -t && make install
     - cd .. && PYTHONPATH=$PYTHONPATH:$(pwd)/tests python3 -m unittest end2end_test.TestExamples.test_1
 

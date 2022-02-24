@@ -92,12 +92,7 @@ resolved_jump(EA,Dest):-
 // Symbol-Symbol jump tables
 resolved_jump(EA,Dest):-
     jump_table_start(EA,Size,TableStart,_,_),
-    symbol_minus_symbol_jump_table(DataAddress,TableStart,Size,Symbol1,Symbol2,Reference,1,0),
-    symbol_minus_symbol(DataAddress,Size,Symbol1,Symbol2,1,0),
-    (
-        Reference = "first", Dest = Symbol2;
-        Reference = "second", Dest = Symbol1
-    ).
+    symbol_minus_symbol_jump_table(_,TableStart,Size,_,Dest,_,_).
 
 resolved_jump(Src,Dest):-
     jump_table_candidate_refined(Src,_,Dest).
@@ -125,6 +120,7 @@ cfg_edge(Src,Dest,"false","false","call"):-
         direct_call_resolved(EA,Dest);
         pc_relative_call(EA,Dest)
     ),
+    !pc_load_call(EA,_),
     refined_block(Dest).
 
 cfg_edge(Src,Dest,"false","false","fallthrough"):-

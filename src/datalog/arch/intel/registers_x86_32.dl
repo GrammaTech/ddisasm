@@ -45,6 +45,9 @@ track_register("EDI","EDI").
 track_register("SI","ESI").
 track_register("ESI","ESI").
 
+track_register("SP","ESP").
+track_register("ESP","ESP").
+
 track_register("BP","EBP").
 track_register("EBP","EBP").
 

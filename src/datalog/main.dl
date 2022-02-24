@@ -155,6 +155,14 @@ This module:
         multiplier:number,offset:number,size_value:unsigned)
 .input op_indirect
 
+/**
+The operand identified by Index should be shifted.
+
+Used on ARM/ARM64, but not x86 or MIPS. Type is architecure-dependent.
+*/
+.decl op_shifted(EA:address,Index:unsigned,Shift:unsigned,Type:symbol)
+.input op_shifted
+
 // data from sections
 .decl data_byte(ea:address,value:unsigned)
 .input data_byte
@@ -344,9 +352,6 @@ pc_relative_operand(EA,Index,Dest):-
 
 split_load_operand(0,0,0):- false.
 
-.decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
-.output got_relative_operand
-
 .decl instruction_has_loop_prefix(EA:address)
 
 instruction_has_loop_prefix(EA):-
@@ -504,6 +509,25 @@ indirect_call(EA):-
     !pc_relative_call(EA,_),
     !direct_call_resolved(EA,_),
     !arch.return(EA).
+
+/**
+Identify edge case direct calls that are used to load the program counter and
+not as control-flow (e.g. call-to-pop sequences).
+*/
+.decl pc_load_call(Src:address,Dest:address)
+.output pc_load_call
+
+// TODO: Replace with platform-specific definition of direct_call.
+pc_load_call(Src,Dest):-
+    (
+        binary_isa("X86");
+        binary_isa("X64")
+    ),
+    // CALL pushes program counter to stack,
+    direct_call(Src,Dest),
+    // POP loads program counter from the stack.
+    next(Src,Dest),
+    instruction_get_operation(Dest,"POP").
 
 .decl halt(EA:address)
 
@@ -715,16 +739,6 @@ no_return_call(EA):-
 is_padding(EA):-
     arch.is_nop(EA).
 
-// The functions and data-objects that are intrinsic to the compiler's ABI -
-// artifacts of compilation that are not explicit features of the source and
-// will likely be reintroduced by the compiler toolchain.
-.decl abi_intrinsic(EA:address,Name:symbol)
-.output abi_intrinsic
-
-// TODO: Abstract relation for target platforms.
-got_relative_operand(0,0,0):-
-    false.
-
 /**
 The set of printable ASCII characters.
 */
@@ -736,3 +750,11 @@ printable_char(0xC).
 printable_char(0xD).
 printable_char(N):-
     N = range(0x20,0x7E+1,1).
+
+/*
+The functions and data-objects that are intrinsic to the compiler's ABI -
+artifacts of compilation that are not explicit features of the source and
+will likely be reintroduced by the compiler toolchain.
+*/
+.decl abi_intrinsic(EA:address,Name:symbol)
+.output abi_intrinsic

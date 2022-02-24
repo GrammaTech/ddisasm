@@ -51,7 +51,7 @@ def compatible_test(config, test):
 class TestExamples(unittest.TestCase):
     def setUp(self):
         self.configs = Path("./tests/").glob("*.yaml")
-        if __name__ == "__main__":
+        if __name__ == "__main__" and sys.argv[1:]:
             self.configs = [
                 arg for arg in sys.argv[1:] if arg.endswith(".yaml")
             ]
@@ -98,6 +98,7 @@ class TestExamples(unittest.TestCase):
             "strip": config["test"].get("strip", False),
             "sstrip": config["test"].get("sstrip", False),
             "skip_test": config["test"].get("skip", False),
+            "check_cfg": config["test"].get("check_cfg", False),
             "exec_wrapper": config["test"].get("wrapper"),
             "arch": config.get("arch"),
             "extra_ddisasm_args": config.get("disassemble", {}).get(

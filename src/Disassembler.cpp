@@ -1296,6 +1296,15 @@ void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool se
         newComment << "hasImageBase(" << reg << ")";
         updateComment(module, comments, ea, newComment.str());
     }
+    for(auto &T : *prog->getRelation("reg_has_got"))
+    {
+        gtirb::Addr EA;
+        std::string Reg;
+        T >> EA >> Reg;
+        std::ostringstream Comment;
+        Comment << "GOT(" << Reg << ")";
+        updateComment(module, comments, EA, Comment.str());
+    }
     if(selfDiagnose)
     {
         for(auto &output : *prog->getRelation("false_positive"))

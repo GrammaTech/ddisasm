@@ -21,11 +21,12 @@ default: &default
     skip: false
 
   # Test configuration.
-  test:
+  test: &default-test
     wrapper: "qemu-aarch64 -L /usr/aarch64-linux-gnu"
     strip_exe: "aarch64-linux-gnu-strip"
     strip: false
     skip: false
+    check_cfg: true
 
 zero-one-two-three-optimize: &zero-one-two-three-optimize
   <<: *default
@@ -83,8 +84,17 @@ tests:
       flags: []
       skip: false
 
+    test:
+      <<: *default-test
+      # Don't check CFG on C++ binaries
+      check_cfg: false
+
   - name: ex_noreturn
     <<: *default
+    test:
+      <<: *default-test
+      # noreturn may result in unreachable code.
+      check_cfg: false
 
   - name: ex_pointerReatribution
     <<: *default
@@ -115,5 +125,22 @@ tests:
       flags: []
       skip: false
 
+    test:
+      <<: *default-test
+      # Don't check CFG on C++ binaries
+      check_cfg: false
+
   - name: ex_cond_branch
     <<: *assembly
+
+  - name: ex_registers
+    <<: *assembly
+
+  - name: ex_op_types
+    <<: *assembly
+    test:
+      # To include some of the operand types, we have to use instructions that
+      # we can't actually execute in userspace.
+      # Just make sure it disassembles and re-assembles without errors
+      <<: *default-test
+      skip: true
