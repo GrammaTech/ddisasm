@@ -149,6 +149,7 @@ invalid(EA,"arm: invalid pc"):-
 // PC-relative LDR
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     litpool_ref(EA,Reg,LitPoolAddr,Size,"LDR"),
+    !relocation(LitPoolAddr,_,_,_,_,_,_),
     data_word(LitPoolAddr,Size,Val).
 
 // ADR
@@ -427,7 +428,7 @@ where foo is a symbol relocated by GOT.
 */
 labeled_data_candidate(Dest),
 symbol_minus_symbol_candidate(Addr,Size,EA_add_pc,Dest,as(Scale,unsigned),Offset):-
-    data_access_pattern(Addr,Size,0,EABase),
+    litpool_ref(EABase,Reg,Addr,Size,_),
     def_used(EABase,Reg,EA_add_pc,_),
     arch.reg_reg_arithmetic_operation(EA_add_pc,Reg,Reg,PC,1,0),
     arch.pc_register(PC),
