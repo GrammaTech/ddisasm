@@ -25,162 +25,58 @@ Define a set predicates to abstract from ARM32 specific instruction set
 and characteristics
 */
 
-/*
- * LDR and STR instructions can have their operands encoded several different
- * ways, depending on which form of the instruction it is:
- *
- *      Op1      Op2      Op3      Op4
- * (1)  Indirect Rt
- * (2)  Indirect #offset  Rt
- * (3)  Indirect Rm       Rt
- * (4)  Rt2      Indirect Rt
- * (5)  Rt2      Indirect #offset  Rt
- * (6)  Rt2      Indirect Rm       Rt
- * (7)  Imm      Rt
- * (8)  Rt2      Imm      Rt
- *
- * Each is used for the following forms:
- * (1)
- *      LDR{type}{cond} Rt, [Rn {, #offset}]
- *      LDR{type}{cond} Rt, [Rn, #offset]!
- *      LDR{type}{cond} Rt, [Rn, ±Rm {, shift}]
- *      LDR{type}{cond} Rt, [Rn, ±Rm {, shift}]!
- * (2)
- *      LDR{type}{cond} Rt, [Rn], #offset
- * (3)
- *      LDR{type}{cond} Rt, [Rn], ±Rm {, shift}
- * (4)
- *      LDRD{cond} Rt, Rt2, [Rn {, #offset}]
- *      LDRD{cond} Rt, Rt2, [Rn, #offset]!
- *      LDRD{cond} Rt, Rt2, [Rn, ±Rm]
- *      LDRD{cond} Rt, Rt2, [Rn, ±Rm]!
- * (5)
- *      LDRD{cond} Rt, Rt2, [Rn], #offset
- * (6)
- *      LDRD{cond} Rt, Rt2, [Rn], ±Rm
- * (7)
- *      LDR Rt, label
- * (8)
- *      LDRD Rt, Rt2, label
- */
-.decl load_store_operands(EA:address, RtOp:operand_code, Rt2Op:operand_code, RmOp:operand_code, IndirectOp:operand_code, ImmOp:operand_code)
-
-// Basic mem operations: (1), (2), (3)
-load_store_operands(EA,RtOp,0,RmOp,Op1,ImmOp):-
-    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
-    (
-        contains("LDR", Operation);
-        contains("STR", Operation)
-    ),
-    op_indirect(Op1,_,_,_,_,_,_),
-    (
-        Op3 = 0, RmOp = 0, ImmOp = 0, RtOp = Op2;  // (1)
-        Op3 != 0, op_immediate(Op2,_), RmOp = 0, ImmOp = Op2, RtOp = Op3; // (2)
-        Op3 != 0, op_regdirect(Op2,_), RmOp = Op2, ImmOp = 0, RtOp = Op3  // (3)
-    ),
-    op_regdirect(RtOp,_).
-
-// Doubleword mem operations: (4), (5), (6)
-load_store_operands(EA,RtOp,Op1,RmOp,Op2,ImmOp):-
-    instruction(EA,_,_,Operation,Op1,Op2,Op3,Op4,_,_),
-    (
-        contains("LDRD", Operation);
-        contains("LDREXD", Operation);
-        contains("STRD", Operation)
-    ),
-    op_regdirect(Op1,_),
-    op_indirect(Op2,_,_,_,_,_,_),
-    (
-        Op4 = 0, RmOp = 0, ImmOp = 0, RtOp = Op3;  // (4)
-        Op4 != 0, op_immediate(Op3,_), RmOp = 0, ImmOp = Op3, RtOp = Op4; // (5)
-        Op4 != 0, op_regdirect(Op3,_), RmOp = Op3, ImmOp = 0, RtOp = Op4  // (6)
-    ),
-    op_regdirect(RtOp,_).
-
-// Relative: (7)
-load_store_operands(EA,Op2,0,0,0,Op1):-
-    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
-    (
-        contains("LDR", Operation);
-        contains("STR", Operation)
-    ),
-    op_immediate(Op1,_),
-    op_regdirect(Op2,_).
-
-// Doubleword Relative: (8)
-load_store_operands(EA,Op3,Op1,0,0,Op2):-
-    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
-    (
-        contains("LDR", Operation);
-        contains("STR", Operation)
-    ),
-    op_regdirect(Op1,_),
-    op_immediate(Op2,_),
-    op_regdirect(Op3,_).
-
 // doubleword operations require an even,odd pair of registers, e.g., r2,r3
 // Rt2 isn't really encoded in the instruction, it's derived from Rt, so we
 // just need to ensure Rt is even.
 invalid(EA,"arm: doubleword op Rt is odd"):-
-    load_store_operands(EA,RtOp,Rt2Op,_,_,_),
+    arch.memory_access(_,EA,_,_,Rt,_,_,_,Offset), // memory access for Rt
+    arch.memory_access(_,EA,_,_,_,_,_,_,Offset2), // memory access for Rt2
+    Offset < Offset2,
+    instruction_get_operation(EA,Operation),
+    OperationRoot = substr(Operation,0,4),
+    (
+        OperationRoot = "LDRD";
+        OperationRoot = "STRD"
+    ),
     (EA band 1) = 0, // ARM mode only
-    Rt2Op != 0,
-    op_regdirect_contains_reg(RtOp,Rt),
     (
         arch.reg_index(Rt,Index), (Index band 1) = 1;  // If Rt is odd, the instruction is invalid.
         Rt = "LR"                                      // If Rt is LR, the instruction is invalid.
     ).
 
+// For T32 instructions, you must not specify SP or PC for either Rt or Rt2.
 // LDRD Rt, Rt2, [Rn]
 // LDRD Rt, Rt2, [Rn], #offset
 invalid(EA,"thumb: doubleword op registers invalid"):-
-    load_store_operands(EA,RtOp,Rt2Op,_,_,_),
+    arch.memory_access(_,EA,_,_,Rt,_,_,_,_),
     (EA band 1) = 1, // Thumb mode only
-    Rt2Op != 0,
-    op_regdirect_contains_reg(RtOp,Rt),
-    op_regdirect_contains_reg(Rt2Op,Rt2),
+    instruction_get_operation(EA,Operation),
+    substr(Operation,0,4) = "LDRD",
     (
-        Rt = "SP", Rt2 = Rt2;
-        Rt = "PC", Rt2 = Rt2;
-        Rt2 = "SP", Rt = Rt;
-        Rt2 = "PC", Rt = Rt
+        Rt = "SP";
+        Rt = "PC"
     ).
 
+// Applies to all of STR,LDR,STRD,LDRD
 invalid(EA,"arm: pre/post-index disallows Rt[2] eq Rn"):-
-    load_store_operands(EA,RtOp,Rt2Op,RmOp,IndirectOp,ImmOp),
-    (
-        RmOp != 0, ImmOp = 0;                           // post-index (register offset)
-        ImmOp != 0, RmOp = 0;                           // post-index (immediate offset)
-        instruction_writeback(EA), RmOp = 0, ImmOp = 0  // pre-index
-    ),
-    (
-        NotRnOp = RtOp, Rt2Op = 0;               // in single word instruction Rt != Rn
-        NotRnOp = Rt2Op, Rt2Op != 0, RtOp = RtOp // in doubleword instructions, Rt2 != Rn
-    ),
-    op_indirect(IndirectOp,"NONE",Rn,_,_,_,_),
-    op_regdirect_contains_reg(NotRnOp,NotRn),
-    Rn = NotRn.
+    // For LDRD operations, there will be an arch.memory_access for each of Rt
+    // and Rt2, so this rule will check both for conflict with Rn.
+    arch.memory_access(_,EA,_,_,Rt,Rn,_,_,_),
+    instruction_writeback(EA),
+    Rt = Rn.
 
 // Rm must be different from Rt and Rt2 in LDRD instructions.
 // LDRD{cond} Rt, Rt2, [Rn], ±Rm
-invalid(EA,"arm: doubleword rm/rt conflict"):-
-    load_store_operands(EA,RtOp,Rt2Op,RmOp,_,_),
-    (EA band 1) = 0, // ARM mode only
-    RtOp != 0, Rt2Op != 0, RmOp !=0,
-    (RmOp = RtOp; RmOp = Rt2Op).
-
-// Rm must be different from Rt and Rt2 in LDRD instructions.
 // LDRD{cond} Rt, Rt2, [Rn, ±Rm]
 // LDRD{cond} Rt, Rt2, [Rn, ±Rm]!
 invalid(EA,"arm: doubleword rm/rt conflict"):-
-    load_store_operands(EA,RtOp,Rt2Op,0,IndirectOp,_),
+    arch.memory_access(_,EA,_,_,Rt,_,Rm,_,_),
     (EA band 1) = 0, // ARM mode only
-    RtOp != 0, Rt2Op != 0,
-    op_indirect(IndirectOp,"NONE",_,Rm,_,_,_),
-    (
-        op_regdirect_contains_reg(RtOp, Rm);
-        op_regdirect_contains_reg(Rt2Op, Rm)
-    ).
+    instruction_get_operation(EA,Operation),
+    substr(Operation,0,4) = "LDRD",
+    // For LDRD operations, there will be an arch.memory_access for each of Rt
+    // and Rt2, so this rule will check both for conflict with Rm.
+    Rt = Rm.
 
 invalid(EA,"arm: pc is not allowed"):-
     instruction_get_operation(EA,Operation),

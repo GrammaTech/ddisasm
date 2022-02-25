@@ -597,6 +597,23 @@ op_regdirect_contains_reg(Op,Reg_uniform):-
     ),
     arch.track_register(Reg,Reg_uniform).
 
+/**
+Get the canonical name for a register, if there is one. Otherwise, use the
+register name as-is.
+*/
+.decl canonical_reg(Raw:register,Reg:register) inline
+
+canonical_reg(Raw,Reg):-
+    (
+        arch.track_register(Raw,Reg);
+        !arch.track_register(Raw,Reg), Reg = Raw
+    ).
+
+.decl op_regdirect_canonical(Op:operand_code,Reg:register)
+
+op_regdirect_canonical(Op,Reg):-
+    op_regdirect(Op,Raw),
+    canonical_reg(Raw,Reg).
 
 // The instruction at EA has operation Operation and two operands: a register Reg and an immediate Immediate
 .decl op_immediate_and_reg(EA:address,Operation:symbol,Reg:register,Imm_index:operand_index,Immediate:number)

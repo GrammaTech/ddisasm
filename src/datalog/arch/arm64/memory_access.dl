@@ -25,19 +25,6 @@ This module provides implements architecture-independent load and store
 relations for ARM64.
 */
 
-/**
-If it's a tracked register, use the standardized name. Otherwise, use the
-register as-is.
-*/
-.decl op_regdirect_standardize_tracked(Op:operand_code,Reg:register) inline
-
-op_regdirect_standardize_tracked(Op,Reg):-
-    op_regdirect(Op,RawReg),
-    (
-        arch.track_register(RawReg,Reg);
-        !arch.track_register(RawReg,Reg), Reg = RawReg
-    ).
-
 // immediate - post-index
 // LDR <Wt>, [<Xn|SP>], #<simm>
 // STR <Wt>, [<Xn|SP>], #<simm>
@@ -53,7 +40,7 @@ reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
     ),
     op_indirect(Op1,"NONE",BaseReg,"NONE",_,0,_),
     op_immediate(Op2,Offset),
-    op_regdirect_standardize_tracked(Op3,ValReg).
+    op_regdirect_canonical(Op3,ValReg).
 
 // immediate - pre-index / writeback
 // LDR <Wt>, [<Xn|SP>, #<pimm>]
@@ -67,7 +54,7 @@ reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
         substr(Operation,0,3) = "STR", AccessType = "STORE", SrcIndex = 2, DstIndex = 1
     ),
     op_indirect(Op1,"NONE",BaseReg,"NONE",_,Offset,_),
-    op_regdirect_standardize_tracked(Op2,ValReg).
+    op_regdirect_canonical(Op2,ValReg).
 
 // immediate
 // LDR <Wt>, [<Xn|SP>, #<pimm>]
@@ -80,7 +67,7 @@ memory_access(AccessType,EA,SrcIndex,DstIndex,ValReg,BaseReg,"NONE",0,Offset):-
         substr(Operation,0,3) = "STR", AccessType = "STORE", SrcIndex = 2, DstIndex = 1
     ),
     op_indirect(Op1,"NONE",BaseReg,"NONE",_,Offset,_),
-    op_regdirect_standardize_tracked(Op2,ValReg).
+    op_regdirect_canonical(Op2,ValReg).
 
 // LDR (literal)
 // LDR <Xt>, <label>
@@ -89,7 +76,7 @@ memory_access("LOAD",EA,1,2,DstReg,"NONE","NONE",0,Immediate):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     substr(Operation,0,3) = "LDR",
     op_immediate(Op1,Immediate),
-    op_regdirect_standardize_tracked(Op2,DstReg).
+    op_regdirect_canonical(Op2,DstReg).
 
 // LDR (register)
 // LDR <Wt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
@@ -101,7 +88,7 @@ memory_access(AccessType,EA,SrcIndex,DstIndex,ValReg,BaseReg,IndexReg,Mult,0):-
         substr(Operation,0,3) = "STR", AccessType = "STORE", SrcIndex = 2, DstIndex = 1
     ),
     op_indirect(Op1,"NONE",BaseReg,IndexReg,Mult,0,_),
-    op_regdirect_standardize_tracked(Op2,ValReg).
+    op_regdirect_canonical(Op2,ValReg).
 
 // pair post-index
 // LDP <Wt1>, <Wt2>, [<Xn|SP>], #<imm>
@@ -117,18 +104,18 @@ reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
         substr(Operation,0,3) = "STP", AccessType = "STORE",
             SrcIndex1 = 1, SrcIndex2 = 4, DstIndex1 = 2, DstIndex2 = 2
     ),
-    op_regdirect_contains_reg(Op1,ValReg2),
+    op_regdirect_canonical(Op1,ValReg2),
     op_indirect(Op2,"NONE",BaseReg,"NONE",_,0,_),
     op_immediate(Op3,Offset),
-    op_regdirect_contains_reg(Op4,ValReg1),
+    op_regdirect_canonical(Op4,ValReg1),
     op_regdirect(Op1,ValReg),
     register_size_bits(ValReg,SizeBits).
 
 // pair pre-index
 // LDP <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]! (pre-index)
 // STP <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]!
-memory_access(AccessType,EA,SrcIndex1,DstIndex1,DstReg1,BaseReg,"NONE",0,Offset),
-memory_access(AccessType,EA,SrcIndex2,DstIndex2,DstReg2,BaseReg,"NONE",0,Offset+as(SizeBits/8,number)),
+memory_access(AccessType,EA,SrcIndex1,DstIndex1,ValReg1,BaseReg,"NONE",0,Offset),
+memory_access(AccessType,EA,SrcIndex2,DstIndex2,ValReg2,BaseReg,"NONE",0,Offset+as(SizeBits/8,number)),
 reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     instruction_writeback(EA),
@@ -138,17 +125,17 @@ reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
         substr(Operation,0,3) = "STP", AccessType = "STORE",
             SrcIndex1 = 1, SrcIndex2 = 3, DstIndex1 = 2, DstIndex2 = 2
     ),
-    op_regdirect_contains_reg(Op1,DstReg2),
+    op_regdirect_canonical(Op1,ValReg2),
     op_indirect(Op2,"NONE",BaseReg,"NONE",_,Offset,_),
-    op_regdirect_contains_reg(Op3,DstReg1),
+    op_regdirect_canonical(Op3,ValReg1),
     op_regdirect(Op1,DstReg),
     register_size_bits(DstReg,SizeBits).
 
 // pair (no writeback)
 // LDP <Wt1>, <Wt2>, [<Xn|SP>{, #<imm>}]
 // STP <Wt1>, <Wt2>, [<Xn|SP>{, #<imm>}]
-memory_access(AccessType,EA,SrcIndex1,DstIndex1,DstReg1,BaseReg,"NONE",0,Offset),
-memory_access(AccessType,EA,SrcIndex2,DstIndex2,DstReg2,BaseReg,"NONE",0,Offset+as(SizeBits/8,number)):-
+memory_access(AccessType,EA,SrcIndex1,DstIndex1,ValReg1,BaseReg,"NONE",0,Offset),
+memory_access(AccessType,EA,SrcIndex2,DstIndex2,ValReg2,BaseReg,"NONE",0,Offset+as(SizeBits/8,number)):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     !instruction_writeback(EA),
     (
@@ -157,8 +144,8 @@ memory_access(AccessType,EA,SrcIndex2,DstIndex2,DstReg2,BaseReg,"NONE",0,Offset+
         substr(Operation,0,3) = "STP", AccessType = "STORE",
             SrcIndex1 = 1, SrcIndex2 = 3, DstIndex1 = 2, DstIndex2 = 2
     ),
-    op_regdirect_contains_reg(Op1,DstReg2),
+    op_regdirect_canonical(Op1,ValReg2),
     op_indirect(Op2,"NONE",BaseReg,"NONE",_,Offset,_),
-    op_regdirect_contains_reg(Op3,DstReg1),
+    op_regdirect_canonical(Op3,ValReg1),
     op_regdirect(Op1,DstReg),
     register_size_bits(DstReg,SizeBits).
