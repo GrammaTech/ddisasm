@@ -971,12 +971,11 @@ symbolic_expr_symbol_minus_symbol(EA,Size,SymbolName1,SymbolName2,Scale,FinalOff
     ),
     best_symexpr_symbol(NewSymbol1,SymbolName1,"Beg"),
     (
-        boundary_label(EA,_,_),
-        best_symexpr_symbol(NewSymbol2,SymbolName2,"End")
+        boundary_sym_expr(EA,NewSymbol2), Symbol2Loc = "End"
         ;
-        !boundary_label(EA,_,_),
-        best_symexpr_symbol(NewSymbol2,SymbolName2,"Beg")
-    ).
+        !boundary_sym_expr(EA,NewSymbol2), Symbol2Loc = "Beg"
+    ),
+    best_symexpr_symbol(NewSymbol2,SymbolName2,Symbol2Loc).
 
 // Symbolic operands
 symbolic_expr(EA+InstrOffset,Size,SymbolName,Offset):-
@@ -1001,7 +1000,13 @@ symbolic_expr(EA+InstrOffset,Size,SymbolName,0):-
     !symbolic_expr_from_relocation(EA+InstrOffset,_,_,_),
     !symbol_minus_symbol_from_relocation(EA+InstrOffset,_,_,_,_,_),
     !symbol_minus_symbol(EA+InstrOffset,_,_,_,_,_),
-    best_symexpr_symbol(Dest,SymbolName,"Beg").
+    (
+        boundary_sym_expr(EA+InstrOffset,Dest), SymbolLoc = "End"
+        ;
+        !boundary_sym_expr(EA+InstrOffset,Dest), SymbolLoc = "Beg"
+    ),
+    best_symexpr_symbol(Dest,SymbolName,SymbolLoc).
+
 
 // Symbolic data
 symbolic_expr(EA,Size,SymbolName,Offset):-
@@ -1018,7 +1023,12 @@ symbolic_expr(EA,Size,SymbolName,0):-
     !symbol_minus_symbol_from_relocation(EA,_,_,_,_,_),
     !symbol_minus_symbol(EA,_,_,_,_,_),
     !moved_data_label(EA,_,_,_),
-    best_symexpr_symbol(Dest,SymbolName,"Beg").
+    (
+        boundary_sym_expr(EA,Dest), SymbolLoc = "End"
+        ;
+        !boundary_sym_expr(EA,Dest), SymbolLoc = "Beg"
+    ),
+    best_symexpr_symbol(Dest,SymbolName,SymbolLoc).
 
 
 symbolic_expr_attribute(EA+InstrOffset,Attr):-
