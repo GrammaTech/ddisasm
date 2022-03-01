@@ -183,7 +183,7 @@ best_symexpr_symbol(EA,SymbolName,"Beg"):-
 inferred_symbol(EA,SymbolName,"LOCAL","NONE","End"),
 best_symexpr_symbol(EA,SymbolName,"End"):-
     labeled_ea(EA),
-    boundary_label(_,_,EA),
+    boundary_sym_expr(_,EA),
     !symbol_score(EA,_,_,"End",_),
     // TODO: Inferred symbols are converted to hex in the C++.
     // A better solution would be to define a user-defined functor.
