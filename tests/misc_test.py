@@ -287,8 +287,8 @@ class SymbolSelectionTests(unittest.TestCase):
         with symbol 'block_name' points to a symbol with
         name 'target_name'
         """
-        sym = [s for s in m.symbols if s.name == block_name][0]
-        assert isinstance(sym.referent, gtirb.CodeBlock)
+        sym = next(s for s in m.symbols if s.name == block_name)
+        self.assertIsInstance(sym.referent, gtirb.CodeBlock)
         block = sym.referent
         sexpr = sorted(
             [

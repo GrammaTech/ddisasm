@@ -53,15 +53,15 @@ compute an address but this is also no enough.
 */
 
 /**
-A symbolic expression at address `EA` pointing to `Dest` should use a
-symbol pointing to `NewDest` plus an offset . The offset is NewDest-Dest.
+A symbolic expression at address 'EA' pointing to 'Dest' should use a
+symbol pointing to 'NewDest' plus an offset . The offset is NewDest-Dest.
 */
 .decl moved_data_label(EA:address,Size:unsigned,Dest:address,NewDest:address)
 .output moved_data_label
 
 /**
-A symbolic operand at address `EA` with index `Index` and pointing to `Dest`
-should use a symbol pointing to `NewDest` plus an offset.
+A symbolic operand at address 'EA' with index 'Index' and pointing to 'Dest'
+should use a symbol pointing to 'NewDest' plus an offset.
 The offset is NewDest-Dest.
 */
 .decl moved_label(EA:address,Index:operand_index,Dest:address,NewDest:address)
@@ -69,8 +69,8 @@ The offset is NewDest-Dest.
 
 
 /**
-The symbolic expression at address `EA` pointing to `Dest` should
-point to an `at-end` symbol.
+The symbolic expression at address 'EA' pointing to 'Dest' should
+point to an 'at-end' symbol.
 */
 .decl boundary_sym_expr(EA:address,Dest:address)
 
