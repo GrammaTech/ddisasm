@@ -52,11 +52,27 @@ compute an address but this is also no enough.
 
 */
 
+/**
+A symbolic expression at address 'EA' pointing to 'Dest' should use a
+symbol pointing to 'NewDest' plus an offset . The offset is NewDest-Dest.
+*/
 .decl moved_data_label(EA:address,Size:unsigned,Dest:address,NewDest:address)
 .output moved_data_label
 
-.decl moved_label(EA:address,Index:operand_index,Val:address,New_val:address)
+/**
+A symbolic operand at address 'EA' with index 'Index' and pointing to 'Dest'
+should use a symbol pointing to 'NewDest' plus an offset.
+The offset is NewDest-Dest.
+*/
+.decl moved_label(EA:address,Index:operand_index,Dest:address,NewDest:address)
 .output moved_label
+
+
+/**
+The symbolic expression at address 'EA' pointing to 'Dest' should
+point to an 'at-end' symbol.
+*/
+.decl boundary_sym_expr(EA:address,Dest:address)
 
 // this predicate is just for debugging purposes
 .decl moved_label_class(EA:address,Index:operand_index,Reason:symbol)
@@ -503,3 +519,18 @@ moved_label(EA,Op_index,Dest,ImageBase):-
     base_address(ImageBase),
     symbolic_operand(EA,Op_index,Dest,"data"),
     Dest >= ImageBase, Dest <= ImageBase + 1024.
+
+
+////////////////////////////////////////////////////////////////////////////
+// Symbolic expressions that should be pointing at the end of sections
+
+
+boundary_sym_expr(EA+InstrOffset,Dest):-
+    symbolic_operand(EA,Index,Dest,"data"),
+    instruction_immediate_offset(EA,Index,InstrOffset,_),
+    // The immediate is the start of a loop counting down
+    mov_immediate_to_reg(EA,_,Index,as(Dest,number)),
+    value_reg(_,_,EA,"Unknown",Mult,_,_), Mult < 0,
+    //  At the boundary between two sections
+    section(_,_,Dest),
+    section(_,Size,Addr), Addr+Size = Dest.
