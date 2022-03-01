@@ -69,10 +69,8 @@ memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,Rm,Mult,Offset):-
         load_operation(Operation), AccessType = "LOAD", SrcIdx = 1, DstIdx = 2;
         store_operation(Operation), AccessType = "STORE", SrcIdx = 2, DstIdx = 1
     ),
-    op_regdirect_canonical(Op2,Rt),
-    op_indirect(Op1,_,RawRn,RawRm,Mult,Offset,_),
-    canonical_reg(RawRn,Rn),
-    canonical_reg(RawRm,Rm).
+    op_regdirect(Op2,Rt),
+    op_indirect(Op1,_,Rn,Rm,Mult,Offset,_).
 
 // Post-index immediate (2)
 memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,"NONE",0,0),
@@ -82,10 +80,9 @@ reg_arithmetic_operation(EA,Rn,Rn,1,Offset):-
         load_operation(Operation), AccessType = "LOAD", SrcIdx = 1, DstIdx = 3;
         store_operation(Operation), AccessType = "STORE", SrcIdx = 3, DstIdx = 1
     ),
-    op_regdirect_canonical(Op3,Rt),
+    op_regdirect(Op3,Rt),
     instruction_writeback(EA),
-    op_indirect(Op1,_,RawRn,"NONE",_,0,_),
-    canonical_reg(RawRn,Rn),
+    op_indirect(Op1,_,Rn,"NONE",_,0,_),
     op_immediate(Op2,Offset).
 
 // Post-index register (3)
@@ -96,11 +93,10 @@ reg_reg_arithmetic_operation(EA,Rn,Rn,Rm,1,0):-
         load_operation(Operation), AccessType = "LOAD", SrcIdx = 1, DstIdx = 3;
         store_operation(Operation), AccessType = "STORE", SrcIdx = 3, DstIdx = 1
     ),
-    op_regdirect_canonical(Op3,Rt),
+    op_regdirect(Op3,Rt),
     instruction_writeback(EA),
-    op_indirect(Op1,_,RawRn,"NONE",_,0,_),
-    canonical_reg(RawRn,Rn),
-    op_regdirect_canonical(Op2,Rm).
+    op_indirect(Op1,_,Rn,"NONE",_,0,_),
+    op_regdirect(Op2,Rm).
 
 
 // Doubleword operations
@@ -113,11 +109,9 @@ memory_access(AccessType,EA,SrcIdx2,DstIdx2,Rt2,Rn,Rm,Mult,Offset+4):-
         load_operation(Operation), AccessType = "LOAD", SrcIdx1 = 2, SrcIdx2 = 2, DstIdx1 = 3, DstIdx2 = 1;
         store_operation(Operation), AccessType = "STORE", SrcIdx1 = 3, SrcIdx2 = 1, DstIdx1 = 2, DstIdx2 = 2
     ),
-    op_regdirect_canonical(Op3,Rt),
-    op_regdirect_canonical(Op1,Rt2),
-    op_indirect(Op2,_,RawRn,RawRm,Mult,Offset,_),
-    canonical_reg(RawRn,Rn),
-    canonical_reg(RawRm,Rm).
+    op_regdirect(Op3,Rt),
+    op_regdirect(Op1,Rt2),
+    op_indirect(Op2,_,Rn,Rm,Mult,Offset,_).
 
 // Post-index immediate (5)
 memory_access(AccessType,EA,SrcIdx1,DstIdx1,Rt,Rn,"NONE",0,0),
@@ -128,11 +122,10 @@ reg_arithmetic_operation(EA,Rn,Rn,1,Offset):-
         load_operation(Operation), AccessType = "LOAD", SrcIdx1 = 2, SrcIdx2 = 2, DstIdx1 = 4, DstIdx2 = 1;
         store_operation(Operation), AccessType = "STORE", SrcIdx1 = 4, SrcIdx2 = 1, DstIdx1 = 2, DstIdx2 = 2
     ),
-    op_regdirect_canonical(Op4,Rt),
-    op_regdirect_canonical(Op1,Rt2),
+    op_regdirect(Op4,Rt),
+    op_regdirect(Op1,Rt2),
     instruction_writeback(EA),
-    op_indirect(Op2,_,RawRn,"NONE",_,0,_),
-    canonical_reg(RawRn,Rn),
+    op_indirect(Op2,_,Rn,"NONE",_,0,_),
     op_immediate(Op3,Offset).
 
 // Post-index register (6)
@@ -144,12 +137,11 @@ reg_reg_arithmetic_operation(EA,Rn,Rn,Rm,1,0):-
         load_operation(Operation), AccessType = "LOAD", SrcIdx1 = 2, SrcIdx2 = 2, DstIdx1 = 4, DstIdx2 = 1;
         store_operation(Operation), AccessType = "STORE", SrcIdx1 = 4, SrcIdx2 = 1, DstIdx1 = 2, DstIdx2 = 2
     ),
-    op_regdirect_canonical(Op4,Rt),
-    op_regdirect_canonical(Op1,Rt2),
+    op_regdirect(Op4,Rt),
+    op_regdirect(Op1,Rt2),
     instruction_writeback(EA),
-    op_indirect(Op2,_,RawRn,"NONE",_,0,_),
-    canonical_reg(RawRn,Rn),
-    op_regdirect_canonical(Op3,Rm).
+    op_indirect(Op2,_,Rn,"NONE",_,0,_),
+    op_regdirect(Op3,Rm).
 
 
 // Generate arithmetic operations for pre-index writeback cases.
