@@ -282,6 +282,27 @@ class SymbolSelectionTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
+    def check_first_sym_expr(
+        self, m: gtirb.Module, block_name: str, target_name: str
+    ) -> None:
+        """
+        Check that the first Symexpr in a block identified
+        with symbol 'block_name' points to a symbol with
+        name 'target_name'
+        """
+        sym = [s for s in m.symbols if s.name == block_name][0]
+        assert isinstance(sym.referent, gtirb.CodeBlock)
+        block = sym.referent
+        sexpr = sorted(
+            [
+                t[1:]
+                for t in block.byte_interval.symbolic_expressions_at(
+                    range(block.address, block.address + block.size)
+                )
+            ]
+        )[0]
+        self.assertEqual(sexpr[1].symbol.name, target_name)
+
     def test_symbol_selection(self):
         """
         Test that the right symbols are chosen for relocations
@@ -296,32 +317,9 @@ class SymbolSelectionTests(unittest.TestCase):
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
 
-            # check chosen symbols for sym exprs
-            def check_first_sym_expr(
-                block_name: str, target_name: str
-            ) -> None:
-                """
-                Check that the first Symexpr in a block identified
-                with symbol 'block_name' points to a symbol with
-                name 'target_name'
-                """
-                sym = [s for s in m.symbols if s.name == block_name][0]
-                assert isinstance(sym.referent, gtirb.CodeBlock)
-
-                block = sym.referent
-                sexpr = sorted(
-                    [
-                        t[1:]
-                        for t in block.byte_interval.symbolic_expressions_at(
-                            range(block.address, block.address + block.size)
-                        )
-                    ]
-                )[0]
-                self.assertEqual(sexpr[1].symbol.name, target_name)
-
-            check_first_sym_expr("Block_hello", "hello_not_hidden")
-            check_first_sym_expr("Block_how", "how_global")
-            check_first_sym_expr("Block_bye", "bye_obj")
+            self.check_first_sym_expr(m, "Block_hello", "hello_not_hidden")
+            self.check_first_sym_expr(m, "Block_how", "how_global")
+            self.check_first_sym_expr(m, "Block_bye", "bye_obj")
 
             # check symbols at the end of sections
             syms = [
@@ -338,6 +336,21 @@ class SymbolSelectionTests(unittest.TestCase):
             }
             self.assertIn("fun", fun_names)
             self.assertNotIn("_fun", fun_names)
+
+    def test_boundary_sym_expr(self):
+        """
+        Test that symexpr that should be pointing
+        to the end of a section indeed points to
+        the symbol at the end of the section.
+        """
+
+        binary = "ex"
+        with cd(ex_asm_dir / "ex_boundary_sym_expr"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+            self.check_first_sym_expr(m, "load_end", "nums_end")
 
 
 if __name__ == "__main__":
