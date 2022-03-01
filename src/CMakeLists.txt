@@ -415,32 +415,22 @@ if(DDISASM_STATIC_DRIVERS)
 endif()
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  list(APPEND DDISASM_EXTRA_LIBS ddisasm ddisasm_datalog scc_pass
-              no_return_pass function_inference_pass)
+  target_link_libraries(ddisasm PRIVATE ddisasm_datalog scc_pass no_return_pass
+                                        function_inference_pass)
   target_link_options(
     ddisasm PRIVATE /WHOLEARCHIVE:ddisasm_datalog$<$<CONFIG:Debug>:d>
     /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>
     /WHOLEARCHIVE:function_inference_pass$<$<CONFIG:Debug>:d>)
 else()
   if(APPLE)
-    list(
-      APPEND DDISASM_EXTRA_LIBS
-             scc_pass
-             -Wl,-all_load
-             ddisasm_datalog
-             no_return_pass
-             function_inference_pass
-             -Wl,-noall_load)
+    target_link_libraries(
+      ddisasm PRIVATE scc_pass -Wl,-all_load ddisasm_datalog no_return_pass
+                      function_inference_pass -Wl,-noall_load)
   else()
-
-    list(
-      APPEND DDISASM_EXTRA_LIBS
-             scc_pass
-             -Wl,--whole-archive
-             ddisasm_datalog
-             no_return_pass
-             function_inference_pass
-             -Wl,--no-whole-archive)
+    target_link_libraries(
+      ddisasm
+      PRIVATE scc_pass -Wl,--whole-archive ddisasm_datalog no_return_pass
+              function_inference_pass -Wl,--no-whole-archive)
   endif()
 endif()
 
@@ -454,15 +444,15 @@ endif()
 
 target_link_libraries(
   ddisasm
-  ddisasm_datalog
-  gtirb
-  gtirb_pprinter
-  gtirb_builder
-  gtirb_decoder
-  ${Boost_LIBRARIES}
-  ${EXPERIMENTAL_LIB}
-  ${LIBCPP_ABI}
-  ${DDISASM_EXTRA_LIBS})
+  PRIVATE ddisasm_datalog
+          gtirb
+          gtirb_pprinter
+          gtirb_builder
+          gtirb_decoder
+          ${Boost_LIBRARIES}
+          ${EXPERIMENTAL_LIB}
+          ${LIBCPP_ABI}
+          ${DDISASM_EXTRA_LIBS})
 
 if(DDISASM_ENABLE_TESTS)
   add_subdirectory(tests)

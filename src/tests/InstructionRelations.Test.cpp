@@ -208,3 +208,99 @@ TEST(ArchMemoryAccessRelation, Arm64)
 
     EXPECT_EQ(Count, ExpectedMemoryAccesses.size());
 }
+
+TEST(ArchMemoryAccessRelation, Arm32)
+{
+    std::unordered_set<MemoryAccess, Hash> ExpectedMemoryAccesses = {
+        {"LOAD", 0x10000, 1, 2, "R0", "R1", "NONE", 0, 16},
+        {"STORE", 0x10004, 2, 1, "R0", "R1", "NONE", 0, 16},
+        {"LOAD", 0x10008, 1, 2, "R0", "R1", "NONE", 0, 16},
+        {"STORE", 0x1000C, 2, 1, "R0", "R1", "NONE", 0, 16},
+        {"LOAD", 0x10010, 1, 3, "R0", "R1", "NONE", 0, 0},
+        {"STORE", 0x10014, 3, 1, "R0", "R1", "NONE", 0, 0},
+        {"LOAD", 0x10018, 1, 2, "R0", "R1", "R2", 4, 0},
+        {"STORE", 0x1001C, 2, 1, "R0", "R1", "R2", 4, 0},
+        {"LOAD", 0x10020, 1, 2, "R0", "R1", "R2", 4, 0},
+        {"STORE", 0x10024, 2, 1, "R0", "R1", "R2", 4, 0},
+        {"LOAD", 0x10028, 1, 3, "R0", "R1", "NONE", 0, 0},
+        {"STORE", 0x1002C, 3, 1, "R0", "R1", "NONE", 0, 0},
+        {"LOAD", 0x10030, 2, 3, "R0", "R2", "NONE", 0, 16},
+        {"LOAD", 0x10030, 2, 1, "R1", "R2", "NONE", 0, 20},
+        {"STORE", 0x10034, 3, 2, "R0", "R2", "NONE", 0, 16},
+        {"STORE", 0x10034, 1, 2, "R1", "R2", "NONE", 0, 20},
+        {"LOAD", 0x10038, 2, 3, "R0", "R2", "NONE", 0, 16},
+        {"LOAD", 0x10038, 2, 1, "R1", "R2", "NONE", 0, 20},
+        {"STORE", 0x1003C, 3, 2, "R0", "R2", "NONE", 0, 16},
+        {"STORE", 0x1003C, 1, 2, "R1", "R2", "NONE", 0, 20},
+        {"LOAD", 0x10040, 2, 4, "R0", "R2", "NONE", 0, 0},
+        {"LOAD", 0x10040, 2, 1, "R1", "R2", "NONE", 0, 4},
+        {"STORE", 0x10044, 4, 2, "R0", "R2", "NONE", 0, 0},
+        {"STORE", 0x10044, 1, 2, "R1", "R2", "NONE", 0, 4},
+        {"LOAD", 0x10048, 2, 3, "R0", "R2", "R3", 1, 0},
+        {"LOAD", 0x10048, 2, 1, "R1", "R2", "R3", 1, 4},
+        {"STORE", 0x1004C, 3, 2, "R0", "R2", "R3", 1, 0},
+        {"STORE", 0x1004C, 1, 2, "R1", "R2", "R3", 1, 4},
+        {"LOAD", 0x10050, 2, 3, "R0", "R2", "R3", 1, 0},
+        {"LOAD", 0x10050, 2, 1, "R1", "R2", "R3", 1, 4},
+        {"STORE", 0x10054, 3, 2, "R0", "R2", "R3", 1, 0},
+        {"STORE", 0x10054, 1, 2, "R1", "R2", "R3", 1, 4},
+        {"LOAD", 0x10058, 2, 4, "R0", "R2", "NONE", 0, 0},
+        {"LOAD", 0x10058, 2, 1, "R1", "R2", "NONE", 0, 4},
+        {"STORE", 0x1005C, 4, 2, "R0", "R2", "NONE", 0, 0},
+        {"STORE", 0x1005C, 1, 2, "R1", "R2", "NONE", 0, 4},
+    };
+
+    std::vector<uint8_t> Bytes = {
+        0x10, 0x00, 0x91, 0xE5, // 0x10000: ldr r0, [r1, #16]
+        0x10, 0x00, 0x81, 0xE5, // 0x10004: str r0, [r1, #16]
+        0x10, 0x00, 0xB1, 0xE5, // 0x10008: ldr r0, [r1, #16]!
+        0x10, 0x00, 0xA1, 0xE5, // 0x1000C: str r0, [r1, #16]!
+        0x10, 0x00, 0x91, 0xE4, // 0x10010: ldr r0, [r1], #16
+        0x10, 0x00, 0x81, 0xE4, // 0x10014: str r0, [r1], #16
+        0x02, 0x01, 0x91, 0xE7, // 0x10018: ldr r0, [r1, r2, lsl #2]
+        0x02, 0x01, 0x81, 0xE7, // 0x1001C: str r0, [r1, r2, lsl #2]
+        0x02, 0x01, 0xB1, 0xE7, // 0x10020: ldr r0, [r1, r2, lsl #2]!
+        0x02, 0x01, 0xA1, 0xE7, // 0x10024: str r0, [r1, r2, lsl #2]!
+        0x02, 0x01, 0x91, 0xE6, // 0x10028: ldr r0, [r1], r2, lsl #2
+        0x02, 0x01, 0x81, 0xE6, // 0x1002C: str r0, [r1], r2, lsl #2
+        0xD0, 0x01, 0xC2, 0xE1, // 0x10030: ldrd r0, [r2, #16]
+        0xF0, 0x01, 0xC2, 0xE1, // 0x10034: strd r0, [r2, #16]
+        0xD0, 0x01, 0xE2, 0xE1, // 0x10038: ldrd r0, [r2, #16]!
+        0xF0, 0x01, 0xE2, 0xE1, // 0x1003C: strd r0, [r2, #16]!
+        0xD0, 0x01, 0xC2, 0xE0, // 0x10040: ldrd r0, [r2], #16
+        0xF0, 0x01, 0xC2, 0xE0, // 0x10044: strd r0, [r2], #16
+        0xD3, 0x00, 0x82, 0xE1, // 0x10048: ldrd r0, [r2, r3]
+        0xF3, 0x00, 0x82, 0xE1, // 0x1004C: strd r0, [r2, r3]
+        0xD3, 0x00, 0xA2, 0xE1, // 0x10050: ldrd r0, [r2, r3]!
+        0xF3, 0x00, 0xA2, 0xE1, // 0x10054: strd r0, [r2, r3]!
+        0xD3, 0x00, 0x82, 0xE0, // 0x10058: ldrd r0, [r2], r3
+        0xF3, 0x00, 0x82, 0xE0, // 0x1005C: strd r0, [r2], r3
+        0x1E, 0xFF, 0x2F, 0xE1  // bx lr - satisfy code/data inference.
+    };
+    GTIRB Gtirb = buildGtirb(gtirb::ISA::ARM, Bytes);
+
+    auto Souffle = runSouffle(Gtirb);
+    if(!Souffle)
+        FAIL();
+
+    souffle::SouffleProgram *Prog = Souffle->get();
+
+    unsigned int Count = 0;
+    for(auto &output : *Prog->getRelation("arch.memory_access"))
+    {
+        MemoryAccess Result;
+
+        // Load relation
+        output >> Result.Type >> Result.Addr >> Result.SrcOp >> Result.DstOp >> Result.DirectReg
+            >> Result.BaseReg >> Result.IndexReg >> Result.Mult >> Result.Offset;
+
+        SCOPED_TRACE(Result);
+
+        // Verify - is it expected?
+        auto It = ExpectedMemoryAccesses.find(Result);
+        EXPECT_FALSE(It == ExpectedMemoryAccesses.end());
+        Count++;
+    };
+
+    EXPECT_EQ(Count, ExpectedMemoryAccesses.size());
+}
