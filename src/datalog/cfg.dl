@@ -183,8 +183,8 @@ cfg_edge_to_top(Src,Conditional,"return"):-
     !cfg_edge(Src,_,_,_,"return").
 
 cfg_edge_to_symbol(Src,Symbol,"branch"):-
-    refined_block_control_instruction(Src,EA),
-    plt_entry(EA,Symbol),
+    refined_block(Src),
+    plt_block(Src,Symbol),
     !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
     !inferred_special_symbol(_,Symbol,_,_,_).
 
