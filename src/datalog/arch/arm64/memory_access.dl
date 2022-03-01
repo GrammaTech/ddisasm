@@ -40,7 +40,7 @@ reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
     ),
     op_indirect(Op1,"NONE",BaseReg,"NONE",_,0,_),
     op_immediate(Op2,Offset),
-    op_regdirect_canonical(Op3,DirectReg).
+    op_regdirect(Op3,DirectReg).
 
 // immediate - pre-index / writeback
 // LDR <Wt>, [<Xn|SP>, #<pimm>]
@@ -54,7 +54,7 @@ reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
         substr(Operation,0,3) = "STR", AccessType = "STORE", SrcIndex = 2, DstIndex = 1
     ),
     op_indirect(Op1,"NONE",BaseReg,"NONE",_,Offset,_),
-    op_regdirect_canonical(Op2,DirectReg).
+    op_regdirect(Op2,DirectReg).
 
 // immediate
 // LDR <Wt>, [<Xn|SP>, #<pimm>]
@@ -67,7 +67,7 @@ memory_access(AccessType,EA,SrcIndex,DstIndex,DirectReg,BaseReg,"NONE",0,Offset)
         substr(Operation,0,3) = "STR", AccessType = "STORE", SrcIndex = 2, DstIndex = 1
     ),
     op_indirect(Op1,"NONE",BaseReg,"NONE",_,Offset,_),
-    op_regdirect_canonical(Op2,DirectReg).
+    op_regdirect(Op2,DirectReg).
 
 // LDR (literal)
 // LDR <Xt>, <label>
@@ -76,7 +76,7 @@ memory_access("LOAD",EA,1,2,DstReg,"NONE","NONE",0,Immediate):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     substr(Operation,0,3) = "LDR",
     op_immediate(Op1,Immediate),
-    op_regdirect_canonical(Op2,DstReg).
+    op_regdirect(Op2,DstReg).
 
 // LDR (register)
 // LDR <Wt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
@@ -88,7 +88,7 @@ memory_access(AccessType,EA,SrcIndex,DstIndex,DirectReg,BaseReg,IndexReg,Mult,0)
         substr(Operation,0,3) = "STR", AccessType = "STORE", SrcIndex = 2, DstIndex = 1
     ),
     op_indirect(Op1,"NONE",BaseReg,IndexReg,Mult,0,_),
-    op_regdirect_canonical(Op2,DirectReg).
+    op_regdirect(Op2,DirectReg).
 
 // pair post-index
 // LDP <Wt1>, <Wt2>, [<Xn|SP>], #<imm>
@@ -104,12 +104,11 @@ reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
         substr(Operation,0,3) = "STP", AccessType = "STORE",
             SrcIndex1 = 1, SrcIndex2 = 4, DstIndex1 = 2, DstIndex2 = 2
     ),
-    op_regdirect_canonical(Op1,DirectReg2),
+    op_regdirect(Op1,DirectReg2),
     op_indirect(Op2,"NONE",BaseReg,"NONE",_,0,_),
     op_immediate(Op3,Offset),
-    op_regdirect_canonical(Op4,DirectReg1),
-    op_regdirect(Op1,DirectReg),
-    register_size_bits(DirectReg,SizeBits).
+    op_regdirect(Op4,DirectReg1),
+    register_size_bits(DirectReg2,SizeBits).
 
 // pair pre-index
 // LDP <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]! (pre-index)
@@ -125,11 +124,10 @@ reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
         substr(Operation,0,3) = "STP", AccessType = "STORE",
             SrcIndex1 = 1, SrcIndex2 = 3, DstIndex1 = 2, DstIndex2 = 2
     ),
-    op_regdirect_canonical(Op1,DirectReg2),
+    op_regdirect(Op1,DirectReg2),
     op_indirect(Op2,"NONE",BaseReg,"NONE",_,Offset,_),
-    op_regdirect_canonical(Op3,DirectReg1),
-    op_regdirect(Op1,DstReg),
-    register_size_bits(DstReg,SizeBits).
+    op_regdirect(Op3,DirectReg1),
+    register_size_bits(DirectReg2,SizeBits).
 
 // pair (no writeback)
 // LDP <Wt1>, <Wt2>, [<Xn|SP>{, #<imm>}]
@@ -144,8 +142,7 @@ memory_access(AccessType,EA,SrcIndex2,DstIndex2,DirectReg2,BaseReg,"NONE",0,Offs
         substr(Operation,0,3) = "STP", AccessType = "STORE",
             SrcIndex1 = 1, SrcIndex2 = 3, DstIndex1 = 2, DstIndex2 = 2
     ),
-    op_regdirect_canonical(Op1,DirectReg2),
+    op_regdirect(Op1,DirectReg2),
     op_indirect(Op2,"NONE",BaseReg,"NONE",_,Offset,_),
-    op_regdirect_canonical(Op3,DirectReg1),
-    op_regdirect(Op1,DstReg),
-    register_size_bits(DstReg,SizeBits).
+    op_regdirect(Op3,DirectReg1),
+    register_size_bits(DirectReg2,SizeBits).

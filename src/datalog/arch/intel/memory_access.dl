@@ -29,10 +29,10 @@ memory_access("LOAD",EA,1,2,DstReg,BaseReg,IndexReg,Mult,Offset):-
     mov(EA),
     instruction(EA,_,_,_,SrcOp,DestOp,0,0,_,_),
     op_indirect(SrcOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
-    op_regdirect_contains_reg(DestOp,DstReg).
+    op_regdirect(DestOp,DstReg).
 
 memory_access("STORE",EA,1,2,SrcReg,BaseReg,IndexReg,Mult,Offset):-
     mov(EA),
     instruction(EA,_,_,_,SrcOp,DestOp,0,0,_,_),
     op_indirect(DestOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
-    op_regdirect_contains_reg(SrcOp,SrcReg).
+    op_regdirect(SrcOp,SrcReg).
