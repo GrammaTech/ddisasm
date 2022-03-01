@@ -169,7 +169,10 @@ class CfgTests(unittest.TestCase):
             self.assertEqual(len(list(main_block.outgoing_edges)), 2)
 
             edge_types = {e.label.type for e in main_block.outgoing_edges}
-            self.assertEqual(edge_types,{gtirb.Edge.Type.Fallthrough,gtirb.Edge.Type.Return})
+            self.assertEqual(
+                edge_types,
+                {gtirb.Edge.Type.Fallthrough, gtirb.Edge.Type.Return},
+            )
 
             edge1 = list(main_block.outgoing_edges)[0]
             edge2 = list(main_block.outgoing_edges)[1]
@@ -200,7 +203,9 @@ class CfgTests(unittest.TestCase):
             self.assertEqual(len(list(blx_block.outgoing_edges)), 2)
 
             edge_types = {e.label.type for e in blx_block.outgoing_edges}
-            self.assertEqual(edge_types,{gtirb.Edge.Type.Fallthrough,gtirb.Edge.Type.Call})
+            self.assertEqual(
+                edge_types, {gtirb.Edge.Type.Fallthrough, gtirb.Edge.Type.Call}
+            )
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
