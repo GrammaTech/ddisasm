@@ -279,9 +279,6 @@ class PeResourcesTests(unittest.TestCase):
 
 
 class SymbolSelectionTests(unittest.TestCase):
-    @unittest.skipUnless(
-        platform.system() == "Linux", "This test is linux only."
-    )
     def check_first_sym_expr(
         self, m: gtirb.Module, block_name: str, target_name: str
     ) -> None:
@@ -303,6 +300,9 @@ class SymbolSelectionTests(unittest.TestCase):
         )[0]
         self.assertEqual(sexpr[1].symbol.name, target_name)
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_symbol_selection(self):
         """
         Test that the right symbols are chosen for relocations
@@ -337,6 +337,9 @@ class SymbolSelectionTests(unittest.TestCase):
             self.assertIn("fun", fun_names)
             self.assertNotIn("_fun", fun_names)
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_boundary_sym_expr(self):
         """
         Test that symexpr that should be pointing
