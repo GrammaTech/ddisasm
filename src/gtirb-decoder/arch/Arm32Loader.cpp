@@ -208,10 +208,15 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_arm_op& CsOp)
             return ImmOp{CsOp.imm};
         case ARM_OP_MEM:
         {
+            // CsOp.mem.lshift seems to be incorrect for some instructions,
+            // see: https://github.com/capstone-engine/capstone/issues/1848
+            if(CsOp.shift.value && CsOp.shift.type != ARM_SFT_LSL)
+                std::cerr << "WARNING: Unexpected shift type in mem operand.\n";
+
             IndirectOp I = {registerName(ARM_REG_INVALID),
                             registerName(CsOp.mem.base),
                             registerName(CsOp.mem.index),
-                            CsOp.mem.scale * (1 << CsOp.mem.lshift),
+                            CsOp.mem.scale * (1 << CsOp.shift.value),
                             CsOp.mem.disp,
                             32};
             return I;
