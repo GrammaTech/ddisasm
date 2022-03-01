@@ -70,7 +70,11 @@ memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,Rm,Mult,Offset):-
         store_operation(Operation), AccessType = "STORE", SrcIdx = 2, DstIdx = 1
     ),
     op_regdirect(Op2,Rt),
-    op_indirect(Op1,_,Rn,Rm,Mult,Offset,_).
+    op_indirect(Op1,_,Rn,Rm,Scale,Offset,_),
+    (
+        Rm = "NONE", Mult = 0, Scale = Scale;
+        Rm != "NONE", Mult = Scale
+    ).
 
 // Post-index immediate (2)
 memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,"NONE",0,0),
@@ -111,7 +115,11 @@ memory_access(AccessType,EA,SrcIdx2,DstIdx2,Rt2,Rn,Rm,Mult,Offset+4):-
     ),
     op_regdirect(Op3,Rt),
     op_regdirect(Op1,Rt2),
-    op_indirect(Op2,_,Rn,Rm,Mult,Offset,_).
+    op_indirect(Op2,_,Rn,Rm,Scale,Offset,_),
+    (
+        Rm = "NONE", Mult = 0, Scale = Scale;
+        Rm != "NONE", Mult = Scale
+    ).
 
 // Post-index immediate (5)
 memory_access(AccessType,EA,SrcIdx1,DstIdx1,Rt,Rn,"NONE",0,0),
@@ -129,8 +137,8 @@ reg_arithmetic_operation(EA,Rn,Rn,1,Offset):-
     op_immediate(Op3,Offset).
 
 // Post-index register (6)
-memory_access(AccessType,EA,SrcIdx1,DstIdx1,Rt,Rn,Rm,1,0),
-memory_access(AccessType,EA,SrcIdx2,DstIdx2,Rt2,Rn,Rm,1,4),
+memory_access(AccessType,EA,SrcIdx1,DstIdx1,Rt,Rn,"NONE",0,0),
+memory_access(AccessType,EA,SrcIdx2,DstIdx2,Rt2,Rn,"NONE",0,4),
 reg_reg_arithmetic_operation(EA,Rn,Rn,Rm,1,0):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,Op4,_,_),
     (

@@ -70,7 +70,13 @@ invalid(EA,"arm: pre/post-index disallows Rt[2] eq Rn"):-
 // LDRD{cond} Rt, Rt2, [Rn, ±Rm]
 // LDRD{cond} Rt, Rt2, [Rn, ±Rm]!
 invalid(EA,"arm: doubleword rm/rt conflict"):-
-    arch.memory_access(_,EA,_,_,Rt,_,Rm,_,_),
+    (
+        arch.memory_access(_,EA,_,_,Rt,_,Rm,_,_), Rm != "NONE";
+        // Post-index form: Rm is not part of the memory access, since it is
+        // only incremented afterward.
+        arch.memory_access(_,EA,_,_,Rt,Rn,"NONE",_,_),
+        arch.reg_reg_arithmetic_operation(EA,Rn,Rn,Rm,_,0)
+    ),
     (EA band 1) = 0, // ARM mode only
     instruction_get_operation(EA,Operation),
     substr(Operation,0,4) = "LDRD",
