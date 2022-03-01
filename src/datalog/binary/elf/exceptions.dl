@@ -214,13 +214,13 @@ symbol_minus_symbol(EA_start,Size,LandingPadBaseAddress,StartRegion,1,0):-
     Size > 0.
 
 //region end
-boundary_label(EA_end,Block,EndRegion),
+boundary_sym_expr(EA_end,EndRegion),
 symbol_minus_symbol(EA_end,Size,StartRegion,EndRegion,1,0):-
     lsda_callsite(_, _, StartRegion,EA_end,EndRegion,EA_landingPad,_,_),
     Size = EA_landingPad-EA_end,
     Size > 0,
     // Boundary is at the end of the block preceding the EndRegion label.
-    block_boundaries(Block,_,EndRegion).
+    block_boundaries(_,_,EndRegion).
 
 //landing pad
 symbol_minus_symbol(EA_landingPad,Size,LandingPadBaseAddress,LandingPad,1,0):-

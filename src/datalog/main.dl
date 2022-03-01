@@ -624,12 +624,6 @@ defined_symbol(EA,Size,Type,Scope,Visibility,SectIndex,OriginTable,TableIndex,Na
         SectIndex > 0xffff  // SHN_HIRESERVE
     ).
 
-// Labels which are defined "at-end" of a data or code region/referent.
-// Such labels will usually associate with a symbol at address Dest, but they
-// can be safely aliased to a new symbol at the end of the Block.
-.decl boundary_label(EA:address,Dest:address,Block:address)
-.output boundary_label
-
 ////////////////////////////////////////////////////////////////////////////////////////
 
 .decl section(name:symbol,size:unsigned,addr:address)
