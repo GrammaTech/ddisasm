@@ -242,6 +242,7 @@ symbolic_operand_candidate(EA,1,Dest,Type):-
         Operation = "ADR";
         Operation = "ADRP"
     ),
+    !split_load_operand(EA,1,_),
     instruction_get_op(EA, 1, OffsetOp),
     op_immediate(OffsetOp, Offset),
     Dest = as(Offset,address),
