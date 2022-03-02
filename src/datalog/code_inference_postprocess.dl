@@ -60,8 +60,7 @@ block_needs_splitting_at(EA):-
     // code inference.
     (
         symbol_minus_symbol(_,_,_,EA,_,_);
-        symbol_minus_symbol(_,_,EA,_,_,_),
-        !binary_isa("ARM"), !binary_isa("ARM64")
+        symbol_minus_symbol(_,_,EA,_,_,_)
     ),
     code_in_block(EA,Block),
     EA != Block.
@@ -151,18 +150,22 @@ block_information(Block,BlockSize,LastEA+InsnSize):-
     instruction(LastEA,InsnSize,_,_,_,_,_,_,_,_),
     BlockSize= LastEA+InsnSize - Block.
 
+/**
+Blocks are either contiguous or separated by data segments
+This assumes there are no remaining overlapping blocks.
+This is similar to next_block_in_section, but this uses the refined
+block information (i.e., block_information).
+*/
 .decl next_refined_block_in_section(Block:address, NextBlock:address)
 
 next_refined_block_in_section(Block,NextBlock):-
-    refined_block(Block),
-    next_block_in_section(Block,NextBlock),
-    refined_block(NextBlock).
+    block_information(Block,_,NextBlock),
+    block_information(NextBlock,_,_).
 
-next_refined_block_in_section(PrevBlock,Block):-
-    refined_block(Block),
-    next_block_in_section(PrevMerged,Block),
-    block_needs_merging(PrevMerged),
-    code_in_refined_block(PrevMerged,PrevBlock).
+next_refined_block_in_section(Block,NextBlock):-
+    block_information(Block,_,BlockEndAddr),
+    data_in_code(BlockEndAddr,NextBlock),
+    block_information(NextBlock,_,_).
 
 ////////////////////////////////////////////////////////
 // Compute padding regions

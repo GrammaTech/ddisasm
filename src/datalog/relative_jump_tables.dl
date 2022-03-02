@@ -48,7 +48,7 @@ data_word(EA,2,Val):-
 
 data_word(EA,4,Val):-
     data_byte(EA,Byte0),
-    (binary_format("PE"); EA % 4 = 0),//jump tables are assumed to be aligned
+    (binary_format("PE"); binary_isa("ARM"); EA % 4 = 0),//jump tables are assumed to be aligned
     data_byte(EA+1,Byte1),
     data_byte(EA+2,Byte2),
     data_byte(EA+3,Byte3),
@@ -82,7 +82,6 @@ data_word(EA,8,Val):-
         (endianness("LE"), Val = as((Byte7*2^56) bor (Byte6*2^48) bor (Byte5*2^40) bor (Byte4*2^32) + (Byte3*2^24) bor (Byte2*2^16) bor (Byte1*2^8) bor Byte0,number));
         (endianness("BE"), Val = as((Byte0*2^56) bor (Byte1*2^48) bor (Byte2*2^40) bor (Byte3*2^32) + (Byte4*2^24) bor (Byte5*2^16) bor (Byte6*2^8) bor Byte7,number))
     ).
-
 
 .decl take_address(Src:address,Address_taken:address)
 

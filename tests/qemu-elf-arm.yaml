@@ -86,6 +86,15 @@ tests:
       flags: []
       optimizations: [""]
 
+  - name: ex_relative_jump_table
+    <<: *default
+    path: examples/arm_asm_examples
+    build:
+      c: ["arm-linux-gnueabihf-gcc"]
+      cpp: ["arm-linux-gnueabihf-g++"]
+      flags: []
+      optimizations: [""]
+
   - name: ex1
     <<: *default
 

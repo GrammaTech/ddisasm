@@ -345,7 +345,7 @@ labeled_data_candidate(EA):-
 
 .decl base_relative_symbolic_data(EA:address,Size:unsigned,Value:address)
 
-symbol_minus_symbol_jump_table(EA,TableStart,4,ImageBase,ImageBase+Val,1),
+symbol_minus_symbol_jump_table(EA,TableStart,4,ImageBase,ImageBase+Val,1,0),
 base_relative_symbolic_data(EA,4,Val):-
     base_relative_address(EA,TableStart,Val),
     base_address(ImageBase),
@@ -538,7 +538,7 @@ relative_address(EA+1,1,IndexTable,AddressTable,Dest,"first"):-
     possible_ea(ImageBase+as(Word,unsigned)),
     !relative_address_start(EA+1,_,_,_,_).
 
-symbol_minus_symbol_jump_table(EA,TableStart,1,Ref,Dest,4):-
+symbol_minus_symbol_jump_table(EA,TableStart,1,Ref,Dest,4,0):-
     // Byte offsets reference a preceding relative address table.
     relative_address(EA,1,TableStart,Ref,Dest,"first"), Dest < TableStart,
     relative_address_start(Ref,4,_,_,_),

@@ -70,6 +70,15 @@ arithmetic_operation("SHL").
 multiplication_operation("IMUL").
 multiplication_operation("SHL").
 
+shift_rotate_operation("SHL").
+shift_rotate_operation("SAL").
+shift_rotate_operation("SHR").
+shift_rotate_operation("SAR").
+shift_rotate_operation("ROR").
+shift_rotate_operation("ROL").
+shift_rotate_operation("RCR").
+shift_rotate_operation("RCL").
+
 logic_operation("AND").
 logic_operation("XOR").
 logic_operation("OR").

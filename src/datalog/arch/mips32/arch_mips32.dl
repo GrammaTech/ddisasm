@@ -243,36 +243,38 @@ arithmetic_operation("SUBU").
 arithmetic_operation("DSUBU").
 
 // shift/rotate
-arithmetic_operation("SLL").
-arithmetic_operation("SLL16").
-arithmetic_operation("SLLI").
-arithmetic_operation("SLLV").
-arithmetic_operation("SRA").
-arithmetic_operation("SRAI").
-arithmetic_operation("SRARI").
-arithmetic_operation("SRAR").
-arithmetic_operation("SRAV").
-arithmetic_operation("SRL").
-arithmetic_operation("SRL16").
-arithmetic_operation("SRLI").
-arithmetic_operation("SRLRI").
-arithmetic_operation("SRLR").
-arithmetic_operation("SRLV").
-arithmetic_operation("ROTR").
-arithmetic_operation("ROTRV").
-arithmetic_operation("DSLL").
-arithmetic_operation("DSLL32").
-arithmetic_operation("DSLLV").
-arithmetic_operation("DSRA").
-arithmetic_operation("DSRA32").
-arithmetic_operation("DSRAv").
-arithmetic_operation("DSRL").
-arithmetic_operation("DSRL32").
-arithmetic_operation("DSRV").
-arithmetic_operation("DROTR").
-arithmetic_operation("DROTR32").
-arithmetic_operation("DROTRV").
+shift_rotate_operation("SLL").
+shift_rotate_operation("SLL16").
+shift_rotate_operation("SLLI").
+shift_rotate_operation("SLLV").
+shift_rotate_operation("SRA").
+shift_rotate_operation("SRAI").
+shift_rotate_operation("SRARI").
+shift_rotate_operation("SRAR").
+shift_rotate_operation("SRAV").
+shift_rotate_operation("SRL").
+shift_rotate_operation("SRL16").
+shift_rotate_operation("SRLI").
+shift_rotate_operation("SRLRI").
+shift_rotate_operation("SRLR").
+shift_rotate_operation("SRLV").
+shift_rotate_operation("ROTR").
+shift_rotate_operation("ROTRV").
+shift_rotate_operation("DSLL").
+shift_rotate_operation("DSLL32").
+shift_rotate_operation("DSLLV").
+shift_rotate_operation("DSRA").
+shift_rotate_operation("DSRA32").
+shift_rotate_operation("DSRAv").
+shift_rotate_operation("DSRL").
+shift_rotate_operation("DSRL32").
+shift_rotate_operation("DSRV").
+shift_rotate_operation("DROTR").
+shift_rotate_operation("DROTR32").
+shift_rotate_operation("DROTRV").
 
+arithmetic_operation(Operation):-
+   shift_rotate_operation(Operation).
 
 multiplication_operation("MUL").
 multiplication_operation("MULEQ_S").

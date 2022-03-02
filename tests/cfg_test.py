@@ -140,6 +140,76 @@ class CfgTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
+    def test_arm_cfg2(self):
+        """
+        Test ARM32 CFG
+        """
+        binary = "ex"
+        adder_dir = ex_arm_asm_dir / "ex_cfg"
+        with cd(adder_dir):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "-O0",
+                    [],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+            self.assertTrue(disassemble(binary, format="--ir",)[0])
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            main = [s for s in m.symbols if s.name == "main"][0]
+            main_block = main.referent
+
+            # check on bxeq lr
+
+            self.assertEqual(len(list(main_block.outgoing_edges)), 2)
+
+            edge_types = {e.label.type for e in main_block.outgoing_edges}
+            self.assertEqual(
+                edge_types,
+                {gtirb.Edge.Type.Fallthrough, gtirb.Edge.Type.Return},
+            )
+
+            edge1 = list(main_block.outgoing_edges)[0]
+            edge2 = list(main_block.outgoing_edges)[1]
+            if edge1.label.type == gtirb.Edge.Type.Return:
+                self.assertTrue(edge1.label.conditional)
+            if edge2.label.type == gtirb.Edge.Type.Return:
+                self.assertTrue(edge2.label.conditional)
+
+            # check on bx lr
+            sym = [s for s in m.symbols if s.name == "foo"][0]
+            bx_block = sym.referent
+
+            self.assertEqual(len(list(bx_block.outgoing_edges)), 1)
+
+            edge = list(bx_block.outgoing_edges)[0]
+            self.assertEqual(edge.label.type, gtirb.Edge.Type.Return)
+
+            # check on blx foo
+            insn_blx = b"\x00\xf0"
+
+            for block in m.code_blocks:
+                if (
+                    block.address >= main_block.address
+                    and block.contents[:2] == insn_blx
+                ):
+                    blx_block = block
+
+            self.assertEqual(len(list(blx_block.outgoing_edges)), 2)
+
+            edge_types = {e.label.type for e in blx_block.outgoing_edges}
+            self.assertEqual(
+                edge_types, {gtirb.Edge.Type.Fallthrough, gtirb.Edge.Type.Call}
+            )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_arm_tbb_cfg(self):
         """
         Test ARM32 CFG from a TBB jumptable

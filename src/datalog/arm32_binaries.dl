@@ -64,7 +64,6 @@ and characteristics
  *      LDRD Rt, Rt2, label
  */
 .decl load_store_operands(EA:address, RtOp:operand_code, Rt2Op:operand_code, RmOp:operand_code, IndirectOp:operand_code, ImmOp:operand_code)
-.output load_store_operands
 
 // Basic mem operations: (1), (2), (3)
 load_store_operands(EA,RtOp,0,RmOp,Op1,ImmOp):-
@@ -260,21 +259,26 @@ invalid(EA,"arm: invalid pc"):-
 
 // PC-relative LDR
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
-    litpool_ref(EA,Reg,LitPoolAddr,NBits),
-    data_word(LitPoolAddr,NBits/8,Val).
+    litpool_ref(EA,Reg,LitPoolAddr,Size,"LDR"),
+    data_word(LitPoolAddr,Size,Val).
 
-value_reg_edge(EA,Reg,EA,"NONE",0,ValAligned):-
-    def_used_for_address(EA,Reg),
-    instruction(EA,_,_,"ADR",Op1,Op2,_,_,_,_),
-    op_regdirect_contains_reg(Op2,Reg),
-    op_immediate(Op1,Offset),
-    (
-        (EA band 1) = 0, Disp = 8 // ARM mode
-        ;
-        (EA band 1) != 0, Disp = 4 // Thumb mode
-    ),
-    Val = as(EA,number)+Offset+Disp,
-    ValAligned = Val-(Val band 3).
+// ADR
+value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
+    litpool_ref(EA,Reg,LitPoolAddr,_,"ADR"),
+    Val = as(LitPoolAddr,number).
+
+/**
+PC stores the address of the current instruction plus 8 (two ARM
+instructions) in ARM state, and the current instruction plus 4
+(two Thumb instructions) in Thumb state.
+This is used for computing PC-relative addresses.
+*/
+.decl pc_relative_disp(EA:address,Disp:number) inline
+
+pc_relative_disp(EA,Disp):-
+    (EA band 1) = 0,  Disp = 8  // ARM mode
+    ;
+    (EA band 1) != 0, Disp = 4. // Thumb mode
 
 /**
 Jump to the PC register: "bx pc"
@@ -286,25 +290,18 @@ direct_jump(EA,Dest):-
     instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_regdirect(TargetOp,Reg),
     arch.pc_register(Reg),
-    (
-        (EA band 1) = 0,  Disp = 8 // ARM mode
-        ;
-        (EA band 1) != 0, Disp = 4 - 1 // Thumb mode
-    ),
-    Dest = as(as(EA,number) + Disp,address).
+    pc_relative_disp(EA,Disp),
+    Dest0 = EA + as(Disp,address),
+    Dest = Dest0 - (Dest0 band 1).
 
 pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     instruction_get_op(EA, Index, Op),
     op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
     arch.pc_register(Reg),
-    (
-        (EA band 1) = 0,  Disp = 8 // ARM mode
-        ;
-        (EA band 1) != 0, Disp = 4 // Thumb mode
-    ),
-    EANext0 = as(EA,number)+as(Disp,number),
+    pc_relative_disp(EA,Disp),
+    EANext0 = EA + as(Disp,address),
     // Align the address
-    EANext = EANext0-(EANext0 band 3).
+    EANext = EANext0 - (EANext0 band 3).
 
 avoid_symbols("$t").
 avoid_symbols("$a").
@@ -320,8 +317,12 @@ E.g.,
   add ip, ip, #16, #20
   ldr pc, [ip, #2640]
 */
-plt_block(EA,Function):-
-    plt_entry_arm_candidate(EA,Function,_).
+plt_block(Block,Function):-
+    plt_entry_arm_candidate(_,EA_jump,Function,_),
+    code_in_refined_block(EA_jump,Block).
+
+block_points(EA_entry,"code",0,7,"arm: plt-block"):-
+    plt_entry_arm_candidate(EA_entry,_,_,_).
 
 /**
 E.g.,
@@ -331,25 +332,33 @@ E.g.,
   add ip, ip, #16, #20
   ldr pc, [ip, #2640]
 */
-block_points(EA-3,"code",0,7,"arm plt-block"),
+block_points(EA-3,"code",0,7,"arm: plt-block: bx pc"),
 plt_block(EA-3,Function):-
-    plt_entry_arm_candidate(EA,Function,_),
+    plt_entry_arm_candidate(EA,_,Function,_),
     instruction_get_operation(EA-3,Operation2), // thumb
     arch.jump_operation_op_index(Operation2,TargetOpIndex),
     instruction_get_op(EA-3,TargetOpIndex,TargetOp),
     op_regdirect_contains_reg(TargetOp,PC),
     arch.pc_register(PC).
 
-.decl plt_entry_arm_candidate(ea:address, function:symbol, reloc_ea:address)
+/**
+plt_entry_arm_candidate
+
+EA_entry: The address of the PLT entry
+EA_jump:  The address of the last jump instruction in the PLT entry
+Function: The external function that the PLT entry forwards
+EA_reloc: The destination address of the PLT entry
+*/
+.decl plt_entry_arm_candidate(EA_entry:address, EA_jump:address, Function:symbol, EA_reloc:address)
 .output plt_entry_arm_candidate
 
 /**
 E.g.,
   add ip, pc, #0, #12
-  add ip, ip, #16, #20
+  add ip, ip, #16, #20   or   add ip, ip, #N
   ldr pc, [ip, #2640]
 */
-plt_entry_arm_candidate(EA,Function,as(Dest,address)):-
+plt_entry_arm_candidate(EA,EA_jump,Function,as(Dest,address)):-
     plt_section(SecName),
     section(SecName,Size,Beg),
     EA < Beg+Size,
@@ -358,23 +367,59 @@ plt_entry_arm_candidate(EA,Function,as(Dest,address)):-
     arch.pc_register(PC),
 
     // add ip, pc, #0, #12
-    arch.reg_reg_arithmetic_operation(EA,Reg,PC,"NONE",1,N1),
+    arch.reg_arithmetic_operation(EA,Reg,PC,1,N1),
     next(EA, NextEA),
 
     // add ip, ip, #16, #20
     // or
     // add ip, ip, #XXXX
-    arch.reg_reg_arithmetic_operation(NextEA,Reg,Reg,"NONE",1,N2),
-    next(NextEA, NextEA2),
+    arch.reg_arithmetic_operation(NextEA,Reg,Reg,1,N2),
+    next(NextEA, EA_jump),
 
-    instruction_get_operation(NextEA2,Operation),
+    // ldr pc, [ip, #N]
+    instruction_get_operation(EA_jump,Operation),
     arch.load_operation(Operation),
-    instruction_get_src_op(NextEA2,_,OffsetOp),
+    instruction_get_src_op(EA_jump,_,OffsetOp),
     op_indirect(OffsetOp,"NONE",Reg,"NONE",_,Offset,_),
-    instruction_get_dest_op(NextEA2,_,RegOp),
+    instruction_get_dest_op(EA_jump,_,RegOp),
     op_regdirect_contains_reg(RegOp,PC),
 
     Dest = as(EA,number) + N1 + N2 + Offset + 8,
+    relocation(as(Dest,address),_,Function,_,_,_,_).
+
+/**
+E.g.,
+  movw ip, #N1
+  movt ip, #N2
+  add ip, pc
+  ldr.w pc, [ip, #Offset]
+*/
+plt_entry_arm_candidate(EA,EA_jump,Function,as(Dest,address)):-
+    plt_section(SecName),
+    section(SecName,Size,Beg),
+    EA < Beg+Size,
+    EA >= Beg,
+
+    arch.pc_register(PC),
+
+    movw_movt_pair(EA,EA_movt,Value),
+
+    // add ip, pc
+    next(EA_movt, EA_add),
+    arch.reg_reg_arithmetic_operation(EA_add,Reg,PC,Reg,1,0),
+
+    // ldr.w pc, [ip, #Offset]
+    next(EA_add, EA_jump),
+    instruction_get_operation(EA_jump,Operation),
+    arch.load_operation(Operation),
+    instruction_get_src_op(EA_jump,_,OffsetOp),
+    op_indirect(OffsetOp,"NONE",Reg,"NONE",_,Offset,_),
+    instruction_get_dest_op(EA_jump,_,RegOp),
+    op_regdirect_contains_reg(RegOp,PC),
+
+    // What about Offset? It seems irrelevant.
+    Offset = Offset,
+    Dest = as(EA_add,number) - 1 + Value,
     relocation(as(Dest,address),_,Function,_,_,_,_).
 
 block_points(Block,"code",0,10,"call with relocation"):-
@@ -386,57 +431,39 @@ block_points(Block,"code",0,10,"call with relocation"):-
     AlignedEA = EA - (EA band 1),
     relocation(AlignedEA,"THM_CALL",_,_,_,_,_).
 
-cfg_edge_to_symbol(Src,Symbol,"branch"):-
-    plt_entry_arm_candidate(Src,Symbol,_),
-    !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
-    !inferred_special_symbol(_,Symbol,_,_,_).
+block_points(Block,"code",0,1,"arm: plt call"):-
+    plt_entry_arm_candidate(BlockDest,_,_,_),
+    direct_call(EA,BlockDest),
+    code_in_block_candidate_refined(EA,Block),
+    block_is_overlapping(Block,"code").
 
-.decl movw_movt_pair_candidate(EA_movw:address,EA_prev:address,EA_movt:address,Distance:unsigned)
-.output movw_movt_pair_candidate
+/**
+E.g., EA_movw: movw reg, N
+      EA_movt: movt reg, M
+   => reg's Value = N | (M << 16)
+*/
+.decl movw_movt_pair(EA_movw:address,EA_movt:address,Value:number)
+.output movw_movt_pair
 
-movw_movt_pair_candidate(EA_movw,EA_prev,EA_movt,Distance):-
+movw_movt_pair(EA_movw,EA_movt,Value):-
     instruction_get_operation(EA_movt,"MOVT"),
     instruction_get_op(EA_movt,2,RegOp2),
     op_regdirect_contains_reg(RegOp2,Reg),
+    // Given a movt, try to find the corresponding movw up to 3 instructions.
+    (
+        next(EA_movw,EA_movt)
+        ;
+        next(EA_movw,EA_temp),
+        next(EA_temp,EA_movt)
+        ;
+        next(EA_movw,EA_temp1),
+        next(EA_temp1,EA_temp2),
+        next(EA_temp2,EA_movt)
+    ),
     instruction_get_operation(EA_movw,"MOVW"),
     instruction_get_op(EA_movw,2,RegOp),
     op_regdirect_contains_reg(RegOp,Reg),
-    EA_movw = EA_prev,
-    Distance = as(EA_movt-EA_movw,unsigned).
-
-movw_movt_pair_candidate(EA_movw,EA_prev,EA_movt,Distance):-
-    instruction_get_operation(EA_movt,"MOVT"),
-    next(EA_prev,EA_movt),
-    !instruction_get_operation(EA_prev,"MOVW"),
-    EA_prev != EA_movw,
-    next(EA_prev0,EA_prev),
-    movw_movt_pair_candidate(EA_movw,EA_prev0,EA_movt,Distance).
-
-.decl discarded_movw_movt_pair_candidate(EA_movw:address,EA_prev:address,EA_movt:address,Distance:unsigned)
-.output discarded_movw_movt_pair_candidate
-
-discarded_movw_movt_pair_candidate(EA_movw,EA_prev,EA_movt,Distance):-
-    movw_movt_pair_candidate(EA_movw,EA_prev,EA_movt,Distance),
-    movw_movt_pair_candidate(_,_,EA_movt,Distance2),
-    Distance > Distance2.
-
-.decl movw_movt_pair(EA_movw:address,EA_prev:address,EA_movt:address)
-.output movw_movt_pair
-
-movw_movt_pair(EA_movw,EA_prev,EA_movt):-
-    movw_movt_pair_candidate(EA_movw,EA_prev,EA_movt,_),
-    !discarded_movw_movt_pair_candidate(EA_movw,_,EA_movt,_).
-
-/**
-E.g., movw reg, N
-      movt reg, M
-   => reg Value = N | (M << 16)
-*/
-.decl movw_movt_pair_value(EA_movw:address,EA_movt:address,Value:number)
-.output movw_movt_pair_value
-
-movw_movt_pair_value(EA_movw,EA_movt,Value):-
-    movw_movt_pair(EA_movw,EA_movw,EA_movt),
+    // Compute the value
     instruction_get_op(EA_movw,1,Op),
     op_immediate(Op,Low),
     instruction_get_op(EA_movt,1,Op2),
@@ -447,7 +474,7 @@ symbolic_operand_attribute(EA_lo,1,"Part0"),
 symbolic_operand_candidate(EA_lo,1,Dest,Type),
 symbolic_operand_attribute(EA_hi,1,"Part1"),
 symbolic_operand_candidate(EA_hi,1,Dest,Type):-
-    movw_movt_pair_value(EA_lo,EA_hi,Value),
+    movw_movt_pair(EA_lo,EA_hi,Value),
     Dest = as(Value,address),
     (
         code(Dest), Type="code"
@@ -467,20 +494,17 @@ symbolic_operand_point(EA,Imm_index,-1,"unlikely to have symbolic operand"):-
     ).
 
 symbolic_operand_candidate(EA,1,Dest,Type):-
-    !litpool_ref_double(EA,_,_,_),
+    !litpool_ref_double(EA,_,_,_,_),
     // ADR <Register> <Immediate>
     // e.g. adr r1, BaseOp
-    instruction_get_operation(EA, "ADR"),
+    instruction_get_operation(EA,Operation),
+    substr(Operation,0,3) = "ADR",
     instruction_get_op(EA, 1, OffsetOp),
     op_immediate(OffsetOp, Offset),
-    (
-        (EA band 1) = 0,  Disp = 8 // ARM mode
-        ;
-        (EA band 1) != 0, Disp = 4 // Thumb mode
-    ),
-    Dest0 = as(EA,number)+Offset+as(Disp,number),
+    pc_relative_disp(EA,Disp),
+    Dest0 = EA + as(Offset,address) + as(Disp,address),
     // Align the address
-    Dest1 = as(Dest0-(Dest0 band 3),address),
+    Dest1 = Dest0 - (Dest0 band 3),
     (
         code(Dest1), Dest = Dest1, Type="code" // ARM
         ;
@@ -493,6 +517,7 @@ symbolic_operand_candidate(EA,1,Dest,Type):-
     ).
 
 /**
+case 1:
 PIC code uses inlined pc-relative offsets,
 
     ldr REG, .L0
@@ -500,23 +525,31 @@ PIC code uses inlined pc-relative offsets,
        add REG, pc
        ...
     .L0:
-       .word foo-(.LPIC0+4)
+       .word foo-(.LPIC0+Disp)
+
+    (Disp=4 for Thumb mode, 8 for ARM mode)
 
 where the symbol foo is the target symbol, and .L0 will contain the offset
 from PC at .LPIC0 to the symbol foo.
+
+case 2:
+    .L0:
+       .long foo(GOT)
+where foo is a symbol relocated by GOT.
 */
 labeled_data_candidate(Dest),
-symbol_minus_symbol_candidate(Addr,Size,EARef,Dest,as(Scale,unsigned),0):-
+symbol_minus_symbol_candidate(Addr,Size,EA_add_pc,Dest,as(Scale,unsigned),Offset):-
     data_access_pattern(Addr,Size,0,EABase),
-    def_used(EABase,Reg,EAAddPC,_),
-    arch.reg_reg_arithmetic_operation(EAAddPC,Reg,Reg,PC,1,0),
+    def_used(EABase,Reg,EA_add_pc,_),
+    arch.reg_reg_arithmetic_operation(EA_add_pc,Reg,Reg,PC,1,0),
     arch.pc_register(PC),
 
-    EARef = EAAddPC + 4,
+    pc_relative_disp(EA_add_pc,Disp),
     data_word(Addr,Size,Diff),
-    Mode = EAAddPC band 1,
+    Mode = EA_add_pc band 1,
+    Offset = -1 * Disp,
     (
-        Dest = as(as(EARef,number) + Diff,address) - Mode,
+        Dest = EA_add_pc + as(Disp + Diff,address) - Mode,
         !relocation(Addr,_,_,_,_,_,_)
         ;
         relocation(Addr,"REL32",Symbol,_,SymbolIndex,_,"REL"),
@@ -527,17 +560,22 @@ symbol_minus_symbol_candidate(Addr,Size,EARef,Dest,as(Scale,unsigned),0):-
         P = as(Addr,unsigned),
         T = as(Base band 1,unsigned),
         Value = ((S + A) bor T) - P,
-        Dest = (EARef - Mode) + as(Value,address)
+        Dest = (EA_add_pc + as(Disp,address) - Mode) + as(Value,address)
     ),
 
     data_segment(Begin,End),
     Dest >= Begin, Dest <= End,
     Scale = 1.
 
-symbol_minus_symbol_from_relocation(EA,4,SymbolName2,"_GLOBAL_OFFSET_TABLE_",1,-4):-
+symbol_minus_symbol_from_relocation(EA,4,SymbolName2,"_GLOBAL_OFFSET_TABLE_",1,Offset):-
     binary_type("REL"),
     relocation(EA,"BASE_PREL","_GLOBAL_OFFSET_TABLE_",_,_,_,_),
-    symbol_minus_symbol_litpool_access_pattern(_,4,_,EA,1,_,Symbol2,_),
+    symbol_minus_symbol_litpool_access_pattern(_,4,_,EA,1,_,Symbol2,_,Type),
+    (
+        Type = "LDR", Offset = -4
+        ;
+        Type = "ADR", Offset = 0
+    ),
     best_symexpr_symbol(Symbol2,SymbolName2,"Beg").
 
 /**
@@ -551,12 +589,12 @@ Attributes:
 * EntrySize: size of entries
 * TargetAddr: resolved target of the jump
 * TableLimit: first address that cannot be part of the jump table
-* Type: absolute or TBx
+* Type: absolute or relative
 */
-.decl arm_jump_table_candidate(EA_jump:address,TableStart:address,EntryAddr:address,EntrySize:unsigned,TargetAddr:address,TableLimit:address,Type:symbol)
+.decl arm_jump_table_candidate(EA_jump:address,TableStart:address,EntryAddr:address,EntrySize:unsigned,TargetAddr:address,TableLimit:address,Type:symbol,Scale:unsigned,Offset:number)
 .output arm_jump_table_candidate
 
-arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"absolute"):-
+arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"absolute",1,0):-
     EA_jump band 1 = 0,
     instruction_get_operation(EA_jump,Operation),
     arch.load_word_operation(Operation),
@@ -566,9 +604,10 @@ arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimi
     instruction_get_dest_op(EA_jump,_,RegOp),
     op_regdirect_contains_reg(RegOp,PC),
     instruction_get_src_op(EA_jump,_,IndOp),
-    op_indirect(IndOp,"NONE",PC,Reg,Mult,Offset,NBits),
+    op_indirect(IndOp,"NONE",PC,_,Mult,Offset,NBits),
+
     // TODO: Do we need contraints? Mult=4, Offset=0
-    Reg = Reg, Mult = Mult, // to avoid warnings
+    Mult = Mult, // to avoid warnings
     Offset = 0,
     Size = NBits / 8,
     arch.pointer_size(Size),
@@ -576,8 +615,10 @@ arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimi
         arch.conditional_operation(Operation),
         // 8: Assumes that there is a fall-through successor consisting
         // of one instruction (typically a jump instruction)
-        TableStart = EA_jump + 8
-        // TODO: check if the fall-through instruction is a jump
+        TableStart = EA_jump + 8,
+        // Check the fall-through instruction is a jump
+        next(EA_jump,EA_fallthrough),
+        arch.jump(EA_fallthrough)
         ;
         !arch.conditional_operation(Operation),
         TableStart = EA_jump + 4
@@ -591,18 +632,27 @@ arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimi
     ),
     code_in_block_candidate(TargetAddr,_).
 
-.decl tbx_target(EA:address,TableStart:address,Size:unsigned,AlignedTargetAddr:address) inline
-tbx_target(EA,TableStart,Size,AlignedTargetAddr):-
+/**
+Compute the target address for the given relative jump-table entry.
+
+EA: An entry of a relative jump-table
+TableStart: The starting address of the jump-table
+Size: The size of the entry
+Scale: The scale amount is multiplied to the entry value
+AlignedTargetAddr: The computed tgarget address is aligned
+*/
+.decl arm_relative_jump_table_target(EA:address,TableStart:address,Size:unsigned,Scale:unsigned,AlignedTargetAddr:address) inline
+arm_relative_jump_table_target(EA,TableStart,Size,Scale,AlignedTargetAddr):-
     (
         Size != 1, data_word(EA,Size,DiffUnsigned);
         Size = 1, data_byte(EA,DiffUnsigned)
     ),
     DiffUnsigned != 0, // A table with odd number of entries is padded with 0
     Diff = as(DiffUnsigned,number),
-    Scale = 2,
-    AlignedTargetAddr = as(Diff*as(Scale,number)+as(TableStart,number),address).
+    TargetAddr = as(Diff*as(Scale,number)+as(TableStart,number),address),
+    AlignedTargetAddr = TargetAddr - (TargetAddr band 1).
 
-arm_jump_table_candidate(EA,TableStart,TableStart,Size,TargetAddr,TableLimit,"TBx"):-
+arm_jump_table_candidate(EA,TableStart,TableStart,Size,TargetAddr,TableLimit,"relative",2,0):-
     EA band 1 = 1, // assert: tbb/tbh instruction only exist in Thumb.
     instruction(EA,InstrSize,_,Operation,Operand,0,0,0,_,_),
     op_indirect(Operand,"NONE","PC", _,_,_,_),
@@ -613,7 +663,7 @@ arm_jump_table_candidate(EA,TableStart,TableStart,Size,TargetAddr,TableLimit,"TB
     ),
     // tbb/tbh can't perform a mode switch and just uses aligned addresses of
     // Thumb targets.
-    tbx_target(TableStart,TableStart,Size,AlignedTargetAddr),
+    arm_relative_jump_table_target(TableStart,TableStart,Size,2,AlignedTargetAddr),
     TargetAddr = AlignedTargetAddr + 1,
     (
         // Jump to after the jumptable - sets a hard limit on the jumptable size.
@@ -623,17 +673,71 @@ arm_jump_table_candidate(EA,TableStart,TableStart,Size,TargetAddr,TableLimit,"TB
     ),
     code_in_block_candidate(TargetAddr,_).
 
-arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimit,Type):-
+/**
+EA:      adr r1, OffsetToTableStart    or   add r1, pc, #10
+EA_ldr:  ldr r3, [r1,r2,lsl N]
+EA_add   add r4, r3    or   add r4, r4, r3
+EA_jump: bx r4
+*/
+arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"relative",1,as(EA_jump band 1,number)):-
+    (
+        instruction_get_operation(EA,"ADR"),
+        instruction_get_op(EA, 1, OffsetOp),
+        op_immediate(OffsetOp, Offset)
+        ;
+        instruction_get_operation(EA,"ADD"),
+        arch.reg_arithmetic_operation(EA,_,PC,1,Offset),
+        arch.pc_register(PC)
+    ),
+    pc_relative_disp(EA,Disp),
+    TableStart0 = EA + as(Offset,address) + as(Disp,address),
+    next(EA,EA_ldr),
+    instruction_get_operation(EA_ldr,"LDR"),
+    next(EA_ldr,EA_add),
+    arch.reg_reg_arithmetic_operation(EA_add,R4,R4,R3,1,0),
+    next(EA_add,EA_jump),
+    instruction_get_operation(EA_jump,Operation),
+    substr(Operation,0,2) = "BX",
+
+    arch.jump_operation_op_index(Operation,TargetOpIndex),
+    instruction_get_op(EA_jump,TargetOpIndex,Reg4Op),
+    op_regdirect_contains_reg(Reg4Op,R4),
+
+    instruction_get_dest_op(EA_ldr,_,Reg3Op),
+    op_regdirect_contains_reg(Reg3Op,R3),
+    instruction_get_src_op(EA_ldr,_,IndOp),
+    op_indirect(IndOp,"NONE",R1,_,Mult,0,NBits),
+    instruction_get_dest_op(EA,_,Reg1Op),
+    op_regdirect_contains_reg(Reg1Op,R1),
+
+    // TODO: Check on Mult=2?
+    Mult = Mult, // to avoid warnings
+    Size = NBits / 8,
+    arch.pointer_size(Size),
+    TableStart = TableStart0 - (TableStart0 band 1),
+
+    arm_relative_jump_table_target(TableStart,TableStart,Size,1,AlignedTargetAddr),
+    TargetAddr = AlignedTargetAddr + (EA_jump band 1),
+    (
+        // Jump to after the jumptable - sets a hard limit on the jumptable size.
+        AlignedTargetAddr > TableStart, TableLimit = AlignedTargetAddr;
+        // Jump to before the jumptable - does not restrict jumptable size.
+        AlignedTargetAddr <= TableStart, arch.pointer_size(PtrSize), TableLimit = (2 ^ ((8*PtrSize)-1)) - (EA_jump band 1)
+    ),
+    code_in_block_candidate(TargetAddr,_).
+
+// recursive
+arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimit,Type,Scale,Offset):-
     // recursive
-    arm_jump_table_candidate(EA_jump,TableStart,EA,Size,_,TableLimit,Type),
+    arm_jump_table_candidate(EA_jump,TableStart,EA,Size,_,TableLimit,Type,Scale,Offset),
     (
         Type = "absolute",
         address_in_data(EA+Size,TargetAddr),
         AlignedTargetAddr=TargetAddr
         ;
-        Type = "TBx",
-        tbx_target(EA+Size,TableStart,Size,AlignedTargetAddr),
-        TargetAddr=AlignedTargetAddr + 1
+        Type = "relative",
+        arm_relative_jump_table_target(EA+Size,TableStart,Size,Scale,AlignedTargetAddr),
+        TargetAddr = AlignedTargetAddr + (EA_jump band 1)
     ),
     EA+Size < TableLimit,
     (
@@ -657,40 +761,54 @@ arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimi
 // Aggregate arm_jump_table_candidate in one data block
 block_points(TableStart,"data",0,Points,"arm jump table"),
 data_block_candidate(TableStart,BlockSize):-
-    arm_jump_table_candidate(EA_jump,TableStart,EA_last,Size,_,_,_),
-    !arm_jump_table_candidate(EA_jump,TableStart,EA_last+Size,Size,_,_,_),
-    BlockSize = EA_last - TableStart,
+    arm_jump_table_candidate(EA_jump,TableStart,EA_last,Size,_,_,_,_,_),
+    !arm_jump_table_candidate(EA_jump,TableStart,EA_last+Size,Size,_,_,_,_,_),
+    BlockSize = EA_last - TableStart + Size,
     Depth = BlockSize / Size,
     Points = 7+as(Depth,number).
 
 jump_table_candidate(EA,DataEA,TargetEA):-
-    arm_jump_table_candidate(EA,_,DataEA,_,TargetEA,_,_).
+    arm_jump_table_candidate(EA,_,DataEA,_,TargetEA,_,_,_,_).
 
 data_object_point(DataEA,Size,"symbol",2,"arm jump-table3"),
 data_object_candidate(DataEA,Size,"symbol"):-
-    arm_jump_table_candidate(_,_,DataEA,Size,_,_,"absolute").
+    arm_jump_table_candidate(_,_,DataEA,Size,_,_,"absolute",_,_).
 
 jump_table_start(EA,Size,TableStart,TableStart,1):-
-    arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,"TBx"),
+    arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,_,_,_),
     jump_table_candidate_refined(EA,DataEA,_).
 
-symbol_minus_symbol_jump_table(DataEA,TableStart,Size,TableStart,TargetAddr,Scale):-
-    Scale = 2,
-    arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,"TBx"),
+symbol_minus_symbol_jump_table(DataEA,TableStart,Size,TableStart,TargetAddr,as(Scale,number),Offset):-
+    arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,_,Scale,Offset),
     jump_table_candidate_refined(EA,DataEA,TargetAddr).
 
-.decl litpool_ref(ea:address, register_name:register, ea_litpool:address, nbits:unsigned)
-.output litpool_ref
+/**
+Instruction at address `EA` accesses a literal pool located at `LitPoolAddr`
 
-litpool_ref(EA,Reg,LitPoolAddr,NBits):-
+Type="LDR" : Reg gets the value at the LitPoolAddr
+Type="ADR" : Reg gets the address of the literal pool (LitPoolAddr)
+*/
+.decl litpool_ref(EA:address, Reg:register, LitPoolAddr:address, Size:unsigned, Type:symbol)
+
+litpool_ref(EA,Reg,LitPoolAddr,Size,Type):-
     possible_ea(EA),
-    // LDR <Register> <IndirectOp>
-    // e.g., ldr r3, [pc, Offset]
     instruction_get_operation(EA,Operation),
-    arch.load_operation(Operation),
     instruction_get_src_op(EA,_,OffsetOp),
-    op_indirect(OffsetOp,"NONE",PC,"NONE",_,Offset,NBits),
-    arch.pc_register(PC),
+    (
+        // LDR <Register> <IndirectOp>
+        // e.g., ldr r3, [pc, Offset]
+        arch.load_operation(Operation),
+        op_indirect(OffsetOp,"NONE",PC,"NONE",_,Offset,NBits),
+        arch.pc_register(PC),
+        Size = NBits / 8,
+        Type = "LDR"
+        ;
+        // ADR <Register> <Offset>
+        substr(Operation,0,3) = "ADR",
+        op_immediate(OffsetOp, Offset),
+        Size = 4,
+        Type = "ADR"
+    ),
     instruction_get_dest_op(EA,_,RegOp),
     (
         op_regdirect_contains_reg(RegOp,Reg)
@@ -698,113 +816,78 @@ litpool_ref(EA,Reg,LitPoolAddr,NBits):-
         op_regdirect(RegOp,Reg)
     ),
     !arch.pc_register(Reg),
-    (
-        (EA band 1) = 0,  Disp = 8 // ARM mode
-        ;
-        (EA band 1) != 0, Disp = 4 // Thumb mode
-    ),
+    pc_relative_disp(EA,Disp),
     // Align the address
-    EA_aligned = as(EA-(EA band 3),address),
-    Addr = as(EA_aligned,number)+Offset+as(Disp,number),
+    EA_aligned = EA - (EA band 3),
+    Addr = EA_aligned + as(Offset,address) + as(Disp,address),
     LitPoolAddr = as(Addr,address).
 
 // VLDR: label must be aligned on a word boundary within -/+1KB of the
 // current instruction.
 alignment(LitPoolAddr,4):-
-    litpool_ref(EA,_,LitPoolAddr,_),
+    litpool_ref(EA,_,LitPoolAddr,_,"LDR"),
     instruction_get_operation(EA,"VLDR"),
     instruction_get_dest_op(EA,_,DestReg),
     op_regdirect(DestReg,Reg),
     // Only align the first literal pool for consecutive pools.
     // If Dest reg is S, one word; two words otherwise.
     (
-        substr(Reg,0,1) = "S",
-        (
-            !litpool_ref(_,_,LitPoolAddr-4,_)
-            ;
-            litpool_ref(EA0,_,LitPoolAddr-4,_),
-            !instruction_get_operation(EA0,"VLDR")
-        )
+        substr(Reg,0,1) = "S", Disp = 4
         ;
-        substr(Reg,0,1) != "S",
-        (
-            !litpool_ref(_,_,LitPoolAddr-8,_)
-            ;
-            litpool_ref(EA0,_,LitPoolAddr-8,_),
-            !instruction_get_operation(EA0,"VLDR")
-        )
+        substr(Reg,0,1) != "S", Disp = 8
+    ),
+    (
+        !litpool_ref(_,_,LitPoolAddr-Disp,_,"LDR")
+        ;
+        litpool_ref(EA0,_,LitPoolAddr-Disp,_,"LDR"),
+        !instruction_get_operation(EA0,"VLDR")
     ).
 
-.decl litpool_ref_double(ea:address, reg1:register, reg2:register, ea_litpool:address)
+/**
+EA is the address of the adr or ldr but the double is actually read
+later in the next instruction (ldrd).
+
+Type="LDR" : Reg1 and Reg2 get the values at the LitPoolAddr
+Type="ADR" : Reg1 and Reg2 get the values at the address pointed
+             by the value at the LitPoolAddr
+*/
+.decl litpool_ref_double(EA:address, Reg1:register, Reg2:register, LitPoolAddr:address, Type:symbol)
 .output litpool_ref_double
 
-// E.g., adr r, L
+// E.g., adr r, L  or ldr r, [pc, N]
 //       ldrd r1, r2, [r]
-litpool_ref_double(EA,Reg1,Reg2,LitPoolAddr):-
-    possible_ea(EA),
-    // ADR Reg, Label
-    instruction(EA,_,_,"ADR",OffsetOp,RegOp,_,_,_,_),
-    op_regdirect_contains_reg(RegOp,Reg),
-    op_immediate(OffsetOp, Offset),
-
-    next(EA,EA_next),
-
+litpool_ref_double(EA,Reg1,Reg2,LitPoolAddr,Type):-
+    litpool_ref(EA,Reg,LitPoolAddr,_,Type),
+    next(EA,EA_ldrd),
     // LDRD Reg1, Reg2, [Reg]
-    instruction(EA_next,_,_,"LDRD",Op1,IndOp,Op3,_,_,_),
+    instruction(EA_ldrd,_,_,"LDRD",Op1,IndOp,Op3,_,_,_),
     op_regdirect_contains_reg(Op3,Reg1),
     op_regdirect_contains_reg(Op1,Reg2),
-    op_indirect(IndOp,"NONE",Reg,"NONE",_,0,_),
-    (
-        (EA band 1) = 0,  Disp = 8 // ARM mode
-        ;
-        (EA band 1) != 0, Disp = 4 // Thumb mode
-    ),
-    // Align the address
-    EA_aligned = as(EA-(EA band 3), address),
-    Addr = as(EA_aligned,number)+Offset+as(Disp,number),
-    LitPoolAddr = as(Addr,address).
-
-.decl litpool_ref_for_ldrd(ea:address)
-
-litpool_ref_for_ldrd(EA):-
-    litpool_ref(EA,Reg,_,_),
-    next(EA,EA_next),
-    // LDRD Reg1, Reg2, [Reg]
-    instruction(EA_next,_,_,"LDRD",_,IndOp,_,_,_,_),
     op_indirect(IndOp,"NONE",Reg,"NONE",_,0,_).
 
 data_block_candidate(LitPoolAddr,Pt_size*2):-
     arch.pointer_size(Pt_size),
-    litpool_ref_double(_,_,_,LitPoolAddr).
+    litpool_ref_double(_,_,_,LitPoolAddr,"ADR").
 
-data_block_candidate(LitPoolAddr,Size):-
+data_block_candidate(LitPoolAddr,Pt_size):-
     arch.pointer_size(Pt_size),
-    litpool_ref(EA,_,LitPoolAddr,_),
-    (
-        litpool_ref_for_ldrd(EA), Size = Pt_size*2
-        ;
-        !litpool_ref_for_ldrd(EA), Size = Pt_size
-    ).
+    litpool_ref(_,_,LitPoolAddr,_,"LDR").
 
 block_points(LitPoolAddr,"data",0,Points,"arm literal pool"):-
-    litpool_ref(EA,_,LitPoolAddr,_),
+    litpool_ref(EA,_,LitPoolAddr,_,Type),
+    code_in_block_candidate_refined(EA,Block),
     (
-        // Give more points in case of ldr/ldrd sequence
-        litpool_ref_for_ldrd(EA), Points = 12
+        // Give more points in case of ldr/ldrd or adr/ldrd sequence
+        litpool_ref_double(EA,_,_,LitPoolAddr,_), Type = Type,
+        Block = Block, Points = 12
         ;
-        code_in_block_candidate_refined(EA,Block),
-        !block_is_overlapping(Block,_),
-        !litpool_ref_for_ldrd(EA), Points = 9
-        ;
-        code_in_block_candidate_refined(EA,Block),
-        block_is_overlapping(Block,_),
-        !arm_jump_table_candidate(_,_,EA,_,_,_,_),
-        !litpool_ref_for_ldrd(EA), Points = 5
+        !litpool_ref_double(EA,_,_,LitPoolAddr,_), Type = "LDR",
+        (
+            !block_is_overlapping(Block,_), Points = 9
+            ;
+            block_is_overlapping(Block,_), Points = 5
+        )
     ).
-
-block_points(LitPoolAddr,"data",0,11,"arm literal pool"):-
-    litpool_ref_double(EA,_,_,LitPoolAddr),
-    code_in_block_candidate_refined(EA,_).
 
 block_points(Block,"data",0,7,"possible string"),
 data_block_candidate(Block,Size):-
@@ -812,7 +895,7 @@ data_block_candidate(Block,Size):-
     (
         symbol(Block,_,_,_,_,_,_,_,_)
         ;
-        aligned_address_in_data(EA,Block)
+        aligned_address_in_data(_,Block)
     ).
 
 // E.g.,
@@ -833,30 +916,40 @@ block_points(Block,"code",BlockPred,1,"must-fallthrough"):-
     !candidate_block_is_padding(BlockPred),
     block_is_overlapping(BlockPred,_).
 
+symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
+    litpool_ref(EA,_,LitPoolAddr,_,"LDR").
 
 symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
-    litpool_ref(EA,_,LitPoolAddr,_).
-
-symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
-    litpool_ref_double(EA,_,_,LitPoolAddr).
+    litpool_ref_double(EA,_,_,LitPoolAddr,_).
 
 /**
- * Matches instruction patterns that access a symbol-symbol from the literal pool.
- */
-.decl symbol_minus_symbol_litpool_access_pattern(ea:address,size:unsigned,symbol1:address,symbol2:address,scale:unsigned,ea_litpool_ref:address,ea_def:address,reg:register)
+Matches instruction patterns that access a symbol-symbol from the literal pool.
+
+(Symbol2-Symbol1)*Scale
+
+EA: The address of the literal pool with the symbol_minus_symbol expression
+Size: The size of the symbolic expression
+EA_litpool_ref: The EA referencing the literal pool (EA)
+EA_def: The address associated with Symbol1
+Reg: The register containing Symbol2
+Type: Either "LDR" or "ADR"
+*/
+.decl symbol_minus_symbol_litpool_access_pattern(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,EA_litpool_ref:address,EA_def:address,Reg:register,Type:symbol)
 .output symbol_minus_symbol_litpool_access_pattern
 
-//     ldr reg, LitPool
-// ...
-// L1: add reg, pc
-// ...
-// LitPool: .word TARGET - (L1+4)
-//
+/**
+    ldr reg, LitPool
+...
+L1: add reg, pc
+...
+LitPool: .word TARGET - (L1+Disp)
+
+where Disp = 4 for Thumb mode, and 8 for ARM mode.
+*/
 block_needs_splitting_at(EA_add_pc),
 moved_data_label(LitPoolAddr,Size,Symbol1,EA_add_pc),
-symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add_pc,Reg):-
-    litpool_ref(EA,Reg,LitPoolAddr,NBits),
-    Size = NBits/8,
+symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add_pc,Reg,"LDR"):-
+    litpool_ref(EA,Reg,LitPoolAddr,Size,"LDR"),
 
     def_used(EA,Reg,EA_add_pc,_),
 
@@ -870,12 +963,8 @@ symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA
     op_regdirect_contains_reg(DestOp,Reg),
 
     data_word(LitPoolAddr,Size,Diff),
-    (
-        (EA_add_pc band 1) = 0, Disp = 8 // ARM mode
-        ;
-        (EA_add_pc band 1) != 0, Disp = 4 // Thumb mode
-    ),
-    Symbol1 = EA_add_pc+Disp,
+    pc_relative_disp(EA_add_pc,Disp),
+    Symbol1 = EA_add_pc + as(Disp,address),
     Addr2 = as(Diff,address) + Symbol1,
     Symbol2= Addr2-(Addr2 band 1).
 
@@ -887,28 +976,17 @@ symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA
 // LitPool: .word TARGET - Base
 //
 // (in observed cases, LitPool == Base)
-symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA,EA_add,Reg):-
-    litpool_ref(EA,Reg,LitPoolAddr,NBits),
-    Size = NBits/8,
+symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA_ldr,EA_add,Reg,"ADR"):-
+    // e.g., ldr reg1, LitPool
+    litpool_ref(EA_ldr,Reg,LitPoolAddr,Size,"LDR"),
 
-    def_used(EA,Reg,EA_add,_),
+    // e.g., add reg1, reg2
+    def_used(EA_ldr,Reg1,EA_add,_),
+    arch.reg_reg_arithmetic_operation(EA_add,Reg1,Reg1,Reg2,1,0),
 
-    instruction_get_operation(EA_add,"ADD"),
-    instruction_get_op(EA_add,1,PCRelOp),
-    op_regdirect_contains_reg(PCRelOp,PCRelReg),
-
-    def_used(EA_adr,PCRelReg,EA_add,_),
-    instruction_get_operation(EA_adr,"ADR"),
-    instruction_get_op(EA_adr,1,ImmOp),
-
-    op_immediate(ImmOp,Offset),
-    (
-        (EA_adr band 1) = 0, Disp = 8 // ARM mode
-        ;
-        (EA_adr band 1) != 0, Disp = 4 // Thumb mode
-    ),
-    Base = as(EA_adr,number)+Offset+Disp,
-    BaseAligned = Base-(Base band 1),
+    // e.g., adr reg1, Base
+    def_used(EA_adr,Reg2,EA_add,_),
+    litpool_ref(EA_adr,Reg2,BaseAligned,4,"ADR"),
 
     data_word(LitPoolAddr,Size,Diff),
 
@@ -917,18 +995,26 @@ symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA
     Symbol2 = Addr2-(Addr2 band 1).
 
 value_reg_edge(EA,Reg,EA,"NONE",0,as(Symbol2,number)):-
-    symbol_minus_symbol_litpool_access_pattern(_,_,_,Symbol2,_,_,EA,Reg).
+    symbol_minus_symbol_litpool_access_pattern(_,_,_,Symbol2,_,_,EA,Reg,_).
 
-.decl litpool_symbolic_operand(ea_litpool:address,size:unsigned,symbol1:address,symbol2:address,ea_def:address,reg_def:register,sym2_size:unsigned)
+labeled_data_candidate(Symbol2),
+symbol_minus_symbol_jump_table(LitPoolAddr,LitPoolAddr,Size,Symbol1,Symbol2,1,0):-
+    symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,_,_,_,"ADR").
+
+/**
+litpool_symbolic_operand
+
+PC-relative symbolic operand
+*/
+.decl litpool_symbolic_operand(ea_litpool:address,data_access_size:unsigned,symbol1:address,symbol2:address,ea_def:address,reg_def:register,sym2_size:unsigned)
 .output litpool_symbolic_operand
 
 //  (A) ldr  reg1, LitPoolAddr1
 //  (B) ldr  reg2, LitPoolAddr2
 //  (C) add  reg1, pc, reg1 // reg1 is the address of symbol foo
 //  (D) ldr  reg3, [reg1, reg2] // the referenced address is the address of symbol bar.
-block_needs_splitting_at(EA_C),
-litpool_symbolic_operand(LitPoolAddr2,Size,Symbol1,Symbol2,EA_D,Reg3,Size2):-
-    symbol_minus_symbol_litpool_access_pattern(_,_,_,Symbol1,1,_,EA_C,Reg1),
+litpool_symbolic_operand(LitPoolAddr2,DataAccessSize,Symbol1,Symbol2,EA_D,Reg3,SymSize):-
+    symbol_minus_symbol_litpool_access_pattern(_,_,_,Symbol1,1,_,EA_C,Reg1,_),
 
     def_used(EA_C,Reg1,EA_D,_),
 
@@ -939,14 +1025,14 @@ litpool_symbolic_operand(LitPoolAddr2,Size,Symbol1,Symbol2,EA_D,Reg3,Size2):-
     instruction_get_dest_op(EA_D,_,RegOp),
     op_indirect(IndOp,"NONE",Reg1,Reg2,_,0,Bits),
     op_regdirect_contains_reg(RegOp,Reg3),
-    Size2 = Bits / 8,
+    SymSize = Bits / 8,
 
     def_used(EA_B,Reg2,EA_D,_),
 
     // (B) ldr reg2, LitPoolAddr2
-    litpool_ref(EA_B,Reg2,LitPoolAddr2,_),
+    litpool_ref(EA_B,Reg2,LitPoolAddr2,_,"LDR"),
 
-    data_word(LitPoolAddr2,Size,Diff),
+    data_word(LitPoolAddr2,DataAccessSize,Diff),
     Symbol2 = as(Diff,address) + Symbol1.
 
 value_reg_edge(EA,Reg,EA,"NONE",0,as(Val,number)):-
@@ -970,8 +1056,8 @@ symbol_minus_symbol(LitPoolAddr2,Size,Symbol1,Symbol2,1,0):-
 //                [LitPoolAddr2] = bar(GOT) - foo => bar(GOT)
 //
 symbolic_expr_attribute(LitPoolAddr,"GotRelPC"),
-symbolic_data(LitPoolAddr,Size,Got_entry):-
-    litpool_symbolic_operand(LitPoolAddr,Size,_,Got_entry,_,_,_),
+symbolic_data(LitPoolAddr,SymSize,Got_entry):-
+    litpool_symbolic_operand(LitPoolAddr,_,_,Got_entry,_,_,SymSize),
     section(".got",GotSize,GotBeg),
     Got_entry >= GotBeg,
     Got_entry < GotBeg+GotSize,
@@ -980,13 +1066,15 @@ symbolic_data(LitPoolAddr,Size,Got_entry):-
         RelType != "RELATIVE",
         symbol(_,_,_,_,_,_,_,_,Symbol)
         ;
-        symbolic_data(Got_entry,Size,Dest),
-        symbol(Dest,_,_,_,_,_,_,_,Symbol)
+        symbolic_data(Got_entry,SymSize,Dest)
     ).
 
+data_object_candidate(LitPoolAddr,Size,"symbol-symbol"):-
+    symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,_,_,_,_,_,_,_).
+
 must_access_data(EA,Dest):-
-    litpool_ref(EA,_,Dest,_);
-    litpool_ref_double(EA,_,_,Dest).
+    litpool_ref(EA,_,Dest,_,"LDR");
+    litpool_ref_double(EA,_,_,Dest,_).
 
 instruction_get_dest_op(EA,1,Op):-
     instruction(EA,_,_,Operation,Op,_,_,_,_,_),

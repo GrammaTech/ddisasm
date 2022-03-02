@@ -31,10 +31,14 @@ block_points(Block,"data",0,9,"literal pool"),
 data_block_candidate(Block,Size):-
     defined_symbol(Block,Size,_,_,_,_,_,_,"$d").
 
-block_points(Block,"code",0,1,"plausible instruction sequence: cmp/branch"):-
-    conditional_jump(Jump),
-    code_in_block_candidate(Jump,Block),
-    next(PrevEA,Jump),
+block_points(Block,"code",0,3,"plausible instruction sequence: cmp/conditional-instruction"):-
+    (
+        conditional_jump(EA)
+        ;
+        conditional_return(EA)
+    ),
+    code_in_block_candidate(EA,Block),
+    next(PrevEA,EA),
     code_in_block_candidate(PrevEA,Block),
     instruction_get_operation(PrevEA,Operation),
     arch.cmp_operation(Operation).
@@ -68,6 +72,18 @@ symbolic_operand_point(EA,Imm_index,-1,"unlikely to have symbolic operand"):-
         ;
         arch.logic_operation(Operation)
     ).
+
+symbolic_operand_point(EA,2,-2,"arm: add r, r, n"):-
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
+    (
+        substr(Operation,0,3) = "ADD";
+        substr(Operation,0,3) = "SUB";
+        substr(Operation,0,3) = "RSB"
+    ),
+    op_regdirect(Op1,_),
+    op_immediate(Op2,_),
+    Op3 != 0,
+    !symbolic_operand_attribute(EA,_,_).
 
 unlikely_have_symbolic_immediate(EA):-
     instruction_get_operation(EA, Operation),

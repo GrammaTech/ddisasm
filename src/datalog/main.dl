@@ -261,7 +261,7 @@ instruction_get_op(EA,Index,Op):-
     ).
 
 
-.decl instruction_get_dest_op(ea:address,index:number,op:operand_code)
+.decl instruction_get_dest_op(ea:address,index:operand_index,op:operand_code)
 
 instruction_get_dest_op(EA,1,Op):-
     arch.store_operation(Operation),
@@ -425,7 +425,7 @@ pc_relative_jump(EA,Dest):-
     pc_relative_operand(EA,1,Dest).
 
 // jump to the address of a register
- .decl reg_jump(src:address,Reg:symbol)
+.decl reg_jump(src:address,Reg:symbol)
 
 reg_jump(EA,Reg):-
     arch.jump(EA),

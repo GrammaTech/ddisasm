@@ -380,6 +380,10 @@ inferred_special_symbol(EA,"_DYNAMIC","LOCAL","NONE","Beg"):-
     !symbol(EA,_,_,_,_,_,_,_,"_DYNAMIC"),
     section(".dynamic",_,EA).
 
+inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_","LOCAL","NONE","Beg"):-
+    !symbol(_,_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
+    got_reference_pointer(EA).
+
 no_return_function("abort(@.*)?"):- binary_format("ELF").
 no_return_function("_?exit(@.*)?"):- binary_format("ELF").
 no_return_function("__chk_fail(@.*)?"):- binary_format("ELF").
