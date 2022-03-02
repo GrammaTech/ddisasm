@@ -144,3 +144,6 @@ tests:
       # Just make sure it disassembles and re-assembles without errors
       <<: *default-test
       skip: true
+
+  - name: ex_switch1
+    <<: *assembly
