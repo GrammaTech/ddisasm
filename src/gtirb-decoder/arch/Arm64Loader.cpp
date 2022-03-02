@@ -114,6 +114,10 @@ std::optional<relations::Instruction> Arm64Loader::build(Arm64Facts& Facts,
                     case ARM64_SFT_ROR:
                         ShiftType = "ROR";
                         break;
+                    case ARM64_SFT_INVALID:
+                        std::cerr << "WARNING: instruction has a non-zero invalid shift at " << Addr
+                                  << "\n";
+                        return std::nullopt;
                 }
                 Facts.Instructions.shiftedOp(
                     relations::ShiftedOp{Addr, static_cast<uint8_t>(i + 1),
@@ -148,10 +152,25 @@ std::optional<relations::Operand> Arm64Loader::build(const cs_insn& CsInsn, uint
             return ImmOp{CsOp.imm};
         case ARM64_OP_MEM:
         {
+            int64_t Mult = 1;
+
+            if(CsOp.shift.value != 0)
+            {
+                // In load and store operations, the only type of shift allowed is LSL.
+                if(CsOp.shift.type == ARM64_SFT_LSL)
+                {
+                    Mult = 1 << CsOp.shift.value;
+                }
+                else
+                {
+                    std::cerr << "WARNING: unsupported shift in indirect op\n";
+                }
+            }
+
             IndirectOp I = {registerName(ARM64_REG_INVALID),
                             registerName(CsOp.mem.base),
                             registerName(CsOp.mem.index),
-                            1,
+                            Mult,
                             CsOp.mem.disp,
                             4 * 8};
             return I;
