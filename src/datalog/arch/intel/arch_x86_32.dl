@@ -84,10 +84,6 @@ abi_intrinsic(EA,"_GLOBAL_OFFSET_TABLE_"):-
         inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_",_,_,_)
     ).
 
-inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_","LOCAL","NONE","Beg"):-
-    !symbol(_,_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
-    got_reference_pointer(EA).
-
 // GCC GOT-relative offset variant:
 //     add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
 symbolic_expr(EA+ImmediateOffset,4,"_GLOBAL_OFFSET_TABLE_",0):-

@@ -370,10 +370,10 @@ labeled_data_candidate(Val):-
 /**
 A symbol-symbol entry in a relative jump table.
 */
-.decl symbol_minus_symbol_jump_table(EA:address,TableStart:address,Size:unsigned,Reference:address,Dest:address,Scale:number)
+.decl symbol_minus_symbol_jump_table(EA:address,TableStart:address,Size:unsigned,Reference:address,Dest:address,Scale:number,Offset:number)
 .output symbol_minus_symbol_jump_table
 
-symbol_minus_symbol_jump_table(TableStart,TableStart,Size,TableReference,Dest,Scale):-
+symbol_minus_symbol_jump_table(TableStart,TableStart,Size,TableReference,Dest,Scale,0):-
     !binary_isa("ARM"),
     jump_table_start(_,Size,TableStart,TableReference,Scale),
     (
@@ -391,9 +391,9 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,TableReference,Dest,Sc
         TableReference >= SectionStart, TableReference < (SectionStart + SectionSize)
     ).
 
-symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Reference,Dest,Scale):-
+symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Reference,Dest,Scale,Offset):-
     !binary_isa("ARM"),
-    symbol_minus_symbol_jump_table(EA,TableStart,Size,Reference,_,Scale),
+    symbol_minus_symbol_jump_table(EA,TableStart,Size,Reference,_,Scale,Offset),
     !possible_data_limit(EA+Size),
     last_data_limit(EA+Size,LastDataLimit),LastDataLimit <= EA,
     (
@@ -410,8 +410,8 @@ A candidate for a symbol-symbol in data (includes jump tables and other relative
 .decl symbol_minus_symbol_candidate(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,Offset:number)
 .output symbol_minus_symbol_candidate
 
-symbol_minus_symbol_candidate(EA,Size,Symbol1,Symbol2,as(Scale,unsigned),0):-
-    symbol_minus_symbol_jump_table(EA,_,Size,Reference,Dest,Scale),
+symbol_minus_symbol_candidate(EA,Size,Symbol1,Symbol2,as(Scale,unsigned),Offset):-
+    symbol_minus_symbol_jump_table(EA,_,Size,Reference,Dest,Scale,Offset),
     (
         Scale > 0, Symbol1 = Reference, Symbol2 = Dest;
         Scale < 0, Symbol1 = Dest, Symbol2 = Reference
