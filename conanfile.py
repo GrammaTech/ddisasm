@@ -187,12 +187,12 @@ class DdisasmConan(Properties, ConanFile):
         cmake.configure(source_folder=".", defs=defs)
         cmake.build()
         if self.settings.build_type == "Release":
-            with tools.vcvars(self.settings, arch="x86"):
+            with tools.vcvars(self.settings, arch="x86_64"):
                 cmake.test(output_on_failure=True)
             # FIXME: https://github.com/conan-io/conan/issues/3673
             # Remove environment variable to force vcvars configuration.
             os.environ.pop("VisualStudioVersion", None)
-            with tools.vcvars(self.settings, arch="x86_64"):
+            with tools.vcvars(self.settings, arch="x86"):
                 cmake.test(output_on_failure=True)
 
     def package(self):
