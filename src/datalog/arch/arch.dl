@@ -89,8 +89,6 @@ conditional(EA):-
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
 
-.decl arithmetic_operation(Operation:symbol)
-
 /**
 This can include any multiplication operations, including shift-left operation.
 */
