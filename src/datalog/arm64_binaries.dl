@@ -229,6 +229,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
 symbolic_operand_candidate(EA,1,Dest,Type):-
     // ADR <Register> <Immediate>
     // e.g. adr r1, BaseOp
+    code(EA),
     instruction_get_operation(EA, "ADR"),
     instruction_get_op(EA, 1, OffsetOp),
     op_immediate(OffsetOp, Offset),

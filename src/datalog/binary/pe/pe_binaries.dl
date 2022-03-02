@@ -287,6 +287,7 @@ inferred_special_symbol(Start,"__EntryPoint","GLOBAL","FUNC","Beg"):-
     entry_point(Start).
 
 symbolic_operand_candidate(EA,Op_index,Dest,"data"):-
+    code(EA),
     base_address(ImageBase),
     pc_relative_operand(EA,Op_index,Dest),
     Dest = ImageBase.
