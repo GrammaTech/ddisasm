@@ -68,11 +68,14 @@ std::optional<DatalogProgram> runSouffle(GTIRB &Gtirb)
         return std::nullopt;
     }
 
-    std::string DebugDir("/tmp/ddisasm-debug");
+    auto DebugDir = fs::temp_directory_path() / fs::unique_path();
+    std::cout << "\t\tWriting relations to " << DebugDir << "\n";
     fs::create_directories(DebugDir);
-    Souffle->writeFacts(DebugDir + "/");
+    std::string DebugDirPath(DebugDir.string() + "/");
+
+    Souffle->writeFacts(DebugDirPath);
     Souffle->run();
-    Souffle->writeRelations(DebugDir + "/");
+    Souffle->writeRelations(DebugDirPath);
     return Souffle;
 }
 
