@@ -39,14 +39,30 @@ void Arm32Loader::insert(const Arm32Facts& Facts, DatalogProgram& Program)
     Program.insert("op_register_bitfield", Operands.reg_bitfields());
 }
 
-void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Facts)
+void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
+                       Arm32Facts& Facts)
 {
     // NOTE: AArch32 (ARMv8-A) is backward compatible to ARMv7-A.
     cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_ARM | CS_MODE_V8);
     InstructionSize = 4;
     load(ByteInterval, Facts, false);
 
-    cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB | CS_MODE_V8);
+    std::string BinaryAttribute;
+    if(auto AuxData = Module.getAuxData<gtirb::schema::BinaryAttribute>())
+    {
+        if(!AuxData->empty())
+        {
+            BinaryAttribute = AuxData->front();
+        }
+    }
+    if(BinaryAttribute.find("Cortex-M") != std::string::npos)
+    {
+        cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
+    }
+    else
+    {
+        cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB | CS_MODE_V8);
+    }
     InstructionSize = 2;
     load(ByteInterval, Facts, true);
 }

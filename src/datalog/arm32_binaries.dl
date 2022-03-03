@@ -250,6 +250,18 @@ invalid(EA,"arm: invalid pc"):-
     op_regdirect_contains_reg(Op,PC),
     arch.pc_register(PC).
 
+invalid(EA,"arm: invalid arithmetic instruction with suffix s"):-
+    instruction_get_operation(EA,Operation),
+    strlen(Operation) >= 4,
+    substr(Operation,0,3) = OP,
+    (
+        OP = "ADD"; OP = "SUB"; OP = "RSB";
+        OP = "ADC"; OP = "SBC"; OP = "RSC"
+    ),
+    substr(Operation,3,1) = "S",
+    instruction_get_dest_op(EA,_,Op),
+    op_regdirect_contains_reg(Op,PC),
+    arch.pc_register(PC).
 
 /*
  * The instruction at EA has capstone's cs_arm.writeback set.
@@ -266,6 +278,27 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     litpool_ref(EA,Reg,LitPoolAddr,_,"ADR"),
     Val = as(LitPoolAddr,number).
+
+/**
+adr r, offset
+or
+add r, pc, offset
+*/
+.decl adr_instr(EA:address,Reg:register,Offset:number)
+
+adr_instr(EA,Reg,Offset):-
+    instruction(EA,_,_,Operation,OffsetOp,DestOp,0,_,_,_),
+    substr(Operation,0,3) = "ADR",
+    op_immediate(OffsetOp, Offset),
+    op_regdirect(DestOp,Reg).
+
+adr_instr(EA,Reg,Offset):-
+    instruction(EA,_,_,Operation,PCOp,OffsetOp,DestOp,0,_,_),
+    substr(Operation,0,3) = "ADD",
+    op_immediate(OffsetOp, Offset),
+    op_regdirect(DestOp,Reg),
+    op_regdirect(PCOp,PC),
+    arch.pc_register(PC).
 
 /**
 PC stores the address of the current instruction plus 8 (two ARM
@@ -323,6 +356,19 @@ plt_block(Block,Function):-
 
 block_points(EA_entry,"code",0,7,"arm: plt-block"):-
     plt_entry_arm_candidate(EA_entry,_,_,_).
+
+/**
+E.g.,
+  stm r!, {...r...}
+*/
+block_is_overlapping(Block,"code"),
+block_points(Block,"code",0,-4,"arm: stm r!, {...r...}: unlikely code"):-
+    instruction(EA,_,_,Operation,RegListOp,RegOp,0,_,_,_),
+    substr(Operation,0,3) = "STM",
+    instruction_writeback(EA),
+    code_in_block_candidate_refined(EA,Block),
+    op_regdirect_contains_reg(RegOp,Reg),
+    op_regdirect_contains_reg(RegListOp,Reg).
 
 /**
 E.g.,
@@ -497,10 +543,7 @@ symbolic_operand_candidate(EA,1,Dest,Type):-
     !litpool_ref_double(EA,_,_,_,_),
     // ADR <Register> <Immediate>
     // e.g. adr r1, BaseOp
-    instruction_get_operation(EA,Operation),
-    substr(Operation,0,3) = "ADR",
-    instruction_get_op(EA, 1, OffsetOp),
-    op_immediate(OffsetOp, Offset),
+    adr_instr(EA,_,Offset),
     pc_relative_disp(EA,Disp),
     Dest0 = EA + as(Offset,address) + as(Disp,address),
     // Align the address
@@ -610,29 +653,50 @@ Attributes:
 
 .output arm_jump_table_candidate
 
-arm_jump_table_candidate_start(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"absolute",1,0):-
+/**
+Jump-table pattern
+  ldr pc, [pc, r2, lsl N]
+or
+  adr r1, Label
+  ldr pc, [r1, r2, lsl N]
+*/
+arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"absolute",1,0):-
     arch.load_word_operation(Operation),
-    instruction(EA_jump,_,_,Operation,IndOp,RegOp,0,0, _,_),
-    EA_jump band 1 = 0,
-    // ldr pc, [pc,r2, lsl N]
+    instruction(EA_jump,InstrSize,_,Operation,IndOp,RegOp,0,0,_,_),
     // TODO: Currently, 'lsl N' is not propagated from the decoder.
     op_regdirect_contains_reg(RegOp,PC),
     arch.pc_register(PC),
-    op_indirect(IndOp,"NONE",PC,_,_,0,NBits),
+    op_indirect(IndOp,"NONE",BaseReg,_,_,0,NBits),
     Size = NBits / 8,
     arch.pointer_size(Size),
     (
-        arch.conditional_operation(Operation),
-        // 8: Assumes that there is a fall-through successor consisting
-        // of one instruction (typically a jump instruction)
-        TableStart = EA_jump + 8,
-        // Check the fall-through instruction is a jump
-        next(EA_jump,EA_fallthrough),
-        arch.jump(EA_fallthrough)
+        // ldr pc, [pc, r2, lsl N]
+        BaseReg = PC,
+        (
+            arch.conditional_operation(Operation),
+            // 8: Assumes that there is a fall-through successor consisting
+            // of one instruction (typically a jump instruction)
+            // Check the fall-through instruction is a jump
+            next(EA_jump,EA_fallthrough),
+            arch.jump(EA_fallthrough),
+            instruction(EA_fallthrough,InstrSize2,_,_,_,_,_,_,_,_),
+            TableStart0 = EA_jump + as(InstrSize + InstrSize2,address)
+            ;
+            !arch.conditional_operation(Operation),
+            TableStart0 = EA_jump + as(InstrSize,address)
+        )
         ;
-        !arch.conditional_operation(Operation),
-        TableStart = EA_jump + 4
+        // adr r1, Label   or  add r1, pc, offset
+        // ldr pc, [r1, r2, lsl N]
+        next(EA_adr,EA_jump),
+        adr_instr(EA_adr,BaseReg,Offset),
+        pc_relative_disp(EA_adr,Disp),
+        TableStart0 = EA_adr + as(Offset,address) + as(Disp,address)
     ),
+
+    // Tables are aligned.
+    TableStart = TableStart0 - (TableStart0 band 3),
+
     address_in_data(TableStart,TargetAddr),
     (
         // Jump to after the jumptable - sets a hard limit on the jumptable size.
@@ -689,15 +753,7 @@ EA_add   add r4, r3    or   add r4, r4, r3
 EA_jump: bx r4
 */
 arm_jump_table_candidate_start(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"relative",1,as(EA_jump band 1,number)):-
-    (
-        instruction_get_operation(EA,"ADR"),
-        instruction_get_op(EA, 1, OffsetOp),
-        op_immediate(OffsetOp, Offset)
-        ;
-        instruction_get_operation(EA,"ADD"),
-        arch.reg_arithmetic_operation(EA,_,PC,1,Offset),
-        arch.pc_register(PC)
-    ),
+    adr_instr(EA,_,Offset),
     pc_relative_disp(EA,Disp),
     TableStart0 = EA + as(Offset,address) + as(Disp,address),
     next(EA,EA_ldr),
@@ -723,7 +779,9 @@ arm_jump_table_candidate_start(EA_jump,TableStart,TableStart,Size,TargetAddr,Tab
     Mult = Mult, // to avoid warnings
     Size = NBits / 8,
     arch.pointer_size(Size),
-    TableStart = TableStart0 - (TableStart0 band 1),
+
+    // Tables are aligned.
+    TableStart = TableStart0 - (TableStart0 band 3),
 
     arm_relative_jump_table_target(TableStart,TableStart,Size,1,AlignedTargetAddr),
     TargetAddr = AlignedTargetAddr + (EA_jump band 1),
@@ -747,7 +805,7 @@ arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimi
     (
         Type = "absolute",
         address_in_data(EA+Size,TargetAddr),
-        AlignedTargetAddr=TargetAddr
+        AlignedTargetAddr = TargetAddr - (TargetAddr band 1)
         ;
         Type = "relative",
         arm_relative_jump_table_target(EA+Size,TableStart,Size,Scale,AlignedTargetAddr),
@@ -769,7 +827,7 @@ arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimi
     (
         TargetAddr < TableStart
         ;
-        TargetAddr > NewTableLimit
+        TargetAddr >= NewTableLimit
     ).
 
 // Aggregate arm_jump_table_candidate in one data block
@@ -787,6 +845,9 @@ jump_table_candidate(EA,DataEA,TargetEA):-
 data_object_point(DataEA,Size,"symbol",2,"arm jump-table3"),
 data_object_candidate(DataEA,Size,"symbol"):-
     arm_jump_table_candidate(_,_,DataEA,Size,_,_,"absolute",_,_).
+
+data_object_candidate(LitPoolAddr,Size,"symbol-symbol"):-
+    symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,_,_,_,_,_,_,_).
 
 jump_table_start(EA,Size,TableStart,TableStart,1):-
     arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,_,_,_),
@@ -899,36 +960,72 @@ block_points(LitPoolAddr,"data",0,Points,"arm literal pool"):-
         (
             !block_is_overlapping(Block,_), Points = 9
             ;
-            block_is_overlapping(Block,_), Points = 5
+            block_is_overlapping(Block,_),
+            // In case the block is overlapping, give points only if
+            // this block is not likely to be another literal pool.
+            AddrAligned = Block - (Block band 3),
+            (
+                !litpool_ref(_,_,AddrAligned,_,_)
+                ;
+                litpool_ref(EA0,_,AddrAligned,_,_),
+                !code_in_block_candidate_refined(EA0,_)
+                ;
+                litpool_ref(EA0,_,AddrAligned,_,_),
+                code_in_block_candidate_refined(EA0,Block0),
+                block_is_overlapping(Block0,_)
+            ),
+            Points = 5
         )
     ).
 
-block_points(Block,"data",0,7,"possible string"),
+block_points(Block,"data",0,7+Points,"possible string"),
 data_block_candidate(Block,Size):-
     ascii_string(Block,Size),
     (
-        symbol(Block,_,_,_,_,_,_,_,_)
+        symbol(Block,_,_,_,_,_,_,_,_), Points = 0
         ;
-        aligned_address_in_data(_,Block)
+        aligned_address_in_data(EA,Block),
+        (
+            // EA is not code
+            !code_in_block_candidate_refined(EA,_), Points = 0
+            ;
+            // Decrease the points when EA is a part of a string
+            ascii_string(Block0,Size0),
+            EA >= Block0,
+            EA < Block0 + Size0,
+            Points = -12
+            ;
+            // Decrease the points if EA is a literal pool possibly
+            // with symbol-symbol.
+            litpool_ref(EA_ldr,_,EA,_,_),
+            next(EA_ldr,EA_add),
+            arch.reg_reg_arithmetic_operation(EA_add,_,_,PC,1,0),
+            arch.pc_register(PC),
+            Points = -14
+        )
     ).
 
-// E.g.,
-//   0:   strb r3, [r0, #53]
-//   4:   ldrb r3, [r5, #1]
-// The strb instruction is 4 bytes, and the higher 2 bytes happens
-// to be subs instruction, so the blocks are overlapping.
-// The block with strb at 0 is real and the must-through predecessor
-// of the block at 4.
-// Whereas, the subs block do not have any successor.
-// To give more confidence to the real block with strb,
-// give point 1 when one of the block has must-fallthrough
-// even if the block is overlapping.
-block_points(Block,"code",BlockPred,1,"must-fallthrough"):-
-    block_is_overlapping(Block,"code"),
-    must_fallthrough(EA,Block),
-    code_in_block_candidate_refined(EA,BlockPred),
-    !candidate_block_is_padding(BlockPred),
-    block_is_overlapping(BlockPred,_).
+/**
+E.g.,
+  0:   strb r3, [r0, #53]
+  4:   ldrb r3, [r5, #1]
+The strb instruction is 4 bytes, and the higher 2 bytes happens
+to be subs instruction, so the blocks are overlapping.
+The block with strb at 0 is real and the must-through predecessor
+of the block at 4.
+Whereas, the subs block do not have any successor.
+To give more confidence to the real block with strb,
+give points 2 to the enclosing block when the enclosing block has
+a must-fallthrough even if the block is overlapping.
+*/
+block_points(InnerBlock,"code",0,-2,"arm: bogus sub-instruction"):-
+    block_is_overlapping(InnerBlock,"code"),
+    !must_fallthrough(_,InnerBlock),
+    EnclosingEA = InnerBlock-2,
+    code_in_block_candidate_refined(EnclosingEA,_),
+    must_fallthrough(_,EnclosingEA),
+    instruction(InnerBlock,2,_,_,_,_,_,_,_,_),
+    instruction(EnclosingEA,4,_,_,_,_,_,_,_,_).
 
 symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
     litpool_ref(EA,_,LitPoolAddr,_,"LDR").
@@ -969,12 +1066,8 @@ symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA
 
     // ADD <Register> PC
     // e.g., add r3, pc
-    instruction_get_operation(EA_add_pc,"ADD"),
-    instruction_get_op(EA_add_pc,1,PcOp),
-    op_regdirect_contains_reg(PcOp,PC),
     arch.pc_register(PC),
-    instruction_get_dest_op(EA_add_pc,_,DestOp),
-    op_regdirect_contains_reg(DestOp,Reg),
+    arch.reg_reg_arithmetic_operation(EA_add_pc,Reg,Reg,PC,1,0),
 
     data_word(LitPoolAddr,Size,Diff),
     pc_relative_disp(EA_add_pc,Disp),
@@ -1083,9 +1176,6 @@ symbolic_data(LitPoolAddr,SymSize,Got_entry):-
         symbolic_data(Got_entry,SymSize,Dest)
     ).
 
-data_object_candidate(LitPoolAddr,Size,"symbol-symbol"):-
-    symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,_,_,_,_,_,_,_).
-
 must_access_data(EA,Dest):-
     litpool_ref(EA,_,Dest,_,"LDR");
     litpool_ref_double(EA,_,_,Dest,_).
@@ -1142,7 +1232,3 @@ thumb_branch_offset(EA,Offset):-
 impossible_jump_target(Val):-
     possible_ea(Val),
     arch.it_conditional(Val).
-
-block_points(Block,"code",0,-5,"in the middle of IT block"):-
-    code_in_block_candidate(_,Block),
-    arch.it_conditional(Block).

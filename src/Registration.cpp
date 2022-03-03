@@ -23,7 +23,6 @@
 #include "Registration.h"
 
 #include "AuxDataSchema.h"
-
 #include "gtirb-decoder/DatalogProgram.h"
 #include "gtirb-decoder/target/ElfArm32Loader.h"
 #include "gtirb-decoder/target/ElfArm64Loader.h"
@@ -53,6 +52,7 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolVersions>();
     gtirb::AuxDataContainer::registerAuxDataType<DynamicEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<BinaryType>();
+    gtirb::AuxDataContainer::registerAuxDataType<BinaryAttribute>();
     gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
     gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
     gtirb::AuxDataContainer::registerAuxDataType<Encodings>();

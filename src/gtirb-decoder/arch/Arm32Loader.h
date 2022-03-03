@@ -81,7 +81,8 @@ protected:
     void decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
     using InstructionLoader::load;
-    void load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Facts) override;
+    void load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
+              Arm32Facts& Facts) override;
     void load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Facts, bool Thumb);
 
     void insert(const Arm32Facts& Facts, DatalogProgram& Program) override;

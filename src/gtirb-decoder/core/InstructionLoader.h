@@ -200,13 +200,14 @@ protected:
             {
                 for(const auto& ByteInterval : Section.byte_intervals())
                 {
-                    load(ByteInterval, Facts);
+                    load(Module, ByteInterval, Facts);
                 }
             }
         }
     }
 
-    virtual void load(const gtirb::ByteInterval& ByteInterval, T& Facts)
+    virtual void load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
+                      T& Facts)
     {
         assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
 

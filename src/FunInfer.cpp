@@ -67,6 +67,7 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolInfo>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolVersions>();
     gtirb::AuxDataContainer::registerAuxDataType<BinaryType>();
+    gtirb::AuxDataContainer::registerAuxDataType<BinaryAttribute>();
     gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
     gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
     gtirb::AuxDataContainer::registerAuxDataType<DynamicEntries>();
