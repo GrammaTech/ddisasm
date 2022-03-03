@@ -233,12 +233,14 @@ instruction_displacement_offset(EA,Index,DisplacementOffset,DispSize):-
         DispSize = Size - DisplacementOffset
     ).
 
-.decl instruction_get_operation(ea:address,operation:symbol) inline
+.decl instruction_get_operation(ea:address,operation:symbol)
+.output instruction_get_operation
 
 instruction_get_operation(EA,Operation):-
     instruction(EA,_,_,Operation,_,_,_,_,_,_).
 
-.decl instruction_get_op(ea:address,index:operand_index,operator:operand_code)
+.decl instruction_get_op(ea:address, index:operand_index, operator:operand_code)
+.output instruction_get_op
 
 instruction_get_op(EA,Index,Op):-
     instruction(EA,_,_,_,Op1,Op2,Op3,Op4,_,_),
@@ -262,6 +264,7 @@ instruction_get_op(EA,Index,Op):-
 
 
 .decl instruction_get_dest_op(ea:address,index:operand_index,op:operand_code)
+.output instruction_get_dest_op
 
 instruction_get_dest_op(EA,1,Op):-
     arch.store_operation(Operation),
@@ -295,6 +298,7 @@ instruction_get_dest_op(EA,1,Op):-
     arch.one_op_write(Operation).
 
 .decl instruction_get_src_op(ea:address,Index:operand_index,op:operand_code)
+.output instruction_get_src_op
 
 instruction_get_src_op(EA,2,Op):-
     arch.store_operation(Operation),
@@ -547,6 +551,7 @@ alignment(0,0):- false.
 // Operations to abstract features of instructions
 
 .decl op_indirect_contains_reg(op:operand_code,reg:register)
+.output op_indirect_contains_reg
 
 // we ignore segment registers
 op_indirect_contains_reg(Op,Reg_uniform):-
@@ -558,6 +563,7 @@ op_indirect_contains_reg(Op,Reg_uniform):-
     arch.track_register(Reg3,Reg_uniform).
 
 .decl op_regdirect_contains_reg(op:operand_code,reg:register)
+.output op_regdirect_contains_reg
 
 op_regdirect_contains_reg(Op,Reg_uniform):-
     (
