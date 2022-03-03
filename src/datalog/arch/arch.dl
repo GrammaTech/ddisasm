@@ -270,6 +270,22 @@ pc_relative_addr(0,"",0):- false.
 loop_prefix(""):-
     false.
 
-.decl pointer_size(N:unsigned) inline
+.decl pointer_size(N:unsigned)
+
+.output pointer_size
+.output mov
+.output read_only_operation
+.output pc_register
+.output frame_pointer
+.output stack_pointer
+.output arithmetic_operation
+.output logic_operation
+.output cmp_operation
+.output conditional
+.output jump
+.output return
+.output track_register
+.output move_operation
+.output reg_arithmetic_operation
 
 }

@@ -56,6 +56,8 @@ They are organized in blocks of sequential code
 and the block identifier is the address of the first instruction in the block.
 */
 .decl code_in_block(EA:address,Block:address)
+.output code_in_block
+
 /**
 There is a code block starting at 'Block'.
 */

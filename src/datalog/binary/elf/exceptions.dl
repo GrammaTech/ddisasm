@@ -138,7 +138,8 @@ personality (.cfi_lsda and .cfi_personality respectively).
 
 /////////////////////////////////////////////////////////////////////////////////
 // Extract information important for disassembly
-.decl fde_addresses(start:address,end:address)
+.decl fde_addresses(start:address, end:address)
+.output fde_addresses
 
 fde_addresses(Start,End):-
     fde_entry(_,_,_,Start,End,_).
@@ -161,6 +162,7 @@ fde_block_addresses(FdeAddr,Start,EndBlock):-
     block_information(Block,_,EndBlock).
 
 .decl lsda_callsite_addresses(Start:address,End:address,LandingPad:address)
+.output lsda_callsite_addresses
 
 lsda_callsite_addresses(Start,End,LandingPad):-
     lsda_callsite(_,_,Start,_,End,_,LandingPad,_).
