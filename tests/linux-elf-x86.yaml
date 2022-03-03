@@ -178,8 +178,9 @@ tests:
 
   - name: ex_exceptions2
     <<: *position-independent-cpp
-  # TODO:
-  # ex_exceptions3
+
+  - name: ex_exceptions3
+    <<: *position-independent-cpp
 
   - name: ex_false_pointer_array
     <<: *position-independent
