@@ -395,15 +395,18 @@ no_return_function("longjmp(@.*)?"):- binary_format("ELF").
 
 relocation_adjustment(EA,as(Addend,number),"implicit-addend"):-
     binary_format("ELF"),
-    relocation(EA,Type,_,_,_,_,RelType),
+    relocation(EA,Type,_,_,_,_,"REL"),
     relocation_size(Type,Size),
     (
-        RelType = "REL", Size = 8, data_byte(EA,Addend);
-        RelType = "REL", Size != 8, data_word(EA,Size/8,Addend)
+        Size = 8, data_byte(EA,Addend);
+        Size != 8, data_word(EA,Size/8,Addend)
     ).
 
-relocation_adjustment(EA+Offset,N,"immediate-offset"):-
-    binary_isa("X64"),
+relocation_adjustment(EA+Offset,N,"distance-to-pc"):-
+    (
+        binary_isa("X86");
+        binary_isa("X64")
+    ),
     binary_type("REL"),
     code(EA),
     (
@@ -448,7 +451,7 @@ symbolic_expr_from_relocation(EA,Size/8,Symbol,0,TargetEA):-
     symbol(_,_,"SECTION",_,_,SectionIndex,_,SymbolIndex,_),
     section_complete(_,_,Begin,_,_,_,SectionIndex),
     // Addend is the offset of a symbol within the Section.
-    TargetEA = Begin+as(Addend,unsigned)+as(Adjustment,unsigned),
+    TargetEA = as(as(Begin,number)+Addend+Adjustment,address),
     (
         symbol(TargetEA,_,_,_,_,_,_,_,Symbol);
         !symbol(TargetEA,_,_,_,_,_,_,_,_), Symbol = ""
@@ -466,7 +469,6 @@ symbolic_expr_from_relocation(EA,4,Symbol,Addend,TargetEA):-
     symbol(TargetEA,_,_,_,_,_,_,_,Symbol).
 
 symbolic_expr_from_relocation(EA,4,Symbol,Addend+Adjustment,TargetEA):-
-    binary_isa("X64"),
     binary_type("REL"),
     relocation(EA,Type,Symbol,Addend,SymbolIndex,_,_),
     (
@@ -476,13 +478,6 @@ symbolic_expr_from_relocation(EA,4,Symbol,Addend+Adjustment,TargetEA):-
     relocation_adjustment_total(EA,Adjustment),
     symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol),
     Symbol != "".
-
-symbolic_expr_from_relocation(EA,4,Symbol,Addend,TargetEA):-
-    binary_type("REL"),
-    relocation(EA,"PC32",Symbol,Addend,SymbolIndex,Section,"RELA"),
-    symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol),
-    section(Section,Size,Begin),
-    data_section(Section), EA >= Begin, EA < Begin+Size.
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
