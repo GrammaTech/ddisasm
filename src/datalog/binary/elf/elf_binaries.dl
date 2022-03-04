@@ -439,8 +439,7 @@ symbolic_expr_from_relocation(EA,Size/8,Symbol,Addend+Adjustment,TargetEA):-
 symbolic_expr_from_relocation(EA,Size/8,Symbol,0,TargetEA):-
     binary_type("REL"),
     // Nameless relocation referencing a SECTION symbol.
-    relocation(EA,Type,"",Addend,SymbolIndex,SrcSection,_),
-    section(SrcSection,_,_), // Only loaded sections
+    relocation(EA,Type,"",Addend,SymbolIndex,_,_),
     relocation_size(Type,Size),
     (
         Type = "R32";
