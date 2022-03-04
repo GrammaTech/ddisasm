@@ -133,19 +133,36 @@ conditional_operation(Operation):-
     CC = substr(Operation,Size-2,2),
     condition_code(CC).
 
-pc_relative_addr(EA,Reg,Offset):-
+/**
+PC stores the address of the current instruction plus 8 (two ARM
+instructions) in ARM state, and the current instruction plus 4
+(two Thumb instructions) in Thumb state.
+This is used for computing PC-relative addresses.
+*/
+.decl pc_relative_disp(EA:address,Disp:number) inline
+
+pc_relative_disp(EA,Disp):-
+    (EA band 1) = 0,  Disp = 8  // ARM mode
+    ;
+    (EA band 1) != 0, Disp = 4. // Thumb mode
+
+pc_relative_addr(EA,Reg,Val):-
     instruction(EA,_,_,Operation,OffsetOp,DestOp,0,_,_,_),
     substr(Operation,0,3) = "ADR",
     op_immediate(OffsetOp, Offset),
-    op_regdirect(DestOp,Reg).
+    op_regdirect(DestOp,Reg),
+    pc_relative_disp(EA,Disp),
+    Val = as(EA - (EA band 1),number) + Offset + Disp.
 
-pc_relative_addr(EA,Reg,Offset):-
+pc_relative_addr(EA,Reg,Val):-
     instruction(EA,_,_,Operation,PCOp,OffsetOp,DestOp,0,_,_),
     substr(Operation,0,3) = "ADD",
     op_immediate(OffsetOp, Offset),
     op_regdirect(DestOp,Reg),
     op_regdirect(PCOp,PC),
-    arch.pc_register(PC).
+    arch.pc_register(PC),
+    pc_relative_disp(EA,Disp),
+    Val = as(EA - (EA band 1),number) + Offset + Disp.
 
 /**
 IT: The IT (If-Then) instruction makes up to four following instructions
