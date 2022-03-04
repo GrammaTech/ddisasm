@@ -102,7 +102,7 @@ Symbol+Offset
  This symbolic expression corresponds to a relocation and the symbol
 is referenced by name.
  */
-.decl symbolic_expr_from_relocation(EA:address,Size:unsigned,Symbol:symbol,Offset:number)
+.decl symbolic_expr_from_relocation(EA:address,Size:unsigned,Symbol:symbol,Offset:number,TargetEA:address)
 .output symbolic_expr_from_relocation
 
 /**
@@ -914,12 +914,16 @@ labeled_ea(EA):-
 labeled_ea(EA):-
     fde_entry(_,_,_,_,_,EA).
 
+labeled_ea(TargetEA):-
+    // Generate labels for empty symbolic expressions
+    symbolic_expr_from_relocation(_,_,"",_,TargetEA).
+
 data_object_boundary(EA):-
     labeled_ea(EA);
     symbolic_data(EA,_,_);
     string(EA,_,_);
     symbol_minus_symbol(EA,_,_,_,_,_);
-    symbolic_expr_from_relocation(EA,_,_,_);
+    symbolic_expr_from_relocation(EA,_,_,_,_);
     moved_data_label(EA,_,_,_).
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -943,7 +947,13 @@ bss_data(EA):-
 
 
 symbolic_expr(EA,Size,Symbol,Offset):-
-    symbolic_expr_from_relocation(EA,Size,Symbol,Offset).
+    symbolic_expr_from_relocation(EA,Size,Symbol,Offset,_),
+    // Empty symbols must have a symbol name inferred.
+    Symbol != "".
+
+symbolic_expr(EA,Size,Symbol,Offset):-
+    symbolic_expr_from_relocation(EA,Size,"",Offset,TargetEA),
+    best_symexpr_symbol(TargetEA,Symbol,_).
 
 symbolic_expr_symbol_minus_symbol(EA,Size,SymbolName1,SymbolName2,Scale,Offset):-
     symbol_minus_symbol_from_relocation(EA,Size,SymbolName1,SymbolName2,Scale,Offset).
@@ -951,7 +961,7 @@ symbolic_expr_symbol_minus_symbol(EA,Size,SymbolName1,SymbolName2,Scale,Offset):
 // Symbol-Symbol
 symbolic_expr_symbol_minus_symbol(EA,Size,SymbolName1,SymbolName2,Scale,FinalOffset):-
     symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale,Offset),
-    !symbolic_expr_from_relocation(EA,_,_,_),
+    !symbolic_expr_from_relocation(EA,_,_,_,_),
     !symbol_minus_symbol_from_relocation(EA,_,_,_,_,_),
     (
         moved_data_label(EA,Size,Symbol1,NewSymbol1),
@@ -984,7 +994,7 @@ symbolic_expr(EA+InstrOffset,Size,SymbolName,Offset):-
         instruction_immediate_offset(EA,Index,InstrOffset,Size);
         instruction_displacement_offset(EA,Index,InstrOffset,Size)
     ),
-    !symbolic_expr_from_relocation(EA+InstrOffset,_,_,_),
+    !symbolic_expr_from_relocation(EA+InstrOffset,_,_,_,_),
     !symbol_minus_symbol_from_relocation(EA+InstrOffset,_,_,_,_,_),
     !symbol_minus_symbol(EA+InstrOffset,_,_,_,_,_),
     Offset = as(Dest,number) - as(FinalDest,number),
@@ -997,7 +1007,7 @@ symbolic_expr(EA+InstrOffset,Size,SymbolName,0):-
         instruction_immediate_offset(EA,Index,InstrOffset,Size);
         instruction_displacement_offset(EA,Index,InstrOffset,Size)
     ),
-    !symbolic_expr_from_relocation(EA+InstrOffset,_,_,_),
+    !symbolic_expr_from_relocation(EA+InstrOffset,_,_,_,_),
     !symbol_minus_symbol_from_relocation(EA+InstrOffset,_,_,_,_,_),
     !symbol_minus_symbol(EA+InstrOffset,_,_,_,_,_),
     (
@@ -1011,7 +1021,7 @@ symbolic_expr(EA+InstrOffset,Size,SymbolName,0):-
 // Symbolic data
 symbolic_expr(EA,Size,SymbolName,Offset):-
     moved_data_label(EA,Size,Dest,FinalDest),
-    !symbolic_expr_from_relocation(EA,_,_,_),
+    !symbolic_expr_from_relocation(EA,_,_,_,_),
     !symbol_minus_symbol_from_relocation(EA,_,_,_,_,_),
     !symbol_minus_symbol(EA,_,_,_,_,_),
     Offset = as(Dest,number) - as(FinalDest,number),
@@ -1019,7 +1029,7 @@ symbolic_expr(EA,Size,SymbolName,Offset):-
 
 symbolic_expr(EA,Size,SymbolName,0):-
     symbolic_data(EA,Size,Dest),
-    !symbolic_expr_from_relocation(EA,_,_,_),
+    !symbolic_expr_from_relocation(EA,_,_,_,_),
     !symbol_minus_symbol_from_relocation(EA,_,_,_,_,_),
     !symbol_minus_symbol(EA,_,_,_,_,_),
     !moved_data_label(EA,_,_,_),

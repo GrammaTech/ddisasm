@@ -103,7 +103,7 @@ instruction_has_relocation(EA,EA-Mode):-
     Mode = EA band 1,
     relocation(EA-Mode,_,_,_,_,_,_).
 
-symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
+symbolic_expr_from_relocation(EA,4,Symbol,Addend,Dest):-
     binary_type("REL"),
     relocation(EA,"ABS32",Symbol,_,SymbolIndex,_,"REL"),
     symbol(Base,_,_,_,_,_,_,SymbolIndex,Symbol),
@@ -116,7 +116,7 @@ symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
     Addend = as(Base - Dest,number).
 
 symbolic_expr_attribute(EA,"GotRelPC"),
-symbolic_expr_from_relocation(EA,4,Symbol,Addend):-
+symbolic_expr_from_relocation(EA,4,Symbol,Addend,EA+as(Addend,address)):-
     binary_type("REL"),
     relocation(EA,"GOT_BREL",Symbol,_,_,_,_),
     data_word(EA,4,Addend).

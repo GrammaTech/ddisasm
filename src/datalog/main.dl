@@ -109,6 +109,25 @@ This module:
 
 .decl relocation_size(Type:symbol,Size:unsigned)
 
+/**
+Defines adjustments to relocation values.
+*/
+.decl relocation_adjustment(EA:address,Adjustment:number,Reason:symbol)
+.output relocation_adjustment
+/**
+The total relocation adjustment for a location
+*/
+.decl relocation_adjustment_total(EA:address,Adjustment:number)
+.output relocation_adjustment_total
+
+relocation_adjustment_total(EA,0):-
+    relocation(EA,_,_,_,_,_,_),
+    !relocation_adjustment(EA,_,_).
+
+relocation_adjustment_total(EA,Adjustment):-
+    relocation(EA,_,_,_,_,_,_),
+    Adjustment = sum N:{relocation_adjustment(EA,N,_)}.
+
 .decl binary_type(Type:symbol)
 .input binary_type
 
