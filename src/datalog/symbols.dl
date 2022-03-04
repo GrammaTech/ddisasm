@@ -189,7 +189,6 @@ best_symexpr_symbol(EA,SymbolName,"End"):-
     // A better solution would be to define a user-defined functor.
     SymbolName = cat(cat(".L_",to_string(EA)),"_END").
 
-
 /**
 An existing symbol is pointing to the end of a section rather
 than the beginning of the next section.
