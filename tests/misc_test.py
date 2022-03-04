@@ -201,6 +201,7 @@ class DataDirectoryTests(unittest.TestCase):
     )
     def test_data_directories_in_code(self):
         with cd(ex_dir / "ex1"):
+            subprocess.run(make("clean"), stdout=subprocess.DEVNULL)
 
             # Compile with `.rdata' section merged to `.text'.
             proc = subprocess.run(
@@ -261,14 +262,17 @@ class PeResourcesTests(unittest.TestCase):
             )
 
             # Reassemble with regenerated RES file.
+            ml, entry = "ml64", "__EntryPoint"
+            if os.environ.get("VSCMD_ARG_TGT_ARCH") == "x86":
+                ml, entry = "ml", "_EntryPoint"
             self.assertTrue(
                 reassemble(
-                    "ml64",
+                    ml,
                     "ex.exe",
                     extra_flags=[
                         "/link",
                         "ex.res",
-                        "/entry:__EntryPoint",
+                        "/entry:" + entry,
                         "/subsystem:console",
                     ],
                 )
