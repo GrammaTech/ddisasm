@@ -133,6 +133,20 @@ conditional_operation(Operation):-
     CC = substr(Operation,Size-2,2),
     condition_code(CC).
 
+pc_relative_addr(EA,Reg,Offset):-
+    instruction(EA,_,_,Operation,OffsetOp,DestOp,0,_,_,_),
+    substr(Operation,0,3) = "ADR",
+    op_immediate(OffsetOp, Offset),
+    op_regdirect(DestOp,Reg).
+
+pc_relative_addr(EA,Reg,Offset):-
+    instruction(EA,_,_,Operation,PCOp,OffsetOp,DestOp,0,_,_),
+    substr(Operation,0,3) = "ADD",
+    op_immediate(OffsetOp, Offset),
+    op_regdirect(DestOp,Reg),
+    op_regdirect(PCOp,PC),
+    arch.pc_register(PC).
+
 /**
 IT: The IT (If-Then) instruction makes up to four following instructions
 (the IT block) conditional.

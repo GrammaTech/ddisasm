@@ -263,6 +263,31 @@ invalid(EA,"arm: invalid arithmetic instruction with suffix s"):-
     op_regdirect_contains_reg(Op,PC),
     arch.pc_register(PC).
 
+invalid(EA, "arm: invalid stm/ldm"):-
+    instruction(EA,_,_,Operation,RegListOp,RegOp,0,_,_,_),
+    BaseOperation = substr(Operation,0,3),
+    (
+         BaseOperation = "STM";
+         BaseOperation = "LDM"
+    ),
+    instruction_writeback(EA),
+    op_regdirect_contains_reg(RegOp,Reg),
+    op_regdirect_contains_reg(RegListOp,Reg),
+    (
+        // Reg is not the lowest-indexed register in the reglist.
+        op_regdirect_contains_reg(RegListOp,Reg2),
+        arch.reg_index(Reg,RegIdx),
+        arch.reg_index(Reg2,Reg2Idx),
+        Reg2Idx < RegIdx
+        ;
+        // Reg is not allowed in the reglist in 32-bit Thumb instructions
+        EA band 1 = 1, Size = 4
+        ;
+        // Reg is not allowed in the reglist in LDM instructions (all modes)
+        BaseOperation = "LDM"
+    ).
+
+
 /*
  * The instruction at EA has capstone's cs_arm.writeback set.
  */
@@ -273,32 +298,6 @@ invalid(EA,"arm: invalid arithmetic instruction with suffix s"):-
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     litpool_ref(EA,Reg,LitPoolAddr,Size,"LDR"),
     data_word(LitPoolAddr,Size,Val).
-
-// ADR
-value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
-    litpool_ref(EA,Reg,LitPoolAddr,_,"ADR"),
-    Val = as(LitPoolAddr,number).
-
-/**
-adr r, offset
-or
-add r, pc, offset
-*/
-.decl adr_instr(EA:address,Reg:register,Offset:number)
-
-adr_instr(EA,Reg,Offset):-
-    instruction(EA,_,_,Operation,OffsetOp,DestOp,0,_,_,_),
-    substr(Operation,0,3) = "ADR",
-    op_immediate(OffsetOp, Offset),
-    op_regdirect(DestOp,Reg).
-
-adr_instr(EA,Reg,Offset):-
-    instruction(EA,_,_,Operation,PCOp,OffsetOp,DestOp,0,_,_),
-    substr(Operation,0,3) = "ADD",
-    op_immediate(OffsetOp, Offset),
-    op_regdirect(DestOp,Reg),
-    op_regdirect(PCOp,PC),
-    arch.pc_register(PC).
 
 /**
 PC stores the address of the current instruction plus 8 (two ARM
@@ -356,19 +355,6 @@ plt_block(Block,Function):-
 
 block_points(EA_entry,"code",0,7,"arm: plt-block"):-
     plt_entry_arm_candidate(EA_entry,_,_,_).
-
-/**
-E.g.,
-  stm r!, {...r...}
-*/
-block_is_overlapping(Block,"code"),
-block_points(Block,"code",0,-4,"arm: stm r!, {...r...}: unlikely code"):-
-    instruction(EA,_,_,Operation,RegListOp,RegOp,0,_,_,_),
-    substr(Operation,0,3) = "STM",
-    instruction_writeback(EA),
-    code_in_block_candidate_refined(EA,Block),
-    op_regdirect_contains_reg(RegOp,Reg),
-    op_regdirect_contains_reg(RegListOp,Reg).
 
 /**
 E.g.,
@@ -543,7 +529,7 @@ symbolic_operand_candidate(EA,1,Dest,Type):-
     !litpool_ref_double(EA,_,_,_,_),
     // ADR <Register> <Immediate>
     // e.g. adr r1, BaseOp
-    adr_instr(EA,_,Offset),
+    arch.pc_relative_addr(EA,_,Offset),
     pc_relative_disp(EA,Disp),
     Dest0 = EA + as(Offset,address) + as(Disp,address),
     // Align the address
@@ -689,7 +675,7 @@ arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimi
         // adr r1, Label   or  add r1, pc, offset
         // ldr pc, [r1, r2, lsl N]
         next(EA_adr,EA_jump),
-        adr_instr(EA_adr,BaseReg,Offset),
+        arch.pc_relative_addr(EA_adr,BaseReg,Offset),
         pc_relative_disp(EA_adr,Disp),
         TableStart0 = EA_adr + as(Offset,address) + as(Disp,address)
     ),
@@ -753,7 +739,7 @@ EA_add   add r4, r3    or   add r4, r4, r3
 EA_jump: bx r4
 */
 arm_jump_table_candidate_start(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"relative",1,as(EA_jump band 1,number)):-
-    adr_instr(EA,_,Offset),
+    arch.pc_relative_addr(EA,_,Offset),
     pc_relative_disp(EA,Disp),
     TableStart0 = EA + as(Offset,address) + as(Disp,address),
     next(EA,EA_ldr),
