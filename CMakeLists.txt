@@ -35,6 +35,17 @@ endif()
 
 string(TIMESTAMP DDISASM_BUILD_DATE "%Y-%m-%d")
 
+if(DDISASM_ARM_64)
+  list(APPEND DDISASM_ARCH_LIST "ARM64")
+endif()
+if(DDISASM_X86_32)
+  list(APPEND DDISASM_ARCH_LIST "IA32")
+endif()
+if(DDISASM_X86_64)
+  list(APPEND DDISASM_ARCH_LIST "X64")
+endif()
+list(JOIN DDISASM_ARCH_LIST "+" DDISASM_BUILD_ARCH_TARGETS)
+
 #
 # Global Options (CMake)
 #
