@@ -8,7 +8,7 @@ default: &default
   binary: ex
 
   # Compilation configuration.
-  build:
+  build: &default-build
     c: ["arm-linux-gnueabihf-gcc"]
     cpp: ["arm-linux-gnueabihf-g++"]
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
@@ -277,3 +277,19 @@ tests:
   #   link:
   #     compiler: "g++"
   #     flags: ["-lpthread"]
+
+  - name: ex_obj_debug_reloc
+    <<: *default
+    binary: ex.o
+
+    build:
+      <<: *default-build
+      optimizations: ["-Og"]
+      flags: ["-g"]
+
+    reassemble:
+      compiler: "arm-linux-gnueabihf-g++"
+      flags: ["-c"]
+
+    link:
+      linker: "arm-linux-gnueabihf-g++"
