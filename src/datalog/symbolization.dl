@@ -383,13 +383,9 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,TableReference,Dest,Sc
     TableReference_signed = as(TableReference,number),
     Dest = as(TableReference_signed + as(Scale,number)*Diff,unsigned),
     code(Dest),
-    (
-        !binary_format("PE");
-        // Addresses belong to the same segment.
-        section(_,SectionSize,SectionStart),
-        TableStart >= SectionStart, TableStart < (SectionStart + SectionSize),
-        TableReference >= SectionStart, TableReference < (SectionStart + SectionSize)
-    ).
+    // The table is in a loaded section.
+    section(_,SectionSize,SectionStart),
+    TableStart >= SectionStart, TableStart < (SectionStart + SectionSize).
 
 // propagate until finding:
 // * something that doesn't resolve to a code pointer.
