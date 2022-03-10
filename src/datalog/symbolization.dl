@@ -426,10 +426,10 @@ The address appearing at 'EA' is within a potential
 .decl address_in_data_is_printable(EA:address)
 
 address_in_data_is_printable(EA):-
-    address_in_data(EA,_),
     arch.pointer_size(Pt_size),
     ascii_string(EAString,SizeString),
-    EAString <= EA, EA+Pt_size <= EAString+SizeString.
+    address_in_data(EA,_),
+    EAString <= EA, EA <= EAString + SizeString - Pt_size.
 
 // address_in_data considers anything that points to the code region
 // this refinement restricts that to the beginning of the final blocks
