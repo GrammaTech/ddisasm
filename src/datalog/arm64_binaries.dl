@@ -119,7 +119,7 @@ Instead, this is for the symbolization step.
 .decl split_load_for_symbolization(ea:address, nextea:address, dest:address, type:symbol)
 .output split_load_for_symbolization
 
-split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "ADD") :-
+split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "ADD"):-
     // ADRP <Register> <Immediate>
     // e.g. adrp x0, BaseOp
     instruction_get_operation(EA, "ADRP"),
@@ -127,20 +127,18 @@ split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "ADD") :-
     op_immediate(BaseOp, Base),
     instruction_get_op(EA, 2, RegOp),
     op_regdirect_contains_reg(RegOp, Reg1),
-
     (
         Reg1 = Reg2,
-        def_used(EA,Reg1,NextEA,_);
-
+        def_used(EA,Reg1,NextEA,_)
+        ;
         value_reg_edge(StackLoadEA,Reg2,EA,Reg1,1,0),
         def_used(StackLoadEA,Reg2,NextEA,_)
     ),
-
     // ADD <Register> <Register> <Immediate>
     // e.g. add x0, x0, <Offset>
     arch.reg_arithmetic_operation(NextEA,_,Reg2,1,Offset).
 
-split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "LDR/STR") :-
+split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "LDR/STR"):-
     // ADRP <Register> <Immediate>
     // e.g. adrp x0, BaseOp
     instruction_get_operation(EA, "ADRP"),
@@ -148,15 +146,13 @@ split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "LDR/STR") :
     op_immediate(BaseOp, Base),
     instruction_get_op(EA, 2, RegOp),
     op_regdirect_contains_reg(RegOp, Reg1),
-
     (
         Reg1 = Reg2,
-        def_used(EA,Reg1,NextEA,_);
-
+        def_used(EA,Reg1,NextEA,_)
+        ;
         value_reg_edge(StackLoadEA,Reg2,EA,Reg1,1,0),
         def_used(StackLoadEA,Reg2,NextEA,_)
     ),
-
     // LDR/STR <Register> <IndirectOp>
     // e.g. ldr x0, [x0, <OffsetOp>]
     arch.memory_access(_,NextEA,_,_,_,Reg2,"NONE",_,Offset).
