@@ -65,7 +65,7 @@ protected:
     void insert(const Arm32Facts& Facts, DatalogProgram& Program) override;
 
 private:
-    std::optional<relations::Operand> build(const cs_arm_op& CsOp);
+    std::optional<relations::Operand> build(const cs_insn& CsInsn, const cs_arm_op& CsOp);
     bool build(Arm32Facts& Facts, const cs_insn& CsInstruction);
 
     std::shared_ptr<csh> CsHandle;

@@ -136,7 +136,7 @@ bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction)
 
             if(i < regBitFieldInitialIndex(Name))
             {
-                std::optional<relations::Operand> Op = build(CsOp);
+                std::optional<relations::Operand> Op = build(CsInstruction, CsOp);
                 // Build operand for datalog fact.
                 if(!Op)
                 {
@@ -163,7 +163,7 @@ bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction)
             const cs_arm_op& CsOp = Details.operands[i];
 
             // Build operand for datalog fact.
-            std::optional<relations::Operand> Op = build(CsOp);
+            std::optional<relations::Operand> Op = build(CsInstruction, CsOp);
             if(!Op)
             {
                 return false;
@@ -192,7 +192,7 @@ bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction)
     return true;
 }
 
-std::optional<relations::Operand> Arm32Loader::build(const cs_arm_op& CsOp)
+std::optional<relations::Operand> Arm32Loader::build(const cs_insn& CsInsn, const cs_arm_op& CsOp)
 {
     using namespace relations;
 
@@ -210,8 +210,13 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_arm_op& CsOp)
         {
             // CsOp.mem.lshift seems to be incorrect for some instructions,
             // see: https://github.com/capstone-engine/capstone/issues/1848
+            // TODO: LDR instructions support ASR, LSL, LSR, ROR, and RRX shifts.
+            // Only LSL can be represented as a multiplier.
             if(CsOp.shift.value && CsOp.shift.type != ARM_SFT_LSL)
-                std::cerr << "WARNING: Unexpected shift type in mem operand.\n";
+                std::cerr << "WARNING: Unhandled shift type in mem operand ("
+                          << "address=0x" << std::hex << CsInsn.address << std::dec << ", "
+                          << "value=0x" << std::hex << CsOp.shift.value << std::dec << ", "
+                          << "type=" << CsOp.shift.type << ")\n";
 
             IndirectOp I = {registerName(ARM_REG_INVALID),
                             registerName(CsOp.mem.base),
