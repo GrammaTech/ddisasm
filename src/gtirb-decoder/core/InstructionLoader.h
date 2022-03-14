@@ -208,8 +208,8 @@ protected:
 
     // NOTE: If needed, Module can be used in the inherited functions:
     // e.g., ARM32
-    virtual void load([[maybe_unused]] const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
-                      T& Facts)
+    virtual void load([[maybe_unused]] const gtirb::Module& Module,
+                      const gtirb::ByteInterval& ByteInterval, T& Facts)
     {
         assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
 
