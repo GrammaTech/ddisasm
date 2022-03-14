@@ -206,14 +206,12 @@ protected:
         }
     }
 
-    virtual void load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
+    // NOTE: If needed, Module can be used in the inherited functions:
+    // e.g., ARM32
+    virtual void load([[maybe_unused]] const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
                       T& Facts)
     {
         assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
-        // To avoid "unused variable" error
-        // NOTE: Module can be used in the inherited functions: e.g., ARM32
-        if(Module.getISA() == gtirb::ISA::Undefined)
-            assert(false);
 
         uint64_t Addr = static_cast<uint64_t>(*ByteInterval.getAddress());
         uint64_t Size = ByteInterval.getInitializedSize();
