@@ -368,54 +368,13 @@ labeled_data_candidate(Val):-
 ////////////////////////////////////////////////////////////////////////
 
 /**
-A symbol-symbol entry in a relative jump table.
-*/
-.decl symbol_minus_symbol_jump_table(EA:address,TableStart:address,Size:unsigned,Reference:address,Dest:address,Scale:number,Offset:number)
-.output symbol_minus_symbol_jump_table
-
-symbol_minus_symbol_jump_table(TableStart,TableStart,Size,TableReference,Dest,Scale,0):-
-    !binary_isa("ARM"),
-    jump_table_start(_,Size,TableStart,TableReference,Scale),
-    (
-        Size > 1,data_word(TableStart,Size,Diff);
-        Size = 1,data_byte(TableStart,DiffUnsigned), Diff = as(DiffUnsigned,number)
-    ),
-    TableReference_signed = as(TableReference,number),
-    Dest = as(TableReference_signed + as(Scale,number)*Diff,unsigned),
-    code(Dest),
-    // The table is in a loaded section.
-    section(_,SectionSize,SectionStart),
-    TableStart >= SectionStart, TableStart < (SectionStart + SectionSize).
-
-// propagate until finding:
-// * something that doesn't resolve to a code pointer.
-// * a symbol
-// * the end of a data section
-
-// we can't do much better without negating something or adding an entirely
-// new boundary value analysis to analyze comparisons on the jump table index
-// register.
-symbol_minus_symbol_jump_table(EA+Size,TableStart,Size,Reference,Dest,Scale,Offset):-
-    !binary_isa("ARM"),
-    symbol_minus_symbol_jump_table(EA,TableStart,Size,Reference,_,Scale,Offset),
-    !symbol(EA+Size,_,_,_,_,_,_,_,_),
-    !data_segment(_,EA+Size),
-    (
-        Size>1,data_word(EA+Size,Size,Diff);
-        Size=1,data_byte(EA+Size,DiffUnsigned), Diff = as(DiffUnsigned,number)
-    ),
-    Reference_signed = as(Reference,number),
-    Dest = as(Reference_signed + as(Scale,number)*Diff,unsigned),
-    code(Dest).
-
-/**
 A candidate for a symbol-symbol in data (includes jump tables and other relative symbols)
 */
 .decl symbol_minus_symbol_candidate(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,Offset:number)
 .output symbol_minus_symbol_candidate
 
 symbol_minus_symbol_candidate(EA,Size,Symbol1,Symbol2,as(Scale,unsigned),Offset):-
-    symbol_minus_symbol_jump_table(EA,_,Size,Reference,Dest,Scale,Offset),
+    relative_jump_table_entry(EA,_,Size,Reference,Dest,Scale,Offset),
     (
         Scale > 0, Symbol1 = Reference, Symbol2 = Dest;
         Scale < 0, Symbol1 = Dest, Symbol2 = Reference

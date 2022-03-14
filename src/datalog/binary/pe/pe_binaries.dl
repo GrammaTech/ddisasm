@@ -499,7 +499,7 @@ relative_address(EA+1,1,IndexTable,AddressTable,Dest,"first"):-
     possible_ea(ImageBase+as(Word,unsigned)),
     !relative_address_start(EA+1,_,_,_,_).
 
-symbol_minus_symbol_jump_table(EA,TableStart,1,Ref,Dest,4,0):-
+relative_jump_table_entry_candidate(EA,TableStart,1,Ref,Dest,4,0):-
     // Byte offsets reference a preceding relative address table.
     relative_address(EA,1,TableStart,Ref,Dest,"first"), Dest < TableStart,
     relative_address_start(Ref,4,_,_,_),

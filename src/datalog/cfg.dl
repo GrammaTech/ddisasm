@@ -92,7 +92,7 @@ resolved_jump(EA,Dest):-
 // Symbol-Symbol jump tables
 resolved_jump(EA,Dest):-
     jump_table_start(EA,Size,TableStart,_,_),
-    symbol_minus_symbol_jump_table(_,TableStart,Size,_,Dest,_,_).
+    relative_jump_table_entry(_,TableStart,Size,_,Dest,_,_).
 
 resolved_jump(Src,Dest):-
     jump_table_candidate_refined(Src,_,Dest).
