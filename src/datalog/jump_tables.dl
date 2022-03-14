@@ -75,4 +75,4 @@ jump_table_target(EA,Dest):-
 
 jump_table_target(EA,Dest):-
     jump_table_start(EA,Size,TableStart,_,_),
-    symbol_minus_symbol_jump_table(_,TableStart,Size,_,Dest,_,_).
+    relative_jump_table_entry_candidate(_,TableStart,Size,_,Dest,_,_).
