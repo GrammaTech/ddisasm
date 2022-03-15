@@ -43,7 +43,7 @@ block_points(Block,"code",0,3,"plausible instruction sequence: cmp/conditional-i
     instruction_get_operation(PrevEA,Operation),
     arch.cmp_operation(Operation).
 
-plt_block(EA,Function):-
+plt_entry(EA,Function):-
     plt_section(SecName),
     section(SecName,Size,Beg),
     EA < Beg+Size,

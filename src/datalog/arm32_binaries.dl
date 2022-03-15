@@ -317,9 +317,8 @@ E.g.,
   add ip, ip, #16, #20
   ldr pc, [ip, #2640]
 */
-plt_block(Block,Function):-
-    plt_entry_arm_candidate(_,EA_jump,Function,_),
-    code_in_refined_block(EA_jump,Block).
+plt_entry(EA,Function):-
+    plt_entry_arm_candidate(_,EA,Function,_).
 
 block_points(EA_entry,"code",0,7,"arm: plt-block"):-
     plt_entry_arm_candidate(EA_entry,_,_,_).
@@ -333,7 +332,7 @@ E.g.,
   ldr pc, [ip, #2640]
 */
 block_points(EA-3,"code",0,7,"arm: plt-block: bx pc"),
-plt_block(EA-3,Function):-
+plt_entry(EA-3,Function):-
     plt_entry_arm_candidate(EA,_,Function,_),
     instruction_get_operation(EA-3,Operation2), // thumb
     arch.jump_operation_op_index(Operation2,TargetOpIndex),
