@@ -754,15 +754,6 @@ no_return_call(EA):-
     match(Pattern,Name).
 
 /**
-PLT blocks, post code inference but can be used during value analysis.
-*/
-.decl plt_code_block(EA:address,Function:symbol)
-
-plt_code_block(EA,Function):-
-    plt_entry(EACall,Function),
-    code_in_block(EACall,EA).
-
-/**
 Detect no-return calls after code inference, but before value analysis.
 */
 .decl no_return_call_in_code(EA:address)
@@ -773,7 +764,7 @@ no_return_call_in_code(EA):-
 
 no_return_call_in_code(EA):-
     direct_call(EA,Dest),
-    plt_code_block(Dest,Function),
+    plt_block(Dest,Function),
     no_return_function(Pattern),
     match(Pattern,Function).
 

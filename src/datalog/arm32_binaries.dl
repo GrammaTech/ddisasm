@@ -332,7 +332,7 @@ E.g.,
   ldr pc, [ip, #2640]
 */
 block_points(EA-3,"code",0,7,"arm: plt-block: bx pc"),
-plt_entry(EA-3,Function):-
+plt_block(EA-3,Function):-
     plt_entry_arm_candidate(EA,_,Function,_),
     instruction_get_operation(EA-3,Operation2), // thumb
     arch.jump_operation_op_index(Operation2,TargetOpIndex),
