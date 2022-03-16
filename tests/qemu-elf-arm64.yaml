@@ -103,7 +103,6 @@ tests:
   - name: ex_struct
     <<: *default
 
-  # FIXME: -Os: a new jump-table pattern: split_load after cfg changed
   - name: ex_switch
     <<: *default
 
