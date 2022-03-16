@@ -67,7 +67,6 @@ data_access(EA,Op_index,RegSegment,RegBase,RegIndex,Mult,Offset,Size):-
 
 // the register Reg has the given value at instruction EA and operand Op_index
 .decl value_reg_at_operand(EA:address,Op_index:operand_index,Reg:register,EA_from:address,Mult:number,Offset:number,Type:symbol)
-.output value_reg_at_operand
 
 
 // value_reg_at_operand_loop is just used to give priority to "loop" values over other kinds of values
@@ -228,69 +227,26 @@ data_access_pattern_candidate(Address,Size,FinalMult,EA):-
     Address >= Beg,
     Address <= End.
 
-.decl data_access_pattern_conflict(EA1:address,Size1:unsigned,Mult1:number,EA2:address,Size2:unsigned,Mult2:number)
-.output data_access_pattern_conflict
-
-data_access_pattern_conflict(EA1,Size1,Mult1,EA2,Size2,Mult2):-
-    data_access_pattern_candidate(Address,Size1,Mult1,EA1),
-    data_access_pattern_candidate(Address,Size2,Mult2,EA2),
-    EA1 != EA2, Size1 != Size2.
-
-data_access_pattern_conflict(EA,Size1,Mult1,EA,Size2,Mult2):-
-    data_access_pattern_candidate(Address,Size1,Mult1,EA),
-    data_access_pattern_candidate(Address,Size2,Mult2,EA),
-    (Size1 != Size2; Mult1 != Mult2).
-
-.decl data_access_pattern_points(Address:address,Size:unsigned,Multiplier:number,FromWhere:address,Points:number,HeuristicName:symbol)
-.output data_access_pattern_points
-
-data_access_pattern_points(Address,Size,Mult,EA,-2,"data access bias"):-
-    data_access_pattern_candidate(Address,Size,Mult,EA).
-
-data_access_pattern_points(Address,Size,Mult,EA,4,"valid target"):-
-    data_access_pattern_candidate(Address,Size,Mult,EA),
-    instruction_get_operation(EA,Operation),
-    Operation != "LEA",
-    // if it is an indirect call or jump, the destination should be a potential address
-    (
-        address_in_data(Address,_)
-        ;
-        !indirect_jump(EA),
-        !indirect_call(EA)
-    ).
-
-.decl data_access_pattern_total_points(Address:address,Size:unsigned,Multiplier:number,FromWhere:address,Points:number)
-.output data_access_pattern_total_points
-
-data_access_pattern_total_points(Address,Size,Mult,EA,Points):-
-    data_access_pattern_candidate(Address,Size,Mult,EA),
-    Points = sum X:{ data_access_pattern_points(Address,Size,Mult,EA,X,_) }.
-
-.decl discarded_data_access_pattern(Address:address,Size:unsigned,Multiplier:number,FromWhere:address)
-.output discarded_data_access_pattern
-
-discarded_data_access_pattern(Address,Size1,Mult1,EA1):-
-    (
-        data_access_pattern_conflict(EA1,Size1,Mult1,EA2,Size2,Mult2);
-        data_access_pattern_conflict(EA2,Size2,Mult2,EA1,Size1,Mult1)
-    ),
-    data_access_pattern_total_points(Address,Size1,Mult1,EA1,Points1),
-    data_access_pattern_total_points(Address,Size2,Mult2,EA2,Points2),
-    (
-        Points1 < Points2
-        ;
-        // prefer the access pattern with highest multiplier
-        Points1 = Points2,
-        Mult1 < Mult2
-    ).
 
 data_access_pattern(Address,Size,Multiplier,From):-
-    data_access_pattern_total_points(Address,Size,Multiplier,From,Points),
+    data_access_pattern_candidate(Address,Size,Multiplier,From),
     instruction_get_operation(From,Operation),
     Operation != "LEA",
     data_byte(Address,_),
-    !discarded_data_access_pattern(Address,Size,Multiplier,From),
-    Points >= 0.
+    (
+        // select the access pattern with highest multiplier
+        MaxMult = max MaxMult : data_access_pattern_candidate(Address,Size,MaxMult,_),
+        Multiplier >= MaxMult
+        ;
+        // or if the multiplier is equal to the size of the access
+        Multiplier = as(Size,number)
+    ),
+    (
+        // if it is an indirect call or jump, the destination should be a potential address
+        address_in_data(Address,_);
+        !indirect_jump(From),
+        !indirect_call(From)
+    ).
 
 ///////////////////////////////////////////////////////////////////////////////
 // This code takes care of obtaining an ordering in the data_access_patterns
@@ -331,7 +287,6 @@ last_data_access(EA+1,Where):-
 
 
 .decl propagated_data_access(EA:address,Mult:number,EA_ref:address)
-.output propagated_data_access
 
 propagated_data_access(EA,Mult,EA):-
     data_access_pattern(EA,_,Mult,_),
