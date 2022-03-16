@@ -170,6 +170,11 @@ jump(EA):-
     jump_operation(Operation),
     !arch.return(EA).
 
+.decl call(EA:address)
+
+call(EA):-
+    instruction_get_operation(EA,Operation),
+    call_operation(Operation).
 
 .decl delay_slot(BranchEA:address,EA:address)
 

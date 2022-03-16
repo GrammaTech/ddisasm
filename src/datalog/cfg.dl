@@ -100,7 +100,7 @@ resolved_jump(Src,Dest):-
 //////////////////////////////////////////////////////////////////////////////
 // edge creation
 
-cfg_edge(Src,Dest,Conditional,Indirect,"branch"):-
+cfg_edge(Src,Dest,Conditional,Indirect,EdgeType):-
     refined_block_control_instruction(Src,EA),
     (
         direct_jump(EA,Dest), Indirect = "false";
@@ -109,8 +109,12 @@ cfg_edge(Src,Dest,Conditional,Indirect,"branch"):-
     ),
     refined_block(Dest),
     (
-        unconditional_jump(EA), Conditional = "false";
-        !unconditional_jump(EA),Conditional = "true"
+        arch.jump(EA),EdgeType="branch";
+        arch.call(EA),EdgeType="call"
+    ),
+    (
+        !arch.conditional(EA),Conditional = "false";
+        arch.conditional(EA),Conditional = "true"
     ).
 
 cfg_edge(Src,Dest,"false","false","call"):-
