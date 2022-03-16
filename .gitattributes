@@ -1,0 +1,3 @@
+# Treat .a files as binary to ensure their line endings are not rewritten by
+# checkout on Windows.
+*.a binary
