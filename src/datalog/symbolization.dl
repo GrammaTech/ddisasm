@@ -540,7 +540,6 @@ string(EA,End,Encoding):-
 .output data_object_conflict
 
 .decl discarded_data_object(ea:address,size:unsigned,type:symbol)
-.output discarded_data_object
 
 .decl data_object(ea:address,size:unsigned,type:symbol)
 
