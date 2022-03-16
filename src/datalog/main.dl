@@ -750,13 +750,13 @@ no_return_call(EA):-
 /**
 Detect no-return calls after code inference, but before value analysis.
 */
-.decl no_return_call_in_code(EA:address)
+.decl no_return_call_refined(EA:address)
 
-no_return_call_in_code(EA):-
+no_return_call_refined(EA):-
     code(EA),
     no_return_call(EA).
 
-no_return_call_in_code(EA):-
+no_return_call_refined(EA):-
     direct_call(EA,Dest),
     plt_block(Dest,Function),
     no_return_function(Pattern),
