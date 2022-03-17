@@ -471,16 +471,13 @@ indirect_jump(EA):-
 .output direct_call
 
 direct_call(EA,as(Dest,address)):-
-    arch.call_operation(Operation),
-    instruction_get_operation(EA,Operation),
-    arch.call_operation_op_index(Operation,Index),
+    arch.call(EA,Index),
     instruction_get_op(EA,Index,Op),
     op_immediate(Op,Dest),
     !instruction_has_relocation(EA,_).
 
 direct_call(EA,Dest):-
-    arch.call_operation(Operation),
-    instruction_get_operation(EA,Operation),
+    arch.call(EA,_),
     instruction_immediate_offset(EA,_,_,_),
     instruction_has_relocation(EA,Rel),
     relocation(Rel,_,_,_,SymbolIndex,_,_),
@@ -490,8 +487,7 @@ direct_call(EA,Dest):-
 .output pc_relative_call
 
 pc_relative_call(Src,Dest):-
-    instruction_get_operation(Src,Operation),
-    arch.call_operation(Operation),
+    arch.call(Src,_),
     pc_relative_operand(Src,1,Dest).
 
 // for now we do not compute anything about these
@@ -499,9 +495,7 @@ pc_relative_call(Src,Dest):-
 .output reg_call
 
 reg_call(EA,Reg):-
-    arch.call_operation(Operation),
-    instruction_get_operation(EA,Operation),
-    arch.call_operation_op_index(Operation,TargetOpIndex),
+    arch.call(EA,TargetOpIndex),
     instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_regdirect(TargetOp,Reg).
 
@@ -509,9 +503,7 @@ reg_call(EA,Reg):-
 .output indirect_call
 
 indirect_call(EA):-
-    arch.call_operation(Operation),
-    instruction_get_operation(EA,Operation),
-    arch.call_operation_op_index(Operation,TargetOpIndex),
+    arch.call(EA,TargetOpIndex),
     instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_indirect(TargetOp,_,_,_,_,_,_),
     !pc_relative_call(EA,_).

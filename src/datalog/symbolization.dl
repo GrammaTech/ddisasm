@@ -233,8 +233,7 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
         Dest = as(as(SymbolAddr,number)+Addend,address)
         ;
         direct_call(EA,Dest),
-        instruction_get_operation(EA,Operation),
-        arch.call_operation_op_index(Operation,Op_index)
+        arch.call(EA,Op_index)
         ;
         direct_jump(EA,Dest),
         //ignore artificial jumps from loop prefixes

@@ -170,11 +170,12 @@ jump(EA):-
     jump_operation(Operation),
     !arch.return(EA).
 
-.decl call(EA:address)
+.decl call(EA:address,DestOperandIndex:operand_index)
 
-call(EA):-
+call(EA,DestOperandIndex):-
     instruction_get_operation(EA,Operation),
-    call_operation(Operation).
+    call_operation(Operation),
+    call_operation_op_index(Operation,DestOperandIndex).
 
 .decl delay_slot(BranchEA:address,EA:address)
 
@@ -229,8 +230,7 @@ inferred_main_dispatch(CallEA):-
     do_infer_main_function(),
     CallEA = min EA:{
         start_function(Entry),
-        instruction(EA,_,_,CallOp,_,_,_,_,_,_),
-        arch.call_operation(CallOp),
+        arch.call(EA,_),
         code(EA),
         EA >= Entry
     }.
