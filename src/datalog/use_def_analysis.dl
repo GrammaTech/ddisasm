@@ -115,14 +115,12 @@ def(EA,Reg):-
     op_regdirect_contains_reg(Op,Reg).
 
 def(EA,Reg):-
-    instruction_get_operation(EA,Operation),
-    arch.call_operation(Operation),
+    arch.call(EA,_),
     !arch.delay_slot(EA,_),
     arch.function_non_maintained_reg(Reg).
 
 def(EA,Reg):-
-    instruction_get_operation(Call,Operation),
-    arch.call_operation(Operation),
+    arch.call(Call,_),
     arch.delay_slot(Call,EA),
     arch.function_non_maintained_reg(Reg).
 
