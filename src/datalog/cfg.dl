@@ -110,7 +110,7 @@ cfg_edge(Src,Dest,Conditional,Indirect,EdgeType):-
     refined_block(Dest),
     (
         arch.jump(EA),EdgeType="branch";
-        arch.call(EA),EdgeType="call"
+        arch.call(EA,_),EdgeType="call"
     ),
     (
         !arch.conditional(EA),Conditional = "false";
@@ -194,8 +194,7 @@ cfg_edge_to_symbol(Src,Symbol,"branch"):-
 
 cfg_edge_to_symbol(Src,Symbol,"call"):-
     refined_block_control_instruction(Src,EA),
-    arch.call_operation(Operation),
-    instruction_get_operation(EA,Operation),
+    arch.call(EA,_),
     instruction_has_relocation(EA,Rel),
     relocation(Rel,_,Symbol,_,_,_,_),
     !defined_symbol(_,_,_,_,_,_,_,_,Symbol),

@@ -237,8 +237,7 @@ value_reg_unsupported(EA,Reg):-
 // Register defined in a call
 value_reg_unsupported(EA,Reg):-
     def_used_for_address(EA,Reg),
-    instruction_get_operation(EA,Operation),
-    arch.call_operation(Operation).
+    arch.call(EA,_).
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // once we have the edges that relate the values of registers at different
