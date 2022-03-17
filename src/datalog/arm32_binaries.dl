@@ -426,8 +426,7 @@ block_points(Block,"code",0,10,"call with relocation"):-
     binary_type("REL"),
     block_is_overlapping(Block,"code"),
     code_in_block_candidate_refined(EA,Block),
-    arch.call_operation(Operation),
-    instruction_get_operation(EA,Operation),
+    arch.call(EA,_),
     AlignedEA = EA - (EA band 1),
     relocation(AlignedEA,"THM_CALL",_,_,_,_,_).
 

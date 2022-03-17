@@ -100,7 +100,7 @@ resolved_jump(Src,Dest):-
 //////////////////////////////////////////////////////////////////////////////
 // edge creation
 
-cfg_edge(Src,Dest,Conditional,Indirect,"branch"):-
+cfg_edge(Src,Dest,Conditional,Indirect,EdgeType):-
     refined_block_control_instruction(Src,EA),
     (
         direct_jump(EA,Dest), Indirect = "false";
@@ -109,8 +109,12 @@ cfg_edge(Src,Dest,Conditional,Indirect,"branch"):-
     ),
     refined_block(Dest),
     (
-        unconditional_jump(EA), Conditional = "false";
-        !unconditional_jump(EA),Conditional = "true"
+        arch.jump(EA),EdgeType="branch";
+        arch.call(EA,_),EdgeType="call"
+    ),
+    (
+        !arch.conditional(EA),Conditional = "false";
+        arch.conditional(EA),Conditional = "true"
     ).
 
 cfg_edge(Src,Dest,"false","false","call"):-
@@ -190,8 +194,7 @@ cfg_edge_to_symbol(Src,Symbol,"branch"):-
 
 cfg_edge_to_symbol(Src,Symbol,"call"):-
     refined_block_control_instruction(Src,EA),
-    arch.call_operation(Operation),
-    instruction_get_operation(EA,Operation),
+    arch.call(EA,_),
     instruction_has_relocation(EA,Rel),
     relocation(Rel,_,Symbol,_,_,_,_),
     !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
