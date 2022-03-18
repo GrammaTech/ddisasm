@@ -292,7 +292,8 @@ defines_reg(EA,Reg):-
     (
         load(EA,_,_,Reg,_,_,_,_);
         reg_arithmetic_operation(EA,Reg,_,_,_);
-        reg_reg_arithmetic_operation(EA,Reg,_,_,_,_)
+        reg_reg_arithmetic_operation(EA,Reg,_,_,_,_);
+        instruction_get_dest_op(EA,_,Op), op_regdirect_contains_reg(Op,Reg)
     ).
 
 /**
