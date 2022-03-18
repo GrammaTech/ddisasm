@@ -276,6 +276,15 @@ reg_reg_arithmetic_operation(EA,Dst,Reg2,Reg1,1,0):-
 
 /**
 An instruction at EA defines the register Reg
+
+This should include both registers that are an explicit destination operand of
+the instruction as well as registers that are implicitly defined. For example,
+consider this ARM32 load instruction with a post-index writeback:
+
+    ldr r0, [r1], #4
+
+This instruction defines both r0 (an explicit register operand) and r1 (which
+is part of an indirect operand, but that operand is not a destination).
 */
 .decl defines_reg(EA:address,Reg:register)
 
