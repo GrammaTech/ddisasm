@@ -134,7 +134,7 @@ plt_block(EA,Function):-
     pc_relative_jump(EA,Got_entry),
     unconditional_jump(EA),
     pe_import_entry(Got_entry,_,Function,_),
-    code_in_refined_block(EA,EA).
+    code_in_block(EA,EA).
 
 symbol(EA,0,"NOTYPE","GLOBAL","DEFAULT",0,"export",as(Ordinal,unsigned),Function):-
     pe_export_entry(EA,Ordinal,Function).

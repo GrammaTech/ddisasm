@@ -157,7 +157,18 @@ plt_entry(EA,Name):-
 
 plt_block(Block,Function):-
     plt_entry(EA,Function),
-    code_in_refined_block(EA,Block).
+    code_in_block(EA,Block).
+
+// If a block in the PLT section must fallthrough to another block in the
+// PLT, consider it to be a PLT block for Function.
+plt_block(Block,Function):-
+    plt_block(NextBlock,Function),
+    must_fallthrough(EA,NextBlock),
+    code_in_block(EA,Block),
+    plt_section(SecName),
+    section(SecName,Size,Beg),
+    EA < Beg+Size,
+    Block >= Beg.
 
 .decl plt_data_reference(ea:address)
 
