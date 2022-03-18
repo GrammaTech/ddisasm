@@ -110,13 +110,7 @@ block_next(EA,Block2):-
 //////////////////////////////////////////////////////////////////////////////
 // Main definitions
 
-def(EA,Reg):-
-    instruction_get_dest_op(EA,_,Op),
-    op_regdirect_contains_reg(Op,Reg).
-
 // Define any registers defined by the instruction
-// These might be implicitly defined, rather than as an explicit operand, so
-// the above rule wouldn't capture such implicit definitions.
 def(EA,Reg):-
     arch.defines_reg(EA,Reg).
 
