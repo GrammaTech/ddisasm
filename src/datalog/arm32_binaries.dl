@@ -317,9 +317,8 @@ E.g.,
   add ip, ip, #16, #20
   ldr pc, [ip, #2640]
 */
-plt_block(Block,Function):-
-    plt_entry_arm_candidate(_,EA_jump,Function,_),
-    code_in_refined_block(EA_jump,Block).
+plt_entry(EA,Function):-
+    plt_entry_arm_candidate(_,EA,Function,_).
 
 block_points(EA_entry,"code",0,7,"arm: plt-block"):-
     plt_entry_arm_candidate(EA_entry,_,_,_).

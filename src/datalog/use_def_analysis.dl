@@ -80,6 +80,7 @@ inter_procedural_jump(Src,Dest):-
 block_next(EA,Block2):-
     block_last_instruction(_,EA),
     may_fallthrough(EA,Block2),
+    !no_return_call_refined(EA),
     block(Block2).
 
 block_next(EA,EA_next):-

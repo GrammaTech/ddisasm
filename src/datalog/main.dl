@@ -713,6 +713,12 @@ unconditional_return(EA):-
     arch.return(EA),
     !arch.conditional(EA).
 
+
+/**
+Detects non-returning calls before even must/may fallthrough relations.
+
+Calculated even before code inference.
+*/
 .decl no_return_call(EA:address)
 
 .decl function_pointer_section(Name:symbol)
@@ -738,6 +744,22 @@ no_return_call(EA):-
     symbol(_,_,_,_,_,_,_,SymbolIndex,Name),
     no_return_function(Pattern),
     match(Pattern,Name).
+
+/**
+Detect no-return calls after code inference, but before value analysis.
+*/
+.decl no_return_call_refined(EA:address)
+
+no_return_call_refined(EA):-
+    code(EA),
+    no_return_call(EA).
+
+no_return_call_refined(EA):-
+    direct_call(EA,Dest),
+    code(EA),
+    plt_block(Dest,Function),
+    no_return_function(Pattern),
+    match(Pattern,Function).
 
 .decl is_padding(EA:address)
 
