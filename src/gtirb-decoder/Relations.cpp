@@ -169,8 +169,7 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::ShiftedWithRegOp& Op)
     {
-        T << Op.Addr << static_cast<uint64_t>(Op.Index) << Op.Reg
-          << Op.Type;
+        T << Op.Addr << static_cast<uint64_t>(Op.Index) << Op.Reg << Op.Type;
         return T;
     }
 } // namespace souffle

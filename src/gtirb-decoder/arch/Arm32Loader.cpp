@@ -227,7 +227,7 @@ bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction)
                 {
                     Facts.Instructions.shiftedWithRegOp(
                         relations::ShiftedWithRegOp{Addr, static_cast<uint8_t>(i + 1),
-                                             registerName(CsOp.shift.value), ShiftType});
+                                                    registerName(CsOp.shift.value), ShiftType});
                 }
                 else
                 {
