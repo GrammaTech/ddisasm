@@ -55,7 +55,15 @@ jump_equal_operation("BEQ").
 jump_unequal_operation("BNE").
 
 jump_operation_op_index(Operation,1):-
-    jump_operation(Operation).
+    (
+        jump_operation(Operation)
+        ;
+        // mov pc, r
+        move_operation(Operation)
+        ;
+        // ldr pc, [..]
+        load_operation(Operation)
+    ).
 
 call_operation_op_index(Operation,1):-
     call_operation(Operation).

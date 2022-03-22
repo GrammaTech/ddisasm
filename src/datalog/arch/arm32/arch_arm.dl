@@ -213,8 +213,7 @@ conditional(EA):-
 
 // Does not override - extends with `ldr pc, [...]`
 jump(EA):-
-    instruction_get_operation(EA,Operation),
-    load_operation(Operation),
+    mov(EA),
     instruction_get_dest_op(EA,_,Op),
     op_regdirect(Op,Reg),
     pc_register(Reg),

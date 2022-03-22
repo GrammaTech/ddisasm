@@ -610,6 +610,7 @@ block_points(Block,"code",0,20,"function symbol"):-
 
 block_points(Block,"code",0,1,"address in data"):-
     !binary_isa("X86"),
+    !binary_isa("ARM"),
     block_is_overlapping(Block,"code"),
     address_in_data(Address,Block),
     !address_in_data_is_printable(Address).
@@ -621,6 +622,7 @@ block_points(Block,"code",0,1,"aligned address in data"):-
     aligned_address_in_data(_,Block).
 
 block_points(Block,"code",0,1,"address in data array"):-
+    !binary_isa("ARM"),
     block_is_overlapping(Block,"code"),
     address_in_data(Address,Block),
     arch.pointer_size(Pt_size),

@@ -527,6 +527,7 @@ string_candidate_refined(EA,End,"ascii"):-
 string(EA,End,Encoding):-
     data_object(EA,Size,"string"),
     string_candidate_refined(EA,End,Encoding),
+    !discarded_block(EA,"data",_),
     Size = End-EA.
 
 ///////////////////////////////////////////////////////////////////////////

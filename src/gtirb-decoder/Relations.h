@@ -213,6 +213,14 @@ namespace relations
         std::string Type;
     };
 
+    struct ShiftedWithRegOp
+    {
+        gtirb::Addr Addr;
+        uint8_t Index;
+        std::string Reg;
+        std::string Type;
+    };
+
 } // namespace relations
 
 namespace souffle
@@ -274,6 +282,7 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::ShiftedOp& Op);
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::ShiftedWithRegOp& Op);
 } // namespace souffle
 
 #endif // SRC_GTIRB_DECODER_RELATIONS_H_
