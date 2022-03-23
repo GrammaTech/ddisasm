@@ -1060,19 +1060,25 @@ symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
 E.g.,
 EA:add r, pc, offset
    ldrd r1, r2, [r]
-where LitPoolAddr = aligned(EA + Offset + Disp).
+where LitPoolAddr = align(EA + Disp) + Offset.
 =>
-.L:
-   add r, pc, LitPoolAddr - .L - Disp + Adjust
-where Disp is 4 for Thumb and 8 for ARM mode.
-Adjust=(EA band 2): LitPoolAddr is aligned in 4-byte boundary.
+Thumb mode---
+.L: add r, pc, (LitPoolAddr - .L - 2) & ~0b11
+ARM mode---
+.L: add r, pc, (LitPoolAddr - .L - 8)
 */
-symbol_minus_symbol_candidate(EA,4,EA,LitPoolAddr,1,Offset):-
+symbolic_operand_attribute(EA,2,"PcAlignAdjust2"),
+symbol_minus_symbol_candidate(EA,4,EA,LitPoolAddr,1,-2):-
     litpool_ref(EA,_,LitPoolAddr,_,"ADR"),
     instruction_get_operation(EA,Operation),
     substr(Operation,0,3) = "ADD",
-    arch.pc_relative_disp(EA,Disp),
-    Offset = -1*Disp + as(EA band 2,number).
+    arch.pc_relative_disp(EA,4).
+
+symbol_minus_symbol_candidate(EA,4,EA,LitPoolAddr,1,-8):-
+    litpool_ref(EA,_,LitPoolAddr,_,"ADR"),
+    instruction_get_operation(EA,Operation),
+    substr(Operation,0,3) = "ADD",
+    arch.pc_relative_disp(EA,8).
 
 /**
 Matches instruction patterns that access a symbol-symbol from the literal pool.
