@@ -60,7 +60,6 @@ Instruction at address 'EA' uses register 'Reg' at operand index 'Index'.
 //////////////////////////////////////////////////////////////////////////////
 //local underapproximation of control flow
 .decl local_next(ea:address,ea_next:address)
-.output local_next
 
 local_next(EA,EA_next):-
     code_in_block(EA,Block),
@@ -76,7 +75,6 @@ inter_procedural_jump(Src,Dest):-
     code(OtherSrc).
 
 .decl block_next(ea:address,ea_next:address)
-.output block_next
 
 block_next(EA,Block2):-
     block_last_instruction(_,EA),
