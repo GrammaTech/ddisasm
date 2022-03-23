@@ -162,7 +162,6 @@ fde_block_addresses(FdeAddr,Start,EndBlock):-
     block_information(Block,_,EndBlock).
 
 .decl lsda_callsite_addresses(Start:address,End:address,LandingPad:address)
-.output lsda_callsite_addresses
 
 lsda_callsite_addresses(Start,End,LandingPad):-
     lsda_callsite(_,_,Start,_,End,_,LandingPad,_).
