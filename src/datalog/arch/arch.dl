@@ -186,6 +186,56 @@ call(EA,DestOperandIndex):-
     call_operation(Operation),
     call_operation_op_index(Operation,DestOperandIndex).
 
+/**
+Represents a load or store.
+
+The address of the accessed memory is of the form:
+
+    BaseReg + IndexReg * Mult + Offset
+
+Complex memory accesses may be represented with multiple members of this
+relation at the same address. For example, the arm64 instruction:
+
+    0x1000: ldp x7, x8, [x0, #10]
+
+generates two arch.memory_access members:
+
+    memory_access("LOAD",0x1000,2,3,"X7","X0","NONE",0,10)
+    memory_access("LOAD",0x1000,2,1,"X8","X0","NONE",0,18)
+
+AccessType is either "LOAD" or "STORE"
+DirectReg, BaseReg, and IndexReg may be untracked registers or unstandardized names.
+*/
+.decl memory_access(AccessType:symbol,EA:address,SrcOp:operand_index,DstOp:operand_index,
+    DirectReg:register,BaseReg:register,IndexReg:register,Mult:number,Offset:number)
+.output memory_access
+
+// TODO: remove when MIPS has memory_access implemented.
+memory_access("",0,0,0,"","","",0,0):-
+    false.
+
+/**
+Represents a load from memory to a register.
+
+See arch.memory_access().
+*/
+.decl load(EA:address,SrcOp:operand_index,DstOp:operand_index,DstReg:register,
+    BaseReg:register,IndexReg:register,Mult:number,Offset:number) inline
+
+load(EA,SrcOp,DstOp,DstReg,BaseReg,IndexReg,Mult,Offset):-
+    memory_access("LOAD",EA,SrcOp,DstOp,DstReg,BaseReg,IndexReg,Mult,Offset).
+
+/**
+Represents a store from a register to memory.
+
+See arch.memory_access().
+*/
+.decl store(EA:address,SrcOp:operand_index,DstOp:operand_index,SrcReg:register,
+    BaseReg:register,IndexReg:register,Mult:number,Offset:number) inline
+
+store(EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset):-
+    memory_access("STORE",EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset).
+
 .decl delay_slot(BranchEA:address,EA:address)
 
 delay_slot(0,0):-
@@ -223,6 +273,28 @@ Note: Src1 and Src2 *may* be the same register.
 // Commutative property
 reg_reg_arithmetic_operation(EA,Dst,Reg2,Reg1,1,0):-
     reg_reg_arithmetic_operation(EA,Dst,Reg1,Reg2,1,0).
+
+/**
+An instruction at EA defines the register Reg
+
+This should include both registers that are an explicit destination operand of
+the instruction as well as registers that are implicitly defined. For example,
+consider this ARM32 load instruction with a post-index writeback:
+
+    ldr r0, [r1], #4
+
+This instruction defines both r0 (an explicit register operand) and r1 (which
+is part of an indirect operand, but that operand is not a destination).
+*/
+.decl defines_reg(EA:address,Reg:register)
+
+defines_reg(EA,Reg):-
+    (
+        load(EA,_,_,Reg,_,_,_,_);
+        reg_arithmetic_operation(EA,Reg,_,_,_);
+        reg_reg_arithmetic_operation(EA,Reg,_,_,_,_);
+        instruction_get_dest_op(EA,_,Op), op_regdirect_contains_reg(Op,Reg)
+    ).
 
 /**
 The location and register where the address of main is loaded.

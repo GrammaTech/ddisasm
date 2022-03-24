@@ -31,31 +31,9 @@
 #include "../Relations.h"
 #include "../core/InstructionLoader.h"
 
-struct InstructionWriteback
-{
-    gtirb::Addr Addr;
-};
-
-class Arm32InstructionFacts : public InstructionFacts
-{
-public:
-    void writeback(const InstructionWriteback& writeback)
-    {
-        InstructionWritebackList.push_back(writeback);
-    }
-
-    const std::vector<InstructionWriteback>& writeback() const
-    {
-        return InstructionWritebackList;
-    }
-
-private:
-    std::vector<InstructionWriteback> InstructionWritebackList;
-};
-
 struct Arm32Facts
 {
-    Arm32InstructionFacts Instructions;
+    InstructionFacts Instructions;
     OperandFacts Operands;
 };
 
@@ -87,15 +65,10 @@ protected:
     void insert(const Arm32Facts& Facts, DatalogProgram& Program) override;
 
 private:
-    std::optional<relations::Operand> build(const cs_arm_op& CsOp);
+    std::optional<relations::Operand> build(const cs_insn& CsInsn, const cs_arm_op& CsOp);
     bool build(Arm32Facts& Facts, const cs_insn& CsInstruction);
 
     std::shared_ptr<csh> CsHandle;
 };
-
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const InstructionWriteback& writeback);
-} // namespace souffle
 
 #endif // SRC_GTIRB_DECODER_ARCH_ARM32DECODER_H_

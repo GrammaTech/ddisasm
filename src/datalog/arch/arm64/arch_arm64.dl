@@ -32,6 +32,7 @@
 #include "jump_operations.dl"
 #include "interrupt_operations.dl"
 #include "registers.dl"
+#include "memory_access.dl"
 
 move_operation(Operation) :-
     instruction_get_operation(_, Operation),

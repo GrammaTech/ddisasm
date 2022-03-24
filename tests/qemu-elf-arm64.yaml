@@ -147,3 +147,6 @@ tests:
 
   - name: ex_switch1
     <<: *assembly
+
+  - name: ex_stack_split_load
+    <<: *assembly

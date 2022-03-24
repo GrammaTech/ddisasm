@@ -194,7 +194,8 @@ symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
     instruction_get_op(EA,Op_index,Op),
     (
         op_immediate(Op,Dest),
-        Dest_addr = as(Dest,address)
+        Dest_addr = as(Dest,address),
+        !split_load_operand(EA,Op_index,_)
         ;
         pc_relative_operand(EA,Op_index,Dest_addr),
         Op = Op // avoid warning
