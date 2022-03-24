@@ -55,9 +55,13 @@ if(DDISASM_ARM_64)
   add_definitions(-DDDISASM_ARM_64)
 
   set(DATALOG_ARM64_SOURCES
-      datalog/arch/arm64/arch_arm64.dl datalog/arch/arm64/float_operations.dl
-      datalog/arch/arm64/jump_operations.dl datalog/arch/arm64/registers.dl
-      datalog/arm_binaries.dl datalog/arm64_binaries.dl)
+      datalog/arch/arm64/arch_arm64.dl
+      datalog/arch/arm64/float_operations.dl
+      datalog/arch/arm64/jump_operations.dl
+      datalog/arch/arm64/registers.dl
+      datalog/arm_binaries.dl
+      datalog/arm64_binaries.dl
+      datalog/arch/arm64/memory_access.dl)
 
   set(GENERATED_ARM64_CPP souffle_disasm_arm64.cpp)
 
@@ -84,9 +88,12 @@ if(DDISASM_X86_32)
   add_definitions(-DDDISASM_X86_32)
 
   set(DATALOG_X86_32_SOURCES
-      datalog/arch/intel/arch_x86_32.dl datalog/arch/intel/float_operations.dl
+      datalog/arch/intel/arch_x86_32.dl
+      datalog/arch/intel/float_operations.dl
       datalog/arch/intel/jump_operations.dl
-      datalog/arch/intel/registers_x86_32.dl datalog/arch/intel/arch_x86.dl)
+      datalog/arch/intel/registers_x86_32.dl
+      datalog/arch/intel/arch_x86.dl
+      datalog/arch/intel/memory_access.dl)
 
   set(GENERATED_X86_32_CPP souffle_disasm_x86_32.cpp)
 
@@ -113,9 +120,12 @@ if(DDISASM_X86_64)
   add_definitions(-DDDISASM_X86_64)
 
   set(DATALOG_X86_64_SOURCES
-      datalog/arch/intel/arch_x86_64.dl datalog/arch/intel/float_operations.dl
+      datalog/arch/intel/arch_x86_64.dl
+      datalog/arch/intel/float_operations.dl
       datalog/arch/intel/jump_operations.dl
-      datalog/arch/intel/registers_x86_64.dl datalog/arch/intel/arch_x86.dl)
+      datalog/arch/intel/registers_x86_64.dl
+      datalog/arch/intel/arch_x86.dl
+      datalog/arch/intel/memory_access.dl)
 
   set(GENERATED_X86_64_CPP souffle_disasm_x86_64.cpp)
 
@@ -258,65 +268,77 @@ add_subdirectory(gtirb-decoder)
 
 add_subdirectory(passes)
 
-# ===== souffle_disasm =====
-# First build a static library of all the non-generated code.. This is just a
-# hack to get CMake to use different compile flags (because the generated
+# ==== ddisasm_datalog =====
+# Build generated code as a static library. It is both used by tests, and needs
+# different compilation flags than the rest of the source (because the generated
 # souffle code won't build with -Wall -Werror).
-add_library(disasm_main STATIC Disassembler.cpp Interpreter.cpp
-                               Registration.cpp Main.cpp)
+add_library(
+  ddisasm_datalog STATIC ${GENERATED_X86_32_CPP} ${GENERATED_X86_64_CPP}
+                         ${GENERATED_ARM64_CPP})
+
+target_compile_definitions(ddisasm_datalog PRIVATE __EMBEDDED_SOUFFLE__)
+target_compile_definitions(ddisasm_datalog PRIVATE RAM_DOMAIN_SIZE=64)
+target_compile_options(ddisasm_datalog PRIVATE ${OPENMP_FLAGS})
+if(SOUFFLE_INCLUDE_DIR)
+  target_include_directories(ddisasm_datalog SYSTEM
+                             PRIVATE ${SOUFFLE_INCLUDE_DIR})
+endif()
+
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  target_link_options(ddisasm_datalog PRIVATE -NODEFAULTLIB:LIBCMTD)
+
+  set_common_msvc_options(ddisasm_datalog)
+
+  set_souffle_msvc_options(ddisasm_datalog)
+else()
+  target_compile_options(ddisasm_datalog PRIVATE -O3)
+  target_compile_options(ddisasm_datalog PRIVATE -Wno-parentheses-equality
+                                                 -Wno-unused-parameter)
+endif()
+
+# ====== ddisasm ===========
+# Build final ddisasm executable
+add_executable(ddisasm Disassembler.cpp Interpreter.cpp Registration.cpp
+                       Main.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
-  target_compile_options(disasm_main PRIVATE -Wno-unused-parameter)
+  target_compile_options(ddisasm PRIVATE -Wno-unused-parameter)
 endif()
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Version.h.in"
                "${CMAKE_BINARY_DIR}/include/Version.h" @ONLY)
 target_include_directories(
-  disasm_main PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
+  ddisasm PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
 if(ehp_INCLUDE_DIR)
-  target_include_directories(disasm_main PRIVATE ${ehp_INCLUDE_DIR})
+  target_include_directories(ddisasm PRIVATE ${ehp_INCLUDE_DIR})
 endif()
 if(CAPSTONE_INCLUDE_DIR)
-  target_include_directories(disasm_main PRIVATE ${CAPSTONE_INCLUDE_DIR})
+  target_include_directories(ddisasm PRIVATE ${CAPSTONE_INCLUDE_DIR})
 endif()
 if(SOUFFLE_INCLUDE_DIR)
-  target_include_directories(disasm_main SYSTEM PRIVATE ${SOUFFLE_INCLUDE_DIR})
+  target_include_directories(ddisasm SYSTEM PRIVATE ${SOUFFLE_INCLUDE_DIR})
 endif()
 
-target_compile_definitions(disasm_main PRIVATE __EMBEDDED_SOUFFLE__)
-target_compile_definitions(disasm_main PRIVATE RAM_DOMAIN_SIZE=64)
-target_compile_options(disasm_main PRIVATE ${OPENMP_FLAGS})
+target_compile_definitions(ddisasm PRIVATE __EMBEDDED_SOUFFLE__)
+target_compile_definitions(ddisasm PRIVATE RAM_DOMAIN_SIZE=64)
+target_compile_options(ddisasm PRIVATE ${OPENMP_FLAGS})
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  target_compile_definitions(disasm_main PRIVATE _CRT_SECURE_NO_WARNINGS)
-  target_compile_definitions(disasm_main PRIVATE _CRT_NONSTDC_NO_WARNINGS)
+  target_compile_definitions(ddisasm PRIVATE _CRT_SECURE_NO_WARNINGS)
+  target_compile_definitions(ddisasm PRIVATE _CRT_NONSTDC_NO_WARNINGS)
 
-  set_msvc_lief_options(disasm_main)
-  set_common_msvc_options(disasm_main)
+  set_msvc_lief_options(ddisasm)
+  set_common_msvc_options(ddisasm)
 else()
-  target_compile_options(disasm_main PRIVATE -O3)
-  target_compile_options(disasm_main PRIVATE -Wall)
-  target_compile_options(disasm_main PRIVATE -Wextra -Wpointer-arith)
-  target_compile_options(disasm_main PRIVATE -Werror)
+  target_compile_options(ddisasm PRIVATE -O3)
+  target_compile_options(ddisasm PRIVATE -Wall)
+  target_compile_options(ddisasm PRIVATE -Wextra -Wpointer-arith)
+  target_compile_options(ddisasm PRIVATE -Werror)
 endif()
 
 if(${GTIRB_USE_SYSTEM_BOOST} MATCHES "OFF")
-  add_dependencies(disasm_main Boost)
+  add_dependencies(ddisasm Boost)
 endif()
-
-target_link_libraries(
-  disasm_main
-  gtirb
-  gtirb_pprinter
-  gtirb_builder
-  gtirb_decoder
-  ${Boost_LIBRARIES}
-  ${EXPERIMENTAL_LIB}
-  ${LIBCPP_ABI})
-
-# Now combine the static library and generated code into an executable.
-add_executable(ddisasm ${GENERATED_X86_32_CPP} ${GENERATED_X86_64_CPP}
-                       ${GENERATED_ARM64_CPP})
 
 if(DDISASM_STATIC_DRIVERS)
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
@@ -328,40 +350,23 @@ if(DDISASM_STATIC_DRIVERS)
 endif()
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  target_link_libraries(ddisasm disasm_main scc_pass no_return_pass
-                        function_inference_pass)
+  target_link_libraries(ddisasm PRIVATE ddisasm_datalog scc_pass no_return_pass
+                                        function_inference_pass)
   target_link_options(
-    ddisasm PRIVATE /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>
+    ddisasm PRIVATE /WHOLEARCHIVE:ddisasm_datalog$<$<CONFIG:Debug>:d>
+    /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>
     /WHOLEARCHIVE:function_inference_pass$<$<CONFIG:Debug>:d>)
 else()
   if(APPLE)
     target_link_libraries(
-      ddisasm PRIVATE disasm_main scc_pass -Wl,-all_load no_return_pass
+      ddisasm PRIVATE scc_pass -Wl,-all_load ddisasm_datalog no_return_pass
                       function_inference_pass -Wl,-noall_load)
   else()
     target_link_libraries(
-      ddisasm PRIVATE disasm_main scc_pass -Wl,--whole-archive no_return_pass
-                      function_inference_pass -Wl,--no-whole-archive)
+      ddisasm
+      PRIVATE scc_pass -Wl,--whole-archive ddisasm_datalog no_return_pass
+              function_inference_pass -Wl,--no-whole-archive)
   endif()
-endif()
-
-target_compile_definitions(ddisasm PRIVATE __EMBEDDED_SOUFFLE__)
-target_compile_definitions(ddisasm PRIVATE RAM_DOMAIN_SIZE=64)
-target_compile_options(ddisasm PRIVATE ${OPENMP_FLAGS})
-if(SOUFFLE_INCLUDE_DIR)
-  target_include_directories(ddisasm SYSTEM PRIVATE ${SOUFFLE_INCLUDE_DIR})
-endif()
-
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  target_link_options(ddisasm PRIVATE -NODEFAULTLIB:LIBCMTD)
-
-  set_common_msvc_options(ddisasm)
-
-  set_souffle_msvc_options(ddisasm)
-else()
-  target_compile_options(ddisasm PRIVATE -O3)
-  target_compile_options(ddisasm PRIVATE -Wno-parentheses-equality
-                                         -Wno-unused-parameter)
 endif()
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
@@ -371,6 +376,18 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
     target_link_libraries(ddisasm PRIVATE gomp)
   endif()
 endif()
+
+target_link_libraries(
+  ddisasm
+  PRIVATE ddisasm_datalog
+          gtirb
+          gtirb_pprinter
+          gtirb_builder
+          gtirb_decoder
+          ${Boost_LIBRARIES}
+          ${EXPERIMENTAL_LIB}
+          ${LIBCPP_ABI}
+          ${DDISASM_EXTRA_LIBS})
 
 if(DDISASM_ENABLE_TESTS)
   add_subdirectory(tests)

@@ -111,15 +111,17 @@ block_next(EA,Block2):-
 //////////////////////////////////////////////////////////////////////////////
 // Main definitions
 
+// Define any registers defined by the instruction
 def(EA,Reg):-
-    instruction_get_dest_op(EA,_,Op),
-    op_regdirect_contains_reg(Op,Reg).
+    arch.defines_reg(EA,Reg).
 
+// A call "defines" all caller-saved registers
 def(EA,Reg):-
     arch.call(EA,_),
     !arch.delay_slot(EA,_),
     arch.function_non_maintained_reg(Reg).
 
+// A call "defines" all caller-saved registers (variant for delay slots)
 def(EA,Reg):-
     arch.call(Call,_),
     arch.delay_slot(Call,EA),

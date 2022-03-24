@@ -1,0 +1,148 @@
+//===- memory_access.dl -------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019-2022 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+This module provides implements architecture-independent load and store
+relations for ARM64.
+*/
+
+// immediate - post-index
+// LDR <Wt>, [<Xn|SP>], #<simm>
+// STR <Wt>, [<Xn|SP>], #<simm>
+// The post indexing operation does not affect the load, but we do generate a
+// reg_arithmetic_operation to track modification of the index.
+memory_access(AccessType,EA,SrcIndex,DstIndex,DirectReg,BaseReg,"NONE",0,0),
+reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
+    instruction_writeback(EA),
+    (
+        load_operation(Operation), AccessType = "LOAD", SrcIndex = 1, DstIndex = 3;
+        store_operation(Operation), AccessType = "STORE", SrcIndex = 3, DstIndex = 1
+    ),
+    op_indirect(Op1,"NONE",BaseReg,"NONE",_,0,_),
+    op_immediate(Op2,Offset),
+    op_regdirect(Op3,DirectReg).
+
+// immediate - pre-index / writeback
+// LDR <Wt>, [<Xn|SP>, #<pimm>]
+// STR <Wt>, [<Xn|SP>, #<simm>]!
+memory_access(AccessType,EA,SrcIndex,DstIndex,DirectReg,BaseReg,"NONE",0,Offset),
+reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
+    instruction_writeback(EA),
+    (
+        load_operation(Operation), AccessType = "LOAD", SrcIndex = 1, DstIndex = 2;
+        store_operation(Operation), AccessType = "STORE", SrcIndex = 2, DstIndex = 1
+    ),
+    op_indirect(Op1,"NONE",BaseReg,"NONE",_,Offset,_),
+    op_regdirect(Op2,DirectReg).
+
+// immediate
+// LDR <Wt>, [<Xn|SP>, #<pimm>]
+// STR <Wt>, [<Xn|SP>{, #<pimm>}]
+memory_access(AccessType,EA,SrcIndex,DstIndex,DirectReg,BaseReg,"NONE",0,Offset):-
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
+    !instruction_writeback(EA),
+    (
+        load_operation(Operation), AccessType = "LOAD", SrcIndex = 1, DstIndex = 2;
+        store_operation(Operation), AccessType = "STORE", SrcIndex = 2, DstIndex = 1
+    ),
+    op_indirect(Op1,"NONE",BaseReg,"NONE",_,Offset,_),
+    op_regdirect(Op2,DirectReg).
+
+// LDR (literal)
+// LDR <Xt>, <label>
+// No corresponding STR instruction.
+memory_access("LOAD",EA,1,2,DstReg,"NONE","NONE",0,Immediate):-
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
+    load_operation(Operation),
+    op_immediate(Op1,Immediate),
+    op_regdirect(Op2,DstReg).
+
+// LDR (register)
+// LDR <Wt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
+// STR <Wt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
+memory_access(AccessType,EA,SrcIndex,DstIndex,DirectReg,BaseReg,IndexReg,Mult,0):-
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
+    (
+        load_operation(Operation), AccessType = "LOAD", SrcIndex = 1, DstIndex = 2;
+        store_operation(Operation), AccessType = "STORE", SrcIndex = 2, DstIndex = 1
+    ),
+    op_indirect(Op1,"NONE",BaseReg,IndexReg,Mult,0,_),
+    op_regdirect(Op2,DirectReg).
+
+// pair post-index
+// LDP <Wt1>, <Wt2>, [<Xn|SP>], #<imm>
+// STP <Wt1>, <Wt2>, [<Xn|SP>], #<imm>
+memory_access(AccessType,EA,SrcIndex1,DstIndex1,DirectReg1,BaseReg,"NONE",0,0),
+memory_access(AccessType,EA,SrcIndex2,DstIndex2,DirectReg2,BaseReg,"NONE",0,as(SizeBits/8,number)),
+reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,Op4,_,_),
+    instruction_writeback(EA),
+    (
+        load_operation(Operation), AccessType = "LOAD",
+            SrcIndex1 = 2, SrcIndex2 = 2, DstIndex1 = 1, DstIndex2 = 4;
+        store_operation(Operation), AccessType = "STORE",
+            SrcIndex1 = 1, SrcIndex2 = 4, DstIndex1 = 2, DstIndex2 = 2
+    ),
+    op_regdirect(Op1,DirectReg2),
+    op_indirect(Op2,"NONE",BaseReg,"NONE",_,0,_),
+    op_immediate(Op3,Offset),
+    op_regdirect(Op4,DirectReg1),
+    register_size_bits(DirectReg2,SizeBits).
+
+// pair pre-index
+// LDP <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]! (pre-index)
+// STP <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]!
+memory_access(AccessType,EA,SrcIndex1,DstIndex1,DirectReg1,BaseReg,"NONE",0,Offset),
+memory_access(AccessType,EA,SrcIndex2,DstIndex2,DirectReg2,BaseReg,"NONE",0,Offset+as(SizeBits/8,number)),
+reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
+    instruction_writeback(EA),
+    (
+        load_operation(Operation), AccessType = "LOAD",
+            SrcIndex1 = 2, SrcIndex2 = 2, DstIndex1 = 1, DstIndex2 = 3;
+        store_operation(Operation), AccessType = "STORE",
+            SrcIndex1 = 1, SrcIndex2 = 3, DstIndex1 = 2, DstIndex2 = 2
+    ),
+    op_regdirect(Op1,DirectReg2),
+    op_indirect(Op2,"NONE",BaseReg,"NONE",_,Offset,_),
+    op_regdirect(Op3,DirectReg1),
+    register_size_bits(DirectReg2,SizeBits).
+
+// pair (no writeback)
+// LDP <Wt1>, <Wt2>, [<Xn|SP>{, #<imm>}]
+// STP <Wt1>, <Wt2>, [<Xn|SP>{, #<imm>}]
+memory_access(AccessType,EA,SrcIndex1,DstIndex1,DirectReg1,BaseReg,"NONE",0,Offset),
+memory_access(AccessType,EA,SrcIndex2,DstIndex2,DirectReg2,BaseReg,"NONE",0,Offset+as(SizeBits/8,number)):-
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
+    !instruction_writeback(EA),
+    (
+        load_operation(Operation), AccessType = "LOAD",
+            SrcIndex1 = 2, SrcIndex2 = 2, DstIndex1 = 1, DstIndex2 = 3;
+        store_operation(Operation), AccessType = "STORE",
+            SrcIndex1 = 1, SrcIndex2 = 3, DstIndex1 = 2, DstIndex2 = 2
+    ),
+    op_regdirect(Op1,DirectReg2),
+    op_indirect(Op2,"NONE",BaseReg,"NONE",_,Offset,_),
+    op_regdirect(Op3,DirectReg1),
+    register_size_bits(DirectReg2,SizeBits).
