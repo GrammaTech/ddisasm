@@ -35,8 +35,8 @@ reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     instruction_writeback(EA),
     (
-        substr(Operation,0,3) = "LDR", AccessType = "LOAD", SrcIndex = 1, DstIndex = 3;
-        substr(Operation,0,3) = "STR", AccessType = "STORE", SrcIndex = 3, DstIndex = 1
+        load_operation(Operation), AccessType = "LOAD", SrcIndex = 1, DstIndex = 3;
+        store_operation(Operation), AccessType = "STORE", SrcIndex = 3, DstIndex = 1
     ),
     op_indirect(Op1,"NONE",BaseReg,"NONE",_,0,_),
     op_immediate(Op2,Offset),
@@ -50,8 +50,8 @@ reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     instruction_writeback(EA),
     (
-        substr(Operation,0,3) = "LDR", AccessType = "LOAD", SrcIndex = 1, DstIndex = 2;
-        substr(Operation,0,3) = "STR", AccessType = "STORE", SrcIndex = 2, DstIndex = 1
+        load_operation(Operation), AccessType = "LOAD", SrcIndex = 1, DstIndex = 2;
+        store_operation(Operation), AccessType = "STORE", SrcIndex = 2, DstIndex = 1
     ),
     op_indirect(Op1,"NONE",BaseReg,"NONE",_,Offset,_),
     op_regdirect(Op2,DirectReg).
@@ -63,8 +63,8 @@ memory_access(AccessType,EA,SrcIndex,DstIndex,DirectReg,BaseReg,"NONE",0,Offset)
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     !instruction_writeback(EA),
     (
-        substr(Operation,0,3) = "LDR", AccessType = "LOAD", SrcIndex = 1, DstIndex = 2;
-        substr(Operation,0,3) = "STR", AccessType = "STORE", SrcIndex = 2, DstIndex = 1
+        load_operation(Operation), AccessType = "LOAD", SrcIndex = 1, DstIndex = 2;
+        store_operation(Operation), AccessType = "STORE", SrcIndex = 2, DstIndex = 1
     ),
     op_indirect(Op1,"NONE",BaseReg,"NONE",_,Offset,_),
     op_regdirect(Op2,DirectReg).
@@ -74,7 +74,7 @@ memory_access(AccessType,EA,SrcIndex,DstIndex,DirectReg,BaseReg,"NONE",0,Offset)
 // No corresponding STR instruction.
 memory_access("LOAD",EA,1,2,DstReg,"NONE","NONE",0,Immediate):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
-    substr(Operation,0,3) = "LDR",
+    load_operation(Operation),
     op_immediate(Op1,Immediate),
     op_regdirect(Op2,DstReg).
 
@@ -84,8 +84,8 @@ memory_access("LOAD",EA,1,2,DstReg,"NONE","NONE",0,Immediate):-
 memory_access(AccessType,EA,SrcIndex,DstIndex,DirectReg,BaseReg,IndexReg,Mult,0):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     (
-        substr(Operation,0,3) = "LDR", AccessType = "LOAD", SrcIndex = 1, DstIndex = 2;
-        substr(Operation,0,3) = "STR", AccessType = "STORE", SrcIndex = 2, DstIndex = 1
+        load_operation(Operation), AccessType = "LOAD", SrcIndex = 1, DstIndex = 2;
+        store_operation(Operation), AccessType = "STORE", SrcIndex = 2, DstIndex = 1
     ),
     op_indirect(Op1,"NONE",BaseReg,IndexReg,Mult,0,_),
     op_regdirect(Op2,DirectReg).
@@ -99,9 +99,9 @@ reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,Op4,_,_),
     instruction_writeback(EA),
     (
-        substr(Operation,0,3) = "LDP", AccessType = "LOAD",
+        load_operation(Operation), AccessType = "LOAD",
             SrcIndex1 = 2, SrcIndex2 = 2, DstIndex1 = 1, DstIndex2 = 4;
-        substr(Operation,0,3) = "STP", AccessType = "STORE",
+        store_operation(Operation), AccessType = "STORE",
             SrcIndex1 = 1, SrcIndex2 = 4, DstIndex1 = 2, DstIndex2 = 2
     ),
     op_regdirect(Op1,DirectReg2),
@@ -119,9 +119,9 @@ reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     instruction_writeback(EA),
     (
-        substr(Operation,0,3) = "LDP", AccessType = "LOAD",
+        load_operation(Operation), AccessType = "LOAD",
             SrcIndex1 = 2, SrcIndex2 = 2, DstIndex1 = 1, DstIndex2 = 3;
-        substr(Operation,0,3) = "STP", AccessType = "STORE",
+        store_operation(Operation), AccessType = "STORE",
             SrcIndex1 = 1, SrcIndex2 = 3, DstIndex1 = 2, DstIndex2 = 2
     ),
     op_regdirect(Op1,DirectReg2),
@@ -137,9 +137,9 @@ memory_access(AccessType,EA,SrcIndex2,DstIndex2,DirectReg2,BaseReg,"NONE",0,Offs
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     !instruction_writeback(EA),
     (
-        substr(Operation,0,3) = "LDP", AccessType = "LOAD",
+        load_operation(Operation), AccessType = "LOAD",
             SrcIndex1 = 2, SrcIndex2 = 2, DstIndex1 = 1, DstIndex2 = 3;
-        substr(Operation,0,3) = "STP", AccessType = "STORE",
+        store_operation(Operation), AccessType = "STORE",
             SrcIndex1 = 1, SrcIndex2 = 3, DstIndex1 = 2, DstIndex2 = 2
     ),
     op_regdirect(Op1,DirectReg2),
