@@ -832,16 +832,16 @@ block_points(Block,"data",0,7,"object symbol"):-
 
 block_is_overlapping(Block,"code"),
 block_points(Block,"code",0,-1,"jump to string"):-
-    code_in_block_candidate(EA,Block),
-    direct_jump(EA,Dest),
     ascii_string(Beg,End),
+    direct_jump(EA,Dest),
     Dest >= Beg,
     Dest < End,
     (
         symbol(Beg,_,_,_,_,_,_,_,_)
         ;
-        aligned_address_in_data(EA0,Beg)
-    ).
+        aligned_address_in_data(_,Beg)
+    ),
+    code_in_block_candidate(EA,Block).
 
 ////////////////////////////////////////////////////////////////////////////
 
