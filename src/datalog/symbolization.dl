@@ -481,8 +481,8 @@ Referenced from `.L01' is the string "xeon_phi\0" referenced from `.L02' "i\0".
 */
 
 string_candidate_refined(EA,End,"string"):-
-    data_byte(End-1,0),
     string_candidate(_,End,"ascii"),
+    data_byte(End-1,0),
     EA = max EA : { string_candidate(EA,End,"ascii") }.
 
 string_candidate_refined(EA,End,"ascii"):-
