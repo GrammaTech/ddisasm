@@ -10,13 +10,15 @@ endif()
 
 add_executable(
   TestDdisasm
+  ../Registration.cpp
   Main.Test.cpp
   SccPass.Test.cpp
   NoReturnPass.Test.cpp
   ElfReader.Test.cpp
   RawReader.Test.cpp
   CompositeLoader.Test.cpp
-  ArchiveReader.Test.cpp)
+  ArchiveReader.Test.cpp
+  InstructionRelations.Test.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_link_libraries(
@@ -28,10 +30,12 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
     gtirb
     gtirb_builder
     gtirb_decoder
+    ddisasm_datalog
     scc_pass
     no_return_pass)
-  target_link_options(${PROJECT_NAME} PRIVATE
-                      /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>)
+  target_link_options(
+    ${PROJECT_NAME} PRIVATE /WHOLEARCHIVE:ddisasm_datalog$<$<CONFIG:Debug>:d>
+    /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>)
 else()
   if(APPLE)
     target_link_libraries(
@@ -45,6 +49,7 @@ else()
       gtirb_decoder
       scc_pass
       -Wl,-all_load
+      ddisasm_datalog
       no_return_pass
       -Wl,-noall_load)
   else()
@@ -59,6 +64,7 @@ else()
       gtirb_decoder
       scc_pass
       -Wl,--whole-archive
+      ddisasm_datalog
       no_return_pass
       -Wl,--no-whole-archive)
   endif()
@@ -70,6 +76,13 @@ target_compile_options(${PROJECT_NAME} PRIVATE ${OPENMP_FLAGS})
 if(SOUFFLE_INCLUDE_DIR)
   target_include_directories(${PROJECT_NAME} SYSTEM
                              PRIVATE ${SOUFFLE_INCLUDE_DIR})
+endif()
+
+if(CAPSTONE_INCLUDE_DIR)
+  target_include_directories(${PROJECT_NAME} PRIVATE ${CAPSTONE_INCLUDE_DIR})
+endif()
+if(ehp_INCLUDE_DIR)
+  target_include_directories(${PROJECT_NAME} PRIVATE ${ehp_INCLUDE_DIR})
 endif()
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)

@@ -109,6 +109,25 @@ This module:
 
 .decl relocation_size(Type:symbol,Size:unsigned)
 
+/**
+Defines adjustments to relocation values.
+*/
+.decl relocation_adjustment(EA:address,Adjustment:number,Reason:symbol)
+.output relocation_adjustment
+/**
+The total relocation adjustment for a location
+*/
+.decl relocation_adjustment_total(EA:address,Adjustment:number)
+.output relocation_adjustment_total
+
+relocation_adjustment_total(EA,0):-
+    relocation(EA,_,_,_,_,_,_),
+    !relocation_adjustment(EA,_,_).
+
+relocation_adjustment_total(EA,Adjustment):-
+    relocation(EA,_,_,_,_,_,_),
+    Adjustment = sum N:{relocation_adjustment(EA,N,_)}.
+
 .decl binary_type(Type:symbol)
 .input binary_type
 
@@ -130,6 +149,12 @@ This module:
           op1:operand_code,op2:operand_code,op3:operand_code,op4:operand_code,
           immOffset:unsigned,displacementOffset:unsigned)
 .input instruction
+
+/*
+ * The instruction at EA has capstone's cs_arm.writeback set.
+ */
+.decl instruction_writeback(EA:address)
+.input instruction_writeback
 
 .decl op_register_bitfield(code:operand_code,register_name:register)
 .input op_register_bitfield
@@ -274,11 +299,17 @@ instruction_get_op(EA,Index,Op):-
 
 instruction_get_dest_op(EA,1,Op):-
     arch.store_operation(Operation),
-    instruction(EA,_,_,Operation,Op,_,_,_,_,_).
+    instruction(EA,_,_,Operation,Op,_,_,_,_,_),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,_).
+
+instruction_get_dest_op(EA,DstIndex,Op):-
+    arch.memory_access(_,EA,_,DstIndex,_,_,_,_,_),
+    instruction_get_op(EA,DstIndex,Op).
 
 instruction_get_dest_op(EA,Index,Op):-
-    !arch.store_operation(Operation),
     instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
+    !arch.store_operation(Operation),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,_),
     !arch.read_only_operation(Operation),
     (
         Op4 = 0,
@@ -307,23 +338,30 @@ instruction_get_dest_op(EA,1,Op):-
 
 instruction_get_src_op(EA,2,Op):-
     arch.store_operation(Operation),
-    instruction(EA,_,_,Operation,_,Op,0,0,_,_).
+    instruction(EA,_,_,Operation,_,Op,0,0,_,_),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,_).
+
+instruction_get_src_op(EA,SrcIndex,Op):-
+    arch.memory_access(_,EA,SrcIndex,_,_,_,_,_,_),
+    instruction_get_op(EA,SrcIndex,Op).
 
 //when the dest is used as a source as well
 instruction_get_src_op(EA,Index,Op2):-
     instruction(EA,_,_,Operation,_,Op2,_,_,_,_),Op2 != 0,
     Index = 2,
     !arch.mov(EA),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,_),
     !arch.op_does_not_read_dest_reg(Operation),
     !arch.write_only_operation(Operation).
 
 instruction_get_src_op(EA,Index,Op):-
-    !arch.store_operation(Operation),
     (
         instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
         instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
         instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
     ),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,_),
+    !arch.store_operation(Operation),  // Currently not all archs fully implement arch.memory_access.
     !arch.write_only_operation(Operation).
 
 
@@ -461,16 +499,13 @@ indirect_jump(EA):-
 .output direct_call
 
 direct_call(EA,as(Dest,address)):-
-    arch.call_operation(Operation),
-    instruction_get_operation(EA,Operation),
-    arch.call_operation_op_index(Operation,Index),
+    arch.call(EA,Index),
     instruction_get_op(EA,Index,Op),
     op_immediate(Op,Dest),
     !instruction_has_relocation(EA,_).
 
 direct_call(EA,Dest):-
-    arch.call_operation(Operation),
-    instruction_get_operation(EA,Operation),
+    arch.call(EA,_),
     instruction_immediate_offset(EA,_,_,_),
     instruction_has_relocation(EA,Rel),
     relocation(Rel,_,_,_,SymbolIndex,_,_),
@@ -491,8 +526,7 @@ direct_call_resolved(0,0):-
 .output pc_relative_call
 
 pc_relative_call(Src,Dest):-
-    instruction_get_operation(Src,Operation),
-    arch.call_operation(Operation),
+    arch.call(Src,_),
     pc_relative_operand(Src,1,Dest).
 
 // for now we do not compute anything about these
@@ -500,9 +534,7 @@ pc_relative_call(Src,Dest):-
 .output reg_call
 
 reg_call(EA,Reg):-
-    arch.call_operation(Operation),
-    instruction_get_operation(EA,Operation),
-    arch.call_operation_op_index(Operation,TargetOpIndex),
+    arch.call(EA,TargetOpIndex),
     instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_regdirect(TargetOp,Reg).
 
@@ -510,9 +542,7 @@ reg_call(EA,Reg):-
 .output indirect_call
 
 indirect_call(EA):-
-    arch.call_operation(Operation),
-    instruction_get_operation(EA,Operation),
-    arch.call_operation_op_index(Operation,TargetOpIndex),
+    arch.call(EA,TargetOpIndex),
     instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_indirect(TargetOp,_,_,_,_,_,_),
     !pc_relative_call(EA,_),
@@ -575,7 +605,6 @@ op_regdirect_contains_reg(Op,Reg_uniform):-
         op_register_bitfield(Op,Reg)
     ),
     arch.track_register(Reg,Reg_uniform).
-
 
 // The instruction at EA has operation Operation and two operands: a register Reg and an immediate Immediate
 .decl op_immediate_and_reg(EA:address,Operation:symbol,Reg:register,Imm_index:operand_index,Immediate:number)
@@ -711,6 +740,12 @@ unconditional_return(EA):-
     arch.return(EA),
     !arch.conditional(EA).
 
+
+/**
+Detects non-returning calls before even must/may fallthrough relations.
+
+Calculated even before code inference.
+*/
 .decl no_return_call(EA:address)
 
 .decl function_pointer_section(Name:symbol)
@@ -736,6 +771,22 @@ no_return_call(EA):-
     symbol(_,_,_,_,_,_,_,SymbolIndex,Name),
     no_return_function(Pattern),
     match(Pattern,Name).
+
+/**
+Detect no-return calls after code inference, but before value analysis.
+*/
+.decl no_return_call_refined(EA:address)
+
+no_return_call_refined(EA):-
+    code(EA),
+    no_return_call(EA).
+
+no_return_call_refined(EA):-
+    direct_call(EA,Dest),
+    code(EA),
+    plt_block(Dest,Function),
+    no_return_function(Pattern),
+    match(Pattern,Function).
 
 .decl is_padding(EA:address)
 

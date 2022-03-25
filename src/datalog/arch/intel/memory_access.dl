@@ -1,6 +1,6 @@
-//===- version.h -------------------------------------------------*- C++ -*-===//
+//===- memory_access.dl -------------------------------------*- datalog -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2019-2022 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,32 +20,19 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+/**
+This module provides implements architecture-independent load and store
+relations for x86.
+*/
 
-#ifndef DDISASM_VERSION_H
-#define DDISASM_VERSION_H
+memory_access("LOAD",EA,1,2,DstReg,BaseReg,IndexReg,Mult,Offset):-
+    mov(EA),
+    instruction(EA,_,_,_,SrcOp,DestOp,0,0,_,_),
+    op_indirect(SrcOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
+    op_regdirect(DestOp,DstReg).
 
-#define DDISASM_MAJOR_VERSION @DDISASM_MAJOR_VERSION@
-#define DDISASM_MINOR_VERSION @DDISASM_MINOR_VERSION@
-#define DDISASM_PATCH_VERSION @DDISASM_PATCH_VERSION@
-
-#define DDISASM_STR_HELPER(x) #x
-#define DDISASM_STR(x) DDISASM_STR_HELPER(x)
-
-#define DDISASM_VERSION_STRING \
-    DDISASM_STR(DDISASM_MAJOR_VERSION) "." DDISASM_STR(DDISASM_MINOR_VERSION) \
-        "." DDISASM_STR(DDISASM_PATCH_VERSION)
-
-#define DDISASM_BUILD_DATE "@DDISASM_BUILD_DATE@"
-
-#define DDISASM_BUILD_REVISION "@DDISASM_BUILD_REVISION@"
-
-#define DDISASM_BUILD_ARCH_TARGETS "@DDISASM_BUILD_ARCH_TARGETS@"
-
-#define DDISASM_FULL_VERSION_STRING \
-    ( \
-     DDISASM_VERSION_STRING \
-     " (" DDISASM_BUILD_REVISION " " DDISASM_BUILD_DATE ") " \
-     DDISASM_BUILD_ARCH_TARGETS \
-    )
-
-#endif
+memory_access("STORE",EA,1,2,SrcReg,BaseReg,IndexReg,Mult,Offset):-
+    mov(EA),
+    instruction(EA,_,_,_,SrcOp,DestOp,0,0,_,_),
+    op_indirect(DestOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
+    op_regdirect(SrcOp,SrcReg).

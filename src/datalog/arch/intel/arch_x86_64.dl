@@ -50,7 +50,7 @@ symbolic_operand_attribute(EA,Index,"GotRelPC"):-
 
 symbolic_operand_attribute(EA,Index,"GotRelPC"):-
     instruction_displacement_offset(EA,Index,Offset,_),
-    symbolic_expr_from_relocation(EA+Offset,_,_,_),
+    symbolic_expr_from_relocation(EA+Offset,_,_,_,_),
     (
         relocation(EA+Offset,"GOTPCRELX",_,_,_,_,_);
         relocation(EA+Offset,"REX_GOTPCRELX",_,_,_,_,_)
@@ -59,7 +59,7 @@ symbolic_operand_attribute(EA,Index,"GotRelPC"):-
 symbolic_operand_attribute(EA,Index,"TpOff"):-
     (
         instruction_displacement_offset(EA,Index,Offset,_),
-        symbolic_expr_from_relocation(EA+Offset,_,_,_),
+        symbolic_expr_from_relocation(EA+Offset,_,_,_,_),
         relocation(EA+Offset,"TPOFF32",_,_,_,_,_)
         ;
         symbolic_operand(EA,Index,Dest,_),

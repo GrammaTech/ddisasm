@@ -155,7 +155,7 @@ bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction)
 
             if(i < regBitFieldInitialIndex(Name))
             {
-                std::optional<relations::Operand> Op = build(CsOp);
+                std::optional<relations::Operand> Op = build(CsInstruction, CsOp);
                 // Build operand for datalog fact.
                 if(!Op)
                 {
@@ -182,7 +182,7 @@ bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction)
             const cs_arm_op& CsOp = Details.operands[i];
 
             // Build operand for datalog fact.
-            std::optional<relations::Operand> Op = build(CsOp);
+            std::optional<relations::Operand> Op = build(CsInstruction, CsOp);
             if(!Op)
             {
                 return false;
@@ -250,12 +250,12 @@ bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction)
     Facts.Instructions.add(relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0});
     if(Details.writeback)
     {
-        Facts.Instructions.writeback(InstructionWriteback{Addr});
+        Facts.Instructions.writeback(relations::InstructionWriteback{Addr});
     }
     return true;
 }
 
-std::optional<relations::Operand> Arm32Loader::build(const cs_arm_op& CsOp)
+std::optional<relations::Operand> Arm32Loader::build(const cs_insn& CsInsn, const cs_arm_op& CsOp)
 {
     using namespace relations;
 
@@ -271,10 +271,20 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_arm_op& CsOp)
             return ImmOp{CsOp.imm};
         case ARM_OP_MEM:
         {
+            // CsOp.mem.lshift seems to be incorrect for some instructions,
+            // see: https://github.com/capstone-engine/capstone/issues/1848
+            // TODO: LDR instructions support ASR, LSL, LSR, ROR, and RRX shifts.
+            // Only LSL can be represented as a multiplier.
+            if(CsOp.shift.value && CsOp.shift.type != ARM_SFT_LSL)
+                std::cerr << "WARNING: Unhandled shift type in mem operand ("
+                          << "address=0x" << std::hex << CsInsn.address << std::dec << ", "
+                          << "value=0x" << std::hex << CsOp.shift.value << std::dec << ", "
+                          << "type=" << CsOp.shift.type << ")\n";
+
             IndirectOp I = {registerName(ARM_REG_INVALID),
                             registerName(CsOp.mem.base),
                             registerName(CsOp.mem.index),
-                            CsOp.mem.scale * (1 << CsOp.mem.lshift),
+                            CsOp.mem.scale * (1 << CsOp.shift.value),
                             CsOp.mem.disp,
                             32};
             return I;
@@ -304,12 +314,3 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_arm_op& CsOp)
 
     return std::nullopt;
 }
-
-namespace souffle
-{
-    souffle::tuple& operator<<(souffle::tuple& T, const InstructionWriteback& Writeback)
-    {
-        T << Writeback.Addr;
-        return T;
-    }
-} // namespace souffle

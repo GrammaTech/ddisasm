@@ -83,11 +83,9 @@ reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
         arch.stack_pointer(Base)
     ),
     def_used(StackFrameDefinedAt,Base,EA,_),
-    arch.mov(EA),
-    instruction_get_dest_op(EA,_,DestOp),
-    op_indirect(DestOp,"NONE",Base,"NONE",_,StackPos,_),
-    instruction_get_src_op(EA,_,SrcOp),
-    op_regdirect_contains_reg(SrcOp,Reg).
+    arch.store(EA,_,_,RawReg,RawBase,"NONE",_,StackPos),
+    arch.track_register(RawReg,Reg),
+    arch.track_register(RawBase,Base).
 
 .decl reg_loaded_from_stack(EA:address,Reg:register,Base:register,StackPos:number, StackFrameDefinedAt: address)
 .output reg_loaded_from_stack
@@ -98,11 +96,9 @@ reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
         arch.stack_pointer(Base)
     ),
     def_used(StackFrameDefinedAt,Base,EA,_),
-    arch.mov(EA),
-    instruction_get_src_op(EA,_,SrcOp),
-    op_indirect(SrcOp,"NONE",Base,"NONE",_,StackPos,_),
-    instruction_get_dest_op(EA,_,DestOp),
-    op_regdirect_contains_reg(DestOp,Reg).
+    arch.load(EA,_,_,RawReg,RawBase,"NONE",_,StackPos),
+    arch.track_register(RawReg,Reg),
+    arch.track_register(RawBase,Base).
 
 // Register saved and loaded from stack
 // This is flow insensitive but we make sure that the load and store
@@ -237,8 +233,7 @@ value_reg_unsupported(EA,Reg):-
 // Register defined in a call
 value_reg_unsupported(EA,Reg):-
     def_used_for_address(EA,Reg),
-    instruction_get_operation(EA,Operation),
-    arch.call_operation(Operation).
+    arch.call(EA,_).
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // once we have the edges that relate the values of registers at different

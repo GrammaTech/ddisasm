@@ -119,40 +119,43 @@ Instead, this is for the symbolization step.
 .decl split_load_for_symbolization(ea:address, nextea:address, dest:address, type:symbol)
 .output split_load_for_symbolization
 
-split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "ADD") :-
+split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "ADD"):-
     // ADRP <Register> <Immediate>
     // e.g. adrp x0, BaseOp
     instruction_get_operation(EA, "ADRP"),
     instruction_get_op(EA, 1, BaseOp),
     op_immediate(BaseOp, Base),
-
-    def_used(EA,_,NextEA,_),
-
+    instruction_get_op(EA, 2, RegOp),
+    op_regdirect_contains_reg(RegOp, Reg1),
+    (
+        Reg1 = Reg2,
+        def_used(EA,Reg1,NextEA,_)
+        ;
+        value_reg_edge(StackLoadEA,Reg2,EA,Reg1,1,0),
+        def_used(StackLoadEA,Reg2,NextEA,_)
+    ),
     // ADD <Register> <Register> <Immediate>
-    // e.g. add x0, x0, <OffsetOp>
-    instruction_get_operation(NextEA, "ADD"),
-    instruction_get_op(NextEA, 2, OffsetOp),
-    op_immediate(OffsetOp, Offset).
+    // e.g. add x0, x0, <Offset>
+    arch.reg_arithmetic_operation(NextEA,_,Reg2,1,Offset).
 
-split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "LDR/STR") :-
+split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "LDR/STR"):-
     // ADRP <Register> <Immediate>
     // e.g. adrp x0, BaseOp
     instruction_get_operation(EA, "ADRP"),
     instruction_get_op(EA, 1, BaseOp),
     op_immediate(BaseOp, Base),
-
-    def_used(EA,_,NextEA,_),
-
+    instruction_get_op(EA, 2, RegOp),
+    op_regdirect_contains_reg(RegOp, Reg1),
+    (
+        Reg1 = Reg2,
+        def_used(EA,Reg1,NextEA,_)
+        ;
+        value_reg_edge(StackLoadEA,Reg2,EA,Reg1,1,0),
+        def_used(StackLoadEA,Reg2,NextEA,_)
+    ),
     // LDR/STR <Register> <IndirectOp>
     // e.g. ldr x0, [x0, <OffsetOp>]
-    instruction_get_operation(NextEA, Operation),
-    (
-        arch.load_operation(Operation)
-        ;
-        arch.store_operation(Operation)
-    ),
-    instruction_get_op(NextEA, 1, OffsetOp),
-    op_indirect(OffsetOp,"NONE",_,"NONE",_,Offset,_).
+    arch.memory_access(_,NextEA,_,_,_,Reg2,"NONE",_,Offset).
 
 split_load_operand(EA, 1, as(Dest,address)) :-
     split_load_for_symbolization(EA, _, Dest, _).
@@ -215,8 +218,8 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     op_indirect(Op1,_,_,_,_,_,DataSize),
     data_word(RefAddr,DataSize/8,Val).
 
+// Not restricted with def_used_for_address since ADRP and ADR are always addresses.
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
-    def_used_for_address(EA,Reg),
     instruction(EA,_,_,Operation,Op1,Op2,_,_,_,_),
     (
         Operation = "ADRP";
@@ -230,7 +233,12 @@ symbolic_operand_candidate(EA,1,Dest,Type):-
     // ADR <Register> <Immediate>
     // e.g. adr r1, BaseOp
     code(EA),
-    instruction_get_operation(EA, "ADR"),
+    instruction_get_operation(EA, Operation),
+    (
+        Operation = "ADR";
+        Operation = "ADRP"
+    ),
+    !split_load_operand(EA,1,_),
     instruction_get_op(EA, 1, OffsetOp),
     op_immediate(OffsetOp, Offset),
     Dest = as(Offset,address),
