@@ -65,7 +65,7 @@ There is a code block starting at 'Block'.
 /**
 The instruction at address 'EA' is code.
 */
-.decl code(EA:address)
+.decl code(EA:address) inline
 
 /**
 The last instruction of 'Block' is at address 'EA'
