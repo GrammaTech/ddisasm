@@ -145,12 +145,11 @@ flow_def(EA_jump,Reg,EA_target,Immediate):-
     instruction_get_operation(EA_jump,Operation),
     arch.jump_unequal_operation(Operation).
 
-.decl must_def(EA:address,Reg:register)
+.decl must_def(EA:address,Reg:register) inline
 
 must_def(EA,Reg):-
     def(EA,Reg),
-    instruction_get_operation(EA,Op),
-    !arch.conditional_operation(Op).
+    !arch.conditional(EA).
 
 .decl defined_in_block(EA:address,Reg:register)
 
