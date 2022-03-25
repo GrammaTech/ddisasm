@@ -228,26 +228,38 @@ data_access_pattern_candidate(Address,Size,FinalMult,EA):-
     Address >= Beg,
     Address <= End.
 
+/*
+Filter out some invalid DAP candidates before performing expensive aggregation
+*/
+.decl data_access_pattern_candidate_refined(Address:address,Size:unsigned,Multiplier:number,FromWhere:address)
 
-data_access_pattern(Address,Size,Multiplier,From):-
+data_access_pattern_candidate_refined(Address,Size,Multiplier,From):-
     data_access_pattern_candidate(Address,Size,Multiplier,From),
     instruction_get_operation(From,Operation),
     Operation != "LEA",
     data_byte(Address,_),
     (
-        // select the access pattern with highest multiplier
-        MaxMult = max MaxMult : data_access_pattern_candidate(Address,Size,MaxMult,_),
-        Multiplier >= MaxMult
-        ;
-        // or if the multiplier is equal to the size of the access
-        Multiplier = as(Size,number)
-    ),
-    (
-        // if it is an indirect call or jump, the destination should be a potential address
         address_in_data(Address,_);
         !indirect_jump(From),
         !indirect_call(From)
     ).
+
+/*
+Find the largest multiplier for each Address,Size combination among the data access pattern candidates
+*/
+.decl dap_max_mult(Address:address,Size:unsigned,Max:number)
+
+dap_max_mult(Address,Size,Max):-
+    data_access_pattern_candidate_refined(Address,Size,_,_),
+    Max = max Mult : data_access_pattern_candidate_refined(Address,Size,Mult,_).
+
+data_access_pattern(Address,Size,Multiplier,From):-
+    data_access_pattern_candidate_refined(Address,Size,Multiplier,From),
+    dap_max_mult(Address,Size,Multiplier).
+
+data_access_pattern(Address,Size,Multiplier,From):-
+    data_access_pattern_candidate_refined(Address,Size,Multiplier,From),
+    Multiplier = as(Size,number).
 
 ///////////////////////////////////////////////////////////////////////////////
 // This code takes care of obtaining an ordering in the data_access_patterns
