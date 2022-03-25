@@ -59,7 +59,7 @@ Instruction at address 'EA' uses register 'Reg' at operand index 'Index'.
 .decl flow_def(EA:address,Reg:register,EA_next:address,Value:number)
 //////////////////////////////////////////////////////////////////////////////
 //local underapproximation of control flow
-.decl local_next(ea:address,ea_next:address)
+.decl local_next(ea:address,ea_next:address) inline
 
 local_next(EA,EA_next):-
     code_in_block(EA,Block),
