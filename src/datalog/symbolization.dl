@@ -186,7 +186,7 @@ in symbolic expressions.
 .output symbolic_operand_candidate
 .decl symbolic_operand_point(ea:address,operand_index:operand_index,points:number,why:symbol)
 .output symbolic_operand_point
-.decl symbolic_operand_total_points(ea:address,operand_index:operand_index,points:number)
+.decl symbolic_operand_total_points(ea:address,operand_index:operand_index,points:number) inline
 
 symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
     binary_type("EXEC"),
