@@ -211,7 +211,7 @@ invalid(EA,"known data region"):-
     instruction(EA,_,_,_,_,_,_,_,_,_),
     Size > 0, EA >= Begin, EA < (Begin + Size).
 
-.decl possible_ea(EA:address)
+.decl possible_ea(EA:address) inline
 
 possible_ea(EA):-
     instruction(EA,_,_,_,_,_,_,_,_,_),
