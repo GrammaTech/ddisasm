@@ -289,29 +289,3 @@ def_used_for_address(EA_def,Reg):-
 
 def_used_for_address(EA,Reg):-
     arch.pc_relative_addr(EA,Reg,_).
-
-// straight_line_def_used is a weaker version than def_used
-// that can be used BEFORE code inference.
-
-
-// the last address where a register was defined within the block
-.decl straight_line_last_def(EA:address,EA_def:address,Reg:register)
-
-straight_line_last_def(EA_next,EA,Reg):-
-    def(EA,Reg),
-    possible_ea(EA),
-    must_fallthrough(EA,EA_next),
-    possible_ea(EA_next).
-
-straight_line_last_def(EA_next,EA_def,Reg):-
-    straight_line_last_def(EA,EA_def,Reg),
-    !must_def(EA,Reg),
-    must_fallthrough(EA,EA_next),
-    possible_ea(EA_next).
-
-.decl straight_line_def_used(EA_def:address,Reg:register,EA_used:address,Index:unsigned)
-.output straight_line_def_used
-
-straight_line_def_used(EA_def,Reg,EA_used,Index):-
-    used(EA_used,Reg,Index),
-    straight_line_last_def(EA_used,EA_def,Reg).
