@@ -48,7 +48,7 @@ inferred_main_dispatch(CallEA):-
     CallEA = min EA:{
         start_function(Entry),
         arch.call(EA,_),
-        code(EA),
+        code_in_block(EA,_),
         next(EA,HltEA),
         instruction(HltEA,_,_,"HLT",_,_,_,_,_,_),
         EA >= Entry
