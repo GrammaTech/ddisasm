@@ -1,7 +1,6 @@
-
-//===- Interpreter.cpp ------------------------------------------*- C++ -*-===//
+//===- Functors.h -----------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2021 GrammaTech, Inc.
+//  Copyright (C) 2022 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -21,15 +20,31 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
-#include <souffle/SouffleInterface.h>
-
+#ifndef SRC_FUNCTORS_H_
+#define SRC_FUNCTORS_H_
 #include <gtirb/gtirb.hpp>
 
-#ifndef GTIRB_SRC_INTERPRETER_H_
-#define GTIRB_SRC_INTERPRETER_H_
+// C interface is used for accessing the functors from datalog
+extern "C"
+{
+    __attribute__((__visibility__("default"))) uint8_t functor_data_exists(uint64_t EA);
 
-void runInterpreter(gtirb::IR& IR, gtirb::Module& Module, souffle::SouffleProgram* Program,
-                    const std::string& DatalogFile, const std::string& Directory, uint8_t Threads);
+    __attribute__((__visibility__("default"))) uint8_t functor_data_u8(uint64_t EA);
+    /*
+    uint16_t data_u16(uint64_t EA);
+    uint32_t data_u32(uint64_t EA);
+    uint64_t data_u64(uint64_t EA);
 
-#endif // GTIRB_SRC_INTERPRETER_H_
+    int8_t data_s8(uint64_t EA);
+    int16_t data_s16(uint64_t EA);
+    int32_t data_s32(uint64_t EA);
+    int64_t data_s64(uint64_t EA);
+    */
+}
+
+#ifdef __EMBEDDED_SOUFFLE__
+// C++ interface allows ddisasm CPP code to instantiate functor data
+void initFunctorGtirbModule(const gtirb::Module* M);
+#endif /* __EMBEDDED_SOUFFLE__ */
+
+#endif // SRC_FUNCTORS_H_
