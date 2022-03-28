@@ -27,13 +27,14 @@
 void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
 {
     std::vector<relations::Section> Sections;
+    std::vector<relations::SectionProperty> SectionProperties;
+    std::vector<relations::SectionTypeFlags> SectionTypeFlags;
 
-    // FIXME: We should either rename this AuxData table or split it.
-    auto* SectionProperties = Module.getAuxData<gtirb::schema::ElfSectionProperties>();
+    auto* TypeFlags = Module.getAuxData<gtirb::schema::SectionTypeFlags>();
 
-    if(!SectionProperties)
+    if(!TypeFlags)
     {
-        std::cerr << "WARNING: Missing `elfSectionProperties' AuxData table\n";
+        std::cerr << "WARNING: Missing `sectionTypeFlags' AuxData table\n";
     }
 
     auto* Alignment = Module.getAuxData<gtirb::schema::Alignment>();
@@ -44,7 +45,7 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
     }
 
     std::map<gtirb::UUID, uint64_t> SectionIndexes;
-    if(auto* T = Module.getAuxData<gtirb::schema::ElfSectionIndex>())
+    if(auto* T = Module.getAuxData<gtirb::schema::SectionIndex>())
     {
         for(auto [Index, Uuid] : *T)
         {
@@ -52,8 +53,26 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
         }
     }
 
+    uint8_t Flag = 0;
     for(const auto& Section : Module.sections())
     {
+        bool R = Section.isFlagSet(gtirb::SectionFlag::Readable);
+        bool W = Section.isFlagSet(gtirb::SectionFlag::Writable);
+        bool E = Section.isFlagSet(gtirb::SectionFlag::Executable);
+        bool L = Section.isFlagSet(gtirb::SectionFlag::Loaded);
+        bool I = Section.isFlagSet(gtirb::SectionFlag::Initialized);
+        bool T = Section.isFlagSet(gtirb::SectionFlag::ThreadLocal);
+        if(!R && !W && !E && !L && !I && !T)
+        {
+            // If no section flag is available, set them by default
+            R = true;
+            W = false;
+            E = true;
+            L = true;
+            I = false;
+            T = false;
+        }
+
         if(!Section.isFlagSet(gtirb::SectionFlag::Loaded))
         {
             continue;
@@ -61,21 +80,27 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
         assert(Section.getAddress() && "Section has no address.");
         assert(Section.getSize() && "Section has non-calculable size.");
 
+        SectionProperties.push_back(
+            {Section.getName(), static_cast<uint64_t>(R ? 1 : 0), static_cast<uint64_t>(W ? 1 : 0),
+             static_cast<uint64_t>(E ? 1 : 0), static_cast<uint64_t>(L ? 1 : 0),
+             static_cast<uint64_t>(I ? 1 : 0), static_cast<uint64_t>(T ? 1 : 0)});
+
         uint64_t Type = 0;
         uint64_t Flags = 0;
-        if(SectionProperties)
+        if(TypeFlags)
         {
-            if(auto It = SectionProperties->find(Section.getUUID()); It != SectionProperties->end())
+            if(auto It = TypeFlags->find(Section.getUUID()); It != TypeFlags->end())
             {
                 Type = std::get<0>(It->second);
                 Flags = std::get<1>(It->second);
             }
             else
             {
-                std::cerr << "WARNING: Section missing from `elfSectionProperties' AuxData table: "
+                std::cerr << "WARNING: Section missing from `sectionTypeFlags' AuxData table: "
                           << Section.getName() << '\n';
             }
         }
+        SectionTypeFlags.push_back({Section.getName(), Type, Flags});
 
         uint64_t Align = 0;
         if(Alignment)
@@ -88,9 +113,11 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
 
         uint64_t Index = SectionIndexes[Section.getUUID()];
 
-        Sections.push_back({Section.getName(), *Section.getSize(), *Section.getAddress(), Type,
-                            Flags, Align, Index});
+        Sections.push_back(
+            {Section.getName(), *Section.getSize(), *Section.getAddress(), Align, Index});
     }
 
     Program.insert("section_complete", std::move(Sections));
+    Program.insert("section_property", std::move(SectionProperties));
+    Program.insert("section_type_flags", std::move(SectionTypeFlags));
 }

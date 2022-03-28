@@ -63,7 +63,7 @@ void PeReader::initModule()
 
 void PeReader::buildSections()
 {
-    std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> SectionProperties;
+    std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> SectionTypeFlags;
 
     for(auto &Section : Pe->sections())
     {
@@ -118,10 +118,10 @@ void PeReader::buildSections()
             S->addByteInterval(*Context, Addr, Size, 0);
         }
 
-        SectionProperties[S->getUUID()] = {0, Section.characteristics()};
+        SectionTypeFlags[S->getUUID()] = {0, Section.characteristics()};
     }
 
-    Module->addAuxData<gtirb::schema::ElfSectionProperties>(std::move(SectionProperties));
+    Module->addAuxData<gtirb::schema::SectionTypeFlags>(std::move(SectionTypeFlags));
 }
 
 void PeReader::buildSymbols()

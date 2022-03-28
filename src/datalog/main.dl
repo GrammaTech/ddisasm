@@ -58,6 +58,7 @@ This module:
 .type address <: unsigned
 .type operand_code <: unsigned
 .type operand_index <: unsigned
+.type bool <: unsigned
 
 // Binary format specific predicates.
 #include "binary/elf/elf_binaries.dl"
@@ -101,8 +102,14 @@ This module:
 .decl symbol(ea:address,size:unsigned,type:symbol,scope:symbol,visibility:symbol,sectionIndex:unsigned,originTable:symbol,tableIndex:unsigned,name:symbol)
 .input symbol
 
-.decl section_complete(Name:symbol,Size:unsigned,EA:address,Type:unsigned,Flags:unsigned,Align:unsigned,Index:unsigned)
+.decl section_complete(Name:symbol,Size:unsigned,EA:address,Align:unsigned,Index:unsigned)
 .input section_complete
+
+.decl section_property(Name:symbol,Readable:bool,Writable:bool,Executable:bool,Loaded:bool,Initialized:bool,ThreadLocal:bool)
+.input section_property
+
+.decl section_type_flags(Name:symbol,Type:unsigned,Flags:unsigned)
+.input section_type_flags
 
 .decl relocation(EA:address,Type:symbol,Name:symbol,Addend:number,SymbolIndex:unsigned,Section:symbol,RelType:symbol)
 .input relocation
@@ -656,15 +663,27 @@ defined_symbol(EA,Size,Type,Scope,Visibility,SectIndex,OriginTable,TableIndex,Na
 ////////////////////////////////////////////////////////////////////////////////////////
 
 .decl section(name:symbol,size:unsigned,addr:address)
+.output section
 .decl data_section(name:symbol)
 .decl exception_section(name:symbol)
 .decl special_data_section(name:symbol)
 .decl regular_data_section(name:symbol)
 .decl code_section(name:symbol)
+.output code_section
 .decl tls_section(name:symbol)
 .output tls_section
 .decl bss_section(name:symbol)
 .output bss_section
+
+section(Name,Size,Addr):-
+    section_complete(Name,Size,Addr,_,_),
+    section_property(Name,_,_,_,1,_,_).
+
+code_section(Section):-
+    section_property(Section,_,_,1,_,_,_).
+
+tls_section(Section):-
+    section_property(Section,_,_,_,_,_,1).
 
 regular_data_section(Name):-
     data_section(Name),

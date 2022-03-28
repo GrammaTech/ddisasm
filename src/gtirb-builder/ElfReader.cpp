@@ -55,7 +55,7 @@ void ElfReader::resurrectSections()
 {
     std::map<gtirb::UUID, uint64_t> Alignment;
     std::map<uint64_t, gtirb::UUID> SectionIndex;
-    std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> SectionProperties;
+    std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> SectionTypeFlags;
 
     // Get dynamic entries
     std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
@@ -115,7 +115,7 @@ void ElfReader::resurrectSections()
 
         Alignment[S->getUUID()] = 16;
         SectionIndex[Index] = S->getUUID();
-        SectionProperties[S->getUUID()] = {Type, Flags};
+        SectionTypeFlags[S->getUUID()] = {Type, Flags};
         ++Index;
     }
 
@@ -162,7 +162,7 @@ void ElfReader::resurrectSections()
 
         Alignment[GotS->getUUID()] = 16;
         SectionIndex[Index] = GotS->getUUID();
-        SectionProperties[GotS->getUUID()] = {Type, Flags};
+        SectionTypeFlags[GotS->getUUID()] = {Type, Flags};
         ++Index;
 
         // -----------------------------------------------------------
@@ -183,7 +183,7 @@ void ElfReader::resurrectSections()
 
         Alignment[DataS->getUUID()] = 16;
         SectionIndex[Index] = DataS->getUUID();
-        SectionProperties[DataS->getUUID()] = {Type, Flags};
+        SectionTypeFlags[DataS->getUUID()] = {Type, Flags};
         ++Index;
 
         // -----------------------------------------------------------
@@ -206,7 +206,7 @@ void ElfReader::resurrectSections()
 
             Alignment[DataS2->getUUID()] = 16;
             SectionIndex[Index] = DataS2->getUUID();
-            SectionProperties[DataS2->getUUID()] = {
+            SectionTypeFlags[DataS2->getUUID()] = {
                 static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS),
                 static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC
                                       | LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE)};
@@ -238,7 +238,7 @@ void ElfReader::resurrectSections()
 
             Alignment[Bss->getUUID()] = 16;
             SectionIndex[Index] = Bss->getUUID();
-            SectionProperties[Bss->getUUID()] = {
+            SectionTypeFlags[Bss->getUUID()] = {
                 static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS),
                 static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC
                                       | LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE)};
@@ -248,8 +248,8 @@ void ElfReader::resurrectSections()
     }
 
     Module->addAuxData<gtirb::schema::Alignment>(std::move(Alignment));
-    Module->addAuxData<gtirb::schema::ElfSectionIndex>(std::move(SectionIndex));
-    Module->addAuxData<gtirb::schema::ElfSectionProperties>(std::move(SectionProperties));
+    Module->addAuxData<gtirb::schema::SectionIndex>(std::move(SectionIndex));
+    Module->addAuxData<gtirb::schema::SectionTypeFlags>(std::move(SectionTypeFlags));
     return;
 }
 
@@ -385,7 +385,7 @@ void ElfReader::buildSections()
 {
     std::map<gtirb::UUID, uint64_t> Alignment;
     std::map<uint64_t, gtirb::UUID> SectionIndex;
-    std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> SectionProperties;
+    std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> SectionTypeFlags;
 
     // For sectionless binary, call resurrectSections.
     if(Elf->sections().size() == 0)
@@ -457,6 +457,10 @@ void ElfReader::buildSections()
         {
             S->addFlag(gtirb::SectionFlag::Initialized);
         }
+        if(Tls)
+        {
+            S->addFlag(gtirb::SectionFlag::ThreadLocal);
+        }
 
         if(Loaded)
         {
@@ -509,15 +513,15 @@ void ElfReader::buildSections()
         // Add section index and raw section properties to aux data.
         Alignment[S->getUUID()] = Section.alignment();
         SectionIndex[Index] = S->getUUID();
-        SectionProperties[S->getUUID()] = {static_cast<uint64_t>(Section.type()),
-                                           static_cast<uint64_t>(Section.flags())};
+        SectionTypeFlags[S->getUUID()] = {static_cast<uint64_t>(Section.type()),
+                                          static_cast<uint64_t>(Section.flags())};
 
         Index++;
     }
 
     Module->addAuxData<gtirb::schema::Alignment>(std::move(Alignment));
-    Module->addAuxData<gtirb::schema::ElfSectionIndex>(std::move(SectionIndex));
-    Module->addAuxData<gtirb::schema::ElfSectionProperties>(std::move(SectionProperties));
+    Module->addAuxData<gtirb::schema::SectionIndex>(std::move(SectionIndex));
+    Module->addAuxData<gtirb::schema::SectionTypeFlags>(std::move(SectionTypeFlags));
 }
 
 void ElfReader::buildSymbols()

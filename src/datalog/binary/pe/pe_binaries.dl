@@ -78,29 +78,19 @@ pe_section_characteristics("IMAGE_SCN_MEM_EXECUTE",0x20000000).
 pe_section_characteristics("IMAGE_SCN_MEM_READ",0x40000000).
 pe_section_characteristics("IMAGE_SCN_MEM_WRITE",0x80000000).
 
-section(Name,Size,Addr):-
-    binary_format("PE"),
-    section_complete(Name,Size,Addr,_,_,_,_).
-
 data_section(Section):-
     binary_format("PE"),
     !code_section(Section),
-    section_complete(Section,_,_,_,Flags,_,_),
+    section_type_flags(Section,_,Flags),
     pe_section_characteristics("IMAGE_SCN_CNT_INITIALIZED_DATA",Data),
     Flags band Data >0.
 
 bss_section(Section),
 data_section(Section):-
     binary_format("PE"),
-    section_complete(Section,_,_,_,Flags,_,_),
+    section_type_flags(Section,_,Flags),
     pe_section_characteristics("IMAGE_SCN_CNT_UNINITIALIZED_DATA",Data),
     Flags band Data >0.
-
-code_section(Section):-
-    binary_format("PE"),
-    section_complete(Section,_,_,_,Flags,_,_),
-    pe_section_characteristics("IMAGE_SCN_CNT_CODE",Exec),
-    Flags band Exec >0.
 
 data_region(Begin,Size):-
     pe_data_directory(_,Begin,Size), Size > 0;

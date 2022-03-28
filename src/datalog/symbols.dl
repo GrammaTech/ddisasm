@@ -206,7 +206,7 @@ at the end of a block.
 symbol_at_end(EA,SymbolName),
 symbol_at_section_end(EA,SymbolName):-
     symbol(EA,_,_,_,_,SectionIndex,_,_,SymbolName),
-    section_complete(_,Size,Beg,_,_,_,SectionIndex),
+    section_complete(_,Size,Beg,_,SectionIndex),
     EA = Beg + Size.
 
 symbol_at_end(EA,SymbolName):-
@@ -222,5 +222,5 @@ outside its own section and should be moved to 'NewEA'.
 symbol_before_section_beg(EA,SymbolName,Beg):-
     symbol(EA,_,_,_,_,SectionIndex,_,_,SymbolName),
     SectionIndex != 0,
-    section_complete(_,_,Beg,_,_,_,SectionIndex),
+    section_complete(_,_,Beg,_,SectionIndex),
     EA < Beg.

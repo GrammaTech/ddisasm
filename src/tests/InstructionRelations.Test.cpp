@@ -54,8 +54,8 @@ GTIRB buildGtirb(gtirb::ISA ISA, std::vector<uint8_t> &Bytes)
     Alignment[S->getUUID()] = 8;
 
     Module->addAuxData<gtirb::schema::Alignment>(std::move(Alignment));
-    Module->addAuxData<gtirb::schema::ElfSectionIndex>(std::move(SectionIndex));
-    Module->addAuxData<gtirb::schema::ElfSectionProperties>(std::move(SectionProperties));
+    Module->addAuxData<gtirb::schema::SectionIndex>(std::move(SectionIndex));
+    Module->addAuxData<gtirb::schema::SectionTypeFlags>(std::move(SectionProperties));
 
     return GTIRB{std::move(Context), IR, Module};
 }
