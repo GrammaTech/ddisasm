@@ -1,5 +1,8 @@
 #include "Functors.h"
 
+#include <fstream>
+#include <iostream>
+
 const gtirb::Module* Module = nullptr;
 
 static const gtirb::ByteInterval* get_byte_interval(uint64_t EA)
@@ -55,11 +58,40 @@ int32_t data_s32(uint64_t EA);
 int64_t data_s64(uint64_t EA);
 */
 
+#ifdef __EMBEDDED_SOUFFLE__
+
 // C++ interface allows ddisasm CPP code to instantiate functor data
 void initFunctorGtirbModule(const gtirb::Module* M)
 {
     // TODO: build a sorted Range => ByteInterval map. This will allow a binary
     // search to find the right range quickly.
-
     Module = M;
 }
+
+#else
+
+std::unique_ptr<gtirb::Context> Context;
+
+/*
+Load the GTIRB file from the debug directory if running in the interpreter
+*/
+void __attribute__((constructor)) loadGtirb(void)
+{
+    // TODO: locate fact-dir in the command line args
+    const std::string GtirbPath("debug/binary.gtirb");
+
+    Context = std::make_unique<gtirb::Context>();
+
+    std::ifstream Stream(GtirbPath, std::ios::in | std::ios::binary);
+    gtirb::ErrorOr<gtirb::IR*> Result = gtirb::IR::load(*Context, Stream);
+    if(!Result)
+    {
+        std::cerr << "ERROR: Failed to load GTIRB: " << GtirbPath << "\n";
+        return;
+    }
+
+    // TODO: support multi-module GTIRB files (static archives)
+    gtirb::IR* IR = *Result;
+    Module = &(*IR->modules().begin());
+}
+#endif /* __EMBEDDED_SOUFFLE__ */

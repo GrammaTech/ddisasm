@@ -292,7 +292,8 @@ int main(int argc, char **argv)
             // Disassemble with the interpeter engine.
             std::cerr << " (interpreter)";
             const std::string &DatalogFile = vm["interpreter"].as<std::string>();
-            runInterpreter(Module, Souffle->get(), DatalogFile, DebugDir.string(), Threads);
+            runInterpreter(*GTIRB->IR, Module, Souffle->get(), DatalogFile, DebugDir.string(),
+                           Threads);
         }
         else
         {
