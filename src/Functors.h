@@ -27,11 +27,12 @@
 // C interface is used for accessing the functors from datalog
 extern "C"
 {
-    __attribute__((__visibility__("default"))) bool functor_data_exists(uint64_t EA, size_t Size);
-    __attribute__((__visibility__("default"))) uint8_t functor_data_u8(uint64_t EA);
+    __attribute__((__visibility__("default"))) uint64_t functor_data_exists(uint64_t EA,
+                                                                            size_t Size);
+    __attribute__((__visibility__("default"))) uint64_t functor_data_u8(uint64_t EA);
 
-    __attribute__((__visibility__("default"))) int16_t functor_data_s16(uint64_t EA);
-    __attribute__((__visibility__("default"))) int32_t functor_data_s32(uint64_t EA);
+    __attribute__((__visibility__("default"))) int64_t functor_data_s16(uint64_t EA);
+    __attribute__((__visibility__("default"))) int64_t functor_data_s32(uint64_t EA);
     __attribute__((__visibility__("default"))) int64_t functor_data_s64(uint64_t EA);
 
     /*

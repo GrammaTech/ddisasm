@@ -31,19 +31,17 @@ static const gtirb::ByteInterval* get_byte_interval(uint64_t EA, size_t Size)
     return nullptr;
 }
 
-bool functor_data_exists(uint64_t EA, size_t Size)
+uint64_t functor_data_exists(uint64_t EA, size_t Size)
 {
     const gtirb::ByteInterval* ByteInterval = get_byte_interval(EA, Size);
-    return (ByteInterval != nullptr);
+    return ByteInterval != nullptr ? 1 : 0;
 }
 
 static void readData(uint64_t EA, uint8_t* Buffer, size_t Count)
 {
     const gtirb::ByteInterval* ByteInterval = get_byte_interval(EA, Count);
-    if(!ByteInterval)
+    if(ByteInterval == nullptr)
     {
-        std::cerr << "WARNING: using null for data in undefined range at " << std::hex << EA
-                  << std::dec << "\n";
         memset(Buffer, 0, Count);
         return;
     }
@@ -54,32 +52,32 @@ static void readData(uint64_t EA, uint8_t* Buffer, size_t Count)
     memcpy(Buffer, Data + EA - Addr, Count);
 }
 
-uint8_t functor_data_u8(uint64_t EA)
+uint64_t functor_data_u8(uint64_t EA)
 {
     uint8_t Value;
     readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
     return Value;
 }
 
-int16_t functor_data_s16(uint64_t EA)
+int64_t functor_data_s16(uint64_t EA)
 {
-    int16_t Value;
+    uint16_t Value;
     readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
-    return IsBigEndian ? betoh16(Value) : letoh16(Value);
+    return static_cast<int16_t>(IsBigEndian ? be16toh(Value) : le16toh(Value));
 }
 
-int32_t functor_data_s32(uint64_t EA)
+int64_t functor_data_s32(uint64_t EA)
 {
-    int32_t Value;
+    uint32_t Value;
     readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
-    return IsBigEndian ? betoh32(Value) : letoh32(Value);
+    return static_cast<int32_t>(IsBigEndian ? be32toh(Value) : le32toh(Value));
 }
 
 int64_t functor_data_s64(uint64_t EA)
 {
-    int64_t Value;
+    uint64_t Value;
     readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
-    return IsBigEndian ? betoh64(Value) : letoh64(Value);
+    return static_cast<int64_t>(IsBigEndian ? be64toh(Value) : le64toh(Value));
 }
 
 void initFunctorGtirbModule(const gtirb::Module* M)
