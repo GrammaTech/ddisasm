@@ -115,15 +115,7 @@ false_positive(Location):-
 
 zero_relocation(EA):-
     relocation(EA,_,_,_,_,_,_),
-    data_byte(EA,0),
-    data_byte(EA+1,0),
-    data_byte(EA+2,0),
-    data_byte(EA+3,0),
-    data_byte(EA+4,0),
-    data_byte(EA+5,0),
-    data_byte(EA+6,0),
-    data_byte(EA+7,0).
-
+    data_word(EA,8,0).
 
 false_negative(EA):-
     data_byte(EA,_),
