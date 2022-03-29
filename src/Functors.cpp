@@ -4,8 +4,9 @@
 #include <iostream>
 
 const gtirb::Module* Module = nullptr;
+bool IsBigEndian = false;
 
-static const gtirb::ByteInterval* get_byte_interval(uint64_t EA)
+static const gtirb::ByteInterval* get_byte_interval(uint64_t EA, size_t Size)
 {
     // TODO: maybe this is too slow for the functor
     for(const auto& Section : Module->sections())
@@ -18,8 +19,8 @@ static const gtirb::ByteInterval* get_byte_interval(uint64_t EA)
             for(const auto& ByteInterval : Section.byte_intervals())
             {
                 uint64_t Addr = static_cast<uint64_t>(*ByteInterval.getAddress());
-                uint64_t Size = ByteInterval.getInitializedSize();
-                if(EA < Addr || EA >= Addr + Size)
+                uint64_t IntervalSize = ByteInterval.getInitializedSize();
+                if(EA < Addr || EA + Size > Addr + IntervalSize)
                 {
                     continue;
                 }
@@ -30,45 +31,80 @@ static const gtirb::ByteInterval* get_byte_interval(uint64_t EA)
     return nullptr;
 }
 
-uint8_t functor_data_exists(uint64_t EA)
+bool functor_data_exists(uint64_t EA, size_t Size)
 {
-    const gtirb::ByteInterval* ByteInterval = get_byte_interval(EA);
+    const gtirb::ByteInterval* ByteInterval = get_byte_interval(EA, Size);
     return (ByteInterval != nullptr);
+}
+
+static void readData(uint64_t EA, uint8_t* Buffer, size_t Count)
+{
+    const gtirb::ByteInterval* ByteInterval = get_byte_interval(EA, Count);
+    if(!ByteInterval)
+    {
+        std::cerr << "WARNING: using null for data in undefined range at " << std::hex << EA
+                  << std::dec << "\n";
+        memset(Buffer, 0, Count);
+        return;
+    }
+    uint64_t Addr = static_cast<uint64_t>(*ByteInterval->getAddress());
+    auto Data = ByteInterval->rawBytes<const uint8_t>();
+
+    // memcpy: safely handles unaligned requests.
+    memcpy(Buffer, Data + EA - Addr, Count);
 }
 
 uint8_t functor_data_u8(uint64_t EA)
 {
-    const gtirb::ByteInterval* ByteInterval = get_byte_interval(EA);
-    if(!ByteInterval)
-    {
-        return 0;
-    }
-    uint64_t Addr = static_cast<uint64_t>(*ByteInterval->getAddress());
-    auto Data = ByteInterval->rawBytes<const int8_t>();
-    return Data[EA - Addr];
+    uint8_t Value;
+    readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
+    return Value;
 }
 
-/*
-uint16_t data_u16(uint64_t EA);
-uint32_t data_u32(uint64_t EA);
-uint64_t data_u64(uint64_t EA);
-int8_t data_s8(uint64_t EA);
-int16_t data_s16(uint64_t EA);
-int32_t data_s32(uint64_t EA);
-int64_t data_s64(uint64_t EA);
-*/
+int16_t functor_data_s16(uint64_t EA)
+{
+    int16_t Value;
+    readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
+    return IsBigEndian ? betoh16(Value) : letoh16(Value);
+}
 
-#ifdef __EMBEDDED_SOUFFLE__
+int32_t functor_data_s32(uint64_t EA)
+{
+    int32_t Value;
+    readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
+    return IsBigEndian ? betoh32(Value) : letoh32(Value);
+}
 
-// C++ interface allows ddisasm CPP code to instantiate functor data
+int64_t functor_data_s64(uint64_t EA)
+{
+    int64_t Value;
+    readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
+    return IsBigEndian ? betoh64(Value) : letoh64(Value);
+}
+
 void initFunctorGtirbModule(const gtirb::Module* M)
 {
     // TODO: build a sorted Range => ByteInterval map. This will allow a binary
     // search to find the right range quickly.
     Module = M;
+
+    // Check module's byte order
+    switch(Module->getByteOrder())
+    {
+        case gtirb::ByteOrder::Big:
+            IsBigEndian = true;
+            break;
+        case gtirb::ByteOrder::Little:
+            IsBigEndian = false;
+            break;
+        case gtirb::ByteOrder::Undefined:
+        default:
+            std::cerr << "WARNING: GTIRB has undefined endianness (assuming little)\n";
+            IsBigEndian = false;
+    }
 }
 
-#else
+#ifndef __EMBEDDED_SOUFFLE__
 
 std::unique_ptr<gtirb::Context> Context;
 
@@ -92,6 +128,6 @@ void __attribute__((constructor)) loadGtirb(void)
 
     // TODO: support multi-module GTIRB files (static archives)
     gtirb::IR* IR = *Result;
-    Module = &(*IR->modules().begin());
+    initFunctorGtirbModule(&(*IR->modules().begin()));
 }
 #endif /* __EMBEDDED_SOUFFLE__ */

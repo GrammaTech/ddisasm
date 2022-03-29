@@ -27,24 +27,23 @@
 // C interface is used for accessing the functors from datalog
 extern "C"
 {
-    __attribute__((__visibility__("default"))) uint8_t functor_data_exists(uint64_t EA);
-
+    __attribute__((__visibility__("default"))) bool functor_data_exists(uint64_t EA, size_t Size);
     __attribute__((__visibility__("default"))) uint8_t functor_data_u8(uint64_t EA);
+
+    __attribute__((__visibility__("default"))) int16_t functor_data_s16(uint64_t EA);
+    __attribute__((__visibility__("default"))) int32_t functor_data_s32(uint64_t EA);
+    __attribute__((__visibility__("default"))) int64_t functor_data_s64(uint64_t EA);
+
     /*
     uint16_t data_u16(uint64_t EA);
     uint32_t data_u32(uint64_t EA);
     uint64_t data_u64(uint64_t EA);
 
     int8_t data_s8(uint64_t EA);
-    int16_t data_s16(uint64_t EA);
-    int32_t data_s32(uint64_t EA);
-    int64_t data_s64(uint64_t EA);
     */
 }
 
-#ifdef __EMBEDDED_SOUFFLE__
 // C++ interface allows ddisasm CPP code to instantiate functor data
 void initFunctorGtirbModule(const gtirb::Module* M);
-#endif /* __EMBEDDED_SOUFFLE__ */
 
 #endif // SRC_FUNCTORS_H_
