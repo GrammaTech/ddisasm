@@ -6,9 +6,8 @@
 const gtirb::Module* Module = nullptr;
 bool IsBigEndian = false;
 
-static const gtirb::ByteInterval* get_byte_interval(uint64_t EA, size_t Size)
+static const gtirb::ByteInterval* getByteInterval(uint64_t EA, size_t Size)
 {
-    // TODO: maybe this is too slow for the functor
     for(const auto& Section : Module->sections())
     {
         bool Executable = Section.isFlagSet(gtirb::SectionFlag::Executable);
@@ -33,13 +32,13 @@ static const gtirb::ByteInterval* get_byte_interval(uint64_t EA, size_t Size)
 
 uint64_t functor_data_exists(uint64_t EA, size_t Size)
 {
-    const gtirb::ByteInterval* ByteInterval = get_byte_interval(EA, Size);
+    const gtirb::ByteInterval* ByteInterval = getByteInterval(EA, Size);
     return ByteInterval != nullptr ? 1 : 0;
 }
 
 static void readData(uint64_t EA, uint8_t* Buffer, size_t Count)
 {
-    const gtirb::ByteInterval* ByteInterval = get_byte_interval(EA, Count);
+    const gtirb::ByteInterval* ByteInterval = getByteInterval(EA, Count);
     if(ByteInterval == nullptr)
     {
         memset(Buffer, 0, Count);
@@ -82,8 +81,6 @@ int64_t functor_data_s64(uint64_t EA)
 
 void initFunctorGtirbModule(const gtirb::Module* M)
 {
-    // TODO: build a sorted Range => ByteInterval map. This will allow a binary
-    // search to find the right range quickly.
     Module = M;
 
     // Check module's byte order
