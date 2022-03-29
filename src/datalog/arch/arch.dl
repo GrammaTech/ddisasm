@@ -139,6 +139,7 @@ This excludes a read of SP for adjusting stack-pointer: e.g., pop
 .output one_op_write
 
 .decl call_operation(Operation:symbol)
+.output call_operation
 
 .decl syscall_operation(Operation:symbol)
 
