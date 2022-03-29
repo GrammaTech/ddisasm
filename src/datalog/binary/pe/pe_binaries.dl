@@ -80,17 +80,16 @@ pe_section_characteristics("IMAGE_SCN_MEM_WRITE",0x80000000).
 
 data_section(Section):-
     binary_format("PE"),
-    !code_section(Section),
-    section_type_flags(Section,_,Flags),
-    pe_section_characteristics("IMAGE_SCN_CNT_INITIALIZED_DATA",Data),
-    Flags band Data >0.
+    section_property(Section,"Loaded"),
+    section_property(Section,"Initialized"),
+    !section_property(Section,"Executable").
 
 bss_section(Section),
 data_section(Section):-
     binary_format("PE"),
-    section_type_flags(Section,_,Flags),
-    pe_section_characteristics("IMAGE_SCN_CNT_UNINITIALIZED_DATA",Data),
-    Flags band Data >0.
+    section_property(Section,"Loaded"),
+    !section_property(Section,"Initialized"),
+    !section_property(Section,"Executable").
 
 data_region(Begin,Size):-
     pe_data_directory(_,Begin,Size), Size > 0;
@@ -191,7 +190,7 @@ possible_rva_operand(EA,Op_index,RVA):-
     op_indirect(Op,_,_,_,_,Value,_), Value >= 0,
     RVA = as(Value,address),
     base_address(ImageBase),
-    section(_,Size,Begin),
+    loaded_section(_,Size,Begin),
     (ImageBase + RVA) >= Begin,
     (ImageBase + RVA) < (Begin + Size).
 
@@ -534,7 +533,7 @@ symbol_minus_symbol_jump_table(EA,TableStart,1,Ref,Dest,4,0):-
     relative_address(EA,1,TableStart,Ref,Dest,"first"), Dest < TableStart,
     relative_address_start(Ref,4,_,_,_),
     // Addresses belong to the same segment.
-    section(_,Size,Start),
+    loaded_section(_,Size,Start),
     Ref >= Start, Ref < (Start + Size),
     Dest >= Start, Dest < (Start + Size).
 
@@ -688,18 +687,18 @@ is_padding(EA):-
 
 merged_data_region(DataStart,DataStart+DataSize):-
     binary_format("PE"),
-    !section(".rdata",_,_),
+    !loaded_section(".rdata",_,_),
     (
         pe_data_directory(_,DataStart,DataSize), DataSize > 0;
         pe_debug_data(_,DataStart,DataSize), DataSize > 0
     ),
     entry_point(Entry),
     DataStart < Entry,
-    section(".text",SectionSize,SectionStart),
+    loaded_section(".text",SectionSize,SectionStart),
     DataStart > SectionStart,
     DataStart < SectionStart + SectionSize.
 
 data_region(Start,Size):-
     Last = max End:{merged_data_region(_,End)},
-    section(".text",_,Start),
+    loaded_section(".text",_,Start),
     Size = Last - Start.

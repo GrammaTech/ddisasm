@@ -58,12 +58,11 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionProperty& Property)
     {
-        T << Property.Name << Property.Readable << Property.Writable << Property.Executable
-          << Property.Loaded << Property.Initialized << Property.ThreadLocal;
+        T << Property.Name << Property.Property;
         return T;
     }
 
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionTypeFlags& TypeFlags)
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionProperties& TypeFlags)
     {
         T << TypeFlags.Name << TypeFlags.Type << TypeFlags.Flags;
         return T;

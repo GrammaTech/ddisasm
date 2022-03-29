@@ -255,7 +255,7 @@ E.g.,
 */
 plt_entry_arm_candidate(EA,EA_jump,Function,as(Dest,address)):-
     plt_section(SecName),
-    section(SecName,Size,Beg),
+    loaded_section(SecName,Size,Beg),
     EA < Beg+Size,
     EA >= Beg,
 
@@ -291,7 +291,7 @@ E.g.,
 */
 plt_entry_arm_candidate(EA,EA_jump,Function,as(Dest,address)):-
     plt_section(SecName),
-    section(SecName,Size,Beg),
+    loaded_section(SecName,Size,Beg),
     EA < Beg+Size,
     EA >= Beg,
 
@@ -952,7 +952,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,as(Val,number)):-
 //
 symbol_minus_symbol(LitPoolAddr2,Size,Symbol1,Symbol2,1,0):-
     litpool_symbolic_operand(LitPoolAddr2,Size,Symbol1,Symbol2,_,_,_),
-    section(".got",Size,Beg),
+    loaded_section(".got",Size,Beg),
     (
         Symbol2 < Beg
         ;
@@ -966,7 +966,7 @@ symbol_minus_symbol(LitPoolAddr2,Size,Symbol1,Symbol2,1,0):-
 symbolic_expr_attribute(LitPoolAddr,"GotRelPC"),
 symbolic_data(LitPoolAddr,SymSize,Got_entry):-
     litpool_symbolic_operand(LitPoolAddr,_,_,Got_entry,_,_,SymSize),
-    section(".got",GotSize,GotBeg),
+    loaded_section(".got",GotSize,GotBeg),
     Got_entry >= GotBeg,
     Got_entry < GotBeg+GotSize,
     (

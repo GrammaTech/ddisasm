@@ -138,9 +138,9 @@ namespace gtirb
         };
 
         /// \brief Auxiliary data covering ELF section properties.
-        struct SectionTypeFlags
+        struct SectionProperties
         {
-            static constexpr const char* Name = "sectionTypeFlags";
+            static constexpr const char* Name = "sectionProperties";
             typedef std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> Type;
         };
 

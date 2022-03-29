@@ -56,8 +56,8 @@ elf_section_type("SYMTAB_SHNDX",18).
 elf_section_type("NUM",19).
 
 data_section(Name):-
-    section_type_flags(Name,Type,Flags),
-    elf_section_flag("SHF_EXECINSTR",Pos_Exec), Flags band (2^Pos_Exec)  = 0,
+    section_properties(Name,Type,Flags),
+    !section_property(Name,"Executable"),
     elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc)  > 0,
     (   elf_section_type("PROGBITS",Type);
         elf_section_type("NOBITS",Type);
@@ -103,7 +103,7 @@ got_section(".got.plt").
 
 bss_section(Name):-
     binary_format("ELF"),
-    section_type_flags(Name,Type,Flags),
+    section_properties(Name,Type,Flags),
     elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc) > 0,
     SHT_NOBITS = 8,
     Type = SHT_NOBITS.
@@ -119,7 +119,7 @@ non_zero_data_section(Name):-
 
 plt_entry(EA,Function):-
     plt_section(SecName),
-    section(SecName,Size,Beg),
+    loaded_section(SecName,Size,Beg),
     EA < Beg+Size,
     EA >= Beg,
     pc_relative_jump(EA,Got_entry),
@@ -128,7 +128,7 @@ plt_entry(EA,Function):-
 
 plt_entry(EA,Name):-
     plt_section(SecName),
-    section(SecName,Size,Beg),
+    loaded_section(SecName,Size,Beg),
     EA < Beg+Size,
     EA >= Beg,
     pc_relative_jump(EA,Got_entry),
@@ -150,7 +150,7 @@ plt_block(Block,Function):-
     must_fallthrough(EA,NextBlock),
     code_in_block(EA,Block),
     plt_section(SecName),
-    section(SecName,Size,Beg),
+    loaded_section(SecName,Size,Beg),
     EA < Beg+Size,
     Block >= Beg.
 
@@ -176,11 +176,11 @@ either the .got or .got.plt section.
 .output got_reference_pointer
 
 got_reference_pointer(EA):-
-    section(".got.plt",_,EA).
+    loaded_section(".got.plt",_,EA).
 
 got_reference_pointer(EA):-
-    section(".got",_,EA),
-    !section(".got.plt",_,_).
+    loaded_section(".got",_,EA),
+    !loaded_section(".got.plt",_,_).
 
 // Identify load PC operations:
 // e.g. (clang)
@@ -195,7 +195,7 @@ got_reference_pointer(EA):-
 reg_has_got(EA,Reg):-
     value_reg(EA,Reg,_,"NONE",_,Offset,_),
     got_section(Name),
-    section(Name,_,as(Offset,address)).
+    loaded_section(Name,_,as(Offset,address)).
 
 /**
 Operand instruction at 'EA' at index 'Index' is a GOT-relative reference to an
@@ -253,7 +253,7 @@ get_pc_thunk(EA,Reg):-
     arch.return(EA+Size).
 
 got_reference(Got_entry,Symbol):-
-    section(".got",Size,Beg),
+    loaded_section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
     relocation(Got_entry,RelType,Symbol,_,_,_,_),
@@ -262,7 +262,7 @@ got_reference(Got_entry,Symbol):-
     symbol(_,_,_,_,_,_,_,_,Symbol).
 
 got_reference(Got_entry,Symbol):-
-    section(".got",Size,Beg),
+    loaded_section(".got",Size,Beg),
     Got_entry >= Beg,
     Got_entry < Beg+Size,
     arch.pointer_size(Ptr),
@@ -277,8 +277,8 @@ got_reference(Got_entry,Symbol):-
 symbol_minus_symbol(Got_entry+8,8,Beg,Dest,1,0):-
     relocation(Got_entry,"DTPMOD64","",_,_,_,_),
     (
-        section(".tbss",_,Beg);
-        section(".tdata",_,Beg)
+        loaded_section(".tbss",_,Beg);
+        loaded_section(".tdata",_,Beg)
     ),
     // ti_offset is initialized for @TLSGD and zero for @TLSLD
     data_word(Got_entry+8,8,Offset),
@@ -357,7 +357,7 @@ inferred_special_symbol(EA,"__do_global_dtors_aux","LOCAL","FUNC","Beg"):-
     function_inference.function_entry(EA),
     // referenced from .fini_array
     address_in_data(FiniArray,EA),
-    section(".fini_array",Size,Beg),
+    loaded_section(".fini_array",Size,Beg),
     FiniArray >= Beg,
     FiniArray < Beg+Size,
     // compare a value in bss with 0 in the first block
@@ -366,14 +366,14 @@ inferred_special_symbol(EA,"__do_global_dtors_aux","LOCAL","FUNC","Beg"):-
     op_immediate(Op1,0),
     pc_relative_operand(EA_cmp,2,DataRef),
     bss_section(SectionName),
-    section(SectionName,SizeBss,BegData),
+    loaded_section(SectionName,SizeBss,BegData),
     DataRef >= BegData,
     DataRef <= BegData+SizeBss.
 
 inferred_special_symbol(EA,"_DYNAMIC","LOCAL","NONE","Beg"):-
     binary_format("ELF"),
     !symbol(EA,_,_,_,_,_,_,_,"_DYNAMIC"),
-    section(".dynamic",_,EA).
+    loaded_section(".dynamic",_,EA).
 
 inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_","LOCAL","NONE","Beg"):-
     !symbol(_,_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
@@ -443,7 +443,7 @@ symbolic_expr_from_relocation(EA,Size/8,Symbol,0,TargetEA):-
     ),
     relocation_adjustment_total(EA,Adjustment),
     symbol(_,_,"SECTION",_,_,SectionIndex,_,SymbolIndex,_),
-    section_complete(_,_,Begin,_,SectionIndex),
+    section(_,_,Begin,_,SectionIndex),
     // Addend is the offset of a symbol within the Section.
     TargetEA = as(as(Begin,number)+Addend+Adjustment,address),
     (
@@ -478,9 +478,9 @@ symbolic_expr_from_relocation(EA,4,Symbol,Addend+Adjustment,TargetEA):-
 .decl tls_segment(Start:address,End:address,Align:unsigned)
 
 tls_segment(Start,End,Align):-
-    Start = min EA:{ tls_section(Name), section(Name,_,Addr), EA=Addr },
-    End = max EA:{ tls_section(Name), section(Name,Size,Addr), EA=Addr+Size },
-    Align = max X:{ tls_section(Name), section_complete(Name,_,_,X,_) }.
+    Start = min EA:{ tls_section(Name), loaded_section(Name,_,Addr), EA=Addr },
+    End = max EA:{ tls_section(Name), loaded_section(Name,Size,Addr), EA=Addr+Size },
+    Align = max X:{ tls_section(Name), section(Name,_,_,X,_) }.
 
 // Segment-based references to thread-local storage,
 //   e.g.   mov     eax, DWORD PTR fs:i@tpoff
@@ -524,16 +524,16 @@ inferred_special_symbol(DestAddr,Name,"LOCAL","FUNC","Beg"):-
 // that contaisn the IRELATIVE relocations
 
 inferred_special_symbol(Beg,"__rela_iplt_start","GLOBAL","NONE","Beg"):-
-    section(".rela.plt",_,Beg),
+    loaded_section(".rela.plt",_,Beg),
     !symbol(_,_,_,_,_,_,_,_,"__rela_iplt_start").
 
 inferred_special_symbol(Beg+Size,"__rela_iplt_end","GLOBAL","NONE","End"):-
-    section(".rela.plt",Size,Beg),
+    loaded_section(".rela.plt",Size,Beg),
     !symbol(_,_,_,_,_,_,_,_,"__rela_iplt_end").
 
 abi_intrinsic(Beg,"__rela_iplt_start"),
 abi_intrinsic(Beg+Size,"__rela_iplt_end"):-
-    section(".rela.plt",Size,Beg).
+    loaded_section(".rela.plt",Size,Beg).
 
 
 

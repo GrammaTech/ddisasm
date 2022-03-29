@@ -27,14 +27,14 @@
 void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
 {
     std::vector<relations::Section> Sections;
-    std::vector<relations::SectionProperty> SectionProperties;
-    std::vector<relations::SectionTypeFlags> SectionTypeFlags;
+    std::vector<relations::SectionProperty> SectionProperty;
+    std::vector<relations::SectionProperties> SectionProperties;
 
-    auto* TypeFlags = Module.getAuxData<gtirb::schema::SectionTypeFlags>();
+    auto* SectProperties = Module.getAuxData<gtirb::schema::SectionProperties>();
 
-    if(!TypeFlags)
+    if(Module.getFileFormat() == gtirb::FileFormat::ELF && !SectProperties)
     {
-        std::cerr << "WARNING: Missing `sectionTypeFlags' AuxData table\n";
+        std::cerr << "WARNING: Missing `sectionProperties' AuxData table\n";
     }
 
     auto* Alignment = Module.getAuxData<gtirb::schema::Alignment>();
@@ -80,27 +80,35 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
         assert(Section.getAddress() && "Section has no address.");
         assert(Section.getSize() && "Section has non-calculable size.");
 
-        SectionProperties.push_back(
-            {Section.getName(), static_cast<uint64_t>(R ? 1 : 0), static_cast<uint64_t>(W ? 1 : 0),
-             static_cast<uint64_t>(E ? 1 : 0), static_cast<uint64_t>(L ? 1 : 0),
-             static_cast<uint64_t>(I ? 1 : 0), static_cast<uint64_t>(T ? 1 : 0)});
+        if(R)
+            SectionProperty.push_back({Section.getName(), "Readable"});
+        if(W)
+            SectionProperty.push_back({Section.getName(), "Writable"});
+        if(E)
+            SectionProperty.push_back({Section.getName(), "Executable"});
+        if(L)
+            SectionProperty.push_back({Section.getName(), "Loaded"});
+        if(I)
+            SectionProperty.push_back({Section.getName(), "Initialized"});
+        if(T)
+            SectionProperty.push_back({Section.getName(), "ThreadLocal"});
 
         uint64_t Type = 0;
         uint64_t Flags = 0;
-        if(TypeFlags)
+        if(SectProperties)
         {
-            if(auto It = TypeFlags->find(Section.getUUID()); It != TypeFlags->end())
+            if(auto It = SectProperties->find(Section.getUUID()); It != SectProperties->end())
             {
                 Type = std::get<0>(It->second);
                 Flags = std::get<1>(It->second);
             }
             else
             {
-                std::cerr << "WARNING: Section missing from `sectionTypeFlags' AuxData table: "
+                std::cerr << "WARNING: Section missing from `elfSectionProperties' AuxData table: "
                           << Section.getName() << '\n';
             }
         }
-        SectionTypeFlags.push_back({Section.getName(), Type, Flags});
+        SectionProperties.push_back({Section.getName(), Type, Flags});
 
         uint64_t Align = 0;
         if(Alignment)
@@ -117,7 +125,7 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
             {Section.getName(), *Section.getSize(), *Section.getAddress(), Align, Index});
     }
 
-    Program.insert("section_complete", std::move(Sections));
-    Program.insert("section_property", std::move(SectionProperties));
-    Program.insert("section_type_flags", std::move(SectionTypeFlags));
+    Program.insert("section", std::move(Sections));
+    Program.insert("section_property", std::move(SectionProperty));
+    Program.insert("section_properties", std::move(SectionProperties));
 }

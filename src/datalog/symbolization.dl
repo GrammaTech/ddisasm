@@ -304,7 +304,7 @@ symbolic_operand_point(EA,Imm_index,-1,"immediate is bitmask"):-
 symbolic_operand_point(EA,Imm_index,-2,"point to exception section"):-
     symbolic_operand_candidate(EA,Imm_index,Dest,_),
     exception_section(Name),
-    section(Name,SectSize,Base),
+    loaded_section(Name,SectSize,Base),
     Base <= Dest, Dest < Base+SectSize.
 
 symbolic_operand_point(EA,Imm_index,-1,"operated on logical operation result"):-
@@ -386,7 +386,7 @@ symbol_minus_symbol_jump_table(TableStart,TableStart,Size,TableReference,Dest,Sc
     (
         !binary_format("PE");
         // Addresses belong to the same segment.
-        section(_,SectionSize,SectionStart),
+        loaded_section(_,SectionSize,SectionStart),
         TableStart >= SectionStart, TableStart < (SectionStart + SectionSize),
         TableReference >= SectionStart, TableReference < (SectionStart + SectionSize)
     ).
@@ -690,7 +690,7 @@ data_object_point(EA,Pt_size,Type,-2,"data object bias"):-
 data_object_point(EA,Size,Type,-100,"in-exception-section"):-
     data_object_candidate(EA,Size,Type),
     exception_section(Name),
-    section(Name,SectSize,Base),
+    loaded_section(Name,SectSize,Base),
     EA >= Base, EA < Base+SectSize.
 
 data_object_point(EA,8,"symbol-symbol",5,"quad symbol-symbol"):-
@@ -762,14 +762,14 @@ data_object_point(EA,Pt_size,"symbol",-2,"point-to-exception-section"):-
     data_object_candidate(EA,Pt_size,"symbol"),
     address_in_data_refined(EA,Dest),
     exception_section(Name),
-    section(Name,SectSize,Base),
+    loaded_section(Name,SectSize,Base),
     Dest >= Base, Dest < Base+SectSize.
 
 data_object_point(EA,Pt_size,"symbol",-1,"point-to-special-section"):-
     data_object_candidate(EA,Pt_size,"symbol"),
     address_in_data_refined(EA,Dest),
     special_data_section(Name),
-    section(Name,SectSize,Base),
+    loaded_section(Name,SectSize,Base),
     Dest >= Base, Dest < Base+SectSize.
 
 data_object_point(EA,Pt_size,"symbol",10,"has relocation"):-
@@ -933,12 +933,12 @@ data_object_boundary(EA):-
 bss_data(Base),
 bss_data(Base+SizeSect):-
     bss_section(SectionName),
-    section(SectionName,SizeSect,Base).
+    loaded_section(SectionName,SizeSect,Base).
 
 bss_data(EA):-
     labeled_ea(EA),
     bss_section(SectionName),
-    section(SectionName,SizeSect,Base),
+    loaded_section(SectionName,SizeSect,Base),
     EA >= Base,
     EA < Base+SizeSect.
 

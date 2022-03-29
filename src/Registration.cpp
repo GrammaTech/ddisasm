@@ -55,7 +55,7 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
     gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
     gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
-    gtirb::AuxDataContainer::registerAuxDataType<SectionTypeFlags>();
+    gtirb::AuxDataContainer::registerAuxDataType<SectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<SectionIndex>();
     gtirb::AuxDataContainer::registerAuxDataType<CfiDirectives>();
     gtirb::AuxDataContainer::registerAuxDataType<Libraries>();

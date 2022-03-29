@@ -137,7 +137,7 @@ symbolic_operand_attribute(EA,Index,"NtpOff"):-
 
 plt_entry(EA,Function):-
     plt_section(SecName),
-    section(SecName,Size,Beg),
+    loaded_section(SecName,Size,Beg),
     EA < Beg+Size,
     EA >= Beg,
     indirect_jump(EA),

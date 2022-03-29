@@ -140,15 +140,10 @@ namespace relations
     struct SectionProperty
     {
         std::string Name;
-        uint64_t Readable;
-        uint64_t Writable;
-        uint64_t Executable;
-        uint64_t Loaded;
-        uint64_t Initialized;
-        uint64_t ThreadLocal;
+        std::string Property;
     };
 
-    struct SectionTypeFlags
+    struct SectionProperties
     {
         std::string Name;
         uint64_t Type;
@@ -250,7 +245,7 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionProperty& S);
 
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionTypeFlags& S);
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionProperties& S);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Instruction& I);
 

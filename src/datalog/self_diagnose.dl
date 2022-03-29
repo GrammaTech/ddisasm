@@ -46,11 +46,11 @@ bad_symbol_constant(EA,Cnt):-
     ),
     symbolic_operand(EA,Index,Dest,_),
     !moved_label(EA,Index,_,_),
-    section(Name,SectSize,Base),
+    loaded_section(Name,SectSize,Base),
     Dest >= Base,
     Dest < SectSize+Base,
 
-    section(Name2,SectSize2,Base2),
+    loaded_section(Name2,SectSize2,Base2),
     Name2 != Name,
     Dest_minus_cnt2 = as(as(Dest,number)-Cnt2,unsigned),
     Dest_minus_cnt2 >= Base2,
@@ -71,11 +71,11 @@ bad_symbol_constant(EA,Cnt):-
         InsnOffset = InsnOffset // avoid warning
     ),
     moved_label(EA,Index,Orig,Dest),
-    section(Name,SectSize,Base),
+    loaded_section(Name,SectSize,Base),
     Dest >= Base,
     Dest < SectSize+Base,
 
-    section(Name2,SectSize2,Base2),
+    loaded_section(Name2,SectSize2,Base2),
     Name2 != Name,
     Orig_minus_cnt2 = as(as(Orig,number)-Cnt2,unsigned),
     Orig_minus_cnt2 >= Base2,
@@ -132,7 +132,7 @@ false_negative(EA):-
     !symbolic_data(EA,_,_),
     !symbol_minus_symbol(EA,_,_,_,_,_),
     regular_data_section(Sect),
-    section(Sect,SizeSect,BegSect),
+    loaded_section(Sect,SizeSect,BegSect),
     EA >= BegSect,
     EA < SizeSect+BegSect.
 
@@ -146,6 +146,6 @@ false_positive(EA):-
     !relocation(EA,_,_,_,_,_,_),
 
     regular_data_section(Sect),
-    section(Sect,SizeSect,BegSect),
+    loaded_section(Sect,SizeSect,BegSect),
     EA >= BegSect,
     EA < SizeSect+BegSect.

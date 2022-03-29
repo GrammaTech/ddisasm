@@ -55,7 +55,7 @@ GTIRB buildGtirb(gtirb::ISA ISA, std::vector<uint8_t> &Bytes)
 
     Module->addAuxData<gtirb::schema::Alignment>(std::move(Alignment));
     Module->addAuxData<gtirb::schema::SectionIndex>(std::move(SectionIndex));
-    Module->addAuxData<gtirb::schema::SectionTypeFlags>(std::move(SectionProperties));
+    Module->addAuxData<gtirb::schema::SectionProperties>(std::move(SectionProperties));
 
     return GTIRB{std::move(Context), IR, Module};
 }
