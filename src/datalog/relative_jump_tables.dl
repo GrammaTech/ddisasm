@@ -280,14 +280,15 @@ relative_jump_table_entry_candidate(TableStart,TableStart,Size,TableReference,De
 // we can't do much better without negating something or adding an entirely
 // new boundary value analysis to analyze comparisons on the jump table index
 // register.
-relative_jump_table_entry_candidate(EA+Size,TableStart,Size,Reference,Dest,Scale,Offset):-
+relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
     !binary_isa("ARM"),
-    relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,_,Scale,Offset),
-    !symbol(EA+Size,_,_,_,_,_,_,_,_),
-    !data_segment(_,EA+Size),
+    relative_jump_table_entry_candidate(LastEA,TableStart,Size,Reference,_,Scale,Offset),
+    EA = LastEA + Size,
+    !symbol(EA,_,_,_,_,_,_,_,_),
+    data_segment(BegData,EndData), BegData <= TableStart, EA+Size <= EndData,
     (
-        Size>1,data_word(EA+Size,Size,Diff);
-        Size=1,data_byte(EA+Size,DiffUnsigned), Diff = as(DiffUnsigned,number)
+        Size>1,data_word(EA,Size,Diff);
+        Size=1,data_byte(EA,DiffUnsigned), Diff = as(DiffUnsigned,number)
     ),
     Reference_signed = as(Reference,number),
     Dest = as(Reference_signed + as(Scale,number)*Diff,unsigned),
