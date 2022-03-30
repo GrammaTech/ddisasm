@@ -1,5 +1,7 @@
 #include "Functors.h"
 
+#include <sys/stat.h>
+
 #include <fstream>
 #include <iostream>
 
@@ -108,8 +110,14 @@ Load the GTIRB file from the debug directory if running in the interpreter
 */
 void __attribute__((constructor)) loadGtirb(void)
 {
-    // TODO: locate fact-dir in the command line args
-    const std::string GtirbPath("debug/binary.gtirb");
+    const char* DebugDir = std::getenv("DDISASM_DEBUG_DIR");
+    if(!DebugDir)
+    {
+        std::cerr << "ERROR: DDISASM_DEBUG_DIR not set\n";
+        return;
+    }
+    std::string GtirbPath(DebugDir);
+    GtirbPath.append("/binary.gtirb");
 
     Context = std::make_unique<gtirb::Context>();
 
