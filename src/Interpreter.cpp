@@ -108,7 +108,8 @@ void loadAll(souffle::SouffleProgram *Program, const std::string &Directory)
 }
 
 void runInterpreter(gtirb::IR &IR, gtirb::Module &Module, souffle::SouffleProgram *Program,
-                    const std::string &DatalogFile, const std::string &Directory, uint8_t Threads)
+                    const std::string &DatalogFile, const std::string &Directory,
+                    const std::string &LibDirectory, uint8_t Threads)
 {
     // Dump the current GTIRB into the debug directory for use by Functors.
     std::ofstream out(Directory + "/binary.gtirb", std::ios::out | std::ios::binary);
@@ -127,6 +128,45 @@ void runInterpreter(gtirb::IR &IR, gtirb::Module &Module, souffle::SouffleProgra
         std::exit(EXIT_FAILURE);
     }
 
+    // Locate libfunctors.so
+    // If LibDirectory is provided, only check there. Otherwise, search:
+    // ./build/lib/ (Relative directory)
+    // Dir(DatalogFile)../../build/lib/
+    // ./ (Current directory)
+    std::string FinalLibDirectory;
+    if(!LibDirectory.empty())
+    {
+        if(!boost::filesystem::exists(boost::filesystem::path(LibDirectory) / "libfunctors.so"))
+        {
+            std::cerr << "Error: 'libfunctors.so' not in " << LibDirectory << ".\n";
+            std::exit(EXIT_FAILURE);
+        }
+        FinalLibDirectory = LibDirectory;
+    }
+    else
+    {
+        const std::vector<boost::filesystem::path> LibSearchPaths = {
+            "./build/lib",
+            boost::filesystem::path(DatalogFile).parent_path() / "../../build/lib/",
+            ".",
+        };
+
+        for(auto It = LibSearchPaths.begin(); It < LibSearchPaths.end(); It++)
+        {
+            if(boost::filesystem::exists(*It / "libfunctors.so"))
+            {
+                FinalLibDirectory = It->string();
+                break;
+            }
+        }
+
+        if(FinalLibDirectory.empty())
+        {
+            std::cerr << "Error: could not find 'libfunctors.so'.\n";
+            std::exit(EXIT_FAILURE);
+        }
+    }
+
     // Build `souffle' command-line arguments.
     std::string Arch = getInterpreterArch(Module);
     std::vector<std::string> Args = {Arch,
@@ -136,7 +176,8 @@ void runInterpreter(gtirb::IR &IR, gtirb::Module &Module, souffle::SouffleProgra
                                      Directory,
                                      "--jobs",
                                      std::to_string(Threads),
-                                     "--library-dir=build/lib",
+                                     "--library-dir",
+                                     FinalLibDirectory,
                                      DatalogFile};
 
     // Execute the `souffle' interpreter.
