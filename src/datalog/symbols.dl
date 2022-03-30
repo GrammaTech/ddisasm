@@ -149,7 +149,7 @@ best_func_symbol(EA,SymbolName):-
    symbol_score(EA,SymbolName,"FUNC","Beg",Score),
    Score = max S: {symbol_score(EA,_,"FUNC","Beg",S)}.
 
-inferred_symbol(EA,SymbolName,"GLOBAL","FUNC","Beg"),
+inferred_symbol(EA,SymbolName,"LOCAL","FUNC","Beg"),
 best_func_symbol(EA,SymbolName):-
     function_inference.function_entry(EA),
     !symbol_score(EA,_,"FUNC","Beg",_),
