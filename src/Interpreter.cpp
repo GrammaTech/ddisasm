@@ -25,8 +25,7 @@
 #include <souffle/CompiledSouffle.h>
 
 #include <boost/filesystem.hpp>
-#include <boost/process/search_path.hpp>
-#include <boost/process/system.hpp>
+#include <boost/process.hpp>
 
 std::string getInterpreterArch(const gtirb::Module &Module)
 {
@@ -120,6 +119,10 @@ void runInterpreter(gtirb::IR &IR, gtirb::Module &Module, souffle::SouffleProgra
     IR.save(out);
     out.close();
 
+    // Put the debug directory in an env variable for Functors.
+    boost::process::environment Env = boost::this_process::environment();
+    Env["DDISASM_DEBUG_DIR"] = Directory;
+
     // Search PATH for `souffle' binary.
     boost::filesystem::path SouffleBinary = boost::process::search_path("souffle");
     if(SouffleBinary.empty())
@@ -141,7 +144,7 @@ void runInterpreter(gtirb::IR &IR, gtirb::Module &Module, souffle::SouffleProgra
                                      DatalogFile};
 
     // Execute the `souffle' interpreter.
-    int Code = boost::process::system(SouffleBinary, Args);
+    int Code = boost::process::system(SouffleBinary, Args, Env);
     if(Code)
     {
         std::cerr << "Error: `souffle' return non-zero exit code: " << Code << "\n";
