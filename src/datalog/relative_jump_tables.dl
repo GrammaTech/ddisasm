@@ -315,7 +315,7 @@ discarded_jump_table_entry(TableStart,EA):-
 /**
 An entry in a relative jump table of the form (Dest-Reference)/Scale.
 
-These are generated after value analysis, and used for symbolization and final
+These are generated after data access analysis, and used for symbolization and final
 CFG generation. This allows using the final results of value analysis to
 resolve overlapping jump tables.
 */
