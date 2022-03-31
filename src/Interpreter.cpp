@@ -119,6 +119,7 @@ void runInterpreter(gtirb::IR &IR, gtirb::Module &Module, souffle::SouffleProgra
     // Put the debug directory in an env variable for Functors.
     boost::process::environment Env = boost::this_process::environment();
     Env["DDISASM_DEBUG_DIR"] = Directory;
+    Env["DDISASM_GTIRB_MODULE_NAME"] = Module.getName();
 
     // Search PATH for `souffle' binary.
     boost::filesystem::path SouffleBinary = boost::process::search_path("souffle");
