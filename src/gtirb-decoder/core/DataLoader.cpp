@@ -21,7 +21,9 @@
 //
 //===----------------------------------------------------------------------===//
 #include "DataLoader.h"
+
 #include "../../AuxDataSchema.h"
+#include "../../Functors.h"
 #include "../Endian.h"
 
 void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
@@ -29,13 +31,15 @@ void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program
     DataFacts Facts;
     load(Module, Facts);
 
-    Program.insert("data_byte", std::move(Facts.Bytes));
+    Program.insert("byte_interval", std::move(Facts.ByteIntervals));
     Program.insert("address_in_data", std::move(Facts.Addresses));
     Program.insert("ascii_string", std::move(Facts.Ascii));
 }
 
 void DataLoader::load(const gtirb::Module& Module, DataFacts& Facts)
 {
+    initFunctorGtirbModule(&Module);
+
     std::optional<gtirb::Addr> Min, Max;
     for(const auto& Section : Module.sections())
     {
@@ -78,6 +82,7 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
     gtirb::Addr Addr = *ByteInterval.getAddress();
     uint64_t Size = ByteInterval.getInitializedSize();
     auto Data = ByteInterval.rawBytes<const int8_t>();
+    Facts.ByteIntervals.push_back({Addr, Addr + Size});
 
     size_t Ascii = 0;
 
@@ -85,7 +90,6 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
     {
         // Single byte.
         uint8_t Byte = *Data;
-        Facts.Bytes.push_back({Addr, Byte});
 
         // Possible address.
         if(Size >= static_cast<uint64_t>(PointerSize))

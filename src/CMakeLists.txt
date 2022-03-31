@@ -34,6 +34,7 @@ set(DATALOG_BASE_SOURCES
     datalog/code_inference.dl
     datalog/code_inference_postprocess.dl
     datalog/cfg.dl
+    datalog/data.dl
     datalog/data_access_analysis.dl
     datalog/empty_range.dl
     datalog/basic_function_inference.dl
@@ -364,7 +365,7 @@ endif()
 # ====== ddisasm ===========
 # Build final ddisasm executable
 add_executable(ddisasm Disassembler.cpp Interpreter.cpp Registration.cpp
-                       Main.cpp)
+                       Main.cpp Functors.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_compile_options(ddisasm PRIVATE -Wno-unused-parameter)
