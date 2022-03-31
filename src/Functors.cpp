@@ -129,8 +129,32 @@ void __attribute__((constructor)) loadGtirb(void)
         return;
     }
 
-    // TODO: support multi-module GTIRB files (static archives)
     gtirb::IR* IR = *Result;
-    initFunctorGtirbModule(&(*IR->modules().begin()));
+
+    // Locate the correct module
+    const char* ModuleName = std::getenv("DDISASM_GTIRB_MODULE_NAME");
+    if(!ModuleName)
+    {
+        std::cerr << "ERROR: DDISASM_GTIRB_MODULE_NAME not set\n";
+        return;
+    }
+
+    auto Modules = IR->modules();
+    const gtirb::Module* M = nullptr;
+    for(auto It = Modules.begin(); It != Modules.end(); It++)
+    {
+        if(It->getName().compare(ModuleName) == 0)
+        {
+            M = &(*It);
+            break;
+        }
+    }
+    if(M == nullptr)
+    {
+        std::cerr << "ERROR: No module with name: " << ModuleName << "\n";
+        return;
+    }
+
+    initFunctorGtirbModule(M);
 }
 #endif /* __EMBEDDED_SOUFFLE__ */
