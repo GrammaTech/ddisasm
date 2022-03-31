@@ -186,14 +186,20 @@ class DdisasmConan(Properties, ConanFile):
 
         cmake.configure(source_folder=".", defs=defs)
         cmake.build()
+
+        # Using the CMAKE_CTEST_ARGUMENTS environment variable to pass args to
+        # ctest would allow us to use `cmake.test()` and `--verbose`, but it
+        # is new in CMake 3.17 (newer than what is available in our Windows
+        # test runner). As a workaround, we run ctest directly.
+        # https://cmake.org/cmake/help/latest/variable/CMAKE_CTEST_ARGUMENTS.html#cmake-ctest-arguments
         if self.settings.build_type == "Release":
             with tools.vcvars(self.settings, arch="x86_64"):
-                cmake.test(output_on_failure=True)
+                self.run(["ctest", "--verbose"], cwd=cmake.build_folder)
             # FIXME: https://github.com/conan-io/conan/issues/3673
             # Remove environment variable to force vcvars configuration.
             os.environ.pop("VisualStudioVersion", None)
             with tools.vcvars(self.settings, arch="x86"):
-                cmake.test(output_on_failure=True)
+                self.run(["ctest", "--verbose"], cwd=cmake.build_folder)
 
     def package(self):
         self.copy("*", src="bin", dst="bin", keep_path=False)

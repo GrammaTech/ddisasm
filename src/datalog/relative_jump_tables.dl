@@ -244,3 +244,85 @@ jump_table_start(EA_jump,4,TableStart,TableReference,1):-
     // Jump to register.
     def_used(EA_base,_,EA_jump,_),
     reg_jump(EA_jump,Reg_jump).
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+// propagate jump tables
+
+/**
+An entry in a relative jump table of the form (Dest-Reference)/Scale
+
+These are generated during value analysis, and referenced by value analysis,
+so cannot negate any results of value analysis.
+
+Some of these are discarded to form relative_jump_table_entry, which is used by
+symbolization.
+*/
+.decl relative_jump_table_entry_candidate(EA:address,TableStart:address,Size:unsigned,Reference:address,Dest:address,Scale:number,Offset:number)
+.output relative_jump_table_entry_candidate
+
+relative_jump_table_entry_candidate(TableStart,TableStart,Size,TableReference,Dest,Scale,0):-
+    !binary_isa("ARM"),
+    jump_table_start(_,Size,TableStart,TableReference,Scale),
+    (
+        Size > 1,data_word(TableStart,Size,Diff);
+        Size = 1,data_byte(TableStart,DiffUnsigned), Diff = as(DiffUnsigned,number)
+    ),
+    TableReference_signed = as(TableReference,number),
+    Dest = as(TableReference_signed + as(Scale,number)*Diff,unsigned),
+    code(Dest),
+    // The table is in a loaded section.
+    section(_,SectionSize,SectionStart),
+    TableStart >= SectionStart, TableStart < (SectionStart + SectionSize).
+
+// propagate until finding:
+// * something that doesn't resolve to a code pointer.
+// * a symbol
+// * the end of a data section
+
+// we can't do much better without negating something or adding an entirely
+// new boundary value analysis to analyze comparisons on the jump table index
+// register.
+relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
+    !binary_isa("ARM"),
+    relative_jump_table_entry_candidate(LastEA,TableStart,Size,Reference,_,Scale,Offset),
+    EA = LastEA + Size,
+    !symbol(EA,_,_,_,_,_,_,_,_),
+    data_segment(BegData,EndData), BegData <= TableStart, EA+Size <= EndData,
+    (
+        Size>1,data_word(EA,Size,Diff);
+        Size=1,data_byte(EA,DiffUnsigned), Diff = as(DiffUnsigned,number)
+    ),
+    Reference_signed = as(Reference,number),
+    Dest = as(Reference_signed + as(Scale,number)*Diff,unsigned),
+    code(Dest).
+
+.decl discarded_jump_table_entry(TableStart:address,EA:address)
+.output discarded_jump_table_entry
+
+// Truncate a jump table if a separate data access is encountered.
+discarded_jump_table_entry(TableStart,EA):-
+    relative_jump_table_entry_candidate(EA,TableStart,Size,_,_,_,_),
+    possible_data_limit(Limit),
+    EA <= Limit, Limit < EA+Size,
+    EA != TableStart.
+
+// Recursively discard after truncation
+discarded_jump_table_entry(TableStart,EA):-
+    discarded_jump_table_entry(TableStart,DiscardEA),
+    jump_table_start(_,Size,TableStart,_,_),
+    EA = DiscardEA + Size,
+    relative_jump_table_entry_candidate(EA,TableStart,Size,_,_,_,_).
+
+/**
+An entry in a relative jump table of the form (Dest-Reference)/Scale.
+
+These are generated after data access analysis, and used for symbolization and final
+CFG generation. This allows using the final results of value analysis to
+resolve overlapping jump tables.
+*/
+.decl relative_jump_table_entry(EA:address,TableStart:address,Size:unsigned,Reference:address,Dest:address,Scale:number,Offset:number)
+.output relative_jump_table_entry
+
+relative_jump_table_entry(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
+    relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offset),
+    !discarded_jump_table_entry(TableStart,EA).
