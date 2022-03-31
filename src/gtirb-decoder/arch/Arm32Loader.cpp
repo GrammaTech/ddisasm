@@ -49,15 +49,32 @@ void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& B
     InstructionSize = 4;
     load(ByteInterval, Facts, false);
 
-    std::string BinaryAttribute;
-    if(auto AuxData = Module.getAuxData<gtirb::schema::BinaryAttribute>())
+    bool mclass = false;
+    for(const auto& Section : Module.sections())
     {
-        if(!AuxData->empty())
+        if(Section.getName() == ".ARM.attributes")
         {
-            BinaryAttribute = AuxData->front();
+            for(const auto& ByteInterval : Section.byte_intervals())
+            {
+                const char* RawChars = ByteInterval.rawBytes<const char>();
+                // Remove zeros
+                std::vector<char> Chars;
+                for(size_t I=0; I<ByteInterval.getSize(); ++I)
+                {
+                    if(RawChars[I] != 0)
+                        Chars.push_back(RawChars[I]);
+                }
+                std::string SectStr(Chars.begin(), Chars.end());
+                if(SectStr.find("Cortex-M") != std::string::npos)
+                {
+                    mclass = true;
+                    break;
+                }
+            }
         }
     }
-    if(BinaryAttribute.find("Cortex-M") != std::string::npos)
+
+    if(mclass)
     {
         cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
     }

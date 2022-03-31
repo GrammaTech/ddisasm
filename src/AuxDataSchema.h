@@ -99,13 +99,6 @@ namespace gtirb
             typedef std::vector<std::string> Type;
         };
 
-        /// \brief Auxiliary info about binary's attribute.
-        struct BinaryAttribute
-        {
-            static constexpr const char* Name = "binaryAttribute";
-            typedef std::vector<std::string> Type;
-        };
-
         /// \brief Auxiliary data that maps code blocks to integers
         /// representing strongly connected components in the
         /// intra-procedural CFG. (The CFG without taking into account

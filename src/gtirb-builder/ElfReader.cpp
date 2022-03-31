@@ -422,23 +422,6 @@ void ElfReader::buildSections()
         bool Relocatable = Loaded && Section.virtual_address() == 0
                            && Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL;
 
-        if(Module->getISA() == gtirb::ISA::ARM && Section.name() == ".ARM.attributes")
-        {
-            std::vector<uint8_t> Data = Section.content();
-            // At the moment, the only information needed for ARM32 in
-            // .ARM.attributes is the CPU information.
-            // For now, we keep the raw bytes as string, where we can find out
-            // the CPU information by finding substring.
-            // It would be an overkill to implement a parser for
-            // .ARM.attributes here unless we need other information.
-            // TODO: Parse the section properly if needed
-            std::string Str(Data.begin(), Data.end());
-            std::vector<std::string> Attribute;
-            Attribute.emplace_back(Str);
-            Module->addAuxData<gtirb::schema::BinaryAttribute>(std::move(Attribute));
-        }
-
-        // FIXME: Populate sections that are not loaded (e.g. .symtab and .strtab)
         if(!Loaded && !Literal)
         {
             Index++;

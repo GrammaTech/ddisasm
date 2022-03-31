@@ -123,7 +123,7 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
         }
         else if(Byte == 0 && Ascii > 0)
         {
-            Facts.Ascii.push_back({Addr - Ascii, Ascii + 1});
+            Facts.Ascii.push_back({Addr - Ascii, Addr + 1});
             Ascii = 0;
         }
         else

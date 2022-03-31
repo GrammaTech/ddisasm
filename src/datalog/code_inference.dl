@@ -829,9 +829,9 @@ block_is_overlapping(Block,"code"),
 block_points(Block,"code",0,-1,"jump to string"):-
     code_in_block_candidate(EA,Block),
     direct_jump(EA,Dest),
-    ascii_string(Beg,Size),
+    ascii_string(Beg,End),
     Dest >= Beg,
-    Dest < Beg+Size,
+    Dest < End,
     (
         symbol(Beg,_,_,_,_,_,_,_,_)
         ;

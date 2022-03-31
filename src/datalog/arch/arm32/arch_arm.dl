@@ -139,6 +139,14 @@ PC stores the address of the current instruction plus 8 (two ARM
 instructions) in ARM state, and the current instruction plus 4
 (two Thumb instructions) in Thumb state.
 This is used for computing PC-relative addresses.
+
+NOTE: More specifically, in Thumb state,
+for B, BL, CBNZ, and CBZ instructions, the value of the PC is the address of
+the current instruction plus 4 bytes.
+For all other instructions that use labels, the value of the PC is the address
+of the current instruction plus 4 bytes, with bit[1] of the result
+cleared to 0 to make it word-aligned.
+The word-alignment needs to be handled where this is used.
 */
 .decl pc_relative_disp(EA:address,Disp:number) inline
 
@@ -212,7 +220,7 @@ it_conditional(EA):-
 conditional(EA):-
     it_conditional(EA).
 
-// Does not override - extends with `ldr pc, [...]`
+// Does not override - extends with `ldr pc, [...] or mov pc, reg`
 jump(EA):-
     mov(EA),
     instruction_get_dest_op(EA,_,Op),

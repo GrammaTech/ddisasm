@@ -214,7 +214,7 @@ There is a potential address at 'EA' pointing to 'Value'.
 /**
 Possible null-terminated ASCII string of 'Size' bytes begins at address 'EA'.
 */
-.decl ascii_string(EA:address,Size:unsigned)
+.decl ascii_string(EA:address,End:address)
 .input ascii_string
 
 ///////////////////////////////////////////////////////////////

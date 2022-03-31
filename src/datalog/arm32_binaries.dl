@@ -750,7 +750,7 @@ data_block_candidate(TableStart,BlockSize):-
 block_points(TableStart,"data",0,15,"arm jump table"):-
     arm_jump_table_candidate(_,TableStart,_,_,_,_,_,_,_),
     data_block_candidate(TableStart,_),
-    // If it's a defined symbol, the points are alreay given.
+    // If it's a defined symbol, the points are already given.
     !defined_symbol(TableStart,_,_,_,_,_,_,_,"$d").
 
 block_points(TargetEA,"code",0,3,"arm: jump table target"):-
@@ -880,35 +880,37 @@ block_points(LitPoolAddr,"data",0,Points,"arm literal pool"):-
         (
             !block_is_overlapping(Block,_), Points = 9
             ;
-            block_is_overlapping(Block,_),
             // In case the block is overlapping, give points only if
             // this block is not likely to be another literal pool.
-            AddrAligned = Block - (Block band 3),
+            block_is_overlapping(Block,_),
             (
-                !litpool_ref(_,_,AddrAligned,_,_)
+                !block_overlap(_,"data",Block,"code")
                 ;
-                litpool_ref(EA0,_,AddrAligned,_,_),
-                !code_in_block_candidate_refined(EA0,_)
+                block_overlap(LitPool2,"data",Block,"code"),
+                (
+                    !litpool_ref(_,_,LitPool2,_,_)
+                    ;
+                    litpool_ref(EA0,_,LitPool2,_,_),
+                    !code_in_block_candidate_refined(EA0,_)
+                )
             ),
             Points = 5
         )
     ).
 
 block_points(Block,"data",0,7,"possible string"),
-data_block_candidate(Block,Size):-
-    ascii_string(Block,Size),
+data_block_candidate(Block,End-Block):-
+    ascii_string(Block,End),
     (
         symbol(Block,_,_,_,_,_,_,_,_)
         ;
         aligned_address_in_data(_,Block),
         (
             // There is an ascii string before this one.
-            Block = Block0 + Size0,
-            ascii_string(Block0,Size0)
+            ascii_string(_,Block)
             ;
             // There is an ascii string after this one.
-            Block0 = Block + Size,
-            ascii_string(Block0,_)
+            ascii_string(End,_)
         )
     ).
 
@@ -1063,9 +1065,13 @@ PC-relative symbolic operand
 //  (C) add  reg1, pc, reg1 // reg1 is the address of symbol foo
 //  (D) ldr  reg3, [reg1, reg2] // the referenced address is the address of symbol bar.
 litpool_symbolic_operand(LitPoolAddr2,DataAccessSize,Symbol1,Symbol2,EA_D,Reg3,SymSize):-
-    symbol_minus_symbol_litpool_access_pattern(_,_,_,Symbol1,1,_,EA_C,Reg1,_),
-
-    def_used(EA_C,Reg1,EA_D,_),
+    symbol_minus_symbol_litpool_access_pattern(_,_,_,Symbol1,1,_,EA_C,Reg0,_),
+    (
+        def_used(EA_C,Reg1,EA_D,_), Reg1 = Reg0
+        ;
+        def_used(EA_restore,Reg1,EA_D,_),
+        value_reg_edge(EA_restore,Reg1,EA_C,Reg0,1,0)
+    ),
 
     // (D) ldr reg3, [reg1, reg2]
     instruction_get_operation(EA_D,Operation),
