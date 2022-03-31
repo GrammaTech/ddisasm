@@ -34,14 +34,6 @@ extern "C"
     __attribute__((__visibility__("default"))) int64_t functor_data_s16(uint64_t EA);
     __attribute__((__visibility__("default"))) int64_t functor_data_s32(uint64_t EA);
     __attribute__((__visibility__("default"))) int64_t functor_data_s64(uint64_t EA);
-
-    /*
-    uint16_t data_u16(uint64_t EA);
-    uint32_t data_u32(uint64_t EA);
-    uint64_t data_u64(uint64_t EA);
-
-    int8_t data_s8(uint64_t EA);
-    */
 }
 
 // C++ interface allows ddisasm CPP code to instantiate functor data
