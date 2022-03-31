@@ -133,14 +133,14 @@ moved_pc_relative_candidate(EA,Op_index,Dest,NewDest,Diff):-
     pc_relative_operand(EA,Op_index,Dest),
     !symbolic_operand(EA,Op_index,_,_),
     regular_data_section(Name),
-    loaded_section(Name,SizeSect,Base),
+    loaded_section(Base,End,Name),
     (
         Base > Dest,
         NewDest = Base,
-        SizeSect = SizeSect // avoid warning
+        End = End // avoid warning
         ;
-        Dest > Base+SizeSect,
-        NewDest = Base+SizeSect
+        Dest > End,
+        NewDest = End
     ),
     Diff = max(NewDest,Dest) - min(NewDest,Dest).
 
@@ -150,7 +150,7 @@ moved_pc_relative_candidate(EA,Op_index,Dest,NewDest,Diff):-
     pc_relative_operand(EA,Op_index,Dest),
     !symbolic_operand(EA,Op_index,_,_),
     exception_section(Name),
-    loaded_section(Name,_,Base),
+    loaded_section(Base,_,Name),
     (
         cie_entry(Dest, _,_,_);
         fde_entry(Dest,_,_,_,_,_)
@@ -188,12 +188,12 @@ moved_displacement_candidate(EA,Op_index,Dest,NewDest,Diff):-
     NewDest = Access_dest,
     Diff = max(Access_dest-Dest, Dest-Access_dest),
 
-    loaded_section(Name,SectSize,Base),
-    Dest >= Base, Dest <= Base+SectSize,
+    loaded_section(Base,End,Name),
+    Dest >= Base, Dest <= End,
 
     regular_data_section(Name2), Name2 != Name,
-    loaded_section(Name2,SectSize2,Base2),
-    NewDest >= Base2, NewDest <= Base2+SectSize2,
+    loaded_section(Base2,End2,Name2),
+    NewDest >= Base2, NewDest <= End2,
 
     // sections can have one overlapping address
     Dest != Base2,
@@ -222,9 +222,9 @@ moved_displacement_candidate(EA,Op_index,as(Dest,address),AccessDest,1):-
     !split_load_operand(EA,Op_index,_),
     data_access_pattern_candidate(AccessDest,_,_,EA),
     regular_data_section(Name),
-    loaded_section(Name,SizeSect,Base),
+    loaded_section(Base,End,Name),
     AccessDest >= Base,
-    AccessDest < Base+SizeSect,
+    AccessDest < End,
 
     Diff = max(AccessDest,DestAddr) - min(AccessDest,DestAddr),
     10*DestAddr >= Base,
@@ -261,17 +261,17 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
         Mult = Mult // avoid warning
     ),
     regular_data_section(Name),
-    loaded_section(Name,SectSize,Base),
+    loaded_section(Base,End,Name),
     (
         DestAddr < Base,
         Distance = Base-DestAddr,
         NewDest = Base,
         10*DestAddr > Base,
-        SectSize = SectSize // avoid warning
+        End = End // avoid warning
         ;
-        DestAddr > Base+SectSize,
-        Distance = DestAddr-(Base+SectSize),
-        NewDest = Base+SectSize
+        DestAddr > End,
+        Distance = DestAddr-End,
+        NewDest = End
     ).
 
 //Same case as before with the other register
@@ -286,17 +286,17 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
     !split_load_operand(EA,Op_index,_),
     value_reg_at_operand(EA,Op_index,Reg,_,Mult2,0,_), Mult2>1,
     regular_data_section(Name),
-    loaded_section(Name,SectSize,Base),
+    loaded_section(Base,End,Name),
     (
         DestAddr < Base,
         Distance = Base-DestAddr,
         NewDest = Base,
         10*DestAddr > Base,
-        SectSize = SectSize // avoid warning
+        End = End // avoid warning
         ;
-        DestAddr>Base+SectSize,
-        Distance = DestAddr-(Base+SectSize),
-        NewDest = Base+SectSize
+        DestAddr > End,
+        Distance = DestAddr-End,
+        NewDest = End
     ).
 
 // Same case as before but with a repeated register
@@ -309,18 +309,18 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
     !instruction_get_operation(EA,"LEA"),
     !symbolic_operand(EA,Op_index,_,_),
     regular_data_section(Name),
-    loaded_section(Name,SectSize,Base),
+    loaded_section(Base,End,Name),
     // the destination is below or above the section
     (
         DestAddr < Base,
         Distance = Base-DestAddr,
         NewDest = Base,
         10*DestAddr > Base,
-        SectSize = SectSize // avoid warning
+        End = End // avoid warning
     ;
-        DestAddr > Base+SectSize,
-        Distance = DestAddr-(Base+SectSize),
-        NewDest = Base+SectSize
+        DestAddr > End,
+        Distance = DestAddr-End,
+        NewDest = End
     ).
 
 
@@ -376,21 +376,21 @@ cmp_reg_to_reg(EA,Reg1,Reg2):-
             Beg:address,End:address,OldBeg:address,OldEnd:address)
 .output dest_enlarged_data_section
 
-dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs,Beg+SizeSect+MultAbs,Beg,Beg+SizeSect):-
+dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs,End+MultAbs,Beg,End):-
     best_value_reg(EA_def,Reg,_,Mult,NewDest,"loop"), NewDest >= 0,
     NewDestAddr = as(NewDest,address),
     MultAbs = as(max(Mult,-Mult),unsigned),
     regular_data_section(Name),
-    loaded_section(Name,SizeSect,Beg),
+    loaded_section(Beg,End,Name),
     NewDestAddr >= Beg,
-    NewDestAddr <= Beg+SizeSect.
+    NewDestAddr <= End.
 
 // The data access is always done with an offset e.g.:
 // mov EBX,OFFSET state
 // mov RDX,QWORD PTR [RBX+1320]
 // sub RBX,88
 // cmp RBX,OFFSET state-1408
-dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs-OffsetAddr,Beg+SizeSect+MultAbs-OffsetAddr,Beg,Beg+SizeSect):-
+dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs-OffsetAddr,End+MultAbs-OffsetAddr,Beg,End):-
     best_value_reg(EA_def,Reg,EA_from,Mult,_,"loop"),
     def_used(EA_def,Reg,EA_used,Op_index),
     value_reg_at_operand_loop(EA_used,Op_index,Reg,EA_from,Mult,NewDest,"loop"), NewDest >= 0,
@@ -400,9 +400,9 @@ dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs-OffsetAddr,Beg+Siz
     NewDestAddr = as(NewDest,address),
     MultAbs = as(max(Mult,-Mult),unsigned),
     regular_data_section(Name),
-    loaded_section(Name,SizeSect,Beg),
+    loaded_section(Beg,End,Name),
     NewDestAddr >= Beg,
-    NewDestAddr <= Beg+SizeSect.
+    NewDestAddr <= End.
 
 
 // immediate used to access memory
@@ -412,9 +412,9 @@ moved_immediate_candidate(EA_from,Imm_index,ImmediateAddr,NewDest):-
     data_access_pattern_candidate(NewDest,_,Mult,EA_access),
 
     regular_data_section(Name),
-    loaded_section(Name,SizeSect,Beg),
+    loaded_section(Beg,End,Name),
     NewDest >= Beg,
-    NewDest < Beg+SizeSect,
+    NewDest < End,
     (
         Reg = Reg2,
         Reg3 = Reg3 // avoid warning
@@ -432,9 +432,9 @@ moved_immediate_candidate(EA_from,Imm_index,ImmediateAddr,NewDest):-
     ),
     ImmediateAddr = as(Immediate,address),
     as(Beg,number)-Mult <= Immediate,
-    Immediate <= as(Beg+SizeSect,number)+Mult,
+    Immediate <= as(End,number)+Mult,
     //only move if the original does not fall in the original section
-    (ImmediateAddr < Beg ; ImmediateAddr > Beg+SizeSect).
+    (ImmediateAddr < Beg ; ImmediateAddr > End).
 
 moved_label_class(EA,Imm_index,"immediate loop bound"),
 moved_immediate_candidate(EA,Imm_index,ImmediateAddr,NewDest):-
@@ -532,5 +532,5 @@ boundary_sym_expr(EA+InstrOffset,Dest):-
     mov_immediate_to_reg(EA,_,Index,as(Dest,number)),
     value_reg(_,_,EA,"Unknown",Mult,_,_), Mult < 0,
     //  At the boundary between two sections
-    loaded_section(_,_,Dest),
-    loaded_section(_,Size,Addr), Addr+Size = Dest.
+    loaded_section(Dest,_,_),
+    loaded_section(_,Dest,_).

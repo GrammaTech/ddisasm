@@ -107,8 +107,8 @@ This module:
 .decl section_property(Name:symbol,Property:symbol)
 .input section_property
 
-.decl section_properties(Name:symbol,Type:unsigned,Flags:unsigned)
-.input section_properties
+.decl section_type(Name:symbol,Type:unsigned)
+.input section_type
 
 .decl relocation(EA:address,Type:symbol,Name:symbol,Addend:number,SymbolIndex:unsigned,Section:symbol,RelType:symbol)
 .input relocation
@@ -661,7 +661,7 @@ defined_symbol(EA,Size,Type,Scope,Visibility,SectIndex,OriginTable,TableIndex,Na
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-.decl loaded_section(name:symbol,size:unsigned,addr:address)
+.decl loaded_section(Beg:address,End:address,Name:symbol)
 .output loaded_section
 .decl data_section(name:symbol)
 .output data_section
@@ -675,14 +675,16 @@ defined_symbol(EA,Size,Type,Scope,Visibility,SectIndex,OriginTable,TableIndex,Na
 .decl bss_section(name:symbol)
 .output bss_section
 
-loaded_section(Name,Size,Addr):-
-    section(Name,Size,Addr,_,_),
+loaded_section(Beg,Beg+Size,Name):-
+    section(Name,Size,Beg,_,_),
     section_property(Name,"Loaded").
 
 code_section(Section):-
+    section(Section,_,_,_,_),
     section_property(Section,"Executable").
 
 tls_section(Section):-
+    data_section(Section),
     section_property(Section,"ThreadLocal").
 
 regular_data_section(Name):-
@@ -698,10 +700,10 @@ regular_data_section(Name):-
 bss_section_limits(0,0):-
     !bss_section(_).
 
-bss_section_limits(Begin,LastSect+SizeLast):-
-    Begin = min X:{ bss_section(Name),loaded_section(Name,_,X)},
-    LastSect = max X:{ bss_section(Name),loaded_section(Name,_,X)},
-    loaded_section(_,SizeLast,LastSect).
+bss_section_limits(Begin,End):-
+    Begin = min X:{ bss_section(Name),loaded_section(X,_,Name)},
+    LastSect = max X:{ bss_section(Name),loaded_section(X,_,Name)},
+    loaded_section(LastSect,End,_).
 
 /*
 data segments can be data sections or fragments of the code section that
@@ -711,18 +713,18 @@ contain data instead of code.
 .decl initialized_data_segment(Begin:address,End:address)
 .output initialized_data_segment
 
-initialized_data_segment(Begin,Begin+Size):-
+initialized_data_segment(Begin,End):-
     non_zero_data_section(Section),
-    loaded_section(Section,Size,Begin).
+    loaded_section(Begin,End,Section).
 
 initialized_data_segment(Begin,End):-
     data_in_code(Begin,End).
 
 .decl data_segment(Begin:address,End:address)
 
-data_segment(Begin,Begin+Size):-
+data_segment(Begin,End):-
     data_section(Section),
-    loaded_section(Section,Size,Begin).
+    loaded_section(Begin,End,Section).
 
 data_segment(Begin,End):-
     initialized_data_segment(Begin,End).

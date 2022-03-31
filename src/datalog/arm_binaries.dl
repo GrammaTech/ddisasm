@@ -45,9 +45,9 @@ block_points(Block,"code",0,3,"plausible instruction sequence: cmp/conditional-i
 
 plt_entry(EA,Function):-
     plt_section(SecName),
-    loaded_section(SecName,Size,Beg),
-    EA < Beg+Size,
+    loaded_section(Beg,End,SecName),
     EA >= Beg,
+    EA < End,
     arch.jump(EA),
     instruction_get_op(EA,_,Op),
     op_indirect(Op,_, _, _,_, Offset, _),

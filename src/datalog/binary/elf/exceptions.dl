@@ -280,11 +280,11 @@ symbol_minus_symbol(Addr,4,Addr+4,Addr+Length+4,1,0):-
     fde_entry(Addr,Length,_,_,_,_),
     !last_fde(Addr).
 
-symbol_minus_symbol(Addr,4,Addr+4,StartSection+Size,1,0):-
+symbol_minus_symbol(Addr,4,Addr+4,EndSection,1,0):-
     option("no-cfi-directives"),
     fde_entry(Addr,_,_, _, _,_),
     last_fde(Addr),
-    loaded_section(".eh_frame",Size,StartSection).
+    loaded_section(_,EndSection,".eh_frame").
 
 // CIE offset
 symbol_minus_symbol(Addr+4,4,Cie,Addr+4,1,0):-

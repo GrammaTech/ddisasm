@@ -28,7 +28,7 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
 {
     std::vector<relations::Section> Sections;
     std::vector<relations::SectionProperty> SectionProperty;
-    std::vector<relations::SectionProperties> SectionProperties;
+    std::vector<relations::SectionType> SectionType;
 
     auto* SectProperties = Module.getAuxData<gtirb::schema::SectionProperties>();
 
@@ -94,13 +94,11 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
             SectionProperty.push_back({Section.getName(), "ThreadLocal"});
 
         uint64_t Type = 0;
-        uint64_t Flags = 0;
         if(SectProperties)
         {
             if(auto It = SectProperties->find(Section.getUUID()); It != SectProperties->end())
             {
                 Type = std::get<0>(It->second);
-                Flags = std::get<1>(It->second);
             }
             else
             {
@@ -108,7 +106,7 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
                           << Section.getName() << '\n';
             }
         }
-        SectionProperties.push_back({Section.getName(), Type, Flags});
+        SectionType.push_back({Section.getName(), Type});
 
         uint64_t Align = 0;
         if(Alignment)
@@ -127,5 +125,5 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
 
     Program.insert("section", std::move(Sections));
     Program.insert("section_property", std::move(SectionProperty));
-    Program.insert("section_properties", std::move(SectionProperties));
+    Program.insert("section_type", std::move(SectionType));
 }

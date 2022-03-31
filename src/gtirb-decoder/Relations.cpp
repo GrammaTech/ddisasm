@@ -62,9 +62,9 @@ namespace souffle
         return T;
     }
 
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionProperties& TypeFlags)
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionType& Type)
     {
-        T << TypeFlags.Name << TypeFlags.Type << TypeFlags.Flags;
+        T << Type.Name << Type.Type;
         return T;
     }
 

@@ -190,9 +190,9 @@ possible_rva_operand(EA,Op_index,RVA):-
     op_indirect(Op,_,_,_,_,Value,_), Value >= 0,
     RVA = as(Value,address),
     base_address(ImageBase),
-    loaded_section(_,Size,Begin),
+    loaded_section(Begin,End,_),
     (ImageBase + RVA) >= Begin,
-    (ImageBase + RVA) < (Begin + Size).
+    (ImageBase + RVA) < End.
 
 .decl base_relative_operand(EA:address,Index:operand_index,Dest:address)
 .output base_relative_operand
@@ -533,9 +533,9 @@ symbol_minus_symbol_jump_table(EA,TableStart,1,Ref,Dest,4,0):-
     relative_address(EA,1,TableStart,Ref,Dest,"first"), Dest < TableStart,
     relative_address_start(Ref,4,_,_,_),
     // Addresses belong to the same segment.
-    loaded_section(_,Size,Start),
-    Ref >= Start, Ref < (Start + Size),
-    Dest >= Start, Dest < (Start + Size).
+    loaded_section(Start,End,_),
+    Ref >= Start, Ref < End,
+    Dest >= Start, Dest < End.
 
 // the call to main is right after the call to "__p___argc"
 main_function(EA):-
@@ -687,18 +687,18 @@ is_padding(EA):-
 
 merged_data_region(DataStart,DataStart+DataSize):-
     binary_format("PE"),
-    !loaded_section(".rdata",_,_),
+    !loaded_section(_,_,".rdata"),
     (
         pe_data_directory(_,DataStart,DataSize), DataSize > 0;
         pe_debug_data(_,DataStart,DataSize), DataSize > 0
     ),
     entry_point(Entry),
     DataStart < Entry,
-    loaded_section(".text",SectionSize,SectionStart),
+    loaded_section(SectionStart,SectionEnd,".text"),
     DataStart > SectionStart,
-    DataStart < SectionStart + SectionSize.
+    DataStart < SectionEnd.
 
 data_region(Start,Size):-
     Last = max End:{merged_data_region(_,End)},
-    loaded_section(".text",_,Start),
+    loaded_section(Start,_,".text"),
     Size = Last - Start.

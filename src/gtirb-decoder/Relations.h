@@ -143,11 +143,10 @@ namespace relations
         std::string Property;
     };
 
-    struct SectionProperties
+    struct SectionType
     {
         std::string Name;
         uint64_t Type;
-        uint64_t Flags;
     };
 
     struct Padding
@@ -245,7 +244,7 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionProperty& S);
 
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionProperties& S);
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionType& S);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Instruction& I);
 

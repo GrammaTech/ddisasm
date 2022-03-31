@@ -236,7 +236,7 @@ basic_target(Val):-
         entry_point(Val)
         ;
         code_section(Name),
-        loaded_section(Name,_,Val)
+        loaded_section(Val,_,Name)
         ;
         defined_symbol(Val,_,_,_,_,_,_,_,_)
         ;
@@ -601,7 +601,7 @@ block_points(Block,"code",0,20,"start point"):-
 block_points(Block,"code",0,1,"code section start"):-
     block_is_overlapping(Block,"code"),
     code_section(Section),
-    loaded_section(Section,_,Block).
+    loaded_section(Block,_,Section).
 
 block_points(Block,"code",0,20,"function symbol"):-
     block_is_overlapping(Block,"code"),
@@ -873,8 +873,7 @@ block_still_overlap(Block1,Type1,Block2,Type2):-
 data_in_code_propagate(BlockEndAddr,BlockEndAddr,SectionLimit):-
     block_boundaries(_,BlockBegAddr,BlockEndAddr),
     !block_boundaries(_,BlockEndAddr,_),
-    loaded_section(_,Size,AddrSection),
-    SectionLimit = AddrSection+Size,
+    loaded_section(AddrSection,SectionLimit,_),
     AddrSection <= BlockBegAddr, BlockEndAddr < SectionLimit.
 
 data_in_code_propagate(EA+1,Begin,SectionLimit):-
@@ -889,8 +888,15 @@ data_in_code(Begin,End+1):-
 // Data before the first code-block in the code section.
 data_in_code(Begin,Block-1):-
     // TODO: Skip ELF headers when resurrecting sections and use `code_section'.
-    loaded_section(".text",Size,Begin),
-    Block = min EA:{ block_boundaries(_,EA,_), EA >= Begin, EA < Begin + Size },
+    loaded_section(Begin,End,".text"),
+    // This def of 'Size' is unnecessary because "EA < Begin+Size" can replaced
+    // with "EA < End".
+    // However, it causes a strange build error as follows:
+    // Error: Mutually dependent aggregate
+    // This may be a bug in souffle.
+    // To avoid the error, use Size for now.
+    Size = End - Begin,
+    Block = min EA:{ block_boundaries(_,EA,_), EA >= Begin, EA < Begin + Size},
     Block > Begin.
 
 .decl next_block_in_section(Block:address,NextBlock:address)
