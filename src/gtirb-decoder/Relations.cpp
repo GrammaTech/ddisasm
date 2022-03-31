@@ -190,4 +190,10 @@ namespace souffle
         return T;
     }
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::ByteInterval& Interval)
+    {
+        T << Interval.Start << Interval.End;
+        return T;
+    }
+
 } // namespace souffle

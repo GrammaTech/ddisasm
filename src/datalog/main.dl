@@ -66,6 +66,9 @@ This module:
 // Architecture specific predicates.
 #include "arch/arch.dl"
 
+// Binary data
+#include "data.dl"
+
 // Detection of jump tables.
 #include "jump_tables.dl"
 #include "relative_jump_tables.dl"
@@ -202,10 +205,6 @@ Used on ARM/ARM64, but not x86 or MIPS. Type is architecure-dependent.
 .decl op_shifted_w_reg(EA:address,Index:unsigned,Reg:register,Type:symbol)
 .input op_shifted_w_reg
 .output op_shifted_w_reg
-
-// data from sections
-.decl data_byte(ea:address,value:unsigned)
-.input data_byte
 
 /**
 There is a potential address at 'EA' pointing to 'Value'.

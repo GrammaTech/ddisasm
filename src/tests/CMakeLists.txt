@@ -11,6 +11,7 @@ endif()
 add_executable(
   TestDdisasm
   ../Registration.cpp
+  ../Functors.cpp
   Main.Test.cpp
   SccPass.Test.cpp
   NoReturnPass.Test.cpp

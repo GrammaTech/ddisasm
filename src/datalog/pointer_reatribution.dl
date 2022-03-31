@@ -229,7 +229,7 @@ moved_displacement_candidate(EA,Op_index,as(Dest,address),AccessDest,1):-
     Diff = max(AccessDest,DestAddr) - min(AccessDest,DestAddr),
     10*DestAddr >= Base,
     // the remaining component does not fall on any data or code section
-    !data_byte(Diff,_),
+    @functor_data_exists(Diff) = 0,
     // does not fall in bss sections
     bss_section_limits(BssBeg,BssEnd),
     (
@@ -396,7 +396,7 @@ dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs-OffsetAddr,End+Mul
     value_reg_at_operand_loop(EA_used,Op_index,Reg,EA_from,Mult,NewDest,"loop"), NewDest >= 0,
     data_access(EA_used,Op_index,"NONE",Reg,"NONE",_,Offset,_), Offset > 0,
     OffsetAddr = as(Offset,address),
-    !data_byte(OffsetAddr,_),
+    @functor_data_exists(OffsetAddr) = 0,
     NewDestAddr = as(NewDest,address),
     MultAbs = as(max(Mult,-Mult),unsigned),
     regular_data_section(Name),
