@@ -158,7 +158,7 @@ def disassemble(
         start = timer()
         completedProcess = subprocess.run(
             ["ddisasm", target_binary, format, output, "-j", "1"] + extra_args,
-            timeout=90,
+            timeout=300,
         )
         time_spent = timer() - start
     if completedProcess.returncode == 0:
