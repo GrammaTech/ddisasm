@@ -686,7 +686,7 @@ jump_table_start(EA,Size,TableStart,TableStart,1):-
     arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,_,_,_),
     jump_table_candidate_refined(EA,DataEA,_).
 
-symbol_minus_symbol_jump_table(DataEA,TableStart,Size,TableStart,TargetAddr,as(Scale,number),Offset):-
+relative_jump_table_entry_candidate(DataEA,TableStart,Size,TableStart,TargetAddr,as(Scale,number),Offset):-
     arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,_,Scale,Offset),
     jump_table_candidate_refined(EA,DataEA,TargetAddr).
 
@@ -906,7 +906,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,as(Symbol2,number)):-
     symbol_minus_symbol_litpool_access_pattern(_,_,_,Symbol2,_,_,EA,Reg,_).
 
 labeled_data_candidate(Symbol2),
-symbol_minus_symbol_jump_table(LitPoolAddr,LitPoolAddr,Size,Symbol1,Symbol2,1,0):-
+relative_jump_table_entry_candidate(LitPoolAddr,LitPoolAddr,Size,Symbol1,Symbol2,1,0):-
     symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,_,_,_,"ADR").
 
 /**
