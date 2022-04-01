@@ -651,7 +651,9 @@ defined_symbol(EA,Size,Type,Scope,Visibility,SectIndex,OriginTable,TableIndex,Na
         SectIndex < 0xff00; // SHN_LORESERVE
         SectIndex = 0xfff1; // SHN_ABS
         SectIndex > 0xffff  // SHN_HIRESERVE
-    ).
+    ),
+    // Avoid FILE symbols.
+    Type != "FILE".
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
