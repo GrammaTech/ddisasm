@@ -108,6 +108,19 @@ value_reg_edge(EALoad,Reg2,EAPrev,Reg1,1,0):-
     reg_loaded_from_stack(EALoad,Reg2,_,StackPos, StackFrameDefinedAt),
     def_used(EAPrev,Reg1,EAStore,_).
 
+/**
+A stack frame is defined in terms of a previous stack frame.
+*/
+.decl adjacent_stack_frame(PrevAt:address,NextAt:address,BaseReg:register,Offset:number)
+
+adjacent_stack_frame(PrevEA,NextEA,BaseReg,Offset):-
+    def_used(PrevEA,BaseReg,NextEA,_),
+    (
+        arch.frame_pointer(BaseReg);
+        arch.stack_pointer(BaseReg)
+    ),
+    arch.reg_arithmetic_operation(NextEA,BaseReg,BaseReg,1,Offset).
+
 // Register saved in previous frame and loaded from the next.
 // e.g.:
 //   sub ESP,12                   PrevStackFrame
@@ -117,9 +130,9 @@ value_reg_edge(EALoad,Reg2,EAPrev,Reg1,1,0):-
 //   sub ESP,8                    NextStackFrame
 //   mov EBX,DWORD PTR [ESP+16]   Load
 value_reg_edge(EA,Reg2,From,Reg1,1,0):-
+    adjacent_stack_frame(PrevStackFrame,NextStackFrame,Base,Offset),
     reg_loaded_from_stack(EA,Reg2,Base,StackPos,NextStackFrame),
-    value_reg(NextStackFrame,Base,PrevStackFrame,Base,1,Immediate,_),
-    reg_stored_in_stack(Store,Reg1,StackPos+Immediate,PrevStackFrame),
+    reg_stored_in_stack(Store,Reg1,StackPos+Offset,PrevStackFrame),
     def_used(From,Reg1,Store,_).
 
 // mov DWORD from memory
