@@ -25,7 +25,11 @@
 #include <souffle/CompiledSouffle.h>
 
 #include <boost/filesystem.hpp>
-#include <boost/process.hpp>
+#include <boost/process/args.hpp>
+#include <boost/process/env.hpp>
+#include <boost/process/environment.hpp>
+#include <boost/process/search_path.hpp>
+#include <boost/process/system.hpp>
 
 std::string getInterpreterArch(const gtirb::Module &Module)
 {
