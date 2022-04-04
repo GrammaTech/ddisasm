@@ -5,10 +5,9 @@
 #include <fstream>
 #include <iostream>
 
-const gtirb::Module* Module = nullptr;
-bool IsBigEndian = false;
+FunctorContextManager FunctorContext;
 
-static const gtirb::ByteInterval* getByteInterval(uint64_t EA, size_t Size)
+const gtirb::ByteInterval* FunctorContextManager::getByteInterval(uint64_t EA, size_t Size)
 {
     for(const auto& Section : Module->sections())
     {
@@ -34,13 +33,13 @@ static const gtirb::ByteInterval* getByteInterval(uint64_t EA, size_t Size)
 
 uint64_t functor_data_exists(uint64_t EA, size_t Size)
 {
-    const gtirb::ByteInterval* ByteInterval = getByteInterval(EA, Size);
+    const gtirb::ByteInterval* ByteInterval = FunctorContext.getByteInterval(EA, Size);
     return ByteInterval != nullptr ? 1 : 0;
 }
 
-static void readData(uint64_t EA, uint8_t* Buffer, size_t Count)
+void FunctorContextManager::readData(uint64_t EA, uint8_t* Buffer, size_t Count)
 {
-    const gtirb::ByteInterval* ByteInterval = getByteInterval(EA, Count);
+    const gtirb::ByteInterval* ByteInterval = FunctorContext.getByteInterval(EA, Count);
     if(ByteInterval == nullptr)
     {
         memset(Buffer, 0, Count);
@@ -56,32 +55,32 @@ static void readData(uint64_t EA, uint8_t* Buffer, size_t Count)
 uint64_t functor_data_u8(uint64_t EA)
 {
     uint8_t Value;
-    readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
+    FunctorContext.readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
     return Value;
 }
 
 int64_t functor_data_s16(uint64_t EA)
 {
     uint16_t Value;
-    readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
-    return static_cast<int16_t>(IsBigEndian ? be16toh(Value) : le16toh(Value));
+    FunctorContext.readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
+    return static_cast<int16_t>(FunctorContext.IsBigEndian ? be16toh(Value) : le16toh(Value));
 }
 
 int64_t functor_data_s32(uint64_t EA)
 {
     uint32_t Value;
-    readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
-    return static_cast<int32_t>(IsBigEndian ? be32toh(Value) : le32toh(Value));
+    FunctorContext.readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
+    return static_cast<int32_t>(FunctorContext.IsBigEndian ? be32toh(Value) : le32toh(Value));
 }
 
 int64_t functor_data_s64(uint64_t EA)
 {
     uint64_t Value;
-    readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
-    return static_cast<int64_t>(IsBigEndian ? be64toh(Value) : le64toh(Value));
+    FunctorContext.readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
+    return static_cast<int64_t>(FunctorContext.IsBigEndian ? be64toh(Value) : le64toh(Value));
 }
 
-void initFunctorGtirbModule(const gtirb::Module* M)
+void FunctorContextManager::useModule(const gtirb::Module* M)
 {
     Module = M;
 
@@ -102,13 +101,12 @@ void initFunctorGtirbModule(const gtirb::Module* M)
 }
 
 #ifndef __EMBEDDED_SOUFFLE__
-
-std::unique_ptr<gtirb::Context> Context;
-
 /*
-Load the GTIRB file from the debug directory if running in the interpreter
+Load the GTIRB file from the debug directory
+
+Used only for the interpreter.
 */
-void __attribute__((constructor)) loadGtirb(void)
+void FunctorContextManager::loadGtirb(void)
 {
     const char* DebugDir = std::getenv("DDISASM_DEBUG_DIR");
     if(!DebugDir)
@@ -119,10 +117,10 @@ void __attribute__((constructor)) loadGtirb(void)
     std::string GtirbPath(DebugDir);
     GtirbPath.append("/binary.gtirb");
 
-    Context = std::make_unique<gtirb::Context>();
+    GtirbContext = std::make_unique<gtirb::Context>();
 
     std::ifstream Stream(GtirbPath, std::ios::in | std::ios::binary);
-    gtirb::ErrorOr<gtirb::IR*> Result = gtirb::IR::load(*Context, Stream);
+    gtirb::ErrorOr<gtirb::IR*> Result = gtirb::IR::load(*GtirbContext, Stream);
     if(!Result)
     {
         std::cerr << "ERROR: Failed to load GTIRB: " << GtirbPath << "\n";
@@ -155,6 +153,6 @@ void __attribute__((constructor)) loadGtirb(void)
         return;
     }
 
-    initFunctorGtirbModule(M);
+    FunctorContext.useModule(M);
 }
 #endif /* __EMBEDDED_SOUFFLE__ */

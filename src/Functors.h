@@ -24,19 +24,64 @@
 #define SRC_FUNCTORS_H_
 #include <gtirb/gtirb.hpp>
 
+#include "Endian.h"
+
+#ifndef __has_declspec_attribute
+#define __has_declspec_attribute(x) 0
+#endif
+
+#ifndef __has_attribute
+#define __has_attribute(x) 0
+#endif
+
+#if defined(_MSC_VER) || __has_declspec_attribute(dllexport)
+#define EXPORT _declspec(dllexport)
+#elif defined(__GNUC__) || __has_attribute(visibility)
+#define EXPORT __attribute__((visibility("default")))
+#else
+#define EXPORT
+#endif
+
 // C interface is used for accessing the functors from datalog
 extern "C"
 {
-    __attribute__((__visibility__("default"))) uint64_t functor_data_exists(uint64_t EA,
-                                                                            size_t Size);
-    __attribute__((__visibility__("default"))) uint64_t functor_data_u8(uint64_t EA);
+    EXPORT uint64_t functor_data_exists(uint64_t EA, size_t Size);
+    EXPORT uint64_t functor_data_u8(uint64_t EA);
 
-    __attribute__((__visibility__("default"))) int64_t functor_data_s16(uint64_t EA);
-    __attribute__((__visibility__("default"))) int64_t functor_data_s32(uint64_t EA);
-    __attribute__((__visibility__("default"))) int64_t functor_data_s64(uint64_t EA);
+    EXPORT int64_t functor_data_s16(uint64_t EA);
+    EXPORT int64_t functor_data_s32(uint64_t EA);
+    EXPORT int64_t functor_data_s64(uint64_t EA);
 }
 
-// C++ interface allows ddisasm CPP code to instantiate functor data
-void initFunctorGtirbModule(const gtirb::Module* M);
+class FunctorContextManager
+{
+public:
+    FunctorContextManager()
+#ifdef __EMBEDDED_SOUFFLE__
+    {
+    }
+#else
+    {
+        // Load GTIRB from the debug directory when the Context is initialized
+        // if running in the interpreter.
+        loadGtirb();
+    }
+#endif /* __EMBEDDED_SOUFFLE__ */
+
+    const gtirb::ByteInterval* getByteInterval(uint64_t EA, size_t Size);
+    void readData(uint64_t EA, uint8_t* Buffer, size_t Count);
+    void useModule(const gtirb::Module* M);
+    bool IsBigEndian = false;
+
+private:
+    const gtirb::Module* Module = nullptr;
+
+#ifndef __EMBEDDED_SOUFFLE__
+    void loadGtirb(void);
+    std::unique_ptr<gtirb::Context> GtirbContext;
+#endif
+};
+
+extern FunctorContextManager FunctorContext;
 
 #endif // SRC_FUNCTORS_H_
