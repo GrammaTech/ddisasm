@@ -8,7 +8,7 @@
 #if defined(_WIN32) || defined(__APPLE__)
 #if defined(_MSC_VER)
 
-#define be16toh(x) _byteswap_uint16(x)
+#define be16toh(x) _byteswap_ushort(x)
 #define le16toh(x) (x)
 
 #define be32toh(x) _byteswap_ulong(x)
