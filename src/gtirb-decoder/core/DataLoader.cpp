@@ -23,8 +23,8 @@
 #include "DataLoader.h"
 
 #include "../../AuxDataSchema.h"
+#include "../../Endian.h"
 #include "../../Functors.h"
-#include "../Endian.h"
 
 void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
 {
@@ -38,7 +38,7 @@ void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program
 
 void DataLoader::load(const gtirb::Module& Module, DataFacts& Facts)
 {
-    initFunctorGtirbModule(&Module);
+    FunctorContext.useModule(&Module);
 
     std::optional<gtirb::Addr> Min, Max;
     for(const auto& Section : Module.sections())
