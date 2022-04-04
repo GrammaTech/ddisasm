@@ -5,6 +5,8 @@
 #include <fstream>
 #include <iostream>
 
+#include "Endian.h"
+
 FunctorContextManager FunctorContext;
 
 const gtirb::ByteInterval* FunctorContextManager::getByteInterval(uint64_t EA, size_t Size)

@@ -24,8 +24,6 @@
 #define SRC_FUNCTORS_H_
 #include <gtirb/gtirb.hpp>
 
-#include "Endian.h"
-
 #ifndef __has_declspec_attribute
 #define __has_declspec_attribute(x) 0
 #endif
