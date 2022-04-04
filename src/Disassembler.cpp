@@ -452,33 +452,31 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(
     gtirb::Addr EA, const VectorByEA<SymbolicExprAttribute> &SymbolicDataAttributes)
 {
     const static std::map<std::string, gtirb::SymAttribute> AttributeMap = {
-        {"Part0", gtirb::SymAttribute::Part0},
-        {"Part1", gtirb::SymAttribute::Part1},
-        {"Part2", gtirb::SymAttribute::Part2},
-        {"Part3", gtirb::SymAttribute::Part3},
-        {"AddrRelGot", gtirb::SymAttribute::AddrRelGot},
-        {"GotRef", gtirb::SymAttribute::GotRef},
-        {"GotRelPC", gtirb::SymAttribute::GotRelPC},
-        {"GotRelGot", gtirb::SymAttribute::GotRelGot},
-        {"GotRelAddr", gtirb::SymAttribute::GotRelAddr},
-        {"GotPage", gtirb::SymAttribute::GotPage},
-        {"GotPageOfst", gtirb::SymAttribute::GotPageOfst},
-        {"PltRef", gtirb::SymAttribute::PltRef},
-        {"TpOff", gtirb::SymAttribute::TpOff},
-        {"TlsLd", gtirb::SymAttribute::TlsLd},
-        {"TlsGd", gtirb::SymAttribute::TlsGd},
-        {"GotOff", gtirb::SymAttribute::GotOff},
-        {"NtpOff", gtirb::SymAttribute::NtpOff},
-        {"DtpOff", gtirb::SymAttribute::DtpOff},
-        {"Lo12", gtirb::SymAttribute::Lo12},
-        {"Hi", gtirb::SymAttribute::Hi},
-        {"Lo", gtirb::SymAttribute::Lo}};
+        // ELF (common)
+        {"GOT", gtirb::SymAttribute::GOT},
+        {"GOTPC", gtirb::SymAttribute::GOTPC},
+        {"GOTOFF", gtirb::SymAttribute::GOTOFF},
+        {"PCREL", gtirb::SymAttribute::PCREL},
+        {"PLT", gtirb::SymAttribute::PLT},
+        {"TPOFF", gtirb::SymAttribute::TPOFF},
+        {"DTPOFF", gtirb::SymAttribute::DTPOFF},
+        {"NTPOFF", gtirb::SymAttribute::NTPOFF},
+        {"TLSGD", gtirb::SymAttribute::TLSGD},
+        {"TLSLD", gtirb::SymAttribute::TLSLD},
+        // ARM
+        {"G0", gtirb::SymAttribute::G0},
+        {"G1", gtirb::SymAttribute::G1},
+        {"LO12", gtirb::SymAttribute::LO12},
+        // MIPS
+        {"HI", gtirb::SymAttribute::HI},
+        {"LO", gtirb::SymAttribute::LO},
+    };
     gtirb::SymAttributeSet Attributes;
 
     auto Range = SymbolicDataAttributes.equal_range(EA);
     for(auto It = Range.first; It != Range.second; It++)
     {
-        Attributes.addFlag(AttributeMap.at(It->Type));
+        Attributes.insert(AttributeMap.at(It->Type));
     }
 
     return Attributes;

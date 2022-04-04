@@ -349,14 +349,14 @@ base_addr_offset_operand(EA,NextEA,Dest_addr):-
         Dest_addr >= Begin, Dest_addr <= End
     ).
 
-symbolic_operand_attribute(EA,1,"AddrRelGot"):-
+symbolic_operand_attribute(EA,1,"GOT"):-
     base_addr_offset_operand(EA,_,_).
 
-symbolic_operand_attribute(EA,2,"Lo"):-
+symbolic_operand_attribute(EA,2,"LO"):-
     base_addr_offset_operand(_,EA,_).
 
 // Hi
-symbolic_operand_attribute(EA, 1, "Hi"):-
+symbolic_operand_attribute(EA, 1, "HI"):-
     (
         split_load(EA, _, Dest_addr, _)
         ;
@@ -375,7 +375,7 @@ symbolic_operand_attribute(EA, 1, "Hi"):-
     ).
 
 // Lo
-symbolic_operand_attribute(EA, Index, "Lo"):-
+symbolic_operand_attribute(EA, Index, "LO"):-
     (
         split_load(_,EA,Dest_addr,_),
         Index = 2
@@ -413,7 +413,7 @@ symbolic_operand_mips_candidate(EA,1,Dest):-
     split_loadstore(_,EA,Dest).
 
 // E.g., lw t9, %got(puts)(gp)
-symbolic_operand_attribute(EA,Index,"AddrRelGot"):-
+symbolic_operand_attribute(EA,Index,"GOT"):-
     symbolic_operand_mips_candidate(EA,Index,Got_entry),
     got_reference(Got_entry,_).
 
