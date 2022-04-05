@@ -898,7 +898,7 @@ block_points(LitPoolAddr,"data",0,Points,"arm literal pool"):-
         )
     ).
 
-block_points(Block,"data",0,7,"possible string"),
+block_points(Block,"data",0,8,"possible string"),
 data_block_candidate(Block,End-Block):-
     ascii_string(Block,End),
     (
@@ -913,15 +913,6 @@ data_block_candidate(Block,End-Block):-
             ascii_string(End,_)
         )
     ).
-
-block_points(Block,"code",BlockPred,7,"may-fallthrough"):-
-    block_is_overlapping(Block,"code"),
-    may_fallthrough(EA,Block),
-    code_in_block_candidate_refined(EA,BlockPred),
-    !candidate_block_is_padding(BlockPred),
-    block_is_overlapping(BlockPred,_),
-    block_points(BlockPred,"code",_,Points,_),
-    Points >= 6.
 
 /**
 E.g.,

@@ -721,8 +721,12 @@ block_points(Block,"code",BlockPred,Points,Why):-
     may_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     block_is_overlapping(BlockPred,"code"),
-    !block_overlap(BlockPred,"code",_,"data"),
-    !block_overlap(_,"data",BlockPred,"code"),
+    (
+        Why = "may-fallthrough"
+        ;
+        !block_overlap(BlockPred,"code",_,"data"),
+        !block_overlap(_,"data",BlockPred,"code")
+    ),
     block_points(BlockPred,"code",_,Points,Why),
     transitive_points(Why),
     Points != 0.

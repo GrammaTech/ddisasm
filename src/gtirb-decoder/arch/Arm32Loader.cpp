@@ -50,26 +50,23 @@ void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& B
     load(ByteInterval, Facts, false);
 
     bool mclass = false;
-    for(const auto& Section : Module.sections())
+    for(const auto& Section : Module.findSections(".ARM.attributes"))
     {
-        if(Section.getName() == ".ARM.attributes")
+        for(const auto& ByteInterval : Section.byte_intervals())
         {
-            for(const auto& ByteInterval : Section.byte_intervals())
+            const char* RawChars = ByteInterval.rawBytes<const char>();
+            // Remove zeros
+            std::vector<char> Chars;
+            for(size_t I = 0; I < ByteInterval.getInitializedSize(); ++I)
             {
-                const char* RawChars = ByteInterval.rawBytes<const char>();
-                // Remove zeros
-                std::vector<char> Chars;
-                for(size_t I = 0; I < ByteInterval.getSize(); ++I)
-                {
-                    if(RawChars[I] != 0)
-                        Chars.push_back(RawChars[I]);
-                }
-                std::string SectStr(Chars.begin(), Chars.end());
-                if(SectStr.find("Cortex-M") != std::string::npos)
-                {
-                    mclass = true;
-                    break;
-                }
+                if(RawChars[I] != 0)
+                    Chars.push_back(RawChars[I]);
+            }
+            std::string SectStr(Chars.begin(), Chars.end());
+            if(SectStr.find("Cortex-M") != std::string::npos)
+            {
+                mclass = true;
+                break;
             }
         }
     }

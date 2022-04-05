@@ -493,7 +493,10 @@ string_candidate(EA,End,"ascii"):-
       labeled_data_candidate(EA);
       preferred_data_access(_,EA)
     ),
-    EA >= Beg, EA < End.
+    EA >= Beg, EA < End,
+    data_segment(DataBeg,DataEnd),
+    EA >= DataBeg,
+    End <= DataEnd.
 
 string_candidate(EA,End,"ascii"):-
     string_candidate(_,EA,"ascii"),
@@ -527,7 +530,6 @@ string_candidate_refined(EA,End,"ascii"):-
 string(EA,End,Encoding):-
     data_object(EA,Size,"string"),
     string_candidate_refined(EA,End,Encoding),
-    !discarded_block(EA,"data",_),
     Size = End-EA.
 
 ///////////////////////////////////////////////////////////////////////////
