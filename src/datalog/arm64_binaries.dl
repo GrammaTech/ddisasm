@@ -138,8 +138,8 @@ split_load_for_symbolization(EA, NextEA,as(as(Base,number)+Offset,address),"ADD"
         NextEA = UsedEA,
         Reg1 = Reg2
         ;
-        value_reg_edge(StackLoadEA,Reg2,EA,Reg1,1,0),
-        def_used(StackLoadEA,Reg2,NextEA,_)
+        stack_load_store_pair(UsedEA,LoadEA,Reg1,Reg2),
+        def_used(LoadEA,Reg2,NextEA,_)
     ),
     // ADD <Register> <Register> <Immediate>
     // e.g. add x0, x0, <Offset>
@@ -151,8 +151,8 @@ split_load_for_symbolization(EA,NextEA,as(as(Base,number)+Offset,address),"LDR/S
         NextEA = UsedEA,
         Reg1 = Reg2
         ;
-        value_reg_edge(StackLoadEA,Reg2,EA,Reg1,1,0),
-        def_used(StackLoadEA,Reg2,NextEA,_)
+        stack_load_store_pair(UsedEA,LoadEA,Reg1,Reg2),
+        def_used(LoadEA,Reg2,NextEA,_)
     ),
     // LDR/STR <Register> <IndirectOp>
     // e.g. ldr x0, [x0, <OffsetOp>]
