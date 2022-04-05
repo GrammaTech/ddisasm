@@ -74,14 +74,26 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
     arch.move_operation(Operation),
     op_immediate_and_reg(EA,Operation,Reg,_,Immediate).
 
+/**
+Generate distinct stack frames (identifying them by the location at which the
+stack frame pointer register is defined.)
+*/
+.decl stack_frame(EA:address,BaseReg:register)
+
+stack_frame(EA,BaseReg):-
+    // Restricted with def_used_for_address because a stack frame is not very
+    // interesting if nothing is loaded/stored from it.
+    def_used_for_address(EA,BaseReg),
+    (
+        arch.frame_pointer(BaseReg);
+        arch.stack_pointer(BaseReg)
+    ).
+
 .decl reg_stored_in_stack(EA:address,Reg:register,StackPos:number, StackFrameDefinedAt: address)
 .output reg_stored_in_stack
 
 reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
-    (
-        arch.frame_pointer(Base);
-        arch.stack_pointer(Base)
-    ),
+    stack_frame(StackFrameDefinedAt,Base),
     def_used(StackFrameDefinedAt,Base,EA,_),
     arch.store(EA,_,_,RawReg,RawBase,"NONE",_,StackPos),
     arch.track_register(RawReg,Reg),
@@ -91,10 +103,7 @@ reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
 .output reg_loaded_from_stack
 
 reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
-    (
-        arch.frame_pointer(Base);
-        arch.stack_pointer(Base)
-    ),
+    stack_frame(StackFrameDefinedAt,Base),
     def_used(StackFrameDefinedAt,Base,EA,_),
     arch.load(EA,_,_,RawReg,RawBase,"NONE",_,StackPos),
     arch.track_register(RawReg,Reg),
@@ -104,8 +113,9 @@ reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
 // This is flow insensitive but we make sure that the load and store
 // refer to the same stack frame, identified by the address where RBP is defined.
 value_reg_edge(EALoad,Reg2,EAPrev,Reg1,1,0):-
-    reg_stored_in_stack(EAStore,Reg1,StackPos, StackFrameDefinedAt),
-    reg_loaded_from_stack(EALoad,Reg2,_,StackPos, StackFrameDefinedAt),
+    stack_frame(StackFrameDefinedAt,Base),
+    reg_stored_in_stack(EAStore,Reg1,StackPos,StackFrameDefinedAt),
+    reg_loaded_from_stack(EALoad,Reg2,Base,StackPos,StackFrameDefinedAt),
     def_used(EAPrev,Reg1,EAStore,_).
 
 /**
