@@ -109,14 +109,27 @@ reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
     arch.track_register(RawReg,Reg),
     arch.track_register(RawBase,Base).
 
+/**
+Track where a value is loaded from the stack and then used as an address.
+
+We'll only track stack store-load pairs if the stack variable is eventually
+used for an address.
+*/
+.decl stack_var_used_for_address(StackFrameDefinedAt:address,Base:register,StackPos:number)
+
+stack_var_used_for_address(StackFrameDefinedAt,Base,StackPos):-
+    reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt),
+    def_used_for_address(EA,Reg).
+
+.decl stack_load_store_pair(StoreEA:address,LoadEA:address,StoreReg:register,LoadReg:register)
+
 // Register saved and loaded from stack
 // This is flow insensitive but we make sure that the load and store
 // refer to the same stack frame, identified by the address where RBP is defined.
-value_reg_edge(EALoad,Reg2,EAPrev,Reg1,1,0):-
-    stack_frame(StackFrameDefinedAt,Base),
-    reg_stored_in_stack(EAStore,Reg1,StackPos,StackFrameDefinedAt),
-    reg_loaded_from_stack(EALoad,Reg2,Base,StackPos,StackFrameDefinedAt),
-    def_used(EAPrev,Reg1,EAStore,_).
+stack_load_store_pair(EAStore,EALoad,StoreReg,LoadReg):-
+    stack_var_used_for_address(StackFrameDefinedAt,Base,StackPos),
+    reg_stored_in_stack(EAStore,StoreReg,StackPos,StackFrameDefinedAt),
+    reg_loaded_from_stack(EALoad,LoadReg,Base,StackPos,StackFrameDefinedAt).
 
 /**
 A stack frame is defined in terms of a previous stack frame.
@@ -139,11 +152,14 @@ adjacent_stack_frame(PrevEA,NextEA,BaseReg,Offset):-
 //   ...
 //   sub ESP,8                    NextStackFrame
 //   mov EBX,DWORD PTR [ESP+16]   Load
-value_reg_edge(EA,Reg2,From,Reg1,1,0):-
+stack_load_store_pair(EAStore,EALoad,StoreReg,LoadReg):-
     adjacent_stack_frame(PrevStackFrame,NextStackFrame,Base,Offset),
-    reg_loaded_from_stack(EA,Reg2,Base,StackPos,NextStackFrame),
-    reg_stored_in_stack(Store,Reg1,StackPos+Offset,PrevStackFrame),
-    def_used(From,Reg1,Store,_).
+    reg_loaded_from_stack(EALoad,LoadReg,Base,StackPos,NextStackFrame),
+    reg_stored_in_stack(EAStore,StoreReg,StackPos+Offset,PrevStackFrame).
+
+value_reg_edge(EALoad,Reg2,EAPrev,Reg1,1,0):-
+    stack_load_store_pair(EAStore,EALoad,Reg1,Reg2),
+    def_used(EAPrev,Reg1,EAStore,_).
 
 // mov DWORD from memory
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
