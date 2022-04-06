@@ -284,11 +284,13 @@ possible_data_limit(EA):-
 
 last_data_limit(EA+1,EA):-
     possible_data_limit(EA),
-    data_byte(EA+1,_).
+    data_byte(EA+1,_),
+    !code(EA+1).
 
 last_data_limit(EA+1,Where):-
     last_data_limit(EA,Where),
     data_byte(EA+1,_),
+    !code(EA+1),
     !possible_data_limit(EA).
 
 .decl last_data_access(EA:address,Where:address)
