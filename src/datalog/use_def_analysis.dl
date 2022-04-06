@@ -266,10 +266,10 @@ return_val_def(Callee,Reg,EA_def):-
 
 // The return register is defined elsewhere in the function.
 return_val_def(Callee,Reg,EA_def):-
+    last_def(Block,EA_def,Reg),
     arch.return_val_reg(Reg),
     return_block_end(Callee,CalleeEnd,Block,BlockEnd),
     !block_last_def(BlockEnd,_,Reg),
-    last_def(Block,EA_def,Reg),
     Callee <= EA_def,
     EA_def < CalleeEnd.
 
