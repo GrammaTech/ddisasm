@@ -124,8 +124,25 @@ adrp_dest(EA,Reg,as(Dest,address)):-
 .decl adrp_used(EA:address,Reg:register,UsedEA:address,Dest:address)
 
 adrp_used(EA,Reg,UsedEA,Dest):-
-    adrp_dest(EA,Reg,Dest),
-    def_used(EA,Reg,UsedEA,_).
+    def_used(EA,Reg,UsedEA,_),
+    adrp_dest(EA,Reg,Dest).
+
+/**
+An instruction which could be the second half of a split load.
+*/
+.decl split_load_tail(EA:address,Offset:number,Reg:register,Type:symbol)
+
+// ADD <Register> <Register> <Immediate>
+// e.g. add x0, x0, <Offset>
+split_load_tail(EA,Offset,Reg,Type):-
+    arch.reg_arithmetic_operation(EA,_,Reg,1,Offset),
+    Type = "ADD".
+
+// LDR/STR <Register> <IndirectOp>
+// e.g. ldr x0, [x0, <OffsetOp>]
+split_load_tail(EA,Offset,Reg,Type):-
+    arch.memory_access(_,EA,_,_,_,Reg,"NONE",_,Offset),
+    Type = "LDR/STR".
 
 /**
 This version of split_load uses def_used, so this should not be used for
@@ -135,31 +152,17 @@ Instead, this is for the symbolization step.
 .decl split_load_for_symbolization(ea:address, nextea:address, dest:address, type:symbol)
 .output split_load_for_symbolization
 
-split_load_for_symbolization(EA, NextEA,as(as(Base,number)+Offset,address),"ADD"):-
-    adrp_used(EA,Reg1,UsedEA,Base),
-    (
-        NextEA = UsedEA,
-        Reg1 = Reg2
-        ;
-        stack_load_store_pair(UsedEA,LoadEA,Reg1,Reg2),
-        def_used(LoadEA,Reg2,NextEA,_)
-    ),
-    // ADD <Register> <Register> <Immediate>
-    // e.g. add x0, x0, <Offset>
-    arch.reg_arithmetic_operation(NextEA,_,Reg2,1,Offset).
+// Direct split load
+split_load_for_symbolization(EA,UsedEA,as(as(Base,number)+Offset,address),Type):-
+    adrp_used(EA,Reg,UsedEA,Base),
+    split_load_tail(UsedEA,Offset,Reg,Type).
 
-split_load_for_symbolization(EA,NextEA,as(as(Base,number)+Offset,address),"LDR/STR"):-
+// Split load through the stack
+split_load_for_symbolization(EA,NextEA,as(as(Base,number)+Offset,address),Type):-
     adrp_used(EA,Reg1,UsedEA,Base),
-    (
-        NextEA = UsedEA,
-        Reg1 = Reg2
-        ;
-        stack_load_store_pair(UsedEA,LoadEA,Reg1,Reg2),
-        def_used(LoadEA,Reg2,NextEA,_)
-    ),
-    // LDR/STR <Register> <IndirectOp>
-    // e.g. ldr x0, [x0, <OffsetOp>]
-    arch.memory_access(_,NextEA,_,_,_,Reg2,"NONE",_,Offset).
+    stack_load_store_pair(UsedEA,LoadEA,Reg1,Reg2),
+    def_used(LoadEA,Reg2,NextEA,_),
+    split_load_tail(NextEA,Offset,Reg2,Type).
 
 split_load_operand(EA, 1, as(Dest,address)) :-
     split_load_for_symbolization(EA, _, Dest, _).
