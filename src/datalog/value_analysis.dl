@@ -76,7 +76,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
 
 /**
 Generate distinct stack frames (identifying them by the location at which the
-stack frame pointer register is defined.)
+stack or frame pointer register is defined.)
 */
 .decl stack_frame(EA:address,BaseReg:register)
 
@@ -89,17 +89,17 @@ stack_frame(EA,BaseReg):-
         arch.stack_pointer(BaseReg)
     ).
 
-.decl reg_stored_in_stack(EA:address,Reg:register,StackPos:number, StackFrameDefinedAt: address)
+.decl reg_stored_in_stack(EA:address,Reg:register,Base:register,StackPos:number,StackFrameDefinedAt:address)
 .output reg_stored_in_stack
 
-reg_stored_in_stack(EA,Reg,StackPos,StackFrameDefinedAt):-
+reg_stored_in_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
     stack_frame(StackFrameDefinedAt,Base),
     def_used(StackFrameDefinedAt,Base,EA,_),
     arch.store(EA,_,_,RawReg,RawBase,"NONE",_,StackPos),
     arch.track_register(RawReg,Reg),
     arch.track_register(RawBase,Base).
 
-.decl reg_loaded_from_stack(EA:address,Reg:register,Base:register,StackPos:number, StackFrameDefinedAt: address)
+.decl reg_loaded_from_stack(EA:address,Reg:register,Base:register,StackPos:number,StackFrameDefinedAt:address)
 .output reg_loaded_from_stack
 
 reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
@@ -117,18 +117,29 @@ used for an address.
 */
 .decl stack_var_used_for_address(StackFrameDefinedAt:address,Base:register,StackPos:number)
 
+// Before the stack var is stored, it is used for an address.
+stack_var_used_for_address(StackFrameDefinedAt,Base,StackPos):-
+    reg_stored_in_stack(EAStore,StoreReg,Base,StackPos,StackFrameDefinedAt),
+    def_used(EADef,StoreReg,EAStore,_),
+    def_used_for_address(EADef,StoreReg).
+
+// After the stack variable is loaded from the stack, it is used for an address.
 stack_var_used_for_address(StackFrameDefinedAt,Base,StackPos):-
     reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt),
     def_used_for_address(EA,Reg).
 
+/**
+A value is stored to a location on the stack and loaded from that location.
+
+This is flow insensitive but we make sure that the load and store refer to the
+same stack frame, identified by the address where the stack or frame pointer is
+defined.
+*/
 .decl stack_load_store_pair(StoreEA:address,LoadEA:address,StoreReg:register,LoadReg:register)
 
-// Register saved and loaded from stack
-// This is flow insensitive but we make sure that the load and store
-// refer to the same stack frame, identified by the address where RBP is defined.
 stack_load_store_pair(EAStore,EALoad,StoreReg,LoadReg):-
     stack_var_used_for_address(StackFrameDefinedAt,Base,StackPos),
-    reg_stored_in_stack(EAStore,StoreReg,StackPos,StackFrameDefinedAt),
+    reg_stored_in_stack(EAStore,StoreReg,Base,StackPos,StackFrameDefinedAt),
     reg_loaded_from_stack(EALoad,LoadReg,Base,StackPos,StackFrameDefinedAt).
 
 /**
@@ -155,7 +166,7 @@ adjacent_stack_frame(PrevEA,NextEA,BaseReg,Offset):-
 stack_load_store_pair(EAStore,EALoad,StoreReg,LoadReg):-
     adjacent_stack_frame(PrevStackFrame,NextStackFrame,Base,Offset),
     reg_loaded_from_stack(EALoad,LoadReg,Base,StackPos,NextStackFrame),
-    reg_stored_in_stack(EAStore,StoreReg,StackPos+Offset,PrevStackFrame).
+    reg_stored_in_stack(EAStore,StoreReg,Base,StackPos+Offset,PrevStackFrame).
 
 value_reg_edge(EALoad,Reg2,EAPrev,Reg1,1,0):-
     stack_load_store_pair(EAStore,EALoad,Reg1,Reg2),

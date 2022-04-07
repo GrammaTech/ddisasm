@@ -194,7 +194,7 @@ moved_label(EA_load,1,Address,Base):-
     // GOT-relative stored in stack.
     got_relative_operand(EA_load,_,Dest),
     def_used(EA_load,Reg,EA_store,_),
-    reg_stored_in_stack(EA_store,Reg,StackPos,StackFrame),
+    reg_stored_in_stack(EA_store,Reg,_,StackPos,StackFrame),
 
     // GOT-relative compared for jump.
     arch.frame_pointer(BaseReg),
