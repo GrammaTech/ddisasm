@@ -111,21 +111,14 @@ split_load(EA, NextEA, as(Base + Offset,address), "LDR/STR") :-
 pc_relative_jump(EA, as(Dest,address)):-
     split_load(EA, _, Dest, "LDR/STR").
 
-.decl adrp_dest(EA:address,Reg:register,Dest:address)
-
-adrp_dest(EA,Reg,as(Dest,address)):-
-    // ADRP <Register> <Immediate>
-    // e.g. adrp x0, ImmOp
-    instruction(EA,_,_,"ADRP",ImmOp,RegOp,0,0,_,_),
-    code(EA),
-    op_immediate(ImmOp,Dest),
-    op_regdirect_contains_reg(RegOp,Reg).
-
+/**
+A reference to the register loaded by an adrp instruction.
+*/
 .decl adrp_used(EA:address,Reg:register,UsedEA:address,Dest:address)
 
 adrp_used(EA,Reg,UsedEA,Dest):-
     def_used(EA,Reg,UsedEA,_),
-    adrp_dest(EA,Reg,Dest).
+    arch.adrp_dest(EA,Reg,Dest).
 
 /**
 An instruction which could be the second half of a split load.
@@ -226,6 +219,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     data_word(RefAddr,DataSize/8,Val).
 
 // Not restricted with def_used_for_address since ADRP and ADR are always addresses.
+// TODO: This rule shouldn't be needed once both adrp and adr are marked as pc_relative_addr.
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     instruction(EA,_,_,Operation,Op1,Op2,_,_,_,_),
     (

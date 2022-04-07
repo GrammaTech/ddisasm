@@ -40,7 +40,7 @@ instruction_get_src_op(EA,Index,Op):-
 //       ...
 //       lw gp, 16(fp)
 value_reg_edge(EALoad,"GP",EAPrev,"GP",1,0):-
-    reg_stored_in_stack(EAStore,"GP",StackPos,StackFrameDefinedAt),
+    reg_stored_in_stack(EAStore,"GP",_,StackPos,StackFrameDefinedAt),
     reg_loaded_from_stack(EALoad,"GP","FP",StackPos,StackFrameDefinedAt2),
     def_used(EAPrev,"GP",EAStore,_),
     EAPrev != EAStore,
@@ -155,7 +155,7 @@ hi_load_prop(EA,EA,Reg,Upper,"direct"):-
 hi_load_prop(RegRestoreEA,EA,Reg2,Upper,"stack-restore"):-
     hi_load(EA,Reg,Upper),
     def_used(EA,Reg,RegStoreEA,_),
-    reg_stored_in_stack(RegStoreEA,Reg,StackPos,StackFrameDefinedAt),
+    reg_stored_in_stack(RegStoreEA,Reg,_,StackPos,StackFrameDefinedAt),
     reg_loaded_from_stack(RegRestoreEA,Reg2,"SP",StackPos,StackFrameDefinedAt).
 
 hi_load_prop(MoveEA,EA,Reg2,Upper,"move"):-
