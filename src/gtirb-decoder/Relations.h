@@ -236,12 +236,6 @@ namespace relations
         gtirb::Addr Addr;
     };
 
-    struct ByteInterval
-    {
-        gtirb::Addr Start;
-        gtirb::Addr End;
-    };
-
 } // namespace relations
 
 namespace souffle
@@ -310,8 +304,6 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::ShiftedWithRegOp& Op);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::InstructionWriteback& writeback);
-
-    souffle::tuple& operator<<(souffle::tuple& T, const relations::ByteInterval& Interval);
 
 } // namespace souffle
 
