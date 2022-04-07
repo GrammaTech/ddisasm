@@ -37,7 +37,7 @@ data_byte(EA,Value):-
     @functor_data_exists(EA,1) = 1,
     Value = @functor_data_u8(EA).
 
-/*
+/**
 Signed representation of the data word at EA.
 */
 .decl data_word(EA:address,Size:unsigned,Val:number) inline

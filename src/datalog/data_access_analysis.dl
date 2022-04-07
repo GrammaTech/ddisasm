@@ -228,7 +228,7 @@ data_access_pattern_candidate(Address,Size,FinalMult,EA):-
     Address >= Beg,
     Address <= End.
 
-/*
+/**
 Filter out some invalid DAP candidates before performing expensive aggregation
 */
 .decl data_access_pattern_candidate_refined(Address:address,Size:unsigned,Multiplier:number,FromWhere:address)
@@ -239,13 +239,14 @@ data_access_pattern_candidate_refined(Address,Size,Multiplier,From):-
     Operation != "LEA",
     data_byte(Address,_),
     (
+        // if it is an indirect call or jump, the destination should be a potential address
         address_in_data(Address,_);
         !indirect_jump(From),
         !indirect_call(From)
     ).
 
-/*
-Locates unique DAP Address,Size pairs at which the max must be evaluated.
+/**
+Unique DAP Address,Size pairs at which the max must be evaluated.
 
 Prevents evalutaing the max for each non-unique copy of the pair.
 */
@@ -254,8 +255,8 @@ Prevents evalutaing the max for each non-unique copy of the pair.
 dap_location(Address,Size):-
     data_access_pattern_candidate_refined(Address,Size,_,_).
 
-/*
-Find the largest multiplier for each Address,Size combination among the data access pattern candidates
+/**
+The largest multiplier for each Address,Size combination among the data access pattern candidates
 */
 .decl dap_max_mult(Address:address,Size:unsigned,Max:number)
 

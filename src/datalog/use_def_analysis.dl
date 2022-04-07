@@ -240,7 +240,7 @@ return_val_used(EA_call,Callee,Reg,EA_used,Index_used):-
 
 /**
 A value is returned from a called procedure Callee, from the last Block with
-and last instruction at BlockEnd.
+the last instruction at BlockEnd.
 */
 .decl return_block_end(Callee:address,CalleeEnd:address,Block:address,BlockEnd:address)
 
@@ -274,7 +274,7 @@ return_val_def(Callee,Reg,EA_def):-
     EA_def < CalleeEnd.
 
 /**
-The return value of a function is used.
+A function defines a return value and it is used by the caller.
 
 reg: return-value register
 ea_used: use of the return-value register after a call
