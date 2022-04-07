@@ -31,7 +31,6 @@ void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program
     DataFacts Facts;
     load(Module, Facts);
 
-    Program.insert("byte_interval", std::move(Facts.ByteIntervals));
     Program.insert("address_in_data", std::move(Facts.Addresses));
     Program.insert("ascii_string", std::move(Facts.Ascii));
 }
@@ -82,7 +81,6 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
     gtirb::Addr Addr = *ByteInterval.getAddress();
     uint64_t Size = ByteInterval.getInitializedSize();
     auto Data = ByteInterval.rawBytes<const int8_t>();
-    Facts.ByteIntervals.push_back({Addr, Addr + Size});
 
     size_t Ascii = 0;
 

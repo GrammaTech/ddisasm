@@ -24,9 +24,6 @@
 Manage access to raw binary data
 */
 
-.decl byte_interval(Start:address,End:address)
-.input byte_interval
-
 .functor functor_data_exists(EA:address,Size:unsigned):unsigned
 .functor functor_data_u8(EA:address):unsigned
 .functor functor_data_s16(EA:address):number

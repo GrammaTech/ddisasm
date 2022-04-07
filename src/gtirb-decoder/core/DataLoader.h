@@ -32,7 +32,6 @@
 struct DataFacts
 {
     gtirb::Addr Min, Max;
-    std::vector<relations::ByteInterval> ByteIntervals;
     std::vector<relations::Data<gtirb::Addr>> Addresses;
     std::vector<relations::Data<gtirb::Addr>> Ascii;
 };
