@@ -183,45 +183,45 @@ tests:
   # ----------------------------------------------------------------------------
   # Static examples
   # ----------------------------------------------------------------------------
-  - name: ex1
-    <<: *default
-    build:
-      flags: ["-static","-no-pie"]
-      c: ["gcc"]
-      cpp: ["g++"]
-      optimizations: ["-O0"]
-    reassemble:
-      flags: ["-nostdlib", "-no-pie"]
-      compiler: "gcc"
-    distro:
-      name: Ubuntu
-      version: ["18.04","20.04"]
-    test:
-      strip_exe: "strip"
-      strip: false
-      # CFG checks on static binaries is pretty slow, and a lot of failures (false positives?) in library code.
-      check_cfg: false
+  # - name: ex1
+  #   <<: *default
+  #   build:
+  #     flags: ["-static","-no-pie"]
+  #     c: ["gcc"]
+  #     cpp: ["g++"]
+  #     optimizations: ["-O0"]
+  #   reassemble:
+  #     flags: ["-nostdlib", "-no-pie"]
+  #     compiler: "gcc"
+  #   distro:
+  #     name: Ubuntu
+  #     version: ["18.04","20.04"]
+  #   test:
+  #     strip_exe: "strip"
+  #     strip: false
+  #     # CFG checks on static binaries is pretty slow, and a lot of failures (false positives?) in library code.
+  #     check_cfg: false
 
-  # stripped version
-  - name: ex1
-    <<: *default
-    <<: *test-strip-default
-    build:
-      flags: ["-static", "-no-pie"]
-      c: ["gcc"]
-      cpp: ["g++"]
-      optimizations: ["-O0"]
-    reassemble:
-      flags: ["-nostdlib", "-no-pie"]
-      compiler: "gcc"
-    distro:
-      name: Ubuntu
-      version: ["18.04","20.04"]
-    test:
-      strip_exe: "strip"
-      strip: true
-      # CFG checks on static binaries is pretty slow, and a lot of failures (false positives?) in library code.
-      check_cfg: false
+  # # stripped version
+  # - name: ex1
+  #   <<: *default
+  #   <<: *test-strip-default
+  #   build:
+  #     flags: ["-static", "-no-pie"]
+  #     c: ["gcc"]
+  #     cpp: ["g++"]
+  #     optimizations: ["-O0"]
+  #   reassemble:
+  #     flags: ["-nostdlib", "-no-pie"]
+  #     compiler: "gcc"
+  #   distro:
+  #     name: Ubuntu
+  #     version: ["18.04","20.04"]
+  #   test:
+  #     strip_exe: "strip"
+  #     strip: true
+  #     # CFG checks on static binaries is pretty slow, and a lot of failures (false positives?) in library code.
+  #     check_cfg: false
 
   # ----------------------------------------------------------------------------
   # Small C and C++ examples (stripped).
