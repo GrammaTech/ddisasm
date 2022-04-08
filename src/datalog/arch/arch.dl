@@ -79,6 +79,7 @@ defintive list of jumps.
 Define all variants of the move operation.
 */
 .decl move_operation(Operation:symbol)
+.output move_operation
 
 .decl load_operation(Operation:symbol)
 
@@ -87,16 +88,19 @@ load_word_operation(""):-
     false.
 
 .decl store_operation(Operation:symbol)
+.output store_operation
 
 .decl conditional_operation(Operation:symbol)
 
 .decl conditional(EA:address)
+.output conditional
 
 conditional(EA):-
     instruction_get_operation(EA,Operation),
     arch.conditional_operation(Operation).
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
+.output op_does_not_read_dest_reg
 
 /**
 This can include any multiplication operations, including shift-left operation.
@@ -114,32 +118,41 @@ This can include any kinds of arithmetic operations including arithmetic shifts
 and multiplications.
 */
 .decl arithmetic_operation(Operation:symbol)
+.output arithmetic_operation
 
 /**
 This can include logical operations including bitwise operations.
 */
 .decl logic_operation(Operation:symbol)
+.output logic_operation
 
 .decl read_only_operation(Operation:symbol)
+.output read_only_operation
 
 /**
 This excludes a read of SP for adjusting stack-pointer: e.g., pop
 */
 .decl write_only_operation(Operation:symbol)
+.output write_only_operation
 
 .decl one_op_write(Operation:symbol)
+.output one_op_write
 
 .decl call_operation(Operation:symbol)
+.output call_operation
 
 .decl syscall_operation(Operation:symbol)
 
 .decl return_operation(Operation:symbol)
 
 .decl halt_operation(Operation:symbol)
+.output halt_operation
+
 halt_operation(""):-
     false.
 
 .decl cmp_operation(Operation:symbol)
+.output cmp_operation
 
 // ===========================================================================
 // Operation Operand Indices
@@ -157,6 +170,7 @@ halt_operation(""):-
 Find all addresses where a move instruction is used
 */
 .decl mov(EA:address)
+.output mov
 
 .decl is_nop(EA:address)
 
@@ -168,11 +182,13 @@ is_nop(EA):-
 Returns
 */
 .decl return(EA:address) overridable
+.output return
 return(EA):-
     instruction_get_operation(EA,Operation),
     return_operation(Operation).
 
 .decl jump(EA:address) overridable
+.output jump
 
 jump(EA):-
     instruction_get_operation(EA,Operation),
@@ -237,6 +253,7 @@ store(EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset):-
     memory_access("STORE",EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset).
 
 .decl delay_slot(BranchEA:address,EA:address)
+.output delay_slot
 
 delay_slot(0,0):-
     false.
@@ -257,6 +274,7 @@ operation_size_exception(0,0,0):-
 Arithmetic operation on one source register of the form Dst = Src * Mult + Offset
 */
 .decl reg_arithmetic_operation(EA:address,Dst:register,Src:register,Mult:number,Offset:number)
+.output reg_arithmetic_operation
 
 // Simplify operations with two source registers where both registers are the same.
 reg_arithmetic_operation(EA,Dst,Src,Mult+1,Offset):-
@@ -325,6 +343,7 @@ Limit the registers that are tracked and transform the names to their 64-bit
 versions.
 */
 .decl track_register(RegName:register,RegGenericName:register)
+.output track_register
 
 /**
 This specifies the registers whose value is not kept through a function call
@@ -333,10 +352,13 @@ according to the architecture's calling convention.
 .decl function_non_maintained_reg(Reg:register)
 
 .decl pc_register(Reg:register)
+.output pc_register
 
 .decl frame_pointer(Reg:register)
+.output frame_pointer
 
 .decl stack_pointer(Reg:register)
+.output stack_pointer
 
 .decl return_val_reg(Reg:register)
 
