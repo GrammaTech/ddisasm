@@ -368,5 +368,41 @@ propagated_data_access(NextEA,Mult,EA_ref):-
         data_access_pattern(EA_ref,S,Mult,From)
     ).
 
+// last data_access_pattern_candidate
+.decl last_data_access_candidate(EA:address,Where:address)
+.output last_data_access_candidate
+
+last_data_access_candidate(EA,Where):-
+    data_access_pattern_candidate(EA,_,_,_),
+    Where = max Where : {data_access_pattern_candidate(Where,_,_,_), Where < EA}.
+
+// adjacent non collision data accesses
+.decl non_collision_access(EA:address,EA_ref:address)
+.output non_collision_access
+
+non_collision_access(EA,EA):-
+    data_access_pattern_candidate(EA,_,Mult,_),
+    Mult > 0.
+
+// connecting adjacent data accesses when they have the same multiplier
+// and they are not colliding
+non_collision_access(EA_prop,EA_access):-
+    last_data_access_candidate(EA_prop,EA_access),
+    data_access_pattern_candidate(EA_prop,_,Mult,_),
+    data_access_pattern_candidate(EA_access,_,Mult,_), Mult > 0,
+    (EA_prop - EA_access) % as(Mult,unsigned) = 0.
+
+// If a data access at NextEA lies in the middle of [EA, EA + Mult], it's 
+// still not colliding if the NextEA >= EA + Size.
+non_collision_access(NextEA,EA_ref):-
+    non_collision_access(EA,EA_ref),
+    NextEelementEA = EA+ as(Mult,unsigned),
+    // There is a data access in between
+    last_data_access_candidate(NextEA, EA), 
+    NextEelementEA > NextEA,
+    //But it is "synchronized": It has the same multiplier and it does not collide
+    data_access_pattern_candidate(EA,Size,Mult,_),
+    EA+Size <= NextEA.
+
 preferred_data_access(EA,EA_label):-
     propagated_data_access(EA,_,EA_label).
