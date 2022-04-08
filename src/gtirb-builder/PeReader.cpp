@@ -121,7 +121,7 @@ void PeReader::buildSections()
         SectionProperties[S->getUUID()] = {0, Section.characteristics()};
     }
 
-    Module->addAuxData<gtirb::schema::ElfSectionProperties>(std::move(SectionProperties));
+    Module->addAuxData<gtirb::schema::SectionProperties>(std::move(SectionProperties));
 }
 
 void PeReader::buildSymbols()

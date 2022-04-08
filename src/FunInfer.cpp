@@ -71,8 +71,8 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
     gtirb::AuxDataContainer::registerAuxDataType<DynamicEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
-    gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
-    gtirb::AuxDataContainer::registerAuxDataType<ElfSectionIndex>();
+    gtirb::AuxDataContainer::registerAuxDataType<SectionProperties>();
+    gtirb::AuxDataContainer::registerAuxDataType<SectionIndex>();
     gtirb::AuxDataContainer::registerAuxDataType<CfiDirectives>();
     gtirb::AuxDataContainer::registerAuxDataType<Libraries>();
     gtirb::AuxDataContainer::registerAuxDataType<LibraryPaths>();

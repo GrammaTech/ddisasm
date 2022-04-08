@@ -57,6 +57,12 @@ void ModuleLoader(const gtirb::Module& Module, DatalogProgram& Program)
             BinaryType = AuxData->front();
         }
     }
+    else
+    {
+        // If no information is available for binary type,
+        // set it to EXEC by default.
+        BinaryType = "EXEC";
+    }
 
     Program.insert<std::vector<std::string>>("binary_isa", {BinaryIsa});
     Program.insert<std::vector<std::string>>("binary_type", {BinaryType});

@@ -131,16 +131,16 @@ namespace gtirb
         };
 
         /// \brief Auxiliary data mapping a section index to a section UUID.
-        struct ElfSectionIndex
+        struct SectionIndex
         {
-            static constexpr const char* Name = "elfSectionIndex";
+            static constexpr const char* Name = "sectionIndex";
             typedef std::map<uint64_t, gtirb::UUID> Type;
         };
 
         /// \brief Auxiliary data covering ELF section properties.
-        struct ElfSectionProperties
+        struct SectionProperties
         {
-            static constexpr const char* Name = "elfSectionProperties";
+            static constexpr const char* Name = "sectionProperties";
             typedef std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> Type;
         };
 
@@ -181,13 +181,6 @@ namespace gtirb
         {
             static constexpr const char* Name = "ddisasmVersion";
             typedef std::string Type;
-        };
-
-        /// \brief Auxiliary data covering PE section properties.
-        struct PeSectionProperties
-        {
-            static constexpr const char* Name = "peSectionProperties";
-            typedef std::map<gtirb::UUID, uint64_t> Type;
         };
 
         /// \brief Auxiliary data representing the import table of a PE file.
