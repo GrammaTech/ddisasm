@@ -888,15 +888,8 @@ data_in_code(Begin,End+1):-
 // Data before the first code-block in the code section.
 data_in_code(Begin,Block-1):-
     // TODO: Skip ELF headers when resurrecting sections and use `code_section'.
-    loaded_section(Begin,End,".text"),
-    // This def of 'Size' is unnecessary because "EA < Begin+Size" can replaced
-    // with "EA < End".
-    // However, it causes a strange build error as follows:
-    // Error: Mutually dependent aggregate
-    // This may be a bug in souffle.
-    // To avoid the error, use Size for now.
-    Size = End - Begin,
-    Block = min EA:{ block_boundaries(_,EA,_), EA >= Begin, EA < Begin + Size},
+    loaded_section(Begin,EndSect,".text"),
+    Block = min EA:{ block_boundaries(_,EA,_), EA >= Begin, EA < EndSect},
     Block > Begin.
 
 .decl next_block_in_section(Block:address,NextBlock:address)

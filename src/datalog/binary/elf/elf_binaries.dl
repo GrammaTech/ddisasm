@@ -97,9 +97,7 @@ got_section(".got.plt").
 bss_section(Name):-
     binary_format("ELF"),
     section_property(Name,"Loaded"),
-    section_type(Name,Type),
-    SHT_NOBITS = 8,
-    Type = SHT_NOBITS.
+    !section_property(Name,"Initialized").
 
 non_zero_data_section(Name):-
     data_section(Name),

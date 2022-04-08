@@ -702,8 +702,7 @@ bss_section_limits(0,0):-
 
 bss_section_limits(Begin,End):-
     Begin = min X:{ bss_section(Name),loaded_section(X,_,Name)},
-    LastSect = max X:{ bss_section(Name),loaded_section(X,_,Name)},
-    loaded_section(LastSect,End,_).
+    End = max X:{ bss_section(Name),loaded_section(_,X,Name)}.
 
 /*
 data segments can be data sections or fragments of the code section that
