@@ -83,6 +83,15 @@ tests:
   - name: ex_getoptlong
     <<: *default
 
+  - name: ex_init_array
+    <<: *default
+    build:
+      # Testing one version is enough.
+      optimizations: ["-O0"]
+    reassemble:
+      compiler: "mips-linux-gnu-g++"
+      flags: ["-no-pie"]
+
   - name: ex_noreturn
     <<: *default
 
