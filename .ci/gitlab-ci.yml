@@ -112,8 +112,6 @@ build-conan-gcc9:
     # Install packages needed for the tests
     - python -m pip install pip --upgrade && python -m pip install gtirb distro --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
-    - export PATH="$PATH;C:\\Program Files\\CMake\\bin"
-    - export PYTHON="C:\\Python39\\python.exe"
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
     - python .ci/build.py -s build_type=$BUILD_TYPE
 
