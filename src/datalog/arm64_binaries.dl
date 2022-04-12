@@ -254,17 +254,3 @@ unlikely_have_symbolic_immediate(EA):-
     instruction_get_operation(EA, Operation),
     contains("ADD", Operation),
     !split_load(_,EA,_,"ADD").
-
-instruction_get_dest_op(EA,Index,Op):-
-    instruction(EA,_,_,"LDP",Op1,Op2,_,_,_,_),
-    (
-        Index = 1, Op = Op1, Op2 = Op2;
-        Index = 2, Op = Op2, Op1 = Op1
-    ).
-
-instruction_get_src_op(EA,Index,Op):-
-    instruction(EA,_,_,"STP",Op1,Op2,_,_,_,_),
-    (
-        Index = 1, Op = Op1, Op2 = Op2;
-        Index = 2, Op = Op2, Op1 = Op1
-    ).
