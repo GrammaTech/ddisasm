@@ -124,6 +124,7 @@ tests:
   - name: ex_init_array
     <<: *default
     build:
+      <<: *default-build
       # Testing one version is enough.
       optimizations: ["-O0"]
     reassemble:
