@@ -128,6 +128,7 @@ tests:
 
   - name: ex_init_array
     <<: *default-cpp
+    build:
       # Testing one version is enough.
       optimizations: ["-O0"]
 
