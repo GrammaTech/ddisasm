@@ -31,18 +31,18 @@ FunctorContextManager FunctorContext;
 
 const gtirb::ByteInterval* FunctorContextManager::getByteInterval(uint64_t EA, size_t Size)
 {
-    for(const auto& Section : Module->sections())
+    for(const auto& Section : Module->findSectionsOn(gtirb::Addr(EA)))
     {
         bool Executable = Section.isFlagSet(gtirb::SectionFlag::Executable);
         bool Initialized = Section.isFlagSet(gtirb::SectionFlag::Initialized);
         bool Loaded = Section.isFlagSet(gtirb::SectionFlag::Loaded);
         if(Loaded && (Executable || Initialized))
         {
-            for(const auto& ByteInterval : Section.byte_intervals())
+            for(const auto& ByteInterval : Section.findByteIntervalsOn(gtirb::Addr(EA)))
             {
                 uint64_t Addr = static_cast<uint64_t>(*ByteInterval.getAddress());
                 uint64_t IntervalSize = ByteInterval.getInitializedSize();
-                if(EA < Addr || EA + Size > Addr + IntervalSize)
+                if(EA + Size > Addr + IntervalSize)
                 {
                     continue;
                 }
@@ -159,22 +159,13 @@ void FunctorContextManager::loadGtirb(void)
         return;
     }
 
-    auto Modules = IR->modules();
-    const gtirb::Module* M = nullptr;
-    for(auto It = Modules.begin(); It != Modules.end(); It++)
-    {
-        if(It->getName().compare(ModuleName) == 0)
-        {
-            M = &(*It);
-            break;
-        }
-    }
-    if(M == nullptr)
+    auto Modules = IR->findModules(ModuleName);
+    if(Modules.empty())
     {
         std::cerr << "ERROR: No module with name: " << ModuleName << "\n";
         return;
     }
 
-    FunctorContext.useModule(M);
+    FunctorContext.useModule(&(*Modules.begin()));
 }
 #endif /* __EMBEDDED_SOUFFLE__ */
