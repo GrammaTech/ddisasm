@@ -24,7 +24,7 @@ workflow:
 
 stages:
   - build-images
-  - check-format
+  - prebuild
   - build
   - build-packages
   - test-and-tag
@@ -86,7 +86,7 @@ build-ci-image-static:
     UBUNTU_CODENAME: "" # Don't push to DockerHub
 
 check-format:
-  stage: check-format
+  stage: prebuild
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20:$IMAGE_TAG
   script:
     - pre-commit run --all-files --show-diff-on-failure
@@ -600,28 +600,57 @@ debian-installer-ubuntu20:
     - 'build-ubuntu20-packages'
   <<: *debian-installer-ubuntu-template
 
-.get-image-name: &get-image-name
-  - VERSION=$(echo $(cat version.txt) | python3 -c "import sys; l=sys.stdin.read().split(); print('.'.join([l[1],l[3],l[5]]))")
-  - 'IMAGE_NAME=grammatech/ddisasm'
-
-docker-image:
-  stage: deploy
-  needs: []
-  tags: ['research-shell']
+docker-image-vars:
+  stage: prebuild
+  tags: [cluster]
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20:$IMAGE_TAG
   rules:
     - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
   script:
-    - *get-image-name
-    - docker build -t $IMAGE_NAME:latest .
-    - docker tag $IMAGE_NAME:latest $IMAGE_NAME:$VERSION
-    - docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
-    - docker push $IMAGE_NAME:latest
-    - docker push $IMAGE_NAME:$VERSION
-  after_script:
-    - *get-image-name
-    - docker rmi $IMAGE_NAME:latest
-    - docker rmi $IMAGE_NAME:$VERSION
+    - echo "VERSION=$(awk '{s=(NR==1?s:s".")$2}END{print s}' version.txt)" >> .env
+    - echo "GTIRB_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb | grep "refs/heads/$GTIRB_BRANCH\$" | awk '{print $1}')" >> .env
+    - echo "GTIRB_PPRINTER_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb-pprinter | grep "refs/heads/$GTIRB_PPRINTER_BRANCH\$" | awk '{print $1}')" >> .env
+    - cat .env
+  artifacts:
+    reports:
+      dotenv: .env
+
+docker-image:
+  stage: deploy
+  needs:
+    - job: docker-image-vars
+      artifacts: true
+  tags: [cluster]
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]  # Override the image's entrypoint so we can specify our own script
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+  script:
+    - echo "GTIRB_REF=$GTIRB_COMMIT"
+    - echo "GTIRB_PPRINTER_REF=$GTIRB_PPRINTER_COMMIT"
+    # Configure authentication credentials for Docker Hub and GitLab
+    - >-
+      echo "{\"auths\":{
+        \"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"},
+        \"https://index.docker.io/v1/\":{\"username\":\"$DOCKERHUB_USERNAME\",\"password\":\"$DOCKERHUB_PASSWORD\"}
+      }}" > /kaniko/.docker/config.json
+    # Run the kaniko executor, which will build our image (using a cache if available)
+    # Push to Docker Hub
+    - >-
+      /kaniko/executor
+      --cache=true
+      --cache-repo=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/ddisasm/cache
+      --context=$CI_PROJECT_DIR
+      --build-arg GTIRB_REF=$GTIRB_COMMIT
+      --build-arg GTIRB_PPRINTER_REF=$GTIRB_PPRINTER_COMMIT
+      --dockerfile=$CI_PROJECT_DIR/Dockerfile
+      --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:$VERSION
+      --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:latest
+      --destination=grammatech/ddisasm:$VERSION
+      --destination=grammatech/ddisasm:latest
 
 .apt-upload: &apt-upload
   stage: deploy-to-apt
