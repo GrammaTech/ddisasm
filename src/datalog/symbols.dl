@@ -87,7 +87,7 @@ symbol_score(EA,SymbolName,Type,Pos,Score):-
     defined_symbol(EA,_,Type,Scope,Visibility,_,_,TableIndex,SymbolName),
     !ambiguous_symbol(SymbolName),
     !avoid_symbols(SymbolName),
-    Type !="SECTION", Type != "FILE",
+    Type !="SECTION",
     (
         symbol_at_section_end(EA,SymbolName), Pos = "End";
         !symbol_at_section_end(EA,SymbolName), Pos = "Beg"
