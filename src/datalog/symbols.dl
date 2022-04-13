@@ -149,13 +149,17 @@ best_func_symbol(EA,SymbolName):-
    symbol_score(EA,SymbolName,"FUNC","Beg",Score),
    Score = max S: {symbol_score(EA,_,"FUNC","Beg",S)}.
 
-inferred_symbol(EA,SymbolName,"GLOBAL","FUNC","Beg"),
+inferred_symbol(EA,SymbolName,Scope,"FUNC","Beg"),
 best_func_symbol(EA,SymbolName):-
     function_inference.function_entry(EA),
     !symbol_score(EA,_,"FUNC","Beg",_),
     // TODO: Function symbols are converted to hex in the C++.
     // A better solution would be to define a user-defined functor.
-    SymbolName = cat("FUN_",to_string(EA)).
+    SymbolName = cat("FUN_",to_string(EA)),
+    (
+        binary_isa("MIPS"), Scope = "GLOBAL";
+       !binary_isa("MIPS"), Scope = "LOCAL"
+    ).
 
 // Choose:
 // 1. the symbol with maximum score
