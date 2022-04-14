@@ -45,6 +45,39 @@ class CfgTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
+    def test_switch_overlap(self):
+        """
+        Test that with two overlapping jumptables, a conherent jump table is
+        generated.
+        """
+        binary = "ex"
+        with cd(ex_asm_dir / "ex_switch_overlap"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+        rodata = next(s for s in m.sections if s.name == ".jumptable")
+        ref = None
+        count = 0
+        for _, _, symexpr in rodata.symbolic_expressions_at(
+            range(rodata.address, rodata.address + rodata.size)
+        ):
+            if not isinstance(symexpr, gtirb.symbolicexpression.SymAddrAddr):
+                continue
+
+            # confirm all symexpr have the same ref
+            if count == 0:
+                ref = symexpr.symbol2
+
+            self.assertEqual(symexpr.symbol2.name, ref.name)
+            count += 1
+        self.assertEqual(count, 4)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_x86_64_object_cfg(self):
         """
         Test X86_64 object file relocation edges.
