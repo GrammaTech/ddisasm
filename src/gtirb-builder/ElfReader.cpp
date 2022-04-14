@@ -276,10 +276,16 @@ void ElfReader::buildSymbols()
 
         gtirb::Symbol *S;
 
-        // Symbols with special section index do not have an address.
+        // Symbols with special section index do not have an address except
+        // for absolute symbols (SHN_ABS).
+        // See
+        // https://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-94076.html#chapter6-tbl-16
+        // FILE symbols do not have an address either.
         if((SecIndex == static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)
             || (SecIndex >= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_LORESERVE)
-                && SecIndex <= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)))
+                && SecIndex <= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)
+                && SecIndex != static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_ABS))
+            || Type == "FILE")
            && Value == 0)
         {
             S = Module->addSymbol(*Context, Name);
