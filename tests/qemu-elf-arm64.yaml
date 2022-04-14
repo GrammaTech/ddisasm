@@ -141,3 +141,11 @@ tests:
 
   - name: ex_stack_split_load
     <<: *assembly
+
+  # ex1, stripped, dynamic
+  - name: ex1
+    <<: *default
+    test:
+      <<: *default-test
+      strip: true
+      check_cfg: false  # TODO: re-enable when #363 is fixed.
