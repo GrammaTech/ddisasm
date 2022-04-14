@@ -79,6 +79,10 @@ tests:
       compiler: "aarch64-linux-gnu-g++"
       flags: []
       skip: false
+    test:
+      <<: *default-test
+      # Don't check CFG on C++ binaries
+      check_cfg: false
 
   - name: ex_memberPointer
     <<: *default
