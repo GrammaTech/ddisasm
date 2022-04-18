@@ -269,7 +269,7 @@ instruction_displacement_offset(EA,Index,DisplacementOffset,DispSize):-
 instruction_get_operation(EA,Operation):-
     instruction(EA,_,_,Operation,_,_,_,_,_,_).
 
-.decl instruction_get_op(ea:address,index:operand_index,operator:operand_code)
+.decl instruction_get_op(ea:address, index:operand_index, operator:operand_code)
 
 instruction_get_op(EA,Index,Op):-
     instruction(EA,_,_,_,Op1,Op2,Op3,Op4,_,_),
@@ -583,6 +583,7 @@ alignment(0,0):- false.
 // Operations to abstract features of instructions
 
 .decl op_indirect_contains_reg(op:operand_code,reg:register)
+.output op_indirect_contains_reg
 
 // we ignore segment registers
 op_indirect_contains_reg(Op,Reg_uniform):-
@@ -594,6 +595,7 @@ op_indirect_contains_reg(Op,Reg_uniform):-
     arch.track_register(Reg3,Reg_uniform).
 
 .decl op_regdirect_contains_reg(op:operand_code,reg:register)
+.output op_regdirect_contains_reg
 
 op_regdirect_contains_reg(Op,Reg_uniform):-
     (
@@ -657,7 +659,9 @@ defined_symbol(EA,Size,Type,Scope,Visibility,SectIndex,OriginTable,TableIndex,Na
         SectIndex < 0xff00; // SHN_LORESERVE
         SectIndex = 0xfff1; // SHN_ABS
         SectIndex > 0xffff  // SHN_HIRESERVE
-    ).
+    ),
+    // Avoid FILE symbols.
+    Type != "FILE".
 
 ////////////////////////////////////////////////////////////////////////////////////////
 

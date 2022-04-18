@@ -15,9 +15,10 @@ main:
     # PSTATE
     msr DAIFSet, #10
 
-    # TODO: SYS (at_op)
-    # Currently decoded incorrectly using capstone 5.x (next).
-    # AT S12E0R, x0
+    # SYS (at_op)
+    at s12e0r, x0
+    dc cvau, x2
+    ic ivau, x0
 
     ldp fp,lr,[sp],#16
     ret

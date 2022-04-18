@@ -58,6 +58,7 @@ instruction_memory_access_size(EA,Index,SizeAccess):-
 
 //there is a data access at EA in the operand Op_index
 .decl data_access(EA:address,Op_index:operand_index,RegSegment:register,RegBase:register,RegIndex:register,Mult:number,Offset:number,Size:unsigned)
+.output data_access
 
 data_access(EA,Op_index,RegSegment,RegBase,RegIndex,Mult,Offset,Size):-
     code(EA),

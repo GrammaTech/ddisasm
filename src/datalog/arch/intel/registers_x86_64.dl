@@ -48,6 +48,9 @@ track_register("RSI","RSI").
 track_register("RBP","RBP").
 track_register("EBP","RBP").
 
+track_register("RSP","RSP").
+track_register("ESP","RSP").
+
 track_register("R8","R8").
 track_register("R8D","R8").
 
