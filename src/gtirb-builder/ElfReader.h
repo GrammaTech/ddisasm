@@ -25,6 +25,21 @@
 
 #include "./GtirbBuilder.h"
 
+class ElfReaderException : public std::exception
+{
+    std::string error_message;
+
+public:
+    ElfReaderException(const std::string& msg) : error_message(msg)
+    {
+    }
+
+    virtual const char* what() const throw()
+    {
+        return error_message.c_str();
+    }
+};
+
 class ElfReader : public GtirbBuilder
 {
 public:

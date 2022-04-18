@@ -109,12 +109,9 @@ build-conan-gcc9:
     # Set up user and remote
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
     - conan user ci_user -r gitlab -p
-    # Install gtirb python wheel
-    - python -m pip install pip --upgrade && python -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
+    # Install packages needed for the tests
+    - python -m pip install pip --upgrade && python -m pip install gtirb distro --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
-    - export PATH="$PATH;C:\\Program Files\\CMake\\bin"
-    - export SOUFFLE_INCLUDE_DIR="C:\\users\\vagrant\\AppData\\local\\Packages\\CanonicalGroupLimited.Ubuntu20.04onWindows_79rhkp1fndgsc\\localstate\\rootfs\\usr\\local\\include"
-    - export PYTHON="C:\\Python39\\python.exe"
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
     - python .ci/build.py -s build_type=$BUILD_TYPE
 

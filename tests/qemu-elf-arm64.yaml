@@ -28,14 +28,6 @@ default: &default
     skip: false
     check_cfg: true
 
-zero-one-two-three-optimize: &zero-one-two-three-optimize
-  <<: *default
-  build:
-    c: ["aarch64-linux-gnu-gcc"]
-    cpp: ["aarch64-linux-gnu-g++"]
-    optimizations: ["-O0", "-O1", "-O2", "-O3"]
-    flags: []
-
 assembly: &assembly
   <<: *default
   path: examples/arm64_asm_examples
@@ -111,9 +103,8 @@ tests:
   - name: ex_struct
     <<: *default
 
-  # FIXME: -Os: a new jump-table pattern: split_load after cfg changed
   - name: ex_switch
-    <<: *zero-one-two-three-optimize
+    <<: *default
 
   - name: ex_uninitialized_data
     <<: *default
@@ -150,3 +141,11 @@ tests:
 
   - name: ex_stack_split_load
     <<: *assembly
+
+  # ex1, stripped, dynamic
+  - name: ex1
+    <<: *default
+    test:
+      <<: *default-test
+      strip: true
+      check_cfg: false  # TODO: re-enable when #363 is fixed.
