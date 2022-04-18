@@ -133,7 +133,7 @@ void PeReader::buildSections()
         // properties for PE.
         //
         // FIXME: Investigate the compiling errors and resolve the problem.
-        //SectionProperties[S->getUUID()] = {0, Section.characteristics()};
+        // SectionProperties[S->getUUID()] = {0, Section.characteristics()};
     }
     Module->addAuxData<gtirb::schema::SectionProperties>(std::move(SectionProperties));
 }
