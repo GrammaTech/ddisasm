@@ -353,7 +353,7 @@ after_end(Next,End):-
 possible_target(EA):-
     after_end(EA,_),
     (
-        !arch.is_nop(EA);
+        !is_padding(EA);
         block_limit(EA)
     ).
 
