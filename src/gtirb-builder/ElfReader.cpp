@@ -174,7 +174,7 @@ void ElfReader::buildSymbols()
 {
     std::map<std::tuple<uint64_t, uint64_t, std::string, std::string, std::string, uint64_t,
                         std::string>,
-             std::vector<std::tuple<std::string, uint64_t>>>
+             std::tuple<std::set<std::string>, std::vector<std::tuple<std::string, uint64_t>>>>
         Symbols;
 
     auto LoadSymbols = [&](LIEF::ELF::it_symbols SymbolIt, std::string TableName, bool UseLimit,
@@ -206,11 +206,6 @@ void ElfReader::buildSymbols()
                     Version = SymbolVersion.symbol_version_auxiliary().name();
                 }
             }
-            if(Version)
-            {
-                // Construct a normalized symbol name and a version.
-                Name = Name.append("@" + *Version);
-            }
 
             // Rebase symbols onto their respective relocated section address.
             bool Relocatable = Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL;
@@ -231,15 +226,21 @@ void ElfReader::buildSymbols()
                 Value = tlsBaseAddress() + Value;
             }
 
-            Symbols[std::tuple(Value,                                     // Value
-                               Symbol.size(),                             // Size
-                               LIEF::ELF::to_string(Symbol.type()),       // Type
-                               LIEF::ELF::to_string(Symbol.binding()),    // Binding
-                               LIEF::ELF::to_string(Symbol.visibility()), // Scope
-                               Symbol.shndx(),                            // Section Index
-                               Name                                       // Name(@Version)
-                               )]
-                .push_back({TableName, TableIndex});
+            auto &[Versions, TableIndexes] =
+                Symbols[std::tuple(Value,                                     // Value
+                                   Symbol.size(),                             // Size
+                                   LIEF::ELF::to_string(Symbol.type()),       // Type
+                                   LIEF::ELF::to_string(Symbol.binding()),    // Binding
+                                   LIEF::ELF::to_string(Symbol.visibility()), // Scope
+                                   Symbol.shndx(),                            // Section Index
+                                   Name                                       // Name(@Version)
+                                   )];
+            if(Version)
+            {
+                Versions.insert(*Version);
+            }
+            TableIndexes.push_back({TableName, TableIndex});
+
             TableIndex++;
         }
     };
@@ -274,23 +275,43 @@ void ElfReader::buildSymbols()
 
     std::map<gtirb::UUID, auxdata::ElfSymbolInfo> SymbolInfo;
     std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo> SymbolTabIdxInfo;
-    for(auto &[Key, Indexes] : Symbols)
+    for(auto &[Key, VersionAndIndexes] : Symbols)
     {
         auto &[Value, Size, Type, Scope, Visibility, SecIndex, Name] = Key;
+        auto &[Versions, Indexes] = VersionAndIndexes;
 
+        std::string VersionedName = Name;
+        if(Versions.size() > 1)
+        {
+            auto VersionsIt = Versions.begin();
+            const std::string &Version1 = *(VersionsIt++);
+            const std::string &Version2 = *VersionsIt;
+            throw ElfReaderException("Indistinguishable symbol " + Name
+                                     + " has multiple versions: " + Version1 + " " + Version2);
+        }
+        if(Versions.size() > 0)
+        {
+            VersionedName = VersionedName.append("@" + *Versions.begin());
+        }
         gtirb::Symbol *S;
 
-        // Symbols with special section index do not have an address.
+        // Symbols with special section index do not have an address except
+        // for absolute symbols (SHN_ABS).
+        // See
+        // https://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-94076.html#chapter6-tbl-16
+        // FILE symbols do not have an address either.
         if((SecIndex == static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)
             || (SecIndex >= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_LORESERVE)
-                && SecIndex <= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)))
+                && SecIndex <= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)
+                && SecIndex != static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_ABS))
+            || Type == "FILE")
            && Value == 0)
         {
-            S = Module->addSymbol(*Context, Name);
+            S = Module->addSymbol(*Context, VersionedName);
         }
         else
         {
-            S = Module->addSymbol(*Context, gtirb::Addr(Value), Name);
+            S = Module->addSymbol(*Context, gtirb::Addr(Value), VersionedName);
         }
 
         assert(S && "Failed to create symbol.");
