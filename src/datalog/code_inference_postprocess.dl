@@ -175,7 +175,7 @@ next_refined_block_in_section(Block,NextBlock):-
 
 // blocks with only nops are padding
 padding(EA,Size):-
-    nop_block(EA),
+    padding_block(EA),
     block_information(EA,Size,_).
 
 // padding that does not form a block
@@ -187,34 +187,34 @@ padding(EA,Size):-
     Size = NonNop-EA,
     Size > 0.
 
-.decl block_has_non_nop(Block:address)
+.decl block_has_non_padding(Block:address)
 
-block_has_non_nop(Block):-
+block_has_non_padding(Block):-
     block_boundaries(Block,BegAddr,EndAddr),
     code_in_refined_block(EA,Block),
     EA >= BegAddr,
     EA < EndAddr,
-    !arch.is_nop(EA).
+    !is_padding(EA).
 
-.decl nop_block(Block:address)
+.decl padding_block(Block:address)
 
-nop_block(Block):-
+padding_block(Block):-
     refined_block(Block),
-    !block_has_non_nop(Block).
+    !block_has_non_padding(Block).
 
 // nops before code in a block
 .decl padding_prefix(EA:address,Block:address)
 
 padding_prefix(EA,Block):-
     code_in_block(EA,Block),
-    arch.is_nop(EA),
+    is_padding(EA),
     EA = Block.
 
 padding_prefix(EA,Block):-
     padding_prefix(PrevEA,Block),
     next(PrevEA,EA),
     code_in_block(EA,Block),
-    arch.is_nop(EA).
+    is_padding(EA).
 
 // the first code EA after nop pads in the given block
 .decl padding_prefix_end(EA:address,Block:address)
@@ -222,6 +222,6 @@ padding_prefix(EA,Block):-
 
 padding_prefix_end(EA,Block):-
     code_in_block(EA,Block),
-    !arch.is_nop(EA),
+    !is_padding(EA),
     next(PrevEA,EA),
     padding_prefix(PrevEA,Block).
