@@ -355,7 +355,7 @@ int main(int argc, char **argv)
 
         // Remove provisional AuxData tables.
         Module.removeAuxData<gtirb::schema::Relocations>();
-        Module.removeAuxData<gtirb::schema::ElfSectionIndex>();
+        Module.removeAuxData<gtirb::schema::SectionIndex>();
 
         // Pretty-print
         if(vm.count("debug") != 0)

@@ -103,6 +103,10 @@ void ElfReader::buildSections()
         {
             S->addFlag(gtirb::SectionFlag::Initialized);
         }
+        if(Tls)
+        {
+            S->addFlag(gtirb::SectionFlag::ThreadLocal);
+        }
 
         if(Loaded)
         {
@@ -162,8 +166,8 @@ void ElfReader::buildSections()
     }
 
     Module->addAuxData<gtirb::schema::Alignment>(std::move(Alignment));
-    Module->addAuxData<gtirb::schema::ElfSectionIndex>(std::move(SectionIndex));
-    Module->addAuxData<gtirb::schema::ElfSectionProperties>(std::move(SectionProperties));
+    Module->addAuxData<gtirb::schema::SectionIndex>(std::move(SectionIndex));
+    Module->addAuxData<gtirb::schema::SectionProperties>(std::move(SectionProperties));
 }
 
 void ElfReader::buildSymbols()

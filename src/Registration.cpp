@@ -52,14 +52,13 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
     gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
     gtirb::AuxDataContainer::registerAuxDataType<Encodings>();
-    gtirb::AuxDataContainer::registerAuxDataType<ElfSectionProperties>();
-    gtirb::AuxDataContainer::registerAuxDataType<ElfSectionIndex>();
+    gtirb::AuxDataContainer::registerAuxDataType<SectionProperties>();
+    gtirb::AuxDataContainer::registerAuxDataType<SectionIndex>();
     gtirb::AuxDataContainer::registerAuxDataType<CfiDirectives>();
     gtirb::AuxDataContainer::registerAuxDataType<Libraries>();
     gtirb::AuxDataContainer::registerAuxDataType<LibraryPaths>();
     gtirb::AuxDataContainer::registerAuxDataType<SymbolicExpressionSizes>();
     gtirb::AuxDataContainer::registerAuxDataType<DdisasmVersion>();
-    gtirb::AuxDataContainer::registerAuxDataType<PeSectionProperties>();
     gtirb::AuxDataContainer::registerAuxDataType<PeImportedSymbols>();
     gtirb::AuxDataContainer::registerAuxDataType<PeExportedSymbols>();
     gtirb::AuxDataContainer::registerAuxDataType<ExportEntries>();
