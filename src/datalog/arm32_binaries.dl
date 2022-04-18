@@ -526,7 +526,7 @@ symbol_minus_symbol_from_relocation(EA,4,SymbolName2,"_GLOBAL_OFFSET_TABLE_",1,O
     (
         Type = "LDR", Offset = -4
         ;
-        Type = "ADR", Offset = 0
+        Type = "AddPC", Offset = 0
     ),
     best_symexpr_symbol(Symbol2,SymbolName2,"Beg").
 
@@ -779,7 +779,7 @@ symbol_minus_symbol_jump_table(DataEA,TableStart,Size,TableStart,TargetAddr,as(S
 Instruction at address `EA` accesses a literal pool located at `LitPoolAddr`
 
 Type="LDR" : Reg gets the value at the LitPoolAddr
-Type="ADR" : Reg gets the address of the literal pool (LitPoolAddr)
+Type="AddPC" : Reg gets the address of the literal pool (LitPoolAddr)
 */
 .decl litpool_ref(EA:address, Reg:register, LitPoolAddr:address, Size:unsigned, Type:symbol)
 
@@ -807,7 +807,7 @@ litpool_ref(EA,Reg,LitPoolAddr,Size,Type):-
         LitPoolAddr0 = as(Val,address),
         LitPoolAddr = LitPoolAddr0 - (LitPoolAddr0 band 3),
         Size = 4,
-        Type = "ADR"
+        Type = "AddPC"
     ),
     instruction_get_dest_op(EA,_,RegOp),
     (
@@ -843,7 +843,7 @@ EA is the address of the adr or ldr but the double is actually read
 later in the next instruction (ldrd).
 
 Type="LDR" : Reg1 and Reg2 get the values at the LitPoolAddr
-Type="ADR" : Reg1 and Reg2 get the values at the address pointed
+Type="AddPC" : Reg1 and Reg2 get the values at the address pointed
              by the value at the LitPoolAddr
 */
 .decl litpool_ref_double(EA:address, Reg1:register, Reg2:register, LitPoolAddr:address, Type:symbol)
@@ -862,7 +862,7 @@ litpool_ref_double(EA,Reg1,Reg2,LitPoolAddr,Type):-
 
 data_block_candidate(LitPoolAddr,Pt_size*2):-
     arch.pointer_size(Pt_size),
-    litpool_ref_double(_,_,_,LitPoolAddr,"ADR").
+    litpool_ref_double(_,_,_,LitPoolAddr,"AddPC").
 
 data_block_candidate(LitPoolAddr,Pt_size):-
     arch.pointer_size(Pt_size),
@@ -945,28 +945,22 @@ symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
     litpool_ref_double(EA,_,_,LitPoolAddr,_).
 
 /**
-E.g.,
-EA:add r, pc, offset
-   ldrd r1, r2, [r]
-where LitPoolAddr = align(EA + Disp) + Offset.
+symbolic_operand_candidate & symbolic_expr to prepare for the convertion:
+addw reg, pc, offset
 =>
-Thumb mode---
-.L: add r, pc, (LitPoolAddr - .L - 2) & ~0b11
-ARM mode---
-.L: add r, pc, (LitPoolAddr - .L - 8)
-*/
-symbolic_operand_attribute(EA,2,"PcAlignAdjust2"),
-symbol_minus_symbol_candidate(EA,4,EA,LitPoolAddr,1,-2):-
-    litpool_ref(EA,_,LitPoolAddr,_,"ADR"),
-    instruction_get_operation(EA,Operation),
-    substr(Operation,0,3) = "ADD",
-    arch.pc_relative_disp(EA,4).
+adr reg, label
 
-symbol_minus_symbol_candidate(EA,4,EA,LitPoolAddr,1,-8):-
-    litpool_ref(EA,_,LitPoolAddr,_,"ADR"),
-    instruction_get_operation(EA,Operation),
-    substr(Operation,0,3) = "ADD",
-    arch.pc_relative_disp(EA,8).
+where label = align(pc + offset + disp): disp=4 for thumb, 8 for arm.
+*/
+symbolic_operand_candidate(EA,1,LitPoolAddr,"data"):-
+    code(EA),
+    litpool_ref(EA,_,LitPoolAddr,_,"AddPC").
+
+symbolic_expr(EA+InstrOffset,Size,SymbolName,0):-
+    litpool_ref(EA,_,LitPoolAddr,_,"AddPC"),
+    InstrOffset = 0,
+    Size = 2,
+    best_symexpr_symbol(LitPoolAddr,SymbolName,"Beg").
 
 /**
 Matches instruction patterns that access a symbol-symbol from the literal pool.
@@ -978,7 +972,7 @@ Size: The size of the symbolic expression
 EA_litpool_ref: The EA referencing the literal pool (EA)
 EA_def: The address associated with Symbol1
 Reg: The register containing Symbol2
-Type: Either "LDR" or "ADR"
+Type: Either "LDR" or "AddPC"
 */
 .decl symbol_minus_symbol_litpool_access_pattern(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,EA_litpool_ref:address,EA_def:address,Reg:register,Type:symbol)
 .output symbol_minus_symbol_litpool_access_pattern
@@ -1018,7 +1012,7 @@ symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA
 // LitPool: .word TARGET - Base
 //
 // (in observed cases, LitPool == Base)
-symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA_ldr,EA_add,Reg,"ADR"):-
+symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA_ldr,EA_add,Reg,"AddPC"):-
     // e.g., ldr reg1, LitPool
     litpool_ref(EA_ldr,Reg,LitPoolAddr,Size,"LDR"),
 
@@ -1028,7 +1022,7 @@ symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA
 
     // e.g., adr reg1, Base
     def_used(EA_adr,Reg2,EA_add,_),
-    litpool_ref(EA_adr,Reg2,BaseAligned,4,"ADR"),
+    litpool_ref(EA_adr,Reg2,BaseAligned,4,"AddPC"),
 
     data_word(LitPoolAddr,Size,Diff),
 
@@ -1041,7 +1035,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,as(Symbol2,number)):-
 
 labeled_data_candidate(Symbol2),
 symbol_minus_symbol_jump_table(LitPoolAddr,LitPoolAddr,Size,Symbol1,Symbol2,1,0):-
-    symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,_,_,_,"ADR").
+    symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,_,_,_,"AddPC").
 
 /**
 litpool_symbolic_operand

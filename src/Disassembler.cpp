@@ -513,8 +513,7 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(
         {"DtpOff", gtirb::SymAttribute::DtpOff},
         {"Lo12", gtirb::SymAttribute::Lo12},
         {"Hi", gtirb::SymAttribute::Hi},
-        {"Lo", gtirb::SymAttribute::Lo},
-        {"PcAlignAdjust2", gtirb::SymAttribute::PcAlignAdjust2}};
+        {"Lo", gtirb::SymAttribute::Lo}};
     gtirb::SymAttributeSet Attributes;
 
     auto Range = SymbolicDataAttributes.equal_range(EA);
