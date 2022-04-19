@@ -5,7 +5,7 @@ default: &default
   binary: ex
 
   # Compilation configuration.
-  build:
+  build: &default-build
     c: ["gcc", "clang"]
     cpp: ["g++", "clang++"]
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
@@ -125,6 +125,13 @@ tests:
 
   - name: ex_getoptlong
     <<: *default
+
+  - name: ex_init_array
+    <<: *default-cpp
+    build:
+      <<: *default-build
+      # Testing one version is enough.
+      optimizations: ["-O0"]
 
   - name: ex_memberPointer
     <<: *default-cpp

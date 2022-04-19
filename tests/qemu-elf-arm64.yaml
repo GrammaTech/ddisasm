@@ -69,6 +69,21 @@ tests:
   - name: ex_getoptlong
     <<: *default
 
+  - name: ex_init_array
+    <<: *default
+    build:
+      <<: *default-build
+      # Testing one version is enough.
+      optimizations: ["-O0"]
+    reassemble:
+      compiler: "aarch64-linux-gnu-g++"
+      flags: []
+      skip: false
+    test:
+      <<: *default-test
+      # Don't check CFG on C++ binaries
+      check_cfg: false
+
   - name: ex_memberPointer
     <<: *default
     reassemble:

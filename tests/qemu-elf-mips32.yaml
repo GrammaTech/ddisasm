@@ -83,6 +83,12 @@ tests:
   - name: ex_getoptlong
     <<: *default
 
+  - name: ex_init_array
+    <<: *zero-optimize
+    reassemble:
+      compiler: "mips-linux-gnu-g++"
+      flags: ["-no-pie"]
+
   - name: ex_noreturn
     <<: *default
 
