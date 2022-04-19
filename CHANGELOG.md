@@ -1,5 +1,8 @@
 # 1.5.3 (Unreleased)
-* TBD
+* Rename `elfSectionIndex` to `sectionIndex`, and `elfSectionProperties` to
+  `sectionProperties`, and remove `peSectionProperties`.
+* Refactor `section_complete`: add `section_property`, and rename `section_complete`
+  to `section`, and `section` to `loaded_section`.
 
 # 1.5.2
 * Add ELF x86_64 .o support.

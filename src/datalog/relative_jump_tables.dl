@@ -269,8 +269,8 @@ relative_jump_table_entry_candidate(TableStart,TableStart,Size,TableReference,De
     Dest = as(TableReference_signed + as(Scale,number)*Diff,unsigned),
     code(Dest),
     // The table is in a loaded section.
-    section(_,SectionSize,SectionStart),
-    TableStart >= SectionStart, TableStart < (SectionStart + SectionSize).
+    loaded_section(SectionStart,SectionEnd,_),
+    TableStart >= SectionStart, TableStart < SectionEnd.
 
 // propagate until finding:
 // * something that doesn't resolve to a code pointer.

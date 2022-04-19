@@ -125,13 +125,13 @@ got_reference(GotEntry,Symbol):-
     dynamic_entry("MIPS_GOTSYM",FirstIndex),
     dynamic_entry("MIPS_LOCAL_GOTNO",NumLocalEntries),
     Index >= FirstIndex,
-    section(".got",_,Beg),
+    loaded_section(Beg,_,".got"),
     GotEntry = Beg + NumLocalEntries*4 + (Index-FirstIndex)*4.
 
 // Local entries
 got_reference(Got_entry,SymbolName):-
     symbolic_expr(Got_entry,4,SymbolName,0),
-    section(".got",_,Beg),
+    loaded_section(Beg,_,".got"),
     Got_entry >= Beg,
     dynamic_entry("MIPS_LOCAL_GOTNO",NumLocalEntries),
     Got_entry < Beg+4*NumLocalEntries.
@@ -501,9 +501,9 @@ mips_stubs_section(".MIPS.stubs").
 
 mips_stubs_entry(Block,Function):-
     mips_stubs_section(SecName),
-    section(SecName,Beg,Size),
+    loaded_section(Beg,End,SecName),
     EA >= Beg,
-    EA < Beg+Size,
+    EA < End,
     // Reuse the definition of plt_entry_candidate since the pattern
     // is the same.
     plt_entry_candidate(EA,GotIndex),
@@ -525,7 +525,7 @@ plt_entry_candidate(EA,as(GotIndex,unsigned)):-
     op_regdirect_contains_reg(Op2,"T9"),
     op_indirect(Op1,"NONE","GP","NONE",_,Offset,_),
     symbol(GpValue,_,_,_,_,_,_,_,"_gp"),
-    section(".got",_,GotBeg),
+    loaded_section(GotBeg,_,".got"),
     GotBeg = GpValue+as(Offset,address),
 
     next(PrevEA2, PrevEA),
@@ -568,9 +568,9 @@ plt_entry(EA,Function):-
 // NOTE: Cases of no delay-slot were observed
 plt_entry(EA,Function):-
     plt_section(SecName),
-    section(SecName,Beg,Size),
+    loaded_section(Beg,End,SecName),
     EA >= Beg,
-    EA < Beg+Size,
+    EA < End,
 
     next(EA,NextEA),
 

@@ -315,9 +315,9 @@ E.g.,
 */
 plt_entry_arm_candidate(EA,EA_jump,Function,as(Dest,address)):-
     plt_section(SecName),
-    section(SecName,Size,Beg),
-    EA < Beg+Size,
+    loaded_section(Beg,End,SecName),
     EA >= Beg,
+    EA < End,
 
     arch.pc_register(PC),
 
@@ -351,9 +351,9 @@ E.g.,
 */
 plt_entry_arm_candidate(EA,EA_jump,Function,as(Dest,address)):-
     plt_section(SecName),
-    section(SecName,Size,Beg),
-    EA < Beg+Size,
+    loaded_section(Beg,End,SecName),
     EA >= Beg,
+    EA < End,
 
     arch.pc_register(PC),
 
@@ -1084,13 +1084,20 @@ value_reg_edge(EA,Reg,EA,"NONE",0,as(Val,number)):-
 //
 symbol_minus_symbol(LitPoolAddr2,Size,Symbol1,Symbol2,1,0):-
     litpool_symbolic_operand(LitPoolAddr2,Size,Symbol1,Symbol2,_,_,_),
-    section(".got",Size,Beg),
+    loaded_section(Beg,End,".got"),
+    // Symbol2 is not in got.
     (
-        Symbol2 < Beg
+        Symbol2 < Beg, End = End
         ;
-        Symbol2 >= Beg+Size
+        Symbol2 >= End
     ),
-    !relocation(LitPoolAddr2,_,_,_,_,_,_).
+    !relocation(LitPoolAddr2,_,_,_,_,_,_),
+    (
+        code(Symbol2)
+        ;
+        data_segment(DataBeg,DataEnd),
+        Symbol2 >= DataBeg, Symbol2 < DataEnd
+    ).
 
 //  => equations: [LitPoolAddr1] = foo - (C)
 //                [LitPoolAddr2] = bar(GOT) - foo => bar(GOT)
@@ -1098,9 +1105,9 @@ symbol_minus_symbol(LitPoolAddr2,Size,Symbol1,Symbol2,1,0):-
 symbolic_expr_attribute(LitPoolAddr,"GotRelPC"),
 symbolic_data(LitPoolAddr,SymSize,Got_entry):-
     litpool_symbolic_operand(LitPoolAddr,_,_,Got_entry,_,_,SymSize),
-    section(".got",GotSize,GotBeg),
+    loaded_section(GotBeg,GotEnd,".got"),
     Got_entry >= GotBeg,
-    Got_entry < GotBeg+GotSize,
+    Got_entry < GotEnd,
     (
         relocation(Got_entry,RelType,Symbol,_,_,_,_),
         RelType != "RELATIVE",

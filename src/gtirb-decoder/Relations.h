@@ -133,10 +133,20 @@ namespace relations
         std::string Name;
         uint64_t Size;
         gtirb::Addr Addr;
-        uint64_t Type;
-        uint64_t Flags;
         uint64_t Align;
         uint64_t Index;
+    };
+
+    struct SectionProperty
+    {
+        std::string Name;
+        std::string Property;
+    };
+
+    struct SectionType
+    {
+        std::string Name;
+        uint64_t Type;
     };
 
     struct Padding
@@ -239,6 +249,10 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::DynamicEntry& D);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Section& S);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionProperty& S);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionType& S);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Instruction& I);
 
