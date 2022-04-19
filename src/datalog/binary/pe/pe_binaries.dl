@@ -504,7 +504,7 @@ is_padding(EA):-
     instruction_get_operation(EA,"INT3").
 
 // Make padding blocks in PEs data. Otherwise each
-// Individual INT3 instruction is its own block.
+// individual INT3 instruction is its own block.
 // Using the point system is too expensive.
 discarded_block(EA,"code","PE padding considered data"):-
     candidate_block_is_padding(EA).
