@@ -1113,7 +1113,7 @@ symbolic_data(LitPoolAddr,SymSize,Got_entry):-
         RelType != "RELATIVE",
         symbol(_,_,_,_,_,_,_,_,Symbol)
         ;
-        symbolic_data(Got_entry,SymSize,Dest)
+        symbolic_data(Got_entry,SymSize,_)
     ).
 
 must_access_data(EA,Dest):-
