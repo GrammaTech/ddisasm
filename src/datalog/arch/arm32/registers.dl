@@ -57,6 +57,8 @@ track_register("LR","LR").
 //track_register("R15","PC").
 track_register("PC","PC").
 
+track_register("APSR_NZCVQ", "APSR_NZCVQ").
+
 .decl reg_index(RegName:register,Index:unsigned)
 
 reg_index("R0",0).
@@ -97,3 +99,5 @@ frame_pointer("FP").
 stack_pointer("SP").
 
 return_val_reg("R0").
+
+condition_flags_reg("APSR_NZCVQ").

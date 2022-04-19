@@ -113,8 +113,8 @@ cfg_edge(Src,Dest,Conditional,Indirect,EdgeType):-
         arch.call(EA,_),EdgeType="call"
     ),
     (
-        !arch.conditional(EA),Conditional = "false";
-        arch.conditional(EA),Conditional = "true"
+        !arch.conditional(EA,_),Conditional = "false";
+        arch.conditional(EA,_),Conditional = "true"
     ).
 
 cfg_edge(Src,Dest,"false","false","call"):-

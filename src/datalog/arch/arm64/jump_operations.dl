@@ -26,59 +26,61 @@ The set of jump operations in aarch64
 
 // Basic jump operations
 jump_operation("B").
+jump_operation("B.AL").  // always (not really conditional)
 jump_operation("BR").
 
 /**
 Conditional branches
 */
-.decl conditional_branch(c:symbol)
-conditional_branch("B.EQ").
-conditional_branch("B.NE").
-conditional_branch("B.GT").
-conditional_branch("B.LT").
-conditional_branch("B.GE").
-conditional_branch("B.LE").
-conditional_branch("B.CS").
-conditional_branch("B.HS").
-conditional_branch("B.CC").
-conditional_branch("B.LO").
-conditional_branch("B.MI").
-conditional_branch("B.PL").
-conditional_branch("B.AL").
-conditional_branch("B.NV").
-conditional_branch("B.VS").
-conditional_branch("B.VC").
-conditional_branch("B.HI").
-conditional_branch("B.LS").
+.decl conditional_branch(Operation:symbol,CC:condition_code)
+
+conditional_branch(Operation,CC):-
+    (
+        Base = "B.";
+        Base = "BC."
+    ),
+    (
+        Suffix = "EQ", CC = "E";
+        Suffix = "NE", CC = "NE";
+        Suffix = "GT", CC = "G";
+        Suffix = "LT", CC = "L";
+        Suffix = "GE", CC = "GE";
+        Suffix = "LE", CC = "LE";
+        Suffix = "HS", CC = "AE";
+        Suffix = "LO", CC = "B";
+        Suffix = "MI", CC = "S";
+        Suffix = "PL", CC = "NS";
+        Suffix = "VS", CC = "O";
+        Suffix = "VC", CC = "NO";
+        Suffix = "HI", CC = "A";
+        Suffix = "LS", CC = "BE"
+    ),
+    Operation = cat(Base,Suffix).
 
 jump_operation(Operation),
-conditional_operation(Operation):-
-    conditional_branch(Operation).
+conditional_operation(Operation,CC):-
+    conditional_branch(Operation,CC).
 
 /**
 ARM64 conditional test and jump operations
 */
-.decl test_jump_operation(Operation:symbol, JumpTargetIndex:operand_index)
-test_jump_operation("CBZ", 1).
-test_jump_operation("CBNZ", 1).
-test_jump_operation("TBZ", 2).
-test_jump_operation("TBNZ", 2).
+.decl test_jump_operation(Operation:symbol,JumpTargetIndex:operand_index,CC:condition_code)
+test_jump_operation("CBZ",1,"E").
+test_jump_operation("CBNZ",1,"NE").
+test_jump_operation("TBZ",2,"E").
+test_jump_operation("TBNZ",2,"NE").
 
 jump_operation(Operation),
-conditional_operation(Operation):-
-    test_jump_operation(Operation,_).
-
-jump_equal_operation("B.EQ").
-
-jump_unequal_operation("B.NE").
+conditional_operation(Operation,CC):-
+    test_jump_operation(Operation,_,CC).
 
 jump_operation_op_index(Operation,1):-
     jump_operation(Operation),
-    !test_jump_operation(Operation,_).
+    !test_jump_operation(Operation,_,_).
 
 jump_operation_op_index(Operation,Index):-
     jump_operation(Operation),
-    test_jump_operation(Operation,Index).
+    test_jump_operation(Operation,Index,_).
 
 call_operation_op_index(Operation,1):-
     call_operation(Operation).

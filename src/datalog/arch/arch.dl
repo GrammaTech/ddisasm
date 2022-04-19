@@ -52,6 +52,37 @@ of them.
 #endif
 
 /**
+This condition code type is modeled primarily after Intel codes.
+
+A condition code of "?" indicates that the comparison is not understood by ddisasm.
+
+Mapping to other architectures is provided:
+
+CC  ARM Intel MIPS    Description
+
+O   VS  O     -       Overflow
+NO  VC  NO    -       No overflow
+P   -   P     -       Parity
+PE  -   PE    -       No parity
+S   MI  S     -       Negative
+NS  PL  NS    -       Positive or zero
+
+E   EQ  E     EQ      Equal
+NE  NE  NE    NE      Not equal
+
+A   HI  A     -       Unsigned above
+B   LO  B     -       Unsigned below
+AE  HS  AE    -       Unsigned above or equal
+BE  LS  BE    -       Unsigned below or equal
+
+G   GT  G     GTZ     Signed greater
+L   LT  L     LTZ     Signed less
+GE  GE  GE    GEZ     Signed greater or equal
+LE  LE  LE    LEZ     Signed less or equal
+*/
+.type condition_code <: symbol
+
+/**
 Define a standard interface for architecture components.
 */
 .comp Arch {
@@ -72,8 +103,6 @@ An operation that may be a jump, depending on context. Use arch.jump(EA) for a
 defintive list of jumps.
 */
 .decl jump_operation(Operation:symbol)
-.decl jump_equal_operation(Operation:symbol)
-.decl jump_unequal_operation(Operation:symbol)
 
 /**
 Define all variants of the move operation.
@@ -90,14 +119,14 @@ load_word_operation(""):-
 .decl store_operation(Operation:symbol)
 .output store_operation
 
-.decl conditional_operation(Operation:symbol)
+.decl conditional_operation(Operation:symbol,CC:condition_code)
 
-.decl conditional(EA:address)
+.decl conditional(EA:address,CC:condition_code)
 .output conditional
 
-conditional(EA):-
+conditional(EA,CC):-
     instruction_get_operation(EA,Operation),
-    arch.conditional_operation(Operation).
+    arch.conditional_operation(Operation,CC).
 
 .decl op_does_not_read_dest_reg(Operation:symbol)
 .output op_does_not_read_dest_reg
@@ -153,6 +182,18 @@ halt_operation(""):-
 
 .decl cmp_operation(Operation:symbol)
 .output cmp_operation
+
+/**
+Comparison operations where a value is implicitly compared to zero.
+
+Comparison may occur within an instruction that is also a branch operation,
+e.g., "BEQZ" on MIPS.
+*/
+.decl cmp_zero_operation(Operation:symbol)
+.output cmp_zero_operation
+
+cmp_zero_operation(""):-
+    false.
 
 // ===========================================================================
 // Operation Operand Indices
@@ -252,6 +293,68 @@ See arch.memory_access().
 store(EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset):-
     memory_access("STORE",EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset).
 
+/**
+A pair of instructions that sets the flags register and then conditionally jump.
+
+Empty on architectures where a flags register is not used.
+*/
+.decl flags_and_jump_pair(EA_flags:address,EA_jmp:address,CC:condition_code)
+.output flags_and_jump_pair
+
+flags_and_jump_pair(EA_flags,EA_jmp,CC):-
+    condition_flags_reg(Reg),
+    def_used(EA_flags,Reg,EA_jmp,_),
+    arch.jump(EA_jmp),
+    arch.conditional(EA_jmp,CC).
+
+/**
+A pair of instructions that compares a register to an immediate and then
+conditionally jumps.
+*/
+.decl compare_and_jump_immediate(EA_cmp:address,EA_jmp:address,CC:condition_code,Reg:register,Immediate:number)
+.output compare_and_jump_immediate
+
+// Branch instruction that uses the result of a compare-to-immediate
+compare_and_jump_immediate(EA_cmp,EA_jmp,CC,Reg,Immediate):-
+    flags_and_jump_pair(EA_cmp,EA_jmp,CC),
+    instruction_get_operation(EA_cmp,Operation),
+    arch.cmp_operation(Operation),
+    cmp_immediate_to_reg(EA_cmp,Reg,_,Immediate).
+
+// Branch instructions with built-in zero comparisons
+compare_and_jump_immediate(EA,EA,CC,Reg,0):-
+    instruction_get_operation(EA,Operation),
+    arch.cmp_zero_operation(Operation),
+    arch.jump(EA),
+    arch.conditional(EA,CC),
+    instruction_get_op(EA,_,Op),
+    (
+        // Explicit register
+        op_regdirect_contains_reg(Op,Reg)
+        ;
+        // Implicit register (e.g., Intel "JECXZ")
+        register_access(EA,"R",RawReg),
+        arch.track_register(RawReg,Reg),
+        !op_regdirect_contains_reg(Op,Reg)
+    ).
+
+/**
+A pair of instructions that compares a register to another register and then
+conditionally jumps.
+*/
+.decl compare_and_jump_register(EA_cmp:address,EA_jmp:address,CC:condition_code,Reg1:register,Reg2:register)
+
+// cmp-and-branch pairs using a flags register
+compare_and_jump_register(EA_cmp,EA_jmp,CC,Reg1,Reg2):-
+    flags_and_jump_pair(EA_cmp,EA_jmp,CC),
+    cmp_reg_to_reg(EA_cmp,Reg1,Reg2).
+
+// Single instruction that compares and branches
+compare_and_jump_register(EA,EA,CC,Reg1,Reg2):-
+    cmp_reg_to_reg(EA,Reg1,Reg2),
+    arch.jump(EA),
+    arch.conditional(EA,CC).
+
 .decl delay_slot(BranchEA:address,EA:address)
 .output delay_slot
 
@@ -308,6 +411,7 @@ is part of an indirect operand, but that operand is not a destination).
 
 defines_reg(EA,Reg):-
     (
+        register_access(EA,"W",UntrackedReg), arch.track_register(UntrackedReg,Reg);
         load(EA,_,_,Reg,_,_,_,_);
         reg_arithmetic_operation(EA,Reg,_,_,_);
         reg_reg_arithmetic_operation(EA,Reg,_,_,_,_);
@@ -361,6 +465,11 @@ according to the architecture's calling convention.
 .output stack_pointer
 
 .decl return_val_reg(Reg:register)
+
+/**
+The register that holds condition flags.
+*/
+.decl condition_flags_reg(Reg:register)
 
 /**
 A pc-relative address 'Val' is loaded into 'Reg' at address 'EA'.

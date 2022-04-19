@@ -69,7 +69,11 @@ mov(EA):-
     move_operation(Operation).
 
 is_nop(EA):-
-    instruction_get_operation(EA,"NOP").
+    instruction_get_operation(EA,Operation),
+    (
+        Operation = "NOP";
+        Operation = "B.NV"  // B.NV is a never-taken branch.
+    ).
 
 op_does_not_read_dest_reg(Operation):-
     instruction_get_operation(_, Operation).

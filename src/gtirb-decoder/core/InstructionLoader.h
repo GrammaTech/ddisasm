@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 #ifndef SRC_GTIRB_DECODER_CORE_INSTRUCTIONLOADER_H_
 #define SRC_GTIRB_DECODER_CORE_INSTRUCTIONLOADER_H_
+#include <capstone/capstone.h>
 
 #include <gtirb/gtirb.hpp>
 #include <vector>
@@ -185,35 +186,56 @@ public:
         return InstructionWritebackList;
     }
 
+    void registerAccess(const relations::RegisterAccess& access)
+    {
+        RegisterAccesses.push_back(access);
+    }
+
+    const std::vector<relations::RegisterAccess>& registerAccesses() const
+    {
+        return RegisterAccesses;
+    }
+
 private:
     std::vector<relations::Instruction> Instructions;
     std::vector<gtirb::Addr> InvalidInstructions;
     std::vector<relations::ShiftedOp> ShiftedOps;
     std::vector<relations::ShiftedWithRegOp> ShiftedWithRegOps;
     std::vector<relations::InstructionWriteback> InstructionWritebackList;
+    std::vector<relations::RegisterAccess> RegisterAccesses;
 };
 
-template <typename T>
+struct BinaryFacts
+{
+    InstructionFacts Instructions;
+    OperandFacts Operands;
+};
+
 class InstructionLoader
 {
 public:
-    using FactsType = T;
-
     virtual ~InstructionLoader(){};
 
     void operator()(const gtirb::Module& Module, DatalogProgram& Program)
     {
-        T Facts;
+        BinaryFacts Facts;
         load(Module, Facts);
         insert(Facts, Program);
     }
 
 protected:
-    explicit InstructionLoader(uint8_t N) : InstructionSize{N} {};
+    explicit InstructionLoader(uint8_t N) : InstructionSize{N}
+    {
+        // Create smart Capstone handle.
+        CsHandle.reset(new csh(0), [](csh* Handle) {
+            cs_close(Handle);
+            delete Handle;
+        });
+    };
 
-    virtual void insert(const T& Facts, DatalogProgram& Program) = 0;
+    virtual void insert(const BinaryFacts& Facts, DatalogProgram& Program);
 
-    virtual void load(const gtirb::Module& Module, T& Facts)
+    virtual void load(const gtirb::Module& Module, BinaryFacts& Facts)
     {
         for(const auto& Section : Module.sections())
         {
@@ -231,7 +253,7 @@ protected:
     // NOTE: If needed, Module can be used in the inherited functions:
     // e.g., ARM32
     virtual void load([[maybe_unused]] const gtirb::Module& Module,
-                      const gtirb::ByteInterval& ByteInterval, T& Facts)
+                      const gtirb::ByteInterval& ByteInterval, BinaryFacts& Facts)
     {
         assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
 
@@ -248,11 +270,17 @@ protected:
         }
     }
 
+    // Load register accesses for a cs_insn
+    virtual void loadRegisterAccesses(BinaryFacts& Facts, uint64_t Addr,
+                                      const cs_insn& CsInstruction);
+
     // Disassemble bytes and build Instruction and Operand facts.
-    virtual void decode(T& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) = 0;
+    virtual void decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) = 0;
 
     // We default to decoding instructions at every byte offset.
     uint8_t InstructionSize = 1;
+
+    std::shared_ptr<csh> CsHandle;
 };
 
 // Decorator for loading instructions from known code blocks.
@@ -260,9 +288,7 @@ template <typename T>
 class CodeBlockLoader : public T
 {
 protected:
-    using FactsType = typename T::FactsType;
-
-    void load(const gtirb::Module& Module, FactsType& Facts) override
+    void load(const gtirb::Module& Module, BinaryFacts& Facts) override
     {
         for(auto& Block : Module.code_blocks())
         {
@@ -270,7 +296,7 @@ protected:
         }
     }
 
-    void load(const gtirb::CodeBlock& Block, FactsType& Facts)
+    void load(const gtirb::CodeBlock& Block, BinaryFacts& Facts)
     {
         assert(Block.getAddress() && "Found code block without address.");
         gtirb::Addr Addr = *Block.getAddress();

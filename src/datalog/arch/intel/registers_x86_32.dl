@@ -51,6 +51,8 @@ track_register("ESP","ESP").
 track_register("BP","EBP").
 track_register("EBP","EBP").
 
+track_register("EFLAGS", "EFLAGS").
+
 function_non_maintained_reg("EAX").
 function_non_maintained_reg("ECX").
 function_non_maintained_reg("EDX").
@@ -62,3 +64,5 @@ frame_pointer("EBP").
 stack_pointer("ESP").
 
 return_val_reg("EAX").
+
+condition_flags_reg("EFLAGS").

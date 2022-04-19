@@ -31,23 +31,11 @@
 #include "../Relations.h"
 #include "../core/InstructionLoader.h"
 
-struct Arm32Facts
-{
-    InstructionFacts Instructions;
-    OperandFacts Operands;
-};
-
-class Arm32Loader : public InstructionLoader<Arm32Facts>
+class Arm32Loader : public InstructionLoader
 {
 public:
     Arm32Loader() : InstructionLoader(4)
     {
-        // Create smart Captone handle.
-        CsHandle.reset(new csh(0), [](csh* Handle) {
-            cs_close(Handle);
-            delete Handle;
-        });
-
         // Setup Capstone engine.
         [[maybe_unused]] cs_err Err =
             cs_open(CS_ARCH_ARM, (cs_mode)(CS_MODE_ARM | CS_MODE_V8), CsHandle.get());
@@ -56,20 +44,16 @@ public:
     }
 
 protected:
-    void decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
+    void decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
     using InstructionLoader::load;
     void load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
-              Arm32Facts& Facts) override;
-    void load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Facts, bool Thumb);
-
-    void insert(const Arm32Facts& Facts, DatalogProgram& Program) override;
+              BinaryFacts& Facts) override;
+    void load(const gtirb::ByteInterval& ByteInterval, BinaryFacts& Facts, bool Thumb);
 
 private:
     std::optional<relations::Operand> build(const cs_insn& CsInsn, const cs_arm_op& CsOp);
-    bool build(Arm32Facts& Facts, const cs_insn& CsInstruction);
-
-    std::shared_ptr<csh> CsHandle;
+    bool build(BinaryFacts& Facts, const cs_insn& CsInstruction);
 };
 
 #endif // SRC_GTIRB_DECODER_ARCH_ARM32DECODER_H_

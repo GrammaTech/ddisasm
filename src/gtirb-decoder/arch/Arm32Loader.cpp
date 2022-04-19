@@ -26,23 +26,7 @@
 #include <string>
 #include <vector>
 
-void Arm32Loader::insert(const Arm32Facts& Facts, DatalogProgram& Program)
-{
-    auto& [Instructions, Operands] = Facts;
-    Program.insert("instruction", Instructions.instructions());
-    Program.insert("instruction_writeback", Instructions.writeback());
-    Program.insert("invalid_op_code", Instructions.invalid());
-    Program.insert("op_shifted", Instructions.shiftedOps());
-    Program.insert("op_shifted_w_reg", Instructions.shiftedWithRegOps());
-    Program.insert("op_immediate", Operands.imm());
-    Program.insert("op_regdirect", Operands.reg());
-    Program.insert("op_indirect", Operands.indirect());
-    Program.insert("op_special", Operands.special());
-    Program.insert("op_register_bitfield", Operands.reg_bitfields());
-}
-
-void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
-                       Arm32Facts& Facts)
+void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval, BinaryFacts& Facts)
 {
     // NOTE: AArch32 (ARMv8-A) is backward compatible to ARMv7-A.
     cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_ARM | CS_MODE_V8);
@@ -83,7 +67,7 @@ void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& B
     load(ByteInterval, Facts, true);
 }
 
-void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Facts, bool Thumb)
+void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, BinaryFacts& Facts, bool Thumb)
 {
     assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
 
@@ -106,7 +90,7 @@ void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Fact
     }
 }
 
-void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
+void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
 {
     // Decode instruction with Capstone.
     cs_insn* CsInsn;
@@ -119,7 +103,11 @@ void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size,
         InstAdded = build(Facts, CsInsn[Count - 1]);
     }
 
-    if(!InstAdded)
+    if(InstAdded)
+    {
+        loadRegisterAccesses(Facts, Addr, CsInsn[Count - 1]);
+    }
+    else
     {
         // Add address to list of invalid instruction locations.
         Facts.Instructions.invalid(gtirb::Addr(Addr));
@@ -128,7 +116,7 @@ void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size,
     cs_free(CsInsn, Count);
 }
 
-bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction)
+bool Arm32Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction)
 {
     const cs_arm& Details = CsInstruction.detail->arm;
     std::string Name = uppercase(CsInstruction.mnemonic);

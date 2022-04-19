@@ -236,6 +236,13 @@ namespace relations
         gtirb::Addr Addr;
     };
 
+    struct RegisterAccess
+    {
+        gtirb::Addr Addr;
+        std::string Mode;
+        std::string Register;
+    };
+
 } // namespace relations
 
 namespace souffle
@@ -304,6 +311,8 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::ShiftedWithRegOp& Op);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::InstructionWriteback& writeback);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::RegisterAccess& RegAccess);
 
 } // namespace souffle
 

@@ -31,23 +31,11 @@
 #include "../Relations.h"
 #include "../core/InstructionLoader.h"
 
-struct Arm64Facts
-{
-    InstructionFacts Instructions;
-    OperandFacts Operands;
-};
-
-class Arm64Loader : public InstructionLoader<Arm64Facts>
+class Arm64Loader : public InstructionLoader
 {
 public:
     Arm64Loader() : InstructionLoader(4)
     {
-        // Create smart Captone handle.
-        CsHandle.reset(new csh(0), [](csh* Handle) {
-            cs_close(Handle);
-            delete Handle;
-        });
-
         // Setup Capstone engine.
         [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM64, CS_MODE_ARM, CsHandle.get());
         assert(Err == CS_ERR_OK && "Failed to initialize ARM64 disassembler.");
@@ -55,16 +43,13 @@ public:
     }
 
 protected:
-    void decode(Arm64Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
-    void insert(const Arm64Facts& Facts, DatalogProgram& Program) override;
+    void decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
 private:
     std::optional<relations::Operand> build(const cs_insn& CsInsn, uint8_t OpIndex,
                                             const cs_arm64_op& CsOp);
-    bool build(Arm64Facts& Facts, const cs_insn& CsInstruction);
+    bool build(BinaryFacts& Facts, const cs_insn& CsInstruction);
     std::optional<std::string> operandString(const cs_insn& CsInsn, uint8_t Index);
-
-    std::shared_ptr<csh> CsHandle;
 };
 
 std::optional<const char*> barrierValue(const arm64_barrier_op Op);
