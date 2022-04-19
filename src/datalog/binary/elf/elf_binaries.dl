@@ -25,18 +25,6 @@
 #include "relocations.dl"
 
 // This module defines predicates and rules specific of ELF binaries
-section(Name,Size,Addr):-
-    binary_format("ELF"),
-    section_complete(Name,Size,Addr,_,Flags,_,_),
-    elf_section_flag("SHF_ALLOC",Pos_Alloc),
-    Flags band (2^Pos_Alloc)  > 0.
-
-.decl elf_section_flag(Name:symbol,Position:unsigned)
-
-elf_section_flag("SHF_WRITE",0).
-elf_section_flag("SHF_ALLOC",1).
-elf_section_flag("SHF_EXECINSTR",2).
-elf_section_flag("SHF_TLS",10).
 
 .decl elf_section_type(Name:symbol,Code:unsigned)
 
@@ -61,9 +49,9 @@ elf_section_type("SYMTAB_SHNDX",18).
 elf_section_type("NUM",19).
 
 data_section(Name):-
-    section_complete(Name,_,_,Type,Flags,_,_),
-    elf_section_flag("SHF_EXECINSTR",Pos_Exec), Flags band (2^Pos_Exec)  = 0,
-    elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc)  > 0,
+    section_property(Name,"Loaded"),
+    !section_property(Name,"Executable"),
+    section_type(Name,Type),
     (   elf_section_type("PROGBITS",Type);
         elf_section_type("NOBITS",Type);
         elf_section_type("INIT_ARRAY",Type);
@@ -89,11 +77,6 @@ special_data_section(".interp").
 special_data_section(".jcr").
 special_data_section(".tm_clone_table").
 
-code_section(Name):-
-    binary_format("ELF"),
-    section_complete(Name,_,_,_,Flags,_,_),
-    elf_section_flag("SHF_EXECINSTR",Pos_Exec), Flags band (2^Pos_Exec)  > 0.
-
 function_pointer_section(".init_array"):-binary_format("ELF").
 function_pointer_section(".fini_array"):-binary_format("ELF").
 function_pointer_section(".got.plt"):-binary_format("ELF").
@@ -111,18 +94,10 @@ plt_section(".plt.sec").
 got_section(".got").
 got_section(".got.plt").
 
-tls_section(Name):-
-    binary_format("ELF"),
-    data_section(Name),
-    section_complete(Name,_,_,_,Flags,_,_),
-    elf_section_flag("SHF_TLS", Pos_Tls), Flags band (2^Pos_Tls) > 0.
-
 bss_section(Name):-
     binary_format("ELF"),
-    section_complete(Name,_,_,Type,Flags,_,_),
-    elf_section_flag("SHF_ALLOC",Pos_Alloc), Flags band (2^Pos_Alloc) > 0,
-    SHT_NOBITS = 8,
-    Type = SHT_NOBITS.
+    section_property(Name,"Loaded"),
+    !section_property(Name,"Initialized").
 
 non_zero_data_section(Name):-
     data_section(Name),
@@ -135,18 +110,18 @@ non_zero_data_section(Name):-
 
 plt_entry(EA,Function):-
     plt_section(SecName),
-    section(SecName,Size,Beg),
-    EA < Beg+Size,
+    loaded_section(Beg,End,SecName),
     EA >= Beg,
+    EA < End,
     pc_relative_jump(EA,Got_entry),
     relocation(Got_entry,_,Function,_,_,_,_),
     Function != "".
 
 plt_entry(EA,Name):-
     plt_section(SecName),
-    section(SecName,Size,Beg),
-    EA < Beg+Size,
+    loaded_section(Beg,End,SecName),
     EA >= Beg,
+    EA < End,
     pc_relative_jump(EA,Got_entry),
     relocation(Got_entry,"IRELATIVE","",Dest,_,_,_),
     (
@@ -166,9 +141,9 @@ plt_block(Block,Function):-
     must_fallthrough(EA,NextBlock),
     code_in_block(EA,Block),
     plt_section(SecName),
-    section(SecName,Size,Beg),
-    EA < Beg+Size,
-    Block >= Beg.
+    loaded_section(Beg,End,SecName),
+    Block >= Beg,
+    EA < End.
 
 .decl plt_data_reference(ea:address)
 
@@ -192,11 +167,11 @@ either the .got or .got.plt section.
 .output got_reference_pointer
 
 got_reference_pointer(EA):-
-    section(".got.plt",_,EA).
+    loaded_section(EA,_,".got.plt").
 
 got_reference_pointer(EA):-
-    section(".got",_,EA),
-    !section(".got.plt",_,_).
+    loaded_section(EA,_,".got"),
+    !loaded_section(_,_,".got.plt").
 
 // Identify load PC operations:
 // e.g. (clang)
@@ -211,7 +186,7 @@ got_reference_pointer(EA):-
 reg_has_got(EA,Reg):-
     value_reg(EA,Reg,_,"NONE",_,Offset,_),
     got_section(Name),
-    section(Name,_,as(Offset,address)).
+    loaded_section(as(Offset,address),_,Name).
 
 /**
 Operand instruction at 'EA' at index 'Index' is a GOT-relative reference to an
@@ -269,18 +244,18 @@ get_pc_thunk(EA,Reg):-
     arch.return(EA+Size).
 
 got_reference(Got_entry,Symbol):-
-    section(".got",Size,Beg),
+    loaded_section(Beg,End,".got"),
     Got_entry >= Beg,
-    Got_entry < Beg+Size,
+    Got_entry < End,
     relocation(Got_entry,RelType,Symbol,_,_,_,_),
     RelType != "RELATIVE",
     RelType != "DTPMOD64",
     symbol(_,_,_,_,_,_,_,_,Symbol).
 
 got_reference(Got_entry,Symbol):-
-    section(".got",Size,Beg),
+    loaded_section(Beg,End,".got"),
     Got_entry >= Beg,
-    Got_entry < Beg+Size,
+    Got_entry < End,
     arch.pointer_size(Ptr),
     symbolic_expr(Got_entry,Ptr,Symbol,_).
 
@@ -293,8 +268,8 @@ got_reference(Got_entry,Symbol):-
 symbol_minus_symbol(Got_entry+8,8,Beg,Dest,1,0):-
     relocation(Got_entry,"DTPMOD64","",_,_,_,_),
     (
-        section(".tbss",_,Beg);
-        section(".tdata",_,Beg)
+        loaded_section(Beg,_,".tbss");
+        loaded_section(Beg,_,".tdata")
     ),
     // ti_offset is initialized for @TLSGD and zero for @TLSLD
     data_word(Got_entry+8,8,Offset),
@@ -373,23 +348,23 @@ inferred_special_symbol(EA,"__do_global_dtors_aux","LOCAL","FUNC","Beg"):-
     function_inference.function_entry(EA),
     // referenced from .fini_array
     address_in_data(FiniArray,EA),
-    section(".fini_array",Size,Beg),
+    loaded_section(Beg,End,".fini_array"),
     FiniArray >= Beg,
-    FiniArray < Beg+Size,
+    FiniArray < End,
     // compare a value in bss with 0 in the first block
     code_in_refined_block(EA_cmp,EA),
     instruction(EA_cmp,_,_,"CMP",Op1,_,0,0,_,_),
     op_immediate(Op1,0),
     pc_relative_operand(EA_cmp,2,DataRef),
     bss_section(SectionName),
-    section(SectionName,SizeBss,BegData),
+    loaded_section(BegData,EndData,SectionName),
     DataRef >= BegData,
-    DataRef <= BegData+SizeBss.
+    DataRef <= EndData.
 
 inferred_special_symbol(EA,"_DYNAMIC","LOCAL","NONE","Beg"):-
     binary_format("ELF"),
     !symbol(EA,_,_,_,_,_,_,_,"_DYNAMIC"),
-    section(".dynamic",_,EA).
+    loaded_section(EA,_,".dynamic").
 
 inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_","LOCAL","NONE","Beg"):-
     !symbol(_,_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
@@ -459,7 +434,7 @@ symbolic_expr_from_relocation(EA,Size/8,Symbol,0,TargetEA):-
     ),
     relocation_adjustment_total(EA,Adjustment),
     symbol(_,_,"SECTION",_,_,SectionIndex,_,SymbolIndex,_),
-    section_complete(_,_,Begin,_,_,_,SectionIndex),
+    section(_,_,Begin,_,SectionIndex),
     // Addend is the offset of a symbol within the Section.
     TargetEA = as(as(Begin,number)+Addend+Adjustment,address),
     (
@@ -494,9 +469,9 @@ symbolic_expr_from_relocation(EA,4,Symbol,Addend+Adjustment,TargetEA):-
 .decl tls_segment(Start:address,End:address,Align:unsigned)
 
 tls_segment(Start,End,Align):-
-    Start = min EA:{ tls_section(Name), section(Name,_,Addr), EA=Addr },
-    End = max EA:{ tls_section(Name), section(Name,Size,Addr), EA=Addr+Size },
-    Align = max X:{ tls_section(Name), section_complete(Name,_,_,_,_,X,_) }.
+    Start = min EA:{ tls_section(Name), loaded_section(Addr,_,Name), EA=Addr },
+    End = max EA:{ tls_section(Name), loaded_section(_,End,Name), EA=End },
+    Align = max X:{ tls_section(Name), section(Name,_,_,X,_) }.
 
 // Segment-based references to thread-local storage,
 //   e.g.   mov     eax, DWORD PTR fs:i@tpoff
@@ -540,16 +515,16 @@ inferred_special_symbol(DestAddr,Name,"LOCAL","FUNC","Beg"):-
 // that contaisn the IRELATIVE relocations
 
 inferred_special_symbol(Beg,"__rela_iplt_start","GLOBAL","NONE","Beg"):-
-    section(".rela.plt",_,Beg),
+    loaded_section(Beg,_,".rela.plt"),
     !symbol(_,_,_,_,_,_,_,_,"__rela_iplt_start").
 
-inferred_special_symbol(Beg+Size,"__rela_iplt_end","GLOBAL","NONE","End"):-
-    section(".rela.plt",Size,Beg),
+inferred_special_symbol(End,"__rela_iplt_end","GLOBAL","NONE","End"):-
+    loaded_section(_,End,".rela.plt"),
     !symbol(_,_,_,_,_,_,_,_,"__rela_iplt_end").
 
 abi_intrinsic(Beg,"__rela_iplt_start"),
-abi_intrinsic(Beg+Size,"__rela_iplt_end"):-
-    section(".rela.plt",Size,Beg).
+abi_intrinsic(End,"__rela_iplt_end"):-
+    loaded_section(Beg,End,".rela.plt").
 
 
 

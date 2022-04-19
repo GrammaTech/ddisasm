@@ -101,8 +101,14 @@ This module:
 .decl symbol(ea:address,size:unsigned,type:symbol,scope:symbol,visibility:symbol,sectionIndex:unsigned,originTable:symbol,tableIndex:unsigned,name:symbol)
 .input symbol
 
-.decl section_complete(Name:symbol,Size:unsigned,EA:address,Type:unsigned,Flags:unsigned,Align:unsigned,Index:unsigned)
-.input section_complete
+.decl section(Name:symbol,Size:unsigned,EA:address,Align:unsigned,Index:unsigned)
+.input section
+
+.decl section_property(Name:symbol,Property:symbol)
+.input section_property
+
+.decl section_type(Name:symbol,Type:unsigned)
+.input section_type
 
 .decl relocation(EA:address,Type:symbol,Name:symbol,Addend:number,SymbolIndex:unsigned,Section:symbol,RelType:symbol)
 .input relocation
@@ -659,16 +665,31 @@ defined_symbol(EA,Size,Type,Scope,Visibility,SectIndex,OriginTable,TableIndex,Na
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-.decl section(name:symbol,size:unsigned,addr:address)
+.decl loaded_section(Beg:address,End:address,Name:symbol)
+.output loaded_section
 .decl data_section(name:symbol)
+.output data_section
 .decl exception_section(name:symbol)
 .decl special_data_section(name:symbol)
 .decl regular_data_section(name:symbol)
 .decl code_section(name:symbol)
+.output code_section
 .decl tls_section(name:symbol)
 .output tls_section
 .decl bss_section(name:symbol)
 .output bss_section
+
+loaded_section(Beg,Beg+Size,Name):-
+    section(Name,Size,Beg,_,_),
+    section_property(Name,"Loaded").
+
+code_section(Section):-
+    section(Section,_,_,_,_),
+    section_property(Section,"Executable").
+
+tls_section(Section):-
+    data_section(Section),
+    section_property(Section,"ThreadLocal").
 
 regular_data_section(Name):-
     data_section(Name),
@@ -683,10 +704,9 @@ regular_data_section(Name):-
 bss_section_limits(0,0):-
     !bss_section(_).
 
-bss_section_limits(Begin,LastSect+SizeLast):-
-    Begin = min X:{ bss_section(Name),section(Name,_,X)},
-    LastSect = max X:{ bss_section(Name),section(Name,_,X)},
-    section(_,SizeLast,LastSect).
+bss_section_limits(Begin,End):-
+    Begin = min X:{ bss_section(Name),loaded_section(X,_,Name)},
+    End = max X:{ bss_section(Name),loaded_section(_,X,Name)}.
 
 /*
 data segments can be data sections or fragments of the code section that
@@ -696,18 +716,18 @@ contain data instead of code.
 .decl initialized_data_segment(Begin:address,End:address)
 .output initialized_data_segment
 
-initialized_data_segment(Begin,Begin+Size):-
+initialized_data_segment(Begin,End):-
     non_zero_data_section(Section),
-    section(Section,Size,Begin).
+    loaded_section(Begin,End,Section).
 
 initialized_data_segment(Begin,End):-
     data_in_code(Begin,End).
 
 .decl data_segment(Begin:address,End:address)
 
-data_segment(Begin,Begin+Size):-
+data_segment(Begin,End):-
     data_section(Section),
-    section(Section,Size,Begin).
+    loaded_section(Begin,End,Section).
 
 data_segment(Begin,End):-
     initialized_data_segment(Begin,End).

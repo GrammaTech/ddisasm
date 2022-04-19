@@ -118,10 +118,24 @@ void PeReader::buildSections()
             S->addByteInterval(*Context, Addr, Size, 0);
         }
 
-        SectionProperties[S->getUUID()] = {0, Section.characteristics()};
+        // NOTE: Currently, printing section properties for masm causes some
+        // compiling errors:
+        // _TEXT SEGMENT READ EXECUTE 'CODE' 'DATA'
+        // error A2015:segment attributes cannot change : READ
+        // error A2015:segment attributes cannot change : EXECUTE
+        //
+        // Previously, the section properties were populated into
+        // PeSectionProperties, which was not used by the pretty-printer.
+        // The change to make SectionProperties shared by both ELF and PE
+        // revealed the problem.
+        //
+        // To avoid the problem for now, do not populate the section
+        // properties for PE.
+        //
+        // FIXME: Investigate the compiling errors and resolve the problem.
+        // SectionProperties[S->getUUID()] = {0, Section.characteristics()};
     }
-
-    Module->addAuxData<gtirb::schema::ElfSectionProperties>(std::move(SectionProperties));
+    Module->addAuxData<gtirb::schema::SectionProperties>(std::move(SectionProperties));
 }
 
 void PeReader::buildSymbols()
