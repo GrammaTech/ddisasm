@@ -131,7 +131,7 @@ cfg_edge(Src,Dest,"false","false","fallthrough"):-
     refined_block_control_instruction(Src,EA),
     may_fallthrough(EA,Dest),
     !no_return_call_refined(EA),
-    !padding_block(Src),
+    !nop_block(Src),
     code_in_refined_block(Dest,Dest),
     next_refined_block_in_section(Src,Dest),
     // Assume no fallthrough edge from one plt block to another.
@@ -139,11 +139,11 @@ cfg_edge(Src,Dest,"false","false","fallthrough"):-
 
 cfg_edge(Src,Dest,"false","false","fallthrough"):-
     cfg_edge(_,Src,_,_,_),
-    padding_block(Src),
+    nop_block(Src),
     next_refined_block_in_section(Src,Dest).
 
 cfg_edge(Src,Dest,"false","false","fallthrough"):-
-     padding_block(Src),
+     nop_block(Src),
      cfg_edge(_,Src,_,_,_),
      next_refined_block_in_section(Src,Dest).
 
