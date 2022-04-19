@@ -75,6 +75,9 @@ track_register("R14D","R14").
 track_register("R15","R15").
 track_register("R15D","R15").
 
+track_register("EFLAGS", "RFLAGS").
+track_register("RFLAGS", "RFLAGS").
+
 function_non_maintained_reg("RAX").
 function_non_maintained_reg("RCX").
 function_non_maintained_reg("RDX").
@@ -96,3 +99,5 @@ frame_pointer("RBP").
 stack_pointer("RSP").
 
 return_val_reg("RAX").
+
+condition_flags_reg("RFLAGS").

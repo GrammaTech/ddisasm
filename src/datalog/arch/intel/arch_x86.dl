@@ -37,7 +37,8 @@ mov(EA):-
     instruction_get_operation(EA,Operation),
     move_operation(Operation).
 
-conditional_operation(Operation):-
+// TODO: CMOV conditions - nothing uses the CC on a mov instruction currently.
+conditional_operation(Operation,"?"):-
     instruction_get_operation(_, Operation),
     substr(Operation,0,4) = "CMOV".
 
@@ -56,7 +57,7 @@ is_nop(EA):-
 
 // Extend the generic case with loop operations.
 jump_operation(Operation):-
-    loop_operation(Operation).
+    loop_operation(Operation,_).
 
 op_does_not_read_dest_reg("LEA").
 op_does_not_read_dest_reg("POP").
@@ -95,16 +96,20 @@ one_op_write("DEC").
 one_op_write("POP").
 one_op_write("NOT").
 
-.decl loop_operation(Operation:symbol)
-loop_operation("LOOP").
-loop_operation("LOOPE").
-loop_operation("LOOPZ").
-loop_operation("LOOPNE").
-loop_operation("LOOPNZ").
+.decl loop_operation(Operation:symbol,CC:condition_code)
+loop_operation("LOOP","NE").
 
-conditional_operation(Operation):-
+// LOOPcc instructions check two conditions: ECX = 0 AND ZF = ?
+// This is too complex to represent with our standardized condition codes.
+loop_operation("LOOPE","?").
+loop_operation("LOOPZ","?").
+loop_operation("LOOPNE","?").
+loop_operation("LOOPNZ","?").
+
+conditional_operation(Operation,CC),
+cmp_zero_operation(Operation):-
     instruction_get_operation(_, Operation),
-    loop_operation(Operation).
+    loop_operation(Operation,CC).
 
 loop_prefix("REP").
 loop_prefix("REPE").
@@ -121,6 +126,10 @@ halt_operation("UD2").
 
 cmp_operation("CMP").
 cmp_operation("TEST").
+
+cmp_zero_operation("JCXZ").
+cmp_zero_operation("JECXZ").
+cmp_zero_operation("JRCXZ").
 
 // FIXME: review this list when Capstone is updated.
 operation_size_exception(EA,Index,8):-

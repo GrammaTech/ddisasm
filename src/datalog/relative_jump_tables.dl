@@ -94,11 +94,10 @@ relative_address(EA+Size,Size,TableStart,Ref,Dest,DestIsFirstOrSecond):-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // detect jump tables precisely once we have all results of the analyses
 
-
 // auxiliary predicate for detecting accessing an element of a jump table.
-.decl jump_table_element_access(EA:address,Size:unsigned,TableStart:address)
+.decl jump_table_element_access(EA:address,Size:unsigned,TableStart:address,RegIndex:register,Mult:unsigned)
 
-jump_table_element_access(EA,Size,TableStartAddr):-
+jump_table_element_access(EA,Size,TableStartAddr,RegIndex,Size):-
     data_access(EA,_,"NONE","NONE",RegIndex,as(Size,number),TableStart,Size),
     TableStartAddr = as(TableStart,address),
     RegIndex != "NONE",
@@ -106,7 +105,7 @@ jump_table_element_access(EA,Size,TableStartAddr):-
     TableStartAddr >= Beg,
     TableStartAddr <= End.
 
-jump_table_element_access(EA,1,TableStartAddr):-
+jump_table_element_access(EA,1,TableStartAddr,RegBase,1):-
     data_access(EA,_,"NONE",RegBase,"NONE",_,TableStart,1),
     TableStartAddr = as(TableStart,address),
     RegBase != "NONE",
@@ -114,7 +113,7 @@ jump_table_element_access(EA,1,TableStartAddr):-
     TableStartAddr >= Beg,
     TableStartAddr <= End.
 
-jump_table_element_access(EA,Size,TableStartAddr):-
+jump_table_element_access(EA,Size,TableStartAddr,RegIndex,Size):-
     data_access(EA,_,"NONE",RegBase,RegIndex,as(Size,number),Offset,Size),
     RegIndex != "NONE",
     const_value_reg_used(EA,_,_,RegBase,Base),
@@ -125,7 +124,7 @@ jump_table_element_access(EA,Size,TableStartAddr):-
 
 // sometimes the regBase contains the index (already multiplied)
 // and the regIndex contains the base address
-jump_table_element_access(EA,Size,TableStartAddr):-
+jump_table_element_access(EA,Size,TableStartAddr,RegBase,1):-
     data_access(EA,_,"NONE",RegBase,RegIndex,1,0,Size),
     RegBase != "NONE",
     const_value_reg_used(EA,_,_,RegIndex,TableStart),
@@ -134,13 +133,25 @@ jump_table_element_access(EA,Size,TableStartAddr):-
     TableStartAddr >= Beg,
     TableStartAddr <= End.
 
+/**
+The end of a jump table as identified by a boundary value of the index register.
+*/
+.decl jump_table_max(TableStart:address,TableEnd:address)
+.output jump_table_max
+
+jump_table_max(TableStart,TableStart+as(Value,unsigned)*Mult):-
+    jump_table_element_access(EA,_,TableStart,RegIndexRaw,Mult),
+    arch.track_register(RegIndexRaw,RegIndex),
+    code_in_block(EA,Block),
+    last_value_reg_limit(Block,_,_,_,RegIndex,Value,"MAX"),
+    Value >= 0.
 
 .decl jump_table_start(EA_jump:address,Size:unsigned,TableStart:address,TableRef:address,Scale:number)
 .output jump_table_start
 
 jump_table_start(EA_jump,Size,TableStart,as(Base,address),Scale):-
     // Looks like a jump table access occurs at EA...
-    jump_table_element_access(EA,Size,TableStart),
+    jump_table_element_access(EA,Size,TableStart,_,_),
     // ...and the register defined at EA (Reg) is used as RegJump = Base + Reg * Scale
     value_reg(EA_add,RegJump,EA,Reg,Scale,Base,_),
     Reg != "NONE",
@@ -164,7 +175,7 @@ jump_table_start(EA_jump,Size,TableStart,TableReferenceAddr,Scale):-
         Operation = "ADD", Scale=1;
         Operation = "SUB", Scale=-1
     ),
-    jump_table_element_access(EA_base,Size,TableStart),
+    jump_table_element_access(EA_base,Size,TableStart,_,_),
     const_value_reg_used(EA_base,_,_,Reg,TableReference),
     TableReferenceAddr = as(TableReference,address),
     (
@@ -216,18 +227,27 @@ relative_jump_table_entry_candidate(TableStart,TableStart,Size,TableReference,De
     loaded_section(SectionStart,SectionEnd,_),
     TableStart >= SectionStart, TableStart < SectionEnd.
 
-// propagate until finding:
+// If we identified a limit to the size of the jump table using the boundary
+// value analysis (jump_table_max), propagate it now and feed the result back
+// into the value analysis.
+// If a jump table is unbounded (i.e., no jump_table_max has been generated),
+// then we have low confidence about its size. In this case, we defer
+// propagating until the post-value-analysis refinement stage. Propagating
+// unbounded tables would likely pollute value analysis results with
+// questionable edges anyway.
+//
+// Propagate until finding:
+// * jump table index boundary
 // * something that doesn't resolve to a code pointer.
 // * a symbol
 // * the end of a data section
 
-// we can't do much better without negating something or adding an entirely
-// new boundary value analysis to analyze comparisons on the jump table index
-// register.
 relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
     !binary_isa("ARM"),
     relative_jump_table_entry_candidate(LastEA,TableStart,Size,Reference,_,Scale,Offset),
     EA = LastEA + Size,
+    jump_table_max(TableStart,TableEnd),
+    TableEnd >= EA,
     !symbol(EA,_,_,_,_,_,_,_,_),
     data_segment(BegData,EndData), BegData <= TableStart, EA+Size <= EndData,
     (
@@ -275,3 +295,30 @@ resolve overlapping jump tables.
 relative_jump_table_entry(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
     relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offset),
     !discarded_jump_table_entry(TableStart,Reference,EA).
+
+/**
+Propagate unbounded jump tables
+
+Jump tables with no jump_table_max are not propgated in the
+relative_jump_table_entry_candidate relation since we have low confidence on
+their boundaries. We propagate them now, in the refinement stage, where we
+can negate more advanced analyses.
+
+Since these were not propagated earlier, these edges were not used during value
+analysis.
+*/
+relative_jump_table_entry(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
+    !binary_isa("ARM"),
+    relative_jump_table_entry(LastEA,TableStart,Size,Reference,_,Scale,Offset),
+    !jump_table_max(TableStart,_),
+    EA = LastEA + Size,
+    !symbol(EA,_,_,_,_,_,_,_,_),
+    data_segment(BegData,EndData), BegData <= TableStart, EA+Size <= EndData,
+    (
+        Size>1,data_word(EA,Size,Diff);
+        Size=1,data_byte(EA,DiffUnsigned), Diff = as(DiffUnsigned,number)
+    ),
+    last_data_limit(EA+Size-1,LastDataLimit),LastDataLimit < EA,
+    Reference_signed = as(Reference,number),
+    Dest = as(Reference_signed + as(Scale,number)*Diff,unsigned),
+    code(Dest).

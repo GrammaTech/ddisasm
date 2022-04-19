@@ -23,32 +23,20 @@
 #ifndef SRC_GTIRB_DECODER_ARCH_X86DECODER_H_
 #define SRC_GTIRB_DECODER_ARCH_X86DECODER_H_
 
+#include <capstone/capstone.h>
+
 #include <optional>
 #include <string>
 #include <tuple>
 
-#include <capstone/capstone.h>
-
 #include "../Relations.h"
 #include "../core/InstructionLoader.h"
 
-struct X86Facts
-{
-    InstructionFacts Instructions;
-    OperandFacts Operands;
-};
-
-class X86Loader : public InstructionLoader<X86Facts>
+class X86Loader : public InstructionLoader
 {
 public:
     X86Loader() : InstructionLoader{1}
     {
-        // Create smart Captone handle.
-        CsHandle.reset(new csh(0), [](csh* Handle) {
-            cs_close(Handle);
-            delete Handle;
-        });
-
         // Setup Capstone engine.
         [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_X86, CS_MODE_32, CsHandle.get());
         assert(Err == CS_ERR_OK && "Failed to initialize X86 disassembler.");
@@ -56,15 +44,12 @@ public:
     }
 
 protected:
-    void decode(X86Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
-    void insert(const X86Facts& Facts, DatalogProgram& Program) override;
+    void decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
 private:
     std::optional<relations::Operand> build(const cs_x86_op& CsOp);
-    std::optional<relations::Instruction> build(X86Facts& Facts, const cs_insn& CsInstruction);
+    std::optional<relations::Instruction> build(BinaryFacts& Facts, const cs_insn& CsInstruction);
     std::tuple<std::string, std::string> splitMnemonic(const cs_insn& CsInstruction);
-
-    std::shared_ptr<csh> CsHandle;
 };
 
 #endif // SRC_GTIRB_DECODER_ARCH_X86DECODER_H_
