@@ -34,7 +34,7 @@ struct DataFacts
     gtirb::Addr Min, Max;
     std::vector<relations::Data<uint8_t>> Bytes;
     std::vector<relations::Data<gtirb::Addr>> Addresses;
-    std::vector<relations::Data<size_t>> Ascii;
+    std::vector<relations::Data<gtirb::Addr>> Ascii;
 };
 
 // Load data sections.

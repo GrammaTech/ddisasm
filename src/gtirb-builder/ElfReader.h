@@ -65,7 +65,7 @@ private:
     // TODO: Handle duplicate section names?
     std::map<std::string, uint64_t> SectionRelocations;
 
-    const std::unordered_set<std::string> Literals = {"pydata"};
+    const std::unordered_set<std::string> Literals = {"pydata", ".ARM.attributes"};
 };
 
 #endif // ELF_GTIRB_BUILDER_H_

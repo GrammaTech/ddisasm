@@ -150,6 +150,11 @@ public:
         ShiftedOps.push_back(Op);
     }
 
+    void shiftedWithRegOp(const relations::ShiftedWithRegOp& Op)
+    {
+        ShiftedWithRegOps.push_back(Op);
+    }
+
     const std::vector<relations::Instruction>& instructions() const
     {
         return Instructions;
@@ -163,6 +168,11 @@ public:
     const std::vector<relations::ShiftedOp>& shiftedOps() const
     {
         return ShiftedOps;
+    }
+
+    const std::vector<relations::ShiftedWithRegOp>& shiftedWithRegOps() const
+    {
+        return ShiftedWithRegOps;
     }
 
     void writeback(const relations::InstructionWriteback& writeback)
@@ -179,6 +189,7 @@ private:
     std::vector<relations::Instruction> Instructions;
     std::vector<gtirb::Addr> InvalidInstructions;
     std::vector<relations::ShiftedOp> ShiftedOps;
+    std::vector<relations::ShiftedWithRegOp> ShiftedWithRegOps;
     std::vector<relations::InstructionWriteback> InstructionWritebackList;
 };
 
@@ -211,13 +222,16 @@ protected:
             {
                 for(const auto& ByteInterval : Section.byte_intervals())
                 {
-                    load(ByteInterval, Facts);
+                    load(Module, ByteInterval, Facts);
                 }
             }
         }
     }
 
-    virtual void load(const gtirb::ByteInterval& ByteInterval, T& Facts)
+    // NOTE: If needed, Module can be used in the inherited functions:
+    // e.g., ARM32
+    virtual void load([[maybe_unused]] const gtirb::Module& Module,
+                      const gtirb::ByteInterval& ByteInterval, T& Facts)
     {
         assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
 

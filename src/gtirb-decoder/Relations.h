@@ -223,6 +223,15 @@ namespace relations
         std::string Type;
     };
 
+    struct ShiftedWithRegOp
+    {
+        gtirb::Addr Addr;
+        uint8_t Index;
+        std::string Reg;
+        std::string Type;
+    };
+
+
     struct InstructionWriteback
     {
         gtirb::Addr Addr;
@@ -292,6 +301,8 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SymbolMinusSymbol& Expr);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::ShiftedOp& Op);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::ShiftedWithRegOp& Op);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::InstructionWriteback& writeback);
 

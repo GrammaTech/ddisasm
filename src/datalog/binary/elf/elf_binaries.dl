@@ -306,6 +306,7 @@ main_function(EA):-
 
 do_infer_main_function():-
     binary_format("ELF"),
+    !binary_type("REL"),
     !function_symbol(_,"main").
 
 /**
