@@ -270,30 +270,33 @@ add_subdirectory(gtirb-decoder)
 add_subdirectory(passes)
 
 # ===== functors ====
-# Build a shared functors library for use with the interpreter
-add_library(functors SHARED Functors.cpp)
-target_link_libraries(functors gtirb)
+# Build a shared functors library for use with the interpreter. Disabled if
+# BUILD_SHARED_LIBS is OFF
+if(BUILD_SHARED_LIBS)
+  add_library(functors SHARED Functors.cpp)
+  target_link_libraries(functors gtirb)
 
-target_compile_definitions(functors PRIVATE -DSOUFFLE_INTERPRETER_FUNCTOR_LIB)
+  target_compile_definitions(functors PRIVATE -DSOUFFLE_INTERPRETER_FUNCTOR_LIB)
 
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
-  target_compile_options(functors PRIVATE -Wno-unused-parameter)
-endif()
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
+    target_compile_options(functors PRIVATE -Wno-unused-parameter)
+  endif()
 
-target_include_directories(
-  functors PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
+  target_include_directories(
+    functors PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
 
-target_compile_options(functors PRIVATE ${OPENMP_FLAGS})
+  target_compile_options(functors PRIVATE ${OPENMP_FLAGS})
 
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  target_compile_definitions(functors PRIVATE _CRT_SECURE_NO_WARNINGS)
-  target_compile_definitions(functors PRIVATE _CRT_NONSTDC_NO_WARNINGS)
-  set_common_msvc_options(functors)
-else()
-  target_compile_options(functors PRIVATE -O3)
-  target_compile_options(functors PRIVATE -Wall)
-  target_compile_options(functors PRIVATE -Wextra -Wpointer-arith)
-  target_compile_options(functors PRIVATE -Werror)
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+    target_compile_definitions(functors PRIVATE _CRT_SECURE_NO_WARNINGS)
+    target_compile_definitions(functors PRIVATE _CRT_NONSTDC_NO_WARNINGS)
+    set_common_msvc_options(functors)
+  else()
+    target_compile_options(functors PRIVATE -O3)
+    target_compile_options(functors PRIVATE -Wall)
+    target_compile_options(functors PRIVATE -Wextra -Wpointer-arith)
+    target_compile_options(functors PRIVATE -Werror)
+  endif()
 endif()
 
 # ==== ddisasm_datalog =====
