@@ -231,7 +231,6 @@ namespace relations
         std::string Type;
     };
 
-
     struct InstructionWriteback
     {
         gtirb::Addr Addr;
