@@ -7,6 +7,7 @@ import gtirb
 
 ex_dir = Path("./examples/")
 ex_asm_dir = ex_dir / "asm_examples"
+ex_arm64_asm_dir = ex_dir / "arm64_asm_examples"
 
 
 class CfgTests(unittest.TestCase):
@@ -41,6 +42,50 @@ class CfgTests(unittest.TestCase):
             self.assertEqual(len(list(jumping_block.outgoing_edges)), 4)
             dest_blocks = [e.target for e in jumping_block.outgoing_edges]
             self.assertEqual(set(dest_blocks), set(expected_dest_blocks))
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_switch_limited_by_cmp_x64(self):
+        """
+        Ensure jump table propagation is limited by comparsions of the index
+        register.
+        """
+        binary = "ex"
+        with cd(ex_asm_dir / "ex_switch_limited_by_cmp"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+        # check that the .jump has edges to only the four jump table entries
+        jump_sym = next(s for s in m.symbols if s.name == ".jump")
+        self.assertEqual(len(list(jump_sym.referent.outgoing_edges)), 4)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_switch_limited_by_cmp_arm64(self):
+        """
+        Ensure jump table propagation is limited by comparsions of the index
+        register.
+        """
+        binary = "ex"
+        with cd(ex_arm64_asm_dir / "ex_switch_limited_by_cmp"):
+            self.assertTrue(
+                compile(
+                    "aarch64-linux-gnu-gcc", "aarch64-linux-gnu-g++", "-O0", []
+                )
+            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+        # check that the .jump has edges to only the four jump table entries
+        jump_sym = next(s for s in m.symbols if s.name == ".jump")
+        self.assertEqual(len(list(jump_sym.referent.outgoing_edges)), 4)
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
