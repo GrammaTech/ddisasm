@@ -391,9 +391,9 @@ The address appearing at 'EA' is within a potential
 
 address_in_data_is_printable(EA):-
     arch.pointer_size(Pt_size),
-    ascii_string(EAString,SizeString),
+    ascii_string(EAString,End),
     address_in_data(EA,_),
-    EAString <= EA, EA <= EAString + SizeString - Pt_size.
+    EAString <= EA, EA <= End - Pt_size.
 
 // address_in_data considers anything that points to the code region
 // this refinement restricts that to the beginning of the final blocks
@@ -450,17 +450,20 @@ Possible string of some 'Encoding' at interval ['EA','End').
 .decl string_candidate_refined(EA:address,End:address,Encoding:symbol)
 .output string_candidate_refined
 
-string_candidate(EA,Beg+Size,"ascii"):-
-    ascii_string(Beg,Size),
+string_candidate(EA,End,"ascii"):-
+    ascii_string(Beg,End),
     (
       labeled_data_candidate(EA);
       preferred_data_access(_,EA)
     ),
-    EA >= Beg, EA < Beg+Size.
+    EA >= Beg, EA < End,
+    data_segment(DataBeg,DataEnd),
+    EA >= DataBeg,
+    End <= DataEnd.
 
-string_candidate(EA,EA+Size,"ascii"):-
+string_candidate(EA,End,"ascii"):-
     string_candidate(_,EA,"ascii"),
-    ascii_string(EA,Size).
+    ascii_string(EA,End).
 
 /**
 String candidate refinement projects candidate string references onto a compound

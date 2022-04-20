@@ -32,6 +32,8 @@ void Arm32Loader::insert(const Arm32Facts& Facts, DatalogProgram& Program)
     Program.insert("instruction", Instructions.instructions());
     Program.insert("instruction_writeback", Instructions.writeback());
     Program.insert("invalid_op_code", Instructions.invalid());
+    Program.insert("op_shifted", Instructions.shiftedOps());
+    Program.insert("op_shifted_w_reg", Instructions.shiftedWithRegOps());
     Program.insert("op_immediate", Operands.imm());
     Program.insert("op_regdirect", Operands.reg());
     Program.insert("op_indirect", Operands.indirect());
@@ -39,14 +41,44 @@ void Arm32Loader::insert(const Arm32Facts& Facts, DatalogProgram& Program)
     Program.insert("op_register_bitfield", Operands.reg_bitfields());
 }
 
-void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Facts)
+void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
+                       Arm32Facts& Facts)
 {
     // NOTE: AArch32 (ARMv8-A) is backward compatible to ARMv7-A.
     cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_ARM | CS_MODE_V8);
     InstructionSize = 4;
     load(ByteInterval, Facts, false);
 
-    cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB | CS_MODE_V8);
+    bool mclass = false;
+    for(const auto& Section : Module.findSections(".ARM.attributes"))
+    {
+        for(const auto& ByteInterval : Section.byte_intervals())
+        {
+            const char* RawChars = ByteInterval.rawBytes<const char>();
+            // Remove zeros
+            std::vector<char> Chars;
+            for(size_t I = 0; I < ByteInterval.getInitializedSize(); ++I)
+            {
+                if(RawChars[I] != 0)
+                    Chars.push_back(RawChars[I]);
+            }
+            std::string SectStr(Chars.begin(), Chars.end());
+            if(SectStr.find("Cortex-M") != std::string::npos)
+            {
+                mclass = true;
+                break;
+            }
+        }
+    }
+
+    if(mclass)
+    {
+        cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
+    }
+    else
+    {
+        cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB | CS_MODE_V8);
+    }
     InstructionSize = 2;
     load(ByteInterval, Facts, true);
 }
@@ -100,6 +132,7 @@ bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction)
 {
     const cs_arm& Details = CsInstruction.detail->arm;
     std::string Name = uppercase(CsInstruction.mnemonic);
+    gtirb::Addr Addr(CsInstruction.address);
     if(auto index = Name.rfind(".W"); index != std::string::npos)
         Name = Name.substr(0, index);
 
@@ -172,6 +205,51 @@ bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction)
             // Add operand to the operands table.
             uint64_t OpIndex = Facts.Operands.add(*Op);
             OpCodes.push_back(OpIndex);
+
+            // Populate shift metadata if present.
+            if(CsOp.type == ARM_OP_REG && CsOp.shift.value != 0)
+            {
+                std::string ShiftType;
+                switch(CsOp.shift.type)
+                {
+                    case ARM_SFT_ASR:
+                    case ARM_SFT_ASR_REG:
+                        ShiftType = "ASR";
+                        break;
+                    case ARM_SFT_LSL:
+                    case ARM_SFT_LSL_REG:
+                        ShiftType = "LSL";
+                        break;
+                    case ARM_SFT_LSR:
+                    case ARM_SFT_LSR_REG:
+                        ShiftType = "LSR";
+                        break;
+                    case ARM_SFT_ROR:
+                    case ARM_SFT_ROR_REG:
+                        ShiftType = "ROR";
+                        break;
+                    case ARM_SFT_RRX:
+                    case ARM_SFT_RRX_REG:
+                        ShiftType = "RRX";
+                        break;
+                    case ARM_SFT_INVALID:
+                        std::cerr << "WARNING: instruction has a non-zero invalid shift at " << Addr
+                                  << "\n";
+                        return false;
+                }
+                if(CsOp.shift.value > 32)
+                {
+                    Facts.Instructions.shiftedWithRegOp(
+                        relations::ShiftedWithRegOp{Addr, static_cast<uint8_t>(i + 1),
+                                                    registerName(CsOp.shift.value), ShiftType});
+                }
+                else
+                {
+                    Facts.Instructions.shiftedOp(
+                        relations::ShiftedOp{Addr, static_cast<uint8_t>(i + 1),
+                                             static_cast<uint8_t>(CsOp.shift.value), ShiftType});
+                }
+            }
         }
     }
 
@@ -181,7 +259,6 @@ bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction)
         std::rotate(OpCodes.begin(), OpCodes.begin() + 1, OpCodes.end());
     }
 
-    gtirb::Addr Addr(CsInstruction.address);
     uint64_t Size(CsInstruction.size);
 
     Facts.Instructions.add(relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0});

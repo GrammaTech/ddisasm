@@ -135,6 +135,45 @@ conditional_operation(Operation):-
     condition_code(CC).
 
 /**
+PC stores the address of the current instruction plus 8 (two ARM
+instructions) in ARM state, and the current instruction plus 4
+(two Thumb instructions) in Thumb state.
+This is used for computing PC-relative addresses.
+
+NOTE: More specifically, in Thumb state,
+for B, BL, CBNZ, and CBZ instructions, the value of the PC is the address of
+the current instruction plus 4 bytes.
+For all other instructions that use labels, the value of the PC is the address
+of the current instruction plus 4 bytes, with bit[1] of the result
+cleared to 0 to make it word-aligned.
+The word-alignment needs to be handled where this is used.
+*/
+.decl pc_relative_disp(EA:address,Disp:number) inline
+
+pc_relative_disp(EA,Disp):-
+    (EA band 1) = 0,  Disp = 8  // ARM mode
+    ;
+    (EA band 1) != 0, Disp = 4. // Thumb mode
+
+pc_relative_addr(EA,Reg,Val):-
+    instruction(EA,_,_,Operation,OffsetOp,DestOp,0,_,_,_),
+    substr(Operation,0,3) = "ADR",
+    op_immediate(OffsetOp, Offset),
+    op_regdirect(DestOp,Reg),
+    pc_relative_disp(EA,Disp),
+    Val = as(EA - (EA band 1),number) + Offset + Disp.
+
+pc_relative_addr(EA,Reg,Val):-
+    instruction(EA,_,_,Operation,PCOp,OffsetOp,DestOp,0,_,_),
+    substr(Operation,0,3) = "ADD",
+    op_immediate(OffsetOp, Offset),
+    op_regdirect(DestOp,Reg),
+    op_regdirect(PCOp,PC),
+    arch.pc_register(PC),
+    pc_relative_disp(EA,Disp),
+    Val = as(EA - (EA band 1),number) + Offset + Disp.
+
+/**
 IT: The IT (If-Then) instruction makes up to four following instructions
 (the IT block) conditional.
 
@@ -181,10 +220,9 @@ it_conditional(EA):-
 conditional(EA):-
     it_conditional(EA).
 
-// Does not override - extends with `ldr pc, [...]`
+// Does not override - extends with `ldr pc, [...] or mov pc, reg`
 jump(EA):-
-    instruction_get_operation(EA,Operation),
-    load_operation(Operation),
+    mov(EA),
     instruction_get_dest_op(EA,_,Op),
     op_regdirect(Op,Reg),
     pc_register(Reg),

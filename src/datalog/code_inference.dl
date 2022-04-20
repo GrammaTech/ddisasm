@@ -611,6 +611,7 @@ block_points(Block,"code",0,20,"function symbol"):-
 
 block_points(Block,"code",0,1,"address in data"):-
     !binary_isa("X86"),
+    !binary_isa("ARM"),
     block_is_overlapping(Block,"code"),
     address_in_data(Address,Block),
     !address_in_data_is_printable(Address).
@@ -622,6 +623,7 @@ block_points(Block,"code",0,1,"aligned address in data"):-
     aligned_address_in_data(_,Block).
 
 block_points(Block,"code",0,1,"address in data array"):-
+    !binary_isa("ARM"),
     block_is_overlapping(Block,"code"),
     address_in_data(Address,Block),
     arch.pointer_size(Pt_size),
@@ -720,8 +722,12 @@ block_points(Block,"code",BlockPred,Points,Why):-
     may_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     block_is_overlapping(BlockPred,"code"),
-    !block_overlap(BlockPred,"code",_,"data"),
-    !block_overlap(_,"data",BlockPred,"code"),
+    (
+        Why = "may-fallthrough"
+        ;
+        !block_overlap(BlockPred,"code",_,"data"),
+        !block_overlap(_,"data",BlockPred,"code")
+    ),
     block_points(BlockPred,"code",_,Points,Why),
     transitive_points(Why),
     Points != 0.
@@ -828,9 +834,9 @@ block_is_overlapping(Block,"code"),
 block_points(Block,"code",0,-1,"jump to string"):-
     code_in_block_candidate(EA,Block),
     direct_jump(EA,Dest),
-    ascii_string(Beg,Size),
+    ascii_string(Beg,End),
     Dest >= Beg,
-    Dest < Beg+Size,
+    Dest < End,
     (
         symbol(Beg,_,_,_,_,_,_,_,_)
         ;
