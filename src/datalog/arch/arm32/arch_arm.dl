@@ -187,44 +187,43 @@ The condition switch in the IT block can be either: T (Then) or E (Else).
 
 This predicate determines if EA is a IT block instruction.
 */
-.decl it_conditional(EA:address)
+.decl it_conditional(EA:address,IT:address)
 .output it_conditional
 
-it_conditional(EA):-
-    instruction_get_operation(Prev1,Operation),
+it_conditional(EA,IT):-
+    instruction_get_operation(IT,Operation),
     substr(Operation,0,2) = "IT",
-    next(Prev1,EA).
+    next(IT,EA).
 
-it_conditional(EA):-
-    instruction_get_operation(Prev2,Operation),
+it_conditional(EA,IT):-
+    instruction_get_operation(IT,Operation),
     substr(Operation,0,2) = "IT",
     strlen(Operation) >= 3,
-    next(Prev2,Prev1),
+    next(IT,Prev1),
     next(Prev1,EA).
 
-it_conditional(EA):-
-    instruction_get_operation(Prev3,Operation),
+it_conditional(EA,IT):-
+    instruction_get_operation(IT,Operation),
     substr(Operation,0,2) = "IT",
     strlen(Operation) >= 4,
-    next(Prev3,Prev2),
+    next(IT,Prev2),
     next(Prev2,Prev1),
     next(Prev1,EA).
 
-it_conditional(EA):-
-    instruction_get_operation(Prev4,Operation),
+it_conditional(EA,IT):-
+    instruction_get_operation(IT,Operation),
     substr(Operation,0,2) = "IT",
     strlen(Operation) = 5,
-    next(Prev4,Prev3),
+    next(IT,Prev3),
     next(Prev3,Prev2),
     next(Prev2,Prev1),
     next(Prev1,EA).
 
 conditional(EA,CC):-
-    it_conditional(EA),
-    Size = strlen(Operation),
-    instruction_get_operation(EA,Operation),
-    Suffix = substr(Operation,Size-2,2),
-    condition_code(Suffix,CC).
+    it_conditional(EA,IT),
+    instruction_get_op(IT,1,Op),
+    op_special(Op,"it",ArmCC),
+    condition_code(ArmCC,CC).
 
 // Does not override - extends with `ldr pc, [...] or mov pc, reg`
 jump(EA):-

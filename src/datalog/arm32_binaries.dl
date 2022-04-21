@@ -1172,4 +1172,4 @@ thumb_branch_offset(EA,Offset):-
 
 impossible_jump_target(Val):-
     possible_ea(Val),
-    arch.it_conditional(Val).
+    arch.it_conditional(Val,_).

@@ -26,7 +26,8 @@
 #include <string>
 #include <vector>
 
-void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval, BinaryFacts& Facts)
+void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
+                       BinaryFacts& Facts)
 {
     // NOTE: AArch32 (ARMv8-A) is backward compatible to ARMv7-A.
     cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_ARM | CS_MODE_V8);
@@ -175,6 +176,64 @@ bool Arm32Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction)
         // Add reg_bitfield to the table.
         uint64_t OpIndex = Facts.Operands.add(RegBitFields);
         OpCodes.push_back(OpIndex);
+    }
+    else if(CsInstruction.id == ARM_INS_IT)
+    {
+        // Capstone doesn't currently populate any operands for IT instructions.
+        // Generate it based on the condition code.
+        std::string OpCC;
+        switch(Details.cc)
+        {
+            case ARM_CC_INVALID:
+                assert(!"Unexpected condition code for IT instruction");
+            case ARM_CC_EQ:
+                OpCC = "EQ";
+                break;
+            case ARM_CC_NE:
+                OpCC = "NE";
+                break;
+            case ARM_CC_HS:
+                OpCC = "HS";
+                break;
+            case ARM_CC_LO:
+                OpCC = "LO";
+                break;
+            case ARM_CC_MI:
+                OpCC = "MI";
+                break;
+            case ARM_CC_PL:
+                OpCC = "PL";
+                break;
+            case ARM_CC_VS:
+                OpCC = "VS";
+                break;
+            case ARM_CC_VC:
+                OpCC = "VC";
+                break;
+            case ARM_CC_HI:
+                OpCC = "HI";
+                break;
+            case ARM_CC_LS:
+                OpCC = "LS";
+                break;
+            case ARM_CC_GE:
+                OpCC = "GE";
+                break;
+            case ARM_CC_LT:
+                OpCC = "LT";
+                break;
+            case ARM_CC_GT:
+                OpCC = "GT";
+                break;
+            case ARM_CC_LE:
+                OpCC = "LE";
+                break;
+            case ARM_CC_AL:
+                OpCC = "AL";
+                break;
+        }
+
+        OpCodes.push_back(Facts.Operands.add(relations::SpecialOp{"it", OpCC}));
     }
     else if(Name != "NOP")
     {
