@@ -63,7 +63,7 @@ void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& B
                     Chars.push_back(RawChars[I]);
             }
             std::string SectStr(Chars.begin(), Chars.end());
-            if(SectStr.find("Cortex-M") != std::string::npos)
+            if(SectStr.find("Cortex-M7") != std::string::npos)
             {
                 mclass = true;
                 break;
