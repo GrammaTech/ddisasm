@@ -427,6 +427,18 @@ defines_reg(EA,Reg):-
     ).
 
 /**
+An instruction at EA uses the register Reg
+
+This may be an implicit use (i.e., the register may not appear in any operands).
+*/
+.decl uses_reg(EA:address,Reg:register)
+.output uses_reg
+
+uses_reg(EA,Reg):-
+    register_access(EA,"R",UntrackedReg),
+    arch.track_register(UntrackedReg,Reg).
+
+/**
 The location and register where the address of main is loaded.
  */
 .decl inferred_main_in_reg(EA:address,Reg:register)

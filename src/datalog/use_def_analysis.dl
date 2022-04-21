@@ -176,7 +176,7 @@ used(EA,Reg,Index):-
 
 // Implicitly-used registers use an operand index of zero.
 used(EA,Reg,0):-
-    register_access(EA,"R",Reg),
+    arch.uses_reg(EA,Reg),
     !used_explicit(EA,Reg,_).
 
 .decl used_in_block(EA:address,Reg:register)

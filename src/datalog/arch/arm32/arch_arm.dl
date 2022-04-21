@@ -136,6 +136,11 @@ conditional_operation(Operation,CC):-
     Suffix = substr(Operation,Size-2,2),
     condition_code(Suffix,CC).
 
+// Conditional instructions implicitly use the CPSR, which capstone doesn't
+// seem to indicate reliably in cs_reg_access.
+uses_reg(EA,"CPSR"):-
+    conditional(EA,_).
+
 /**
 PC stores the address of the current instruction plus 8 (two ARM
 instructions) in ARM state, and the current instruction plus 4
