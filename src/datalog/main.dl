@@ -635,7 +635,11 @@ op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate):-
 
 cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
     op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate),
-    arch.cmp_operation(Operation).
+    arch.cmp_operation(Operation),
+    (
+        !arch.jump(EA);
+        arch.jump(EA), arch.jump_operation_op_index(Operation,JumpTargetIndex), Imm_index != JumpTargetIndex
+    ).
 
 /////////////////////////////////////////////////////////////////////////////////
 

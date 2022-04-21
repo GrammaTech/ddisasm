@@ -180,6 +180,14 @@ This excludes a read of SP for adjusting stack-pointer: e.g., pop
 halt_operation(""):-
     false.
 
+/**
+May include operations that:
+
+* compare two values and implicitly set flags, e.g, Intel "CMP"
+* compare two values in a manner other than subtraction, e.g, Intel "TEST"
+* make a comparison and branch, e.g., mips32 "BEQZ"
+
+*/
 .decl cmp_operation(Operation:symbol)
 .output cmp_operation
 
