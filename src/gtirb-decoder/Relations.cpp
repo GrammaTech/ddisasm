@@ -178,6 +178,12 @@ namespace souffle
         return T;
     }
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::ShiftedWithRegOp& Op)
+    {
+        T << Op.Addr << static_cast<uint64_t>(Op.Index) << Op.Reg << Op.Type;
+        return T;
+    }
+
     souffle::tuple& operator<<(souffle::tuple& T, const relations::InstructionWriteback& Writeback)
     {
         T << Writeback.Addr;
