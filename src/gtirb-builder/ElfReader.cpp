@@ -68,7 +68,6 @@ void ElfReader::buildSections()
         bool Relocatable = Loaded && Section.virtual_address() == 0
                            && Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL;
 
-        // FIXME: Populate sections that are not loaded (e.g. .symtab and .strtab)
         if(!Loaded && !Literal)
         {
             Index++;
