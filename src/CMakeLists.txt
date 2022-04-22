@@ -34,6 +34,7 @@ set(DATALOG_BASE_SOURCES
     datalog/code_inference.dl
     datalog/code_inference_postprocess.dl
     datalog/cfg.dl
+    datalog/data.dl
     datalog/data_access_analysis.dl
     datalog/empty_range.dl
     datalog/basic_function_inference.dl
@@ -332,6 +333,36 @@ add_subdirectory(gtirb-decoder)
 
 add_subdirectory(passes)
 
+# ===== functors ====
+# Build a shared functors library for use with the interpreter. Disabled if
+# BUILD_SHARED_LIBS is OFF
+if(BUILD_SHARED_LIBS)
+  add_library(functors SHARED Functors.cpp)
+  target_link_libraries(functors gtirb)
+
+  target_compile_definitions(functors PRIVATE -DSOUFFLE_INTERPRETER_FUNCTOR_LIB)
+
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
+    target_compile_options(functors PRIVATE -Wno-unused-parameter)
+  endif()
+
+  target_include_directories(
+    functors PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
+
+  target_compile_options(functors PRIVATE ${OPENMP_FLAGS})
+
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+    target_compile_definitions(functors PRIVATE _CRT_SECURE_NO_WARNINGS)
+    target_compile_definitions(functors PRIVATE _CRT_NONSTDC_NO_WARNINGS)
+    set_common_msvc_options(functors)
+  else()
+    target_compile_options(functors PRIVATE -O3)
+    target_compile_options(functors PRIVATE -Wall)
+    target_compile_options(functors PRIVATE -Wextra -Wpointer-arith)
+    target_compile_options(functors PRIVATE -Werror)
+  endif()
+endif()
+
 # ==== ddisasm_datalog =====
 # Build generated code as a static library. It is both used by tests, and needs
 # different compilation flags than the rest of the source (because the generated
@@ -364,7 +395,7 @@ endif()
 # ====== ddisasm ===========
 # Build final ddisasm executable
 add_executable(ddisasm Disassembler.cpp Interpreter.cpp Registration.cpp
-                       Main.cpp)
+                       Main.cpp Functors.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_compile_options(ddisasm PRIVATE -Wno-unused-parameter)

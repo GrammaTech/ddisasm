@@ -65,7 +65,7 @@ There is a code block starting at 'Block'.
 /**
 The instruction at address 'EA' is code.
 */
-.decl code(EA:address)
+.decl code(EA:address) inline
 
 /**
 The last instruction of 'Block' is at address 'EA'
@@ -211,7 +211,7 @@ invalid(EA,"known data region"):-
     instruction(EA,_,_,_,_,_,_,_,_,_),
     Size > 0, EA >= Begin, EA < (Begin + Size).
 
-.decl possible_ea(EA:address)
+.decl possible_ea(EA:address) inline
 
 possible_ea(EA):-
     instruction(EA,_,_,_,_,_,_,_,_,_),
@@ -832,16 +832,16 @@ block_points(Block,"data",0,7,"object symbol"):-
 
 block_is_overlapping(Block,"code"),
 block_points(Block,"code",0,-1,"jump to string"):-
-    code_in_block_candidate(EA,Block),
-    direct_jump(EA,Dest),
     ascii_string(Beg,End),
+    direct_jump(EA,Dest),
     Dest >= Beg,
     Dest < End,
     (
         symbol(Beg,_,_,_,_,_,_,_,_)
         ;
-        aligned_address_in_data(EA0,Beg)
-    ).
+        aligned_address_in_data(_,Beg)
+    ),
+    code_in_block_candidate(EA,Block).
 
 ////////////////////////////////////////////////////////////////////////////
 

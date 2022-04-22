@@ -40,7 +40,7 @@ instruction_get_src_op(EA,Index,Op):-
 //       ...
 //       lw gp, 16(fp)
 value_reg_edge(EALoad,"GP",EAPrev,"GP",1,0):-
-    reg_stored_in_stack(EAStore,"GP",StackPos,StackFrameDefinedAt),
+    reg_stored_in_stack(EAStore,"GP",_,StackPos,StackFrameDefinedAt),
     reg_loaded_from_stack(EALoad,"GP","FP",StackPos,StackFrameDefinedAt2),
     def_used(EAPrev,"GP",EAStore,_),
     EAPrev != EAStore,
@@ -155,7 +155,7 @@ hi_load_prop(EA,EA,Reg,Upper,"direct"):-
 hi_load_prop(RegRestoreEA,EA,Reg2,Upper,"stack-restore"):-
     hi_load(EA,Reg,Upper),
     def_used(EA,Reg,RegStoreEA,_),
-    reg_stored_in_stack(RegStoreEA,Reg,StackPos,StackFrameDefinedAt),
+    reg_stored_in_stack(RegStoreEA,Reg,_,StackPos,StackFrameDefinedAt),
     reg_loaded_from_stack(RegRestoreEA,Reg2,"SP",StackPos,StackFrameDefinedAt).
 
 hi_load_prop(MoveEA,EA,Reg2,Upper,"move"):-
@@ -358,6 +358,26 @@ base_addr_offset_operand(EA,NextEA,Dest_addr):-
     // ADDIU <Register> <Register> <Offset>
     // e.g. addiu reg2, reg, Offset
     arch.reg_arithmetic_operation(NextEA,_,Reg,_,Offset),
+
+    // Ensure the loaded register is only used in the add. Some examples that
+    // should not match:
+    // * a loop index:
+    //       lw $v1, %got(array)($gp)
+    //   loop:
+    //       sw $v0, 0($v1)
+    //       addiu $v1, $v1, 4
+    //       bne $v0, $a0,.loop
+    // * a loop limit:
+    //       lw $s0, %got(array)($gp)
+    //       addiu $s2,$s0,40
+    //   loop:
+    //       lw $a2, 0($s0)
+    //       ...
+    //       addiu $s0, $s0, 4
+    //       bne $s0, $s2,.loop
+    // TODO: can we identify MIPS_BASE_ADDRESS and this is that .got entry? (is
+    // that some single location in a binary?)
+    0 = count : { def_used(EA,Reg,OtherEA,_), OtherEA != NextEA },
 
     Dest_addr = as(Value+Offset,address),
     (
