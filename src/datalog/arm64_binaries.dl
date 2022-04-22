@@ -114,13 +114,27 @@ pc_relative_jump(EA, as(Dest,address)):-
     split_load(EA, _, Dest, "LDR/STR").
 
 /**
-A reference to the register loaded by an adr or adrp instruction.
+A reference to a value loaded by an adr or adrp instruction.
+
+EA: Address of the adr/adrp instruction
+Reg: The register that holds the used value
+UsedEA: Address where the value is used
+Dest: The destination address
+
+Reg is necessarily the register loaded by adrp! It may be the result of:
+
+    adrp x0, label
+    mov x1, x0
+UsedEA:
+    # x1 is used
+
+and Reg would be `x1`
 */
 .decl adr_used(EA:address,Reg:register,UsedEA:address,Dest:address)
 
 adr_used(EA,Reg,UsedEA,Dest):-
-    def_used(EA,Reg,UsedEA,_),
-    arch.adr_dest(EA,Reg,Dest).
+    const_value_reg_used(UsedEA,EA,Reg,as(Dest,number)),
+    arch.adr_dest(EA,_,Dest).
 
 /**
 An instruction which could be the second half of a split load.
@@ -151,13 +165,6 @@ Instead, this is for the symbolization step.
 split_load_for_symbolization(EA,UsedEA,as(as(Base,number)+Offset,address),Type):-
     adr_used(EA,Reg,UsedEA,Base),
     split_load_tail(UsedEA,Offset,Reg,Type).
-
-// Split load through the stack
-split_load_for_symbolization(EA,NextEA,as(as(Base,number)+Offset,address),Type):-
-    adr_used(EA,Reg1,UsedEA,Base),
-    stack_load_store_pair(UsedEA,LoadEA,Reg1,Reg2),
-    def_used(LoadEA,Reg2,NextEA,_),
-    split_load_tail(NextEA,Offset,Reg2,Type).
 
 split_load_operand(EA, 1, as(Dest,address)) :-
     split_load_for_symbolization(EA, _, Dest, _).
