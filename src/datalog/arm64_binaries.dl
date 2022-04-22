@@ -133,8 +133,20 @@ and Reg would be `x1`
 .decl adr_used(EA:address,Reg:register,UsedEA:address,Dest:address)
 
 adr_used(EA,Reg,UsedEA,Dest):-
-    const_value_reg_used(UsedEA,EA,Reg,as(Dest,number)),
-    arch.adr_dest(EA,_,Dest).
+    const_value_reg_used(UsedEA,EA,EARegDef,Reg,as(Dest,number)),
+    arch.adr_dest(EA,_,Dest),
+
+    // The `add` of a split load may have an immediate of zero if the target
+    // is page-aligned. If that address then has an addition offset added to
+    // it, e.g.:
+    //      adrp x8, .L_c4a000
+    //      add x8,x8, :lo12:.L_c4a000
+    //      add x8,x8,#8
+    // then we will generate a false positive in the second `add`, since the
+    // first is effectively a move. We only want to apply :lo12: to the first
+    // "ADD" instruction.
+    instruction_get_operation(EARegDef,Operation),
+    Operation != "ADD".
 
 /**
 An instruction which could be the second half of a split load.

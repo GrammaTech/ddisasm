@@ -117,7 +117,7 @@ jump_table_element_access(EA,1,TableStartAddr):-
 jump_table_element_access(EA,Size,TableStartAddr):-
     data_access(EA,_,"NONE",RegBase,RegIndex,as(Size,number),Offset,Size),
     RegIndex != "NONE",
-    const_value_reg_used(EA,_,RegBase,Base),
+    const_value_reg_used(EA,_,_,RegBase,Base),
     TableStartAddr = as(Base+Offset,address),
     data_segment(Beg,End),
     TableStartAddr >= Beg,
@@ -128,7 +128,7 @@ jump_table_element_access(EA,Size,TableStartAddr):-
 jump_table_element_access(EA,Size,TableStartAddr):-
     data_access(EA,_,"NONE",RegBase,RegIndex,1,0,Size),
     RegBase != "NONE",
-    const_value_reg_used(EA,_,RegIndex,TableStart),
+    const_value_reg_used(EA,_,_,RegIndex,TableStart),
     TableStartAddr = as(TableStart,address),
     data_segment(Beg,End),
     TableStartAddr >= Beg,
@@ -165,7 +165,7 @@ jump_table_start(EA_jump,Size,TableStart,TableReferenceAddr,Scale):-
         Operation = "SUB", Scale=-1
     ),
     jump_table_element_access(EA_base,Size,TableStart),
-    const_value_reg_used(EA_base,_,Reg,TableReference),
+    const_value_reg_used(EA_base,_,_,Reg,TableReference),
     TableReferenceAddr = as(TableReference,address),
     (
         code(TableReferenceAddr);

@@ -413,9 +413,11 @@ A constant value is used in a data access.
 
 EADef: The address where Value was orginally defined (which may not necessarily
 be where Reg is defined, if that value is moved to a different register later).
-*/
-.decl const_value_reg_used(UsedEA:address,EADef:address,Reg:register,Value:number)
 
-const_value_reg_used(UsedEA,EADef,Reg,Value):-
-    value_reg(EA2,Reg,EADef,"NONE",0,Value,_),
-    def_used(EA2,Reg,UsedEA,_).
+EARegDef: The address where Reg is defined as Value. Often EADef = EARegDef.
+*/
+.decl const_value_reg_used(UsedEA:address,EADef:address,EARegDef:address,Reg:register,Value:number)
+
+const_value_reg_used(UsedEA,EADef,EARegDef,Reg,Value):-
+    value_reg(EARegDef,Reg,EADef,"NONE",0,Value,_),
+    def_used(EARegDef,Reg,UsedEA,_).
