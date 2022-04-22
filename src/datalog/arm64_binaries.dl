@@ -112,6 +112,32 @@ pc_relative_jump(EA, as(Dest,address)):-
     split_load(EA, _, Dest, "LDR/STR").
 
 /**
+A reference to the register loaded by an adrp instruction.
+*/
+.decl adrp_used(EA:address,Reg:register,UsedEA:address,Dest:address)
+
+adrp_used(EA,Reg,UsedEA,Dest):-
+    def_used(EA,Reg,UsedEA,_),
+    arch.adrp_dest(EA,Reg,Dest).
+
+/**
+An instruction which could be the second half of a split load.
+*/
+.decl split_load_tail(EA:address,Offset:number,Reg:register,Type:symbol)
+
+// ADD <Register> <Register> <Immediate>
+// e.g. add x0, x0, <Offset>
+split_load_tail(EA,Offset,Reg,Type):-
+    arch.reg_arithmetic_operation(EA,_,Reg,1,Offset),
+    Type = "ADD".
+
+// LDR/STR <Register> <IndirectOp>
+// e.g. ldr x0, [x0, <OffsetOp>]
+split_load_tail(EA,Offset,Reg,Type):-
+    arch.memory_access(_,EA,_,_,_,Reg,"NONE",_,Offset),
+    Type = "LDR/STR".
+
+/**
 This version of split_load uses def_used, so this should not be used for
 the code inference step due to cyclic negation issue.
 Instead, this is for the symbolization step.
@@ -119,43 +145,17 @@ Instead, this is for the symbolization step.
 .decl split_load_for_symbolization(ea:address, nextea:address, dest:address, type:symbol)
 .output split_load_for_symbolization
 
-split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "ADD"):-
-    // ADRP <Register> <Immediate>
-    // e.g. adrp x0, BaseOp
-    instruction_get_operation(EA, "ADRP"),
-    instruction_get_op(EA, 1, BaseOp),
-    op_immediate(BaseOp, Base),
-    instruction_get_op(EA, 2, RegOp),
-    op_regdirect_contains_reg(RegOp, Reg1),
-    (
-        Reg1 = Reg2,
-        def_used(EA,Reg1,NextEA,_)
-        ;
-        value_reg_edge(StackLoadEA,Reg2,EA,Reg1,1,0),
-        def_used(StackLoadEA,Reg2,NextEA,_)
-    ),
-    // ADD <Register> <Register> <Immediate>
-    // e.g. add x0, x0, <Offset>
-    arch.reg_arithmetic_operation(NextEA,_,Reg2,1,Offset).
+// Direct split load
+split_load_for_symbolization(EA,UsedEA,as(as(Base,number)+Offset,address),Type):-
+    adrp_used(EA,Reg,UsedEA,Base),
+    split_load_tail(UsedEA,Offset,Reg,Type).
 
-split_load_for_symbolization(EA, NextEA, as(Base + Offset,address), "LDR/STR"):-
-    // ADRP <Register> <Immediate>
-    // e.g. adrp x0, BaseOp
-    instruction_get_operation(EA, "ADRP"),
-    instruction_get_op(EA, 1, BaseOp),
-    op_immediate(BaseOp, Base),
-    instruction_get_op(EA, 2, RegOp),
-    op_regdirect_contains_reg(RegOp, Reg1),
-    (
-        Reg1 = Reg2,
-        def_used(EA,Reg1,NextEA,_)
-        ;
-        value_reg_edge(StackLoadEA,Reg2,EA,Reg1,1,0),
-        def_used(StackLoadEA,Reg2,NextEA,_)
-    ),
-    // LDR/STR <Register> <IndirectOp>
-    // e.g. ldr x0, [x0, <OffsetOp>]
-    arch.memory_access(_,NextEA,_,_,_,Reg2,"NONE",_,Offset).
+// Split load through the stack
+split_load_for_symbolization(EA,NextEA,as(as(Base,number)+Offset,address),Type):-
+    adrp_used(EA,Reg1,UsedEA,Base),
+    stack_load_store_pair(UsedEA,LoadEA,Reg1,Reg2),
+    def_used(LoadEA,Reg2,NextEA,_),
+    split_load_tail(NextEA,Offset,Reg2,Type).
 
 split_load_operand(EA, 1, as(Dest,address)) :-
     split_load_for_symbolization(EA, _, Dest, _).
@@ -219,6 +219,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     data_word(RefAddr,DataSize/8,Val).
 
 // Not restricted with def_used_for_address since ADRP and ADR are always addresses.
+// TODO: This rule shouldn't be needed once both adrp and adr are marked as pc_relative_addr.
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     instruction(EA,_,_,Operation,Op1,Op2,_,_,_,_),
     (

@@ -158,4 +158,24 @@ reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,Sign*Mult,0):-
 inferred_main_in_reg(EA,"X0"):-
     inferred_main_dispatch(EA).
 
+/**
+The referenced address of an ADRP instruction
+
+This intermediate relation is an optimization that allows performing non-
+recursive work before running the recursive rule adrp_used.
+*/
+.decl adrp_dest(EA:address,Reg:register,Dest:address)
+
+adrp_dest(EA,Reg,as(Dest,address)):-
+    // ADRP <Register> <Immediate>
+    // e.g. adrp x0, ImmOp
+    instruction(EA,_,_,"ADRP",ImmOp,RegOp,0,0,_,_),
+    op_immediate(ImmOp,Dest),
+    op_regdirect_contains_reg(RegOp,Reg).
+
+// mark adrp instructions as PC-relative
+// This also ensures they are marked as def_used_for_address
+pc_relative_addr(EA,Reg,as(Dest,number)):-
+    adrp_dest(EA,Reg,Dest).
+
 }

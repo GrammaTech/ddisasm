@@ -142,7 +142,9 @@ int main(int argc, char **argv)
         "no-analysis,n",
         "Do not perform disassembly. This option only parses/loads the binary object into GTIRB.")(
         "interpreter,I", po::value<std::string>(),
-        "Execute the souffle interpreter with the specified source file.");
+        "Execute the souffle interpreter with the specified source file.")(
+        "library-dir,L", po::value<std::string>(),
+        "Directory from which extra libraries are loaded when running the interpreter");
 
     po::positional_options_description pd;
     pd.add("input-file", -1);
@@ -292,7 +294,10 @@ int main(int argc, char **argv)
             // Disassemble with the interpeter engine.
             std::cerr << " (interpreter)";
             const std::string &DatalogFile = vm["interpreter"].as<std::string>();
-            runInterpreter(Module, Souffle->get(), DatalogFile, DebugDir.string(), Threads);
+            const std::string &LibDirectory =
+                vm.count("library-dir") ? vm["library-dir"].as<std::string>() : std::string();
+            runInterpreter(*GTIRB->IR, Module, Souffle->get(), DatalogFile, DebugDir.string(),
+                           LibDirectory, Threads);
         }
         else
         {

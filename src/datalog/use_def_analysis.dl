@@ -59,7 +59,7 @@ Instruction at address 'EA' uses register 'Reg' at operand index 'Index'.
 .decl flow_def(EA:address,Reg:register,EA_next:address,Value:number)
 //////////////////////////////////////////////////////////////////////////////
 //local underapproximation of control flow
-.decl local_next(ea:address,ea_next:address)
+.decl local_next(ea:address,ea_next:address) inline
 
 local_next(EA,EA_next):-
     code_in_block(EA,Block),
@@ -145,12 +145,11 @@ flow_def(EA_jump,Reg,EA_target,Immediate):-
     instruction_get_operation(EA_jump,Operation),
     arch.jump_unequal_operation(Operation).
 
-.decl must_def(EA:address,Reg:register)
+.decl must_def(EA:address,Reg:register) inline
 
 must_def(EA,Reg):-
     def(EA,Reg),
-    instruction_get_operation(EA,Op),
-    !arch.conditional_operation(Op).
+    !arch.conditional(EA).
 
 .decl defined_in_block(EA:address,Reg:register)
 
@@ -229,29 +228,65 @@ def_used(EA_def,Reg,EA_used,Index):-
 def_used(EA_def,Reg,EA_used,Index_used):-
     def_used_return_val_reg(EA_def,_,Reg,EA_used,Index_used).
 
-// reg: return-value register
-// ea_used: use of the return-value register after a call
-// ea_call: the corresponding call
-// ea_def: def of the return-value register in the callee
+/**
+A value returned from a function is used.
+*/
+.decl return_val_used(EA_call:address,Callee:address,Reg:register,EA_used:address,Index_used:operand_index)
+
+return_val_used(EA_call,Callee,Reg,EA_used,Index_used):-
+    arch.return_val_reg(Reg),
+    def_used_intra(EA_call,Reg,EA_used,Index_used),
+    direct_call(EA_call,Callee).
+
+/**
+A value is returned from a called procedure Callee, from the last Block with
+the last instruction at BlockEnd.
+*/
+.decl return_block_end(Callee:address,CalleeEnd:address,Block:address,BlockEnd:address)
+
+return_block_end(Callee,CalleeEnd,Block,BlockEnd):-
+    direct_call(_,Callee),
+    fde_addresses(Callee,CalleeEnd),
+    arch.return(CalleeReturn),
+    Callee <= CalleeReturn,
+    CalleeReturn < CalleeEnd,
+    code_in_block(CalleeReturn,Block),
+    block_last_instruction(Block,BlockEnd).
+
+/**
+A register is defined and then returned from a called function
+*/
+.decl return_val_def(Callee:address,Reg:register,EA_def:address)
+
+// Simple case: the returning block defines the return register.
+return_val_def(Callee,Reg,EA_def):-
+    arch.return_val_reg(Reg),
+    return_block_end(Callee,_,_,BlockEnd),
+    block_last_def(BlockEnd,EA_def,Reg).
+
+// The return register is defined elsewhere in the function.
+return_val_def(Callee,Reg,EA_def):-
+    last_def(Block,EA_def,Reg),
+    arch.return_val_reg(Reg),
+    return_block_end(Callee,CalleeEnd,Block,BlockEnd),
+    !block_last_def(BlockEnd,_,Reg),
+    Callee <= EA_def,
+    EA_def < CalleeEnd.
+
+/**
+A function defines a return value and it is used by the caller.
+
+reg: return-value register
+ea_used: use of the return-value register after a call
+ea_call: the corresponding call
+ea_def: def of the return-value register in the callee
+*/
 .decl def_used_return_val_reg(ea_def:address,ea_call:address,reg:register,ea_used:address,index_used:operand_index)
 .output def_used_return_val_reg
 
 def_used_return_val_reg(EA_def,EA_call,Reg,EA_used,Index_used):-
-    arch.return_val_reg(Reg),
-    def_used_intra(EA_call,Reg,EA_used,Index_used),
-    direct_call(EA_call,Callee),
-    fde_addresses(Callee,End),
-    arch.return(CalleeReturn),
-    Callee <= CalleeReturn,
-    CalleeReturn < End,
-    code_in_block(CalleeReturn,CalleeReturnBlock),
-    block_last_instruction(CalleeReturnBlock,CalleeReturnBlock_end),
-    (
-        block_last_def(CalleeReturnBlock_end,EA_def,Reg)
-        ;
-        !block_last_def(CalleeReturnBlock_end,_,Reg),
-        last_def(CalleeReturnBlock,EA_def,Reg)
-    ).
+    return_val_used(EA_call,Callee,Reg,EA_used,Index_used),
+    return_val_def(Callee,Reg,EA_def).
 
 /**
  * The register 'Reg' used as an address at address 'EA'.
@@ -289,29 +324,3 @@ def_used_for_address(EA_def,Reg):-
 
 def_used_for_address(EA,Reg):-
     arch.pc_relative_addr(EA,Reg,_).
-
-// straight_line_def_used is a weaker version than def_used
-// that can be used BEFORE code inference.
-
-
-// the last address where a register was defined within the block
-.decl straight_line_last_def(EA:address,EA_def:address,Reg:register)
-
-straight_line_last_def(EA_next,EA,Reg):-
-    def(EA,Reg),
-    possible_ea(EA),
-    must_fallthrough(EA,EA_next),
-    possible_ea(EA_next).
-
-straight_line_last_def(EA_next,EA_def,Reg):-
-    straight_line_last_def(EA,EA_def,Reg),
-    !must_def(EA,Reg),
-    must_fallthrough(EA,EA_next),
-    possible_ea(EA_next).
-
-.decl straight_line_def_used(EA_def:address,Reg:register,EA_used:address,Index:unsigned)
-.output straight_line_def_used
-
-straight_line_def_used(EA_def,Reg,EA_used,Index):-
-    used(EA_used,Reg,Index),
-    straight_line_last_def(EA_used,EA_def,Reg).

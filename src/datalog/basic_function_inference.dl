@@ -80,9 +80,9 @@ in_function_initial(Block,Block):-
     function_entry(Block).
 
 in_function_initial(Block,Begin):-
-    refined_block(Block),
-    fde_addresses(Begin,End),
     function_entry(Begin),
+    fde_addresses(Begin,End),
+    refined_block(Block),
     Begin <= Block,
     Block < End.
 

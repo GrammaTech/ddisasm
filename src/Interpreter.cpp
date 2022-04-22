@@ -25,6 +25,9 @@
 #include <souffle/CompiledSouffle.h>
 
 #include <boost/filesystem.hpp>
+#include <boost/process/args.hpp>
+#include <boost/process/env.hpp>
+#include <boost/process/environment.hpp>
 #include <boost/process/search_path.hpp>
 #include <boost/process/system.hpp>
 
@@ -108,15 +111,65 @@ void loadAll(souffle::SouffleProgram *Program, const std::string &Directory)
     }
 }
 
-void runInterpreter(gtirb::Module &Module, souffle::SouffleProgram *Program,
-                    const std::string &DatalogFile, const std::string &Directory, uint8_t Threads)
+void runInterpreter(gtirb::IR &IR, gtirb::Module &Module, souffle::SouffleProgram *Program,
+                    const std::string &DatalogFile, const std::string &Directory,
+                    const std::string &LibDirectory, uint8_t Threads)
 {
+    // Dump the current GTIRB into the debug directory for use by Functors.
+    std::ofstream out(Directory + "/binary.gtirb", std::ios::out | std::ios::binary);
+    IR.save(out);
+    out.close();
+
+    // Put the debug directory in an env variable for Functors.
+    boost::process::environment Env = boost::this_process::environment();
+    Env["DDISASM_DEBUG_DIR"] = Directory;
+    Env["DDISASM_GTIRB_MODULE_NAME"] = Module.getName();
+
     // Search PATH for `souffle' binary.
     boost::filesystem::path SouffleBinary = boost::process::search_path("souffle");
     if(SouffleBinary.empty())
     {
         std::cerr << "Error: could not find `souffle' on the PATH.\n";
         std::exit(EXIT_FAILURE);
+    }
+
+    // Locate libfunctors.so
+    // If LibDirectory is provided, only check there. Otherwise, search:
+    // ./build/lib/ (Relative directory)
+    // Dir(DatalogFile)../../build/lib/
+    // ./ (Current directory)
+    std::string FinalLibDirectory;
+    if(!LibDirectory.empty())
+    {
+        if(!boost::filesystem::exists(boost::filesystem::path(LibDirectory) / "libfunctors.so"))
+        {
+            std::cerr << "Error: 'libfunctors.so' not in " << LibDirectory << ".\n";
+            std::exit(EXIT_FAILURE);
+        }
+        FinalLibDirectory = LibDirectory;
+    }
+    else
+    {
+        const std::vector<boost::filesystem::path> LibSearchPaths = {
+            "./build/lib",
+            boost::filesystem::path(DatalogFile).parent_path() / "../../build/lib/",
+            ".",
+        };
+
+        for(auto It = LibSearchPaths.begin(); It < LibSearchPaths.end(); It++)
+        {
+            if(boost::filesystem::exists(*It / "libfunctors.so"))
+            {
+                FinalLibDirectory = It->string();
+                break;
+            }
+        }
+
+        if(FinalLibDirectory.empty())
+        {
+            std::cerr << "Error: could not find 'libfunctors.so'.\n";
+            std::exit(EXIT_FAILURE);
+        }
     }
 
     // Build `souffle' command-line arguments.
@@ -128,10 +181,12 @@ void runInterpreter(gtirb::Module &Module, souffle::SouffleProgram *Program,
                                      Directory,
                                      "--jobs",
                                      std::to_string(Threads),
+                                     "--library-dir",
+                                     FinalLibDirectory,
                                      DatalogFile};
 
     // Execute the `souffle' interpreter.
-    int Code = boost::process::system(SouffleBinary, Args);
+    int Code = boost::process::system(SouffleBinary, Args, Env);
     if(Code)
     {
         std::cerr << "Error: `souffle' return non-zero exit code: " << Code << "\n";

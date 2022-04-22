@@ -21,21 +21,24 @@
 //
 //===----------------------------------------------------------------------===//
 #include "DataLoader.h"
+
 #include "../../AuxDataSchema.h"
-#include "../Endian.h"
+#include "../../Endian.h"
+#include "../../Functors.h"
 
 void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
 {
     DataFacts Facts;
     load(Module, Facts);
 
-    Program.insert("data_byte", std::move(Facts.Bytes));
     Program.insert("address_in_data", std::move(Facts.Addresses));
     Program.insert("ascii_string", std::move(Facts.Ascii));
 }
 
 void DataLoader::load(const gtirb::Module& Module, DataFacts& Facts)
 {
+    FunctorContext.useModule(&Module);
+
     std::optional<gtirb::Addr> Min, Max;
     for(const auto& Section : Module.sections())
     {
@@ -85,7 +88,6 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
     {
         // Single byte.
         uint8_t Byte = *Data;
-        Facts.Bytes.push_back({Addr, Byte});
 
         // Possible address.
         if(Size >= static_cast<uint64_t>(PointerSize))
