@@ -109,16 +109,13 @@ Map ARM condition suffixes to standard condition codes
 */
 .decl condition_code(Suffix:symbol,CC:condition_code)
 
-// TODO: aliases - what does capstone use?
 condition_code("EQ","E").
 condition_code("NE","NE").
 condition_code("GT","G").
 condition_code("LT","L").
 condition_code("GE","GE").
 condition_code("LE","LE").
-condition_code("CS","AE").
 condition_code("HS","AE").
-condition_code("CC","B").
 condition_code("LO","B").
 condition_code("MI","S").
 condition_code("PL","NS").
