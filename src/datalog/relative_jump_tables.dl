@@ -114,16 +114,6 @@ jump_table_element_access(EA,1,TableStartAddr):-
     TableStartAddr >= Beg,
     TableStartAddr <= End.
 
-/**
-A constant value is used in a data access.
-*/
-.decl const_value_reg_used_at_data_access(EA:address,Reg:register,Value:number)
-
-const_value_reg_used_at_data_access(EA,Reg,Value):-
-    value_reg(EA_regdef,Reg,_,"NONE",0,Value,_),
-    def_used(EA_regdef,Reg,EA,_),
-    data_access(EA,_,"NONE",_,_,_,_,_).
-
 jump_table_element_access(EA,Size,TableStartAddr):-
     data_access(EA,_,"NONE",RegBase,RegIndex,as(Size,number),Offset,Size),
     RegIndex != "NONE",
