@@ -407,3 +407,17 @@ best_value_reg(EA,Reg,0,MaxMultiplier,Offset,"incomplete"):-
     OtherReg != "NONE",
     !value_reg(EA,Reg,_,"Unknown",_,_,_),
     MaxMultiplier >= max Multiplier:{value_reg(EA,Reg,_,_,Multiplier,_,_)}.
+
+/**
+A constant value is used in a data access.
+
+EADef: The address where Value was orginally defined (which may not necessarily
+be where Reg is defined, if that value is moved to a different register later).
+
+EARegDef: The address where Reg is defined as Value. Often EADef = EARegDef.
+*/
+.decl const_value_reg_used(UsedEA:address,EADef:address,EARegDef:address,Reg:register,Value:number)
+
+const_value_reg_used(UsedEA,EADef,EARegDef,Reg,Value):-
+    value_reg(EARegDef,Reg,EADef,"NONE",0,Value,_),
+    def_used(EARegDef,Reg,UsedEA,_).

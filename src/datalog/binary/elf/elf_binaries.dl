@@ -416,7 +416,8 @@ symbolic_expr_from_relocation(EA,Size/8,Symbol,Addend+Adjustment,TargetEA):-
     (
         Type = "R32";
         Type = "R64";
-        Type = "R32S"
+        Type = "R32S";
+        Type = "ABS64"
     ),
     relocation_adjustment_total(EA,Adjustment),
     symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol),
