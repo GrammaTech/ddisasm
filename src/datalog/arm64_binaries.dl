@@ -121,7 +121,7 @@ Reg: The register that holds the used value
 UsedEA: Address where the value is used
 Dest: The destination address
 
-Reg is necessarily the register loaded by adrp! It may be the result of:
+Reg is not necessarily the register loaded by adrp! It may be the result of:
 
     adrp x0, label
     mov x1, x0
