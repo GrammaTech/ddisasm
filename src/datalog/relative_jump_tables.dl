@@ -248,22 +248,29 @@ relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offs
     Dest = as(Reference_signed + as(Scale,number)*Diff,unsigned),
     code(Dest).
 
-.decl discarded_jump_table_entry(TableStart:address,EA:address)
+.decl discarded_jump_table_entry(TableStart:address,TableRef:address,EA:address)
 .output discarded_jump_table_entry
 
+// Prefer jump tables where TableRef = TableStart, if there is a conflict.
+discarded_jump_table_entry(TableStart,TableRef1,TableStart):-
+    jump_table_start(_,_,TableStart,TableRef1,_),
+    jump_table_start(_,_,TableStart,TableRef2,_),
+    TableRef1 != TableStart,
+    TableRef2 = TableStart.
+
 // Truncate a jump table if a separate data access is encountered.
-discarded_jump_table_entry(TableStart,EA):-
-    relative_jump_table_entry_candidate(EA,TableStart,Size,_,_,_,_),
+discarded_jump_table_entry(TableStart,Ref,EA):-
+    relative_jump_table_entry_candidate(EA,TableStart,Size,Ref,_,_,_),
     possible_data_limit(Limit),
     EA <= Limit, Limit < EA+Size,
     EA != TableStart.
 
-// Recursively discard after truncation
-discarded_jump_table_entry(TableStart,EA):-
-    discarded_jump_table_entry(TableStart,DiscardEA),
-    jump_table_start(_,Size,TableStart,_,_),
+// Recursively discard
+discarded_jump_table_entry(TableStart,Ref,EA):-
+    discarded_jump_table_entry(TableStart,Ref,DiscardEA),
+    jump_table_start(_,Size,TableStart,Ref,_),
     EA = DiscardEA + Size,
-    relative_jump_table_entry_candidate(EA,TableStart,Size,_,_,_,_).
+    relative_jump_table_entry_candidate(EA,TableStart,Size,Ref,_,_,_).
 
 /**
 An entry in a relative jump table of the form (Dest-Reference)/Scale.
@@ -277,4 +284,4 @@ resolve overlapping jump tables.
 
 relative_jump_table_entry(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
     relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offset),
-    !discarded_jump_table_entry(TableStart,EA).
+    !discarded_jump_table_entry(TableStart,Reference,EA).
