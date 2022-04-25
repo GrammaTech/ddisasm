@@ -49,7 +49,9 @@ void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& B
     InstructionSize = 4;
     load(ByteInterval, Facts, false);
 
-    bool mclass = false;
+    // For Thumb, check if the arch type is available.
+    // For Cortex-M, add CS_MODE_MCLASS to the cs option.
+    m_mclass = false;
     for(const auto& Section : Module.findSections(".ARM.attributes"))
     {
         for(const auto& ByteInterval : Section.byte_intervals())
@@ -65,13 +67,27 @@ void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& B
             std::string SectStr(Chars.begin(), Chars.end());
             if(SectStr.find("Cortex-M7") != std::string::npos)
             {
-                mclass = true;
-                break;
+                const char* RawChars = ByteInterval.rawBytes<const char>();
+                // Remove zeros
+                std::vector<char> Chars;
+                for(size_t I = 0; I < ByteInterval.getSize(); ++I)
+                {
+                    if(RawChars[I] != 0)
+                        Chars.push_back(RawChars[I]);
+                }
+                std::string SectStr(Chars.begin(), Chars.end());
+                if(SectStr.find("Cortex-M") != std::string::npos)
+                {
+                    m_mclass = true;
+                    break;
+                }
             }
+            m_archtype_from_elf = true;
+            break;
         }
     }
 
-    if(mclass)
+    if(m_mclass)
     {
         cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
     }
@@ -99,14 +115,14 @@ void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Fact
 
     while(Size >= InstructionSize)
     {
-        decode(Facts, Data, Size, Addr);
+        decode(Facts, Data, Size, Addr, Thumb);
         Addr += InstructionSize;
         Data += InstructionSize;
         Size -= InstructionSize;
     }
 }
 
-void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
+void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr, bool Thumb)
 {
     // Decode instruction with Capstone.
     cs_insn* CsInsn;
@@ -121,8 +137,82 @@ void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size,
 
     if(!InstAdded)
     {
-        // Add address to list of invalid instruction locations.
-        Facts.Instructions.invalid(gtirb::Addr(Addr));
+        bool Invalid = true;
+        // NOTE: The current version of Capstone fails to decode 'mrs' and
+        // 'msr' instructions correctly without CS_MODE_MCLASS.
+        // Also, it fails to decode 'blx' instruction correctly with
+        // CS_MODE_MCLASS.
+        //
+        // If the decoding fails, try different CS modes to see if it works.
+        // This is done only when it's Thumb mode, and the arch type is not
+        // available.
+        if(Thumb && !m_archtype_from_elf)
+        {
+            if(m_mclass)
+            {
+                // Try non-MCLASS mode
+                cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB | CS_MODE_V8);
+                size_t Count = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &CsInsn);
+                InstAdded = false;
+                if(Count > 0) {
+                    Arm32Facts TempFacts;
+                    InstAdded = build(TempFacts, CsInsn[Count - 1]);
+                }
+                if(InstAdded)
+                {
+                    std::string Name0 = uppercase(CsInsn->mnemonic);
+                    std::string Name = Name0.substr(0, 3);
+                    // NOTE: MCLASS mode of capstone fails to decode 'blx'
+                    // instruction correctly.
+                    if(Name == "BLX")
+                    {
+                        m_mclass = false;
+                        Invalid = false;
+                        InstAdded = build(Facts, CsInsn[Count - 1]);
+                    }
+                }
+                // If non-MCLASS mode decoding failed, revert the mode.
+                if(!InstAdded)
+                {
+                    cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
+                }
+            }
+            else
+            {
+                // Try MCLASS mode
+                cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
+                size_t Count = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &CsInsn);
+                InstAdded = false;
+                if(Count > 0) {
+                    Arm32Facts TempFacts;
+                    InstAdded = build(TempFacts, CsInsn[Count - 1]);
+                }
+                if(InstAdded)
+                {
+                    std::string Name0 = uppercase(CsInsn->mnemonic);
+                    std::string Name = Name0.substr(0, 3);
+                    // NOTE: Non-MCLASS mode of capstone fails to decode 'mrs'
+                    // or 'msr' instruction correctly.
+                    if(Name == "MRS" || Name == "MSR")
+                    {
+                        m_mclass = true;
+                        Invalid = false;
+                        InstAdded = build(Facts, CsInsn[Count - 1]);
+                    }
+                }
+                // If MCLASS mode decoding failed, revert the mode.
+                if(!InstAdded)
+                {
+                    cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB | CS_MODE_V8);
+                }
+            }
+        }
+
+        if(Invalid)
+        {
+            // Add address to list of invalid instruction locations.
+            Facts.Instructions.invalid(gtirb::Addr(Addr));
+        }
     }
 
     cs_free(CsInsn, Count);

@@ -53,10 +53,17 @@ public:
             cs_open(CS_ARCH_ARM, (cs_mode)(CS_MODE_ARM | CS_MODE_V8), CsHandle.get());
         assert(Err == CS_ERR_OK && "Failed to initialize ARM disassembler.");
         cs_option(*CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
+
+        m_mclass = false;
+        m_archtype_from_elf = false;
     }
 
 protected:
-    void decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
+    void decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override
+    {
+        assert("Should not be called");
+    }
+    void decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr, bool Thumb);
 
     using InstructionLoader::load;
     void load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
@@ -70,6 +77,8 @@ private:
     bool build(Arm32Facts& Facts, const cs_insn& CsInstruction);
 
     std::shared_ptr<csh> CsHandle;
+    bool m_mclass;
+    bool m_archtype_from_elf;
 };
 
 #endif // SRC_GTIRB_DECODER_ARCH_ARM32DECODER_H_
