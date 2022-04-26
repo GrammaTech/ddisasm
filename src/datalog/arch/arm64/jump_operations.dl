@@ -39,22 +39,7 @@ conditional_branch(Operation,CC):-
         Base = "B.";
         Base = "BC."
     ),
-    (
-        Suffix = "EQ", CC = "E";
-        Suffix = "NE", CC = "NE";
-        Suffix = "GT", CC = "G";
-        Suffix = "LT", CC = "L";
-        Suffix = "GE", CC = "GE";
-        Suffix = "LE", CC = "LE";
-        Suffix = "HS", CC = "AE";
-        Suffix = "LO", CC = "B";
-        Suffix = "MI", CC = "S";
-        Suffix = "PL", CC = "NS";
-        Suffix = "VS", CC = "O";
-        Suffix = "VC", CC = "NO";
-        Suffix = "HI", CC = "A";
-        Suffix = "LS", CC = "BE"
-    ),
+    condition_code_map(Suffix,CC),
     Operation = cat(Base,Suffix).
 
 jump_operation(Operation),

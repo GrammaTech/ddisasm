@@ -104,26 +104,6 @@ long_operation(Operation):-
     instruction_get_operation(_,Operation),
     strlen(Operation) > 2.
 
-/**
-Map ARM condition suffixes to standard condition codes
-*/
-.decl condition_code(Suffix:symbol,CC:condition_code)
-
-condition_code("EQ","E").
-condition_code("NE","NE").
-condition_code("GT","G").
-condition_code("LT","L").
-condition_code("GE","GE").
-condition_code("LE","LE").
-condition_code("HS","AE").
-condition_code("LO","B").
-condition_code("MI","S").
-condition_code("PL","NS").
-condition_code("VS","O").
-condition_code("VC","OV").
-condition_code("HI","A").
-condition_code("LS","BE").
-
 conditional_operation(Operation,CC):-
     long_operation(Operation),
     instruction_get_operation(_,Operation),
@@ -131,7 +111,7 @@ conditional_operation(Operation,CC):-
     Operation != "TEQ", Operation != "SMMLS",
     Operation != "MLS", Operation != "HVC",
     Suffix = substr(Operation,Size-2,2),
-    condition_code(Suffix,CC).
+    condition_code_map(Suffix,CC).
 
 // Conditional instructions implicitly use the CPSR, which capstone doesn't
 // seem to indicate reliably in cs_reg_access.
@@ -225,7 +205,7 @@ conditional(EA,CC):-
     it_conditional(EA,IT),
     instruction_get_op(IT,1,Op),
     op_special(Op,"it",ArmCC),
-    condition_code(ArmCC,CC).
+    condition_code_map(ArmCC,CC).
 
 // Does not override - extends with `ldr pc, [...] or mov pc, reg`
 jump(EA):-
