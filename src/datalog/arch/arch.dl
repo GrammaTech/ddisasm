@@ -292,68 +292,6 @@ See arch.memory_access().
 store(EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset):-
     memory_access("STORE",EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset).
 
-/**
-A pair of instructions that sets the flags register and then conditionally jump.
-
-Empty on architectures where a flags register is not used.
-*/
-.decl flags_and_jump_pair(EA_flags:address,EA_jmp:address,CC:condition_code)
-.output flags_and_jump_pair
-
-flags_and_jump_pair(EA_flags,EA_jmp,CC):-
-    condition_flags_reg(Reg),
-    def_used(EA_flags,Reg,EA_jmp,_),
-    arch.jump(EA_jmp),
-    arch.conditional(EA_jmp,CC).
-
-/**
-A pair of instructions that compares a register to an immediate and then
-conditionally jumps.
-*/
-.decl compare_and_jump_immediate(EA_cmp:address,EA_jmp:address,CC:condition_code,Reg:register,Immediate:number)
-.output compare_and_jump_immediate
-
-// Branch instruction that uses the result of a compare-to-immediate
-compare_and_jump_immediate(EA_cmp,EA_jmp,CC,Reg,Immediate):-
-    flags_and_jump_pair(EA_cmp,EA_jmp,CC),
-    instruction_get_operation(EA_cmp,Operation),
-    arch.cmp_operation(Operation),
-    cmp_immediate_to_reg(EA_cmp,Reg,_,Immediate).
-
-// Branch instructions with built-in zero comparisons
-compare_and_jump_immediate(EA,EA,CC,Reg,0):-
-    instruction_get_operation(EA,Operation),
-    arch.cmp_zero_operation(Operation),
-    arch.jump(EA),
-    arch.conditional(EA,CC),
-    instruction_get_op(EA,_,Op),
-    (
-        // Explicit register
-        op_regdirect_contains_reg(Op,Reg)
-        ;
-        // Implicit register (e.g., Intel "JECXZ")
-        register_access(EA,"R",RawReg),
-        arch.track_register(RawReg,Reg),
-        !op_regdirect_contains_reg(Op,Reg)
-    ).
-
-/**
-A pair of instructions that compares a register to another register and then
-conditionally jumps.
-*/
-.decl compare_and_jump_register(EA_cmp:address,EA_jmp:address,CC:condition_code,Reg1:register,Reg2:register)
-
-// cmp-and-branch pairs using a flags register
-compare_and_jump_register(EA_cmp,EA_jmp,CC,Reg1,Reg2):-
-    flags_and_jump_pair(EA_cmp,EA_jmp,CC),
-    cmp_reg_to_reg(EA_cmp,Reg1,Reg2).
-
-// Single instruction that compares and branches
-compare_and_jump_register(EA,EA,CC,Reg1,Reg2):-
-    cmp_reg_to_reg(EA,Reg1,Reg2),
-    arch.jump(EA),
-    arch.conditional(EA,CC).
-
 .decl delay_slot(BranchEA:address,EA:address)
 .output delay_slot
 
