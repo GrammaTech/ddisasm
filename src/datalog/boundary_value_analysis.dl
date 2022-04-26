@@ -172,14 +172,14 @@ Basic-block propagation of value_reg_limit
 
 Limits can only exist at CFG edges (from conditional jumps) so this simplifies propagation a bit.
 */
-.decl last_value_reg_limit(Block:address,EA_cmp:address,EA_jmp:address,EA_limited:address,Reg:register,Value:number,LimitType:limit_type)
+.decl last_value_reg_limit(Block:address,Reg:register,Value:number,LimitType:limit_type)
 .output last_value_reg_limit
 
-last_value_reg_limit(EA_limited,EA_cmp,EA_jmp,EA_limited,Reg,Value,LimitType):-
-    value_reg_limit(EA_cmp,EA_jmp,EA_limited,Reg,Value,LimitType).
+last_value_reg_limit(EA_limited,Reg,Value,LimitType):-
+    value_reg_limit(_,_,EA_limited,Reg,Value,LimitType).
 
-last_value_reg_limit(BlockNext,EA_cmp,EA_jmp,EA_limited,PropagatedReg,PropagatedVal,PropagatedType):-
-    last_value_reg_limit(Block,EA_cmp,EA_jmp,EA_limited,PropagatedReg,PropagatedVal,PropagatedType),
+last_value_reg_limit(BlockNext,PropagatedReg,PropagatedVal,PropagatedType):-
+    last_value_reg_limit(Block,PropagatedReg,PropagatedVal,PropagatedType),
     block_last_instruction(Block,BlockEnd),
     block_next(BlockEnd,BlockNext),
     !defined_in_block(Block,PropagatedReg),

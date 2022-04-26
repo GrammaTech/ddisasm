@@ -143,7 +143,7 @@ jump_table_max(TableStart,TableStart+as(Value,unsigned)*Mult):-
     jump_table_element_access(EA,_,TableStart,RegIndexRaw,Mult),
     arch.track_register(RegIndexRaw,RegIndex),
     code_in_block(EA,Block),
-    last_value_reg_limit(Block,_,_,_,RegIndex,Value,"MAX"),
+    last_value_reg_limit(Block,RegIndex,Value,"MAX"),
     Value >= 0.
 
 .decl jump_table_start(EA_jump:address,Size:unsigned,TableStart:address,TableRef:address,Scale:number)
