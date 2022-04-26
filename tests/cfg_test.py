@@ -157,12 +157,7 @@ class CfgTests(unittest.TestCase):
                     "qemu-arm -L /usr/arm-linux-gnueabihf",
                 )
             )
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                )[0]
-            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
@@ -194,12 +189,7 @@ class CfgTests(unittest.TestCase):
                     "qemu-arm -L /usr/arm-linux-gnueabihf",
                 )
             )
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                )[0]
-            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]

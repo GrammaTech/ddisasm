@@ -29,12 +29,7 @@ class ArmInvalidLdrTests(unittest.TestCase):
             )
 
             # collect the invalid symbols
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                )
-            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
             invalid_syms = [
