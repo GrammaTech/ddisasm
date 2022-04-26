@@ -61,7 +61,8 @@ jump_table_candidate_refined(EA,EntryAddr,TargetAddr):-
     !code(EntryAddr).
 
 /**
-The set of all CFG edges formed by jump tables.
+CFG edges formed by jump tables using the best available information during
+value analysis.
 
 Attributes:
 

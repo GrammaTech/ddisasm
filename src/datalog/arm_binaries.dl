@@ -121,3 +121,24 @@ symbolic_expr_from_relocation(EA,4,Symbol,Addend,EA+as(Addend,address)):-
     binary_type("REL"),
     relocation(EA,"GOT_BREL",Symbol,_,_,_,_),
     data_word(EA,4,Addend).
+
+
+/**
+Map ARM condition suffixes to standard condition codes
+*/
+.decl condition_code_map(Suffix:symbol,CC:condition_code)
+
+condition_code_map("EQ","E").
+condition_code_map("NE","NE").
+condition_code_map("GT","G").
+condition_code_map("LT","L").
+condition_code_map("GE","GE").
+condition_code_map("LE","LE").
+condition_code_map("HS","AE").
+condition_code_map("LO","B").
+condition_code_map("MI","S").
+condition_code_map("PL","NS").
+condition_code_map("VS","O").
+condition_code_map("VC","OV").
+condition_code_map("HI","A").
+condition_code_map("LS","BE").

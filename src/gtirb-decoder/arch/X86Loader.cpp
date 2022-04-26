@@ -21,23 +21,13 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include "X86Loader.h"
+
 #include <algorithm>
 #include <string>
 #include <vector>
 
-#include "X86Loader.h"
-
-void X86Loader::insert(const X86Facts& Facts, DatalogProgram& Program)
-{
-    auto& [Instructions, Operands] = Facts;
-    Program.insert("instruction", Instructions.instructions());
-    Program.insert("invalid_op_code", Instructions.invalid());
-    Program.insert("op_immediate", Operands.imm());
-    Program.insert("op_regdirect", Operands.reg());
-    Program.insert("op_indirect", Operands.indirect());
-}
-
-void X86Loader::decode(X86Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
+void X86Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
 {
     // Decode instruction with Capstone.
     cs_insn* CsInsn;
@@ -54,6 +44,7 @@ void X86Loader::decode(X86Facts& Facts, const uint8_t* Bytes, uint64_t Size, uin
     {
         // Add the instruction to the facts table.
         Facts.Instructions.add(*Instruction);
+        loadRegisterAccesses(Facts, Addr, *CsInsn);
     }
     else
     {
@@ -64,7 +55,7 @@ void X86Loader::decode(X86Facts& Facts, const uint8_t* Bytes, uint64_t Size, uin
     cs_free(CsInsn, Count);
 }
 
-std::optional<relations::Instruction> X86Loader::build(X86Facts& Facts,
+std::optional<relations::Instruction> X86Loader::build(BinaryFacts& Facts,
                                                        const cs_insn& CsInstruction)
 {
     cs_x86& Details = CsInstruction.detail->x86;
