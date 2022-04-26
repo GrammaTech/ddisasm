@@ -39,6 +39,68 @@ jumptable propagation to determine a max size.
 */
 
 /**
+A pair of instructions that sets the flags register and then conditionally jump.
+
+Empty on architectures where a flags register is not used.
+*/
+.decl flags_and_jump_pair(EA_flags:address,EA_jmp:address,CC:condition_code)
+.output flags_and_jump_pair
+
+flags_and_jump_pair(EA_flags,EA_jmp,CC):-
+    arch.condition_flags_reg(Reg),
+    def_used(EA_flags,Reg,EA_jmp,_),
+    arch.jump(EA_jmp),
+    arch.conditional(EA_jmp,CC).
+
+/**
+A pair of instructions that compares a register to an immediate and then
+conditionally jumps.
+*/
+.decl compare_and_jump_immediate(EA_cmp:address,EA_jmp:address,CC:condition_code,Reg:register,Immediate:number)
+.output compare_and_jump_immediate
+
+// Branch instruction that uses the result of a compare-to-immediate
+compare_and_jump_immediate(EA_cmp,EA_jmp,CC,Reg,Immediate):-
+    flags_and_jump_pair(EA_cmp,EA_jmp,CC),
+    instruction_get_operation(EA_cmp,Operation),
+    arch.cmp_operation(Operation),
+    cmp_immediate_to_reg(EA_cmp,Reg,_,Immediate).
+
+// Branch instructions with built-in zero comparisons
+compare_and_jump_immediate(EA,EA,CC,Reg,0):-
+    instruction_get_operation(EA,Operation),
+    arch.cmp_zero_operation(Operation),
+    arch.jump(EA),
+    arch.conditional(EA,CC),
+    instruction_get_op(EA,_,Op),
+    (
+        // Explicit register
+        op_regdirect_contains_reg(Op,Reg)
+        ;
+        // Implicit register (e.g., Intel "JECXZ")
+        register_access(EA,"R",RawReg),
+        arch.track_register(RawReg,Reg),
+        !op_regdirect_contains_reg(Op,Reg)
+    ).
+
+/**
+A pair of instructions that compares a register to another register and then
+conditionally jumps.
+*/
+.decl compare_and_jump_register(EA_cmp:address,EA_jmp:address,CC:condition_code,Reg1:register,Reg2:register)
+
+// cmp-and-branch pairs using a flags register
+compare_and_jump_register(EA_cmp,EA_jmp,CC,Reg1,Reg2):-
+    flags_and_jump_pair(EA_cmp,EA_jmp,CC),
+    cmp_reg_to_reg(EA_cmp,Reg1,Reg2).
+
+// Single instruction that compares and branches
+compare_and_jump_register(EA,EA,CC,Reg1,Reg2):-
+    cmp_reg_to_reg(EA,Reg1,Reg2),
+    arch.jump(EA),
+    arch.conditional(EA,CC).
+
+/**
 Either "MIN", "MAX", "EQ", "NE"
 */
 .type limit_type <: symbol
@@ -56,7 +118,7 @@ The limit is effective after address EA_limited.
 // BLT/FLT = "branch/fallthrough limit type"
 value_reg_limit(EA_cmp,EA_jmp,EA_branch,Reg,BValue,BLT),
 value_reg_limit(EA_cmp,EA_jmp,EA_fallthrough,Reg,FValue,FLT):-
-    arch.compare_and_jump_immediate(EA_cmp,EA_jmp,CC,Reg,Immediate),
+    compare_and_jump_immediate(EA_cmp,EA_jmp,CC,Reg,Immediate),
     direct_jump(EA_jmp,EA_branch),
     may_fallthrough(EA_jmp,EA_fallthrough),
     (
@@ -76,9 +138,8 @@ Jumps where generating a value_reg_limit is not supported.
 .decl no_value_reg_limit(EA_jmp:address)
 .output no_value_reg_limit
 
-// Unsupported condition codes
 no_value_reg_limit(EA_jmp):-
-    arch.compare_and_jump_immediate(_,EA_jmp,CC,_,_),
+    compare_and_jump_immediate(_,EA_jmp,CC,_,_),
     (
         CC="O";
         CC="NO";
@@ -90,17 +151,17 @@ no_value_reg_limit(EA_jmp):-
 
 // Reg-reg comparisons
 no_value_reg_limit(EA_jmp):-
-    arch.compare_and_jump_register(_,EA_jmp,_,_,_).
+    compare_and_jump_register(_,EA_jmp,_,_,_).
 
 // Flags set by a non-compare instruction
 no_value_reg_limit(EA_jmp):-
-    arch.flags_and_jump_pair(EA_cmp,EA_jmp,_),
+    flags_and_jump_pair(EA_cmp,EA_jmp,_),
     instruction_get_operation(EA_cmp,Operation),
     !arch.cmp_operation(Operation).
 
 // Flags set by comparison with indirect operand.
 no_value_reg_limit(EA_jmp):-
-    arch.flags_and_jump_pair(EA_cmp,EA_jmp,_),
+    flags_and_jump_pair(EA_cmp,EA_jmp,_),
     instruction_get_operation(EA_cmp,Operation),
     arch.cmp_operation(Operation),
     instruction_get_op(EA_cmp,_,Op),
