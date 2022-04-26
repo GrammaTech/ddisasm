@@ -27,43 +27,27 @@ This module stablishes basic information about register:
 
 */
 
-track_register("AL","RAX").
-track_register("AX","RAX").
 track_register("EAX","RAX").
 track_register("RAX","RAX").
 
-track_register("BL","RBX").
-track_register("BX","RBX").
 track_register("EBX","RBX").
 track_register("RBX","RBX").
 
-track_register("CL","RCX").
-track_register("CX","RCX").
 track_register("ECX","RCX").
 track_register("RCX","RCX").
 
-track_register("DL","RDX").
-track_register("DX","RDX").
 track_register("EDX","RDX").
 track_register("RDX","RDX").
 
-track_register("DIL","RDI").
-track_register("DI","RDI").
 track_register("EDI","RDI").
 track_register("RDI","RDI").
 
-track_register("SIL","RSI").
-track_register("SI","RSI").
 track_register("ESI","RSI").
 track_register("RSI","RSI").
 
-track_register("BPL","RBP").
-track_register("BP","RBP").
 track_register("RBP","RBP").
 track_register("EBP","RBP").
 
-track_register("SPL","RSP").
-track_register("SP","RSP").
 track_register("RSP","RSP").
 track_register("ESP","RSP").
 
