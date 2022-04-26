@@ -245,10 +245,7 @@ def test(exec_wrapper=None):
     if exec_wrapper:
         env["EXEC"] = exec_wrapper
     completedProcess = subprocess.run(
-        make("check"),
-        env=env,
-        stderr=subprocess.DEVNULL,
-        timeout=60,
+        make("check"), env=env, stderr=subprocess.DEVNULL, timeout=60
     )
     if completedProcess.returncode != 0:
         print(bcolors.fail("# Testing FAILED\n"))
