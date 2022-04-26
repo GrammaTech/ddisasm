@@ -65,6 +65,8 @@ track_register("LR", "LR").
 track_register("WSP", "SP").
 track_register("SP", "SP").
 
+track_register("NZCV", "NZCV").
+
 // Use the 'System V AMD64 ABI' calling convention.
 function_non_maintained_reg(Reg):-
     gp_reg_index(I),
@@ -85,3 +87,5 @@ stack_pointer("WSP").
 stack_pointer("SP").
 
 return_val_reg("X0").
+
+condition_flags_reg("NZCV").

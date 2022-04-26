@@ -25,50 +25,42 @@ The set of jump operations in x86
 */
 
 /**
-Conditional jumps
+Conditional jumps that rely on EFLAGS
 */
-.decl conditional_jump(c:symbol)
-conditional_jump("JCXZ").
-conditional_jump("JECXZ").
-conditional_jump("JRCXZ").
-conditional_jump("JO").
-conditional_jump("JNO").
-conditional_jump("JB").
-conditional_jump("JNB").
-conditional_jump("JZ").
-conditional_jump("JNZ").
-conditional_jump("JNA").
-conditional_jump("JA").
-conditional_jump("JS").
-conditional_jump("JNS").
-conditional_jump("JP").
-conditional_jump("JNP").
-conditional_jump("JL").
-conditional_jump("JGE").
-conditional_jump("JLE").
-conditional_jump("JG").
-conditional_jump("JC").
-conditional_jump("JAE").
-conditional_jump("JE").
-conditional_jump("JNE").
-conditional_jump("JBE").
-conditional_jump("JNBE").
+.decl jump_condition_code(Operation:symbol,CC:condition_code)
+
+jump_condition_code("JO","O").
+jump_condition_code("JNO","NO").
+jump_condition_code("JB","B").
+jump_condition_code("JNB","AE").
+jump_condition_code("JNA","BE").
+jump_condition_code("JA","A").
+jump_condition_code("JL","L").
+jump_condition_code("JGE","GE").
+jump_condition_code("JLE","LE").
+jump_condition_code("JG","G").
+jump_condition_code("JAE","AE").
+jump_condition_code("JE","E").
+jump_condition_code("JNE","NE").
+jump_condition_code("JBE","BE").
+jump_condition_code("JNBE","A").
+jump_condition_code("JP","P").
+jump_condition_code("JNP","PE").
+jump_condition_code("JS","L").
+jump_condition_code("JNS","GE").
+jump_condition_code("JCXZ","E").
+jump_condition_code("JECXZ","E").
+jump_condition_code("JRCXZ","E").
 
 jump_operation(Operation),
-conditional_operation(Operation):-
-    conditional_jump(Operation).
+conditional_operation(Operation,CC):-
+    jump_condition_code(Operation,CC).
 
 jump_operation("JMP").
 
-jump_equal_operation("JE").
-jump_equal_operation("JZ").
-
-jump_unequal_operation("JNE").
-jump_unequal_operation("JNZ").
-
 jump_operation_op_index(Operation,1):-
     jump_operation(Operation);
-    loop_operation(Operation).
+    loop_operation(Operation,_).
 
 call_operation_op_index(Operation,1):-
     call_operation(Operation).

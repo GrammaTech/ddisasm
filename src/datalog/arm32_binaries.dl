@@ -582,7 +582,7 @@ arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimi
         // [1] ldr pc, [pc, r2, lsl N]
         BaseReg = PC,
         (
-            arch.conditional_operation(Operation),
+            arch.conditional_operation(Operation,_),
             // If it's conditional, it is likely that there is a fall-through
             // successor consisting of one instruction (typically a jump
             // instruction)
@@ -592,7 +592,7 @@ arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimi
             instruction(EA_fallthrough,InstrSize2,_,_,_,_,_,_,_,_),
             TableStart0 = EA_jump + as(InstrSize + InstrSize2,address)
             ;
-            !arch.conditional_operation(Operation),
+            !arch.conditional_operation(Operation,_),
             TableStart0 = EA_jump + as(InstrSize,address)
         )
         ;
@@ -1172,4 +1172,4 @@ thumb_branch_offset(EA,Offset):-
 
 impossible_jump_target(Val):-
     possible_ea(Val),
-    arch.it_conditional(Val).
+    arch.it_conditional(Val,_).

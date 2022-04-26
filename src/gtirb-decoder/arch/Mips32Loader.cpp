@@ -27,17 +27,7 @@
 #include <string>
 #include <vector>
 
-void Mips32Loader::insert(const Mips32Facts& Facts, DatalogProgram& Program)
-{
-    auto& [Instructions, Operands] = Facts;
-    Program.insert("instruction", Instructions.instructions());
-    Program.insert("invalid_op_code", Instructions.invalid());
-    Program.insert("op_immediate", Operands.imm());
-    Program.insert("op_regdirect", Operands.reg());
-    Program.insert("op_indirect", Operands.indirect());
-}
-
-void Mips32Loader::decode(Mips32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
+void Mips32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
 {
     // Decode instruction with Capstone.
     cs_insn* CsInsn;
@@ -54,6 +44,9 @@ void Mips32Loader::decode(Mips32Facts& Facts, const uint8_t* Bytes, uint64_t Siz
     {
         // Add the instruction to the facts table.
         Facts.Instructions.add(*Instruction);
+
+        // loadRegisterAccesses() is not called here since capstone does not
+        // support register accesses on MIPS.
     }
     else
     {
@@ -64,7 +57,7 @@ void Mips32Loader::decode(Mips32Facts& Facts, const uint8_t* Bytes, uint64_t Siz
     cs_free(CsInsn, Count);
 }
 
-std::optional<relations::Instruction> Mips32Loader::build(Mips32Facts& Facts,
+std::optional<relations::Instruction> Mips32Loader::build(BinaryFacts& Facts,
                                                           const cs_insn& CsInstruction)
 {
     const cs_mips& Details = CsInstruction.detail->mips;

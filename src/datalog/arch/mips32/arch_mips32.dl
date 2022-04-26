@@ -130,25 +130,27 @@ return(EA):-
     instruction(EA,_,_,Operation,Op,_,_,_,_,_),
     op_regdirect_contains_reg(Op,"RA").
 
+// TODO: condition codes on these instructions are not populated, as nothing
+// would use them right now.
 // Conditional moves
-conditional_operation("MOVZ").
-conditional_operation("MOVN").
+conditional_operation("MOVZ","?").
+conditional_operation("MOVN","?").
 // Conditional stores
-conditional_operation("SC").
-conditional_operation("SCD").
+conditional_operation("SC","?").
+conditional_operation("SCD","?").
 // Conditional traps
-conditional_operation("TGE").
-conditional_operation("TGEU").
-conditional_operation("TLT").
-conditional_operation("TLTU").
-conditional_operation("TEQ").
-conditional_operation("TNE").
-conditional_operation("TGEI").
-conditional_operation("TGEIU").
-conditional_operation("TLTI").
-conditional_operation("TLTIU").
-conditional_operation("TEQI").
-conditional_operation("TNEI").
+conditional_operation("TGE","?").
+conditional_operation("TGEU","?").
+conditional_operation("TLT","?").
+conditional_operation("TLTU","?").
+conditional_operation("TEQ","?").
+conditional_operation("TNE","?").
+conditional_operation("TGEI","?").
+conditional_operation("TGEIU","?").
+conditional_operation("TLTI","?").
+conditional_operation("TLTIU","?").
+conditional_operation("TEQI","?").
+conditional_operation("TNEI","?").
 
 // Extend jump - don't override.
 jump(EA):-
@@ -412,11 +414,26 @@ return_operation("JRADDIUSP").
 cmp_operation(""):-
     false.
 
-// CHECK: Do we want to put the followings here?
-//cmp_operation("SLT").
-//cmp_operation("SLTU").
-//cmp_operation("SLTI").
-//cmp_operation("SLTIU").
+cmp_zero_operation("BLEZ").
+cmp_zero_operation("BLEZL").
+cmp_zero_operation("BLEZC").
+cmp_zero_operation("BGTZ").
+cmp_zero_operation("BGTZL").
+cmp_zero_operation("BGTZC").
+cmp_zero_operation("BLTZ").
+cmp_zero_operation("BLTZL").
+cmp_zero_operation("BLTZC").
+cmp_zero_operation("BGEZ").
+cmp_zero_operation("BGEZC").
+cmp_zero_operation("BGEZL").
+cmp_zero_operation("BLTZAL").
+cmp_zero_operation("BGEZAL").
+cmp_zero_operation("BLTZALL").
+cmp_zero_operation("BGEZALL").
+cmp_zero_operation("BEQZ").
+cmp_zero_operation("BEQZC").
+cmp_zero_operation("BNEZ").
+cmp_zero_operation("BNEZC").
 
 // ADDI/ADDIU <Register> <Register> <Immediate>
 reg_arithmetic_operation(EA,Dst,Src,1,Immediate):-

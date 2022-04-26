@@ -253,3 +253,9 @@ stack_pointer("SP").
 
 return_val_reg("V0").
 return_val_reg("V1").
+
+// Instead of a condition flags register, conditional MIPS instructions check
+// the condition directly, e.g.:
+// BEQ $t0, $t1, .label
+condition_flags_reg(""):-
+    false.
