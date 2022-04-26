@@ -110,7 +110,11 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_false_pointer_array(self):
         self.check_function_inference(
-            ex_dir / "ex_false_pointer_array", "ex", "gcc", "g++", "-O3",
+            ex_dir / "ex_false_pointer_array",
+            "ex",
+            "gcc",
+            "g++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -158,7 +162,11 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_pointerReatribution(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution", "ex", "gcc", "g++", "-O3",
+            ex_dir / "ex_pointerReatribution",
+            "ex",
+            "gcc",
+            "g++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -166,7 +174,11 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_pointerReatribution2(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution2", "ex", "gcc", "g++", "-O3",
+            ex_dir / "ex_pointerReatribution2",
+            "ex",
+            "gcc",
+            "g++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -174,7 +186,11 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_pointerReatribution3(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution3", "ex", "gcc", "g++", "-O3",
+            ex_dir / "ex_pointerReatribution3",
+            "ex",
+            "gcc",
+            "g++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -206,7 +222,11 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_uninitialized_data(self):
         self.check_function_inference(
-            ex_dir / "ex_uninitialized_data", "ex", "gcc", "g++", "-O3",
+            ex_dir / "ex_uninitialized_data",
+            "ex",
+            "gcc",
+            "g++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -270,7 +290,11 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_false_pointer_array_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_false_pointer_array", "ex", "clang", "clang++", "-O3",
+            ex_dir / "ex_false_pointer_array",
+            "ex",
+            "clang",
+            "clang++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -302,7 +326,11 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_memberPointer_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_memberPointer", "ex", "clang", "clang++", "-O3",
+            ex_dir / "ex_memberPointer",
+            "ex",
+            "clang",
+            "clang++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -318,7 +346,11 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_pointerReatribution_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution", "ex", "clang", "clang++", "-O3",
+            ex_dir / "ex_pointerReatribution",
+            "ex",
+            "clang",
+            "clang++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -374,7 +406,11 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_uninitialized_data_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_uninitialized_data", "ex", "clang", "clang++", "-O3",
+            ex_dir / "ex_uninitialized_data",
+            "ex",
+            "clang",
+            "clang++",
+            "-O3",
         )
 
     @unittest.skipUnless(
@@ -382,7 +418,11 @@ class TestFunctionInference(unittest.TestCase):
     )
     def test_functions_virtualDispatch_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_virtualDispatch", "ex", "clang", "clang++", "-O3",
+            ex_dir / "ex_virtualDispatch",
+            "ex",
+            "clang",
+            "clang++",
+            "-O3",
         )
 
 

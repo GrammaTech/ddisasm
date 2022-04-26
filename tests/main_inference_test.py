@@ -21,7 +21,12 @@ class TestMainInference(unittest.TestCase):
         self.fail("No main symbol disassembled")
 
     def check_main_inference(
-        self, make_dir, binary, strip=False, strip_exe="strip", **compile_opts,
+        self,
+        make_dir,
+        binary,
+        strip=False,
+        strip_exe="strip",
+        **compile_opts,
     ):
         """
         Test that the main function is inferred in the same location for
@@ -29,7 +34,8 @@ class TestMainInference(unittest.TestCase):
         """
         with cd(make_dir):
             self.assertTrue(
-                compile(**compile_opts), msg="Compilation failed",
+                compile(**compile_opts),
+                msg="Compilation failed",
             )
             self.assertTrue(
                 disassemble(
@@ -44,7 +50,10 @@ class TestMainInference(unittest.TestCase):
             module = gtirb.IR.load_protobuf(binary + ".gtirb").modules[0]
             self.assertTrue(
                 disassemble(
-                    binary, strip_exe=strip_exe, strip=True, format="--ir",
+                    binary,
+                    strip_exe=strip_exe,
+                    strip=True,
+                    format="--ir",
                 )[0],
                 msg="Disassembly failed (stripped)",
             )
