@@ -169,7 +169,7 @@ class DdisasmConan(Properties, ConanFile):
                 "CMAKE_CXX_FLAGS"
             ] = "/DBOOST_ALL_NO_LIB /DBOOST_UUID_FORCE_AUTO_LINK"
         else:
-            cmake = CMake(self, generator=None)
+            cmake = CMake(self, generator=None, parallel=False)
             defs.update({"GTIRB_PPRINTER_STRIP_DEBUG_SYMBOLS:BOOL": "ON"})
             self.add_dep_bin_path("mcpp")
 
