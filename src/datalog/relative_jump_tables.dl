@@ -299,7 +299,7 @@ relative_jump_table_entry(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
 /**
 Propagate unbounded jump tables
 
-Jump tables with no jump_table_max are not propgated in the
+Jump tables with no jump_table_max are not propagated in the
 relative_jump_table_entry_candidate relation since we have low confidence on
 their boundaries. We propagate them now, in the refinement stage, where we
 can negate more advanced analyses.
