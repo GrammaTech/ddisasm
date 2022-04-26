@@ -380,7 +380,9 @@ symbol_minus_symbol_candidate(EA,Size,Symbol1,Symbol2,as(Scale,unsigned),Offset)
         Scale > 0, Symbol1 = Reference, Symbol2 = Dest;
         Scale < 0, Symbol1 = Dest, Symbol2 = Reference
         // Scale = 0 is nonsense.
-    ).
+    ),
+    // If Symbol1 is zero, we have an absolute address.
+    Symbol1 != 0.
 
 ////////////////////////////////////////////////////////////////////////
 
