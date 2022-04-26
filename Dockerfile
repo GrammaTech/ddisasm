@@ -20,7 +20,7 @@ RUN apt-get -y update \
       sqlite3 \
       zlib1g-dev
 
-RUN git clone -b 2.1 https://github.com/souffle-lang/souffle && \
+RUN git clone -b 2.2 https://github.com/souffle-lang/souffle && \
     cd souffle && \
     cmake . -Bbuild -DCMAKE_BUILD_TYPE=Release -DSOUFFLE_USE_CURSES=0 -DSOUFFLE_USE_SQLITE=0 -DSOUFFLE_DOMAIN_64BIT=1 && \
     cd build && \
