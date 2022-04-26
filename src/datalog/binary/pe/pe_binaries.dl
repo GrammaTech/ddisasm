@@ -507,6 +507,7 @@ is_padding(EA):-
 // individual INT3 instruction is its own block.
 // Using the point system is too expensive.
 discarded_block(EA,"code","PE padding considered data"):-
+    binary_format("PE"),
     candidate_block_is_padding(EA).
 
 // Off-cut base-relative reference to symbol:
