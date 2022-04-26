@@ -54,8 +54,8 @@ public:
         assert(Err == CS_ERR_OK && "Failed to initialize ARM disassembler.");
         cs_option(*CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
 
-        m_mclass = false;
-        m_archtype_from_elf = false;
+        Mclass = false;
+        ArchtypeFromElf = false;
     }
 
 protected:
@@ -74,11 +74,11 @@ protected:
 
 private:
     std::optional<relations::Operand> build(const cs_insn& CsInsn, const cs_arm_op& CsOp);
-    bool build(Arm32Facts& Facts, const cs_insn& CsInstruction);
+    bool build(Arm32Facts& Facts, const cs_insn& CsInstruction, bool Update);
 
     std::shared_ptr<csh> CsHandle;
-    bool m_mclass;
-    bool m_archtype_from_elf;
+    bool Mclass;
+    bool ArchtypeFromElf;
 };
 
 #endif // SRC_GTIRB_DECODER_ARCH_ARM32DECODER_H_
