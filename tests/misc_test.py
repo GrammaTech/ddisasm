@@ -147,7 +147,12 @@ class MovedLabelTests(unittest.TestCase):
         binary = "ex"
         with cd(ex_asm_dir / "ex_moved_label"):
             self.assertTrue(compile("gcc", "g++", "-Os", []))
-            self.assertTrue(disassemble(binary, format="--ir",)[0])
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    format="--ir",
+                )[0]
+            )
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
@@ -184,7 +189,9 @@ class RawGtirbTests(unittest.TestCase):
             # Output GTIRB file without disassembling.
             self.assertTrue(
                 disassemble(
-                    binary, format="--ir", extra_args=["--no-analysis"],
+                    binary,
+                    format="--ir",
+                    extra_args=["--no-analysis"],
                 )[0]
             )
 
