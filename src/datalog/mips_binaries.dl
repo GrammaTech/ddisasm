@@ -314,7 +314,7 @@ split_load_conflict(EA_hi,EA_lo,Dest_addr,Type,EA_hi2,EA_lo2,Dest_addr2,Type2):-
         EA_hi = EA_hi2, EA_lo = EA_lo2, Dest_addr < Dest_addr2
     ),
     // If two split_loads share either lo or hi or both, and the dest addresses
-    // or type are different, then they conflict.
+    // are different, then they conflict.
     (
         EA_lo = EA_lo2
         ;
