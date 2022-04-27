@@ -446,6 +446,12 @@ reg_arithmetic_operation(EA,Dst,Src,1,Immediate):-
     op_regdirect_contains_reg(Op1,Src),
     op_immediate(Op2,Immediate).
 
+reg_arithmetic_operation(EA,Dst,Src,2^Immediate,0):-
+    instruction(EA,_,_,"SLL",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op3,Dst),
+    op_regdirect_contains_reg(Op1,Src),
+    op_immediate(Op2,Immediate).
+
 // ADD/ADDU <Register> <Register> <Register>
 reg_reg_arithmetic_operation(EA,Reg,Reg1,Reg2,1,0):-
     instruction(EA,_,_,Operation,SrcOp1,SrcOp2,DestOp,0,_,_),
