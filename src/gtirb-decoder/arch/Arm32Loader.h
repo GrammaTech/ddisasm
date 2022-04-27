@@ -59,7 +59,8 @@ public:
     }
 
 protected:
-    void decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override
+    void decode([[maybe_unused]] Arm32Facts& Facts, [[maybe_unused]] const uint8_t* Bytes,
+                [[maybe_unused]] uint64_t Size, [[maybe_unused]] uint64_t Addr) override
     {
         assert("Should not be called");
     }
