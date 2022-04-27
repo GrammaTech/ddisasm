@@ -114,90 +114,95 @@ void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Fact
 void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr,
                          bool Thumb)
 {
-    // Decode instruction with Capstone.
-    cs_insn* CsInsn;
-    size_t Count = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &CsInsn);
-
-    // Build datalog instruction facts from Capstone instruction.
-    if(!Thumb || ArchtypeFromElf)
+    size_t CsModes[2];
+    size_t CsModeCount = 1;
+    if(Thumb)
     {
-        bool InstAdded = false;
-        if(Count > 0)
+        if(ArchtypeFromElf)
         {
-            bool Update = true;
-            InstAdded = build(Facts, CsInsn[Count - 1], Update);
+            if(Mclass)
+            {
+                CsModes[0] = (CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
+            }
+            else
+            {
+                CsModes[0] = (CS_MODE_THUMB | CS_MODE_V8);
+            }
         }
-
-        if(!InstAdded)
+        else
         {
-            // Add address to list of invalid instruction locations.
-            Facts.Instructions.invalid(gtirb::Addr(Addr));
+            if(Mclass)
+            {
+                CsModes[1] = (CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
+                CsModes[0] = (CS_MODE_THUMB | CS_MODE_V8);
+            }
+            else
+            {
+                CsModes[0] = (CS_MODE_THUMB | CS_MODE_V8);
+                CsModes[1] = (CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
+            }
+            CsModeCount = 2;
         }
     }
-    else // Thumb && !ArchtypeFromElf
+    else
     {
-        // NOTE: The current version of Capstone fails to decode 'mrs' and
-        // 'msr' instructions correctly without CS_MODE_MCLASS.
-        // Also, it fails to decode 'blx' instruction correctly with
-        // CS_MODE_MCLASS.
-        //
-        // If the decoding fails, try different CS modes to see if it works.
-        // This is done only when it's Thumb mode, and the arch type is not
-        // available.
+        CsModes[0] = (CS_MODE_ARM | CS_MODE_V8);
+    }
+
+    std::unique_ptr<cs_insn, std::function<void(cs_insn*)>> InsnPtr;
+    size_t InsnCount = 0;
+
+    // NOTE: The current version of Capstone fails to decode 'mrs' and
+    // 'msr' instructions correctly without CS_MODE_MCLASS.
+    // Also, it fails to decode 'blx label' instruction correctly with
+    // CS_MODE_MCLASS.
+    //
+    // This loop is to try out multiple CS modes to see if decoding succeeds.
+    // Currently, this is done only when the arch type info is not available.
+    bool InstAdded = false;
+    for(size_t I = 0; I < CsModeCount; I++)
+    {
+        // Decode instruction with Capstone.
+        cs_insn* Insn;
+        cs_option(*CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
+        cs_option(*CsHandle, CS_OPT_MODE, CsModes[I]);
+        size_t TmpCount = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &Insn);
+
+        // Exception-safe cleanup of instructions
+        std::unique_ptr<cs_insn, std::function<void(cs_insn*)>> TmpInsnPtr(
+            Insn, [TmpCount](cs_insn* Instr) { cs_free(Instr, TmpCount); });
+
         Arm32Facts TempFacts;
-        bool InstAdded = false;
-        if(Count > 0)
+        InstAdded = false;
+        if(TmpCount > 0)
         {
             bool Update = false;
-            InstAdded = build(TempFacts, CsInsn[Count - 1], Update);
+            InstAdded = build(TempFacts, Insn[TmpCount - 1], Update);
         }
 
         if(InstAdded)
         {
-            bool Update = true;
-            build(Facts, CsInsn[Count - 1], Update);
-        }
-        else
-        {
-            bool Invalid = true;
-
-            // Try the other mode to see if it works.
-            cs_option(*CsHandle, CS_OPT_MODE,
-                      CS_MODE_THUMB | CS_MODE_V8 | (Mclass ? (cs_mode)0 : CS_MODE_MCLASS));
-
-            cs_insn* CsInsn2;
-            size_t Count2 = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &CsInsn2);
-            bool InstAdded2 = false;
-            Arm32Facts TempFacts2;
-            if(Count2 > 0)
+            InsnPtr = std::move(TmpInsnPtr);
+            InsnCount = TmpCount;
+            if(CsModes[I] & CS_MODE_MCLASS != 0)
             {
-                bool Update = false;
-                InstAdded2 = build(TempFacts2, CsInsn2[Count2 - 1], Update);
+                Mclass = true;
             }
-            // If InstAdded, switch the mode
-            if(InstAdded2)
-            {
-                bool Update = true;
-                build(Facts, CsInsn2[Count2 - 1], Update);
-                Mclass = !Mclass;
-                Invalid = false;
-            }
-            else
-            {
-                // Decoding failed on both modes
-                // Keep the existing mode.
-            }
-            cs_free(CsInsn2, Count2);
-
-            if(Invalid)
-            {
-                // Add address to list of invalid instruction locations.
-                Facts.Instructions.invalid(gtirb::Addr(Addr));
-            }
+            break;
         }
     }
 
-    cs_free(CsInsn, Count);
+    if(InstAdded)
+    {
+        // Build datalog instruction facts from Capstone instruction.
+        bool Update = true;
+        build(Facts, (&(*InsnPtr))[InsnCount - 1], Update);
+    }
+    else
+    {
+        // Add address to list of invalid instruction locations.
+        Facts.Instructions.invalid(gtirb::Addr(Addr));
+    }
 }
 
 bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction, bool Update)
