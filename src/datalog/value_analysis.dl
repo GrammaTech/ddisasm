@@ -71,8 +71,8 @@ or loop) and considering the value with most steps.
 // mov reg immediate
 value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
     def_used_for_address(EA,Reg),
-    arch.move_operation(Operation),
-    op_immediate_and_reg(EA,Operation,Reg,_,Immediate).
+    arch.move_reg_imm(EA,Reg_untracked,Immediate,_),
+    arch.track_register(Reg_untracked,Reg).
 
 /**
 Generate distinct stack frames (identifying them by the location at which the
@@ -172,13 +172,11 @@ value_reg_edge(EALoad,Reg2,EAPrev,Reg1,1,0):-
     stack_load_store_pair(EAStore,EALoad,Reg1,Reg2),
     def_used(EAPrev,Reg1,EAStore,_).
 
-// mov DWORD from memory
+// mov DWORD from memory (constant address)
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     def_used_for_address(EA,Reg),
-    arch.move_operation(Operation),
-    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
-    op_regdirect_contains_reg(Op2,Reg),
-    op_indirect(Op1,"NONE","NONE","NONE",_,Offset,32),
+    arch.load(EA,_,_,Reg_untracked,"NONE","NONE",_,Offset),
+    arch.track_register(Reg_untracked,Reg),
     Offset >= 0,
     Offset_addr = as(Offset,address),
     data_byte(Offset_addr,Byte0),
@@ -188,10 +186,11 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     Byte3 <= 128,
     Val = as(Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0,number).
 
+// mov DWORD from memory (PC-relative address)
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     def_used_for_address(EA,Reg),
-    arch.move_operation(Operation),
-    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
+    arch.load(EA,_,_,_,_,_,_,_),
+    instruction(EA,_,_,_,Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg),
     op_indirect(Op1,_,_,_,_,_,32),
     pc_relative_operand(EA,1,Offset),
@@ -230,11 +229,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
     def_used_for_address(EA_prev,Reg_origin),
     def_used(EA_prev,Reg_origin,EA,_),
-    arch.mov(EA),
-    instruction_get_op(EA,1,Op1),
-    op_regdirect_contains_reg(Op1,Reg_origin),
-    instruction_get_op(EA,2,Op2),
-    op_regdirect_contains_reg(Op2,Reg),
+    arch.move_reg_reg_tracked(EA,Reg,Reg_origin),
     EA != EA_prev.
 
 //reset a register
@@ -256,13 +251,8 @@ value_reg_edge(EA,Dst,EA_prev,Src,Mult,Immediate):-
 // Load a register from a non-constant memory address
 value_reg_unsupported(EA,Reg):-
     def_used_for_address(EA,Reg),
-    (
-        arch.mov(EA);
-        instruction_get_operation(EA,Operation), arch.load_operation(Operation)
-    ),
-    instruction(EA,_,_,_,Op1,Op2,0,0,_,_),
-    op_regdirect_contains_reg(Op2,Reg),
-    op_indirect(Op1,_,RegBase,RegIndex,_,_,_),
+    arch.load(EA,_,_,Reg_untracked,RegBase,RegIndex,_,_),
+    arch.track_register(Reg_untracked,Reg),
     (
         RegBase != "NONE",
         RegIndex = RegIndex // avoid warning
@@ -274,11 +264,9 @@ value_reg_unsupported(EA,Reg):-
 // Load a register from a register that is not tracked
 value_reg_unsupported(EA,Reg):-
     def_used_for_address(EA,Reg),
-    arch.mov(EA),
-    instruction(EA,_,_,_,Op1,Op2,0,0,_,_),
-    op_regdirect_contains_reg(Op2,Reg),
-    op_regdirect(Op1,_),
-    !op_regdirect_contains_reg(Op1,_).
+    arch.move_reg_reg(EA,Dst_untracked,Src_untracked),
+    arch.track_register(Dst_untracked,_),
+    !arch.track_register(Src_untracked,_).
 
 // Register defined in a call
 value_reg_unsupported(EA,Reg):-

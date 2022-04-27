@@ -144,21 +144,17 @@ reg_has_base_image(EA_code,Reg):-
     base_address(ImageBase),
     arch.pointer_size(Size),
     code(EA_code),
-    arch.mov(EA_code),
+    arch.load(EA_code,_,_,_,_,_,_,_),
     pc_relative_operand(EA_code,_,EA_data),
     data_word(EA_data,Size,Value), ImageBase = as(Value,address),
     def(EA_code,Reg).
 
 reg_has_base_image(EA,Reg):-
     reg_has_base_image(EA2,Reg2),
-    def_used(EA2,Reg2,EA,Index),
-    def(EA,Reg),
+    def_used(EA2,Reg2,EA,_),
     (
-        arch.mov(EA),
-        instruction_get_op(EA,Index,Op),
-        op_regdirect(Op,_)
-        ;
-        arch.reg_reg_arithmetic_operation(EA,Reg,Reg2,_,Mult,0), Mult>1, Index=Index
+        arch.move_reg_reg(EA,Reg,Reg2);
+        arch.reg_reg_arithmetic_operation(EA,Reg,Reg2,_,Mult,0), Mult>1
     ).
 
 // Not all compilers respect register-volatility conventions, and it is
@@ -371,7 +367,7 @@ relative_address_start(Table,8,Ref,Dest,"first"):-
     take_address(EA1,Table),
     next(EA1,EA2),
     // indexes table
-    arch.mov(EA2),
+    arch.load(EA2,_,_,_,_,_,_,_),
     next(EA2,EA3),
     // loads reference address
     take_address(EA3,Ref),
@@ -421,14 +417,14 @@ relative_address_start(IndexTableStart,1,TableStart,Dest,"first"):-
     (
         next(EA_mov,EA_jmp)
         ;
-        next(EA_pop1,EA_jmp), !arch.mov(EA_pop1),
+        next(EA_pop1,EA_jmp), !arch.memory_access("LOAD",EA_pop1,_,_,_,_,_,_,_),
         next(EA_mov,EA_pop1)
         ;
-        next(EA_pop2,EA_jmp), !arch.mov(EA_pop2),
-        next(EA_pop1,EA_pop2), !arch.mov(EA_pop1),
+        next(EA_pop2,EA_jmp), !arch.memory_access("LOAD",EA_pop2,_,_,_,_,_,_,_),
+        next(EA_pop1,EA_pop2), !arch.memory_access("LOAD",EA_pop1,_,_,_,_,_,_,_),
         next(EA_mov,EA_pop1)
     ),
-    arch.mov(EA_mov),
+    arch.load(EA_mov,_,_,_,_,_,_,_),
     instruction_get_op(EA_mov,_,Op_mov),
     op_indirect(Op_mov,_,_,_,1,Offset0,8),
     // Sometimes, the offset value is off-by-4 from the actual index table.
@@ -455,7 +451,8 @@ relative_address_start(IndexTableStart,1,TableStart,Dest,"first"):-
 relative_address_start(Table,1,Ref,Dest,"first"):-
     base_address(ImageBase),
     // base-relative table address load and index
-    arch.mov(EA1), instruction_get_src_op(EA1,_,Op1),
+    arch.load(EA1,_,_,_,_,_,_,_),
+    instruction_get_src_op(EA1,_,Op1),
     op_indirect(Op1,_,_,_,1,Offset1,8), Offset1 > 0,
     Table = ImageBase+as(Offset1,unsigned),
     data_byte(Table,Byte),
@@ -616,7 +613,7 @@ relative_address_start(TableStart,4,0,Dest,"first"):-
     possible_ea(Dest2),
 
     next(EA_load,EA_mov),
-    arch.mov(EA_mov),
+    arch.load(EA_mov,_,_,_,_,_,_,_),
     next(EA_mov,EA_call),
     reg_call(EA_call,_).
 

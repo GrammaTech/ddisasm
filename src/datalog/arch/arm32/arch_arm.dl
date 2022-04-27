@@ -38,8 +38,6 @@ move_operation(Operation) :-
     instruction_get_operation(_, Operation),
     contains("MOV", Operation).
 
-move_operation("MVN").
-
 load_operation(Operation):-
     instruction_get_operation(_,Operation),
     (
@@ -62,13 +60,6 @@ store_operation(Operation):-
         contains("STR", Operation)
         ;
         contains("STM", Operation)
-    ).
-
-mov(EA):-
-    instruction_get_operation(EA,Operation),
-    (
-        move_operation(Operation);
-        load_operation(Operation)
     ).
 
 is_nop(EA):-
@@ -209,9 +200,7 @@ conditional(EA,CC):-
 
 // Does not override - extends with `ldr pc, [...] or mov pc, reg`
 jump(EA):-
-    mov(EA),
-    instruction_get_dest_op(EA,_,Op),
-    op_regdirect(Op,Reg),
+    load(EA,_,_,Reg,_,_,_,_),
     pc_register(Reg),
     !arch.return(EA).
 

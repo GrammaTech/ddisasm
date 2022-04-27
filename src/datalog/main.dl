@@ -361,7 +361,7 @@ instruction_get_src_op(EA,SrcIndex,Op):-
 instruction_get_src_op(EA,Index,Op2):-
     instruction(EA,_,_,Operation,_,Op2,_,_,_,_),Op2 != 0,
     Index = 2,
-    !arch.mov(EA),
+    !arch.move(EA),
     !arch.memory_access(_,EA,_,_,_,_,_,_,_),
     !arch.op_does_not_read_dest_reg(Operation),
     !arch.write_only_operation(Operation).
