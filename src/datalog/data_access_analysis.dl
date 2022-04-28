@@ -237,7 +237,6 @@ data_access_pattern_candidate_refined(Address,Size,Multiplier,From):-
     data_access_pattern_candidate(Address,Size,Multiplier,From),
     instruction_get_operation(From,Operation),
     Operation != "LEA",
-    data_byte(Address,_),
     (
         // if it is an indirect call or jump, the destination should be a potential address
         address_in_data(Address,_);
@@ -248,7 +247,7 @@ data_access_pattern_candidate_refined(Address,Size,Multiplier,From):-
 /**
 Unique DAP Address,Size pairs at which the max must be evaluated.
 
-Prevents evalutaing the max for each non-unique copy of the pair.
+Prevents evaluating the max for each non-unique copy of the pair.
 */
 .decl dap_location(Address:address,Size:unsigned)
 
@@ -281,128 +280,107 @@ possible_data_limit(EA):-
     labeled_data_candidate(EA);
     data_segment(_,EA).
 
-.decl last_data_limit(EA:address,Where:address)
+.decl next_data_limit(EA:address,Next:address)
 
-last_data_limit(EA+1,EA):-
-    possible_data_limit(EA),
-    data_byte(EA+1,_),
-    !code(EA+1).
-
-last_data_limit(EA+1,Where):-
-    last_data_limit(EA,Where),
-    data_byte(EA+1,_),
-    !code(EA+1),
-    !possible_data_limit(EA).
-
-.decl last_data_access(EA:address,Where:address)
-
-last_data_access(EA+1,EA):-
+next_data_limit(EA,Next):-
     data_access_pattern(EA,_,_,_),
-    data_byte(EA+1,_).
+    Next = min Next : {possible_data_limit(Next), Next> EA},
+    data_segment(Beg,End), EA>=Beg, Next<= End.
 
-last_data_access(EA+1,Where):-
-    last_data_access(EA,Where),
-    data_byte(EA+1,_),
-    !data_access_pattern(EA,_,_,_).
+.decl next_data_access(EA:address,Where:address)
+.output next_data_access
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-// This code performs the propagation of data accesses according to their multiplier
-// One data access is propagated through the data section until the next one is found.
-// Once the next one is found, we can still propagate if the data accesses are "synchronized"
-// i.e. they have the same multiplier or they are accessed from the same address in code.
+next_data_access(EA,Next):-
+    data_access_pattern(EA,_,_,_),
+    Next = min Next : {data_access_pattern(Next,_,_,_), Next> EA},
+    data_segment(Beg,End), EA>=Beg, Next<= End.
 
 
-.decl propagated_data_access(EA:address,Mult:number,EA_ref:address)
+// FIXME: This predicate has been added to avoid exceptions when mult is 0
+// due to https://github.com/souffle-lang/souffle/issues/1513
+.decl data_access_pattern_non_zero(Address:address,Size:unsigned,Multiplier:unsigned,FromWhere:address)
 
-propagated_data_access(EA,Mult,EA):-
+data_access_pattern_non_zero(Address,Size,as(Mult,unsigned),FromWhere):-
+    data_access_pattern(Address,Size,Mult,FromWhere), Mult > 0.
+
+.decl synchronized_access(EA:address,EA2:address)
+.output synchronized_access
+.decl next_disynchronized_data_access(EA:address,Where:address)
+.output next_disynchronized_data_access
+// the beginning of a syncronized access is
+// the first access of a segment
+synchronized_access(EA,EA):-
+    data_access_pattern_non_zero(EA,_,_,_),
+    !next_data_access(_,EA).
+
+// Or an access whose previous access is not syncronized
+synchronized_access(Next,Next):-
+    data_access_pattern_non_zero(Next,Size2,Mult2,_),
+    next_data_access(EA,Next),
+    data_access_pattern(EA,Size,Mult_s,_),
+    Mult_s>=0, Mult = as(Mult_s,unsigned),
+    (
+        Mult2 != Mult,
+        // avoid warnings
+        Size = Size,
+        Size2 = Size2
+        ;
+        Mult2 = Mult,
+        Rem = Next - EA % Mult2,
+        (
+            Rem < Size, Size2 = Size2;
+            Mult2 - Rem < Size2, Size = Size
+        )
+    ).
+
+synchronized_access(EA_ref,Next):-
+    synchronized_access(EA_ref, EA),
+    data_access_pattern_non_zero(EA_ref,Size,Mult,From),
+    next_data_access(EA,Next),
+    data_access_pattern(Next,Size2,Mult2,From2),
+    Mult2_u = as(Mult2,unsigned),
+    (
+        Mult2_u=0,
+        From2 = From,
+        Size2 = Size,
+        Next - EA_ref % Mult = 0
+        ;
+        Mult2_u = Mult,
+        Rem = Next - EA % Mult,
+        Size <= Rem,
+        Size2 <= Mult - Rem
+    ).
+
+next_disynchronized_data_access(EA_ref,Next):-
+    synchronized_access(EA_ref,EA),EA_ref != EA,
+    next_data_access(EA,Next),
+    !synchronized_access(EA_ref,Next).
+
+
+.decl propagated_data_access(EA:address,Mult:unsigned,EA_ref:address)
+
+propagated_data_access(EA,as(Mult,unsigned),EA):-
     data_access_pattern(EA,_,Mult,_),
+    data_byte(EA,_),
     // We only propagate data accesses with positive multipliers (for now)
     // This is just easier and gives us enough information.
     Mult >= 0.
 
-// FIXME: This predicate has been added to avoid exceptions when mult is 0
-// due to https://github.com/souffle-lang/souffle/issues/1513
-.decl data_access_pattern_non_zero(Address:address,Size:unsigned,Multiplier:number,FromWhere:address)
-
-data_access_pattern_non_zero(Address,Size,Mult,FromWhere):-
-    data_access_pattern(Address,Size,Mult,FromWhere), Mult > 0.
-
-// For all the range where the access at EA_access is the last one (using last_data_access),
-// we can propagate the data access at all points, in regular intervals using Mult,
-// at the same time (without a recursive rule).
-// This is much more efficient than the recursive rule below.
+// Propagate until the next data limit or disyncronized access
 propagated_data_access(EA_prop,Mult,EA_access):-
-    last_data_access(EA_prop,EA_access),
-    data_access_pattern_non_zero(EA_access,_,Mult,_), Mult > 0,
-    (EA_prop - EA_access) % as(Mult,unsigned) = 0,
-    // no collision with data limits
-    !possible_data_limit(EA_prop),
-    last_data_limit(EA_prop,LastDataLimit), LastDataLimit <= EA_access,
-    // no direct collision with data accesses
-    (
-        !data_access_pattern(EA_prop,_,_,_);
-        // unless accessed from same address
-        data_access_pattern(EA_prop,S,0,From),
-        data_access_pattern_non_zero(EA_access,S,Mult,From)
-    ).
+    data_access_pattern_non_zero(EA_access,_,Mult,_),
+    data_byte(EA_access,_),
+    next_disynchronized_data_access(EA_access, Next_access),
+    next_data_limit(EA_access, Next_limit),
+    EA_prop = range(EA_access, min(Next_access,Next_limit),Mult).
 
-// If there have been data accesses in between, we still propagate
-// previous data accesses as long as they have the same multiplier
-// and the don't collide directly.
-propagated_data_access(NextEA,Mult,EA_ref):-
-    propagated_data_access(EA,Mult,EA_ref),
-    NextEA = EA+ as(Mult,unsigned),
-    // There is a data access in between
-    last_data_access(NextEA,LastDataAccess), LastDataAccess > EA,
-    //But it is "synchronized": It has the same multiplier and it does not collide
-    data_access_pattern(LastDataAccess,Size,Mult,_),
-    LastDataAccess+Size <= NextEA,
-    // no collision with data limits
-    !possible_data_limit(NextEA),
-    last_data_limit(NextEA,LastDataLimit), LastDataLimit <= EA,
-    // no direct collision with data accesses
-    (
-        !data_access_pattern(NextEA,_,_,_);
-        // unless accessed from same address
-        data_access_pattern(NextEA,S,0,From),
-        data_access_pattern(EA_ref,S,Mult,From)
-    ).
+propagated_data_access(EA_prop,Mult,EA_access):-
+    data_access_pattern_non_zero(EA_access,_,Mult,_),
+    data_byte(EA_access,_),
+    !next_disynchronized_data_access(EA_access, _),
+    next_data_limit(EA_access, Next_limit),
+    EA_prop = range(EA_access,Next_limit,Mult).
 
-// last data_access_pattern_candidate
-.decl last_data_access_candidate(EA:address,Where:address)
-.output last_data_access_candidate
-
-last_data_access_candidate(EA,Where):-
-    data_access_pattern_candidate(EA,_,_,_),
-    Where = max Where : {data_access_pattern_candidate(Where,_,_,_), Where < EA}.
-
-// adjacent non collision data accesses
-.decl non_collision_access(EA:address,EA_ref:address)
-.output non_collision_access
-
-non_collision_access(EA,EA):-
-    data_access_pattern_candidate(EA,_,Mult,_),
-    Mult > 0.
-
-// connecting adjacent data accesses when they have the same multiplier
-// and they are not colliding
-non_collision_access(EA_prop,EA_access):-
-    last_data_access_candidate(EA_prop,EA_access),
-    data_access_pattern_candidate(EA_prop,_,Mult,_),
-    data_access_pattern_candidate(EA_access,_,Mult,_), Mult > 0,
-    (EA_prop - EA_access) % as(Mult,unsigned) = 0.
-
-// If a data access at NextEA lies in the middle of [EA, EA + Mult], it's 
-// still not colliding if the NextEA >= EA + Size.
-non_collision_access(NextEA,EA_ref):-
-    non_collision_access(EA,EA_ref),
-    NextEelementEA = EA+ as(Mult,unsigned),
-    // There is a data access in between
-    last_data_access_candidate(NextEA, EA), 
-    NextEelementEA > NextEA,
-    //But it is "synchronized": It has the same multiplier and it does not collide
-    data_access_pattern_candidate(EA,Size,Mult,_),
-    EA+Size <= NextEA.
 
 preferred_data_access(EA,EA_label):-
     propagated_data_access(EA,_,EA_label).

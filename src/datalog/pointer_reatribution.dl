@@ -507,7 +507,7 @@ moved_label(EA,Op_index,Dest,Block):-
 moved_label(EA,Op_index,Src,Dst):-
     symbolic_operand(_,_,Dst,"data"),
     symbolic_operand(EA,Op_index,Src,"data"),
-    non_collision_access(Src, Dst),
+    synchronized_access(Dst,Src),
     Dst != Src.
 
 // Reference to PE header or optional header.
