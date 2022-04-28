@@ -63,7 +63,6 @@ private:
     std::optional<relations::Operand> build(const cs_insn& CsInsn, const cs_arm_op& CsOp);
     bool build(BinaryFacts& Facts, const cs_insn& CsInstruction, bool Update);
 
-    std::shared_ptr<csh> CsHandle;
     bool Mclass;
     bool ArchtypeFromElf;
 };
