@@ -274,6 +274,10 @@ data_access_pattern(Address,Size,Multiplier,From):-
 ///////////////////////////////////////////////////////////////////////////////
 // This code takes care of obtaining an ordering in the data_access_patterns
 
+/**
+Data limits are the candidates for labeled data
+and the boundaries of data segments.
+*/
 .decl possible_data_limit(EA:address)
 
 possible_data_limit(EA):-
@@ -281,6 +285,9 @@ possible_data_limit(EA):-
     data_segment(_,EA);
     data_segment(EA,_).
 
+/**
+The next data limit after 'EA' is at 'Next'.
+*/
 .decl next_data_limit(EA:address,Next:address)
 
 next_data_limit(EA,Next):-
@@ -288,15 +295,22 @@ next_data_limit(EA,Next):-
     Next = min Next : {possible_data_limit(Next), Next> EA},
     data_segment(Beg,End), EA>=Beg, Next<= End.
 
+/**
+The first data limit after the data access at address
+'Access' is at address 'DataLimit'.
+*/
 .decl data_limit_after_access(Access:address,DataLimit:address)
 
-data_limit_after_access(EA,Next):-
-    data_access_pattern(EA,_,_,_),
-    Next = min Next : {possible_data_limit(Next), Next> EA},
-    data_segment(Beg,End), EA>=Beg, Next<= End.
 
+data_limit_after_access(Access,DataLimit):-
+    data_access_pattern(Access,_,_,_),
+    DataLimit = min DataLimit : {possible_data_limit(DataLimit), DataLimit> Access},
+    data_segment(Beg,End), Access>=Beg, DataLimit<= End.
+
+/**
+The next data access after the one at 'EA' is at 'Next'.
+*/
 .decl next_data_access(EA:address,Next:address)
-.output next_data_access
 
 next_data_access(EA,Next):-
     data_access_pattern(EA,_,_,_),
@@ -311,22 +325,33 @@ next_data_access(EA,Next):-
 data_access_pattern_non_zero(Address,Size,as(Mult,unsigned),FromWhere):-
     data_access_pattern(Address,Size,Mult,FromWhere), Mult > 0.
 
-.decl synchronized_access(EA:address,EA2:address)
-.output synchronized_access
-.decl next_disynchronized_data_access(EA:address,Where:address)
-.output next_disynchronized_data_access
-// the beginning of a syncronized access is
+
+/**
+'InitialEA' contains the first data access synchronous with 'SyncEA'.
+
+Two data accesses are synchronous if:
+1. The second access has multiplier 0 and it original from the same address
+  as the first.
+2. Or, The have the same multiplier and the space between them
+  means they do not collide with each other even if they are propagated.
+*/
+.decl first_synchronous_access(InitialEA:address,SyncEA:address)
+.output first_synchronous_access
+
+// the beginning of a synchronous access is
 // the first access of a segment
-synchronized_access(EA,EA):-
+first_synchronous_access(EA,EA):-
     data_access_pattern_non_zero(EA,_,_,_),
     !next_data_access(_,EA).
 
-// Or an access whose previous access is not syncronized
-synchronized_access(Next,Next):-
+// Or an access whose previous access is not synchronous
+first_synchronous_access(Next,Next):-
     data_access_pattern_non_zero(Next,Size2,Mult2,_),
     next_data_access(EA,Next),
     data_access_pattern(EA,Size,Mult_s,_),
     Mult_s>=0, Mult = as(Mult_s,unsigned),
+    // this is the negation of the synchronous condition
+    // simplified to skip the case 1 (Mult=0).
     (
         Mult2 != Mult,
         // avoid warnings
@@ -341,8 +366,8 @@ synchronized_access(Next,Next):-
         )
     ).
 
-synchronized_access(EA_ref,Next):-
-    synchronized_access(EA_ref, EA),
+first_synchronous_access(EA_ref,Next):-
+    first_synchronous_access(EA_ref, EA),
     data_access_pattern_non_zero(EA_ref,Size,Mult,From),
     next_data_access(EA,Next),
     data_access_pattern(Next,Size2,Mult2,From2),
@@ -359,10 +384,17 @@ synchronized_access(EA_ref,Next):-
         Size2 <= Mult - Rem
     ).
 
-next_disynchronized_data_access(EA_ref,Next):-
-    synchronized_access(EA_ref,EA),EA_ref != EA,
-    next_data_access(EA,Next),
-    !synchronized_access(EA_ref,Next).
+/**
+The next data access after 'EA' that is not synchronous with 'EA'
+is located at address 'Next'.
+*/
+.decl next_dyssynchronous_data_access(EA:address,Next:address)
+.output next_dyssynchronous_data_access
+
+next_dyssynchronous_data_access(EA,Next):-
+    first_synchronous_access(EA,SyncEA),EA != SyncEA,
+    next_data_access(SyncEA,Next),
+    !first_synchronous_access(EA,Next).
 
 
 .decl propagated_data_access(EA:address,Mult:unsigned,EA_ref:address)
@@ -374,21 +406,20 @@ propagated_data_access(EA,as(Mult,unsigned),EA):-
     // This is just easier and gives us enough information.
     Mult >= 0.
 
-// Propagate until the next data limit or disyncronized access
+// Propagate until the next data limit or dyssyncronous access
+// This propagation is not recursive, it uses range to iterate.
 propagated_data_access(EA_prop,Mult,EA_access):-
     data_access_pattern_non_zero(EA_access,_,Mult,_),
     data_byte(EA_access,_),
-    next_disynchronized_data_access(EA_access, Next_access),
+    (
+        next_dyssynchronous_data_access(EA_access, Next_access),
+        Limit = min(Next_access,Next_limit)
+        ;
+        !next_dyssynchronous_data_access(EA_access, _),
+        Limit = Next_limit
+    ),
     data_limit_after_access(EA_access, Next_limit),
-    EA_prop = range(EA_access, min(Next_access,Next_limit),Mult).
-
-propagated_data_access(EA_prop,Mult,EA_access):-
-    data_access_pattern_non_zero(EA_access,_,Mult,_),
-    data_byte(EA_access,_),
-    !next_disynchronized_data_access(EA_access, _),
-    data_limit_after_access(EA_access, Next_limit),
-    EA_prop = range(EA_access,Next_limit,Mult).
-
+    EA_prop = range(EA_access, Limit,Mult).
 
 preferred_data_access(EA,EA_label):-
     propagated_data_access(EA,_,EA_label).
