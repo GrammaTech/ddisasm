@@ -159,11 +159,18 @@ relocation_adjustment_total(EA,Adjustment):-
           immOffset:unsigned,displacementOffset:unsigned)
 .input instruction
 
-/*
- * The instruction at EA has capstone's cs_arm.writeback set.
- */
+/**
+ The instruction at EA has capstone's cs_arm.writeback set.
+*/
 .decl instruction_writeback(EA:address)
 .input instruction_writeback
+
+/**
+The register Register is accessed at EA with Mode.
+Mode may be "R" or "W"
+*/
+.decl register_access(EA:address,Mode:symbol,Register:register)
+.input register_access
 
 .decl op_register_bitfield(code:operand_code,register_name:register)
 .input op_register_bitfield
@@ -432,13 +439,13 @@ instruction_has_relocation(EA,EA+Offset):-
 
 unconditional_jump(EA):-
     arch.jump(EA),
-    !arch.conditional(EA).
+    !arch.conditional(EA,_).
 
 .decl conditional_jump(src:address)
 
 conditional_jump(EA):-
     arch.jump(EA),
-    arch.conditional(EA).
+    arch.conditional(EA,_).
 
 // direct jumps
 .decl direct_jump(src:address, dest:address)
@@ -628,7 +635,11 @@ op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate):-
 
 cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate):-
     op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate),
-    arch.cmp_operation(Operation).
+    arch.cmp_operation(Operation),
+    (
+        !arch.jump(EA);
+        arch.jump(EA), arch.jump_operation_op_index(Operation,JumpTargetIndex), Imm_index != JumpTargetIndex
+    ).
 
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -755,13 +766,13 @@ data_segment(Begin,End):-
 
 conditional_return(EA):-
     arch.return(EA),
-    arch.conditional(EA).
+    arch.conditional(EA,_).
 
 .decl unconditional_return(EA:address)
 
 unconditional_return(EA):-
     arch.return(EA),
-    !arch.conditional(EA).
+    !arch.conditional(EA,_).
 
 
 /**

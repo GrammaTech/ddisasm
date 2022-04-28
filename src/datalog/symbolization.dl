@@ -58,6 +58,7 @@ This module also computes and symbol_minus_symbol.
 #include "bitmasks.dl"
 #include "use_def_analysis.dl"
 #include "value_analysis.dl"
+#include "boundary_value_analysis.dl"
 #include "data_access_analysis.dl" // data_access_analysis uses predicates from here
 #include "pointer_reatribution.dl"
 #include "register_type_analysis.dl"
@@ -380,7 +381,9 @@ symbol_minus_symbol_candidate(EA,Size,Symbol1,Symbol2,as(Scale,unsigned),Offset)
         Scale > 0, Symbol1 = Reference, Symbol2 = Dest;
         Scale < 0, Symbol1 = Dest, Symbol2 = Reference
         // Scale = 0 is nonsense.
-    ).
+    ),
+    // If Symbol1 is zero, we have an absolute address.
+    Symbol1 != 0.
 
 ////////////////////////////////////////////////////////////////////////
 

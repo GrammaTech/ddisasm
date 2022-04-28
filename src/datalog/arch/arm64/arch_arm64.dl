@@ -69,7 +69,11 @@ mov(EA):-
     move_operation(Operation).
 
 is_nop(EA):-
-    instruction_get_operation(EA,"NOP").
+    instruction_get_operation(EA,Operation),
+    (
+        Operation = "NOP";
+        Operation = "B.NV"  // B.NV is a never-taken branch.
+    ).
 
 op_does_not_read_dest_reg(Operation):-
     instruction_get_operation(_, Operation).
@@ -159,23 +163,24 @@ inferred_main_in_reg(EA,"X0"):-
     inferred_main_dispatch(EA).
 
 /**
-The referenced address of an ADRP instruction
+The referenced address of an ADRP or ADR instruction
 
 This intermediate relation is an optimization that allows performing non-
-recursive work before running the recursive rule adrp_used.
+recursive work before running the recursive rule adr_used.
 */
-.decl adrp_dest(EA:address,Reg:register,Dest:address)
+.decl adr_dest(EA:address,Reg:register,Dest:address)
 
-adrp_dest(EA,Reg,as(Dest,address)):-
+adr_dest(EA,Reg,as(Dest,address)):-
     // ADRP <Register> <Immediate>
     // e.g. adrp x0, ImmOp
-    instruction(EA,_,_,"ADRP",ImmOp,RegOp,0,0,_,_),
+    instruction(EA,_,_,Operation,ImmOp,RegOp,0,0,_,_),
+    substr(Operation,0,3) = "ADR",
     op_immediate(ImmOp,Dest),
     op_regdirect_contains_reg(RegOp,Reg).
 
 // mark adrp instructions as PC-relative
 // This also ensures they are marked as def_used_for_address
 pc_relative_addr(EA,Reg,as(Dest,number)):-
-    adrp_dest(EA,Reg,Dest).
+    adr_dest(EA,Reg,Dest).
 
 }

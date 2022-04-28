@@ -41,9 +41,10 @@ adrp x0, L1
 add x0, x0, :lo12:L1
 */
 split_load(EA, NextEA, as(Base + Offset,address), "ADD") :-
-    // ADRP <Register> <Immediate>
+    // ADRP/ADR <Register> <Immediate>
     // e.g. adrp x0, BaseOp
-    instruction_get_operation(EA, "ADRP"),
+    instruction_get_operation(EA,ADROperation),
+    substr(ADROperation,0,3) = "ADR",
     instruction_get_op(EA, 1, BaseOp),
     op_immediate(BaseOp, Base),
     instruction_get_op(EA, 2, RegOp),
@@ -75,9 +76,10 @@ adrp x0, L1
 ldr x0, [x0,:lo12:L1]
 */
 split_load(EA, NextEA, as(Base + Offset,address), "LDR/STR") :-
-    // ADRP <Register> <Immediate>
+    // ADRP/ADR <Register> <Immediate>
     // e.g. adrp x0, BaseOp
-    instruction_get_operation(EA, "ADRP"),
+    instruction_get_operation(EA,ADROperation),
+    substr(ADROperation,0,3) = "ADR",
     instruction_get_op(EA, 1, BaseOp),
     op_immediate(BaseOp, Base),
     instruction_get_op(EA, 2, RegOp),
@@ -112,13 +114,39 @@ pc_relative_jump(EA, as(Dest,address)):-
     split_load(EA, _, Dest, "LDR/STR").
 
 /**
-A reference to the register loaded by an adrp instruction.
-*/
-.decl adrp_used(EA:address,Reg:register,UsedEA:address,Dest:address)
+A reference to a value loaded by an adr or adrp instruction.
 
-adrp_used(EA,Reg,UsedEA,Dest):-
-    def_used(EA,Reg,UsedEA,_),
-    arch.adrp_dest(EA,Reg,Dest).
+EA: Address of the adr/adrp instruction
+Reg: The register that holds the used value
+UsedEA: Address where the value is used
+Dest: The destination address
+
+Reg is not necessarily the register loaded by adrp! It may be the result of:
+
+    adrp x0, label
+    mov x1, x0
+UsedEA:
+    # x1 is used
+
+and Reg would be `x1`
+*/
+.decl adr_used(EA:address,Reg:register,UsedEA:address,Dest:address)
+
+adr_used(EA,Reg,UsedEA,Dest):-
+    const_value_reg_used(UsedEA,EA,EARegDef,Reg,as(Dest,number)),
+    arch.adr_dest(EA,_,Dest),
+
+    // The `add` of a split load may have an immediate of zero if the target
+    // is page-aligned. If that address then has an addition offset added to
+    // it, e.g.:
+    //      adrp x8, .L_c4a000
+    //      add x8,x8, :lo12:.L_c4a000
+    //      add x8,x8,#8
+    // then we will generate a false positive in the second `add`, since the
+    // first is effectively a move. We only want to apply :lo12: to the first
+    // "ADD" instruction.
+    instruction_get_operation(EARegDef,Operation),
+    Operation != "ADD".
 
 /**
 An instruction which could be the second half of a split load.
@@ -147,15 +175,8 @@ Instead, this is for the symbolization step.
 
 // Direct split load
 split_load_for_symbolization(EA,UsedEA,as(as(Base,number)+Offset,address),Type):-
-    adrp_used(EA,Reg,UsedEA,Base),
+    adr_used(EA,Reg,UsedEA,Base),
     split_load_tail(UsedEA,Offset,Reg,Type).
-
-// Split load through the stack
-split_load_for_symbolization(EA,NextEA,as(as(Base,number)+Offset,address),Type):-
-    adrp_used(EA,Reg1,UsedEA,Base),
-    stack_load_store_pair(UsedEA,LoadEA,Reg1,Reg2),
-    def_used(LoadEA,Reg2,NextEA,_),
-    split_load_tail(NextEA,Offset,Reg2,Type).
 
 split_load_operand(EA, 1, as(Dest,address)) :-
     split_load_for_symbolization(EA, _, Dest, _).

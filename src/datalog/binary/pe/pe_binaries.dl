@@ -515,6 +515,14 @@ is_padding(EA):-
     binary_format("PE"),
     instruction_get_operation(EA,"INT3").
 
+// Make INT3 blocks in PEs data. Otherwise each
+// individual INT3 instruction is its own block.
+// Using the point system is too expensive.
+discarded_block(EA,"code","PE padding considered data"):-
+    binary_format("PE"),
+    code_in_block_candidate_refined(EA,EA),
+    instruction_get_operation(EA,"INT3").
+
 // Off-cut base-relative reference to symbol:
 //    e.g.  movzx EDX,BYTE PTR [RAX+RCX*1+((IMAGEREL N_180fa2570)+7)]
 //                                                               ^^

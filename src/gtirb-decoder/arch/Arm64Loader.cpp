@@ -26,21 +26,7 @@
 #include <string>
 #include <vector>
 
-void Arm64Loader::insert(const Arm64Facts& Facts, DatalogProgram& Program)
-{
-    auto& [Instructions, Operands] = Facts;
-    Program.insert("instruction", Instructions.instructions());
-    Program.insert("instruction_writeback", Instructions.writeback());
-    Program.insert("invalid_op_code", Instructions.invalid());
-    Program.insert("op_shifted", Instructions.shiftedOps());
-    Program.insert("op_immediate", Operands.imm());
-    Program.insert("op_regdirect", Operands.reg());
-    Program.insert("op_fp_immediate", Operands.fp_imm());
-    Program.insert("op_indirect", Operands.indirect());
-    Program.insert("op_special", Operands.special());
-}
-
-void Arm64Loader::decode(Arm64Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
+void Arm64Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
 {
     // Decode instruction with Capstone.
     cs_insn* CsInsn;
@@ -53,7 +39,11 @@ void Arm64Loader::decode(Arm64Facts& Facts, const uint8_t* Bytes, uint64_t Size,
         InstAdded = build(Facts, *CsInsn);
     }
 
-    if(!InstAdded)
+    if(InstAdded)
+    {
+        loadRegisterAccesses(Facts, Addr, *CsInsn);
+    }
+    else
     {
         // Add address to list of invalid instruction locations.
         Facts.Instructions.invalid(gtirb::Addr(Addr));
@@ -62,7 +52,7 @@ void Arm64Loader::decode(Arm64Facts& Facts, const uint8_t* Bytes, uint64_t Size,
     cs_free(CsInsn, Count);
 }
 
-bool Arm64Loader::build(Arm64Facts& Facts, const cs_insn& CsInstruction)
+bool Arm64Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction)
 {
     const cs_arm64& Details = CsInstruction.detail->arm64;
     std::string Name = uppercase(CsInstruction.mnemonic);

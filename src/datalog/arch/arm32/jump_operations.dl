@@ -36,8 +36,8 @@ jump_operation(Operation):-
 
 jump_operation(Operation):-
     jump_operation_may_have_cc(Base),
-    condition_code(CC),
-    Operation = cat(Base, CC).
+    condition_code_map(Suffix,_),
+    Operation = cat(Base,Suffix).
 
 jump_operation("TBB").
 jump_operation("TBH").
@@ -47,12 +47,8 @@ jump_operation("CBNZ").
 
 // Jump operations with standard condition codes are captured by the generic
 // conditional_operation rule in arch_arm.dl
-conditional_operation("CBZ").
-conditional_operation("CBNZ").
-
-jump_equal_operation("BEQ").
-
-jump_unequal_operation("BNE").
+conditional_operation("CBZ","E").
+conditional_operation("CBNZ","NE").
 
 jump_operation_op_index(Operation,1):-
     (

@@ -31,6 +31,7 @@ set(DATALOG_BASE_SOURCES
     datalog/binary/pe/pe_binaries.dl
     datalog/binary/pe/relocations.dl
     datalog/bitmasks.dl
+    datalog/boundary_value_analysis.dl
     datalog/code_inference.dl
     datalog/code_inference_postprocess.dl
     datalog/cfg.dl

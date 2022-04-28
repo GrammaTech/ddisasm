@@ -26,23 +26,8 @@
 #include <string>
 #include <vector>
 
-void Arm32Loader::insert(const Arm32Facts& Facts, DatalogProgram& Program)
-{
-    auto& [Instructions, Operands] = Facts;
-    Program.insert("instruction", Instructions.instructions());
-    Program.insert("instruction_writeback", Instructions.writeback());
-    Program.insert("invalid_op_code", Instructions.invalid());
-    Program.insert("op_shifted", Instructions.shiftedOps());
-    Program.insert("op_shifted_w_reg", Instructions.shiftedWithRegOps());
-    Program.insert("op_immediate", Operands.imm());
-    Program.insert("op_regdirect", Operands.reg());
-    Program.insert("op_indirect", Operands.indirect());
-    Program.insert("op_special", Operands.special());
-    Program.insert("op_register_bitfield", Operands.reg_bitfields());
-}
-
 void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
-                       Arm32Facts& Facts)
+                       BinaryFacts& Facts)
 {
     // NOTE: AArch32 (ARMv8-A) is backward compatible to ARMv7-A.
     cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_ARM | CS_MODE_V8);
@@ -88,7 +73,7 @@ void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& B
     load(ByteInterval, Facts, true);
 }
 
-void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Facts, bool Thumb)
+void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, BinaryFacts& Facts, bool Thumb)
 {
     assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
 
@@ -111,7 +96,7 @@ void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, Arm32Facts& Fact
     }
 }
 
-void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr,
+void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr,
                          bool Thumb)
 {
     size_t CsModes[2];
@@ -174,7 +159,7 @@ void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size,
         std::unique_ptr<cs_insn, std::function<void(cs_insn*)>> TmpInsnPtr(
             Insn, [TmpCount](cs_insn* Instr) { cs_free(Instr, TmpCount); });
 
-        Arm32Facts TempFacts;
+        BinaryFacts TempFacts;
         InstAdded = false;
         if(TmpCount > 0)
         {
@@ -199,6 +184,7 @@ void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size,
         // Build datalog instruction facts from Capstone instruction.
         bool Update = true;
         build(Facts, (&(*InsnPtr))[InsnCount - 1], Update);
+        loadRegisterAccesses(Facts, Addr, (&(*InsnPtr))[InsnCount - 1]);
     }
     else
     {
@@ -207,7 +193,7 @@ void Arm32Loader::decode(Arm32Facts& Facts, const uint8_t* Bytes, uint64_t Size,
     }
 }
 
-bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction, bool Update)
+bool Arm32Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction, bool Update)
 {
     const cs_arm& Details = CsInstruction.detail->arm;
     std::string Name = uppercase(CsInstruction.mnemonic);
@@ -272,6 +258,64 @@ bool Arm32Loader::build(Arm32Facts& Facts, const cs_insn& CsInstruction, bool Up
             uint64_t OpIndex = Facts.Operands.add(RegBitFields);
             OpCodes.push_back(OpIndex);
         }
+    }
+    else if(CsInstruction.id == ARM_INS_IT)
+    {
+        // Capstone doesn't currently populate any operands for IT instructions.
+        // Generate it based on the condition code.
+        std::string OpCC;
+        switch(Details.cc)
+        {
+            case ARM_CC_INVALID:
+                assert(!"Unexpected condition code for IT instruction");
+            case ARM_CC_EQ:
+                OpCC = "EQ";
+                break;
+            case ARM_CC_NE:
+                OpCC = "NE";
+                break;
+            case ARM_CC_HS:
+                OpCC = "HS";
+                break;
+            case ARM_CC_LO:
+                OpCC = "LO";
+                break;
+            case ARM_CC_MI:
+                OpCC = "MI";
+                break;
+            case ARM_CC_PL:
+                OpCC = "PL";
+                break;
+            case ARM_CC_VS:
+                OpCC = "VS";
+                break;
+            case ARM_CC_VC:
+                OpCC = "VC";
+                break;
+            case ARM_CC_HI:
+                OpCC = "HI";
+                break;
+            case ARM_CC_LS:
+                OpCC = "LS";
+                break;
+            case ARM_CC_GE:
+                OpCC = "GE";
+                break;
+            case ARM_CC_LT:
+                OpCC = "LT";
+                break;
+            case ARM_CC_GT:
+                OpCC = "GT";
+                break;
+            case ARM_CC_LE:
+                OpCC = "LE";
+                break;
+            case ARM_CC_AL:
+                OpCC = "AL";
+                break;
+        }
+
+        OpCodes.push_back(Facts.Operands.add(relations::SpecialOp{"it", OpCC}));
     }
     else if(Name != "NOP")
     {
