@@ -413,6 +413,10 @@ tests:
     <<: *assembly
     <<: *test-strip-default
 
+  - name: ex_synchronized_access
+    <<: *assembly
+    <<: *test-strip-default
+
   # ----------------------------------------------------------------------------
   # Relocatable ELF objects (.o).
   # ----------------------------------------------------------------------------
