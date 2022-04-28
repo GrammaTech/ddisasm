@@ -53,6 +53,8 @@ This module:
   explored.
 */
 
+#define UNUSED(Var) Var = Var
+
 .type register <: symbol
 
 .type address <: unsigned

@@ -101,9 +101,38 @@ compare_and_jump_register(EA,EA,CC,Reg1,Reg2):-
     arch.conditional(EA,CC).
 
 /**
+A pair of instructions that compares a memory location to an immediate and then
+conditionally jumps.
+*/
+.decl compare_and_jump_indirect(EA_cmp:address,EA_jmp:address,CC:condition_code,IndirectOp:operand_code,Immediate:number)
+
+compare_and_jump_indirect(EA_cmp,EA_jmp,CC,IndirectOp,Immediate):-
+    flags_and_jump_pair(EA_cmp,EA_jmp,CC),
+    instruction_get_operation(EA_cmp,CmpOperation),
+    arch.cmp_operation(CmpOperation),
+    instruction_get_op(EA_cmp,_,IndirectOp),
+    op_indirect(IndirectOp,_,_,_,_,_,_),
+    instruction_get_op(EA_cmp,_,ImmOp),
+    op_immediate(ImmOp,Immediate).
+
+/**
 Either "MIN" or "MAX"
 */
 .type limit_type <: symbol
+
+/**
+Map condition codes to limit types
+*/
+.decl limit_type_map(CC:condition_code,BranchLT:limit_type,FallthroughLT:limit_type,BranchOffset:number,FallthroughOffset:number)
+
+limit_type_map("A","MIN","MAX",1,0).
+limit_type_map("G","MIN","MAX",1,0).
+limit_type_map("AE","MIN","MAX",0,-1).
+limit_type_map("GE","MIN","MAX",0,-1).
+limit_type_map("B","MAX","MIN",-1,0).
+limit_type_map("L","MAX","MIN",-1,0).
+limit_type_map("BE","MAX","MIN",0,1).
+limit_type_map("LE","MAX","MIN",0,1).
 
 /**
 An instruction at EA limits the value of Reg at some MIN or MAX value.
@@ -115,19 +144,38 @@ The limit is effective after address EA_limited.
 
 // Each comparison generates two limits - the fallthough case is limited one
 // way, and the branch case is limited the other.
-// BLT/FLT = "branch/fallthrough limit type"
-value_reg_limit(EA_jmp,EA_branch,Reg,BValue,BLT),
-value_reg_limit(EA_jmp,EA_fallthrough,Reg,FValue,FLT):-
+value_reg_limit(EA_jmp,EA_branch,Reg,BranchValue,BranchLT),
+value_reg_limit(EA_jmp,EA_fallthrough,Reg,FallthroughValue,FallthroughLT):-
     compare_and_jump_immediate(_,EA_jmp,CC,Reg,Immediate),
+    limit_type_map(CC,BranchLT,FallthroughLT,BranchOffset,FallthroughOffset),
     direct_jump(EA_jmp,EA_branch),
     may_fallthrough(EA_jmp,EA_fallthrough),
-    (
-        (CC="A"; CC="G"), BLT = "MIN", FLT = "MAX", BValue = Immediate + 1, FValue = Immediate;
-        (CC="AE"; CC="GE"), BLT = "MIN", FLT = "MAX", BValue = Immediate, FValue = Immediate - 1;
+    BranchValue = Immediate + BranchOffset,
+    FallthroughValue = Immediate + FallthroughOffset.
 
-        (CC="B"; CC="L"), BLT = "MAX", FLT = "MIN", BValue = Immediate - 1, FValue = Immediate;
-        (CC="BE"; CC="LE"), BLT = "MAX", FLT = "MIN", BValue = Immediate, FValue = Immediate + 1
-    ).
+// Ad-hoc rule for basic indirect comparison cases where the value is moved to
+// a register right after the jump (either at the branch target or the
+// fallthrough).
+value_reg_limit(EA_jmp,EA_target,Reg,Value,LimitType):-
+    compare_and_jump_indirect(EA_cmp,EA_jmp,CC,IndirectOp,Immediate),
+    limit_type_map(CC,BranchLT,FallthroughLT,BranchOffset,FallthroughOffset),
+    // Enforce next to ensure the memory isn't modified between comparison and jump.
+    next(EA_cmp,EA_jmp),
+    (
+        direct_jump(EA_jmp,EA_target),
+        LimitType = BranchLT,
+        Value = Immediate + BranchOffset,
+        UNUSED(FallthroughLT), UNUSED(FallthroughOffset)
+        ;
+        may_fallthrough(EA_jmp,EA_target),
+        LimitType = FallthroughLT,
+        Value = Immediate + FallthroughOffset,
+        UNUSED(BranchLT), UNUSED(BranchOffset)
+    ),
+    // The value is loaded from this IndirectOp into a register immediately after the jump.
+    arch.load(EA_target,_,_,Reg_untracked,_,_,_,_),
+    arch.track_register(Reg_untracked,Reg),
+    instruction_get_op(EA_target,_,IndirectOp).
 
 /**
 A register is compared as NE or EQ and used for a conditional jump.
@@ -170,14 +218,6 @@ no_value_reg_limit(EA_jmp):-
     flags_and_jump_pair(EA_cmp,EA_jmp,_),
     instruction_get_operation(EA_cmp,Operation),
     !arch.cmp_operation(Operation).
-
-// Flags set by comparison with indirect operand.
-no_value_reg_limit(EA_jmp):-
-    flags_and_jump_pair(EA_cmp,EA_jmp,_),
-    instruction_get_operation(EA_cmp,Operation),
-    arch.cmp_operation(Operation),
-    instruction_get_op(EA_cmp,_,Op),
-    op_indirect(Op,_,_,_,_,_,_).
 
 /**
 Basic-block propagation of value_reg_limit
