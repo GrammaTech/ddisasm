@@ -221,8 +221,6 @@ no_value_reg_limit(EA_jmp):-
 
 /**
 Basic-block propagation of value_reg_limit
-
-Limits can only exist at CFG edges (from conditional jumps) so this simplifies propagation a bit.
 */
 .decl last_value_reg_limit(Block:address,Reg:register,Value:number,LimitType:limit_type)
 .output last_value_reg_limit
@@ -230,8 +228,10 @@ Limits can only exist at CFG edges (from conditional jumps) so this simplifies p
 last_value_reg_limit(EA_limited,Reg,Value,LimitType):-
     value_reg_limit(_,EA_limited,Reg,Value,LimitType).
 
+// Simple propagation
 last_value_reg_limit(BlockNext,PropagatedReg,PropagatedVal,PropagatedType):-
-    last_value_reg_limit(Block,PropagatedReg,PropagatedVal,PropagatedType),
+    last_value_reg_limit(EA,PropagatedReg,PropagatedVal,PropagatedType),
+    code_in_block(EA,Block),
     block_last_instruction(Block,BlockEnd),
     block_next(BlockEnd,BlockNext),
     !defined_in_block(Block,PropagatedReg),
@@ -254,4 +254,24 @@ last_value_reg_limit(BlockNext,PropagatedReg,PropagatedVal,PropagatedType):-
             Reg = PropagatedReg, PropagatedType = "MAX", Type = "MAX", PropagatedVal < Val;
             Reg = PropagatedReg, PropagatedType = "MIN", Type = "MIN", PropagatedVal > Val
         )
+    ).
+
+// Propagate to a different register through a move instruction
+last_value_reg_limit(EA_next,DstReg,PropagatedVal,PropagatedType):-
+    last_value_reg_limit(EA,SrcReg,PropagatedVal,PropagatedType),
+    code_in_block(EA,Block),
+    block_last_instruction(Block,BlockEnd),
+    arch.move_reg_reg_tracked(EA_mov,DstReg,SrcReg),
+    Block <= EA_mov, EA_mov <= BlockEnd,
+    code_in_block(EA_mov,EA),
+    // The limit for the move is placed on the next instruction, because that is
+    // where the limit becomes active. This is analagous to the limit propagated
+    // from a previous block being placed at the beginning of the new block.
+    local_next(EA_mov,EA_next),
+    (
+        // SrcReg is not previously defined in the block.
+        !block_last_def(EA_mov,_,SrcReg)
+        ;
+        // we are propagating the last_value_reg_limit from a previous move in the block.
+        block_last_def(EA_mov,EA,SrcReg)
     ).
