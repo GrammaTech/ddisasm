@@ -278,16 +278,24 @@ data_access_pattern(Address,Size,Multiplier,From):-
 
 possible_data_limit(EA):-
     labeled_data_candidate(EA);
-    data_segment(_,EA).
+    data_segment(_,EA);
+    data_segment(EA,_).
 
 .decl next_data_limit(EA:address,Next:address)
 
 next_data_limit(EA,Next):-
+    possible_data_limit(EA),
+    Next = min Next : {possible_data_limit(Next), Next> EA},
+    data_segment(Beg,End), EA>=Beg, Next<= End.
+
+.decl data_limit_after_access(Access:address,DataLimit:address)
+
+data_limit_after_access(EA,Next):-
     data_access_pattern(EA,_,_,_),
     Next = min Next : {possible_data_limit(Next), Next> EA},
     data_segment(Beg,End), EA>=Beg, Next<= End.
 
-.decl next_data_access(EA:address,Where:address)
+.decl next_data_access(EA:address,Next:address)
 .output next_data_access
 
 next_data_access(EA,Next):-
@@ -371,14 +379,14 @@ propagated_data_access(EA_prop,Mult,EA_access):-
     data_access_pattern_non_zero(EA_access,_,Mult,_),
     data_byte(EA_access,_),
     next_disynchronized_data_access(EA_access, Next_access),
-    next_data_limit(EA_access, Next_limit),
+    data_limit_after_access(EA_access, Next_limit),
     EA_prop = range(EA_access, min(Next_access,Next_limit),Mult).
 
 propagated_data_access(EA_prop,Mult,EA_access):-
     data_access_pattern_non_zero(EA_access,_,Mult,_),
     data_byte(EA_access,_),
     !next_disynchronized_data_access(EA_access, _),
-    next_data_limit(EA_access, Next_limit),
+    data_limit_after_access(EA_access, Next_limit),
     EA_prop = range(EA_access,Next_limit,Mult).
 
 
