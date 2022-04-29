@@ -171,7 +171,7 @@ void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size
         {
             InsnPtr = std::move(TmpInsnPtr);
             InsnCount = TmpCount;
-            if(CsModes[I] & CS_MODE_MCLASS != 0)
+            if((CsModes[I] & CS_MODE_MCLASS) != 0)
             {
                 Mclass = true;
             }
