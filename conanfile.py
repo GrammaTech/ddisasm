@@ -5,7 +5,7 @@ import re
 
 
 def get_version():
-    if os.getenv("CI_COMMIT_REF_NAME", "") == "windows-support":
+    if os.getenv("CI_COMMIT_REF_NAME", "") == "master":
         return "dev"
     try:
         with open("version.txt") as f:
@@ -20,7 +20,7 @@ def get_version():
                 major = match.group(2)
                 minor = match.group(5)
                 patch = match.group(8)
-                return major + "." + minor + "." + patch + "-internal"
+                return major + "." + minor + "." + patch
             else:
                 return "<ERROR: no version found>"
     except Exception:
