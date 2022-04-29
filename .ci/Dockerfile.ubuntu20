@@ -26,7 +26,7 @@ RUN apt-get -y install clang-format unzip \
     make mcpp pkg-config protobuf-compiler python3 python3-pip \
     software-properties-common wget zlib1g-dev
 RUN apt-get remove -y python3-keyrings.alt
-RUN python3 -m pip install distro pyyaml psycopg2-binary
+RUN python3 -m pip install distro pyyaml psycopg2-binary networkx pydot sphinx
 
 # Install cross-platform utils
 RUN apt-get -y update && \
