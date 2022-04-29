@@ -29,6 +29,9 @@
 void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
                        BinaryFacts& Facts)
 {
+    CsModes[0] = (CS_MODE_ARM | CS_MODE_V8);
+    CsModeCount = 1;
+
     // NOTE: AArch32 (ARMv8-A) is backward compatible to ARMv7-A.
     cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_ARM | CS_MODE_V8);
     InstructionSize = 4;
@@ -61,13 +64,30 @@ void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& B
         ArchtypeFromElf = true;
     }
 
-    if(Mclass)
+    if(ArchtypeFromElf)
     {
-        cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
+        if(Mclass)
+        {
+            CsModes[0] = (CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
+        }
+        else
+        {
+            CsModes[0] = (CS_MODE_THUMB | CS_MODE_V8);
+        }
     }
     else
     {
-        cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_THUMB | CS_MODE_V8);
+        if(Mclass)
+        {
+            CsModes[1] = (CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
+            CsModes[0] = (CS_MODE_THUMB | CS_MODE_V8);
+        }
+        else
+        {
+            CsModes[0] = (CS_MODE_THUMB | CS_MODE_V8);
+            CsModes[1] = (CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
+        }
+        CsModeCount = 2;
     }
     InstructionSize = 2;
     load(ByteInterval, Facts, true);
@@ -89,51 +109,15 @@ void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, BinaryFacts& Fac
 
     while(Size >= InstructionSize)
     {
-        decode(Facts, Data, Size, Addr, Thumb);
+        decode(Facts, Data, Size, Addr);
         Addr += InstructionSize;
         Data += InstructionSize;
         Size -= InstructionSize;
     }
 }
 
-void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr,
-                         bool Thumb)
+void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
 {
-    size_t CsModes[2];
-    size_t CsModeCount = 1;
-    if(Thumb)
-    {
-        if(ArchtypeFromElf)
-        {
-            if(Mclass)
-            {
-                CsModes[0] = (CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
-            }
-            else
-            {
-                CsModes[0] = (CS_MODE_THUMB | CS_MODE_V8);
-            }
-        }
-        else
-        {
-            if(Mclass)
-            {
-                CsModes[1] = (CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
-                CsModes[0] = (CS_MODE_THUMB | CS_MODE_V8);
-            }
-            else
-            {
-                CsModes[0] = (CS_MODE_THUMB | CS_MODE_V8);
-                CsModes[1] = (CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
-            }
-            CsModeCount = 2;
-        }
-    }
-    else
-    {
-        CsModes[0] = (CS_MODE_ARM | CS_MODE_V8);
-    }
-
     std::unique_ptr<cs_insn, std::function<void(cs_insn*)>> InsnPtr;
     size_t InsnCount = 0;
 
@@ -146,12 +130,12 @@ void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size
     //
     // This loop is to try out multiple CS modes to see if decoding succeeds.
     // Currently, this is done only when the arch type info is not available.
-    bool InstAdded = false;
+    bool Success = false;
+    OpndFactsT OpndFacts;
     for(size_t I = 0; I < CsModeCount; I++)
     {
         // Decode instruction with Capstone.
         cs_insn* Insn;
-        cs_option(*CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
         cs_option(*CsHandle, CS_OPT_MODE, CsModes[I]);
         size_t TmpCount = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &Insn);
 
@@ -159,15 +143,13 @@ void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size
         std::unique_ptr<cs_insn, std::function<void(cs_insn*)>> TmpInsnPtr(
             Insn, [TmpCount](cs_insn* Instr) { cs_free(Instr, TmpCount); });
 
-        BinaryFacts TempFacts;
-        InstAdded = false;
         if(TmpCount > 0)
         {
-            bool Update = false;
-            InstAdded = build(TempFacts, Insn[TmpCount - 1], Update);
+            OpndFacts.clear();
+            Success = collectOpndFacts(OpndFacts, Insn[0]);
         }
 
-        if(InstAdded)
+        if(Success)
         {
             InsnPtr = std::move(TmpInsnPtr);
             InsnCount = TmpCount;
@@ -179,11 +161,10 @@ void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size
         }
     }
 
-    if(InstAdded)
+    if(Success)
     {
         // Build datalog instruction facts from Capstone instruction.
-        bool Update = true;
-        build(Facts, (&(*InsnPtr))[InsnCount - 1], Update);
+        build(Facts, (&(*InsnPtr))[InsnCount - 1], OpndFacts);
         loadRegisterAccesses(Facts, Addr, (&(*InsnPtr))[InsnCount - 1]);
     }
     else
@@ -193,15 +174,13 @@ void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size
     }
 }
 
-bool Arm32Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction, bool Update)
+bool Arm32Loader::collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInstruction)
 {
     const cs_arm& Details = CsInstruction.detail->arm;
     std::string Name = uppercase(CsInstruction.mnemonic);
     gtirb::Addr Addr(CsInstruction.address);
     if(auto index = Name.rfind(".W"); index != std::string::npos)
         Name = Name.substr(0, index);
-
-    std::vector<uint64_t> OpCodes;
 
     auto registerName = [this](uint64_t Reg) {
         return (Reg == ARM_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(*CsHandle, Reg));
@@ -240,24 +219,18 @@ bool Arm32Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction, bool U
                 {
                     return false;
                 }
-                if(Update)
-                {
-                    // Add operand to the operands table.
-                    uint64_t OpIndex = Facts.Operands.add(*Op);
-                    OpCodes.push_back(OpIndex);
-                }
+                OperandFacts Tmp;
+                Tmp.add(*Op);
+                OpndFacts.Operands.push_back(Tmp);
             }
             else
             {
                 RegBitFields.push_back(registerName(CsOp.reg));
             }
         }
-        if(Update)
-        {
-            // Add reg_bitfield to the table.
-            uint64_t OpIndex = Facts.Operands.add(RegBitFields);
-            OpCodes.push_back(OpIndex);
-        }
+        OperandFacts Tmp;
+        Tmp.add(RegBitFields);
+        OpndFacts.Operands.push_back(Tmp);
     }
     else if(CsInstruction.id == ARM_INS_IT)
     {
@@ -315,7 +288,9 @@ bool Arm32Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction, bool U
                 break;
         }
 
-        OpCodes.push_back(Facts.Operands.add(relations::SpecialOp{"it", OpCC}));
+        OperandFacts Tmp;
+        Tmp.add(relations::SpecialOp{"it", OpCC});
+        OpndFacts.Operands.push_back(Tmp);
     }
     else if(Name != "NOP")
     {
@@ -331,12 +306,9 @@ bool Arm32Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction, bool U
                 return false;
             }
 
-            if(Update)
-            {
-                // Add operand to the operands table.
-                uint64_t OpIndex = Facts.Operands.add(*Op);
-                OpCodes.push_back(OpIndex);
-            }
+            OperandFacts Tmp;
+            Tmp.add(*Op);
+            OpndFacts.Operands.push_back(Tmp);
 
             // Populate shift metadata if present.
             if(CsOp.type == ARM_OP_REG && CsOp.shift.value != 0)
@@ -369,23 +341,41 @@ bool Arm32Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction, bool U
                                   << "\n";
                         return false;
                 }
-                if(Update)
+                if(CsOp.shift.value > 32)
                 {
-                    if(CsOp.shift.value > 32)
-                    {
-                        Facts.Instructions.shiftedWithRegOp(
-                            relations::ShiftedWithRegOp{Addr, static_cast<uint8_t>(i + 1),
-                                                        registerName(CsOp.shift.value), ShiftType});
-                    }
-                    else
-                    {
-                        Facts.Instructions.shiftedOp(relations::ShiftedOp{
-                            Addr, static_cast<uint8_t>(i + 1),
-                            static_cast<uint8_t>(CsOp.shift.value), ShiftType});
-                    }
+                    OpndFacts.ShiftedWithRegOp =
+                        relations::ShiftedWithRegOp{Addr, static_cast<uint8_t>(i + 1),
+                                                    registerName(CsOp.shift.value), ShiftType};
+                }
+                else
+                {
+                    OpndFacts.ShiftedOp =
+                        relations::ShiftedOp{Addr, static_cast<uint8_t>(i + 1),
+                                             static_cast<uint8_t>(CsOp.shift.value), ShiftType};
                 }
             }
         }
+    }
+    return true;
+}
+
+void Arm32Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction,
+                        const OpndFactsT& OpndFacts)
+{
+    const cs_arm& Details = CsInstruction.detail->arm;
+    std::string Name = uppercase(CsInstruction.mnemonic);
+    gtirb::Addr Addr(CsInstruction.address);
+    if(auto index = Name.rfind(".W"); index != std::string::npos)
+        Name = Name.substr(0, index);
+
+    std::vector<uint64_t> OpCodes;
+
+    for(const auto& Operand : OpndFacts.Operands)
+    {
+        // Add operand to the operands table.
+        std::optional<uint64_t> OpIndex = Facts.Operands.insert(Operand);
+        assert(OpIndex);
+        OpCodes.push_back(*OpIndex);
     }
 
     // Put the destination operand at the end of the operand list.
@@ -394,17 +384,22 @@ bool Arm32Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction, bool U
         std::rotate(OpCodes.begin(), OpCodes.begin() + 1, OpCodes.end());
     }
 
-    if(Update)
-    {
-        uint64_t Size(CsInstruction.size);
+    uint64_t Size(CsInstruction.size);
 
-        Facts.Instructions.add(relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0});
-        if(Details.writeback)
-        {
-            Facts.Instructions.writeback(relations::InstructionWriteback{Addr});
-        }
+    Facts.Instructions.add(relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0});
+    if(Details.writeback)
+    {
+        Facts.Instructions.writeback(relations::InstructionWriteback{Addr});
     }
-    return true;
+
+    if(OpndFacts.ShiftedWithRegOp)
+    {
+        Facts.Instructions.shiftedWithRegOp(*OpndFacts.ShiftedWithRegOp);
+    }
+    if(OpndFacts.ShiftedOp)
+    {
+        Facts.Instructions.shiftedOp(*OpndFacts.ShiftedOp);
+    }
 }
 
 std::optional<relations::Operand> Arm32Loader::build(const cs_insn& CsInsn, const cs_arm_op& CsOp)

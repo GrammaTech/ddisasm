@@ -30,6 +30,70 @@ std::string uppercase(std::string S)
 };
 
 /**
+The given OperandFacts should have only one operand.
+Insert it to this object and return the corresponding OpIndex.
+*/
+std::optional<uint64_t> OperandFacts::insert(const OperandFacts& OpndFacts)
+{
+    std::optional<uint64_t> OpIndex;
+
+    const auto& imm = OpndFacts.imm();
+    const auto& reg = OpndFacts.reg();
+    const auto& reg_bitfields = OpndFacts.reg_bitfields_raw();
+    const auto& fp_imm = OpndFacts.fp_imm();
+    const auto& indirect = OpndFacts.indirect();
+    const auto& special = OpndFacts.special();
+    if(imm.size() + reg.size() + reg_bitfields.size() + fp_imm.size() + indirect.size()
+           + special.size()
+       != 1)
+    {
+        return OpIndex;
+    }
+
+    if(imm.size() == 1)
+    {
+        OpIndex = this->add(imm.begin()->first);
+    }
+    else if(reg.size() == 1)
+    {
+        OpIndex = this->add(reg.begin()->first);
+    }
+    else if(reg_bitfields.size() == 1)
+    {
+        OpIndex = this->add(reg_bitfields.begin()->first);
+    }
+    else if(fp_imm.size() == 1)
+    {
+        OpIndex = this->add(fp_imm.begin()->first);
+    }
+    else if(indirect.size() == 1)
+    {
+        OpIndex = this->add(indirect.begin()->first);
+    }
+    else if(special.size() == 1)
+    {
+        OpIndex = this->add(special.begin()->first);
+    }
+    return OpIndex;
+}
+
+const std::vector<relations::RegBitFieldOp> OperandFacts::reg_bitfields() const
+{
+    std::vector<relations::RegBitFieldOp> RegBitFieldsForSouffle;
+    for(auto It = RegBitFields.begin(); It != RegBitFields.end(); ++It)
+    {
+        auto Regs = It->first;
+        auto Index = It->second;
+        for(auto It2 = Regs.begin(); It2 != Regs.end(); ++It2)
+        {
+            auto K = relations::RegBitFieldOp{Index, *It2};
+            RegBitFieldsForSouffle.push_back(K);
+        }
+    }
+    return RegBitFieldsForSouffle;
+}
+
+/**
 Insert BinaryFacts into the Datalog program.
 */
 void InstructionLoader::insert(const BinaryFacts& Facts, DatalogProgram& Program)

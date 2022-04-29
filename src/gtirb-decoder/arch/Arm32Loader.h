@@ -44,15 +44,13 @@ public:
 
         Mclass = false;
         ArchtypeFromElf = false;
+        CsModes[0] = (CS_MODE_ARM | CS_MODE_V8);
+        CsModes[1] = 0;
+        CsModeCount = 1;
     }
 
 protected:
-    void decode([[maybe_unused]] BinaryFacts& Facts, [[maybe_unused]] const uint8_t* Bytes,
-                [[maybe_unused]] uint64_t Size, [[maybe_unused]] uint64_t Addr) override
-    {
-        assert("Should not be called");
-    }
-    void decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr, bool Thumb);
+    void decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr);
 
     using InstructionLoader::load;
     void load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
@@ -60,11 +58,28 @@ protected:
     void load(const gtirb::ByteInterval& ByteInterval, BinaryFacts& Facts, bool Thumb);
 
 private:
+    typedef struct
+    {
+        std::vector<OperandFacts> Operands;
+        std::optional<relations::ShiftedWithRegOp> ShiftedWithRegOp;
+        std::optional<relations::ShiftedOp> ShiftedOp;
+
+        void clear()
+        {
+            Operands.clear();
+            ShiftedWithRegOp.reset();
+            ShiftedOp.reset();
+        }
+    } OpndFactsT;
+
     std::optional<relations::Operand> build(const cs_insn& CsInsn, const cs_arm_op& CsOp);
-    bool build(BinaryFacts& Facts, const cs_insn& CsInstruction, bool Update);
+    void build(BinaryFacts& Facts, const cs_insn& CsInstruction, const OpndFactsT& OpFacts);
+    bool collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInstruction);
 
     bool Mclass;
     bool ArchtypeFromElf;
+    size_t CsModes[2];
+    size_t CsModeCount;
 };
 
 #endif // SRC_GTIRB_DECODER_ARCH_ARM32DECODER_H_
