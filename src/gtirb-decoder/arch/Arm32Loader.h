@@ -60,7 +60,7 @@ protected:
 private:
     typedef struct
     {
-        std::vector<OperandFacts> Operands;
+        std::vector<relations::Operand> Operands;
         std::optional<relations::ShiftedWithRegOp> ShiftedWithRegOp;
         std::optional<relations::ShiftedOp> ShiftedOp;
 

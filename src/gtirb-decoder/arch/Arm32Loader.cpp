@@ -219,18 +219,14 @@ bool Arm32Loader::collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInstr
                 {
                     return false;
                 }
-                OperandFacts Tmp;
-                Tmp.add(*Op);
-                OpndFacts.Operands.push_back(Tmp);
+                OpndFacts.Operands.push_back(*Op);
             }
             else
             {
                 RegBitFields.push_back(registerName(CsOp.reg));
             }
         }
-        OperandFacts Tmp;
-        Tmp.add(RegBitFields);
-        OpndFacts.Operands.push_back(Tmp);
+        OpndFacts.Operands.push_back(RegBitFields);
     }
     else if(CsInstruction.id == ARM_INS_IT)
     {
@@ -288,9 +284,7 @@ bool Arm32Loader::collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInstr
                 break;
         }
 
-        OperandFacts Tmp;
-        Tmp.add(relations::SpecialOp{"it", OpCC});
-        OpndFacts.Operands.push_back(Tmp);
+        OpndFacts.Operands.push_back(relations::SpecialOp{"it", OpCC});
     }
     else if(Name != "NOP")
     {
@@ -306,9 +300,7 @@ bool Arm32Loader::collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInstr
                 return false;
             }
 
-            OperandFacts Tmp;
-            Tmp.add(*Op);
-            OpndFacts.Operands.push_back(Tmp);
+            OpndFacts.Operands.push_back(*Op);
 
             // Populate shift metadata if present.
             if(CsOp.type == ARM_OP_REG && CsOp.shift.value != 0)
@@ -373,9 +365,8 @@ void Arm32Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction,
     for(const auto& Operand : OpndFacts.Operands)
     {
         // Add operand to the operands table.
-        std::optional<uint64_t> OpIndex = Facts.Operands.insert(Operand);
-        assert(OpIndex);
-        OpCodes.push_back(*OpIndex);
+        uint64_t OpIndex = Facts.Operands.add(Operand);
+        OpCodes.push_back(OpIndex);
     }
 
     // Put the destination operand at the end of the operand list.

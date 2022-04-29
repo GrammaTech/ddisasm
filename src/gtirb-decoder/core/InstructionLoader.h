@@ -78,11 +78,6 @@ public:
         return Reg;
     }
 
-    const std::map<std::vector<std::string>, uint64_t>& reg_bitfields_raw() const
-    {
-        return RegBitFields;
-    }
-
     const std::map<relations::FPImmOp, uint64_t>& fp_imm() const
     {
         return FPImm;
@@ -99,8 +94,6 @@ public:
     }
 
     const std::vector<relations::RegBitFieldOp> reg_bitfields() const;
-
-    std::optional<uint64_t> insert(const OperandFacts& OpndFacts);
 
 protected:
     template <typename T>
