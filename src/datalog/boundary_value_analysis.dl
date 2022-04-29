@@ -156,7 +156,7 @@ value_reg_limit(EA_jmp,EA_fallthrough,Reg,FallthroughValue,FallthroughLT):-
 // Ad-hoc rule for basic indirect comparison cases where the value is moved to
 // a register right after the jump (either at the branch target or the
 // fallthrough).
-value_reg_limit(EA_jmp,EA_target,Reg,Value,LimitType):-
+value_reg_limit(EA_jmp,EA_limited,Reg,Value,LimitType):-
     compare_and_jump_indirect(EA_cmp,EA_jmp,CC,IndirectOp,Immediate),
     limit_type_map(CC,BranchLT,FallthroughLT,BranchOffset,FallthroughOffset),
     // Enforce next to ensure the memory isn't modified between comparison and jump.
@@ -175,7 +175,8 @@ value_reg_limit(EA_jmp,EA_target,Reg,Value,LimitType):-
     // The value is loaded from this IndirectOp into a register immediately after the jump.
     arch.load(EA_target,_,_,Reg_untracked,_,_,_,_),
     arch.track_register(Reg_untracked,Reg),
-    instruction_get_op(EA_target,_,IndirectOp).
+    instruction_get_op(EA_target,_,IndirectOp),
+    local_next(EA_target,EA_limited).
 
 /**
 A register is compared as NE or EQ and used for a conditional jump.
