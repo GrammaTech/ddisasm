@@ -63,7 +63,7 @@ class Properties:
     def archived_channels(self):
         # Add to this list branch names to have conan packages for
         # branches archived in gitlab.
-        archived_branches = ["master", "windows-support"]
+        archived_branches = ["master"]
         # Also, archive the 'stable' channel, where all stable versions
         # will be uploaded
         archived_channels = ["stable"]
