@@ -30,7 +30,7 @@ should be installed:
 - [gtirb](https://github.com/grammatech/gtirb)
 - [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
 - [Capstone](http://www.capstone-engine.org/), version 4.0.1 or later
-- [Souffle](https://souffle-lang.github.io), version 2.1
+- [Souffle](https://souffle-lang.github.io), version 2.2
   - Must be configured with support for 64 bit numbers (via `-DSOUFFLE_DOMAIN_64BIT=1` during configuration)
 - [libehp](https://git.zephyr-software.com/opensrc/libehp), version 1.0.0 or higher
 - [LIEF](https://lief.quarkslab.com/), version 0.11.5 or higher

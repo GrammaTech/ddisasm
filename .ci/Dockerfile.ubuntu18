@@ -22,7 +22,7 @@ RUN curl -SL https://cmake.org/files/v$(echo $CMAKE_VERSION | sed -r 's/\.[0-9]+
     |tar -xz --strip-components=1 -C /usr/local
 
 # souffle
-RUN git clone -b 2.1 https://github.com/souffle-lang/souffle && \
+RUN git clone -b 2.2 https://github.com/souffle-lang/souffle && \
     cd souffle && \
     cmake . -Bbuild -DCMAKE_BUILD_TYPE=Release -DSOUFFLE_USE_CURSES=0 \
     -DCMAKE_CXX_COMPILER=g++-9 -DSOUFFLE_USE_SQLITE=0 -DSOUFFLE_DOMAIN_64BIT=1 && \
