@@ -233,8 +233,7 @@ last_value_reg_limit(EA_limited,Reg,Value,LimitType):-
 last_value_reg_limit(BlockNext,PropagatedReg,PropagatedVal,PropagatedType):-
     last_value_reg_limit(EA,PropagatedReg,PropagatedVal,PropagatedType),
     code_in_block(EA,Block),
-    block_last_instruction(Block,BlockEnd),
-    block_next(BlockEnd,BlockNext),
+    block_next(Block,BlockEnd,BlockNext),
     !defined_in_block(Block,PropagatedReg),
     (
         // If there is no conditional jump at this CFG edge, then there is no new value_reg_limit.
