@@ -268,6 +268,7 @@ pages:
     paths:
       - public
   script:
+    - python3 -m pip install networkx pydot sphinx
     - python3  doc/build_index.py
     - python3 -m sphinx  doc public
 
@@ -285,6 +286,7 @@ pages-no-publish:
     paths:
       - public
   script:
+    - python3 -m pip install networkx pydot sphinx
     - python3  doc/build_index.py
     - python3 -m sphinx  doc public
 
