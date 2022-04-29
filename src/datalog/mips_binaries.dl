@@ -217,10 +217,15 @@ split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset,address), "ADDIU") :-
 split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset+T9Value,address), "ADDU") :-
     // lui reg, hi(xxx)
     hi_load(EA_hi,Reg,Upper),
+    // NOTE: This assumes t9 holds the address of the current function, and
+    //       lui is the first instruction of the current function.
+    // A sufficient condition is that the lui instruction is
+    // at the beginning of a block.
+    code_in_block(EA_hi, EA_hi),
+    // TODO: Find a way of safely getting the function-entry address for t9.
 
     def_used(EA_hi,Reg,EA_lo,_),
     EA_hi != EA_lo,
-
     // addiu reg2, reg, lo(xxx)
     instruction_get_operation(EA_lo, "ADDIU"),
     arch.reg_arithmetic_operation(EA_lo,Reg2,Reg,_,Offset),
@@ -231,10 +236,6 @@ split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset+T9Value,address), "ADDU"
     // addu reg3, reg2, t9
     instruction_get_operation(EA_addu, "ADDU"),
     arch.reg_reg_arithmetic_operation(EA_addu,_,Reg2,"T9",1,0), // RA too?
-
-    // NOTE: This assumes t9 holds the address of the current function, and
-    //       lui is the first instruction of the current function.
-    // TODO: Find a way of safely getting the function-entry address for t9.
     T9Value = as(EA_hi, number).
 
 // E.g., lui reg, hi(xxx)
@@ -282,6 +283,23 @@ split_load_point(EA_hi,EA_lo,Dest_addr,Type,-5,"maybe-in-different-function"):-
     EA_hi < Begin,
     Begin < EA_lo.
 
+// Heuristics 3: ADDU candidates rely on several assumptions.
+// If those assumptions are false, we subtract points.
+
+split_load_point(EA_hi,EA_lo,Dest_addr,"ADDU",-1,"t9 cannot have a function pointer"):-
+//  lui reg, hi(xxx)
+//  addiu reg2, reg, lo(xxx)
+    split_load_candidate(EA_hi,EA_lo,Dest_addr,"ADDU"),
+    def_used(EA_lo,Reg,EA_addu,_),
+    EA_lo != EA_addu,
+    // addu reg3, reg2, t9
+    instruction_get_operation(EA_addu, "ADDU"),
+    arch.reg_reg_arithmetic_operation(EA_addu,_,Reg,"T9",1,0),
+    // t9 cannot be a function pointer if it is
+    // the result of a product.
+    def_used(EA_def_t9,"T9",EA_addu,_),
+    value_reg(EA_def_t9,"T9",_,_,Mult,_,_), Mult>1.
+
 // TODO: Add more heuristics if needed.
 
 split_load_conflict(EA_hi,EA_lo,Dest_addr,Type,EA_hi2,EA_lo2,Dest_addr2,Type2):-
@@ -292,13 +310,15 @@ split_load_conflict(EA_hi,EA_lo,Dest_addr,Type,EA_hi2,EA_lo2,Dest_addr2,Type2):-
         EA_hi < EA_hi2
         ;
         EA_hi = EA_hi2, EA_lo < EA_lo2
+        ;
+        EA_hi = EA_hi2, EA_lo = EA_lo2, Dest_addr < Dest_addr2
     ),
-    // If two split_loads share either lo or hi split, and the dest addresses
+    // If two split_loads share either lo or hi or both, and the dest addresses
     // are different, then they conflict.
     (
-        EA_hi != EA_hi2, EA_lo = EA_lo2
+        EA_lo = EA_lo2
         ;
-        EA_hi = EA_hi2, EA_lo != EA_lo2
+        EA_hi = EA_hi2
     ),
     Dest_addr != Dest_addr2.
 

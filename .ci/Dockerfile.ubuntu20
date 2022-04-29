@@ -6,7 +6,7 @@ RUN apt-get -y update && apt-get -y install bison build-essential cmake \
     zlib1g-dev
 
 # souffle
-RUN git clone -b 2.1 https://github.com/souffle-lang/souffle && \
+RUN git clone -b 2.2 https://github.com/souffle-lang/souffle && \
     cd souffle && \
     cmake . -Bbuild -DCMAKE_BUILD_TYPE=Release -DSOUFFLE_USE_CURSES=0 -DSOUFFLE_USE_SQLITE=0 -DSOUFFLE_DOMAIN_64BIT=1 && \
     cd build && \
@@ -26,7 +26,7 @@ RUN apt-get -y install clang-format unzip \
     make mcpp pkg-config protobuf-compiler python3 python3-pip \
     software-properties-common wget zlib1g-dev
 RUN apt-get remove -y python3-keyrings.alt
-RUN python3 -m pip install distro pyyaml psycopg2-binary
+RUN python3 -m pip install distro pyyaml psycopg2-binary networkx pydot sphinx
 
 # Install cross-platform utils
 RUN apt-get -y update && \
