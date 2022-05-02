@@ -5,7 +5,7 @@ import re
 
 
 def get_version():
-    if os.getenv("CI_COMMIT_REF_NAME", "") == "main":
+    if os.getenv("CI_COMMIT_REF_NAME", "") == os.getenv("CI_DEFAULT_BRANCH"):
         return "dev"
     try:
         with open("version.txt") as f:
