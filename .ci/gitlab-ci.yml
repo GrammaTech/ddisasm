@@ -547,7 +547,7 @@ docker-image:
   needs: []
   tags: ['research-shell']
   rules:
-    - if: '$CI_COMMIT_REF_NAME == "master"'
+    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
   script:
     - *get-image-name
@@ -570,20 +570,40 @@ docker-image:
 public-bionic-unstable:
   <<: *apt-upload
   rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   variables:
     JOB_NAME: debian-installer-ubuntu18
     APT_REPO: public
     APT_REPO_CODENAME: bionic
     APT_REPO_COMPONENT: unstable
 
+internal-bionic-unstable:
+  <<: *apt-upload
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  variables:
+    JOB_NAME: debian-installer-ubuntu18
+    APT_REPO: internal
+    APT_REPO_CODENAME: bionic
+    APT_REPO_COMPONENT: unstable
+
 public-focal-unstable:
   <<: *apt-upload
   rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   variables:
     JOB_NAME: debian-installer-ubuntu20
     APT_REPO: public
+    APT_REPO_CODENAME: focal
+    APT_REPO_COMPONENT: unstable
+
+internal-focal-unstable:
+  <<: *apt-upload
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  variables:
+    JOB_NAME: debian-installer-ubuntu20
+    APT_REPO: internal
     APT_REPO_CODENAME: focal
     APT_REPO_COMPONENT: unstable
 
@@ -597,6 +617,16 @@ public-bionic-stable:
     APT_REPO_CODENAME: bionic
     APT_REPO_COMPONENT: stable
 
+internal-bionic-stable:
+  <<: *apt-upload
+  rules:
+    - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+  variables:
+    JOB_NAME: debian-installer-ubuntu18
+    APT_REPO: internal
+    APT_REPO_CODENAME: bionic
+    APT_REPO_COMPONENT: stable
+
 public-focal-stable:
   <<: *apt-upload
   rules:
@@ -604,5 +634,15 @@ public-focal-stable:
   variables:
     JOB_NAME: debian-installer-ubuntu20
     APT_REPO: public
+    APT_REPO_CODENAME: focal
+    APT_REPO_COMPONENT: stable
+
+internal-focal-stable:
+  <<: *apt-upload
+  rules:
+    - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+  variables:
+    JOB_NAME: debian-installer-ubuntu20
+    APT_REPO: internal
     APT_REPO_CODENAME: focal
     APT_REPO_COMPONENT: stable
