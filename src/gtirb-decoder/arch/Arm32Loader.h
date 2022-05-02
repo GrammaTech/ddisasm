@@ -50,7 +50,7 @@ public:
     }
 
 protected:
-    void decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr);
+    void decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
 
     using InstructionLoader::load;
     void load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
