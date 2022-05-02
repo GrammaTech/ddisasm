@@ -78,21 +78,6 @@ $ cmake ./ -Bbuild -DDDISASM_ARM_64=OFF -DDDISASM_X86_32=OFF
 ```
 will deactivate ARM_64 and X86_32 support.
 
-### Souffle interpreter
-
-For accelerated development of datalog logic, ddisasm can also execute the
-souffle interpreter. To invoke the interpreter, specify a `--debug-dir`
-directory path and the `--intepreter` parameter with the path of ddisasm's
-datalog entry.
-
-For example:
-```
-$ cd ddisasm/examples/ex1
-$ make
-$ mkdir dbg
-$ ddisasm --debug-dir dbg --interpreter ../../src/datalog/main.dl --asm ex.s ex
-```
-
 ## Installing
 See the [GTIRB readme](https://github.com/GrammaTech/gtirb/#installing).
 
@@ -142,17 +127,19 @@ Ddisasm accepts the following parameters:
 :   Number of cores to use. It is set to the number of cores in the machine by default.
 
 `-I [ --interpreter ] arg`
-:   Execute the souffle interpreter with the specified source file.
+:   Execute the Souffle interpreter with the specified source file.
+
+`-L [ --library-dir ] arg`
+:   Specify the search directory for the Souffle interpreter to locate functor libraries.
+
+`--profile arg`
+:   Execute the Souffle profiler to generate the specified profile log file.
+
 
 ## Rewriting a project
 
-The directory tests/ contains the script `reassemble_and_test.sh` to
-rewrite and test a complete project. `reassemble_and_test.sh` rebuilds
-a project using the compiler and compiler flags specified in the
-enviroment variables CC and CFLAGS (`make -e`), rewrites the binary
-and run the project tests on the new binary.
-
-We can rewrite ex1 as follows:
+The directory `examples/` contains numerous example programs that can be
+rewritten. We can rewrite `examples/ex1` as follows:
 
 ```
 cd examples/ex1
@@ -163,24 +150,15 @@ gcc ex.s -o ex_rewritten
 
 ## Testing
 
-The directory `tests/` also contains a script `test_small.sh` for
-rewriting the examples in `/examples` with different compilers and
-optimization flags.
+To run the test suite, run:
 
+```
+cd build && PATH=$(pwd)/bin:$PATH ctest
+```
 
 ## Contributing
 
-Please read the [DDisasm Code of Conduct](CODE_OF_CONDUCT.md).
-
-Please follow the Code Requirements in
-[gtirb/CONTRIBUTING](https://github.com/GrammaTech/gtirb/blob/master/CONTRIBUTING.md#code-requirements).
-
-We ask that all contributors complete our Contributor License
-Agreement (CLA), which can be found at
-[GrammaTech-CLA-ddisasm.pdfGTIRB.pdf](./GrammaTech-CLA-ddisasm.pdfGTIRB.pdf),
-and email the completed form to `CLA@GrammaTech.com`.  Under this
-agreement contributors retain the copyright to their work but grants
-GrammaTech unlimited license to the work.
+See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## External Contributors
 
