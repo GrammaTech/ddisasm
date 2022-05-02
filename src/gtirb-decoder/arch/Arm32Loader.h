@@ -58,7 +58,7 @@ protected:
     void load(const gtirb::ByteInterval& ByteInterval, BinaryFacts& Facts, bool Thumb);
 
 private:
-    typedef struct
+    struct OpndFactsT
     {
         std::vector<relations::Operand> Operands;
         std::optional<relations::ShiftedWithRegOp> ShiftedWithRegOp;
@@ -70,7 +70,7 @@ private:
             ShiftedWithRegOp.reset();
             ShiftedOp.reset();
         }
-    } OpndFactsT;
+    };
 
     std::optional<relations::Operand> build(const cs_insn& CsInsn, const cs_arm_op& CsOp);
     void build(BinaryFacts& Facts, const cs_insn& CsInstruction, const OpndFactsT& OpFacts);
