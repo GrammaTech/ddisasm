@@ -5,7 +5,7 @@ import re
 
 
 def get_version():
-    if os.getenv("CI_COMMIT_REF_NAME", "") == "master":
+    if os.getenv("CI_COMMIT_REF_NAME", "") == "main":
         return "dev"
     try:
         with open("version.txt") as f:
@@ -63,7 +63,7 @@ class Properties:
     def archived_channels(self):
         # Add to this list branch names to have conan packages for
         # branches archived in gitlab.
-        archived_branches = ["master"]
+        archived_branches = ["main"]
         # Also, archive the 'stable' channel, where all stable versions
         # will be uploaded
         archived_channels = ["stable"]
