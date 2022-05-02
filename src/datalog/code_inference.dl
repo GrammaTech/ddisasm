@@ -895,7 +895,6 @@ data_in_code(Begin,End+1):-
 
 // Data before the first code-block in the code section.
 data_in_code(Begin,Block-1):-
-    // TODO: Skip ELF headers when resurrecting sections and use `code_section'.
     loaded_section(Begin,EndSect,".text"),
     Block = min EA:{ block_boundaries(_,EA,_), EA >= Begin, EA < EndSect},
     Block > Begin.
