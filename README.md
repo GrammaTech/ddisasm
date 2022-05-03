@@ -19,17 +19,41 @@ code.
 Use the [grammatech/ddisasm](https://hub.docker.com/r/grammatech/ddisasm)
 Docker image to try out `ddisasm` quickly.
 
+ddisasm supports disassembling ELF and PE binary formats on x86_32, x86_64,
+ARM32, ARM64, and MIPS32 architectures.
+
+## Usage
+
+ddisasm can be used to disassemble an ELF binary:
+
+```
+ddisasm examples/ex1/ex --asm ex.s
+```
+
+The generated assembly can then be rebuilt with gcc:
+
+```
+gcc ex.s -o ex_rewritten
+```
+
+## Installing
+
+Pre-built packages are available to install ddisasm on Windows or Ubuntu.
+
+See the [GTIRB readme](https://github.com/GrammaTech/gtirb/#installing) for details.
+
 ## Dependencies
 
 ddisasm uses C++17, and requires a compiler which supports
 that standard such as gcc 7, clang 6, or MSVC 2017.
 
-To build and install ddisasm, the following requirements
-should be installed:
+To build ddisasm from source, the following requirements should be installed:
 
 - [gtirb](https://github.com/grammatech/gtirb)
 - [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
-- [Capstone](http://www.capstone-engine.org/), version 4.0.1 or later
+- [Capstone](http://www.capstone-engine.org/), version 5.0.0 or later
+  - 5.x is not yet by the Capstone team.
+  - GrammaTech builds and tests using the [GrammaTech/capstone](https://github.com/GrammaTech/capstone) fork.
 - [Souffle](https://souffle-lang.github.io), version 2.2
   - Must be configured with support for 64 bit numbers (via `-DSOUFFLE_DOMAIN_64BIT=1` during configuration)
 - [libehp](https://git.zephyr-software.com/opensrc/libehp), version 1.0.0 or higher
@@ -77,9 +101,6 @@ For example:
 $ cmake ./ -Bbuild -DDDISASM_ARM_64=OFF -DDDISASM_X86_32=OFF
 ```
 will deactivate ARM_64 and X86_32 support.
-
-## Installing
-See the [GTIRB readme](https://github.com/GrammaTech/gtirb/#installing).
 
 ## Running the analysis
 
@@ -134,19 +155,6 @@ Ddisasm accepts the following parameters:
 
 `--profile arg`
 :   Execute the Souffle profiler to generate the specified profile log file.
-
-
-## Rewriting a project
-
-The directory `examples/` contains numerous example programs that can be
-rewritten. We can rewrite `examples/ex1` as follows:
-
-```
-cd examples/ex1
-make
-ddisasm ex --asm ex.s
-gcc ex.s -o ex_rewritten
-```
 
 ## Testing
 
