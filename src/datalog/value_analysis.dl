@@ -278,6 +278,11 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
 
 step_limit(12).
 
+// subsumption for value_reg:
+// for two value_reg that differ only by step count, the lower step count subsumes the other.
+value_reg(EA,Reg,EA_reg1,Reg1,Multiplier,Offset,Steps1) <= value_reg(EA,Reg,EA_reg1,Reg1,Multiplier,Offset,Steps2):-
+    Steps2 <= Steps1.
+
 value_reg(EA,Reg,EA,Reg,1,0,1):-
     def_used_for_address(EA,Reg),
     value_reg_unsupported(EA,Reg).
