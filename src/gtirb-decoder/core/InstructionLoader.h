@@ -78,22 +78,6 @@ public:
         return Reg;
     }
 
-    const std::vector<relations::RegBitFieldOp> reg_bitfields() const
-    {
-        std::vector<relations::RegBitFieldOp> RegBitFieldsForSouffle;
-        for(auto It = RegBitFields.begin(); It != RegBitFields.end(); ++It)
-        {
-            auto Regs = It->first;
-            auto Index = It->second;
-            for(auto It2 = Regs.begin(); It2 != Regs.end(); ++It2)
-            {
-                auto K = relations::RegBitFieldOp{Index, *It2};
-                RegBitFieldsForSouffle.push_back(K);
-            }
-        }
-        return RegBitFieldsForSouffle;
-    }
-
     const std::map<relations::FPImmOp, uint64_t>& fp_imm() const
     {
         return FPImm;
@@ -108,6 +92,8 @@ public:
     {
         return Special;
     }
+
+    const std::vector<relations::RegBitFieldOp> reg_bitfields() const;
 
 protected:
     template <typename T>

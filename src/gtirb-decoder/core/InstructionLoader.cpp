@@ -29,6 +29,22 @@ std::string uppercase(std::string S)
     return S;
 };
 
+const std::vector<relations::RegBitFieldOp> OperandFacts::reg_bitfields() const
+{
+    std::vector<relations::RegBitFieldOp> RegBitFieldsForSouffle;
+    for(auto It = RegBitFields.begin(); It != RegBitFields.end(); ++It)
+    {
+        auto Regs = It->first;
+        auto Index = It->second;
+        for(auto It2 = Regs.begin(); It2 != Regs.end(); ++It2)
+        {
+            auto K = relations::RegBitFieldOp{Index, *It2};
+            RegBitFieldsForSouffle.push_back(K);
+        }
+    }
+    return RegBitFieldsForSouffle;
+}
+
 /**
 Insert BinaryFacts into the Datalog program.
 */

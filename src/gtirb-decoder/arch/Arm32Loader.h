@@ -41,6 +41,12 @@ public:
             cs_open(CS_ARCH_ARM, (cs_mode)(CS_MODE_ARM | CS_MODE_V8), CsHandle.get());
         assert(Err == CS_ERR_OK && "Failed to initialize ARM disassembler.");
         cs_option(*CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
+
+        Mclass = false;
+        ArchtypeFromElf = false;
+        CsModes[0] = (CS_MODE_ARM | CS_MODE_V8);
+        CsModes[1] = 0;
+        CsModeCount = 1;
     }
 
 protected:
@@ -52,8 +58,28 @@ protected:
     void load(const gtirb::ByteInterval& ByteInterval, BinaryFacts& Facts, bool Thumb);
 
 private:
+    struct OpndFactsT
+    {
+        std::vector<relations::Operand> Operands;
+        std::optional<relations::ShiftedWithRegOp> ShiftedWithRegOp;
+        std::optional<relations::ShiftedOp> ShiftedOp;
+
+        void clear()
+        {
+            Operands.clear();
+            ShiftedWithRegOp.reset();
+            ShiftedOp.reset();
+        }
+    };
+
     std::optional<relations::Operand> build(const cs_insn& CsInsn, const cs_arm_op& CsOp);
-    bool build(BinaryFacts& Facts, const cs_insn& CsInstruction);
+    void build(BinaryFacts& Facts, const cs_insn& CsInstruction, const OpndFactsT& OpFacts);
+    bool collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInstruction);
+
+    bool Mclass;
+    bool ArchtypeFromElf;
+    size_t CsModes[2];
+    size_t CsModeCount;
 };
 
 #endif // SRC_GTIRB_DECODER_ARCH_ARM32DECODER_H_
