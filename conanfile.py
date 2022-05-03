@@ -5,7 +5,7 @@ import re
 
 
 def get_version():
-    if os.getenv("CI_COMMIT_REF_NAME", "") == "windows-support":
+    if os.getenv("CI_COMMIT_REF_NAME", "") == os.getenv("CI_DEFAULT_BRANCH"):
         return "dev"
     try:
         with open("version.txt") as f:
@@ -20,7 +20,7 @@ def get_version():
                 major = match.group(2)
                 minor = match.group(5)
                 patch = match.group(8)
-                return major + "." + minor + "." + patch + "-internal"
+                return major + "." + minor + "." + patch
             else:
                 return "<ERROR: no version found>"
     except Exception:
@@ -63,7 +63,7 @@ class Properties:
     def archived_channels(self):
         # Add to this list branch names to have conan packages for
         # branches archived in gitlab.
-        archived_branches = ["master", "windows-support"]
+        archived_branches = ["main"]
         # Also, archive the 'stable' channel, where all stable versions
         # will be uploaded
         archived_channels = ["stable"]

@@ -64,7 +64,6 @@ check-format:
 
 .run_only_main: &run-only-main
   - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-  - if: $CI_COMMIT_BRANCH == "master"
   - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
   - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
   # regular build is manual and optional
@@ -271,13 +270,12 @@ pages:
     - python3  doc/build_index.py
     - python3 -m sphinx  doc public
 
-# We want to generate documentation for master
-# and releases but not publish it in gitlab directly.
+# We want to generate documentation for
+# releases but not publish it in gitlab directly.
 pages-no-publish:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20:$IMAGE_TAG
   stage: build
   rules:
-    - if: $CI_COMMIT_BRANCH == "master"
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
     - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
   artifacts:
@@ -542,17 +540,14 @@ debian-installer-ubuntu20:
 
 .get-image-name: &get-image-name
   - VERSION=$(echo $(cat version.txt) | python3 -c "import sys; l=sys.stdin.read().split(); print('.'.join([l[1],l[3],l[5]]))")
-  - IMAGE_SUFFIX=""
-  - '[[ $CI_COMMIT_REF_NAME != windows-support && ! $CI_COMMIT_REF_NAME =~ ^release-.*-internal ]] || IMAGE_SUFFIX="-internal"'
-  - 'IMAGE_NAME=grammatech/ddisasm${IMAGE_SUFFIX}'
+  - 'IMAGE_NAME=grammatech/ddisasm'
 
 docker-image:
   stage: deploy
   needs: []
   tags: ['research-shell']
   rules:
-    - if: '$CI_COMMIT_REF_NAME == "master"'
-    - if: '$CI_COMMIT_REF_NAME == "windows-support"'
+    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
   script:
     - *get-image-name
@@ -572,25 +567,55 @@ docker-image:
     project: rewriting/utility/package-uploader
     strategy: depend
 
+public-bionic-unstable:
+  <<: *apt-upload
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  variables:
+    JOB_NAME: debian-installer-ubuntu18
+    APT_REPO: public
+    APT_REPO_CODENAME: bionic
+    APT_REPO_COMPONENT: unstable
+
 internal-bionic-unstable:
   <<: *apt-upload
   rules:
-    - if: '$CI_COMMIT_BRANCH == "windows-support"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   variables:
     JOB_NAME: debian-installer-ubuntu18
     APT_REPO: internal
     APT_REPO_CODENAME: bionic
     APT_REPO_COMPONENT: unstable
 
+public-focal-unstable:
+  <<: *apt-upload
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  variables:
+    JOB_NAME: debian-installer-ubuntu20
+    APT_REPO: public
+    APT_REPO_CODENAME: focal
+    APT_REPO_COMPONENT: unstable
+
 internal-focal-unstable:
   <<: *apt-upload
   rules:
-    - if: '$CI_COMMIT_BRANCH == "windows-support"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   variables:
     JOB_NAME: debian-installer-ubuntu20
     APT_REPO: internal
     APT_REPO_CODENAME: focal
     APT_REPO_COMPONENT: unstable
+
+public-bionic-stable:
+  <<: *apt-upload
+  rules:
+    - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+  variables:
+    JOB_NAME: debian-installer-ubuntu18
+    APT_REPO: public
+    APT_REPO_CODENAME: bionic
+    APT_REPO_COMPONENT: stable
 
 internal-bionic-stable:
   <<: *apt-upload
@@ -600,6 +625,16 @@ internal-bionic-stable:
     JOB_NAME: debian-installer-ubuntu18
     APT_REPO: internal
     APT_REPO_CODENAME: bionic
+    APT_REPO_COMPONENT: stable
+
+public-focal-stable:
+  <<: *apt-upload
+  rules:
+    - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+  variables:
+    JOB_NAME: debian-installer-ubuntu20
+    APT_REPO: public
+    APT_REPO_CODENAME: focal
     APT_REPO_COMPONENT: stable
 
 internal-focal-stable:
