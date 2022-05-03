@@ -61,3 +61,8 @@ SouffleProf
 Generating HTML files...
 file output to: profiler_html/1.html
 ```
+
+The current version of Souffle (2.2) has a bug where synthesized profiled
+programs are missing an `#include` for `Logger.h`; see
+https://github.com/souffle-lang/souffle/pull/2186. The easiest way to run
+profiling is to install Souffle from the commit that fixes this bug, 1f2b7c8.
