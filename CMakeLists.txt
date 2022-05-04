@@ -23,9 +23,20 @@ project(
     "${DDISASM_MAJOR_VERSION}.${DDISASM_MINOR_VERSION}.${DDISASM_PATCH_VERSION}"
 )
 
+#
+# Global Options (CMake)
+#
+
+option(DDISASM_ARM_32 "Whether or not ARM support is built." ON)
+option(DDISASM_ARM_64 "Whether or not ARM64 support is built." ON)
+option(DDISASM_MIPS_32 "Whether or not MIPS support is built." ON)
+option(DDISASM_X86_32 "Whether or not x86_32 support is built." ON)
+option(DDISASM_X86_64 "Whether or not x86_64 support is built." ON)
+
 if(NOT DEFINED DDISASM_BUILD_REVISION)
   execute_process(
     COMMAND git log --pretty=format:%h -n 1
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
     OUTPUT_VARIABLE DDISASM_BUILD_REVISION
     ERROR_QUIET)
 endif()
@@ -51,16 +62,6 @@ if(DDISASM_MIPS_32)
   list(APPEND DDISASM_ARCH_LIST "MIPS32")
 endif()
 list(JOIN DDISASM_ARCH_LIST "+" DDISASM_BUILD_ARCH_TARGETS)
-
-#
-# Global Options (CMake)
-#
-
-option(DDISASM_ARM_32 "Whether or not ARM support is built." ON)
-option(DDISASM_ARM_64 "Whether or not ARM64 support is built." ON)
-option(DDISASM_MIPS_32 "Whether or not MIPS support is built." ON)
-option(DDISASM_X86_32 "Whether or not x86_32 support is built." ON)
-option(DDISASM_X86_64 "Whether or not x86_64 support is built." ON)
 
 option(DDISASM_ENABLE_TESTS "Enable building and running unit tests." ON)
 
