@@ -146,12 +146,11 @@ jump_table_max(TableStart,TableStart+as(Value,unsigned)*Mult):-
     (
         // The register was not previously defined in this block.
         !block_last_def(EA,_,RegIndex),
-        last_value_reg_limit(Block,RegIndex,Value,"MAX")
+        last_value_reg_limit(_,Block,RegIndex,Value,"MAX")
         ;
         // Register is defined in the block - check for a propagated limit.
         block_last_def(EA,EA_def,RegIndex),
-        local_next(EA_def,EA_limited),
-        last_value_reg_limit(EA_limited,RegIndex,Value,"MAX")
+        last_value_reg_limit(EA_def,_,RegIndex,Value,"MAX")
     ),
     Value >= 0.
 

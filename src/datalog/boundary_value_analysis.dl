@@ -137,9 +137,10 @@ limit_type_map("LE","MAX","MIN",0,1).
 /**
 An instruction at EA limits the value of Reg at some MIN or MAX value.
 
-The limit is effective after address EA_limited.
+From: the address that creates the limit
+To: the address at which the limit is active
 */
-.decl value_reg_limit(EA_jmp:address,EA_limited:address,Reg:register,Value:number,LimitType:limit_type)
+.decl value_reg_limit(From:address,To:address,Reg:register,Value:number,LimitType:limit_type)
 .output value_reg_limit
 
 // Each comparison generates two limits - the fallthough case is limited one
@@ -156,7 +157,7 @@ value_reg_limit(EA_jmp,EA_fallthrough,Reg,FallthroughValue,FallthroughLT):-
 // Ad-hoc rule for basic indirect comparison cases where the value is moved to
 // a register right after the jump (either at the branch target or the
 // fallthrough).
-value_reg_limit(EA_jmp,EA_limited,Reg,Value,LimitType):-
+value_reg_limit(EA_target,EA_limited,Reg,Value,LimitType):-
     compare_and_jump_indirect(EA_cmp,EA_jmp,CC,IndirectOp,Immediate),
     limit_type_map(CC,BranchLT,FallthroughLT,BranchOffset,FallthroughOffset),
     // Enforce next to ensure the memory isn't modified between comparison and jump.
@@ -222,16 +223,19 @@ no_value_reg_limit(EA_jmp):-
 
 /**
 Basic-block propagation of value_reg_limit
+
+From: the address that creates the limit
+To: the address at which the limit is active
 */
-.decl last_value_reg_limit(Block:address,Reg:register,Value:number,LimitType:limit_type)
+.decl last_value_reg_limit(From:address,To:address,Reg:register,Value:number,LimitType:limit_type)
 .output last_value_reg_limit
 
-last_value_reg_limit(EA_limited,Reg,Value,LimitType):-
-    value_reg_limit(_,EA_limited,Reg,Value,LimitType).
+last_value_reg_limit(From,To,Reg,Value,LimitType):-
+    value_reg_limit(From,To,Reg,Value,LimitType).
 
 // Simple propagation
-last_value_reg_limit(BlockNext,PropagatedReg,PropagatedVal,PropagatedType):-
-    last_value_reg_limit(EA,PropagatedReg,PropagatedVal,PropagatedType),
+last_value_reg_limit(BlockEnd,BlockNext,PropagatedReg,PropagatedVal,PropagatedType):-
+    last_value_reg_limit(_,EA,PropagatedReg,PropagatedVal,PropagatedType),
     code_in_block(EA,Block),
     block_next(Block,BlockEnd,BlockNext),
     !defined_in_block(Block,PropagatedReg),
@@ -257,8 +261,8 @@ last_value_reg_limit(BlockNext,PropagatedReg,PropagatedVal,PropagatedType):-
     ).
 
 // Propagate to a different register through a move instruction
-last_value_reg_limit(EA_next,DstReg,PropagatedVal,PropagatedType):-
-    last_value_reg_limit(EA,SrcReg,PropagatedVal,PropagatedType),
+last_value_reg_limit(EA_mov,EA_next,DstReg,PropagatedVal,PropagatedType):-
+    last_value_reg_limit(From,EA,SrcReg,PropagatedVal,PropagatedType),
     code_in_block(EA,Block),
     block_last_instruction(Block,BlockEnd),
     arch.move_reg_reg_tracked(EA_mov,DstReg,SrcReg),
@@ -267,11 +271,16 @@ last_value_reg_limit(EA_next,DstReg,PropagatedVal,PropagatedType):-
     // The limit for the move is placed on the next instruction, because that is
     // where the limit becomes active. This is analagous to the limit propagated
     // from a previous block being placed at the beginning of the new block.
-    local_next(EA_mov,EA_next),
+    (
+        EA_mov != BlockEnd, local_next(EA_mov,EA_next)
+        ;
+        EA_mov = BlockEnd, block_next(Block,BlockEnd,EA_next)
+    ),
     (
         // SrcReg is not previously defined in the block.
-        !block_last_def(EA_mov,_,SrcReg)
+        !block_last_def(EA_mov,_,SrcReg),
+        UNUSED(From)
         ;
         // we are propagating the last_value_reg_limit from a previous move in the block.
-        block_last_def(EA_mov,EA,SrcReg)
+        block_last_def(EA_mov,From,SrcReg)
     ).
