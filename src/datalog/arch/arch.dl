@@ -249,6 +249,12 @@ move_reg_imm(EA,Dst,Value,1):-
     op_immediate(Op1,Value),
     op_regdirect(Op2,Dst).
 
+.decl move_reg_imm_tracked(EA:address,Dst:register,Imm:number,ImmIndex:operand_index) inline
+
+move_reg_imm_tracked(EA,Reg,Immediate,ImmIndex):-
+    move_reg_imm(EA,Reg_untracked,Immediate,ImmIndex),
+    track_register(Reg_untracked,Reg).
+
 .decl move(EA:address)
 
 move(EA):-
