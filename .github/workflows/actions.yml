@@ -1,0 +1,66 @@
+name: DDisasm Build
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [focal, bionic]
+        compiler: [g++, clang++]
+        exclude:
+          - os: bionic
+            compiler: clang++
+    env:
+      BUILD_TYPE: Release
+    container: adamjseitz/ddisasm-${{ matrix.os }}-ci
+    steps:
+      - name: Install capstone, gtirb, gtirb-pprinter,
+        run: |
+          curl https://download.grammatech.com/gtirb/files/apt-repo/conf/apt.gpg.key | apt-key add -
+          echo "deb https://download.grammatech.com/gtirb/files/apt-repo ${{ matrix.os }} unstable" >> /etc/apt/sources.list
+          apt-get update
+          apt-get -y install libcapstone-dev=1:5.0.0-gtdev libgtirb libgtirb-dev libgtirb-pprinter libgtirb-pprinter-dev gtirb-pprinter
+      - name: Checkout ddisasm
+        uses: actions/checkout@v3
+      - name: Build
+        run: |
+          mkdir build
+          cd build
+          cmake -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DLIEF_ROOT=/usr/ ..
+          make
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ddisasm-build-${{ matrix.os }}-${{ matrix.compiler }}
+          path: build
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [focal, bionic]
+        compiler: [g++, clang++]
+        exclude:
+          - os: bionic
+            compiler: clang++
+    needs: build
+    container: adamjseitz/ddisasm-${{ matrix.os }}-ci
+    steps:
+      - name: Install capstone, gtirb, gtirb-pprinter,
+        run: |
+          curl https://download.grammatech.com/gtirb/files/apt-repo/conf/apt.gpg.key | apt-key add -
+          echo "deb https://download.grammatech.com/gtirb/files/apt-repo ${{ matrix.os }} unstable" >> /etc/apt/sources.list
+          apt-get update
+          apt-get -y install libcapstone-dev=1:5.0.0-gtdev libgtirb libgtirb-dev libgtirb-pprinter libgtirb-pprinter-dev gtirb-pprinter
+          pip3 install gtirb
+      # Checkout
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      # Download artifacts
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: ddisasm-build-${{ matrix.os }}-${{ matrix.compiler }}
+          path: build
+      - run: chmod +x build/bin/*
+      # Run tests
+      - run: cd build && PATH=$(pwd)/bin:$PATH ctest -V
