@@ -2,8 +2,7 @@ variables:
   GTIRB_BRANCH: "master"
   GTIRB_PPRINTER_BRANCH: "master"
   CAPSTONE_BRANCH: "master"
-  LIBEHP_REF: "master"
-  IMAGE_TAG: "1"
+  IMAGE_TAG: "2"
   EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_SERVER_HOST}/api/v4/projects/1587/packages/pypi/simple
   CONAN_PASSWORD: $CI_JOB_TOKEN
   # The following two variables are used by the package-uploader
@@ -127,16 +126,6 @@ conan-windows-release:
     BUILD_TYPE: Release
   <<: *conan-windows-template
 
-.build-libehp: &build-libehp
-  - git clone https://git.zephyr-software.com/opensrc/libehp.git
-  - pushd libehp
-  - git reset --hard $LIBEHP_REF
-  - cmake ./ -Bbuild -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DEHP_BUILD_SHARED_LIBS=OFF
-  - cd build
-  - make
-  - make install
-  - popd
-
 .build-template: &build
   artifacts:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
@@ -153,7 +142,6 @@ conan-windows-release:
     - for pkg in gtirb gtirb-pprinter capstone; do unzip $pkg.zip; done
     # Install gtirb, pprinter, and capstone
     - dpkg -i libcapstone-dev.deb libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
-    - *build-libehp
     # Build ddisasm
     - mkdir build
     - cd build
@@ -226,7 +214,6 @@ build-static:
   rules:
     *run-only-main
   script:
-    - *build-libehp
     # install capstone
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
     - unzip capstone.zip
@@ -297,7 +284,6 @@ static-drivers:
   rules:
     *run-only-main
   script:
-    - *build-libehp
     # install capstone
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
     - unzip capstone.zip
@@ -378,7 +364,6 @@ test-make-install:
   rules:
     *run-only-main
   script:
-    - *build-libehp
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-ubuntu20 --output "gtirb.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-ubuntu20 --output "gtirb-pprinter.zip"
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
@@ -401,7 +386,6 @@ test-make-install:
       - build/*.deb
       - build/install_manifest*.txt
   script:
-    - *build-libehp
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-$OS --output "gtirb.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-$OS --output "gtirb-pprinter.zip"

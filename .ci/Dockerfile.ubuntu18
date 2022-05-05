@@ -1,14 +1,33 @@
+# ------------------------------------------------------------------------------
+# Install Souffle
+# ------------------------------------------------------------------------------
 FROM ubuntu:18.04 as souffle
 ARG CMAKE_VERSION=3.15.0
 
-RUN export DEBIAN_FRONTEND=noninteractive
-RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
-RUN apt-get -y update && apt-get -y install build-essential cmake curl \
-    doxygen flex git libffi-dev libtool lsb-release make mcpp pkg-config \
-    software-properties-common zlib1g-dev
-
-RUN add-apt-repository ppa:ubuntu-toolchain-r/test \
-    && apt-get -y update && apt-get -y install g++-9
+# Install packages
+# g++-9 requires the ppa, and add-apt-repository is installed with
+# software-properties-common, so we must invoke apt twice.
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime && \
+    apt-get -y update && \
+    apt-get -y install \
+        build-essential \
+        cmake \
+        curl \
+        doxygen \
+        flex \
+        git \
+        libffi-dev \
+        libtool \
+        lsb-release \
+        make \
+        mcpp \
+        pkg-config \
+        software-properties-common \
+        zlib1g-dev && \
+    add-apt-repository ppa:ubuntu-toolchain-r/test && \
+    apt-get -y update && \
+    apt-get -y install g++-9
 
 # bison
 RUN curl https://ftp.gnu.org/gnu/bison/bison-3.5.1.tar.xz --output bison-3.5.1.tar.xz \
@@ -29,6 +48,43 @@ RUN git clone -b 2.2 https://github.com/souffle-lang/souffle && \
     cd build && \
     make install -j4
 
+# ------------------------------------------------------------------------------
+# Install LIEF
+# ------------------------------------------------------------------------------
+FROM ubuntu:18.04 AS lief
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime && \
+    apt-get -y update && \
+    apt-get -y install \
+        build-essential \
+        cmake \
+        git \
+        python3
+
+RUN git clone -b 0.11.5 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF && \
+    cmake -DLIEF_PYTHON_API=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF /usr/local/src/LIEF -B/usr/local/src/LIEF/build && \
+    cmake --build /usr/local/src/LIEF/build --target install
+
+# ------------------------------------------------------------------------------
+# Install libehp
+# ------------------------------------------------------------------------------
+FROM ubuntu:18.04 AS libehp
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime && \
+    apt-get -y update && \
+    apt-get -y install \
+        build-essential \
+        cmake \
+        git
+
+RUN git clone https://git.zephyr-software.com/opensrc/libehp.git /usr/local/src/libehp && \
+    git -C /usr/local/src/libehp reset --hard ddb106c4c1e521bf4b282d17e2a8abf0aa0fe721 && \
+    cmake -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release -DEHP_BUILD_SHARED_LIBS=OFF /usr/local/src/libehp -B/usr/local/src/libehp/build && \
+    cmake --build /usr/local/src/libehp/build --target install
+
+# ------------------------------------------------------------------------------
+# Final image
+# ------------------------------------------------------------------------------
 FROM ubuntu:18.04
 
 ARG BOOST_VERSION=1.67
@@ -37,42 +93,65 @@ ARG CMAKE_VERSION=3.12.1
 # Use bash for more convenient variable substitution syntax
 SHELL ["/bin/bash", "-c"]
 
+# Install packages
+# g++-9 requires the ppa, and add-apt-repository is installed with
+# software-properties-common, so we must invoke apt twice.
+RUN apt-get -y update && \
+    # We must install software-properties-common first so we can run add-apt-repository
+    apt-get -y install software-properties-common && \
+    add-apt-repository ppa:ubuntu-toolchain-r/test && \
+    add-apt-repository ppa:mhier/libboost-latest && \
+    dpkg --add-architecture i386 && \
+    apt-get -y update && \
+    apt-get -y install \
+        clang \
+        clang-format \
+        curl \
+        doxygen \
+        gcc-arm-linux-gnueabihf \
+        gcc-aarch64-linux-gnu \
+        gcc-mips-linux-gnu \
+        g++-9 \
+        g++-arm-linux-gnueabihf \
+        g++-aarch64-linux-gnu \
+        g++-mips-linux-gnu \
+        git \
+        lib32gcc-7-dev \
+        lib32stdc++-7-dev \
+        libboost${BOOST_VERSION}-dev \
+        libc6-dev:i386 \
+        libpq-dev \
+        libprotobuf-dev \
+        libtool \
+        libstdc++-7-dev \
+        libstdc++-7-dev:i386 \
+        make \
+        mcpp \
+        pkg-config \
+        protobuf-compiler \
+        python3 \
+        python3-pip \
+        qemu-user \
+        software-properties-common \
+        unzip \
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install common packages
-RUN apt-get -y update && apt-get -y install clang clang-format \
-    curl doxygen git libpq-dev libprotobuf-dev libtool libstdc++-7-dev \
-    make mcpp pkg-config protobuf-compiler python3 python3-pip \
-    software-properties-common unzip wget zlib1g-dev
-
-# This is required to run souffle compiled with g++-9
-RUN add-apt-repository ppa:ubuntu-toolchain-r/test \
-    && apt-get -y update && apt-get -y install g++-9
-
-RUN apt-get remove -y python3-keyrings.alt
-RUN python3 -m pip install distro pyyaml psycopg2-binary
+RUN python3 -m pip install --no-cache-dir \
+    distro \
+    pyyaml \
+    psycopg2-binary \
+    pre-commit
 
 # Install CMake
 RUN curl -SL https://cmake.org/files/v$(echo $CMAKE_VERSION | sed -r 's/\.[0-9]+$//;')/cmake-$CMAKE_VERSION-Linux-x86_64.tar.gz \
     |tar -xz --strip-components=1 -C /usr/local
 
-# Install cross-platform utils
-RUN apt-get -y update \
- && apt-get -y install \
-      gcc-arm-linux-gnueabihf \
-      g++-arm-linux-gnueabihf \
-      gcc-aarch64-linux-gnu \
-      g++-aarch64-linux-gnu \
-      gcc-mips-linux-gnu \
-      g++-mips-linux-gnu \
-      qemu-user
-
-RUN dpkg --add-architecture i386 \
- && apt-get -y update \
- && apt-get -y install \
-      libc6-dev:i386 \
-      libstdc++-7-dev:i386 \
-      lib32gcc-7-dev \
-      lib32stdc++-7-dev
+# Setup pre-commit
+WORKDIR /ddisasm
+COPY .pre-commit-config.yaml .
+RUN git init && \
+    pre-commit install-hooks
 
 # Create the necessary links and cache to the most recent shared libraries
 # found in the directory /usr/mips-linus-gnu/ so that the run-time linker can
@@ -85,33 +164,14 @@ COPY --from=souffle /usr/local/bin/souffle-compile /usr/bin/souffle-compile
 COPY --from=souffle /usr/local/bin/souffle /usr/bin/souffle
 COPY --from=souffle /usr/local/bin/souffleprof /usr/bin/souffleprof
 COPY --from=souffle /usr/local/include/souffle/ /usr/include/souffle
-
-# Install Boost
-RUN add-apt-repository ppa:mhier/libboost-latest && \
-    apt-get -y update && \
-    apt-get -y install libboost${BOOST_VERSION}-dev
-
-# Install LIEF
-RUN cd /usr/local/src \
-    && git clone -b 0.11.5 https://github.com/lief-project/LIEF.git \
-    && cd LIEF \
-    && mkdir build \
-    && cd build \
-    && cmake -DLIEF_PYTHON_API=off -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=Off .. \
-    && make \
-    && make install
+COPY --from=lief /usr/lib/libLIEF.a /usr/lib/libLIEF.a
+COPY --from=lief /usr/include/LIEF /usr/include/LIEF
+COPY --from=lief /usr/share/LIEF /usr/share/LIEF
+COPY --from=libehp /usr/local/lib /usr/local/lib
+COPY --from=libehp /usr/local/include /usr/local/include
 
 # Install sstrip
 COPY etc/sstrip /usr/bin/sstrip
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
-
-RUN python3 -m pip install pre-commit
-WORKDIR /pre-commit-setup
-RUN git init
-COPY .pre-commit-config.yaml .
-RUN pre-commit install-hooks
-
-# Disable git ssl so we can clone libehp
-RUN git config --global http.sslverify false
