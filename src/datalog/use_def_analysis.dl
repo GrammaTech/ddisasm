@@ -73,7 +73,7 @@ inter_procedural_jump(Src,Dest):-
     direct_call(OtherSrc,Dest),
     code(OtherSrc).
 
-.decl block_next(Block:address,EA:address,EA_next:address)
+.decl block_next(Block:address,BlockEnd:address,NextBlock:address)
 .output block_next
 
 block_next(Block,EA,Block2):-
