@@ -52,7 +52,7 @@ To build ddisasm from source, the following requirements should be installed:
 - [gtirb](https://github.com/grammatech/gtirb)
 - [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
 - [Capstone](http://www.capstone-engine.org/), version 5.0.0 or later
-  - 5.x is not yet by the Capstone team.
+  - 5.x is not yet released by the Capstone team.
   - GrammaTech builds and tests using the [GrammaTech/capstone](https://github.com/GrammaTech/capstone) fork.
 - [Souffle](https://souffle-lang.github.io), version 2.2
   - Must be configured with support for 64 bit numbers (via `-DSOUFFLE_DOMAIN_64BIT=1` during configuration)
