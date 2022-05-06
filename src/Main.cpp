@@ -144,7 +144,9 @@ int main(int argc, char **argv)
         "interpreter,I", po::value<std::string>(),
         "Execute the souffle interpreter with the specified source file.")(
         "library-dir,L", po::value<std::string>(),
-        "Directory from which extra libraries are loaded when running the interpreter");
+        "Directory from which extra libraries are loaded when running the interpreter")(
+        "profile", po::value<std::string>(),
+        "Generate Souffle profiling information the specified path (requires --interpreter)");
 
     po::positional_options_description pd;
     pd.add("input-file", -1);
@@ -186,6 +188,12 @@ int main(int argc, char **argv)
     if(vm.count("interpreter") && !vm.count("debug-dir"))
     {
         std::cerr << "Error: missing `--debug-dir' argument required by `--interpreter'\n";
+        return 1;
+    }
+
+    if(vm.count("profile") && !vm.count("interpreter"))
+    {
+        std::cerr << "Error: missing `--interpreter' argument required by `--profile'\n";
         return 1;
     }
 
@@ -293,11 +301,13 @@ int main(int argc, char **argv)
         {
             // Disassemble with the interpeter engine.
             std::cerr << " (interpreter)";
+            const std::string &ProfilePath =
+                vm.count("profile") ? vm["profile"].as<std::string>() : std::string();
             const std::string &DatalogFile = vm["interpreter"].as<std::string>();
             const std::string &LibDirectory =
                 vm.count("library-dir") ? vm["library-dir"].as<std::string>() : std::string();
             runInterpreter(*GTIRB->IR, Module, Souffle->get(), DatalogFile, DebugDir.string(),
-                           LibDirectory, Threads);
+                           LibDirectory, ProfilePath, Threads);
         }
         else
         {

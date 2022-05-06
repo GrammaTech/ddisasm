@@ -117,7 +117,8 @@ void loadAll(souffle::SouffleProgram *Program, const std::string &Directory)
 
 void runInterpreter(gtirb::IR &IR, gtirb::Module &Module, souffle::SouffleProgram *Program,
                     const std::string &DatalogFile, const std::string &Directory,
-                    const std::string &LibDirectory, uint8_t Threads)
+                    const std::string &LibDirectory, const std::string &ProfilePath,
+                    uint8_t Threads)
 {
     // Dump the current GTIRB into the debug directory for use by Functors.
     std::ofstream out(Directory + "/binary.gtirb", std::ios::out | std::ios::binary);
@@ -188,6 +189,11 @@ void runInterpreter(gtirb::IR &IR, gtirb::Module &Module, souffle::SouffleProgra
                                      "--library-dir",
                                      FinalLibDirectory,
                                      DatalogFile};
+
+    if(!ProfilePath.empty())
+    {
+        Args.insert(Args.end(), {"--compile", "--profile", ProfilePath});
+    }
 
     // Execute the `souffle' interpreter.
     int Code = boost::process::system(SouffleBinary, Args, Env);

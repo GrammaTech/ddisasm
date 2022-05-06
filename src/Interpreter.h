@@ -31,6 +31,7 @@
 
 void runInterpreter(gtirb::IR& IR, gtirb::Module& Module, souffle::SouffleProgram* Program,
                     const std::string& DatalogFile, const std::string& Directory,
-                    const std::string& LibDirectory, uint8_t Threads);
+                    const std::string& LibDirectory, const std::string& ProfilePath,
+                    uint8_t Threads);
 
 #endif // GTIRB_SRC_INTERPRETER_H_
