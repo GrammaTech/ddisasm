@@ -216,10 +216,52 @@ cmp_zero_operation(""):-
 // ===========================================================================
 
 /**
-Find all addresses where a move instruction is used
+Moves from a register to a register; a move does not transform the value
+(except by sign extension).
+
+Dst and Src may be untracked registers.
 */
-.decl mov(EA:address)
-.output mov
+.decl move_reg_reg(EA:address,Dst:register,Src:register)
+
+move_reg_reg(EA,Dst,Src):-
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
+    move_operation(Operation),
+    op_regdirect(Op1,Src),
+    op_regdirect(Op2,Dst).
+
+.decl move_reg_reg_tracked(EA:address,Dst:register,Src:register) inline
+
+move_reg_reg_tracked(EA,Dst,Src):-
+    arch.move_reg_reg(EA,Dst_untracked,Src_untracked),
+    track_register(Dst_untracked,Dst),
+    track_register(Src_untracked,Src).
+
+/**
+Moves an immediate value to a register.
+
+Dst may be an untracked register.
+*/
+.decl move_reg_imm(EA:address,Dst:register,Imm:number,ImmIndex:operand_index)
+
+move_reg_imm(EA,Dst,Value,1):-
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
+    move_operation(Operation),
+    op_immediate(Op1,Value),
+    op_regdirect(Op2,Dst).
+
+.decl move_reg_imm_tracked(EA:address,Dst:register,Imm:number,ImmIndex:operand_index) inline
+
+move_reg_imm_tracked(EA,Reg,Immediate,ImmIndex):-
+    move_reg_imm(EA,Reg_untracked,Immediate,ImmIndex),
+    track_register(Reg_untracked,Reg).
+
+.decl move(EA:address)
+
+move(EA):-
+    (
+        move_reg_reg(EA,_,_);
+        move_reg_imm(EA,_,_,_)
+    ).
 
 .decl is_nop(EA:address)
 

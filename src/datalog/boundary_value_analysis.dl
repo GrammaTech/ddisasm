@@ -101,33 +101,83 @@ compare_and_jump_register(EA,EA,CC,Reg1,Reg2):-
     arch.conditional(EA,CC).
 
 /**
+A pair of instructions that compares a memory location to an immediate and then
+conditionally jumps.
+*/
+.decl compare_and_jump_indirect(EA_cmp:address,EA_jmp:address,CC:condition_code,IndirectOp:operand_code,Immediate:number)
+
+compare_and_jump_indirect(EA_cmp,EA_jmp,CC,IndirectOp,Immediate):-
+    flags_and_jump_pair(EA_cmp,EA_jmp,CC),
+    instruction_get_operation(EA_cmp,CmpOperation),
+    arch.cmp_operation(CmpOperation),
+    instruction_get_op(EA_cmp,_,IndirectOp),
+    op_indirect(IndirectOp,_,_,_,_,_,_),
+    instruction_get_op(EA_cmp,_,ImmOp),
+    op_immediate(ImmOp,Immediate).
+
+/**
 Either "MIN" or "MAX"
 */
 .type limit_type <: symbol
 
 /**
+Map condition codes to limit types
+*/
+.decl limit_type_map(CC:condition_code,BranchLT:limit_type,FallthroughLT:limit_type,BranchOffset:number,FallthroughOffset:number)
+
+limit_type_map("A","MIN","MAX",1,0).
+limit_type_map("G","MIN","MAX",1,0).
+limit_type_map("AE","MIN","MAX",0,-1).
+limit_type_map("GE","MIN","MAX",0,-1).
+limit_type_map("B","MAX","MIN",-1,0).
+limit_type_map("L","MAX","MIN",-1,0).
+limit_type_map("BE","MAX","MIN",0,1).
+limit_type_map("LE","MAX","MIN",0,1).
+
+/**
 An instruction at EA limits the value of Reg at some MIN or MAX value.
 
-The limit is effective after address EA_limited.
+From: the address that creates the limit
+To: the address at which the limit is active
 */
-.decl value_reg_limit(EA_jmp:address,EA_limited:address,Reg:register,Value:number,LimitType:limit_type)
+.decl value_reg_limit(From:address,To:address,Reg:register,Value:number,LimitType:limit_type)
 .output value_reg_limit
 
 // Each comparison generates two limits - the fallthough case is limited one
 // way, and the branch case is limited the other.
-// BLT/FLT = "branch/fallthrough limit type"
-value_reg_limit(EA_jmp,EA_branch,Reg,BValue,BLT),
-value_reg_limit(EA_jmp,EA_fallthrough,Reg,FValue,FLT):-
+value_reg_limit(EA_jmp,EA_branch,Reg,BranchValue,BranchLT),
+value_reg_limit(EA_jmp,EA_fallthrough,Reg,FallthroughValue,FallthroughLT):-
     compare_and_jump_immediate(_,EA_jmp,CC,Reg,Immediate),
+    limit_type_map(CC,BranchLT,FallthroughLT,BranchOffset,FallthroughOffset),
     direct_jump(EA_jmp,EA_branch),
     may_fallthrough(EA_jmp,EA_fallthrough),
-    (
-        (CC="A"; CC="G"), BLT = "MIN", FLT = "MAX", BValue = Immediate + 1, FValue = Immediate;
-        (CC="AE"; CC="GE"), BLT = "MIN", FLT = "MAX", BValue = Immediate, FValue = Immediate - 1;
+    BranchValue = Immediate + BranchOffset,
+    FallthroughValue = Immediate + FallthroughOffset.
 
-        (CC="B"; CC="L"), BLT = "MAX", FLT = "MIN", BValue = Immediate - 1, FValue = Immediate;
-        (CC="BE"; CC="LE"), BLT = "MAX", FLT = "MIN", BValue = Immediate, FValue = Immediate + 1
-    ).
+// Ad-hoc rule for basic indirect comparison cases where the value is moved to
+// a register right after the jump (either at the branch target or the
+// fallthrough).
+value_reg_limit(EA_target,EA_limited,Reg,Value,LimitType):-
+    compare_and_jump_indirect(EA_cmp,EA_jmp,CC,IndirectOp,Immediate),
+    limit_type_map(CC,BranchLT,FallthroughLT,BranchOffset,FallthroughOffset),
+    // Enforce next to ensure the memory isn't modified between comparison and jump.
+    next(EA_cmp,EA_jmp),
+    (
+        direct_jump(EA_jmp,EA_target),
+        LimitType = BranchLT,
+        Value = Immediate + BranchOffset,
+        UNUSED(FallthroughLT), UNUSED(FallthroughOffset)
+        ;
+        may_fallthrough(EA_jmp,EA_target),
+        LimitType = FallthroughLT,
+        Value = Immediate + FallthroughOffset,
+        UNUSED(BranchLT), UNUSED(BranchOffset)
+    ),
+    // The value is loaded from this IndirectOp into a register immediately after the jump.
+    arch.load(EA_target,_,_,Reg_untracked,_,_,_,_),
+    arch.track_register(Reg_untracked,Reg),
+    instruction_get_op(EA_target,_,IndirectOp),
+    local_next(EA_target,EA_limited).
 
 /**
 A register is compared as NE or EQ and used for a conditional jump.
@@ -171,29 +221,23 @@ no_value_reg_limit(EA_jmp):-
     instruction_get_operation(EA_cmp,Operation),
     !arch.cmp_operation(Operation).
 
-// Flags set by comparison with indirect operand.
-no_value_reg_limit(EA_jmp):-
-    flags_and_jump_pair(EA_cmp,EA_jmp,_),
-    instruction_get_operation(EA_cmp,Operation),
-    arch.cmp_operation(Operation),
-    instruction_get_op(EA_cmp,_,Op),
-    op_indirect(Op,_,_,_,_,_,_).
-
 /**
 Basic-block propagation of value_reg_limit
 
-Limits can only exist at CFG edges (from conditional jumps) so this simplifies propagation a bit.
+From: the address that creates the limit
+To: the address at which the limit is active
 */
-.decl last_value_reg_limit(Block:address,Reg:register,Value:number,LimitType:limit_type)
+.decl last_value_reg_limit(From:address,To:address,Reg:register,Value:number,LimitType:limit_type)
 .output last_value_reg_limit
 
-last_value_reg_limit(EA_limited,Reg,Value,LimitType):-
-    value_reg_limit(_,EA_limited,Reg,Value,LimitType).
+last_value_reg_limit(From,To,Reg,Value,LimitType):-
+    value_reg_limit(From,To,Reg,Value,LimitType).
 
-last_value_reg_limit(BlockNext,PropagatedReg,PropagatedVal,PropagatedType):-
-    last_value_reg_limit(Block,PropagatedReg,PropagatedVal,PropagatedType),
-    block_last_instruction(Block,BlockEnd),
-    block_next(BlockEnd,BlockNext),
+// Simple propagation
+last_value_reg_limit(BlockEnd,BlockNext,PropagatedReg,PropagatedVal,PropagatedType):-
+    last_value_reg_limit(_,EA,PropagatedReg,PropagatedVal,PropagatedType),
+    code_in_block(EA,Block),
+    block_next(Block,BlockEnd,BlockNext),
     !defined_in_block(Block,PropagatedReg),
     (
         // If there is no conditional jump at this CFG edge, then there is no new value_reg_limit.
@@ -214,4 +258,28 @@ last_value_reg_limit(BlockNext,PropagatedReg,PropagatedVal,PropagatedType):-
             Reg = PropagatedReg, PropagatedType = "MAX", Type = "MAX", PropagatedVal < Val;
             Reg = PropagatedReg, PropagatedType = "MIN", Type = "MIN", PropagatedVal > Val
         )
+    ).
+
+// Propagate to a different register through a move instruction
+last_value_reg_limit(EA_mov,EA_next,DstReg,PropagatedVal,PropagatedType):-
+    last_value_reg_limit(From,EA,SrcReg,PropagatedVal,PropagatedType),
+    code_in_block(EA,Block),
+    block_last_instruction(Block,BlockEnd),
+    code_in_block(EA_mov,EA),
+    arch.move_reg_reg_tracked(EA_mov,DstReg,SrcReg),
+    // The limit for the move is placed on the next instruction, because that is
+    // where the limit becomes active. This is analagous to the limit propagated
+    // from a previous block being placed at the beginning of the new block.
+    (
+        EA_mov != BlockEnd, local_next(EA_mov,EA_next)
+        ;
+        EA_mov = BlockEnd, block_next(Block,BlockEnd,EA_next)
+    ),
+    (
+        // SrcReg is not previously defined in the block.
+        !block_last_def(EA_mov,_,SrcReg),
+        UNUSED(From)
+        ;
+        // we are propagating the last_value_reg_limit from a previous move in the block.
+        block_last_def(EA_mov,From,SrcReg)
     ).

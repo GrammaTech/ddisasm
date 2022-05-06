@@ -22,17 +22,17 @@
 //===----------------------------------------------------------------------===//
 /**
 This module provides implements architecture-independent load and store
-relations for x86.
+relations for mips32.
 */
 
 memory_access("LOAD",EA,1,2,DstReg,BaseReg,IndexReg,Mult,Offset):-
     instruction(EA,_,_,Operation,SrcOp,DestOp,0,0,_,_),
-    move_operation(Operation),
+    load_operation(Operation),
     op_indirect(SrcOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
     op_regdirect(DestOp,DstReg).
 
 memory_access("STORE",EA,1,2,SrcReg,BaseReg,IndexReg,Mult,Offset):-
     instruction(EA,_,_,Operation,SrcOp,DestOp,0,0,_,_),
-    move_operation(Operation),
+    store_operation(Operation),
     op_indirect(DestOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
     op_regdirect(SrcOp,SrcReg).

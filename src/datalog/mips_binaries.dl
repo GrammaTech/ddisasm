@@ -47,26 +47,8 @@ value_reg_edge(EALoad,"GP",EAPrev,"GP",1,0):-
     // StackFrameDefinedAt2: move fp, sp
     def_used(StackFrameDefinedAt,Reg_origin,StackFrameDefinedAt2,_),
     StackFrameDefinedAt != StackFrameDefinedAt2,
-    arch.mov(StackFrameDefinedAt2),
-    instruction_get_op(StackFrameDefinedAt2,1,Op1),
-    op_regdirect_contains_reg(Op1,Reg_origin),
-    instruction_get_op(StackFrameDefinedAt2,2,Op2),
-    op_regdirect_contains_reg(Op2,_),
+    arch.move_reg_reg_tracked(StackFrameDefinedAt2,_,Reg_origin),
     StackFrameDefinedAt2 != StackFrameDefinedAt.
-
-value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
-    arch.reg_arithmetic_operation(EA,Reg,"ZERO",_,Immediate).
-
-// move reg, zero
-value_reg_edge(EA,Reg,EA,"NONE",0,0):-
-    arch.move_operation(Operation),
-    instruction(EA,_,_,Operation,Op1,Op2,_,0,_,_),
-    op_regdirect_contains_reg(Op1,Reg),
-    op_regdirect_contains_reg(Op2,"ZERO").
-
-// lui reg immediate
-value_reg_edge(EA,Reg,EA,"NONE",0,Immediate*(2^16)):-
-    op_immediate_and_reg(EA,"LUI",Reg,_,Immediate).
 
 // load word from got table: e.g., lw v0, -32696(gp)
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
@@ -161,12 +143,7 @@ hi_load_prop(RegRestoreEA,EA,Reg2,Upper,"stack-restore"):-
 hi_load_prop(MoveEA,EA,Reg2,Upper,"move"):-
     hi_load(EA,Reg,Upper),
     def_used(EA,Reg,MoveEA,_),
-    arch.move_operation(Operation),
-    instruction_get_operation(MoveEA, Operation),
-    instruction_get_src_op(MoveEA,_,SrcOp),
-    instruction_get_dest_op(MoveEA,_,DestOp),
-    op_regdirect_contains_reg(SrcOp,Reg),
-    op_regdirect_contains_reg(DestOp,Reg2).
+    arch.move_reg_reg_tracked(MoveEA,Reg2,Reg).
 
 // Split-loads -------------------------------------------------------
 .decl split_load_candidate(ea_hi:address, ea_lo:address, dest:address, type:symbol)

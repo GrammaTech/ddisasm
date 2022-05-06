@@ -126,6 +126,7 @@ if(DDISASM_MIPS_32)
       datalog/arch/mips32/arch_mips32.dl
       datalog/arch/mips32/float_operations.dl
       datalog/arch/mips32/jump_operations.dl
+      datalog/arch/mips32/memory_access.dl
       datalog/arch/mips32/registers.dl
       datalog/mips_binaries.dl)
 

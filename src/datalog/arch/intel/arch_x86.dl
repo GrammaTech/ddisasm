@@ -33,9 +33,19 @@ move_operation(Operation) :-
     instruction_get_operation(_, Operation),
     contains("MOV", Operation).
 
-mov(EA):-
-    instruction_get_operation(EA,Operation),
-    move_operation(Operation).
+// Implicit moves w/ sign extension of AX <- AL, EAX <- AX, RAX <- EAX.
+move_operation("CBW").
+move_operation("CWDE").
+move_operation("CDQE").
+
+move_reg_reg(EA,"AX","AL"):-
+    instruction_get_operation(EA,"CBW").
+
+move_reg_reg(EA,"EAX","AX"):-
+    instruction_get_operation(EA,"CWDE").
+
+move_reg_reg(EA,"RAX","EAX"):-
+    instruction_get_operation(EA,"CDQE").
 
 // TODO: CMOV conditions - nothing uses the CC on a mov instruction currently.
 conditional_operation(Operation,"?"):-

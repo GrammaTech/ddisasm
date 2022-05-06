@@ -549,10 +549,12 @@ abi_intrinsic(End,"__rela_iplt_end"):-
 //   mov RAX,OFFSET __start___libc_atexit+ CONSTANT
 moved_label_class(EAStop,ImmIndexStop,"libc atexit"),
 moved_immediate_candidate(EAStop,ImmIndexStop,ImmediateStopAddr,ImmediateStartAddr):-
-    mov_immediate_to_reg(EAStart,_,_,ImmediateStart),
+    arch.move_reg_imm_tracked(EAStart,_,ImmediateStart,_),
+    code(EAStart),
     ImmediateStartAddr = as(ImmediateStart, address),
     defined_symbol(ImmediateStartAddr,_,_,_,_,_,_,_,"__start___libc_atexit"),
     next(EAStart,EAStop),
-    mov_immediate_to_reg(EAStop,_,ImmIndexStop,ImmediateStop),
+    arch.move_reg_imm_tracked(EAStop,_,ImmediateStop,ImmIndexStop),
+    code(EAStop),
     ImmediateStopAddr = as(ImmediateStop, address),
     defined_symbol(ImmediateStopAddr,_,_,_,_,_,_,_,"__stop___libc_atexit").

@@ -27,10 +27,7 @@
 #include "interrupt_operations.dl"
 #include "float_operations.dl"
 #include "registers.dl"
-
-move_operation(Operation):-
-  store_operation(Operation);
-  load_operation(Operation).
+#include "memory_access.dl"
 
 move_operation("MOV").
 move_operation("MOVE").
@@ -39,6 +36,18 @@ move_operation("MOVF").
 move_operation("MOVN").
 move_operation("MOVT").
 move_operation("MOVZ").
+
+move_reg_imm(EA,Reg,Value,1):-
+    instruction(EA,_,_,"LUI",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Immediate),
+    Value = Immediate bshl 16,
+    op_regdirect(Op2,Reg).
+
+move_reg_imm(EA,Reg,0,1):-
+    move_reg_reg(EA,Reg,"ZERO").
+
+move_reg_imm(EA,Reg,Immediate,1):-
+    arch.reg_arithmetic_operation(EA,Reg,"ZERO",_,Immediate).
 
 store_operation("ST").
 store_operation("ST.B").
@@ -114,10 +123,6 @@ load_operation("LWX").
 load_operation("LWXC1").
 load_operation("LWXS").
 load_operation("LI").
-
-mov(EA):-
-    instruction_get_operation(EA,Operation),
-    move_operation(Operation).
 
 // Do not treat nop in delay_slot as padding:
 // see the usage of is_nop in code_inference*.dl
@@ -234,7 +239,6 @@ arithmetic_operation("DADDIU").
 arithmetic_operation("DADDIU").
 
 arithmetic_operation("LSA").
-arithmetic_operation("LUI").
 arithmetic_operation("DAUI").
 arithmetic_operation("DAHI").
 arithmetic_operation("DATI").

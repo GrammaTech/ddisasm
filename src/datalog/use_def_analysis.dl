@@ -73,35 +73,35 @@ inter_procedural_jump(Src,Dest):-
     direct_call(OtherSrc,Dest),
     code(OtherSrc).
 
-.decl block_next(ea:address,ea_next:address)
+.decl block_next(Block:address,BlockEnd:address,NextBlock:address)
 .output block_next
 
-block_next(EA,Block2):-
-    block_last_instruction(_,EA),
+block_next(Block,EA,Block2):-
+    block_last_instruction(Block,EA),
     may_fallthrough(EA,Block2),
     !no_return_call_refined(EA),
     block(Block2).
 
-block_next(EA,EA_next):-
-    block_last_instruction(_,EA),
+block_next(Block,EA,EA_next):-
+    block_last_instruction(Block,EA),
     !arch.delay_slot(_,EA),
     direct_jump(EA,EA_next),
     !inter_procedural_jump(EA,EA_next).
 
-block_next(EA,EA_next):-
-    block_last_instruction(_,EA),
+block_next(Block,EA,EA_next):-
+    block_last_instruction(Block,EA),
     arch.delay_slot(JumpEA,EA),
     direct_jump(JumpEA,EA_next),
     !inter_procedural_jump(JumpEA,EA_next).
 
-block_next(EA,Dest):-
-    block_last_instruction(_,EA),
+block_next(Block,EA,Dest):-
+    block_last_instruction(Block,EA),
     jump_table_target(EA,Dest).
 
 // Path created by exception handling.
-block_next(EA,Block2):-
+block_next(Block,EA,Block2):-
     lsda_callsite_addresses(Beg,End, Block2),
-    block_last_instruction(_,EA),
+    block_last_instruction(Block,EA),
     EA >= Beg, EA < End,
     block(Block2).
 
@@ -204,20 +204,19 @@ block_last_def(EA_next,EA_def,Reg):-
 
 last_def(Block,EA,Reg):-
     def(EA,Reg),
-    block_next(EA,Block),
+    block_next(_,EA,Block),
     !flow_def(EA,Reg,Block,_).
 
 last_def(Block,EA_def,Reg):-
     block_last_def(Block_end,EA_def,Reg),
     !must_def(Block_end,Reg),
-    block_next(Block_end,Block),
+    block_next(_,Block_end,Block),
     !flow_def(Block_end,Reg,Block,_).
 
 last_def(Block_next,EA_def,Reg):-
     last_def(Block,EA_def,Reg),
     !defined_in_block(Block,Reg),
-    block_last_instruction(Block,Block_end),
-    block_next(Block_end,Block_next),
+    block_next(Block,Block_end,Block_next),
     !flow_def(Block_end,Reg,Block,_).
 
 last_def(Block_next,Block_end,Reg):-

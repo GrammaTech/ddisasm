@@ -38,8 +38,6 @@ move_operation(Operation) :-
     instruction_get_operation(_, Operation),
     contains("MOV", Operation).
 
-move_operation("MVN").
-
 load_operation(Operation):-
     instruction_get_operation(_,Operation),
     (
@@ -64,10 +62,6 @@ store_operation(Operation):-
         contains("STP", Operation)
     ).
 
-mov(EA):-
-    instruction_get_operation(EA,Operation),
-    move_operation(Operation).
-
 is_nop(EA):-
     instruction_get_operation(EA,Operation),
     (
@@ -86,6 +80,7 @@ arithmetic_operation("LSL").
 arithmetic_operation("LSR").
 arithmetic_operation("ASR").
 arithmetic_operation("ROR").
+arithmetic_operation("MVN").
 
 multiplication_operation("MUL").
 multiplication_operation("LSL").
