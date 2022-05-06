@@ -2,7 +2,10 @@ variables:
   GTIRB_BRANCH: "master"
   GTIRB_PPRINTER_BRANCH: "master"
   CAPSTONE_BRANCH: "master"
-  IMAGE_TAG: "2"
+  # The IMAGE_TAG is derived from the branch name so that if a branch modifies
+  # the CI images, it builds and runs using the new images without conflicting
+  # with main.
+  IMAGE_TAG: "$CI_COMMIT_REF_NAME"
   EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_SERVER_HOST}/api/v4/projects/1587/packages/pypi/simple
   CONAN_PASSWORD: $CI_JOB_TOKEN
   # The following two variables are used by the package-uploader
@@ -20,6 +23,7 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == "schedule"
 
 stages:
+  - build-images
   - check-format
   - build
   - build-packages
@@ -31,6 +35,47 @@ stages:
 
 default:
   tags: [cluster]
+
+.build-ci-image: &build-ci-image
+  stage: build-images
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    # Configure authentication credentials for both Docker Hub and GitLab
+    - >-
+      echo "{\"auths\":{
+        \"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"},
+        \"https://index.docker.io/v1/\":{\"username\":\"$DOCKERHUB_USERNAME\",\"password\":\"$DOCKERHUB_PASSWORD\"}
+      }}" > /kaniko/.docker/config.json
+    # Run the kaniko executor, which will build our image (using a cache if available)
+    # Push to our internal registry, and if on the default branch, to Docker Hub.
+    - >-
+      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
+        export DOCKER_HUB_ARG="--destination=grammatech/ddisasm-ci-${UBUNTU_CODENAME}:latest"
+      fi
+    - >-
+      /kaniko/executor
+      --cache=true
+      --cache-repo=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/${IMAGE_NAME}/cache
+      --context=$CI_PROJECT_DIR
+      --dockerfile=$CI_PROJECT_DIR/$DOCKERFILE_PATH
+      --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/${IMAGE_NAME}:$IMAGE_TAG
+      $DOCKER_HUB_ARG
+
+build-ci-image-ubuntu18:
+  <<: *build-ci-image
+  variables:
+    DOCKERFILE_PATH: .ci/Dockerfile.ubuntu18
+    IMAGE_NAME: ubuntu18
+    UBUNTU_CODENAME: bionic
+
+build-ci-image-ubuntu20:
+  <<: *build-ci-image
+  variables:
+    DOCKERFILE_PATH: .ci/Dockerfile.ubuntu20
+    IMAGE_NAME: ubuntu20
+    UBUNTU_CODENAME: focal
 
 check-format:
   stage: check-format

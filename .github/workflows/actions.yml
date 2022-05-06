@@ -12,7 +12,7 @@ jobs:
             compiler: clang++
     env:
       BUILD_TYPE: Release
-    container: adamjseitz/ddisasm-${{ matrix.os }}-ci
+    container: grammatech/ddisasm-ci-${{ matrix.os }}:latest
     steps:
       - name: Install capstone, gtirb, gtirb-pprinter,
         run: |
@@ -43,7 +43,7 @@ jobs:
           - os: bionic
             compiler: clang++
     needs: build
-    container: adamjseitz/ddisasm-${{ matrix.os }}-ci
+    container: grammatech/ddisasm-ci-${{ matrix.os }}:latest
     steps:
       - name: Install capstone, gtirb, gtirb-pprinter,
         run: |
