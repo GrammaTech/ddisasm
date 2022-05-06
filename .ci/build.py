@@ -14,19 +14,7 @@ def run_conan(args):
 def build(argv):
     props = conanfile.Properties()
     run_conan(["create", "--keep-source", ".", props.conan_ref] + argv)
-    archived_channels = props.archived_channels
-    if props.conan_channel in archived_channels:
-        run_conan(
-            ["upload", props.conan_recipe, "--all", "--remote", "gitlab"]
-        )
-    else:
-        print(
-            "Conan channel not archived. Update archived_branches in "
-            "conanfile.py to get archival."
-        )
-        print("archived channels: ")
-        print(*archived_channels, sep=", ")
-        print("channel built: " + props.conan_channel)
+    run_conan(["upload", props.conan_recipe, "--all", "--remote", "gitlab"])
 
 
 if __name__ == "__main__":

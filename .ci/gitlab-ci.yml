@@ -574,6 +574,20 @@ debian-installer-ubuntu20:
     - 'build-ubuntu20-packages'
   <<: *debian-installer-ubuntu-template
 
+cleanup-branch:
+  # After a branch merges, delete the conan package for that branch.
+  stage: deploy
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_EVENT_TYPE == 'merged_result'
+  script:
+    - CONAN_PACKAGE=ddisasm/dev@rewriting+ddisasm/$(echo $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME | sed 's/\//\+/')
+    - echo 'Removing $CONAN_PACKAGE'
+    - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
+    - conan user ci_user -r gitlab -p
+    # TODO: enable this after confirming the correct package will be removed.
+    #- conan remove $CONAN_PACKAGE --remote=gitlab
+
 .get-image-name: &get-image-name
   - VERSION=$(echo $(cat version.txt) | python3 -c "import sys; l=sys.stdin.read().split(); print('.'.join([l[1],l[3],l[5]]))")
   - 'IMAGE_NAME=grammatech/ddisasm'
