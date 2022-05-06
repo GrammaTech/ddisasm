@@ -154,6 +154,37 @@ jump_table_max(TableStart,TableStart+as(Value,unsigned)*Mult):-
     ),
     Value >= 0.
 
+// A common pattern in CL-generated binaries looks like:
+//
+// Load an index from a table
+//      movzx EAX,BYTE PTR [RSI+RAX*1+(IMAGEREL $L_140009e74)]
+// Use that to index into the actual jump table
+//      mov EDX,DWORD PTR [RSI+RAX*4+(IMAGEREL $L_140009e64)]
+//      add RDX,RSI
+//      jmp RDX
+//
+// If we know the limit for the index used in the first load, we can find the
+// possible indices for the second table.
+//
+// TODO: Currently, this generates a jump_table_max for *every* index value in
+// the first table. This works since relative_jump_table_entry_candidate will
+// propagate to the largest max.
+// I think we could avoid this problem if Souffle supported recursive
+// aggregates (currently in development, see https://github.com/souffle-lang/souffle/pull/2263)
+// and range queries in aggregates (bug: https://github.com/souffle-lang/souffle/issues/2160).
+// Alternatively, we could use subsumption to delete the smaller jump_table_max.
+jump_table_max(TableStart2,TableStart2+IndexValue*Mult2):-
+    jump_table_element_access(EA1,_,TableStart1,_,Mult1),
+    jump_table_max(TableStart1,TableEnd1),
+    def_used(EA1,Reg,EA2,_),
+    jump_table_element_access(EA2,_,TableStart2,RegIndexRaw,Mult2),
+    arch.track_register(RegIndexRaw,Reg),
+    TableAddress = range(TableStart1,TableEnd1+Mult1,Mult1),
+    (
+        Mult1 = 1, data_byte(TableAddress,IndexValue);
+        Mult1 != 1, data_word(TableAddress,Mult1,IndexValueSigned), IndexValue = as(IndexValueSigned,unsigned)
+    ).
+
 .decl jump_table_start(EA_jump:address,Size:unsigned,TableStart:address,TableRef:address,Scale:number)
 .output jump_table_start
 
