@@ -265,9 +265,8 @@ last_value_reg_limit(EA_mov,EA_next,DstReg,PropagatedVal,PropagatedType):-
     last_value_reg_limit(From,EA,SrcReg,PropagatedVal,PropagatedType),
     code_in_block(EA,Block),
     block_last_instruction(Block,BlockEnd),
-    arch.move_reg_reg_tracked(EA_mov,DstReg,SrcReg),
-    Block <= EA_mov, EA_mov <= BlockEnd,
     code_in_block(EA_mov,EA),
+    arch.move_reg_reg_tracked(EA_mov,DstReg,SrcReg),
     // The limit for the move is placed on the next instruction, because that is
     // where the limit becomes active. This is analagous to the limit propagated
     // from a previous block being placed at the beginning of the new block.
