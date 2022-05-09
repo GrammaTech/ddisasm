@@ -128,7 +128,7 @@ plt_block(EA,Function):-
 symbol(EA,0,"NOTYPE","GLOBAL","DEFAULT",0,"export",as(Ordinal,unsigned),Function):-
     pe_export_entry(EA,Ordinal,Function).
 
-.decl reg_has_base_image(EA:address,Reg:register)
+.decl reg_has_base_image(EA:address,Reg:reg_group)
 .output reg_has_base_image
 
 reg_has_base_image(EA,Reg):-
@@ -153,14 +153,14 @@ reg_has_base_image(EA,Reg):-
     reg_has_base_image(EA2,Reg2),
     def_used(EA2,Reg2,EA,_),
     (
-        arch.move_reg_reg(EA,Reg,Reg2);
+        arch.move_reg_reg_tracked(EA,Reg,Reg2);
         arch.reg_reg_arithmetic_operation(EA,Reg,Reg2,_,Mult,0), Mult>1
     ).
 
 // Not all compilers respect register-volatility conventions, and it is
 // sometimes the case that a register is still expected to contain the image base
 // address in a volatile register after intervening functions are called.
-.decl call_shadows_imagebase_reg(EA:address,EA_call:address,Reg:register)
+.decl call_shadows_imagebase_reg(EA:address,EA_call:address,Reg:reg_group)
 .output call_shadows_imagebase_reg
 
 call_shadows_imagebase_reg(EA,EA_def,Reg):-
@@ -215,9 +215,11 @@ base_relative_operand(EA_def1,Op_index,as(Value,address)):-
     reg_has_base_image(EA_def2,Reg2),
     def_used(EA_def2,Reg2,EA,Op_index_access),
     (
-        data_access(EA,Op_index_access,"NONE",Reg2,Reg1,1,0,_);
-        data_access(EA,Op_index_access,"NONE",Reg1,Reg2,1,0,_)
+        data_access(EA,Op_index_access,"NONE",RawReg2,RawReg1,1,0,_);
+        data_access(EA,Op_index_access,"NONE",RawReg1,RawReg2,1,0,_)
     ),
+    arch.track_register(RawReg1,Reg1),
+    arch.track_register(RawReg2,Reg2),
     !instruction_get_operation(EA,"LEA"),
     def_used(EA_def1,Reg1,EA,_),
 
@@ -240,9 +242,11 @@ base_relative_operand(EA_def2,Op_index_access,RVA):-
     possible_rva_operand(EA_def2,Op_index_access,RVA),
 
     (
-        data_access(EA,_,"NONE",Reg1,Reg2,1,_,_);
-        data_access(EA,_,"NONE",Reg2,Reg1,1,_,_)
-    ).
+        data_access(EA,_,"NONE",RawReg1,RawReg2,1,_,_);
+        data_access(EA,_,"NONE",RawReg2,RawReg1,1,_,_)
+    ),
+    arch.track_register(RawReg1,Reg1),
+    arch.track_register(RawReg2,Reg2).
 
 base_relative_operand(EA,Op_index,RVA):-
     possible_rva_operand(EA,Op_index,RVA),

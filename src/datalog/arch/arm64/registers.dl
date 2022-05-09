@@ -83,7 +83,6 @@ pc_register("NONE"):-
 frame_pointer("NONE"):-
     false.
 
-stack_pointer("WSP").
 stack_pointer("SP").
 
 return_val_reg("X0").

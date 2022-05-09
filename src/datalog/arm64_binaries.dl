@@ -106,9 +106,9 @@ split_load(EA, NextEA, as(Base + Offset,address), "LDR/STR") :-
         arch.store_operation(Operation)
     ),
     instruction_get_op(NextEA, 1, OffsetOp),
-    op_indirect(OffsetOp,"NONE",Reg2,"NONE",_,Offset,_),
-    // Make sure the registers match
-    Reg = Reg2.
+
+    op_indirect(OffsetOp,"NONE",RawReg,"NONE",_,Offset,_),
+    arch.track_register(RawReg,Reg).
 
 pc_relative_jump(EA, as(Dest,address)):-
     split_load(EA, _, Dest, "LDR/STR").
@@ -130,7 +130,7 @@ UsedEA:
 
 and Reg would be `x1`
 */
-.decl adr_used(EA:address,Reg:register,UsedEA:address,Dest:address)
+.decl adr_used(EA:address,Reg:reg_group,UsedEA:address,Dest:address)
 
 adr_used(EA,Reg,UsedEA,Dest):-
     const_value_reg_used(UsedEA,EA,EARegDef,Reg,as(Dest,number)),
@@ -151,7 +151,7 @@ adr_used(EA,Reg,UsedEA,Dest):-
 /**
 An instruction which could be the second half of a split load.
 */
-.decl split_load_tail(EA:address,Offset:number,Reg:register,Type:symbol)
+.decl split_load_tail(EA:address,Offset:number,Reg:reg_group,Type:symbol)
 
 // ADD <Register> <Register> <Immediate>
 // e.g. add x0, x0, <Offset>
@@ -162,7 +162,8 @@ split_load_tail(EA,Offset,Reg,Type):-
 // LDR/STR <Register> <IndirectOp>
 // e.g. ldr x0, [x0, <OffsetOp>]
 split_load_tail(EA,Offset,Reg,Type):-
-    arch.memory_access(_,EA,_,_,_,Reg,"NONE",_,Offset),
+    arch.memory_access(_,EA,_,_,_,RawReg,"NONE",_,Offset),
+    arch.track_register(RawReg,Reg),
     Type = "LDR/STR".
 
 /**

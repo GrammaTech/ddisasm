@@ -56,7 +56,7 @@ flags_and_jump_pair(EA_flags,EA_jmp,CC):-
 A pair of instructions that compares a register to an immediate and then
 conditionally jumps.
 */
-.decl compare_and_jump_immediate(EA_cmp:address,EA_jmp:address,CC:condition_code,Reg:register,Immediate:number)
+.decl compare_and_jump_immediate(EA_cmp:address,EA_jmp:address,CC:condition_code,Reg:reg_group,Immediate:number)
 .output compare_and_jump_immediate
 
 // Branch instruction that uses the result of a compare-to-immediate
@@ -87,7 +87,7 @@ compare_and_jump_immediate(EA,EA,CC,Reg,0):-
 A pair of instructions that compares a register to another register and then
 conditionally jumps.
 */
-.decl compare_and_jump_register(EA_cmp:address,EA_jmp:address,CC:condition_code,Reg1:register,Reg2:register)
+.decl compare_and_jump_register(EA_cmp:address,EA_jmp:address,CC:condition_code,Reg1:reg_group,Reg2:reg_group)
 
 // cmp-and-branch pairs using a flags register
 compare_and_jump_register(EA_cmp,EA_jmp,CC,Reg1,Reg2):-
@@ -140,7 +140,7 @@ An instruction at EA limits the value of Reg at some MIN or MAX value.
 From: the address that creates the limit
 To: the address at which the limit is active
 */
-.decl value_reg_limit(From:address,To:address,Reg:register,Value:number,LimitType:limit_type)
+.decl value_reg_limit(From:address,To:address,Reg:reg_group,Value:number,LimitType:limit_type)
 .output value_reg_limit
 
 // Each comparison generates two limits - the fallthough case is limited one
@@ -182,7 +182,7 @@ value_reg_limit(EA_target,EA_limited,Reg,Value,LimitType):-
 /**
 A register is compared as NE or EQ and used for a conditional jump.
 */
-.decl cmp_defines(EA_jmp:address,EA_dst:address,Reg:register)
+.decl cmp_defines(EA_jmp:address,EA_dst:address,Reg:reg_group)
 
 cmp_defines(EA_jmp,EA_dst,Reg):-
     compare_and_jump_immediate(_,EA_jmp,"E",Reg,_),
@@ -227,7 +227,7 @@ Basic-block propagation of value_reg_limit
 From: the address that creates the limit
 To: the address at which the limit is active
 */
-.decl last_value_reg_limit(From:address,To:address,Reg:register,Value:number,LimitType:limit_type)
+.decl last_value_reg_limit(From:address,To:address,Reg:reg_group,Value:number,LimitType:limit_type)
 .output last_value_reg_limit
 
 last_value_reg_limit(From,To,Reg,Value,LimitType):-

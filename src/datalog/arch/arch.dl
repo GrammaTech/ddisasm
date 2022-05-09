@@ -229,7 +229,7 @@ move_reg_reg(EA,Dst,Src):-
     op_regdirect(Op1,Src),
     op_regdirect(Op2,Dst).
 
-.decl move_reg_reg_tracked(EA:address,Dst:register,Src:register) inline
+.decl move_reg_reg_tracked(EA:address,Dst:reg_group,Src:reg_group) inline
 
 move_reg_reg_tracked(EA,Dst,Src):-
     arch.move_reg_reg(EA,Dst_untracked,Src_untracked),
@@ -249,7 +249,7 @@ move_reg_imm(EA,Dst,Value,1):-
     op_immediate(Op1,Value),
     op_regdirect(Op2,Dst).
 
-.decl move_reg_imm_tracked(EA:address,Dst:register,Imm:number,ImmIndex:operand_index) inline
+.decl move_reg_imm_tracked(EA:address,Dst:reg_group,Imm:number,ImmIndex:operand_index) inline
 
 move_reg_imm_tracked(EA,Reg,Immediate,ImmIndex):-
     move_reg_imm(EA,Reg_untracked,Immediate,ImmIndex),
@@ -364,7 +364,7 @@ operation_size_exception(0,0,0):-
 /**
 Arithmetic operation on one source register of the form Dst = Src * Mult + Offset
 */
-.decl reg_arithmetic_operation(EA:address,Dst:register,Src:register,Mult:number,Offset:number)
+.decl reg_arithmetic_operation(EA:address,Dst:reg_group,Src:reg_group,Mult:number,Offset:number)
 .output reg_arithmetic_operation
 
 // Simplify operations with two source registers where both registers are the same.
@@ -377,7 +377,7 @@ Arithmetic operation on two source registers of the form Dst = Src1 + Src2 * Mul
 
 Note: Src1 and Src2 *may* be the same register.
 */
-.decl reg_reg_arithmetic_operation(EA:address,Dst:register,Src1:register,Src2:register,Mult:number,Offset:number)
+.decl reg_reg_arithmetic_operation(EA:address,Dst:reg_group,Src1:reg_group,Src2:reg_group,Mult:number,Offset:number)
 
 // Commutative property
 reg_reg_arithmetic_operation(EA,Dst,Reg2,Reg1,1,0):-
@@ -395,12 +395,12 @@ consider this ARM32 load instruction with a post-index writeback:
 This instruction defines both r0 (an explicit register operand) and r1 (which
 is part of an indirect operand, but that operand is not a destination).
 */
-.decl defines_reg(EA:address,Reg:register)
+.decl defines_reg(EA:address,Reg:reg_group)
 
 defines_reg(EA,Reg):-
     (
         register_access(EA,"W",UntrackedReg), arch.track_register(UntrackedReg,Reg);
-        load(EA,_,_,Reg,_,_,_,_);
+        load(EA,_,_,UntrackedReg,_,_,_,_), arch.track_register(UntrackedReg,Reg);
         reg_arithmetic_operation(EA,Reg,_,_,_);
         reg_reg_arithmetic_operation(EA,Reg,_,_,_,_);
         instruction_get_dest_op(EA,_,Op), op_regdirect_contains_reg(Op,Reg)
@@ -411,7 +411,7 @@ An instruction at EA uses the register Reg
 
 This may be an implicit use (i.e., the register may not appear in any operands).
 */
-.decl uses_reg(EA:address,Reg:register)
+.decl uses_reg(EA:address,Reg:reg_group)
 .output uses_reg
 
 uses_reg(EA,Reg):-
@@ -421,7 +421,7 @@ uses_reg(EA,Reg):-
 /**
 The location and register where the address of main is loaded.
  */
-.decl inferred_main_in_reg(EA:address,Reg:register)
+.decl inferred_main_in_reg(EA:address,Reg:reg_group)
 
 /**
  * Locate where main() is dispatched (i.e., where __libc_start_main is called.)
@@ -443,38 +443,41 @@ inferred_main_dispatch(CallEA):-
 // ===========================================================================
 
 /**
-Limit the registers that are tracked and transform the names to their 64-bit
-versions.
+
+Maps registers to groups of registers (reg_group) referred to by a single name.
+This is used to allow different register names that refer to the same storage
+to be tracked together, e.g., on x86, both AX and EAX are members of the EAX
+reg_group.
 */
-.decl track_register(RegName:register,RegGenericName:register)
+.decl track_register(RegName:register,RegGroupName:reg_group)
 .output track_register
 
 /**
 This specifies the registers whose value is not kept through a function call
 according to the architecture's calling convention.
 */
-.decl function_non_maintained_reg(Reg:register)
+.decl function_non_maintained_reg(Reg:reg_group)
 
 .decl pc_register(Reg:register)
 .output pc_register
 
-.decl frame_pointer(Reg:register)
+.decl frame_pointer(Reg:reg_group)
 .output frame_pointer
 
-.decl stack_pointer(Reg:register)
+.decl stack_pointer(Reg:reg_group)
 .output stack_pointer
 
-.decl return_val_reg(Reg:register)
+.decl return_val_reg(Reg:reg_group)
 
 /**
 The register that holds condition flags.
 */
-.decl condition_flags_reg(Reg:register)
+.decl condition_flags_reg(Reg:reg_group)
 
 /**
 A pc-relative address 'Val' is loaded into 'Reg' at address 'EA'.
 */
-.decl pc_relative_addr(EA:address,Reg:register,Val:number)
+.decl pc_relative_addr(EA:address,Reg:reg_group,Val:number)
 
 pc_relative_addr(0,"",0):- false.
 

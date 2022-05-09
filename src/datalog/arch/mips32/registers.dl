@@ -208,15 +208,6 @@ track_register("FR31","FR31").
 
 
 // Use the MIPS calling convention.
-function_non_maintained_reg("R4").
-function_non_maintained_reg("R5").
-function_non_maintained_reg("R6").
-function_non_maintained_reg("R7").
-
-function_non_maintained_reg("FR12").
-function_non_maintained_reg("FR13").
-function_non_maintained_reg("FR14").
-
 
 function_non_maintained_reg("AT").
 

@@ -55,8 +55,9 @@ inferred_main_dispatch(CallEA):-
      }.
 
 // call __x86.get_pc_thunk.REG
-pc_relative_addr(EA,Reg,PC):-
+pc_relative_addr(EA,RegGroup,PC):-
     get_pc_thunk(EA_thunk,Reg),
+    arch.track_register(Reg,RegGroup),
     direct_call(EA,EA_thunk),
     instruction(EA,Size,_,_,_,_,_,_,_,_),
     PC = as(EA+Size,number).
@@ -65,7 +66,7 @@ pc_relative_addr(EA,Reg,PC):-
 pc_relative_addr(EA,Reg,PC):-
     pc_load_call(_,EA),
     instruction_get_op(EA,_,Op),
-    op_regdirect(Op,Reg),
+    op_regdirect_contains_reg(Op,Reg),
     PC = as(EA,number).
 }
 
@@ -201,7 +202,8 @@ moved_label(EA_load,1,Address,Base):-
     def_used(StackFrame,BaseReg,EA_cmp,_),
     arch.cmp_operation(Operation),
     instruction(EA_cmp,Size,_,Operation,Op1,_,0,0,_,_),
-    op_indirect(Op1,"NONE",BaseReg,"NONE",_,StackPos,_),
+    op_indirect(Op1,"NONE",RawBaseReg,"NONE",_,StackPos,_),
+    arch.track_register(RawBaseReg,BaseReg),
     arch.jump(EA_cmp+Size),
 
     // Moved-value offset is the offset from the reference data object.

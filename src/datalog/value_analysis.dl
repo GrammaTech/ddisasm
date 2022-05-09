@@ -58,14 +58,14 @@ or loop) and considering the value with most steps.
 
 */
 
-.decl value_reg_edge(EA:address,Reg:register,
-                EA_reg1:address,Reg1:register,Multiplier:number,Offset:number)
+.decl value_reg_edge(EA:address,Reg:reg_group,
+                EA_reg1:address,Reg1:reg_group,Multiplier:number,Offset:number)
 .output value_reg_edge
-.decl value_reg(EA:address,Reg:register,
-                EA_reg1:address,Reg1:register,Multiplier:number,Offset:number,steps:number)
+.decl value_reg(EA:address,Reg:reg_group,
+                EA_reg1:address,Reg1:reg_group,Multiplier:number,Offset:number,steps:number)
 .output value_reg
 
-.decl best_value_reg(EA:address,Reg:register,EA_from:address,Multiplier:number,Offset:number,type:symbol)
+.decl best_value_reg(EA:address,Reg:reg_group,EA_from:address,Multiplier:number,Offset:number,type:symbol)
 .output best_value_reg
 
 // mov reg immediate
@@ -78,7 +78,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
 Generate distinct stack frames (identifying them by the location at which the
 stack or frame pointer register is defined.)
 */
-.decl stack_frame(EA:address,BaseReg:register)
+.decl stack_frame(EA:address,BaseReg:reg_group)
 
 stack_frame(EA,BaseReg):-
     // Restricted with def_used_for_address because a stack frame is not very
@@ -89,7 +89,7 @@ stack_frame(EA,BaseReg):-
         arch.stack_pointer(BaseReg)
     ).
 
-.decl reg_stored_in_stack(EA:address,Reg:register,Base:register,StackPos:number,StackFrameDefinedAt:address)
+.decl reg_stored_in_stack(EA:address,Reg:reg_group,Base:reg_group,StackPos:number,StackFrameDefinedAt:address)
 .output reg_stored_in_stack
 
 reg_stored_in_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
@@ -99,7 +99,7 @@ reg_stored_in_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
     arch.track_register(RawReg,Reg),
     arch.track_register(RawBase,Base).
 
-.decl reg_loaded_from_stack(EA:address,Reg:register,Base:register,StackPos:number,StackFrameDefinedAt:address)
+.decl reg_loaded_from_stack(EA:address,Reg:reg_group,Base:reg_group,StackPos:number,StackFrameDefinedAt:address)
 .output reg_loaded_from_stack
 
 reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
@@ -115,7 +115,7 @@ Track where a value is loaded from the stack and then used as an address.
 We'll only track stack store-load pairs if the stack variable is eventually
 used for an address.
 */
-.decl stack_var_used_for_address(StackFrameDefinedAt:address,Base:register,StackPos:number)
+.decl stack_var_used_for_address(StackFrameDefinedAt:address,Base:reg_group,StackPos:number)
 
 // Before the stack var is stored, it is used for an address.
 stack_var_used_for_address(StackFrameDefinedAt,Base,StackPos):-
@@ -135,7 +135,7 @@ This is flow insensitive but we make sure that the load and store refer to the
 same stack frame, identified by the address where the stack or frame pointer is
 defined.
 */
-.decl stack_load_store_pair(StoreEA:address,LoadEA:address,StoreReg:register,LoadReg:register)
+.decl stack_load_store_pair(StoreEA:address,LoadEA:address,StoreReg:reg_group,LoadReg:reg_group)
 
 stack_load_store_pair(EAStore,EALoad,StoreReg,LoadReg):-
     stack_var_used_for_address(StackFrameDefinedAt,Base,StackPos),
@@ -145,7 +145,7 @@ stack_load_store_pair(EAStore,EALoad,StoreReg,LoadReg):-
 /**
 A stack frame is defined in terms of a previous stack frame.
 */
-.decl adjacent_stack_frame(PrevAt:address,NextAt:address,BaseReg:register,Offset:number)
+.decl adjacent_stack_frame(PrevAt:address,NextAt:address,BaseReg:reg_group,Offset:number)
 
 adjacent_stack_frame(PrevEA,NextEA,BaseReg,Offset):-
     def_used(PrevEA,BaseReg,NextEA,_),
@@ -246,7 +246,7 @@ value_reg_edge(EA,Dst,EA_prev,Src,Mult,Immediate):-
 /** A register is defined using an unknown value
  This predicate is used to create trivial leaf edges in
  the value_reg graph `step_limit` .*/
-.decl value_reg_unsupported(EA:address, Reg:register)
+.decl value_reg_unsupported(EA:address, Reg:reg_group)
 
 // Load a register from a non-constant memory address
 value_reg_unsupported(EA,Reg):-
@@ -308,7 +308,7 @@ with two register `Reg1` and `Reg2` defined at `EA_def1` and `EA_def1`.
 
 The operation is Reg_def = Reg1 + Reg2 * Mult + Offset.
 */
-.decl reg_reg_arithmetic_operation_defs(EA:address,Reg_def:register,EA_def1:address,Reg1:register,EA_def2:address,Reg2:register,Mult:number,Offset:number)
+.decl reg_reg_arithmetic_operation_defs(EA:address,Reg_def:reg_group,EA_def1:address,Reg1:reg_group,EA_def2:address,Reg2:reg_group,Mult:number,Offset:number)
 
 reg_reg_arithmetic_operation_defs(EA,Reg_def,EA_def1,Reg1,EA_def2,Reg2,Mult,Offset):-
     arch.reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
@@ -404,7 +404,7 @@ be where Reg is defined, if that value is moved to a different register later).
 
 EARegDef: The address where Reg is defined as Value. Often EADef = EARegDef.
 */
-.decl const_value_reg_used(UsedEA:address,EADef:address,EARegDef:address,Reg:register,Value:number)
+.decl const_value_reg_used(UsedEA:address,EADef:address,EARegDef:address,Reg:reg_group,Value:number)
 
 const_value_reg_used(UsedEA,EADef,EARegDef,Reg,Value):-
     value_reg(EARegDef,Reg,EADef,"NONE",0,Value,_),

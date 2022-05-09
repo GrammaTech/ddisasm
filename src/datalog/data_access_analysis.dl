@@ -74,17 +74,17 @@ data_access(EA,Op_index,RegSegment,RegBase,RegIndex,Mult,Offset,Size):-
 .decl value_reg_at_operand_loop(EA:address,Op_index:operand_index,Reg:register,EA_from:address,Mult:number,Offset:number,Type:symbol)
 
 
-value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,BaseAddress,"loop"),
-value_reg_at_operand_loop(EA,Op_index,Reg,EA_from,Mult,BaseAddress,"loop"):-
-    data_access(EA,Op_index,_,Reg2,Reg3,_,_,_),
+value_reg_at_operand(EA,Op_index,RawReg,EA_from,Mult,BaseAddress,"loop"),
+value_reg_at_operand_loop(EA,Op_index,RawReg,EA_from,Mult,BaseAddress,"loop"):-
+    data_access(EA,Op_index,_,RawReg2,RawReg3,_,_,_),
     (
-        Reg = Reg2,
-        Reg3 = Reg3 // avoid warning
+        RawReg = RawReg2,
+        UNUSED(RawReg3)
         ;
-        Reg = Reg3,
-        Reg2 = Reg2 // avoid warning
+        RawReg = RawReg3,
+        UNUSED(RawReg2)
     ),
-    Reg != "NONE",
+    arch.track_register(RawReg,Reg),
     def_used(EA_def,Reg,EA,Op_index),
     best_value_reg(EA_def,Reg,EA_from,Mult,Offset,"loop"),
     (
@@ -97,17 +97,17 @@ value_reg_at_operand_loop(EA,Op_index,Reg,EA_from,Mult,BaseAddress,"loop"):-
         BaseAddress = Offset-Mult
     ).
 
-value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,Offset_final,Type):-
-    data_access(EA,Op_index,_,Reg2,Reg3,_,_,_),
+value_reg_at_operand(EA,Op_index,RawReg,EA_from,Mult,Offset_final,Type):-
+    data_access(EA,Op_index,_,RawReg2,RawReg3,_,_,_),
     (
-        Reg = Reg2,
-        Reg3 = Reg3 // avoid warning
+        RawReg = RawReg2,
+        UNUSED(RawReg3)
         ;
-        Reg = Reg3,
-        Reg2 = Reg2 // avoid warning
+        RawReg = RawReg3,
+        UNUSED(RawReg2)
     ),
-    Reg != "NONE",
-    !value_reg_at_operand_loop(EA,Op_index,Reg,_,_,_,_),
+    arch.track_register(RawReg,Reg),
+    !value_reg_at_operand_loop(EA,Op_index,RawReg,_,_,_,_),
     def_used(EA_def,Reg,EA,Op_index),
     best_value_reg(EA_def,Reg,EA_from,Mult,Offset,Type),
     (
@@ -119,16 +119,16 @@ value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,Offset_final,Type):-
     ).
 
 // case where there is not apparent definition
-value_reg_at_operand(EA,Op_index,Reg,0,1,0,"incomplete"):-
-    data_access(EA,Op_index,_,Reg2,Reg3,_,_,_),
+value_reg_at_operand(EA,Op_index,RawReg,0,1,0,"incomplete"):-
+    data_access(EA,Op_index,_,RawReg2,RawReg3,_,_,_),
     (
-        Reg = Reg2,
-        Reg3 = Reg3 // avoid warning
+        RawReg = RawReg2,
+        UNUSED(RawReg3)
         ;
-        Reg = Reg3,
-        Reg2 = Reg2 // avoid warning
+        RawReg = RawReg3,
+        UNUSED(RawReg2)
     ),
-    Reg != "NONE",
+    arch.track_register(RawReg,Reg),
     !def_used(_,Reg,EA,Op_index).
 
 // NONE registers have 0 value
@@ -136,10 +136,10 @@ value_reg_at_operand(EA,Op_index,Reg,0,0,0,"complete"):-
     data_access(EA,Op_index,_,Reg2,Reg3,_,_,_),
     (
         Reg = Reg2,
-        Reg3 = Reg3 // avoid warning
+        UNUSED(Reg3)
         ;
         Reg = Reg3,
-        Reg2 = Reg2 // avoid warning
+        UNUSED(Reg2)
     ),
     Reg = "NONE".
 

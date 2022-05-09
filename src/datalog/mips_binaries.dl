@@ -118,7 +118,7 @@ got_reference(Got_entry,SymbolName):-
     dynamic_entry("MIPS_LOCAL_GOTNO",NumLocalEntries),
     Got_entry < Beg+4*NumLocalEntries.
 
-.decl hi_load(ea:address, reg:register, upper:number)
+.decl hi_load(ea:address, reg:reg_group, upper:number)
 
 // LUI <Register> <Immediate>
 hi_load(EA,Reg,Upper):-
@@ -128,7 +128,7 @@ hi_load(EA,Reg,Upper):-
     op_immediate(BaseOp, Upper),
     op_regdirect_contains_reg(RegOp,Reg).
 
-.decl hi_load_prop(reg_restore_ea:address, ea:address, reg:register, upper:number, type:symbol)
+.decl hi_load_prop(reg_restore_ea:address, ea:address, reg:reg_group, upper:number, type:symbol)
 .output hi_load_prop
 
 hi_load_prop(EA,EA,Reg,Upper,"direct"):-
@@ -228,8 +228,8 @@ split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset+T9Value,address), "ADDU"
 //       move reg2, reg
 //       lw/sw reg3, lo(xxx)(reg2)
 split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset,address), "LoadStore") :-
-    hi_load_prop(RegRestoreEA,EA_hi,Reg2,Upper,_),
-    def_used(RegRestoreEA,Reg2,EA_lo,_),
+    hi_load_prop(RegRestoreEA,EA_hi,Reg,Upper,_),
+    def_used(RegRestoreEA,Reg,EA_lo,_),
 
     // lw/sw reg3, lo(xxx)(reg2)
     instruction_get_operation(EA_lo, Operation),
@@ -240,7 +240,8 @@ split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset,address), "LoadStore") :
         arch.store_operation(Operation),
         instruction_get_dest_op(EA_lo,_,Op)
     ),
-    op_indirect(Op,"NONE",Reg2,"NONE",1,Offset,_).
+    op_indirect(Op,"NONE",RawReg,"NONE",1,Offset,_),
+    arch.track_register(RawReg,Reg).
 
 split_load_point(EA_hi,EA_lo,Dest_addr,Type,0,"base"):-
     split_load_candidate(EA_hi,EA_lo,Dest_addr,Type).
@@ -596,7 +597,8 @@ plt_entry(EA,Function):-
     instruction_get_operation(NextEA, Operation),
     arch.load_operation(Operation),
     instruction_get_src_op(NextEA,_,Op),
-    op_indirect(Op,"NONE",Reg,"NONE",_,Offset,_),
+    op_indirect(Op,"NONE",RawReg,"NONE",_,Offset,_),
+    arch.track_register(RawReg,Reg),
     Dest_addr = as(Upper*2^16+Offset,address),
 
     next(NextEA,NextEA2),

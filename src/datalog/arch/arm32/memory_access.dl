@@ -65,7 +65,7 @@ memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,"NONE",0,Offset):-
         contains("STM", Operation), AccessType = "STORE", SrcIdx = 1, DstIdx = 2
     ),
     op_register_bitfield(Op1,Index,Rt),
-    op_regdirect_contains_reg(Op2,Rn),
+    op_regdirect(Op2,Rn),
     arch.pointer_size(Pt_size),
     Offset = as(Index * Pt_size, number).
 
@@ -87,7 +87,7 @@ memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,Rm,Mult,Offset):-
 
 // Post-index immediate (2)
 memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,"NONE",0,0),
-reg_arithmetic_operation(EA,Rn,Rn,1,Offset):-
+reg_arithmetic_operation(EA,RnTracked,RnTracked,1,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     (
         load_operation(Operation), AccessType = "LOAD", SrcIdx = 1, DstIdx = 3;
@@ -96,11 +96,12 @@ reg_arithmetic_operation(EA,Rn,Rn,1,Offset):-
     op_regdirect(Op3,Rt),
     instruction_writeback(EA),
     op_indirect(Op1,_,Rn,"NONE",_,0,_),
-    op_immediate(Op2,Offset).
+    op_immediate(Op2,Offset),
+    arch.track_register(Rn,RnTracked).
 
 // Post-index register (3)
 memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,"NONE",0,0),
-reg_reg_arithmetic_operation(EA,Rn,Rn,Rm,1,0):-
+reg_reg_arithmetic_operation(EA,RnTracked,RnTracked,RmTracked,1,0):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     (
         load_operation(Operation), AccessType = "LOAD", SrcIdx = 1, DstIdx = 3;
@@ -109,8 +110,9 @@ reg_reg_arithmetic_operation(EA,Rn,Rn,Rm,1,0):-
     op_regdirect(Op3,Rt),
     instruction_writeback(EA),
     op_indirect(Op1,_,Rn,"NONE",_,0,_),
-    op_regdirect(Op2,Rm).
-
+    op_regdirect(Op2,Rm),
+    arch.track_register(Rn,RnTracked),
+    arch.track_register(Rm,RmTracked).
 
 // Doubleword operations
 
@@ -133,7 +135,7 @@ memory_access(AccessType,EA,SrcIdx2,DstIdx2,Rt2,Rn,Rm,Mult,Offset+4):-
 // Post-index immediate (5)
 memory_access(AccessType,EA,SrcIdx1,DstIdx1,Rt,Rn,"NONE",0,0),
 memory_access(AccessType,EA,SrcIdx2,DstIdx2,Rt2,Rn,"NONE",0,4),
-reg_arithmetic_operation(EA,Rn,Rn,1,Offset):-
+reg_arithmetic_operation(EA,RnTracked,RnTracked,1,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,Op4,_,_),
     (
         load_operation(Operation), AccessType = "LOAD", SrcIdx1 = 2, SrcIdx2 = 2, DstIdx1 = 4, DstIdx2 = 1;
@@ -143,12 +145,13 @@ reg_arithmetic_operation(EA,Rn,Rn,1,Offset):-
     op_regdirect(Op1,Rt2),
     instruction_writeback(EA),
     op_indirect(Op2,_,Rn,"NONE",_,0,_),
-    op_immediate(Op3,Offset).
+    op_immediate(Op3,Offset),
+    arch.track_register(Rn,RnTracked).
 
 // Post-index register (6)
 memory_access(AccessType,EA,SrcIdx1,DstIdx1,Rt,Rn,"NONE",0,0),
 memory_access(AccessType,EA,SrcIdx2,DstIdx2,Rt2,Rn,"NONE",0,4),
-reg_reg_arithmetic_operation(EA,Rn,Rn,Rm,1,0):-
+reg_reg_arithmetic_operation(EA,RnTracked,RnTracked,RmTracked,1,0):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,Op4,_,_),
     (
         load_operation(Operation), AccessType = "LOAD", SrcIdx1 = 2, SrcIdx2 = 2, DstIdx1 = 4, DstIdx2 = 1;
@@ -158,19 +161,24 @@ reg_reg_arithmetic_operation(EA,Rn,Rn,Rm,1,0):-
     op_regdirect(Op1,Rt2),
     instruction_writeback(EA),
     op_indirect(Op2,_,Rn,"NONE",_,0,_),
-    op_regdirect(Op3,Rm).
+    op_regdirect(Op3,Rm),
+    arch.track_register(Rn,RnTracked),
+    arch.track_register(Rm,RmTracked).
 
 
 // Generate arithmetic operations for pre-index writeback cases.
 // Handles single-word, double-word, and LDM/STM.
-reg_arithmetic_operation(EA,Rn,Rn,1,Offset):-
+reg_arithmetic_operation(EA,RnTracked,RnTracked,1,Offset):-
     memory_access(_,EA,_,_,_,Rn,"NONE",_,Offset),
     !memory_access(_,EA,_,_,_,Rn,"NONE",_,Offset-4), // Don't match the second access from a doubleword operation.
     instruction_writeback(EA),
-    Offset != 0.
+    Offset != 0,
+    arch.track_register(Rn,RnTracked).
 
-reg_reg_arithmetic_operation(EA,Rn,Rn,Rm,Mult,Offset):-
+reg_reg_arithmetic_operation(EA,RnTracked,RnTracked,RmTracked,Mult,Offset):-
     memory_access(_,EA,_,_,_,Rn,Rm,Mult,Offset),
     !memory_access(_,EA,_,_,_,Rn,Rm,Mult,Offset-4), // Don't match the second access from a doubleword operation.
     instruction_writeback(EA),
-    Rm != "NONE".
+    Rm != "NONE",
+    arch.track_register(Rn,RnTracked),
+    arch.track_register(Rm,RmTracked).

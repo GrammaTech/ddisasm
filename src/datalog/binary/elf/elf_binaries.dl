@@ -156,7 +156,7 @@ plt_data_reference(EA):-
 /**
 Value of register 'Reg' at address 'EA' is a GOT-relative base reference.
 */
-.decl reg_has_got(EA:address,Reg:register)
+.decl reg_has_got(EA:address,Reg:reg_group)
 .output reg_has_got
 
 /**
@@ -207,9 +207,10 @@ got_relative_operand(EA,Index,Dest):-
     def_used(EA_base,Reg,EA,Index),
     instruction_get_op(EA,Index,Op),
     (
-      op_indirect(Op,"NONE",Reg,_,_,Offset,_);
-      op_indirect(Op,"NONE",_,Reg,1,Offset,_)
+      op_indirect(Op,"NONE",RawReg,_,_,Offset,_);
+      op_indirect(Op,"NONE",_,RawReg,1,Offset,_)
     ),
+    arch.track_register(RawReg,Reg),
     Offset != 0,
     got_reference_pointer(Got),
     Dest=Got+as(Offset,address).

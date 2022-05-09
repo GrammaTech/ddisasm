@@ -340,11 +340,11 @@ moved_label(EA,Op_index,Dest,NewDest):-
 // consider the case where the immediate is a loop bound
 
 
-.decl cmp_reg_to_reg(EA:address,Reg1:register,Reg2:register)
+.decl cmp_reg_to_reg(EA:address,Reg1:reg_group,Reg2:reg_group)
 
 .decl moved_immediate_candidate(EA:address,Op_index:operand_index,Immediate:address,New_immmediate:address)
 
-.decl mov_pc_relative_immediate_to_reg(EA:address,Reg:register,Imm_index:operand_index,Immediate:number)
+.decl mov_pc_relative_immediate_to_reg(EA:address,Reg:reg_group,Imm_index:operand_index,Immediate:number)
 
 mov_pc_relative_immediate_to_reg(EA,Reg,1,Immediate):-
     code(EA),
@@ -363,7 +363,7 @@ cmp_reg_to_reg(EA,Reg1,Reg2):-
     instruction_get_op(EA,_,Op2), Op2!=Op1,
     op_regdirect_contains_reg(Op2,Reg2).
 
-.decl dest_enlarged_data_section(EA:address,Reg:register,NewDest:address,
+.decl dest_enlarged_data_section(EA:address,Reg:reg_group,NewDest:address,
             Beg:address,End:address,OldBeg:address,OldEnd:address)
 .output dest_enlarged_data_section
 
@@ -384,8 +384,9 @@ dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs,End+MultAbs,Beg,En
 dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs-OffsetAddr,End+MultAbs-OffsetAddr,Beg,End):-
     best_value_reg(EA_def,Reg,EA_from,Mult,_,"loop"),
     def_used(EA_def,Reg,EA_used,Op_index),
-    value_reg_at_operand_loop(EA_used,Op_index,Reg,EA_from,Mult,NewDest,"loop"), NewDest >= 0,
-    data_access(EA_used,Op_index,"NONE",Reg,"NONE",_,Offset,_), Offset > 0,
+    value_reg_at_operand_loop(EA_used,Op_index,RawReg,EA_from,Mult,NewDest,"loop"), NewDest >= 0,
+    data_access(EA_used,Op_index,"NONE",RawReg,"NONE",_,Offset,_), Offset > 0,
+    arch.track_register(RawReg,Reg),
     OffsetAddr = as(Offset,address),
     @functor_data_exists(OffsetAddr,1) = 0,
     NewDestAddr = as(NewDest,address),
@@ -399,7 +400,7 @@ dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs-OffsetAddr,End+Mul
 // immediate used to access memory
 moved_label_class(EA_from,Imm_index,"immediate used to access memory"),
 moved_immediate_candidate(EA_from,Imm_index,ImmediateAddr,NewDest):-
-    data_access(EA_access,Op_index,_,Reg2,Reg3,_,_,_),
+    data_access(EA_access,Op_index,_,RawReg2,RawReg3,_,_,_),
     data_access_pattern_candidate(NewDest,_,Mult,EA_access),
 
     regular_data_section(Name),
@@ -407,14 +408,15 @@ moved_immediate_candidate(EA_from,Imm_index,ImmediateAddr,NewDest):-
     NewDest >= Beg,
     NewDest < End,
     (
-        Reg = Reg2,
-        Reg3 = Reg3 // avoid warning
+        RawReg = RawReg2,
+        UNUSED(RawReg3)
         ;
-        Reg = Reg3,
-        Reg2 = Reg2 // avoid warning
+        RawReg = RawReg3,
+        UNUSED(RawReg2)
     ),
-    value_reg_at_operand(EA_access,Op_index,Reg,EA_from,_,_,Type),
+    value_reg_at_operand(EA_access,Op_index,RawReg,EA_from,_,_,Type),
     Type != "incomplete",
+    arch.track_register(RawReg,Reg),
     (
         binary_type("EXEC"),
         arch.move_reg_imm_tracked(EA_from,Reg,Immediate,Imm_index), code(EA_from), Immediate >= 0

@@ -47,7 +47,14 @@ move_reg_imm(EA,Reg,0,1):-
     move_reg_reg(EA,Reg,"ZERO").
 
 move_reg_imm(EA,Reg,Immediate,1):-
-    arch.reg_arithmetic_operation(EA,Reg,"ZERO",_,Immediate).
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
+    (
+        Operation = "ADDI";
+        Operation = "ADDIU"
+    ),
+    op_regdirect(Op3,Reg),
+    op_regdirect(Op1,"ZERO"),
+    op_immediate(Op2,Immediate).
 
 store_operation("ST").
 store_operation("ST.B").
