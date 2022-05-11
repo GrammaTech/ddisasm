@@ -304,10 +304,6 @@ DirectReg, BaseReg, and IndexReg may be untracked registers or unstandardized na
     DirectReg:register,BaseReg:reg_nullable,IndexReg:reg_nullable,Mult:number,Offset:number)
 .output memory_access
 
-// TODO: remove when MIPS has memory_access implemented.
-memory_access("",0,0,0,"","","",0,0):-
-    false.
-
 /**
 Represents a load from memory to a register.
 
