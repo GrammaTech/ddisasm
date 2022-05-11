@@ -56,7 +56,7 @@ flags_and_jump_pair(EA_flags,EA_jmp,CC):-
 A pair of instructions that compares a register to an immediate and then
 conditionally jumps.
 */
-.decl compare_and_jump_immediate(EA_cmp:address,EA_jmp:address,CC:condition_code,Reg:reg_group,Immediate:number)
+.decl compare_and_jump_immediate(EA_cmp:address,EA_jmp:address,CC:condition_code,Reg:register,Immediate:number)
 .output compare_and_jump_immediate
 
 // Branch instruction that uses the result of a compare-to-immediate
@@ -78,8 +78,8 @@ compare_and_jump_immediate(EA,EA,CC,Reg,0):-
         op_regdirect_contains_reg(Op,Reg)
         ;
         // Implicit register (e.g., Intel "JECXZ")
-        register_access(EA,"R",RawReg),
-        arch.track_register(RawReg,Reg),
+        register_access(EA,"R",RegIn),
+        reg_map(RegIn,Reg),
         !op_regdirect_contains_reg(Op,Reg)
     ).
 
@@ -87,7 +87,7 @@ compare_and_jump_immediate(EA,EA,CC,Reg,0):-
 A pair of instructions that compares a register to another register and then
 conditionally jumps.
 */
-.decl compare_and_jump_register(EA_cmp:address,EA_jmp:address,CC:condition_code,Reg1:reg_group,Reg2:reg_group)
+.decl compare_and_jump_register(EA_cmp:address,EA_jmp:address,CC:condition_code,Reg1:register,Reg2:register)
 
 // cmp-and-branch pairs using a flags register
 compare_and_jump_register(EA_cmp,EA_jmp,CC,Reg1,Reg2):-
@@ -140,7 +140,7 @@ An instruction at EA limits the value of Reg at some MIN or MAX value.
 From: the address that creates the limit
 To: the address at which the limit is active
 */
-.decl value_reg_limit(From:address,To:address,Reg:reg_group,Value:number,LimitType:limit_type)
+.decl value_reg_limit(From:address,To:address,Reg:register,Value:number,LimitType:limit_type)
 .output value_reg_limit
 
 // Each comparison generates two limits - the fallthough case is limited one
@@ -148,6 +148,7 @@ To: the address at which the limit is active
 value_reg_limit(EA_jmp,EA_branch,Reg,BranchValue,BranchLT),
 value_reg_limit(EA_jmp,EA_fallthrough,Reg,FallthroughValue,FallthroughLT):-
     compare_and_jump_immediate(_,EA_jmp,CC,Reg,Immediate),
+    track_register(Reg),
     limit_type_map(CC,BranchLT,FallthroughLT,BranchOffset,FallthroughOffset),
     direct_jump(EA_jmp,EA_branch),
     may_fallthrough(EA_jmp,EA_fallthrough),
@@ -174,15 +175,15 @@ value_reg_limit(EA_target,EA_limited,Reg,Value,LimitType):-
         UNUSED(BranchLT), UNUSED(BranchOffset)
     ),
     // The value is loaded from this IndirectOp into a register immediately after the jump.
-    arch.load(EA_target,_,_,Reg_untracked,_,_,_,_),
-    arch.track_register(Reg_untracked,Reg),
+    arch.load(EA_target,_,_,Reg,_,_,_,_),
+    track_register(Reg),
     instruction_get_op(EA_target,_,IndirectOp),
     local_next(EA_target,EA_limited).
 
 /**
 A register is compared as NE or EQ and used for a conditional jump.
 */
-.decl cmp_defines(EA_jmp:address,EA_dst:address,Reg:reg_group)
+.decl cmp_defines(EA_jmp:address,EA_dst:address,Reg:register)
 
 cmp_defines(EA_jmp,EA_dst,Reg):-
     compare_and_jump_immediate(_,EA_jmp,"E",Reg,_),
@@ -227,7 +228,7 @@ Basic-block propagation of value_reg_limit
 From: the address that creates the limit
 To: the address at which the limit is active
 */
-.decl last_value_reg_limit(From:address,To:address,Reg:reg_group,Value:number,LimitType:limit_type)
+.decl last_value_reg_limit(From:address,To:address,Reg:register,Value:number,LimitType:limit_type)
 .output last_value_reg_limit
 
 last_value_reg_limit(From,To,Reg,Value,LimitType):-
@@ -266,7 +267,7 @@ last_value_reg_limit(EA_mov,EA_next,DstReg,PropagatedVal,PropagatedType):-
     code_in_block(EA,Block),
     block_last_instruction(Block,BlockEnd),
     code_in_block(EA_mov,EA),
-    arch.move_reg_reg_tracked(EA_mov,DstReg,SrcReg),
+    arch.move_reg_reg(EA_mov,DstReg,SrcReg),
     // The limit for the move is placed on the next instruction, because that is
     // where the limit becomes active. This is analagous to the limit propagated
     // from a previous block being placed at the beginning of the new block.

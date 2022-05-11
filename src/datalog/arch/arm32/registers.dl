@@ -26,39 +26,16 @@ This module stablishes basic information about register:
  - Whether they all callee or caller saved according to the ABI
 */
 
-track_register("R0","R0").
-track_register("R1","R1").
-track_register("R2","R2").
-track_register("R3","R3").
-track_register("R4","R4").
-track_register("R5","R5").
-track_register("R6","R6").
-track_register("R7","R7").
-track_register("R8","R8").
+// TODO: does capstone really generate both names (e.g., R9 and SB)?
 
-track_register("R9","SB").
-track_register("SB","SB").
+reg_map_rule("R9","SB").
+reg_map_rule("R10","SL").
+reg_map_rule("R11","FP").
+reg_map_rule("R12","IP").
+reg_map_rule("R13","SP").
+reg_map_rule("R14","LR").
 
-track_register("R10","SL").
-track_register("SL","SL").
-
-track_register("R11","FP").
-track_register("FP","FP").
-
-track_register("R12","IP").
-track_register("IP","IP").
-
-track_register("R13","SP").
-track_register("SP","SP").
-
-track_register("R14","LR").
-track_register("LR","LR").
-
-track_register("PC","PC").
-
-track_register("CPSR", "CPSR").
-
-.decl reg_index(RegName:reg_group,Index:unsigned)
+.decl reg_index(RegName:register,Index:unsigned)
 
 reg_index("R0",0).
 reg_index("R1",1).
@@ -77,6 +54,23 @@ reg_index("SP",13).
 reg_index("LR",14).
 reg_index("PC",15).
 
+general_purpose_reg("R0").
+general_purpose_reg("R1").
+general_purpose_reg("R2").
+general_purpose_reg("R3").
+general_purpose_reg("R4").
+general_purpose_reg("R5").
+general_purpose_reg("R6").
+general_purpose_reg("R7").
+general_purpose_reg("R8").
+general_purpose_reg("SB").
+general_purpose_reg("SL").
+general_purpose_reg("FP").
+general_purpose_reg("IP").
+general_purpose_reg("SP").
+general_purpose_reg("LR").
+general_purpose_reg("PC").
+
 // Use the ARM calling convention.
 function_non_maintained_reg("R0").
 function_non_maintained_reg("R1").
@@ -87,12 +81,12 @@ function_non_maintained_reg("IP").
 function_non_maintained_reg("SP").
 function_non_maintained_reg("LR").
 
-pc_register("PC").
+pc_reg("PC").
 
 frame_pointer("FP").
 
 stack_pointer("SP").
 
-return_val_reg("R0").
+return_reg("R0").
 
 condition_flags_reg("CPSR").

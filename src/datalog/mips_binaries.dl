@@ -47,13 +47,14 @@ value_reg_edge(EALoad,"GP",EAPrev,"GP",1,0):-
     // StackFrameDefinedAt2: move fp, sp
     def_used(StackFrameDefinedAt,Reg_origin,StackFrameDefinedAt2,_),
     StackFrameDefinedAt != StackFrameDefinedAt2,
-    arch.move_reg_reg_tracked(StackFrameDefinedAt2,_,Reg_origin),
+    arch.move_reg_reg(StackFrameDefinedAt2,_,Reg_origin),
     StackFrameDefinedAt2 != StackFrameDefinedAt.
 
 // load word from got table: e.g., lw v0, -32696(gp)
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     instruction(EA,_,_,"LW",_,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg),
+    track_register(Reg),
     gp_relative_operand(EA,1,Offset_addr),
     data_word(Offset_addr, 4, Val).
 
@@ -69,7 +70,8 @@ value_reg_edge(EA,Reg,PrevEA1,Reg,1,as(PrevEA0,number)):-
     next(PrevEA1,EA),
     instruction_get_operation(EA, "ADDU"),
     instruction_get_dest_op(EA,_,DestOp),
-    op_regdirect_contains_reg(DestOp,Reg).
+    op_regdirect_contains_reg(DestOp,Reg),
+    track_register(Reg).
 
 .decl gp_relative_operand(src:address,index:operand_index, dest:address)
 .output gp_relative_operand
@@ -118,7 +120,7 @@ got_reference(Got_entry,SymbolName):-
     dynamic_entry("MIPS_LOCAL_GOTNO",NumLocalEntries),
     Got_entry < Beg+4*NumLocalEntries.
 
-.decl hi_load(ea:address, reg:reg_group, upper:number)
+.decl hi_load(ea:address, reg:register, upper:number)
 
 // LUI <Register> <Immediate>
 hi_load(EA,Reg,Upper):-
@@ -128,7 +130,7 @@ hi_load(EA,Reg,Upper):-
     op_immediate(BaseOp, Upper),
     op_regdirect_contains_reg(RegOp,Reg).
 
-.decl hi_load_prop(reg_restore_ea:address, ea:address, reg:reg_group, upper:number, type:symbol)
+.decl hi_load_prop(reg_restore_ea:address, ea:address, reg:register, upper:number, type:symbol)
 .output hi_load_prop
 
 hi_load_prop(EA,EA,Reg,Upper,"direct"):-
@@ -143,7 +145,7 @@ hi_load_prop(RegRestoreEA,EA,Reg2,Upper,"stack-restore"):-
 hi_load_prop(MoveEA,EA,Reg2,Upper,"move"):-
     hi_load(EA,Reg,Upper),
     def_used(EA,Reg,MoveEA,_),
-    arch.move_reg_reg_tracked(MoveEA,Reg2,Reg).
+    arch.move_reg_reg(MoveEA,Reg2,Reg).
 
 // Split-loads -------------------------------------------------------
 .decl split_load_candidate(ea_hi:address, ea_lo:address, dest:address, type:symbol)
@@ -240,8 +242,7 @@ split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset,address), "LoadStore") :
         arch.store_operation(Operation),
         instruction_get_dest_op(EA_lo,_,Op)
     ),
-    op_indirect(Op,"NONE",RawReg,"NONE",1,Offset,_),
-    arch.track_register(RawReg,Reg).
+    op_indirect_mapped(Op,"NONE",Reg,"NONE",1,Offset,_).
 
 split_load_point(EA_hi,EA_lo,Dest_addr,Type,0,"base"):-
     split_load_candidate(EA_hi,EA_lo,Dest_addr,Type).
@@ -597,8 +598,7 @@ plt_entry(EA,Function):-
     instruction_get_operation(NextEA, Operation),
     arch.load_operation(Operation),
     instruction_get_src_op(NextEA,_,Op),
-    op_indirect(Op,"NONE",RawReg,"NONE",_,Offset,_),
-    arch.track_register(RawReg,Reg),
+    op_indirect_mapped(Op,"NONE",Reg,"NONE",_,Offset,_),
     Dest_addr = as(Upper*2^16+Offset,address),
 
     next(NextEA,NextEA2),

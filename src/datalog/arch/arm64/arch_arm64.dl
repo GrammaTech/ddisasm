@@ -163,7 +163,7 @@ The referenced address of an ADRP or ADR instruction
 This intermediate relation is an optimization that allows performing non-
 recursive work before running the recursive rule adr_used.
 */
-.decl adr_dest(EA:address,Reg:reg_group,Dest:address)
+.decl adr_dest(EA:address,Reg:register,Dest:address)
 
 adr_dest(EA,Reg,as(Dest,address)):-
     // ADRP <Register> <Immediate>

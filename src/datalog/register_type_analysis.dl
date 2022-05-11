@@ -21,7 +21,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-.decl def_register_is_not_base_address(EA:address,Reg:reg_group)
+.decl def_register_is_not_base_address(EA:address,Reg:register)
 
 // register compared with non-symbolic
 def_register_is_not_base_address(EA_def,Reg):-

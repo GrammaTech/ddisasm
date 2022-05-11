@@ -156,7 +156,7 @@ plt_data_reference(EA):-
 /**
 Value of register 'Reg' at address 'EA' is a GOT-relative base reference.
 */
-.decl reg_has_got(EA:address,Reg:reg_group)
+.decl reg_has_got(EA:address,Reg:register)
 .output reg_has_got
 
 /**
@@ -207,10 +207,9 @@ got_relative_operand(EA,Index,Dest):-
     def_used(EA_base,Reg,EA,Index),
     instruction_get_op(EA,Index,Op),
     (
-      op_indirect(Op,"NONE",RawReg,_,_,Offset,_);
-      op_indirect(Op,"NONE",_,RawReg,1,Offset,_)
+      op_indirect_mapped(Op,"NONE",Reg,_,_,Offset,_);
+      op_indirect_mapped(Op,"NONE",_,Reg,1,Offset,_)
     ),
-    arch.track_register(RawReg,Reg),
     Offset != 0,
     got_reference_pointer(Got),
     Dest=Got+as(Offset,address).
@@ -240,8 +239,8 @@ get_pc_thunk(EA,Reg):-
     direct_call(_,EA),
     instruction(EA,Size,_,Operation,Op1,Op2,_,_,_,_),
     arch.move_operation(Operation),
-    op_regdirect(Op2,Reg),
-    op_indirect(Op1,"NONE","ESP","NONE",1,0,_),
+    op_regdirect_contains_reg(Op2,Reg),
+    op_indirect_mapped(Op1,"NONE","ESP","NONE",1,0,_),
     arch.return(EA+Size).
 
 got_reference(Got_entry,Symbol):-
@@ -550,12 +549,12 @@ abi_intrinsic(End,"__rela_iplt_end"):-
 //   mov RAX,OFFSET __start___libc_atexit+ CONSTANT
 moved_label_class(EAStop,ImmIndexStop,"libc atexit"),
 moved_immediate_candidate(EAStop,ImmIndexStop,ImmediateStopAddr,ImmediateStartAddr):-
-    arch.move_reg_imm_tracked(EAStart,_,ImmediateStart,_),
+    arch.move_reg_imm(EAStart,_,ImmediateStart,_),
     code(EAStart),
     ImmediateStartAddr = as(ImmediateStart, address),
     defined_symbol(ImmediateStartAddr,_,_,_,_,_,_,_,"__start___libc_atexit"),
     next(EAStart,EAStop),
-    arch.move_reg_imm_tracked(EAStop,_,ImmediateStop,ImmIndexStop),
+    arch.move_reg_imm(EAStop,_,ImmediateStop,ImmIndexStop),
     code(EAStop),
     ImmediateStopAddr = as(ImmediateStop, address),
     defined_symbol(ImmediateStopAddr,_,_,_,_,_,_,_,"__stop___libc_atexit").

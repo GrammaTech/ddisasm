@@ -95,29 +95,29 @@ relative_address(EA+Size,Size,TableStart,Ref,Dest,DestIsFirstOrSecond):-
 // detect jump tables precisely once we have all results of the analyses
 
 // auxiliary predicate for detecting accessing an element of a jump table.
-.decl jump_table_element_access(EA:address,Size:unsigned,TableStart:address,RegIndex:reg_group)
+.decl jump_table_element_access(EA:address,Size:unsigned,TableStart:address,RegIndex:register)
 
-jump_table_element_access(EA,Size,TableStartAddr,RegIndex):-
-    data_access(EA,_,"NONE","NONE",RawRegIndex,as(Size,number),TableStart,Size),
-    arch.track_register(RawRegIndex,RegIndex),
+jump_table_element_access(EA,Size,TableStartAddr,RegIndex_nn):-
+    data_access(EA,_,"NONE","NONE",RegIndex,as(Size,number),TableStart,Size),
+    reg_nonnull(RegIndex,RegIndex_nn),
     TableStartAddr = as(TableStart,address),
     data_segment(Beg,End),
     TableStartAddr >= Beg,
     TableStartAddr <= End.
 
-jump_table_element_access(EA,1,TableStartAddr,RegBase):-
-    data_access(EA,_,"NONE",RawRegBase,"NONE",_,TableStart,1),
-    arch.track_register(RawRegBase,RegBase),
+jump_table_element_access(EA,1,TableStartAddr,RegBase_nn):-
+    data_access(EA,_,"NONE",RegBase,"NONE",_,TableStart,1),
+    reg_nonnull(RegBase,RegBase_nn),
     TableStartAddr = as(TableStart,address),
     data_segment(Beg,End),
     TableStartAddr >= Beg,
     TableStartAddr <= End.
 
-jump_table_element_access(EA,Size,TableStartAddr,RegIndex):-
-    data_access(EA,_,"NONE",RawRegBase,RawRegIndex,as(Size,number),Offset,Size),
-    arch.track_register(RawRegBase,RegBase),
-    arch.track_register(RawRegIndex,RegIndex),
-    const_value_reg_used(EA,_,_,RegBase,Base),
+jump_table_element_access(EA,Size,TableStartAddr,RegIndex_nn):-
+    data_access(EA,_,"NONE",RegBase,RegIndex,as(Size,number),Offset,Size),
+    reg_nonnull(RegBase,RegBase_nn),
+    reg_nonnull(RegIndex,RegIndex_nn),
+    const_value_reg_used(EA,_,_,RegBase_nn,Base),
     TableStartAddr = as(Base+Offset,address),
     data_segment(Beg,End),
     TableStartAddr >= Beg,
@@ -125,11 +125,11 @@ jump_table_element_access(EA,Size,TableStartAddr,RegIndex):-
 
 // sometimes the regBase contains the index (already multiplied)
 // and the regIndex contains the base address
-jump_table_element_access(EA,Size,TableStartAddr,RegBase):-
-    data_access(EA,_,"NONE",RawRegBase,RawRegIndex,1,0,Size),
-    arch.track_register(RawRegBase,RegBase),
-    arch.track_register(RawRegIndex,RegIndex),
-    const_value_reg_used(EA,_,_,RegIndex,TableStart),
+jump_table_element_access(EA,Size,TableStartAddr,RegBase_nn):-
+    data_access(EA,_,"NONE",RegBase,RegIndex,1,0,Size),
+    reg_nonnull(RegBase,RegBase_nn),
+    reg_nonnull(RegIndex,RegIndex_nn),
+    const_value_reg_used(EA,_,_,RegIndex_nn,TableStart),
     TableStartAddr = as(TableStart,address),
     data_segment(Beg,End),
     TableStartAddr >= Beg,
@@ -235,8 +235,7 @@ jump_table_start(EA_jump,4,TableStart,TableReference,1):-
     arch.reg_reg_arithmetic_operation(EA_base,Reg_jump,Reg_got,_,1,0),
     // Jump to register.
     def_used(EA_base,_,EA_jump,_),
-    reg_jump(EA_jump,Reg_jump_untracked),
-    arch.track_register(Reg_jump_untracked,Reg_jump).
+    reg_jump(EA_jump,Reg_jump).
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // propagate jump tables

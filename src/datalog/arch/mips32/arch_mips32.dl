@@ -41,20 +41,15 @@ move_reg_imm(EA,Reg,Value,1):-
     instruction(EA,_,_,"LUI",Op1,Op2,0,0,_,_),
     op_immediate(Op1,Immediate),
     Value = Immediate bshl 16,
-    op_regdirect(Op2,Reg).
+    op_regdirect_contains_reg(Op2,Reg).
 
 move_reg_imm(EA,Reg,0,1):-
-    move_reg_reg(EA,Reg,"ZERO").
+    zero_reg(Zero),
+    move_reg_reg(EA,Reg,Zero).
 
 move_reg_imm(EA,Reg,Immediate,1):-
-    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
-    (
-        Operation = "ADDI";
-        Operation = "ADDIU"
-    ),
-    op_regdirect(Op3,Reg),
-    op_regdirect(Op1,"ZERO"),
-    op_immediate(Op2,Immediate).
+    zero_reg(Zero),
+    reg_arithmetic_operation(EA,Reg,Zero,_,Immediate).
 
 store_operation("ST").
 store_operation("ST.B").

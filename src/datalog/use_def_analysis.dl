@@ -39,23 +39,23 @@ The traversal of def_used_for_address is kept intra-procedural (not following ca
 
 
 // register is defined in this location
-.decl def(EA:address,Reg:reg_group)
+.decl def(EA:address,Reg:register)
 
 /**
 Instruction at address 'EA' uses register 'Reg' at operand index 'Index'.
 */
-.decl used(EA:address,Reg:reg_group,Index:operand_index)
+.decl used(EA:address,Reg:register,Index:operand_index)
 
 //The 'reg' is defined in 'ea_def' and used in 'ea_used' in the operand with index 'index_used'
-.decl def_used(ea_def:address,reg:reg_group,ea_used:address,index_used:operand_index)
+.decl def_used(ea_def:address,reg:register,ea_used:address,index_used:operand_index)
 .output def_used
 
-.decl def_used_intra(ea_def:address,reg:reg_group,ea_used:address,index_used:operand_index)
+.decl def_used_intra(ea_def:address,reg:register,ea_used:address,index_used:operand_index)
 .output def_used_intra
 
 // a register is implicitly defined by being compared to a constant and then jumping
 // this definition only takes place in between the jump and the target that implies equality
-.decl flow_def(EA:address,Reg:reg_group,EA_next:address,Value:number)
+.decl flow_def(EA:address,Reg:register,EA_next:address,Value:number)
 //////////////////////////////////////////////////////////////////////////////
 //local underapproximation of control flow
 .decl local_next(ea:address,ea_next:address) inline
@@ -108,30 +108,46 @@ block_next(Block,EA,Block2):-
 //////////////////////////////////////////////////////////////////////////////
 // Main definitions
 
+/**
+Which registers are tracked for use-def and value analysis.
+*/
+.decl track_register(Reg:register)
+
+track_register(Reg):-
+    arch.general_purpose_reg(Reg);
+    arch.frame_pointer(Reg);
+    arch.stack_pointer(Reg);
+    arch.return_reg(Reg);
+    arch.condition_flags_reg(Reg).
+
 // Define any registers defined by the instruction
 def(EA,Reg):-
-    arch.defines_reg(EA,Reg).
+    arch.defines_reg(EA,Reg),
+    track_register(Reg).
 
 // A call "defines" all caller-saved registers
 def(EA,Reg):-
     arch.call(EA,_),
     !arch.delay_slot(EA,_),
-    arch.function_non_maintained_reg(Reg).
+    arch.function_non_maintained_reg(Reg),
+    track_register(Reg).
 
 // A call "defines" all caller-saved registers (variant for delay slots)
 def(EA,Reg):-
     arch.call(Call,_),
     arch.delay_slot(Call,EA),
-    arch.function_non_maintained_reg(Reg).
+    arch.function_non_maintained_reg(Reg),
+    track_register(Reg).
 
-def(EA,TrackedReg):-
+def(EA,Reg):-
     direct_call(EA,EA_pc_thunk),
     get_pc_thunk(EA_pc_thunk,Reg),
-    arch.track_register(Reg,TrackedReg).
+    track_register(Reg).
 
 flow_def(EA_jump,Reg,EA_target,Immediate):-
     code(EA),
     cmp_immediate_to_reg(EA,Reg,_,Immediate),
+    track_register(Reg),
     next(EA,EA_jump),
     direct_jump(EA_jump,EA_target),
     arch.jump(EA_jump),
@@ -140,19 +156,20 @@ flow_def(EA_jump,Reg,EA_target,Immediate):-
 flow_def(EA_jump,Reg,EA_target,Immediate):-
     code(EA),
     cmp_immediate_to_reg(EA,Reg,_,Immediate),
+    track_register(Reg),
     next(EA,EA_jump),
     direct_jump(EA_jump,_),
     next(EA_jump,EA_target),
     arch.jump(EA_jump),
     arch.conditional(EA_jump,"NE").
 
-.decl must_def(EA:address,Reg:reg_group) inline
+.decl must_def(EA:address,Reg:register) inline
 
 must_def(EA,Reg):-
     def(EA,Reg),
     !arch.conditional(EA,_).
 
-.decl defined_in_block(EA:address,Reg:reg_group)
+.decl defined_in_block(EA:address,Reg:register)
 
 defined_in_block(Block,Reg):-
     def(EA,Reg),
@@ -161,16 +178,18 @@ defined_in_block(Block,Reg):-
 /**
 The register is explicitly used in an operand.
 */
-.decl used_explicit(EA:address,Reg:reg_group,Index:operand_index)
+.decl used_explicit(EA:address,Reg:register,Index:operand_index)
 
 used_explicit(EA,Reg,Index):-
     instruction_get_src_op(EA,Index,Op),
     op_regdirect_contains_reg(Op,Reg),
+    track_register(Reg),
     !is_xor_reset(EA).
 
 used_explicit(EA,Reg,Index):-
     instruction_get_op(EA,Index,Op),
-    op_indirect_contains_reg(Op,Reg).
+    op_indirect_contains_reg(Op,Reg),
+    track_register(Reg).
 
 used(EA,Reg,Index):-
     used_explicit(EA,Reg,Index).
@@ -178,16 +197,17 @@ used(EA,Reg,Index):-
 // Implicitly-used registers use an operand index of zero.
 used(EA,Reg,0):-
     arch.uses_reg(EA,Reg),
+    track_register(Reg),
     !used_explicit(EA,Reg,_).
 
-.decl used_in_block(EA:address,Reg:reg_group)
+.decl used_in_block(EA:address,Reg:register)
 
 used_in_block(Block,Reg):-
     used(EA,Reg,_),
     code_in_block(EA,Block).
 
 // the last address where a register was defined within the block
-.decl block_last_def(EA:address,EA_def:address,Reg:reg_group)
+.decl block_last_def(EA:address,EA_def:address,Reg:register)
 
 
 
@@ -201,7 +221,7 @@ block_last_def(EA_next,EA_def,Reg):-
     local_next(EA,EA_next).
 
 // the last address where a register was defined at the basic block level.
-.decl last_def(EA:address,EA_def:address,Reg:reg_group)
+.decl last_def(EA:address,EA_def:address,Reg:register)
 
 last_def(Block,EA,Reg):-
     def(EA,Reg),
@@ -244,10 +264,10 @@ def_used(EA_def,Reg,EA_used,Index_used):-
 /**
 A value returned from a function is used.
 */
-.decl return_val_used(EA_call:address,Callee:address,Reg:reg_group,EA_used:address,Index_used:operand_index)
+.decl return_val_used(EA_call:address,Callee:address,Reg:register,EA_used:address,Index_used:operand_index)
 
 return_val_used(EA_call,Callee,Reg,EA_used,Index_used):-
-    arch.return_val_reg(Reg),
+    arch.return_reg(Reg),
     def_used_intra(EA_call,Reg,EA_used,Index_used),
     direct_call(EA_call,Callee).
 
@@ -269,18 +289,18 @@ return_block_end(Callee,CalleeEnd,Block,BlockEnd):-
 /**
 A register is defined and then returned from a called function
 */
-.decl return_val_def(Callee:address,Reg:reg_group,EA_def:address)
+.decl return_val_def(Callee:address,Reg:register,EA_def:address)
 
 // Simple case: the returning block defines the return register.
 return_val_def(Callee,Reg,EA_def):-
-    arch.return_val_reg(Reg),
+    arch.return_reg(Reg),
     return_block_end(Callee,_,_,BlockEnd),
     block_last_def(BlockEnd,EA_def,Reg).
 
 // The return register is defined elsewhere in the function.
 return_val_def(Callee,Reg,EA_def):-
     last_def(Block,EA_def,Reg),
-    arch.return_val_reg(Reg),
+    arch.return_reg(Reg),
     return_block_end(Callee,CalleeEnd,Block,BlockEnd),
     !block_last_def(BlockEnd,_,Reg),
     Callee <= EA_def,
@@ -294,7 +314,7 @@ ea_used: use of the return-value register after a call
 ea_call: the corresponding call
 ea_def: def of the return-value register in the callee
 */
-.decl def_used_return_val_reg(ea_def:address,ea_call:address,reg:reg_group,ea_used:address,index_used:operand_index)
+.decl def_used_return_val_reg(ea_def:address,ea_call:address,reg:register,ea_used:address,index_used:operand_index)
 .output def_used_return_val_reg
 
 def_used_return_val_reg(EA_def,EA_call,Reg,EA_used,Index_used):-
@@ -304,7 +324,7 @@ def_used_return_val_reg(EA_def,EA_call,Reg,EA_used,Index_used):-
 /**
  * The register 'Reg' used as an address at address 'EA'.
  */
-.decl used_for_address(EA:address,Reg:reg_group)
+.decl used_for_address(EA:address,Reg:register)
 .output used_for_address
 
 used_for_address(EA,Reg):-
@@ -312,21 +332,19 @@ used_for_address(EA,Reg):-
     instruction_get_op(EA,Index,Op),
     op_indirect_contains_reg(Op,Reg).
 
-used_for_address(EA,RegGroup):-
+used_for_address(EA,Reg):-
     reg_jump(EA,Reg),
-    arch.track_register(Reg,RegGroup),
-    used(EA,RegGroup,_).
+    used(EA,Reg,_).
 
-used_for_address(EA,RegGroup):-
+used_for_address(EA,Reg):-
     reg_call(EA,Reg),
-    arch.track_register(Reg,RegGroup),
-    used(EA,RegGroup,_).
+    used(EA,Reg,_).
 
 /**
  * The register 'Reg' as defined at address 'EA_def' is later used either as an address
  * or to compute an address.
  */
-.decl def_used_for_address(EA_def:address,Reg:reg_group)
+.decl def_used_for_address(EA_def:address,Reg:register)
 .output def_used_for_address
 
 def_used_for_address(EA_def,Reg):-
