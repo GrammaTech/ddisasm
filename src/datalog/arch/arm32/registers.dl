@@ -26,14 +26,9 @@ This module stablishes basic information about register:
  - Whether they all callee or caller saved according to the ABI
 */
 
-// TODO: does capstone really generate both names (e.g., R9 and SB)?
-
-reg_map_rule("R9","SB").
-reg_map_rule("R10","SL").
-reg_map_rule("R11","FP").
-reg_map_rule("R12","IP").
-reg_map_rule("R13","SP").
-reg_map_rule("R14","LR").
+// As long as CS_OPT_SYNTAX_NOREGNAME is not provided, capstone generates names
+// like SB, SL, FP, etc. for registers >R8
+// See https://github.com/capstone-engine/capstone/blob/fe3e7ab6716d0ba249b6779dadd4a3a2eb842f21/arch/ARM/ARMInstPrinter.c#L191
 
 .decl reg_index(RegName:register,Index:unsigned)
 

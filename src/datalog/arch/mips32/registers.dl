@@ -26,86 +26,9 @@ This module establishes basic information about register:
  - Whether they all callee or caller saved according to the ABI
 */
 
-// TODO: does capstone really generate both names?
-
-reg_map_rule("R0","ZERO").
-reg_map_rule("R1","AT").
-reg_map_rule("R2","V0").
-reg_map_rule("R3","V1").
-reg_map_rule("R4","A0").
-reg_map_rule("R5","A1").
-reg_map_rule("R6","A2").
-reg_map_rule("R7","A3").
-reg_map_rule("R8","T0").
-reg_map_rule("R9","T1").
-reg_map_rule("R10","T2").
-reg_map_rule("R11","T3").
-reg_map_rule("R12","T4").
-reg_map_rule("R13","T5").
-reg_map_rule("R14","T6").
-reg_map_rule("R15","T7").
-reg_map_rule("R16","S0").
-reg_map_rule("R17","S1").
-reg_map_rule("R18","S2").
-reg_map_rule("R19","S3").
-reg_map_rule("R20","S4").
-reg_map_rule("R21","S5").
-reg_map_rule("R22","S6").
-reg_map_rule("R23","S7").
-reg_map_rule("R24","T8").
-reg_map_rule("R25","T9").
-reg_map_rule("R26","K0").
-reg_map_rule("R27","K1").
-reg_map_rule("R28","GP").
-reg_map_rule("R29","SP").
-reg_map_rule("R30","FP").
-reg_map_rule("R31","RA").
-reg_map_rule("RA","RA").
-
-// TODO: what are these? does capstone generate these names?
-// should they be tracked?
-reg_map_rule("HI0","AC0").
-reg_map_rule("HI1","AC1").
-reg_map_rule("HI2","AC2").
-reg_map_rule("HI3","AC3").
-
-// TODO: what are these? does capstone generate these names?
-// should they be tracked?
-// AFPR128
-/*
-reg_map_rule("W0","W0").
-reg_map_rule("W1","W1").
-reg_map_rule("W2","W2").
-reg_map_rule("W3","W3").
-reg_map_rule("W4","W4").
-reg_map_rule("W5","W5").
-reg_map_rule("W6","W6").
-reg_map_rule("W7","W7").
-reg_map_rule("W8","W8").
-reg_map_rule("W9","W9").
-reg_map_rule("W10","W10").
-reg_map_rule("W11","W11").
-reg_map_rule("W12","W12").
-reg_map_rule("W13","W13").
-reg_map_rule("W14","W14").
-reg_map_rule("W15","W15").
-reg_map_rule("W16","W16").
-reg_map_rule("W17","W17").
-reg_map_rule("W18","W18").
-reg_map_rule("W19","W19").
-reg_map_rule("W20","W20").
-reg_map_rule("W21","W21").
-reg_map_rule("W22","W22").
-reg_map_rule("W23","W23").
-reg_map_rule("W24","W24").
-reg_map_rule("W25","W25").
-reg_map_rule("W26","W26").
-reg_map_rule("W27","W27").
-reg_map_rule("W28","W28").
-reg_map_rule("W29","W29").
-reg_map_rule("W30","W30").
-reg_map_rule("W31","W31").
-*/
+// Capstone uses the O32 ABI register names.
+// https://github.com/capstone-engine/capstone/blob/fe3e7ab6716d0ba249b6779dadd4a3a2eb842f21/arch/Mips/MipsMapping.c#L17
+// SIMD (W0-W31) and FPU (F0-F31) registers are not handled currently.
 
 general_purpose_reg("AT").
 general_purpose_reg("V0").

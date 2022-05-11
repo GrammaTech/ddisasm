@@ -430,6 +430,9 @@ Defines explicit register mappings.
 */
 .decl reg_map_rule(RegIn:input_reg,Reg:register)
 
+reg_map_rule("",""):-
+    false.
+
 /**
 This specifies the registers whose value is not kept through a function call
 according to the architecture's calling convention.
