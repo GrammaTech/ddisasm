@@ -1054,8 +1054,8 @@ litpool_symbolic_operand(LitPoolAddr2,DataAccessSize,Symbol1,Symbol2,EA_D,Reg3,S
     (
         def_used(EA_C,Reg1,EA_D,_), Reg1 = Reg0
         ;
-        def_used(EA_restore,Reg1,EA_D,_),
-        value_reg_edge(EA_restore,Reg1,EA_C,Reg0,1,0)
+        value_reg_edge(EA_restore,Reg1,EA_C,Reg0,1,0),
+        def_used(EA_restore,Reg1,EA_D,_)
     ),
 
     // (D) ldr reg3, [reg1, reg2]
