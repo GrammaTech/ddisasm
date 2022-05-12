@@ -95,9 +95,9 @@ relative_address(EA+Size,Size,TableStart,Ref,Dest,DestIsFirstOrSecond):-
 // detect jump tables precisely once we have all results of the analyses
 
 // auxiliary predicate for detecting accessing an element of a jump table.
-.decl jump_table_element_access(EA:address,Size:unsigned,TableStart:address,RegIndex:register,Mult:unsigned)
+.decl jump_table_element_access(EA:address,Size:unsigned,TableStart:address,RegIndex:register)
 
-jump_table_element_access(EA,Size,TableStartAddr,RegIndex,Size):-
+jump_table_element_access(EA,Size,TableStartAddr,RegIndex):-
     data_access(EA,_,"NONE","NONE",RegIndex,as(Size,number),TableStart,Size),
     TableStartAddr = as(TableStart,address),
     RegIndex != "NONE",
@@ -105,7 +105,7 @@ jump_table_element_access(EA,Size,TableStartAddr,RegIndex,Size):-
     TableStartAddr >= Beg,
     TableStartAddr <= End.
 
-jump_table_element_access(EA,1,TableStartAddr,RegBase,1):-
+jump_table_element_access(EA,1,TableStartAddr,RegBase):-
     data_access(EA,_,"NONE",RegBase,"NONE",_,TableStart,1),
     TableStartAddr = as(TableStart,address),
     RegBase != "NONE",
@@ -113,7 +113,7 @@ jump_table_element_access(EA,1,TableStartAddr,RegBase,1):-
     TableStartAddr >= Beg,
     TableStartAddr <= End.
 
-jump_table_element_access(EA,Size,TableStartAddr,RegIndex,Size):-
+jump_table_element_access(EA,Size,TableStartAddr,RegIndex):-
     data_access(EA,_,"NONE",RegBase,RegIndex,as(Size,number),Offset,Size),
     RegIndex != "NONE",
     const_value_reg_used(EA,_,_,RegBase,Base),
@@ -124,7 +124,7 @@ jump_table_element_access(EA,Size,TableStartAddr,RegIndex,Size):-
 
 // sometimes the regBase contains the index (already multiplied)
 // and the regIndex contains the base address
-jump_table_element_access(EA,Size,TableStartAddr,RegBase,1):-
+jump_table_element_access(EA,Size,TableStartAddr,RegBase):-
     data_access(EA,_,"NONE",RegBase,RegIndex,1,0,Size),
     RegBase != "NONE",
     const_value_reg_used(EA,_,_,RegIndex,TableStart),
@@ -139,8 +139,8 @@ The end of a jump table as identified by a boundary value of the index register.
 .decl jump_table_max(TableStart:address,TableEnd:address)
 .output jump_table_max
 
-jump_table_max(TableStart,TableStart+as(Value,unsigned)*Mult):-
-    jump_table_element_access(EA,_,TableStart,RegIndexRaw,Mult),
+jump_table_max(TableStart,TableStart+as(Value,unsigned)*Size):-
+    jump_table_element_access(EA,Size,TableStart,RegIndexRaw),
     arch.track_register(RegIndexRaw,RegIndex),
     code_in_block(EA,Block),
     (
@@ -173,16 +173,16 @@ jump_table_max(TableStart,TableStart+as(Value,unsigned)*Mult):-
 // aggregates (currently in development, see https://github.com/souffle-lang/souffle/pull/2263)
 // and range queries in aggregates (bug: https://github.com/souffle-lang/souffle/issues/2160).
 // Alternatively, we could use subsumption to delete the smaller jump_table_max.
-jump_table_max(TableStart2,TableStart2+IndexValue*Mult2):-
-    jump_table_element_access(EA1,_,TableStart1,_,Mult1),
+jump_table_max(TableStart2,TableStart2+IndexValue*Size2):-
+    jump_table_element_access(EA1,Size1,TableStart1,_),
     jump_table_max(TableStart1,TableEnd1),
     def_used(EA1,Reg,EA2,_),
-    jump_table_element_access(EA2,_,TableStart2,RegIndexRaw,Mult2),
+    jump_table_element_access(EA2,Size2,TableStart2,RegIndexRaw),
     arch.track_register(RegIndexRaw,Reg),
-    TableAddress = range(TableStart1,TableEnd1+Mult1,Mult1),
+    TableAddress = range(TableStart1,TableEnd1+Size1,Size1),
     (
-        Mult1 = 1, data_byte(TableAddress,IndexValue);
-        Mult1 != 1, data_word(TableAddress,Mult1,IndexValueSigned), IndexValue = as(IndexValueSigned,unsigned)
+        Size1 = 1, data_byte(TableAddress,IndexValue);
+        Size1 != 1, data_word(TableAddress,Size1,IndexValueSigned), IndexValue = as(IndexValueSigned,unsigned)
     ).
 
 .decl jump_table_start(EA_jump:address,Size:unsigned,TableStart:address,TableRef:address,Scale:number)
@@ -190,7 +190,7 @@ jump_table_max(TableStart2,TableStart2+IndexValue*Mult2):-
 
 jump_table_start(EA_jump,Size,TableStart,as(Base,address),Scale):-
     // Looks like a jump table access occurs at EA...
-    jump_table_element_access(EA,Size,TableStart,_,_),
+    jump_table_element_access(EA,Size,TableStart,_),
     // ...and the register defined at EA (Reg) is used as RegJump = Base + Reg * Scale
     value_reg(EA_add,RegJump,EA,Reg,Scale,Base,_),
     Reg != "NONE",
@@ -214,7 +214,7 @@ jump_table_start(EA_jump,Size,TableStart,TableReferenceAddr,Scale):-
         Operation = "ADD", Scale=1;
         Operation = "SUB", Scale=-1
     ),
-    jump_table_element_access(EA_base,Size,TableStart,_,_),
+    jump_table_element_access(EA_base,Size,TableStart,_),
     const_value_reg_used(EA_base,_,_,Reg,TableReference),
     TableReferenceAddr = as(TableReference,address),
     (
