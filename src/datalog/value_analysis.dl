@@ -59,7 +59,7 @@ or loop) and considering the value with most steps.
 */
 
 .decl value_reg_edge(EA:address,Reg:register,
-                EA_reg1:address,Reg1:reg_nullable,Multiplier:number,Offset:number)
+                EA_reg1:address,Reg1:register,Multiplier:number,Offset:number)
 .output value_reg_edge
 .decl value_reg(EA:address,Reg:register,
                 EA_reg1:address,Reg1:reg_nullable,Multiplier:number,Offset:number,steps:number)
@@ -67,11 +67,6 @@ or loop) and considering the value with most steps.
 
 .decl best_value_reg(EA:address,Reg:register,EA_from:address,Multiplier:number,Offset:number,type:symbol)
 .output best_value_reg
-
-// mov reg immediate
-value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
-    def_used_for_address(EA,Reg),
-    arch.move_reg_imm(EA,Reg,Immediate,_).
 
 /**
 Generate distinct stack frames (identifying them by the location at which the
@@ -169,61 +164,6 @@ value_reg_edge(EALoad,Reg2,EAPrev,Reg1,1,0):-
     stack_load_store_pair(EAStore,EALoad,Reg1,Reg2),
     def_used(EAPrev,Reg1,EAStore,_).
 
-// mov DWORD from memory (constant address)
-value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
-    def_used_for_address(EA,Reg),
-    arch.load(EA,_,_,Reg,"NONE","NONE",_,Offset),
-    Offset >= 0,
-    Offset_addr = as(Offset,address),
-    data_byte(Offset_addr,Byte0),
-    data_byte(Offset_addr+1,Byte1),
-    data_byte(Offset_addr+2,Byte2),
-    data_byte(Offset_addr+3,Byte3),
-    Byte3 <= 128,
-    Val = as(Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0,number).
-
-// mov DWORD from memory (PC-relative address)
-value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
-    def_used_for_address(EA,Reg),
-    arch.load(EA,_,_,_,_,_,_,_),
-    instruction(EA,_,_,_,Op1,Op2,0,0,_,_),
-    op_regdirect_contains_reg(Op2,Reg),
-    op_indirect(Op1,_,_,_,_,_,32),
-    pc_relative_operand(EA,1,Offset),
-    data_byte(Offset,Byte0),
-    data_byte(Offset+1,Byte1),
-    data_byte(Offset+2,Byte2),
-    data_byte(Offset+3,Byte3),
-    Byte3 <= 128,
-    Val = as(Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0,number).
-
-// register implicitly defined
-value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
-    def_used_for_address(EA,Reg),
-    flow_def(EA,Reg,_,Immediate).
-
-// pc-relative LEA
-value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
-    code(EA),
-    instruction(EA,Size,_,"LEA",Op1,Op2,0,0,_,_),
-    op_indirect_mapped(Op1,_,PcReg,"NONE",_,Offset,_),
-    arch.pc_reg(PcReg),
-    op_regdirect_contains_reg(Op2,Reg),
-    track_register(Reg),
-    Address = as(EA+Size,number)+Offset.
-
-// GOT-relative LEA. (Note that We drop the GOT Register.)
-value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
-    got_relative_operand(EA,1,Offset),
-    instruction(EA,_,_,"LEA",_,Op2,0,0,_,_),
-    op_regdirect_contains_reg(Op2,Reg),
-    track_register(Reg),
-    Address = as(Offset,number).
-
-value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
-    arch.pc_relative_addr(EA,Reg,Val),
-    track_register(Reg).
-
 //mov reg reg_origin
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
     def_used_for_address(EA_prev,Reg_origin),
@@ -231,11 +171,6 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
     arch.move_reg_reg(EA,Reg,Reg_origin),
     track_register(Reg),
     EA != EA_prev.
-
-//reset a register
-value_reg_edge(EA,Reg,EA,"NONE",0,0):-
-    def_used_for_address(EA,Reg),
-    is_xor_reset(EA).
 
 // basic arithmetic operations
 value_reg_edge(EA,Dst,EA_prev,Src,Mult,Immediate):-
@@ -273,6 +208,76 @@ value_reg_unsupported(EA,Reg):-
     def_used_for_address(EA,Reg),
     arch.call(EA,_).
 
+
+///////////////////////////////////////////////////////////////////////////////////////
+// constant value_reg
+///////////////////////////////////////////////////////////////////////////////////////
+
+// mov reg immediate
+value_reg(EA,Reg,EA,"NONE",0,Immediate,1):-
+    def_used_for_address(EA,Reg),
+    arch.move_reg_imm(EA,Reg,Immediate,_).
+
+//reset a register
+value_reg(EA,Reg,EA,"NONE",0,0,1):-
+    def_used_for_address(EA,Reg),
+    is_xor_reset(EA).
+
+// register implicitly defined
+value_reg(EA,Reg,EA,"NONE",0,Immediate,1):-
+    def_used_for_address(EA,Reg),
+    flow_def(EA,Reg,_,Immediate).
+
+// pc-relative LEA
+value_reg(EA,Reg,EA,"NONE",0,Address,1):-
+    code(EA),
+    instruction(EA,Size,_,"LEA",Op1,Op2,0,0,_,_),
+    op_indirect_mapped(Op1,_,PcReg,"NONE",_,Offset,_),
+    arch.pc_reg(PcReg),
+    op_regdirect_contains_reg(Op2,Reg),
+    track_register(Reg),
+    Address = as(EA+Size,number)+Offset.
+
+// GOT-relative LEA. (Note that We drop the GOT Register.)
+value_reg(EA,Reg,EA,"NONE",0,Address,1):-
+    got_relative_operand(EA,1,Offset),
+    instruction(EA,_,_,"LEA",_,Op2,0,0,_,_),
+    op_regdirect_contains_reg(Op2,Reg),
+    track_register(Reg),
+    Address = as(Offset,number).
+
+value_reg(EA,Reg,EA,"NONE",0,Val,1):-
+    arch.pc_relative_addr(EA,Reg,Val),
+    track_register(Reg).
+
+// mov DWORD from memory (constant address)
+value_reg(EA,Reg,EA,"NONE",0,Val,1):-
+    def_used_for_address(EA,Reg),
+    arch.load(EA,_,_,Reg,"NONE","NONE",_,Offset),
+    Offset >= 0,
+    Offset_addr = as(Offset,address),
+    data_byte(Offset_addr,Byte0),
+    data_byte(Offset_addr+1,Byte1),
+    data_byte(Offset_addr+2,Byte2),
+    data_byte(Offset_addr+3,Byte3),
+    Byte3 <= 128,
+    Val = as(Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0,number).
+
+// mov DWORD from memory (PC-relative address)
+value_reg(EA,Reg,EA,"NONE",0,Val,1):-
+    def_used_for_address(EA,Reg),
+    arch.load(EA,_,_,_,_,_,_,_),
+    instruction(EA,_,_,_,Op1,Op2,0,0,_,_),
+    op_regdirect_contains_reg(Op2,Reg),
+    op_indirect(Op1,_,_,_,_,_,32),
+    pc_relative_operand(EA,1,Offset),
+    data_byte(Offset,Byte0),
+    data_byte(Offset+1,Byte1),
+    data_byte(Offset+2,Byte2),
+    data_byte(Offset+3,Byte3),
+    Byte3 <= 128,
+    Val = as(Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0,number).
+
 ///////////////////////////////////////////////////////////////////////////////////////
 // once we have the edges that relate the values of registers at different
 // instructions we propagate these values forward
@@ -280,10 +285,6 @@ value_reg_unsupported(EA,Reg):-
 .decl step_limit(Limit:number)
 
 step_limit(12).
-
-//base cases
-value_reg(EA,Reg,EA,"NONE",Mult,Immediate,1):-
-    value_reg_edge(EA,Reg,EA,"NONE",Mult,Immediate).
 
 value_reg(EA,Reg,EA,Reg,1,0,1):-
     def_used_for_address(EA,Reg),

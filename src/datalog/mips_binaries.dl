@@ -51,7 +51,7 @@ value_reg_edge(EALoad,"GP",EAPrev,"GP",1,0):-
     StackFrameDefinedAt2 != StackFrameDefinedAt.
 
 // load word from got table: e.g., lw v0, -32696(gp)
-value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
+value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     instruction(EA,_,_,"LW",_,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg),
     track_register(Reg),
