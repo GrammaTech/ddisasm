@@ -256,7 +256,7 @@ last_def(Block_next,EA_def,Reg):-
     last_def(Block,EA_def,Reg),
     !defined_in_block(Block,Reg),
     block_next(Block,Block_end,Block_next),
-    !flow_def(Block_end,Reg,Block,_).
+    !flow_def(Block_end,Reg,Block_next,_).
 
 last_def(Block_next,Block_end,Reg):-
     flow_def(Block_end,Reg,Block_next,_).
