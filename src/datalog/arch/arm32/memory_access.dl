@@ -66,7 +66,6 @@ memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,"NONE",0,Offset):-
     ),
     op_register_bitfield(Op1,Index,Rt),
     op_regdirect_contains_reg(Op2,Rn),
-    arch.stack_pointer(Rn),
     arch.pointer_size(Pt_size),
     Offset = as(Index * Pt_size, number).
 
@@ -163,7 +162,7 @@ reg_reg_arithmetic_operation(EA,Rn,Rn,Rm,1,0):-
 
 
 // Generate arithmetic operations for pre-index writeback cases.
-// Handles both single-word and double-word.
+// Handles single-word, double-word, and LDM/STM.
 reg_arithmetic_operation(EA,Rn,Rn,1,Offset):-
     memory_access(_,EA,_,_,_,Rn,"NONE",_,Offset),
     !memory_access(_,EA,_,_,_,Rn,"NONE",_,Offset-4), // Don't match the second access from a doubleword operation.
