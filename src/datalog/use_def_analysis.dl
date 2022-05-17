@@ -215,11 +215,11 @@ used_before_code_inference(EA,Reg,0):-
     !used_explicit(EA,Reg,_),
     !is_xor_reset(EA).
 
-.decl used_in_block(EA:address,Reg:register)
+.decl used_in_block(Block:address,EA_used:address,Reg:register,Index:operand_index)
 
-used_in_block(Block,Reg):-
-    used(EA,Reg,_),
-    code_in_block(EA,Block).
+used_in_block(Block,EA_used,Reg,Index):-
+    used(EA_used,Reg,Index),
+    code_in_block(EA_used,Block).
 
 used(EA,Reg,Index):-
     used_before_code_inference(EA,Reg,Index).
@@ -261,17 +261,44 @@ last_def(Block_next,EA_def,Reg):-
 last_def(Block_next,Block_end,Reg):-
     flow_def(Block_end,Reg,Block_next,_).
 
+/**
+Propagate backward from usages to search for defs.
+
+This is faster than propagating forward from defs, since a used value should
+always be defined in well-behaved code. In addition, we know to stop
+propagating once the definition is found.
+
+The alternative strategy of propagating forward from defs means that it must
+propagate indefinitely, in case it is used multiple times. Further, side-effect
+definitions are often unused.
+
+The downside is that multiple nearby uses have to independently propagate to
+the definition. (TODO: Maybe could be improved? only propagate to a used, then later forward propagate def through all next_used?)
+*/
+.decl next_used(Block:address,BlockEnd:address,BlockNext:address,EA_used:address,Reg:register,Index:operand_index)
+
+next_used(PrevBlock,PrevBlockEnd,Block,EA_used,Reg,Index):-
+    used_in_block(Block,EA_used,Reg,Index),
+    !block_last_def(EA_used,_,Reg),
+    block_next(PrevBlock,PrevBlockEnd,Block).
+
+next_used(PrevBlock,PrevBlockEnd,Block,EA_used,Reg,Index):-
+    next_used(Block,BlockEnd,BlockNext,EA_used,Reg,Index),
+    !defined_in_block(Block,Reg),
+    !flow_def(BlockEnd,Reg,BlockNext,_),
+    block_next(PrevBlock,PrevBlockEnd,Block).
 
 def_used_intra(EA_def,Reg,EA_used,Index):-
     used(EA_used,Reg,Index),
     block_last_def(EA_used,EA_def,Reg).
 
-
 def_used_intra(EA_def,Reg,EA_used,Index):-
-    last_def(Block,EA_def,Reg),
-    code_in_block(EA_used,Block),
-    !block_last_def(EA_used,_,Reg),
-    used(EA_used,Reg,Index).
+    next_used(_,BlockEnd,BlockNext,EA_used,Reg,Index),
+    (
+        def(BlockEnd,Reg), EA_def=BlockEnd, UNUSED(BlockNext);
+        flow_def(BlockEnd,Reg,BlockNext,_), EA_def=BlockEnd;
+        !must_def(BlockEnd,Reg), block_last_def(BlockEnd,EA_def,Reg), UNUSED(BlockNext)
+    ).
 
 def_used(EA_def,Reg,EA_used,Index):-
     def_used_intra(EA_def,Reg,EA_used,Index).
