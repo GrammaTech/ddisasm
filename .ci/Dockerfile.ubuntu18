@@ -78,7 +78,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         git
 
 RUN git clone https://git.zephyr-software.com/opensrc/libehp.git /usr/local/src/libehp && \
-    git -C /usr/local/src/libehp reset --hard ddb106c4c1e521bf4b282d17e2a8abf0aa0fe721 && \
+    git -C /usr/local/src/libehp reset --hard 5e41e26b88d415f3c7d3eb47f9f0d781cc519459 && \
     cmake -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release -DEHP_BUILD_SHARED_LIBS=OFF /usr/local/src/libehp -B/usr/local/src/libehp/build && \
     cmake --build /usr/local/src/libehp/build --target install
 

@@ -57,7 +57,7 @@ RUN apt-get -y update \
       git
 
 RUN git clone https://git.zephyr-software.com/opensrc/libehp.git /usr/local/src/libehp
-RUN git -C /usr/local/src/libehp reset --hard ddb106c4c1e521bf4b282d17e2a8abf0aa0fe721
+RUN git -C /usr/local/src/libehp reset --hard 5e41e26b88d415f3c7d3eb47f9f0d781cc519459
 RUN cmake -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release -DEHP_BUILD_SHARED_LIBS=OFF /usr/local/src/libehp -B/usr/local/src/libehp/build
 RUN cmake --build /usr/local/src/libehp/build -j --target all install
 
