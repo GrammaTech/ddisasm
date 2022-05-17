@@ -96,11 +96,12 @@ namespace relations
     struct RegBitFieldOp
     {
         uint64_t Op;
+        uint64_t Index;
         std::string Reg;
 
         constexpr bool operator<(const RegBitFieldOp& A) const noexcept
         {
-            return std::tie(Op, Reg) < std::tie(A.Op, A.Reg);
+            return std::tie(Op, Index, Reg) < std::tie(A.Op, Index, A.Reg);
         }
     };
     using RegBitFieldOpVector = std::vector<std::string>;

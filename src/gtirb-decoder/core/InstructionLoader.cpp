@@ -36,9 +36,10 @@ const std::vector<relations::RegBitFieldOp> OperandFacts::reg_bitfields() const
     {
         auto Regs = It->first;
         auto Index = It->second;
-        for(auto It2 = Regs.begin(); It2 != Regs.end(); ++It2)
+        uint64_t Cnt = 0;
+        for(auto It2 = Regs.begin(); It2 != Regs.end(); ++It2, ++Cnt)
         {
-            auto K = relations::RegBitFieldOp{Index, *It2};
+            auto K = relations::RegBitFieldOp{Index, Cnt, *It2};
             RegBitFieldsForSouffle.push_back(K);
         }
     }

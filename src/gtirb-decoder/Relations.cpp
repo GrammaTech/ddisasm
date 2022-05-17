@@ -101,7 +101,7 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::RegBitFieldOp& R)
     {
-        T << R.Op << R.Reg;
+        T << R.Op << R.Index << R.Reg;
         return T;
     }
 
