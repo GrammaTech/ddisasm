@@ -158,7 +158,7 @@ COPY --from=gtirb-pprinter /usr/local/lib /usr/local/lib
 COPY --from=gtirb-pprinter /usr/local/include /usr/local/include
 
 ARG DDISASM_URL=https://github.com/GrammaTech/ddisasm
-ARG DDISASM_BRANCH=master
+ARG DDISASM_BRANCH=main
 RUN git clone --depth 1 -b $DDISASM_BRANCH $DDISASM_URL /usr/local/src/ddisasm
 RUN cmake -DLIEF_ROOT=/usr/ -DCMAKE_BUILD_TYPE=Release /usr/local/src/ddisasm -B/usr/local/src/ddisasm/build
 RUN cmake --build /usr/local/src/ddisasm/build -j --target all install
