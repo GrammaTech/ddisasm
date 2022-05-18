@@ -370,12 +370,12 @@ value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,S
 
 // For a given EA, Reg, EA_from and Multiplier we keep the minimum and maximum offsets
 best_value_reg(EA,Reg,EA_from,Multiplier,MinOffset,"loop"):-
-    !def_used_return_val_reg(EA,_,Reg,_,_),
+    //!def_used_return_val_reg(EA,_,Reg,_,_),
     value_reg(EA,Reg,EA_from,"Unknown",Multiplier,MinOffset,_),
     MinOffset <= min Offset:{value_reg(EA,Reg,EA_from,"Unknown",Multiplier,Offset,_)}.
 
 best_value_reg(EA,Reg,EA_from,Multiplier,MaxOffset,"loop"):-
-    !def_used_return_val_reg(EA,_,Reg,_,_),
+    //!def_used_return_val_reg(EA,_,Reg,_,_),
     value_reg(EA,Reg,EA_from,"Unknown",Multiplier,MaxOffset,_),
     MaxOffset >= max Offset:{value_reg(EA,Reg,EA_from,"Unknown",Multiplier,Offset,_)}.
 
