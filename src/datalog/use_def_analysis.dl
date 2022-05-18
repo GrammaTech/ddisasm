@@ -233,29 +233,6 @@ block_last_def(EA_next,EA_def,Reg):-
     !must_def(EA,Reg),
     local_next(EA,EA_next).
 
-// the last address where a register was defined at the basic block level.
-.decl last_def(EA:address,EA_def:address,Reg:register)
-
-last_def(Block,EA,Reg):-
-    def(EA,Reg),
-    block_next(_,EA,Block),
-    !flow_def(EA,Reg,Block,_).
-
-last_def(Block,EA_def,Reg):-
-    block_last_def(Block_end,EA_def,Reg),
-    !must_def(Block_end,Reg),
-    block_next(_,Block_end,Block),
-    !flow_def(Block_end,Reg,Block,_).
-
-last_def(Block_next,EA_def,Reg):-
-    last_def(Block,EA_def,Reg),
-    !defined_in_block(Block,Reg),
-    block_next(Block,Block_end,Block_next),
-    !flow_def(Block_end,Reg,Block_next,_).
-
-last_def(Block_next,Block_end,Reg):-
-    flow_def(Block_end,Reg,Block_next,_).
-
 /**
 A register is referenced in a block
 */
@@ -304,26 +281,26 @@ definitions are often unused.
 The downside is that multiple nearby uses have to independently propagate to
 the definition. (TODO: Maybe could be improved? only propagate to a used, then later forward propagate def through all next_used?)
 */
-.decl next_used(Block:address,BlockEnd:address,BlockNext:address,EA_used:address,Reg:register,Index:operand_index)
+.decl next_used(Block:address,EA_used:address,Reg:register,Index:operand_index)
 
 // Base case: used in this block
-next_used(PrevBlock,PrevBlockEnd,Block,EA_used,Reg,Index):-
-    block_next(PrevBlock,PrevBlockEnd,Block),
+next_used(PrevBlock,EA_used,Reg,Index):-
+    block_next(PrevBlock,_,Block),
     used_in_block(Block,EA_used,Reg,Index),
     !block_last_def(EA_used,_,Reg).
 
 // Base case: returned in this block
-next_used(PrevBlock,PrevBlockEnd,Block,EA_used,Reg,Index):-
-    block_next(PrevBlock,PrevBlockEnd,Block),
+next_used(PrevBlock,EA_used,Reg,Index):-
+    block_next(PrevBlock,_,Block),
     return_block_end(Callee,_,Block,BlockEnd),
     !block_last_def(BlockEnd,_,Reg),
     return_val_used(_,Callee,Reg,EA_used,Index).
 
 // Recursive case
-next_used(PrevBlock,PrevBlockEnd,Block,EA_used,Reg,Index):-
-    next_used(Block,_,_,EA_used,Reg,Index),
+next_used(PrevBlock,EA_used,Reg,Index):-
+    next_used(Block,EA_used,Reg,Index),
     !reg_in_block(Block,Reg), // !flow_def is implied by !reg_in_block
-    block_next(PrevBlock,PrevBlockEnd,Block).
+    block_next(PrevBlock,_,Block).
 
 /**
 An edge between two used() that depend on the same def.
@@ -331,10 +308,13 @@ An edge between two used() that depend on the same def.
 .decl used_used(Reg:register,EA_used:address,Index:operand_index,Next_EA_used:address,NextIndex:operand_index)
 
 used_used(Reg,EA_used,Index,Next_EA_used,NextIndex):-
-    next_used(Block,BlockEnd,BlockNext,Next_EA_used,Reg,NextIndex),
+    next_used(Block,Next_EA_used,Reg,NextIndex),
+    block_last_instruction(Block,BlockEnd),
     used_in_block(Block,EA_used,Reg,Index),
     !defined_in_block(Block,Reg),
-    !flow_def(BlockEnd,Reg,BlockNext,_).
+    // If there is any flow_def at BlockEnd, there should be a flow_def no
+    // matter which CFG edge from there is taken.
+    !flow_def(BlockEnd,Reg,_,_).
 
 def_used(EA_def,Reg,EA_used,Index):-
     used(EA_used,Reg,Index),
@@ -342,15 +322,23 @@ def_used(EA_def,Reg,EA_used,Index):-
 
 def_used(EA_def,Reg,EA_used,Index):-
     return_val_used(_,Callee,Reg,EA_used,Index),
-    return_block_end(Callee,_,Block,BlockEnd),
+    return_block_end(Callee,_,_,BlockEnd),
     block_last_def(BlockEnd,EA_def,Reg).
 
 def_used(EA_def,Reg,EA_used,Index):-
-    next_used(_,BlockEnd,BlockNext,EA_used,Reg,Index),
+    next_used(Block,EA_used,Reg,Index),
+    block_last_instruction(Block,BlockEnd),
     (
-        def(BlockEnd,Reg), EA_def=BlockEnd, UNUSED(BlockNext);
-        flow_def(BlockEnd,Reg,BlockNext,_), EA_def=BlockEnd;
-        !must_def(BlockEnd,Reg), block_last_def(BlockEnd,EA_def,Reg), UNUSED(BlockNext)
+        def(BlockEnd,Reg),
+        EA_def=BlockEnd
+        ;
+        // If there is any flow_def at BlockEnd, there should be a flow_def no
+        // matter which CFG edge from there is taken.
+        flow_def(BlockEnd,Reg,_,_),
+        EA_def=BlockEnd
+        ;
+        !must_def(BlockEnd,Reg),
+        block_last_def(BlockEnd,EA_def,Reg)
     ).
 
 // Forward propagate def_used to downstream used
