@@ -119,11 +119,9 @@ check-format:
   - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
   # regular build is manual and optional
   # This only works with gitlab 13.12 or higher
-  # See https://about.gitlab.com/blog/2021/05/20/dag-manual-fix/
-  # Uncomment once gitlab is updated
-  #- if: $CI_COMMIT_BRANCH
-  #  when: manual
-  #  allow_failure: true
+  - if: $CI_COMMIT_BRANCH
+    when: manual
+    allow_failure: true
 
 build-conan-gcc7:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu18
@@ -154,9 +152,16 @@ build-conan-gcc9:
 .conan-windows-template: &conan-windows-template
   stage: build
   tags: [ddisasm-windows]
+  artifacts:
+    paths:
+      - .conan
+    # Set a short expiry time - only needed until it is published by a later job.
+    expire_in: 8 hours
   script:
     - systeminfo
     - pip3 install --upgrade conan
+    # Build conan packages in a directory that we can publish as an artifact.
+    - export CONAN_USER_HOME=$(cygpath -w $(pwd))
     # Set up user and remote
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
     - conan user ci_user -r gitlab -p
@@ -164,7 +169,17 @@ build-conan-gcc9:
     - python -m pip install pip --upgrade && python -m pip install gtirb distro --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
-    - python .ci/build.py -s build_type=$BUILD_TYPE
+    - python .ci/run_conan.py build -s build_type=$BUILD_TYPE
+
+.conan-windows-publish-template: &conan-windows-publish-template
+  stage: deploy
+  tags: [ddisasm-windows]
+  rules:
+    *run-only-main
+  script:
+    - export CONAN_USER_HOME=$(cygpath -w $(pwd))
+    - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
+    - python .ci/run_conan.py upload
 
 conan-windows-debug:
   variables:
@@ -173,10 +188,26 @@ conan-windows-debug:
     *run-only-main
   <<: *conan-windows-template
 
+conan-windows-debug-publish:
+  needs:
+    - conan-windows-debug
+  variables:
+    BUILD_TYPE: Debug
+  dependencies: [conan-windows-debug]
+  <<: *conan-windows-publish-template
+
 conan-windows-release:
   variables:
     BUILD_TYPE: Release
   <<: *conan-windows-template
+
+conan-windows-release-publish:
+  needs:
+    - conan-windows-release
+  variables:
+    BUILD_TYPE: Release
+  dependencies: [conan-windows-release]
+  <<: *conan-windows-publish-template
 
 .build-template: &build
   artifacts:
@@ -573,20 +604,6 @@ debian-installer-ubuntu20:
     - 'test-ubuntu20-ddisasm-dbg-package'
     - 'build-ubuntu20-packages'
   <<: *debian-installer-ubuntu-template
-
-cleanup-branch:
-  # After a branch merges, delete the conan package for that branch.
-  stage: deploy
-  needs: []
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_EVENT_TYPE == 'merged_result'
-  script:
-    - CONAN_PACKAGE=ddisasm/dev@rewriting+ddisasm/$(echo $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME | sed 's/\//\+/')
-    - echo 'Removing $CONAN_PACKAGE'
-    - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
-    - conan user ci_user -r gitlab -p
-    # TODO: enable this after confirming the correct package will be removed.
-    #- conan remove $CONAN_PACKAGE --remote=gitlab
 
 .get-image-name: &get-image-name
   - VERSION=$(echo $(cat version.txt) | python3 -c "import sys; l=sys.stdin.read().split(); print('.'.join([l[1],l[3],l[5]]))")
