@@ -192,6 +192,14 @@ cfg_edge_to_symbol(Src,Symbol,"branch"):-
     !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
     !inferred_special_symbol(_,Symbol,_,_,_).
 
+cfg_edge_to_symbol(Src,Symbol,"branch"):-
+    refined_block_control_instruction(Src,EA),
+    arch.jump(EA),
+    instruction_has_relocation(EA,Rel),
+    relocation(Rel,_,Symbol,_,_,_,_),
+    !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
+    Symbol != "".
+
 cfg_edge_to_symbol(Src,Symbol,"call"):-
     refined_block_control_instruction(Src,EA),
     arch.call(EA,_),
