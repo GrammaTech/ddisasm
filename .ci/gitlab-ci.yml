@@ -51,7 +51,7 @@ default:
     # Run the kaniko executor, which will build our image (using a cache if available)
     # Push to our internal registry, and if on the default branch, to Docker Hub.
     - >-
-      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
+      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" && "$UBUNTU_CODENAME" != "" ]; then
         export DOCKER_HUB_ARG="--destination=grammatech/ddisasm-ci-${UBUNTU_CODENAME}:latest"
       fi
     - >-
@@ -76,6 +76,13 @@ build-ci-image-ubuntu20:
     DOCKERFILE_PATH: .ci/Dockerfile.ubuntu20
     IMAGE_NAME: ubuntu20
     UBUNTU_CODENAME: focal
+
+build-ci-image-static:
+  <<: *build-ci-image
+  variables:
+    DOCKERFILE_PATH: .ci/Dockerfile.static
+    IMAGE_NAME: static
+    UBUNTU_CODENAME: "" # Don't push to DockerHub
 
 check-format:
   stage: check-format
