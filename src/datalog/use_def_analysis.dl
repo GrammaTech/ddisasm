@@ -278,8 +278,9 @@ The alternative strategy of propagating forward from defs means that it must
 propagate indefinitely, in case it is used multiple times. Further, side-effect
 definitions are often unused.
 
-The downside is that multiple nearby uses have to independently propagate to
-the definition. (TODO: Maybe could be improved? only propagate to a used, then later forward propagate def through all next_used?)
+To further optimize this strategy, if another use is encountered, we don't
+propagate any further. Later, the relation used_used() propagates defs forward
+through adjacent uses.
 */
 .decl next_used(Block:address,EA_used:address,Reg:register,Index:operand_index)
 
