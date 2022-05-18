@@ -174,7 +174,10 @@ Mode may be "R" or "W"
 .decl register_access(EA:address,Mode:symbol,Register:register)
 .input register_access
 
-.decl op_register_bitfield(code:operand_code,register_name:register)
+/**
+Index: The index of the register in bitfield (starts with 0)
+*/
+.decl op_register_bitfield(code:operand_code,Index:unsigned,register_name:register)
 .input op_register_bitfield
 
 .decl invalid_op_code(ea:address)
@@ -618,7 +621,7 @@ op_regdirect_contains_reg(Op,Reg_uniform):-
     (
         op_regdirect(Op,Reg)
         ;
-        op_register_bitfield(Op,Reg)
+        op_register_bitfield(Op,_,Reg)
     ),
     arch.track_register(Reg,Reg_uniform).
 

@@ -251,6 +251,16 @@ TEST(ArchMemoryAccessRelation, Arm32)
         {"LOAD", 0x10058, 2, 1, "R1", "R2", "NONE", 0, 4},
         {"STORE", 0x1005C, 4, 2, "R0", "R2", "NONE", 0, 0},
         {"STORE", 0x1005C, 1, 2, "R1", "R2", "NONE", 0, 4},
+        {"LOAD", 0x10060, 2, 1, "R0", "SP", "NONE", 0, 0},
+        {"STORE", 0x10064, 1, 2, "R0", "SP", "NONE", 0, 0},
+        {"LOAD", 0x10068, 2, 1, "R2", "R0", "NONE", 0, 0},
+        {"LOAD", 0x10068, 2, 1, "R3", "R0", "NONE", 0, 4},
+        {"LOAD", 0x10068, 2, 1, "R4", "R0", "NONE", 0, 8},
+        {"LOAD", 0x10068, 2, 1, "R5", "R0", "NONE", 0, 12},
+        {"STORE", 0x1006C, 1, 2, "R0", "LR", "NONE", 0, 0},
+        {"STORE", 0x1006C, 1, 2, "R1", "LR", "NONE", 0, 4},
+        {"STORE", 0x1006C, 1, 2, "R2", "LR", "NONE", 0, 8},
+        {"STORE", 0x1006C, 1, 2, "R3", "LR", "NONE", 0, 12},
     };
 
     std::vector<uint8_t> Bytes = {
@@ -278,6 +288,10 @@ TEST(ArchMemoryAccessRelation, Arm32)
         0xF3, 0x00, 0xA2, 0xE1, // 0x10054: strd r0, [r2, r3]!
         0xD3, 0x00, 0x82, 0xE0, // 0x10058: ldrd r0, [r2], r3
         0xF3, 0x00, 0x82, 0xE0, // 0x1005C: strd r0, [r2], r3
+        0x01, 0x00, 0xBD, 0xE8, // 0x10060: ldm sp!, {r0}
+        0x01, 0x00, 0x2D, 0xE9, // 0x10064: stm sp!, {r0}
+        0x3C, 0x00, 0x90, 0xE8, // 0x10068: ldm r0, {r2, r3, r4, r5}
+        0x0F, 0x00, 0x8E, 0xE8, // 0x1006C: stm lr, {r0, r1, r2, r3}
         0x1E, 0xFF, 0x2F, 0xE1  // bx lr - satisfy code/data inference.
     };
     GTIRB Gtirb = buildGtirb(gtirb::ISA::ARM, Bytes);
@@ -296,6 +310,12 @@ TEST(ArchMemoryAccessRelation, Arm32)
         // Load relation
         output >> Result.Type >> Result.Addr >> Result.SrcOp >> Result.DstOp >> Result.DirectReg
             >> Result.BaseReg >> Result.IndexReg >> Result.Mult >> Result.Offset;
+
+        // Filter out Thumb instructions accidentally decoded
+        if((Result.Addr & 3) != 0)
+        {
+            continue;
+        }
 
         SCOPED_TRACE(Result);
 
