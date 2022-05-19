@@ -27,15 +27,6 @@ This module establishes basic information about register:
 */
 
 /**
-Generate Indexes of general purpose registers
-*/
-.decl gp_reg_index(Index:unsigned)
-gp_reg_index(0).
-gp_reg_index(I + 1):-
-    gp_reg_index(I),
-    I < 28.
-
-/**
 The size of a register, in bits.
 */
 .decl register_size_bits(Reg:symbol,Size:unsigned)
@@ -43,9 +34,9 @@ The size of a register, in bits.
 
 register_size_bits(Reg32, 32),
 register_size_bits(Reg64, 64),
-track_register(Reg32, Reg64),
-track_register(Reg64, Reg64):-
-    gp_reg_index(I),
+reg_map_rule(Reg32, Reg64),
+general_purpose_reg(Reg64):-
+    I = range(0,29),
     Reg32 = cat("W", to_string(I)),
     Reg64 = cat("X", to_string(I)).
 
@@ -56,36 +47,30 @@ register_size_bits("FP", 64).
 register_size_bits("LR", 64).
 register_size_bits("SP", 64).
 
-track_register("W29", "FP").
-track_register("FP", "FP").
+reg_map_rule("W29", "FP").
+reg_map_rule("W30", "LR").
+reg_map_rule("WSP", "SP").
 
-track_register("W30", "LR").
-track_register("LR", "LR").
-
-track_register("WSP", "SP").
-track_register("SP", "SP").
-
-track_register("NZCV", "NZCV").
+general_purpose_reg("FP").
+general_purpose_reg("LR").
 
 // Use the 'System V AMD64 ABI' calling convention.
 function_non_maintained_reg(Reg):-
-    gp_reg_index(I),
-    Reg = cat("X", to_string(I)),
-    0 <= I, I <= 18.
+    I = range(0,19),
+    Reg = cat("X", to_string(I)).
 
 function_non_maintained_reg("FP").
 
 // PC is not a register in aarch64
-pc_register("NONE"):-
+pc_reg(""):-
     false.
 
 // TODO:
-frame_pointer("NONE"):-
+frame_pointer(""):-
     false.
 
-stack_pointer("WSP").
 stack_pointer("SP").
 
-return_val_reg("X0").
+return_reg("X0").
 
 condition_flags_reg("NZCV").

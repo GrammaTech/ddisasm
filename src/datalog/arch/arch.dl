@@ -226,15 +226,8 @@ Dst and Src may be untracked registers.
 move_reg_reg(EA,Dst,Src):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     move_operation(Operation),
-    op_regdirect(Op1,Src),
-    op_regdirect(Op2,Dst).
-
-.decl move_reg_reg_tracked(EA:address,Dst:register,Src:register) inline
-
-move_reg_reg_tracked(EA,Dst,Src):-
-    arch.move_reg_reg(EA,Dst_untracked,Src_untracked),
-    track_register(Dst_untracked,Dst),
-    track_register(Src_untracked,Src).
+    op_regdirect_contains_reg(Op1,Src),
+    op_regdirect_contains_reg(Op2,Dst).
 
 /**
 Moves an immediate value to a register.
@@ -247,13 +240,7 @@ move_reg_imm(EA,Dst,Value,1):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     move_operation(Operation),
     op_immediate(Op1,Value),
-    op_regdirect(Op2,Dst).
-
-.decl move_reg_imm_tracked(EA:address,Dst:register,Imm:number,ImmIndex:operand_index) inline
-
-move_reg_imm_tracked(EA,Reg,Immediate,ImmIndex):-
-    move_reg_imm(EA,Reg_untracked,Immediate,ImmIndex),
-    track_register(Reg_untracked,Reg).
+    op_regdirect_contains_reg(Op2,Dst).
 
 .decl move(EA:address)
 
@@ -314,12 +301,8 @@ AccessType is either "LOAD" or "STORE"
 DirectReg, BaseReg, and IndexReg may be untracked registers or unstandardized names.
 */
 .decl memory_access(AccessType:symbol,EA:address,SrcOp:operand_index,DstOp:operand_index,
-    DirectReg:register,BaseReg:register,IndexReg:register,Mult:number,Offset:number)
+    DirectReg:register,BaseReg:reg_nullable,IndexReg:reg_nullable,Mult:number,Offset:number)
 .output memory_access
-
-// TODO: remove when MIPS has memory_access implemented.
-memory_access("",0,0,0,"","","",0,0):-
-    false.
 
 /**
 Represents a load from memory to a register.
@@ -327,7 +310,7 @@ Represents a load from memory to a register.
 See arch.memory_access().
 */
 .decl load(EA:address,SrcOp:operand_index,DstOp:operand_index,DstReg:register,
-    BaseReg:register,IndexReg:register,Mult:number,Offset:number) inline
+    BaseReg:reg_nullable,IndexReg:reg_nullable,Mult:number,Offset:number) inline
 
 load(EA,SrcOp,DstOp,DstReg,BaseReg,IndexReg,Mult,Offset):-
     memory_access("LOAD",EA,SrcOp,DstOp,DstReg,BaseReg,IndexReg,Mult,Offset).
@@ -338,7 +321,7 @@ Represents a store from a register to memory.
 See arch.memory_access().
 */
 .decl store(EA:address,SrcOp:operand_index,DstOp:operand_index,SrcReg:register,
-    BaseReg:register,IndexReg:register,Mult:number,Offset:number) inline
+    BaseReg:reg_nullable,IndexReg:reg_nullable,Mult:number,Offset:number) inline
 
 store(EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset):-
     memory_access("STORE",EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset).
@@ -399,7 +382,7 @@ is part of an indirect operand, but that operand is not a destination).
 
 defines_reg(EA,Reg):-
     (
-        register_access(EA,"W",UntrackedReg), arch.track_register(UntrackedReg,Reg);
+        register_access(EA,"W",RegIn), reg_map(RegIn,Reg);
         load(EA,_,_,Reg,_,_,_,_);
         reg_arithmetic_operation(EA,Reg,_,_,_);
         reg_reg_arithmetic_operation(EA,Reg,_,_,_,_);
@@ -415,8 +398,8 @@ This may be an implicit use (i.e., the register may not appear in any operands).
 .output uses_reg
 
 uses_reg(EA,Reg):-
-    register_access(EA,"R",UntrackedReg),
-    arch.track_register(UntrackedReg,Reg).
+    register_access(EA,"R",RegIn),
+    reg_map(RegIn,Reg).
 
 /**
 The location and register where the address of main is loaded.
@@ -443,11 +426,12 @@ inferred_main_dispatch(CallEA):-
 // ===========================================================================
 
 /**
-Limit the registers that are tracked and transform the names to their 64-bit
-versions.
+Defines explicit register mappings.
 */
-.decl track_register(RegName:register,RegGenericName:register)
-.output track_register
+.decl reg_map_rule(RegIn:input_reg,Reg:register)
+
+reg_map_rule("",""):-
+    false.
 
 /**
 This specifies the registers whose value is not kept through a function call
@@ -455,16 +439,40 @@ according to the architecture's calling convention.
 */
 .decl function_non_maintained_reg(Reg:register)
 
-.decl pc_register(Reg:register)
-.output pc_register
+/**
+The PC register, if architecturally accessible.
+*/
+.decl pc_reg(Reg:register)
 
+/**
+Register that may hold the stack frame pointer.
+
+The frame pointer is often also a general_purpose_reg.
+*/
 .decl frame_pointer(Reg:register)
-.output frame_pointer
 
+/**
+Register that may hold the stack pointer.
+*/
 .decl stack_pointer(Reg:register)
-.output stack_pointer
 
-.decl return_val_reg(Reg:register)
+/**
+Registers that hold the return value of a function.
+*/
+.decl return_reg(Reg:register)
+
+/**
+Registers that may be used for general purpose calculations.
+*/
+.decl general_purpose_reg(Reg:register)
+
+/**
+A register with a constant value of zero.
+*/
+.decl zero_reg(Reg:register)
+
+zero_reg(""):-
+    false.
 
 /**
 The register that holds condition flags.

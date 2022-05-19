@@ -27,56 +27,40 @@ This module stablishes basic information about register:
 
 */
 
-track_register("EAX","RAX").
-track_register("RAX","RAX").
+reg_map_rule("EAX","RAX").
+reg_map_rule("EBX","RBX").
+reg_map_rule("ECX","RCX").
+reg_map_rule("EDX","RDX").
+reg_map_rule("EDI","RDI").
+reg_map_rule("ESI","RSI").
+reg_map_rule("EBP","RBP").
+reg_map_rule("ESP","RSP").
+reg_map_rule("R8D","R8").
+reg_map_rule("R9D","R9").
+reg_map_rule("R10D","R10").
+reg_map_rule("R11D","R11").
+reg_map_rule("R12D","R12").
+reg_map_rule("R13D","R13").
+reg_map_rule("R14D","R14").
+reg_map_rule("R15D","R15").
 
-track_register("EBX","RBX").
-track_register("RBX","RBX").
+reg_map_rule("EFLAGS", "RFLAGS").
 
-track_register("ECX","RCX").
-track_register("RCX","RCX").
-
-track_register("EDX","RDX").
-track_register("RDX","RDX").
-
-track_register("EDI","RDI").
-track_register("RDI","RDI").
-
-track_register("ESI","RSI").
-track_register("RSI","RSI").
-
-track_register("RBP","RBP").
-track_register("EBP","RBP").
-
-track_register("RSP","RSP").
-track_register("ESP","RSP").
-
-track_register("R8","R8").
-track_register("R8D","R8").
-
-track_register("R9","R9").
-track_register("R9D","R9").
-
-track_register("R10","R10").
-track_register("R10D","R10").
-
-track_register("R11","R11").
-track_register("R11D","R11").
-
-track_register("R12","R12").
-track_register("R12D","R12").
-
-track_register("R13","R13").
-track_register("R13D","R13").
-
-track_register("R14","R14").
-track_register("R14D","R14").
-
-track_register("R15","R15").
-track_register("R15D","R15").
-
-track_register("EFLAGS", "RFLAGS").
-track_register("RFLAGS", "RFLAGS").
+general_purpose_reg("RAX").
+general_purpose_reg("RBX").
+general_purpose_reg("RCX").
+general_purpose_reg("RDX").
+general_purpose_reg("RDI").
+general_purpose_reg("RSI").
+general_purpose_reg("RBP").
+general_purpose_reg("R8").
+general_purpose_reg("R9").
+general_purpose_reg("R10").
+general_purpose_reg("R11").
+general_purpose_reg("R12").
+general_purpose_reg("R13").
+general_purpose_reg("R14").
+general_purpose_reg("R15").
 
 function_non_maintained_reg("RAX").
 function_non_maintained_reg("RCX").
@@ -92,12 +76,12 @@ function_non_maintained_reg("RDI"),
 function_non_maintained_reg("RSI"):-
     binary_format("ELF").
 
-pc_register("RIP").
+pc_reg("RIP").
 
 frame_pointer("RBP").
 
 stack_pointer("RSP").
 
-return_val_reg("RAX").
+return_reg("RAX").
 
 condition_flags_reg("RFLAGS").

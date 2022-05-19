@@ -57,21 +57,21 @@ instruction_memory_access_size(EA,Index,SizeAccess):-
     ).
 
 //there is a data access at EA in the operand Op_index
-.decl data_access(EA:address,Op_index:operand_index,RegSegment:register,RegBase:register,RegIndex:register,Mult:number,Offset:number,Size:unsigned)
+.decl data_access(EA:address,Op_index:operand_index,RegSegment:reg_nullable,RegBase:reg_nullable,RegIndex:reg_nullable,Mult:number,Offset:number,Size:unsigned)
 .output data_access
 
 data_access(EA,Op_index,RegSegment,RegBase,RegIndex,Mult,Offset,Size):-
     code(EA),
     instruction_get_op(EA,Op_index,Op),
-    op_indirect(Op,RegSegment,RegBase,RegIndex,Mult,Offset,_),
+    op_indirect_mapped(Op,RegSegment,RegBase,RegIndex,Mult,Offset,_),
     instruction_memory_access_size(EA,Op_index,Size).
 
 // the register Reg has the given value at instruction EA and operand Op_index
-.decl value_reg_at_operand(EA:address,Op_index:operand_index,Reg:register,EA_from:address,Mult:number,Offset:number,Type:symbol)
+.decl value_reg_at_operand(EA:address,Op_index:operand_index,Reg:reg_nullable,EA_from:address,Mult:number,Offset:number,Type:symbol)
 
 
 // value_reg_at_operand_loop is just used to give priority to "loop" values over other kinds of values
-.decl value_reg_at_operand_loop(EA:address,Op_index:operand_index,Reg:register,EA_from:address,Mult:number,Offset:number,Type:symbol)
+.decl value_reg_at_operand_loop(EA:address,Op_index:operand_index,Reg:reg_nullable,EA_from:address,Mult:number,Offset:number,Type:symbol)
 
 
 value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,BaseAddress,"loop"),
@@ -79,21 +79,21 @@ value_reg_at_operand_loop(EA,Op_index,Reg,EA_from,Mult,BaseAddress,"loop"):-
     data_access(EA,Op_index,_,Reg2,Reg3,_,_,_),
     (
         Reg = Reg2,
-        Reg3 = Reg3 // avoid warning
+        UNUSED(Reg3)
         ;
         Reg = Reg3,
-        Reg2 = Reg2 // avoid warning
+        UNUSED(Reg2)
     ),
-    Reg != "NONE",
-    def_used(EA_def,Reg,EA,Op_index),
-    best_value_reg(EA_def,Reg,EA_from,Mult,Offset,"loop"),
+    reg_nonnull(Reg,Reg_nn),
+    def_used(EA_def,Reg_nn,EA,Op_index),
+    best_value_reg(EA_def,Reg_nn,EA_from,Mult,Offset,"loop"),
     (
         // the access is after the increment
-        !def_used(EA_from,Reg,EA,Op_index),
+        !def_used(EA_from,Reg_nn,EA,Op_index),
         BaseAddress = Offset
         ;
         // the access is before the increment
-        def_used(EA_from,Reg,EA,Op_index),
+        def_used(EA_from,Reg_nn,EA,Op_index),
         BaseAddress = Offset-Mult
     ).
 
@@ -101,15 +101,15 @@ value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,Offset_final,Type):-
     data_access(EA,Op_index,_,Reg2,Reg3,_,_,_),
     (
         Reg = Reg2,
-        Reg3 = Reg3 // avoid warning
+        UNUSED(Reg3)
         ;
         Reg = Reg3,
-        Reg2 = Reg2 // avoid warning
+        UNUSED(Reg2)
     ),
-    Reg != "NONE",
+    reg_nonnull(Reg,Reg_nn),
     !value_reg_at_operand_loop(EA,Op_index,Reg,_,_,_,_),
-    def_used(EA_def,Reg,EA,Op_index),
-    best_value_reg(EA_def,Reg,EA_from,Mult,Offset,Type),
+    def_used(EA_def,Reg_nn,EA,Op_index),
+    best_value_reg(EA_def,Reg_nn,EA_from,Mult,Offset,Type),
     (
         Offset_final = max(Offset,0)
         ;
@@ -123,23 +123,23 @@ value_reg_at_operand(EA,Op_index,Reg,0,1,0,"incomplete"):-
     data_access(EA,Op_index,_,Reg2,Reg3,_,_,_),
     (
         Reg = Reg2,
-        Reg3 = Reg3 // avoid warning
+        UNUSED(Reg3)
         ;
         Reg = Reg3,
-        Reg2 = Reg2 // avoid warning
+        UNUSED(Reg2)
     ),
-    Reg != "NONE",
-    !def_used(_,Reg,EA,Op_index).
+    reg_nonnull(Reg,Reg_nn),
+    !def_used(_,Reg_nn,EA,Op_index).
 
 // NONE registers have 0 value
 value_reg_at_operand(EA,Op_index,Reg,0,0,0,"complete"):-
     data_access(EA,Op_index,_,Reg2,Reg3,_,_,_),
     (
         Reg = Reg2,
-        Reg3 = Reg3 // avoid warning
+        UNUSED(Reg3)
         ;
         Reg = Reg3,
-        Reg2 = Reg2 // avoid warning
+        UNUSED(Reg2)
     ),
     Reg = "NONE".
 

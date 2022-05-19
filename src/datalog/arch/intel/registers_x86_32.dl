@@ -27,42 +27,41 @@ This module stablishes basic information about register:
  - Whether they all callee or caller saved according to the ABI
 */
 
-track_register("AX","EAX").
-track_register("EAX","EAX").
+reg_map_rule("AX","EAX").
 
-track_register("BX","EBX").
-track_register("EBX","EBX").
+reg_map_rule("BX","EBX").
 
-track_register("CX","ECX").
-track_register("ECX","ECX").
+reg_map_rule("CX","ECX").
 
-track_register("DX","EDX").
-track_register("EDX","EDX").
+reg_map_rule("DX","EDX").
 
-track_register("DI","EDI").
-track_register("EDI","EDI").
+reg_map_rule("DI","EDI").
 
-track_register("SI","ESI").
-track_register("ESI","ESI").
+reg_map_rule("SI","ESI").
 
-track_register("SP","ESP").
-track_register("ESP","ESP").
+reg_map_rule("SP","ESP").
 
-track_register("BP","EBP").
-track_register("EBP","EBP").
+reg_map_rule("BP","EBP").
 
-track_register("EFLAGS", "EFLAGS").
+general_purpose_reg("EAX").
+general_purpose_reg("EBX").
+general_purpose_reg("ECX").
+general_purpose_reg("EDX").
+general_purpose_reg("EDI").
+general_purpose_reg("ESI").
+general_purpose_reg("EBP").
 
 function_non_maintained_reg("EAX").
 function_non_maintained_reg("ECX").
 function_non_maintained_reg("EDX").
 
-pc_register("EIP").
+pc_reg(""):-
+    false.
 
 frame_pointer("EBP").
 
 stack_pointer("ESP").
 
-return_val_reg("EAX").
+return_reg("EAX").
 
 condition_flags_reg("EFLAGS").

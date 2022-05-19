@@ -78,14 +78,14 @@ return(EA):-
     substr(Operation,0,3) = "POP",
     instruction_get_op(EA,_,Op),
     op_regdirect_contains_reg(Op,Reg),
-    pc_register(Reg).
+    pc_reg(Reg).
 
 return(EA):-
     instruction_get_operation(EA,Operation),
     substr(Operation,0,3) = "MOV",
     instruction_get_dest_op(EA,_,DestOp),
     op_regdirect_contains_reg(DestOp,PC),
-    pc_register(PC),
+    pc_reg(PC),
     instruction_get_src_op(EA,_,SrcOp),
     op_regdirect_contains_reg(SrcOp,"LR").
 
@@ -134,7 +134,7 @@ pc_relative_addr(EA,Reg,Val):-
     instruction(EA,_,_,Operation,OffsetOp,DestOp,0,_,_,_),
     substr(Operation,0,3) = "ADR",
     op_immediate(OffsetOp, Offset),
-    op_regdirect(DestOp,Reg),
+    op_regdirect_contains_reg(DestOp,Reg),
     pc_relative_disp(EA,Disp),
     Val = as(EA - (EA band 1),number) + Offset + Disp.
 
@@ -142,9 +142,9 @@ pc_relative_addr(EA,Reg,Val):-
     instruction(EA,_,_,Operation,PCOp,OffsetOp,DestOp,0,_,_),
     substr(Operation,0,3) = "ADD",
     op_immediate(OffsetOp, Offset),
-    op_regdirect(DestOp,Reg),
-    op_regdirect(PCOp,PC),
-    arch.pc_register(PC),
+    op_regdirect_contains_reg(DestOp,Reg),
+    op_regdirect_contains_reg(PCOp,PC),
+    arch.pc_reg(PC),
     pc_relative_disp(EA,Disp),
     Val = as(EA - (EA band 1),number) + Offset + Disp.
 
@@ -201,7 +201,7 @@ conditional(EA,CC):-
 // Does not override - extends with `ldr pc, [...] or mov pc, reg`
 jump(EA):-
     load(EA,_,_,Reg,_,_,_,_),
-    pc_register(Reg),
+    pc_reg(Reg),
     !arch.return(EA).
 
 op_does_not_read_dest_reg(Operation):-

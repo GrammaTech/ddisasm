@@ -97,26 +97,27 @@ relative_address(EA+Size,Size,TableStart,Ref,Dest,DestIsFirstOrSecond):-
 // auxiliary predicate for detecting accessing an element of a jump table.
 .decl jump_table_element_access(EA:address,Size:unsigned,TableStart:address,RegIndex:register)
 
-jump_table_element_access(EA,Size,TableStartAddr,RegIndex):-
+jump_table_element_access(EA,Size,TableStartAddr,RegIndex_nn):-
     data_access(EA,_,"NONE","NONE",RegIndex,as(Size,number),TableStart,Size),
+    reg_nonnull(RegIndex,RegIndex_nn),
     TableStartAddr = as(TableStart,address),
-    RegIndex != "NONE",
     data_segment(Beg,End),
     TableStartAddr >= Beg,
     TableStartAddr <= End.
 
-jump_table_element_access(EA,1,TableStartAddr,RegBase):-
+jump_table_element_access(EA,1,TableStartAddr,RegBase_nn):-
     data_access(EA,_,"NONE",RegBase,"NONE",_,TableStart,1),
+    reg_nonnull(RegBase,RegBase_nn),
     TableStartAddr = as(TableStart,address),
-    RegBase != "NONE",
     data_segment(Beg,End),
     TableStartAddr >= Beg,
     TableStartAddr <= End.
 
-jump_table_element_access(EA,Size,TableStartAddr,RegIndex):-
+jump_table_element_access(EA,Size,TableStartAddr,RegIndex_nn):-
     data_access(EA,_,"NONE",RegBase,RegIndex,as(Size,number),Offset,Size),
-    RegIndex != "NONE",
-    const_value_reg_used(EA,_,_,RegBase,Base),
+    reg_nonnull(RegBase,RegBase_nn),
+    reg_nonnull(RegIndex,RegIndex_nn),
+    const_value_reg_used(EA,_,_,RegBase_nn,Base),
     TableStartAddr = as(Base+Offset,address),
     data_segment(Beg,End),
     TableStartAddr >= Beg,
@@ -124,10 +125,11 @@ jump_table_element_access(EA,Size,TableStartAddr,RegIndex):-
 
 // sometimes the regBase contains the index (already multiplied)
 // and the regIndex contains the base address
-jump_table_element_access(EA,Size,TableStartAddr,RegBase):-
+jump_table_element_access(EA,Size,TableStartAddr,RegBase_nn):-
     data_access(EA,_,"NONE",RegBase,RegIndex,1,0,Size),
-    RegBase != "NONE",
-    const_value_reg_used(EA,_,_,RegIndex,TableStart),
+    reg_nonnull(RegBase,RegBase_nn),
+    reg_nonnull(RegIndex,RegIndex_nn),
+    const_value_reg_used(EA,_,_,RegIndex_nn,TableStart),
     TableStartAddr = as(TableStart,address),
     data_segment(Beg,End),
     TableStartAddr >= Beg,
@@ -140,8 +142,7 @@ The end of a jump table as identified by a boundary value of the index register.
 .output jump_table_max
 
 jump_table_max(TableStart,TableStart+as(Value,unsigned)*Size):-
-    jump_table_element_access(EA,Size,TableStart,RegIndexRaw),
-    arch.track_register(RegIndexRaw,RegIndex),
+    jump_table_element_access(EA,Size,TableStart,RegIndex),
     code_in_block(EA,Block),
     (
         // The register was not previously defined in this block.
@@ -177,8 +178,7 @@ jump_table_max(TableStart2,TableStart2+IndexValue*Size2):-
     jump_table_element_access(EA1,Size1,TableStart1,_),
     jump_table_max(TableStart1,TableEnd1),
     def_used(EA1,Reg,EA2,_),
-    jump_table_element_access(EA2,Size2,TableStart2,RegIndexRaw),
-    arch.track_register(RegIndexRaw,Reg),
+    jump_table_element_access(EA2,Size2,TableStart2,Reg),
     TableAddress = range(TableStart1,TableEnd1+Size1,Size1),
     (
         Size1 = 1, data_byte(TableAddress,IndexValue);

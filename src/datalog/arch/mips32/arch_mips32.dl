@@ -41,13 +41,15 @@ move_reg_imm(EA,Reg,Value,1):-
     instruction(EA,_,_,"LUI",Op1,Op2,0,0,_,_),
     op_immediate(Op1,Immediate),
     Value = Immediate bshl 16,
-    op_regdirect(Op2,Reg).
+    op_regdirect_contains_reg(Op2,Reg).
 
 move_reg_imm(EA,Reg,0,1):-
-    move_reg_reg(EA,Reg,"ZERO").
+    zero_reg(Zero),
+    move_reg_reg(EA,Reg,Zero).
 
 move_reg_imm(EA,Reg,Immediate,1):-
-    arch.reg_arithmetic_operation(EA,Reg,"ZERO",_,Immediate).
+    zero_reg(Zero),
+    reg_arithmetic_operation(EA,Reg,Zero,_,Immediate).
 
 store_operation("ST").
 store_operation("ST.B").

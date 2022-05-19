@@ -408,16 +408,16 @@ moved_immediate_candidate(EA_from,Imm_index,ImmediateAddr,NewDest):-
     NewDest < End,
     (
         Reg = Reg2,
-        Reg3 = Reg3 // avoid warning
+        UNUSED(Reg3)
         ;
         Reg = Reg3,
-        Reg2 = Reg2 // avoid warning
+        UNUSED(Reg2)
     ),
     value_reg_at_operand(EA_access,Op_index,Reg,EA_from,_,_,Type),
     Type != "incomplete",
     (
         binary_type("EXEC"),
-        arch.move_reg_imm_tracked(EA_from,Reg,Immediate,Imm_index), code(EA_from), Immediate >= 0
+        arch.move_reg_imm(EA_from,Reg,Immediate,Imm_index), code(EA_from), Immediate >= 0
         ;
         mov_pc_relative_immediate_to_reg(EA_from,Reg,Imm_index,Immediate), Immediate >= 0
     ),
@@ -452,7 +452,7 @@ moved_immediate_candidate(EA_def2,Imm_index,ImmediateAddr,NewDest):-
     def_used(EA_def2,Reg2,EA,_),
     (
         binary_type("EXEC"),
-        arch.move_reg_imm_tracked(EA_def2,Reg2,Immediate,Imm_index), code(EA_def2), Immediate >= 0
+        arch.move_reg_imm(EA_def2,Reg2,Immediate,Imm_index), code(EA_def2), Immediate >= 0
         ;
         mov_pc_relative_immediate_to_reg(EA_def2,Reg2,Imm_index,Immediate), Immediate >= 0
     ),
@@ -520,7 +520,7 @@ boundary_sym_expr(EA+InstrOffset,Dest):-
     symbolic_operand(EA,Index,Dest,"data"),
     instruction_immediate_offset(EA,Index,InstrOffset,_),
     // The immediate is the start of a loop counting down
-    arch.move_reg_imm_tracked(EA,_,as(Dest,number),Index),
+    arch.move_reg_imm(EA,_,as(Dest,number),Index),
     code(EA),
     value_reg(_,_,EA,"Unknown",Mult,_,_), Mult < 0,
     //  At the boundary between two sections

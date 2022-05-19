@@ -64,7 +64,8 @@ memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,"NONE",0,Offset):-
         contains("LDM", Operation), AccessType = "LOAD", SrcIdx = 2, DstIdx = 1;
         contains("STM", Operation), AccessType = "STORE", SrcIdx = 1, DstIdx = 2
     ),
-    op_register_bitfield(Op1,Index,Rt),
+    op_register_bitfield(Op1,Index,RtIn),
+    reg_map(RtIn,Rt),
     op_regdirect_contains_reg(Op2,Rn),
     arch.pointer_size(Pt_size),
     Offset = as(Index * Pt_size, number).
@@ -78,8 +79,9 @@ memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,Rm,Mult,Offset):-
         load_operation(Operation), AccessType = "LOAD", SrcIdx = 1, DstIdx = 2;
         store_operation(Operation), AccessType = "STORE", SrcIdx = 2, DstIdx = 1
     ),
-    op_regdirect(Op2,Rt),
-    op_indirect(Op1,_,Rn,Rm,Scale,Offset,_),
+    op_regdirect_contains_reg(Op2,Rt),
+    op_indirect_mapped(Op1,_,Rn,Rm,Scale,Offset,_),
+    reg_nonnull(Rn,_),
     (
         Rm = "NONE", Mult = 0, Scale = Scale;
         Rm != "NONE", Mult = Scale
@@ -87,30 +89,31 @@ memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,Rm,Mult,Offset):-
 
 // Post-index immediate (2)
 memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,"NONE",0,0),
-reg_arithmetic_operation(EA,Rn,Rn,1,Offset):-
+reg_arithmetic_operation(EA,Rn_nn,Rn_nn,1,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     (
         load_operation(Operation), AccessType = "LOAD", SrcIdx = 1, DstIdx = 3;
         store_operation(Operation), AccessType = "STORE", SrcIdx = 3, DstIdx = 1
     ),
-    op_regdirect(Op3,Rt),
+    op_regdirect_contains_reg(Op3,Rt),
     instruction_writeback(EA),
-    op_indirect(Op1,_,Rn,"NONE",_,0,_),
+    op_indirect_mapped(Op1,_,Rn,"NONE",_,0,_),
+    reg_nonnull(Rn,Rn_nn),
     op_immediate(Op2,Offset).
 
 // Post-index register (3)
 memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,"NONE",0,0),
-reg_reg_arithmetic_operation(EA,Rn,Rn,Rm,1,0):-
+reg_reg_arithmetic_operation(EA,Rn_nn,Rn_nn,Rm,1,0):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     (
         load_operation(Operation), AccessType = "LOAD", SrcIdx = 1, DstIdx = 3;
         store_operation(Operation), AccessType = "STORE", SrcIdx = 3, DstIdx = 1
     ),
-    op_regdirect(Op3,Rt),
+    op_regdirect_contains_reg(Op3,Rt),
     instruction_writeback(EA),
-    op_indirect(Op1,_,Rn,"NONE",_,0,_),
-    op_regdirect(Op2,Rm).
-
+    op_indirect_mapped(Op1,_,Rn,"NONE",_,0,_),
+    reg_nonnull(Rn,Rn_nn),
+    op_regdirect_contains_reg(Op2,Rm).
 
 // Doubleword operations
 
@@ -122,9 +125,10 @@ memory_access(AccessType,EA,SrcIdx2,DstIdx2,Rt2,Rn,Rm,Mult,Offset+4):-
         load_operation(Operation), AccessType = "LOAD", SrcIdx1 = 2, SrcIdx2 = 2, DstIdx1 = 3, DstIdx2 = 1;
         store_operation(Operation), AccessType = "STORE", SrcIdx1 = 3, SrcIdx2 = 1, DstIdx1 = 2, DstIdx2 = 2
     ),
-    op_regdirect(Op3,Rt),
-    op_regdirect(Op1,Rt2),
-    op_indirect(Op2,_,Rn,Rm,Scale,Offset,_),
+    op_regdirect_contains_reg(Op3,Rt),
+    op_regdirect_contains_reg(Op1,Rt2),
+    op_indirect_mapped(Op2,_,Rn,Rm,Scale,Offset,_),
+    reg_nonnull(Rn,_),
     (
         Rm = "NONE", Mult = 0, Scale = Scale;
         Rm != "NONE", Mult = Scale
@@ -133,44 +137,48 @@ memory_access(AccessType,EA,SrcIdx2,DstIdx2,Rt2,Rn,Rm,Mult,Offset+4):-
 // Post-index immediate (5)
 memory_access(AccessType,EA,SrcIdx1,DstIdx1,Rt,Rn,"NONE",0,0),
 memory_access(AccessType,EA,SrcIdx2,DstIdx2,Rt2,Rn,"NONE",0,4),
-reg_arithmetic_operation(EA,Rn,Rn,1,Offset):-
+reg_arithmetic_operation(EA,Rn_nn,Rn_nn,1,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,Op4,_,_),
     (
         load_operation(Operation), AccessType = "LOAD", SrcIdx1 = 2, SrcIdx2 = 2, DstIdx1 = 4, DstIdx2 = 1;
         store_operation(Operation), AccessType = "STORE", SrcIdx1 = 4, SrcIdx2 = 1, DstIdx1 = 2, DstIdx2 = 2
     ),
-    op_regdirect(Op4,Rt),
-    op_regdirect(Op1,Rt2),
+    op_regdirect_contains_reg(Op4,Rt),
+    op_regdirect_contains_reg(Op1,Rt2),
     instruction_writeback(EA),
-    op_indirect(Op2,_,Rn,"NONE",_,0,_),
+    op_indirect_mapped(Op2,_,Rn,"NONE",_,0,_),
+    reg_nonnull(Rn,Rn_nn),
     op_immediate(Op3,Offset).
 
 // Post-index register (6)
 memory_access(AccessType,EA,SrcIdx1,DstIdx1,Rt,Rn,"NONE",0,0),
 memory_access(AccessType,EA,SrcIdx2,DstIdx2,Rt2,Rn,"NONE",0,4),
-reg_reg_arithmetic_operation(EA,Rn,Rn,Rm,1,0):-
+reg_reg_arithmetic_operation(EA,Rn_nn,Rn_nn,Rm,1,0):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,Op4,_,_),
     (
         load_operation(Operation), AccessType = "LOAD", SrcIdx1 = 2, SrcIdx2 = 2, DstIdx1 = 4, DstIdx2 = 1;
         store_operation(Operation), AccessType = "STORE", SrcIdx1 = 4, SrcIdx2 = 1, DstIdx1 = 2, DstIdx2 = 2
     ),
-    op_regdirect(Op4,Rt),
-    op_regdirect(Op1,Rt2),
+    op_regdirect_contains_reg(Op4,Rt),
+    op_regdirect_contains_reg(Op1,Rt2),
     instruction_writeback(EA),
-    op_indirect(Op2,_,Rn,"NONE",_,0,_),
-    op_regdirect(Op3,Rm).
+    op_indirect_mapped(Op2,_,Rn,"NONE",_,0,_),
+    reg_nonnull(Rn,Rn_nn),
+    op_regdirect_contains_reg(Op3,Rm).
 
 
 // Generate arithmetic operations for pre-index writeback cases.
 // Handles single-word, double-word, and LDM/STM.
-reg_arithmetic_operation(EA,Rn,Rn,1,Offset):-
+reg_arithmetic_operation(EA,Rn_nn,Rn_nn,1,Offset):-
     memory_access(_,EA,_,_,_,Rn,"NONE",_,Offset),
     !memory_access(_,EA,_,_,_,Rn,"NONE",_,Offset-4), // Don't match the second access from a doubleword operation.
     instruction_writeback(EA),
+    reg_nonnull(Rn,Rn_nn),
     Offset != 0.
 
-reg_reg_arithmetic_operation(EA,Rn,Rn,Rm,Mult,Offset):-
+reg_reg_arithmetic_operation(EA,Rn_nn,Rn_nn,Rm_nn,Mult,Offset):-
     memory_access(_,EA,_,_,_,Rn,Rm,Mult,Offset),
     !memory_access(_,EA,_,_,_,Rn,Rm,Mult,Offset-4), // Don't match the second access from a doubleword operation.
     instruction_writeback(EA),
-    Rm != "NONE".
+    reg_nonnull(Rn,Rn_nn),
+    reg_nonnull(Rm,Rm_nn).

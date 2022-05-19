@@ -59,10 +59,10 @@ or loop) and considering the value with most steps.
 */
 
 .decl value_reg_edge(EA:address,Reg:register,
-                EA_reg1:address,Reg1:register,Multiplier:number,Offset:number)
+                EA_reg1:address,Reg1:reg_nullable,Multiplier:number,Offset:number)
 .output value_reg_edge
 .decl value_reg(EA:address,Reg:register,
-                EA_reg1:address,Reg1:register,Multiplier:number,Offset:number,steps:number)
+                EA_reg1:address,Reg1:reg_nullable,Multiplier:number,Offset:number,steps:number)
 .output value_reg
 
 .decl best_value_reg(EA:address,Reg:register,EA_from:address,Multiplier:number,Offset:number,type:symbol)
@@ -71,8 +71,7 @@ or loop) and considering the value with most steps.
 // mov reg immediate
 value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
     def_used_for_address(EA,Reg),
-    arch.move_reg_imm(EA,Reg_untracked,Immediate,_),
-    arch.track_register(Reg_untracked,Reg).
+    arch.move_reg_imm(EA,Reg,Immediate,_).
 
 /**
 Generate distinct stack frames (identifying them by the location at which the
@@ -95,9 +94,8 @@ stack_frame(EA,BaseReg):-
 reg_stored_in_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
     stack_frame(StackFrameDefinedAt,Base),
     def_used(StackFrameDefinedAt,Base,EA,_),
-    arch.store(EA,_,_,RawReg,RawBase,"NONE",_,StackPos),
-    arch.track_register(RawReg,Reg),
-    arch.track_register(RawBase,Base).
+    arch.store(EA,_,_,Reg,Base,"NONE",_,StackPos),
+    track_register(Reg).
 
 .decl reg_loaded_from_stack(EA:address,Reg:register,Base:register,StackPos:number,StackFrameDefinedAt:address)
 .output reg_loaded_from_stack
@@ -105,9 +103,8 @@ reg_stored_in_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
 reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
     stack_frame(StackFrameDefinedAt,Base),
     def_used(StackFrameDefinedAt,Base,EA,_),
-    arch.load(EA,_,_,RawReg,RawBase,"NONE",_,StackPos),
-    arch.track_register(RawReg,Reg),
-    arch.track_register(RawBase,Base).
+    arch.load(EA,_,_,Reg,Base,"NONE",_,StackPos),
+    track_register(Reg).
 
 /**
 Track where a value is loaded from the stack and then used as an address.
@@ -175,8 +172,7 @@ value_reg_edge(EALoad,Reg2,EAPrev,Reg1,1,0):-
 // mov DWORD from memory (constant address)
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     def_used_for_address(EA,Reg),
-    arch.load(EA,_,_,Reg_untracked,"NONE","NONE",_,Offset),
-    arch.track_register(Reg_untracked,Reg),
+    arch.load(EA,_,_,Reg,"NONE","NONE",_,Offset),
     Offset >= 0,
     Offset_addr = as(Offset,address),
     data_byte(Offset_addr,Byte0),
@@ -210,9 +206,10 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Immediate):-
 value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
     code(EA),
     instruction(EA,Size,_,"LEA",Op1,Op2,0,0,_,_),
-    op_indirect(Op1,_,PcReg,"NONE",_,Offset,_),
-    arch.pc_register(PcReg),
+    op_indirect_mapped(Op1,_,PcReg,"NONE",_,Offset,_),
+    arch.pc_reg(PcReg),
     op_regdirect_contains_reg(Op2,Reg),
+    track_register(Reg),
     Address = as(EA+Size,number)+Offset.
 
 // GOT-relative LEA. (Note that We drop the GOT Register.)
@@ -220,16 +217,19 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Address):-
     got_relative_operand(EA,1,Offset),
     instruction(EA,_,_,"LEA",_,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg),
+    track_register(Reg),
     Address = as(Offset,number).
 
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
-    arch.pc_relative_addr(EA,Reg,Val).
+    arch.pc_relative_addr(EA,Reg,Val),
+    track_register(Reg).
 
 //mov reg reg_origin
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
     def_used_for_address(EA_prev,Reg_origin),
     def_used(EA_prev,Reg_origin,EA,_),
-    arch.move_reg_reg_tracked(EA,Reg,Reg_origin),
+    arch.move_reg_reg(EA,Reg,Reg_origin),
+    track_register(Reg),
     EA != EA_prev.
 
 //reset a register
@@ -241,7 +241,8 @@ value_reg_edge(EA,Reg,EA,"NONE",0,0):-
 value_reg_edge(EA,Dst,EA_prev,Src,Mult,Immediate):-
     def_used_for_address(EA_prev,Src),
     def_used(EA_prev,Src,EA,_),
-    arch.reg_arithmetic_operation(EA,Dst,Src,Mult,Immediate).
+    arch.reg_arithmetic_operation(EA,Dst,Src,Mult,Immediate),
+    track_register(Dst).
 
 /** A register is defined using an unknown value
  This predicate is used to create trivial leaf edges in
@@ -251,8 +252,7 @@ value_reg_edge(EA,Dst,EA_prev,Src,Mult,Immediate):-
 // Load a register from a non-constant memory address
 value_reg_unsupported(EA,Reg):-
     def_used_for_address(EA,Reg),
-    arch.load(EA,_,_,Reg_untracked,RegBase,RegIndex,_,_),
-    arch.track_register(Reg_untracked,Reg),
+    arch.load(EA,_,_,Reg,RegBase,RegIndex,_,_),
     (
         RegBase != "NONE",
         RegIndex = RegIndex // avoid warning
@@ -264,9 +264,9 @@ value_reg_unsupported(EA,Reg):-
 // Load a register from a register that is not tracked
 value_reg_unsupported(EA,Reg):-
     def_used_for_address(EA,Reg),
-    arch.move_reg_reg(EA,Dst_untracked,Src_untracked),
-    arch.track_register(Dst_untracked,_),
-    !arch.track_register(Src_untracked,_).
+    arch.move_reg_reg(EA,Dst,Src),
+    track_register(Dst),
+    !track_register(Src).
 
 // Register defined in a call
 value_reg_unsupported(EA,Reg):-

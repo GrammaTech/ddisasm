@@ -106,9 +106,8 @@ split_load(EA, NextEA, as(Base + Offset,address), "LDR/STR") :-
         arch.store_operation(Operation)
     ),
     instruction_get_op(NextEA, 1, OffsetOp),
-    op_indirect(OffsetOp,"NONE",Reg2,"NONE",_,Offset,_),
-    // Make sure the registers match
-    Reg = Reg2.
+
+    op_indirect_mapped(OffsetOp,"NONE",Reg,"NONE",_,Offset,_).
 
 pc_relative_jump(EA, as(Dest,address)):-
     split_load(EA, _, Dest, "LDR/STR").
@@ -161,8 +160,9 @@ split_load_tail(EA,Offset,Reg,Type):-
 
 // LDR/STR <Register> <IndirectOp>
 // e.g. ldr x0, [x0, <OffsetOp>]
-split_load_tail(EA,Offset,Reg,Type):-
+split_load_tail(EA,Offset,Reg_nn,Type):-
     arch.memory_access(_,EA,_,_,_,Reg,"NONE",_,Offset),
+    reg_nonnull(Reg,Reg_nn),
     Type = "LDR/STR".
 
 /**
@@ -236,6 +236,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     arch.load_operation(Operation),
     instruction_get_dest_op(EA,_,DestRegOp),
     op_regdirect_contains_reg(DestRegOp,Reg),
+    track_register(Reg),
     op_indirect(Op1,_,_,_,_,_,DataSize),
     data_word(RefAddr,DataSize/8,Val).
 
@@ -248,6 +249,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
         Operation = "ADR"
     ),
     op_regdirect_contains_reg(Op2,Reg),
+    track_register(Reg),
     op_immediate(Op1,Offset),
     Val = Offset.
 

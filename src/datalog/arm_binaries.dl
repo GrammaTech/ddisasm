@@ -80,8 +80,8 @@ symbolic_operand_point(EA,2,-2,"arm: add r, r, n"):-
         substr(Operation,0,3) = "SUB";
         substr(Operation,0,3) = "RSB"
     ),
-    op_regdirect(Op1,Reg),
-    !arch.pc_register(Reg),
+    op_regdirect_contains_reg(Op1,Reg),
+    !arch.pc_reg(Reg),
     op_immediate(Op2,_),
     Op3 != 0,
     !symbolic_operand_attribute(EA,_,_).

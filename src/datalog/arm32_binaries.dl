@@ -40,8 +40,12 @@ invalid(EA,"arm: doubleword op Rt is odd"):-
     ),
     (EA band 1) = 0, // ARM mode only
     (
-        arch.reg_index(Rt,Index), (Index band 1) = 1;  // If Rt is odd, the instruction is invalid.
-        Rt = "LR"                                      // If Rt is LR, the instruction is invalid.
+        // If Rt is odd, the instruction is invalid.
+        arch.reg_index(Rt,Index),
+        (Index band 1) = 1
+        ;
+        // If Rt is LR, the instruction is invalid.
+        Rt = "LR"
     ).
 
 // For T32 instructions, you must not specify SP or PC for either Rt or Rt2.
@@ -95,7 +99,7 @@ invalid(EA,"arm: pc is not allowed"):-
     ),
     instruction_get_dest_op(EA,_,Op),
     op_regdirect_contains_reg(Op,PC),
-    arch.pc_register(PC).
+    arch.pc_reg(PC).
 
 invalid(EA,"arm: sp is not allowed"):-
     instruction_get_operation(EA,Operation),
@@ -112,15 +116,15 @@ invalid(EA,"arm: deprecated bx"):-
 
 invalid(EA,"arm: pc cannot be used as index register"):-
     instruction_get_op(EA,_,Op),
-    op_indirect(Op,_,_,PC,_,_,_),
-    arch.pc_register(PC).
+    op_indirect_mapped(Op,_,_,PC,_,_,_),
+    arch.pc_reg(PC).
 
 invalid(EA,"arm: invalid mul operand (pc)"):-
     instruction_get_operation(EA,Operation),
     contains("MUL",Operation),
     instruction_get_op(EA,_,Op),
     op_regdirect_contains_reg(Op,Reg),
-    arch.pc_register(Reg).
+    arch.pc_reg(Reg).
 
 invalid(EA,"arm: deprecated bx"):-
     instruction_get_operation(EA,"BX"),
@@ -152,7 +156,7 @@ invalid(EA,"arm: invalid pc"):-
     ),
     instruction_get_dest_op(EA,_,Op),
     op_regdirect_contains_reg(Op,PC),
-    arch.pc_register(PC).
+    arch.pc_reg(PC).
 
 invalid(EA,"arm: invalid arithmetic instruction with suffix s"):-
     instruction_get_operation(EA,Operation),
@@ -165,7 +169,7 @@ invalid(EA,"arm: invalid arithmetic instruction with suffix s"):-
     substr(Operation,3,1) = "S",
     instruction_get_dest_op(EA,_,Op),
     op_regdirect_contains_reg(Op,PC),
-    arch.pc_register(PC).
+    arch.pc_reg(PC).
 
 invalid(EA, "arm: invalid stm/ldm"):-
     instruction(EA,_,_,Operation,RegListOp,RegOp,0,_,_,_),
@@ -195,6 +199,7 @@ invalid(EA, "arm: invalid stm/ldm"):-
 // PC-relative LDR
 value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
     litpool_ref(EA,Reg,LitPoolAddr,Size,"LDR"),
+    track_register(Reg),
     !relocation(LitPoolAddr,_,_,_,_,_,_),
     data_word(LitPoolAddr,Size,Val).
 
@@ -206,16 +211,16 @@ direct_jump(EA,Dest):-
     instruction_get_operation(EA,Operation),
     arch.jump_operation_op_index(Operation,TargetOpIndex),
     instruction_get_op(EA,TargetOpIndex,TargetOp),
-    op_regdirect(TargetOp,Reg),
-    arch.pc_register(Reg),
+    op_regdirect_contains_reg(TargetOp,Reg),
+    arch.pc_reg(Reg),
     arch.pc_relative_disp(EA,Disp),
     Dest0 = EA + as(Disp,address),
     Dest = Dest0 - (Dest0 band 1).
 
 pc_relative_operand(EA,Index,as(as(EANext,number)+Offset,address)):-
     instruction_get_op(EA, Index, Op),
-    op_indirect(Op,"NONE",Reg,"NONE",1,Offset,_),
-    arch.pc_register(Reg),
+    op_indirect_mapped(Op,"NONE",Reg,"NONE",1,Offset,_),
+    arch.pc_reg(Reg),
     arch.pc_relative_disp(EA,Disp),
     EANext0 = EA + as(Disp,address),
     // Align the address
@@ -294,7 +299,7 @@ plt_block(EA-3,Function):-
     arch.jump_operation_op_index(Operation2,TargetOpIndex),
     instruction_get_op(EA-3,TargetOpIndex,TargetOp),
     op_regdirect_contains_reg(TargetOp,PC),
-    arch.pc_register(PC).
+    arch.pc_reg(PC).
 
 /**
 plt_entry_arm_candidate
@@ -319,7 +324,7 @@ plt_entry_arm_candidate(EA,EA_jump,Function,as(Dest,address)):-
     EA >= Beg,
     EA < End,
 
-    arch.pc_register(PC),
+    arch.pc_reg(PC),
 
     // add ip, pc, #0, #12
     arch.reg_arithmetic_operation(EA,Reg,PC,1,N1),
@@ -335,7 +340,7 @@ plt_entry_arm_candidate(EA,EA_jump,Function,as(Dest,address)):-
     instruction_get_operation(EA_jump,Operation),
     arch.load_operation(Operation),
     instruction_get_src_op(EA_jump,_,OffsetOp),
-    op_indirect(OffsetOp,"NONE",Reg,"NONE",_,Offset,_),
+    op_indirect_mapped(OffsetOp,"NONE",Reg,"NONE",_,Offset,_),
     instruction_get_dest_op(EA_jump,_,RegOp),
     op_regdirect_contains_reg(RegOp,PC),
 
@@ -355,7 +360,7 @@ plt_entry_arm_candidate(EA,EA_jump,Function,as(Dest,address)):-
     EA >= Beg,
     EA < End,
 
-    arch.pc_register(PC),
+    arch.pc_reg(PC),
 
     movw_movt_pair(EA,EA_movt,Value),
 
@@ -368,7 +373,7 @@ plt_entry_arm_candidate(EA,EA_jump,Function,as(Dest,address)):-
     instruction_get_operation(EA_jump,Operation),
     arch.load_operation(Operation),
     instruction_get_src_op(EA_jump,_,OffsetOp),
-    op_indirect(OffsetOp,"NONE",Reg,"NONE",_,Offset,_),
+    op_indirect_mapped(OffsetOp,"NONE",Reg,"NONE",_,Offset,_),
     instruction_get_dest_op(EA_jump,_,RegOp),
     op_regdirect_contains_reg(RegOp,PC),
 
@@ -493,8 +498,8 @@ labeled_data_candidate(Dest),
 symbol_minus_symbol_candidate(Addr,Size,EA_add_pc,Dest,as(Scale,unsigned),Offset):-
     litpool_ref(EABase,Reg,Addr,Size,_),
     def_used(EABase,Reg,EA_add_pc,_),
+    arch.pc_reg(PC),
     arch.reg_reg_arithmetic_operation(EA_add_pc,Reg,Reg,PC,1,0),
-    arch.pc_register(PC),
 
     arch.pc_relative_disp(EA_add_pc,Disp),
     data_word(Addr,Size,Diff),
@@ -574,8 +579,8 @@ arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimi
     instruction(EA_jump,InstrSize,_,Operation,IndOp,RegOp,0,0,_,_),
     // TODO: Currently, 'lsl N' is not propagated from the decoder.
     op_regdirect_contains_reg(RegOp,PC),
-    arch.pc_register(PC),
-    op_indirect(IndOp,"NONE",BaseReg,_,_,0,NBits),
+    arch.pc_reg(PC),
+    op_indirect_mapped(IndOp,"NONE",BaseReg,_,_,0,NBits),
     Size = NBits / 8,
     arch.pointer_size(Size),
     (
@@ -641,7 +646,8 @@ arm_jump_table_candidate_start(EA,TableStart,TableStart,Size,TargetAddr,TableLim
     ),
     instruction(EA,InstrSize,_,Operation,Operand,0,0,0,_,_),
     EA band 1 = 1, // assert: tbb/tbh instruction only exist in Thumb.
-    op_indirect(Operand,"NONE","PC", _,_,_,_),
+    arch.pc_reg(PC),
+    op_indirect_mapped(Operand,"NONE",PC,_,_,_,_),
     TableStart = as(EA+InstrSize-1,address),
 
     // tbb/tbh can't perform a mode switch and just uses aligned addresses of
@@ -679,7 +685,7 @@ arm_jump_table_candidate_start(EA_jump,TableStart,TableStart,Size,TargetAddr,Tab
     instruction_get_dest_op(EA_ldr,_,Reg3Op),
     op_regdirect_contains_reg(Reg3Op,R3),
     instruction_get_src_op(EA_ldr,_,IndOp),
-    op_indirect(IndOp,"NONE",R1,_,Mult,0,NBits),
+    op_indirect_mapped(IndOp,"NONE",R1,_,Mult,0,NBits),
     instruction_get_dest_op(EA,_,Reg1Op),
     op_regdirect_contains_reg(Reg1Op,R1),
 
@@ -791,8 +797,8 @@ litpool_ref(EA,Reg,LitPoolAddr,Size,Type):-
         arch.load_operation(Operation),
         instruction_get_operation(EA,Operation),
         instruction_get_src_op(EA,_,OffsetOp),
-        op_indirect(OffsetOp,"NONE",PC,"NONE",_,Offset,NBits),
-        arch.pc_register(PC),
+        op_indirect_mapped(OffsetOp,"NONE",PC,"NONE",_,Offset,NBits),
+        arch.pc_reg(PC),
         arch.pc_relative_disp(EA,Disp),
         // Align the address
         EA_aligned = EA - (EA band 3),
@@ -810,12 +816,8 @@ litpool_ref(EA,Reg,LitPoolAddr,Size,Type):-
         Type = "AddPC"
     ),
     instruction_get_dest_op(EA,_,RegOp),
-    (
-        op_regdirect_contains_reg(RegOp,Reg)
-        ;
-        op_regdirect(RegOp,Reg)
-    ),
-    !arch.pc_register(Reg).
+    op_regdirect_contains_reg(RegOp,Reg),
+    !arch.pc_reg(Reg).
 
 // VLDR: label must be aligned on a word boundary within -/+1KB of the
 // current instruction.
@@ -858,7 +860,7 @@ litpool_ref_double(EA,Reg1,Reg2,LitPoolAddr,Type):-
     instruction(EA_ldrd,_,_,"LDRD",Op1,IndOp,Op3,_,_,_),
     op_regdirect_contains_reg(Op3,Reg1),
     op_regdirect_contains_reg(Op1,Reg2),
-    op_indirect(IndOp,"NONE",Reg,"NONE",_,0,_).
+    op_indirect_mapped(IndOp,"NONE",Reg,"NONE",_,0,_).
 
 data_block_candidate(LitPoolAddr,Pt_size*2):-
     arch.pointer_size(Pt_size),
@@ -995,7 +997,7 @@ symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA
 
     // ADD <Register> PC
     // e.g., add r3, pc
-    arch.pc_register(PC),
+    arch.pc_reg(PC),
     arch.reg_reg_arithmetic_operation(EA_add_pc,Reg,Reg,PC,1,0),
 
     data_word(LitPoolAddr,Size,Diff),
@@ -1063,7 +1065,7 @@ litpool_symbolic_operand(LitPoolAddr2,DataAccessSize,Symbol1,Symbol2,EA_D,Reg3,S
     arch.load_operation(Operation),
     instruction_get_src_op(EA_D,_,IndOp),
     instruction_get_dest_op(EA_D,_,RegOp),
-    op_indirect(IndOp,"NONE",Reg1,Reg2,_,0,Bits),
+    op_indirect_mapped(IndOp,"NONE",Reg1,Reg2,_,0,Bits),
     op_regdirect_contains_reg(RegOp,Reg3),
     SymSize = Bits / 8,
 
@@ -1077,6 +1079,7 @@ litpool_symbolic_operand(LitPoolAddr2,DataAccessSize,Symbol1,Symbol2,EA_D,Reg3,S
 
 value_reg_edge(EA,Reg,EA,"NONE",0,as(Val,number)):-
     litpool_symbolic_operand(_,_,_,Symbol2,EA,Reg,Size),
+    track_register(Reg),
     data_word(Symbol2,Size,Val).
 
 //  => equations: [LitPoolAddr1] = foo - (C)

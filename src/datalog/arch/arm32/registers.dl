@@ -26,38 +26,9 @@ This module stablishes basic information about register:
  - Whether they all callee or caller saved according to the ABI
 */
 
-track_register("R0","R0").
-track_register("R1","R1").
-track_register("R2","R2").
-track_register("R3","R3").
-track_register("R4","R4").
-track_register("R5","R5").
-track_register("R6","R6").
-track_register("R7","R7").
-track_register("R8","R8").
-
-track_register("R9","SB").
-track_register("SB","SB").
-
-track_register("R10","SL").
-track_register("SL","SL").
-
-track_register("R11","FP").
-track_register("FP","FP").
-
-track_register("R12","IP").
-track_register("IP","IP").
-
-track_register("R13","SP").
-track_register("SP","SP").
-
-track_register("R14","LR").
-track_register("LR","LR").
-
-//track_register("R15","PC").
-track_register("PC","PC").
-
-track_register("CPSR", "CPSR").
+// As long as CS_OPT_SYNTAX_NOREGNAME is not provided, capstone generates names
+// like SB, SL, FP, etc. for registers >R8
+// See https://github.com/capstone-engine/capstone/blob/fe3e7ab6716d0ba249b6779dadd4a3a2eb842f21/arch/ARM/ARMInstPrinter.c#L191
 
 .decl reg_index(RegName:register,Index:unsigned)
 
@@ -70,17 +41,30 @@ reg_index("R5",5).
 reg_index("R6",6).
 reg_index("R7",7).
 reg_index("R8",8).
-reg_index("R9",9).
-reg_index("R10",10).
-reg_index("R11",11).
-reg_index("R12",12).
-reg_index("R13",13).
-reg_index("R14",14).
-reg_index("R15",15).
+reg_index("SB",9).
+reg_index("SL",10).
+reg_index("FP",11).
+reg_index("IP",12).
+reg_index("SP",13).
+reg_index("LR",14).
+reg_index("PC",15).
 
-reg_index(Reg,Index):-
-    track_register(Reg0,Reg),
-    reg_index(Reg0,Index).
+general_purpose_reg("R0").
+general_purpose_reg("R1").
+general_purpose_reg("R2").
+general_purpose_reg("R3").
+general_purpose_reg("R4").
+general_purpose_reg("R5").
+general_purpose_reg("R6").
+general_purpose_reg("R7").
+general_purpose_reg("R8").
+general_purpose_reg("SB").
+general_purpose_reg("SL").
+general_purpose_reg("FP").
+general_purpose_reg("IP").
+general_purpose_reg("SP").
+general_purpose_reg("LR").
+general_purpose_reg("PC").
 
 // Use the ARM calling convention.
 function_non_maintained_reg("R0").
@@ -88,16 +72,16 @@ function_non_maintained_reg("R1").
 function_non_maintained_reg("R2").
 function_non_maintained_reg("R3").
 
-function_non_maintained_reg("R12").
-function_non_maintained_reg("R13").
-function_non_maintained_reg("R14").
+function_non_maintained_reg("IP").
+function_non_maintained_reg("SP").
+function_non_maintained_reg("LR").
 
-pc_register("PC").
+pc_reg("PC").
 
 frame_pointer("FP").
 
 stack_pointer("SP").
 
-return_val_reg("R0").
+return_reg("R0").
 
 condition_flags_reg("CPSR").

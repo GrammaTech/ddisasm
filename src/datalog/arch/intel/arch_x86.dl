@@ -38,14 +38,13 @@ move_operation("CBW").
 move_operation("CWDE").
 move_operation("CDQE").
 
-move_reg_reg(EA,"AX","AL"):-
-    instruction_get_operation(EA,"CBW").
-
-move_reg_reg(EA,"EAX","AX"):-
-    instruction_get_operation(EA,"CWDE").
-
-move_reg_reg(EA,"RAX","EAX"):-
-    instruction_get_operation(EA,"CDQE").
+move_reg_reg(EA,"RAX","RAX"):-
+    instruction_get_operation(EA,Operation),
+    (
+        Operation = "CBW";
+        Operation = "CWDE";
+        Operation = "CDQE"
+    ).
 
 // TODO: CMOV conditions - nothing uses the CC on a mov instruction currently.
 conditional_operation(Operation,"?"):-
@@ -196,17 +195,17 @@ reg_arithmetic_operation(EA,Dst,Src,Mult,0):-
     op_regdirect_contains_reg(Op1,Src).
 
 //lea reg [reg_origin*Multiplier+Offset]
-reg_arithmetic_operation(EA,Reg,Reg_origin,Mult,Offset):-
+reg_arithmetic_operation(EA,Reg,Reg_origin_nn,Mult,Offset):-
     instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
-    op_indirect(Op1,_,"NONE",Reg_origin_non_uniform,Mult,Offset,_),
-    arch.track_register(Reg_origin_non_uniform,Reg_origin),
+    op_indirect_mapped(Op1,_,"NONE",Reg_origin,Mult,Offset,_),
+    reg_nonnull(Reg_origin,Reg_origin_nn),
     op_regdirect_contains_reg(Op2,Reg).
 
 //lea reg [reg_origin+Offset]
-reg_arithmetic_operation(EA,Reg,Reg_origin,1,Offset):-
+reg_arithmetic_operation(EA,Reg,Reg_origin_nn,1,Offset):-
     instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
-    op_indirect(Op1,_,Reg_origin_non_uniform,"NONE",1,Offset,_),
-    arch.track_register(Reg_origin_non_uniform,Reg_origin),
+    op_indirect_mapped(Op1,_,Reg_origin,"NONE",1,Offset,_),
+    reg_nonnull(Reg_origin,Reg_origin_nn),
     op_regdirect_contains_reg(Op2,Reg).
 
 reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
@@ -220,11 +219,11 @@ reg_reg_arithmetic_operation(EA,Reg2,Reg1,Reg2,1,0):-
     op_regdirect_contains_reg(Op1,Reg1).
 
 //lea reg [reg1 + reg2*Multiplier+Offset]
-reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset):-
+reg_reg_arithmetic_operation(EA,Reg_def,Reg1_nn,Reg2_nn,Mult,Offset):-
     instruction(EA,_,_,"LEA",Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg_def),
-    op_indirect(Op1,_,Reg1_n,Reg2_n,Mult,Offset,_),
-    arch.track_register(Reg1_n,Reg1),
-    arch.track_register(Reg2_n,Reg2).
+    op_indirect_mapped(Op1,_,Reg1,Reg2,Mult,Offset,_),
+    reg_nonnull(Reg1,Reg1_nn),
+    reg_nonnull(Reg2,Reg2_nn).
 
 }
