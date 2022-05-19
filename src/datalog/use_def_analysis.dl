@@ -212,7 +212,8 @@ used_before_code_inference(EA,Reg,Index):-
 used_before_code_inference(EA,Reg,0):-
     arch.uses_reg(EA,Reg),
     track_register(Reg),
-    !used_explicit(EA,Reg,_).
+    !used_explicit(EA,Reg,_),
+    !is_xor_reset(EA).
 
 .decl used_in_block(EA:address,Reg:register)
 
