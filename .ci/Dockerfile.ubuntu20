@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------------
-# Install Souffle
+# Build Souffle
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04 AS souffle
 RUN export DEBIAN_FRONTEND=noninteractive
@@ -27,7 +27,7 @@ RUN git clone -b 2.2 https://github.com/souffle-lang/souffle && \
     make -C build install -j4
 
 # ------------------------------------------------------------------------------
-# Install LIEF
+# Build LIEF
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04 AS lief
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -44,7 +44,7 @@ RUN git clone -b 0.11.5 --depth 1 https://github.com/lief-project/LIEF.git /usr/
     cmake --build /usr/local/src/LIEF/build -j --target install
 
 # ------------------------------------------------------------------------------
-# Install libehp
+# Build libehp
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04 AS libehp
 RUN export DEBIAN_FRONTEND=noninteractive && \
