@@ -22,6 +22,8 @@
 //===----------------------------------------------------------------------===//
 #include "Functors.h"
 
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/strong_components.hpp>
 #include <fstream>
 #include <iostream>
 
@@ -100,6 +102,81 @@ int64_t functor_data_s64(uint64_t EA)
     uint64_t Value;
     FunctorContext.readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
     return static_cast<int64_t>(FunctorContext.IsBigEndian ? be64toh(Value) : le64toh(Value));
+}
+
+souffle::RamDomain build_scc_list([[maybe_unused]] souffle::SymbolTable* SymbolTable,
+                                  souffle::RecordTable* RecordTable, souffle::RamDomain Edges)
+{
+    using OutEdgeListS = boost::vecS;
+    using VertexListS = boost::vecS;
+    using DirectedS = boost::directedS;
+    using EdgeListS = boost::listS;
+    using vertex_descriptor = boost::adjacency_list_traits<OutEdgeListS, VertexListS, DirectedS,
+                                                           EdgeListS>::vertex_descriptor;
+
+    // Build graph using Boost data structures
+    using Graph = boost::adjacency_list<OutEdgeListS, VertexListS, DirectedS,
+                                        // Vertices are addresses (uint64_t)
+                                        uint64_t,
+                                        // No edge properties
+                                        boost::no_property,
+                                        // track mapping between vertex descriptors and addresses
+                                        std::unordered_map<uint64_t, vertex_descriptor>>;
+
+    Graph Cfg = Graph();
+    auto& AddressMap = Cfg[boost::graph_bundle];
+
+    souffle::RamDomain Next = Edges;
+    while(Next != 0)
+    {
+        const souffle::RamDomain* Node = RecordTable->unpack(Next, 2);
+        const souffle::RamDomain* Edge = RecordTable->unpack(Node[0], 2);
+
+        // Get vertices, adding to the graph if they aren't present yet.
+        vertex_descriptor EdgeVerts[2];
+        for(uint8_t I = 0; I < 2; I++)
+        {
+            if(auto It = AddressMap.find(Edge[I]); It != AddressMap.end())
+            {
+                EdgeVerts[I] = It->second;
+            }
+            else
+            {
+                // Insert new vertex.
+                auto Vertex = add_vertex(Cfg);
+                Cfg[Vertex] = Edge[I];
+                AddressMap[Edge[I]] = Vertex;
+                EdgeVerts[I] = Vertex;
+            }
+        }
+
+        add_edge(EdgeVerts[0], EdgeVerts[1], Cfg);
+        Next = Node[1];
+    }
+
+    // Find SCCs using Boost
+    typedef std::map<vertex_descriptor, uint64_t> PropertyMap;
+    PropertyMap SccComponents;
+    boost::associative_property_map<PropertyMap> SccComponentsMap(SccComponents);
+    strong_components(Cfg, SccComponentsMap);
+
+    // Convert result back to Souffle types
+    souffle::RamDomain HeadRecordID = 0;
+
+    // Build SCC member lists
+    for(auto Vertex : boost::make_iterator_range(vertices(Cfg)))
+    {
+        uint64_t Address = Cfg[Vertex];
+        uint64_t SCC = SccComponents[Vertex];
+
+        const souffle::RamDomain Membership[2] = {static_cast<souffle::RamDomain>(SCC),
+                                                  static_cast<souffle::RamDomain>(Address)};
+        souffle::RamDomain MembershipRecordID = RecordTable->pack(Membership, 2);
+        const souffle::RamDomain ListNode[2] = {MembershipRecordID, HeadRecordID};
+        HeadRecordID = RecordTable->pack(ListNode, 2);
+    }
+
+    return HeadRecordID;
 }
 
 void FunctorContextManager::useModule(const gtirb::Module* M)

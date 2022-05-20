@@ -65,11 +65,17 @@ local_next(EA,EA_next):-
     may_fallthrough(EA,EA_next),
     code_in_block(EA_next,Block).
 
-.decl inter_procedural_jump(Src:address,Dest:address)
+.decl inter_procedural_edge(Src:address,Dest:address)
 
-inter_procedural_jump(Src,Dest):-
+inter_procedural_edge(Src,Dest):-
     unconditional_jump(Src),
     direct_jump(Src,Dest),
+    direct_call(OtherSrc,Dest),
+    code(OtherSrc).
+
+inter_procedural_edge(Src,Dest):-
+    may_fallthrough(Src,Dest),
+    !pc_load_call(Src,Dest),
     direct_call(OtherSrc,Dest),
     code(OtherSrc).
 
@@ -79,20 +85,21 @@ inter_procedural_jump(Src,Dest):-
 block_next(Block,EA,Block2):-
     block_last_instruction(Block,EA),
     may_fallthrough(EA,Block2),
-    !no_return_call_refined(EA),
+    !no_return_call_propagated(EA),
+    !inter_procedural_edge(EA,Block2),
     block(Block2).
 
 block_next(Block,EA,EA_next):-
     block_last_instruction(Block,EA),
     !arch.delay_slot(_,EA),
     direct_jump(EA,EA_next),
-    !inter_procedural_jump(EA,EA_next).
+    !inter_procedural_edge(EA,EA_next).
 
 block_next(Block,EA,EA_next):-
     block_last_instruction(Block,EA),
     arch.delay_slot(JumpEA,EA),
     direct_jump(JumpEA,EA_next),
-    !inter_procedural_jump(JumpEA,EA_next).
+    !inter_procedural_edge(JumpEA,EA_next).
 
 block_next(Block,EA,Dest):-
     block_last_instruction(Block,EA),
