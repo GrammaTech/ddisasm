@@ -143,13 +143,25 @@ value_reg_at_operand(EA,Op_index,Reg,0,0,0,"complete"):-
     ),
     Reg = "NONE".
 
+/**
+The address 'Address' is accessed from an instruction at address 'FromWhere'.
+The access has size 'Size' and uses a multiplier 'Multiplier'.
+*/
 .decl data_access_pattern(Address:address,Size:unsigned,Multiplier:number,FromWhere:address)
 .output data_access_pattern
 
+/**
+Auxiliary predicate that computes initial approximation of `data_access_pattern`
+*/
 .decl data_access_pattern_candidate(Address:address,Size:unsigned,Multiplier:number,FromWhere:address)
 .output data_access_pattern_candidate
 
-.decl preferred_data_access(ea:address,ea_data_access:address)
+/**
+The address at 'EA' is probably accessed using the same pattern as
+the data access in 'AccessEA'. Preferred data accesses are computed
+by propagating data accesses based on their multiplier.
+*/
+.decl preferred_data_access(EA:address,AccessEA:address)
 .output preferred_data_access
 
 //////////////////////////////////////////////////
@@ -272,7 +284,8 @@ data_access_pattern(Address,Size,Multiplier,From):-
     Multiplier = as(Size,number).
 
 ///////////////////////////////////////////////////////////////////////////////
-// This code takes care of obtaining an ordering in the data_access_patterns
+// This code takes care of obtaining an ordering in the data_access_patterns.
+// This ordering is later used to propagate data accesses.
 
 /**
 Data limits are the candidates for labeled data
@@ -292,8 +305,8 @@ The next data limit after 'EA' is at 'Next'.
 
 next_data_limit(EA,Next):-
     possible_data_limit(EA),
-    Next = min Next : {possible_data_limit(Next), Next> EA},
-    data_segment(Beg,End), EA>=Beg, Next<= End.
+    Next = min Next : {possible_data_limit(Next), Next > EA},
+    data_segment(Beg,End), EA >= Beg, Next <= End.
 
 /**
 The first data limit after the data access at address
@@ -304,8 +317,8 @@ The first data limit after the data access at address
 
 data_limit_after_access(Access,DataLimit):-
     data_access_pattern(Access,_,_,_),
-    DataLimit = min DataLimit : {possible_data_limit(DataLimit), DataLimit> Access},
-    data_segment(Beg,End), Access>=Beg, DataLimit<= End.
+    DataLimit = min DataLimit : {possible_data_limit(DataLimit), DataLimit > Access},
+    data_segment(Beg,End), Access >= Beg, DataLimit <= End.
 
 /**
 The next data access after the one at 'EA' is at 'Next'.
@@ -314,8 +327,8 @@ The next data access after the one at 'EA' is at 'Next'.
 
 next_data_access(EA,Next):-
     data_access_pattern(EA,_,_,_),
-    Next = min Next : {data_access_pattern(Next,_,_,_), Next> EA},
-    data_segment(Beg,End), EA>=Beg, Next<= End.
+    Next = min Next : {data_access_pattern(Next,_,_,_), Next > EA},
+    data_segment(Beg,End), EA >= Beg, Next <= End.
 
 
 // FIXME: This predicate has been added to avoid exceptions when mult is 0
@@ -330,9 +343,9 @@ data_access_pattern_non_zero(Address,Size,as(Mult,unsigned),FromWhere):-
 'InitialEA' contains the first data access synchronous with 'SyncEA'.
 
 Two data accesses are synchronous if:
-1. The second access has multiplier 0 and it original from the same address
+1. The second access has multiplier 0 and it originates from the same address
   as the first.
-2. Or, The have the same multiplier and the space between them
+2. Or, They have the same multiplier and the space between them
   means they do not collide with each other even if they are propagated.
 */
 .decl first_synchronous_access(InitialEA:address,SyncEA:address)
@@ -355,8 +368,8 @@ first_synchronous_access(Next,Next):-
     (
         Mult2 != Mult,
         // avoid warnings
-        Size = Size,
-        Size2 = Size2
+        UNUSED(Size),
+        UNUSED(Size2)
         ;
         Mult2 = Mult,
         Rem = Next - EA % Mult2,
@@ -392,23 +405,25 @@ is located at address 'Next'.
 .output next_dyssynchronous_data_access
 
 next_dyssynchronous_data_access(EA,Next):-
-    first_synchronous_access(EA,SyncEA),EA != SyncEA,
+    first_synchronous_access(EA,SyncEA), EA != SyncEA,
     next_data_access(SyncEA,Next),
     !first_synchronous_access(EA,Next).
 
+/////////////////////////////////////////////
+// The actual propagation of data accesses
 
-.decl propagated_data_access(EA:address,Mult:unsigned,EA_ref:address)
-
-propagated_data_access(EA,as(Mult,unsigned),EA):-
+preferred_data_access(EA,EA):-
     data_access_pattern(EA,_,Mult,_),
     data_byte(EA,_),
     // We only propagate data accesses with positive multipliers (for now)
     // This is just easier and gives us enough information.
     Mult >= 0.
 
-// Propagate until the next data limit or dyssyncronous access
+
+// Data accesses with non-zero multiplier are propagated until the next
+// dysynchronous data access or the next data limit, whichever comes first.
 // This propagation is not recursive, it uses range to iterate.
-propagated_data_access(EA_prop,Mult,EA_access):-
+preferred_data_access(EA_prop,EA_access):-
     data_access_pattern_non_zero(EA_access,_,Mult,_),
     data_byte(EA_access,_),
     (
@@ -420,6 +435,3 @@ propagated_data_access(EA_prop,Mult,EA_access):-
     ),
     data_limit_after_access(EA_access, Next_limit),
     EA_prop = range(EA_access, Limit,Mult).
-
-preferred_data_access(EA,EA_label):-
-    propagated_data_access(EA,_,EA_label).
