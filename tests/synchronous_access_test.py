@@ -32,6 +32,9 @@ class SynchronousAccessTests(unittest.TestCase):
                 80, [block.size for block in bss_section.data_blocks]
             )
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_propagate_through_synchronous_accesses(self):
         """
         Test that the data accesses propagate through
