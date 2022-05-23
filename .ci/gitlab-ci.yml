@@ -2,8 +2,10 @@ variables:
   GTIRB_BRANCH: "master"
   GTIRB_PPRINTER_BRANCH: "master"
   CAPSTONE_BRANCH: "master"
-  LIBEHP_REF: "master"
-  IMAGE_TAG: "1"
+  # The IMAGE_TAG is derived from the branch name so that if a branch modifies
+  # the CI images, it builds and runs using the new images without conflicting
+  # with main.
+  IMAGE_TAG: "$CI_COMMIT_REF_NAME"
   EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_SERVER_HOST}/api/v4/projects/1587/packages/pypi/simple
   CONAN_PASSWORD: $CI_JOB_TOKEN
   # The following two variables are used by the package-uploader
@@ -21,6 +23,7 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == "schedule"
 
 stages:
+  - build-images
   - check-format
   - build
   - build-packages
@@ -32,6 +35,54 @@ stages:
 
 default:
   tags: [cluster]
+
+.build-ci-image: &build-ci-image
+  stage: build-images
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    # Configure authentication credentials for both Docker Hub and GitLab
+    - >-
+      echo "{\"auths\":{
+        \"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"},
+        \"https://index.docker.io/v1/\":{\"username\":\"$DOCKERHUB_USERNAME\",\"password\":\"$DOCKERHUB_PASSWORD\"}
+      }}" > /kaniko/.docker/config.json
+    # Run the kaniko executor, which will build our image (using a cache if available)
+    # Push to our internal registry, and if on the default branch, to Docker Hub.
+    - >-
+      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" && "$UBUNTU_CODENAME" != "" ]; then
+        export DOCKER_HUB_ARG="--destination=grammatech/ddisasm-ci-${UBUNTU_CODENAME}:latest"
+      fi
+    - >-
+      /kaniko/executor
+      --cache=true
+      --cache-repo=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/${IMAGE_NAME}/cache
+      --context=$CI_PROJECT_DIR
+      --dockerfile=$CI_PROJECT_DIR/$DOCKERFILE_PATH
+      --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/${IMAGE_NAME}:$IMAGE_TAG
+      $DOCKER_HUB_ARG
+
+build-ci-image-ubuntu18:
+  <<: *build-ci-image
+  variables:
+    DOCKERFILE_PATH: .ci/Dockerfile.ubuntu18
+    IMAGE_NAME: ubuntu18
+    UBUNTU_CODENAME: bionic
+
+build-ci-image-ubuntu20:
+  <<: *build-ci-image
+  variables:
+    DOCKERFILE_PATH: .ci/Dockerfile.ubuntu20
+    IMAGE_NAME: ubuntu20
+    UBUNTU_CODENAME: focal
+
+build-ci-image-static:
+  <<: *build-ci-image
+  variables:
+    DOCKERFILE_PATH: .ci/Dockerfile.static
+    IMAGE_NAME: static
+    UBUNTU_CODENAME: "" # Don't push to DockerHub
 
 check-format:
   stage: check-format
@@ -127,16 +178,6 @@ conan-windows-release:
     BUILD_TYPE: Release
   <<: *conan-windows-template
 
-.build-libehp: &build-libehp
-  - git clone https://git.zephyr-software.com/opensrc/libehp.git
-  - pushd libehp
-  - git reset --hard $LIBEHP_REF
-  - cmake ./ -Bbuild -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DEHP_BUILD_SHARED_LIBS=OFF
-  - cd build
-  - make
-  - make install
-  - popd
-
 .build-template: &build
   artifacts:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
@@ -153,7 +194,6 @@ conan-windows-release:
     - for pkg in gtirb gtirb-pprinter capstone; do unzip $pkg.zip; done
     # Install gtirb, pprinter, and capstone
     - dpkg -i libcapstone-dev.deb libgtirb.deb libgtirb-dev.deb libgtirb-pprinter.deb libgtirb-pprinter-dev.deb
-    - *build-libehp
     # Build ddisasm
     - mkdir build
     - cd build
@@ -226,7 +266,6 @@ build-static:
   rules:
     *run-only-main
   script:
-    - *build-libehp
     # install capstone
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
     - unzip capstone.zip
@@ -297,7 +336,6 @@ static-drivers:
   rules:
     *run-only-main
   script:
-    - *build-libehp
     # install capstone
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
     - unzip capstone.zip
@@ -378,7 +416,6 @@ test-make-install:
   rules:
     *run-only-main
   script:
-    - *build-libehp
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-ubuntu20 --output "gtirb.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-ubuntu20 --output "gtirb-pprinter.zip"
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
@@ -401,7 +438,6 @@ test-make-install:
       - build/*.deb
       - build/install_manifest*.txt
   script:
-    - *build-libehp
     - curl -L https://git.grammatech.com/rewriting/extra-packages/-/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb/-/jobs/artifacts/${GTIRB_BRANCH}/download?job=debian-installer-$OS --output "gtirb.zip"
     - curl -L https://git.grammatech.com/rewriting/gtirb-pprinter/-/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=debian-installer-$OS --output "gtirb-pprinter.zip"
