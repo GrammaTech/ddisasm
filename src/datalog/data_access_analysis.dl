@@ -305,8 +305,9 @@ The next data limit after 'EA' is at 'Next'.
 
 next_data_limit(EA,Next):-
     possible_data_limit(EA),
+    data_segment(Beg,End), EA >= Beg, EA < End,
     Next = min Next : {possible_data_limit(Next), Next > EA},
-    data_segment(Beg,End), EA >= Beg, Next <= End.
+    Next <= End.
 
 /**
 The first data limit after the data access at address
@@ -317,8 +318,9 @@ The first data limit after the data access at address
 
 data_limit_after_access(Access,DataLimit):-
     data_access_pattern(Access,_,_,_),
+    data_segment(Beg,End), Access >= Beg, Access < End,
     DataLimit = min DataLimit : {possible_data_limit(DataLimit), DataLimit > Access},
-    data_segment(Beg,End), Access >= Beg, DataLimit <= End.
+    DataLimit <= End.
 
 /**
 The next data access after the one at 'EA' is at 'Next'.
@@ -327,8 +329,9 @@ The next data access after the one at 'EA' is at 'Next'.
 
 next_data_access(EA,Next):-
     data_access_pattern(EA,_,_,_),
+    data_segment(Beg,End), EA >= Beg, EA < End,
     Next = min Next : {data_access_pattern(Next,_,_,_), Next > EA},
-    data_segment(Beg,End), EA >= Beg, Next <= End.
+    Next <= End.
 
 
 // FIXME: This predicate has been added to avoid exceptions when mult is 0
