@@ -104,9 +104,7 @@ RUN ln -s /usr/i686-linux-gnu/lib/ /usr/lib/i386-linux-gnu && \
     mkdir etc && \
     ldconfig -c etc/ld.do.cache -r .
 
-COPY --from=souffle /usr/local/bin/souffle-compile /usr/bin/souffle-compile
-COPY --from=souffle /usr/local/bin/souffle /usr/bin/souffle
-COPY --from=souffle /usr/local/bin/souffleprof /usr/bin/souffleprof
+COPY --from=souffle /usr/local/bin/souffle* /usr/local/bin/
 COPY --from=souffle /usr/local/include/souffle/ /usr/include/souffle
 COPY --from=lief /usr/lib/libLIEF.a /usr/lib/libLIEF.a
 COPY --from=lief /usr/include/LIEF /usr/include/LIEF
