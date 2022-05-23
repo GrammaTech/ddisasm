@@ -18,6 +18,7 @@ RUN apt-get -y update \
       libtool \
       lsb-release \
       mcpp \
+      python \
       sqlite3 \
       zlib1g-dev
 
