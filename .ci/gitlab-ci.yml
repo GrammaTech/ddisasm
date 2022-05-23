@@ -328,7 +328,7 @@ pages-no-publish:
 static-drivers:
   stage: deploy
   image: $DOCKER_REGISTRY/rewriting/ddisasm/static:$IMAGE_TAG
-  needs: []
+  needs: [check-format]
   artifacts:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
