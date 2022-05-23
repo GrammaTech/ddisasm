@@ -51,7 +51,7 @@ default:
     # Run the kaniko executor, which will build our image (using a cache if available)
     # Push to our internal registry, and if on the default branch, to Docker Hub.
     - >-
-      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" && "$UBUNTU_CODENAME" != "" ]; then
+      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ] && [ "$UBUNTU_CODENAME" != "" ]; then
         export DOCKER_HUB_ARG="--destination=grammatech/ddisasm-ci-${UBUNTU_CODENAME}:latest"
       fi
     - >-
