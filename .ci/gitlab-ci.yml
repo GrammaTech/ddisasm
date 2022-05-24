@@ -138,7 +138,7 @@ build-conan-gcc7:
     # Install gtirb python wheel
     - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
-    - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/build.py
+    - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/run_conan.py
 
 build-conan-gcc9:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu20
