@@ -351,18 +351,20 @@ Two data accesses are synchronous if:
 2. Or, They have the same multiplier and the space between them
   means they do not collide with each other even if they are propagated.
 */
-.decl first_synchronous_access(InitialEA:address,SyncEA:address)
+.decl first_synchronous_access(InitialEA:address,SyncEA:address,UsedBits:unsigned)
 .output first_synchronous_access
 
 // the beginning of a synchronous access is
 // the first access of a segment
-first_synchronous_access(EA,EA):-
-    data_access_pattern_non_zero(EA,_,_,_),
+first_synchronous_access(EA,EA,UsedBits):-
+    data_access_pattern_non_zero(EA,Size,Mult,_), Mult <= 64, Size < 64,
+    UsedBits = 2^Size - 1,
     !next_data_access(_,EA).
 
 // Or an access whose previous access is not synchronous
-first_synchronous_access(Next,Next):-
+first_synchronous_access(Next,Next,UsedBits):-
     data_access_pattern_non_zero(Next,Size2,Mult2,_),
+    Mult2 <= 64, Size2 < 64, UsedBits = 2^Size2 - 1,
     next_data_access(EA,Next),
     data_access_pattern(EA,Size,Mult_s,_),
     Mult_s>=0, Mult = as(Mult_s,unsigned),
@@ -375,29 +377,34 @@ first_synchronous_access(Next,Next):-
         UNUSED(Size2)
         ;
         Mult2 = Mult,
-        Rem = Next - EA % Mult2,
+        Rem = (Next - EA) % Mult2,
         (
             Rem < Size, UNUSED(Size2);
             Mult2 - Rem < Size2, UNUSED(Size)
         )
     ).
 
-first_synchronous_access(EA_ref,Next):-
-    first_synchronous_access(EA_ref, EA),
+first_synchronous_access(EA_ref,Next,UsedBitsAccum2):-
+    first_synchronous_access(EA_ref, EA, UsedBitsAccum),
     data_access_pattern_non_zero(EA_ref,Size,Mult,From),
     next_data_access(EA,Next),
-    data_access_pattern(Next,Size2,Mult2,From2),
-    Mult2_u = as(Mult2,unsigned),
+    data_access_pattern(Next,Size2,Mult2_s,From2),
+    Mult2 <= 64, Size2 < 64,
+    Rem = (Next - EA_ref) % Mult,
+    Size <= Rem,
+    Rem + Size2 <= Mult, // this tells use we can safely shift left
+    UsedBits = (2^Size2 - 1) bshl Rem,
+    Mult2 = as(Mult2_s,unsigned),
     (
-        Mult2_u=0,
+        Mult2 = 0,
         From2 = From,
         Size2 = Size,
-        Next - EA_ref % Mult = 0
+        Rem = 0,
+        UsedBitsAccum2 = UsedBitsAccum
         ;
-        Mult2_u = Mult,
-        Rem = Next - EA % Mult,
-        Size <= Rem,
-        Size2 <= Mult - Rem
+        Mult2 = Mult,
+        0 = UsedBits band UsedBitsAccum,
+        UsedBitsAccum2 = UsedBitsAccum bor UsedBits
     ).
 
 /**
@@ -408,9 +415,9 @@ is located at address 'Next'.
 .output next_dyssynchronous_data_access
 
 next_dyssynchronous_data_access(EA,Next):-
-    first_synchronous_access(EA,SyncEA), EA != SyncEA,
+    first_synchronous_access(EA,SyncEA,_), EA != SyncEA,
     next_data_access(SyncEA,Next),
-    !first_synchronous_access(EA,Next).
+    !first_synchronous_access(EA,Next,_).
 
 /////////////////////////////////////////////
 // The actual propagation of data accesses
