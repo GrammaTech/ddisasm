@@ -377,8 +377,8 @@ first_synchronous_access(Next,Next):-
         Mult2 = Mult,
         Rem = Next - EA % Mult2,
         (
-            Rem < Size, Size2 = Size2;
-            Mult2 - Rem < Size2, Size = Size
+            Rem < Size, UNUSED(Size2);
+            Mult2 - Rem < Size2, UNUSED(Size)
         )
     ).
 

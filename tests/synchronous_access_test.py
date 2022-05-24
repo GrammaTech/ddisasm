@@ -27,7 +27,7 @@ class SynchronousAccessTests(unittest.TestCase):
             m = ir_library.modules[0]
 
             bss_section = next(s for s in m.sections if s.name == ".bss")
-            # There is a code block in .bss of size 80
+            # There is a data block in .bss of size 80
             self.assertIn(
                 80, [block.size for block in bss_section.data_blocks]
             )
@@ -72,7 +72,7 @@ class SynchronousAccessTests(unittest.TestCase):
                 if addr >= data_section.address
                 and addr < data_section.address + data_section.size
             ]
-            # Three syncrhonized accesses propagated in a loop with 10 elements
+            # Three synchronized accesses propagated in a loop with 10 elements
             self.assertGreaterEqual(len(addresses_in_data), 30)
 
 
