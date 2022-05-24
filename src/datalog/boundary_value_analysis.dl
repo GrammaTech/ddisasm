@@ -155,6 +155,35 @@ value_reg_limit(EA_jmp,EA_fallthrough,Reg,FallthroughValue,FallthroughLT):-
     BranchValue = Immediate + BranchOffset,
     FallthroughValue = Immediate + FallthroughOffset.
 
+// Detect comparisons where one register is defined as an immediate in the same block.
+value_reg_limit(EA_jmp,EA_branch,Reg,BranchValue,BranchLT),
+value_reg_limit(EA_jmp,EA_fallthrough,Reg,FallthroughValue,FallthroughLT):-
+    compare_and_jump_register(EA_cmp,EA_jmp,CC,Reg1,Reg2),
+    limit_type_map(CC,LT1,LT2,Offset1,Offset2),
+    (
+        ConstReg=Reg1,
+        Reg=Reg2,
+        BranchLT=LT1,
+        FallthroughLT=LT2,
+        BranchOffset=Offset1,
+        FallthroughOffset=Offset2
+        ;
+        ConstReg=Reg2,
+        Reg=Reg1,
+        // If the first register is the const, the offsets and limit types are swapped.
+        BranchLT=LT2,
+        FallthroughLT=LT1,
+        BranchOffset=Offset2,
+        FallthroughOffset=Offset1
+    ),
+    block_last_def(EA_cmp,EA_regdef,ConstReg),
+    arch.move_reg_imm(EA_regdef,ConstReg,Immediate,_),
+    track_register(Reg),
+    direct_jump(EA_jmp,EA_branch),
+    may_fallthrough(EA_jmp,EA_fallthrough),
+    BranchValue = Immediate + BranchOffset,
+    FallthroughValue = Immediate + FallthroughOffset.
+
 // Ad-hoc rule for basic indirect comparison cases where the value is moved to
 // a register right after the jump (either at the branch target or the
 // fallthrough).
@@ -214,7 +243,28 @@ no_value_reg_limit(EA_jmp):-
 
 // Reg-reg comparisons
 no_value_reg_limit(EA_jmp):-
-    compare_and_jump_register(_,EA_jmp,_,_,_).
+    compare_and_jump_register(EA_cmp,EA_jmp,_,Reg1,Reg2),
+    (
+        // neither register is defined in this block
+        !block_last_def(EA_cmp,_,Reg1),
+        !block_last_def(EA_cmp,_,Reg2)
+        ;
+        // Reg1 defined, but not as an immediate.
+        block_last_def(EA_cmp,EA,Reg1),
+        !arch.move_reg_imm(EA,Reg1,_,_),
+        !block_last_def(EA_cmp,_,Reg2)
+        ;
+        // Reg2 defined, but not as an immediate.
+        block_last_def(EA_cmp,EA,Reg2),
+        !arch.move_reg_imm(EA,Reg2,_,_),
+        !block_last_def(EA_cmp,_,Reg1)
+        ;
+        // Both registers defined, but neither as an immediate.
+        block_last_def(EA_cmp,EA,Reg1),
+        !arch.move_reg_imm(EA,Reg1,_,_),
+        block_last_def(EA_cmp,_,Reg2),
+        !arch.move_reg_imm(EA,Reg2,_,_)
+    ).
 
 // Flags set by a non-compare instruction
 no_value_reg_limit(EA_jmp):-
