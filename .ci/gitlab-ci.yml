@@ -50,10 +50,10 @@ default:
       }}" > /kaniko/.docker/config.json
     # Run the kaniko executor, which will build our image (using a cache if available)
     # Push to our internal registry, and if on the default branch, to Docker Hub.
-    - >-
-      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ] && [ "$UBUNTU_CODENAME" != "" ]; then
-        export DOCKER_HUB_ARG="--destination=grammatech/ddisasm-ci-${UBUNTU_CODENAME}:latest"
-      fi
+    #- >-
+    #  if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ] && [ "$UBUNTU_CODENAME" != "" ]; then
+    #    export DOCKER_HUB_ARG="--destination=grammatech/ddisasm-ci-${UBUNTU_CODENAME}:latest"
+    #  fi
     - >-
       /kaniko/executor
       --cache=true
@@ -61,7 +61,7 @@ default:
       --context=$CI_PROJECT_DIR
       --dockerfile=$CI_PROJECT_DIR/$DOCKERFILE_PATH
       --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/${IMAGE_NAME}:$IMAGE_TAG
-      $DOCKER_HUB_ARG
+    #  $DOCKER_HUB_ARG
 
 build-ci-image-ubuntu18:
   <<: *build-ci-image
