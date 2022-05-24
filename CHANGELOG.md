@@ -15,7 +15,7 @@
   * Fix disassembling stripped ARM64 binaries.
 * Release support for ARM32 and MIPS32 binaries.
 * Optimizations to improve performance and reduce memory usage.
-* Require GrammaTech's fork capstone, >5.0.0.
+* Require GrammaTech's Capstone fork, >5.0.0.
 * Add "--profile" argument.
 
 # 1.5.2
