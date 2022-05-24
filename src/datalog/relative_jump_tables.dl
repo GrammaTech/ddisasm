@@ -357,7 +357,7 @@ relative_jump_table_entry(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
         Size>1,data_word(EA,Size,Diff);
         Size=1,data_byte(EA,DiffUnsigned), Diff = as(DiffUnsigned,number)
     ),
-    next_data_limit(Prev, Next), Prev <= EA, Next >= EA+Size,
+    next_data_limit(Prev, Next), Prev < EA, Next >= EA+Size,
     Reference_signed = as(Reference,number),
     Dest = as(Reference_signed + as(Scale,number)*Diff,unsigned),
     code(Dest).
