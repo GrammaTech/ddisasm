@@ -5,26 +5,27 @@ import re
 
 
 def get_version():
-    if os.getenv("CI_COMMIT_REF_NAME", "") == os.getenv("CI_DEFAULT_BRANCH"):
+    if re.match(r"^release-.*", os.getenv("CI_COMMIT_REF_NAME", "")):
+        try:
+            with open("version.txt") as f:
+                s = f.read()
+                match = re.search(
+                    r"VERSION_MAJOR(\s+)(\S+)(\s+)"
+                    r"VERSION_MINOR(\s+)(\S+)(\s+)"
+                    r"VERSION_PATCH(\s+)(\S+)(\s+)",
+                    s,
+                )
+                if match:
+                    major = match.group(2)
+                    minor = match.group(5)
+                    patch = match.group(8)
+                    return major + "." + minor + "." + patch
+                else:
+                    return "<ERROR: no version found>"
+        except Exception:
+            return None
+    else:
         return "dev"
-    try:
-        with open("version.txt") as f:
-            s = f.read()
-            match = re.search(
-                r"VERSION_MAJOR(\s+)(\S+)(\s+)"
-                r"VERSION_MINOR(\s+)(\S+)(\s+)"
-                r"VERSION_PATCH(\s+)(\S+)(\s+)",
-                s,
-            )
-            if match:
-                major = match.group(2)
-                minor = match.group(5)
-                patch = match.group(8)
-                return major + "." + minor + "." + patch
-            else:
-                return "<ERROR: no version found>"
-    except Exception:
-        return None
 
 
 def branch_to_channel(branch):
@@ -38,7 +39,7 @@ class Properties:
     name = "ddisasm"
     version = get_version()
     rel_url = "rewriting/ddisasm"
-    exports_sources = "*"
+    exports_sources = "*", "!.conan/*"
 
     @property
     def description(self):
@@ -58,18 +59,6 @@ class Properties:
             branch = os.environ["CI_COMMIT_REF_NAME"]
             channel = branch_to_channel(branch)
         return channel
-
-    @property
-    def archived_channels(self):
-        # Add to this list branch names to have conan packages for
-        # branches archived in gitlab.
-        archived_branches = ["main"]
-        # Also, archive the 'stable' channel, where all stable versions
-        # will be uploaded
-        archived_channels = ["stable"]
-        return archived_channels + list(
-            map(branch_to_channel, archived_branches)
-        )
 
     @property
     def conan_ref(self):
