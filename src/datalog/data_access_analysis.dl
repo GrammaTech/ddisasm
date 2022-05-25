@@ -291,9 +291,9 @@ data_access_pattern(Address,Size,Multiplier,From):-
 Data limits are the candidates for labeled data
 and the boundaries of data segments.
 */
-.decl possible_data_limit(EA:address)
+.decl data_limit(EA:address)
 
-possible_data_limit(EA):-
+data_limit(EA):-
     labeled_data_candidate(EA);
     data_segment(_,EA);
     data_segment(EA,_).
@@ -304,9 +304,9 @@ The next data limit after 'EA' is at 'Next'.
 .decl next_data_limit(EA:address,Next:address)
 
 next_data_limit(EA,Next):-
-    possible_data_limit(EA),
+    data_limit(EA),
     data_segment(Beg,End), EA >= Beg, EA < End,
-    Next = min Next : {possible_data_limit(Next), Next > EA},
+    Next = min Next : {data_limit(Next), Next > EA},
     Next <= End.
 
 /**
@@ -319,7 +319,7 @@ The first data limit after the data access at address
 data_limit_after_access(Access,DataLimit):-
     data_access_pattern(Access,_,_,_),
     data_segment(Beg,End), Access >= Beg, Access < End,
-    DataLimit = min DataLimit : {possible_data_limit(DataLimit), DataLimit > Access},
+    DataLimit = min DataLimit : {data_limit(DataLimit), DataLimit > Access},
     DataLimit <= End.
 
 /**
@@ -343,69 +343,68 @@ data_access_pattern_non_zero(Address,Size,as(Mult,unsigned),FromWhere):-
 
 
 /**
-'InitialEA' contains the first data access synchronous with 'SyncEA'.
-
 Two data accesses are synchronous if:
 1. The second access has multiplier 0 and it originates from the same address
   as the first.
 2. Or, They have the same multiplier and the space between them
   means they do not collide with each other even if they are propagated.
+
+`synchronous_access` denotes that the access at `RefAccess` is synchronous
+with all the accesses from `RefAccess` to `LastEA`.
+For example, if we have the consecutive accesses: A, B, C, D.
+synchronous_access(A,D) means that A is synchronous with B, C and D.
 */
-.decl first_synchronous_access(InitialEA:address,SyncEA:address,UsedBits:unsigned)
-.output first_synchronous_access
+.decl synchronous_access(RefAccess:address,LastEA:address)
+.output synchronous_access
 
-// the beginning of a synchronous access is
-// the first access of a segment
-first_synchronous_access(EA,EA,UsedBits):-
-    data_access_pattern_non_zero(EA,Size,Mult,_), Mult <= 64, Size < 64,
-    UsedBits = 2^Size - 1,
-    !next_data_access(_,EA).
 
-// Or an access whose previous access is not synchronous
-first_synchronous_access(Next,Next,UsedBits):-
-    data_access_pattern_non_zero(Next,Size2,Mult2,_),
-    Mult2 <= 64, Size2 < 64, UsedBits = 2^Size2 - 1,
-    next_data_access(EA,Next),
-    data_access_pattern(EA,Size,Mult_s,_),
-    Mult_s>=0, Mult = as(Mult_s,unsigned),
-    // this is the negation of the synchronous condition
-    // simplified to skip the case 1 (Mult=0).
-    (
-        Mult2 != Mult,
-        // avoid warnings
-        UNUSED(Size),
-        UNUSED(Size2)
-        ;
-        Mult2 = Mult,
-        Rem = (Next - EA) % Mult2,
-        (
-            Rem < Size, UNUSED(Size2);
-            Mult2 - Rem < Size2, UNUSED(Size)
-        )
-    ).
-
-first_synchronous_access(EA_ref,Next,UsedBitsAccum2):-
-    first_synchronous_access(EA_ref, EA, UsedBitsAccum),
-    data_access_pattern_non_zero(EA_ref,Size,Mult,From),
-    next_data_access(EA,Next),
-    data_access_pattern(Next,Size2,Mult2_s,From2),
-    Mult2 <= 64, Size2 < 64,
-    Rem = (Next - EA_ref) % Mult,
-    Size <= Rem,
-    Rem + Size2 <= Mult, // this tells use we can safely shift left
-    UsedBits = (2^Size2 - 1) bshl Rem,
+synchronous_access(EA,EA2):-
+    data_access_pattern_non_zero(EA,Size,Mult,From),
+    next_data_access(EA,EA2),
+    data_access_pattern(EA2,Size2,Mult2_s,From2),
     Mult2 = as(Mult2_s,unsigned),
+
+    Rem = (EA2 - EA) % Mult,
+    Size <= Rem,
+    Rem + Size2 <= Mult,
     (
         Mult2 = 0,
         From2 = From,
         Size2 = Size,
-        Rem = 0,
-        UsedBitsAccum2 = UsedBitsAccum
+        Rem = 0
         ;
-        Mult2 = Mult,
-        0 = UsedBits band UsedBitsAccum,
-        UsedBitsAccum2 = UsedBitsAccum bor UsedBits
+        Mult2 = Mult
     ).
+
+synchronous_access(EA,EA2):-
+    synchronous_access(EA,EA_inter),
+    data_access_pattern_non_zero(EA,Size,Mult,From),
+    next_data_access(EA_inter,EA2),
+    data_access_pattern(EA2,Size2,Mult2_s,From2),
+    Mult2 = as(Mult2_s,unsigned),
+
+    Rem = (EA2 - EA) % Mult,
+    Size <= Rem,
+    Rem + Size2 <= Mult,
+    (
+        Mult2 = 0,
+        From2 = From,
+        Size2 = Size,
+        Rem = 0
+        ;
+        Mult2 = Mult
+    ).
+
+/**
+The first synchronous data access of 'Access' is located
+at address 'Ref'.
+*/
+.decl first_synchronous_access(Ref:address,Access:address)
+
+first_synchronous_access(Ref,Access):-
+    synchronous_access(_,Access),
+    Ref = min Ref: {synchronous_access(Ref,Access)}.
+
 
 /**
 The next data access after 'EA' that is not synchronous with 'EA'
@@ -415,9 +414,16 @@ is located at address 'Next'.
 .output next_dyssynchronous_data_access
 
 next_dyssynchronous_data_access(EA,Next):-
-    first_synchronous_access(EA,SyncEA,_), EA != SyncEA,
-    next_data_access(SyncEA,Next),
-    !first_synchronous_access(EA,Next,_).
+    data_access_pattern(EA,_,_,_),
+    (
+        synchronous_access(EA,End),
+        next_data_access(End,Next),
+        !synchronous_access(EA,Next)
+        ;
+        !synchronous_access(EA,_),
+        next_data_access(EA,Next)
+    ).
+
 
 /////////////////////////////////////////////
 // The actual propagation of data accesses

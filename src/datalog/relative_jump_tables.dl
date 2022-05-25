@@ -310,7 +310,7 @@ discarded_jump_table_entry(TableStart,TableRef1,TableStart):-
 // Truncate a jump table if a separate data access is encountered.
 discarded_jump_table_entry(TableStart,Ref,EA):-
     relative_jump_table_entry_candidate(EA,TableStart,Size,Ref,_,_,_),
-    possible_data_limit(Limit),
+    data_limit(Limit),
     EA <= Limit, Limit < EA+Size,
     EA != TableStart.
 
