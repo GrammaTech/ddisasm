@@ -429,11 +429,8 @@ next_dyssynchronous_data_access(EA,Next):-
 // The actual propagation of data accesses
 
 preferred_data_access(EA,EA):-
-    data_access_pattern(EA,_,Mult,_),
-    data_byte(EA,_),
-    // We only propagate data accesses with positive multipliers (for now)
-    // This is just easier and gives us enough information.
-    Mult >= 0.
+    data_access_pattern(EA,_,0,_),
+    data_byte(EA,_).
 
 
 // Data accesses with non-zero multiplier are propagated until the next
