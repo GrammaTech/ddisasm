@@ -440,11 +440,11 @@ preferred_data_access(EA_prop,EA_access):-
     data_access_pattern_non_zero(EA_access,_,Mult,_),
     data_byte(EA_access,_),
     (
-        next_dyssynchronous_data_access(EA_access, Next_access),
+        next_dyssynchronous_data_access(EA_access,Next_access),
         Limit = min(Next_access,Next_limit)
         ;
-        !next_dyssynchronous_data_access(EA_access, _),
+        !next_dyssynchronous_data_access(EA_access,_),
         Limit = Next_limit
     ),
-    data_limit_after_access(EA_access, Next_limit),
-    EA_prop = range(EA_access, Limit,Mult).
+    data_limit_after_access(EA_access,Next_limit),
+    EA_prop = range(EA_access,Limit,Mult).
