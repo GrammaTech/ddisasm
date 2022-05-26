@@ -5,7 +5,7 @@ variables:
   # The IMAGE_TAG is derived from the branch name so that if a branch modifies
   # the CI images, it builds and runs using the new images without conflicting
   # with main.
-  IMAGE_TAG: "$CI_COMMIT_REF_NAME"
+  IMAGE_TAG: "$CI_COMMIT_REF_SLUG"
   EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_SERVER_HOST}/api/v4/projects/1587/packages/pypi/simple
   CONAN_PASSWORD: $CI_JOB_TOKEN
   # The following two variables are used by the package-uploader
