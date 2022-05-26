@@ -353,6 +353,13 @@ Two data accesses are synchronous if:
 with all the accesses from `RefAccess` to `LastEA`.
 For example, if we have the consecutive accesses: A, B, C, D.
 synchronous_access(A,D) means that A is synchronous with B, C and D.
+
+Note that if synchronous_access(A,D) is generated, so will
+synchronous_access(A,B) and synchronous_access(A,C) since
+the computation is incremental.
+We could use subsumption to remove those intermediate results
+but that would require reworking `first_synchronous_access`
+as well.
 */
 .decl synchronous_access(RefAccess:address,LastEA:address)
 .output synchronous_access
