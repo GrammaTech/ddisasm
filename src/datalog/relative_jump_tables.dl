@@ -310,7 +310,7 @@ discarded_jump_table_entry(TableStart,TableRef1,TableStart):-
 // Truncate a jump table if a separate data access is encountered.
 discarded_jump_table_entry(TableStart,Ref,EA):-
     relative_jump_table_entry_candidate(EA,TableStart,Size,Ref,_,_,_),
-    possible_data_limit(Limit),
+    data_limit(Limit),
     EA <= Limit, Limit < EA+Size,
     EA != TableStart.
 
@@ -357,7 +357,7 @@ relative_jump_table_entry(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
         Size>1,data_word(EA,Size,Diff);
         Size=1,data_byte(EA,DiffUnsigned), Diff = as(DiffUnsigned,number)
     ),
-    last_data_limit(EA+Size-1,LastDataLimit),LastDataLimit < EA,
+    next_data_limit(Prev, Next), Prev < EA, Next >= EA+Size,
     Reference_signed = as(Reference,number),
     Dest = as(Reference_signed + as(Scale,number)*Diff,unsigned),
     code(Dest).
