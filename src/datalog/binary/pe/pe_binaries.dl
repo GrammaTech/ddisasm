@@ -523,7 +523,7 @@ discarded_block(EA,"code","PE padding considered data"):-
     instruction_get_operation(EA,"INT3"),
     !direct_jump(_,EA),
     !direct_call(_,EA),
-    !may_fallthrough(_,EA).
+    !must_fallthrough(_,EA).
 
 // Off-cut base-relative reference to symbol:
 //    e.g.  movzx EDX,BYTE PTR [RAX+RCX*1+((IMAGEREL N_180fa2570)+7)]
