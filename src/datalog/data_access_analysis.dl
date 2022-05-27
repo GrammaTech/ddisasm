@@ -157,11 +157,11 @@ Auxiliary predicate that computes initial approximation of `data_access_pattern`
 .output data_access_pattern_candidate
 
 /**
-The address at 'EA' is probably accessed using the same pattern as
-the data access in 'AccessEA'. Preferred data accesses are computed
+The address at 'EA' is probably accessed with size 'Size' using the same
+pattern as the data access in 'AccessEA'. Preferred data accesses are computed
 by propagating data accesses based on their multiplier.
 */
-.decl preferred_data_access(EA:address,AccessEA:address)
+.decl preferred_data_access(EA:address,Size:unsigned,AccessEA:address)
 .output preferred_data_access
 
 //////////////////////////////////////////////////
@@ -435,16 +435,16 @@ next_dyssynchronous_data_access(EA,Next):-
 /////////////////////////////////////////////
 // The actual propagation of data accesses
 
-preferred_data_access(EA,EA):-
-    data_access_pattern(EA,_,0,_),
+preferred_data_access(EA,Size,EA):-
+    data_access_pattern(EA,Size,0,_),
     data_byte(EA,_).
 
 
 // Data accesses with non-zero multiplier are propagated until the next
 // dysynchronous data access or the next data limit, whichever comes first.
 // This propagation is not recursive, it uses range to iterate.
-preferred_data_access(EA_prop,EA_access):-
-    data_access_pattern_non_zero(EA_access,_,Mult,_),
+preferred_data_access(EA_prop,Size,EA_access):-
+    data_access_pattern_non_zero(EA_access,Size,Mult,_),
     data_byte(EA_access,_),
     (
         next_dyssynchronous_data_access(EA_access,Next_access),
