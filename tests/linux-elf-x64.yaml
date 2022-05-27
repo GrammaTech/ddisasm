@@ -367,6 +367,13 @@ tests:
       <<: *default-test
       check_cfg: false
 
+  - name: ex_noreturn_use_def
+    <<: *assembly
+    test:
+      <<: *default-test
+      # this example has some intentional unreachable code.
+      check_cfg: false
+
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
