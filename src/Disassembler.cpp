@@ -1208,128 +1208,129 @@ void buildPadding(gtirb::Module &Module, souffle::SouffleProgram *Prog)
     Module.addAuxData<gtirb::schema::Padding>(std::move(Padding));
 }
 
-void buildComments(gtirb::Module &module, souffle::SouffleProgram *prog, bool selfDiagnose)
+void buildComments(gtirb::Module &Module, souffle::SouffleProgram *Prog, bool SelfDiagnose)
 {
-    std::map<gtirb::Offset, std::string> comments;
-    for(auto &output : *prog->getRelation("data_access_pattern"))
+    std::map<gtirb::Offset, std::string> Comments;
+    for(auto &Output : *Prog->getRelation("data_access_pattern"))
     {
-        gtirb::Addr ea;
-        uint64_t size, from;
-        int64_t multiplier;
-        output >> ea >> size >> multiplier >> from;
-        std::ostringstream newComment;
-        newComment << "data_access(" << size << ", " << multiplier << ", " << std::hex << from
+        gtirb::Addr Ea;
+        uint64_t Size, From;
+        int64_t Multiplier;
+        Output >> Ea >> Size >> Multiplier >> From;
+        std::ostringstream NewComment;
+        NewComment << "data_access(" << Size << ", " << Multiplier << ", " << std::hex << From
                    << std::dec << ")";
-        updateComment(module, comments, ea, newComment.str());
+        updateComment(Module, Comments, Ea, NewComment.str());
     }
 
-    for(auto &output : *prog->getRelation("preferred_data_access"))
+    for(auto &Output : *Prog->getRelation("preferred_data_access"))
     {
-        gtirb::Addr ea;
-        uint64_t data_access;
-        output >> ea >> data_access;
-        std::ostringstream newComment;
-        newComment << "preferred_data_access(" << std::hex << data_access << std::dec << ")";
-        updateComment(module, comments, ea, newComment.str());
+        gtirb::Addr Ea;
+        uint64_t Size, DataAccess;
+        Output >> Ea >> Size >> DataAccess;
+        std::ostringstream NewComment;
+        NewComment << "preferred_data_access(" << Size << ", " << std::hex << DataAccess << std::dec
+                   << ")";
+        updateComment(Module, Comments, Ea, NewComment.str());
     }
 
-    for(auto &output : *prog->getRelation("best_value_reg"))
+    for(auto &Output : *Prog->getRelation("best_value_reg"))
     {
-        gtirb::Addr ea, eaOrigin;
-        std::string reg, type;
-        int64_t multiplier, offset;
-        output >> ea >> reg >> eaOrigin >> multiplier >> offset >> type;
-        std::ostringstream newComment;
-        newComment << reg << "=X*" << multiplier << "+" << std::hex << offset << std::dec
-                   << " type(" << type << ")";
-        updateComment(module, comments, ea, newComment.str());
+        gtirb::Addr Ea, EaOrigin;
+        std::string Reg, Type;
+        int64_t Multiplier, Offset;
+        Output >> Ea >> Reg >> EaOrigin >> Multiplier >> Offset >> Type;
+        std::ostringstream NewComment;
+        NewComment << Reg << "=X*" << Multiplier << "+" << std::hex << Offset << std::dec
+                   << " type(" << Type << ")";
+        updateComment(Module, Comments, Ea, NewComment.str());
     }
 
-    for(auto &output : *prog->getRelation("value_reg"))
+    for(auto &Output : *Prog->getRelation("value_reg"))
     {
-        gtirb::Addr ea, ea2;
-        std::string reg, reg2;
-        int64_t multiplier, offset;
-        output >> ea >> reg >> ea2 >> reg2 >> multiplier >> offset;
-        std::ostringstream newComment;
-        newComment << reg << "=(" << reg2 << "," << std::hex << ea2 << std::dec << ")*"
-                   << multiplier << "+" << std::hex << offset << std::dec;
-        updateComment(module, comments, ea, newComment.str());
+        gtirb::Addr Ea, Ea2;
+        std::string Reg, Reg2;
+        int64_t Multiplier, Offset;
+        Output >> Ea >> Reg >> Ea2 >> Reg2 >> Multiplier >> Offset;
+        std::ostringstream NewComment;
+        NewComment << Reg << "=(" << Reg2 << "," << std::hex << Ea2 << std::dec << ")*"
+                   << Multiplier << "+" << std::hex << Offset << std::dec;
+        updateComment(Module, Comments, Ea, NewComment.str());
     }
 
-    for(auto &output : *prog->getRelation("moved_label_class"))
+    for(auto &Output : *Prog->getRelation("moved_label_class"))
     {
-        gtirb::Addr ea;
-        uint64_t opIndex;
-        std::string type;
+        gtirb::Addr Ea;
+        uint64_t OpIndex;
+        std::string Type;
 
-        output >> ea >> opIndex >> type;
-        std::ostringstream newComment;
-        newComment << " moved label-" << type;
-        updateComment(module, comments, ea, newComment.str());
+        Output >> Ea >> OpIndex >> Type;
+        std::ostringstream NewComment;
+        NewComment << " moved label-" << Type;
+        updateComment(Module, Comments, Ea, NewComment.str());
     }
 
-    for(auto &output : *prog->getRelation("def_used"))
+    for(auto &Output : *Prog->getRelation("def_used"))
     {
-        gtirb::Addr ea_use, ea_def;
-        uint64_t index;
-        std::string reg;
-        output >> ea_def >> reg >> ea_use >> index;
-        std::ostringstream newComment;
-        newComment << "def(" << reg << ", " << std::hex << ea_def << std::dec << ")";
-        updateComment(module, comments, ea_use, newComment.str());
+        gtirb::Addr EaUse, EaDef;
+        uint64_t Index;
+        std::string Reg;
+        Output >> EaDef >> Reg >> EaUse >> Index;
+        std::ostringstream NewComment;
+        NewComment << "def(" << Reg << ", " << std::hex << EaDef << std::dec << ")";
+        updateComment(Module, Comments, EaUse, NewComment.str());
     }
-    for(auto &output : *prog->getRelation("missed_jump_table"))
+    for(auto &Output : *Prog->getRelation("missed_jump_table"))
     {
-        gtirb::Addr ea;
-        output >> ea;
-        std::ostringstream newComment;
-        newComment << "missed_jump_table";
-        updateComment(module, comments, ea, newComment.str());
+        gtirb::Addr Ea;
+        Output >> Ea;
+        std::ostringstream NewComment;
+        NewComment << "missed_jump_table";
+        updateComment(Module, Comments, Ea, NewComment.str());
     }
-    for(auto &output : *prog->getRelation("reg_has_base_image"))
+    for(auto &Output : *Prog->getRelation("reg_has_base_image"))
     {
-        gtirb::Addr ea;
-        std::string reg;
-        output >> ea >> reg;
-        std::ostringstream newComment;
-        newComment << "hasImageBase(" << reg << ")";
-        updateComment(module, comments, ea, newComment.str());
+        gtirb::Addr Ea;
+        std::string Reg;
+        Output >> Ea >> Reg;
+        std::ostringstream NewComment;
+        NewComment << "hasImageBase(" << Reg << ")";
+        updateComment(Module, Comments, Ea, NewComment.str());
     }
-    for(auto &T : *prog->getRelation("reg_has_got"))
+    for(auto &T : *Prog->getRelation("reg_has_got"))
     {
         gtirb::Addr EA;
         std::string Reg;
         T >> EA >> Reg;
         std::ostringstream Comment;
         Comment << "GOT(" << Reg << ")";
-        updateComment(module, comments, EA, Comment.str());
+        updateComment(Module, Comments, EA, Comment.str());
     }
-    if(selfDiagnose)
+    if(SelfDiagnose)
     {
-        for(auto &output : *prog->getRelation("false_positive"))
+        for(auto &Output : *Prog->getRelation("false_positive"))
         {
-            gtirb::Addr ea;
-            output >> ea;
-            updateComment(module, comments, ea, "false positive");
+            gtirb::Addr Ea;
+            Output >> Ea;
+            updateComment(Module, Comments, Ea, "false positive");
         }
-        for(auto &output : *prog->getRelation("false_negative"))
+        for(auto &Output : *Prog->getRelation("false_negative"))
         {
-            gtirb::Addr ea;
-            output >> ea;
-            updateComment(module, comments, ea, "false negative");
+            gtirb::Addr Ea;
+            Output >> Ea;
+            updateComment(Module, Comments, Ea, "false negative");
         }
-        for(auto &output : *prog->getRelation("bad_symbol_constant"))
+        for(auto &Output : *Prog->getRelation("bad_symbol_constant"))
         {
-            gtirb::Addr ea;
-            uint64_t index;
-            output >> ea >> index;
-            std::ostringstream newComment;
-            newComment << "bad_symbol_constant(" << index << ")";
-            updateComment(module, comments, ea, newComment.str());
+            gtirb::Addr Ea;
+            uint64_t Index;
+            Output >> Ea >> Index;
+            std::ostringstream NewComment;
+            NewComment << "bad_symbol_constant(" << Index << ")";
+            updateComment(Module, Comments, Ea, NewComment.str());
         }
     }
-    module.addAuxData<gtirb::schema::Comments>(std::move(comments));
+    Module.addAuxData<gtirb::schema::Comments>(std::move(Comments));
 }
 
 void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
