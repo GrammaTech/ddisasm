@@ -361,6 +361,9 @@ tests:
   - name: ex_loop_instructions
     <<: *assembly
 
+  - name: ex_two_data_accesses
+    <<: *assembly
+
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
