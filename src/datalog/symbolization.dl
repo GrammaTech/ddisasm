@@ -458,7 +458,7 @@ string_candidate(EA,End,"ascii"):-
     ascii_string(Beg,End),
     (
       labeled_data_candidate(EA);
-      preferred_data_access(_,EA)
+      preferred_data_access(_,_,EA)
     ),
     EA >= Beg, EA < End,
     data_segment(DataBeg,DataEnd),
@@ -525,9 +525,7 @@ data_object_candidate(EA,Size,"string"):-
     Size = End-EA.
 
 data_object_candidate(EA,Size,"other"):-
-    preferred_data_access(EA,Label),
-    data_access_pattern(Label,Size,_,_),
-    Size > 0,
+    preferred_data_access(EA,Size,_),
     !address_in_data_refined(EA,_),
     !symbol_minus_symbol_candidate(EA,Size,_,_,_,_).
 
@@ -700,10 +698,9 @@ data_object_point(EA4,Size4,Type,2,"pointed by pointer array"):-
 // data access heuristic
 data_object_point(EA,Pt_size,"symbol",5,"data access"):-
     data_object_candidate(EA,Pt_size,"symbol"),
-    preferred_data_access(EA,Label),
     (
-        data_access_pattern(Label,Pt_size,_,_);
-        data_access_pattern(Label,0,_,_)
+        preferred_data_access(EA,Pt_size,_);
+        preferred_data_access(EA,0,_)
     ).
 
 // if we conflict with several other candidates we reduce the points
@@ -763,7 +760,7 @@ data_object_point(EA,Size,"string",3,"long string"):-
 
 data_object_point(EA,Size,"string",-2,"string in jump table"):-
     data_object_candidate(EA,Size,"string"),
-    preferred_data_access(EA,EA_ref),
+    preferred_data_access(EA,_,EA_ref),
     jump_table_start(_,_,EA_ref,_,_).
 
 // data access negative heuristic

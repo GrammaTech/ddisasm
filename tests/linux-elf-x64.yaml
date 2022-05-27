@@ -361,6 +361,12 @@ tests:
   - name: ex_loop_instructions
     <<: *assembly
 
+  - name: ex_two_data_accesses
+    <<: *assembly
+    test:
+      <<: *default-test
+      check_cfg: false
+
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
