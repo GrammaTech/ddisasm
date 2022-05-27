@@ -363,6 +363,9 @@ tests:
 
   - name: ex_two_data_accesses
     <<: *assembly
+    test:
+      <<: *default-test
+      check_cfg: false
 
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
