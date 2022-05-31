@@ -197,7 +197,7 @@ invalid(EA, "arm: invalid stm/ldm"):-
 
 
 // PC-relative LDR
-value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
+value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     litpool_ref(EA,Reg,LitPoolAddr,Size,"LDR"),
     track_register(Reg),
     !relocation(LitPoolAddr,_,_,_,_,_,_),
@@ -1032,7 +1032,7 @@ symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA
     Addr2 = as(Diff,address) + Symbol1,
     Symbol2 = Addr2-(Addr2 band 1).
 
-value_reg_edge(EA,Reg,EA,"NONE",0,as(Symbol2,number)):-
+value_reg(EA,Reg,EA,"NONE",0,as(Symbol2,number),1):-
     symbol_minus_symbol_litpool_access_pattern(_,_,_,Symbol2,_,_,EA,Reg,_).
 
 labeled_data_candidate(Symbol2),
@@ -1077,7 +1077,7 @@ litpool_symbolic_operand(LitPoolAddr2,DataAccessSize,Symbol1,Symbol2,EA_D,Reg3,S
     data_word(LitPoolAddr2,DataAccessSize,Diff),
     Symbol2 = as(Diff,address) + Symbol1.
 
-value_reg_edge(EA,Reg,EA,"NONE",0,as(Val,number)):-
+value_reg(EA,Reg,EA,"NONE",0,as(Val,number),1):-
     litpool_symbolic_operand(_,_,_,Symbol2,EA,Reg,Size),
     track_register(Reg),
     data_word(Symbol2,Size,Val).

@@ -230,7 +230,7 @@ symbolic_operand_attribute(ea, 2, "Lo12") :-
     !relocation(as(Dest,address),"GLOB_DAT",_,_,_,_,_).
 
 
-value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
+value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     split_load_for_symbolization(_,EA,RefAddr,_),
     instruction(EA,_,_,Operation,Op1,_,_,_,_,_),
     arch.load_operation(Operation),
@@ -242,7 +242,7 @@ value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
 
 // Not restricted with def_used_for_address since ADRP and ADR are always addresses.
 // TODO: This rule shouldn't be needed once both adrp and adr are marked as pc_relative_addr.
-value_reg_edge(EA,Reg,EA,"NONE",0,Val):-
+value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     instruction(EA,_,_,Operation,Op1,Op2,_,_,_,_),
     (
         Operation = "ADRP";
