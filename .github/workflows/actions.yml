@@ -1,6 +1,28 @@
 name: DDisasm Build
 on: [push]
 jobs:
+  docker:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [focal, bionic]
+        include:
+          - os: focal
+            file_suffix: ubuntu20
+          - os: bionic
+            file_suffix: ubuntu18
+    steps:
+      - uses: actions/checkout@master
+      - name: Kaniko build
+        uses: aevea/action-kaniko@v0.9.0
+        with:
+          registry: ghcr.io
+          image: ${{ matrix.os }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          cache: true
+          cache_registry: ${{ matrix.os }}-cache
+          tag: ${{ github.ref_name }}
+          build_file: .ci/Dockerfile.${{ matrix.file_suffix }}
   build:
     runs-on: ubuntu-latest
     strategy:
@@ -10,9 +32,10 @@ jobs:
         exclude:
           - os: bionic
             compiler: clang++
+    needs: docker
     env:
       BUILD_TYPE: Release
-    container: grammatech/ddisasm-ci-${{ matrix.os }}:latest
+    container: ghcr.io/${{ github.repository }}/${{ matrix.os }}:${{ github.ref_name }}
     steps:
       - name: Install capstone, gtirb, gtirb-pprinter,
         run: |
@@ -43,7 +66,7 @@ jobs:
           - os: bionic
             compiler: clang++
     needs: build
-    container: grammatech/ddisasm-ci-${{ matrix.os }}:latest
+    container: ghcr.io/${{ github.repository }}/${{ matrix.os }}:${{ github.ref_name }}
     steps:
       - name: Install capstone, gtirb, gtirb-pprinter,
         run: |
