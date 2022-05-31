@@ -634,12 +634,6 @@ npad(EA,Size):-
     op_regdirect(Op,"EDI"),
     Size = 2.
 
-// lea REG, [REG+00]
-npad(EA,Size):-
-    instruction(EA,Size,_,"LEA",Op1,Op2,_,_,_,_),
-    op_indirect(Op1,"NONE",Reg,"NONE",_,0,_),
-    op_regdirect(Op2,Reg).
-
 // jmp .+N; .npad N
 npad(EA,Size):-
     unconditional_jump(EA),
