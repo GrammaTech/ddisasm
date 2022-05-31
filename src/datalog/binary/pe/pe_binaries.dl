@@ -512,13 +512,18 @@ is_padding(EA):-
     binary_format("PE"),
     instruction_get_operation(EA,"INT3").
 
-// Make INT3 blocks in PEs data. Otherwise each
+// Make INT3 blocks in PEs data as long as
+// they are not connected to other blocks.
+// Otherwise each
 // individual INT3 instruction is its own block.
 // Using the point system is too expensive.
 discarded_block(EA,"code","PE padding considered data"):-
     binary_format("PE"),
     code_in_block_candidate_refined(EA,EA),
-    instruction_get_operation(EA,"INT3").
+    instruction_get_operation(EA,"INT3"),
+    !direct_jump(_,EA),
+    !direct_call(_,EA),
+    !must_fallthrough(_,EA).
 
 // Off-cut base-relative reference to symbol:
 //    e.g.  movzx EDX,BYTE PTR [RAX+RCX*1+((IMAGEREL N_180fa2570)+7)]
@@ -628,12 +633,6 @@ npad(EA,Size):-
     instruction(EA,Size,_,"MOV",Op,Op,_,_,_,_),
     op_regdirect(Op,"EDI"),
     Size = 2.
-
-// lea REG, [REG+00]
-npad(EA,Size):-
-    instruction(EA,Size,_,"LEA",Op1,Op2,_,_,_,_),
-    op_indirect(Op1,"NONE",Reg,"NONE",_,0,_),
-    op_regdirect(Op2,Reg).
 
 // jmp .+N; .npad N
 npad(EA,Size):-
