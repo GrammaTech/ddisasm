@@ -256,12 +256,8 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     arch.load(EA,_,_,Reg,"NONE","NONE",_,Offset),
     Offset >= 0,
     Offset_addr = as(Offset,address),
-    data_byte(Offset_addr,Byte0),
-    data_byte(Offset_addr+1,Byte1),
-    data_byte(Offset_addr+2,Byte2),
-    data_byte(Offset_addr+3,Byte3),
-    Byte3 <= 128,
-    Val = as(Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0,number).
+    data_word(Offset_addr,4,Val),
+    Val >= 0.
 
 // mov DWORD from memory (PC-relative address)
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
@@ -271,12 +267,8 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     op_regdirect_contains_reg(Op2,Reg),
     op_indirect(Op1,_,_,_,_,_,32),
     pc_relative_operand(EA,1,Offset),
-    data_byte(Offset,Byte0),
-    data_byte(Offset+1,Byte1),
-    data_byte(Offset+2,Byte2),
-    data_byte(Offset+3,Byte3),
-    Byte3 <= 128,
-    Val = as(Byte3*2^24+ Byte2*2^16 + Byte1*2^8 + Byte0,number).
+    data_word(Offset,4,Val),
+    Val >= 0.
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // once we have the edges that relate the values of registers at different
