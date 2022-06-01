@@ -123,13 +123,27 @@ check-format:
     when: manual
     allow_failure: true
 
-build-conan-gcc7:
+.conan-linux-publish-template: &conan-linux-publish-template
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu18
-  stage: build
-  needs: [check-format]
+  stage: deploy
   rules:
     *run-only-main
-  script: &build-conan
+  script:
+    - export CONAN_USER_HOME=$(pwd)
+    - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/run_conan.py upload
+
+.conan-linux-build-template: &conan-linux-build-template
+  stage: build
+  needs: [check-format]
+  artifacts:
+    paths:
+      - .conan
+    # Set a short expiry time - only needed until it is published by a later job.
+    expire_in: 8 hours
+  rules:
+    *run-only-main
+  script:
+    - export CONAN_USER_HOME=$(pwd)
     - pip3 install --upgrade conan
     - conan profile new default --detect
     - conan profile update settings.compiler.libcxx=libstdc++11 default
@@ -138,16 +152,28 @@ build-conan-gcc7:
     # Install gtirb python wheel
     - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
-    - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/run_conan.py
+    - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/run_conan.py build -s build_type=Release
 
-build-conan-gcc9:
+
+build-conan-gcc7-release:
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu18
+  <<: *conan-linux-build-template
+
+conan-gcc7-release-publish:
+  needs:
+    - build-conan-gcc7-release
+  dependencies: [build-conan-gcc7-release]
+  <<: *conan-linux-publish-template
+
+build-conan-gcc9-release:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu20
-  stage: build
-  needs: [check-format]
-  rules:
-    *run-only-main
-  script:
-    *build-conan
+  <<: *conan-linux-build-template
+
+conan-gcc9-release-publish:
+  needs:
+    - build-conan-gcc9-release
+  dependencies: [build-conan-gcc9-release]
+  <<: *conan-linux-publish-template
 
 .conan-windows-template: &conan-windows-template
   stage: build
