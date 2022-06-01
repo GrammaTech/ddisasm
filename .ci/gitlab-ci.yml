@@ -1,7 +1,7 @@
 variables:
-  GTIRB_BRANCH: "master"
-  GTIRB_PPRINTER_BRANCH: "master"
-  CAPSTONE_BRANCH: "master"
+  GTIRB_BRANCH: "release-1.10.7"
+  GTIRB_PPRINTER_BRANCH: "release-1.8.3"
+  CAPSTONE_BRANCH: "capstone-5.0.0-gt2"
   # The IMAGE_TAG is derived from the branch name so that if a branch modifies
   # the CI images, it builds and runs using the new images without conflicting
   # with main.
