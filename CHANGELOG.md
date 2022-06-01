@@ -1,4 +1,4 @@
-# 1.5.3 (Unreleased)
+# 1.5.3
 * Rename `elfSectionIndex` to `sectionIndex`, and `elfSectionProperties` to
   `sectionProperties`, and remove `peSectionProperties`.
 * Refactor `section_complete`: add `section_property`, and rename `section_complete`
