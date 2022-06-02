@@ -21,6 +21,11 @@ def upload():
     run_conan(["upload", props.conan_recipe, "--all", "--remote", "gitlab"])
 
 
+def handle_bad_args():
+    print("Incorrect argument(s)", file=sys.stderr)
+    sys.exit(1)
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         if sys.argv[1] == "upload":
@@ -28,5 +33,6 @@ if __name__ == "__main__":
         elif sys.argv[1] == "build":
             build(sys.argv[2:])
         else:
-            print("Unrecognized arguments")
-            sys.exit(1)
+            handle_bad_args()
+    else:
+        handle_bad_args()
