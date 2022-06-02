@@ -1,3 +1,6 @@
+# 1.5.4 (Unreleased)
+* TBD
+
 # 1.5.3
 * Rename `elfSectionIndex` to `sectionIndex`, and `elfSectionProperties` to
   `sectionProperties`, and remove `peSectionProperties`.
