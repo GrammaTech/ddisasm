@@ -41,7 +41,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 
 RUN git clone -b 0.11.5 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF && \
     cmake -DLIEF_PYTHON_API=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF /usr/local/src/LIEF -B/usr/local/src/LIEF/build && \
-    cmake --build /usr/local/src/LIEF/build -j --target install
+    cmake --build /usr/local/src/LIEF/build -j4 --target install
 
 # ------------------------------------------------------------------------------
 # Build libehp
@@ -58,7 +58,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 RUN git clone https://git.zephyr-software.com/opensrc/libehp.git /usr/local/src/libehp && \
     git -C /usr/local/src/libehp reset --hard 5e41e26b88d415f3c7d3eb47f9f0d781cc519459 && \
     cmake -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release -DEHP_BUILD_SHARED_LIBS=OFF /usr/local/src/libehp -B/usr/local/src/libehp/build && \
-    cmake --build /usr/local/src/libehp/build -j --target install
+    cmake --build /usr/local/src/libehp/build -j4 --target install
 
 # ------------------------------------------------------------------------------
 # Final image
