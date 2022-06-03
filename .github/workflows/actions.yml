@@ -3,6 +3,8 @@ on: [push]
 jobs:
   docker:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     strategy:
       matrix:
         os: [focal, bionic]
