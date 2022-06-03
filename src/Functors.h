@@ -24,8 +24,6 @@
 #define SRC_FUNCTORS_H_
 #include <gtirb/gtirb.hpp>
 
-#include "souffle/SouffleInterface.h"
-
 #ifndef __has_declspec_attribute
 #define __has_declspec_attribute(x) 0
 #endif
@@ -51,10 +49,6 @@ extern "C"
     EXPORT int64_t functor_data_s16(uint64_t EA);
     EXPORT int64_t functor_data_s32(uint64_t EA);
     EXPORT int64_t functor_data_s64(uint64_t EA);
-
-    EXPORT souffle::RamDomain build_scc_list(souffle::SymbolTable* symbolTable,
-                                             souffle::RecordTable* recordTable,
-                                             souffle::RamDomain Edges);
 }
 
 class FunctorContextManager
