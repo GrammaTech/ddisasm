@@ -252,7 +252,7 @@ symbolization.
 .decl relative_jump_table_entry_candidate(EA:address,TableStart:address,Size:unsigned,Reference:address,Dest:address,Scale:number,Offset:number)
 .output relative_jump_table_entry_candidate
 
-relative_jump_table_entry_candidate(TableStart,TableStart,Size,TableReference,Dest,Scale,0):-
+relative_jump_table_entry_candidate(TableStart,TableStart,Size,TableReference,NewDest,Scale,0):-
     !binary_isa("ARM"),
     jump_table_start(_,Size,TableStart,TableReference,Scale),
     (
@@ -261,7 +261,12 @@ relative_jump_table_entry_candidate(TableStart,TableStart,Size,TableReference,De
     ),
     TableReference_signed = as(TableReference,number),
     Dest = as(TableReference_signed + as(Scale,number)*Diff,unsigned),
-    code(Dest),
+    (
+        // Target is code.
+        code(Dest), NewDest = Dest;
+        // Target is padding - forward to the next possible target.
+        is_padding(Dest), after_end(Dest,End), after_end(NewDest,End), !is_padding(NewDest)
+    ),
     // The table is in a loaded section.
     loaded_section(SectionStart,SectionEnd,_),
     TableStart >= SectionStart, TableStart < SectionEnd.
@@ -281,7 +286,7 @@ relative_jump_table_entry_candidate(TableStart,TableStart,Size,TableReference,De
 // * a symbol
 // * the end of a data section
 
-relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
+relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,NewDest,Scale,Offset):-
     !binary_isa("ARM"),
     relative_jump_table_entry_candidate(LastEA,TableStart,Size,Reference,_,Scale,Offset),
     EA = LastEA + Size,
@@ -295,7 +300,12 @@ relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offs
     ),
     Reference_signed = as(Reference,number),
     Dest = as(Reference_signed + as(Scale,number)*Diff,unsigned),
-    code(Dest).
+    (
+        // Target is code.
+        code(Dest), NewDest = Dest;
+        // Target is padding - forward to the next possible target.
+        is_padding(Dest), after_end(Dest,End), after_end(NewDest,End), !is_padding(NewDest)
+    ).
 
 .decl discarded_jump_table_entry(TableStart:address,TableRef:address,EA:address)
 .output discarded_jump_table_entry
@@ -346,7 +356,7 @@ can negate more advanced analyses.
 Since these were not propagated earlier, these edges were not used during value
 analysis.
 */
-relative_jump_table_entry(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
+relative_jump_table_entry(EA,TableStart,Size,Reference,NewDest,Scale,Offset):-
     !binary_isa("ARM"),
     relative_jump_table_entry(LastEA,TableStart,Size,Reference,_,Scale,Offset),
     !jump_table_max(TableStart,_),
@@ -360,4 +370,9 @@ relative_jump_table_entry(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
     next_data_limit(Prev, Next), Prev < EA, Next >= EA+Size,
     Reference_signed = as(Reference,number),
     Dest = as(Reference_signed + as(Scale,number)*Diff,unsigned),
-    code(Dest).
+    (
+        // Target is code.
+        code(Dest), NewDest = Dest;
+        // Target is padding - forward to the next possible target.
+        is_padding(Dest), after_end(Dest,End), after_end(NewDest,End), !is_padding(NewDest)
+    ).
