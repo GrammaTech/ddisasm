@@ -32,7 +32,7 @@ main:
   cmp RDI, 0
   jz .do_return
 
-  call my_noreturn_loop
+  call func_with_tailcall
   mov AL, [R15 + 1]
 
 .do_return:
@@ -42,6 +42,17 @@ main:
 
   .globl deref_and_print
   .type	deref_and_print,@function
+
+  .globl func_with_tailcall
+  .type	func_with_tailcall,@function
+func_with_tailcall:
+  mov R15, 3
+.loop3:
+  sub R15, 1
+  jnz .loop3
+
+  # tail call
+  jmp my_noreturn_loop
 
 deref_and_print:
   # Dereference a pointer and print
@@ -55,7 +66,7 @@ deref_and_print:
   .type	my_noreturn,@function
 my_noreturn:
   # loop, and then call a known noreturn.
-  # The loop ensures noreturn must propagate through SCCs
+  # The loop ensures noreturn must propagate through loops
   mov R15, 5
 
 .loop:
@@ -68,14 +79,23 @@ my_noreturn:
   xor RDI, RDI
   call exit@PLT
 
+
   .globl my_noreturn_loop
   .type	my_noreturn_loop,@function
 my_noreturn_loop:
   push RBP
   mov RBP,RSP
 
+  # jump over some inline data
+  jmp .loop_forever
+
+  .long 0xffffffff
+  .long 0xffffffff
+  .long 0xffffffff
+  .long 0xffffffff
+
   # loop forever
-  # The loop ensures noreturn must recognize dead end SCCs.
+  # The loop ensures noreturn must recognize dead end loops.
 .loop_forever:
   mov RDI, OFFSET .s_loop
   call puts@PLT
