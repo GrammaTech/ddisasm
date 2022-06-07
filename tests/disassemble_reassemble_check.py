@@ -48,7 +48,7 @@ def get_target(binary, strip_exe, strip, sstrip, extra_strip_flags=None):
         subprocess.run(["cp", binary, binary + ".stripped"])
         binary = binary + ".stripped"
 
-        cmd = [strip_exe, "--strip-unneeded", binary]
+        cmd = build_chroot_wrapper() + [strip_exe, "--strip-unneeded", binary]
         if extra_strip_flags:
             cmd.extend(extra_strip_flags)
 
@@ -62,7 +62,9 @@ def get_target(binary, strip_exe, strip, sstrip, extra_strip_flags=None):
         print("# stripping sections\n")
         subprocess.run(["cp", binary, binary + ".sstripped"])
         binary = binary + ".sstripped"
-        completed_process = subprocess.run(["sstrip", binary])
+        completed_process = subprocess.run(
+            build_chroot_wrapper() + ["sstrip", binary]
+        )
         if completed_process.returncode != 0:
             print(bcolors.fail("# sstrip failed\n"))
             binary = None
@@ -87,10 +89,47 @@ def cd(new_dir):
         os.chdir(prev_dir)
 
 
+def resolve_chroot_root(chroot: str) -> str:
+    if not chroot:
+        return None
+
+    schroot_result = subprocess.run(
+        ["schroot", "--location", "--chroot", chroot],
+        capture_output=True,
+        encoding="utf-8",
+    )
+    chroot_root_path = schroot_result.stdout.strip()
+    return chroot_root_path
+
+
+# These chroot options support running the end-to-end tests in OS chroots in
+# the nightly tests.
+MAKE_CHROOT = os.getenv("E2E_MAKE_CHROOT", None)
+MAKE_CHROOT_ROOT = resolve_chroot_root(MAKE_CHROOT)
+
+
+def build_chroot_wrapper() -> List[str]:
+    if MAKE_CHROOT:
+        chroot_cwd_path = os.path.relpath(os.getcwd(), MAKE_CHROOT_ROOT)
+        wrapper = [
+            "schroot",
+            "--chroot",
+            MAKE_CHROOT,
+            "--directory",
+            chroot_cwd_path,
+            "--preserve-environment",
+            "--",
+        ]
+    else:
+        wrapper = []
+    return wrapper
+
+
 def make(target=""):
     target = [] if target == "" else [target]
+
     if platform.system() == "Linux":
-        return ["make", "-e"] + target
+        return build_chroot_wrapper() + ["make", "-e"] + target
     elif platform.system() == "Windows":
         return ["nmake", "/E", "/F", "Makefile.windows"] + target
 
@@ -189,7 +228,9 @@ def reassemble(compiler, binary, extra_flags):
             *extra_flags
         )
         completedProcess = subprocess.run(
-            [compiler, binary + ".s", "-o", binary] + extra_flags
+            build_chroot_wrapper()
+            + [compiler, binary + ".s", "-o", binary]
+            + extra_flags
         )
     elif platform.system() == "Windows":
         out_arg = "/OUT:" + binary
@@ -232,7 +273,9 @@ def link(
 ) -> bool:
     """Link a reassembled object file into a new binary."""
     print("# Linking", ", ".join(obj), "into", binary)
-    cmd = [linker] + obj + ["-o", binary] + extra_flags
+    cmd = (
+        build_chroot_wrapper() + [linker] + obj + ["-o", binary] + extra_flags
+    )
     print("link command:", " ".join(cmd))
     completedProcess = subprocess.run(cmd)
     if completedProcess.returncode != 0:
