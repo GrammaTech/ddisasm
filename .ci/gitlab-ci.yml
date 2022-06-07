@@ -117,11 +117,20 @@ check-format:
     when: manual
     allow_failure: true
 
+.publish-rules: &publish-rules
+  - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+  # regular build is manual and optional
+  # This only works with gitlab 13.12 or higher
+  - if: $CI_COMMIT_BRANCH
+    when: manual
+    allow_failure: true
+
 .conan-linux-publish-template: &conan-linux-publish-template
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu18
   stage: deploy
   rules:
-    *run-only-main
+    *publish-rules
   script:
     - export CONAN_USER_HOME=$(pwd)
     - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/run_conan.py upload
@@ -195,7 +204,7 @@ conan-gcc9-release-publish:
   stage: deploy
   tags: [ddisasm-windows]
   rules:
-    *run-only-main
+    *publish-rules
   script:
     - export CONAN_USER_HOME=$(cygpath -w $(pwd))
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
