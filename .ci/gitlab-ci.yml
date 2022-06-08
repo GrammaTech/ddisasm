@@ -248,9 +248,7 @@ conan-windows-release-publish:
     # Build ddisasm
     - mkdir build
     - cd build
-    # FIXME: CMake should automatically find LIEF_LIBRARY but fails to on Arch.
-    - 'LIEF_LIBRARY=/usr/lib/libLIEF.a && [ -f $LIEF_LIBRARY ] || LIEF_LIBRARY=/usr/lib/libLIEF.so'
-    - cmake -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_DEBIAN_PACKAGE_RELEASE="$(lsb_release -sc)" -DBUILD_FUNINFER=1 -DLIEF_ROOT=/usr/ -DLIEF_LIBRARY=${LIEF_LIBRARY} -DDDISASM_STRIP_DEBUG_SYMBOLS=On ..
+    - cmake -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_DEBIAN_PACKAGE_RELEASE="$(lsb_release -sc)" -DBUILD_FUNINFER=1 -DDDISASM_STRIP_DEBUG_SYMBOLS=ON ..
     - make -j4
 
 .test-and-tag-template: &test-and-tag
@@ -339,7 +337,7 @@ build-static:
     # build ddisasm
     - mkdir build
     - cd build
-    - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDDISASM_BUILD_SHARED_LIBS=OFF -DLIEF_ROOT=/usr/
+    - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDDISASM_BUILD_SHARED_LIBS=OFF
     - make -j
     # Run the regression tests.
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
@@ -408,7 +406,7 @@ static-drivers:
     - cd ../..
     # build ddisasm
     - mkdir build && cd build
-    - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DDDISASM_STATIC_DRIVERS=ON -DLIEF_ROOT=/usr/
+    - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DDDISASM_STATIC_DRIVERS=ON
     - make -j
     # Run the regression tests.
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V

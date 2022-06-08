@@ -40,7 +40,7 @@ RUN apt-get -y update \
       git \
       python3
 
-RUN git clone -b 0.11.5 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF
+RUN git clone -b 0.12.1 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF
 RUN cmake -DLIEF_PYTHON_API=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF /usr/local/src/LIEF -B/usr/local/src/LIEF/build
 RUN cmake --build /usr/local/src/LIEF/build -j --target all install
 
@@ -161,7 +161,7 @@ COPY --from=gtirb-pprinter /usr/local/include /usr/local/include
 ARG DDISASM_URL=https://github.com/GrammaTech/ddisasm
 ARG DDISASM_BRANCH=main
 RUN git clone --depth 1 -b $DDISASM_BRANCH $DDISASM_URL /usr/local/src/ddisasm
-RUN cmake -DLIEF_ROOT=/usr/ -DCMAKE_BUILD_TYPE=Release /usr/local/src/ddisasm -B/usr/local/src/ddisasm/build
+RUN cmake -DCMAKE_BUILD_TYPE=Release /usr/local/src/ddisasm -B/usr/local/src/ddisasm/build
 RUN cmake --build /usr/local/src/ddisasm/build -j --target all install
 
 # ------------------------------------------------------------------------------

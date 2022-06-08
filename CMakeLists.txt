@@ -286,22 +286,13 @@ if(NOT CAPSTONE_INCLUDE_DIR)
   unset(CAPSTONE_LIB_DIR)
 endif()
 
-# Use LIEF with 'find_package()'
-# ==============================
-
+# ---------------------------------------------------------------------------
+# LIEF
+# ---------------------------------------------------------------------------
 if(ENABLE_CONAN)
   set(LIEF_LIBRARIES CONAN_PKG::lief)
 else()
-  # Custom path to the LIEF install directory
-  set(LIEF_ROOT CACHE PATH ${CMAKE_INSTALL_PREFIX})
-  # Directory to 'FindLIEF.cmake'
-  list(APPEND CMAKE_MODULE_PATH ${LIEF_ROOT}/share/LIEF/cmake)
-  if(APPLE)
-    include(${CMAKE_INSTALL_PREFIX}/share/LIEF/cmake/FindLIEF.cmake)
-  else()
-    include(FindLIEF)
-  endif()
-  find_package(LIEF 0.11.5 REQUIRED COMPONENTS STATIC)
+  find_package(LIEF 0.12.1 REQUIRED COMPONENTS STATIC)
 endif()
 
 # ---------------------------------------------------------------------------

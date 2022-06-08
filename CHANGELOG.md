@@ -1,5 +1,5 @@
 # 1.5.4 (Unreleased)
-* TBD
+* Update LIEF to version 0.12.1.
 
 # 1.5.3
 * Rename `elfSectionIndex` to `sectionIndex`, and `elfSectionProperties` to

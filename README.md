@@ -57,7 +57,7 @@ To build ddisasm from source, the following requirements should be installed:
 - [Souffle](https://souffle-lang.github.io), version 2.2
   - Must be configured with support for 64 bit numbers (via `-DSOUFFLE_DOMAIN_64BIT=1` during configuration)
 - [libehp](https://git.zephyr-software.com/opensrc/libehp), version 1.0.0 or higher
-- [LIEF](https://lief.quarkslab.com/), version 0.11.5 or higher
+- [LIEF](https://lief.quarkslab.com/), version 0.12.1 or higher
 
 Note that these versions are newer than what your package manager may provide
 by default: This is true on Ubuntu 18, Debian 10, and others. Prefer building
@@ -74,11 +74,11 @@ Use the following options to configure cmake:
 
 - You can tell CMake about the paths to its dependencies as follows:
 
- Option | Use
- ------ | -----
- `LIEF_ROOT` | Path to the LIEF installation dir
- `gtirb_DIR` | Path to the GTIRB installation dir
- `gtirb_pprinter_DIR` | Path to the gtirb-pprinter build dir
+| Option               | Description                                 |
+|----------------------|---------------------------------------------|
+| `gtirb_DIR`          | Path to the GTIRB build directory.          |
+| `gtirb_pprinter_DIR` | Path to the gtirb-pprinter build directory. |
+| `LIEF_DIR`           | Path to the LIEF build directory.           |
 
 - ddisasm can make use of GTIRB in static library form (instead of
  shared library form, the default) if you use the flag
