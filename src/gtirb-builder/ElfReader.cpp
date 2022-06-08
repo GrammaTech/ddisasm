@@ -26,6 +26,26 @@
 #include <algorithm>
 #include <sstream>
 
+// NOTE:
+// Elf32_Sym is defined here in duplicate of LIEF::ELF::details::Elf32_Sym,
+// which is an incomplete type in version 0.12.1 (not defined in a header).
+namespace
+{
+    typedef uint32_t Elf32_Addr;
+    typedef uint16_t Elf32_Half;
+    typedef uint32_t Elf32_Word;
+
+    struct Elf32_Sym
+    {
+        Elf32_Word st_name;
+        Elf32_Addr st_value;
+        Elf32_Word st_size;
+        unsigned char st_info;
+        unsigned char st_other;
+        Elf32_Half st_shndx;
+    };
+} // namespace
+
 ElfReader::ElfReader(std::string Path, std::string Name, std::shared_ptr<gtirb::Context> Context,
                      gtirb::IR *IR, std::shared_ptr<LIEF::Binary> Binary)
     : GtirbBuilder(Path, Name, Context, IR, Binary)
@@ -366,14 +386,19 @@ void ElfReader::resurrectSymbols()
 
         for(uint64_t I = 0; I < DynSymNum; ++I)
         {
-            LIEF::ELF::Elf32_Sym sym;
-            memcpy(&sym, &Bytes[I * sizeof(LIEF::ELF::Elf32_Sym)], sizeof(LIEF::ELF::Elf32_Sym));
+            // NOTE:
+            // We cast a pointer to the locally defined Elf32_Sym struct to a pointer of the
+            // incomplete type LIEF::ELF::details::Elf32_Sym.
+            Elf32_Sym S;
+            memcpy(&S, &Bytes[I * sizeof(Elf32_Sym)], sizeof(Elf32_Sym));
+            LIEF::ELF::details::Elf32_Sym *P =
+                reinterpret_cast<LIEF::ELF::details::Elf32_Sym *>(&S);
             if(Module->getByteOrder() == gtirb::ByteOrder::Big)
             {
-                LIEF::Convert::swap_endian<LIEF::ELF::Elf32_Sym>(&sym);
+                LIEF::Convert::swap_endian<LIEF::ELF::details::Elf32_Sym>(P);
             }
-            LIEF::ELF::Symbol Symbol(&sym);
-            std::string Name = getStringAt(sym.st_name);
+            LIEF::ELF::Symbol Symbol(*P);
+            std::string Name = getStringAt(S.st_name);
             Symbol.name(Name);
             Elf->add_dynamic_symbol(Symbol);
         }
@@ -489,7 +514,7 @@ void ElfReader::buildSections()
             if(Initialized)
             {
                 // Add allocated section contents to a single, contiguous ByteInterval.
-                std::vector<uint8_t> Bytes = Section.content();
+                LIEF::span<const uint8_t> Bytes = Section.content();
                 S->addByteInterval(*Context, Addr, Bytes.begin(), Bytes.end(), Section.size(),
                                    Bytes.size());
             }
@@ -503,7 +528,7 @@ void ElfReader::buildSections()
         if(Literal)
         {
             // Transcribe unloaded, literal data to an address-less section with a single DataBlock.
-            std::vector<uint8_t> Bytes = Section.content();
+            LIEF::span<const uint8_t> Bytes = Section.content();
             gtirb::ByteInterval *I = S->addByteInterval(*Context, Bytes.begin(), Bytes.end(),
                                                         Section.size(), Bytes.size());
             I->addBlock<gtirb::DataBlock>(*Context, 0, Section.size());
@@ -537,8 +562,7 @@ void ElfReader::buildSymbols()
              std::tuple<std::set<std::string>, std::vector<std::tuple<std::string, uint64_t>>>>
         Symbols;
 
-    auto LoadSymbols = [&](LIEF::ELF::it_symbols SymbolIt, std::string TableName, bool UseLimit,
-                           uint64_t MaxSyms) {
+    auto LoadSymbols = [&](auto SymbolIt, std::string TableName, bool UseLimit, uint64_t MaxSyms) {
         uint64_t TableIndex = 0;
         for(auto &Symbol : SymbolIt)
         {
@@ -560,10 +584,10 @@ void ElfReader::buildSymbols()
             }
             else if(Symbol.has_version())
             {
-                LIEF::ELF::SymbolVersion SymbolVersion = Symbol.symbol_version();
-                if(SymbolVersion.has_auxiliary_version())
+                const LIEF::ELF::SymbolVersion *SymbolVersion = Symbol.symbol_version();
+                if(SymbolVersion->has_auxiliary_version())
                 {
-                    Version = SymbolVersion.symbol_version_auxiliary().name();
+                    Version = SymbolVersion->symbol_version_auxiliary()->name();
                 }
             }
 
@@ -734,31 +758,32 @@ void ElfReader::addAuxData()
 
     // Add `relocations' aux data table.
     std::set<auxdata::Relocation> RelocationTuples;
-    for(auto &Relocation : Elf->relocations())
+    for(const auto &Relocation : Elf->relocations())
     {
         std::string SymbolName;
         std::string SectionName;
         if(Relocation.has_section())
         {
-            LIEF::ELF::Section &Section = Relocation.section();
-            if(!Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC))
+            const LIEF::ELF::Section *Section = Relocation.section();
+            if(!Section->has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC))
             {
                 // Ignore relocations that are applied to un-loaded sections.
                 continue;
             }
-            SectionName = Section.name();
+            SectionName = Section->name();
         }
 
         if(Relocation.has_symbol())
         {
-            SymbolName = Relocation.symbol().name();
+            SymbolName = Relocation.symbol()->name();
 
-            if(Relocation.symbol().has_version())
+            if(Relocation.symbol()->has_version())
             {
-                LIEF::ELF::SymbolVersion SymbolVersion = Relocation.symbol().symbol_version();
-                if(SymbolVersion.has_auxiliary_version())
+                const LIEF::ELF::SymbolVersion *SymbolVersion =
+                    Relocation.symbol()->symbol_version();
+                if(SymbolVersion->has_auxiliary_version())
                 {
-                    SymbolName.append("@" + SymbolVersion.symbol_version_auxiliary().name());
+                    SymbolName.append("@" + SymbolVersion->symbol_version_auxiliary()->name());
                 }
             }
         }
@@ -770,7 +795,7 @@ void ElfReader::addAuxData()
             // Rebase relocation offset for object-file relocations.
             if(Relocation.has_section())
             {
-                Address = SectionRelocations[Relocation.section().name()] + Address;
+                Address = SectionRelocations[Relocation.section()->name()] + Address;
             }
         }
 

@@ -39,7 +39,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
       git \
       python3
 
-RUN git clone -b 0.11.5 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF && \
+RUN git clone -b 0.12.1 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF && \
     cmake -DLIEF_PYTHON_API=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF /usr/local/src/LIEF -B/usr/local/src/LIEF/build && \
     cmake --build /usr/local/src/LIEF/build -j --target install
 

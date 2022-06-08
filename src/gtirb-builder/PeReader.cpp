@@ -109,7 +109,7 @@ void PeReader::buildSections()
         if(Initialized)
         {
             // Add allocated section contents to a single, contiguous ByteInterval.
-            std::vector<uint8_t> Bytes = Section.content();
+            LIEF::span<const uint8_t> Bytes = Section.content();
             S->addByteInterval(*Context, Addr, Bytes.begin(), Bytes.end(), Size, Bytes.size());
         }
         else
@@ -213,13 +213,13 @@ std::vector<auxdata::PeResource> PeReader::resources()
 
     if(Pe->has_resources())
     {
-        auto &ResourceDirNode = Pe->resources();
+        const LIEF::PE::ResourceNode *ResourceNode = Pe->resources();
 
         const uint8_t Header[] = {0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00,
                                   0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-        auto ResourceDir = dynamic_cast<LIEF::PE::ResourceDirectory *>(&ResourceDirNode);
-        for(auto &TypeNode : ResourceDirNode.childs())
+        auto ResourceDir = dynamic_cast<const LIEF::PE::ResourceDirectory *>(ResourceNode);
+        for(auto &TypeNode : ResourceNode->childs())
         {
             for(auto &IdNode : TypeNode.childs())
             {
@@ -313,8 +313,8 @@ std::vector<auxdata::PeResource> PeReader::resources()
                         // EA = <data offset> - <section image offset> + <section RVA> + <image
                         // base>
                         auto ResourceSection = Pe->section_from_offset(DataNode->offset());
-                        uint64_t DataEA = DataNode->offset() - ResourceSection.offset()
-                                          + ResourceSection.virtual_address()
+                        uint64_t DataEA = DataNode->offset() - ResourceSection->offset()
+                                          + ResourceSection->virtual_address()
                                           + Pe->optional_header().imagebase();
                         auto DataBIs = Module->findByteIntervalsOn(gtirb::Addr(DataEA));
                         if(DataBIs)
