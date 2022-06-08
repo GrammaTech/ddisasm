@@ -394,6 +394,12 @@ else()
                                                  -Wno-unused-parameter)
 endif()
 
+# Disable var-tracking-assignments - uses too much memory when building datalog
+# code.
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
+  target_compile_options(ddisasm_datalog PRIVATE -fno-var-tracking-assignments)
+endif()
+
 # ====== ddisasm ===========
 # Build final ddisasm executable
 add_executable(ddisasm Disassembler.cpp Interpreter.cpp Registration.cpp
