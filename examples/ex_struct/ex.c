@@ -4,11 +4,13 @@
 typedef unsigned short ush;
 typedef struct ct_data
 {
-    union {
+    union
+    {
         ush freq; /* frequency count */
         ush code; /* bit string */
     } fc;
-    union {
+    union
+    {
         ush dad; /* father node in Huffman tree */
         ush len; /* length of bit string */
     } dl;

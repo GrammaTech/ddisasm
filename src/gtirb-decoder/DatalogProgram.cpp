@@ -23,6 +23,7 @@
 #include "DatalogProgram.h"
 
 #include <souffle/RamTypes.h>
+
 #include <fstream>
 #include <gtirb/gtirb.hpp>
 

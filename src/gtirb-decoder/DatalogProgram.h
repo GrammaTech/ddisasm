@@ -26,13 +26,12 @@
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 
+#include <gtirb/gtirb.hpp>
 #include <map>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <tuple>
-
-#include <gtirb/gtirb.hpp>
 
 class CompositeLoader;
 
