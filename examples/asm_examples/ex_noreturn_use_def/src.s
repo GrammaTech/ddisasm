@@ -30,9 +30,17 @@ main:
 .next:
   xor RDI, RDI
   cmp RDI, 0
-  jz .do_return
+  jz .next2
 
   call func_with_tailcall
+  mov AL, [R15 + 1]
+
+.next2:
+  xor RDI, RDI
+  cmp RDI, 0
+  jz .do_return
+
+  call my_noreturn_switch
   mov AL, [R15 + 1]
 
 .do_return:
@@ -40,8 +48,6 @@ main:
   pop RBP
   ret
 
-  .globl deref_and_print
-  .type	deref_and_print,@function
 
   .globl func_with_tailcall
   .type	func_with_tailcall,@function
@@ -54,6 +60,21 @@ func_with_tailcall:
   # tail call
   jmp my_noreturn_loop
 
+  .globl calls_noreturn_switch
+  .type	calls_noreturn_switch,@function
+calls_noreturn_switch:
+  xor RDI, RDI
+  call my_noreturn_switch
+
+  # nops, then fallthrough to another function.
+  # ddisasm can infer my_noreturn_switch is noreturn from this.
+  nop
+  nop
+  nop
+  nop
+
+  .globl deref_and_print
+  .type	deref_and_print,@function
 deref_and_print:
   # Dereference a pointer and print
   # This indirection makes it harder for symbolization to identify
@@ -101,6 +122,25 @@ my_noreturn_loop:
   call puts@PLT
   jmp .loop_forever
 
+  .globl my_noreturn_switch
+  .type	my_noreturn_switch,@function
+my_noreturn_switch:
+  # enter a switch case, then call a noreturn.
+  # segment_target_range can't detect this, but we can guess that it's noreturn
+  # if a call to it falls through interprocedurally.
+  lea RAX,QWORD PTR [RIP+.L_jumptable]
+  movsxd RDI,DWORD PTR [RAX+RDI*4]
+  add RDI,RAX
+  jmp RDI
+
+.L_one:
+    mov RDI, 1
+    jmp .L_exit
+.L_two:
+    mov RDI, 2
+.L_exit:
+  call exit@PLT
+
 .section .rodata
 .align	8, 0x00
 .s_hello_ptr:
@@ -111,3 +151,7 @@ my_noreturn_loop:
   .asciz "Shutting down..."
 .s_loop:
   .asciz "Loop"
+
+.L_jumptable:
+  .long .L_one - .L_jumptable
+  .long .L_two - .L_jumptable

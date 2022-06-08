@@ -124,6 +124,25 @@ no_return_block(Block):-
     block_boundaries(Block,Beg,EndBlock),
     EndBlock <= End.
 
+// A function is called, and the call falls through interprocedurally.
+// The function is likely noreturn.
+// The edge after this call site should already be eliminated because it's
+// interprocedural, but this rule ensures other calls to the same function
+// don't introduce problematic edges.
+no_return_block(Func):-
+    direct_call(Call,Func),
+    may_fallthrough(Call,Fallthrough),
+    (
+        !candidate_block_is_padding(Fallthrough),
+        Next = Fallthrough,
+        From = Call
+        ;
+        candidate_block_is_padding(Fallthrough),
+        block_last_instruction(Fallthrough,From),
+        may_fallthrough(From,Next)
+    ),
+    inter_procedural_edge(From,Next).
+
 /**
 Calls to known no return functions or their PLT blocks.
 */
