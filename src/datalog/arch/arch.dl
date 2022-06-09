@@ -367,6 +367,32 @@ reg_reg_arithmetic_operation(EA,Dst,Reg2,Reg1,1,0):-
     reg_reg_arithmetic_operation(EA,Dst,Reg1,Reg2,1,0).
 
 /**
+A value in a register is zero/sign-extended.
+
+The initial value to be extended is SrcBits wide.
+
+A value of 0 for Signed indicates the value is zero-extended, while 1 indicates
+that it is sign-extended.
+
+If the register is used for other operations in the instruction, it is assumed
+the sign extension occurs first.
+*/
+.decl extend_reg(EA:address,Reg:register,Signed:unsigned,SrcBits:unsigned)
+.output extend_reg
+
+extend_reg(0,"",0,0):-
+    false.
+
+/**
+A value loaded from memory is zero/sign-extended.
+*/
+.decl extend_load(EA:address,Signed:unsigned,SrcBits:unsigned)
+.output extend_load
+
+extend_load(0,0,0):-
+    false.
+
+/**
 An instruction at EA defines the register Reg
 
 This should include both registers that are an explicit destination operand of
@@ -499,6 +525,10 @@ A pc-relative address 'Val' is loaded into 'Reg' at address 'EA'.
 
 pc_relative_addr(0,"",0):- false.
 
+/**
+The size of a register, in bits.
+*/
+.decl register_size_bits(Reg:input_reg,Size:unsigned)
 
 // ===========================================================================
 // Other architectural attributes

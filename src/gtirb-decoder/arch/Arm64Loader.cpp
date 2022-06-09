@@ -108,6 +108,46 @@ bool Arm64Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction)
                     relations::ShiftedOp{Addr, static_cast<uint8_t>(i + 1),
                                          static_cast<uint8_t>(CsOp.shift.value), ShiftType});
             }
+
+            // Populate extend metadata if present. We pass this as a shift type.
+            if(CsOp.type == ARM64_OP_REG && CsOp.ext != ARM64_EXT_INVALID)
+            {
+                std::string ShiftType;
+                switch(CsOp.ext)
+                {
+                    case ARM64_EXT_UXTB:
+                        ShiftType = "UXTB";
+                        break;
+                    case ARM64_EXT_UXTH:
+                        ShiftType = "UXTH";
+                        break;
+                    case ARM64_EXT_UXTW:
+                        ShiftType = "UXTW";
+                        break;
+                    case ARM64_EXT_UXTX:
+                        ShiftType = "UXTX";
+                        break;
+                    case ARM64_EXT_SXTB:
+                        ShiftType = "SXTB";
+                        break;
+                    case ARM64_EXT_SXTH:
+                        ShiftType = "SXTH";
+                        break;
+                    case ARM64_EXT_SXTW:
+                        ShiftType = "SXTW";
+                        break;
+                    case ARM64_EXT_SXTX:
+                        ShiftType = "SXTX";
+                        break;
+                    case ARM64_EXT_INVALID:
+                        std::cerr << "WARNING: instruction has a non-zero invalid shift at " << Addr
+                                  << "\n";
+                        return false;
+                }
+                Facts.Instructions.shiftedOp(
+                    relations::ShiftedOp{Addr, static_cast<uint8_t>(i + 1),
+                                         static_cast<uint8_t>(CsOp.shift.value), ShiftType});
+            }
         }
         // Put the destination operand at the end of the operand list.
         if(OpCount > 0)

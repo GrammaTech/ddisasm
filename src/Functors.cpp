@@ -81,6 +81,34 @@ uint64_t functor_data_u8(uint64_t EA)
     return Value;
 }
 
+uint64_t functor_data_u16(uint64_t EA)
+{
+    uint16_t Value;
+    FunctorContext.readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
+    return FunctorContext.IsBigEndian ? be16toh(Value) : le16toh(Value);
+}
+
+uint64_t functor_data_u32(uint64_t EA)
+{
+    uint32_t Value;
+    FunctorContext.readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
+    return FunctorContext.IsBigEndian ? be32toh(Value) : le32toh(Value);
+}
+
+uint64_t functor_data_u64(uint64_t EA)
+{
+    uint64_t Value;
+    FunctorContext.readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
+    return FunctorContext.IsBigEndian ? be64toh(Value) : le64toh(Value);
+}
+
+int64_t functor_data_s8(uint64_t EA)
+{
+    uint8_t Value;
+    FunctorContext.readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
+    return static_cast<int8_t>(Value);
+}
+
 int64_t functor_data_s16(uint64_t EA)
 {
     uint16_t Value;

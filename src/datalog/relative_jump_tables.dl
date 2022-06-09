@@ -81,6 +81,7 @@ relative_address(EA,Size,EA,Ref,Dest,DestIsFirstOrSecond):-
 
 relative_address(EA+Size,Size,TableStart,Ref,Dest,DestIsFirstOrSecond):-
     relative_address(EA,Size,TableStart,Ref,_,DestIsFirstOrSecond),
+    Size != 1,
     data_word(EA+Size,Size,Diff),
     Diff != 0,
     RefSigned = as(Ref,number),
@@ -136,6 +137,46 @@ jump_table_element_access(EA,Size,TableStartAddr,RegBase_nn):-
     TableStartAddr <= End.
 
 /**
+Find sign extensions of the jump table element.
+*/
+.decl jump_table_signed(TableStart:address,Signed:unsigned)
+.output jump_table_signed
+
+// The value is explicitly extended when loaded from memory.
+jump_table_signed(TableStart,Signed):-
+    jump_table_element_access(EA,Size,TableStart,_),
+    arch.extend_load(EA,Signed,8*Size).
+
+// The register is explicitly extended.
+jump_table_signed(TableStart,Signed):-
+    jump_table_element_access(EA,Size,TableStart,_),
+    value_reg(EA_used,_,EA,Reg,_,_,_),
+    arch.extend_reg(EA_used,Reg,Signed,8*Size).
+
+// The register is loaded, and then a larger version of that register is used.
+jump_table_signed(TableStart,Signed):-
+    jump_table_element_access(EA,_,TableStart,_),
+    instruction_get_dest_op(EA,_,DstOp),
+    op_regdirect(DstOp,DefReg),
+    reg_map(DefReg,DefRegMapped),
+    value_reg(EA_used,_,EA,DefRegMapped,_,_,_),
+    instruction_get_src_op(EA_used,_,Op),
+    op_regdirect(Op,UsedReg),
+    reg_map(UsedReg,DefRegMapped),
+    arch.register_size_bits(DefReg,DefSize),
+    arch.register_size_bits(UsedReg,UsedSize),
+    UsedSize > DefSize,
+    // Using the larger register is an implicit zero-extension.
+    Signed = 0.
+
+jump_table_signed(TableStart,Signed):-
+    // If the offset is already the right size, assume that it is signed.
+    jump_table_element_access(_,Size,TableStart,_),
+    arch.pointer_size(PtrSize),
+    Size = PtrSize,
+    Signed = 1.
+
+/**
 The end of a jump table as identified by a boundary value of the index register.
 */
 .decl jump_table_max(TableStart:address,TableEnd:address)
@@ -180,11 +221,11 @@ jump_table_max(TableStart2,TableStart2+IndexValue*Size2):-
     def_used(EA1,Reg,EA2,_),
     jump_table_element_access(EA2,Size2,TableStart2,Reg),
     TableAddress = range(TableStart1,TableEnd1+Size1,Size1),
-    (
-        Size1 = 1, data_byte(TableAddress,IndexValue);
-        Size1 != 1, data_word(TableAddress,Size1,IndexValueSigned), IndexValue = as(IndexValueSigned,unsigned)
-    ).
+    data_uword(TableAddress,Size1,IndexValue).
 
+/**
+A jump table begins at TableStart.
+*/
 .decl jump_table_start(EA_jump:address,Size:unsigned,TableStart:address,TableRef:address,Scale:number)
 .output jump_table_start
 
@@ -243,15 +284,18 @@ jump_table_start(EA_jump,4,TableStart,TableReference,1):-
 /**
 Calculate the target for a relative jump table entry.
 */
-.decl relative_jump_table_entry_target(EA:address,Size:unsigned,Reference:address,Dest:address,Scale:number) inline
+.decl relative_jump_table_entry_target(EA:address,TableStart:address,Size:unsigned,Reference:address,Dest:address,Scale:number) inline
 
-relative_jump_table_entry_target(EA,Size,Reference,NewDest,Scale):-
+relative_jump_table_entry_target(EA,TableStart,Size,Reference,NewDest,Scale):-
+    jump_table_signed(TableStart,Signed),
     (
-        Size>1,data_word(EA,Size,Diff);
-        Size=1,data_byte(EA,DiffUnsigned), Diff = as(DiffUnsigned,number)
+        Signed = 0, data_uword(EA,Size,UDiff),
+        Dest = Reference + UDiff
+        ;
+        Signed = 1, data_word(EA,Size,SDiff),
+        Reference_signed = as(Reference,number),
+        Dest = as(Reference_signed + as(Scale,number)*SDiff,address)
     ),
-    Reference_signed = as(Reference,number),
-    Dest = as(Reference_signed + as(Scale,number)*Diff,unsigned),
     (
         // Target is code.
         code(Dest), NewDest = Dest;
@@ -274,7 +318,7 @@ symbolization.
 relative_jump_table_entry_candidate(TableStart,TableStart,Size,Reference,Dest,Scale,0):-
     !binary_isa("ARM"),
     jump_table_start(_,Size,TableStart,Reference,Scale),
-    relative_jump_table_entry_target(TableStart,Size,Reference,Dest,Scale),
+    relative_jump_table_entry_target(TableStart,TableStart,Size,Reference,Dest,Scale),
     // The table is in a loaded section.
     loaded_section(SectionStart,SectionEnd,_),
     TableStart >= SectionStart, TableStart < SectionEnd.
@@ -302,7 +346,7 @@ relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offs
     TableEnd >= EA,
     !symbol(EA,_,_,_,_,_,_,_,_),
     data_segment(BegData,EndData), BegData <= TableStart, EA+Size <= EndData,
-    relative_jump_table_entry_target(EA,Size,Reference,Dest,Scale).
+    relative_jump_table_entry_target(EA,TableStart,Size,Reference,Dest,Scale).
 
 .decl discarded_jump_table_entry(TableStart:address,TableRef:address,EA:address)
 .output discarded_jump_table_entry
@@ -361,4 +405,4 @@ relative_jump_table_entry(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
     !symbol(EA,_,_,_,_,_,_,_,_),
     data_segment(BegData,EndData), BegData <= TableStart, EA+Size <= EndData,
     next_data_limit(Prev, Next), Prev < EA, Next >= EA+Size,
-    relative_jump_table_entry_target(EA,Size,Reference,Dest,Scale).
+    relative_jump_table_entry_target(EA,TableStart,Size,Reference,Dest,Scale).

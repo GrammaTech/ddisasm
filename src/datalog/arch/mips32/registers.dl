@@ -60,6 +60,10 @@ general_purpose_reg("K1").
 general_purpose_reg("GP").
 general_purpose_reg("FP").
 
+register_size_bits(InputReg,32):-
+    general_purpose_reg(Reg),
+    reg_map(InputReg,Reg).
+
 // Use the MIPS calling convention.
 
 function_non_maintained_reg("AT").

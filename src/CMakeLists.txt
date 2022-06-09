@@ -159,6 +159,7 @@ if(DDISASM_X86_32)
       datalog/arch/intel/arch_x86_32.dl
       datalog/arch/intel/float_operations.dl
       datalog/arch/intel/jump_operations.dl
+      datalog/arch/intel/registers_common.dl
       datalog/arch/intel/registers_x86_32.dl
       datalog/arch/intel/arch_x86.dl
       datalog/arch/intel/memory_access.dl)
@@ -191,6 +192,7 @@ if(DDISASM_X86_64)
       datalog/arch/intel/arch_x86_64.dl
       datalog/arch/intel/float_operations.dl
       datalog/arch/intel/jump_operations.dl
+      datalog/arch/intel/registers_common.dl
       datalog/arch/intel/registers_x86_64.dl
       datalog/arch/intel/arch_x86.dl
       datalog/arch/intel/memory_access.dl)
