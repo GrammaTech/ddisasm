@@ -49,6 +49,8 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    permissions:
+      packages: read
     strategy:
       matrix:
         os: [focal, bionic]
@@ -82,6 +84,8 @@ jobs:
           path: build
   test:
     runs-on: ubuntu-latest
+    permissions:
+      packages: read
     strategy:
       matrix:
         os: [focal, bionic]
