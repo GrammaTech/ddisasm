@@ -161,12 +161,18 @@ An instruction which could be the second half of a split load.
 // e.g. add x0, x0, <Offset>
 split_load_tail(EA,Offset,Reg,Type):-
     arch.reg_arithmetic_operation(EA,_,Reg,1,Offset),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,_),
     Type = "ADD".
 
 // LDR/STR <Register> <IndirectOp>
 // e.g. ldr x0, [x0, <OffsetOp>]
 split_load_tail(EA,Offset,Reg_nn,Type):-
     arch.memory_access(_,EA,_,_,_,Reg,"NONE",_,Offset),
+    // The memory access cannot be a post-index operation. There should be no
+    // immediate operand.
+    instruction(EA,_,_,_,_,Op2,Op3,_,_,_),
+    !op_immediate(Op2,_),
+    !op_immediate(Op3,_),
     reg_nonnull(Reg,Reg_nn),
     Type = "LDR/STR".
 
