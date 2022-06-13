@@ -65,17 +65,6 @@ local_next(EA,EA_next):-
     may_fallthrough(EA,EA_next),
     code_in_block(EA_next,Block).
 
-
-.decl procedure_entry(EA:address)
-
-procedure_entry(EA):-
-    (
-        direct_call(Src,EA), code(Src);
-        function_symbol(EA,_);
-        entry_point(EA);
-        start_function(EA)
-    ).
-
 .decl inter_procedural_edge(Src:address,Dest:address)
 
 inter_procedural_edge(Src,Dest):-
@@ -83,13 +72,13 @@ inter_procedural_edge(Src,Dest):-
     direct_jump(Src,Dest),
     // If a function begins between Src and Dest (including at Dest), then it
     // is an interprocedural edge (assumes that functions are contiguous).
-    procedure_entry(Between),
+    function_inference.function_entry_initial(Between),
     Src < Between, Between <= Dest.
 
 inter_procedural_edge(Src,Dest):-
     may_fallthrough(Src,Dest),
     !pc_load_call(Src,Dest),
-    procedure_entry(Dest).
+    function_inference.function_entry_initial(Dest).
 
 .decl block_next(Block:address,BlockEnd:address,NextBlock:address)
 .output block_next

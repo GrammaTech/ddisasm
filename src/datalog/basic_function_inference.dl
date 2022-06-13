@@ -37,41 +37,56 @@ Function inference based on call frames.
 .decl function_without_callframe(Block:address)
 .output function_without_callframe
 
+/**
+Initial function entry discovery after code inference, but before use-def and
+value analysis.
+*/
+.decl function_entry_initial(EA:address)
 
+function_entry_initial(EA):-
+    fde_addresses(EA,_),
+    block(EA).
+
+function_entry_initial(EA):-
+    block(EA),
+    (
+        entry_point(EA);
+        function_symbol(EA,_);
+        start_function(EA);
+        loaded_section(EA,_,_);
+        // TODO: Fold pc_load_call into generic arch component.
+        direct_call(EA_caller,EA), code(EA_caller), !pc_load_call(EA_caller,EA)
+    ).
 
 function_entry_name(EA,SymbolName):-
     function_entry(EA),
     best_func_symbol(EA,SymbolName).
 
-function_entry(Begin):-
-    fde_addresses(Begin,_),
-    refined_block(Begin).
-
-function_without_callframe(EA),
 function_entry(EA):-
+    function_entry_initial(EA),
+    refined_block(EA).
+
+function_entry(EA):-
+    direct_call_resolved(EA_caller,EA),
+    code(EA_caller),
+    refined_block(EA).
+
+function_entry(EA):-
+    main_function(EA),
     refined_block(EA),
-    !fde_addresses(EA,_),
-    (
-        entry_point(EA);
-        function_symbol(EA,_);
-        main_function(EA);
-        start_function(EA);
-        loaded_section(EA,_,_);
-        //called
-        // TODO: Fold pc_load_call into generic arch component.
-        (direct_call(EA_caller,EA), code(EA_caller), !pc_load_call(EA_caller,EA));
-        (direct_call_resolved(EA_caller,EA), code(EA_caller))
-    ).
+    !fde_addresses(EA,_).
 
 // pointer in special sections
-function_without_callframe(EA),
 function_entry(EA):-
     code_pointer_in_data(Src,EA),
-    !fde_addresses(EA,_),
     function_pointer_section(Name),
     loaded_section(Base,End,Name),
     Src >= Base,
     Src < End.
+
+function_without_callframe(EA):-
+    function_entry(EA),
+    !fde_addresses(EA,_).
 
 .decl in_function_initial(Block:address,Function:address)
 

@@ -56,7 +56,7 @@ in the last block
 
 // base case
 segment_target_range(Beg,End,MaxTgt):-
-    procedure_entry(Block),
+    function_inference.function_entry_initial(Block),
     !incomplete_block(Block),
     block_boundaries(Block,Beg,End),
     block_last_instruction(Block,BlockEnd),
@@ -74,7 +74,7 @@ segment_target_range(Beg,End,MaxTgt):-
     next_block_in_section(PrevBlock,Block),
     block_boundaries(Block,_,End),
     !incomplete_block(Block),
-    !procedure_entry(Block),
+    !function_inference.function_entry_initial(Block),
     block_last_instruction(Block,BlockEnd),
     (
         !direct_or_pcrel_jump(BlockEnd,_),
