@@ -309,8 +309,6 @@ build-ubuntu20-gcc:
     OS: 'ubuntu20'
     CXX_COMPILER: 'g++'
     BUILD_TYPE: 'RelWithDebInfo'
-  rules:
-    *run-only-main
   <<: *build
 
 build-ubuntu20-gcc-debug:
