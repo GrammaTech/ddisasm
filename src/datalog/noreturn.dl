@@ -32,11 +32,16 @@ otherwise produce spurious def_used instances.
 incomplete_block(Block):-
     block_last_instruction(Block,BlockEnd),
     (
-        pc_relative_jump(BlockEnd,_);
         indirect_jump(BlockEnd);
         reg_jump(BlockEnd,_);
         arch.return(BlockEnd)
     ).
+
+.decl direct_or_pcrel_jump(Src:address,Dest:address)
+
+direct_or_pcrel_jump(Src,Dest):-
+    direct_jump(Src,Dest);
+    pc_relative_jump(Src,Dest).
 
 /**
 The segment between [Beg,End] does not have any indirect targets
@@ -56,10 +61,10 @@ segment_target_range(Beg,End,MaxTgt):-
     block_boundaries(Block,Beg,End),
     block_last_instruction(Block,BlockEnd),
     (
-        !direct_jump(BlockEnd,_),
+        !direct_or_pcrel_jump(BlockEnd,_),
         MaxTgt = Beg
         ;
-        direct_jump(BlockEnd,MaxTgt)
+        direct_or_pcrel_jump(BlockEnd,MaxTgt)
     ),
     MaxTgt >= Beg.
 
@@ -72,17 +77,17 @@ segment_target_range(Beg,End,MaxTgt):-
     !procedure_entry(Block),
     block_last_instruction(Block,BlockEnd),
     (
-        !direct_jump(BlockEnd,_),
+        !direct_or_pcrel_jump(BlockEnd,_),
         MaxTgt = PrevMaxTgt
         ;
-        direct_jump(BlockEnd,MaxTgt2),
+        direct_or_pcrel_jump(BlockEnd,MaxTgt2),
         !inter_procedural_edge(BlockEnd,_),
         MaxTgt2 >= Beg,
         MaxTgt = max(PrevMaxTgt,MaxTgt2)
         ;
         // if the jump is interprocedural, do not count it for the range, but only
         // propagate if it is a jump to a no-return proc.
-        direct_jump(BlockEnd,InterTarget),
+        direct_or_pcrel_jump(BlockEnd,InterTarget),
         inter_procedural_edge(BlockEnd,_),
         no_return_block(InterTarget),
         MaxTgt = PrevMaxTgt
