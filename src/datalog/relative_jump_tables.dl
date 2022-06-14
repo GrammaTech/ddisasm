@@ -256,7 +256,7 @@ relative_jump_table_entry_target(EA,Size,Reference,NewDest,Scale):-
         // Target is code.
         code(Dest), NewDest = Dest;
         // Target is padding - forward to the next possible target.
-        is_padding(Dest), after_end(Dest,End), after_end(NewDest,End), !is_padding(NewDest)
+        is_padding(Dest), after_end(Dest,End), after_end(NewDest,End), !is_padding(NewDest), code(NewDest)
     ).
 
 /**
