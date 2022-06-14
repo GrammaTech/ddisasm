@@ -113,12 +113,15 @@ pc_relative_jump(EA, as(Dest,address)):-
     split_load(EA, _, Dest, "LDR/STR").
 
 /**
-A reference to a value loaded by an adr or adrp instruction.
+A reference to a page-aligned value loaded by an adr or adrp instruction.
 
 EA: Address of the adr/adrp instruction
 Reg: The register that holds the used value
 UsedEA: Address where the value is used
 Dest: The destination address
+
+We care primarily about adrp, but sometimes if the target is close enough,
+the assembler will substitute an adr to the page-aligned address instead.
 
 Reg is not necessarily the register loaded by adrp! It may be the result of:
 
@@ -129,12 +132,14 @@ UsedEA:
 
 and Reg would be `x1`
 */
-.decl adr_used(EA:address,Reg:register,UsedEA:address,Dest:address)
+.decl adrp_used(EA:address,Reg:register,UsedEA:address,Dest:address)
 
-adr_used(EA,Reg,UsedEA,Dest):-
+adrp_used(EA,Reg,UsedEA,Dest):-
     const_value_reg_used(UsedEA,EA,EARegDef,Reg,as(Dest,number)),
     arch.adr_dest(EA,_,Dest),
-
+    // Ensure that Dest is page-aligned - otherwise it's not a substituted
+    // adrp, and can't be part of a split load.
+    Dest band 0xFFF = 0,
     // The `add` of a split load may have an immediate of zero if the target
     // is page-aligned. If that address then has an addition offset added to
     // it, e.g.:
@@ -156,12 +161,18 @@ An instruction which could be the second half of a split load.
 // e.g. add x0, x0, <Offset>
 split_load_tail(EA,Offset,Reg,Type):-
     arch.reg_arithmetic_operation(EA,_,Reg,1,Offset),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,_),
     Type = "ADD".
 
 // LDR/STR <Register> <IndirectOp>
 // e.g. ldr x0, [x0, <OffsetOp>]
 split_load_tail(EA,Offset,Reg_nn,Type):-
     arch.memory_access(_,EA,_,_,_,Reg,"NONE",_,Offset),
+    // The memory access cannot be a post-index operation. There should be no
+    // immediate operand.
+    instruction(EA,_,_,_,_,Op2,Op3,_,_,_),
+    !op_immediate(Op2,_),
+    !op_immediate(Op3,_),
     reg_nonnull(Reg,Reg_nn),
     Type = "LDR/STR".
 
@@ -175,7 +186,7 @@ Instead, this is for the symbolization step.
 
 // Direct split load
 split_load_for_symbolization(EA,UsedEA,as(as(Base,number)+Offset,address),Type):-
-    adr_used(EA,Reg,UsedEA,Base),
+    adrp_used(EA,Reg,UsedEA,Base),
     split_load_tail(UsedEA,Offset,Reg,Type).
 
 split_load_operand(EA, 1, as(Dest,address)) :-

@@ -178,6 +178,12 @@ tests:
   - name: ex_stack_split_load
     <<: *assembly
 
+  - name: ex_adr_not_split_load
+    <<: *assembly
+
+  - name: ex_post_index_no_lo12
+    <<: *assembly
+
   # ex1, stripped, dynamic
   - name: ex1
     <<: *default
