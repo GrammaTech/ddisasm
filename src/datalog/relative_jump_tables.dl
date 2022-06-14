@@ -241,6 +241,25 @@ jump_table_start(EA_jump,4,TableStart,TableReference,1):-
 // propagate jump tables
 
 /**
+Calculate the target for a relative jump table entry.
+*/
+.decl relative_jump_table_entry_target(EA:address,Size:unsigned,Reference:address,Dest:address,Scale:number) inline
+
+relative_jump_table_entry_target(EA,Size,Reference,NewDest,Scale):-
+    (
+        Size>1,data_word(EA,Size,Diff);
+        Size=1,data_byte(EA,DiffUnsigned), Diff = as(DiffUnsigned,number)
+    ),
+    Reference_signed = as(Reference,number),
+    Dest = as(Reference_signed + as(Scale,number)*Diff,unsigned),
+    (
+        // Target is code.
+        code(Dest), NewDest = Dest;
+        // Target is padding - forward to the next possible target.
+        is_padding(Dest), after_end(Dest,End), after_end(NewDest,End), !is_padding(NewDest), code(NewDest)
+    ).
+
+/**
 An entry in a relative jump table of the form (Dest-Reference)/Scale
 
 These are generated during value analysis, and referenced by value analysis,
@@ -252,16 +271,10 @@ symbolization.
 .decl relative_jump_table_entry_candidate(EA:address,TableStart:address,Size:unsigned,Reference:address,Dest:address,Scale:number,Offset:number)
 .output relative_jump_table_entry_candidate
 
-relative_jump_table_entry_candidate(TableStart,TableStart,Size,TableReference,Dest,Scale,0):-
+relative_jump_table_entry_candidate(TableStart,TableStart,Size,Reference,Dest,Scale,0):-
     !binary_isa("ARM"),
-    jump_table_start(_,Size,TableStart,TableReference,Scale),
-    (
-        Size > 1,data_word(TableStart,Size,Diff);
-        Size = 1,data_byte(TableStart,DiffUnsigned), Diff = as(DiffUnsigned,number)
-    ),
-    TableReference_signed = as(TableReference,number),
-    Dest = as(TableReference_signed + as(Scale,number)*Diff,unsigned),
-    code(Dest),
+    jump_table_start(_,Size,TableStart,Reference,Scale),
+    relative_jump_table_entry_target(TableStart,Size,Reference,Dest,Scale),
     // The table is in a loaded section.
     loaded_section(SectionStart,SectionEnd,_),
     TableStart >= SectionStart, TableStart < SectionEnd.
@@ -289,13 +302,7 @@ relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offs
     TableEnd >= EA,
     !symbol(EA,_,_,_,_,_,_,_,_),
     data_segment(BegData,EndData), BegData <= TableStart, EA+Size <= EndData,
-    (
-        Size>1,data_word(EA,Size,Diff);
-        Size=1,data_byte(EA,DiffUnsigned), Diff = as(DiffUnsigned,number)
-    ),
-    Reference_signed = as(Reference,number),
-    Dest = as(Reference_signed + as(Scale,number)*Diff,unsigned),
-    code(Dest).
+    relative_jump_table_entry_target(EA,Size,Reference,Dest,Scale).
 
 .decl discarded_jump_table_entry(TableStart:address,TableRef:address,EA:address)
 .output discarded_jump_table_entry
@@ -353,11 +360,5 @@ relative_jump_table_entry(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
     EA = LastEA + Size,
     !symbol(EA,_,_,_,_,_,_,_,_),
     data_segment(BegData,EndData), BegData <= TableStart, EA+Size <= EndData,
-    (
-        Size>1,data_word(EA,Size,Diff);
-        Size=1,data_byte(EA,DiffUnsigned), Diff = as(DiffUnsigned,number)
-    ),
     next_data_limit(Prev, Next), Prev < EA, Next >= EA+Size,
-    Reference_signed = as(Reference,number),
-    Dest = as(Reference_signed + as(Scale,number)*Diff,unsigned),
-    code(Dest).
+    relative_jump_table_entry_target(EA,Size,Reference,Dest,Scale).
