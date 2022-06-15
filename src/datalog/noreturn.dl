@@ -1,0 +1,182 @@
+//===- noreturn.dl ------------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2022 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+This module performs an early noreturn analysis after code inference but before
+use-def analysis begins. It is intended to eliminate CFG edges that may
+otherwise produce spurious def_used instances.
+*/
+
+.decl incomplete_block(Block:address)
+.output incomplete_block
+
+incomplete_block(Block):-
+    block_last_instruction(Block,BlockEnd),
+    (
+        indirect_jump(BlockEnd);
+        reg_jump(BlockEnd,_);
+        arch.return(BlockEnd)
+    ).
+
+.decl direct_or_pcrel_jump(Src:address,Dest:address)
+
+direct_or_pcrel_jump(Src,Dest):-
+    direct_jump(Src,Dest);
+    pc_relative_jump(Src,Dest).
+
+/**
+The segment between [Beg,End] does not have any indirect targets
+or return instructions and all the direct targets are between Beg and Tmax
+
+If End > Tmax, then we can say that the segment is self-contained, which
+means that the only way to step out of it is through a fallthrough
+in the last block
+*/
+.decl segment_target_range(Beg:address,End:address,Tmax:address)
+.output segment_target_range
+
+// base case
+segment_target_range(Beg,End,MaxTgt):-
+    function_inference.function_entry_initial(Block),
+    !incomplete_block(Block),
+    block_boundaries(Block,Beg,End),
+    block_last_instruction(Block,BlockEnd),
+    (
+        !direct_or_pcrel_jump(BlockEnd,_),
+        MaxTgt = Beg
+        ;
+        direct_or_pcrel_jump(BlockEnd,MaxTgt)
+    ),
+    MaxTgt >= Beg.
+
+segment_target_range(Beg,End,MaxTgt):-
+    segment_target_range(Beg,PrevEnd,PrevMaxTgt),
+    block_boundaries(PrevBlock,_,PrevEnd),
+    next_block_in_section(PrevBlock,Block),
+    block_boundaries(Block,_,End),
+    !incomplete_block(Block),
+    !function_inference.function_entry_initial(Block),
+    block_last_instruction(Block,BlockEnd),
+    (
+        !direct_or_pcrel_jump(BlockEnd,_),
+        MaxTgt = PrevMaxTgt
+        ;
+        direct_or_pcrel_jump(BlockEnd,MaxTgt2),
+        !inter_procedural_edge(BlockEnd,_),
+        MaxTgt2 >= Beg,
+        MaxTgt = max(PrevMaxTgt,MaxTgt2)
+        ;
+        // if the jump is interprocedural, do not count it for the range, but only
+        // propagate if it is a jump to a no-return proc.
+        direct_or_pcrel_jump(BlockEnd,InterTarget),
+        inter_procedural_edge(BlockEnd,_),
+        no_return_block(InterTarget),
+        MaxTgt = PrevMaxTgt
+    ),
+    MaxTgt >= Beg.
+
+
+.decl self_contained_segment(Beg:address,End:address)
+
+self_contained_segment(Beg,End):-
+    segment_target_range(Beg,End,MaxTgt),
+    MaxTgt < End.
+
+/**
+No-return blocks.
+
+This is a underapproximation, since it cannot propagate through jumptables or
+indirect calls (which are not yet resolved), or could call library functions
+that are not known to be no-return.
+
+The only situation where it would generate false-positive noreturns is if a
+"known noreturn" library function does, in fact, return.
+*/
+.decl no_return_block(EA:address)
+
+// If we have a self-contained segment and the
+// last block does not fallthrough, all the blocks
+// in the segment cannot return
+// If the fallthrough in the last block turns
+// out to be a no-return call, the same applies
+no_return_block(Block):-
+    self_contained_segment(Beg,End),
+    block_boundaries(LastBlock,_,End),
+    block_last_instruction(LastBlock,BlockEnd),
+    (
+        !may_fallthrough(BlockEnd,_);
+        no_return_call_propagated(BlockEnd)
+    ),
+    block_boundaries(Block,Beg,EndBlock),
+    EndBlock <= End.
+
+// A function is called, and the call falls through interprocedurally.
+// The function is likely noreturn.
+// The edge after this call site should already be eliminated because it's
+// interprocedural, but this rule ensures other calls to the same function
+// don't introduce problematic edges.
+no_return_block(Func):-
+    direct_call(Call,Func),
+    may_fallthrough(Call,Fallthrough),
+    (
+        !candidate_block_is_padding(Fallthrough),
+        Next = Fallthrough,
+        From = Call
+        ;
+        candidate_block_is_padding(Fallthrough),
+        block_last_instruction(Fallthrough,From),
+        may_fallthrough(From,Next)
+    ),
+    inter_procedural_edge(From,Next).
+
+/**
+Calls to known no return functions or their PLT blocks.
+*/
+.decl no_return_call_refined(EA:address)
+
+no_return_call_refined(EA):-
+    no_return_call(EA).
+
+// Find noreturn calls to plt_block instead of the earlier plt_entry
+no_return_call_refined(EA):-
+    direct_call(EA,Dest),
+    plt_block(Dest,Function),
+    no_return_function(Pattern),
+    match(Pattern,Function).
+
+no_return_block(Block):-
+    no_return_call_refined(BlockEnd),
+    block_last_instruction(Block,BlockEnd).
+
+/**
+Calls to noreturn blocks.
+*/
+.decl no_return_call_propagated(EA:address)
+.output no_return_call_propagated
+
+no_return_call_propagated(EA):-
+    no_return_call_refined(EA).
+
+no_return_call_propagated(EA):-
+    direct_call(EA,Block),
+    no_return_block(Block),
+    !pc_load_call(EA,Block).

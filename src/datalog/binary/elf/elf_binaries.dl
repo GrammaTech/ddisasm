@@ -377,6 +377,7 @@ no_return_function("__chk_fail(@.*)?"):- binary_format("ELF").
 no_return_function("__stack_chk_fail(@.*)?"):- binary_format("ELF").
 no_return_function("__assert_fail(@.*)?"):- binary_format("ELF").
 no_return_function("longjmp(@.*)?"):- binary_format("ELF").
+no_return_function("__clang_call_terminate"):- binary_format("ELF").
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 

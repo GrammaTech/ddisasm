@@ -41,6 +41,7 @@ set(DATALOG_BASE_SOURCES
     datalog/basic_function_inference.dl
     datalog/jump_tables.dl
     datalog/main.dl
+    datalog/noreturn.dl
     datalog/pointer_reatribution.dl
     datalog/register_type_analysis.dl
     datalog/relative_jump_tables.dl
@@ -352,6 +353,10 @@ if(BUILD_SHARED_LIBS)
     functors PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
 
   target_compile_options(functors PRIVATE ${OPENMP_FLAGS})
+  target_compile_definitions(functors PRIVATE RAM_DOMAIN_SIZE=64)
+  if(SOUFFLE_INCLUDE_DIR)
+    target_include_directories(functors SYSTEM PRIVATE ${SOUFFLE_INCLUDE_DIR})
+  endif()
 
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
     target_compile_definitions(functors PRIVATE _CRT_SECURE_NO_WARNINGS)
