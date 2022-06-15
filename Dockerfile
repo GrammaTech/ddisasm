@@ -42,7 +42,7 @@ RUN apt-get -y update \
 
 RUN git clone -b 0.12.1 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF
 RUN cmake -DLIEF_PYTHON_API=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF /usr/local/src/LIEF -B/usr/local/src/LIEF/build
-RUN cmake --build /usr/local/src/LIEF/build -j --target all install
+RUN cmake --build /usr/local/src/LIEF/build -j4 --target all install
 
 # ------------------------------------------------------------------------------
 # Install libehp
@@ -59,7 +59,7 @@ RUN apt-get -y update \
 RUN git clone https://git.zephyr-software.com/opensrc/libehp.git /usr/local/src/libehp
 RUN git -C /usr/local/src/libehp reset --hard 5e41e26b88d415f3c7d3eb47f9f0d781cc519459
 RUN cmake -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release -DEHP_BUILD_SHARED_LIBS=OFF /usr/local/src/libehp -B/usr/local/src/libehp/build
-RUN cmake --build /usr/local/src/libehp/build -j --target all install
+RUN cmake --build /usr/local/src/libehp/build -j4 --target all install
 
 # ------------------------------------------------------------------------------
 # Install GTIRB
@@ -79,7 +79,7 @@ RUN apt-get -y update \
 
 RUN git clone --depth 1 https://github.com/GrammaTech/gtirb /usr/local/src/gtirb
 RUN cmake -DGTIRB_JAVA_API=OFF -DGTIRB_CL_API=OFF /usr/local/src/gtirb -B/usr/local/src/gtirb/build
-RUN cmake --build /usr/local/src/gtirb/build -j --target all install
+RUN cmake --build /usr/local/src/gtirb/build -j4 --target all install
 
 # ------------------------------------------------------------------------------
 # Install gtirb-pprinter
@@ -111,7 +111,7 @@ COPY --from=gtirb /usr/local/include /usr/local/include
 
 RUN git clone --depth 1 https://github.com/GrammaTech/gtirb-pprinter /usr/local/src/gtirb-pprinter
 RUN cmake /usr/local/src/gtirb-pprinter -B/usr/local/src/gtirb-pprinter/build
-RUN cmake --build /usr/local/src/gtirb-pprinter/build -j --target all install
+RUN cmake --build /usr/local/src/gtirb-pprinter/build -j4 --target all install
 
 # ------------------------------------------------------------------------------
 # Install Ddisasm
@@ -162,7 +162,7 @@ ARG DDISASM_URL=https://github.com/GrammaTech/ddisasm
 ARG DDISASM_BRANCH=main
 RUN git clone --depth 1 -b $DDISASM_BRANCH $DDISASM_URL /usr/local/src/ddisasm
 RUN cmake -DCMAKE_BUILD_TYPE=Release /usr/local/src/ddisasm -B/usr/local/src/ddisasm/build
-RUN cmake --build /usr/local/src/ddisasm/build -j --target all install
+RUN cmake --build /usr/local/src/ddisasm/build -j4 --target all install
 
 # ------------------------------------------------------------------------------
 # Final image
