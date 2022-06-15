@@ -90,6 +90,7 @@ def cd(new_dir):
 
 
 def resolve_chroot_root(chroot: str) -> str:
+    """Get the root path for a chroot"""
     if not chroot:
         return None
 
@@ -109,6 +110,7 @@ MAKE_CHROOT_ROOT = resolve_chroot_root(MAKE_CHROOT)
 
 
 def build_chroot_wrapper() -> List[str]:
+    """Build command for executing in the configured chroot"""
     if MAKE_CHROOT:
         chroot_cwd_path = os.path.relpath(os.getcwd(), MAKE_CHROOT_ROOT)
         wrapper = [
