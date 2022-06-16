@@ -32,6 +32,7 @@ stages:
   - package-tests
   - deploy
   - deploy-to-apt
+  - upload
 
 default:
   tags: [cluster]
@@ -157,7 +158,6 @@ check-format:
     # Run build script
     - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/run_conan.py build -s build_type=Release
 
-
 build-conan-gcc7-release:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu18
   <<: *conan-linux-build-template
@@ -210,6 +210,49 @@ conan-gcc9-release-publish:
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
     - python .ci/run_conan.py upload
 
+.conan-windows-package-template: &conan-windows-package-template
+  stage: build-packages
+  tags: [ddisasm-windows]
+  artifacts:
+    name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
+    paths:
+      - ddisasm*.zip
+  script:
+    # Initialize
+      # Setting CI_PROJECT_DIR to the PWD because GitLab Runner sets a relative path for CI_PROJECT_DIR with VirtualBox runners.
+    - export CI_PROJECT_DIR=`cygpath -w $(pwd)`
+    - export CONAN_USER_HOME="${CI_PROJECT_DIR}"
+    - export PYTHONPATH="${PYTHONPATH};${CI_PROJECT_DIR}"
+    # Prep
+    - python -m pip install --upgrade conan
+    # Install
+    - python .ci/run_conan.py install --install-folder=./packages
+    # Package
+    - export PKG_NAME=`conan inspect . --raw name`
+    - export PKG_VERSION=`conan inspect . --raw version`
+    - export PKG_ARCH=`uname -m`
+    - export PKG_FILENAME="${CI_PROJECT_DIR}\\${PKG_NAME}-${PKG_VERSION}.win10.${PKG_ARCH}.zip"
+    - export PKG_FILENAME_LITE="${CI_PROJECT_DIR}\\${PKG_NAME}-lite-${PKG_VERSION}.win10.${PKG_ARCH}.zip"
+    - |+
+      for PKG_DIR in ./packages/*/; do
+        PKG_DIR_NAME=`basename $PKG_DIR`
+        for PKG_SUBDIR in ./packages/$PKG_DIR_NAME/*/; do
+          PKG_SUBDIR_NAME=`basename $PKG_SUBDIR`
+          PKG_FILE_DEST="./package/${PKG_NAME}/${PKG_SUBDIR_NAME}"
+          [ -d $PKG_FILE_DEST ] || mkdir -p $PKG_FILE_DEST
+          if [ $PKG_SUBDIR_NAME != 'licenses' ]; then
+            cp -r $PKG_SUBDIR/* $PKG_FILE_DEST
+          else
+            for PKG_LICENSE in $PKG_SUBDIR/*; do
+              cp $PKG_LICENSE $PKG_FILE_DEST/LICENSE-$PKG_DIR_NAME
+            done
+          fi
+        done
+      done
+    - cd ./package
+    - zip -r $PKG_FILENAME ./
+    - zip -r $PKG_FILENAME_LITE ./ -x "${PKG_NAME}/include/*"
+
 conan-windows-debug:
   variables:
     BUILD_TYPE: Debug
@@ -237,6 +280,10 @@ conan-windows-release-publish:
     BUILD_TYPE: Release
   dependencies: [conan-windows-release]
   <<: *conan-windows-publish-template
+
+conan-windows-release-package:
+  needs: [conan-windows-release]
+  <<: *conan-windows-package-template
 
 .build-template: &build
   artifacts:
@@ -740,3 +787,30 @@ internal-focal-stable:
     APT_REPO: internal
     APT_REPO_CODENAME: focal
     APT_REPO_COMPONENT: stable
+
+.windows-upload: &windows-upload
+  stage: upload
+  trigger:
+    project: rewriting/utility/package-uploader
+    strategy: depend
+  needs: [conan-windows-release]
+
+windows-upload-public:
+  <<: *windows-upload
+  rules:
+    - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  variables:
+    JOB_NAME: conan-windows-release
+    FILESERVER: public
+    FILESERVER_SUBDIR_NAME: windows-release
+
+windows-upload-internal:
+  <<: *windows-upload
+  rules:
+    - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  variables:
+    JOB_NAME: conan-windows-release
+    FILESERVER: internal
+    FILESERVER_SUBDIR_NAME: windows-release

@@ -21,6 +21,11 @@ def upload():
     run_conan(["upload", props.conan_recipe, "--all", "--remote", "gitlab"])
 
 
+def install(argv):
+    props = conanfile.Properties()
+    run_conan(["install", props.conan_recipe, "--generator=deploy"] + argv)
+
+
 def handle_bad_args():
     print("Incorrect argument(s)", file=sys.stderr)
     sys.exit(1)
@@ -32,6 +37,8 @@ if __name__ == "__main__":
             upload()
         elif sys.argv[1] == "build":
             build(sys.argv[2:])
+        elif sys.argv[1] == "install":
+            install(sys.argv[2:])
         else:
             handle_bad_args()
     else:
