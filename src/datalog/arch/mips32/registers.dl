@@ -105,4 +105,9 @@ return_reg("V1").
 condition_flags_reg(""):-
     false.
 
+integer_reg_param("R4",1).
+integer_reg_param("R5",2).
+integer_reg_param("R6",3).
+integer_reg_param("R7",4).
+
 zero_reg("ZERO").

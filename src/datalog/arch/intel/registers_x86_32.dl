@@ -65,3 +65,5 @@ stack_pointer("ESP").
 return_reg("EAX").
 
 condition_flags_reg("EFLAGS").
+
+integer_reg_param("", 0):- false.

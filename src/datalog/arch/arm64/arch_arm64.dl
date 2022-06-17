@@ -122,9 +122,9 @@ cmp_operation("CMP").
 
 // On ARM64, capstone doesn't provide the operand size. The ddisasm decoder
 // assumes all operands are 32-bit. Anything else must be defined here.
-operation_size_exception(EA,1,Size):-
-    instruction(EA,_,_,Operation,Op,_,_,_,_,_),
-    op_indirect(Op,_,_,_,_,_,_),
+data_access_size(Operation,DestReg,Size):-
+    instruction_get_operation(_,Operation),
+    op_regdirect_contains_reg(_,DestReg),
     (
         substr(Operation,0,4) = "LDRB", Size = 1;
         substr(Operation,0,5) = "LDRSB", Size = 1;

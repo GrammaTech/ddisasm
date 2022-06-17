@@ -85,3 +85,19 @@ stack_pointer("RSP").
 return_reg("RAX").
 
 condition_flags_reg("RFLAGS").
+
+// Microsoft x64
+integer_reg_param("RCX",1),
+integer_reg_param("RDX",2),
+integer_reg_param("R8",3),
+integer_reg_param("R9",4):-
+    binary_format("PE").
+
+// System V X86_64
+integer_reg_param("RDI",1),
+integer_reg_param("RSI",2),
+integer_reg_param("RDX",3),
+integer_reg_param("RCX",4),
+integer_reg_param("R8",5),
+integer_reg_param("R9",6):-
+    binary_format("ELF").

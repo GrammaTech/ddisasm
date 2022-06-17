@@ -334,14 +334,14 @@ delay_slot(0,0):-
 
 /**
 These operations are either special like LEA (does not read memory) or
-are not decoded corectly from capstone
+are not decoded correctly from capstone
 
-* EA: Instruction address
-* OpIndex: Operand index
-* Size: Operand size in bytes
+* Operation: Operation name
+* DestReg: The destination register of the operation
+* Size: Data-access size in bytes
 */
-.decl operation_size_exception(EA:address,OpIndex:operand_index,Size:unsigned)
-operation_size_exception(0,0,0):-
+.decl data_access_size(Operation:symbol,DestReg:register,Size:unsigned)
+data_access_size("","NONE",0):-
     false.
 
 /**
@@ -473,6 +473,19 @@ A register with a constant value of zero.
 
 zero_reg(""):-
     false.
+
+/**
+Registers used for passing function arguments by calling convention:
+e.g., {r0-r3} for ARM32, {rcx,rdx,r8,r9} for Microsoft x64, etc.
+*/
+.decl integer_reg_param(Reg:register,Index:unsigned)
+
+/**
+Floating-point registers
+*/
+.decl float_reg(Reg:register,Size:unsigned)
+
+float_reg("",0):- false.
 
 /**
 The register that holds condition flags.
