@@ -25,13 +25,21 @@ Define a set predicates to abstract from ARM specific instruction set
 and characteristics
 */
 
-avoid_symbols("$d").
+/**
+Block contains a plausible sequence of instructions, which has low possibility
+of happening in data bytes: e.g., mov lr, pc; jump
+This can be used for the code inference step.
 
-block_points(Block,"data",0,9,"literal pool"),
-data_block_candidate(Block,Size):-
-    defined_symbol(Block,Size,_,_,_,_,_,_,"$d").
+Block2: transitive block
+*/
+.decl contains_plausible_instr_seq(Block:address,Weight:number,Type:symbol,Block2:address)
+.output contains_plausible_instr_seq
 
-block_points(Block,"code",0,3,"plausible instruction sequence: cmp/conditional-instruction"):-
+/**
+Block contains an instruction sequence of a flag-setting instruction followed
+by a conditional jump or return.
+*/
+contains_plausible_instr_seq(Block,3,"cmp/conditional-branch",0):-
     (
         conditional_jump(EA)
         ;
@@ -42,6 +50,12 @@ block_points(Block,"code",0,3,"plausible instruction sequence: cmp/conditional-i
     code_in_block_candidate(PrevEA,Block),
     instruction_get_operation(PrevEA,Operation),
     arch.cmp_operation(Operation).
+
+block_points(Block,"code",0,Weight,cat("contains_plausible_instr_seq: ", Why)):-
+    block_is_overlapping(Block,"code"),
+    contains_plausible_instr_seq(Block,Weight,Why,_).
+
+avoid_symbols("$d").
 
 plt_entry(EA,Function):-
     plt_section(SecName),

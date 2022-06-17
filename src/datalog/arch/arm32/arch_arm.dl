@@ -47,12 +47,39 @@ load_operation(Operation):-
     ).
 
 load_word_operation(Operation):-
-    instruction_get_operation(_,Operation),
-    substr(Operation,0,3) = "LDR",
+    load_operation(Operation),
     (
-        strlen(Operation) = 3; // unconditional
-        strlen(Operation) = 5  // conditional ldr
+        Operation = "LDR"
+        ;
+        strlen(Operation) = 5,
+        Suffix = substr(Operation,3,2),
+        condition_code_map(Suffix,_)
     ).
+
+data_access_size("LDR",DestReg,4):-
+    op_regdirect_contains_reg(_,DestReg).
+data_access_size("LDRSB",DestReg,1):-
+    op_regdirect_contains_reg(_,DestReg).
+data_access_size("LDRB",DestReg,1):-
+    op_regdirect_contains_reg(_,DestReg).
+data_access_size("LDRSH",DestReg,2):-
+    op_regdirect_contains_reg(_,DestReg).
+data_access_size("LDRH",DestReg,2):-
+    op_regdirect_contains_reg(_,DestReg).
+
+data_access_size(Operation,DestReg,Size):-
+    load_operation(Operation),
+    substr(Operation,0,4) = "VLDR",
+    arch.float_reg(DestReg,Size).
+
+data_access_size(Operation,DestReg,Size):-
+    load_operation(Operation),
+    Len = strlen(Operation),
+    Len >= 5,
+    Suffix = substr(Operation,Len-2,2),
+    condition_code_map(Suffix,_),
+    OperationWOSuffix = substr(Operation,0,Len-2),
+    data_access_size(OperationWOSuffix,DestReg,Size).
 
 store_operation(Operation):-
     instruction_get_operation(_,Operation),
@@ -75,7 +102,11 @@ return(EA):-
 
 return(EA):-
     instruction_get_operation(EA,Operation),
-    substr(Operation,0,3) = "POP",
+    (
+        substr(Operation,0,3) = "POP"
+        ;
+        substr(Operation,0,3) = "LDM"
+    ),
     instruction_get_op(EA,_,Op),
     op_regdirect_contains_reg(Op,Reg),
     pc_reg(Reg).
@@ -99,8 +130,14 @@ conditional_operation(Operation,CC):-
     long_operation(Operation),
     instruction_get_operation(_,Operation),
     Size = strlen(Operation),
+    // The last two characters in the following instructions happen to be
+    // one of the condition codes, but they are not conditional.
     Operation != "TEQ", Operation != "SMMLS",
-    Operation != "MLS", Operation != "HVC",
+    Operation != "MLS", Operation != "HLT",
+    Operation != "HVC", Operation != "SVC",
+    Operation != "MOVS", Operation != "MLS",
+    Operation != "VMLS", Operation != "VNMLS",
+    Operation != "LSLS",
     Suffix = substr(Operation,Size-2,2),
     condition_code_map(Suffix,CC).
 
@@ -136,17 +173,38 @@ pc_relative_addr(EA,Reg,Val):-
     op_immediate(OffsetOp, Offset),
     op_regdirect_contains_reg(DestOp,Reg),
     pc_relative_disp(EA,Disp),
-    Val = as(EA - (EA band 1),number) + Offset + Disp.
+    Val = as(EA - (EA band 3),number) + Offset + Disp.
 
 pc_relative_addr(EA,Reg,Val):-
     instruction(EA,_,_,Operation,PCOp,OffsetOp,DestOp,0,_,_),
-    substr(Operation,0,3) = "ADD",
+    (
+        substr(Operation,0,3) = "ADD", Sign = 1
+        ;
+        substr(Operation,0,3) = "SUB", Sign = -1
+    ),
     op_immediate(OffsetOp, Offset),
     op_regdirect_contains_reg(DestOp,Reg),
     op_regdirect_contains_reg(PCOp,PC),
     arch.pc_reg(PC),
     pc_relative_disp(EA,Disp),
-    Val = as(EA - (EA band 1),number) + Offset + Disp.
+    Val = as(EA - (EA band 3),number) + Sign * Offset + Disp.
+
+/**
+E.g.,
+0: movs r0, #0
+4: pop { r1, pc}
+The upper 2-bytes of the mov instruction happens to be a valid Thumb
+instruction: ITETE in this case.
+*/
+.decl dangling_thumb_instr(EA:address)
+.output dangling_thumb_instr
+
+dangling_thumb_instr(EA):-
+    instruction(EA,2,_,_,_,_,_,_,_,_),
+    EA2 = EA - 2,
+    instruction(EA2,4,_,_,_,_,_,_,_,_),
+    next(_,EA2),
+    !next(_,EA).
 
 /**
 IT: The IT (If-Then) instruction makes up to four following instructions
@@ -164,11 +222,13 @@ This predicate determines if EA is a IT block instruction.
 .output it_conditional
 
 it_conditional(EA,IT):-
+    !dangling_thumb_instr(IT),
     instruction_get_operation(IT,Operation),
     substr(Operation,0,2) = "IT",
     next(IT,EA).
 
 it_conditional(EA,IT):-
+    !dangling_thumb_instr(IT),
     instruction_get_operation(IT,Operation),
     substr(Operation,0,2) = "IT",
     strlen(Operation) >= 3,
@@ -176,6 +236,7 @@ it_conditional(EA,IT):-
     next(Prev1,EA).
 
 it_conditional(EA,IT):-
+    !dangling_thumb_instr(IT),
     instruction_get_operation(IT,Operation),
     substr(Operation,0,2) = "IT",
     strlen(Operation) >= 4,
@@ -184,6 +245,7 @@ it_conditional(EA,IT):-
     next(Prev1,EA).
 
 it_conditional(EA,IT):-
+    !dangling_thumb_instr(IT),
     instruction_get_operation(IT,Operation),
     substr(Operation,0,2) = "IT",
     strlen(Operation) = 5,
@@ -198,11 +260,16 @@ conditional(EA,CC):-
     op_special(Op,"it",ArmCC),
     condition_code_map(ArmCC,CC).
 
-// Does not override - extends with `ldr pc, [...] or mov pc, reg`
+// Does not override - extends with `ldr pc, [...]`
 jump(EA):-
     load(EA,_,_,Reg,_,_,_,_),
     pc_reg(Reg),
     !arch.return(EA).
+
+// Does not override - extends with `mov pc, reg`
+jump(EA):-
+    move_reg_reg(EA,PC,_),
+    pc_reg(PC).
 
 op_does_not_read_dest_reg(Operation):-
     // TODO: There could be more.
@@ -315,6 +382,7 @@ call_operation("BLXLE").
 call_operation("BLXAL").
 
 syscall_operation("SWI").
+syscall_operation("SVC").
 
 // TODO:
 return_operation(""):-
@@ -385,5 +453,37 @@ reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,Sign,0):-
 
 inferred_main_in_reg(EA,"R0"):-
     inferred_main_dispatch(EA).
+
+/**
+The function `Func` receives a string argument at register `Reg`.
+*/
+.decl library_string_arg(Func:symbol,Reg:register)
+
+library_string_arg("strchr","R0").
+library_string_arg("strrchr","R0").
+library_string_arg("strlen","R0").
+
+library_string_arg("strcat","R1").
+library_string_arg("strncat","R1").
+library_string_arg("strcpy","R1").
+library_string_arg("strncpy","R1").
+library_string_arg("strtok","R1").
+library_string_arg("strxfrm","R1").
+
+library_string_arg("strcmp","R0").
+library_string_arg("strcmp","R1").
+library_string_arg("strncmp","R0").
+library_string_arg("strncmp","R1").
+library_string_arg("strcoll","R0").
+library_string_arg("strcoll","R1").
+library_string_arg("strcspn","R0").
+library_string_arg("strcspn","R1").
+library_string_arg("strpbrk","R0").
+library_string_arg("strpbrk","R1").
+library_string_arg("strspn","R0").
+library_string_arg("strspn","R1").
+library_string_arg("strstr","R0").
+library_string_arg("strstr","R1").
+// TODO: add more
 
 }

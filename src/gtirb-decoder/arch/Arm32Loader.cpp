@@ -419,6 +419,15 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_insn& CsInsn, cons
                           << "value=0x" << std::hex << CsOp.shift.value << std::dec << ", "
                           << "type=" << CsOp.shift.type << ")\n";
 
+            // Capstone does not provide a way of accessing the size of
+            // the memory reference.
+            // Size should be 64 instead of 32 for double-word memory
+            // reference: e.g., VLDR D0, [...]
+            // TODO: (1) We could request capstone to be fixed, or (2) make
+            // this function take the previous operand if any to infer the
+            // reference size.
+            // For now, datalog code needs to determine the size in other way:
+            // e.g., look at the dest/src register for load/store instructions.
             IndirectOp I = {registerName(ARM_REG_INVALID),
                             registerName(CsOp.mem.base),
                             registerName(CsOp.mem.index),

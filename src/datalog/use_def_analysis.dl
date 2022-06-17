@@ -46,6 +46,12 @@ Instruction at address 'EA' uses register 'Reg' at operand index 'Index'.
 */
 .decl used(EA:address,Reg:register,Index:operand_index)
 
+/**
+Instruction at address 'EA' uses register 'Reg' at operand index 'Index'.
+This is supposed to be used before code inference.
+*/
+.decl used_before_code_inference(EA:address,Reg:register,Index:operand_index)
+
 //The 'reg' is defined in 'ea_def' and used in 'ea_used' in the operand with index 'index_used'
 .decl def_used(ea_def:address,reg:register,ea_used:address,index_used:operand_index)
 .output def_used
@@ -199,11 +205,11 @@ used_explicit(EA,Reg,Index):-
     op_indirect_contains_reg(Op,Reg),
     track_register(Reg).
 
-used(EA,Reg,Index):-
+used_before_code_inference(EA,Reg,Index):-
     used_explicit(EA,Reg,Index).
 
 // Implicitly-used registers use an operand index of zero.
-used(EA,Reg,0):-
+used_before_code_inference(EA,Reg,0):-
     arch.uses_reg(EA,Reg),
     track_register(Reg),
     !used_explicit(EA,Reg,_).
@@ -213,6 +219,9 @@ used(EA,Reg,0):-
 used_in_block(Block,Reg):-
     used(EA,Reg,_),
     code_in_block(EA,Block).
+
+used(EA,Reg,Index):-
+    used_before_code_inference(EA,Reg,Index).
 
 // the last address where a register was defined within the block
 .decl block_last_def(EA:address,EA_def:address,Reg:register)
@@ -365,3 +374,28 @@ def_used_for_address(EA_def,Reg):-
 
 def_used_for_address(EA,Reg):-
     arch.pc_relative_addr(EA,Reg,_).
+
+// straight_line_def_used is a weaker version than def_used
+// that can be used BEFORE code inference.
+
+// the last address where a register was defined within the block
+.decl straight_line_last_def(EA:address,EA_def:address,Reg:register)
+
+straight_line_last_def(EA_next,EA,Reg):-
+    def(EA,Reg),
+    possible_ea(EA),
+    must_fallthrough(EA,EA_next),
+    possible_ea(EA_next).
+
+straight_line_last_def(EA_next,EA_def,Reg):-
+    straight_line_last_def(EA,EA_def,Reg),
+    !must_def(EA,Reg),
+    must_fallthrough(EA,EA_next),
+    possible_ea(EA_next).
+
+.decl straight_line_def_used(EA_def:address,Reg:register,EA_used:address,Index:unsigned)
+.output straight_line_def_used
+
+straight_line_def_used(EA_def,Reg,EA_used,Index):-
+    used_before_code_inference(EA_used,Reg,Index),
+    straight_line_last_def(EA_used,EA_def,Reg).

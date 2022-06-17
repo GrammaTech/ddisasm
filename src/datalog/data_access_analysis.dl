@@ -46,13 +46,19 @@ other access.
 
 instruction_memory_access_size(EA,Index,SizeAccess):-
     code(EA),
+    instruction_get_operation(EA,Operation),
     instruction_get_op(EA,Index,Op),
+    op_indirect(Op,_,_,_,_,_,Size),
     (
-        arch.operation_size_exception(EA,Index,SizeAccess),
-        Op = Op // avoid warning
+        // NOTE: This assumes there is only one memory operand in an
+        // instruction.
+        instruction_get_dest_op(EA,_,DestOp),
+        op_regdirect_contains_reg(DestOp,DestReg),
+        arch.data_access_size(Operation,DestReg,SizeAccess),
+        UNUSED(Size)
         ;
-        !arch.operation_size_exception(EA,Index,_),
-        op_indirect(Op,_,_,_,_,_,Size),
+        // If data_access_size is not available, look at the operand directly.
+        !arch.data_access_size(Operation,_,_),
         SizeAccess = Size/8
     ).
 

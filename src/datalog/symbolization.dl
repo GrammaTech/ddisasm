@@ -357,6 +357,7 @@ symbolic_operand(EA,Op_index,Value,Type):-
 .output labeled_data_candidate
 
 labeled_data_candidate(EA):-
+    !binary_isa("ARM"),
     symbol(EA,_,_,_,_,_,_,_,_).
 
 labeled_data_candidate(EA):-
@@ -424,16 +425,18 @@ address_in_data_refined(EA,Val):-
     Val >= Beg,
     Val <= End,
     data_segment(Beg0,End0),
+    arch.pointer_size(PtSize),
     EA >= Beg0,
-    EA < End0.
+    EA + PtSize <= End0.
 
 address_in_data_refined(EA,Val):-
     binary_type("EXEC"),
     address_in_data(EA,Val),
     block(Val),
     data_segment(Beg0,End0),
+    arch.pointer_size(PtSize),
     EA >= Beg0,
-    EA < End0.
+    EA + PtSize <= End0.
 
 
 .init address_in_data_refined_range=empty_range
@@ -852,9 +855,9 @@ code_pointer_in_data(EA,Val):-
 // Final label decision
 
 labeled_ea(EA):-
+    !binary_isa("ARM"),
     defined_symbol(EA,_,Type,_,_,_,_,_,_),
     Type != "SECTION",
-    Type != "FILE",
     EA != 0.
 
 labeled_ea(EA):-

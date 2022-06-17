@@ -168,6 +168,7 @@ may_have_symbolic_immediate(Src,as(Dest,address)):-
         relocation(Src+Offset,_,_,_,_,_,_)
         ;
         binary_type("EXEC"),
+        !binary_isa("ARM"),
         instruction_get_operation(Src,Operation),
         !arch.logic_operation(Operation),
         Offset = Offset // avoid warning
@@ -192,7 +193,11 @@ invalid(EA,Type):-
         // EA is followed by something that cannot be code.
         must_fallthrough(EA,Dest),  Type = "must_fallthrough to invalid"
     ),
-    !instruction(Dest,_,_,_,_,_,_,_,_,_), Dest != 0.
+    (
+        !instruction(Dest,_,_,_,_,_,_,_,_,_);
+        defined_symbol(Dest,_,"OBJECT",_,_,_,_,_,_)
+    ),
+    Dest != 0.
 
 // propagate the invalid instructions backwards until ret or jmp (encoded in must_fallthrough)
 // propagate through direct jumps and calls
@@ -240,7 +245,9 @@ basic_target(Val):-
         code_section(Name),
         loaded_section(Val,_,Name)
         ;
-        defined_symbol(Val,_,_,_,_,_,_,_,_)
+        !binary_isa("ARM"),
+        defined_symbol(Val,_,Type,_,_,_,_,_,_),
+        Type != "OBJECT"
         ;
         // Exception information
         fde_addresses(Val,_)
@@ -688,7 +695,8 @@ block_points(Block,"code",BlockPred,1,"fits"):-
 // Prefer blocks that have a well-defined boundary with a prior block.
 block_points(Block,"code",0,1,"better fit"):-
     block_is_overlapping(Block,"code"),
-    block_candidate_boundaries(_,"code",_,Block).
+    block_candidate_boundaries(Block,"code",Beg,_),
+    block_candidate_boundaries(_,"code",_,Beg).
 
 // its address appears somewhere
 block_points(Block,"code",0,3,"appears"):-
@@ -753,6 +761,9 @@ block_points(Block,"code",BlockPred,Points2,Why):-
     ).
 
 block_points(Block,"code",BlockPred,Points,Why):-
+    // In case of ARM32, ARM and Thumb blocks often overlap.
+    // We skip this predicate for ARM32.
+    !binary_isa("ARM"),
     block_is_overlapping(Block,"code"),
     direct_jump(EA,Block),
     // do not count instructions that fallthrough and jump to the same place twice
@@ -766,6 +777,9 @@ block_points(Block,"code",BlockPred,Points,Why):-
     Points != 0.
 
 block_points(Block,"code",BlockPred,Points,Why):-
+    // In case of ARM32, ARM and Thumb blocks often overlap.
+    // We skip this predicate for ARM32.
+    !binary_isa("ARM"),
     block_is_overlapping(Block,"code"),
     direct_call(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
@@ -787,6 +801,12 @@ block_points(Block,"code",0,1,"has well-defined call"):-
     code_in_block_candidate_refined(EA,Block),
     direct_call(EA,BlockDest),
     !block_is_overlapping(BlockDest,"code").
+
+block_points(Block,"code",0,3,"has well-defined call to a function symbol"):-
+    block_is_overlapping(Block,"code"),
+    code_in_block_candidate_refined(EA,Block),
+    direct_call(EA,BlockDest),
+    function_symbol(BlockDest,_).
 
 block_points(Block,"code",0,1,"plt call"):-
     block_is_overlapping(Block,"code"),
@@ -829,6 +849,15 @@ block_points(Block,"code",0,-2,"conditional jump/return: fallthrough to invalid"
 data_block_candidate(Block,Size),
 block_points(Block,"data",0,7,"object symbol"):-
     defined_symbol(Block,Size,"OBJECT",_,_,_,_,_,_).
+
+/**
+Block that must fall through to object symbol is unlikely real code.
+*/
+block_points(Block,"code",0,-5,"must-fallthrough to object"):-
+    block_is_overlapping(Block,"code"),
+    code_in_block_candidate_refined(EA,Block),
+    must_fallthrough(EA,EASucc),
+    symbol(EASucc,_,"OBJECT",_,_,_,_,_,_).
 
 block_is_overlapping(Block,"code"),
 block_points(Block,"code",0,-1,"jump to string"):-

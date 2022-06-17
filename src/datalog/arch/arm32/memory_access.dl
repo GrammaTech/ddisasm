@@ -61,8 +61,11 @@ Each is used for the following forms:
 memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,"NONE",0,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     (
-        contains("LDM", Operation), AccessType = "LOAD", SrcIdx = 2, DstIdx = 1;
-        contains("STM", Operation), AccessType = "STORE", SrcIdx = 1, DstIdx = 2
+        (contains("LDM", Operation); contains("POP", Operation)),
+        AccessType = "LOAD", SrcIdx = 2, DstIdx = 1
+        ;
+        (contains("STM", Operation); contains("PUSH", Operation)),
+        AccessType = "STORE", SrcIdx = 1, DstIdx = 2
     ),
     op_register_bitfield(Op1,Index,RtIn),
     reg_map(RtIn,Rt),
@@ -168,7 +171,7 @@ reg_reg_arithmetic_operation(EA,Rn_nn,Rn_nn,Rm,1,0):-
 
 
 // Generate arithmetic operations for pre-index writeback cases.
-// Handles single-word, double-word, and LDM/STM.
+// Handles single-word, double-word, LDM/STM, and POP/PUSH.
 reg_arithmetic_operation(EA,Rn_nn,Rn_nn,1,Offset):-
     memory_access(_,EA,_,_,_,Rn,"NONE",_,Offset),
     !memory_access(_,EA,_,_,_,Rn,"NONE",_,Offset-4), // Don't match the second access from a doubleword operation.

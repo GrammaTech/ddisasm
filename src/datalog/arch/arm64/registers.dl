@@ -74,3 +74,12 @@ stack_pointer("SP").
 return_reg("X0").
 
 condition_flags_reg("NZCV").
+
+integer_reg_param("X0",1).
+integer_reg_param("X1",2).
+integer_reg_param("X2",3).
+integer_reg_param("X3",4).
+integer_reg_param("X4",5).
+integer_reg_param("X5",6).
+integer_reg_param("X6",7).
+integer_reg_param("X7",8).
