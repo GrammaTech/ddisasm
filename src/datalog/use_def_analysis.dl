@@ -219,10 +219,10 @@ used_in_block(Block,EA_used,Reg,Index):-
 used(EA,Reg,Index):-
     used_before_code_inference(EA,Reg,Index).
 
-// the last address where a register was defined within the block
+/**
+The last address prior to EA where Reg was defined within the block
+*/
 .decl block_last_def(EA:address,EA_def:address,Reg:register)
-
-
 
 block_last_def(EA_next,EA,Reg):-
     def(EA,Reg),
@@ -232,6 +232,23 @@ block_last_def(EA_next,EA_def,Reg):-
     block_last_def(EA,EA_def,Reg),
     !must_def(EA,Reg),
     local_next(EA,EA_next).
+
+/**
+The last definition(s) of Reg in a given block.
+
+Multiple are possible in conditional cases.
+*/
+.decl last_def_in_block(Block:address,EA_def:address,Reg:register)
+
+last_def_in_block(Block,EA_def,Reg):-
+    block_last_instruction(Block,BlockEnd),
+    (
+        def(BlockEnd,Reg),
+        EA_def=BlockEnd
+        ;
+        !must_def(BlockEnd,Reg),
+        block_last_def(BlockEnd,EA_def,Reg)
+    ).
 
 /**
 A register is referenced in a block
@@ -335,14 +352,7 @@ def_used(EA_def,Reg,EA_used,Index):-
 
 def_used(EA_def,Reg,EA_used,Index):-
     next_used(Block,BlockUsed,Reg),
-    block_last_instruction(Block,BlockEnd),
-    (
-        def(BlockEnd,Reg),
-        EA_def=BlockEnd
-        ;
-        !must_def(BlockEnd,Reg),
-        block_last_def(BlockEnd,EA_def,Reg)
-    ),
+    last_def_in_block(Block,EA_def,Reg),
     used_not_def_in_block(BlockUsed,Reg,EA_used),
     used(EA_used,Reg,Index).
 
