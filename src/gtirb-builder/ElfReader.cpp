@@ -406,6 +406,77 @@ void ElfReader::resurrectSymbols()
     return;
 }
 
+// Parse .ARM.attributes to find "M" that indicates "Microcontroller".
+static bool detectArm32Microcontroller(gtirb::Section *S)
+{
+    auto readLeb128 = [](const unsigned char *Ptr, unsigned int *len_out, int Sign) {
+        uint64_t Ans = 0;
+        unsigned int NRead = 0;
+        int Shift = 0;
+        unsigned char Byte;
+
+        do
+        {
+            Byte = *Ptr++;
+            NRead++;
+
+            Ans |= (Byte & 0x7f) << Shift;
+
+            Shift += 7;
+        } while(Byte & 0x80);
+
+        if(len_out != NULL)
+            *len_out = NRead;
+
+        if(Sign && (Shift < 32) && (Byte & 0x40))
+            Ans |= -1 << Shift;
+
+        return Ans;
+    };
+
+    bool Found = false;
+    for(const auto &ByteInterval : S->byte_intervals())
+    {
+        uint64_t N = ByteInterval.getSize();
+        const unsigned char *RawChars = ByteInterval.rawBytes<const unsigned char>();
+        const unsigned char *Ptr = RawChars;
+        if(*Ptr != 'A')
+            continue;
+
+        Ptr++;
+        N--;
+        // next 4 bytes: section length
+        Ptr += 4;
+        N -= 4;
+        // "aeabi"
+        int NameLen = strlen((char *)Ptr) + 1;
+        Ptr += NameLen;
+        N -= NameLen;
+        int tag2 = *(Ptr++);
+        N--;
+        Ptr += 4;
+        N -= 4;
+        while(N > 0)
+        {
+            unsigned int Len = 0;
+            int Tag = readLeb128(Ptr, &Len, 0);
+            Ptr += Len;
+            N -= Len;
+            if(Tag == 7) // 7: Tag_CPU_arch_profile
+            {
+                int Val = readLeb128(Ptr, &Len, 0);
+                Ptr += Len;
+                N -= Len;
+                if(Val == 'M') // Microcontroller
+                {
+                    Found = true;
+                }
+            }
+        }
+    }
+    return Found;
+}
+
 void ElfReader::buildSections()
 {
     std::map<gtirb::UUID, uint64_t> Alignment;
@@ -540,6 +611,20 @@ void ElfReader::buildSections()
         SectionProperties[S->getUUID()] = {static_cast<uint64_t>(Section.type()),
                                            static_cast<uint64_t>(Section.flags())};
 
+        // In case of ARM32, inspect .ARM.attributes section to see
+        // if the binary is Microcontroller.
+        if(Module->getISA() == gtirb::ISA::ARM && Section.name() == ".ARM.attributes")
+        {
+            if(detectArm32Microcontroller(S))
+            {
+                // Note that this information is used for setting up Capstone
+                // mode correctly:
+                // i.e., include CS_MODE_MCLASS for Microcontroller
+                std::vector<std::string> ArchInfo;
+                ArchInfo.emplace_back("Microcontroller");
+                Module->addAuxData<gtirb::schema::ArchInfo>(std::move(ArchInfo));
+            }
+        }
         Index++;
     }
 

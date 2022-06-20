@@ -29,42 +29,35 @@
 void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
                        BinaryFacts& Facts)
 {
-    CsModes[0] = (CS_MODE_ARM | CS_MODE_V8);
-    CsModeCount = 1;
-
-    // NOTE: AArch32 (ARMv8-A) is backward compatible to ARMv7-A.
-    cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_ARM | CS_MODE_V8);
-    InstructionSize = 4;
-    load(ByteInterval, Facts, false);
-
     // For Thumb, check if the arch type is available.
     // For Cortex-M, add CS_MODE_MCLASS to the cs option.
     Mclass = false;
-    const auto& Sections = Module.findSections(".ARM.attributes");
-    if(!Sections.empty())
+    auto* ArchInfo0 = Module.getAuxData<gtirb::schema::ArchInfo>();
+    if(ArchInfo0)
     {
-        const auto& Section = *Sections.begin();
-        for(const auto& ByteInterval : Section.byte_intervals())
+        for(const auto& ArchInfo : *ArchInfo0)
         {
-            const char* RawChars = ByteInterval.rawBytes<const char>();
-            // Remove zeros
-            std::vector<char> Chars;
-            for(size_t I = 0; I < ByteInterval.getInitializedSize(); ++I)
-            {
-                if(RawChars[I] != 0)
-                    Chars.push_back(RawChars[I]);
-            }
-            std::string SectStr(Chars.begin(), Chars.end());
-            if(SectStr.find("Cortex-M7") != std::string::npos)
+            ArchInfoExists = true;
+            if(ArchInfo == "Microcontroller")
             {
                 Mclass = true;
-                break;
             }
         }
-        ArchtypeFromElf = true;
     }
 
-    if(ArchtypeFromElf)
+    // In case of MCLASS (Microcontroller), no need to decode in ARM state.
+    if(!Mclass)
+    {
+        CsModes[0] = (CS_MODE_ARM | CS_MODE_V8);
+        CsModeCount = 1;
+
+        // NOTE: AArch32 (ARMv8-A) is backward compatible to ARMv7-A.
+        cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_ARM | CS_MODE_V8);
+        InstructionSize = 4;
+        load(ByteInterval, Facts, false);
+    }
+
+    if(ArchInfoExists)
     {
         if(Mclass)
         {

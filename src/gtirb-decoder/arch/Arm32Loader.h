@@ -43,7 +43,7 @@ public:
         cs_option(*CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
 
         Mclass = false;
-        ArchtypeFromElf = false;
+        ArchInfoExists = false;
         CsModes[0] = (CS_MODE_ARM | CS_MODE_V8);
         CsModes[1] = 0;
         CsModeCount = 1;
@@ -77,7 +77,7 @@ private:
     bool collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInstruction);
 
     bool Mclass;
-    bool ArchtypeFromElf;
+    bool ArchInfoExists;
     size_t CsModes[2];
     size_t CsModeCount;
 };
