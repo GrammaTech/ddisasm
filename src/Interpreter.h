@@ -22,8 +22,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <souffle/SouffleInterface.h>
-
 #include <gtirb/gtirb.hpp>
 #include "gtirb-decoder/DatalogProgram.h"
 

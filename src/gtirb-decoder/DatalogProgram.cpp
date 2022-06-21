@@ -92,7 +92,8 @@ bool DatalogProgram::insertTuple(std::stringstream &TupleText, souffle::Relation
                     break;
                 }
                 default:
-                    std::cerr << "Invalid type attribute" << std::endl;
+                    std::cerr << "Cannot parse field type " << Relation->getAttrType(I)
+                              << std::endl;
                     return false;
             }
         }
@@ -163,15 +164,7 @@ void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation
     for(size_t I = 0; I < Relation->getArity(); I++)
     {
         std::string FieldType = Relation->getAttrType(I);
-
-        if(FieldType == "u:address")
-        {
-            HexFields.push_back(true);
-        }
-        else
-        {
-            HexFields.push_back(false);
-        }
+        HexFields.push_back(FieldType == "u:address");
     }
     Stream << std::showbase;
 
@@ -204,6 +197,11 @@ void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation
                     break;
                 case 'i':
                     Stream << Tuple[I];
+                    break;
+                default:
+                    throw std::logic_error("Serialization for datalog type "
+                                           + std::string(Relation->getAttrType(I))
+                                           + " not defined");
             }
         }
         Stream << "\n";
