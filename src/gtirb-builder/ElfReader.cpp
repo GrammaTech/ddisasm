@@ -409,7 +409,7 @@ void ElfReader::resurrectSymbols()
 // Parse .ARM.attributes to find "M" that indicates "Microcontroller".
 static bool detectArm32Microcontroller(gtirb::Section *S)
 {
-    auto readLeb128 = [](const unsigned char *Ptr, unsigned int *len_out, int Sign) {
+    auto readUleb128 = [](const unsigned char *Ptr, unsigned int *len_out) {
         uint64_t Ans = 0;
         unsigned int NRead = 0;
         int Shift = 0;
@@ -428,9 +428,6 @@ static bool detectArm32Microcontroller(gtirb::Section *S)
         if(len_out != NULL)
             *len_out = NRead;
 
-        if(Sign && (Shift < 32) && (Byte & 0x40))
-            Ans |= -1 << Shift;
-
         return Ans;
     };
 
@@ -445,26 +442,29 @@ static bool detectArm32Microcontroller(gtirb::Section *S)
 
         Ptr++;
         N--;
-        // next 4 bytes: section length
+        // Skip 4 bytes (section length)
         Ptr += 4;
         N -= 4;
-        // "aeabi"
+        // Skip name (e.g., "aeabi")
         int NameLen = strlen((char *)Ptr) + 1;
         Ptr += NameLen;
         N -= NameLen;
-        int tag2 = *(Ptr++);
+        // Skip 1-bit tag
+        Ptr++;
         N--;
+        // Skip unrelated 4-bytes
         Ptr += 4;
         N -= 4;
+        // Read pairs of (Tag,Value) until it finds (7, "M").
         while(N > 0)
         {
             unsigned int Len = 0;
-            int Tag = readLeb128(Ptr, &Len, 0);
+            int Tag = readUleb128(Ptr, &Len);
             Ptr += Len;
             N -= Len;
             if(Tag == 7) // 7: Tag_CPU_arch_profile
             {
-                int Val = readLeb128(Ptr, &Len, 0);
+                int Val = readUleb128(Ptr, &Len);
                 Ptr += Len;
                 N -= Len;
                 if(Val == 'M') // Microcontroller

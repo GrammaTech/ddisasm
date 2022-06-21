@@ -44,9 +44,7 @@ public:
 
         Mclass = false;
         ArchInfoExists = false;
-        CsModes[0] = (CS_MODE_ARM | CS_MODE_V8);
-        CsModes[1] = 0;
-        CsModeCount = 1;
+        CsModes.push_back(CS_MODE_ARM | CS_MODE_V8);
     }
 
 protected:
@@ -78,8 +76,7 @@ private:
 
     bool Mclass;
     bool ArchInfoExists;
-    size_t CsModes[2];
-    size_t CsModeCount;
+    std::vector<size_t> CsModes;
 };
 
 #endif // SRC_GTIRB_DECODER_ARCH_ARM32DECODER_H_

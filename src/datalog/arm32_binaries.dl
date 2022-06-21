@@ -756,9 +756,9 @@ arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimi
         ),
         EA_jump = EA_ldr
         ;
-        Rd = PC,
         // [2] adr r1, Label   or  add r1, pc, offset
         //     ldr pc, [r1, r2, lsl N]
+        Rd = PC,
         straight_line_def_used(EA_adr,BaseReg,EA_ldr,_),
         arch.pc_relative_addr(EA_adr,BaseReg,Val),
         TableStart0 = as(Val,address),
@@ -1828,7 +1828,7 @@ Block containing instructions that only belong to Microcontroller arch.
 arm_microcontroller(Block):-
     refined_block(Block),
     code_in_block_candidate_refined(EA,Block),
-    instruction(EA,_,_,Operation,_,_,_,_,_,_),
+    instruction_get_operation(EA,Operation),
     (
         // The following instructions are only decoded with CS_MODE_MCLASS.
         substr(Operation,0,3) = "MRS";
