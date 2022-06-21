@@ -47,6 +47,11 @@ class ExtraArgsTest(unittest.TestCase):
             # dissasemble with hints
             with tempfile.TemporaryDirectory() as debug_dir:
                 with tempfile.NamedTemporaryFile(mode="w") as hints_file:
+                    # we add a couple of incorrect hints to test error checking
+                    print("not-a-real-predicate\t10", file=hints_file)
+                    print("invalid\tnot-address\tbad-hint", file=hints_file)
+                    print("invalid\t0x100000", file=hints_file)
+                    # we add the good hint at the end
                     print(
                         f"invalid\t{main_block.address}\tuser-provided-hint",
                         file=hints_file,
@@ -74,10 +79,10 @@ class ExtraArgsTest(unittest.TestCase):
                 # it contains an invalid instruction through hints
                 main_block = main_sym.referent
                 self.assertIsInstance(main_block, gtirb.DataBlock)
-                self.assertIn(
-                    "user-provided-hint",
-                    (Path(debug_dir) / "invalid.csv").read_text(),
-                )
+                invalid_text = (Path(debug_dir) / "invalid.csv").read_text()
+                self.assertIn("user-provided-hint", invalid_text)
+                self.assertNotIn("bad-hint", invalid_text)
+                self.assertNotIn("0x100000", invalid_text)
 
 
 if __name__ == "__main__":

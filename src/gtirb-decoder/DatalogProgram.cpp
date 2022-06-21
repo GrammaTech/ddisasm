@@ -132,7 +132,7 @@ void DatalogProgram::readHintsFile(const std::string FileName)
         souffle::Relation *Relation = Program->getRelation(RelationName);
         if(!Relation)
         {
-            std::cerr << "Warning: ignoring hint in line " << LineNumber << ": unknown relation"
+            std::cerr << "Warning: ignoring hint in line " << LineNumber << ": unknown relation "
                       << RelationName << std::endl;
             continue;
         }
