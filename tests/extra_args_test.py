@@ -1,4 +1,3 @@
-import os
 import platform
 import tempfile
 import unittest
@@ -31,8 +30,6 @@ class ExtraArgsTest(unittest.TestCase):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
 
             # disassemble
-            if not os.path.exists("dbg"):
-                os.mkdir("dbg")
             self.assertTrue(
                 disassemble(
                     "ex",
@@ -48,37 +45,39 @@ class ExtraArgsTest(unittest.TestCase):
             main_block = main_sym.referent
             self.assertIsInstance(main_block, gtirb.CodeBlock)
             # dissasemble with hints
-            with tempfile.NamedTemporaryFile(mode="w") as hints_file:
-                print(
-                    f"invalid\t{main_block.address}\tuser-provided-hint",
-                    file=hints_file,
-                    flush=True,
-                )
-                self.assertTrue(
-                    disassemble(
-                        "ex",
-                        format="--ir",
-                        extra_args=[
-                            "--debug-dir",
-                            "dbg",
-                            "--hints",
-                            hints_file.name,
-                        ],
-                    )[0]
-                )
+            with tempfile.TemporaryDirectory() as debug_dir:
+                with tempfile.NamedTemporaryFile(mode="w") as hints_file:
+                    print(
+                        f"invalid\t{main_block.address}\tuser-provided-hint",
+                        file=hints_file,
+                        flush=True,
+                    )
+                    self.assertTrue(
+                        disassemble(
+                            "ex",
+                            format="--ir",
+                            extra_args=[
+                                "--debug-dir",
+                                debug_dir,
+                                "--hints",
+                                hints_file.name,
+                            ],
+                        )[0]
+                    )
 
-            # load the new gtirb
-            ir = gtirb.IR.load_protobuf("ex.gtirb")
-            m = ir.modules[0]
+                # load the new gtirb
+                ir = gtirb.IR.load_protobuf("ex.gtirb")
+                m = ir.modules[0]
 
-            main_sym = next(sym for sym in m.symbols if sym.name == "main")
-            # main cannot be code if we tell it explicitly that
-            # it contains an invalid instruction through hints
-            main_block = main_sym.referent
-            self.assertIsInstance(main_block, gtirb.DataBlock)
-            self.assertIn(
-                "user-provided-hint", Path("dbg/invalid.csv").read_text()
-            )
+                main_sym = next(sym for sym in m.symbols if sym.name == "main")
+                # main cannot be code if we tell it explicitly that
+                # it contains an invalid instruction through hints
+                main_block = main_sym.referent
+                self.assertIsInstance(main_block, gtirb.DataBlock)
+                self.assertIn(
+                    "user-provided-hint",
+                    (Path(debug_dir) / "invalid.csv").read_text(),
+                )
 
 
 if __name__ == "__main__":
