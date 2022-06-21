@@ -29,9 +29,8 @@ if("${CPACK_DDISASM_PACKAGE}" STREQUAL "deb-ddisasm")
         "libstdc++6, libc6, libgcc1, libgomp1, libgtirb${CPACK_GTIRB_SUFFIX} (=${CPACK_GTIRB_DEB_VERSION}), libgtirb-pprinter${CPACK_GTIRB_PPRINTER_SUFFIX} (=${CPACK_GTIRB_PPRINTER_DEB_VERSION}), libboost-filesystem1.71.0, libboost-program-options1.71.0, libcapstone-dev${CPACK_CAPSTONE_SUFFIX} (=${CPACK_CAPSTONE_PKG_VERSION})"
     )
   else()
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS
-        "libstdc++6, libc6, libgcc1, libgomp1, libgtirb${CPACK_GTIRB_SUFFIX} (=${CPACK_GTIRB_DEB_VERSION}), libgtirb-pprinter${CPACK_GTIRB_PPRINTER_SUFFIX} (=${CPACK_GTIRB_PPRINTER_DEB_VERSION}), libboost (>=1.67) | libboost1.67, libcapstone-dev${CPACK_CAPSTONE_SUFFIX} (=${CPACK_CAPSTONE_PKG_VERSION})"
-    )
+    message(
+      SEND_ERROR "Uknown / missing value for CPACK_DEBIAN_PACKAGE_RELEASE.")
   endif()
 elseif("${CPACK_DDISASM_PACKAGE}" STREQUAL "deb-debug")
   set(CPACK_DEBIAN_PACKAGE_NAME "ddisasm-dbg${CPACK_DDISASM_SUFFIX}")

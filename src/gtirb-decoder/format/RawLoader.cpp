@@ -23,6 +23,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "RawLoader.h"
+
 #include "../../AuxDataSchema.h"
 
 void RawEntryLoader(const gtirb::Module &Module, DatalogProgram &Program)
