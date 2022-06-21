@@ -57,16 +57,17 @@ public:
         }
     }
 
+    bool insertTuple(std::stringstream& TupleText, souffle::Relation* Relation);
+
+    void readHintsFile(const std::string FileName);
+
     void writeRelation(std::ostream& Stream, const souffle::Relation* Relation);
 
     void writeFacts(const std::string& Directory);
 
     void writeFacts(gtirb::Module& Module);
 
-    void writeRelations(const std::string& Directory)
-    {
-        Program->printAll(Directory);
-    }
+    void writeRelations(const std::string& Directory);
 
     void writeRelations(gtirb::Module& Module);
 

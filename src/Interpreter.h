@@ -25,11 +25,12 @@
 #include <souffle/SouffleInterface.h>
 
 #include <gtirb/gtirb.hpp>
+#include "gtirb-decoder/DatalogProgram.h"
 
 #ifndef GTIRB_SRC_INTERPRETER_H_
 #define GTIRB_SRC_INTERPRETER_H_
 
-void runInterpreter(gtirb::IR& IR, gtirb::Module& Module, souffle::SouffleProgram* Program,
+void runInterpreter(gtirb::IR& IR, gtirb::Module& Module, DatalogProgram& Program,
                     const std::string& DatalogFile, const std::string& Directory,
                     const std::string& LibDirectory, const std::string& ProfilePath,
                     uint8_t Threads);
