@@ -6,6 +6,7 @@
   * Handle single-byte jump tables where the value should be interpreted as a
     signed difference.
   * Prevent generation of incorrect :lo12: attributes in post-index operands.
+* Add "--hints" argument.
 
 # 1.5.3
 * Rename `elfSectionIndex` to `sectionIndex`, and `elfSectionProperties` to
