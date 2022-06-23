@@ -179,6 +179,7 @@ For example
 invalid 0x100 definitely_not_code
 ```
 will add a fact `invalid(0x100,"definitely_not_code")` to the Datalog database.
+The fields need to be separated by tabs '\t'.
 
 ## Contributing
 
