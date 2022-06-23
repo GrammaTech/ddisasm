@@ -51,6 +51,14 @@ class ExtraArgsTest(unittest.TestCase):
                     print("not-a-real-predicate\t10", file=hints_file)
                     print("invalid\tnot-address\tbad-hint", file=hints_file)
                     print("invalid\t0x100000", file=hints_file)
+
+                    # good hint with extra fields
+                    print(
+                        "invalid\t0x0\tuser-provided-extra-field"
+                        "\tthe-extra-field",
+                        file=hints_file,
+                        flush=True,
+                    )
                     # we add the good hint at the end
                     print(
                         f"invalid\t{main_block.address}\tuser-provided-hint",
@@ -81,6 +89,11 @@ class ExtraArgsTest(unittest.TestCase):
                 self.assertIsInstance(main_block, gtirb.DataBlock)
                 invalid_text = (Path(debug_dir) / "invalid.csv").read_text()
                 self.assertIn("user-provided-hint", invalid_text)
+                # the entry with extra fields is taken but the
+                # extra field is ignored
+                self.assertIn("user-provided-extra-field", invalid_text)
+                self.assertNotIn("the-extra-field", invalid_text)
+                # the incorrect hints are not included
                 self.assertNotIn("bad-hint", invalid_text)
                 self.assertNotIn("0x100000", invalid_text)
 

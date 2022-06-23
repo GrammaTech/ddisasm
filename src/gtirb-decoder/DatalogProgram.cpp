@@ -53,9 +53,9 @@ std::optional<DatalogProgram> DatalogProgram::load(const gtirb::Module &Module)
 bool DatalogProgram::insertTuple(std::stringstream &TupleText, souffle::Relation *Relation)
 {
     souffle::tuple T(Relation);
+    std::string Field;
     for(size_t I = 0; I < Relation->getArity(); I++)
     {
-        std::string Field;
         if(Relation->getArity() == 1)
         {
             Field = TupleText.str();
@@ -102,6 +102,11 @@ bool DatalogProgram::insertTuple(std::stringstream &TupleText, souffle::Relation
             std::cerr << "Failed to parse " << I + 1 << "-th field: '" << Field << "'" << std::endl;
             return false;
         }
+    }
+    if(std::getline(TupleText, Field, '\t'))
+    {
+        std::cerr << "CSV file has more fields than expected, field '" << Field << "' is ignored"
+                  << std::endl;
     }
     Relation->insert(T);
     return true;
