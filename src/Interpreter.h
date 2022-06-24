@@ -23,6 +23,7 @@
 //===----------------------------------------------------------------------===//
 
 #include <gtirb/gtirb.hpp>
+
 #include "gtirb-decoder/DatalogProgram.h"
 
 #ifndef GTIRB_SRC_INTERPRETER_H_
