@@ -172,6 +172,16 @@ public:
         return InstructionWritebackList;
     }
 
+    void conditionCode(const relations::InstructionCondCode& CondCode)
+    {
+        InstructionCondCodeList.push_back(CondCode);
+    }
+
+    const std::vector<relations::InstructionCondCode>& conditionCode() const
+    {
+        return InstructionCondCodeList;
+    }
+
     void registerAccess(const relations::RegisterAccess& access)
     {
         RegisterAccesses.push_back(access);
@@ -188,6 +198,7 @@ private:
     std::vector<relations::ShiftedOp> ShiftedOps;
     std::vector<relations::ShiftedWithRegOp> ShiftedWithRegOps;
     std::vector<relations::InstructionWriteback> InstructionWritebackList;
+    std::vector<relations::InstructionCondCode> InstructionCondCodeList;
     std::vector<relations::RegisterAccess> RegisterAccesses;
 };
 

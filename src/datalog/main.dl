@@ -186,6 +186,12 @@ relocation_adjustment_total(EA,Adjustment):-
 .input instruction_writeback
 
 /**
+ The instruction at EA has capstone's cs_arm.cc set.
+*/
+.decl instruction_cond_code(EA:address,CondCode:symbol)
+.input instruction_cond_code
+
+/**
 The register Register is accessed at EA with Mode.
 Mode may be "R" or "W"
 */

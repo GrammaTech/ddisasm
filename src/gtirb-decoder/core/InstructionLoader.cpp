@@ -54,6 +54,7 @@ void InstructionLoader::insert(const BinaryFacts& Facts, DatalogProgram& Program
     auto& [Instructions, Operands] = Facts;
     Program.insert("instruction", Instructions.instructions());
     Program.insert("instruction_writeback", Instructions.writeback());
+    Program.insert("instruction_cond_code", Instructions.conditionCode());
     Program.insert("invalid_op_code", Instructions.invalid());
     Program.insert("op_shifted", Instructions.shiftedOps());
     Program.insert("op_shifted_w_reg", Instructions.shiftedWithRegOps());

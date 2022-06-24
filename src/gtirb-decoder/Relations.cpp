@@ -190,6 +190,12 @@ namespace souffle
         return T;
     }
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::InstructionCondCode& CondCode)
+    {
+        T << CondCode.Addr << CondCode.CC;
+        return T;
+    }
+
     souffle::tuple& operator<<(souffle::tuple& T, const relations::RegisterAccess& Access)
     {
         T << Access.Addr << Access.Mode << Access.Register;

@@ -164,6 +164,63 @@ void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size
     }
 }
 
+static std::string armCc2String(arm_cc CC)
+{
+    std::string OpCC = "";
+    switch(CC)
+    {
+        case ARM_CC_INVALID:
+            assert(!"Unexpected condition code for IT instruction");
+        case ARM_CC_EQ:
+            OpCC = "EQ";
+            break;
+        case ARM_CC_NE:
+            OpCC = "NE";
+            break;
+        case ARM_CC_HS:
+            OpCC = "HS";
+            break;
+        case ARM_CC_LO:
+            OpCC = "LO";
+            break;
+        case ARM_CC_MI:
+            OpCC = "MI";
+            break;
+        case ARM_CC_PL:
+            OpCC = "PL";
+            break;
+        case ARM_CC_VS:
+            OpCC = "VS";
+            break;
+        case ARM_CC_VC:
+            OpCC = "VC";
+            break;
+        case ARM_CC_HI:
+            OpCC = "HI";
+            break;
+        case ARM_CC_LS:
+            OpCC = "LS";
+            break;
+        case ARM_CC_GE:
+            OpCC = "GE";
+            break;
+        case ARM_CC_LT:
+            OpCC = "LT";
+            break;
+        case ARM_CC_GT:
+            OpCC = "GT";
+            break;
+        case ARM_CC_LE:
+            OpCC = "LE";
+            break;
+        case ARM_CC_AL:
+            OpCC = "AL";
+            break;
+    }
+    assert(OpCC != "");
+    return OpCC;
+}
+
 bool Arm32Loader::collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInstruction)
 {
     const cs_arm& Details = CsInstruction.detail->arm;
@@ -222,58 +279,7 @@ bool Arm32Loader::collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInstr
     {
         // Capstone doesn't currently populate any operands for IT instructions.
         // Generate it based on the condition code.
-        std::string OpCC;
-        switch(Details.cc)
-        {
-            case ARM_CC_INVALID:
-                assert(!"Unexpected condition code for IT instruction");
-            case ARM_CC_EQ:
-                OpCC = "EQ";
-                break;
-            case ARM_CC_NE:
-                OpCC = "NE";
-                break;
-            case ARM_CC_HS:
-                OpCC = "HS";
-                break;
-            case ARM_CC_LO:
-                OpCC = "LO";
-                break;
-            case ARM_CC_MI:
-                OpCC = "MI";
-                break;
-            case ARM_CC_PL:
-                OpCC = "PL";
-                break;
-            case ARM_CC_VS:
-                OpCC = "VS";
-                break;
-            case ARM_CC_VC:
-                OpCC = "VC";
-                break;
-            case ARM_CC_HI:
-                OpCC = "HI";
-                break;
-            case ARM_CC_LS:
-                OpCC = "LS";
-                break;
-            case ARM_CC_GE:
-                OpCC = "GE";
-                break;
-            case ARM_CC_LT:
-                OpCC = "LT";
-                break;
-            case ARM_CC_GT:
-                OpCC = "GT";
-                break;
-            case ARM_CC_LE:
-                OpCC = "LE";
-                break;
-            case ARM_CC_AL:
-                OpCC = "AL";
-                break;
-        }
-
+        std::string OpCC = armCc2String(Details.cc);
         OpndFacts.Operands.push_back(relations::SpecialOp{"it", OpCC});
     }
     else if(Name != "NOP")
@@ -368,6 +374,12 @@ void Arm32Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction,
     uint64_t Size(CsInstruction.size);
 
     Facts.Instructions.add(relations::Instruction{Addr, Size, "", Name, OpCodes, 0, 0});
+
+    if(Details.cc != ARM_CC_AL)
+    {
+        Facts.Instructions.conditionCode(
+            relations::InstructionCondCode{Addr, armCc2String(Details.cc)});
+    }
     if(Details.writeback)
     {
         Facts.Instructions.writeback(relations::InstructionWriteback{Addr});
