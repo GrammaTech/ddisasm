@@ -126,21 +126,6 @@ long_operation(Operation):-
     instruction_get_operation(_,Operation),
     strlen(Operation) > 2.
 
-conditional_operation(Operation,CC):-
-    long_operation(Operation),
-    instruction_get_operation(_,Operation),
-    Size = strlen(Operation),
-    // The last two characters in the following instructions happen to be
-    // one of the condition codes, but they are not conditional.
-    Operation != "TEQ", Operation != "SMMLS",
-    Operation != "MLS", Operation != "HLT",
-    Operation != "HVC", Operation != "SVC",
-    Operation != "MOVS", Operation != "MLS",
-    Operation != "VMLS", Operation != "VNMLS",
-    Operation != "LSLS",
-    Suffix = substr(Operation,Size-2,2),
-    condition_code_map(Suffix,CC).
-
 // Conditional instructions implicitly use the CPSR, which capstone doesn't
 // seem to indicate reliably in cs_reg_access.
 uses_reg(EA,"CPSR"):-
@@ -260,7 +245,11 @@ conditional(EA,CC):-
     op_special(Op,"it",ArmCC),
     condition_code_map(ArmCC,CC).
 
-// Does not override - extends with `ldr pc, [...]`
+conditional(EA,CC):-
+    instruction_cond_code(EA,CC0),
+    condition_code_map(CC0,CC).
+
+// Does not override - extends with `ldr pc, [...]
 jump(EA):-
     load(EA,_,_,Reg,_,_,_,_),
     pc_reg(Reg),

@@ -741,7 +741,7 @@ arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimi
         Rd = PC,
         BaseReg = PC,
         (
-            arch.conditional_operation(Operation,_),
+            arch.conditional(EA_jump,_),
             // If it's conditional, it is likely that there is a fall-through
             // successor consisting of one instruction (typically a jump
             // instruction)
@@ -751,7 +751,7 @@ arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimi
             instruction(EA_fallthrough,InstrSize2,_,_,_,_,_,_,_,_),
             TableStart0 = EA_ldr + as(InstrSize + InstrSize2,address)
             ;
-            !arch.conditional_operation(Operation,_),
+            !arch.conditional(EA_ldr,_),
             TableStart0 = EA_ldr + as(InstrSize,address)
         ),
         EA_jump = EA_ldr
