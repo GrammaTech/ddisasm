@@ -1,5 +1,6 @@
 # 1.5.4 (Unreleased)
 * Update LIEF to version 0.12.1.
+* Ubuntu 18 and gcc7 are no longer supported
 
 # 1.5.3
 * Rename `elfSectionIndex` to `sectionIndex`, and `elfSectionProperties` to
