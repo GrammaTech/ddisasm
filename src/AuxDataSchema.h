@@ -99,6 +99,13 @@ namespace gtirb
             typedef std::vector<std::string> Type;
         };
 
+        /// \bried Auxiliary data for architecture information
+        struct ArchInfo
+        {
+            static constexpr const char* Name = "archInfo";
+            typedef std::vector<std::string> Type;
+        };
+
         /// \brief Auxiliary data that maps code blocks to integers
         /// representing strongly connected components in the
         /// intra-procedural CFG. (The CFG without taking into account

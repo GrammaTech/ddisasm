@@ -273,6 +273,41 @@ pc_relative_for_code(EA):-
 avoid_symbols("$t").
 avoid_symbols("$a").
 
+direct_call(EA,Dest):-
+    arch.call(EA,Index),
+    instruction_get_op(EA,Index,Op),
+    op_immediate(Op,Dest0),
+    !instruction_has_relocation(EA,_),
+    instruction_get_operation(EA,Operation),
+    (
+        contains("X",Operation),
+        (
+            (EA band 1) = 0, Dest = as(Dest0+1,address);
+            (EA band 1) = 1, Dest = as(Dest0,address)
+        )
+        ;
+        !contains("X",Operation),
+        Dest = as(Dest0,address)
+    ).
+
+direct_call(EA,Dest):-
+    arch.call(EA,_),
+    instruction_immediate_offset(EA,_,_,_),
+    instruction_has_relocation(EA,Rel),
+    relocation(Rel,_,_,_,SymbolIndex,_,_),
+    defined_symbol(Dest0,_,_,_,_,_,_,SymbolIndex,_),
+    instruction_get_operation(EA,Operation),
+    (
+        contains("X",Operation),
+        (
+            (EA band 1) = 0, Dest = as(Dest0+1,address);
+            (EA band 1) = 1, Dest = as(Dest0-1,address)
+        )
+        ;
+        !contains("X",Operation),
+        Dest = as(Dest0,address)
+    ).
+
 basic_target(Val+1):-
     defined_symbol(Val,_,_,_,_,_,_,_,"$t").
 basic_target(Val):-
@@ -687,18 +722,23 @@ Jump-table pattern
 or
   [2] adr r1, Label
       ldr pc, [r1, r2, lsl N]
+or
+  [3] adr r1, Label
+      ldr r0, [r1, r2, lsl N]
+      mov pc, r0
 */
 arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"absolute",1,0):-
     arch.load_word_operation(Operation),
-    instruction(EA_jump,InstrSize,_,Operation,IndOp,RegOp,0,0,_,_),
+    instruction(EA_ldr,InstrSize,_,Operation,IndOp,RegOp,0,0,_,_),
     // TODO: Currently, 'lsl N' is not propagated from the decoder.
-    op_regdirect_contains_reg(RegOp,PC),
+    op_regdirect_contains_reg(RegOp,Rd),
     arch.pc_reg(PC),
     op_indirect_mapped(IndOp,"NONE",BaseReg,_,_,0,NBits),
     Size = NBits / 8,
     arch.pointer_size(Size),
     (
         // [1] ldr pc, [pc, r2, lsl N]
+        Rd = PC,
         BaseReg = PC,
         (
             arch.conditional_operation(Operation,_),
@@ -706,20 +746,33 @@ arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimi
             // successor consisting of one instruction (typically a jump
             // instruction)
             // Check the fall-through instruction is a jump to make sure.
-            next(EA_jump,EA_fallthrough),
+            next(EA_ldr,EA_fallthrough),
             arch.jump(EA_fallthrough),
             instruction(EA_fallthrough,InstrSize2,_,_,_,_,_,_,_,_),
-            TableStart0 = EA_jump + as(InstrSize + InstrSize2,address)
+            TableStart0 = EA_ldr + as(InstrSize + InstrSize2,address)
             ;
             !arch.conditional_operation(Operation,_),
-            TableStart0 = EA_jump + as(InstrSize,address)
-        )
+            TableStart0 = EA_ldr + as(InstrSize,address)
+        ),
+        EA_jump = EA_ldr
         ;
         // [2] adr r1, Label   or  add r1, pc, offset
         //     ldr pc, [r1, r2, lsl N]
-        next(EA_adr,EA_jump),
+        Rd = PC,
+        straight_line_def_used(EA_adr,BaseReg,EA_ldr,_),
         arch.pc_relative_addr(EA_adr,BaseReg,Val),
-        TableStart0 = as(Val,address)
+        TableStart0 = as(Val,address),
+        EA_jump = EA_ldr
+        ;
+        // [3] adr r1, Label   or  add r1, pc, offset
+        //     ldr r0, [r1, r2, lsl N]
+        //     mov pc, r0
+        straight_line_def_used(EA_adr,BaseReg,EA_ldr,_),
+        arch.pc_relative_addr(EA_adr,BaseReg,Val),
+        TableStart0 = as(Val,address),
+        straight_line_def_used(EA_ldr,Rd,EA_mov,_),
+        arch.move_reg_reg(EA_mov,PC,Rd),
+        EA_jump = EA_mov
     ),
 
     // Tables are aligned.
@@ -940,7 +993,7 @@ Type="AddPC" : Reg gets the address of the literal pool (LitPoolAddr)
 litpool_ref(EA,Reg,LitPoolAddr,Size,Type,OpIndex):-
     possible_ea(EA),
     (
-        // LDR <Register> <IndirectOp>
+        // LDR/VLDR <Register> <IndirectOp>
         // e.g., ldr r3, [pc, Offset]
         arch.load_operation(Operation),
         instruction_get_operation(EA,Operation),
@@ -1241,6 +1294,15 @@ contains_plausible_instr_seq(Block,6,"ldr/add-pc",0):-
     code_in_block_candidate_refined(EA,Block),
     !arch.dangling_thumb_instr(Block),
     init_ldr_add_pc(EA,_,_,_,_,_).
+
+
+/**
+Block with movw/movt pair is likely real code.
+*/
+contains_plausible_instr_seq(Block,6,"movw/movt",0):-
+    movw_movt_pair(EA_movw,EA_movt,_),
+    code_in_block_candidate_refined(EA_movw,Block),
+    code_in_block_candidate_refined(EA_movt,Block).
 
 /**
 The return register is set up, and return:
@@ -1756,3 +1818,19 @@ impossible_jump_target(Val):-
     // Although this assumes that IT instruction is not a branch target, at
     // least this restricts false-positive cases.
     next(_,IT).
+
+/**
+Block containing instructions that only belong to Microcontroller arch.
+*/
+.decl arm_microcontroller(Block:address)
+.output arm_microcontroller
+
+arm_microcontroller(Block):-
+    refined_block(Block),
+    code_in_block_candidate_refined(EA,Block),
+    instruction_get_operation(EA,Operation),
+    (
+        // The following instructions are only decoded with CS_MODE_MCLASS.
+        substr(Operation,0,3) = "MRS";
+        substr(Operation,0,3) = "MSR"
+    ).

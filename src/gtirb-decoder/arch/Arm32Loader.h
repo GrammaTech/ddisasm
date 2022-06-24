@@ -43,10 +43,8 @@ public:
         cs_option(*CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
 
         Mclass = false;
-        ArchtypeFromElf = false;
-        CsModes[0] = (CS_MODE_ARM | CS_MODE_V8);
-        CsModes[1] = 0;
-        CsModeCount = 1;
+        ArchInfoExists = false;
+        CsModes.push_back(CS_MODE_ARM | CS_MODE_V8);
     }
 
 protected:
@@ -77,9 +75,8 @@ private:
     bool collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInstruction);
 
     bool Mclass;
-    bool ArchtypeFromElf;
-    size_t CsModes[2];
-    size_t CsModeCount;
+    bool ArchInfoExists;
+    std::vector<size_t> CsModes;
 };
 
 #endif // SRC_GTIRB_DECODER_ARCH_ARM32DECODER_H_

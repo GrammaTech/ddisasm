@@ -1416,6 +1416,30 @@ void renameInferredSymbols(gtirb::Module &Module)
     }
 }
 
+void buildArchInfo(gtirb::Module &Module, souffle::SouffleProgram *Prog)
+{
+    if(Module.getISA() == gtirb::ISA::ARM)
+    {
+        // ArchInfo may have been extracted from the .ARM.attributes section.
+        // Note that currently, we only check if the binary is Microcontroller
+        // or not.
+        auto *ArchInfo0 = Module.getAuxData<gtirb::schema::ArchInfo>();
+        if(!ArchInfo0)
+        {
+            // If the information is not found, see if there's any block
+            // containing Microcontroller-specific instructions, such as MSR
+            // and MRS.
+            auto Mblocks = Prog->getRelation("arm_microcontroller");
+            if(Mblocks && Mblocks->size() > 0)
+            {
+                std::vector<std::string> ArchInfo;
+                ArchInfo.emplace_back("Microcontroller");
+                Module.addAuxData<gtirb::schema::ArchInfo>(std::move(ArchInfo));
+            }
+        }
+    }
+}
+
 void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
                        souffle::SouffleProgram *Prog, bool SelfDiagnose)
 {
@@ -1437,6 +1461,7 @@ void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
     buildComments(Module, Prog, SelfDiagnose);
     updateEntryPoint(Module, Prog);
     buildSymbolVersions(Module);
+    buildArchInfo(Module, Prog);
     if(Module.getISA() == gtirb::ISA::ARM)
     {
         shiftThumbBlocks(Module);

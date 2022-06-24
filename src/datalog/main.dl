@@ -571,12 +571,14 @@ indirect_jump(EA):-
 .output direct_call
 
 direct_call(EA,as(Dest,address)):-
+    !binary_isa("ARM"),
     arch.call(EA,Index),
     instruction_get_op(EA,Index,Op),
     op_immediate(Op,Dest),
     !instruction_has_relocation(EA,_).
 
 direct_call(EA,Dest):-
+    !binary_isa("ARM"),
     arch.call(EA,_),
     instruction_immediate_offset(EA,_,_,_),
     instruction_has_relocation(EA,Rel),

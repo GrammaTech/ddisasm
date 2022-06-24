@@ -16,6 +16,7 @@ void registerTestAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolTabIdxInfo>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfSymbolVersions>();
     gtirb::AuxDataContainer::registerAuxDataType<BinaryType>();
+    gtirb::AuxDataContainer::registerAuxDataType<ArchInfo>();
     gtirb::AuxDataContainer::registerAuxDataType<Sccs>();
     gtirb::AuxDataContainer::registerAuxDataType<Relocations>();
     gtirb::AuxDataContainer::registerAuxDataType<DynamicEntries>();

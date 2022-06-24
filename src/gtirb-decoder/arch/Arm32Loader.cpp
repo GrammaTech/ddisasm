@@ -29,65 +29,54 @@
 void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
                        BinaryFacts& Facts)
 {
-    CsModes[0] = (CS_MODE_ARM | CS_MODE_V8);
-    CsModeCount = 1;
-
-    // NOTE: AArch32 (ARMv8-A) is backward compatible to ARMv7-A.
-    cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_ARM | CS_MODE_V8);
-    InstructionSize = 4;
-    load(ByteInterval, Facts, false);
-
     // For Thumb, check if the arch type is available.
     // For Cortex-M, add CS_MODE_MCLASS to the cs option.
-    Mclass = false;
-    const auto& Sections = Module.findSections(".ARM.attributes");
-    if(!Sections.empty())
+    auto* ArchInfo = Module.getAuxData<gtirb::schema::ArchInfo>();
+    if(ArchInfo)
     {
-        const auto& Section = *Sections.begin();
-        for(const auto& ByteInterval : Section.byte_intervals())
+        ArchInfoExists = !ArchInfo->empty();
+        if(std::find(ArchInfo->begin(), ArchInfo->end(), "Microcontroller") != ArchInfo->end())
         {
-            const char* RawChars = ByteInterval.rawBytes<const char>();
-            // Remove zeros
-            std::vector<char> Chars;
-            for(size_t I = 0; I < ByteInterval.getInitializedSize(); ++I)
-            {
-                if(RawChars[I] != 0)
-                    Chars.push_back(RawChars[I]);
-            }
-            std::string SectStr(Chars.begin(), Chars.end());
-            if(SectStr.find("Cortex-M7") != std::string::npos)
-            {
-                Mclass = true;
-                break;
-            }
+            Mclass = true;
         }
-        ArchtypeFromElf = true;
     }
 
-    if(ArchtypeFromElf)
+    // In case of MCLASS (Microcontroller), no need to decode in ARM state.
+    if(!Mclass)
+    {
+        CsModes.clear();
+        CsModes.push_back(CS_MODE_ARM | CS_MODE_V8);
+
+        // NOTE: AArch32 (ARMv8-A) is backward compatible to ARMv7-A.
+        cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_ARM | CS_MODE_V8);
+        InstructionSize = 4;
+        load(ByteInterval, Facts, false);
+    }
+
+    CsModes.clear();
+    if(ArchInfoExists)
     {
         if(Mclass)
         {
-            CsModes[0] = (CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
+            CsModes.push_back(CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
         }
         else
         {
-            CsModes[0] = (CS_MODE_THUMB | CS_MODE_V8);
+            CsModes.push_back(CS_MODE_THUMB | CS_MODE_V8);
         }
     }
     else
     {
         if(Mclass)
         {
-            CsModes[1] = (CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
-            CsModes[0] = (CS_MODE_THUMB | CS_MODE_V8);
+            CsModes.push_back(CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
+            CsModes.push_back(CS_MODE_THUMB | CS_MODE_V8);
         }
         else
         {
-            CsModes[0] = (CS_MODE_THUMB | CS_MODE_V8);
-            CsModes[1] = (CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
+            CsModes.push_back(CS_MODE_THUMB | CS_MODE_V8);
+            CsModes.push_back(CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
         }
-        CsModeCount = 2;
     }
     InstructionSize = 2;
     load(ByteInterval, Facts, true);
@@ -132,11 +121,12 @@ void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size
     // Currently, this is done only when the arch type info is not available.
     bool Success = false;
     OpndFactsT OpndFacts;
-    for(size_t I = 0; I < CsModeCount; I++)
+    for(auto It = CsModes.begin(); It != CsModes.end(); It++)
     {
+        size_t CsMode = *It;
         // Decode instruction with Capstone.
         cs_insn* Insn;
-        cs_option(*CsHandle, CS_OPT_MODE, CsModes[I]);
+        cs_option(*CsHandle, CS_OPT_MODE, CsMode);
         size_t TmpCount = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &Insn);
 
         // Exception-safe cleanup of instructions
@@ -153,7 +143,7 @@ void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size
         {
             InsnPtr = std::move(TmpInsnPtr);
             InsnCount = TmpCount;
-            if((CsModes[I] & CS_MODE_MCLASS) != 0)
+            if((CsMode & CS_MODE_MCLASS) != 0)
             {
                 Mclass = true;
             }
