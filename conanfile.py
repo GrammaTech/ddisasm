@@ -80,16 +80,12 @@ class DdisasmConan(Properties, ConanFile):
     build_requires = (
         "libehp/%s@rewriting+extra-packages/stable" % (libehp_version),
         "lief/%s@rewriting+extra-packages/stable" % (lief_version),
+        "souffle/%s@rewriting+extra-packages/stable" % (souffle_version),
     )
 
     def build_requirements(self):
         if self.settings.os == "Windows":
             self.build_requires("ninja/1.10.2")
-        else:
-            self.build_requires(
-                "souffle/%s@rewriting+extra-packages/stable"
-                % (self.souffle_version)
-            )
 
     boost_version = "1.69.0"
     gtirb_version = "dev"
@@ -128,16 +124,20 @@ class DdisasmConan(Properties, ConanFile):
             self.build_cmake()
 
     # Puts a dependency's bin path on PATH
-    def add_dep_bin_path(self, dep):
-        bin_dirs = self.deps_cpp_info[dep].bin_paths
+    def add_dep_bin_path(self, *deps):
+        bin_dirs = sum([self.deps_cpp_info[dep].bin_paths for dep in deps], [])
         new_path = [os.environ.get("PATH", "")] + bin_dirs
         os.environ["PATH"] = os.pathsep.join(new_path)
 
-    # Puts a dependency's lib path on LD_LIBRARY_PATH
+    # Puts a dependency's lib path on LD_LIBRARY_PATH (for Linux) or PATH (for
+    # Windows)
     def add_dep_lib_path(self, *deps):
         lib_dirs = sum([self.deps_cpp_info[dep].lib_paths for dep in deps], [])
-        new_ld_lib_path = [os.environ.get("LD_LIBRARY_PATH", "")] + lib_dirs
-        os.environ["LD_LIBRARY_PATH"] = os.pathsep.join(new_ld_lib_path)
+        env_var_name = (
+            "PATH" if self.settings.os == "Windows" else "LD_LIBRARY_PATH"
+        )
+        new_value = [os.environ.get(env_var_name, "")] + lib_dirs
+        os.environ[env_var_name] = os.pathsep.join(new_value)
 
     def build_cmake(self):
         defs = {"CMAKE_VERBOSE_MAKEFILE:BOOL": "ON", "ENABLE_CONAN:BOOL": "ON"}
@@ -148,7 +148,6 @@ class DdisasmConan(Properties, ConanFile):
                     k: os.environ.get(k)
                     for k in [
                         "CMAKE_PREFIX_PATH",
-                        "SOUFFLE_INCLUDE_DIR",
                         "PYTHON",
                     ]
                 }
@@ -157,10 +156,10 @@ class DdisasmConan(Properties, ConanFile):
             defs[
                 "CMAKE_CXX_FLAGS"
             ] = "/DBOOST_ALL_NO_LIB /DBOOST_UUID_FORCE_AUTO_LINK"
+            self.add_dep_lib_path("libffi")
         else:
             cmake = CMake(self, generator=None, parallel=True)
             defs.update({"GTIRB_PPRINTER_STRIP_DEBUG_SYMBOLS:BOOL": "ON"})
-            self.add_dep_bin_path("mcpp")
 
         revision = os.environ.get("CI_COMMIT_SHORT_SHA")
         if revision:
@@ -168,7 +167,7 @@ class DdisasmConan(Properties, ConanFile):
 
         if self.settings.build_type == "Release":
             cmake.build_type = "RelWithDebInfo"
-        self.add_dep_bin_path("gtirb-pprinter")
+        self.add_dep_bin_path("gtirb-pprinter", "mcpp")
         self.add_dep_lib_path("gtirb-pprinter", "gtirb", "capstone")
         bin_dir = os.path.join(os.getcwd(), "bin")
         os.environ["PATH"] = os.pathsep.join([os.environ["PATH"], bin_dir])
