@@ -175,7 +175,7 @@ adr_dest(EA,Reg,as(Dest,address)):-
 
 // mark adrp instructions as PC-relative
 // This also ensures they are marked as def_used_for_address
-pc_relative_addr(EA,Reg,as(Dest,number)):-
+pc_relative_addr(EA,Reg,Dest):-
     adr_dest(EA,Reg,Dest).
 
 }
