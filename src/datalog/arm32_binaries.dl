@@ -213,16 +213,7 @@ invalid(EA, "arm: invalid stm/ldm"):-
 
 // PC-relative LDR
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
-    litpool_ref(EA0,Reg,LitPoolAddr,Size,_),
-    instruction_get_operation(EA0,Operation),
-    (
-        contains("LDR",Operation), EA = EA0
-        ;
-        contains("ADR",Operation),
-        straight_line_def_used(EA0,Reg,EA,_),
-        instruction_get_operation(EA,Operation2),
-        contains("LDR",Operation2)
-    ),
+    litpool_ref(EA,Reg,LitPoolAddr,Size,_),
     track_register(Reg),
     !relocation(LitPoolAddr,_,_,_,_,_,_),
     data_word(LitPoolAddr,Size,Val).
@@ -944,7 +935,7 @@ arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimi
     arm_jump_table_candidate(EA_jump,TableStart,EA,Size,_,TableLimit,Type,Scale,Offset),
     !defined_symbol(EA+Size,_,_,_,_,_,_,_,"$t"),
     !defined_symbol(EA+Size,_,_,_,_,_,_,_,"$a"),
-    // This entry is neither either a jump target or it is a target
+    // This entry is either a jump target or it is a target
     // of a jump that is likely spurious.
     Addr = EA+Size+(EA_jump band 1),
     (
@@ -1344,7 +1335,7 @@ data_block_candidate(Block,Size):-
     defined_symbol(Block,Size,_,_,_,_,_,_,"$d").
 
 /**
-If litpool overlaps with a function symbol or $t or $a, give panelty.
+If litpool overlaps with a function symbol or $t or $a, give penalty.
 */
 block_points(LitPoolAddr,"data",0,-20,"arm: litpool: overlapped with code symbol"):-
     litpool_ref(_,_,LitPoolAddr,_,_),

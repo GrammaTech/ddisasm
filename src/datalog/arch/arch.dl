@@ -493,7 +493,7 @@ The register that holds condition flags.
 .decl condition_flags_reg(Reg:register)
 
 /**
-A pc-relative address 'Val' is loaded into 'Reg' at address 'EA'.
+A pc-relative address 'Target' is loaded into 'Reg' at address 'EA'.
 */
 .decl pc_relative_addr(EA:address,Reg:register,Target:address)
 
