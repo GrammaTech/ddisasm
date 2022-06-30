@@ -376,3 +376,16 @@ std::optional<const char*> barrierValue(const arm64_barrier_op Op)
     }
     return std::nullopt;
 }
+
+uint8_t Arm64Loader::operandCount(const cs_insn& CsInstruction)
+{
+    const cs_arm64& Details = CsInstruction.detail->arm64;
+    return Details.op_count;
+}
+
+uint8_t Arm64Loader::operandAccess(const cs_insn& CsInstruction, uint64_t Index)
+{
+    const cs_arm64& Details = CsInstruction.detail->arm64;
+    const cs_arm64_op& op = Details.operands[Index];
+    return op.access;
+}

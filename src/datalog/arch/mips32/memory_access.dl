@@ -31,8 +31,8 @@ memory_access("LOAD",EA,1,2,DstReg,BaseReg,IndexReg,Mult,Offset):-
     op_indirect_mapped(SrcOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
     op_regdirect_contains_reg(DestOp,DstReg).
 
-memory_access("STORE",EA,1,2,SrcReg,BaseReg,IndexReg,Mult,Offset):-
-    instruction(EA,_,_,Operation,SrcOp,DestOp,0,0,_,_),
+memory_access("STORE",EA,2,1,SrcReg,BaseReg,IndexReg,Mult,Offset):-
+    instruction(EA,_,_,Operation,DestOp,SrcOp,0,0,_,_),
     store_operation(Operation),
     op_indirect_mapped(DestOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
     op_regdirect_contains_reg(SrcOp,SrcReg).

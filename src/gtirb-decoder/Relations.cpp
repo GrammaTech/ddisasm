@@ -198,7 +198,13 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::RegisterAccess& Access)
     {
-        T << Access.Addr << Access.Mode << Access.Register;
+        T << Access.Addr << Access.Register << Access.Mode;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::InstructionOpAccess& Access)
+    {
+        T << Access.Addr << Access.Index << Access.Mode;
         return T;
     }
 

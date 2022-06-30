@@ -191,12 +191,21 @@ relocation_adjustment_total(EA,Adjustment):-
 .decl instruction_cond_code(EA:address,CondCode:symbol)
 .input instruction_cond_code
 
+.type access_mode <: symbol
+
 /**
-The register Register is accessed at EA with Mode.
-Mode may be "R" or "W"
+The register Register is accessed at EA with AccessMode.
+
+AccessMode may be "R" or "W"
 */
-.decl register_access(EA:address,Mode:symbol,Register:input_reg)
+.decl register_access(EA:address,Register:input_reg,AccessMode:access_mode)
 .input register_access
+
+/**
+The operand at index Index is accessed at EA with AccessMode
+*/
+.decl instruction_op_access(EA:address,Index:operand_index,AccessMode:access_mode)
+.input instruction_op_access
 
 /**
 Index: The index of the register in bitfield (starts with 0)
@@ -283,7 +292,7 @@ reg_map_nullable(Reg,as(Reg,reg_nullable)):-
         op_register_bitfield(_,_,Reg);
         op_indirect(_,_,Reg,_,_,_,_);
         op_indirect(_,_,_,Reg,_,_,_);
-        register_access(_,_,Reg);
+        register_access(_,Reg,_);
         op_shifted_w_reg(_,_,Reg,_)
     ),
     !arch.reg_map_rule(Reg,_).
@@ -372,76 +381,33 @@ instruction_get_op(EA,Index,Op):-
         Op1 = Op1, Op2 = Op2, Op3 = Op3 // avoid warning
     ).
 
-
-.decl instruction_get_dest_op(ea:address,index:operand_index,op:operand_code)
-
-instruction_get_dest_op(EA,1,Op):-
-    arch.store_operation(Operation),
-    instruction(EA,_,_,Operation,Op,_,_,_,_,_),
-    !arch.memory_access(_,EA,_,_,_,_,_,_,_).
-
-instruction_get_dest_op(EA,DstIndex,Op):-
-    arch.memory_access(_,EA,_,DstIndex,_,_,_,_,_),
-    instruction_get_op(EA,DstIndex,Op).
-
-instruction_get_dest_op(EA,Index,Op):-
-    instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
-    !arch.store_operation(Operation),
-    !arch.memory_access(_,EA,_,_,_,_,_,_,_),
-    !arch.read_only_operation(Operation),
-    (
-        Op4 = 0,
-        Op3 = 0,
-        Op2 != 0,
-        Op = Op2,
-        Index = 2
-        ;
-        Op4 = 0,
-        Op3 != 0,
-        Op = Op3,
-        Index = 3,
-        Op2 = Op2 // avoid warning
-        ;
-        Op4 != 0,
-        Op = Op4,
-        Index = 4,
-        Op2 = Op2, Op3 = Op3 // avoid warning
-    ).
-
-instruction_get_dest_op(EA,1,Op):-
-    instruction(EA,_,_,Operation,Op,0,0,0,_,_),
-    arch.one_op_write(Operation).
-
-.decl instruction_get_src_op(ea:address,Index:operand_index,op:operand_code)
-
-instruction_get_src_op(EA,2,Op):-
-    arch.store_operation(Operation),
-    instruction(EA,_,_,Operation,_,Op,0,0,_,_),
-    !arch.memory_access(_,EA,_,_,_,_,_,_,_).
-
-instruction_get_src_op(EA,SrcIndex,Op):-
-    arch.memory_access(_,EA,SrcIndex,_,_,_,_,_,_),
-    instruction_get_op(EA,SrcIndex,Op).
-
-//when the dest is used as a source as well
-instruction_get_src_op(EA,Index,Op2):-
-    instruction(EA,_,_,Operation,_,Op2,_,_,_,_),Op2 != 0,
-    Index = 2,
-    !arch.move(EA),
-    !arch.memory_access(_,EA,_,_,_,_,_,_,_),
-    !arch.op_does_not_read_dest_reg(Operation),
-    !arch.write_only_operation(Operation).
+/**
+Source operands
+*/
+.decl instruction_get_src_op(EA:address,Index:operand_index,Op:operand_code)
 
 instruction_get_src_op(EA,Index,Op):-
-    (
-        instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
-        instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
-        instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
-    ),
-    !arch.memory_access(_,EA,_,_,_,_,_,_,_),
-    !arch.store_operation(Operation),  // Currently not all archs fully implement arch.memory_access.
-    !arch.write_only_operation(Operation).
+    instruction_op_access(EA,Index,"R"),
+    !arch.op_access_override(EA,Index,"R",0),
+    instruction_get_op(EA,Index,Op).
 
+instruction_get_src_op(EA,Index,Op):-
+    arch.op_access_override(EA,Index,"R",1),
+    instruction_get_op(EA,Index,Op).
+
+/**
+Destination operands
+*/
+.decl instruction_get_dest_op(EA:address,Index:operand_index,Op:operand_code)
+
+instruction_get_dest_op(EA,Index,Op):-
+    instruction_op_access(EA,Index,"W"),
+    !arch.op_access_override(EA,Index,"W",0),
+    instruction_get_op(EA,Index,Op).
+
+instruction_get_dest_op(EA,Index,Op):-
+    arch.op_access_override(EA,Index,"W",1),
+    instruction_get_op(EA,Index,Op).
 
 /////////////////////////////////////////////////////////////
 // inference of basic facts

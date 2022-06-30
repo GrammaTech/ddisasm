@@ -138,3 +138,16 @@ std::optional<relations::Operand> X86Loader::build(const cs_x86_op& CsOp)
     }
     return std::nullopt;
 }
+
+uint8_t X86Loader::operandCount(const cs_insn& CsInstruction)
+{
+    const cs_x86& Details = CsInstruction.detail->x86;
+    return Details.op_count;
+}
+
+uint8_t X86Loader::operandAccess(const cs_insn& CsInstruction, uint64_t Index)
+{
+    const cs_x86& Details = CsInstruction.detail->x86;
+    const cs_x86_op& op = Details.operands[Index];
+    return op.access;
+}

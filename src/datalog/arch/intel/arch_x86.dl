@@ -70,9 +70,6 @@ is_nop(EA):-
 jump_operation(Operation):-
     loop_operation(Operation,_).
 
-op_does_not_read_dest_reg("LEA").
-op_does_not_read_dest_reg("POP").
-
 arithmetic_operation("ADD").
 arithmetic_operation("SUB").
 arithmetic_operation("INC").
@@ -96,16 +93,6 @@ logic_operation("AND").
 logic_operation("XOR").
 logic_operation("OR").
 logic_operation("TEST").
-
-read_only_operation("TEST").
-read_only_operation("CMP").
-
-write_only_operation("POP").
-
-one_op_write("INC").
-one_op_write("DEC").
-one_op_write("POP").
-one_op_write("NOT").
 
 .decl loop_operation(Operation:symbol,CC:condition_code)
 loop_operation("LOOP","NE").

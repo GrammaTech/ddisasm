@@ -463,3 +463,16 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_insn& CsInsn, cons
 
     return std::nullopt;
 }
+
+uint8_t Arm32Loader::operandCount(const cs_insn& CsInstruction)
+{
+    const cs_arm& Details = CsInstruction.detail->arm;
+    return Details.op_count;
+}
+
+uint8_t Arm32Loader::operandAccess(const cs_insn& CsInstruction, uint64_t Index)
+{
+    const cs_arm& Details = CsInstruction.detail->arm;
+    const cs_arm_op& op = Details.operands[Index];
+    return op.access;
+}

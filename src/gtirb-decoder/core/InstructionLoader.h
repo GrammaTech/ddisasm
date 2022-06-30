@@ -182,6 +182,16 @@ public:
         return InstructionCondCodeList;
     }
 
+    void opAccess(const relations::InstructionOpAccess& Access)
+    {
+        InstructionOpAccessList.push_back(Access);
+    }
+
+    const std::vector<relations::InstructionOpAccess>& opAccess() const
+    {
+        return InstructionOpAccessList;
+    }
+
     void registerAccess(const relations::RegisterAccess& access)
     {
         RegisterAccesses.push_back(access);
@@ -199,6 +209,7 @@ private:
     std::vector<relations::ShiftedWithRegOp> ShiftedWithRegOps;
     std::vector<relations::InstructionWriteback> InstructionWritebackList;
     std::vector<relations::InstructionCondCode> InstructionCondCodeList;
+    std::vector<relations::InstructionOpAccess> InstructionOpAccessList;
     std::vector<relations::RegisterAccess> RegisterAccesses;
 };
 
@@ -273,6 +284,9 @@ protected:
 
     // Disassemble bytes and build Instruction and Operand facts.
     virtual void decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) = 0;
+
+    virtual uint8_t operandCount(const cs_insn& CsInstruction) = 0;
+    virtual uint8_t operandAccess(const cs_insn& CsInstruction, uint64_t Index) = 0;
 
     // We default to decoding instructions at every byte offset.
     uint8_t InstructionSize = 1;

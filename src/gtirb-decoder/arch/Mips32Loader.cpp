@@ -125,3 +125,15 @@ std::optional<relations::Operand> Mips32Loader::build(const cs_mips_op& CsOp)
     }
     return std::nullopt;
 }
+
+uint8_t Mips32Loader::operandCount(const cs_insn& CsInstruction)
+{
+    const cs_mips& Details = CsInstruction.detail->mips;
+    return Details.op_count;
+}
+
+uint8_t Mips32Loader::operandAccess(const cs_insn& CsInstruction, uint64_t Index)
+{
+    // MIPS does not provide operand access information.
+    return CS_AC_INVALID;
+}

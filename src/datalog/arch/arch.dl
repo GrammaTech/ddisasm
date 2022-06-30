@@ -128,9 +128,6 @@ conditional(EA,CC):-
     instruction_get_operation(EA,Operation),
     arch.conditional_operation(Operation,CC).
 
-.decl op_does_not_read_dest_reg(Operation:symbol)
-.output op_does_not_read_dest_reg
-
 /**
 This can include any multiplication operations, including shift-left operation.
 */
@@ -154,18 +151,6 @@ This can include logical operations including bitwise operations.
 */
 .decl logic_operation(Operation:symbol)
 .output logic_operation
-
-.decl read_only_operation(Operation:symbol)
-.output read_only_operation
-
-/**
-This excludes a read of SP for adjusting stack-pointer: e.g., pop
-*/
-.decl write_only_operation(Operation:symbol)
-.output write_only_operation
-
-.decl one_op_write(Operation:symbol)
-.output one_op_write
 
 .decl call_operation(Operation:symbol)
 .output call_operation
@@ -393,39 +378,28 @@ extend_load(0,0,0):-
     false.
 
 /**
-An instruction at EA defines the register Reg
+Override the register access mode reported by Capstone
 
-This should include both registers that are an explicit destination operand of
-the instruction as well as registers that are implicitly defined. For example,
-consider this ARM32 load instruction with a post-index writeback:
-
-    ldr r0, [r1], #4
-
-This instruction defines both r0 (an explicit register operand) and r1 (which
-is part of an indirect operand, but that operand is not a destination).
+The Enable field indicates if the (EA,Mode,Register) tuple should be a logical
+addition to register_access (Enable = 1) or ignored if it is in register_access
+(Enable = 0).
 */
-.decl defines_reg(EA:address,Reg:register)
+.decl register_access_override(EA:address,Register:register,Access:access_mode,Enable:unsigned)
 
-defines_reg(EA,Reg):-
-    (
-        register_access(EA,"W",RegIn), reg_map(RegIn,Reg);
-        load(EA,_,_,Reg,_,_,_,_);
-        reg_arithmetic_operation(EA,Reg,_,_,_);
-        reg_reg_arithmetic_operation(EA,Reg,_,_,_,_);
-        instruction_get_dest_op(EA,_,Op), op_regdirect_contains_reg(Op,Reg)
-    ).
+register_access_override(0,"","",0):-
+    false.
 
 /**
-An instruction at EA uses the register Reg
+Override the operand access mode reported by Capstone.
 
-This may be an implicit use (i.e., the register may not appear in any operands).
+The Enable field indicates if the (EA,Mode,Register) tuple should be a logical
+addition to instruction_op_access (Enable = 1) or ignored if it is in
+instruction_op_access (Enable = 0).
 */
-.decl uses_reg(EA:address,Reg:register)
-.output uses_reg
+.decl op_access_override(EA:address,Index:operand_index,Access:access_mode,Enable:unsigned)
 
-uses_reg(EA,Reg):-
-    register_access(EA,"R",RegIn),
-    reg_map(RegIn,Reg).
+op_access_override(0,0,"",0):-
+    false.
 
 /**
 The location and register where the address of main is loaded.
