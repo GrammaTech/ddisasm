@@ -393,7 +393,7 @@ static-drivers:
     - unzip capstone.zip
     - dpkg -i libcapstone-dev.deb
     # build GTIRB
-    - git clone https://git.grammatech.com/rewriting/gtirb.git
+    - git clone https://git.grammatech.com/rewriting/gtirb.git -b $GTIRB_BRANCH
     - cd gtirb
     - mkdir build && cd build
     - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DGTIRB_BUILD_SHARED_LIBS=OFF
