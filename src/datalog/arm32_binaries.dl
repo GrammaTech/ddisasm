@@ -262,13 +262,12 @@ pc_relative_for_jump_table(EA_adr):-
 
 avoid_symbols("$t").
 avoid_symbols("$a").
+/**
+Avoid $d or $d.n where n is a number.
+*/
 avoid_symbols(Name):-
     defined_symbol(_,_,_,_,_,_,_,_,Name),
-    (
-        substr(Name,0,2) = "$d"
-        ;
-        substr(Name,0,1) = "?"
-    ).
+    substr(Name,0,2) = "$d".
 
 direct_call(EA,Dest):-
     arch.call(EA,Index),
