@@ -262,6 +262,13 @@ pc_relative_for_jump_table(EA_adr):-
 
 avoid_symbols("$t").
 avoid_symbols("$a").
+avoid_symbols(Name):-
+    defined_symbol(_,_,_,_,_,_,_,_,Name),
+    (
+        substr(Name,0,2) = "$d"
+        ;
+        substr(Name,0,1) = "?"
+    ).
 
 direct_call(EA,Dest):-
     arch.call(EA,Index),
@@ -304,6 +311,19 @@ basic_target(Val):-
     defined_symbol(Val,_,_,_,_,_,_,_,Name),
     Name != "$t",
     Name != "$d".
+
+/**
+In some cases, a function has no explicit caller or does not have a
+corresponding function symbol.
+In order to initially recognize it as a code block in such cases,
+treat "push {lr}", which is a typical instruction that starts a function,
+as a basic target.
+*/
+basic_target(EA):-
+    instruction_get_operation(EA,Operation),
+    contains("PUSH",Operation),
+    instruction_get_src_op(EA,_,RegBitFieldOp),
+    op_regdirect_contains_reg(RegBitFieldOp,"LR").
 
 labeled_data_candidate(EA):-
     symbol(EA,_,Type,_,_,_,_,_,Name),
@@ -990,8 +1010,7 @@ arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimi
 // Aggregate arm_jump_table_candidate in one data block
 data_block_candidate(TableStart,BlockSize):-
     arm_jump_table_candidate(EA_jump,TableStart,EA_last,Size,_,_,_,_,_),
-    Addr = EA_last+(EA_jump band 1),
-    !code_in_block_candidate(_,Addr),
+    !arm_jump_table_candidate(EA_jump,TableStart,EA_last+Size,Size,_,_,_,_,_),
     BlockSize = EA_last - TableStart + Size.
 
 block_points(TableStart,"data",0,15,"arm: jump table"):-
@@ -1617,6 +1636,22 @@ block_points(Block,"code",0,-2,"arm: contains unplausible instr"):-
     code_in_block_candidate_refined(EA,Block),
     (EA band 1) = 0,
     data_word(EA,4,0).
+
+/**
+A code block that must fall through to a function symbol, and overlaps with a
+literal pool is highly likely false.
+*/
+block_points(Block,"code",0,-9,"arm: possibly a litpool followed by a function symbol"):-
+    code_in_block_candidate_refined(EA,Block),
+    (
+        block_overlap(Block,"code",BlockLitPool,"data")
+        ;
+        block_overlap(BlockLitPool,"data",Block,"code")
+    ),
+    litpool_ref(_,_,BlockLitPool,_,_),
+    must_fallthrough(EA,BlockSucc),
+    Block != BlockSucc,
+    function_symbol(BlockSucc,_).
 
 data_block_candidate(Block,Pt_size),
 block_points(Block,"data",0,2,"arm: pointer to string in data"):-
