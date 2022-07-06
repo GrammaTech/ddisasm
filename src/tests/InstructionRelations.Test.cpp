@@ -261,6 +261,14 @@ TEST(ArchMemoryAccessRelation, Arm32)
         {"STORE", 0x1006C, 1, 2, "R1", "LR", "NONE", 0, 4},
         {"STORE", 0x1006C, 1, 2, "R2", "LR", "NONE", 0, 8},
         {"STORE", 0x1006C, 1, 2, "R3", "LR", "NONE", 0, 12},
+        {"STORE", 0x10070, 1, 0, "R2", "SP", "NONE", 0, 0},
+        {"STORE", 0x10070, 1, 0, "R3", "SP", "NONE", 0, 4},
+        {"STORE", 0x10070, 1, 0, "R4", "SP", "NONE", 0, 8},
+        {"STORE", 0x10070, 1, 0, "R5", "SP", "NONE", 0, 12},
+        {"LOAD", 0x10074, 0, 1, "R2", "SP", "NONE", 0, 0},
+        {"LOAD", 0x10074, 0, 1, "R3", "SP", "NONE", 0, 4},
+        {"LOAD", 0x10074, 0, 1, "R4", "SP", "NONE", 0, 8},
+        {"LOAD", 0x10074, 0, 1, "R5", "SP", "NONE", 0, 12},
     };
 
     std::vector<uint8_t> Bytes = {
@@ -292,7 +300,15 @@ TEST(ArchMemoryAccessRelation, Arm32)
         0x01, 0x00, 0x2D, 0xE9, // 0x10064: stm sp!, {r0}
         0x3C, 0x00, 0x90, 0xE8, // 0x10068: ldm r0, {r2, r3, r4, r5}
         0x0F, 0x00, 0x8E, 0xE8, // 0x1006C: stm lr, {r0, r1, r2, r3}
-        0x1E, 0xFF, 0x2F, 0xE1  // bx lr - satisfy code/data inference.
+        0x3C, 0x00, 0x2D, 0xE9, // 0x10070: push {r2, r3, r4, r5}
+        0x3C, 0x00, 0xBD, 0xE8, // 0x10074: pop {r2, r3, r4, r5}
+        // TODO:
+        // verify memory_access, reg_arithmetic_operation for:
+        // 0x10078: ldmia r0!, {r2, r3, r4, r5}
+        // 0x1007C: stmdb r0!, {r2, r3, r4, r5}
+        // 0x10080: ldmda r0!, {r2, r3, r4, r5}
+        // 0x10084: stmib r0!, {r2, r3, r4, r5}
+        0x1E, 0xFF, 0x2F, 0xE1 // bx lr - satisfy code/data inference.
     };
     GTIRB Gtirb = buildGtirb(gtirb::ISA::ARM, Bytes);
 
