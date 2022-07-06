@@ -659,7 +659,7 @@ internal-focal-stable:
   trigger:
     project: rewriting/utility/package-uploader
     strategy: depend
-  needs: [conan-windows-release]
+  needs: [conan-windows-release-package]
 
 windows-upload-public:
   <<: *windows-upload
