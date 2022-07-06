@@ -68,85 +68,6 @@ or loop) and considering the value with most steps.
 .decl best_value_reg(EA:address,Reg:register,EA_from:address,Multiplier:number,Offset:number,type:symbol)
 .output best_value_reg
 
-/**
-Generate distinct stack frames (identifying them by the location at which the
-stack or frame pointer register is defined.)
-*/
-.decl stack_frame(EA:address,BaseReg:register)
-
-stack_frame(EA,BaseReg):-
-    // Restricted with def_used_for_address because a stack frame is not very
-    // interesting if nothing is loaded/stored from it.
-    def_used_for_address(EA,BaseReg),
-    (
-        arch.frame_pointer(BaseReg);
-        arch.stack_pointer(BaseReg)
-    ).
-
-.decl reg_stored_in_stack(EA:address,Reg:register,Base:register,StackPos:number,StackFrameDefinedAt:address)
-.output reg_stored_in_stack
-
-reg_stored_in_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
-    stack_frame(StackFrameDefinedAt,Base),
-    def_used(StackFrameDefinedAt,Base,EA,_),
-    arch.store(EA,_,_,Reg,Base,"NONE",_,StackPos),
-    track_register(Reg).
-
-.decl reg_loaded_from_stack(EA:address,Reg:register,Base:register,StackPos:number,StackFrameDefinedAt:address)
-.output reg_loaded_from_stack
-
-reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt):-
-    stack_frame(StackFrameDefinedAt,Base),
-    def_used(StackFrameDefinedAt,Base,EA,_),
-    arch.load(EA,_,_,Reg,Base,"NONE",_,StackPos),
-    track_register(Reg).
-
-/**
-Track where a value is loaded from the stack and then used as an address.
-
-We'll only track stack store-load pairs if the stack variable is eventually
-used for an address.
-*/
-.decl stack_var_used_for_address(StackFrameDefinedAt:address,Base:register,StackPos:number)
-
-// Before the stack var is stored, it is used for an address.
-stack_var_used_for_address(StackFrameDefinedAt,Base,StackPos):-
-    reg_stored_in_stack(EAStore,StoreReg,Base,StackPos,StackFrameDefinedAt),
-    def_used(EADef,StoreReg,EAStore,_),
-    def_used_for_address(EADef,StoreReg).
-
-// After the stack variable is loaded from the stack, it is used for an address.
-stack_var_used_for_address(StackFrameDefinedAt,Base,StackPos):-
-    reg_loaded_from_stack(EA,Reg,Base,StackPos,StackFrameDefinedAt),
-    def_used_for_address(EA,Reg).
-
-/**
-A value is stored to a location on the stack and loaded from that location.
-
-This is flow insensitive but we make sure that the load and store refer to the
-same stack frame, identified by the address where the stack or frame pointer is
-defined.
-*/
-.decl stack_load_store_pair(StoreEA:address,LoadEA:address,StoreReg:register,LoadReg:register)
-
-stack_load_store_pair(EAStore,EALoad,StoreReg,LoadReg):-
-    stack_var_used_for_address(StackFrameDefinedAt,Base,StackPos),
-    reg_stored_in_stack(EAStore,StoreReg,Base,StackPos,StackFrameDefinedAt),
-    reg_loaded_from_stack(EALoad,LoadReg,Base,StackPos,StackFrameDefinedAt).
-
-/**
-A stack frame is defined in terms of a previous stack frame.
-*/
-.decl adjacent_stack_frame(PrevAt:address,NextAt:address,BaseReg:register,Offset:number)
-
-adjacent_stack_frame(PrevEA,NextEA,BaseReg,Offset):-
-    def_used(PrevEA,BaseReg,NextEA,_),
-    (
-        arch.frame_pointer(BaseReg);
-        arch.stack_pointer(BaseReg)
-    ),
-    arch.reg_arithmetic_operation(NextEA,BaseReg,BaseReg,1,Offset).
-
 // Register saved in previous frame and loaded from the next.
 // e.g.:
 //   sub ESP,12                   PrevStackFrame
@@ -155,19 +76,23 @@ adjacent_stack_frame(PrevEA,NextEA,BaseReg,Offset):-
 //   ...
 //   sub ESP,8                    NextStackFrame
 //   mov EBX,DWORD PTR [ESP+16]   Load
+/*
 stack_load_store_pair(EAStore,EALoad,StoreReg,LoadReg):-
     adjacent_stack_frame(PrevStackFrame,NextStackFrame,Base,Offset),
     reg_loaded_from_stack(EALoad,LoadReg,Base,StackPos,NextStackFrame),
     reg_stored_in_stack(EAStore,StoreReg,Base,StackPos+Offset,PrevStackFrame).
+*/
 
+// Connect values that are stored to and then loaded from the stack.
 value_reg_edge(EALoad,Reg2,EAPrev,Reg1,1,0):-
-    stack_load_store_pair(EAStore,EALoad,Reg1,Reg2),
-    def_used(EAPrev,Reg1,EAStore,_).
+    stack_def_use.def_used(EAStore,_,EALoad,_),
+    reg_def_use.def_used(EAPrev,Reg1,EAStore,_),
+    reg_def_use.def(EALoad,Reg2).
 
 //mov reg reg_origin
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
     def_used_for_address(EA_prev,Reg_origin),
-    def_used(EA_prev,Reg_origin,EA,_),
+    reg_def_use.def_used(EA_prev,Reg_origin,EA,_),
     arch.move_reg_reg(EA,Reg,Reg_origin),
     track_register(Reg),
     EA != EA_prev.
@@ -175,7 +100,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
 // basic arithmetic operations
 value_reg_edge(EA,Dst,EA_prev,Src,Mult,Immediate):-
     def_used_for_address(EA_prev,Src),
-    def_used(EA_prev,Src,EA,_),
+    reg_def_use.def_used(EA_prev,Src,EA,_),
     arch.reg_arithmetic_operation(EA,Dst,Src,Mult,Immediate),
     track_register(Dst).
 
@@ -226,7 +151,7 @@ value_reg(EA,Reg,EA,"NONE",0,0,1):-
 // register implicitly defined
 value_reg(EA,Reg,EA,"NONE",0,Immediate,1):-
     def_used_for_address(EA,Reg),
-    flow_def(EA,Reg,_,Immediate).
+    reg_def_use.flow_def(EA,Reg,_,Immediate).
 
 // pc-relative LEA
 value_reg(EA,Reg,EA,"NONE",0,Address,1):-
@@ -276,8 +201,8 @@ Constant folding for bitwise operations (reg op reg)
 value_reg(EA,DstReg,EA,"NONE",0,Val,Steps3):-
     step_limit(StepLimit),
     arch.reg_reg_bitwise_binary_op(EA,DstReg,SrcReg1,SrcReg2,Op),
-    def_used(EA_def1,SrcReg1,EA,_),
-    def_used(EA_def2,SrcReg2,EA,_),
+    reg_def_use.def_used(EA_def1,SrcReg1,EA,_),
+    reg_def_use.def_used(EA_def2,SrcReg2,EA,_),
     value_reg(EA_def1,SrcReg1,EA_def1,"NONE",0,SrcVal1,Steps1),
     Steps1 <= StepLimit-3,
     value_reg(EA_def2,SrcReg2,EA_def2,"NONE",0,SrcVal2,Steps2),
@@ -301,7 +226,7 @@ Constant folding for bitwise operations (reg op imm)
 value_reg(EA,DstReg,EA,"NONE",0,Val,Steps+1):-
     step_limit(StepLimit),
     arch.reg_imm_bitwise_binary_op(EA,DstReg,SrcReg,Imm,Op),
-    def_used(EA_def,SrcReg,EA,_),
+    reg_def_use.def_used(EA_def,SrcReg,EA,_),
     value_reg(EA_def,SrcReg,EA_def,"NONE",0,SrcVal,Steps),
     Steps <= StepLimit-1,
     (
@@ -358,9 +283,9 @@ reg_reg_arithmetic_operation_defs(EA,Reg_def,EA_def1,Reg1,EA_def2,Reg2,Mult,Offs
     def_used_for_address(EA,Reg_def),
     arch.reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
     Reg1 != Reg2,
-    def_used(EA_def1,Reg1,EA,_),
+    reg_def_use.def_used(EA_def1,Reg1,EA,_),
     EA != EA_def1,
-    def_used(EA_def2,Reg2,EA,_),
+    reg_def_use.def_used(EA_def2,Reg2,EA,_),
     EA != EA_def2.
 
 .plan 1: (3,1,2,4), 2: (4,1,2,3)
@@ -432,7 +357,7 @@ best_value_reg(EA,Reg,EA_from,Multiplier,Offset,"complete"):-
 .decl value_reg_max_mult(EA:address,Reg:register,MaxMult:number)
 
 value_reg_max_mult(EA,Reg,MaxMult):-
-    def(EA,Reg),
+    reg_def_use.def(EA,Reg),
     !value_reg(EA,Reg,_,"Unknown",_,_,_),
     MaxMult = max Multiplier:{value_reg(EA,Reg,_,_,Multiplier,_,_)}.
 
@@ -453,4 +378,4 @@ EARegDef: The address where Reg is defined as Value. Often EADef = EARegDef.
 
 const_value_reg_used(UsedEA,EADef,EARegDef,Reg,Value):-
     value_reg(EARegDef,Reg,EADef,"NONE",0,Value,_),
-    def_used(EARegDef,Reg,UsedEA,_).
+    reg_def_use.def_used(EARegDef,Reg,UsedEA,_).

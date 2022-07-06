@@ -1278,7 +1278,7 @@ void buildComments(gtirb::Module &Module, souffle::SouffleProgram *Prog, bool Se
         updateComment(Module, Comments, Ea, NewComment.str());
     }
 
-    for(auto &Output : *Prog->getRelation("def_used"))
+    for(auto &Output : *Prog->getRelation("reg_def_use.def_used"))
     {
         gtirb::Addr EaUse, EaDef;
         uint64_t Index;

@@ -37,28 +37,6 @@ code inference.
 The traversal of def_used_for_address is kept intra-procedural (not following call edges).
 */
 
-
-// register is defined in this location
-.decl def(EA:address,Reg:register)
-
-/**
-Instruction at address 'EA' uses register 'Reg' at operand index 'Index'.
-*/
-.decl used(EA:address,Reg:register,Index:operand_index)
-
-/**
-Instruction at address 'EA' uses register 'Reg' at operand index 'Index'.
-This is supposed to be used before code inference.
-*/
-.decl used_before_code_inference(EA:address,Reg:register,Index:operand_index)
-
-//The 'reg' is defined in 'ea_def' and used in 'ea_used' in the operand with index 'index_used'
-.decl def_used(ea_def:address,reg:register,ea_used:address,index_used:operand_index)
-.output def_used
-
-// a register is implicitly defined by being compared to a constant and then jumping
-// this definition only takes place in between the jump and the target that implies equality
-.decl flow_def(EA:address,Reg:register,EA_next:address,Value:number)
 //////////////////////////////////////////////////////////////////////////////
 //local underapproximation of control flow
 .decl local_next(ea:address,ea_next:address) inline
@@ -131,272 +109,418 @@ track_register(Reg):-
     arch.return_reg(Reg);
     arch.condition_flags_reg(Reg).
 
-// Define any registers defined by the instruction
-def(EA,Reg):-
-    (
-        register_access(EA,RegIn,"W"),
-        reg_map(RegIn,Reg),
-        !arch.register_access_override(EA,Reg,"W",0)
-        ;
-        arch.register_access_override(EA,Reg,"W",1)
-    ),
-    track_register(Reg).
 
-// A call "defines" the return value register
-def(EA,Reg):-
-    arch.call(EA,_),
-    !arch.delay_slot(EA,_),
-    arch.return_reg(Reg).
+.comp AbstractDefUse<T> {
 
-// A call "defines" the return value register (variant for delay slots)
-def(EA,Reg):-
-    arch.call(Call,_),
-    arch.delay_slot(Call,EA),
-    arch.return_reg(Reg).
+    /**
+    Obj is defined in this location
+    */
+    .decl def(EA:address,Obj:T)
 
-def(EA,Reg):-
-    direct_call(EA,EA_pc_thunk),
-    get_pc_thunk(EA_pc_thunk,Reg),
-    track_register(Reg).
+    /**
+    Instruction at address 'EA' uses Obj at operand index 'Index'.
+    */
+    .decl used(EA:address,Obj:T,Index:operand_index)
 
-flow_def(EA_jump,Reg,EA_target,Immediate):-
-    code(EA),
-    cmp_immediate_to_reg(EA,Reg,_,Immediate),
-    track_register(Reg),
-    next(EA,EA_jump),
-    direct_jump(EA_jump,EA_target),
-    arch.jump(EA_jump),
-    arch.conditional(EA_jump,"E").
+    /**
+    A <T> is implicitly defined by being compared to a constant and then jumping
+    this definition only takes place in between the jump and the target that implies equality
+    */
+    .decl flow_def(EA:address,Obj:T,EA_next:address,Value:number)
 
-flow_def(EA_jump,Reg,EA_target,Immediate):-
-    code(EA),
-    cmp_immediate_to_reg(EA,Reg,_,Immediate),
-    track_register(Reg),
-    next(EA,EA_jump),
-    direct_jump(EA_jump,_),
-    next(EA_jump,EA_target),
-    arch.jump(EA_jump),
-    arch.conditional(EA_jump,"NE").
+    /**
+    A <T> is unconditionally defined at EA.
+    */
+    .decl must_def(EA:address,Obj:T) inline
 
-.decl must_def(EA:address,Reg:register) inline
+    must_def(EA,Obj):-
+        def(EA,Obj),
+        !arch.conditional(EA,_).
 
-must_def(EA,Reg):-
-    def(EA,Reg),
-    !arch.conditional(EA,_).
+    /**
+    An Obj <T> can propagate through the instruction at EA.
 
-.decl defined_in_block(EA:address,Reg:register)
+    Intended to be extended by child components to modify behavior of AbstractDefUse.
+    */
+    .decl ea_propagates_def(EA:address,Obj:T) inline
 
-defined_in_block(Block,Reg):-
-    def(EA,Reg),
-    code_in_block(EA,Block).
+    /**
+    An Obj <T> can propagate through Block.
+    */
+    .decl block_propagates_def(Block:address,Obj:T) inline
+
+    // block_propagates_def *could* be derived from ea_propagates_def, but
+    // child components aware of the implementation of ea_propagates_def can do
+    // it more efficiently.
+
+    /*
+    block_propagates_def(Block,Obj):-
+        code_in_block(EA,Block),
+        ea_propagates_def(EA,Obj).
+    */
+
+    .decl defined_in_block(EA:address,Obj:T)
+
+    defined_in_block(Block,Obj):-
+        def(EA,Obj),
+        code_in_block(EA,Block).
+
+    .decl used_in_block(Block:address,EA_used:address,Obj:T,Index:operand_index)
+
+    used_in_block(Block,EA_used,Obj,Index):-
+        used(EA_used,Obj,Index),
+        code_in_block(EA_used,Block).
+
+    /**
+    The last address prior to EA where Reg was defined within the block
+    */
+    .decl block_last_def(EA:address,EA_def:address,Obj:T) overridable
+
+    block_last_def(EA_next,EA,Obj):-
+        def(EA,Obj),
+        local_next(EA,EA_next).
+
+    block_last_def(EA_next,EA_def,Obj):-
+        block_last_def(EA,EA_def,Obj),
+        !must_def(EA,Obj),
+        ea_propagates_def(EA,Obj),
+        local_next(EA,EA_next).
+
+    /**
+    The last definition(s) of <T> in a given block.
+
+    Multiple are possible in conditional cases.
+    */
+    .decl last_def_in_block(Block:address,EA_def:address,Obj:T)
+
+    last_def_in_block(Block,EA_def,Obj):-
+        block_last_instruction(Block,BlockEnd),
+        (
+            def(BlockEnd,Obj),
+            EA_def=BlockEnd
+            ;
+            !must_def(BlockEnd,Obj),
+            block_last_def(BlockEnd,EA_def,Obj)
+        ).
+
+    /**
+    A <T> is referenced in a block
+    */
+    .decl ref_in_block(Block:address,Obj:T)
+
+    ref_in_block(Block,Obj):-
+        defined_in_block(Block,Obj);
+        used_in_block(Block,_,Obj,_).
+
+    /**
+    A <T> is used in a block, but a live definition for that use is not found
+    within the block.
+
+    We consider a <T> to be live only if it is live for interblock edges.
+    Intrablock cases are handled directly by the def_used relation.
+
+    To find the definition for this use, live_reg_at_block_end will have to
+    propagate backward from the block.
+    */
+    .decl live_reg_used(Block:address,Obj:T,EA_used:address) overridable
+
+    // Used in this block
+    live_reg_used(Block,Obj,EA_used):-
+        used_in_block(Block,EA_used,Obj,_),
+        !block_last_def(EA_used,_,Obj).
+
+    /**
+    The <T> is live at the end of Block, and will be used in BlockUsed.
+
+    Propagates backward from usages to search for defs.
+
+    This is faster than propagating forward from defs, since a used value should
+    always be defined in well-behaved code. In addition, we know to stop
+    propagating once the definition is found.
+
+    The alternative strategy of propagating forward from defs means that it must
+    propagate indefinitely, in case it is used multiple times. Further, side-effect
+    definitions are often unused.
+
+    To further optimize this strategy, if another use is encountered, we don't
+    propagate any further. Later, the relation live_reg_at_prior_used() propagates
+    defs forward through adjacent uses.
+    */
+    .decl live_reg_at_block_end(Block:address,BlockUsed:address,Obj:T) overridable
+    .output live_reg_at_block_end
+
+    // Base case
+    live_reg_at_block_end(PrevBlock,Block,Obj):-
+        block_next(PrevBlock,PrevBlockEnd,Block),
+        live_reg_used(Block,Obj,_),
+        !flow_def(PrevBlockEnd,Obj,Block,_).
+
+    // Recursive case
+    live_reg_at_block_end(PrevBlock,BlockUsed,Obj):-
+        live_reg_at_block_end(Block,BlockUsed,Obj),
+        !ref_in_block(Block,Obj), // !flow_def is implied by !ref_in_block
+        block_propagates_def(Block,Obj),
+        block_next(PrevBlock,_,Block).
+
+    /**
+    The <T> is live at EA_used and at the beginning of BlockUsed, and
+    holds the same value from the same definition. The <T> is used in
+    BlockUsed.
+
+    Forms an edge between two used() that depend on the same def.
+    */
+    .decl live_reg_at_prior_used(EA_used:address,BlockUsed:address,Obj:T)
+
+    live_reg_at_prior_used(EA_used,BlockUsed,Obj):-
+        live_reg_at_block_end(Block,BlockUsed,Obj),
+        used_in_block(Block,EA_used,Obj,_),
+        !defined_in_block(Block,Obj).
+
+
+    /**
+    A <T> is defined in 'EA_def' and used in 'EA_used' in the operand with index 'Index_used'
+    */
+    .decl def_used(EA_def:address,Obj:T,EA_used:address,Index_used:operand_index) overridable
+    .output def_used
+
+    // Intra-block def-use
+    def_used(EA_def,Obj,EA_used,Index):-
+        used(EA_used,Obj,Index),
+        block_last_def(EA_used,EA_def,Obj).
+
+    // Inter-blocks def-use (explicit def)
+    def_used(EA_def,Obj,EA_used,Index):-
+        live_reg_at_block_end(Block,BlockUsed,Obj),
+        last_def_in_block(Block,EA_def,Obj),
+        live_reg_used(BlockUsed,Obj,EA_used),
+        used(EA_used,Obj,Index).
+
+    // Inter-blocks def-use (flow def)
+    def_used(EA_def,Obj,EA_used,Index):-
+        live_reg_at_block_end(Block,BlockUsed,Obj),
+        !defined_in_block(Block,Obj),
+        block_propagates_def(Block,Obj),
+        flow_def(EA_def,Obj,Block,_),
+        live_reg_used(BlockUsed,Obj,EA_used),
+        used(EA_used,Obj,Index).
+
+    // Forward propagate def_used to downstream used
+    def_used(EA_def,Obj,Next_EA_used,NextIndex):-
+        live_reg_at_prior_used(EA_used,NextUsedBlock,Obj),
+        def_used(EA_def,Obj,EA_used,_),
+        live_reg_used(NextUsedBlock,Obj,Next_EA_used),
+        used(Next_EA_used,Obj,NextIndex),
+        !block_last_def(Next_EA_used,_,Obj).
+}
+
+.comp RegisterDefUse : AbstractDefUse<register> {
+
+    // Define any registers defined by the instruction
+    def(EA,Reg):-
+        (
+            register_access(EA,RegIn,"W"),
+            reg_map(RegIn,Reg),
+            !arch.register_access_override(EA,Reg,"W",0)
+            ;
+            arch.register_access_override(EA,Reg,"W",1)
+        ),
+        track_register(Reg).
+
+    // A call "defines" the return value register
+    def(EA,Reg):-
+        arch.call(EA,_),
+        !arch.delay_slot(EA,_),
+        arch.return_reg(Reg).
+
+    // A call "defines" the return value register (variant for delay slots)
+    def(EA,Reg):-
+        arch.call(Call,_),
+        arch.delay_slot(Call,EA),
+        arch.return_reg(Reg).
+
+    def(EA,Reg):-
+        direct_call(EA,EA_pc_thunk),
+        get_pc_thunk(EA_pc_thunk,Reg),
+        track_register(Reg).
+
+    flow_def(EA_jump,Reg,EA_target,Immediate):-
+        code(EA),
+        cmp_immediate_to_reg(EA,Reg,_,Immediate),
+        track_register(Reg),
+        next(EA,EA_jump),
+        direct_jump(EA_jump,EA_target),
+        arch.jump(EA_jump),
+        arch.conditional(EA_jump,"E").
+
+    flow_def(EA_jump,Reg,EA_target,Immediate):-
+        code(EA),
+        cmp_immediate_to_reg(EA,Reg,_,Immediate),
+        track_register(Reg),
+        next(EA,EA_jump),
+        direct_jump(EA_jump,_),
+        next(EA_jump,EA_target),
+        arch.jump(EA_jump),
+        arch.conditional(EA_jump,"NE").
+
+    // Register defs are never invalidated.
+    ea_propagates_def(EA,Reg):-
+        UNUSED(EA),
+        UNUSED(Reg).
+
+    block_propagates_def(Block,Reg):-
+        UNUSED(Block),
+        UNUSED(Reg).
+
+    /**
+    The register is explicitly used in an operand.
+    */
+    .decl used_explicit(EA:address,Reg:register,Index:operand_index)
+
+    used_explicit(EA,Reg,Index):-
+        instruction_get_src_op(EA,Index,Op),
+        op_regdirect_contains_reg(Op,Reg),
+        track_register(Reg),
+        !is_xor_reset(EA).
+
+    used_explicit(EA,Reg,Index):-
+        instruction_get_op(EA,Index,Op),
+        op_indirect_contains_reg(Op,Reg),
+        track_register(Reg).
+
+    used(EA,Reg,Index):-
+        used_explicit(EA,Reg,Index).
+
+    // Implicitly-used registers use an operand index of zero.
+    used(EA,Reg,0):-
+        (
+            register_access(EA,RegIn,"R"),
+            reg_map(RegIn,Reg),
+            !arch.register_access_override(EA,Reg,"R",0)
+            ;
+            arch.register_access_override(EA,Reg,"R",1)
+        ),
+        track_register(Reg),
+        !used_explicit(EA,Reg,_),
+        !is_xor_reset(EA).
+
+    /**
+    A value returned from a function is used.
+    */
+    .decl return_val_used(EA_call:address,Callee:address,Reg:register,EA_used:address,Index_used:operand_index)
+
+    return_val_used(EA_call,Callee,Reg,EA_used,Index_used):-
+        arch.return_reg(Reg),
+        def_used(EA_call,Reg,EA_used,Index_used),
+        direct_call(EA_call,Callee).
+
+    /**
+    A value is returned from a called procedure Callee, from the last Block with
+    the last instruction at BlockEnd.
+    */
+    .decl return_block_end(Callee:address,CalleeEnd:address,Block:address,BlockEnd:address)
+
+    return_block_end(Callee,CalleeEnd,Block,BlockEnd):-
+        direct_call(_,Callee),
+        fde_addresses(Callee,CalleeEnd),
+        arch.return(CalleeReturn),
+        Callee <= CalleeReturn,
+        CalleeReturn < CalleeEnd,
+        code_in_block(CalleeReturn,Block),
+        block_last_instruction(Block,BlockEnd).
+
+    // Extend for values returned in this block
+    live_reg_used(RetBlock,Reg,EA_used):-
+        return_block_end(Callee,_,RetBlock,RetBlockEnd),
+        !block_last_def(RetBlockEnd,_,Reg),
+        return_val_used(_,Callee,Reg,EA_used,_).
+
+    // Inter-procedural def-use
+    def_used(EA_def,Reg,EA_used,Index):-
+        return_val_used(_,Callee,Reg,EA_used,Index),
+        return_block_end(Callee,_,_,BlockEnd),
+        block_last_def(BlockEnd,EA_def,Reg).
+
+}
+
+.init reg_def_use = RegisterDefUse
+
+.type stack_var = [BaseReg:register,StackPos:number]
 
 /**
-The register is explicitly used in an operand.
+Generate distinct stack frames (identifying them by the location at which the
+stack or frame pointer register is defined.)
 */
-.decl used_explicit(EA:address,Reg:register,Index:operand_index)
+.decl stack_frame(EA:address,BaseReg:register)
 
-used_explicit(EA,Reg,Index):-
-    instruction_get_src_op(EA,Index,Op),
-    op_regdirect_contains_reg(Op,Reg),
-    track_register(Reg),
-    !is_xor_reset(EA).
-
-used_explicit(EA,Reg,Index):-
-    instruction_get_op(EA,Index,Op),
-    op_indirect_contains_reg(Op,Reg),
-    track_register(Reg).
-
-used_before_code_inference(EA,Reg,Index):-
-    used_explicit(EA,Reg,Index).
-
-// Implicitly-used registers use an operand index of zero.
-used_before_code_inference(EA,Reg,0):-
+stack_frame(EA,BaseReg):-
+    // Restricted with def_used_for_address because a stack frame is not very
+    // interesting if nothing is loaded/stored from it.
+    def_used_for_address(EA,BaseReg),
     (
-        register_access(EA,RegIn,"R"),
-        reg_map(RegIn,Reg),
-        !arch.register_access_override(EA,Reg,"R",0)
-        ;
-        arch.register_access_override(EA,Reg,"R",1)
-    ),
-    track_register(Reg),
-    !used_explicit(EA,Reg,_),
-    !is_xor_reset(EA).
-
-.decl used_in_block(Block:address,EA_used:address,Reg:register,Index:operand_index)
-
-used_in_block(Block,EA_used,Reg,Index):-
-    used(EA_used,Reg,Index),
-    code_in_block(EA_used,Block).
-
-used(EA,Reg,Index):-
-    used_before_code_inference(EA,Reg,Index).
-
-/**
-The last address prior to EA where Reg was defined within the block
-*/
-.decl block_last_def(EA:address,EA_def:address,Reg:register)
-
-block_last_def(EA_next,EA,Reg):-
-    def(EA,Reg),
-    local_next(EA,EA_next).
-
-block_last_def(EA_next,EA_def,Reg):-
-    block_last_def(EA,EA_def,Reg),
-    !must_def(EA,Reg),
-    local_next(EA,EA_next).
-
-/**
-The last definition(s) of Reg in a given block.
-
-Multiple are possible in conditional cases.
-*/
-.decl last_def_in_block(Block:address,EA_def:address,Reg:register)
-
-last_def_in_block(Block,EA_def,Reg):-
-    block_last_instruction(Block,BlockEnd),
-    (
-        def(BlockEnd,Reg),
-        EA_def=BlockEnd
-        ;
-        !must_def(BlockEnd,Reg),
-        block_last_def(BlockEnd,EA_def,Reg)
+        arch.frame_pointer(BaseReg);
+        arch.stack_pointer(BaseReg)
     ).
 
 /**
-A register is referenced in a block
+A stack frame is defined in terms of a previous stack frame.
 */
-.decl reg_in_block(Block:address,Reg:register)
+/*
+.decl adjacent_stack_frame(PrevAt:address,NextAt:address,BaseReg:register,Offset:number)
 
-reg_in_block(Block,Reg):-
-    defined_in_block(Block,Reg);
-    used_in_block(Block,_,Reg,_).
-
-/**
-A value returned from a function is used.
+adjacent_stack_frame(PrevEA,NextEA,BaseReg,Offset):-
+    reg_def_use.def_used(PrevEA,BaseReg,NextEA,_),
+    (
+        arch.frame_pointer(BaseReg);
+        arch.stack_pointer(BaseReg)
+    ),
+    arch.reg_arithmetic_operation(NextEA,BaseReg,BaseReg,1,Offset).
 */
-.decl return_val_used(EA_call:address,Callee:address,Reg:register,EA_used:address,Index_used:operand_index)
 
-return_val_used(EA_call,Callee,Reg,EA_used,Index_used):-
-    arch.return_reg(Reg),
-    def_used(EA_call,Reg,EA_used,Index_used),
-    direct_call(EA_call,Callee).
+.comp StackVarDefUse : AbstractDefUse<stack_var> {
 
-/**
-A value is returned from a called procedure Callee, from the last Block with
-the last instruction at BlockEnd.
-*/
-.decl return_block_end(Callee:address,CalleeEnd:address,Block:address,BlockEnd:address)
+    // When a value is stored to the stack, it defines a stack value.
+    def(EA,[BaseReg,StackPos]):-
+        (
+            arch.frame_pointer(BaseReg);
+            arch.stack_pointer(BaseReg)
+        ),
+        arch.store(EA,_,_,_,BaseReg,"NONE",_,StackPos).
 
-return_block_end(Callee,CalleeEnd,Block,BlockEnd):-
-    direct_call(_,Callee),
-    fde_addresses(Callee,CalleeEnd),
-    arch.return(CalleeReturn),
-    Callee <= CalleeReturn,
-    CalleeReturn < CalleeEnd,
-    code_in_block(CalleeReturn,Block),
-    block_last_instruction(Block,BlockEnd).
+    // TODO: flow_def (x86 can have these!)
+    flow_def(0,nil,0,0):-
+        false.
 
-/**
-A register is used in a block, but a live definition for that use is not found
-within the block.
+    // When a value is loaded from the stack, it is a use of a stack value.
+    used(EA,[BaseReg,StackPos],SrcOp):-
+        (
+            arch.frame_pointer(BaseReg);
+            arch.stack_pointer(BaseReg)
+        ),
+        arch.load(EA,SrcOp,_,_,BaseReg,"NONE",_,StackPos).
 
-We consider a register to be live only if it is live for interblock edges.
-Intrablock cases are handled directly by the def_used relation.
+    // TODO: ensure we don't propagate through stack frame changes (at least, not without adjustment)
 
-To find the definition for this use, live_reg_at_block_end will have to
-propagate backward from the block.
-*/
-.decl live_reg_used(Block:address,Reg:register,EA_used:address)
+    ea_propagates_def(EA,[BaseReg,StackPos]):-
+        !reg_def_use.def(EA,BaseReg),
+        UNUSED(StackPos).
 
-// Used in this block
-live_reg_used(Block,Reg,EA_used):-
-    used_in_block(Block,EA_used,Reg,_),
-    !block_last_def(EA_used,_,Reg).
+    block_propagates_def(Block,[BaseReg,StackPos]):-
+        !reg_def_use.defined_in_block(Block,BaseReg),
+        UNUSED(StackPos).
 
-// Returned in this block
-live_reg_used(RetBlock,Reg,EA_used):-
-    return_block_end(Callee,_,RetBlock,RetBlockEnd),
-    !block_last_def(RetBlockEnd,_,Reg),
-    return_val_used(_,Callee,Reg,EA_used,_).
+    .override live_reg_used
 
-/**
-The register Reg is live at the end of Block, and will be used in BlockUsed.
+    // TODO: can we eliminate this override?
 
-Propagates backward from usages to search for defs.
+    live_reg_used(Block,[BaseReg,StackPos],EA_used):-
+        used_in_block(Block,EA_used,[BaseReg,StackPos],_),
+        !block_last_def(EA_used,_,[BaseReg,StackPos]),
+        !reg_def_use.block_last_def(EA_used,_,BaseReg).
 
-This is faster than propagating forward from defs, since a used value should
-always be defined in well-behaved code. In addition, we know to stop
-propagating once the definition is found.
+    // TODO: adjust and propagate through adjacent stack frames?
+}
 
-The alternative strategy of propagating forward from defs means that it must
-propagate indefinitely, in case it is used multiple times. Further, side-effect
-definitions are often unused.
-
-To further optimize this strategy, if another use is encountered, we don't
-propagate any further. Later, the relation live_reg_at_prior_used() propagates
-defs forward through adjacent uses.
-*/
-.decl live_reg_at_block_end(Block:address,BlockUsed:address,Reg:register)
-
-// Base case
-live_reg_at_block_end(PrevBlock,Block,Reg):-
-    block_next(PrevBlock,PrevBlockEnd,Block),
-    live_reg_used(Block,Reg,_),
-    !flow_def(PrevBlockEnd,Reg,Block,_).
-
-// Recursive case
-live_reg_at_block_end(PrevBlock,BlockUsed,Reg):-
-    live_reg_at_block_end(Block,BlockUsed,Reg),
-    !reg_in_block(Block,Reg), // !flow_def is implied by !reg_in_block
-    block_next(PrevBlock,_,Block).
-
-/**
-The register Reg is live at EA_used and at the beginning of BlockUsed, and
-holds the same value from the same definition. The register Reg is used in
-BlockUsed.
-
-Forms an edge between two used() that depend on the same def.
-*/
-.decl live_reg_at_prior_used(EA_used:address,BlockUsed:address,Reg:register)
-
-live_reg_at_prior_used(EA_used,BlockUsed,Reg):-
-    live_reg_at_block_end(Block,BlockUsed,Reg),
-    used_in_block(Block,EA_used,Reg,_),
-    !defined_in_block(Block,Reg).
-
-// Intra-block def-use
-def_used(EA_def,Reg,EA_used,Index):-
-    used(EA_used,Reg,Index),
-    block_last_def(EA_used,EA_def,Reg).
-
-// Inter-procedural def-use
-def_used(EA_def,Reg,EA_used,Index):-
-    return_val_used(_,Callee,Reg,EA_used,Index),
-    return_block_end(Callee,_,_,BlockEnd),
-    block_last_def(BlockEnd,EA_def,Reg).
-
-// Inter-blocks def-use (explicit def)
-def_used(EA_def,Reg,EA_used,Index):-
-    live_reg_at_block_end(Block,BlockUsed,Reg),
-    last_def_in_block(Block,EA_def,Reg),
-    live_reg_used(BlockUsed,Reg,EA_used),
-    used(EA_used,Reg,Index).
-
-// Inter-blocks def-use (flow def)
-def_used(EA_def,Reg,EA_used,Index):-
-    live_reg_at_block_end(Block,BlockUsed,Reg),
-    !defined_in_block(Block,Reg),
-    flow_def(EA_def,Reg,Block,_),
-    live_reg_used(BlockUsed,Reg,EA_used),
-    used(EA_used,Reg,Index).
-
-// Forward propagate def_used to downstream used
-def_used(EA_def,Reg,Next_EA_used,NextIndex):-
-    live_reg_at_prior_used(EA_used,NextUsedBlock,Reg),
-    def_used(EA_def,Reg,EA_used,_),
-    live_reg_used(NextUsedBlock,Reg,Next_EA_used),
-    used(Next_EA_used,Reg,NextIndex),
-    !block_last_def(Next_EA_used,_,Reg).
+.init stack_def_use = StackVarDefUse
 
 /**
  * The register 'Reg' used as an address at address 'EA'.
@@ -405,17 +529,17 @@ def_used(EA_def,Reg,Next_EA_used,NextIndex):-
 .output used_for_address
 
 used_for_address(EA,Reg):-
-    used(EA,Reg,Index),
+    reg_def_use.used(EA,Reg,Index),
     instruction_get_op(EA,Index,Op),
     op_indirect_contains_reg(Op,Reg).
 
 used_for_address(EA,Reg):-
     reg_jump(EA,Reg),
-    used(EA,Reg,_).
+    reg_def_use.used(EA,Reg,_).
 
 used_for_address(EA,Reg):-
     reg_call(EA,Reg),
-    used(EA,Reg,_).
+    reg_def_use.used(EA,Reg,_).
 
 /**
  * The register 'Reg' as defined at address 'EA_def' is later used either as an address
@@ -425,36 +549,38 @@ used_for_address(EA,Reg):-
 .output def_used_for_address
 
 def_used_for_address(EA_def,Reg):-
-    def_used(EA_def,Reg,EA,_),
+    reg_def_use.def_used(EA_def,Reg,EA,_),
     used_for_address(EA,Reg).
 
 def_used_for_address(EA_def,Reg):-
     def_used_for_address(EA_used,_),
-    def_used(EA_def,Reg,EA_used,_).
+    reg_def_use.def_used(EA_def,Reg,EA_used,_).
 
 def_used_for_address(EA,Reg):-
     arch.pc_relative_addr(EA,Reg,_).
 
-// straight_line_def_used is a weaker version than def_used
-// that can be used BEFORE code inference.
 
 // the last address where a register was defined within the block
 .decl straight_line_last_def(EA:address,EA_def:address,Reg:register)
 
 straight_line_last_def(EA_next,EA,Reg):-
-    def(EA,Reg),
+    reg_def_use.def(EA,Reg),
     possible_ea(EA),
     must_fallthrough(EA,EA_next),
     possible_ea(EA_next).
 
 straight_line_last_def(EA_next,EA_def,Reg):-
     straight_line_last_def(EA,EA_def,Reg),
-    !must_def(EA,Reg),
+    !reg_def_use.must_def(EA,Reg),
     must_fallthrough(EA,EA_next),
     possible_ea(EA_next).
 
+/**
+straight_line_def_used is a weaker version than reg_def_use.def_used
+that can be used BEFORE code inference.
+*/
 .decl straight_line_def_used(EA_def:address,Reg:register,EA_used:address,Index:unsigned)
 
 straight_line_def_used(EA_def,Reg,EA_used,Index):-
-    used_before_code_inference(EA_used,Reg,Index),
+    reg_def_use.used_explicit(EA_used,Reg,Index),
     straight_line_last_def(EA_used,EA_def,Reg).
