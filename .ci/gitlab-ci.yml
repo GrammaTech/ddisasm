@@ -659,7 +659,7 @@ internal-focal-stable:
   trigger:
     project: rewriting/utility/package-uploader
     strategy: depend
-  needs: [conan-windows-release]
+  needs: [conan-windows-release-package]
 
 windows-upload-public:
   <<: *windows-upload
@@ -667,7 +667,7 @@ windows-upload-public:
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   variables:
-    JOB_NAME: conan-windows-release
+    JOB_NAME: conan-windows-release-package
     FILESERVER: public
     FILESERVER_SUBDIR_NAME: windows-release
 
@@ -677,6 +677,6 @@ windows-upload-internal:
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   variables:
-    JOB_NAME: conan-windows-release
+    JOB_NAME: conan-windows-release-package
     FILESERVER: internal
     FILESERVER_SUBDIR_NAME: windows-release
