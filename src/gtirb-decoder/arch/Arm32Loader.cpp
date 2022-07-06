@@ -156,6 +156,14 @@ void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size
         // Build datalog instruction facts from Capstone instruction.
         build(Facts, (&(*InsnPtr))[InsnCount - 1], OpndFacts);
         loadRegisterAccesses(Facts, Addr, (&(*InsnPtr))[InsnCount - 1]);
+
+        if(InsnPtr->detail->arm.update_flags)
+        {
+            // Capstone bug: for some instructions, "CPSR" is missing from regs_write even when
+            // update_flags is set.
+            Facts.Instructions.registerAccess(
+                relations::RegisterAccess{gtirb::Addr(Addr), "W", "CPSR"});
+        }
     }
     else
     {
