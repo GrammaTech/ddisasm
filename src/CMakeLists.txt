@@ -1,26 +1,28 @@
 # ===== generated souffle code =====
-# On windows, wsl is used to call souffle.  There is no good way to 'find'
-# souffle in wsl, so we skip this step entirely and will hard-code the call.
-if(NOT WIN32)
-  find_program(
-    SOUFFLE souffle
-    HINTS $ENV{PATH}
-    DOC "souffle must be in your PATH to build disassembler.")
-  if(NOT SOUFFLE)
-    message(FATAL_ERROR "souffle was not found in your PATH. Unable to build.")
+find_program(
+  SOUFFLE souffle
+  HINTS $ENV{PATH}
+  DOC "souffle must be in your PATH to build disassembler.")
+if(NOT SOUFFLE)
+  message(FATAL_ERROR "souffle was not found in your PATH. Unable to build.")
+endif()
+if(NOT SOUFFLE_INCLUDE_DIR)
+  get_filename_component(SOUFFLE_BIN_DIR ${SOUFFLE} DIRECTORY)
+  get_filename_component(SOUFFLE_INCLUDE_DIR ${SOUFFLE_BIN_DIR}/../include
+                         ABSOLUTE)
+  if(NOT EXISTS ${SOUFFLE_INCLUDE_DIR}/souffle)
+    message(WARNING "SOUFFLE_INCLUDE_DIR not found")
+    unset(SOUFFLE_INCLUDE_DIR)
   endif()
-  if(NOT SOUFFLE_INCLUDE_DIR)
-    get_filename_component(SOUFFLE_BIN_DIR ${SOUFFLE} DIRECTORY)
-    get_filename_component(SOUFFLE_INCLUDE_DIR ${SOUFFLE_BIN_DIR}/../include
-                           ABSOLUTE)
-    if(NOT EXISTS ${SOUFFLE_INCLUDE_DIR}/souffle)
-      message(WARNING "SOUFFLE_INCLUDE_DIR not found")
-      unset(SOUFFLE_INCLUDE_DIR)
-    endif()
-    unset(SOUFFLE_BIN_DIR)
-  endif()
+  unset(SOUFFLE_BIN_DIR)
+endif()
+
+# Souffle searches for a "mcpp" binary, even on Windows, where "mcpp.exe" would
+# probably make more sense. We explicitly provide the preprocessor.
+if(WIN32)
+  set(SOUFFLE_PREPROCESSOR_ARG "--preprocessor=mcpp.exe")
 else()
-  set(SOUFFLE wsl souffle)
+  set(SOUFFLE_PREPROCESSOR_ARG "")
 endif()
 
 set(DATALOG_BASE_SOURCES
@@ -67,14 +69,7 @@ if(DDISASM_ARM_32)
       datalog/arch/arm32/memory_access.dl)
 
   set(GENERATED_ARM32_CPP souffle_disasm_arm32.cpp)
-
-  if(WIN32)
-    set(GENERATED_ARM32_CPP_PATH
-        "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_arm32.cpp)")
-  else()
-    set(GENERATED_ARM32_CPP_PATH
-        ${CMAKE_BINARY_DIR}/src/souffle_disasm_arm32.cpp)
-  endif()
+  set(GENERATED_ARM32_CPP_PATH ${CMAKE_BINARY_DIR}/src/souffle_disasm_arm32.cpp)
 
   add_custom_command(
     OUTPUT ${GENERATED_ARM32_CPP}
@@ -82,8 +77,9 @@ if(DDISASM_ARM_32)
            # program name. Change directory and use a relative path so the name
            # does not depend on build location.
     WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
-    COMMAND ${SOUFFLE} main.dl -g ${GENERATED_ARM32_CPP_PATH} -jauto
-            -MARCH_ARM32
+    COMMAND
+      ${SOUFFLE} main.dl -g ${GENERATED_ARM32_CPP_PATH} -jauto -MARCH_ARM32
+      ${SOUFFLE_PREPROCESSOR_ARG}
     DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_ARM32_SOURCES})
 endif()
 
@@ -100,14 +96,8 @@ if(DDISASM_ARM_64)
       datalog/arch/arm64/memory_access.dl)
 
   set(GENERATED_ARM64_CPP souffle_disasm_arm64.cpp)
-
-  if(WIN32)
-    set(GENERATED_ARM64_CPP_PATH
-        "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_arm64.cpp)")
-  else()
-    set(GENERATED_ARM64_CPP_PATH
-        "${CMAKE_BINARY_DIR}/src/souffle_disasm_arm64.cpp")
-  endif()
+  set(GENERATED_ARM64_CPP_PATH
+      "${CMAKE_BINARY_DIR}/src/souffle_disasm_arm64.cpp")
 
   add_custom_command(
     OUTPUT ${GENERATED_ARM64_CPP}
@@ -115,8 +105,9 @@ if(DDISASM_ARM_64)
            # program name. Change directory and use a relative path so the name
            # does not depend on build location.
     WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
-    COMMAND ${SOUFFLE} main.dl -g ${GENERATED_ARM64_CPP_PATH} -jauto
-            -MARCH_ARM64
+    COMMAND
+      ${SOUFFLE} main.dl -g ${GENERATED_ARM64_CPP_PATH} -jauto -MARCH_ARM64
+      ${SOUFFLE_PREPROCESSOR_ARG}
     DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_ARM64_SOURCES})
 endif()
 
@@ -133,13 +124,8 @@ if(DDISASM_MIPS_32)
 
   set(GENERATED_MIPS32_CPP souffle_disasm_mips32.cpp)
 
-  if(WIN32)
-    set(GENERATED_MIPS32_CPP_PATH
-        "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_mips32.cpp)")
-  else()
-    set(GENERATED_MIPS32_CPP_PATH
-        "${CMAKE_BINARY_DIR}/src/souffle_disasm_mips32.cpp")
-  endif()
+  set(GENERATED_MIPS32_CPP_PATH
+      "${CMAKE_BINARY_DIR}/src/souffle_disasm_mips32.cpp")
 
   add_custom_command(
     OUTPUT ${GENERATED_MIPS32_CPP}
@@ -147,8 +133,9 @@ if(DDISASM_MIPS_32)
            # program name. Change directory and use a relative path so the name
            # does not depend on build location.
     WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
-    COMMAND ${SOUFFLE} main.dl -g ${GENERATED_MIPS32_CPP_PATH} -jauto
-            -MARCH_MIPS32
+    COMMAND
+      ${SOUFFLE} main.dl -g ${GENERATED_MIPS32_CPP_PATH} -jauto -MARCH_MIPS32
+      ${SOUFFLE_PREPROCESSOR_ARG}
     DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_MIPS32_SOURCES})
 endif()
 
@@ -164,14 +151,8 @@ if(DDISASM_X86_32)
       datalog/arch/intel/memory_access.dl)
 
   set(GENERATED_X86_32_CPP souffle_disasm_x86_32.cpp)
-
-  if(WIN32)
-    set(GENERATED_X86_32_CPP_PATH
-        "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_32.cpp)")
-  else()
-    set(GENERATED_X86_32_CPP_PATH
-        "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_32.cpp")
-  endif()
+  set(GENERATED_X86_32_CPP_PATH
+      "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_32.cpp")
 
   add_custom_command(
     OUTPUT ${GENERATED_X86_32_CPP}
@@ -179,8 +160,9 @@ if(DDISASM_X86_32)
            # program name. Change directory and use a relative path so the name
            # does not depend on build location.
     WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
-    COMMAND ${SOUFFLE} main.dl -g ${GENERATED_X86_32_CPP_PATH} -jauto
-            -MARCH_IA32
+    COMMAND
+      ${SOUFFLE} main.dl -g ${GENERATED_X86_32_CPP_PATH} -jauto -MARCH_IA32
+      ${SOUFFLE_PREPROCESSOR_ARG}
     DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_X86_32_SOURCES})
 endif()
 
@@ -196,14 +178,8 @@ if(DDISASM_X86_64)
       datalog/arch/intel/memory_access.dl)
 
   set(GENERATED_X86_64_CPP souffle_disasm_x86_64.cpp)
-
-  if(WIN32)
-    set(GENERATED_X86_64_CPP_PATH
-        "$$(wslpath ${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_64.cpp)")
-  else()
-    set(GENERATED_X86_64_CPP_PATH
-        "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_64.cpp")
-  endif()
+  set(GENERATED_X86_64_CPP_PATH
+      "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_64.cpp")
 
   add_custom_command(
     OUTPUT ${GENERATED_X86_64_CPP}
@@ -211,8 +187,9 @@ if(DDISASM_X86_64)
            # program name. Change directory and use a relative path so the name
            # does not depend on build location.
     WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
-    COMMAND ${SOUFFLE} main.dl -g ${GENERATED_X86_64_CPP_PATH} -jauto
-            -MARCH_AMD64
+    COMMAND
+      ${SOUFFLE} main.dl -g ${GENERATED_X86_64_CPP_PATH} -jauto -MARCH_AMD64
+      ${SOUFFLE_PREPROCESSOR_ARG}
     DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_X86_64_SOURCES})
 endif()
 

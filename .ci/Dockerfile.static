@@ -18,10 +18,11 @@ RUN apt-get -y update \
       libtool \
       lsb-release \
       mcpp \
+      python \
       sqlite3 \
       zlib1g-dev
 
-RUN git clone -b 2.2 https://github.com/souffle-lang/souffle && \
+RUN git clone -b 2.3 https://github.com/souffle-lang/souffle && \
     cd souffle && \
     cmake . -Bbuild -DCMAKE_BUILD_TYPE=Release -DSOUFFLE_USE_CURSES=0 -DSOUFFLE_USE_SQLITE=0 -DSOUFFLE_DOMAIN_64BIT=1 && \
     make -C build install -j4
@@ -104,9 +105,7 @@ RUN ln -s /usr/i686-linux-gnu/lib/ /usr/lib/i386-linux-gnu && \
     mkdir etc && \
     ldconfig -c etc/ld.do.cache -r .
 
-COPY --from=souffle /usr/local/bin/souffle-compile /usr/bin/souffle-compile
-COPY --from=souffle /usr/local/bin/souffle /usr/bin/souffle
-COPY --from=souffle /usr/local/bin/souffleprof /usr/bin/souffleprof
+COPY --from=souffle /usr/local/bin/souffle* /usr/local/bin/
 COPY --from=souffle /usr/local/include/souffle/ /usr/include/souffle
 COPY --from=lief /usr/lib/libLIEF.a /usr/lib/libLIEF.a
 COPY --from=lief /usr/include/LIEF /usr/include/LIEF
