@@ -285,23 +285,32 @@ return_block_end(Callee,CalleeEnd,Block,BlockEnd):-
     block_last_instruction(Block,BlockEnd).
 
 /**
-A register is used in a block, but not defined there.
+A register is used in a block, but a live definition for that use is not found
+within the block.
+
+We consider a register to be live only if it is live for interblock edges.
+Intrablock cases are handled directly by the def_used relation.
+
+To find the definition for this use, live_reg_at_block_end will have to
+propagate backward from the block.
 */
-.decl used_not_def_in_block(Block:address,Reg:register,EA_used:address)
+.decl live_reg_used(Block:address,Reg:register,EA_used:address)
 
 // Used in this block
-used_not_def_in_block(Block,Reg,EA_used):-
+live_reg_used(Block,Reg,EA_used):-
     used_in_block(Block,EA_used,Reg,_),
     !block_last_def(EA_used,_,Reg).
 
 // Returned in this block
-used_not_def_in_block(RetBlock,Reg,EA_used):-
+live_reg_used(RetBlock,Reg,EA_used):-
     return_block_end(Callee,_,RetBlock,RetBlockEnd),
     !block_last_def(RetBlockEnd,_,Reg),
     return_val_used(_,Callee,Reg,EA_used,_).
 
 /**
-Propagate backward from usages to search for defs.
+The register Reg is live at the end of Block, and will be used in BlockUsed.
+
+Propagates backward from usages to search for defs.
 
 This is faster than propagating forward from defs, since a used value should
 always be defined in well-behaved code. In addition, we know to stop
@@ -312,58 +321,66 @@ propagate indefinitely, in case it is used multiple times. Further, side-effect
 definitions are often unused.
 
 To further optimize this strategy, if another use is encountered, we don't
-propagate any further. Later, the relation used_used() propagates defs forward
-through adjacent uses.
+propagate any further. Later, the relation live_reg_at_prior_used() propagates
+defs forward through adjacent uses.
 */
-.decl next_used(Block:address,BlockUsed:address,Reg:register)
+.decl live_reg_at_block_end(Block:address,BlockUsed:address,Reg:register)
 
 // Base case
-next_used(PrevBlock,Block,Reg):-
+live_reg_at_block_end(PrevBlock,Block,Reg):-
     block_next(PrevBlock,PrevBlockEnd,Block),
-    used_not_def_in_block(Block,Reg,_),
+    live_reg_used(Block,Reg,_),
     !flow_def(PrevBlockEnd,Reg,Block,_).
 
 // Recursive case
-next_used(PrevBlock,BlockUsed,Reg):-
-    next_used(Block,BlockUsed,Reg),
+live_reg_at_block_end(PrevBlock,BlockUsed,Reg):-
+    live_reg_at_block_end(Block,BlockUsed,Reg),
     !reg_in_block(Block,Reg), // !flow_def is implied by !reg_in_block
     block_next(PrevBlock,_,Block).
 
 /**
-An edge between two used() that depend on the same def.
-*/
-.decl used_used(EA_used:address,BlockUsed:address,Reg:register)
+The register Reg is live at EA_used and at the beginning of BlockUsed, and
+holds the same value from the same definition. The register Reg is used in
+BlockUsed.
 
-used_used(EA_used,BlockUsed,Reg):-
-    next_used(Block,BlockUsed,Reg),
+Forms an edge between two used() that depend on the same def.
+*/
+.decl live_reg_at_prior_used(EA_used:address,BlockUsed:address,Reg:register)
+
+live_reg_at_prior_used(EA_used,BlockUsed,Reg):-
+    live_reg_at_block_end(Block,BlockUsed,Reg),
     used_in_block(Block,EA_used,Reg,_),
     !defined_in_block(Block,Reg).
 
+// Intra-block def-use
 def_used(EA_def,Reg,EA_used,Index):-
     used(EA_used,Reg,Index),
     block_last_def(EA_used,EA_def,Reg).
 
+// Inter-procedural def-use
 def_used(EA_def,Reg,EA_used,Index):-
     return_val_used(_,Callee,Reg,EA_used,Index),
     return_block_end(Callee,_,_,BlockEnd),
     block_last_def(BlockEnd,EA_def,Reg).
 
+// Inter-blocks def-use (explicit def)
 def_used(EA_def,Reg,EA_used,Index):-
-    next_used(Block,BlockUsed,Reg),
+    live_reg_at_block_end(Block,BlockUsed,Reg),
     last_def_in_block(Block,EA_def,Reg),
-    used_not_def_in_block(BlockUsed,Reg,EA_used),
+    live_reg_used(BlockUsed,Reg,EA_used),
     used(EA_used,Reg,Index).
 
+// Inter-blocks def-use (flow def)
 def_used(EA_def,Reg,EA_used,Index):-
-    next_used(Block,BlockUsed,Reg),
+    live_reg_at_block_end(Block,BlockUsed,Reg),
     !defined_in_block(Block,Reg),
     flow_def(EA_def,Reg,Block,_),
-    used_not_def_in_block(BlockUsed,Reg,EA_used),
+    live_reg_used(BlockUsed,Reg,EA_used),
     used(EA_used,Reg,Index).
 
 // Forward propagate def_used to downstream used
 def_used(EA_def,Reg,Next_EA_used,NextIndex):-
-    used_used(EA_used,NextUsedBlock,Reg),
+    live_reg_at_prior_used(EA_used,NextUsedBlock,Reg),
     def_used(EA_def,Reg,EA_used,_),
     used_in_block(NextUsedBlock,Next_EA_used,Reg,NextIndex),
     !block_last_def(Next_EA_used,_,Reg).
