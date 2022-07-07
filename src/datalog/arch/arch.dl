@@ -380,7 +380,7 @@ extend_load(0,0,0):-
 /**
 Override the register access mode reported by Capstone
 
-The Enable field indicates if the (EA,Mode,Register) tuple should be a logical
+The Enable field indicates if the (EA,Register,Access) tuple should be a logical
 addition to register_access (Enable = 1) or ignored if it is in register_access
 (Enable = 0).
 */
@@ -392,7 +392,7 @@ register_access_override(0,"","",0):-
 /**
 Override the operand access mode reported by Capstone.
 
-The Enable field indicates if the (EA,Mode,Register) tuple should be a logical
+The Enable field indicates if the (EA,Register,Access) tuple should be a logical
 addition to instruction_op_access (Enable = 1) or ignored if it is in
 instruction_op_access (Enable = 0).
 */
