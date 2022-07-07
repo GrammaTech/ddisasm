@@ -511,7 +511,6 @@ register_access_override(EA,Reg,Access,1):-
     op_regdirect_contains_reg(Op,Reg).
 
 register_access_override(EA,Reg,"R",1):-
-    op_access_override(EA,Index,_,1),
     instruction_get_op(EA,Index,Op),
     op_indirect_contains_reg(Op,Reg).
 
