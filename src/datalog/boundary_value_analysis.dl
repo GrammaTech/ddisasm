@@ -78,7 +78,7 @@ compare_and_jump_immediate(EA,EA,CC,Reg,0):-
         op_regdirect_contains_reg(Op,Reg)
         ;
         // Implicit register (e.g., Intel "JECXZ")
-        register_access(EA,"R",RegIn),
+        register_access(EA,RegIn,"R"),
         reg_map(RegIn,Reg),
         !op_regdirect_contains_reg(Op,Reg)
     ).

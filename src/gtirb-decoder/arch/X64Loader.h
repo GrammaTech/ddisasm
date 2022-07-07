@@ -45,6 +45,8 @@ public:
 
 protected:
     void decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
+    uint8_t operandCount(const cs_insn& CsInstruction) override;
+    uint8_t operandAccess(const cs_insn& CsInstruction, uint64_t Index) override;
 
 private:
     std::optional<relations::Operand> build(const cs_x86_op& CsOp);

@@ -243,11 +243,9 @@ symbolic_operand_attribute(ea, 2, "Lo12") :-
 
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     split_load_for_symbolization(_,EA,RefAddr,_),
-    instruction(EA,_,_,Operation,Op1,_,_,_,_,_),
-    arch.load_operation(Operation),
-    instruction_get_dest_op(EA,_,DestRegOp),
-    op_regdirect_contains_reg(DestRegOp,Reg),
+    arch.load(EA,OpIndex,_,Reg,_,_,_,_),
     track_register(Reg),
+    instruction_get_op(EA,OpIndex,Op1),
     op_indirect(Op1,_,_,_,_,_,DataSize),
     data_word(RefAddr,DataSize/8,Val).
 

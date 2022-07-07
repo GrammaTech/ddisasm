@@ -112,13 +112,8 @@ return(EA):-
     pc_reg(Reg).
 
 return(EA):-
-    instruction_get_operation(EA,Operation),
-    substr(Operation,0,3) = "MOV",
-    instruction_get_dest_op(EA,_,DestOp),
-    op_regdirect_contains_reg(DestOp,PC),
-    pc_reg(PC),
-    instruction_get_src_op(EA,_,SrcOp),
-    op_regdirect_contains_reg(SrcOp,"LR").
+    arch.pc_reg(PC),
+    move_reg_reg(EA,PC,"LR").
 
 .decl long_operation(operation:symbol)
 
@@ -128,8 +123,15 @@ long_operation(Operation):-
 
 // Conditional instructions implicitly use the CPSR, which capstone doesn't
 // seem to indicate reliably in cs_reg_access.
-uses_reg(EA,"CPSR"):-
+register_access_override(EA,"CPSR","R",1):-
     conditional(EA,_).
+
+// mov reg, #imm instructions incorrectly mark the written register as read.
+// See: https://github.com/capstone-engine/capstone/issues/1652
+op_access_override(EA,Index,"R",0):-
+    move_reg_imm(EA,Dst,_,_),
+    instruction_get_op(EA,Index,Op),
+    op_regdirect_contains_reg(Op,Dst).
 
 /**
 PC stores the address of the current instruction plus 8 (two ARM
@@ -260,10 +262,6 @@ jump(EA):-
     move_reg_reg(EA,PC,_),
     pc_reg(PC).
 
-op_does_not_read_dest_reg(Operation):-
-    // TODO: There could be more.
-    load_operation(Operation).
-
 arithmetic_operation(Operation):-
     instruction_get_operation(_,Operation),
     Op = substr(Operation,0,3),
@@ -314,25 +312,6 @@ logic_operation(Operation):-
         Op = "TST";
         Op = "MVN"
     ).
-
-read_only_operation(Operation):-
-    instruction_get_operation(_,Operation),
-    Op = substr(Operation,0,3),
-    (
-        Op = "CMN";
-        Op = "CMP";
-        Op = "TEQ";
-        Op = "TST"
-    ).
-
-// TODO:
-write_only_operation(Operation):-
-    instruction_get_operation(_,Operation),
-    substr(Operation,0,3) = "POP".
-
-// TODO:
-one_op_write(""):-
-    false.
 
 pointer_size(4).
 

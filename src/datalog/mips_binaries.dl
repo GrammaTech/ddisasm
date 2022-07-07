@@ -25,14 +25,6 @@ Define a set predicates to abstract from MIPS specific instruction set
 and characteristics
 */
 
-// NOTE: For jump instructions, treat all ops as src.
-// E.g., bne $v0, $v1, L_xxx
-//       Both v0 and v1 are sources.
-// See mips' read_only_operation
-instruction_get_src_op(EA,Index,Op):-
-    instruction_get_operation(EA, Operation),
-    arch.read_only_operation(Operation),
-    instruction_get_op(EA,Index,Op).
 
 // e.g., sw gp, 16(sp)
 //       ...
@@ -234,15 +226,7 @@ split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset,address), "LoadStore") :
     def_used(RegRestoreEA,Reg,EA_lo,_),
 
     // lw/sw reg3, lo(xxx)(reg2)
-    instruction_get_operation(EA_lo, Operation),
-    (
-        arch.load_operation(Operation),
-        instruction_get_src_op(EA_lo,_,Op)
-        ;
-        arch.store_operation(Operation),
-        instruction_get_dest_op(EA_lo,_,Op)
-    ),
-    op_indirect_mapped(Op,"NONE",Reg,"NONE",1,Offset,_).
+    arch.memory_access(_,EA_lo,_,_,_,Reg,"NONE",1,Offset).
 
 split_load_point(EA_hi,EA_lo,Dest_addr,Type,0,"base"):-
     split_load_candidate(EA_hi,EA_lo,Dest_addr,Type).

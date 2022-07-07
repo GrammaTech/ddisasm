@@ -202,10 +202,6 @@ delay_slot(BranchEA,EA):-
     next(BranchEA, EA),
     Dest != EA.
 
-op_does_not_read_dest_reg(Operation):-
-    instruction_get_operation(_, Operation).
-
-
 arithmetic_operation("ADD").
 arithmetic_operation("ADDIUPC").
 arithmetic_operation("ADDIUR1SP").
@@ -362,18 +358,6 @@ logic_operation("DEXT").
 logic_operation("DEXTM").
 logic_operation("DEXTU").
 
-
-read_only_operation(Operation):-
-    jump_operation(Operation).
-
-// TODO:
-write_only_operation(""):-
-    false.
-
-// TODO:
-one_op_write(""):-
-    false.
-
 pointer_size(4).
 
 call_operation(Operation):-
@@ -471,5 +455,63 @@ reg_reg_arithmetic_operation(EA,Reg,Reg1,Reg2,1,0):-
 
 inferred_main_in_reg(EA,"A0"):-
     inferred_main_dispatch(EA).
+
+// capstone does not support register/operand access metadata on MIPS, so we
+// have to emulate it.
+
+// Reads
+op_access_override(EA,Index,"R",1):-
+    arch.memory_access(_,EA,Index,_,_,_,_,_,_).
+
+// NOTE: For jump instructions, treat all ops as src.
+// E.g., bne $v0, $v1, L_xxx
+//       Both v0 and v1 are sources.
+op_access_override(EA,Index,"R",1):-
+    instruction_get_operation(EA,Operation),
+    arch.jump_operation(Operation),
+    instruction_get_op(EA,Index,_).
+
+op_access_override(EA,Index,"R",1):-
+    (
+        instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
+        instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
+        instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
+    ),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,_),
+    !arch.jump_operation(Operation).
+
+// Writes
+op_access_override(EA,DstIndex,"W",1):-
+    arch.memory_access(_,EA,_,DstIndex,_,_,_,_,_).
+
+op_access_override(EA,Index,"W",1):-
+    instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,_),
+    !arch.jump_operation(Operation),
+    (
+        Op4 = 0,
+        Op3 = 0,
+        Op2 != 0,
+        Index = 2
+        ;
+        Op4 = 0,
+        Op3 != 0,
+        Index = 3,
+        UNUSED(Op2)
+        ;
+        Op4 != 0,
+        Index = 4,
+        UNUSED(Op2), UNUSED(Op3)
+    ).
+
+// Generate register access information from the operand information
+register_access_override(EA,Reg,Access,1):-
+    op_access_override(EA,Index,Access,1),
+    instruction_get_op(EA,Index,Op),
+    op_regdirect_contains_reg(Op,Reg).
+
+register_access_override(EA,Reg,"R",1):-
+    instruction_get_op(EA,Index,Op),
+    op_indirect_contains_reg(Op,Reg).
 
 }

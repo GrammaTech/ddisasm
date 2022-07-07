@@ -136,7 +136,13 @@ track_register(Reg):-
 
 // Define any registers defined by the instruction
 def(EA,Reg):-
-    arch.defines_reg(EA,Reg),
+    (
+        register_access(EA,RegIn,"W"),
+        reg_map(RegIn,Reg),
+        !arch.register_access_override(EA,Reg,"W",0)
+        ;
+        arch.register_access_override(EA,Reg,"W",1)
+    ),
     track_register(Reg).
 
 // A call "defines" all caller-saved registers
@@ -210,7 +216,13 @@ used_before_code_inference(EA,Reg,Index):-
 
 // Implicitly-used registers use an operand index of zero.
 used_before_code_inference(EA,Reg,0):-
-    arch.uses_reg(EA,Reg),
+    (
+        register_access(EA,RegIn,"R"),
+        reg_map(RegIn,Reg),
+        !arch.register_access_override(EA,Reg,"R",0)
+        ;
+        arch.register_access_override(EA,Reg,"R",1)
+    ),
     track_register(Reg),
     !used_explicit(EA,Reg,_).
 

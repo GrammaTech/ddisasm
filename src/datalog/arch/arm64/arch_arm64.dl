@@ -69,9 +69,6 @@ is_nop(EA):-
         Operation = "B.NV"  // B.NV is a never-taken branch.
     ).
 
-op_does_not_read_dest_reg(Operation):-
-    instruction_get_operation(_, Operation).
-
 arithmetic_operation("ADD").
 arithmetic_operation("SUB").
 arithmetic_operation("MUL").
@@ -96,17 +93,6 @@ logic_operation("ORR").
 logic_operation("EON").
 logic_operation("ORN").
 logic_operation("BIC").
-
-read_only_operation("CMP").
-read_only_operation("TST").
-
-// TODO:
-write_only_operation(""):-
-    false.
-
-// TODO:
-one_op_write(""):-
-    false.
 
 pointer_size(8).
 

@@ -55,6 +55,7 @@ void InstructionLoader::insert(const BinaryFacts& Facts, DatalogProgram& Program
     Program.insert("instruction", Instructions.instructions());
     Program.insert("instruction_writeback", Instructions.writeback());
     Program.insert("instruction_cond_code", Instructions.conditionCode());
+    Program.insert("instruction_op_access", Instructions.opAccess());
     Program.insert("invalid_op_code", Instructions.invalid());
     Program.insert("op_shifted", Instructions.shiftedOps());
     Program.insert("op_shifted_w_reg", Instructions.shiftedWithRegOps());
@@ -93,5 +94,23 @@ void InstructionLoader::loadRegisterAccesses(BinaryFacts& Facts, uint64_t Addr,
     {
         Facts.Instructions.registerAccess(relations::RegisterAccess{
             GtirbAddr, "W", uppercase(cs_reg_name(*CsHandle, RegsWrite[i]))});
+    }
+
+    uint64_t OpCount = operandCount(CsInstruction);
+    for(uint64_t i = 0; i < OpCount; i++)
+    {
+        // Translate operand indices to match our operand order shuffling.
+        // The datalog treats operands as 1-indexed, and we move the first
+        // operand to the end. Thus, we can just substitute zeroes with OpCount.
+        uint64_t Index = i == 0 ? OpCount : i;
+        uint8_t Access = operandAccess(CsInstruction, i);
+        if(Access & CS_AC_READ)
+        {
+            Facts.Instructions.opAccess(relations::InstructionOpAccess{GtirbAddr, Index, "R"});
+        }
+        if(Access & CS_AC_WRITE)
+        {
+            Facts.Instructions.opAccess(relations::InstructionOpAccess{GtirbAddr, Index, "W"});
+        }
     }
 }
