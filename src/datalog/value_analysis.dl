@@ -62,7 +62,7 @@ or loop) and considering the value with most steps.
                 EA_reg1:address,Reg1:register,Multiplier:number,Offset:number)
 .output value_reg_edge
 .decl value_reg(EA:address,Reg:register,
-                EA_reg1:address,Reg1:reg_nullable,Multiplier:number,Offset:number,steps:number)
+                EA_reg1:address,Reg1:reg_nullable,Multiplier:number,Offset:number,Steps:unsigned)
 .output value_reg
 
 .decl best_value_reg(EA:address,Reg:register,EA_from:address,Multiplier:number,Offset:number,type:symbol)
@@ -274,9 +274,14 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
 // once we have the edges that relate the values of registers at different
 // instructions we propagate these values forward
 
-.decl step_limit(Limit:number)
+.decl step_limit(Limit:unsigned)
 
 step_limit(12).
+
+// subsumption for value_reg:
+// for two value_reg that differ only by step count, the lower step count subsumes the other.
+value_reg(EA,Reg,EA_reg1,Reg1,Multiplier,Offset,Steps1) <= value_reg(EA,Reg,EA_reg1,Reg1,Multiplier,Offset,Steps2):-
+    Steps2 <= Steps1.
 
 value_reg(EA,Reg,EA,Reg,1,0,1):-
     def_used_for_address(EA,Reg),
@@ -290,9 +295,9 @@ value_reg(EA,Reg,EA,Reg,1,0,1):-
 value_reg(EA,Reg,EA_from,"Unknown",Immediate,Base,Steps+1):-
     step_limit(StepLimit),
     value_reg(EA,Reg,EA_from,"NONE",0,Base,Steps),
+    Steps <= StepLimit-2,
     value_reg_edge(EA,Reg,EA,Reg,1,Immediate),
-    Immediate != 0,
-    Steps+1 < StepLimit.
+    Immediate != 0.
 
 /**
 This is an auxiliary predicate used for computing `value_reg`.
@@ -316,57 +321,52 @@ reg_reg_arithmetic_operation_defs(EA,Reg_def,EA_def1,Reg1,EA_def2,Reg2,Mult,Offs
 value_reg(EA,Reg_def,EA_third,Reg3,Mult1+(Mult*Mult2),Offset+Offset1+Offset2*Mult,Steps3):-
     step_limit(StepLimit),
     reg_reg_arithmetic_operation_defs(EA,Reg_def,EA_def1,Reg1,EA_def2,Reg2,Mult,Offset),
-
     value_reg(EA_def1,Reg1,EA_third,Reg3,Mult1,Offset1,Steps1),
-    Steps1+2 < StepLimit,
+    Steps1 <= StepLimit-3,
     EA != EA_third,
     value_reg(EA_def2,Reg2,EA_third,Reg3,Mult2,Offset2,Steps2),
-
-    Steps2+2 < StepLimit,
+    Steps2 <= StepLimit-3,
     Steps3 = max(Steps1,Steps2)+2.
 
 // deal with arithmetic operation on two registers when one of the registers contains a constant
 value_reg(EA,Reg_def,EA_third,Reg3,Mult*Mult2,Offset+Offset1+Offset2*Mult,Steps3):-
     step_limit(StepLimit),
     reg_reg_arithmetic_operation_defs(EA,Reg_def,EA_def1,Reg1,EA_def2,Reg2,Mult,Offset),
-
     value_reg(EA_def1,Reg1,_,"NONE",_,Offset1,Steps1),
-    Steps1+2 < StepLimit,
+    Steps1 <= StepLimit-3,
     value_reg(EA_def2,Reg2,EA_third,Reg3,Mult2,Offset2,Steps2),
+    Steps2 <= StepLimit-3,
     EA != EA_third,
     Reg3 != "NONE",
-    Steps2+2 < StepLimit,
     Steps3 = max(Steps1,Steps2)+2.
 
 // the other register constains a constant.
 value_reg(EA,Reg_def,EA_third,Reg3,Mult1,Offset+Offset1+Offset2*Mult,Steps3):-
     step_limit(StepLimit),
     reg_reg_arithmetic_operation_defs(EA,Reg_def,EA_def1,Reg1,EA_def2,Reg2,Mult,Offset),
-    def_used_for_address(EA,Reg_def),
     value_reg(EA_def2,Reg2,_,"NONE",_,Offset2,Steps2),
-    Steps2+2 < StepLimit,
+    Steps2 <= StepLimit-3,
     value_reg(EA_def1,Reg1,EA_third,Reg3,Mult1,Offset1,Steps1),
+    Steps1 <= StepLimit-3,
     Reg3 != "NONE",
     EA != EA_third,
-    Steps1+2 < StepLimit,
-
     Steps3 = max(Steps1,Steps2)+2.
 
-// normal propagation
-value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,Steps2):-
+// normal forward propagation
+value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,Steps+1):-
     step_limit(StepLimit),
     value_reg(EA2,Reg2,EA3,Reg3,Multiplier2,Offset2,Steps),
+    Steps <= StepLimit - 2,
     value_reg_edge(EA1,Reg1,EA2,Reg2,Multiplier,Offset),
-    EA1 != EA2,
-    // we allow less back steps
-    (
-        EA2 < EA1,
-        Steps2 = Steps+1
-        ;
-        EA2 >= EA1,
-        Steps2 = Steps+5
-    ),
-    Steps2 < StepLimit.
+    EA1 > EA2.
+
+// normal backward propagation
+value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,Steps+5):-
+    step_limit(StepLimit),
+    value_reg(EA2,Reg2,EA3,Reg3,Multiplier2,Offset2,Steps),
+    Steps <= StepLimit - 6,
+    value_reg_edge(EA1,Reg1,EA2,Reg2,Multiplier,Offset),
+    EA1 < EA2.
 
 // For a given EA, Reg, EA_from and Multiplier we keep the minimum and maximum offsets
 best_value_reg(EA,Reg,EA_from,Multiplier,MinOffset,"loop"):-
