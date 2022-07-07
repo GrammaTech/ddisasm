@@ -289,12 +289,12 @@ A register is used in a block, but not defined there.
 */
 .decl used_not_def_in_block(Block:address,Reg:register,EA_used:address)
 
-// Base case: used in this block
+// Used in this block
 used_not_def_in_block(Block,Reg,EA_used):-
     used_in_block(Block,EA_used,Reg,_),
     !block_last_def(EA_used,_,Reg).
 
-// Base case: returned in this block
+// Returned in this block
 used_not_def_in_block(RetBlock,Reg,EA_used):-
     return_block_end(Callee,_,RetBlock,RetBlockEnd),
     !block_last_def(RetBlockEnd,_,Reg),
@@ -332,14 +332,12 @@ next_used(PrevBlock,BlockUsed,Reg):-
 /**
 An edge between two used() that depend on the same def.
 */
-.decl used_used(Reg:register,EA_used:address,Index:operand_index,Next_EA_used:address,NextIndex:operand_index)
+.decl used_used(EA_used:address,BlockUsed:address,Reg:register)
 
-used_used(Reg,EA_used,Index,Next_EA_used,NextIndex):-
-    next_used(Block,NextUsedBlock,Reg),
-    used_in_block(Block,EA_used,Reg,Index),
-    !defined_in_block(Block,Reg),
-    used_in_block(NextUsedBlock,Next_EA_used,Reg,NextIndex),
-    !block_last_def(Next_EA_used,_,Reg).
+used_used(EA_used,BlockUsed,Reg):-
+    next_used(Block,BlockUsed,Reg),
+    used_in_block(Block,EA_used,Reg,_),
+    !defined_in_block(Block,Reg).
 
 def_used(EA_def,Reg,EA_used,Index):-
     used(EA_used,Reg,Index),
@@ -365,8 +363,10 @@ def_used(EA_def,Reg,EA_used,Index):-
 
 // Forward propagate def_used to downstream used
 def_used(EA_def,Reg,Next_EA_used,NextIndex):-
-    used_used(Reg,EA_used,Index,Next_EA_used,NextIndex),
-    def_used(EA_def,Reg,EA_used,Index).
+    used_used(EA_used,NextUsedBlock,Reg),
+    def_used(EA_def,Reg,EA_used,_),
+    used_in_block(NextUsedBlock,Next_EA_used,Reg,NextIndex),
+    !block_last_def(Next_EA_used,_,Reg).
 
 /**
  * The register 'Reg' used as an address at address 'EA'.
