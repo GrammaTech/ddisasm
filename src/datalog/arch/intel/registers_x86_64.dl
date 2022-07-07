@@ -101,3 +101,29 @@ integer_reg_param("RCX",4),
 integer_reg_param("R8",5),
 integer_reg_param("R9",6):-
     binary_format("ELF").
+
+register_size_bits(Reg,8):-
+    Reg = "DIL";
+    Reg = "SIL";
+    Reg = "BPL";
+    Reg = "SPL".
+
+register_size_bits(Reg,64):-
+    Reg = "RAX";
+    Reg = "RBX";
+    Reg = "RCX";
+    Reg = "RDX";
+    Reg = "RBP";
+    Reg = "RSI";
+    Reg = "RDI";
+    Reg = "RSP".
+
+register_size_bits(Reg8,8),
+register_size_bits(Reg16,16),
+register_size_bits(Reg32,32),
+register_size_bits(Reg64,64):-
+    Index = range(8,16,1),
+    Reg8 = cat("R", to_string(Index), "L"),
+    Reg16 = cat("R", to_string(Index), "W"),
+    Reg32 = cat("R", to_string(Index), "D"),
+    Reg64 = cat("R", to_string(Index)).

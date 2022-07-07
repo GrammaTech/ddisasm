@@ -66,6 +66,10 @@ general_purpose_reg("SP").
 general_purpose_reg("LR").
 general_purpose_reg("PC").
 
+register_size_bits(InputReg,32):-
+    general_purpose_reg(Reg),
+    reg_map(InputReg,Reg).
+
 // Use the ARM calling convention.
 function_non_maintained_reg("R0").
 function_non_maintained_reg("R1").

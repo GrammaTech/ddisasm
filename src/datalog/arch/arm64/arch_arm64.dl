@@ -178,4 +178,25 @@ adr_dest(EA,Reg,as(Dest,address)):-
 pc_relative_addr(EA,Reg,as(Dest,number)):-
     adr_dest(EA,Reg,Dest).
 
+/**
+Table of ARM64 extend types, whether they are signed, and the size of the
+source, in bits.
+*/
+.decl extend_type(Type:symbol,Signed:unsigned,SrcBits:unsigned)
+
+extend_type("UXTB",0,8).
+extend_type("UXTH",0,16).
+extend_type("UXTW",0,32).
+extend_type("UXTX",0,64).
+extend_type("SXTB",1,8).
+extend_type("SXTH",1,16).
+extend_type("SXTW",1,32).
+extend_type("SXTX",1,64).
+
+extend_reg(EA,Reg,Signed,SrcBits):-
+    extend_type(ExtendType,Signed,SrcBits),
+    op_shifted(EA,Index,_,ExtendType),
+    instruction_get_op(EA,Index,Op),
+    op_regdirect_contains_reg(Op,Reg).
+
 }

@@ -45,7 +45,11 @@ extern "C"
 {
     EXPORT uint64_t functor_data_exists(uint64_t EA, size_t Size);
     EXPORT uint64_t functor_data_u8(uint64_t EA);
+    EXPORT uint64_t functor_data_u16(uint64_t EA);
+    EXPORT uint64_t functor_data_u32(uint64_t EA);
+    EXPORT uint64_t functor_data_u64(uint64_t EA);
 
+    EXPORT int64_t functor_data_s8(uint64_t EA);
     EXPORT int64_t functor_data_s16(uint64_t EA);
     EXPORT int64_t functor_data_s32(uint64_t EA);
     EXPORT int64_t functor_data_s64(uint64_t EA);

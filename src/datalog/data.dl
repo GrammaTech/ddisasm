@@ -26,6 +26,10 @@ Manage access to raw binary data
 
 .functor functor_data_exists(EA:address,Size:unsigned):unsigned
 .functor functor_data_u8(EA:address):unsigned
+.functor functor_data_u16(EA:address):unsigned
+.functor functor_data_u32(EA:address):unsigned
+.functor functor_data_u64(EA:address):unsigned
+.functor functor_data_s8(EA:address):number
 .functor functor_data_s16(EA:address):number
 .functor functor_data_s32(EA:address):number
 .functor functor_data_s64(EA:address):number
@@ -34,13 +38,43 @@ Manage access to raw binary data
 .decl data_byte(EA:address,Value:unsigned) inline
 
 data_byte(EA,Value):-
-    @functor_data_exists(EA,1) = 1,
-    Value = @functor_data_u8(EA).
+    data_uword(EA,1,Value).
 
 /**
-Signed representation of the data word at EA.
+Unsigned representation of the data at EA.
+*/
+.decl data_uword(EA:address,Size:unsigned,Val:unsigned) inline
+
+data_uword(EA,Size,Value):-
+    Size = 1,
+    @functor_data_exists(EA,Size) = 1,
+    Value = @functor_data_u8(EA).
+
+data_uword(EA,Size,Value):-
+    Size = 2,
+    @functor_data_exists(EA,Size) = 1,
+    Value = @functor_data_u16(EA).
+
+data_uword(EA,Size,Value):-
+    Size = 4,
+    @functor_data_exists(EA,Size) = 1,
+    Value = @functor_data_u32(EA).
+
+data_uword(EA,Size,Value):-
+    Size = 8,
+    @functor_data_exists(EA,Size) = 1,
+    Value = @functor_data_u64(EA).
+
+
+/**
+Signed representation of the data at EA.
 */
 .decl data_word(EA:address,Size:unsigned,Val:number) inline
+
+data_word(EA,Size,Value):-
+    Size = 1,
+    @functor_data_exists(EA,Size) = 1,
+    Value = @functor_data_s8(EA).
 
 data_word(EA,Size,Value):-
     Size = 2,

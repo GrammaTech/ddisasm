@@ -26,12 +26,6 @@ This module establishes basic information about register:
  - Whether they all callee or caller saved according to the ABI
 */
 
-/**
-The size of a register, in bits.
-*/
-.decl register_size_bits(Reg:symbol,Size:unsigned)
-.output register_size_bits
-
 register_size_bits(Reg32, 32),
 register_size_bits(Reg64, 64),
 reg_map_rule(Reg32, Reg64),
