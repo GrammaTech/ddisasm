@@ -63,8 +63,8 @@ invalid(EA,"thumb: doubleword op registers invalid"):-
 
 // Applies to all of STR,LDR,STRD,LDRD
 invalid(EA,"arm: pre/post-index disallows Rt[2] eq Rn"):-
-    // For LDRD operations, there will be an arch.memory_access for each of Rt
-    // and Rt2, so this rule will check both for conflict with Rn.
+    // For LDRD operations, there will be an 'arch.memory_access' for each of
+    // Rt and Rt2, so this rule will check both for conflict with Rn.
     arch.memory_access(_,EA,_,_,Rt,Rn,_,_,_),
     instruction_writeback(EA),
     Rt = Rn.
@@ -84,8 +84,8 @@ invalid(EA,"arm: doubleword rm/rt conflict"):-
     (EA band 1) = 0, // ARM mode only
     instruction_get_operation(EA,Operation),
     substr(Operation,0,4) = "LDRD",
-    // For LDRD operations, there will be an arch.memory_access for each of Rt
-    // and Rt2, so this rule will check both for conflict with Rm.
+    // For LDRD operations, there will be an 'arch.memory_access' for each of
+    // Rt and Rt2, so this rule will check both for conflict with Rm.
     Rt = Rm.
 
 invalid(EA,"arm: pc is not allowed as dest"):-
@@ -239,7 +239,7 @@ mov pc, r   or  bx r
 
 In the above pattern, Label is supposed to be code rather than data
 (literal pools).
-Therefore, it should not be treated as litpool_ref, whose target is data.
+Therefore, it should not be treated as 'litpool_ref', whose target is data.
 This predicate is used for excluding such case from litpool_ref.
 Also, the target should not be aligned.
 */
@@ -317,6 +317,7 @@ corresponding function symbol.
 In order to initially recognize it as a code block in such cases,
 treat "push {lr}", which is a typical instruction that starts a function,
 as a basic target.
+E.g., asterisk
 */
 basic_target(EA):-
     instruction_get_operation(EA,Operation),
@@ -612,15 +613,12 @@ init_ldr_add_pc(EA_ldr,Size,Reg1,LitPoolAddr,EA_add_pc,Reg2):-
     arch.pc_reg(PC).
 
 /**
-A weaker version of cinf_symbol_minus_symbol_candidate_arm that can be used
-before code inference.
-see the comment of cinf_symbol_minus_symbol_candidate_arm.
+This rule is shared by 'init_symbol_minus_symbol_candidate_arm' and
+'cinf_symbol_minus_symbol_candidate_arm'.
 */
-.decl init_symbol_minus_symbol_candidate_arm(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,Offset:number)
-.output init_symbol_minus_symbol_candidate_arm
+.decl symbol_minus_symbol_candidate_arm(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,Offset:number) inline
 
-init_symbol_minus_symbol_candidate_arm(Addr,Size,EA_add_pc,Dest,Scale,Offset):-
-    init_ldr_add_pc(_,Size,Reg,Addr,EA_add_pc,Reg),
+symbol_minus_symbol_candidate_arm(Addr,Size,EA_add_pc,Dest,Scale,Offset):-
     arch.pc_relative_disp(EA_add_pc,Disp),
     data_word(Addr,Size,Diff),
     Mode = EA_add_pc band 1,
@@ -640,6 +638,18 @@ init_symbol_minus_symbol_candidate_arm(Addr,Size,EA_add_pc,Dest,Scale,Offset):-
         Dest = (EA_add_pc + as(Disp,address) - Mode) + as(Value,address)
     ),
     Scale = 1.
+
+/**
+A weaker version of 'cinf_symbol_minus_symbol_candidate_arm' that can be used
+before code inference.
+see the comment of 'cinf_symbol_minus_symbol_candidate_arm'.
+*/
+.decl init_symbol_minus_symbol_candidate_arm(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,Offset:number)
+.output init_symbol_minus_symbol_candidate_arm
+
+init_symbol_minus_symbol_candidate_arm(Addr,Size,EA_add_pc,Dest,Scale,Offset):-
+    init_ldr_add_pc(_,Size,Reg,Addr,EA_add_pc,Reg),
+    symbol_minus_symbol_candidate_arm(Addr,Size,EA_add_pc,Dest,Scale,Offset).
 
 /**
 When a block address is referenced only by a symbol-symbol literal pool, make
@@ -689,30 +699,12 @@ where foo is a symbol relocated by GOT.
 */
 cinf_symbol_minus_symbol_candidate_arm(Addr,Size,EA_add_pc,Dest,Scale,Offset):-
     cinf_ldr_add_pc(_,Size,Reg,Addr,EA_add_pc,Reg),
-    arch.pc_relative_disp(EA_add_pc,Disp),
-    data_word(Addr,Size,Diff),
-    Mode = EA_add_pc band 1,
-    Offset = -1 * Disp,
-    (
-        Dest = EA_add_pc + as(Disp + Diff,address) - Mode,
-        !relocation(Addr,_,_,_,_,_,_)
-        ;
-        relocation(Addr,"REL32",Symbol,_,SymbolIndex,_,"REL"),
-        symbol(Base,_,_,_,_,_,_,SymbolIndex,Symbol),
-        // ((S + A) | T) - P
-        S = as(Base,unsigned),
-        A = as(Diff,unsigned),
-        P = as(Addr,unsigned),
-        T = as(Base band 1,unsigned),
-        Value = ((S + A) bor T) - P,
-        Dest = (EA_add_pc + as(Disp,address) - Mode) + as(Value,address)
-    ),
-    Scale = 1.
+    symbol_minus_symbol_candidate_arm(Addr,Size,EA_add_pc,Dest,Scale,Offset).
 
 symbol_minus_symbol_candidate(Addr,Size,EA_add_pc,Dest,Scale,Offset):-
     cinf_symbol_minus_symbol_candidate_arm(Addr,Size,EA_add_pc,Dest,Scale,Offset).
 
-// TODO: Ideally, we want to rename cinf_symbol_minus_symbol_candidate_arm to
+// TODO: Ideally, we want to rename 'cinf_symbol_minus_symbol_candidate_arm' to
 // the common rule 'symbol_minus_symbol_candidate', and use it here.
 // However, it causes a stratification problem. See
 // https://git.grammatech.com/rewriting/ddisasm/-/issues/392 for more details.
@@ -787,7 +779,7 @@ table_start_absolute_target_addr(TableStart0,TableStart,TargetAddr,TableLimit):-
 Jump-table pattern
   [1] ldr pc, [pc, r2, lsl N]
 */
-arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"absolute",1,0):-
+arm_jump_table_candidate_start(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"absolute",1,0):-
     op_indirect_mapped(IndOp,"NONE",PC,_,4,0,NBits),
     arch.load_word_operation(Operation),
     instruction(EA_jump,InstrSize,_,Operation,IndOp,RegOp,0,0,_,_),
@@ -816,7 +808,7 @@ Jump-table pattern
   [2] adr r1, Label   or  add r1, pc, offset
       ldr pc, [r1, r2, lsl N]
 */
-arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"absolute",1,0):-
+arm_jump_table_candidate_start(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"absolute",1,0):-
     // ldr pc, [r1, r2, lsl N]
     op_indirect_mapped(IndOp,"NONE",BaseReg,_,4,0,NBits),
     arch.load_word_operation(Operation),
@@ -838,7 +830,7 @@ Jump-table pattern
       ldr r0, [r1, r2, lsl N]
       mov pc, r0
 */
-arm_jump_table_candidate(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"absolute",1,0):-
+arm_jump_table_candidate_start(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"absolute",1,0):-
     // mov pc, r0
     arch.pc_reg(PC),
     arch.move_reg_reg(EA_jump,PC,Rd),
@@ -1154,15 +1146,16 @@ block_points(Block,"code",0,Confidence-2,cat("litpool ref block: ",Reason)):-
     litpool_confidence(EA,LitPoolAddr,Confidence,Reason),
     Confidence > 2.
 
-block_points(LitPoolAddr,"data",0,Confidence,cat("arm: litpool: ",Reason)):-
-    litpool_confidence(_,LitPoolAddr,Confidence,Reason).
-
+/**
+This rule is used for transmitting the points given to a literal pool data
+block to the corresponding literal-pool reference code block.
+*/
 .decl code_to_litpool_ref_point_transfer(Reason:symbol,Adjust:number)
 
 code_to_litpool_ref_point_transfer("litpool ref block: adr/ldm",2).
 code_to_litpool_ref_point_transfer("litpool ref block: ldr/ldrd or adr/ldrd",2).
 code_to_litpool_ref_point_transfer("litpool ref block: ref by non-overlapping block",2).
-code_to_litpool_ref_point_transfer("litpool ref block: not overlapping",0).
+code_to_litpool_ref_point_transfer("litpool ref block: loaded register used somewhere",3).
 code_to_litpool_ref_point_transfer("litpool ref block: possibly register param",2).
 code_to_litpool_ref_point_transfer("litpool ref block: multiple litpool refs in a block",0).
 code_to_litpool_ref_point_transfer("litpool ref block: valid VLDR", 2).
@@ -1172,14 +1165,18 @@ code_to_litpool_ref_point_transfer("function symbol",0).
 block_points(LitPoolAddr,"data",0,Points+Adjust,cat("litpool: ",Reason)):-
     block_points(Block,"code",0,Points0,Reason),
     code_to_litpool_ref_point_transfer(Reason,Adjust),
-    litpool_ref(EA,_,LitPoolAddr,_,_),
+    (
+        litpool_ref(EA,_,LitPoolAddr,_,_)
+        ;
+        arch.pc_relative_addr(EA,_,LitPoolAddr)
+    ),
     code_in_block_candidate_refined(EA,Block),
     Points = Points0 + Adjust,
     Points > 0.
 
 /**
 ADR/LDM pair loads multiple data from literal pool.
-Create data_block_candidate accordingly.
+Create 'data_block_candidate' accordingly.
 E.g.,
 adr r2, .L_xxx
 ldm r2, { r2, r3 }
@@ -1240,17 +1237,15 @@ block_points(Block,"code",0,Confidence,"litpool ref block: not overlapping"):-
 /**
 Even if the ref block is overlapping, if the loaded register is used somewhere,
 it is likely a literal pool.
-NOTE: We can't use def_used here.
+NOTE: We can't use 'def_used' here.
 */
-litpool_confidence(EA,LitPoolAddr,Confidence,"loaded register used somewhere"),
-block_points(LitPoolAddr,"data",0,Confidence,"litpool: loaded register used somewhere"),
-block_points(Block,"code",0,Confidence-1,"litpool ref block: loaded register used somewhere"):-
+litpool_confidence(EA,LitPoolAddr,Confidence,"loaded register used somewhere"):-
     litpool_ref(EA,Reg,LitPoolAddr,_,_),
     code_in_block_candidate_refined(EA,Block),
     block_is_overlapping(Block,"code"),
     !overlap_with_litpool(Block),
     straight_line_def_used(EA,Reg,_,_),
-    Confidence = 2.
+    Confidence = 3.
 
 /**
 Even if the ref block is overlapping and there is no known use of the loaded
@@ -1348,7 +1343,7 @@ block_points(LitPoolAddr,"data",0,Points,"arm: litpool: consecutive literal pool
         Points = 1
     ).
 
-block_points(Block,"data",0,9,"arm: $d symbol"),
+block_points(Block,"data",0,10,"arm: $d symbol"),
 data_block_candidate(Block,Size):-
     defined_symbol(Block,Size,_,_,_,_,_,_,"$d").
 
@@ -1458,7 +1453,7 @@ contains_plausible_instr_seq(Block,2,"multiple loads from stack",0):-
 
 /**
 Give 1 point to the blocks that are one-step transitive
-from a block contains_plausible_instr_seq.
+from a block 'contains_plausible_instr_seq'.
 */
 contains_plausible_instr_seq(Block,1,cat("transitive: ",Note),Block2):-
     block_is_overlapping(Block,"code"),
@@ -1603,7 +1598,7 @@ block_points(Block,"code",0,2,"arm: return followed by a function"):-
     function_symbol(EANext,_).
 
 /**
-Address_in_data with no explicit reference often happens to be ldmdaeq:
+'Address_in_data' with no explicit reference often happens to be ldmdaeq:
 E.g.,
 <  .word .L_8171bc9
 <  .word .L_81501ba
@@ -1703,7 +1698,7 @@ Matches instruction patterns that access a symbol-symbol from the literal pool.
 
 (Symbol2-Symbol1)*Scale
 
-EA: The address of the literal pool with the symbol_minus_symbol expression
+EA: The address of the literal pool with the 'symbol_minus_symbol' expression
 Size: The size of the symbolic expression
 EA_litpool_ref: The EA referencing the literal pool (EA)
 EA_def: The address associated with Symbol1
