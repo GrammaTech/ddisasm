@@ -1,6 +1,11 @@
 # 1.5.4 (Unreleased)
 * Update LIEF to version 0.12.1.
+* Update Souffle to version 2.3.
 * Ubuntu 18 and gcc7 are no longer supported
+* ARM64 support improvements:
+  * Handle single-byte jump tables where the value should be interpreted as a
+    signed difference.
+  * Prevent generation of incorrect :lo12: attributes in post-index operands.
 
 # 1.5.3
 * Rename `elfSectionIndex` to `sectionIndex`, and `elfSectionProperties` to
