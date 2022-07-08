@@ -239,8 +239,8 @@ mov pc, r   or  bx r
 
 In the above pattern, Label is supposed to be code rather than data
 (literal pools).
-Therefore, it should not be treated as 'litpool_ref', whose target is data.
-This predicate is used for excluding such case from litpool_ref.
+Therefore, it should not be treated as `litpool_ref`, whose target is data.
+This predicate is used for excluding such case from `litpool_ref`.
 Also, the target should not be aligned.
 */
 .decl pc_relative_for_jump_table(EA:address)
@@ -318,6 +318,14 @@ In order to initially recognize it as a code block in such cases,
 treat "push {lr}", which is a typical instruction that starts a function,
 as a basic target.
 E.g., asterisk
+
+FIXME: This is a heuristic: i.e., we can still miss blocks if the function
+starts with other instructions. It is better to make the initial candidate
+blocks by brute force, and refine them later with heuristics.
+TODO: One option could be to re-define `after_end` for arm.
+The current definition skips through nops only.
+We could change its behavior for arm to skip also through locations that
+have no instruction at all. This should allow it to skip through literal pools.
 */
 basic_target(EA):-
     instruction_get_operation(EA,Operation),
@@ -373,8 +381,6 @@ plt_block(EA-3,Function):-
     arch.pc_reg(PC).
 
 /**
-plt_entry_arm_candidate
-
 EA_entry: The address of the PLT entry
 EA_jump:  The address of the last jump instruction in the PLT entry
 Function: The external function that the PLT entry forwards
@@ -601,7 +607,7 @@ may_have_symbolic_immediate(Src,Dest):-
 ldr Reg1, .L0
 add Reg2, Reg1, pc
 
-Uses 'straight_line_def_used', which is a weaker version of 'def_used' that can
+Uses `straight_line_def_used`, which is a weaker version of `def_used` that can
 be used before code inference.
 */
 .decl init_ldr_add_pc(EA_ldr:address,Size:unsigned,Reg1:register,LitPoolAddr:address,EA_add_pc:address,Reg2:register)
@@ -613,8 +619,8 @@ init_ldr_add_pc(EA_ldr,Size,Reg1,LitPoolAddr,EA_add_pc,Reg2):-
     arch.pc_reg(PC).
 
 /**
-This rule is shared by 'init_symbol_minus_symbol_candidate_arm' and
-'cinf_symbol_minus_symbol_candidate_arm'.
+This rule is shared by `init_symbol_minus_symbol_candidate_arm` and
+`cinf_symbol_minus_symbol_candidate_arm`.
 */
 .decl symbol_minus_symbol_candidate_arm(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,Offset:number) inline
 
@@ -640,9 +646,9 @@ symbol_minus_symbol_candidate_arm(Addr,Size,EA_add_pc,Dest,Scale,Offset):-
     Scale = 1.
 
 /**
-A weaker version of 'cinf_symbol_minus_symbol_candidate_arm' that can be used
+A weaker version of `cinf_symbol_minus_symbol_candidate_arm` that can be used
 before code inference.
-see the comment of 'cinf_symbol_minus_symbol_candidate_arm'.
+see the comment of `cinf_symbol_minus_symbol_candidate_arm`.
 */
 .decl init_symbol_minus_symbol_candidate_arm(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,Offset:number)
 .output init_symbol_minus_symbol_candidate_arm
@@ -663,7 +669,7 @@ basic_target(EA):-
 ldr Reg1, .L0
 add add Reg2, Reg1, pc
 
-Uses def_used
+Uses `def_used`
 */
 .decl cinf_ldr_add_pc(EA_ldr:address,Size:unsigned,Reg1:register,LitPoolAddr:address,EA_add_pc:address,Reg2:register)
 
@@ -704,10 +710,12 @@ cinf_symbol_minus_symbol_candidate_arm(Addr,Size,EA_add_pc,Dest,Scale,Offset):-
 symbol_minus_symbol_candidate(Addr,Size,EA_add_pc,Dest,Scale,Offset):-
     cinf_symbol_minus_symbol_candidate_arm(Addr,Size,EA_add_pc,Dest,Scale,Offset).
 
-// TODO: Ideally, we want to rename 'cinf_symbol_minus_symbol_candidate_arm' to
-// the common rule 'symbol_minus_symbol_candidate', and use it here.
-// However, it causes a stratification problem. See
-// https://git.grammatech.com/rewriting/ddisasm/-/issues/392 for more details.
+/**
+TODO: Ideally, we want to rename `cinf_symbol_minus_symbol_candidate_arm` to
+the common rule `symbol_minus_symbol_candidate`, and use it here.
+However, it causes a stratification problem. See
+https://git.grammatech.com/rewriting/ddisasm/-/issues/392 for more details.
+*/
 labeled_data_candidate(Dest):-
     cinf_symbol_minus_symbol_candidate_arm(_,_,_,Dest,_,_),
     data_segment(Begin,End),
@@ -1176,7 +1184,7 @@ block_points(LitPoolAddr,"data",0,Points+Adjust,cat("litpool: ",Reason)):-
 
 /**
 ADR/LDM pair loads multiple data from literal pool.
-Create 'data_block_candidate' accordingly.
+Create `data_block_candidate` accordingly.
 E.g.,
 adr r2, .L_xxx
 ldm r2, { r2, r3 }
@@ -1237,7 +1245,7 @@ block_points(Block,"code",0,Confidence,"litpool ref block: not overlapping"):-
 /**
 Even if the ref block is overlapping, if the loaded register is used somewhere,
 it is likely a literal pool.
-NOTE: We can't use 'def_used' here.
+NOTE: We can't use `def_used` here.
 */
 litpool_confidence(EA,LitPoolAddr,Confidence,"loaded register used somewhere"):-
     litpool_ref(EA,Reg,LitPoolAddr,_,_),
@@ -1278,7 +1286,7 @@ block_points(Block,"code",0,1,"multiple litpool refs in a block"):-
 
 /**
 Currently, floating-point registers are currently not tracked in
-straight_line_def_used.
+`straight_line_def_used`.
 Even if the ref block is overlapping and there is no known use of the loaded
 register, if the instruction appears to be a valid VLDR, it is likely a
 literal.
@@ -1453,7 +1461,7 @@ contains_plausible_instr_seq(Block,2,"multiple loads from stack",0):-
 
 /**
 Give 1 point to the blocks that are one-step transitive
-from a block 'contains_plausible_instr_seq'.
+from a block `contains_plausible_instr_seq`.
 */
 contains_plausible_instr_seq(Block,1,cat("transitive: ",Note),Block2):-
     block_is_overlapping(Block,"code"),
@@ -1598,7 +1606,7 @@ block_points(Block,"code",0,2,"arm: return followed by a function"):-
     function_symbol(EANext,_).
 
 /**
-'Address_in_data' with no explicit reference often happens to be ldmdaeq:
+`Address_in_data` with no explicit reference often happens to be ldmdaeq:
 E.g.,
 <  .word .L_8171bc9
 <  .word .L_81501ba
@@ -1698,7 +1706,7 @@ Matches instruction patterns that access a symbol-symbol from the literal pool.
 
 (Symbol2-Symbol1)*Scale
 
-EA: The address of the literal pool with the 'symbol_minus_symbol' expression
+EA: The address of the literal pool with the `symbol_minus_symbol` expression
 Size: The size of the symbolic expression
 EA_litpool_ref: The EA referencing the literal pool (EA)
 EA_def: The address associated with Symbol1
