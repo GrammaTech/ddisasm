@@ -246,7 +246,7 @@ value_reg(EA,Reg,EA,"NONE",0,Address,1):-
     track_register(Reg),
     Address = as(Offset,number).
 
-value_reg(EA,Reg,EA,"NONE",0,Val,1):-
+value_reg(EA,Reg,EA,"NONE",0,as(Val,number),1):-
     arch.pc_relative_addr(EA,Reg,Val),
     track_register(Reg).
 

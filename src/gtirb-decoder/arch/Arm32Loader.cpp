@@ -307,7 +307,7 @@ bool Arm32Loader::collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInstr
             OpndFacts.Operands.push_back(*Op);
 
             // Populate shift metadata if present.
-            if(CsOp.type == ARM_OP_REG && CsOp.shift.value != 0)
+            if(CsOp.shift.type != ARM_SFT_INVALID && CsOp.shift.value != 0)
             {
                 std::string ShiftType;
                 switch(CsOp.shift.type)
@@ -421,8 +421,13 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_insn& CsInsn, cons
         {
             // CsOp.mem.lshift seems to be incorrect for some instructions,
             // see: https://github.com/capstone-engine/capstone/issues/1848
-            // TODO: LDR instructions support ASR, LSL, LSR, ROR, and RRX shifts.
+            // The lshift value can also be fetched via op.shift.value.
+            // Therefore, we use op.shift.value here instead.
+            //
+            // LDR instructions support ASR, LSL, LSR, ROR, and RRX shifts.
             // Only LSL can be represented as a multiplier.
+            // Therefore, we carry the LSL info in op_indirect rules.
+            // For other types of shifts, we use ShiftedOp.
             if(CsOp.shift.value && CsOp.shift.type != ARM_SFT_LSL)
                 std::cerr << "WARNING: Unhandled shift type in mem operand ("
                           << "address=0x" << std::hex << CsInsn.address << std::dec << ", "

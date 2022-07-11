@@ -865,6 +865,14 @@ printable_char(0xD).
 printable_char(N):-
     N = range(0x20,0x7E+1,1).
 
+/**
+Align address in 4-byte boundary
+*/
+.decl align_addr(AddrAligned:address,AddrOrig:address) inline
+
+align_addr(AddrAligned,AddrOrig):-
+    AddrAligned = AddrOrig - (AddrOrig band 3).
+
 /*
 The functions and data-objects that are intrinsic to the compiler's ABI -
 artifacts of compilation that are not explicit features of the source and

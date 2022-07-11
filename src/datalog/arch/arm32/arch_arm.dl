@@ -56,6 +56,8 @@ load_word_operation(Operation):-
         condition_code_map(Suffix,_)
     ).
 
+data_access_size("LDRD",DestReg,8):-
+    op_regdirect_contains_reg(_,DestReg).
 data_access_size("LDR",DestReg,4):-
     op_regdirect_contains_reg(_,DestReg).
 data_access_size("LDRSB",DestReg,1):-
@@ -160,7 +162,7 @@ pc_relative_addr(EA,Reg,Val):-
     op_immediate(OffsetOp, Offset),
     op_regdirect_contains_reg(DestOp,Reg),
     pc_relative_disp(EA,Disp),
-    Val = as(EA - (EA band 3),number) + Offset + Disp.
+    Val = as(as(EA - (EA band 3),number) + Offset + Disp,address).
 
 pc_relative_addr(EA,Reg,Val):-
     instruction(EA,_,_,Operation,PCOp,OffsetOp,DestOp,0,_,_),
@@ -174,7 +176,7 @@ pc_relative_addr(EA,Reg,Val):-
     op_regdirect_contains_reg(PCOp,PC),
     arch.pc_reg(PC),
     pc_relative_disp(EA,Disp),
-    Val = as(EA - (EA band 3),number) + Sign * Offset + Disp.
+    Val = as(as(EA - (EA band 3),number) + Sign * Offset + Disp,address).
 
 /**
 E.g.,
