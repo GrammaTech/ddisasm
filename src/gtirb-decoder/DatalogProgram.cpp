@@ -50,6 +50,116 @@ std::optional<DatalogProgram> DatalogProgram::load(const gtirb::Module &Module)
     return std::nullopt;
 }
 
+/**
+Create a record from a string and return the record ID.
+*/
+souffle::RamDomain DatalogProgram::insertRecord(const std::string &RecordText)
+{
+    if(RecordText[0] != '[' || RecordText[RecordText.size() - 1] != ']')
+    {
+        throw std::invalid_argument("Could not parse record");
+    }
+
+    souffle::RecordTable &RecordTable = Program->getRecordTable();
+    souffle::SymbolTable &SymbolTable = Program->getSymbolTable();
+
+    // Create string without the enclosing record brackets
+    std::string RemainingFieldText = RecordText.substr(1, RecordText.size() - 2);
+
+    // TODO: is there any way to verify that the structure we discover from the
+    // RecordText matches the expected structure of the desired record type?
+    // Parsing would also be easier if we knew the expected types. We could get
+    // confused, for example, if a string entry is a valid integer or record.
+
+    std::vector<souffle::RamDomain> RecordData;
+    std::string InferredRecordType;
+    std::string Field;
+    bool End = false;
+    while(!End)
+    {
+        size_t Pos = RemainingFieldText.find(", ");
+        if(Pos == std::string::npos)
+        {
+            Pos = RemainingFieldText.size();
+            End = true;
+        }
+        Field = RemainingFieldText.substr(0, Pos);
+
+        if(!End)
+        {
+            RemainingFieldText = RemainingFieldText.substr(Pos + 2);
+        }
+
+        enum ParseMode
+        {
+            PARSE_UNSIGNED,
+            PARSE_SIGNED,
+            PARSE_FLOAT,
+            PARSE_RECORD,
+            PARSE_STRING,
+            PARSE_END /* Keep at end */
+        };
+
+        // We don't know what the form of the record type is. Just try parsing
+        // until something works...
+        for(unsigned int ParseAttempt = PARSE_UNSIGNED; ParseAttempt < PARSE_END; ParseAttempt++)
+        {
+            std::string InferredFieldType = "";
+            try
+            {
+                switch(ParseAttempt)
+                {
+                    case PARSE_UNSIGNED:
+                    {
+                        // Unsigned int
+                        uint64_t Number = std::stoull(Field, 0, 0);
+                        RecordData.push_back(souffle::ramBitCast(Number));
+                        InferredFieldType = "u";
+                        break;
+                    }
+                    case PARSE_SIGNED:
+                    {
+                        // Signed int
+                        int64_t Number = std::stoll(Field, 0, 0);
+                        RecordData.push_back(souffle::ramBitCast(Number));
+                        InferredFieldType = "i";
+                        break;
+                    }
+                    case PARSE_FLOAT:
+                    {
+                        // Float
+                        RecordData.push_back(souffle::ramBitCast(std::stod(Field)));
+                        InferredFieldType = "f";
+                        break;
+                    }
+                    case PARSE_RECORD:
+                    {
+                        // Record
+                        RecordData.push_back(insertRecord(Field));
+                        InferredFieldType = "r";
+                        break;
+                    }
+                    case PARSE_STRING:
+                        // Nothing else worked - insert it as a string.
+                        RecordData.push_back(SymbolTable.encode(Field));
+                        InferredFieldType = "s";
+                        break;
+                }
+            }
+            catch(std::invalid_argument e)
+            {
+                // Didn't parse correctly - try parsing as a different type.
+                continue;
+            }
+
+            // Parsing succeeded.
+            break;
+        }
+    }
+
+    return RecordTable.pack(RecordData.data(), RecordData.size());
+}
+
 bool DatalogProgram::insertTuple(std::stringstream &TupleText, souffle::Relation *Relation)
 {
     souffle::tuple T(Relation);
@@ -91,6 +201,9 @@ bool DatalogProgram::insertTuple(std::stringstream &TupleText, souffle::Relation
                     T << std::stod(Field);
                     break;
                 }
+                case 'r':
+                    T << insertRecord(Field);
+                    break;
                 default:
                     std::cerr << "Cannot parse field type " << Relation->getAttrType(I)
                               << std::endl;
@@ -162,15 +275,74 @@ std::vector<DatalogProgram::Target> DatalogProgram::supportedTargets()
     return Targets;
 }
 
+void DatalogProgram::serializeAttribute(std::ostream &Stream, const std::string &AttrType,
+                                        souffle::RamDomain Data)
+{
+    souffle::SymbolTable &SymbolTable = Program->getSymbolTable();
+    switch(AttrType[0])
+    {
+        case 's':
+            Stream << SymbolTable.unsafeDecode(Data);
+            break;
+        case 'u':
+            if(AttrType == "u:address")
+            {
+                Stream << std::hex << souffle::ramBitCast<souffle::RamUnsigned>(Data) << std::dec;
+            }
+            else
+            {
+                Stream << souffle::ramBitCast<souffle::RamUnsigned>(Data);
+            }
+            break;
+        case 'f':
+            Stream << souffle::ramBitCast<souffle::RamFloat>(Data);
+            break;
+        case 'i':
+            Stream << souffle::ramBitCast<souffle::RamSigned>(Data);
+            break;
+        case 'r':
+            serializeRecord(Stream, AttrType, Data);
+            break;
+        default:
+            throw std::logic_error("Serialization for datalog type " + AttrType + " not defined");
+    }
+}
+
+void DatalogProgram::serializeRecord(std::ostream &Stream, const std::string &AttrType,
+                                     souffle::RamDomain RecordId)
+{
+    // There is no way to look up record type information from the Datalog. We
+    // have to keep a map of definitions here.
+    static const std::map<std::string, std::list<std::string>> RecordTypeMap = {
+        {"r:stack_var", {"s:register", "i:number"}},
+    };
+
+    auto It = RecordTypeMap.find(AttrType);
+    if(It == RecordTypeMap.end())
+    {
+        throw std::logic_error("Serialization for datalog record type " + AttrType
+                               + " not defined");
+    }
+
+    const souffle::RamDomain *Record =
+        Program.get()->getRecordTable().unpack(RecordId, It->second.size());
+
+    Stream << "[";
+    unsigned int I = 0;
+    for(const std::string &RecordAttr : It->second)
+    {
+        if(I > 0)
+        {
+            Stream << ", ";
+        }
+        serializeAttribute(Stream, RecordAttr, Record[I]);
+        I++;
+    }
+    Stream << "]";
+}
+
 void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation *Relation)
 {
-    souffle::SymbolTable &SymbolTable = Relation->getSymbolTable();
-    std::vector<bool> HexFields;
-    for(size_t I = 0; I < Relation->getArity(); I++)
-    {
-        std::string FieldType = Relation->getAttrType(I);
-        HexFields.push_back(FieldType == "u:address");
-    }
     Stream << std::showbase;
 
     for(souffle::tuple Tuple : *Relation)
@@ -181,33 +353,7 @@ void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation
             {
                 Stream << "\t";
             }
-            switch(Relation->getAttrType(I)[0])
-            {
-                case 's':
-                    Stream << SymbolTable.unsafeDecode(Tuple[I]);
-                    break;
-                case 'u':
-                    if(HexFields[I])
-                    {
-                        Stream << std::hex << souffle::ramBitCast<souffle::RamUnsigned>(Tuple[I])
-                               << std::dec;
-                    }
-                    else
-                    {
-                        Stream << souffle::ramBitCast<souffle::RamUnsigned>(Tuple[I]);
-                    }
-                    break;
-                case 'f':
-                    Stream << souffle::ramBitCast<souffle::RamFloat>(Tuple[I]);
-                    break;
-                case 'i':
-                    Stream << Tuple[I];
-                    break;
-                default:
-                    throw std::logic_error("Serialization for datalog type "
-                                           + std::string(Relation->getAttrType(I))
-                                           + " not defined");
-            }
+            serializeAttribute(Stream, Relation->getAttrType(I), Tuple[I]);
         }
         Stream << "\n";
     }

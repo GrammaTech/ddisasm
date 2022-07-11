@@ -98,6 +98,12 @@ public:
     static std::vector<Target> supportedTargets();
 
 private:
+    souffle::RamDomain insertRecord(const std::string& RecordText);
+    void serializeRecord(std::ostream& Stream, const std::string& AttrType,
+                         souffle::RamDomain RecordId);
+    void serializeAttribute(std::ostream& Stream, const std::string& AttrType,
+                            souffle::RamDomain Data);
+
     static std::map<Target, Factory>& loaders();
 
     std::shared_ptr<souffle::SouffleProgram> Program;
