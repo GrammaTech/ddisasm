@@ -49,7 +49,6 @@
 #include "Registration.h"
 #include "Version.h"
 #include "gtirb-builder/GtirbBuilder.h"
-#include "gtirb-decoder/DatalogProgram.h"
 #include "gtirb-decoder/core/ModuleLoader.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
@@ -124,6 +123,7 @@ int main(int argc, char **argv)
         "Specifies the ASM output file; use to '-' print to stdout")(
         "debug", "generate assembler file with debugging information")(
         "debug-dir", po::value<std::string>(), "location to write CSV files for debugging")(
+        "hints", po::value<std::string>(), "location of user-provided hints file")(
         "input-file", po::value<std::string>(), "file to disasemble")(
         "keep-functions,K", po::value<std::vector<std::string>>()->multitoken(),
         "Print the given functions even if they are skipped by default (e.g. _start)")(
@@ -262,6 +262,12 @@ int main(int argc, char **argv)
             return EXIT_FAILURE;
         }
 
+        if(vm.count("hints"))
+        {
+            std::string HintsFileName = vm["hints"].as<std::string>();
+            Souffle->readHintsFile(HintsFileName);
+        }
+
         printElapsedTimeSince(StartDecode);
 
         // Remove initial entry point.
@@ -306,7 +312,7 @@ int main(int argc, char **argv)
             const std::string &DatalogFile = vm["interpreter"].as<std::string>();
             const std::string &LibDirectory =
                 vm.count("library-dir") ? vm["library-dir"].as<std::string>() : std::string();
-            runInterpreter(*GTIRB->IR, Module, Souffle->get(), DatalogFile, DebugDir.string(),
+            runInterpreter(*GTIRB->IR, Module, *Souffle, DatalogFile, DebugDir.string(),
                            LibDirectory, ProfilePath, Threads);
         }
         else

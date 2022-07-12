@@ -132,6 +132,9 @@ Ddisasm accepts the following parameters:
 `--debug-dir arg`
 :   location to write CSV files for debugging
 
+`--hints arg`
+:   location of user-provided hints file
+
 `-K [ --keep-functions ] arg`
 :   Print the given functions even if they are skipped by default (e.g. _start)
 
@@ -163,6 +166,20 @@ To run the test suite, run:
 ```
 cd build && PATH=$(pwd)/bin:$PATH ctest
 ```
+
+## Providing User Hints
+
+A user can provide a file with user hints to guide and overcome limitations in the current ddisasm
+implementation. User hints are simply datalog facts that are added to the database before running
+the Datalog program. Datalog hints are provided in tab-separated .csv format where the first field
+is the predicate name and subsequent fields are the fact field values to be added.
+
+For example
+```
+invalid 0x100 definitely_not_code
+```
+will add a fact `invalid(0x100,"definitely_not_code")` to the Datalog database.
+The fields need to be separated by tabs '\t'.
 
 ## Contributing
 

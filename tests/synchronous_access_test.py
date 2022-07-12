@@ -62,7 +62,7 @@ class SynchronousAccessTests(unittest.TestCase):
                 "preferred_data_access"
             ]
             addresses = [
-                int(x.split("\t")[0])
+                int(x.split("\t")[0], base=16)
                 for x in preferred_data_access[1].strip().split("\n")
             ]
 

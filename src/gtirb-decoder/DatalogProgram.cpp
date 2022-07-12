@@ -50,6 +50,106 @@ std::optional<DatalogProgram> DatalogProgram::load(const gtirb::Module &Module)
     return std::nullopt;
 }
 
+bool DatalogProgram::insertTuple(std::stringstream &TupleText, souffle::Relation *Relation)
+{
+    souffle::tuple T(Relation);
+    std::string Field;
+    for(size_t I = 0; I < Relation->getArity(); I++)
+    {
+        if(Relation->getArity() == 1)
+        {
+            Field = TupleText.str();
+        }
+        else if(!std::getline(TupleText, Field, '\t'))
+        {
+            std::cerr << "CSV file has less fields than expected" << std::endl;
+            return false;
+        }
+        try
+        {
+            switch(Relation->getAttrType(I)[0])
+            {
+                case 's':
+                {
+                    T << Field;
+                    break;
+                }
+                case 'i':
+                {
+                    int64_t Number = std::stoll(Field, 0, 0);
+                    T << Number;
+                    break;
+                }
+                case 'u':
+                {
+                    uint64_t Number = std::stoull(Field, 0, 0);
+                    T << Number;
+                    break;
+                }
+                case 'f':
+                {
+                    T << std::stod(Field);
+                    break;
+                }
+                default:
+                    std::cerr << "Cannot parse field type " << Relation->getAttrType(I)
+                              << std::endl;
+                    return false;
+            }
+        }
+        catch(std::invalid_argument e)
+        {
+            std::cerr << "Failed to parse " << I + 1 << "-th field: '" << Field << "'" << std::endl;
+            return false;
+        }
+    }
+    if(std::getline(TupleText, Field, '\t'))
+    {
+        std::cerr << "CSV file has more fields than expected, field '" << Field << "' is ignored"
+                  << std::endl;
+    }
+    Relation->insert(T);
+    return true;
+}
+
+void DatalogProgram::readHintsFile(const std::string FileName)
+{
+    std::ifstream HintsFile(FileName);
+
+    if(!HintsFile)
+    {
+        std::cerr << "Error: could not find hints file `" << FileName << "'\n";
+        return;
+    }
+
+    std::string Line;
+    int LineNumber = 0;
+    while(std::getline(HintsFile, Line))
+    {
+        ++LineNumber;
+        std::stringstream Row(Line);
+        std::string RelationName;
+        if(!std::getline(Row, RelationName, '\t'))
+        {
+            std::cerr << "Warning: ignoring hint in line " << LineNumber << ": '" << Line << "'\n";
+            continue;
+        }
+        souffle::Relation *Relation = Program->getRelation(RelationName);
+        if(!Relation)
+        {
+            std::cerr << "Warning: ignoring hint in line " << LineNumber << ": unknown relation "
+                      << RelationName << std::endl;
+            continue;
+        }
+        if(!insertTuple(Row, Relation))
+        {
+            std::cerr << "Warning: ignoring hint in line " << LineNumber << ": bad format"
+                      << std::endl;
+            continue;
+        }
+    }
+}
+
 std::vector<DatalogProgram::Target> DatalogProgram::supportedTargets()
 {
     static std::vector<DatalogProgram::Target> Targets;
@@ -65,6 +165,14 @@ std::vector<DatalogProgram::Target> DatalogProgram::supportedTargets()
 void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation *Relation)
 {
     souffle::SymbolTable &SymbolTable = Relation->getSymbolTable();
+    std::vector<bool> HexFields;
+    for(size_t I = 0; I < Relation->getArity(); I++)
+    {
+        std::string FieldType = Relation->getAttrType(I);
+        HexFields.push_back(FieldType == "u:address");
+    }
+    Stream << std::showbase;
+
     for(souffle::tuple Tuple : *Relation)
     {
         for(size_t I = 0; I < Tuple.size(); I++)
@@ -79,13 +187,26 @@ void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation
                     Stream << SymbolTable.unsafeDecode(Tuple[I]);
                     break;
                 case 'u':
-                    Stream << souffle::ramBitCast<souffle::RamUnsigned>(Tuple[I]);
+                    if(HexFields[I])
+                    {
+                        Stream << std::hex << souffle::ramBitCast<souffle::RamUnsigned>(Tuple[I])
+                               << std::dec;
+                    }
+                    else
+                    {
+                        Stream << souffle::ramBitCast<souffle::RamUnsigned>(Tuple[I]);
+                    }
                     break;
                 case 'f':
                     Stream << souffle::ramBitCast<souffle::RamFloat>(Tuple[I]);
                     break;
-                default:
+                case 'i':
                     Stream << Tuple[I];
+                    break;
+                default:
+                    throw std::logic_error("Serialization for datalog type "
+                                           + std::string(Relation->getAttrType(I))
+                                           + " not defined");
             }
         }
         Stream << "\n";
@@ -98,6 +219,17 @@ void DatalogProgram::writeFacts(const std::string &Directory)
     for(souffle::Relation *Relation : Program->getInputRelations())
     {
         std::ofstream File(Directory + Relation->getName() + ".facts", FileMask);
+        writeRelation(File, Relation);
+        File.close();
+    }
+}
+
+void DatalogProgram::writeRelations(const std::string &Directory)
+{
+    std::ios_base::openmode FileMask = std::ios::out;
+    for(souffle::Relation *Relation : Program->getOutputRelations())
+    {
+        std::ofstream File(Directory + Relation->getName() + ".csv", FileMask);
         writeRelation(File, Relation);
         File.close();
     }
