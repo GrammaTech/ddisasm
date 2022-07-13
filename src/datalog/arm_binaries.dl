@@ -51,9 +51,22 @@ contains_plausible_instr_seq(Block,3,"cmp/conditional-branch",0):-
     instruction_get_operation(PrevEA,Operation),
     arch.cmp_operation(Operation).
 
+/**
+In some cases, a data block continues to a code block (must-fallthrough) and
+makes a big, false code block when there is no explicit reference to the code
+block.
+To avoid such data block from being given too many points for code inference
+heuristics, exclude implausible cases.
+TODO: add more cases here if any.
+*/
+.decl contains_plausible_instr_seq_limited(Block:address,Weight:number,Type:symbol,Block2:address)
+.output contains_plausible_instr_seq_limited
+
+contains_plausible_instr_seq_limited(0,0,"",0):- false.
+
 block_points(Block,"code",0,Weight,cat("contains_plausible_instr_seq: ", Why)):-
     block_is_overlapping(Block,"code"),
-    contains_plausible_instr_seq(Block,Weight,Why,_).
+    contains_plausible_instr_seq_limited(Block,Weight,Why,_).
 
 avoid_symbols("$d").
 

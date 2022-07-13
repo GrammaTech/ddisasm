@@ -694,6 +694,7 @@ block_points(Block,"code",BlockPred,1,"fits"):-
 
 // Prefer blocks that have a well-defined boundary with a prior block.
 block_points(Block,"code",0,1,"better fit"):-
+    !binary_isa("ARM"),
     block_is_overlapping(Block,"code"),
     block_candidate_boundaries(Block,"code",Beg,_),
     block_candidate_boundaries(_,"code",_,Beg).
