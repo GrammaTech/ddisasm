@@ -249,12 +249,15 @@ basic_target(Val):-
         defined_symbol(Val,_,Type,_,_,_,_,_,_),
         Type != "OBJECT"
         ;
-        // Exception information
+        // ELF exception information
         fde_addresses(Val,_)
         ;
         lsda_callsite_addresses(Val, _, _)
         ;
         lsda_callsite_addresses(_, _, Val)
+        ;
+        // PE32 exception information
+        seh_handler_entry(_,Val)
     ).
 
 .decl block_limit(EA:address)
@@ -562,6 +565,7 @@ transitive_points("fde-entry").
 transitive_points("landing-pad").
 transitive_points("exc-region").
 transitive_points("relative jump table target").
+transitive_points("seh handler").
 
 //////////////////////////////////////////////////////////////////////
 // data block candidate points
@@ -871,6 +875,10 @@ block_points(Block,"code",0,-1,"jump to string"):-
         aligned_address_in_data(_,Beg)
     ),
     code_in_block_candidate(EA,Block).
+
+block_points(Block,"code",0,5,"seh handler"):-
+    block_is_overlapping(Block,"code"),
+    seh_handler_entry(_,Block).
 
 ////////////////////////////////////////////////////////////////////////////
 

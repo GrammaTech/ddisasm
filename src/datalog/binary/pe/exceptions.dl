@@ -1,0 +1,136 @@
+//===- exceptions.dl ----------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019-2022 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+//
+
+/**
+Register "Reg" at address "EA" contains a reference to the Thread Information
+Block (TIB).
+*/
+.decl reg_has_tib(EA:address,Reg:register)
+.output reg_has_tib
+
+reg_has_tib(EA,Reg):-
+    binary_isa("X86"),
+    binary_format("PE"),
+    // Loads
+    instruction_get_operation(EA,"MOV"),
+    // Thread Information Block from FS segment register,
+    instruction_get_src_op(EA,_,Src),
+    op_indirect(Src,"FS","NONE","NONE",1,0,_),
+    // Into some register.
+    instruction_get_dest_op(EA,_,Op),
+    op_regdirect_contains_reg(Op,Reg).
+
+/**
+PE32 SEH - Structured Exception Handlers
+
+Relations for identifying exception registrations.
+
+SEH can be summarized with the following mechanics:
+
+    1. Segment register FS references the Thread Information Block (TIB).
+
+    2. FS:[0], the first field of in TIB, is a linked-list of exceptions:
+
+        typedef struct _NT_TIB {
+            struct _EXCEPTION_REGISTRATION_RECORD *ExceptionList;
+        ...
+        } NT_TIB;
+
+    2. An exception registration record has a reference to the previously
+       registered exception and a reference to the new exception handler:
+
+        typedef struct _EXCEPTION_REGISTRATION_RECORD {
+            struct _EXCEPTION_REGISTRATION_RECORD *Next;
+            PEXCEPTION_ROUTINE Handler;
+        } EXCEPTION_REGISTRATION_RECORD;
+
+    3. Registering a new exception is done by creating a new registration
+       record struct on the stack and writing it directly to FS:[0], e.g.:
+
+       push  _except_handler   ; handler
+       mov   EAX,FS:[0]        ; previous
+       push  EAX
+       ...
+       mov   FS:[0], EAX       ; register new exception
+*/
+.decl pe_exception_handler(EA:address)
+.output pe_exception_handler
+
+pe_exception_handler(EA):-
+    seh_handler_entry(_,EA),
+    code(EA).
+
+/**
+PE32 SAFESEH - Safe Structured Exception Handlers
+
+Windows PE32 binaries may specify a table of safe exception handlers when linked
+with the '/SAFESEH' parameter. These predicates identify those handlers for code
+and data-object inference.
+
+SEH exception handlers are stored as a linked list on the stack, and are
+vulnerable to corruption by buffer-overflow and other memory-safety bugs.
+
+SAFESEH is an extension of SEH that stores a list of exceptions handlers, checked
+at runtime. The safe exception handler table is stored in a table referenced by
+the 'SEHandlerTable' pointer in the load configuration data directory:
+
+   // WINNT.H
+   typedef struct _IMAGE_LOAD_CONFIG_DIRECTORY32 {
+   ...
+   DWORD   SEHandlerTable;
+   DWORD   SEHandlerCount;
+   ...
+   }
+
+https://docs.microsoft.com/en-us/cpp/build/reference/safeseh-image-has-safe-exception-handlers
+*/
+.decl seh_handler_table(Beg:address,End:address)
+.output seh_handler_table
+
+seh_handler_table(Beg,End):-
+    binary_isa("X86"),
+    binary_format("PE"),
+    pe_load_config("SEHandlerTable",Table),
+    pe_load_config("SEHandlerCount",Count),
+    Beg = as(Table,address),
+    End = as(Beg+(Count*4),address).
+
+data_region(Beg,End-End):-
+    seh_handler_table(Beg,End).
+
+.decl seh_handler_entry(EA:address,Handler:address)
+.output seh_handler_entry
+
+seh_handler_entry(EA,ImageBase+RVA):-
+    base_address(ImageBase),
+    seh_handler_table(EA,_),
+    data_word(EA,4,Val),
+    RVA = as(Val,address).
+
+seh_handler_entry(EA+4,ImageBase+RVA):-
+    base_address(ImageBase),
+    seh_handler_entry(EA,_),
+    data_word(EA+4,4,Val), Val != 0,
+    seh_handler_table(_,End), EA < End,
+    RVA = as(Val,address).

@@ -1,12 +1,10 @@
 CFLAGS = "/Fa"
 
-all: main.c
-	cl $(CFLAGS) main.c
-	cmd /C "for %A in (750 800 900 700 500 250 100 200 600) do @ main.exe %A" > out.txt
+all: ex.c
+	cl $(CFLAGS) ex.c
+	cmd /C "for %A in (750 800 900 700 500 250 100 200 600) do @ ex.exe %A" > out.txt
 clean:
-	del /F /Q *.exe *.obj *.exp *.def *.lib *.asm out.txt check.txt mllink$$.lnk
-	del /F /Q ex.unstripped *.s *.old*
-	if exist dl_files { rmdir /Q /S dl_files }
+	del /F /Q *.exe *.obj *.exp *.def *.lib *.s out.txt check.txt mllink$$.lnk
 check:
-	cmd /C "for %A in (750 800 900 700 500 250 100 200 600) do @ main.exe %A" > check.txt
+	cmd /C "for %A in (750 800 900 700 500 250 100 200 600) do @ ex.exe %A" > check.txt
 	@ FC out.txt check.txt && echo TEST OK

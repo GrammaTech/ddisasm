@@ -1,4 +1,5 @@
 # 1.5.4 (Unreleased)
+* Add PE32 Safe Structured Exception Handling (SAFESEH) support.
 * Update LIEF to version 0.12.1.
 * Update Souffle to version 2.3.
 * Ubuntu 18 and gcc7 are no longer supported

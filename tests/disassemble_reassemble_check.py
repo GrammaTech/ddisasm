@@ -220,31 +220,30 @@ def reassemble(compiler, binary, extra_flags):
     Reassemble the assembly file binary+'.s' into a new binary
     """
     print("# Reassembling", binary + ".s", "into", binary)
+
     if platform.system() == "Linux":
-        print(
-            "compile command:",
-            compiler,
-            binary + ".s",
-            "-o",
-            binary,
-            *extra_flags
-        )
-        completedProcess = subprocess.run(
+        cmd = (
             build_chroot_wrapper()
             + [compiler, binary + ".s", "-o", binary]
             + extra_flags
         )
     elif platform.system() == "Windows":
-        out_arg = "/OUT:" + binary
-        if "/link" not in extra_flags:
-            extra_flags = extra_flags + ["/link", out_arg]
-        else:
-            extra_flags = extra_flags + [out_arg]
-        print("compile command:", compiler, binary + ".s", *extra_flags)
-        completedProcess = subprocess.run(
-            [compiler, binary + ".s"] + extra_flags
-        )
-    if completedProcess.returncode != 0:
+        cmd = [compiler, binary + ".s"] + extra_flags
+
+        if "/link" not in cmd:
+            cmd.append("/link")
+        cmd.append("/out:" + binary)
+
+        # NOTE:
+        # Reassembling with SAFESEH support requires redundant `/safeseh' flags
+        # and fails if the first flag does not precede the source file in the
+        # command-line. We insert the flag here as the first argument.
+        if "/safeseh" in extra_flags:
+            cmd.insert(1, "/safeseh")
+
+    print("compile command:", *cmd)
+    proc = subprocess.run(cmd)
+    if proc.returncode != 0:
         print(bcolors.fail("# Reassembly failed\n"))
         return False
     print(bcolors.okgreen("# Reassembly succeed"))

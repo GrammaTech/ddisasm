@@ -51,6 +51,19 @@ void PeDataDirectoryLoader(const gtirb::Module &Module, DatalogProgram &Program)
     {
         Program.insert("pe_debug_data", *DebugData);
     }
+
+    if(auto *LoadConfig = Module.getAuxData<gtirb::schema::PeLoadConfig>())
+    {
+        if(auto *Relation = Program.get()->getRelation("pe_load_config"))
+        {
+            for(const auto [Name, Value] : *LoadConfig)
+            {
+                souffle::tuple Row(Relation);
+                Row << Name << Value;
+                Relation->insert(Row);
+            }
+        }
+    }
 }
 
 namespace souffle

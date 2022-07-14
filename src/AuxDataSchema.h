@@ -190,6 +190,13 @@ namespace gtirb
             typedef std::string Type;
         };
 
+        /// \brief Auxiliary data mapping PE load configuration field names to number values.
+        struct PeLoadConfig
+        {
+            static constexpr const char* Name = "peLoadConfig";
+            typedef std::map<std::string, uint64_t> Type;
+        };
+
         /// \brief Auxiliary data representing the import table of a PE file.
         struct ImportEntries
         {
@@ -237,6 +244,13 @@ namespace gtirb
         {
             static constexpr const char* Name = "peDebugData";
             typedef std::vector<auxdata::PeDebugData> Type;
+        };
+
+        /// \brief Auxiliary data listing of safe exception handler blocks.
+        struct PeSafeExceptionHandlers
+        {
+            static constexpr const char* Name = "peSafeExceptionHandlers";
+            typedef std::set<gtirb::UUID> Type;
         };
 
         /// \brief Auxiliary data for Souffle fact files.
