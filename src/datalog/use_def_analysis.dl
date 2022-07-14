@@ -253,6 +253,7 @@ track_register(Reg):-
     live_reg_at_block_end(PrevBlock,Block,Obj):-
         block_next(PrevBlock,PrevBlockEnd,Block),
         live_reg_used(Block,Obj,_),
+        def(_,Obj), // Ensure a def exists before we bother propagating...
         !flow_def(PrevBlockEnd,Obj,Block,_).
 
     // Recursive case
