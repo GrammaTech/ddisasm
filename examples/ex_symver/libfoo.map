@@ -1,0 +1,15 @@
+LIBFOO_1.0 {
+    global:
+      foo;
+      bar;
+    local:
+      *;
+};
+
+LIBFOO_2.0 {
+    global:
+      foo;
+      bar;
+    local:
+      *;
+} LIBFOO_1.0;
