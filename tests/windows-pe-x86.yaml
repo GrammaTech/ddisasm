@@ -6,7 +6,7 @@ default: &default
   arch: x86
 
   # Compilation configuration.
-  build:
+  build: &default-build
     c: ["cl"]
     cpp: ["cl"]
     optimizations: ["/Od", "/Ot", "/O1", "/Ox", "/O2"]
@@ -33,6 +33,13 @@ assembly: &assembly
   <<: *default
   path: examples/asm_examples
 
+cpp-exceptions: &cpp-exceptions
+  <<: *default
+
+  build:
+    <<: *default-build
+    flags: ["/EHsc"] # Enable C++ exception handling.
+
 tests:
     - name: ex1
       <<: *default
@@ -42,6 +49,15 @@ tests:
 
     - name: ex_confusing_data
       <<: *default
+
+    - name: ex_exceptions1
+      <<: *cpp-exceptions
+
+    - name: ex_exceptions2
+      <<: *cpp-exceptions
+
+    - name: ex_exceptions3
+      <<: *cpp-exceptions
 
     - name: ex_false_pointer_array
       <<: *default
@@ -75,19 +91,15 @@ tests:
 
     - name: ex_legacy_switch.001
       <<: *default
-      binary: main.exe
 
     - name: ex_legacy_switch.002
       <<: *default
-      binary: main.exe
 
     - name: ex_legacy_switch.003
       <<: *default
-      binary: main.exe
 
     - name: ex_legacy_switch.004
       <<: *default
-      binary: main.exe
 
     - name: ex_memberPointer
       <<: *default
@@ -101,7 +113,29 @@ tests:
     - name: ex1
       <<: *default
       build:
-        c: ["cl"]
-        cpp: ["cl"]
-        optimizations: ["/Od", "/Ot", "/O1", "/Ox", "/O2"]
+        <<: *default-build
         flags: ["/link", "/merge:.rdata=.text"]
+
+    - name: ex_seh
+      <<: *default
+      build:
+        <<: *default-build
+        flags: ["/link", "/safeseh:no"]
+
+    - name: ex_seh
+      <<: *default
+      build:
+        <<: *default-build
+        flags: ["/link", "/safeseh"]
+
+    # TODO:
+    # - name: ex_thread_local
+    #   <<: *default
+
+    # TODO:
+    # - name: ex_threads
+    #   <<: *default
+
+    # TODO:
+    # - name: ex_call_once
+    #   <<: *default

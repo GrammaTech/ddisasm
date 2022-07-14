@@ -6,9 +6,7 @@ all: ex.res ex.c
 ex.res: ex.rc
 	rc /nologo ex.rc
 clean:
-	del /F /Q *.exe *.obj *.exp *.def *.lib *.asm *.res out.txt check.txt mllink$$.lnk
-	del /F /Q ex.unstripped *.s *.old*
-	if exist dl_files { rmdir /Q /S dl_files }
+	del /F /Q *.exe *.obj *.exp *.def *.lib *.res *.s out.txt check.txt mllink$$.lnk
 check:
 	@ ex >check.txt
 	@ FC out.txt check.txt && echo TEST OK

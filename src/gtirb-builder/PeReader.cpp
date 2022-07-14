@@ -201,6 +201,23 @@ void PeReader::addAuxData()
 
     // Add `peDebugData` aux data table.
     Module->addAuxData<gtirb::schema::PeDebugData>(debugData());
+
+    // Add `peLoadConfig` aux data table.
+    if(Pe->has_configuration())
+    {
+        std::map<std::string, uint64_t> PeLoadConfig;
+
+        LIEF::PE::WIN_VERSION Version = Pe->load_configuration()->version();
+        if(Version != LIEF::PE::WIN_VERSION::WIN_UNKNOWN)
+        {
+            auto *LoadConfiguration =
+                reinterpret_cast<LIEF::PE::LoadConfigurationV0 *>(Pe->load_configuration());
+            PeLoadConfig.insert({"SEHandlerTable", LoadConfiguration->se_handler_table()});
+            PeLoadConfig.insert({"SEHandlerCount", LoadConfiguration->se_handler_count()});
+        }
+
+        Module->addAuxData<gtirb::schema::PeLoadConfig>(std::move(PeLoadConfig));
+    }
 }
 
 std::vector<auxdata::PeResource> PeReader::resources()

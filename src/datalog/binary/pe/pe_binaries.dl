@@ -21,6 +21,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "exceptions.dl"
 #include "relocations.dl"
 
 // This module defines predicates specific of PE binaries
@@ -36,6 +37,9 @@
 
 .decl pe_debug_data(Type:symbol,Address:address,Size:unsigned)
 .input pe_debug_data
+
+.decl pe_load_config(Name:symbol,Value:unsigned)
+.input pe_load_config
 
 /**
 Table maps PE section attribute names to a bitflag.

@@ -137,10 +137,11 @@ moved_pc_relative_candidate(EA,Op_index,Dest,NewDest,Diff):-
     (
         Base > Dest,
         NewDest = Base,
-        End = End // avoid warning
+        UNUSED(End)
         ;
         Dest > End,
-        NewDest = End
+        NewDest = End,
+        UNUSED(Base)
     ),
     Diff = max(NewDest,Dest) - min(NewDest,Dest).
 
@@ -292,7 +293,7 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
         Distance = Base-DestAddr,
         NewDest = Base,
         10*DestAddr > Base,
-        End = End // avoid warning
+        UNUSED(End)
         ;
         DestAddr > End,
         Distance = DestAddr-End,
@@ -317,11 +318,12 @@ moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
         Distance = Base-DestAddr,
         NewDest = Base,
         10*DestAddr > Base,
-        End = End // avoid warning
+        UNUSED(End)
     ;
         DestAddr > End,
         Distance = DestAddr-End,
-        NewDest = End
+        NewDest = End,
+        UNUSED(Base)
     ).
 
 

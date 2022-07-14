@@ -1,5 +1,6 @@
 #include <exception>
 #include <iostream>
+#include <string>
 
 class myException : std::logic_error
 {

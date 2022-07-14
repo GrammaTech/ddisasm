@@ -6,9 +6,7 @@ all: ex.c
 	@ echo B |ex >> out.txt
 	@ echo C |ex >> out.txt
 clean:
-	del /F /Q *.exe *.obj *.exp *.def *.lib *.asm out.txt check.txt mllink$$.lnk
-	del /F /Q ex.unstripped *.s *.old*
-	if exist dl_files { rmdir /Q /S dl_files }
+	del /F /Q *.exe *.obj *.exp *.def *.lib *.s out.txt check.txt mllink$$.lnk
 check:
 	@ echo A |ex > check.txt
 	@ echo B |ex >> check.txt

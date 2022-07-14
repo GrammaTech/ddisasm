@@ -1187,6 +1187,30 @@ void buildCfiDirectives(gtirb::Module &Module, souffle::SouffleProgram *Prog)
     Module.addAuxData<gtirb::schema::CfiDirectives>(std::move(CfiDirectives));
 }
 
+void buildSehTable(gtirb::Module &Module, souffle::SouffleProgram *Prog)
+{
+    if(Module.getFileFormat() != gtirb::FileFormat::PE)
+    {
+        return;
+    }
+
+    std::set<gtirb::UUID> Handlers;
+
+    for(auto &T : *Prog->getRelation("pe_exception_handler"))
+    {
+        gtirb::Addr EA;
+        T >> EA;
+
+        if(const auto It = Module.findCodeBlocksAt(EA); !It.empty())
+        {
+            gtirb::CodeBlock &Block = *It.begin();
+            Handlers.insert(Block.getUUID());
+        }
+    };
+
+    Module.addAuxData<gtirb::schema::PeSafeExceptionHandlers>(std::move(Handlers));
+}
+
 void buildPadding(gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
     std::map<gtirb::Offset, uint64_t> Padding;
@@ -1450,6 +1474,7 @@ void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
     buildDataBlocks(Context, Module, Prog);
     buildCodeSymbolicInformation(Module, Prog);
     buildCfiDirectives(Module, Prog);
+    buildSehTable(Module, Prog);
     expandSymbolForwarding(Module, Prog);
     buildFunctions(Module, Prog);
     // This should be done after creating all the symbols.
