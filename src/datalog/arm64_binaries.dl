@@ -217,29 +217,33 @@ object).
 In such case, using :got: for adrp and :got_lo12: for ldr causes runtime
 failure. To avoid the problem, the relocation directives are not used for adrp and ldr.
 */
-symbolic_operand_attribute(ea, 1, "GotRef") :-
-    split_load_for_symbolization(ea, _, Dest, "LDR/STR"),
-    !split_load_for_symbolization(ea, _, Dest, "ADD"),
-    relocation(Dest,_,_,_,_,_,_).
+symbolic_operand_attribute(EA,1,"GotRef"),
+symbolic_operand_attribute(EA_ldr,1,"GotRef"),
+symbolic_operand_attribute(EA_ldr,1,"Lo12"):-
+    split_load_for_symbolization(EA,EA_ldr,Dest,"LDR/STR"),
+    !split_load_for_symbolization(EA,EA_ldr,Dest,"ADD"),
+    relocation(Dest,_,_,_,_,_,_),
+    loaded_section(Beg,End,".got"),
+    Beg <= Dest, Dest < End.
 
-symbolic_operand_attribute(ea, 1, "GotRef"),
-symbolic_operand_attribute(ea, 1, "Lo12") :-
-    split_load_for_symbolization(ea0, ea, Dest, "LDR/STR"),
-    !split_load_for_symbolization(ea0, _, Dest, "ADD"),
-    relocation(Dest,_,_,_,_,_,_).
-
-symbolic_operand_attribute(ea, 1, "Lo12") :-
-    split_load_for_symbolization(ea0, ea, Dest, "LDR/STR"),
+symbolic_operand_attribute(EA,1,"Lo12"):-
+    split_load_for_symbolization(EA0,EA,Dest,"LDR/STR"),
     (
-        !relocation(Dest,_,_,_,_,_,_), ea0 = ea0
+        !relocation(Dest,_,_,_,_,_,_),
+        UNUSED(EA0)
         ;
-        split_load_for_symbolization(ea0, _, Dest, "ADD")
+        split_load_for_symbolization(EA0,_,Dest,"ADD")
+        ;
+        loaded_section(Beg,End,".got"),
+        (
+            Beg > Dest, UNUSED(End);
+            Dest >= End, UNUSED(Beg)
+        )
     ).
 
-symbolic_operand_attribute(ea, 2, "Lo12") :-
-    split_load_for_symbolization(_, ea, Dest, "ADD"),
+symbolic_operand_attribute(EA,2,"Lo12"):-
+    split_load_for_symbolization(_,EA,Dest,"ADD"),
     !relocation(as(Dest,address),"GLOB_DAT",_,_,_,_,_).
-
 
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     split_load_for_symbolization(_,EA,RefAddr,_),
