@@ -59,14 +59,14 @@ To avoid such data block from being given too many points for code inference
 heuristics, exclude implausible cases.
 TODO: add more cases here if any.
 */
-.decl contains_plausible_instr_seq_limited(Block:address,Weight:number,Type:symbol,Block2:address)
-.output contains_plausible_instr_seq_limited
+.decl plausible_block(Block:address,Weight:number,Type:symbol,Block2:address)
+.output plausible_block
 
-contains_plausible_instr_seq_limited(0,0,"",0):- false.
+plausible_block(0,0,"",0):- false.
 
-block_points(Block,"code",0,Weight,cat("contains_plausible_instr_seq: ", Why)):-
+block_points(Block,"code",0,Weight,cat("plausible_block: ", Why)):-
     block_is_overlapping(Block,"code"),
-    contains_plausible_instr_seq_limited(Block,Weight,Why,_).
+    plausible_block(Block,Weight,Why,_).
 
 avoid_symbols("$d").
 
