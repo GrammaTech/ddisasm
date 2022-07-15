@@ -149,16 +149,6 @@ track_register(Reg):-
     */
     .decl block_propagates_def(Block:address,Obj:T) inline
 
-    // block_propagates_def *could* be derived from ea_propagates_def, but
-    // child components aware of the implementation of ea_propagates_def can do
-    // it more efficiently.
-
-    /*
-    block_propagates_def(Block,Obj):-
-        code_in_block(EA,Block),
-        ea_propagates_def(EA,Obj).
-    */
-
     .decl defined_in_block(EA:address,Obj:T)
 
     defined_in_block(Block,Obj):-
@@ -223,11 +213,21 @@ track_register(Reg):-
     propagate backward from the block.
     */
     .decl live_reg_used(Block:address,Obj:T,EA_used:address) overridable
+    .output live_reg_used
 
     // Used in this block
     live_reg_used(Block,Obj,EA_used):-
         used_in_block(Block,EA_used,Obj,_),
         !block_last_def(EA_used,_,Obj).
+
+    /**
+    Determine whether a live_reg_used() should be back-propagated via
+    live_reg_at_block_end.
+
+    This allows child components to verify that a definition exists that may be
+    reachable.
+    */
+    .decl propagate_from_block(Block:address,Obj:T) inline
 
     /**
     The <T> is live at the end of Block, and will be used in BlockUsed.
@@ -253,12 +253,13 @@ track_register(Reg):-
     live_reg_at_block_end(PrevBlock,Block,Obj):-
         block_next(PrevBlock,PrevBlockEnd,Block),
         live_reg_used(Block,Obj,_),
-        def(_,Obj), // Ensure a def exists before we bother propagating...
+        propagate_from_block(Block,Obj),
         !flow_def(PrevBlockEnd,Obj,Block,_).
 
     // Recursive case
     live_reg_at_block_end(PrevBlock,BlockUsed,Obj):-
         live_reg_at_block_end(Block,BlockUsed,Obj),
+        // TODO: propagate through conditional defs
         !ref_in_block(Block,Obj), // !flow_def is implied by !ref_in_block
         block_propagates_def(Block,Obj),
         block_next(PrevBlock,_,Block).
@@ -441,6 +442,11 @@ track_register(Reg):-
         return_block_end(Callee,_,_,BlockEnd),
         block_last_def(BlockEnd,EA_def,Reg).
 
+    propagate_from_block(Block,Obj):-
+        // Ensure a def exists before we bother propagating.
+        def(_,Obj),
+        UNUSED(Block).
+
 }
 
 .init reg_def_use = RegisterDefUse
@@ -454,13 +460,23 @@ stack or frame pointer register is defined.)
 .decl stack_frame(EA:address,BaseReg:register)
 
 stack_frame(EA,BaseReg):-
-    // Restricted with def_used_for_address because a stack frame is not very
-    // interesting if nothing is loaded/stored from it.
-    def_used_for_address(EA,BaseReg),
+    // TODO: if the frame pointer, ensure the def is in terms of the stack pointer?
+    reg_def_use.def(EA,BaseReg),
     (
         arch.frame_pointer(BaseReg);
         arch.stack_pointer(BaseReg)
     ).
+
+/**
+Find uses of a given stack frame.
+*/
+.decl stack_frame_used_in_block(FrameDefinedAt:address,BaseReg:register,Block:address)
+
+stack_frame_used_in_block(FrameDefinedAt,BaseReg,Block):-
+    stack_frame(FrameDefinedAt,BaseReg),
+    reg_def_use.def_used(FrameDefinedAt,BaseReg,EA_used,_),
+    code_in_block(EA_used,Block).
+
 
 /**
 A stack frame is defined in terms of a previous stack frame.
@@ -519,6 +535,23 @@ adjacent_stack_frame(PrevEA,NextEA,BaseReg,Offset):-
         !reg_def_use.block_last_def(EA_used,_,BaseReg).
 
     // TODO: adjust and propagate through adjacent stack frames?
+
+    /**
+    A stack variable is defined and used in the same frame.
+
+    We actually don't track the def location here to reduce the size of
+    this relation.
+    */
+    .decl stack_def_used_candidate(StackVar:stack_var,BlockUsed:address)
+
+    stack_def_used_candidate([BaseReg,StackPos],BlockUsed):-
+        defined_in_block(BlockDefined,[BaseReg,StackPos]),
+        stack_frame_used_in_block(FrameDefinedAt,BaseReg,BlockDefined),
+        stack_frame_used_in_block(FrameDefinedAt,BaseReg,BlockUsed).
+
+    propagate_from_block(Block,Obj):-
+        // Ensure a def exists in the same stack frame
+        stack_def_used_candidate(Obj,Block).
 }
 
 .init stack_def_use = StackVarDefUse
