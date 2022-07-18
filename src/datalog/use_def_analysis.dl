@@ -394,7 +394,8 @@ def_used(EA_def,Reg,EA_used,Index):-
 def_used(EA_def,Reg,Next_EA_used,NextIndex):-
     live_reg_at_prior_used(EA_used,NextUsedBlock,Reg),
     def_used(EA_def,Reg,EA_used,_),
-    used_in_block(NextUsedBlock,Next_EA_used,Reg,NextIndex),
+    live_reg_used(NextUsedBlock,Reg,Next_EA_used),
+    used(Next_EA_used,Reg,NextIndex),
     !block_last_def(Next_EA_used,_,Reg).
 
 /**
