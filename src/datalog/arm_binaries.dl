@@ -26,20 +26,27 @@ and characteristics
 */
 
 /**
+Block contains an implausible instruction or instruction sequence.
+*/
+.decl contains_implausible_instr_seq(Block:address)
+
+contains_implausible_instr_seq(0):- false.
+
+/**
 Block contains a plausible sequence of instructions, which has low possibility
 of happening in data bytes: e.g., mov lr, pc; jump
 This can be used for the code inference step.
 
 Block2: transitive block
 */
-.decl contains_plausible_instr_seq(Block:address,Weight:number,Type:symbol,Block2:address)
+.decl contains_plausible_instr_seq(Block:address,Weight:number,Type:symbol)
 .output contains_plausible_instr_seq
 
 /**
 Block contains an instruction sequence of a flag-setting instruction followed
 by a conditional jump or return.
 */
-contains_plausible_instr_seq(Block,3,"cmp/conditional-branch",0):-
+contains_plausible_instr_seq(Block,3,"cmp/conditional-branch"):-
     (
         conditional_jump(EA)
         ;
@@ -52,12 +59,12 @@ contains_plausible_instr_seq(Block,3,"cmp/conditional-branch",0):-
     arch.cmp_operation(Operation).
 
 /**
-In some cases, a data block continues to a code block (must-fallthrough) and
-makes a big, false code block when there is no explicit reference to the code
-block.
-To avoid such data block from being given too many points for code inference
-heuristics, exclude implausible cases.
-TODO: add more cases here if any.
+A plausible block 'Block' is a block that contains one or more plausible
+instructions or instruction sequences and does not contain any implausible
+instruction sequences.
+'Weight' specifies the number of points given to the plausible block.
+'Type' specifies the kind of plausible instruction sequence found in the block.
+'Block2` is the block from which the points were transferred if any (0 otherwise).
 */
 .decl plausible_block(Block:address,Weight:number,Type:symbol,Block2:address)
 .output plausible_block

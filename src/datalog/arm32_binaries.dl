@@ -566,24 +566,14 @@ Prefer blocks that have a well-defined boundary with a prior literal pool.
 block_points(Block,"code",0,1,"arm: better fit after literal pool"):-
     block_is_overlapping(Block,"code"),
     block_candidate_boundaries(Block,"code",Beg,_),
-    Count = count :{
+    (
+        !block_candidate_boundaries(_,"code",_,Beg)
+        ;
         block_candidate_boundaries(BlockPred,"code",_,Beg),
-        (Block band 1) = (BlockPred band 1)
-    },
-    Count = 0,
+        (Block band 1) != (BlockPred band 1)
+    ),
     litpool_ref(_,_,LitPoolAddr,Size,_),
-    LitPoolAddr + Size = Beg - (Beg band 1).
-
-/**
-Prefer blocks that have a well-defined boundary with a prior block.
-*/
-block_points(Block,"code",0,1,"arm: better fit after code block"):-
-    block_is_overlapping(Block,"code"),
-    block_candidate_boundaries(Block,"code",Beg,_),
-    block_candidate_boundaries(BlockPred,"code",_,Beg),
-    // Note that the block needs to be the same mode as the previous block to
-    // be qualified.
-    (Block band 1) = (BlockPred band 1).
+    LitPoolAddr + Size = Beg.
 
 /**
 Similarly to the above rule, if the enclosed Thumb instruction does not have
@@ -1241,27 +1231,11 @@ litpool_confidence(EA,LitPoolAddr,Confidence,"adr/ldm"):-
     ).
 
 /**
-Give more points in case of ldr/ldrd, which is likely a valid instruction
-sequence.
+Give more points in case of ldr/ldrd or adr/ldrd, which is likely a valid
+instruction sequence.
 */
 litpool_confidence(EA,LitPoolAddr,Confidence,"ldr/ldrd"):-
     litpool_ref(EA,Reg,LitPoolAddr,_,_),
-    straight_line_def_used(EA,Reg,EA_ldrd,_),
-    instruction_get_operation(EA_ldrd,Operation),
-    contains("LDRD",Operation),
-    !arch.dangling_thumb_instr(EA),
-    code_in_block_candidate(EA,Block),
-    (
-        block_is_overlapping(Block,_), Confidence = 3;
-        !block_is_overlapping(Block,_), Confidence = 5
-    ).
-
-/**
-Give more points in case of adr/ldrd, which is likely a valid instruction
-sequence.
-*/
-litpool_confidence(EA,LitPoolAddr,Confidence,"adr/ldrd"):-
-    arch.pc_relative_addr(EA,Reg,LitPoolAddr),
     straight_line_def_used(EA,Reg,EA_ldrd,_),
     instruction_get_operation(EA_ldrd,Operation),
     contains("LDRD",Operation),
@@ -1425,26 +1399,27 @@ block_points(LitPoolAddr,"data",0,-20,"arm: litpool: overlapped with code symbol
     (Name = "$t"; Name = "$a").
 
 /**
-Limited version of `contains_plausible_instr_seq`.
-Exclude implausible instructions.
-E.g., 0000 movs r0, r0
+Byte value '0x0000', which is "movs r0, r0", is unlikely code.
 TODO: add more.
 */
-plausible_block(Block,Weight,Type,Block2):-
-    contains_plausible_instr_seq(Block,Weight,Type,Block2),
-    Count = count :{
-        code_in_block_candidate(EA,Block),
-        instruction(EA,_,_,"MOVS",Op1,Op2,0,_,_,_),
-        op_regdirect_contains_reg(Op1,"R0"),
-        op_regdirect_contains_reg(Op2,"R0")
-    },
-    Count = 0.
+contains_implausible_instr_seq(Block):-
+    code_in_block_candidate(EA,Block),
+    instruction(EA,_,_,"MOVS",Op1,Op2,0,_,_,_),
+    op_regdirect_contains_reg(Op1,"R0"),
+    op_regdirect_contains_reg(Op2,"R0").
 
+/**
+Limited version of `contains_plausible_instr_seq`.
+Exclude implausible instructions.
+*/
+plausible_block(Block,Weight,Type,0):-
+    contains_plausible_instr_seq(Block,Weight,Type),
+    !contains_implausible_instr_seq(Block).
 
 /**
 Block with movw/movt pair is likely real code.
 */
-contains_plausible_instr_seq(Block,6,"movw/movt",0):-
+contains_plausible_instr_seq(Block,6,"movw/movt"):-
     movw_movt_pair(EA_movw,EA_movt,_),
     code_in_block_candidate_refined(EA_movw,Block),
     code_in_block_candidate_refined(EA_movt,Block).
@@ -1455,7 +1430,7 @@ E.g,
 movs r0, #0
 bx lr
 */
-contains_plausible_instr_seq(Block,1,"set-r0/return",0):-
+contains_plausible_instr_seq(Block,1,"set-r0/return"):-
     code_in_block_candidate_refined(EA,Block),
     !arch.dangling_thumb_instr(Block),
     arch.return(EA),
@@ -1470,7 +1445,7 @@ E.g.,
 cmp r0, #0
 ite ne
 */
-contains_plausible_instr_seq(Block,2,"cmp/it",0):-
+contains_plausible_instr_seq(Block,2,"cmp/it"):-
     code_in_block_candidate_refined(EA,Block),
     instruction_get_operation(EA,Operation),
     substr(Operation,0,2) = "IT",
@@ -1486,7 +1461,7 @@ E.g.,
 mov lr, pc
 bx target
 */
-contains_plausible_instr_seq(Block,7,"mov-lr-pc/jump",0):-
+contains_plausible_instr_seq(Block,7,"mov-lr-pc/jump"):-
     code_in_block_candidate_refined(EA,Block),
     !arch.dangling_thumb_instr(Block),
     arch.pc_reg(PC),
@@ -1501,7 +1476,7 @@ E.g.,
 sub sp, fp, #8   or   add sp, #8
 pop {pc}
 */
-contains_plausible_instr_seq(Block,1,"adjust-sp/return",0):-
+contains_plausible_instr_seq(Block,1,"adjust-sp/return"):-
     arch.return(EA),
     code_in_block_candidate_refined(EA,Block),
     !arch.dangling_thumb_instr(Block),
@@ -1518,7 +1493,7 @@ contains_plausible_instr_seq(Block,1,"adjust-sp/return",0):-
 If a block contains multiple stack load instructions, it is likely a real
 code.
 */
-contains_plausible_instr_seq(Block,2,"multiple loads from stack",0):-
+contains_plausible_instr_seq(Block,2,"multiple loads from stack"):-
     code_in_block_candidate_refined(_,Block),
     arch.stack_pointer(SP),
     Count = count :{code_in_block_candidate_refined(EA,Block),
