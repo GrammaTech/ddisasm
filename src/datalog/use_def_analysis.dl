@@ -221,15 +221,6 @@ track_register(Reg):-
         !block_last_def(EA_used,_,Obj).
 
     /**
-    Determine whether a live_reg_used() should be back-propagated via
-    live_reg_at_block_end.
-
-    This allows child components to verify that a definition exists that may be
-    reachable.
-    */
-    .decl propagate_from_block(Block:address,Obj:T) inline
-
-    /**
     The <T> is live at the end of Block, and will be used in BlockUsed.
 
     Propagates backward from usages to search for defs.
@@ -253,7 +244,6 @@ track_register(Reg):-
     live_reg_at_block_end(PrevBlock,Block,Obj):-
         block_next(PrevBlock,PrevBlockEnd,Block),
         live_reg_used(Block,Obj,_),
-        propagate_from_block(Block,Obj),
         !flow_def(PrevBlockEnd,Obj,Block,_).
 
     // Recursive case
@@ -263,6 +253,11 @@ track_register(Reg):-
         !ref_in_block(Block,Obj), // !flow_def is implied by !ref_in_block
         block_propagates_def(Block,Obj),
         block_next(PrevBlock,_,Block).
+
+    // Ensure we partition on the delta relation in each version of the rule
+    // for best performance: in rule version 1, swap delta_block_next (2) with
+    // live_reg_at_block_end (1).
+    .plan 1: (2,1)
 
     /**
     The <T> is live at EA_used and at the beginning of BlockUsed, and
@@ -442,11 +437,6 @@ track_register(Reg):-
         return_block_end(Callee,_,_,BlockEnd),
         block_last_def(BlockEnd,EA_def,Reg).
 
-    propagate_from_block(Block,Obj):-
-        // Ensure a def exists before we bother propagating.
-        def(_,Obj),
-        UNUSED(Block).
-
 }
 
 .init reg_def_use = RegisterDefUse
@@ -535,23 +525,6 @@ adjacent_stack_frame(PrevEA,NextEA,BaseReg,Offset):-
         !reg_def_use.block_last_def(EA_used,_,BaseReg).
 
     // TODO: adjust and propagate through adjacent stack frames?
-
-    /**
-    A stack variable is defined and used in the same frame.
-
-    We actually don't track the def location here to reduce the size of
-    this relation.
-    */
-    .decl stack_def_used_candidate(StackVar:stack_var,BlockUsed:address)
-
-    stack_def_used_candidate([BaseReg,StackPos],BlockUsed):-
-        defined_in_block(BlockDefined,[BaseReg,StackPos]),
-        stack_frame_used_in_block(FrameDefinedAt,BaseReg,BlockDefined),
-        stack_frame_used_in_block(FrameDefinedAt,BaseReg,BlockUsed).
-
-    propagate_from_block(Block,Obj):-
-        // Ensure a def exists in the same stack frame
-        stack_def_used_candidate(Obj,Block).
 }
 
 .init stack_def_use = StackVarDefUse
