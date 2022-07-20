@@ -362,38 +362,48 @@ python-manylinux-2010-publish-external:
     - tar -xf conan_home.tar.gz
     - tar -xf conan_aux.tar.gz -C $(cygpath -u C:\\)
     # Setting CI_PROJECT_DIR to the PWD because GitLab Runner sets a relative path for CI_PROJECT_DIR with VirtualBox runners.
-    - export CI_PROJECT_DIR=`cygpath -w $(pwd)`
-    - export CONAN_USER_HOME="${CI_PROJECT_DIR}"
-    - export PYTHONPATH="${PYTHONPATH};${CI_PROJECT_DIR}"
+    - export CI_PROJECT_DIR=$(pwd)
+    - export CONAN_USER_HOME=$(cygpath -w $(pwd))
+    - export PYTHONPATH="${PYTHONPATH};$(cygpath -w $(pwd))"
     # Prep
     - python -m pip install --upgrade conan~=$CONAN_VERSION
     # Install
-    - python .ci/run_conan.py install --install-folder=./packages
-    # Package
-    - export PKG_NAME=`conan inspect . --raw name`
-    - export PKG_VERSION=`conan inspect . --raw version`
-    - export PKG_ARCH=`uname -m`
-    - export PKG_FILENAME="${CI_PROJECT_DIR}\\${PKG_NAME}-${PKG_VERSION}.win10.${PKG_ARCH}.zip"
-    - export PKG_FILENAME_LITE="${CI_PROJECT_DIR}\\${PKG_NAME}-lite-${PKG_VERSION}.win10.${PKG_ARCH}.zip"
+    - python .ci/run_conan.py install --install-folder=./conan-packages
+    # Merge Package Files
+    - export CONAN_PACKAGES="${CI_PROJECT_DIR}/conan-packages/*"
+    - export WINDOWS_PACKAGE_NAME=`conan inspect . --raw name`
+    - export WINDOWS_PACKAGE_VERSION=`conan inspect . --raw version`
+    - export WINDOWS_PACKAGE_ARCH=`uname -m`
+    - export WINDOWS_PACKAGE_DIR="${CI_PROJECT_DIR}/windows-package"
+    - export WINDOWS_PACKAGE="${WINDOWS_PACKAGE_DIR}/${WINDOWS_PACKAGE_NAME}"
+    - mkdir -p $WINDOWS_PACKAGE
     - |+
-      for PKG_DIR in ./packages/*/; do
-        PKG_DIR_NAME=`basename $PKG_DIR`
-        for PKG_SUBDIR in ./packages/$PKG_DIR_NAME/*/; do
-          PKG_SUBDIR_NAME=`basename $PKG_SUBDIR`
-          PKG_FILE_DEST="./package/${PKG_NAME}/${PKG_SUBDIR_NAME}"
-          [ -d $PKG_FILE_DEST ] || mkdir -p $PKG_FILE_DEST
-          if [ $PKG_SUBDIR_NAME != 'licenses' ]; then
-            cp -r $PKG_SUBDIR/* $PKG_FILE_DEST
-          else
-            for PKG_LICENSE in $PKG_SUBDIR/*; do
-              cp $PKG_LICENSE $PKG_FILE_DEST/LICENSE-$PKG_DIR_NAME
-            done
+      for CONAN_PACKAGE in $CONAN_PACKAGES; do
+        if [ -d $CONAN_PACKAGE ]; then
+          rsync -a --exclude licenses $CONAN_PACKAGE/ $WINDOWS_PACKAGE/
+          if [ -d $CONAN_PACKAGE/licenses ]; then
+            CONAN_PACKAGE_NAME=`basename $CONAN_PACKAGE`
+            mkdir -p ${WINDOWS_PACKAGE}/licenses/${CONAN_PACKAGE_NAME}
+            rsync -a $CONAN_PACKAGE/licenses/ ${WINDOWS_PACKAGE}/licenses/${CONAN_PACKAGE_NAME}/
           fi
-        done
+        fi
       done
-    - cd ./package
-    - zip -r $PKG_FILENAME ./
-    - zip -r $PKG_FILENAME_LITE ./ -x "${PKG_NAME}/include/*"
+    - cd $WINDOWS_PACKAGE_DIR
+    # Runtime Package
+    - export WINDOWS_RUNTIME_PACKAGE_ARCHIVE="${CI_PROJECT_DIR}/${WINDOWS_PACKAGE_NAME}-${WINDOWS_PACKAGE_VERSION}.win10.${WINDOWS_PACKAGE_ARCH}.zip"
+    - export WINDOWS_RUNTIME_PACKAGE_MANIFEST=(
+        "ddisasm/bin/capstone.dll"
+        "ddisasm/bin/ddisasm.exe"
+        "ddisasm/bin/gtirb.dll"
+        "ddisasm/bin/gtirb_layout.dll"
+        "ddisasm/bin/gtirb-layout.exe"
+        "ddisasm/bin/gtirb_pprinter.dll"
+        "ddisasm/bin/gtirb-pprinter.exe"
+        "ddisasm/licenses/capstone/*"
+        "ddisasm/licenses/gtirb/*"
+        "ddisasm/licenses/gtirb-pprinter/*"
+      )
+    - zip -r $WINDOWS_RUNTIME_PACKAGE_ARCHIVE ${WINDOWS_RUNTIME_PACKAGE_MANIFEST[@]}
 
 conan-windows-debug:
   variables:
