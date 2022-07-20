@@ -45,7 +45,7 @@ See the [GTIRB readme](https://github.com/GrammaTech/gtirb/#installing) for deta
 ## Dependencies
 
 ddisasm uses C++17, and requires a compiler which supports
-that standard such as gcc 7, clang 6, or MSVC 2017.
+that standard such as gcc 9, clang 6, or MSVC 2017.
 
 To build ddisasm from source, the following requirements should be installed:
 
