@@ -1,0 +1,11 @@
+LIBBAR_1.0 {
+  global:
+    bar;
+  local:
+     *;
+};
+
+LIBBAR_2.0 {
+  global:
+    bar;
+} LIBBAR_1.0;

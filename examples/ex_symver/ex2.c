@@ -3,7 +3,7 @@
 
 #include "foo.h"
 
-__asm__(".symver foo,foo@LIBFOO_1.0");
+__asm__(".symver foo,foo@LIBFOO_2.0");
 
 int main()
 {

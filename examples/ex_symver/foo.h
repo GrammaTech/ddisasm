@@ -1,2 +1,2 @@
-extern int bar;
-void foo(void);
+void foo();
+void bar();
