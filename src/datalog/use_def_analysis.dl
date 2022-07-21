@@ -116,17 +116,20 @@ track_register(Reg):-
     Obj is defined in this location
     */
     .decl def(EA:address,Obj:T)
+    .output def
 
     /**
     Instruction at address 'EA' uses Obj at operand index 'Index'.
     */
     .decl used(EA:address,Obj:T,Index:operand_index)
+    .output used
 
     /**
     A <T> is implicitly defined by being compared to a constant and then jumping
     this definition only takes place in between the jump and the target that implies equality
     */
     .decl flow_def(EA:address,Obj:T,EA_next:address,Value:number)
+    .output flow_def
 
     /**
     A <T> is unconditionally defined at EA.
@@ -150,12 +153,14 @@ track_register(Reg):-
     .decl block_propagates_def(Block:address,Obj:T) inline
 
     .decl defined_in_block(EA:address,Obj:T)
+    .output defined_in_block
 
     defined_in_block(Block,Obj):-
         def(EA,Obj),
         code_in_block(EA,Block).
 
     .decl used_in_block(Block:address,EA_used:address,Obj:T,Index:operand_index)
+    .output used_in_block
 
     used_in_block(Block,EA_used,Obj,Index):-
         used(EA_used,Obj,Index),
@@ -165,6 +170,7 @@ track_register(Reg):-
     The last address prior to EA where Reg was defined within the block
     */
     .decl block_last_def(EA:address,EA_def:address,Obj:T) overridable
+    .output block_last_def
 
     block_last_def(EA_next,EA,Obj):-
         def(EA,Obj),
@@ -182,6 +188,7 @@ track_register(Reg):-
     Multiple are possible in conditional cases.
     */
     .decl last_def_in_block(Block:address,EA_def:address,Obj:T)
+    .output last_def_in_block
 
     last_def_in_block(Block,EA_def,Obj):-
         block_last_instruction(Block,BlockEnd),
@@ -197,6 +204,7 @@ track_register(Reg):-
     A <T> is referenced in a block
     */
     .decl ref_in_block(Block:address,Obj:T)
+    .output ref_in_block
 
     ref_in_block(Block,Obj):-
         defined_in_block(Block,Obj);
@@ -212,12 +220,12 @@ track_register(Reg):-
     To find the definition for this use, live_reg_at_block_end will have to
     propagate backward from the block.
     */
-    .decl live_reg_used(Block:address,Obj:T,EA_used:address) overridable
+    .decl live_reg_used(Block:address,Obj:T,EA_used:address,Index:operand_index,Moves:unsigned) overridable
     .output live_reg_used
 
     // Used in this block
-    live_reg_used(Block,Obj,EA_used):-
-        used_in_block(Block,EA_used,Obj,_),
+    live_reg_used(Block,Obj,EA_used,Index,0):-
+        used_in_block(Block,EA_used,Obj,Index),
         !block_last_def(EA_used,_,Obj).
 
     /**
@@ -243,7 +251,7 @@ track_register(Reg):-
     // Base case
     live_reg_at_block_end(PrevBlock,Block,Obj):-
         block_next(PrevBlock,PrevBlockEnd,Block),
-        live_reg_used(Block,Obj,_),
+        live_reg_used(Block,Obj,_,_,_),
         !flow_def(PrevBlockEnd,Obj,Block,_).
 
     // Recursive case
@@ -267,11 +275,12 @@ track_register(Reg):-
     Forms an edge between two used() that depend on the same def.
     */
     .decl live_reg_at_prior_used(EA_used:address,BlockUsed:address,Obj:T)
+    .output live_reg_at_prior_used
 
     live_reg_at_prior_used(EA_used,BlockUsed,Obj):-
         live_reg_at_block_end(Block,BlockUsed,Obj),
         used_in_block(Block,EA_used,Obj,_),
-        !defined_in_block(Block,Obj).
+        !defined_in_block(Block,Obj). // TODO: should this technically be !block_next_def?
 
 
     /**
@@ -289,24 +298,24 @@ track_register(Reg):-
     def_used(EA_def,Obj,EA_used,Index):-
         live_reg_at_block_end(Block,BlockUsed,Obj),
         last_def_in_block(Block,EA_def,Obj),
-        live_reg_used(BlockUsed,Obj,EA_used),
-        used(EA_used,Obj,Index).
+        live_reg_used(BlockUsed,Obj,EA_used,Index,_).
+        // TODO: verify that the stack frame is not invalidated after EA_def?
+
+    .plan 1: (3,1,2)
 
     // Inter-blocks def-use (flow def)
     def_used(EA_def,Obj,EA_used,Index):-
         live_reg_at_block_end(Block,BlockUsed,Obj),
-        !defined_in_block(Block,Obj),
+        !defined_in_block(Block,Obj), // TODO: should !defined_in_block, block_propagates_def be here?
         block_propagates_def(Block,Obj),
         flow_def(EA_def,Obj,Block,_),
-        live_reg_used(BlockUsed,Obj,EA_used),
-        used(EA_used,Obj,Index).
+        live_reg_used(BlockUsed,Obj,EA_used,Index,_).
 
     // Forward propagate def_used to downstream used
     def_used(EA_def,Obj,Next_EA_used,NextIndex):-
         live_reg_at_prior_used(EA_used,NextUsedBlock,Obj),
         def_used(EA_def,Obj,EA_used,_),
-        live_reg_used(NextUsedBlock,Obj,Next_EA_used),
-        used(Next_EA_used,Obj,NextIndex),
+        live_reg_used(NextUsedBlock,Obj,Next_EA_used,NextIndex,_),
         !block_last_def(Next_EA_used,_,Obj).
 }
 
@@ -426,10 +435,10 @@ track_register(Reg):-
         block_last_instruction(Block,BlockEnd).
 
     // Extend for values returned in this block
-    live_reg_used(RetBlock,Reg,EA_used):-
+    live_reg_used(RetBlock,Reg,EA_used,Index,1):-
         return_block_end(Callee,_,RetBlock,RetBlockEnd),
         !block_last_def(RetBlockEnd,_,Reg),
-        return_val_used(_,Callee,Reg,EA_used,_).
+        return_val_used(_,Callee,Reg,EA_used,Index).
 
     // Inter-procedural def-use
     def_used(EA_def,Reg,EA_used,Index):-
@@ -448,6 +457,7 @@ Generate distinct stack frames (identifying them by the location at which the
 stack or frame pointer register is defined.)
 */
 .decl stack_frame(EA:address,BaseReg:register)
+.output stack_frame
 
 stack_frame(EA,BaseReg):-
     // TODO: if the frame pointer, ensure the def is in terms of the stack pointer?
@@ -458,21 +468,10 @@ stack_frame(EA,BaseReg):-
     ).
 
 /**
-Find uses of a given stack frame.
-*/
-.decl stack_frame_used_in_block(FrameDefinedAt:address,BaseReg:register,Block:address)
-
-stack_frame_used_in_block(FrameDefinedAt,BaseReg,Block):-
-    stack_frame(FrameDefinedAt,BaseReg),
-    reg_def_use.def_used(FrameDefinedAt,BaseReg,EA_used,_),
-    code_in_block(EA_used,Block).
-
-
-/**
 A stack frame is defined in terms of a previous stack frame.
 */
-/*
 .decl adjacent_stack_frame(PrevAt:address,NextAt:address,BaseReg:register,Offset:number)
+.output adjacent_stack_frame
 
 adjacent_stack_frame(PrevEA,NextEA,BaseReg,Offset):-
     reg_def_use.def_used(PrevEA,BaseReg,NextEA,_),
@@ -481,7 +480,67 @@ adjacent_stack_frame(PrevEA,NextEA,BaseReg,Offset):-
         arch.stack_pointer(BaseReg)
     ),
     arch.reg_arithmetic_operation(NextEA,BaseReg,BaseReg,1,Offset).
+
+/**
+Find uses of a given stack frame.
 */
+.decl stack_frame_used_in_block(FrameDefinedAt:address,BaseReg:register,Block:address)
+.output stack_frame_used_in_block
+
+stack_frame_used_in_block(FrameDefinedAt,BaseReg,Block):-
+    stack_frame(FrameDefinedAt,BaseReg),
+    reg_def_use.def_used(FrameDefinedAt,BaseReg,EA_used,_),
+    code_in_block(EA_used,Block).
+
+.decl adjusts_stack_in_block(Block:address,EA:address,BaseReg:register,Offset:number)
+.output adjusts_stack_in_block
+
+adjusts_stack_in_block(Block,EA,BaseReg,Offset):-
+    (
+        arch.frame_pointer(BaseReg);
+        arch.stack_pointer(BaseReg)
+    ),
+    arch.reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset),
+    code_in_block(EA,Block).
+
+
+.decl block_adjusts_stack(Block:address,BaseReg:register,Offset:number)
+.output block_adjusts_stack
+
+// TODO: ensure we only generate block_adjusts_stack if we understand all the
+// definitions of BaseReg in the block
+block_adjusts_stack(Block,BaseReg,TotalOffset):-
+    block(Block),
+    (
+        arch.frame_pointer(BaseReg);
+        arch.stack_pointer(BaseReg)
+    ),
+    TotalOffset != 0,
+    TotalOffset = sum Offset : {
+        adjusts_stack_in_block(Block,_,BaseReg,Offset)
+    }.
+/**
+
+EA: the address where the stack is adjusted
+PrevEA: the previous definition of EA in the Block (or what if there is no prev?)
+BaseReg:
+Offset: the accumulated adjustment in the Block
+*/
+.decl block_accumulated_stack_adjustments(EA:address,BaseReg:register,Offset:number)
+.output block_accumulated_stack_adjustments
+
+block_accumulated_stack_adjustments(Block,BaseReg,0):-
+    block_adjusts_stack(Block,BaseReg,_).
+
+block_accumulated_stack_adjustments(EA_next,BaseReg,Sum+Offset):-
+    block_accumulated_stack_adjustments(EA,BaseReg,Sum),
+    code_in_block(EA,Block),
+    block_adjusts_stack(Block,BaseReg,_),
+    (
+        adjusts_stack_in_block(Block,EA,BaseReg,Offset);
+        !adjusts_stack_in_block(Block,EA,BaseReg,_), Offset=0
+    ),
+    local_next(EA,EA_next).
 
 .comp StackVarDefUse : AbstractDefUse<stack_var> {
 
@@ -519,12 +578,81 @@ adjacent_stack_frame(PrevEA,NextEA,BaseReg,Offset):-
 
     // TODO: can we eliminate this override?
 
-    live_reg_used(Block,[BaseReg,StackPos],EA_used):-
-        used_in_block(Block,EA_used,[BaseReg,StackPos],_),
+    live_reg_used(Block,[BaseReg,StackPos],EA_used,Index,0):-
+        used_in_block(Block,EA_used,[BaseReg,StackPos],Index),
         !block_last_def(EA_used,_,[BaseReg,StackPos]),
         !reg_def_use.block_last_def(EA_used,_,BaseReg).
 
-    // TODO: adjust and propagate through adjacent stack frames?
+    // stack is adjusted in the block where the var is used
+    live_reg_used(Block,[BaseReg,StackPos+Offset],EA_used,Index,0):-
+        used_in_block(Block,EA_used,[BaseReg,StackPos],Index),
+        !block_last_def(EA_used,_,[BaseReg,StackPos]),
+        block_accumulated_stack_adjustments(EA_used,BaseReg,Offset),
+        Offset != 0.
+
+    /*
+    Intra-block def-use with stack var adjustment, e.g.:
+
+    0000: movq %rax,16(%rsp)
+    0004: subq $24,%rsp
+    0008: movq 40(%rsp),%rax
+
+    used(8,[RSP,40],1)
+    code_in_block(8,0)
+    adjusts_stack_in_block(0,4,RSP,24)
+    block_accumulated_stack_adjustments(8,RSP,-24)
+    local_next(0,4)
+    block_accumulated_stack_adjustments(8,RSP,0)
+    Diff = -24 - 0
+    block_last_def(4,EA_def,[RSP,40+(-24)])
+    */
+    def_used(EA_def,[BaseReg,StackPos+Diff],EA_used,Index):-
+        used(EA_used,[BaseReg,StackPos],Index),
+        // There should be no last def since BaseReg is modified.
+        !block_last_def(EA_used,_,[BaseReg,StackPos]),
+        code_in_block(EA_used,Block),
+        // query back for last_def with adjusted StackPos from each stack adjustment
+        adjusts_stack_in_block(Block,EA_adjust,BaseReg,_),
+        block_accumulated_stack_adjustments(EA_used,BaseReg,Ref2),
+        local_next(EA_prev,EA_adjust),
+        block_accumulated_stack_adjustments(EA_prev,BaseReg,Ref1),
+        Diff = Ref2 - Ref1,
+        block_last_def(EA_adjust,EA_def,[BaseReg,StackPos+Diff]).
+
+    .decl live_stack_var_at_stack_adjustment(Block:address,Var:stack_var,EA_used:address,Index:operand_index,Adjustment:number,Moves:unsigned)
+
+    live_stack_var_at_stack_adjustment(Block,[BaseReg,StackPos],EA_used,Index,Adjustment,Moves):-
+        block_adjusts_stack(Block,BaseReg,Adjustment),
+        live_reg_at_block_end(Block,BlockUsed,[BaseReg,StackPos]),
+        live_reg_used(BlockUsed,[BaseReg,StackPos],EA_used,Index,Moves).
+
+    // Interblock def-use with a def and adjustment in the same block
+    def_used(EA_def,[BaseReg,StackPos+Diff],EA_used,Index):-
+        live_stack_var_at_stack_adjustment(Block,[BaseReg,StackPos],EA_used,Index,Ref2,_),
+        // query back for last_def with adjusted StackPos from each stack adjustment
+        adjusts_stack_in_block(Block,EA_adjust,BaseReg,_),
+        may_fallthrough(EA_prev,EA_adjust),
+        code_in_block(EA_prev,Block),
+        block_accumulated_stack_adjustments(EA_prev,BaseReg,Ref1),
+        Diff = Ref2 - Ref1,
+        block_last_def(EA_adjust,EA_def,[BaseReg,StackPos+Diff]).
+
+    /*
+    Generates a live_reg_used where !code_in_block(EA_used,Block), similar to
+    return value rules
+    */
+    live_reg_used(Block,[BaseReg,StackPos+Offset],EA_used,Index,Moves+1):-
+        live_stack_var_at_stack_adjustment(Block,[BaseReg,StackPos],EA_used,Index,Offset,Moves),
+        // Ensure that this used() has not already propagated to this block too many times.
+        // This breaks loops.
+        Moves <= 1,
+        // TODO: in addition to this last_def check, if it's defined under a
+        // different alias when there are multiple stack adjustments in the
+        // block, it really shouldn't propagate.
+        // This is the inverse of the latter half of the two above def_used
+        // rules
+        !last_def_in_block(Block,_,[BaseReg,StackPos]).
+
 }
 
 .init stack_def_use = StackVarDefUse
