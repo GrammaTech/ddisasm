@@ -8,18 +8,12 @@ LIBFOO_1.0 {
 LIBFOO_2.0 {
   global:
     foo;
-
-  local:
-     *;
 } LIBFOO_1.0;
 
 
 LIBFOO_3.0 {
   global:
     foo;
-
-  local:
-     *;
 } LIBFOO_2.0;
 
 
