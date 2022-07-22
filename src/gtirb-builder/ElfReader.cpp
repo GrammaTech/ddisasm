@@ -644,7 +644,7 @@ void ElfReader::buildSymbols()
 
     using SymbolVersionId = uint16_t;
     const SymbolVersionId NO_VERSION_LOCAL = 0;
-    const SymbolVersionId NO_VERSION_GLOBAL = 0;
+    const SymbolVersionId NO_VERSION_GLOBAL = 1;
 
     std::map<std::string, std::set<SymbolVersionId>> VersionToIds;
     auxdata::ElfSymDefs ElfSymDefinitions;
