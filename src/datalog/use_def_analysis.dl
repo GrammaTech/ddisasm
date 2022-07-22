@@ -564,6 +564,15 @@ block_accumulated_stack_adjustments(EA_next,BaseReg,Sum+Offset):-
         ),
         arch.load(EA,SrcOp,_,_,BaseReg,"NONE",_,StackPos).
 
+    // A stack variable can also be directly used as an indirect operand
+    used(EA,[BaseReg,StackPos],OpIndex):-
+        (
+            arch.frame_pointer(BaseReg);
+            arch.stack_pointer(BaseReg)
+        ),
+        op_indirect_mapped(IndirectOp,"NONE",BaseReg,"NONE",_,StackPos,_),
+        instruction_get_src_op(EA,OpIndex,IndirectOp).
+
     // TODO: ensure we don't propagate through stack frame changes (at least, not without adjustment)
 
     ea_propagates_def(EA,[BaseReg,StackPos]):-

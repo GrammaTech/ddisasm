@@ -190,27 +190,23 @@ symbolic_operand_attribute(EA,Index,"NtpOff"):-
 //          mov     DWORD PTR -28[ebp], eax
 //          sub     edi, 88
 //          cmp     edi, DWORD PTR -28[ebp]
-// TODO: fix this rule
-/*
+
 moved_label_class(EA_load,1,"got-data-object relative"),
 moved_label(EA_load,1,Address,Base):-
     // GOT-relative stored in stack.
     got_relative_operand(EA_load,_,Dest),
-    reg_def_use.def_used(EA_load,Reg,EA_store,_),
-    reg_stored_in_stack(EA_store,Reg,_,StackPos,StackFrame),
-
-    // GOT-relative compared for jump.
+    reg_def_use.def_used(EA_load,_,EA_store,_),
     arch.frame_pointer(BaseReg),
-    reg_def_use.def_used(StackFrame,BaseReg,EA_cmp,_),
+    stack_def_use.def_used(EA_store,[BaseReg,StackPos],EA_cmp,_),
+    // GOT-relative compared for jump.
     arch.cmp_operation(Operation),
-    instruction(EA_cmp,Size,_,Operation,Op1,_,0,0,_,_),
+    instruction(EA_cmp,_,_,Operation,Op1,_,0,0,_,_),
     op_indirect_mapped(Op1,"NONE",BaseReg,"NONE",_,StackPos,_),
-    arch.jump(EA_cmp+Size),
-
+    next(EA_cmp,EA_jump),
+    arch.jump(EA_jump),
     // Moved-value offset is the offset from the reference data object.
     reg_def_use.def_used(EA_arith,_,EA_cmp,_),
     best_value_reg(EA_arith,_,EA_obj,_,_,"loop"),
     moved_label(EA_obj,1,_,Base),
     Offset=as(Dest-Base,number),
     Address=Base+as(Offset,address).
-*/
