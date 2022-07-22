@@ -643,8 +643,6 @@ void ElfReader::buildSymbols()
     }
 
     using SymbolVersionId = uint16_t;
-    const SymbolVersionId NO_VERSION_LOCAL = 0;
-    const SymbolVersionId NO_VERSION_GLOBAL = 1;
 
     std::map<std::string, std::set<SymbolVersionId>> VersionToIds;
     auxdata::ElfSymDefs ElfSymDefinitions;
@@ -698,7 +696,7 @@ void ElfReader::buildSymbols()
                 Value = tlsBaseAddress() + Value;
             }
 
-            SymbolVersionId Version = NO_VERSION_LOCAL;
+            SymbolVersionId Version = LIEF::ELF::VER_NDX_LOCAL;
             std::string VersionStr;
             // Symbols in "dynsym" table have versions.
             if(Symbol.has_version())
@@ -745,9 +743,9 @@ void ElfReader::buildSymbols()
             {
                 // If there is no version but there is a global
                 // instance of this symbol, we consider this one global too.
-                if(VersionMap.find(NO_VERSION_GLOBAL) != VersionMap.end())
+                if(VersionMap.find(LIEF::ELF::VER_NDX_GLOBAL) != VersionMap.end())
                 {
-                    Version = NO_VERSION_GLOBAL;
+                    Version = LIEF::ELF::VER_NDX_GLOBAL;
                 }
             }
             VersionMap[Version].push_back({TableName, TableIndex});
@@ -769,7 +767,7 @@ void ElfReader::buildSymbols()
             std::string VersionedName = Name;
             // For datalog, we add the version id to the name.
             // This will be removed later
-            if(Version > NO_VERSION_GLOBAL)
+            if(Version > LIEF::ELF::VER_NDX_GLOBAL)
             {
                 VersionedName += "@" + std::to_string(Version);
             }
@@ -799,7 +797,8 @@ void ElfReader::buildSymbols()
             SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex};
             SymbolTabIdxInfo[S->getUUID()] = Indexes;
             // 0 and 1 are used to denote local and global scope with no version.
-            if(Version > NO_VERSION_GLOBAL)
+            // anythin higher is a valid version index.
+            if(Version > LIEF::ELF::VER_NDX_GLOBAL)
             {
                 SymVerEntries[S->getUUID()] = Version;
             }
@@ -880,7 +879,7 @@ void ElfReader::addAuxData()
         {
             SymbolName = Relocation.symbol()->name();
             auto SymbolVersion = Relocation.symbol()->symbol_version();
-            if(SymbolVersion && SymbolVersion->value() > 1)
+            if(SymbolVersion && SymbolVersion->value() > LIEF::ELF::VER_NDX_GLOBAL)
             {
                 SymbolName += "@" + std::to_string(SymbolVersion->value());
             }
