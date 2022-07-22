@@ -643,6 +643,8 @@ void ElfReader::buildSymbols()
     }
 
     using SymbolVersionId = uint16_t;
+    const SymbolVersionId NO_VERSION_LOCAL = 0;
+    const SymbolVersionId NO_VERSION_GLOBAL = 0;
 
     std::map<std::string, std::set<SymbolVersionId>> VersionToIds;
     auxdata::ElfSymDefs ElfSymDefinitions;
@@ -696,7 +698,7 @@ void ElfReader::buildSymbols()
                 Value = tlsBaseAddress() + Value;
             }
 
-            SymbolVersionId Version = 0;
+            SymbolVersionId Version = NO_VERSION_LOCAL;
             std::string VersionStr;
             // Symbols in "dynsym" table have versions.
             if(Symbol.has_version())
@@ -739,6 +741,15 @@ void ElfReader::buildSymbols()
                                              + "@" + VersionStr);
                 }
             }
+            else
+            {
+                // If there is no version but there is a global
+                // instance of this symbol, we consider this one global too.
+                if(VersionMap.find(NO_VERSION_GLOBAL) != VersionMap.end())
+                {
+                    Version = NO_VERSION_GLOBAL;
+                }
+            }
             VersionMap[Version].push_back({TableName, TableIndex});
             TableIndex++;
         }
@@ -758,7 +769,7 @@ void ElfReader::buildSymbols()
             std::string VersionedName = Name;
             // For datalog, we add the version id to the name.
             // This will be removed later
-            if(Version > 1)
+            if(Version > NO_VERSION_GLOBAL)
             {
                 VersionedName += "@" + std::to_string(Version);
             }
@@ -787,8 +798,8 @@ void ElfReader::buildSymbols()
             // Add additional symbol information to aux data.
             SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex};
             SymbolTabIdxInfo[S->getUUID()] = Indexes;
-            // 0 and 1 are used to denote global and local no version.
-            if(Version > 1)
+            // 0 and 1 are used to denote local and global scope with no version.
+            if(Version > NO_VERSION_GLOBAL)
             {
                 SymVerEntries[S->getUUID()] = Version;
             }
