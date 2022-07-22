@@ -647,6 +647,10 @@ block_accumulated_stack_adjustments(EA_next,BaseReg,Sum+Offset):-
         block_last_def(EA_adjust,EA_def,[BaseReg,StackPos+Diff]).
 
     /*
+    Generate live_var_used for live stack variables at a stack variable adjustment.
+
+    Ensures these moved live stack variables continue propagating back to their def.
+
     Generates a live_var_used where !code_in_block(EA_used,Block), similar to
     return value rules
     */
