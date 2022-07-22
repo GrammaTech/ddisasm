@@ -217,14 +217,14 @@ track_register(Reg):-
     We consider a <T> to be live only if it is live for interblock edges.
     Intrablock cases are handled directly by the def_used relation.
 
-    To find the definition for this use, live_reg_at_block_end will have to
+    To find the definition for this use, live_var_at_block_end will have to
     propagate backward from the block.
     */
-    .decl live_reg_used(Block:address,Obj:T,EA_used:address,Index:operand_index,Moves:unsigned) overridable
-    .output live_reg_used
+    .decl live_var_used(Block:address,Obj:T,EA_used:address,Index:operand_index,Moves:unsigned) overridable
+    .output live_var_used
 
     // Used in this block
-    live_reg_used(Block,Obj,EA_used,Index,0):-
+    live_var_used(Block,Obj,EA_used,Index,0):-
         used_in_block(Block,EA_used,Obj,Index),
         !block_last_def(EA_used,_,Obj).
 
@@ -242,21 +242,21 @@ track_register(Reg):-
     definitions are often unused.
 
     To further optimize this strategy, if another use is encountered, we don't
-    propagate any further. Later, the relation live_reg_at_prior_used() propagates
+    propagate any further. Later, the relation live_var_at_prior_used() propagates
     defs forward through adjacent uses.
     */
-    .decl live_reg_at_block_end(Block:address,BlockUsed:address,Obj:T) overridable
-    .output live_reg_at_block_end
+    .decl live_var_at_block_end(Block:address,BlockUsed:address,Obj:T) overridable
+    .output live_var_at_block_end
 
     // Base case
-    live_reg_at_block_end(PrevBlock,Block,Obj):-
+    live_var_at_block_end(PrevBlock,Block,Obj):-
         block_next(PrevBlock,PrevBlockEnd,Block),
-        live_reg_used(Block,Obj,_,_,_),
+        live_var_used(Block,Obj,_,_,_),
         !flow_def(PrevBlockEnd,Obj,Block,_).
 
     // Recursive case
-    live_reg_at_block_end(PrevBlock,BlockUsed,Obj):-
-        live_reg_at_block_end(Block,BlockUsed,Obj),
+    live_var_at_block_end(PrevBlock,BlockUsed,Obj):-
+        live_var_at_block_end(Block,BlockUsed,Obj),
         // TODO: propagate through conditional defs
         !ref_in_block(Block,Obj), // !flow_def is implied by !ref_in_block
         block_propagates_def(Block,Obj),
@@ -264,7 +264,7 @@ track_register(Reg):-
 
     // Ensure we partition on the delta relation in each version of the rule
     // for best performance: in rule version 1, swap delta_block_next (2) with
-    // live_reg_at_block_end (1).
+    // live_var_at_block_end (1).
     .plan 1: (2,1)
 
     /**
@@ -274,11 +274,11 @@ track_register(Reg):-
 
     Forms an edge between two used() that depend on the same def.
     */
-    .decl live_reg_at_prior_used(EA_used:address,BlockUsed:address,Obj:T)
-    .output live_reg_at_prior_used
+    .decl live_var_at_prior_used(EA_used:address,BlockUsed:address,Obj:T)
+    .output live_var_at_prior_used
 
-    live_reg_at_prior_used(EA_used,BlockUsed,Obj):-
-        live_reg_at_block_end(Block,BlockUsed,Obj),
+    live_var_at_prior_used(EA_used,BlockUsed,Obj):-
+        live_var_at_block_end(Block,BlockUsed,Obj),
         used_in_block(Block,EA_used,Obj,_),
         !defined_in_block(Block,Obj). // TODO: should this technically be !block_next_def?
 
@@ -296,26 +296,26 @@ track_register(Reg):-
 
     // Inter-blocks def-use (explicit def)
     def_used(EA_def,Obj,EA_used,Index):-
-        live_reg_at_block_end(Block,BlockUsed,Obj),
+        live_var_at_block_end(Block,BlockUsed,Obj),
         last_def_in_block(Block,EA_def,Obj),
-        live_reg_used(BlockUsed,Obj,EA_used,Index,_).
+        live_var_used(BlockUsed,Obj,EA_used,Index,_).
         // TODO: verify that the stack frame is not invalidated after EA_def?
 
     .plan 1: (3,1,2)
 
     // Inter-blocks def-use (flow def)
     def_used(EA_def,Obj,EA_used,Index):-
-        live_reg_at_block_end(Block,BlockUsed,Obj),
+        live_var_at_block_end(Block,BlockUsed,Obj),
         !defined_in_block(Block,Obj), // TODO: should !defined_in_block, block_propagates_def be here?
         block_propagates_def(Block,Obj),
         flow_def(EA_def,Obj,Block,_),
-        live_reg_used(BlockUsed,Obj,EA_used,Index,_).
+        live_var_used(BlockUsed,Obj,EA_used,Index,_).
 
     // Forward propagate def_used to downstream used
     def_used(EA_def,Obj,Next_EA_used,NextIndex):-
-        live_reg_at_prior_used(EA_used,NextUsedBlock,Obj),
+        live_var_at_prior_used(EA_used,NextUsedBlock,Obj),
         def_used(EA_def,Obj,EA_used,_),
-        live_reg_used(NextUsedBlock,Obj,Next_EA_used,NextIndex,_),
+        live_var_used(NextUsedBlock,Obj,Next_EA_used,NextIndex,_),
         !block_last_def(Next_EA_used,_,Obj).
 }
 
@@ -435,7 +435,7 @@ track_register(Reg):-
         block_last_instruction(Block,BlockEnd).
 
     // Extend for values returned in this block
-    live_reg_used(RetBlock,Reg,EA_used,Index,1):-
+    live_var_used(RetBlock,Reg,EA_used,Index,1):-
         return_block_end(Callee,_,RetBlock,RetBlockEnd),
         !block_last_def(RetBlockEnd,_,Reg),
         return_val_used(_,Callee,Reg,EA_used,Index).
@@ -574,17 +574,17 @@ block_accumulated_stack_adjustments(EA_next,BaseReg,Sum+Offset):-
         !reg_def_use.defined_in_block(Block,BaseReg),
         UNUSED(StackPos).
 
-    .override live_reg_used
+    .override live_var_used
 
     // TODO: can we eliminate this override?
 
-    live_reg_used(Block,[BaseReg,StackPos],EA_used,Index,0):-
+    live_var_used(Block,[BaseReg,StackPos],EA_used,Index,0):-
         used_in_block(Block,EA_used,[BaseReg,StackPos],Index),
         !block_last_def(EA_used,_,[BaseReg,StackPos]),
         !reg_def_use.block_last_def(EA_used,_,BaseReg).
 
     // stack is adjusted in the block where the var is used
-    live_reg_used(Block,[BaseReg,StackPos+Offset],EA_used,Index,0):-
+    live_var_used(Block,[BaseReg,StackPos+Offset],EA_used,Index,0):-
         used_in_block(Block,EA_used,[BaseReg,StackPos],Index),
         !block_last_def(EA_used,_,[BaseReg,StackPos]),
         block_accumulated_stack_adjustments(EA_used,BaseReg,Offset),
@@ -623,8 +623,8 @@ block_accumulated_stack_adjustments(EA_next,BaseReg,Sum+Offset):-
 
     live_stack_var_at_stack_adjustment(Block,[BaseReg,StackPos],EA_used,Index,Adjustment,Moves):-
         block_adjusts_stack(Block,BaseReg,Adjustment),
-        live_reg_at_block_end(Block,BlockUsed,[BaseReg,StackPos]),
-        live_reg_used(BlockUsed,[BaseReg,StackPos],EA_used,Index,Moves).
+        live_var_at_block_end(Block,BlockUsed,[BaseReg,StackPos]),
+        live_var_used(BlockUsed,[BaseReg,StackPos],EA_used,Index,Moves).
 
     // Interblock def-use with a def and adjustment in the same block
     def_used(EA_def,[BaseReg,StackPos+Diff],EA_used,Index):-
@@ -638,10 +638,10 @@ block_accumulated_stack_adjustments(EA_next,BaseReg,Sum+Offset):-
         block_last_def(EA_adjust,EA_def,[BaseReg,StackPos+Diff]).
 
     /*
-    Generates a live_reg_used where !code_in_block(EA_used,Block), similar to
+    Generates a live_var_used where !code_in_block(EA_used,Block), similar to
     return value rules
     */
-    live_reg_used(Block,[BaseReg,StackPos+Offset],EA_used,Index,Moves+1):-
+    live_var_used(Block,[BaseReg,StackPos+Offset],EA_used,Index,Moves+1):-
         live_stack_var_at_stack_adjustment(Block,[BaseReg,StackPos],EA_used,Index,Offset,Moves),
         // Ensure that this used() has not already propagated to this block too many times.
         // This breaks loops.
