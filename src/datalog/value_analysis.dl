@@ -68,26 +68,14 @@ or loop) and considering the value with most steps.
 .decl best_value_reg(EA:address,Reg:register,EA_from:address,Multiplier:number,Offset:number,type:symbol)
 .output best_value_reg
 
-// Register saved in previous frame and loaded from the next.
-// e.g.:
-//   sub ESP,12                   PrevStackFrame
-//   ...
-//   mov DWORD PTR [ESP+8],EAX    Store
-//   ...
-//   sub ESP,8                    NextStackFrame
-//   mov EBX,DWORD PTR [ESP+16]   Load
-/*
-stack_load_store_pair(EAStore,EALoad,StoreReg,LoadReg):-
-    adjacent_stack_frame(PrevStackFrame,NextStackFrame,Base,Offset),
-    reg_loaded_from_stack(EALoad,LoadReg,Base,StackPos,NextStackFrame),
-    reg_stored_in_stack(EAStore,StoreReg,Base,StackPos+Offset,PrevStackFrame).
-*/
-
 // Connect values that are stored to and then loaded from the stack.
+// We avoid using the StackVar for the BaseReg and StackPos in arch.load and
+// arch.store since there may have been a stack adjustment.
 value_reg_edge(EALoad,Reg2,EAPrev,Reg1,1,0):-
     stack_def_use.def_used(EAStore,_,EALoad,_),
-    reg_def_use.def_used(EAPrev,Reg1,EAStore,_),
-    reg_def_use.def(EALoad,Reg2).
+    arch.store(EAStore,_,_,Reg1,_,_,_,_),
+    arch.load(EALoad,_,_,Reg2,_,_,_,_),
+    reg_def_use.def_used(EAPrev,Reg1,EAStore,_).
 
 //mov reg reg_origin
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
