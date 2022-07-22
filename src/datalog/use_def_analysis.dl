@@ -452,46 +452,6 @@ track_register(Reg):-
 
 .type stack_var = [BaseReg:register,StackPos:number]
 
-/**
-Generate distinct stack frames (identifying them by the location at which the
-stack or frame pointer register is defined.)
-*/
-.decl stack_frame(EA:address,BaseReg:register)
-.output stack_frame
-
-stack_frame(EA,BaseReg):-
-    // TODO: if the frame pointer, ensure the def is in terms of the stack pointer?
-    reg_def_use.def(EA,BaseReg),
-    (
-        arch.frame_pointer(BaseReg);
-        arch.stack_pointer(BaseReg)
-    ).
-
-/**
-A stack frame is defined in terms of a previous stack frame.
-*/
-.decl adjacent_stack_frame(PrevAt:address,NextAt:address,BaseReg:register,Offset:number)
-.output adjacent_stack_frame
-
-adjacent_stack_frame(PrevEA,NextEA,BaseReg,Offset):-
-    reg_def_use.def_used(PrevEA,BaseReg,NextEA,_),
-    (
-        arch.frame_pointer(BaseReg);
-        arch.stack_pointer(BaseReg)
-    ),
-    arch.reg_arithmetic_operation(NextEA,BaseReg,BaseReg,1,Offset).
-
-/**
-Find uses of a given stack frame.
-*/
-.decl stack_frame_used_in_block(FrameDefinedAt:address,BaseReg:register,Block:address)
-.output stack_frame_used_in_block
-
-stack_frame_used_in_block(FrameDefinedAt,BaseReg,Block):-
-    stack_frame(FrameDefinedAt,BaseReg),
-    reg_def_use.def_used(FrameDefinedAt,BaseReg,EA_used,_),
-    code_in_block(EA_used,Block).
-
 .decl adjusts_stack_in_block(Block:address,EA:address,BaseReg:register,Offset:number)
 .output adjusts_stack_in_block
 
