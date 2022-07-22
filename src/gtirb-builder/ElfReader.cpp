@@ -868,9 +868,10 @@ void ElfReader::addAuxData()
         if(Relocation.has_symbol())
         {
             SymbolName = Relocation.symbol()->name();
-            if(Relocation.symbol()->has_version())
+            auto SymbolVersion = Relocation.symbol()->symbol_version();
+            if(SymbolVersion && SymbolVersion->value() > 1)
             {
-                SymbolName += "@" + std::to_string(Relocation.symbol()->symbol_version()->value());
+                SymbolName += "@" + std::to_string(SymbolVersion->value());
             }
         }
 
