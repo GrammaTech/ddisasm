@@ -211,6 +211,23 @@ track_register(Reg):-
         used_in_block(Block,_,Obj,_).
 
     /**
+    A <T> is defined in a block, and is still live at the end of the block.
+
+    This can potentially be paired with a live_var_used if there is a path
+    between the Blocks.
+    */
+    .decl live_var_def(Block:address,VarIdentify:T,LiveVar:T,EA_def:address)
+
+    live_var_def(Block,Obj,Obj,EA_def):-
+        // TODO: verify that the stack frame is not invalidated after EA_def?
+        last_def_in_block(Block,EA_def,Obj).
+
+    live_var_def(Block,Obj,Obj,EA_def):-
+        flow_def(EA_def,Obj,Block,_),
+        !defined_in_block(Block,Obj), // TODO: should !defined_in_block, block_propagates_def be here?
+        block_propagates_def(Block,Obj).
+
+    /**
     A <T> is used in a block, but a live definition for that use is not found
     within the block.
 
@@ -295,21 +312,12 @@ track_register(Reg):-
         block_last_def(EA_used,EA_def,Obj).
 
     // Inter-blocks def-use (explicit def)
-    def_used(EA_def,Obj,EA_used,Index):-
+    def_used(EA_def,ObjIdentity,EA_used,Index):-
         live_var_at_block_end(Block,BlockUsed,Obj),
-        last_def_in_block(Block,EA_def,Obj),
+        live_var_def(Block,ObjIdentity,Obj,EA_def),
         live_var_used(BlockUsed,Obj,EA_used,Index,_).
-        // TODO: verify that the stack frame is not invalidated after EA_def?
 
-    .plan 1: (3,1,2)
-
-    // Inter-blocks def-use (flow def)
-    def_used(EA_def,Obj,EA_used,Index):-
-        live_var_at_block_end(Block,BlockUsed,Obj),
-        !defined_in_block(Block,Obj), // TODO: should !defined_in_block, block_propagates_def be here?
-        block_propagates_def(Block,Obj),
-        flow_def(EA_def,Obj,Block,_),
-        live_var_used(BlockUsed,Obj,EA_used,Index,_).
+    .plan 1: (3, 1, 2)
 
     // Forward propagate def_used to downstream used
     def_used(EA_def,Obj,Next_EA_used,NextIndex):-
@@ -630,29 +638,24 @@ stack_base_reg_move(Block,EA,Src,Dst):-
         live_var_at_block_end(Block,BlockUsed,[BaseReg,StackPos]),
         live_var_used(BlockUsed,[BaseReg,StackPos],EA_used,Index,Moves).
 
-    // Interblock def-use with a def and adjustment in the same block
-    def_used(EA_def,[BaseReg,StackPos+Diff],EA_used,Index):-
-        live_stack_var_at_stack_adjustment(Block,[BaseReg,StackPos],EA_used,Index,Ref2,_),
-        // query back for last_def with adjusted StackPos from each stack adjustment
+    // Stack pointer is adjusted before the end of the Block, altering the live def
+    live_var_def(Block,[BaseReg,StackPos],[BaseReg,StackPos-Diff],EA_def):-
+        block_adjusts_stack(Block,BaseReg,Ref2),
         adjusts_stack_in_block(Block,EA_adjust,BaseReg,_),
         may_fallthrough(EA_prev,EA_adjust),
         code_in_block(EA_prev,Block),
         block_accumulated_stack_adjustments(EA_prev,BaseReg,Ref1),
         Diff = Ref2 - Ref1,
-        block_last_def(EA_adjust,EA_def,[BaseReg,StackPos+Diff]).
+        block_last_def(EA_adjust,EA_def,[BaseReg,StackPos]).
 
-    // Interblock def-use with a def and a BaseReg move in the same block
-    // TODO: optimize more? slowest part of def_used to generate zero tuples right now.
-    def_used(EA_def,[BaseReg,StackPos],EA_used,Index):-
-        live_var_at_block_end(Block,BlockUsed,[NewBaseReg,StackPos]),
-        live_var_used(BlockUsed,[NewBaseReg,StackPos],EA_used,Index,_),
+    // def and a BaseReg move in the same block
+    live_var_def(Block,[BaseReg,StackPos],[NewBaseReg,StackPos],EA_def):-
+        stack_base_reg_move(Block,EA_mov,BaseReg,NewBaseReg),
+        block_last_def(EA_mov,EA_def,[BaseReg,StackPos]),
+        // [NewBaseReg+StackPos] is not redefined after the move
         !last_def_in_block(Block,_,[NewBaseReg,StackPos]),
-        reg_def_use.last_def_in_block(Block,EA_mov,NewBaseReg),
-        arch.move_reg_reg(EA_mov,NewBaseReg,BaseReg),
-        block_last_def(EA_mov,EA_def,[BaseReg,StackPos]).
-
-    .plan 1: (2,1,3,4,5)
-
+        // NewBaseReg is not redefined after the move
+        reg_def_use.last_def_in_block(Block,EA_mov,NewBaseReg).
     /*
     Generate live_var_used for live stack variables at a stack variable adjustment.
 
