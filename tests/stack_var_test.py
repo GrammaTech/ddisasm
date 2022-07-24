@@ -478,3 +478,145 @@ class StackVarTests(unittest.TestCase):
         self.assertEqual(
             1, count_stack_def_use_in_snippet(module, ("RSP", 16))
         )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_stack_var_move_base_reg_intrablock(self):
+        """
+        Test stack var def-use where a stack var is defined, and the stack
+        pointer is moved to the frame pointer.
+
+        A MIPS-specific rule for this pattern used to exist, but it has been
+        made redudant with arch-generic recognition.
+        """
+        module = asm_to_gtirb(
+            """
+            # Define a stack frame
+            subq $12,%rsp
+
+            # Define a stack variable
+            movq %rax,16(%rsp)
+
+            # Move stack pointer to frame pointer
+            movq %rsp,%rbp
+
+            # Use the stack variable via the frame pointer
+            movq 16(%rbp),%rax
+
+            .end:
+            """
+        )
+        self.assertEqual(
+            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+        )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_stack_var_move_base_reg_interblock1(self):
+        """
+        Test stack var def-use where a stack var is defined, and the stack
+        pointer is moved to the frame pointer.
+
+        In this case, the def and move occur in the same block, but not the use
+        """
+        module = asm_to_gtirb(
+            """
+            # Define a stack frame
+            subq $12,%rsp
+
+            # Define a stack variable
+            movq %rax,16(%rsp)
+
+            # Move stack pointer to frame pointer
+            movq %rsp,%rbp
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            # Use the stack variable via the frame pointer
+            movq 16(%rbp),%rax
+
+            .end:
+            """
+        )
+        self.assertEqual(
+            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+        )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_stack_var_move_base_reg_interblock2(self):
+        """
+        Test stack var def-use where a stack var is defined, and the stack
+        pointer is moved to the frame pointer.
+
+        In this case, the def occurs in one block, and the move and use in
+        another.
+        """
+        module = asm_to_gtirb(
+            """
+            # Define a stack frame
+            subq $12,%rsp
+
+            # Define a stack variable
+            movq %rax,16(%rsp)
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            # Move stack pointer to frame pointer
+            movq %rsp,%rbp
+
+            # Use the stack variable via the frame pointer
+            movq 16(%rbp),%rax
+
+            .end:
+            """
+        )
+        self.assertEqual(
+            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+        )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_stack_var_move_base_reg_interblock3(self):
+        """
+        Test stack var def-use where a stack var is defined, and the stack
+        pointer is moved to the frame pointer.
+
+        In this case, the def, move, and use occur in different blocks.
+        """
+        module = asm_to_gtirb(
+            """
+            # Define a stack frame
+            subq $12,%rsp
+
+            # Define a stack variable
+            movq %rax,16(%rsp)
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            # Move stack pointer to frame pointer
+            movq %rsp,%rbp
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            # Use the stack variable via the frame pointer
+            movq 16(%rbp),%rax
+
+            .end:
+            """
+        )
+        self.assertEqual(
+            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+        )

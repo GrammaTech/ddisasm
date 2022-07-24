@@ -25,26 +25,6 @@ Define a set predicates to abstract from MIPS specific instruction set
 and characteristics
 */
 
-
-// e.g., sw gp, 16(sp)
-//       ...
-//       move fp, sp
-//       ...
-//       lw gp, 16(fp)
-// TODO: fix this rule.
-/*
-value_reg_edge(EALoad,"GP",EAPrev,"GP",1,0):-
-    reg_stored_in_stack(EAStore,"GP",_,StackPos,StackFrameDefinedAt),
-    reg_loaded_from_stack(EALoad,"GP","FP",StackPos,StackFrameDefinedAt2),
-    reg_def_use.def_used(EAPrev,"GP",EAStore,_),
-    EAPrev != EAStore,
-    // StackFrameDefinedAt2: move fp, sp
-    reg_def_use.def_used(StackFrameDefinedAt,Reg_origin,StackFrameDefinedAt2,_),
-    StackFrameDefinedAt != StackFrameDefinedAt2,
-    arch.move_reg_reg(StackFrameDefinedAt2,_,Reg_origin),
-    StackFrameDefinedAt2 != StackFrameDefinedAt.
-*/
-
 // load word from got table: e.g., lw v0, -32696(gp)
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     instruction(EA,_,_,"LW",_,Op2,0,0,_,_),

@@ -502,6 +502,24 @@ block_accumulated_stack_adjustments(EA_next,BaseReg,Sum+Offset):-
     ),
     local_next(EA,EA_next).
 
+/**
+A stack base register is moved to another potential stack base register.
+*/
+.decl stack_base_reg_move(Block:address,EA:address,Src:register,Dst:register)
+
+stack_base_reg_move(Block,EA,Src,Dst):-
+    (
+        arch.frame_pointer(Src);
+        arch.stack_pointer(Src)
+    ),
+    (
+        arch.frame_pointer(Dst);
+        arch.stack_pointer(Dst)
+    ),
+    Dst != Src,
+    arch.move_reg_reg(EA,Dst,Src),
+    code_in_block(EA,Block).
+
 .comp StackVarDefUse : AbstractDefUse<stack_var> {
 
     // When a value is stored to the stack, it defines a stack value.
@@ -559,6 +577,13 @@ block_accumulated_stack_adjustments(EA_next,BaseReg,Sum+Offset):-
         block_accumulated_stack_adjustments(EA_used,BaseReg,Offset),
         Offset != 0.
 
+    // basereg is moved in the block where the var is used
+    live_var_used(Block,[BaseReg,StackPos],EA_used,Index,0):-
+        stack_base_reg_move(Block,EA_mov,BaseReg,NewBaseReg),
+        used_in_block(Block,EA_used,[NewBaseReg,StackPos],Index),
+        reg_def_use.block_last_def(EA_used,EA_mov,NewBaseReg),
+        !block_last_def(EA_mov,_,[BaseReg,StackPos]).
+
     /*
     Intra-block def-use with stack var adjustment, e.g.:
 
@@ -588,6 +613,16 @@ block_accumulated_stack_adjustments(EA_next,BaseReg,Sum+Offset):-
         Diff = Ref2 - Ref1,
         block_last_def(EA_adjust,EA_def,[BaseReg,StackPos+Diff]).
 
+    // Intrablock def-use where the def uses the BaseReg is moved.
+    def_used(EA_def,[BaseReg,StackPos],EA_used,Index):-
+        used(EA_used,[UsedBaseReg,StackPos],Index),
+        reg_def_use.block_last_def(EA_used,EA_mov,UsedBaseReg),
+        stack_base_reg_move(_,EA_mov,BaseReg,UsedBaseReg),
+        // The def of [BaseReg+StackPos] should be the same from both EA_used
+        // and EA_mov.
+        block_last_def(EA_used,EA_def,[BaseReg,StackPos]),
+        block_last_def(EA_mov,EA_def,[BaseReg,StackPos]).
+
     .decl live_stack_var_at_stack_adjustment(Block:address,Var:stack_var,EA_used:address,Index:operand_index,Adjustment:number,Moves:unsigned)
 
     live_stack_var_at_stack_adjustment(Block,[BaseReg,StackPos],EA_used,Index,Adjustment,Moves):-
@@ -605,6 +640,18 @@ block_accumulated_stack_adjustments(EA_next,BaseReg,Sum+Offset):-
         block_accumulated_stack_adjustments(EA_prev,BaseReg,Ref1),
         Diff = Ref2 - Ref1,
         block_last_def(EA_adjust,EA_def,[BaseReg,StackPos+Diff]).
+
+    // Interblock def-use with a def and a BaseReg move in the same block
+    // TODO: optimize more? slowest part of def_used to generate zero tuples right now.
+    def_used(EA_def,[BaseReg,StackPos],EA_used,Index):-
+        live_var_at_block_end(Block,BlockUsed,[NewBaseReg,StackPos]),
+        live_var_used(BlockUsed,[NewBaseReg,StackPos],EA_used,Index,_),
+        !last_def_in_block(Block,_,[NewBaseReg,StackPos]),
+        reg_def_use.last_def_in_block(Block,EA_mov,NewBaseReg),
+        arch.move_reg_reg(EA_mov,NewBaseReg,BaseReg),
+        block_last_def(EA_mov,EA_def,[BaseReg,StackPos]).
+
+    .plan 1: (2,1,3,4,5)
 
     /*
     Generate live_var_used for live stack variables at a stack variable adjustment.
@@ -625,6 +672,15 @@ block_accumulated_stack_adjustments(EA_next,BaseReg,Sum+Offset):-
         // This is the inverse of the latter half of the two above def_used
         // rules
         !last_def_in_block(Block,_,[BaseReg,StackPos]).
+
+    live_var_used(Block,[BaseReg,StackPos],EA_used,Index,Moves+1):-
+        live_var_at_block_end(Block,BlockUsed,[NewBaseReg,StackPos]),
+        live_var_used(BlockUsed,[NewBaseReg,StackPos],EA_used,Index,Moves),
+        stack_base_reg_move(Block,EA_mov,BaseReg,NewBaseReg),
+        reg_def_use.last_def_in_block(Block,EA_mov,NewBaseReg),
+        !last_def_in_block(Block,_,[NewBaseReg,StackPos]).
+
+    .plan 1: (2,1,3,4)
 
 }
 
