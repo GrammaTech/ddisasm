@@ -116,20 +116,17 @@ track_register(Reg):-
     Obj is defined in this location
     */
     .decl def(EA:address,Obj:T)
-    .output def
 
     /**
     Instruction at address 'EA' uses Obj at operand index 'Index'.
     */
     .decl used(EA:address,Obj:T,Index:operand_index)
-    .output used
 
     /**
     A <T> is implicitly defined by being compared to a constant and then jumping
     this definition only takes place in between the jump and the target that implies equality
     */
     .decl flow_def(EA:address,Obj:T,EA_next:address,Value:number)
-    .output flow_def
 
     /**
     A <T> is unconditionally defined at EA.
@@ -153,14 +150,12 @@ track_register(Reg):-
     .decl block_propagates_def(Block:address,Obj:T) inline
 
     .decl defined_in_block(EA:address,Obj:T)
-    .output defined_in_block
 
     defined_in_block(Block,Obj):-
         def(EA,Obj),
         code_in_block(EA,Block).
 
     .decl used_in_block(Block:address,EA_used:address,Obj:T,Index:operand_index)
-    .output used_in_block
 
     used_in_block(Block,EA_used,Obj,Index):-
         used(EA_used,Obj,Index),
@@ -170,7 +165,6 @@ track_register(Reg):-
     The last address prior to EA where Reg was defined within the block
     */
     .decl block_last_def(EA:address,EA_def:address,Obj:T) overridable
-    .output block_last_def
 
     block_last_def(EA_next,EA,Obj):-
         def(EA,Obj),
@@ -188,7 +182,6 @@ track_register(Reg):-
     Multiple are possible in conditional cases.
     */
     .decl last_def_in_block(Block:address,EA_def:address,Obj:T)
-    .output last_def_in_block
 
     last_def_in_block(Block,EA_def,Obj):-
         block_last_instruction(Block,BlockEnd),
@@ -204,7 +197,6 @@ track_register(Reg):-
     A <T> is referenced in a block
     */
     .decl ref_in_block(Block:address,Obj:T)
-    .output ref_in_block
 
     ref_in_block(Block,Obj):-
         defined_in_block(Block,Obj);
