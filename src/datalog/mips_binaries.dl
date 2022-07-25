@@ -111,14 +111,11 @@ hi_load(EA,Reg,Upper):-
 hi_load_prop(EA,EA,Reg,Upper,"direct"):-
     hi_load(EA,Reg,Upper).
 
-// TODO: fix this rule.
-/*
 hi_load_prop(RegRestoreEA,EA,Reg2,Upper,"stack-restore"):-
     hi_load(EA,Reg,Upper),
     reg_def_use.def_used(EA,Reg,RegStoreEA,_),
-    reg_stored_in_stack(RegStoreEA,Reg,_,StackPos,StackFrameDefinedAt),
-    reg_loaded_from_stack(RegRestoreEA,Reg2,"SP",StackPos,StackFrameDefinedAt).
-*/
+    stack_def_use.def_used(RegStoreEA,_,RegRestoreEA,_),
+    arch.load(RegRestoreEA,_,_,Reg2,_,_,_,_).
 
 hi_load_prop(MoveEA,EA,Reg2,Upper,"move"):-
     hi_load(EA,Reg,Upper),
