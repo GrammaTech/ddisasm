@@ -66,11 +66,11 @@ souffle::RamDomain DatalogProgram::insertRecord(const std::string &RecordText)
     // Create string without the enclosing record brackets
     std::string RemainingFieldText = RecordText.substr(1, RecordText.size() - 2);
 
-    // TODO: is there any way to verify that the structure we discover from the
-    // RecordText matches the expected structure of the desired record type?
-    // Parsing would also be easier if we knew the expected types. We could get
-    // confused, for example, if a string entry is a valid integer or record.
-
+    // There is currnently no way to query souffle for the the structure of the
+    // record type.
+    // Parsing would also be easier and more accurate if we knew the expected
+    // types. This code could be wrong, for example, if a string entry is a
+    // valid integer or record.
     std::vector<souffle::RamDomain> RecordData;
     std::string InferredRecordType;
     std::string Field;

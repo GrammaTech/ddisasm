@@ -110,6 +110,10 @@ track_register(Reg):-
     arch.condition_flags_reg(Reg).
 
 
+/**
+The AbstractDefUse component defines relations and rules shared by def-use
+analysis for both registers and stack variables.
+*/
 .comp AbstractDefUse<T> {
 
     /**
@@ -138,18 +142,21 @@ track_register(Reg):-
         !arch.conditional(EA,_).
 
     /**
-    An Var <T> can propagate through the instruction at EA.
+    A Var <T> can propagate through the instruction at EA.
 
     Intended to be extended by child components to modify behavior of AbstractDefUse.
     */
     .decl ea_propagates_def(EA:address,Var:T) inline
 
     /**
-    An Var <T> can propagate through Block.
+    A Var <T> can propagate through Block.
     */
     .decl block_propagates_def(Block:address,Var:T) inline
 
-    .decl defined_in_block(EA:address,Var:T)
+    /**
+    A Var <T> is defined in the Block
+    */
+    .decl defined_in_block(Block:address,Var:T)
 
     defined_in_block(Block,Var):-
         def(EA,Var),
@@ -157,12 +164,15 @@ track_register(Reg):-
 
     .decl used_in_block(Block:address,EA_used:address,Var:T,Index:operand_index)
 
+    /**
+    A Var <T> is used in the Block
+    */
     used_in_block(Block,EA_used,Var,Index):-
         used(EA_used,Var,Index),
         code_in_block(EA_used,Block).
 
     /**
-    The last address prior to EA where Reg was defined within the block
+    The last address prior to EA where Var was defined within the block
     */
     .decl block_last_def(EA:address,EA_def:address,Var:T)
 
@@ -211,12 +221,11 @@ track_register(Reg):-
     .decl live_var_def(Block:address,VarIdentify:T,LiveVar:T,EA_def:address)
 
     live_var_def(Block,Var,Var,EA_def):-
-        // TODO: verify that the stack frame is not invalidated after EA_def?
         last_def_in_block(Block,EA_def,Var).
 
     live_var_def(Block,Var,Var,EA_def):-
         flow_def(EA_def,Var,Block,_),
-        !defined_in_block(Block,Var), // TODO: should !defined_in_block, block_propagates_def be here?
+        !defined_in_block(Block,Var),
         block_propagates_def(Block,Var).
 
     /**
@@ -266,7 +275,6 @@ track_register(Reg):-
     // Recursive case
     live_var_at_block_end(PrevBlock,BlockUsed,Var):-
         live_var_at_block_end(Block,BlockUsed,Var),
-        // TODO: propagate through conditional defs
         !ref_in_block(Block,Var), // !flow_def is implied by !ref_in_block
         block_propagates_def(Block,Var),
         block_next(PrevBlock,_,Block).
@@ -289,7 +297,13 @@ track_register(Reg):-
     live_var_at_prior_used(EA_used,BlockUsed,Var):-
         live_var_at_block_end(Block,BlockUsed,Var),
         used_in_block(Block,EA_used,Var,_),
-        !defined_in_block(Block,Var). // TODO: should this technically be !block_next_def?
+        // Although this does not generate a live_var_at_prior used for a used
+        // where the def was in the same block, it shouldn't be necessary since
+        // the def will generate a live_var_def, which will connect directly to
+        // the used via the normal interblock def_used rule (i.e., we don't
+        // need to do used-used chaining if for a used in the same block as the
+        // def).
+        !defined_in_block(Block,Var).
 
 
     /**
@@ -452,6 +466,9 @@ track_register(Reg):-
 
 .type stack_var = [BaseReg:register,StackPos:number]
 
+/**
+An offset is added to a stack pointer register at EA.
+*/
 .decl adjusts_stack_in_block(Block:address,EA:address,BaseReg:register,Offset:number)
 .output adjusts_stack_in_block
 
@@ -463,28 +480,41 @@ adjusts_stack_in_block(Block,EA,BaseReg,Offset):-
     arch.reg_arithmetic_operation(EA,BaseReg,BaseReg,1,Offset),
     code_in_block(EA,Block).
 
+/**
+BaseReg is modified in a manner in Block that is not a handled type of stack
+adjustment.
+*/
+.decl unsupported_stack_def_in_block(Block:address,BaseReg:register)
 
+unsupported_stack_def_in_block(Block,BaseReg):-
+    (
+        arch.frame_pointer(BaseReg);
+        arch.stack_pointer(BaseReg)
+    ),
+    reg_def_use.def(EA,BaseReg),
+    code_in_block(EA,Block),
+    !adjusts_stack_in_block(_,EA,BaseReg,_).
+
+/**
+The total offset added to BaseReg in Block.
+*/
 .decl block_adjusts_stack(Block:address,BaseReg:register,Offset:number)
 .output block_adjusts_stack
 
-// TODO: ensure we only generate block_adjusts_stack if we understand all the
-// definitions of BaseReg in the block
 block_adjusts_stack(Block,BaseReg,TotalOffset):-
     block(Block),
     (
         arch.frame_pointer(BaseReg);
         arch.stack_pointer(BaseReg)
     ),
+    !unsupported_stack_def_in_block(Block,BaseReg),
     TotalOffset != 0,
     TotalOffset = sum Offset : {
         adjusts_stack_in_block(Block,_,BaseReg,Offset)
     }.
-/**
 
-EA: the address where the stack is adjusted
-PrevEA: the previous definition of EA in the Block (or what if there is no prev?)
-BaseReg:
-Offset: the accumulated adjustment in the Block
+/**
+The total offset added to BaseReg in Block between the block start and EA.
 */
 .decl block_accumulated_stack_adjustments(EA:address,BaseReg:register,Offset:number)
 .output block_accumulated_stack_adjustments
@@ -551,8 +581,6 @@ stack_base_reg_move(Block,EA,Src,Dst):-
         op_indirect_mapped(IndirectOp,"NONE",BaseReg,"NONE",_,StackPos,_),
         instruction_get_src_op(EA,OpIndex,IndirectOp).
 
-    // TODO: ensure we don't propagate through stack frame changes (at least, not without adjustment)
-
     ea_propagates_def(EA,[BaseReg,StackPos]):-
         !reg_def_use.def(EA,BaseReg),
         UNUSED(StackPos).
@@ -607,10 +635,11 @@ stack_base_reg_move(Block,EA,Src,Dst):-
         code_in_block(EA_used,Block),
         // query back for last_def with adjusted StackPos from each stack adjustment
         adjusts_stack_in_block(Block,EA_adjust,BaseReg,_),
-        block_accumulated_stack_adjustments(EA_used,BaseReg,Ref2),
-        local_next(EA_prev,EA_adjust),
-        block_accumulated_stack_adjustments(EA_prev,BaseReg,Ref1),
-        Diff = Ref2 - Ref1,
+        Diff = sum Offset : {
+            adjusts_stack_in_block(Block,EA,BaseReg,Offset),
+            EA_adjust <= EA,
+            EA < EA_used
+        },
         block_last_def(EA_adjust,EA_def,[BaseReg,StackPos+Diff]).
 
     // Intrablock def-use where the def uses the BaseReg is moved.
@@ -622,13 +651,6 @@ stack_base_reg_move(Block,EA,Src,Dst):-
         // and EA_mov.
         block_last_def(EA_used,EA_def,[BaseReg,StackPos]),
         block_last_def(EA_mov,EA_def,[BaseReg,StackPos]).
-
-    .decl live_stack_var_at_stack_adjustment(Block:address,Var:stack_var,EA_used:address,Index:operand_index,Adjustment:number,Moves:unsigned)
-
-    live_stack_var_at_stack_adjustment(Block,[BaseReg,StackPos],EA_used,Index,Adjustment,Moves):-
-        block_adjusts_stack(Block,BaseReg,Adjustment),
-        live_var_at_block_end(Block,BlockUsed,[BaseReg,StackPos]),
-        live_var_used(BlockUsed,[BaseReg,StackPos],EA_used,Index,Moves).
 
     // Stack pointer is adjusted before the end of the Block, altering the live def
     live_var_def(Block,[BaseReg,StackPos],[BaseReg,StackPos-Diff],EA_def):-
@@ -648,6 +670,23 @@ stack_base_reg_move(Block,EA,Src,Dst):-
         !last_def_in_block(Block,_,[NewBaseReg,StackPos]),
         // NewBaseReg is not redefined after the move
         reg_def_use.last_def_in_block(Block,EA_mov,NewBaseReg).
+
+    /**
+    Block adjust a stack pointer register, and a stack variable relative to
+    that stack pointer is live at the end of Block.
+
+    Does *not* verify that the variable is live at any particular adjustment
+    instruction.
+
+    This exists primarily as an optimization for the rules that use it.
+    */
+    .decl live_stack_var_at_stack_adjustment(Block:address,Var:stack_var,EA_used:address,Index:operand_index,Adjustment:number,Moves:unsigned)
+
+    live_stack_var_at_stack_adjustment(Block,[BaseReg,StackPos],EA_used,Index,Adjustment,Moves):-
+        block_adjusts_stack(Block,BaseReg,Adjustment),
+        live_var_at_block_end(Block,BlockUsed,[BaseReg,StackPos]),
+        live_var_used(BlockUsed,[BaseReg,StackPos],EA_used,Index,Moves).
+
     /*
     Generate live_var_used for live stack variables at a stack variable adjustment.
 

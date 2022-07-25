@@ -175,15 +175,17 @@ def in_bounds(bounds: typing.Tuple[int, int], val: int):
 
 
 def count_stack_def_use_in_snippet(
-    module: gtirb.Module, stack_var: typing.Tuple[str, int]
+    module: gtirb.Module, stack_var: typing.Tuple[str, int] = None
 ) -> int:
     """
     Count stack_def_use.def_used tuples for a stack variable in the snippet
+
+    If stack_var is None, count all in_bounds tuples.
     """
     count = 0
     bounds = snippet_bounds(module)
     for def_used in parse_souffle_output(module, "stack_def_use.def_used"):
-        if def_used[1] != stack_var:
+        if stack_var is not None and def_used[1] != stack_var:
             continue
         if in_bounds(bounds, def_used[0]) and in_bounds(bounds, def_used[2]):
             count += 1
@@ -620,3 +622,34 @@ class StackVarTests(unittest.TestCase):
         self.assertEqual(
             1, count_stack_def_use_in_snippet(module, ("RSP", 16))
         )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_stack_var_adjustment_intrablock_redef(self):
+        """
+        Test stack var def-use within a block with a stack pointer adjustment.
+        """
+        module = asm_to_gtirb(
+            """
+            # Define a stack frame
+            subq $32,%rsp
+
+            # Define a stack variable
+            movq %rax,16(%rsp)
+
+            # Adjust
+            subq $24,%rsp
+
+            # Redefine stack pointer (not an adjustment)
+            movq %rax,%rsp
+
+            # Use the stack variable
+            movq 40(%rsp),%rax
+
+            .end:
+            """
+        )
+
+        # There should be no def_used for snippet
+        self.assertEqual(0, count_stack_def_use_in_snippet(module))
