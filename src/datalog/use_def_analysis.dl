@@ -164,7 +164,7 @@ track_register(Reg):-
     /**
     The last address prior to EA where Reg was defined within the block
     */
-    .decl block_last_def(EA:address,EA_def:address,Var:T) overridable
+    .decl block_last_def(EA:address,EA_def:address,Var:T)
 
     block_last_def(EA_next,EA,Var):-
         def(EA,Var),
@@ -254,7 +254,7 @@ track_register(Reg):-
     propagate any further. Later, the relation live_var_at_prior_used() propagates
     defs forward through adjacent uses.
     */
-    .decl live_var_at_block_end(Block:address,BlockUsed:address,Var:T) overridable
+    .decl live_var_at_block_end(Block:address,BlockUsed:address,Var:T)
     .output live_var_at_block_end
 
     // Base case
@@ -295,7 +295,7 @@ track_register(Reg):-
     /**
     A <T> is defined in 'EA_def' and used in 'EA_used' in the operand with index 'Index_used'
     */
-    .decl def_used(EA_def:address,Var:T,EA_used:address,Index_used:operand_index) overridable
+    .decl def_used(EA_def:address,Var:T,EA_used:address,Index_used:operand_index)
     .output def_used
 
     // Intra-block def-use
