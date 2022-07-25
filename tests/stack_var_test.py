@@ -653,3 +653,40 @@ class StackVarTests(unittest.TestCase):
 
         # There should be no def_used for snippet
         self.assertEqual(0, count_stack_def_use_in_snippet(module))
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_stack_var_adjustment_interblock_redef_after_use(self):
+        """
+        Test stack var def-use with adjustment where the stack pointer is
+        redefined after a use.
+        """
+        module = asm_to_gtirb(
+            """
+            # Define a stack frame
+            subq $32,%rsp
+
+            # Define a stack variable
+            movq %rax,16(%rsp)
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            # Adjust
+            subq $24,%rsp
+
+            # Use the stack variable
+            movq 40(%rsp),%rax
+
+            # Redefine stack pointer (not an adjustment)
+            movq %rax,%rsp
+
+            .end:
+            """
+        )
+
+        self.assertEqual(
+            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+        )

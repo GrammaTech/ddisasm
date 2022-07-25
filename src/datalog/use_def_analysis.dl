@@ -200,6 +200,7 @@ analysis for both registers and stack variables.
             EA_def=BlockEnd
             ;
             !must_def(BlockEnd,Var),
+            ea_propagates_def(BlockEnd,Var),
             block_last_def(BlockEnd,EA_def,Var)
         ).
 
@@ -484,53 +485,61 @@ adjusts_stack_in_block(Block,EA,BaseReg,Offset):-
 BaseReg is modified in a manner in Block that is not a handled type of stack
 adjustment.
 */
-.decl unsupported_stack_def_in_block(Block:address,BaseReg:register)
+.decl unsupported_stack_def(EA:address,BaseReg:register)
+.output unsupported_stack_def
 
-unsupported_stack_def_in_block(Block,BaseReg):-
+unsupported_stack_def(EA,BaseReg):-
     (
         arch.frame_pointer(BaseReg);
         arch.stack_pointer(BaseReg)
     ),
     reg_def_use.def(EA,BaseReg),
-    code_in_block(EA,Block),
     !adjusts_stack_in_block(_,EA,BaseReg,_).
-
-/**
-The total offset added to BaseReg in Block.
-*/
-.decl block_adjusts_stack(Block:address,BaseReg:register,Offset:number)
-.output block_adjusts_stack
-
-block_adjusts_stack(Block,BaseReg,TotalOffset):-
-    block(Block),
-    (
-        arch.frame_pointer(BaseReg);
-        arch.stack_pointer(BaseReg)
-    ),
-    !unsupported_stack_def_in_block(Block,BaseReg),
-    TotalOffset != 0,
-    TotalOffset = sum Offset : {
-        adjusts_stack_in_block(Block,_,BaseReg,Offset)
-    }.
 
 /**
 The total offset added to BaseReg in Block between the block start and EA.
 */
-.decl block_accumulated_stack_adjustments(EA:address,BaseReg:register,Offset:number)
-.output block_accumulated_stack_adjustments
+.decl block_differential_stack_adjustment(EA_ref:address,EA:address,BaseReg:register,Offset:number)
+.output block_differential_stack_adjustment
 
-block_accumulated_stack_adjustments(Block,BaseReg,0):-
-    block_adjusts_stack(Block,BaseReg,_).
+// Start at the beginning of blocks if there is a stack adjustment in the block
+block_differential_stack_adjustment(Block,Block,BaseReg,0):-
+    block(Block),
+    adjusts_stack_in_block(Block,_,BaseReg,_).
 
-block_accumulated_stack_adjustments(EA_next,BaseReg,Sum+Offset):-
-    block_accumulated_stack_adjustments(EA,BaseReg,Sum),
+// Start after unsupported stack definitions
+block_differential_stack_adjustment(EA_next,EA_next,BaseReg,0):-
+    block(Block),
+    adjusts_stack_in_block(Block,_,BaseReg,_),
     code_in_block(EA,Block),
-    block_adjusts_stack(Block,BaseReg,_),
+    unsupported_stack_def(EA,BaseReg),
+    local_next(EA,EA_next).
+
+// Propagate
+block_differential_stack_adjustment(EA_ref,EA_next,BaseReg,Sum+Offset):-
+    block_differential_stack_adjustment(EA_ref,EA,BaseReg,Sum),
+    code_in_block(EA,Block),
     (
         adjusts_stack_in_block(Block,EA,BaseReg,Offset);
         !adjusts_stack_in_block(Block,EA,BaseReg,_), Offset=0
     ),
-    local_next(EA,EA_next).
+    local_next(EA,EA_next),
+    !unsupported_stack_def(EA,BaseReg).
+
+/**
+A stack adjustment affects live variables at the end of Block.
+*/
+.decl block_adjusts_stack(Block:address,EA_ref:address,BaseReg:register,Offset:number)
+.output block_adjusts_stack
+
+block_adjusts_stack(Block,EA_ref,BaseReg,Sum+Offset):-
+    block_last_instruction(Block,EA),
+    block_differential_stack_adjustment(EA_ref,EA,BaseReg,Sum),
+    (
+        adjusts_stack_in_block(Block,EA,BaseReg,Offset);
+        !adjusts_stack_in_block(Block,EA,BaseReg,_), Offset=0
+    ),
+    !unsupported_stack_def(EA,BaseReg).
 
 /**
 A stack base register is moved to another potential stack base register.
@@ -602,7 +611,7 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     live_var_used(Block,[BaseReg,StackPos+Offset],EA_used,Index,0):-
         used_in_block(Block,EA_used,[BaseReg,StackPos],Index),
         !block_last_def(EA_used,_,[BaseReg,StackPos]),
-        block_accumulated_stack_adjustments(EA_used,BaseReg,Offset),
+        block_differential_stack_adjustment(Block,EA_used,BaseReg,Offset),
         Offset != 0.
 
     // basereg is moved in the block where the var is used
@@ -621,25 +630,23 @@ stack_base_reg_move(Block,EA,Src,Dst):-
 
     used(8,[RSP,40],1)
     code_in_block(8,0)
+    block_differential_stack_adjustments(0,8,RSP,-24)
     adjusts_stack_in_block(0,4,RSP,24)
-    block_accumulated_stack_adjustments(8,RSP,-24)
-    local_next(0,4)
-    block_accumulated_stack_adjustments(8,RSP,0)
+    block_differential_stack_adjustments(0,4,RSP,0)
     Diff = -24 - 0
     block_last_def(4,EA_def,[RSP,40+(-24)])
     */
+
     def_used(EA_def,[BaseReg,StackPos+Diff],EA_used,Index):-
         used(EA_used,[BaseReg,StackPos],Index),
         // There should be no last def since BaseReg is modified.
         !block_last_def(EA_used,_,[BaseReg,StackPos]),
         code_in_block(EA_used,Block),
         // query back for last_def with adjusted StackPos from each stack adjustment
+        block_differential_stack_adjustment(EA_ref,EA_used,BaseReg,Ref2),
         adjusts_stack_in_block(Block,EA_adjust,BaseReg,_),
-        Diff = sum Offset : {
-            adjusts_stack_in_block(Block,EA,BaseReg,Offset),
-            EA_adjust <= EA,
-            EA < EA_used
-        },
+        block_differential_stack_adjustment(EA_ref,EA_adjust,BaseReg,Ref1),
+        Diff = Ref2 - Ref1,
         block_last_def(EA_adjust,EA_def,[BaseReg,StackPos+Diff]).
 
     // Intrablock def-use where the def uses the BaseReg is moved.
@@ -654,11 +661,10 @@ stack_base_reg_move(Block,EA,Src,Dst):-
 
     // Stack pointer is adjusted before the end of the Block, altering the live def
     live_var_def(Block,[BaseReg,StackPos],[BaseReg,StackPos-Diff],EA_def):-
-        block_adjusts_stack(Block,BaseReg,Ref2),
+        block_last_instruction(Block,EA),
+        block_adjusts_stack(Block,EA_ref,BaseReg,Ref2),
         adjusts_stack_in_block(Block,EA_adjust,BaseReg,_),
-        may_fallthrough(EA_prev,EA_adjust),
-        code_in_block(EA_prev,Block),
-        block_accumulated_stack_adjustments(EA_prev,BaseReg,Ref1),
+        block_differential_stack_adjustment(EA_ref,EA_adjust,BaseReg,Ref1),
         Diff = Ref2 - Ref1,
         block_last_def(EA_adjust,EA_def,[BaseReg,StackPos]).
 
@@ -683,7 +689,7 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     .decl live_stack_var_at_stack_adjustment(Block:address,Var:stack_var,EA_used:address,Index:operand_index,Adjustment:number,Moves:unsigned)
 
     live_stack_var_at_stack_adjustment(Block,[BaseReg,StackPos],EA_used,Index,Adjustment,Moves):-
-        block_adjusts_stack(Block,BaseReg,Adjustment),
+        block_adjusts_stack(Block,Block,BaseReg,Adjustment),
         live_var_at_block_end(Block,BlockUsed,[BaseReg,StackPos]),
         live_var_used(BlockUsed,[BaseReg,StackPos],EA_used,Index,Moves).
 
