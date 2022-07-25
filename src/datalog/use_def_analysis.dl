@@ -113,67 +113,67 @@ track_register(Reg):-
 .comp AbstractDefUse<T> {
 
     /**
-    Obj is defined in this location
+    Var is defined in this location
     */
-    .decl def(EA:address,Obj:T)
+    .decl def(EA:address,Var:T)
 
     /**
-    Instruction at address 'EA' uses Obj at operand index 'Index'.
+    Instruction at address 'EA' uses Var at operand index 'Index'.
     */
-    .decl used(EA:address,Obj:T,Index:operand_index)
+    .decl used(EA:address,Var:T,Index:operand_index)
 
     /**
     A <T> is implicitly defined by being compared to a constant and then jumping
     this definition only takes place in between the jump and the target that implies equality
     */
-    .decl flow_def(EA:address,Obj:T,EA_next:address,Value:number)
+    .decl flow_def(EA:address,Var:T,EA_next:address,Value:number)
 
     /**
     A <T> is unconditionally defined at EA.
     */
-    .decl must_def(EA:address,Obj:T) inline
+    .decl must_def(EA:address,Var:T) inline
 
-    must_def(EA,Obj):-
-        def(EA,Obj),
+    must_def(EA,Var):-
+        def(EA,Var),
         !arch.conditional(EA,_).
 
     /**
-    An Obj <T> can propagate through the instruction at EA.
+    An Var <T> can propagate through the instruction at EA.
 
     Intended to be extended by child components to modify behavior of AbstractDefUse.
     */
-    .decl ea_propagates_def(EA:address,Obj:T) inline
+    .decl ea_propagates_def(EA:address,Var:T) inline
 
     /**
-    An Obj <T> can propagate through Block.
+    An Var <T> can propagate through Block.
     */
-    .decl block_propagates_def(Block:address,Obj:T) inline
+    .decl block_propagates_def(Block:address,Var:T) inline
 
-    .decl defined_in_block(EA:address,Obj:T)
+    .decl defined_in_block(EA:address,Var:T)
 
-    defined_in_block(Block,Obj):-
-        def(EA,Obj),
+    defined_in_block(Block,Var):-
+        def(EA,Var),
         code_in_block(EA,Block).
 
-    .decl used_in_block(Block:address,EA_used:address,Obj:T,Index:operand_index)
+    .decl used_in_block(Block:address,EA_used:address,Var:T,Index:operand_index)
 
-    used_in_block(Block,EA_used,Obj,Index):-
-        used(EA_used,Obj,Index),
+    used_in_block(Block,EA_used,Var,Index):-
+        used(EA_used,Var,Index),
         code_in_block(EA_used,Block).
 
     /**
     The last address prior to EA where Reg was defined within the block
     */
-    .decl block_last_def(EA:address,EA_def:address,Obj:T) overridable
+    .decl block_last_def(EA:address,EA_def:address,Var:T) overridable
 
-    block_last_def(EA_next,EA,Obj):-
-        def(EA,Obj),
+    block_last_def(EA_next,EA,Var):-
+        def(EA,Var),
         local_next(EA,EA_next).
 
-    block_last_def(EA_next,EA_def,Obj):-
-        block_last_def(EA,EA_def,Obj),
-        !must_def(EA,Obj),
-        ea_propagates_def(EA,Obj),
+    block_last_def(EA_next,EA_def,Var):-
+        block_last_def(EA,EA_def,Var),
+        !must_def(EA,Var),
+        ea_propagates_def(EA,Var),
         local_next(EA,EA_next).
 
     /**
@@ -181,26 +181,26 @@ track_register(Reg):-
 
     Multiple are possible in conditional cases.
     */
-    .decl last_def_in_block(Block:address,EA_def:address,Obj:T)
+    .decl last_def_in_block(Block:address,EA_def:address,Var:T)
 
-    last_def_in_block(Block,EA_def,Obj):-
+    last_def_in_block(Block,EA_def,Var):-
         block_last_instruction(Block,BlockEnd),
         (
-            def(BlockEnd,Obj),
+            def(BlockEnd,Var),
             EA_def=BlockEnd
             ;
-            !must_def(BlockEnd,Obj),
-            block_last_def(BlockEnd,EA_def,Obj)
+            !must_def(BlockEnd,Var),
+            block_last_def(BlockEnd,EA_def,Var)
         ).
 
     /**
     A <T> is referenced in a block
     */
-    .decl ref_in_block(Block:address,Obj:T)
+    .decl ref_in_block(Block:address,Var:T)
 
-    ref_in_block(Block,Obj):-
-        defined_in_block(Block,Obj);
-        used_in_block(Block,_,Obj,_).
+    ref_in_block(Block,Var):-
+        defined_in_block(Block,Var);
+        used_in_block(Block,_,Var,_).
 
     /**
     A <T> is defined in a block, and is still live at the end of the block.
@@ -210,14 +210,14 @@ track_register(Reg):-
     */
     .decl live_var_def(Block:address,VarIdentify:T,LiveVar:T,EA_def:address)
 
-    live_var_def(Block,Obj,Obj,EA_def):-
+    live_var_def(Block,Var,Var,EA_def):-
         // TODO: verify that the stack frame is not invalidated after EA_def?
-        last_def_in_block(Block,EA_def,Obj).
+        last_def_in_block(Block,EA_def,Var).
 
-    live_var_def(Block,Obj,Obj,EA_def):-
-        flow_def(EA_def,Obj,Block,_),
-        !defined_in_block(Block,Obj), // TODO: should !defined_in_block, block_propagates_def be here?
-        block_propagates_def(Block,Obj).
+    live_var_def(Block,Var,Var,EA_def):-
+        flow_def(EA_def,Var,Block,_),
+        !defined_in_block(Block,Var), // TODO: should !defined_in_block, block_propagates_def be here?
+        block_propagates_def(Block,Var).
 
     /**
     A <T> is used in a block, but a live definition for that use is not found
@@ -229,13 +229,13 @@ track_register(Reg):-
     To find the definition for this use, live_var_at_block_end will have to
     propagate backward from the block.
     */
-    .decl live_var_used(Block:address,Obj:T,EA_used:address,Index:operand_index,Moves:unsigned) overridable
+    .decl live_var_used(Block:address,Var:T,EA_used:address,Index:operand_index,Moves:unsigned) overridable
     .output live_var_used
 
     // Used in this block
-    live_var_used(Block,Obj,EA_used,Index,0):-
-        used_in_block(Block,EA_used,Obj,Index),
-        !block_last_def(EA_used,_,Obj).
+    live_var_used(Block,Var,EA_used,Index,0):-
+        used_in_block(Block,EA_used,Var,Index),
+        !block_last_def(EA_used,_,Var).
 
     /**
     The <T> is live at the end of Block, and will be used in BlockUsed.
@@ -254,21 +254,21 @@ track_register(Reg):-
     propagate any further. Later, the relation live_var_at_prior_used() propagates
     defs forward through adjacent uses.
     */
-    .decl live_var_at_block_end(Block:address,BlockUsed:address,Obj:T) overridable
+    .decl live_var_at_block_end(Block:address,BlockUsed:address,Var:T) overridable
     .output live_var_at_block_end
 
     // Base case
-    live_var_at_block_end(PrevBlock,Block,Obj):-
+    live_var_at_block_end(PrevBlock,Block,Var):-
         block_next(PrevBlock,PrevBlockEnd,Block),
-        live_var_used(Block,Obj,_,_,_),
-        !flow_def(PrevBlockEnd,Obj,Block,_).
+        live_var_used(Block,Var,_,_,_),
+        !flow_def(PrevBlockEnd,Var,Block,_).
 
     // Recursive case
-    live_var_at_block_end(PrevBlock,BlockUsed,Obj):-
-        live_var_at_block_end(Block,BlockUsed,Obj),
+    live_var_at_block_end(PrevBlock,BlockUsed,Var):-
+        live_var_at_block_end(Block,BlockUsed,Var),
         // TODO: propagate through conditional defs
-        !ref_in_block(Block,Obj), // !flow_def is implied by !ref_in_block
-        block_propagates_def(Block,Obj),
+        !ref_in_block(Block,Var), // !flow_def is implied by !ref_in_block
+        block_propagates_def(Block,Var),
         block_next(PrevBlock,_,Block).
 
     // Ensure we partition on the delta relation in each version of the rule
@@ -283,40 +283,40 @@ track_register(Reg):-
 
     Forms an edge between two used() that depend on the same def.
     */
-    .decl live_var_at_prior_used(EA_used:address,BlockUsed:address,Obj:T)
+    .decl live_var_at_prior_used(EA_used:address,BlockUsed:address,Var:T)
     .output live_var_at_prior_used
 
-    live_var_at_prior_used(EA_used,BlockUsed,Obj):-
-        live_var_at_block_end(Block,BlockUsed,Obj),
-        used_in_block(Block,EA_used,Obj,_),
-        !defined_in_block(Block,Obj). // TODO: should this technically be !block_next_def?
+    live_var_at_prior_used(EA_used,BlockUsed,Var):-
+        live_var_at_block_end(Block,BlockUsed,Var),
+        used_in_block(Block,EA_used,Var,_),
+        !defined_in_block(Block,Var). // TODO: should this technically be !block_next_def?
 
 
     /**
     A <T> is defined in 'EA_def' and used in 'EA_used' in the operand with index 'Index_used'
     */
-    .decl def_used(EA_def:address,Obj:T,EA_used:address,Index_used:operand_index) overridable
+    .decl def_used(EA_def:address,Var:T,EA_used:address,Index_used:operand_index) overridable
     .output def_used
 
     // Intra-block def-use
-    def_used(EA_def,Obj,EA_used,Index):-
-        used(EA_used,Obj,Index),
-        block_last_def(EA_used,EA_def,Obj).
+    def_used(EA_def,Var,EA_used,Index):-
+        used(EA_used,Var,Index),
+        block_last_def(EA_used,EA_def,Var).
 
     // Inter-blocks def-use (explicit def)
-    def_used(EA_def,ObjIdentity,EA_used,Index):-
-        live_var_at_block_end(Block,BlockUsed,Obj),
-        live_var_def(Block,ObjIdentity,Obj,EA_def),
-        live_var_used(BlockUsed,Obj,EA_used,Index,_).
+    def_used(EA_def,VarIdentity,EA_used,Index):-
+        live_var_at_block_end(Block,BlockUsed,Var),
+        live_var_def(Block,VarIdentity,Var,EA_def),
+        live_var_used(BlockUsed,Var,EA_used,Index,_).
 
     .plan 1: (3, 1, 2)
 
     // Forward propagate def_used to downstream used
-    def_used(EA_def,Obj,Next_EA_used,NextIndex):-
-        live_var_at_prior_used(EA_used,NextUsedBlock,Obj),
-        def_used(EA_def,Obj,EA_used,_),
-        live_var_used(NextUsedBlock,Obj,Next_EA_used,NextIndex,_),
-        !block_last_def(Next_EA_used,_,Obj).
+    def_used(EA_def,Var,Next_EA_used,NextIndex):-
+        live_var_at_prior_used(EA_used,NextUsedBlock,Var),
+        def_used(EA_def,Var,EA_used,_),
+        live_var_used(NextUsedBlock,Var,Next_EA_used,NextIndex,_),
+        !block_last_def(Next_EA_used,_,Var).
 }
 
 .comp RegisterDefUse : AbstractDefUse<register> {
