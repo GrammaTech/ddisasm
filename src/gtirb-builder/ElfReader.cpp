@@ -641,10 +641,7 @@ void ElfReader::buildSymbols()
     {
         resurrectSymbols();
     }
-
-    using SymbolVersionId = uint16_t;
-
-    std::map<std::string, std::set<SymbolVersionId>> VersionToIds;
+    std::map<std::string, std::set<auxdata::SymbolVersionId>> VersionToIds;
     auxdata::ElfSymDefs ElfSymDefinitions;
     for(LIEF::ELF::SymbolVersionDefinition &Def : Elf->symbols_version_definition())
     {
@@ -669,7 +666,7 @@ void ElfReader::buildSymbols()
                                  uint64_t, std::string>;
     using TableDecl = std::tuple<std::string, uint64_t>;
 
-    std::map<SymbolKey, std::map<SymbolVersionId, std::vector<TableDecl>>> Symbols;
+    std::map<SymbolKey, std::map<auxdata::SymbolVersionId, std::vector<TableDecl>>> Symbols;
     auto LoadSymbols = [&](auto SymbolIt, std::string TableName) {
         uint64_t TableIndex = 0;
         for(auto &Symbol : SymbolIt)
@@ -696,7 +693,7 @@ void ElfReader::buildSymbols()
                 Value = tlsBaseAddress() + Value;
             }
 
-            SymbolVersionId Version = LIEF::ELF::VER_NDX_LOCAL;
+            auxdata::SymbolVersionId Version = LIEF::ELF::VER_NDX_LOCAL;
             std::string VersionStr;
             // Symbols in "dynsym" table have versions.
             if(Symbol.has_version())
@@ -723,7 +720,7 @@ void ElfReader::buildSymbols()
             // select the best version already available (from dynsym).
             if(VersionStr.size() > 0)
             {
-                std::set<SymbolVersionId> &PossibleVersions = VersionToIds[VersionStr];
+                std::set<auxdata::SymbolVersionId> &PossibleVersions = VersionToIds[VersionStr];
                 for(auto &[VersionId, Val] : VersionMap)
                 {
                     // Ignore the 15th bit that marks whether the symbol is hidden.
@@ -797,7 +794,7 @@ void ElfReader::buildSymbols()
             SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex};
             SymbolTabIdxInfo[S->getUUID()] = Indexes;
             // 0 and 1 are used to denote local and global scope with no version.
-            // anythin higher is a valid version index.
+            // anything higher is a valid version index.
             if(Version > LIEF::ELF::VER_NDX_GLOBAL)
             {
                 SymVerEntries[S->getUUID()] = Version;

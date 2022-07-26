@@ -62,15 +62,17 @@ namespace auxdata
     using Relocation =
         std::tuple<uint64_t, std::string, std::string, int64_t, uint64_t, std::string, std::string>;
 
+    /// Symbol version identifiers are 16 bit unsigned integers.
+    using SymbolVersionId = uint16_t;
     /// Map from symbol version identifiers to the list of versions strings.
     /// The first element of the list is the version itself, the subsequent elements
     /// are predecessor versions.
-    using ElfSymDefs = std::map<uint16_t, std::vector<std::string>>;
+    using ElfSymDefs = std::map<SymbolVersionId, std::vector<std::string>>;
     /// Map from dynamic library names to the symbol versions that they need.
     /// For each library, we have a map from version identifiers to version strings.
-    using ElfSymNeeded = std::map<std::string, std::map<uint16_t, std::string>>;
+    using ElfSymNeeded = std::map<std::string, std::map<SymbolVersionId, std::string>>;
     //// Map from gtirb::Symbol UUIDs to symbol version identifiers.
-    using ElfSymbolVersionsEntries = std::map<gtirb::UUID, uint16_t>;
+    using ElfSymbolVersionsEntries = std::map<gtirb::UUID, SymbolVersionId>;
 } // namespace auxdata
 
 /// \file AuxDataSchema.h
