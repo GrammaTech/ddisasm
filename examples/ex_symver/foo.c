@@ -17,7 +17,7 @@ __asm__(".symver foo2,foo@LIBFOO_2.0");
 
 void foo2()
 {
-    puts("foo 3.0");
+    puts("foo 2.0");
     bar2();
 }
 
