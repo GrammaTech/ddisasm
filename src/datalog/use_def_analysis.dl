@@ -408,11 +408,17 @@ analysis for both registers and stack variables.
         op_indirect_contains_reg(Op,Reg),
         track_register(Reg).
 
-    used(EA,Reg,Index):-
+    /**
+    Instruction at address 'EA' uses register 'Reg' at operand index 'Index'.
+    This is supposed to be used before code inference.
+    */
+    .decl used_before_code_inference(EA:address,Reg:register,Index:operand_index)
+
+    used_before_code_inference(EA,Reg,Index):-
         used_explicit(EA,Reg,Index).
 
     // Implicitly-used registers use an operand index of zero.
-    used(EA,Reg,0):-
+    used_before_code_inference(EA,Reg,0):-
         (
             register_access(EA,RegIn,"R"),
             reg_map(RegIn,Reg),
@@ -423,6 +429,9 @@ analysis for both registers and stack variables.
         track_register(Reg),
         !used_explicit(EA,Reg,_),
         !is_xor_reset(EA).
+
+    used(EA,Reg,Index):-
+        used_before_code_inference(EA,Reg,Index).
 
     /**
     A value returned from a function is used.
@@ -786,5 +795,5 @@ that can be used BEFORE code inference.
 .decl straight_line_def_used(EA_def:address,Reg:register,EA_used:address,Index:unsigned)
 
 straight_line_def_used(EA_def,Reg,EA_used,Index):-
-    reg_def_use.used_explicit(EA_used,Reg,Index),
+    reg_def_use.used_before_code_inference(EA_used,Reg,Index),
     straight_line_last_def(EA_used,EA_def,Reg).
