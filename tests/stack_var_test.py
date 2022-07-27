@@ -174,8 +174,12 @@ def in_bounds(bounds: typing.Tuple[int, int], val: int):
     return val >= bounds[0] and val < bounds[1]
 
 
+stack_var_type = typing.Tuple[str, int]
+
+
 def count_stack_def_use_in_snippet(
-    module: gtirb.Module, stack_var: typing.Tuple[str, int] = None
+    module: gtirb.Module,
+    stack_var_pair: typing.Tuple[stack_var_type, stack_var_type] = None,
 ) -> int:
     """
     Count stack_def_use.def_used tuples for a stack variable in the snippet
@@ -185,7 +189,10 @@ def count_stack_def_use_in_snippet(
     count = 0
     bounds = snippet_bounds(module)
     for def_used in parse_souffle_output(module, "stack_def_use.def_used"):
-        if stack_var is not None and def_used[1] != stack_var:
+        if stack_var_pair is not None and (
+            def_used[1] != stack_var_pair[0]
+            or def_used[3] != stack_var_pair[1]
+        ):
             continue
         if in_bounds(bounds, def_used[0]) and in_bounds(bounds, def_used[2]):
             count += 1
@@ -211,7 +218,8 @@ class StackVarTests(unittest.TestCase):
             """
         )
         self.assertEqual(
-            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 16))),
         )
 
     @unittest.skipUnless(
@@ -240,7 +248,8 @@ class StackVarTests(unittest.TestCase):
             """
         )
         self.assertEqual(
-            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 16))),
         )
 
     @unittest.skipUnless(
@@ -276,7 +285,8 @@ class StackVarTests(unittest.TestCase):
             """
         )
         self.assertEqual(
-            2, count_stack_def_use_in_snippet(module, ("RSP", 16))
+            2,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 16))),
         )
 
     @unittest.skipUnless(
@@ -308,7 +318,8 @@ class StackVarTests(unittest.TestCase):
             """
         )
         self.assertEqual(
-            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 40))),
         )
 
     @unittest.skipUnless(
@@ -345,7 +356,8 @@ class StackVarTests(unittest.TestCase):
             """
         )
         self.assertEqual(
-            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 40))),
         )
 
     @unittest.skipUnless(
@@ -375,7 +387,8 @@ class StackVarTests(unittest.TestCase):
             """
         )
         self.assertEqual(
-            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 40))),
         )
 
     @unittest.skipUnless(
@@ -408,7 +421,8 @@ class StackVarTests(unittest.TestCase):
             """
         )
         self.assertEqual(
-            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 40))),
         )
 
     @unittest.skipUnless(
@@ -441,7 +455,8 @@ class StackVarTests(unittest.TestCase):
             """
         )
         self.assertEqual(
-            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 40))),
         )
 
     @unittest.skipUnless(
@@ -478,7 +493,8 @@ class StackVarTests(unittest.TestCase):
             """
         )
         self.assertEqual(
-            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 40))),
         )
 
     @unittest.skipUnless(
@@ -510,7 +526,8 @@ class StackVarTests(unittest.TestCase):
             """
         )
         self.assertEqual(
-            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RBP", 16))),
         )
 
     @unittest.skipUnless(
@@ -545,7 +562,8 @@ class StackVarTests(unittest.TestCase):
             """
         )
         self.assertEqual(
-            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RBP", 16))),
         )
 
     @unittest.skipUnless(
@@ -581,7 +599,8 @@ class StackVarTests(unittest.TestCase):
             """
         )
         self.assertEqual(
-            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RBP", 16))),
         )
 
     @unittest.skipUnless(
@@ -620,7 +639,8 @@ class StackVarTests(unittest.TestCase):
             """
         )
         self.assertEqual(
-            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RBP", 16))),
         )
 
     @unittest.skipUnless(
@@ -688,5 +708,6 @@ class StackVarTests(unittest.TestCase):
         )
 
         self.assertEqual(
-            1, count_stack_def_use_in_snippet(module, ("RSP", 16))
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 40))),
         )

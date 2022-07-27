@@ -35,7 +35,7 @@ TEST(DatalogProgramTest, TestInsertTuple)
     souffle::Relation *Relation = Program.get()->getRelation("stack_def_use.def_used");
 
     // Currently, this is the only relation that uses record types.
-    std::stringstream TupleStream("0x778\t[SP, 16]\t0x7ac\t1\n");
+    std::stringstream TupleStream("0x778\t[SP, 16]\t0x7ac\t[SP, 16]\t1\n");
     Program.insertTuple(TupleStream, Relation);
 
     // Read the tuple back.
@@ -45,17 +45,21 @@ TEST(DatalogProgramTest, TestInsertTuple)
     ASSERT_NE(TupleIt, Relation->end());
 
     // Tuple should have four attributes.
-    ASSERT_EQ((*TupleIt).size(), 4);
+    ASSERT_EQ((*TupleIt).size(), 5);
 
     ASSERT_EQ(souffle::ramBitCast<souffle::RamUnsigned>((*TupleIt)[0]), 0x778);
 
-    // Verify record
+    // Verify records
     const souffle::RamDomain *Record = Program.get()->getRecordTable().unpack((*TupleIt)[1], 2);
     ASSERT_EQ(Program.get()->getSymbolTable().decode(Record[0]), "SP");
     ASSERT_EQ(Record[1], 16);
 
+    Record = Program.get()->getRecordTable().unpack((*TupleIt)[3], 2);
+    ASSERT_EQ(Program.get()->getSymbolTable().decode(Record[0]), "SP");
+    ASSERT_EQ(Record[1], 16);
+
     ASSERT_EQ(souffle::ramBitCast<souffle::RamUnsigned>((*TupleIt)[2]), 0x7ac);
-    ASSERT_EQ(souffle::ramBitCast<souffle::RamUnsigned>((*TupleIt)[3]), 1);
+    ASSERT_EQ(souffle::ramBitCast<souffle::RamUnsigned>((*TupleIt)[4]), 1);
 
     TupleIt++;
 

@@ -197,7 +197,7 @@ moved_label(EA_load,1,Address,Base):-
     got_relative_operand(EA_load,_,Dest),
     reg_def_use.def_used(EA_load,_,EA_store,_),
     arch.frame_pointer(BaseReg),
-    stack_def_use.def_used(EA_store,[BaseReg,StackPos],EA_cmp,_),
+    stack_def_use.def_used(EA_store,[BaseReg,StackPos],EA_cmp,[BaseReg,StackPos],_),
     // GOT-relative compared for jump.
     arch.cmp_operation(Operation),
     instruction(EA_cmp,_,_,Operation,Op1,_,0,0,_,_),
