@@ -164,11 +164,12 @@ bool DatalogProgram::insertTuple(std::stringstream &TupleText, souffle::Relation
 {
     souffle::tuple T(Relation);
     std::string Field;
-    for(size_t I = 0; I < Relation->getArity(); I++)
+    size_t Arity = Relation->getArity();
+    for(size_t I = 0; I < Arity; I++)
     {
-        if(Relation->getArity() == 1)
+        if(Arity == 1)
         {
-            Field = TupleText.str();
+            std::getline(TupleText, Field, '\n');
         }
         else if(!std::getline(TupleText, Field, '\t'))
         {
@@ -216,7 +217,8 @@ bool DatalogProgram::insertTuple(std::stringstream &TupleText, souffle::Relation
             return false;
         }
     }
-    if(std::getline(TupleText, Field, '\t'))
+
+    if(!TupleText.eof() && std::getline(TupleText, Field, '\t'))
     {
         std::cerr << "CSV file has more fields than expected, field '" << Field << "' is ignored"
                   << std::endl;
