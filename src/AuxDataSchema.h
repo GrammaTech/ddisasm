@@ -25,6 +25,7 @@
 #define DDISASM_AUXDATASCHEMA_H
 
 #include <gtirb/gtirb.hpp>
+#include <gtirb_pprinter/AuxDataSchema.hpp>
 #include <map>
 #include <string>
 #include <tuple>
@@ -72,13 +73,6 @@ namespace gtirb
     namespace schema
     {
         /// \brief Auxiliary data for extra symbol info.
-        struct ElfSymbolInfo
-        {
-            static constexpr const char* Name = "elfSymbolInfo";
-            typedef std::map<gtirb::UUID, auxdata::ElfSymbolInfo> Type;
-        };
-
-        /// \brief Auxiliary data for extra symbol info.
         struct ElfSymbolTabIdxInfo
         {
             static constexpr const char* Name = "elfSymbolTabIdxInfo";
@@ -90,20 +84,6 @@ namespace gtirb
         {
             static constexpr const char* Name = "elfSymbolVersions";
             typedef std::map<gtirb::UUID, std::string> Type;
-        };
-
-        /// \brief Auxiliary data describing a binary's type.
-        struct BinaryType
-        {
-            static constexpr const char* Name = "binaryType";
-            typedef std::vector<std::string> Type;
-        };
-
-        /// \bried Auxiliary data for architecture information
-        struct ArchInfo
-        {
-            static constexpr const char* Name = "archInfo";
-            typedef std::vector<std::string> Type;
         };
 
         /// \brief Auxiliary data that maps code blocks to integers
@@ -130,56 +110,11 @@ namespace gtirb
             typedef std::set<auxdata::ElfDynamicEntry> Type;
         };
 
-        /// \brief Auxiliary data covering data object encoding specifiers.
-        struct Encodings
-        {
-            static constexpr const char* Name = "encodings";
-            typedef std::map<gtirb::UUID, std::string> Type;
-        };
-
         /// \brief Auxiliary data mapping a section index to a section UUID.
         struct SectionIndex
         {
             static constexpr const char* Name = "sectionIndex";
             typedef std::map<uint64_t, gtirb::UUID> Type;
-        };
-
-        /// \brief Auxiliary data covering ELF section properties.
-        struct SectionProperties
-        {
-            static constexpr const char* Name = "sectionProperties";
-            typedef std::map<gtirb::UUID, std::tuple<uint64_t, uint64_t>> Type;
-        };
-
-        /// \brief Auxiliary data covering cfi directives.
-        struct CfiDirectives
-        {
-            static constexpr const char* Name = "cfiDirectives";
-            typedef std::map<
-                gtirb::Offset,
-                std::vector<std::tuple<std::string, std::vector<int64_t>, gtirb::UUID>>>
-                Type;
-        };
-
-        /// \brief Auxiliary data that includes names of necessary libraries.
-        struct Libraries
-        {
-            static constexpr const char* Name = "libraries";
-            typedef std::vector<std::string> Type;
-        };
-
-        /// \brief Auxiliary data that includes names of necessary library paths.
-        struct LibraryPaths
-        {
-            static constexpr const char* Name = "libraryPaths";
-            typedef std::vector<std::string> Type;
-        };
-
-        /// \brief Auxiliary data that stores the size of symbolic expressions.
-        struct SymbolicExpressionSizes
-        {
-            static constexpr const char* Name = "symbolicExpressionSizes";
-            typedef std::map<gtirb::Offset, uint64_t> Type;
         };
 
         /// \brief Auxiliary data that stores the version of ddisasm used to
@@ -195,34 +130,6 @@ namespace gtirb
         {
             static constexpr const char* Name = "peLoadConfig";
             typedef std::map<std::string, uint64_t> Type;
-        };
-
-        /// \brief Auxiliary data representing the import table of a PE file.
-        struct ImportEntries
-        {
-            static constexpr const char* Name = "peImportEntries";
-            typedef std::vector<auxdata::PeImportEntry> Type;
-        };
-
-        /// \brief Auxiliary data representing the export table of a PE file.
-        struct ExportEntries
-        {
-            static constexpr const char* Name = "peExportEntries";
-            typedef std::vector<auxdata::PeExportEntry> Type;
-        };
-
-        /// \brief Auxiliary data for the UUIDs of imported symbols in a PE file.
-        struct PeImportedSymbols
-        {
-            static constexpr const char* Name = "peImportedSymbols";
-            typedef std::vector<gtirb::UUID> Type;
-        };
-
-        /// \brief Auxiliary data for the UUIDs of exported symbols in a PE file.
-        struct PeExportedSymbols
-        {
-            static constexpr const char* Name = "peExportedSymbols";
-            typedef std::vector<gtirb::UUID> Type;
         };
 
         // \brief Auxiliary data for PE resources.
@@ -244,13 +151,6 @@ namespace gtirb
         {
             static constexpr const char* Name = "peDebugData";
             typedef std::vector<auxdata::PeDebugData> Type;
-        };
-
-        /// \brief Auxiliary data listing of safe exception handler blocks.
-        struct PeSafeExceptionHandlers
-        {
-            static constexpr const char* Name = "peSafeExceptionHandlers";
-            typedef std::set<gtirb::UUID> Type;
         };
 
         /// \brief Auxiliary data for Souffle fact files.

@@ -1,6 +1,6 @@
 add_library(gtirb_builder STATIC GtirbBuilder.cpp ElfReader.cpp PeReader.cpp ArchiveReader.cpp)
 
-target_link_libraries(gtirb_builder ${LIEF_LIBRARIES} ${Boost_LIBRARIES} gtirb)
+target_link_libraries(gtirb_builder ${LIEF_LIBRARIES} ${Boost_LIBRARIES} gtirb gtirb_pprinter)
 
 target_include_directories(gtirb_builder PUBLIC ${LIEF_INCLUDE_DIRS})
 
