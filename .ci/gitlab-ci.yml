@@ -598,7 +598,7 @@ docker-image:
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
   script:
     - *get-image-name
-    - docker build -t $IMAGE_NAME:latest --build-arg DDISASM_URL=$CI_PROJECT_URL --build-arg DDISASM_BRANCH=$CI_COMMIT_REF_NAME .
+    - docker build -t $IMAGE_NAME:latest .
     - docker tag $IMAGE_NAME:latest $IMAGE_NAME:$VERSION
     - docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
     - docker push $IMAGE_NAME:latest
