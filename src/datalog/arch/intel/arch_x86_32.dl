@@ -123,8 +123,9 @@ symbolic_operand_attribute(EA,Index,"PltRef"):-
     symbolic_operand(EA,Index,Dest,_),
     plt_block(Dest,_).
 
-symbolic_operand_attribute(EA,Index,"GotOff"):-
-    got_relative_operand(EA,Index,_).
+symbolic_operand_attribute(EA,Index,"GotOff"),
+symbolic_operand_candidate(EA,Index,Dest,"data"):-
+    got_relative_operand(EA,Index,Dest).
 
 symbolic_operand_attribute(EA,Index,"GotRef"):-
     got_relative_operand(EA,Index,Dest),
