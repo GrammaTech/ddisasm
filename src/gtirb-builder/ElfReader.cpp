@@ -797,7 +797,7 @@ void ElfReader::buildSymbols()
             // anything higher is a valid version index.
             if(Version > LIEF::ELF::VER_NDX_GLOBAL)
             {
-                SymVerEntries[S->getUUID()] = Version;
+                SymVerEntries[S->getUUID()] = {Version & 0x7FFF, Version & 0x8000};
             }
         }
     }

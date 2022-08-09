@@ -389,35 +389,33 @@ class ElfSymbolVersionsTests(unittest.TestCase):
 
             foo1, foo2, foo3 = foo_symbols
             # Symbols have the right versions
+            self.assertEqual(defs[symver_entries[foo1][0]], ["LIBFOO_1.0"])
             self.assertEqual(
-                defs[symver_entries[foo1] & 0x7FFF], ["LIBFOO_1.0"]
-            )
-            self.assertEqual(
-                defs[symver_entries[foo2] & 0x7FFF],
+                defs[symver_entries[foo2][0]],
                 ["LIBFOO_2.0", "LIBFOO_1.0"],
             )
             self.assertEqual(
-                defs[symver_entries[foo3] & 0x7FFF],
+                defs[symver_entries[foo3][0]],
                 ["LIBFOO_3.0", "LIBFOO_2.0"],
             )
 
             # Check that foo@LIBFOO_1.0 and foo@LIBFOO_2.0 are not default
-            self.assertTrue(symver_entries[foo1] & 0x8000)
-            self.assertTrue(symver_entries[foo2] & 0x8000)
-            self.assertFalse(symver_entries[foo3] & 0x8000)
+            self.assertTrue(symver_entries[foo1][1])
+            self.assertTrue(symver_entries[foo2][1])
+            self.assertFalse(symver_entries[foo3][1])
 
             bar_symbols = [sym for sym in m.symbols if sym.name == "bar"]
 
             bar1, bar2 = bar_symbols
             # Check needed symbol versions
             needed_versions = {
-                needed["libbar.so"][symver_entries[bar1]],
-                needed["libbar.so"][symver_entries[bar2]],
+                needed["libbar.so"][symver_entries[bar1][0]],
+                needed["libbar.so"][symver_entries[bar2][0]],
             }
             self.assertEqual(needed_versions, {"LIBBAR_1.0", "LIBBAR_2.0"})
             # Needed versions are not hidden
-            self.assertFalse(symver_entries[bar1] & 0x8000)
-            self.assertFalse(symver_entries[bar2] & 0x8000)
+            self.assertFalse(symver_entries[bar1][1])
+            self.assertFalse(symver_entries[bar2][1])
 
 
 if __name__ == "__main__":
