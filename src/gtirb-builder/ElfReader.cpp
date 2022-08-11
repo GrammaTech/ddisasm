@@ -642,22 +642,23 @@ void ElfReader::buildSymbols()
         resurrectSymbols();
     }
     std::map<std::string, std::set<auxdata::SymbolVersionId>> VersionToIds;
-    auxdata::ElfSymDefs ElfSymDefinitions;
+    auxdata::ElfSymVerDefs ElfSymVerDefinitions;
     for(LIEF::ELF::SymbolVersionDefinition &Def : Elf->symbols_version_definition())
     {
-        auto &Names = ElfSymDefinitions[Def.ndx()];
+        std::vector<std::string> Names;
         for(LIEF::ELF::SymbolVersionAux &SymAux : Def.symbols_aux())
         {
             Names.push_back(SymAux.name());
         }
+        ElfSymVerDefinitions[Def.ndx()] = {Names, Def.flags()};
         VersionToIds[*Names.begin()].insert(Def.ndx());
     }
-    auxdata::ElfSymNeeded ElfSymNeededTable;
+    auxdata::ElfSymVerNeeded ElfSymVerNeededTable;
     for(LIEF::ELF::SymbolVersionRequirement &Req : Elf->symbols_version_requirement())
     {
         for(LIEF::ELF::SymbolVersionAuxRequirement &SymAux : Req.auxiliary_symbols())
         {
-            ElfSymNeededTable[Req.name()][SymAux.other()] = SymAux.name();
+            ElfSymVerNeededTable[Req.name()][SymAux.other()] = SymAux.name();
             VersionToIds[SymAux.name()].insert(SymAux.other());
         }
     }
@@ -815,8 +816,9 @@ void ElfReader::buildSymbols()
 
     Module->addAuxData<gtirb::schema::ElfSymbolInfo>(std::move(SymbolInfo));
     Module->addAuxData<gtirb::schema::ElfSymbolTabIdxInfo>(std::move(SymbolTabIdxInfo));
-    Module->addAuxData<gtirb::schema::ElfSymbolVersions>(std::tuple(
-        std::move(ElfSymDefinitions), std::move(ElfSymNeededTable), std::move(SymVerEntries)));
+    Module->addAuxData<gtirb::schema::ElfSymbolVersions>(std::tuple(std::move(ElfSymVerDefinitions),
+                                                                    std::move(ElfSymVerNeededTable),
+                                                                    std::move(SymVerEntries)));
 }
 
 void ElfReader::addEntryBlock()

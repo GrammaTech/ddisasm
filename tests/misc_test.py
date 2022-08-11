@@ -381,6 +381,12 @@ class ElfSymbolVersionsTests(unittest.TestCase):
                 "elfSymbolVersions"
             ].data
 
+            # The version of the library itself is recorded in defs
+            # This is typically SymbolVersionId = 1 (but I am not sure if it's
+            # required by the spec to be)
+            VER_FLG_BASE = 0x1
+            self.assertIn((["libfoo.so", VER_FLG_BASE]), defs)
+
             foo_symbols = sorted(
                 [sym for sym in m.symbols if sym.name == "foo"],
                 key=lambda x: x.referent.address,
@@ -389,14 +395,16 @@ class ElfSymbolVersionsTests(unittest.TestCase):
 
             foo1, foo2, foo3 = foo_symbols
             # Symbols have the right versions
-            self.assertEqual(defs[symver_entries[foo1][0]], ["LIBFOO_1.0"])
+            self.assertEqual(
+                defs[symver_entries[foo1][0]], (["LIBFOO_1.0"], 0)
+            )
             self.assertEqual(
                 defs[symver_entries[foo2][0]],
-                ["LIBFOO_2.0", "LIBFOO_1.0"],
+                (["LIBFOO_2.0", "LIBFOO_1.0"], 0),
             )
             self.assertEqual(
                 defs[symver_entries[foo3][0]],
-                ["LIBFOO_3.0", "LIBFOO_2.0"],
+                (["LIBFOO_3.0", "LIBFOO_2.0"], 0),
             )
 
             # Check that foo@LIBFOO_1.0 and foo@LIBFOO_2.0 are not default

@@ -62,15 +62,19 @@ namespace auxdata
     using Relocation =
         std::tuple<uint64_t, std::string, std::string, int64_t, uint64_t, std::string, std::string>;
 
-    /// Symbol version identifiers are 16 bit unsigned integers.
+    /// Version identifiers are 16 bit unsigned integers.
     using SymbolVersionId = uint16_t;
-    /// Map from symbol version identifiers to the list of versions strings.
-    /// The first element of the list is the version itself, the subsequent elements
-    /// are predecessor versions.
-    using ElfSymDefs = std::map<SymbolVersionId, std::vector<std::string>>;
+    /// Map from version identifiers to version definitions. These correspond
+    /// to ELFxx_Verdef entries in the ELF section .gnu.version_d.
+    /// The values in the map are tuples containing the list of versions strings and
+    /// the verdef flags. The verdef flag may be VER_FLG_BASE (0x1), which indicates
+    /// that the given version definiton is the file itself, and must not be
+    /// used for matching a symbol. The first element of the list is the version
+    /// itself, the subsequent elements are predecessor versions.
+    using ElfSymVerDefs = std::map<SymbolVersionId, std::tuple<std::vector<std::string>, uint16_t>>;
     /// Map from dynamic library names to the symbol versions that they need.
     /// For each library, we have a map from version identifiers to version strings.
-    using ElfSymNeeded = std::map<std::string, std::map<SymbolVersionId, std::string>>;
+    using ElfSymVerNeeded = std::map<std::string, std::map<SymbolVersionId, std::string>>;
     //// Map from gtirb::Symbol UUIDs to a tuple of symbol version identifier and hidden attribute.
     using ElfSymbolVersionsEntries = std::map<gtirb::UUID, std::tuple<SymbolVersionId, bool>>;
 } // namespace auxdata
@@ -97,7 +101,7 @@ namespace gtirb
         struct ElfSymbolVersions
         {
             static constexpr const char* Name = "elfSymbolVersions";
-            typedef std::tuple<auxdata::ElfSymDefs, auxdata::ElfSymNeeded,
+            typedef std::tuple<auxdata::ElfSymVerDefs, auxdata::ElfSymVerNeeded,
                                auxdata::ElfSymbolVersionsEntries>
                 Type;
         };
