@@ -1,5 +1,5 @@
 # 1.5.5 (Unreleased)
-* TODO
+* Update generated `elfSymbolVersions` auxdata.
 
 # 1.5.4
 * Add PE32 Safe Structured Exception Handling (SAFESEH) support.
