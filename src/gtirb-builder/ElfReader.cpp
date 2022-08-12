@@ -641,8 +641,8 @@ void ElfReader::buildSymbols()
     {
         resurrectSymbols();
     }
-    std::map<std::string, std::set<auxdata::SymbolVersionId>> VersionToIds;
-    auxdata::ElfSymVerDefs ElfSymVerDefinitions;
+    std::map<std::string, std::set<gtirb::provisional_schema::SymbolVersionId>> VersionToIds;
+    gtirb::provisional_schema::ElfSymVerDefs ElfSymVerDefinitions;
     for(LIEF::ELF::SymbolVersionDefinition &Def : Elf->symbols_version_definition())
     {
         std::vector<std::string> Names;
@@ -653,7 +653,7 @@ void ElfReader::buildSymbols()
         ElfSymVerDefinitions[Def.ndx()] = {Names, Def.flags()};
         VersionToIds[*Names.begin()].insert(Def.ndx());
     }
-    auxdata::ElfSymVerNeeded ElfSymVerNeededTable;
+    gtirb::provisional_schema::ElfSymVerNeeded ElfSymVerNeededTable;
     for(LIEF::ELF::SymbolVersionRequirement &Req : Elf->symbols_version_requirement())
     {
         for(LIEF::ELF::SymbolVersionAuxRequirement &SymAux : Req.auxiliary_symbols())
@@ -667,7 +667,9 @@ void ElfReader::buildSymbols()
                                  uint64_t, std::string>;
     using TableDecl = std::tuple<std::string, uint64_t>;
 
-    std::map<SymbolKey, std::map<auxdata::SymbolVersionId, std::vector<TableDecl>>> Symbols;
+    std::map<SymbolKey,
+             std::map<gtirb::provisional_schema::SymbolVersionId, std::vector<TableDecl>>>
+        Symbols;
     auto LoadSymbols = [&](auto SymbolIt, std::string TableName) {
         uint64_t TableIndex = 0;
         for(auto &Symbol : SymbolIt)
@@ -694,7 +696,7 @@ void ElfReader::buildSymbols()
                 Value = tlsBaseAddress() + Value;
             }
 
-            auxdata::SymbolVersionId Version = LIEF::ELF::VER_NDX_LOCAL;
+            gtirb::provisional_schema::SymbolVersionId Version = LIEF::ELF::VER_NDX_LOCAL;
             std::string VersionStr;
             // Symbols in "dynsym" table have versions.
             if(Symbol.has_version())
@@ -721,7 +723,8 @@ void ElfReader::buildSymbols()
             // select the best version already available (from dynsym).
             if(VersionStr.size() > 0)
             {
-                std::set<auxdata::SymbolVersionId> &PossibleVersions = VersionToIds[VersionStr];
+                std::set<gtirb::provisional_schema::SymbolVersionId> &PossibleVersions =
+                    VersionToIds[VersionStr];
                 for(auto &[VersionId, Val] : VersionMap)
                 {
                     // Ignore the 15th bit that marks whether the symbol is hidden.
@@ -756,7 +759,7 @@ void ElfReader::buildSymbols()
 
     std::map<gtirb::UUID, auxdata::ElfSymbolInfo> SymbolInfo;
     std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo> SymbolTabIdxInfo;
-    auxdata::ElfSymbolVersionsEntries SymVerEntries;
+    gtirb::provisional_schema::ElfSymbolVersionsEntries SymVerEntries;
     for(auto &[Key, VersionMap] : Symbols)
     {
         auto &[Value, Size, Type, Scope, Visibility, SecIndex, Name] = Key;
@@ -816,9 +819,9 @@ void ElfReader::buildSymbols()
 
     Module->addAuxData<gtirb::schema::ElfSymbolInfo>(std::move(SymbolInfo));
     Module->addAuxData<gtirb::schema::ElfSymbolTabIdxInfo>(std::move(SymbolTabIdxInfo));
-    Module->addAuxData<gtirb::schema::ElfSymbolVersions>(std::tuple(std::move(ElfSymVerDefinitions),
-                                                                    std::move(ElfSymVerNeededTable),
-                                                                    std::move(SymVerEntries)));
+    Module->addAuxData<gtirb::provisional_schema::ElfSymbolVersions>(
+        std::tuple(std::move(ElfSymVerDefinitions), std::move(ElfSymVerNeededTable),
+                   std::move(SymVerEntries)));
 }
 
 void ElfReader::addEntryBlock()
