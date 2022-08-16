@@ -11,7 +11,7 @@ all: ex.c ex2.c ex3.c foo.c
 	@LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. ./ex2 >> out.txt
 	@LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. ./ex3 >> out.txt
 clean:
-	rm -f ex libfoo.so *.s *.gtirb out.txt
+	rm -f ex ex2 ex3 libfoo.so libbar.so *.s *.gtirb out.txt
 check:
 	@LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. ./ex >/tmp/res.txt
 	@LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. ./ex2 >> /tmp/res.txt
