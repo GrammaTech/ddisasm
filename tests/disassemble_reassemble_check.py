@@ -4,6 +4,7 @@ import gtirb
 import os
 import shlex
 import subprocess
+from pathlib import Path
 from timeit import default_timer as timer
 from typing import List
 
@@ -221,7 +222,12 @@ def reassemble(compiler, binary, extra_flags):
     """
     print("# Reassembling", binary + ".s", "into", binary)
 
-    if platform.system() == "Linux":
+    if "uasm" in compiler:
+        obj = Path(binary).with_suffix(".o")
+        cmd = [compiler, *extra_flags, "-Fo", obj, binary + ".s"]
+        print("compile command:", *cmd)
+        proc = subprocess.run(cmd)
+    elif platform.system() == "Linux":
         cmd = (
             build_chroot_wrapper()
             + [compiler, binary + ".s", "-o", binary]
@@ -273,13 +279,18 @@ def link(
     linker: str, binary: str, obj: List[str], extra_flags: List[str]
 ) -> bool:
     """Link a reassembled object file into a new binary."""
+
+    # Strip implicit .o suffix from reassembled object targets.
+    if Path(binary).suffix == ".o":
+        binary = Path(binary).with_suffix("").name
+
     print("# Linking", ", ".join(obj), "into", binary)
     cmd = (
         build_chroot_wrapper() + [linker] + obj + ["-o", binary] + extra_flags
     )
     print("link command:", " ".join(cmd))
-    completedProcess = subprocess.run(cmd)
-    if completedProcess.returncode != 0:
+    proc = subprocess.run(cmd)
+    if proc.returncode != 0:
         print(bcolors.fail("# Linking failed\n"))
         return False
     print(bcolors.okgreen("# Linking succeed"))
@@ -311,11 +322,11 @@ def disassemble_reassemble_test(
     extra_compile_flags=[],
     extra_reassemble_flags=["-no-pie"],
     extra_link_flags=[],
-    linker=None,
     reassembly_compiler="gcc",
     c_compilers=["gcc", "clang"],
     cxx_compilers=["g++", "clang++"],
     optimizations=["-O0", "-O1", "-O2", "-O3", "-Os"],
+    linker=None,
     strip_exe="strip",
     strip=False,
     sstrip=False,
@@ -323,7 +334,7 @@ def disassemble_reassemble_test(
     skip_test=False,
     exec_wrapper=None,
     arch=None,
-    extra_ddisasm_args=[],
+    extra_ddisasm_flags=[],
     check_cfg=False,
 ):
     """
@@ -369,7 +380,7 @@ def disassemble_reassemble_test(
                     strip_exe,
                     strip,
                     sstrip,
-                    extra_args=["--ir", gtirb_filename] + extra_ddisasm_args,
+                    extra_args=["--ir", gtirb_filename] + extra_ddisasm_flags,
                 )
 
                 # Do some GTIRB checks
@@ -397,8 +408,8 @@ def disassemble_reassemble_test(
                     continue
                 if linker and not link(
                     linker,
-                    os.path.splitext(binary)[0],
-                    [binary],
+                    binary,
+                    [Path(binary).with_suffix(".o").name],
                     extra_link_flags,
                 ):
                     link_errors += 1

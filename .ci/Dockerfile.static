@@ -2,8 +2,10 @@
 # Build Souffle
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04 AS souffle
+
 RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
+
 RUN apt-get -y update \
  && apt-get -y install \
       automake \
@@ -31,9 +33,11 @@ RUN git clone -b 2.3 https://github.com/souffle-lang/souffle && \
 # Build LIEF
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04 AS lief
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime && \
-    apt-get -y update && \
+
+RUN export DEBIAN_FRONTEND=noninteractive
+RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
+
+RUN apt-get -y update && \
     apt-get -y install \
       build-essential \
       cmake \
@@ -48,9 +52,11 @@ RUN git clone -b 0.12.1 --depth 1 https://github.com/lief-project/LIEF.git /usr/
 # Build libehp
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04 AS libehp
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime && \
-    apt-get -y update && \
+
+RUN export DEBIAN_FRONTEND=noninteractive
+RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
+
+RUN apt-get -y update && \
     apt-get -y install \
       build-essential \
       cmake \
@@ -62,14 +68,38 @@ RUN git clone https://git.zephyr-software.com/opensrc/libehp.git /usr/local/src/
     cmake --build /usr/local/src/libehp/build -j --target install
 
 # ------------------------------------------------------------------------------
+# Build UASM
+# ------------------------------------------------------------------------------
+FROM ubuntu:14.04 as UASM
+
+RUN export DEBIAN_FRONTEND=noninteractive
+RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
+
+RUN apt-get update -y && \
+    apt-get install -y \
+      clang-3.8 \
+      make \
+      git && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN git clone -b v2.50 https://github.com/Terraspace/UASM /usr/local/src/UASM && \
+    cd /usr/local/src/UASM && \
+    make -f Makefile_Linux && \
+    install GccUnixR/uasm /usr/local/bin
+
+# ------------------------------------------------------------------------------
 # Final image
 # ------------------------------------------------------------------------------
 FROM docker.grammatech.com/rewriting/gtirb-pprinter/static
 
-# Install apt packages
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime && \
-    apt-get -y update && \
+# Use bash for more convenient variable substitution syntax
+SHELL ["/bin/bash", "-c"]
+
+RUN export DEBIAN_FRONTEND=noninteractive
+RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
+
+# Install APT packages
+RUN apt-get -y update && \
     apt-get -y install \
         gcc-arm-linux-gnueabihf \
         g++-arm-linux-gnueabihf \
@@ -77,33 +107,42 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         g++-aarch64-linux-gnu \
         gcc-mips-linux-gnu \
         g++-mips-linux-gnu \
+        gcc-mingw-w64-i686 \
+        g++-mingw-w64-i686 \
         lib32gcc-9-dev \
         lib32stdc++-9-dev \
         libc-dev-i386-cross \
         make \
-        mcpp \
+        mingw-w64-i686-dev \
         pkg-config \
         python3 \
         python3-pip \
         qemu-user \
         software-properties-common \
         wget \
-        unzip \
-        zlib1g-dev
+        unzip && \
+    ln -s /usr/i686-linux-gnu/lib/ /usr/lib/i386-linux-gnu && \
+    ln -s /usr/i686-linux-gnu/include /usr/include/i386-linux-gnu && \
+    rm -rf /var/lib/apt/lists/*
 
+# Create shared library cache for /usr/mips-linux-gnu/lib.
+RUN cd /usr/mips-linux-gnu && \
+    mkdir etc && \
+    ldconfig -c etc/ld.do.cache -r .
+
+# Install WINE environment
+RUN dpkg --add-architecture i386 && \
+    apt-get -y update && \
+    apt-get -y install wine-stable wine32 && \
+    rm -rf /var/lib/apt/lists/*
+RUN winepath
+ENV WINEPATH="/usr/lib/gcc/i686-w64-mingw32/9.3-win32"
+
+# Install Python dependencies
 RUN python3 -m pip install --no-cache-dir \
     distro \
     pyyaml \
     psycopg2-binary
-
-# Create the necessary links and cache to the most recent shared libraries
-# found in the directory /usr/mips-linus-gnu/ so that the run-time linker can
-# use the cache.
-RUN ln -s /usr/i686-linux-gnu/lib/ /usr/lib/i386-linux-gnu && \
-    ln -s /usr/i686-linux-gnu/include /usr/include/i386-linux-gnu && \
-    cd /usr/mips-linux-gnu && \
-    mkdir etc && \
-    ldconfig -c etc/ld.do.cache -r .
 
 COPY --from=souffle /usr/local/bin/souffle* /usr/local/bin/
 COPY --from=souffle /usr/local/include/souffle/ /usr/include/souffle
@@ -112,6 +151,7 @@ COPY --from=lief /usr/include/LIEF /usr/include/LIEF
 COPY --from=lief /usr/share/LIEF /usr/share/LIEF
 COPY --from=libehp /usr/local/lib /usr/local/lib
 COPY --from=libehp /usr/local/include /usr/local/include
+COPY --from=UASM /usr/local/bin/uasm /usr/local/bin/uasm
 
 # Install sstrip
 COPY etc/sstrip /usr/bin/sstrip

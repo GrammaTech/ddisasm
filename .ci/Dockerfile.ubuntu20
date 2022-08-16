@@ -2,10 +2,12 @@
 # Build Souffle
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04 AS souffle
+
 RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
-RUN apt-get -y update \
- && apt-get -y install \
+
+RUN apt-get -y update && \
+    apt-get -y install \
       automake \
       bison \
       build-essential \
@@ -20,7 +22,8 @@ RUN apt-get -y update \
       mcpp \
       python \
       sqlite3 \
-      zlib1g-dev
+      zlib1g-dev && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN git clone -b 2.3 https://github.com/souffle-lang/souffle && \
     cd souffle && \
@@ -31,9 +34,11 @@ RUN git clone -b 2.3 https://github.com/souffle-lang/souffle && \
 # Build LIEF
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04 AS lief
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime && \
-    apt-get -y update && \
+
+RUN export DEBIAN_FRONTEND=noninteractive
+RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
+
+RUN apt-get -y update && \
     apt-get -y install \
       build-essential \
       cmake \
@@ -48,9 +53,11 @@ RUN git clone -b 0.12.1 --depth 1 https://github.com/lief-project/LIEF.git /usr/
 # Build libehp
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04 AS libehp
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime && \
-    apt-get -y update && \
+
+RUN export DEBIAN_FRONTEND=noninteractive
+RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
+
+RUN apt-get -y update && \
     apt-get -y install \
       build-essential \
       cmake \
@@ -62,14 +69,44 @@ RUN git clone https://git.zephyr-software.com/opensrc/libehp.git /usr/local/src/
     cmake --build /usr/local/src/libehp/build -j4 --target install
 
 # ------------------------------------------------------------------------------
+# Build UASM
+# ------------------------------------------------------------------------------
+FROM ubuntu:14.04 as UASM
+
+RUN export DEBIAN_FRONTEND=noninteractive
+RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
+
+RUN apt-get update -y && \
+    apt-get install -y \
+      clang-3.8 \
+      make \
+      git && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN git clone -b v2.50 https://github.com/Terraspace/UASM /usr/local/src/UASM && \
+    cd /usr/local/src/UASM && \
+    make -f Makefile_Linux && \
+    install GccUnixR/uasm /usr/local/bin
+
+# ------------------------------------------------------------------------------
 # Final image
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04
 
-# Install apt packages
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime && \
-    apt-get -y update && \
+RUN export DEBIAN_FRONTEND=noninteractive
+RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
+
+# Install APT packages
+#
+# Note that multilib dependencies must be installed with care to support cross-
+# compilation for all architecture. We do not use the `gcc-multilib' package,
+# which will conflict with and automatically remove ARM packages. Instead we use
+# the `libc6-dev-i386-cross' package and manually link its paths to the standard
+# multilib locations.
+#
+# See: https://bugs.launchpad.net/ubuntu/+source/gcc-defaults/+bug/1300211
+#
+RUN apt-get -y update && \
     apt-get -y install \
         autoconf \
         build-essential \
@@ -81,7 +118,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         git \
         lib32gcc-9-dev \
         lib32stdc++-9-dev \
-        libc-dev-i386-cross \
+        libc6-dev-i386-cross \
         libprotobuf-dev \
         libprotoc-dev \
         libtool \
@@ -92,10 +129,13 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-program-options1.71.0 \
         libboost-system-dev \
         libboost-system1.71.0 \
+        mingw-w64-i686-dev \
         gcc-arm-linux-gnueabihf \
         g++-arm-linux-gnueabihf \
         gcc-aarch64-linux-gnu \
         g++-aarch64-linux-gnu \
+        gcc-mingw-w64-i686 \
+        g++-mingw-w64-i686 \
         gcc-mips-linux-gnu \
         g++-mips-linux-gnu \
         make \
@@ -109,9 +149,30 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         qemu-user \
         software-properties-common \
         unzip \
-        zlib1g-dev \
-    && rm -rf /var/lib/apt/lists/*
+        zlib1g-dev && \
+    ln -s /usr/i686-linux-gnu/lib/ /usr/lib/i386-linux-gnu && \
+    ln -s /usr/i686-linux-gnu/include /usr/include/i386-linux-gnu && \
+    rm -rf /var/lib/apt/lists/*
 
+# Create shared library cache for /usr/mips-linux-gnu/lib.
+RUN cd /usr/mips-linux-gnu && \
+    mkdir etc && \
+    ldconfig -c etc/ld.do.cache -r .
+
+# Install WINE environment
+#
+# Note that this must be done after installing `libc6-dev-i386-cross' and
+# and linking its paths to the standard multilib locations, i.e. we merge
+# the lib and include paths of /usr/i686-linux-gnu and /usr/i386-linux-gnu.
+#
+RUN dpkg --add-architecture i386 && \
+    apt-get -y update && \
+    apt-get -y install wine-stable wine32 && \
+    rm -rf /var/lib/apt/lists/*
+RUN winepath
+ENV WINEPATH="/usr/lib/gcc/i686-w64-mingw32/9.3-win32"
+
+# Install Python dependencies
 RUN python3 -m pip install --no-cache-dir \
     distro \
     pyyaml \
@@ -121,20 +182,11 @@ RUN python3 -m pip install --no-cache-dir \
     pydot \
     sphinx
 
-# Setup pre-commit
+# Setup pre-commit hooks.
 WORKDIR /ddisasm
 COPY .pre-commit-config.yaml .
 RUN git init && \
     pre-commit install-hooks
-
-# Create the necessary links and cache to the most recent shared libraries
-# found in the directory /usr/mips-linus-gnu/ so that the run-time linker can
-# use the cache.
-RUN ln -s /usr/i686-linux-gnu/lib/ /usr/lib/i386-linux-gnu && \
-    ln -s /usr/i686-linux-gnu/include /usr/include/i386-linux-gnu && \
-    cd /usr/mips-linux-gnu && \
-    mkdir etc && \
-    ldconfig -c etc/ld.do.cache -r .
 
 COPY --from=souffle /usr/local/bin/souffle* /usr/local/bin/
 COPY --from=souffle /usr/local/include/souffle/ /usr/local/include/souffle
@@ -143,6 +195,7 @@ COPY --from=lief /usr/include/LIEF /usr/include/LIEF
 COPY --from=lief /usr/share/LIEF /usr/share/LIEF
 COPY --from=libehp /usr/local/lib /usr/local/lib
 COPY --from=libehp /usr/local/include /usr/local/include
+COPY --from=UASM /usr/local/bin/uasm /usr/local/bin/uasm
 
 # Install sstrip
 COPY etc/sstrip /usr/bin/sstrip

@@ -94,15 +94,15 @@ class TestExamples(unittest.TestCase):
             "c_compilers": config["build"]["c"],
             "cxx_compilers": config["build"]["cpp"],
             "optimizations": config["build"]["optimizations"],
-            "strip_exe": config["test"]["strip_exe"],
+            "strip_exe": config["test"].get("strip_exe", "strip-dummy"),
             "strip": config["test"].get("strip", False),
             "sstrip": config["test"].get("sstrip", False),
             "skip_test": config["test"].get("skip", False),
             "check_cfg": config["test"].get("check_cfg", False),
             "exec_wrapper": config["test"].get("wrapper"),
             "arch": config.get("arch"),
-            "extra_ddisasm_args": config.get("disassemble", {}).get(
-                "args", []
+            "extra_ddisasm_flags": config.get("disassemble", {}).get(
+                "flags", []
             ),
         }
         if config["reassemble"].get("skip", False):

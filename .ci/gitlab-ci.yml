@@ -58,6 +58,13 @@ default:
       --dockerfile=$CI_PROJECT_DIR/$DOCKERFILE_PATH
       --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/${IMAGE_NAME}:$IMAGE_TAG
 
+build-ci-image-conan-ubuntu20:
+  <<: *build-ci-image
+  variables:
+    DOCKERFILE_PATH: .ci/Dockerfile.conan-ubuntu20
+    IMAGE_NAME: conan-ubuntu20
+    UBUNTU_CODENAME: focal
+
 build-ci-image-ubuntu20:
   <<: *build-ci-image
   variables:
@@ -98,7 +105,7 @@ check-format:
     allow_failure: true
 
 .conan-linux-publish-template: &conan-linux-publish-template
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu18
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu20:$IMAGE_TAG
   stage: deploy
   rules:
     *publish-rules
@@ -129,7 +136,7 @@ check-format:
     - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/run_conan.py build -s build_type=Release
 
 build-conan-gcc9-release:
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu20
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu20:$IMAGE_TAG
   <<: *conan-linux-build-template
 
 conan-gcc9-release-publish:
