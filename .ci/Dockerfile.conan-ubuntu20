@@ -1,3 +1,14 @@
+FROM ubuntu:14.04 as UASM
+
+RUN apt-get update -y \
+ && apt-get install -y clang-3.8 make git \
+ && rm -rf /var/lib/apt/lists
+
+RUN git clone -b v2.50 https://github.com/Terraspace/UASM /usr/local/src/UASM \
+ && cd /usr/local/src/UASM \
+ && make -f Makefile_Linux \
+ && install GccUnixR/uasm /usr/local/bin
+
 FROM ubuntu:20.04
 
 # Use bash for more convenient variable substitution syntax
@@ -6,42 +17,54 @@ SHELL ["/bin/bash", "-c"]
 RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
-RUN apt-get update -y \
- && apt-get install -y \
+# Install APT packages
+RUN apt-get update -y && \
+    apt-get install -y \
       clang \
       cmake \
       curl \
+      g++-aarch64-linux-gnu \
+      g++-arm-linux-gnueabihf \
+      gcc-aarch64-linux-gnu \
+      gcc-arm-linux-gnueabihf \
+      gcc-mingw-w64-i686 \
+      gcc-mips-linux-gnu \
       git \
-      libffi-dev \
-      libstdc++-7-dev \
-      make \
-      python3 \
-      python3-pip \
-      unzip
-
-# Install cross-platform utils
-RUN apt-get -y update && \
-    apt-get -y install \
-    gcc-arm-linux-gnueabihf \
-    g++-arm-linux-gnueabihf \
-    gcc-aarch64-linux-gnu \
-    g++-aarch64-linux-gnu \
-    gcc-mips-linux-gnu \
-    g++-mips-linux-gnu \
-    qemu-user
-
-RUN apt-get -y update \
- && apt-get -y install \
+      g++-mingw-w64-i686 \
+      g++-mips-linux-gnu \
       lib32gcc-9-dev \
       lib32stdc++-9-dev \
       libc-dev-i386-cross \
- && ln -s /usr/i686-linux-gnu/lib/ /usr/lib/i386-linux-gnu \
- && ln -s /usr/i686-linux-gnu/include /usr/include/i386-linux-gnu
+      libstdc++-7-dev \
+      make \
+      mingw-w64-i686-dev \
+      python3 \
+      python3-pip \
+      qemu-user \
+      unzip \
+      wget && \
+ ln -s /usr/i686-linux-gnu/lib/ /usr/lib/i386-linux-gnu && \
+ ln -s /usr/i686-linux-gnu/include /usr/include/i386-linux-gnu && \
+ rm -rf /var/lib/apt/lists/*
 
-RUN cd /usr/mips-linux-gnu \
- && mkdir etc \
- && ldconfig -c etc/ld.do.cache -r .
+# Create shared library cache for /usr/mips-linux-gnu/lib.
+RUN cd /usr/mips-linux-gnu && \
+    mkdir etc && \
+    ldconfig -c etc/ld.do.cache -r .
 
+# Install WINE environment
+RUN dpkg --add-architecture i386 && \
+    apt-get -y update && \
+    apt-get -y install wine-stable wine32 && \
+    rm -rf /var/lib/apt/lists/*
+RUN winepath
+ENV WINEPATH="/usr/lib/gcc/i686-w64-mingw32/9.3-win32"
+
+# Install Python dependencies
+RUN python3 -m pip install --no-cache-dir \
+    distro \
+    pyyaml \
+    psycopg2-binary
+
+COPY --from=UASM /usr/local/bin/uasm /usr/local/bin/uasm
 COPY etc/sstrip /usr/bin/sstrip
-
-RUN python3 -m pip install conan distro pyyaml psycopg2-binary

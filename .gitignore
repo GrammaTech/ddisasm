@@ -24,6 +24,7 @@ examples/**/ex.s
 examples/**/ex.stripped
 examples/**/ex.unstripped
 examples/**/out.txt
+examples/**/check.txt
 examples/**/ex
 examples/**/ex.o
 examples/**/*.so
@@ -31,6 +32,8 @@ examples/**/*.i
 examples/**/*.ii
 examples/**/*.o.s
 examples/**/*.gtirb
+examples/**/*.exp
+examples/**/*.lib
 
 /gtirb
 /gtirb-pprinter

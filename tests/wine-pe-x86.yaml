@@ -1,0 +1,112 @@
+platform: Linux
+
+distro:
+  name: Ubuntu
+  version: ["20.04"]
+
+default: &default
+  path: examples
+  binary: ex.exe
+  arch: x86
+
+  # Compilation configuration.
+  build:
+    c: ["i686-w64-mingw32-gcc"]
+    cpp: ["i686-w64-mingw32-g++"]
+    optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
+    flags: []
+
+  # Disassembly configuration.
+  disassemble:
+    flags: ["-F", "--generate-import-libs"]
+
+  # Reassembly configuration.
+  reassemble:
+    compiler: "uasm"
+    flags: ["-nologo", "-coff"]
+    skip: false
+
+  # Linker configuration.
+  link:
+    linker: "i686-w64-mingw32-ld"
+    flags: ["KERNEL32.lib", "msvcrt.lib", "--entry", "__EntryPoint", "--subsystem", "console"]
+
+  # Test configuration.
+  test:
+    wrapper: "wine"
+    strip_exe: "strip-dummy"
+    strip: false
+    skip: false
+
+cpp: &cpp
+  <<: *default
+  link:
+    linker: "i686-w64-mingw32-ld"
+    flags: ["KERNEL32.lib", "msvcrt.lib", "libstdc++-6.lib", "--entry", "__EntryPoint", "--subsystem", "console"]
+  test:
+    wrapper: "wine"
+
+tests:
+    - name: ex1
+      <<: *default
+
+    - name: ex_2modulesPIC
+      <<: *default
+
+    - name: ex_confusing_data
+      <<: *default
+
+    - name: ex_false_pointer_array
+      <<: *default
+
+    - name: ex_float
+      <<: *default
+
+    - name: ex_fprintf
+      <<: *default
+
+    - name: ex_noreturn
+      <<: *default
+
+    - name: ex_pointerReatribution
+      <<: *default
+
+    # TODO: -O1
+    # - name: ex_pointerReatribution2
+    #   <<: *default
+
+    - name: ex_pointerReatribution3
+      <<: *default
+
+    - name: ex_struct
+      <<: *default
+
+    - name: ex_switch
+      <<: *default
+
+    - name: ex_uninitialized_data
+      <<: *default
+
+    - name: ex_legacy_switch.001
+      <<: *default
+
+    - name: ex_legacy_switch.002
+      <<: *default
+
+    - name: ex_legacy_switch.003
+      <<: *default
+
+    - name: ex_legacy_switch.004
+      <<: *default
+
+    - name: ex_memberPointer
+      <<: *cpp
+
+    - name: ex_virtualDispatch
+      <<: *cpp
+
+    - name: ex_simple_dll
+      <<: *default
+      link:
+          linker: "i686-w64-mingw32-ld"
+          flags: ["test.lib", "KERNEL32.lib", "msvcrt.lib", "--entry", "__EntryPoint", "-subsystem", "console"]
