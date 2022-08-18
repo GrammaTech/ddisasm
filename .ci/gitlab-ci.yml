@@ -111,6 +111,7 @@ check-format:
     *publish-rules
   script:
     - export CONAN_USER_HOME=$(pwd)
+    - pip3 install --upgrade conan
     - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/run_conan.py upload
 
 .conan-linux-build-template: &conan-linux-build-template
@@ -162,7 +163,7 @@ conan-gcc9-release-publish:
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
     - conan user ci_user -r gitlab -p
     # Install packages needed for the tests
-    - python -m pip install pip --upgrade && python -m pip install gtirb distro --extra-index-url=$EXTRA_INDEX_URL --pre
+    - python -m pip install pip --upgrade && python -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
     - python .ci/run_conan.py build -s build_type=$BUILD_TYPE
@@ -174,6 +175,7 @@ conan-gcc9-release-publish:
     *publish-rules
   script:
     - export CONAN_USER_HOME=$(cygpath -w $(pwd))
+    - pip3 install --upgrade conan
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
     - python .ci/run_conan.py upload
 

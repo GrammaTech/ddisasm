@@ -3,8 +3,6 @@ import hashlib
 import platform
 from enum import Enum
 
-import distro
-
 
 class DB:
     """Singleton database connection wrapper."""
@@ -86,7 +84,7 @@ def upload(name, asm, compilers, compiler_args, strip):
                 " ".join(compilers),
                 " ".join(compiler_args),
                 platform.system(),
-                " ".join([distro.name(), distro.version()]),
+                platform.platform(),
                 os.environ.get("CI_JOB_IMAGE"),
                 os.environ.get("CI_PIPELINE_ID"),
                 os.environ.get("CI_COMMIT_SHA"),

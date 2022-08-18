@@ -200,9 +200,6 @@ tests:
   #   reassemble:
   #     flags: ["-nostdlib", "-no-pie"]
   #     compiler: "gcc"
-  #   distro:
-  #     name: Ubuntu
-  #     version: ["18.04","20.04"]
   #   test:
   #     strip_exe: "strip"
   #     strip: false
@@ -221,9 +218,6 @@ tests:
   #   reassemble:
   #     flags: ["-nostdlib", "-no-pie"]
   #     compiler: "gcc"
-  #   distro:
-  #     name: Ubuntu
-  #     version: ["18.04","20.04"]
   #   test:
   #     strip_exe: "strip"
   #     strip: true

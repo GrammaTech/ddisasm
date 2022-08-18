@@ -140,7 +140,6 @@ ENV WINEPATH="/usr/lib/gcc/i686-w64-mingw32/9.3-win32"
 
 # Install Python dependencies
 RUN python3 -m pip install --no-cache-dir \
-    distro \
     pyyaml \
     psycopg2-binary
 
