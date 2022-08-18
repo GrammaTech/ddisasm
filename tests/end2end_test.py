@@ -5,7 +5,6 @@ import unittest
 from pathlib import Path
 
 import yaml
-import distro
 
 from disassemble_reassemble_check import (
     disassemble_reassemble_test as drt,
@@ -19,28 +18,17 @@ def compatible_test(config, test):
         if platform.system() not in config["platform"]:
             return False
 
-    # Check the test case is compatible with this distro.
-    if "distro" in config:
-        if distro.name() not in config["distro"]["name"]:
-            return False
-        if distro.version() not in config["distro"]["version"]:
-            return False
-
-    # Individual test can also be deactivated for a distro
+    # Check if the test case should run in the nightly tests.
+    if "nightly" in config:
+        if os.environ.get("DDISASM_NIGHTLY"):
+            if not config["nightly"]:
+                return False
 
     # Check the test case is compatible with this platform.
     if "platform" in test:
         if platform.system() not in test["platform"]:
             return False
 
-    # Check the test case is compatible with this distro.
-    if "distro" in test:
-        if distro.name() not in test["distro"]["name"]:
-            return False
-        if distro.version() not in test["distro"]["version"]:
-            return False
-
-    # TODO: Can we have a hybrid x86_32 and x86_64 vcvar environment?
     if "platform" in config and "arch" in test:
         if "Windows" in config["platform"]:
             if os.environ["VSCMD_ARG_TGT_ARCH"] != test["arch"]:

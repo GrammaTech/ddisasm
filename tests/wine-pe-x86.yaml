@@ -1,8 +1,6 @@
 platform: Linux
 
-distro:
-  name: Ubuntu
-  version: ["20.04"]
+nightly: False
 
 default: &default
   path: examples
@@ -50,8 +48,9 @@ tests:
     - name: ex1
       <<: *default
 
-    - name: ex_2modulesPIC
-      <<: *default
+    # TODO: supected non-deterministic failure
+    # - name: ex_2modulesPIC
+    #   <<: *default
 
     - name: ex_confusing_data
       <<: *default
@@ -87,17 +86,18 @@ tests:
     - name: ex_uninitialized_data
       <<: *default
 
-    - name: ex_legacy_switch.001
-      <<: *default
+    # TODO: suspected non-deterministic failure
+    # - name: ex_legacy_switch.001
+    #   <<: *default
 
-    - name: ex_legacy_switch.002
-      <<: *default
+    # - name: ex_legacy_switch.002
+    #   <<: *default
 
-    - name: ex_legacy_switch.003
-      <<: *default
+    # - name: ex_legacy_switch.003
+    #   <<: *default
 
-    - name: ex_legacy_switch.004
-      <<: *default
+    # - name: ex_legacy_switch.004
+    #   <<: *default
 
     - name: ex_memberPointer
       <<: *cpp

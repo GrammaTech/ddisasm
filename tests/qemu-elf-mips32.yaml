@@ -1,7 +1,4 @@
-# Restrict these test cases to systems with compatible QEMU packages.
-distro:
-  name: Ubuntu
-  version: ["20.04"]
+platform: Linux
 
 default: &default
   path: examples
