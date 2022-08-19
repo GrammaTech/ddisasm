@@ -283,27 +283,6 @@ arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimi
     arm_jump_table_candidate(EA_jump,TableStart,EA,Size,_,TableLimit,Type,Scale,Offset),
     !defined_symbol(EA+Size,_,_,_,_,_,_,_,"$t"),
     !defined_symbol(EA+Size,_,_,_,_,_,_,_,"$a"),
-    // This entry is either a jump target or it is a target
-    // of a jump that is likely spurious.
-    Addr = EA+Size+(EA_jump band 1),
-    (
-        !direct_jump(_,Addr)
-        ;
-        // If there's a jump to this entry, check if the jump is spurious.
-        direct_jump(EA_jump2,Addr),
-        (
-            (EA_jump2 band 1) != (EA_jump band 1)
-            ;
-            // There is no pred.
-            !next(_,EA_jump2)
-            ;
-            // The jump is in a different section.
-            loaded_section(Beg,End,_),
-            Addr >= Beg,
-            Addr < End,
-            !(EA_jump2 >= Beg, EA_jump2 < End)
-        )
-    ),
     EA+Size < TableLimit,
     (
         Type = "absolute",
@@ -339,11 +318,30 @@ arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimi
         TargetAddr >= NewTableLimit
     ).
 
-// Aggregate arm_jump_table_candidate in one data block
-data_block_candidate(TableStart,BlockSize):-
+.decl arm_jump_table_data_block_limit(TableStart:address,Limit:address)
+
+arm_jump_table_data_block_limit(TableStart,Limit):-
     arm_jump_table_candidate(EA_jump,TableStart,EA_last,Size,_,_,_,_,_),
     !arm_jump_table_candidate(EA_jump,TableStart,EA_last+Size,Size,_,_,_,_,_),
-    BlockSize = EA_last - TableStart + Size.
+    Limit = EA_last+Size.
+
+arm_jump_table_data_block_limit(TableStart,EA):-
+    arm_jump_table_candidate(_,TableStart,EA,_,_,_,_,_,_),
+    EA band 1 = 0,
+    (
+        direct_jump(_,EA);
+        direct_jump(_,EA bor 1)
+    ).
+
+// Generate data block candidates for the jump table entries.
+// We try to generate one big block, but split it at any possible jump target.
+// This allows the block_points rules to decide whether the conflicts are data
+// or code.
+data_block_candidate(TableStart,Limit-TableStart):-
+    arm_jump_table_candidate_start(_,TableStart,_,_,_,_,_,_,_),
+    Limit = min Limit : {
+        arm_jump_table_data_block_limit(TableStart,Limit)
+    }.
 
 jump_table_candidate(EA,DataEA,TargetEA):-
     arm_jump_table_candidate(EA,_,DataEA,_,TargetEA,_,_,_,_).

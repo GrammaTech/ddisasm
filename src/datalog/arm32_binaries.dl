@@ -1183,6 +1183,8 @@ block_points(Block,"data",0,3,"arm: pointer to string adjacent to another string
         ascii_string(End,_)
     ).
 
+// First data_block of the jump table gets lots of points,
+// since the tbh instruction must have some corresponding entries.
 block_points(TableStart,"data",0,Points,"arm: jump table"):-
     arm_jump_table_candidate(_,TableStart,_,_,_,_,_,_,_),
     data_block_candidate(TableStart,_),
@@ -1192,6 +1194,50 @@ block_points(TableStart,"data",0,Points,"arm: jump table"):-
         // If it's a defined symbol, the points 10 are already given.
         defined_symbol(TableStart,_,_,_,_,_,_,_,"$d"), Points = 5
     ).
+
+// Subsequent data blocks compete with code blocks.
+// "code" blocks win over "data" in ties, so these blocks need more points to
+// be kept. We should win if the code block only has "better fit" and a
+// "fallthrough-to" from a previous conflicting data block.
+data_block_candidate(Limit1,Limit2-Limit1),
+block_points(Limit1,"data",0,2,"arm: jump table"):-
+    arm_jump_table_data_block_limit(TableStart,Limit1),
+    Limit2 = min Limit2 : {
+        arm_jump_table_data_block_limit(TableStart,Limit2),
+        Limit2 > Limit1
+    }.
+
+// Give points to a jump table entry block if its end corresponds with the
+// first target code block of the jump table.
+block_points(Block,"data",0,10,"arm: jump table fits target"):-
+    data_block_candidate(Block,BlockSize),
+    block_points(Block,"data",0,_,"arm: jump table"),
+    arm_jump_table_candidate(EA_jump,TableStart,Block,Size,_,_,_,_,_),
+    FirstTargetAddr = min TargetAddr : {
+        arm_jump_table_candidate(EA_jump,TableStart,EA,_,TargetAddr,_,_,_,_),
+        // Only consider targets that would exist if Block were the last block
+        // of entries.
+        EA < Block + BlockSize,
+        // Only find Targets *after* the jump table (can be before in signed or
+        // absolute jump tables)
+        TargetAddr > TableStart
+    },
+    AlignedFirstTargetAddr = FirstTargetAddr - (FirstTargetAddr band 1),
+    (
+        // Perfect alignment.
+        Block + BlockSize = AlignedFirstTargetAddr,
+        UNUSED(Size)
+        ;
+        // Aligns, but there's an extra byte at the end of a tbb jumptable,
+        // because there were an odd number of real targets.
+        // Compilers may insert a zero byte to fill it.
+        Size = 1,
+        (Block + BlockSize) band 1 = 1,
+        Block + BlockSize + 1 = AlignedFirstTargetAddr,
+        data_byte(Block + BlockSize,0)
+    ),
+    // Don't apply this rule to first block of entries - it already gets 15 points.
+    Block != TableStart.
 
 block_points(TargetEA,"code",0,3,"arm: jump table target"):-
     arm_jump_table_candidate(_,_,_,_,TargetEA,_,_,_,_),
