@@ -50,6 +50,11 @@ default:
       }}" > /kaniko/.docker/config.json
     # Run the kaniko executor, which will build our image (using a cache if available)
     # Push to our internal registry
+    # If we're on the main branch, also push the latest tag.
+    - >-
+      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
+        export EXTRA_DEST="--destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/${IMAGE_NAME}:latest"
+      fi
     - >-
       /kaniko/executor
       --cache=true
@@ -57,6 +62,7 @@ default:
       --context=$CI_PROJECT_DIR
       --dockerfile=$CI_PROJECT_DIR/$DOCKERFILE_PATH
       --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/${IMAGE_NAME}:$IMAGE_TAG
+      $EXTRA_DEST
 
 build-ci-image-conan-ubuntu20:
   <<: *build-ci-image
