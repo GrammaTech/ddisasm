@@ -2,6 +2,7 @@ import os
 import sys
 import platform
 import unittest
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -63,12 +64,19 @@ class TestExamples(unittest.TestCase):
             # Parse YAML config file.
             with open(str(path)) as f:
                 config = yaml.safe_load(f)
+            platform_compatible = compatible_test(config, {})
+            # Run setup command.
+            if platform_compatible and "setup" in config:
+                subprocess.run(config["setup"])
             # Run all test cases for this host.
             for test in config["tests"]:
                 with self.subTest(test=test):
                     if not compatible_test(config, test):
                         self.skipTest("skipping incompatible test")
                     self.disassemble_example(test)
+            # Run teardown command.
+            if platform_compatible and "teardown" in config:
+                subprocess.run(config["teardown"])
 
     def disassemble_example(self, config):
         path = Path(config["path"]) / config["name"]

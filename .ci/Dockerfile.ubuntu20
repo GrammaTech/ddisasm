@@ -93,6 +93,9 @@ RUN git clone -b v2.50 https://github.com/Terraspace/UASM /usr/local/src/UASM &&
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04
 
+# Use BASH for downstream projects that rely on it (e.g. ddisasm-exp).
+SHELL ["/bin/bash", "-c"]
+
 RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
@@ -149,6 +152,7 @@ RUN apt-get -y update && \
         qemu-user \
         software-properties-common \
         unzip \
+        wget \
         zlib1g-dev && \
     ln -s /usr/i686-linux-gnu/lib/ /usr/lib/i386-linux-gnu && \
     ln -s /usr/i686-linux-gnu/include /usr/include/i386-linux-gnu && \
