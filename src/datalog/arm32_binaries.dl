@@ -261,7 +261,9 @@ pc_relative_for_jump_table(EA_adr):-
     arch.pc_relative_addr(EA_adr,Reg1,_).
 
 /**
-Special symbol names from elf: e.g., $t, $a, $d, etc.
+Mapping symbol names from elf: e.g., $t, $a, $d, etc.
+
+See https://sourceware.org/binutils/docs/as/ARM-Mapping-Symbols.html
 */
 .decl thumb_sym(Name:symbol)
 .decl arm_sym(Name:symbol)
