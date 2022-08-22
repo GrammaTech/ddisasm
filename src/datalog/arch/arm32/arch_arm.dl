@@ -354,6 +354,8 @@ call_operation("BLXAL").
 syscall_operation("SWI").
 syscall_operation("SVC").
 
+halt_operation("UDF").
+
 // TODO:
 return_operation(""):-
     false.

@@ -260,15 +260,43 @@ pc_relative_for_jump_table(EA_adr):-
     straight_line_def_used(EA_adr,Reg1,EA_add,_),
     arch.pc_relative_addr(EA_adr,Reg1,_).
 
-
-avoid_symbols("$t").
-avoid_symbols("$a").
 /**
-Avoid $d or $d.n where n is a number.
+Special symbol names from elf: e.g., $t, $a, $d, etc.
 */
-avoid_symbols(Name):-
+.decl thumb_sym(Name:symbol)
+.decl arm_sym(Name:symbol)
+.decl data_sym(Name:symbol)
+
+thumb_sym("$t").
+thumb_sym(Name):-
     defined_symbol(_,_,_,_,_,_,_,_,Name),
-    substr(Name,0,2) = "$d".
+    // $t.n where n is a number.
+    substr(Name,0,3) = "$t.".
+    // TODO: check the last bits are a number.
+    // e.g., substr(Name,3,len-3)
+
+arm_sym("$a").
+arm_sym(Name):-
+    defined_symbol(_,_,_,_,_,_,_,_,Name),
+    // $a.n where n is a number.
+    substr(Name,0,3) = "$a.".
+    // TODO: check the last bits are a number.
+    // e.g., substr(Name,3,len-3)
+
+data_sym("$d").
+data_sym(Name):-
+    defined_symbol(_,_,_,_,_,_,_,_,Name),
+    // $d.n where n is a number.
+    substr(Name,0,3) = "$d.".
+    // TODO: check the last bits are a number.
+    // e.g., substr(Name,3,len-3)
+
+avoid_symbols(Name):-
+    (
+        thumb_sym(Name);
+        arm_sym(Name);
+        data_sym(Name)
+    ).
 
 direct_call(EA,Dest):-
     arch.call(EA,Index),
@@ -306,11 +334,13 @@ direct_call(EA,Dest):-
     ).
 
 basic_target(Val+1):-
-    defined_symbol(Val,_,_,_,_,_,_,_,"$t").
+    defined_symbol(Val,_,_,_,_,_,_,_,Name),
+    thumb_sym(Name).
+
 basic_target(Val):-
     defined_symbol(Val,_,_,_,_,_,_,_,Name),
-    Name != "$t",
-    Name != "$d".
+    !thumb_sym(Name),
+    !data_sym(Name).
 
 /**
 In some cases, a function has no explicit caller or does not have a
@@ -336,20 +366,21 @@ basic_target(EA):-
 
 labeled_data_candidate(EA):-
     symbol(EA,_,Type,_,_,_,_,_,Name),
-    Name != "$t",
-    Name != "$a",
+    !thumb_sym(Name),
+    !arm_sym(Name),
     Type != "FUNC".
 
 labeled_ea(EA+1):-
-    defined_symbol(EA,_,Type,_,_,_,_,_,"$t"),
+    defined_symbol(EA,_,Type,_,_,_,_,_,Name),
+    thumb_sym(Name),
     Type != "SECTION",
     EA != 0.
 
 labeled_ea(EA):-
     defined_symbol(EA,_,Type,_,_,_,_,_,Name),
     Type != "SECTION",
-    Name != "$t",
-    Name != "$d",
+    !thumb_sym(Name),
+    !data_sym(Name),
     EA != 0.
 
 /**
@@ -1412,7 +1443,7 @@ If litpool overlaps with a function symbol or $t or $a, give penalty.
 block_points(LitPoolAddr,"data",0,-20,"arm: litpool: overlapped with code symbol"):-
     litpool_ref(_,_,LitPoolAddr,_,_),
     symbol(LitPoolAddr,_,_,_,_,_,_,_,Name),
-    (Name = "$t"; Name = "$a").
+    (thumb_sym(Name); arm_sym(Name)).
 
 /**
 Byte value '0x0000', which is "movs r0, r0", is unlikely code.
@@ -1554,7 +1585,10 @@ block_points(Block,"data",0,8,"possible string: symbol"),
 data_block_candidate(Block,End-Block):-
     !arm_jump_table_candidate(_,Block,_,_,_,_,_,_,_),
     ascii_string(Block,End),
-    symbol(Block,_,Type,_,_,_,_,_,Name), Name != "$t", Type != "FUNC".
+    symbol(Block,_,Type,_,_,_,_,_,Name),
+    Type != "FUNC",
+    !thumb_sym(Name),
+    !arm_sym(Name).
 
 block_points(Block,"data",0,-5,"possible string: symbol is target"):-
     block_points(Block,"data",0,8,"possible string: symbol"),
@@ -1727,7 +1761,10 @@ data_block_candidate(Block,Pt_size),
 block_points(Block,"data",0,2,"arm: pointer to string in data"):-
     aligned_address_in_data(Block,Addr),
     ascii_string(Addr,_),
-    arch.pointer_size(Pt_size).
+    arch.pointer_size(Pt_size),
+    // The string does not overlap with a possible literal pool.
+    align_addr(Addr_aligned,Addr),
+    !litpool_ref(_,_,Addr_aligned,_,_).
 
 /**
 On top of the above, if there's another string nearby, give more points.
@@ -1735,6 +1772,9 @@ On top of the above, if there's another string nearby, give more points.
 block_points(Block,"data",0,3,"arm: pointer to string adjacent to another strings in data"):-
     aligned_address_in_data(Block,Addr),
     ascii_string(Addr,End),
+    // The string does not overlap with a possible literal pool.
+    align_addr(Addr_aligned,Addr),
+    !litpool_ref(_,_,Addr_aligned,_,_),
     (
         ascii_string(_,Addr), UNUSED(End)
         ;
