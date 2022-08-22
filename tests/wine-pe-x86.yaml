@@ -2,6 +2,9 @@ platform: Linux
 
 nightly: False
 
+setup: ["wineserver", "--persistent"]
+teardown: ["wineserver", "--kill"]
+
 default: &default
   path: examples
   binary: ex.exe
@@ -48,9 +51,8 @@ tests:
     - name: ex1
       <<: *default
 
-    # TODO: supected non-deterministic failure
-    # - name: ex_2modulesPIC
-    #   <<: *default
+    - name: ex_2modulesPIC
+      <<: *default
 
     - name: ex_confusing_data
       <<: *default
@@ -86,18 +88,17 @@ tests:
     - name: ex_uninitialized_data
       <<: *default
 
-    # TODO: suspected non-deterministic failure
-    # - name: ex_legacy_switch.001
-    #   <<: *default
+    - name: ex_legacy_switch.001
+      <<: *default
 
-    # - name: ex_legacy_switch.002
-    #   <<: *default
+    - name: ex_legacy_switch.002
+      <<: *default
 
-    # - name: ex_legacy_switch.003
-    #   <<: *default
+    - name: ex_legacy_switch.003
+      <<: *default
 
-    # - name: ex_legacy_switch.004
-    #   <<: *default
+    - name: ex_legacy_switch.004
+      <<: *default
 
     - name: ex_memberPointer
       <<: *cpp

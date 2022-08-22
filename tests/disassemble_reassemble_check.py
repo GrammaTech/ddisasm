@@ -225,7 +225,6 @@ def reassemble(compiler, binary, extra_flags):
     if "uasm" in compiler:
         obj = Path(binary).with_suffix(".o")
         cmd = [compiler, *extra_flags, "-Fo", obj, binary + ".s"]
-        print("compile command:", *cmd)
         proc = subprocess.run(cmd)
     elif platform.system() == "Linux":
         cmd = (
