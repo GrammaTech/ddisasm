@@ -303,7 +303,7 @@ last_value_reg_limit(BlockEnd,BlockNext,PropagatedReg,PropagatedVal,PropagatedTy
         value_reg_limit(BlockEnd,BlockNext,Reg,Val,Type),
         (
             // Different registers.
-            Reg != PropagatedReg;
+            Reg != PropagatedReg, UNUSED(Val), UNUSED(Type);
 
             // The new limit is a less restrictive min or max.
             Reg = PropagatedReg, PropagatedType = "MAX", Type = "MAX", PropagatedVal < Val;
