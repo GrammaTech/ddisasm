@@ -67,6 +67,9 @@ if(DDISASM_ARM_32)
       datalog/arch/arm32/registers.dl
       datalog/arm_binaries.dl
       datalog/arm32_binaries.dl
+      datalog/arm32_ci_heuristics.dl
+      datalog/arm32_jump_tables.dl
+      datalog/arm32_symbolization.dl
       datalog/arch/arm32/memory_access.dl)
 
   set(GENERATED_ARM32_CPP souffle_disasm_arm32.cpp)
