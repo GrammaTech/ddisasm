@@ -385,7 +385,7 @@ class ElfSymbolVersionsTests(unittest.TestCase):
             # This is typically SymbolVersionId = 1 (but I am not sure if it's
             # required by the spec to be)
             VER_FLG_BASE = 0x1
-            self.assertIn((["libfoo.so", VER_FLG_BASE]), defs)
+            self.assertIn((["libfoo.so"], VER_FLG_BASE), defs.values())
 
             foo_symbols = sorted(
                 [sym for sym in m.symbols if sym.name == "foo"],
