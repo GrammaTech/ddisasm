@@ -79,13 +79,6 @@ namespace gtirb
             typedef std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo> Type;
         };
 
-        /// \brief Auxiliary data for ELF symbol versions.
-        struct ElfSymbolVersions
-        {
-            static constexpr const char* Name = "elfSymbolVersions";
-            typedef std::map<gtirb::UUID, std::string> Type;
-        };
-
         /// \brief Auxiliary data that maps code blocks to integers
         /// representing strongly connected components in the
         /// intra-procedural CFG. (The CFG without taking into account

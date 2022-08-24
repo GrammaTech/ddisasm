@@ -40,6 +40,7 @@
 void registerAuxDataTypes()
 {
     using namespace gtirb::schema;
+    using namespace gtirb::provisional_schema;
     gtirb::AuxDataContainer::registerAuxDataType<Alignment>();
     gtirb::AuxDataContainer::registerAuxDataType<Comments>();
     gtirb::AuxDataContainer::registerAuxDataType<FunctionEntries>();

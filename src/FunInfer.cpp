@@ -58,6 +58,7 @@ namespace std
 void registerAuxDataTypes()
 {
     using namespace gtirb::schema;
+    using namespace gtirb::provisional_schema;
     gtirb::AuxDataContainer::registerAuxDataType<Comments>();
     gtirb::AuxDataContainer::registerAuxDataType<FunctionEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<FunctionBlocks>();

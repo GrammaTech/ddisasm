@@ -348,31 +348,25 @@ void removeSectionSymbols(gtirb::Context &Context, gtirb::Module &Module)
     }
 }
 
-void buildSymbolVersions(gtirb::Module &Module)
+void removeSymbolVersionsFromNames(gtirb::Module &Module)
 {
     if(Module.getFileFormat() != gtirb::FileFormat::ELF)
     {
         return;
     }
-
-    std::map<gtirb::UUID, std::string> SymbolVersions;
-
-    std::vector<std::tuple<gtirb::Symbol *, std::string, std::string>> Versioned;
+    std::vector<std::tuple<gtirb::Symbol *, std::string>> Versioned;
     for(auto &Symbol : Module.symbols())
     {
         const std::string &Name = Symbol.getName();
         if(size_t I = Name.find('@'); I != std::string::npos)
         {
-            Versioned.push_back({&Symbol, Name.substr(0, I), Name.substr(I)});
+            Versioned.push_back({&Symbol, Name.substr(0, I)});
         }
     }
-    for(auto [Symbol, Name, Version] : Versioned)
+    for(auto [Symbol, Name] : Versioned)
     {
         Symbol->setName(Name);
-        SymbolVersions.insert({Symbol->getUUID(), Version});
     }
-
-    Module.addAuxData<gtirb::schema::ElfSymbolVersions>(std::move(SymbolVersions));
 }
 
 void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
@@ -1485,7 +1479,7 @@ void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
     buildPadding(Module, Prog);
     buildComments(Module, Prog, SelfDiagnose);
     updateEntryPoint(Module, Prog);
-    buildSymbolVersions(Module);
+    removeSymbolVersionsFromNames(Module);
     buildArchInfo(Module, Prog);
     if(Module.getISA() == gtirb::ISA::ARM)
     {

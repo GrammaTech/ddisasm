@@ -360,5 +360,71 @@ class SymbolSelectionTests(unittest.TestCase):
             self.check_first_sym_expr(m, "load_end", "nums_end")
 
 
+class ElfSymbolVersionsTests(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_symbol_versions(self):
+        """
+        Test that symbols have the right version.
+        """
+
+        binary = "libfoo.so"
+        with cd(ex_dir / "ex_symver"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            (defs, needed, symver_entries) = m.aux_data[
+                "elfSymbolVersions"
+            ].data
+
+            # The version of the library itself is recorded in defs
+            # This is typically SymbolVersionId = 1 (but I am not sure if it's
+            # required by the spec to be)
+            VER_FLG_BASE = 0x1
+            self.assertIn((["libfoo.so"], VER_FLG_BASE), defs.values())
+
+            foo_symbols = sorted(
+                [sym for sym in m.symbols if sym.name == "foo"],
+                key=lambda x: x.referent.address,
+            )
+            self.assertEqual(len(foo_symbols), 3)
+
+            foo1, foo2, foo3 = foo_symbols
+            # Symbols have the right versions
+            self.assertEqual(
+                defs[symver_entries[foo1][0]], (["LIBFOO_1.0"], 0)
+            )
+            self.assertEqual(
+                defs[symver_entries[foo2][0]],
+                (["LIBFOO_2.0", "LIBFOO_1.0"], 0),
+            )
+            self.assertEqual(
+                defs[symver_entries[foo3][0]],
+                (["LIBFOO_3.0", "LIBFOO_2.0"], 0),
+            )
+
+            # Check that foo@LIBFOO_1.0 and foo@LIBFOO_2.0 are not default
+            self.assertTrue(symver_entries[foo1][1])
+            self.assertTrue(symver_entries[foo2][1])
+            self.assertFalse(symver_entries[foo3][1])
+
+            bar_symbols = [sym for sym in m.symbols if sym.name == "bar"]
+
+            bar1, bar2 = bar_symbols
+            # Check needed symbol versions
+            needed_versions = {
+                needed["libbar.so"][symver_entries[bar1][0]],
+                needed["libbar.so"][symver_entries[bar2][0]],
+            }
+            self.assertEqual(needed_versions, {"LIBBAR_1.0", "LIBBAR_2.0"})
+            # Needed versions are not hidden
+            self.assertFalse(symver_entries[bar1][1])
+            self.assertFalse(symver_entries[bar2][1])
+
+
 if __name__ == "__main__":
     unittest.main()

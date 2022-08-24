@@ -641,35 +641,41 @@ void ElfReader::buildSymbols()
     {
         resurrectSymbols();
     }
+    std::map<std::string, std::set<gtirb::provisional_schema::SymbolVersionId>> VersionToIds;
+    gtirb::provisional_schema::ElfSymVerDefs ElfSymVerDefinitions;
+    for(LIEF::ELF::SymbolVersionDefinition &Def : Elf->symbols_version_definition())
+    {
+        std::vector<std::string> Names;
+        for(LIEF::ELF::SymbolVersionAux &SymAux : Def.symbols_aux())
+        {
+            Names.push_back(SymAux.name());
+        }
+        ElfSymVerDefinitions[Def.ndx()] = {Names, Def.flags()};
+        VersionToIds[*Names.begin()].insert(Def.ndx());
+    }
+    gtirb::provisional_schema::ElfSymVerNeeded ElfSymVerNeededTable;
+    for(LIEF::ELF::SymbolVersionRequirement &Req : Elf->symbols_version_requirement())
+    {
+        for(LIEF::ELF::SymbolVersionAuxRequirement &SymAux : Req.auxiliary_symbols())
+        {
+            ElfSymVerNeededTable[Req.name()][SymAux.other()] = SymAux.name();
+            VersionToIds[SymAux.name()].insert(SymAux.other());
+        }
+    }
 
-    std::map<std::tuple<uint64_t, uint64_t, std::string, std::string, std::string, uint64_t,
-                        std::string>,
-             std::tuple<std::set<std::string>, std::vector<std::tuple<std::string, uint64_t>>>>
+    using SymbolKey = std::tuple<uint64_t, uint64_t, std::string, std::string, std::string,
+                                 uint64_t, std::string>;
+    using TableDecl = std::tuple<std::string, uint64_t>;
+
+    std::map<SymbolKey,
+             std::map<gtirb::provisional_schema::SymbolVersionId, std::vector<TableDecl>>>
         Symbols;
-
     auto LoadSymbols = [&](auto SymbolIt, std::string TableName) {
         uint64_t TableIndex = 0;
         for(auto &Symbol : SymbolIt)
         {
             std::string Name = Symbol.name();
             uint64_t Value = Symbol.value();
-
-            // Append the GNU symbol version to the symbol name.
-            std::optional<std::string> Version;
-            if(std::size_t I = Name.find('@'); I != std::string::npos)
-            {
-                // TODO: Keep track of "default" versions as denoted by double `at'.
-                Version = Name.substr(I, 2) == "@@" ? Name.substr(I + 2) : Name.substr(I + 1);
-                Name = Name.substr(0, I);
-            }
-            else if(Symbol.has_version())
-            {
-                const LIEF::ELF::SymbolVersion *SymbolVersion = Symbol.symbol_version();
-                if(SymbolVersion->has_auxiliary_version())
-                {
-                    Version = SymbolVersion->symbol_version_auxiliary()->name();
-                }
-            }
 
             // Rebase symbols onto their respective relocated section address.
             bool Relocatable = Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL;
@@ -690,21 +696,60 @@ void ElfReader::buildSymbols()
                 Value = tlsBaseAddress() + Value;
             }
 
-            auto &[Versions, TableIndexes] =
+            gtirb::provisional_schema::SymbolVersionId Version = LIEF::ELF::VER_NDX_LOCAL;
+            std::string VersionStr;
+            // Symbols in "dynsym" table have versions.
+            if(Symbol.has_version())
+            {
+                Version = Symbol.symbol_version()->value();
+            }
+            // Symbols in "symtab" table have the version attached to the name.
+            // We remove the version from the name and recover the corresponding version identifier.
+            else if(std::size_t I = Name.find('@'); I != std::string::npos)
+            {
+                VersionStr = Name.substr(I, 2) == "@@" ? Name.substr(I + 2) : Name.substr(I + 1);
+                Name = Name.substr(0, I);
+            }
+            auto &VersionMap =
                 Symbols[std::tuple(Value,                                     // Value
                                    Symbol.size(),                             // Size
                                    LIEF::ELF::to_string(Symbol.type()),       // Type
                                    LIEF::ELF::to_string(Symbol.binding()),    // Binding
                                    LIEF::ELF::to_string(Symbol.visibility()), // Scope
                                    Symbol.shndx(),                            // Section Index
-                                   Name                                       // Name(@Version)
+                                   Name                                       // Name
                                    )];
-            if(Version)
+            // If the version was part of the name,
+            // select the best version already available (from dynsym).
+            if(VersionStr.size() > 0)
             {
-                Versions.insert(*Version);
+                std::set<gtirb::provisional_schema::SymbolVersionId> &PossibleVersions =
+                    VersionToIds[VersionStr];
+                for(auto &[VersionId, Val] : VersionMap)
+                {
+                    // Ignore the 15th bit that marks whether the symbol is hidden.
+                    if(PossibleVersions.find(VersionId & 0x7FFF) != PossibleVersions.end())
+                    {
+                        Version = VersionId;
+                        break;
+                    }
+                }
+                if(!Version)
+                {
+                    throw ElfReaderException("Could not find compatible symbol version for " + Name
+                                             + "@" + VersionStr);
+                }
             }
-            TableIndexes.push_back({TableName, TableIndex});
-
+            else
+            {
+                // If there is no version but there is a global
+                // instance of this symbol, we consider this one global too.
+                if(VersionMap.find(LIEF::ELF::VER_NDX_GLOBAL) != VersionMap.end())
+                {
+                    Version = LIEF::ELF::VER_NDX_GLOBAL;
+                }
+            }
+            VersionMap[Version].push_back({TableName, TableIndex});
             TableIndex++;
         }
     };
@@ -714,50 +759,51 @@ void ElfReader::buildSymbols()
 
     std::map<gtirb::UUID, auxdata::ElfSymbolInfo> SymbolInfo;
     std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo> SymbolTabIdxInfo;
-    for(auto &[Key, VersionAndIndexes] : Symbols)
+    gtirb::provisional_schema::ElfSymbolVersionsEntries SymVerEntries;
+    for(auto &[Key, VersionMap] : Symbols)
     {
         auto &[Value, Size, Type, Scope, Visibility, SecIndex, Name] = Key;
-        auto &[Versions, Indexes] = VersionAndIndexes;
-
-        std::string VersionedName = Name;
-        if(Versions.size() > 1)
+        for(auto &[Version, Indexes] : VersionMap)
         {
-            auto VersionsIt = Versions.begin();
-            const std::string &Version1 = *(VersionsIt++);
-            const std::string &Version2 = *VersionsIt;
-            throw ElfReaderException("Indistinguishable symbol " + Name
-                                     + " has multiple versions: " + Version1 + " " + Version2);
-        }
-        if(Versions.size() > 0)
-        {
-            VersionedName = VersionedName.append("@" + *Versions.begin());
-        }
-        gtirb::Symbol *S;
+            std::string VersionedName = Name;
+            // For datalog, we add the version id to the name.
+            // This will be removed later
+            if(Version > LIEF::ELF::VER_NDX_GLOBAL)
+            {
+                VersionedName += "@" + std::to_string(Version);
+            }
+            gtirb::Symbol *S;
+            // Symbols with special section index do not have an address except
+            // for absolute symbols (SHN_ABS).
+            // See
+            // https://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-94076.html#chapter6-tbl-16
+            // FILE symbols do not have an address either.
+            if((SecIndex == static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)
+                || (SecIndex >= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_LORESERVE)
+                    && SecIndex <= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)
+                    && SecIndex != static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_ABS))
+                || Type == "FILE")
+               && Value == 0)
+            {
+                S = Module->addSymbol(*Context, VersionedName);
+            }
+            else
+            {
+                S = Module->addSymbol(*Context, gtirb::Addr(Value), VersionedName);
+            }
 
-        // Symbols with special section index do not have an address except
-        // for absolute symbols (SHN_ABS).
-        // See
-        // https://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-94076.html#chapter6-tbl-16
-        // FILE symbols do not have an address either.
-        if((SecIndex == static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)
-            || (SecIndex >= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_LORESERVE)
-                && SecIndex <= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)
-                && SecIndex != static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_ABS))
-            || Type == "FILE")
-           && Value == 0)
-        {
-            S = Module->addSymbol(*Context, VersionedName);
-        }
-        else
-        {
-            S = Module->addSymbol(*Context, gtirb::Addr(Value), VersionedName);
-        }
+            assert(S && "Failed to create symbol.");
 
-        assert(S && "Failed to create symbol.");
-
-        // Add additional symbol information to aux data.
-        SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex};
-        SymbolTabIdxInfo[S->getUUID()] = Indexes;
+            // Add additional symbol information to aux data.
+            SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex};
+            SymbolTabIdxInfo[S->getUUID()] = Indexes;
+            // 0 and 1 are used to denote local and global scope with no version.
+            // anything higher is a valid version index.
+            if(Version > LIEF::ELF::VER_NDX_GLOBAL)
+            {
+                SymVerEntries[S->getUUID()] = {Version & 0x7FFF, Version & 0x8000};
+            }
+        }
     }
 
     // In case of MIPS, if _gp does not exist in Module (either sectionless or
@@ -773,6 +819,9 @@ void ElfReader::buildSymbols()
 
     Module->addAuxData<gtirb::schema::ElfSymbolInfo>(std::move(SymbolInfo));
     Module->addAuxData<gtirb::schema::ElfSymbolTabIdxInfo>(std::move(SymbolTabIdxInfo));
+    Module->addAuxData<gtirb::provisional_schema::ElfSymbolVersions>(
+        std::tuple(std::move(ElfSymVerDefinitions), std::move(ElfSymVerNeededTable),
+                   std::move(SymVerEntries)));
 }
 
 void ElfReader::addEntryBlock()
@@ -831,15 +880,10 @@ void ElfReader::addAuxData()
         if(Relocation.has_symbol())
         {
             SymbolName = Relocation.symbol()->name();
-
-            if(Relocation.symbol()->has_version())
+            auto SymbolVersion = Relocation.symbol()->symbol_version();
+            if(SymbolVersion && SymbolVersion->value() > LIEF::ELF::VER_NDX_GLOBAL)
             {
-                const LIEF::ELF::SymbolVersion *SymbolVersion =
-                    Relocation.symbol()->symbol_version();
-                if(SymbolVersion->has_auxiliary_version())
-                {
-                    SymbolName.append("@" + SymbolVersion->symbol_version_auxiliary()->name());
-                }
+                SymbolName += "@" + std::to_string(SymbolVersion->value());
             }
         }
 
