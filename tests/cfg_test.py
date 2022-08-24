@@ -343,6 +343,56 @@ class CfgTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
+    def test_arm_tbh_cfg(self):
+        """
+        Test ARM32 CFG from a TBH jumptable
+        """
+        binary = "ex"
+        with cd(ex_arm_asm_dir / "ex_tbh"):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "-O0",
+                    [],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    format="--ir",
+                    strip=True,
+                    strip_exe="arm-linux-gnueabihf-strip",
+                )[0]
+            )
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            # Locate the tbh instruction
+            jumping_block = None
+            for block in m.code_blocks:
+                # search for tbh [pc, r0]
+                if block.contents[:4] == b"\xdf\xe8\x10\xf0":
+                    jumping_block = block
+                    break
+            else:
+                self.fail("Could not find tbh instruction")
+
+            # check that the tbh block has edges to all the jump table entries
+            self.assertEqual(len(list(jumping_block.outgoing_edges)), 4)
+
+            # check that there are symbolic expressions for all four jump
+            # table entries
+            for offset in range(4, 12, 2):
+                symexprs = list(
+                    m.symbolic_expressions_at(jumping_block.address + offset)
+                )
+                self.assertEqual(len(symexprs), 1)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_x86_64_object_cfg(self):
         """
         Test X86_64 object file relocation edges.
