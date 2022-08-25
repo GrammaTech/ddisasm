@@ -18,11 +18,18 @@ default: &default
     skip: false
 
   # Test configuration.
-  test:
+  test: &default-test
     wrapper: "qemu-arm -L /usr/arm-linux-gnueabihf"
     strip_exe: "arm-linux-gnueabihf-strip"
     strip: false
     skip: false
+
+assembly: &assembly
+  <<: *default
+  path: examples/arm_asm_examples
+  build: &assembly-build
+    <<: *default-build
+    optimizations: [""]
 
 c-object: &c-object
   <<: *default
@@ -54,43 +61,31 @@ cpp-object: &cpp-object
 
 tests:
   - name: ex1_pie
-    <<: *default
-    path: examples/arm_asm_examples
+    <<: *assembly
     build:
-      c: ["arm-linux-gnueabihf-gcc"]
-      cpp: ["arm-linux-gnueabihf-g++"]
+      <<: *assembly-build
       flags: ["-pie"]
-      optimizations: [""]
 
   - name: ex1_no_pie
-    <<: *default
-    path: examples/arm_asm_examples
+    <<: *assembly
     reassemble:
       compiler: "arm-linux-gnueabihf-gcc"
       flags: ["-no-pie"]
     build:
-      c: ["arm-linux-gnueabihf-gcc"]
-      cpp: ["arm-linux-gnueabihf-g++"]
+      <<: *assembly-build
       flags: ["-no-pie"]
-      optimizations: [""]
 
   - name: ex_setend
-    <<: *default
-    path: examples/arm_asm_examples
-    build:
-      c: ["arm-linux-gnueabihf-gcc"]
-      cpp: ["arm-linux-gnueabihf-g++"]
-      flags: []
-      optimizations: [""]
+    <<: *assembly
 
   - name: ex_relative_jump_table
-    <<: *default
-    path: examples/arm_asm_examples
-    build:
-      c: ["arm-linux-gnueabihf-gcc"]
-      cpp: ["arm-linux-gnueabihf-g++"]
-      flags: []
-      optimizations: [""]
+    <<: *assembly
+
+  - name: ex_add_as_jump
+    <<: *assembly
+    reassemble:
+      compiler: "arm-linux-gnueabihf-gcc"
+      flags: ["-no-pie"]
 
   - name: ex1
     <<: *default

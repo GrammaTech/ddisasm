@@ -264,6 +264,10 @@ jump(EA):-
     move_reg_reg(EA,PC,_),
     pc_reg(PC).
 
+jump(EA):-
+    reg_reg_arithmetic_operation(EA,PC,_,_,_,_),
+    pc_reg(PC).
+
 arithmetic_operation(Operation):-
     instruction_get_operation(_,Operation),
     Op = substr(Operation,0,3),
