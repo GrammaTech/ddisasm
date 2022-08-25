@@ -105,5 +105,6 @@ jobs:
           name: ddisasm-build-${{ matrix.os }}-${{ matrix.compiler }}
           path: build
       - run: chmod +x build/bin/*
+      - run: mkdir ${HOME}/.wine
       # Run tests
       - run: cd build && PATH=$(pwd)/bin:$PATH ctest -V
