@@ -57,30 +57,6 @@ Attributes:
 .output arm_jump_table_candidate
 
 /**
-Check if the given address is likely a viable target.
-*/
-.decl viable_target(Target:address)
-
-viable_target(TargetAddr):-
-    code_in_block_candidate(TargetAddr,_).
-
-/**
-Paddings (NOPs) followed by code block are often jump-table target.
-Look forward only up to two nops to avoid inefficiency.
-*/
-viable_target(TargetAddr):-
-    arch.is_nop(TargetAddr),
-    next(TargetAddr,Next),
-    code_in_block_candidate(Next,_).
-
-viable_target(TargetAddr):-
-    arch.is_nop(TargetAddr),
-    next(TargetAddr,Next1),
-    arch.is_nop(Next1),
-    next(Next1,Next2),
-    code_in_block_candidate(Next2,_).
-
-/**
 * TableStart0: table start address (before alignment)
 * TableStart: table start address (after alignment)
 * TargetAddr: the absolute address at the first entry of the table
@@ -98,7 +74,7 @@ table_start_absolute_target_addr(TableStart0,TableStart,TargetAddr,TableLimit):-
         // Jump to before the jumptable - does not restrict jumptable size.
         TargetAddr <= TableStart, TableLimit = (2 ^ 32) - 1
     ),
-    viable_target(TargetAddr).
+    !invalid(TargetAddr,_).
 
 /**
 Jump-table pattern
@@ -276,7 +252,8 @@ arm_jump_table_candidate(EA_jump,TableStart,EA,Size,TargetAddr,NewTableLimit,Typ
     arm_jump_table_candidate_start(EA_jump,TableStart,EA,Size,TargetAddr,NewTableLimit,Type,Scale,Offset),
     // We check this here so `arm_jump_table_candidate_start` is not recursive
     // and `arm_jump_table_candidate_start` is not recomputed for every new `code_in_block_candidate`.
-    viable_target(TargetAddr).
+    instruction(TargetAddr,_,_,_,_,_,_,_,_,_),
+    !invalid(TargetAddr,_).
 
 // recursive case
 arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimit,Type,Scale,Offset):-
@@ -297,7 +274,8 @@ arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimi
         arm_rel_signed_jump_table_target(EA+Size,TableStart,Size,Scale,AlignedTargetAddr),
         TargetAddr = AlignedTargetAddr + (EA_jump band 1)
     ),
-    viable_target(TargetAddr),
+    instruction(TargetAddr,_,_,_,_,_,_,_,_,_),
+    !invalid(TargetAddr,_),
     !impossible_jump_target(TargetAddr),
     (
         // The target address is less than the limit, but at some address beyond
