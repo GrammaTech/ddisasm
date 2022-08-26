@@ -35,7 +35,7 @@ Attributes:
 * EntrySize: size of entries
 * TargetAddr: resolved target of the jump
 * TableLimit: first address that cannot be part of the jump table
-* Type: absolute or relative
+* Type: "absolute", "rel_signed", or "rel_unsigned"
 */
 .decl arm_jump_table_candidate_start(EA_jump:address,TableStart:address,EntryAddr:address,EntrySize:unsigned,TargetAddr:address,TableLimit:address,Type:symbol,Scale:unsigned,Offset:number)
 
@@ -50,7 +50,7 @@ Attributes:
 * EntrySize: size of entries
 * TargetAddr: resolved target of the jump
 * TableLimit: first address that cannot be part of the jump table
-* Type: absolute or relative
+* Type: "absolute", "rel_signed", or "rel_unsigned"
 */
 .decl arm_jump_table_candidate(EA_jump:address,TableStart:address,EntryAddr:address,EntrySize:unsigned,TargetAddr:address,TableLimit:address,Type:symbol,Scale:unsigned,Offset:number)
 .output arm_jump_table_candidate
@@ -149,26 +149,40 @@ arm_jump_table_candidate_start(EA_jump,TableStart,TableStart,Size,TargetAddr,Tab
     table_start_absolute_target_addr(TableStart0,TableStart,TargetAddr,TableLimit).
 
 /**
-Compute the target address for the given relative jump-table entry.
+Compute the target address for the given unsigned relative jump-table entry.
 
 EA: An entry of a relative jump-table
 TableStart: The starting address of the jump-table
 Size: The size of the entry
 Scale: The scale amount is multiplied to the entry value
-AlignedTargetAddr: The computed tgarget address is aligned
+AlignedTargetAddr: The computed target address is aligned
 */
-.decl arm_relative_jump_table_target(EA:address,TableStart:address,Size:unsigned,Scale:unsigned,AlignedTargetAddr:address) inline
-arm_relative_jump_table_target(EA,TableStart,Size,Scale,AlignedTargetAddr):-
-    (
-        Size != 1, data_word(EA,Size,DiffUnsigned);
-        Size = 1, data_byte(EA,DiffUnsigned)
-    ),
-    DiffUnsigned != 0, // A table with odd number of entries is padded with 0
-    Diff = as(DiffUnsigned,number),
+.decl arm_rel_unsigned_jump_table_target(EA:address,TableStart:address,Size:unsigned,Scale:unsigned,AlignedTargetAddr:address) inline
+
+arm_rel_unsigned_jump_table_target(EA,TableStart,Size,Scale,AlignedTargetAddr):-
+    data_uword(EA,Size,Diff),
+    Diff != 0, // A table with odd number of entries is padded with 0
+    TargetAddr = TableStart + Diff * Scale,
+    AlignedTargetAddr = TargetAddr - (TargetAddr band 1).
+
+/**
+Compute the target address for the given signed relative jump-table entry.
+
+EA: An entry of a relative jump-table
+TableStart: The starting address of the jump-table
+Size: The size of the entry
+Scale: The scale amount is multiplied to the entry value
+AlignedTargetAddr: The computed target address is aligned
+*/
+.decl arm_rel_signed_jump_table_target(EA:address,TableStart:address,Size:unsigned,Scale:unsigned,AlignedTargetAddr:address) inline
+
+arm_rel_signed_jump_table_target(EA,TableStart,Size,Scale,AlignedTargetAddr):-
+    data_word(EA,Size,Diff),
+    Diff != 0, // A table with odd number of entries is padded with 0
     TargetAddr = as(Diff*as(Scale,number)+as(TableStart,number),address),
     AlignedTargetAddr = TargetAddr - (TargetAddr band 1).
 
-arm_jump_table_candidate_start(EA,TableStart,TableStart,Size,TargetAddr,TableLimit,"relative",2,0):-
+arm_jump_table_candidate_start(EA,TableStart,TableStart,Size,TargetAddr,TableLimit,"rel_unsigned",2,0):-
     (
         Operation="TBH", Size = 2;
         Operation="TBB", Size = 1
@@ -181,7 +195,7 @@ arm_jump_table_candidate_start(EA,TableStart,TableStart,Size,TargetAddr,TableLim
 
     // tbb/tbh can't perform a mode switch and just uses aligned addresses of
     // Thumb targets.
-    arm_relative_jump_table_target(TableStart,TableStart,Size,2,AlignedTargetAddr),
+    arm_rel_unsigned_jump_table_target(TableStart,TableStart,Size,2,AlignedTargetAddr),
     TargetAddr = AlignedTargetAddr + 1,
     (
         // Jump to after the jumptable - sets a hard limit on the jumptable size.
@@ -196,7 +210,7 @@ EA_ldr:  ldr r3, [r1,r2,lsl N]
 EA_add   add r4, r3    or   add r4, r4, r3
 EA_jump: bx r4
 */
-arm_jump_table_candidate_start(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"relative",1,as(EA_jump band 1,number)):-
+arm_jump_table_candidate_start(EA_jump,TableStart,TableStart,Size,TargetAddr,TableLimit,"rel_signed",1,as(EA_jump band 1,number)):-
     arch.pc_relative_addr(EA,_,TableStart0),
     next(EA,EA_ldr),
     instruction_get_operation(EA_ldr,"LDR"),
@@ -225,7 +239,7 @@ arm_jump_table_candidate_start(EA_jump,TableStart,TableStart,Size,TargetAddr,Tab
     // Tables are aligned.
     align_addr(TableStart,TableStart0),
 
-    arm_relative_jump_table_target(TableStart,TableStart,Size,1,AlignedTargetAddr),
+    arm_rel_signed_jump_table_target(TableStart,TableStart,Size,1,AlignedTargetAddr),
     TargetAddr = AlignedTargetAddr + (EA_jump band 1),
     (
         // Jump to after the jumptable - sets a hard limit on the jumptable size.
@@ -273,8 +287,12 @@ arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimi
         address_in_data(EA+Size,TargetAddr),
         AlignedTargetAddr = TargetAddr - (TargetAddr band 1)
         ;
-        Type = "relative",
-        arm_relative_jump_table_target(EA+Size,TableStart,Size,Scale,AlignedTargetAddr),
+        Type = "rel_unsigned",
+        arm_rel_unsigned_jump_table_target(EA+Size,TableStart,Size,Scale,AlignedTargetAddr),
+        TargetAddr = AlignedTargetAddr + (EA_jump band 1)
+        ;
+        Type = "rel_signed",
+        arm_rel_signed_jump_table_target(EA+Size,TableStart,Size,Scale,AlignedTargetAddr),
         TargetAddr = AlignedTargetAddr + (EA_jump band 1)
     ),
     code_in_block_candidate(TargetAddr,_),
@@ -313,7 +331,11 @@ data_object_candidate(DataEA,Size,"symbol"):-
 
 data_object_point(DataEA,Size,"symbol-symbol",2,"arm jump-table3"),
 data_object_candidate(DataEA,Size,"symbol-symbol"):-
-    arm_jump_table_candidate(_,_,DataEA,Size,_,_,"relative",_,_).
+    arm_jump_table_candidate(_,_,DataEA,Size,_,_,Type,_,_),
+    (
+        Type = "rel_unsigned";
+        Type = "rel_signed"
+    ).
 
 jump_table_start(EA,Size,TableStart,TableStart,1):-
     arm_jump_table_candidate(EA,TableStart,DataEA,Size,_,_,_,_,_),
