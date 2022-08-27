@@ -637,25 +637,32 @@ void buildCodeSymbolicInformation(gtirb::Module &Module, souffle::SouffleProgram
     }
 }
 
-void buildCodeBlocks(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
+void buildCodeBlocks(gtirb::Context &Context, gtirb::Module &Module,
+                     souffle::SouffleProgram *Program)
 {
-    auto blockInformation =
-        convertSortedRelation<VectorByEA<BlockInformation>>("block_information", prog);
-    for(auto &output : *prog->getRelation("refined_block"))
+    auto BlockInfo =
+        convertSortedRelation<VectorByEA<BlockInformation>>("block_information", Program);
+    for(auto &Tuple : *Program->getRelation("refined_block"))
     {
-        gtirb::Addr blockAddress;
-        output >> blockAddress;
-        if(auto sections = module.findSectionsOn(blockAddress); !sections.empty())
+        gtirb::Addr BlockAddress;
+        Tuple >> BlockAddress;
+
+        if(auto Sections = Module.findSectionsOn(BlockAddress); !Sections.empty())
         {
-            gtirb::Section &section = *sections.begin();
-            uint64_t size = blockInformation.find(blockAddress)->size;
-            if(auto it = section.findByteIntervalsOn(blockAddress); !it.empty())
+            gtirb::Section &Section = *Sections.begin();
+            uint64_t BlockSize = BlockInfo.find(BlockAddress)->size;
+            if(auto It = Section.findByteIntervalsOn(BlockAddress); !It.empty())
             {
-                if(gtirb::ByteInterval &byteInterval = *it.begin(); byteInterval.getAddress())
+                if(gtirb::ByteInterval &ByteInterval = *It.begin(); ByteInterval.getAddress())
                 {
-                    uint64_t blockOffset = blockAddress - *byteInterval.getAddress();
-                    uint64_t isThumb = static_cast<uint64_t>(blockAddress) & 1;
-                    byteInterval.addBlock<gtirb::CodeBlock>(context, blockOffset, size, isThumb);
+                    uint64_t BlockOffset = BlockAddress - *ByteInterval.getAddress();
+                    gtirb::DecodeMode DecodeMode = gtirb::DecodeMode::Default;
+                    if(static_cast<uint64_t>(BlockAddress) & 1)
+                    {
+                        DecodeMode = gtirb::DecodeMode::Thumb;
+                    }
+                    ByteInterval.addBlock<gtirb::CodeBlock>(Context, BlockOffset, BlockSize,
+                                                            DecodeMode);
                 }
             }
         }
