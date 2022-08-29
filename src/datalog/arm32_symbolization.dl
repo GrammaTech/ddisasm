@@ -92,7 +92,7 @@ symbolic_operand_candidate(EA_hi,1,Dest,Type):-
     (
         code(Dest), Type="code"
         ;
-        !litpool_ref(_,_,Dest,_,_),
+        !litpool_ref(_,_,_,Dest,_,_,_),
         data_segment(Begin,End),
         Dest >= Begin, Dest <= End,
         Type = "data"
@@ -153,7 +153,7 @@ be used before code inference.
 .decl init_ldr_add_pc(EA_ldr:address,Size:unsigned,Reg1:register,LitPoolAddr:address,EA_add_pc:address,Reg2:register)
 
 init_ldr_add_pc(EA_ldr,Size,Reg1,LitPoolAddr,EA_add_pc,Reg2):-
-    litpool_ref(EA_ldr,Reg1,LitPoolAddr,Size,_),
+    litpool_ref(EA_ldr,Reg1,_,LitPoolAddr,_,Size,_),
     instruction_get_operation(EA_ldr,Operation),
     arch.load_operation(Operation),
     straight_line_def_used(EA_ldr,Reg1,EA_add_pc,_),
@@ -216,7 +216,7 @@ Uses `def_used`
 .decl cinf_ldr_add_pc(EA_ldr:address,Size:unsigned,Reg1:register,LitPoolAddr:address,EA_add_pc:address,Reg2:register)
 
 cinf_ldr_add_pc(EA_ldr,Size,Reg1,LitPoolAddr,EA_add_pc,Reg2):-
-    litpool_ref(EA_ldr,Reg1,LitPoolAddr,Size,_),
+    litpool_ref(EA_ldr,Reg1,_,LitPoolAddr,_,Size,_),
     instruction_get_operation(EA_ldr,Operation),
     arch.load_operation(Operation),
     def_used(EA_ldr,Reg1,EA_add_pc,_),
@@ -281,14 +281,14 @@ data_object_candidate(LitPoolAddr,Size,"symbol-symbol"):-
 
 data_object_point(EA,Size,"symbol",5,"arm literal pool"),
 data_object_candidate(LitPoolAddr,Size,"symbol"):-
-    litpool_ref(EA,_,LitPoolAddr,Size,_),
+    litpool_ref(EA,_,_,LitPoolAddr,_,Size,_),
     symbolic_operand_candidate(EA,_,LitPoolAddr,_),
     !symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,_,_,_,_,_,_,_,_).
 
 
 symbolic_operand_candidate(EA,OpIndex,Addr,"data"):-
     code(EA),
-    litpool_ref(EA,_,Addr,_,OpIndex),
+    litpool_ref(EA,_,_,Addr,_,_,OpIndex),
     !function_symbol(as(Addr,address),_).
 
 symbolic_operand_candidate(EA,OpIndex,Dest,Type):-
@@ -360,7 +360,7 @@ symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA
 // (in observed cases, LitPool == Base)
 symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA_ldr,EA_add,Reg,"AddPC"):-
     // e.g., ldr reg1, LitPool
-    litpool_ref(EA_ldr,Reg,LitPoolAddr,Size,_),
+    litpool_ref(EA_ldr,Reg,_,LitPoolAddr,_,Size,_),
 
     // e.g., add reg1, reg2
     def_used(EA_ldr,Reg1,EA_add,_),
@@ -416,7 +416,7 @@ litpool_symbolic_operand(LitPoolAddr2,DataAccessSize,Symbol1,Symbol2,EA_D,Reg3,S
     def_used(EA_B,Reg2,EA_D,_),
 
     // (B) ldr reg2, LitPoolAddr2
-    litpool_ref(EA_B,Reg2,LitPoolAddr2,DataAccessSize,_),
+    litpool_ref(EA_B,Reg2,_,LitPoolAddr2,_,DataAccessSize,_),
 
     data_word(LitPoolAddr2,DataAccessSize,Diff),
     Symbol2 = as(Diff,address) + Symbol1.
