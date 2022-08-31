@@ -629,8 +629,8 @@ docker-image:
     - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
   script:
-    - echo "GTIRB_REF=$GTIRB_COMMIT"
-    - echo "GTIRB_PPRINTER_REF=$GTIRB_PPRINTER_COMMIT"
+    - echo "GTIRB_COMMIT=$GTIRB_COMMIT"
+    - echo "GTIRB_PPRINTER_COMMIT=$GTIRB_PPRINTER_COMMIT"
     # Configure authentication credentials for Docker Hub and GitLab
     - >-
       echo "{\"auths\":{
@@ -644,8 +644,10 @@ docker-image:
       --cache=true
       --cache-repo=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/ddisasm/cache
       --context=$CI_PROJECT_DIR
-      --build-arg GTIRB_REF=$GTIRB_COMMIT
-      --build-arg GTIRB_PPRINTER_REF=$GTIRB_PPRINTER_COMMIT
+      --build-arg GTIRB_BRANCH=$GTIRB_BRANCH
+      --build-arg GTIRB_CACHE_KEY=$GTIRB_COMMIT
+      --build-arg GTIRB_PPRINTER_BRANCH=$GTIRB_PPRINTER_BRANCH
+      --build-arg GTIRB_PPRINTER_CACHE_KEY=$GTIRB_PPRINTER_COMMIT
       --dockerfile=$CI_PROJECT_DIR/Dockerfile
       --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:$VERSION
       --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:latest

@@ -77,10 +77,9 @@ RUN apt-get -y update \
       python3 \
       git
 
-ARG GTIRB_REF=master
-RUN git clone https://github.com/GrammaTech/gtirb /usr/local/src/gtirb && \
-    cd /usr/local/src/gtirb && \
-    git checkout $GTIRB_REF
+ARG GTIRB_BRANCH=master
+ARG GTIRB_CACHE_KEY
+RUN git clone --depth=1 -b $GTIRB_BRANCH https://github.com/GrammaTech/gtirb /usr/local/src/gtirb
 RUN cmake -DGTIRB_JAVA_API=OFF -DGTIRB_CL_API=OFF /usr/local/src/gtirb -B/usr/local/src/gtirb/build
 RUN cmake --build /usr/local/src/gtirb/build -j4 --target all install
 
@@ -112,10 +111,9 @@ RUN wget https://download.grammatech.com/gtirb/files/apt-repo/pool/unstable/libc
 COPY --from=gtirb /usr/local/lib /usr/local/lib
 COPY --from=gtirb /usr/local/include /usr/local/include
 
-ARG GTIRB_PPRINTER_REF=master
-RUN git clone --depth 1 https://github.com/GrammaTech/gtirb-pprinter /usr/local/src/gtirb-pprinter && \
-    cd /usr/local/src/gtirb-pprinter && \
-    git checkout $GTIRB_PPRINTER_REF
+ARG GTIRB_PPRINTER_BRANCH=master
+ARG GTIRB_PPRINTER_CACHE_KEY
+RUN git clone --depth 1 -b $GTIRB_PPRINTER_BRANCH https://github.com/GrammaTech/gtirb-pprinter /usr/local/src/gtirb-pprinter
 RUN cmake /usr/local/src/gtirb-pprinter -B/usr/local/src/gtirb-pprinter/build
 RUN cmake --build /usr/local/src/gtirb-pprinter/build -j4 --target all install
 
