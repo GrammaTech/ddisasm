@@ -102,7 +102,7 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
             }
             else
             {
-                std::cerr << "WARNING: Section missing from `elfSectionProperties' AuxData table: "
+                std::cerr << "WARNING: Section missing from `sectionProperties' AuxData table: "
                           << Section.getName() << '\n';
             }
         }
