@@ -38,6 +38,7 @@ Attributes:
 * Type: "absolute", "rel_signed", or "rel_unsigned"
 */
 .decl arm_jump_table_candidate_start(EA_jump:address,TableStart:address,EntryAddr:address,EntrySize:unsigned,TargetAddr:address,TableLimit:address,Type:symbol,Scale:unsigned,Offset:number)
+.output arm_jump_table_candidate_start
 
 /**
 Represents an entry in an ARM jump table.
@@ -54,6 +55,30 @@ Attributes:
 */
 .decl arm_jump_table_candidate(EA_jump:address,TableStart:address,EntryAddr:address,EntrySize:unsigned,TargetAddr:address,TableLimit:address,Type:symbol,Scale:unsigned,Offset:number)
 .output arm_jump_table_candidate
+
+/**
+Check if the given address is likely a viable target.
+*/
+.decl viable_target(Target:address)
+
+viable_target(TargetAddr):-
+    code_in_block_candidate(TargetAddr,_).
+
+/**
+Paddings (NOPs) followed by code block are often jump-table target.
+Look forward only up to two nops to avoid inefficiency.
+*/
+viable_target(TargetAddr):-
+    arch.is_nop(TargetAddr),
+    next(TargetAddr,Next),
+    code_in_block_candidate(Next,_).
+
+viable_target(TargetAddr):-
+    arch.is_nop(TargetAddr),
+    next(TargetAddr,Next1),
+    arch.is_nop(Next1),
+    next(Next1,Next2),
+    code_in_block_candidate(Next2,_).
 
 /**
 * TableStart0: table start address (before alignment)
@@ -73,7 +98,7 @@ table_start_absolute_target_addr(TableStart0,TableStart,TargetAddr,TableLimit):-
         // Jump to before the jumptable - does not restrict jumptable size.
         TargetAddr <= TableStart, TableLimit = (2 ^ 32) - 1
     ),
-    code_in_block_candidate(TargetAddr,_).
+    viable_target(TargetAddr).
 
 /**
 Jump-table pattern
@@ -227,12 +252,10 @@ arm_jump_table_candidate_start(EA_jump,TableStart,TableStart,Size,TargetAddr,Tab
     instruction_get_dest_op(EA_ldr,_,Reg3Op),
     op_regdirect_contains_reg(Reg3Op,R3),
     instruction_get_src_op(EA_ldr,_,IndOp),
-    op_indirect_mapped(IndOp,"NONE",R1,_,Mult,0,NBits),
+    op_indirect_mapped(IndOp,"NONE",R1,_,4,0,NBits),
     instruction_get_dest_op(EA,_,Reg1Op),
     op_regdirect_contains_reg(Reg1Op,R1),
 
-    // TODO: Check on Mult=2?
-    Mult = Mult, // to avoid warnings
     Size = NBits / 8,
     arch.pointer_size(Size),
 
@@ -253,7 +276,7 @@ arm_jump_table_candidate(EA_jump,TableStart,EA,Size,TargetAddr,NewTableLimit,Typ
     arm_jump_table_candidate_start(EA_jump,TableStart,EA,Size,TargetAddr,NewTableLimit,Type,Scale,Offset),
     // We check this here so `arm_jump_table_candidate_start` is not recursive
     // and `arm_jump_table_candidate_start` is not recomputed for every new `code_in_block_candidate`.
-    code_in_block_candidate(TargetAddr,_).
+    viable_target(TargetAddr).
 
 // recursive case
 arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimit,Type,Scale,Offset):-
@@ -295,7 +318,7 @@ arm_jump_table_candidate(EA_jump,TableStart,EA+Size,Size,TargetAddr,NewTableLimi
         arm_rel_signed_jump_table_target(EA+Size,TableStart,Size,Scale,AlignedTargetAddr),
         TargetAddr = AlignedTargetAddr + (EA_jump band 1)
     ),
-    code_in_block_candidate(TargetAddr,_),
+    viable_target(TargetAddr),
     !impossible_jump_target(TargetAddr),
     (
         // The target address is less than the limit, but at some address beyond
