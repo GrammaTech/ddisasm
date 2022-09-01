@@ -221,10 +221,10 @@ Compute the value loaded from a literal pool.
   - ldm BaseReg, {Reg1,...,RegN}
 */
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
-    litpool_ref(_,EA,LitPoolAddr,LitPoolOffset,_,_),
+    litpool_ref(_,EA,RefAddr,LitPoolOffset,_,_),
     arch.load(EA,_,_,Reg,_,_,_,RegOffset),
     track_register(Reg),
-    Addr = LitPoolAddr + as(LitPoolOffset + RegOffset,address),
+    Addr = RefAddr + as(LitPoolOffset + RegOffset,address),
     !relocation(Addr,_,_,_,_,_,_),
     instruction_get_operation(EA,Operation),
     (
@@ -235,6 +235,19 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
         arch.data_access_size(Operation,Reg,Size)
     ),
     data_word(Addr,Size,Val).
+
+/**
+Constant folding for bitwise operations
+*/
+value_reg(EA,DstReg,EA,"NONE",0,Val,1):-
+    instruction(EA,_,_,Operation,SrcRegOp,DstRegOp,0,0,_,_),
+    arch.bitwise_binary_operation(Operation,SrcVal,Imm,Val),
+    op_shifted(EA,_,Imm0,Operation),
+    Imm = as(Imm0,number),
+    op_regdirect_contains_reg(DstRegOp,DstReg),
+    op_regdirect_contains_reg(SrcRegOp,SrcReg),
+    straight_line_def_used(EA_def,SrcReg,EA,_),
+    value_reg(EA_def,SrcReg,EA_def,"NONE",0,SrcVal,_).
 
 /**
 Jump to the PC register: "bx pc"
@@ -541,8 +554,9 @@ block_points(Block,"code",0,1,"arm: better fit after literal pool"):-
         block_candidate_boundaries(BlockPred,"code",_,Beg),
         (Block band 1) != (BlockPred band 1)
     ),
-    litpool_ref(_,_,LitPoolAddr,Offset,Size,_),
-    LitPoolAddr + as(Offset,address) + Size = Beg.
+    litpool_ref(_,_,RefAddr,LitPoolOffset,Size,_),
+    LitPoolAddr = RefAddr + as(LitPoolOffset,address),
+    LitPoolAddr + Size = Beg.
 
 /**
 Similarly to the above rule, if the enclosed Thumb instruction does not have
@@ -576,11 +590,12 @@ EA:     EA of the instruction containing the literal-pool label.
         For other cases, EA is the address of the load instruction.
 EA_ldr: EA of the load instruction that actually accesses the literal pool
         EA = EA_ldr for non-ADR/LDR case
-LitPoolAddr: the address of literal pool
+RefAddr: The address of referenced label
 Offset: This is for handling the ADR/LDR case:
           adr BaseReg, Label
           ldr Reg, [BaseReg, Offset]
         For other cases, Offset is 0.
+        The actual literal pool address would be `RefAddr + Offset`.
 Size:   The whole size of the literal pool block accessed by the instruction
         at EA_ldr:
         E.g., 1 for LDRB
@@ -592,14 +607,14 @@ Size:   The whole size of the literal pool block accessed by the instruction
 OpIndex: The index of operand for literal-pool label.
         E.g., 1 for LDR, 2 for LDRD, 1 for ADR
 */
-.decl litpool_ref(EA:address, EA_ldr:address, LitPoolAddr:address, Offset:number, Size:unsigned, OpIndex:operand_index)
+.decl litpool_ref(EA:address, EA_ldr:address, RefAddr:address, Offset:number, Size:unsigned, OpIndex:operand_index)
 .output litpool_ref
 
 /**
 (A) LDR or LDRD
 ldr Reg, [pc, off]   or   ldrd Reg1, Reg2, [pc, off]
 */
-litpool_ref(EA,EA,LitPoolAddr,0,Size,OpIndex):-
+litpool_ref(EA,EA,RefAddr,0,Size,OpIndex):-
     !invalid(EA,_),
     instruction_get_operation(EA,Operation),
     arch.load_operation(Operation),
@@ -618,7 +633,7 @@ litpool_ref(EA,EA,LitPoolAddr,0,Size,OpIndex):-
     arch.pc_relative_disp(EA,PCRelDisp),
     align_addr(EA_aligned,EA),
     Addr = EA_aligned + as(Off,address) + as(PCRelDisp,address),
-    LitPoolAddr = as(Addr,address),
+    RefAddr = as(Addr,address),
     arch.data_access_size(Operation,Reg1,Size).
 
 /**
@@ -626,9 +641,9 @@ litpool_ref(EA,EA,LitPoolAddr,0,Size,OpIndex):-
 adr BaseReg, Label    or   add/sub BaseReg, pc, off
 ldr Reg1, [BaseReg, Offset]  or ldrd Reg1, Reg2, [BaseReg, Offset]
 */
-litpool_ref(EA,EA_ldr,LitPoolAddr,Offset,Size,OpIndex):-
+litpool_ref(EA,EA_ldr,RefAddr,Offset,AccessSize,OpIndex):-
     !invalid(EA,_),
-    arch.pc_relative_addr(EA,BaseReg,LitPoolAddr),
+    arch.pc_relative_addr(EA,BaseReg,RefAddr),
     instruction_immediate_offset(EA,OpIndex,_,_),
     straight_line_def_used(EA,BaseReg,EA_ldr,_),
     instruction_get_operation(EA_ldr,Operation),
@@ -645,17 +660,16 @@ litpool_ref(EA,EA_ldr,LitPoolAddr,Offset,Size,OpIndex):-
     ),
     arch.pc_reg(PC),
     BaseReg != PC,
-    arch.data_access_size(Operation,Reg1,AccessSize),
-    Size = as(Offset+as(AccessSize,number),unsigned).
+    arch.data_access_size(Operation,Reg1,AccessSize).
 
 /**
 (C) ADR/LDM
 adr r1, Label    or   add/sub r1, pc, offset
 ldm r1, {r2, r3}
 */
-litpool_ref(EA,EA_ldm,LitPoolAddr,0,Size,OpIndex):-
+litpool_ref(EA,EA_ldm,RefAddr,0,Size,OpIndex):-
     !invalid(EA,_),
-    arch.pc_relative_addr(EA,Reg,LitPoolAddr),
+    arch.pc_relative_addr(EA,Reg,RefAddr),
     straight_line_def_used(EA,Reg,EA_ldm,_),
     instruction_get_operation(EA_ldm,Operation),
     contains("LDM",Operation),
@@ -672,13 +686,14 @@ litpool_ref(EA,EA_ldm,LitPoolAddr,0,Size,OpIndex):-
 Create data block candidate for each valid literal pool.
 */
 data_block_candidate(LitPoolAddr,Size):-
-    litpool_ref(EA,_,LitPoolAddr,_,Size,_),
+    litpool_ref(EA,_,RefAddr,LitPoolOffset,Size,_),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
     code_in_block_candidate_refined(EA,_).
 
 // VLDR: label must be aligned on a word boundary within -/+1KB of the
 // current instruction.
 alignment(LitPoolAddr,4):-
-    litpool_ref(_,EA_ldr,LitPoolAddr,_,_,_),
+    litpool_ref(_,EA_ldr,LitPoolAddr,0,_,_),
     instruction_get_operation(EA_ldr,"VLDR"),
     instruction_get_dest_op(EA_ldr,_,DestReg),
     op_regdirect_contains_reg(DestReg,Reg),
@@ -686,9 +701,9 @@ alignment(LitPoolAddr,4):-
     // If Dest reg is S, one word; two words otherwise.
     arch.float_reg(Reg,Disp),
     (
-        !litpool_ref(_,_,LitPoolAddr-Disp,_,_,_)
+        !litpool_ref(_,_,LitPoolAddr-Disp,0,_,_)
         ;
-        litpool_ref(_,EA0,LitPoolAddr-Disp,_,_,_),
+        litpool_ref(_,EA0,LitPoolAddr-Disp,0,_,_),
         !instruction_get_operation(EA0,"VLDR")
     ).
 
@@ -716,7 +731,8 @@ Confidence level for each literal pool
 .decl litpool_total_confidence(LitPoolAddr:address, Confidence:number)
 
 litpool_total_confidence(LitPoolAddr,Total):-
-    litpool_ref(_,_,LitPoolAddr,_,_,_),
+    litpool_ref(_,_,RefAddr,LitPoolOffset,_,_),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
     Total = sum X:{litpool_confidence(_,LitPoolAddr,X,_)}.
 
 /**
@@ -725,7 +741,8 @@ Give more points to the literal pool (data) and the ref block (code)
 when it is more likely to be an actual literal pool.
 */
 block_points(Block,"code",0,Confidence-2,cat("litpool ref block: ",Reason)):-
-    litpool_ref(EA,_,LitPoolAddr,_,_,_),
+    litpool_ref(EA,_,RefAddr,LitPoolOffset,_,_),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
     code_in_block_candidate_refined(EA,Block),
     litpool_confidence(EA,LitPoolAddr,Confidence,Reason),
     Confidence > 2.
@@ -755,7 +772,8 @@ code_to_litpool_ref_point_transfer("must-fallthrough",0).
 block_points(LitPoolAddr,"data",0,Points,cat("litpool: ",Reason)):-
     block_points(Block,"code",0,Points0,Reason),
     code_to_litpool_ref_point_transfer(Reason,Adjust),
-    litpool_ref(EA,_,LitPoolAddr,_,_,_),
+    litpool_ref(EA,_,RefAddr,LitPoolOffset,_,_),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
     code_in_block_candidate_refined(EA,Block),
     Points = Points0 + Adjust,
     Points > 0.
@@ -784,7 +802,8 @@ Give more points in case of ldr/ldrd or adr/ldrd, which is likely a valid
 instruction sequence.
 */
 litpool_confidence(EA,LitPoolAddr,Confidence,"ldr/ldrd"):-
-    litpool_ref(EA,EA_ldr,LitPoolAddr,_,_,_),
+    litpool_ref(EA,EA_ldr,RefAddr,LitPoolOffset,_,_),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
     straight_line_def_used(EA_ldr,_,EA_ldrd,_),
     instruction_get_operation(EA_ldrd,Operation),
     contains("LDRD",Operation),
@@ -807,7 +826,8 @@ data_block_candidate(LitPoolAddr,Pt_size*2):-
 If the ref block is not overlapping, it is likely a true literal pool.
 */
 litpool_confidence(EA,LitPoolAddr,Confidence,"ref by non-overlapping block"):-
-    litpool_ref(EA,_,LitPoolAddr,_,_,_),
+    litpool_ref(EA,_,RefAddr,LitPoolOffset,_,_),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
     code_in_block_candidate_refined(EA,Block),
     !block_is_overlapping(Block,"code"),
     Confidence = 12.
@@ -818,7 +838,8 @@ overlapping, give 1 point.
 */
 litpool_confidence(EA,LitPoolAddr,Confidence,"not overlapping"),
 block_points(Block,"code",0,Confidence,"litpool ref block: not overlapping"):-
-    litpool_ref(EA,_,LitPoolAddr,_,_,_),
+    litpool_ref(EA,_,RefAddr,LitPoolOffset,_,_),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
     code_in_block_candidate_refined(EA,Block),
     block_is_overlapping(Block,"code"),
     !overlap_with_litpool(Block),
@@ -832,7 +853,8 @@ it is likely a literal pool.
 NOTE: We can't use `def_used` here.
 */
 litpool_confidence(EA,LitPoolAddr,Confidence,"loaded register used somewhere"):-
-    litpool_ref(EA,EA_ldr,LitPoolAddr,_,_,_),
+    litpool_ref(EA,EA_ldr,RefAddr,LitPoolOffset,_,_),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
     code_in_block_candidate_refined(EA,Block),
     block_is_overlapping(Block,"code"),
     !overlap_with_litpool(Block),
@@ -848,7 +870,8 @@ Note that the use of r may not be explicit when r is only used as an argument
 of a function call.
 */
 litpool_confidence(EA,LitPoolAddr,Confidence,"possibly register param"):-
-    litpool_ref(EA,EA_ldr,LitPoolAddr,_,_,_),
+    litpool_ref(EA,EA_ldr,RefAddr,LitPoolOffset,_,_),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
     code_in_block_candidate_refined(EA,Block),
     block_is_overlapping(Block,"code"),
     !overlap_with_litpool(Block),
@@ -865,7 +888,8 @@ If there are multiple litpool references in a block, it is likely a real code.
 */
 litpool_confidence(EA,LitPoolAddr,1,"multiple litpool refs in a block"),
 block_points(Block,"code",0,1,"multiple litpool refs in a block"):-
-    litpool_ref(EA,_,LitPoolAddr,_,_,_),
+    litpool_ref(EA,_,RefAddr,LitPoolOffset,_,_),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
     code_in_block_candidate_refined(EA,Block),
     Count = count :{
         code_in_block_candidate_refined(EA2,Block),
@@ -883,7 +907,8 @@ register, if the instruction appears to be a valid VLDR, it is likely a
 literal.
 */
 litpool_confidence(EA,LitPoolAddr,Confidence,"valid VLDR"):-
-    litpool_ref(EA,EA_ldr,LitPoolAddr,_,Size,_),
+    litpool_ref(EA,EA_ldr,RefAddr,LitPoolOffset,Size,_),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
     code_in_block_candidate_refined(EA,Block),
     block_is_overlapping(Block,"code"),
     !straight_line_def_used(EA_ldr,_,_,_),
@@ -901,7 +926,8 @@ Even if the ref block is overlapping, if it contains a plausible instruction
 sequence, it is likely a true literal pool.
 */
 block_points(LitPoolAddr,"data",0,Confidence,"arm: litpool: ref by block containing plausible instr seq"):-
-    litpool_ref(EA,_,LitPoolAddr,_,_,_),
+    litpool_ref(EA,_,RefAddr,LitPoolOffset,_,_),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
     code_in_block_candidate_refined(EA,Block),
     block_is_overlapping(Block,"code"),
     !overlap_with_litpool(Block),
@@ -914,31 +940,32 @@ Check if there's another literal pool before or after this one.
 */
 block_points(Block,"code",0,Points,"arm: litpool ref block: consecutive literal pools"),
 block_points(LitPoolAddr,"data",0,Points,"arm: litpool: consecutive literal pools"):-
-    litpool_ref(EA,_,LitPoolAddr,_,Size,_),
+    litpool_ref(EA,_,RefAddr,LitPoolOffset,Size,_),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
     code_in_block_candidate_refined(EA,Block),
     block_is_overlapping(Block,"code"),
     !overlap_with_litpool(Block),
     (Size2 = 4; Size2 = 8),
     (
         // There is a literal pool before this one.
-        litpool_ref(_,_,LitPoolAddr-Size2,_,Size2,_),
+        litpool_ref(_,_,LitPoolAddr-Size2-as(Offset2,address),Offset2,Size2,_),
         litpool_total_confidence(LitPoolAddr-Size2,Confidence),
         Confidence > 1,
         (
             // There is no literal pool after this one.
-            !litpool_ref(_,_,LitPoolAddr+Size,_,_,_),
+            !litpool_ref(_,_,LitPoolAddr+Size,0,_,_),
             Points = 1
             ;
             // There is a literal pool after this one.
-            litpool_ref(_,_,LitPoolAddr+Size,_,_,_),
+            litpool_ref(_,_,LitPoolAddr+Size-as(Offset1,address),Offset1,_,_),
             litpool_total_confidence(LitPoolAddr+Size,Confidence2),
             Confidence2 > 2,
             Points = 3
         )
         ;
         // There is no literal pool before this one, but, there is one after.
-        !litpool_ref(_,_,LitPoolAddr-Size2,_,_,_),
-        litpool_ref(_,_,LitPoolAddr+Size,_,_,_),
+        !litpool_ref(_,_,LitPoolAddr-Size2-as(Offset2,address),Offset2,_,_),
+        litpool_ref(_,_,LitPoolAddr+Size-as(Offset2,address),Offset2,_,_),
         litpool_total_confidence(LitPoolAddr+Size,Confidence1),
         Confidence1 > 1,
         Points = 1
@@ -952,7 +979,8 @@ data_block_candidate(Block,Size):-
 If litpool overlaps with a function symbol or $t or $a, give penalty.
 */
 block_points(LitPoolAddr,"data",0,-20,"arm: litpool: overlapped with code symbol"):-
-    litpool_ref(_,_,LitPoolAddr,_,_,_),
+    litpool_ref(_,_,RefAddr,LitPoolOffset,_,_),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
     symbol(LitPoolAddr,_,_,_,_,_,_,_,Name),
     (thumb_sym(Name); arm_sym(Name)).
 
@@ -1028,7 +1056,8 @@ data_block_candidate(Block,End-Block):-
     !arm_jump_table_candidate(_,Block,_,_,_,_,_,_,_),
     ascii_string(Block,End),
     address_in_data(LitPoolAddr,Block),
-    litpool_ref(EA,EA_ldr,LitPoolAddr,_,_,_),
+    litpool_ref(EA,EA_ldr,RefAddr,LitPoolOffset,_,_),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
     arch.load(EA_ldr,_,_,Reg,_,_,_,_),
     code_in_block_candidate(EA,Block2),
     code_in_block_candidate(CallEA,Block2),

@@ -92,7 +92,7 @@ symbolic_operand_candidate(EA_hi,1,Dest,Type):-
     (
         code(Dest), Type="code"
         ;
-        !litpool_ref(_,_,Dest,_,_,_),
+        !litpool_ref(_,_,Dest,0,_,_),
         data_segment(Begin,End),
         Dest >= Begin, Dest <= End,
         Type = "data"
@@ -281,15 +281,17 @@ data_object_candidate(LitPoolAddr,Size,"symbol-symbol"):-
 
 data_object_point(EA,Size,"symbol",5,"arm literal pool"),
 data_object_candidate(LitPoolAddr,Size,"symbol"):-
-    litpool_ref(EA,_,LitPoolAddr,_,Size,_),
-    symbolic_operand_candidate(EA,_,LitPoolAddr,_),
+    litpool_ref(EA,_,RefAddr,LitPoolOffset,Size,_),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
+    symbolic_operand_candidate(EA,_,RefAddr,_),
     !symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,_,_,_,_,_,_,_,_).
 
-
-symbolic_operand_candidate(EA,OpIndex,Addr,"data"):-
+// TODO: It can't guarantee that it's data.
+symbolic_operand_candidate(EA,OpIndex,RefAddr,"data"):-
     code(EA),
-    litpool_ref(EA,_,Addr,_,_,OpIndex),
-    !function_symbol(as(Addr,address),_).
+    litpool_ref(EA,_,RefAddr,LitPoolOffset,_,OpIndex),
+    LitPoolAddr = RefAddr+as(LitPoolOffset,address),
+    !function_symbol(LitPoolAddr,_).
 
 symbolic_operand_candidate(EA,OpIndex,Dest,Type):-
     code(EA),
