@@ -237,19 +237,6 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     data_word(Addr,Size,Val).
 
 /**
-Constant folding for bitwise operations
-*/
-value_reg(EA,DstReg,EA,"NONE",0,Val,1):-
-    instruction(EA,_,_,Operation,SrcRegOp,DstRegOp,0,0,_,_),
-    arch.bitwise_binary_operation(Operation,SrcVal,Imm,Val),
-    op_shifted(EA,_,Imm0,Operation),
-    Imm = as(Imm0,number),
-    op_regdirect_contains_reg(DstRegOp,DstReg),
-    op_regdirect_contains_reg(SrcRegOp,SrcReg),
-    straight_line_def_used(EA_def,SrcReg,EA,_),
-    value_reg(EA_def,SrcReg,EA_def,"NONE",0,SrcVal,_).
-
-/**
 Jump to the PC register: "bx pc"
 */
 direct_jump(EA,Dest):-
