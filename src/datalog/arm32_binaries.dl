@@ -215,57 +215,25 @@ invalid(EA, "arm: invalid stm/ldm"):-
     ).
 
 /**
-Map each destination register of load instruction to index and access size.
-E.g.,
-    ldr Reg, [...]
-    => ldr_dest_reg_info(EA,Reg,1,4)
-    ldrd Reg1, Reg2, [...]
-    => ldr_dest_reg_info(EA,Reg1,1,4)
-       ldr_dest_reg_info(EA,Reg2,2,4)
-    ldm R, {Reg1,...,RegN}
-    => ldr_dest_reg_info(EA,Reg1,1,4)
-       ldr_dest_reg_info(EA,RegN,N,4)
-*/
-.decl ldr_dest_reg_info(EA:address,Reg:register,Index:unsigned,AccessSize:unsigned)
-
-ldr_dest_reg_info(EA,Reg,1,4):-
-    instruction(EA,_,_,Operation,_,_,SrcRegOp1,0,_,_),
-    substr(Operation,0,4) = "LDRD",
-    op_regdirect_contains_reg(SrcRegOp1,Reg).
-
-ldr_dest_reg_info(EA,Reg,2,4):-
-    instruction(EA,_,_,Operation,SrcRegOp2,_,_,0,_,_),
-    substr(Operation,0,4) = "LDRD",
-    op_regdirect_contains_reg(SrcRegOp2,Reg).
-
-ldr_dest_reg_info(EA,Reg,Index,4):-
-    instruction_get_operation(EA,Operation),
-    substr(Operation,0,3) = "LDM",
-    instruction_get_dest_op(EA,_,RegBitFieldOp),
-    op_register_bitfield(RegBitFieldOp,Index,RegIn),
-    reg_map(RegIn,Reg).
-
-ldr_dest_reg_info(EA,Reg,1,Size):-
-    instruction_get_operation(EA,Operation),
-    instruction(EA,_,_,Operation,_,SrcRegOp,0,_,_,_),
-    arch.load_operation(Operation),
-    substr(Operation,0,4) != "LDRD",
-    substr(Operation,0,3) != "LDM",
-    op_regdirect_contains_reg(SrcRegOp,Reg),
-    arch.data_access_size(Operation,Reg,Size).
-
-/**
 Compute the value loaded from a literal pool.
   - ldr Reg, [BaseReg, Offset]
   - ldrd Reg1, Reg2, [BaseReg, Offset]
   - ldm BaseReg, {Reg1,...,RegN}
 */
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
-    litpool_ref(_,EA,LitPoolAddr,Offset,_,_),
-    ldr_dest_reg_info(EA,Reg,RegIndex,Size),
+    litpool_ref(_,EA,LitPoolAddr,LitPoolOffset,_,_),
+    arch.load(EA,_,_,Reg,_,_,_,RegOffset),
     track_register(Reg),
-    Addr = LitPoolAddr + (RegIndex - 1) * 4 + as(Offset,address),
+    Addr = LitPoolAddr + as(LitPoolOffset + RegOffset,address),
     !relocation(Addr,_,_,_,_,_,_),
+    instruction_get_operation(EA,Operation),
+    (
+        substr(Operation,0,4) = "LDRD", Size = 4;
+        substr(Operation,0,3) = "LDM", Size = 4;
+        substr(Operation,0,4) != "LDRD",
+        substr(Operation,0,3) != "LDM",
+        arch.data_access_size(Operation,Reg,Size)
+    ),
     data_word(Addr,Size,Val).
 
 /**
