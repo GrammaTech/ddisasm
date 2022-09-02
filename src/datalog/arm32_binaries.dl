@@ -216,16 +216,14 @@ invalid(EA, "arm: invalid stm/ldm"):-
 
 /**
 Compute the value loaded from a literal pool.
-  - ldr Reg, [BaseReg, Offset]
-  - ldrd Reg1, Reg2, [BaseReg, Offset]
+  - ldr Reg, [BaseReg, Off]
+  - ldrd Reg1, Reg2, [BaseReg, Off]
   - ldm BaseReg, {Reg1,...,RegN}
 */
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     litpool_ref(_,EA,RefAddr,LitPoolOffset,_,_),
-    arch.load(EA,_,_,Reg,_,_,_,RegOffset),
+    arch.load(EA,_,_,Reg,BaseReg,_,_,RegOffset),
     track_register(Reg),
-    Addr = RefAddr + as(LitPoolOffset + RegOffset,address),
-    !relocation(Addr,_,_,_,_,_,_),
     instruction_get_operation(EA,Operation),
     (
         substr(Operation,0,4) = "LDRD", Size = 4;
@@ -234,6 +232,26 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
         substr(Operation,0,3) != "LDM",
         arch.data_access_size(Operation,Reg,Size)
     ),
+    arch.pc_reg(PC),
+    (
+        BaseReg = PC, substr(Operation,0,4) = "LDRD",
+        instruction(EA,_,_,_,_,_,SrcRegOp1,0,_,_),
+        op_regdirect_contains_reg(SrcRegOp1,Reg),
+        Offset = 0, UNUSED(RegOffset)
+        ;
+        BaseReg = PC, substr(Operation,0,4) = "LDRD",
+        instruction(EA,_,_,_,SrcRegOp2,_,_,0,_,_),
+        op_regdirect_contains_reg(SrcRegOp2,Reg),
+        Offset = 4, UNUSED(RegOffset)
+        ;
+        BaseReg = PC, substr(Operation,0,4) != "LDRD",
+        Offset = 0, UNUSED(RegOffset)
+        ;
+        BaseReg != PC,
+        Offset = RegOffset
+    ),
+    Addr = RefAddr + as(LitPoolOffset+Offset,address),
+    !relocation(Addr,_,_,_,_,_,_),
     data_word(Addr,Size,Val).
 
 /**
