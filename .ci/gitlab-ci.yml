@@ -667,7 +667,7 @@ public-focal-unstable:
   variables:
     JOB_NAME: debian-installer-ubuntu20
     APT_REPO: public
-    APT_REPO_CODENAME: focal
+    APT_REPO_CODENAMES: focal
     APT_REPO_COMPONENT: unstable
 
 internal-focal-unstable:
@@ -677,7 +677,7 @@ internal-focal-unstable:
   variables:
     JOB_NAME: debian-installer-ubuntu20
     APT_REPO: internal
-    APT_REPO_CODENAME: focal
+    APT_REPO_CODENAMES: focal
     APT_REPO_COMPONENT: unstable
 
 public-focal-stable:
@@ -687,7 +687,7 @@ public-focal-stable:
   variables:
     JOB_NAME: debian-installer-ubuntu20
     APT_REPO: public
-    APT_REPO_CODENAME: focal
+    APT_REPO_CODENAMES: focal
     APT_REPO_COMPONENT: stable
 
 internal-focal-stable:
@@ -697,7 +697,7 @@ internal-focal-stable:
   variables:
     JOB_NAME: debian-installer-ubuntu20
     APT_REPO: internal
-    APT_REPO_CODENAME: focal
+    APT_REPO_CODENAMES: focal
     APT_REPO_COMPONENT: stable
 
 .windows-upload: &windows-upload
