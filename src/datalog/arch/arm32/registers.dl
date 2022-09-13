@@ -98,3 +98,7 @@ float_reg(Reg,4):-
 float_reg(Reg,8):-
     Index = range(0,32,1),
     Reg = cat("D", to_string(Index)).
+
+float_reg(Reg,16):-
+    Index = range(0,16,1),
+    Reg = cat("Q", to_string(Index)).

@@ -610,6 +610,27 @@ litpool_ref(EA,R2,LitPoolAddr,Size,OpIndex):-
         UNUSED(R2)
     ).
 
+/**
+(D) ADR/VLDn
+adr r1, Label    or   add/sub r1, pc, offset
+vldn.type {dn,...}, r1
+*/
+data_block_candidate(RefAddr,AccessSize),
+litpool_ref(EA,"NONE",RefAddr,AccessSize,OpIndex):-
+    !invalid(EA,_),
+    arch.pc_relative_addr(EA,Reg,RefAddr),
+    straight_line_def_used(EA,Reg,EA_vld,_),
+    instruction_get_operation(EA_vld,Operation),
+    (
+        contains("VLD1",Operation);
+        contains("VLD2",Operation);
+        contains("VLD3",Operation);
+        contains("VLD4",Operation)
+    ),
+    arch.memory_access_aggregated(_,EA_vld,_,_,Reg,_,_,_,AccessSize),
+    instruction_immediate_offset(EA,OpIndex,_,_).
+
+
 // VLDR: label must be aligned on a word boundary within -/+1KB of the
 // current instruction.
 alignment(LitPoolAddr,4):-
