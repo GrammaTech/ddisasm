@@ -276,12 +276,11 @@ AccesSize: The size of the entire consecutive memory that the given
            instruction at EA accesses.
 */
 .decl memory_access_aggregated(AccessType:symbol,EA:address,
-    SrcOp:operand_index, DstOp:operand_index,
     BaseReg:reg_nullable,IndexReg:reg_nullable,Mult:number,Offset:number,
     AccessSize:unsigned)
 .output memory_access_aggregated
 
-memory_access_aggregated("",0,0,0,"","",0,0,0):- false.
+memory_access_aggregated("",0,"","",0,0,0):- false.
 
 /**
 Represents a load or store.

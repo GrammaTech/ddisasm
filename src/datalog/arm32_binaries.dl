@@ -627,7 +627,7 @@ litpool_ref(EA,"NONE",RefAddr,AccessSize,OpIndex):-
         contains("VLD3",Operation);
         contains("VLD4",Operation)
     ),
-    arch.memory_access_aggregated(_,EA_vld,_,_,Reg,_,_,_,AccessSize),
+    arch.memory_access_aggregated(_,EA_vld,Reg,_,_,_,AccessSize),
     instruction_immediate_offset(EA,OpIndex,_,_).
 
 
