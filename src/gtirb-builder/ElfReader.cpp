@@ -641,6 +641,9 @@ void ElfReader::buildSymbols()
     {
         resurrectSymbols();
     }
+    // Map version strings (e.g., GLIBC_2.2.5) to SymbolVersionIds
+    // Usually there's only one VersionId for each version string, but it
+    // would be possible for there to be more.
     std::map<std::string, std::set<gtirb::provisional_schema::SymbolVersionId>> VersionToIds;
     gtirb::provisional_schema::ElfSymVerDefs ElfSymVerDefinitions;
     for(LIEF::ELF::SymbolVersionDefinition &Def : Elf->symbols_version_definition())
@@ -736,8 +739,16 @@ void ElfReader::buildSymbols()
                 }
                 if(!Version)
                 {
-                    throw ElfReaderException("Could not find compatible symbol version for " + Name
-                                             + "@" + VersionStr);
+                    if(!PossibleVersions.empty())
+                    {
+                        // It's a real version, but it wasn't in .dynsym.
+                        Version = *PossibleVersions.begin();
+                    }
+                    else
+                    {
+                        throw ElfReaderException("Could not find compatible symbol version for "
+                                                 + Name + "@" + VersionStr);
+                    }
                 }
             }
             else
