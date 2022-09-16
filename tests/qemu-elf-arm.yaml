@@ -75,6 +75,15 @@ tests:
       <<: *assembly-build
       flags: ["-no-pie"]
 
+  - name: ex_movw_movt
+    <<: *assembly
+    reassemble:
+      compiler: "arm-linux-gnueabihf-gcc"
+      flags: ["-no-pie"]
+    build:
+      <<: *assembly-build
+      flags: ["-no-pie"]
+
   - name: ex_setend
     <<: *assembly
 
