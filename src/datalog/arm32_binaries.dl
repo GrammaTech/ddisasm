@@ -601,7 +601,7 @@ Offset: This is for handling the ADR/LDR case:
           ldr Reg, [BaseReg, Offset]
         For other cases, Offset is 0.
         The actual literal pool address would be `RefAddr + Offset`.
-Size:   The whole size of the literal pool block accessed by the instruction
+Size:   The whole size of the literal pool entry accessed by the instruction
         at EA_ldr:
         E.g., 1 for LDRB
               2 for LDRH
