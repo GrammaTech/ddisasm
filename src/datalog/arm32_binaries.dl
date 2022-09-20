@@ -620,52 +620,29 @@ OpIndex: The index of operand for literal-pool label.
 ldr Reg, [pc, off]   or   ldrd Reg1, Reg2, [pc, off]
 */
 litpool_ref(EA,EA,RefAddr,0,Size,OpIndex):-
-    !invalid(EA,_),
-    instruction_get_operation(EA,Operation),
-    arch.load_operation(Operation),
-    (
-        substr(Operation,0,4) != "LDRD",
-        arch.memory_access(_,EA,OpIndex,_,Reg1,PC,_,_,Off),
-        !arch.pc_reg(Reg1)
-        ;
-        substr(Operation,0,4) = "LDRD",
-        arch.memory_access(_,EA,OpIndex,_,Reg1,PC,_,_,Off),
-        arch.memory_access(_,EA,OpIndex,_,Reg2,PC,_,_,Off+4),
-        !arch.pc_reg(Reg1),
-        !arch.pc_reg(Reg2)
-    ),
     arch.pc_reg(PC),
-    arch.pc_relative_disp(EA,PCRelDisp),
+    arch.load(EA,_,_,Reg,PC,_,_,Offset),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,Offset-4),
+    instruction_memory_access_size(EA,OpIndex,Size),
+    arch.pc_relative_disp(EA,Disp),
     align_addr(EA_aligned,EA),
-    Addr = EA_aligned + as(Off,address) + as(PCRelDisp,address),
-    RefAddr = as(Addr,address),
-    arch.data_access_size(Operation,Reg1,Size).
+    RefAddr = EA_aligned + as(Disp+Offset,address),
+    !arch.pc_reg(Reg).
 
 /**
 (B) ADR/LDR or ADR/LDRD
 adr BaseReg, Label    or   add/sub BaseReg, pc, off
 ldr Reg1, [BaseReg, Offset]  or ldrd Reg1, Reg2, [BaseReg, Offset]
 */
-litpool_ref(EA,EA_ldr,RefAddr,Offset,AccessSize,OpIndex):-
-    !invalid(EA,_),
+litpool_ref(EA,EA_ldr,RefAddr,Offset,Size,OpIndex):-
     arch.pc_relative_addr(EA,BaseReg,RefAddr),
     instruction_immediate_offset(EA,OpIndex,_,_),
     straight_line_def_used(EA,BaseReg,EA_ldr,_),
-    instruction_get_operation(EA_ldr,Operation),
-    (
-        substr(Operation,0,4) != "LDRD",
-        arch.memory_access(_,EA_ldr,_,_,Reg1,BaseReg,"NONE",_,Offset),
-        !arch.pc_reg(Reg1)
-        ;
-        substr(Operation,0,4) = "LDRD",
-        arch.memory_access(_,EA_ldr,_,_,Reg1,BaseReg,"NONE",_,Offset),
-        arch.memory_access(_,EA_ldr,_,_,Reg2,BaseReg,"NONE",_,Offset+4),
-        !arch.pc_reg(Reg1),
-        !arch.pc_reg(Reg2)
-    ),
-    arch.pc_reg(PC),
-    BaseReg != PC,
-    arch.data_access_size(Operation,Reg1,AccessSize).
+    arch.load(EA_ldr,_,_,Reg1,BaseReg,_,_,Offset),
+    !arch.memory_access(_,EA_ldr,_,_,_,_,_,_,Offset-4),
+    instruction_memory_access_size(EA_ldr,_,Size),
+    !arch.pc_reg(Reg1),
+    !arch.pc_reg(BaseReg).
 
 /**
 (C) ADR/LDM

@@ -45,7 +45,7 @@ other access.
 .decl instruction_memory_access_size(EA:address,Op_index:operand_index,Size:unsigned)
 
 instruction_memory_access_size(EA,Index,SizeAccess):-
-    code(EA),
+    !invalid(EA,_),
     instruction_get_operation(EA,Operation),
     instruction_get_op(EA,Index,Op),
     op_indirect(Op,_,_,_,_,_,Size),
