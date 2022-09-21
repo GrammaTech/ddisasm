@@ -48,7 +48,7 @@ public:
     {
         if(auto* Relation = Program->getRelation(Name))
         {
-            for(const auto Element : Data)
+            for(const auto& Element : Data)
             {
                 souffle::tuple Row(Relation);
                 Row << Element;

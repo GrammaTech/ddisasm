@@ -342,6 +342,17 @@ basic_target(Val):-
     !data_sym(Name).
 
 /**
+Either movw r, #N or movt r, #N
+*/
+.decl movw_movt(EA:address,Reg:register,Val:number,Operation:symbol)
+
+movw_movt(EA,Reg,Val,Operation):-
+    instruction(EA,_,_,Operation,ImmOp,RegOp,0,_,_,_),
+    op_regdirect_contains_reg(RegOp,Reg),
+    op_immediate(ImmOp,Val),
+    (Operation = "MOVW"; Operation = "MOVT").
+
+/**
 E.g., EA_movw: movw reg, N
       EA_movt: movt reg, M
    => reg's Value = N | (M << 16)
@@ -356,22 +367,17 @@ movw_movt_pair(EA_movw,EA_movt,Value):-
         next(EA_movw,EA_movt)
         ;
         next(EA_movw,EA_temp),
-        next(EA_temp,EA_movt)
+        next(EA_temp,EA_movt),
+        !movw_movt(EA_temp,Reg,_,"MOVW")
         ;
         next(EA_movw,EA_temp1),
         next(EA_temp1,EA_temp2),
-        next(EA_temp2,EA_movt)
+        next(EA_temp2,EA_movt),
+        !movw_movt(EA_temp1,Reg,_,"MOVW"),
+        !movw_movt(EA_temp2,Reg,_,"MOVW")
     ),
-    instruction_get_operation(EA_movt,"MOVT"),
-    instruction_get_op(EA_movt,2,RegOp2),
-    op_regdirect_contains_reg(RegOp2,Reg),
-    instruction_get_op(EA_movw,2,RegOp),
-    op_regdirect_contains_reg(RegOp,Reg),
-    // Compute the value
-    instruction_get_op(EA_movw,1,Op),
-    op_immediate(Op,Low),
-    instruction_get_op(EA_movt,1,Op2),
-    op_immediate(Op2,High),
+    movw_movt(EA_movw,Reg,Low,"MOVW"),
+    movw_movt(EA_movt,Reg,High,"MOVT"),
     Value = (High*2^16) bor Low.
 
 /**

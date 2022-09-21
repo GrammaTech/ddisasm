@@ -40,6 +40,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <gtirb/gtirb.hpp>
+#include <gtirb_pprinter/Fixup.hpp>
 #include <gtirb_pprinter/PeBinaryPrinter.hpp>
 #include <gtirb_pprinter/PrettyPrinter.hpp>
 
@@ -235,7 +236,6 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    gtirb_pprint::PrettyPrinter pprinter;
     bool HasPE = false;
     auto Modules = GTIRB->IR->modules();
     unsigned int ModuleCount = std::distance(std::begin(Modules), std::end(Modules));
@@ -378,60 +378,6 @@ int main(int argc, char **argv)
         Module.removeAuxData<gtirb::schema::Relocations>();
         Module.removeAuxData<gtirb::schema::SectionIndex>();
 
-        // Pretty-print
-        if(vm.count("debug") != 0)
-        {
-            pprinter.setListingMode("debug");
-        }
-
-        if(vm.count("keep-functions") != 0)
-        {
-            for(auto keep : vm["keep-functions"].as<std::vector<std::string>>())
-            {
-                pprinter.symbolPolicy().keep(keep);
-            }
-        }
-
-        fs::path AsmPath;
-        std::ofstream AsmFileStream;
-        bool UseStdout = true;
-        if(vm.count("asm") != 0)
-        {
-            std::string name = vm["asm"].as<std::string>();
-            if(name != "-")
-            {
-                AsmPath = name;
-            }
-        }
-
-        if(!AsmPath.empty())
-        {
-            // If there are multiple modules, use the asm argument as a directory.
-            // Each module will get its own .s file.
-            if(ModuleCount > 1)
-            {
-                fs::create_directories(AsmPath);
-                std::string name = Module.getName();
-
-                // Strip ".o" extension if it exists.
-                if(name.compare(name.size() - 2, 2, ".o") == 0)
-                {
-                    name.erase(name.size() - 2);
-                }
-                AsmPath /= name + ".s";
-            }
-            AsmFileStream.open(AsmPath.string());
-            UseStdout = false;
-        }
-
-        if(vm.count("asm") != 0 || (vm.count("ir") == 0 && vm.count("json") == 0))
-        {
-            std::cerr << "Printing assembler" << std::flush;
-            auto StartPrinting = std::chrono::high_resolution_clock::now();
-            pprinter.print(UseStdout ? std::cout : AsmFileStream, *GTIRB->Context, Module);
-            printElapsedTimeSince(StartPrinting);
-        }
-
         performSanityChecks(Souffle->get(), vm.count("self-diagnose") != 0);
 
         if(Module.getFileFormat() == gtirb::FileFormat::PE)
@@ -470,6 +416,8 @@ int main(int argc, char **argv)
         }
     }
 
+    gtirb_pprint::PrettyPrinter pprinter;
+
     // Output PE-specific build artifacts.
     if(HasPE)
     {
@@ -482,6 +430,76 @@ int main(int argc, char **argv)
         {
             gtirb_bprint::PeBinaryPrinter BP(pprinter, {}, {});
             BP.resources(*GTIRB->IR, *GTIRB->Context);
+        }
+    }
+
+    // Pretty-print
+    if(vm.count("asm") != 0 || (vm.count("ir") == 0 && vm.count("json") == 0))
+    {
+        std::string ListingMode = vm.count("debug") != 0 ? "debug" : "";
+        for(auto &Module : Modules)
+        {
+            const std::string &format = gtirb_pprint::getModuleFileFormat(Module);
+            const std::string &isa = gtirb_pprint::getModuleISA(Module);
+            const std::string &syntax =
+                gtirb_pprint::getDefaultSyntax(format, isa, ListingMode).value_or("");
+            auto target = std::make_tuple(format, isa, syntax);
+            pprinter.setTarget(std::move(target));
+
+            // Apply pre-print transforms provided by the pretty-printer library.
+            // This MODIFIES the GTIRB, so it's important to do this *after*
+            // writing the GTIRB output to disk if we're doing both.
+            gtirb_pprint::applyFixups(*GTIRB->Context, Module, pprinter);
+
+            if(vm.count("debug") != 0)
+            {
+                pprinter.setListingMode("debug");
+            }
+
+            if(vm.count("keep-functions") != 0)
+            {
+                for(auto keep : vm["keep-functions"].as<std::vector<std::string>>())
+                {
+                    pprinter.symbolPolicy().keep(keep);
+                }
+            }
+
+            fs::path AsmPath;
+            std::ofstream AsmFileStream;
+            bool UseStdout = true;
+            if(vm.count("asm") != 0)
+            {
+                std::string name = vm["asm"].as<std::string>();
+                if(name != "-")
+                {
+                    AsmPath = name;
+                }
+            }
+
+            if(!AsmPath.empty())
+            {
+                // If there are multiple modules, use the asm argument as a directory.
+                // Each module will get its own .s file.
+                if(ModuleCount > 1)
+                {
+                    fs::create_directories(AsmPath);
+                    std::string name = Module.getName();
+
+                    // Strip ".o" extension if it exists.
+                    if(name.compare(name.size() - 2, 2, ".o") == 0)
+                    {
+                        name.erase(name.size() - 2);
+                    }
+                    AsmPath /= name + ".s";
+                }
+                AsmFileStream.open(AsmPath.string());
+                UseStdout = false;
+            }
+
+            std::cerr << "Printing assembler" << std::flush;
+            auto StartPrinting = std::chrono::high_resolution_clock::now();
+            pprinter.print(UseStdout ? std::cout : AsmFileStream, *GTIRB->Context, Module);
+            printElapsedTimeSince(StartPrinting);
         }
     }
 

@@ -94,7 +94,8 @@ jobs:
           echo "deb https://download.grammatech.com/gtirb/files/apt-repo ${{ matrix.os }} unstable" >> /etc/apt/sources.list
           apt-get update
           apt-get -y install libcapstone-dev=1:5.0.0-gtdev libgtirb libgtirb-dev libgtirb-pprinter libgtirb-pprinter-dev gtirb-pprinter
-          pip3 install gtirb
+          export GTIRB_VERSION=$(dpkg -s libgtirb | grep 'Version:' | grep -Po '[\d\.]+')
+          pip3 install https://download.grammatech.com/gtirb/files/python/gtirb-${GTIRB_VERSION}.dev0-py3-none-any.whl
       # Checkout
       - name: Checkout repository
         uses: actions/checkout@v3

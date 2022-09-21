@@ -77,7 +77,9 @@ RUN apt-get -y update \
       python3 \
       git
 
-RUN git clone --depth 1 https://github.com/GrammaTech/gtirb /usr/local/src/gtirb
+ARG GTIRB_BRANCH=master
+ARG GTIRB_CACHE_KEY
+RUN git clone --depth=1 -b $GTIRB_BRANCH https://github.com/GrammaTech/gtirb /usr/local/src/gtirb
 RUN cmake -DGTIRB_JAVA_API=OFF -DGTIRB_CL_API=OFF /usr/local/src/gtirb -B/usr/local/src/gtirb/build
 RUN cmake --build /usr/local/src/gtirb/build -j4 --target all install
 
@@ -109,7 +111,9 @@ RUN wget https://download.grammatech.com/gtirb/files/apt-repo/pool/unstable/libc
 COPY --from=gtirb /usr/local/lib /usr/local/lib
 COPY --from=gtirb /usr/local/include /usr/local/include
 
-RUN git clone --depth 1 https://github.com/GrammaTech/gtirb-pprinter /usr/local/src/gtirb-pprinter
+ARG GTIRB_PPRINTER_BRANCH=master
+ARG GTIRB_PPRINTER_CACHE_KEY
+RUN git clone --depth 1 -b $GTIRB_PPRINTER_BRANCH https://github.com/GrammaTech/gtirb-pprinter /usr/local/src/gtirb-pprinter
 RUN cmake /usr/local/src/gtirb-pprinter -B/usr/local/src/gtirb-pprinter/build
 RUN cmake --build /usr/local/src/gtirb-pprinter/build -j4 --target all install
 
@@ -172,11 +176,11 @@ FROM ubuntu:20.04
 COPY --from=ddisasm /lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0 /lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0
 COPY --from=ddisasm /lib/x86_64-linux-gnu/libboost_program_options.so.1.71.0 /lib/x86_64-linux-gnu/libboost_program_options.so.1.71.0
 COPY --from=ddisasm /lib/libcapstone.so.5 /lib/libcapstone.so.5
-COPY --from=ddisasm /lib/x86_64-linux-gnu/libgomp.so.1 /lib/x86_64-linux-gnu/libgomp.so.1
-COPY --from=ddisasm /usr/local/lib/libgtirb.so.* /usr/local/lib/
-COPY --from=ddisasm /usr/local/lib/libgtirb_layout.so.* /usr/local/lib/
-COPY --from=ddisasm /usr/local/lib/libgtirb_pprinter.so.* /usr/local/lib/
-COPY --from=ddisasm /lib/x86_64-linux-gnu/libprotobuf.so.17 /lib/x86_64-linux-gnu/libprotobuf.so.17
+COPY --from=ddisasm /lib/x86_64-linux-gnu/libgomp.so* /lib/x86_64-linux-gnu/
+COPY --from=ddisasm /usr/local/lib/libgtirb.so* /usr/local/lib/
+COPY --from=ddisasm /usr/local/lib/libgtirb_layout.so* /usr/local/lib/
+COPY --from=ddisasm /usr/local/lib/libgtirb_pprinter.so* /usr/local/lib/
+COPY --from=ddisasm /lib/x86_64-linux-gnu/libprotobuf.so* /lib/x86_64-linux-gnu/
 COPY --from=ddisasm /usr/local/bin/ddisasm /usr/local/bin/
 COPY --from=ddisasm /usr/local/bin/gtirb* /usr/local/bin/
 

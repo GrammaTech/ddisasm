@@ -208,6 +208,7 @@ fun:
             b .L_607
 .arm
 .L_5e9:
+            nop
 
             ldr r0, [r7, #4]
             bl two
