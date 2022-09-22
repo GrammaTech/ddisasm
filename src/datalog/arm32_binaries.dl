@@ -560,8 +560,7 @@ block_points(Block,"code",0,1,"arm: better fit after literal pool"):-
         block_candidate_boundaries(BlockPred,"code",_,Beg),
         (Block band 1) != (BlockPred band 1)
     ),
-    litpool_addr(LitPoolAddr,Size),
-    LitPoolAddr + Size = Beg.
+    litpool_boundaries(LitPoolAddr,Beg).
 
 /**
 Similarly to the above rule, if the enclosed Thumb instruction does not have
@@ -622,7 +621,7 @@ ldr Reg, [pc, off]   or   ldrd Reg1, Reg2, [pc, off]
 litpool_ref(EA,EA,RefAddr,0,Size,OpIndex):-
     arch.pc_reg(PC),
     arch.load(EA,_,_,Reg,PC,_,_,Offset),
-    !arch.memory_access(_,EA,_,_,_,_,_,_,Offset-4),
+    !arch.memory_access("LOAD",EA,_,_,_,_,_,_,Offset-4),
     instruction_memory_access_size(EA,OpIndex,Size),
     arch.pc_relative_disp(EA,Disp),
     align_addr(EA_aligned,EA),
@@ -640,7 +639,7 @@ litpool_ref(EA,EA_ldr,RefAddr,as(Offset,unsigned),Size,OpIndex):-
     straight_line_def_used(EA,BaseReg,EA_ldr,_),
     arch.load(EA_ldr,_,_,Reg1,BaseReg,_,_,Offset),
     Offset >= 0,
-    !arch.memory_access(_,EA_ldr,_,_,_,_,_,_,Offset-4),
+    !arch.memory_access("LOAD",EA_ldr,_,_,_,_,_,_,Offset-4),
     instruction_memory_access_size(EA_ldr,_,Size),
     !arch.pc_reg(Reg1),
     !arch.pc_reg(BaseReg).
@@ -668,10 +667,11 @@ litpool_ref(EA,EA_ldm,RefAddr,0,Size,OpIndex):-
 /*
 Collect all literal pool addresses computed from `litpool_ref`s.
 */
-.decl litpool_addr(LitPoolAddr:address,Size:unsigned)
+.decl litpool_boundaries(BegAddr:address,EndAddr:address)
 
-litpool_addr(RefAddr+Offset,Size):-
-    litpool_ref(_,_,RefAddr,Offset,Size,_).
+litpool_boundaries(LitPoolAddr,LitPoolAddr+Size):-
+    litpool_ref(_,_,RefAddr,Offset,Size,_),
+    LitPoolAddr = RefAddr+Offset.
 
 /**
 Create data block candidate for each valid literal pool.
@@ -722,7 +722,7 @@ Confidence level for each literal pool
 .decl litpool_total_confidence(LitPoolAddr:address, Confidence:number)
 
 litpool_total_confidence(LitPoolAddr,Total):-
-    litpool_addr(LitPoolAddr,_),
+    litpool_boundaries(LitPoolAddr,_),
     Total = sum X:{litpool_confidence(_,LitPoolAddr,X,_)}.
 
 /**
@@ -938,24 +938,24 @@ block_points(LitPoolAddr,"data",0,Points,"arm: litpool: consecutive literal pool
     (Size2 = 4; Size2 = 8),
     (
         // There is a literal pool before this one.
-        litpool_addr(LitPoolAddr-Size2,Size2),
+        litpool_boundaries(LitPoolAddr-Size2,LitPoolAddr),
         litpool_total_confidence(LitPoolAddr-Size2,Confidence),
         Confidence > 1,
         (
             // There is no literal pool after this one.
-            !litpool_addr(LitPoolAddr+Size,_),
+            !litpool_boundaries(LitPoolAddr+Size,_),
             Points = 1
             ;
             // There is a literal pool after this one.
-            litpool_addr(LitPoolAddr+Size,_),
+            litpool_boundaries(LitPoolAddr+Size,_),
             litpool_total_confidence(LitPoolAddr+Size,Confidence2),
             Confidence2 > 2,
             Points = 3
         )
         ;
         // There is no literal pool before this one, but, there is one after.
-        !litpool_addr(LitPoolAddr-Size2,_),
-        litpool_addr(LitPoolAddr+Size,_),
+        !litpool_boundaries(LitPoolAddr-Size2,_),
+        litpool_boundaries(LitPoolAddr+Size,_),
         litpool_total_confidence(LitPoolAddr+Size,Confidence1),
         Confidence1 > 1,
         Points = 1
@@ -969,7 +969,7 @@ data_block_candidate(Block,Size):-
 If litpool overlaps with a function symbol or $t or $a, give penalty.
 */
 block_points(LitPoolAddr,"data",0,-20,"arm: litpool: overlapped with code symbol"):-
-    litpool_addr(LitPoolAddr,_),
+    litpool_boundaries(LitPoolAddr,_),
     symbol(LitPoolAddr,_,_,_,_,_,_,_,Name),
     (thumb_sym(Name); arm_sym(Name)).
 
@@ -1135,7 +1135,7 @@ block_points(Block,"code",0,-9,"arm: possibly a litpool followed by a function s
         ;
         block_overlap(BlockLitPool,"data",Block,"code")
     ),
-    litpool_addr(BlockLitPool,_),
+    litpool_boundaries(BlockLitPool,_),
     must_fallthrough(EA,BlockSucc),
     Block != BlockSucc,
     function_symbol(BlockSucc,_).
@@ -1158,7 +1158,7 @@ block_points(Block,"data",0,2,"arm: pointer to string in data"):-
     arch.pointer_size(Pt_size),
     // The string does not overlap with a possible literal pool.
     align_addr(Addr_aligned,Addr),
-    !litpool_addr(Addr_aligned,_).
+    !litpool_boundaries(Addr_aligned,_).
 
 /**
 On top of the above, if there's another string nearby, give more points.
@@ -1168,7 +1168,7 @@ block_points(Block,"data",0,3,"arm: pointer to string adjacent to another string
     ascii_string(Addr,End),
     // The string does not overlap with a possible literal pool.
     align_addr(Addr_aligned,Addr),
-    !litpool_addr(Addr_aligned,_),
+    !litpool_boundaries(Addr_aligned,_),
     (
         ascii_string(_,Addr), UNUSED(End)
         ;

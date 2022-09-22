@@ -286,7 +286,6 @@ data_object_candidate(LitPoolAddr,Size,"symbol"):-
     symbolic_operand_candidate(EA,_,RefAddr,_),
     !symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,_,_,_,_,_,_,_,_).
 
-// TODO: It can't guarantee that it's data.
 symbolic_operand_candidate(EA,OpIndex,RefAddr,"data"):-
     code(EA),
     litpool_ref(EA,_,RefAddr,LitPoolOffset,_,OpIndex),
