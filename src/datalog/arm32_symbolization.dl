@@ -291,7 +291,9 @@ symbolic_operand_candidate(EA,OpIndex,RefAddr,"data"):-
     code(EA),
     litpool_ref(EA,_,RefAddr,LitPoolOffset,_,OpIndex),
     LitPoolAddr = RefAddr+as(LitPoolOffset,address),
-    !function_symbol(LitPoolAddr,_).
+    !function_symbol(LitPoolAddr,_),
+    data_segment(Begin,End),
+    LitPoolAddr >= Begin, LitPoolAddr <= End.
 
 symbolic_operand_candidate(EA,OpIndex,Dest,Type):-
     code(EA),
@@ -368,7 +370,7 @@ symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA
     def_used(EA_ldr,Reg1,EA_add,_),
     arch.reg_reg_arithmetic_operation(EA_add,Reg1,Reg1,Reg2,1,0),
 
-    // e.g., adr reg1, Base
+    // e.g., adr reg2, Base
     def_used(EA_adr,Reg2,EA_add,_),
     arch.pc_relative_addr(EA_adr,Reg2,BaseAligned),
 
