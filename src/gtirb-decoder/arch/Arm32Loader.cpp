@@ -265,46 +265,46 @@ bool Arm32Loader::collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInst)
 
     int OpCount = Details.op_count;
     int regBitFieldInitIdx = regBitFieldInitialIndex(CsInst);
-    int regBitFieldFiniIdx = OpCount - 1;
     if(regBitFieldInitIdx != -1)
     {
-        std::vector<std::string> RegBitFields;
-        for(int i = 0; i < OpCount; i++)
+        int i = 0;
+        // Operands before bitfield.
+        for(; i < regBitFieldInitIdx; i++)
         {
-            // Load capstone operand.
             const cs_arm_op& CsOp = Details.operands[i];
-
-            if(VldVst.find(static_cast<arm_insn>(CsInst.id)) != VldVst.end())
+            std::optional<relations::Operand> Op = build(CsInst, CsOp);
+            if(!Op)
             {
-                // In case of VLDn or VSTn,
-                // stop collecting reg fields once a memory indirect operand
-                // is encountered.
-                if(CsOp.type == ARM_OP_MEM)
-                {
-                    assert(i != 0);
-                    regBitFieldFiniIdx = i - 1;
-                    OpndFacts.Operands.push_back(RegBitFields);
-                }
+                return false;
             }
-
-            if(i < regBitFieldInitIdx || i > regBitFieldFiniIdx)
+            OpndFacts.Operands.push_back(*Op);
+        }
+        // Bitfield operands
+        std::vector<std::string> RegBitFields;
+        for(; i < OpCount; i++)
+        {
+            const cs_arm_op& CsOp = Details.operands[i];
+            // In case of VLDn or VSTn,
+            // stop collecting reg fields once a memory indirect operand
+            // is encountered.
+            if(CsOp.type == ARM_OP_MEM)
             {
-                std::optional<relations::Operand> Op = build(CsInst, CsOp);
-                // Build operand for datalog fact.
-                if(!Op)
-                {
-                    return false;
-                }
-                OpndFacts.Operands.push_back(*Op);
+                assert(i != 0);
+                break;
             }
-            else
+            RegBitFields.push_back(registerName(CsOp.reg));
+        }
+        OpndFacts.Operands.push_back(RegBitFields);
+        // Operands after bitfields
+        for(; i < OpCount; i++)
+        {
+            const cs_arm_op& CsOp = Details.operands[i];
+            std::optional<relations::Operand> Op = build(CsInst, CsOp);
+            if(!Op)
             {
-                RegBitFields.push_back(registerName(CsOp.reg));
-                if(i == regBitFieldFiniIdx)
-                {
-                    OpndFacts.Operands.push_back(RegBitFields);
-                }
+                return false;
             }
+            OpndFacts.Operands.push_back(*Op);
         }
     }
     else if(CsInst.id == ARM_INS_IT)

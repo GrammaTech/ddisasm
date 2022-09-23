@@ -76,13 +76,9 @@ memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,"NONE",0,Offset):-
 memory_access_aggregated(AccessType,EA,Rn,"NONE",0,0,AccessSize):-
     instruction(EA,_,_,Operation,Op1,BitFieldOp,0,0,_,_),
     (
-        (contains("VLD1", Operation); contains("VLD2", Operation);
-         contains("VLD3", Operation); contains("VLD4", Operation)),
-        AccessType = "LOAD"
+        match("VLD[1-4].*",Operation), AccessType = "LOAD"
         ;
-        (contains("VST1", Operation); contains("VST2", Operation);
-         contains("VST3", Operation); contains("VST4", Operation)),
-        AccessType = "STORE"
+        match("VST[1-4].*",Operation), AccessType = "STORE"
     ),
     op_register_bitfield(BitFieldOp,MaxIndex,RtIn),
     !op_register_bitfield(BitFieldOp,MaxIndex+1,_),
@@ -96,13 +92,9 @@ memory_access_aggregated(AccessType,EA,Rn,"NONE",0,0,AccessSize):-
     instruction(EA,_,_,Operation,Op1,_,BitFieldOp,0,_,_),
     BitFieldOp != 0,
     (
-        (contains("VLD1", Operation); contains("VLD2", Operation);
-         contains("VLD3", Operation); contains("VLD4", Operation)),
-        AccessType = "LOAD"
+        match("VLD[1-4].*",Operation), AccessType = "LOAD"
         ;
-        (contains("VST1", Operation); contains("VST2", Operation);
-         contains("VST3", Operation); contains("VST4", Operation)),
-        AccessType = "STORE"
+        match("VST[1-4].*",Operation), AccessType = "STORE"
     ),
     op_register_bitfield(BitFieldOp,MaxIndex,RtIn),
     !op_register_bitfield(BitFieldOp,MaxIndex+1,_),
