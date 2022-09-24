@@ -162,6 +162,8 @@ COPY --from=gtirb-pprinter /usr/local/bin/gtirb* /usr/local/bin/
 COPY --from=gtirb-pprinter /usr/local/lib /usr/local/lib
 COPY --from=gtirb-pprinter /usr/local/include /usr/local/include
 
+# .git directory is needed to correctly generate version information
+COPY .git/ /usr/local/src/ddisasm/.git
 COPY doc/ /usr/local/src/ddisasm/doc/
 COPY src/ /usr/local/src/ddisasm/src/
 COPY README.md CMakeLists.txt CMakeLists.googletest version.txt /usr/local/src/ddisasm/
