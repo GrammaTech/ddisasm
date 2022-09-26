@@ -664,6 +664,20 @@ litpool_ref(EA,EA_ldm,RefAddr,0,Size,OpIndex):-
     Size = RegCnt * Pt_size,
     instruction_immediate_offset(EA,OpIndex,_,_).
 
+/**
+(D) ADR/VLDn
+adr r1, Label    or   add/sub r1, pc, offset
+vldn.type {dn,...}, r1
+*/
+litpool_ref(EA,EA_vld,RefAddr,0,AccessSize,OpIndex):-
+    !invalid(EA,_),
+    arch.pc_relative_addr(EA,Reg,RefAddr),
+    straight_line_def_used(EA,Reg,EA_vld,_),
+    instruction_get_operation(EA_vld,Operation),
+    match("VLD[1-4].*",Operation),
+    arch.memory_access_aggregated(_,EA_vld,Reg,_,_,_,AccessSize),
+    instruction_immediate_offset(EA,OpIndex,_,_).
+
 /*
 Collect all literal pool addresses computed from `litpool_ref`s.
 */
@@ -680,27 +694,6 @@ data_block_candidate(LitPoolAddr,Size):-
     litpool_ref(EA,_,RefAddr,LitPoolOffset,Size,_),
     LitPoolAddr = RefAddr + LitPoolOffset,
     code_in_block_candidate_refined(EA,_).
-
-/**
-(D) ADR/VLDn
-adr r1, Label    or   add/sub r1, pc, offset
-vldn.type {dn,...}, r1
-*/
-data_block_candidate(RefAddr,AccessSize),
-litpool_ref(EA,"NONE",RefAddr,AccessSize,OpIndex):-
-    !invalid(EA,_),
-    arch.pc_relative_addr(EA,Reg,RefAddr),
-    straight_line_def_used(EA,Reg,EA_vld,_),
-    instruction_get_operation(EA_vld,Operation),
-    (
-        contains("VLD1",Operation);
-        contains("VLD2",Operation);
-        contains("VLD3",Operation);
-        contains("VLD4",Operation)
-    ),
-    arch.memory_access_aggregated(_,EA_vld,Reg,_,_,_,AccessSize),
-    instruction_immediate_offset(EA,OpIndex,_,_).
-
 
 // VLDR: label must be aligned on a word boundary within -/+1KB of the
 // current instruction.
