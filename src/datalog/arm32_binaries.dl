@@ -245,7 +245,7 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
         BaseReg != PC,
         Offset = RegOffset
     ),
-    Addr = RefAddr + LitPoolOffset,
+    Addr = RefAddr + LitPoolOffset + Offset,
     !relocation(Addr,_,_,_,_,_,_),
     data_word(Addr,Size,Val).
 
