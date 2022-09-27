@@ -227,25 +227,15 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     instruction_get_operation(EA,Operation),
     instruction_memory_access_size(EA,_,OpSize),
     Size = min(OpSize,4),
-    arch.pc_reg(PC),
+    // arch.load includes PC-relative displacement in RegOffset for
+    // PC-relative loads, and litpool_ref includes it in LitPoolOffset,
+    // so we must compensate for the double-count.
     (
-        BaseReg = PC, substr(Operation,0,4) = "LDRD",
-        instruction(EA,_,_,_,_,_,SrcRegOp1,0,_,_),
-        op_regdirect_contains_reg(SrcRegOp1,Reg),
-        Offset = 0, UNUSED(RegOffset)
+        arch.pc_reg(BaseReg), arch.pc_relative_disp(EA,Adjustment)
         ;
-        BaseReg = PC, substr(Operation,0,4) = "LDRD",
-        instruction(EA,_,_,_,SrcRegOp2,_,_,0,_,_),
-        op_regdirect_contains_reg(SrcRegOp2,Reg),
-        Offset = 4, UNUSED(RegOffset)
-        ;
-        BaseReg = PC, substr(Operation,0,4) != "LDRD",
-        Offset = 0, UNUSED(RegOffset)
-        ;
-        BaseReg != PC,
-        Offset = RegOffset
+        !arch.pc_reg(BaseReg), Adjustment = 0
     ),
-    Addr = RefAddr + LitPoolOffset + Offset,
+    Addr = RefAddr + LitPoolOffset + as(RegOffset-Adjustment,unsigned),
     !relocation(Addr,_,_,_,_,_,_),
     data_word(Addr,Size,Val).
 
