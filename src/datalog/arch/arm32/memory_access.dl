@@ -90,7 +90,6 @@ memory_access_aggregated(AccessType,EA,Rn,"NONE",0,0,AccessSize):-
 
 memory_access_aggregated(AccessType,EA,Rn,"NONE",0,0,AccessSize):-
     instruction(EA,_,_,Operation,Op1,_,BitFieldOp,0,_,_),
-    BitFieldOp != 0,
     (
         match("VLD[1-4].*",Operation), AccessType = "LOAD"
         ;
