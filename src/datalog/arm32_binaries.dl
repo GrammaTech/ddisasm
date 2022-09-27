@@ -224,7 +224,6 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     litpool_ref(_,EA,RefAddr,LitPoolOffset,_,_),
     arch.load(EA,_,_,Reg,BaseReg,_,_,RegOffset),
     track_register(Reg),
-    instruction_get_operation(EA,Operation),
     instruction_memory_access_size(EA,_,OpSize),
     Size = min(OpSize,4),
     // arch.load includes PC-relative displacement in RegOffset for
