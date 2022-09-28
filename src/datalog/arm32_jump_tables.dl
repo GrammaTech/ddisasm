@@ -305,10 +305,13 @@ arm_jump_table_data_block_limit(TableStart,Limit):-
 
 arm_jump_table_data_block_limit(TableStart,EA):-
     arm_jump_table_candidate(_,TableStart,EA,_,_,_,_,_,_),
-    EA band 1 = 0,
+    // Don't generate a limit at TableStart - the jumptable must have at least
+    // one entry.
+    TableStart != EA,
+    arch.instruction_at(EA,Inst),
     (
-        direct_jump(_,EA);
-        direct_jump(_,EA bor 1)
+        direct_jump(_,Inst);
+        arm_jump_table_candidate(_,_,_,_,Inst,_,_,_,_)
     ).
 
 /**
