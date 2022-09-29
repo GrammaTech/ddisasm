@@ -248,10 +248,10 @@ void DatalogProgram::writeFacts(gtirb::Module &Module)
 
         // Construct type signature string.
         std::stringstream Type;
-        Type << "<" << std::string(Relation->getAttrType(0));
+        Type << "<" << Relation->getAttrName(0) << &Relation->getAttrType(0)[1];
         for(size_t I = 1; I < Relation->getArity(); I++)
         {
-            Type << "," << Relation->getAttrType(I);
+            Type << "," << Relation->getAttrName(I) << &Relation->getAttrType(I)[1];
         }
         Type << ">";
 
@@ -280,10 +280,10 @@ void DatalogProgram::writeRelations(gtirb::Module &Module)
 
         // Construct type signature string.
         std::stringstream Type;
-        Type << "<" << std::string(Relation->getAttrType(0));
+        Type << "<" << Relation->getAttrName(0) << &Relation->getAttrType(0)[1];
         for(size_t I = 1; I < Relation->getArity(); I++)
         {
-            Type << "," << Relation->getAttrType(I);
+            Type << "," << Relation->getAttrName(I) << &Relation->getAttrType(I)[1];
         }
         Type << ">";
 
