@@ -1465,7 +1465,7 @@ void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
     }
 }
 
-void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
+bool performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
 {
     bool error = false;
     if(selfDiagnose)
@@ -1508,11 +1508,9 @@ void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
                       << BlockKind2 << ")" << std::dec << std::endl;
         }
     }
-    if(error)
-    {
-        std::cerr << "Aborting" << std::endl;
-        exit(1);
-    }
     if(selfDiagnose && !error)
+    {
         std::cout << "Self diagnose completed: No errors found" << std::endl;
+    }
+    return error;
 }
