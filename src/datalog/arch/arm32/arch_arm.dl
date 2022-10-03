@@ -313,7 +313,6 @@ logic_operation(Operation):-
         Op = "BIC";
         Op = "EOR";
         Op = "AND";
-        Op = "XOR";
         Op = "ORR";
         Op = "TST";
         Op = "MVN"
@@ -374,6 +373,61 @@ cmp_operation(Operation):-
         Op = "TST"
     ).
 
+reg_imm_bitwise_binary_op(EA,DstReg,SrcReg,Imm,Op):-
+    instruction(EA,_,_,Operation,SrcRegOp,DstRegOp,0,0,_,_),
+    (
+        substr(Operation,0,3) = "ASR", Op = "ASR";
+        substr(Operation,0,3) = "LSR", Op = "LSR";
+        substr(Operation,0,3) = "LSL", Op = "LSL"
+    ),
+    op_regdirect_contains_reg(DstRegOp,DstReg),
+    op_regdirect_contains_reg(SrcRegOp,SrcReg),
+    op_shifted(EA,_,Imm0,_),
+    Imm = as(Imm0,number).
+
+reg_imm_bitwise_binary_op(EA,DstReg,SrcReg,Imm,Op):-
+    instruction(EA,_,_,Operation,SrcRegOp,ImmOp,DstRegOp,0,_,_),
+    (
+        substr(Operation,0,3) = "ASR", Op = "ASR";
+        substr(Operation,0,3) = "LSR", Op = "LSR";
+        substr(Operation,0,3) = "LSL", Op = "LSL";
+        substr(Operation,0,3) = "AND", Op = "AND";
+        substr(Operation,0,3) = "ORR", Op = "OR";
+        substr(Operation,0,3) = "EOR", Op = "XOR"
+    ),
+    op_regdirect_contains_reg(DstRegOp,DstReg),
+    op_regdirect_contains_reg(SrcRegOp,SrcReg),
+    op_immediate(ImmOp,Imm).
+
+reg_reg_bitwise_binary_op(EA,DstReg,SrcReg1,SrcReg2,Op):-
+    instruction(EA,_,_,Operation,SrcRegOp,DstRegOp,0,0,_,_),
+    (
+        substr(Operation,0,3) = "ASR", Op = "ASR";
+        substr(Operation,0,3) = "LSR", Op = "LSR";
+        substr(Operation,0,3) = "LSL", Op = "LSL";
+        substr(Operation,0,3) = "AND", Op = "AND";
+        substr(Operation,0,3) = "ORR", Op = "OR";
+        substr(Operation,0,3) = "EOR", Op = "XOR"
+    ),
+    op_regdirect_contains_reg(DstRegOp,DstReg),
+    op_regdirect_contains_reg(DstRegOp,SrcReg1),
+    op_regdirect_contains_reg(SrcRegOp,SrcReg2),
+    !op_shifted(EA,_,_,_).
+
+reg_reg_bitwise_binary_op(EA,DstReg,SrcReg1,SrcReg2,Op):-
+    instruction(EA,_,_,Operation,SrcRegOp1,SrcRegOp2,DstRegOp,0,_,_),
+    (
+        substr(Operation,0,3) = "ASR", Op = "ASR";
+        substr(Operation,0,3) = "LSR", Op = "LSR";
+        substr(Operation,0,3) = "LSL", Op = "LSL";
+        substr(Operation,0,3) = "AND", Op = "AND";
+        substr(Operation,0,3) = "ORR", Op = "OR";
+        substr(Operation,0,3) = "EOR", Op = "XOR"
+    ),
+    op_regdirect_contains_reg(DstRegOp,DstReg),
+    op_regdirect_contains_reg(SrcRegOp1,SrcReg1),
+    op_regdirect_contains_reg(SrcRegOp2,SrcReg2).
+
 // ADD/SUB reg, #imm (two operands: Thumb)
 reg_arithmetic_operation(EA,Reg,Reg,1,Sign*Immediate):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
@@ -418,6 +472,7 @@ reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,Sign,0):-
 
 // ADD/SUB reg, reg, reg
 reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,Sign,0):-
+    !op_shifted(EA,_,_,_),
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     (
         Operation = "ADD", Sign = 1;
