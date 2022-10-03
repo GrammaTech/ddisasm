@@ -215,8 +215,8 @@ value_reg_unsupported(EA,Reg):-
 
 // mov reg immediate
 value_reg(EA,Reg,EA,"NONE",0,Immediate,1):-
-    def_used_for_address(EA,Reg),
-    arch.move_reg_imm(EA,Reg,Immediate,_).
+    arch.move_reg_imm(EA,Reg,Immediate,_),
+    !relocation(EA,_,_,_,_,_,_).
 
 //reset a register
 value_reg(EA,Reg,EA,"NONE",0,0,1):-
@@ -269,6 +269,52 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     pc_relative_operand(EA,1,Offset),
     data_word(Offset,4,Val),
     Val >= 0.
+
+/**
+Constant folding for bitwise operations (reg op reg)
+*/
+value_reg(EA,DstReg,EA,"NONE",0,Val,Steps3):-
+    step_limit(StepLimit),
+    arch.reg_reg_bitwise_binary_op(EA,DstReg,SrcReg1,SrcReg2,Op),
+    def_used(EA_def1,SrcReg1,EA,_),
+    def_used(EA_def2,SrcReg2,EA,_),
+    value_reg(EA_def1,SrcReg1,EA_def1,"NONE",0,SrcVal1,Steps1),
+    Steps1 <= StepLimit-3,
+    value_reg(EA_def2,SrcReg2,EA_def2,"NONE",0,SrcVal2,Steps2),
+    Steps2 <= StepLimit-3,
+    (
+        Op = "ASR", Val = SrcVal1 bshr  SrcVal2;
+        // NOTE: bshru seems to produce incorrect value.
+        // For example, 0x98000000 bshru 10 => 0x3fffffffe60000
+        // For now, disable it.
+        //Op = "LSR", Val = SrcVal1 bshru SrcVal2;
+        Op = "LSL", Val = SrcVal1 bshl  SrcVal2;
+        Op = "AND", Val = SrcVal1 band  SrcVal2;
+        Op = "OR",  Val = SrcVal1 bor   SrcVal2;
+        Op = "XOR", Val = SrcVal1 bxor  SrcVal2
+    ),
+    Steps3 = max(Steps1,Steps2)+2.
+
+/**
+Constant folding for bitwise operations (reg op imm)
+*/
+value_reg(EA,DstReg,EA,"NONE",0,Val,Steps+1):-
+    step_limit(StepLimit),
+    arch.reg_imm_bitwise_binary_op(EA,DstReg,SrcReg,Imm,Op),
+    def_used(EA_def,SrcReg,EA,_),
+    value_reg(EA_def,SrcReg,EA_def,"NONE",0,SrcVal,Steps),
+    Steps <= StepLimit-1,
+    (
+        Op = "ASR", Val = SrcVal bshr  Imm;
+        // NOTE: bshru seems to produce incorrect value.
+        // For example, 0x98000000 bshru 10 => 0x3fffffffe60000
+        // For now, disable it.
+        //Op = "LSR", Val = SrcVal bshru Imm;
+        Op = "LSL", Val = SrcVal bshl  Imm;
+        Op = "AND", Val = SrcVal band  Imm;
+        Op = "OR",  Val = SrcVal bor   Imm;
+        Op = "XOR", Val = SrcVal bxor  Imm
+    ).
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // once we have the edges that relate the values of registers at different
