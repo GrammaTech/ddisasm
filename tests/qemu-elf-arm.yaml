@@ -93,6 +93,9 @@ tests:
   - name: ex_litpool
     <<: *assembly
 
+  - name: ex_vld
+    <<: *assembly
+
   - name: ex_add_as_jump
     <<: *assembly
     reassemble:
