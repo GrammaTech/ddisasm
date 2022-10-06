@@ -75,6 +75,15 @@ position-independent-cpp: &position-independent-cpp
     flags: ["-m32", "-pie"]
     skip: false
 
+assembly-position-independent: &assembly-position-independent
+  <<: *position-independent
+  path: examples/x86_32_asm_examples
+  build:
+    c: ["gcc"]
+    cpp: ["g++"]
+    flags: ["-m32", "-fpie"]
+    optimizations: [""]
+
 tests:
   # ----------------------------------------------------------------------------
   # Small C and C++ examples.
@@ -223,9 +232,15 @@ tests:
   - name: ex_struct
     <<: *position-independent
 
-  # TODO:
-  # - name: ex_switch
-  #   <<: *position-independent
+  - name: ex_switch
+    <<: *position-independent
+
+    build:
+      c: ["gcc", "clang"]
+      cpp: ["g++", "clang++"]
+      # clang Os still fails
+      optimizations: ["-O0", "-O1", "-O2", "-O3"]
+      flags: ["-m32", "-fpie"]
 
   - name: ex_uninitialized_data
     <<: *position-independent
@@ -252,3 +267,11 @@ tests:
   - name: ex1
     <<: *position-independent
     <<: *strip
+
+
+  # ----------------------------------------------------------------------------
+  # Assembly examples.
+  # ----------------------------------------------------------------------------
+
+  - name: ex_got_relative
+    <<: *assembly-position-independent
