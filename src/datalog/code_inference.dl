@@ -237,8 +237,7 @@ basic_target(Val):-
         relocation(EA,_,_,_,_,_,_)
         ;
         binary_type("EXEC"),
-        address_in_data(_,Val),
-        !impossible_jump_target(Val)
+        address_in_data(_,Val)
         ;
         entry_point(Val)
         ;

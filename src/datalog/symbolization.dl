@@ -522,7 +522,8 @@ data_object_candidate(EA,Size,"symbol-symbol"):-
 
 data_object_candidate(EA,Pt_size,"symbol"):-
     arch.pointer_size(Pt_size),
-    address_in_data_refined(EA,_).
+    address_in_data_refined(EA,Dest),
+    !impossible_jump_target(Dest).
 
 data_object_candidate(EA,Size,"string"):-
     string_candidate_refined(EA,End,_),

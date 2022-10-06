@@ -298,7 +298,6 @@ arm_jump_table_candidate(EA_jump,Reference,TableStart,EA+Size,Size,TargetAddr,Ne
     ),
     instruction(TargetAddr,_,_,_,_,_,_,_,_,_),
     !invalid(TargetAddr,_),
-    !impossible_jump_target(TargetAddr),
     (
         // The target address is less than the limit, but at some address beyond
         // the current entry. Limit the table size to that target.
@@ -394,15 +393,3 @@ jump_table_start(EA,Size,TableStart,Reference,1):-
 relative_jump_table_entry_candidate(DataEA,TableStart,Size,Reference,TargetAddr,as(Scale,number),Offset):-
     arm_jump_table_candidate(EA,Reference,TableStart,DataEA,Size,_,_,_,Scale,Offset),
     jump_table_candidate_refined(EA,DataEA,TargetAddr).
-
-impossible_jump_target(Val):-
-    possible_ea(Val),
-    arch.it_conditional(Val,IT),
-    // Make sure that the IT instruction is valid to avoid the following case:
-    // This assumption is needed to avoid the following case: e.g., zlib.O1:
-    // 1: b .L_41b1
-    // 5: ldr r3, [r6,#12]
-    // The instruction at address 3 happens to be ITTE.
-    // Although this assumes that IT instruction is not a branch target, at
-    // least this restricts false-positive cases.
-    next(_,IT).
