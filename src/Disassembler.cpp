@@ -865,6 +865,18 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
                     ConnectToBlock[&Symbol] = {&Block, false};
                     continue;
                 }
+
+                if((Module.getISA() == gtirb::ISA::ARM) && ((static_cast<uint64_t>(Addr) & 1) == 0))
+                {
+                    // If a Thumb block starts here, connect to it.
+                    // CodeBlocks still are located at +1 until shiftThumbBlocks() executes.
+                    if(auto It = Module.findCodeBlocksAt(Addr + 1); !It.empty())
+                    {
+                        gtirb::CodeBlock &Block = It.front();
+                        ConnectToBlock[&Symbol] = {&Block, false};
+                        continue;
+                    }
+                }
             }
             if(auto It = Module.findCodeBlocksOn(Addr); !It.empty())
             {
