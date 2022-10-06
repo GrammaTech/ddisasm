@@ -135,36 +135,6 @@ struct BlockInformation
     uint64_t size{0};
 };
 
-struct PLTReference
-{
-    PLTReference(gtirb::Addr ea) : EA(ea)
-    {
-    }
-
-    PLTReference(souffle::tuple &tuple)
-    {
-        assert(tuple.size() == 2);
-        tuple >> EA >> Name;
-    };
-
-    std::string Name;
-    gtirb::Addr EA{0};
-};
-
-struct BlockPoints
-{
-    BlockPoints(souffle::tuple &tuple)
-    {
-        assert(tuple.size() == 4);
-        tuple >> Address >> Predecessor >> Importance >> Why;
-    };
-
-    gtirb::Addr Address{0};
-    gtirb::Addr Predecessor{0};
-    int64_t Importance{0};
-    std::string Why;
-};
-
 template <typename T>
 using VectorByEA = boost::multi_index_container<
     T, boost::multi_index::indexed_by<boost::multi_index::ordered_non_unique<
