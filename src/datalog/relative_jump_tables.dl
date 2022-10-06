@@ -278,8 +278,8 @@ jump_table_start(EA_jump,4,TableStart,TableReference,1):-
     def_used(EA_base,_,EA_jump,_),
     reg_jump(EA_jump,Reg_jump).
 
-// add EAX,DWORD PTR [ECX+EAX*4+.L_804a008@GOTOFF]
-// jmp EAX
+// add ECX,DWORD PTR [ECX+EAX*4+.L_804a008@GOTOFF]
+// jmp ECX
 jump_table_start(EA_jump,4,TableStart,TableReference,1):-
     binary_isa("X86"),
     got_reference_pointer(TableReference),
