@@ -232,9 +232,15 @@ tests:
   - name: ex_struct
     <<: *position-independent
 
-
   - name: ex_switch
     <<: *position-independent
+
+    build:
+      c: ["gcc", "clang"]
+      cpp: ["g++", "clang++"]
+      # clang Os still fails
+      optimizations: ["-O0", "-O1", "-O2", "-O3"]
+      flags: ["-m32", "-fpie"]
 
   - name: ex_uninitialized_data
     <<: *position-independent
