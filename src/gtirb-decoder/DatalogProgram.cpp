@@ -248,12 +248,11 @@ void DatalogProgram::writeFacts(gtirb::Module &Module)
 
         // Construct type signature string.
         std::stringstream Type;
-        Type << "<" << Relation->getAttrName(0) << &Relation->getAttrType(0)[1];
+        Type << Relation->getAttrName(0) << ":" << Relation->getAttrType(0);
         for(size_t I = 1; I < Relation->getArity(); I++)
         {
-            Type << "," << Relation->getAttrName(I) << &Relation->getAttrType(I)[1];
+            Type << "," << Relation->getAttrName(I) << ":" << Relation->getAttrType(I);
         }
-        Type << ">";
 
         // Write CSV to buffer.
         std::stringstream Csv;
@@ -280,12 +279,11 @@ void DatalogProgram::writeRelations(gtirb::Module &Module)
 
         // Construct type signature string.
         std::stringstream Type;
-        Type << "<" << Relation->getAttrName(0) << &Relation->getAttrType(0)[1];
+        Type << Relation->getAttrName(0) << ":" << Relation->getAttrType(0);
         for(size_t I = 1; I < Relation->getArity(); I++)
         {
-            Type << "," << Relation->getAttrName(I) << &Relation->getAttrType(I)[1];
+            Type << "," << Relation->getAttrName(I) << ":" << Relation->getAttrType(I);
         }
-        Type << ">";
 
         // Write CSV to buffer.
         std::stringstream Csv;
