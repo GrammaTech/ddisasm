@@ -627,7 +627,8 @@ void buildCodeBlocks(gtirb::Context &Context, gtirb::Module &Module,
                 {
                     uint64_t BlockOffset = BlockAddress - *ByteInterval.getAddress();
                     gtirb::DecodeMode DecodeMode = gtirb::DecodeMode::Default;
-                    if(static_cast<uint64_t>(BlockAddress) & 1)
+                    if((static_cast<uint64_t>(BlockAddress) & 1)
+                       && (Module.getISA() == gtirb::ISA::ARM))
                     {
                         DecodeMode = gtirb::DecodeMode::Thumb;
                     }
