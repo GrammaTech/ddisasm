@@ -629,7 +629,7 @@ litpool_ref(EA,EA_ldr,RefAddr,as(Offset,unsigned),Size,OpIndex):-
     arch.pc_relative_addr(EA,BaseReg,RefAddr),
     instruction_immediate_offset(EA,OpIndex,_,_),
     straight_line_def_used(EA,BaseReg,EA_ldr,_),
-    arch.load(EA_ldr,_,_,Reg1,BaseReg,_,_,Offset),
+    arch.load(EA_ldr,_,_,Reg1,BaseReg,"NONE",_,Offset),
     Offset >= 0,
     !arch.memory_access("LOAD",EA_ldr,_,_,_,_,_,_,Offset-4),
     instruction_memory_access_size(EA_ldr,_,Size),
