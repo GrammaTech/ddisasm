@@ -388,6 +388,9 @@ def disassemble_reassemble_test(
                     gtirb_errors += check_gtirb.check_cfg(module)
 
                 gtirb_errors += check_gtirb.check_main_is_code(module)
+                gtirb_errors += check_gtirb.check_decode_mode_matches_arch(
+                    module
+                )
 
                 asm_db.upload(
                     os.path.basename(make_dir),

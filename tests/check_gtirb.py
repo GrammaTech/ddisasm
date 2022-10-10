@@ -202,6 +202,32 @@ def check_main_is_code(module: gtirb.Module) -> int:
     return error_count
 
 
+def check_decode_mode_matches_arch(module: gtirb.Module) -> int:
+    """
+    Ensure a GTIRB only uses DecodeMode values that match the architecture
+
+    Returns the number of errors found.
+    """
+    error_count = 0
+
+    # if a new mode is added, we will raise a KeyError unless it is added
+    # to this dictionary.
+    mode_to_arch = {
+        gtirb.CodeBlock.DecodeMode.Thumb: gtirb.module.Module.ISA.ARM
+    }
+
+    for block in module.code_blocks:
+        if block.decode_mode == gtirb.CodeBlock.DecodeMode.Default:
+            # "Default" is correct on every arch
+            continue
+
+        if module.isa != mode_to_arch[block.decode_mode]:
+            print(f"ERROR: {module.isa} does not support {block.decode_mode}")
+            error_count += 1
+
+    return error_count
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("path")
@@ -209,6 +235,7 @@ def main():
     checks = {
         "cfg": check_cfg,
         "main_is_code": check_main_is_code,
+        "decode_mode_matches_arch": check_decode_mode_matches_arch,
     }
 
     check_names = list(checks.keys())

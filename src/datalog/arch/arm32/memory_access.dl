@@ -73,6 +73,36 @@ memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,"NONE",0,Offset):-
     arch.pointer_size(Pt_size),
     Offset = as(Index * Pt_size, number).
 
+memory_access_aggregated(AccessType,EA,Rn,"NONE",0,0,AccessSize):-
+    instruction(EA,_,_,Operation,Op1,BitFieldOp,0,0,_,_),
+    (
+        match("VLD[1-4].*",Operation), AccessType = "LOAD"
+        ;
+        match("VST[1-4].*",Operation), AccessType = "STORE"
+    ),
+    op_register_bitfield(BitFieldOp,MaxIndex,RtIn),
+    !op_register_bitfield(BitFieldOp,MaxIndex+1,_),
+    RegCnt = MaxIndex + 1,
+    reg_map(RtIn,Rt),
+    float_reg(Rt, RegSize),
+    op_indirect_mapped(Op1,_,Rn,"NONE",_,_,_),
+    AccessSize = RegCnt * RegSize.
+
+memory_access_aggregated(AccessType,EA,Rn,"NONE",0,0,AccessSize):-
+    instruction(EA,_,_,Operation,Op1,_,BitFieldOp,0,_,_),
+    (
+        match("VLD[1-4].*",Operation), AccessType = "LOAD"
+        ;
+        match("VST[1-4].*",Operation), AccessType = "STORE"
+    ),
+    op_register_bitfield(BitFieldOp,MaxIndex,RtIn),
+    !op_register_bitfield(BitFieldOp,MaxIndex+1,_),
+    RegCnt = MaxIndex + 1,
+    reg_map(RtIn,Rt),
+    float_reg(Rt, RegSize),
+    op_indirect_mapped(Op1,_,Rn,"NONE",_,_,_),
+    AccessSize = RegCnt * RegSize.
+
 // Single-word operations
 
 // Register-offset, immediate-offset, pre-index (1)

@@ -229,11 +229,11 @@ static std::string armCc2String(arm_cc CC)
     return OpCC;
 }
 
-bool Arm32Loader::collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInstruction)
+bool Arm32Loader::collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInst)
 {
-    const cs_arm& Details = CsInstruction.detail->arm;
-    std::string Name = uppercase(CsInstruction.mnemonic);
-    gtirb::Addr Addr(CsInstruction.address);
+    const cs_arm& Details = CsInst.detail->arm;
+    std::string Name = uppercase(CsInst.mnemonic);
+    gtirb::Addr Addr(CsInst.address);
     if(auto index = Name.rfind(".W"); index != std::string::npos)
         Name = Name.substr(0, index);
 
@@ -241,49 +241,73 @@ bool Arm32Loader::collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInstr
         return (Reg == ARM_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(*CsHandle, Reg));
     };
 
-    auto regBitFieldInitialIndex = [](const std::string& Str) {
-        std::string OpCode = Str.substr(0, 3);
-        if(OpCode == "LDM" or OpCode == "STM")
-            return 1;
-        if(OpCode == "POP")
-            return 0;
+    static std::set<arm_insn> LdmStm = {
+        ARM_INS_LDM,     ARM_INS_LDMDA,   ARM_INS_LDMDB,  ARM_INS_LDMIB,
+        ARM_INS_FLDMDBX, ARM_INS_FLDMIAX, ARM_INS_VLDMDB, ARM_INS_VLDMIA,
+        ARM_INS_STM,     ARM_INS_STMDA,   ARM_INS_STMDB,  ARM_INS_STMIB,
+        ARM_INS_FSTMDBX, ARM_INS_FSTMIAX, ARM_INS_VSTMDB, ARM_INS_VSTMIA};
 
-        OpCode = Str.substr(0, 4);
-        if(OpCode == "PUSH")
-            return 0;
-        if(OpCode == "VSTM" or OpCode == "VLDM")
-            return 1;
+    static std::set<arm_insn> PushPop = {ARM_INS_POP, ARM_INS_PUSH, ARM_INS_VPOP, ARM_INS_VPUSH};
 
-        return -1;
+    static std::set<arm_insn> VldVst = {ARM_INS_VLD1, ARM_INS_VLD2, ARM_INS_VLD3, ARM_INS_VLD4,
+                                        ARM_INS_VST1, ARM_INS_VST2, ARM_INS_VST3, ARM_INS_VST4};
+
+    auto regBitFieldInitialIndex = [](const cs_insn& Inst) {
+        int RegBitVectorIndex = -1;
+        if(LdmStm.find(static_cast<arm_insn>(Inst.id)) != LdmStm.end())
+            RegBitVectorIndex = 1;
+        if(PushPop.find(static_cast<arm_insn>(Inst.id)) != PushPop.end())
+            RegBitVectorIndex = 0;
+        if(VldVst.find(static_cast<arm_insn>(Inst.id)) != VldVst.end())
+            RegBitVectorIndex = 0;
+        return RegBitVectorIndex;
     };
 
     int OpCount = Details.op_count;
-    if(regBitFieldInitialIndex(Name) != -1)
+    int regBitFieldInitIdx = regBitFieldInitialIndex(CsInst);
+    if(regBitFieldInitIdx != -1)
     {
-        std::vector<std::string> RegBitFields;
-        for(int i = 0; i < OpCount; i++)
+        int i = 0;
+        // Operands before bitfield.
+        for(; i < regBitFieldInitIdx; i++)
         {
-            // Load capstone operand.
             const cs_arm_op& CsOp = Details.operands[i];
-
-            if(i < regBitFieldInitialIndex(Name))
+            std::optional<relations::Operand> Op = build(CsInst, CsOp);
+            if(!Op)
             {
-                std::optional<relations::Operand> Op = build(CsInstruction, CsOp);
-                // Build operand for datalog fact.
-                if(!Op)
-                {
-                    return false;
-                }
-                OpndFacts.Operands.push_back(*Op);
+                return false;
             }
-            else
+            OpndFacts.Operands.push_back(*Op);
+        }
+        // Bitfield operands
+        std::vector<std::string> RegBitFields;
+        for(; i < OpCount; i++)
+        {
+            const cs_arm_op& CsOp = Details.operands[i];
+            // In case of VLDn or VSTn,
+            // stop collecting reg fields once a memory indirect operand
+            // is encountered.
+            if(CsOp.type == ARM_OP_MEM)
             {
-                RegBitFields.push_back(registerName(CsOp.reg));
+                assert(i != 0);
+                break;
             }
+            RegBitFields.push_back(registerName(CsOp.reg));
         }
         OpndFacts.Operands.push_back(RegBitFields);
+        // Operands after bitfields
+        for(; i < OpCount; i++)
+        {
+            const cs_arm_op& CsOp = Details.operands[i];
+            std::optional<relations::Operand> Op = build(CsInst, CsOp);
+            if(!Op)
+            {
+                return false;
+            }
+            OpndFacts.Operands.push_back(*Op);
+        }
     }
-    else if(CsInstruction.id == ARM_INS_IT)
+    else if(CsInst.id == ARM_INS_IT)
     {
         // Capstone doesn't currently populate any operands for IT instructions.
         // Generate it based on the condition code.
@@ -298,7 +322,7 @@ bool Arm32Loader::collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInstr
             const cs_arm_op& CsOp = Details.operands[i];
 
             // Build operand for datalog fact.
-            std::optional<relations::Operand> Op = build(CsInstruction, CsOp);
+            std::optional<relations::Operand> Op = build(CsInst, CsOp);
             if(!Op)
             {
                 return false;

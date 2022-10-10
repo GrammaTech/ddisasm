@@ -266,6 +266,23 @@ call(EA,DestOperandIndex):-
     call_operation_op_index(Operation,DestOperandIndex).
 
 /**
+Represents a load or store of a given instruction at EA.
+
+This rule can represent complex vector loads, the semantics of which
+`memory_access` cannot accommodate.
+E.g., vld2.32, etc., in arm neon
+
+AccesSize: The size of the entire consecutive memory that the given
+           instruction at EA accesses.
+*/
+.decl memory_access_aggregated(AccessType:symbol,EA:address,
+    BaseReg:reg_nullable,IndexReg:reg_nullable,Mult:number,Offset:number,
+    AccessSize:unsigned)
+.output memory_access_aggregated
+
+memory_access_aggregated("",0,"","",0,0,0):- false.
+
+/**
 Represents a load or store.
 
 The address of the accessed memory is of the form:
@@ -346,10 +363,30 @@ Arithmetic operation on two source registers of the form Dst = Src1 + Src2 * Mul
 Note: Src1 and Src2 *may* be the same register.
 */
 .decl reg_reg_arithmetic_operation(EA:address,Dst:register,Src1:register,Src2:register,Mult:number,Offset:number)
+.output reg_reg_arithmetic_operation
 
 // Commutative property
 reg_reg_arithmetic_operation(EA,Dst,Reg2,Reg1,1,0):-
     reg_reg_arithmetic_operation(EA,Dst,Reg1,Reg2,1,0).
+
+/**
+Bitwise operation on two source of the form Dst = Src1 op Src2
+
+op-----
+ASR: Arithmetic Shift Right
+LSR: Logical Shift Right
+LSL: Logical Shift Left
+AND: Bitwise AND
+OR:  Bitwise OR
+XOR: Bitwise Exclusive OR
+
+Note: The second source is either a register or an immediate.
+*/
+.decl reg_reg_bitwise_binary_op(EA:address,Dst:register,Src1:register,Src2:register,Op:symbol)
+.decl reg_imm_bitwise_binary_op(EA:address,Dst:register,Src:register,Imm:number,Op:symbol)
+
+reg_reg_bitwise_binary_op(0,"","","",""):- false.
+reg_imm_bitwise_binary_op(0,"","",0,""):- false.
 
 /**
 A value in a register is zero/sign-extended.

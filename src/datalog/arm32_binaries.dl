@@ -224,28 +224,17 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     litpool_ref(_,EA,RefAddr,LitPoolOffset,_,_),
     arch.load(EA,_,_,Reg,BaseReg,_,_,RegOffset),
     track_register(Reg),
-    instruction_get_operation(EA,Operation),
     instruction_memory_access_size(EA,_,OpSize),
     Size = min(OpSize,4),
-    arch.pc_reg(PC),
+    // arch.load includes PC-relative displacement in RegOffset for
+    // PC-relative loads, and litpool_ref includes it in LitPoolOffset,
+    // so we must compensate for the double-count.
     (
-        BaseReg = PC, substr(Operation,0,4) = "LDRD",
-        instruction(EA,_,_,_,_,_,SrcRegOp1,0,_,_),
-        op_regdirect_contains_reg(SrcRegOp1,Reg),
-        Offset = 0, UNUSED(RegOffset)
+        arch.pc_reg(BaseReg), arch.pc_relative_disp(EA,Adjustment)
         ;
-        BaseReg = PC, substr(Operation,0,4) = "LDRD",
-        instruction(EA,_,_,_,SrcRegOp2,_,_,0,_,_),
-        op_regdirect_contains_reg(SrcRegOp2,Reg),
-        Offset = 4, UNUSED(RegOffset)
-        ;
-        BaseReg = PC, substr(Operation,0,4) != "LDRD",
-        Offset = 0, UNUSED(RegOffset)
-        ;
-        BaseReg != PC,
-        Offset = RegOffset
+        !arch.pc_reg(BaseReg), Adjustment = 0
     ),
-    Addr = RefAddr + LitPoolOffset,
+    Addr = RefAddr + LitPoolOffset + as(RegOffset-Adjustment,unsigned),
     !relocation(Addr,_,_,_,_,_,_),
     data_word(Addr,Size,Val).
 
@@ -619,6 +608,7 @@ OpIndex: The index of operand for literal-pool label.
 ldr Reg, [pc, off]   or   ldrd Reg1, Reg2, [pc, off]
 */
 litpool_ref(EA,EA,RefAddr,0,Size,OpIndex):-
+    !invalid(EA,_),
     arch.pc_reg(PC),
     arch.load(EA,_,_,Reg,PC,_,_,Offset),
     !arch.memory_access("LOAD",EA,_,_,_,_,_,_,Offset-4),
@@ -634,6 +624,8 @@ adr BaseReg, Label    or   add/sub BaseReg, pc, off
 ldr Reg1, [BaseReg, Offset]  or ldrd Reg1, Reg2, [BaseReg, Offset]
 */
 litpool_ref(EA,EA_ldr,RefAddr,as(Offset,unsigned),Size,OpIndex):-
+    !invalid(EA,_),
+    !invalid(EA_ldr,_),
     arch.pc_relative_addr(EA,BaseReg,RefAddr),
     instruction_immediate_offset(EA,OpIndex,_,_),
     straight_line_def_used(EA,BaseReg,EA_ldr,_),
@@ -651,6 +643,7 @@ ldm r1, {r2, r3}
 */
 litpool_ref(EA,EA_ldm,RefAddr,0,Size,OpIndex):-
     !invalid(EA,_),
+    !invalid(EA_ldm,_),
     arch.pc_relative_addr(EA,Reg,RefAddr),
     straight_line_def_used(EA,Reg,EA_ldm,_),
     instruction_get_operation(EA_ldm,Operation),
@@ -662,6 +655,21 @@ litpool_ref(EA,EA_ldm,RefAddr,0,Size,OpIndex):-
     RegCnt = MaxIndex + 1,
     arch.pointer_size(Pt_size),
     Size = RegCnt * Pt_size,
+    instruction_immediate_offset(EA,OpIndex,_,_).
+
+/**
+(D) ADR/VLDn
+adr r1, Label    or   add/sub r1, pc, offset
+vldn.type {dn,...}, r1
+*/
+litpool_ref(EA,EA_vld,RefAddr,0,AccessSize,OpIndex):-
+    !invalid(EA,_),
+    !invalid(EA_vld,_),
+    arch.memory_access_aggregated("LOAD",EA_vld,Reg,_,_,_,AccessSize),
+    instruction_get_operation(EA_vld,Operation),
+    match("VLD[1-4].*",Operation),
+    straight_line_def_used(EA,Reg,EA_vld,_),
+    arch.pc_relative_addr(EA,Reg,RefAddr),
     instruction_immediate_offset(EA,OpIndex,_,_).
 
 /*
