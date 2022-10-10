@@ -711,3 +711,127 @@ class StackVarTests(unittest.TestCase):
             1,
             count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 40))),
         )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_adjusted_killing_use(self):
+        """
+        Test that a definition before adjustment
+        kills the corresponding use.
+        """
+        module = asm_to_gtirb(
+            """
+            # Define a stack frame
+            subq $32,%rsp
+
+            # Define a stack variable
+            movq %rax,16(%rsp)
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            # Redefine (the later use is killed and should not be
+            # matched with the previous definition)
+            movq %rax,16(%rsp)
+
+            # Adjust
+            subq $24,%rsp
+
+            # Use the stack variable
+            movq 40(%rsp),%rax
+
+            .end:
+            """
+        )
+
+        self.assertEqual(
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 40))),
+        )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_adjusted_killing_def(self):
+        """
+        Test that a definition before adjustment
+        is killed by the definition after the adjustment.
+        """
+        module = asm_to_gtirb(
+            """
+            # Define a stack frame
+            subq $32,%rsp
+
+            # Define a stack variable
+            movq %rax,16(%rsp)
+
+            # Adjust
+            subq $24,%rsp
+
+            # Redefine, this kills the previous definition.
+            movq %rax,40(%rsp)
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            # Use the stack variable
+            movq 40(%rsp),%rax
+
+            .end:
+            """
+        )
+
+        self.assertEqual(
+            0,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 40))),
+        )
+        self.assertEqual(
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 40), ("RSP", 40))),
+        )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_adjusted_killing_use_intrablock(self):
+        """
+        Test that a definition before adjustment
+        kills the corresponding use.
+        """
+        module = asm_to_gtirb(
+            """
+            # Define a stack frame
+            subq $32,%rsp
+
+            # Define a stack variable
+            movq %rax,16(%rsp)
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            # Redefine (the later use is killed and should not be
+            # matched with the previous definition)
+            movq %rax,16(%rsp)
+
+            # Adjust
+            subq $24,%rsp
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            # Use the stack variable
+            movq 40(%rsp),%rax
+
+            .end:
+            """
+        )
+
+        self.assertEqual(
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 40))),
+        )
