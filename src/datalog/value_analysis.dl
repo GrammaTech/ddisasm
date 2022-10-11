@@ -69,7 +69,6 @@ or loop) and considering the value with most steps.
 .output best_value_reg
 
 // Connect values that are stored to and then loaded from the stack.
-// In the normal case, RegBase+StackPos is used for both the load and store
 value_reg_edge(EALoad,Reg2,EAPrev,Reg1,1,0):-
     stack_def_use.def_used(EAStore,[RegBaseStore,StackPosStore],EALoad,[RegBaseLoad,StackPosLoad],_),
     arch.store(EAStore,_,_,Reg1,RegBaseStore,"NONE",_,StackPosStore),

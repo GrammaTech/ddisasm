@@ -111,11 +111,11 @@ hi_load(EA,Reg,Upper):-
 hi_load_prop(EA,EA,Reg,Upper,"direct"):-
     hi_load(EA,Reg,Upper).
 
-hi_load_prop(RegRestoreEA,EA,Reg2,Upper,"stack-restore"):-
+hi_load_prop(RegLoadEA,EA,Reg2,Upper,"stack-restore"):-
     hi_load(EA,Reg,Upper),
     reg_def_use.def_used(EA,Reg,RegStoreEA,_),
-    stack_def_use.def_used(RegStoreEA,_,RegRestoreEA,_,_),
-    arch.load(RegRestoreEA,_,_,Reg2,_,_,_,_).
+    stack_def_use.def_used(RegStoreEA,_,RegLoadEA,_,_),
+    arch.load(RegLoadEA,_,_,Reg2,_,_,_,_).
 
 hi_load_prop(MoveEA,EA,Reg2,Upper,"move"):-
     hi_load(EA,Reg,Upper),

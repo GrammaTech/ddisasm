@@ -162,11 +162,11 @@ analysis for both registers and stack variables.
         def(EA,Var),
         code_in_block(EA,Block).
 
-    .decl used_in_block(Block:address,EA_used:address,Var:T,Index:operand_index)
-
     /**
     A Var <T> is used in the Block
     */
+    .decl used_in_block(Block:address,EA_used:address,Var:T,Index:operand_index)
+
     used_in_block(Block,EA_used,Var,Index):-
         used(EA_used,Var,Index),
         code_in_block(EA_used,Block).
