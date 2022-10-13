@@ -215,8 +215,8 @@ value_reg_unsupported(EA,Reg):-
 
 // mov reg immediate
 value_reg(EA,Reg,EA,"NONE",0,Immediate,1):-
-    arch.move_reg_imm(EA,Reg,Immediate,_),
-    !relocation(EA,_,_,_,_,_,_).
+    def_used_for_address(EA,Reg),
+    arch.move_reg_imm(EA,Reg,Immediate,_).
 
 //reset a register
 value_reg(EA,Reg,EA,"NONE",0,0,1):-
