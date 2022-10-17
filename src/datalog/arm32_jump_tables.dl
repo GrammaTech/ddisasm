@@ -483,6 +483,14 @@ jump_table_start(EA,Size,TableStart,Reference,1):-
     arm_jump_table_candidate(EA,Reference,TableStart,DataEA,Size,_,_,_,_,_),
     jump_table_candidate_refined(EA,DataEA,_).
 
-relative_jump_table_entry_candidate(DataEA,TableStart,Size,Reference,TargetAddr,as(Scale,number),Offset):-
-    arm_jump_table_candidate(EA,Reference,TableStart,DataEA,Size,_,_,_,Scale,Offset),
+relative_jump_table_entry_candidate(TableStart,TableStart,Size,Reference,TargetAddr,as(Scale,number),Offset):-
+    arm_jump_table_candidate_start(_,EA,_,Reference,TableStart,Size,_,_,_,Scale,Offset),
+    arm_jump_table_candidate(EA,Reference,TableStart,TableStart,Size,_,_,_,Scale,Offset),
+    jump_table_candidate_refined(EA,TableStart,TargetAddr).
+
+relative_jump_table_entry_candidate(DataEA,TableStart,Size,Reference,TargetAddr,Scale,Offset):-
+    // ensure the previous entry is a candidate.
+    relative_jump_table_entry_candidate(PrevDataEA,TableStart,Size,Reference,_,Scale,Offset),
+    DataEA = PrevDataEA + Size,
+    arm_jump_table_candidate(EA,Reference,TableStart,DataEA,Size,_,_,_,as(Scale,unsigned),Offset),
     jump_table_candidate_refined(EA,DataEA,TargetAddr).
