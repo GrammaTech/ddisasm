@@ -64,9 +64,8 @@ Instructions in the same block as the jumptable's jump instruction.
 */
 .decl arm_jump_table_block_instruction(EA:address,EA_jump:address)
 
-arm_jump_table_block_instruction(Prev,EA_jump):-
-    arm_jump_table_candidate_start(_,EA_jump,_,_,_,_,_,_,_,_,_),
-    must_fallthrough(Prev,EA_jump).
+arm_jump_table_block_instruction(EA_jump,EA_jump):-
+    arm_jump_table_candidate_start(_,EA_jump,_,_,_,_,_,_,_,_,_).
 
 arm_jump_table_block_instruction(Prev,EA_jump):-
     arm_jump_table_block_instruction(EA,EA_jump),
