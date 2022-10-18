@@ -2,30 +2,6 @@
 
     .section    .rodata
     .align    2
-value.1:
-    .word 0xffe60000
-value.2:
-    .word 0xffe60000
-value.3:
-    .word 0x1000
-value.4:
-    .word 0x1000
-value.5:
-    .word 0xf0
-value.6:
-    .word 0xf0
-value.7:
-    .word 0xffff
-value.8:
-    .word 0xffff
-value.9:
-    .word 0xf0
-value.10:
-    .word 0xf0
-value.11:
-    .word 0x1a0000
-value.12:
-    .word 0x260000
 print_format:
     .string "%d\n"
 

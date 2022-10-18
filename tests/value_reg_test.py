@@ -1,5 +1,6 @@
 import ctypes
 import platform
+import subprocess
 import unittest
 from disassemble_reassemble_check import compile, cd, disassemble
 from pathlib import Path
@@ -43,27 +44,18 @@ class ValueRegTests(unittest.TestCase):
             fun = [s for s in m.symbols if s.name == "fun"][0]
             fun_block = fun.referent
 
-            values_symbols = list(
-                map(
-                    lambda x: [
-                        s for s in m.symbols if s.name == "value." + str(x)
-                    ][0],
-                    range(1, 13),
-                )
-            )
-            values = list(
-                map(
-                    lambda x: int.from_bytes(x._payload.contents, "little"),
-                    values_symbols,
-                )
-            )
-
             points = [
                 edge.source.address + edge.source.size - 16
                 for edge in fun_block.incoming_edges
                 if edge.label.type == gtirb.Edge.Type.Call
             ]
             points.sort()
+
+            result = subprocess.run(
+                ["qemu-arm", "-L", "/usr/arm-linux-gnueabihf", binary],
+                stdout=subprocess.PIPE,
+            )
+            values = list(map(int, result.stdout.decode("utf-8").split()))
 
             assert len(values) == len(points)
 
