@@ -190,6 +190,38 @@ in symbolic expressions.
 .output symbolic_operand_point
 .decl symbolic_operand_total_points(ea:address,operand_index:operand_index,points:number) inline
 
+// Symbolic operands that can occur in any binary type
+symbolic_operand_candidate(EA,Op_index,Dest,Type):-
+    code(EA),
+    instruction_get_op(EA,Op_index,Op),
+    (
+        direct_call(EA,Dest),
+        op_immediate(Op,_),
+        arch.call(EA,Op_index)
+        ;
+        direct_jump(EA,Dest),
+        op_immediate(Op,_),
+        //ignore artificial jumps from loop prefixes
+        !instruction_has_loop_prefix(EA),
+        instruction_get_operation(EA,Operation),
+        arch.jump_operation_op_index(Operation,Op_index)
+        ;
+        pc_relative_operand(EA,Op_index,Dest),
+        UNUSED(Op)
+        ;
+        split_load_operand(EA,Op_index,Dest),
+        UNUSED(Op)
+    ),
+    (
+        code(Dest), Type = "code"
+        ;
+        data_segment(Begin,End),
+        Dest >= Begin,
+        Dest <= End,
+        Type = "data"
+    ).
+
+// Symbolic operands that can only occur in executables
 symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
     binary_type("EXEC"),
     code(EA),
@@ -197,13 +229,9 @@ symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
     (
         op_immediate(Op,Dest),
         Dest_addr = as(Dest,address),
-        !split_load_operand(EA,Op_index,_)
-        ;
-        pc_relative_operand(EA,Op_index,Dest_addr),
-        Op = Op // avoid warning
-        ;
-        split_load_operand(EA,Op_index,Dest_addr),
-        Op = Op // avoid warning
+        !split_load_operand(EA,Op_index,_),
+        !direct_call(EA,_),
+        !direct_jump(EA,_)
         ;
         op_indirect(Op,_,_,_,_,Dest,_),
         Dest_addr = as(Dest,address),
@@ -234,19 +262,6 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
         relocation(EA+DisplacementOffset,_,Symbol,Addend,_,_,_),
         symbol(SymbolAddr,_,_,_,_,_,_,_,Symbol),
         Dest = as(as(SymbolAddr,number)+Addend,address)
-        ;
-        direct_call(EA,Dest),
-        arch.call(EA,Op_index)
-        ;
-        direct_jump(EA,Dest),
-        //ignore artificial jumps from loop prefixes
-        !instruction_has_loop_prefix(EA),
-        instruction_get_operation(EA,Operation),
-        arch.jump_operation_op_index(Operation,Op_index)
-        ;
-        pc_relative_operand(EA,Op_index,Dest)
-        ;
-        split_load_operand(EA,Op_index,Dest)
     ),
     (
         code(Dest), Type = "code"
