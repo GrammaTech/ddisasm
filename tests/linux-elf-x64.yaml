@@ -424,6 +424,10 @@ tests:
     <<: *assembly
     <<: *test-strip-default
 
+  - name: ex_fde_entry
+    <<: *assembly
+    <<: *test-strip-default
+
   # ----------------------------------------------------------------------------
   # Relocatable ELF objects (.o).
   # ----------------------------------------------------------------------------

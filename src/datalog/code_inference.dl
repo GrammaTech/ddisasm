@@ -820,7 +820,7 @@ block_points(Block,"code",0,1,"plt call"):-
     direct_call(EA,BlockDest),
     plt_entry(BlockDest,_).
 
-block_points(Block,"code",0,10,"fde-entry"):-
+block_points(Block,"code",0,20,"fde-entry"):-
     block_is_overlapping(Block,"code"),
     fde_addresses(Block,_).
 
