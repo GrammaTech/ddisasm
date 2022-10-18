@@ -1236,7 +1236,9 @@ block_points(Block,"data",0,10,"arm: jump table fits target"):-
     Block != TableStart.
 
 block_points(TargetEA,"code",0,3,"arm: jump table target"):-
-    arm_jump_table_candidate(_,_,_,_,_,TargetEA,_,_,_,_),
+    arm_jump_table_data_block(EA_jmp,TableStart,Block,BlockSize),
+    arm_jump_table_candidate(EA_jmp,_,TableStart,DataEA,Size,TargetEA,_,_,_,_),
+    Block <= DataEA, DataEA+Size <= Block+BlockSize,
     block_is_overlapping(TargetEA,"code").
 
 must_access_data(EA,Dest):-
