@@ -25,8 +25,7 @@ value.10:
 value.11:
     .word 0x1a0000
 value.12:
-    .word 0xffe60000
-    .word 0x3fffff
+    .word 0x260000
 print_format:
     .string "%d\n"
 
@@ -170,7 +169,7 @@ main:
     it eq
     ldreq   r1, [r1]
     mov     r0, r1
-    # r0 value = 0x3fffffffe60000
+    # r0 value = 0x260000
     bl  fun
     #------------------------
 .thumb
