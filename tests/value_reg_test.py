@@ -48,7 +48,7 @@ class ValueRegTests(unittest.TestCase):
                     lambda x: [
                         s for s in m.symbols if s.name == "value." + str(x)
                     ][0],
-                    range(1, 11),
+                    range(1, 13),
                 )
             )
             values = list(
@@ -59,7 +59,7 @@ class ValueRegTests(unittest.TestCase):
             )
 
             points = [
-                edge.source.address + edge.source.size - 8
+                edge.source.address + edge.source.size - 16
                 for edge in fun_block.incoming_edges
                 if edge.label.type == gtirb.Edge.Type.Call
             ]
@@ -76,17 +76,24 @@ class ValueRegTests(unittest.TestCase):
                 .split("\n")
             )
 
+            souffle_outputs = {}
             for tupl in value_regs:
                 tupl = tupl.split("\t")
 
                 ea0 = int(tupl[0], 0)
                 ea = ea0 - (ea0 & 1)
                 val = int(tupl[5], 0)
+                souffle_outputs[ea] = val
 
-                if ea in points_to_values:
+            for ea in points_to_values:
+                if ea in souffle_outputs:
+                    val0 = souffle_outputs[ea]
                     baseline = ctypes.c_int32(points_to_values[ea]).value
+                    val = ctypes.c_int32(val0).value
                     if val != baseline:
                         self.fail(f"{ea:#x}: {val} != {baseline}")
+                else:
+                    self.fail(f"{ea:#x}: no value_reg found")
 
 
 if __name__ == "__main__":

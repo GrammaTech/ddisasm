@@ -284,10 +284,7 @@ value_reg(EA,DstReg,EA,"NONE",0,Val,Steps3):-
     Steps2 <= StepLimit-3,
     (
         Op = "ASR", Val = SrcVal1 bshr  SrcVal2;
-        // NOTE: bshru seems to produce incorrect value.
-        // For example, 0x98000000 bshru 10 => 0x3fffffffe60000
-        // For now, disable it.
-        //Op = "LSR", Val = SrcVal1 bshru SrcVal2;
+        Op = "LSR", Val = SrcVal1 bshru SrcVal2;
         Op = "LSL", Val = SrcVal1 bshl  SrcVal2;
         Op = "AND", Val = SrcVal1 band  SrcVal2;
         Op = "OR",  Val = SrcVal1 bor   SrcVal2;
@@ -306,10 +303,7 @@ value_reg(EA,DstReg,EA,"NONE",0,Val,Steps+1):-
     Steps <= StepLimit-1,
     (
         Op = "ASR", Val = SrcVal bshr  Imm;
-        // NOTE: bshru seems to produce incorrect value.
-        // For example, 0x98000000 bshru 10 => 0x3fffffffe60000
-        // For now, disable it.
-        //Op = "LSR", Val = SrcVal bshru Imm;
+        Op = "LSR", Val = SrcVal bshru Imm;
         Op = "LSL", Val = SrcVal bshl  Imm;
         Op = "AND", Val = SrcVal band  Imm;
         Op = "OR",  Val = SrcVal bor   Imm;
