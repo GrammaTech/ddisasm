@@ -69,6 +69,17 @@ or loop) and considering the value with most steps.
 .output best_value_reg
 
 /**
+For logical right shift in 32-bit ISA, the LHS value's upper 32-bit
+needs to be masked out.
+*/
+.decl bshru_wrapper(Lhs:number,Rhs:number,Res:number) inline
+
+bshru_wrapper(Lhs,Rhs,Res):-
+    arch.pointer_size(PtSize),
+    Lhs_prime = Lhs band as((1 bshl (PtSize*8)) - 1,number),
+    Res = Lhs_prime bshru Rhs.
+
+/**
 Generate distinct stack frames (identifying them by the location at which the
 stack or frame pointer register is defined.)
 */
@@ -284,12 +295,7 @@ value_reg(EA,DstReg,EA,"NONE",0,Val,Steps3):-
     Steps2 <= StepLimit-3,
     (
         Op = "ASR", Val = SrcVal1 bshr  SrcVal2;
-        Op = "LSR",
-        // For logical right shift in 32-bit ISA, the LHS value's upper 32-bit
-        // needs to be masked out.
-        arch.pointer_size(PtSize),
-        SrcVal1_prime = SrcVal1 band as((1 bshl (PtSize*8)) - 1,number),
-        Val = SrcVal1_prime bshru SrcVal2;
+        Op = "LSR", bshru_wrapper(SrcVal1,SrcVal2,Val);
         Op = "LSL", Val = SrcVal1 bshl  SrcVal2;
         Op = "AND", Val = SrcVal1 band  SrcVal2;
         Op = "OR",  Val = SrcVal1 bor   SrcVal2;
@@ -308,7 +314,7 @@ value_reg(EA,DstReg,EA,"NONE",0,Val,Steps+1):-
     Steps <= StepLimit-1,
     (
         Op = "ASR", Val = SrcVal bshr  Imm;
-        Op = "LSR", Val = SrcVal bshru Imm;
+        Op = "LSR", bshru_wrapper(SrcVal,Imm,Val);
         Op = "LSL", Val = SrcVal bshl  Imm;
         Op = "AND", Val = SrcVal band  Imm;
         Op = "OR",  Val = SrcVal bor   Imm;
