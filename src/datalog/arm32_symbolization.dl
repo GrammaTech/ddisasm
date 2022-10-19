@@ -477,3 +477,8 @@ symbolic_expr_from_relocation(EA+1,4,Symbol,Addend,as(Dest,address)):-
     thumb_branch_offset(EA,Offset),
     Addend = Offset + 4,
     Dest = as(EA,number)+Addend.
+
+impossible_jump_target(EA):-
+    arch.it_conditional(EA,IT),
+    code_in_block(EA,_),
+    code_in_block(IT,_).

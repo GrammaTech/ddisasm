@@ -629,7 +629,7 @@ litpool_ref(EA,EA_ldr,RefAddr,as(Offset,unsigned),Size,OpIndex):-
     arch.pc_relative_addr(EA,BaseReg,RefAddr),
     instruction_immediate_offset(EA,OpIndex,_,_),
     straight_line_def_used(EA,BaseReg,EA_ldr,_),
-    arch.load(EA_ldr,_,_,Reg1,BaseReg,_,_,Offset),
+    arch.load(EA_ldr,_,_,Reg1,BaseReg,"NONE",_,Offset),
     Offset >= 0,
     !arch.memory_access("LOAD",EA_ldr,_,_,_,_,_,_,Offset-4),
     instruction_memory_access_size(EA_ldr,_,Size),
@@ -983,7 +983,7 @@ block_points(LitPoolAddr,"data",0,-20,"arm: litpool: overlapped with code symbol
 
 block_points(Block,"data",0,8,"possible string: symbol"),
 data_block_candidate(Block,End-Block):-
-    !arm_jump_table_candidate(_,Block,_,_,_,_,_,_,_),
+    !arm_jump_table_candidate(_,_,Block,_,_,_,_,_,_,_),
     ascii_string(Block,End),
     symbol(Block,_,Type,_,_,_,_,_,Name),
     Type != "FUNC",
@@ -1001,7 +1001,7 @@ Check if there's another string before or after this one.
 */
 block_points(Block,"data",0,5,"possible string: string pred exists"),
 data_block_candidate(Block,End-Block):-
-    !arm_jump_table_candidate(_,Block,_,_,_,_,_,_,_),
+    !arm_jump_table_candidate(_,_,Block,_,_,_,_,_,_,_),
     ascii_string(Block,End),
     aligned_address_in_data(_,Block),
     ascii_string(_,End2),
@@ -1021,7 +1021,7 @@ data_block_candidate(Block,End-Block):-
 
 block_points(Block,"data",0,5,"possible string: string succ exists"),
 data_block_candidate(Block,End-Block):-
-    !arm_jump_table_candidate(_,Block,_,_,_,_,_,_,_),
+    !arm_jump_table_candidate(_,_,Block,_,_,_,_,_,_,_),
     ascii_string(Block,End),
     aligned_address_in_data(_,Block),
     ascii_string(Block2,_),
@@ -1050,7 +1050,7 @@ Block: .string "..."
 */
 block_points(Block,"data",0,4,"possible string: string param for string library"),
 data_block_candidate(Block,End-Block):-
-    !arm_jump_table_candidate(_,Block,_,_,_,_,_,_,_),
+    !arm_jump_table_candidate(_,_,Block,_,_,_,_,_,_,_),
     ascii_string(Block,End),
     address_in_data(LitPoolAddr,Block),
     litpool_ref(EA,EA_ldr,RefAddr,LitPoolOffset,_,_),
@@ -1183,8 +1183,10 @@ block_points(Block,"data",0,3,"arm: pointer to string adjacent to another string
         ascii_string(End,_)
     ).
 
+// First data_block of the jump table gets lots of points,
+// since the tbh instruction must have some corresponding entries.
 block_points(TableStart,"data",0,Points,"arm: jump table"):-
-    arm_jump_table_candidate(_,TableStart,_,_,_,_,_,_,_),
+    arm_jump_table_candidate(_,_,TableStart,_,_,_,_,_,_,_),
     data_block_candidate(TableStart,_),
     (
         !defined_symbol(TableStart,_,_,_,_,_,_,_,"$d"), Points = 15
@@ -1193,8 +1195,50 @@ block_points(TableStart,"data",0,Points,"arm: jump table"):-
         defined_symbol(TableStart,_,_,_,_,_,_,_,"$d"), Points = 5
     ).
 
+// Subsequent data blocks compete with code blocks.
+// Give a few points to encourage selection unless there's a compelling reason
+// to select the code.
+block_points(Block,"data",0,2,"arm: jump table"):-
+    arm_jump_table_data_block(_,TableStart,Block,_),
+    block_is_overlapping(Block,"data"),
+    Block != TableStart.
+
+// Give points to a jump table entry block if its end corresponds with the
+// first target code block of the jump table.
+block_points(Block,"data",0,10,"arm: jump table fits target"):-
+    arm_jump_table_data_block(EA_jump,TableStart,Block,BlockSize),
+    block_is_overlapping(Block,"data"),
+    arm_jump_table_candidate(EA_jump,_,TableStart,Block,Size,_,_,_,_,_),
+    FirstTargetAddr = min TargetAddr : {
+        arm_jump_table_candidate(EA_jump,_,TableStart,EA,_,TargetAddr,_,_,_,_),
+        // Only consider targets that would exist if Block were the last block
+        // of entries.
+        EA < Block + BlockSize,
+        // Only find Targets *after* the jump table (can be before in signed or
+        // absolute jump tables)
+        TargetAddr > TableStart
+    },
+    AlignedFirstTargetAddr = FirstTargetAddr - (FirstTargetAddr band 1),
+    (
+        // Perfect alignment.
+        Block + BlockSize = AlignedFirstTargetAddr,
+        UNUSED(Size)
+        ;
+        // Aligns, but there's an extra byte at the end of a tbb jumptable,
+        // because there were an odd number of real targets.
+        // Compilers may insert a zero byte to fill it.
+        Size = 1,
+        (Block + BlockSize) band 1 = 1,
+        Block + BlockSize + 1 = AlignedFirstTargetAddr,
+        data_byte(Block + BlockSize,0)
+    ),
+    // Don't apply this rule to first block of entries - it already gets 15 points.
+    Block != TableStart.
+
 block_points(TargetEA,"code",0,3,"arm: jump table target"):-
-    arm_jump_table_candidate(_,_,_,_,TargetEA,_,_,_,_),
+    arm_jump_table_data_block(EA_jmp,TableStart,Block,BlockSize),
+    arm_jump_table_candidate(EA_jmp,_,TableStart,DataEA,Size,TargetEA,_,_,_,_),
+    Block <= DataEA, DataEA+Size <= Block+BlockSize,
     block_is_overlapping(TargetEA,"code").
 
 must_access_data(EA,Dest):-

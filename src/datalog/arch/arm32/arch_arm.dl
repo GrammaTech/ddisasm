@@ -178,6 +178,12 @@ pc_relative_addr(EA,Reg,Val):-
     pc_relative_disp(EA,Disp),
     Val = as(as(EA - (EA band 3),number) + Sign * Offset + Disp,address).
 
+.override instruction_at
+
+instruction_at(EA,Instruction):-
+    instruction(Instruction,_,_,_,_,_,_,_,_,_),
+    EA = Instruction - (Instruction band 1).
+
 /**
 E.g.,
 0: movs r0, #0

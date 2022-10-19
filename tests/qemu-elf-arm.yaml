@@ -87,6 +87,9 @@ tests:
   - name: ex_setend
     <<: *assembly
 
+  - name: ex_it_split
+    <<: *assembly
+
   - name: ex_relative_jump_table
     <<: *assembly
 

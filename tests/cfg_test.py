@@ -343,6 +343,46 @@ class CfgTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
+    def test_arm_tbb_r3_base_cfg(self):
+        """
+        Test ARM32 CFG from a TBB jumptable wtih R3 as base register
+        """
+        binary = "ex"
+        with cd(ex_arm_asm_dir / "ex_tbb_r3_base"):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "-O0",
+                    [],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            # Locate the tbb instruction
+            jumping_block = None
+            expected_dest_blocks = []
+
+            for block in m.code_blocks:
+                # search for tbb [r3, r0]
+                if block.contents[-4:] == b"\xd3\xe8\x00\xf0":
+                    jumping_block = block
+
+                # search for nop
+                elif block.contents[:2] == b"\x00\xbf":
+                    expected_dest_blocks.append(block)
+
+            # check that the tbb block has edges to all the jump table entries
+            self.assertEqual(len(list(jumping_block.outgoing_edges)), 4)
+            dest_blocks = [e.target for e in jumping_block.outgoing_edges]
+            self.assertEqual(set(dest_blocks), set(expected_dest_blocks))
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_arm_tbh_cfg(self):
         """
         Test ARM32 CFG from a TBH jumptable
