@@ -188,5 +188,6 @@ COPY --from=ddisasm /usr/local/bin/gtirb* /usr/local/bin/
 
 ENV LD_LIBRARY_PATH=/usr/local/lib
 
-RUN gtirb-pprinter --version
-RUN ddisasm --version
+# `grep -v 'UNKNOWN'`: return a failure code if the version string contains 'UNKNOWN'
+RUN gtirb-pprinter --version | grep -v 'UNKNOWN'
+RUN ddisasm --version | grep -v 'UNKNOWN'
