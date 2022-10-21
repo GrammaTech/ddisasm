@@ -1,5 +1,6 @@
 # 1.5.5 (Unreleased)
 * Update generated `elfSymbolVersions` auxdata.
+* Add "--ignore-errors" argument.
 
 # 1.5.4
 * Add PE32 Safe Structured Exception Handling (SAFESEH) support.
