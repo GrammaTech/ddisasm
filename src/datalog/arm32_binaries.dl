@@ -768,11 +768,11 @@ code_to_litpool_ref_point_transfer("may-fallthrough",0).
 code_to_litpool_ref_point_transfer("must-fallthrough",0).
 
 block_points(LitPoolAddr,"data",0,Points,cat("litpool: ",Reason)):-
-    block_points(Block,"code",0,Points0,Reason),
-    code_to_litpool_ref_point_transfer(Reason,Adjust),
     litpool_ref(EA,_,RefAddr,LitPoolOffset,_,_),
-    LitPoolAddr = RefAddr + LitPoolOffset,
     code_in_block_candidate_refined(EA,Block),
+    block_points(Block,"code",0,Points0,Reason),
+    LitPoolAddr = RefAddr + LitPoolOffset,
+    code_to_litpool_ref_point_transfer(Reason,Adjust),
     Points = Points0 + Adjust,
     Points > 0.
 
@@ -1050,11 +1050,11 @@ Block: .string "..."
 */
 block_points(Block,"data",0,4,"possible string: string param for string library"),
 data_block_candidate(Block,End-Block):-
-    !arm_jump_table_candidate(_,_,Block,_,_,_,_,_,_,_),
-    ascii_string(Block,End),
-    address_in_data(LitPoolAddr,Block),
     litpool_ref(EA,EA_ldr,RefAddr,LitPoolOffset,_,_),
     LitPoolAddr = RefAddr + LitPoolOffset,
+    address_in_data(LitPoolAddr,Block),
+    ascii_string(Block,End),
+    !arm_jump_table_candidate(_,_,Block,_,_,_,_,_,_,_),
     arch.load(EA_ldr,_,_,Reg,_,_,_,_),
     code_in_block_candidate(EA,Block2),
     code_in_block_candidate(CallEA,Block2),
