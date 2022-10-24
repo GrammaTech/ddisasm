@@ -454,7 +454,6 @@ straight_line_last_def(EA_next,EA_def,Reg):-
     possible_ea(EA_next).
 
 .decl straight_line_def_used(EA_def:address,Reg:register,EA_used:address,Index:unsigned)
-.output straight_line_def_used
 
 straight_line_def_used(EA_def,Reg,EA_used,Index):-
     used_before_code_inference(EA_used,Reg,Index),
