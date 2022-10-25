@@ -53,14 +53,13 @@ souffle::tuple &operator>>(souffle::tuple &t, uint8_t &byte)
 
 struct DecodedInstruction
 {
-    gtirb::Addr EA;
-    uint64_t Size;
     std::map<uint64_t, std::variant<ImmOp, IndirectOp>> Operands;
     uint64_t immediateOffset;
     uint64_t displacementOffset;
 };
 
-std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SouffleProgram *prog)
+std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SouffleProgram *prog,
+                                                              std::set<gtirb::Addr> &code)
 {
     std::map<uint64_t, ImmOp> Immediates;
     for(auto &output : *prog->getRelation("op_immediate"))
@@ -83,10 +82,20 @@ std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SoufflePr
     std::map<gtirb::Addr, DecodedInstruction> insns;
     for(auto &output : *prog->getRelation("instruction"))
     {
-        DecodedInstruction insn;
         gtirb::Addr EA;
+        output >> EA;
+
+        // Don't bother recovering instructions that aren't considered code.
+        if(code.count(EA) == 0)
+        {
+            continue;
+        }
+
+        DecodedInstruction insn;
+        uint64_t size;
         std::string prefix, opcode;
-        output >> EA >> insn.Size >> prefix >> opcode;
+        output >> size >> prefix >> opcode;
+
         for(size_t i = 1; i <= 4; i++)
         {
             uint64_t operandIndex;
@@ -247,17 +256,6 @@ struct SymbolicInfo
     VectorByEA<SymExprSymbolMinusSymbol> SymbolMinusSymbolSymbolicExprs;
     VectorByEA<SymbolicExprAttribute> SymbolicExprAttributes;
 };
-
-template <typename T>
-std::vector<T> convertRelation(const std::string &relation, souffle::SouffleProgram *prog)
-{
-    std::vector<T> result;
-    for(auto &output : *prog->getRelation(relation))
-    {
-        result.emplace_back(output);
-    }
-    return result;
-}
 
 template <typename Container, typename Elem = typename Container::value_type>
 Container convertSortedRelation(const std::string &relation, souffle::SouffleProgram *prog)
@@ -582,17 +580,24 @@ void buildSymbolicExpr(gtirb::Module &Module, const gtirb::Addr &Ea,
 
 void buildCodeSymbolicInformation(gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
-    auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", Prog);
+    std::set<gtirb::Addr> Code;
+    for(auto &output : *Prog->getRelation("code_in_refined_block"))
+    {
+        gtirb::Addr EA;
+        output >> EA;
+        Code.insert(EA);
+    }
+
     SymbolicInfo symbolicInfo{
         convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr", Prog),
         convertSortedRelation<VectorByEA<SymExprSymbolMinusSymbol>>(
             "symbolic_expr_symbol_minus_symbol", Prog),
         convertSortedRelation<VectorByEA<SymbolicExprAttribute>>("symbolic_expr_attribute", Prog)};
-    std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(Prog);
+    std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(Prog, Code);
 
-    for(auto &Cib : codeInBlock)
+    for(auto &EA : Code)
     {
-        const auto Inst = decodedInstructions.find(Cib.EA);
+        const auto Inst = decodedInstructions.find(EA);
         assert(Inst != decodedInstructions.end());
         for(auto &Op : Inst->second.Operands)
         {
