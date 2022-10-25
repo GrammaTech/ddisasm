@@ -106,12 +106,14 @@ def parse_field(field: str, type_spec: str) -> typing.Any:
     """
     Parse a field in a tuple
     """
-    if type_spec[0] in ("i", "u"):
+    base_type = type_spec.split(":")[1]
+
+    if base_type in ("i", "u"):
         # base=0 supports both prefixed hexadecimal and decimal
         value = int(field, base=0)
-    elif type_spec[0] == "s":
+    elif base_type == "s":
         value = field
-    elif type_spec[0] == "r":
+    elif base_type == "r":
         value = parse_record(field, type_spec)
     else:
         raise SnippetTestException("Cannot parse type: " + str(type_spec))
@@ -123,8 +125,8 @@ def parse_record(record_str: str, type_spec: str) -> typing.Tuple[typing.Any]:
     """
     Parse a record entry using a type spec generator
     """
-    record_types = {"stack_var": "s:register,i:number"}
-    type_name = type_spec.split(":")[1]
+    record_types = {"stack_var": "BaseReg:s:register,StackPos:i:number"}
+    type_name = type_spec.split(":")[2]
     type_spec = record_types[type_name]
 
     # strip brackets
