@@ -247,6 +247,11 @@ analysis for both registers and stack variables.
 
     To find the definition for this use, live_var_at_block_end will have to
     propagate backward from the block.
+
+    The `Moves` field, used only by stack var tracking, tracks the number of
+    basic blocks that perform a stack variable transformation (where a stack
+    variable descriptor is adjusted due to a change in the stack pointer).
+    This prevents infinite loops.
     */
     .decl live_var_used(Block:address,LiveVar:T,UsedVar:T,EA_used:address,Index:operand_index,Moves:unsigned) overridable
     .output live_var_used
@@ -572,7 +577,7 @@ stack_base_reg_move(Block,EA,Src,Dst):-
 
     .plan 1: (3, 1, 2)
 
-    // def in block with with moves/adjustments (used may be in the same block, or propagated to this block).
+    // def in block with moves/adjustments (used may be in the same block, or propagated to this block).
     def_used(EA_def,DefVar,EA_used,UsedVar,Index):-
         live_var_used_in_block(_,EA,DefVar,UsedVar,EA_used,Index,_),
         may_fallthrough(EA_def,EA),
@@ -632,7 +637,7 @@ stack_base_reg_move(Block,EA,Src,Dst):-
 
     .override live_var_used
 
-    // If the live var propagates to the beginning of the block, add it to the intrablock relation.
+    // If the live var propagates to the beginning of the block, add it to the inter-block relation.
     live_var_used(Block,LiveVar,UsedVar,EA_used,Index,Moves):-
         live_var_used_in_block(Block,Block,LiveVar,UsedVar,EA_used,Index,Moves).
 }

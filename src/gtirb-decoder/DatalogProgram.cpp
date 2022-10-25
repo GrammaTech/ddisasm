@@ -66,7 +66,7 @@ souffle::RamDomain DatalogProgram::insertRecord(const std::string &RecordText)
     // Create string without the enclosing record brackets
     std::string RemainingFieldText = RecordText.substr(1, RecordText.size() - 2);
 
-    // There is currnently no way to query souffle for the the structure of the
+    // There is currently no way to query souffle for the structure of the
     // record type.
     // Parsing would also be easier and more accurate if we knew the expected
     // types. This code could be wrong, for example, if a string entry is a
