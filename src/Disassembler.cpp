@@ -1436,19 +1436,29 @@ void buildArchInfo(gtirb::Module &Module, souffle::SouffleProgram *Prog)
     if(Module.getISA() == gtirb::ISA::ARM)
     {
         // ArchInfo may have been extracted from the .ARM.attributes section.
-        // Note that currently, we only check if the binary is Microcontroller
-        // or not.
         auto *ArchInfo0 = Module.getAuxData<gtirb::schema::ArchInfo>();
         if(!ArchInfo0)
         {
-            // If the information is not found, see if there's any block
-            // containing Microcontroller-specific instructions, such as MSR
-            // and MRS.
-            auto Mblocks = Prog->getRelation("arm_microcontroller");
-            if(Mblocks && Mblocks->size() > 0)
+            // If the information is not found, see if the datalog inferred any
+            // arch information.
+            std::map<std::string, std::string> ArchInfo;
+            for(auto &output : *Prog->getRelation("inferred_arch_info"))
             {
-                std::vector<std::string> ArchInfo;
-                ArchInfo.emplace_back("Microcontroller");
+                std::string Key;
+                std::string Value;
+                output >> Key >> Value;
+
+                auto It = ArchInfo.find(Key);
+                if(It != ArchInfo.end())
+                {
+                    std::cerr << "WARNING: Conflicting values for ArchInfo " << Key << ": "
+                              << It->second << ", " << Value << "\n";
+                }
+                ArchInfo[Key] = Value;
+            }
+
+            if(ArchInfo.size() > 0)
+            {
                 Module.addAuxData<gtirb::schema::ArchInfo>(std::move(ArchInfo));
             }
         }
