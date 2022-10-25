@@ -47,11 +47,11 @@ local_next(EA,EA_next):-
     code_in_block(EA_next,Block).
 
 /**
-Boundaries of each instruction within a block.
+next() for each instruction within a block.
 */
-.decl block_instruction_boundaries(Block:address,Before:address,After:address)
+.decl block_instruction_next(Block:address,Before:address,After:address)
 
-block_instruction_boundaries(Block,Before,After):-
+block_instruction_next(Block,Before,After):-
     code_in_block(Before,Block),
     next(Before,After).
 
@@ -617,14 +617,14 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     // Propagate
     live_var_used_in_block(Block,EA,[BaseReg,StackPos],[BaseReg,StackPos],EA_used,Index,Moves):-
         live_var_used_in_block(Block,Next,[BaseReg,StackPos],[BaseReg,StackPos],EA_used,Index,Moves),
-        block_instruction_boundaries(Block,EA,Next),
+        block_instruction_next(Block,EA,Next),
         !reg_def_use.def(EA,BaseReg),
         !def(EA,[BaseReg,StackPos]).
 
     // Instruction adjusts the stack pointer.
     live_var_used_in_block(Block,EA,[BaseReg,StackPos+Offset],UsedVar,EA_used,Index,Moves):-
         live_var_used_in_block(Block,Next,[BaseReg,StackPos],UsedVar,EA_used,Index,Moves),
-        block_instruction_boundaries(Block,EA,Next),
+        block_instruction_next(Block,EA,Next),
         adjusts_stack_in_block(_,EA,BaseReg,Offset).
 
     // Instruction copies the stack pointer.
@@ -632,7 +632,7 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     // live_var_used_in_block at EA if SrcBaseReg is not modified.
     live_var_used_in_block(Block,EA,[SrcBaseReg,StackPos],UsedVar,EA_used,Index,Moves):-
         live_var_used_in_block(Block,Next,[DstBaseReg,StackPos],UsedVar,EA_used,Index,Moves),
-        block_instruction_boundaries(Block,EA,Next),
+        block_instruction_next(Block,EA,Next),
         stack_base_reg_move(_,EA,SrcBaseReg,DstBaseReg).
 
     .override live_var_used
