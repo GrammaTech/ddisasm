@@ -219,7 +219,7 @@ cinf_ldr_add_pc(EA_ldr,Size,Reg1,LitPoolAddr,EA_add_pc,Reg2):-
     litpool_ref(EA_ldr,EA_ldr,LitPoolAddr,0,Size,_),
     instruction_get_operation(EA_ldr,Operation),
     arch.load_operation(Operation),
-    def_used(EA_ldr,Reg1,EA_add_pc,_),
+    reg_def_use.def_used(EA_ldr,Reg1,EA_add_pc,_),
     arch.reg_reg_arithmetic_operation(EA_add_pc,Reg2,Reg1,PC,1,0),
     arch.pc_reg(PC).
 
@@ -366,11 +366,11 @@ symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,Symbol1,Symbol2,1,EA
     litpool_ref(EA_ldr,EA_ldr,LitPoolAddr,0,Size,_),
 
     // e.g., add reg1, reg2
-    def_used(EA_ldr,Reg1,EA_add,_),
+    reg_def_use.def_used(EA_ldr,Reg1,EA_add,_),
     arch.reg_reg_arithmetic_operation(EA_add,Reg1,Reg1,Reg2,1,0),
 
     // e.g., adr reg2, Base
-    def_used(EA_adr,Reg2,EA_add,_),
+    reg_def_use.def_used(EA_adr,Reg2,EA_add,_),
     arch.pc_relative_addr(EA_adr,Reg2,BaseAligned),
 
     data_word(LitPoolAddr,Size,Diff),
@@ -401,10 +401,10 @@ PC-relative symbolic operand
 litpool_symbolic_operand(LitPoolAddr2,DataAccessSize,Symbol1,Symbol2,EA_D,Reg3,SymSize):-
     symbol_minus_symbol_litpool_access_pattern(_,_,_,Symbol1,1,_,EA_C,Reg0,_),
     (
-        def_used(EA_C,Reg1,EA_D,_), Reg1 = Reg0
+        reg_def_use.def_used(EA_C,Reg1,EA_D,_), Reg1 = Reg0
         ;
         value_reg_edge(EA_restore,Reg1,EA_C,Reg0,1,0),
-        def_used(EA_restore,Reg1,EA_D,_)
+        reg_def_use.def_used(EA_restore,Reg1,EA_D,_)
     ),
 
     // (D) ldr reg3, [reg1, reg2]
@@ -416,7 +416,7 @@ litpool_symbolic_operand(LitPoolAddr2,DataAccessSize,Symbol1,Symbol2,EA_D,Reg3,S
     op_regdirect_contains_reg(RegOp,Reg3),
     SymSize = Bits / 8,
 
-    def_used(EA_B,Reg2,EA_D,_),
+    reg_def_use.def_used(EA_B,Reg2,EA_D,_),
 
     // (B) ldr reg2, LitPoolAddr2
     litpool_ref(EA_B,EA_B,LitPoolAddr2,0,DataAccessSize,_),

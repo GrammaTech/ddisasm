@@ -107,10 +107,10 @@ moved_data_label(EA,SizePointer,Dest,Address):-
 moved_pc_relative_candidate(EA_def2,Op_index,Dest,NewDest,Diff):-
     binary_format("ELF"),
     cmp_reg_to_reg(EA,Reg1,Reg2),
-    def_used(EA_def1,Reg1,EA,_),
+    reg_def_use.def_used(EA_def1,Reg1,EA,_),
     dest_enlarged_data_section(EA_def1,Reg1,NewDest,Beg,End,OldBeg,OldEnd),
 
-    def_used(EA_def2,Reg2,EA,_),
+    reg_def_use.def_used(EA_def2,Reg2,EA,_),
     pc_relative_operand(EA_def2,Op_index,Dest),
     instruction_get_operation(EA_def2,"LEA"),
 
@@ -386,7 +386,7 @@ dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs,End+MultAbs,Beg,En
 // cmp RBX,OFFSET state-1408
 dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs-OffsetAddr,End+MultAbs-OffsetAddr,Beg,End):-
     best_value_reg(EA_def,Reg,EA_from,Mult,_,"loop"),
-    def_used(EA_def,Reg,EA_used,Op_index),
+    reg_def_use.def_used(EA_def,Reg,EA_used,Op_index),
     value_reg_at_operand_loop(EA_used,Op_index,Reg,EA_from,Mult,NewDest,"loop"), NewDest >= 0,
     data_access(EA_used,Op_index,"NONE",Reg,"NONE",_,Offset,_), Offset > 0,
     OffsetAddr = as(Offset,address),
@@ -435,7 +435,7 @@ moved_immediate_candidate(EA,Imm_index,ImmediateAddr,NewDest):-
     binary_type("EXEC"),
     cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate), Immediate >= 0,
     ImmediateAddr = as(Immediate,address),
-    def_used(EA_def,Reg,EA,_),
+    reg_def_use.def_used(EA_def,Reg,EA,_),
     dest_enlarged_data_section(EA_def,Reg,NewDest,Beg,End,OldBeg,OldEnd),
     Beg <= ImmediateAddr, ImmediateAddr <= End,
     (
@@ -449,10 +449,10 @@ moved_immediate_candidate(EA,Imm_index,ImmediateAddr,NewDest):-
 moved_label_class(EA_def2,Imm_index,"loaded immediate loop bound"),
 moved_immediate_candidate(EA_def2,Imm_index,ImmediateAddr,NewDest):-
     cmp_reg_to_reg(EA,Reg1,Reg2),
-    def_used(EA_def1,Reg1,EA,_),
+    reg_def_use.def_used(EA_def1,Reg1,EA,_),
     dest_enlarged_data_section(EA_def1,Reg1,NewDest,Beg,End,OldBeg,OldEnd),
 
-    def_used(EA_def2,Reg2,EA,_),
+    reg_def_use.def_used(EA_def2,Reg2,EA,_),
     (
         binary_type("EXEC"),
         arch.move_reg_imm(EA_def2,Reg2,Immediate,Imm_index), code(EA_def2), Immediate >= 0

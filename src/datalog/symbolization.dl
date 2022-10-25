@@ -291,7 +291,7 @@ symbolic_operand_point(EA,Index,10,"pie code"):-
 
 symbolic_operand_point(EA,Imm_index,-1,"compared to non-address"):-
     cmp_immediate_to_reg(EA,Reg,Imm_index,_),
-    def_used(EA_def,Reg,EA,_),
+    reg_def_use.def_used(EA_def,Reg,EA,_),
     def_register_is_not_base_address(EA_def,Reg).
 
 symbolic_operand_point(EA,Imm_index,-1,"immediate is bitmask"):-
@@ -310,7 +310,7 @@ symbolic_operand_point(EA,Imm_index,-2,"point to exception section"):-
 symbolic_operand_point(EA,Imm_index,-1,"operated on logical operation result"):-
     op_immediate_and_reg(EA,_,Reg,Imm_index,_),
     !arch.jump(EA),
-    def_used(EA_def,Reg,EA,_),
+    reg_def_use.def_used(EA_def,Reg,EA,_),
     instruction_get_operation(EA_def,Operation),
     arch.logic_operation(Operation),
     !low_pass_filter(EA_def),
