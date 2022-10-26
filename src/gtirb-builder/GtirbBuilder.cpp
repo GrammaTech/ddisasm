@@ -54,13 +54,13 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
         {
             case LIEF::EXE_FORMATS::FORMAT_ELF:
             {
-                ElfReader Elf(Path, Binary->name(), Context, IR, Binary);
+                ElfReader Elf(Path, fs::path(Path).filename().string(), Context, IR, Binary);
                 Elf.build();
                 break;
             }
             case LIEF::EXE_FORMATS::FORMAT_PE:
             {
-                PeReader Pe(Path, Binary->name(), Context, IR, Binary);
+                PeReader Pe(Path, fs::path(Path).filename().string(), Context, IR, Binary);
                 Pe.build();
                 break;
             }
