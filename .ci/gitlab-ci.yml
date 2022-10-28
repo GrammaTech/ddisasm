@@ -32,6 +32,8 @@ stages:
   - package-tests
   - deploy
   - deploy-to-apt
+  - trigger
+  - results
   - upload
 
 default:
@@ -527,8 +529,6 @@ build-ubuntu20-packages:
   needs: ['build-ubuntu20-gcc']
   variables:
     OS: ubuntu20
-  rules:
-    *run-only-main
   <<: *build-ubuntu-packages
 
 .setup-apt-repo-template: &setup-apt-repo
@@ -537,8 +537,6 @@ build-ubuntu20-packages:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - apt-repo
-  rules:
-    *run-only-main
   script:
     - !reference [.setup-apt]
     - !reference [.download-deps]
@@ -557,8 +555,6 @@ setup-ubuntu20-package-tests:
 
 .test-ubuntu-ddisasm: &test-ubuntu-ddisasm
   stage: package-tests
-  rules:
-    *run-only-main
   script:
     - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
     - echo -e "\ndeb $TRUSTED file:$(pwd)/apt-repo ./\n" >> /etc/apt/sources.list
@@ -568,8 +564,6 @@ setup-ubuntu20-package-tests:
 
 .test-ubuntu-ddisasm-dbg: &test-ubuntu-ddisasm-dbg
   stage: package-tests
-  rules:
-    *run-only-main
   script:
     - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
     - echo -e "\ndeb $TRUSTED file:$(pwd)/apt-repo ./\n" >> /etc/apt/sources.list
@@ -593,8 +587,6 @@ test-ubuntu20-ddisasm-dbg-package:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - '*ddisasm*.deb'
-  rules:
-    *run-only-main
   script:
     - cp build/*ddisasm*.deb ./
 
@@ -605,6 +597,31 @@ debian-installer-ubuntu20:
     - 'test-ubuntu20-ddisasm-dbg-package'
     - 'build-ubuntu20-packages'
   <<: *debian-installer-ubuntu-template
+
+trigger:
+  stage: trigger
+  needs:
+    # TODO: on master, this unfortantely depends on deploy, since the ddisasm-arm-benchmark will pull the apt package.
+    # maybe it would be better to always use the artifact for ddisasm?
+    - debian-installer-ubuntu20
+  variables:
+    DDISASM_BRANCH: $CI_COMMIT_BRANCH
+  trigger:
+    project: aseitz/ddisasm-arm-benchmark
+    branch: master
+    strategy: depend
+
+results:
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20:$IMAGE_TAG
+  stage: results
+  needs:
+    - trigger
+  script:
+    - curl --location --output artifacts.zip "${CI_API_V4_URL}/projects/aseitz%2Fddisasm-arm-benchmark/jobs/artifacts/master/download?job=merge-metrics&job_token=$CI_JOB_TOKEN"
+    - unzip artifacts.zip
+  artifacts:
+    reports:
+      metrics: metrics.txt
 
 docker-image-vars:
   stage: prebuild
