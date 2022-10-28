@@ -105,6 +105,49 @@ class ArmMiscTests(unittest.TestCase):
             section = next(s for s in m.sections if s.name == ".text")
             self.assertEqual(len(list(m.code_blocks_on(section.address))), 1)
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_arm_ldcl(self):
+        """
+        Test that ldcl instructions, valid only on ARMv7 and earlier, decode
+        correctly.
+        """
+        binary = "ex"
+        adder_dir = ex_arm_asm_dir / "ex_ldcl"
+        with cd(adder_dir):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "-O0",
+                    [],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            for sym in m.symbols:
+                if sym.name == "main":
+                    block = sym.referent
+                    break
+
+            self.assertIsInstance(block, gtirb.block.CodeBlock)
+            # ensure main decoded as ARM, not Thumb.
+            self.assertEqual(
+                block.decode_mode, gtirb.CodeBlock.DecodeMode.Default
+            )
+
+            # Check auxdata
+            archInfo = m.aux_data["archInfo"].data
+            self.assertIn("Arch", archInfo)
+            self.assertIn("Profile", archInfo)
+            self.assertEqual(archInfo["Arch"], "v7")
+            self.assertEqual(archInfo["Profile"], "Application")
+
 
 if __name__ == "__main__":
     unittest.main()
