@@ -507,7 +507,7 @@ inferred_special_symbol(DestAddr,Name,"LOCAL","FUNC","Beg"):-
     relocation(_,"IRELATIVE","",Dest,_,_,_),
     DestAddr = as(Dest,address),
     !symbol(DestAddr,_,"GNU_IFUNC",_,_,_,_,_,_),
-    NameFunc = cat("FUN_",to_string(Dest)),
+    NameFunc = cat("FUN_",@to_string_hex(as(Dest,unsigned))),
     Name = cat(NameFunc,"_IFUNC").
 
 

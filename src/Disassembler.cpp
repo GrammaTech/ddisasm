@@ -1395,40 +1395,6 @@ void shiftThumbBlocks(gtirb::Module &Module)
     }
 }
 
-void renameInferredSymbols(gtirb::Module &Module)
-{
-    std::map<gtirb::Symbol *, std::string> NewNames;
-    for(gtirb::Symbol &Sym : Module.symbols())
-    {
-        std::regex Pattern("(?:.L_|FUN_)(\\d+)(?:_END|_IFUNC|)");
-        std::smatch Matches;
-        const std::string &Name = Sym.getName();
-        if(std::regex_match(Name, Matches, Pattern))
-        {
-            try
-            {
-                std::stringstream S;
-                S << Name.substr(0, Matches.position(1)) << std::hex << std::stoull(Matches.str(1))
-                  << Name.substr(Matches.position(1) + Matches.length(1));
-                NewNames[&Sym] = S.str();
-            }
-            catch(std::invalid_argument const &Ex)
-            {
-                std::cerr << "ERROR: could not rename symbol '" << Name << "' to hex" << std::endl;
-            }
-            catch(std::out_of_range const &Ex)
-            {
-                std::cerr << "ERROR: could not rename symbol '" << Name
-                          << "' to hex (invalid range)" << std::endl;
-            }
-        }
-    }
-    for(auto [Sym, NewName] : NewNames)
-    {
-        Sym->setName(NewName);
-    }
-}
-
 void buildArchInfo(gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
     if(Module.getISA() == gtirb::ISA::ARM)
@@ -1468,7 +1434,6 @@ void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
     buildFunctions(Module, Prog);
     // This should be done after creating all the symbols.
     connectSymbolsToBlocks(Context, Module, Prog);
-    renameInferredSymbols(Module);
     // These functions should not create additional symbols.
     buildCFG(Context, Module, Prog);
     buildPadding(Module, Prog);

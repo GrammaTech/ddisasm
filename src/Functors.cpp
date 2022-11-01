@@ -171,6 +171,15 @@ int64_t functor_data_s64(uint64_t EA)
     return static_cast<int64_t>(FunctorContext.IsBigEndian ? be64toh(Value) : le64toh(Value));
 }
 
+souffle::RamDomain to_string_hex(souffle::SymbolTable* symbolTable,
+                                 [[maybe_unused]] souffle::RecordTable* recordTable,
+                                 souffle::RamDomain Value)
+{
+    std::stringstream S;
+    S << std::hex << Value;
+    return symbolTable->encode(S.str());
+}
+
 void FunctorContextManager::useModule(const gtirb::Module* M)
 {
     Module = M;
