@@ -105,17 +105,18 @@ _Note that the section type value is always 0 for PE sections._
 
 `sanctioned`
 
-|       |                                                                                              |
+|       |                                                                                             |
 |------:|---------------------------------------------------------------------------------------------|
 |  Name | **symbolForwarding**                                                                        |
 |  Type | `std::map<gtirb::UUID, gtirb::UUID>`                                                        |
 | Value | Map one symbol to another symbol. (Used for flattening linker-induced indirect references.) |
 
 This table is used to resolve certain kinds of indirect constructs used by linkers in symbolic expressions.
-Currently there are four kinds of constructs that use symbolForwarding:
+Currently there are four kinds of constructs that use symbolForwarding.
 
- 1. **GOT references**:  Instructions in the code might refer to function or data through the GOT table.
-    The code will point to a GOT entry, whose content gets resolved to the referred element at runtime.
+### GOT references
+Instructions in the code might refer to function or data through the GOT table.
+The code will point to a GOT entry, whose content gets resolved to the referred element at runtime.
 
 For example, the code in the binary would be:
 ```
@@ -135,8 +136,9 @@ mov RAX,QWORD PTR [RIP+Foo@GOTPCREL]
 The linker will then take care of creating a new GOT entry based on this symbolic expression.
 
 
-2. **PLT references**: The case of PLT entries is similar.
-The original code would look like:
+### PLT references
+
+The case of PLT entries is similar. The original code would look like:
 ```
 # the call in the code
     call FUN_590
@@ -147,14 +149,15 @@ FUN_590:
 ```
 The original code calls to the PLT thunk, which then resolves
 the reference dynamically and jumps to the corresponding function.
-The symbol forwarding table wil have an entry of the form `FUN_590` -> `Foo`
+The symbol forwarding table will have an entry of the form `FUN_590` -> `Foo`
 and the generated assembly will be:
 ```
     call Foo@PLT
 ```
 
- 3. **COPY relocations**: In the case of copy relocations, the original code
- looks as follows:
+### COPY relocations
+
+In the case of copy relocations, the original code looks as follows:
  ```
     mov RAX,QWORD PTR [RIP+stdout]
     ...
@@ -163,13 +166,13 @@ and the generated assembly will be:
 stdout:
     201020    .zero 8
  ```
- The entry in the Bss section contains a COPY relocation that will copy
- the content of stdout from glibc into the reserved slot.
- Unfortunately, we don't have a way to tell the linker to generate
- a copy relocation for the existing slot at address `201020`. Therefore, we will ignore
- the slot and let the linker reserve a new one.
- We do this by renaming the defined symbol `stdout` to `stout_copy` and adding
- a symbol forwarding entry `stdout_copy` -> `stdout`.
+The entry in the Bss section contains a COPY relocation that will copy the content of stdout from glibc into the reserved slot. Unfortunately, we don't have a way to tell the linker to generate a copy relocation for the existing slot at address `201020`. Therefore, we will ignorethe slot and let the linker reserve a new one.
+
+We do this by:
+  - Renaming the defined symbol `stdout` to `stout_copy`
+  - The symbolic expressions still point to this renamed symbol
+  - The symbol forwarding entry `stdout_copy` -> `stdout` forwards the renamed symbol to an undefined copy of the symbol with the original name.
+
  As a result the code will be printed as:
  ```
     mov RAX,QWORD PTR [RIP+stdout] # note that this still points to stdout_copy, but it is being redirected.
@@ -180,15 +183,15 @@ stdout_copy:
     201020    .zero 8 # this is now dead data
  ```
 
- 4. **ABI intrinsic**: This is used for symbols that get redefined by the linking
- process, we want the references to point to the new versions of the symbols defined
- by the linker, not to where those symbols where in the original binary.
+### ABI intrinsic
+This is used for symbols that get redefined by the linking process, we want the references to point to the new versions of the symbols defined by the linker, not to where those symbols where in the original binary.
 
- The mechanism is the same as with COPY relocation, the original definition is renamed.
- The symbolic expressions still point to the original definition, but
- the symbol forwarding table forwards the renamed symbol to an undefined copy of
- the symbol with the original name.
+ The mechanism is the same as with COPY relocation:
+  - The original definition is renamed `<Name>_copy`
+  - The symbolic expressions still point to the original definition
+  - The symbol forwarding table `<Name> -> <Name>_copy` forwards the renamed symbol to an undefined copy of the symbol with the original name.
 
+This is applied to symbols like `_GLOBAL_OFFSET_TABLE_` or `__dso_handle`.
 
 
 ## symbolicExpressionSizes
