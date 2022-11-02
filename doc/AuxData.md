@@ -145,7 +145,7 @@ The case of PLT entries is similar. The original code would look like:
 
 # the thunk in the PLT table
 FUN_590:
-        590:   jmp QWORD PTR [RIP+Foo@GOTPCREL]
+        jmp QWORD PTR [RIP+Foo@GOTPCREL]
 ```
 The original code calls to the PLT thunk, which then resolves
 the reference dynamically and jumps to the corresponding function.
@@ -166,10 +166,10 @@ In the case of copy relocations, the original code looks as follows:
 stdout:
     201020    .zero 8
  ```
-The entry in the Bss section contains a COPY relocation that will copy the content of stdout from glibc into the reserved slot. Unfortunately, we don't have a way to tell the linker to generate a copy relocation for the existing slot at address `201020`. Therefore, we will ignorethe slot and let the linker reserve a new one.
+The entry in the Bss section contains a COPY relocation that will copy the content of stdout from glibc into the reserved slot. Unfortunately, we don't have a way to tell the linker to generate a copy relocation for the existing slot at address `201020`. Therefore, we will ignore the slot and let the linker reserve a new one.
 
 We do this by:
-  - Renaming the defined symbol `stdout` to `stout_copy`
+  - Renaming the defined symbol `stdout` to `stdout_copy`
   - The symbolic expressions still point to this renamed symbol
   - The symbol forwarding entry `stdout_copy` -> `stdout` forwards the renamed symbol to an undefined copy of the symbol with the original name.
 
