@@ -15,7 +15,6 @@ main:
 .jt:
     .byte (.case0 - .jt) / 2
     .byte (.case1 - .jt) / 2
-.split:
     .byte (.case2 - .jt) / 2
     .byte (.case3 - .jt) / 2
 
@@ -37,4 +36,4 @@ main:
 .section .rodata
     @ Ensure the jumptable is split into multiple code block candidates with
     @ address_in_data()
-    .long .split
+    .long .jt+2

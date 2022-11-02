@@ -300,135 +300,85 @@ class CfgTests(unittest.TestCase):
     )
     def test_arm_tbb_cfg(self):
         """
-        Test ARM32 CFG from a TBB jumptable
+        Test ARM32 CFG from TBB/TBH jumptables
         """
         binary = "ex"
-        with cd(ex_arm_asm_dir / "ex_tbb"):
-            self.assertTrue(
-                compile(
-                    "arm-linux-gnueabihf-gcc",
-                    "arm-linux-gnueabihf-g++",
-                    "-O0",
-                    [],
-                    "qemu-arm -L /usr/arm-linux-gnueabihf",
-                )
-            )
-            self.assertTrue(disassemble(binary, format="--ir")[0])
+        examples = (
+            ("ex_tbb", b"\xdf\xe8\x00\xf0", 1),
+            ("ex_tbh", b"\xdf\xe8\x10\xf0", 2),
+            ("ex_tbb_r3_base", b"\xd3\xe8\x00\xf0", 1),
+        )
+        for example_dir, jump_instruction_bytes, tbl_entry_size in examples:
+            with self.subTest(example_dir=example_dir):
+                with cd(ex_arm_asm_dir / example_dir):
+                    self.assertTrue(
+                        compile(
+                            "arm-linux-gnueabihf-gcc",
+                            "arm-linux-gnueabihf-g++",
+                            "-O0",
+                            [],
+                            "qemu-arm -L /usr/arm-linux-gnueabihf",
+                        )
+                    )
 
-            # test_relative_jump_tables relies on symbols to find the expected
-            # source and target blocks. However, ARM doesn't seem to match the
-            # symbols with CodeBlocks correctly, so we work around it.
+                    self.assertTrue(
+                        disassemble(
+                            binary,
+                            format="--ir",
+                            strip_exe="arm-linux-gnueabihf-strip",
+                            strip=True,
+                            extra_strip_flags=["--keep-symbol=table"],
+                        )[0]
+                    )
 
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
-            m = ir_library.modules[0]
+                    ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+                    m = ir_library.modules[0]
 
-            # Locate the tbb instruction
-            jumping_block = None
-            expected_dest_blocks = []
+                    # Locate the tbb instruction
+                    jumping_block = None
+                    for block in m.code_blocks:
+                        if (
+                            block.contents[-len(jump_instruction_bytes) :]
+                            == jump_instruction_bytes
+                        ):
+                            jumping_block = block
+                            break
+                    else:
+                        self.fail("Could not find tbb/tbh instruction")
 
-            for block in m.code_blocks:
-                # search for tbb [pc, r3]
-                if block.contents[:4] == b"\xdf\xe8\x00\xf0":
-                    jumping_block = block
+                    # check that the tbb block has edges to all the jump table
+                    # entries
+                    self.assertEqual(
+                        len(list(jumping_block.outgoing_edges)), 4
+                    )
+                    # check that there are symbolic expressions for all four
+                    # jump table entries
+                    if example_dir == "ex_tbb_r3_base":
+                        table_sym = next(
+                            s for s in m.symbols if s.name == "table"
+                        )
+                        table_address = table_sym.referent.address
+                    else:
+                        table_address = jumping_block.address + len(
+                            jump_instruction_bytes
+                        )
+                    for i in range(0, 4):
+                        symexprs = list(
+                            m.symbolic_expressions_at(
+                                table_address + i * tbl_entry_size
+                            )
+                        )
+                        self.assertEqual(len(symexprs), 1)
 
-                # search for nop
-                elif block.contents[:2] == b"\x00\xbf":
-                    expected_dest_blocks.append(block)
-
-            # check that the tbb block has edges to all the jump table entries
-            self.assertEqual(len(list(jumping_block.outgoing_edges)), 4)
-            dest_blocks = [e.target for e in jumping_block.outgoing_edges]
-            self.assertEqual(set(dest_blocks), set(expected_dest_blocks))
-
-    @unittest.skipUnless(
-        platform.system() == "Linux", "This test is linux only."
-    )
-    def test_arm_tbb_r3_base_cfg(self):
-        """
-        Test ARM32 CFG from a TBB jumptable wtih R3 as base register
-        """
-        binary = "ex"
-        with cd(ex_arm_asm_dir / "ex_tbb_r3_base"):
-            self.assertTrue(
-                compile(
-                    "arm-linux-gnueabihf-gcc",
-                    "arm-linux-gnueabihf-g++",
-                    "-O0",
-                    [],
-                    "qemu-arm -L /usr/arm-linux-gnueabihf",
-                )
-            )
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
-            m = ir_library.modules[0]
-
-            # Locate the tbb instruction
-            jumping_block = None
-            expected_dest_blocks = []
-
-            for block in m.code_blocks:
-                # search for tbb [r3, r0]
-                if block.contents[-4:] == b"\xd3\xe8\x00\xf0":
-                    jumping_block = block
-
-                # search for nop
-                elif block.contents[:2] == b"\x00\xbf":
-                    expected_dest_blocks.append(block)
-
-            # check that the tbb block has edges to all the jump table entries
-            self.assertEqual(len(list(jumping_block.outgoing_edges)), 4)
-            dest_blocks = [e.target for e in jumping_block.outgoing_edges]
-            self.assertEqual(set(dest_blocks), set(expected_dest_blocks))
-
-    @unittest.skipUnless(
-        platform.system() == "Linux", "This test is linux only."
-    )
-    def test_arm_tbh_cfg(self):
-        """
-        Test ARM32 CFG from a TBH jumptable
-        """
-        binary = "ex"
-        with cd(ex_arm_asm_dir / "ex_tbh"):
-            self.assertTrue(
-                compile(
-                    "arm-linux-gnueabihf-gcc",
-                    "arm-linux-gnueabihf-g++",
-                    "-O0",
-                    [],
-                    "qemu-arm -L /usr/arm-linux-gnueabihf",
-                )
-            )
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    strip=True,
-                    strip_exe="arm-linux-gnueabihf-strip",
-                )[0]
-            )
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
-            m = ir_library.modules[0]
-
-            # Locate the tbh instruction
-            jumping_block = None
-            for block in m.code_blocks:
-                # search for tbh [pc, r0]
-                if block.contents[:4] == b"\xdf\xe8\x10\xf0":
-                    jumping_block = block
-                    break
-            else:
-                self.fail("Could not find tbh instruction")
-
-            # check that the tbh block has edges to all the jump table entries
-            self.assertEqual(len(list(jumping_block.outgoing_edges)), 4)
-
-            # check that there are symbolic expressions for all four jump
-            # table entries
-            for offset in range(4, 12, 2):
-                symexprs = list(
-                    m.symbolic_expressions_at(jumping_block.address + offset)
-                )
-                self.assertEqual(len(symexprs), 1)
+                    # check functionBlocks
+                    function_blocks = m.aux_data["functionBlocks"].data
+                    for _, blocks in function_blocks.items():
+                        if jumping_block in blocks:
+                            for edge in jumping_block.outgoing_edges:
+                                self.assertIn(edge.target, blocks)
+                            break
+                    else:
+                        self.fail("Jumping block not found in functionBlocks")
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
