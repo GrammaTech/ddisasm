@@ -22,6 +22,9 @@ workflow:
     - if: $CI_COMMIT_BRANCH
     - if: $CI_PIPELINE_SOURCE == "schedule"
 
+include:
+  - local: .ci/arm-benchmark.yml
+
 stages:
   - build-images
   - prebuild
@@ -597,31 +600,6 @@ debian-installer-ubuntu20:
     - 'test-ubuntu20-ddisasm-dbg-package'
     - 'build-ubuntu20-packages'
   <<: *debian-installer-ubuntu-template
-
-trigger:
-  stage: trigger
-  needs:
-    # TODO: on master, this unfortantely depends on deploy, since the ddisasm-arm-benchmark will pull the apt package.
-    # maybe it would be better to always use the artifact for ddisasm?
-    - debian-installer-ubuntu20
-  variables:
-    DDISASM_BRANCH: $CI_COMMIT_BRANCH
-  trigger:
-    project: aseitz/ddisasm-arm-benchmark
-    branch: master
-    strategy: depend
-
-results:
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20:$IMAGE_TAG
-  stage: results
-  needs:
-    - trigger
-  script:
-    - curl --location --output artifacts.zip "${CI_API_V4_URL}/projects/aseitz%2Fddisasm-arm-benchmark/jobs/artifacts/master/download?job=merge-metrics&job_token=$CI_JOB_TOKEN"
-    - unzip artifacts.zip
-  artifacts:
-    reports:
-      metrics: metrics.txt
 
 docker-image-vars:
   stage: prebuild
