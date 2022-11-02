@@ -171,7 +171,7 @@ The entry in the Bss section contains a COPY relocation that will copy the conte
 This is achieved as follows:
   - Ddisasm renames the defined symbol `stdout` to `stdout_copy`
   - The symbolic expressions still point to this renamed symbol.
-  - Ddisasm adds a symbol forwarding entry `stdout_copy` -> `stdout`, which forwards the renamed symbol to an undefined copy of the symbol with the original name.
+  - Ddisasm adds a symbol forwarding entry `stdout_copy` -> `stdout`, which forwards the renamed symbol to an copy of the symbol with the original name but that points to a ProxyBlock.
 
  The symbol forwarding entry is used by gtirb-pprinter to generate the following assembly code:
  ```
@@ -189,7 +189,7 @@ This is used for symbols that get redefined by the linking process, we want the 
  The mechanism is the same as with COPY relocation:
   - Ddisasm renames the defined symbol to `<Name>_copy`.
   - The symbolic expressions still point to the original definition.
-  - Ddisasm adds a symbol forwarding entry `<Name> -> <Name>_copy`, which forwards the renamed symbol to an undefined copy of the symbol with the original name.
+  - Ddisasm adds a symbol forwarding entry `<Name> -> <Name>_copy`, which forwards the renamed symbol to an copy of the symbol with the original name but that points to a ProxyBlock.
 
 This is applied to symbols like `_GLOBAL_OFFSET_TABLE_` or `__dso_handle`.
 
