@@ -105,6 +105,12 @@ tests:
       compiler: "arm-linux-gnueabihf-gcc"
       flags: ["-no-pie"]
 
+  - name: ex_blx_interwork
+    <<: *assembly
+    build:
+      <<: *assembly-build
+      flags: ["-no-pie"]
+
   - name: ex1
     <<: *default
 
