@@ -1,6 +1,7 @@
 # 1.5.5 (Unreleased)
 * Update generated `elfSymbolVersions` auxdata.
 * Add "--ignore-errors" argument.
+* Update LIEF to version 0.12.3.
 
 # 1.5.4
 * Add PE32 Safe Structured Exception Handling (SAFESEH) support.
