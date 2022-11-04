@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <LIEF/LIEF.hpp>
+#include <fstream>
 #include <gtirb/gtirb.hpp>
 
 #include "../gtirb-builder/ElfReader.h"
