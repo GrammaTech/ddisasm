@@ -62,8 +62,9 @@ extern "C"
     /**
     Format an unsigned integer as a string in its hex representation
     */
-    souffle::RamDomain to_string_hex(souffle::SymbolTable* symbolTable,
-                                     souffle::RecordTable* recordTable, souffle::RamDomain Value);
+    EXPORT souffle::RamDomain to_string_hex(souffle::SymbolTable* symbolTable,
+                                            souffle::RecordTable* recordTable,
+                                            souffle::RamDomain Value);
 }
 
 class FunctorContextManager
