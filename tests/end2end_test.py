@@ -82,6 +82,7 @@ class TestExamples(unittest.TestCase):
                     "ex",
                     optimizations=["-O0"],
                     extra_ddisasm_flags=ddisasm_opts,
+                    upload=False,
                 )
             )
 
