@@ -72,7 +72,7 @@ instruction sequences.
 plausible_block(0,0,"",0):- false.
 
 block_points(Block,"code",0,Weight,cat("plausible_block: ", Why)):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     plausible_block(Block,Weight,Why,_).
 
 avoid_symbols("$d").

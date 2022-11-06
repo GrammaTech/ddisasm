@@ -443,10 +443,11 @@ multiple_fallthrough_to(Block):-
     code_in_block_candidate_refined(EA2,BlockPred2),
     BlockPred != BlockPred2.
 
-
+/**
+Two blocks overlap.
+*/
 .decl block_overlap(Block1:address,Type1:block_type,Block2:address,Type2:block_type)
 .output block_overlap
-
 
 block_overlap(Block1,Type1,Block2,Type2):-
     block_candidate_boundaries(Block1,Type1,BegAddr1,EndAddr1),
@@ -459,14 +460,189 @@ block_overlap(Block1,Type1,Block2,Type2):-
     BegAddr1 <= BegAddr2,
     BegAddr2 < EndAddr1.
 
+block_overlap(Block2,Type2,Block1,Type1):-
+    block_overlap(Block1,Type1,Block2,Type2).
 
-.decl block_is_overlapping(Block:address,Type:block_type)
+/**
+The block BlockA,TypeA implies the existence of of BlockB,TypeB
+*/
+.decl block_candidate_dependency_edge(BlockA:address,TypeA:block_type,BlockB:address,TypeB:block_type)
 
-block_is_overlapping(Block,Type):-
+block_candidate_dependency_edge(BlockA,"code",BlockB,"code"):-
+    code_in_block_candidate_refined(EA,BlockA),
     (
-        block_overlap(Block,Type,_,_);
-        block_overlap(_,_,Block,Type)
-    ).
+        must_fallthrough(EA,BlockB);
+        direct_jump(EA,BlockB);
+        direct_call(EA,BlockB)
+    ),
+    block_candidate_boundaries(BlockB,"code",_,_),
+    BlockA != BlockB.
+
+
+/**
+Assign ordering to overlapping blocks to enable tracking if all overlapping
+blocks are discarded.
+*/
+.decl block_overlap_id(BlockA:address,TypeA:block_type,BlockB:address,TypeB:block_type,Index:unsigned)
+
+block_overlap_id(BlockA,TypeA,BlockB,TypeB,autoinc()):-
+    block_overlap(BlockA,TypeA,BlockB,TypeB).
+
+/**
+The first block_overlap for each block according to block_overlap_id's ordering
+*/
+.decl first_block_overlap(BlockA:address,TypeA:block_type,BlockB:address,TypeB:block_type)
+
+first_block_overlap(BlockA,TypeA,BlockB,TypeB):-
+    block_candidate_boundaries(BlockA,TypeA,_,_),
+    NextID = min ID : {
+        block_overlap_id(BlockA,TypeA,_,_,ID)
+    },
+    block_overlap_id(BlockA,TypeA,BlockB,TypeB,NextID).
+
+/**
+Subsequent block_overlap for each block according to block_overlap_id's ordering
+*/
+.decl next_block_overlap(BlockA:address,TypeA:block_type,BlockB:address,TypeB:block_type,BlockC:address,TypeC:block_type)
+
+next_block_overlap(BlockA,TypeA,BlockB,TypeB,BlockC,TypeC):-
+    (
+        first_block_overlap(BlockA,TypeA,BlockB,TypeB);
+        next_block_overlap(BlockA,TypeA,_,_,BlockB,TypeB)
+    ),
+    block_overlap_id(BlockA,TypeA,BlockB,TypeB,LastID),
+    NextID = min ID : {
+        block_overlap_id(BlockA,TypeA,_,_,ID),
+        ID > LastID
+    },
+    block_overlap_id(BlockA,TypeA,BlockC,TypeC,NextID).
+
+/**
+All blocks that overlap with A and sorted prior to B in block_order impossible.
+
+If...
+
+    prior_overlaps_discarded(BlockA,TypeA,BlockB,TypeB),
+    !next_block_overlap(BlockA,TypeA,BlockB,TypeB,_,_),
+
+...then all blocks that overlap A are impossible.
+*/
+.decl prior_overlaps_discarded(BlockA:address,TypeA:block_type,BlockB:address,TypeB:block_type)
+
+prior_overlaps_discarded(BlockA,TypeA,BlockB,TypeB):-
+    first_block_overlap(BlockA,TypeA,BlockB,TypeB),
+    impossible_block(BlockB,TypeB,_).
+
+prior_overlaps_discarded(BlockA,TypeA,BlockC,TypeC):-
+    prior_overlaps_discarded(BlockA,TypeA,BlockB,TypeB),
+    next_block_overlap(BlockA,TypeA,BlockB,TypeB,BlockC,TypeC),
+    impossible_block(BlockC,TypeC,_).
+
+
+/**
+Known blocks are blocks that must exist due to metadata.
+
+The Propagate field is a bool to indicate whether it is safe to forward-
+propagate the known_block. Known blocks that are a result of function symbols,
+for example, are safe to propagate forward, whereas non-overlapping blocks are
+not.
+*/
+.decl known_block(Block:address,Type:block_type,Propagate:unsigned,Reason:symbol)
+.output known_block
+
+known_block(Block,Type,0,"Non-overlapping"):-
+    block_candidate_boundaries(Block,Type,_,_),
+    !block_overlap(Block,Type,_,_).
+
+// If all overlapping blocks are discarded, this block becomes known.
+known_block(BlockA,TypeA,0,"overlaps discarded"):-
+    block_overlap(BlockA,TypeA,BlockB,TypeB),
+    !next_block_overlap(BlockA,TypeA,BlockB,TypeB,_,_),
+    prior_overlaps_discarded(BlockA,TypeA,BlockB,TypeB).
+
+// On ARM, both entry point and function symbols do use the low bit to indicate
+// ARM/Thumb, so these rules are valid there as well.
+known_block(Block,"code",1,"entry point"):-
+    !binary_type("REL"),
+    entry_point(Block).
+
+known_block(Block,"code",1,"function symbol"):-
+    function_symbol(Block,_).
+
+/**
+ELF section types that contain an array of code pointers.
+*/
+.decl elf_pointer_array_section_type(SectionTypeName:symbol)
+
+elf_pointer_array_section_type("INIT_ARRAY").
+elf_pointer_array_section_type("PREINIT_ARRAY").
+elf_pointer_array_section_type("FINI_ARRAY").
+
+known_block(Block,"code",1,"pointer array section"):-
+    binary_format("ELF"),
+    elf_pointer_array_section_type(SectionTypeName),
+    elf_section_type(SectionTypeName,SectionType),
+    section_type(SectionName,SectionType),
+    section(SectionName,Size,Start,_,_),
+    arch.pointer_size(PointerSize),
+    Entry = range(Start,Start+Size,PointerSize),
+    data_uword(Entry,PointerSize,Val),
+    Block = as(Val,address).
+
+// Propagate forward from known blocks.
+// We can only propagate blocks derived from real metadata. Propagating from
+// non-overlapping blocks is a bit too aggressive - a missed data block can
+// result in a non-overlapping false code block, and propagating that can have
+// disastrous results.
+// We could only do that if we can guarantee that data_block_candidate is a
+// strict superset of true data blocks.
+known_block(BlockB,TypeB,1,"propagated"):-
+    known_block(BlockA,TypeA,1,_),
+    block_candidate_dependency_edge(BlockA,TypeA,BlockB,TypeB).
+
+// subsumption: known_block that can propagate are stronger than others.
+known_block(Block,Type,0,_) <= known_block(Block,Type,1,_):-
+    true.
+
+/**
+Logically impossible blocks.
+*/
+.decl impossible_block(Block:address,Type:block_type,Reason:symbol)
+.output impossible_block
+
+// A known block discovered by propagation must discard overlapping blocks
+impossible_block(BlockB,TypeB,"overlaps known"):-
+    known_block(BlockA,TypeA,_,_),
+    block_overlap(BlockA,TypeA,BlockB,TypeB).
+
+// Propagate impossible blocks backward
+impossible_block(BlockA,TypeA,"propagated impossible"):-
+    impossible_block(BlockB,TypeB,_),
+    block_candidate_dependency_edge(BlockA,TypeA,BlockB,TypeB).
+
+/**
+Blocks that are still overlapping after known_block and impossible_block are determined.
+*/
+.decl unresolved_block(Block:address,Type:block_type)
+
+unresolved_block(Block,Type):-
+    block_candidate_boundaries(Block,Type,_,_),
+    !known_block(Block,Type,_,_),
+    !impossible_block(Block,Type,_).
+
+// If some rule assigns negative points, make sure positive point rules are considered.
+unresolved_block(Block,Type):-
+    negative_block_points(Block,Type,_,_,_).
+
+/**
+Blocks that still overlap after known_block and impossible_block are determined.
+*/
+.decl unresolved_block_overlap(Block1:address,Type1:block_type,Block2:address,Type2:block_type)
+
+unresolved_block_overlap(Block1,Type1,Block2,Type2):-
+    block_overlap(Block1,Type1,Block2,Type2),
+    unresolved_block(Block1,Type1),
+    unresolved_block(Block2,Type2).
 
 //////////////////////////////////////////////////////////////////////
 // We need to solve the block overlaps
@@ -475,7 +651,7 @@ block_is_overlapping(Block,Type):-
 .decl block_total_points(Block:address,Type:block_type, points:number)
 
 block_total_points(Block,Type,Points):-
-    block_is_overlapping(Block,Type),
+    unresolved_block(Block,Type),
     Points = sum X:{block_points(Block,Type,_,X,_)}.
 
 /**
@@ -488,10 +664,7 @@ BlockPropagated (for debugging purpose):
 .output discarded_block
 
 discarded_block(Block1,Type1,"less points",0):-
-    (
-        block_overlap(Block1,Type1,Block2,Type2);
-        block_overlap(Block2,Type2,Block1,Type1)
-    ),
+    unresolved_block_overlap(Block1,Type1,Block2,Type2),
     // keep the block that has more points
     block_total_points(Block1,Type1,Points1),
     block_total_points(Block2,Type2,Points2),
@@ -503,6 +676,9 @@ discarded_block(Block1,Type1,"less points",0):-
         Type1 = "data",
         Type2 = "code"
     ).
+
+discarded_block(Block,Type,"impossible",0):-
+    impossible_block(Block,Type,_).
 
 discarded_block(Block,Type,"negative points",0):-
     block_total_points(Block,Type,Points),
@@ -517,7 +693,8 @@ discarded_block(Block,"code","propagated",Block2):-
         direct_call(EA,Block2);
         must_fallthrough(EA,Block2)
     ),
-    code_in_block_candidate_refined(EA,Block).
+    code_in_block_candidate_refined(EA,Block),
+    unresolved_block(Block,"code").
 
 //////////////////////////////////////////////////////////////////////
 //special cases
@@ -557,6 +734,17 @@ candidate_block_is_padding(Block):-
 .decl block_points(Block:address,Type:block_type,Predecessor:address,Importance:number,HeuristicName:symbol)
 .output block_points
 
+/**
+Negative block points are collected in their own relation.
+
+This allows any block with negative_block_points to be marked as
+unresolved_block without causing cyclic negation.
+*/
+.decl negative_block_points(Block:address,Type:block_type,Predecessor:address,Importance:number,HeuristicName:symbol)
+
+block_points(Block,Type,Predecessor,Importance,HeuristicName):-
+    negative_block_points(Block,Type,Predecessor,Importance,HeuristicName).
+
 .decl transitive_points(HeuristicName:symbol)
 
 transitive_points("start point").
@@ -588,7 +776,6 @@ block_points(Block,"data",0,3,"relative-jump-table-start"):-
 //////////////////////////////////////////////////////////////////////
 // code block candidate points
 
-block_is_overlapping(Block,"code"),
 block_points(Block,"code",0,-3,"overlaps with relocation"):-
     (
         binary_isa("X86");
@@ -610,38 +797,34 @@ block_points(Block,"code",0,-3,"overlaps with relocation"):-
     ).
 
 block_points(Block,"code",0,0,"basic point"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     code_in_block_candidate_refined(_,Block).
 
 block_points(Block,"code",0,20,"start point"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     entry_point(Block).
 
 block_points(Block,"code",0,1,"code section start"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     code_section(Section),
     loaded_section(Block,_,Section).
-
-block_points(Block,"code",0,20,"function symbol"):-
-    block_is_overlapping(Block,"code"),
-    function_symbol(Block,_).
 
 block_points(Block,"code",0,1,"address in data"):-
     !binary_isa("X86"),
     !binary_isa("ARM"),
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     address_in_data(Address,Block),
     !address_in_data_is_printable(Address).
 
 block_points(Block,"code",0,1,"aligned address in data"):-
     !binary_isa("X86"),
     !binary_isa("ARM"),
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     aligned_address_in_data(_,Block).
 
 block_points(Block,"code",0,1,"address in data array"):-
     !binary_isa("ARM"),
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     address_in_data(Address,Block),
     arch.pointer_size(Pt_size),
     (
@@ -660,92 +843,91 @@ block_points(Block,"code",0,1,"address in data array"):-
     ).
 
 block_points(Block,"code",BlockPred,6,"direct jump"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     direct_jump(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     BlockPred != Block,
-    !block_is_overlapping(BlockPred,_).
+    known_block(BlockPred,"code",_,_).
 
 block_points(Block,"code",BlockPred,6,"direct call"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     direct_call(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     BlockPred != Block,
-    !block_is_overlapping(BlockPred,_).
+    known_block(BlockPred,"code",_,_).
 
 block_points(Block,"code",BlockPred,2,"must-fallthrough"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     must_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     !candidate_block_is_padding(BlockPred),
-    !block_is_overlapping(BlockPred,_).
+    known_block(BlockPred,"code",_,_).
 
 block_points(Block,"code",BlockPred,7,"may-fallthrough"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     may_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     !candidate_block_is_padding(BlockPred),
-    !block_is_overlapping(BlockPred,_).
+    known_block(BlockPred,"code",_,_).
 
 // it fits but the previous block does not fallthrough
 block_points(Block,Type,BlockPred,3,"fits"):-
-    block_is_overlapping(Block,Type),
+    unresolved_block(Block,Type),
     after_end(Block,EA),
     code_in_block_candidate_refined(EA,BlockPred),
-    !block_is_overlapping(BlockPred,_).
+    known_block(BlockPred,"code",_,_).
 
 // fits after nops block
 block_points(Block,Type,BlockPred,1,"fits"):-
-    block_is_overlapping(Block,Type),
+    unresolved_block(Block,Type),
     next(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     candidate_block_is_padding(BlockPred),
-    !block_is_overlapping(BlockPred,_).
+    known_block(BlockPred,"code",_,_).
 
 // Prefer blocks that have a well-defined boundary with a prior block.
 block_points(Block,Type,0,1,"better fit"):-
-    block_is_overlapping(Block,Type),
+    unresolved_block(Block,Type),
     next(EAPrev,Block),
     code_in_block_candidate_refined(EAPrev,BlockPrev),
     Block != BlockPrev.
 
 // its address appears somewhere
 block_points(Block,"code",0,3,"appears"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     possible_target_from(Block,EA),
     !unlikely_have_symbolic_immediate(EA),
     !direct_jump(EA,Block),
     !direct_call(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     BlockPred != Block,
-    !block_is_overlapping(BlockPred,_).
+    known_block(BlockPred,"code",_,_).
 
 block_points(Block,"code",0,3,"relative jump table target"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     relative_address(EA,_,_,_,Block,_),
     count :{ relative_address(EA,_,_,_,_,_) } = 1,
     !relative_address(Block,_,_,_,_,_).
 
 // give a point if it may fallthrough to another block
 block_points(Block,"code",Block_succ,1,"fallthrough_to"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     code_in_block_candidate_refined(EA,Block),
     may_fallthrough(EA,Block_succ),
     code_in_block_candidate_refined(_,Block_succ),
-    !block_is_overlapping(Block_succ,_),
+    known_block(Block_succ,"code",_,_),
     !is_padding(Block_succ).
 
 // transitivity for fallthrough and direct jumps and calls
 block_points(Block,"code",BlockPred,Points,Why):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     may_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
-    block_is_overlapping(BlockPred,"code"),
+    unresolved_block(BlockPred,"code"),
     (
         Why = "may-fallthrough"
         ;
-        !block_overlap(BlockPred,"code",_,"data"),
-        !block_overlap(_,"data",BlockPred,"code")
+        !unresolved_block_overlap(BlockPred,"code",_,"data")
     ),
     block_points(BlockPred,"code",_,Points,Why),
     transitive_points(Why),
@@ -755,14 +937,12 @@ block_points(Block,"code",BlockPred,Points2,Why):-
     // Because for ARM, any bytes that cannot fall through are highly likely
     // literal pool, we skip this predicate for ARM.
     !binary_isa("ARM"),
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     after_end(Block,EA),
     code_in_block_candidate_refined(EA,BlockPred),
-    block_is_overlapping(BlockPred,"code"),
-    !block_overlap(BlockPred,"code",_,"data"),
-    !block_overlap(_,"data",BlockPred,"code"),
-    !block_overlap(Block,"code",_,"data"),
-    !block_overlap(_,"data",Block,"code"),
+    unresolved_block(BlockPred,"code"),
+    !unresolved_block_overlap(BlockPred,"code",_,"data"),
+    !unresolved_block_overlap(Block,"code",_,"data"),
     block_points(BlockPred,"code",_,Points,Why),
     transitive_points(Why),
     (
@@ -775,14 +955,13 @@ block_points(Block,"code",BlockPred,Points,Why):-
     // In case of ARM32, ARM and Thumb blocks often overlap.
     // We skip this predicate for ARM32.
     !binary_isa("ARM"),
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     direct_jump(EA,Block),
     // do not count instructions that fallthrough and jump to the same place twice
     !may_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
-    block_is_overlapping(BlockPred,"code"),
-    !block_overlap(BlockPred,"code",_,"data"),
-    !block_overlap(_,"data",BlockPred,"code"),
+    unresolved_block(BlockPred,"code"),
+    !unresolved_block_overlap(BlockPred,"code",_,"data"),
     block_points(BlockPred,"code",_,Points,Why),
     transitive_points(Why),
     Points != 0.
@@ -791,64 +970,64 @@ block_points(Block,"code",BlockPred,Points,Why):-
     // In case of ARM32, ARM and Thumb blocks often overlap.
     // We skip this predicate for ARM32.
     !binary_isa("ARM"),
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     direct_call(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
-    block_is_overlapping(BlockPred,"code"),
-    !block_overlap(BlockPred,"code",_,"data"),
-    !block_overlap(_,"data",BlockPred,"code"),
+    unresolved_block(BlockPred,"code"),
+    !unresolved_block_overlap(BlockPred,"code",_,"data"),
     block_points(BlockPred,"code",_,Points,Why),
     transitive_points(Why),
     Points != 0.
 
 block_points(Block,"code",0,1,"has well-defined jump"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     code_in_block_candidate_refined(EA,Block),
     direct_jump(EA,BlockDest),
-    !block_is_overlapping(BlockDest,"code").
+    known_block(BlockDest,"code",_,_).
 
 block_points(Block,"code",0,1,"has well-defined call"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     code_in_block_candidate_refined(EA,Block),
     direct_call(EA,BlockDest),
-    !block_is_overlapping(BlockDest,"code").
+    known_block(BlockDest,"code",_,_).
 
 block_points(Block,"code",0,3,"has well-defined call to a function symbol"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     code_in_block_candidate_refined(EA,Block),
     direct_call(EA,BlockDest),
     function_symbol(BlockDest,_).
 
 block_points(Block,"code",0,1,"plt call"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     code_in_block_candidate_refined(EA,Block),
     direct_call(EA,BlockDest),
     plt_entry(BlockDest,_).
 
 block_points(Block,"code",0,20,"fde-entry"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     fde_addresses(Block,_).
 
 block_points(Block,"code",0,2,"padding nop block"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     fde_addresses(_,Block),
     arch.is_nop(Block).
 
 block_points(Block,"code",0,-1,"overlap long nop"):-
-    block_is_overlapping(Block,"code"),
-    block_overlap(Block,"code",Block2,"code"),
+    unresolved_block(Block,"code"),
+    unresolved_block_overlap(Block,"code",Block2,"code"),
+    Block < Block2,
     code_in_block_candidate_refined(EA_nop,Block2),
     arch.is_nop(EA_nop).
 
 block_points(Block,"code",0,3,"exc-region"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     lsda_callsite_addresses(Block, _, _).
 
 block_points(Block,"code",0,10,"landing-pad"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     lsda_callsite_addresses( _, _, Block).
 
-block_points(Block,"code",0,-2,"conditional jump/return: fallthrough to invalid"):-
+negative_block_points(Block,"code",0,-2,"conditional jump/return: fallthrough to invalid"):-
     code_in_block_candidate(EA,Block),
     (
         conditional_jump(EA);
@@ -864,14 +1043,13 @@ block_points(Block,"data",0,7,"object symbol"):-
 /**
 Block that must fall through to object symbol is unlikely real code.
 */
-block_points(Block,"code",0,-5,"must-fallthrough to object"):-
-    block_is_overlapping(Block,"code"),
+negative_block_points(Block,"code",0,-5,"must-fallthrough to object"):-
+    unresolved_block(Block,"code"),
     code_in_block_candidate_refined(EA,Block),
     must_fallthrough(EA,EASucc),
     symbol(EASucc,_,"OBJECT",_,_,_,_,_,_).
 
-block_is_overlapping(Block,"code"),
-block_points(Block,"code",0,-1,"jump to string"):-
+negative_block_points(Block,"code",0,-1,"jump to string"):-
     ascii_string(Beg,End),
     direct_jump(EA,Dest),
     Dest >= Beg,
@@ -884,7 +1062,7 @@ block_points(Block,"code",0,-1,"jump to string"):-
     code_in_block_candidate(EA,Block).
 
 block_points(Block,"code",0,5,"seh handler"):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     seh_handler_entry(_,Block).
 
 block_points(Block,"data",0,Points,"data access"):-
@@ -900,8 +1078,8 @@ block_points(Block,"data",0,Points,"data access"):-
     AccessSize != 0,
     code_in_block_candidate(EA,Block0),
     (
-        !block_is_overlapping(Block0,_), Points = 4;
-        block_is_overlapping(Block0,_), Points = 2
+        !unresolved_block(Block0,_), !impossible_block(Block0,_,_), Points = 4;
+        unresolved_block(Block0,_), Points = 2
     ).
 
 must_access_data(EA,Block),
