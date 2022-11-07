@@ -374,7 +374,8 @@ discarded_jump_table_entry(TableStart,Ref,EA):-
     (
         symbolic_operand(_,_,Limit,"data");
         data_segment(Limit,_);
-        data_segment(_,Limit)
+        data_segment(_,Limit);
+        jump_table_start(_,_,Limit,_,_)
     ),
     EA <= Limit, Limit < EA+Size,
     EA != TableStart.
