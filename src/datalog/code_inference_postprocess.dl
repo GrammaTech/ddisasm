@@ -145,12 +145,11 @@ refined_block_control_instruction(Block,Branch):-
     refined_block_last_instruction(Block,EA),
     arch.delay_slot(Branch,EA).
 
-block_information(Block,BlockSize,FirstEA,LastEA+InsnSize):-
+block_information(Block,BlockSize,FirstEA,FirstEA+BlockSize):-
     refined_block_last_instruction(Block,LastInst),
     arch.instruction_at(FirstEA,Block),
     instruction(LastInst,InsnSize,_,_,_,_,_,_,_,_),
-    arch.instruction_at(LastEA,LastInst),
-    BlockSize= LastEA+InsnSize - FirstEA.
+    BlockSize = LastInst + InsnSize - Block.
 
 /**
 Blocks are either contiguous or separated by data segments
