@@ -61,7 +61,9 @@ class TestExamples(unittest.TestCase):
         )
 
     @unittest.skipUnless(
-        platform.system() == "Linux", "This test is linux only."
+        os.path.exists("./build/lib/libfunctors.so")
+        and platform.system() == "Linux",
+        "This test is linux only.",
     )
     def test_interpreter(self):
         """
