@@ -112,7 +112,7 @@ _Note that the section type value is always 0 for PE sections._
 | Value | Map one symbol to another symbol. (Used for flattening linker-induced indirect references.) |
 
 This table is used to resolve certain kinds of indirect constructs used by linkers in symbolic expressions.
-Currently there are four kinds of constructs that use symbolForwarding.
+Currently there are five kinds of constructs that use symbolForwarding.
 
 ### GOT references
 Instructions in the code might refer to function or data through the GOT table.
@@ -192,6 +192,40 @@ This is used for symbols that get redefined by the linking process, we want the 
   - Ddisasm adds a symbol forwarding entry `<Name> -> <Name>_copy`, which forwards the renamed symbol to an copy of the symbol with the original name but that points to a ProxyBlock.
 
 This is applied to symbols like `_GLOBAL_OFFSET_TABLE_` or `__dso_handle`.
+
+### References to imported symbols in PE binaries
+
+PE binaries record imported procedures in the import address table (IAT). Each entry corresponds to an
+imported procedure and it is populated by the Windows loader.
+
+```
+            call [.L_40100C]
+            ...
+            ...
+# An entry on the IAT table
+.L_40100C:
+            .quad Foo
+```
+This is very similar to the GOT table and Ddisasm generates the same kind of symbol forwarding entry.
+Ddisasm adds an entry to the  symbol forwarding table of the form `IAT_Entry` -> `Foo`.
+
+PE binaries can also use small thunks to support imported procedures for code that was not
+compiled like that. In that case, the user code will have a direct call
+and the linker will add a small thunk that references the IAT table.
+
+```
+            call 200000
+            ...
+# The compiler added thunk
+.L_200000:
+            jmp       [.L_40100C]
+            ...
+# An entry on the IAT table
+.L_40100C:
+            .quad Foo
+```
+The original code calls to the thunk, which then jumps to the target function using the IAT.
+Ddisasm adds an entry to the  symbol forwarding table of the form `.L_200000` -> `Foo`.
 
 
 ## symbolicExpressionSizes
