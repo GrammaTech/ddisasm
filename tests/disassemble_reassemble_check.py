@@ -204,10 +204,10 @@ def disassemble(
         )
         time_spent = timer() - start
     if completedProcess.returncode == 0:
-        print(bcolors.okgreen("Disassembly succeed"), flush=True)
+        print(bcolors.okgreen("Disassembly succeed"))
         return True, time_spent
     else:
-        print(bcolors.fail("Disassembly failed"), flush=True)
+        print(bcolors.fail("Disassembly failed"))
         return False, time_spent
 
 

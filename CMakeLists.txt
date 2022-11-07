@@ -350,7 +350,8 @@ if(DDISASM_ENABLE_TESTS)
 
   add_test(
     NAME python_tests
-    COMMAND ${PYTHON} -m unittest discover tests "*_test.py"
+    COMMAND
+      ${PYTHON} -u -m unittest discover tests "*_test.py"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/")
 endif()
 
