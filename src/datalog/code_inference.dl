@@ -193,11 +193,20 @@ invalid(EA,Type):-
         // EA is followed by something that cannot be code.
         must_fallthrough(EA,Dest),  Type = "must_fallthrough to invalid"
     ),
-    (
-        !instruction(Dest,_,_,_,_,_,_,_,_,_);
-        defined_symbol(Dest,_,"OBJECT",_,_,_,_,_,_)
-    ),
+    !instruction(Dest,_,_,_,_,_,_,_,_,_),
     Dest != 0.
+
+invalid(Inst,"overlaps object"):-
+    defined_symbol(Start,ObjSize,"OBJECT",_,_,_,_,_,_),
+    End = Start + ObjSize,
+    arch.instruction_at(EA,Inst),
+    Start <= EA, EA < End.
+
+invalid(Inst,"overlaps object"):-
+    instruction(Inst,InstSize,_,_,_,_,_,_,_,_),
+    arch.instruction_at(EA,Inst),
+    defined_symbol(Start,_,"OBJECT",_,_,_,_,_,_),
+    EA < Start, Start < EA + InstSize.
 
 // propagate the invalid instructions backwards until ret or jmp (encoded in must_fallthrough)
 // propagate through direct jumps and calls
@@ -564,10 +573,12 @@ known_block(BlockA,TypeA,0,"overlaps discarded"):-
 // ARM/Thumb, so these rules are valid there as well.
 known_block(Block,"code",1,"entry point"):-
     !binary_type("REL"),
-    entry_point(Block).
+    entry_point(Block),
+    block_candidate_boundaries(Block,"code",_,_).
 
 known_block(Block,"code",1,"function symbol"):-
-    function_symbol(Block,_).
+    function_symbol(Block,_),
+    block_candidate_boundaries(Block,"code",_,_).
 
 /**
 ELF section types that contain an array of code pointers.
@@ -587,7 +598,8 @@ known_block(Block,"code",1,"pointer array section"):-
     arch.pointer_size(PointerSize),
     Entry = range(Start,Start+Size,PointerSize),
     data_uword(Entry,PointerSize,Val),
-    Block = as(Val,address).
+    Block = as(Val,address),
+    block_candidate_boundaries(Block,"code",_,_).
 
 // Propagate forward from known blocks.
 // We can only propagate blocks derived from real metadata. Propagating from
@@ -685,16 +697,17 @@ discarded_block(Block,Type,"negative points",0):-
     Points < 0.
 
 // propagate discarding blocks through direct jumps, calls, and must_fallthrough
-discarded_block(Block,"code","propagated",Block2):-
-    discarded_block(Block2,"code",_,_),
+discarded_block(Block1,Type1,"propagated",Block2):-
+    discarded_block(Block2,Type2,_,_),
     !overlapping_instruction(Block2,_),
+    block_candidate_dependency_edge(Block1,Type1,Block2,Type2),
     (
-        direct_jump(EA,Block2);
-        direct_call(EA,Block2);
-        must_fallthrough(EA,Block2)
-    ),
-    code_in_block_candidate_refined(EA,Block),
-    unresolved_block(Block,"code").
+        unresolved_block(Block1,Type1)
+        ;
+        // A known block that can't be propagated is only non-overlapping,
+        // so we discard if other results render it nonsense.
+        known_block(Block1,Type1,0,_)
+    ).
 
 //////////////////////////////////////////////////////////////////////
 //special cases
@@ -1037,17 +1050,8 @@ negative_block_points(Block,"code",0,-2,"conditional jump/return: fallthrough to
     invalid(Invalid,_).
 
 data_block_candidate(Block,Size),
-block_points(Block,"data",0,7,"object symbol"):-
+known_block(Block,"data",1,"object symbol"):-
     defined_symbol(Block,Size,"OBJECT",_,_,_,_,_,_).
-
-/**
-Block that must fall through to object symbol is unlikely real code.
-*/
-negative_block_points(Block,"code",0,-5,"must-fallthrough to object"):-
-    unresolved_block(Block,"code"),
-    code_in_block_candidate_refined(EA,Block),
-    must_fallthrough(EA,EASucc),
-    symbol(EASucc,_,"OBJECT",_,_,_,_,_,_).
 
 negative_block_points(Block,"code",0,-1,"jump to string"):-
     ascii_string(Beg,End),

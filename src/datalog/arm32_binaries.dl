@@ -328,11 +328,13 @@ basic_target(Val):-
 // Mapping symbols yield known blocks.
 known_block(Block,"code",1,"$a"):-
     arm_sym(Name),
-    defined_symbol(Block,_,_,_,_,_,_,_,Name).
+    defined_symbol(Block,_,_,_,_,_,_,_,Name),
+    block_candidate_boundaries(Block,"code",_,_).
 
 known_block(Block bor 1,"code",1,"$t"):-
     thumb_sym(Name),
-    defined_symbol(Block,_,_,_,_,_,_,_,Name).
+    defined_symbol(Block,_,_,_,_,_,_,_,Name),
+    block_candidate_boundaries(Block,"code",_,_).
 
 /**
 Either movw r, #N or movt r, #N
