@@ -136,7 +136,7 @@ struct BlockInformation
 
     BlockInformation(souffle::tuple &tuple)
     {
-        assert(tuple.size() == 3);
+        assert(tuple.size() == 4);
         tuple >> EA >> size;
     };
 

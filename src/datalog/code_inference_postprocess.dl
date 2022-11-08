@@ -35,7 +35,7 @@
 .decl refined_block(block:address)
 .output refined_block
 
-.decl block_information(block:address,size:unsigned,endAddress:address)
+.decl block_information(Block:address,Size:unsigned,StartAddress:address,EndAddress:address)
 .output block_information
 
 // Last instruction of refined block:
@@ -145,10 +145,11 @@ refined_block_control_instruction(Block,Branch):-
     refined_block_last_instruction(Block,EA),
     arch.delay_slot(Branch,EA).
 
-block_information(Block,BlockSize,LastEA+InsnSize):-
-    refined_block_last_instruction(Block,LastEA),
-    instruction(LastEA,InsnSize,_,_,_,_,_,_,_,_),
-    BlockSize= LastEA+InsnSize - Block.
+block_information(Block,BlockSize,FirstEA,FirstEA+BlockSize):-
+    refined_block_last_instruction(Block,LastInst),
+    arch.instruction_at(FirstEA,Block),
+    instruction(LastInst,InsnSize,_,_,_,_,_,_,_,_),
+    BlockSize = LastInst + InsnSize - Block.
 
 /**
 Blocks are either contiguous or separated by data segments
@@ -159,13 +160,13 @@ block information (i.e., block_information).
 .decl next_refined_block_in_section(Block:address, NextBlock:address)
 
 next_refined_block_in_section(Block,NextBlock):-
-    block_information(Block,_,NextBlock),
-    block_information(NextBlock,_,_).
+    block_information(Block,_,_,End),
+    block_information(NextBlock,_,End,_).
 
 next_refined_block_in_section(Block,NextBlock):-
-    block_information(Block,_,BlockEndAddr),
-    data_in_code(BlockEndAddr,NextBlock),
-    block_information(NextBlock,_,_).
+    block_information(Block,_,_,End),
+    data_in_code(End,DataEnd),
+    block_information(NextBlock,_,DataEnd,_).
 
 ////////////////////////////////////////////////////////
 // Compute padding regions
@@ -176,7 +177,7 @@ next_refined_block_in_section(Block,NextBlock):-
 // blocks with only nops are padding
 padding(EA,Size):-
     nop_block(EA),
-    block_information(EA,Size,_).
+    block_information(EA,Size,_,_).
 
 // padding that does not form a block
 padding(EA,Size):-
