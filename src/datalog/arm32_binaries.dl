@@ -1161,11 +1161,14 @@ negative_block_points(Block,"code",0,-1,"arm: must-fallthrough to a function sym
     Block != BlockSucc,
     function_symbol(BlockSucc,_).
 
-data_block_candidate(Block,Pt_size),
+data_block_candidate(Block,Pt_size):-
+    aligned_address_in_data(Block,Addr),
+    ascii_string(Addr,_),
+    arch.pointer_size(Pt_size).
+
 block_points(Block,"data",0,2,"arm: pointer to string in data"):-
     aligned_address_in_data(Block,Addr),
     ascii_string(Addr,_),
-    arch.pointer_size(Pt_size),
     // The string does not overlap with a possible literal pool.
     align_addr(Addr_aligned,Addr),
     !litpool_boundaries(Addr_aligned,_).
