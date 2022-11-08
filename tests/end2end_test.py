@@ -1,6 +1,7 @@
 import os
 import sys
 import platform
+import tempfile
 import unittest
 import subprocess
 from pathlib import Path
@@ -58,6 +59,34 @@ class TestExamples(unittest.TestCase):
                 optimizations=[],
             )
         )
+
+    @unittest.skipUnless(
+        os.path.exists("./build/lib/libfunctors.so")
+        and platform.system() == "Linux",
+        "This test is linux only.",
+    )
+    def test_interpreter(self):
+        """
+        Test running the interpreter
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # ddisasm executes with examples/ex1 as the working directory, so
+            # the relative path to the datalog requires "../../"
+            ddisasm_opts = [
+                "--interpreter",
+                "../../src/datalog/main.dl",
+                "--debug-dir",
+                tmpdir,
+            ]
+            self.assertTrue(
+                drt(
+                    "examples/ex1",
+                    "ex",
+                    optimizations=["-O0"],
+                    extra_ddisasm_flags=ddisasm_opts,
+                    upload=False,
+                )
+            )
 
     def test_examples(self):
         for path in self.configs:
