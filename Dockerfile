@@ -40,7 +40,7 @@ RUN apt-get -y update \
       git \
       python3
 
-RUN git clone -b 0.12.1 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF
+RUN git clone -b 0.12.3 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF
 RUN cmake -DLIEF_PYTHON_API=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF /usr/local/src/LIEF -B/usr/local/src/LIEF/build
 RUN cmake --build /usr/local/src/LIEF/build -j4 --target all install
 
@@ -162,6 +162,8 @@ COPY --from=gtirb-pprinter /usr/local/bin/gtirb* /usr/local/bin/
 COPY --from=gtirb-pprinter /usr/local/lib /usr/local/lib
 COPY --from=gtirb-pprinter /usr/local/include /usr/local/include
 
+# .git directory is needed to correctly generate version information
+COPY .git/ /usr/local/src/ddisasm/.git
 COPY doc/ /usr/local/src/ddisasm/doc/
 COPY src/ /usr/local/src/ddisasm/src/
 COPY README.md CMakeLists.txt CMakeLists.googletest version.txt /usr/local/src/ddisasm/
@@ -186,5 +188,6 @@ COPY --from=ddisasm /usr/local/bin/gtirb* /usr/local/bin/
 
 ENV LD_LIBRARY_PATH=/usr/local/lib
 
-RUN gtirb-pprinter --version
-RUN ddisasm --version
+# `grep -v 'UNKNOWN'`: return a failure code if the version string contains 'UNKNOWN'
+RUN gtirb-pprinter --version | grep -v 'UNKNOWN'
+RUN ddisasm --version | grep -v 'UNKNOWN'

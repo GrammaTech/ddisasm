@@ -73,15 +73,31 @@ memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,"NONE",0,Offset):-
     arch.pointer_size(Pt_size),
     Offset = as(Index * Pt_size, number).
 
+/**
+Build operation substrings for aggregated access types.
+
+Previously, we used regex "match" functor with "VLD[1-4].*" and "VST[1-4].*".
+However, it was very slow. When this Souffle PR is merged, we can evaluate
+that again.
+
+https://github.com/souffle-lang/souffle/pull/2328
+*/
+.decl aggregated_access_operation(OperationPrefix:symbol,AccessType:symbol)
+
+aggregated_access_operation(OperationPrefix,AccessType):-
+    I = range(1,5),
+    (
+        OperationBase = "VLD", AccessType = "LOAD";
+        OperationBase = "VST", AccessType = "STORE"
+    ),
+    OperationPrefix = cat(OperationBase,to_string(I),".").
+
 memory_access_aggregated(AccessType,EA,Rn,"NONE",0,0,AccessSize):-
     instruction(EA,_,_,Operation,Op1,BitFieldOp,0,0,_,_),
-    (
-        match("VLD[1-4].*",Operation), AccessType = "LOAD"
-        ;
-        match("VST[1-4].*",Operation), AccessType = "STORE"
-    ),
     op_register_bitfield(BitFieldOp,MaxIndex,RtIn),
     !op_register_bitfield(BitFieldOp,MaxIndex+1,_),
+    aggregated_access_operation(OperationPrefix,AccessType),
+    OperationPrefix = substr(Operation,0,strlen(OperationPrefix)),
     RegCnt = MaxIndex + 1,
     reg_map(RtIn,Rt),
     float_reg(Rt, RegSize),
@@ -90,13 +106,10 @@ memory_access_aggregated(AccessType,EA,Rn,"NONE",0,0,AccessSize):-
 
 memory_access_aggregated(AccessType,EA,Rn,"NONE",0,0,AccessSize):-
     instruction(EA,_,_,Operation,Op1,_,BitFieldOp,0,_,_),
-    (
-        match("VLD[1-4].*",Operation), AccessType = "LOAD"
-        ;
-        match("VST[1-4].*",Operation), AccessType = "STORE"
-    ),
     op_register_bitfield(BitFieldOp,MaxIndex,RtIn),
     !op_register_bitfield(BitFieldOp,MaxIndex+1,_),
+    aggregated_access_operation(OperationPrefix,AccessType),
+    OperationPrefix = substr(Operation,0,strlen(OperationPrefix)),
     RegCnt = MaxIndex + 1,
     reg_map(RtIn,Rt),
     float_reg(Rt, RegSize),

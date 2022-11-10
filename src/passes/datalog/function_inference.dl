@@ -307,5 +307,5 @@ symbolic_expression_in_data(Address,Symbol,Offset):-
 
     complete_function(Function):-
         function_entry_initial(Function),
-        incomplete_function(Function).
+        !incomplete_function(Function).
 }

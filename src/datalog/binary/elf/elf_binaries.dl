@@ -204,7 +204,7 @@ address 'Dest'.
 //     movsx   eax, BYTE PTR array@GOTOFF[esi+ebx]
 got_relative_operand(EA,Index,Dest):-
     reg_has_got(EA_base,Reg),
-    def_used(EA_base,Reg,EA,Index),
+    reg_def_use.def_used(EA_base,Reg,EA,Index),
     instruction_get_op(EA,Index,Op),
     (
       op_indirect_mapped(Op,"NONE",Reg,_,_,Offset,_);
@@ -216,9 +216,9 @@ got_relative_operand(EA,Index,Dest):-
 
 got_relative_operand(EA3,Index,as(Dest,address)):-
     reg_has_got(EA1,Reg1),
-    def_used(EA1,Reg1,EA2,_),
+    reg_def_use.def_used(EA1,Reg1,EA2,_),
     arch.reg_reg_arithmetic_operation(EA2,Reg3,Reg1,Reg2,Mult,0),
-    def_used(EA2,Reg3,EA3,_),
+    reg_def_use.def_used(EA2,Reg3,EA3,_),
     op_immediate_and_reg(EA3,_,Reg3,Index,_),
     value_reg(EA3,Reg3,_,Reg2,Mult,Dest,_).
 
@@ -313,7 +313,7 @@ do_infer_main_function():-
 
 inferred_main_function(Main_location):-
     arch.inferred_main_in_reg(Main_load,Reg),
-    def_used(EA_def,Reg,Main_load,_),
+    reg_def_use.def_used(EA_def,Reg,Main_load,_),
     value_reg(EA_def,Reg,_,"NONE",_,Offset,_),
     Main_location = as(Offset, address),
     code(Main_location).
@@ -326,7 +326,7 @@ inferred_main_function(Main):-
     address_in_data(Dest,Main).
 
 // Inform the use_def analysis that the register is used here as an address.
-used(EA,Reg,0),
+reg_def_use.used(EA,Reg,0),
 used_for_address(EA,Reg):-
     arch.inferred_main_in_reg(EA,Reg).
 
@@ -488,7 +488,7 @@ symbolic_operand_candidate(EA,Index,as(Reference+Offset,address),"data"):-
 symbolic_operand_candidate(EA_used,Index,as(Reference+Offset,address),"data"):-
     instruction_get_op(EA_def,_,Op_def),
     op_indirect(Op_def,"FS","NONE","NONE",_,0,_),
-    def_used(EA_def,_,EA_used,Index),
+    reg_def_use.def_used(EA_def,_,EA_used,Index),
     instruction_get_op(EA_used,Index,Op_used),
     op_indirect(Op_used,"NONE",_,_,_,Offset,_), Offset < 0,
     tls_segment(_,TlsEnd,Align),
@@ -507,7 +507,7 @@ inferred_special_symbol(DestAddr,Name,"LOCAL","FUNC","Beg"):-
     relocation(_,"IRELATIVE","",Dest,_,_,_),
     DestAddr = as(Dest,address),
     !symbol(DestAddr,_,"GNU_IFUNC",_,_,_,_,_,_),
-    NameFunc = cat("FUN_",to_string(Dest)),
+    NameFunc = cat("FUN_",@to_string_hex(as(Dest,unsigned))),
     Name = cat(NameFunc,"_IFUNC").
 
 

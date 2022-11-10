@@ -82,7 +82,8 @@ default:
     # Configure authentication credentials for GitLab
     - >-
       echo "{\"auths\":{
-        \"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}
+        \"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"},
+        \"https://index.docker.io/v1/\":{\"username\":\"$DOCKERHUB_USERNAME\",\"password\":\"$DOCKERHUB_PASSWORD\"}
       }}" > /kaniko/.docker/config.json
     # Run the kaniko executor, which will build our image (using a cache if available)
     # Push to our internal registry
@@ -93,6 +94,7 @@ default:
       fi
     - >-
       /kaniko/executor
+      --snapshotMode=redo
       --cache=true
       --cache-repo=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/${IMAGE_NAME}/cache
       --context=$CI_PROJECT_DIR
@@ -646,6 +648,7 @@ docker-image:
     # Push to Docker Hub
     - >-
       /kaniko/executor
+      --snapshotMode=redo
       --cache=true
       --cache-repo=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/ddisasm/cache
       --context=$CI_PROJECT_DIR

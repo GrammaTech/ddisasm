@@ -204,10 +204,10 @@ def disassemble(
         )
         time_spent = timer() - start
     if completedProcess.returncode == 0:
-        print(bcolors.okgreen("Disassembly succeed"), flush=True)
+        print(bcolors.okgreen("Disassembly succeed"))
         return True, time_spent
     else:
-        print(bcolors.fail("Disassembly failed"), flush=True)
+        print(bcolors.fail("Disassembly failed"))
         return False, time_spent
 
 
@@ -335,6 +335,7 @@ def disassemble_reassemble_test(
     arch=None,
     extra_ddisasm_flags=[],
     check_cfg=False,
+    upload=True,
 ):
     """
     Disassemble, reassemble and test an example with the given compilers and
@@ -392,13 +393,14 @@ def disassemble_reassemble_test(
                     module
                 )
 
-                asm_db.upload(
-                    os.path.basename(make_dir),
-                    binary + ".s",
-                    [compiler, cxx_compiler],
-                    [optimization] + extra_compile_flags,
-                    strip,
-                )
+                if upload:
+                    asm_db.upload(
+                        os.path.basename(make_dir),
+                        binary + ".s",
+                        [compiler, cxx_compiler],
+                        [optimization] + extra_compile_flags,
+                        strip,
+                    )
                 print("Time " + str(time))
                 if not success:
                     disassembly_errors += 1

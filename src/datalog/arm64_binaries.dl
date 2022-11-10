@@ -253,19 +253,6 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     op_indirect(Op1,_,_,_,_,_,DataSize),
     data_word(RefAddr,DataSize/8,Val).
 
-// Not restricted with def_used_for_address since ADRP and ADR are always addresses.
-// TODO: This rule shouldn't be needed once both adrp and adr are marked as pc_relative_addr.
-value_reg(EA,Reg,EA,"NONE",0,Val,1):-
-    instruction(EA,_,_,Operation,Op1,Op2,_,_,_,_),
-    (
-        Operation = "ADRP";
-        Operation = "ADR"
-    ),
-    op_regdirect_contains_reg(Op2,Reg),
-    track_register(Reg),
-    op_immediate(Op1,Offset),
-    Val = Offset.
-
 symbolic_operand_candidate(EA,1,Dest,Type):-
     // ADR <Register> <Immediate>
     // e.g. adr r1, BaseOp

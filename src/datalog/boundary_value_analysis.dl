@@ -48,7 +48,7 @@ Empty on architectures where a flags register is not used.
 
 flags_and_jump_pair(EA_flags,EA_jmp,CC):-
     arch.condition_flags_reg(Reg),
-    def_used(EA_flags,Reg,EA_jmp,_),
+    reg_def_use.def_used(EA_flags,Reg,EA_jmp,_),
     arch.jump(EA_jmp),
     arch.conditional(EA_jmp,CC).
 
@@ -176,7 +176,7 @@ value_reg_limit(EA_jmp,EA_fallthrough,Reg,FallthroughValue,FallthroughLT):-
         BranchOffset=Offset2,
         FallthroughOffset=Offset1
     ),
-    block_last_def(EA_cmp,EA_regdef,ConstReg),
+    reg_def_use.block_last_def(EA_cmp,EA_regdef,ConstReg),
     arch.move_reg_imm(EA_regdef,ConstReg,Immediate,_),
     track_register(Reg),
     direct_jump(EA_jmp,EA_branch),
@@ -246,23 +246,23 @@ no_value_reg_limit(EA_jmp):-
     compare_and_jump_register(EA_cmp,EA_jmp,_,Reg1,Reg2),
     (
         // neither register is defined in this block
-        !block_last_def(EA_cmp,_,Reg1),
-        !block_last_def(EA_cmp,_,Reg2)
+        !reg_def_use.block_last_def(EA_cmp,_,Reg1),
+        !reg_def_use.block_last_def(EA_cmp,_,Reg2)
         ;
         // Reg1 defined, but not as an immediate.
-        block_last_def(EA_cmp,EA,Reg1),
+        reg_def_use.block_last_def(EA_cmp,EA,Reg1),
         !arch.move_reg_imm(EA,Reg1,_,_),
-        !block_last_def(EA_cmp,_,Reg2)
+        !reg_def_use.block_last_def(EA_cmp,_,Reg2)
         ;
         // Reg2 defined, but not as an immediate.
-        block_last_def(EA_cmp,EA,Reg2),
+        reg_def_use.block_last_def(EA_cmp,EA,Reg2),
         !arch.move_reg_imm(EA,Reg2,_,_),
-        !block_last_def(EA_cmp,_,Reg1)
+        !reg_def_use.block_last_def(EA_cmp,_,Reg1)
         ;
         // Both registers defined, but neither as an immediate.
-        block_last_def(EA_cmp,EA,Reg1),
+        reg_def_use.block_last_def(EA_cmp,EA,Reg1),
         !arch.move_reg_imm(EA,Reg1,_,_),
-        block_last_def(EA_cmp,_,Reg2),
+        reg_def_use.block_last_def(EA_cmp,_,Reg2),
         !arch.move_reg_imm(EA,Reg2,_,_)
     ).
 
@@ -289,7 +289,7 @@ last_value_reg_limit(BlockEnd,BlockNext,PropagatedReg,PropagatedVal,PropagatedTy
     last_value_reg_limit(_,EA,PropagatedReg,PropagatedVal,PropagatedType),
     code_in_block(EA,Block),
     block_next(Block,BlockEnd,BlockNext),
-    !defined_in_block(Block,PropagatedReg),
+    !reg_def_use.defined_in_block(Block,PropagatedReg),
     (
         // If there is no conditional jump at this CFG edge, then there is no new value_reg_limit.
         !conditional_jump(BlockEnd);
@@ -328,9 +328,9 @@ last_value_reg_limit(EA_mov,EA_next,DstReg,PropagatedVal,PropagatedType):-
     ),
     (
         // SrcReg is not previously defined in the block.
-        !block_last_def(EA_mov,_,SrcReg),
+        !reg_def_use.block_last_def(EA_mov,_,SrcReg),
         UNUSED(From)
         ;
         // we are propagating the last_value_reg_limit from a previous move in the block.
-        block_last_def(EA_mov,From,SrcReg)
+        reg_def_use.block_last_def(EA_mov,From,SrcReg)
     ).
