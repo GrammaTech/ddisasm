@@ -40,6 +40,11 @@ we can use a ADT
 .type symbol_position <: symbol
 
 /**
+Format an unsigned integer as a string in its hex representation
+*/
+.functor to_string_hex(Value:unsigned):symbol stateful
+
+/**
 A new symbol 'SymbolName' at address 'EA' should be created.
 */
 .decl inferred_symbol(EA:address,SymbolName:symbol,Scope:symbol,Type:symbol,Pos:symbol_position)
@@ -153,9 +158,7 @@ inferred_symbol(EA,SymbolName,Scope,"FUNC","Beg"),
 best_func_symbol(EA,SymbolName):-
     function_inference.function_entry(EA),
     !symbol_score(EA,_,"FUNC","Beg",_),
-    // TODO: Function symbols are converted to hex in the C++.
-    // A better solution would be to define a user-defined functor.
-    SymbolName = cat("FUN_",to_string(EA)),
+    SymbolName = cat("FUN_",@to_string_hex(EA)),
     (
         binary_isa("MIPS"), Scope = "GLOBAL";
        !binary_isa("MIPS"), Scope = "LOCAL"
@@ -180,18 +183,14 @@ best_symexpr_symbol(EA,SymbolName,"Beg"):-
     labeled_ea(EA),
     !symbol_score(EA,_,_,"Beg",_),
     !best_func_symbol(EA,_),
-    // TODO: Inferred symbols are converted to hex in the C++.
-    // A better solution would be to define a user-defined functor.
-    SymbolName = cat(".L_",to_string(EA)).
+    SymbolName = cat(".L_",@to_string_hex(EA)).
 
 inferred_symbol(EA,SymbolName,"LOCAL","NONE","End"),
 best_symexpr_symbol(EA,SymbolName,"End"):-
     labeled_ea(EA),
     boundary_sym_expr(_,EA),
     !symbol_score(EA,_,_,"End",_),
-    // TODO: Inferred symbols are converted to hex in the C++.
-    // A better solution would be to define a user-defined functor.
-    SymbolName = cat(cat(".L_",to_string(EA)),"_END").
+    SymbolName = cat(cat(".L_",@to_string_hex(EA)),"_END").
 
 /**
 An existing symbol is pointing to the end of a section rather

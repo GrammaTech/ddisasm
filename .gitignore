@@ -19,6 +19,8 @@ standalone_compilation.tar.bz2
 src/tests/inputs/hello.gtirb
 
 examples/**/dl_files
+examples/**/ex.exe
+examples/**/ex.exe.s
 examples/**/ex.old
 examples/**/ex.s
 examples/**/ex.stripped
@@ -26,6 +28,8 @@ examples/**/ex.unstripped
 examples/**/out.txt
 examples/**/check.txt
 examples/**/ex
+examples/**/ex2
+examples/**/ex3
 examples/**/ex.o
 examples/**/*.so
 examples/**/*.i

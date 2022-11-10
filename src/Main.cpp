@@ -126,6 +126,7 @@ int main(int argc, char **argv)
         "debug-dir", po::value<std::string>(), "location to write CSV files for debugging")(
         "hints", po::value<std::string>(), "location of user-provided hints file")(
         "input-file", po::value<std::string>(), "file to disasemble")(
+        "ignore-errors", "Return success even if there are disassembly errors.")(
         "keep-functions,K", po::value<std::vector<std::string>>()->multitoken(),
         "Print the given functions even if they are skipped by default (e.g. _start)")(
         "self-diagnose",
@@ -237,6 +238,7 @@ int main(int argc, char **argv)
     }
 
     bool HasPE = false;
+    bool AnalysisErrors = false;
     auto Modules = GTIRB->IR->modules();
     unsigned int ModuleCount = std::distance(std::begin(Modules), std::end(Modules));
     for(auto &Module : Modules)
@@ -378,7 +380,7 @@ int main(int argc, char **argv)
         Module.removeAuxData<gtirb::schema::Relocations>();
         Module.removeAuxData<gtirb::schema::SectionIndex>();
 
-        performSanityChecks(Souffle->get(), vm.count("self-diagnose") != 0);
+        AnalysisErrors |= performSanityChecks(Souffle->get(), vm.count("self-diagnose") != 0);
 
         if(Module.getFileFormat() == gtirb::FileFormat::PE)
         {
@@ -508,5 +510,10 @@ int main(int argc, char **argv)
         GTIRB->Context->ForgetAllocations();
     }
 
-    return 0;
+    if(AnalysisErrors && !vm.count("ignore-errors"))
+    {
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
 }

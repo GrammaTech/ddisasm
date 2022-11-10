@@ -139,7 +139,7 @@ reg_has_base_image(EA,Reg):-
     base_address(ImageBase),
     pc_relative_operand(EA,_,ImageBase),
     code(EA),
-    def(EA,Reg),
+    reg_def_use.def(EA,Reg),
     instruction_get_operation(EA,"LEA").
 
 symbolic_expr_from_relocation(EA_data,Size,"__ImageBase",0,ImageBase),
@@ -151,11 +151,11 @@ reg_has_base_image(EA_code,Reg):-
     arch.load(EA_code,_,_,_,_,_,_,_),
     pc_relative_operand(EA_code,_,EA_data),
     data_word(EA_data,Size,Value), ImageBase = as(Value,address),
-    def(EA_code,Reg).
+    reg_def_use.def(EA_code,Reg).
 
 reg_has_base_image(EA,Reg):-
     reg_has_base_image(EA2,Reg2),
-    def_used(EA2,Reg2,EA,_),
+    reg_def_use.def_used(EA2,Reg2,EA,_),
     (
         arch.move_reg_reg(EA,Reg,Reg2);
         arch.reg_reg_arithmetic_operation(EA,Reg,Reg2,_,Mult,0), Mult>1
@@ -179,15 +179,15 @@ possible_rva_operand(EA,Op_index,RVA):-
 // Indirect access using register with ImageBase
 base_relative_operand(EA_used,Op_index,RVA):-
     reg_has_base_image(EA_def,Reg),
-    def_used(EA_def,Reg,EA_used,Op_index),
+    reg_def_use.def_used(EA_def,Reg,EA_used,Op_index),
     possible_rva_operand(EA_used,Op_index,RVA).
 
 // Indirect access later added to ImageBase
 base_relative_operand(EA_def1,Op_index,as(Value,address)):-
     reg_has_base_image(EA_def2,Reg2),
-    def_used(EA_def2,Reg2,EA,_),
+    reg_def_use.def_used(EA_def2,Reg2,EA,_),
     arch.reg_reg_arithmetic_operation(EA,Reg1,Reg1,Reg2,1,0),
-    def_used(EA_def1,Reg1,EA,_),
+    reg_def_use.def_used(EA_def1,Reg1,EA,_),
 
     instruction_get_op(EA_def1,Op_index,Op),
     instruction_get_operation(EA_def1,"LEA"),
@@ -196,13 +196,13 @@ base_relative_operand(EA_def1,Op_index,as(Value,address)):-
 // Indirect access later added to ImageBase in an indirect operand
 base_relative_operand(EA_def1,Op_index,as(Value,address)):-
     reg_has_base_image(EA_def2,Reg2),
-    def_used(EA_def2,Reg2,EA,Op_index_access),
+    reg_def_use.def_used(EA_def2,Reg2,EA,Op_index_access),
     (
         data_access(EA,Op_index_access,"NONE",Reg2,Reg1,1,0,_);
         data_access(EA,Op_index_access,"NONE",Reg1,Reg2,1,0,_)
     ),
     !instruction_get_operation(EA,"LEA"),
-    def_used(EA_def1,Reg1,EA,_),
+    reg_def_use.def_used(EA_def1,Reg1,EA,_),
 
     instruction_get_op(EA_def1,Op_index,Op),
     instruction_get_operation(EA_def1,"LEA"),
@@ -216,10 +216,10 @@ base_relative_operand(EA_def1,Op_index,as(Value,address)):-
 // movzx       ecx,byte ptr [rbp+r15+3]
 base_relative_operand(EA_def2,Op_index_access,RVA):-
     reg_has_base_image(EA_def1,Reg1),
-    def_used(EA_def1,Reg1,EA,_),
+    reg_def_use.def_used(EA_def1,Reg1,EA,_),
 
     data_access(EA_def2,Op_index_access,"NONE","NONE",_,4,Offset,_), Offset > 0,
-    def_used(EA_def2,Reg2,EA,_),
+    reg_def_use.def_used(EA_def2,Reg2,EA,_),
     possible_rva_operand(EA_def2,Op_index_access,RVA),
 
     (
@@ -257,12 +257,12 @@ symbolic_operand_candidate(EA,Op_index,Dest,"data"):-
 
 base_relative_operation(EA_relop,EA_inst):-
     base_relative_operand(EA_relop,_,_),
-    def_used(EA_relop,_,EA_inst,_).
+    reg_def_use.def_used(EA_relop,_,EA_inst,_).
 
 base_relative_operation(EA_relop,EA_next):-
     base_relative_operand(EA_relop,_,_),
-    def_used(EA_relop,_,EA_inst,_),
-    def_used(EA_inst,_,EA_next,_).
+    reg_def_use.def_used(EA_relop,_,EA_inst,_),
+    reg_def_use.def_used(EA_inst,_,EA_next,_).
 
 .decl base_relative_jump(EA_relop:address,EA:address)
 .output base_relative_jump

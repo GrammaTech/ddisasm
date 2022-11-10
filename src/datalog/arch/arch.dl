@@ -537,6 +537,21 @@ A pc-relative address 'Target' is loaded into 'Reg' at address 'EA'.
 pc_relative_addr(0,"",0):- false.
 
 /**
+Maps instruction identifier address to the instruction's real memory address.
+
+While this is a simple one-to-one mapping on most architectures, Thumb
+instructions on ARM are offset by 1 byte. This relation makes it easier to
+write portable rules.
+
+Maps all instructions in the instruction input relation, regardless of
+invalid(), etc.
+*/
+.decl instruction_at(EA:address,Instruction:address) overridable
+
+instruction_at(Instruction,Instruction):-
+    instruction(Instruction,_,_,_,_,_,_,_,_,_).
+
+/**
 The size of a register, in bits.
 */
 .decl register_size_bits(Reg:input_reg,Size:unsigned)

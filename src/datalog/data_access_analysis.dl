@@ -91,15 +91,15 @@ value_reg_at_operand_loop(EA,Op_index,Reg,EA_from,Mult,BaseAddress,"loop"):-
         UNUSED(Reg2)
     ),
     reg_nonnull(Reg,Reg_nn),
-    def_used(EA_def,Reg_nn,EA,Op_index),
+    reg_def_use.def_used(EA_def,Reg_nn,EA,Op_index),
     best_value_reg(EA_def,Reg_nn,EA_from,Mult,Offset,"loop"),
     (
         // the access is after the increment
-        !def_used(EA_from,Reg_nn,EA,Op_index),
+        !reg_def_use.def_used(EA_from,Reg_nn,EA,Op_index),
         BaseAddress = Offset
         ;
         // the access is before the increment
-        def_used(EA_from,Reg_nn,EA,Op_index),
+        reg_def_use.def_used(EA_from,Reg_nn,EA,Op_index),
         BaseAddress = Offset-Mult
     ).
 
@@ -114,7 +114,7 @@ value_reg_at_operand(EA,Op_index,Reg,EA_from,Mult,Offset_final,Type):-
     ),
     reg_nonnull(Reg,Reg_nn),
     !value_reg_at_operand_loop(EA,Op_index,Reg,_,_,_,_),
-    def_used(EA_def,Reg_nn,EA,Op_index),
+    reg_def_use.def_used(EA_def,Reg_nn,EA,Op_index),
     best_value_reg(EA_def,Reg_nn,EA_from,Mult,Offset,Type),
     (
         Offset_final = max(Offset,0)
@@ -135,7 +135,7 @@ value_reg_at_operand(EA,Op_index,Reg,0,1,0,"incomplete"):-
         UNUSED(Reg2)
     ),
     reg_nonnull(Reg,Reg_nn),
-    !def_used(_,Reg_nn,EA,Op_index).
+    !reg_def_use.def_used(_,Reg_nn,EA,Op_index).
 
 // NONE registers have 0 value
 value_reg_at_operand(EA,Op_index,Reg,0,0,0,"complete"):-

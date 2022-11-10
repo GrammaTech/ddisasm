@@ -74,7 +74,7 @@ class DdisasmConan(Properties, ConanFile):
     generators = "cmake"
     settings = ("os", "compiler", "build_type", "arch")
 
-    lief_version = "0.12.1"
+    lief_version = "0.12.3"
     libehp_version = "0.1.1-gt3"
     souffle_version = "2.3"
     build_requires = (

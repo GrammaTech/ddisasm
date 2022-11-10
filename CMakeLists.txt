@@ -292,7 +292,7 @@ endif()
 if(ENABLE_CONAN)
   set(LIEF_LIBRARIES CONAN_PKG::lief)
 else()
-  find_package(LIEF 0.12.1 REQUIRED COMPONENTS STATIC)
+  find_package(LIEF 0.12.3 REQUIRED COMPONENTS STATIC)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -350,7 +350,8 @@ if(DDISASM_ENABLE_TESTS)
 
   add_test(
     NAME python_tests
-    COMMAND ${PYTHON} -m unittest discover tests "*_test.py"
+    COMMAND
+      ${PYTHON} -u -m unittest discover tests "*_test.py"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/")
 endif()
 

@@ -30,6 +30,6 @@
 
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
                        souffle::SouffleProgram *prog, bool selfDiagnose);
-void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose);
+bool performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose);
 
 #endif // GTIRB_MODULE_DISASSEMBLER_H_

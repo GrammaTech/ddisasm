@@ -22,6 +22,7 @@
 //===----------------------------------------------------------------------===//
 #include "Functors.h"
 
+#include <cassert>
 #include <fstream>
 #include <iostream>
 
@@ -53,8 +54,12 @@ const gtirb::ByteInterval* FunctorContextManager::getByteInterval(uint64_t EA, s
     return nullptr;
 }
 
-uint64_t functor_data_exists(uint64_t EA, size_t Size)
+uint64_t functor_data_valid(uint64_t EA, size_t Size)
 {
+    if(!(Size == 1 || Size == 2 || Size == 4 || Size == 8))
+    {
+        return 0;
+    }
     const gtirb::ByteInterval* ByteInterval = FunctorContext.getByteInterval(EA, Size);
     return ByteInterval != nullptr ? 1 : 0;
 }
@@ -72,6 +77,24 @@ void FunctorContextManager::readData(uint64_t EA, uint8_t* Buffer, size_t Count)
 
     // memcpy: safely handles unaligned requests.
     memcpy(Buffer, Data + EA - Addr, Count);
+}
+
+uint64_t functor_data_unsigned(uint64_t EA, size_t Size)
+{
+    switch(Size)
+    {
+        case 1:
+            return functor_data_u8(EA);
+        case 2:
+            return functor_data_u16(EA);
+        case 4:
+            return functor_data_u32(EA);
+        case 8:
+            return functor_data_u64(EA);
+        default:
+            assert(!"Invalid size");
+    }
+    return 0;
 }
 
 uint64_t functor_data_u8(uint64_t EA)
@@ -102,6 +125,24 @@ uint64_t functor_data_u64(uint64_t EA)
     return FunctorContext.IsBigEndian ? be64toh(Value) : le64toh(Value);
 }
 
+int64_t functor_data_signed(uint64_t EA, size_t Size)
+{
+    switch(Size)
+    {
+        case 1:
+            return functor_data_s8(EA);
+        case 2:
+            return functor_data_s16(EA);
+        case 4:
+            return functor_data_s32(EA);
+        case 8:
+            return functor_data_s64(EA);
+        default:
+            assert(!"Invalid size");
+    }
+    return 0;
+}
+
 int64_t functor_data_s8(uint64_t EA)
 {
     uint8_t Value;
@@ -128,6 +169,15 @@ int64_t functor_data_s64(uint64_t EA)
     uint64_t Value;
     FunctorContext.readData(EA, reinterpret_cast<uint8_t*>(&Value), sizeof(Value));
     return static_cast<int64_t>(FunctorContext.IsBigEndian ? be64toh(Value) : le64toh(Value));
+}
+
+souffle::RamDomain to_string_hex(souffle::SymbolTable* symbolTable,
+                                 [[maybe_unused]] souffle::RecordTable* recordTable,
+                                 souffle::RamDomain Value)
+{
+    std::stringstream S;
+    S << std::hex << Value;
+    return symbolTable->encode(S.str());
 }
 
 void FunctorContextManager::useModule(const gtirb::Module* M)

@@ -53,14 +53,13 @@ souffle::tuple &operator>>(souffle::tuple &t, uint8_t &byte)
 
 struct DecodedInstruction
 {
-    gtirb::Addr EA;
-    uint64_t Size;
     std::map<uint64_t, std::variant<ImmOp, IndirectOp>> Operands;
     uint64_t immediateOffset;
     uint64_t displacementOffset;
 };
 
-std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SouffleProgram *prog)
+std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SouffleProgram *prog,
+                                                              std::set<gtirb::Addr> &code)
 {
     std::map<uint64_t, ImmOp> Immediates;
     for(auto &output : *prog->getRelation("op_immediate"))
@@ -83,10 +82,20 @@ std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SoufflePr
     std::map<gtirb::Addr, DecodedInstruction> insns;
     for(auto &output : *prog->getRelation("instruction"))
     {
-        DecodedInstruction insn;
         gtirb::Addr EA;
+        output >> EA;
+
+        // Don't bother recovering instructions that aren't considered code.
+        if(code.count(EA) == 0)
+        {
+            continue;
+        }
+
+        DecodedInstruction insn;
+        uint64_t size;
         std::string prefix, opcode;
-        output >> EA >> insn.Size >> prefix >> opcode;
+        output >> size >> prefix >> opcode;
+
         for(size_t i = 1; i <= 4; i++)
         {
             uint64_t operandIndex;
@@ -127,7 +136,7 @@ struct BlockInformation
 
     BlockInformation(souffle::tuple &tuple)
     {
-        assert(tuple.size() == 3);
+        assert(tuple.size() == 4);
         tuple >> EA >> size;
     };
 
@@ -247,17 +256,6 @@ struct SymbolicInfo
     VectorByEA<SymExprSymbolMinusSymbol> SymbolMinusSymbolSymbolicExprs;
     VectorByEA<SymbolicExprAttribute> SymbolicExprAttributes;
 };
-
-template <typename T>
-std::vector<T> convertRelation(const std::string &relation, souffle::SouffleProgram *prog)
-{
-    std::vector<T> result;
-    for(auto &output : *prog->getRelation(relation))
-    {
-        result.emplace_back(output);
-    }
-    return result;
-}
 
 template <typename Container, typename Elem = typename Container::value_type>
 Container convertSortedRelation(const std::string &relation, souffle::SouffleProgram *prog)
@@ -582,17 +580,24 @@ void buildSymbolicExpr(gtirb::Module &Module, const gtirb::Addr &Ea,
 
 void buildCodeSymbolicInformation(gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
-    auto codeInBlock = convertRelation<CodeInBlock>("code_in_refined_block", Prog);
+    std::set<gtirb::Addr> Code;
+    for(auto &output : *Prog->getRelation("code_in_refined_block"))
+    {
+        gtirb::Addr EA;
+        output >> EA;
+        Code.insert(EA);
+    }
+
     SymbolicInfo symbolicInfo{
         convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr", Prog),
         convertSortedRelation<VectorByEA<SymExprSymbolMinusSymbol>>(
             "symbolic_expr_symbol_minus_symbol", Prog),
         convertSortedRelation<VectorByEA<SymbolicExprAttribute>>("symbolic_expr_attribute", Prog)};
-    std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(Prog);
+    std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(Prog, Code);
 
-    for(auto &Cib : codeInBlock)
+    for(auto &EA : Code)
     {
-        const auto Inst = decodedInstructions.find(Cib.EA);
+        const auto Inst = decodedInstructions.find(EA);
         assert(Inst != decodedInstructions.end());
         for(auto &Op : Inst->second.Operands)
         {
@@ -864,6 +869,18 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
                     gtirb::Node &Block = BlockIt.front();
                     ConnectToBlock[&Symbol] = {&Block, false};
                     continue;
+                }
+
+                if((Module.getISA() == gtirb::ISA::ARM) && ((static_cast<uint64_t>(Addr) & 1) == 0))
+                {
+                    // If a Thumb block starts here, connect to it.
+                    // CodeBlocks still are located at +1 until shiftThumbBlocks() executes.
+                    if(auto It = Module.findCodeBlocksAt(Addr + 1); !It.empty())
+                    {
+                        gtirb::CodeBlock &Block = It.front();
+                        ConnectToBlock[&Symbol] = {&Block, false};
+                        continue;
+                    }
                 }
             }
             if(auto It = Module.findCodeBlocksOn(Addr); !It.empty())
@@ -1266,7 +1283,7 @@ void buildComments(gtirb::Module &Module, souffle::SouffleProgram *Prog, bool Se
         updateComment(Module, Comments, Ea, NewComment.str());
     }
 
-    for(auto &Output : *Prog->getRelation("def_used"))
+    for(auto &Output : *Prog->getRelation("reg_def_use.def_used"))
     {
         gtirb::Addr EaUse, EaDef;
         uint64_t Index;
@@ -1378,40 +1395,6 @@ void shiftThumbBlocks(gtirb::Module &Module)
     }
 }
 
-void renameInferredSymbols(gtirb::Module &Module)
-{
-    std::map<gtirb::Symbol *, std::string> NewNames;
-    for(gtirb::Symbol &Sym : Module.symbols())
-    {
-        std::regex Pattern("(?:.L_|FUN_)(\\d+)(?:_END|_IFUNC|)");
-        std::smatch Matches;
-        const std::string &Name = Sym.getName();
-        if(std::regex_match(Name, Matches, Pattern))
-        {
-            try
-            {
-                std::stringstream S;
-                S << Name.substr(0, Matches.position(1)) << std::hex << std::stoull(Matches.str(1))
-                  << Name.substr(Matches.position(1) + Matches.length(1));
-                NewNames[&Sym] = S.str();
-            }
-            catch(std::invalid_argument const &Ex)
-            {
-                std::cerr << "ERROR: could not rename symbol '" << Name << "' to hex" << std::endl;
-            }
-            catch(std::out_of_range const &Ex)
-            {
-                std::cerr << "ERROR: could not rename symbol '" << Name
-                          << "' to hex (invalid range)" << std::endl;
-            }
-        }
-    }
-    for(auto [Sym, NewName] : NewNames)
-    {
-        Sym->setName(NewName);
-    }
-}
-
 void buildArchInfo(gtirb::Module &Module, souffle::SouffleProgram *Prog)
 {
     if(Module.getISA() == gtirb::ISA::ARM)
@@ -1451,7 +1434,6 @@ void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
     buildFunctions(Module, Prog);
     // This should be done after creating all the symbols.
     connectSymbolsToBlocks(Context, Module, Prog);
-    renameInferredSymbols(Module);
     // These functions should not create additional symbols.
     buildCFG(Context, Module, Prog);
     buildPadding(Module, Prog);
@@ -1465,7 +1447,7 @@ void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
     }
 }
 
-void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
+bool performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
 {
     bool error = false;
     if(selfDiagnose)
@@ -1508,11 +1490,9 @@ void performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
                       << BlockKind2 << ")" << std::dec << std::endl;
         }
     }
-    if(error)
-    {
-        std::cerr << "Aborting" << std::endl;
-        exit(1);
-    }
     if(selfDiagnose && !error)
+    {
         std::cout << "Self diagnose completed: No errors found" << std::endl;
+    }
+    return error;
 }
