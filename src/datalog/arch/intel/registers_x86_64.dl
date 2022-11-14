@@ -27,6 +27,7 @@ This module stablishes basic information about register:
 
 */
 
+reg_map_rule("AL","RAX").
 reg_map_rule("EAX","RAX").
 reg_map_rule("EBX","RBX").
 reg_map_rule("ECX","RCX").

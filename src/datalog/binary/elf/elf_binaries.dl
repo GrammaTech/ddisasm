@@ -54,6 +54,7 @@ data_section(Name):-
     section_type(Name,Type),
     (   elf_section_type("PROGBITS",Type);
         elf_section_type("NOBITS",Type);
+        elf_section_type("NOTE",Type);
         elf_section_type("INIT_ARRAY",Type);
         elf_section_type("FINI_ARRAY",Type);
         elf_section_type("PREINIT_ARRAY",Type);
@@ -125,7 +126,14 @@ plt_entry(EA,Name):-
     pc_relative_jump(EA,Got_entry),
     relocation(Got_entry,"IRELATIVE","",Dest,_,_,_),
     (
-        defined_symbol(as(Dest,address),_,"GNU_IFUNC",_,_,_,_,_,Name);
+        // If the target function exists in the binary, choose a local symbol.
+        // NOTE: This is needed to avoid extra PLT references.
+        function_symbol(as(Dest,address),Name),
+        defined_symbol(as(Dest,address),_,"GNU_IFUNC","LOCAL",_,_,_,_,Name)
+        ;
+        !function_symbol(as(Dest,address),Name),
+        defined_symbol(as(Dest,address),_,"GNU_IFUNC",_,_,_,_,_,Name)
+        ;
         !defined_symbol(as(Dest,address),_,"GNU_IFUNC",_,_,_,_,_,_),
         ifunc_symbol(as(Dest,address),Name)
     ).

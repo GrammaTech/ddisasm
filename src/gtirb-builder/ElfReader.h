@@ -64,6 +64,7 @@ private:
 
     // For sectionless binaries
     std::map<std::string, uint64_t> getDynamicEntries();
+    std::pair<std::optional<uint64_t>, std::optional<uint64_t>> getTls();
     void resurrectSections();
     void resurrectSymbols();
     void createGPforMIPS(uint64_t SecIndex,

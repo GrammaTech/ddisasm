@@ -538,3 +538,25 @@ boundary_sym_expr(EA+InstrOffset,Dest):-
     //  At the boundary between two sections
     loaded_section(Dest,_,_),
     loaded_section(_,Dest,_).
+
+/**
+E.g., libc.so
+leaq __elf_set___libc_atexit_element__IO_cleanup__(%rip),%rbx
+leaq __start___libc_IO_vtables(%rip),%rax
+cmpq %rax,%rbx
+*/
+boundary_sym_expr(EA+DisplacementOffset,Dest):-
+    symbolic_operand(EA,Index,Dest,"data"),
+    //  At the boundary between two sections
+    loaded_section(Dest,_,_),
+    loaded_section(Beg,Dest,_),
+    // The symbol is possibly used in loop-bound check instruction (e.g., cmp).
+    reg_def_use.def_used(EA,Reg1,EA_cmp,_),
+    instruction_get_operation(EA_cmp,Operation),
+    arch.cmp_operation(Operation),
+    reg_def_use.def_used(EA_beg,Reg2,EA_cmp,_),
+    Reg1 != Reg2,
+    symbolic_operand(EA_beg,_,Dest2,"data"),
+    Dest2 >= Beg,
+    Dest2 < Dest,
+    instruction_displacement_offset(EA,Index,DisplacementOffset,_).
