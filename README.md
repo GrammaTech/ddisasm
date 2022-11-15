@@ -140,6 +140,16 @@ Use the following options to configure cmake:
  shared library form, the default) if you use the flag
  `-DDDISASM_BUILD_SHARED_LIBS=OFF`.
 
+- You can tell CMake to use ccache with the flag
+  `-DDDISASM_USE_CCACHE=ON`. (*Don’t* use
+  `-DCMAKE_CXX_COMPILER_LAUNCHER=ccache`.) This is especially useful
+  when Souffle is configured to generate multiple files.
+
+- For development, you can ask Souffle to generate multiple files per
+  target with `-DDDISASM_GENERATE_MANY=ON`. This results in a slower
+  initial build time, but recompilation will be faster (especially
+  when used with ccache; see above).
+
 Once the dependencies are installed, you can configure and build as
 follows:
 
@@ -148,6 +158,10 @@ $ cmake ./ -Bbuild
 $ cd build
 $ make
 ```
+
+When using `-DDDISASM_GENERATE_MANY=ON`, it is safe to aggressively
+parallelize the build (e.g. `-j$(nproc)`). This is not recommended
+otherwise, as memory usage by the compiler is high.
 
 ### Debug build options
 

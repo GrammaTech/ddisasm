@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+# -*- mode: python -*-
+
+"""
+Chain-load ccache with its environment configured to allow
+identical files generated for different architectures (in different
+directories) to share the same cached object.
+"""
+
+import os
+import re
+import sys
+
+
+from pathlib import Path
+
+
+def tty_print(arg):
+    """
+    Print ARG directly to /dev/tty.
+    For debugging from within cmake.
+    """
+    with open("/dev/tty", "w") as tty:
+        print(arg, file=tty)
+
+
+def run_compiler(compiler, args):
+    os.environ["CCACHE_NOHASHDIR"] = "1"
+    # If there is only one C++ file, use its directory as the basedir.
+    cpp_files = [
+        arg for arg in sys.argv[2:] if re.search(r"\.(cpp|cxx|cc)$", arg)
+    ]
+    if len(cpp_files) == 1:
+        basedir = str(Path(cpp_files[0]).parent)
+        os.environ["CCACHE_BASEDIR"] = basedir
+    os.execvp("ccache", ["ccache"] + [compiler] + args)
+
+
+if __name__ == "__main__":
+    run_compiler(sys.argv[1], sys.argv[2:])

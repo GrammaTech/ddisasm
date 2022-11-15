@@ -67,6 +67,71 @@ set(DATALOG_BASE_SOURCES
 
 set(SOUFFLE_DATALOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/datalog/)
 
+function(GENERATE_ARCH_CPP_SINGLE)
+  cmake_parse_arguments(PARAM "" "ARCH;MARCH;PATH" "DATALOG_SOURCES" ${ARGV})
+
+  string(TOLOWER ${PARAM_ARCH} ARCH)
+  add_custom_command(
+    OUTPUT "${PARAM_PATH}.cpp"
+    WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
+    COMMAND
+      ${SOUFFLE} main.dl -g "${PARAM_PATH}.cpp" -jauto -MARCH_${PARAM_MARCH}
+      ${SOUFFLE_PREPROCESSOR_ARG} ${SOUFFLE_PROFILING_ARG} -N ddisasm_${ARCH}
+    DEPENDS ${DATALOG_BASE_SOURCES} ${PARAM_DATALOG_SOURCES})
+endfunction()
+
+function(GENERATE_ARCH_CPP_MANY)
+  cmake_parse_arguments(PARAM "" "ARCH;MARCH;PATH" "DATALOG_SOURCES" ${ARGV})
+  string(TOLOWER ${PARAM_ARCH} ARCH)
+  set(STAGING_PATH ${CMAKE_BINARY_DIR}/src/souffle_disasm_${ARCH}.staging/)
+
+  # Force reconfiguration if any of the datalog sources changed.
+  foreach(SOURCE ${DATALOG_BASE_SOURCES} ${PARAM_DATALOG_SOURCES})
+    set_directory_properties(PROPERTIES CMAKE_CONFIGURE_DEPENDS $SOURCE)
+  endforeach()
+
+  # Recreate the staging directory
+  file(REMOVE_RECURSE ${STAGING_PATH})
+  file(MAKE_DIRECTORY ${STAGING_PATH})
+  file(MAKE_DIRECTORY ${PARAM_PATH})
+
+  # Generate CPP code
+  execute_process(
+    COMMAND
+      ${SOUFFLE} main.dl -G ${STAGING_PATH} -jauto -MARCH_${PARAM_MARCH}
+      ${SOUFFLE_PREPROCESSOR_ARG} ${SOUFFLE_PROFILING_ARG} -N ddisasm_${ARCH}
+    WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}")
+
+  # Remove stale files from final generator output directory
+  file(
+    GLOB GENERATED_FILES
+    RELATIVE "${PARAM_PATH}/"
+    "${PARAM_PATH}/*")
+  foreach(FILE ${GENERATED_FILES})
+    if(NOT EXISTS "${STAGING_PATH}/${FILE}")
+      file(REMOVE "${PARAM_CPP_PATH}/${FILE}")
+    endif()
+  endforeach()
+
+  # Copy modified files from staging to final generator output directory
+  file(
+    GLOB GENERATED_FILES
+    RELATIVE "${STAGING_PATH}/"
+    "${STAGING_PATH}/*")
+  foreach(FILE ${GENERATED_FILES})
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            "${STAGING_PATH}/${FILE}" "${PARAM_PATH}")
+  endforeach()
+endfunction()
+
+macro(GENERATE_ARCH_CPP)
+  if(DDISASM_GENERATE_MANY)
+    generate_arch_cpp_many(${ARGV})
+  else()
+    generate_arch_cpp_single(${ARGV})
+  endif()
+endmacro()
+
 if(DDISASM_ARM_32)
   add_definitions(-DDDISASM_ARM_32)
 
@@ -82,19 +147,24 @@ if(DDISASM_ARM_32)
       datalog/arch/arm32_jump_tables.dl
       datalog/arch/arm32_symbolization.dl)
 
-  set(GENERATED_ARM32_CPP souffle_disasm_arm32.cpp)
-  set(GENERATED_ARM32_CPP_PATH ${CMAKE_BINARY_DIR}/src/souffle_disasm_arm32.cpp)
+  set(GENERATED_ARM32_CPP_PATH ${CMAKE_BINARY_DIR}/src/souffle_disasm_arm32)
 
-  add_custom_command(
-    OUTPUT ${GENERATED_ARM32_CPP}
-           # Souffle includes the path of the output file in the generated
-           # program name. Change directory and use a relative path so the name
-           # does not depend on build location.
-    WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
-    COMMAND
-      ${SOUFFLE} main.dl -g ${GENERATED_ARM32_CPP_PATH} -jauto -MARCH_ARM32
-      ${SOUFFLE_PREPROCESSOR_ARG} ${SOUFFLE_PROFILING_ARG}
-    DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_ARM32_SOURCES})
+  generate_arch_cpp(
+    ARCH
+    ARM32
+    MARCH
+    ARM32
+    DATALOG_SOURCES
+    ${DATALOG_ARM32_SOURCES}
+    PATH
+    ${GENERATED_ARM32_CPP_PATH})
+
+  if(DDISASM_GENERATE_MANY)
+    file(GLOB GENERATED_ARM32_CPP CONFIGURE_DEPENDS
+         "${GENERATED_ARM32_CPP_PATH}/*")
+  else()
+    set(GENERATED_ARM32_CPP "${GENERATED_ARM32_CPP_PATH}.cpp")
+  endif()
 endif()
 
 if(DDISASM_ARM_64)
@@ -109,20 +179,24 @@ if(DDISASM_ARM_64)
       datalog/arch/arm_binaries.dl
       datalog/arch/arm64_symbolization.dl)
 
-  set(GENERATED_ARM64_CPP souffle_disasm_arm64.cpp)
-  set(GENERATED_ARM64_CPP_PATH
-      "${CMAKE_BINARY_DIR}/src/souffle_disasm_arm64.cpp")
+  set(GENERATED_ARM64_CPP_PATH ${CMAKE_BINARY_DIR}/src/souffle_disasm_arm64)
 
-  add_custom_command(
-    OUTPUT ${GENERATED_ARM64_CPP}
-           # Souffle includes the path of the output file in the generated
-           # program name. Change directory and use a relative path so the name
-           # does not depend on build location.
-    WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
-    COMMAND
-      ${SOUFFLE} main.dl -g ${GENERATED_ARM64_CPP_PATH} -jauto -MARCH_ARM64
-      ${SOUFFLE_PREPROCESSOR_ARG} ${SOUFFLE_PROFILING_ARG}
-    DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_ARM64_SOURCES})
+  generate_arch_cpp(
+    ARCH
+    ARM64
+    MARCH
+    ARM64
+    DATALOG_SOURCES
+    ${DATALOG_ARM64_SOURCES}
+    PATH
+    ${GENERATED_ARM64_CPP_PATH})
+
+  if(DDISASM_GENERATE_MANY)
+    file(GLOB GENERATED_ARM64_CPP CONFIGURE_DEPENDS
+         "${GENERATED_ARM64_CPP_PATH}/*")
+  else()
+    set(GENERATED_ARM64_CPP "${GENERATED_ARM64_CPP_PATH}.cpp")
+  endif()
 endif()
 
 if(DDISASM_MIPS_32)
@@ -136,21 +210,24 @@ if(DDISASM_MIPS_32)
       datalog/arch/mips32/registers.dl
       datalog/arch/mips_symbolization.dl)
 
-  set(GENERATED_MIPS32_CPP souffle_disasm_mips32.cpp)
+  set(GENERATED_MIPS32_CPP_PATH "${CMAKE_BINARY_DIR}/src/souffle_disasm_mips32")
 
-  set(GENERATED_MIPS32_CPP_PATH
-      "${CMAKE_BINARY_DIR}/src/souffle_disasm_mips32.cpp")
+  generate_arch_cpp(
+    ARCH
+    MIPS32
+    MARCH
+    MIPS32
+    DATALOG_SOURCES
+    ${DATALOG_MIPS32_SOURCES}
+    PATH
+    ${GENERATED_MIPS32_CPP_PATH})
 
-  add_custom_command(
-    OUTPUT ${GENERATED_MIPS32_CPP}
-           # Souffle includes the path of the output file in the generated
-           # program name. Change directory and use a relative path so the name
-           # does not depend on build location.
-    WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
-    COMMAND
-      ${SOUFFLE} main.dl -g ${GENERATED_MIPS32_CPP_PATH} -jauto -MARCH_MIPS32
-      ${SOUFFLE_PREPROCESSOR_ARG} ${SOUFFLE_PROFILING_ARG}
-    DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_MIPS32_SOURCES})
+  if(DDISASM_GENERATE_MANY)
+    file(GLOB GENERATED_MIPS32_CPP CONFIGURE_DEPENDS
+         "${GENERATED_MIPS32_CPP_PATH}/*")
+  else()
+    set(GENERATED_MIPS32_CPP "${GENERATED_MIPS32_CPP_PATH}.cpp")
+  endif()
 endif()
 
 if(DDISASM_X86_32)
@@ -166,20 +243,24 @@ if(DDISASM_X86_32)
       datalog/arch/intel/memory_access.dl
       datalog/arch/x86_32_symbolization.dl)
 
-  set(GENERATED_X86_32_CPP souffle_disasm_x86_32.cpp)
-  set(GENERATED_X86_32_CPP_PATH
-      "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_32.cpp")
+  set(GENERATED_X86_32_CPP_PATH "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_32")
 
-  add_custom_command(
-    OUTPUT ${GENERATED_X86_32_CPP}
-           # Souffle includes the path of the output file in the generated
-           # program name. Change directory and use a relative path so the name
-           # does not depend on build location.
-    WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
-    COMMAND
-      ${SOUFFLE} main.dl -g ${GENERATED_X86_32_CPP_PATH} -jauto -MARCH_IA32
-      ${SOUFFLE_PREPROCESSOR_ARG} ${SOUFFLE_PROFILING_ARG}
-    DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_X86_32_SOURCES})
+  generate_arch_cpp(
+    ARCH
+    x86_32
+    MARCH
+    IA32
+    DATALOG_SOURCES
+    ${DATALOG_X86_32_SOURCES}
+    PATH
+    ${GENERATED_X86_32_CPP_PATH})
+
+  if(DDISASM_GENERATE_MANY)
+    file(GLOB GENERATED_X86_32_CPP CONFIGURE_DEPENDS
+         "${GENERATED_X86_32_CPP_PATH}/*")
+  else()
+    set(GENERATED_X86_32_CPP "${GENERATED_X86_32_CPP_PATH}.cpp")
+  endif()
 endif()
 
 if(DDISASM_X86_64)
@@ -195,20 +276,25 @@ if(DDISASM_X86_64)
       datalog/arch/intel/memory_access.dl
       datalog/arch/x86_64_symbolization.dl)
 
-  set(GENERATED_X86_64_CPP souffle_disasm_x86_64.cpp)
-  set(GENERATED_X86_64_CPP_PATH
-      "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_64.cpp")
+  set(GENERATED_X86_64_CPP_PATH "${CMAKE_BINARY_DIR}/src/souffle_disasm_x86_64")
 
-  add_custom_command(
-    OUTPUT ${GENERATED_X86_64_CPP}
-           # Souffle includes the path of the output file in the generated
-           # program name. Change directory and use a relative path so the name
-           # does not depend on build location.
-    WORKING_DIRECTORY "${SOUFFLE_DATALOG_DIR}"
-    COMMAND
-      ${SOUFFLE} main.dl -g ${GENERATED_X86_64_CPP_PATH} -jauto -MARCH_AMD64
-      ${SOUFFLE_PREPROCESSOR_ARG} ${SOUFFLE_PROFILING_ARG}
-    DEPENDS ${DATALOG_BASE_SOURCES} ${DATALOG_X86_64_SOURCES})
+  generate_arch_cpp(
+    ARCH
+    x86_64
+    MARCH
+    AMD64
+    DATALOG_SOURCES
+    ${DATALOG_X86_64_SOURCES}
+    PATH
+    ${GENERATED_X86_64_CPP_PATH})
+
+  if(DDISASM_GENERATE_MANY)
+    file(GLOB GENERATED_X86_64_CPP CONFIGURE_DEPENDS
+         "${GENERATED_X86_64_CPP_PATH}/*")
+  else()
+    set(GENERATED_X86_64_CPP "${GENERATED_X86_64_CPP_PATH}.cpp")
+  endif()
+
 endif()
 
 # determine what flags to use to specify -fopenmp.
