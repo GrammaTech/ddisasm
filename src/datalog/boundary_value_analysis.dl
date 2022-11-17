@@ -272,6 +272,10 @@ no_value_reg_limit(EA_jmp):-
     instruction_get_operation(EA_cmp,Operation),
     !arch.cmp_operation(Operation).
 
+.decl step_limit_small(Limit:unsigned)
+
+step_limit_small(4).
+
 /**
 Basic-block propagation of value_reg_limit
 
@@ -286,7 +290,7 @@ last_value_reg_limit(From,To,Reg,Value,LimitType,0):-
 
 // Simple propagation
 last_value_reg_limit(BlockEnd,BlockNext,PropagatedReg,PropagatedVal,PropagatedType,Steps+1):-
-    step_limit(StepLimit),
+    step_limit_small(StepLimit),
     last_value_reg_limit(_,EA,PropagatedReg,PropagatedVal,PropagatedType,Steps),
     Steps <= StepLimit-1,
     code_in_block(EA,Block),
@@ -328,7 +332,7 @@ limit_reg_op(EA,Reg,Reg,Offset):-
 // * move to a different register
 // * simple add or sub operation modifying a register that has a known limit
 last_value_reg_limit(EA_mov,EA_next,DstReg,PropagatedVal+Offset,PropagatedType,Steps+1):-
-    step_limit(StepLimit),
+    step_limit_small(StepLimit),
     last_value_reg_limit(From,EA,SrcReg,PropagatedVal,PropagatedType,Steps),
     Steps <= StepLimit-1,
     code_in_block(EA,Block),
