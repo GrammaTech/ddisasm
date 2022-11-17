@@ -125,7 +125,7 @@ jump_table_element_access(EA,Size,TableStartAddr,RegIndex_nn):-
     TableStartAddr <= End.
 
 /**
-The following case was observed in libc.so:
+The following case was observed in libc.so (v2.36):
 movslq .L_191058(%rip),%rdi
 leaq .L_191058(%rip),%r8
 addq %r8,%rdi
@@ -139,11 +139,16 @@ jmpq *%rdi
     .long .L_129db0-.L_191058
 
 In the data access, the base register is PC and there is no index register.
+This is a single access, so create a corresponding `jump_table_max`.
 */
 jump_table_element_access(EA,Size,TableStartAddr,"NONE"):-
     data_access(EA,_,"NONE",RegBase,"NONE",1,Offset,Size),
     reg_nonnull(RegBase,RegBase_nn),
     arch.pc_reg(RegBase_nn),
+    def_used_for_address(EA,_,Type),
+    (
+        Type = "Jump"; Type = "Call"
+    ),
     next(EA,EA_next),
     TableStartAddr = as(as(EA_next,number)+Offset,address),
     data_segment(Beg,End),
@@ -214,25 +219,11 @@ jump_table_max(TableStart,TableStart+as(Value,unsigned)*Size):-
     (
         // The register was not previously defined in this block.
         !reg_def_use.block_last_def(EA,_,RegIndex),
-        last_value_reg_limit(_,Block,RegIndex,Value,"MAX")
+        last_value_reg_limit(_,Block,RegIndex,Value,"MAX",_)
         ;
         // Register is defined in the block - check for a propagated limit.
         reg_def_use.block_last_def(EA,EA_def,RegIndex), UNUSED(Block),
-        last_value_reg_limit(EA_def,_,RegIndex,Value,"MAX")
-        ;
-        // cmp BL,42
-        // ...
-        // movzx EAX,BL
-        // ...
-        // sub EAX,32
-        // ...
-        // movzx ECX,BYTE PTR [RSI+RAX*1]
-        reg_def_use.block_last_def(EA,EA_sub,RegIndex), UNUSED(Block),
-        arch.reg_arithmetic_operation(EA_sub,Reg,Reg,1,Offset),
-        reg_def_use.def_used(EA_def,Reg,EA_sub,_),
-        compare_and_jump_immediate(EA_def,EA_jmp,_,_,_),
-        last_value_reg_limit(EA_jmp,_,RegIndex,Value0,"MAX"),
-        Value = Value0 + Offset
+        last_value_reg_limit(EA_def,_,RegIndex,Value,"MAX",_)
     ),
     Value >= 0.
 

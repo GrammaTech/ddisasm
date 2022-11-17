@@ -666,9 +666,21 @@ void ElfReader::buildSections()
             uint64_t Addr = GnuStackSegment.virtual_address();
             Addr = (Addr == 0 ? tlsBaseAddress() + 0x1000 : Addr);
             uint64_t Size = GnuStackSegment.virtual_size();
-            std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(Addr, Size);
-            S->addByteInterval(*Context, gtirb::Addr(Addr), Bytes.begin(), Bytes.end(), Size,
-                               Bytes.size());
+            if(Size == 0)
+            {
+                // If no data exists, add size-0 dummy block so that the
+                // section can be printed out.
+                gtirb::ByteInterval *BI = gtirb::ByteInterval::Create(*Context, gtirb::Addr(Addr));
+                auto EmptyDataBlock = gtirb::DataBlock::Create(*Context, 0);
+                BI->addBlock(0, EmptyDataBlock);
+                S->addByteInterval(BI);
+            }
+            else
+            {
+                std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(Addr, Size);
+                S->addByteInterval(*Context, gtirb::Addr(Addr), Bytes.begin(), Bytes.end(), Size,
+                                   Bytes.size());
+            }
             uint64_t Type = static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS);
             uint64_t Flags = 0;
 
@@ -971,7 +983,7 @@ void ElfReader::addAuxData()
         std::string Type = getRelocationType(Relocation);
 
         // .tdata section can have relocations.
-        // E.g., libc.so
+        // E.g., libc.so (v2.36)
         // .section .tdata ,"wa",@progbits
         // A: __resp: .quad _res
         //
