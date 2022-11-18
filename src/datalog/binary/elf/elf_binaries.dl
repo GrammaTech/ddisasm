@@ -468,7 +468,7 @@ symbolic_expr_from_relocation(EA+InstrOffset,Size,"",0,TargetEA):-
         instruction_displacement_offset(EA,Index,InstrOffset,Size)
     ),
     relocation(Got_entry,"TPOFF64","",Offset,_,_,_),
-    loaded_section(Beg,_,".tdata"),
+    tls_segment(Beg,_,_),
     TargetEA = as(as(Beg,number)+Offset,address).
 
 
