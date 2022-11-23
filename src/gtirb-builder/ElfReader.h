@@ -71,6 +71,8 @@ private:
                          std::map<gtirb::UUID, auxdata::ElfSymbolInfo>& SymbolInfo,
                          std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo>& SymbolTabIdxInfo);
 
+    const LIEF::ELF::Section* findRelocationSection(const LIEF::ELF::Relocation& Relocation);
+
     // TODO: Handle duplicate section names?
     std::map<std::string, uint64_t> SectionRelocations;
 

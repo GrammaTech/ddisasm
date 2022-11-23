@@ -584,7 +584,10 @@ void ElfReader::buildSections()
                 {
                     uint64_t Offset = Section.virtual_address() - TlsBegin;
 
-                    Addr = gtirb::Addr(tlsBaseAddress() + Offset);
+                    uint64_t SectAddr = tlsBaseAddress() + Offset;
+                    SectionRelocations[Section.name()] = SectAddr;
+
+                    Addr = gtirb::Addr(SectAddr);
                 }
                 else
                 {
@@ -671,6 +674,8 @@ void ElfReader::buildSections()
                 Addr = tlsBaseAddress() + TlsSize;
                 // Use the next available page.
                 Addr = (Addr & ~(0x1000 - 1)) + 0x1000;
+
+                SectionRelocations[S->getName()] = Addr;
             }
             uint64_t Size = GnuStackSegment->virtual_size();
             if(Size == 0)
@@ -756,7 +761,8 @@ void ElfReader::buildSymbols()
                 if(Symbol.shndx() > 0 && Symbol.shndx() < Elf->sections().size())
                 {
                     const LIEF::ELF::Section &Section = Elf->sections()[Symbol.shndx()];
-                    Value = SectionRelocations[Section.name()] + Value;
+                    uint64_t Offset = Value - Section.virtual_address();
+                    Value = SectionRelocations[Section.name()] + Offset;
                 }
             }
 
@@ -923,6 +929,28 @@ void ElfReader::addEntryBlock()
     }
 }
 
+const LIEF::ELF::Section *ElfReader::findRelocationSection(const LIEF::ELF::Relocation &Relocation)
+{
+    uint64_t Address = Relocation.address();
+    if(Relocation.has_section())
+    {
+        return Relocation.section();
+    }
+    else
+    {
+        auto Section =
+            std::find_if(Elf->sections().begin(), Elf->sections().end(), [Address](auto &S) {
+                return (Address >= S.virtual_address()
+                        && Address < (S.virtual_address() + S.size()))
+                       && (S.name() != ".tbss");
+            });
+        if(Section != Elf->sections().end())
+            return &(*Section);
+        else
+            return NULL;
+    }
+}
+
 void ElfReader::addAuxData()
 {
     // Add `binaryType' aux data table.
@@ -975,13 +1003,16 @@ void ElfReader::addAuxData()
         }
 
         uint64_t Address = Relocation.address();
-        if(Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL
-           && Relocation.purpose() == LIEF::ELF::RELOCATION_PURPOSES::RELOC_PURPOSE_OBJECT)
+        // Rebase relocation offset for object-file relocations or TLS
+        // relocations.
+        const LIEF::ELF::Section *RelocationSection = findRelocationSection(Relocation);
+        if(RelocationSection)
         {
-            // Rebase relocation offset for object-file relocations.
-            if(Relocation.has_section())
+            auto SectRelocation = SectionRelocations.find(RelocationSection->name());
+            if(SectRelocation != SectionRelocations.end())
             {
-                Address = SectionRelocations[Relocation.section()->name()] + Address;
+                uint64_t Offset = Address - RelocationSection->virtual_address();
+                Address = SectRelocation->second + Offset;
             }
         }
 
@@ -993,33 +1024,6 @@ void ElfReader::addAuxData()
 
         RelocationTuples.insert({Address, Type, SymbolName, Relocation.addend(), Relocation.info(),
                                  SectionName, RelType});
-
-        // .tdata section can have relocations.
-        // E.g., libc.so (v2.36)
-        // .section .tdata ,"wa",@progbits
-        // A: __resp: .quad _res
-        //
-        // The address A has a relocation.
-        // 0x1e1008  R64  _res@32770  0  2626  RELA
-        if(TlsAddr && Address >= TlsAddr->first && Address < TlsAddr->second)
-        {
-            auto TlsSection =
-                std::find_if(Elf->sections().begin(), Elf->sections().end(), [Address](auto &S) {
-                    return S.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS)
-                           && (Address >= S.virtual_address()
-                               && Address < (S.virtual_address() + S.size()));
-                });
-            if(TlsSection != Elf->sections().end())
-            {
-                uint64_t Offset = Address - TlsSection->virtual_address();
-                uint64_t NewAddress = tlsBaseAddress() + Offset;
-                if(Address != NewAddress)
-                {
-                    RelocationTuples.insert({NewAddress, Type, SymbolName, Relocation.addend(),
-                                             Relocation.info(), SectionName, RelType});
-                }
-            }
-        }
     }
     Module->addAuxData<gtirb::schema::Relocations>(std::move(RelocationTuples));
 
