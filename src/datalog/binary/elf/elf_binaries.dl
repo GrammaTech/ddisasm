@@ -324,7 +324,7 @@ inferred_main_function(Main):-
 
 // Inform the use_def analysis that the register is used here as an address.
 reg_def_use.used(EA,Reg,0),
-used_for_address(EA,Reg,"InferredMain"):-
+reg_used_for(EA,Reg,"InferredMain"):-
     arch.inferred_main_in_reg(EA,Reg).
 
 main_function(Main_location):-
@@ -471,6 +471,10 @@ symbolic_expr_from_relocation(EA+InstrOffset,Size,"",0,TargetEA):-
     tls_segment(Beg,_,_),
     TargetEA = as(as(Beg,number)+Offset,address).
 
+symbolic_expr_from_relocation(EA,Size,"",0,as(Dest,address)):-
+    arch.pointer_size(Size),
+    relocation(EA,"IRELATIVE","",Dest,_,_,_).
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -518,20 +522,16 @@ inferred_special_symbol(DestAddr,Name,"LOCAL","FUNC","Beg"):-
     NameFunc = cat("FUN_",@to_string_hex(as(Dest,unsigned))),
     Name = cat(NameFunc,"_IFUNC").
 
-// If the function exists in the binary, prefer a local symbol.
+// Prefer local IFUNC symbols over global ones.
 // NOTE: This is needed for choosing local symbol for PLT if any
-// to avoid extra PLT reference.
+// to avoid extra PLT reference related to gnu_indirect_function.
 ifunc_symbol(DestAddr,Name):-
-    relocation(_,"IRELATIVE","",Dest,_,_,_),
-    DestAddr = as(Dest,address),
-    defined_symbol(DestAddr,_,"GNU_IFUNC","LOCAL",_,_,_,_,Name),
-    function_symbol(DestAddr,Name).
-
-ifunc_symbol(DestAddr,Name):-
-    relocation(_,"IRELATIVE","",Dest,_,_,_),
-    DestAddr = as(Dest,address),
-    defined_symbol(DestAddr,_,"GNU_IFUNC",_,_,_,_,_,Name),
-    !function_symbol(DestAddr,Name).
+    (
+        defined_symbol(DestAddr,_,"GNU_IFUNC","LOCAL",_,_,_,_,Name)
+        ;
+        !defined_symbol(DestAddr,_,"GNU_IFUNC","LOCAL",_,_,_,_,_),
+        defined_symbol(DestAddr,_,"GNU_IFUNC",_,_,_,_,_,Name)
+    ).
 
 // these symbols point to the begining and end of the iplt section
 // that contaisn the IRELATIVE relocations

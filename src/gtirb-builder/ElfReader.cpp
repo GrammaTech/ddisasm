@@ -477,18 +477,19 @@ static bool detectArm32Microcontroller(gtirb::Section *S)
     return Found;
 }
 
-std::pair<std::optional<uint64_t>, std::optional<uint64_t>> ElfReader::getTls()
+std::optional<std::pair<uint64_t, uint64_t>> ElfReader::getTls()
 {
-    std::optional<uint64_t> TlsBegin, TlsEnd;
+    std::optional<std::pair<uint64_t, uint64_t>> Ans;
     for(auto &Segment : Elf->segments())
     {
         if(Segment.type() == LIEF::ELF::SEGMENT_TYPES::PT_TLS)
         {
-            TlsBegin = Segment.virtual_address();
-            TlsEnd = Segment.virtual_address() + Segment.virtual_size();
+            uint64_t TlsBegin = Segment.virtual_address();
+            uint64_t TlsEnd = Segment.virtual_address() + Segment.virtual_size();
+            Ans = std::make_pair(TlsBegin, TlsEnd);
         }
     }
-    return std::make_pair(TlsBegin, TlsEnd);
+    return Ans;
 }
 
 void ElfReader::buildSections()
@@ -504,10 +505,7 @@ void ElfReader::buildSections()
         return;
     }
 
-    std::optional<uint64_t> TlsBegin, TlsEnd;
-    auto p = getTls();
-    TlsBegin = p.first;
-    TlsEnd = p.second;
+    std::optional<std::pair<uint64_t, uint64_t>> TlsAddr = getTls();
 
     // ELF object files do not have allocated address spaces.
     if(Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL)
@@ -578,11 +576,14 @@ void ElfReader::buildSections()
 
             // Rebase TLS section. Thread-local data section addresses overlap other sections, as
             // they are only templates for per-thread copies of the data sections.
-            if(Tls && TlsBegin && TlsEnd && !Relocatable)
+            if(Tls && TlsAddr && !Relocatable)
             {
-                if(Section.virtual_address() >= *TlsBegin && Section.virtual_address() < *TlsEnd)
+                uint64_t TlsBegin = TlsAddr->first;
+                uint64_t TlsEnd = TlsAddr->second;
+                if(Section.virtual_address() >= TlsBegin && Section.virtual_address() < TlsEnd)
                 {
-                    uint64_t Offset = Section.virtual_address() - *TlsBegin;
+                    uint64_t Offset = Section.virtual_address() - TlsBegin;
+
                     Addr = gtirb::Addr(tlsBaseAddress() + Offset);
                 }
                 else
@@ -647,25 +648,31 @@ void ElfReader::buildSections()
     // type of PT_GNU_STACK, create an artificial section for it.
     if(!GnuStackSectionExist)
     {
-        LIEF::ELF::Segment GnuStackSegment;
-        for(auto &Segment : Elf->segments())
-        {
-            if(Segment.type() == LIEF::ELF::SEGMENT_TYPES::PT_GNU_STACK)
-            {
-                GnuStackSegment = Segment;
-                break;
-            }
-        }
+        auto GnuStackSegment = std::find_if(
+            Elf->segments().begin(), Elf->segments().end(),
+            [](auto &S) { return S.type() == LIEF::ELF::SEGMENT_TYPES::PT_GNU_STACK; });
 
-        if(GnuStackSegment.type() == LIEF::ELF::SEGMENT_TYPES::PT_GNU_STACK)
+        if(GnuStackSegment != Elf->segments().end())
         {
             gtirb::Section *S = Module->addSection(*Context, ".note.GNU-stack");
             S->addFlag(gtirb::SectionFlag::Loaded);
             S->addFlag(gtirb::SectionFlag::Readable);
             S->addFlag(gtirb::SectionFlag::Initialized);
-            uint64_t Addr = GnuStackSegment.virtual_address();
-            Addr = (Addr == 0 ? tlsBaseAddress() + 0x1000 : Addr);
-            uint64_t Size = GnuStackSegment.virtual_size();
+            uint64_t Addr = GnuStackSegment->virtual_address();
+            // If Addr is 0, create an address after TLS.
+            if(Addr == 0)
+            {
+                uint64_t TlsSize = 0;
+                std::optional<std::pair<uint64_t, uint64_t>> TlsAddr = getTls();
+                if(TlsAddr)
+                {
+                    TlsSize = TlsAddr->second - TlsAddr->first;
+                }
+                Addr = tlsBaseAddress() + TlsSize;
+                // Use the next available page.
+                Addr = (Addr & ~(0x1000 - 1)) + 0x1000;
+            }
+            uint64_t Size = GnuStackSegment->virtual_size();
             if(Size == 0)
             {
                 // If no data exists, add size-0 dummy block so that the
@@ -938,9 +945,7 @@ void ElfReader::addAuxData()
     }
     Module->addAuxData<gtirb::schema::BinaryType>(std::move(BinaryType));
 
-    auto Tls = getTls();
-    std::optional<uint64_t> TlsBegin = Tls.first;
-    std::optional<uint64_t> TlsEnd = Tls.second;
+    auto TlsAddr = getTls();
 
     // Add `relocations' aux data table.
     std::set<auxdata::Relocation> RelocationTuples;
@@ -982,6 +987,13 @@ void ElfReader::addAuxData()
 
         std::string Type = getRelocationType(Relocation);
 
+        // RELA relocations have an explicit addend field, and REL relocations store an
+        // implicit addend in the location to be modified.
+        std::string RelType = Relocation.is_rela() ? "RELA" : "REL";
+
+        RelocationTuples.insert({Address, Type, SymbolName, Relocation.addend(), Relocation.info(),
+                                 SectionName, RelType});
+
         // .tdata section can have relocations.
         // E.g., libc.so (v2.36)
         // .section .tdata ,"wa",@progbits
@@ -989,18 +1001,25 @@ void ElfReader::addAuxData()
         //
         // The address A has a relocation.
         // 0x1e1008  R64  _res@32770  0  2626  RELA
-        if(TlsBegin && Address >= *TlsBegin && TlsEnd && Address < *TlsEnd && Type != "RELATIVE")
+        if(TlsAddr && Address >= TlsAddr->first && Address < TlsAddr->second)
         {
-            uint64_t Offset = Address - *TlsBegin;
-            Address = tlsBaseAddress() + Offset;
+            auto TlsSection =
+                std::find_if(Elf->sections().begin(), Elf->sections().end(), [Address](auto &S) {
+                    return S.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS)
+                           && (Address >= S.virtual_address()
+                               && Address < (S.virtual_address() + S.size()));
+                });
+            if(TlsSection != Elf->sections().end())
+            {
+                uint64_t Offset = Address - TlsSection->virtual_address();
+                uint64_t NewAddress = tlsBaseAddress() + Offset;
+                if(Address != NewAddress)
+                {
+                    RelocationTuples.insert({NewAddress, Type, SymbolName, Relocation.addend(),
+                                             Relocation.info(), SectionName, RelType});
+                }
+            }
         }
-
-        // RELA relocations have an explicit addend field, and REL relocations store an
-        // implicit addend in the location to be modified.
-        std::string RelType = Relocation.is_rela() ? "RELA" : "REL";
-
-        RelocationTuples.insert({Address, Type, SymbolName, Relocation.addend(), Relocation.info(),
-                                 SectionName, RelType});
     }
     Module->addAuxData<gtirb::schema::Relocations>(std::move(RelocationTuples));
 

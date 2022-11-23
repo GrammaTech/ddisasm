@@ -552,10 +552,8 @@ boundary_sym_expr(EA+DisplacementOffset,Dest):-
     loaded_section(Beg,Dest,_),
     // The symbol is possibly used in loop-bound check instruction (e.g., cmp).
     reg_def_use.def_used(EA,Reg1,EA_cmp,_),
-    instruction_get_operation(EA_cmp,Operation),
-    arch.cmp_operation(Operation),
+    cmp_reg_to_reg(EA_cmp,Reg1,Reg2),
     reg_def_use.def_used(EA_beg,Reg2,EA_cmp,_),
-    Reg1 != Reg2,
     symbolic_operand(EA_beg,_,Dest2,"data"),
     Dest2 >= Beg,
     Dest2 < Dest,

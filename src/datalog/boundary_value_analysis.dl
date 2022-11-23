@@ -274,7 +274,7 @@ no_value_reg_limit(EA_jmp):-
 
 .decl step_limit_small(Limit:unsigned)
 
-step_limit_small(4).
+step_limit_small(3).
 
 /**
 Basic-block propagation of value_reg_limit
@@ -292,7 +292,7 @@ last_value_reg_limit(From,To,Reg,Value,LimitType,0):-
 last_value_reg_limit(BlockEnd,BlockNext,PropagatedReg,PropagatedVal,PropagatedType,Steps+1):-
     step_limit_small(StepLimit),
     last_value_reg_limit(_,EA,PropagatedReg,PropagatedVal,PropagatedType,Steps),
-    Steps <= StepLimit-1,
+    Steps <= StepLimit,
     code_in_block(EA,Block),
     block_next(Block,BlockEnd,BlockNext),
     !reg_def_use.defined_in_block(Block,PropagatedReg),
@@ -334,7 +334,7 @@ limit_reg_op(EA,Reg,Reg,Offset):-
 last_value_reg_limit(EA_mov,EA_next,DstReg,PropagatedVal+Offset,PropagatedType,Steps+1):-
     step_limit_small(StepLimit),
     last_value_reg_limit(From,EA,SrcReg,PropagatedVal,PropagatedType,Steps),
-    Steps <= StepLimit-1,
+    Steps <= StepLimit,
     code_in_block(EA,Block),
     block_last_instruction(Block,BlockEnd),
     limit_reg_op(EA_mov,DstReg,SrcReg,Offset),

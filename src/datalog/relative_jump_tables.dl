@@ -139,18 +139,18 @@ jmpq *%rdi
     .long .L_129db0-.L_191058
 
 In the data access, the base register is PC and there is no index register.
-This is a single access, so create a corresponding `jump_table_max`.
 */
 jump_table_element_access(EA,Size,TableStartAddr,"NONE"):-
-    data_access(EA,_,"NONE",RegBase,"NONE",1,Offset,Size),
-    reg_nonnull(RegBase,RegBase_nn),
-    arch.pc_reg(RegBase_nn),
+    pc_relative_operand(EA,1,TableStartAddr),
+    data_access(EA,_,_,_,_,_,_,Size),
     def_used_for_address(EA,_,Type),
     (
         Type = "Jump"; Type = "Call"
     ),
-    next(EA,EA_next),
-    TableStartAddr = as(as(EA_next,number)+Offset,address),
+    reg_def_use.def_used(EA,Reg1,EA_add,_),
+    reg_def_use.def_used(EA2,Reg2,EA_add,_),
+    take_address(EA2,TableStartAddr),
+    arch.reg_reg_arithmetic_operation(EA_add,_,Reg2,Reg1,1,0),
     data_segment(Beg,End),
     TableStartAddr >= Beg,
     TableStartAddr <= End.
