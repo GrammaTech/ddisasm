@@ -1,3 +1,4 @@
+import lief
 import os
 import platform
 import unittest
@@ -53,6 +54,40 @@ class LibrarySymbolsTests(unittest.TestCase):
                 ".plt",
                 ".plt.sec",
             ]
+
+
+class IFuncSymbolsTests(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_symbols_through_plt(self):
+        """
+        Test a binary that calls a local method defined as
+        gnu_indirect_function through plt and check if the local symbol is
+        chosen over global symbols.
+        """
+
+        binary = "ex.so"
+        with cd(ex_asm_dir / "ex_ifunc"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            self.assertTrue(disassemble(binary, format="--asm")[0])
+            self.assertTrue(
+                reassemble(
+                    "gcc",
+                    binary,
+                    extra_flags=["-shared", "-Wl,--version-script=ex.map"],
+                )
+            )
+
+            binlief = lief.parse(binary)
+            for relocation in binlief.relocations:
+                # The rewritten binary should not contain any JUMP_SLOT
+                # relocation: the relocation for strcmp should be
+                # R_X86_64_IRELATIVE instead of R_X86_64_JUMP_SLOT.
+                self.assertTrue(
+                    lief.ELF.RELOCATION_X86_64(relocation.type)
+                    != lief.ELF.RELOCATION_X86_64.JUMP_SLOT
+                )
 
 
 class AuxDataTests(unittest.TestCase):
