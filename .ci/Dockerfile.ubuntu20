@@ -183,7 +183,8 @@ RUN python3 -m pip install --no-cache-dir \
     networkx \
     pre-commit \
     pydot \
-    sphinx
+    sphinx \
+    lief==0.12.3
 
 # Setup pre-commit hooks.
 WORKDIR /ddisasm

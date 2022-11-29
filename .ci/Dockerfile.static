@@ -141,7 +141,8 @@ ENV WINEPATH="/usr/lib/gcc/i686-w64-mingw32/9.3-win32"
 # Install Python dependencies
 RUN python3 -m pip install --no-cache-dir \
     pyyaml \
-    psycopg2-binary
+    psycopg2-binary \
+    lief==0.12.3
 
 COPY --from=souffle /usr/local/bin/souffle* /usr/local/bin/
 COPY --from=souffle /usr/local/include/souffle/ /usr/include/souffle
