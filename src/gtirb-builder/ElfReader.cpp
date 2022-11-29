@@ -942,7 +942,7 @@ const LIEF::ELF::Section *ElfReader::findRelocationSection(const LIEF::ELF::Relo
             std::find_if(Elf->sections().begin(), Elf->sections().end(), [Address](auto &S) {
                 return (Address >= S.virtual_address()
                         && Address < (S.virtual_address() + S.size()))
-                       && (S.name() != ".tbss");
+                       && (S.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS);
             });
         if(Section != Elf->sections().end())
             return &(*Section);
