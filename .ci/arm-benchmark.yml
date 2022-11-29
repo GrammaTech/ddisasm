@@ -30,7 +30,7 @@ trigger:
   variables:
     DDISASM_BRANCH: $CI_COMMIT_BRANCH
   trigger:
-    project: aseitz/ddisasm-arm-benchmark
+    project: rewriting/ddisasm-arm-benchmark
     branch: master
     strategy: depend
 
@@ -42,7 +42,7 @@ results:
   rules:
     *trigger-arm-benchmark-rules
   script:
-    - curl --location --output artifacts.zip "${CI_API_V4_URL}/projects/aseitz%2Fddisasm-arm-benchmark/jobs/artifacts/master/download?job=merge-metrics&job_token=$CI_JOB_TOKEN"
+    - curl --location --output artifacts.zip "${CI_API_V4_URL}/projects/rewriting%2Fddisasm-arm-benchmark/jobs/artifacts/master/download?job=merge-metrics&job_token=$CI_JOB_TOKEN"
     - unzip artifacts.zip
   artifacts:
     reports:
