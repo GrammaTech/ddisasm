@@ -1,4 +1,3 @@
-import lief
 import os
 import platform
 import unittest
@@ -14,6 +13,8 @@ from disassemble_reassemble_check import (
 from pathlib import Path
 import gtirb
 
+if platform.system() == "Linux":
+    import lief
 
 ex_dir = Path("./examples/")
 ex_asm_dir = ex_dir / "asm_examples"
