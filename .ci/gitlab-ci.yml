@@ -338,6 +338,7 @@ build-static:
     *run-only-main
   script:
     # install capstone
+    - !reference [.setup-apt]
     - !reference [.install-capstone]
     # build GTIRB
     - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
@@ -408,6 +409,7 @@ static-drivers:
     *run-only-main
   script:
     # install capstone
+    - !reference [.setup-apt]
     - !reference [.install-capstone]
     # build GTIRB
     - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
