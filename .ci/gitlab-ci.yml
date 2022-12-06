@@ -553,11 +553,20 @@ setup-ubuntu20-package-tests:
     OS: ubuntu20
   <<: *setup-apt-repo
 
+.prefer-local-repo: &prefer-local-repo
+  - |-
+      tee /etc/apt/preferences  << EOF
+      Package: *
+      Pin: origin ""
+      Pin-Priority: 1001
+      EOF
+
 .test-ubuntu-ddisasm: &test-ubuntu-ddisasm
   stage: package-tests
   rules:
     *run-only-main
   script:
+    - !reference [.prefer-local-repo]
     - if [ $(lsb_release -sc) == "bionic" ]; then TRUSTED="[trusted=yes]"; fi
     - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
     - echo -e "\ndeb $TRUSTED file:$(pwd)/apt-repo ./\n" >> /etc/apt/sources.list
@@ -571,6 +580,7 @@ setup-ubuntu20-package-tests:
   rules:
     *run-only-main
   script:
+    - !reference [.prefer-local-repo]
     - if [ $(lsb_release -sc) == "bionic" ]; then TRUSTED="[trusted=yes]"; fi
     - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
     - echo -e "\ndeb $TRUSTED file:$(pwd)/apt-repo ./\n" >> /etc/apt/sources.list
