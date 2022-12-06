@@ -42,19 +42,16 @@ default:
   - DIST_NAME="$(lsb_release -sc)"
   - wget -O - https://download.grammatech.com/gtirb/files/apt-repo/conf/apt.gpg.key | apt-key add -
   - COMPONENT=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "stable" || echo "unstable")
-  - echo "deb https://download.grammatech.com/gtirb/files/apt-repo $DIST_NAME $COMPONENT" | tee -a /etc/apt/sources.list
+  - echo "deb https://download.grammatech.com/gtirb/files/apt-repo $DIST_NAME $COMPONENT" | tee -a /etc/apt/sources.list.d/gtirb.list
   - apt-get update -y
 
+.download-deps:
+  - apt-get download -y libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION} libgtirb-dev${GTIRB_VERSION:+-$GTIRB_VERSION} libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
+
 .install-deps:
-  # Install capstone and gtirb and gtirb-pprinter.
   - apt-get install -y libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION} libgtirb-dev${GTIRB_VERSION:+-$GTIRB_VERSION} libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
 
 .install-capstone:
-  - DIST_NAME="$(lsb_release -sc)"
-  - wget -O - https://download.grammatech.com/gtirb/files/apt-repo/conf/apt.gpg.key | apt-key add -
-  - COMPONENT=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "stable" || echo "unstable")
-  - echo "deb https://download.grammatech.com/gtirb/files/apt-repo $DIST_NAME $COMPONENT" | tee -a /etc/apt/sources.list
-  - apt-get update -y
   - apt-get install -y libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION}
 
 .build-ci-image: &build-ci-image
@@ -531,10 +528,11 @@ build-ubuntu20-packages:
     *run-only-main
   script:
     - !reference [.setup-apt]
-    - apt-get download -y libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION} libgtirb-dev${GTIRB_VERSION:+-$GTIRB_VERSION} libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION} gtirb-pprinter${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
+    - !reference [.download-deps]
     - mkdir apt-repo
+    - mv *.deb apt-repo
+    - rm /etc/apt/sources.list.d/gtirb.list && apt-get update -y
     - cp build/*.deb apt-repo
-    - cp *.deb apt-repo
     - cd apt-repo && dpkg-scanpackages . /dev/null > Packages
 
 setup-ubuntu20-package-tests:
@@ -544,35 +542,22 @@ setup-ubuntu20-package-tests:
     OS: ubuntu20
   <<: *setup-apt-repo
 
-.prefer-local-repo: &prefer-local-repo
-  - |-
-      tee /etc/apt/preferences  << EOF
-      Package: *
-      Pin: origin ""
-      Pin-Priority: 1001
-      EOF
-
 .test-ubuntu-ddisasm: &test-ubuntu-ddisasm
   stage: package-tests
   rules:
     *run-only-main
   script:
-    - !reference [.prefer-local-repo]
-    - if [ $(lsb_release -sc) == "bionic" ]; then TRUSTED="[trusted=yes]"; fi
     - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
     - echo -e "\ndeb $TRUSTED file:$(pwd)/apt-repo ./\n" >> /etc/apt/sources.list
     - 'TEST_PKG_NAME=$(dpkg --info apt-repo/ddisasm.deb | sed -n "s/ Package: //p")'
     - apt-get update -y && apt-get install -y --allow-unauthenticated $TEST_PKG_NAME
     - ddisasm --version
 
-
 .test-ubuntu-ddisasm-dbg: &test-ubuntu-ddisasm-dbg
   stage: package-tests
   rules:
     *run-only-main
   script:
-    - !reference [.prefer-local-repo]
-    - if [ $(lsb_release -sc) == "bionic" ]; then TRUSTED="[trusted=yes]"; fi
     - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
     - echo -e "\ndeb $TRUSTED file:$(pwd)/apt-repo ./\n" >> /etc/apt/sources.list
     - 'TEST_PKG_NAME=$(dpkg --info apt-repo/ddisasm-dbg.deb | sed -n "s/ Package: //p")'
