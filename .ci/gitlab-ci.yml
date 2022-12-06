@@ -412,7 +412,6 @@ static-drivers:
   script:
     # install capstone
     - !reference [.install-capstone]
-    - dpkg -i libcapstone*.deb
     # build GTIRB
     - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
     - git clone https://git.grammatech.com/rewriting/gtirb.git -b $GTIRB_BRANCH
