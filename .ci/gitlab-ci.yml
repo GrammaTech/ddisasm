@@ -343,6 +343,7 @@ build-static:
     # install capstone
     - !reference [.install-capstone]
     # build GTIRB
+    - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
     - git clone https://git.grammatech.com/rewriting/gtirb.git -b $GTIRB_BRANCH
     - mkdir gtirb/build
     - cd gtirb/build
@@ -351,6 +352,7 @@ build-static:
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
     # build gtirb-pprinter
+    - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "master")
     - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b $GTIRB_PPRINTER_BRANCH
     - mkdir gtirb-pprinter/build
     - cd gtirb-pprinter/build
@@ -412,6 +414,7 @@ static-drivers:
     - !reference [.install-capstone]
     - dpkg -i libcapstone*.deb
     # build GTIRB
+    - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
     - git clone https://git.grammatech.com/rewriting/gtirb.git -b $GTIRB_BRANCH
     - cd gtirb
     - mkdir build && cd build
@@ -420,6 +423,7 @@ static-drivers:
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
     # build gtirb-pprinter
+    - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "master")
     - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b $GTIRB_PPRINTER_BRANCH
     - cd gtirb-pprinter
     - mkdir build && cd build
