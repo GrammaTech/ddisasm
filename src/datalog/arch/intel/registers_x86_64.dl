@@ -27,6 +27,14 @@ This module stablishes basic information about register:
 
 */
 
+reg_map_rule("AL","RAX").
+reg_map_rule("BL","RBX").
+reg_map_rule("CL","RCX").
+reg_map_rule("DL","RDX").
+reg_map_rule("DI","RDI").
+reg_map_rule("SI","RSI").
+reg_map_rule("BP","RBP").
+reg_map_rule("SP","RSP").
 reg_map_rule("EAX","RAX").
 reg_map_rule("EBX","RBX").
 reg_map_rule("ECX","RCX").

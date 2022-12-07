@@ -272,21 +272,27 @@ no_value_reg_limit(EA_jmp):-
     instruction_get_operation(EA_cmp,Operation),
     !arch.cmp_operation(Operation).
 
+.decl step_limit_small(Limit:unsigned)
+
+step_limit_small(3).
+
 /**
 Basic-block propagation of value_reg_limit
 
 From: the address that creates the limit
 To: the address at which the limit is active
 */
-.decl last_value_reg_limit(From:address,To:address,Reg:register,Value:number,LimitType:limit_type)
+.decl last_value_reg_limit(From:address,To:address,Reg:register,Value:number,LimitType:limit_type,Steps:unsigned)
 .output last_value_reg_limit
 
-last_value_reg_limit(From,To,Reg,Value,LimitType):-
+last_value_reg_limit(From,To,Reg,Value,LimitType,0):-
     value_reg_limit(From,To,Reg,Value,LimitType).
 
 // Simple propagation
-last_value_reg_limit(BlockEnd,BlockNext,PropagatedReg,PropagatedVal,PropagatedType):-
-    last_value_reg_limit(_,EA,PropagatedReg,PropagatedVal,PropagatedType),
+last_value_reg_limit(BlockEnd,BlockNext,PropagatedReg,PropagatedVal,PropagatedType,Steps+1):-
+    step_limit_small(StepLimit),
+    last_value_reg_limit(_,EA,PropagatedReg,PropagatedVal,PropagatedType,Steps),
+    Steps <= StepLimit,
     code_in_block(EA,Block),
     block_next(Block,BlockEnd,BlockNext),
     !reg_def_use.defined_in_block(Block,PropagatedReg),
@@ -311,13 +317,30 @@ last_value_reg_limit(BlockEnd,BlockNext,PropagatedReg,PropagatedVal,PropagatedTy
         )
     ).
 
-// Propagate to a different register through a move instruction
-last_value_reg_limit(EA_mov,EA_next,DstReg,PropagatedVal,PropagatedType):-
-    last_value_reg_limit(From,EA,SrcReg,PropagatedVal,PropagatedType),
+/**
+Move or arithmetic operation on a limited register
+*/
+.decl limit_reg_op(EA:address,DstReg:register,SrcReg:register,Offset:number)
+
+limit_reg_op(EA,DstReg,SrcReg,0):-
+    arch.move_reg_reg(EA,DstReg,SrcReg).
+
+limit_reg_op(EA,Reg,Reg,Offset):-
+    arch.reg_arithmetic_operation(EA,Reg,Reg,1,Offset).
+
+// Propagate through:
+// * move to a different register
+// * simple add or sub operation modifying a register that has a known limit
+last_value_reg_limit(EA_mov,EA_next,DstReg,PropagatedVal+Offset,PropagatedType,Steps+1):-
+    step_limit_small(StepLimit),
+    last_value_reg_limit(From,EA,SrcReg,PropagatedVal,PropagatedType,Steps),
+    Steps <= StepLimit,
     code_in_block(EA,Block),
     block_last_instruction(Block,BlockEnd),
-    code_in_block(EA_mov,EA),
-    arch.move_reg_reg(EA_mov,DstReg,SrcReg),
+    limit_reg_op(EA_mov,DstReg,SrcReg,Offset),
+    EA <= EA_mov,
+    EA_mov <= BlockEnd,
+    code_in_block(EA_mov,Block),
     // The limit for the move is placed on the next instruction, because that is
     // where the limit becomes active. This is analagous to the limit propagated
     // from a previous block being placed at the beginning of the new block.

@@ -477,6 +477,21 @@ static bool detectArm32Microcontroller(gtirb::Section *S)
     return Found;
 }
 
+std::optional<std::pair<uint64_t, uint64_t>> ElfReader::getTls()
+{
+    std::optional<std::pair<uint64_t, uint64_t>> Ans;
+    for(auto &Segment : Elf->segments())
+    {
+        if(Segment.type() == LIEF::ELF::SEGMENT_TYPES::PT_TLS)
+        {
+            uint64_t TlsBegin = Segment.virtual_address();
+            uint64_t TlsEnd = Segment.virtual_address() + Segment.virtual_size();
+            Ans = std::make_pair(TlsBegin, TlsEnd);
+        }
+    }
+    return Ans;
+}
+
 void ElfReader::buildSections()
 {
     std::map<gtirb::UUID, uint64_t> Alignment;
@@ -490,15 +505,7 @@ void ElfReader::buildSections()
         return;
     }
 
-    std::optional<uint64_t> TlsBegin, TlsEnd;
-    for(auto &Segment : Elf->segments())
-    {
-        if(Segment.type() == LIEF::ELF::SEGMENT_TYPES::PT_TLS)
-        {
-            TlsBegin = Segment.virtual_address();
-            TlsEnd = Segment.virtual_address() + Segment.virtual_size();
-        }
-    }
+    std::optional<std::pair<uint64_t, uint64_t>> TlsAddr = getTls();
 
     // ELF object files do not have allocated address spaces.
     if(Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL)
@@ -506,6 +513,7 @@ void ElfReader::buildSections()
         relocateSections();
     }
 
+    bool GnuStackSectionExist = false;
     uint64_t Index = 0;
     for(auto &Section : Elf->sections())
     {
@@ -568,12 +576,18 @@ void ElfReader::buildSections()
 
             // Rebase TLS section. Thread-local data section addresses overlap other sections, as
             // they are only templates for per-thread copies of the data sections.
-            if(Tls && TlsBegin && TlsEnd && !Relocatable)
+            if(Tls && TlsAddr && !Relocatable)
             {
-                if(Section.virtual_address() >= *TlsBegin && Section.virtual_address() < *TlsEnd)
+                uint64_t TlsBegin = TlsAddr->first;
+                uint64_t TlsEnd = TlsAddr->second;
+                if(Section.virtual_address() >= TlsBegin && Section.virtual_address() < TlsEnd)
                 {
-                    uint64_t Offset = Section.virtual_address() - *TlsBegin;
-                    Addr = gtirb::Addr(tlsBaseAddress() + Offset);
+                    uint64_t Offset = Section.virtual_address() - TlsBegin;
+
+                    uint64_t SectAddr = tlsBaseAddress() + Offset;
+                    SectionRelocations[Section.name()] = SectAddr;
+
+                    Addr = gtirb::Addr(SectAddr);
                 }
                 else
                 {
@@ -611,6 +625,11 @@ void ElfReader::buildSections()
         SectionProperties[S->getUUID()] = {static_cast<uint64_t>(Section.type()),
                                            static_cast<uint64_t>(Section.flags())};
 
+        if(Section.name() == ".note.GNU-stack")
+        {
+            GnuStackSectionExist = true;
+        }
+
         // In case of ARM32, inspect .ARM.attributes section to see
         // if the binary is Microcontroller.
         if(Module->getISA() == gtirb::ISA::ARM && Section.name() == ".ARM.attributes")
@@ -626,6 +645,53 @@ void ElfReader::buildSections()
             }
         }
         Index++;
+    }
+
+    // If .note.GNU-stack section does not exist and there is a segment
+    // type of PT_GNU_STACK, create an artificial section for it.
+    if(!GnuStackSectionExist)
+    {
+        auto GnuStackSegment = std::find_if(
+            Elf->segments().begin(), Elf->segments().end(),
+            [](auto &S) { return S.type() == LIEF::ELF::SEGMENT_TYPES::PT_GNU_STACK; });
+
+        if(GnuStackSegment != Elf->segments().end())
+        {
+            gtirb::Section *S = Module->addSection(*Context, ".note.GNU-stack");
+            S->addFlag(gtirb::SectionFlag::Loaded);
+            S->addFlag(gtirb::SectionFlag::Readable);
+            S->addFlag(gtirb::SectionFlag::Initialized);
+            uint64_t Addr = GnuStackSegment->virtual_address();
+            // If Addr is 0, create an address after TLS.
+            if(Addr == 0)
+            {
+                uint64_t TlsSize = 0;
+                std::optional<std::pair<uint64_t, uint64_t>> TlsAddr = getTls();
+                if(TlsAddr)
+                {
+                    TlsSize = TlsAddr->second - TlsAddr->first;
+                }
+                Addr = tlsBaseAddress() + TlsSize;
+                // Use the next available page.
+                Addr = (Addr & ~(0x1000 - 1)) + 0x1000;
+
+                SectionRelocations[S->getName()] = Addr;
+            }
+
+            uint64_t Size = GnuStackSegment->virtual_size();
+            std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(Addr, Size);
+            gtirb::ByteInterval *BI = S->addByteInterval(*Context, gtirb::Addr(Addr), Bytes.begin(),
+                                                         Bytes.end(), Size, Bytes.size());
+            auto DataBlock = gtirb::DataBlock::Create(*Context, Size);
+            BI->addBlock(0, DataBlock);
+
+            uint64_t Type = static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS);
+            uint64_t Flags = 0;
+
+            Alignment[S->getUUID()] = 0;
+            SectionIndex[Index++] = S->getUUID();
+            SectionProperties[S->getUUID()] = {Type, Flags};
+        }
     }
 
     Module->addAuxData<gtirb::schema::Alignment>(std::move(Alignment));
@@ -687,7 +753,8 @@ void ElfReader::buildSymbols()
                 if(Symbol.shndx() > 0 && Symbol.shndx() < Elf->sections().size())
                 {
                     const LIEF::ELF::Section &Section = Elf->sections()[Symbol.shndx()];
-                    Value = SectionRelocations[Section.name()] + Value;
+                    uint64_t Offset = Value - Section.virtual_address();
+                    Value = SectionRelocations[Section.name()] + Offset;
                 }
             }
 
@@ -753,9 +820,14 @@ void ElfReader::buildSymbols()
             }
             else
             {
+                if(!Version && VersionMap.size() == 1)
+                {
+                    auto &[Version_, _] = *VersionMap.begin();
+                    Version = Version_;
+                }
                 // If there is no version but there is a global
                 // instance of this symbol, we consider this one global too.
-                if(VersionMap.find(LIEF::ELF::VER_NDX_GLOBAL) != VersionMap.end())
+                else if(VersionMap.find(LIEF::ELF::VER_NDX_GLOBAL) != VersionMap.end())
                 {
                     Version = LIEF::ELF::VER_NDX_GLOBAL;
                 }
@@ -849,6 +921,28 @@ void ElfReader::addEntryBlock()
     }
 }
 
+const LIEF::ELF::Section *ElfReader::findRelocationSection(const LIEF::ELF::Relocation &Relocation)
+{
+    uint64_t Address = Relocation.address();
+    if(Relocation.has_section())
+    {
+        return Relocation.section();
+    }
+    else
+    {
+        auto Section =
+            std::find_if(Elf->sections().begin(), Elf->sections().end(), [Address](auto &S) {
+                return (Address >= S.virtual_address()
+                        && Address < (S.virtual_address() + S.size()))
+                       && (S.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS);
+            });
+        if(Section != Elf->sections().end())
+            return &(*Section);
+        else
+            return NULL;
+    }
+}
+
 void ElfReader::addAuxData()
 {
     // Add `binaryType' aux data table.
@@ -870,6 +964,8 @@ void ElfReader::addAuxData()
             std::exit(EXIT_FAILURE);
     }
     Module->addAuxData<gtirb::schema::BinaryType>(std::move(BinaryType));
+
+    auto TlsAddr = getTls();
 
     // Add `relocations' aux data table.
     std::set<auxdata::Relocation> RelocationTuples;
@@ -899,22 +995,27 @@ void ElfReader::addAuxData()
         }
 
         uint64_t Address = Relocation.address();
-        if(Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL
-           && Relocation.purpose() == LIEF::ELF::RELOCATION_PURPOSES::RELOC_PURPOSE_OBJECT)
+        // Rebase relocation offset for object-file relocations or TLS
+        // relocations.
+        const LIEF::ELF::Section *RelocationSection = findRelocationSection(Relocation);
+        if(RelocationSection)
         {
-            // Rebase relocation offset for object-file relocations.
-            if(Relocation.has_section())
+            auto SectRelocation = SectionRelocations.find(RelocationSection->name());
+            if(SectRelocation != SectionRelocations.end())
             {
-                Address = SectionRelocations[Relocation.section()->name()] + Address;
+                uint64_t Offset = Address - RelocationSection->virtual_address();
+                Address = SectRelocation->second + Offset;
             }
         }
+
+        std::string Type = getRelocationType(Relocation);
 
         // RELA relocations have an explicit addend field, and REL relocations store an
         // implicit addend in the location to be modified.
         std::string RelType = Relocation.is_rela() ? "RELA" : "REL";
 
-        RelocationTuples.insert({Address, getRelocationType(Relocation), SymbolName,
-                                 Relocation.addend(), Relocation.info(), SectionName, RelType});
+        RelocationTuples.insert({Address, Type, SymbolName, Relocation.addend(), Relocation.info(),
+                                 SectionName, RelType});
     }
     Module->addAuxData<gtirb::schema::Relocations>(std::move(RelocationTuples));
 

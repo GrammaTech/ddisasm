@@ -88,7 +88,7 @@ value_reg_edge(EALoad,Reg2,EAPrev,Reg1,1,0):-
 
 //mov reg reg_origin
 value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
-    def_used_for_address(EA_prev,Reg_origin),
+    def_used_for_address(EA_prev,Reg_origin,_),
     reg_def_use.def_used(EA_prev,Reg_origin,EA,_),
     arch.move_reg_reg(EA,Reg,Reg_origin),
     track_register(Reg),
@@ -96,7 +96,7 @@ value_reg_edge(EA,Reg,EA_prev,Reg_origin,1,0):-
 
 // basic arithmetic operations
 value_reg_edge(EA,Dst,EA_prev,Src,Mult,Immediate):-
-    def_used_for_address(EA_prev,Src),
+    def_used_for_address(EA_prev,Src,_),
     reg_def_use.def_used(EA_prev,Src,EA,_),
     arch.reg_arithmetic_operation(EA,Dst,Src,Mult,Immediate),
     track_register(Dst).
@@ -108,7 +108,7 @@ value_reg_edge(EA,Dst,EA_prev,Src,Mult,Immediate):-
 
 // Load a register from a non-constant memory address
 value_reg_unsupported(EA,Reg):-
-    def_used_for_address(EA,Reg),
+    def_used_for_address(EA,Reg,_),
     arch.load(EA,_,_,Reg,RegBase,RegIndex,_,_),
     (
         RegBase != "NONE",
@@ -120,14 +120,14 @@ value_reg_unsupported(EA,Reg):-
 
 // Load a register from a register that is not tracked
 value_reg_unsupported(EA,Reg):-
-    def_used_for_address(EA,Reg),
+    def_used_for_address(EA,Reg,_),
     arch.move_reg_reg(EA,Dst,Src),
     track_register(Dst),
     !track_register(Src).
 
 // Register defined in a call
 value_reg_unsupported(EA,Reg):-
-    def_used_for_address(EA,Reg),
+    def_used_for_address(EA,Reg,_),
     arch.call(EA,_).
 
 
@@ -137,17 +137,17 @@ value_reg_unsupported(EA,Reg):-
 
 // mov reg immediate
 value_reg(EA,Reg,EA,"NONE",0,Immediate,1):-
-    def_used_for_address(EA,Reg),
+    def_used_for_address(EA,Reg,_),
     arch.move_reg_imm(EA,Reg,Immediate,_).
 
 //reset a register
 value_reg(EA,Reg,EA,"NONE",0,0,1):-
-    def_used_for_address(EA,Reg),
+    def_used_for_address(EA,Reg,_),
     is_xor_reset(EA).
 
 // register implicitly defined
 value_reg(EA,Reg,EA,"NONE",0,Immediate,1):-
-    def_used_for_address(EA,Reg),
+    def_used_for_address(EA,Reg,_),
     reg_def_use.flow_def(EA,Reg,_,Immediate).
 
 // pc-relative LEA
@@ -174,7 +174,7 @@ value_reg(EA,Reg,EA,"NONE",0,as(Val,number),1):-
 
 // mov DWORD from memory (constant address)
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
-    def_used_for_address(EA,Reg),
+    def_used_for_address(EA,Reg,_),
     arch.load(EA,_,_,Reg,"NONE","NONE",_,Offset),
     Offset >= 0,
     Offset_addr = as(Offset,address),
@@ -183,7 +183,7 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
 
 // mov DWORD from memory (PC-relative address)
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
-    def_used_for_address(EA,Reg),
+    def_used_for_address(EA,Reg,_),
     arch.load(EA,_,_,_,_,_,_,_),
     instruction(EA,_,_,_,Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg),
@@ -246,7 +246,7 @@ value_reg(EA,Reg,EA_reg1,Reg1,Multiplier,Offset,Steps1) <= value_reg(EA,Reg,EA_r
     Steps2 <= Steps1.
 
 value_reg(EA,Reg,EA,Reg,1,0,1):-
-    def_used_for_address(EA,Reg),
+    def_used_for_address(EA,Reg,_),
     value_reg_unsupported(EA,Reg).
 
 value_reg(EA,Reg,EA,Reg,1,0,1):-
@@ -271,7 +271,7 @@ The operation is Reg_def = Reg1 + Reg2 * Mult + Offset.
 .decl reg_reg_arithmetic_operation_defs(EA:address,Reg_def:register,EA_def1:address,Reg1:register,EA_def2:address,Reg2:register,Mult:number,Offset:number)
 
 reg_reg_arithmetic_operation_defs(EA,Reg_def,EA_def1,Reg1,EA_def2,Reg2,Mult,Offset):-
-    def_used_for_address(EA,Reg_def),
+    def_used_for_address(EA,Reg_def,_),
     arch.reg_reg_arithmetic_operation(EA,Reg_def,Reg1,Reg2,Mult,Offset),
     Reg1 != Reg2,
     reg_def_use.def_used(EA_def1,Reg1,EA,_),

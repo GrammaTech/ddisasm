@@ -124,6 +124,37 @@ jump_table_element_access(EA,Size,TableStartAddr,RegIndex_nn):-
     TableStartAddr >= Beg,
     TableStartAddr <= End.
 
+/**
+The following case was observed in libc.so (v2.36):
+movslq .L_191058(%rip),%rdi
+leaq .L_191058(%rip),%r8
+addq %r8,%rdi
+jmpq *%rdi
+...
+.L_191058:
+    .long .L_129b24-.L_191058
+    .long .L_129db0-.L_191058
+    .long .L_129d20-.L_191058
+    .long .L_129ef0-.L_191058
+    .long .L_129db0-.L_191058
+
+In the data access, the base register is PC and there is no index register.
+*/
+jump_table_element_access(EA,Size,TableStartAddr,"NONE"):-
+    pc_relative_operand(EA,1,TableStartAddr),
+    data_access(EA,_,_,_,_,_,_,Size),
+    def_used_for_address(EA,_,Type),
+    (
+        Type = "Jump"; Type = "Call"
+    ),
+    reg_def_use.def_used(EA,Reg1,EA_add,_),
+    reg_def_use.def_used(EA2,Reg2,EA_add,_),
+    take_address(EA2,TableStartAddr),
+    arch.reg_reg_arithmetic_operation(EA_add,_,Reg2,Reg1,1,0),
+    data_segment(Beg,End),
+    TableStartAddr >= Beg,
+    TableStartAddr <= End.
+
 // sometimes the regBase contains the index (already multiplied)
 // and the regIndex contains the base address
 jump_table_element_access(EA,Size,TableStartAddr,RegBase_nn):-
@@ -188,11 +219,11 @@ jump_table_max(TableStart,TableStart+as(Value,unsigned)*Size):-
     (
         // The register was not previously defined in this block.
         !reg_def_use.block_last_def(EA,_,RegIndex),
-        last_value_reg_limit(_,Block,RegIndex,Value,"MAX")
+        last_value_reg_limit(_,Block,RegIndex,Value,"MAX",_)
         ;
         // Register is defined in the block - check for a propagated limit.
         reg_def_use.block_last_def(EA,EA_def,RegIndex), UNUSED(Block),
-        last_value_reg_limit(EA_def,_,RegIndex,Value,"MAX")
+        last_value_reg_limit(EA_def,_,RegIndex,Value,"MAX",_)
     ),
     Value >= 0.
 
