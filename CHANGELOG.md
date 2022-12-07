@@ -1,4 +1,4 @@
-# 1.5.5 (Unreleased)
+# 1.5.5
 * Update generated `elfSymbolVersions` auxdata.
 * Add "--ignore-errors" argument.
 * Update LIEF to version 0.12.3.
