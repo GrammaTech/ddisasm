@@ -1,7 +1,7 @@
 variables:
-  GTIRB_BRANCH: "master"
-  GTIRB_PPRINTER_BRANCH: "master"
-  CAPSTONE_BRANCH: "master"
+  GTIRB_VERSION: ""
+  GTIRB_PPRINTER_VERSION: ""
+  CAPSTONE_VERSION: ""
   # The IMAGE_TAG is derived from the branch name so that if a branch modifies
   # the CI images, it builds and runs using the new images without conflicting
   # with main.
@@ -37,41 +37,33 @@ stages:
 default:
   tags: [cluster]
 
-.download-deps:
-  - DIST_NAME="$(lsb_release -sc)"
-  - case $OS in
-      ubuntu20) JOB_NAME='debian-installer-ubuntu20' ;;
-    esac
+.setup-apt:
   # Configure GTIRB APT repository.
+  - DIST_NAME="$(lsb_release -sc)"
   - wget -O - https://download.grammatech.com/gtirb/files/apt-repo/conf/apt.gpg.key | apt-key add -
-  - echo "deb https://download.grammatech.com/gtirb/files/apt-repo $DIST_NAME unstable" | tee -a /etc/apt/sources.list
+  - COMPONENT=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "stable" || echo "unstable")
+  - echo "deb https://download.grammatech.com/gtirb/files/apt-repo $DIST_NAME $COMPONENT" | tee -a /etc/apt/sources.list.d/gtirb.list
   - apt-get update -y
-  # Download capstone, gtirb, and gtirb-pprinter packages.
+
+.download-deps:
   - >-
-    if [ $CAPSTONE_BRANCH != "master" ]; then
-      curl -L https://git.grammatech.com/api/v4/projects/rewriting%2Fextra-packages/jobs/artifacts/${CAPSTONE_BRANCH}/download?job=capstone-linux-deb --output "capstone.zip"
-      unzip "capstone.zip"
-    else
-      apt-get download libcapstone-dev=1:5.0.0-gtdev
-    fi
-  - >-
-    if [ $GTIRB_BRANCH != "master" ]; then
-      curl -L https://git.grammatech.com/api/v4/projects/rewriting%2Fgtirb/jobs/artifacts/${GTIRB_BRANCH}/download?job=${JOB_NAME} --output "gtirb.zip"
-      unzip "gtirb.zip"
-    else
-      apt-get download libgtirb libgtirb-dev
-    fi
-  - >-
-    if [ $GTIRB_PPRINTER_BRANCH != "master" ]; then
-      curl -L https://git.grammatech.com/api/v4/projects/rewriting%2Fgtirb-pprinter/jobs/artifacts/${GTIRB_PPRINTER_BRANCH}/download?job=${JOB_NAME} --output "gtirb-pprinter.zip"
-      unzip "gtirb-pprinter.zip"
-    else
-      apt-get download libgtirb-pprinter libgtirb-pprinter-dev gtirb-pprinter
-    fi
+    apt-get install --download-only -y
+    libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION}
+    libgtirb-dev${GTIRB_VERSION:+-$GTIRB_VERSION}
+    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
+    gtirb-pprinter${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
+  - mv /var/cache/apt/archives/*.deb .
 
 .install-deps:
-  - !reference [.download-deps]
-  - dpkg -i libcapstone*.deb libgtirb*.deb gtirb-pprinter*.deb
+  - >-
+    apt-get install -y
+    libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION}
+    libgtirb-dev${GTIRB_VERSION:+-$GTIRB_VERSION}
+    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
+    gtirb-pprinter${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
+
+.install-capstone:
+  - apt-get install -y libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION}
 
 .build-ci-image: &build-ci-image
   stage: build-images
@@ -304,6 +296,7 @@ conan-windows-release-package:
     paths:
       - build
   script:
+    - !reference [.setup-apt]
     - !reference [.install-deps]
     # Build ddisasm
     - mkdir build
@@ -313,6 +306,7 @@ conan-windows-release-package:
 
 .test-and-tag-template: &test-and-tag
   script:
+    - !reference [.setup-apt]
     - !reference [.install-deps]
     # Install gtirb python API
     - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
@@ -355,9 +349,10 @@ build-static:
     *run-only-main
   script:
     # install capstone
-    - !reference [.download-deps]
-    - dpkg -i libcapstone*.deb
+    - !reference [.setup-apt]
+    - !reference [.install-capstone]
     # build GTIRB
+    - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
     - git clone https://git.grammatech.com/rewriting/gtirb.git -b $GTIRB_BRANCH
     - mkdir gtirb/build
     - cd gtirb/build
@@ -366,6 +361,7 @@ build-static:
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
     # build gtirb-pprinter
+    - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "master")
     - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b $GTIRB_PPRINTER_BRANCH
     - mkdir gtirb-pprinter/build
     - cd gtirb-pprinter/build
@@ -424,9 +420,10 @@ static-drivers:
     *run-only-main
   script:
     # install capstone
-    - !reference [.download-deps]
-    - dpkg -i libcapstone*.deb
+    - !reference [.setup-apt]
+    - !reference [.install-capstone]
     # build GTIRB
+    - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
     - git clone https://git.grammatech.com/rewriting/gtirb.git -b $GTIRB_BRANCH
     - cd gtirb
     - mkdir build && cd build
@@ -435,6 +432,7 @@ static-drivers:
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
     # build gtirb-pprinter
+    - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "master")
     - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b $GTIRB_PPRINTER_BRANCH
     - cd gtirb-pprinter
     - mkdir build && cd build
@@ -493,6 +491,7 @@ test-make-install:
   rules:
     *run-only-main
   script:
+    - !reference [.setup-apt]
     - !reference [.install-deps]
     # Install gtirb python API
     - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
@@ -510,8 +509,9 @@ test-make-install:
       - build/*.deb
       - build/install_manifest*.txt
   script:
+    - !reference [.setup-apt]
     - !reference [.install-deps]
-    - "CAPSTONE_PKG_VERSION=$(dpkg -s libcapstone-dev | awk '/Version:/ { print $2 }')"
+    - "CAPSTONE_PKG_VERSION=$(dpkg -s libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION} | awk '/Version:/ { print $2 }')"
     - cd build
     # Use make to update timestamps on all build targets. The artifacts we
     # pulled in from the dependent job should already be up-to-date, but since
@@ -540,10 +540,12 @@ build-ubuntu20-packages:
   rules:
     *run-only-main
   script:
+    - !reference [.setup-apt]
     - !reference [.download-deps]
     - mkdir apt-repo
+    - mv *.deb apt-repo
+    - rm /etc/apt/sources.list.d/gtirb.list && apt-get update -y
     - cp build/*.deb apt-repo
-    - cp *.deb apt-repo
     - cd apt-repo && dpkg-scanpackages . /dev/null > Packages
 
 setup-ubuntu20-package-tests:
@@ -553,35 +555,22 @@ setup-ubuntu20-package-tests:
     OS: ubuntu20
   <<: *setup-apt-repo
 
-.prefer-local-repo: &prefer-local-repo
-  - |-
-      tee /etc/apt/preferences  << EOF
-      Package: *
-      Pin: origin ""
-      Pin-Priority: 1001
-      EOF
-
 .test-ubuntu-ddisasm: &test-ubuntu-ddisasm
   stage: package-tests
   rules:
     *run-only-main
   script:
-    - !reference [.prefer-local-repo]
-    - if [ $(lsb_release -sc) == "bionic" ]; then TRUSTED="[trusted=yes]"; fi
     - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
     - echo -e "\ndeb $TRUSTED file:$(pwd)/apt-repo ./\n" >> /etc/apt/sources.list
     - 'TEST_PKG_NAME=$(dpkg --info apt-repo/ddisasm.deb | sed -n "s/ Package: //p")'
     - apt-get update -y && apt-get install -y --allow-unauthenticated $TEST_PKG_NAME
     - ddisasm --version
 
-
 .test-ubuntu-ddisasm-dbg: &test-ubuntu-ddisasm-dbg
   stage: package-tests
   rules:
     *run-only-main
   script:
-    - !reference [.prefer-local-repo]
-    - if [ $(lsb_release -sc) == "bionic" ]; then TRUSTED="[trusted=yes]"; fi
     - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
     - echo -e "\ndeb $TRUSTED file:$(pwd)/apt-repo ./\n" >> /etc/apt/sources.list
     - 'TEST_PKG_NAME=$(dpkg --info apt-repo/ddisasm-dbg.deb | sed -n "s/ Package: //p")'
@@ -626,7 +615,9 @@ docker-image-vars:
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
   script:
     - echo "VERSION=$(awk '{s=(NR==1?s:s".")$2}END{print s}' version.txt)" >> .env
+    - echo "GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")"
     - echo "GTIRB_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb | grep "refs/heads/$GTIRB_BRANCH\$" | awk '{print $1}')" >> .env
+    - echo "GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "master")"
     - echo "GTIRB_PPRINTER_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb-pprinter | grep "refs/heads/$GTIRB_PPRINTER_BRANCH\$" | awk '{print $1}')" >> .env
     - cat .env
   artifacts:
