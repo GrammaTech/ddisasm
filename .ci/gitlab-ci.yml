@@ -46,10 +46,21 @@ default:
   - apt-get update -y
 
 .download-deps:
-  - apt-get download -y libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION} libgtirb-dev${GTIRB_VERSION:+-$GTIRB_VERSION} libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
+  - >-
+    apt-get install --download-only -y
+    libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION}
+    libgtirb-dev${GTIRB_VERSION:+-$GTIRB_VERSION}
+    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
+    gtirb-pprinter${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
+  - mv /var/cache/apt/archives/*.deb .
 
 .install-deps:
-  - apt-get install -y libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION} libgtirb-dev${GTIRB_VERSION:+-$GTIRB_VERSION} libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
+  - >-
+    apt-get install -y
+    libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION}
+    libgtirb-dev${GTIRB_VERSION:+-$GTIRB_VERSION}
+    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
+    gtirb-pprinter${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
 
 .install-capstone:
   - apt-get install -y libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION}
