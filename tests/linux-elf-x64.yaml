@@ -100,6 +100,9 @@ tests:
   - name: ex_confusing_data
     <<: *default
 
+  - name: ex_copy_relo
+    <<: *default
+
   - name: ex_exceptions1
     <<: *default-cpp
 
@@ -236,6 +239,10 @@ tests:
     <<: *test-strip-default
 
   - name: ex_confusing_data
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_copy_relo
     <<: *default
     <<: *test-strip-default
 

@@ -94,6 +94,9 @@ tests:
   - name: ex_confusing_data
     <<: *default
 
+  - name: ex_copy_relo
+    <<: *default
+
   - name: ex_exceptions1
     <<: *default-cpp
 
