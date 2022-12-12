@@ -413,58 +413,20 @@ void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
                            souffle::SouffleProgram *Prog)
 {
     std::map<gtirb::UUID, gtirb::UUID> SymbolForwarding;
-    for(auto &T : *Prog->getRelation("relocation"))
+    for(auto &T : *Prog->getRelation("copy_relocated_symbol"))
     {
         gtirb::Addr EA;
-        int64_t Offset;
-        std::string Type, Name;
-        T >> EA >> Type >> Name >> Offset;
-        if(Type == "COPY")
+        std::string Name;
+        T >> EA >> Name;
+
+        gtirb::Symbol *CopySymbol = findSymbol(Module, EA, Name);
+        if(CopySymbol)
         {
-            gtirb::Symbol *CopySymbol = findSymbol(Module, EA, Name);
-            if(CopySymbol)
-            {
-                std::set<gtirb::Symbol *> CopySyms;
-                CopySyms.insert(CopySymbol);
-                // Find all the symbols whose size and type are the same as the
-                // ones of CopySymbol, and treat them in the same way.
-                auto *SymInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
-                if(SymInfo)
-                {
-                    auto sameSizeType = [&SymInfo](gtirb::Symbol *Sym1, gtirb::Symbol *Sym2) {
-                        if(auto It1 = SymInfo->find(Sym1->getUUID()); It1 != SymInfo->end())
-                        {
-                            if(auto It2 = SymInfo->find(Sym2->getUUID()); It2 != SymInfo->end())
-                            {
-                                uint64_t SymSize1 = std::get<0>(It1->second);
-                                std::string SymType1 = std::get<1>(It1->second);
-                                uint64_t SymSize2 = std::get<0>(It2->second);
-                                std::string SymType2 = std::get<1>(It2->second);
-                                return (SymSize1 == SymSize2 && SymType1 == SymType2);
-                            }
-                        }
-                        return false;
-                    };
-
-                    auto Found = Module.findSymbols(EA);
-                    for(gtirb::Symbol &Symbol : Found)
-                    {
-                        gtirb::Symbol *Sym = &Symbol;
-                        if(sameSizeType(CopySymbol, Sym))
-                            CopySyms.insert(Sym);
-                    }
-                }
-
-                for(gtirb::Symbol *Symbol : CopySyms)
-                {
-                    std::string SymName = Symbol->getName();
-                    gtirb::Symbol *RealSymbol = Module.addSymbol(Context, SymName);
-                    RealSymbol->setReferent(Module.addProxyBlock(Context));
-                    SymName = stripSymbolVersion(SymName);
-                    Symbol->setName(SymName + "_copy");
-                    SymbolForwarding[Symbol->getUUID()] = RealSymbol->getUUID();
-                }
-            }
+            gtirb::Symbol *RealSymbol = Module.addSymbol(Context, Name);
+            RealSymbol->setReferent(Module.addProxyBlock(Context));
+            Name = stripSymbolVersion(Name);
+            CopySymbol->setName(Name + "_copy");
+            SymbolForwarding[CopySymbol->getUUID()] = RealSymbol->getUUID();
         }
     }
     for(auto &T : *Prog->getRelation("abi_intrinsic"))
