@@ -374,6 +374,7 @@ as well.
 synchronous_access(EA,EA2):-
     data_access_pattern_non_zero(EA,Size,Mult,From),
     next_data_access(EA,EA2),
+    !symbol(EA2,_,_,_,_,_,_,_,_),
     data_access_pattern(EA2,Size2,Mult2_s,From2),
     Mult2 = as(Mult2_s,unsigned),
 
@@ -393,6 +394,7 @@ synchronous_access(EA,EA2):-
     synchronous_access(EA,EA_inter),
     data_access_pattern_non_zero(EA,Size,Mult,From),
     next_data_access(EA_inter,EA2),
+    !symbol(EA2,_,_,_,_,_,_,_,_),
     data_access_pattern(EA2,Size2,Mult2_s,From2),
     Mult2 = as(Mult2_s,unsigned),
 
