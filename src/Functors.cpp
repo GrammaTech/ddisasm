@@ -171,6 +171,11 @@ int64_t functor_data_s64(uint64_t EA)
     return static_cast<int64_t>(FunctorContext.IsBigEndian ? be64toh(Value) : le64toh(Value));
 }
 
+uint64_t functor_aligned(uint64_t EA, size_t Size)
+{
+    return EA + ((Size - (EA % Size)) % Size);
+}
+
 souffle::RamDomain to_string_hex(souffle::SymbolTable* symbolTable,
                                  [[maybe_unused]] souffle::RecordTable* recordTable,
                                  souffle::RamDomain Value)

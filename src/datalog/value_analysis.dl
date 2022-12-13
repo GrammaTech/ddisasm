@@ -160,14 +160,6 @@ value_reg(EA,Reg,EA,"NONE",0,Address,1):-
     track_register(Reg),
     Address = as(EA+Size,number)+Offset.
 
-// GOT-relative LEA. (Note that We drop the GOT Register.)
-value_reg(EA,Reg,EA,"NONE",0,Address,1):-
-    got_relative_operand(EA,1,Offset),
-    instruction(EA,_,_,"LEA",_,Op2,0,0,_,_),
-    op_regdirect_contains_reg(Op2,Reg),
-    track_register(Reg),
-    Address = as(Offset,number).
-
 value_reg(EA,Reg,EA,"NONE",0,as(Val,number),1):-
     arch.pc_relative_addr(EA,Reg,Val),
     track_register(Reg).
@@ -231,6 +223,15 @@ value_reg(EA,DstReg,EA,"NONE",0,Val,Steps+1):-
         Op = "OR",  Val = SrcVal bor   Imm;
         Op = "XOR", Val = SrcVal bxor  Imm
     ).
+
+// GOT-relative LEA. (Note that we drop the GOT Register.)
+value_reg(EA,Reg,EA,"NONE",0,Address,1):-
+    binary_format("ELF"),
+    got_relative_operand(EA,1,Offset),
+    instruction(EA,_,_,"LEA",_,Op2,0,0,_,_),
+    op_regdirect_contains_reg(Op2,Reg),
+    track_register(Reg),
+    Address = as(Offset,number).
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // once we have the edges that relate the values of registers at different
