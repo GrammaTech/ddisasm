@@ -22,7 +22,7 @@
 //===----------------------------------------------------------------------===//
 
 /**
-Table maps ELF relocation types to a size in bytes.
+Table maps ELF relocation types to a size in bits.
 */
 .decl elf_relocation_size(ISA:symbol,Type:symbol,Size:unsigned)
 
