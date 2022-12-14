@@ -413,23 +413,20 @@ void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
                            souffle::SouffleProgram *Prog)
 {
     std::map<gtirb::UUID, gtirb::UUID> SymbolForwarding;
-    for(auto &T : *Prog->getRelation("relocation"))
+    for(auto &T : *Prog->getRelation("copy_relocated_symbol"))
     {
         gtirb::Addr EA;
-        int64_t Offset;
-        std::string Type, Name;
-        T >> EA >> Type >> Name >> Offset;
-        if(Type == "COPY")
+        std::string Name;
+        T >> EA >> Name;
+
+        gtirb::Symbol *CopySymbol = findSymbol(Module, EA, Name);
+        if(CopySymbol)
         {
-            gtirb::Symbol *CopySymbol = findSymbol(Module, EA, Name);
-            if(CopySymbol)
-            {
-                gtirb::Symbol *RealSymbol = Module.addSymbol(Context, Name);
-                RealSymbol->setReferent(Module.addProxyBlock(Context));
-                Name = stripSymbolVersion(Name);
-                CopySymbol->setName(Name + "_copy");
-                SymbolForwarding[CopySymbol->getUUID()] = RealSymbol->getUUID();
-            }
+            gtirb::Symbol *RealSymbol = Module.addSymbol(Context, Name);
+            RealSymbol->setReferent(Module.addProxyBlock(Context));
+            Name = stripSymbolVersion(Name);
+            CopySymbol->setName(Name + "_copy");
+            SymbolForwarding[CopySymbol->getUUID()] = RealSymbol->getUUID();
         }
     }
     for(auto &T : *Prog->getRelation("abi_intrinsic"))

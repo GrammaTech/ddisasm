@@ -543,6 +543,23 @@ symbol_minus_symbol(EA+Size,Size,Start,Start+Offset,1,0):-
     arch.pointer_size(Size).
 
 ////////////////////////////////////////////////////////////////////
+/**
+Collect all the symbols whose address, size and type are the same as the
+symbol with `COPY` relocation.
+*/
+.decl copy_relocated_symbol(EA:address,Name:symbol)
+.output copy_relocated_symbol
+
+copy_relocated_symbol(EA,Name):-
+    relocation(EA,"COPY",Name,_,_,_,_).
+
+copy_relocated_symbol(EA,Name):-
+    copy_relocated_symbol(EA,Name2),
+    symbol(EA,Size,Type,_,_,_,_,_,Name2),
+    symbol(EA,Size,Type,_,_,_,_,_,Name),
+    Name != Name2.
+
+////////////////////////////////////////////////////////////////////
 // Static binaries
 
 .decl ifunc_symbol(EA:address,Name:symbol)
