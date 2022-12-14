@@ -59,6 +59,8 @@ extern "C"
     EXPORT int64_t functor_data_s32(uint64_t EA);
     EXPORT int64_t functor_data_s64(uint64_t EA);
 
+    EXPORT uint64_t functor_aligned(uint64_t EA, size_t Size);
+
     /**
     Format an unsigned integer as a string in its hex representation
     */

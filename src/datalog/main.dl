@@ -79,6 +79,8 @@ Convert between input_reg and register with arch.reg_map
 .type operand_code <: unsigned
 .type operand_index <: unsigned
 
+.functor functor_aligned(EA:address,Size:unsigned):address
+
 // Binary format specific predicates.
 #include "binary/elf/elf_binaries.dl"
 #include "binary/pe/pe_binaries.dl"
@@ -285,7 +287,7 @@ e.g., on x86, both AX and EAX are members of the EAX register.
 reg_map_nullable(RegIn,Reg):-
     arch.reg_map_rule(RegIn,Reg).
 
-// Any register not mapped by a rule is assumed to map to itself.l
+// Any register not mapped by a rule is assumed to map to itself.
 reg_map_nullable(Reg,as(Reg,reg_nullable)):-
     (
         op_regdirect(_,Reg);

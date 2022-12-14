@@ -190,6 +190,12 @@ tests:
       compiler: "g++"
       flags: ["-no-pie", "-lpthread"]
 
+  - name: ex_imported_tls_syms
+    <<: *default-cpp
+    reassemble:
+      compiler: "g++"
+      flags: ["-no-pie", "-lpthread"]
+
   # ----------------------------------------------------------------------------
   # Static examples
   # ----------------------------------------------------------------------------
