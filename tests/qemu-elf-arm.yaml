@@ -126,6 +126,9 @@ tests:
   - name: ex_confusing_data
     <<: *default
 
+  - name: ex_copy_relo
+    <<: *default
+
   # TODO:
   #  - name: ex_exceptions1 # cpp {1,2,3}: libehp currently doesn't support arm32
   #    <<: *default

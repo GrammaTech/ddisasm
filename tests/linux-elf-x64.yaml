@@ -100,6 +100,9 @@ tests:
   - name: ex_confusing_data
     <<: *default
 
+  - name: ex_copy_relo
+    <<: *default
+
   - name: ex_exceptions1
     <<: *default-cpp
 
@@ -187,6 +190,12 @@ tests:
       compiler: "g++"
       flags: ["-no-pie", "-lpthread"]
 
+  - name: ex_imported_tls_syms
+    <<: *default-cpp
+    reassemble:
+      compiler: "g++"
+      flags: ["-no-pie", "-lpthread"]
+
   # ----------------------------------------------------------------------------
   # Static examples
   # ----------------------------------------------------------------------------
@@ -236,6 +245,10 @@ tests:
     <<: *test-strip-default
 
   - name: ex_confusing_data
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_copy_relo
     <<: *default
     <<: *test-strip-default
 

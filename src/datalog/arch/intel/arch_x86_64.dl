@@ -33,6 +33,94 @@ inferred_main_in_reg(EA,"RDI"):-
 
 }
 
+/**
+Find special-case TLSGD code sequence of the form:
+
+  .byte 0x66
+  lea rdi, X@tlsgd[rip]
+  .value 0x6666
+  rex64
+  call __tls_get_addr@PLT
+
+GCC uses explicit directives to inline 0x66 bytes (which are actually `data16'
+instruction prefixes) as padding. Likewise, the accompanying `rex64' prefix on
+the call instruction inserts a 0x48 byte to extend the code sequence to the
+required 16-byte length.
+
+https://docs.oracle.com/cd/E19120-01/open.solaris/819-0690/chapter8-60/index.html
+*/
+.decl tlsgd_code_sequence(EA:address)
+.output tlsgd_code_sequence
+
+tlsgd_code_sequence(EA):-
+    binary_isa("X64"),
+    binary_format("ELF"),
+    relocation(Got_entry,"DTPMOD64",_,_,_,_,_),
+    pc_relative_operand(EA,_,Got_entry),
+    data_byte(EA,0x66),                           // .byte 0x66
+    instruction(EA+1,Size,_,"LEA",_,_,_,_,_,_),   // lea X@tlsgd[rip]
+    data_byte(EA+Size+1,0x66),                    // .value 0x6666
+    data_byte(EA+Size+2,0x66),
+    data_byte(EA+Size+3,0x48).                    // rex64
+
+tls_get_addr(Load,Call,Start+Offset):-
+    binary_isa("X64"),
+    binary_format("ELF"),
+    // Load address of tls_index structure in GOT.
+    tls_index(EA,Offset),
+    pc_relative_operand(Load,_,EA),
+    reg_def_use.block_last_def(Call,Load,"RDI"),
+    // Call __tls_get_addr to resolve, either the:
+    //   1. Address of TLS variable (GD), or
+    //   2. Address of the TLS block (LD).
+    direct_call(Call,Dest),
+    plt_block(Dest,Name),
+    Prefix = "__tls_get_addr",
+    substr(Name,0,strlen(Prefix)) = Prefix,
+    tls_segment(Start,_,_).
+
+// Identify instruction operands with FS segment references to
+// Thread Local Storage; used in the Initial Executable (IE) model.
+// Note that these references are resolved by the linker to integral
+// offsets without relocations, e.g.
+//          mov     eax, DWORD PTR fs:i@tpoff
+//    as    mov     eax, DWORD PTR fs:[-4]
+tls_relative_operand(EA,Index,Dest,"TpOff"):-
+    binary_isa("X64"),
+    binary_format("ELF"),
+    code(EA),
+    instruction_get_op(EA,Index,Op),
+    op_indirect(Op,"FS","NONE","NONE",_,Offset,_), Offset < 0,
+    tls_segment(_,TlsEnd,Align),
+    Base = as(@functor_aligned(TlsEnd, max(Align,1)),number),
+    Dest = as(Base+Offset,address).
+
+//   e.g.   mov      rax, qword ptr fs:[0]
+//          lea      rax, [rax + threadLocal@TPOFF]
+tls_relative_operand(EA_used,Index,Dest,"TpOff"):-
+    binary_isa("X64"),
+    binary_format("ELF"),
+    instruction_get_op(EA_def,_,Op_def),
+    op_indirect(Op_def,"FS","NONE","NONE",_,0,_),
+    reg_def_use.def_used(EA_def,_,EA_used,Index),
+    instruction_get_op(EA_used,Index,Op_used),
+    op_indirect(Op_used,"NONE",_,_,_,Offset,_), Offset < 0,
+    tls_segment(_,TlsEnd,Align),
+    Base = as(@functor_aligned(TlsEnd, max(Align,1)),number),
+    Dest = as(Base+Offset,address).
+
+// Identify TLS block offsets used in the Local Dynamic TLS model,
+// i.e. X@DTPOFF operands.
+tls_relative_operand(EA,Index,Dest,"DtpOff"):-
+    binary_isa("X64"),
+    binary_format("ELF"),
+    tls_segment(Start,End,_),
+    const_value_reg_used(EA,DefEA,_,Reg,as(Start,number)),
+    instruction_get_op(EA,Index,Op),
+    op_indirect_mapped(Op,"NONE",Reg,_,_,Offset,_),
+    Dest = Start + as(Offset,address), Dest < End,
+    !tlsgd_code_sequence(DefEA-8).
+
 symbolic_operand_attribute(EA,Index,"PltRef"):-
     symbolic_operand(EA,Index,Dest,_),
     plt_block(Dest,_).
@@ -56,53 +144,34 @@ symbolic_operand_attribute(EA,Index,"GotRelPC"):-
         relocation(EA+Offset,"REX_GOTPCRELX",_,_,_,_,_)
     ).
 
+// Local Executable (LE) TLS:
+//   i.e.  FS:[0] + X@TPOFF and FS:[ X@TPOFF ]
 symbolic_operand_attribute(EA,Index,"TpOff"):-
-    (
-        instruction_displacement_offset(EA,Index,Offset,_),
-        symbolic_expr_from_relocation(EA+Offset,_,_,_,_),
-        relocation(EA+Offset,"TPOFF32",_,_,_,_,_)
-        ;
-        symbolic_operand(EA,Index,Dest,_),
-        tls_segment(Start,End,_),
-        Dest >= Start, Dest < End
-    ).
+    binary_isa("X64"),
+    binary_format("ELF"),
+    instruction_displacement_offset(EA,Index,Offset,_),
+    symbolic_expr_from_relocation(EA+Offset,_,_,_,_),
+    relocation(EA+Offset,"TPOFF32",_,_,_,_,_).
 
 symbolic_operand_attribute(EA,Index,"TpOff"):-
+    binary_isa("X64"),
+    binary_format("ELF"),
     symbolic_operand(EA,Index,Dest,_),
     got_reference(Dest,_),
     relocation(Dest,"TPOFF64",_,_,_,_,_).
 
-// Find special-case TLSD code sequence of the form:
-// .byte 0x66
-// lea rdi, X@tlsgd[rip]
-// .value 0x6666
-// rex64
-// call __tls_get_addr@PLT
-//
-// Explanation:
-// GCC uses explict directives to inline 0x66 bytes (which are actually `data16'
-// instruction prefixes) as padding that have no "negative impact on the code".
-// Likewise, the accompanying `rex64' prefix on the call instruction inserts a 0x48
-// byte to extend the code sequence to the requisite 16-byte length, and again has
-// "no impact the code".
-// Reference:
-// https://docs.oracle.com/cd/E19120-01/open.solaris/819-0690/chapter8-60/index.html
-.decl tlsgd_code_sequence(EA:address)
-tlsgd_code_sequence(EA):-
-    relocation(Got_entry,"DTPMOD64","",_,_,_,_),
-    pc_relative_operand(EA,_,Got_entry),
-    data_byte(EA,0x66),                           // .byte 0x66
-    instruction(EA+1,Size,_,"LEA",_,_,_,_,_,_),   // lea X@tlsgd[rip]
-    data_byte(EA+Size+1,0x66),                    // .value 0x6666
-    data_byte(EA+Size+2,0x66),
-    data_byte(EA+Size+3,0x48).                    // rex64
-
+// General Dynamic (GD) TLS:
+//   i.e.  X@TLSGD + __tls_get_addr()
 symbolic_operand_attribute(EA,Index,"TlsGd"):-
     symbolic_operand(EA,Index,Dest,_),
     relocation(Dest,"DTPMOD64",_,_,_,_,_),
     tlsgd_code_sequence(EA).
 
+// Local Dynamic (LD) TLS:
+//   i.e.  X@TLSLD + __tls_get_addr() + X@DTPOFF
 symbolic_operand_attribute(EA,Index,"TlsLd"):-
+    binary_isa("X64"),
+    binary_format("ELF"),
     symbolic_operand(EA,Index,Dest,_),
     relocation(Dest,"DTPMOD64",_,_,_,_,_),
     !tlsgd_code_sequence(EA).
