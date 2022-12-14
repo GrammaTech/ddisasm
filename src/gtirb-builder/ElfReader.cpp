@@ -760,7 +760,9 @@ void ElfReader::buildSymbols()
 
             // Rebase a TLS symbol onto the relocated TLS segment.
             bool Tls = Symbol.type() == LIEF::ELF::ELF_SYMBOL_TYPES::STT_TLS;
-            if(Tls && !Relocatable)
+            if(Tls && !Relocatable
+               && (Symbol.shndx()
+                   != static_cast<uint16_t>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)))
             {
                 // STT_TLS symbols are relative to PT_TLS segment base.
                 Value = tlsBaseAddress() + Value;
