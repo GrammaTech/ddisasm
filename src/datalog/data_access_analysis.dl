@@ -335,9 +335,9 @@ The next data access after the one at 'EA' is at 'Next'.
 
 next_data_access(EA,Next):-
     data_access_pattern(EA,_,_,_),
-    data_limit_after_access(EA,Limit),
+    data_segment(Beg,End), EA >= Beg, EA < End,
     Next = min Next : {data_access_pattern(Next,_,_,_), Next > EA},
-    Next <= Limit.
+    Next <= End.
 
 
 // FIXME: This predicate has been added to avoid exceptions when mult is 0
@@ -346,6 +346,27 @@ next_data_access(EA,Next):-
 
 data_access_pattern_non_zero(Address,Size,as(Mult,unsigned),FromWhere):-
     data_access_pattern(Address,Size,Mult,FromWhere), Mult > 0.
+
+
+/**
+Barriers are the candidates for limiting synchronous access pairing.
+*/
+.decl synchronous_access_barrier(EA:address)
+
+synchronous_access_barrier(EA):-
+    symbol(EA,_,_,_,_,_,_,_,_);
+    data_segment(_,EA);
+    data_segment(EA,_).
+
+/**
+The first synchronous_access barrier after the data access to 'EA' is at
+address 'Barrier'.
+*/
+.decl synchronous_access_barrier_after_access(EA:address,Barrier:address)
+
+synchronous_access_barrier_after_access(EA,Barrier):-
+    data_access_pattern(EA,_,_,_),
+    Barrier = min Barrier : {synchronous_access_barrier(Barrier), Barrier > EA}.
 
 
 /**
@@ -375,6 +396,8 @@ synchronous_access(EA,EA2):-
     data_access_pattern_non_zero(EA,Size,Mult,From),
     next_data_access(EA,EA2),
     data_access_pattern(EA2,Size2,Mult2_s,From2),
+    synchronous_access_barrier_after_access(EA,Barrier),
+    EA2 < Barrier,
     Mult2 = as(Mult2_s,unsigned),
 
     Rem = (EA2 - EA) % Mult,
@@ -394,6 +417,8 @@ synchronous_access(EA,EA2):-
     data_access_pattern_non_zero(EA,Size,Mult,From),
     next_data_access(EA_inter,EA2),
     data_access_pattern(EA2,Size2,Mult2_s,From2),
+    synchronous_access_barrier_after_access(EA_inter,Barrier),
+    EA2 < Barrier,
     Mult2 = as(Mult2_s,unsigned),
 
     Rem = (EA2 - EA) % Mult,
