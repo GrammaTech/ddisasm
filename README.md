@@ -141,8 +141,7 @@ Use the following options to configure cmake:
  `-DDDISASM_BUILD_SHARED_LIBS=OFF`.
 
 - You can tell CMake to use ccache with the flag
-  `-DDDISASM_USE_CCACHE=ON`. (*Don’t* use
-  `-DCMAKE_CXX_COMPILER_LAUNCHER=ccache`.) This is especially useful
+  `-DCMAKE_CXX_COMPILER_LAUNCHER=ccache`. This is especially useful
   when Souffle is configured to generate multiple files.
 
 - For development, you can ask Souffle to generate multiple files per

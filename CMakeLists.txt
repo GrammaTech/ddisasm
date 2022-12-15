@@ -35,20 +35,6 @@ option(DDISASM_X86_64 "Whether or not x86_64 support is built." ON)
 option(DDISASM_SOUFFLE_PROFILING "Whether to generate Souffle profiles." OFF)
 option(DDISASM_GENERATE_MANY "Whether to have Souffle generate multiple files."
        OFF)
-option(DDISASM_USE_CCACHE "Whether to use ccache." OFF)
-
-if(DDISASM_USE_CCACHE)
-  find_program(CCACHE ccache)
-  if(CCACHE)
-    find_program(
-      CCACHE_CXX ccache-cxx
-      HINTS ${CMAKE_CURRENT_LIST_DIR}/etc
-      DOC "Could not find launcher")
-    if(CCACHE_CXX)
-      set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_CXX}")
-    endif()
-  endif()
-endif()
 
 if(NOT DEFINED DDISASM_BUILD_REVISION)
   execute_process(
