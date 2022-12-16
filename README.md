@@ -33,7 +33,7 @@ ddisasm examples/ex1/ex --asm ex.s
 The generated assembly can then be rebuilt with gcc:
 
 ```
-gcc ex.s -o ex_rewritten
+gcc -nostartfiles ex.s -o ex_rewritten
 ```
 
 ## Installing
