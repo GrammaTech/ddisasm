@@ -135,7 +135,15 @@ class TestStaticLib(unittest.TestCase):
                         binary,
                     )
                     re_compiler = default.get("reassemble").get("compiler")
-                    re_flags = default.get("reassemble").get("flags")
+
+                    # Filter out -nostartfiles since we are building object
+                    # files. It isn't needed while linking, either, because we
+                    # use the original ex.o.
+                    re_flags = [
+                        f
+                        for f in default.get("reassemble").get("flags")
+                        if f != "-nostartfiles"
+                    ]
 
                     for obj in modules:
                         subprocess.run(

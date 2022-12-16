@@ -14,7 +14,7 @@ default: &default
   # Reassembly configuration.
   reassemble:
     compiler: "gcc"
-    flags: ["-m32", "-no-pie"]
+    flags: ["-m32", "-no-pie", "-nostartfiles"]
     skip: false
 
   # Test configuration.
@@ -33,7 +33,7 @@ cpp: &default-cpp
     check_cfg: false
   reassemble:
     compiler: "g++"
-    flags: ["-m32", "-fno-pie", "-no-pie"]
+    flags: ["-m32", "-fno-pie", "-no-pie", "-nostartfiles"]
     skip: false
 
 position-independent: &position-independent
@@ -49,7 +49,7 @@ position-independent: &position-independent
   # Reassembly configuration.
   reassemble:
     compiler: "gcc"
-    flags: ["-m32", "-fpie"]
+    flags: ["-m32", "-fpie", "-nostartfiles"]
     skip: false
 
   test:
@@ -72,7 +72,7 @@ position-independent-cpp: &position-independent-cpp
     check_cfg: false
   reassemble:
     compiler: "g++"
-    flags: ["-m32", "-pie"]
+    flags: ["-m32", "-pie", "-nostartfiles"]
     skip: false
 
 assembly-position-independent: &assembly-position-independent
@@ -167,7 +167,7 @@ tests:
     <<: *default-cpp
     reassemble:
       compiler: "g++"
-      flags: ["-m32", "-lpthread", "-no-pie", "-fno-pie"]
+      flags: ["-m32", "-lpthread", "-no-pie", "-fno-pie", "-nostartfiles"]
 
   - name: ex_call_once
     <<: *default-cpp
@@ -178,7 +178,7 @@ tests:
         flags: ["-m32"]
     reassemble:
       compiler: "g++"
-      flags: ["-m32", "-lpthread"]
+      flags: ["-m32", "-lpthread", "-nostartfiles"]
 
   # ----------------------------------------------------------------------------
   # Small C and C++ examples.  (position independent code)
@@ -258,7 +258,7 @@ tests:
     <<: *position-independent-cpp
     reassemble:
       compiler: "g++"
-      flags: ["-m32", "-lpthread", "-fpie"]
+      flags: ["-m32", "-lpthread", "-fpie", "-nostartfiles"]
 
   # ----------------------------------------------------------------------------
   # Small C and C++ examples. (stripped)

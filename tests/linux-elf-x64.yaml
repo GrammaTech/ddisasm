@@ -14,7 +14,7 @@ default: &default
   # Reassembly configuration.
   reassemble:
     compiler: "gcc"
-    flags: ["-no-pie"]
+    flags: ["-no-pie", "-nostartfiles"]
     skip: false
 
   # Test configuration.
@@ -29,7 +29,7 @@ cpp: &default-cpp
   <<: *default
   reassemble:
     compiler: "g++"
-    flags: ["-no-pie"]
+    flags: ["-no-pie", "-nostartfiles"]
     skip: false
 
   test:
@@ -174,27 +174,27 @@ tests:
     <<: *default-cpp
     reassemble:
       compiler: "g++"
-      flags: ["-no-pie", "-lpthread"]
+      flags: ["-no-pie", "-lpthread", "-nostartfiles"]
 
   - name: ex_dynamic_tls
     <<: *default
     binary: fun.so
     reassemble:
       compiler: "gcc"
-      flags: ["-shared"]
+      flags: ["-shared", "-nostartfiles"]
       skip: false
 
   - name: ex_call_once
     <<: *default-cpp
     reassemble:
       compiler: "g++"
-      flags: ["-no-pie", "-lpthread"]
+      flags: ["-no-pie", "-lpthread", "-nostartfiles"]
 
   - name: ex_imported_tls_syms
     <<: *default-cpp
     reassemble:
       compiler: "g++"
-      flags: ["-no-pie", "-lpthread"]
+      flags: ["-no-pie", "-lpthread", "-nostartfiles"]
 
   # ----------------------------------------------------------------------------
   # Static examples
@@ -207,7 +207,7 @@ tests:
       cpp: ["g++"]
       optimizations: ["-O0"]
     reassemble:
-      flags: ["-nostdlib", "-no-pie"]
+      flags: ["-nostdlib", "-no-pie", "-nostartfiles"]
       compiler: "gcc"
     test:
       strip_exe: "strip"
@@ -225,7 +225,7 @@ tests:
       cpp: ["g++"]
       optimizations: ["-O0"]
     reassemble:
-      flags: ["-nostdlib", "-no-pie"]
+      flags: ["-nostdlib", "-no-pie", "-nostartfiles"]
       compiler: "gcc"
     test:
       strip_exe: "strip"
