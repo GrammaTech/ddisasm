@@ -75,10 +75,11 @@ void DatalogAnalysisPass::analyzeImpl(AnalysisPassResult& Result, const gtirb::M
     {
         // Disassemble with the compiled, synthesized program.
         Program->setNumThreads(ThreadCount);
-        Program->setPruneImdtRels(!WriteSouffleOutputs && DebugDirRoot.empty());
+        bool pruneImdtRels = !WriteSouffleOutputs && DebugDirRoot.empty();
+        Program->setPruneImdtRels(pruneImdtRels);
         try
         {
-            Program->run();
+            Program->runAll("", "", false, pruneImdtRels);
         }
         catch(std::exception& e)
         {
