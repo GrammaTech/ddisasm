@@ -165,8 +165,10 @@ relocation_adjustment_total(EA,Adjustment):-
 .decl binary_format(Format:symbol)
 .input binary_format
 
-.decl binary_isa(isa:symbol)
-.input binary_isa
+.decl binary_isa(ArchName:symbol) inline
+
+binary_isa(ArchName):-
+    arch.arch(ArchName).
 
 .decl option(Option:symbol)
 .input option
