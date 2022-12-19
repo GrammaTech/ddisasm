@@ -28,7 +28,7 @@ trigger:
   rules:
     *trigger-arm-benchmark-rules
   variables:
-    DDISASM_BRANCH: $CI_COMMIT_BRANCH
+    PARENT_PIPELINE_ID: $CI_PIPELINE_ID
   trigger:
     project: rewriting/ddisasm-arm-benchmark
     branch: master
