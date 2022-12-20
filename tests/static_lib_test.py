@@ -128,7 +128,12 @@ class TestStaticLib(unittest.TestCase):
                     )
 
                     # reassemble object files
-                    print("# Reassembling", binary + ".s", "into", binary)
+                    print(
+                        "# Reassembling",
+                        ", ".join([obj + ".s" for obj in modules]),
+                        "into",
+                        binary,
+                    )
                     re_compiler = default.get("reassemble").get("compiler")
                     re_flags = default.get("reassemble").get("flags")
 
@@ -147,12 +152,12 @@ class TestStaticLib(unittest.TestCase):
 
                     # re-build static archive
                     objects = [obj + ".o" for obj in modules]
-                    for obj in modules:
-                        subprocess.run(
-                            ["ar", "-rcs", binary] + objects, check=True
-                        )
+                    subprocess.run(
+                        ["ar", "-rcs", binary] + objects, check=True
+                    )
 
                     # re-link
-                    objects.append("ex.o")
-                    self.assertTrue(link(re_compiler, "ex", objects, re_flags))
+                    self.assertTrue(
+                        link(re_compiler, "ex", ["ex.o", binary], re_flags)
+                    )
                     self.assertTrue(test(wrapper))
