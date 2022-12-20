@@ -86,9 +86,10 @@ function(GENERATE_ARCH_CPP_MANY)
   set(STAGING_PATH ${CMAKE_BINARY_DIR}/src/souffle_disasm_${ARCH}.staging/)
 
   # Force reconfiguration if any of the datalog sources changed.
-  foreach(SOURCE ${DATALOG_BASE_SOURCES} ${PARAM_DATALOG_SOURCES})
-    set_directory_properties(PROPERTIES CMAKE_CONFIGURE_DEPENDS $SOURCE)
-  endforeach()
+  get_directory_property(OLD_DEPS CMAKE_CONFIGURE_DEPENDS)
+  set(NEW_DEPS "${OLD_DEPS};${DATALOG_BASE_SOURCES};${PARAM_DATALOG_SOURCES}")
+  list(REMOVE_DUPLICATES NEW_DEPS)
+  set_directory_properties(PROPERTIES CMAKE_CONFIGURE_DEPENDS "${NEW_DEPS}")
 
   # Recreate the staging directory
   file(REMOVE_RECURSE ${STAGING_PATH})
