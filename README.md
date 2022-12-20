@@ -146,8 +146,7 @@ Use the following options to configure cmake:
 
 - For development, you can ask Souffle to generate multiple files per
   target with `-DDDISASM_GENERATE_MANY=ON`. This results in a slower
-  initial build time, but recompilation will be faster (especially
-  when used with ccache; see above).
+  initial build time, but recompilation will be faster.
 
 Once the dependencies are installed, you can configure and build as
 follows:
