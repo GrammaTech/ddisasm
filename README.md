@@ -148,7 +148,7 @@ Ddisasm accepts the following parameters:
 :   Skip additional analyses to compute more precise function boundaries.
 
 `-j [ --threads ]`
-:   Number of cores to use. It is set to the number of cores in the machine by default.
+:   Number of cores to use.
 
 `-I [ --interpreter ] arg`
 :   Execute the Souffle interpreter with the specified source file.
