@@ -135,6 +135,14 @@ tests:
       compiler: "arm-linux-gnueabihf-gcc"
       flags: ["-march=armv8-a", "-nostartfiles"]
 
+  - name: ex_aliased_data
+    <<: *assembly
+    test:
+      <<: *default-test
+      # ex_aliased_data is only meaningful when stripped; its "fake code"
+      # generates problematic mapping symbols.
+      strip: true
+
   - name: ex1
     <<: *default
 
