@@ -24,11 +24,12 @@
 trigger:
   stage: trigger
   needs:
-    - debian-installer-ubuntu20
+    - job: debian-installer-ubuntu20
+      artifacts: true
   rules:
     *trigger-arm-benchmark-rules
   variables:
-    PARENT_PIPELINE_ID: $CI_PIPELINE_ID
+    ARTIFACT_URL: ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/jobs/${JOB_ID_DEBIAN_INSTALLER_UBUNTU20}/artifacts
   trigger:
     project: rewriting/ddisasm-arm-benchmark
     branch: master
