@@ -363,7 +363,11 @@ call_operation("BLXAL").
 syscall_operation("SWI").
 syscall_operation("SVC").
 
+halt_operation("HLT").
 halt_operation("UDF").
+
+// capstone decodes Thumb "udf 0xfe" (bytes: "fe de") as "TRAP".
+halt_operation("TRAP").
 
 // TODO:
 return_operation(""):-

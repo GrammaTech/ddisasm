@@ -123,6 +123,9 @@ tests:
   - name: ex_tbb_zero
     <<: *assembly
 
+  - name: ex_halts
+    <<: *assembly
+
   - name: ex1
     <<: *default
 
