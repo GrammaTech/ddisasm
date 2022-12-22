@@ -242,7 +242,8 @@ basic_target(Val):-
         entry_point(Val)
         ;
         code_section(Name),
-        loaded_section(Val,_,Name)
+        loaded_section(Addr,_,Name),
+        arch.instruction_at(Addr,Val)
         ;
         !binary_isa("ARM"),
         defined_symbol(Val,_,Type,_,_,_,_,_,_),
