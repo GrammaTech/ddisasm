@@ -137,8 +137,7 @@ int main(int argc, char **argv)
         "with-souffle-relations", "Package facts/output relations into an AuxData table.")(
         "no-cfi-directives",
         "Do not produce cfi directives. Instead it produces symbolic expressions in .eh_frame.")(
-        "threads,j", po::value<unsigned int>()->default_value(1),
-        "Number of cores to use. It is set to the number of cores in the machine by default")(
+        "threads,j", po::value<unsigned int>()->default_value(1), "Number of cores to use.")(
         "generate-import-libs", "Generated .DEF and .LIB files for imported libraries (PE).")(
         "generate-resources", "Generated .RES files for embedded resources (PE).")(
         "no-analysis,n",
