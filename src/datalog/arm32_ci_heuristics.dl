@@ -29,7 +29,7 @@ Byte value '0x0000', which is "movs r0, r0", is unlikely code.
 TODO: add more.
 */
 contains_implausible_instr_seq(Block):-
-    code_in_block_candidate(EA,Block),
+    code_in_block_candidate_refined(EA,Block),
     instruction(EA,_,_,"MOVS",Op1,Op2,0,_,_,_),
     op_regdirect_contains_reg(Op1,"R0"),
     op_regdirect_contains_reg(Op2,"R0").

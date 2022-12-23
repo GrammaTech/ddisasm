@@ -992,7 +992,7 @@ block_points(Block,"code",Size,0,10,"landing-pad"):-
     lsda_callsite_addresses( _, _, Block).
 
 negative_block_points(Block,"code",Size,0,-2,"conditional jump/return: fallthrough to invalid"):-
-    code_in_block_candidate(EA,Block),
+    code_in_block_candidate_refined(EA,Block),
     block_candidate_boundaries(Block,"code",Start,End),
     Size = End - Start,
     (
@@ -1016,7 +1016,7 @@ negative_block_points(Block,"code",Size,0,-1,"jump to string"):-
         ;
         aligned_address_in_data(_,Beg)
     ),
-    code_in_block_candidate(EA,Block),
+    code_in_block_candidate_refined(EA,Block),
     block_candidate_boundaries(Block,"code",Start,End),
     Size = End - Start.
 
@@ -1035,7 +1035,7 @@ block_points(Block,"data",AccessSize,0,Points,"data access"):-
     pc_relative_operand(EA,MemIndex,Block),
     instruction_memory_access_size(EA,MemIndex,AccessSize),
     AccessSize != 0,
-    code_in_block_candidate(EA,Block0),
+    code_in_block_candidate_refined(EA,Block0),
     (
         !unresolved_block(Block0,"code",_), !impossible_block(Block0,"code",_,_), Points = 4;
         unresolved_block(Block0,"code",_), Points = 2
