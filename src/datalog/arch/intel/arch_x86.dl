@@ -137,14 +137,12 @@ data_access_size("MOVSD",DestReg,8):-
 
 data_access_size("MOV",DestReg,NBits/8):-
     op_regdirect_contains_reg(_,DestReg),
-    reg_map(Reg,DestReg),
-    arch.register_size_bits(Reg,NBits).
+    arch.register_size_bits(as(DestReg,input_reg),NBits).
 
-data_access_size(Operation,DestReg,NBits/8):-
+data_access_size(Operation,Reg,NBits/8):-
     arch.arithmetic_operation(Operation),
-    op_regdirect_contains_reg(_,DestReg),
-    reg_map(Reg,DestReg),
-    arch.register_size_bits(Reg,NBits).
+    op_regdirect_contains_reg(_,Reg),
+    arch.register_size_bits(as(Reg,input_reg),NBits).
 
 data_access_size("LEA",DestReg,0):-
     op_regdirect_contains_reg(_,DestReg).

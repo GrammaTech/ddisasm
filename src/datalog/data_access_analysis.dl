@@ -52,9 +52,9 @@ instruction_memory_access_size(EA,Index,SizeAccess):-
     (
         // NOTE: This assumes there is only one memory operand in an
         // instruction.
-        instruction_get_dest_op(EA,_,DestOp),
-        op_regdirect_contains_reg(DestOp,DestReg),
-        arch.data_access_size(Operation,DestReg,SizeAccess),
+        instruction_get_op(EA,_,RegOp),
+        op_regdirect_contains_reg(RegOp,Reg),
+        arch.data_access_size(Operation,Reg,SizeAccess),
         UNUSED(Size)
         ;
         // If data_access_size is not available, look at the operand directly.

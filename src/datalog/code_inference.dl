@@ -887,6 +887,7 @@ block_points(Block,"code",0,5,"seh handler"):-
     block_is_overlapping(Block,"code"),
     seh_handler_entry(_,Block).
 
+must_access_data(EA,Block),
 data_block_candidate(Block,Size),
 block_points(Block,"data",0,4,"data access"):-
     (
@@ -898,6 +899,7 @@ block_points(Block,"data",0,4,"data access"):-
     instruction_get_operation(EA,Operation),
     arch.data_access_size(Operation,DestReg,Size).
 
+must_access_data(EA,Block),
 data_block_candidate(Block,Size),
 block_points(Block,"data",0,4,"arithmetic data access"):-
     (
@@ -908,9 +910,9 @@ block_points(Block,"data",0,4,"arithmetic data access"):-
     instruction(EA,_,_,Operation,Op1,Op2,0,_,_,_),
     arch.arithmetic_operation(Operation),
     (
-        op_regdirect_contains_reg(Op2,Reg), Op1 = Op1
+        op_regdirect_contains_reg(Op2,Reg), UNUSED(Op1)
         ;
-        op_regdirect_contains_reg(Op1,Reg), Op2 = Op2
+        op_regdirect_contains_reg(Op1,Reg), UNUSED(Op2)
     ),
     arch.data_access_size(Operation,Reg,Size).
 
