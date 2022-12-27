@@ -887,7 +887,7 @@ block_points(Block,"code",0,5,"seh handler"):-
     block_is_overlapping(Block,"code"),
     seh_handler_entry(_,Block).
 
-block_candidate_boundaries(Block,"data",Block,Block+Size),
+data_block_candidate(Block,Size),
 block_points(Block,"data",0,4,"data access"):-
     (
         binary_isa("X86");
@@ -898,7 +898,7 @@ block_points(Block,"data",0,4,"data access"):-
     instruction_get_operation(EA,Operation),
     arch.data_access_size(Operation,DestReg,Size).
 
-block_candidate_boundaries(Block,"data",Block,Block+Size),
+data_block_candidate(Block,Size),
 block_points(Block,"data",0,4,"arithmetic data access"):-
     (
         binary_isa("X86");
