@@ -823,45 +823,74 @@ block_points(Block,"code",Size,0,1,"address in data array"):-
         address_in_data(Address-Pt_size,_)
     ).
 
-block_points(Block,"code",Size,BlockPred,6,"direct jump"):-
+block_points(Block,"code",Size,BlockPred,Points,"direct jump"):-
     unresolved_block(Block,"code",Size),
     direct_jump(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     BlockPred != Block,
-    !unresolved_block(BlockPred,"code",_),
-    !impossible_block(BlockPred,"code",_,_).
+    (
+        !unresolved_block(BlockPred,"code",_),
+        !impossible_block(BlockPred,"code",_,_),
+        Points = 6
+        ;
+        unresolved_block(BlockPred,"code",_),
+        Points = 2
+    ).
 
-block_points(Block,"code",Size,BlockPred,6,"direct call"):-
+block_points(Block,"code",Size,BlockPred,Points,"direct call"):-
     unresolved_block(Block,"code",Size),
     direct_call(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     BlockPred != Block,
-    !unresolved_block(BlockPred,"code",_),
-    !impossible_block(BlockPred,"code",_,_).
+    (
+        !unresolved_block(BlockPred,"code",_),
+        !impossible_block(BlockPred,"code",_,_),
+        Points = 6
+        ;
+        unresolved_block(BlockPred,"code",_),
+        Points = 2
+    ).
 
-block_points(Block,"code",Size,BlockPred,2,"must-fallthrough"):-
+block_points(Block,"code",Size,BlockPred,Points,"must-fallthrough"):-
     unresolved_block(Block,"code",Size),
     must_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     !candidate_block_is_padding(BlockPred),
-    !unresolved_block(BlockPred,"code",_),
-    !impossible_block(BlockPred,"code",_,_).
+    (
+        !unresolved_block(BlockPred,"code",_),
+        !impossible_block(BlockPred,"code",_,_),
+        Points = 2
+        ;
+        unresolved_block(BlockPred,"code",_),
+        Points = 1
+    ).
 
-block_points(Block,"code",Size,BlockPred,7,"may-fallthrough"):-
+block_points(Block,"code",Size,BlockPred,Points,"may-fallthrough"):-
     unresolved_block(Block,"code",Size),
     may_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     !candidate_block_is_padding(BlockPred),
-    !unresolved_block(BlockPred,"code",_),
-    !impossible_block(BlockPred,"code",_,_).
-
+    (
+        !unresolved_block(BlockPred,"code",_),
+        !impossible_block(BlockPred,"code",_,_),
+        Points = 7
+        ;
+        unresolved_block(BlockPred,"code",_),
+        Points = 2
+    ).
 // it fits but the previous block does not fallthrough
-block_points(Block,Type,Size,BlockPred,3,"fits"):-
+block_points(Block,Type,Size,BlockPred,Points,"fits"):-
     unresolved_block(Block,Type,Size),
     after_end(Block,EA),
     code_in_block_candidate_refined(EA,BlockPred),
-    !unresolved_block(BlockPred,"code",_),
-    !impossible_block(BlockPred,"code",_,_).
+    (
+        !unresolved_block(BlockPred,"code",_),
+        !impossible_block(BlockPred,"code",_,_),
+        Points = 3
+        ;
+        unresolved_block(BlockPred,"code",_),
+        Points = 1
+    ).
 
 // fits after nops block
 block_points(Block,Type,Size,BlockPred,1,"fits"):-
@@ -871,13 +900,6 @@ block_points(Block,Type,Size,BlockPred,1,"fits"):-
     candidate_block_is_padding(BlockPred),
     !unresolved_block(BlockPred,"code",_),
     !impossible_block(BlockPred,"code",_,_).
-
-// Prefer blocks that have a well-defined boundary with a prior block.
-block_points(Block,Type,Size,0,1,"better fit"):-
-    unresolved_block(Block,Type,Size),
-    next(EAPrev,Block),
-    code_in_block_candidate_refined(EAPrev,BlockPrev),
-    Block != BlockPrev.
 
 // its address appears somewhere
 block_points(Block,"code",Size,0,3,"appears"):-
