@@ -1,0 +1,50 @@
+.trigger-rules: &trigger-arm-benchmark-rules
+  # Always run on the default branch to ensure we have updated values for the metrics.
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  # In merge requests, run if something might change the ARM code inference results.
+  - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH
+    changes:
+      - .ci/trigger-arm-benchmark.yml
+      - src/datalog/arch/arm32/*.dl
+      - src/datalog/arm_binaries.dl
+      - src/datalog/arm32_binaries.dl
+      - src/datalog/arm32_ci_heuristics.dl
+      - src/datalog/arm32_jump_tables.dl
+      - src/datalog/code_inference.dl
+      - src/datalog/data.dl
+      - src/datalog/main.dl
+      - src/gtirb-builder/**
+      - src/gtirb-decoder/**
+      - src/Functors.*
+      - src/Main.cpp
+  # Can always be triggered manually
+  - when: manual
+    allow_failure: true
+
+trigger:
+  stage: trigger
+  needs:
+    - job: debian-installer-ubuntu20
+      artifacts: true
+  rules:
+    *trigger-arm-benchmark-rules
+  variables:
+    ARTIFACT_URL: ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/jobs/${JOB_ID_DEBIAN_INSTALLER_UBUNTU20}/artifacts
+  trigger:
+    project: rewriting/ddisasm-arm-benchmark
+    branch: master
+    strategy: depend
+
+results:
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20:$IMAGE_TAG
+  stage: results
+  needs:
+    - trigger
+  rules:
+    *trigger-arm-benchmark-rules
+  script:
+    - curl --location --output artifacts.zip "${CI_API_V4_URL}/projects/rewriting%2Fddisasm-arm-benchmark/jobs/artifacts/master/download?job=merge-metrics&job_token=$CI_JOB_TOKEN"
+    - unzip artifacts.zip
+  artifacts:
+    reports:
+      metrics: metrics.txt

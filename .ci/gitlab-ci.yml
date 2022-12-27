@@ -22,6 +22,9 @@ workflow:
     - if: $CI_COMMIT_BRANCH
     - if: $CI_PIPELINE_SOURCE == "schedule"
 
+include:
+  - local: .ci/arm-benchmark.yml
+
 stages:
   - build-images
   - prebuild
@@ -32,6 +35,8 @@ stages:
   - package-tests
   - deploy
   - deploy-to-apt
+  - trigger
+  - results
   - upload
 
 default:
@@ -527,8 +532,6 @@ build-ubuntu20-packages:
   needs: ['build-ubuntu20-gcc']
   variables:
     OS: ubuntu20
-  rules:
-    *run-only-main
   <<: *build-ubuntu-packages
 
 .setup-apt-repo-template: &setup-apt-repo
@@ -537,8 +540,6 @@ build-ubuntu20-packages:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - apt-repo
-  rules:
-    *run-only-main
   script:
     - !reference [.setup-apt]
     - !reference [.download-deps]
@@ -557,8 +558,6 @@ setup-ubuntu20-package-tests:
 
 .test-ubuntu-ddisasm: &test-ubuntu-ddisasm
   stage: package-tests
-  rules:
-    *run-only-main
   script:
     - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
     - echo -e "\ndeb $TRUSTED file:$(pwd)/apt-repo ./\n" >> /etc/apt/sources.list
@@ -568,8 +567,6 @@ setup-ubuntu20-package-tests:
 
 .test-ubuntu-ddisasm-dbg: &test-ubuntu-ddisasm-dbg
   stage: package-tests
-  rules:
-    *run-only-main
   script:
     - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
     - echo -e "\ndeb $TRUSTED file:$(pwd)/apt-repo ./\n" >> /etc/apt/sources.list
@@ -593,10 +590,12 @@ test-ubuntu20-ddisasm-dbg-package:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - '*ddisasm*.deb'
-  rules:
-    *run-only-main
+    reports:
+      dotenv: .env
   script:
     - cp build/*ddisasm*.deb ./
+    # exports e.g. JOB_ID_DEBIAN_INSTALLER_UBUNTU20=$CI_JOB_ID
+    - echo "JOB_ID_$(echo $CI_JOB_NAME | tr - _ | tr '[:lower:]' '[:upper:]')=$CI_JOB_ID" >> .env
 
 debian-installer-ubuntu20:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20:$IMAGE_TAG

@@ -549,7 +549,7 @@ block_points(Block,"code",0,1,"arm: better fit after literal pool"):-
         block_candidate_boundaries(BlockPred,"code",_,Beg),
         (Block band 1) != (BlockPred band 1)
     ),
-    litpool_boundaries(LitPoolAddr,Beg).
+    litpool_boundaries(_,Beg).
 
 /**
 Similarly to the above rule, if the enclosed Thumb instruction does not have
