@@ -370,6 +370,33 @@ code_in_block_candidate(EA,EA):-
     possible_ea(EA).
 
 
+/**
+Build padding candidates from nop instructions
+*/
+.decl nop_in_padding_candidate(EA:address,Start:address)
+
+nop_in_padding_candidate(EA,EA):-
+    is_padding(EA),
+    next(Prev,EA),
+    !is_padding(Prev).
+
+nop_in_padding_candidate(Next,Start):-
+    nop_in_padding_candidate(EA,Start),
+    next(EA,Next),
+    is_padding(Next),
+    !block_limit(Next).
+
+/**
+Padding block candidates can help fill in space when evaluating overlapping
+models.
+*/
+.decl padding_block_candidate(EA:address,Size:unsigned)
+
+padding_block_candidate(Start,Next-Start):-
+    nop_in_padding_candidate(EA,Start),
+    next(EA,Next),
+    !nop_in_padding_candidate(Next,Start).
+
 // in case we cannot fallthrough, we skip any nops that we might find
 // and generate a new possible_target once the nops finish
 .decl after_end(EA:address,End:address)
@@ -461,6 +488,10 @@ block_candidate_boundaries(Block,"code", BegAddr,EndAddr):-
 
 block_candidate_boundaries(Block,"data",Block,Block+Size):-
     data_block_candidate(Block,Size).
+
+block_candidate_boundaries(Block,"padding",Start,Start+Size):-
+    padding_block_candidate(Block,Size),
+    arch.instruction_at(Start,Block).
 
 // auxiliary predicate to detect that there are several candidates that fallthrough into a third candidate block
 .decl multiple_fallthrough_to(Block:address)
@@ -608,6 +639,141 @@ unresolved_block_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
         Type2 != "data"
     ).
 
+/**
+Valid unresolved intervals
+*/
+.decl unresolved_interval(Start:address,End:address)
+.output unresolved_interval
+
+unresolved_interval(Start,End):-
+    unresolved_block(Block,Type,Size),
+    block_total_points(Block,Type,Size,Points),
+    Points >= 0,
+    block_candidate_boundaries(Block,Type,Start,End),
+    Size = End - Start.
+
+/**
+Sort intervals by end address
+*/
+.decl unresolved_interval_order(ID:unsigned,Start:address,End:address)
+.output unresolved_interval_order
+
+unresolved_interval_order(ID,FirstStart,FirstEnd):-
+    ID = 1,
+    FirstEnd = min End : {
+        unresolved_interval(_,End)
+    },
+    FirstStart = min Start : {
+        unresolved_interval(Start,FirstEnd)
+    }.
+
+unresolved_interval_order(LastID+1,NextStart,LastEnd):-
+    unresolved_interval_order(LastID,LastStart,LastEnd),
+    NextStart = min Start : {
+        unresolved_interval(Start,LastEnd),
+        Start > LastStart
+    }.
+
+unresolved_interval_order(LastID+1,NextStart,NextEnd):-
+    unresolved_interval_order(LastID,LastStart,LastEnd),
+    0 = count : {
+        unresolved_interval(Start,LastEnd),
+        Start > LastStart
+    },
+    NextEnd = min End : {
+        unresolved_interval(_,End),
+        End > LastEnd
+    },
+    NextStart = min Start : {
+        unresolved_interval(Start,NextEnd)
+    }.
+
+/**
+Take the best scoring block that occupies an identical interval.
+*/
+.decl unresolved_interval_weight(ID:unsigned,Weight:unsigned)
+.output unresolved_interval_weight
+
+unresolved_interval_weight(ID,Weight):-
+    unresolved_interval_order(ID,Start,End),
+    Size = End - Start,
+    MaxPoints = as(max Points : {
+        block_candidate_boundaries(Block,Type,Start,End),
+        block_total_points(Block,Type,Size,Points),
+        // Don't select intervals with negative score.
+        Points >= 0
+    }, unsigned),
+    Weight = Size * 5 + MaxPoints.
+
+/**
+Weighted interval schedule: prior finished
+
+The number of intervals that end before the start of interval I
+*/
+.decl wis_prior(I:unsigned,Count:unsigned)
+.output wis_prior
+
+wis_prior(0,0).
+
+wis_prior(I,Count):-
+    unresolved_interval_order(I,Start,_),
+    Count = as(count : {
+        unresolved_interval_order(_,_,End),
+        End <= Start // or equal: allow last end == start
+    }, unsigned).
+
+/**
+Weighted interval schedule: memoized subproblems
+
+Value is the optimized total weight for intervals 1:I.
+*/
+.decl wis_memo(I:unsigned,Value:unsigned,Pred:unsigned)
+.output wis_memo
+
+wis_memo(0,0,0).
+
+wis_memo(I,Value,Pred):-
+    wis_memo(IPrev,LeaveWeight,_),
+    I = IPrev + 1,
+    unresolved_interval_weight(I,IWeight),
+    wis_prior(I,P),
+    wis_memo(P,TakeWeight0,_),
+    TakeWeight = TakeWeight0 + IWeight,
+    (
+        LeaveWeight > TakeWeight,
+        Value = LeaveWeight,
+        Pred = IPrev
+        ;
+        LeaveWeight <= TakeWeight,
+        Value = TakeWeight,
+        Pred = P
+    ).
+
+/**
+Weighted interval schedule: reconstruct schedule of selected intervals
+*/
+.decl wis_schedule(Interval:unsigned)
+.output wis_schedule
+
+.decl wis_schedule_iter(Iter:unsigned)
+.output wis_schedule_iter
+
+// Start from the end, which holds the completed optimal solution.
+wis_schedule_iter(I):-
+    unresolved_interval_order(I,_,_),
+    !unresolved_interval_order(I+1,_,_).
+
+// Add to schedule if request I was taken.
+wis_schedule(I):-
+    wis_schedule_iter(I),
+    wis_memo(I,_,P),
+    wis_prior(I,P).
+
+// Follow predecessor pointers
+wis_schedule_iter(Pred):-
+    wis_schedule_iter(I),
+    wis_memo(I,_,Pred).
+
 //////////////////////////////////////////////////////////////////////
 // We need to solve the block overlaps
 // we do it with heuristics
@@ -626,18 +792,37 @@ BlockPropagated (for debugging purpose):
 */
 .decl discarded_block(Block:address,Type:block_type,Size:unsigned,Reason:symbol,BlockPropagated:address)
 
-discarded_block(Block1,Type1,Size1,"less points",0):-
-    unresolved_block_overlap(Block1,Type1,Size1,Block2,Type2,Size2),
+discarded_block(Block,Type,Size,"interval discarded",0):-
+    unresolved_block(Block,Type,Size),
+    block_candidate_boundaries(Block,Type,Start,End),
+    unresolved_interval_order(I,Start,End),
+    Size = End - Start,
+    !wis_schedule(I).
+
+.decl block_type_priority(Type:block_type,Priority:unsigned)
+
+block_type_priority("code",2).
+block_type_priority("data",1).
+block_type_priority("padding",0).
+
+discarded_block(Block1,Type1,Size,"less points",0):-
+    wis_schedule(I),
+    unresolved_interval_order(I,Start,End),
+    Size = End - Start,
+    block_candidate_boundaries(Block1,Type1,Start,End),
+    unresolved_block_overlap(Block1,Type1,Size,Block2,Type2,Size),
+    block_candidate_boundaries(Block2,Type2,Start,End),
     // keep the block that has more points
-    block_total_points(Block1,Type1,Size1,Points1),
-    block_total_points(Block2,Type2,Size2,Points2),
+    block_total_points(Block1,Type1,Size,Points1),
+    block_total_points(Block2,Type2,Size,Points2),
     (
         Points1 < Points2
-    ;
-        // for equal number of points, prefer code
+        ;
+        // for equal number of points, respect block_type_priority
         Points1 = Points2,
-        Type1 = "data",
-        Type2 = "code"
+        block_type_priority(Type1,Priority1),
+        block_type_priority(Type2,Priority2),
+        Type1 < Type2
     ).
 
 discarded_block(Block,Type,Size,"impossible",0):-
@@ -771,15 +956,6 @@ block_points(Block,"code",BlockSize,0,-3,"overlaps with relocation"):-
     ),
     block_candidate_boundaries(Block,"code",Start,End),
     BlockSize = End - Start.
-
-/**
-Give penalty on the later nop block when two nop blocks are overlapping.
-*/
-block_points(Block,"code",Size,0,-3,"overlapped paddings"):-
-    block_overlap(Block0,"code",_,Block,"code",Size),
-    Block0 < Block,
-    candidate_block_is_padding(Block0),
-    candidate_block_is_padding(Block).
 
 block_points(Block,"code",Size,0,0,"basic point"):-
     unresolved_block(Block,"code",Size),
@@ -937,6 +1113,7 @@ block_points(Block,"code",Size,Block_succ,1,"fallthrough_to"):-
     !is_padding(Block_succ).
 
 // transitivity for fallthrough and direct jumps and calls
+/*
 block_points(Block,"code",Size,BlockPred,Points,Why):-
     unresolved_block(Block,"code",Size),
     may_fallthrough(EA,Block),
@@ -950,6 +1127,7 @@ block_points(Block,"code",Size,BlockPred,Points,Why):-
     block_points(BlockPred,"code",_,_,Points,Why),
     transitive_points(Why),
     Points != 0.
+*/
 
 block_points(Block,"code",Size,BlockPred,Points2,Why):-
     // Because for ARM, any bytes that cannot fall through are highly likely
