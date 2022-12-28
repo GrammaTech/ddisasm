@@ -101,6 +101,28 @@ bool isPEFormat(const gtirb::IR &IR)
     return false;
 }
 
+static void checkPathIsWritable(const std::string &Path)
+{
+    std::ofstream Out(Path, std::ios::out);
+    if(!Out.is_open())
+    {
+        std::cerr << "Error: failed to open file: " << Path << "\n";
+        std::exit(1);
+    }
+}
+
+static void checkOutputParamIsWritable(const po::variables_map &Vars, const std::string &VarName)
+{
+    if(Vars.count(VarName) != 0)
+    {
+        std::string Path = Vars[VarName].as<std::string>();
+        if(Path != "-")
+        {
+            checkPathIsWritable(Path);
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     registerAuxDataTypes();
@@ -194,6 +216,9 @@ int main(int argc, char **argv)
     }
 #endif
 
+    checkOutputParamIsWritable(vm, "ir");
+    checkOutputParamIsWritable(vm, "json");
+
     // Parse and build a GTIRB module from a supported binary object file.
     std::cerr << "Building the initial gtirb representation " << std::flush;
     auto StartBuildZeroIR = std::chrono::high_resolution_clock::now();
@@ -203,6 +228,20 @@ int main(int argc, char **argv)
     {
         std::cerr << "\nERROR: " << Filename << ": " << GTIRB.getError().message() << "\n";
         return 1;
+    }
+
+    auto Modules = GTIRB->IR->modules();
+    unsigned int ModuleCount = std::distance(std::begin(Modules), std::end(Modules));
+    if(vm.count("asm") != 0)
+    {
+        // We don't know whether we will be creating a directory and writing
+        // multiple --asm files or writing a single file until we have created
+        // the initial GTIRB.
+        // Ensure the output file is writable if we're just doing a single file.
+        if(ModuleCount == 1)
+        {
+            checkOutputParamIsWritable(vm, "asm");
+        }
     }
 
     // Add `ddisasmVersion' aux data table.
@@ -252,8 +291,6 @@ int main(int argc, char **argv)
         Pipeline.setDatalogProfileDir(ProfileDir);
     }
 
-    auto Modules = GTIRB->IR->modules();
-    unsigned int ModuleCount = std::distance(std::begin(Modules), std::end(Modules));
     if(vm.count("debug-dir"))
     {
         Pipeline.configureDebugDir(vm["debug-dir"].as<std::string>(), ModuleCount > 1);
@@ -313,7 +350,7 @@ int main(int argc, char **argv)
         }
         else
         {
-            std::ofstream out(vm["json"].as<std::string>());
+            std::ofstream out(name);
             GTIRB->IR->saveJSON(out);
         }
     }

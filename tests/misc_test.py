@@ -560,5 +560,39 @@ class OverlayTests(unittest.TestCase):
             self.assertEqual(bytes(overlay), b"OVERLAY")
 
 
+class OutputTests(unittest.TestCase):
+    def test_output_no_dir(self):
+        """
+        Writing output to a non-existent directory fails
+        """
+        output_types = (
+            ("--ir", "out.gtirb"),
+            ("--json", "out.json"),
+            ("--asm", "out.s"),
+        )
+
+        ext = ".exe" if platform.system() == "Windows" else ""
+
+        with cd(ex_dir / "ex1"):
+            proc = subprocess.run(make("clean"), stdout=subprocess.DEVNULL)
+            self.assertEqual(proc.returncode, 0)
+
+            proc = subprocess.run(make("all"), stdout=subprocess.DEVNULL)
+            self.assertEqual(proc.returncode, 0)
+
+            for opt, filename in output_types:
+                with self.subTest(opt=opt, filename=filename):
+                    args = [
+                        "ddisasm",
+                        "ex" + ext,
+                        opt,
+                        os.path.join("nodir", filename),
+                    ]
+                    proc = subprocess.run(args, capture_output=True)
+
+                    self.assertEqual(proc.returncode, 1)
+                    self.assertIn(b"Error: failed to open file", proc.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
