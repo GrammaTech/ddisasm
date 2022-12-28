@@ -368,7 +368,7 @@ tests:
   - name: ex_loop_instructions
     <<: *assembly
 
-  - name: ex_data_accesses
+  - name: ex_data_access
     <<: *assembly
     test:
       <<: *default-test
