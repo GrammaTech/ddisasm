@@ -135,14 +135,14 @@ cmp_zero_operation("JRCXZ").
 data_access_size("MOVSD",DestReg,8):-
     op_regdirect_contains_reg(_,DestReg).
 
-data_access_size("MOV",DestReg,NBits/8):-
-    op_regdirect_contains_reg(_,DestReg),
-    arch.register_size_bits(as(DestReg,input_reg),NBits).
+data_access_size("MOV",as(DestReg,register),NBits/8):-
+    op_regdirect(_,DestReg),
+    arch.register_size_bits(DestReg,NBits).
 
-data_access_size(Operation,Reg,NBits/8):-
+data_access_size(Operation,as(Reg,register),NBits/8):-
     arch.arithmetic_operation(Operation),
-    op_regdirect_contains_reg(_,Reg),
-    arch.register_size_bits(as(Reg,input_reg),NBits).
+    op_regdirect(_,Reg),
+    arch.register_size_bits(Reg,NBits).
 
 data_access_size("LEA",DestReg,0):-
     op_regdirect_contains_reg(_,DestReg).
