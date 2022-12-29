@@ -443,7 +443,7 @@ E.g.,
   ldr pc, [ip, #2640]
 */
 plt_entry(EA,Function):-
-    plt_entry_arm_candidate(_,EA,Function,_).
+    plt_entry_arm_candidate(EA,_,Function,_).
 
 block_points(EA_entry,"code",Size,0,7,"arm: plt-block"):-
     unresolved_block(EA_entry,"code",Size),
