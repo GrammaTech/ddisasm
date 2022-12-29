@@ -634,7 +634,7 @@ ldr Reg, [pc, off]   or   ldrd Reg1, Reg2, [pc, off]
 litpool_ref(EA,EA,RefAddr,0,Size,OpIndex):-
     !invalid(EA,_),
     arch.pc_reg(PC),
-    arch.load(EA,_,_,Reg,PC,_,_,Offset),
+    arch.load(EA,_,_,Reg,PC,"NONE",_,Offset),
     !arch.memory_access("LOAD",EA,_,_,_,_,_,_,Offset-4),
     instruction_memory_access_size(EA,OpIndex,Size),
     arch.pc_relative_disp(EA,Disp),
