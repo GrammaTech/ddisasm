@@ -299,6 +299,39 @@ arm_jump_table_candidate_start(EA_ldr,EA_jump,IndexReg,TableStart,TableStart,Siz
         AlignedTargetAddr <= TableStart, arch.pointer_size(PtrSize), TableLimit = (2 ^ ((8*PtrSize)-1)) - (EA_jump band 1)
     ).
 
+/**
+EA:         adr r2, Label
+...
+EA_ldr:     ldr r1, [r1, r2]
+EA_jump:    add pc, r1, r2
+*/
+arm_jump_table_candidate_start(EA_ldr,EA_jump,RegIndexNN,TableStart,TableStart,Size,TargetAddr,TableLimit,"rel_signed",1,0):-
+    arch.pc_relative_addr(EA,_,TableStart0),
+    straight_line_def_used(EA,RegBase,EA_ldr,_),
+    arch.load(EA_ldr,_,_,RegLoaded,RegIndex,RegBase,1,0),
+    reg_nonnull(RegIndex,RegIndexNN),
+    instruction_get_src_op(EA_ldr,_,IndOp),
+    op_indirect_mapped(IndOp,_,_,_,_,_,NBits),
+    straight_line_def_used(EA,RegBase,EA_jump,_),
+    straight_line_def_used(EA_ldr,RegLoaded,EA_jump,_),
+    arch.pc_reg(PC),
+    arch.reg_reg_arithmetic_operation(EA_jump,PC,RegLoaded,RegBase,1,0),
+
+    Size = NBits / 8,
+    arch.pointer_size(Size),
+
+    // Tables are aligned.
+    align_addr(TableStart,TableStart0),
+
+    arm_rel_signed_jump_table_target(TableStart,TableStart,Size,1,AlignedTargetAddr),
+    TargetAddr = AlignedTargetAddr + (EA_jump band 1),
+    (
+        // Jump to after the jumptable - sets a hard limit on the jumptable size.
+        AlignedTargetAddr > TableStart, TableLimit = AlignedTargetAddr;
+        // Jump to before the jumptable - does not restrict jumptable size.
+        AlignedTargetAddr <= TableStart, arch.pointer_size(PtrSize), TableLimit = (2 ^ ((8*PtrSize)-1)) - (EA_jump band 1)
+    ).
+
 // base case
 arm_jump_table_candidate(EA_jump,Reference,TableStart,TableStart,Size,TargetAddr,NewTableLimit,Type,Scale,Offset):-
     arm_jump_table_candidate_start(_,EA_jump,_,Reference,TableStart,Size,TargetAddr,NewTableLimit,Type,Scale,Offset),

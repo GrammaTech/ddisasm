@@ -93,6 +93,9 @@ tests:
   - name: ex_relative_jump_table
     <<: *assembly
 
+  - name: ex_relative_jump_table2
+    <<: *assembly
+
   - name: ex_litpool
     <<: *assembly
 
