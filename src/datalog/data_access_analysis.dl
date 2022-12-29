@@ -43,7 +43,6 @@ other access.
 
 // auxiliary predicate to  compute the amount of read memory
 .decl instruction_memory_access_size(EA:address,Op_index:operand_index,Size:unsigned)
-.output instruction_memory_access_size
 
 instruction_memory_access_size(EA,Index,SizeAccess):-
     !invalid(EA,_),

@@ -894,29 +894,14 @@ block_points(Block,"data",0,4,"data access"):-
         binary_isa("X86");
         binary_isa("X64")
     ),
-    arch.load(EA,SrcIndex,_,_,_,_,_,_),
-    pc_relative_operand(EA,SrcIndex,Block),
     instruction_get_operation(EA,Operation),
-    instruction_get_dest_op(EA,_,DestOp),
-    op_regdirect(DestOp,DestReg),
-    arch.data_access_size(Operation,as(DestReg,register),Size).
+    (
+        Operation = "MOV";
+        arch.arithmetic_operation(Operation)
+    ),
+    pc_relative_operand(EA,MemIndex,Block),
+    instruction_memory_access_size(EA,MemIndex,Size).
 
-must_access_data(EA,Block),
-data_block_candidate(Block,Size),
-block_points(Block,"data",0,4,"arithmetic data access"):-
-    (
-        binary_isa("X86");
-        binary_isa("X64")
-    ),
-    pc_relative_operand(EA,_,Block),
-    instruction(EA,_,_,Operation,Op1,Op2,0,_,_,_),
-    arch.arithmetic_operation(Operation),
-    (
-        op_regdirect(Op2,Reg), UNUSED(Op1)
-        ;
-        op_regdirect(Op1,Reg), UNUSED(Op2)
-    ),
-    arch.data_access_size(Operation,as(Reg,register),Size).
 
 ////////////////////////////////////////////////////////////////////////////
 
