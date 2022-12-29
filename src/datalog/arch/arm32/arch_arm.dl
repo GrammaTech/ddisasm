@@ -56,18 +56,18 @@ load_word_operation(Operation):-
         condition_code_map(Suffix,_)
     ).
 
-data_access_size("LDRD",DestReg,8):-
-    op_regdirect_contains_reg(_,DestReg).
-data_access_size("LDR",DestReg,4):-
-    op_regdirect_contains_reg(_,DestReg).
-data_access_size("LDRSB",DestReg,1):-
-    op_regdirect_contains_reg(_,DestReg).
-data_access_size("LDRB",DestReg,1):-
-    op_regdirect_contains_reg(_,DestReg).
-data_access_size("LDRSH",DestReg,2):-
-    op_regdirect_contains_reg(_,DestReg).
-data_access_size("LDRH",DestReg,2):-
-    op_regdirect_contains_reg(_,DestReg).
+data_access_size("LDRD",as(DestReg,register),8):-
+    op_regdirect(_,DestReg).
+data_access_size("LDR",as(DestReg,register),4):-
+    op_regdirect(_,DestReg).
+data_access_size("LDRSB",as(DestReg,register),1):-
+    op_regdirect(_,DestReg).
+data_access_size("LDRB",as(DestReg,register),1):-
+    op_regdirect(_,DestReg).
+data_access_size("LDRSH",as(DestReg,register),2):-
+    op_regdirect(_,DestReg).
+data_access_size("LDRH",as(DestReg,register),2):-
+    op_regdirect(_,DestReg).
 
 data_access_size(Operation,DestReg,Size):-
     load_operation(Operation),
