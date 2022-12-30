@@ -813,20 +813,6 @@ block_points(Block,"code",Size,0,1,"arm: plt call"):-
     unresolved_block(Block,"code",Size).
 
 /**
-Prefer blocks that have a well-defined boundary with a prior literal pool.
-*/
-block_points(Block,"code",Size,0,1,"arm: better fit after literal pool"):-
-    unresolved_block(Block,"code",Size),
-    block_candidate_boundaries(Block,"code",Beg,_),
-    (
-        !block_candidate_boundaries(_,"code",_,Beg)
-        ;
-        block_candidate_boundaries(BlockPred,"code",_,Beg),
-        (Block band 1) != (BlockPred band 1)
-    ),
-    litpool_boundaries(_,Beg).
-
-/**
 Similarly to the above rule, if the enclosed Thumb instruction does not have
 any predecessor and the outer instruction has one, give penalty to the dangling
 Thumb block.

@@ -913,7 +913,6 @@ transitive_points("direct jump").
 transitive_points("direct call").
 transitive_points("must-fallthrough").
 transitive_points("may-fallthrough").
-transitive_points("fits").
 transitive_points("fde-entry").
 transitive_points("landing-pad").
 transitive_points("exc-region").
@@ -1054,28 +1053,6 @@ block_points(Block,"code",Size,BlockPred,Points,"may-fallthrough"):-
         unresolved_block(BlockPred,"code",_),
         Points = 2
     ).
-// it fits but the previous block does not fallthrough
-block_points(Block,Type,Size,BlockPred,Points,"fits"):-
-    unresolved_block(Block,Type,Size),
-    after_end(Block,EA),
-    code_in_block_candidate_refined(EA,BlockPred),
-    (
-        !unresolved_block(BlockPred,"code",_),
-        !impossible_block(BlockPred,"code",_,_),
-        Points = 3
-        ;
-        unresolved_block(BlockPred,"code",_),
-        Points = 1
-    ).
-
-// fits after nops block
-block_points(Block,Type,Size,BlockPred,1,"fits"):-
-    unresolved_block(Block,Type,Size),
-    next(EA,Block),
-    code_in_block_candidate_refined(EA,BlockPred),
-    candidate_block_is_padding(BlockPred),
-    !unresolved_block(BlockPred,"code",_),
-    !impossible_block(BlockPred,"code",_,_).
 
 // its address appears somewhere
 block_points(Block,"code",Size,0,3,"appears"):-
