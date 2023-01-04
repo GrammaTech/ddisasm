@@ -603,6 +603,14 @@ block_points(Block,"code",0,-3,"overlaps with relocation"):-
         !instruction_displacement_offset(EA,_,Target-EA,_)
     ).
 
+/**
+Give penalty on the later nop block when two nop blocks are overlapping.
+*/
+block_points(Block,"code",0,-3,"overlapped paddings"):-
+    block_overlap(Block0,"code",Block,"code"),
+    is_padding(Block0),
+    is_padding(Block).
+
 block_points(Block,"code",0,0,"basic point"):-
     block_is_overlapping(Block,"code"),
     code_in_block_candidate_refined(_,Block).
@@ -718,7 +726,14 @@ block_points(Block,"code",0,3,"relative jump table target"):-
     block_is_overlapping(Block,"code"),
     relative_address(EA,_,_,_,Block,_),
     count :{ relative_address(EA,_,_,_,_,_) } = 1,
-    !relative_address(Block,_,_,_,_,_).
+    !relative_address(Block,_,_,_,_,_),
+    (
+        !address_in_data(EA,_), Points = 3
+        ;
+        // If it is possible that EA has an absolute address instead of
+        // a relative address, give less points.
+        address_in_data(EA,_), Points = 1
+    ).
 
 // give a point if it may fallthrough to another block
 block_points(Block,"code",Block_succ,1,"fallthrough_to"):-
