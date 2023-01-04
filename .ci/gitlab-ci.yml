@@ -40,7 +40,7 @@ stages:
   - upload
 
 default:
-  tags: [cluster]
+  tags: [shared]
 
 .setup-apt:
   # Configure GTIRB APT repository.
