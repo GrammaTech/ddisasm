@@ -845,7 +845,10 @@ block_points(Block,"code",0,2,"padding nop block"):-
 
 block_points(Block,"code",0,-1,"overlap long nop"):-
     block_is_overlapping(Block,"code"),
-    block_overlap(Block,"code",Block2,"code"),
+    (
+        block_overlap(Block,"code",Block2,"code");
+        block_overlap(Block2,"code",Block,"code")
+    ),
     code_in_block_candidate_refined(EA_nop,Block2),
     arch.is_nop(EA_nop).
 
