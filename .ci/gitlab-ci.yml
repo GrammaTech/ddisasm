@@ -607,7 +607,6 @@ debian-installer-ubuntu20:
 
 docker-image-vars:
   stage: prebuild
-  tags: [cluster]
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20:$IMAGE_TAG
   rules:
     - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
@@ -630,7 +629,6 @@ docker-image:
   needs:
     - job: docker-image-vars
       artifacts: true
-  tags: [cluster]
   image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]  # Override the image's entrypoint so we can specify our own script
