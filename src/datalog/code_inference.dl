@@ -722,7 +722,7 @@ block_points(Block,"code",0,3,"appears"):-
     BlockPred != Block,
     !block_is_overlapping(BlockPred,_).
 
-block_points(Block,"code",0,3,"relative jump table target"):-
+block_points(Block,"code",0,Points,"relative jump table target"):-
     block_is_overlapping(Block,"code"),
     relative_address(EA,_,_,_,Block,_),
     count :{ relative_address(EA,_,_,_,_,_) } = 1,
