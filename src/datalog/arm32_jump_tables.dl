@@ -95,7 +95,8 @@ indexed_pc_relative_load(EA,DstReg,LoadFrom,IndexReg,Size):-
     Size = as(Mult,unsigned),
     reg_nonnull(IndexReg0,IndexReg),
     arch.pc_relative_disp(EA,Disp),
-    LoadFrom = as(as(EA - (EA band 3),number) + Disp,address).
+    align_addr(AlignedEA,EA),
+    LoadFrom = as(as(AlignedEA,number) + Disp,address).
 
 // pc-rel load:
 //  adr r1, Label   or  add r1, pc, offset
