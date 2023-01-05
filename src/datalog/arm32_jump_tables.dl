@@ -221,27 +221,27 @@ Size: The size of the entry
 Scale: The scale amount is multiplied to the entry value
 AlignedTargetAddr: The computed target address is aligned
 */
-.decl arm_jump_table_target(Type:symbol,Thumb:unsigned,EA:address,Reference:address,Size:unsigned,Scale:unsigned,TargetAddr:address) inline
+.decl arm_jump_table_candidate_target(Type:symbol,Thumb:unsigned,EA:address,Reference:address,Size:unsigned,Scale:unsigned,TargetAddr:address) inline
 
-arm_jump_table_target("absolute",Thumb,EA,Reference,Size,Scale,TargetAddr):-
+arm_jump_table_candidate_target("absolute",Thumb,EA,Reference,Size,Scale,TargetAddr):-
     arch.pointer_size(Size),
     address_in_data(EA,TargetAddr),
     UNUSED(Thumb),
     UNUSED(Reference),
     UNUSED(Scale).
 
-arm_jump_table_target("rel_unsigned",Thumb,EA,Reference,Size,Scale,TargetAddr):-
+arm_jump_table_candidate_target("rel_unsigned",Thumb,EA,Reference,Size,Scale,TargetAddr):-
     data_uword(EA,Size,Diff),
     TargetAddr = (Reference + Diff * Scale) bor Thumb.
 
-arm_jump_table_target("rel_signed",Thumb,EA,Reference,Size,Scale,TargetAddr):-
+arm_jump_table_candidate_target("rel_signed",Thumb,EA,Reference,Size,Scale,TargetAddr):-
     data_word(EA,Size,Diff),
     TargetAddr = as(Diff*as(Scale,number)+as(Reference,number),address) bor Thumb.
 
 // base case
 arm_jump_table_candidate(EA_jump,Reference,TableStart,TableStart,Size,TargetAddr,TableLimit,Type,Scale):-
     arm_jump_table_candidate_start(_,EA_jump,_,Reference,TableStart,Size,Type,Scale,_),
-    arm_jump_table_target(Type,EA_jump band 1,TableStart,Reference,Size,Scale,TargetAddr),
+    arm_jump_table_candidate_target(Type,EA_jump band 1,TableStart,Reference,Size,Scale,TargetAddr),
     arch.instruction_at(AlignedTargetAddr,TargetAddr),
     instruction(TargetAddr,_,_,_,_,_,_,_,_,_),
     !invalid(TargetAddr,_),
@@ -259,7 +259,7 @@ arm_jump_table_candidate(EA_jump,Reference,TableStart,EA,Size,TargetAddr,NewTabl
     !defined_symbol(EA,_,_,_,_,_,_,_,"$t"),
     !defined_symbol(EA,_,_,_,_,_,_,_,"$a"),
     EA < TableLimit,
-    arm_jump_table_target(Type,EA_jump band 1,EA,Reference,Size,Scale,TargetAddr),
+    arm_jump_table_candidate_target(Type,EA_jump band 1,EA,Reference,Size,Scale,TargetAddr),
     arch.instruction_at(AlignedTargetAddr,TargetAddr),
     instruction(TargetAddr,_,_,_,_,_,_,_,_,_),
     !invalid(TargetAddr,_),
