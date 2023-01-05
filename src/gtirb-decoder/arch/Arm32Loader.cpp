@@ -334,26 +334,32 @@ bool Arm32Loader::collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInst)
             if(CsOp.shift.type != ARM_SFT_INVALID && CsOp.shift.value != 0)
             {
                 std::string ShiftType;
+                bool IsRegShift = false;
                 switch(CsOp.shift.type)
                 {
-                    case ARM_SFT_ASR:
                     case ARM_SFT_ASR_REG:
+                        IsRegShift = true;
+                    case ARM_SFT_ASR:
                         ShiftType = "ASR";
                         break;
-                    case ARM_SFT_LSL:
                     case ARM_SFT_LSL_REG:
+                        IsRegShift = true;
+                    case ARM_SFT_LSL:
                         ShiftType = "LSL";
                         break;
-                    case ARM_SFT_LSR:
                     case ARM_SFT_LSR_REG:
+                        IsRegShift = true;
+                    case ARM_SFT_LSR:
                         ShiftType = "LSR";
                         break;
-                    case ARM_SFT_ROR:
                     case ARM_SFT_ROR_REG:
+                        IsRegShift = true;
+                    case ARM_SFT_ROR:
                         ShiftType = "ROR";
                         break;
-                    case ARM_SFT_RRX:
                     case ARM_SFT_RRX_REG:
+                        IsRegShift = true;
+                    case ARM_SFT_RRX:
                         ShiftType = "RRX";
                         break;
                     case ARM_SFT_INVALID:
@@ -361,7 +367,7 @@ bool Arm32Loader::collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInst)
                                   << "\n";
                         return false;
                 }
-                if(CsOp.shift.value > 32)
+                if(IsRegShift)
                 {
                     OpndFacts.ShiftedWithRegOp =
                         relations::ShiftedWithRegOp{Addr, static_cast<uint8_t>(i + 1),
@@ -443,20 +449,17 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_insn& CsInsn, cons
             return ImmOp{CsOp.imm};
         case ARM_OP_MEM:
         {
-            // CsOp.mem.lshift seems to be incorrect for some instructions,
-            // see: https://github.com/capstone-engine/capstone/issues/1848
-            // The lshift value can also be fetched via op.shift.value.
-            // Therefore, we use op.shift.value here instead.
-            //
-            // LDR instructions support ASR, LSL, LSR, ROR, and RRX shifts.
-            // Only LSL can be represented as a multiplier.
-            // Therefore, we carry the LSL info in op_indirect rules.
-            // For other types of shifts, we use ShiftedOp.
-            if(CsOp.shift.value && CsOp.shift.type != ARM_SFT_LSL)
-                std::cerr << "WARNING: Unhandled shift type in mem operand ("
-                          << "address=0x" << std::hex << CsInsn.address << std::dec << ", "
-                          << "value=0x" << std::hex << CsOp.shift.value << std::dec << ", "
-                          << "type=" << CsOp.shift.type << ")\n";
+            // We translate LSL shifts into a Mult in op_indirect.
+            // Other shifts must be verified with op_shifted.
+            uint32_t LShiftMult = 1;
+            if(CsOp.shift.type == ARM_SFT_LSL)
+            {
+                // CsOp.mem.lshift seems to be incorrect for some instructions,
+                // see: https://github.com/capstone-engine/capstone/issues/1848
+                // The lshift value can also be fetched via op.shift.value.
+                // Therefore, we use op.shift.value here instead.
+                LShiftMult = 1 << CsOp.shift.value;
+            }
 
             // Capstone does not provide a way of accessing the size of
             // the memory reference.
@@ -470,7 +473,7 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_insn& CsInsn, cons
             IndirectOp I = {registerName(ARM_REG_INVALID),
                             registerName(CsOp.mem.base),
                             registerName(CsOp.mem.index),
-                            CsOp.mem.scale * (1 << CsOp.shift.value),
+                            CsOp.mem.scale * LShiftMult,
                             CsOp.mem.disp,
                             32};
             return I;

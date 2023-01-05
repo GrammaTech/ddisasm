@@ -237,19 +237,19 @@ Index: The index of the register in bitfield (starts with 0)
 .input op_indirect
 
 /**
-The operand identified by Index should be shifted.
+The operand identified by Index should be shifted with an immediate.
 
 Used on ARM/ARM64, but not x86 or MIPS. Type is architecure-dependent.
 */
-.decl op_shifted(EA:address,Index:unsigned,Shift:unsigned,Type:symbol)
+.decl op_shifted(EA:address,Index:operand_index,Shift:unsigned,Type:symbol)
 .input op_shifted
 
 /**
-The operand identified by Index should be shifted.
+The operand identified by Index should be shifted with a register.
 
 Used on ARM/ARM64, but not x86 or MIPS. Type is architecure-dependent.
 */
-.decl op_shifted_w_reg(EA:address,Index:unsigned,Reg:input_reg,Type:symbol)
+.decl op_shifted_w_reg(EA:address,Index:operand_index,Reg:input_reg,Type:symbol)
 .input op_shifted_w_reg
 
 /**
