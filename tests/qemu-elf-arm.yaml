@@ -120,6 +120,9 @@ tests:
       compiler: "arm-linux-gnueabihf-gcc"
       flags: ["-pie"]
 
+  - name: ex_tbb_zero
+    <<: *assembly
+
   - name: ex1
     <<: *default
 
