@@ -26,7 +26,8 @@ else()
 endif()
 
 if(DDISASM_SOUFFLE_PROFILING)
-  set(SOUFFLE_PROFILING_ARG "--profile=profile.log")
+  # We only need the presence of the argument.
+  set(SOUFFLE_PROFILING_ARG "--profile=")
 else()
   set(SOUFFLE_PROFILING_ARG "")
 endif()
