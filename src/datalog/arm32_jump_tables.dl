@@ -238,9 +238,18 @@ arm_jump_table_candidate_target("rel_signed",Thumb,EA,Reference,Size,Scale,Targe
     TargetAddr = as(Diff*as(Scale,number)+as(Reference,number),address) bor Thumb.
 
 // base case
-arm_jump_table_candidate(EA_jump,Reference,TableStart,TableStart,Size,TargetAddr,TableLimit,Type,Scale):-
+arm_jump_table_candidate(EA_jump,Reference,TableStart,EA,Size,TargetAddr,TableLimit,Type,Scale):-
     arm_jump_table_candidate_start(_,EA_jump,_,Reference,TableStart,Size,Type,Scale,_),
-    arm_jump_table_candidate_target(Type,EA_jump band 1,TableStart,Reference,Size,Scale,TargetAddr),
+    (
+        EA = TableStart
+        ;
+        // sometimes the compiler knows the index is non-zero, and puts zero
+        // in the starting entry. (observed in a tbb jump table)
+        Type = "rel_unsigned",
+        EA = TableStart + Size,
+        data_uword(TableStart,Size,0)
+    ),
+    arm_jump_table_candidate_target(Type,EA_jump band 1,EA,Reference,Size,Scale,TargetAddr),
     arch.instruction_at(AlignedTargetAddr,TargetAddr),
     instruction(TargetAddr,_,_,_,_,_,_,_,_,_),
     !invalid(TargetAddr,_),
@@ -407,10 +416,13 @@ jump_table_start(EA,Size,TableStart,Reference,1):-
     arm_jump_table_candidate(EA,Reference,TableStart,DataEA,Size,_,_,_,_),
     jump_table_candidate_refined(EA,DataEA,_).
 
-relative_jump_table_entry_candidate(TableStart,TableStart,Size,Reference,TargetAddr,as(Scale,number),Offset):-
+relative_jump_table_entry_candidate(DataEA,TableStart,Size,Reference,TargetAddr,as(Scale,number),Offset):-
     arm_jump_table_candidate_start(_,EA,_,Reference,TableStart,Size,_,Scale,NeedsOffset),
-    arm_jump_table_candidate(EA,Reference,TableStart,TableStart,Size,_,_,_,Scale),
-    jump_table_candidate_refined(EA,TableStart,TargetAddr),
+    // Find the first (valid) entry - not always at TableStart!
+    DataEA = min DataEA : {
+        arm_jump_table_candidate(EA,Reference,TableStart,DataEA,Size,_,_,_,Scale)
+    },
+    jump_table_candidate_refined(EA,DataEA,TargetAddr),
     Offset = as(as(NeedsOffset,unsigned) band as(TargetAddr,unsigned),number).
 
 relative_jump_table_entry_candidate(DataEA,TableStart,Size,Reference,TargetAddr,as(Scale,number),Offset):-
