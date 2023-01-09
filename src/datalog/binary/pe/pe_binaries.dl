@@ -486,9 +486,10 @@ is_padding(EA):-
 // Otherwise each
 // individual INT3 instruction is its own block.
 // Using the point system is too expensive.
-discarded_block(EA,"code","PE padding considered data",0):-
+discarded_block(EA,"code",End-Start,"PE padding considered data",0):-
     binary_format("PE"),
     code_in_block_candidate_refined(EA,EA),
+    block_candidate_boundaries(EA,"code",Start,End),
     instruction_get_operation(EA,"INT3"),
     !direct_jump(_,EA),
     !direct_call(_,EA),
