@@ -381,6 +381,9 @@ tests:
       # this example has some intentional unreachable code.
       check_cfg: false
 
+  - name: ex_synchronous_access3
+    <<: *assembly
+
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
@@ -434,6 +437,10 @@ tests:
     <<: *test-strip-default
 
   - name: ex_synchronous_access
+    <<: *assembly
+    <<: *test-strip-default
+
+  - name: ex_synchronous_access3
     <<: *assembly
     <<: *test-strip-default
 
