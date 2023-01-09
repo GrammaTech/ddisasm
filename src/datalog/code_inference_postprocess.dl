@@ -219,7 +219,6 @@ padding_prefix(EA,Block):-
 
 // the first code EA after nop pads in the given block
 .decl padding_prefix_end(EA:address,Block:address)
-.output padding_prefix_end
 
 padding_prefix_end(EA,Block):-
     code_in_block(EA,Block),

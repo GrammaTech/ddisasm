@@ -72,7 +72,6 @@ instruction_memory_access_size(EA,Index,SizeAccess):-
 
 //there is a data access at EA in the operand Op_index
 .decl data_access(EA:address,Op_index:operand_index,RegSegment:reg_nullable,RegBase:reg_nullable,RegIndex:reg_nullable,Mult:number,Offset:number,Size:unsigned)
-.output data_access
 
 data_access(EA,Op_index,RegSegment,RegBase,RegIndex,Mult,Offset,Size):-
     code(EA),
@@ -168,7 +167,6 @@ The access has size 'Size' and uses a multiplier 'Multiplier'.
 Auxiliary predicate that computes initial approximation of `data_access_pattern`
 */
 .decl data_access_pattern_candidate(Address:address,Size:unsigned,Multiplier:number,FromWhere:address)
-.output data_access_pattern_candidate
 
 /**
 The address at 'EA' is probably accessed with size 'Size' using the same
@@ -397,8 +395,6 @@ but that would require reworking `first_synchronous_access`
 as well.
 */
 .decl synchronous_access(RefAccess:address,LastEA:address)
-.output synchronous_access
-
 
 synchronous_access(EA,EA2):-
     data_access_pattern_non_zero(EA,Size,Mult,From),
@@ -457,7 +453,6 @@ The next data access after 'EA' that is not synchronous with 'EA'
 is located at address 'Next'.
 */
 .decl next_dyssynchronous_data_access(EA:address,Next:address)
-.output next_dyssynchronous_data_access
 
 next_dyssynchronous_data_access(EA,Next):-
     data_access_pattern(EA,_,_,_),

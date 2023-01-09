@@ -184,7 +184,6 @@ typical_function_start(Block):-
     op_regdirect(Op1,"RBP").
 
 .decl symbolic_expression_in_code(Address:address,Symbol:address,Offset:number)
-.output symbolic_expression_in_code
 
 symbolic_expression_in_code(Address,Symbol,Offset):-
     block(Block,Size),
@@ -193,7 +192,6 @@ symbolic_expression_in_code(Address,Symbol,Offset):-
     Address < Block+Size.
 
 .decl symbolic_expression_in_data(Address:address,Symbol:address,Offset:number)
-.output symbolic_expression_in_data
 
 symbolic_expression_in_data(Address,Symbol,Offset):-
     symbolic_expression(Address,Symbol,Offset),
@@ -208,7 +206,6 @@ symbolic_expression_in_data(Address,Symbol,Offset):-
     .decl function_entry_final(Address:address)
 
     .decl reason(Address:address,Why:symbol)
-    .output reason
 
     // not referenced anywhere
     reason(Block,"not referenced anywhere"),

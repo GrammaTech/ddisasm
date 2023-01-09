@@ -54,7 +54,6 @@
 .decl direct_jump_outside_scc(src:address,dest:address)
 .decl fallthrough_outside_scc(src:address,dest:address)
 .decl return(src:address)
-.output return
 
 direct_call(Src,Dest):-
     cfg_edge(Src,Dest,_,"false","call").
@@ -85,13 +84,11 @@ incomplete_block(Src):-
     cfg_edge_to_symbol(Src,_,_,"true","branch").
 
 .decl no_return(Block:address)
-.output no_return
 
 .decl block_call_no_return(Block:address)
 .output block_call_no_return
 
 .decl scc_no_return(Scc:scc)
-.output scc_no_return
 
 // initial seeds for the analysis
 .decl no_return_function(Name:symbol)
@@ -112,7 +109,6 @@ last_in_scc(Scc,MaxIndex):-
     MaxIndex = max X: {in_scc(Scc,X,_)}.
 
 .decl scc_partial_no_return(Scc:scc,Index:number)
-.output scc_partial_no_return
 
 .decl block_in_scc_no_return(Block:address)
 

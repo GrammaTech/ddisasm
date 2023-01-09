@@ -51,7 +51,6 @@ required 16-byte length.
 https://docs.oracle.com/cd/E19120-01/open.solaris/819-0690/chapter8-60/index.html
 */
 .decl tlsgd_code_sequence(EA:address)
-.output tlsgd_code_sequence
 
 tlsgd_code_sequence(EA):-
     binary_isa("X64"),

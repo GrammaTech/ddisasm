@@ -56,7 +56,6 @@ They are organized in blocks of sequential code
 and the block identifier is the address of the first instruction in the block.
 */
 .decl code_in_block(EA:address,Block:address)
-.output code_in_block
 
 /**
 There is a code block starting at 'Block'.
@@ -85,7 +84,6 @@ are permitted and do not generate block conflicts. Those overlapping
 instructions are captured by this predicate.
 */
 .decl overlapping_instruction(EA:address, EA2: address)
-.output overlapping_instruction
 
 /**
 There is a segment of data in a code section that spans from 'Begin' to 'End'.
@@ -178,7 +176,6 @@ may_have_symbolic_immediate(Src,as(Dest,address)):-
 unlikely_have_symbolic_immediate(0):- false.
 
 .decl invalid(EA:address,Type:symbol)
-.output invalid
 
 // if the decoder failed to decode any instruction at EA, EA is invalid
 invalid(EA,Type):-
@@ -314,7 +311,6 @@ possible_target_from(Dest,Src):-
 
 .decl possible_target(Target:address)
 .decl code_in_block_candidate(EA:address,EA_block:address)
-.output code_in_block_candidate
 
 possible_target(EA):-
     basic_target(EA).
@@ -399,7 +395,6 @@ common_tail(EA):-
     !code_in_block_candidate(EA_prev,Block2).
 
 .decl code_in_block_candidate_refined(EA:address,Block:address)
-.output code_in_block_candidate_refined
 
 code_in_block_candidate_refined(Block,Block):-
     code_in_block_candidate(Block,Block).
@@ -431,7 +426,6 @@ In most cases 'BegAddr' and 'Block' coincide, but there are exceptions such as
 ARM 32 Thumb code blocks. These block candidates can be code blocks or data blocks.
 */
 .decl block_candidate_boundaries(Block:address,Type:block_type,BegAddr:address,EndAddr:address)
-.output block_candidate_boundaries
 
 block_candidate_boundaries(Block,"code",Block,Next):-
     !binary_isa("ARM"),
@@ -464,7 +458,6 @@ multiple_fallthrough_to(Block):-
 Two blocks overlap.
 */
 .decl block_overlap(Block1:address,Type1:block_type,Block2:address,Type2:block_type)
-.output block_overlap
 
 block_overlap(Block1,Type1,Block2,Type2):-
     block_candidate_boundaries(Block1,Type1,BegAddr1,EndAddr1),
@@ -592,7 +585,6 @@ BlockPropagated (for debugging purpose):
      - block that this block overlapped with (for "first instruction overlap")
 */
 .decl discarded_block(Block:address,Type:block_type,Reason:symbol,BlockPropagated:address)
-.output discarded_block
 
 discarded_block(Block1,Type1,"less points",0):-
     unresolved_block_overlap(Block1,Type1,Block2,Type2),
@@ -649,7 +641,6 @@ candidate_block_is_not_padding(Block):-
     !is_padding(EA).
 
 .decl candidate_block_is_padding(Block:address)
-.output candidate_block_is_padding
 
 candidate_block_is_padding(Block):-
     code_in_block_candidate_refined(_,Block),
@@ -663,7 +654,6 @@ candidate_block_is_padding(Block):-
  overlapping blocks.
 */
 .decl block_points(Block:address,Type:block_type,Predecessor:address,Importance:number,HeuristicName:symbol)
-.output block_points
 
 /**
 Negative block points are collected in their own relation.

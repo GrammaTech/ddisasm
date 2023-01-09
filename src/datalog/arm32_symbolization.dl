@@ -208,7 +208,6 @@ before code inference.
 see the comment of `cinf_symbol_minus_symbol_candidate_arm`.
 */
 .decl init_symbol_minus_symbol_candidate_arm(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,Offset:number)
-.output init_symbol_minus_symbol_candidate_arm
 
 init_symbol_minus_symbol_candidate_arm(Addr,Size,EA_add_pc,Dest,Scale,Offset):-
     init_ldr_add_pc(_,Size,Reg,Addr,EA_add_pc,Reg),
@@ -239,7 +238,6 @@ cinf_ldr_add_pc(EA_ldr,Size,Reg1,LitPoolAddr,EA_add_pc,Reg2):-
     arch.pc_reg(PC).
 
 .decl cinf_symbol_minus_symbol_candidate_arm(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,Offset:number)
-.output cinf_symbol_minus_symbol_candidate_arm
 
 /**
 case 1:
@@ -345,7 +343,6 @@ Reg: The register containing Symbol2
 Type: Either "LDR" or "AddPC"
 */
 .decl symbol_minus_symbol_litpool_access_pattern(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,EA_litpool_ref:address,EA_def:address,Reg:register,Type:symbol)
-.output symbol_minus_symbol_litpool_access_pattern
 
 /**
     ldr reg, LitPool
@@ -407,7 +404,6 @@ litpool_symbolic_operand
 PC-relative symbolic operand
 */
 .decl litpool_symbolic_operand(ea_litpool:address,data_access_size:unsigned,symbol1:address,symbol2:address,ea_def:address,reg_def:register,sym2_size:unsigned)
-.output litpool_symbolic_operand
 
 //  (A) ldr  reg1, LitPoolAddr1
 //  (B) ldr  reg2, LitPoolAddr2

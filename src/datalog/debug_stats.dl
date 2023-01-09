@@ -23,13 +23,10 @@
 
 // Predicates for debugging and statistics
 .decl discarded_aligned_pointer(ea:address)
-.output discarded_aligned_pointer
 
 .decl discarded_aligned_pointer_to_text(ea:address)
-.output discarded_aligned_pointer_to_text
 
 .decl unaligned_pointer(ea:address)
-.output unaligned_pointer
 
 discarded_aligned_pointer_to_text(EA):-
     aligned_address_in_data(EA,_),
@@ -44,7 +41,6 @@ unaligned_pointer(EA):-
     EA % Pt_size != 0.
 
 .decl immediate_symbol(ea:address,op_index:operand_index,dest:address)
-.output immediate_symbol
 
 immediate_symbol(EA,Op_index,DestAddr):-
     code(EA),
@@ -80,7 +76,6 @@ This relation is used by negation in `discarded_relocations` to find any
 relocations that did not materialize as symbols after analysis.
 */
 .decl used_relocation(EA:address)
-.output used_relocation
 
 used_relocation(EA):-
     binary_format("PE"),
@@ -106,7 +101,6 @@ used_relocation(EA):-
 Select relocations that were not symbolized, i.e. possible false negatives.
 */
 .decl discarded_relocation(EA:address)
-.output discarded_relocation
 
 discarded_relocation(EA):-
     binary_format("PE"),

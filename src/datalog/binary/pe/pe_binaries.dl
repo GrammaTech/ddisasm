@@ -162,7 +162,6 @@ reg_has_base_image(EA,Reg):-
     ).
 
 .decl possible_rva_operand(EA:address,Index:operand_index,Dest:address)
-.output possible_rva_operand
 
 possible_rva_operand(EA,Op_index,RVA):-
     instruction_get_op(EA,Op_index,Op),
@@ -174,7 +173,6 @@ possible_rva_operand(EA,Op_index,RVA):-
     (ImageBase + RVA) < End.
 
 .decl base_relative_operand(EA:address,Index:operand_index,Dest:address)
-.output base_relative_operand
 
 // Indirect access using register with ImageBase
 base_relative_operand(EA_used,Op_index,RVA):-
@@ -253,7 +251,6 @@ symbolic_operand_candidate(EA,Op_index,Dest,"data"):-
     Dest = ImageBase.
 
 .decl base_relative_operation(EA_relop:address,EA:address)
-.output base_relative_operation
 
 base_relative_operation(EA_relop,EA_inst):-
     base_relative_operand(EA_relop,_,_),
@@ -265,7 +262,6 @@ base_relative_operation(EA_relop,EA_next):-
     reg_def_use.def_used(EA_inst,_,EA_next,_).
 
 .decl base_relative_jump(EA_relop:address,EA:address)
-.output base_relative_jump
 
 // TODO: narrow by restricting base_relative_operation chain to operations a
 //       jump table address calculation would actually use.
@@ -278,7 +274,6 @@ labeled_data_candidate(ImageBase+Dest):-
     base_relative_symbolic_operand(_,_,Dest).
 
 .decl dos_header_symbolic_operand(EA:address,Dest:unsigned)
-.output dos_header_symbolic_operand
 
 symbolic_expr_from_relocation(EA+Disp_offset,Size/8,"__ImageBase",as(Dest-ImageBase,number),Dest),
 dos_header_symbolic_operand(EA,Dest):-
@@ -601,7 +596,6 @@ relative_address_start(TableStart,4,0,Dest,"first"):-
 Non-destructive multi-byte NOPs used by the MSVC compiler. (See `listing.inc'.)
 */
 .decl npad(EA:address,Size:unsigned)
-.output npad
 
 // mov edi, edi
 npad(EA,Size):-
@@ -622,7 +616,6 @@ is_padding(EA):-
     npad(EA,_).
 
 .decl merged_data_region(Start:address,End:address)
-.output merged_data_region
 
 merged_data_region(DataStart,DataStart+DataSize):-
     binary_format("PE"),

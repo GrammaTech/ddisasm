@@ -60,7 +60,6 @@ or loop) and considering the value with most steps.
 
 .decl value_reg_edge(EA:address,Reg:register,
                 EA_reg1:address,Reg1:register,Multiplier:number,Offset:number)
-.output value_reg_edge
 .decl value_reg(EA:address,Reg:register,
                 EA_reg1:address,Reg1:reg_nullable,Multiplier:number,Offset:number,Steps:unsigned)
 .output value_reg

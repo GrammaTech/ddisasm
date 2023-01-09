@@ -27,7 +27,6 @@ Function inference based on call frames.
 .comp basic_function_inference{
 
 .decl function_entry(Block:address)
-.output function_entry
 .decl function_entry_name(Block:address,Name:symbol)
 .output function_entry_name
 
@@ -35,7 +34,6 @@ Function inference based on call frames.
 .output in_function
 
 .decl function_without_callframe(Block:address)
-.output function_without_callframe
 
 /**
 Initial function entry discovery after code inference, but before use-def and

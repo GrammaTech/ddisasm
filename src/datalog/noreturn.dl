@@ -27,7 +27,6 @@ otherwise produce spurious def_used instances.
 */
 
 .decl incomplete_block(Block:address)
-.output incomplete_block
 
 incomplete_block(Block):-
     block_last_instruction(Block,BlockEnd),
@@ -52,7 +51,6 @@ means that the only way to step out of it is through a fallthrough
 in the last block
 */
 .decl segment_target_range(Beg:address,End:address,Tmax:address)
-.output segment_target_range
 
 // base case
 segment_target_range(Beg,End,MaxTgt):-
@@ -171,7 +169,6 @@ no_return_block(Block):-
 Calls to noreturn blocks.
 */
 .decl no_return_call_propagated(EA:address)
-.output no_return_call_propagated
 
 no_return_call_propagated(EA):-
     no_return_call_refined(EA).

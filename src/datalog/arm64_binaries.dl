@@ -34,7 +34,6 @@ basic_target(Val):-
 Compute an immediate load performed across two consecutive instructions
 */
 .decl split_load(ea:address, nextea:address, dest:address, type:symbol)
-.output split_load
 
 /** E.g.,
 adrp x0, L1
@@ -182,7 +181,6 @@ the code inference step due to cyclic negation issue.
 Instead, this is for the symbolization step.
 */
 .decl split_load_for_symbolization(ea:address, nextea:address, dest:address, type:symbol)
-.output split_load_for_symbolization
 
 // Direct split load
 split_load_for_symbolization(EA,UsedEA,as(as(Base,number)+Offset,address),Type):-
