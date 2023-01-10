@@ -889,8 +889,7 @@ candidate_block_is_padding(Block):-
  The heuristics give a variable number of points for things like number
  of predecessors, how the block is reached (through direct jump, fallthough, etc.)
  and if the block's address appears in the data section, whether it appears aligned
- or in a pointer array. The points are trasmitted transitively though
- overlapping blocks.
+ or in a pointer array.
 */
 .decl block_points(Block:address,Type:block_type,Size:unsigned,Predecessor:address,Importance:number,HeuristicName:symbol)
 
@@ -904,20 +903,6 @@ unresolved_block without causing cyclic negation.
 
 block_points(Block,Type,Size,Predecessor,Importance,HeuristicName):-
     negative_block_points(Block,Type,Size,Predecessor,Importance,HeuristicName).
-
-.decl transitive_points(HeuristicName:symbol)
-
-transitive_points("code section start").
-transitive_points("function symbol").
-transitive_points("direct jump").
-transitive_points("direct call").
-transitive_points("must-fallthrough").
-transitive_points("may-fallthrough").
-transitive_points("fde-entry").
-transitive_points("landing-pad").
-transitive_points("exc-region").
-transitive_points("relative jump table target").
-transitive_points("seh handler").
 
 //////////////////////////////////////////////////////////////////////
 // data block candidate points
@@ -1088,69 +1073,6 @@ block_points(Block,"code",Size,Block_succ,1,"fallthrough_to"):-
     !unresolved_block(Block_succ,"code",_),
     !impossible_block(Block_succ,"code",_,_),
     !is_padding(Block_succ).
-
-// transitivity for fallthrough and direct jumps and calls
-/*
-block_points(Block,"code",Size,BlockPred,Points,Why):-
-    unresolved_block(Block,"code",Size),
-    may_fallthrough(EA,Block),
-    code_in_block_candidate_refined(EA,BlockPred),
-    unresolved_block(BlockPred,"code",_),
-    (
-        Why = "may-fallthrough"
-        ;
-        !unresolved_block_overlap(BlockPred,"code",_,_,"data",_)
-    ),
-    block_points(BlockPred,"code",_,_,Points,Why),
-    transitive_points(Why),
-    Points != 0.
-*/
-
-block_points(Block,"code",Size,BlockPred,Points2,Why):-
-    // Because for ARM, any bytes that cannot fall through are highly likely
-    // literal pool, we skip this predicate for ARM.
-    !binary_isa("ARM"),
-    unresolved_block(Block,"code",Size),
-    after_end(Block,EA),
-    code_in_block_candidate_refined(EA,BlockPred),
-    unresolved_block(BlockPred,"code",_),
-    !unresolved_block_overlap(BlockPred,"code",_,_,"data",_),
-    !unresolved_block_overlap(Block,"code",_,_,"data",_),
-    block_points(BlockPred,"code",_,_,Points,Why),
-    transitive_points(Why),
-    (
-        Points > 2, Points2 = Points-2
-        ;
-        Points < -2, Points2 = Points+2
-    ).
-
-block_points(Block,"code",Size,BlockPred,Points,Why):-
-    // In case of ARM32, ARM and Thumb blocks often overlap.
-    // We skip this predicate for ARM32.
-    !binary_isa("ARM"),
-    unresolved_block(Block,"code",Size),
-    direct_jump(EA,Block),
-    // do not count instructions that fallthrough and jump to the same place twice
-    !may_fallthrough(EA,Block),
-    code_in_block_candidate_refined(EA,BlockPred),
-    unresolved_block(BlockPred,"code",_),
-    !unresolved_block_overlap(BlockPred,"code",_,_,"data",_),
-    block_points(BlockPred,"code",_,_,Points,Why),
-    transitive_points(Why),
-    Points != 0.
-
-block_points(Block,"code",Size,BlockPred,Points,Why):-
-    // In case of ARM32, ARM and Thumb blocks often overlap.
-    // We skip this predicate for ARM32.
-    !binary_isa("ARM"),
-    unresolved_block(Block,"code",Size),
-    direct_call(EA,Block),
-    code_in_block_candidate_refined(EA,BlockPred),
-    unresolved_block(BlockPred,"code",_),
-    !unresolved_block_overlap(BlockPred,"code",_,_,"data",_),
-    block_points(BlockPred,"code",_,_,Points,Why),
-    transitive_points(Why),
-    Points != 0.
 
 block_points(Block,"code",Size,0,1,"has well-defined jump"):-
     unresolved_block(Block,"code",Size),
