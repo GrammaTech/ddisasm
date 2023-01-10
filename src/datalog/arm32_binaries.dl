@@ -976,9 +976,15 @@ block_points(LitPoolAddr,"data",0,Points,"arm: litpool: consecutive literal pool
         Points = 1
     ).
 
-block_points(Block,"data",0,10,"arm: $d symbol"),
-data_block_candidate(Block,Size):-
-    defined_symbol(Block,Size,_,_,_,_,_,_,"$d").
+block_points(Block,"data",0,10,"arm: $d symbol"):-
+    defined_symbol(Block,0,_,_,_,_,_,_,"$d"),
+    data_block_candidate(Block,_).
+
+impossible_block(Block,"code","Overlaps $d symbol"):-
+    defined_symbol(EA,0,_,_,_,_,_,_,"$d"),
+    block_candidate_boundaries(Block,"code",Start,End),
+    Start <= EA,
+    EA < End.
 
 /**
 If litpool overlaps with a function symbol or $t or $a, give penalty.
