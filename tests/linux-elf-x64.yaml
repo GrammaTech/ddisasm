@@ -374,6 +374,12 @@ tests:
       <<: *default-test
       check_cfg: false
 
+  - name: ex_overlapping_nops
+    <<: *assembly
+    test:
+      <<: *default-test
+      check_cfg: false
+
   - name: ex_noreturn_use_def
     <<: *assembly
     test:
