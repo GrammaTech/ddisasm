@@ -1540,11 +1540,12 @@ bool performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
                   << std::endl;
         for(auto &output : *blockOverlap)
         {
-            uint64_t Block1, Block2;
+            uint64_t Block1, Block2, Size1, Size2;
             std::string BlockKind1, BlockKind2;
-            output >> Block1 >> BlockKind1 >> Block2 >> BlockKind2;
-            std::cerr << std::hex << Block1 << " (" << BlockKind1 << ") - " << Block2 << " ("
-                      << BlockKind2 << ")" << std::dec << std::endl;
+            output >> Block1 >> BlockKind1 >> Size1 >> Block2 >> BlockKind2 >> Size2;
+            std::cerr << std::hex << Block1 << " (" << BlockKind1 << ", " << Size1 << " bytes) - "
+                      << Block2 << " (" << BlockKind2 << ", " << Size2 << " bytes)" << std::dec
+                      << std::endl;
         }
     }
     if(selfDiagnose && !error)
