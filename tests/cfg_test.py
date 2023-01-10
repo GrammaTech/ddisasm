@@ -383,6 +383,80 @@ class CfgTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
+    def test_arm_tbb_zero_entry_cfg(self):
+        """
+        Test ARM32 CFG for TBB with a zero first entry
+        """
+        binary = "ex"
+
+        with cd(ex_arm_asm_dir / "ex_tbb_zero"):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "-O0",
+                    [],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    format="--ir",
+                    strip_exe="arm-linux-gnueabihf-strip",
+                    strip=True,
+                    extra_strip_flags=["--keep-symbol=table"],
+                )[0]
+            )
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            # Locate the tbb instruction
+            jumping_block = None
+            jump_instruction_bytes = b"\xdf\xe8\x00\xf0"
+            for block in m.code_blocks:
+                if (
+                    block.contents[-len(jump_instruction_bytes) :]
+                    == jump_instruction_bytes
+                ):
+                    jumping_block = block
+                    break
+            else:
+                self.fail("Could not find tbb/tbh instruction")
+
+            # check that the tbb block has edges to all the jump table
+            # entries
+            self.assertEqual(len(list(jumping_block.outgoing_edges)), 3)
+            # check that there are symbolic expressions for jump table entries
+            # but not the first one.
+            table_address = jumping_block.address + len(jump_instruction_bytes)
+            tbl_entry_size = 1
+            self.assertEqual(
+                len(list(m.symbolic_expressions_at(table_address))), 0
+            )
+            for i in range(1, 4):
+                symexprs = list(
+                    m.symbolic_expressions_at(
+                        table_address + i * tbl_entry_size
+                    )
+                )
+                self.assertEqual(len(symexprs), 1)
+
+            # check functionBlocks
+            function_blocks = m.aux_data["functionBlocks"].data
+            for _, blocks in function_blocks.items():
+                if jumping_block in blocks:
+                    for edge in jumping_block.outgoing_edges:
+                        self.assertIn(edge.target, blocks)
+                    break
+            else:
+                self.fail("Jumping block not found in functionBlocks")
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_x86_64_object_cfg(self):
         """
         Test X86_64 object file relocation edges.
