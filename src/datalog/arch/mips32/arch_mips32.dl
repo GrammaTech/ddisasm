@@ -29,6 +29,8 @@
 #include "registers.dl"
 #include "memory_access.dl"
 
+arch("MIPS").
+
 move_operation("MOV").
 move_operation("MOVE").
 move_operation("MOVEP").

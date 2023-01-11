@@ -34,6 +34,8 @@ and characteristics
 #include "registers.dl"
 #include "memory_access.dl"
 
+arch("ARM").
+
 move_operation(Operation) :-
     instruction_get_operation(_, Operation),
     contains("MOV", Operation).

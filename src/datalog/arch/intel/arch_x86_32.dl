@@ -26,6 +26,7 @@
 
 #include "registers_x86_32.dl"
 
+arch("X86").
 pointer_size(4).
 
 inferred_main_in_reg(Push,Reg):-

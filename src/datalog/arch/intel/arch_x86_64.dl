@@ -26,6 +26,7 @@
 
 #include "registers_x86_64.dl"
 
+arch("X64").
 pointer_size(8).
 
 inferred_main_in_reg(EA,"RDI"):-

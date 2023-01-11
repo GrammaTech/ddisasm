@@ -26,9 +26,6 @@
 
 void ModuleLoader(const gtirb::Module& Module, DatalogProgram& Program)
 {
-    // Binary architecture.
-    std::string BinaryIsa = binaryISA(Module.getISA());
-
     // Binary file format.
     std::string BinaryFormat = binaryFormat(Module.getFileFormat());
 
@@ -64,7 +61,6 @@ void ModuleLoader(const gtirb::Module& Module, DatalogProgram& Program)
         BinaryType = "EXEC";
     }
 
-    Program.insert<std::vector<std::string>>("binary_isa", {BinaryIsa});
     Program.insert<std::vector<std::string>>("binary_type", {BinaryType});
     Program.insert<std::vector<std::string>>("binary_format", {BinaryFormat});
     Program.insert<std::vector<gtirb::Addr>>("base_address", {BaseAddress});
