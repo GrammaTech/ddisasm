@@ -608,8 +608,8 @@ Give penalty on the later nop block when two nop blocks are overlapping.
 */
 block_points(Block,"code",0,-3,"overlapped paddings"):-
     block_overlap(Block0,"code",Block,"code"),
-    is_padding(Block0),
-    is_padding(Block).
+    candidate_block_is_padding(Block0),
+    candidate_block_is_padding(Block).
 
 block_points(Block,"code",0,0,"basic point"):-
     block_is_overlapping(Block,"code"),
@@ -842,15 +842,6 @@ block_points(Block,"code",0,2,"padding nop block"):-
     block_is_overlapping(Block,"code"),
     fde_addresses(_,Block),
     arch.is_nop(Block).
-
-block_points(Block,"code",0,-1,"overlap long nop"):-
-    block_is_overlapping(Block,"code"),
-    (
-        block_overlap(Block,"code",Block2,"code");
-        block_overlap(Block2,"code",Block,"code")
-    ),
-    code_in_block_candidate_refined(EA_nop,Block2),
-    arch.is_nop(EA_nop).
 
 block_points(Block,"code",0,3,"exc-region"):-
     block_is_overlapping(Block,"code"),
