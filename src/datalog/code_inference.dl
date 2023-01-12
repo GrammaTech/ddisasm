@@ -887,20 +887,35 @@ block_points(Block,"code",0,5,"seh handler"):-
     block_is_overlapping(Block,"code"),
     seh_handler_entry(_,Block).
 
-must_access_data(EA,Block),
-data_block_candidate(Block,Size),
-block_points(Block,"data",0,4,"data access"):-
+block_points(Block,"data",0,Points,"data access"):-
+    // Limit this to Intel for now since this can duplicate ARM's
+    // literal-pool handling.
+    // Eventually, we may want to make data-access handling ISA-generic.
     (
         binary_isa("X86");
         binary_isa("X64")
     ),
-    instruction_get_operation(EA,Operation),
+    pc_relative_operand(EA,MemIndex,Block),
+    instruction_memory_access_size(EA,MemIndex,AccessSize),
+    AccessSize != 0,
+    code_in_block_candidate(EA,Block0),
     (
-        Operation = "MOV";
-        arch.arithmetic_operation(Operation)
+        !block_is_overlapping(Block0,_), Points = 4;
+        block_is_overlapping(Block0,_), Points = 2
+    ).
+
+must_access_data(EA,Block),
+data_block_candidate(Block,Size):-
+    // Limit this to Intel for now since this can duplicate ARM's
+    // literal-pool handling.
+    // Eventually, we may want to make data-access handling ISA-generic.
+    (
+        binary_isa("X86");
+        binary_isa("X64")
     ),
     pc_relative_operand(EA,MemIndex,Block),
-    instruction_memory_access_size(EA,MemIndex,Size).
+    instruction_memory_access_size(EA,MemIndex,Size),
+    Size != 0.
 
 
 ////////////////////////////////////////////////////////////////////////////
