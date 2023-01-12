@@ -326,12 +326,12 @@ basic_target(Val):-
     !data_sym(Name).
 
 // Mapping symbols yield known blocks.
-known_block(Block,"code",1,"$a"):-
+known_block(Block,"code","$a"):-
     arm_sym(Name),
     defined_symbol(Block,_,_,_,_,_,_,_,Name),
     block_candidate_boundaries(Block,"code",_,_).
 
-known_block(Block bor 1,"code",1,"$t"):-
+known_block(Block bor 1,"code","$t"):-
     thumb_sym(Name),
     defined_symbol(Block,_,_,_,_,_,_,_,Name),
     block_candidate_boundaries(Block,"code",_,_).
@@ -507,7 +507,7 @@ plt_entry_arm_candidate(EA,EA_jump,Function,as(Dest,address)):-
     relocation(as(Dest,address),_,Function,_,_,_,_).
 
 // TODO: are there more relocation types that we can use as known blocks?
-known_block(Block,"code",1,"arm: THM_CALL relocation"):-
+known_block(Block,"code","arm: THM_CALL relocation"):-
     binary_type("REL"),
     code_in_block_candidate_refined(EA,Block),
     arch.call(EA,_),
@@ -798,8 +798,12 @@ litpool_confidence(EA,LitPoolAddr,Confidence,"adr/ldm"):-
     contains("LDM",Operation),
     code_in_block_candidate(EA,Block),
     (
-        unresolved_block(Block,"code"), Confidence = 3;
-        known_block(Block,"code",_,_), Confidence = 5
+        unresolved_block(Block,"code"),
+        Confidence = 3
+        ;
+        !unresolved_block(Block,"code"),
+        !impossible_block(Block,"code",_),
+        Confidence = 5
     ).
 
 /**
@@ -815,8 +819,12 @@ litpool_confidence(EA,LitPoolAddr,Confidence,"ldr/ldrd"):-
     !arch.dangling_thumb_instr(EA),
     code_in_block_candidate(EA,Block),
     (
-        unresolved_block(Block,"code"), Confidence = 3;
-        known_block(Block,"code",_,_), Confidence = 5
+        unresolved_block(Block,"code"),
+        Confidence = 3
+        ;
+        !unresolved_block(Block,"code"),
+        !impossible_block(Block,"code",_),
+        Confidence = 5
     ).
 
 data_block_candidate(LitPoolAddr,Pt_size*2):-
@@ -834,7 +842,8 @@ litpool_confidence(EA,LitPoolAddr,Confidence,"ref by non-overlapping block"):-
     litpool_ref(EA,_,RefAddr,LitPoolOffset,_,_),
     LitPoolAddr = RefAddr + LitPoolOffset,
     code_in_block_candidate_refined(EA,Block),
-    known_block(Block,"code",_,_),
+    !unresolved_block(Block,"code"),
+    !impossible_block(Block,"code",_),
     Confidence = 12.
 
 /**
@@ -849,7 +858,8 @@ block_points(Block,"code",0,Confidence,"litpool ref block: not overlapping"):-
     unresolved_block(Block,"code"),
     !overlap_with_litpool(Block),
     !code_in_block_candidate(LitPoolAddr+(EA band 1),_),
-    known_block(LitPoolAddr,"data",_,_),
+    !unresolved_block(LitPoolAddr,"data"),
+    !impossible_block(LitPoolAddr,"data",_),
     Confidence = 1.
 
 /**

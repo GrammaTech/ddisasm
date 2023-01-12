@@ -487,96 +487,20 @@ block_candidate_dependency_edge(BlockA,"code",BlockB,"code"):-
     block_candidate_boundaries(BlockB,"code",_,_),
     BlockA != BlockB.
 
-
-/**
-Assign ordering to overlapping blocks to enable tracking if all overlapping
-blocks are discarded.
-*/
-.decl block_overlap_id(BlockA:address,TypeA:block_type,BlockB:address,TypeB:block_type,Index:unsigned)
-
-block_overlap_id(BlockA,TypeA,BlockB,TypeB,autoinc()):-
-    block_overlap(BlockA,TypeA,BlockB,TypeB).
-
-/**
-The first block_overlap for each block according to block_overlap_id's ordering
-*/
-.decl first_block_overlap(BlockA:address,TypeA:block_type,BlockB:address,TypeB:block_type)
-
-first_block_overlap(BlockA,TypeA,BlockB,TypeB):-
-    block_candidate_boundaries(BlockA,TypeA,_,_),
-    NextID = min ID : {
-        block_overlap_id(BlockA,TypeA,_,_,ID)
-    },
-    block_overlap_id(BlockA,TypeA,BlockB,TypeB,NextID).
-
-/**
-Subsequent block_overlap for each block according to block_overlap_id's ordering
-*/
-.decl next_block_overlap(BlockA:address,TypeA:block_type,BlockB:address,TypeB:block_type,BlockC:address,TypeC:block_type)
-
-next_block_overlap(BlockA,TypeA,BlockB,TypeB,BlockC,TypeC):-
-    (
-        first_block_overlap(BlockA,TypeA,BlockB,TypeB);
-        next_block_overlap(BlockA,TypeA,_,_,BlockB,TypeB)
-    ),
-    block_overlap_id(BlockA,TypeA,BlockB,TypeB,LastID),
-    NextID = min ID : {
-        block_overlap_id(BlockA,TypeA,_,_,ID),
-        ID > LastID
-    },
-    block_overlap_id(BlockA,TypeA,BlockC,TypeC,NextID).
-
-/**
-All blocks that overlap with A and sorted prior to B in block_order impossible.
-
-If...
-
-    prior_overlaps_discarded(BlockA,TypeA,BlockB,TypeB),
-    !next_block_overlap(BlockA,TypeA,BlockB,TypeB,_,_),
-
-...then all blocks that overlap A are impossible.
-*/
-.decl prior_overlaps_discarded(BlockA:address,TypeA:block_type,BlockB:address,TypeB:block_type)
-
-prior_overlaps_discarded(BlockA,TypeA,BlockB,TypeB):-
-    first_block_overlap(BlockA,TypeA,BlockB,TypeB),
-    impossible_block(BlockB,TypeB,_).
-
-prior_overlaps_discarded(BlockA,TypeA,BlockC,TypeC):-
-    prior_overlaps_discarded(BlockA,TypeA,BlockB,TypeB),
-    next_block_overlap(BlockA,TypeA,BlockB,TypeB,BlockC,TypeC),
-    impossible_block(BlockC,TypeC,_).
-
-
 /**
 Known blocks are blocks that must exist due to metadata.
-
-The Propagate field is a bool to indicate whether it is safe to forward-
-propagate the known_block. Known blocks that are a result of function symbols,
-for example, are safe to propagate forward, whereas non-overlapping blocks are
-not.
 */
-.decl known_block(Block:address,Type:block_type,Propagate:unsigned,Reason:symbol)
+.decl known_block(Block:address,Type:block_type,Reason:symbol)
 .output known_block
-
-known_block(Block,Type,0,"Non-overlapping"):-
-    block_candidate_boundaries(Block,Type,_,_),
-    !block_overlap(Block,Type,_,_).
-
-// If all overlapping blocks are discarded, this block becomes known.
-known_block(BlockA,TypeA,0,"overlaps discarded"):-
-    block_overlap(BlockA,TypeA,BlockB,TypeB),
-    !next_block_overlap(BlockA,TypeA,BlockB,TypeB,_,_),
-    prior_overlaps_discarded(BlockA,TypeA,BlockB,TypeB).
 
 // On ARM, both entry point and function symbols do use the low bit to indicate
 // ARM/Thumb, so these rules are valid there as well.
-known_block(Block,"code",1,"entry point"):-
+known_block(Block,"code","entry point"):-
     !binary_type("REL"),
     entry_point(Block),
     block_candidate_boundaries(Block,"code",_,_).
 
-known_block(Block,"code",1,"function symbol"):-
+known_block(Block,"code","function symbol"):-
     function_symbol(Block,_),
     block_candidate_boundaries(Block,"code",_,_).
 
@@ -589,7 +513,7 @@ elf_pointer_array_section_type("INIT_ARRAY").
 elf_pointer_array_section_type("PREINIT_ARRAY").
 elf_pointer_array_section_type("FINI_ARRAY").
 
-known_block(Block,"code",1,"pointer array section"):-
+known_block(Block,"code","pointer array section"):-
     binary_format("ELF"),
     elf_pointer_array_section_type(SectionTypeName),
     elf_section_type(SectionTypeName,SectionType),
@@ -602,19 +526,9 @@ known_block(Block,"code",1,"pointer array section"):-
     block_candidate_boundaries(Block,"code",_,_).
 
 // Propagate forward from known blocks.
-// We can only propagate blocks derived from real metadata. Propagating from
-// non-overlapping blocks is a bit too aggressive - a missed data block can
-// result in a non-overlapping false code block, and propagating that can have
-// disastrous results.
-// We could only do that if we can guarantee that data_block_candidate is a
-// strict superset of true data blocks.
-known_block(BlockB,TypeB,1,"propagated"):-
-    known_block(BlockA,TypeA,1,_),
+known_block(BlockB,TypeB,"propagated"):-
+    known_block(BlockA,TypeA,_),
     block_candidate_dependency_edge(BlockA,TypeA,BlockB,TypeB).
-
-// subsumption: known_block that can propagate are stronger than others.
-known_block(Block,Type,0,_) <= known_block(Block,Type,1,_):-
-    true.
 
 /**
 Logically impossible blocks.
@@ -624,7 +538,7 @@ Logically impossible blocks.
 
 // A known block discovered by propagation must discard overlapping blocks
 impossible_block(BlockB,TypeB,"overlaps known"):-
-    known_block(BlockA,TypeA,_,_),
+    known_block(BlockA,TypeA,_),
     block_overlap(BlockA,TypeA,BlockB,TypeB).
 
 // Propagate impossible blocks backward
@@ -639,8 +553,11 @@ Blocks that are still overlapping after known_block and impossible_block are det
 
 unresolved_block(Block,Type):-
     block_candidate_boundaries(Block,Type,_,_),
-    !known_block(Block,Type,_,_),
-    !impossible_block(Block,Type,_).
+    !known_block(Block,Type,_),
+    !impossible_block(Block,Type,_),
+    // Has a possible overlap
+    block_overlap(Block,Type,Other,OtherType),
+    !impossible_block(Other,OtherType,_).
 
 // If some rule assigns negative points, make sure positive point rules are considered.
 unresolved_block(Block,Type):-
@@ -704,9 +621,8 @@ discarded_block(Block1,Type1,"propagated",Block2):-
     (
         unresolved_block(Block1,Type1)
         ;
-        // A known block that can't be propagated is only non-overlapping,
-        // so we discard if other results render it nonsense.
-        known_block(Block1,Type1,0,_)
+        // it's non-overlapping, but depends on a discarded block.
+        !unresolved_block_overlap(Block1,Type1,_,_)
     ).
 
 //////////////////////////////////////////////////////////////////////
@@ -860,35 +776,40 @@ block_points(Block,"code",BlockPred,6,"direct jump"):-
     direct_jump(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     BlockPred != Block,
-    known_block(BlockPred,"code",_,_).
+    !unresolved_block(BlockPred,"code"),
+    !impossible_block(BlockPred,"code",_).
 
 block_points(Block,"code",BlockPred,6,"direct call"):-
     unresolved_block(Block,"code"),
     direct_call(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     BlockPred != Block,
-    known_block(BlockPred,"code",_,_).
+    !unresolved_block(BlockPred,"code"),
+    !impossible_block(BlockPred,"code",_).
 
 block_points(Block,"code",BlockPred,2,"must-fallthrough"):-
     unresolved_block(Block,"code"),
     must_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     !candidate_block_is_padding(BlockPred),
-    known_block(BlockPred,"code",_,_).
+    !unresolved_block(BlockPred,"code"),
+    !impossible_block(BlockPred,"code",_).
 
 block_points(Block,"code",BlockPred,7,"may-fallthrough"):-
     unresolved_block(Block,"code"),
     may_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     !candidate_block_is_padding(BlockPred),
-    known_block(BlockPred,"code",_,_).
+    !unresolved_block(BlockPred,"code"),
+    !impossible_block(BlockPred,"code",_).
 
 // it fits but the previous block does not fallthrough
 block_points(Block,Type,BlockPred,3,"fits"):-
     unresolved_block(Block,Type),
     after_end(Block,EA),
     code_in_block_candidate_refined(EA,BlockPred),
-    known_block(BlockPred,"code",_,_).
+    !unresolved_block(BlockPred,"code"),
+    !impossible_block(BlockPred,"code",_).
 
 // fits after nops block
 block_points(Block,Type,BlockPred,1,"fits"):-
@@ -896,7 +817,8 @@ block_points(Block,Type,BlockPred,1,"fits"):-
     next(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     candidate_block_is_padding(BlockPred),
-    known_block(BlockPred,"code",_,_).
+    !unresolved_block(BlockPred,"code"),
+    !impossible_block(BlockPred,"code",_).
 
 // Prefer blocks that have a well-defined boundary with a prior block.
 block_points(Block,Type,0,1,"better fit"):-
@@ -914,7 +836,8 @@ block_points(Block,"code",0,3,"appears"):-
     !direct_call(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     BlockPred != Block,
-    known_block(BlockPred,"code",_,_).
+    !unresolved_block(BlockPred,"code"),
+    !impossible_block(BlockPred,"code",_).
 
 block_points(Block,"code",0,3,"relative jump table target"):-
     unresolved_block(Block,"code"),
@@ -928,7 +851,8 @@ block_points(Block,"code",Block_succ,1,"fallthrough_to"):-
     code_in_block_candidate_refined(EA,Block),
     may_fallthrough(EA,Block_succ),
     code_in_block_candidate_refined(_,Block_succ),
-    known_block(Block_succ,"code",_,_),
+    !unresolved_block(Block_succ,"code"),
+    !impossible_block(Block_succ,"code",_),
     !is_padding(Block_succ).
 
 // transitivity for fallthrough and direct jumps and calls
@@ -996,13 +920,13 @@ block_points(Block,"code",0,1,"has well-defined jump"):-
     unresolved_block(Block,"code"),
     code_in_block_candidate_refined(EA,Block),
     direct_jump(EA,BlockDest),
-    known_block(BlockDest,"code",_,_).
+    !unresolved_block(BlockDest,"code").
 
 block_points(Block,"code",0,1,"has well-defined call"):-
     unresolved_block(Block,"code"),
     code_in_block_candidate_refined(EA,Block),
     direct_call(EA,BlockDest),
-    known_block(BlockDest,"code",_,_).
+    !unresolved_block(BlockDest,"code").
 
 block_points(Block,"code",0,3,"has well-defined call to a function symbol"):-
     unresolved_block(Block,"code"),
@@ -1050,7 +974,7 @@ negative_block_points(Block,"code",0,-2,"conditional jump/return: fallthrough to
     invalid(Invalid,_).
 
 data_block_candidate(Block,Size),
-known_block(Block,"data",1,"object symbol"):-
+known_block(Block,"data","object symbol"):-
     defined_symbol(Block,Size,"OBJECT",_,_,_,_,_,_).
 
 negative_block_points(Block,"code",0,-1,"jump to string"):-
