@@ -225,7 +225,7 @@ and the linker will add a small thunk that references the IAT table.
             .quad Foo
 ```
 The original code calls to the thunk, which then jumps to the target function using the IAT.
-Ddisasm adds an entry to the  symbol forwarding table of the form `.L_200000` -> `Foo`.
+Ddisasm adds an entry to the symbol forwarding table of the form `.L_200000` -> `Foo`.
 
 
 ## symbolicExpressionSizes
