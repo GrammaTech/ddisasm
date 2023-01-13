@@ -132,11 +132,11 @@ cmp_zero_operation("JECXZ").
 cmp_zero_operation("JRCXZ").
 
 // FIXME: review this list when Capstone is updated.
-data_access_size("MOVSD",DestReg,8):-
-    op_regdirect_contains_reg(_,DestReg).
+data_access_size("MOVSD",as(DestReg,register),8):-
+    op_regdirect(_,DestReg).
 
-data_access_size("LEA",DestReg,0):-
-    op_regdirect_contains_reg(_,DestReg).
+data_access_size("LEA",as(DestReg,register),0):-
+    op_regdirect(_,DestReg).
 
 // ADD reg, imm
 reg_arithmetic_operation(EA,Reg,Reg,1,Immediate):-
