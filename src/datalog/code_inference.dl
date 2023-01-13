@@ -561,7 +561,9 @@ unresolved_block(Block,Type):-
 
 // If some rule assigns negative points, make sure positive point rules are considered.
 unresolved_block(Block,Type):-
-    negative_block_points(Block,Type,_,_,_).
+    negative_block_points(Block,Type,_,_,_),
+    !known_block(Block,Type,_),
+    !impossible_block(Block,Type,_).
 
 /**
 Blocks that still overlap after known_block and impossible_block are determined.
