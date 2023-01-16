@@ -30,17 +30,8 @@
 #include "../core/SectionLoader.h"
 #include "../format/ElfLoader.h"
 
-CompositeLoader ElfArm32Loader()
-{
-    CompositeLoader Loader("souffle_disasm_arm32");
-    Loader.add(ModuleLoader);
-    Loader.add(SectionLoader);
-    Loader.add<Arm32Loader>();
-    Loader.add<DataLoader>(DataLoader::Pointer::DWORD);
-    Loader.add(ElfDynamicEntryLoader);
-    Loader.add(ElfSymbolLoader);
-    Loader.add(ElfExceptionLoader);
-    return Loader;
-}
+void ArmUnwindLoader(const gtirb::Module &Module, DatalogProgram &Program);
+
+CompositeLoader ElfArm32Loader();
 
 #endif // SRC_GTIRB_DECODER_TARGET_ELFARM32LOADER_H_

@@ -1314,3 +1314,33 @@ arm_microcontroller(Block):-
         substr(Operation,0,3) = "MRS";
         substr(Operation,0,3) = "MSR"
     ).
+
+// Create a target only if there's only one possible instruction mode at the
+// address. Creating both as potential targets creates too many false
+// positives.
+basic_target(Inst):-
+    arm_exidx_entry(Start),
+    arch.instruction_at(Start,Inst),
+    !arch.instruction_at(Start,Inst bxor 1).
+
+// exidx metadata doesn't set the low bit to indicate Thumb, so we can only use
+// it as a source of known block if the address isn't both an ARM and Thumb
+// block.
+known_block(Block,"code",".ARM.exidx"):-
+    arm_exidx_entry(Start),
+    arch.instruction_at(Start,Block),
+    block_candidate_boundaries(Block,"code",_,_),
+    !code_in_block_candidate_refined(Block bxor 1,_).
+
+// a block that overlaps both potential .ARM.exidx functions must not exist.
+impossible_block(Other,"data","overlaps .ARM.exidx"):-
+    arm_exidx_entry(Start),
+    // Since we do not populate basic_target from arm_exidx_entry, the blocks
+    // may not begin at Start.
+    code_in_block_candidate_refined(Start,BlockArm),
+    code_in_block_candidate_refined(Start bor 1,BlockThumb),
+    block_candidate_boundaries(BlockArm,"code",_,EndArm),
+    block_candidate_boundaries(BlockThumb,"code",_,EndThumb),
+    block_candidate_boundaries(Other,"data",DataStart,DataEnd),
+    DataStart < min(EndArm, EndThumb),
+    Start < DataEnd.
