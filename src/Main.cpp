@@ -329,7 +329,7 @@ int main(int argc, char **argv)
             souffle::ProfileEventSingleton::instance().setOutputFile(ProfilePath);
 #endif
             Souffle->threads(Threads);
-            Souffle->pruneImdtRels = !vm.count("with-souffle-relations");
+            Souffle->pruneImdtRels = !(vm.count("with-souffle-relations") || vm.count("debug-dir"));
             try
             {
                 Souffle->run();
