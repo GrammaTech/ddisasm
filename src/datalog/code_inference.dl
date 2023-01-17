@@ -504,6 +504,9 @@ known_block(Block,"code","function symbol"):-
     function_symbol(Block,_),
     block_candidate_boundaries(Block,"code",_,_).
 
+known_block(Block,"code","fde-entry"):-
+    fde_addresses(Block,_),
+    block_candidate_boundaries(Block,"code",_,_).
 
 known_block(Block,"code","pointer array section"):-
     binary_format("ELF"),
@@ -667,7 +670,6 @@ block_points(Block,Type,Predecessor,Importance,HeuristicName):-
 
 .decl transitive_points(HeuristicName:symbol)
 
-transitive_points("start point").
 transitive_points("code section start").
 transitive_points("function symbol").
 transitive_points("direct jump").
@@ -719,10 +721,6 @@ block_points(Block,"code",0,-3,"overlaps with relocation"):-
 block_points(Block,"code",0,0,"basic point"):-
     unresolved_block(Block,"code"),
     code_in_block_candidate_refined(_,Block).
-
-block_points(Block,"code",0,20,"start point"):-
-    unresolved_block(Block,"code"),
-    entry_point(Block).
 
 block_points(Block,"code",0,1,"code section start"):-
     unresolved_block(Block,"code"),
@@ -930,10 +928,6 @@ block_points(Block,"code",0,1,"plt call"):-
     code_in_block_candidate_refined(EA,Block),
     direct_call(EA,BlockDest),
     plt_entry(BlockDest,_).
-
-block_points(Block,"code",0,20,"fde-entry"):-
-    unresolved_block(Block,"code"),
-    fde_addresses(Block,_).
 
 block_points(Block,"code",0,2,"padding nop block"):-
     unresolved_block(Block,"code"),
