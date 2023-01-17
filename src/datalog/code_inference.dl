@@ -196,17 +196,24 @@ invalid(EA,Type):-
     !instruction(Dest,_,_,_,_,_,_,_,_,_),
     Dest != 0.
 
-invalid(Inst,"overlaps object"):-
-    defined_symbol(Start,ObjSize,"OBJECT",_,_,_,_,_,_),
-    End = Start + ObjSize,
-    arch.instruction_at(EA,Inst),
-    Start <= EA, EA < End.
+/**
+Largest instruction in the binary
+*/
+.decl max_instruction_size(Size:unsigned)
+
+max_instruction_size(MaxSize):-
+    MaxSize = max Size : {
+        instruction(_,Size,_,_,_,_,_,_,_,_)
+    }.
 
 invalid(Inst,"overlaps object"):-
-    instruction(Inst,InstSize,_,_,_,_,_,_,_,_),
+    defined_symbol(Start,ObjSize,"OBJECT",_,_,_,_,_,_),
+    max_instruction_size(MaxInstSize),
     arch.instruction_at(EA,Inst),
-    defined_symbol(Start,_,"OBJECT",_,_,_,_,_,_),
-    EA < Start, Start < EA + InstSize.
+    Start-MaxInstSize < EA,
+    EA < Start+ObjSize,
+    instruction(Inst,InstSize,_,_,_,_,_,_,_,_),
+    Start < EA+InstSize.
 
 // propagate the invalid instructions backwards until ret or jmp (encoded in must_fallthrough)
 // propagate through direct jumps and calls
