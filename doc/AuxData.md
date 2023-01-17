@@ -184,7 +184,7 @@ stdout_copy:
  ```
 
 ### ABI intrinsic
-This is used for symbols that get redefined by the linking process, we want the references to point to the new versions of the symbols defined by the linker, not to where those symbols where in the original binary.
+This is used for symbols that get redefined by the linking process, we want the references to point to the new versions of the symbols defined by the linker, not to where those symbols were in the original binary.
 
  The mechanism is the same as with COPY relocation:
   - Ddisasm renames the defined symbol to `<Name>_copy`.
