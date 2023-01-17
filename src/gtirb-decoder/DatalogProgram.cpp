@@ -381,6 +381,15 @@ void DatalogProgram::writeRelations(const std::string &Directory)
         writeRelation(File, Relation);
         File.close();
     }
+    if(!pruneImdtRels)
+    {
+        for(souffle::Relation *Relation : Program->getInternalRelations())
+        {
+            std::ofstream File(Directory + Relation->getName() + ".csv", FileMask);
+            writeRelation(File, Relation);
+            File.close();
+        }
+    }
 }
 
 void addRelationToRelationsMap(
