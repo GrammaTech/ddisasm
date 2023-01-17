@@ -14,7 +14,7 @@ default: &default
 
   # Disassembly configuration.
   disassemble:
-    flags: ["-F", "--generate-import-libs"]
+    flags: ["-F", "--generate-import-libs", "--with-souffle-relations"]
 
   # Reassembly configuration.
   reassemble:

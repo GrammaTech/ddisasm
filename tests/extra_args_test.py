@@ -34,6 +34,7 @@ class ExtraArgsTest(unittest.TestCase):
                 disassemble(
                     "ex",
                     format="--ir",
+                    extra_args=["--with-souffle-relations"],
                 )[0]
             )
 
@@ -74,6 +75,7 @@ class ExtraArgsTest(unittest.TestCase):
                                 debug_dir,
                                 "--hints",
                                 hints_file.name,
+                                "--with-souffle-relations",
                             ],
                         )[0]
                     )
