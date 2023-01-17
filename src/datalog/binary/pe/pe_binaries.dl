@@ -133,7 +133,6 @@ symbol(EA,0,"NOTYPE","GLOBAL","DEFAULT",0,"export",as(Ordinal,unsigned),Function
     pe_export_entry(EA,Ordinal,Function).
 
 .decl reg_has_base_image(EA:address,Reg:register)
-.output reg_has_base_image
 
 reg_has_base_image(EA,Reg):-
     base_address(ImageBase),

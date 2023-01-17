@@ -557,7 +557,6 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     A stack is defined in 'EA_def' and used in 'EA_used' in the operand with index 'Index_used'
     */
     .decl def_used(EA_def:address,VarDef:stack_var,EA_used:address,VarUsed:stack_var,Index_used:operand_index)
-    .output def_used
 
     // Intra-block def-use
     def_used(EA_def,Var,EA_used,Var,Index):-

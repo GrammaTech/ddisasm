@@ -161,7 +161,6 @@ The address 'Address' is accessed from an instruction at address 'FromWhere'.
 The access has size 'Size' and uses a multiplier 'Multiplier'.
 */
 .decl data_access_pattern(Address:address,Size:unsigned,Multiplier:number,FromWhere:address)
-.output data_access_pattern
 
 /**
 Auxiliary predicate that computes initial approximation of `data_access_pattern`
@@ -174,7 +173,6 @@ pattern as the data access in 'AccessEA'. Preferred data accesses are computed
 by propagating data accesses based on their multiplier.
 */
 .decl preferred_data_access(EA:address,Size:unsigned,AccessEA:address)
-.output preferred_data_access
 
 //////////////////////////////////////////////////
 

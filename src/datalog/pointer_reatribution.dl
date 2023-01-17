@@ -74,7 +74,6 @@ point to an 'at-end' symbol.
 
 // this predicate is just for debugging purposes
 .decl moved_label_class(EA:address,Index:operand_index,Reason:symbol)
-.output moved_label_class
 
 ////////////////////////////////////////////////////////////////////////////////////
 

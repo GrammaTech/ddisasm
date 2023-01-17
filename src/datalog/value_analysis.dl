@@ -62,10 +62,8 @@ or loop) and considering the value with most steps.
                 EA_reg1:address,Reg1:register,Multiplier:number,Offset:number)
 .decl value_reg(EA:address,Reg:register,
                 EA_reg1:address,Reg1:reg_nullable,Multiplier:number,Offset:number,Steps:unsigned)
-.output value_reg
 
 .decl best_value_reg(EA:address,Reg:register,EA_from:address,Multiplier:number,Offset:number,type:symbol)
-.output best_value_reg
 
 /**
 For logical right shift in 32-bit ISA, the LHS value's upper 32-bit
