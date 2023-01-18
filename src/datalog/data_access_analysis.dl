@@ -48,18 +48,25 @@ instruction_memory_access_size(EA,Index,SizeAccess):-
     !invalid(EA,_),
     instruction_get_operation(EA,Operation),
     instruction_get_op(EA,Index,Op),
-    op_indirect(Op,_,_,_,_,_,Size),
+    op_indirect(Op,_,_,_,_,_,NBits),
     (
-        // NOTE: This assumes there is only one memory operand in an
-        // instruction.
-        instruction_get_dest_op(EA,_,DestOp),
-        op_regdirect_contains_reg(DestOp,DestReg),
-        arch.data_access_size(Operation,DestReg,SizeAccess),
-        UNUSED(Size)
+        // If the dest op is a register, see if there is a corresponding
+        // data_access_size available.
+        instruction_get_dest_op(EA,_,RegOp),
+        op_regdirect(RegOp,Reg),
+        arch.data_access_size(Operation,as(Reg,register),SizeAccess),
+        UNUSED(NBits)
         ;
-        // If data_access_size is not available, look at the operand directly.
+        // If the dest op is not a register, use the operand size from the
+        // instruction no matter if data_access_size is available or not.
+        instruction_get_dest_op(EA,_,RegOp),
+        !op_regdirect(RegOp,_),
+        SizeAccess = NBits/8
+        ;
+        // If data_access_size is not available for the Operation,
+        // use the operand size from the instruction.
         !arch.data_access_size(Operation,_,_),
-        SizeAccess = Size/8
+        SizeAccess = NBits/8
     ).
 
 //there is a data access at EA in the operand Op_index
@@ -349,6 +356,27 @@ data_access_pattern_non_zero(Address,Size,as(Mult,unsigned),FromWhere):-
 
 
 /**
+Barriers are the candidates for limiting synchronous access pairing.
+*/
+.decl synchronous_access_barrier(EA:address)
+
+synchronous_access_barrier(EA):-
+    symbol(EA,_,_,_,_,_,_,_,_);
+    data_segment(_,EA);
+    data_segment(EA,_).
+
+/**
+The first synchronous_access barrier after the data access to 'EA' is at
+address 'Barrier'.
+*/
+.decl synchronous_access_barrier_after_access(EA:address,Barrier:address)
+
+synchronous_access_barrier_after_access(EA,Barrier):-
+    data_access_pattern(EA,_,_,_),
+    Barrier = min Barrier : {synchronous_access_barrier(Barrier), Barrier > EA}.
+
+
+/**
 Two data accesses are synchronous if:
 1. The second access has multiplier 0 and it originates from the same address
   as the first.
@@ -375,6 +403,8 @@ synchronous_access(EA,EA2):-
     data_access_pattern_non_zero(EA,Size,Mult,From),
     next_data_access(EA,EA2),
     data_access_pattern(EA2,Size2,Mult2_s,From2),
+    synchronous_access_barrier_after_access(EA,Barrier),
+    EA2 < Barrier,
     Mult2 = as(Mult2_s,unsigned),
 
     Rem = (EA2 - EA) % Mult,
@@ -394,6 +424,8 @@ synchronous_access(EA,EA2):-
     data_access_pattern_non_zero(EA,Size,Mult,From),
     next_data_access(EA_inter,EA2),
     data_access_pattern(EA2,Size2,Mult2_s,From2),
+    synchronous_access_barrier_after_access(EA_inter,Barrier),
+    EA2 < Barrier,
     Mult2 = as(Mult2_s,unsigned),
 
     Rem = (EA2 - EA) % Mult,

@@ -36,6 +36,9 @@
 
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
+#if defined(DDISASM_SOUFFLE_PROFILING)
+#include <souffle/profile/ProfileEvent.h>
+#endif
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -147,7 +150,7 @@ int main(int argc, char **argv)
         "library-dir,L", po::value<std::string>(),
         "Directory from which extra libraries are loaded when running the interpreter")(
         "profile", po::value<std::string>(),
-        "Generate Souffle profiling information the specified path (requires --interpreter)");
+        "Generate Souffle profiling information at the specified path");
 
     po::positional_options_description pd;
     pd.add("input-file", -1);
@@ -192,11 +195,13 @@ int main(int argc, char **argv)
         return 1;
     }
 
+#if !defined(DDISASM_SOUFFLE_PROFILING)
     if(vm.count("profile") && !vm.count("interpreter"))
     {
         std::cerr << "Error: missing `--interpreter' argument required by `--profile'\n";
         return 1;
     }
+#endif
 
     // Parse and build a GTIRB module from a supported binary object file.
     std::cerr << "Building the initial gtirb representation " << std::flush;
@@ -303,13 +308,14 @@ int main(int argc, char **argv)
         std::cerr << "Disassembling" << std::flush;
         unsigned int Threads = vm["threads"].as<unsigned int>();
 
+        const std::string &ProfilePath =
+            vm.count("profile") ? vm["profile"].as<std::string>() : std::string();
+
         auto StartDisassembling = std::chrono::high_resolution_clock::now();
         if(vm.count("interpreter"))
         {
             // Disassemble with the interpeter engine.
             std::cerr << " (interpreter)";
-            const std::string &ProfilePath =
-                vm.count("profile") ? vm["profile"].as<std::string>() : std::string();
             const std::string &DatalogFile = vm["interpreter"].as<std::string>();
             const std::string &LibDirectory =
                 vm.count("library-dir") ? vm["library-dir"].as<std::string>() : std::string();
@@ -319,6 +325,9 @@ int main(int argc, char **argv)
         else
         {
             // Disassemble with the compiled, synthesized program.
+#if defined(DDISASM_SOUFFLE_PROFILING)
+            souffle::ProfileEventSingleton::instance().setOutputFile(ProfilePath);
+#endif
             Souffle->threads(Threads);
             try
             {

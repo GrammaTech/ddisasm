@@ -242,7 +242,8 @@ basic_target(Val):-
         entry_point(Val)
         ;
         code_section(Name),
-        loaded_section(Val,_,Name)
+        loaded_section(Addr,_,Name),
+        arch.instruction_at(Addr,Val)
         ;
         !binary_isa("ARM"),
         defined_symbol(Val,_,Type,_,_,_,_,_,_),
@@ -478,10 +479,16 @@ block_total_points(Block,Type,Points):-
     block_is_overlapping(Block,Type),
     Points = sum X:{block_points(Block,Type,_,X,_)}.
 
-.decl discarded_block(Block:address,Type:block_type,Reason:symbol)
+/**
+Block: block to be discarded
+BlockPropagated (for debugging purpose):
+     - previous block that the reason is propagated from (for "propagated")
+     - block that this block overlapped with (for "first instruction overlap")
+*/
+.decl discarded_block(Block:address,Type:block_type,Reason:symbol,BlockPropagated:address)
 .output discarded_block
 
-discarded_block(Block1,Type1,"less points"):-
+discarded_block(Block1,Type1,"less points",0):-
     (
         block_overlap(Block1,Type1,Block2,Type2);
         block_overlap(Block2,Type2,Block1,Type1)
@@ -498,13 +505,13 @@ discarded_block(Block1,Type1,"less points"):-
         Type2 = "code"
     ).
 
-discarded_block(Block,Type,"negative points"):-
+discarded_block(Block,Type,"negative points",0):-
     block_total_points(Block,Type,Points),
     Points < 0.
 
 // propagate discarding blocks through direct jumps, calls, and must_fallthrough
-discarded_block(Block,"code","propagated"):-
-    discarded_block(Block2,"code",_),
+discarded_block(Block,"code","propagated",Block2):-
+    discarded_block(Block2,"code",_,_),
     !overlapping_instruction(Block2,_),
     (
         direct_jump(EA,Block2);
@@ -519,7 +526,7 @@ discarded_block(Block,"code","propagated"):-
 // two blocks where the first instruction is overlapping and only different because of a prefix
 // we discard the second block but register the instruction without prefix as code
 overlapping_instruction(Block2,Block),
-discarded_block(Block2,"code","first instruction overlap"):-
+discarded_block(Block2,"code","first instruction overlap",Block):-
     block_overlap(Block,"code",Block2,"code"),
     // one has an extra prefix with respect to the other
     instruction(Block,Size,"LOCK",OpCode,Op1,Op2,Op3,Op4,_,_),
@@ -890,12 +897,43 @@ block_points(Block,"code",0,5,"seh handler"):-
     block_is_overlapping(Block,"code"),
     seh_handler_entry(_,Block).
 
+block_points(Block,"data",0,Points,"data access"):-
+    // Limit this to Intel for now since this can duplicate ARM's
+    // literal-pool handling.
+    // Eventually, we may want to make data-access handling ISA-generic.
+    (
+        binary_isa("X86");
+        binary_isa("X64")
+    ),
+    pc_relative_operand(EA,MemIndex,Block),
+    instruction_memory_access_size(EA,MemIndex,AccessSize),
+    AccessSize != 0,
+    code_in_block_candidate(EA,Block0),
+    (
+        !block_is_overlapping(Block0,_), Points = 4;
+        block_is_overlapping(Block0,_), Points = 2
+    ).
+
+must_access_data(EA,Block),
+data_block_candidate(Block,Size):-
+    // Limit this to Intel for now since this can duplicate ARM's
+    // literal-pool handling.
+    // Eventually, we may want to make data-access handling ISA-generic.
+    (
+        binary_isa("X86");
+        binary_isa("X64")
+    ),
+    pc_relative_operand(EA,MemIndex,Block),
+    instruction_memory_access_size(EA,MemIndex,Size),
+    Size != 0.
+
+
 ////////////////////////////////////////////////////////////////////////////
 
 
 code_in_block(EA,Block):-
     code_in_block_candidate_refined(EA,Block),
-    !discarded_block(Block,"code",_).
+    !discarded_block(Block,"code",_,_).
 
 code_in_block(EA,Block):-
     overlapping_instruction(EA,Block),
@@ -916,8 +954,8 @@ code(EA):-
 
 block_still_overlap(Block1,Type1,Block2,Type2):-
     block_overlap(Block1,Type1,Block2,Type2),
-    !discarded_block(Block1,Type1,_),
-    !discarded_block(Block2,Type2,_),
+    !discarded_block(Block1,Type1,_,_),
+    !discarded_block(Block2,Type2,_,_),
     // We only care about code-code or code-data conflicts
     // but not about data-data conflicts.
     (Type1 = "code"; Type2 = "code").

@@ -7,7 +7,7 @@ import gtirb
 ex_arm_asm_dir = Path("./examples/arm_asm_examples")
 
 
-class ArmInvalidLdrTests(unittest.TestCase):
+class ArmMiscTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
@@ -70,6 +70,40 @@ class ArmInvalidLdrTests(unittest.TestCase):
             self.assertTrue(isinstance(main_first_block, gtirb.CodeBlock))
             self.assertTrue(all(blocks_are_data))
             self.assertEqual(len(blocks_are_data), len(invalid_syms))
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_thumb_at_section_start(self):
+        """
+        Test that Thumb code is discovered at the start of a section
+        """
+        binary = "ex"
+        with cd(ex_arm_asm_dir / "ex_thumb_at_section_start"):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "-O0",
+                    [],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    format="--ir",
+                    strip_exe="arm-linux-gnueabihf-strip",
+                    strip=True,
+                )[0]
+            )
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+
+            m = ir_library.modules[0]
+
+            section = next(s for s in m.sections if s.name == ".text")
+            self.assertEqual(len(list(m.code_blocks_on(section.address))), 1)
 
 
 if __name__ == "__main__":

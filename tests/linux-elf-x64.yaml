@@ -368,6 +368,12 @@ tests:
   - name: ex_loop_instructions
     <<: *assembly
 
+  - name: ex_data_access
+    <<: *assembly
+    test:
+      <<: *default-test
+      check_cfg: false
+
   - name: ex_two_data_accesses
     <<: *assembly
     test:
@@ -386,6 +392,9 @@ tests:
       <<: *default-test
       # this example has some intentional unreachable code.
       check_cfg: false
+
+  - name: ex_synchronous_access3
+    <<: *assembly
 
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
@@ -440,6 +449,10 @@ tests:
     <<: *test-strip-default
 
   - name: ex_synchronous_access
+    <<: *assembly
+    <<: *test-strip-default
+
+  - name: ex_synchronous_access3
     <<: *assembly
     <<: *test-strip-default
 

@@ -87,6 +87,11 @@ Define a standard interface for architecture components.
 */
 .comp Arch {
 
+/**
+The name of the active architecture
+*/
+.decl arch(Name:symbol) inline
+
 // ===========================================================================
 // Operation Types
 // ===========================================================================
@@ -479,7 +484,7 @@ according to the architecture's calling convention.
 /**
 The PC register, if architecturally accessible.
 */
-.decl pc_reg(Reg:register)
+.decl pc_reg(Reg:register) inline
 
 /**
 Register that may hold the stack frame pointer.
