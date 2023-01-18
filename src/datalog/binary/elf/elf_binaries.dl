@@ -78,9 +78,23 @@ special_data_section(".interp").
 special_data_section(".jcr").
 special_data_section(".tm_clone_table").
 
-function_pointer_section(".init_array"):-binary_format("ELF").
-function_pointer_section(".fini_array"):-binary_format("ELF").
-function_pointer_section(".got.plt"):-binary_format("ELF").
+/**
+ELF section types that contain an array of code pointers.
+*/
+.decl elf_pointer_array_section_type(SectionTypeName:symbol)
+
+elf_pointer_array_section_type("INIT_ARRAY").
+elf_pointer_array_section_type("PREINIT_ARRAY").
+elf_pointer_array_section_type("FINI_ARRAY").
+
+function_pointer_section(SectionName):-
+    binary_format("ELF"),
+    elf_pointer_array_section_type(SectionTypeName),
+    elf_section_type(SectionTypeName,SectionType),
+    section_type(SectionName,SectionType).
+
+function_pointer_section(".got.plt"):-
+    binary_format("ELF").
 
 ////////////////////////////////////////////////////////////////////////////
 // detect references  to libraries (calls to plt)

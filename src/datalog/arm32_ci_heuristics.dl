@@ -131,7 +131,7 @@ Give 1 point to the blocks that are one-step transitive
 from a block `plausible_block`.
 */
 plausible_block(Block,1,cat("transitive: ",Note),Block2):-
-    block_is_overlapping(Block,"code"),
+    unresolved_block(Block,"code"),
     !arch.dangling_thumb_instr(Block),
     (
         code_in_block_candidate_refined(EA,Block),
