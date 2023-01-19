@@ -28,6 +28,29 @@
 
 #include "Endian.h"
 
+namespace
+{
+    template <int Bits>
+    static inline int32_t sign_extend32(uint32_t Val)
+    {
+        assert(Bits > 0 && Bits <= 32);
+        if(Bits == 32)
+        {
+            return static_cast<int32_t>(Val);
+        }
+        uint32_t Mask = (~static_cast<uint32_t>(0)) >> (32 - Bits);
+        Val &= Mask;
+        uint32_t TopBit = 1U << (Bits - 1);
+        int32_t Signed = static_cast<int32_t>(Val);
+        if((Val & TopBit) != 0)
+        {
+            Signed -= static_cast<int32_t>(TopBit * 2);
+        }
+        return Signed;
+    }
+
+} // namespace
+
 FunctorContextManager FunctorContext;
 
 const gtirb::ByteInterval* FunctorContextManager::getByteInterval(uint64_t EA, size_t Size)
@@ -174,6 +197,19 @@ int64_t functor_data_s64(uint64_t EA)
 uint64_t functor_aligned(uint64_t EA, size_t Size)
 {
     return EA + ((Size - (EA % Size)) % Size);
+}
+
+// Return the branch offset of a 32-bit THUMB branch instruction.
+int64_t functor_thumb32_branch_offset(uint16_t UpperInsn, uint64_t LowerInsn)
+{
+    uint32_t S = (UpperInsn & (1U << 10)) >> 10;
+    uint32_t Upper = UpperInsn & 0x3ffU;
+    uint32_t Lower = LowerInsn & 0x7ffU;
+    uint32_t J1 = (LowerInsn & (1U << 13)) >> 13;
+    uint32_t J2 = (LowerInsn & (1U << 11)) >> 11;
+    uint32_t I1 = J1 ^ S ? 0 : 1;
+    uint32_t I2 = J2 ^ S ? 0 : 1;
+    return sign_extend32<25>((S << 24) | (I1 << 23) | (I2 << 22) | (Upper << 12) | (Lower << 1));
 }
 
 souffle::RamDomain to_string_hex(souffle::SymbolTable* symbolTable,

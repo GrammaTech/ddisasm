@@ -61,6 +61,8 @@ extern "C"
 
     EXPORT uint64_t functor_aligned(uint64_t EA, size_t Size);
 
+    EXPORT int64_t functor_thumb32_branch_offset(uint16_t Upper, uint64_t Lower);
+
     /**
     Format an unsigned integer as a string in its hex representation
     */
