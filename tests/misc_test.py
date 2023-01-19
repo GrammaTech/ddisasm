@@ -103,7 +103,13 @@ class AuxDataTests(unittest.TestCase):
         binary = "ex"
         with cd(ex_asm_dir / "ex_cfi_directives"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    format="--ir",
+                    extra_args=["--with-souffle-relations"],
+                )[0]
+            )
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
@@ -249,7 +255,13 @@ class DataDirectoryTests(unittest.TestCase):
             self.assertEqual(proc.returncode, 0)
 
             # Disassemble to GTIRB file.
-            self.assertTrue(disassemble("ex.exe", format="--ir")[0])
+            self.assertTrue(
+                disassemble(
+                    "ex.exe",
+                    format="--ir",
+                    extra_args=["--with-souffle-relations"],
+                )[0]
+            )
 
             # Load the GTIRB file.
             ir = gtirb.IR.load_protobuf("ex.exe.gtirb")
@@ -354,7 +366,13 @@ class SymbolSelectionTests(unittest.TestCase):
         binary = "ex"
         with cd(ex_asm_dir / "ex_symbol_selection"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    format="--ir",
+                    extra_args=["--with-souffle-relations"],
+                )[0]
+            )
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
