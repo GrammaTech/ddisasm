@@ -482,6 +482,8 @@ symbolic_data(LitPoolAddr,SymSize,Got_entry):-
         symbolic_data(Got_entry,SymSize,_)
     ).
 
+.functor functor_thumb32_branch_offset(Instruction:unsigned):number
+
 symbolic_expr_from_relocation(EA+1,4,Symbol,Addend,as(Dest,address)):-
     binary_type("REL"),
     (
@@ -489,7 +491,8 @@ symbolic_expr_from_relocation(EA+1,4,Symbol,Addend,as(Dest,address)):-
         relocation(EA,"THM_JUMP24",Symbol,_,_,_,"REL")
     ),
     Symbol != "",
-    thumb_branch_offset(EA,Offset),
+    data_uword(EA,4,Insn),
+    Offset = @functor_thumb32_branch_offset(Insn),
     Addend = Offset + 4,
     Dest = as(EA,number)+Addend.
 

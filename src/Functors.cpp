@@ -199,16 +199,21 @@ uint64_t functor_aligned(uint64_t EA, size_t Size)
     return EA + ((Size - (EA % Size)) % Size);
 }
 
-// Return the branch offset of a 32-bit THUMB branch instruction.
-int64_t functor_thumb32_branch_offset(uint16_t UpperInsn, uint64_t LowerInsn)
+// Decode the branch offset of a 32-bit THUMB branch instruction. Used to find
+// REL relocation addends. Backward compatible with THUMB-1 encoding.
+int64_t functor_thumb32_branch_offset(uint32_t Instruction)
 {
-    uint32_t S = (UpperInsn & (1U << 10)) >> 10;
-    uint32_t Upper = UpperInsn & 0x3ffU;
-    uint32_t Lower = LowerInsn & 0x7ffU;
-    uint32_t J1 = (LowerInsn & (1U << 13)) >> 13;
-    uint32_t J2 = (LowerInsn & (1U << 11)) >> 11;
+    uint16_t Hi = (uint16_t)(Instruction & 0xFFFFU);
+    uint16_t Lo = (uint16_t)((Instruction >> 16) & 0xFFFFU);
+
+    uint32_t S = (Hi & (1U << 10)) >> 10;
+    uint32_t Upper = Hi & 0x3ffU;
+    uint32_t Lower = Lo & 0x7ffU;
+    uint32_t J1 = (Lo & (1U << 13)) >> 13;
+    uint32_t J2 = (Lo & (1U << 11)) >> 11;
     uint32_t I1 = J1 ^ S ? 0 : 1;
     uint32_t I2 = J2 ^ S ? 0 : 1;
+
     return sign_extend32<25>((S << 24) | (I1 << 23) | (I2 << 22) | (Upper << 12) | (Lower << 1));
 }
 

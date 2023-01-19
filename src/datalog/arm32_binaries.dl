@@ -1245,27 +1245,6 @@ must_access_data(EA,Dest):-
     litpool_ref(_,EA,Dest,_,_,_).
 
 /**
-Decode Thumb-2 encoded branch offset. Used to find REL relocation addends.
-
-Note that this is backwards compatible with Thumb-1.
-*/
-.functor functor_thumb32_branch_offset(Upper:unsigned,Lower:unsigned):number
-
-.decl thumb_branch_offset(EA:address,Offset:number)
-.output thumb_branch_offset
-
-thumb_branch_offset(EA,Offset):-
-    (
-        relocation(EA,"THM_CALL",_,_,_,_,_);
-        relocation(EA,"THM_JUMP24",_,_,_,_,_)
-    ),
-    data_word(EA,2,UpperInsn),
-    data_word(EA+2,2,LowerInsn),
-    UpperHalf = as(UpperInsn,unsigned),
-    LowerHalf = as(LowerInsn,unsigned),
-    Offset = @functor_thumb32_branch_offset(UpperHalf,LowerHalf).
-
-/**
 Block containing instructions that only belong to Microcontroller arch.
 */
 .decl arm_microcontroller(Block:address)
