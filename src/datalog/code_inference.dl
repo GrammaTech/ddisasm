@@ -726,6 +726,14 @@ block_points(Block,"code",0,-3,"overlaps with relocation"):-
         !instruction_displacement_offset(EA,_,Target-EA,_)
     ).
 
+/**
+Give penalty on the later nop block when two nop blocks are overlapping.
+*/
+block_points(Block,"code",0,-3,"overlapped paddings"):-
+    block_overlap(Block0,"code",Block,"code"),
+    candidate_block_is_padding(Block0),
+    candidate_block_is_padding(Block).
+
 block_points(Block,"code",0,0,"basic point"):-
     unresolved_block(Block,"code"),
     code_in_block_candidate_refined(_,Block).
@@ -836,11 +844,18 @@ block_points(Block,"code",0,3,"appears"):-
     !unresolved_block(BlockPred,"code"),
     !impossible_block(BlockPred,"code",_).
 
-block_points(Block,"code",0,3,"relative jump table target"):-
+block_points(Block,"code",0,Points,"relative jump table target"):-
     unresolved_block(Block,"code"),
     relative_address(EA,_,_,_,Block,_),
     count :{ relative_address(EA,_,_,_,_,_) } = 1,
-    !relative_address(Block,_,_,_,_,_).
+    !relative_address(Block,_,_,_,_,_),
+    (
+        !address_in_data(EA,_), Points = 3
+        ;
+        // If it is possible that EA has an absolute address instead of
+        // a relative address, give less points.
+        address_in_data(EA,_), Points = 1
+    ).
 
 // give a point if it may fallthrough to another block
 block_points(Block,"code",Block_succ,1,"fallthrough_to"):-
@@ -941,13 +956,6 @@ block_points(Block,"code",0,2,"padding nop block"):-
     unresolved_block(Block,"code"),
     fde_addresses(_,Block),
     arch.is_nop(Block).
-
-block_points(Block,"code",0,-1,"overlap long nop"):-
-    unresolved_block(Block,"code"),
-    unresolved_block_overlap(Block,"code",Block2,"code"),
-    Block < Block2,
-    code_in_block_candidate_refined(EA_nop,Block2),
-    arch.is_nop(EA_nop).
 
 block_points(Block,"code",0,3,"exc-region"):-
     unresolved_block(Block,"code"),
