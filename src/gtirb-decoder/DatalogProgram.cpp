@@ -377,6 +377,10 @@ void DatalogProgram::writeRelations(const std::string &Directory)
     std::ios_base::openmode FileMask = std::ios::out;
     for(souffle::Relation *Relation : Program->getOutputRelations())
     {
+        if(Relation->getArity() == 0)
+        {
+            continue;
+        }
         std::ofstream File(Directory + Relation->getName() + ".csv", FileMask);
         writeRelation(File, Relation);
         File.close();
@@ -385,6 +389,10 @@ void DatalogProgram::writeRelations(const std::string &Directory)
     {
         for(souffle::Relation *Relation : Program->getInternalRelations())
         {
+            if(Relation->getArity() == 0)
+            {
+                continue;
+            }
             std::ofstream File(Directory + Relation->getName() + ".csv", FileMask);
             writeRelation(File, Relation);
             File.close();
