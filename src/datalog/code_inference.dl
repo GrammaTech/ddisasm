@@ -542,7 +542,12 @@ Logically impossible blocks.
 impossible_block(BlockB,TypeB,SizeB,"overlaps known"):-
     known_block(BlockA,TypeA,SizeA,_),
     block_overlap(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
-    !overlapping_instruction(BlockA,BlockB).
+    !overlapping_instruction(BlockA,BlockB),
+    // overlapping data blocks are allowed
+    (
+        TypeA != "data";
+        TypeB != "data"
+    ).
 
 // Propagate impossible blocks backward
 impossible_block(BlockA,TypeA,SizeA,"propagated impossible"):-
@@ -577,7 +582,12 @@ Blocks that still overlap after known_block and impossible_block are determined.
 unresolved_block_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
     block_overlap(Block1,Type1,Size1,Block2,Type2,Size2),
     unresolved_block(Block1,Type1,Size1),
-    unresolved_block(Block2,Type2,Size2).
+    unresolved_block(Block2,Type2,Size2),
+    // overlapping data blocks are allowed
+    (
+        Type1 != "data";
+        Type2 != "data"
+    ).
 
 //////////////////////////////////////////////////////////////////////
 // We need to solve the block overlaps
