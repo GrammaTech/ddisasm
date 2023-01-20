@@ -61,7 +61,8 @@ instruction_memory_access_size(EA,Index,SizeAccess):-
         // instruction no matter if data_access_size is available or not.
         instruction_get_dest_op(EA,_,RegOp),
         !op_regdirect(RegOp,_),
-        SizeAccess = NBits/8
+        SizeAccess = NBits/8,
+        UNUSED(Operation)
         ;
         // If data_access_size is not available for the Operation,
         // use the operand size from the instruction.
