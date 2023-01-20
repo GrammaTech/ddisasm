@@ -399,7 +399,7 @@ build-static:
     - mkdir build
     - cd build
     - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDDISASM_BUILD_SHARED_LIBS=OFF -DDDISASM_GENERATE_MANY=ON
-    - make
+    - make -j4
     # Report ccache stats.
     - ccache --show-stats
     # Run the regression tests.
@@ -475,7 +475,7 @@ static-drivers:
     # build ddisasm
     - mkdir build && cd build
     - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Debug -DDDISASM_STATIC_DRIVERS=ON -DDDISASM_GENERATE_MANY=ON
-    - make
+    - make -j4
     # Run the regression tests.
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
     # For verification purposes, print ldd of the driver here.
