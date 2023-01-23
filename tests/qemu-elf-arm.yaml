@@ -125,6 +125,9 @@ tests:
 
   - name: ex_halts
     <<: *assembly
+    reassemble:
+      compiler: "arm-linux-gnueabihf-gcc"
+      flags: ["-march=armv8-a"]
 
   - name: ex1
     <<: *default

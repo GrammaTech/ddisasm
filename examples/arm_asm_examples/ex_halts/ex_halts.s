@@ -1,6 +1,7 @@
 .syntax unified
 .section .text
 .thumb
+.arch armv8-a
 
 .global	main
 .type	main, %function
