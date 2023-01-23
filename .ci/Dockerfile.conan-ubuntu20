@@ -20,6 +20,7 @@ RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 # Install APT packages
 RUN apt-get update -y && \
     apt-get install -y \
+      ccache \
       clang \
       cmake \
       curl \

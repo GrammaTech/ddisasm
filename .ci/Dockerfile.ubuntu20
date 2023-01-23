@@ -113,6 +113,7 @@ RUN apt-get -y update && \
     apt-get -y install \
         autoconf \
         build-essential \
+        ccache \
         clang \
         clang-format \
         cmake \
