@@ -1,5 +1,12 @@
-# 1.5.6 (Unreleased)
-* TODO
+# 1.5.6
+* Discover ARM Thumb blocks at section start in stripped binaries.
+* Bugfix for undefined TLS symbol relocations.
+* Add ARM `HLT` and `TRAP` instruction support.
+* Bugfix for aliased copy-relocations.
+* Bugfix to avoid propagating synchronous accesses across symbols.
+* Add build option for compiled Souffle profile generation.
+* Improved x86-64 dynamic TLS support.
+* Various logic improvements for GLIBC rewriting support.
 
 # 1.5.5
 * Update generated `elfSymbolVersions` auxdata.
