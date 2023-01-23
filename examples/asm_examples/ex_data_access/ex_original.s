@@ -11,6 +11,11 @@ foo:
     pushq   %rbp
     movq    %rsp, %rbp
 
+    xor    %r8, %r8
+    xor    %r9, %r9
+    xor    %r10, %r10
+    xor    %r11, %r11
+
     imul    r0_mul(%rip), %r8
     movq    r1_add(%rip), %r9
     xor     %r8, %r9
