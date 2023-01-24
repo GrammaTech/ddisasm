@@ -1321,7 +1321,12 @@ arm_microcontroller(Block):-
 basic_target(Inst):-
     arm_exidx_entry(Start),
     arch.instruction_at(Start,Inst),
-    !arch.instruction_at(Start,Inst bxor 1).
+    invalid(Inst bxor 1,_).
+
+// Always split blocks at arm_exidx_entry.
+block_limit(Inst):-
+    arm_exidx_entry(Start),
+    arch.instruction_at(Start,Inst).
 
 // exidx metadata doesn't set the low bit to indicate Thumb, so we can only use
 // it as a source of known block if the address isn't both an ARM and Thumb
@@ -1330,15 +1335,13 @@ known_block(Block,"code",".ARM.exidx"):-
     arm_exidx_entry(Start),
     arch.instruction_at(Start,Block),
     block_candidate_boundaries(Block,"code",_,_),
-    !code_in_block_candidate_refined(Block bxor 1,_).
+    !block_candidate_boundaries(Block bxor 1,"code",_,_).
 
 // a block that overlaps both potential .ARM.exidx functions must not exist.
 impossible_block(Other,"data","overlaps .ARM.exidx"):-
     arm_exidx_entry(Start),
-    // Since we do not populate basic_target from arm_exidx_entry, the blocks
-    // may not begin at Start.
-    code_in_block_candidate_refined(Start,BlockArm),
-    code_in_block_candidate_refined(Start bor 1,BlockThumb),
+    BlockArm = Start,
+    BlockThumb = Start bor 1,
     block_candidate_boundaries(BlockArm,"code",_,EndArm),
     block_candidate_boundaries(BlockThumb,"code",_,EndThumb),
     block_candidate_boundaries(Other,"data",DataStart,DataEnd),
