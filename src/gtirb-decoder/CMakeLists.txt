@@ -14,8 +14,7 @@ set(DATALOG_DECODER_TARGETS
     arch/Mips32Loader.cpp
     format/ElfLoader.cpp
     format/PeLoader.cpp
-    format/RawLoader.cpp
-    target/ElfArm32Loader.cpp)
+    format/RawLoader.cpp)
 
 add_library(gtirb_decoder STATIC Relations.cpp DatalogProgram.cpp
                                  ${DATALOG_DECODER_TARGETS})

@@ -65,4 +65,6 @@ public:
     void addExceptionInformation(souffle::SouffleProgram *prog);
 };
 
+void ArmUnwindLoader(const gtirb::Module &Module, DatalogProgram &Program);
+
 #endif // SRC_GTIRB_DECODER_FORMAT_ELFLOADER_H_
