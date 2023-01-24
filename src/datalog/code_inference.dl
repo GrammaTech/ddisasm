@@ -492,7 +492,6 @@ block_candidate_dependency_edge(BlockA,"code",BlockB,"code"):-
 Known blocks are blocks that must exist due to metadata.
 */
 .decl known_block(Block:address,Type:block_type,Reason:symbol)
-.output known_block
 
 // On ARM, both entry point and function symbols do use the low bit to indicate
 // ARM/Thumb, so these rules are valid there as well.
@@ -527,7 +526,6 @@ known_block(BlockB,TypeB,"propagated"):-
 Logically impossible blocks.
 */
 .decl impossible_block(Block:address,Type:block_type,Reason:symbol)
-.output impossible_block
 
 // A known block discovered by propagation must discard overlapping blocks
 impossible_block(BlockB,TypeB,"overlaps known"):-
