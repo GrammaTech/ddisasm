@@ -451,7 +451,6 @@ analysis for both registers and stack variables.
     A <T> is defined in 'EA_def' and used in 'EA_used' in the operand with index 'Index_used'
     */
     .decl def_used(EA_def:address,Var:register,EA_used:address,Index_used:operand_index)
-    .output def_used
 
     // Intra-block def-use
     def_used(EA_def,Var,EA_used,Index):-
