@@ -30,13 +30,7 @@ class ExtraArgsTest(unittest.TestCase):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
 
             # disassemble
-            self.assertTrue(
-                disassemble(
-                    "ex",
-                    format="--ir",
-                    extra_args=["--with-souffle-relations"],
-                )[0]
-            )
+            self.assertTrue(disassemble("ex", format="--ir")[0])
 
             # load the gtirb
             ir = gtirb.IR.load_protobuf("ex.gtirb")
@@ -75,7 +69,6 @@ class ExtraArgsTest(unittest.TestCase):
                                 debug_dir,
                                 "--hints",
                                 hints_file.name,
-                                "--with-souffle-relations",
                             ],
                         )[0]
                     )
