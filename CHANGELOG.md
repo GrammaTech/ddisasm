@@ -1,5 +1,5 @@
 # 1.5.7 (Unreleased)
-* TODO
+* ARM: Improve code inference using unwind information from .ARM.exidx section
 
 # 1.5.6
 * Discover ARM Thumb blocks at section start in stripped binaries.

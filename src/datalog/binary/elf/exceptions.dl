@@ -115,6 +115,15 @@ symbolic expression pointing to 'address'.
 */
 .decl lsda_type_entry(lsdaTypeTableAddress:address,index:unsigned,address:address)
 .input lsda_type_entry
+
+/**
+Address where a function starts according to the ARM exidx table.
+
+This address does not set the low bit for Thumb functions.
+*/
+.decl arm_exidx_entry(FunctionStart:address)
+.input arm_exidx_entry
+
 /////////////////////////////////////////////////////////////////////////////////
 // output predicates
 
