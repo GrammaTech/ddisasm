@@ -101,6 +101,7 @@ RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 # Install APT packages
 RUN apt-get -y update && \
     apt-get -y install \
+        ccache \
         gcc-arm-linux-gnueabihf \
         g++-arm-linux-gnueabihf \
         gcc-aarch64-linux-gnu \

@@ -70,6 +70,13 @@ default:
 .install-capstone:
   - apt-get install -y libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION}
 
+# Set up ccache and report initial stats.
+.setup-ccache:
+  - export CCACHE_DIR="$PWD/ccache" CCACHE_BASEDIR="$PWD"
+  - export CCACHE_COMPILERCHECK=content
+  - ccache --zero-stats
+  - ccache --show-stats
+
 .build-ci-image: &build-ci-image
   stage: build-images
   image:
@@ -163,9 +170,12 @@ check-format:
       - .conan
     # Set a short expiry time - only needed until it is published by a later job.
     expire_in: 8 hours
+  cache:
+    paths: [ccache]
   rules:
     *run-only-main
   script:
+    - !reference [.setup-ccache]
     - export CONAN_USER_HOME=$(pwd)
     - pip3 install --upgrade conan
     - conan profile new default --detect
@@ -175,7 +185,7 @@ check-format:
     # Install gtirb python wheel
     - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
-    - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/run_conan.py build -s build_type=Release
+    - CMAKE_CXX_COMPILER_LAUNCHER=ccache PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/run_conan.py build -s build_type=Release
 
 build-conan-gcc9-release:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu20:$IMAGE_TAG
@@ -300,14 +310,20 @@ conan-windows-release-package:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - build
+  cache:
+    paths: [ccache]
   script:
     - !reference [.setup-apt]
     - !reference [.install-deps]
+    # set up ccache
+    - !reference [.setup-ccache]
     # Build ddisasm
     - mkdir build
     - cd build
-    - cmake -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_DEBIAN_PACKAGE_RELEASE="$(lsb_release -sc)" -DBUILD_FUNINFER=1 -DDDISASM_STRIP_DEBUG_SYMBOLS=ON ..
+    - cmake -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_DEBIAN_PACKAGE_RELEASE="$(lsb_release -sc)" -DBUILD_FUNINFER=1 -DDDISASM_STRIP_DEBUG_SYMBOLS=ON ..
     - make
+    # Report ccache stats.
+    - ccache --show-stats
 
 .test-and-tag-template: &test-and-tag
   script:
@@ -352,16 +368,20 @@ build-static:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/static:$IMAGE_TAG
   rules:
     *run-only-main
+  cache:
+    paths: [ccache]
   script:
     # install capstone
     - !reference [.setup-apt]
     - !reference [.install-capstone]
+    # setup ccache
+    - !reference [.setup-ccache]
     # build GTIRB
     - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
     - git clone https://git.grammatech.com/rewriting/gtirb.git -b $GTIRB_BRANCH
     - mkdir gtirb/build
     - cd gtirb/build
-    - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_BUILD_SHARED_LIBS=OFF
+    - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_BUILD_SHARED_LIBS=OFF
     - make -j
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
@@ -370,7 +390,7 @@ build-static:
     - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b $GTIRB_PPRINTER_BRANCH
     - mkdir gtirb-pprinter/build
     - cd gtirb-pprinter/build
-    - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
+    - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
     - make -j
     - cd ../..
     # build ddisasm
@@ -378,6 +398,8 @@ build-static:
     - cd build
     - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDDISASM_BUILD_SHARED_LIBS=OFF
     - make
+    # Report ccache stats.
+    - ccache --show-stats
     # Run the regression tests.
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
 
@@ -421,18 +443,22 @@ static-drivers:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - build/bin
+  cache:
+    paths: [ccache]
   rules:
     *run-only-main
   script:
     # install capstone
     - !reference [.setup-apt]
     - !reference [.install-capstone]
+    # set up ccache
+    - !reference [.setup-ccache]
     # build GTIRB
     - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
     - git clone https://git.grammatech.com/rewriting/gtirb.git -b $GTIRB_BRANCH
     - cd gtirb
     - mkdir build && cd build
-    - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DGTIRB_BUILD_SHARED_LIBS=OFF
+    - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Debug -DGTIRB_BUILD_SHARED_LIBS=OFF
     - make -j
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
@@ -441,17 +467,19 @@ static-drivers:
     - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b $GTIRB_PPRINTER_BRANCH
     - cd gtirb-pprinter
     - mkdir build && cd build
-    - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
+    - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Debug -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
     - make -j
     - cd ../..
     # build ddisasm
     - mkdir build && cd build
-    - cmake ../ -DCMAKE_BUILD_TYPE=Debug -DDDISASM_STATIC_DRIVERS=ON
+    - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Debug -DDDISASM_STATIC_DRIVERS=ON
     - make
     # Run the regression tests.
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
     # For verification purposes, print ldd of the driver here.
     - ldd bin/ddisasm
+    # Report ccache stats.
+    - ccache --show-stats
 
 run-ubuntu20-gcc:
   stage: test-and-tag
