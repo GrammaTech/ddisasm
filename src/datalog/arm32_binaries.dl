@@ -1266,40 +1266,6 @@ must_access_data(EA,Dest):-
     litpool_ref(_,EA,Dest,_,_,_).
 
 /**
-Decode Thumb-2 encoded branch offset. Used to find REL relocation addends.
-
-Note that this is backwards compatible with Thumb-1.
-*/
-.decl thumb_branch_offset(EA:address,Offset:number)
-.output thumb_branch_offset
-
-thumb_branch_offset(EA,Offset):-
-    (
-        relocation(EA,"THM_CALL",_,_,_,_,_);
-        relocation(EA,"THM_JUMP24",_,_,_,_,_)
-    ),
-    data_word(EA,2,Half0),
-    data_word(EA+2,2,Half1),
-    UpperHalf = as(Half0,unsigned),
-    LowerHalf = as(Half1,unsigned),
-    Sign = (UpperHalf band (1 bshl 10)) bshr 10,
-    Upper = UpperHalf band 0x3FF,
-    Lower = LowerHalf band 0x7FF,
-    J1 = (LowerHalf band (1 bshl 13)) bshr 13,
-    J2 = (LowerHalf band (1 bshl 11)) bshr 11,
-    (J1 bxor Sign = 0, I1 = 1; J1 bxor Sign != 0, I1 = 0),
-    (J2 bxor Sign = 0, I2 = 1; J2 bxor Sign != 0, I2 = 0),
-    Bits = (Sign bshl 24) bor (I1 bshl 23) bor (I2 bshl 22) bor (Upper bshl 12) bor (Lower bshl 1),
-    // Sign-extend unsigned 25-bit value to 32 bits.
-    Masked = Bits band ((bnot 1) bshr (32 - 25)),
-    TopBit = as(1 bshl (25 - 1),number),
-    Signed = as(Masked,number),
-    (
-        Signed band TopBit = 0,  Offset = Signed;
-        Signed band TopBit != 0, Offset = Signed - (TopBit * 2)
-    ).
-
-/**
 Block containing instructions that only belong to Microcontroller arch.
 */
 .decl arm_microcontroller(Block:address)

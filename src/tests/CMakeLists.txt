@@ -20,7 +20,8 @@ add_executable(
   CompositeLoader.Test.cpp
   ArchiveReader.Test.cpp
   InstructionRelations.Test.cpp
-  DatalogProgram.Test.cpp)
+  DatalogProgram.Test.cpp
+  Functors.Test.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_link_libraries(
