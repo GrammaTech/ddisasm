@@ -14,7 +14,7 @@ default: &default
   # Reassembly configuration.
   reassemble:
     compiler: "arm-linux-gnueabihf-gcc"
-    flags: []
+    flags: ["-nostartfiles"]
     skip: false
 
   # Test configuration.
@@ -70,7 +70,7 @@ tests:
     <<: *assembly
     reassemble:
       compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-no-pie"]
+      flags: ["-no-pie", "-nostartfiles"]
     build:
       <<: *assembly-build
       flags: ["-no-pie"]
@@ -79,7 +79,7 @@ tests:
     <<: *assembly
     reassemble:
       compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-no-pie"]
+      flags: ["-no-pie", "-nostartfiles"]
     build:
       <<: *assembly-build
       flags: ["-no-pie"]
@@ -98,27 +98,33 @@ tests:
 
   - name: ex_litpool
     <<: *assembly
+    reassemble:
+      compiler: "arm-linux-gnueabihf-gcc"
+      flags: ["-no-pie", "-nostartfiles"]
 
   - name: ex_vld
     <<: *assembly
+    reassemble:
+      compiler: "arm-linux-gnueabihf-gcc"
+      flags: ["-no-pie", "-nostartfiles"]
 
   - name: ex_add_as_jump
     <<: *assembly
     reassemble:
       compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-no-pie"]
+      flags: ["-no-pie", "-nostartfiles"]
 
   - name: ex_blx_interwork
     <<: *assembly
     build:
       <<: *assembly-build
-      flags: ["-no-pie"]
+      flags: ["-no-pie", "-nostartfiles"]
 
   - name: ex_movw_movt_pie
     <<: *assembly
     reassemble:
       compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-pie"]
+      flags: ["-pie", "-nostartfiles"]
 
   - name: ex_tbb_zero
     <<: *assembly
@@ -127,7 +133,7 @@ tests:
     <<: *assembly
     reassemble:
       compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-march=armv8-a"]
+      flags: ["-march=armv8-a", "-nostartfiles"]
 
   - name: ex1
     <<: *default
@@ -166,13 +172,13 @@ tests:
       optimizations: ["-O0"]
     reassemble:
       compiler: "arm-linux-gnueabihf-g++"
-      flags: []
+      flags: ["-nostartfiles"]
 
   - name: ex_memberPointer
     <<: *default
     reassemble:
       compiler: "arm-linux-gnueabihf-g++"
-      flags: []
+      flags: ["-nostartfiles"]
       skip: false
 
   - name: ex_noreturn
@@ -197,7 +203,7 @@ tests:
     <<: *default
     reassemble:
       compiler: "arm-linux-gnueabihf-g++"
-      flags: []
+      flags: ["-nostartfiles"]
       skip: false
 
   - name: ex_uninitialized_data

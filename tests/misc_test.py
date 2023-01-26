@@ -227,7 +227,9 @@ class RawGtirbTests(unittest.TestCase):
             # Disassemble GTIRB input file.
             self.assertTrue(disassemble("ex.gtirb", format="--asm")[0])
 
-            self.assertTrue(reassemble("gcc", "ex.gtirb", extra_flags=[]))
+            self.assertTrue(
+                reassemble("gcc", "ex.gtirb", extra_flags=["-nostartfiles"])
+            )
             self.assertTrue(test())
 
 

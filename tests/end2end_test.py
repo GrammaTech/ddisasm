@@ -83,7 +83,9 @@ class TestExamples(unittest.TestCase):
                     "examples/ex1",
                     "ex",
                     optimizations=["-O0"],
+                    extra_compile_flags=["-pie"],
                     extra_ddisasm_flags=ddisasm_opts,
+                    extra_reassemble_flags=["-nostartfiles", "-pie"],
                     upload=False,
                 )
             )
