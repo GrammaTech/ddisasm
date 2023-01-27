@@ -962,7 +962,7 @@ Give penalty on the dangling block where an instruction is enclosed
 in a bigger instruction.
 */
 block_points(Block2,"code",0,-1,"dangling block with enclosed instr"):-
-    block_overlap(Block,"code",Block2,"code"),
+    unresolved_block_overlap(Block,"code",Block2,"code"),
     instruction(Block,Size,_,_,_,_,_,_,_,_),   // Instr
     instruction(Block2,Size2,_,_,_,_,_,_,_,_), // Instr2
     Block < Block2, Size > Size2,
