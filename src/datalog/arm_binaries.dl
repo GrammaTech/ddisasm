@@ -40,7 +40,6 @@ This can be used for the code inference step.
 Block2: transitive block
 */
 .decl contains_plausible_instr_seq(Block:address,Weight:number,Type:symbol)
-.output contains_plausible_instr_seq
 
 /**
 Block contains an instruction sequence of a flag-setting instruction followed
@@ -67,7 +66,6 @@ instruction sequences.
 'Block2` is the block from which the points were transferred if any (0 otherwise).
 */
 .decl plausible_block(Block:address,Weight:number,Type:symbol,Block2:address)
-.output plausible_block
 
 plausible_block(0,0,"",0):- false.
 

@@ -44,7 +44,6 @@ A pair of instructions that sets the flags register and then conditionally jump.
 Empty on architectures where a flags register is not used.
 */
 .decl flags_and_jump_pair(EA_flags:address,EA_jmp:address,CC:condition_code)
-.output flags_and_jump_pair
 
 flags_and_jump_pair(EA_flags,EA_jmp,CC):-
     arch.condition_flags_reg(Reg),
@@ -57,7 +56,6 @@ A pair of instructions that compares a register to an immediate and then
 conditionally jumps.
 */
 .decl compare_and_jump_immediate(EA_cmp:address,EA_jmp:address,CC:condition_code,Reg:register,Immediate:number)
-.output compare_and_jump_immediate
 
 // Branch instruction that uses the result of a compare-to-immediate
 compare_and_jump_immediate(EA_cmp,EA_jmp,CC,Reg,Immediate):-
@@ -141,7 +139,6 @@ From: the address that creates the limit
 To: the address at which the limit is active
 */
 .decl value_reg_limit(From:address,To:address,Reg:register,Value:number,LimitType:limit_type)
-.output value_reg_limit
 
 // Each comparison generates two limits - the fallthough case is limited one
 // way, and the branch case is limited the other.
@@ -226,7 +223,6 @@ cmp_defines(EA_jmp,EA_dst,Reg):-
 Jumps where generating a value_reg_limit is not supported.
 */
 .decl no_value_reg_limit(EA_jmp:address)
-.output no_value_reg_limit
 
 // Ignored condition codes - all limits propagate through these types
 // of comparisons.
@@ -283,7 +279,6 @@ From: the address that creates the limit
 To: the address at which the limit is active
 */
 .decl last_value_reg_limit(From:address,To:address,Reg:register,Value:number,LimitType:limit_type,Steps:unsigned)
-.output last_value_reg_limit
 
 last_value_reg_limit(From,To,Reg,Value,LimitType,0):-
     value_reg_limit(From,To,Reg,Value,LimitType).

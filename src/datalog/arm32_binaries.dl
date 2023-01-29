@@ -264,7 +264,6 @@ This predicate is used for excluding such case from `litpool_ref`.
 Also, the target should not be aligned.
 */
 .decl pc_relative_for_jump_table(EA:address)
-.output pc_relative_for_jump_table
 
 pc_relative_for_jump_table(EA_adr):-
     op_shifted(EA_add,3,4,"LSL"),
@@ -353,7 +352,6 @@ E.g., EA_movw: movw reg, N
    => reg's Value = N | (M << 16)
 */
 .decl movw_movt_pair(EA_movw:address,EA_movt:address,Value:number)
-.output movw_movt_pair
 
 movw_movt_pair(EA_movw,EA_movt,Value):-
     instruction_get_operation(EA_movw,"MOVW"),
@@ -434,7 +432,6 @@ Function: The external function that the PLT entry forwards
 EA_reloc: The destination address of the PLT entry
 */
 .decl plt_entry_arm_candidate(EA_entry:address, EA_jump:address, Function:symbol, EA_reloc:address)
-.output plt_entry_arm_candidate
 
 /**
 E.g.,
@@ -613,7 +610,6 @@ OpIndex: The index of operand for literal-pool label.
         E.g., 1 for LDR, 2 for LDRD, 1 for ADR
 */
 .decl litpool_ref(EA:address, EA_ldr:address, RefAddr:address, Offset:unsigned, Size:unsigned, OpIndex:operand_index)
-.output litpool_ref
 
 /**
 (A) LDR or LDRD

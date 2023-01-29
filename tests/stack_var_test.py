@@ -60,6 +60,7 @@ def disassemble_to_gtirb(target: str) -> gtirb.Module:
             gtirb_path,
             "-j",
             "1",
+            # Needed so stack_def_use.def_used is is available.
             "--with-souffle-relations",
         ]
         subprocess.run(cmd, timeout=60, check=True)

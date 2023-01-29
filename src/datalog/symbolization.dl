@@ -73,7 +73,6 @@ This predicate only supports symbolic expressions with one symbol and no
 offset. For symbolic operands with offset see `moved_label`.
 */
 .decl symbolic_operand(EA:address,Index:operand_index,Value:address,Type:symbol)
-.output symbolic_operand
 
 /**
 There is a symbolic expression in the data at address 'EA' of size 'Size'
@@ -84,7 +83,6 @@ and no offset. For symbolic expressions in data with offset see
 see `symbol_minus_symbol`.
 */
 .decl symbolic_data(EA:address,Size:unsigned,Value:address)
-.output symbolic_data
 
 /**
 There is a symbolic expression in data at address 'EA' of size 'Size' of the form:
@@ -94,7 +92,6 @@ There is a symbolic expression in data at address 'EA' of size 'Size' of the for
 Both symbols are given as addresses.
 */
 .decl symbol_minus_symbol(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,Offset:number)
-.output symbol_minus_symbol
 
 /**
  There is a symbolic expression at address 'EA' of size 'Size' of the form:
@@ -105,7 +102,6 @@ Symbol+Offset
 is referenced by name.
  */
 .decl symbolic_expr_from_relocation(EA:address,Size:unsigned,Symbol:symbol,Offset:number,TargetEA:address)
-.output symbolic_expr_from_relocation
 
 /**
  There is a symbolic expression at address 'EA' of size 'Size' of the form:
@@ -116,7 +112,6 @@ This symbolic expression corresponds to a relocation and the symbol
 is referenced by name.
  */
 .decl symbol_minus_symbol_from_relocation(EA:address,Size:unsigned,Symbol1:symbol,Symbol2:symbol,Scale:unsigned,Offset:number)
-.output symbol_minus_symbol_from_relocation
 
 // Not all ISAs have these
 symbol_minus_symbol_from_relocation(0,0,"","",1,0):- false.
@@ -149,7 +144,6 @@ The symbolic operand at address 'EA' and 'Index' has a symbolic expression
 attribute 'Attribute'.
 */
 .decl symbolic_operand_attribute(EA:address,Index:unsigned,Attribute:symbol)
-.output symbolic_operand_attribute
 
 symbolic_operand_attribute(0,0,""):- false.
 
@@ -171,7 +165,6 @@ The address 'Ea' needs to be labeled so it can be referred
 in symbolic expressions.
 */
 .decl labeled_ea(Ea:address)
-.output labeled_ea
 
 // How data sections are divided into elements by labels or data objects
 .decl data_object_boundary(EA:address)
@@ -185,9 +178,7 @@ in symbolic expressions.
 // candidates of symbolic values in the code
 
 .decl symbolic_operand_candidate(ea:address,operand_index:operand_index,Dest:address,Type:symbol)
-.output symbolic_operand_candidate
 .decl symbolic_operand_point(ea:address,operand_index:operand_index,points:number,why:symbol)
-.output symbolic_operand_point
 .decl symbolic_operand_total_points(ea:address,operand_index:operand_index,points:number) inline
 
 // Symbolic operands that can occur in any binary type
@@ -365,7 +356,6 @@ symbolic_operand(EA,Op_index,Value,Type):-
 ///////////////////////////////
 // label candidates before moving
 .decl labeled_data_candidate(EA:address)
-.output labeled_data_candidate
 
 labeled_data_candidate(EA):-
     !binary_isa("ARM"),
@@ -386,7 +376,6 @@ labeled_data_candidate(Val):-
 A candidate for a symbol-symbol in data (includes jump tables and other relative symbols)
 */
 .decl symbol_minus_symbol_candidate(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,Offset:number)
-.output symbol_minus_symbol_candidate
 
 symbol_minus_symbol_candidate(EA,Size,Symbol1,Symbol2,as(Scale,unsigned),Offset):-
     relative_jump_table_entry(EA,_,Size,Reference,Dest,Scale,Offset),
@@ -464,10 +453,8 @@ Possible string of some 'Encoding' at interval ['EA','End').
 .output string
 
 .decl string_candidate(EA:address,End:address,Encoding:symbol)
-.output string_candidate
 
 .decl string_candidate_refined(EA:address,End:address,Encoding:symbol)
-.output string_candidate_refined
 
 string_candidate(EA,End,"ascii"):-
     ascii_string(Beg,End),
@@ -516,13 +503,10 @@ string(EA,End,Encoding):-
 
 ///////////////////////////////////////////////////////////////////////////
 .decl data_object_candidate(ea:address,size:unsigned,type:symbol)
-.output data_object_candidate
 
 .decl data_object_point(ea:address,size:unsigned,type:symbol,points:number,why:symbol)
-.output data_object_point
 
 .decl data_object_conflict(ea:address,size:unsigned,type:symbol,ea2:address,size2:unsigned,type2:symbol)
-.output data_object_conflict
 
 .decl discarded_data_object(ea:address,size:unsigned,type:symbol)
 
@@ -820,7 +804,6 @@ data_object_conflict(EA,Size,Type,EA2,Size2,Type2):-
     Val < EA2+Size2.
 
 .decl data_object_total_points(EA:address,Size:unsigned,Type:symbol,Points:number)
-.output data_object_total_points
 
 data_object_total_points(EA,Size,Type,Points):-
     data_object_candidate(EA,Size,Type),

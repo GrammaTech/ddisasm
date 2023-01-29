@@ -71,7 +71,6 @@ inter_procedural_edge(Src,Dest):-
     function_inference.function_entry_initial(Dest).
 
 .decl block_next(Block:address,BlockEnd:address,NextBlock:address)
-.output block_next
 
 block_next(Block,EA,Block2):-
     block_last_instruction(Block,EA),
@@ -254,7 +253,6 @@ analysis for both registers and stack variables.
     This prevents infinite loops.
     */
     .decl live_var_used(Block:address,LiveVar:T,UsedVar:T,EA_used:address,Index:operand_index,Moves:unsigned) overridable
-    .output live_var_used
 
     // Used in this block
     live_var_used(Block,Var,Var,EA_used,Index,0):-
@@ -279,7 +277,6 @@ analysis for both registers and stack variables.
     defs forward through adjacent uses.
     */
     .decl live_var_at_block_end(Block:address,BlockUsed:address,Var:T)
-    .output live_var_at_block_end
 
     // Base case
     live_var_at_block_end(PrevBlock,Block,Var):-
@@ -307,7 +304,6 @@ analysis for both registers and stack variables.
     Forms an edge between two used() that depend on the same def.
     */
     .decl live_var_at_prior_used(EA_used:address,BlockUsed:address,Var:T)
-    .output live_var_at_prior_used
 
     live_var_at_prior_used(EA_used,BlockUsed,Var):-
         live_var_at_block_end(Block,BlockUsed,Var),
@@ -455,7 +451,6 @@ analysis for both registers and stack variables.
     A <T> is defined in 'EA_def' and used in 'EA_used' in the operand with index 'Index_used'
     */
     .decl def_used(EA_def:address,Var:register,EA_used:address,Index_used:operand_index)
-    .output def_used
 
     // Intra-block def-use
     def_used(EA_def,Var,EA_used,Index):-
@@ -491,7 +486,6 @@ analysis for both registers and stack variables.
 An offset is added to a stack pointer register at EA.
 */
 .decl adjusts_stack_in_block(Block:address,EA:address,BaseReg:register,Offset:number)
-.output adjusts_stack_in_block
 
 adjusts_stack_in_block(Block,EA,BaseReg,Offset):-
     (
@@ -562,7 +556,6 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     A stack is defined in 'EA_def' and used in 'EA_used' in the operand with index 'Index_used'
     */
     .decl def_used(EA_def:address,VarDef:stack_var,EA_used:address,VarUsed:stack_var,Index_used:operand_index)
-    .output def_used
 
     // Intra-block def-use
     def_used(EA_def,Var,EA_used,Var,Index):-
@@ -595,7 +588,6 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     Propagate live uses backwards within a block on a per-instruction basis.
     */
     .decl live_var_used_in_block(Block:address,EA:address,LiveVar:stack_var,UsedVar:stack_var,EA_used:address,Index:operand_index,Moves:unsigned)
-    .output live_var_used_in_block
 
     // Used in this block
     live_var_used_in_block(Block,EA_used,[BaseReg,StackPos],[BaseReg,StackPos],EA_used,Index,0):-
@@ -648,7 +640,6 @@ stack_base_reg_move(Block,EA,Src,Dst):-
  * The register 'Reg' used as an address at address 'EA'.
  */
 .decl reg_used_for(EA:address,Reg:register,Type:symbol)
-.output reg_used_for
 
 reg_used_for(EA,Reg,"Memory"):-
     reg_def_use.used(EA,Reg,Index),
@@ -668,7 +659,6 @@ reg_used_for(EA,Reg,"Call"):-
  * or to compute an address.
  */
 .decl def_used_for_address(EA_def:address,Reg:register,Type:symbol)
-.output def_used_for_address
 
 def_used_for_address(EA_def,Reg,Type):-
     reg_def_use.def_used(EA_def,Reg,EA,_),

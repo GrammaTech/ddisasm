@@ -30,12 +30,7 @@ class ExtraArgsTest(unittest.TestCase):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
 
             # disassemble
-            self.assertTrue(
-                disassemble(
-                    "ex",
-                    format="--ir",
-                )[0]
-            )
+            self.assertTrue(disassemble("ex", format="--ir")[0])
 
             # load the gtirb
             ir = gtirb.IR.load_protobuf("ex.gtirb")

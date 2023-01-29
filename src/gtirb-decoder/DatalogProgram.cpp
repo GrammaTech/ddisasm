@@ -377,10 +377,53 @@ void DatalogProgram::writeRelations(const std::string &Directory)
     std::ios_base::openmode FileMask = std::ios::out;
     for(souffle::Relation *Relation : Program->getOutputRelations())
     {
+        if(Relation->getArity() == 0)
+        {
+            continue;
+        }
         std::ofstream File(Directory + Relation->getName() + ".csv", FileMask);
         writeRelation(File, Relation);
         File.close();
     }
+    if(!pruneImdtRels)
+    {
+        for(souffle::Relation *Relation : Program->getInternalRelations())
+        {
+            if(Relation->getArity() == 0)
+            {
+                continue;
+            }
+            std::ofstream File(Directory + Relation->getName() + ".csv", FileMask);
+            writeRelation(File, Relation);
+            File.close();
+        }
+    }
+}
+
+void addRelationToRelationsMap(
+    DatalogProgram *Program, souffle::Relation *Relation,
+    std::map<std::string, std::tuple<std::string, std::string>> &Relations)
+{
+    if(Relation->getArity() == 0)
+    {
+        return;
+    }
+
+    // Construct type signature string.
+    std::stringstream Type;
+    Type << Relation->getAttrName(0) << ":" << Relation->getAttrType(0);
+    for(size_t I = 1; I < Relation->getArity(); I++)
+    {
+        Type << "," << Relation->getAttrName(I) << ":" << Relation->getAttrType(I);
+    }
+
+    // Write CSV to buffer.
+    std::stringstream Csv;
+    Program->writeRelation(Csv, Relation);
+
+    // TODO: Compress CSV.
+
+    Relations[Relation->getName()] = {Type.str(), Csv.str()};
 }
 
 void DatalogProgram::writeFacts(gtirb::Module &Module)
@@ -389,26 +432,7 @@ void DatalogProgram::writeFacts(gtirb::Module &Module)
 
     for(souffle::Relation *Relation : Program->getInputRelations())
     {
-        if(Relation->getArity() == 0)
-        {
-            continue;
-        }
-
-        // Construct type signature string.
-        std::stringstream Type;
-        Type << Relation->getAttrName(0) << ":" << Relation->getAttrType(0);
-        for(size_t I = 1; I < Relation->getArity(); I++)
-        {
-            Type << "," << Relation->getAttrName(I) << ":" << Relation->getAttrType(I);
-        }
-
-        // Write CSV to buffer.
-        std::stringstream Csv;
-        writeRelation(Csv, Relation);
-
-        // TODO: Compress CSV.
-
-        Relations[Relation->getName()] = {Type.str(), Csv.str()};
+        addRelationToRelationsMap(this, Relation, Relations);
     }
 
     Module.addAuxData<gtirb::schema::SouffleFacts>(std::move(Relations));
@@ -420,26 +444,14 @@ void DatalogProgram::writeRelations(gtirb::Module &Module)
 
     for(souffle::Relation *Relation : Program->getOutputRelations())
     {
-        if(Relation->getArity() == 0)
+        addRelationToRelationsMap(this, Relation, Relations);
+    }
+    if(!pruneImdtRels)
+    {
+        for(souffle::Relation *Relation : Program->getInternalRelations())
         {
-            continue;
+            addRelationToRelationsMap(this, Relation, Relations);
         }
-
-        // Construct type signature string.
-        std::stringstream Type;
-        Type << Relation->getAttrName(0) << ":" << Relation->getAttrType(0);
-        for(size_t I = 1; I < Relation->getArity(); I++)
-        {
-            Type << "," << Relation->getAttrName(I) << ":" << Relation->getAttrType(I);
-        }
-
-        // Write CSV to buffer.
-        std::stringstream Csv;
-        writeRelation(Csv, Relation);
-
-        // TODO: Compress CSV.
-
-        Relations[Relation->getName()] = {Type.str(), Csv.str()};
     }
 
     Module.addAuxData<gtirb::schema::SouffleOutputs>(std::move(Relations));

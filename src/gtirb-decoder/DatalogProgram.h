@@ -97,6 +97,8 @@ public:
 
     static std::vector<Target> supportedTargets();
 
+    bool pruneImdtRels = true;
+
 private:
     souffle::RamDomain insertRecord(const std::string& RecordText);
     void serializeRecord(std::ostream& Stream, const std::string& AttrType,

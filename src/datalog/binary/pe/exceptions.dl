@@ -27,7 +27,6 @@ Register "Reg" at address "EA" contains a reference to the Thread Information
 Block (TIB).
 */
 .decl reg_has_tib(EA:address,Reg:register)
-.output reg_has_tib
 
 reg_has_tib(EA,Reg):-
     binary_isa("X86"),
@@ -106,7 +105,6 @@ the 'SEHandlerTable' pointer in the load configuration data directory:
 https://docs.microsoft.com/en-us/cpp/build/reference/safeseh-image-has-safe-exception-handlers
 */
 .decl seh_handler_table(Beg:address,End:address)
-.output seh_handler_table
 
 seh_handler_table(Beg,End):-
     binary_isa("X86"),
@@ -120,7 +118,6 @@ data_region(Beg,End-End):-
     seh_handler_table(Beg,End).
 
 .decl seh_handler_entry(EA:address,Handler:address)
-.output seh_handler_entry
 
 seh_handler_entry(EA,ImageBase+RVA):-
     base_address(ImageBase),

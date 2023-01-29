@@ -194,7 +194,6 @@ The upper 2-bytes of the mov instruction happens to be a valid Thumb
 instruction: ITETE in this case.
 */
 .decl dangling_thumb_instr(EA:address)
-.output dangling_thumb_instr
 
 dangling_thumb_instr(EA):-
     instruction(EA,2,_,_,_,_,_,_,_,_),
@@ -216,7 +215,6 @@ The condition switch in the IT block can be either: T (Then) or E (Else).
 This predicate determines if EA is a IT block instruction.
 */
 .decl it_conditional(EA:address,IT:address)
-.output it_conditional
 
 it_conditional(EA,IT):-
     !dangling_thumb_instr(IT),

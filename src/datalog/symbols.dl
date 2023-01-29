@@ -71,13 +71,11 @@ can be two variants: If 'Pos' is "Beg", the symbol points to the beginning
 of a block. If 'Pos' is "End", the symbol points at the end of a block.
 */
 .decl best_symexpr_symbol(EA:address,SymbolName:symbol,Pos:symbol_position)
-.output best_symexpr_symbol
 
 /**
 Best function symbol at address 'EA'.
 */
 .decl best_func_symbol(EA:address,SymbolName:symbol)
-.output best_func_symbol
 
 /**
 This predicate is computed to decide which is the best symbol for
@@ -85,7 +83,6 @@ symbolic expressions or the best function symbol at each address.
 Each symbol receives a score based on its properties.
 */
 .decl symbol_score(EA:address,SymbolName:symbol,Type:symbol,Pos:symbol_position,Score:unsigned)
-.output symbol_score
 
 
 symbol_score(EA,SymbolName,Type,Pos,Score):-
@@ -197,7 +194,6 @@ An existing symbol is pointing to the end of a section rather
 than the beginning of the next section.
 */
 .decl symbol_at_section_end(EA:address,SymbolName:symbol)
-.output symbol_at_section_end
 
 /**
 The symbol at address 'EA' with name 'SymbolName' should point

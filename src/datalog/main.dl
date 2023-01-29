@@ -144,12 +144,10 @@ Convert between input_reg and register with arch.reg_map
 Defines adjustments to relocation values.
 */
 .decl relocation_adjustment(EA:address,Adjustment:number,Reason:symbol)
-.output relocation_adjustment
 /**
 The total relocation adjustment for a location
 */
 .decl relocation_adjustment_total(EA:address,Adjustment:number)
-.output relocation_adjustment_total
 
 relocation_adjustment_total(EA,0):-
     relocation(EA,_,_,_,_,_,_),
@@ -232,7 +230,6 @@ Index: The index of the register in bitfield (starts with 0)
 
 .decl op_special(code:operand_code,type:symbol,value:symbol)
 .input op_special
-.output op_special
 
 .decl op_indirect(code:operand_code,reg1:input_reg,reg2:input_reg,reg3:input_reg,
         multiplier:number,offset:number,size_value:unsigned)
@@ -324,7 +321,6 @@ The `Offset` is non-zero only for the x86 ISA, for other ISAs the symbolic
 expressions point to the beginning of the instruction.
 */
 .decl instruction_immediate_offset(EA:address,Index:operand_index,Offset:unsigned,Size:unsigned)
-.output instruction_immediate_offset
 
 instruction_immediate_offset(EA,Index,ImmediateOffset,Size-ImmediateOffset):-
     instruction(EA,Size,_,_,_,_,_,_,ImmediateOffset,_),
@@ -339,7 +335,6 @@ The `Offset` is non-zero only for the x86 ISA, for other ISAs the symbolic
 expressions point to the beginning of the instruction.
 */
 .decl instruction_displacement_offset(EA:address,Index:operand_index,Offset:unsigned,Size:unsigned)
-.output instruction_displacement_offset
 
 instruction_displacement_offset(EA,Index,DisplacementOffset,DispSize):-
     instruction(EA,Size,_,_,_,_,_,_,ImmediateOffset,DisplacementOffset),
@@ -423,7 +418,6 @@ next(EA,EA+Size):-
     instruction(EA,Size,_,_,_,_,_,_,_,_).
 
 .decl pc_relative_operand(src:address,index:operand_index, dest:address)
-.output pc_relative_operand
 
 pc_relative_operand(EA,Index,Dest):-
     binary_isa("X64"),
@@ -443,7 +437,6 @@ pc_relative_operand(EA,Index,Dest):-
     Dest = Base + as(as(Size-Offset,number)+Addend,unsigned).
 
 .decl split_load_operand(src:address,index:operand_index, dest:address)
-.output split_load_operand
 
 split_load_operand(0,0,0):- false.
 
@@ -457,7 +450,6 @@ instruction_has_loop_prefix(EA):-
 Instruction at address "EA" has a relocation for address "Relocation".
 */
 .decl instruction_has_relocation(EA:address,Rel:address)
-.output instruction_has_relocation
 
 instruction_has_relocation(EA,EA+Offset):-
     (
@@ -485,7 +477,6 @@ conditional_jump(EA):-
 
 // direct jumps
 .decl direct_jump(src:address, dest:address)
-.output direct_jump
 
 direct_jump(EA,as(Dest,address)):-
     arch.jump(EA),
@@ -513,7 +504,6 @@ impossible_jump_target(0):-
 // Special kinds of indirect jumps
 // PC relative jumps
 .decl pc_relative_jump(src:address, dest:address)
-.output pc_relative_jump
 
 pc_relative_jump(EA,Dest):-
     arch.jump(EA),
@@ -544,7 +534,6 @@ indirect_jump(EA):-
 // CALLS
 // direct calls
 .decl direct_call(EA:address,Dest:address)
-.output direct_call
 
 direct_call(EA,as(Dest,address)):-
     !binary_isa("ARM"),
@@ -567,13 +556,11 @@ direct_call(EA,Dest):-
 // This needs to be distinguished from direct_call to avoid cyclic dependency
 // in function inference: see basic_function_inference.dl.
 .decl direct_call_resolved(src:address, dest:address)
-.output direct_call_resolved
 
 direct_call_resolved(0,0):-
     false.
 
 .decl pc_relative_call(src:address,dest:address)
-.output pc_relative_call
 
 pc_relative_call(Src,Dest):-
     arch.call(Src,_),
@@ -581,7 +568,6 @@ pc_relative_call(Src,Dest):-
 
 // for now we do not compute anything about these
 .decl reg_call(src:address,reg:register)
-.output reg_call
 
 reg_call(EA,Reg):-
     arch.call(EA,TargetOpIndex),
@@ -589,7 +575,6 @@ reg_call(EA,Reg):-
     op_regdirect_contains_reg(TargetOp,Reg).
 
 .decl indirect_call(src:address)
-.output indirect_call
 
 indirect_call(EA):-
     arch.call(EA,TargetOpIndex),
@@ -604,7 +589,6 @@ Identify edge case direct calls that are used to load the program counter and
 not as control-flow (e.g. call-to-pop sequences).
 */
 .decl pc_load_call(Src:address,Dest:address)
-.output pc_load_call
 
 // TODO: Replace with platform-specific definition of direct_call.
 pc_load_call(Src,Dest):-
@@ -636,7 +620,6 @@ alignment(0,0):- false.
 // Operations to abstract features of instructions
 
 .decl op_indirect_contains_reg(Op:operand_code,Reg:register)
-.output op_indirect_contains_reg
 
 // we ignore segment registers
 op_indirect_contains_reg(Op,Reg):-
@@ -656,7 +639,6 @@ op_indirect_mapped(Op,Reg1,Reg2,Reg3,Mult,Offset,Size):-
     reg_map_nullable(RegIn3,Reg3).
 
 .decl op_regdirect_contains_reg(Op:operand_code,Reg:register)
-.output op_regdirect_contains_reg
 
 op_regdirect_contains_reg(Op,Reg):-
     (
@@ -695,7 +677,6 @@ symbol_set(EA,Size,Type,Scope,Visibility,SectIndex,Name):-
     symbol(EA,Size,Type,Scope,Visibility,SectIndex,_,_,Name).
 
 .decl ambiguous_symbol(name:symbol)
-.output ambiguous_symbol
 
 ambiguous_symbol(Name):-
     symbol_set(_,_,_,_,_,_,Name),
@@ -703,7 +684,6 @@ ambiguous_symbol(Name):-
 
 // Function symbols
 .decl function_symbol(ea:address,name:symbol)
-.output function_symbol
 
 function_symbol(EA,Name):-
     symbol(EA,_,"FUNC",_,_,_,_,_,Name).
@@ -731,16 +711,12 @@ defined_symbol(EA,Size,Type,Scope,Visibility,SectIndex,OriginTable,TableIndex,Na
 ////////////////////////////////////////////////////////////////////////////////////////
 
 .decl loaded_section(Beg:address,End:address,Name:symbol)
-.output loaded_section
 .decl data_section(name:symbol)
-.output data_section
 .decl exception_section(name:symbol)
 .decl special_data_section(name:symbol)
 .decl regular_data_section(name:symbol)
 .decl code_section(name:symbol)
-.output code_section
 .decl tls_section(name:symbol)
-.output tls_section
 .decl bss_section(name:symbol)
 .output bss_section
 
@@ -761,10 +737,8 @@ regular_data_section(Name):-
     !special_data_section(Name).
 
 .decl non_zero_data_section(name:symbol)
-.output non_zero_data_section
 
 .decl bss_section_limits(Begin:address,End:address)
-.output bss_section_limits
 
 bss_section_limits(0,0):-
     !bss_section(_).
