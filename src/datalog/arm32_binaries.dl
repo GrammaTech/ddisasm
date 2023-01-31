@@ -1222,13 +1222,10 @@ On top of the above, if there's another string nearby, give more points.
 block_points(Block,"data",Size,0,3,"arm: pointer to string adjacent to another strings in data"):-
     block_points(Block,"data",Size,0,2,"arm: pointer to string in data"),
     aligned_address_in_data(Block,Addr),
-    ascii_string(Addr,End),
-    // The string does not overlap with a possible literal pool.
-    align_addr(Addr_aligned,Addr),
-    !litpool_boundaries(Addr_aligned,_),
     (
-        ascii_string(_,Addr), UNUSED(End)
+        ascii_string(_,Addr)
         ;
+        ascii_string(Addr,End),
         ascii_string(End,_)
     ).
 
