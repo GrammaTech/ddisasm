@@ -110,6 +110,9 @@ tests:
     - name: ex_simple_dll
       <<: *default
 
+    - name: ex_dll_sym_mangling
+      <<: *default
+
     - name: ex1
       <<: *default
       build:

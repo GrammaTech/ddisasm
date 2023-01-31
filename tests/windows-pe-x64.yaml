@@ -90,6 +90,9 @@ tests:
     - name: ex_simple_dll
       <<: *default
 
+    - name: ex_dll_sym_mangling
+      <<: *default
+
     - name: ex_switch_in_code4
       <<: *assembly
 
