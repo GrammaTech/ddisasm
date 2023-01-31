@@ -92,6 +92,16 @@ tests:
 
     - name: ex_dll_sym_mangling
       <<: *default
+      binary: baz.dll
+      build:
+        c: ["cl"]
+        cpp: ["cl"]
+        optimizations: ["/Od"]
+        flags: []
+      reassemble:
+        compiler: "ml64"
+        flags: ["/link", "/DLL", "/ENTRY:_EntryPoint", "/SUBSYSTEM:console"]
+        skip: false
 
     - name: ex_switch_in_code4
       <<: *assembly
