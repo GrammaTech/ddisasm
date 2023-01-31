@@ -52,10 +52,19 @@ a `DLL` or `EXE` entry and optionally a [subsystem][SUBSYSTEM] descriptor (e.g.
 |       |                                              |
 |------:|----------------------------------------------|
 |  Name | **archInfo**                                 |
-|  Type | `std::vector<std::string>`                   |
-| Value | A list of detailed architecture information. |
+|  Type | `std::map<std::string, std::string>`         |
+| Value | A map of detailed architecture information.  |
 
-_Note that this is currently only used for ARM32 to indicate the binary is for a `Microcontroller`._
+Currently only generated for ARM32 binaries.
+
+Possible key, value pairs are:
+
+| Key       | Values                                 |
+|-----------|----------------------------------------|
+| "Profile" | "Application", "RealTime", "Microcontroller", "System" |
+| "Arch"    | "Pre_v4", "v4", "v4T", "v5T", "v5TE", "v5TEJ", "v6", "v6KZ", "v6K", "v7", "v6_M", "v6S_M", "v7E_M", "v8_A", "v8_R", "v8_M_Base", "v8_M_Main", "v8_1_M_Main", "v9_A" |
+
+These correspond to values in the ARM attributes section, but may also be inferred by ddisasm based on the presence of particular instructions if no ARM attributes section is present in the binary.
 
 ## comments
 

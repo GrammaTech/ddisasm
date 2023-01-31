@@ -49,7 +49,6 @@ value_reg_edge(EA,Reg,PrevEA1,Reg,1,as(PrevEA0,number)):-
     track_register(Reg).
 
 .decl gp_relative_operand(src:address,index:operand_index, dest:address)
-.output gp_relative_operand
 
 // e.g., lw v0, -32696(gp)
 gp_relative_operand(EA,Index,as(GpValue+Offset,address)):-
@@ -106,7 +105,6 @@ hi_load(EA,Reg,Upper):-
     op_regdirect_contains_reg(RegOp,Reg).
 
 .decl hi_load_prop(reg_restore_ea:address, ea:address, reg:register, upper:number, type:symbol)
-.output hi_load_prop
 
 hi_load_prop(EA,EA,Reg,Upper,"direct"):-
     hi_load(EA,Reg,Upper).
@@ -124,26 +122,20 @@ hi_load_prop(MoveEA,EA,Reg2,Upper,"move"):-
 
 // Split-loads -------------------------------------------------------
 .decl split_load_candidate(ea_hi:address, ea_lo:address, dest:address, type:symbol)
-.output split_load_candidate
 
 .decl split_load_point(ea:address, nextea:address, dest:address, type:symbol, point:number, why:symbol)
-.output split_load_point
 
 .decl split_load_conflict(ea:address, nextea:address, dest:address, type:symbol, ea2:address, nextea2:address, dest2:address, type2:symbol)
-.output split_load_conflict
 
 .decl split_load_total_points(ea:address, nextea:address, dest:address, type:symbol, points:number)
 
 .decl discarded_split_load(ea:address, nextea:address, dest:address, type:symbol, points:number)
-.output discarded_split_load
 
 // Compute an immediate load performed across two consecutive instructions
 .decl split_load(ea:address, nextea:address, dest:address, type:symbol)
-.output split_load
 
 // Compute an immediate load/store performed across two separate instructions
 .decl split_loadstore(ea:address, nextea:address, dest:address)
-.output split_loadstore
 
 
 // E.g., lui reg, hi(xxx)
@@ -304,7 +296,6 @@ discarded_split_load(EA_hi,EA_lo,Dest_addr,Type,Points):-
 
 
 .decl base_addr_offset_operand(ea:address, next_ea:address, dest:address)
-.output base_addr_offset_operand
 
 // e.g., lw v0, -32696(gp)  <-- v0: MIPS_BASE_ADDRESS
 //       addiu a0, v0, 2560 <-- 2560: offset from MIPS_BASE_ADDRESS to target L
@@ -405,7 +396,6 @@ symbolic_operand_attribute(EA, Index, "Lo"):-
     ).
 
 .decl symbolic_operand_mips_candidate(ea:address,index:operand_index, dest:address)
-.output symbolic_operand_mips_candidate
 
 symbolic_operand_mips_candidate(EA,Index,Dest):-
     gp_relative_operand(EA,Index,Dest).
@@ -483,7 +473,6 @@ symbolic_operand_point(EA,Op_index,1,"lookup-got"):-
 mips_stubs_section(".MIPS.stubs").
 
 .decl mips_stubs_entry(Block:address,Function:symbol)
-.output mips_stubs_entry
 
 mips_stubs_entry(Block,Function):-
     mips_stubs_section(SecName),
@@ -497,7 +486,6 @@ mips_stubs_entry(Block,Function):-
     code_in_refined_block(EA,Block).
 
 .decl plt_entry_candidate(EA:address,GotIndex:unsigned)
-.output plt_entry_candidate
 
 // Pattern-matching.1:
 //   lw $t9, _GLOBAL_OFFSET_TABLE_($gp)

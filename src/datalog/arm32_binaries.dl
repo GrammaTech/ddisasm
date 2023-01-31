@@ -264,7 +264,6 @@ This predicate is used for excluding such case from `litpool_ref`.
 Also, the target should not be aligned.
 */
 .decl pc_relative_for_jump_table(EA:address)
-.output pc_relative_for_jump_table
 
 pc_relative_for_jump_table(EA_adr):-
     op_shifted(EA_add,3,4,"LSL"),
@@ -353,7 +352,6 @@ E.g., EA_movw: movw reg, N
    => reg's Value = N | (M << 16)
 */
 .decl movw_movt_pair(EA_movw:address,EA_movt:address,Value:number)
-.output movw_movt_pair
 
 movw_movt_pair(EA_movw,EA_movt,Value):-
     instruction_get_operation(EA_movw,"MOVW"),
@@ -434,7 +432,6 @@ Function: The external function that the PLT entry forwards
 EA_reloc: The destination address of the PLT entry
 */
 .decl plt_entry_arm_candidate(EA_entry:address, EA_jump:address, Function:symbol, EA_reloc:address)
-.output plt_entry_arm_candidate
 
 /**
 E.g.,
@@ -584,7 +581,6 @@ OpIndex: The index of operand for literal-pool label.
         E.g., 1 for LDR, 2 for LDRD, 1 for ADR
 */
 .decl litpool_ref(EA:address, EA_ldr:address, RefAddr:address, Offset:unsigned, Size:unsigned, OpIndex:operand_index)
-.output litpool_ref
 
 /**
 (A) LDR or LDRD
@@ -1237,20 +1233,45 @@ must_access_data(EA,Dest):-
     litpool_ref(_,EA,Dest,_,_,_).
 
 /**
-Block containing instructions that only belong to Microcontroller arch.
+ArchInfo auxdata inferred by the presence of specific instructions or patterns.
 */
-.decl arm_microcontroller(Block:address)
-.output arm_microcontroller
+.decl inferred_arch_info(Key:symbol,Value:symbol)
+.output inferred_arch_info
 
-arm_microcontroller(Block):-
-    refined_block(Block),
-    code_in_block_candidate_refined(EA,Block),
+// "System" is not a true hardware profile, but represents
+// Application OR RealTime profiles.
+
+// "blx label" is not possible on the "Microcontroller" profile.
+inferred_arch_info("Profile","System"):-
+    code_in_refined_block(EA,_),
+    instruction_get_operation(EA,Operation),
+    substr(Operation,0,3) = "BLX",
+    arch.jump_operation_op_index(Operation,OpIndex),
+    instruction_get_op(EA,OpIndex,Op),
+    op_immediate(Op,_).
+
+// ARM code is not possible on the "Microcontroller" profile.
+inferred_arch_info("Profile","System"):-
+    code_in_refined_block(EA,_),
+    EA band 1 = 0.
+
+inferred_arch_info("Profile","Microcontroller"):-
+    code_in_refined_block(EA,_),
     instruction_get_operation(EA,Operation),
     (
         // The following instructions are only decoded with CS_MODE_MCLASS.
+        // TODO: *some* MRS/MSR can be decoded without CS_MODE_MCLASS. We
+        // should refine this rule to only match the ones that cannot.
         substr(Operation,0,3) = "MRS";
         substr(Operation,0,3) = "MSR"
     ).
+
+// LDCL is not available on ARMv8+
+// It could be v7 or anything older, but we guess v7 to provide maximum
+// compatibility.
+inferred_arch_info("Arch","v7"):-
+    code_in_refined_block(EA,_),
+    instruction_get_operation(EA,"LDCL").
 
 // Create a target only if there's only one possible instruction mode at the
 // address. Creating both as potential targets creates too many false

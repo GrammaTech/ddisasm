@@ -232,7 +232,7 @@ public:
     }
 
 protected:
-    explicit InstructionLoader(uint8_t N) : InstructionSize{N}
+    explicit InstructionLoader(uint8_t N) : MinInstructionSize{N}
     {
         // Create smart Capstone handle.
         CsHandle.reset(new csh(0), [](csh* Handle) {
@@ -272,9 +272,9 @@ protected:
         while(Size > 0)
         {
             decode(Facts, Data, Size, Addr);
-            Addr += InstructionSize;
-            Data += InstructionSize;
-            Size -= InstructionSize;
+            Addr += MinInstructionSize;
+            Data += MinInstructionSize;
+            Size -= MinInstructionSize;
         }
     }
 
@@ -289,7 +289,7 @@ protected:
     virtual uint8_t operandAccess(const cs_insn& CsInstruction, uint64_t Index) = 0;
 
     // We default to decoding instructions at every byte offset.
-    uint8_t InstructionSize = 1;
+    uint8_t MinInstructionSize = 1;
 
     std::shared_ptr<csh> CsHandle;
 };

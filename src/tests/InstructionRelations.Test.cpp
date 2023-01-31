@@ -68,6 +68,8 @@ std::optional<DatalogProgram> runSouffle(GTIRB &Gtirb)
         return std::nullopt;
     }
 
+    Souffle->pruneImdtRels = false;
+
     auto DebugDir = fs::temp_directory_path() / fs::unique_path();
     std::cout << "\t\tWriting relations to " << DebugDir << "\n";
     fs::create_directories(DebugDir);

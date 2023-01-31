@@ -41,7 +41,6 @@ In these jump tables, the reference address coincides with the starting address
 of the jump table.
 */
 .decl relative_address(EA:address,Size:unsigned,TableStart:address,Reference:address,Dest:address,DestIsFirstOrSecond:symbol)
-.output relative_address
 
 .decl relative_address_start(EA:address,Size:unsigned,Reference:address,Dest:address, DestIsFirstOrSecond:symbol)
 
@@ -171,7 +170,6 @@ jump_table_element_access(EA,Size,TableStartAddr,RegBase_nn):-
 Find sign extensions of the jump table element.
 */
 .decl jump_table_signed(TableStart:address,Signed:unsigned)
-.output jump_table_signed
 
 // The value is explicitly extended when loaded from memory.
 jump_table_signed(TableStart,Signed):-
@@ -211,7 +209,6 @@ jump_table_signed(TableStart,Signed):-
 The end of a jump table as identified by a boundary value of the index register.
 */
 .decl jump_table_max(TableStart:address,TableEnd:address)
-.output jump_table_max
 
 jump_table_max(TableStart,TableStart+as(Value,unsigned)*Size):-
     jump_table_element_access(EA,Size,TableStart,RegIndex),
@@ -258,7 +255,6 @@ jump_table_max(TableStart2,TableStart2+IndexValue*Size2):-
 A jump table begins at TableStart.
 */
 .decl jump_table_start(EA_jump:address,Size:unsigned,TableStart:address,TableRef:address,Scale:number)
-.output jump_table_start
 
 jump_table_start(EA_jump,Size,TableStart,as(Base,address),Scale):-
     // Looks like a jump table access occurs at EA...
@@ -354,7 +350,6 @@ Some of these are discarded to form relative_jump_table_entry, which is used by
 symbolization.
 */
 .decl relative_jump_table_entry_candidate(EA:address,TableStart:address,Size:unsigned,Reference:address,Dest:address,Scale:number,Offset:number)
-.output relative_jump_table_entry_candidate
 
 relative_jump_table_entry_candidate(TableStart,TableStart,Size,Reference,Dest,Scale,0):-
     !binary_isa("ARM"),
@@ -390,7 +385,6 @@ relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offs
     relative_jump_table_entry_target(EA,TableStart,Size,Reference,Dest,Scale).
 
 .decl discarded_jump_table_entry(TableStart:address,TableRef:address,EA:address)
-.output discarded_jump_table_entry
 
 // Prefer jump tables where TableRef = TableStart, if there is a conflict.
 discarded_jump_table_entry(TableStart,TableRef1,TableStart):-
@@ -426,7 +420,6 @@ CFG generation. This allows using the final results of value analysis to
 resolve overlapping jump tables.
 */
 .decl relative_jump_table_entry(EA:address,TableStart:address,Size:unsigned,Reference:address,Dest:address,Scale:number,Offset:number)
-.output relative_jump_table_entry
 
 relative_jump_table_entry(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
     relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offset),

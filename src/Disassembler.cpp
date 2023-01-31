@@ -1221,100 +1221,139 @@ void buildPadding(gtirb::Module &Module, souffle::SouffleProgram *Prog)
 void buildComments(gtirb::Module &Module, souffle::SouffleProgram *Prog, bool SelfDiagnose)
 {
     std::map<gtirb::Offset, std::string> Comments;
-    for(auto &Output : *Prog->getRelation("data_access_pattern"))
+    auto *data_access_pattern = Prog->getRelation("data_access_pattern");
+    if(data_access_pattern)
     {
-        gtirb::Addr Ea;
-        uint64_t Size, From;
-        int64_t Multiplier;
-        Output >> Ea >> Size >> Multiplier >> From;
-        std::ostringstream NewComment;
-        NewComment << "data_access(" << Size << ", " << Multiplier << ", " << std::hex << From
-                   << std::dec << ")";
-        updateComment(Module, Comments, Ea, NewComment.str());
+        for(auto &Output : *data_access_pattern)
+        {
+            gtirb::Addr Ea;
+            uint64_t Size, From;
+            int64_t Multiplier;
+            Output >> Ea >> Size >> Multiplier >> From;
+            std::ostringstream NewComment;
+            NewComment << "data_access(" << Size << ", " << Multiplier << ", " << std::hex << From
+                       << std::dec << ")";
+            updateComment(Module, Comments, Ea, NewComment.str());
+        }
     }
 
-    for(auto &Output : *Prog->getRelation("preferred_data_access"))
+    auto *preferred_data_access = Prog->getRelation("preferred_data_access");
+    if(preferred_data_access)
     {
-        gtirb::Addr Ea;
-        uint64_t Size, DataAccess;
-        Output >> Ea >> Size >> DataAccess;
-        std::ostringstream NewComment;
-        NewComment << "preferred_data_access(" << Size << ", " << std::hex << DataAccess << std::dec
-                   << ")";
-        updateComment(Module, Comments, Ea, NewComment.str());
+        for(auto &Output : *preferred_data_access)
+        {
+            gtirb::Addr Ea;
+            uint64_t Size, DataAccess;
+            Output >> Ea >> Size >> DataAccess;
+            std::ostringstream NewComment;
+            NewComment << "preferred_data_access(" << Size << ", " << std::hex << DataAccess
+                       << std::dec << ")";
+            updateComment(Module, Comments, Ea, NewComment.str());
+        }
     }
 
-    for(auto &Output : *Prog->getRelation("best_value_reg"))
+    auto *best_value_reg = Prog->getRelation("best_value_reg");
+    if(best_value_reg)
     {
-        gtirb::Addr Ea, EaOrigin;
-        std::string Reg, Type;
-        int64_t Multiplier, Offset;
-        Output >> Ea >> Reg >> EaOrigin >> Multiplier >> Offset >> Type;
-        std::ostringstream NewComment;
-        NewComment << Reg << "=X*" << Multiplier << "+" << std::hex << Offset << std::dec
-                   << " type(" << Type << ")";
-        updateComment(Module, Comments, Ea, NewComment.str());
+        for(auto &Output : *best_value_reg)
+        {
+            gtirb::Addr Ea, EaOrigin;
+            std::string Reg, Type;
+            int64_t Multiplier, Offset;
+            Output >> Ea >> Reg >> EaOrigin >> Multiplier >> Offset >> Type;
+            std::ostringstream NewComment;
+            NewComment << Reg << "=X*" << Multiplier << "+" << std::hex << Offset << std::dec
+                       << " type(" << Type << ")";
+            updateComment(Module, Comments, Ea, NewComment.str());
+        }
     }
 
-    for(auto &Output : *Prog->getRelation("value_reg"))
+    auto *value_reg = Prog->getRelation("value_reg");
+    if(value_reg)
     {
-        gtirb::Addr Ea, Ea2;
-        std::string Reg, Reg2;
-        int64_t Multiplier, Offset;
-        Output >> Ea >> Reg >> Ea2 >> Reg2 >> Multiplier >> Offset;
-        std::ostringstream NewComment;
-        NewComment << Reg << "=(" << Reg2 << "," << std::hex << Ea2 << std::dec << ")*"
-                   << Multiplier << "+" << std::hex << Offset << std::dec;
-        updateComment(Module, Comments, Ea, NewComment.str());
+        for(auto &Output : *value_reg)
+        {
+            gtirb::Addr Ea, Ea2;
+            std::string Reg, Reg2;
+            int64_t Multiplier, Offset;
+            Output >> Ea >> Reg >> Ea2 >> Reg2 >> Multiplier >> Offset;
+            std::ostringstream NewComment;
+            NewComment << Reg << "=(" << Reg2 << "," << std::hex << Ea2 << std::dec << ")*"
+                       << Multiplier << "+" << std::hex << Offset << std::dec;
+            updateComment(Module, Comments, Ea, NewComment.str());
+        }
     }
 
-    for(auto &Output : *Prog->getRelation("moved_label_class"))
+    auto *moved_label_class = Prog->getRelation("moved_label_class");
+    if(moved_label_class)
     {
-        gtirb::Addr Ea;
-        uint64_t OpIndex;
-        std::string Type;
+        for(auto &Output : *moved_label_class)
+        {
+            gtirb::Addr Ea;
+            uint64_t OpIndex;
+            std::string Type;
 
-        Output >> Ea >> OpIndex >> Type;
-        std::ostringstream NewComment;
-        NewComment << " moved label-" << Type;
-        updateComment(Module, Comments, Ea, NewComment.str());
+            Output >> Ea >> OpIndex >> Type;
+            std::ostringstream NewComment;
+            NewComment << " moved label-" << Type;
+            updateComment(Module, Comments, Ea, NewComment.str());
+        }
     }
 
-    for(auto &Output : *Prog->getRelation("reg_def_use.def_used"))
+    auto *reg_def_use_def_used = Prog->getRelation("reg_def_use.def_used");
+    if(reg_def_use_def_used)
     {
-        gtirb::Addr EaUse, EaDef;
-        uint64_t Index;
-        std::string Reg;
-        Output >> EaDef >> Reg >> EaUse >> Index;
-        std::ostringstream NewComment;
-        NewComment << "def(" << Reg << ", " << std::hex << EaDef << std::dec << ")";
-        updateComment(Module, Comments, EaUse, NewComment.str());
+        for(auto &Output : *reg_def_use_def_used)
+        {
+            gtirb::Addr EaUse, EaDef;
+            uint64_t Index;
+            std::string Reg;
+            Output >> EaDef >> Reg >> EaUse >> Index;
+            std::ostringstream NewComment;
+            NewComment << "def(" << Reg << ", " << std::hex << EaDef << std::dec << ")";
+            updateComment(Module, Comments, EaUse, NewComment.str());
+        }
     }
-    for(auto &Output : *Prog->getRelation("missed_jump_table"))
+
+    auto *missed_jump_table = Prog->getRelation("missed_jump_table");
+    if(missed_jump_table)
     {
-        gtirb::Addr Ea;
-        Output >> Ea;
-        std::ostringstream NewComment;
-        NewComment << "missed_jump_table";
-        updateComment(Module, Comments, Ea, NewComment.str());
+        for(auto &Output : *missed_jump_table)
+        {
+            gtirb::Addr Ea;
+            Output >> Ea;
+            std::ostringstream NewComment;
+            NewComment << "missed_jump_table";
+            updateComment(Module, Comments, Ea, NewComment.str());
+        }
     }
-    for(auto &Output : *Prog->getRelation("reg_has_base_image"))
+
+    auto *reg_has_base_image = Prog->getRelation("reg_has_base_image");
+    if(reg_has_base_image)
     {
-        gtirb::Addr Ea;
-        std::string Reg;
-        Output >> Ea >> Reg;
-        std::ostringstream NewComment;
-        NewComment << "hasImageBase(" << Reg << ")";
-        updateComment(Module, Comments, Ea, NewComment.str());
+        for(auto &Output : *reg_has_base_image)
+        {
+            gtirb::Addr Ea;
+            std::string Reg;
+            Output >> Ea >> Reg;
+            std::ostringstream NewComment;
+            NewComment << "hasImageBase(" << Reg << ")";
+            updateComment(Module, Comments, Ea, NewComment.str());
+        }
     }
-    for(auto &T : *Prog->getRelation("reg_has_got"))
+
+    auto *reg_has_got = Prog->getRelation("reg_has_got");
+    if(reg_has_got)
     {
-        gtirb::Addr EA;
-        std::string Reg;
-        T >> EA >> Reg;
-        std::ostringstream Comment;
-        Comment << "GOT(" << Reg << ")";
-        updateComment(Module, Comments, EA, Comment.str());
+        for(auto &T : *reg_has_got)
+        {
+            gtirb::Addr EA;
+            std::string Reg;
+            T >> EA >> Reg;
+            std::ostringstream Comment;
+            Comment << "GOT(" << Reg << ")";
+            updateComment(Module, Comments, EA, Comment.str());
+        }
     }
     if(SelfDiagnose)
     {
@@ -1397,19 +1436,29 @@ void buildArchInfo(gtirb::Module &Module, souffle::SouffleProgram *Prog)
     if(Module.getISA() == gtirb::ISA::ARM)
     {
         // ArchInfo may have been extracted from the .ARM.attributes section.
-        // Note that currently, we only check if the binary is Microcontroller
-        // or not.
         auto *ArchInfo0 = Module.getAuxData<gtirb::schema::ArchInfo>();
         if(!ArchInfo0)
         {
-            // If the information is not found, see if there's any block
-            // containing Microcontroller-specific instructions, such as MSR
-            // and MRS.
-            auto Mblocks = Prog->getRelation("arm_microcontroller");
-            if(Mblocks && Mblocks->size() > 0)
+            // If the information is not found, see if the datalog inferred any
+            // arch information.
+            std::map<std::string, std::string> ArchInfo;
+            for(auto &output : *Prog->getRelation("inferred_arch_info"))
             {
-                std::vector<std::string> ArchInfo;
-                ArchInfo.emplace_back("Microcontroller");
+                std::string Key;
+                std::string Value;
+                output >> Key >> Value;
+
+                auto It = ArchInfo.find(Key);
+                if(It != ArchInfo.end())
+                {
+                    std::cerr << "WARNING: Conflicting values for ArchInfo " << Key << ": "
+                              << It->second << ", " << Value << "\n";
+                }
+                ArchInfo[Key] = Value;
+            }
+
+            if(ArchInfo.size() > 0)
+            {
                 Module.addAuxData<gtirb::schema::ArchInfo>(std::move(ArchInfo));
             }
         }

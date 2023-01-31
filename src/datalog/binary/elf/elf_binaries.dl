@@ -168,14 +168,12 @@ plt_data_reference(EA):-
 Value of register 'Reg' at address 'EA' is a GOT-relative base reference.
 */
 .decl reg_has_got(EA:address,Reg:register)
-.output reg_has_got
 
 /**
 Address 'EA' is used as a GOT-relative base reference. 'EA' is the beginning of
 either the .got or .got.plt section.
 */
 .decl got_reference_pointer(EA:address)
-.output got_reference_pointer
 
 got_reference_pointer(EA):-
     loaded_section(EA,_,".got.plt").
@@ -204,7 +202,6 @@ Operand instruction at 'EA' at index 'Index' is a GOT-relative reference to an
 address 'Dest'.
 */
 .decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
-.output got_relative_operand
 
 // GOT-relative references consist of a load of the GOT pointer to a register:
 //     call    __x86.get_pc_thunk.ax
@@ -234,7 +231,6 @@ got_relative_operand(EA3,Index,as(Dest,address)):-
     value_reg(EA3,Reg3,_,Reg2,Mult,Dest,_).
 
 .decl get_pc_thunk(EA:address,Reg:register)
-.output get_pc_thunk
 
 // call    __x86.get_pc_thunk.REG
 // ...
@@ -497,7 +493,6 @@ Instruction at address 'EA' references a TLS data address 'Dest' in the operand
 at 'Index'.
 */
 .decl tls_relative_operand(EA:address,Index:operand_index,Dest:address,Type:symbol)
-.output tls_relative_operand
 
 tls_relative_operand(0,0,0,""):- false.
 

@@ -39,7 +39,6 @@ Attributes:
 * Offset: "1" if the jump table pattern requires "+1" for symbol-symbol Thumb targets in symbolic expression
 */
 .decl arm_jump_table_candidate_start(EA_access:address,EA_jump:address,RegIndex:reg_nullable,Reference:address,TableStart:address,EntrySize:unsigned,Type:symbol,Scale:unsigned,Offset:number)
-.output arm_jump_table_candidate_start
 
 /**
 Represents an entry in an ARM jump table.
@@ -56,7 +55,6 @@ Attributes:
 * Type: "absolute", "rel_signed", or "rel_unsigned"
 */
 .decl arm_jump_table_candidate(EA_jump:address,Reference:address,TableStart:address,EntryAddr:address,EntrySize:unsigned,TargetAddr:address,TableLimit:address,Type:symbol,Scale:unsigned)
-.output arm_jump_table_candidate
 
 /**
 Instructions in the same block as the jumptable's jump instruction.
@@ -287,7 +285,6 @@ big data block instead of smaller ones. We prefer this if we can identify the
 comparison, because it's a definitive limit on the jumptable size.
 */
 .decl arm_jump_table_cmp_limit(Jmp:address,TableStart:address,Count:number)
-.output arm_jump_table_cmp_limit
 
 arm_jump_table_cmp_limit(Jmp,TableStart,Immediate+Offset+1):-
     arm_jump_table_candidate_start(_,Jmp,IndexReg0,_,TableStart,_,_,_,_),

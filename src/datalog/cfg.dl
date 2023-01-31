@@ -81,7 +81,6 @@ jump_table(EA,Memory+Pt_size):-
 
 // Resolve easy jumps that access a straightforward jump table
 .decl resolved_jump(Src:address,Dest:address)
-.output resolved_jump
 
 resolved_jump(EA,Dest):-
     jump_table(EA,Memory),

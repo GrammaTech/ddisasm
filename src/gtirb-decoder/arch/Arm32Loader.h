@@ -37,25 +37,35 @@ public:
     Arm32Loader() : InstructionLoader(4)
     {
         // Setup Capstone engine.
-        [[maybe_unused]] cs_err Err =
-            cs_open(CS_ARCH_ARM, (cs_mode)(CS_MODE_ARM | CS_MODE_V8), CsHandle.get());
+        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_ARM, (cs_mode)(CS_MODE_ARM), CsHandle.get());
         assert(Err == CS_ERR_OK && "Failed to initialize ARM disassembler.");
         cs_option(*CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
-
-        Mclass = false;
-        ArchInfoExists = false;
-        CsModes.push_back(CS_MODE_ARM | CS_MODE_V8);
     }
 
 protected:
-    void decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
-    uint8_t operandCount(const cs_insn& CsInstruction) override;
-    uint8_t operandAccess(const cs_insn& CsInstruction, uint64_t Index) override;
+    // override from CodeBlockLoader
+    void load(const gtirb::Module& Module, BinaryFacts& Facts) override
+    {
+        initCsModes(Module);
+        InstructionLoader::load(Module, Facts);
+    }
 
-    using InstructionLoader::load;
     void load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
               BinaryFacts& Facts) override;
-    void load(const gtirb::ByteInterval& ByteInterval, BinaryFacts& Facts, bool Thumb);
+    void load(const gtirb::ByteInterval& ByteInterval, BinaryFacts& Facts, size_t ExecutionMode,
+              const std::vector<size_t>& CsModes);
+    void decode([[maybe_unused]] BinaryFacts& Facts, [[maybe_unused]] const uint8_t* Bytes,
+                [[maybe_unused]] uint64_t Size, [[maybe_unused]] uint64_t Addr) override
+    {
+        // For ARM32, we override the default implementation of load(ByteInterval,...), and the
+        // overridden implementation calls decode() with a different signature (in order to pass
+        // CsModes).
+        assert(!"Not implemented for ARM32");
+    }
+    void decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr,
+                const std::vector<size_t>& CsModes);
+    uint8_t operandCount(const cs_insn& CsInstruction) override;
+    uint8_t operandAccess(const cs_insn& CsInstruction, uint64_t Index) override;
 
 private:
     struct OpndFactsT
@@ -72,13 +82,12 @@ private:
         }
     };
 
+    void initCsModes(const gtirb::Module& Module);
     std::optional<relations::Operand> build(const cs_insn& CsInsn, const cs_arm_op& CsOp);
     void build(BinaryFacts& Facts, const cs_insn& CsInstruction, const OpndFactsT& OpFacts);
     bool collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInstruction);
 
-    bool Mclass;
-    bool ArchInfoExists;
-    std::vector<size_t> CsModes;
+    std::map<size_t, std::vector<size_t>> CsModes;
 };
 
 #endif // SRC_GTIRB_DECODER_ARCH_ARM32DECODER_H_

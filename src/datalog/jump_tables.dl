@@ -36,7 +36,6 @@ Attributes:
 * TargetEA: The target of the jump.
 */
 .decl jump_table_candidate(EA:address,DataEA:address,TargetEA:address)
-.output jump_table_candidate
 
 // Fallback rule for architectures where this is unused.
 jump_table_candidate(0,0,0):-
@@ -52,7 +51,6 @@ Attributes:
 * TargetEA: The target of the jump.
 */
 .decl jump_table_candidate_refined(EA:address,DataEA:address,TargetEA:address)
-.output jump_table_candidate_refined
 
 jump_table_candidate_refined(EA,EntryAddr,TargetAddr):-
     jump_table_candidate(EA,EntryAddr,TargetAddr),

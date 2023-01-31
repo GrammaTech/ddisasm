@@ -57,7 +57,6 @@ A symbolic expression at address 'EA' pointing to 'Dest' should use a
 symbol pointing to 'NewDest' plus an offset . The offset is NewDest-Dest.
 */
 .decl moved_data_label(EA:address,Size:unsigned,Dest:address,NewDest:address)
-.output moved_data_label
 
 /**
 A symbolic operand at address 'EA' with index 'Index' and pointing to 'Dest'
@@ -65,7 +64,6 @@ should use a symbol pointing to 'NewDest' plus an offset.
 The offset is NewDest-Dest.
 */
 .decl moved_label(EA:address,Index:operand_index,Dest:address,NewDest:address)
-.output moved_label
 
 
 /**
@@ -76,7 +74,6 @@ point to an 'at-end' symbol.
 
 // this predicate is just for debugging purposes
 .decl moved_label_class(EA:address,Index:operand_index,Reason:symbol)
-.output moved_label_class
 
 ////////////////////////////////////////////////////////////////////////////////////
 
@@ -209,7 +206,6 @@ moved_displacement_candidate(EA,Op_index,Dest,NewDest,Diff):-
     ).
 
 .decl moved_displacement_candidate(EA:address,Op_index:operand_index,Dest:address,NewDest:address,Priority:unsigned)
-.output moved_displacement_candidate
 
 moved_label_class(EA,Op_index,"miss section with access"),
 moved_displacement_candidate(EA,Op_index,as(Dest,address),AccessDest,1):-
@@ -368,7 +364,6 @@ cmp_reg_to_reg(EA,Reg1,Reg2):-
 
 .decl dest_enlarged_data_section(EA:address,Reg:register,NewDest:address,
             Beg:address,End:address,OldBeg:address,OldEnd:address)
-.output dest_enlarged_data_section
 
 dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs,End+MultAbs,Beg,End):-
     best_value_reg(EA_def,Reg,_,Mult,NewDest,"loop"), NewDest >= 0,
