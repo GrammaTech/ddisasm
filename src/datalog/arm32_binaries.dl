@@ -1262,20 +1262,45 @@ must_access_data(EA,Dest):-
     litpool_ref(_,EA,Dest,_,_,_).
 
 /**
-Block containing instructions that only belong to Microcontroller arch.
+ArchInfo auxdata inferred by the presence of specific instructions or patterns.
 */
-.decl arm_microcontroller(Block:address)
-.output arm_microcontroller
+.decl inferred_arch_info(Key:symbol,Value:symbol)
+.output inferred_arch_info
 
-arm_microcontroller(Block):-
-    refined_block(Block),
-    code_in_block_candidate_refined(EA,Block),
+// "System" is not a true hardware profile, but represents
+// Application OR RealTime profiles.
+
+// "blx label" is not possible on the "Microcontroller" profile.
+inferred_arch_info("Profile","System"):-
+    code_in_refined_block(EA,_),
+    instruction_get_operation(EA,Operation),
+    substr(Operation,0,3) = "BLX",
+    arch.jump_operation_op_index(Operation,OpIndex),
+    instruction_get_op(EA,OpIndex,Op),
+    op_immediate(Op,_).
+
+// ARM code is not possible on the "Microcontroller" profile.
+inferred_arch_info("Profile","System"):-
+    code_in_refined_block(EA,_),
+    EA band 1 = 0.
+
+inferred_arch_info("Profile","Microcontroller"):-
+    code_in_refined_block(EA,_),
     instruction_get_operation(EA,Operation),
     (
         // The following instructions are only decoded with CS_MODE_MCLASS.
+        // TODO: *some* MRS/MSR can be decoded without CS_MODE_MCLASS. We
+        // should refine this rule to only match the ones that cannot.
         substr(Operation,0,3) = "MRS";
         substr(Operation,0,3) = "MSR"
     ).
+
+// LDCL is not available on ARMv8+
+// It could be v7 or anything older, but we guess v7 to provide maximum
+// compatibility.
+inferred_arch_info("Arch","v7"):-
+    code_in_refined_block(EA,_),
+    instruction_get_operation(EA,"LDCL").
 
 // Create a target only if there's only one possible instruction mode at the
 // address. Creating both as potential targets creates too many false

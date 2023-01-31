@@ -406,9 +406,68 @@ void ElfReader::resurrectSymbols()
     return;
 }
 
-// Parse .ARM.attributes to find "M" that indicates "Microcontroller".
-static bool detectArm32Microcontroller(gtirb::Section *S)
+// Parse .ARM.attributes to populate ArchInfo auxdata
+// Returns true if any ArchInfo are created.
+static bool buildArm32ArchInfo(gtirb::Section *S, std::map<std::string, std::string> &ArchInfo)
 {
+    // Just define what we need.
+    // Full list available here: https://llvm.org/doxygen/ARMBuildAttributes_8h_source.html
+    enum ArmAttributeTag
+    {
+        Tag_CPU_arch = 6,
+        Tag_CPU_arch_profile = 7,
+    };
+    enum CPUArch
+    {
+        Pre_v4 = 0,
+        v4 = 1,           // e.g. SA110
+        v4T = 2,          // e.g. ARM7TDMI
+        v5T = 3,          // e.g. ARM9TDMI
+        v5TE = 4,         // e.g. ARM946E_S
+        v5TEJ = 5,        // e.g. ARM926EJ_S
+        v6 = 6,           // e.g. ARM1136J_S
+        v6KZ = 7,         // e.g. ARM1176JZ_S
+        v6T2 = 8,         // e.g. ARM1156T2_S
+        v6K = 9,          // e.g. ARM1176JZ_S
+        v7 = 10,          // e.g. Cortex A8, Cortex M3
+        v6_M = 11,        // e.g. Cortex M1
+        v6S_M = 12,       // v6_M with the System extensions
+        v7E_M = 13,       // v7_M with DSP extensions
+        v8_A = 14,        // v8_A AArch32
+        v8_R = 15,        // e.g. Cortex R52
+        v8_M_Base = 16,   // v8_M_Base AArch32
+        v8_M_Main = 17,   // v8_M_Main AArch32
+        v8_1_M_Main = 21, // v8_1_M_Main AArch32
+        v9_A = 22,        // v9_A AArch32
+    };
+    const std::map<CPUArch, std::string> CPUArchNames = {
+        {Pre_v4, "Pre_v4"},
+        {v4, "v4"},
+        {v4T, "v4T"},
+        {v5T, "v5T"},
+        {v5TE, "v5TE"},
+        {v5TEJ, "v5TEJ"},
+        {v6, "v6"},
+        {v6KZ, "v6KZ"},
+        {v6K, "v6K"},
+        {v7, "v7"},
+        {v6_M, "v6_M"},
+        {v6S_M, "v6S_M"},
+        {v7E_M, "v7E_M"},
+        {v8_A, "v8_A"},
+        {v8_R, "v8_R"},
+        {v8_M_Base, "v8_M_Base"},
+        {v8_M_Main, "v8_M_Main"},
+        {v8_1_M_Main, "v8_1_M_Main"},
+        {v9_A, "v9_A"},
+    };
+    const std::map<char, std::string> CPUProfileNames = {
+        {'A', "Application"},
+        {'M', "Microcontroller"},
+        {'R', "RealTime"},
+        {'S', "System"},
+    };
+
     auto readUleb128 = [](const unsigned char *Ptr, unsigned int *len_out) {
         uint64_t Ans = 0;
         unsigned int NRead = 0;
@@ -455,26 +514,58 @@ static bool detectArm32Microcontroller(gtirb::Section *S)
         // Skip unrelated 4-bytes
         Ptr += 4;
         N -= 4;
-        // Read pairs of (Tag,Value) until it finds (7, "M").
+        // Read pairs of (Tag,Value)
         while(N > 0)
         {
             unsigned int Len = 0;
             int Tag = readUleb128(Ptr, &Len);
             Ptr += Len;
             N -= Len;
-            if(Tag == 7) // 7: Tag_CPU_arch_profile
+
+            switch(Tag)
             {
-                int Val = readUleb128(Ptr, &Len);
-                Ptr += Len;
-                N -= Len;
-                if(Val == 'M') // Microcontroller
+                case Tag_CPU_arch_profile:
                 {
-                    Found = true;
+                    int Val = readUleb128(Ptr, &Len);
+                    Ptr += Len;
+                    N -= Len;
+
+                    auto It = CPUProfileNames.find(static_cast<char>(Val));
+                    if(It != CPUProfileNames.end())
+                    {
+                        ArchInfo["Profile"] = It->second;
+                    }
+                    else
+                    {
+                        // We don't support other profiles. DDisasm will fall
+                        // back to disassembling all modes.
+                        std::cerr << "WARNING: Encountered unknown ARM profile: "
+                                  << static_cast<char>(Val) << "\n";
+                    }
+                    break;
+                }
+                case Tag_CPU_arch:
+                {
+                    int Val = readUleb128(Ptr, &Len);
+                    Ptr += Len;
+                    N -= Len;
+
+                    auto It = CPUArchNames.find(static_cast<CPUArch>(Val));
+                    if(It != CPUArchNames.end())
+                    {
+                        const std::string &ArchName = It->second;
+                        ArchInfo["Arch"] = ArchName;
+                    }
+                    else
+                    {
+                        std::cerr << "WARNING: Encountered unknown ARM arch: " << Val << "\n";
+                    }
+                    break;
                 }
             }
         }
     }
-    return Found;
+    return ArchInfo.size() > 0;
 }
 
 std::optional<std::pair<uint64_t, uint64_t>> ElfReader::getTls()
@@ -634,13 +725,9 @@ void ElfReader::buildSections()
         // if the binary is Microcontroller.
         if(Module->getISA() == gtirb::ISA::ARM && Section.name() == ".ARM.attributes")
         {
-            if(detectArm32Microcontroller(S))
+            std::map<std::string, std::string> ArchInfo;
+            if(buildArm32ArchInfo(S, ArchInfo))
             {
-                // Note that this information is used for setting up Capstone
-                // mode correctly:
-                // i.e., include CS_MODE_MCLASS for Microcontroller
-                std::vector<std::string> ArchInfo;
-                ArchInfo.emplace_back("Microcontroller");
                 Module->addAuxData<gtirb::schema::ArchInfo>(std::move(ArchInfo));
             }
         }

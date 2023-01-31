@@ -161,6 +161,13 @@ namespace gtirb
             static constexpr const char* Name = "rawEntries";
             typedef std::vector<uint64_t> Type;
         };
+
+        /// \brief Auxiliary data describing architecture information
+        struct ArchInfo
+        {
+            static constexpr const char* Name = "archInfo";
+            typedef std::map<std::string, std::string> Type;
+        };
     } // namespace schema
 } // namespace gtirb
 

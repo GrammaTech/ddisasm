@@ -26,63 +26,123 @@
 #include <string>
 #include <vector>
 
-void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
-                       BinaryFacts& Facts)
+const std::set<std::string> Versions = {
+    "Pre_v4", "v4",        "v4T",       "v5T",         "v5TE",  "v5TEJ", "v6",
+    "v6KZ",   "v6K",       "v7",        "v6_M",        "v6S_M", "v7E_M", "v8_A",
+    "v8_R",   "v8_M_Base", "v8_M_Main", "v8_1_M_Main", "v9_A",
+};
+const std::set<std::string> V8Plus = {"v8_A",      "v8_R",        "v8_M_Base",
+                                      "v8_M_Main", "v8_1_M_Main", "v9_A"};
+const std::set<std::string> VNoThumb = {"Pre_v4", "v4"};
+
+void Arm32Loader::initCsModes(const gtirb::Module& Module)
 {
-    // For Thumb, check if the arch type is available.
-    // For Cortex-M, add CS_MODE_MCLASS to the cs option.
+    bool ProfileInArchInfo = false;
+    bool VersionInArchInfo = false;
+    std::string Profile;
+    bool VersionIs8Plus = false;
+    bool VersionSupportsThumb = true;
     auto* ArchInfo = Module.getAuxData<gtirb::schema::ArchInfo>();
     if(ArchInfo)
     {
-        ArchInfoExists = !ArchInfo->empty();
-        if(std::find(ArchInfo->begin(), ArchInfo->end(), "Microcontroller") != ArchInfo->end())
+        auto ProfileIt = ArchInfo->find("Profile");
+        if(ProfileIt != ArchInfo->end())
         {
-            Mclass = true;
+            ProfileInArchInfo = true;
+            Profile = ProfileIt->second;
+        }
+
+        auto ArchIt = ArchInfo->find("Arch");
+        if(ArchIt != ArchInfo->end())
+        {
+            VersionInArchInfo = true;
+            if(V8Plus.count(ArchIt->second) > 0)
+            {
+                VersionIs8Plus = true;
+            }
+            else if(VNoThumb.count(ArchIt->second) > 0)
+            {
+                VersionSupportsThumb = false;
+            }
         }
     }
 
-    // In case of MCLASS (Microcontroller), no need to decode in ARM state.
-    if(!Mclass)
+    // Execution modes are ARM or Thumb.
+    std::vector<size_t> ExecutionModes;
+    if(!ProfileInArchInfo || Profile != "Microcontroller")
     {
-        CsModes.clear();
-        CsModes.push_back(CS_MODE_ARM | CS_MODE_V8);
-
-        // NOTE: AArch32 (ARMv8-A) is backward compatible to ARMv7-A.
-        cs_option(*CsHandle, CS_OPT_MODE, CS_MODE_ARM | CS_MODE_V8);
-        InstructionSize = 4;
-        load(ByteInterval, Facts, false);
+        // The ARM Microcontroller profile does not support ARM mode.
+        ExecutionModes.push_back(CS_MODE_ARM);
+    }
+    if(VersionSupportsThumb)
+    {
+        ExecutionModes.push_back(CS_MODE_THUMB);
     }
 
-    CsModes.clear();
-    if(ArchInfoExists)
+    for(size_t ExecutionMode : ExecutionModes)
     {
-        if(Mclass)
+        // Modifiers: CS_MODE_MCLASS
+        std::vector<size_t> Modifiers;
+        if(ExecutionMode == CS_MODE_ARM)
         {
-            CsModes.push_back(CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
+            Modifiers.push_back(0);
         }
         else
         {
-            CsModes.push_back(CS_MODE_THUMB | CS_MODE_V8);
+            if(ProfileInArchInfo)
+            {
+                // Only use the known profile
+                Modifiers.push_back(Profile == "Microcontroller" ? CS_MODE_MCLASS : 0);
+            }
+            else
+            {
+                // If the ARM CPU profile is not known, we may have to toggle
+                // CS_MODE_MCLASS to successfully decode all instructions.
+                // Thumb2 MRS and MSR instructions support a larger set of `<spec_reg>` on
+                // M-profile devices, so they do not decode without CS_MODE_MCLASS.
+                // The Thumb 'blx label' instruction does not decode with CS_MODE_MCLASS,
+                // because it is not a supported instruction on M-profile devices.
+                Modifiers.push_back(0);
+                Modifiers.push_back(CS_MODE_MCLASS);
+            }
         }
-    }
-    else
-    {
-        if(Mclass)
+
+        std::vector<size_t> Versions;
+        if(VersionInArchInfo)
         {
-            CsModes.push_back(CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
-            CsModes.push_back(CS_MODE_THUMB | CS_MODE_V8);
+            // Only use the known version
+            Versions.push_back(VersionIs8Plus ? CS_MODE_V8 : 0);
         }
         else
         {
-            CsModes.push_back(CS_MODE_THUMB | CS_MODE_V8);
-            CsModes.push_back(CS_MODE_THUMB | CS_MODE_V8 | CS_MODE_MCLASS);
+            // If the version is unknown, we have to try both.
+            // The instruction "ldcl p1, c0, [r0], #8" (02 01 f0 ec) is valid
+            // only without CS_MODE_V8.
+            Versions.push_back(CS_MODE_V8);
+            Versions.push_back(0);
+        }
+
+        for(size_t Modifier : Modifiers)
+        {
+            for(size_t Version : Versions)
+            {
+                CsModes[ExecutionMode].push_back(ExecutionMode | Modifier | Version);
+            }
         }
     }
-    InstructionSize = 2;
-    load(ByteInterval, Facts, true);
 }
 
-void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, BinaryFacts& Facts, bool Thumb)
+void Arm32Loader::load(const gtirb::Module& Module, const gtirb::ByteInterval& ByteInterval,
+                       BinaryFacts& Facts)
+{
+    for(auto&& [ExecutionMode, CurrentCsModes] : CsModes)
+    {
+        load(ByteInterval, Facts, ExecutionMode, CurrentCsModes);
+    }
+}
+
+void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, BinaryFacts& Facts,
+                       size_t ExecutionMode, const std::vector<size_t>& CsModes)
 {
     assert(ByteInterval.getAddress() && "ByteInterval is non-addressable.");
 
@@ -91,73 +151,87 @@ void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, BinaryFacts& Fac
     auto Data = ByteInterval.rawBytes<const uint8_t>();
 
     // Thumb instruction candidates are distinguished by the least significant bit (1).
-    if(Thumb)
+    if(ExecutionMode == CS_MODE_ARM)
     {
+        MinInstructionSize = 4;
+    }
+    else
+    {
+        MinInstructionSize = 2;
         Addr++;
     }
 
-    while(Size >= InstructionSize)
+    while(Size >= MinInstructionSize)
     {
-        decode(Facts, Data, Size, Addr);
-        Addr += InstructionSize;
-        Data += InstructionSize;
-        Size -= InstructionSize;
+        decode(Facts, Data, Size, Addr, CsModes);
+        Addr += MinInstructionSize;
+        Data += MinInstructionSize;
+        Size -= MinInstructionSize;
     }
 }
 
-void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr)
+class CsInsn
+{
+    cs_insn* Insn;
+
+public:
+    CsInsn(csh Handle)
+    {
+        Insn = cs_malloc(Handle);
+        if(Insn == nullptr)
+        {
+            std::cerr << "Failed to allocate CsInsn\n";
+            std::exit(1);
+        }
+    }
+
+    ~CsInsn()
+    {
+        cs_free(Insn, 1);
+    }
+
+    operator cs_insn*()
+    {
+        return Insn;
+    }
+};
+
+void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr,
+                         const std::vector<size_t>& CsModes)
 {
     std::unique_ptr<cs_insn, std::function<void(cs_insn*)>> InsnPtr;
     size_t InsnCount = 0;
 
-    // NOTE: If the ARM CPU profile is not known, we may have to switch modes
-    // to successfully decode all instructions.
-    // Thumb2 MRS and MSR instructions support a larger set of `<spec_reg>` on
-    // M-profile devices, so they do not decode without CS_MODE_MCLASS.
-    // The Thumb 'blx label' instruction does not decode with CS_MODE_MCLASS,
-    // because it is not a supported instruction on M-profile devices.
-    //
-    // This loop is to try out multiple CS modes to see if decoding succeeds.
-    // Currently, this is done only when the arch type info is not available.
+    // This loop is to try out multiple CS modes until decoding succeeds.
+    // This generates a superset of all decoding options, assuming the same
+    // bytes do not decode to two different results on different modes.
     bool Success = false;
     OpndFactsT OpndFacts;
-    for(auto It = CsModes.begin(); It != CsModes.end(); It++)
+    CsInsn Insn(*CsHandle);
+    for(size_t CsMode : CsModes)
     {
-        size_t CsMode = *It;
-        // Decode instruction with Capstone.
-        cs_insn* Insn;
         cs_option(*CsHandle, CS_OPT_MODE, CsMode);
-        size_t TmpCount = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &Insn);
-
-        // Exception-safe cleanup of instructions
-        std::unique_ptr<cs_insn, std::function<void(cs_insn*)>> TmpInsnPtr(
-            Insn, [TmpCount](cs_insn* Instr) { cs_free(Instr, TmpCount); });
-
-        if(TmpCount > 0)
-        {
-            OpndFacts.clear();
-            Success = collectOpndFacts(OpndFacts, Insn[0]);
-        }
-
+        uint64_t IterAddr = Addr;
+        uint64_t InsnSize = Size;
+        Success = cs_disasm_iter(*CsHandle, &Bytes, &InsnSize, &IterAddr, Insn);
         if(Success)
         {
-            InsnPtr = std::move(TmpInsnPtr);
-            InsnCount = TmpCount;
-            if((CsMode & CS_MODE_MCLASS) != 0)
+            OpndFacts.clear();
+            Success = collectOpndFacts(OpndFacts, *Insn);
+            if(Success)
             {
-                Mclass = true;
+                break;
             }
-            break;
         }
     }
 
     if(Success)
     {
         // Build datalog instruction facts from Capstone instruction.
-        build(Facts, (&(*InsnPtr))[InsnCount - 1], OpndFacts);
-        loadRegisterAccesses(Facts, Addr, (&(*InsnPtr))[InsnCount - 1]);
+        build(Facts, *Insn, OpndFacts);
+        loadRegisterAccesses(Facts, Addr, *Insn);
 
-        if(InsnPtr->detail->arm.update_flags)
+        if((*Insn).detail->arm.update_flags)
         {
             // Capstone bug: for some instructions, "CPSR" is missing from regs_write even when
             // update_flags is set.
