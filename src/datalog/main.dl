@@ -88,6 +88,22 @@ Convert between input_reg and register with arch.reg_map
 // Architecture specific predicates.
 #include "arch/arch.dl"
 
+#ifdef ARCH_ARM64
+    #include "arch/arm_binaries.dl"
+    #include "arch/arm64_symbolization.dl"
+#elif defined(ARCH_ARM32)
+    #include "arch/arm_binaries.dl"
+    #include "arch/arm32_binaries.dl"
+#elif defined(ARCH_IA32)
+    #include "arch/x86_32_symbolization.dl"
+#elif defined(ARCH_AMD64)
+    #include "arch/x86_64_symbolization.dl"
+#elif defined(ARCH_MIPS32)
+    #include "arch/mips_symbolization.dl"
+#else
+    #error "Undefined architecture"
+#endif
+
 // Binary data
 #include "data.dl"
 
