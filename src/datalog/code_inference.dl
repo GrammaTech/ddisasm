@@ -945,6 +945,19 @@ block_points(Block,"code",0,2,"padding nop block"):-
     fde_addresses(_,Block),
     arch.is_nop(Block).
 
+/**
+Give penalty on the dangling block where an instruction is enclosed
+in a bigger instruction.
+*/
+block_points(Block2,"code",0,-1,"dangling block with enclosed instr"):-
+    unresolved_block_overlap(Block,"code",Block2,"code"),
+    instruction(Block,Size,_,_,_,_,_,_,_,_),   // Instr
+    instruction(Block2,Size2,_,_,_,_,_,_,_,_), // Instr2
+    Block < Block2, Size > Size2,
+    Block+Size = Block2+Size2, // Instr2 is enclosed in Instr at the end.
+    block_candidate_boundaries(Block2,"code",Beg2,_),
+    !block_candidate_boundaries(_,"code",_,Beg2).
+
 block_points(Block,"code",0,3,"exc-region"):-
     unresolved_block(Block,"code"),
     lsda_callsite_addresses(Block, _, _).

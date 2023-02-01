@@ -518,35 +518,6 @@ block_points(Block,"code",0,1,"arm: plt call"):-
     unresolved_block(Block,"code").
 
 /**
-E.g., vim
-0:   pop { r2, lr }
-4:   adr r1, L
-There is an overlapping block at 0x2 that happens to be a valid 2-byte Thumb
-instruction 'ldr'.
-
-If there is no block before the address 0x0, the following rule does not hold
-for both the block at 0x0 and the one at 0x2:
-
-  // Prefer blocks that have a well-defined boundary with a prior block.
-  block_points(Block,"code",0,1,"better fit")
-
-To break such tie, give one point to the outer block.
-
-Block: the outer block
-Block2: the enclosed block
-*/
-block_points(Block,"code",0,1,"arm: enclosing thumb instruction"):-
-    unresolved_block_overlap(Block,"code",Block2,"code"),
-    (Block band 1) = 1, // Thumb mode only
-    Block2 = Block + 2,
-    instruction(Block,4,_,_,_,_,_,_,_,_),
-    instruction(Block2,2,_,_,_,_,_,_,_,_),
-    block_candidate_boundaries(Block,"code",Beg,_),
-    block_candidate_boundaries(Block2,"code",Beg2,_),
-    !block_candidate_boundaries(_,"code",_,Beg),
-    !block_candidate_boundaries(_,"code",_,Beg2).
-
-/**
 Prefer blocks that have a well-defined boundary with a prior literal pool.
 */
 block_points(Block,"code",0,1,"arm: better fit after literal pool"):-
