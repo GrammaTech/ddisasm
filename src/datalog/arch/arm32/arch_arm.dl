@@ -492,9 +492,6 @@ reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,Sign,0):-
     op_regdirect_contains_reg(Op2,Src2),
     op_regdirect_contains_reg(Op3,Dst).
 
-inferred_main_in_reg(EA,"R0"):-
-    inferred_main_dispatch(EA).
-
 /**
 The function `Func` receives a string argument at register `Reg`.
 */
