@@ -16,8 +16,9 @@ clean:
 	rm -f ex *.dll out.txt *.s *.lib *.exp *.o *.err *.obj *.exe
 
 check:
-	@ ex >/tmp/res.txt
-	@ diff out.txt /tmp/res.txt && echo TEST OK
+	$(CC)  ex.c foo.lib baz.lib
+	@ ex > check.txt
+	@ FC out.txt check.txt && echo TEST OK
 
 reassemble:
 	@ $(AS) $(ASFLAGS) /c baz.dll.s
