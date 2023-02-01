@@ -100,7 +100,7 @@ tests:
         flags: []
       reassemble:
         compiler: "ml64"
-        flags: ["/link", "/DLL", "/ENTRY:_EntryPoint", "/SUBSYSTEM:console"]
+        flags: ["/link", "/DLL", "/entry:__EntryPoint", "/subsystem:console"]
         skip: false
 
     - name: ex_switch_in_code4
