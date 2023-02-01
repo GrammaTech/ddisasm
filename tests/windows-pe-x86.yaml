@@ -110,7 +110,7 @@ tests:
     - name: ex_simple_dll
       <<: *default
 
-    - name: ex_dll_sym_mangling
+    - name: ex_ml_sym_mangling
       <<: *default
       binary: baz.dll
       build:
