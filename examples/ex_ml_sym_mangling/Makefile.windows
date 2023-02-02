@@ -1,0 +1,27 @@
+CC=
+CFLAGS=
+EXEC=
+
+all: foo baz
+	$(CC)  ex.c foo.lib baz.lib
+	@ ex > out.txt
+
+foo: foo.h foo.c
+	$(CC) $(CFLAGS) /LD foo.c
+
+baz: baz.h baz.c foo
+	$(CC) $(CFLAGS) /LD baz.c foo.lib
+
+clean:
+	rm -f ex *.dll out.txt *.s *.lib *.exp *.o *.err *.obj *.exe
+
+check:
+	$(CC)  ex.c foo.lib baz.lib
+	@ ex > check.txt
+	@ FC out.txt check.txt && echo TEST OK
+
+reassemble:
+	@ $(AS) $(ASFLAGS) /c baz.dll.s
+	@ lib.exe /subsystem:console /def /export:message baz.dll.obj
+	@ link.exe /subsystem:console /entry:__EntryPoint /dll baz.dll.obj baz.dll.exp
+	@ link.exe /out:ex.exe /subsystem:console ex.obj baz.dll.lib

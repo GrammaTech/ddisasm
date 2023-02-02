@@ -90,6 +90,19 @@ tests:
     - name: ex_simple_dll
       <<: *default
 
+    - name: ex_ml_sym_mangling
+      <<: *default
+      binary: baz.dll
+      build:
+        c: ["cl"]
+        cpp: ["cl"]
+        optimizations: ["/Od"]
+        flags: []
+      reassemble:
+        compiler: "ml64"
+        flags: ["/link", "/DLL", "/entry:__EntryPoint", "/subsystem:console"]
+        skip: false
+
     - name: ex_switch_in_code4
       <<: *assembly
 
