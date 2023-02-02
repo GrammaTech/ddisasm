@@ -31,16 +31,12 @@ const std::set<std::string> Versions = {
     "v6KZ",   "v6K",       "v7",        "v6_M",        "v6S_M", "v7E_M", "v8_A",
     "v8_R",   "v8_M_Base", "v8_M_Main", "v8_1_M_Main", "v9_A",
 };
-const std::set<std::string> V8Plus = {"v8_A",      "v8_R",        "v8_M_Base",
-                                      "v8_M_Main", "v8_1_M_Main", "v9_A"};
 const std::set<std::string> VNoThumb = {"Pre_v4", "v4"};
 
 void Arm32Loader::initCsModes(const gtirb::Module& Module)
 {
     bool ProfileInArchInfo = false;
-    bool VersionInArchInfo = false;
     std::string Profile;
-    bool VersionIs8Plus = false;
     bool VersionSupportsThumb = true;
     auto* ArchInfo = Module.getAuxData<gtirb::schema::ArchInfo>();
     if(ArchInfo)
@@ -53,17 +49,9 @@ void Arm32Loader::initCsModes(const gtirb::Module& Module)
         }
 
         auto ArchIt = ArchInfo->find("Arch");
-        if(ArchIt != ArchInfo->end())
+        if(ArchIt != ArchInfo->end() && (VNoThumb.count(ArchIt->second) > 0))
         {
-            VersionInArchInfo = true;
-            if(V8Plus.count(ArchIt->second) > 0)
-            {
-                VersionIs8Plus = true;
-            }
-            else if(VNoThumb.count(ArchIt->second) > 0)
-            {
-                VersionSupportsThumb = false;
-            }
+            VersionSupportsThumb = false;
         }
     }
 
@@ -107,27 +95,21 @@ void Arm32Loader::initCsModes(const gtirb::Module& Module)
             }
         }
 
-        std::vector<size_t> Versions;
-        if(VersionInArchInfo)
-        {
-            // Only use the known version
-            Versions.push_back(VersionIs8Plus ? CS_MODE_V8 : 0);
-        }
-        else
-        {
-            // If the version is unknown, we have to try both.
-            // The instruction "ldcl p1, c0, [r0], #8" (02 01 f0 ec) is valid
-            // only without CS_MODE_V8.
-            Versions.push_back(CS_MODE_V8);
-            Versions.push_back(0);
-        }
-
         for(size_t Modifier : Modifiers)
         {
-            for(size_t Version : Versions)
-            {
-                CsModes[ExecutionMode].push_back(ExecutionMode | Modifier | Version);
-            }
+            // Always try both with and without CS_MODE_V8.
+            // We'd like to use the version from ArchInfo to decide this when
+            // present, but capstone seems to be missing some pre-V8
+            // instructions without CS_MODE_V8. For example, "vcvt.f64.u32"
+            // (40 0b f8 ee) is a valid Advanced SIMD instruction according to
+            // "ARM Architecture Reference Manual ARMv7-A and ARMv7-R edition"
+            // and has been observed in binaries with v7 defined in arch info,
+            // but capstone only decodes it successfully with CS_MODE_V8.
+            // CS_MODE_V8 is also not a strict superset of v7; the instruction
+            // "ldcl p1, c0, [r0], #8" (02 01 f0 ec) is valid only without
+            // CS_MODE_V8.
+            CsModes[ExecutionMode].push_back(ExecutionMode | Modifier | CS_MODE_V8);
+            CsModes[ExecutionMode].push_back(ExecutionMode | Modifier);
         }
     }
 }
