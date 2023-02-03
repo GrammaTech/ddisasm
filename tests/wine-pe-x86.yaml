@@ -111,3 +111,6 @@ tests:
       link:
           linker: "i686-w64-mingw32-ld"
           flags: ["test.lib", "KERNEL32.lib", "msvcrt.lib", "--entry", "__EntryPoint", "-subsystem", "console"]
+
+    - name: ex_kuser
+      <<: *default
