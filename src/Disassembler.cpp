@@ -290,6 +290,18 @@ std::string stripSymbolVersion(const std::string Name)
     return Name;
 }
 
+void removeEntryPoint(gtirb::Module &Module)
+{
+    // Remove initial entry point.
+    // ElfReader and PeReader create a code block with zero size to set the entrypoint.
+    // It's no longer needed; we connect it to a real code block once it's created.
+    if(gtirb::CodeBlock *Block = Module.getEntryPoint())
+    {
+        Block->getByteInterval()->removeBlock(Block);
+    }
+    Module.setEntryPoint(nullptr);
+}
+
 void removeSectionSymbols(gtirb::Context &Context, gtirb::Module &Module)
 {
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
@@ -1469,6 +1481,7 @@ void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
                        souffle::SouffleProgram *Prog, bool SelfDiagnose)
 {
     removeSectionSymbols(Context, Module);
+    removeEntryPoint(Module);
     buildInferredSymbols(Context, Module, Prog);
     buildSymbolForwarding(Context, Module, Prog);
     buildCodeBlocks(Context, Module, Prog);
