@@ -455,9 +455,6 @@ reg_reg_arithmetic_operation(EA,Reg,Reg1,Reg2,1,0):-
     op_regdirect_contains_reg(SrcOp1,Reg1),
     op_regdirect_contains_reg(SrcOp2,Reg2).
 
-inferred_main_in_reg(EA,"A0"):-
-    inferred_main_dispatch(EA).
-
 // capstone does not support register/operand access metadata on MIPS, so we
 // have to emulate it.
 

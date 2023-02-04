@@ -29,32 +29,6 @@
 arch("X86").
 pointer_size(4).
 
-inferred_main_in_reg(Push,Reg):-
-    inferred_main_dispatch(Call),
-    // Get the value pushed onto the stack as an argument (assumes cdecl).
-    next(Push,Call),
-    instruction_get_operation(Push,"PUSH"),
-    instruction_get_src_op(Push,_,Op),
-    (
-        op_indirect_contains_reg(Op,Reg);
-        op_regdirect_contains_reg(Op,Reg)
-    ).
-
-.override inferred_main_dispatch
-
-// ELF X86-32 may have an additional function call in _start, so we add an
-// additional heuristic that checks for a consecutive HLT instruction.
-inferred_main_dispatch(CallEA):-
-    do_infer_main_function(),
-    CallEA = min EA:{
-        start_function(Entry),
-        arch.call(EA,_),
-        code_in_block(EA,_),
-        next(EA,HltEA),
-        instruction(HltEA,_,_,"HLT",_,_,_,_,_,_),
-        EA >= Entry
-     }.
-
 // call __x86.get_pc_thunk.REG
 pc_relative_addr(EA,Reg,PC):-
     get_pc_thunk(EA_thunk,Reg),

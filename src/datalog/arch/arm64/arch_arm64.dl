@@ -142,9 +142,6 @@ reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,Sign*Mult,0):-
         !op_shifted(EA,3,_,_), Mult = 1
     ).
 
-inferred_main_in_reg(EA,"X0"):-
-    inferred_main_dispatch(EA).
-
 /**
 The referenced address of an ADRP or ADR instruction
 
