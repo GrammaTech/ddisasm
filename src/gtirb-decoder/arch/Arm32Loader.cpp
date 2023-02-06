@@ -152,36 +152,9 @@ void Arm32Loader::load(const gtirb::ByteInterval& ByteInterval, BinaryFacts& Fac
     }
 }
 
-class CsInsn
-{
-    cs_insn* Insn;
-
-public:
-    CsInsn(csh Handle)
-    {
-        Insn = cs_malloc(Handle);
-        if(Insn == nullptr)
-        {
-            std::cerr << "Failed to allocate CsInsn\n";
-            std::exit(1);
-        }
-    }
-
-    ~CsInsn()
-    {
-        cs_free(Insn, 1);
-    }
-
-    operator cs_insn*()
-    {
-        return Insn;
-    }
-};
-
 void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr,
                          const std::vector<size_t>& CsModes)
 {
-    std::unique_ptr<cs_insn, std::function<void(cs_insn*)>> InsnPtr;
     size_t InsnCount = 0;
 
     // This loop is to try out multiple CS modes until decoding succeeds.
@@ -189,17 +162,21 @@ void Arm32Loader::decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size
     // bytes do not decode to two different results on different modes.
     bool Success = false;
     OpndFactsT OpndFacts;
-    CsInsn Insn(*CsHandle);
+    std::unique_ptr<cs_insn, std::function<void(cs_insn*)>> Insn;
     for(size_t CsMode : CsModes)
     {
         cs_option(*CsHandle, CS_OPT_MODE, CsMode);
-        uint64_t IterAddr = Addr;
-        uint64_t InsnSize = Size;
-        Success = cs_disasm_iter(*CsHandle, &Bytes, &InsnSize, &IterAddr, Insn);
+        cs_insn* TmpInsnRaw = nullptr;
+        size_t Count = cs_disasm(*CsHandle, Bytes, Size, Addr, 1, &TmpInsnRaw);
+        Success = Count > 0;
+        std::unique_ptr<cs_insn, std::function<void(cs_insn*)>> TmpInsn(
+            TmpInsnRaw, [Count](cs_insn* Instr) { cs_free(Instr, Count); });
+
         if(Success)
         {
             OpndFacts.clear();
-            Success = collectOpndFacts(OpndFacts, *Insn);
+            Success = collectOpndFacts(OpndFacts, *TmpInsnRaw);
+            Insn = std::move(TmpInsn);
             if(Success)
             {
                 break;
