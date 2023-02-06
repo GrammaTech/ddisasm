@@ -208,4 +208,10 @@ namespace souffle
         return T;
     }
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::ArchInfo& ArchInfo)
+    {
+        T << ArchInfo.Key << ArchInfo.Value;
+        return T;
+    }
+
 } // namespace souffle

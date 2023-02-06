@@ -257,6 +257,12 @@ namespace relations
         std::string Mode;
     };
 
+    struct ArchInfo
+    {
+        std::string Key;
+        std::string Value;
+    };
+
 } // namespace relations
 
 namespace souffle
@@ -331,6 +337,8 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::RegisterAccess& RegAccess);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::InstructionOpAccess& OpAccess);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::ArchInfo& ArchInfo);
 
 } // namespace souffle
 

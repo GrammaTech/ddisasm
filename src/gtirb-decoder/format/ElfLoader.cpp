@@ -422,6 +422,23 @@ static const uint8_t *getSectionBytes(const gtirb::Section &Section)
         return nullptr;
     }
 }
+
+void ElfArchInfoLoader(const gtirb::Module &Module, DatalogProgram &Program)
+{
+    std::vector<relations::ArchInfo> ArchInfo;
+
+    // Load arch info from aux data.
+    if(auto *Table = Module.getAuxData<gtirb::schema::ArchInfo>())
+    {
+        for(auto [Key, Value] : *Table)
+        {
+            ArchInfo.push_back({Key, Value});
+        }
+    }
+
+    Program.insert("arch_info", std::move(ArchInfo));
+}
+
 /**
 Locate function starts from ARM exception tables.
 

@@ -215,6 +215,38 @@ invalid(EA, "arm: invalid stm/ldm"):-
     ).
 
 /**
+Assign ARM version names to their generation number
+
+e.g., "v7E_M" -> 7
+*/
+.decl arm_ver_order(Name:symbol,VersionID:unsigned)
+
+arm_ver_order("Pre_v4", 3).
+arm_ver_order("v4", 4).
+arm_ver_order("v4T", 4).
+arm_ver_order("v5T", 5).
+arm_ver_order("v5TE", 5).
+arm_ver_order("v5TEJ", 5).
+arm_ver_order("v6", 6).
+arm_ver_order("v6KZ", 6).
+arm_ver_order("v6_M", 6).
+arm_ver_order("v6S_M", 6).
+arm_ver_order("v7", 7).
+arm_ver_order("v7E_M", 7).
+arm_ver_order("v8_A", 8).
+arm_ver_order("v8_R", 8).
+arm_ver_order("v8_M_Base", 8).
+arm_ver_order("v8_M_Main", 8).
+arm_ver_order("v8_1_M_Main", 8).
+arm_ver_order("v9", 9).
+
+invalid(EA,"hlt: min v8"):-
+    arch_info("Arch",Version),
+    arm_ver_order(Version,VerID),
+    VerID < 8,
+    instruction_get_operation(EA,"HLT").
+
+/**
 Compute the value loaded from a literal pool.
   - ldr Reg, [BaseReg, Off]
   - ldrd Reg1, Reg2, [BaseReg, Off]
@@ -1243,6 +1275,7 @@ ArchInfo auxdata inferred by the presence of specific instructions or patterns.
 
 // "blx label" is not possible on the "Microcontroller" profile.
 inferred_arch_info("Profile","System"):-
+    !arch_info("Profile",_),
     code_in_refined_block(EA,_),
     instruction_get_operation(EA,Operation),
     substr(Operation,0,3) = "BLX",
@@ -1252,10 +1285,12 @@ inferred_arch_info("Profile","System"):-
 
 // ARM code is not possible on the "Microcontroller" profile.
 inferred_arch_info("Profile","System"):-
+    !arch_info("Profile",_),
     code_in_refined_block(EA,_),
     EA band 1 = 0.
 
 inferred_arch_info("Profile","Microcontroller"):-
+    !arch_info("Profile",_),
     code_in_refined_block(EA,_),
     instruction_get_operation(EA,Operation),
     (
@@ -1270,6 +1305,7 @@ inferred_arch_info("Profile","Microcontroller"):-
 // It could be v7 or anything older, but we guess v7 to provide maximum
 // compatibility.
 inferred_arch_info("Arch","v7"):-
+    !arch_info("Arch",_),
     code_in_refined_block(EA,_),
     instruction_get_operation(EA,"LDCL").
 

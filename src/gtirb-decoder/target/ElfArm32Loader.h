@@ -40,6 +40,7 @@ CompositeLoader ElfArm32Loader()
     Loader.add(ElfDynamicEntryLoader);
     Loader.add(ElfSymbolLoader);
     Loader.add(ElfExceptionLoader);
+    Loader.add(ElfArchInfoLoader);
     Loader.add(ArmUnwindLoader);
     return Loader;
 }
