@@ -246,6 +246,13 @@ invalid(EA,"hlt: min v8"):-
     VerID < 8,
     instruction_get_operation(EA,"HLT").
 
+invalid(EA,"writeback to PC"):-
+    instruction_writeback(EA),
+    instruction_get_op(EA,_,Op),
+    op_indirect(Op,_,PCIn,_,_,_,_),
+    reg_map(PCIn,PC),
+    arch.pc_reg(PC).
+
 /**
 Compute the value loaded from a literal pool.
   - ldr Reg, [BaseReg, Off]
