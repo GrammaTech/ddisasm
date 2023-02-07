@@ -106,6 +106,7 @@ class OverlappingInstructionTests(unittest.TestCase):
         binary = "ex"
         with cd(ex_asm_dir / "ex_overlapping_instruction"):
 
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
             gtirb_file = "ex.gtirb"
             self.assertTrue(disassemble(binary, gtirb_file, format="--ir")[0])
 
