@@ -1,13 +1,13 @@
 
-	.text
+    .text
 
     .align 16
-	.globl  main
-	.type	main, @function
+    .globl  main
+    .type   main, @function
 main:
 .LFB6:
-	pushq	%rbp
-	movq	%rsp, %rbp
+    pushq    %rbp
+    movq    %rsp, %rbp
 
     movq    $1, %rax
     movq    $1, %rcx
@@ -27,12 +27,12 @@ main:
     movq    $8,%rsi
     call    printf@PLT
 .L3:
-	movl	$0, %eax
-	popq	%rbp
-	ret
+    movl    $0, %eax
+    popq    %rbp
+    ret
 
 .LFE6:
-	.size	main, .-main
+    .size   main, .-main
 
     .section .rodata
 .LC0:

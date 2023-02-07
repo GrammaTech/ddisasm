@@ -95,7 +95,7 @@ class OverlappingInstructionTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
-    def test_symbols_through_plt(self):
+    def test_lock_cmpxchg(self):
         """
         Test a binary that contains legitimate overlapping instructions:
         e.g., 0x0: lock cmpxchg
