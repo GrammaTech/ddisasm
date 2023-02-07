@@ -1,7 +1,7 @@
 
 	.text
 
-#    .align 16
+    .align 16
 	.globl  main
 	.type	main, @function
 main:
@@ -10,7 +10,7 @@ main:
 	movq	%rsp, %rbp
 
     movq    $1, %rax
-#    movq    $1, %rcx
+    movq    $1, %rcx
     movq    $1, %rdx
     cmpl    $0, %ecx
     jz      .L1+1
