@@ -530,7 +530,8 @@ Logically impossible blocks.
 // A known block discovered by propagation must discard overlapping blocks
 impossible_block(BlockB,TypeB,"overlaps known"):-
     known_block(BlockA,TypeA,_),
-    block_overlap(BlockA,TypeA,BlockB,TypeB).
+    block_overlap(BlockA,TypeA,BlockB,TypeB),
+    !overlapping_instruction(BlockA,BlockB).
 
 // Propagate impossible blocks backward
 impossible_block(BlockA,TypeA,"propagated impossible"):-

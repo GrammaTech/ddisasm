@@ -91,6 +91,34 @@ class IFuncSymbolsTests(unittest.TestCase):
                 )
 
 
+class OverlappingInstructionTests(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_lock_cmpxchg(self):
+        """
+        Test a binary that contains legitimate overlapping instructions:
+        e.g., 0x0: lock cmpxchg
+        At 0x0, lock cmpxchg
+        At 0x1,      cmpxchg
+        """
+
+        binary = "ex"
+        with cd(ex_asm_dir / "ex_overlapping_instruction"):
+
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            gtirb_file = "ex.gtirb"
+            self.assertTrue(disassemble(binary, gtirb_file, format="--ir")[0])
+
+            ir_library = gtirb.IR.load_protobuf(gtirb_file)
+            m = ir_library.modules[0]
+
+            main_sym = next(sym for sym in m.symbols if sym.name == "main")
+            main_block = main_sym.referent
+            self.assertIsInstance(main_block, gtirb.CodeBlock)
+            self.assertEqual(len(list(main_block.outgoing_edges)), 1)
+
+
 class AuxDataTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
