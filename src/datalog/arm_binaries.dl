@@ -148,7 +148,7 @@ symbolic_expr_from_relocation(EA,4,Symbol,Addend,Dest):-
     Dest = ((S + A) bor T),
     Addend = as(Base - Dest,number).
 
-symbolic_expr_attribute(EA,"GotRelPC"),
+symbolic_expr_attribute(EA,"GOT"),
 symbolic_expr_from_relocation(EA,4,Symbol,Addend,EA+as(Addend,address)):-
     binary_type("REL"),
     relocation(EA,"GOT_BREL",Symbol,_,_,_,_),

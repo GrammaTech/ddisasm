@@ -82,7 +82,7 @@ tls_get_addr(Load,Call,Start+Offset):-
 // offsets without relocations, e.g.
 //          mov     eax, DWORD PTR fs:i@tpoff
 //    as    mov     eax, DWORD PTR fs:[-4]
-tls_relative_operand(EA,Index,Dest,"TpOff"):-
+tls_relative_operand(EA,Index,Dest,"TPOFF"):-
     binary_isa("X64"),
     binary_format("ELF"),
     code(EA),
@@ -94,7 +94,7 @@ tls_relative_operand(EA,Index,Dest,"TpOff"):-
 
 //   e.g.   mov      rax, qword ptr fs:[0]
 //          lea      rax, [rax + threadLocal@TPOFF]
-tls_relative_operand(EA_used,Index,Dest,"TpOff"):-
+tls_relative_operand(EA_used,Index,Dest,"TPOFF"):-
     binary_isa("X64"),
     binary_format("ELF"),
     instruction_get_op(EA_def,_,Op_def),
@@ -108,7 +108,7 @@ tls_relative_operand(EA_used,Index,Dest,"TpOff"):-
 
 // Identify TLS block offsets used in the Local Dynamic TLS model,
 // i.e. X@DTPOFF operands.
-tls_relative_operand(EA,Index,Dest,"DtpOff"):-
+tls_relative_operand(EA,Index,Dest,"DTPOFF"):-
     binary_isa("X64"),
     binary_format("ELF"),
     tls_segment(Start,End,_),
@@ -118,22 +118,25 @@ tls_relative_operand(EA,Index,Dest,"DtpOff"):-
     Dest = Start + as(Offset,address), Dest < End,
     !tlsgd_code_sequence(DefEA-8).
 
-symbolic_operand_attribute(EA,Index,"PltRef"):-
+symbolic_operand_attribute(EA,Index,"PLT"):-
     symbolic_operand(EA,Index,Dest,_),
     plt_block(Dest,_).
 
-symbolic_operand_attribute(EA,Index,"PltRef"):-
+symbolic_operand_attribute(EA,Index,"PLT"):-
     instruction_immediate_offset(EA,Index,Offset,_),
     instruction_has_relocation(EA,EA+Offset),
     relocation(EA+Offset,"PLT32",_,_,_,_,_).
 
-symbolic_operand_attribute(EA,Index,"GotRelPC"):-
+symbolic_operand_attribute(EA,Index,"GOT"),
+symbolic_operand_attribute(EA,Index,"PCREL"):-
     symbolic_operand(EA,Index,Dest,_),
     !moved_label(EA,Index,_,_),
     got_reference(Dest,_),
+    !relocation(Dest,"TPOFF64",_,_,_,_,_),
     !relocation(Dest,"DTPMOD64",_,_,_,_,_).
 
-symbolic_operand_attribute(EA,Index,"GotRelPC"):-
+symbolic_operand_attribute(EA,Index,"GOT"),
+symbolic_operand_attribute(EA,Index,"PCREL"):-
     instruction_displacement_offset(EA,Index,Offset,_),
     symbolic_expr_from_relocation(EA+Offset,_,_,_,_),
     (
@@ -143,14 +146,15 @@ symbolic_operand_attribute(EA,Index,"GotRelPC"):-
 
 // Local Executable (LE) TLS:
 //   i.e.  FS:[0] + X@TPOFF and FS:[ X@TPOFF ]
-symbolic_operand_attribute(EA,Index,"TpOff"):-
+symbolic_operand_attribute(EA,Index,"TPOFF"):-
     binary_isa("X64"),
     binary_format("ELF"),
     instruction_displacement_offset(EA,Index,Offset,_),
     symbolic_expr_from_relocation(EA+Offset,_,_,_,_),
     relocation(EA+Offset,"TPOFF32",_,_,_,_,_).
 
-symbolic_operand_attribute(EA,Index,"TpOff"):-
+symbolic_operand_attribute(EA,Index,"GOT"),
+symbolic_operand_attribute(EA,Index,"TPOFF"):-
     binary_isa("X64"),
     binary_format("ELF"),
     symbolic_operand(EA,Index,Dest,_),
@@ -159,14 +163,14 @@ symbolic_operand_attribute(EA,Index,"TpOff"):-
 
 // General Dynamic (GD) TLS:
 //   i.e.  X@TLSGD + __tls_get_addr()
-symbolic_operand_attribute(EA,Index,"TlsGd"):-
+symbolic_operand_attribute(EA,Index,"TLSGD"):-
     symbolic_operand(EA,Index,Dest,_),
     relocation(Dest,"DTPMOD64",_,_,_,_,_),
     tlsgd_code_sequence(EA).
 
 // Local Dynamic (LD) TLS:
 //   i.e.  X@TLSLD + __tls_get_addr() + X@DTPOFF
-symbolic_operand_attribute(EA,Index,"TlsLd"):-
+symbolic_operand_attribute(EA,Index,"TLSLD"):-
     binary_isa("X64"),
     binary_format("ELF"),
     symbolic_operand(EA,Index,Dest,_),

@@ -1,5 +1,6 @@
-# 1.5.7 (Unreleased)
+# 1.6.0 (Unreleased)
 * ARM: Improve code inference using unwind information from .ARM.exidx section
+* Replace symbolic expression attributes with composable labels.
 
 # 1.5.6
 * Discover ARM Thumb blocks at section start in stripped binaries.
