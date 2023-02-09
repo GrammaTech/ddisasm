@@ -276,13 +276,6 @@ int main(int argc, char **argv)
 
         printElapsedTimeSince(StartDecode);
 
-        // Remove initial entry point.
-        if(gtirb::CodeBlock *Block = Module.getEntryPoint())
-        {
-            Block->getByteInterval()->removeBlock(Block);
-        }
-        Module.setEntryPoint(nullptr);
-
         Souffle->insert("option", createDisasmOptions(vm));
 
         fs::path DebugDir;
