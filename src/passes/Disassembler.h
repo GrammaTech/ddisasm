@@ -1,6 +1,6 @@
 //===- Disassembler.h -------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2019-2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,16 +20,17 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
+#ifndef GTIRB_MODULE_DISASSEMBLER_H_
+#define GTIRB_MODULE_DISASSEMBLER_H_
 #include <souffle/SouffleInterface.h>
 
 #include <gtirb/gtirb.hpp>
 
-#ifndef GTIRB_MODULE_DISASSEMBLER_H_
-#define GTIRB_MODULE_DISASSEMBLER_H_
+#include "AnalysisPass.h"
 
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
                        souffle::SouffleProgram *prog, bool selfDiagnose);
-bool performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose);
+void performSanityChecks(AnalysisPassResult &Result, souffle::SouffleProgram *prog,
+                         bool selfDiagnose, bool ignoreErrors);
 
 #endif // GTIRB_MODULE_DISASSEMBLER_H_

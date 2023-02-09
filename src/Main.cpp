@@ -1,6 +1,6 @@
 //===- Main.cpp -------------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2019-2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -23,6 +23,7 @@
 #include <fcntl.h>
 
 #include <chrono>
+#include <iomanip>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -36,9 +37,6 @@
 
 #include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
-#if defined(DDISASM_SOUFFLE_PROFILING)
-#include <souffle/profile/ProfileEvent.h>
-#endif
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -48,40 +46,17 @@
 #include <gtirb_pprinter/PrettyPrinter.hpp>
 
 #include "AuxDataSchema.h"
-#include "Disassembler.h"
-#include "Interpreter.h"
+#include "PrintUtils.h"
 #include "Registration.h"
 #include "Version.h"
 #include "gtirb-builder/GtirbBuilder.h"
-#include "gtirb-decoder/core/ModuleLoader.h"
+#include "passes/DisassemblyPass.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
 #include "passes/SccPass.h"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
-
-void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_clock> Start)
-{
-    auto End = std::chrono::high_resolution_clock::now();
-    std::cerr << " (";
-    int64_t secs = std::chrono::duration_cast<std::chrono::seconds>(End - Start).count();
-    if(secs != 0)
-        std::cerr << secs << "s)" << std::endl;
-    else
-        std::cerr << std::chrono::duration_cast<std::chrono::milliseconds>(End - Start).count()
-                  << "ms)" << std::endl;
-}
-
-std::vector<std::string> createDisasmOptions(const po::variables_map &vm)
-{
-    std::vector<std::string> Options;
-    if(vm.count("no-cfi-directives"))
-    {
-        Options.push_back("no-cfi-directives");
-    }
-    return Options;
-}
 
 static bool isStdoutATerminal()
 {
@@ -145,12 +120,12 @@ int main(int argc, char **argv)
         "generate-resources", "Generated .RES files for embedded resources (PE).")(
         "no-analysis,n",
         "Do not perform disassembly. This option only parses/loads the binary object into GTIRB.")(
-        "interpreter,I", po::value<std::string>(),
-        "Execute the souffle interpreter with the specified source file.")(
+        "interpreter,I", po::value<std::string>()->implicit_value("."),
+        "Execute the souffle interpreter with the specified repository root directory.")(
         "library-dir,L", po::value<std::string>(),
         "Directory from which extra libraries are loaded when running the interpreter")(
-        "profile", po::value<std::string>(),
-        "Generate Souffle profiling information at the specified path");
+        "profile", po::value<std::string>()->default_value(""),
+        "Generate Souffle profiling information in the specified directory.");
 
     po::positional_options_description pd;
     pd.add("input-file", -1);
@@ -195,8 +170,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    const std::string &ProfileDir = vm["profile"].as<std::string>();
 #if !defined(DDISASM_SOUFFLE_PROFILING)
-    if(vm.count("profile") && !vm.count("interpreter"))
+    if(!ProfileDir.empty() && !vm.count("interpreter"))
     {
         std::cerr << "Error: missing `--interpreter' argument required by `--profile'\n";
         return 1;
@@ -217,6 +193,7 @@ int main(int argc, char **argv)
     // Add `ddisasmVersion' aux data table.
     GTIRB->IR->addAuxData<gtirb::schema::DdisasmVersion>(DDISASM_FULL_VERSION_STRING);
     printElapsedTimeSince(StartBuildZeroIR);
+    std::cerr << "\n";
 
     if(!GTIRB->IR)
     {
@@ -241,148 +218,130 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    fs::path DebugDirRoot;
+    if(vm.count("debug-dir"))
+    {
+        DebugDirRoot = vm["debug-dir"].as<std::string>();
+    }
+
+    if(!ProfileDir.empty())
+    {
+        fs::create_directories(ProfileDir);
+    }
+
     bool HasPE = false;
-    bool AnalysisErrors = false;
     auto Modules = GTIRB->IR->modules();
     unsigned int ModuleCount = std::distance(std::begin(Modules), std::end(Modules));
     for(auto &Module : Modules)
     {
-        // Decode and load GTIRB Module into the SouffleProgram context.
-        std::cerr << "Decoding binary: " << Module.getName() << std::flush;
-        auto StartDecode = std::chrono::high_resolution_clock::now();
-
-        std::optional<DatalogProgram> Souffle = DatalogProgram::load(Module);
-        if(!Souffle)
-        {
-            std::cerr << "\nERROR: " << Filename << ": "
-                      << "Unsupported binary target: " << binaryFormat(Module.getFileFormat())
-                      << "-" << binaryISA(Module.getISA()) << "-"
-                      << binaryEndianness(Module.getByteOrder()) << "\n\n";
-
-            std::cerr << "Available targets:\n";
-            for(auto [FileFormat, Arch, ByteOrder] : DatalogProgram::supportedTargets())
-            {
-                std::cerr << "\t" << binaryFormat(FileFormat) << "-" << binaryISA(Arch) << "-"
-                          << binaryEndianness(ByteOrder) << "\n";
-            }
-            return EXIT_FAILURE;
-        }
-
-        if(vm.count("hints"))
-        {
-            std::string HintsFileName = vm["hints"].as<std::string>();
-            Souffle->readHintsFile(HintsFileName);
-        }
-
-        printElapsedTimeSince(StartDecode);
-
-        Souffle->insert("option", createDisasmOptions(vm));
-
-        fs::path DebugDir;
-        if(vm.count("debug-dir") != 0)
-        {
-            // Create multiple subdirectories for each module, if there are multiple.
-            DebugDir = vm["debug-dir"].as<std::string>();
-            if(ModuleCount > 1)
-            {
-                DebugDir /= Module.getName();
-            }
-
-            std::cerr << "Writing facts to debug dir " << vm["debug-dir"].as<std::string>()
-                      << std::endl;
-            fs::create_directories(DebugDir);
-            Souffle->writeFacts(DebugDir.string() + "/");
-        }
-        if(vm.count("with-souffle-relations"))
-        {
-            Souffle->writeFacts(Module);
-        }
-
-        std::cerr << "Disassembling" << std::flush;
-        unsigned int Threads = vm["threads"].as<unsigned int>();
-
-        const std::string &ProfilePath =
-            vm.count("profile") ? vm["profile"].as<std::string>() : std::string();
-
-        auto StartDisassembling = std::chrono::high_resolution_clock::now();
-        if(vm.count("interpreter"))
-        {
-            // Disassemble with the interpeter engine.
-            std::cerr << " (interpreter)";
-            const std::string &DatalogFile = vm["interpreter"].as<std::string>();
-            const std::string &LibDirectory =
-                vm.count("library-dir") ? vm["library-dir"].as<std::string>() : std::string();
-            runInterpreter(*GTIRB->IR, Module, *Souffle, DatalogFile, DebugDir.string(),
-                           LibDirectory, ProfilePath, Threads);
-        }
-        else
-        {
-            // Disassemble with the compiled, synthesized program.
-#if defined(DDISASM_SOUFFLE_PROFILING)
-            souffle::ProfileEventSingleton::instance().setOutputFile(ProfilePath);
-#endif
-            Souffle->threads(Threads);
-            Souffle->pruneImdtRels = !(vm.count("with-souffle-relations") || vm.count("debug-dir"));
-            try
-            {
-                Souffle->run();
-            }
-            catch(std::exception &e)
-            {
-                souffle::SignalHandler::instance()->error(e.what());
-            }
-        }
-        printElapsedTimeSince(StartDisassembling);
-
-        if(!DebugDir.empty())
-        {
-            std::cerr << "Writing results to debug dir " << DebugDir << std::endl;
-            Souffle->writeRelations(DebugDir.string() + "/");
-        }
-        if(vm.count("with-souffle-relations"))
-        {
-            Souffle->writeRelations(Module);
-        }
-        std::cerr << "Populating gtirb representation " << std::flush;
-        auto StartGtirbBuilding = std::chrono::high_resolution_clock::now();
-        disassembleModule(*GTIRB->Context, Module, Souffle->get(), vm.count("self-diagnose") != 0);
-        printElapsedTimeSince(StartGtirbBuilding);
-
+        std::cerr << "Processing module: " << Module.getName() << "\n";
+        std::list<std::unique_ptr<AnalysisPass>> Pipeline;
+        Pipeline.push_back(std::make_unique<DisassemblyPass>(vm.count("self-diagnose") != 0,
+                                                             vm.count("ignore-errors") != 0,
+                                                             vm.count("no-cfi-directives") != 0));
         if(vm.count("skip-function-analysis") == 0)
         {
-            std::cerr << "Computing intra-procedural SCCs " << std::flush;
-            auto StartSCCsComputation = std::chrono::high_resolution_clock::now();
-            computeSCCs(Module);
-            printElapsedTimeSince(StartSCCsComputation);
-            std::cerr << "Computing no return analysis " << std::flush;
-            NoReturnPass NoReturn;
-            FunctionInferencePass FunctionInference;
+            Pipeline.push_back(std::make_unique<SccPass>());
+            Pipeline.push_back(std::make_unique<NoReturnPass>());
+            Pipeline.push_back(std::make_unique<FunctionInferencePass>());
+        }
 
-            if(!DebugDir.empty())
+        AnalysisPass *PreviousPass = nullptr;
+        for(auto &Pass : Pipeline)
+        {
+            std::cerr << std::setw(IndentWidth) << "" << std::left << std::setw(PassNameWidth)
+                      << Pass->getName();
+
+            if(!DebugDirRoot.empty())
             {
-                fs::path PassDir;
-                PassDir = DebugDir / "pass-noreturn";
-                fs::create_directories(PassDir);
-                NoReturn.setDebugDir(PassDir.string() + "/");
-
-                PassDir = DebugDir / "pass-function-inference";
-                fs::create_directories(PassDir);
-                FunctionInference.setDebugDir(PassDir.string() + "/");
+                fs::path PassDebugDir = DebugDirRoot;
+                if(ModuleCount > 1)
+                {
+                    PassDebugDir /= Module.getName();
+                }
+                Pass->setDebugRoot(PassDebugDir);
             }
-            auto StartNoReturnAnalysis = std::chrono::high_resolution_clock::now();
-            NoReturn.computeNoReturn(Module, Threads);
-            printElapsedTimeSince(StartNoReturnAnalysis);
-            std::cerr << "Detecting additional functions " << std::flush;
-            auto StartFunctionAnalysis = std::chrono::high_resolution_clock::now();
-            FunctionInference.computeFunctions(*GTIRB->Context, Module, Threads);
-            printElapsedTimeSince(StartFunctionAnalysis);
+
+            if(Pass->hasLoad())
+            {
+                std::cerr << std::right << std::setw(PassStepWidth) << "load " << std::flush;
+                if(printPassResults(Pass->load(*GTIRB->Context, Module, PreviousPass)))
+                {
+                    // warnings emitted - indent line appropriately
+                    std::cerr << std::setw(IndentWidth + PassNameWidth + PassStepWidth + TimeWidth)
+                              << "";
+                }
+            }
+            else
+            {
+                std::cerr << std::setw(PassStepWidth + TimeWidth) << "";
+            }
+            std::cerr << std::flush;
+
+            // Free previous pass
+            if(PreviousPass != nullptr)
+            {
+                Pipeline.pop_front();
+                PreviousPass = nullptr;
+            }
+
+            if(DatalogAnalysisPass *DatalogPass = dynamic_cast<DatalogAnalysisPass *>(Pass.get()))
+            {
+                // datalog-only configuration
+                DatalogPass->setThreadCount(vm["threads"].as<unsigned int>());
+
+                if(!ProfileDir.empty())
+                {
+                    DatalogPass->setProfileDir(ProfileDir);
+                }
+
+                if(vm.count("interpreter"))
+                {
+                    // Disassemble with the interpeter engine.
+                    DatalogPass->setExecutionMode(DatalogExecutionMode::INTERPRETED);
+                    DatalogPass->setInterpreterDir(vm["interpreter"].as<std::string>());
+                    DatalogPass->setLibDir(vm.count("library-dir")
+                                               ? vm["library-dir"].as<std::string>()
+                                               : std::string());
+                }
+
+                if(vm.count("with-souffle-relations"))
+                {
+                    DatalogPass->enableSouffleOutputs();
+                }
+
+                if(vm.count("hints"))
+                {
+                    DatalogPass->readHints(vm["hints"].as<std::string>());
+                }
+            }
+
+            std::cerr << std::right << std::setw(PassStepWidth) << "compute " << std::flush;
+            printPassResults(Pass->analyze(Module));
+
+            if(Pass->hasTransform())
+            {
+                std::cerr << std::right << std::setw(PassStepWidth) << "transform " << std::flush;
+                if(printPassResults(Pass->transform(*GTIRB->Context, Module)))
+                {
+                    // warnings emitted - indent line appropriately
+                    std::cerr << std::setw(IndentWidth + PassNameWidth
+                                           + 2 * (PassStepWidth + TimeWidth))
+                              << "";
+                }
+            }
+            else
+            {
+                std::cerr << std::setw(PassStepWidth + TimeWidth) << "";
+            }
+
+            std::cerr << "\n";
+            PreviousPass = Pass.get();
         }
 
         // Remove provisional AuxData tables.
         Module.removeAuxData<gtirb::schema::Relocations>();
         Module.removeAuxData<gtirb::schema::SectionIndex>();
-
-        AnalysisErrors |= performSanityChecks(Souffle->get(), vm.count("self-diagnose") != 0);
 
         if(Module.getFileFormat() == gtirb::FileFormat::PE)
         {
@@ -500,21 +459,17 @@ int main(int argc, char **argv)
                 UseStdout = false;
             }
 
-            std::cerr << "Printing assembler" << std::flush;
+            std::cerr << "Printing assembler " << std::flush;
             auto StartPrinting = std::chrono::high_resolution_clock::now();
             pprinter.print(UseStdout ? std::cout : AsmFileStream, *GTIRB->Context, Module);
             printElapsedTimeSince(StartPrinting);
+            std::cerr << "\n";
         }
     }
 
     if(GTIRB)
     {
         GTIRB->Context->ForgetAllocations();
-    }
-
-    if(AnalysisErrors && !vm.count("ignore-errors"))
-    {
-        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;

@@ -26,29 +26,11 @@
 
 #include <fstream>
 #include <gtirb/gtirb.hpp>
+#include <gtirb_pprinter/AuxDataUtils.hpp>
 
 #include "../AuxDataSchema.h"
 #include "CompositeLoader.h"
 #include "core/ModuleLoader.h"
-
-std::map<DatalogProgram::Target, DatalogProgram::Factory> &DatalogProgram::loaders()
-{
-    static std::map<Target, Factory> Loaders;
-    return Loaders;
-}
-
-std::optional<DatalogProgram> DatalogProgram::load(const gtirb::Module &Module)
-{
-    auto Target = std::make_tuple(Module.getFileFormat(), Module.getISA(), Module.getByteOrder());
-
-    auto Factories = loaders();
-    if(auto It = Factories.find(Target); It != Factories.end())
-    {
-        auto Loader = (It->second)();
-        return Loader.load(Module);
-    }
-    return std::nullopt;
-}
 
 /**
 Create a record from a string and return the record ID.
@@ -227,7 +209,7 @@ bool DatalogProgram::insertTuple(std::stringstream &TupleText, souffle::Relation
     return true;
 }
 
-void DatalogProgram::readHintsFile(const std::string FileName)
+void DatalogProgram::readHintsFile(const std::string &FileName, const std::string &Namespace)
 {
     std::ifstream HintsFile(FileName);
 
@@ -236,6 +218,8 @@ void DatalogProgram::readHintsFile(const std::string FileName)
         std::cerr << "Error: could not find hints file `" << FileName << "'\n";
         return;
     }
+
+    std::string Prefix = Namespace + ".";
 
     std::string Line;
     int LineNumber = 0;
@@ -249,6 +233,11 @@ void DatalogProgram::readHintsFile(const std::string FileName)
             std::cerr << "Warning: ignoring hint in line " << LineNumber << ": '" << Line << "'\n";
             continue;
         }
+        if(RelationName.substr(0, Prefix.size()) != Prefix)
+        {
+            continue;
+        }
+        RelationName.erase(0, Prefix.size());
         souffle::Relation *Relation = Program->getRelation(RelationName);
         if(!Relation)
         {
@@ -263,18 +252,6 @@ void DatalogProgram::readHintsFile(const std::string FileName)
             continue;
         }
     }
-}
-
-std::vector<DatalogProgram::Target> DatalogProgram::supportedTargets()
-{
-    static std::vector<DatalogProgram::Target> Targets;
-
-    for(auto Factory : DatalogProgram::loaders())
-    {
-        Targets.push_back(Factory.first);
-    }
-
-    return Targets;
 }
 
 void DatalogProgram::serializeAttribute(std::ostream &Stream, const std::string &AttrType,
@@ -401,7 +378,7 @@ void DatalogProgram::writeRelations(const std::string &Directory)
 }
 
 void addRelationToRelationsMap(
-    DatalogProgram *Program, souffle::Relation *Relation,
+    DatalogProgram *Program, const std::string &Namespace, souffle::Relation *Relation,
     std::map<std::string, std::tuple<std::string, std::string>> &Relations)
 {
     if(Relation->getArity() == 0)
@@ -422,35 +399,34 @@ void addRelationToRelationsMap(
     Program->writeRelation(Csv, Relation);
 
     // TODO: Compress CSV.
-
-    Relations[Relation->getName()] = {Type.str(), Csv.str()};
+    Relations[Namespace + "." + Relation->getName()] = {Type.str(), Csv.str()};
 }
 
-void DatalogProgram::writeFacts(gtirb::Module &Module)
+void DatalogProgram::writeFacts(gtirb::Module &Module, const std::string &Namespace)
 {
-    std::map<std::string, std::tuple<std::string, std::string>> Relations;
+    auto Relations = aux_data::util::getOrDefault<gtirb::schema::SouffleFacts>(Module);
 
     for(souffle::Relation *Relation : Program->getInputRelations())
     {
-        addRelationToRelationsMap(this, Relation, Relations);
+        addRelationToRelationsMap(this, Namespace, Relation, Relations);
     }
 
     Module.addAuxData<gtirb::schema::SouffleFacts>(std::move(Relations));
 }
 
-void DatalogProgram::writeRelations(gtirb::Module &Module)
+void DatalogProgram::writeRelations(gtirb::Module &Module, const std::string &Namespace)
 {
-    std::map<std::string, std::tuple<std::string, std::string>> Relations;
+    auto Relations = aux_data::util::getOrDefault<gtirb::schema::SouffleOutputs>(Module);
 
     for(souffle::Relation *Relation : Program->getOutputRelations())
     {
-        addRelationToRelationsMap(this, Relation, Relations);
+        addRelationToRelationsMap(this, Namespace, Relation, Relations);
     }
     if(!pruneImdtRels)
     {
         for(souffle::Relation *Relation : Program->getInternalRelations())
         {
-            addRelationToRelationsMap(this, Relation, Relations);
+            addRelationToRelationsMap(this, Namespace, Relation, Relations);
         }
     }
 

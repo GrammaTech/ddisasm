@@ -41,21 +41,21 @@ void SccLoader(const gtirb::Module& M, DatalogProgram& P);
 struct PaddingLoader
 {
     void operator()(const gtirb::Module& M, DatalogProgram& P);
-    gtirb::Context* Context;
+    const gtirb::Context* Context;
 };
 
 // Load CFI information.
 struct FdeEntriesLoader
 {
     void operator()(const gtirb::Module& M, DatalogProgram& P);
-    gtirb::Context* Context;
+    const gtirb::Context* Context;
 };
 
 // Load function entry addresses.
 struct FunctionEntriesLoader
 {
     void operator()(const gtirb::Module& M, DatalogProgram& P);
-    gtirb::Context* Context;
+    const gtirb::Context* Context;
 };
 
 #endif // SRC_GTIRB_DECODER_CORE_AUXDATALOADER_H_

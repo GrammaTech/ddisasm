@@ -24,6 +24,7 @@
 
 #include <souffle/CompiledSouffle.h>
 
+#include <boost/dll.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/process/args.hpp>
 #include <boost/process/env.hpp>
@@ -72,7 +73,7 @@ void loadAll(DatalogProgram &Program, const std::string &Directory)
     }
 }
 
-void runInterpreter(gtirb::IR &IR, gtirb::Module &Module, DatalogProgram &Program,
+void runInterpreter(const gtirb::IR &IR, const gtirb::Module &Module, DatalogProgram &Program,
                     const std::string &DatalogFile, const std::string &Directory,
                     const std::string &LibDirectory, const std::string &ProfilePath,
                     uint8_t Threads)
@@ -97,8 +98,7 @@ void runInterpreter(gtirb::IR &IR, gtirb::Module &Module, DatalogProgram &Progra
 
     // Locate libfunctors.so
     // If LibDirectory is provided, only check there. Otherwise, search:
-    // ./build/lib/ (Relative directory)
-    // Dir(DatalogFile)../../build/lib/
+    // (directory of running ddisasm)/../lib/
     // ./ (Current directory)
     std::string FinalLibDirectory;
     if(!LibDirectory.empty())
@@ -113,8 +113,7 @@ void runInterpreter(gtirb::IR &IR, gtirb::Module &Module, DatalogProgram &Progra
     else
     {
         const std::vector<boost::filesystem::path> LibSearchPaths = {
-            "./build/lib",
-            boost::filesystem::path(DatalogFile).parent_path() / "../../build/lib/",
+            boost::dll::program_location().parent_path() / "../lib",
             ".",
         };
 

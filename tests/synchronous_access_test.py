@@ -65,7 +65,7 @@ class SynchronousAccessTests(unittest.TestCase):
             data_section = next(s for s in m.sections if s.name == ".data")
 
             preferred_data_access = m.aux_data["souffleOutputs"].data[
-                "preferred_data_access"
+                "disassembly.preferred_data_access"
             ]
             addresses = [
                 int(x.split("\t")[0], base=16)
@@ -106,7 +106,7 @@ class SynchronousAccessTests(unittest.TestCase):
             m = ir_library.modules[0]
 
             synchronous_access = m.aux_data["souffleOutputs"].data[
-                "synchronous_access"
+                "disassembly.synchronous_access"
             ]
 
             # There should not be any synchronous_access.

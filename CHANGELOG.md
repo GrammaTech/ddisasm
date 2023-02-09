@@ -1,6 +1,20 @@
 # 1.6.0 (Unreleased)
 * ARM: Improve code inference using unwind information from .ARM.exidx section
 * Replace symbolic expression attributes with composable labels.
+* ddisasm output now displays runtimes of "load", "compute", and "transform"
+  phases of each analysis pass
+* Various command-line options now apply to all datalog passes:
+  * `--debug-dir` creates subdirectories for each datalog pass
+  * `--interpreter` argument now specifies the source code repository's root
+    directory, defaults to the current working directory, and enables the
+    interpreter for all datalog passes
+  * `--profile` specifies a directory name where profiles for each datalog pass
+    is written
+  * Entries in files provided to `--hints` should namespace relation names using
+    the name of the analysis pass, e.g., `disassembly.invalid`.
+  * `--with-souffle-relations` keeps relations from all passes; entries in the
+    `souffleFacts` and `souffleOutputs` auxdata are now namespaced
+    with the name of the analysis pass, e.g., `disassembly.block_points`.
 
 # 1.5.6
 * Discover ARM Thumb blocks at section start in stripped binaries.

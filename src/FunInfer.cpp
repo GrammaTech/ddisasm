@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "AuxDataSchema.h"
+#include "PrintUtils.h"
 #include "Version.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
@@ -80,18 +81,6 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<LibraryPaths>();
     gtirb::AuxDataContainer::registerAuxDataType<SymbolicExpressionSizes>();
     gtirb::AuxDataContainer::registerAuxDataType<DdisasmVersion>();
-}
-
-void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_clock> Start)
-{
-    auto End = std::chrono::high_resolution_clock::now();
-    std::cout << " (";
-    int secs = std::chrono::duration_cast<std::chrono::seconds>(End - Start).count();
-    if(secs != 0)
-        std::cout << secs << "s)" << std::endl;
-    else
-        std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(End - Start).count()
-                  << "ms)" << std::endl;
 }
 
 int main(int argc, char **argv)
@@ -162,6 +151,7 @@ int main(int argc, char **argv)
     // Add `ddisasmVersion' aux data table.
     IR->addAuxData<gtirb::schema::DdisasmVersion>(DDISASM_FULL_VERSION_STRING);
     printElapsedTimeSince(StartReadBaseIR);
+    std::cerr << "\n";
 
     if(!IR)
     {
@@ -169,35 +159,80 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    for(auto Module = IR->modules_begin(); Module != IR->modules_end(); ++Module)
+    fs::path DebugDirRoot;
+    if(vm.count("debug-dir"))
     {
-        // Core of new code - functional analysis only
-        gtirb::Module &CurrModule = *Module;
+        DebugDirRoot = vm["debug-dir"].as<std::string>();
+    }
 
-        std::cout << "Processing module " << CurrModule.getName() << std::endl;
+    auto Modules = IR->modules();
+    unsigned int ModuleCount = std::distance(std::begin(Modules), std::end(Modules));
+    for(auto &Module : Modules)
+    {
+        std::cerr << "Processing module: " << Module.getName() << "\n";
+        std::list<std::unique_ptr<AnalysisPass>> Pipeline;
+        Pipeline.push_back(std::make_unique<SccPass>());
+        Pipeline.push_back(std::make_unique<NoReturnPass>());
+        Pipeline.push_back(std::make_unique<FunctionInferencePass>());
 
-        std::cout << "Computing intra-procedural SCCs " << std::flush;
-        auto StartSCCsComputation = std::chrono::high_resolution_clock::now();
-        computeSCCs(CurrModule);
-        printElapsedTimeSince(StartSCCsComputation);
-
-        unsigned int NThreads = vm["threads"].as<unsigned int>();
-        std::cout << "Computing no return analysis " << std::flush;
-        NoReturnPass NoReturn;
-        FunctionInferencePass FunctionInference;
-        if(vm.count("debug-dir") != 0)
+        for(auto &Pass : Pipeline)
         {
-            NoReturn.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
-            FunctionInference.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
-        }
-        auto StartNoReturnAnalysis = std::chrono::high_resolution_clock::now();
-        NoReturn.computeNoReturn(CurrModule, NThreads);
-        printElapsedTimeSince(StartNoReturnAnalysis);
+            std::cerr << std::setw(IndentWidth) << "" << std::left << std::setw(PassNameWidth)
+                      << Pass->getName();
 
-        std::cout << "Detecting additional functions " << std::flush;
-        auto StartFunctionAnalysis = std::chrono::high_resolution_clock::now();
-        FunctionInference.computeFunctions(Context, CurrModule, NThreads);
-        printElapsedTimeSince(StartFunctionAnalysis);
+            if(!DebugDirRoot.empty())
+            {
+                fs::path PassDebugDir = DebugDirRoot;
+                if(ModuleCount > 1)
+                {
+                    PassDebugDir /= Module.getName();
+                }
+                Pass->setDebugRoot(PassDebugDir);
+            }
+
+            if(Pass->hasLoad())
+            {
+                std::cerr << std::right << std::setw(PassStepWidth) << "load " << std::flush;
+                if(printPassResults(Pass->load(Context, Module)))
+                {
+                    // warnings emitted - indent line appropriately
+                    std::cerr << std::setw(IndentWidth + PassNameWidth + PassStepWidth + TimeWidth)
+                              << "";
+                }
+            }
+            else
+            {
+                std::cerr << std::setw(PassStepWidth + TimeWidth) << "";
+            }
+            std::cerr << std::flush;
+
+            if(DatalogAnalysisPass *DatalogPass = dynamic_cast<DatalogAnalysisPass *>(Pass.get()))
+            {
+                // datalog-only configuration
+                DatalogPass->setThreadCount(vm["threads"].as<unsigned int>());
+            }
+
+            std::cerr << std::right << std::setw(PassStepWidth) << "compute " << std::flush;
+            printPassResults(Pass->analyze(Module));
+
+            if(Pass->hasTransform())
+            {
+                std::cerr << std::right << std::setw(PassStepWidth) << "transform " << std::flush;
+                if(printPassResults(Pass->transform(Context, Module)))
+                {
+                    // warnings emitted - indent line appropriately
+                    std::cerr << std::setw(IndentWidth + PassNameWidth
+                                           + 2 * (PassStepWidth + TimeWidth))
+                              << "";
+                }
+            }
+            else
+            {
+                std::cerr << std::setw(PassStepWidth + TimeWidth) << "";
+            }
+
+            std::cerr << "\n";
+        }
     }
 
     // Output GTIRB

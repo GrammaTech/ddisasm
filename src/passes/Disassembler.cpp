@@ -1,6 +1,6 @@
 //===- Disassembler.cpp -----------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2019-2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -23,12 +23,11 @@
 
 #include "Disassembler.h"
 
-#include <LIEF/LIEF.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <regex>
 
-#include "AuxDataSchema.h"
-#include "gtirb-decoder/CompositeLoader.h"
+#include "../AuxDataSchema.h"
+#include "../gtirb-decoder/Relations.h"
 
 using ImmOp = relations::ImmOp;
 using IndirectOp = relations::IndirectOp;
@@ -818,7 +817,8 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
         for(auto [Uuid, Info] : *SymbolInfo)
         {
             uint64_t SectionIndex = std::get<4>(Info);
-            if(SectionIndex == static_cast<uint64_t>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_COMMON))
+            constexpr uint64_t SHN_COMMON = 0xfff2;
+            if(SectionIndex == SHN_COMMON)
             {
                 gtirb::Node *Node = gtirb::Node::getByUUID(Context, Uuid);
                 if(auto *Symbol = dyn_cast_or_null<gtirb::Symbol>(Node);
@@ -1507,53 +1507,51 @@ void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
     }
 }
 
-bool performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
+void performSanityChecks(AnalysisPassResult &Result, souffle::SouffleProgram *prog,
+                         bool selfDiagnose, bool ignoreErrors)
 {
-    bool error = false;
+    std::list<std::string> &Messages = ignoreErrors ? Result.Warnings : Result.Errors;
     if(selfDiagnose)
     {
-        std::cout << "Perfoming self diagnose (this will only give the right results if "
-                     "the target "
-                     "program contains all the relocation information)"
-                  << std::endl;
+        Result.Warnings.push_back(
+            "Perfoming self diagnose (this will only give the right results if "
+            "the target program contains all the relocation information)");
         auto falsePositives = prog->getRelation("false_positive");
         if(falsePositives->size() > 0)
         {
-            error = true;
-            std::cerr << "False positives: " << falsePositives->size() << std::endl;
+            std::stringstream ErrMsg;
+            ErrMsg << "False positives: " << falsePositives->size();
+            Messages.push_back(ErrMsg.str());
         }
         auto falseNegatives = prog->getRelation("false_negative");
         if(falseNegatives->size() > 0)
         {
-            error = true;
-            std::cerr << "False negatives: " << falseNegatives->size() << std::endl;
+            std::stringstream ErrMsg;
+            ErrMsg << "False negatives: " << falseNegatives->size();
+            Messages.push_back(ErrMsg.str());
         }
         auto badSymbolCnt = prog->getRelation("bad_symbol_constant");
         if(badSymbolCnt->size() > 0)
         {
-            error = true;
-            std::cerr << "Bad symbol constants: " << badSymbolCnt->size() << std::endl;
+            std::stringstream ErrMsg;
+            ErrMsg << "Bad symbol constants: " << badSymbolCnt->size();
+            Messages.push_back(ErrMsg.str());
         }
     }
     auto blockOverlap = prog->getRelation("block_still_overlap");
     if(blockOverlap->size() > 0)
     {
-        error = true;
-        std::cerr << "The conflicts between the following code blocks could not be resolved:"
-                  << std::endl;
+        std::stringstream ErrMsg;
+        ErrMsg << "The conflicts between the following code blocks could not be resolved:\n";
         for(auto &output : *blockOverlap)
         {
             uint64_t Block1, Block2, Size1, Size2;
             std::string BlockKind1, BlockKind2;
             output >> Block1 >> BlockKind1 >> Size1 >> Block2 >> BlockKind2 >> Size2;
-            std::cerr << std::hex << Block1 << " (" << BlockKind1 << ", " << Size1 << " bytes) - "
-                      << Block2 << " (" << BlockKind2 << ", " << Size2 << " bytes)" << std::dec
-                      << std::endl;
+            ErrMsg << std::hex << Block1 << " (" << BlockKind1 << ", " << Size1 << " bytes) - "
+                   << Block2 << " (" << BlockKind2 << ", " << Size2 << " bytes)" << std::dec
+                   << "\n";
         }
+        Messages.push_back(ErrMsg.str());
     }
-    if(selfDiagnose && !error)
-    {
-        std::cout << "Self diagnose completed: No errors found" << std::endl;
-    }
-    return error;
 }

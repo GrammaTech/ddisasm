@@ -33,8 +33,6 @@
 #include <string>
 #include <tuple>
 
-class CompositeLoader;
-
 class DatalogProgram
 {
 public:
@@ -59,17 +57,17 @@ public:
 
     bool insertTuple(std::stringstream& TupleText, souffle::Relation* Relation);
 
-    void readHintsFile(const std::string FileName);
+    void readHintsFile(const std::string& FileName, const std::string& Namespace);
 
     void writeRelation(std::ostream& Stream, const souffle::Relation* Relation);
 
     void writeFacts(const std::string& Directory);
 
-    void writeFacts(gtirb::Module& Module);
+    void writeFacts(gtirb::Module& Module, const std::string& Namespace);
 
     void writeRelations(const std::string& Directory);
 
-    void writeRelations(gtirb::Module& Module);
+    void writeRelations(gtirb::Module& Module, const std::string& Namespace);
 
     void threads(unsigned int N)
     {
@@ -86,17 +84,6 @@ public:
         return Program.get();
     }
 
-    // Loader factory registration.
-    using Target = std::tuple<gtirb::FileFormat, gtirb::ISA, gtirb::ByteOrder>;
-    using Factory = std::function<CompositeLoader()>;
-
-    static void registerLoader(Target T, Factory F)
-    {
-        loaders()[T] = F;
-    }
-
-    static std::vector<Target> supportedTargets();
-
     bool pruneImdtRels = true;
 
 private:
@@ -105,8 +92,6 @@ private:
                          souffle::RamDomain RecordId);
     void serializeAttribute(std::ostream& Stream, const std::string& AttrType,
                             souffle::RamDomain Data);
-
-    static std::map<Target, Factory>& loaders();
 
     std::shared_ptr<souffle::SouffleProgram> Program;
 };

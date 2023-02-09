@@ -56,7 +56,7 @@ class DefUsedTests(unittest.TestCase):
             # function and used in `main`.
             def_used = (
                 m.aux_data["souffleOutputs"]
-                .data["reg_def_use.def_used"][1]
+                .data["disassembly.reg_def_use.def_used"][1]
                 .strip()
                 .split("\n")
             )

@@ -398,8 +398,7 @@ endif()
 
 # ====== ddisasm ===========
 # Build final ddisasm executable
-add_executable(ddisasm Disassembler.cpp Interpreter.cpp Registration.cpp
-                       Main.cpp Functors.cpp)
+add_executable(ddisasm Registration.cpp Main.cpp Functors.cpp PrintUtils.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_compile_options(ddisasm PRIVATE -Wno-unused-parameter)
@@ -488,6 +487,8 @@ target_link_libraries(
           gtirb_pprinter
           gtirb_builder
           gtirb_decoder
+          generic_pass
+          disassembly_pass
           ${Boost_LIBRARIES}
           ${EXPERIMENTAL_LIB}
           ${LIBCPP_ABI}
@@ -529,7 +530,7 @@ install(
 if(BUILD_FUNINFER)
   # ===== souffle_funinfer =====
 
-  add_executable(funinfer FunInfer.cpp)
+  add_executable(funinfer FunInfer.cpp PrintUtils.cpp)
 
   target_include_directories(
     funinfer PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
@@ -555,15 +556,15 @@ if(BUILD_FUNINFER)
     funinfer
     PRIVATE gtirb
             gtirb_decoder
+            generic_pass
             scc_pass
             ${CAPSTONE}
             ${Boost_LIBRARIES}
             ${EXPERIMENTAL_LIB}
-            ${LIBCPP_ABI}
-            scc_pass)
+            ${LIBCPP_ABI})
 
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-    target_link_libraries(funinfer PRIVATE scc_pass no_return_pass
+    target_link_libraries(funinfer PRIVATE no_return_pass
                                            function_inference_pass)
     target_link_options(
       funinfer PRIVATE /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>

@@ -1,7 +1,6 @@
-
-//===- Interpreter.cpp ------------------------------------------*- C++ -*-===//
+//===- PrintUtils.h ---------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2021 GrammaTech, Inc.
+//  Copyright (C) 2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -21,17 +20,22 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#ifndef _PRINT_UTILS_H_
+#define _PRINT_UTILS_H_
 
-#include <gtirb/gtirb.hpp>
+#include <chrono>
+#include <iomanip>
 
-#include "gtirb-decoder/DatalogProgram.h"
+#include "passes/AnalysisPass.h"
 
-#ifndef GTIRB_SRC_INTERPRETER_H_
-#define GTIRB_SRC_INTERPRETER_H_
+// Define CLI output field widths
+constexpr size_t IndentWidth = 4;
+constexpr size_t TimeWidth = 8;
+constexpr size_t PassNameWidth = 18;
+constexpr size_t PassStepWidth = 12;
 
-void runInterpreter(gtirb::IR& IR, gtirb::Module& Module, DatalogProgram& Program,
-                    const std::string& DatalogFile, const std::string& Directory,
-                    const std::string& LibDirectory, const std::string& ProfilePath,
-                    uint8_t Threads);
+void printElapsedTime(std::chrono::duration<double> Elapsed);
+void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_clock> Start);
+bool printPassResults(const AnalysisPassResult &Result);
 
-#endif // GTIRB_SRC_INTERPRETER_H_
+#endif /* _PRINT_UTILS_H_ */
