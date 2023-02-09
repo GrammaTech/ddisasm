@@ -163,6 +163,12 @@ relocation_adjustment_total(EA,Adjustment):-
 .decl binary_format(Format:symbol)
 .input binary_format
 
+/**
+ArchInfo auxdata derived ELF metadata
+*/
+.decl arch_info(Key:symbol,Value:symbol)
+.input arch_info
+
 .decl binary_isa(ArchName:symbol) inline
 
 binary_isa(ArchName):-
