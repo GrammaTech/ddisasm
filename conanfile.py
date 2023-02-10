@@ -39,7 +39,7 @@ class Properties:
     name = "ddisasm"
     version = get_version()
     rel_url = "rewriting/ddisasm"
-    exports_sources = "*", "!.conan/*"
+    exports_sources = "*", "!.conan/*", "!ccache/*"
 
     @property
     def description(self):
