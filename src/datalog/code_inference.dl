@@ -522,7 +522,7 @@ known_block(Block,"code",Size,"pointer array section"):-
     binary_format("ELF"),
     function_pointer_section(SectionName),
     section(SectionName,SectionSize,Start,_,_),
-    address_in_data(Entry,Block),
+    aligned_address_in_data(Entry,Block),
     Start <= Entry,
     Entry < Start+SectionSize,
     block_candidate_boundaries(Block,"code",Beg,End),
