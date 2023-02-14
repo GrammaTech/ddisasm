@@ -51,9 +51,9 @@ contains_plausible_instr_seq(Block,3,"cmp/conditional-branch"):-
         ;
         conditional_return(EA)
     ),
-    code_in_block_candidate(EA,Block),
+    code_in_block_candidate_refined(EA,Block),
     next(PrevEA,EA),
-    code_in_block_candidate(PrevEA,Block),
+    code_in_block_candidate_refined(PrevEA,Block),
     instruction_get_operation(PrevEA,Operation),
     arch.cmp_operation(Operation).
 

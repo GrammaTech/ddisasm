@@ -810,7 +810,7 @@ litpool_confidence(EA,LitPoolAddr,Confidence,"adr/ldm"):-
     straight_line_def_used(EA,Reg,EA_ldm,_),
     instruction_get_operation(EA_ldm,Operation),
     contains("LDM",Operation),
-    code_in_block_candidate(EA,Block),
+    code_in_block_candidate_refined(EA,Block),
     (
         unresolved_block(Block,"code",_),
         Confidence = 3
@@ -831,7 +831,7 @@ litpool_confidence(EA,LitPoolAddr,Confidence,"ldr/ldrd"):-
     instruction_get_operation(EA_ldrd,Operation),
     contains("LDRD",Operation),
     !arch.dangling_thumb_instr(EA),
-    code_in_block_candidate(EA,Block),
+    code_in_block_candidate_refined(EA,Block),
     (
         unresolved_block(Block,"code",_),
         Confidence = 3
@@ -905,7 +905,7 @@ litpool_confidence(EA,LitPoolAddr,Confidence,"possibly register param"):-
     unresolved_block(Block,"code",_),
     !overlap_with_litpool(Block),
     !straight_line_def_used(EA,_,_,_),
-    code_in_block_candidate(CallEA,Block),
+    code_in_block_candidate_refined(CallEA,Block),
     arch.call(CallEA,_),
     arch.load(EA_ldr,_,_,Reg,_,_,_,_),
     arch.integer_reg_param(Reg,_),
