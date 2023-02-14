@@ -485,8 +485,11 @@ void ArmUnwindLoader(const gtirb::Module &Module, DatalogProgram &Program)
         uint32_t ExidxEntryAddr = ExidxSectionAddr + I * sizeof(ExidxEntry);
         uint32_t FnStart = decodePrel31(FnPrel, ExidxEntryAddr);
 
+        uint64_t CantUnwind = static_cast<uint64_t>(EntryData == 1);
+
         souffle::tuple tuple(FunctionStartRelation);
         tuple << gtirb::Addr(FnStart);
+        tuple << CantUnwind;
         FunctionStartRelation->insert(tuple);
 
         // TODO: in entries where Data is an offset referencing the .ARM.extab
