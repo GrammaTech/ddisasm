@@ -151,12 +151,22 @@ operation indicating a relative jump table.
 */
 .decl indexed_pc_relative_load_relative(EA:address,DstReg:register,LoadFrom:address,IndexReg:reg_nullable,Size:unsigned,EA_add:address,Reference:address)
 
+// loaded offset added to a register containing pc relative addr
 indexed_pc_relative_load_relative(EA_ldr,DstReg,TableStart,IndexReg,Size,EA_add,Reference):-
     indexed_pc_relative_load(EA_ldr,LoadedReg,TableStart,IndexReg,Size),
     straight_line_def_used(EA_ldr,LoadedReg,EA_add,_),
     arch.reg_reg_arithmetic_operation(EA_add,DstReg,RefReg,LoadedReg,1,0),
     straight_line_def_used(EA_ref,RefReg,EA_add,_),
     arch.pc_relative_addr(EA_ref,RefReg,Reference).
+
+// loaded offset added directly to PC
+indexed_pc_relative_load_relative(EA_ldr,DstReg,TableStart,IndexReg,Size,EA_add,Reference):-
+    indexed_pc_relative_load(EA_ldr,LoadedReg,TableStart,IndexReg,Size),
+    straight_line_def_used(EA_ldr,LoadedReg,EA_add,_),
+    arch.pc_reg(PC),
+    arch.reg_reg_arithmetic_operation(EA_add,DstReg,PC,LoadedReg,1,0),
+    arch.pc_relative_disp(EA_add,Disp),
+    Reference = EA_add + as(Disp,address).
 
 /**
     EA_ldr:  ldr r3, ...
@@ -238,15 +248,12 @@ arm_jump_table_candidate_target("rel_signed",Thumb,EA,Reference,Size,Scale,Targe
 // base case
 arm_jump_table_candidate(EA_jump,Reference,TableStart,EA,Size,TargetAddr,TableLimit,Type,Scale):-
     arm_jump_table_candidate_start(_,EA_jump,_,Reference,TableStart,Size,Type,Scale,_),
-    (
-        EA = TableStart
-        ;
-        // sometimes the compiler knows the index is non-zero, and puts zero
-        // in the starting entry. (observed in a tbb jump table)
-        Type = "rel_unsigned",
-        EA = TableStart + Size,
-        data_uword(TableStart,Size,0)
-    ),
+    // we try both at TableStart (first entry) and TableStart+Size
+    // sometimes the compiler knows the index is non-zero, and puts padding
+    // in the starting entry. we have observed:
+    // * zero padding in a tbb jump table
+    // * "bpkt #0" as padding in ARM ldr/add in libRSCpuRef.so
+    EA = range(TableStart,TableStart+Size+1,Size),
     arm_jump_table_candidate_target(Type,EA_jump band 1,EA,Reference,Size,Scale,TargetAddr),
     arch.instruction_at(AlignedTargetAddr,TargetAddr),
     instruction(TargetAddr,_,_,_,_,_,_,_,_,_),
