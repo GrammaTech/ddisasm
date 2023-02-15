@@ -307,7 +307,8 @@ class CfgTests(unittest.TestCase):
         examples = (
             ("ex_tbb", b"\xdf\xe8\x00\xf0", 1),
             ("ex_tbh", b"\xdf\xe8\x10\xf0", 2),
-            ("ex_tbb_r3_base", b"\xd3\xe8\x00\xf0", 1),
+            ("ex_tbb_r3_ldr", b"\xd3\xe8\x00\xf0", 1),
+            ("ex_tbb_r3_adr", b"\xd3\xe8\x00\xf0", 1),
         )
         for example_dir, jump_instruction_bytes, tbl_entry_size in examples:
             with self.subTest(example_dir=example_dir):
@@ -354,7 +355,7 @@ class CfgTests(unittest.TestCase):
                     )
                     # check that there are symbolic expressions for all four
                     # jump table entries
-                    if example_dir == "ex_tbb_r3_base":
+                    if example_dir.startswith("ex_tbb_r3_"):
                         table_sym = next(
                             s for s in m.symbols if s.name == "table"
                         )
