@@ -834,9 +834,9 @@ discarded_block(Block,Type,Size,"negative points",0):-
 
 // propagate discarding blocks through direct jumps, calls, and must_fallthrough
 discarded_block(Block1,Type1,Size1,"propagated",Block2):-
-    discarded_block(Block2,Type2,Size2,_,_),
+    discarded_block(Block2,"code",Size2,_,_),
     !overlapping_instruction(Block2,_),
-    block_candidate_dependency_edge(Block1,Type1,Size1,Block2,Type2,Size2),
+    block_candidate_dependency_edge(Block1,Type1,Size1,Block2,"code",Size2),
     (
         unresolved_block(Block1,Type1,Size1)
         ;
