@@ -3,6 +3,7 @@ import unittest
 from disassemble_reassemble_check import compile, cd, disassemble
 from pathlib import Path
 import gtirb
+from gtirb.cfg import EdgeType
 
 
 ex_dir = Path("./examples/")
@@ -453,6 +454,47 @@ class CfgTests(unittest.TestCase):
                     break
             else:
                 self.fail("Jumping block not found in functionBlocks")
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_arm_relative_jump_table3(self):
+        """
+        Test ARM jumptable with ldr, add, bkpt
+        """
+        binary = "ex"
+
+        with cd(ex_arm_asm_dir / "ex_relative_jump_table3"):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "-O0",
+                    [],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    format="--ir",
+                    strip_exe="arm-linux-gnueabihf-strip",
+                    strip=True,
+                )[0]
+            )
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            main = next(s for s in m.symbols if s.name == "main")
+            main_block = main.referent
+            jump_block = next(
+                edge
+                for edge in main_block.outgoing_edges
+                if edge.label.type == EdgeType.Fallthrough
+            ).target
+
+            self.assertEqual(len(list(jump_block.outgoing_edges)), 4)
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
