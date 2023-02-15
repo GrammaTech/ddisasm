@@ -215,6 +215,10 @@ arm_jump_table_candidate_start(EA,EA,IndexReg,Reference,TableStart,Size,"rel_uns
         LitPoolAddr = LitPoolBase + LitPoolOffset,
         data_uword(LitPoolAddr,PtrSize,Value),
         TableStart = as(Value,address)
+        ;
+        !arch.pc_reg(BaseReg),
+        straight_line_def_used(EA_adr,BaseReg,EA,_),
+        arch.pc_relative_addr(EA_adr,BaseReg,TableStart)
     ).
 
 /**
