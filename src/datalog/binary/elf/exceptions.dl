@@ -121,7 +121,7 @@ Address where a function starts according to the ARM exidx table.
 
 This address does not set the low bit for Thumb functions.
 */
-.decl arm_exidx_entry(FunctionStart:address)
+.decl arm_exidx_entry(FunctionStart:address,CantUnwind:unsigned)
 .input arm_exidx_entry
 
 /////////////////////////////////////////////////////////////////////////////////

@@ -1339,27 +1339,27 @@ inferred_arch_info("Arch","v7"):-
 // address. Creating both as potential targets creates too many false
 // positives.
 basic_target(Inst):-
-    arm_exidx_entry(Start),
+    arm_exidx_entry(Start,_),
     arch.instruction_at(Start,Inst),
     invalid(Inst bxor 1,_).
 
 // Always split blocks at arm_exidx_entry.
 block_limit(Inst):-
-    arm_exidx_entry(Start),
+    arm_exidx_entry(Start,_),
     arch.instruction_at(Start,Inst).
 
 // exidx metadata doesn't set the low bit to indicate Thumb, so we can only use
 // it as a source of known block if the address isn't both an ARM and Thumb
 // block.
 known_block(Block,"code",BlockEnd - BlockBeg,".ARM.exidx"):-
-    arm_exidx_entry(Start),
+    arm_exidx_entry(Start,0),
     arch.instruction_at(Start,Block),
     block_candidate_boundaries(Block,"code",BlockBeg,BlockEnd),
     !block_candidate_boundaries(Block bxor 1,"code",_,_).
 
 // a block that overlaps both potential .ARM.exidx functions must not exist.
 impossible_block(Other,"data",DataEnd - DataStart,"overlaps .ARM.exidx"):-
-    arm_exidx_entry(Start),
+    arm_exidx_entry(Start,0),
     BlockArm = Start,
     BlockThumb = Start bor 1,
     block_candidate_boundaries(BlockArm,"code",_,EndArm),
