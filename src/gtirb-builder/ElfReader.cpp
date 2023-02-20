@@ -786,6 +786,114 @@ void ElfReader::buildSections()
     Module->addAuxData<gtirb::schema::SectionProperties>(std::move(SectionProperties));
 }
 
+// Replace the VersionStr in the given Symbol with Version ID if any.
+// Or update Symbols with the VersionMap for the symbol.
+//
+// TableName and TableIndex are only used when Update is true.
+std::string ElfReader::getVersionedNameOrUpdateVersionMap(const LIEF::ELF::Symbol &Symbol,
+                                                          bool Update, const std::string &TableName,
+                                                          uint64_t TableIndex)
+{
+    std::string Name = Symbol.name();
+    uint64_t Value = Symbol.value();
+
+    // Rebase symbols onto their respective relocated section address.
+    bool Relocatable = Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL;
+    if(Relocatable)
+    {
+        if(Symbol.shndx() > 0 && Symbol.shndx() < Elf->sections().size())
+        {
+            const LIEF::ELF::Section &Section = Elf->sections()[Symbol.shndx()];
+            uint64_t Offset = Value - Section.virtual_address();
+            Value = SectionRelocations[Section.name()] + Offset;
+        }
+    }
+
+    // Rebase a TLS symbol onto the relocated TLS segment.
+    bool Tls = Symbol.type() == LIEF::ELF::ELF_SYMBOL_TYPES::STT_TLS;
+    if(Tls && !Relocatable
+       && (Symbol.shndx() != static_cast<uint16_t>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)))
+    {
+        // STT_TLS symbols are relative to PT_TLS segment base.
+        Value = tlsBaseAddress() + Value;
+    }
+
+    gtirb::provisional_schema::SymbolVersionId Version = LIEF::ELF::VER_NDX_LOCAL;
+    std::string VersionStr;
+    // Symbols in "dynsym" table have versions.
+    if(Symbol.has_version())
+    {
+        Version = Symbol.symbol_version()->value();
+    }
+    // Symbols in "symtab" table have the version attached to the name.
+    // We remove the version from the name and recover the corresponding version identifier.
+    else if(std::size_t I = Name.find('@'); I != std::string::npos)
+    {
+        VersionStr = Name.substr(I, 2) == "@@" ? Name.substr(I + 2) : Name.substr(I + 1);
+        Name = Name.substr(0, I);
+    }
+    auto &VersionMap = Symbols[std::tuple(Value,                                     // Value
+                                          Symbol.size(),                             // Size
+                                          LIEF::ELF::to_string(Symbol.type()),       // Type
+                                          LIEF::ELF::to_string(Symbol.binding()),    // Binding
+                                          LIEF::ELF::to_string(Symbol.visibility()), // Scope
+                                          Symbol.shndx(), // Section Index
+                                          Name            // Name
+                                          )];
+    // If the version was part of the name,
+    // select the best version already available (from dynsym).
+    if(VersionStr.size() > 0)
+    {
+        std::set<gtirb::provisional_schema::SymbolVersionId> &PossibleVersions =
+            VersionToIds[VersionStr];
+        for(auto &[VersionId, Val] : VersionMap)
+        {
+            // Ignore the 15th bit that marks whether the symbol is hidden.
+            if(PossibleVersions.find(VersionId & 0x7FFF) != PossibleVersions.end())
+            {
+                Version = VersionId;
+                break;
+            }
+        }
+        if(!Version)
+        {
+            if(!PossibleVersions.empty())
+            {
+                // It's a real version, but it wasn't in .dynsym.
+                Version = *PossibleVersions.begin();
+            }
+            else
+            {
+                throw ElfReaderException("Could not find compatible symbol version for " + Name
+                                         + "@" + VersionStr);
+            }
+        }
+    }
+    else
+    {
+        if(!Version && VersionMap.size() == 1)
+        {
+            auto &[Version_, _] = *VersionMap.begin();
+            Version = Version_;
+        }
+        // If there is no version but there is a global
+        // instance of this symbol, we consider this one global too.
+        else if(VersionMap.find(LIEF::ELF::VER_NDX_GLOBAL) != VersionMap.end())
+        {
+            Version = LIEF::ELF::VER_NDX_GLOBAL;
+        }
+    }
+    if(Update)
+    {
+        VersionMap[Version].push_back({TableName, TableIndex});
+    }
+    if(Version)
+    {
+        Name += "@" + std::to_string(Version);
+    }
+    return Name;
+}
+
 void ElfReader::buildSymbols()
 {
     // If there's no existing dynamic symbols, resurrect them.
@@ -819,109 +927,11 @@ void ElfReader::buildSymbols()
         }
     }
 
-    using SymbolKey = std::tuple<uint64_t, uint64_t, std::string, std::string, std::string,
-                                 uint64_t, std::string>;
-    using TableDecl = std::tuple<std::string, uint64_t>;
-
-    std::map<SymbolKey,
-             std::map<gtirb::provisional_schema::SymbolVersionId, std::vector<TableDecl>>>
-        Symbols;
     auto LoadSymbols = [&](auto SymbolIt, std::string TableName) {
         uint64_t TableIndex = 0;
         for(auto &Symbol : SymbolIt)
         {
-            std::string Name = Symbol.name();
-            uint64_t Value = Symbol.value();
-
-            // Rebase symbols onto their respective relocated section address.
-            bool Relocatable = Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL;
-            if(Relocatable)
-            {
-                if(Symbol.shndx() > 0 && Symbol.shndx() < Elf->sections().size())
-                {
-                    const LIEF::ELF::Section &Section = Elf->sections()[Symbol.shndx()];
-                    uint64_t Offset = Value - Section.virtual_address();
-                    Value = SectionRelocations[Section.name()] + Offset;
-                }
-            }
-
-            // Rebase a TLS symbol onto the relocated TLS segment.
-            bool Tls = Symbol.type() == LIEF::ELF::ELF_SYMBOL_TYPES::STT_TLS;
-            if(Tls && !Relocatable
-               && (Symbol.shndx()
-                   != static_cast<uint16_t>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)))
-            {
-                // STT_TLS symbols are relative to PT_TLS segment base.
-                Value = tlsBaseAddress() + Value;
-            }
-
-            gtirb::provisional_schema::SymbolVersionId Version = LIEF::ELF::VER_NDX_LOCAL;
-            std::string VersionStr;
-            // Symbols in "dynsym" table have versions.
-            if(Symbol.has_version())
-            {
-                Version = Symbol.symbol_version()->value();
-            }
-            // Symbols in "symtab" table have the version attached to the name.
-            // We remove the version from the name and recover the corresponding version identifier.
-            else if(std::size_t I = Name.find('@'); I != std::string::npos)
-            {
-                VersionStr = Name.substr(I, 2) == "@@" ? Name.substr(I + 2) : Name.substr(I + 1);
-                Name = Name.substr(0, I);
-            }
-            auto &VersionMap =
-                Symbols[std::tuple(Value,                                     // Value
-                                   Symbol.size(),                             // Size
-                                   LIEF::ELF::to_string(Symbol.type()),       // Type
-                                   LIEF::ELF::to_string(Symbol.binding()),    // Binding
-                                   LIEF::ELF::to_string(Symbol.visibility()), // Scope
-                                   Symbol.shndx(),                            // Section Index
-                                   Name                                       // Name
-                                   )];
-            // If the version was part of the name,
-            // select the best version already available (from dynsym).
-            if(VersionStr.size() > 0)
-            {
-                std::set<gtirb::provisional_schema::SymbolVersionId> &PossibleVersions =
-                    VersionToIds[VersionStr];
-                for(auto &[VersionId, Val] : VersionMap)
-                {
-                    // Ignore the 15th bit that marks whether the symbol is hidden.
-                    if(PossibleVersions.find(VersionId & 0x7FFF) != PossibleVersions.end())
-                    {
-                        Version = VersionId;
-                        break;
-                    }
-                }
-                if(!Version)
-                {
-                    if(!PossibleVersions.empty())
-                    {
-                        // It's a real version, but it wasn't in .dynsym.
-                        Version = *PossibleVersions.begin();
-                    }
-                    else
-                    {
-                        throw ElfReaderException("Could not find compatible symbol version for "
-                                                 + Name + "@" + VersionStr);
-                    }
-                }
-            }
-            else
-            {
-                if(!Version && VersionMap.size() == 1)
-                {
-                    auto &[Version_, _] = *VersionMap.begin();
-                    Version = Version_;
-                }
-                // If there is no version but there is a global
-                // instance of this symbol, we consider this one global too.
-                else if(VersionMap.find(LIEF::ELF::VER_NDX_GLOBAL) != VersionMap.end())
-                {
-                    Version = LIEF::ELF::VER_NDX_GLOBAL;
-                }
-            }
-            VersionMap[Version].push_back({TableName, TableIndex});
+            getVersionedNameOrUpdateVersionMap(Symbol, true /*Update*/, TableName, TableIndex);
             TableIndex++;
         }
     };
@@ -1075,35 +1085,15 @@ void ElfReader::addAuxData()
 
         if(Relocation.has_symbol())
         {
-            SymbolName = Relocation.symbol()->name();
-            auto SymbolVersion = Relocation.symbol()->symbol_version();
+            auto Symbol = *Relocation.symbol();
+
+            SymbolName = Symbol.name();
+            auto SymbolVersion = Symbol.symbol_version();
             if(!SymbolVersion)
             {
-                if(std::size_t I = SymbolName.find('@'); I != std::string::npos)
-                {
-                    std::string VersionStr = SymbolName.substr(I, 2) == "@@"
-                                                 ? SymbolName.substr(I + 2)
-                                                 : SymbolName.substr(I + 1);
-                    // If the version was part of the name, look up VersionToIds to
-                    // find the version Id already given in buildSymbols.
-                    if(VersionStr.size() > 0)
-                    {
-                        SymbolName = SymbolName.substr(0, I);
-                        std::set<gtirb::provisional_schema::SymbolVersionId> &PossibleVersions =
-                            VersionToIds[VersionStr];
-                        if(!PossibleVersions.empty())
-                        {
-                            // It's a real version, but it wasn't in .dynsym.
-                            auto Version = *PossibleVersions.begin();
-                            SymbolName += "@" + std::to_string(Version);
-                        }
-                        else
-                        {
-                            throw ElfReaderException("Could not find compatible symbol version for "
-                                                     + SymbolName + "@" + VersionStr);
-                        }
-                    }
-                }
+                // If the version was part of the name, try to find the
+                // version Id already given in buildSymbols.
+                SymbolName = getVersionedNameOrUpdateVersionMap(Symbol);
             }
             else if(SymbolVersion->value() > LIEF::ELF::VER_NDX_GLOBAL)
             {

@@ -1074,7 +1074,7 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
         if(It.empty())
         {
             std::cerr << "WARNING: failed to find symbols for " << Name << " in cfg_edge_to_symbol("
-                      << EA << "," << Name << "," << Type << "\n";
+                      << EA << "," << Name << "," << Type << ")\n";
             continue;
         }
 
