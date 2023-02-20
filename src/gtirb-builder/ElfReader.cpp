@@ -902,8 +902,10 @@ void ElfReader::buildSymbols()
                     }
                     else
                     {
-                        throw ElfReaderException("Could not find compatible symbol version for "
-                                                 + Name + "@" + VersionStr);
+                        // Concat Name and VersionStr back together.
+                        Name += "@" + VersionStr;
+                        std::cerr << "WARNING: Could not find compatible symbol version for "
+                                  << Name << std::endl;
                     }
                 }
             }
