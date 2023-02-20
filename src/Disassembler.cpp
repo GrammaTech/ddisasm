@@ -1070,7 +1070,11 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
         T >> EA >> Name >> Type;
 
         const gtirb::CodeBlock *CodeBlock = &*module.findCodeBlocksOn(EA).begin();
-        gtirb::Symbol &Symbol = *module.findSymbols(Name).begin();
+        auto It = module.findSymbols(Name);
+        if(It.empty())
+            continue;
+
+        gtirb::Symbol &Symbol = *It.begin();
         gtirb::ProxyBlock *ExternalBlock = Symbol.getReferent<gtirb::ProxyBlock>();
         if(!ExternalBlock)
         {
