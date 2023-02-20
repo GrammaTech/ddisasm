@@ -73,6 +73,11 @@ private:
 
     const LIEF::ELF::Section* findRelocationSection(const LIEF::ELF::Relocation& Relocation);
 
+    // Map version strings (e.g., GLIBC_2.2.5) to SymbolVersionIds
+    // Usually there's only one VersionId for each version string, but it
+    // would be possible for there to be more.
+    std::map<std::string, std::set<gtirb::provisional_schema::SymbolVersionId>> VersionToIds;
+
     // TODO: Handle duplicate section names?
     std::map<std::string, uint64_t> SectionRelocations;
 

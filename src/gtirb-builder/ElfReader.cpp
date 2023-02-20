@@ -794,10 +794,10 @@ void ElfReader::buildSymbols()
     {
         resurrectSymbols();
     }
+    // Populate VersionToIds:
     // Map version strings (e.g., GLIBC_2.2.5) to SymbolVersionIds
     // Usually there's only one VersionId for each version string, but it
     // would be possible for there to be more.
-    std::map<std::string, std::set<gtirb::provisional_schema::SymbolVersionId>> VersionToIds;
     gtirb::provisional_schema::ElfSymVerDefs ElfSymVerDefinitions;
     for(LIEF::ELF::SymbolVersionDefinition &Def : Elf->symbols_version_definition())
     {
@@ -1077,7 +1077,35 @@ void ElfReader::addAuxData()
         {
             SymbolName = Relocation.symbol()->name();
             auto SymbolVersion = Relocation.symbol()->symbol_version();
-            if(SymbolVersion && SymbolVersion->value() > LIEF::ELF::VER_NDX_GLOBAL)
+            if(!SymbolVersion)
+            {
+                if(std::size_t I = SymbolName.find('@'); I != std::string::npos)
+                {
+                    std::string VersionStr = SymbolName.substr(I, 2) == "@@"
+                                                 ? SymbolName.substr(I + 2)
+                                                 : SymbolName.substr(I + 1);
+                    // If the version was part of the name, look up VersionToIds to
+                    // find the version Id already given in buildSymbols.
+                    if(VersionStr.size() > 0)
+                    {
+                        SymbolName = SymbolName.substr(0, I);
+                        std::set<gtirb::provisional_schema::SymbolVersionId> &PossibleVersions =
+                            VersionToIds[VersionStr];
+                        if(!PossibleVersions.empty())
+                        {
+                            // It's a real version, but it wasn't in .dynsym.
+                            auto Version = *PossibleVersions.begin();
+                            SymbolName += "@" + std::to_string(Version);
+                        }
+                        else
+                        {
+                            throw ElfReaderException("Could not find compatible symbol version for "
+                                                     + SymbolName + "@" + VersionStr);
+                        }
+                    }
+                }
+            }
+            else if(SymbolVersion->value() > LIEF::ELF::VER_NDX_GLOBAL)
             {
                 SymbolName += "@" + std::to_string(SymbolVersion->value());
             }
