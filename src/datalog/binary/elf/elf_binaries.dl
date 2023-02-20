@@ -440,7 +440,6 @@ relocation_adjustment(EA+Offset,N,"distance-to-pc"):-
         binary_isa("X86");
         binary_isa("X64")
     ),
-    binary_type("REL"),
     code(EA),
     (
         instruction(EA,Size,_,_,_,_,_,_,_,Offset);
@@ -449,6 +448,8 @@ relocation_adjustment(EA+Offset,N,"distance-to-pc"):-
     relocation(EA+Offset,Type,Symbol,_,SymbolIndex,_,_),
     (
         Type = "PC32";
+        Type = "GOTPCRELX";
+        Type = "REX_GOTPCRELX";
         Type = "PLT32"
     ),
     symbol(_,_,_,_,_,_,_,SymbolIndex,Symbol),
@@ -463,6 +464,9 @@ symbolic_expr_from_relocation(EA,Size/8,Symbol,Addend+Adjustment,TargetEA):-
         Type = "R32";
         Type = "R64";
         Type = "R32S";
+        Type = "PC32";
+        Type = "GOTPCRELX";
+        Type = "REX_GOTPCRELX";
         Type = "ABS64"
     ),
     relocation_adjustment_total(EA,Adjustment),

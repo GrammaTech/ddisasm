@@ -103,6 +103,9 @@ tests:
   - name: ex_copy_relo
     <<: *default
 
+  - name: ex_emit_relocs
+    <<: *default
+
   - name: ex_exceptions1
     <<: *default-cpp
 
