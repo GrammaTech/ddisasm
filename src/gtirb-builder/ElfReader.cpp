@@ -902,10 +902,12 @@ void ElfReader::buildSymbols()
                     }
                     else
                     {
-                        // Concat Name and VersionStr back together.
-                        Name += "@" + VersionStr;
+                        // It is possible that VersionStr is not a version, and
+                        // the symbol name contains `@` instead.
+                        // Report a warning just in case.
                         std::cerr << "WARNING: Could not find compatible symbol version for "
-                                  << Name << std::endl;
+                                  << Name << "@" << VersionStr << std::endl;
+                        continue;
                     }
                 }
             }
