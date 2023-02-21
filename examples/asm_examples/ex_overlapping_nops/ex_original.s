@@ -4,6 +4,7 @@
     .string "hello"
     .quad nop.block.size12
     .quad nop.block.size8
+    .quad nop.block.size28
 
 	.text
 
@@ -14,6 +15,7 @@
 foo:
     leaq nop.block.size8(%rip), %rsi
     jmp main
+    jmp nop.block.size8.2
 
 nop.block.size12:
     .byte 0x66
@@ -44,3 +46,34 @@ main:
 
 .LFE6:
 	.size	main, .-main
+
+nop.block.size28:
+    .byte 0x0f
+    .byte 0x1f
+    .byte 0x84
+    .byte 0x00
+    .byte 0x00
+    .byte 0x00
+    .byte 0x00
+    .byte 0x00
+    .byte 0x66
+    .byte 0x2e
+    .byte 0x0f
+    .byte 0x1f
+    .byte 0x84
+    .byte 0x00
+    .byte 0x00
+    .byte 0x00
+    .byte 0x00
+    .byte 0x00
+    .byte 0x66
+    .byte 0x2e
+nop.block.size8.2:
+    .byte 0x0f
+    .byte 0x1f
+    .byte 0x84
+    .byte 0x00
+    .byte 0x00
+    .byte 0x00
+    .byte 0x00
+    .byte 0x00
