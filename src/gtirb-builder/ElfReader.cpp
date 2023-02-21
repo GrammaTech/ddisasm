@@ -902,8 +902,13 @@ void ElfReader::buildSymbols()
                     }
                     else
                     {
-                        throw ElfReaderException("Could not find compatible symbol version for "
-                                                 + Name + "@" + VersionStr);
+                        // It is possible that VersionStr is not a version, and
+                        // the symbol name contains `@` instead.
+                        // Report a warning just in case.
+                        std::cerr << "WARNING: Could not find compatible symbol version for "
+                                  << Name << "@" << VersionStr << std::endl;
+                        TableIndex++;
+                        continue;
                     }
                 }
             }
