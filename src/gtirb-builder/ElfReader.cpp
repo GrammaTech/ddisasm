@@ -907,6 +907,7 @@ void ElfReader::buildSymbols()
                         // Report a warning just in case.
                         std::cerr << "WARNING: Could not find compatible symbol version for "
                                   << Name << "@" << VersionStr << std::endl;
+                        TableIndex++;
                         continue;
                     }
                 }
