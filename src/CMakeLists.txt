@@ -37,6 +37,7 @@ set(DATALOG_BASE_SOURCES
     datalog/binary/elf/elf_binaries.dl
     datalog/binary/elf/exceptions.dl
     datalog/binary/elf/relocations.dl
+    datalog/binary/elf/tls.dl
     datalog/binary/pe/pe_binaries.dl
     datalog/binary/pe/exceptions.dl
     datalog/binary/pe/relocations.dl

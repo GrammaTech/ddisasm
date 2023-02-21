@@ -48,10 +48,6 @@ abi_intrinsic(EA,Name):-
     get_pc_thunk(EA,_),
     symbol(EA,_,_,_,_,_,_,_,Name).
 
-abi_intrinsic(EA,"__dso_handle"):-
-    got_relative_operand(_,_,EA),
-    symbol(EA,_,_,_,_,_,_,_,"__dso_handle").
-
 abi_intrinsic(EA,"_GLOBAL_OFFSET_TABLE_"):-
     (
         symbol(EA,_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_");
@@ -72,13 +68,6 @@ symbolic_expr(EA+ImmediateOffset,4,"_GLOBAL_OFFSET_TABLE_",0):-
     op_immediate_and_reg(EA,"ADD",_,Index,_),
     instruction_immediate_offset(EA,Index,ImmediateOffset,_).
 
-got_relative_operand(EA,Index,as(Dest,address)):-
-    relocation(EA+DisplacementOffset,"GOTOFF",Symbol,Addend,SymbolIndex,_,_),
-    relocation_adjustment_total(EA+DisplacementOffset,Adjustment),
-    symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol),
-    Dest = as(TargetEA,number) + Addend + Adjustment,
-    instruction_displacement_offset(EA,Index,DisplacementOffset,_).
-
 // CLANG GOT-relative offset variant:
 //     add     ebx, offset _GLOBAL_OFFSET_TABLE_+(.Ltmp0-.L1$pb)
 symbolic_operand_attribute(EA,Index,"GOTPC"),
@@ -95,21 +84,19 @@ symbolic_operand_attribute(EA,Index,"PLT"):-
       direct_jump(EA,_);
       direct_call(EA,_)
     ),
-    symbolic_operand(EA,Index,Dest,_),
+    symbolic_operand_candidate(EA,Index,Dest,_),
     plt_block(Dest,_).
 
-symbolic_operand_attribute(EA,Index,"GOTOFF"),
-symbolic_operand_candidate(EA,Index,Dest,"data"):-
-    got_relative_operand(EA,Index,Dest).
+symbolic_operand_attribute(EA,Index,"GOTOFF"):-
+    got_relative_operand(EA,Index,Dest),
+    !tls_index(Dest,_),
+    !tls_descriptor(Dest,_).
 
 symbolic_operand_attribute(EA,Index,"GOT"):-
     got_relative_operand(EA,Index,Dest),
-    got_reference(Dest,_).
-
-symbolic_operand_attribute(EA,Index,"NTPOFF"):-
-    got_relative_operand(EA,Index,Dest),
     got_reference(Dest,_),
-    relocation(Dest,"TLS_TPOFF",_,_,_,_,_).
+    !tls_index(Dest,_),
+    !tls_descriptor(Dest,_).
 
 plt_entry(EA,Function):-
     plt_section(SecName),
@@ -130,32 +117,6 @@ plt_entry(EA,Function):-
     ),
     relocation(Got_entry,_,Function,_,_,_,_).
 
-// Segment-based references to thread-local storage,
-//   e.g.   mov    eax, DWORD PTR gs:i@ntpoff
-//     or   mov    eax, DWORD PTR gs:0xfffffff0
-symbolic_operand_candidate(EA,Index,as(Reference+Offset,address),"data"):-
-    instruction_get_op(EA,Index,Op),
-    op_indirect(Op,"GS","NONE","NONE",_,Offset,_), Offset < 0,
-    tls_segment(_,TlsEnd,Align),
-    Reference = as(TlsEnd,number) + as(TlsEnd % max(Align,1),number).
-
-//   e.g.  mov  eax, qword ptr gs:[0]
-//         lea  eax, [eax + threadLocal@NTPOFF]
-symbolic_operand_candidate(EA_used,Index,as(Reference+Offset,address),"data"):-
-    instruction_get_op(EA_def,_,Op_def),
-    op_indirect(Op_def,"GS","NONE","NONE",_,0,_),
-    reg_def_use.def_used(EA_def,_,EA_used,Index),
-    instruction_get_op(EA_used,Index,Op_used),
-    op_indirect(Op_used,"NONE",_,_,_,Offset,_), Offset < 0,
-    tls_segment(_,TlsEnd,Align),
-    Reference = as(TlsEnd,number) + as(TlsEnd % max(Align,1),number).
-
-symbolic_operand_attribute(EA,Index,"NTPOFF"):-
-    symbolic_operand(EA,Index,Dest,_),
-    tls_segment(Start,End,_),
-    Dest >= Start, Dest < End.
-
-
 // GOT-relative data objects are sometimes used as references in loops.
 // First a moved-label to the middle of a symbol:
 //   e.g.   lea     esi, state@GOTOFF[ebx+1320]
@@ -165,7 +126,6 @@ symbolic_operand_attribute(EA,Index,"NTPOFF"):-
 //          mov     DWORD PTR -28[ebp], eax
 //          sub     edi, 88
 //          cmp     edi, DWORD PTR -28[ebp]
-
 moved_label_class(EA_load,1,"got-data-object relative"),
 moved_label(EA_load,1,Address,Base):-
     // GOT-relative stored in stack.
