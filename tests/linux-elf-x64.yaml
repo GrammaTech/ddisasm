@@ -184,6 +184,21 @@ tests:
       flags: ["-shared", "-nostartfiles"]
       skip: false
 
+  - name: ex_dynamic_tls
+    <<: *default
+    binary: fun.so
+    build:
+      <<: *default-build
+      c: ["gcc"]
+      cpp: ["g++"]
+      flags: ["-mtls-dialect=gnu2"]
+    reassemble:
+      compiler: "gcc"
+      flags: ["-shared", "-nostartfiles"]
+      skip: false
+    test:
+      check_cfg: false
+
   - name: ex_call_once
     <<: *default-cpp
     reassemble:

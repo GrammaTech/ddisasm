@@ -76,7 +76,11 @@ class IFuncSymbolsTests(unittest.TestCase):
                 reassemble(
                     "gcc",
                     binary,
-                    extra_flags=["-shared", "-Wl,--version-script=ex.map"],
+                    extra_flags=[
+                        "-shared",
+                        "-Wl,--version-script=ex.map",
+                        "-nostartfiles",
+                    ],
                 )
             )
 

@@ -21,6 +21,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tls.dl"
 #include "exceptions.dl"
 #include "relocations.dl"
 
@@ -169,19 +170,6 @@ Value of register 'Reg' at address 'EA' is a GOT-relative base reference.
 */
 .decl reg_has_got(EA:address,Reg:register)
 
-/**
-Address 'EA' is used as a GOT-relative base reference. 'EA' is the beginning of
-either the .got or .got.plt section.
-*/
-.decl got_reference_pointer(EA:address)
-
-got_reference_pointer(EA):-
-    loaded_section(EA,_,".got.plt").
-
-got_reference_pointer(EA):-
-    loaded_section(EA,_,".got"),
-    !loaded_section(_,_,".got.plt").
-
 // Identify load PC operations:
 // e.g. (clang)
 //    call  .L1$pb
@@ -196,6 +184,36 @@ reg_has_got(EA,Reg):-
     value_reg(EA,Reg,_,"NONE",_,Offset,_),
     got_section(Name),
     loaded_section(as(Offset,address),_,Name).
+
+/**
+Address 'EA' is used as a GOT-relative base reference. 'EA' is the beginning of
+either the .got or .got.plt section.
+*/
+.decl got_reference_pointer(EA:address)
+.output got_reference_pointer
+
+got_reference_pointer(EA):-
+    loaded_section(EA,_,".got.plt").
+
+got_reference_pointer(EA):-
+    loaded_section(EA,_,".got"),
+    !loaded_section(_,_,".got.plt").
+
+got_reference(EA,Symbol):-
+    loaded_section(Beg,End,".got"),
+    EA >= Beg, EA < End,
+    relocation(EA,RelType,Symbol,_,_,_,_),
+    RelType != "RELATIVE",
+    !tls_index(EA,_),
+    !tls_descriptor(EA,_),
+    symbol(_,_,_,_,_,_,_,_,Symbol).
+
+got_reference(Got_entry,Symbol):-
+    loaded_section(Beg,End,".got"),
+    Got_entry >= Beg,
+    Got_entry < End,
+    arch.pointer_size(Ptr),
+    symbolic_expr(Got_entry,Ptr,Symbol,_).
 
 /**
 Operand instruction at 'EA' at index 'Index' is a GOT-relative reference to an
@@ -230,6 +248,16 @@ got_relative_operand(EA3,Index,as(Dest,address)):-
     op_immediate_and_reg(EA3,_,Reg3,Index,_),
     value_reg(EA3,Reg3,_,Reg2,Mult,Dest,_).
 
+got_relative_operand(EA,Index,as(Dest,address)):-
+    relocation(EA+DisplacementOffset,"GOTOFF",Symbol,Addend,SymbolIndex,_,_),
+    relocation_adjustment_total(EA+DisplacementOffset,Adjustment),
+    symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol),
+    Dest = as(TargetEA,number) + Addend + Adjustment,
+    instruction_displacement_offset(EA,Index,DisplacementOffset,_).
+
+symbolic_operand_candidate(EA,Index,Dest,"data"):-
+    got_relative_operand(EA,Index,Dest).
+
 .decl get_pc_thunk(EA:address,Reg:register)
 
 // call    __x86.get_pc_thunk.REG
@@ -246,31 +274,6 @@ get_pc_thunk(EA,Reg):-
     op_regdirect_contains_reg(Op2,Reg),
     op_indirect_mapped(Op1,"NONE","ESP","NONE",1,0,_),
     arch.return(EA+Size).
-
-got_reference(Got_entry,Symbol):-
-    loaded_section(Beg,End,".got"),
-    Got_entry >= Beg,
-    Got_entry < End,
-    relocation(Got_entry,RelType,Symbol,_,_,_,_),
-    RelType != "RELATIVE",
-    RelType != "DTPMOD64",
-    symbol(_,_,_,_,_,_,_,_,Symbol).
-
-got_reference(Got_entry,Symbol):-
-    loaded_section(Beg,End,".got"),
-    Got_entry >= Beg,
-    Got_entry < End,
-    arch.pointer_size(Ptr),
-    symbolic_expr(Got_entry,Ptr,Symbol,_).
-
-got_reference(EA,Symbol):-
-    relocation(EA,"DTPMOD64","",_,_,_,_),
-    symbolic_expr_symbol_minus_symbol(EA+8,8,_,Symbol,_,_).
-
-got_reference(Got_entry,Symbol):-
-    relocation(Got_entry,"DTPMOD64",Symbol,_,_,_,_),
-    Symbol != "".
-
 
 //////////////////////////////////////////////////////////////////////////
 // find the main function even if it does not have a symbol
@@ -496,11 +499,6 @@ symbolic_expr_from_relocation(EA,Size,Symbol,Addend,TargetEA):-
     relocation(EA,"GLOB_DAT",Symbol,Addend,SymbolIndex,_,_),
     symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol).
 
-symbolic_expr_from_relocation(EA,4,Symbol,Addend,TargetEA):-
-    binary_type("REL"),
-    relocation(EA,"TPOFF32",Symbol,Addend,_,_,_),
-    symbol(TargetEA,_,_,_,_,_,_,_,Symbol).
-
 symbolic_expr_from_relocation(EA,4,Symbol,Addend+Adjustment,TargetEA):-
     binary_type("REL"),
     relocation(EA,Type,Symbol,Addend,SymbolIndex,_,_),
@@ -512,98 +510,10 @@ symbolic_expr_from_relocation(EA,4,Symbol,Addend+Adjustment,TargetEA):-
     symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol),
     Symbol != "".
 
-symbolic_expr_from_relocation(EA+InstrOffset,Size,"",0,TargetEA):-
-    symbolic_operand(EA,Index,Got_entry,_),
-    (
-        instruction_immediate_offset(EA,Index,InstrOffset,Size);
-        instruction_displacement_offset(EA,Index,InstrOffset,Size)
-    ),
-    relocation(Got_entry,"TPOFF64","",Offset,_,_,_),
-    tls_segment(Beg,_,_),
-    TargetEA = as(as(Beg,number)+Offset,address).
-
 symbolic_expr_from_relocation(EA,Size,"",0,as(Dest,address)):-
     arch.pointer_size(Size),
     relocation(EA,"IRELATIVE","",Dest,_,_,_).
 
-
-////////////////////////////////////////////////////////////////////////////////////////////
-// Thread Local Storage (TLS)
-
-/**
-A TLS data segment, which may contain contiguous sections (i.e. '.tbss' and
-'.tdata'), begins at address 'Start' and ends at address 'End' and is aligned
-to 'Align' bytes.
-*/
-.decl tls_segment(Start:address,End:address,Align:unsigned)
-
-tls_segment(Start,End,Align):-
-    Start = min EA:{ tls_section(Name), loaded_section(Addr,_,Name), EA=Addr },
-    End = max EA:{ tls_section(Name), loaded_section(_,End,Name), EA=End },
-    Align = max X:{ tls_section(Name), section(Name,_,_,X,_) }.
-
-/**
-Instruction at address 'EA' references a TLS data address 'Dest' in the operand
-at 'Index'.
-*/
-.decl tls_relative_operand(EA:address,Index:operand_index,Dest:address,Type:symbol)
-
-tls_relative_operand(0,0,0,""):- false.
-
-/**
-A 'tls_index' struct is located in the GOT at address 'EA' for a TLS variable
-at some 'Offset' into the TLS block.
-
-'tls_index' structs are allocated to two contiguous entries in GOT,
-
-   typedef struct
-   {
-     unsigned long int ti_module;
-     unsigned long int ti_offset;
-   } tls_index;
-
-Note that 'Offset' is initialized for @TLSGD relocations and zero @TLSLD.
-*/
-.decl tls_index(EA:address,Offset:unsigned)
-
-tls_index(EA,as(Offset,unsigned)):-
-    binary_format("ELF"),
-    (
-        relocation(EA,"DTPMOD64",_,_,_,_,_);
-        relocation(EA,"TLS_DTPMOD32",_,_,_,_,_)
-    ),
-    arch.pointer_size(Size),
-    data_word(EA+Size,Size,Offset).
-
-/**
-A TLS address is resolved dynamically with a call to the builtin
-'__tls_get_addr(struct *ti_index)' function at address 'Call'.
-
-The address of the variable's tls_index struct is loaded in the instruction at
-address 'Load'.
-
-The resolved address 'Dest' is either the beginning of the TLS segment for
-@TLSLD relocations, or the address of the variable for @TLSGD relocations.
-*/
-.decl tls_get_addr(Load:address,Call:address,Dest:address)
-
-tls_get_addr(0,0,0):- false.
-
-value_reg(EA,Reg,EA,"NONE",0,Value,1):-
-    arch.return_reg(Reg),
-    tls_get_addr(_,EA,Address),
-    Value = as(Address,number).
-
-symbolic_operand_candidate(EA,Index,Dest,"data"):-
-    tls_relative_operand(EA,Index,Dest,_).
-
-symbolic_operand_attribute(EA,Index,Type):-
-    tls_relative_operand(EA,Index,_,Type).
-
-symbol_minus_symbol(EA+Size,Size,Start,Start+Offset,1,0):-
-    tls_index(EA,Offset),
-    tls_segment(Start,_,_),
-    arch.pointer_size(Size).
 
 ////////////////////////////////////////////////////////////////////
 /**

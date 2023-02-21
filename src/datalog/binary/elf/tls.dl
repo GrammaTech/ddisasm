@@ -1,0 +1,703 @@
+//===- arch.dl ----------------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019-2022 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+
+/**
+Thread Local Storage (TLS)
+
+ELF binaries use a number of optimization models for dynamically loading and
+statically linking TLS variables. This module defines predicates for
+inferring and resolving thread-local variable references in ELF binaries.
+
+ - 'tls_segment' computes the boundaries and alignment of the TLS data block.
+ - 'tls_index' locates GOT allocated TLS structs used by dynamic TLS models.
+ - 'tls_get_addr' identifies __tls_get_addr calls.
+ - 'tls_global_dynamic' computes "General Dynamic" code sequences.
+ - 'tls_local_dynamic' disambiguates "Local Dynamic" code sequences.
+ - 'tls_descriptor' resolves tlsdesc structs used by TLS descriptor model.
+ - 'tls_desc_call' identifies indirect @TLSDESC calls.
+ - 'tls_relative_addr' computes TLS block-relative offsets in instruction operands.
+
+Below is an overview of the supported ELF TLS models with code detailing the
+"initial" relocations (object-file) and "outstanding" relocations (linked binary).
+
+1. "General Dynamic" (GD) - dynamic TLS
+
+Dynamic TLS with offsets resolved dynamically by relocations in GOT.
+
+             CODE                                      RELOCATIONS
+------------------------------------------------------------------------(  .o)--
+             add     REG, _GLOBAL_OFFSET_TABLE_
+             lea     EAX, X@TLSGD[REG]                      TLS_GD
+             call    ___tls_get_addr@PLT                     PLT32
+             mov     EAX, DWORD PTR [EAX]
+------------------------------------------------------------------------( .so)--
+             add     REG, _GLOBAL_OFFSET_TABLE_
+             lea     EAX, N
+             call    ___tls_get_addr@PLT                     PLT32
+             mov     EAX, DWORD PTR [EAX]
+             ...
+  GOT(N  ):  .zero  4                                     DTPMOD32
+  GOT(N+1):  .dword OFFSET                                DTPOFF32
+
+General Dynamic resolves the address of the TLS variable directly through
+__tls_get_addr using an initialized OFFSET with relocation in the GOT.
+
+Note that this example is for X86-32. While the implementation of these models
+is generally consistent between 32 and 64, relocation constants and names vary.
+In particular, X86-64 uses a fixed code-template for the General Dynamic model,
+detailed in 'tls_global_dynamic'.
+
+
+2. "Local Dynamic" (LD)
+
+Dynamic TLS with static offsets.
+
+             CODE                                      RELOCATIONS
+------------------------------------------------------------------------(  .o)--
+             lea     REG, X@TLSLD[RIP]                       TLSLD
+             call    __tls_get_addr@PLT
+             ...
+             mov     REG, X@DTPOFF[RAX]                    DTOFF32
+------------------------------------------------------------------------( .so)--
+             lea     REG, N
+             call    __tls_get_addr@PLT
+             ...
+             mov     REG, [RAX+OFFSET]
+             ...
+    GOT(N):  .zero 8                                      DTPMOD64
+             .zero 8
+
+Local Dynamic resolves the beginning of the TLS block through __tls_get_addr,
+but the offset field in GOT is uninitialized. Consequently, this optimization
+level requires one less relocation in the GOT, but we must infer variable
+references from a static OFFSET in instruction operands - resolved by the
+linker - for @DTPOFF relocations.
+
+
+3. "Initial Executable" (IE)
+
+Static TLS with offset relocations allocated in the GOT.
+
+             CODE                                      RELOCATIONS
+------------------------------------------------------------------------(  .o)--
+             mov     RAX, X@GOTTPOFF                      GOTTPOFF
+             mov     FS:[RAX], RAX
+------------------------------------------------------------------------(.exe)--
+             mov     RAX, N
+             mov     FS:[RAX], RAX
+             ...
+    GOT(N):  .zero 8                                       TPOFF64
+
+IE requires a single relocation, resolved at startup (load-time), and stored in
+the GOT entry for X, where @GOTTPOFF relocations are in position-independent
+code and @INDNTPOFF relocations are in x86-32 position-dependent code.
+
+
+4. "Local Executable" (LE)
+
+Static TLS (link-time) with no relocations.
+
+Resolves all TLS references to block-relative offsets statically, without
+dynamic relocations or indirect references through the GOT.
+
+             CODE                                      RELOCATIONS
+------------------------------------------------------------------------(  .o)--
+             mov     RAX, DWORD PTR FS:X@TPOFF             TPOFF32
+------------------------------------------------------------------------(.exe)--
+             mov     RAX, DWORD PTR FS:[-4]                   NONE
+
+TLS block address is stored in the FS and GS segment register for X86-64 and
+x86-32 respectively, and the @TPOFF relocations are resolved by the linker to
+integral offsets, without relocations.
+
+5. "TLS Descriptors" (TLSDESC)
+
+Dynamic TLS optimization with indirect call to a lazy relocation function
+pointer in GOT.
+
+             CODE                                      RELOCATIONS
+------------------------------------------------------------------------(  .o)--
+             lea     RAX, X@TLSDESC[RIP]                   TLSDESC
+             call    [QWORD PTR [RAX+X@TLSCALL]]
+             mov     RDX, QWORD PTR FS:0
+             add     RAX, RDX
+             mov     EAX, DWORD PTR [RAX]
+------------------------------------------------------------------------( .so)--
+             lea    RAX, [RIP+N]
+             call   QWORD PTR [RAX]
+             mov    RDX, QWORD PTR FS:0
+             add    RAX, RDX
+             mov    EAX, DWORD PTR [RAX]
+             ...
+    GOT(N):  .zero  8                                      TLSDESC
+
+General Dynamic and Local Dynamic access models to thread-local variables are
+"known to be extremely inefficient because of the need to call a function to
+obtain the address of a thread-local variable" [3] (register clobbering).
+
+TLS descriptor model is an optimized variant (ca. 2018) that replaces tls_index
+structs with tlsdesc structs and uses @TLSDESC and @TLSCALL symbol attributes.
+
+Descriptor TLS uses a relocated function pointer - stored in the GOT tlsdesc
+struct - to lazily preserve call-clobbered registers and call __tls_get_addr().
+
+See 'tls_descriptor'.
+
+
+See the following for more detailed documentation:
+
+[1] https://www.uclibc.org/docs/tls.pdf
+[2] https://docs.oracle.com/cd/E19120-01/open.solaris/819-0690/6n33n7feo/index.html
+[3] https://www.fsfla.org/~lxoliva/writeups/TLS/RFC-TLSDESC-x86.txt
+
+*/
+
+.decl tls_segment_register(Reg:input_reg)
+
+tls_segment_register("FS"):-
+    binary_format("ELF"),
+    binary_isa("X64").
+
+tls_segment_register("GS"):-
+    binary_format("ELF"),
+    binary_isa("X86").
+
+/**
+A TLS data segment, which may contain contiguous sections (i.e. '.tbss' and
+'.tdata'), begins at address 'Start' and ends at address 'End' and is aligned
+to 'Align' bytes.
+*/
+.decl tls_segment(Start:address,End:address,Align:unsigned)
+.output tls_segment
+
+tls_segment(Start,End,Align):-
+    Start = min EA:{ tls_section(Name), loaded_section(Addr,_,Name), EA=Addr },
+    End = max EA:{ tls_section(Name), loaded_section(_,End,Name), EA=End },
+    Align = max X:{ tls_section(Name), section(Name,_,_,X,_) }.
+
+/**
+A 'tls_index' struct is located in the GOT at address 'EA' for a TLS variable
+at some 'Offset' into the TLS block.
+
+'tls_index' structs are allocated to two contiguous entries in GOT,
+
+   typedef struct
+   {
+     unsigned long int ti_module;
+     unsigned long int ti_offset;
+   } tls_index;
+
+Note that 'Offset' is initialized for @TLSGD relocations and zero for @TLSLD.
+*/
+.decl tls_index(EA:address,Offset:unsigned)
+.output tls_index
+
+tls_index(EA,as(Offset,unsigned)):-
+    binary_format("ELF"),
+    (
+        relocation(EA,"DTPMOD64",_,_,_,_,_);
+        relocation(EA,"TLS_DTPMOD32",_,_,_,_,_)
+    ),
+    arch.pointer_size(Size),
+    data_word(EA+Size,Size,Offset).
+
+/**
+A TLS address is resolved dynamically with a call to the builtin
+'__tls_get_addr(struct *ti_index)' function at address 'Call'.
+
+The address of the variable's tls_index struct is loaded in the instruction at
+address 'Load'.
+
+The resolved address 'Dest' is either the beginning of the TLS segment for
+@TLSLD relocations, or the address of the variable for @TLSGD relocations.
+*/
+.decl tls_get_addr(Load:address,Call:address,Dest:address)
+.output tls_get_addr
+
+tls_get_addr(Load,Call,Start+Offset):-
+    binary_format("ELF"),
+    (
+        binary_isa("X64"),
+        pc_relative_operand(Load,_,EA),
+        Reg = "RDI",
+        Prefix = "__tls_get_addr" // double underscore
+        ;
+        binary_isa("X86"),
+        got_relative_operand(Load,_,EA),
+        Reg = "EAX",
+        Prefix = "___tls_get_addr" // triple underscore
+    ),
+    // Load address of tls_index structure in GOT.
+    tls_index(EA,Offset),
+    reg_def_use.block_last_def(Call,Load,Reg),
+    // Call __tls_get_addr to resolve, either the:
+    //   1. Address of TLS variable (GD), or
+    //   2. Address of the TLS block (LD).
+    direct_call(Call,Dest),
+    plt_block(Dest,Name),
+    substr(Name,0,strlen(Prefix)) = Prefix,
+    tls_segment(Start,_,_).
+
+/**
+A TLS variable is resolved dynamically by indirect call to a TLSCALL relocated
+builtin function at address 'Call'.
+
+The address of the variable's tls_desc struct is loaded in the instruction at
+address 'Load'.
+*/
+.decl tls_desc_call(Load:address,Call:address,Dest:address)
+.output tls_desc_call
+
+tls_desc_call(Load,Call,Dest):-
+    tls_segment(Start,_,_),
+    tls_descriptor(EA,Offset),
+    (
+        pc_relative_operand(Load,_,EA);
+        got_relative_operand(Load,_,EA)
+    ),
+    arch.call(Call,_),
+    const_value_reg_used(Call,Load,_,_,as(EA,number)),
+    Dest = Start + Offset.
+
+/**
+Find all "General Dynamic" code sequences.
+
+First we find code sequences referencing tls_index structs in GOT with both
+DTPMOD and DTPOFF relocations.
+
+However, the GD and LD models cannot be distinguished by the presence of a
+DTPOFF relocation alone, as static variables may have only a DTPMOD relocation
+and still use the General Dynamic (@TLDGD) model.
+
+For x86-64, we distinguish @TLSGD from @TLSLD with the code template of the
+form:
+
+  .byte 0x66
+  lea RDI, X@TLSGD[RIP]
+  .value 0x6666
+  rex64
+  call __tls_get_addr@PLT
+
+GCC uses explicit directives to inline 0x66 bytes (which are actually `data16'
+instruction prefixes) as padding. Likewise, the accompanying `rex64' prefix on
+the call instruction inserts a 0x48 byte to extend the code sequence to the
+required 16-byte length.
+
+Finally, for x86-32 we identify tls_index structs with non-zero offsets and
+propagate backward to adjacent structs, as the offset value may be initialized
+to zero. Note that this approach will replace the @TLSGD relocations with a
+@TLSLD relocation for binaries with a single static TLS variable, as the two
+models are ambigous in this case.
+
+https://docs.oracle.com/cd/E19120-01/open.solaris/819-0690/chapter8-60/index.html
+*/
+.decl tls_global_dynamic(EA:address)
+.output tls_global_dynamic
+
+tls_global_dynamic(EA):-
+    binary_format("ELF"),
+    tls_get_addr(EA,_,_),
+    arch.pointer_size(Size),
+    (
+        binary_isa("X64"),
+        pc_relative_operand(EA,_,TlsIndex),
+        relocation(TlsIndex,"DTPMOD64",_,_,_,_,_),
+        relocation(TlsIndex+Size,"DTPOFF64",_,_,_,_,_)
+        ;
+        binary_isa("X86"),
+        got_relative_operand(EA,_,TlsIndex),
+        relocation(TlsIndex,"TLS_DTPMOD32",_,_,_,_,_),
+        relocation(TlsIndex+Size,"TLS_DTPOFF32",_,_,_,_,_)
+    ).
+
+tls_global_dynamic(EA):-
+    binary_isa("X64"),
+    binary_format("ELF"),
+    relocation(TlsIndex,"DTPMOD64",_,_,_,_,_),
+    pc_relative_operand(EA,_,TlsIndex),
+    data_byte(EA,0x66),                           // .byte 0x66
+    instruction(EA+1,Size,_,"LEA",_,_,_,_,_,_),   // lea X@tlsgd[rip]
+    data_byte(EA+Size+1,0x66),                    // .value 0x6666
+    data_byte(EA+Size+2,0x66),
+    data_byte(EA+Size+3,0x48).                    // rex64
+
+tls_global_dynamic(EA):-
+    binary_format("ELF"),
+    tls_get_addr(EA,_,_),
+    got_relative_operand(EA,_,TlsIndex),
+    tls_index(TlsIndex,Offset), Offset > 0.
+
+tls_global_dynamic(EA2):-
+    tls_global_dynamic(EA1),
+    got_relative_operand(EA1,_,TlsIndex),
+    tls_index(TlsIndex-8,_),
+    got_relative_operand(EA2,_,TlsIndex-8).
+
+
+/**
+Identify and disambiguate @TLSLD/@TLSLDM by exclusion of previously
+computed @TLSGD relocations.
+
+General Dynamic TLS uses two relocations, DTPMOD and DTPOFF, allowing
+__tls_get_addr to return the address of the variable directly.
+
+Local Dynamic TLS uses a single DTPMOD relocation, and __tls_get_addr returns
+the start of the TLS block. Variables are addressed with integral offsets in
+indirect operands.
+
+We identify @TLSLD relocations by a call to __tls_get_address followed by the
+use of non-zero offsets in indirect operands. For x86-64, we distinguish @TLSGD
+from @TLSLD with the code template described in 'tls_global_dynamic'.
+*/
+.decl tls_local_dynamic(EA:address)
+.output tls_local_dynamic
+
+tls_local_dynamic(Load):-
+    binary_format("ELF"),
+    tls_segment(Start,_,_),
+    tls_get_addr(Load,Call,Start),
+    !tls_global_dynamic(Load),
+    reg_def_use.def_used(Call,Reg,EA,Index),
+    instruction_get_op(EA,Index,Op),
+    op_indirect_mapped(Op,"NONE",Reg,_,_,_,_).
+
+/**
+A 'tlsdesc' struct is located in the GOT at address 'EA' and references a
+symbol at some 'Offset' in the 'tls_segment'.
+
+'tlsdesc' structs are allocated to two contiguous entries in GOT, for a struct
+of the general form:
+
+    struct tlsdesc
+    {
+        void *arg;
+        uint64_t arg_slot;
+    };
+
+Descriptor structs have a single outstanding relocation for the first struct
+member, a pointer referencing one of the following resolution functions:
+
+    _dl_tlsdesc_return(struct tlsdesc *on_rax);
+    _dl_tlsdesc_undefweak(struct tlsdesc *on_rax);
+    _dl_tlsdesc_dynamic(struct tlsdesc *on_rax);
+
+Note that these functions take a single pointer argument, allowing the code to
+load the address of the struct and indirectly call the function, chosen by the
+dynamic loader, at the same location, e.g.:
+
+    lea   RAX, X@TLSDESC[RIP]
+    call  [QWORD PTR [RAX+X@TLSCALL]]
+
+Consequently, variations of this model are best explained in terms of the
+tlsdesc struct after dynamic loading (runtime).
+
+      Variable Type                   RAX[0]                         RAX[8]
+      ------------------------------------------------------------------------
+      tlsdesc     {                void *arg           uint64_t arg_slot    };
+      ------------------------------------------------------------------------
+1.    static              _dl_tlsdesc_return                         Offset
+2.    undefined weak   _dl_tlsdesc_undefweak                         Addend
+3.    unallocated        _dl_tlsdesc_dynamic    struct tlsdesc_dynamic_arg*
+
+We can infer the target of tlsdesc relocations using the addend of the TLSDESC
+relocation. For x86-32, static TLS variables may store the offset directly in
+the arg_slot field.
+
+Also, static TLS variables may be further optimized by the compiler using a
+combination of @TLSDESC/@TLSCALL and @DTPOFF relocations, using a code sequence
+like:
+
+    lea     RAX, _TLS_MODULE_BASE_@TLSDESC[RIP]
+    call    [QWORD PTR [RAX+_TLS_MODULE_BASE_@TLSCALL]]
+    mov     RSI, QWORD PTR FS:0
+    lea     R8, X@DTPOFF[RAX+RSI]
+    ...
+    add     RAX, OFFSET Y@DTPOFF
+
+All @DTPOFF relocations will be resolved by the linker to integral indirect
+operand offsets, and only a single outstanding TLSDESC relocation will exist
+for consecutive static variables.
+
+Use TLSDESC with the '-mtls-dialect=gnu2' option for GCC.
+*/
+.decl tls_descriptor(EA:address,Offset:unsigned)
+.output tls_descriptor
+
+tls_descriptor(EA,Offset):-
+    (
+        binary_isa("X64"), Type = "TLSDESC";
+        binary_isa("X86"), Type = "TLS_DESC"
+    ),
+    relocation(EA,Type,"",Addend,_,_,"RELA"),
+    Offset = as(Addend,unsigned).
+
+tls_descriptor(EA,Offset):-
+    (
+        binary_isa("X64"), Type = "TLSDESC";
+        binary_isa("X86"), Type = "TLS_DESC"
+    ),
+    relocation(EA,Type,Symbol,_,_,_,_), Symbol != "",
+    symbol(Dest,_,"TLS",_,_,_,_,_,Symbol),
+    tls_segment(Start,_,_),
+    Offset = Dest - Start.
+
+tls_descriptor(EA,Offset):-
+    binary_isa("X86"),
+    relocation(EA,"TLS_DESC","",0,_,_,"REL"),
+    data_word(EA+4,4,Val), Val > 0,
+    Offset = as(Val,unsigned).
+
+/**
+Instruction at address 'EA' references a TLS data address 'Dest' in the operand
+at 'Index' using a TLS relocation of some 'Type'.
+
+Relocation 'Type' is one of following labels corresponding to those used in
+the 'symbolic_operand_attribute' predicate:
+
+          Label      TLS Model           Arch
+          -----------------------------------
+          DTPOFF     Local Dynamic      32+64
+          TPOFF      Local Executable      64
+          NTPOFF     Local Executable      32
+
+Note that TLSGD and TLSLD attributes are excluded as they reference GOT, not
+TLS offsets. Likewise for "Initial Executable" relocations (e.g. @GOTTPOFF).
+*/
+.decl tls_relative_operand(EA:address,Index:operand_index,Dest:address,Type:symbol)
+.output tls_relative_operand
+
+// Local Dynamic (LD) TLS model:
+//   i.e. X@DTPOFF operands.
+tls_relative_operand(EA,Index,Dest,"DTPOFF"):-
+    binary_format("ELF"),
+    tls_segment(Start,End,_),
+    tls_local_dynamic(Load),
+    tls_get_addr(Load,Call,_),
+    const_value_reg_used(EA,Call,_,Reg,as(Start,number)),
+    instruction_get_op(EA,Index,Op),
+    op_indirect_mapped(Op,"NONE",Reg,_,_,Offset,_),
+    Dest = Start + as(Offset,address), Dest < End.
+
+// Local Executable (LE) TLS model,
+//   i.e. mov REG, FS:X@TPOFF
+tls_relative_operand(EA,Index,Dest,Type):-
+    tls_segment_register(Reg),
+    (
+        binary_isa("X64"),
+        Type = "TPOFF"
+        ;
+        binary_isa("X86"),
+        Type = "NTPOFF"
+    ),
+    instruction_get_op(EA,Index,Op),
+    op_indirect(Op,Reg,"NONE","NONE",_,Offset,_), Offset < 0,
+    tls_segment(_,TlsEnd,Align),
+    Base = as(@functor_aligned(TlsEnd, max(Align,1)),number),
+    Dest = as(Base+Offset,address).
+
+// Local Executable (LE) TLS model,
+//   i.e. mov REG, FS:[0]
+//        lea REG, [REG + X@TPOFF]
+tls_relative_operand(EA_used,Index,Dest,Type):-
+    tls_segment_register(Reg),
+    (
+        binary_isa("X64"),
+        Type = "TPOFF"
+        ;
+        binary_isa("X86"),
+        Type = "NTPOFF"
+    ),
+    instruction_get_op(EA_def,_,Op_def),
+    op_indirect(Op_def,Reg,"NONE","NONE",_,0,_),
+    reg_def_use.def_used(EA_def,_,EA_used,Index),
+    instruction_get_op(EA_used,Index,Op_used),
+    op_indirect(Op_used,"NONE",_,_,_,Offset,_), Offset < 0,
+    tls_segment(_,TlsEnd,Align),
+    Base = as(@functor_aligned(TlsEnd, max(Align,1)),number),
+    Dest = as(Base+Offset,address).
+
+// TLS Descriptor (TLSDESC) model,
+//   i.e. _TLS_MODULE_BASE_@TLSDESC + _TLS_MODULE_BASE_@TLSCALL + X@DTPOFF
+tls_relative_operand(EA,Index,Dest,"DTPOFF"):-
+    tls_segment(Start,End,_),
+    tls_desc_call(_,Call,Base),
+    const_value_reg_used(EA,Call,_,Reg,as(Base,number)),
+    instruction_get_op(EA,Index,Op),
+    op_indirect_mapped(Op,"NONE",Reg,_,_,Offset,_),
+    Dest = Start + as(Offset,address), Dest < End.
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Initial Relocations
+
+/**
+Map TLS relocation types to one or more symbolic operand types.
+*/
+.decl tls_operand_attribute(Type:symbol,Attribute:symbol)
+
+// X64
+tls_operand_attribute("TLSGD",      "TLSGD").
+tls_operand_attribute("TLSLD",      "TLSLDM").
+tls_operand_attribute("DTPOFF32",   "DTPOFF").
+tls_operand_attribute("TPOFF32",    "TPOFF").
+tls_operand_attribute("GOTTPOFF",   "TPOFF").
+tls_operand_attribute("GOTTPOFF",   "GOT").
+
+// X86
+tls_operand_attribute("TLS_GD",     "TLSGD").
+tls_operand_attribute("TLS_LD",     "TLSLD").
+tls_operand_attribute("TLS_LDO_32", "DTPOFF").
+tls_operand_attribute("TLS_LE",     "NTPOFF").
+tls_operand_attribute("TLS_GOTIE",  "NTPOFF").
+tls_operand_attribute("TLS_GOTIE",  "GOTOFF").
+
+symbolic_operand_attribute(EA,Index,Attr),
+symbolic_expr_from_relocation(EA+Offset,Size/8,Symbol,Addend,TargetEA):-
+    binary_type("REL"), // initial relocations
+    binary_isa(ISA),
+    instruction_displacement_offset(EA,Index,Offset,_),
+    tls_operand_attribute(Type,Attr),
+    elf_relocation_size(ISA,Type,Size),
+    relocation(EA+Offset,Type,Symbol,Addend,_,_,_),
+    symbol(TargetEA,_,_,_,_,_,_,_,Symbol).
+
+///////////////////////////////////////////////////////////////////////////////
+// Outstanding Relocations
+
+got_reference(EA,Symbol):-
+    (
+        relocation(EA,"DTPMOD64",Symbol,_,_,_,_);
+        relocation(EA,"TLS_DTPMOD32",Symbol,_,_,_,_)
+    ),
+    Symbol != "".
+
+// Infer indirect symbol references from DTPOFF offsets in GOT (GD).
+got_reference(EA,Symbol):-
+    (
+        relocation(EA,"DTPMOD64","",_,_,_,_);
+        relocation(EA,"TLS_DTPMOD32","",_,_,_,_)
+    ),
+    arch.pointer_size(Size),
+    symbolic_expr_symbol_minus_symbol(EA+Size,Size,_,Symbol,_,_).
+
+// Infer indirect symbol references from @DTPOFF operands (LD).
+got_reference(EA,Symbol):-
+    (
+        relocation(EA,"DTPMOD64","",_,_,_,_),
+        pc_relative_operand(Load,_,EA)
+        ;
+        relocation(EA,"TLS_DTPMOD32","",_,_,_,_),
+        got_relative_operand(Load,_,EA)
+    ),
+    tls_get_addr(Load,Call,_),
+    reg_def_use.def_used(Call,_,Ref,_),
+    tls_relative_operand(Ref,_,Dest,"DTPOFF"),
+    symbol(Dest,_,"TLS",_,_,_,_,_,Symbol).
+
+got_reference(EA,Symbol):-
+    tls_segment(Start,_,_),
+    tls_descriptor(EA,Offset),
+    symbol(Start+Offset,_,"TLS",_,_,_,_,_,Symbol).
+
+value_reg(EA,Reg,EA,"NONE",0,Value,1):-
+    arch.return_reg(Reg),
+    (
+        tls_get_addr(_,EA,Address);
+        tls_desc_call(_,EA,Address)
+    ),
+    Value = as(Address,number).
+
+// TODO: Adapt symbolization to prefer base symbol in expressions,
+//      e.g. .quad foo-_TLS_MODULE_BASE_
+//       not .quad foo-foo
+inferred_symbol(EA,"_TLS_MODULE_BASE_","LOCAL","NONE","Beg"):-
+    tls_segment(EA,_,_).
+
+// Symbolize tls_index.ti_offset value in GOT (i.e. DTPOFF relocation).
+symbol_minus_symbol(EA+Size,Size,Start,Dest,1,0):-
+    arch.pointer_size(Size),
+    tls_segment(Start,_,_),
+    tls_global_dynamic(Load),
+    tls_get_addr(Load,_,Dest),
+    symbolic_operand(Load,_,EA,"data"),
+    tls_index(EA,_).
+
+// General Dynamic (GD) TLS reference to GOT:
+//   i.e.  X@TLSGD + __tls_get_addr()
+symbolic_operand_attribute(EA,Index,"TLSGD"):-
+    tls_global_dynamic(EA),
+    symbolic_operand_candidate(EA,Index,Dest,_),
+    (
+        relocation(Dest,"DTPMOD64",_,_,_,_,_);
+        relocation(Dest,"TLS_DTPMOD32",_,_,_,_,_)
+    ).
+
+// Local Dynamic (LD) TLS reference to GOT:
+//   i.e.  X@TLSLD + __tls_get_addr() + X@DTPOFF
+symbolic_operand_attribute(EA,Index,Type):-
+    tls_local_dynamic(EA),
+    symbolic_operand_candidate(EA,Index,Dest,_),
+    (
+        relocation(Dest,"DTPMOD64",_,_,_,_,_),
+        Type = "TLSLD"
+        ;
+        relocation(Dest,"TLS_DTPMOD32",_,_,_,_,_),
+        Type = "TLSLDM"
+    ).
+
+// Initial Executable (IE) TLS reference to GOT:
+//   i.e.  X@GOTTPOFF + FS:[REG]
+symbolic_operand_attribute(EA,Index,"GOT"),
+symbolic_operand_attribute(EA,Index,Type):-
+    binary_format("ELF"),
+    symbolic_operand_candidate(EA,Index,Dest,_),
+    (
+        binary_isa("X64"),
+        relocation(Dest,"TPOFF64",_,_,_,_,_),
+        Type = "TPOFF"
+        ;
+        binary_isa("X86"),
+        relocation(Dest,"TLS_TPOFF",_,_,_,_,_),
+        Type = "NTPOFF"
+    ).
+
+symbolic_operand_candidate(EA,Index,Dest,"data"):-
+    tls_relative_operand(EA,Index,Dest,_).
+
+symbolic_operand_attribute(EA,Index,Type):-
+    tls_relative_operand(EA,Index,_,Type).
+
+// TLS Descriptor (TLSDESC) reference to GOT:
+//   i.e. X@TLSDESC + X@TLSCALL
+symbolic_operand_attribute(Load,1,"TLSDESC"),
+symbolic_operand_attribute(EA,1,"TLSCALL"),
+symbolic_operand_candidate(EA,1,Dest,"data"):-
+    tls_segment(Start,_,_),
+    tls_descriptor(Desc,Offset),
+    (
+        pc_relative_operand(Load,_,Desc);
+        got_relative_operand(Load,_,Desc)
+    ),
+    indirect_call(EA),
+    const_value_reg_used(EA,Load,_,_,_),
+    Dest = Start+Offset.
