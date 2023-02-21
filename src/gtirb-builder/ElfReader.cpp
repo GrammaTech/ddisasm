@@ -786,8 +786,10 @@ void ElfReader::buildSections()
     Module->addAuxData<gtirb::schema::SectionProperties>(std::move(SectionProperties));
 }
 
-// Replace the VersionStr in the given Symbol with Version ID if any.
-// Or update Symbols with the VersionMap for the symbol.
+// Return a VersionedName where the VersionStr in the given Symbol is
+// replaced with Version ID if any.
+// If `Update` is true, update Symbols with the updated VersionMap for
+// the symbol.
 //
 // TableName and TableIndex are only used when Update is true.
 std::string ElfReader::getVersionedNameOrUpdateVersionMap(const LIEF::ELF::Symbol &Symbol,
@@ -830,7 +832,16 @@ std::string ElfReader::getVersionedNameOrUpdateVersionMap(const LIEF::ELF::Symbo
     else if(std::size_t I = Name.find('@'); I != std::string::npos)
     {
         VersionStr = Name.substr(I, 2) == "@@" ? Name.substr(I + 2) : Name.substr(I + 1);
-        Name = Name.substr(0, I);
+        if(!VersionToIds[VersionStr].empty())
+        {
+            Name = Name.substr(0, I);
+        }
+        else
+        {
+            // If the VersionStr is not in the version list,
+            // consider the symbol as unversioned, and do not split Name.
+            VersionStr.clear();
+        }
     }
     auto &VersionMap = Symbols[std::tuple(Value,                                     // Value
                                           Symbol.size(),                             // Size
