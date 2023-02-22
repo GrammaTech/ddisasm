@@ -6,7 +6,7 @@
 __attribute((tls_model("initial-exec"))) static __thread int index;
 __attribute((tls_model("initial-exec"))) static __thread char buffer_initial_exec[16];
 
-void fun_static()
+void fun_initial_exec()
 {
     buffer_initial_exec[index % 16] = '_';
     index++;

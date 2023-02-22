@@ -1,2 +1,2 @@
 void fun();
-void fun_static();
+void fun_initial_exec();

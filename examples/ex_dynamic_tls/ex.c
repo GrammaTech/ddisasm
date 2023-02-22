@@ -6,10 +6,10 @@
 int main()
 {
     fun();
-    fun_static();
+    fun_initial_exec();
     fun();
-    fun_static();
+    fun_initial_exec();
     fun();
-    fun_static();
+    fun_initial_exec();
     return 0;
 }
