@@ -1,7 +1,7 @@
 CC="gcc"
 CFLAGS=
 
-all: ex.c fun.c
+all: ex.c fun.c fun_static.c
 	$(CC) fun.c  -shared $(CFLAGS) -fPIC -o  fun.so
 	$(CC) fun_static.c  -shared $(CFLAGS) -fPIC -o  fun_static.so
 	$(CC) ex.c   $(CFLAGS)  fun.so fun_static.so -o ex

@@ -586,13 +586,13 @@ symbolic_expr_from_relocation(EA+Offset,Size/8,Symbol,Addend,TargetEA):-
 
 symbolic_expr_from_relocation(Got_entry,Size/8,"",0,TargetEA):-
     (
-    binary_isa("X64"),
-    relocation(Got_entry,"TPOFF64","",Addend,_,_,_),
-    elf_relocation_size("X64","TPOFF64",Size)
-    ;
-    binary_isa("X86"),
-    relocation(Got_entry,"TLS_TPOFF","",Addend,_,_,_),
-    elf_relocation_size("X86","TLS_TPOFF",Size)
+        binary_isa("X64"),
+        relocation(Got_entry,"TPOFF64","",Addend,_,_,_),
+        elf_relocation_size("X64","TPOFF64",Size)
+        ;
+        binary_isa("X86"),
+        relocation(Got_entry,"TLS_TPOFF","",Addend,_,_,_),
+        elf_relocation_size("X86","TLS_TPOFF",Size)
     ),
     relocation_adjustment_total(Got_entry,Adjustment),
     tls_segment(Beg,_,_),
