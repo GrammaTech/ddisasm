@@ -898,7 +898,7 @@ std::string ElfReader::getVersionedNameOrUpdateVersionMap(const LIEF::ELF::Symbo
     {
         VersionMap[Version].push_back({TableName, TableIndex});
     }
-    if(Version)
+    if(Version > LIEF::ELF::VER_NDX_GLOBAL)
     {
         Name += "@" + std::to_string(Version);
     }
