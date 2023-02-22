@@ -1,5 +1,8 @@
 #include <stdio.h>
 
+// By setting these variables to the initial-exec tls model
+// the library will be marked with the STATIC_TLS flag in the dynamic section.
+
 __attribute((tls_model("initial-exec"))) static __thread int index;
 __attribute((tls_model("initial-exec"))) static __thread char buffer_initial_exec[16];
 
