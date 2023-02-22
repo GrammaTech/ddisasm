@@ -6,7 +6,10 @@
 int main()
 {
     fun();
+    fun_static();
     fun();
+    fun_static();
     fun();
+    fun_static();
     return 0;
 }
