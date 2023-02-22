@@ -141,7 +141,8 @@ The symbols in this predicate are referred by name.
 
 /**
 The symbolic operand at address 'EA' and 'Index' has a symbolic expression
-attribute 'Attribute'.
+attribute 'Attribute'. Note that some attributes may be inferred but not used,
+if the corresponding `symbolic_operand` is not selected.
 */
 .decl symbolic_operand_attribute(EA:address,Index:unsigned,Attribute:symbol)
 

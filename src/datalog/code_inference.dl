@@ -744,6 +744,7 @@ Give penalty on the later nop block when two nop blocks are overlapping.
 */
 block_points(Block,"code",Size,0,-3,"overlapped paddings"):-
     block_overlap(Block0,"code",_,Block,"code",Size),
+    Block0 < Block,
     candidate_block_is_padding(Block0),
     candidate_block_is_padding(Block).
 

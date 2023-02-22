@@ -260,6 +260,30 @@ tests:
       compiler: "g++"
       flags: ["-m32", "-lpthread", "-fpie", "-nostartfiles"]
 
+  - name: ex_dynamic_tls
+    <<: *position-independent
+    binary: fun.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-m32", "-shared", "-nostartfiles"]
+      skip: false
+
+  - name: ex_dynamic_tls
+    <<: *default
+    binary: fun.so
+    build:
+      <<: *default-build
+      c: ["gcc"]
+      cpp: ["g++"]
+      flags: ["-mtls-dialect=gnu2"]
+    reassemble:
+      compiler: "gcc"
+      flags: ["-shared", "-nostartfiles"]
+      skip: false
+    test:
+      check_cfg: false
+
+
   # ----------------------------------------------------------------------------
   # Small C and C++ examples. (stripped)
   # ----------------------------------------------------------------------------

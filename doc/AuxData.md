@@ -412,8 +412,12 @@ identifiers to version strings.
 3. `ElfSymbolVersionsEntries = std::map<gtirb::UUID, std::tuple<SymbolVersionId,bool>>`
 
 Symbol UUIDs are mapped to symbol versions where the `bool` represents the
-`HIDDEN` attribute. Symbol version identifiers are `SymbolVersionId = uint16_t`
-integers.
+`HIDDEN` attribute (i.e., bit 15 of the version ID). Symbol version
+identifiers are `SymbolVersionId = uint16_t` integers.
+
+`HIDDEN` symbol versions correspond to symbols specified with `@` and not
+visible to the static linker, while the default version of a symbol specified
+with `@@` will be non-hidden.
 
 |       |                                                                                                    |
 |------:|----------------------------------------------------------------------------------------------------|

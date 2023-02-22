@@ -475,6 +475,9 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(
         {"NTPOFF", gtirb::SymAttribute::NTPOFF},
         {"TLSGD", gtirb::SymAttribute::TLSGD},
         {"TLSLD", gtirb::SymAttribute::TLSLD},
+        {"TLSLDM", gtirb::SymAttribute::TLSLDM},
+        {"TLSDESC", gtirb::SymAttribute::TLSDESC},
+        {"TLSCALL", gtirb::SymAttribute::TLSCALL},
         // ARM
         {"G0", gtirb::SymAttribute::G0},
         {"G1", gtirb::SymAttribute::G1},
