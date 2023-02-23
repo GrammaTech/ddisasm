@@ -245,7 +245,7 @@ conan-gcc9-release-publish:
     - export CONAN_USER_HOME="${CI_PROJECT_DIR}"
     - export PYTHONPATH="${PYTHONPATH};${CI_PROJECT_DIR}"
     # Prep
-    - python -m pip install --upgrade conan
+    - python -m pip install --upgrade conan==$CONAN_VERSION
     # Install
     - python .ci/run_conan.py install --install-folder=./packages
     # Package
