@@ -401,8 +401,8 @@ arm_jump_table_data_block(EA_jmp,TableStart,Limit1,Size):-
 data_block_candidate(Block,Size):-
     arm_jump_table_data_block(_,_,Block,Size).
 
-jump_table_candidate(EA,DataEA,TargetEA):-
-    arm_jump_table_candidate(EA,_,_,DataEA,_,TargetEA,_,_,_).
+jump_table_candidate(EA,DataEA,DataSize,TargetEA):-
+    arm_jump_table_candidate(EA,_,_,DataEA,DataSize,TargetEA,_,_,_).
 
 data_object_point(DataEA,Size,"symbol",2,"arm jump-table3"),
 data_object_candidate(DataEA,Size,"symbol"):-
