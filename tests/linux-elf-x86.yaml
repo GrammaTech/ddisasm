@@ -269,6 +269,14 @@ tests:
       skip: false
 
   - name: ex_dynamic_tls
+    <<: *position-independent
+    binary: fun_initial_exec.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-m32", "-shared", "-nostartfiles"]
+      skip: false
+
+  - name: ex_dynamic_tls
     <<: *default
     binary: fun.so
     build:
