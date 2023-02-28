@@ -89,3 +89,8 @@ void SccPass::transformImpl(AnalysisPassResult& Result, gtirb::Context& Context,
 {
     Module.addAuxData<gtirb::schema::Sccs>(std::move(Sccs));
 }
+
+void SccPass::clear()
+{
+    Sccs.clear();
+}

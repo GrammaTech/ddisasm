@@ -31,14 +31,14 @@
 #include <tuple>
 #include <utility>
 
-#include "../DatalogProgram.h"
+#include "../DatalogIO.h"
 #include "../Relations.h"
 
 // Load code block edges.
-void BlocksLoader(const gtirb::Module& M, DatalogProgram& P);
+void BlocksLoader(const gtirb::Module& M, souffle::SouffleProgram& P);
 
 // Load CFG edges.
-void CfgLoader(const gtirb::Module& M, DatalogProgram& P);
+void CfgLoader(const gtirb::Module& M, souffle::SouffleProgram& P);
 
 std::tuple<std::string, std::string, std::string> edgeProperties(const gtirb::EdgeLabel& L);
 

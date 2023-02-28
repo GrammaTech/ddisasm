@@ -28,10 +28,10 @@
 #include <string>
 #include <vector>
 
-#include "../DatalogProgram.h"
+#include "../DatalogIO.h"
 #include "../Relations.h"
 
 // Load section properties.
-void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program);
+void SectionLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program);
 
 #endif // SRC_GTIRB_DECODER_SECTIONLOADER_H_

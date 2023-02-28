@@ -46,6 +46,7 @@
 #include <gtirb_pprinter/PrettyPrinter.hpp>
 
 #include "AuxDataSchema.h"
+#include "Hints.h"
 #include "PrintUtils.h"
 #include "Registration.h"
 #include "Version.h"
@@ -84,6 +85,33 @@ static void setStdoutToBinary()
         assert(stdout && "Failed to reopen stdout");
 #endif
     }
+}
+
+std::set<std::string> pipelinePassSlugs(const std::list<std::unique_ptr<AnalysisPass>> &Pipeline)
+{
+    std::set<std::string> Slugs;
+    for(auto &Pass : Pipeline)
+    {
+        // only the datalog passes support hints
+        if(dynamic_cast<DatalogAnalysisPass *>(Pass.get()))
+        {
+            Slugs.insert(Pass->getNameSlug());
+        }
+    }
+    return Slugs;
+}
+
+bool isPEFormat(const gtirb::IR &IR)
+{
+    auto Modules = IR.modules();
+    for(auto &Module : Modules)
+    {
+        if(Module.getFileFormat() == gtirb::FileFormat::PE)
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 int main(int argc, char **argv)
@@ -229,23 +257,30 @@ int main(int argc, char **argv)
         fs::create_directories(ProfileDir);
     }
 
-    bool HasPE = false;
+    std::list<std::unique_ptr<AnalysisPass>> Pipeline;
+    Pipeline.push_back(std::make_unique<DisassemblyPass>(vm.count("self-diagnose") != 0,
+                                                         vm.count("ignore-errors") != 0,
+                                                         vm.count("no-cfi-directives") != 0));
+    if(vm.count("skip-function-analysis") == 0)
+    {
+        Pipeline.push_back(std::make_unique<SccPass>());
+        Pipeline.push_back(std::make_unique<NoReturnPass>());
+        Pipeline.push_back(std::make_unique<FunctionInferencePass>());
+    }
+
+    // TODO: currently, hints files have no support for static archives containing multiple modules;
+    // all hints are used when processing each module, which is most likely not desirable.
+    HintsLoader DatalogHints;
+    if(vm.count("hints"))
+    {
+        DatalogHints.read(vm["hints"].as<std::string>(), pipelinePassSlugs(Pipeline));
+    }
+
     auto Modules = GTIRB->IR->modules();
     unsigned int ModuleCount = std::distance(std::begin(Modules), std::end(Modules));
     for(auto &Module : Modules)
     {
         std::cerr << "Processing module: " << Module.getName() << "\n";
-        std::list<std::unique_ptr<AnalysisPass>> Pipeline;
-        Pipeline.push_back(std::make_unique<DisassemblyPass>(vm.count("self-diagnose") != 0,
-                                                             vm.count("ignore-errors") != 0,
-                                                             vm.count("no-cfi-directives") != 0));
-        if(vm.count("skip-function-analysis") == 0)
-        {
-            Pipeline.push_back(std::make_unique<SccPass>());
-            Pipeline.push_back(std::make_unique<NoReturnPass>());
-            Pipeline.push_back(std::make_unique<FunctionInferencePass>());
-        }
-
         AnalysisPass *PreviousPass = nullptr;
         for(auto &Pass : Pipeline)
         {
@@ -278,11 +313,10 @@ int main(int argc, char **argv)
             }
             std::cerr << std::flush;
 
-            // Free previous pass
+            // Clear previous pass data
             if(PreviousPass != nullptr)
             {
-                Pipeline.pop_front();
-                PreviousPass = nullptr;
+                PreviousPass->clear();
             }
 
             if(DatalogAnalysisPass *DatalogPass = dynamic_cast<DatalogAnalysisPass *>(Pass.get()))
@@ -310,10 +344,7 @@ int main(int argc, char **argv)
                     DatalogPass->enableSouffleOutputs();
                 }
 
-                if(vm.count("hints"))
-                {
-                    DatalogPass->readHints(vm["hints"].as<std::string>());
-                }
+                DatalogHints.insert(DatalogPass->getProgram(), DatalogPass->getNameSlug());
             }
 
             std::cerr << std::right << std::setw(PassStepWidth) << "compute " << std::flush;
@@ -342,11 +373,6 @@ int main(int argc, char **argv)
         // Remove provisional AuxData tables.
         Module.removeAuxData<gtirb::schema::Relocations>();
         Module.removeAuxData<gtirb::schema::SectionIndex>();
-
-        if(Module.getFileFormat() == gtirb::FileFormat::PE)
-        {
-            HasPE = true;
-        }
     }
 
     // Output GTIRB
@@ -382,7 +408,7 @@ int main(int argc, char **argv)
     gtirb_pprint::PrettyPrinter pprinter;
 
     // Output PE-specific build artifacts.
-    if(HasPE)
+    if(isPEFormat(*GTIRB->IR))
     {
         if(vm.count("generate-import-libs"))
         {

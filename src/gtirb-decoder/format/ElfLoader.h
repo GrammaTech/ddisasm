@@ -29,13 +29,13 @@
 #include "../Relations.h"
 #include "ehp.hpp"
 
-void ElfDynamicEntryLoader(const gtirb::Module &Module, DatalogProgram &Program);
+void ElfDynamicEntryLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program);
 
-void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program);
+void ElfSymbolLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program);
 
-void ElfExceptionLoader(const gtirb::Module &Module, DatalogProgram &Program);
+void ElfExceptionLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program);
 
-void ElfArchInfoLoader(const gtirb::Module &Module, DatalogProgram &Program);
+void ElfArchInfoLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program);
 
 class ElfExceptionDecoder
 {
@@ -64,9 +64,9 @@ private:
 
 public:
     ElfExceptionDecoder(const gtirb::Module &module);
-    void addExceptionInformation(souffle::SouffleProgram *prog);
+    void addExceptionInformation(souffle::SouffleProgram &Program);
 };
 
-void ArmUnwindLoader(const gtirb::Module &Module, DatalogProgram &Program);
+void ArmUnwindLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program);
 
 #endif // SRC_GTIRB_DECODER_FORMAT_ELFLOADER_H_

@@ -21,17 +21,15 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
-#include <gtirb/gtirb.hpp>
-
-#include "../gtirb-decoder/DatalogProgram.h"
-
 #ifndef GTIRB_SRC_INTERPRETER_H_
 #define GTIRB_SRC_INTERPRETER_H_
+#include <gtirb/gtirb.hpp>
 
-void runInterpreter(const gtirb::IR& IR, const gtirb::Module& Module, DatalogProgram& Program,
-                    const std::string& DatalogFile, const std::string& Directory,
-                    const std::string& LibDirectory, const std::string& ProfilePath,
-                    uint8_t Threads);
+#include "../gtirb-decoder/DatalogIO.h"
+
+void runInterpreter(const gtirb::IR& IR, const gtirb::Module& Module,
+                    souffle::SouffleProgram& Program, const std::string& DatalogFile,
+                    const std::string& Directory, const std::string& LibDirectory,
+                    const std::string& ProfilePath, uint8_t Threads);
 
 #endif // GTIRB_SRC_INTERPRETER_H_

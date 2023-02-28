@@ -31,7 +31,7 @@ void NoReturnPass::transformImpl(AnalysisPassResult& Result, gtirb::Context& Con
                                  gtirb::Module& Module)
 {
     std::set<gtirb::CodeBlock*> NoReturn;
-    for(auto& Output : *Souffle->get()->getRelation("block_call_no_return"))
+    for(auto& Output : *Program->getRelation("block_call_no_return"))
     {
         gtirb::Addr BlockAddr(Output[0]);
         // this should correspond to only one block
@@ -60,8 +60,8 @@ void NoReturnPass::loadImpl(AnalysisPassResult& Result, const gtirb::Context& Co
     Loader.add(SccLoader);
     Loader.add(CfgLoader);
 
-    Souffle = Loader.load(Module);
-    if(!Souffle)
+    Program = Loader.load(Module);
+    if(!Program)
     {
         Result.Errors.push_back("Could not create souffle_no_return program");
     }

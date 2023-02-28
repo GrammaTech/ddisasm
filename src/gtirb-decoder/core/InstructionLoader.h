@@ -27,7 +27,7 @@
 #include <gtirb/gtirb.hpp>
 #include <vector>
 
-#include "../DatalogProgram.h"
+#include "../DatalogIO.h"
 #include "../Relations.h"
 
 class OperandFacts
@@ -224,7 +224,7 @@ class InstructionLoader
 public:
     virtual ~InstructionLoader(){};
 
-    void operator()(const gtirb::Module& Module, DatalogProgram& Program)
+    void operator()(const gtirb::Module& Module, souffle::SouffleProgram& Program)
     {
         BinaryFacts Facts;
         load(Module, Facts);
@@ -241,7 +241,7 @@ protected:
         });
     };
 
-    virtual void insert(const BinaryFacts& Facts, DatalogProgram& Program);
+    virtual void insert(const BinaryFacts& Facts, souffle::SouffleProgram& Program);
 
     virtual void load(const gtirb::Module& Module, BinaryFacts& Facts)
     {

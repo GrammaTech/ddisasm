@@ -24,12 +24,8 @@
 
 std::string AnalysisPass::getNameSlug() const
 {
-    size_t Pos;
     std::string Name = getName();
-    while((Pos = Name.find(" ")) != std::string::npos)
-    {
-        Name.replace(Pos, 1, "-");
-    }
+    std::replace(Name.begin(), Name.end(), ' ', '-');
     return Name;
 }
 
@@ -59,4 +55,8 @@ AnalysisPassResult AnalysisPass::transform(gtirb::Context& Context, gtirb::Modul
     transformImpl(Result, Context, Module);
     Result.RunTime = std::chrono::high_resolution_clock::now() - StartTime;
     return Result;
+}
+
+void AnalysisPass::clear()
+{
 }

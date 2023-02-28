@@ -25,9 +25,9 @@
 
 #include <gtirb/gtirb.hpp>
 
-#include "../DatalogProgram.h"
+#include "../DatalogIO.h"
 #include "../Relations.h"
 
-void SymbolicExpressionLoader(const gtirb::Module& M, DatalogProgram& P);
+void SymbolicExpressionLoader(const gtirb::Module& M, souffle::SouffleProgram& P);
 
 #endif // SRC_GTIRB_DECODER_CORE_SYMBOLICEXPRESSIONLOADER_H_

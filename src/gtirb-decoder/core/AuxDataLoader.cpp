@@ -24,7 +24,7 @@
 
 #include "../../AuxDataSchema.h"
 
-void PaddingLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
+void PaddingLoader::operator()(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
     std::vector<relations::Padding> PaddingBlocks;
 
@@ -43,10 +43,10 @@ void PaddingLoader::operator()(const gtirb::Module& Module, DatalogProgram& Prog
         }
     }
 
-    Program.insert("padding", std::move(PaddingBlocks));
+    DatalogIO::insert(Program, "padding", std::move(PaddingBlocks));
 }
 
-void FdeEntriesLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
+void FdeEntriesLoader::operator()(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
     std::set<gtirb::Addr> FdeStart;
     std::set<gtirb::Addr> FdeEnd;
@@ -87,10 +87,11 @@ void FdeEntriesLoader::operator()(const gtirb::Module& Module, DatalogProgram& P
         FdeAddresses.push_back({*StartIt, *EndIt});
     }
 
-    Program.insert("fde_addresses", std::move(FdeAddresses));
+    DatalogIO::insert(Program, "fde_addresses", std::move(FdeAddresses));
 }
 
-void FunctionEntriesLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
+void FunctionEntriesLoader::operator()(const gtirb::Module& Module,
+                                       souffle::SouffleProgram& Program)
 {
     std::vector<gtirb::Addr> Functions;
 
@@ -109,10 +110,10 @@ void FunctionEntriesLoader::operator()(const gtirb::Module& Module, DatalogProgr
         }
     }
 
-    Program.insert("function_entry", std::move(Functions));
+    DatalogIO::insert(Program, "function_entry", std::move(Functions));
 }
 
-void SccLoader(const gtirb::Module& Module, DatalogProgram& Program)
+void SccLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
     auto* SccTable = Module.getAuxData<gtirb::schema::Sccs>();
     assert(SccTable && "SCCs AuxData table missing from GTIRB module");
@@ -135,5 +136,5 @@ void SccLoader(const gtirb::Module& Module, DatalogProgram& Program)
         InScc.push_back({SccIndex, SccBlockIndex[SccIndex]++, *Block.getAddress()});
     }
 
-    Program.insert("in_scc", std::move(InScc));
+    DatalogIO::insert(Program, "in_scc", std::move(InScc));
 }

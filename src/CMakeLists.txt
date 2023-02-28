@@ -398,7 +398,8 @@ endif()
 
 # ====== ddisasm ===========
 # Build final ddisasm executable
-add_executable(ddisasm Registration.cpp Main.cpp Functors.cpp PrintUtils.cpp)
+add_executable(ddisasm Registration.cpp Main.cpp Functors.cpp PrintUtils.cpp
+                       Hints.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_compile_options(ddisasm PRIVATE -Wno-unused-parameter)

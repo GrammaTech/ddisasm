@@ -29,8 +29,8 @@
 #include "AnalysisPass.h"
 
 void disassembleModule(gtirb::Context &context, gtirb::Module &module,
-                       souffle::SouffleProgram *prog, bool selfDiagnose);
-void performSanityChecks(AnalysisPassResult &Result, souffle::SouffleProgram *prog,
+                       souffle::SouffleProgram &Program, bool selfDiagnose);
+void performSanityChecks(AnalysisPassResult &Result, souffle::SouffleProgram &Program,
                          bool selfDiagnose, bool ignoreErrors);
 
 #endif // GTIRB_MODULE_DISASSEMBLER_H_

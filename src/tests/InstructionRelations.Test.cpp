@@ -182,10 +182,10 @@ TEST(ArchMemoryAccessRelation, Arm64)
     };
     GTIRB Gtirb = buildGtirb(gtirb::ISA::ARM64, Bytes);
     runSouffle(Gtirb);
-    souffle::SouffleProgram *Prog = Gtirb.Disassembler.getSouffle()->get();
+    souffle::SouffleProgram &Program = Gtirb.Disassembler.getProgram();
 
     unsigned int Count = 0;
-    for(auto &output : *Prog->getRelation("arch.memory_access"))
+    for(auto &output : *Program.getRelation("arch.memory_access"))
     {
         MemoryAccess Result;
 
@@ -304,10 +304,10 @@ TEST(ArchMemoryAccessRelation, Arm32)
     };
     GTIRB Gtirb = buildGtirb(gtirb::ISA::ARM, Bytes);
     runSouffle(Gtirb);
-    souffle::SouffleProgram *Prog = Gtirb.Disassembler.getSouffle()->get();
+    souffle::SouffleProgram &Program = Gtirb.Disassembler.getProgram();
 
     unsigned int Count = 0;
-    for(auto &output : *Prog->getRelation("arch.memory_access"))
+    for(auto &output : *Program.getRelation("arch.memory_access"))
     {
         MemoryAccess Result;
 

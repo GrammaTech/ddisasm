@@ -86,6 +86,11 @@ public:
         DebugDir = Root / DirName;
     }
 
+    /**
+    Prepare for running the pass on an additional Module with the same settings.
+    */
+    virtual void clear();
+
 protected:
     virtual void loadImpl(AnalysisPassResult& Result, const gtirb::Context& Context,
                           const gtirb::Module& Module, AnalysisPass* PreviousPass = nullptr) = 0;

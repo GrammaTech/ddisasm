@@ -22,39 +22,39 @@
 //===----------------------------------------------------------------------===//
 #include "PeLoader.h"
 
-void PeSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
+void PeSymbolLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     if(auto *ExportEntries = Module.getAuxData<gtirb::schema::ExportEntries>())
     {
-        Program.insert("pe_export_entry", *ExportEntries);
+        DatalogIO::insert(Program, "pe_export_entry", *ExportEntries);
     }
 
     if(auto *ImportEntries = Module.getAuxData<gtirb::schema::ImportEntries>())
     {
-        Program.insert("pe_import_entry", *ImportEntries);
+        DatalogIO::insert(Program, "pe_import_entry", *ImportEntries);
     }
 
     if(auto *Relocations = Module.getAuxData<gtirb::schema::Relocations>())
     {
-        Program.insert("relocation", *Relocations);
+        DatalogIO::insert(Program, "relocation", *Relocations);
     }
 }
 
-void PeDataDirectoryLoader(const gtirb::Module &Module, DatalogProgram &Program)
+void PeDataDirectoryLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     if(auto *DataDirectories = Module.getAuxData<gtirb::schema::PeDataDirectories>())
     {
-        Program.insert("pe_data_directory", *DataDirectories);
+        DatalogIO::insert(Program, "pe_data_directory", *DataDirectories);
     }
 
     if(auto *DebugData = Module.getAuxData<gtirb::schema::PeDebugData>())
     {
-        Program.insert("pe_debug_data", *DebugData);
+        DatalogIO::insert(Program, "pe_debug_data", *DebugData);
     }
 
     if(auto *LoadConfig = Module.getAuxData<gtirb::schema::PeLoadConfig>())
     {
-        if(auto *Relation = Program.get()->getRelation("pe_load_config"))
+        if(auto *Relation = Program.getRelation("pe_load_config"))
         {
             for(const auto [Name, Value] : *LoadConfig)
             {

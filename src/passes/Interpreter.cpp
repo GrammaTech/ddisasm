@@ -52,31 +52,10 @@ std::string getInterpreterArch(const gtirb::Module &Module)
     return "";
 }
 
-void loadAll(DatalogProgram &Program, const std::string &Directory)
-{
-    // Load output relations into synthesized SouffleProgram.
-    for(souffle::Relation *Relation : Program.get()->getOutputRelations())
-    {
-        const std::string Path = Directory + "/" + Relation->getName() + ".csv";
-        std::ifstream CSV(Path);
-        if(!CSV)
-        {
-            std::cerr << "Error: missing output relation `" << Path << "'\n";
-            continue;
-        }
-        std::string Line;
-        while(std::getline(CSV, Line))
-        {
-            std::stringstream Row(Line);
-            Program.insertTuple(Row, Relation);
-        }
-    }
-}
-
-void runInterpreter(const gtirb::IR &IR, const gtirb::Module &Module, DatalogProgram &Program,
-                    const std::string &DatalogFile, const std::string &Directory,
-                    const std::string &LibDirectory, const std::string &ProfilePath,
-                    uint8_t Threads)
+void runInterpreter(const gtirb::IR &IR, const gtirb::Module &Module,
+                    souffle::SouffleProgram &Program, const std::string &DatalogFile,
+                    const std::string &Directory, const std::string &LibDirectory,
+                    const std::string &ProfilePath, uint8_t Threads)
 {
     // Dump the current GTIRB into the debug directory for use by Functors.
     std::ofstream out(Directory + "/binary.gtirb", std::ios::out | std::ios::binary);
@@ -160,5 +139,5 @@ void runInterpreter(const gtirb::IR &IR, const gtirb::Module &Module, DatalogPro
     }
 
     // Load the output relations back into the synthesized program context.
-    loadAll(Program, Directory);
+    DatalogIO::readRelations(Program, Directory);
 }

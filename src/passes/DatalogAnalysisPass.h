@@ -30,7 +30,7 @@
 #include <optional>
 #include <string>
 
-#include "../gtirb-decoder/DatalogProgram.h"
+#include "../gtirb-decoder/DatalogIO.h"
 #include "AnalysisPass.h"
 
 enum DatalogExecutionMode
@@ -44,6 +44,7 @@ class DatalogAnalysisPass : public AnalysisPass
 public:
     virtual AnalysisPassResult analyze(const gtirb::Module& Module) override;
     virtual AnalysisPassResult transform(gtirb::Context& Context, gtirb::Module& Module) override;
+    virtual void clear() override;
 
     void setInterpreterDir(const std::string& Path)
     {
@@ -71,9 +72,9 @@ public:
     }
     void readHints(const std::string& Filename);
 
-    DatalogProgram* getSouffle()
+    souffle::SouffleProgram& getProgram()
     {
-        return &(*Souffle);
+        return *Program;
     };
 
     virtual bool hasLoad(void) override
@@ -94,7 +95,8 @@ protected:
     std::string ProfilePath;
     DatalogExecutionMode ExecutionMode = DatalogExecutionMode::SYNTHESIZED;
     int ThreadCount = 1;
-    std::optional<DatalogProgram> Souffle;
+
+    std::unique_ptr<souffle::SouffleProgram> Program;
     bool WriteSouffleOutputs = false;
 };
 

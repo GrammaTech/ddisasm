@@ -31,30 +31,30 @@
 #include <tuple>
 #include <utility>
 
-#include "../DatalogProgram.h"
+#include "../DatalogIO.h"
 #include "../Relations.h"
 
 // Load strongly connected component facts.
-void SccLoader(const gtirb::Module& M, DatalogProgram& P);
+void SccLoader(const gtirb::Module& M, souffle::SouffleProgram& P);
 
 // Load code-padding regions.
 struct PaddingLoader
 {
-    void operator()(const gtirb::Module& M, DatalogProgram& P);
+    void operator()(const gtirb::Module& M, souffle::SouffleProgram& P);
     const gtirb::Context* Context;
 };
 
 // Load CFI information.
 struct FdeEntriesLoader
 {
-    void operator()(const gtirb::Module& M, DatalogProgram& P);
+    void operator()(const gtirb::Module& M, souffle::SouffleProgram& P);
     const gtirb::Context* Context;
 };
 
 // Load function entry addresses.
 struct FunctionEntriesLoader
 {
-    void operator()(const gtirb::Module& M, DatalogProgram& P);
+    void operator()(const gtirb::Module& M, souffle::SouffleProgram& P);
     const gtirb::Context* Context;
 };
 

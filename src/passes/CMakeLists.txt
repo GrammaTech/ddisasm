@@ -5,9 +5,6 @@ add_library(generic_pass STATIC AnalysisPass.cpp DatalogAnalysisPass.cpp
 
 target_link_libraries(generic_pass gtirb gtirb_pprinter gtirb_decoder)
 
-if(DDISASM_SOUFFLE_PROFILING)
-  target_compile_definitions(generic_pass PRIVATE DDISASM_SOUFFLE_PROFILING)
-endif()
 if(SOUFFLE_INCLUDE_DIR)
   target_include_directories(generic_pass SYSTEM PRIVATE ${SOUFFLE_INCLUDE_DIR})
 endif()

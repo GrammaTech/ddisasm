@@ -20,7 +20,7 @@ add_executable(
   CompositeLoader.Test.cpp
   ArchiveReader.Test.cpp
   InstructionRelations.Test.cpp
-  DatalogProgram.Test.cpp
+  DatalogIO.Test.cpp
   Functors.Test.cpp)
 
 target_link_libraries(

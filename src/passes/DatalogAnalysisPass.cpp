@@ -22,65 +22,44 @@
 //===----------------------------------------------------------------------===//
 #include "DatalogAnalysisPass.h"
 
-#include "Interpreter.h"
-
-#if defined(DDISASM_SOUFFLE_PROFILING)
-#include <souffle/profile/ProfileEvent.h>
-
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
-#endif
+
+#include <gtirb/gtirb.hpp>
+#include <gtirb_pprinter/AuxDataUtils.hpp>
+
+#include "../AuxDataSchema.h"
+#include "Interpreter.h"
 
 AnalysisPassResult DatalogAnalysisPass::analyze(const gtirb::Module& Module)
 {
     if(!DebugDir.empty())
     {
         fs::create_directories(DebugDir);
-        Souffle->writeFacts(DebugDir.string() + "/");
+        DatalogIO::writeFacts(DebugDir.string() + "/", *Program);
     }
 
-#if defined(DDISASM_SOUFFLE_PROFILING)
     if(ExecutionMode == DatalogExecutionMode::SYNTHESIZED)
     {
-        souffle::ProfileEventSingleton::instance().setOutputFile(ProfilePath);
+        DatalogIO::setProfilePath(ProfilePath);
     }
-#endif
 
     AnalysisPassResult Result = AnalysisPass::analyze(Module);
 
     if(!DebugDir.empty())
     {
-        Souffle->writeRelations(DebugDir.string() + "/");
+        DatalogIO::writeRelations(DebugDir.string() + "/", *Program);
     }
 
-#if defined(DDISASM_SOUFFLE_PROFILING)
     if(ExecutionMode == DatalogExecutionMode::SYNTHESIZED)
     {
-        souffle::ProfileEventSingleton::instance().stopTimer();
-        souffle::ProfileEventSingleton::instance().dump();
-
-        // Clearing the profile path ensures the ProfileEventSingleton
-        // destructor does not dump again.
-        souffle::ProfileEventSingleton::instance().setOutputFile("");
-
-        // Clear the profile database by loading an empty json file
-        // (this is the only way to clear it that Souffle currently exposes)
-        fs::path DbFilePath = fs::unique_path();
-
-        std::ofstream DbFile(DbFilePath.string(), std::ios::out);
-        if(!DbFile.is_open())
+        std::string Err = DatalogIO::clearProfileDB();
+        if(!Err.empty())
         {
-            Result.Errors.push_back("Failed to clear profile data: could not open "
-                                    + DbFilePath.string());
+            Result.Errors.push_back(Err);
             return Result;
         }
-        DbFile << "{}\n";
-        DbFile.close();
-
-        souffle::ProfileEventSingleton::instance().setDBFromFile(DbFilePath.string());
-        fs::remove(DbFilePath);
     }
-#endif
 
     return Result;
 }
@@ -90,17 +69,17 @@ void DatalogAnalysisPass::analyzeImpl(AnalysisPassResult& Result, const gtirb::M
     if(ExecutionMode == DatalogExecutionMode::INTERPRETED)
     {
         // Disassemble with the interpreter engine.
-        runInterpreter(*Module.getIR(), Module, *Souffle, InterpreterPath, DebugDir.string(),
+        runInterpreter(*Module.getIR(), Module, *Program, InterpreterPath, DebugDir.string(),
                        LibDir, ProfilePath, ThreadCount);
     }
     else
     {
         // Disassemble with the compiled, synthesized program.
-        Souffle->threads(ThreadCount);
-        Souffle->pruneImdtRels = !WriteSouffleOutputs && DebugDir.empty();
+        Program->setNumThreads(ThreadCount);
+        Program->setPruneImdtRels(!WriteSouffleOutputs && DebugDir.empty());
         try
         {
-            Souffle->run();
+            Program->run();
         }
         catch(std::exception& e)
         {
@@ -109,26 +88,56 @@ void DatalogAnalysisPass::analyzeImpl(AnalysisPassResult& Result, const gtirb::M
     }
 }
 
+void addRelationsToMap(souffle::SouffleProgram& Program,
+                       const std::vector<souffle::Relation*>& Relations,
+                       std::map<std::string, std::tuple<std::string, std::string>>& Map,
+                       const std::string& Namespace)
+{
+    for(souffle::Relation* Relation : Relations)
+    {
+        if(Relation->getArity() == 0)
+        {
+            continue;
+        }
+
+        std::stringstream Type;
+        DatalogIO::serializeType(Type, Relation);
+
+        // Write CSV to buffer.
+        std::stringstream Csv;
+        DatalogIO::writeRelation(Csv, Program, Relation);
+
+        // TODO: Compress CSV.
+        Map[Namespace + "." + Relation->getName()] = {Type.str(), Csv.str()};
+    }
+}
+
+void writeRelationAuxdata(souffle::SouffleProgram& Program, gtirb::Module& Module,
+                          const std::string& Namespace)
+{
+    auto Facts = aux_data::util::getOrDefault<gtirb::schema::SouffleFacts>(Module);
+    auto Outputs = aux_data::util::getOrDefault<gtirb::schema::SouffleOutputs>(Module);
+
+    addRelationsToMap(Program, Program.getInputRelations(), Facts, Namespace);
+    addRelationsToMap(Program, Program.getInternalRelations(), Outputs, Namespace);
+    addRelationsToMap(Program, Program.getOutputRelations(), Outputs, Namespace);
+
+    Module.addAuxData<gtirb::schema::SouffleFacts>(std::move(Facts));
+    Module.addAuxData<gtirb::schema::SouffleOutputs>(std::move(Outputs));
+}
+
 AnalysisPassResult DatalogAnalysisPass::transform(gtirb::Context& Context, gtirb::Module& Module)
 {
-    std::string Slug;
     if(WriteSouffleOutputs)
     {
-        Slug = getNameSlug();
-        Souffle->writeFacts(Module, Slug);
+        writeRelationAuxdata(*Program, Module, getNameSlug());
     }
 
     auto Result = AnalysisPass::transform(Context, Module);
-
-    if(WriteSouffleOutputs)
-    {
-        Souffle->writeRelations(Module, Slug);
-    }
-
     return Result;
 }
 
-void DatalogAnalysisPass::readHints(const std::string& Filename)
+void DatalogAnalysisPass::clear()
 {
-    Souffle->readHintsFile(Filename, getName());
+    Program.reset();
 }

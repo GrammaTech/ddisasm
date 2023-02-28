@@ -1,6 +1,6 @@
-//===- PeLoader.h -----------------------------------------------*- C++ -*-===//
+//===- Hints.h --------------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2020 GrammaTech, Inc.
+//  Copyright (C) 2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,26 +20,33 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_GTIRB_DECODER_FORMAT_PELOADER_H_
-#define SRC_GTIRB_DECODER_FORMAT_PELOADER_H_
-
-#include <gtirb/gtirb.hpp>
+#ifndef _HINTS_H_
+#define _HINTS_H_
+#include <list>
+#include <map>
+#include <set>
 #include <string>
-#include <tuple>
 
-#include "../../AuxDataSchema.h"
-#include "../CompositeLoader.h"
-#include "../Relations.h"
+#include "gtirb-decoder/DatalogIO.h"
 
-void PeSymbolLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program);
-
-void PeDataDirectoryLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program);
-
-namespace relations
+class HintsLoader
 {
-    using PeDataDirectory = auxdata::PeDataDirectory;
-    using PeExportEntry = auxdata::PeExportEntry;
-    using PeImportEntry = auxdata::PeImportEntry;
-} // namespace relations
+public:
+    /**
+    Load hints file from disk.
+    */
+    void read(const std::string& FileName, const std::set<std::string>& Namespaces);
 
-#endif // SRC_GTIRB_DECODER_FORMAT_PELOADER_H_
+    /**
+    Inserts loaded hints into a souffle program
+    */
+    void insert(souffle::SouffleProgram& Program, const std::string& Namespace);
+
+private:
+    // map of (namespace -> map(relation name -> list(pair(lineno, tuple text))))
+    std::unordered_map<std::string,
+                       std::unordered_map<std::string, std::list<std::pair<uint32_t, std::string>>>>
+        HintsTable;
+};
+
+#endif /* _HINTS_H_ */

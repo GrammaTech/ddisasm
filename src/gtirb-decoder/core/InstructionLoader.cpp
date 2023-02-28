@@ -49,23 +49,23 @@ const std::vector<relations::RegBitFieldOp> OperandFacts::reg_bitfields() const
 /**
 Insert BinaryFacts into the Datalog program.
 */
-void InstructionLoader::insert(const BinaryFacts& Facts, DatalogProgram& Program)
+void InstructionLoader::insert(const BinaryFacts& Facts, souffle::SouffleProgram& Program)
 {
     auto& [Instructions, Operands] = Facts;
-    Program.insert("instruction", Instructions.instructions());
-    Program.insert("instruction_writeback", Instructions.writeback());
-    Program.insert("instruction_cond_code", Instructions.conditionCode());
-    Program.insert("instruction_op_access", Instructions.opAccess());
-    Program.insert("invalid_op_code", Instructions.invalid());
-    Program.insert("op_shifted", Instructions.shiftedOps());
-    Program.insert("op_shifted_w_reg", Instructions.shiftedWithRegOps());
-    Program.insert("register_access", Instructions.registerAccesses());
-    Program.insert("op_immediate", Operands.imm());
-    Program.insert("op_regdirect", Operands.reg());
-    Program.insert("op_fp_immediate", Operands.fp_imm());
-    Program.insert("op_indirect", Operands.indirect());
-    Program.insert("op_special", Operands.special());
-    Program.insert("op_register_bitfield", Operands.reg_bitfields());
+    DatalogIO::insert(Program, "instruction", Instructions.instructions());
+    DatalogIO::insert(Program, "instruction_writeback", Instructions.writeback());
+    DatalogIO::insert(Program, "instruction_cond_code", Instructions.conditionCode());
+    DatalogIO::insert(Program, "instruction_op_access", Instructions.opAccess());
+    DatalogIO::insert(Program, "invalid_op_code", Instructions.invalid());
+    DatalogIO::insert(Program, "op_shifted", Instructions.shiftedOps());
+    DatalogIO::insert(Program, "op_shifted_w_reg", Instructions.shiftedWithRegOps());
+    DatalogIO::insert(Program, "register_access", Instructions.registerAccesses());
+    DatalogIO::insert(Program, "op_immediate", Operands.imm());
+    DatalogIO::insert(Program, "op_regdirect", Operands.reg());
+    DatalogIO::insert(Program, "op_fp_immediate", Operands.fp_imm());
+    DatalogIO::insert(Program, "op_indirect", Operands.indirect());
+    DatalogIO::insert(Program, "op_special", Operands.special());
+    DatalogIO::insert(Program, "op_register_bitfield", Operands.reg_bitfields());
 }
 
 /**

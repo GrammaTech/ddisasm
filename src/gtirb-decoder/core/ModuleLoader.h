@@ -25,11 +25,11 @@
 
 #include <gtirb/gtirb.hpp>
 
-#include "../DatalogProgram.h"
+#include "../DatalogIO.h"
 #include "../Relations.h"
 
 // Load binary format information: architecture, file format, entry point, etc.
-void ModuleLoader(const gtirb::Module& Module, DatalogProgram& Program);
+void ModuleLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program);
 
 const char* binaryISA(gtirb::ISA Arch);
 const char* binaryFormat(const gtirb::FileFormat Format);

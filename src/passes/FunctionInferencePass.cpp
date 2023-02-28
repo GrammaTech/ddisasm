@@ -36,7 +36,6 @@ void FunctionInferencePass::transformImpl(AnalysisPassResult& Result, gtirb::Con
                                           gtirb::Module& Module)
 {
     auto* SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
-    souffle::SouffleProgram* Program = Souffle->get();
 
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
     std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2function;
@@ -161,8 +160,8 @@ void FunctionInferencePass::loadImpl(AnalysisPassResult& Result, const gtirb::Co
         Loader.add(FunctionEntriesLoader{&Context});
 
     // Load GTIRB and build program.
-    Souffle = Loader.load(Module);
-    if(!Souffle)
+    Program = Loader.load(Module);
+    if(!Program)
     {
         Result.Errors.push_back("Could not create souffle_function_inference program");
     }

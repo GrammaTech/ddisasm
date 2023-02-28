@@ -40,7 +40,7 @@ void DisassemblyPass::loadImpl(AnalysisPassResult& Result, const gtirb::Context&
     if(auto It = Factories.find(Target); It != Factories.end())
     {
         auto Loader = (It->second)();
-        Souffle = Loader.load(Module);
+        Program = Loader.load(Module);
     }
     else
     {
@@ -63,13 +63,13 @@ void DisassemblyPass::loadImpl(AnalysisPassResult& Result, const gtirb::Context&
     {
         std::vector<std::string> Options;
         Options.push_back("no-cfi-directives");
-        Souffle->insert("option", Options);
+        DatalogIO::insert(*Program, "option", Options);
     }
 }
 
 void DisassemblyPass::transformImpl(AnalysisPassResult& Result, gtirb::Context& Context,
                                     gtirb::Module& Module)
 {
-    disassembleModule(Context, Module, Souffle->get(), SelfDiagnose);
-    performSanityChecks(Result, Souffle->get(), SelfDiagnose, IgnoreErrors);
+    disassembleModule(Context, Module, *Program, SelfDiagnose);
+    performSanityChecks(Result, *Program, SelfDiagnose, IgnoreErrors);
 }

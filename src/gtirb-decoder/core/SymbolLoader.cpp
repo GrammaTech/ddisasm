@@ -22,7 +22,7 @@
 //===----------------------------------------------------------------------===//
 #include "SymbolLoader.h"
 
-void SymbolLoader(const gtirb::Module& Module, DatalogProgram& Program)
+void SymbolLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
     std::vector<relations::Symbol> Symbols;
 
@@ -33,5 +33,5 @@ void SymbolLoader(const gtirb::Module& Module, DatalogProgram& Program)
         Symbols.push_back({Addr, 0, "NOTYPE", "GLOBAL", "DEFAULT", 0, Name});
     }
 
-    Program.insert("symbol", std::move(Symbols));
+    DatalogIO::insert(Program, "symbol", std::move(Symbols));
 }

@@ -45,6 +45,8 @@ public:
         return true;
     }
 
+    virtual void clear() override;
+
 protected:
     virtual void loadImpl(AnalysisPassResult& Result, const gtirb::Context& Context,
                           const gtirb::Module& Module,

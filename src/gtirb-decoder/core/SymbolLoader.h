@@ -28,10 +28,10 @@
 #include <string>
 #include <vector>
 
-#include "../DatalogProgram.h"
+#include "../DatalogIO.h"
 #include "../Relations.h"
 
 // Load symbol information.
-void SymbolLoader(const gtirb::Module& Module, DatalogProgram& Program);
+void SymbolLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program);
 
 #endif // SRC_GTIRB_DECODER_CORE_SYMBOLLOADER_H_
