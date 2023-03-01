@@ -43,7 +43,6 @@ class DatalogAnalysisPass : public AnalysisPass
 {
 public:
     virtual AnalysisPassResult analyze(const gtirb::Module& Module) override;
-    virtual AnalysisPassResult transform(gtirb::Context& Context, gtirb::Module& Module) override;
     virtual void clear() override;
 
     void configureSouffleInterpreter(const std::string& Path, const std::string& LibDir_)
@@ -78,6 +77,8 @@ public:
 
 protected:
     virtual void analyzeImpl(AnalysisPassResult& Result, const gtirb::Module& Module) override;
+    virtual void transformImpl(AnalysisPassResult& Result, gtirb::Context& Context,
+                               gtirb::Module& Module) override;
 
     /**
     Get the filename of the Datalog source file.

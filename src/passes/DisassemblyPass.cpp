@@ -70,6 +70,8 @@ void DisassemblyPass::loadImpl(AnalysisPassResult& Result, const gtirb::Context&
 void DisassemblyPass::transformImpl(AnalysisPassResult& Result, gtirb::Context& Context,
                                     gtirb::Module& Module)
 {
+    DatalogAnalysisPass::transformImpl(Result, Context, Module);
+
     disassembleModule(Context, Module, *Program, SelfDiagnose);
     performSanityChecks(Result, *Program, SelfDiagnose, IgnoreErrors);
 }

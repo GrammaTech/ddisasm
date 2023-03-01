@@ -35,6 +35,8 @@
 void FunctionInferencePass::transformImpl(AnalysisPassResult& Result, gtirb::Context& Context,
                                           gtirb::Module& Module)
 {
+    DatalogAnalysisPass::transformImpl(Result, Context, Module);
+
     auto* SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
 
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;

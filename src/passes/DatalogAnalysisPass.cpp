@@ -125,15 +125,13 @@ void writeRelationAuxdata(souffle::SouffleProgram& Program, gtirb::Module& Modul
     Module.addAuxData<gtirb::schema::SouffleOutputs>(std::move(Outputs));
 }
 
-AnalysisPassResult DatalogAnalysisPass::transform(gtirb::Context& Context, gtirb::Module& Module)
+void DatalogAnalysisPass::transformImpl(AnalysisPassResult& Result, gtirb::Context& Context,
+                                        gtirb::Module& Module)
 {
     if(WriteSouffleOutputs)
     {
         writeRelationAuxdata(*Program, Module, getNameSlug());
     }
-
-    auto Result = AnalysisPass::transform(Context, Module);
-    return Result;
 }
 
 void DatalogAnalysisPass::clear()

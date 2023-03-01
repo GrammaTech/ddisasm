@@ -30,6 +30,8 @@
 void NoReturnPass::transformImpl(AnalysisPassResult& Result, gtirb::Context& Context,
                                  gtirb::Module& Module)
 {
+    DatalogAnalysisPass::transformImpl(Result, Context, Module);
+
     std::set<gtirb::CodeBlock*> NoReturn;
     for(auto& Output : *Program->getRelation("block_call_no_return"))
     {
