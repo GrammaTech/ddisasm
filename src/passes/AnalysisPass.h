@@ -80,10 +80,10 @@ public:
     */
     virtual AnalysisPassResult transform(gtirb::Context& Context, gtirb::Module& Module);
 
-    void setDebugRoot(const fs::path& Root)
+    void configureDebugDir(const std::string& DebugDirRoot_, bool MultiModule_)
     {
-        std::string DirName = getNameSlug();
-        DebugDir = Root / DirName;
+        DebugDirRoot = DebugDirRoot_;
+        MultiModule = MultiModule_;
     }
 
     /**
@@ -97,7 +97,18 @@ protected:
     virtual void analyzeImpl(AnalysisPassResult& Result, const gtirb::Module& Module) = 0;
     virtual void transformImpl(AnalysisPassResult& Result, gtirb::Context& Context,
                                gtirb::Module& Module) = 0;
-    fs::path DebugDir;
+    std::string DebugDirRoot;
+    bool MultiModule = false;
+
+    std::string getDebugDir(const gtirb::Module& Module)
+    {
+        fs::path RootPath(DebugDirRoot);
+
+        fs::path DebugDir(MultiModule ? RootPath / Module.getName() / getNameSlug()
+                                      : RootPath / getNameSlug());
+        fs::create_directories(DebugDir);
+        return DebugDir.string();
+    }
 };
 
 #endif // _ANALYSIS_PASS_H_

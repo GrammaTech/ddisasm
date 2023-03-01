@@ -1,4 +1,4 @@
-//===- PrintUtils.cpp -------------------------------------------*- C++ -*-===//
+//===- CliDriver.cpp ---------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2023 GrammaTech, Inc.
 //
@@ -20,7 +20,13 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#include "PrintUtils.h"
+#include "CliDriver.h"
+
+// Define CLI output field widths
+constexpr size_t IndentWidth = 4;
+constexpr size_t TimeWidth = 8;
+constexpr size_t PassNameWidth = 18;
+constexpr size_t PassStepWidth = 12;
 
 void printElapsedTime(std::chrono::duration<double> Elapsed)
 {
@@ -58,12 +64,45 @@ void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_
     printElapsedTime(End - Start);
 }
 
-/**
-Prints pass results
+void DDisasmPipelineListener::notifyPassBegin(const AnalysisPass &Pass)
+{
+    std::cerr << std::setw(IndentWidth) << "" << std::left << std::setw(PassNameWidth)
+              << Pass.getName() << std::flush;
+}
 
-returns whether warnings were emitted
-*/
-bool printPassResults(const AnalysisPassResult &Result)
+void DDisasmPipelineListener::notifyPassEnd([[maybe_unused]] const AnalysisPass &Pass)
+{
+    std::cerr << "\n";
+}
+
+void DDisasmPipelineListener::notifyPassPhase(AnalysisPassPhase Phase, bool HasPhase)
+{
+    std::string Name;
+    switch(Phase)
+    {
+        case AnalysisPassPhase::LOAD:
+            Name = "load";
+            break;
+        case AnalysisPassPhase::ANALYZE:
+            Name = "compute";
+            break;
+        case AnalysisPassPhase::TRANSFORM:
+            Name = "transform";
+            break;
+    }
+    if(HasPhase)
+    {
+        std::cerr << std::right << std::setw(PassStepWidth) << (Name + " ");
+    }
+    else
+    {
+        std::cerr << std::setw(PassStepWidth + TimeWidth) << "";
+    }
+    std::cerr << std::flush;
+}
+
+void DDisasmPipelineListener::notifyPassResult(AnalysisPassPhase Phase,
+                                               const AnalysisPassResult &Result)
 {
     printElapsedTime(Result.RunTime);
     if(!Result.Warnings.empty() || !Result.Errors.empty())
@@ -82,5 +121,25 @@ bool printPassResults(const AnalysisPassResult &Result)
     {
         std::exit(EXIT_FAILURE);
     }
-    return !Result.Warnings.empty();
+    if(!Result.Warnings.empty())
+    {
+        size_t PaddingMult;
+        switch(Phase)
+        {
+            case AnalysisPassPhase::LOAD:
+                PaddingMult = 1;
+                break;
+            case AnalysisPassPhase::ANALYZE:
+                PaddingMult = 2;
+                break;
+            case AnalysisPassPhase::TRANSFORM:
+                PaddingMult = 2;
+                break;
+        }
+
+        // Re-indent after emitting warnings
+        std::cerr << std::setw(IndentWidth + PassNameWidth
+                               + PaddingMult * (PassStepWidth + TimeWidth))
+                  << "";
+    }
 }

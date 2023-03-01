@@ -30,8 +30,9 @@
 #include <thread>
 #include <vector>
 
+#include "AnalysisPipeline.h"
 #include "AuxDataSchema.h"
-#include "PrintUtils.h"
+#include "CliDriver.h"
 #include "Version.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
@@ -159,80 +160,28 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    AnalysisPipeline Pipeline;
+    Pipeline.addListener(std::make_shared<DDisasmPipelineListener>());
+    Pipeline.push<SccPass>();
+    Pipeline.push<NoReturnPass>();
+    Pipeline.push<FunctionInferencePass>();
+
+    Pipeline.setDatalogThreadCount(vm["threads"].as<unsigned int>());
+
+    auto Modules = IR->modules();
+
     fs::path DebugDirRoot;
     if(vm.count("debug-dir"))
     {
+        unsigned int ModuleCount = std::distance(std::begin(Modules), std::end(Modules));
+        Pipeline.configureDebugDir(vm["debug-dir"].as<std::string>(), ModuleCount > 1);
         DebugDirRoot = vm["debug-dir"].as<std::string>();
     }
 
-    auto Modules = IR->modules();
-    unsigned int ModuleCount = std::distance(std::begin(Modules), std::end(Modules));
     for(auto &Module : Modules)
     {
         std::cerr << "Processing module: " << Module.getName() << "\n";
-        std::list<std::unique_ptr<AnalysisPass>> Pipeline;
-        Pipeline.push_back(std::make_unique<SccPass>());
-        Pipeline.push_back(std::make_unique<NoReturnPass>());
-        Pipeline.push_back(std::make_unique<FunctionInferencePass>());
-
-        for(auto &Pass : Pipeline)
-        {
-            std::cerr << std::setw(IndentWidth) << "" << std::left << std::setw(PassNameWidth)
-                      << Pass->getName();
-
-            if(!DebugDirRoot.empty())
-            {
-                fs::path PassDebugDir = DebugDirRoot;
-                if(ModuleCount > 1)
-                {
-                    PassDebugDir /= Module.getName();
-                }
-                Pass->setDebugRoot(PassDebugDir);
-            }
-
-            if(Pass->hasLoad())
-            {
-                std::cerr << std::right << std::setw(PassStepWidth) << "load " << std::flush;
-                if(printPassResults(Pass->load(Context, Module)))
-                {
-                    // warnings emitted - indent line appropriately
-                    std::cerr << std::setw(IndentWidth + PassNameWidth + PassStepWidth + TimeWidth)
-                              << "";
-                }
-            }
-            else
-            {
-                std::cerr << std::setw(PassStepWidth + TimeWidth) << "";
-            }
-            std::cerr << std::flush;
-
-            if(DatalogAnalysisPass *DatalogPass = dynamic_cast<DatalogAnalysisPass *>(Pass.get()))
-            {
-                // datalog-only configuration
-                DatalogPass->setThreadCount(vm["threads"].as<unsigned int>());
-            }
-
-            std::cerr << std::right << std::setw(PassStepWidth) << "compute " << std::flush;
-            printPassResults(Pass->analyze(Module));
-
-            if(Pass->hasTransform())
-            {
-                std::cerr << std::right << std::setw(PassStepWidth) << "transform " << std::flush;
-                if(printPassResults(Pass->transform(Context, Module)))
-                {
-                    // warnings emitted - indent line appropriately
-                    std::cerr << std::setw(IndentWidth + PassNameWidth
-                                           + 2 * (PassStepWidth + TimeWidth))
-                              << "";
-                }
-            }
-            else
-            {
-                std::cerr << std::setw(PassStepWidth + TimeWidth) << "";
-            }
-
-            std::cerr << "\n";
-        }
+        Pipeline.run(Context, Module);
     }
 
     // Output GTIRB

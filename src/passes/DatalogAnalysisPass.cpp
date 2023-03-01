@@ -33,10 +33,9 @@ namespace fs = boost::filesystem;
 
 AnalysisPassResult DatalogAnalysisPass::analyze(const gtirb::Module& Module)
 {
-    if(!DebugDir.empty())
+    if(!DebugDirRoot.empty())
     {
-        fs::create_directories(DebugDir);
-        DatalogIO::writeFacts(DebugDir.string() + "/", *Program);
+        DatalogIO::writeFacts(getDebugDir(Module) + "/", *Program);
     }
 
     if(ExecutionMode == DatalogExecutionMode::SYNTHESIZED)
@@ -46,9 +45,9 @@ AnalysisPassResult DatalogAnalysisPass::analyze(const gtirb::Module& Module)
 
     AnalysisPassResult Result = AnalysisPass::analyze(Module);
 
-    if(!DebugDir.empty())
+    if(!DebugDirRoot.empty())
     {
-        DatalogIO::writeRelations(DebugDir.string() + "/", *Program);
+        DatalogIO::writeRelations(getDebugDir(Module) + "/", *Program);
     }
 
     if(ExecutionMode == DatalogExecutionMode::SYNTHESIZED)
@@ -69,14 +68,14 @@ void DatalogAnalysisPass::analyzeImpl(AnalysisPassResult& Result, const gtirb::M
     if(ExecutionMode == DatalogExecutionMode::INTERPRETED)
     {
         // Disassemble with the interpreter engine.
-        runInterpreter(*Module.getIR(), Module, *Program, InterpreterPath, DebugDir.string(),
+        runInterpreter(*Module.getIR(), Module, *Program, InterpreterPath, getDebugDir(Module),
                        LibDir, ProfilePath, ThreadCount);
     }
     else
     {
         // Disassemble with the compiled, synthesized program.
         Program->setNumThreads(ThreadCount);
-        Program->setPruneImdtRels(!WriteSouffleOutputs && DebugDir.empty());
+        Program->setPruneImdtRels(!WriteSouffleOutputs && DebugDirRoot.empty());
         try
         {
             Program->run();

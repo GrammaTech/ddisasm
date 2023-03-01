@@ -396,10 +396,27 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_compile_options(ddisasm_datalog PRIVATE -fno-var-tracking-assignments)
 endif()
 
+# ====== ddisasm_pipeline ===========
+add_library(ddisasm_pipeline STATIC CliDriver.cpp Hints.cpp
+                                    AnalysisPipeline.cpp)
+
+if(SOUFFLE_INCLUDE_DIR)
+  target_include_directories(ddisasm_pipeline SYSTEM
+                             PRIVATE ${SOUFFLE_INCLUDE_DIR})
+endif()
+
+target_compile_definitions(ddisasm_pipeline PRIVATE __EMBEDDED_SOUFFLE__)
+target_compile_definitions(ddisasm_pipeline PRIVATE RAM_DOMAIN_SIZE=64)
+
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  set_common_msvc_options(ddisasm_pipeline)
+endif()
+
+target_link_libraries(ddisasm_pipeline PRIVATE gtirb gtirb_decoder)
+
 # ====== ddisasm ===========
 # Build final ddisasm executable
-add_executable(ddisasm Registration.cpp Main.cpp Functors.cpp PrintUtils.cpp
-                       Hints.cpp)
+add_executable(ddisasm Registration.cpp Main.cpp Functors.cpp)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   target_compile_options(ddisasm PRIVATE -Wno-unused-parameter)
@@ -484,6 +501,7 @@ endif()
 target_link_libraries(
   ddisasm
   PRIVATE ddisasm_datalog
+          ddisasm_pipeline
           gtirb
           gtirb_pprinter
           gtirb_builder
@@ -531,7 +549,7 @@ install(
 if(BUILD_FUNINFER)
   # ===== souffle_funinfer =====
 
-  add_executable(funinfer FunInfer.cpp PrintUtils.cpp)
+  add_executable(funinfer FunInfer.cpp)
 
   target_include_directories(
     funinfer PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
@@ -555,7 +573,8 @@ if(BUILD_FUNINFER)
 
   target_link_libraries(
     funinfer
-    PRIVATE gtirb
+    PRIVATE ddisasm_pipeline
+            gtirb
             gtirb_decoder
             generic_pass
             scc_pass

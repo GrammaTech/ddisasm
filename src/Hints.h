@@ -39,6 +39,8 @@ public:
 
     /**
     Inserts loaded hints into a souffle program
+
+    Has no effect if read() was never called.
     */
     void insert(souffle::SouffleProgram& Program, const std::string& Namespace);
 

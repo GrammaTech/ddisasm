@@ -1,4 +1,4 @@
-//===- PrintUtils.h ---------------------------------------------*- C++ -*-===//
+//===- CliDriver.h -----------------------------------------------*- C++ -*-===//
 //
 //  Copyright (C) 2023 GrammaTech, Inc.
 //
@@ -20,22 +20,30 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef _PRINT_UTILS_H_
-#define _PRINT_UTILS_H_
+#ifndef _CLI_DRIVER_H_
+#define _CLI_DRIVER_H_
 
 #include <chrono>
 #include <iomanip>
 
+#include "AnalysisPipeline.h"
 #include "passes/AnalysisPass.h"
-
-// Define CLI output field widths
-constexpr size_t IndentWidth = 4;
-constexpr size_t TimeWidth = 8;
-constexpr size_t PassNameWidth = 18;
-constexpr size_t PassStepWidth = 12;
 
 void printElapsedTime(std::chrono::duration<double> Elapsed);
 void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_clock> Start);
-bool printPassResults(const AnalysisPassResult &Result);
+bool printPassResults(const AnalysisPassResult& Result);
 
-#endif /* _PRINT_UTILS_H_ */
+class DDisasmPipelineListener : public AnalysisPipelineListener
+{
+public:
+    virtual ~DDisasmPipelineListener()
+    {
+    }
+
+    virtual void notifyPassBegin(const AnalysisPass& Pass);
+    virtual void notifyPassEnd(const AnalysisPass& Pass);
+    virtual void notifyPassPhase(AnalysisPassPhase Phase, bool HasPhase);
+    virtual void notifyPassResult(AnalysisPassPhase Phase, const AnalysisPassResult& Result);
+};
+
+#endif /* _CLI_DRIVER_H_ */

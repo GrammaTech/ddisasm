@@ -46,13 +46,11 @@ public:
     virtual AnalysisPassResult transform(gtirb::Context& Context, gtirb::Module& Module) override;
     virtual void clear() override;
 
-    void setInterpreterDir(const std::string& Path)
+    void configureSouffleInterpreter(const std::string& Path, const std::string& LibDir_)
     {
+        ExecutionMode = DatalogExecutionMode::INTERPRETED;
         InterpreterPath = (fs::path(Path) / getSourceFilename()).string();
-    }
-    void setLibDir(const std::string& Path)
-    {
-        LibDir = Path;
+        LibDir = LibDir_;
     }
     void setProfileDir(const std::string& Path)
     {
@@ -61,10 +59,6 @@ public:
     void setThreadCount(int J)
     {
         ThreadCount = J;
-    }
-    void setExecutionMode(DatalogExecutionMode Mode)
-    {
-        ExecutionMode = Mode;
     }
     void enableSouffleOutputs(bool Enable = true)
     {

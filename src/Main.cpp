@@ -45,9 +45,10 @@
 #include <gtirb_pprinter/PeBinaryPrinter.hpp>
 #include <gtirb_pprinter/PrettyPrinter.hpp>
 
+#include "AnalysisPipeline.h"
 #include "AuxDataSchema.h"
+#include "CliDriver.h"
 #include "Hints.h"
-#include "PrintUtils.h"
 #include "Registration.h"
 #include "Version.h"
 #include "gtirb-builder/GtirbBuilder.h"
@@ -85,20 +86,6 @@ static void setStdoutToBinary()
         assert(stdout && "Failed to reopen stdout");
 #endif
     }
-}
-
-std::set<std::string> pipelinePassSlugs(const std::list<std::unique_ptr<AnalysisPass>> &Pipeline)
-{
-    std::set<std::string> Slugs;
-    for(auto &Pass : Pipeline)
-    {
-        // only the datalog passes support hints
-        if(dynamic_cast<DatalogAnalysisPass *>(Pass.get()))
-        {
-            Slugs.insert(Pass->getNameSlug());
-        }
-    }
-    return Slugs;
 }
 
 bool isPEFormat(const gtirb::IR &IR)
@@ -246,129 +233,55 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    fs::path DebugDirRoot;
-    if(vm.count("debug-dir"))
+    AnalysisPipeline Pipeline;
+    Pipeline.addListener(std::make_shared<DDisasmPipelineListener>());
+    Pipeline.push<DisassemblyPass>(vm.count("self-diagnose") != 0, vm.count("ignore-errors") != 0,
+                                   vm.count("no-cfi-directives") != 0);
+
+    if(vm.count("skip-function-analysis") == 0)
     {
-        DebugDirRoot = vm["debug-dir"].as<std::string>();
+        Pipeline.push<SccPass>();
+        Pipeline.push<NoReturnPass>();
+        Pipeline.push<FunctionInferencePass>();
     }
 
+    Pipeline.setDatalogThreadCount(vm["threads"].as<unsigned int>());
     if(!ProfileDir.empty())
     {
         fs::create_directories(ProfileDir);
-    }
-
-    std::list<std::unique_ptr<AnalysisPass>> Pipeline;
-    Pipeline.push_back(std::make_unique<DisassemblyPass>(vm.count("self-diagnose") != 0,
-                                                         vm.count("ignore-errors") != 0,
-                                                         vm.count("no-cfi-directives") != 0));
-    if(vm.count("skip-function-analysis") == 0)
-    {
-        Pipeline.push_back(std::make_unique<SccPass>());
-        Pipeline.push_back(std::make_unique<NoReturnPass>());
-        Pipeline.push_back(std::make_unique<FunctionInferencePass>());
-    }
-
-    // TODO: currently, hints files have no support for static archives containing multiple modules;
-    // all hints are used when processing each module, which is most likely not desirable.
-    HintsLoader DatalogHints;
-    if(vm.count("hints"))
-    {
-        DatalogHints.read(vm["hints"].as<std::string>(), pipelinePassSlugs(Pipeline));
+        Pipeline.setDatalogProfileDir(ProfileDir);
     }
 
     auto Modules = GTIRB->IR->modules();
     unsigned int ModuleCount = std::distance(std::begin(Modules), std::end(Modules));
+    if(vm.count("debug-dir"))
+    {
+        Pipeline.configureDebugDir(vm["debug-dir"].as<std::string>(), ModuleCount > 1);
+    }
+
+    if(vm.count("interpreter"))
+    {
+        Pipeline.configureSouffleInterpreter(
+            vm["interpreter"].as<std::string>(),
+            vm.count("library-dir") ? vm["library-dir"].as<std::string>() : std::string());
+    }
+
+    // TODO: currently, hints files have no support for static archives containing multiple modules;
+    // all hints are used when processing each module, which is most likely not desirable.
+    if(vm.count("hints"))
+    {
+        Pipeline.loadHints(vm["hints"].as<std::string>());
+    }
+
+    if(vm.count("with-souffle-relations"))
+    {
+        Pipeline.enableSouffleOutputs();
+    }
+
     for(auto &Module : Modules)
     {
         std::cerr << "Processing module: " << Module.getName() << "\n";
-        AnalysisPass *PreviousPass = nullptr;
-        for(auto &Pass : Pipeline)
-        {
-            std::cerr << std::setw(IndentWidth) << "" << std::left << std::setw(PassNameWidth)
-                      << Pass->getName();
-
-            if(!DebugDirRoot.empty())
-            {
-                fs::path PassDebugDir = DebugDirRoot;
-                if(ModuleCount > 1)
-                {
-                    PassDebugDir /= Module.getName();
-                }
-                Pass->setDebugRoot(PassDebugDir);
-            }
-
-            if(Pass->hasLoad())
-            {
-                std::cerr << std::right << std::setw(PassStepWidth) << "load " << std::flush;
-                if(printPassResults(Pass->load(*GTIRB->Context, Module, PreviousPass)))
-                {
-                    // warnings emitted - indent line appropriately
-                    std::cerr << std::setw(IndentWidth + PassNameWidth + PassStepWidth + TimeWidth)
-                              << "";
-                }
-            }
-            else
-            {
-                std::cerr << std::setw(PassStepWidth + TimeWidth) << "";
-            }
-            std::cerr << std::flush;
-
-            // Clear previous pass data
-            if(PreviousPass != nullptr)
-            {
-                PreviousPass->clear();
-            }
-
-            if(DatalogAnalysisPass *DatalogPass = dynamic_cast<DatalogAnalysisPass *>(Pass.get()))
-            {
-                // datalog-only configuration
-                DatalogPass->setThreadCount(vm["threads"].as<unsigned int>());
-
-                if(!ProfileDir.empty())
-                {
-                    DatalogPass->setProfileDir(ProfileDir);
-                }
-
-                if(vm.count("interpreter"))
-                {
-                    // Disassemble with the interpeter engine.
-                    DatalogPass->setExecutionMode(DatalogExecutionMode::INTERPRETED);
-                    DatalogPass->setInterpreterDir(vm["interpreter"].as<std::string>());
-                    DatalogPass->setLibDir(vm.count("library-dir")
-                                               ? vm["library-dir"].as<std::string>()
-                                               : std::string());
-                }
-
-                if(vm.count("with-souffle-relations"))
-                {
-                    DatalogPass->enableSouffleOutputs();
-                }
-
-                DatalogHints.insert(DatalogPass->getProgram(), DatalogPass->getNameSlug());
-            }
-
-            std::cerr << std::right << std::setw(PassStepWidth) << "compute " << std::flush;
-            printPassResults(Pass->analyze(Module));
-
-            if(Pass->hasTransform())
-            {
-                std::cerr << std::right << std::setw(PassStepWidth) << "transform " << std::flush;
-                if(printPassResults(Pass->transform(*GTIRB->Context, Module)))
-                {
-                    // warnings emitted - indent line appropriately
-                    std::cerr << std::setw(IndentWidth + PassNameWidth
-                                           + 2 * (PassStepWidth + TimeWidth))
-                              << "";
-                }
-            }
-            else
-            {
-                std::cerr << std::setw(PassStepWidth + TimeWidth) << "";
-            }
-
-            std::cerr << "\n";
-            PreviousPass = Pass.get();
-        }
+        Pipeline.run(*GTIRB->Context, Module);
 
         // Remove provisional AuxData tables.
         Module.removeAuxData<gtirb::schema::Relocations>();

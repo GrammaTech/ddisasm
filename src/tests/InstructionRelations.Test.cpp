@@ -68,7 +68,7 @@ void runSouffle(GTIRB &Gtirb)
     fs::create_directories(DebugDir);
     std::string DebugDirPath(DebugDir.string() + "/");
 
-    Gtirb.Disassembler.setDebugRoot(DebugDirPath);
+    Gtirb.Disassembler.configureDebugDir(DebugDirPath, false);
 
     Gtirb.Disassembler.load(*Gtirb.Context, *Gtirb.Module);
     Gtirb.Disassembler.analyze(*Gtirb.Module);
