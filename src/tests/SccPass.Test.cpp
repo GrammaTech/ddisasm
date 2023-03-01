@@ -2,6 +2,7 @@
 
 #include <gtirb/gtirb.hpp>
 
+#include "../AnalysisPipeline.h"
 #include "../AuxDataSchema.h"
 #include "../passes/SccPass.h"
 
@@ -27,10 +28,9 @@ TEST(Unit_SccPass, loop)
     Cfg[*addEdge(B2, B3, Cfg)] = SimpleFallthrough;
     Cfg[*addEdge(B3, B2, Cfg)] = SimpleJump;
 
-    SccPass Scc = SccPass();
-    Scc.load(Ctx, *M);
-    Scc.analyze(*M);
-    Scc.transform(Ctx, *M);
+    AnalysisPipeline Pipeline;
+    Pipeline.push<SccPass>();
+    Pipeline.run(Ctx, *M);
 
     auto* SccTable = M->getAuxData<gtirb::schema::Sccs>();
     EXPECT_NE(SccTable->find(B1->getUUID())->second, SccTable->find(B2->getUUID())->second);
@@ -64,10 +64,9 @@ TEST(Unit_SccPass, recursion)
     Cfg[*addEdge(B3, B2, Cfg)] = SimpleCall;
     Cfg[*addEdge(B2, B1, Cfg)] = SimpleReturn;
 
-    SccPass Scc = SccPass();
-    Scc.load(Ctx, *M);
-    Scc.analyze(*M);
-    Scc.transform(Ctx, *M);
+    AnalysisPipeline Pipeline;
+    Pipeline.push<SccPass>();
+    Pipeline.run(Ctx, *M);
 
     auto* SccTable = M->getAuxData<gtirb::schema::Sccs>();
     // call  and return edges are ignored
@@ -97,10 +96,9 @@ TEST(Unit_SccPass, nested_loop)
     Cfg[*addEdge(B2, B3, Cfg)] = SimpleJump;
     Cfg[*addEdge(B3, B1, Cfg)] = SimpleJump;
 
-    SccPass Scc = SccPass();
-    Scc.load(Ctx, *M);
-    Scc.analyze(*M);
-    Scc.transform(Ctx, *M);
+    AnalysisPipeline Pipeline;
+    Pipeline.push<SccPass>();
+    Pipeline.run(Ctx, *M);
 
     auto* SccTable = M->getAuxData<gtirb::schema::Sccs>();
     // call  and return edges are ignored
@@ -141,10 +139,9 @@ TEST(Unit_SccPass, loops_and_call)
     Cfg[*addEdge(B3, B4, Cfg)] = SimpleFallthrough;
     Cfg[*addEdge(B4, B3, Cfg)] = SimpleJump;
 
-    SccPass Scc = SccPass();
-    Scc.load(Ctx, *M);
-    Scc.analyze(*M);
-    Scc.transform(Ctx, *M);
+    AnalysisPipeline Pipeline;
+    Pipeline.push<SccPass>();
+    Pipeline.run(Ctx, *M);
 
     auto* SccTable = M->getAuxData<gtirb::schema::Sccs>();
     // call  and return edges are ignored

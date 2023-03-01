@@ -3,6 +3,7 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <gtirb/gtirb.hpp>
 
+#include "../AnalysisPipeline.h"
 #include "../passes/NoReturnPass.h"
 #include "../passes/SccPass.h"
 
@@ -74,15 +75,10 @@ TEST(Unit_NoReturnPass, remove_simple_fallthrough)
     Cfg[*addEdge(B1, ExternalBlock, Cfg)] = simpleCall();
     Cfg[*addEdge(B2, TopBlock, Cfg)] = simpleReturn();
 
-    SccPass Scc = SccPass();
-    Scc.load(Ctx, *M);
-    Scc.analyze(*M);
-    Scc.transform(Ctx, *M);
-
-    NoReturnPass NoReturn = NoReturnPass();
-    NoReturn.load(Ctx, *M);
-    NoReturn.analyze(*M);
-    NoReturn.transform(Ctx, *M);
+    AnalysisPipeline Pipeline;
+    Pipeline.push<SccPass>();
+    Pipeline.push<NoReturnPass>();
+    Pipeline.run(Ctx, *M);
 
     // B1, which does not return, should not fall through.
     EXPECT_FALSE(edgeIn(Cfg, B1, B2));
@@ -140,15 +136,10 @@ TEST(Unit_NoReturnPass, one_path_returns)
 
     EXPECT_EQ(9, Cfg.m_edges.size());
 
-    SccPass Scc = SccPass();
-    Scc.load(Ctx, *M);
-    Scc.analyze(*M);
-    Scc.transform(Ctx, *M);
-
-    NoReturnPass NoReturn = NoReturnPass();
-    NoReturn.load(Ctx, *M);
-    NoReturn.analyze(*M);
-    NoReturn.transform(Ctx, *M);
+    AnalysisPipeline Pipeline;
+    Pipeline.push<SccPass>();
+    Pipeline.push<NoReturnPass>();
+    Pipeline.run(Ctx, *M);
 
     // B3, which does not return, should not fall through.
     EXPECT_FALSE(edgeIn(Cfg, B3, B4));
@@ -211,15 +202,10 @@ TEST(Unit_NoReturnPass, two_paths_no_return)
 
     EXPECT_EQ(11, Cfg.m_edges.size());
 
-    SccPass Scc = SccPass();
-    Scc.load(Ctx, *M);
-    Scc.analyze(*M);
-    Scc.transform(Ctx, *M);
-
-    NoReturnPass NoReturn = NoReturnPass();
-    NoReturn.load(Ctx, *M);
-    NoReturn.analyze(*M);
-    NoReturn.transform(Ctx, *M);
+    AnalysisPipeline Pipeline;
+    Pipeline.push<SccPass>();
+    Pipeline.push<NoReturnPass>();
+    Pipeline.run(Ctx, *M);
 
     // No-return blocks should not fallthrough
     EXPECT_FALSE(edgeIn(Cfg, B3, B4));
@@ -280,15 +266,10 @@ TEST(Unit_NoReturnPass, loop_no_return)
 
     EXPECT_EQ(9, Cfg.m_edges.size());
 
-    SccPass Scc = SccPass();
-    Scc.load(Ctx, *M);
-    Scc.analyze(*M);
-    Scc.transform(Ctx, *M);
-
-    NoReturnPass NoReturn = NoReturnPass();
-    NoReturn.load(Ctx, *M);
-    NoReturn.analyze(*M);
-    NoReturn.transform(Ctx, *M);
+    AnalysisPipeline Pipeline;
+    Pipeline.push<SccPass>();
+    Pipeline.push<NoReturnPass>();
+    Pipeline.run(Ctx, *M);
 
     // No-return blocks should not fallthough.
     EXPECT_FALSE(edgeIn(Cfg, B4, B5));

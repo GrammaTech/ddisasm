@@ -29,6 +29,7 @@ target_link_libraries(
   ${Boost_LIBRARIES}
   gtest
   gtest_main
+  ddisasm_pipeline
   gtirb
   gtirb_builder
   gtirb_decoder
