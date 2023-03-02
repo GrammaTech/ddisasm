@@ -218,7 +218,7 @@ conan-gcc9-release-publish:
     - python -m pip install pip --upgrade && python -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
-    - python .ci/run_conan.py build -s build_type=$BUILD_TYPE
+    - python .ci/run_conan.py build $CONAN_OPTIONS -s build_type=$BUILD_TYPE
 
 .conan-windows-publish-template: &conan-windows-publish-template
   stage: deploy
@@ -277,6 +277,7 @@ conan-gcc9-release-publish:
 conan-windows-debug:
   variables:
     BUILD_TYPE: Debug
+    CONAN_OPTIONS: -o run_tests=False
   rules:
     *run-only-main
   <<: *conan-windows-template

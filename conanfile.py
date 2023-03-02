@@ -73,6 +73,7 @@ class DdisasmConan(Properties, ConanFile):
     author = "GrammaTech Inc."
     generators = "cmake"
     settings = ("os", "compiler", "build_type", "arch")
+    options = {"run_tests": [True, False, None]}
 
     lief_version = "0.12.3"
     libehp_version = "0.1.1-gt3"
@@ -102,7 +103,7 @@ class DdisasmConan(Properties, ConanFile):
     def imports(self):
         self.copy("*.dll", "bin", "bin")
 
-    def configure(self):
+    def validate(self):
         if (
             self.settings.compiler == "gcc"
             and self.settings.compiler.libcxx != "libstdc++11"
@@ -175,12 +176,16 @@ class DdisasmConan(Properties, ConanFile):
         cmake.configure(source_folder=".", defs=defs)
         cmake.build()
 
+        run_tests = (
+            self.options.run_tests or self.options.run_tests == None
+        )  # noqa: E711
+
         # Using the CMAKE_CTEST_ARGUMENTS environment variable to pass args to
         # ctest would allow us to use `cmake.test()` and `--verbose`, but it
         # is new in CMake 3.17 (newer than what is available in our Windows
         # test runner). As a workaround, we run ctest directly.
         # https://cmake.org/cmake/help/latest/variable/CMAKE_CTEST_ARGUMENTS.html#cmake-ctest-arguments
-        if self.settings.build_type == "Release":
+        if run_tests:
             with tools.vcvars(self.settings, arch="x86_64"):
                 self.run(["ctest", "--verbose"], cwd=cmake.build_folder)
             # FIXME: https://github.com/conan-io/conan/issues/3673
