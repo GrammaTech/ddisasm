@@ -33,20 +33,6 @@
 
 namespace DatalogIO
 {
-    template <typename T>
-    void insert(souffle::SouffleProgram& Program, const std::string& Name, const T& Data)
-    {
-        if(auto* Relation = Program.getRelation(Name))
-        {
-            for(const auto& Element : Data)
-            {
-                souffle::tuple Row(Relation);
-                Row << Element;
-                Relation->insert(Row);
-            }
-        }
-    }
-
     void serializeRecord(std::ostream& Stream, souffle::SouffleProgram& Program,
                          const std::string& AttrType, souffle::RamDomain RecordId);
     void serializeAttribute(std::ostream& Stream, souffle::SouffleProgram& Program,

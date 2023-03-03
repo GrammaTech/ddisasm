@@ -25,6 +25,7 @@
 
 #include "../../AuxDataSchema.h"
 #include "../../Endian.h"
+#include "../Relations.h"
 
 void ElfDynamicEntryLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
@@ -39,7 +40,7 @@ void ElfDynamicEntryLoader(const gtirb::Module &Module, souffle::SouffleProgram 
         }
     }
 
-    DatalogIO::insert(Program, "dynamic_entry", std::move(DynamicEntries));
+    relations::insert(Program, "dynamic_entry", std::move(DynamicEntries));
 }
 
 void ElfSymbolLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program)
@@ -103,11 +104,11 @@ void ElfSymbolLoader(const gtirb::Module &Module, souffle::SouffleProgram &Progr
         }
     }
 
-    DatalogIO::insert(Program, "symbol", std::move(Symbols));
+    relations::insert(Program, "symbol", std::move(Symbols));
 
     if(auto *Relocations = Module.getAuxData<gtirb::schema::Relocations>())
     {
-        DatalogIO::insert(Program, "relocation", *Relocations);
+        relations::insert(Program, "relocation", *Relocations);
     }
 }
 
@@ -436,7 +437,7 @@ void ElfArchInfoLoader(const gtirb::Module &Module, souffle::SouffleProgram &Pro
         }
     }
 
-    DatalogIO::insert(Program, "arch_info", std::move(ArchInfo));
+    relations::insert(Program, "arch_info", std::move(ArchInfo));
 }
 
 /**

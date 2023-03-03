@@ -23,16 +23,12 @@
 #ifndef SRC_GTIRB_DECODER_CORE_AUXDATALOADER_H_
 #define SRC_GTIRB_DECODER_CORE_AUXDATALOADER_H_
 
-#include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 
 #include <gtirb/gtirb.hpp>
 #include <string>
 #include <tuple>
 #include <utility>
-
-#include "../DatalogIO.h"
-#include "../Relations.h"
 
 // Load strongly connected component facts.
 void SccLoader(const gtirb::Module& M, souffle::SouffleProgram& P);

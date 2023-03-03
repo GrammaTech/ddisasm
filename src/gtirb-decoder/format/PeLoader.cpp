@@ -26,17 +26,17 @@ void PeSymbolLoader(const gtirb::Module &Module, souffle::SouffleProgram &Progra
 {
     if(auto *ExportEntries = Module.getAuxData<gtirb::schema::ExportEntries>())
     {
-        DatalogIO::insert(Program, "pe_export_entry", *ExportEntries);
+        relations::insert(Program, "pe_export_entry", *ExportEntries);
     }
 
     if(auto *ImportEntries = Module.getAuxData<gtirb::schema::ImportEntries>())
     {
-        DatalogIO::insert(Program, "pe_import_entry", *ImportEntries);
+        relations::insert(Program, "pe_import_entry", *ImportEntries);
     }
 
     if(auto *Relocations = Module.getAuxData<gtirb::schema::Relocations>())
     {
-        DatalogIO::insert(Program, "relocation", *Relocations);
+        relations::insert(Program, "relocation", *Relocations);
     }
 }
 
@@ -44,12 +44,12 @@ void PeDataDirectoryLoader(const gtirb::Module &Module, souffle::SouffleProgram 
 {
     if(auto *DataDirectories = Module.getAuxData<gtirb::schema::PeDataDirectories>())
     {
-        DatalogIO::insert(Program, "pe_data_directory", *DataDirectories);
+        relations::insert(Program, "pe_data_directory", *DataDirectories);
     }
 
     if(auto *DebugData = Module.getAuxData<gtirb::schema::PeDebugData>())
     {
-        DatalogIO::insert(Program, "pe_debug_data", *DebugData);
+        relations::insert(Program, "pe_debug_data", *DebugData);
     }
 
     if(auto *LoadConfig = Module.getAuxData<gtirb::schema::PeLoadConfig>())

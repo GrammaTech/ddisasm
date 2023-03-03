@@ -23,6 +23,7 @@
 #include "SymbolicExpressionLoader.h"
 
 #include "../../AuxDataSchema.h"
+#include "../Relations.h"
 
 void SymbolicExpressionLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
@@ -55,6 +56,6 @@ void SymbolicExpressionLoader(const gtirb::Module& Module, souffle::SouffleProgr
         }
     }
 
-    DatalogIO::insert(Program, "symbolic_expression", std::move(SymbolicExpressions));
-    DatalogIO::insert(Program, "symbol_minus_symbol", std::move(SymbolMinusSymbols));
+    relations::insert(Program, "symbolic_expression", std::move(SymbolicExpressions));
+    relations::insert(Program, "symbol_minus_symbol", std::move(SymbolMinusSymbols));
 }

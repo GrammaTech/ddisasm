@@ -23,6 +23,7 @@
 #include "SectionLoader.h"
 
 #include "../../AuxDataSchema.h"
+#include "../Relations.h"
 
 void SectionLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
@@ -123,7 +124,7 @@ void SectionLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program
             {Section.getName(), *Section.getSize(), *Section.getAddress(), Align, Index});
     }
 
-    DatalogIO::insert(Program, "section", std::move(Sections));
-    DatalogIO::insert(Program, "section_property", std::move(SectionProperty));
-    DatalogIO::insert(Program, "section_type", std::move(SectionType));
+    relations::insert(Program, "section", std::move(Sections));
+    relations::insert(Program, "section_property", std::move(SectionProperty));
+    relations::insert(Program, "section_type", std::move(SectionType));
 }

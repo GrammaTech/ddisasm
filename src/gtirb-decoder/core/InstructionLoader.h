@@ -23,11 +23,11 @@
 #ifndef SRC_GTIRB_DECODER_CORE_INSTRUCTIONLOADER_H_
 #define SRC_GTIRB_DECODER_CORE_INSTRUCTIONLOADER_H_
 #include <capstone/capstone.h>
+#include <souffle/SouffleInterface.h>
 
 #include <gtirb/gtirb.hpp>
 #include <vector>
 
-#include "../DatalogIO.h"
 #include "../Relations.h"
 
 class OperandFacts

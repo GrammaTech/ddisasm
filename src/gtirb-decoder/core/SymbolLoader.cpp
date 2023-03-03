@@ -22,6 +22,8 @@
 //===----------------------------------------------------------------------===//
 #include "SymbolLoader.h"
 
+#include "../Relations.h"
+
 void SymbolLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
     std::vector<relations::Symbol> Symbols;
@@ -33,5 +35,5 @@ void SymbolLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
         Symbols.push_back({Addr, 0, "NOTYPE", "GLOBAL", "DEFAULT", 0, Name});
     }
 
-    DatalogIO::insert(Program, "symbol", std::move(Symbols));
+    relations::insert(Program, "symbol", std::move(Symbols));
 }

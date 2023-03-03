@@ -23,6 +23,7 @@
 #include "AuxDataLoader.h"
 
 #include "../../AuxDataSchema.h"
+#include "../Relations.h"
 
 void PaddingLoader::operator()(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
@@ -43,7 +44,7 @@ void PaddingLoader::operator()(const gtirb::Module& Module, souffle::SouffleProg
         }
     }
 
-    DatalogIO::insert(Program, "padding", std::move(PaddingBlocks));
+    relations::insert(Program, "padding", std::move(PaddingBlocks));
 }
 
 void FdeEntriesLoader::operator()(const gtirb::Module& Module, souffle::SouffleProgram& Program)
@@ -87,7 +88,7 @@ void FdeEntriesLoader::operator()(const gtirb::Module& Module, souffle::SouffleP
         FdeAddresses.push_back({*StartIt, *EndIt});
     }
 
-    DatalogIO::insert(Program, "fde_addresses", std::move(FdeAddresses));
+    relations::insert(Program, "fde_addresses", std::move(FdeAddresses));
 }
 
 void FunctionEntriesLoader::operator()(const gtirb::Module& Module,
@@ -110,7 +111,7 @@ void FunctionEntriesLoader::operator()(const gtirb::Module& Module,
         }
     }
 
-    DatalogIO::insert(Program, "function_entry", std::move(Functions));
+    relations::insert(Program, "function_entry", std::move(Functions));
 }
 
 void SccLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
@@ -136,5 +137,5 @@ void SccLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
         InScc.push_back({SccIndex, SccBlockIndex[SccIndex]++, *Block.getAddress()});
     }
 
-    DatalogIO::insert(Program, "in_scc", std::move(InScc));
+    relations::insert(Program, "in_scc", std::move(InScc));
 }

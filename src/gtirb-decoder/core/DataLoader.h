@@ -26,7 +26,6 @@
 #include <gtirb/gtirb.hpp>
 #include <vector>
 
-#include "../DatalogIO.h"
 #include "../Relations.h"
 
 struct DataFacts

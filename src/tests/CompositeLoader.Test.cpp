@@ -30,14 +30,14 @@ public:
     void operator()(const gtirb::Module& Module, souffle::SouffleProgram& Program)
     {
         auto Tuples = {relations::SccIndex{0, 0, gtirb::Addr(0)}};
-        DatalogIO::insert(Program, "in_scc", Tuples);
+        relations::insert(Program, "in_scc", Tuples);
     }
 };
 
 void TestLoaderFunction(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
     auto Tuples = {relations::SccIndex{1, 1, gtirb::Addr(1)}};
-    DatalogIO::insert(Program, "in_scc", Tuples);
+    relations::insert(Program, "in_scc", Tuples);
 }
 
 TEST_P(CompositeLoaderTest, build_test_loader)

@@ -31,8 +31,8 @@ void DataLoader::operator()(const gtirb::Module& Module, souffle::SouffleProgram
     DataFacts Facts;
     load(Module, Facts);
 
-    DatalogIO::insert(Program, "address_in_data", std::move(Facts.Addresses));
-    DatalogIO::insert(Program, "ascii_string", std::move(Facts.Ascii));
+    relations::insert(Program, "address_in_data", std::move(Facts.Addresses));
+    relations::insert(Program, "ascii_string", std::move(Facts.Ascii));
 }
 
 void DataLoader::load(const gtirb::Module& Module, DataFacts& Facts)

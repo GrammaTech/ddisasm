@@ -23,10 +23,9 @@
 #ifndef SRC_GTIRB_DECODER_CORE_MODULELOADER_H_
 #define SRC_GTIRB_DECODER_CORE_MODULELOADER_H_
 
-#include <gtirb/gtirb.hpp>
+#include <souffle/SouffleInterface.h>
 
-#include "../DatalogIO.h"
-#include "../Relations.h"
+#include <gtirb/gtirb.hpp>
 
 // Load binary format information: architecture, file format, entry point, etc.
 void ModuleLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program);

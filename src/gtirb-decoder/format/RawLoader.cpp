@@ -25,6 +25,7 @@
 #include "RawLoader.h"
 
 #include "../../AuxDataSchema.h"
+#include "../Relations.h"
 
 void RawEntryLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
@@ -36,5 +37,5 @@ void RawEntryLoader(const gtirb::Module &Module, souffle::SouffleProgram &Progra
             Entries.push_back(gtirb::Addr(EA));
         }
     }
-    DatalogIO::insert(Program, "entry_point", std::move(Entries));
+    relations::insert(Program, "entry_point", std::move(Entries));
 }

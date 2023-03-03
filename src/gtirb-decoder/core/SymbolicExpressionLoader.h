@@ -23,10 +23,9 @@
 #ifndef SRC_GTIRB_DECODER_CORE_SYMBOLICEXPRESSIONLOADER_H_
 #define SRC_GTIRB_DECODER_CORE_SYMBOLICEXPRESSIONLOADER_H_
 
-#include <gtirb/gtirb.hpp>
+#include <souffle/SouffleInterface.h>
 
-#include "../DatalogIO.h"
-#include "../Relations.h"
+#include <gtirb/gtirb.hpp>
 
 void SymbolicExpressionLoader(const gtirb::Module& M, souffle::SouffleProgram& P);
 

@@ -23,6 +23,7 @@
 #include "EdgesLoader.h"
 
 #include "../../AuxDataSchema.h"
+#include "../Relations.h"
 
 void BlocksLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
@@ -50,8 +51,8 @@ void BlocksLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
         PrevBlockAddr = BlockAddr;
     }
 
-    DatalogIO::insert(Program, "block", std::move(Blocks));
-    DatalogIO::insert(Program, "next_block", std::move(NextBlocks));
+    relations::insert(Program, "block", std::move(Blocks));
+    relations::insert(Program, "next_block", std::move(NextBlocks));
 }
 
 std::tuple<std::string, std::string, std::string> edgeProperties(const gtirb::EdgeLabel& Label)
@@ -148,7 +149,7 @@ void CfgLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
         }
     }
 
-    DatalogIO::insert(Program, "cfg_edge", std::move(Edges));
-    DatalogIO::insert(Program, "cfg_edge_to_top", std::move(TopEdges));
-    DatalogIO::insert(Program, "cfg_edge_to_symbol", std::move(SymbolEdges));
+    relations::insert(Program, "cfg_edge", std::move(Edges));
+    relations::insert(Program, "cfg_edge_to_top", std::move(TopEdges));
+    relations::insert(Program, "cfg_edge_to_symbol", std::move(SymbolEdges));
 }

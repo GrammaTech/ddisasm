@@ -23,10 +23,11 @@
 #ifndef SRC_GTIRB_DECODER_FORMAT_ELFLOADER_H_
 #define SRC_GTIRB_DECODER_FORMAT_ELFLOADER_H_
 
+#include <souffle/SouffleInterface.h>
+
 #include <string>
 
 #include "../CompositeLoader.h"
-#include "../Relations.h"
 #include "ehp.hpp"
 
 void ElfDynamicEntryLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program);

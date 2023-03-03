@@ -23,6 +23,7 @@
 #include "DisassemblyPass.h"
 
 #include "../gtirb-decoder/CompositeLoader.h"
+#include "../gtirb-decoder/Relations.h"
 #include "../gtirb-decoder/core/ModuleLoader.h"
 #include "Disassembler.h"
 
@@ -63,7 +64,7 @@ void DisassemblyPass::loadImpl(AnalysisPassResult& Result, const gtirb::Context&
     {
         std::vector<std::string> Options;
         Options.push_back("no-cfi-directives");
-        DatalogIO::insert(*Program, "option", Options);
+        relations::insert(*Program, "option", Options);
     }
 }
 
