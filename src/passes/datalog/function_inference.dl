@@ -67,6 +67,7 @@ This is designed to be used with tbdisasm trace GTIRB inputs to funifer.
 
 .decl symbolic_expression(Address:address,Symbol:address,Offset:number)
 .input symbolic_expression
+.output symbolic_expression
 
 .decl symbol_minus_symbol(Address:address,Symbol1:address,Symbol2:address,Offset:number)
 .input symbol_minus_symbol
