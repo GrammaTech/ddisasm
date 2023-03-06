@@ -71,10 +71,22 @@ Attributes:
 .decl jump_table_candidate_refined(EA:address,DataEA:address,TargetEA:address)
 
 jump_table_candidate_refined(EA,EntryAddr,TargetAddr):-
-    jump_table_candidate(EA,EntryAddr,EntrySize,TargetAddr),
+    jump_table_candidate(EA,_,_,_),
     code(EA),
+    EntryAddr = min EntryAddr : {
+        jump_table_candidate(EA,EntryAddr,_,_)
+    },
+    jump_table_candidate(EA,EntryAddr,EntrySize,TargetAddr),
     code(TargetAddr),
     !invalid_jump_table_candidate(EntryAddr,EntrySize).
+
+jump_table_candidate_refined(EA,NextEntryAddr,TargetAddr):-
+    jump_table_candidate_refined(EA,EntryAddr,_),
+    jump_table_candidate(EA,EntryAddr,EntrySize,_),
+    NextEntryAddr = EntryAddr + EntrySize,
+    jump_table_candidate(EA,NextEntryAddr,EntrySize,TargetAddr),
+    code(TargetAddr),
+    !invalid_jump_table_candidate(NextEntryAddr,EntrySize).
 
 /**
 CFG edges formed by jump tables using the best available information during
