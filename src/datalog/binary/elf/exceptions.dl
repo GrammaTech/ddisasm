@@ -160,7 +160,7 @@ code as follows:
 .text
 .align 16
 __restore_rt:
-   	movl $15, %rax
+    movl $15, %rax
     syscall
 */
 .decl misalinged_fde_start(start:address,start_adjusted:address)
