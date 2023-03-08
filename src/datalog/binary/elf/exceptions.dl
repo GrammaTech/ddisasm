@@ -152,22 +152,56 @@ personality (.cfi_lsda and .cfi_personality respectively).
 fde_addresses(Start,End):-
     fde_entry(_,_,_,Start,End,_).
 
+/**
+FDE start points can on ocasion be misaligned with the actual start
+of the function. This has been seen on glibc restore_rt which generates
+code as follows:
+
+.text
+.align 16
+__restore_rt:
+   	movl $15, %rax
+    syscall
+*/
+.decl misalinged_fde_start(start:address,start_adjusted:address)
+.output misalinged_fde_start
+
+misalinged_fde_start(Start,StartAligned):-
+    fde_addresses(Start,End),
+    (
+        StartAligned = @functor_aligned(Start,8)
+        ;
+        StartAligned = @functor_aligned(Start,16)
+    ),
+    StartAligned > Start,
+    function_symbol(StartAligned,_),
+    StartAligned < End.
+
 // The fde addresses restricted to existing blocks
 .decl fde_block_addresses(FdeAddr:address,StartAddr:address,EndAddr:address)
 
-fde_block_addresses(FdeAddr,Start,EndAddr):-
+fde_block_addresses(FdeAddr,StartAdjusted,EndAddrAdjusted):-
     fde_entry(FdeAddr,_,_,Start,EndAddr,_),
-    refined_block(Start),
-    block_information(_,_,_,EndAddr).
+    (
+        refined_block(Start),
+        StartAdjusted = Start
+        ;
+        // adjust start point if necessary
+        !refined_block(Start),
+        misalinged_fde_start(Start,StartAdjusted),
+        refined_block(StartAdjusted)
+    ),
+    (
+        block_information(_,_,_,EndAddr),
+        EndAddrAdjusted = EndAddr
+        ;
+        // adjust endpoint if necessary
+        !block_information(_,_,_,EndAddr),
+        after_end(EndAddr,End),
+        refined_block_last_instruction(Block,End),
+        block_information(Block,_,_,EndAddrAdjusted)
+    ).
 
-fde_block_addresses(FdeAddr,Start,EndBlock):-
-    fde_entry(FdeAddr,_,_,Start,EndAddr,_),
-    refined_block(Start),
-    // this case moves the end address to the end of the last block
-    !block_information(_,_,_,EndAddr),
-    after_end(EndAddr,End),
-    refined_block_last_instruction(Block,End),
-    block_information(Block,_,_,EndBlock).
 
 .decl lsda_callsite_addresses(Start:address,End:address,LandingPad:address)
 
@@ -468,8 +502,8 @@ cfi_directive(Block,BlockSize,LastLocalIndex,".cfi_endproc","",0,0,0):-
 // only generate other directives if the block range was generated
 cfi_directive(StartFunction,0,1,".cfi_lsda",LsdaSymbol,1,Encoding,0):-
     !option("no-cfi-directives"),
-    fde_entry(FdeAddr,_,Cie,StartFunction,_,Lsda),
-    fde_block_addresses(FdeAddr,_,_),
+    fde_entry(FdeAddr,_,Cie,_,_,Lsda),
+    fde_block_addresses(FdeAddr,StartFunction,_),
     cie_encoding(Cie,_,LsdaEncoding),
     (
         Lsda != 0, Encoding = as(LsdaEncoding,number),
@@ -482,8 +516,8 @@ cfi_directive(StartFunction,0,1,".cfi_lsda",LsdaSymbol,1,Encoding,0):-
 
 cfi_directive(StartFunction,0,2,".cfi_personality",PersonalitySymbol,1,Encoding,0):-
     !option("no-cfi-directives"),
-    fde_entry(FdeAddr,_,Cie,StartFunction,_,_),
-    fde_block_addresses(FdeAddr,_,_),
+    fde_entry(FdeAddr,_,Cie,_,_,_),
+    fde_block_addresses(FdeAddr,StartFunction,_),
     (
         cie_personality(Cie,Personality,_,_,PersonalityEncoding),
         Personality != 0, Encoding = as(PersonalityEncoding,number),
@@ -500,7 +534,7 @@ cfi_directive(Block,Offset,LocalIndex,CfiInsn,"",NOperands,ScaledOp1,ScaledOp2):
     !option("no-cfi-directives"),
     fde_instruction(FdeAddr,Index,_,_,Insn,Op1,Op2),
     fde_entry(FdeAddr,_,Cie,_,_,_),
-    fde_block_addresses(FdeAddr,_,EndBlockAddr),
+    fde_block_addresses(FdeAddr,StartFunction,EndBlockAddr),
     dwarf_to_cfi(Insn,NOperands,CfiInsn),
     cie_entry(Cie,_,_,DataAlignmentFactor),
     (
@@ -519,10 +553,16 @@ cfi_directive(Block,Offset,LocalIndex,CfiInsn,"",NOperands,ScaledOp1,ScaledOp2):
     ),
     fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
     (
+        Addr < StartFunction,
+        UNUSED(EndBlockAddr),
+        Block = StartFunction,
+        Offset = 0
+        ;
         Addr >= EndBlockAddr,
+        UNUSED(StartFunction),
         block_information(Block,Offset,_,EndBlockAddr)
         ;
-        Addr < EndBlockAddr,
+        Addr >= StartFunction, Addr < EndBlockAddr,
         code_in_refined_block(Addr,Block),
         Offset = Addr-Block
     ).
@@ -532,13 +572,19 @@ cfi_directive(Block,Offset,LocalIndex,CfiInsn,"",NOperands,ScaledOp1,ScaledOp2):
 cfi_directive(Block,Offset,LocalIndex,".cfi_escape","",Size,as(InstructionBytesAddr,number),0):-
     !option("no-cfi-directives"),
     fde_instruction(FdeAddr,Index,Size,InstructionBytesAddr,"unhandled_instruction",_,_),
-    fde_block_addresses(FdeAddr,_,EndBlockAddr),
+    fde_block_addresses(FdeAddr,StartFunction,EndBlockAddr),
     fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
     (
+        Addr < StartFunction,
+        UNUSED(EndBlockAddr),
+        Block = StartFunction,
+        Offset = 0
+        ;
         Addr >= EndBlockAddr,
+        UNUSED(StartFunction),
         block_information(Block,Offset,_,EndBlockAddr)
         ;
-        Addr < EndBlockAddr,
+        Addr >= StartFunction, Addr < EndBlockAddr,
         code_in_refined_block(Addr,Block),
         Offset = Addr-Block
     ).
