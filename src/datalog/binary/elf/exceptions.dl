@@ -153,7 +153,7 @@ fde_addresses(Start,End):-
     fde_entry(_,_,_,Start,End,_).
 
 /**
-FDE start points can on ocasion be misaligned with the actual start
+FDE start points can on occasion be misaligned with the actual start
 of the function. This has been seen on glibc restore_rt which generates
 code as follows:
 
