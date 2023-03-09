@@ -264,7 +264,7 @@ basic_target(Val):-
         ;
         // ELF exception information
         fde_addresses(Val,_),
-        !misalinged_fde_start(Val,_)
+        !misaligned_fde_start(Val,_)
         ;
         lsda_callsite_addresses(Val, _, _)
         ;
@@ -516,7 +516,7 @@ known_block(Block,"code",Size,"function symbol"):-
 
 known_block(Block,"code",Size,"fde-entry"):-
     fde_addresses(Block,_),
-    !misalinged_fde_start(Block,_),
+    !misaligned_fde_start(Block,_),
     block_candidate_boundaries(Block,"code",Start,End),
     Size = End - Start.
 

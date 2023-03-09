@@ -163,10 +163,10 @@ __restore_rt:
     movl $15, %rax
     syscall
 */
-.decl misalinged_fde_start(start:address,start_adjusted:address)
-.output misalinged_fde_start
+.decl misaligned_fde_start(start:address,start_adjusted:address)
+.output misaligned_fde_start
 
-misalinged_fde_start(Start,StartAligned):-
+misaligned_fde_start(Start,StartAligned):-
     fde_addresses(Start,End),
     (
         StartAligned = @functor_aligned(Start,8)
@@ -188,7 +188,7 @@ fde_block_addresses(FdeAddr,StartAdjusted,EndAddrAdjusted):-
         ;
         // adjust start point if necessary
         !refined_block(Start),
-        misalinged_fde_start(Start,StartAdjusted),
+        misaligned_fde_start(Start,StartAdjusted),
         refined_block(StartAdjusted)
     ),
     (
