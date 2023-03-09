@@ -484,6 +484,30 @@ endproc_local_index(FdeAddr,LocalIndex):-
     ).
 
 
+/**
+The location a FDE instruction (identified by FdeAddr, Index, and LocalIndex)
+refers to, expressed as a combination of a BlockAddr and an Offset into the block.
+*/
+.decl fde_instruction_block_offset(FdeAddr:address,Index:unsigned,LocalIndex:unsigned,BlockAddr:address,Offset:unsigned)
+
+fde_instruction_block_offset(FdeAddr,Index,LocalIndex,Block,Offset):-
+    fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
+    fde_block_addresses(FdeAddr,StartFunction,EndBlockAddr),
+    (
+        Addr < StartFunction,
+        UNUSED(EndBlockAddr),
+        Block = StartFunction,
+        Offset = 0
+        ;
+        Addr >= EndBlockAddr,
+        UNUSED(StartFunction),
+        block_information(Block,Offset,_,EndBlockAddr)
+        ;
+        Addr >= StartFunction, Addr < EndBlockAddr,
+        code_in_refined_block(Addr,Block),
+        Offset = Addr-Block
+    ).
+
 //////////////////////////////////////////////////////////////////////////////////
 // Computation of cfi directives
 
@@ -534,7 +558,6 @@ cfi_directive(Block,Offset,LocalIndex,CfiInsn,"",NOperands,ScaledOp1,ScaledOp2):
     !option("no-cfi-directives"),
     fde_instruction(FdeAddr,Index,_,_,Insn,Op1,Op2),
     fde_entry(FdeAddr,_,Cie,_,_,_),
-    fde_block_addresses(FdeAddr,StartFunction,EndBlockAddr),
     dwarf_to_cfi(Insn,NOperands,CfiInsn),
     cie_entry(Cie,_,_,DataAlignmentFactor),
     (
@@ -551,43 +574,15 @@ cfi_directive(Block,Offset,LocalIndex,CfiInsn,"",NOperands,ScaledOp1,ScaledOp2):
         cfi_operand_is_register(Insn,2),
         ScaledOp2 = Op2
     ),
-    fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
-    (
-        Addr < StartFunction,
-        UNUSED(EndBlockAddr),
-        Block = StartFunction,
-        Offset = 0
-        ;
-        Addr >= EndBlockAddr,
-        UNUSED(StartFunction),
-        block_information(Block,Offset,_,EndBlockAddr)
-        ;
-        Addr >= StartFunction, Addr < EndBlockAddr,
-        code_in_refined_block(Addr,Block),
-        Offset = Addr-Block
-    ).
+    fde_instruction_block_offset(FdeAddr,Index,LocalIndex,Block,Offset).
+
 
 
 // instructions that are encoded as a block of bytes (because they don't have their own cfi directive)
 cfi_directive(Block,Offset,LocalIndex,".cfi_escape","",Size,as(InstructionBytesAddr,number),0):-
     !option("no-cfi-directives"),
     fde_instruction(FdeAddr,Index,Size,InstructionBytesAddr,"unhandled_instruction",_,_),
-    fde_block_addresses(FdeAddr,StartFunction,EndBlockAddr),
-    fde_instruction_ref(FdeAddr,Index,LocalIndex,Addr),
-    (
-        Addr < StartFunction,
-        UNUSED(EndBlockAddr),
-        Block = StartFunction,
-        Offset = 0
-        ;
-        Addr >= EndBlockAddr,
-        UNUSED(StartFunction),
-        block_information(Block,Offset,_,EndBlockAddr)
-        ;
-        Addr >= StartFunction, Addr < EndBlockAddr,
-        code_in_refined_block(Addr,Block),
-        Offset = Addr-Block
-    ).
+    fde_instruction_block_offset(FdeAddr,Index,LocalIndex,Block,Offset).
 
 /////////////////////////////////////////////////////////////////
 // Auxiliary predicates for cfi directives
