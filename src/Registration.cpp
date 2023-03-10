@@ -23,7 +23,6 @@
 #include "Registration.h"
 
 #include "AuxDataSchema.h"
-#include "gtirb-decoder/DatalogProgram.h"
 #include "gtirb-decoder/target/ElfArm32Loader.h"
 #include "gtirb-decoder/target/ElfArm64Loader.h"
 #include "gtirb-decoder/target/ElfMips32Loader.h"
@@ -36,6 +35,7 @@
 #include "gtirb-decoder/target/RawMips32Loader.h"
 #include "gtirb-decoder/target/RawX64Loader.h"
 #include "gtirb-decoder/target/RawX86Loader.h"
+#include "passes/DisassemblyPass.h"
 
 void registerAuxDataTypes()
 {
@@ -82,67 +82,67 @@ void registerDatalogLoaders()
 {
 #if defined(DDISASM_ARM_32)
     // Register ELF-ARM32-LE target.
-    DatalogProgram::registerLoader(
+    DisassemblyPass::registerLoader(
         {gtirb::FileFormat::ELF, gtirb::ISA::ARM, gtirb::ByteOrder::Little}, ElfArm32Loader);
 
     // Register RAW-ARM32-LE target.
-    DatalogProgram::registerLoader(
+    DisassemblyPass::registerLoader(
         {gtirb::FileFormat::RAW, gtirb::ISA::ARM, gtirb::ByteOrder::Little}, RawArm32Loader);
 #endif
 
 #if defined(DDISASM_ARM_64)
     // Register ELF-ARM64-LE target.
-    DatalogProgram::registerLoader(
+    DisassemblyPass::registerLoader(
         {gtirb::FileFormat::ELF, gtirb::ISA::ARM64, gtirb::ByteOrder::Little}, ElfArm64Loader);
 
     // Register RAW-ARM64-LE target.
-    DatalogProgram::registerLoader(
+    DisassemblyPass::registerLoader(
         {gtirb::FileFormat::RAW, gtirb::ISA::ARM64, gtirb::ByteOrder::Little}, RawArm64Loader);
 #endif
 
 #if defined(DDISASM_MIPS_32)
     // Register ELF-MIPS32-BE target.
-    DatalogProgram::registerLoader(
+    DisassemblyPass::registerLoader(
         {gtirb::FileFormat::ELF, gtirb::ISA::MIPS32, gtirb::ByteOrder::Big}, ElfMips32BELoader);
 
     // Register ELF-MIPS32-LE target.
-    DatalogProgram::registerLoader(
+    DisassemblyPass::registerLoader(
         {gtirb::FileFormat::ELF, gtirb::ISA::MIPS32, gtirb::ByteOrder::Little}, ElfMips32LELoader);
 
     // Register RAW-MIPS32-BE target.
-    DatalogProgram::registerLoader(
+    DisassemblyPass::registerLoader(
         {gtirb::FileFormat::RAW, gtirb::ISA::MIPS32, gtirb::ByteOrder::Big}, RawMips32BELoader);
 
     // Register RAW-MIPS32-LE target.
-    DatalogProgram::registerLoader(
+    DisassemblyPass::registerLoader(
         {gtirb::FileFormat::RAW, gtirb::ISA::MIPS32, gtirb::ByteOrder::Little}, RawMips32LELoader);
 #endif
 
 #if defined(DDISASM_X86_32)
     // Register ELF-X86-LE target.
-    DatalogProgram::registerLoader(
+    DisassemblyPass::registerLoader(
         {gtirb::FileFormat::ELF, gtirb::ISA::IA32, gtirb::ByteOrder::Little}, ElfX86Loader);
 
     // Register PE-X86-LE target.
-    DatalogProgram::registerLoader(
+    DisassemblyPass::registerLoader(
         {gtirb::FileFormat::PE, gtirb::ISA::IA32, gtirb::ByteOrder::Little}, PeX86Loader);
 
     // Register RAW-X86-LE target.
-    DatalogProgram::registerLoader(
+    DisassemblyPass::registerLoader(
         {gtirb::FileFormat::RAW, gtirb::ISA::IA32, gtirb::ByteOrder::Little}, RawX86Loader);
 #endif
 
 #if defined(DDISASM_X86_64)
     // Register ELF-X64-LE target.
-    DatalogProgram::registerLoader(
+    DisassemblyPass::registerLoader(
         {gtirb::FileFormat::ELF, gtirb::ISA::X64, gtirb::ByteOrder::Little}, ElfX64Loader);
 
     // Register PE-X64-LE target.
-    DatalogProgram::registerLoader(
+    DisassemblyPass::registerLoader(
         {gtirb::FileFormat::PE, gtirb::ISA::X64, gtirb::ByteOrder::Little}, PeX64Loader);
 
     // Register RAW-X64-LE target.
-    DatalogProgram::registerLoader(
+    DisassemblyPass::registerLoader(
         {gtirb::FileFormat::RAW, gtirb::ISA::X64, gtirb::ByteOrder::Little}, RawX64Loader);
 #endif
 }

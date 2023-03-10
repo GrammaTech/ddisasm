@@ -1,6 +1,7 @@
-//===- ModuleLoader.h -------------------------------------------*- C++ -*-===//
+
+//===- Interpreter.cpp ------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2020 GrammaTech, Inc.
+//  Copyright (C) 2021 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,18 +21,15 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_GTIRB_DECODER_CORE_MODULELOADER_H_
-#define SRC_GTIRB_DECODER_CORE_MODULELOADER_H_
-
-#include <souffle/SouffleInterface.h>
-
+#ifndef GTIRB_SRC_INTERPRETER_H_
+#define GTIRB_SRC_INTERPRETER_H_
 #include <gtirb/gtirb.hpp>
 
-// Load binary format information: architecture, file format, entry point, etc.
-void ModuleLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program);
+#include "../gtirb-decoder/DatalogIO.h"
 
-const char* binaryISA(gtirb::ISA Arch);
-const char* binaryFormat(const gtirb::FileFormat Format);
-const char* binaryEndianness(const gtirb::ByteOrder ByteOrder);
+void runInterpreter(const gtirb::IR& IR, const gtirb::Module& Module,
+                    souffle::SouffleProgram& Program, const std::string& DatalogFile,
+                    const std::string& Directory, const std::string& LibDirectory,
+                    const std::string& ProfilePath, uint8_t Threads);
 
-#endif // SRC_GTIRB_DECODER_CORE_MODULELOADER_H_
+#endif // GTIRB_SRC_INTERPRETER_H_

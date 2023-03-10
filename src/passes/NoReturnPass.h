@@ -1,6 +1,6 @@
 //===- NoReturnPass.h -------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2019-2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -23,21 +23,39 @@
 #ifndef NO_RETURN_PASS_H_
 #define NO_RETURN_PASS_H_
 
-#include <souffle/SouffleInterface.h>
-
 #include <gtirb/gtirb.hpp>
-#include <optional>
 
-// Refine the CFG by removing fallthrough edges whenever there is a call to a block that never
-// returns.
-class NoReturnPass
+#include "DatalogAnalysisPass.h"
+
+/**
+Refine the CFG by removing fallthrough edges whenever there is a call to a block that never
+returns.
+*/
+class NoReturnPass : public DatalogAnalysisPass
 {
-private:
-    std::optional<std::string> DebugDir;
-    std::set<gtirb::CodeBlock*> updateCFG(souffle::SouffleProgram* P, gtirb::Module& M);
+    virtual std::string getName() const override
+    {
+        return "no return analysis";
+    }
 
-public:
-    void setDebugDir(std::string Path);
-    std::set<gtirb::CodeBlock*> computeNoReturn(gtirb::Module& module, unsigned int NThreads = 1);
+    virtual std::string getSourceFilename() const override
+    {
+        return "src/passes/datalog/no_return_analysis.dl";
+    }
+
+    virtual bool hasLoad(void) override
+    {
+        return true;
+    }
+    virtual bool hasTransform(void) override
+    {
+        return true;
+    }
+
+protected:
+    void loadImpl(AnalysisPassResult& Result, const gtirb::Context& Context,
+                  const gtirb::Module& Module, AnalysisPass* PreviousPass = nullptr) override;
+    void transformImpl(AnalysisPassResult& Result, gtirb::Context& Context,
+                       gtirb::Module& Module) override;
 };
 #endif // NO_RETURN_PASS_H_

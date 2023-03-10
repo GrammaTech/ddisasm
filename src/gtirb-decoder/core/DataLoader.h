@@ -26,7 +26,6 @@
 #include <gtirb/gtirb.hpp>
 #include <vector>
 
-#include "../DatalogProgram.h"
 #include "../Relations.h"
 
 struct DataFacts
@@ -54,7 +53,7 @@ public:
     explicit DataLoader(Pointer N, Endian E = Endian::LITTLE) : PointerSize{N}, Endianness{E} {};
     virtual ~DataLoader(){};
 
-    virtual void operator()(const gtirb::Module& Module, DatalogProgram& Program);
+    virtual void operator()(const gtirb::Module& Module, souffle::SouffleProgram& Program);
 
 protected:
     virtual void load(const gtirb::Module& Module, DataFacts& Facts);

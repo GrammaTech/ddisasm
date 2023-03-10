@@ -37,6 +37,20 @@
 
 namespace relations
 {
+    template <typename T>
+    void insert(souffle::SouffleProgram& Program, const std::string& Name, const T& Data)
+    {
+        if(auto* Relation = Program.getRelation(Name))
+        {
+            for(const auto& Element : Data)
+            {
+                souffle::tuple Row(Relation);
+                Row << Element;
+                Relation->insert(Row);
+            }
+        }
+    }
+
     template <class T>
     struct Data
     {

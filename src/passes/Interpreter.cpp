@@ -24,6 +24,7 @@
 
 #include <souffle/CompiledSouffle.h>
 
+#include <boost/dll.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/process/args.hpp>
 #include <boost/process/env.hpp>
@@ -51,31 +52,10 @@ std::string getInterpreterArch(const gtirb::Module &Module)
     return "";
 }
 
-void loadAll(DatalogProgram &Program, const std::string &Directory)
-{
-    // Load output relations into synthesized SouffleProgram.
-    for(souffle::Relation *Relation : Program.get()->getOutputRelations())
-    {
-        const std::string Path = Directory + "/" + Relation->getName() + ".csv";
-        std::ifstream CSV(Path);
-        if(!CSV)
-        {
-            std::cerr << "Error: missing output relation `" << Path << "'\n";
-            continue;
-        }
-        std::string Line;
-        while(std::getline(CSV, Line))
-        {
-            std::stringstream Row(Line);
-            Program.insertTuple(Row, Relation);
-        }
-    }
-}
-
-void runInterpreter(gtirb::IR &IR, gtirb::Module &Module, DatalogProgram &Program,
-                    const std::string &DatalogFile, const std::string &Directory,
-                    const std::string &LibDirectory, const std::string &ProfilePath,
-                    uint8_t Threads)
+void runInterpreter(const gtirb::IR &IR, const gtirb::Module &Module,
+                    souffle::SouffleProgram &Program, const std::string &DatalogFile,
+                    const std::string &Directory, const std::string &LibDirectory,
+                    const std::string &ProfilePath, uint8_t Threads)
 {
     // Dump the current GTIRB into the debug directory for use by Functors.
     std::ofstream out(Directory + "/binary.gtirb", std::ios::out | std::ios::binary);
@@ -97,8 +77,7 @@ void runInterpreter(gtirb::IR &IR, gtirb::Module &Module, DatalogProgram &Progra
 
     // Locate libfunctors.so
     // If LibDirectory is provided, only check there. Otherwise, search:
-    // ./build/lib/ (Relative directory)
-    // Dir(DatalogFile)../../build/lib/
+    // (directory of running ddisasm)/../lib/
     // ./ (Current directory)
     std::string FinalLibDirectory;
     if(!LibDirectory.empty())
@@ -113,8 +92,7 @@ void runInterpreter(gtirb::IR &IR, gtirb::Module &Module, DatalogProgram &Progra
     else
     {
         const std::vector<boost::filesystem::path> LibSearchPaths = {
-            "./build/lib",
-            boost::filesystem::path(DatalogFile).parent_path() / "../../build/lib/",
+            boost::dll::program_location().parent_path() / "../lib",
             ".",
         };
 
@@ -161,5 +139,5 @@ void runInterpreter(gtirb::IR &IR, gtirb::Module &Module, DatalogProgram &Progra
     }
 
     // Load the output relations back into the synthesized program context.
-    loadAll(Program, Directory);
+    DatalogIO::readRelations(Program, Directory);
 }

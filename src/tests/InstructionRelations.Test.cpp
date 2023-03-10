@@ -5,7 +5,7 @@
 
 #include "../AuxDataSchema.h"
 #include "../Registration.h"
-#include "../gtirb-decoder/DatalogProgram.h"
+#include "../passes/DisassemblyPass.h"
 
 namespace fs = boost::filesystem;
 
@@ -14,6 +14,7 @@ struct GTIRB
     std::unique_ptr<gtirb::Context> Context;
     gtirb::IR *IR;
     gtirb::Module *Module;
+    DisassemblyPass Disassembler;
 };
 
 GTIRB buildGtirb(gtirb::ISA ISA, std::vector<uint8_t> &Bytes)
@@ -60,25 +61,18 @@ GTIRB buildGtirb(gtirb::ISA ISA, std::vector<uint8_t> &Bytes)
     return GTIRB{std::move(Context), IR, Module};
 }
 
-std::optional<DatalogProgram> runSouffle(GTIRB &Gtirb)
+void runSouffle(GTIRB &Gtirb)
 {
-    std::optional<DatalogProgram> Souffle = DatalogProgram::load(*Gtirb.Module);
-    if(!Souffle)
-    {
-        return std::nullopt;
-    }
-
-    Souffle->pruneImdtRels = false;
-
     auto DebugDir = fs::temp_directory_path() / fs::unique_path();
     std::cout << "\t\tWriting relations to " << DebugDir << "\n";
     fs::create_directories(DebugDir);
     std::string DebugDirPath(DebugDir.string() + "/");
 
-    Souffle->writeFacts(DebugDirPath);
-    Souffle->run();
-    Souffle->writeRelations(DebugDirPath);
-    return Souffle;
+    Gtirb.Disassembler.configureDebugDir(DebugDirPath, false);
+
+    Gtirb.Disassembler.load(*Gtirb.Context, *Gtirb.Module);
+    Gtirb.Disassembler.analyze(*Gtirb.Module);
+    Gtirb.Disassembler.transform(*Gtirb.Context, *Gtirb.Module);
 }
 
 struct MemoryAccess
@@ -187,15 +181,11 @@ TEST(ArchMemoryAccessRelation, Arm64)
         0xC0, 0x03, 0x5F, 0xD6  // ret - satisfy code/data inference.
     };
     GTIRB Gtirb = buildGtirb(gtirb::ISA::ARM64, Bytes);
-
-    auto Souffle = runSouffle(Gtirb);
-    if(!Souffle)
-        FAIL();
-
-    souffle::SouffleProgram *Prog = Souffle->get();
+    runSouffle(Gtirb);
+    souffle::SouffleProgram &Program = Gtirb.Disassembler.getProgram();
 
     unsigned int Count = 0;
-    for(auto &output : *Prog->getRelation("arch.memory_access"))
+    for(auto &output : *Program.getRelation("arch.memory_access"))
     {
         MemoryAccess Result;
 
@@ -313,15 +303,11 @@ TEST(ArchMemoryAccessRelation, Arm32)
         0x1E, 0xFF, 0x2F, 0xE1 // bx lr - satisfy code/data inference.
     };
     GTIRB Gtirb = buildGtirb(gtirb::ISA::ARM, Bytes);
-
-    auto Souffle = runSouffle(Gtirb);
-    if(!Souffle)
-        FAIL();
-
-    souffle::SouffleProgram *Prog = Souffle->get();
+    runSouffle(Gtirb);
+    souffle::SouffleProgram &Program = Gtirb.Disassembler.getProgram();
 
     unsigned int Count = 0;
-    for(auto &output : *Prog->getRelation("arch.memory_access"))
+    for(auto &output : *Program.getRelation("arch.memory_access"))
     {
         MemoryAccess Result;
 

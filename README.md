@@ -151,13 +151,13 @@ Ddisasm accepts the following parameters:
 :   Number of cores to use.
 
 `-I [ --interpreter ] arg`
-:   Execute the Souffle interpreter with the specified source file.
+:   Execute the Souffle interpreter with the specified source directory.
 
 `-L [ --library-dir ] arg`
 :   Specify the search directory for the Souffle interpreter to locate functor libraries.
 
 `--profile arg`
-:   Execute the Souffle profiler to generate the specified profile log file.
+:   Generate Souffle profiling information in the specified directory.
 
 ## Testing
 
@@ -172,13 +172,14 @@ cd build && PATH=$(pwd)/bin:$PATH ctest
 A user can provide a file with user hints to guide and overcome limitations in the current ddisasm
 implementation. User hints are simply datalog facts that are added to the database before running
 the Datalog program. Datalog hints are provided in tab-separated .csv format where the first field
-is the predicate name and subsequent fields are the fact field values to be added.
+is the predicate name namespaced with the pass name and subsequent fields are the fact field values
+to be added.
 
 For example
 ```
-invalid 0x100 definitely_not_code
+disassembly.invalid 0x100 definitely_not_code
 ```
-will add a fact `invalid(0x100,"definitely_not_code")` to the Datalog database.
+will add a fact `invalid(0x100,"definitely_not_code")` to the Datalog database of the disassembly pass.
 The fields need to be separated by tabs '\t'.
 
 ## Contributing

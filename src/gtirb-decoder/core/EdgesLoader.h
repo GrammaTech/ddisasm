@@ -23,7 +23,6 @@
 #ifndef SRC_GTIRB_DECODER_CORE_EDGESLOADER_H_
 #define SRC_GTIRB_DECODER_CORE_EDGESLOADER_H_
 
-#include <souffle/CompiledSouffle.h>
 #include <souffle/SouffleInterface.h>
 
 #include <gtirb/gtirb.hpp>
@@ -31,14 +30,11 @@
 #include <tuple>
 #include <utility>
 
-#include "../DatalogProgram.h"
-#include "../Relations.h"
-
 // Load code block edges.
-void BlocksLoader(const gtirb::Module& M, DatalogProgram& P);
+void BlocksLoader(const gtirb::Module& M, souffle::SouffleProgram& P);
 
 // Load CFG edges.
-void CfgLoader(const gtirb::Module& M, DatalogProgram& P);
+void CfgLoader(const gtirb::Module& M, souffle::SouffleProgram& P);
 
 std::tuple<std::string, std::string, std::string> edgeProperties(const gtirb::EdgeLabel& L);
 

@@ -26,13 +26,13 @@
 #include "../../Endian.h"
 #include "../../Functors.h"
 
-void DataLoader::operator()(const gtirb::Module& Module, DatalogProgram& Program)
+void DataLoader::operator()(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
     DataFacts Facts;
     load(Module, Facts);
 
-    Program.insert("address_in_data", std::move(Facts.Addresses));
-    Program.insert("ascii_string", std::move(Facts.Ascii));
+    relations::insert(Program, "address_in_data", std::move(Facts.Addresses));
+    relations::insert(Program, "ascii_string", std::move(Facts.Ascii));
 }
 
 void DataLoader::load(const gtirb::Module& Module, DataFacts& Facts)

@@ -23,8 +23,9 @@
 #include "ModuleLoader.h"
 
 #include "../../AuxDataSchema.h"
+#include "../Relations.h"
 
-void ModuleLoader(const gtirb::Module& Module, DatalogProgram& Program)
+void ModuleLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
     // Binary file format.
     std::string BinaryFormat = binaryFormat(Module.getFileFormat());
@@ -61,11 +62,11 @@ void ModuleLoader(const gtirb::Module& Module, DatalogProgram& Program)
         BinaryType = "EXEC";
     }
 
-    Program.insert<std::vector<std::string>>("binary_type", {BinaryType});
-    Program.insert<std::vector<std::string>>("binary_format", {BinaryFormat});
-    Program.insert<std::vector<gtirb::Addr>>("base_address", {BaseAddress});
-    Program.insert<std::vector<gtirb::Addr>>("entry_point", {EntryPoint});
-    Program.insert<std::vector<std::string>>("endianness", {Endianness});
+    relations::insert<std::vector<std::string>>(Program, "binary_type", {BinaryType});
+    relations::insert<std::vector<std::string>>(Program, "binary_format", {BinaryFormat});
+    relations::insert<std::vector<gtirb::Addr>>(Program, "base_address", {BaseAddress});
+    relations::insert<std::vector<gtirb::Addr>>(Program, "entry_point", {EntryPoint});
+    relations::insert<std::vector<std::string>>(Program, "endianness", {Endianness});
 }
 
 const char* binaryFormat(const gtirb::FileFormat Format)

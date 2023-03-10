@@ -1,6 +1,6 @@
 //===- SccPass.h ------------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2019-2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,15 +20,43 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
-#include <gtirb/gtirb.hpp>
-
 #ifndef SCC_PASS_H_
 #define SCC_PASS_H_
 
+#include <gtirb/gtirb.hpp>
+
+#include "AnalysisPass.h"
+
 using SccMap = std::map<gtirb::UUID, int64_t>;
 
-// Compute strongly connected components and store them in a AuxData table SccMap called "SCCs"
-void computeSCCs(gtirb::Module &module);
+/**
+Compute strongly connected components and store them in a AuxData table SccMap called "SCCs"
+*/
+class SccPass : public AnalysisPass
+{
+public:
+    virtual std::string getName() const override
+    {
+        return "SCC analysis";
+    }
+
+    virtual bool hasTransform(void) override
+    {
+        return true;
+    }
+
+    virtual void clear() override;
+
+protected:
+    virtual void loadImpl(AnalysisPassResult& Result, const gtirb::Context& Context,
+                          const gtirb::Module& Module,
+                          AnalysisPass* PreviousPass = nullptr) override;
+    virtual void analyzeImpl(AnalysisPassResult& Result, const gtirb::Module& Module) override;
+    virtual void transformImpl(AnalysisPassResult& Result, gtirb::Context& Context,
+                               gtirb::Module& Module) override;
+
+private:
+    SccMap Sccs;
+};
 
 #endif // SCC_PASS_H_

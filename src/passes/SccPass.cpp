@@ -1,6 +1,6 @@
 //===- SccPass.cpp ----------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2019-2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -46,10 +46,14 @@ public:
     }
 };
 
-void computeSCCs(gtirb::Module& module)
+void SccPass::loadImpl(AnalysisPassResult& Result, const gtirb::Context& Context,
+                       const gtirb::Module& Module, AnalysisPass* PreviousPass)
 {
-    SccMap Sccs;
-    auto& Cfg = module.getIR()->getCFG();
+}
+
+void SccPass::analyzeImpl(AnalysisPassResult& Result, const gtirb::Module& Module)
+{
+    auto& Cfg = Module.getIR()->getCFG();
     KeepIntraProcedural Filter;
     boost::filtered_graph<gtirb::CFG, KeepIntraProcedural> CfgFiltered(Cfg, Filter);
 
@@ -78,5 +82,15 @@ void computeSCCs(gtirb::Module& module)
         gtirb::Node* N = Cfg[Vertex];
         Sccs[N->getUUID()] = SccComponents[Vertex];
     }
-    module.addAuxData<gtirb::schema::Sccs>(std::move(Sccs));
+}
+
+void SccPass::transformImpl(AnalysisPassResult& Result, gtirb::Context& Context,
+                            gtirb::Module& Module)
+{
+    Module.addAuxData<gtirb::schema::Sccs>(std::move(Sccs));
+}
+
+void SccPass::clear()
+{
+    Sccs.clear();
 }

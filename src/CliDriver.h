@@ -1,6 +1,6 @@
-//===- Disassembler.h -------------------------------------------*- C++ -*-===//
+//===- CliDriver.h -----------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,16 +20,30 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#ifndef _CLI_DRIVER_H_
+#define _CLI_DRIVER_H_
 
-#include <souffle/SouffleInterface.h>
+#include <chrono>
+#include <iomanip>
 
-#include <gtirb/gtirb.hpp>
+#include "AnalysisPipeline.h"
+#include "passes/AnalysisPass.h"
 
-#ifndef GTIRB_MODULE_DISASSEMBLER_H_
-#define GTIRB_MODULE_DISASSEMBLER_H_
+void printElapsedTime(std::chrono::duration<double> Elapsed);
+void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_clock> Start);
+bool printPassResults(const AnalysisPassResult& Result);
 
-void disassembleModule(gtirb::Context &context, gtirb::Module &module,
-                       souffle::SouffleProgram *prog, bool selfDiagnose);
-bool performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose);
+class DDisasmPipelineListener : public AnalysisPipelineListener
+{
+public:
+    virtual ~DDisasmPipelineListener()
+    {
+    }
 
-#endif // GTIRB_MODULE_DISASSEMBLER_H_
+    virtual void notifyPassBegin(const AnalysisPass& Pass);
+    virtual void notifyPassEnd(const AnalysisPass& Pass);
+    virtual void notifyPassPhase(AnalysisPassPhase Phase, bool HasPhase);
+    virtual void notifyPassResult(AnalysisPassPhase Phase, const AnalysisPassResult& Result);
+};
+
+#endif /* _CLI_DRIVER_H_ */

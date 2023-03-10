@@ -195,8 +195,11 @@ class AuxDataTests(unittest.TestCase):
                 ("souffleOutputs", "csv"),
             ]:
                 for name, relation in m.aux_data[table].data.items():
+                    dirname, filename = name.split(".", 1)
                     _, csv = relation
-                    with open(f"aux/{name}.{ext}", "w") as out:
+                    path = Path("aux", dirname, f"{filename}.{ext}")
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(path, "w") as out:
                         out.write(csv)
 
             # compare the relations directories

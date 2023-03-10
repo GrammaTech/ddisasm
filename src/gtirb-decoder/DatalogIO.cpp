@@ -1,6 +1,6 @@
-//===- DatalogProgram.h -----------------------------------------*- C++ -*-===//
+//===- DatalogIO.h -----------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2020 GrammaTech, Inc.
+//  Copyright (C) 2020-2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,48 +20,30 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#include "DatalogProgram.h"
+#include "DatalogIO.h"
 
 #include <souffle/RamTypes.h>
+#if defined(DDISASM_SOUFFLE_PROFILING)
+#include <souffle/profile/ProfileEvent.h>
+#endif
 
 #include <fstream>
-#include <gtirb/gtirb.hpp>
-
-#include "../AuxDataSchema.h"
-#include "CompositeLoader.h"
-#include "core/ModuleLoader.h"
-
-std::map<DatalogProgram::Target, DatalogProgram::Factory> &DatalogProgram::loaders()
-{
-    static std::map<Target, Factory> Loaders;
-    return Loaders;
-}
-
-std::optional<DatalogProgram> DatalogProgram::load(const gtirb::Module &Module)
-{
-    auto Target = std::make_tuple(Module.getFileFormat(), Module.getISA(), Module.getByteOrder());
-
-    auto Factories = loaders();
-    if(auto It = Factories.find(Target); It != Factories.end())
-    {
-        auto Loader = (It->second)();
-        return Loader.load(Module);
-    }
-    return std::nullopt;
-}
+#include <list>
+#include <map>
 
 /**
 Create a record from a string and return the record ID.
 */
-souffle::RamDomain DatalogProgram::insertRecord(const std::string &RecordText)
+souffle::RamDomain DatalogIO::insertRecord(souffle::SouffleProgram &Program,
+                                           const std::string &RecordText)
 {
     if(RecordText[0] != '[' || RecordText[RecordText.size() - 1] != ']')
     {
         throw std::invalid_argument("Could not parse record");
     }
 
-    souffle::RecordTable &RecordTable = Program->getRecordTable();
-    souffle::SymbolTable &SymbolTable = Program->getSymbolTable();
+    souffle::RecordTable &RecordTable = Program.getRecordTable();
+    souffle::SymbolTable &SymbolTable = Program.getSymbolTable();
 
     // Create string without the enclosing record brackets
     std::string RemainingFieldText = RecordText.substr(1, RecordText.size() - 2);
@@ -135,7 +117,7 @@ souffle::RamDomain DatalogProgram::insertRecord(const std::string &RecordText)
                     case PARSE_RECORD:
                     {
                         // Record
-                        RecordData.push_back(insertRecord(Field));
+                        RecordData.push_back(insertRecord(Program, Field));
                         InferredFieldType = "r";
                         break;
                     }
@@ -160,8 +142,11 @@ souffle::RamDomain DatalogProgram::insertRecord(const std::string &RecordText)
     return RecordTable.pack(RecordData.data(), RecordData.size());
 }
 
-bool DatalogProgram::insertTuple(std::stringstream &TupleText, souffle::Relation *Relation)
+bool DatalogIO::insertTuple(const std::string &TupleText, souffle::SouffleProgram &Program,
+                            souffle::Relation *Relation)
 {
+    std::stringstream Ss(TupleText);
+
     souffle::tuple T(Relation);
     std::string Field;
     size_t Arity = Relation->getArity();
@@ -169,9 +154,9 @@ bool DatalogProgram::insertTuple(std::stringstream &TupleText, souffle::Relation
     {
         if(Arity == 1)
         {
-            std::getline(TupleText, Field, '\n');
+            std::getline(Ss, Field, '\n');
         }
-        else if(!std::getline(TupleText, Field, '\t'))
+        else if(!std::getline(Ss, Field, '\t'))
         {
             std::cerr << "CSV file has less fields than expected" << std::endl;
             return false;
@@ -203,7 +188,7 @@ bool DatalogProgram::insertTuple(std::stringstream &TupleText, souffle::Relation
                     break;
                 }
                 case 'r':
-                    T << insertRecord(Field);
+                    T << insertRecord(Program, Field);
                     break;
                 default:
                     std::cerr << "Cannot parse field type " << Relation->getAttrType(I)
@@ -218,7 +203,7 @@ bool DatalogProgram::insertTuple(std::stringstream &TupleText, souffle::Relation
         }
     }
 
-    if(!TupleText.eof() && std::getline(TupleText, Field, '\t'))
+    if(!Ss.eof() && std::getline(Ss, Field, '\t'))
     {
         std::cerr << "CSV file has more fields than expected, field '" << Field << "' is ignored"
                   << std::endl;
@@ -227,60 +212,10 @@ bool DatalogProgram::insertTuple(std::stringstream &TupleText, souffle::Relation
     return true;
 }
 
-void DatalogProgram::readHintsFile(const std::string FileName)
+void DatalogIO::serializeAttribute(std::ostream &Stream, souffle::SouffleProgram &Program,
+                                   const std::string &AttrType, souffle::RamDomain Data)
 {
-    std::ifstream HintsFile(FileName);
-
-    if(!HintsFile)
-    {
-        std::cerr << "Error: could not find hints file `" << FileName << "'\n";
-        return;
-    }
-
-    std::string Line;
-    int LineNumber = 0;
-    while(std::getline(HintsFile, Line))
-    {
-        ++LineNumber;
-        std::stringstream Row(Line);
-        std::string RelationName;
-        if(!std::getline(Row, RelationName, '\t'))
-        {
-            std::cerr << "Warning: ignoring hint in line " << LineNumber << ": '" << Line << "'\n";
-            continue;
-        }
-        souffle::Relation *Relation = Program->getRelation(RelationName);
-        if(!Relation)
-        {
-            std::cerr << "Warning: ignoring hint in line " << LineNumber << ": unknown relation "
-                      << RelationName << std::endl;
-            continue;
-        }
-        if(!insertTuple(Row, Relation))
-        {
-            std::cerr << "Warning: ignoring hint in line " << LineNumber << ": bad format"
-                      << std::endl;
-            continue;
-        }
-    }
-}
-
-std::vector<DatalogProgram::Target> DatalogProgram::supportedTargets()
-{
-    static std::vector<DatalogProgram::Target> Targets;
-
-    for(auto Factory : DatalogProgram::loaders())
-    {
-        Targets.push_back(Factory.first);
-    }
-
-    return Targets;
-}
-
-void DatalogProgram::serializeAttribute(std::ostream &Stream, const std::string &AttrType,
-                                        souffle::RamDomain Data)
-{
-    souffle::SymbolTable &SymbolTable = Program->getSymbolTable();
+    souffle::SymbolTable &SymbolTable = Program.getSymbolTable();
     switch(AttrType[0])
     {
         case 's':
@@ -303,15 +238,15 @@ void DatalogProgram::serializeAttribute(std::ostream &Stream, const std::string 
             Stream << souffle::ramBitCast<souffle::RamSigned>(Data);
             break;
         case 'r':
-            serializeRecord(Stream, AttrType, Data);
+            serializeRecord(Stream, Program, AttrType, Data);
             break;
         default:
             throw std::logic_error("Serialization for datalog type " + AttrType + " not defined");
     }
 }
 
-void DatalogProgram::serializeRecord(std::ostream &Stream, const std::string &AttrType,
-                                     souffle::RamDomain RecordId)
+void DatalogIO::serializeRecord(std::ostream &Stream, souffle::SouffleProgram &Program,
+                                const std::string &AttrType, souffle::RamDomain RecordId)
 {
     // There is no way to look up record type information from the Datalog. We
     // have to keep a map of definitions here.
@@ -326,8 +261,7 @@ void DatalogProgram::serializeRecord(std::ostream &Stream, const std::string &At
                                + " not defined");
     }
 
-    const souffle::RamDomain *Record =
-        Program.get()->getRecordTable().unpack(RecordId, It->second.size());
+    const souffle::RamDomain *Record = Program.getRecordTable().unpack(RecordId, It->second.size());
 
     Stream << "[";
     unsigned int I = 0;
@@ -337,13 +271,24 @@ void DatalogProgram::serializeRecord(std::ostream &Stream, const std::string &At
         {
             Stream << ", ";
         }
-        serializeAttribute(Stream, RecordAttr, Record[I]);
+        serializeAttribute(Stream, Program, RecordAttr, Record[I]);
         I++;
     }
     Stream << "]";
 }
 
-void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation *Relation)
+void DatalogIO::serializeType(std::ostream &Stream, souffle::Relation *Relation)
+{
+    // Construct type signature string.
+    Stream << Relation->getAttrName(0) << ":" << Relation->getAttrType(0);
+    for(size_t I = 1; I < Relation->getArity(); I++)
+    {
+        Stream << "," << Relation->getAttrName(I) << ":" << Relation->getAttrType(I);
+    }
+}
+
+void DatalogIO::writeRelation(std::ostream &Stream, souffle::SouffleProgram &Program,
+                              const souffle::Relation *Relation)
 {
     Stream << std::showbase;
 
@@ -355,104 +300,88 @@ void DatalogProgram::writeRelation(std::ostream &Stream, const souffle::Relation
             {
                 Stream << "\t";
             }
-            serializeAttribute(Stream, Relation->getAttrType(I), Tuple[I]);
+            serializeAttribute(Stream, Program, Relation->getAttrType(I), Tuple[I]);
         }
         Stream << "\n";
     }
 }
 
-void DatalogProgram::writeFacts(const std::string &Directory)
+void DatalogIO::writeRelations(const std::string &Directory, const std::string &FileExtension,
+                               souffle::SouffleProgram &Program,
+                               const std::vector<souffle::Relation *> &Relations)
 {
     std::ios_base::openmode FileMask = std::ios::out;
-    for(souffle::Relation *Relation : Program->getInputRelations())
+    for(souffle::Relation *Relation : Relations)
     {
-        std::ofstream File(Directory + Relation->getName() + ".facts", FileMask);
-        writeRelation(File, Relation);
+        std::ofstream File(Directory + Relation->getName() + FileExtension, FileMask);
+        writeRelation(File, Program, Relation);
         File.close();
     }
 }
 
-void DatalogProgram::writeRelations(const std::string &Directory)
+void DatalogIO::writeFacts(const std::string &Directory, souffle::SouffleProgram &Program)
 {
-    std::ios_base::openmode FileMask = std::ios::out;
-    for(souffle::Relation *Relation : Program->getOutputRelations())
+    writeRelations(Directory, ".facts", Program, Program.getInputRelations());
+}
+
+void DatalogIO::writeRelations(const std::string &Directory, souffle::SouffleProgram &Program)
+{
+    std::string FileExtension = ".csv";
+    writeRelations(Directory, FileExtension, Program, Program.getInternalRelations());
+    writeRelations(Directory, FileExtension, Program, Program.getOutputRelations());
+}
+
+void DatalogIO::readRelations(souffle::SouffleProgram &Program, const std::string &Directory)
+{
+    // Load output relations into synthesized SouffleProgram.
+    for(souffle::Relation *Relation : Program.getOutputRelations())
     {
-        if(Relation->getArity() == 0)
+        const std::string Path = Directory + "/" + Relation->getName() + ".csv";
+        std::ifstream CSV(Path);
+        if(!CSV)
         {
+            std::cerr << "Error: missing output relation `" << Path << "'\n";
             continue;
         }
-        std::ofstream File(Directory + Relation->getName() + ".csv", FileMask);
-        writeRelation(File, Relation);
-        File.close();
-    }
-    if(!pruneImdtRels)
-    {
-        for(souffle::Relation *Relation : Program->getInternalRelations())
+        std::string Line;
+        while(std::getline(CSV, Line))
         {
-            if(Relation->getArity() == 0)
-            {
-                continue;
-            }
-            std::ofstream File(Directory + Relation->getName() + ".csv", FileMask);
-            writeRelation(File, Relation);
-            File.close();
+            DatalogIO::insertTuple(Line, Program, Relation);
         }
     }
 }
 
-void addRelationToRelationsMap(
-    DatalogProgram *Program, souffle::Relation *Relation,
-    std::map<std::string, std::tuple<std::string, std::string>> &Relations)
+void DatalogIO::setProfilePath(const std::string &ProfilePath)
 {
-    if(Relation->getArity() == 0)
-    {
-        return;
-    }
-
-    // Construct type signature string.
-    std::stringstream Type;
-    Type << Relation->getAttrName(0) << ":" << Relation->getAttrType(0);
-    for(size_t I = 1; I < Relation->getArity(); I++)
-    {
-        Type << "," << Relation->getAttrName(I) << ":" << Relation->getAttrType(I);
-    }
-
-    // Write CSV to buffer.
-    std::stringstream Csv;
-    Program->writeRelation(Csv, Relation);
-
-    // TODO: Compress CSV.
-
-    Relations[Relation->getName()] = {Type.str(), Csv.str()};
+#if defined(DDISASM_SOUFFLE_PROFILING)
+    souffle::ProfileEventSingleton::instance().setOutputFile(ProfilePath);
+#endif
 }
 
-void DatalogProgram::writeFacts(gtirb::Module &Module)
+std::string DatalogIO::clearProfileDB()
 {
-    std::map<std::string, std::tuple<std::string, std::string>> Relations;
+#if defined(DDISASM_SOUFFLE_PROFILING)
+    souffle::ProfileEventSingleton::instance().stopTimer();
+    souffle::ProfileEventSingleton::instance().dump();
 
-    for(souffle::Relation *Relation : Program->getInputRelations())
+    // Clearing the profile path ensures the ProfileEventSingleton
+    // destructor does not dump again.
+    souffle::ProfileEventSingleton::instance().setOutputFile("");
+
+    // Clear the profile database by loading an empty json file
+    // (this is the only way to clear it that Souffle currently exposes)
+    fs::path DbFilePath = fs::unique_path();
+
+    std::ofstream DbFile(DbFilePath.string(), std::ios::out);
+    if(!DbFile.is_open())
     {
-        addRelationToRelationsMap(this, Relation, Relations);
+        return "Failed to clear profile data: could not open " + DbFilePath.string();
     }
+    DbFile << "{}\n";
+    DbFile.close();
 
-    Module.addAuxData<gtirb::schema::SouffleFacts>(std::move(Relations));
-}
-
-void DatalogProgram::writeRelations(gtirb::Module &Module)
-{
-    std::map<std::string, std::tuple<std::string, std::string>> Relations;
-
-    for(souffle::Relation *Relation : Program->getOutputRelations())
-    {
-        addRelationToRelationsMap(this, Relation, Relations);
-    }
-    if(!pruneImdtRels)
-    {
-        for(souffle::Relation *Relation : Program->getInternalRelations())
-        {
-            addRelationToRelationsMap(this, Relation, Relations);
-        }
-    }
-
-    Module.addAuxData<gtirb::schema::SouffleOutputs>(std::move(Relations));
+    souffle::ProfileEventSingleton::instance().setDBFromFile(DbFilePath.string());
+    fs::remove(DbFilePath);
+#endif
+    return "";
 }

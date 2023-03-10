@@ -28,7 +28,7 @@
 #include <string>
 #include <vector>
 
-#include "DatalogProgram.h"
+#include "DatalogIO.h"
 #include "Relations.h"
 
 class CompositeLoader
@@ -38,7 +38,7 @@ public:
     ~CompositeLoader() = default;
 
     // Common type definition for functions/functors that populate datalog relations.
-    using Loader = std::function<void(const gtirb::Module&, DatalogProgram&)>;
+    using Loader = std::function<void(const gtirb::Module&, souffle::SouffleProgram&)>;
 
     // Add function to this composite loader.
     void add(Loader Fn)
@@ -53,26 +53,25 @@ public:
         Loaders.push_back(T{std::forward<Args>(A)...});
     }
 
-    // Build a DatalogProgram (i.e. SouffleProgram).
-    std::optional<DatalogProgram> load(const gtirb::Module& Module)
+    // Build a SouffleProgram
+    std::unique_ptr<souffle::SouffleProgram> load(const gtirb::Module& Module)
     {
-        if(auto SouffleProgram =
-               std::shared_ptr<souffle::SouffleProgram>(souffle::ProgramFactory::newInstance(Name)))
+        std::unique_ptr<souffle::SouffleProgram> Program(
+            souffle::ProgramFactory::newInstance(Name));
+        if(Program)
         {
-            DatalogProgram Program{SouffleProgram};
-            return operator()(Module, Program);
+            operator()(Module, *Program);
         }
-        return std::nullopt;
+        return Program;
     }
 
     // Implement loader interface for composition of CompositeLoaders.
-    std::optional<DatalogProgram> operator()(const gtirb::Module& Module, DatalogProgram& Program)
+    void operator()(const gtirb::Module& Module, souffle::SouffleProgram& Program)
     {
         for(auto& Loader : Loaders)
         {
             Loader(Module, Program);
         }
-        return Program;
     }
 
 private:

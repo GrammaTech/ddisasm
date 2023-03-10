@@ -63,7 +63,7 @@ class ValueRegTests(unittest.TestCase):
 
             value_regs = (
                 m.aux_data["souffleOutputs"]
-                .data["value_reg"][1]
+                .data["disassembly.value_reg"][1]
                 .strip()
                 .split("\n")
             )
