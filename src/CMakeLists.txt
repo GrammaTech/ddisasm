@@ -407,6 +407,7 @@ endif()
 
 target_compile_definitions(ddisasm_pipeline PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(ddisasm_pipeline PRIVATE RAM_DOMAIN_SIZE=64)
+target_compile_options(ddisasm_pipeline PRIVATE ${OPENMP_FLAGS})
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   set_common_msvc_options(ddisasm_pipeline)

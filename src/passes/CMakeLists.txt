@@ -11,6 +11,7 @@ endif()
 
 target_compile_definitions(generic_pass PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(generic_pass PRIVATE RAM_DOMAIN_SIZE=64)
+target_compile_options(generic_pass PRIVATE ${OPENMP_FLAGS})
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   set_common_msvc_options(generic_pass)
@@ -29,6 +30,7 @@ target_link_libraries(disassembly_pass gtirb gtirb_pprinter)
 
 target_compile_definitions(disassembly_pass PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(disassembly_pass PRIVATE RAM_DOMAIN_SIZE=64)
+target_compile_options(disassembly_pass PRIVATE ${OPENMP_FLAGS})
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   set_common_msvc_options(disassembly_pass)
