@@ -786,17 +786,11 @@ void ElfReader::buildSections()
     Module->addAuxData<gtirb::schema::SectionProperties>(std::move(SectionProperties));
 }
 
-// Return a VersionedName where the VersionStr in the given Symbol is
-// replaced with Version ID if any.
-// If `Update` is true, update Symbols with the updated VersionMap for
-// the symbol.
-//
-// TableName and TableIndex are only used when Update is true.
-std::string ElfReader::getVersionedNameOrUpdateVersionMap(const LIEF::ELF::Symbol &Symbol,
-                                                          bool Update, const std::string &TableName,
-                                                          uint64_t TableIndex)
+/*
+Get an adjusted value for a LIEF Symbol
+*/
+uint64_t ElfReader::getSymbolValue(const LIEF::ELF::Symbol &Symbol)
 {
-    std::string Name = Symbol.name();
     uint64_t Value = Symbol.value();
 
     // Rebase symbols onto their respective relocated section address.
@@ -820,16 +814,47 @@ std::string ElfReader::getVersionedNameOrUpdateVersionMap(const LIEF::ELF::Symbo
         Value = tlsBaseAddress() + Value;
     }
 
-    gtirb::provisional_schema::SymbolVersionId Version = LIEF::ELF::VER_NDX_LOCAL;
+    return Value;
+}
+
+/*
+Look up LiefToGtirbSymbols for the given SymbolKey and return a VersionedName.
+*/
+std::string ElfReader::getVersionedName(const SymbolKey &Key)
+{
+    auto It = LiefToGtirbSymbols.find(Key);
+    assert(It != LiefToGtirbSymbols.end() && "No Gtirb symbol for LIEF symbol");
+    gtirb::Symbol *Symbol = It->second;
+    return Symbol->getName();
+}
+
+/*
+Create a SymbolKey for the given LIEF Symbol.
+*/
+ElfReader::SymbolKey ElfReader::getSymbolKey(const LIEF::ELF::Symbol &Symbol,
+                                             const std::string &Name)
+{
+    uint64_t Value = getSymbolValue(Symbol);
+    return std::tuple(Value,                                     // Value
+                      Symbol.size(),                             // Size
+                      LIEF::ELF::to_string(Symbol.type()),       // Type
+                      LIEF::ELF::to_string(Symbol.binding()),    // Binding
+                      LIEF::ELF::to_string(Symbol.visibility()), // Scope
+                      Symbol.shndx(),                            // Section Index
+                      Name                                       // Name
+    );
+}
+
+/*
+Return a pair of Name and VersionStr for the given LIEF Symbol.
+*/
+std::pair<std::string, std::string> ElfReader::getNameAndVersionStr(const LIEF::ELF::Symbol &Symbol)
+{
+    std::string Name = Symbol.name();
     std::string VersionStr;
-    // Symbols in "dynsym" table have versions.
-    if(Symbol.has_version())
-    {
-        Version = Symbol.symbol_version()->value();
-    }
     // Symbols in "symtab" table have the version attached to the name.
     // We remove the version from the name and recover the corresponding version identifier.
-    else if(std::size_t I = Name.find('@'); I != std::string::npos)
+    if(std::size_t I = Name.find('@'); I != std::string::npos)
     {
         VersionStr = Name.substr(I, 2) == "@@" ? Name.substr(I + 2) : Name.substr(I + 1);
         if(!VersionToIds[VersionStr].empty())
@@ -843,14 +868,34 @@ std::string ElfReader::getVersionedNameOrUpdateVersionMap(const LIEF::ELF::Symbo
             VersionStr.clear();
         }
     }
-    auto &VersionMap = Symbols[std::tuple(Value,                                     // Value
-                                          Symbol.size(),                             // Size
-                                          LIEF::ELF::to_string(Symbol.type()),       // Type
-                                          LIEF::ELF::to_string(Symbol.binding()),    // Binding
-                                          LIEF::ELF::to_string(Symbol.visibility()), // Scope
-                                          Symbol.shndx(), // Section Index
-                                          Name            // Name
-                                          )];
+    return std::make_pair(Name, VersionStr);
+}
+
+/*
+Update Symbols with the updated VersionMap for the symbol.
+*/
+void ElfReader::updateVersionMap(const LIEF::ELF::Symbol &Symbol, const std::string &TableName,
+                                 uint64_t TableIndex)
+{
+    gtirb::provisional_schema::SymbolVersionId Version = LIEF::ELF::VER_NDX_LOCAL;
+
+    std::string Name;
+    std::string VersionStr;
+    if(Symbol.has_version())
+    {
+        // Symbols in "dynsym" table have versions.
+        Version = Symbol.symbol_version()->value();
+        Name = Symbol.name();
+    }
+    else
+    {
+        auto NV = getNameAndVersionStr(Symbol);
+        Name = NV.first;
+        VersionStr = NV.second;
+    }
+
+    SymbolKey Key = getSymbolKey(Symbol, Name);
+    auto &VersionMap = Symbols[Key];
     // If the version was part of the name,
     // select the best version already available (from dynsym).
     if(VersionStr.size() > 0)
@@ -894,15 +939,7 @@ std::string ElfReader::getVersionedNameOrUpdateVersionMap(const LIEF::ELF::Symbo
             Version = LIEF::ELF::VER_NDX_GLOBAL;
         }
     }
-    if(Update)
-    {
-        VersionMap[Version].push_back({TableName, TableIndex});
-    }
-    if(Version > LIEF::ELF::VER_NDX_GLOBAL)
-    {
-        Name += "@" + std::to_string(Version);
-    }
-    return Name;
+    VersionMap[Version].push_back({TableName, TableIndex});
 }
 
 void ElfReader::buildSymbols()
@@ -942,7 +979,7 @@ void ElfReader::buildSymbols()
         uint64_t TableIndex = 0;
         for(auto &Symbol : SymbolIt)
         {
-            getVersionedNameOrUpdateVersionMap(Symbol, true /*Update*/, TableName, TableIndex);
+            updateVersionMap(Symbol, TableName, TableIndex);
             TableIndex++;
         }
     };
@@ -986,6 +1023,9 @@ void ElfReader::buildSymbols()
             }
 
             assert(S && "Failed to create symbol.");
+
+            // Update LiefToGtirbSymbols for later.
+            LiefToGtirbSymbols[Key] = S;
 
             // Add additional symbol information to aux data.
             SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex};
@@ -1104,7 +1144,9 @@ void ElfReader::addAuxData()
             {
                 // If the version was part of the name, try to find the
                 // version Id already given in buildSymbols.
-                SymbolName = getVersionedNameOrUpdateVersionMap(Symbol);
+                std::string Name = getNameAndVersionStr(Symbol).first;
+                SymbolKey Key = getSymbolKey(Symbol, Name);
+                SymbolName = getVersionedName(Key);
             }
             else if(SymbolVersion->value() > LIEF::ELF::VER_NDX_GLOBAL)
             {

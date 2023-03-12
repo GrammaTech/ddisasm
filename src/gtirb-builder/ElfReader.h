@@ -73,11 +73,6 @@ private:
 
     const LIEF::ELF::Section* findRelocationSection(const LIEF::ELF::Relocation& Relocation);
 
-    std::string getVersionedNameOrUpdateVersionMap(const LIEF::ELF::Symbol& Symbol,
-                                                   bool Update = false,
-                                                   const std::string& TableName = "",
-                                                   uint64_t TableIndex = 0);
-
     // Map version strings (e.g., GLIBC_2.2.5) to SymbolVersionIds
     // Usually there's only one VersionId for each version string, but it
     // would be possible for there to be more.
@@ -89,6 +84,18 @@ private:
     std::map<SymbolKey,
              std::map<gtirb::provisional_schema::SymbolVersionId, std::vector<TableDecl>>>
         Symbols;
+
+    // Map SymbolKey to Gtirb Symbol
+    std::map<SymbolKey, gtirb::Symbol*> LiefToGtirbSymbols;
+
+    // Helper functions to process LIEF Symbols with Versions
+    uint64_t getSymbolValue(const LIEF::ELF::Symbol& Symbol);
+    std::pair<std::string, std::string> getNameAndVersionStr(const LIEF::ELF::Symbol& Symbol);
+    SymbolKey getSymbolKey(const LIEF::ELF::Symbol& Symbol, const std::string& Name);
+    void updateVersionMap(const LIEF::ELF::Symbol& Symbol, const std::string& TableName,
+                          uint64_t TableIndex);
+
+    std::string getVersionedName(const SymbolKey& Key);
 
     // TODO: Handle duplicate section names?
     std::map<std::string, uint64_t> SectionRelocations;
