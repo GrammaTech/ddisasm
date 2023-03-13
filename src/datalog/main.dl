@@ -207,6 +207,7 @@ binary_isa(ArchName):-
           op1:operand_code,op2:operand_code,op3:operand_code,op4:operand_code,
           immOffset:unsigned,displacementOffset:unsigned)
 .input instruction
+.output instruction
 
 /**
  The instruction at EA has capstone's cs_arm.writeback set.
